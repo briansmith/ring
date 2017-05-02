@@ -37,7 +37,10 @@ type testSuite struct {
 	directory string
 	// binary is the name of the binary that can process these tests.
 	binary string
-	tests  []test
+	// faxScanFunc, if not nil, is the function to use instead of
+	// (*bufio.Scanner).Scan. This can be used to skip lines.
+	faxScanFunc func(*bufio.Scanner) bool
+	tests       []test
 }
 
 func (t *testSuite) getDirectory() string {
@@ -47,6 +50,7 @@ func (t *testSuite) getDirectory() string {
 var aesGCMTests = testSuite{
 	"AES_GCM",
 	"cavp_aes_gcm_test",
+	nil,
 	[]test{
 		{"gcmDecrypt128", []string{"dec", "aes-128-gcm"}, false},
 		{"gcmDecrypt256", []string{"dec", "aes-256-gcm"}, false},
@@ -58,6 +62,7 @@ var aesGCMTests = testSuite{
 var aesTests = testSuite{
 	"AES",
 	"cavp_aes_test",
+	nil,
 	[]test{
 		{"CBCGFSbox128", []string{"kat", "aes-128-cbc"}, false},
 		{"CBCGFSbox192", []string{"kat", "aes-192-cbc"}, false},
@@ -102,18 +107,21 @@ var aesTests = testSuite{
 var ecdsa2KeyPairTests = testSuite{
 	"ECDSA2",
 	"cavp_ecdsa2_keypair_test",
+	nil,
 	[]test{{"KeyPair", nil, true}},
 }
 
 var ecdsa2PKVTests = testSuite{
 	"ECDSA2",
 	"cavp_ecdsa2_pkv_test",
+	nil,
 	[]test{{"PKV", nil, false}},
 }
 
 var ecdsa2SigGenTests = testSuite{
 	"ECDSA2",
 	"cavp_ecdsa2_siggen_test",
+	nil,
 	[]test{
 		{"SigGen", []string{"SigGen"}, true},
 		{"SigGenComponent", []string{"SigGenComponent"}, true},
@@ -123,12 +131,14 @@ var ecdsa2SigGenTests = testSuite{
 var ecdsa2SigVerTests = testSuite{
 	"ECDSA2",
 	"cavp_ecdsa2_sigver_test",
+	nil,
 	[]test{{"SigVer", nil, false}},
 }
 
 var rsa2SigGenTests = testSuite{
 	"RSA2",
 	"cavp_rsa2_siggen_test",
+	nil,
 	[]test{
 		{"SigGen15_186-3", []string{"pkcs15"}, true},
 		{"SigGenPSS_186-3", []string{"pss"}, true},
@@ -138,21 +148,46 @@ var rsa2SigGenTests = testSuite{
 var rsa2SigVerTests = testSuite{
 	"RSA2",
 	"cavp_rsa2_sigver_test",
+	func(s *bufio.Scanner) bool {
+		for {
+			if !s.Scan() {
+				return false
+			}
+
+			line := s.Text()
+			if strings.HasPrefix(line, "p = ") || strings.HasPrefix(line, "d = ") || strings.HasPrefix(line, "SaltVal = ") || strings.HasPrefix(line, "EM with ") {
+				continue
+			}
+			if strings.HasPrefix(line, "q = ") {
+				// Skip the "q = " line and an additional blank line.
+				if !s.Scan() {
+					return false
+				}
+				if len(strings.TrimSpace(s.Text())) > 0 {
+					return false
+				}
+				continue
+			}
+			return true
+		}
+	},
 	[]test{
-		{"SigVer15_186-3", []string{"pkcs15"}, true},
-		{"SigVerPSS_186-3", []string{"pss"}, true},
+		{"SigVer15_186-3", []string{"pkcs15"}, false},
+		{"SigVerPSS_186-3", []string{"pss"}, false},
 	},
 }
 
 var hmacTests = testSuite{
 	"HMAC",
 	"cavp_hmac_test",
+	nil,
 	[]test{{"HMAC", nil, false}},
 }
 
 var shaTests = testSuite{
 	"SHA",
 	"cavp_sha_test",
+	nil,
 	[]test{
 		{"SHA1LongMsg", []string{"SHA1"}, false},
 		{"SHA1ShortMsg", []string{"SHA1"}, false},
@@ -170,6 +205,7 @@ var shaTests = testSuite{
 var shaMonteTests = testSuite{
 	"SHA",
 	"cavp_sha_monte_test",
+	nil,
 	[]test{
 		{"SHA1Monte", []string{"SHA1"}, false},
 		{"SHA224Monte", []string{"SHA224"}, false},
@@ -182,12 +218,14 @@ var shaMonteTests = testSuite{
 var ctrDRBGTests = testSuite{
 	"DRBG800-90A",
 	"cavp_ctr_drbg_test",
+	nil,
 	[]test{{"CTR_DRBG", nil, false}},
 }
 
 var tdesTests = testSuite{
 	"TDES",
 	"cavp_tdes_test",
+	nil,
 	[]test{
 		// {"TCBCMMT2", []string{"mmt"}, false},
 		// {"TCBCMMT3", []string{"mmt"}, false},
@@ -287,6 +325,11 @@ func canonicalizeLine(in string) string {
 }
 
 func compareFAX(suite *testSuite, test test) error {
+	faxScanFunc := suite.faxScanFunc
+	if faxScanFunc == nil {
+		faxScanFunc = (*bufio.Scanner).Scan
+	}
+
 	respPath := filepath.Join(suite.getDirectory(), "resp", test.inFile+".resp")
 	respFile, err := os.Open(respPath)
 	if err != nil {
@@ -320,7 +363,7 @@ func compareFAX(suite *testSuite, test test) error {
 			haveFaxLine := false
 
 			if inHeader {
-				for faxScanner.Scan() {
+				for faxScanFunc(faxScanner) {
 					faxLine = faxScanner.Text()
 					if len(faxLine) != 0 && faxLine[0] != '#' {
 						haveFaxLine = true
@@ -330,7 +373,7 @@ func compareFAX(suite *testSuite, test test) error {
 
 				inHeader = false
 			} else {
-				if faxScanner.Scan() {
+				if faxScanFunc(faxScanner) {
 					faxLine = faxScanner.Text()
 					haveFaxLine = true
 				}
@@ -358,7 +401,7 @@ func compareFAX(suite *testSuite, test test) error {
 		return fmt.Errorf("resp and fax differ at line %d for %q %q: %q vs %q", lineNo, suite.getDirectory(), test.inFile, respLine, faxLine)
 	}
 
-	if faxScanner.Scan() {
+	if faxScanFunc(faxScanner) {
 		return fmt.Errorf("fax file is longer than resp for %q %q", suite.getDirectory(), test.inFile)
 	}
 
