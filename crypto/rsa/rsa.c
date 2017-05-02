@@ -448,8 +448,8 @@ int RSA_sign(int hash_nid, const uint8_t *in, unsigned in_len, uint8_t *out,
              unsigned *out_len, RSA *rsa) {
   const unsigned rsa_size = RSA_size(rsa);
   int ret = 0;
-  uint8_t *signed_msg;
-  size_t signed_msg_len;
+  uint8_t *signed_msg = NULL;
+  size_t signed_msg_len = 0;
   int signed_msg_is_alloced = 0;
   size_t size_t_out_len;
 
@@ -508,7 +508,7 @@ int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
   uint8_t *buf = NULL;
   int ret = 0;
   uint8_t *signed_msg = NULL;
-  size_t signed_msg_len, len;
+  size_t signed_msg_len = 0, len;
   int signed_msg_is_alloced = 0;
 
   if (hash_nid == NID_md5_sha1 && msg_len != SSL_SIG_LENGTH) {
