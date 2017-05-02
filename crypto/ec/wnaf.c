@@ -78,9 +78,10 @@
 #include "../internal.h"
 
 
-/* This file implements the wNAF-based interleaving multi-exponentation method
- * (<URL:http://www.informatik.tu-darmstadt.de/TI/Mitarbeiter/moeller.html#multiexp>);
- * */
+/* This file implements the wNAF-based interleaving multi-exponentiation method
+ * at:
+ *   http://link.springer.com/chapter/10.1007%2F3-540-45537-X_13
+ *   http://www.bmoeller.de/pdf/TI-01-08.multiexp.pdf */
 
 /* Determine the modified width-(w+1) Non-Adjacent Form (wNAF) of 'scalar'.
  * This is an array  r[]  of values that are either zero or odd with an
