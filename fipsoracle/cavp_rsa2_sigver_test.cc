@@ -73,8 +73,16 @@ static bool TestRSA2SigVer(FileTest *t, void *arg) {
     return false;
   }
 
-  if (RSA_verify(EVP_MD_type(md), digest_buf, digest_len, sig.data(),
-                 sig.size(), key.get())) {
+  int ok;
+  if (ctx->is_pss) {
+    ok = RSA_verify_pss_mgf1(key.get(), digest_buf, digest_len, md, md, -1,
+                             sig.data(), sig.size());
+  } else {
+    ok = RSA_verify(EVP_MD_type(md), digest_buf, digest_len, sig.data(),
+                    sig.size(), key.get());
+  }
+
+  if (ok) {
     printf("Result = P\r\n\r\n");
   } else {
     char buf[256];

@@ -74,12 +74,25 @@ static bool TestRSA2SigGen(FileTest *t, void *arg) {
   const EVP_MD *md = EVP_get_digestbyname(hash.c_str());
   uint8_t digest_buf[EVP_MAX_MD_SIZE];
   std::vector<uint8_t> sig(RSA_size(ctx->key.get()));
-  unsigned digest_len, sig_len;
+  unsigned digest_len;
+  size_t sig_len;
   if (md == NULL ||
-      !EVP_Digest(msg.data(), msg.size(), digest_buf, &digest_len, md, NULL) ||
-      !RSA_sign(EVP_MD_type(md), digest_buf, digest_len, sig.data(), &sig_len,
-                ctx->key.get())) {
+      !EVP_Digest(msg.data(), msg.size(), digest_buf, &digest_len, md, NULL)) {
     return false;
+  }
+
+  if (ctx->is_pss) {
+    if (!RSA_sign_pss_mgf1(ctx->key.get(), &sig_len, sig.data(), sig.size(),
+                           digest_buf, digest_len, md, md, -1)) {
+      return false;
+    }
+  } else {
+    unsigned sig_len_u;
+    if (!RSA_sign(EVP_MD_type(md), digest_buf, digest_len, sig.data(),
+                  &sig_len_u, ctx->key.get())) {
+      return false;
+    }
+    sig_len = sig_len_u;
   }
 
   printf("%sS = %s\r\n\r\n", test.c_str(),

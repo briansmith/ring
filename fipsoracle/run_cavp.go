@@ -131,7 +131,7 @@ var rsa2SigGenTests = testSuite{
 	"cavp_rsa2_siggen_test",
 	[]test{
 		{"SigGen15_186-3", []string{"pkcs15"}, true},
-		// {"SigGenPSS_186-3", []string{"pss"}, true},
+		{"SigGenPSS_186-3", []string{"pss"}, true},
 	},
 }
 
@@ -140,7 +140,7 @@ var rsa2SigVerTests = testSuite{
 	"cavp_rsa2_sigver_test",
 	[]test{
 		{"SigVer15_186-3", []string{"pkcs15"}, true},
-		// {"SigVerPSS_186-3", []string{"pss"}, true},
+		{"SigVerPSS_186-3", []string{"pss"}, true},
 	},
 }
 
