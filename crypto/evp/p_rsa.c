@@ -251,19 +251,9 @@ static int pkey_rsa_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out,
     return 0;
   }
 
-  if (!setup_tbuf(rctx, ctx)) {
-    return 0;
-  }
-
   if (rctx->md == NULL) {
-    const int ret = RSA_public_decrypt(sig_len, sig, rctx->tbuf,
-                                       ctx->pkey->pkey.rsa, rctx->pad_mode);
-    if (ret < 0) {
-      return 0;
-    }
-    *out_len = ret;
-    OPENSSL_memcpy(out, rctx->tbuf, *out_len);
-    return 1;
+    return RSA_verify_raw(rsa, out_len, out, *out_len, sig, sig_len,
+                          rctx->pad_mode);
   }
 
   if (rctx->pad_mode != RSA_PKCS1_PADDING) {
@@ -276,7 +266,8 @@ static int pkey_rsa_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out,
   uint8_t *asn1_prefix;
   size_t asn1_prefix_len;
   int asn1_prefix_allocated;
-  if (!RSA_add_pkcs1_prefix(&asn1_prefix, &asn1_prefix_len,
+  if (!setup_tbuf(rctx, ctx) ||
+      !RSA_add_pkcs1_prefix(&asn1_prefix, &asn1_prefix_len,
                             &asn1_prefix_allocated, EVP_MD_type(rctx->md),
                             kDummyHash, hash_len)) {
     return 0;
