@@ -197,8 +197,9 @@ pub fn parse_big_endian_and_pad_consttime(
 /// and so the padding logic can be dropped.
 pub fn big_endian_from_limbs_padded(limbs: &[Limb], out: &mut [u8]) {
     let num_limbs = limbs.len();
-    let (dest, to_zero) =
-        out.split_at_mut(num_limbs * LIMB_BYTES); // May panic.
+    let out_len = out.len();
+    let (to_zero, dest) =
+        out.split_at_mut(out_len - (num_limbs * LIMB_BYTES)); // May panic.
     for i in 0..num_limbs {
         let mut limb = limbs[i];
         for j in 0..LIMB_BYTES {
@@ -264,5 +265,60 @@ mod tests {
         }
 
         // XXX: This is a weak set of tests. TODO: expand it.
+    }
+
+    #[test]
+    fn test_big_endian_from_limbs_padded_same_length() {
+        #[cfg(target_pointer_width = "32")]
+        let limbs = [
+            0xbccddeef, 0x89900aab, 0x45566778, 0x01122334,
+            0xddeeff00, 0x99aabbcc, 0x55667788, 0x11223344
+        ];
+
+        #[cfg(target_pointer_width = "64")]
+        let limbs = [
+            0x89900aab_bccddeef, 0x01122334_45566778,
+            0x99aabbcc_ddeeff00, 0x11223344_55667788,
+        ];
+
+        let expected = [
+            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
+            0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00,
+            0x01, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78,
+            0x89, 0x90, 0x0a, 0xab, 0xbc, 0xcd, 0xde, 0xef,
+        ];
+
+        let mut out = [0xabu8; 32];
+        big_endian_from_limbs_padded(&limbs[..], &mut out);
+        assert_eq!(&out[..], &expected[..]);
+    }
+
+    #[test]
+    fn test_big_endian_from_limbs_padded_fewer_limbs() {
+        #[cfg(target_pointer_width = "32")]
+        // Two fewer limbs.
+        let limbs = [
+            0xbccddeef, 0x89900aab, 0x45566778, 0x01122334,
+            0xddeeff00, 0x99aabbcc,
+        ];
+
+        // One fewer limb.
+        #[cfg(target_pointer_width = "64")]
+        let limbs = [
+            0x89900aab_bccddeef, 0x01122334_45566778,
+            0x99aabbcc_ddeeff00,
+        ];
+
+        let expected = [
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00,
+            0x01, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78,
+            0x89, 0x90, 0x0a, 0xab, 0xbc, 0xcd, 0xde, 0xef,
+        ];
+
+        let mut out = [0xabu8; 32];
+
+        big_endian_from_limbs_padded(&limbs[..], &mut out);
+        assert_eq!(&out[..], &expected[..]);
     }
 }
