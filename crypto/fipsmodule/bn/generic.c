@@ -704,4 +704,12 @@ void bn_sqr_comba4(BN_ULONG *r, const BN_ULONG *a) {
   r[7] = c2;
 }
 
+#undef mul_add
+#undef mul
+#undef sqr
+#undef mul_add_c
+#undef mul_add_c2
+#undef sqr_add_c
+#undef sqr_add_c2
+
 #endif
