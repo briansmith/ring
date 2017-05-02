@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Brian Smith.
+// Copyright 2015-2017 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -314,31 +314,14 @@ pub use rsa::verification::{
     RSA_PSS_2048_8192_SHA512,
 };
 
+pub use signature_impl::Signature;
+
 /// Lower-level verification primitives. Usage of `ring::signature::verify()`
 /// is preferred when the public key and signature are encoded in standard
 /// formats, as it also handles the parsing.
 #[cfg(feature = "use_heap")]
 pub mod primitive {
     pub use rsa::verification::verify_rsa;
-}
-
-/// A public key signature returned from a signing operation.
-pub struct Signature {
-    value: [u8; 64],
-}
-
-impl<'a> Signature {
-    // Initialize a 64-byte signature from slice of bytes. XXX: This is public
-    // so that other *ring* submodules can use it, but it isn't intended for
-    // public use.
-    #[doc(hidden)]
-    pub fn new(signature_bytes: [u8; 64]) -> Signature {
-        Signature { value: signature_bytes }
-    }
-}
-
-impl AsRef<[u8]> for Signature {
-    fn as_ref(&self) -> &[u8] { &self.value[..] }
 }
 
 /// A signature verification algorithm.

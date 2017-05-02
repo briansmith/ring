@@ -161,6 +161,7 @@ pub mod rand;
 mod rsa;
 
 pub mod signature;
+mod signature_impl;
 
 #[cfg(any(feature = "use_heap", test))]
 pub mod test;

@@ -14,7 +14,7 @@
 
 //! EdDSA Signatures.
 
-use {der, digest, error, pkcs8, private, rand, signature};
+use {der, digest, error, pkcs8, private, rand, signature, signature_impl};
 use super::ops::*;
 use untrusted;
 
@@ -203,7 +203,7 @@ impl<'a> Ed25519KeyPair {
                                      &nonce);
             }
         }
-        signature::Signature::new(signature_bytes)
+        signature_impl::signature_from_bytes(&signature_bytes)
     }
 }
 
