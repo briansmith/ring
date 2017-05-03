@@ -26,6 +26,7 @@
 
 #include "internal.h"
 #include "../internal.h"
+#include "../fipsmodule/cipher/internal.h"
 
 
 typedef struct {

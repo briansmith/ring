@@ -49,10 +49,10 @@
 #include <openssl/aes.h>
 
 #include <assert.h>
-#include <stdlib.h>
 
 #include <openssl/cpu.h>
 
+#include "internal.h"
 #include "../modes/internal.h"
 
 
@@ -1059,44 +1059,6 @@ void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 }
 
 #else
-
-#if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
-
-static int hwaes_capable(void) {
-  return CRYPTO_is_ARMv8_AES_capable();
-}
-
-int aes_hw_set_encrypt_key(const uint8_t *user_key, const int bits,
-                           AES_KEY *key);
-int aes_hw_set_decrypt_key(const uint8_t *user_key, const int bits,
-                           AES_KEY *key);
-void aes_hw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void aes_hw_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-
-#else
-
-static int hwaes_capable(void) {
-  return 0;
-}
-
-static int aes_hw_set_encrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
-  abort();
-}
-
-static int aes_hw_set_decrypt_key(const uint8_t *user_key, int bits, AES_KEY *key) {
-  abort();
-}
-
-static void aes_hw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
-  abort();
-}
-
-static void aes_hw_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
-  abort();
-}
-
-#endif
-
 
 /* In this case several functions are provided by asm code. However, one cannot
  * control asm symbol visibility with command line flags and such so they are

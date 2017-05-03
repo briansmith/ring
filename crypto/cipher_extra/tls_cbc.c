@@ -59,6 +59,7 @@
 
 #include "../internal.h"
 #include "internal.h"
+#include "../fipsmodule/cipher/internal.h"
 
 
 /* MAX_HASH_BIT_COUNT_BYTES is the maximum number of bytes in the hash's length

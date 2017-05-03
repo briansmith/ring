@@ -23,7 +23,7 @@
 #include <openssl/mem.h>
 #include <openssl/poly1305.h>
 
-#include "internal.h"
+#include "../fipsmodule/cipher/internal.h"
 #include "../internal.h"
 
 

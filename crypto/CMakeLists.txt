@@ -88,7 +88,7 @@ add_subdirectory(curve25519)
 
 # Level 1, depends only on 0.*
 add_subdirectory(digest_extra)
-add_subdirectory(cipher)
+add_subdirectory(cipher_extra)
 add_subdirectory(rand_extra)
 add_subdirectory(bio)
 add_subdirectory(bn_extra)
@@ -166,7 +166,7 @@ add_library(
   $<TARGET_OBJECTS:pool>
   $<TARGET_OBJECTS:fipsmodule>
   $<TARGET_OBJECTS:digest_extra>
-  $<TARGET_OBJECTS:cipher>
+  $<TARGET_OBJECTS:cipher_extra>
   $<TARGET_OBJECTS:rc4>
   $<TARGET_OBJECTS:conf>
   $<TARGET_OBJECTS:chacha>

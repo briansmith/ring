@@ -18,7 +18,7 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
-#include "../../cipher/internal.h"
+#include "../cipher/internal.h"
 
 
 /* Section references in this file refer to SP 800-90Ar1:

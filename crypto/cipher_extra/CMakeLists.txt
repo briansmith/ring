@@ -10,19 +10,16 @@ if (${ARCH} STREQUAL "x86_64")
 endif()
 
 add_library(
-  cipher
+  cipher_extra
 
   OBJECT
 
-  cipher.c
+  cipher_extra.c
   derive_key.c
-  aead.c
 
   e_null.c
   e_rc2.c
   e_rc4.c
-  e_des.c
-  e_aes.c
   e_aesgcmsiv.c
   e_aesctrhmac.c
   e_chacha20poly1305.c

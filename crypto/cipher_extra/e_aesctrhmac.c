@@ -18,7 +18,7 @@
 #include <openssl/err.h>
 #include <openssl/sha.h>
 
-#include "internal.h"
+#include "../fipsmodule/cipher/internal.h"
 
 
 #define EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN SHA256_DIGEST_LENGTH

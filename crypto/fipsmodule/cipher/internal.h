@@ -54,101 +54,66 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/cipher.h>
+#ifndef OPENSSL_HEADER_CIPHER_INTERNAL_H
+#define OPENSSL_HEADER_CIPHER_INTERNAL_H
 
-#include <assert.h>
+#include <openssl/base.h>
 
-#include <openssl/digest.h>
-#include <openssl/mem.h>
+#include <openssl/aead.h>
+#include <openssl/aes.h>
 
-#include "internal.h"
+#include "../../internal.h"
+#include "../modes/internal.h"
+
+#if defined(__cplusplus)
+extern "C" {
+#endif
 
 
-#define PKCS5_SALT_LEN 8
+/* EVP_CIPH_MODE_MASK contains the bits of |flags| that represent the mode. */
+#define EVP_CIPH_MODE_MASK 0x3f
 
-int EVP_BytesToKey(const EVP_CIPHER *type, const EVP_MD *md,
-                   const uint8_t *salt, const uint8_t *data, size_t data_len,
-                   unsigned count, uint8_t *key, uint8_t *iv) {
-  EVP_MD_CTX c;
-  uint8_t md_buf[EVP_MAX_MD_SIZE];
-  unsigned niv, nkey, addmd = 0;
-  unsigned mds = 0, i;
-  int rv = 0;
+/* EVP_AEAD represents a specific AEAD algorithm. */
+struct evp_aead_st {
+  uint8_t key_len;
+  uint8_t nonce_len;
+  uint8_t overhead;
+  uint8_t max_tag_len;
 
-  nkey = type->key_len;
-  niv = type->iv_len;
+  /* init initialises an |EVP_AEAD_CTX|. If this call returns zero then
+   * |cleanup| will not be called for that context. */
+  int (*init)(EVP_AEAD_CTX *, const uint8_t *key, size_t key_len,
+              size_t tag_len);
+  int (*init_with_direction)(EVP_AEAD_CTX *, const uint8_t *key, size_t key_len,
+                             size_t tag_len, enum evp_aead_direction_t dir);
+  void (*cleanup)(EVP_AEAD_CTX *);
 
-  assert(nkey <= EVP_MAX_KEY_LENGTH);
-  assert(niv <= EVP_MAX_IV_LENGTH);
+  int (*seal)(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
+              size_t max_out_len, const uint8_t *nonce, size_t nonce_len,
+              const uint8_t *in, size_t in_len, const uint8_t *ad,
+              size_t ad_len);
 
-  if (data == NULL) {
-    return nkey;
-  }
+  int (*open)(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
+              size_t max_out_len, const uint8_t *nonce, size_t nonce_len,
+              const uint8_t *in, size_t in_len, const uint8_t *ad,
+              size_t ad_len);
 
-  EVP_MD_CTX_init(&c);
-  for (;;) {
-    if (!EVP_DigestInit_ex(&c, md, NULL)) {
-      return 0;
-    }
-    if (addmd++) {
-      if (!EVP_DigestUpdate(&c, md_buf, mds)) {
-        goto err;
-      }
-    }
-    if (!EVP_DigestUpdate(&c, data, data_len)) {
-      goto err;
-    }
-    if (salt != NULL) {
-      if (!EVP_DigestUpdate(&c, salt, PKCS5_SALT_LEN)) {
-        goto err;
-      }
-    }
-    if (!EVP_DigestFinal_ex(&c, md_buf, &mds)) {
-      goto err;
-    }
+  int (*get_iv)(const EVP_AEAD_CTX *ctx, const uint8_t **out_iv,
+                size_t *out_len);
+};
 
-    for (i = 1; i < count; i++) {
-      if (!EVP_DigestInit_ex(&c, md, NULL) ||
-          !EVP_DigestUpdate(&c, md_buf, mds) ||
-          !EVP_DigestFinal_ex(&c, md_buf, &mds)) {
-        goto err;
-      }
-    }
+/* aes_ctr_set_key initialises |*aes_key| using |key_bytes| bytes from |key|,
+ * where |key_bytes| must either be 16, 24 or 32. If not NULL, |*out_block| is
+ * set to a function that encrypts single blocks. If not NULL, |*gcm_ctx| is
+ * initialised to do GHASH with the given key. It returns a function for
+ * optimised CTR-mode, or NULL if CTR-mode should be built using
+ * |*out_block|. */
+ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
+                         block128_f *out_block, const uint8_t *key,
+                         size_t key_bytes);
 
-    i = 0;
-    if (nkey) {
-      for (;;) {
-        if (nkey == 0 || i == mds) {
-          break;
-        }
-        if (key != NULL) {
-          *(key++) = md_buf[i];
-        }
-        nkey--;
-        i++;
-      }
-    }
+#if defined(__cplusplus)
+} /* extern C */
+#endif
 
-    if (niv && i != mds) {
-      for (;;) {
-        if (niv == 0 || i == mds) {
-          break;
-        }
-        if (iv != NULL) {
-          *(iv++) = md_buf[i];
-        }
-        niv--;
-        i++;
-      }
-    }
-    if (nkey == 0 && niv == 0) {
-      break;
-    }
-  }
-  rv = type->key_len;
-
-err:
-  EVP_MD_CTX_cleanup(&c);
-  OPENSSL_cleanse(md_buf, EVP_MAX_MD_SIZE);
-  return rv;
-}
+#endif /* OPENSSL_HEADER_CIPHER_INTERNAL_H */

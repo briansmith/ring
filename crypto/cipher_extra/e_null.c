@@ -61,7 +61,6 @@
 #include <openssl/nid.h>
 
 #include "../internal.h"
-#include "internal.h"
 
 
 static int null_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,

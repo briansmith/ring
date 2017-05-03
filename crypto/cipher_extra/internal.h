@@ -54,54 +54,16 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#ifndef OPENSSL_HEADER_CIPHER_INTERNAL_H
-#define OPENSSL_HEADER_CIPHER_INTERNAL_H
+#ifndef OPENSSL_HEADER_CIPHER_EXTRA_INTERNAL_H
+#define OPENSSL_HEADER_CIPHER_EXTRA_INTERNAL_H
 
 #include <openssl/base.h>
 
-#include <openssl/aead.h>
-#include <openssl/aes.h>
-
 #include "../internal.h"
-#include "../fipsmodule/modes/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
-
-/* EVP_CIPH_MODE_MASK contains the bits of |flags| that represent the mode. */
-#define EVP_CIPH_MODE_MASK 0x3f
-
-
-/* EVP_AEAD represents a specific AEAD algorithm. */
-struct evp_aead_st {
-  uint8_t key_len;
-  uint8_t nonce_len;
-  uint8_t overhead;
-  uint8_t max_tag_len;
-
-  /* init initialises an |EVP_AEAD_CTX|. If this call returns zero then
-   * |cleanup| will not be called for that context. */
-  int (*init)(EVP_AEAD_CTX *, const uint8_t *key, size_t key_len,
-              size_t tag_len);
-  int (*init_with_direction)(EVP_AEAD_CTX *, const uint8_t *key, size_t key_len,
-                             size_t tag_len, enum evp_aead_direction_t dir);
-  void (*cleanup)(EVP_AEAD_CTX *);
-
-  int (*seal)(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
-              size_t max_out_len, const uint8_t *nonce, size_t nonce_len,
-              const uint8_t *in, size_t in_len, const uint8_t *ad,
-              size_t ad_len);
-
-  int (*open)(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
-              size_t max_out_len, const uint8_t *nonce, size_t nonce_len,
-              const uint8_t *in, size_t in_len, const uint8_t *ad,
-              size_t ad_len);
-
-  int (*get_iv)(const EVP_AEAD_CTX *ctx, const uint8_t **out_iv,
-                size_t *out_len);
-};
 
 
 /* EVP_tls_cbc_get_padding determines the padding from the decrypted, TLS, CBC
@@ -158,18 +120,9 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
                               const uint8_t *mac_secret,
                               unsigned mac_secret_length);
 
-/* aes_ctr_set_key initialises |*aes_key| using |key_bytes| bytes from |key|,
- * where |key_bytes| must either be 16, 24 or 32. If not NULL, |*out_block| is
- * set to a function that encrypts single blocks. If not NULL, |*gcm_ctx| is
- * initialised to do GHASH with the given key. It returns a function for
- * optimised CTR-mode, or NULL if CTR-mode should be built using
- * |*out_block|. */
-ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
-                         block128_f *out_block, const uint8_t *key,
-                         size_t key_bytes);
 
 #if defined(__cplusplus)
 } /* extern C */
 #endif
 
-#endif /* OPENSSL_HEADER_CIPHER_INTERNAL_H */
+#endif /* OPENSSL_HEADER_CIPHER_EXTRA_INTERNAL_H */
