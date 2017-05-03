@@ -133,19 +133,6 @@ void GFp_cpuid_setup(void) {
                edx == 0x69746e65 /* enti */ &&
                ecx == 0x444d4163 /* cAMD */;
 
-  int has_amd_xop = 0;
-  if (is_amd) {
-    /* AMD-specific logic.
-     * See http://developer.amd.com/wordpress/media/2012/10/254811.pdf */
-    OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 0x80000000);
-    uint32_t num_extended_ids = eax;
-    if (num_extended_ids >= 0x80000001) {
-      OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 0x80000001);
-      if (ecx & (1 << 11)) {
-        has_amd_xop = 1;
-      }
-    }
-  }
 
   uint32_t extended_features = 0;
   if (num_ids >= 7) {
@@ -189,11 +176,7 @@ void GFp_cpuid_setup(void) {
   }
 
   /* The SDBG bit is repurposed to denote AMD XOP support. */
-  if (has_amd_xop) {
-    ecx |= (1 << 11);
-  } else {
-    ecx &= ~(1 << 11);
-  }
+  ecx &= ~(1 << 11);
 
   uint64_t xcr0 = 0;
   if (ecx & (1 << 27)) {
@@ -205,7 +188,6 @@ void GFp_cpuid_setup(void) {
     /* YMM registers cannot be used. */
     ecx &= ~(1 << 28); /* AVX */
     ecx &= ~(1 << 12); /* FMA */
-    ecx &= ~(1 << 11); /* AMD XOP */
     extended_features &= ~(1 << 5); /* AVX2 */
   }
 
