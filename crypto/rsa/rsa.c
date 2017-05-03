@@ -192,23 +192,6 @@ void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
   }
 }
 
-int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
-  if (rsa->meth->keygen) {
-    return rsa->meth->keygen(rsa, bits, e_value, cb);
-  }
-
-  return rsa_default_keygen(rsa, bits, e_value, cb);
-}
-
-int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                const uint8_t *in, size_t in_len, int padding) {
-  if (rsa->meth->encrypt) {
-    return rsa->meth->encrypt(rsa, out_len, out, max_out, in, in_len, padding);
-  }
-
-  return rsa_default_encrypt(rsa, out_len, out, max_out, in, in_len, padding);
-}
-
 int RSA_public_encrypt(size_t flen, const uint8_t *from, uint8_t *to, RSA *rsa,
                        int padding) {
   size_t out_len;

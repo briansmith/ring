@@ -583,13 +583,13 @@ struct rsa_meth_st {
   int (*verify)(int dtype, const uint8_t *m, unsigned int m_length,
                 const uint8_t *sigbuf, unsigned int siglen, const RSA *rsa);
 
-
-  /* These functions mirror the |RSA_*| functions of the same name. */
+  /* Ignored. Set this to NULL. */
   int (*encrypt)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                  const uint8_t *in, size_t in_len, int padding);
+
+  /* These functions mirror the |RSA_*| functions of the same name. */
   int (*sign_raw)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                   const uint8_t *in, size_t in_len, int padding);
-
   int (*decrypt)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                  const uint8_t *in, size_t in_len, int padding);
   /* Ignored. Set this to NULL. */
@@ -621,6 +621,7 @@ struct rsa_meth_st {
 
   int flags;
 
+  /* Ignored. Set this to NULL. */
   int (*keygen)(RSA *rsa, int bits, BIGNUM *e, BN_GENCB *cb);
 
   /* Ignored. Set this to NULL. */

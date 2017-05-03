@@ -112,8 +112,13 @@ size_t rsa_default_size(const RSA *rsa) {
   return BN_num_bytes(rsa->n);
 }
 
-int rsa_default_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                        const uint8_t *in, size_t in_len, int padding) {
+int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
+                const uint8_t *in, size_t in_len, int padding) {
+  if (rsa->n == NULL || rsa->e == NULL) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
+    return 0;
+  }
+
   const unsigned rsa_size = RSA_size(rsa);
   BIGNUM *f, *result;
   uint8_t *buf = NULL;
@@ -902,7 +907,7 @@ err:
   return ret;
 }
 
-int rsa_default_keygen(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
+int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   /* See FIPS 186-4 appendix B.3. This function implements a generalized version
    * of the FIPS algorithm. For FIPS compliance, the caller is responsible for
    * passing in 2048 or 3072 to |bits| and 65537 for |e_value|. */
@@ -1042,10 +1047,10 @@ const RSA_METHOD RSA_default_method = {
   NULL /* sign */,
   NULL /* verify */,
 
-  NULL /* encrypt (defaults to rsa_default_encrypt) */,
+  NULL /* encrypt (ignored) */,
   NULL /* sign_raw (defaults to rsa_default_sign_raw) */,
   NULL /* decrypt (defaults to rsa_default_decrypt) */,
-  NULL /* verify_raw (defaults to rsa_default_verify_raw) */,
+  NULL /* verify_raw (ignored) */,
 
   NULL /* private_transform (defaults to rsa_default_private_transform) */,
 
@@ -1054,8 +1059,8 @@ const RSA_METHOD RSA_default_method = {
 
   RSA_FLAG_CACHE_PUBLIC | RSA_FLAG_CACHE_PRIVATE,
 
-  NULL /* keygen (defaults to rsa_default_keygen) */,
+  NULL /* keygen (ignored) */,
   NULL /* multi_prime_keygen (ignored) */,
 
-  NULL /* supports_digest */,
+  NULL /* supports_digest (ignored) */,
 };
