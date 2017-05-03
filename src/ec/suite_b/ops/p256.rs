@@ -211,27 +211,26 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     const B_11: usize = 2;
     const B_101: usize = 3;
     const B_111: usize = 4;
-    const B_1010: usize = 5;
-    const B_1111: usize = 6;
-    const B_10101: usize = 7;
-    const B_101111: usize = 8;
-    const DIGIT_COUNT: usize = 9;
+    const B_1111: usize = 5;
+    const B_10101: usize = 6;
+    const B_101111: usize = 7;
+    const DIGIT_COUNT: usize = 8;
 
     let mut d = [Scalar::zero(); DIGIT_COUNT];
 
-    d[B_1]    = to_mont(a);
-    d[B_10]   = sqr(&d[B_1]);
-    d[B_11]   = mul(&d[B_10],   &d[B_1]);
-    d[B_101]  = sqr_mul(&d[B_10], 0 + 1, &d[B_1]);
-    d[B_111]  = mul(&d[B_101],  &d[B_10]);
-    d[B_1010] = sqr(&d[B_101]);
-    d[B_1111] = mul(&d[B_1010], &d[B_101]);
+    d[B_1] = to_mont(a);
+    d[B_10] = sqr(&d[B_1]);
+    d[B_11] = mul(&d[B_10], &d[B_1]);
+    d[B_101] = mul(&d[B_10], &d[B_11]);
+    d[B_111] = mul(&d[B_101], &d[B_10]);
+    let b_1010 = sqr(&d[B_101]);
+    d[B_1111] = mul(&b_1010, &d[B_101]);
+    d[B_10101] = sqr_mul(&b_1010, 0 + 1, &d[B_1]);
+    let b_101010 = sqr(&d[B_10101]);
+    d[B_101111] = mul(&b_101010, &d[B_101]);
+    let b_111111 = mul(&b_101010, &d[B_10101]);
 
-    // These two fork off the main star chain.
-    d[B_10101] =  sqr_mul(&d[B_1010],  0 + 1, &d[B_1]);
-    d[B_101111] = sqr_mul(&d[B_10101], 0 + 1, &d[B_101]);
-
-    let ff       = sqr_mul(&d[B_1111], 0 + 4,  &d[B_1111]);
+    let ff       = sqr_mul(&b_111111,  0 + 2,  &d[B_11]);
     let ffff     = sqr_mul(&ff,        0 + 8,  &ff);
     let ffffffff = sqr_mul(&ffff,      0 + 16, &ffff);
 
