@@ -30,6 +30,7 @@
 
 
 /* Prevent -Wmissing-prototypes warnings. */
+void GFp_curve25519_scalar_mask(uint8_t a[32]);
 void GFp_fe_invert(fe out, const fe z);
 uint8_t GFp_fe_isnegative(const fe f);
 void GFp_fe_mul(fe h, const fe f, const fe g);
@@ -4520,13 +4521,9 @@ void GFp_x25519_sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
   s[31] = (uint8_t)(s11 >> 17);
 }
 
-
-/* Prototype to avoid -Wmissing-prototypes warnings. */
-void GFp_ed25519_scalar_mask(uint8_t a[32]);
-
-void GFp_ed25519_scalar_mask(uint8_t a[32]) {
+void GFp_curve25519_scalar_mask(uint8_t a[32]) {
   a[0] &= 248;
-  a[31] &= 63;
+  a[31] &= 127;
   a[31] |= 64;
 }
 
@@ -4618,12 +4615,6 @@ static void GFp_fe_mul121666(fe h, fe f) {
   h[9] = (int32_t)h9;
 }
 
-static void x25519_scalar_mask(uint8_t e[32]) {
-  e[0] &= 248;
-  e[31] &= 127;
-  e[31] |= 64;
-}
-
 static void x25519_scalar_mult_generic(uint8_t out[32],
                                        const uint8_t scalar[32],
                                        const uint8_t point[32]) {
@@ -4631,7 +4622,7 @@ static void x25519_scalar_mult_generic(uint8_t out[32],
 
   uint8_t e[32];
   memcpy(e, scalar, 32);
-  x25519_scalar_mask(e);
+  GFp_curve25519_scalar_mask(e);
   fe_frombytes(x1, point);
   fe_1(x2);
   fe_0(z2);
@@ -4718,7 +4709,7 @@ void GFp_x25519_public_from_private(uint8_t out_public_value[32],
 
   uint8_t e[32];
   memcpy(e, private_key, 32);
-  x25519_scalar_mask(e);
+  GFp_curve25519_scalar_mask(e);
 
   ge_p3 A;
   GFp_x25519_ge_scalarmult_base(&A, e);

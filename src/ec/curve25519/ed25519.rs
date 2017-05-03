@@ -150,7 +150,7 @@ impl<'a> Ed25519KeyPair {
 
         let mut scalar = [0u8; SCALAR_LEN];
         scalar.copy_from_slice(&scalar_encoded);
-        unsafe { GFp_ed25519_scalar_mask(&mut scalar) };
+        unsafe { GFp_curve25519_scalar_mask(&mut scalar) };
 
         let mut prefix = [0u8; PREFIX_LEN];
         prefix.copy_from_slice(prefix_encoded);
@@ -289,7 +289,7 @@ fn digest_scalar(digest: digest::Digest) -> Scalar {
 }
 
 extern  {
-    fn GFp_ed25519_scalar_mask(a: &mut Scalar);
+    fn GFp_curve25519_scalar_mask(a: &mut Scalar);
     fn GFp_ge_double_scalarmult_vartime(r: &mut Point, a_coeff: &Scalar,
                                         a: &ExtPoint, b_coeff: &Scalar);
     fn GFp_x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Seed);
