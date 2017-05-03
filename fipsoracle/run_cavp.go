@@ -257,6 +257,18 @@ var tdesTests = testSuite{
 	},
 }
 
+var keyWrapTests = testSuite{
+	"KeyWrap38F",
+	"cavp_keywrap_test",
+	nil,
+	[]test{
+		{"KW_AD_128", []string{"dec", "128"}, false},
+		{"KW_AD_256", []string{"dec", "256"}, false},
+		{"KW_AE_128", []string{"enc", "128"}, false},
+		{"KW_AE_256", []string{"enc", "256"}, false},
+	},
+}
+
 var allTestSuites = []*testSuite{
 	&aesGCMTests,
 	&aesTests,
@@ -265,10 +277,11 @@ var allTestSuites = []*testSuite{
 	&ecdsa2PKVTests,
 	&ecdsa2SigGenTests,
 	&ecdsa2SigVerTests,
+	&hmacTests,
+	&keyWrapTests,
 	&rsa2KeyGenTests,
 	&rsa2SigGenTests,
 	&rsa2SigVerTests,
-	&hmacTests,
 	&shaTests,
 	&shaMonteTests,
 	&tdesTests,
