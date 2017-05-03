@@ -77,9 +77,7 @@ static bool TestECDSA2KeyPair(FileTest *t, void *arg) {
   return true;
 }
 
-int main(int argc, char **argv) {
-  CRYPTO_library_init();
-
+int cavp_ecdsa2_keypair_test_main(int argc, char **argv) {
   if (argc != 2) {
     fprintf(stderr, "usage: %s <test file>\n",
             argv[0]);

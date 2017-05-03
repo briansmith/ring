@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	binaryDir = flag.String("bin-dir", "", "Directory containing fipsoracle binaries")
-	suiteDir  = flag.String("suite-dir", "", "Base directory containing the CAVP test suite")
+	oraclePath = flag.String("oracle-bin", "", "Path to the oracle binary")
+	suiteDir   = flag.String("suite-dir", "", "Base directory containing the CAVP test suite")
 )
 
 // test describes a single request file.
@@ -35,8 +35,8 @@ type test struct {
 type testSuite struct {
 	// directory is the name of the directory in the CAVP input, i.e. “AES”.
 	directory string
-	// binary is the name of the binary that can process these tests.
-	binary string
+	// suite names the test suite to pass as the first command-line argument.
+	suite string
 	// faxScanFunc, if not nil, is the function to use instead of
 	// (*bufio.Scanner).Scan. This can be used to skip lines.
 	faxScanFunc func(*bufio.Scanner) bool
@@ -49,7 +49,7 @@ func (t *testSuite) getDirectory() string {
 
 var aesGCMTests = testSuite{
 	"AES_GCM",
-	"cavp_aes_gcm_test",
+	"aes_gcm",
 	nil,
 	[]test{
 		{"gcmDecrypt128", []string{"dec", "aes-128-gcm"}, false},
@@ -61,7 +61,7 @@ var aesGCMTests = testSuite{
 
 var aesTests = testSuite{
 	"AES",
-	"cavp_aes_test",
+	"aes",
 	nil,
 	[]test{
 		{"CBCGFSbox128", []string{"kat", "aes-128-cbc"}, false},
@@ -106,21 +106,21 @@ var aesTests = testSuite{
 
 var ecdsa2KeyPairTests = testSuite{
 	"ECDSA2",
-	"cavp_ecdsa2_keypair_test",
+	"ecdsa2_keypair",
 	nil,
 	[]test{{"KeyPair", nil, true}},
 }
 
 var ecdsa2PKVTests = testSuite{
 	"ECDSA2",
-	"cavp_ecdsa2_pkv_test",
+	"ecdsa2_pkv",
 	nil,
 	[]test{{"PKV", nil, false}},
 }
 
 var ecdsa2SigGenTests = testSuite{
 	"ECDSA2",
-	"cavp_ecdsa2_siggen_test",
+	"ecdsa2_siggen",
 	nil,
 	[]test{
 		{"SigGen", []string{"SigGen"}, true},
@@ -130,14 +130,14 @@ var ecdsa2SigGenTests = testSuite{
 
 var ecdsa2SigVerTests = testSuite{
 	"ECDSA2",
-	"cavp_ecdsa2_sigver_test",
+	"ecdsa2_sigver",
 	nil,
 	[]test{{"SigVer", nil, false}},
 }
 
 var rsa2KeyGenTests = testSuite{
 	"RSA2",
-	"cavp_rsa2_keygen_test",
+	"rsa2_keygen",
 	nil,
 	[]test{
 		{"KeyGen_RandomProbablyPrime3_3", nil, true},
@@ -146,7 +146,7 @@ var rsa2KeyGenTests = testSuite{
 
 var rsa2SigGenTests = testSuite{
 	"RSA2",
-	"cavp_rsa2_siggen_test",
+	"rsa2_siggen",
 	nil,
 	[]test{
 		{"SigGen15_186-3", []string{"pkcs15"}, true},
@@ -156,7 +156,7 @@ var rsa2SigGenTests = testSuite{
 
 var rsa2SigVerTests = testSuite{
 	"RSA2",
-	"cavp_rsa2_sigver_test",
+	"rsa2_sigver",
 	func(s *bufio.Scanner) bool {
 		for {
 			if !s.Scan() {
@@ -188,14 +188,14 @@ var rsa2SigVerTests = testSuite{
 
 var hmacTests = testSuite{
 	"HMAC",
-	"cavp_hmac_test",
+	"hmac",
 	nil,
 	[]test{{"HMAC", nil, false}},
 }
 
 var shaTests = testSuite{
 	"SHA",
-	"cavp_sha_test",
+	"sha",
 	nil,
 	[]test{
 		{"SHA1LongMsg", []string{"SHA1"}, false},
@@ -213,7 +213,7 @@ var shaTests = testSuite{
 
 var shaMonteTests = testSuite{
 	"SHA",
-	"cavp_sha_monte_test",
+	"sha_monte",
 	nil,
 	[]test{
 		{"SHA1Monte", []string{"SHA1"}, false},
@@ -226,14 +226,14 @@ var shaMonteTests = testSuite{
 
 var ctrDRBGTests = testSuite{
 	"DRBG800-90A",
-	"cavp_ctr_drbg_test",
+	"ctr_drbg",
 	nil,
 	[]test{{"CTR_DRBG", nil, false}},
 }
 
 var tdesTests = testSuite{
 	"TDES",
-	"cavp_tdes_test",
+	"tdes",
 	nil,
 	[]test{
 		{"TCBCMMT2", []string{"kat", "des-ede-cbc"}, false},
@@ -259,7 +259,7 @@ var tdesTests = testSuite{
 
 var keyWrapTests = testSuite{
 	"KeyWrap38F",
-	"cavp_keywrap_test",
+	"keywrap",
 	nil,
 	[]test{
 		{"KW_AD_128", []string{"dec", "128"}, false},
@@ -290,8 +290,8 @@ var allTestSuites = []*testSuite{
 func main() {
 	flag.Parse()
 
-	if len(*binaryDir) == 0 {
-		fmt.Fprintf(os.Stderr, "Must give -bin-dir\n")
+	if len(*oraclePath) == 0 {
+		fmt.Fprintf(os.Stderr, "Must give -oracle-bin\n")
 		os.Exit(1)
 	}
 
@@ -313,9 +313,7 @@ func main() {
 }
 
 func doTest(suite *testSuite, test test) error {
-	binary := filepath.Join(*binaryDir, suite.binary)
-
-	var args []string
+	args := []string{suite.suite}
 	args = append(args, test.args...)
 	args = append(args, filepath.Join(suite.getDirectory(), "req", test.inFile+".req"))
 
@@ -326,12 +324,14 @@ func doTest(suite *testSuite, test test) error {
 	}
 	defer outFile.Close()
 
-	cmd := exec.Command(binary, args...)
+	cmd := exec.Command(*oraclePath, args...)
 	cmd.Stdout = outFile
 	cmd.Stderr = os.Stderr
 
+	cmdLine := strings.Join(append([]string{*oraclePath}, args...), " ")
+	fmt.Println("Running", cmdLine)
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("cannot run command for %q %q (%s): %s", suite.getDirectory(), test.inFile, strings.Join(append([]string{binary}, args...), " "), err)
+		return fmt.Errorf("cannot run command for %q %q (%s): %s", suite.getDirectory(), test.inFile, cmdLine, err)
 	}
 
 	return nil

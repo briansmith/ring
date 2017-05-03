@@ -26,6 +26,8 @@
 #include "cavp_test_util.h"
 
 
+namespace {
+
 struct TestCtx {
   const EVP_CIPHER *cipher;
   std::unique_ptr<FileTest> response_sample;
@@ -36,6 +38,8 @@ struct TestCtx {
   };
   Mode mode;
 };
+
+}
 
 static bool MonteCarlo(const TestCtx *ctx, FileTest *t,
                        const EVP_CIPHER *cipher, std::vector<uint8_t> *out,
@@ -231,9 +235,7 @@ static int usage(char *arg) {
   return 1;
 }
 
-int main(int argc, char **argv) {
-  CRYPTO_library_init();
-
+int cavp_aes_test_main(int argc, char **argv) {
   if (argc < 4 || argc > 5) {
     return usage(argv[0]);
   }

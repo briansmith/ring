@@ -25,9 +25,13 @@
 #include "cavp_test_util.h"
 
 
+namespace {
+
 struct TestCtx {
   std::string hash;
 };
+
+}
 
 static bool TestSHAMonte(FileTest *t, void *arg) {
   TestCtx *ctx = reinterpret_cast<TestCtx *>(arg);
@@ -82,9 +86,7 @@ static int usage(char *arg) {
   return 1;
 }
 
-int main(int argc, char **argv) {
-  CRYPTO_library_init();
-
+int cavp_sha_monte_test_main(int argc, char **argv) {
   if (argc != 3) {
     return usage(argv[0]);
   }

@@ -98,9 +98,7 @@ static bool TestECDSA2SigGenComponent(FileTest *t, void *arg) {
   return TestECDSA2SigGenImpl(t, true);
 }
 
-int main(int argc, char **argv) {
-  CRYPTO_library_init();
-
+int cavp_ecdsa2_siggen_test_main(int argc, char **argv) {
   if (argc != 3) {
     fprintf(stderr, "usage: %s (SigGen|SigGenComponent) <test file>\n",
             argv[0]);

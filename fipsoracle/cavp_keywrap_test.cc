@@ -25,10 +25,14 @@
 #include "cavp_test_util.h"
 
 
+namespace {
+
 struct TestCtx {
   bool encrypt;
   std::unique_ptr<FileTest> response_sample;
 };
+
+}
 
 static bool AESKeyWrap(std::vector<uint8_t> *out, bool encrypt,
                        const std::vector<uint8_t> &key,
@@ -114,9 +118,7 @@ static int usage(char *arg) {
   return 1;
 }
 
-int main(int argc, char **argv) {
-  CRYPTO_library_init();
-
+int cavp_keywrap_test_main(int argc, char **argv) {
   if (argc < 4 || argc > 5) {
     return usage(argv[0]);
   }

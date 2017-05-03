@@ -25,9 +25,13 @@
 #include "../crypto/test/file_test.h"
 
 
+namespace {
+
 struct TestCtx {
   std::unique_ptr<FileTest> response_sample;
 };
+
+}
 
 static bool TestCTRDRBG(FileTest *t, void *arg) {
   TestCtx *ctx = reinterpret_cast<TestCtx *>(arg);
@@ -114,9 +118,7 @@ static int usage(char *arg) {
   return 1;
 }
 
-int main(int argc, char **argv) {
-  CRYPTO_library_init();
-
+int cavp_ctr_drbg_test_main(int argc, char **argv) {
   if (argc != 2 && argc != 3) {
     return usage(argv[0]);
   }

@@ -27,10 +27,14 @@
 #include "cavp_test_util.h"
 
 
+namespace {
+
 struct TestCtx {
   const EVP_AEAD *aead;
   std::unique_ptr<FileTest> response_sample;
 };
+
+}
 
 static const EVP_AEAD *GetAEAD(const std::string &name, const bool enc) {
   if (name == "aes-128-gcm") {
@@ -168,9 +172,7 @@ static int usage(char *arg) {
   return 1;
 }
 
-int main(int argc, char **argv) {
-  CRYPTO_library_init();
-
+int cavp_aes_gcm_test_main(int argc, char **argv) {
   if (argc < 4 || argc > 5) {
     return usage(argv[0]);
   }

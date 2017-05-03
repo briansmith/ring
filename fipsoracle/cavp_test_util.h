@@ -52,5 +52,21 @@ int GetECGroupNIDFromInstruction(FileTest *t, const char **out_str = nullptr);
 
 const EVP_MD *GetDigestFromInstruction(FileTest *t);
 
+int cavp_aes_gcm_test_main(int argc, char **argv);
+int cavp_aes_test_main(int argc, char **argv);
+int cavp_ctr_drbg_test_main(int argc, char **argv);
+int cavp_ecdsa2_keypair_test_main(int argc, char **argv);
+int cavp_ecdsa2_pkv_test_main(int argc, char **argv);
+int cavp_ecdsa2_siggen_test_main(int argc, char **argv);
+int cavp_ecdsa2_sigver_test_main(int argc, char **argv);
+int cavp_hmac_test_main(int argc, char **argv);
+int cavp_keywrap_test_main(int argc, char **argv);
+int cavp_rsa2_keygen_test_main(int argc, char **argv);
+int cavp_rsa2_siggen_test_main(int argc, char **argv);
+int cavp_rsa2_sigver_test_main(int argc, char **argv);
+int cavp_sha_monte_test_main(int argc, char **argv);
+int cavp_sha_test_main(int argc, char **argv);
+int cavp_tdes_test_main(int argc, char **argv);
+
 
 #endif  // OPENSSL_HEADER_CRYPTO_FIPSMODULE_CAVP_TEST_UTIL_H

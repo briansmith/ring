@@ -26,10 +26,14 @@
 #include "../crypto/test/file_test.h"
 #include "cavp_test_util.h"
 
+namespace {
+
 struct TestCtx {
   bssl::UniquePtr<RSA> key;
   bool is_pss;
 };
+
+}
 
 static bool TestRSA2SigGen(FileTest *t, void *arg) {
   TestCtx *ctx = reinterpret_cast<TestCtx *>(arg);
@@ -100,9 +104,7 @@ static bool TestRSA2SigGen(FileTest *t, void *arg) {
   return true;
 }
 
-int main(int argc, char **argv) {
-  CRYPTO_library_init();
-
+int cavp_rsa2_siggen_test_main(int argc, char **argv) {
   if (argc != 3) {
     fprintf(stderr, "usage: %s (pkcs15|pss) <test file>\n",
             argv[0]);
