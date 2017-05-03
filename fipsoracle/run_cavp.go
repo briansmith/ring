@@ -319,7 +319,7 @@ func doTest(suite *testSuite, test test) error {
 	args = append(args, test.args...)
 	args = append(args, filepath.Join(suite.getDirectory(), "req", test.inFile+".req"))
 
-	outPath := filepath.Join(suite.getDirectory(), "resp", test.inFile+".resp")
+	outPath := filepath.Join(suite.getDirectory(), "resp", test.inFile+".rsp")
 	outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("cannot open output file for %q %q: %s", suite.getDirectory(), test.inFile, err)
@@ -353,7 +353,7 @@ func compareFAX(suite *testSuite, test test) error {
 		faxScanFunc = (*bufio.Scanner).Scan
 	}
 
-	respPath := filepath.Join(suite.getDirectory(), "resp", test.inFile+".resp")
+	respPath := filepath.Join(suite.getDirectory(), "resp", test.inFile+".rsp")
 	respFile, err := os.Open(respPath)
 	if err != nil {
 		return fmt.Errorf("cannot read output of %q %q: %s", suite.getDirectory(), test.inFile, err)

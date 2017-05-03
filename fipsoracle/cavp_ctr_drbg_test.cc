@@ -135,7 +135,7 @@ int main(int argc, char **argv) {
   for (int i = 0; i < argc; i++) {
     printf(" %s", argv[i]);
   }
-  printf("\r\n\r\n");
+  printf("\r\n# CTR_DRBG options: AES-256 no df\r\n\r\n");
 
   return FileTestMainSilent(TestCTRDRBG, &ctx, argv[1]);
 }
