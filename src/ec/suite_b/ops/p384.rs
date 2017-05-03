@@ -244,21 +244,21 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
 
     // Indexes into `d`.
     const B_1: usize = 0;
-    const B_10: usize = 1;
-    const B_11: usize = 2;
-    const B_101: usize = 3;
-    const B_111: usize = 4;
-    const B_1111: usize = 5;
-    const DIGIT_COUNT: usize = 6;
+    const B_11: usize = 1;
+    const B_101: usize = 2;
+    const B_111: usize = 3;
+    const B_1001: usize = 4;
+    const B_1011: usize = 5;
+    const B_1101: usize = 6;
+    const B_1111: usize = 7;
+    const DIGIT_COUNT: usize = 8;
 
     let mut d = [Scalar::zero(); DIGIT_COUNT];
-
     d[B_1]    = to_mont(a);
-    d[B_10]   = sqr    (&d[B_1]);
-    d[B_11]   = mul    (&d[B_10],         &d[B_1]);
-    d[B_101]  = sqr_mul(&d[B_10],  0 + 1, &d[B_1]);
-    d[B_111]  = mul    (&d[B_101],        &d[B_10]);
-    d[B_1111] = sqr_mul(&d[B_111], 0 + 1, &d[B_1]);
+    let b_10  = sqr(&d[B_1]);
+    for i in B_11..DIGIT_COUNT {
+        d[i] = mul(&d[i - 1], &b_10);
+    }
 
     let ff       = sqr_mul(&d[B_1111], 0 +  4, &d[B_1111]);
     let ffff     = sqr_mul(&ff,        0 +  8, &ff);
@@ -279,54 +279,45 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     //    0101100000011010000011011011001001001000101100001010011101111010
     //    1110110011101100000110010110101011001100110001010010100101110001
 
-    static REMAINING_WINDOWS: [(u8, u8); 48] = [
+    static REMAINING_WINDOWS: [(u8, u8); 39] = [
         (    2, B_11 as u8),
         (3 + 3, B_111 as u8),
         (1 + 2, B_11 as u8),
         (3 + 2, B_11 as u8),
-        (1 + 1, B_1 as u8),
-        (2 + 2, B_11 as u8),
-        (1 + 2, B_11 as u8),
+        (1 + 4, B_1001 as u8),
+        (    4, B_1011 as u8),
         (6 + 4, B_1111 as u8),
         (    3, B_101 as u8),
-        (4 + 2, B_11 as u8),
-        (1 + 3, B_111 as u8),
-        (2 + 3, B_101 as u8),
-        (    1, B_1 as u8),
-        (1 + 3, B_111 as u8),
-        (1 + 4, B_1111 as u8),
-        (    3, B_101 as u8),
-        (1 + 2, B_11 as u8),
-        (6 + 2, B_11 as u8),
-        (1 + 1, B_1 as u8),
-        (5 + 2, B_11 as u8),
-        (1 + 2, B_11 as u8),
-        (1 + 2, B_11 as u8),
-        (2 + 1, B_1 as u8),
-        (2 + 1, B_1 as u8),
-        (2 + 1, B_1 as u8),
-        (3 + 1, B_1 as u8),
-        (1 + 2, B_11 as u8),
         (4 + 1, B_1 as u8),
-        (1 + 1, B_1 as u8),
+        (    4, B_1011 as u8),
+        (    4, B_1001 as u8),
+        (1 + 4, B_1101 as u8),
+        (    4, B_1101 as u8),
+        (    4, B_1111 as u8),
+        (1 + 4, B_1011 as u8),
+        (6 + 4, B_1101 as u8),
+        (5 + 4, B_1101 as u8),
+        (    4, B_1011 as u8),
+        (2 + 4, B_1001 as u8),
+        (2 + 1, B_1 as u8),
+        (3 + 4, B_1011 as u8),
+        (4 + 3, B_101 as u8),
         (2 + 3, B_111 as u8),
         (1 + 4, B_1111 as u8),
-        (1 + 1, B_1 as u8),
-        (1 + 3, B_111 as u8),
-        (1 + 2, B_11 as u8),
+        (1 + 4, B_1011 as u8),
+        (    4, B_1011 as u8),
         (2 + 3, B_111 as u8),
         (1 + 2, B_11 as u8),
         (5 + 2, B_11 as u8),
-        (2 + 1, B_1 as u8),
-        (1 + 2, B_11 as u8),
+        (2 + 4, B_1011 as u8),
         (1 + 3, B_101 as u8),
         (1 + 2, B_11 as u8),
         (2 + 2, B_11 as u8),
         (2 + 2, B_11 as u8),
         (3 + 3, B_101 as u8),
         (2 + 3, B_101 as u8),
-        (2 + 1, B_1 as u8),
-        (1 + 3, B_111 as u8),
+        (2 + 3, B_101 as u8),
+        (    2, B_11 as u8),
         (3 + 1, B_1 as u8),
     ];
 
