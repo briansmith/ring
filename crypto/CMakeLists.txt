@@ -99,7 +99,7 @@ add_subdirectory(asn1)
 add_subdirectory(engine)
 add_subdirectory(dh)
 add_subdirectory(dsa)
-add_subdirectory(rsa)
+add_subdirectory(rsa_extra)
 add_subdirectory(ec_extra)
 add_subdirectory(ecdh)
 add_subdirectory(ecdsa_extra)
@@ -181,7 +181,7 @@ add_library(
   $<TARGET_OBJECTS:engine>
   $<TARGET_OBJECTS:dh>
   $<TARGET_OBJECTS:dsa>
-  $<TARGET_OBJECTS:rsa>
+  $<TARGET_OBJECTS:rsa_extra>
   $<TARGET_OBJECTS:ec_extra>
   $<TARGET_OBJECTS:ecdh>
   $<TARGET_OBJECTS:ecdsa_extra>
@@ -247,7 +247,7 @@ add_executable(
   evp/evp_extra_test.cc
   fipsmodule/ec/ec_test.cc
   fipsmodule/rand/ctrdrbg_test.cc
-  rsa/rsa_test.cc
+  rsa_extra/rsa_test.cc
 
   $<TARGET_OBJECTS:gtest_main>
   $<TARGET_OBJECTS:test_support>

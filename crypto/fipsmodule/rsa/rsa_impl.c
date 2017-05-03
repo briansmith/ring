@@ -67,8 +67,9 @@
 #include <openssl/type_check.h>
 
 #include "internal.h"
-#include "../fipsmodule/bn/internal.h"
-#include "../internal.h"
+#include "../bn/internal.h"
+#include "../../internal.h"
+#include "../delocate.h"
 
 
 static int check_modulus_and_exponent_sizes(const RSA *rsa) {
@@ -1037,38 +1038,11 @@ err:
   return ret;
 }
 
-/* All of the methods are NULL to make it easier for the compiler/linker to drop
- * unused functions. The wrapper functions will select the appropriate
- * |rsa_default_*| implementation. */
-const RSA_METHOD RSA_default_method = {
-  {
-    0 /* references */,
-    1 /* is_static */,
-  },
-  NULL /* app_data */,
-
-  NULL /* init */,
-  NULL /* finish (defaults to rsa_default_finish) */,
-
-  NULL /* size (defaults to rsa_default_size) */,
-
-  NULL /* sign */,
-  NULL /* verify */,
-
-  NULL /* encrypt (ignored) */,
-  NULL /* sign_raw (defaults to rsa_default_sign_raw) */,
-  NULL /* decrypt (defaults to rsa_default_decrypt) */,
-  NULL /* verify_raw (ignored) */,
-
-  NULL /* private_transform (defaults to rsa_default_private_transform) */,
-
-  NULL /* mod_exp (ignored) */,
-  NULL /* bn_mod_exp (ignored) */,
-
-  RSA_FLAG_CACHE_PUBLIC | RSA_FLAG_CACHE_PRIVATE,
-
-  NULL /* keygen (ignored) */,
-  NULL /* multi_prime_keygen (ignored) */,
-
-  NULL /* supports_digest (ignored) */,
-};
+DEFINE_METHOD_FUNCTION(RSA_METHOD, RSA_default_method) {
+  /* All of the methods are NULL to make it easier for the compiler/linker to
+   * drop unused functions. The wrapper functions will select the appropriate
+   * |rsa_default_*| implementation. */
+  OPENSSL_memset(out, 0, sizeof(RSA_METHOD));
+  out->common.is_static = 1;
+  out->flags = RSA_FLAG_CACHE_PUBLIC | RSA_FLAG_CACHE_PRIVATE;
+}

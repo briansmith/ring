@@ -70,12 +70,13 @@
 #include <openssl/sha.h>
 #include <openssl/thread.h>
 
+#include "../bn/internal.h"
+#include "../delocate.h"
+#include "../../internal.h"
 #include "internal.h"
-#include "../internal.h"
-#include "../fipsmodule/bn/internal.h"
 
 
-static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
+DEFINE_STATIC_EX_DATA_CLASS(g_rsa_ex_data_class);
 
 RSA *RSA_new(void) { return RSA_new_method(NULL); }
 
@@ -93,7 +94,7 @@ RSA *RSA_new_method(const ENGINE *engine) {
   }
 
   if (rsa->meth == NULL) {
-    rsa->meth = (RSA_METHOD*) &RSA_default_method;
+    rsa->meth = (RSA_METHOD *) RSA_default_method();
   }
   METHOD_ref(rsa->meth);
 
@@ -103,7 +104,7 @@ RSA *RSA_new_method(const ENGINE *engine) {
   CRYPTO_new_ex_data(&rsa->ex_data);
 
   if (rsa->meth->init && !rsa->meth->init(rsa)) {
-    CRYPTO_free_ex_data(&g_ex_data_class, rsa, &rsa->ex_data);
+    CRYPTO_free_ex_data(g_rsa_ex_data_class_bss_get(), rsa, &rsa->ex_data);
     CRYPTO_MUTEX_cleanup(&rsa->lock);
     METHOD_unref(rsa->meth);
     OPENSSL_free(rsa);
@@ -129,7 +130,7 @@ void RSA_free(RSA *rsa) {
   }
   METHOD_unref(rsa->meth);
 
-  CRYPTO_free_ex_data(&g_ex_data_class, rsa, &rsa->ex_data);
+  CRYPTO_free_ex_data(g_rsa_ex_data_class_bss_get(), rsa, &rsa->ex_data);
 
   BN_clear_free(rsa->n);
   BN_clear_free(rsa->e);
@@ -285,8 +286,8 @@ int RSA_is_opaque(const RSA *rsa) {
 int RSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
                          CRYPTO_EX_dup *dup_func, CRYPTO_EX_free *free_func) {
   int index;
-  if (!CRYPTO_get_ex_new_index(&g_ex_data_class, &index, argl, argp, dup_func,
-                               free_func)) {
+  if (!CRYPTO_get_ex_new_index(g_rsa_ex_data_class_bss_get(), &index, argl,
+                               argp, dup_func, free_func)) {
     return -1;
   }
   return index;
@@ -691,7 +692,14 @@ static const BN_ULONG kSmallFactorsLimbs[] = {
     TOBN(0x36ed1a6c, 0x0e2486bf), TOBN(0x5f270460, 0xec0c5727),
     0x000017b1
 };
-static const BIGNUM kSmallFactors = STATIC_BIGNUM(kSmallFactorsLimbs);
+
+DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
+  out->d = (BN_ULONG *) kSmallFactorsLimbs;
+  out->top = OPENSSL_ARRAY_SIZE(kSmallFactorsLimbs);
+  out->dmax = out->top;
+  out->neg = 0;
+  out->flags = BN_FLG_STATIC_DATA;
+}
 
 int RSA_check_fips(RSA *key) {
   if (RSA_is_opaque(key)) {
@@ -721,7 +729,7 @@ int RSA_check_fips(RSA *key) {
       BN_num_bits(key->e) > 256 ||
       !BN_is_odd(key->n) ||
       !BN_is_odd(key->e) ||
-      !BN_gcd(&small_gcd, key->n, &kSmallFactors, ctx) ||
+      !BN_gcd(&small_gcd, key->n, g_small_factors(), ctx) ||
       !BN_is_one(&small_gcd) ||
       !BN_enhanced_miller_rabin_primality_test(&primality_result, key->n,
                                                BN_prime_checks, ctx, NULL) ||

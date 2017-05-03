@@ -67,7 +67,7 @@
 #include <openssl/sha.h>
 
 #include "internal.h"
-#include "../internal.h"
+#include "../../internal.h"
 
 
 #define RSA_PKCS1_PADDING_SIZE 11

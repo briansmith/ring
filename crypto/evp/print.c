@@ -61,7 +61,7 @@
 #include <openssl/rsa.h>
 
 #include "../internal.h"
-#include "../rsa/internal.h"
+#include "../fipsmodule/rsa/internal.h"
 
 
 static int bn_print(BIO *bp, const char *number, const BIGNUM *num,

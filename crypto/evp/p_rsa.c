@@ -68,7 +68,7 @@
 #include <openssl/rsa.h>
 
 #include "../internal.h"
-#include "../rsa/internal.h"
+#include "../fipsmodule/rsa/internal.h"
 #include "internal.h"
 
 
