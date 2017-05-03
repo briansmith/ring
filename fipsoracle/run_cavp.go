@@ -9,7 +9,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
+	"time"
 )
 
 var (
@@ -287,6 +290,32 @@ var allTestSuites = []*testSuite{
 	&tdesTests,
 }
 
+// testInstance represents a specific test in a testSuite.
+type testInstance struct {
+	suite     *testSuite
+	testIndex int
+}
+
+func worker(wg *sync.WaitGroup, work <-chan testInstance) {
+	defer wg.Done()
+
+	for ti := range work {
+		test := ti.suite.tests[ti.testIndex]
+
+		if err := doTest(ti.suite, test); err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			os.Exit(2)
+		}
+
+		if !test.noFAX {
+			if err := compareFAX(ti.suite, test); err != nil {
+				fmt.Fprintf(os.Stderr, "%s\n", err)
+				os.Exit(3)
+			}
+		}
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -295,21 +324,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	for _, suite := range allTestSuites {
-		for _, test := range suite.tests {
-			if err := doTest(suite, test); err != nil {
-				fmt.Fprintf(os.Stderr, "%s\n", err)
-				os.Exit(2)
-			}
+	work := make(chan testInstance)
+	var wg sync.WaitGroup
 
-			if !test.noFAX {
-				if err := compareFAX(suite, test); err != nil {
-					fmt.Fprintf(os.Stderr, "%s\n", err)
-					os.Exit(3)
-				}
-			}
+	for i := 0; i < runtime.NumCPU(); i++ {
+		wg.Add(1)
+		go worker(&wg, work)
+	}
+
+	for _, suite := range allTestSuites {
+		for i := range suite.tests {
+			work <- testInstance{suite, i}
 		}
 	}
+
+	close(work)
+	wg.Wait()
 }
 
 func doTest(suite *testSuite, test test) error {
@@ -329,10 +359,12 @@ func doTest(suite *testSuite, test test) error {
 	cmd.Stderr = os.Stderr
 
 	cmdLine := strings.Join(append([]string{*oraclePath}, args...), " ")
-	fmt.Println("Running", cmdLine)
+	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("cannot run command for %q %q (%s): %s", suite.getDirectory(), test.inFile, cmdLine, err)
 	}
+
+	fmt.Printf("%s (%ds)\n", cmdLine, int(time.Since(startTime).Seconds()))
 
 	return nil
 }
