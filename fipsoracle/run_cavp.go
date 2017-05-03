@@ -135,6 +135,15 @@ var ecdsa2SigVerTests = testSuite{
 	[]test{{"SigVer", nil, false}},
 }
 
+var rsa2KeyGenTests = testSuite{
+	"RSA2",
+	"cavp_rsa2_keygen_test",
+	nil,
+	[]test{
+		{"KeyGen_RandomProbablyPrime3_3", nil, true},
+	},
+}
+
 var rsa2SigGenTests = testSuite{
 	"RSA2",
 	"cavp_rsa2_siggen_test",
@@ -256,6 +265,7 @@ var allTestSuites = []*testSuite{
 	&ecdsa2PKVTests,
 	&ecdsa2SigGenTests,
 	&ecdsa2SigVerTests,
+	&rsa2KeyGenTests,
 	&rsa2SigGenTests,
 	&rsa2SigVerTests,
 	&hmacTests,
