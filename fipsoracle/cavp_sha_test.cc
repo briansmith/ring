@@ -13,8 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 // cavp_sha_test processes a NIST CAVP SHA test vector request file and emits
-// the corresponding response. An optional sample vector file can be passed to
-// verify the result.
+// the corresponding response.
 
 #include <stdlib.h>
 

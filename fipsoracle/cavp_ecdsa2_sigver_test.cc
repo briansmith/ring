@@ -13,8 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 // cavp_ecdsa2_sigver_test processes a NIST CAVP ECDSA2 SigVer test vector
-// request file and emits the corresponding response. An optional sample vector
-// file can be passed to verify the result.
+// request file and emits the corresponding response.
 
 #include <vector>
 
