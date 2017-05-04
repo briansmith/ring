@@ -928,11 +928,11 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
     goto bn_err;
   }
   BN_CTX_start(ctx);
-  BIGNUM *r0 = BN_CTX_get(ctx);
-  BIGNUM *r1 = BN_CTX_get(ctx);
-  BIGNUM *r2 = BN_CTX_get(ctx);
-  BIGNUM *r3 = BN_CTX_get(ctx);
-  if (r0 == NULL || r1 == NULL || r2 == NULL || r3 == NULL) {
+  BIGNUM *totient = BN_CTX_get(ctx);
+  BIGNUM *pm1 = BN_CTX_get(ctx);
+  BIGNUM *qm1 = BN_CTX_get(ctx);
+  BIGNUM *gcd = BN_CTX_get(ctx);
+  if (totient == NULL || pm1 == NULL || qm1 == NULL || gcd == NULL) {
     goto bn_err;
   }
 
@@ -969,11 +969,19 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
       rsa->q = tmp;
     }
 
-    /* Calculate d. */
-    if (!BN_sub(r1 /* p-1 */, rsa->p, BN_value_one()) ||
-        !BN_sub(r2 /* q-1 */, rsa->q, BN_value_one()) ||
-        !BN_mul(r0 /* (p-1)(q-1) */, r1, r2, ctx) ||
-        !BN_mod_inverse(rsa->d, rsa->e, r0, ctx)) {
+    /* Calculate d = e^(-1) (mod lcm(p-1, q-1)), per FIPS 186-4. This differs
+     * from typical RSA implementations which use (p-1)*(q-1).
+     *
+     * Note this means the size of d might reveal information about p-1 and
+     * q-1. However, we do operations with Chinese Remainder Theorem, so we only
+     * use d (mod p-1) and d (mod q-1) as exponents. Using a minimal totient
+     * does not affect those two values. */
+    if (!BN_sub(pm1, rsa->p, BN_value_one()) ||
+        !BN_sub(qm1, rsa->q, BN_value_one()) ||
+        !BN_mul(totient, pm1, qm1, ctx) ||
+        !BN_gcd(gcd, pm1, qm1, ctx) ||
+        !BN_div(totient, NULL, totient, gcd, ctx) ||
+        !BN_mod_inverse(rsa->d, rsa->e, totient, ctx)) {
       goto bn_err;
     }
 
@@ -984,9 +992,9 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   if (/* Calculate n. */
       !BN_mul(rsa->n, rsa->p, rsa->q, ctx) ||
       /* Calculate d mod (p-1). */
-      !BN_mod(rsa->dmp1, rsa->d, r1, ctx) ||
+      !BN_mod(rsa->dmp1, rsa->d, pm1, ctx) ||
       /* Calculate d mod (q-1) */
-      !BN_mod(rsa->dmq1, rsa->d, r2, ctx)) {
+      !BN_mod(rsa->dmq1, rsa->d, qm1, ctx)) {
     goto bn_err;
   }
 

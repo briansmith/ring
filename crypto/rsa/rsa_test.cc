@@ -555,43 +555,6 @@ TEST(RSATest, OnlyDGiven) {
                          buf_len, key.get()));
 }
 
-TEST(RSATest, RecoverCRTParams) {
-  bssl::UniquePtr<BIGNUM> e(BN_new());
-  ASSERT_TRUE(e);
-  ASSERT_TRUE(BN_set_word(e.get(), RSA_F4));
-
-  bssl::UniquePtr<RSA> key1(RSA_new());
-  ASSERT_TRUE(key1);
-  ASSERT_TRUE(RSA_generate_key_ex(key1.get(), 512, e.get(), nullptr));
-
-  EXPECT_TRUE(RSA_check_key(key1.get()));
-
-  // Create a copy of the key without CRT parameters.
-  bssl::UniquePtr<RSA> key2(RSA_new());
-  ASSERT_TRUE(key2);
-  key2->n = BN_dup(key1->n);
-  key2->e = BN_dup(key1->e);
-  key2->d = BN_dup(key1->d);
-  ASSERT_TRUE(key2->n);
-  ASSERT_TRUE(key2->e);
-  ASSERT_TRUE(key2->d);
-
-  ASSERT_TRUE(RSA_recover_crt_params(key2.get()));
-
-  // The recovered RSA parameters should work.
-  EXPECT_TRUE(RSA_check_key(key2.get()));
-
-  uint8_t buf[128];
-  unsigned buf_len = sizeof(buf);
-  ASSERT_LE(RSA_size(key2.get()), buf_len);
-
-  const uint8_t kDummyHash[32] = {0};
-  EXPECT_TRUE(RSA_sign(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
-                       &buf_len, key2.get()));
-  EXPECT_TRUE(RSA_verify(NID_sha256, kDummyHash, sizeof(kDummyHash), buf,
-                         buf_len, key2.get()));
-}
-
 TEST(RSATest, ASN1) {
   // Test that private keys may be decoded.
   bssl::UniquePtr<RSA> rsa(
