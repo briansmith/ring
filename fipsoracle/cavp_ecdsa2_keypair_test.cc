@@ -68,10 +68,10 @@ static bool TestECDSA2KeyPair(FileTest *t, void *arg) {
       return false;
     }
 
-    printf("Qx = %s\r\nQy = %s\r\nd = %s\r\n\r\n",
+    printf("d = %s\r\nQx = %s\r\nQy = %s\r\n\r\n",
+           EncodeHex(d_bytes.data(), d_bytes.size()).c_str(),
            EncodeHex(qx_bytes.data(), qx_bytes.size()).c_str(),
-           EncodeHex(qy_bytes.data(), qy_bytes.size()).c_str(),
-           EncodeHex(d_bytes.data(), d_bytes.size()).c_str());
+           EncodeHex(qy_bytes.data(), qy_bytes.size()).c_str());
   }
 
   return true;
