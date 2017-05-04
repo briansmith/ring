@@ -54,14 +54,14 @@ static bool TestRSA2KeyGen(FileTest *t, void *arg) {
     RSA_get0_key(key.get(), &n, &e, &d);
     RSA_get0_factors(key.get(), &p, &q);
     std::vector<uint8_t> n_bytes(BN_num_bytes(n)), e_bytes(BN_num_bytes(e)),
-        d_bytes(BN_num_bytes(d)), p_bytes(BN_num_bytes(p)),
+        d_bytes((bits + 7) / 8), p_bytes(BN_num_bytes(p)),
         q_bytes(BN_num_bytes(q));
     if (n == NULL ||
         BN_bn2bin(n, n_bytes.data()) != n_bytes.size() ||
         e == NULL ||
         BN_bn2bin(e, e_bytes.data()) != e_bytes.size() ||
         d == NULL ||
-        BN_bn2bin(d, d_bytes.data()) != d_bytes.size() ||
+        !BN_bn2bin_padded(d_bytes.data(), d_bytes.size(), d) ||
         p == NULL ||
         BN_bn2bin(p, p_bytes.data()) != p_bytes.size() ||
         q == NULL ||
