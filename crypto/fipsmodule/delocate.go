@@ -348,6 +348,7 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 
 					if isGlobal := symbols[target]; isGlobal {
 						line = strings.Replace(line, target, localTargetName(target), 1)
+						target = localTargetName(target)
 					} else if !strings.HasPrefix(target, "BORINGSSL_bcm_") {
 						redirectorName := "bcm_redirector_" + target
 						redirectors[redirectorName] = target
@@ -365,6 +366,24 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 					if len(invertedCondition) > 0 {
 						ret = append(ret, "\t# Was " + orig)
 						ret = append(ret, "\tj" + invertedCondition + " 1f")
+					}
+
+					destination := args[1]
+					if strings.HasPrefix(destination, "%xmm") {
+						if instr != "movq" {
+							panic("unhandled: " + orig)
+						}
+
+						// MOV can target XMM
+						// registers, but LEA cannot.
+						ret = append(ret, "leaq -128(%rsp), %rsp") // Clear the red zone.
+						ret = append(ret, "pushq %rax")
+						ret = append(ret, "leaq " + target + "(%rip), %rax")
+						ret = append(ret, "movq %rax, " + destination)
+						ret = append(ret, "popq %rax")
+						ret = append(ret, "leaq 128(%rsp), %rsp")
+
+						continue
 					}
 
 					// Nobody actually wants to read the
