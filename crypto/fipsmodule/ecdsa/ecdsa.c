@@ -56,7 +56,6 @@
 #include <string.h>
 
 #include <openssl/bn.h>
-#include <openssl/bytestring.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
@@ -91,6 +90,30 @@ static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
   }
 
   return 1;
+}
+
+ECDSA_SIG *ECDSA_SIG_new(void) {
+  ECDSA_SIG *sig = OPENSSL_malloc(sizeof(ECDSA_SIG));
+  if (sig == NULL) {
+    return NULL;
+  }
+  sig->r = BN_new();
+  sig->s = BN_new();
+  if (sig->r == NULL || sig->s == NULL) {
+    ECDSA_SIG_free(sig);
+    return NULL;
+  }
+  return sig;
+}
+
+void ECDSA_SIG_free(ECDSA_SIG *sig) {
+  if (sig == NULL) {
+    return;
+  }
+
+  BN_free(sig->r);
+  BN_free(sig->s);
+  OPENSSL_free(sig);
 }
 
 ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,

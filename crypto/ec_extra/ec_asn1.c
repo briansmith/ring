@@ -408,6 +408,17 @@ EC_GROUP *EC_KEY_parse_parameters(CBS *cbs) {
   return NULL;
 }
 
+int EC_POINT_point2cbb(CBB *out, const EC_GROUP *group, const EC_POINT *point,
+                       point_conversion_form_t form, BN_CTX *ctx) {
+  size_t len = EC_POINT_point2oct(group, point, form, NULL, 0, ctx);
+  if (len == 0) {
+    return 0;
+  }
+  uint8_t *p;
+  return CBB_add_space(out, &p, len) &&
+         EC_POINT_point2oct(group, point, form, p, len, ctx) == len;
+}
+
 EC_KEY *d2i_ECPrivateKey(EC_KEY **out, const uint8_t **inp, long len) {
   /* This function treats its |out| parameter differently from other |d2i|
    * functions. If supplied, take the group from |*out|. */

@@ -164,30 +164,6 @@ size_t ECDSA_size(const EC_KEY *key) {
   return ECDSA_SIG_max_len(group_order_size);
 }
 
-ECDSA_SIG *ECDSA_SIG_new(void) {
-  ECDSA_SIG *sig = OPENSSL_malloc(sizeof(ECDSA_SIG));
-  if (sig == NULL) {
-    return NULL;
-  }
-  sig->r = BN_new();
-  sig->s = BN_new();
-  if (sig->r == NULL || sig->s == NULL) {
-    ECDSA_SIG_free(sig);
-    return NULL;
-  }
-  return sig;
-}
-
-void ECDSA_SIG_free(ECDSA_SIG *sig) {
-  if (sig == NULL) {
-    return;
-  }
-
-  BN_free(sig->r);
-  BN_free(sig->s);
-  OPENSSL_free(sig);
-}
-
 ECDSA_SIG *ECDSA_SIG_parse(CBS *cbs) {
   ECDSA_SIG *ret = ECDSA_SIG_new();
   if (ret == NULL) {

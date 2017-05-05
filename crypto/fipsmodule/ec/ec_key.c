@@ -358,27 +358,19 @@ int EC_KEY_check_fips(const EC_KEY *key) {
     return 0;
   }
 
-  if (!key->priv_key) {
-    return 1;
+  if (key->priv_key) {
+    uint8_t data[16] = {0};
+    ECDSA_SIG *sig = ECDSA_do_sign(data, sizeof(data), key);
+    int ok = sig != NULL &&
+             ECDSA_do_verify(data, sizeof(data), sig, key);
+    ECDSA_SIG_free(sig);
+    if (!ok) {
+      OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
+      return 0;
+    }
   }
 
-  uint8_t data[16] = {0};
-  unsigned sig_len = ECDSA_size(key);
-  uint8_t *sig = OPENSSL_malloc(sig_len);
-  if (sig == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-
-  int ret = 1;
-  if (!ECDSA_sign(0, data, sizeof(data), sig, &sig_len, key) ||
-      !ECDSA_verify(0, data, sizeof(data), sig, sig_len, key)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_PUBLIC_KEY_VALIDATION_FAILED);
-    ret = 0;
-  }
-
-  OPENSSL_free(sig);
-  return ret;
+  return 1;
 }
 
 int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key, BIGNUM *x,

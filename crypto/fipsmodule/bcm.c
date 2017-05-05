@@ -20,7 +20,6 @@
 #include <openssl/aes.h>
 #include <openssl/base.h>
 #include <openssl/bn.h>
-#include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/des.h>
 #include <openssl/ecdsa.h>
