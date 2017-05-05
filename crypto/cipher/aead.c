@@ -18,6 +18,7 @@
 
 #include <openssl/cipher.h>
 #include <openssl/err.h>
+#include <openssl/mem.h>
 
 #include "internal.h"
 #include "../internal.h"
@@ -33,6 +34,24 @@ size_t EVP_AEAD_max_tag_len(const EVP_AEAD *aead) { return aead->max_tag_len; }
 
 void EVP_AEAD_CTX_zero(EVP_AEAD_CTX *ctx) {
   OPENSSL_memset(ctx, 0, sizeof(EVP_AEAD_CTX));
+}
+
+EVP_AEAD_CTX *EVP_AEAD_CTX_new(const EVP_AEAD *aead, const uint8_t *key,
+                               size_t key_len, size_t tag_len) {
+  EVP_AEAD_CTX *ctx = OPENSSL_malloc(sizeof(EVP_AEAD_CTX));
+  EVP_AEAD_CTX_zero(ctx);
+
+  if (EVP_AEAD_CTX_init(ctx, aead, key, key_len, tag_len, NULL)) {
+    return ctx;
+  }
+
+  EVP_AEAD_CTX_free(ctx);
+  return NULL;
+}
+
+void EVP_AEAD_CTX_free(EVP_AEAD_CTX *ctx) {
+  EVP_AEAD_CTX_cleanup(ctx);
+  OPENSSL_free(ctx);
 }
 
 int EVP_AEAD_CTX_init(EVP_AEAD_CTX *ctx, const EVP_AEAD *aead,

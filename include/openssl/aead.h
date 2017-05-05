@@ -186,6 +186,16 @@ typedef struct evp_aead_ctx_st {
  * more uniform cleanup of |EVP_AEAD_CTX|. */
 OPENSSL_EXPORT void EVP_AEAD_CTX_zero(EVP_AEAD_CTX *ctx);
 
+/* EVP_AEAD_CTX_new allocates an |EVP_AEAD_CTX|, calls |EVP_AEAD_CTX_init| and
+ * returns the |EVP_AEAD_CTX|, or NULL on error. */
+OPENSSL_EXPORT EVP_AEAD_CTX *EVP_AEAD_CTX_new(const EVP_AEAD *aead,
+                                              const uint8_t *key,
+                                              size_t key_len, size_t tag_len);
+
+/* EVP_AEAD_CTX_free calls |EVP_AEAD_CTX_cleanup| and |OPENSSL_free| on
+ * |ctx|. */
+OPENSSL_EXPORT void EVP_AEAD_CTX_free(EVP_AEAD_CTX *ctx);
+
 /* EVP_AEAD_CTX_init initializes |ctx| for the given AEAD algorithm. The |impl|
  * argument is ignored and should be NULL. Authentication tags may be truncated
  * by passing a size as |tag_len|. A |tag_len| of zero indicates the default
@@ -333,6 +343,8 @@ namespace bssl {
 using ScopedEVP_AEAD_CTX =
     internal::StackAllocated<EVP_AEAD_CTX, void, EVP_AEAD_CTX_zero,
                              EVP_AEAD_CTX_cleanup>;
+
+BORINGSSL_MAKE_DELETER(EVP_AEAD_CTX, EVP_AEAD_CTX_free)
 
 }  // namespace bssl
 
