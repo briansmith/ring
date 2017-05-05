@@ -78,6 +78,7 @@
 #include <openssl/thread.h>
 
 #include "internal.h"
+#include "../delocate.h"
 #include "../../internal.h"
 
 

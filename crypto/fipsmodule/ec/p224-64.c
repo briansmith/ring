@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include "internal.h"
+#include "../delocate.h"
 #include "../../internal.h"
 
 
