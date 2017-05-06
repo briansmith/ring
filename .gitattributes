@@ -6,3 +6,5 @@
 *.bat eol=crlf
 *.rc eol=crlf
 *.pl linguist-language=Assembly
+*.bin binary
+*.der binary
