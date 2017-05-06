@@ -259,7 +259,9 @@ class GTEST_API_ AssertionResult {
   // Used in EXPECT_TRUE/FALSE(assertion_result).
   AssertionResult(const AssertionResult& other);
 
-  GTEST_DISABLE_MSC_WARNINGS_PUSH_(4800 /* forcing value to bool */)
+  GTEST_DISABLE_MSC_WARNINGS_PUSH_(
+      4619 /* unknown warning (warning 4800 is removed in MSVC 2017) */
+      4800 /* forcing value to bool */)
 
   // Used in the EXPECT_TRUE/FALSE(bool_expression).
   //

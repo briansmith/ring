@@ -447,8 +447,8 @@ static bool GetCertificate(SSL *ssl, bssl::UniquePtr<X509> *out_x509,
   const TestConfig *config = GetTestConfig(ssl);
 
   if (!config->digest_prefs.empty()) {
-    std::unique_ptr<char, Free<char>> digest_prefs(
-        strdup(config->digest_prefs.c_str()));
+    bssl::UniquePtr<char> digest_prefs(
+        OPENSSL_strdup(config->digest_prefs.c_str()));
     std::vector<int> digest_list;
 
     for (;;) {
