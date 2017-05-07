@@ -1,0 +1,9 @@
+# An Ed25519 private key. (This is from BoringSSL's tests.)
+Input = 302e020100300506032b6570042204209d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60
+
+# The same as the above, but with an invalid NULL parameter. (This is from BoringSSL's tests.)
+Input = 3030020100300706032b65700500042204209d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60
+Error = DECODE_ERROR
+
+# Sample private key from draft-ietf-curdle-pkix-04.
+Input = 302e020100300506032b657004220420d4ee72dbf913584ad5b6d8f1f769f8ad3afe7c28cbf1d4fbe097a88f44755842

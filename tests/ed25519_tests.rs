@@ -87,3 +87,18 @@ fn test_ed25519_from_seed_and_public_key_misuse() {
         untrusted::Input::from(PUBLIC_KEY),
         untrusted::Input::from(PRIVATE_KEY)).is_err());
 }
+
+#[test]
+fn test_ed25519_from_pkcs8_unchecked() {
+    // Just test that we can parse the input.
+    test::from_file("tests/ed25519_pkcs8_tests.txt", |section, test_case| {
+        assert_eq!(section, "");
+        let input = test_case.consume_bytes("Input");
+        let error = test_case.consume_optional_string("Error");
+        assert_eq!(
+            Ed25519KeyPair::from_pkcs8_maybe_unchecked(
+                untrusted::Input::from(&input)).is_ok(),
+            error.is_none());
+        Ok(())
+    });
+}
