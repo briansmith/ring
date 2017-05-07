@@ -61,7 +61,7 @@ impl<'a> Ed25519KeyPair {
         let mut seed = [0u8; SEED_LEN];
         try!(rng.fill(&mut seed));
 
-        let key_pair = Ed25519KeyPair::from_seed(&seed);
+        let key_pair = Self::from_seed_(&seed);
         let bytes = Ed25519KeyPairBytes {
             private_key: seed,
             public_key: key_pair.public_key,
@@ -84,9 +84,7 @@ impl<'a> Ed25519KeyPair {
     pub fn from_seed_and_public_key(seed: untrusted::Input,
                                     public_key: untrusted::Input)
             -> Result<Ed25519KeyPair, error::Unspecified> {
-        let seed =
-            try!(slice_as_array_ref!(seed.as_slice_less_safe(), SEED_LEN));
-        let pair = Ed25519KeyPair::from_seed(seed);
+        let pair = try!(Self::from_seed_unchecked(seed));
 
         // This implicitly verifies that `public_key` is the right length.
         if public_key != &pair.public_key[..] {
@@ -96,7 +94,23 @@ impl<'a> Ed25519KeyPair {
         Ok(pair)
     }
 
-    fn from_seed(seed: &Seed) -> Ed25519KeyPair {
+    /// Constructs a Ed25519 key pair from the private key seed `seed`.
+    ///
+    /// It is recommended to use `Ed25519KeyPair::from_pkcs8()` instead. When
+    /// that is not practical, it is recommended to use
+    /// `Ed25519KeyPair::from_seed_and_public_key()` instead.
+    ///
+    /// Since the public key is not given, the public key will be computed from
+    /// the private key. It is not possible to detect misuse or corruption of
+    /// the private key since the public key isn't given as input.
+    pub fn from_seed_unchecked(seed: untrusted::Input)
+                               -> Result<Ed25519KeyPair, error::Unspecified> {
+        let seed =
+            try!(slice_as_array_ref!(seed.as_slice_less_safe(), SEED_LEN));
+        Ok(Self::from_seed_(seed))
+    }
+
+    fn from_seed_(seed: &Seed) -> Ed25519KeyPair {
         let h = digest::digest(&digest::SHA512, seed);
         let (scalar_encoded, prefix_encoded) = h.as_ref().split_at(SCALAR_LEN);
 
