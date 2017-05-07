@@ -158,9 +158,9 @@
 //! const MESSAGE: &'static [u8] = b"hello, world";
 //! let sig = key_pair.sign(MESSAGE);
 //!
-//! // Normally, an application would extract the bytes of the signature and
-//! // send them in a protocol message to the peer(s). Here we just use the
-//! // public key from the private key we just generated.
+//! // Normally an application would extract the bytes of the signature and send
+//! // them in a protocol message to the peer(s). Here we just use the public
+//! // key from the private key we just generated.
 //! let peer_public_key_bytes = &generated_bytes.public_key;
 //! let sig_bytes = sig.as_ref();
 //!
