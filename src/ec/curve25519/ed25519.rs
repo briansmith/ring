@@ -87,6 +87,8 @@ impl<'a> Ed25519KeyPair {
         let pair = try!(Self::from_seed_unchecked(seed));
 
         // This implicitly verifies that `public_key` is the right length.
+        // XXX: This rejects ~18 keys when they are partially reduced, though
+        // those keys are virtually impossible to find.
         if public_key != pair.public_key_bytes() {
             return Err(error::Unspecified);
         }
