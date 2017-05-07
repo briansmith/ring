@@ -142,7 +142,8 @@ impl RSAKeyPair {
                       -> Result<RSAKeyPair, error::Unspecified> {
         const RSA_ENCRYPTION: &'static [u8] =
             include_bytes!("../data/alg-rsa-encryption.der");
-        let der = try!(pkcs8::unwrap_key(input, &RSA_ENCRYPTION));
+        let (der, _) = try!(pkcs8::unwrap_key(pkcs8::Version::V1Only, input,
+                                              &RSA_ENCRYPTION));
         Self::from_der(der)
     }
 

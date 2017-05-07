@@ -138,30 +138,25 @@
 //! use ring::{rand, signature};
 //!
 //! # fn sign_and_verify_ed25519() -> Result<(), ring::error::Unspecified> {
-//! // Generate a key pair.
+//! // Generate a key pair in PKCS#8 (v2) format.
 //! let rng = rand::SystemRandom::new();
-//! let (generated, generated_bytes) =
-//!     try!(signature::Ed25519KeyPair::generate_serializable(&rng));
+//! let pkcs8_bytes = try!(signature::Ed25519KeyPair::generate_pkcs8(&rng));
 //!
-//! // Normally after generating the key pair, the application would extract
-//! // the private and public components and store them persistently for future
-//! // use.
+//! // Normally the application would store the PKCS#8 file persistently. Later
+//! // it would read the PKCS#8 file from persistent storage to use it.
 //!
-//! // Normally the application would later deserialize the private and public
-//! // key from storage and then create an `Ed25519KeyPair` from the
-//! // deserialized bytes.
-//! let key_pair = try!(signature::Ed25519KeyPair::from_seed_and_public_key(
-//!     untrusted::Input::from(&generated_bytes.private_key),
-//!     untrusted::Input::from(&generated_bytes.public_key)));
+//! let key_pair =
+//!    try!(signature::Ed25519KeyPair::from_pkcs8(
+//!             untrusted::Input::from(&pkcs8_bytes)));
 //!
 //! // Sign the message "hello, world".
 //! const MESSAGE: &'static [u8] = b"hello, world";
 //! let sig = key_pair.sign(MESSAGE);
 //!
-//! // Normally an application would extract the bytes of the signature and send
-//! // them in a protocol message to the peer(s). Here we just use the public
-//! // key from the private key we just generated.
-//! let peer_public_key_bytes = &generated_bytes.public_key;
+//! // Normally an application would extract the bytes of the signature and
+//! // send them in a protocol message to the peer(s). Here we just get the
+//! // public key key directly from the key pair.
+//! let peer_public_key_bytes = key_pair.public_key_bytes();
 //! let sig_bytes = sig.as_ref();
 //!
 //! // Verify the signature of the message using the public key. Normally the
@@ -278,7 +273,7 @@ pub use ec::curve25519::ed25519::{
     ED25519,
 
     Ed25519KeyPair,
-    Ed25519KeyPairBytes
+    ED25519_PKCS8_V2_LEN,
 };
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]

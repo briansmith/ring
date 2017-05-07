@@ -14,7 +14,7 @@
 
 //! EdDSA Signatures.
 
-use {digest, error, private, rand, signature};
+use {digest, error, pkcs8, private, rand, signature};
 use super::ops::*;
 use untrusted;
 
@@ -33,54 +33,95 @@ pub struct Ed25519KeyPair {
     public_key: PublicKey,
 }
 
-/// The raw bytes of the Ed25519 key pair, for serialization.
-pub struct Ed25519KeyPairBytes {
-    /// Private key (seed) bytes.
-    pub private_key: [u8; SEED_LEN],
-
-    /// Public key bytes.
-    pub public_key: [u8; PUBLIC_KEY_LEN],
-}
-
 impl<'a> Ed25519KeyPair {
     /// Generates a new random key pair. There is no way to extract the private
     /// key bytes to save them. If you need to save the private key bytes for
     /// future use then use `generate_serializable()` instead.
     pub fn generate(rng: &rand::SecureRandom)
                     -> Result<Ed25519KeyPair, error::Unspecified> {
-        Ed25519KeyPair::generate_serializable(rng).map(|(key_pair, _)| key_pair)
-    }
-
-    /// Generates a new key pair and returns the key pair as both an
-    /// `Ed25519KeyPair` and a `Ed25519KeyPairBytes`. There is no way to
-    /// extract the private key bytes from an `Ed25519KeyPair`, so extracting
-    /// the values from the `Ed25519KeyPairBytes` is the only way to get them.
-    pub fn generate_serializable(rng: &rand::SecureRandom)
-            -> Result<(Ed25519KeyPair, Ed25519KeyPairBytes),
-                      error::Unspecified> {
         let mut seed = [0u8; SEED_LEN];
         try!(rng.fill(&mut seed));
-
-        let key_pair = Self::from_seed_(&seed);
-        let bytes = Ed25519KeyPairBytes {
-            private_key: seed,
-            public_key: key_pair.public_key,
-        };
-
-        Ok((key_pair, bytes))
+        Ok(Ed25519KeyPair::from_seed_(&seed))
     }
 
-    /// Copies key data from the given slices to create a new key pair. The
-    /// first slice must hold the private key and the second slice must hold
-    /// the public key. Both slices must contain 32 little-endian-encoded
-    /// bytes.
+    /// Generates a new key pair and returns the key pair serialized as a
+    /// PKCS#8 document.
     ///
-    /// This is intended for use by code that deserializes key pairs.
+    /// The PKCS#8 document will be a v2 `OneAsymmetricKey` with the public key,
+    /// as described in [RFC 5958 Section 2]. See also
+    /// https://tools.ietf.org/html/draft-ietf-curdle-pkix-04.
     ///
-    /// The private and public keys will be verified to be consistent. This
-    /// helps protect, for example, against the accidental swapping of the
-    /// public and private components of the key pair. This also detects
-    /// corruption that might have occurred during storage of the key pair.
+    /// [RFC 5958 Section 2]: https://tools.ietf.org/html/rfc5958#section-2
+    pub fn generate_pkcs8(rng: &rand::SecureRandom)
+            -> Result<[u8; ED25519_PKCS8_V2_LEN], error::Unspecified> {
+        let mut seed = [0u8; SEED_LEN];
+        try!(rng.fill(&mut seed));
+        let key_pair = Ed25519KeyPair::from_seed_(&seed);
+
+        let mut bytes = [0; ED25519_PKCS8_V2_LEN];
+        let (before_seed, after_seed) =
+            PKCS8_TEMPLATE.split_at(PKCS8_SEED_INDEX);
+        bytes[..PKCS8_SEED_INDEX].copy_from_slice(before_seed);
+        bytes[PKCS8_SEED_INDEX..(PKCS8_SEED_INDEX + SEED_LEN)]
+            .copy_from_slice(&seed);
+        bytes[(PKCS8_SEED_INDEX + SEED_LEN)..PKCS8_PUBLIC_KEY_INDEX]
+            .copy_from_slice(after_seed);
+        bytes[PKCS8_PUBLIC_KEY_INDEX..]
+            .copy_from_slice(key_pair.public_key_bytes());
+
+        Ok(bytes)
+    }
+
+    /// Parses a PKCS#8 v2 Ed25519 private key.
+    ///
+    /// The input must be in PKCS#8 v2 format, and in particular it must contain
+    /// the public key in addition to the private key. `from_pkcs8()` will
+    /// verify that the public key and the private key are consistent with each
+    /// other.
+    ///
+    /// If you need to parse PKCS#8 v1 files (without the public key) then use
+    /// `Ed25519KeyPair::from_pkcs8_maybe_unchecked()` instead.
+    pub fn from_pkcs8(input: untrusted::Input)
+                      -> Result<Ed25519KeyPair, error::Unspecified> {
+        let (seed, public_key) =
+            try!(pkcs8::unwrap_key(pkcs8::Version::V2Only, input,
+                                   ed25519_alg_id()));
+        Self::from_seed_and_public_key(seed, public_key.unwrap())
+    }
+
+    /// Parses a PKCS#8 v1 or v2 Ed25519 private key.
+    ///
+    /// It is recommended to use `Ed25519KeyPair::from_pkcs8()`, which accepts
+    /// only PKCS#8 v2 files that contain the public key.
+    /// `from_pkcs8_maybe_unchecked()` parses PKCS#2 files exactly like
+    /// `from_pkcs8()`. It also accepts v1 files. PKCS#8 v1 files do not contain
+    /// the public key, so when a v1 file is parsed the public key will be
+    /// computed from the private key, and there will be no consistency check
+    /// between the public key and the private key.
+    ///
+    /// PKCS#8 v2 files are parsed exactly like `Ed25519KeyPair::from_pkcs8()`.
+    pub fn from_pkcs8_maybe_unchecked(input: untrusted::Input)
+            -> Result<Ed25519KeyPair, error::Unspecified> {
+        let (seed, public_key) =
+            try!(pkcs8::unwrap_key(pkcs8::Version::V1OrV2, input,
+                                   ed25519_alg_id()));
+        if let Some(public_key) = public_key {
+            Self::from_seed_and_public_key(seed, public_key)
+        } else {
+            Self::from_seed_unchecked(seed)
+        }
+    }
+
+    /// Constructs a Ed25519 key pair from the private key seed `seed` and its
+    /// public key `public_key`.
+    ///
+    /// It is recommended to use `Ed25519KeysiPair::from_pkcs8()` instead.
+    ///
+    /// The private and public keys will be verified to be consistent with each
+    /// other. This helps avoid misuse of the key (e.g. accidentally swapping
+    /// the private key and public key, or using the wrong private key for the
+    /// public key). This also detects any corruption of the public or private
+    /// key.
     pub fn from_seed_and_public_key(seed: untrusted::Input,
                                     public_key: untrusted::Input)
             -> Result<Ed25519KeyPair, error::Unspecified> {
@@ -265,3 +306,16 @@ const SIGNATURE_LEN: usize = ELEM_LEN + SCALAR_LEN;
 
 type Seed = [u8; SEED_LEN];
 const SEED_LEN: usize = 32;
+
+const PKCS8_TEMPLATE: &[u8] = include_bytes!("ed25519_pkcs8_v2_template.der");
+const PKCS8_SEED_INDEX: usize = 0x0e;
+const PKCS8_PUBLIC_KEY_INDEX: usize = 0x33;
+
+#[inline]
+fn ed25519_alg_id() -> &'static [u8] { &PKCS8_TEMPLATE[7..12] }
+
+/// The length of a Ed25519 PKCs#8 (v2) private key generated by
+/// `Ed25519KeyPair::generate_pkcs8()`. Ed25519 PKCS#8 files generated by other
+/// software may have different lengths, and `Ed25519KeyPair::generate_pkcs8()`
+/// may generate files of a different length in the future.
+pub const ED25519_PKCS8_V2_LEN: usize = 0x53;

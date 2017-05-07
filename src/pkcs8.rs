@@ -12,29 +12,45 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+//! PKCS#8 is specified in [RFC 5958].
+//!
+//! [RFC 5958]: https://tools.ietf.org/html/rfc5958.
+
 use {der, error};
 use untrusted;
 
-/// Parses an unencrypted PKCS#8 privatg key, verifies that it is the right type
-/// of key, and returns the key value. `alg_id` must be the encoded value (not
-/// including the outermost `SEQUENCE` tag and length) of the
-/// `AlgorithmIdentifier` that identifies the key type. The result will be an
-/// encoded `RSAPrivateKey` or `ECPrivateKey` or similar.
+pub enum Version {
+    #[cfg(feature = "rsa_signing")] V1Only,
+    V1OrV2,
+    V2Only,
+}
+
+/// Parses an unencrypted PKCS#8 private key, verifies that it is the right type
+/// of key, and returns the key value.
 ///
-/// PKCS#8 is specified in [RFC 5958]. Only v1 keys are supported, as none of
-/// the algorithms we support require v2 support.
+/// `alg_id` must be the encoded value (not including the outermost `SEQUENCE`
+/// tag and length) of the `AlgorithmIdentifier` that identifies the key type.
+/// The result will be an encoded `RSAPrivateKey` or `ECPrivateKey` or similar.
+///
+/// PKCS#8 is specified in [RFC 5958].
 ///
 /// [RFC 5958]: https://tools.ietf.org/html/rfc5958.
-pub fn unwrap_key<'a>(input: untrusted::Input<'a>, alg_id: &[u8])
-                      -> Result<untrusted::Input<'a>, error::Unspecified> {
+pub fn unwrap_key<'a>(version: Version, input: untrusted::Input<'a>,
+                      alg_id: &[u8])
+        -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>),
+                  error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
             // Currently we only support algorithms that should only be encoded
             // in v1 form, so reject v2 and any later form.
-            let version = try!(der::small_nonnegative_integer(input));
-            if version != 0 {
-                return Err(error::Unspecified);
-            }
+            let require_public_key =
+                    match (try!(der::small_nonnegative_integer(input)), version) {
+                #[cfg(feature = "rsa_signing")] (0, Version::V1Only) => false,
+                (0, Version::V1OrV2) => false,
+                (1, Version::V1OrV2) |
+                (1, Version::V2Only) => true,
+                _ => { return Err(error::Unspecified); }
+            };
 
             let actual_alg_id =
                 try!(der::expect_tag_and_get_value(input, der::Tag::Sequence));
@@ -51,7 +67,15 @@ pub fn unwrap_key<'a>(input: untrusted::Input<'a>, alg_id: &[u8])
                     der::Tag::ContextSpecificConstructed0));
             }
 
-            Ok(private_key)
+            let public_key = if require_public_key {
+                Some(try!(der::nested(
+                    input, der::Tag::ContextSpecificConstructed1,
+                    error::Unspecified, der::bit_string_with_no_unused_bits)))
+            } else {
+                None
+            };
+
+            Ok((private_key, public_key))
         })
     })
 }

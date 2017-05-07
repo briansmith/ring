@@ -15,7 +15,7 @@
 extern crate ring;
 extern crate untrusted;
 
-use ring::{rand, signature, test};
+use ring::{signature, test};
 use signature::Ed25519KeyPair;
 
 /// Test vectors from BoringSSL.
@@ -23,51 +23,67 @@ use signature::Ed25519KeyPair;
 fn test_signature_ed25519() {
     test::from_file("tests/ed25519_tests.txt", |section, test_case| {
         assert_eq!(section, "");
-        let private_key = test_case.consume_bytes("PRIV");
-        assert_eq!(64, private_key.len());
+        let seed = test_case.consume_bytes("SEED");
+        assert_eq!(32, seed.len());
+        let seed = untrusted::Input::from(&seed);
+
         let public_key = test_case.consume_bytes("PUB");
         assert_eq!(32, public_key.len());
+        let public_key = untrusted::Input::from(&public_key);
+
         let msg = test_case.consume_bytes("MESSAGE");
+
         let expected_sig = test_case.consume_bytes("SIG");
 
-        let key_pair =
-            Ed25519KeyPair::from_seed_and_public_key(
-                untrusted::Input::from(&private_key[..32]),
-                untrusted::Input::from(&public_key)).unwrap();
+        {
+            let key_pair = Ed25519KeyPair::from_seed_and_public_key(
+                seed, public_key).unwrap();
+            let actual_sig = key_pair.sign(&msg);
+            assert_eq!(&expected_sig[..], actual_sig.as_ref());
+        }
+
+        // Test PKCS#8 generation, parsing, and private-to-public calculations.
+        let rng = test::rand::FixedSliceRandom {
+            bytes: seed.as_slice_less_safe()
+        };
+        let pkcs8 = Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
+        let key_pair = Ed25519KeyPair::from_pkcs8(
+            untrusted::Input::from(&pkcs8)).unwrap();
+        assert_eq!(public_key, key_pair.public_key_bytes());
+
+        // Test Signature generation.
         let actual_sig = key_pair.sign(&msg);
         assert_eq!(&expected_sig[..], actual_sig.as_ref());
 
-        let public_key = untrusted::Input::from(&public_key);
-        let msg = untrusted::Input::from(&msg);
-        let expected_sig = untrusted::Input::from(&expected_sig);
-
-        assert!(signature::verify(&signature::ED25519, public_key, msg,
-                                  expected_sig).is_ok());
+        // Test Signature verification.
+        assert!(signature::verify(
+            &signature::ED25519, public_key, untrusted::Input::from(&msg),
+            untrusted::Input::from(&expected_sig)).is_ok());
         Ok(())
     });
 }
 
 #[test]
 fn test_ed25519_from_seed_and_public_key_misuse() {
-    let rng = rand::SystemRandom::new();
-    let (_, bytes) = Ed25519KeyPair::generate_serializable(&rng).unwrap();
+    const PRIVATE_KEY: &[u8] = include_bytes!("ed25519_test_private_key.bin");
+    const PUBLIC_KEY: &[u8] = include_bytes!("ed25519_test_public_key.bin");
 
     assert!(Ed25519KeyPair::from_seed_and_public_key(
-        untrusted::Input::from(&bytes.private_key),
-        untrusted::Input::from(&bytes.public_key)).is_ok());
+        untrusted::Input::from(PRIVATE_KEY),
+        untrusted::Input::from(PUBLIC_KEY)).is_ok());
 
     // Truncated private key.
     assert!(Ed25519KeyPair::from_seed_and_public_key(
-        untrusted::Input::from(&bytes.private_key[..31]),
-        untrusted::Input::from(&bytes.public_key)).is_err());
+        untrusted::Input::from(&PRIVATE_KEY[..31]),
+        untrusted::Input::from(PUBLIC_KEY)).is_err());
 
     // Truncated public key.
     assert!(Ed25519KeyPair::from_seed_and_public_key(
-        untrusted::Input::from(&bytes.private_key),
-        untrusted::Input::from(&bytes.public_key[..31])).is_err());
+        untrusted::Input::from(PRIVATE_KEY),
+        untrusted::Input::from(&PUBLIC_KEY[..31])).is_err());
 
     // Swapped public and private key.
     assert!(Ed25519KeyPair::from_seed_and_public_key(
-        untrusted::Input::from(&bytes.public_key),
-        untrusted::Input::from(&bytes.private_key)).is_err());
+        untrusted::Input::from(PUBLIC_KEY),
+        untrusted::Input::from(PRIVATE_KEY)).is_err());
 }
