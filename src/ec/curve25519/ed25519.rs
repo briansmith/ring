@@ -81,9 +81,11 @@ impl<'a> Ed25519KeyPair {
     /// helps protect, for example, against the accidental swapping of the
     /// public and private components of the key pair. This also detects
     /// corruption that might have occurred during storage of the key pair.
-    pub fn from_bytes(seed: &[u8], public_key: &[u8])
-                      -> Result<Ed25519KeyPair, error::Unspecified> {
-        let seed = try!(slice_as_array_ref!(seed, SEED_LEN));
+    pub fn from_seed_and_public_key(seed: untrusted::Input,
+                                    public_key: untrusted::Input)
+            -> Result<Ed25519KeyPair, error::Unspecified> {
+        let seed =
+            try!(slice_as_array_ref!(seed.as_slice_less_safe(), SEED_LEN));
         let pair = Ed25519KeyPair::from_seed(seed);
 
         // This implicitly verifies that `public_key` is the right length.

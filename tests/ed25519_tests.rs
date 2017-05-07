@@ -31,7 +31,9 @@ fn test_signature_ed25519() {
         let expected_sig = test_case.consume_bytes("SIG");
 
         let key_pair =
-            Ed25519KeyPair::from_bytes(&private_key[..32], &public_key).unwrap();
+            Ed25519KeyPair::from_seed_and_public_key(
+                untrusted::Input::from(&private_key[..32]),
+                untrusted::Input::from(&public_key)).unwrap();
         let actual_sig = key_pair.sign(&msg);
         assert_eq!(&expected_sig[..], actual_sig.as_ref());
 
@@ -46,22 +48,26 @@ fn test_signature_ed25519() {
 }
 
 #[test]
-fn test_ed25519_from_bytes_misuse() {
+fn test_ed25519_from_seed_and_public_key_misuse() {
     let rng = rand::SystemRandom::new();
     let (_, bytes) = Ed25519KeyPair::generate_serializable(&rng).unwrap();
 
-    assert!(Ed25519KeyPair::from_bytes(&bytes.private_key,
-                                       &bytes.public_key).is_ok());
+    assert!(Ed25519KeyPair::from_seed_and_public_key(
+        untrusted::Input::from(&bytes.private_key),
+        untrusted::Input::from(&bytes.public_key)).is_ok());
 
     // Truncated private key.
-    assert!(Ed25519KeyPair::from_bytes(&bytes.private_key[..31],
-                                       &bytes.public_key).is_err());
+    assert!(Ed25519KeyPair::from_seed_and_public_key(
+        untrusted::Input::from(&bytes.private_key[..31]),
+        untrusted::Input::from(&bytes.public_key)).is_err());
 
     // Truncated public key.
-    assert!(Ed25519KeyPair::from_bytes(&bytes.private_key,
-                                       &bytes.public_key[..31]).is_err());
+    assert!(Ed25519KeyPair::from_seed_and_public_key(
+        untrusted::Input::from(&bytes.private_key),
+        untrusted::Input::from(&bytes.public_key[..31])).is_err());
 
     // Swapped public and private key.
-    assert!(Ed25519KeyPair::from_bytes(&bytes.public_key,
-                                       &bytes.private_key).is_err());
+    assert!(Ed25519KeyPair::from_seed_and_public_key(
+        untrusted::Input::from(&bytes.public_key),
+        untrusted::Input::from(&bytes.private_key)).is_err());
 }

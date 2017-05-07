@@ -150,9 +150,9 @@
 //! // Normally the application would later deserialize the private and public
 //! // key from storage and then create an `Ed25519KeyPair` from the
 //! // deserialized bytes.
-//! let key_pair =
-//!    try!(signature::Ed25519KeyPair::from_bytes(&generated_bytes.private_key,
-//!                                               &generated_bytes.public_key));
+//! let key_pair = try!(signature::Ed25519KeyPair::from_seed_and_public_key(
+//!     untrusted::Input::from(&generated_bytes.private_key),
+//!     untrusted::Input::from(&generated_bytes.public_key)));
 //!
 //! // Sign the message "hello, world".
 //! const MESSAGE: &'static [u8] = b"hello, world";
