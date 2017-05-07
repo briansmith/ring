@@ -56,6 +56,7 @@ include = [
     "src/ec/ecdh_tests.txt",
     "src/ec/curve25519/curve25519.rs",
     "src/ec/curve25519/ed25519.rs",
+    "src/ec/curve25519/ed25519_pkcs8_v2_template.der",
     "src/ec/curve25519/ops.rs",
     "src/ec/curve25519/x25519.rs",
     "src/ec/suite_b/curve.rs",
