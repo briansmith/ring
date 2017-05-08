@@ -18,8 +18,14 @@
 /* This file exists in order to give the fipsmodule target, in non-FIPS mode,
  * something to compile. */
 
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define OPENSSL_ASAN
+#endif
+#endif
+
 int FIPS_mode(void) {
-#if defined(BORINGSSL_FIPS)
+#if defined(BORINGSSL_FIPS) && !defined(OPENSSL_ASAN)
   return 1;
 #else
   return 0;
