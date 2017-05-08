@@ -274,6 +274,7 @@ pub use ec::curve25519::ed25519::{
 
     Ed25519KeyPair,
     ED25519_PKCS8_V2_LEN,
+    ED25519_PUBLIC_KEY_LEN,
 };
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]

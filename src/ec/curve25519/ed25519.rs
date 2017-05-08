@@ -309,6 +309,9 @@ const SEED_LEN: usize = 32;
 const PKCS8_TEMPLATE: &[u8] = include_bytes!("ed25519_pkcs8_v2_template.der");
 const PKCS8_SEED_INDEX: usize = 0x10;
 
+/// The length of an Ed25519 public key.
+pub const ED25519_PUBLIC_KEY_LEN: usize = PUBLIC_KEY_LEN;
+
 #[inline]
 fn ed25519_alg_id() -> &'static [u8] { &PKCS8_TEMPLATE[7..12] }
 
