@@ -132,6 +132,10 @@ if(FIPS)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
+  if(FIPS_BREAK_TEST)
+    target_compile_definitions(bcm_c_generated_asm PRIVATE "-DBORINGSSL_FIPS_BREAK_${FIPS_BREAK_TEST}=1")
+  endif()
+
   function(prepend_path values prefix output)
     set(result)
     foreach(value ${values})
