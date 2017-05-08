@@ -270,16 +270,16 @@ int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
   OPENSSL_memcpy(private_bytes, priv->d, todo);
   OPENSSL_memset(private_bytes + todo, 0, sizeof(private_bytes) - todo);
 
-  /* Pass a SHA256 hash of the private key and message as additional data into
+  /* Pass a SHA512 hash of the private key and message as additional data into
    * the RBG. This is a hardening measure against entropy failure. */
-  OPENSSL_COMPILE_ASSERT(SHA256_DIGEST_LENGTH == 32,
-                         additional_data_is_different_size_from_sha256);
-  SHA256_CTX sha;
-  uint8_t digest[SHA256_DIGEST_LENGTH];
-  SHA256_Init(&sha);
-  SHA256_Update(&sha, private_bytes, sizeof(private_bytes));
-  SHA256_Update(&sha, message, message_len);
-  SHA256_Final(digest, &sha);
+  OPENSSL_COMPILE_ASSERT(SHA512_DIGEST_LENGTH >= 32,
+                         additional_data_is_too_large_for_sha512);
+  SHA512_CTX sha;
+  uint8_t digest[SHA512_DIGEST_LENGTH];
+  SHA512_Init(&sha);
+  SHA512_Update(&sha, private_bytes, sizeof(private_bytes));
+  SHA512_Update(&sha, message, message_len);
+  SHA512_Final(digest, &sha);
 
   /* Select a value k from [1, range-1], following FIPS 186-4 appendix B.5.2. */
   return bn_rand_range_with_additional_data(out, 1, range, digest);
