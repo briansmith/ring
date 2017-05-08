@@ -448,8 +448,9 @@ def FindCMakeFiles(directory):
   return cmakefiles
 
 def OnlyFIPSFragments(path, dent, is_dir):
-  return is_dir or path.startswith(
-      os.path.join('src', 'crypto', 'fipsmodule', ''))
+  return is_dir or (path.startswith(
+      os.path.join('src', 'crypto', 'fipsmodule', '')) and
+      NoTests(path, dent, is_dir))
 
 def NoTestsNorFIPSFragments(path, dent, is_dir):
   return (NoTests(path, dent, is_dir) and
