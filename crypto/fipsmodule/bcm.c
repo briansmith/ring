@@ -95,14 +95,6 @@
 
 #if defined(BORINGSSL_FIPS)
 
-#if defined(__has_feature)
-#if __has_feature(address_sanitizer)
-/* Integrity tests cannot run under ASAN because it involves reading the full
- * .text section, which triggers the global-buffer overflow detection. */
-#define OPENSSL_ASAN
-#endif
-#endif
-
 static void hexdump(const uint8_t *in, size_t len) {
   for (size_t i = 0; i < len; i++) {
     printf("%02x", in[i]);
@@ -296,7 +288,7 @@ static EC_KEY *self_test_ecdsa_key(void) {
   return ec_key;
 }
 
-#ifndef OPENSSL_ASAN
+#if !defined(OPENSSL_ASAN)
 /* These symbols are filled in by delocate.go. They point to the start and end
  * of the module, and the location of the integrity hash, respectively. */
 extern const uint8_t BORINGSSL_bcm_text_start[];
@@ -309,7 +301,9 @@ static void BORINGSSL_bcm_power_on_self_test(void) __attribute__((constructor));
 static void BORINGSSL_bcm_power_on_self_test(void) {
   CRYPTO_library_init();
 
-#ifndef OPENSSL_ASAN
+#if !defined(OPENSSL_ASAN)
+  /* Integrity tests cannot run under ASAN because it involves reading the full
+   * .text section, which triggers the global-buffer overflow detection. */
   const uint8_t *const start = BORINGSSL_bcm_text_start;
   const uint8_t *const end = BORINGSSL_bcm_text_end;
 

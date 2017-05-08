@@ -202,6 +202,12 @@ extern "C" {
 #define BORINGSSL_UNSAFE_DETERMINISTIC_MODE
 #endif
 
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define OPENSSL_ASAN
+#endif
+#endif
+
 /* CRYPTO_THREADID is a dummy value. */
 typedef int CRYPTO_THREADID;
 

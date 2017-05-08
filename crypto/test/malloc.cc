@@ -16,7 +16,7 @@
 
 #if defined(__has_feature)
 #if __has_feature(address_sanitizer) || __has_feature(memory_sanitizer)
-#define OPENSSL_ASAN
+#define OPENSSL_ASAN_OR_MSAN
 #endif
 #endif
 
@@ -32,7 +32,7 @@
 // TODO(davidben): See if this and ASan's and MSan's interceptors can be made to
 // coexist.
 #if defined(__linux__) && defined(OPENSSL_GLIBC) && !defined(OPENSSL_ARM) && \
-    !defined(OPENSSL_AARCH64) && !defined(OPENSSL_ASAN)
+    !defined(OPENSSL_AARCH64) && !defined(OPENSSL_ASAN_OR_MSAN)
 
 #include <errno.h>
 #include <signal.h>
