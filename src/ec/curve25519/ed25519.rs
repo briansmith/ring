@@ -61,12 +61,12 @@ impl<'a> Ed25519KeyPair {
         let mut bytes = [0; ED25519_PKCS8_V2_LEN];
         let (before_seed, after_seed) =
             PKCS8_TEMPLATE.split_at(PKCS8_SEED_INDEX);
+        let seed_end_index = PKCS8_SEED_INDEX + SEED_LEN;
         bytes[..PKCS8_SEED_INDEX].copy_from_slice(before_seed);
-        bytes[PKCS8_SEED_INDEX..(PKCS8_SEED_INDEX + SEED_LEN)]
-            .copy_from_slice(&seed);
-        bytes[(PKCS8_SEED_INDEX + SEED_LEN)..PKCS8_PUBLIC_KEY_INDEX]
+        bytes[PKCS8_SEED_INDEX..seed_end_index].copy_from_slice(&seed);
+        bytes[seed_end_index..(seed_end_index + after_seed.len())]
             .copy_from_slice(after_seed);
-        bytes[PKCS8_PUBLIC_KEY_INDEX..]
+        bytes[(seed_end_index + after_seed.len())..]
             .copy_from_slice(key_pair.public_key_bytes());
 
         Ok(bytes)
@@ -317,7 +317,6 @@ const SEED_LEN: usize = 32;
 
 const PKCS8_TEMPLATE: &[u8] = include_bytes!("ed25519_pkcs8_v2_template.der");
 const PKCS8_SEED_INDEX: usize = 0x10;
-const PKCS8_PUBLIC_KEY_INDEX: usize = 0x35;
 
 #[inline]
 fn ed25519_alg_id() -> &'static [u8] { &PKCS8_TEMPLATE[7..12] }
