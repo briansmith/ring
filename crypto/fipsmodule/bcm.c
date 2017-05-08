@@ -313,11 +313,11 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
   const uint8_t *const start = BORINGSSL_bcm_text_start;
   const uint8_t *const end = BORINGSSL_bcm_text_end;
 
-  static const uint8_t kHMACKey[32] = {0};
-  uint8_t result[SHA256_DIGEST_LENGTH];
+  static const uint8_t kHMACKey[64] = {0};
+  uint8_t result[SHA512_DIGEST_LENGTH];
 
   unsigned result_len;
-  if (!HMAC(EVP_sha256(), kHMACKey, sizeof(kHMACKey), start, end - start,
+  if (!HMAC(EVP_sha512(), kHMACKey, sizeof(kHMACKey), start, end - start,
             result, &result_len) ||
       result_len != sizeof(result)) {
     goto err;

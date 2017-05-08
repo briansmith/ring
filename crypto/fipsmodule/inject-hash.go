@@ -20,7 +20,7 @@ package main
 import (
 	"bytes"
 	"crypto/hmac"
-	"crypto/sha256"
+	"crypto/sha512"
 	"debug/elf"
 	"errors"
 	"flag"
@@ -137,8 +137,8 @@ func do(outPath, oInput string, arInput string) error {
 		return errors.New("failed to read .text: " + err.Error())
 	}
 
-	var zeroKey [32]byte
-	mac := hmac.New(sha256.New, zeroKey[:])
+	var zeroKey [64]byte
+	mac := hmac.New(sha512.New, zeroKey[:])
 	mac.Write(moduleText)
 	calculated := mac.Sum(nil)
 
