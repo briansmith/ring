@@ -57,18 +57,9 @@ impl<'a> Ed25519KeyPair {
         let mut seed = [0u8; SEED_LEN];
         try!(rng.fill(&mut seed));
         let key_pair = Ed25519KeyPair::from_seed_(&seed);
-
         let mut bytes = [0; ED25519_PKCS8_V2_LEN];
-        let (before_seed, after_seed) =
-            PKCS8_TEMPLATE.split_at(PKCS8_SEED_INDEX);
-        let seed_end_index = PKCS8_SEED_INDEX + SEED_LEN;
-        bytes[..PKCS8_SEED_INDEX].copy_from_slice(before_seed);
-        bytes[PKCS8_SEED_INDEX..seed_end_index].copy_from_slice(&seed);
-        bytes[seed_end_index..(seed_end_index + after_seed.len())]
-            .copy_from_slice(after_seed);
-        bytes[(seed_end_index + after_seed.len())..]
-            .copy_from_slice(key_pair.public_key_bytes());
-
+        pkcs8::wrap_key(PKCS8_TEMPLATE, PKCS8_SEED_INDEX, &seed[..],
+                        key_pair.public_key_bytes(), &mut bytes[..]);
         Ok(bytes)
     }
 

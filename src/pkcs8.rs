@@ -79,3 +79,20 @@ pub fn unwrap_key<'a>(version: Version, input: untrusted::Input<'a>,
         })
     })
 }
+
+/// Formats a private key "prefix||private_key||middle||public_key" where
+/// `template` is "prefix||middle" split at position `private_key_index`.
+pub fn wrap_key(template: &[u8], private_key_index: usize, private_key: &[u8],
+                public_key: &[u8], bytes: &mut [u8]) {
+    let (before_private_key, after_private_key) =
+        template.split_at(private_key_index);
+    let private_key_end_index = private_key_index + private_key.len();
+    bytes[..private_key_index].copy_from_slice(before_private_key);
+    bytes[private_key_index..private_key_end_index]
+        .copy_from_slice(&private_key);
+    bytes[private_key_end_index..
+          (private_key_end_index + after_private_key.len())]
+        .copy_from_slice(after_private_key);
+    bytes[(private_key_end_index + after_private_key.len())..]
+        .copy_from_slice(public_key);
+}
