@@ -85,7 +85,6 @@ const Flag<bool> kBoolFlags[] = {
   { "-use-ticket-callback", &TestConfig::use_ticket_callback },
   { "-renew-ticket", &TestConfig::renew_ticket },
   { "-enable-early-data", &TestConfig::enable_early_data },
-  { "-enable-resume-early-data", &TestConfig::enable_resume_early_data },
   { "-enable-client-custom-extension",
     &TestConfig::enable_client_custom_extension },
   { "-enable-server-custom-extension",
@@ -125,8 +124,6 @@ const Flag<bool> kBoolFlags[] = {
   { "-expect-no-session-id", &TestConfig::expect_no_session_id },
   { "-expect-accept-early-data", &TestConfig::expect_accept_early_data },
   { "-expect-reject-early-data", &TestConfig::expect_reject_early_data },
-  { "-expect-no-alpn", &TestConfig::expect_no_alpn },
-  { "-expect-no-resume-alpn", &TestConfig::expect_no_resume_alpn },
   { "-no-op-extra-handshake", &TestConfig::no_op_extra_handshake },
   { "-handshake-twice", &TestConfig::handshake_twice },
   { "-allow-unknown-alpn-protos", &TestConfig::allow_unknown_alpn_protos },
@@ -145,10 +142,8 @@ const Flag<std::string> kStringFlags[] = {
   { "-host-name", &TestConfig::host_name },
   { "-advertise-alpn", &TestConfig::advertise_alpn },
   { "-expect-alpn", &TestConfig::expected_alpn },
-  { "-expect-resume-alpn", &TestConfig::expected_resume_alpn },
   { "-expect-advertised-alpn", &TestConfig::expected_advertised_alpn },
   { "-select-alpn", &TestConfig::select_alpn },
-  { "-select-resume-alpn", &TestConfig::select_resume_alpn },
   { "-psk", &TestConfig::psk },
   { "-psk-identity", &TestConfig::psk_identity },
   { "-srtp-profiles", &TestConfig::srtp_profiles },
@@ -182,7 +177,6 @@ const Flag<int> kIntFlags[] = {
   { "-expect-peer-signature-algorithm",
     &TestConfig::expect_peer_signature_algorithm },
   { "-expect-curve-id", &TestConfig::expect_curve_id },
-  { "-expect-resume-curve-id", &TestConfig::expect_resume_curve_id },
   { "-initial-timeout-duration-ms", &TestConfig::initial_timeout_duration_ms },
   { "-max-cert-list", &TestConfig::max_cert_list },
   { "-expect-cipher-aes", &TestConfig::expect_cipher_aes },
@@ -198,28 +192,54 @@ const Flag<std::vector<int>> kIntVectorFlags[] = {
   { "-verify-prefs", &TestConfig::verify_prefs },
 };
 
+const char kInit[] = "-on-initial";
+const char kResume[] = "-on-resume";
+
 }  // namespace
 
-bool ParseConfig(int argc, char **argv, TestConfig *out_config) {
+bool ParseConfig(int argc, char **argv, bool is_resume,
+                 TestConfig *out_config) {
   for (int i = 0; i < argc; i++) {
-    bool *bool_field = FindField(out_config, kBoolFlags, argv[i]);
+    bool skip = false;
+    char *flag = argv[i];
+    const char *prefix = is_resume ? kResume : kInit;
+    const char *opposite = is_resume ? kInit : kResume;
+    if (strncmp(flag, prefix, strlen(prefix)) == 0) {
+      flag = flag + strlen(prefix);
+      for (int j = 0; j < argc; j++) {
+        if (strcmp(argv[j], flag) == 0) {
+          fprintf(stderr, "Can't use default and prefixed arguments: %s\n",
+                  flag);
+          return false;
+        }
+      }
+    } else if (strncmp(flag, opposite, strlen(opposite)) == 0) {
+      flag = flag + strlen(opposite);
+      skip = true;
+    }
+
+    bool *bool_field = FindField(out_config, kBoolFlags, flag);
     if (bool_field != NULL) {
-      *bool_field = true;
+      if (!skip) {
+        *bool_field = true;
+      }
       continue;
     }
 
-    std::string *string_field = FindField(out_config, kStringFlags, argv[i]);
+    std::string *string_field = FindField(out_config, kStringFlags, flag);
     if (string_field != NULL) {
       i++;
       if (i >= argc) {
         fprintf(stderr, "Missing parameter\n");
         return false;
       }
-      string_field->assign(argv[i]);
+      if (!skip) {
+        string_field->assign(argv[i]);
+      }
       continue;
     }
 
-    std::string *base64_field = FindField(out_config, kBase64Flags, argv[i]);
+    std::string *base64_field = FindField(out_config, kBase64Flags, flag);
     if (base64_field != NULL) {
       i++;
       if (i >= argc) {
@@ -238,23 +258,28 @@ bool ParseConfig(int argc, char **argv, TestConfig *out_config) {
         fprintf(stderr, "Invalid base64: %s\n", argv[i]);
         return false;
       }
-      base64_field->assign(reinterpret_cast<const char *>(decoded.get()), len);
+      if (!skip) {
+        base64_field->assign(reinterpret_cast<const char *>(decoded.get()),
+                             len);
+      }
       continue;
     }
 
-    int *int_field = FindField(out_config, kIntFlags, argv[i]);
+    int *int_field = FindField(out_config, kIntFlags, flag);
     if (int_field) {
       i++;
       if (i >= argc) {
         fprintf(stderr, "Missing parameter\n");
         return false;
       }
-      *int_field = atoi(argv[i]);
+      if (!skip) {
+        *int_field = atoi(argv[i]);
+      }
       continue;
     }
 
     std::vector<int> *int_vector_field =
-        FindField(out_config, kIntVectorFlags, argv[i]);
+        FindField(out_config, kIntVectorFlags, flag);
     if (int_vector_field) {
       i++;
       if (i >= argc) {
@@ -263,11 +288,13 @@ bool ParseConfig(int argc, char **argv, TestConfig *out_config) {
       }
 
       // Each instance of the flag adds to the list.
-      int_vector_field->push_back(atoi(argv[i]));
+      if (!skip) {
+        int_vector_field->push_back(atoi(argv[i]));
+      }
       continue;
     }
 
-    fprintf(stderr, "Unknown argument: %s\n", argv[i]);
+    fprintf(stderr, "Unknown argument: %s\n", flag);
     return false;
   }
 

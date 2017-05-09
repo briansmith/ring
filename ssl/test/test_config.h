@@ -53,12 +53,8 @@ struct TestConfig {
   std::string host_name;
   std::string advertise_alpn;
   std::string expected_alpn;
-  std::string expected_resume_alpn;
-  bool expect_no_alpn = false;
-  bool expect_no_resume_alpn = false;
   std::string expected_advertised_alpn;
   std::string select_alpn;
-  std::string select_resume_alpn;
   bool decline_alpn = false;
   bool expect_session_miss = false;
   bool expect_extended_master_secret = false;
@@ -94,7 +90,6 @@ struct TestConfig {
   bool use_ticket_callback = false;
   bool renew_ticket = false;
   bool enable_early_data = false;
-  bool enable_resume_early_data = false;
   bool enable_client_custom_extension = false;
   bool enable_server_custom_extension = false;
   bool custom_extension_skip = false;
@@ -114,7 +109,6 @@ struct TestConfig {
   bool p384_only = false;
   bool enable_all_curves = false;
   int expect_curve_id = 0;
-  int expect_resume_curve_id = 0;
   bool use_old_client_cert_callback = false;
   int initial_timeout_duration_ms = 0;
   std::string use_client_ca_list;
@@ -147,7 +141,7 @@ struct TestConfig {
   bool enable_ed25519 = false;
 };
 
-bool ParseConfig(int argc, char **argv, TestConfig *out_config);
+bool ParseConfig(int argc, char **argv, bool is_resume, TestConfig *out_config);
 
 
 #endif  // HEADER_TEST_CONFIG

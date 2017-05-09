@@ -60,6 +60,7 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #include <vector>
 
 #include "../../crypto/internal.h"
+#include "../internal.h"
 #include "async_bio.h"
 #include "packeted_bio.h"
 #include "test_config.h"
@@ -754,10 +755,6 @@ static int AlpnSelectCallback(SSL* ssl, const uint8_t** out, uint8_t* outlen,
 
   *out = (const uint8_t*)config->select_alpn.data();
   *outlen = config->select_alpn.size();
-  if (GetTestState(ssl)->is_resume && config->select_resume_alpn.size() > 0) {
-    *out = (const uint8_t*)config->select_resume_alpn.data();
-    *outlen = config->select_resume_alpn.size();
-  }
   return SSL_TLSEXT_ERR_OK;
 }
 
@@ -1028,7 +1025,17 @@ class SocketCloser {
   const int sock_;
 };
 
-static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
+static void ssl_ctx_add_session(SSL_SESSION *session, void *void_param) {
+  SSL_SESSION *new_session = SSL_SESSION_dup(
+      session, SSL_SESSION_INCLUDE_NONAUTH | SSL_SESSION_INCLUDE_TICKET);
+  if (new_session != nullptr) {
+    SSL_CTX_add_session((SSL_CTX *)void_param, new_session);
+  }
+  SSL_SESSION_free(new_session);
+}
+
+static bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx,
+                                         const TestConfig *config) {
   bssl::UniquePtr<SSL_CTX> ssl_ctx(SSL_CTX_new(
       config->is_dtls ? DTLS_method() : TLS_method()));
   if (!ssl_ctx) {
@@ -1076,8 +1083,7 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
                                      NULL);
   }
 
-  if (!config->select_alpn.empty() || !config->select_resume_alpn.empty() ||
-      config->decline_alpn) {
+  if (!config->select_alpn.empty() || config->decline_alpn) {
     SSL_CTX_set_alpn_select_cb(ssl_ctx.get(), AlpnSelectCallback, NULL);
   }
 
@@ -1164,6 +1170,16 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(const TestConfig *config) {
                                             u16s.size())) {
       return nullptr;
     }
+  }
+
+  if (old_ctx) {
+    uint8_t keys[48];
+    if (!SSL_CTX_get_tlsext_ticket_keys(old_ctx, &keys, sizeof(keys)) ||
+        !SSL_CTX_set_tlsext_ticket_keys(ssl_ctx.get(), keys, sizeof(keys))) {
+      return nullptr;
+    }
+    lh_SSL_SESSION_doall_arg(old_ctx->sessions, ssl_ctx_add_session,
+                             ssl_ctx.get());
   }
 
   return ssl_ctx;
@@ -1410,22 +1426,13 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     }
   }
 
-  std::string expected_alpn = config->expected_alpn;
-  if (is_resume && !config->expected_resume_alpn.empty()) {
-    expected_alpn = config->expected_resume_alpn;
-  }
-  bool expect_no_alpn = (!is_resume && config->expect_no_alpn) ||
-      (is_resume && config->expect_no_resume_alpn);
-  if (expect_no_alpn) {
-    expected_alpn.clear();
-  }
-
-  if (!expected_alpn.empty() || expect_no_alpn) {
+  if (!config->is_server) {
     const uint8_t *alpn_proto;
     unsigned alpn_proto_len;
     SSL_get0_alpn_selected(ssl, &alpn_proto, &alpn_proto_len);
-    if (alpn_proto_len != expected_alpn.size() ||
-        OPENSSL_memcmp(alpn_proto, expected_alpn.data(), alpn_proto_len) != 0) {
+    if (alpn_proto_len != config->expected_alpn.size() ||
+        OPENSSL_memcmp(alpn_proto, config->expected_alpn.data(),
+                       alpn_proto_len) != 0) {
       fprintf(stderr, "negotiated alpn proto mismatch\n");
       return false;
     }
@@ -1506,15 +1513,11 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
     return false;
   }
 
-  int expect_curve_id = config->expect_curve_id;
-  if (is_resume && config->expect_resume_curve_id != 0) {
-    expect_curve_id = config->expect_resume_curve_id;
-  }
-  if (expect_curve_id != 0) {
+  if (config->expect_curve_id != 0) {
     uint16_t curve_id = SSL_get_curve_id(ssl);
-    if (static_cast<uint16_t>(expect_curve_id) != curve_id) {
+    if (static_cast<uint16_t>(config->expect_curve_id) != curve_id) {
       fprintf(stderr, "curve_id was %04x, wanted %04x\n", curve_id,
-              static_cast<uint16_t>(expect_curve_id));
+              static_cast<uint16_t>(config->expect_curve_id));
       return false;
     }
   }
@@ -1635,10 +1638,6 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume) {
 static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
                        SSL_CTX *ssl_ctx, const TestConfig *config,
                        bool is_resume, SSL_SESSION *session) {
-  if (is_resume && config->enable_resume_early_data) {
-    SSL_CTX_set_early_data_enabled(ssl_ctx, 1);
-  }
-
   bssl::UniquePtr<SSL> ssl(SSL_new(ssl_ctx));
   if (!ssl) {
     return false;
@@ -2130,8 +2129,9 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  TestConfig config;
-  if (!ParseConfig(argc - 1, argv + 1, &config)) {
+  TestConfig initial_config, resume_config;
+  if (!ParseConfig(argc - 1, argv + 1, false, &initial_config) ||
+      !ParseConfig(argc - 1, argv + 1, true, &resume_config)) {
     return Usage(argv[0]);
   }
 
@@ -2142,30 +2142,33 @@ int main(int argc, char **argv) {
   g_clock.tv_sec = 1234;
   g_clock.tv_usec = 1234;
 
-  bssl::UniquePtr<SSL_CTX> ssl_ctx = SetupCtx(&config);
-  if (!ssl_ctx) {
-    ERR_print_errors_fp(stderr);
-    return 1;
-  }
+  bssl::UniquePtr<SSL_CTX> ssl_ctx;
 
   bssl::UniquePtr<SSL_SESSION> session;
-  for (int i = 0; i < config.resume_count + 1; i++) {
+  for (int i = 0; i < initial_config.resume_count + 1; i++) {
     bool is_resume = i > 0;
-    if (is_resume && !config.is_server && !session) {
+    TestConfig *config = is_resume ? &resume_config : &initial_config;
+    ssl_ctx = SetupCtx(ssl_ctx.get(), config);
+    if (!ssl_ctx) {
+      ERR_print_errors_fp(stderr);
+      return 1;
+    }
+
+    if (is_resume && !initial_config.is_server && !session) {
       fprintf(stderr, "No session to offer.\n");
       return 1;
     }
 
     bssl::UniquePtr<SSL_SESSION> offer_session = std::move(session);
-    if (!DoExchange(&session, ssl_ctx.get(), &config, is_resume,
+    if (!DoExchange(&session, ssl_ctx.get(), config, is_resume,
                     offer_session.get())) {
       fprintf(stderr, "Connection %d failed.\n", i + 1);
       ERR_print_errors_fp(stderr);
       return 1;
     }
 
-    if (config.resumption_delay != 0) {
-      g_clock.tv_sec += config.resumption_delay;
+    if (config->resumption_delay != 0) {
+      g_clock.tv_sec += config->resumption_delay;
     }
   }
 

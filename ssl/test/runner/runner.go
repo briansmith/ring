@@ -1732,6 +1732,7 @@ func addBasicTests() {
 				"-false-start",
 				"-handshake-never-done",
 				"-advertise-alpn", "\x03foo",
+				"-expect-alpn", "foo",
 			},
 			shimWritesFirst: true,
 			shouldFail:      true,
@@ -1937,6 +1938,7 @@ func addBasicTests() {
 				"-false-start",
 				"-handshake-never-done",
 				"-advertise-alpn", "\x03foo",
+				"-expect-alpn", "foo",
 			},
 			shimWritesFirst: true,
 			shouldFail:      true,
@@ -4143,6 +4145,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			flags: []string{
 				"-false-start",
 				"-advertise-alpn", "\x03foo",
+				"-expect-alpn", "foo",
 			},
 			shimWritesFirst: true,
 			resumeSession:   true,
@@ -5001,6 +5004,7 @@ func addExtensionTests() {
 			flags: []string{
 				"-advertise-alpn", "\x03foo\x03bar",
 				"-allow-unknown-alpn-protos",
+				"-expect-alpn", "baz",
 			},
 		})
 		testCases = append(testCases, testCase{
@@ -8011,6 +8015,7 @@ func addExportKeyingMaterialTests() {
 		flags: []string{
 			"-false-start",
 			"-advertise-alpn", "\x03foo",
+			"-expect-alpn", "foo",
 		},
 		shimWritesFirst:      true,
 		exportKeyingMaterial: 1024,
@@ -8674,8 +8679,8 @@ func addCurveTests() {
 			CurvePreferences: []CurveID{CurveP256},
 		},
 		flags: []string{
-			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
-			"-expect-resume-curve-id", strconv.Itoa(int(CurveP256)),
+			"-on-initial-expect-curve-id", strconv.Itoa(int(CurveX25519)),
+			"-on-resume-expect-curve-id", strconv.Itoa(int(CurveP256)),
 		},
 		resumeSession: true,
 	})
@@ -8691,8 +8696,8 @@ func addCurveTests() {
 			CurvePreferences: []CurveID{CurveP256},
 		},
 		flags: []string{
-			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
-			"-expect-resume-curve-id", strconv.Itoa(int(CurveP256)),
+			"-on-initial-expect-curve-id", strconv.Itoa(int(CurveX25519)),
+			"-on-resume-expect-curve-id", strconv.Itoa(int(CurveP256)),
 		},
 		resumeSession: true,
 	})
@@ -10398,8 +10403,8 @@ func addTLS13HandshakeTests() {
 			"-enable-early-data",
 			"-expect-early-data-info",
 			"-expect-reject-early-data",
-			"-expect-alpn", "foo",
-			"-expect-resume-alpn", "bar",
+			"-on-initial-expect-alpn", "foo",
+			"-on-resume-expect-alpn", "bar",
 		},
 	})
 
@@ -10423,8 +10428,8 @@ func addTLS13HandshakeTests() {
 			"-enable-early-data",
 			"-expect-early-data-info",
 			"-expect-reject-early-data",
-			"-expect-no-alpn",
-			"-expect-resume-alpn", "foo",
+			"-on-initial-expect-alpn", "",
+			"-on-resume-expect-alpn", "foo",
 		},
 	})
 
@@ -10448,8 +10453,8 @@ func addTLS13HandshakeTests() {
 			"-enable-early-data",
 			"-expect-early-data-info",
 			"-expect-reject-early-data",
-			"-expect-alpn", "foo",
-			"-expect-no-resume-alpn",
+			"-on-initial-expect-alpn", "foo",
+			"-on-resume-expect-alpn", "",
 		},
 	})
 
@@ -10477,6 +10482,8 @@ func addTLS13HandshakeTests() {
 			"-advertise-alpn", "\x03foo\x03bar",
 			"-enable-early-data",
 			"-expect-early-data-info",
+			"-on-initial-expect-alpn", "foo",
+			"-on-resume-expect-alpn", "bar",
 		},
 		shouldFail:    true,
 		expectedError: ":ALPN_MISMATCH_ON_EARLY_DATA:",
@@ -10499,7 +10506,7 @@ func addTLS13HandshakeTests() {
 		},
 		resumeSession: true,
 		flags: []string{
-			"-enable-resume-early-data",
+			"-on-resume-enable-early-data",
 			"-expect-reject-early-data",
 		},
 	})
@@ -10524,8 +10531,8 @@ func addTLS13HandshakeTests() {
 		resumeSession: true,
 		flags: []string{
 			"-enable-early-data",
-			"-select-alpn", "",
-			"-select-resume-alpn", "foo",
+			"-on-initial-select-alpn", "",
+			"-on-resume-select-alpn", "foo",
 		},
 	})
 
@@ -10549,8 +10556,8 @@ func addTLS13HandshakeTests() {
 		resumeSession: true,
 		flags: []string{
 			"-enable-early-data",
-			"-select-alpn", "foo",
-			"-select-resume-alpn", "",
+			"-on-initial-select-alpn", "foo",
+			"-on-resume-select-alpn", "",
 		},
 	})
 
@@ -10573,8 +10580,8 @@ func addTLS13HandshakeTests() {
 		resumeSession: true,
 		flags: []string{
 			"-enable-early-data",
-			"-select-alpn", "foo",
-			"-select-resume-alpn", "bar",
+			"-on-initial-select-alpn", "foo",
+			"-on-resume-select-alpn", "bar",
 		},
 	})
 
@@ -11170,6 +11177,7 @@ func addExtraHandshakeTests() {
 			"-handshake-twice",
 			"-false-start",
 			"-advertise-alpn", "\x03foo",
+			"-expect-alpn", "foo",
 		},
 		shimWritesFirst:    true,
 		shouldFail:         true,
