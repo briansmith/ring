@@ -161,6 +161,7 @@ use {constant_time, digest, error, rand};
 ///
 /// For a given signature `s`, use `s.as_ref()` to get the signature value as
 /// a byte slice.
+#[derive(Clone, Copy, Debug)]
 pub struct Signature(digest::Digest);
 
 /// A key to use for HMAC signing.
