@@ -3807,18 +3807,6 @@ OPENSSL_EXPORT int SSL_set_private_key_digest_prefs(SSL *ssl,
  * netty-tcnative. */
 OPENSSL_EXPORT void SSL_set_verify_result(SSL *ssl, long result);
 
-/* SSL_CTX_set_min_version calls |SSL_CTX_set_min_proto_version|. */
-OPENSSL_EXPORT int SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version);
-
-/* SSL_CTX_set_max_version calls |SSL_CTX_set_max_proto_version|. */
-OPENSSL_EXPORT int SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version);
-
-/* SSL_set_min_version calls |SSL_set_min_proto_version|. */
-OPENSSL_EXPORT int SSL_set_min_version(SSL *ssl, uint16_t version);
-
-/* SSL_set_max_version calls |SSL_set_max_proto_version|. */
-OPENSSL_EXPORT int SSL_set_max_version(SSL *ssl, uint16_t version);
-
 /* SSL_CTX_enable_tls_channel_id calls |SSL_CTX_set_tls_channel_id_enabled|. */
 OPENSSL_EXPORT int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx);
 

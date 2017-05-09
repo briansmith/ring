@@ -2708,22 +2708,6 @@ void ssl_get_current_time(const SSL *ssl, struct OPENSSL_timeval *out_clock) {
 #endif
 }
 
-int SSL_CTX_set_min_version(SSL_CTX *ctx, uint16_t version) {
-  return SSL_CTX_set_min_proto_version(ctx, version);
-}
-
-int SSL_CTX_set_max_version(SSL_CTX *ctx, uint16_t version) {
-  return SSL_CTX_set_max_proto_version(ctx, version);
-}
-
-int SSL_set_min_version(SSL *ssl, uint16_t version) {
-  return SSL_set_min_proto_version(ssl, version);
-}
-
-int SSL_set_max_version(SSL *ssl, uint16_t version) {
-  return SSL_set_max_proto_version(ssl, version);
-}
-
 void SSL_CTX_set_ticket_aead_method(SSL_CTX *ctx,
                                     const SSL_TICKET_AEAD_METHOD *aead_method) {
   ctx->ticket_aead_method = aead_method;
