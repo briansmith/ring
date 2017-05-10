@@ -26,6 +26,10 @@ deps_os = {
     'boringssl/util/bot/android_tools':
       Var('chromium_git') + '/android_tools.git' + '@' + 'cb6bc21107001e2f2eeee2707b482b2b755baf51',
   },
+  'unix': {
+    'boringssl/util/bot/libFuzzer':
+      Var('chromium_git') + '/chromium/llvm-project/llvm/lib/Fuzzer.git' + '@' + '16f5f743c188c836d32cdaf349d5d3effb8a3518',
+  },
 }
 
 recursedeps = [
