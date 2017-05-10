@@ -271,7 +271,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   BIO *out = BIO_new(BIO_s_mem());
   SSL_set_bio(server, in, out);
   SSL_set_accept_state(server);
-  SSL_set_max_version(server, TLS1_3_VERSION);
+  SSL_set_max_proto_version(server, TLS1_3_VERSION);
   SSL_set_tls_channel_id_enabled(server, 1);
 
   // Enable ciphers that are off by default.
