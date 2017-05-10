@@ -31,6 +31,11 @@ if(UNIX)
   enable_language(ASM)
   set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,--noexecstack")
 
+  # Clang's integerated assembler does not support debug symbols.
+  if(NOT CMAKE_ASM_COMPILER_ID MATCHES "Clang")
+    set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -Wa,-g")
+  endif()
+
   # CMake does not add -isysroot and -arch flags to assembly.
   if (APPLE)
     set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT}")
