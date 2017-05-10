@@ -37,6 +37,7 @@ var (
 	useCallgrind    = flag.Bool("callgrind", false, "If true, run code under valgrind to generate callgrind traces.")
 	useGDB          = flag.Bool("gdb", false, "If true, run BoringSSL code under gdb")
 	useSDE          = flag.Bool("sde", false, "If true, run BoringSSL code under Intel's SDE for each supported chip")
+	sdePath         = flag.String("sde-path", "sde", "The path to find the sde binary.")
 	buildDir        = flag.String("build-dir", "build", "The build directory to run the tests from.")
 	numWorkers      = flag.Int("num-workers", runtime.NumCPU(), "Runs the given number of workers when testing.")
 	jsonOutput      = flag.String("json-output", "", "The file to output JSON results to.")
@@ -161,7 +162,7 @@ func gdbOf(path string, args ...string) *exec.Cmd {
 func sdeOf(cpu, path string, args ...string) *exec.Cmd {
 	sdeArgs := []string{"-" + cpu, "--", path}
 	sdeArgs = append(sdeArgs, args...)
-	return exec.Command("sde", sdeArgs...)
+	return exec.Command(*sdePath, sdeArgs...)
 }
 
 type moreMallocsError struct{}
