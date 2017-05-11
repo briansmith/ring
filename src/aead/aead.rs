@@ -36,10 +36,6 @@
 //!fn main() {
 //!    let rand = SystemRandom::new();
 //!
-//!    // Usually the salt has some random data and something that relates to the user
-//!    // like a username and it must be 8 bytes (64 bits)
-//!    let salt = [0, 1, 2, 3, 4, 5, 6, 7];
-//!
 //!    // Keys must have 32 bytes and also should not be hard coded, it can be generated
 //!    // with SystemRandom
 //!    let mut key = [0; 32];
