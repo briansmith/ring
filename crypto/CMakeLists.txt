@@ -38,7 +38,9 @@ if(UNIX)
 
   # CMake does not add -isysroot and -arch flags to assembly.
   if (APPLE)
-    set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT}")
+    if (CMAKE_OSX_SYSROOT)
+      set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -isysroot ${CMAKE_OSX_SYSROOT}")
+    endif()
     foreach(arch ${CMAKE_OSX_ARCHITECTURES})
       set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -arch ${arch}")
     endforeach()
