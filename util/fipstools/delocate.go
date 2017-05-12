@@ -309,7 +309,7 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 			ret = append(ret, line)
 			continue
 
-		case "leaq", "movq", "cmpq", "cmovneq", "cmoveq":
+		case "leaq", "vmovq", "movq", "cmpq", "cmovneq", "cmoveq":
 			if instr == "movq" && strings.Contains(line, "@GOTTPOFF(%rip)") {
 				// GOTTPOFF are offsets into the thread-local
 				// storage that are stored in the GOT. We have
@@ -342,7 +342,7 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 					line = strings.Replace(line, target, localTargetName(target), 1)
 				}
 
-				if strings.Contains(line, "@GOTPCREL") && (instr == "movq" || instr == "cmoveq" || instr == "cmovneq") {
+				if strings.Contains(line, "@GOTPCREL") && (instr == "movq" || instr == "vmovq" || instr == "cmoveq" || instr == "cmovneq") {
 					line = strings.Replace(line, "@GOTPCREL", "", -1)
 					target = strings.Replace(target, "@GOTPCREL", "", -1)
 
@@ -370,7 +370,7 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 
 					destination := args[1]
 					if strings.HasPrefix(destination, "%xmm") {
-						if instr != "movq" {
+						if instr != "movq" && instr != "vmovq" {
 							panic("unhandled: " + orig)
 						}
 
