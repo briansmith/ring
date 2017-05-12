@@ -27,6 +27,7 @@
 #include <openssl/hmac.h>
 #include <openssl/nid.h>
 #include <openssl/rsa.h>
+#include <openssl/sha.h>
 
 #include "../internal.h"
 #include "rand/internal.h"
@@ -566,6 +567,7 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
 
   RSA *rsa_key = self_test_rsa_key();
   if (rsa_key == NULL) {
+    printf("RSA KeyGen failed\n");
     goto err;
   }
 
@@ -589,12 +591,16 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
 
   EC_KEY *ec_key = self_test_ecdsa_key();
   if (ec_key == NULL) {
+    printf("ECDSA KeyGen failed\n");
     goto err;
   }
 
   /* ECDSA Sign/Verify PWCT */
   ECDSA_SIG *sig =
       ECDSA_do_sign(kPlaintextSHA256, sizeof(kPlaintextSHA256), ec_key);
+#if defined(BORINGSSL_FIPS_BREAK_ECDSA_SIG)
+  sig->r->d[0] = ~sig->r->d[0];
+#endif
   if (sig == NULL ||
       !ECDSA_do_verify(kPlaintextSHA256, sizeof(kPlaintextSHA256), sig,
                        ec_key)) {
