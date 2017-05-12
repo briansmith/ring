@@ -135,7 +135,10 @@ static void rand_get_seed(struct rand_thread_state *state,
    * generator test” which causes the program to randomly abort. Hopefully the
    * rate of failure is small enough not to be a problem in practice. */
   if (CRYPTO_memcmp(state->last_block, entropy, CRNGT_BLOCK_SIZE) == 0) {
-    abort();
+    for (;;) {
+      exit(1);
+      abort();
+    }
   }
 
   for (size_t i = CRNGT_BLOCK_SIZE; i < sizeof(entropy);
