@@ -18,5 +18,7 @@ util/bot/libFuzzer
 util/bot/llvm-build
 util/bot/perl-win32
 util/bot/perl-win32.zip
+util/bot/sde-linux64
+util/bot/sde-linux64.tar.bz2
 util/bot/win_toolchain.json
 util/bot/yasm-win32.exe
