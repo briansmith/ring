@@ -94,11 +94,11 @@ fn p256_elem_inv(a: &Elem<R>) -> Elem<R> {
     }
 
     let b_1 = &a;
-    let b_11     = sqr_mul(b_1,   0 +  1, b_1);
-    let f        = sqr_mul(&b_11, 0 +  2, &b_11);
-    let ff       = sqr_mul(&f,    0 +  4, &f);
-    let ffff     = sqr_mul(&ff,   0 +  8, &ff);
-    let ffffffff = sqr_mul(&ffff, 0 + 16, &ffff);
+    let b_11     = sqr_mul(b_1,    1, b_1);
+    let f        = sqr_mul(&b_11,  2, &b_11);
+    let ff       = sqr_mul(&f,     4, &f);
+    let ffff     = sqr_mul(&ff,    8, &ff);
+    let ffffffff = sqr_mul(&ffff, 16, &ffff);
 
     // ffffffff00000001
     let mut acc = sqr_mul(&ffffffff, 31 + 1, b_1);
@@ -107,19 +107,19 @@ fn p256_elem_inv(a: &Elem<R>) -> Elem<R> {
     sqr_mul_acc(&mut acc, 96 + 32, &ffffffff);
 
     // ffffffff00000001000000000000000000000000ffffffffffffffff
-    sqr_mul_acc(&mut acc, 0 + 32, &ffffffff);
+    sqr_mul_acc(&mut acc, 32, &ffffffff);
 
     // ffffffff00000001000000000000000000000000ffffffffffffffffffff
-    sqr_mul_acc(&mut acc, 0 + 16, &ffff);
+    sqr_mul_acc(&mut acc, 16, &ffff);
 
     // ffffffff00000001000000000000000000000000ffffffffffffffffffffff
-    sqr_mul_acc(&mut acc, 0 + 8, &ff);
+    sqr_mul_acc(&mut acc, 8, &ff);
 
     // ffffffff00000001000000000000000000000000fffffffffffffffffffffff
-    sqr_mul_acc(&mut acc, 0 + 4, &f);
+    sqr_mul_acc(&mut acc, 4, &f);
 
     // ffffffff00000001000000000000000000000000fffffffffffffffffffffffd
-    sqr_mul_acc(&mut acc, 0 + 2, &b_11);
+    sqr_mul_acc(&mut acc, 2, &b_11);
     sqr_mul(&acc, 1 + 1, b_1)
 }
 
@@ -252,8 +252,8 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
         (1 + 4, B_1111 as u8),
         (    5, B_10101 as u8),
         (1 + 3, B_101 as u8),
-        (0 + 3, B_101 as u8),
-        (0 + 3, B_101 as u8),
+        (    3, B_101 as u8),
+        (    3, B_101 as u8),
         (2 + 3, B_111 as u8),
         (3 + 6, B_101111 as u8),
         (2 + 4, B_1111 as u8),
