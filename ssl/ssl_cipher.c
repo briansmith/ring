@@ -1363,6 +1363,10 @@ int SSL_CIPHER_has_SHA256_HMAC(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_mac & SSL_SHA256) != 0;
 }
 
+int SSL_CIPHER_has_SHA384_HMAC(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_mac & SSL_SHA384) != 0;
+}
+
 int SSL_CIPHER_is_AEAD(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_mac & SSL_AEAD) != 0;
 }

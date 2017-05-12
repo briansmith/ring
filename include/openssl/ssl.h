@@ -1191,6 +1191,9 @@ OPENSSL_EXPORT int SSL_CIPHER_has_SHA1_HMAC(const SSL_CIPHER *cipher);
 /* SSL_CIPHER_has_SHA256_HMAC returns one if |cipher| uses HMAC-SHA256. */
 OPENSSL_EXPORT int SSL_CIPHER_has_SHA256_HMAC(const SSL_CIPHER *cipher);
 
+/* SSL_CIPHER_has_SHA384_HMAC returns one if |cipher| uses HMAC-SHA384. */
+OPENSSL_EXPORT int SSL_CIPHER_has_SHA384_HMAC(const SSL_CIPHER *cipher);
+
 /* SSL_CIPHER_is_AEAD returns one if |cipher| uses an AEAD cipher. */
 OPENSSL_EXPORT int SSL_CIPHER_is_AEAD(const SSL_CIPHER *cipher);
 
