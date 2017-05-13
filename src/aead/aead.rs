@@ -31,7 +31,7 @@
 //!extern crate ring;
 //!
 //!use ring::aead::*;
-//!use ring::rand::SystemRandom;
+//!use ring::rand::{SecureRandom, SystemRandom};
 //!
 //!fn main() {
 //!    let rand = SystemRandom::new();
