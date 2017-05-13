@@ -294,70 +294,10 @@ pub static ECDSA_P384_SHA384_ASN1: ECDSAVerificationAlgorithm =
 
 #[cfg(test)]
 mod tests {
-    use {digest, test, signature};
+    use {digest, test};
     use super::digest_scalar_;
     use super::super::ops::*;
     use untrusted;
-
-    #[test]
-    fn signature_ecdsa_verify_asn1_test() {
-        test::from_file("src/ec/suite_b/ecdsa_verify_asn1_tests.txt",
-                        |section, test_case| {
-            assert_eq!(section, "");
-
-            let curve_name = test_case.consume_string("Curve");
-            let digest_name = test_case.consume_string("Digest");
-
-            let msg = test_case.consume_bytes("Msg");
-            let msg = untrusted::Input::from(&msg);
-
-            let public_key = test_case.consume_bytes("Q");
-            let public_key = untrusted::Input::from(&public_key);
-
-            let sig = test_case.consume_bytes("Sig");
-            let sig = untrusted::Input::from(&sig);
-
-            let expected_result = test_case.consume_string("Result");
-
-            let (alg, _, _) =
-                alg_from_curve_and_digest_asn1(&curve_name, &digest_name);
-
-            let actual_result = signature::verify(alg, public_key, msg, sig);
-            assert_eq!(actual_result.is_ok(), expected_result == "P (0 )");
-
-            Ok(())
-        });
-    }
-
-    #[test]
-    fn signature_ecdsa_verify_fixed_test() {
-        test::from_file("src/ec/suite_b/ecdsa_verify_fixed_tests.txt",
-                        |section, test_case| {
-            assert_eq!(section, "");
-
-            let curve_name = test_case.consume_string("Curve");
-            let digest_name = test_case.consume_string("Digest");
-
-            let msg = test_case.consume_bytes("Msg");
-            let msg = untrusted::Input::from(&msg);
-
-            let public_key = test_case.consume_bytes("Q");
-            let public_key = untrusted::Input::from(&public_key);
-
-            let sig = test_case.consume_bytes("Sig");
-            let sig = untrusted::Input::from(&sig);
-
-            let expected_result = test_case.consume_string("Result");
-
-            let (alg, _, _) =
-                alg_from_curve_and_digest_fixed(&curve_name, &digest_name);
-
-            let actual_result = signature::verify(alg, public_key, msg, sig);
-            assert_eq!(actual_result.is_ok(), expected_result == "P (0 )");
-
-            Ok(())
-        });
-    }
 
     #[test]
     fn ecdsa_digest_scalar_test() {
@@ -367,13 +307,24 @@ mod tests {
 
             let curve_name = test_case.consume_string("Curve");
             let digest_name = test_case.consume_string("Digest");
-
             let input = test_case.consume_bytes("Input");
-
             let output = test_case.consume_bytes("Output");
 
-            let (_, ops, digest_alg) =
-                alg_from_curve_and_digest_asn1(&curve_name, &digest_name);
+            let (ops, digest_alg) = match
+                (curve_name.as_str(), digest_name.as_str()) {
+                ("P-256", "SHA256") =>
+                    (&p256::PUBLIC_SCALAR_OPS, &digest::SHA256),
+                ("P-256", "SHA384") =>
+                    (&p256::PUBLIC_SCALAR_OPS, &digest::SHA384),
+                ("P-384", "SHA256") =>
+                    (&p384::PUBLIC_SCALAR_OPS, &digest::SHA256),
+                ("P-384", "SHA384") =>
+                    (&p384::PUBLIC_SCALAR_OPS, &digest::SHA384),
+                _ => {
+                    panic!("Unsupported curve+digest: {}+{}", curve_name,
+                           digest_name);
+                }
+            };
 
             let num_limbs = ops.public_key_ops.common.num_limbs;
             assert_eq!(input.len(), digest_alg.output_len);
@@ -391,47 +342,6 @@ mod tests {
             Ok(())
         });
     }
-
-    fn alg_from_curve_and_digest_asn1(curve_name: &str, digest_name: &str)
-            -> (&'static signature::VerificationAlgorithm,
-                &'static PublicScalarOps, &'static digest::Algorithm) {
-        match (curve_name, digest_name) {
-            ("P-256", "SHA256") =>
-                (&signature::ECDSA_P256_SHA256_ASN1, &p256::PUBLIC_SCALAR_OPS,
-                 &digest::SHA256),
-            ("P-256", "SHA384") =>
-                (&signature::ECDSA_P256_SHA384_ASN1, &p256::PUBLIC_SCALAR_OPS,
-                 &digest::SHA384),
-            ("P-384", "SHA256") =>
-                (&signature::ECDSA_P384_SHA256_ASN1, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA256),
-            ("P-384", "SHA384") =>
-                (&signature::ECDSA_P384_SHA384_ASN1, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA384),
-            _ => {
-                panic!("Unsupported curve+digest: {}+{}", curve_name,
-                       digest_name);
-            }
-        }
-    }
-
-    fn alg_from_curve_and_digest_fixed(curve_name: &str, digest_name: &str)
-            -> (&'static signature::VerificationAlgorithm,
-                &'static PublicScalarOps, &'static digest::Algorithm) {
-        match (curve_name, digest_name) {
-            ("P-256", "SHA256") =>
-                (&signature::ECDSA_P256_SHA256_FIXED, &p256::PUBLIC_SCALAR_OPS,
-                 &digest::SHA256),
-            ("P-384", "SHA384") =>
-                (&signature::ECDSA_P384_SHA384_FIXED, &p384::PUBLIC_SCALAR_OPS,
-                 &digest::SHA384),
-            _ => {
-                panic!("Unsupported curve+digest: {}+{}", curve_name,
-                       digest_name);
-            }
-        }
-    }
-
 }
 
 #[cfg(feature = "internal_benches")]
