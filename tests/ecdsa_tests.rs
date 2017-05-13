@@ -15,7 +15,7 @@
 extern crate ring;
 extern crate untrusted;
 
-use ring::{signature, test};
+use ring::{rand, signature, test};
 
 #[test]
 fn ecdsa_from_pkcs8_test() {
@@ -54,6 +54,27 @@ fn ecdsa_from_pkcs8_test() {
 
         Ok(())
     });
+}
+
+// Verify that, at least, we generate PKCS#8 documents that we can read.
+#[test]
+fn ecdsa_generate_pkcs8_test() {
+    let rng = rand::SystemRandom::new();
+
+    for alg in &[&signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+                 &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+                 &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
+                 &signature::ECDSA_P384_SHA384_FIXED_SIGNING] {
+        let pkcs8 = signature::ECDSAKeyPair::generate_pkcs8(alg, &rng).unwrap();
+        println!();
+        for b in pkcs8.as_ref() {
+            print!("{:02x}", *b);
+        }
+        println!();
+        println!();
+        let _ = signature::ECDSAKeyPair::from_pkcs8(
+            alg, untrusted::Input::from(pkcs8.as_ref())).unwrap();
+    }
 }
 
 #[test]

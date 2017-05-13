@@ -16,13 +16,51 @@
 //!
 //! [RFC 5958]: https://tools.ietf.org/html/rfc5958.
 
-use {der, error};
+use core;
+use {der, ec, error};
 use untrusted;
 
 pub enum Version {
     V1Only,
     V1OrV2,
     V2Only,
+}
+
+/// A template for constructing PKCS#8 documents.
+///
+/// Note that this only works for ECC.
+pub struct Template {
+    pub bytes: &'static [u8],
+
+    // The range within `bytes` that holds the value (not including the tag and
+    // length) for use in the PKCS#8 document's privateKeyAlgorithm field.
+    pub alg_id_range: core::ops::Range<usize>,
+
+    // `bytes` will be split into two parts at `private_key_index`, where the
+    // first part is written before the private key and the second part is
+    // written after the private key. The public key is written after the second
+    // part.
+    pub private_key_index: usize,
+}
+
+impl Template {
+    #[inline]
+    fn alg_id_value(&self) -> &[u8] {
+        &self.bytes[self.alg_id_range.start..self.alg_id_range.end]
+    }
+}
+
+/// Parses an unencrypted PKCS#8 private key, verifies that it is the right type
+/// of key, and returns the key value.
+///
+/// PKCS#8 is specified in [RFC 5958].
+///
+/// [RFC 5958]: https://tools.ietf.org/html/rfc5958.
+pub fn unwrap_key<'a>(template: &Template, version: Version,
+                      input: untrusted::Input<'a>)
+        -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>),
+                   error::Unspecified> {
+    unwrap_key_(template.alg_id_value(), version, input)
 }
 
 /// Parses an unencrypted PKCS#8 private key, verifies that it is the right type
@@ -35,8 +73,8 @@ pub enum Version {
 /// PKCS#8 is specified in [RFC 5958].
 ///
 /// [RFC 5958]: https://tools.ietf.org/html/rfc5958.
-pub fn unwrap_key<'a>(version: Version, input: untrusted::Input<'a>,
-                      alg_id: &[u8])
+pub fn unwrap_key_<'a>(alg_id: &[u8], version: Version,
+                       input: untrusted::Input<'a>)
         -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>),
                   error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
@@ -80,15 +118,36 @@ pub fn unwrap_key<'a>(version: Version, input: untrusted::Input<'a>,
     })
 }
 
+/// A generated PKCS#8 document.
+pub struct PKCS8Document {
+    bytes: [u8; ec::PKCS8_DOCUMENT_MAX_LEN],
+    len: usize,
+}
+
+impl AsRef<[u8]> for PKCS8Document {
+    #[inline]
+    fn as_ref(&self) -> &[u8] { &self.bytes[..self.len] }
+}
+
+pub fn wrap_key(template: &Template, private_key: &[u8], public_key: &[u8])
+                -> PKCS8Document {
+    let mut result = PKCS8Document {
+        bytes: [0; ec::PKCS8_DOCUMENT_MAX_LEN],
+        len: template.bytes.len() + private_key.len() + public_key.len(),
+    };
+    wrap_key_(template, private_key, public_key, &mut result.bytes[..result.len]);
+    result
+}
+
 /// Formats a private key "prefix||private_key||middle||public_key" where
 /// `template` is "prefix||middle" split at position `private_key_index`.
-pub fn wrap_key(template: &[u8], private_key_index: usize, private_key: &[u8],
-                public_key: &[u8], bytes: &mut [u8]) {
+pub fn wrap_key_(template: &Template, private_key: &[u8], public_key: &[u8],
+                 bytes: &mut [u8]) {
     let (before_private_key, after_private_key) =
-        template.split_at(private_key_index);
-    let private_key_end_index = private_key_index + private_key.len();
-    bytes[..private_key_index].copy_from_slice(before_private_key);
-    bytes[private_key_index..private_key_end_index]
+        template.bytes.split_at(template.private_key_index);
+    let private_key_end_index = template.private_key_index + private_key.len();
+    bytes[..template.private_key_index].copy_from_slice(before_private_key);
+    bytes[template.private_key_index..private_key_end_index]
         .copy_from_slice(&private_key);
     bytes[private_key_end_index..
           (private_key_end_index + after_private_key.len())]

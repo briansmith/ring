@@ -280,6 +280,8 @@ pub use ec::curve25519::ed25519::{
     ED25519_PUBLIC_KEY_LEN,
 };
 
+pub use pkcs8::PKCS8Document;
+
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::signing::{RSAKeyPair, RSASigningState};
 

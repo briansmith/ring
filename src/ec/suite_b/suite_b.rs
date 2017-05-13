@@ -153,11 +153,11 @@ fn verify_affine_point_is_on_the_curve_scaled(
     Ok(())
 }
 
-pub fn key_pair_from_pkcs8(curve: &ec::Curve, key_alg_id: &[u8],
+pub fn key_pair_from_pkcs8(curve: &ec::Curve, template: &pkcs8::Template,
                            input: untrusted::Input)
                            -> Result<ec::KeyPair, error::Unspecified> {
     let (ec_private_key, _) = try!(pkcs8::unwrap_key(
-        pkcs8::Version::V1Only, input, key_alg_id));
+        template, pkcs8::Version::V1Only, input));
     let (private_key, public_key) = try!(ec_private_key.read_all(
         error::Unspecified, |input| {
             // https://tools.ietf.org/html/rfc5915#section-3

@@ -15,7 +15,8 @@
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
 use arithmetic::montgomery::*;
-use {der, digest, ec, error, private, signature};
+use core;
+use {der, digest, ec, error, pkcs8, private, rand, signature};
 use super::verify_jacobian_point_is_on_the_curve;
 use super::ops::*;
 use super::public_key::*;
@@ -24,7 +25,7 @@ use untrusted;
 /// An ECDSA signing algorithm.
 pub struct ECDSASigningAlgorithm {
     curve: &'static ec::Curve,
-    key_alg_id: &'static [u8],
+    pkcs8_template: &'static pkcs8::Template,
 }
 
 
@@ -149,6 +150,28 @@ pub struct ECDSAKeyPair {
 }
 
 impl<'a> ECDSAKeyPair {
+    /// Generates a new key pair and returns the key pair serialized as a
+    /// PKCS#8 document.
+    ///
+    /// The PKCS#8 document will be a v1 `OneAsymmetricKey` with the public key
+    /// included in the `ECPrivateKey` structure, as described in
+    /// [RFC 5958 Section 2] and [RFC 5915]. The `ECPrivateKey` structure will
+    /// not have a `parameters` field so the generated key is compatible with
+    /// PKCS#11.
+    ///
+    /// [RFC 5915]: https://tools.ietf.org/html/rfc5915
+    /// [RFC 5958 Section 2]: https://tools.ietf.org/html/rfc5958#section-2
+    pub fn generate_pkcs8(alg: &'static ECDSASigningAlgorithm,
+                          rng: &rand::SecureRandom)
+                          -> Result<pkcs8::PKCS8Document, error::Unspecified> {
+        let private_key = try!(ec::PrivateKey::generate(alg.curve, rng));
+        let mut public_key_bytes = [0; ec::PUBLIC_KEY_MAX_LEN];
+        let public_key_bytes = &mut public_key_bytes[..alg.curve.public_key_len];
+        try!((alg.curve.public_from_private)(public_key_bytes, &private_key));
+        Ok(pkcs8::wrap_key(&alg.pkcs8_template, private_key.bytes(alg.curve),
+                           public_key_bytes))
+    }
+
     /// Constructs an ECDSA key pair by parsing an unencrypted PKCS#8 v1
     /// id-ecPublicKey `ECPrivateKey` key.
     ///
@@ -160,8 +183,8 @@ impl<'a> ECDSAKeyPair {
     pub fn from_pkcs8(alg: &'static ECDSASigningAlgorithm,
                       input: untrusted::Input)
                       -> Result<ECDSAKeyPair, error::Unspecified> {
-        let key_pair = try!(ec::suite_b::key_pair_from_pkcs8(
-            alg.curve, alg.key_alg_id, input));
+        let key_pair = try!(ec::suite_b::key_pair_from_pkcs8(alg.curve,
+            alg.pkcs8_template, input));
         Ok(ECDSAKeyPair { key_pair, alg })
     }
 
@@ -266,7 +289,7 @@ fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
 pub static ECDSA_P256_SHA256_FIXED_SIGNING: ECDSASigningAlgorithm =
         ECDSASigningAlgorithm {
     curve: &ec::suite_b::curve::P256,
-    key_alg_id: EC_PUBLIC_KEY_P256,
+    pkcs8_template: &EC_PUBLIC_KEY_P256_PKCS8_V1_TEMPLATE,
 };
 
 /// Verification of fixed-length (PKCS#11 style) ECDSA signatures using the
@@ -289,7 +312,7 @@ pub static ECDSA_P256_SHA256_FIXED: ECDSAVerificationAlgorithm =
 pub static ECDSA_P384_SHA384_FIXED_SIGNING: ECDSASigningAlgorithm =
         ECDSASigningAlgorithm {
     curve: &ec::suite_b::curve::P384,
-    key_alg_id: EC_PUBLIC_KEY_P384,
+    pkcs8_template: &EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE,
 };
 
 /// Verification of fixed-length (PKCS#11 style) ECDSA signatures using the
@@ -312,7 +335,7 @@ pub static ECDSA_P384_SHA384_FIXED: ECDSAVerificationAlgorithm =
 pub static ECDSA_P256_SHA256_ASN1_SIGNING: ECDSASigningAlgorithm =
         ECDSASigningAlgorithm {
     curve: &ec::suite_b::curve::P256,
-    key_alg_id: EC_PUBLIC_KEY_P256,
+    pkcs8_template: &EC_PUBLIC_KEY_P256_PKCS8_V1_TEMPLATE,
 };
 
 /// Verification of ASN.1 DER-encoded ECDSA signatures using the P-256 curve
@@ -369,7 +392,7 @@ pub static ECDSA_P384_SHA256_ASN1: ECDSAVerificationAlgorithm =
 pub static ECDSA_P384_SHA384_ASN1_SIGNING: ECDSASigningAlgorithm =
         ECDSASigningAlgorithm {
     curve: &ec::suite_b::curve::P384,
-    key_alg_id: EC_PUBLIC_KEY_P384,
+    pkcs8_template: &EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE,
 };
 
 /// Verification of ASN.1 DER-encoded ECDSA signatures using the P-384 curve
@@ -384,11 +407,17 @@ pub static ECDSA_P384_SHA384_ASN1: ECDSAVerificationAlgorithm =
     split_rs: split_rs_asn1,
 };
 
-const EC_PUBLIC_KEY_P256: &'static [u8] =
-    include_bytes!("../../data/alg-ecPublicKey-P256.der");
-const EC_PUBLIC_KEY_P384: &'static [u8] =
-    include_bytes!("../../data/alg-ecPublicKey-P384.der");
+static EC_PUBLIC_KEY_P256_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {
+    bytes: include_bytes ! ("ecPublicKey_p256_pkcs8_v1_template.der"),
+    alg_id_range: core::ops::Range { start: 8, end: 27 },
+    private_key_index: 0x24,
+};
 
+static EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {
+    bytes: include_bytes!("ecPublicKey_p384_pkcs8_v1_template.der"),
+    alg_id_range: core::ops::Range { start: 8, end: 24 },
+    private_key_index: 0x23,
+};
 
 #[cfg(test)]
 mod tests {
