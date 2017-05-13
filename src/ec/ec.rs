@@ -81,7 +81,7 @@ impl<'a> PrivateKey {
 const ELEM_MAX_BITS: usize = 384;
 pub const ELEM_MAX_BYTES: usize = (ELEM_MAX_BITS + 7) / 8;
 
-const SCALAR_MAX_BYTES: usize = ELEM_MAX_BYTES;
+pub const SCALAR_MAX_BYTES: usize = ELEM_MAX_BYTES;
 
 /// The maximum length, in bytes, of an encoded public key.
 pub const PUBLIC_KEY_MAX_LEN: usize = 1 + (2 * ELEM_MAX_BYTES);

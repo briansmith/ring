@@ -36,7 +36,9 @@ pub fn signature_from_bytes(bytes: &[u8]) -> Signature {
     r
 }
 
-/// The maximum length of a signature that can be stored in a `Signature`.
-///
-/// In particular, this isn't used for RSA signatures.
-const MAX_LEN: usize = 1 + (2 * ec::ELEM_MAX_BYTES);
+/// The longest signature is an ASN.1 P-384 signature where *r* and *s* are of
+/// maximum length with the leading high bit set on each. Then each component
+/// will have a tag, a one-byte length, and a one-byte “I'm not negative”
+/// prefix, and the outer sequence will have a two-byte length.
+pub const MAX_LEN: usize = 1/*tag:SEQUENCE*/ + 2/*len*/ +
+    (2 * (1/*tag:INTEGER*/ + 1/*len*/ + 1/*zero*/ + ec::SCALAR_MAX_BYTES));
