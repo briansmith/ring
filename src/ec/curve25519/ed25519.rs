@@ -63,7 +63,8 @@ impl<'a> Ed25519KeyPair {
         Ok(bytes)
     }
 
-    /// Parses a PKCS#8 v2 Ed25519 private key.
+    /// Constructs an Ed25519 key pair by parsing an unencrypted PKCS#8 v2
+    /// Ed25519 private key.
     ///
     /// The input must be in PKCS#8 v2 format, and in particular it must contain
     /// the public key in addition to the private key. `from_pkcs8()` will
@@ -79,7 +80,8 @@ impl<'a> Ed25519KeyPair {
         Self::from_seed_and_public_key(seed, public_key.unwrap())
     }
 
-    /// Parses a PKCS#8 v1 or v2 Ed25519 private key.
+    /// Constructs an Ed25519 key pair by parsing an unencrypted PKCS#8 v1 or v2
+    /// Ed25519 private key.
     ///
     /// It is recommended to use `Ed25519KeyPair::from_pkcs8()`, which accepts
     /// only PKCS#8 v2 files that contain the public key.
@@ -101,7 +103,7 @@ impl<'a> Ed25519KeyPair {
         }
     }
 
-    /// Constructs a Ed25519 key pair from the private key seed `seed` and its
+    /// Constructs an Ed25519 key pair from the private key seed `seed` and its
     /// public key `public_key`.
     ///
     /// It is recommended to use `Ed25519KeysiPair::from_pkcs8()` instead.
