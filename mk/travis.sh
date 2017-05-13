@@ -96,15 +96,30 @@ armv7-linux-androideabi)
 
   emulator @arm-18 -memory 2048 -no-skin -no-boot-anim -no-window &
   adb wait-for-device
+
+  # Run the unit tests first.
   adb push $target_dir/ring-* /data/ring-test
-  for testfile in `find src crypto tests -name "*_test*.txt" -o -name "*test*.pk8"`; do
+  for testfile in `find src crypto -name "*_test*.txt" -o -name "*test*.pk8"`; do
     adb shell mkdir -p /data/`dirname $testfile`
     adb push $testfile /data/$testfile
   done
   adb shell mkdir -p /data/third-party/NIST
   adb push third-party/NIST/SHAVS /data/third-party/NIST/SHAVS
-  adb shell  'cd /data && ./ring-test' 2>&1 | tee /tmp/ring-test
-  grep "test result: ok" /tmp/ring-test
+  adb shell "cd /data && ./ring-test" 2>&1 | tee /tmp/ring-test-log
+  grep "test result: ok" /tmp/ring-test-log
+
+  # Run the integration/functional tests.
+  for testfile in `find tests -name "*_test*.txt" -o -name "*test*.pk8"`; do
+    adb shell mkdir -p /data/`dirname $testfile`
+    adb push $testfile /data/$testfile
+  done
+  find $target_dir -maxdepth 1 -name "*test*" -type f
+  for test_exe in `find $target_dir -maxdepth 1 -name "*test*" -type f`; do
+    adb push $test_exe /data/`basename $test_exe`
+    adb shell "cd /data && ./`basename $test_exe`" 2>&1 | \
+        tee /tmp/`basename $test_exe`-log
+    grep "test result: ok" /tmp/`basename $test_exe`-log
+  done
   ;;
 *)
   cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
@@ -124,7 +139,7 @@ if [[ "$KCOV" == "1" ]]; then
   RUSTFLAGS="-C link-dead-code" \
     cargo test -vv --no-run -j2  ${mode-} ${FEATURES_X-} --target=$TARGET_X
   mk/travis-install-kcov.sh
-  for test_exe in `find target/$TARGET_X/debug -executable -type f`; do
+  for test_exe in `find target/$TARGET_X/debug -maxdepth 1 -executable -type f`; do
     ${HOME}/kcov-${TARGET_X}/bin/kcov \
       --verify \
       --coveralls-id=$TRAVIS_JOB_ID \
