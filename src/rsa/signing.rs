@@ -644,53 +644,10 @@ mod tests {
     // We intentionally avoid `use super::*` so that we are sure to use only
     // the public API; this ensures that enough of the API is public.
     use core;
-    use {error, rand, signature, test};
+    use {rand, signature, test};
     use std;
     use super::super::blinding;
     use untrusted;
-
-    #[test]
-    fn test_signature_rsa_pkcs1_sign() {
-        let rng = rand::SystemRandom::new();
-        test::from_file("src/rsa/rsa_pkcs1_sign_tests.txt",
-                        |section, test_case| {
-            assert_eq!(section, "");
-
-            let digest_name = test_case.consume_string("Digest");
-            let alg = match digest_name.as_ref() {
-                "SHA256" => &signature::RSA_PKCS1_SHA256,
-                "SHA384" => &signature::RSA_PKCS1_SHA384,
-                "SHA512" => &signature::RSA_PKCS1_SHA512,
-                _ =>  { panic!("Unsupported digest: {}", digest_name) }
-            };
-
-            let private_key = test_case.consume_bytes("Key");
-            let msg = test_case.consume_bytes("Msg");
-            let expected = test_case.consume_bytes("Sig");
-            let result = test_case.consume_string("Result");
-
-            let private_key = untrusted::Input::from(&private_key);
-            let key_pair = signature::RSAKeyPair::from_der(private_key);
-            if result == "Fail-Invalid-Key" {
-                assert!(key_pair.is_err());
-                return Ok(());
-            }
-            let key_pair = key_pair.unwrap();
-            let key_pair = std::sync::Arc::new(key_pair);
-
-            // XXX: This test is too slow on Android ARM Travis CI builds.
-            // TODO: re-enable these tests on Android ARM.
-            let mut signing_state =
-                signature::RSASigningState::new(key_pair).unwrap();
-            let mut actual: std::vec::Vec<u8> =
-                vec![0; signing_state.key_pair().public_modulus_len()];
-            signing_state.sign(alg, &rng, &msg, actual.as_mut_slice()).unwrap();
-            assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
-            Ok(())
-        });
-    }
-
-
 
     // `RSAKeyPair::sign` requires that the output buffer is the same length as
     // the public key modulus. Test what happens when it isn't the same length.
@@ -753,7 +710,7 @@ mod tests {
                                        MESSAGE, &mut signature);
             let remaining = signing_state.blinding.remaining();
             assert_eq!((remaining + 1) % blinding::REMAINING_MAX,
-                       prev_remaining);
+            prev_remaining);
         }
     }
 
@@ -797,81 +754,5 @@ mod tests {
                                         MESSAGE, &mut signature);
 
         assert!(result.is_err());
-    }
-
-    #[cfg(feature = "rsa_signing")]
-    #[test]
-    fn test_signature_rsa_pss_sign() {
-        // Outputs the same value whenever a certain length is requested (the
-        // same as the length of the salt). Otherwise, the rng is used.
-        struct DeterministicSalt<'a> {
-            salt: &'a [u8],
-            rng: &'a rand::SecureRandom
-        }
-        impl<'a> rand::SecureRandom for DeterministicSalt<'a> {
-            fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
-                let dest_len = dest.len();
-                if dest_len != self.salt.len() {
-                    try!(self.rng.fill(dest));
-                } else {
-                    dest.copy_from_slice(&self.salt);
-                }
-                Ok(())
-            }
-        }
-        let rng = rand::SystemRandom::new();
-
-        test::from_file("src/rsa/rsa_pss_sign_tests.txt", |section, test_case| {
-            assert_eq!(section, "");
-
-            let digest_name = test_case.consume_string("Digest");
-            let alg = match digest_name.as_ref() {
-                "SHA256" => &signature::RSA_PSS_SHA256,
-                "SHA384" => &signature::RSA_PSS_SHA384,
-                "SHA512" => &signature::RSA_PSS_SHA512,
-                _ =>  { panic!("Unsupported digest: {}", digest_name) }
-            };
-
-            let result = test_case.consume_string("Result");
-            let private_key = test_case.consume_bytes("Key");
-            let private_key = untrusted::Input::from(&private_key);
-            let key_pair = signature::RSAKeyPair::from_der(private_key);
-            if key_pair.is_err() && result == "Fail-Invalid-Key" {
-                return Ok(());
-            }
-            let key_pair = key_pair.unwrap();
-            let key_pair = std::sync::Arc::new(key_pair);
-            let msg = test_case.consume_bytes("Msg");
-            let salt = test_case.consume_bytes("Salt");
-            let expected = test_case.consume_bytes("Sig");
-
-            let new_rng = DeterministicSalt { salt: &salt, rng: &rng };
-
-            let mut signing_state =
-                signature::RSASigningState::new(key_pair).unwrap();
-            let mut actual: std::vec::Vec<u8> =
-                vec![0; signing_state.key_pair().public_modulus_len()];
-            try!(signing_state.sign(alg, &new_rng, &msg, actual.as_mut_slice()));
-            assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
-            Ok(())
-        });
-    }
-
-
-    #[test]
-    fn test_sync_and_send() {
-        const PRIVATE_KEY_DER: &'static [u8] =
-            include_bytes!("signature_rsa_example_private_key.der");
-        let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
-        let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
-        let key_pair = std::sync::Arc::new(key_pair);
-
-        let _: &Send = &key_pair;
-        let _: &Sync = &key_pair;
-
-        let signing_state = signature::RSASigningState::new(key_pair).unwrap();
-        let _: &Send = &signing_state;
-        // TODO: Test that signing_state is NOT Sync; i.e.
-        // `let _: &Sync = &signing_state;` must fail
     }
 }
