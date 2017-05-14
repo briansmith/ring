@@ -454,7 +454,7 @@ OPENSSL_EXPORT int RSA_private_key_to_bytes(uint8_t **out_bytes,
 
 OPENSSL_EXPORT int RSA_get_ex_new_index(long argl, void *argp,
                                         CRYPTO_EX_unused *unused,
-                                        CRYPTO_EX_dup *dup_func,
+                                        CRYPTO_EX_dup *dup_unused,
                                         CRYPTO_EX_free *free_func);
 OPENSSL_EXPORT int RSA_set_ex_data(RSA *r, int idx, void *arg);
 OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *r, int idx);

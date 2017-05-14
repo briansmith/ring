@@ -223,7 +223,7 @@ OPENSSL_EXPORT EC_GROUP *EC_KEY_parse_parameters(CBS *cbs);
 
 OPENSSL_EXPORT int EC_KEY_get_ex_new_index(long argl, void *argp,
                                            CRYPTO_EX_unused *unused,
-                                           CRYPTO_EX_dup *dup_func,
+                                           CRYPTO_EX_dup *dup_unused,
                                            CRYPTO_EX_free *free_func);
 OPENSSL_EXPORT int EC_KEY_set_ex_data(EC_KEY *r, int idx, void *arg);
 OPENSSL_EXPORT void *EC_KEY_get_ex_data(const EC_KEY *r, int idx);

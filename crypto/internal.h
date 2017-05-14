@@ -528,7 +528,7 @@ typedef struct {
  * zero otherwise. */
 OPENSSL_EXPORT int CRYPTO_get_ex_new_index(CRYPTO_EX_DATA_CLASS *ex_data_class,
                                            int *out_index, long argl,
-                                           void *argp, CRYPTO_EX_dup *dup_func,
+                                           void *argp,
                                            CRYPTO_EX_free *free_func);
 
 /* CRYPTO_set_ex_data sets an extra data pointer on a given object. Each class
@@ -542,13 +542,6 @@ OPENSSL_EXPORT void *CRYPTO_get_ex_data(const CRYPTO_EX_DATA *ad, int index);
 
 /* CRYPTO_new_ex_data initialises a newly allocated |CRYPTO_EX_DATA|. */
 OPENSSL_EXPORT void CRYPTO_new_ex_data(CRYPTO_EX_DATA *ad);
-
-/* CRYPTO_dup_ex_data duplicates |from| into a freshly allocated
- * |CRYPTO_EX_DATA|, |to|. Both of which are inside objects of the given
- * class. It returns one on success and zero otherwise. */
-OPENSSL_EXPORT int CRYPTO_dup_ex_data(CRYPTO_EX_DATA_CLASS *ex_data_class,
-                                      CRYPTO_EX_DATA *to,
-                                      const CRYPTO_EX_DATA *from);
 
 /* CRYPTO_free_ex_data frees |ad|, which is embedded inside |obj|, which is an
  * object of the given class. */
