@@ -15,13 +15,20 @@
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
 use arithmetic::montgomery::*;
-use {der, digest, error, private, signature};
+use {der, digest, ec, error, private, signature};
 use super::verify_jacobian_point_is_on_the_curve;
 use super::ops::*;
 use super::public_key::*;
 use untrusted;
 
-/// An ECDSA signature verification algorithm.
+/// An ECDSA signing algorithm.
+pub struct ECDSASigningAlgorithm {
+    curve: &'static ec::Curve,
+    key_alg_id: &'static [u8],
+}
+
+
+/// An ECDSA verification algorithm.
 pub struct ECDSAVerificationAlgorithm {
     ops: &'static PublicScalarOps,
     digest_alg: &'static digest::Algorithm,
@@ -132,6 +139,48 @@ impl signature::VerificationAlgorithm for ECDSAVerificationAlgorithm {
 
 impl private::Private for ECDSAVerificationAlgorithm {}
 
+/// An ECDSA key pair, used for signing.
+pub struct ECDSAKeyPair {
+    #[allow(dead_code)] // XXX: Temporary, since signing isn't implemented yet.
+    key_pair: ec::KeyPair,
+
+    #[allow(dead_code)] // XXX: Temporary, since signing isn't implemented yet.
+    alg: &'static ECDSASigningAlgorithm,
+}
+
+impl<'a> ECDSAKeyPair {
+    /// Constructs an ECDSA key pair by parsing an unencrypted PKCS#8 v1
+    /// id-ecPublicKey `ECPrivateKey` key.
+    ///
+    /// The input must be in PKCS#8 v1 format. It must contain the public key in
+    /// the `ECPrivateKey` structure; `from_pkcs8()` will verify that the public
+    /// key and the private key are consistent with each other. The algorithm
+    /// identifier must identify the curve by name; it must not use an
+    /// "explicit" encoding of the curve.
+    pub fn from_pkcs8(alg: &'static ECDSASigningAlgorithm,
+                      input: untrusted::Input)
+                      -> Result<ECDSAKeyPair, error::Unspecified> {
+        let key_pair = try!(ec::suite_b::key_pair_from_pkcs8(
+            alg.curve, alg.key_alg_id, input));
+        Ok(ECDSAKeyPair { key_pair, alg })
+    }
+
+    /// Constructs an ECDSA key pair directly from the big-endian-encoded
+    /// private key and public key bytes.
+    ///
+    /// This is intended for use by code that deserializes key pairs. It is
+    /// recommended to use `ECDSAKeyPair::from_pkcs8()` (with a PKCS#8-encoded
+    /// key) instead.
+    pub fn from_private_key_and_public_key(alg: &'static ECDSASigningAlgorithm,
+                                           private_key: untrusted::Input,
+                                           public_key: untrusted::Input)
+                      -> Result<ECDSAKeyPair, error::Unspecified> {
+        let key_pair = try!(ec::suite_b::key_pair_from_bytes(
+            alg.curve, private_key, public_key));
+        Ok(ECDSAKeyPair { key_pair, alg })
+    }
+}
+
 fn split_rs_fixed<'a>(
         ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>)
         -> Result<(untrusted::Input<'a>, untrusted::Input<'a>),
@@ -209,6 +258,17 @@ fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
 }
 
 
+/// Signing of fixed-length (PKCS#11 style) ECDSA signatures using the
+/// P-256 curve and SHA-256.
+///
+/// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
+/// documentation for more details.
+pub static ECDSA_P256_SHA256_FIXED_SIGNING: ECDSASigningAlgorithm =
+        ECDSASigningAlgorithm {
+    curve: &ec::suite_b::curve::P256,
+    key_alg_id: EC_PUBLIC_KEY_P256,
+};
+
 /// Verification of fixed-length (PKCS#11 style) ECDSA signatures using the
 /// P-256 curve and SHA-256.
 ///
@@ -221,6 +281,17 @@ pub static ECDSA_P256_SHA256_FIXED: ECDSAVerificationAlgorithm =
     split_rs: split_rs_fixed,
 };
 
+/// Signing of fixed-length (PKCS#11 style) ECDSA signatures using the
+/// P-256 curve and SHA-256.
+///
+/// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
+/// documentation for more details.
+pub static ECDSA_P384_SHA384_FIXED_SIGNING: ECDSASigningAlgorithm =
+        ECDSASigningAlgorithm {
+    curve: &ec::suite_b::curve::P384,
+    key_alg_id: EC_PUBLIC_KEY_P384,
+};
+
 /// Verification of fixed-length (PKCS#11 style) ECDSA signatures using the
 /// P-384 curve and SHA-384.
 ///
@@ -231,6 +302,17 @@ pub static ECDSA_P384_SHA384_FIXED: ECDSAVerificationAlgorithm =
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_fixed,
+};
+
+/// Signing of fixed-length (PKCS#11 style) ECDSA signatures using the
+/// P-256 curve and SHA-256.
+///
+/// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
+/// documentation for more details.
+pub static ECDSA_P256_SHA256_ASN1_SIGNING: ECDSASigningAlgorithm =
+        ECDSASigningAlgorithm {
+    curve: &ec::suite_b::curve::P256,
+    key_alg_id: EC_PUBLIC_KEY_P256,
 };
 
 /// Verification of ASN.1 DER-encoded ECDSA signatures using the P-256 curve
@@ -279,6 +361,17 @@ pub static ECDSA_P384_SHA256_ASN1: ECDSAVerificationAlgorithm =
     split_rs: split_rs_asn1,
 };
 
+/// Signing of fixed-length (PKCS#11 style) ECDSA signatures using the
+/// P-384 curve and SHA-384.
+///
+/// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
+/// documentation for more details.
+pub static ECDSA_P384_SHA384_ASN1_SIGNING: ECDSASigningAlgorithm =
+        ECDSASigningAlgorithm {
+    curve: &ec::suite_b::curve::P384,
+    key_alg_id: EC_PUBLIC_KEY_P384,
+};
+
 /// Verification of ASN.1 DER-encoded ECDSA signatures using the P-384 curve
 /// and SHA-384.
 ///
@@ -290,6 +383,11 @@ pub static ECDSA_P384_SHA384_ASN1: ECDSAVerificationAlgorithm =
     digest_alg: &digest::SHA384,
     split_rs: split_rs_asn1,
 };
+
+const EC_PUBLIC_KEY_P256: &'static [u8] =
+    include_bytes!("../../data/alg-ecPublicKey-P256.der");
+const EC_PUBLIC_KEY_P384: &'static [u8] =
+    include_bytes!("../../data/alg-ecPublicKey-P384.der");
 
 
 #[cfg(test)]

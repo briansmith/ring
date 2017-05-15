@@ -20,7 +20,7 @@ use {der, error};
 use untrusted;
 
 pub enum Version {
-    #[cfg(feature = "rsa_signing")] V1Only,
+    V1Only,
     V1OrV2,
     V2Only,
 }
@@ -45,7 +45,7 @@ pub fn unwrap_key<'a>(version: Version, input: untrusted::Input<'a>,
             // in v1 form, so reject v2 and any later form.
             let require_public_key =
                     match (try!(der::small_nonnegative_integer(input)), version) {
-                #[cfg(feature = "rsa_signing")] (0, Version::V1Only) => false,
+                (0, Version::V1Only) => false,
                 (0, Version::V1OrV2) => false,
                 (1, Version::V1OrV2) |
                 (1, Version::V2Only) => true,

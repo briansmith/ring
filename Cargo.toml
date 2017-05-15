@@ -229,6 +229,7 @@ include = [
     "include/GFp/mem.h",
     "include/GFp/type_check.h",
     "examples/checkdigest.rs",
+    "tests/ecdsa_from_pkcs8_tests.txt",
     "tests/ecdsa_tests.rs",
     "tests/ecdsa_verify_asn1_tests.txt",
     "tests/ecdsa_verify_fixed_tests.txt",

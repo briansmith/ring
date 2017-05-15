@@ -18,6 +18,45 @@ extern crate untrusted;
 use ring::{signature, test};
 
 #[test]
+fn ecdsa_from_pkcs8_test() {
+    test::from_file("tests/ecdsa_from_pkcs8_tests.txt", |section, test_case| {
+        assert_eq!(section, "");
+
+        let curve_name = test_case.consume_string("Curve");
+        let ((this_fixed, this_asn1), (other_fixed, other_asn1)) =
+            match curve_name.as_str() {
+                "P-256" => ((&signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+                             &signature::ECDSA_P256_SHA256_ASN1_SIGNING),
+                            (&signature::ECDSA_P384_SHA384_FIXED_SIGNING,
+                             &signature::ECDSA_P384_SHA384_ASN1_SIGNING)),
+                "P-384" => ((&signature::ECDSA_P384_SHA384_FIXED_SIGNING,
+                             &signature::ECDSA_P384_SHA384_ASN1_SIGNING),
+                            (&signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+                             &signature::ECDSA_P256_SHA256_ASN1_SIGNING)),
+                _ => unreachable!(),
+            };
+
+        let input = test_case.consume_bytes("Input");
+        let input = untrusted::Input::from(&input);
+
+        let error = test_case.consume_optional_string("Error");
+
+        assert_eq!(
+            signature::ECDSAKeyPair::from_pkcs8(this_fixed, input).is_ok(),
+            error.is_none());
+        assert_eq!(
+            signature::ECDSAKeyPair::from_pkcs8(this_asn1, input).is_ok(),
+            error.is_none());
+        assert!(
+            signature::ECDSAKeyPair::from_pkcs8(other_fixed, input).is_err());
+        assert!(
+            signature::ECDSAKeyPair::from_pkcs8(other_asn1, input).is_err());
+
+        Ok(())
+    });
+}
+
+#[test]
 fn signature_ecdsa_verify_asn1_test() {
     test::from_file("tests/ecdsa_verify_asn1_tests.txt", |section, test_case| {
         assert_eq!(section, "");
@@ -77,7 +116,8 @@ fn signature_ecdsa_verify_fixed_test() {
             ("P-256", "SHA256") => &signature::ECDSA_P256_SHA256_FIXED,
             ("P-384", "SHA384") => &signature::ECDSA_P384_SHA384_FIXED,
             _ => {
-                panic!("Unsupported curve+digest: {}+{}", curve_name, digest_name);
+                panic!("Unsupported curve+digest: {}+{}", curve_name,
+                       digest_name);
             }
         };
 

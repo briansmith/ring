@@ -47,6 +47,11 @@ pub enum CurveID {
     P384,
 }
 
+pub struct KeyPair {
+    pub private_key: PrivateKey,
+    pub public_key: [u8; PUBLIC_KEY_MAX_LEN],
+}
+
 pub struct PrivateKey {
     bytes: [u8; SCALAR_MAX_BYTES],
 }

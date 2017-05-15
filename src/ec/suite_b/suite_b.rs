@@ -15,8 +15,9 @@
 //! Elliptic curve operations on P-256 & P-384.
 
 use arithmetic::montgomery::*;
-use error;
+use {der, ec, error, pkcs8};
 use self::ops::*;
+use untrusted;
 
 
 // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that
@@ -152,6 +153,59 @@ fn verify_affine_point_is_on_the_curve_scaled(
     Ok(())
 }
 
+pub fn key_pair_from_pkcs8(curve: &ec::Curve, key_alg_id: &[u8],
+                           input: untrusted::Input)
+                           -> Result<ec::KeyPair, error::Unspecified> {
+    let (ec_private_key, _) = try!(pkcs8::unwrap_key(
+        pkcs8::Version::V1Only, input, key_alg_id));
+    let (private_key, public_key) = try!(ec_private_key.read_all(
+        error::Unspecified, |input| {
+            // https://tools.ietf.org/html/rfc5915#section-3
+            der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
+                let version = try!(der::small_nonnegative_integer(input));
+                if version != 1 {
+                    return Err(error::Unspecified);
+                }
+
+                let private_key = try!(der::expect_tag_and_get_value(
+                    input, der::Tag::OctetString));
+
+                // [0] parameters. TODO: support this.
+
+                // [1] publicKey. The RFC says it is optional, but we require it
+                // to be present.
+                let public_key = try!(der::nested(
+                    input, der::Tag::ContextSpecificConstructed1,
+                    error::Unspecified, |input| {
+                        der::bit_string_with_no_unused_bits(input)
+                    }));
+
+                Ok((private_key, public_key))
+            })
+        }));
+    key_pair_from_bytes(curve, private_key, public_key)
+}
+
+pub fn key_pair_from_bytes(curve: &ec::Curve,
+                           private_key_bytes: untrusted::Input,
+                           public_key_bytes: untrusted::Input)
+                           -> Result<ec::KeyPair, error::Unspecified> {
+    let private_key = try!(ec::PrivateKey::from_bytes(curve, private_key_bytes));
+
+    let mut public_key_check = [0; ec::PUBLIC_KEY_MAX_LEN];
+    { // Borrow `public_key_check`.
+        let public_key_check = &mut public_key_check[..curve.public_key_len];
+        try!((curve.public_from_private)(public_key_check, &private_key));
+        if public_key_bytes != &*public_key_check {
+            return Err(error::Unspecified);
+        }
+    }
+
+    Ok(ec::KeyPair {
+        private_key: private_key,
+        public_key: public_key_check,
+    })
+}
 
 pub mod curve;
 pub mod ecdsa;
