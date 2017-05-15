@@ -58,17 +58,6 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
         try!(rng.fill(&mut candidate_private_key.bytes[..num_bytes]));
 
         // NSA Guide Steps 5, 6, and 7.
-        //
-        // XXX: The NSA guide says that we should verify that the random scalar
-        // is in the range [0, n - 1) and then add one to it so that it is in
-        // the range [1, n). Instead, we verify that the scalar is in the range
-        // [1, n) like BoringSSL (et al.) does. This way, we avoid needing to
-        // compute or store the value (n - 1), we avoid the need to implement
-        // a function to add one to a scalar, and we avoid needing to convert
-        // the scalar back into an array of bytes. TODO: Is there any security
-        // advantage to the way the NSA suggests? There doesn't seem to be,
-        // other than being less error prone w.r.t. accidentally generating
-        // zero-valued keys.
         if scalar_from_big_endian_bytes(
                 ops, &candidate_private_key.bytes[..num_bytes]).is_err() {
             continue;
