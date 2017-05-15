@@ -42,31 +42,33 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
     // XXX: The value 100 was chosen to match OpenSSL due to uncertainty of
     // what specific value would be better, but it seems bad to try 100 times.
     for _ in 0..100 {
-        let mut candidate_private_key =
-            ec::PrivateKey { bytes: [0; ec::SCALAR_MAX_BYTES] };
+        let mut candidate = [0; ec::SCALAR_MAX_BYTES];
 
-        // NSA Guide Steps 1, 2, and 3.
-        //
-        // Since we calculate the length ourselves, it is pointless to check
-        // it, since we can only check it by doing the same calculation.
-        let num_bytes = num_limbs * LIMB_BYTES;
+        {
+            // NSA Guide Steps 1, 2, and 3.
+            //
+            // Since we calculate the length ourselves, it is pointless to check
+            // it, since we can only check it by doing the same calculation.
+            let candidate = &mut candidate[..(num_limbs * LIMB_BYTES)];
 
-        // NSA Guide Step 4.
-        //
-        // The requirement that the random number generator has the requested
-        // security strength is delegated to `rng`.
-        try!(rng.fill(&mut candidate_private_key.bytes[..num_bytes]));
+            // NSA Guide Step 4.
+            //
+            // The requirement that the random number generator has the
+            // requested security strength is delegated to `rng`.
+            try!(rng.fill(candidate));
 
-        // NSA Guide Steps 5, 6, and 7.
-        if scalar_from_big_endian_bytes(
-                ops, &candidate_private_key.bytes[..num_bytes]).is_err() {
-            continue;
+            // NSA Guide Steps 5, 6, and 7.
+            if check_scalar_big_endian_bytes(ops, candidate).is_err() {
+                continue;
+            }
         }
 
         // NSA Guide Step 8 is done in `public_from_private()`.
 
         // NSA Guide Step 9.
-        return Ok(candidate_private_key);
+        return Ok(ec::PrivateKey {
+            bytes: candidate,
+        });
     }
 
     Err(error::Unspecified)
@@ -83,6 +85,12 @@ pub fn private_key_as_scalar(ops: &PrivateKeyOps,
     // This cannot fail because we know the private key is valid.
     scalar_from_big_endian_bytes(
         ops, &private_key.bytes[..(ops.common.num_limbs * LIMB_BYTES)]).unwrap()
+}
+
+pub fn check_scalar_big_endian_bytes(ops: &PrivateKeyOps, bytes: &[u8])
+                                     -> Result<(), error::Unspecified> {
+    debug_assert_eq!(bytes.len(), ops.common.num_limbs * LIMB_BYTES);
+    scalar_from_big_endian_bytes(ops, bytes).map(|_| ())
 }
 
 // Parses a fixed-length (zero-padded) big-endian-encoded scalar in the range
