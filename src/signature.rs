@@ -182,11 +182,11 @@
 //! By default OpenSSL writes RSA public keys in SubjectPublicKeyInfo format,
 //! not RSAPublicKey format, and Base64-encodes them (“PEM” format).
 //!
-//! To convert the PEM SubjectPublicKeyInfo format to the binary RSAPublicKey
-//! format needed by `verify()`, use:
+//! To convert the PEM SubjectPublicKeyInfo format (“BEGIN PUBLIC KEY”) to the
+//! binary RSAPublicKey format needed by `verify()`, use:
 //!
 //! ```sh
-//! openssl rsa -RSAPublicKey_in \
+//! openssl rsa -pubin \
 //!             -in public_key.pem \
 //!             -inform PEM \
 //!             -outform DER \
