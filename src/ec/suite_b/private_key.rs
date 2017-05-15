@@ -114,11 +114,10 @@ pub fn scalar_from_big_endian_bytes(ops: &PrivateKeyOps, bytes: &[u8])
     //
     // XXX: The NSA guide says that we should verify that the random scalar is
     // in the range [0, n - 1) and then add one to it so that it is in the range
-    // [1, n). Instead, we verify that the scalar is in the range [1, n) like
-    // BoringSSL (et al.) does. This way, we avoid needing to compute or store
-    // the value (n - 1), we avoid the need to implement a function to add one
-    // to a scalar, and we avoid needing to convert the scalar back into an
-    // array of bytes.
+    // [1, n). Instead, we verify that the scalar is in the range [1, n). This
+    // way, we avoid needing to compute or store the value (n - 1), we avoid the
+    // need to implement a function to add one to a scalar, and we avoid needing
+    // to convert the scalar back into an array of bytes.
     super::ops::scalar_parse_big_endian_fixed_consttime(
         ops.common, untrusted::Input::from(bytes))
 }
