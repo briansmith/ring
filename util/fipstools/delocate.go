@@ -240,6 +240,10 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 	// offsets in the thread-local storage.
 	threadLocalOffsets := make(map[string]threadLocalOffsetFunc)
 
+	// gotpcrelExternalsNeeded is the set of symbols which are accessed via
+	// the GOT and will need external relocations emitted.
+	gotpcrelExternalsNeeded := make(map[string]struct{})
+
 	source := &lineSource{lines: lines}
 
 	for {
@@ -345,15 +349,16 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 				if strings.Contains(line, "@GOTPCREL") && (instr == "movq" || instr == "vmovq" || instr == "cmoveq" || instr == "cmovneq") {
 					line = strings.Replace(line, "@GOTPCREL", "", -1)
 					target = strings.Replace(target, "@GOTPCREL", "", -1)
+					var useGOT bool
 
 					if isGlobal := symbols[target]; isGlobal {
 						line = strings.Replace(line, target, localTargetName(target), 1)
 						target = localTargetName(target)
-					} else if !strings.HasPrefix(target, "BORINGSSL_bcm_") {
-						redirectorName := "bcm_redirector_" + target
-						redirectors[redirectorName] = target
-						line = strings.Replace(line, target, redirectorName, 1)
-						target = redirectorName
+					} else if target != "OPENSSL_ia32cap_P" && !strings.HasPrefix(target, "BORINGSSL_bcm_") {
+						// If the symbol is defined external to libcrypto.a,
+						// we need to use the GOT to avoid a runtime
+						// relocation.
+						useGOT = true
 					}
 
 					switch instr {
@@ -364,11 +369,31 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 					}
 
 					if len(invertedCondition) > 0 {
-						ret = append(ret, "\t# Was " + orig)
-						ret = append(ret, "\tj" + invertedCondition + " 1f")
+						ret = append(ret, "\t# Was "+orig)
+						ret = append(ret, "\tj"+invertedCondition+" 1f")
 					}
 
 					destination := args[1]
+					if useGOT {
+						if !strings.HasPrefix(destination, "%r") || destination == "%rsp" {
+							// If it comes up, we can support %xmm* or memory references by
+							// picking a spare register, but we must take care not to use a
+							// register referenced in the destination.
+							panic("destination must be a standard 64-bit register")
+						}
+
+						ret = append(ret, "leaq -128(%rsp), %rsp") // Clear the red zone.
+						ret = append(ret, "pushf")
+						ret = append(ret, fmt.Sprintf("leaq %s_GOTPCREL_external(%%rip), %s", target, destination))
+						ret = append(ret, fmt.Sprintf("addq (%s), %s", destination, destination))
+						ret = append(ret, fmt.Sprintf("movq (%s), %s", destination, destination))
+						ret = append(ret, "popf")
+						ret = append(ret, "leaq 128(%rsp), %rsp")
+
+						gotpcrelExternalsNeeded[target] = struct{}{}
+						continue
+					}
+
 					if strings.HasPrefix(destination, "%xmm") {
 						if instr != "movq" && instr != "vmovq" {
 							panic("unhandled: " + orig)
@@ -378,19 +403,16 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 						// registers, but LEA cannot.
 						ret = append(ret, "leaq -128(%rsp), %rsp") // Clear the red zone.
 						ret = append(ret, "pushq %rax")
-						ret = append(ret, "leaq " + target + "(%rip), %rax")
-						ret = append(ret, "movq %rax, " + destination)
+						ret = append(ret, "leaq "+target+"(%rip), %rax")
+						ret = append(ret, "movq %rax, "+destination)
 						ret = append(ret, "popq %rax")
 						ret = append(ret, "leaq 128(%rsp), %rsp")
 
 						continue
 					}
 
-					// Nobody actually wants to read the
-					// code of a function. This is a load
-					// from the GOT which, now that we're
-					// referencing the symbol directly,
-					// needs to be transformed into an LEA.
+					// A movq from the GOT is equivalent to a leaq. This symbol
+					// is defined in libcrypto, so we can reference it directly.
 					line = strings.Replace(line, instr, "leaq", 1)
 					instr = "leaq"
 				}
@@ -417,7 +439,7 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 					ret = append(ret, "leaq -128(%rsp), %rsp") // Clear the red zone.
 					ret = append(ret, "pushfq")
 					ret = append(ret, fmt.Sprintf("leaq OPENSSL_ia32cap_addr_delta(%%rip), %s", args[1]))
-					ret = append(ret, fmt.Sprintf("addq OPENSSL_ia32cap_addr_delta(%%rip), %s", args[1]))
+					ret = append(ret, fmt.Sprintf("addq (%s), %s", args[1], args[1]))
 					ret = append(ret, "popfq")
 					ret = append(ret, "leaq 128(%rsp), %rsp")
 					continue
@@ -563,6 +585,25 @@ func transform(lines []string, symbols map[string]bool) (ret []string) {
 		ret = append(ret, name+":")
 		ret = append(ret, "\tmovq "+f.symbol+"@GOTTPOFF(%rip), %"+f.target)
 		ret = append(ret, "\tret")
+	}
+
+	// Emit external relocations for GOTPCREL offsets.
+	var gotpcrelExternalNames []string
+	for name := range gotpcrelExternalsNeeded {
+		gotpcrelExternalNames = append(gotpcrelExternalNames, name)
+	}
+	sort.Strings(gotpcrelExternalNames)
+
+	for _, name := range gotpcrelExternalNames {
+		ret = append(ret, ".type "+name+"_GOTPCREL_external, @object")
+		ret = append(ret, ".size "+name+"_GOTPCREL_external, 8")
+		ret = append(ret, name+"_GOTPCREL_external:")
+		// Ideally this would be .quad foo@GOTPCREL, but clang's
+		// assembler cannot emit a 64-bit GOTPCREL relocation. Instead,
+		// we manually sign-extend the value, knowing that the GOT is
+		// always at the end, thus foo@GOTPCREL has a positive value.
+		ret = append(ret, "\t.long "+name+"@GOTPCREL")
+		ret = append(ret, "\t.long 0")
 	}
 
 	// Emit an array for storing the module hash.
