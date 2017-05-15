@@ -30,6 +30,9 @@ pub struct Curve {
 
     pub id: CurveID,
 
+    // Precondition: `bytes` is the correct length.
+    check_private_key_bytes: fn(bytes: &[u8]) -> Result<(), error::Unspecified>,
+
     generate_private_key: fn(rng: &rand::SecureRandom)
                              -> Result<PrivateKey, error::Unspecified>,
 
@@ -55,17 +58,24 @@ impl<'a> PrivateKey {
         (curve.generate_private_key)(rng)
     }
 
-    /// Panics if `test_vector` is not the correct length.
-    #[cfg(test)]
-    pub fn from_test_vector(curve: &Curve, test_vector: &[u8]) -> PrivateKey {
+    pub fn from_bytes(curve: &Curve, bytes: untrusted::Input)
+                      -> Result<PrivateKey, error::Unspecified> {
         init::init_once();
-        let mut bytes = [0; SCALAR_MAX_BYTES];
-        bytes[..curve.elem_and_scalar_len].copy_from_slice(test_vector);
-        PrivateKey { bytes }
+        let bytes = bytes.as_slice_less_safe();
+        if curve.elem_and_scalar_len != bytes.len() {
+            return Err(error::Unspecified);
+        }
+        try!((curve.check_private_key_bytes)(bytes));
+        let mut r = PrivateKey {
+            bytes: [0; SCALAR_MAX_BYTES],
+        };
+        r.bytes[..curve.elem_and_scalar_len].copy_from_slice(bytes);
+        Ok(r)
     }
 
-    #[cfg(test)]
-    pub fn bytes(&'a self) -> &'a [u8] { &self.bytes[..] }
+    pub fn bytes(&'a self, curve: &Curve) -> &'a [u8] {
+        &self.bytes[..curve.elem_and_scalar_len]
+    }
 
     #[inline(always)]
     pub fn compute_public_key(&self, curve: &Curve, out: &mut [u8])

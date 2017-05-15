@@ -17,7 +17,8 @@ use {ec, error, rand};
 /// A key agreement algorithm.
 macro_rules! suite_b_curve {
     ( $NAME:ident, $bits:expr, $private_key_ops:expr, $id:expr,
-      $generate_private_key:ident, $public_from_private:ident) =>
+      $check_private_key_bytes:ident, $generate_private_key:ident,
+      $public_from_private:ident) =>
     {
         /// Public keys are encoding in uncompressed form using the
         /// Octet-String-to-Elliptic-Curve-Point algorithm in
@@ -36,9 +37,17 @@ macro_rules! suite_b_curve {
             public_key_len: 1 + (2 * (($bits + 7) / 8)),
             elem_and_scalar_len: ($bits + 7) / 8,
             id: $id,
+            check_private_key_bytes: $check_private_key_bytes,
             generate_private_key: $generate_private_key,
             public_from_private: $public_from_private,
         };
+
+        fn $check_private_key_bytes(bytes: &[u8])
+                                   -> Result<(), error::Unspecified> {
+            debug_assert_eq!(bytes.len(), $bits / 8);
+            ec::suite_b::private_key::check_scalar_big_endian_bytes(
+                $private_key_ops, bytes)
+        }
 
         fn $generate_private_key(rng: &rand::SecureRandom)
                                  -> Result<ec::PrivateKey, error::Unspecified> {
@@ -56,9 +65,9 @@ macro_rules! suite_b_curve {
 }
 
 suite_b_curve!(P256, 256, &ec::suite_b::ops::p256::PRIVATE_KEY_OPS,
-               ec::CurveID::P256, p256_generate_private_key,
-               p256_public_from_private);
+               ec::CurveID::P256, p256_check_private_key_bytes,
+               p256_generate_private_key, p256_public_from_private);
 
 suite_b_curve!(P384, 384, &ec::suite_b::ops::p384::PRIVATE_KEY_OPS,
-               ec::CurveID::P384, p384_generate_private_key,
-               p384_public_from_private);
+               ec::CurveID::P384, p384_check_private_key_bytes,
+               p384_generate_private_key, p384_public_from_private);

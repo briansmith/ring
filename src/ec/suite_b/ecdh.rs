@@ -131,9 +131,16 @@ mod tests {
 
     static SUPPORTED_SUITE_B_ALGS:
         [(&'static str, &'static agreement::Algorithm,
+          &'static ec::Curve,
           &'static ops::CommonOps); 2] = [
-        ("P-256", &agreement::ECDH_P256, &ops::p256::COMMON_OPS),
-        ("P-384", &agreement::ECDH_P384, &ops::p384::COMMON_OPS),
+        ("P-256",
+         &agreement::ECDH_P256,
+         &super::super::curve::P256,
+         &super::super::ops::p256::COMMON_OPS),
+        ("P-384",
+         &agreement::ECDH_P384,
+         &super::super::curve::P384,
+         &super::super::ops::p384::COMMON_OPS),
     ];
 
     #[test]
@@ -146,7 +153,7 @@ mod tests {
         // group order of any curve that is supported.
         let random_ff = test::rand::FixedByteRandom { byte: 0xff };
 
-        for &(_, alg, ops) in SUPPORTED_SUITE_B_ALGS.iter() {
+        for &(_, alg, curve, ops) in SUPPORTED_SUITE_B_ALGS.iter() {
             // Test that the private key value zero is rejected and that
             // `generate` gives up after a while of only getting zeros.
             assert!(agreement::EphemeralPrivateKey::generate(alg, &random_00)
@@ -162,7 +169,7 @@ mod tests {
             // is rejected and that `generate` gives up after a while of only
             // getting that value from the PRNG.
             let mut n_bytes = [0u8; ec::SCALAR_MAX_BYTES];
-            let num_bytes = ops.num_limbs * ops::LIMB_BYTES;
+            let num_bytes = curve.elem_and_scalar_len;
             limb::big_endian_from_limbs_padded(&ops.n.limbs[..ops.num_limbs],
                                                &mut n_bytes[..num_bytes]);
             {
@@ -183,7 +190,7 @@ mod tests {
                 };
                 let key = agreement::EphemeralPrivateKey::generate(alg, &rng)
                                 .unwrap();
-                assert_eq!(&n_minus_1_bytes[..], &key.bytes()[..num_bytes]);
+                assert_eq!(&n_minus_1_bytes[..], key.bytes(curve));
             }
 
             // Test that n + 1 also fails.
@@ -214,8 +221,7 @@ mod tests {
                 };
                 let key = agreement::EphemeralPrivateKey::generate(alg, &rng)
                                 .unwrap();
-                assert_eq!(&n_minus_1_bytes[..num_bytes],
-                           &key.bytes()[..num_bytes]);
+                assert_eq!(&n_minus_1_bytes[..num_bytes], key.bytes(curve));
             }
         }
     }

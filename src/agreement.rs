@@ -122,11 +122,13 @@ impl<'a> EphemeralPrivateKey {
     }
 
     #[cfg(test)]
-    pub fn from_test_vector(alg: &'static Algorithm, test_vector: &[u8])
+    pub fn from_test_vector(alg: &'static Algorithm,
+                            test_vector: untrusted::Input)
                             -> EphemeralPrivateKey {
         EphemeralPrivateKey {
             private_key:
-                ec::PrivateKey::from_test_vector(&alg.i.curve, test_vector),
+                ec::PrivateKey::from_bytes(&alg.i.curve, test_vector)
+                    .unwrap(),
             alg: alg,
         }
     }
@@ -155,7 +157,9 @@ impl<'a> EphemeralPrivateKey {
     }
 
     #[cfg(test)]
-    pub fn bytes(&'a self) -> &'a [u8] { self.private_key.bytes() }
+    pub fn bytes(&'a self, curve: &ec::Curve) -> &'a [u8] {
+        self.private_key.bytes(curve)
+    }
 }
 
 /// Performs a key agreement with an ephemeral private key and the given public
@@ -253,7 +257,8 @@ mod tests {
                     let output = test_case.consume_bytes("Output");
 
                     let private_key =
-                        EphemeralPrivateKey::from_test_vector(alg, &my_private);
+                        EphemeralPrivateKey::from_test_vector(
+                            alg, untrusted::Input::from(&my_private));
 
                     let mut computed_public = [0u8; PUBLIC_KEY_MAX_LEN];
                     let computed_public =

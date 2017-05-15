@@ -22,6 +22,7 @@ static CURVE25519: ec::Curve = ec::Curve {
     public_key_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
     elem_and_scalar_len: X25519_ELEM_SCALAR_PUBLIC_KEY_LEN,
     id: ec::CurveID::Curve25519,
+    check_private_key_bytes: x25519_check_private_key_bytes,
     generate_private_key: x25519_generate_private_key,
     public_from_private: x25519_public_from_private,
 };
@@ -40,6 +41,12 @@ pub static X25519: agreement::Algorithm = agreement::Algorithm {
         ecdh: x25519_ecdh,
     },
 };
+
+fn x25519_check_private_key_bytes(bytes: &[u8])
+                                  -> Result<(), error::Unspecified> {
+    debug_assert_eq!(bytes.len(), X25519_ELEM_SCALAR_PUBLIC_KEY_LEN);
+    Ok(())
+}
 
 fn x25519_generate_private_key(rng: &rand::SecureRandom)
                                -> Result<ec::PrivateKey, error::Unspecified> {
@@ -150,8 +157,8 @@ mod tests {
     fn x25519_(private_key: &[u8], public_key: &[u8])
                -> Result<std::vec::Vec<u8>, error::Unspecified> {
         let private_key =
-            agreement::EphemeralPrivateKey::from_test_vector(&agreement::X25519,
-                                                             private_key);
+            agreement::EphemeralPrivateKey::from_test_vector(
+                &agreement::X25519, untrusted::Input::from(private_key));
         let public_key = untrusted::Input::from(public_key);
         agreement::agree_ephemeral(private_key, &agreement::X25519, public_key,
                                    error::Unspecified, |agreed_value| {
