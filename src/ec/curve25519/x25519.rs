@@ -61,14 +61,12 @@ fn x25519_public_from_private(public_out: &mut [u8],
                               -> Result<(), error::Unspecified> {
     let public_out = try!(slice_as_array_ref_mut!(public_out, PUBLIC_KEY_LEN));
 
-    // XXX: This shouldn't require dynamic checks, but rustc can't slice an
-    // array reference to a shorter array reference. TODO(perf): Fix this.
-    let private_key =
-        try!(slice_as_array_ref!(&private_key.bytes[..PRIVATE_KEY_LEN],
-                                 PRIVATE_KEY_LEN));
-    unsafe {
-        GFp_x25519_public_from_private(public_out, private_key);
-    }
+    let mut scalar = [0u8; ops::SCALAR_LEN];
+    scalar.copy_from_slice(&private_key.bytes[..PRIVATE_KEY_LEN]);
+    unsafe { GFp_curve25519_scalar_mask(&mut scalar); }
+
+    *public_out = ops::scalar_mult_with_base_point(&scalar);
+
     Ok(())
 }
 
@@ -100,13 +98,7 @@ fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
 }
 
 const ELEM_AND_SCALAR_LEN: usize = ops::ELEM_LEN;
-
-// An X25519 private key as an unmasked scalar.
-type PrivateKey = [u8; PRIVATE_KEY_LEN];
 const PRIVATE_KEY_LEN: usize = ELEM_AND_SCALAR_LEN;
-
-// An X25519 public key as an encoded Curve25519 point.
-type PublicKey = [u8; PUBLIC_KEY_LEN];
 const PUBLIC_KEY_LEN: usize = ELEM_AND_SCALAR_LEN;
 
 // An X25519 shared secret as an encoded Curve25519 point.
@@ -115,8 +107,7 @@ const SHARED_SECRET_LEN: usize = ELEM_AND_SCALAR_LEN;
 
 
 extern {
-    fn GFp_x25519_public_from_private(public_key_out: &mut PublicKey,
-                                      private_key: &PrivateKey);
+    fn GFp_curve25519_scalar_mask(a: &mut ops::Scalar);
     fn GFp_x25519_scalar_mult(out: &mut ops::EncodedPoint, scalar: &ops::Scalar,
                               point: &ops::EncodedPoint);
 }

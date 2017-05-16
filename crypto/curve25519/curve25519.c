@@ -31,7 +31,9 @@
 
 /* Prevent -Wmissing-prototypes warnings. */
 void GFp_curve25519_scalar_mask(uint8_t a[32]);
+void GFp_fe_add(fe h, const fe f, const fe g);
 void GFp_fe_invert(fe out, const fe z);
+void GFp_fe_sub(fe h, const fe f, const fe g);
 uint8_t GFp_fe_isnegative(const fe f);
 void GFp_fe_mul(fe h, const fe f, const fe g);
 void GFp_fe_tobytes(uint8_t *s, const fe h);
@@ -246,6 +248,11 @@ static void fe_add(fe h, const fe f, const fe g) {
   }
 }
 
+/* Wrapper to enable Rust FFI without impacting C compiler optimization. */
+void GFp_fe_add(fe h, const fe f, const fe g) {
+    fe_add(h, f, g);
+}
+
 /* h = f - g
  * Can overlap h with f or g.
  *
@@ -260,6 +267,11 @@ static void fe_sub(fe h, const fe f, const fe g) {
   for (i = 0; i < 10; i++) {
     h[i] = f[i] - g[i];
   }
+}
+
+/* Wrapper to enable Rust FFI without impacting C compiler optimization. */
+void GFp_fe_sub(fe h, const fe f, const fe g) {
+    fe_sub(h, f, g);
 }
 
 /* h = f * g
@@ -4674,54 +4686,6 @@ void GFp_x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
 #endif
 
   x25519_scalar_mult_generic(out, scalar, point);
-}
-
-#endif  /* BORINGSSL_X25519_X86_64 */
-
-
-/* Prototypes to avoid -Wmissing-prototypes warnings. */
-void GFp_x25519_public_from_private(uint8_t out_public_value[32],
-                                    const uint8_t private_key[32]);
-
-#if defined(BORINGSSL_X25519_X86_64)
-
-/* When |BORINGSSL_X25519_X86_64| is set, base point multiplication is done with
- * the Montgomery ladder because it's faster. Otherwise it's done using the
- * Ed25519 tables. */
-
-void GFp_x25519_public_from_private(uint8_t out_public_value[32],
-                                    const uint8_t private_key[32]) {
-  static const uint8_t kMongomeryBasePoint[32] = {9};
-  GFp_x25519_scalar_mult(out_public_value, private_key, kMongomeryBasePoint);
-}
-
-#else
-
-void GFp_x25519_public_from_private(uint8_t out_public_value[32],
-                                    const uint8_t private_key[32]) {
-#if defined(BORINGSSL_X25519_NEON)
-  if (GFp_is_NEON_capable()) {
-    static const uint8_t kMongomeryBasePoint[32] = {9};
-    GFp_x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
-    return;
-  }
-#endif
-
-  uint8_t e[32];
-  memcpy(e, private_key, 32);
-  GFp_curve25519_scalar_mask(e);
-
-  ge_p3 A;
-  GFp_x25519_ge_scalarmult_base(&A, e);
-
-  /* We only need the u-coordinate of the curve25519 point. The map is
-   * u=(y+1)/(1-y). Since y=Y/Z, this gives u=(Z+Y)/(Z-Y). */
-  fe zplusy, zminusy, zminusy_inv;
-  fe_add(zplusy, A.Z, A.Y);
-  fe_sub(zminusy, A.Z, A.Y);
-  GFp_fe_invert(zminusy_inv, zminusy);
-  GFp_fe_mul(zplusy, zplusy, zminusy_inv);
-  GFp_fe_tobytes(out_public_value, zplusy);
 }
 
 #endif  /* BORINGSSL_X25519_X86_64 */
