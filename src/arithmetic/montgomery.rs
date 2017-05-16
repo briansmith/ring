@@ -12,27 +12,27 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-// Indicates that the element is not  encoded; there is no *R* factor
+// Indicates that the element is not encoded; there is no *R* factor
 // that needs to be canceled out.
 #[derive(Copy, Clone)]
 pub enum Unencoded {}
 
-// Indicates that the element is  encoded; the value has one *R*
+// Indicates that the element is encoded; the value has one *R*
 // factor that needs to be canceled out.
 #[derive(Copy, Clone)]
 pub enum R {}
 
-// Indicates the element is  encoded twice; the value has two *R*
+// Indicates the element is encoded twice; the value has two *R*
 // factors that need to be canceled out.
 #[derive(Copy, Clone)]
 pub enum RR {}
 
-// Indicates the element is  encoded three times; the value has three
+// Indicates the element is encoded three times; the value has three
 // *R* factors that need to be canceled out.
 #[derive(Copy, Clone)]
 pub enum RRR {}
 
-// Indicates the element is inversely  encoded; the value has one
+// Indicates the element is inversely encoded; the value has one
 // 1/*R* factor that needs to be canceled out.
 #[derive(Copy, Clone)]
 pub enum RInverse {}
@@ -45,7 +45,7 @@ impl Encoding for R {}
 impl Encoding for Unencoded {}
 impl Encoding for RInverse {}
 
-/// The encoding of the result of a  reduction.
+/// The encoding of the result of a reduction.
 pub trait ReductionEncoding {
     type Output: Encoding;
 }
@@ -55,7 +55,7 @@ impl ReductionEncoding for RR { type Output = R; }
 impl ReductionEncoding for R { type Output = Unencoded; }
 impl ReductionEncoding for Unencoded { type Output = RInverse; }
 
-/// The encoding of the result of a  multiplication.
+/// The encoding of the result of a multiplication.
 pub trait ProductEncoding {
     type Output: Encoding;
 }
