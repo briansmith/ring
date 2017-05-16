@@ -106,7 +106,7 @@ impl<'a> Ed25519KeyPair {
     /// Constructs an Ed25519 key pair from the private key seed `seed` and its
     /// public key `public_key`.
     ///
-    /// It is recommended to use `Ed25519KeysiPair::from_pkcs8()` instead.
+    /// It is recommended to use `Ed25519KeyPair::from_pkcs8()` instead.
     ///
     /// The private and public keys will be verified to be consistent with each
     /// other. This helps avoid misuse of the key (e.g. accidentally swapping
