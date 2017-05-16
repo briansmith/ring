@@ -189,8 +189,8 @@
 //! openssl rsa -pubin \
 //!             -in public_key.pem \
 //!             -inform PEM \
-//!             -outform DER \
 //!             -RSAPublicKey_out \
+//!             -outform DER \
 //!             -out public_key.der
 //! ```
 //!
@@ -199,7 +199,7 @@
 //!
 //! ```sh
 //! openssl rsa -in private_key.der \
-//!             -inform DER
+//!             -inform DER \
 //!             -RSAPublicKey_out \
 //!             -outform DER \
 //!             -out public_key.der
