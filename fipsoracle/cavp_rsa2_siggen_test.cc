@@ -50,21 +50,19 @@ static bool TestRSA2SigGen(FileTest *t, void *arg) {
   if (t->IsAtNewInstructionBlock()) {
     int mod_bits = strtoul(mod_str.c_str(), nullptr, 0);
     ctx->key = bssl::UniquePtr<RSA>(RSA_new());
-    bssl::UniquePtr<BIGNUM> e(BN_new());
     if (ctx->key == nullptr ||
         mod_bits == 0 ||
-        !BN_set_word(e.get(), RSA_F4) ||
-        !RSA_generate_key_ex(ctx->key.get(), mod_bits, e.get(), nullptr)) {
+        !RSA_generate_key_fips(ctx->key.get(), mod_bits, nullptr)) {
       return false;
     }
 
-    const BIGNUM *n;
-    RSA_get0_key(ctx->key.get(), &n, nullptr, nullptr);
+    const BIGNUM *n, *e;
+    RSA_get0_key(ctx->key.get(), &n, &e, nullptr);
 
     std::vector<uint8_t> n_bytes(BN_num_bytes(n));
-    std::vector<uint8_t> e_bytes(BN_num_bytes(e.get()));
+    std::vector<uint8_t> e_bytes(BN_num_bytes(e));
     if (!BN_bn2bin_padded(n_bytes.data(), n_bytes.size(), n) ||
-        !BN_bn2bin_padded(e_bytes.data(), e_bytes.size(), e.get())) {
+        !BN_bn2bin_padded(e_bytes.data(), e_bytes.size(), e)) {
       return false;
     }
 

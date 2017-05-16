@@ -177,6 +177,10 @@ OPENSSL_EXPORT int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key,
  * or zero otherwise. */
 OPENSSL_EXPORT int EC_KEY_generate_key(EC_KEY *key);
 
+/* EC_KEY_generate_key_fips behaves like |EC_KEY_generate_key| but performs
+ * additional checks for FIPS compliance. */
+OPENSSL_EXPORT int EC_KEY_generate_key_fips(EC_KEY *key);
+
 
 /* Serialisation. */
 

@@ -41,12 +41,10 @@ static bool TestRSA2KeyGen(FileTest *t, void *arg) {
   size_t bits = strtoul(mod_str.c_str(), nullptr, 0);
   size_t count = strtoul(count_str.c_str(), nullptr, 0);
   for (size_t i = 0; i < count; i++) {
-    bssl::UniquePtr<BIGNUM> gen_e(BN_new());
     bssl::UniquePtr<RSA> key(RSA_new());
     if (key == nullptr ||
         bits == 0 ||
-        !BN_set_word(gen_e.get(), RSA_F4) ||
-        !RSA_generate_key_ex(key.get(), bits, gen_e.get(), nullptr)) {
+        !RSA_generate_key_fips(key.get(), bits, nullptr)) {
       return 0;
     }
 

@@ -122,6 +122,11 @@ OPENSSL_EXPORT void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
 OPENSSL_EXPORT int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e,
                                        BN_GENCB *cb);
 
+/* RSA_generate_key_fips behaves like |RSA_generate_key_ex| but performs
+ * additional checks for FIPS compliance. The public exponent is always 65537
+ * and |bits| must be either 2048 or 3072. */
+OPENSSL_EXPORT int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb);
+
 
 /* Encryption / Decryption */
 

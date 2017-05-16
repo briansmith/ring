@@ -909,8 +909,8 @@ err:
 
 int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   /* See FIPS 186-4 appendix B.3. This function implements a generalized version
-   * of the FIPS algorithm. For FIPS compliance, the caller is responsible for
-   * passing in 2048 or 3072 to |bits| and 65537 for |e_value|. */
+   * of the FIPS algorithm. |RSA_generate_key_fips| performs additional checks
+   * for FIPS-compliant key generation. */
 
   /* Always generate RSA keys which are a multiple of 128 bits. Round |bits|
    * down as needed. */
@@ -1034,6 +1034,23 @@ err:
     BN_CTX_end(ctx);
     BN_CTX_free(ctx);
   }
+  return ret;
+}
+
+int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {
+  /* FIPS 186-4 allows 2048-bit and 3072-bit RSA keys (1024-bit and 1536-bit
+   * primes, respectively) with the prime generation method we use. */
+  if (bits != 2048 && bits != 3072) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_RSA_PARAMETERS);
+    return 0;
+  }
+
+  BIGNUM *e = BN_new();
+  int ret = e != NULL &&
+            BN_set_word(e, RSA_F4) &&
+            RSA_generate_key_ex(rsa, bits, e, cb) &&
+            RSA_check_fips(rsa);
+  BN_free(e);
   return ret;
 }
 

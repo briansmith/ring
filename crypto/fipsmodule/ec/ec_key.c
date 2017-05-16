@@ -494,6 +494,10 @@ err:
   return ok;
 }
 
+int EC_KEY_generate_key_fips(EC_KEY *eckey) {
+  return EC_KEY_generate_key(eckey) && EC_KEY_check_fips(eckey);
+}
+
 int EC_KEY_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
                             CRYPTO_EX_dup *dup_func,
                             CRYPTO_EX_free *free_func) {

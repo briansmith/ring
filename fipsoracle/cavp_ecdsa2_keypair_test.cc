@@ -48,7 +48,7 @@ static bool TestECDSA2KeyPair(FileTest *t, void *arg) {
     bssl::UniquePtr<BIGNUM> qx(BN_new()), qy(BN_new());
     bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
     if (!key ||
-        !EC_KEY_generate_key(key.get()) ||
+        !EC_KEY_generate_key_fips(key.get()) ||
         !EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(key.get()),
                                              EC_KEY_get0_public_key(key.get()),
                                              qx.get(), qy.get(), nullptr)) {
