@@ -18,6 +18,7 @@ import (
 var (
 	oraclePath = flag.String("oracle-bin", "", "Path to the oracle binary")
 	suiteDir   = flag.String("suite-dir", "", "Base directory containing the CAVP test suite")
+	noFAX      = flag.Bool("no-fax", false, "Skip comparing against FAX files")
 )
 
 // test describes a single request file.
@@ -307,7 +308,7 @@ func worker(wg *sync.WaitGroup, work <-chan testInstance) {
 			os.Exit(2)
 		}
 
-		if !test.noFAX {
+		if !*noFAX && !test.noFAX {
 			if err := compareFAX(ti.suite, test); err != nil {
 				fmt.Fprintf(os.Stderr, "%s\n", err)
 				os.Exit(3)
