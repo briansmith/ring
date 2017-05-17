@@ -327,7 +327,7 @@ int EVP_DecodeUpdate(EVP_ENCODE_CTX *ctx, uint8_t *out, int *out_len,
         continue;
     }
 
-    if (base64_ascii_to_bin(c) == 0xff || ctx->eof_seen) {
+    if (ctx->eof_seen) {
       ctx->error_encountered = 1;
       return -1;
     }
