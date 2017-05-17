@@ -65,6 +65,24 @@
 #include "../internal.h"
 
 
+/* constant_time_lt_args_8 behaves like |constant_time_lt_8| but takes |uint8_t|
+ * arguments for a slightly simpler implementation. */
+static inline uint8_t constant_time_lt_args_8(uint8_t a, uint8_t b) {
+  crypto_word_t aw = a;
+  crypto_word_t bw = b;
+  /* |crypto_word_t| is larger than |uint8_t|, so |aw| and |bw| have the same
+   * MSB. |aw| < |bw| iff MSB(|aw| - |bw|) is 1. */
+  return constant_time_msb_w(aw - bw);
+}
+
+/* constant_time_in_range_8 returns |CONSTTIME_TRUE_8| if |min| <= |a| <= |max|
+ * and |CONSTTIME_FALSE_8| otherwise. */
+static inline uint8_t constant_time_in_range_8(uint8_t a, uint8_t min,
+                                               uint8_t max) {
+  a -= min;
+  return constant_time_lt_args_8(a, max - min + 1);
+}
+
 /* Encoding. */
 
 static uint8_t conv_bin2ascii(uint8_t a) {
@@ -72,9 +90,11 @@ static uint8_t conv_bin2ascii(uint8_t a) {
    * itself in constant-time. */
   a &= 0x3f;
   uint8_t ret = constant_time_select_8(constant_time_eq_8(a, 62), '+', '/');
-  ret = constant_time_select_8(constant_time_lt_8(a, 62), a - 52 + '0', ret);
-  ret = constant_time_select_8(constant_time_lt_8(a, 52), a - 26 + 'a', ret);
-  ret = constant_time_select_8(constant_time_lt_8(a, 26), a + 'A', ret);
+  ret =
+      constant_time_select_8(constant_time_lt_args_8(a, 62), a - 52 + '0', ret);
+  ret =
+      constant_time_select_8(constant_time_lt_args_8(a, 52), a - 26 + 'a', ret);
+  ret = constant_time_select_8(constant_time_lt_args_8(a, 26), a + 'A', ret);
   return ret;
 }
 
@@ -238,12 +258,9 @@ void EVP_DecodeInit(EVP_ENCODE_CTX *ctx) {
 static uint8_t base64_ascii_to_bin(uint8_t a) {
   /* Since PEM is sometimes used to carry private keys, we decode base64 data
    * itself in constant-time. */
-  const uint8_t is_upper =
-      constant_time_ge_8(a, 'A') & constant_time_ge_8('Z', a);
-  const uint8_t is_lower =
-      constant_time_ge_8(a, 'a') & constant_time_ge_8('z', a);
-  const uint8_t is_digit =
-      constant_time_ge_8(a, '0') & constant_time_ge_8('9', a);
+  const uint8_t is_upper = constant_time_in_range_8(a, 'A', 'Z');
+  const uint8_t is_lower = constant_time_in_range_8(a, 'a', 'z');
+  const uint8_t is_digit = constant_time_in_range_8(a, '0', '9');
   const uint8_t is_plus = constant_time_eq_8(a, '+');
   const uint8_t is_slash = constant_time_eq_8(a, '/');
   const uint8_t is_equals = constant_time_eq_8(a, '=');
