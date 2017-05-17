@@ -235,6 +235,8 @@ include = [
     "tests/ecdsa_tests.rs",
     "tests/ecdsa_verify_asn1_tests.txt",
     "tests/ecdsa_verify_fixed_tests.txt",
+    "tests/ed25519_test_private_key.bin",
+    "tests/ed25519_test_public_key.bin",
     "tests/ed25519_tests.rs",
     "tests/ed25519_tests.txt",
     "tests/ed25519_from_pkcs8_tests.txt",
