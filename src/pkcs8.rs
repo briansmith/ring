@@ -36,6 +36,10 @@ pub struct Template {
     // length) for use in the PKCS#8 document's privateKeyAlgorithm field.
     pub alg_id_range: core::ops::Range<usize>,
 
+    // `bytes[alg_id_range][curve_id_index..]` contains the OID identifying the,
+    // curve, including the tag and length.
+    pub curve_id_index: usize,
+
     // `bytes` will be split into two parts at `private_key_index`, where the
     // first part is written before the private key and the second part is
     // written after the private key. The public key is written after the second
@@ -47,6 +51,11 @@ impl Template {
     #[inline]
     fn alg_id_value(&self) -> &[u8] {
         &self.bytes[self.alg_id_range.start..self.alg_id_range.end]
+    }
+
+    #[inline]
+    pub fn curve_oid(&self) -> &[u8] {
+        &self.alg_id_value()[self.curve_id_index..]
     }
 }
 

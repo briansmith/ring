@@ -179,7 +179,9 @@ impl<'a> ECDSAKeyPair {
     /// the `ECPrivateKey` structure; `from_pkcs8()` will verify that the public
     /// key and the private key are consistent with each other. The algorithm
     /// identifier must identify the curve by name; it must not use an
-    /// "explicit" encoding of the curve.
+    /// "explicit" encoding of the curve. The `parameters` field of the
+    /// `ECPrivateKey`, if present, must be the same named curve that is in the
+    /// algorithm identifier in the PKCS#8 header.
     pub fn from_pkcs8(alg: &'static ECDSASigningAlgorithm,
                       input: untrusted::Input)
                       -> Result<ECDSAKeyPair, error::Unspecified> {
@@ -410,12 +412,14 @@ pub static ECDSA_P384_SHA384_ASN1: ECDSAVerificationAlgorithm =
 static EC_PUBLIC_KEY_P256_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {
     bytes: include_bytes ! ("ecPublicKey_p256_pkcs8_v1_template.der"),
     alg_id_range: core::ops::Range { start: 8, end: 27 },
+    curve_id_index: 9,
     private_key_index: 0x24,
 };
 
 static EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {
     bytes: include_bytes!("ecPublicKey_p384_pkcs8_v1_template.der"),
     alg_id_range: core::ops::Range { start: 8, end: 24 },
+    curve_id_index: 9,
     private_key_index: 0x23,
 };
 

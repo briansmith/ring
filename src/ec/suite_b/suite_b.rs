@@ -170,7 +170,14 @@ pub fn key_pair_from_pkcs8(curve: &ec::Curve, template: &pkcs8::Template,
                 let private_key = try!(der::expect_tag_and_get_value(
                     input, der::Tag::OctetString));
 
-                // [0] parameters. TODO: support this.
+                // [0] parameters (optional).
+                if input.peek(der::Tag::ContextSpecificConstructed0 as u8) {
+                    let actual_alg_id = try!(der::expect_tag_and_get_value(
+                        input, der::Tag::ContextSpecificConstructed0));
+                    if actual_alg_id != template.curve_oid() {
+                        return Err(error::Unspecified);
+                    }
+                }
 
                 // [1] publicKey. The RFC says it is optional, but we require it
                 // to be present.

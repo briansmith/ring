@@ -313,6 +313,7 @@ const SEED_LEN: usize = 32;
 static PKCS8_TEMPLATE: pkcs8::Template = pkcs8::Template {
     bytes: include_bytes!("ed25519_pkcs8_v2_template.der"),
     alg_id_range: core::ops::Range { start: 7, end: 12 },
+    curve_id_index: 0,
     private_key_index: 0x10,
 };
 
