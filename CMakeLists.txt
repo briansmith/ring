@@ -191,6 +191,13 @@ endif()
 
 if(FIPS)
   add_definitions(-DBORINGSSL_FIPS)
+  if(FIPS_BREAK_TEST)
+    add_definitions("-DBORINGSSL_FIPS_BREAK_${FIPS_BREAK_TEST}=1")
+  endif()
+  # Delocate does not work for ASan and MSan builds.
+  if(NOT ASAN AND NOT MSAN)
+    set(FIPS_DELOCATE "1")
+  endif()
 endif()
 
 # CMake's iOS support uses Apple's multiple-architecture toolchain. It takes an

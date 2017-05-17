@@ -212,6 +212,9 @@ extern "C" {
 #if __has_feature(address_sanitizer)
 #define OPENSSL_ASAN
 #endif
+#if __has_feature(memory_sanitizer)
+#define OPENSSL_MSAN
+#endif
 #endif
 
 /* CRYPTO_THREADID is a dummy value. */

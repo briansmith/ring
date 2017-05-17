@@ -148,7 +148,7 @@ add_library(
   thread_win.c
 )
 
-if(FIPS)
+if(FIPS_DELOCATE)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES GENERATED true)
 
@@ -202,7 +202,7 @@ add_library(
   ${CRYPTO_FIPS_OBJECTS}
 )
 
-if(FIPS)
+if(FIPS_DELOCATE)
   add_dependencies(crypto bcm_o_target)
 endif()
 
