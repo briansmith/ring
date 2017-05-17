@@ -23,70 +23,20 @@ use ring::rand;
 
 #[cfg(feature = "rsa_signing")]
 #[test]
-fn test_rsa_key_pair_from_pkcs8_rsa_encryption_2048() {
-    const INPUT: &'static [u8] =
-        include_bytes!("pkcs8_test_rsaEncryption_2048_e65537.pk8");
-    assert!(signature::RSAKeyPair::from_pkcs8(
-        untrusted::Input::from(INPUT)).is_ok());
-}
+fn rsa_from_pkcs8_test() {
+    test::from_file("tests/rsa_from_pkcs8_tests.txt", |section, test_case| {
+        assert_eq!(section, "");
 
-#[cfg(feature = "rsa_signing")]
-#[test]
-fn test_rsa_key_pair_from_pkcs8_rsa_encryption_3072() {
-    const INPUT: &'static [u8] =
-        include_bytes!("pkcs8_test_rsaEncryption_3072_e65537.pk8");
-    assert!(signature::RSAKeyPair::from_pkcs8(
-        untrusted::Input::from(INPUT)).is_ok());
-}
+        let input = test_case.consume_bytes("Input");
+        let input = untrusted::Input::from(&input);
 
-#[cfg(feature = "rsa_signing")]
-#[test]
-fn test_rsa_key_pair_from_pkcs8_rsa_encryption_invalid_e3() {
-    const INPUT: &'static [u8] =
-        include_bytes!("pkcs8_test_rsaEncryption_2048_e3.pk8");
-    assert!(signature::RSAKeyPair::from_pkcs8(
-        untrusted::Input::from(INPUT)).is_err());
-}
+        let error = test_case.consume_optional_string("Error");
 
-#[cfg(feature = "rsa_signing")]
-#[test]
-fn test_rsa_key_pair_from_pkcs8_rsa_encryption_2048_truncated() {
-    const INPUT: &'static [u8] =
-        include_bytes!("pkcs8_test_rsaEncryption_2048_e65537.pk8");
-    assert!(signature::RSAKeyPair::from_pkcs8(
-        untrusted::Input::from(&INPUT[..(INPUT.len() - 1)])).is_err());
-}
+        assert_eq!(signature::RSAKeyPair::from_pkcs8(input).is_ok(),
+                   error.is_none());
 
-#[cfg(feature = "rsa_signing")]
-#[test]
-fn test_rsa_key_pair_from_pkcs8_ecc() {
-    // The input is a valid P-256 private key, which isn't a valid RSA key.
-    const INPUT: &'static [u8] =
-        include_bytes!("pkcs8_test_ecPublicKey_p256.pk8");
-    assert!(signature::RSAKeyPair::from_pkcs8(
-        untrusted::Input::from(INPUT)).is_err());
-}
-
-#[cfg(feature = "rsa_signing")]
-#[test]
-fn test_rsa_key_pair_from_pkcs8_rsa_encryption_ecc() {
-    // The input's algorithm ID is rsaEncryption, but it contains a P-256
-    // ECPrivateKey.
-    const INPUT: &'static [u8] =
-        include_bytes!("pkcs8_test_rsaEncryption_ecc.pk8");
-    assert!(signature::RSAKeyPair::from_pkcs8(
-        untrusted::Input::from(INPUT)).is_err());
-}
-
-#[cfg(feature = "rsa_signing")]
-#[test]
-fn test_rsa_key_pair_from_pkcs8_ecc_rsa_private_key() {
-    // The input contains an RSAPrivateKey, but marked as an ecPublicKey w/
-    // P-256.
-    const INPUT: &'static [u8] =
-        include_bytes!("pkcs8_test_ecPublicKey_p256_RSAPrivateKey.pk8");
-    assert!(signature::RSAKeyPair::from_pkcs8(
-        untrusted::Input::from(INPUT)).is_err());
+        Ok(())
+    });
 }
 
 #[cfg(feature = "rsa_signing")]
