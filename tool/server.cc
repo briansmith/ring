@@ -152,7 +152,6 @@ bool Server(const std::vector<std::string> &args) {
   }
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
-  SSL_CTX_set_options(ctx.get(), SSL_OP_NO_SSLv3);
 
   // Server authentication is required.
   if (args_map.count("-key") != 0) {
