@@ -140,8 +140,7 @@ mod tests {
         test::from_file("src/hkdf_tests.txt", |section, test_case| {
             assert_eq!(section, "");
             let digest_alg =
-                try!(test_case.consume_digest_alg("Hash")
-                              .ok_or(error::Unspecified));
+                test_case.consume_digest_alg("Hash").ok_or(error::Unspecified)?;
             let secret = test_case.consume_bytes("IKM");
             let salt = test_case.consume_bytes("salt");
             let info = test_case.consume_bytes("info");

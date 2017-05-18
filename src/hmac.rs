@@ -203,7 +203,7 @@ impl SigningKey {
         if key_bytes.len() != recommended_key_len(digest_alg) {
             return Err(error::Unspecified);
         }
-        try!(rng.fill(key_bytes));
+        rng.fill(key_bytes)?;
         Ok(SigningKey::new(digest_alg, key_bytes))
     }
 
@@ -495,8 +495,8 @@ mod tests {
                 None => { return Ok(()); }, // Unsupported digest algorithm
             };
 
-            try!(hmac_test_case_inner(digest_alg, &key_value[..], &input[..],
-                                      &output[..], true));
+            hmac_test_case_inner(digest_alg, &key_value[..], &input[..],
+                                 &output[..], true)?;
 
             // Tamper with the input and check that verification fails.
             if input.is_empty() {

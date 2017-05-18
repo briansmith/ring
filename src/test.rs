@@ -307,8 +307,8 @@ pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
 
     let mut result = Vec::with_capacity(hex_str.len() / 2);
     for digits in hex_str.as_bytes().chunks(2) {
-        let hi = try!(from_hex_digit(digits[0]));
-        let lo = try!(from_hex_digit(digits[1]));
+        let hi = from_hex_digit(digits[0])?;
+        let lo = from_hex_digit(digits[1])?;
         result.push((hi * 0x10) | lo);
     }
     Ok(result)

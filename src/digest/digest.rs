@@ -261,9 +261,9 @@ impl AsRef<[u8]> for Digest {
 
 impl core::fmt::Debug for Digest {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
-        try!(write!(fmt, "{:?}:", self.algorithm));
+        write!(fmt, "{:?}:", self.algorithm)?;
         for byte in self.as_ref() {
-            try!(write!(fmt, "{:02x}", byte));
+            write!(fmt, "{:02x}", byte)?;
         }
         Ok(())
     }

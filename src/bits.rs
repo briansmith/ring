@@ -28,7 +28,7 @@ impl BitLength {
     #[inline]
     pub fn from_usize_bytes(bytes: usize)
                             -> Result<BitLength, error::Unspecified> {
-        let bits = try!(bytes.checked_mul(8).ok_or(error::Unspecified));
+        let bits = bytes.checked_mul(8).ok_or(error::Unspecified)?;
         Ok(BitLength::from_usize_bits(bits))
     }
 
@@ -55,7 +55,7 @@ impl BitLength {
     #[inline]
     pub fn try_sub(self, other: BitLength)
                    -> Result<BitLength, error::Unspecified> {
-        let sum = try!(self.0.checked_sub(other.0).ok_or(error::Unspecified));
+        let sum = self.0.checked_sub(other.0).ok_or(error::Unspecified)?;
         Ok(BitLength(sum))
     }
 }
