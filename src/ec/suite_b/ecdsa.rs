@@ -37,6 +37,31 @@ pub struct ECDSAVerificationAlgorithm {
         for<'a> fn(ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>)
                    -> Result<(untrusted::Input<'a>, untrusted::Input<'a>),
                              error::Unspecified>,
+    id: ECDSAVerificationAlgorithmID,
+}
+
+#[allow(non_camel_case_types)]
+enum ECDSAVerificationAlgorithmID {
+    ECDSA_P256_SHA256_ASN1,
+    ECDSA_P256_SHA256_FIXED,
+    ECDSA_P256_SHA384_ASN1,
+    ECDSA_P384_SHA256_ASN1,
+    ECDSA_P384_SHA384_ASN1,
+    ECDSA_P384_SHA384_FIXED,
+}
+
+impl core::fmt::Debug for ECDSAVerificationAlgorithm {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+        use self::ECDSAVerificationAlgorithmID::*;
+        write!(f, "ring::signature::{}", match self.id {
+            ECDSA_P256_SHA256_ASN1 => "ECDSA_P256_SHA256_ASN1",
+            ECDSA_P256_SHA256_FIXED => "ECDSA_P256_SHA256_FIXED",
+            ECDSA_P256_SHA384_ASN1 => "ECDSA_P256_SHA384_ASN1",
+            ECDSA_P384_SHA256_ASN1 => "ECDSA_P384_SHA256_ASN1",
+            ECDSA_P384_SHA384_ASN1 => "ECDSA_P384_SHA384_ASN1",
+            ECDSA_P384_SHA384_FIXED => "ECDSA_P384_SHA384_FIXED",
+        })
+    }
 }
 
 impl signature::VerificationAlgorithm for ECDSAVerificationAlgorithm {
@@ -304,6 +329,7 @@ pub static ECDSA_P256_SHA256_FIXED: ECDSAVerificationAlgorithm =
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_fixed,
+    id: ECDSAVerificationAlgorithmID::ECDSA_P256_SHA256_FIXED,
 };
 
 /// Signing of fixed-length (PKCS#11 style) ECDSA signatures using the
@@ -327,6 +353,7 @@ pub static ECDSA_P384_SHA384_FIXED: ECDSAVerificationAlgorithm =
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_fixed,
+    id: ECDSAVerificationAlgorithmID::ECDSA_P384_SHA384_FIXED,
 };
 
 /// Signing of fixed-length (PKCS#11 style) ECDSA signatures using the
@@ -350,6 +377,7 @@ pub static ECDSA_P256_SHA256_ASN1: ECDSAVerificationAlgorithm =
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_asn1,
+    id: ECDSAVerificationAlgorithmID::ECDSA_P256_SHA256_ASN1,
 };
 
 /// *Not recommended*. Verification of ASN.1 DER-encoded ECDSA signatures using
@@ -367,6 +395,7 @@ pub static ECDSA_P256_SHA384_ASN1: ECDSAVerificationAlgorithm =
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_asn1,
+    id: ECDSAVerificationAlgorithmID::ECDSA_P256_SHA384_ASN1,
 };
 
 /// *Not recommended*. Verification of ASN.1 DER-encoded ECDSA signatures using
@@ -384,6 +413,7 @@ pub static ECDSA_P384_SHA256_ASN1: ECDSAVerificationAlgorithm =
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_asn1,
+    id: ECDSAVerificationAlgorithmID::ECDSA_P384_SHA256_ASN1,
 };
 
 /// Signing of fixed-length (PKCS#11 style) ECDSA signatures using the
@@ -407,6 +437,7 @@ pub static ECDSA_P384_SHA384_ASN1: ECDSAVerificationAlgorithm =
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_asn1,
+    id: ECDSAVerificationAlgorithmID::ECDSA_P384_SHA384_ASN1,
 };
 
 static EC_PUBLIC_KEY_P256_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {

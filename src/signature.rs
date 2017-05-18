@@ -254,6 +254,7 @@
 //! ```
 
 
+use core;
 use {error, init, private};
 use untrusted;
 
@@ -330,7 +331,7 @@ pub mod primitive {
 }
 
 /// A signature verification algorithm.
-pub trait VerificationAlgorithm: Sync + private::Private {
+pub trait VerificationAlgorithm: core::fmt::Debug + Sync + private::Private {
     /// Verify the signature `signature` of message `msg` with the public key
     /// `public_key`.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,

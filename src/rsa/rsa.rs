@@ -60,6 +60,19 @@ const PRIVATE_KEY_PUBLIC_MODULUS_MAX_LIMBS: usize =
 pub struct RSAParameters {
     padding_alg: &'static padding::RSAVerification,
     min_bits: bits::BitLength,
+    id: RSAParametersID,
+}
+
+#[allow(non_camel_case_types)]
+enum RSAParametersID {
+    RSA_PKCS1_2048_8192_SHA1,
+    RSA_PKCS1_2048_8192_SHA256,
+    RSA_PKCS1_2048_8192_SHA384,
+    RSA_PKCS1_2048_8192_SHA512,
+    RSA_PKCS1_3072_8192_SHA384,
+    RSA_PSS_2048_8192_SHA256,
+    RSA_PSS_2048_8192_SHA384,
+    RSA_PSS_2048_8192_SHA512,
 }
 
 fn parse_public_key(input: untrusted::Input)

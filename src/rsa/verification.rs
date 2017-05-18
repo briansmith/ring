@@ -14,6 +14,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
+use core;
 use {bits, digest, error, private, signature};
 use super::{bigint, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, RSAParameters,
             parse_public_key};
@@ -31,6 +32,23 @@ impl signature::VerificationAlgorithm for RSAParameters {
 
 impl private::Private for RSAParameters {}
 
+impl core::fmt::Debug for RSAParameters {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+        use super::RSAParametersID::*;
+        // XXX: This doesn't include the padding algorithm nor the size range.
+        write!(f, "ring::signature::{}", match self.id {
+            RSA_PKCS1_2048_8192_SHA1 => "RSA_PKCS1_2048_8192_SHA1",
+            RSA_PKCS1_2048_8192_SHA256 => "RSA_PKCS1_2048_8192_SHA256",
+            RSA_PKCS1_2048_8192_SHA384 => "RSA_PKCS1_2048_8192_SHA384",
+            RSA_PKCS1_2048_8192_SHA512 => "RSA_PKCS1_2048_8192_SHA512",
+            RSA_PKCS1_3072_8192_SHA384 => "RSA_PKCS1_3072_8192_SHA384",
+            RSA_PSS_2048_8192_SHA256 => "RSA_PSS_2048_8192_SHA256",
+            RSA_PSS_2048_8192_SHA384 => "RSA_PSS_2048_8192_SHA384",
+            RSA_PSS_2048_8192_SHA512 => "RSA_PSS_2048_8192_SHA512",
+        })
+    }
+}
+
 macro_rules! rsa_params {
     ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $PADDING_ALGORITHM:expr,
       $doc_str:expr ) => {
@@ -41,6 +59,7 @@ macro_rules! rsa_params {
             RSAParameters {
                 padding_alg: $PADDING_ALGORITHM,
                 min_bits: bits::BitLength($min_bits),
+                id: super::RSAParametersID::$VERIFY_ALGORITHM,
             };
     }
 }
