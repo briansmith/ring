@@ -637,9 +637,13 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
   return;
 
 err:
+  BORINGSSL_FIPS_abort();
+}
+
+void BORINGSSL_FIPS_abort(void) {
   for (;;) {
-    exit(1);
     abort();
+    exit(1);
   }
 }
 #endif  /* BORINGSSL_FIPS */

@@ -631,6 +631,12 @@ static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
   return memset(dst, c, n);
 }
 
+#if defined(BORINGSSL_FIPS)
+/* BORINGSSL_FIPS_abort is called when a FIPS power-on or continuous test
+ * fails. It prevents any further cryptographic operations by the current
+ * process. */
+void BORINGSSL_FIPS_abort(void) __attribute__((noreturn));
+#endif
 
 #if defined(__cplusplus)
 }  /* extern C */
