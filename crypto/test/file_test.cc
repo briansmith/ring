@@ -81,13 +81,13 @@ static std::pair<std::string, std::string> ParseKeyValue(const char *str, const 
 
 FileTest::ReadResult FileTest::ReadNext() {
   // If the previous test had unused attributes or instructions, it is an error.
-  if (!unused_attributes_.empty() && !ignore_unused_attributes_) {
+  if (!unused_attributes_.empty()) {
     for (const std::string &key : unused_attributes_) {
       PrintLine("Unused attribute: %s", key.c_str());
     }
     return kReadError;
   }
-  if (!unused_instructions_.empty() && !ignore_unused_attributes_) {
+  if (!unused_instructions_.empty()) {
     for (const std::string &key : unused_instructions_) {
       PrintLine("Unused instruction: %s", key.c_str());
     }
@@ -370,10 +370,6 @@ bool FileTest::IsAtNewInstructionBlock() const {
 void FileTest::InjectInstruction(const std::string &key,
                                  const std::string &value) {
   instructions_[key] = value;
-}
-
-void FileTest::SetIgnoreUnusedAttributes(bool ignore) {
-  ignore_unused_attributes_ = ignore;
 }
 
 int FileTestMainSilent(FileTestFunc run_test, void *arg, const char *path) {

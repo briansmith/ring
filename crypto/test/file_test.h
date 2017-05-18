@@ -162,8 +162,6 @@ class FileTest {
   // instructions.
   void InjectInstruction(const std::string &key, const std::string &value);
 
-  void SetIgnoreUnusedAttributes(bool ignore);
-
  private:
   void ClearTest();
   void ClearInstructions();
@@ -194,8 +192,6 @@ class FileTest {
   std::string current_test_;
 
   bool is_at_new_instruction_block_ = false;
-
-  bool ignore_unused_attributes_ = false;
 
   FileTest(const FileTest &) = delete;
   FileTest &operator=(const FileTest &) = delete;
