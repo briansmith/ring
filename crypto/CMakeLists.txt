@@ -249,6 +249,7 @@ add_executable(
   curve25519/spake25519_test.cc
   curve25519/x25519_test.cc
   dh/dh_test.cc
+  digest_extra/digest_test.cc
   dsa/dsa_test.cc
   err/err_test.cc
   evp/evp_extra_test.cc

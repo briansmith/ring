@@ -18,6 +18,8 @@
 
 #include <memory>
 
+#include <gtest/gtest.h>
+
 #include <openssl/asn1.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
@@ -139,7 +141,7 @@ static const TestVector kTestVectors[] = {
       "900150983cd24fb0d6963f7d28e17f72a9993e364706816aba3e25717850c26c9cd0d89d" },
 };
 
-static bool CompareDigest(const TestVector *test,
+static void CompareDigest(const TestVector *test,
                           const uint8_t *digest,
                           size_t digest_len) {
   static const char kHexTable[] = "0123456789abcdef";
@@ -151,125 +153,65 @@ static bool CompareDigest(const TestVector *test,
   }
   digest_hex[2*digest_len] = '\0';
 
-  if (strcmp(digest_hex, test->expected_hex) != 0) {
-    fprintf(stderr, "%s(\"%s\" * %d) = %s; want %s\n",
-            test->md.name, test->input, (int)test->repeat,
-            digest_hex, test->expected_hex);
-    return false;
-  }
-
-  return true;
+  EXPECT_STREQ(test->expected_hex, digest_hex);
 }
 
-static int TestDigest(const TestVector *test) {
+static void TestDigest(const TestVector *test) {
   bssl::ScopedEVP_MD_CTX ctx;
 
   // Test the input provided.
-  if (!EVP_DigestInit_ex(ctx.get(), test->md.func(), NULL)) {
-    fprintf(stderr, "EVP_DigestInit_ex failed\n");
-    return false;
-  }
+  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), NULL));
   for (size_t i = 0; i < test->repeat; i++) {
-    if (!EVP_DigestUpdate(ctx.get(), test->input, strlen(test->input))) {
-      fprintf(stderr, "EVP_DigestUpdate failed\n");
-      return false;
-    }
+    ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), test->input, strlen(test->input)));
   }
   std::unique_ptr<uint8_t[]> digest(new uint8_t[EVP_MD_size(test->md.func())]);
   unsigned digest_len;
-  if (!EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len)) {
-    fprintf(stderr, "EVP_DigestFinal_ex failed\n");
-    return false;
-  }
-  if (!CompareDigest(test, digest.get(), digest_len)) {
-    return false;
-  }
+  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len));
+  CompareDigest(test, digest.get(), digest_len);
 
   // Test the input one character at a time.
-  if (!EVP_DigestInit_ex(ctx.get(), test->md.func(), NULL)) {
-    fprintf(stderr, "EVP_DigestInit_ex failed\n");
-    return false;
-  }
-  if (!EVP_DigestUpdate(ctx.get(), NULL, 0)) {
-    fprintf(stderr, "EVP_DigestUpdate failed\n");
-    return false;
-  }
+  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), NULL));
+  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), NULL, 0));
   for (size_t i = 0; i < test->repeat; i++) {
     for (const char *p = test->input; *p; p++) {
-      if (!EVP_DigestUpdate(ctx.get(), p, 1)) {
-        fprintf(stderr, "EVP_DigestUpdate failed\n");
-        return false;
-      }
+      ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), p, 1));
     }
   }
-  if (!EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len)) {
-    fprintf(stderr, "EVP_DigestFinal_ex failed\n");
-    return false;
-  }
-  if (digest_len != EVP_MD_size(test->md.func())) {
-    fprintf(stderr, "EVP_MD_size output incorrect\n");
-    return false;
-  }
-  if (!CompareDigest(test, digest.get(), digest_len)) {
-    return false;
-  }
+  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len));
+  EXPECT_EQ(EVP_MD_size(test->md.func()), digest_len);
+  CompareDigest(test, digest.get(), digest_len);
 
   // Test the one-shot function.
   if (test->md.one_shot_func && test->repeat == 1) {
     uint8_t *out = test->md.one_shot_func((const uint8_t *)test->input,
                                           strlen(test->input), digest.get());
-    if (out != digest.get()) {
-      fprintf(stderr, "one_shot_func gave incorrect return\n");
-      return false;
-    }
-    if (!CompareDigest(test, digest.get(), EVP_MD_size(test->md.func()))) {
-      return false;
-    }
+    // One-shot functions return their supplied buffers.
+    EXPECT_EQ(digest.get(), out);
+    CompareDigest(test, digest.get(), EVP_MD_size(test->md.func()));
   }
-
-  return true;
 }
 
-static int TestGetters() {
-  if (EVP_get_digestbyname("RSA-SHA512") != EVP_sha512() ||
-      EVP_get_digestbyname("sha512WithRSAEncryption") != EVP_sha512() ||
-      EVP_get_digestbyname("nonsense") != NULL ||
-      EVP_get_digestbyname("SHA512") != EVP_sha512() ||
-      EVP_get_digestbyname("sha512") != EVP_sha512()) {
-    return false;
+TEST(DigestTest, TestVectors) {
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kTestVectors); i++) {
+    SCOPED_TRACE(i);
+    TestDigest(&kTestVectors[i]);
   }
+}
 
-  if (EVP_get_digestbynid(NID_sha512) != EVP_sha512() ||
-      EVP_get_digestbynid(NID_sha512WithRSAEncryption) != NULL ||
-      EVP_get_digestbynid(NID_undef) != NULL) {
-    return false;
-  }
+TEST(DigestTest, Getters) {
+  EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("RSA-SHA512"));
+  EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("sha512WithRSAEncryption"));
+  EXPECT_EQ(nullptr, EVP_get_digestbyname("nonsense"));
+  EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("SHA512"));
+  EXPECT_EQ(EVP_sha512(), EVP_get_digestbyname("sha512"));
+
+  EXPECT_EQ(EVP_sha512(), EVP_get_digestbynid(NID_sha512));
+  EXPECT_EQ(nullptr, EVP_get_digestbynid(NID_sha512WithRSAEncryption));
+  EXPECT_EQ(nullptr, EVP_get_digestbynid(NID_undef));
 
   bssl::UniquePtr<ASN1_OBJECT> obj(OBJ_txt2obj("1.3.14.3.2.26", 0));
-  if (!obj ||
-      EVP_get_digestbyobj(obj.get()) != EVP_sha1() ||
-      EVP_get_digestbyobj(OBJ_nid2obj(NID_md5_sha1)) != EVP_md5_sha1() ||
-      EVP_get_digestbyobj(OBJ_nid2obj(NID_sha1)) != EVP_sha1()) {
-    return false;
-  }
-
-  return true;
-}
-
-int main() {
-  CRYPTO_library_init();
-
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kTestVectors); i++) {
-    if (!TestDigest(&kTestVectors[i])) {
-      fprintf(stderr, "Test %d failed\n", (int)i);
-      return 1;
-    }
-  }
-
-  if (!TestGetters()) {
-    return 1;
-  }
-
-  printf("PASS\n");
-  return 0;
+  ASSERT_TRUE(obj);
+  EXPECT_EQ(EVP_sha1(), EVP_get_digestbyobj(obj.get()));
+  EXPECT_EQ(EVP_md5_sha1(), EVP_get_digestbyobj(OBJ_nid2obj(NID_md5_sha1)));
+  EXPECT_EQ(EVP_sha1(), EVP_get_digestbyobj(OBJ_nid2obj(NID_sha1)));
 }
