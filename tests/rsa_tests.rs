@@ -93,7 +93,7 @@ fn test_signature_rsa_pss_sign() {
         fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             let dest_len = dest.len();
             if dest_len != self.salt.len() {
-                try!(self.rng.fill(dest));
+                self.rng.fill(dest)?;
             } else {
                 dest.copy_from_slice(&self.salt);
             }
@@ -132,7 +132,7 @@ fn test_signature_rsa_pss_sign() {
             signature::RSASigningState::new(key_pair).unwrap();
         let mut actual: std::vec::Vec<u8> =
             vec![0; signing_state.key_pair().public_modulus_len()];
-        try!(signing_state.sign(alg, &new_rng, &msg, actual.as_mut_slice()));
+        signing_state.sign(alg, &new_rng, &msg, actual.as_mut_slice())?;
         assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
         Ok(())
     });
@@ -179,8 +179,8 @@ fn test_signature_rsa_pkcs1_verify() {
         // for improperly-encoded signatures, we'll have to revisit this.
         assert!(public_key.read_all(error::Unspecified, |input| {
             der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-                let _ = try!(der::positive_integer(input));
-                let _ = try!(der::positive_integer(input));
+                let _ = der::positive_integer(input)?;
+                let _ = der::positive_integer(input)?;
                 Ok(())
             })
         }).is_ok());
@@ -221,8 +221,8 @@ fn test_signature_rsa_pss_verify() {
         // for improperly-encoded signatures, we'll have to revisit this.
         assert!(public_key.read_all(error::Unspecified, |input| {
             der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-                let _ = try!(der::positive_integer(input));
-                let _ = try!(der::positive_integer(input));
+                let _ = der::positive_integer(input)?;
+                let _ = der::positive_integer(input)?;
                 Ok(())
             })
         }).is_ok());

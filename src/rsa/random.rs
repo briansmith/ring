@@ -44,7 +44,7 @@ pub fn set_to_rand_mod(out: &mut [Limb], max_exclusive: &[Limb],
         max_exclusive: &tmp_max[..(max_exclusive.len() + extra_limb)],
         sampling_params: &sampling_params,
     };
-    try!(range.sample_into_limbs(&mut tmp_out[..out.len() + extra_limb], rng));
+    range.sample_into_limbs(&mut tmp_out[..out.len() + extra_limb], rng)?;
 
     let dest_len = out.len();
     out.copy_from_slice(&tmp_out[..dest_len]);
@@ -100,7 +100,7 @@ impl <'a> Range<'a> {
         for _ in 0..100 {
             {
                 let mut dest_as_bytes = limbs_as_bytes_mut(out);
-                try!(rng.fill(&mut dest_as_bytes));
+                rng.fill(&mut dest_as_bytes)?;
             }
 
             // Mask off unwanted bits.

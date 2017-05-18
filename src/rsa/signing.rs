@@ -142,8 +142,8 @@ impl RSAKeyPair {
                       -> Result<RSAKeyPair, error::Unspecified> {
         const RSA_ENCRYPTION: &'static [u8] =
             include_bytes!("../data/alg-rsa-encryption.der");
-        let (der, _) = try!(pkcs8::unwrap_key_(&RSA_ENCRYPTION,
-                                               pkcs8::Version::V1Only, input));
+        let (der, _) = pkcs8::unwrap_key_(&RSA_ENCRYPTION,
+                                          pkcs8::Version::V1Only, input)?;
         Self::from_der(der)
     }
 
@@ -166,18 +166,18 @@ impl RSAKeyPair {
                     -> Result<RSAKeyPair, error::Unspecified> {
         input.read_all(error::Unspecified, |input| {
             der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-                let version = try!(der::small_nonnegative_integer(input));
+                let version = der::small_nonnegative_integer(input)?;
                 if version != 0 {
                     return Err(error::Unspecified);
                 }
-                let n = try!(bigint::Positive::from_der(input));
-                let e = try!(bigint::Positive::from_der(input));
-                let d = try!(bigint::Positive::from_der(input));
-                let p = try!(bigint::Positive::from_der(input));
-                let q = try!(bigint::Positive::from_der(input));
-                let dP = try!(bigint::Positive::from_der(input));
-                let dQ = try!(bigint::Positive::from_der(input));
-                let qInv = try!(bigint::Positive::from_der(input));
+                let n = bigint::Positive::from_der(input)?;
+                let e = bigint::Positive::from_der(input)?;
+                let d = bigint::Positive::from_der(input)?;
+                let p = bigint::Positive::from_der(input)?;
+                let q = bigint::Positive::from_der(input)?;
+                let dP = bigint::Positive::from_der(input)?;
+                let dQ = bigint::Positive::from_der(input)?;
+                let qInv = bigint::Positive::from_der(input)?;
 
                 let n_bits = n.bit_length();
 
@@ -202,10 +202,10 @@ impl RSAKeyPair {
 
                 // Step 1.c. We validate e >= 2**16 = 65536, which, since e is odd,
                 // implies e >= 65537.
-                let (n, e) = try!(super::check_public_modulus_and_exponent(
+                let (n, e) = super::check_public_modulus_and_exponent(
                     n, e, bits::BitLength::from_usize_bits(2048),
                     super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
-                    bits::BitLength::from_usize_bits(17)));
+                    bits::BitLength::from_usize_bits(17))?;
 
                 // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
 
@@ -230,7 +230,7 @@ impl RSAKeyPair {
                 if p.bit_length() != half_n_bits {
                     return Err(error::Unspecified);
                 }
-                let p = try!(p.into_odd_positive());
+                let p = p.into_odd_positive()?;
 
                 // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
 
@@ -244,17 +244,14 @@ impl RSAKeyPair {
                 if p.bit_length() != q.bit_length() {
                     return Err(error::Unspecified);
                 }
-                let q = try!(q.into_odd_positive());
+                let q = q.into_odd_positive()?;
 
                 // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
 
-                let n = try!(n.into_modulus::<N>());
-                let oneRR_mod_n = try!(bigint::One::newRR(&n));
+                let n = n.into_modulus::<N>()?;
+                let oneRR_mod_n = bigint::One::newRR(&n)?;
 
-                let q_mod_n_decoded = {
-                    let q = try!(q.try_clone());
-                    try!(q.into_elem(&n))
-                };
+                let q_mod_n_decoded = q.try_clone()?.into_elem(&n)?;
 
                 // Step 5.i
                 //
@@ -269,11 +266,11 @@ impl RSAKeyPair {
                 // this simplification.
                 //
                 // 3.b is unneeded since `n_bits` is derived here from `n`.
-                try!(q.verify_less_than(&p));
+                q.verify_less_than(&p)?;
                 {
                     let p_mod_n = {
-                        let p = try!(p.try_clone());
-                        try!(p.into_elem(&n))
+                        let p = p.try_clone()?;
+                        p.into_elem(&n)?
                     };
                     let p_minus_q_bits = {
                         // Modular subtraction isn't necessary since we already
@@ -282,12 +279,11 @@ impl RSAKeyPair {
                         // Modular subtraction without having already verified
                         // q < p would be wrong.
                         let p_minus_q =
-                            try!(bigint::elem_sub(p_mod_n, &q_mod_n_decoded,
-                                                  &n));
+                            bigint::elem_sub(p_mod_n, &q_mod_n_decoded, &n)?;
                         p_minus_q.bit_length()
                     };
-                    let min_pq_bitlen_diff = try!(half_n_bits.try_sub(
-                            bits::BitLength::from_usize_bits(100)));
+                    let min_pq_bitlen_diff = half_n_bits.try_sub(
+                            bits::BitLength::from_usize_bits(100))?;
                     if p_minus_q_bits <= min_pq_bitlen_diff {
                         return Err(error::Unspecified);
                     }
@@ -302,15 +298,11 @@ impl RSAKeyPair {
                 // let us assume that checking p * q == 0 (mod n) is equivalent
                 // to checking p * q == n.
                 let q_mod_n = {
-                    let clone = try!(q_mod_n_decoded.try_clone());
-                    try!(bigint::elem_mul(oneRR_mod_n.as_ref(), clone, &n))
+                    let clone = q_mod_n_decoded.try_clone()?;
+                    bigint::elem_mul(oneRR_mod_n.as_ref(), clone, &n)?
                 };
-                let p_mod_n = {
-                    let p = try!(p.try_clone());
-                    try!(p.into_elem(&n))
-                };
-                let pq_mod_n =
-                    try!(bigint::elem_mul(&q_mod_n, p_mod_n, &n));
+                let p_mod_n = p.try_clone()?.into_elem(&n)?;
+                let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, &n)?;
                 if !pq_mod_n.is_zero() {
                     return Err(error::Unspecified);
                 }
@@ -329,8 +321,8 @@ impl RSAKeyPair {
                 // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we
                 // don't have a good way of calculating LCM, so it is omitted,
                 // as explained above.
-                let d = try!(d.into_odd_positive());
-                try!(d.verify_less_than(&n.value()));
+                let d = d.into_odd_positive()?;
+                d.verify_less_than(&n.value())?;
 
                 // Step 6.b is omitted as explained above.
 
@@ -344,12 +336,12 @@ impl RSAKeyPair {
                 // and an odd number modulo an even number is odd.
                 // Therefore `dP` must be odd. But then it cannot be `p - 1`
                 // and so we know `dP < p - 1`.
-                let p = try!(PrivatePrime::new(p, dP));
+                let p = PrivatePrime::new(p, dP)?;
 
                 // Step 7.b is done out-of-order below.
 
                 // Step 7.c.
-                let qInv = try!(qInv.into_elem(&p.modulus));
+                let qInv = qInv.into_elem(&p.modulus)?;
 
                 // Steps 7.d and 7.e are omitted per the documentation above,
                 // and because we don't (in the long term) have a good way to
@@ -357,23 +349,19 @@ impl RSAKeyPair {
 
                 // Step 7.f.
                 let qInv =
-                    try!(bigint::elem_mul(p.oneRR.as_ref(), qInv, &p.modulus));
-                let q_mod_p = {
-                    let q = try!(q.try_clone());
-                    try!(q.into_elem(&p.modulus))
-                };
+                    bigint::elem_mul(p.oneRR.as_ref(), qInv, &p.modulus)?;
+                let q_mod_p = q.try_clone()?.into_elem(&p.modulus)?;
                 let qInv_times_q_mod_p =
-                    try!(bigint::elem_mul(&qInv, q_mod_p, &p.modulus));
+                    bigint::elem_mul(&qInv, q_mod_p, &p.modulus)?;
                 if !qInv_times_q_mod_p.is_one() {
                     return Err(error::Unspecified);
                 }
 
                 // Step 7.b (out of order). Same proof as for `dP < p - 1`.
-                let q = try!(PrivatePrime::new(q, dQ));
+                let q = PrivatePrime::new(q, dQ)?;
 
-                let qq =
-                    try!(bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &n));
-                let qq = try!(qq.into_modulus::<QQ>());
+                let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &n)?
+                    .into_modulus::<QQ>()?;
 
                 Ok(RSAKeyPair {
                     n,
@@ -421,8 +409,8 @@ impl<M: Prime> PrivatePrime<M> {
         // `p - 1` and so we know `dP < p - 1`.
         //
         // The proof that `dQ < q - 1` is the same.
-        let dP = try!(dP.into_odd_positive());
-        try!(dP.verify_less_than(&p));
+        let dP = dP.into_odd_positive()?;
+        dP.verify_less_than(&p)?;
 
         // XXX: Steps 7.d and 7.e are omitted. We don't check that
         // `dP == d % (p - 1)` because we don't (in the long term) have a good
@@ -433,11 +421,11 @@ impl<M: Prime> PrivatePrime<M> {
         // and `e`. TODO: Either prove that what we do is sufficient, or make
         // it so.
 
-        let p = try!(p.into_modulus());
-        let oneRR = try!(bigint::One::newRR(&p));
-        let oneRR_clone = try!(oneRR.try_clone());
-        let oneR = try!(bigint::One::newR(&oneRR, &p));
-        let oneRRR = try!(bigint::One::newRRR(oneRR_clone, &p));
+        let p = p.into_modulus()?;
+        let oneRR = bigint::One::newRR(&p)?;
+        let oneRR_clone = oneRR.try_clone()?;
+        let oneR = bigint::One::newR(&oneRR, &p)?;
+        let oneRRR = bigint::One::newRRR(oneRR_clone, &p)?;
 
         Ok(PrivatePrime {
             modulus: p,
@@ -453,8 +441,8 @@ fn elem_exp_consttime<M, MM>(c: &bigint::Elem<MM>, p: &PrivatePrime<M>)
                              -> Result<bigint::Elem<M>, error::Unspecified>
                              where M: bigint::NotMuchSmallerModulus<MM>,
                                    M: Prime {
-    let c_mod_m = try!(bigint::elem_reduced(c, &p.modulus));
-    let c_mod_m = try!(bigint::elem_mul(p.oneRRR.as_ref(), c_mod_m, &p.modulus));
+    let c_mod_m = bigint::elem_reduced(c, &p.modulus)?;
+    let c_mod_m = bigint::elem_mul(p.oneRRR.as_ref(), c_mod_m, &p.modulus)?;
     bigint::elem_exp_consttime(c_mod_m, &p.exponent, &p.oneR, &p.modulus)
 }
 
@@ -570,7 +558,7 @@ impl RSASigningState {
         } = self;
 
         let m_hash = digest::digest(padding_alg.digest_alg(), msg);
-        try!(padding_alg.encode(&m_hash, signature, mod_bits, rng));
+        padding_alg.encode(&m_hash, signature, mod_bits, rng)?;
 
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.
@@ -579,34 +567,34 @@ impl RSASigningState {
         //
         // TODO: Avoid having `encode()` pad its output, and then remove
         // `Positive::from_be_bytes_padded()`.
-        let base = try!(bigint::Positive::from_be_bytes_padded(
-            untrusted::Input::from(signature)));
-        let base = try!(base.into_elem(&key.n));
+        let base = bigint::Positive::from_be_bytes_padded(
+            untrusted::Input::from(signature))?;
+        let base = base.into_elem(&key.n)?;
 
         // Step 2.
-        let result = try!(blinding.blind(base, key.e, &key.oneRR_mod_n, &key.n,
-                                         rng, |c| {
+        let result = blinding.blind(base, key.e, &key.oneRR_mod_n, &key.n, rng,
+                                    |c| {
             // Step 2.b.i.
-            let m_1 = try!(elem_exp_consttime(&c, &key.p));
-            let c_mod_qq = try!(bigint::elem_reduced_once(&c, &key.qq));
-            let m_2 = try!(elem_exp_consttime(&c_mod_qq, &key.q));
+            let m_1 = elem_exp_consttime(&c, &key.p)?;
+            let c_mod_qq = bigint::elem_reduced_once(&c, &key.qq)?;
+            let m_2 = elem_exp_consttime(&c_mod_qq, &key.q)?;
 
             // Step 2.b.ii isn't needed since there are only two primes.
 
             // Step 2.b.iii.
             let p = &key.p.modulus;
             let m_2 = bigint::elem_widen(m_2);
-            let m_1_minus_m_2 = try!(bigint::elem_sub(m_1, &m_2, p));
-            let h = try!(bigint::elem_mul(&key.qInv, m_1_minus_m_2, p));
+            let m_1_minus_m_2 = bigint::elem_sub(m_1, &m_2, p)?;
+            let h = bigint::elem_mul(&key.qInv, m_1_minus_m_2, p)?;
 
             // Step 2.b.iv. The reduction in the modular multiplication isn't
             // necessary because `h < p` and `p * q == n` implies `h * q < n`.
             // Modular arithmetic is used simply to avoid implementing
             // non-modular arithmetic.
             let h = bigint::elem_widen(h);
-            let q_times_h = try!(bigint::elem_mul(&key.q_mod_n, h, &key.n));
+            let q_times_h = bigint::elem_mul(&key.q_mod_n, h, &key.n)?;
             let m_2 = bigint::elem_widen(m_2);
-            let m = try!(bigint::elem_add(m_2, q_times_h, &key.n));
+            let m = bigint::elem_add(m_2, q_times_h, &key.n)?;
 
             // Step 2.b.v isn't needed since there are only two primes.
 
@@ -619,18 +607,16 @@ impl RSASigningState {
             // size, oddness, and minimum value, since the relationship of `e`
             // to `d`, `p`, and `q` is not verified during `RSAKeyPair`
             // construction.
-            let computed = try!(m.try_clone());
+            let computed = m.try_clone()?;
             let computed =
-                try!(bigint::elem_mul(&key.oneRR_mod_n.as_ref(), computed,
-                                       &key.n));
-            let verify =
-                try!(bigint::elem_exp_vartime(computed, key.e, &key.n));
-            let verify = try!(verify.into_unencoded(&key.n));
-            try!(bigint::elem_verify_equal_consttime(&verify, &c));
+                bigint::elem_mul(&key.oneRR_mod_n.as_ref(), computed, &key.n)?;
+            let verify = bigint::elem_exp_vartime(computed, key.e, &key.n)?;
+            let verify = verify.into_unencoded(&key.n)?;
+            bigint::elem_verify_equal_consttime(&verify, &c)?;
 
             // Step 3.
             Ok(m)
-        }));
+        })?;
 
         result.fill_be_bytes(signature);
 

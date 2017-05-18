@@ -80,8 +80,8 @@ fn parse_public_key(input: untrusted::Input)
                               error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-            let n = try!(der::positive_integer(input));
-            let e = try!(der::positive_integer(input));
+            let n = der::positive_integer(input)?;
+            let e = der::positive_integer(input)?;
             Ok((n, e))
         })
     })
@@ -102,8 +102,8 @@ fn check_public_modulus_and_exponent(
     // keys.
 
     // Step 3 / Step c (out of order).
-    let n = try!(n.into_odd_positive());
-    let e = try!(e.into_odd_positive());
+    let n = n.into_odd_positive()?;
+    let e = e.into_odd_positive()?;
 
     // `pkcs1_encode` depends on this not being small. Otherwise,
     // `pkcs1_encode` would generate padding that is invalid (too few 0xFF
@@ -116,8 +116,7 @@ fn check_public_modulus_and_exponent(
     assert!(n_min_bits >= N_MIN_BITS);
     let n_bits = n.bit_length();
     let n_bits_rounded_up =
-        try!(bits::BitLength::from_usize_bytes(
-            n_bits.as_usize_bytes_rounded_up()));
+        bits::BitLength::from_usize_bytes(n_bits.as_usize_bytes_rounded_up())?;
     if n_bits_rounded_up < n_min_bits {
         return Err(error::Unspecified);
     }
@@ -136,7 +135,7 @@ fn check_public_modulus_and_exponent(
     }
 
     // Only small public exponents are supported.
-    let e = try!(e.into_public_exponent());
+    let e = e.into_public_exponent()?;
 
     // If `n` is less than `e` then somebody has probably accidentally swapped
     // them. The largest acceptable `e` is smaller than the smallest acceptable

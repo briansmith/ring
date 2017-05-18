@@ -71,7 +71,7 @@ impl Positive {
     #[cfg(feature = "rsa_signing")]
     pub fn from_der(input: &mut untrusted::Reader)
                     -> Result<Positive, error::Unspecified> {
-        Self::from_be_bytes(try!(der::positive_integer(input)))
+        Self::from_be_bytes(der::positive_integer(input)?)
     }
 
     // Turns a sequence of big-endian bytes into a Positive Integer.
@@ -87,7 +87,7 @@ impl Positive {
 
     pub fn from_be_bytes_padded(input: untrusted::Input)
                                 -> Result<Self, error::Unspecified> {
-        let r = try!(Nonnegative::from_be_bytes_padded(input));
+        let r = Nonnegative::from_be_bytes_padded(input)?;
         if r.is_zero() {
             return Err(error::Unspecified);
         }
@@ -120,7 +120,7 @@ impl OddPositive {
 
     #[cfg(feature = "rsa_signing")]
     pub fn try_clone(&self) -> Result<OddPositive, error::Unspecified> {
-        let value = try!((self.0).0.try_clone());
+        let value = (self.0).0.try_clone()?;
         Ok(OddPositive(Positive(value)))
     }
 
@@ -297,7 +297,7 @@ impl<M, E> Elem<M, E> {
     // 0 * R**2 (mod m) == 0, so the modulus isn't even needed to construct a
     // zero-valued element.
     pub fn zero() -> Result<Self, error::Unspecified> {
-        let value = try!(Nonnegative::zero());
+        let value = Nonnegative::zero()?;
         Ok(Elem {
             value: value,
             m: PhantomData,
@@ -318,7 +318,7 @@ impl<M, E> Elem<M, E> {
     }
 
     pub fn try_clone(&self) -> Result<Self, error::Unspecified> {
-        let value = try!(self.value.try_clone());
+        let value = self.value.try_clone()?;
         Ok(Elem {
             value: value,
             m: PhantomData,
@@ -338,7 +338,7 @@ impl<M> Elem<M, R> {
 impl<M> Elem<M, Unencoded> {
     #[cfg(feature = "rsa_signing")]
     pub fn one() -> Result<Self, error::Unspecified> {
-        let value = try!(Nonnegative::one());
+        let value = Nonnegative::one()?;
         Ok(Elem {
             value: value,
             m: PhantomData,
@@ -361,7 +361,7 @@ impl<M> Elem<M, Unencoded> {
 
     #[cfg(feature = "rsa_signing")]
     pub fn into_modulus<MM>(self) -> Result<Modulus<MM>, error::Unspecified> {
-        let value = try!(self.value.into_odd_positive());
+        let value = self.value.into_odd_positive()?;
         value.into_modulus()
     }
 }
@@ -371,10 +371,10 @@ pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, b: Elem<M, BF>, m: &Modulus<M>)
                   error::Unspecified>
         where (AF, BF): ProductEncoding {
     let mut r = b.value;
-    try!(bssl::map_result(unsafe {
+    bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(&mut r.0, a.value.as_ref(), &r.0, &m.value.as_ref(),
                             &m.n0)
-    }));
+    })?;
     Ok(Elem {
         value: r,
         m: PhantomData,
@@ -399,13 +399,13 @@ pub fn elem_set_to_product<M, AF, BF>(
 pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
         a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
         -> Result<Elem<Smaller, Unencoded>, error::Unspecified> {
-    let mut r = try!(a.value.try_clone());
+    let mut r = a.value.try_clone()?;
     let m_limbs = (m.value.0).0.limbs();
     assert!(r.limbs().len() <= m_limbs.len());
-    try!(r.0.make_limbs(m_limbs.len(), |r_limbs| {
+    r.0.make_limbs(m_limbs.len(), |r_limbs| {
         limb::limbs_reduce_once_constant_time(r_limbs, m_limbs);
         Ok(())
-    }));
+    })?;
     debug_assert!(greater_than(&(m.value.0).0, &r));
     Ok(Elem {
         value: r,
@@ -419,7 +419,7 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
 pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
         a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
         -> Result<Elem<Smaller, RInverse>, error::Unspecified> {
-    let tmp = try!(a.try_clone());
+    let tmp = a.try_clone()?;
     elem_reduced_(tmp, m)
 }
 
@@ -427,11 +427,11 @@ fn elem_reduced_<LargerM, E: ReductionEncoding, SmallerM>(
         mut a: Elem<LargerM, E>, m: &Modulus<SmallerM>)
         -> Result<Elem<SmallerM, <E as ReductionEncoding>::Output>,
                   error::Unspecified> {
-    let mut r = try!(Elem::zero());
-    try!(bssl::map_result(unsafe {
+    let mut r = Elem::zero()?;
+    bssl::map_result(unsafe {
         GFp_BN_from_montgomery_word(r.value.as_mut_ref(), a.value.as_mut_ref(),
                                     &m.value.as_ref(), &m.n0)
-    }));
+    })?;
     Ok(r)
 }
 
@@ -440,10 +440,10 @@ pub fn elem_squared<M, E>(a: Elem<M, E>, m: &Modulus<M>)
                   error::Unspecified>
         where (E, E): ProductEncoding {
     let mut value = a.value;
-    try!(bssl::map_result(unsafe {
+    bssl::map_result(unsafe {
         GFp_BN_mod_mul_mont(value.as_mut_ref(), value.as_ref(), value.as_ref(),
                             &m.value.as_ref(), &m.n0)
-    }));
+    })?;
     Ok(Elem {
         value: value,
         m: PhantomData,
@@ -467,7 +467,7 @@ pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
 pub fn elem_add<M, E>(mut a: Elem<M, E>, mut b: Elem<M, E>, m: &Modulus<M>)
                       -> Result<Elem<M, E>, error::Unspecified> {
     let m = (m.value.0).0.limbs();
-    try!(a.value.0.make_limbs(m.len(), |a_limbs| {
+    a.value.0.make_limbs(m.len(), |a_limbs| {
         b.value.0.make_limbs(m.len(), |b_limbs| {
             unsafe {
                 LIMBS_add_mod(a_limbs.as_mut_ptr(), a_limbs.as_ptr(),
@@ -475,7 +475,7 @@ pub fn elem_add<M, E>(mut a: Elem<M, E>, mut b: Elem<M, E>, m: &Modulus<M>)
             }
             Ok(())
         })
-    }));
+    })?;
     Ok(a)
 }
 
@@ -484,7 +484,7 @@ pub fn elem_add<M, E>(mut a: Elem<M, E>, mut b: Elem<M, E>, m: &Modulus<M>)
 pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>)
                    -> Result<Elem<M, E>, error::Unspecified> {
     let m_limbs = (m.value.0).0.limbs();
-    try!(a.value.0.make_limbs(m_limbs.len(), |a_limbs| {
+    a.value.0.make_limbs(m_limbs.len(), |a_limbs| {
         let b_limbs = b.value.limbs();
         unsafe {
             // XXX Not constant-time, even though it looks like it might be.
@@ -492,7 +492,7 @@ pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>)
                              m_limbs.as_ptr(), m_limbs.len(), b_limbs.len())
         }
         Ok(())
-    }));
+    })?;
     Ok(a)
 }
 
@@ -504,15 +504,15 @@ pub struct One<M, E>(Elem<M, E>);
 impl<M> One<M, R> {
     pub fn newR(oneRR: &One<M, RR>, m: &Modulus<M>)
                 -> Result<One<M, R>, error::Unspecified> {
-        let value: Elem<M> = try!(Elem::one());
-        let value: Elem<M, R> = try!(elem_mul(oneRR.as_ref(), value, &m));
+        let value: Elem<M> = Elem::one()?;
+        let value: Elem<M, R> = elem_mul(oneRR.as_ref(), value, &m)?;
         Ok(One(value))
     }
 }
 
 impl<M> One<M, RR> {
     pub fn newRR(m: &Modulus<M>) -> Result<One<M, RR>, error::Unspecified> {
-        let RR = try!(calculate_RR(&(m.value.0).0));
+        let RR = calculate_RR(&(m.value.0).0)?;
         Ok(One(Elem {
             value: RR,
             m: PhantomData,
@@ -535,11 +535,11 @@ fn calculate_RR(m: &Nonnegative) -> Result<Nonnegative, error::Unspecified> {
 
     let lg_RR = ((m_bits + (LIMB_BITS - 1)) / LIMB_BITS * LIMB_BITS) * 2;
 
-    let mut r = try!(Nonnegative::zero());
+    let mut r = Nonnegative::zero()?;
 
     let num_limbs = m.limbs().len();
 
-    try!(r.as_mut_ref().make_limbs(num_limbs, |limbs| {
+    r.as_mut_ref().make_limbs(num_limbs, |limbs| {
         // Zero all the limbs.
         for limb in limbs.iter_mut() {
             *limb = 0;
@@ -559,7 +559,7 @@ fn calculate_RR(m: &Nonnegative) -> Result<Nonnegative, error::Unspecified> {
         }
 
         Ok(())
-    }));
+    })?;
 
     Ok(r)
 }
@@ -568,7 +568,7 @@ fn calculate_RR(m: &Nonnegative) -> Result<Nonnegative, error::Unspecified> {
 impl<M> One<M, RRR> {
     pub fn newRRR(oneRR: One<M, RR>, m: &Modulus<M>)
                   -> Result<One<M, RRR>, error::Unspecified> {
-        let oneRRR = try!(elem_squared(oneRR.0, &m));
+        let oneRRR = elem_squared(oneRR.0, &m)?;
         Ok(One(oneRRR))
     }
 }
@@ -580,7 +580,7 @@ impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
 #[cfg(feature = "rsa_signing")]
 impl<M, E> One<M, E> {
     pub fn try_clone(&self) -> Result<Self, error::Unspecified> {
-        let value = try!(self.0.try_clone());
+        let value = self.0.try_clone()?;
         Ok(One(value))
     }
 }
@@ -631,14 +631,14 @@ pub fn elem_exp_vartime<M>(
     //          Algorithms (3rd Edition), Section 4.6.3.
     debug_assert_eq!(exponent & 1, 1);
     assert!(exponent < (1 << PUBLIC_EXPONENT_MAX_BITS.as_usize_bits()));
-    let mut acc = try!(base.try_clone());
+    let mut acc = base.try_clone()?;
     let mut bit = 1 << (64 - 1 - exponent.leading_zeros());
     debug_assert!((exponent & bit) != 0);
     while bit > 1 {
         bit >>= 1;
-        acc = try!(elem_squared(acc, m));
+        acc = elem_squared(acc, m)?;
         if (exponent & bit) != 0 {
-            acc = try!(elem_mul(&base, acc, m));
+            acc = elem_mul(&base, acc, m)?;
         }
     }
     Ok(acc)
@@ -649,12 +649,12 @@ pub fn elem_exp_consttime<M>(
         base: Elem<M, R>, exponent: &OddPositive, oneR: &One<M, R>,
         m: &Modulus<M>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
     let mut r = base.value;
-    try!(bssl::map_result(unsafe {
+    bssl::map_result(unsafe {
         GFp_BN_mod_exp_mont_consttime(&mut r.0, &r.0, exponent.as_ref(),
                                       exponent.0.bit_length().as_usize_bits(),
                                       oneR.0.value.as_ref(), &m.value.as_ref(),
                                       &m.n0)
-    }));
+    })?;
     let r = Elem {
         value: r,
         m: PhantomData,
@@ -671,7 +671,7 @@ pub fn elem_exp_consttime<M>(
     // practical.
 
     #[cfg(not(target_arch = "x86_64"))]
-    let r = try!(r.into_unencoded(m));
+    let r = r.into_unencoded(m)?;
 
     Ok(r)
 }
@@ -692,12 +692,12 @@ pub fn elem_set_to_inverse_blinded(
             r: &mut Elem<super::N, R>, a: &Elem<super::N, Unencoded>,
             n: &Modulus<super::N>, rng: &rand::SecureRandom)
             -> Result<(), InversionError> {
-    let mut blinding_factor = try!(Elem::<super::N, R>::zero());
-    try!(elem_randomize(&mut blinding_factor, n, rng));
-    let to_blind = try!(a.try_clone());
-    let blinded = try!(elem_mul(&blinding_factor, to_blind, n));
-    let blinded_inverse = try!(elem_inverse(blinded, n));
-    try!(elem_set_to_product(r, &blinding_factor, &blinded_inverse, n));
+    let mut blinding_factor = Elem::<super::N, R>::zero()?;
+    elem_randomize(&mut blinding_factor, n, rng)?;
+    let to_blind = a.try_clone()?;
+    let blinded = elem_mul(&blinding_factor, to_blind, n)?;
+    let blinded_inverse = elem_inverse(blinded, n)?;
+    elem_set_to_product(r, &blinding_factor, &blinded_inverse, n)?;
     Ok(())
 }
 
@@ -708,8 +708,8 @@ pub fn elem_set_to_inverse_blinded(
 #[cfg(feature = "rsa_signing")]
 fn elem_inverse<M>(a: Elem<M, Unencoded>, m: &Modulus<M>)
                    -> Result<Elem<M, R>, InversionError> {
-    let a_clone = try!(a.try_clone());
-    let inverse = try!(nonnegative_mod_inverse(a.value, &(m.value.0).0));
+    let a_clone = a.try_clone()?;
+    let inverse = nonnegative_mod_inverse(a.value, &(m.value.0).0)?;
     let r: Elem<M, R> = Elem {
         value: inverse,
         m: PhantomData,
@@ -717,7 +717,7 @@ fn elem_inverse<M>(a: Elem<M, Unencoded>, m: &Modulus<M>)
     };
 
     // Fail safe: Verify a * r == 1 (mod m).
-    let check = try!(elem_mul(&r, a_clone, m));
+    let check = elem_mul(&r, a_clone, m)?;
     assert!(check.is_one());
 
     Ok(r)
@@ -758,7 +758,7 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
             carry = original_value >> (LIMB_BITS - 1);
         }
         if carry != 0 {
-            try!(n.0.grow_by_one_bit());
+            n.0.grow_by_one_bit()?;
         }
         Ok(())
     }
@@ -767,7 +767,7 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
     fn add_assign(r: &mut Nonnegative, a: &mut Nonnegative, m_limb_count: usize)
                   -> Result<(), error::Unspecified> {
         let mut carry = 0;
-        try!(r.0.make_limbs(m_limb_count, |r_limbs| {
+        r.0.make_limbs(m_limb_count, |r_limbs| {
             a.0.make_limbs(m_limb_count, |a_limbs| {
                 carry = unsafe {
                     LIMBS_add_assign(r_limbs.as_mut_ptr(), a_limbs.as_ptr(),
@@ -775,10 +775,10 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
                 };
                 Ok(())
             })
-        }));
+        })?;
         // It is possible for the result to be one bit larger than `m`.
         if carry != 0 {
-            try!(r.0.grow_by_one_bit())
+            r.0.grow_by_one_bit()?
         }
         Ok(())
     }
@@ -799,9 +799,9 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
     }
 
     let mut u = a;
-    let mut v = try!(m.try_clone());
-    let mut x1 = try!(Nonnegative::one());
-    let mut x2 = try!(Nonnegative::zero());
+    let mut v = m.try_clone()?;
+    let mut x1 = Nonnegative::one()?;
+    let mut x2 = Nonnegative::zero()?;
     let mut k = 0;
 
     let m_limbs = m.limbs();
@@ -810,20 +810,20 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
     while !v.is_zero() {
         if v.is_even() {
             halve(&mut v);
-            try!(double(&mut x1));
+            double(&mut x1)?;
         } else if u.is_even() {
             halve(&mut u);
-            try!(double(&mut x2));
+            double(&mut x2)?;
         } else if !greater_than(&u, &v) {
-            try!(sub_assign(&mut v, &mut u, m_limb_count));
+            sub_assign(&mut v, &mut u, m_limb_count)?;
             halve(&mut v);
-            try!(add_assign(&mut x2, &mut x1, m_limb_count));
-            try!(double(&mut x1));
+            add_assign(&mut x2, &mut x1, m_limb_count)?;
+            double(&mut x1)?;
         } else {
-            try!(sub_assign(&mut u, &mut v, m_limb_count));
+            sub_assign(&mut u, &mut v, m_limb_count)?;
             halve(&mut u);
-            try!(add_assign(&mut x1, &mut x2, m_limb_count));
-            try!(double(&mut x2));
+            add_assign(&mut x1, &mut x2, m_limb_count)?;
+            double(&mut x2)?;
         }
         k += 1;
     }
@@ -836,13 +836,13 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
     if !greater_than(m, &x1) {
         debug_assert!(x1.limbs().len() <= m_limb_count + 1);
         // If `x` is longer than `m` then chop off that top bit.
-        try!(x1.0.make_limbs(m_limb_count, |x1_limbs| {
+        x1.0.make_limbs(m_limb_count, |x1_limbs| {
             unsafe {
                 LIMBS_sub_assign(x1_limbs.as_mut_ptr(), m_limbs.as_ptr(),
                                  m_limb_count);
             }
             Ok(())
-        }));
+        })?;
     }
     assert!(greater_than(m, &x1));
 
@@ -854,13 +854,13 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
         let mut carry = 0;
         if x1.is_odd() {
             // x1 += m.
-            try!(x1.0.make_limbs(m_limb_count, |x1_limbs| {
+            x1.0.make_limbs(m_limb_count, |x1_limbs| {
                 carry = unsafe {
                     LIMBS_add_assign(x1_limbs.as_mut_ptr(), m_limbs.as_ptr(),
                                      m_limb_count)
                 };
                 Ok(())
-            }));
+            })?;
         }
 
         // x1 /= 2.
@@ -868,10 +868,10 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: &Nonnegative)
 
         // Shift in the carry bit at the top.
         if carry != 0 {
-            try!(x1.0.make_limbs(m_limb_count, |limbs| {
+            x1.0.make_limbs(m_limb_count, |limbs| {
                 *limbs.last_mut().unwrap() |= 1 << (LIMB_BITS - 1);
                 Ok(())
-            }));
+            })?;
         }
     }
 
@@ -912,23 +912,23 @@ impl Nonnegative {
 
     #[cfg(feature = "rsa_signing")]
     fn one() -> Result<Self, error::Unspecified> {
-        let mut r = try!(Self::zero());
-        try!(r.0.make_limbs(1, |limbs| {
+        let mut r = Self::zero()?;
+        r.0.make_limbs(1, |limbs| {
             limbs[0] = 1;
             Ok(())
-        }));
+        })?;
         Ok(r)
     }
 
     pub fn from_be_bytes_padded(input: untrusted::Input)
                                 -> Result<Self, error::Unspecified> {
-        let mut r = try!(Self::zero());
-        try!(r.0.make_limbs(
+        let mut r = Self::zero()?;
+        r.0.make_limbs(
             ((input.len() * limb::LIMB_BYTES) + limb::LIMB_BYTES - 1) /
                 limb::LIMB_BYTES, |limbs|  {
             // Rejects empty inputs.
             limb::parse_big_endian_and_pad_consttime(input, limbs)
-        }));
+        })?;
         Ok(r)
     }
 
@@ -987,7 +987,7 @@ impl Nonnegative {
 
     fn into_elem<M>(self, m: &Modulus<M>)
                     -> Result<Elem<M, Unencoded>, error::Unspecified> {
-        try!(self.verify_less_than(&(m.value.0).0));
+        self.verify_less_than(&(m.value.0).0)?;
         Ok(Elem {
             value: self,
             m: PhantomData,
@@ -1003,10 +1003,10 @@ impl Nonnegative {
     }
 
     pub fn try_clone(&self) -> Result<Nonnegative, error::Unspecified> {
-        let mut r = try!(Nonnegative::zero());
-        try!(bssl::map_result(unsafe {
+        let mut r = Nonnegative::zero()?;
+        bssl::map_result(unsafe {
             GFp_BN_copy(r.as_mut_ref(), self.as_ref())
-        }));
+        })?;
         Ok(r)
     }
 }
@@ -1100,9 +1100,9 @@ mod repr_c {
         pub fn grow_by_one_bit(&mut self) -> Result<(), error::Unspecified> {
             let old_top = self.top;
             let new_top = old_top + 1;
-            try!(bssl::map_result(unsafe {
+            bssl::map_result(unsafe {
                 GFp_bn_wexpand(self, new_top)
-            }));
+            })?;
             self.top = new_top;
             self.limbs_mut()[old_top as usize] = 1;
             Ok(())
@@ -1123,9 +1123,9 @@ mod repr_c {
                 self.top = num_limbs as c::int;
             } else {
                 let old_top = self.top as usize;
-                try!(bssl::map_result(unsafe {
+                bssl::map_result(unsafe {
                     GFp_bn_wexpand(self, num_limbs as c::int)
-                }));
+                })?;
                 self.top = num_limbs as c::int;
 
                 // Zero the new upper limbs, leaving the old lower limbs untouched.
@@ -1134,7 +1134,7 @@ mod repr_c {
                 }
             }
 
-            try!(f(self.limbs_mut()));
+            f(self.limbs_mut())?;
 
             unsafe {
                 GFp_bn_correct_top(self)
@@ -1289,8 +1289,8 @@ mod tests {
                 Err(InversionError::Unspecified) => unreachable!("Unspecified"),
                 Err(InversionError::NoInverse) => unreachable!("No Inverse"),
             };
-            let one: Elem<M, Unencoded> = try!(Elem::one());
-            let actual_result = try!(elem_mul(&one, actual_result, &m));
+            let one: Elem<M, Unencoded> = Elem::one()?;
+            let actual_result = elem_mul(&one, actual_result, &m)?;
             assert_elem_eq(&actual_result, &expected_result);
             Ok(())
         })
@@ -1310,11 +1310,11 @@ mod tests {
             let n = consume_modulus::<N>(test_case, "M");
             let a = consume_elem(test_case, "A", &n);
             let expected_result = consume_elem(test_case, "R", &n);
-            let mut actual_result = try!(Elem::<N, R>::zero());
+            let mut actual_result = Elem::<N, R>::zero()?;
             assert!(elem_set_to_inverse_blinded(&mut actual_result, &a, &n,
                                                 &rng).is_ok());
-            let one: Elem<N, Unencoded> = try!(Elem::one());
-            let actual_result = try!(elem_mul(&one, actual_result, &n));
+            let one: Elem<N, Unencoded> = Elem::one()?;
+            let actual_result = elem_mul(&one, actual_result, &n)?;
             assert_elem_eq(&actual_result, &expected_result);
             Ok(())
         })
@@ -1351,7 +1351,7 @@ mod tests {
 
             let n = consume_modulus::<N>(test_case, "M");
             let a = consume_elem(test_case, "A", &n);
-            let mut actual_result = try!(Elem::<N, R>::zero());
+            let mut actual_result = Elem::<N, R>::zero()?;
             match elem_set_to_inverse_blinded(&mut actual_result, &a, &n, &rng) {
                 Err(InversionError::NoInverse) => (),
                 Err(InversionError::Unspecified) => unreachable!("Unspecified"),

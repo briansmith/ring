@@ -198,7 +198,7 @@ impl RSAEncoding for PSS {
     fn encode(&self, m_hash: &digest::Digest, m_out: &mut [u8],
               mod_bits: bits::BitLength, rng: &rand::SecureRandom)
               -> Result<(), error::Unspecified> {
-        let metrics = try!(PSSMetrics::new(self.digest_alg, mod_bits));
+        let metrics = PSSMetrics::new(self.digest_alg, mod_bits)?;
 
         // The `m_out` this function fills is the big-endian-encoded value of `m`
         // from the specification, padded to `k` bytes, where `k` is the length
@@ -221,7 +221,7 @@ impl RSAEncoding for PSS {
         // Step 4.
         let mut salt = [0u8; MAX_SALT_LEN];
         let salt = &mut salt[..metrics.s_len];
-        try!(rng.fill(salt));
+        rng.fill(salt)?;
 
         // Step 5 and 6.
         let h_hash = pss_digest(self.digest_alg, m_hash, salt);
@@ -232,7 +232,7 @@ impl RSAEncoding for PSS {
         // Step 9. First output the mask into the out buffer.
         let (mut masked_db, mut digest_terminator) =
             em.split_at_mut(metrics.db_len);
-        try!(mgf1(self.digest_alg, h_hash.as_ref(), &mut masked_db));
+        mgf1(self.digest_alg, h_hash.as_ref(), &mut masked_db)?;
 
         {
             // Steps 7.
@@ -242,7 +242,7 @@ impl RSAEncoding for PSS {
             let mut masked_db = masked_db.skip(metrics.ps_len);
 
             // Step 8.
-            *try!(masked_db.next().ok_or(error::Unspecified)) ^= 0x01;
+            *(masked_db.next().ok_or(error::Unspecified)?) ^= 0x01;
 
             // Step 10.
             for (masked_db_b, salt_b) in masked_db.zip(salt) {
@@ -266,7 +266,7 @@ impl RSAVerification for PSS {
     // where steps 1, 2(a), and 2(b) have been done for us.
     fn verify(&self, m_hash: &digest::Digest, m: &mut untrusted::Reader,
               mod_bits: bits::BitLength) -> Result<(), error::Unspecified> {
-        let metrics = try!(PSSMetrics::new(self.digest_alg, mod_bits));
+        let metrics = PSSMetrics::new(self.digest_alg, mod_bits)?;
 
         // RSASSA-PSS-VERIFY Step 2(c). The `m` this function is given is the
         // big-endian-encoded value of `m` from the specification, padded to
@@ -278,7 +278,7 @@ impl RSAVerification for PSS {
         // strip before we start the PSS decoding steps which is an artifact of
         // the `Verification` interface.
         if metrics.top_byte_mask == 0xff {
-            if try!(m.read_byte()) != 0 {
+            if m.read_byte()? != 0 {
                 return Err(error::Unspecified);
             }
         };
@@ -292,11 +292,11 @@ impl RSAVerification for PSS {
         // Step 3 is done by `PSSMetrics::new()` above.
 
         // Step 5, out of order.
-        let masked_db = try!(em.skip_and_get_input(metrics.db_len));
-        let h_hash = try!(em.skip_and_get_input(metrics.h_len));
+        let masked_db = em.skip_and_get_input(metrics.db_len)?;
+        let h_hash = em.skip_and_get_input(metrics.h_len)?;
 
         // Step 4.
-        if try!(em.read_byte()) != 0xbc {
+        if em.read_byte()? != 0xbc {
             return Err(error::Unspecified);
         }
 
@@ -304,11 +304,11 @@ impl RSAVerification for PSS {
         let mut db = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
         let db = &mut db[..metrics.db_len];
 
-        try!(mgf1(self.digest_alg, h_hash.as_slice_less_safe(), db));
+        mgf1(self.digest_alg, h_hash.as_slice_less_safe(), db)?;
 
-        try!(masked_db.read_all(error::Unspecified, |masked_bytes| {
+        masked_db.read_all(error::Unspecified, |masked_bytes| {
             // Step 6. Check the top bits of first byte are zero.
-            let b = try!(masked_bytes.read_byte());
+            let b = masked_bytes.read_byte()?;
             if b & !metrics.top_byte_mask != 0 {
                 return Err(error::Unspecified);
             }
@@ -316,10 +316,10 @@ impl RSAVerification for PSS {
 
             // Step 8.
             for i in 1..db.len() {
-                db[i] ^= try!(masked_bytes.read_byte());
+                db[i] ^= masked_bytes.read_byte()?;
             }
             Ok(())
-        }));
+        })?;
 
         // Step 9.
         db[0] &= metrics.top_byte_mask;
@@ -362,7 +362,7 @@ struct PSSMetrics {
 impl PSSMetrics {
     fn new(digest_alg: &'static digest::Algorithm, mod_bits: bits::BitLength)
            -> Result<PSSMetrics, error::Unspecified> {
-        let em_bits = try!(mod_bits.try_sub(bits::ONE));
+        let em_bits = mod_bits.try_sub(bits::ONE)?;
         let em_len = em_bits.as_usize_bytes_rounded_up();
         let leading_zero_bits = (8 * em_len) - em_bits.as_usize_bits();
         debug_assert!(leading_zero_bits < 8);
@@ -380,10 +380,8 @@ impl PSSMetrics {
         // two conditions are equivalent. 9 bits are required as the 0x01
         // before the salt requires 1 bit and the 0xbc after the digest
         // requires 8 bits.
-        let db_len = try!(em_len.checked_sub(1 + s_len)
-                                .ok_or(error::Unspecified));
-        let ps_len = try!(db_len.checked_sub(h_len + 1)
-                                .ok_or(error::Unspecified));
+        let db_len = em_len.checked_sub(1 + s_len).ok_or(error::Unspecified)?;
+        let ps_len = db_len.checked_sub(h_len + 1).ok_or(error::Unspecified)?;
 
         debug_assert!(em_bits.as_usize_bits() >= (8 * h_len) + (8 * s_len) + 9);
 

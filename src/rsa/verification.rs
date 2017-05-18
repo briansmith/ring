@@ -25,7 +25,7 @@ impl signature::VerificationAlgorithm for RSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input)
               -> Result<(), error::Unspecified> {
-        let public_key = try!(parse_public_key(public_key));
+        let public_key = parse_public_key(public_key)?;
         verify_rsa(self, public_key, msg, signature)
     }
 }
@@ -130,10 +130,10 @@ pub fn verify_rsa(params: &RSAParameters,
                   -> Result<(), error::Unspecified> {
     // Partially validate the public key. See
     // `check_public_modulus_and_exponent()` for more details.
-    let n = try!(bigint::Positive::from_be_bytes(n));
-    let e = try!(bigint::Positive::from_be_bytes(e));
-    let max_bits = try!(bits::BitLength::from_usize_bytes(
-        PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN));
+    let n = bigint::Positive::from_be_bytes(n)?;
+    let e = bigint::Positive::from_be_bytes(e)?;
+    let max_bits = bits::BitLength::from_usize_bytes(
+        PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)?;
 
     // XXX: FIPS 186-4 seems to indicate that the minimum
     // exponent value is 2**16 + 1, but it isn't clear if this is just for
@@ -142,10 +142,10 @@ pub fn verify_rsa(params: &RSAParameters,
     let e_min_bits = bits::BitLength::from_usize_bits(2);
 
     let (n, e) =
-        try!(super::check_public_modulus_and_exponent(n, e, params.min_bits,
-                                                      max_bits, e_min_bits));
+        super::check_public_modulus_and_exponent(n, e, params.min_bits, max_bits,
+                                                 e_min_bits)?;
     let n_bits = n.bit_length();
-    let n = try!(n.into_modulus::<N>());
+    let n = n.into_modulus::<N>()?;
 
     // The signature must be the same length as the modulus, in bytes.
     if signature.len() != n_bits.as_usize_bytes_rounded_up() {
@@ -155,17 +155,17 @@ pub fn verify_rsa(params: &RSAParameters,
     // RFC 8017 Section 5.2.2: RSAVP1.
 
     // Step 1.
-    let s = try!(bigint::Positive::from_be_bytes_padded(signature));
-    let s = try!(s.into_elem::<N>(&n));
+    let s = bigint::Positive::from_be_bytes_padded(signature)?;
+    let s = s.into_elem::<N>(&n)?;
 
     // Step 2.
     let s = {
         // Montgomery encode `s`.
-        let oneRR = try!(bigint::One::newRR(&n));
-        try!(bigint::elem_mul(oneRR.as_ref(), s, &n))
+        let oneRR = bigint::One::newRR(&n)?;
+        bigint::elem_mul(oneRR.as_ref(), s, &n)?
     };
-    let m = try!(bigint::elem_exp_vartime(s, e, &n));
-    let m = try!(m.into_unencoded(&n));
+    let m = bigint::elem_exp_vartime(s, e, &n)?;
+    let m = m.into_unencoded(&n)?;
 
     // Step 3.
     let mut decoded = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
