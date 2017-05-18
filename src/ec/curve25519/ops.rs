@@ -59,9 +59,9 @@ impl ExtPoint {
                           -> Result<Self, error::Unspecified> {
         let mut point = Self::new_at_infinity();
 
-        try!(bssl::map_result(unsafe {
+        bssl::map_result(unsafe {
             GFp_x25519_ge_frombytes_vartime(&mut point, encoded)
-        }));
+        })?;
 
         Ok(point)
     }

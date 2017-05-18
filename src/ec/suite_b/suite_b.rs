@@ -53,7 +53,7 @@ fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
     let z = ops.point_z(p);
 
     // Verify that the point is not at infinity.
-    try!(ops.elem_verify_is_not_zero(&z));
+    ops.elem_verify_is_not_zero(&z)?;
 
     let x = ops.point_x(p);
     let y = ops.point_y(p);
@@ -105,8 +105,7 @@ fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
     let z4_a = ops.elem_product(&z4, &ops.a);
     let z6 = ops.elem_product(&z4, &z2);
     let z6_b = ops.elem_product(&z6, &ops.b);
-    try!(verify_affine_point_is_on_the_curve_scaled(ops, (&x, &y), &z4_a,
-                                                    &z6_b));
+    verify_affine_point_is_on_the_curve_scaled(ops, (&x, &y), &z4_a, &z6_b)?;
     Ok(z2)
 }
 
@@ -156,24 +155,24 @@ fn verify_affine_point_is_on_the_curve_scaled(
 pub fn key_pair_from_pkcs8(curve: &ec::Curve, template: &pkcs8::Template,
                            input: untrusted::Input)
                            -> Result<ec::KeyPair, error::Unspecified> {
-    let (ec_private_key, _) = try!(pkcs8::unwrap_key(
-        template, pkcs8::Version::V1Only, input));
-    let (private_key, public_key) = try!(ec_private_key.read_all(
+    let (ec_private_key, _) =
+        pkcs8::unwrap_key(template, pkcs8::Version::V1Only, input)?;
+    let (private_key, public_key) = ec_private_key.read_all(
         error::Unspecified, |input| {
             // https://tools.ietf.org/html/rfc5915#section-3
             der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-                let version = try!(der::small_nonnegative_integer(input));
+                let version = der::small_nonnegative_integer(input)?;
                 if version != 1 {
                     return Err(error::Unspecified);
                 }
 
-                let private_key = try!(der::expect_tag_and_get_value(
-                    input, der::Tag::OctetString));
+                let private_key =
+                    der::expect_tag_and_get_value(input, der::Tag::OctetString)?;
 
                 // [0] parameters (optional).
                 if input.peek(der::Tag::ContextSpecificConstructed0 as u8) {
-                    let actual_alg_id = try!(der::expect_tag_and_get_value(
-                        input, der::Tag::ContextSpecificConstructed0));
+                    let actual_alg_id = der::expect_tag_and_get_value(
+                        input, der::Tag::ContextSpecificConstructed0)?;
                     if actual_alg_id != template.curve_oid() {
                         return Err(error::Unspecified);
                     }
@@ -181,15 +180,13 @@ pub fn key_pair_from_pkcs8(curve: &ec::Curve, template: &pkcs8::Template,
 
                 // [1] publicKey. The RFC says it is optional, but we require it
                 // to be present.
-                let public_key = try!(der::nested(
+                let public_key = der::nested(
                     input, der::Tag::ContextSpecificConstructed1,
-                    error::Unspecified, |input| {
-                        der::bit_string_with_no_unused_bits(input)
-                    }));
+                    error::Unspecified, der::bit_string_with_no_unused_bits)?;
 
                 Ok((private_key, public_key))
             })
-        }));
+        })?;
     key_pair_from_bytes(curve, private_key, public_key)
 }
 
@@ -197,12 +194,12 @@ pub fn key_pair_from_bytes(curve: &ec::Curve,
                            private_key_bytes: untrusted::Input,
                            public_key_bytes: untrusted::Input)
                            -> Result<ec::KeyPair, error::Unspecified> {
-    let private_key = try!(ec::PrivateKey::from_bytes(curve, private_key_bytes));
+    let private_key = ec::PrivateKey::from_bytes(curve, private_key_bytes)?;
 
     let mut public_key_check = [0; ec::PUBLIC_KEY_MAX_LEN];
     { // Borrow `public_key_check`.
         let public_key_check = &mut public_key_check[..curve.public_key_len];
-        try!((curve.public_from_private)(public_key_check, &private_key));
+        (curve.public_from_private)(public_key_check, &private_key)?;
         if public_key_bytes != &*public_key_check {
             return Err(error::Unspecified);
         }

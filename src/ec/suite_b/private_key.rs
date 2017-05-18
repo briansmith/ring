@@ -55,7 +55,7 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
             //
             // The requirement that the random number generator has the
             // requested security strength is delegated to `rng`.
-            try!(rng.fill(candidate));
+            rng.fill(candidate)?;
 
             // NSA Guide Steps 5, 6, and 7.
             if check_scalar_big_endian_bytes(ops, candidate).is_err() {
@@ -161,7 +161,7 @@ pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
     // If we validated our inputs correctly and then computed (x, y, z), then
     // (x, y, z) will be on the curve. See
     // `verify_affine_point_is_on_the_curve_scaled` for the motivation.
-    try!(verify_affine_point_is_on_the_curve(ops.common, (&x_aff, &y_aff)));
+    verify_affine_point_is_on_the_curve(ops.common, (&x_aff, &y_aff))?;
 
     let num_limbs = ops.common.num_limbs;
     if let Some(x_out) = x_out {

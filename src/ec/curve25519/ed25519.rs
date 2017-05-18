@@ -47,7 +47,7 @@ impl<'a> Ed25519KeyPair {
     pub fn generate(rng: &rand::SecureRandom)
                     -> Result<Ed25519KeyPair, error::Unspecified> {
         let mut seed = [0u8; SEED_LEN];
-        try!(rng.fill(&mut seed));
+        rng.fill(&mut seed)?;
         Ok(Ed25519KeyPair::from_seed_(&seed))
     }
 
@@ -62,7 +62,7 @@ impl<'a> Ed25519KeyPair {
     pub fn generate_pkcs8(rng: &rand::SecureRandom)
             -> Result<[u8; ED25519_PKCS8_V2_LEN], error::Unspecified> {
         let mut seed = [0u8; SEED_LEN];
-        try!(rng.fill(&mut seed));
+        rng.fill(&mut seed)?;
         let key_pair = Ed25519KeyPair::from_seed_(&seed);
         // TODO: Replace this with `wrap_key()` and return a `PKCS8Document`.
         let mut bytes = [0; ED25519_PKCS8_V2_LEN];
@@ -83,8 +83,7 @@ impl<'a> Ed25519KeyPair {
     /// `Ed25519KeyPair::from_pkcs8_maybe_unchecked()` instead.
     pub fn from_pkcs8(input: untrusted::Input)
                       -> Result<Ed25519KeyPair, error::Unspecified> {
-        let (seed, public_key) =
-            try!(unwrap_pkcs8(pkcs8::Version::V2Only, input));
+        let (seed, public_key) = unwrap_pkcs8(pkcs8::Version::V2Only, input)?;
         Self::from_seed_and_public_key(seed, public_key.unwrap())
     }
 
@@ -102,8 +101,7 @@ impl<'a> Ed25519KeyPair {
     /// PKCS#8 v2 files are parsed exactly like `Ed25519KeyPair::from_pkcs8()`.
     pub fn from_pkcs8_maybe_unchecked(input: untrusted::Input)
             -> Result<Ed25519KeyPair, error::Unspecified> {
-        let (seed, public_key) =
-            try!(unwrap_pkcs8(pkcs8::Version::V1OrV2, input));
+        let (seed, public_key) = unwrap_pkcs8(pkcs8::Version::V1OrV2, input)?;
         if let Some(public_key) = public_key {
             Self::from_seed_and_public_key(seed, public_key)
         } else {
@@ -124,7 +122,7 @@ impl<'a> Ed25519KeyPair {
     pub fn from_seed_and_public_key(seed: untrusted::Input,
                                     public_key: untrusted::Input)
             -> Result<Ed25519KeyPair, error::Unspecified> {
-        let pair = try!(Self::from_seed_unchecked(seed));
+        let pair = Self::from_seed_unchecked(seed)?;
 
         // This implicitly verifies that `public_key` is the right length.
         // XXX: This rejects ~18 keys when they are partially reduced, though
@@ -147,8 +145,7 @@ impl<'a> Ed25519KeyPair {
     /// the private key since the public key isn't given as input.
     pub fn from_seed_unchecked(seed: untrusted::Input)
                                -> Result<Ed25519KeyPair, error::Unspecified> {
-        let seed =
-            try!(slice_as_array_ref!(seed.as_slice_less_safe(), SEED_LEN));
+        let seed = slice_as_array_ref!(seed.as_slice_less_safe(), SEED_LEN)?;
         Ok(Self::from_seed_(seed))
     }
 
@@ -219,10 +216,10 @@ fn unwrap_pkcs8(version: pkcs8::Version, input: untrusted::Input)
         -> Result<(untrusted::Input, Option<untrusted::Input>),
                   error::Unspecified> {
     let (private_key, public_key) =
-        try!(pkcs8::unwrap_key(&PKCS8_TEMPLATE, version, input));
-    let private_key = try!(private_key.read_all(error::Unspecified, |input| {
+        pkcs8::unwrap_key(&PKCS8_TEMPLATE, version, input)?;
+    let private_key = private_key.read_all(error::Unspecified, |input| {
         der::expect_tag_and_get_value(input, der::Tag::OctetString)
-    }));
+    })?;
     Ok((private_key, public_key))
 }
 
@@ -237,27 +234,27 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), error::Unspecified> {
         let public_key = public_key.as_slice_less_safe();
-        let public_key = try!(slice_as_array_ref!(public_key, ELEM_LEN));
+        let public_key = slice_as_array_ref!(public_key, ELEM_LEN)?;
 
         let (signature_r, signature_s) =
-                try!(signature.read_all(error::Unspecified, |input| {
-            let r = try!(input.skip_and_get_input(ELEM_LEN));
+                signature.read_all(error::Unspecified, |input| {
+            let r = input.skip_and_get_input(ELEM_LEN)?;
             let r = r.as_slice_less_safe();
             // `r` is only used as a slice, so don't convert it to an array ref.
 
-            let s = try!(input.skip_and_get_input(SCALAR_LEN));
+            let s = input.skip_and_get_input(SCALAR_LEN)?;
             let s = s.as_slice_less_safe();
             let s = slice_as_array_ref!(s, SCALAR_LEN).unwrap();
 
             Ok((r, s))
-        }));
+        })?;
 
         // Ensure `s` is not too large.
         if (signature_s[SCALAR_LEN - 1] & 0b11100000) != 0 {
             return Err(error::Unspecified);
         }
 
-        let mut a = try!(ExtPoint::from_encoded_point_vartime(public_key));
+        let mut a = ExtPoint::from_encoded_point_vartime(public_key)?;
         a.invert_vartime();
 
         let h_digest =

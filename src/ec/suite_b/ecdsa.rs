@@ -89,18 +89,17 @@ impl signature::VerificationAlgorithm for ECDSAVerificationAlgorithm {
         // can do. Prerequisite #2 is handled implicitly as the domain
         // parameters are hard-coded into the source. Prerequisite #3 is
         // handled by `parse_uncompressed_point`.
-        let peer_pub_key =
-            try!(parse_uncompressed_point(public_key_ops, public_key));
+        let peer_pub_key = parse_uncompressed_point(public_key_ops, public_key)?;
 
-        let (r, s) = try!(signature.read_all(
-            error::Unspecified, |input| (self.split_rs)(scalar_ops, input)));
+        let (r, s) = signature.read_all(
+            error::Unspecified, |input| (self.split_rs)(scalar_ops, input))?;
 
         // NSA Guide Step 1: "If r and s are not both integers in the interval
         // [1, n − 1], output INVALID."
-        let r = try!(scalar_parse_big_endian_variable(public_key_ops.common,
-                                                      AllowZero::No, r));
-        let s = try!(scalar_parse_big_endian_variable(public_key_ops.common,
-                                                      AllowZero::No, s));
+        let r = scalar_parse_big_endian_variable(public_key_ops.common,
+                                                 AllowZero::No, r)?;
+        let s = scalar_parse_big_endian_variable(public_key_ops.common,
+                                                 AllowZero::No, s)?;
 
         // NSA Guide Step 2: "Use the selected hash function to compute H =
         // Hash(M)."
@@ -130,8 +129,8 @@ impl signature::VerificationAlgorithm for ECDSAVerificationAlgorithm {
         // `verify_affine_point_is_on_the_curve_scaled` for details on why).
         // But, we're going to avoid converting to affine for performance
         // reasons, so we do the verification using the Jacobian coordinates.
-        let z2 = try!(verify_jacobian_point_is_on_the_curve(
-                        public_key_ops.common, &product));
+        let z2 = verify_jacobian_point_is_on_the_curve(public_key_ops.common,
+                                                       &product)?;
 
         // NSA Guide Step 7: "Compute v = xR mod n."
         // NSA Guide Step 8: "Compare v and r0. If v = r0, output VALID;
@@ -189,10 +188,10 @@ impl<'a> ECDSAKeyPair {
     pub fn generate_pkcs8(alg: &'static ECDSASigningAlgorithm,
                           rng: &rand::SecureRandom)
                           -> Result<pkcs8::PKCS8Document, error::Unspecified> {
-        let private_key = try!(ec::PrivateKey::generate(alg.curve, rng));
+        let private_key = ec::PrivateKey::generate(alg.curve, rng)?;
         let mut public_key_bytes = [0; ec::PUBLIC_KEY_MAX_LEN];
         let public_key_bytes = &mut public_key_bytes[..alg.curve.public_key_len];
-        try!((alg.curve.public_from_private)(public_key_bytes, &private_key));
+        (alg.curve.public_from_private)(public_key_bytes, &private_key)?;
         Ok(pkcs8::wrap_key(&alg.pkcs8_template, private_key.bytes(alg.curve),
                            public_key_bytes))
     }
@@ -210,8 +209,8 @@ impl<'a> ECDSAKeyPair {
     pub fn from_pkcs8(alg: &'static ECDSASigningAlgorithm,
                       input: untrusted::Input)
                       -> Result<ECDSAKeyPair, error::Unspecified> {
-        let key_pair = try!(ec::suite_b::key_pair_from_pkcs8(alg.curve,
-            alg.pkcs8_template, input));
+        let key_pair = ec::suite_b::key_pair_from_pkcs8(alg.curve,
+            alg.pkcs8_template, input)?;
         Ok(ECDSAKeyPair { key_pair, alg })
     }
 
@@ -225,8 +224,8 @@ impl<'a> ECDSAKeyPair {
                                            private_key: untrusted::Input,
                                            public_key: untrusted::Input)
                       -> Result<ECDSAKeyPair, error::Unspecified> {
-        let key_pair = try!(ec::suite_b::key_pair_from_bytes(
-            alg.curve, private_key, public_key));
+        let key_pair = ec::suite_b::key_pair_from_bytes(
+            alg.curve, private_key, public_key)?;
         Ok(ECDSAKeyPair { key_pair, alg })
     }
 }
@@ -236,8 +235,8 @@ fn split_rs_fixed<'a>(
         -> Result<(untrusted::Input<'a>, untrusted::Input<'a>),
                   error::Unspecified> {
     let scalar_len = ops.scalar_bytes_len();
-    let r = try!(input.skip_and_get_input(scalar_len));
-    let s = try!(input.skip_and_get_input(scalar_len));
+    let r = input.skip_and_get_input(scalar_len)?;
+    let s = input.skip_and_get_input(scalar_len)?;
     Ok((r, s))
 }
 
@@ -246,8 +245,8 @@ fn split_rs_asn1<'a>(
         -> Result<(untrusted::Input<'a>, untrusted::Input<'a>),
                   error::Unspecified> {
     der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-        let r = try!(der::positive_integer(input));
-        let s = try!(der::positive_integer(input));
+        let r = der::positive_integer(input)?;
+        let s = der::positive_integer(input)?;
         Ok((r, s))
     })
 }

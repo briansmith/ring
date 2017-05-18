@@ -255,10 +255,9 @@ impl PublicKeyOps {
     pub fn elem_parse(&self, input: &mut untrusted::Reader)
                       -> Result<Elem<R>, error::Unspecified> {
         let encoded_value =
-            try!(input.skip_and_get_input(self.common.num_limbs * LIMB_BYTES));
+            input.skip_and_get_input(self.common.num_limbs * LIMB_BYTES)?;
         let parsed =
-            try!(elem_parse_big_endian_fixed_consttime(self.common,
-                                                       encoded_value));
+            elem_parse_big_endian_fixed_consttime(self.common, encoded_value)?;
         let mut r = Elem::zero();
         // Montgomery encode (elem_to_mont).
         // TODO: do something about this.
@@ -393,9 +392,9 @@ pub fn scalar_parse_big_endian_variable(ops: &CommonOps, allow_zero: AllowZero,
                                         bytes: untrusted::Input)
                                         -> Result<Scalar, error::Unspecified> {
     let mut r = Scalar::zero();
-    try!(parse_big_endian_in_range_and_pad_consttime(
+    parse_big_endian_in_range_and_pad_consttime(
             bytes, allow_zero, &ops.n.limbs[..ops.num_limbs],
-            &mut r.limbs[..ops.num_limbs]));
+            &mut r.limbs[..ops.num_limbs])?;
     Ok(r)
 }
 
@@ -403,9 +402,9 @@ pub fn scalar_parse_big_endian_partially_reduced_variable_consttime(
         ops: &CommonOps, allow_zero: AllowZero, bytes: untrusted::Input)
         -> Result<Scalar, error::Unspecified> {
     let mut r = Scalar::zero();
-    try!(parse_big_endian_in_range_partially_reduced_and_pad_consttime(
+    parse_big_endian_in_range_partially_reduced_and_pad_consttime(
             bytes, allow_zero, &ops.n.limbs[..ops.num_limbs],
-            &mut r.limbs[..ops.num_limbs]));
+            &mut r.limbs[..ops.num_limbs])?;
     Ok(r)
 }
 
@@ -417,8 +416,8 @@ fn parse_big_endian_fixed_consttime<M>(
         return Err(error::Unspecified);
     }
     let mut r = elem::Elem::zero();
-    try!(parse_big_endian_in_range_and_pad_consttime(
-            bytes, allow_zero, max_exclusive, &mut r.limbs[..ops.num_limbs]));
+    parse_big_endian_in_range_and_pad_consttime(
+            bytes, allow_zero, max_exclusive, &mut r.limbs[..ops.num_limbs])?;
     Ok(r)
 }
 

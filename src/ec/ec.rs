@@ -70,7 +70,7 @@ impl<'a> PrivateKey {
         if curve.elem_and_scalar_len != bytes.len() {
             return Err(error::Unspecified);
         }
-        try!((curve.check_private_key_bytes)(bytes));
+        (curve.check_private_key_bytes)(bytes)?;
         let mut r = PrivateKey {
             bytes: [0; SCALAR_MAX_BYTES],
         };

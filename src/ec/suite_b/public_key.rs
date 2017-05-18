@@ -35,24 +35,24 @@ pub fn parse_uncompressed_point(ops: &PublicKeyOps, input: untrusted::Input)
     // This can be done by inspection if the point is entered in the standard
     // affine representation." (We do it by inspection since we only accept
     // the affine representation.)
-    let (x, y) = try!(input.read_all(error::Unspecified, |input| {
+    let (x, y) = input.read_all(error::Unspecified, |input| {
         // The encoding must be 4, which is the encoding for "uncompressed".
-        let encoding = try!(input.read_byte());
+        let encoding = input.read_byte()?;
         if encoding != 4 {
             return Err(error::Unspecified);
         }
 
         // NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers in the
         // interval [0, p-1] in the case that q is an odd prime p[.]"
-        let x = try!(ops.elem_parse(input));
-        let y = try!(ops.elem_parse(input));
+        let x = ops.elem_parse(input)?;
+        let y = ops.elem_parse(input)?;
         Ok((x, y))
-    }));
+    })?;
 
     // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that
     // yQ**2 = xQ**3 + axQ + b in GF(p), where the arithmetic is performed
     // modulo p."
-    try!(verify_affine_point_is_on_the_curve(ops.common, (&x, &y)));
+    verify_affine_point_is_on_the_curve(ops.common, (&x, &y))?;
 
     // NIST SP 800-56A Note: "Since its order is not verified, there is no
     // check that the public key is in the correct EC subgroup."

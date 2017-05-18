@@ -82,8 +82,8 @@ fn ecdh(private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps,
     // `parse_uncompressed_point` verifies that the point is not at infinity
     // and that it is on the curve, using the Partial Public-Key Validation
     // Routine.
-    let peer_public_key = try!(parse_uncompressed_point(public_key_ops,
-                                                        peer_public_key));
+    let peer_public_key = parse_uncompressed_point(public_key_ops,
+                                                   peer_public_key)?;
 
     // NIST SP 800-56Ar2 Step 1.
     // NSA Guide Step 3 (except point at infinity check).

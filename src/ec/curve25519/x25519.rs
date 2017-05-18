@@ -52,20 +52,20 @@ fn x25519_check_private_key_bytes(bytes: &[u8])
 fn x25519_generate_private_key(rng: &rand::SecureRandom)
                                -> Result<ec::PrivateKey, error::Unspecified> {
     let mut result = ec::PrivateKey { bytes: [0; ec::SCALAR_MAX_BYTES] };
-    try!(rng.fill(&mut result.bytes[..PRIVATE_KEY_LEN]));
+    rng.fill(&mut result.bytes[..PRIVATE_KEY_LEN])?;
     Ok(result)
 }
 
 fn x25519_public_from_private(public_out: &mut [u8],
                               private_key: &ec::PrivateKey)
                               -> Result<(), error::Unspecified> {
-    let public_out = try!(slice_as_array_ref_mut!(public_out, PUBLIC_KEY_LEN));
+    let public_out = slice_as_array_ref_mut!(public_out, PUBLIC_KEY_LEN)?;
 
     // XXX: This shouldn't require dynamic checks, but rustc can't slice an
     // array reference to a shorter array reference. TODO(perf): Fix this.
     let private_key =
-        try!(slice_as_array_ref!(&private_key.bytes[..PRIVATE_KEY_LEN],
-                                 PRIVATE_KEY_LEN));
+        slice_as_array_ref!(&private_key.bytes[..PRIVATE_KEY_LEN],
+                            PRIVATE_KEY_LEN)?;
     unsafe {
         GFp_x25519_public_from_private(public_out, private_key);
     }
@@ -75,16 +75,16 @@ fn x25519_public_from_private(public_out: &mut [u8],
 fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
                peer_public_key: untrusted::Input)
                -> Result<(), error::Unspecified> {
-    let out = try!(slice_as_array_ref_mut!(out, SHARED_SECRET_LEN));
+    let out = slice_as_array_ref_mut!(out, SHARED_SECRET_LEN)?;
 
     // XXX: This shouldn't require dynamic checks, but rustc can't slice an
     // array reference to a shorter array reference. TODO(perf): Fix this.
     let my_private_key =
-        try!(slice_as_array_ref!(&my_private_key.bytes[..PRIVATE_KEY_LEN],
-                                 PRIVATE_KEY_LEN));
+        slice_as_array_ref!(&my_private_key.bytes[..PRIVATE_KEY_LEN],
+                            PRIVATE_KEY_LEN)?;
     let peer_public_key =
-        try!(slice_as_array_ref!(peer_public_key.as_slice_less_safe(),
-                                 PUBLIC_KEY_LEN));
+        slice_as_array_ref!(peer_public_key.as_slice_less_safe(),
+                            PUBLIC_KEY_LEN)?;
 
     unsafe {
         GFp_x25519_scalar_mult(out, my_private_key, peer_public_key);
