@@ -110,7 +110,7 @@ pub enum AllowZero {
 pub fn parse_big_endian_in_range_partially_reduced_and_pad_consttime(
         input: untrusted::Input, allow_zero: AllowZero, m: &[Limb],
         result: &mut [Limb]) -> Result<(), error::Unspecified> {
-    try!(parse_big_endian_and_pad_consttime(input, result));
+    parse_big_endian_and_pad_consttime(input, result)?;
     limbs_reduce_once_constant_time(result, m);
     if allow_zero != AllowZero::Yes {
         if limbs_are_zero_constant_time(&result) != LimbMask::False {
@@ -131,7 +131,7 @@ pub fn parse_big_endian_in_range_partially_reduced_and_pad_consttime(
 pub fn parse_big_endian_in_range_and_pad_consttime(
         input: untrusted::Input, allow_zero: AllowZero, max_exclusive: &[Limb],
         result: &mut [Limb]) -> Result<(), error::Unspecified> {
-    try!(parse_big_endian_and_pad_consttime(input, result));
+    parse_big_endian_and_pad_consttime(input, result)?;
     if limbs_less_than_limbs_consttime(&result, max_exclusive) !=
             LimbMask::True {
         return Err(error::Unspecified);
@@ -175,20 +175,18 @@ pub fn parse_big_endian_and_pad_consttime(
 
     // XXX: Questionable as far as constant-timedness is concerned.
     // TODO: Improve this.
-    try!(input.read_all(error::Unspecified, |input| {
+    input.read_all(error::Unspecified, |input| {
         for i in 0..num_encoded_limbs {
             let mut limb: Limb = 0;
             for _ in 0..bytes_in_current_limb {
-                let b = try!(input.read_byte());
+                let b = input.read_byte()?;
                 limb = (limb << 8) | (b as Limb);
             }
             result[num_encoded_limbs - i - 1] = limb;
             bytes_in_current_limb = LIMB_BYTES;
         }
         Ok(())
-    }));
-
-    Ok(())
+    })
 }
 
 /// XXX: Panics if `out` isn't large enough, but in theory the callers ensure
