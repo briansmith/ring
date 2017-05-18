@@ -114,10 +114,8 @@ impl<'a> EphemeralPrivateKey {
         //
         // This only handles the key generation part of step 1. The rest of
         // step one is done by `compute_public_key()`.
-        Ok(EphemeralPrivateKey {
-            private_key: try!(ec::PrivateKey::generate(&alg.i.curve, rng)),
-            alg: alg,
-        })
+        let private_key = ec::PrivateKey::generate(&alg.i.curve, rng)?;
+        Ok(EphemeralPrivateKey { private_key, alg })
     }
 
     #[cfg(test)]
@@ -220,8 +218,8 @@ pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
     //
     // We have a pretty liberal interpretation of the NIST's spec's "Destroy"
     // that doesn't meet the NSA requirement to "zeroize."
-    try!((alg.ecdh)(shared_key, &my_private_key.private_key, peer_public_key)
-            .map_err(|_| error_value));
+    (alg.ecdh)(shared_key, &my_private_key.private_key, peer_public_key)
+        .map_err(|_| error_value)?;
 
     // NSA Guide Steps 5 and 6.
     //
@@ -277,7 +275,7 @@ mod tests {
                     // In the no-heap mode, some algorithms aren't supported so
                     // we have to skip those algorithms' test cases.
                     let dummy_private_key =
-                        try!(EphemeralPrivateKey::generate(alg, &rng));
+                        EphemeralPrivateKey::generate(alg, &rng)?;
                     fn kdf_not_called(_: &[u8]) -> Result<(), ()> {
                         panic!("The KDF was called during ECDH when the peer's \
                                 public key is invalid.");
