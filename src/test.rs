@@ -129,6 +129,7 @@ use std::io::BufRead;
 /// A test case. A test case consists of a set of named attributes. Every
 /// attribute in the test case must be consumed exactly once; this helps catch
 /// typos and omissions.
+#[derive(Debug)]
 pub struct TestCase {
     attributes: Vec<(String, String, bool)>,
 }
@@ -400,6 +401,7 @@ pub mod rand {
 
     /// An implementation of `SecureRandom` that always fills the output slice
     /// with the given byte.
+    #[derive(Debug)]
     pub struct FixedByteRandom {
         pub byte: u8,
     }
@@ -414,6 +416,7 @@ pub mod rand {
     /// An implementation of `SecureRandom` that always fills the output slice
     /// with the slice in `bytes`. The length of the slice given to `slice`
     /// must match exactly.
+    #[derive(Debug)]
     pub struct FixedSliceRandom<'a> {
         pub bytes: &'a [u8],
     }
@@ -434,6 +437,7 @@ pub mod rand {
     /// the length of the corresponding entry in `bytes`. `current` must be
     /// initialized to zero. `fill()` must be called exactly once for each
     /// entry in `bytes`.
+    #[derive(Debug)]
     pub struct FixedSliceSequenceRandom<'a> {
         /// The value.
         pub bytes: &'a [&'a [u8]],
