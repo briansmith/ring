@@ -1724,7 +1724,7 @@ const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher) {
   return "TLSv1/SSLv3";
 }
 
-COMP_METHOD *SSL_COMP_get_compression_methods(void) { return NULL; }
+STACK_OF(SSL_COMP) *SSL_COMP_get_compression_methods(void) { return NULL; }
 
 int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm) { return 1; }
 

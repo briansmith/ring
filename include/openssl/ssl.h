@@ -3354,7 +3354,7 @@ OPENSSL_EXPORT const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher);
 typedef void COMP_METHOD;
 
 /* SSL_COMP_get_compression_methods returns NULL. */
-OPENSSL_EXPORT COMP_METHOD *SSL_COMP_get_compression_methods(void);
+OPENSSL_EXPORT STACK_OF(SSL_COMP) *SSL_COMP_get_compression_methods(void);
 
 /* SSL_COMP_add_compression_method returns one. */
 OPENSSL_EXPORT int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm);
