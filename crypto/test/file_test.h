@@ -18,12 +18,12 @@
 #include <openssl/base.h>
 
 #include <stdint.h>
-#include <stdio.h>
 
 OPENSSL_MSVC_PRAGMA(warning(push))
 OPENSSL_MSVC_PRAGMA(warning(disable : 4702))
 
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
@@ -86,17 +86,20 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 class FileTest {
  public:
-  explicit FileTest(const char *path);
-  ~FileTest();
-
-  // is_open returns true if the file was successfully opened.
-  bool is_open() const { return file_ != nullptr; }
-
   enum ReadResult {
     kReadSuccess,
     kReadEOF,
     kReadError,
   };
+
+  class LineReader {
+   public:
+    virtual ~LineReader() {}
+    virtual ReadResult ReadLine(char *out, size_t len) = 0;
+  };
+
+  explicit FileTest(std::unique_ptr<LineReader> reader);
+  ~FileTest();
 
   // ReadNext reads the next test from the file. It returns |kReadSuccess| if
   // successfully reading a test and |kReadEOF| at the end of the file. On
@@ -168,7 +171,7 @@ class FileTest {
   void OnKeyUsed(const std::string &key);
   void OnInstructionUsed(const std::string &key);
 
-  FILE *file_ = nullptr;
+  std::unique_ptr<LineReader> reader_;
   // line_ is the number of lines read.
   unsigned line_ = 0;
 
