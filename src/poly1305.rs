@@ -330,10 +330,10 @@ mod tests {
                 assert_eq!(&expected_mac[..], &actual_mac[..]);
             }
 
-            try!(test_poly1305_simd(0, key, &input, expected_mac));
-            try!(test_poly1305_simd(16, key, &input, expected_mac));
-            try!(test_poly1305_simd(32, key, &input, expected_mac));
-            try!(test_poly1305_simd(48, key, &input, expected_mac));
+            test_poly1305_simd(0, key, &input, expected_mac)?;
+            test_poly1305_simd(16, key, &input, expected_mac)?;
+            test_poly1305_simd(32, key, &input, expected_mac)?;
+            test_poly1305_simd(48, key, &input, expected_mac)?;
 
             Ok(())
         })

@@ -37,7 +37,7 @@ fn chacha20_poly1305_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                           nonce: &[u8; aead::NONCE_LEN], ad: &[u8],
                           in_out: &mut [u8], tag_out: &mut [u8; aead::TAG_LEN])
                           -> Result<(), error::Unspecified> {
-    let chacha20_key = try!(ctx_as_key(ctx));
+    let chacha20_key = ctx_as_key(ctx)?;
     let mut counter = chacha::make_counter(nonce, 1);
     chacha::chacha20_xor_in_place(&chacha20_key, &counter, in_out);
     counter[0] = 0;
@@ -50,7 +50,7 @@ fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                           in_prefix_len: usize, in_out: &mut [u8],
                           tag_out: &mut [u8; aead::TAG_LEN])
                           -> Result<(), error::Unspecified> {
-    let chacha20_key = try!(ctx_as_key(ctx));
+    let chacha20_key = ctx_as_key(ctx)?;
     let mut counter = chacha::make_counter(nonce, 0);
     {
         let ciphertext = &in_out[in_prefix_len..];

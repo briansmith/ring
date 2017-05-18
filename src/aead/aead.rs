@@ -64,7 +64,7 @@ impl OpeningKey {
                 ctx_buf: [0; KEY_CTX_BUF_ELEMS],
             },
         };
-        try!(key.key.init(key_bytes));
+        key.key.init(key_bytes)?;
         Ok(key)
     }
 
@@ -127,20 +127,19 @@ pub fn open_in_place<'a>(key: &OpeningKey, nonce: &[u8], ad: &[u8],
                          in_prefix_len: usize,
                          ciphertext_and_tag_modified_in_place: &'a mut [u8])
                          -> Result<&'a mut [u8], error::Unspecified> {
-    let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
+    let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
     let ciphertext_and_tag_len =
-        try!(ciphertext_and_tag_modified_in_place.len()
-                .checked_sub(in_prefix_len).ok_or(error::Unspecified));
+        ciphertext_and_tag_modified_in_place.len()
+                .checked_sub(in_prefix_len).ok_or(error::Unspecified)?;
     let ciphertext_len =
-        try!(ciphertext_and_tag_len.checked_sub(TAG_LEN)
-                .ok_or(error::Unspecified));
-    try!(check_per_nonce_max_bytes(ciphertext_len));
+        ciphertext_and_tag_len.checked_sub(TAG_LEN).ok_or(error::Unspecified)?;
+    check_per_nonce_max_bytes(ciphertext_len)?;
     let (in_out, received_tag) =
         ciphertext_and_tag_modified_in_place
             .split_at_mut(in_prefix_len + ciphertext_len);
     let mut calculated_tag = [0u8; TAG_LEN];
-    try!((key.key.algorithm.open)(&key.key.ctx_buf, nonce, &ad, in_prefix_len,
-                                  in_out, &mut calculated_tag));
+    (key.key.algorithm.open)(&key.key.ctx_buf, nonce, &ad, in_prefix_len,
+                             in_out, &mut calculated_tag)?;
     if constant_time::verify_slices_are_equal(&calculated_tag, received_tag)
             .is_err() {
         // Zero out the plaintext so that it isn't accidentally leaked or used
@@ -181,7 +180,7 @@ impl SealingKey {
                 ctx_buf: [0; KEY_CTX_BUF_ELEMS],
             },
         };
-        try!(key.key.init(key_bytes));
+        key.key.init(key_bytes)?;
         Ok(key)
     }
 
@@ -219,14 +218,13 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], ad: &[u8],
     if out_suffix_capacity < key.key.algorithm.tag_len() {
         return Err(error::Unspecified);
     }
-    let nonce = try!(slice_as_array_ref!(nonce, NONCE_LEN));
+    let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
     let in_out_len =
-        try!(in_out.len().checked_sub(out_suffix_capacity)
-                         .ok_or(error::Unspecified));
-    try!(check_per_nonce_max_bytes(in_out_len));
+        in_out.len().checked_sub(out_suffix_capacity).ok_or(error::Unspecified)?;
+    check_per_nonce_max_bytes(in_out_len)?;
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
-    let tag_out = try!(slice_as_array_ref_mut!(tag_out, TAG_LEN));
-    try!((key.key.algorithm.seal)(&key.key.ctx_buf, nonce, ad, in_out, tag_out));
+    let tag_out = slice_as_array_ref_mut!(tag_out, TAG_LEN)?;
+    (key.key.algorithm.seal)(&key.key.ctx_buf, nonce, ad, in_out, tag_out)?;
     Ok(in_out_len + TAG_LEN)
 }
 
@@ -357,10 +355,10 @@ mod tests {
             for _ in 0..tag_len {
                 s_in_out.push(0);
             }
-            let s_key = try!(aead::SealingKey::new(aead_alg, &key_bytes[..]));
+            let s_key = aead::SealingKey::new(aead_alg, &key_bytes[..])?;
             let s_result = aead::seal_in_place(&s_key, &nonce[..], &ad,
                                                &mut s_in_out[..], tag_len);
-            let o_key = try!(aead::OpeningKey::new(aead_alg, &key_bytes[..]));
+            let o_key = aead::OpeningKey::new(aead_alg, &key_bytes[..])?;
 
             ct.extend(tag);
 
@@ -530,8 +528,8 @@ mod tests {
                              -> Result<(), error::Unspecified> {
         let key_len = aead_alg.key_len;
         let key_data = vec![0u8; key_len];
-        let o_key = try!(aead::OpeningKey::new(aead_alg, &key_data[..key_len]));
-        let s_key = try!(aead::SealingKey::new(aead_alg, &key_data[..key_len]));
+        let s_key = aead::SealingKey::new(aead_alg, &key_data[..key_len])?;
+        let o_key = aead::OpeningKey::new(aead_alg, &key_data[..key_len])?;
 
         let nonce_len = aead_alg.nonce_len();
 
@@ -552,8 +550,8 @@ mod tests {
         // Construct a template input for `open_in_place`.
         let mut to_open = Vec::from(to_seal);
         let ciphertext_len =
-            try!(aead::seal_in_place(&s_key, &nonce[..nonce_len], &ad,
-                                     &mut to_open, tag_len));
+            aead::seal_in_place(&s_key, &nonce[..nonce_len], &ad, &mut to_open,
+                                tag_len)?;
         let to_open = &to_open[..ciphertext_len];
 
         // Nonce is the correct length.

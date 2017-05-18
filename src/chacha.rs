@@ -106,7 +106,7 @@ mod tests {
             assert_eq!(section, "");
 
             let key = test_case.consume_bytes("Key");
-            let key = try!(slice_as_array_ref!(&key, KEY_LEN_IN_BYTES));
+            let key = slice_as_array_ref!(&key, KEY_LEN_IN_BYTES)?;
             let key = key_from_bytes(key);
 
             let ctr = test_case.consume_usize("Ctr");

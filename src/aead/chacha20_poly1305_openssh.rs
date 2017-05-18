@@ -118,7 +118,7 @@ impl OpeningKey {
         // This is beyond what we guarantee.
         let poly_key = poly1305::Key::derive_using_chacha(&self.key.k_2,
                                                           &counter);
-        try!(poly1305::verify(poly_key, ciphertext_in_plaintext_out, tag));
+        poly1305::verify(poly_key, ciphertext_in_plaintext_out, tag)?;
 
         let plaintext_in_ciphertext_out =
             &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];
