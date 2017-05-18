@@ -91,7 +91,7 @@ pub fn unwrap_key_<'a>(alg_id: &[u8], version: Version,
             // Currently we only support algorithms that should only be encoded
             // in v1 form, so reject v2 and any later form.
             let require_public_key =
-                    match (try!(der::small_nonnegative_integer(input)), version) {
+                    match (der::small_nonnegative_integer(input)?, version) {
                 (0, Version::V1Only) => false,
                 (0, Version::V1OrV2) => false,
                 (1, Version::V1OrV2) |
@@ -100,24 +100,24 @@ pub fn unwrap_key_<'a>(alg_id: &[u8], version: Version,
             };
 
             let actual_alg_id =
-                try!(der::expect_tag_and_get_value(input, der::Tag::Sequence));
+                der::expect_tag_and_get_value(input, der::Tag::Sequence)?;
             if actual_alg_id != alg_id {
                 return Err(error::Unspecified);
             }
 
             let private_key =
-                try!(der::expect_tag_and_get_value(input, der::Tag::OctetString));
+                der::expect_tag_and_get_value(input, der::Tag::OctetString)?;
 
             // Ignore any attributes that are present.
             if input.peek(der::Tag::ContextSpecificConstructed0 as u8) {
-                let _ = try!(der::expect_tag_and_get_value(input,
-                    der::Tag::ContextSpecificConstructed0));
+                let _ = der::expect_tag_and_get_value(input,
+                    der::Tag::ContextSpecificConstructed0)?;
             }
 
             let public_key = if require_public_key {
-                Some(try!(der::nested(
+                Some(der::nested(
                     input, der::Tag::ContextSpecificConstructed1,
-                    error::Unspecified, der::bit_string_with_no_unused_bits)))
+                    error::Unspecified, der::bit_string_with_no_unused_bits)?)
             } else {
                 None
             };
