@@ -140,14 +140,14 @@
 //! # fn sign_and_verify_ed25519() -> Result<(), ring::error::Unspecified> {
 //! // Generate a key pair in PKCS#8 (v2) format.
 //! let rng = rand::SystemRandom::new();
-//! let pkcs8_bytes = try!(signature::Ed25519KeyPair::generate_pkcs8(&rng));
+//! let pkcs8_bytes = signature::Ed25519KeyPair::generate_pkcs8(&rng)?;
 //!
 //! // Normally the application would store the PKCS#8 file persistently. Later
 //! // it would read the PKCS#8 file from persistent storage to use it.
 //!
 //! let key_pair =
-//!    try!(signature::Ed25519KeyPair::from_pkcs8(
-//!             untrusted::Input::from(&pkcs8_bytes)));
+//!    signature::Ed25519KeyPair::from_pkcs8(
+//!             untrusted::Input::from(&pkcs8_bytes))?;
 //!
 //! // Sign the message "hello, world".
 //! const MESSAGE: &'static [u8] = b"hello, world";
@@ -166,7 +166,7 @@
 //! let msg = untrusted::Input::from(MESSAGE);
 //! let sig = untrusted::Input::from(sig_bytes);
 //!
-//! try!(signature::verify(&signature::ED25519, peer_public_key, msg, sig));
+//! signature::verify(&signature::ED25519, peer_public_key, msg, sig)?;
 //!
 //! # Ok(())
 //! # }
@@ -219,20 +219,19 @@
 //! let key_bytes_der =
 //!    untrusted::Input::from(
 //!         include_bytes!("src/rsa/signature_rsa_example_private_key.der"));
-//! let key_pair =
-//!    try!(signature::RSAKeyPair::from_der(key_bytes_der));
+//! let key_pair = signature::RSAKeyPair::from_der(key_bytes_der)?;
 //!
 //! // Create a signing state.
 //! let key_pair = std::sync::Arc::new(key_pair);
-//! let mut signing_state = try!(signature::RSASigningState::new(key_pair));
+//! let mut signing_state = signature::RSASigningState::new(key_pair)?;
 //!
 //! // Sign the message "hello, world", using PKCS#1 v1.5 padding and the
 //! // SHA256 digest algorithm.
 //! const MESSAGE: &'static [u8] = b"hello, world";
 //! let rng = rand::SystemRandom::new();
 //! let mut signature = vec![0; signing_state.key_pair().public_modulus_len()];
-//! try!(signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
-//!                         &mut signature));
+//! signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
+//!                    &mut signature)?;
 //!
 //! // Verify the signature.
 //! let public_key_bytes_der =
@@ -240,8 +239,8 @@
 //!         include_bytes!("src/rsa/signature_rsa_example_public_key.der"));
 //! let message = untrusted::Input::from(MESSAGE);
 //! let signature = untrusted::Input::from(&signature);
-//! try!(signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256,
-//!                        public_key_bytes_der, message, signature));
+//! signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256,
+//!                   public_key_bytes_der, message, signature)?;
 //! # Ok(())
 //! # }
 //! #

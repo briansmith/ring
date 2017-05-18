@@ -57,8 +57,8 @@ use std;
 ///
 ///    // The `From<ring::error::Unspecified>` implementation above makes this
 ///    // equivalent to
-///    // `try!(rng.fill(&mut bytes)).map_err(|_| Error::CryptoError)`.
-///    try!(rng.fill(&mut bytes));
+///    // `rng.fill(&mut bytes).map_err(|_| Error::CryptoError)?`.
+///    rng.fill(&mut bytes)?;
 ///
 ///     Ok(bytes)
 /// }

@@ -64,7 +64,7 @@
 //!
 //! # fn main_with_result() -> Result<(), ring::error::Unspecified> {
 //! let rng = rand::SystemRandom::new();
-//! let key = try!(hmac::SigningKey::generate(&digest::SHA256, &rng));
+//! let key = hmac::SigningKey::generate(&digest::SHA256, &rng)?;
 //!
 //! let msg = "hello, world";
 //!
@@ -73,7 +73,7 @@
 //! // [We give access to the message to an untrusted party, and they give it
 //! // back to us. We need to verify they didn't tamper with it.]
 //!
-//! try!(hmac::verify_with_own_key(&key, msg.as_bytes(), signature.as_ref()));
+//! hmac::verify_with_own_key(&key, msg.as_bytes(), signature.as_ref())?;
 //! #
 //! # Ok(())
 //! # }
@@ -95,7 +95,7 @@
 //! // derive `key_value`.
 //! let mut key_value = [0u8; 32];
 //! let rng = rand::SystemRandom::new();
-//! try!(rng.fill(&mut key_value));
+//! rng.fill(&mut key_value)?;
 //!
 //! let s_key = hmac::SigningKey::new(&digest::SHA256, key_value.as_ref());
 //! let signature = hmac::sign(&s_key, msg.as_bytes());
@@ -103,7 +103,7 @@
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
 //! let v_key = hmac::VerificationKey::new(&digest::SHA256, key_value.as_ref());
-//! try!(hmac::verify(&v_key, msg.as_bytes(), signature.as_ref()));
+//! hmac::verify(&v_key, msg.as_bytes(), signature.as_ref())?;
 //! #
 //! # Ok(())
 //! # }
@@ -124,7 +124,7 @@
 //! // derive `key_value`.
 //! let mut key_value = [0u8; 48];
 //! let rng = rand::SystemRandom::new();
-//! try!(rng.fill(&mut key_value));
+//! rng.fill(&mut key_value)?;
 //!
 //! let s_key = hmac::SigningKey::new(&digest::SHA384, key_value.as_ref());
 //! let mut s_ctx = hmac::SigningContext::with_key(&s_key);
@@ -140,7 +140,7 @@
 //! for part in &parts {
 //!     msg.extend(part.as_bytes());
 //! }
-//! try!(hmac::verify(&v_key, &msg.as_ref(), signature.as_ref()));
+//! hmac::verify(&v_key, &msg.as_ref(), signature.as_ref())?;
 //! #
 //! # Ok(())
 //! # }

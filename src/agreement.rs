@@ -31,7 +31,7 @@
 //! let rng = rand::SystemRandom::new();
 //!
 //! let my_private_key =
-//!     try!(agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng));
+//!     agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng)?;
 //!
 //! // Make `my_public_key` a byte slice containing my public key. In a real
 //! // application, this would be sent to the peer in an encoded protocol
@@ -39,7 +39,7 @@
 //! let mut my_public_key = [0u8; agreement::PUBLIC_KEY_MAX_LEN];
 //! let my_public_key =
 //!     &mut my_public_key[..my_private_key.public_key_len()];
-//! try!(my_private_key.compute_public_key(my_public_key));
+//! my_private_key.compute_public_key(my_public_key)?;
 //!
 //! // In a real application, the peer public key would be parsed out of a
 //! // protocol message. Here we just generate one.
@@ -47,11 +47,10 @@
 //! let peer_public_key;
 //! {
 //!     let peer_private_key =
-//!        try!(agreement::EphemeralPrivateKey::generate(&agreement::X25519,
-//!                                                      &rng));
+//!        agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng)?;
 //!     peer_public_key =
 //!         &mut peer_public_key_buf[..peer_private_key.public_key_len()];
-//!     try!(peer_private_key.compute_public_key(peer_public_key));
+//!     peer_private_key.compute_public_key(peer_public_key)?;
 //! }
 //! let peer_public_key = untrusted::Input::from(peer_public_key);
 //!
