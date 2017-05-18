@@ -277,9 +277,6 @@ static bool TestEVP(FileTest *t, void *arg) {
     if (!t->GetBytes(&output, "Output") ||
         !verify_op(ctx.get(), output.data(), output.size(), input.data(),
                    input.size())) {
-      // ECDSA sometimes doesn't push an error code. Push one on the error queue
-      // so it's distinguishable from other errors.
-      OPENSSL_PUT_ERROR(USER, ERR_R_EVP_LIB);
       return false;
     }
     return true;
