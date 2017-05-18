@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-// TODO: Deny `unused_qualifications` after
-// https://github.com/rust-lang/rust/issues/37345 is fixed.
 #![deny(
     const_err,
     dead_code,
@@ -54,6 +52,7 @@
     unused_must_use,
     unused_mut,
     unused_parens,
+    unused_qualifications,
     unused_results,
     unused_unsafe,
     unused_variables,

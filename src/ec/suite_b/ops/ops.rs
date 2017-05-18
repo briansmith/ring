@@ -14,7 +14,7 @@
 
 use arithmetic::montgomery::*;
 use core::marker::PhantomData;
-use {error, limb};
+use error;
 use untrusted;
 
 pub use limb::*; // XXX
@@ -141,7 +141,7 @@ impl CommonOps {
         -> Elem<<(EA, EB) as ProductEncoding>::Output>
         where (EA, EB): ProductEncoding
     {
-        elem::mul_mont(self.elem_mul_mont, a, b)
+        mul_mont(self.elem_mul_mont, a, b)
     }
 
     #[inline]
@@ -299,7 +299,7 @@ impl ScalarOps {
             &self, a: &Scalar<EA>, b: &Scalar<EB>)
             -> Scalar<<(EA, EB) as ProductEncoding>::Output>
             where (EA, EB): ProductEncoding {
-        elem::mul_mont(self.scalar_mul_mont, a, b)
+        mul_mont(self.scalar_mul_mont, a, b)
     }
 }
 
@@ -338,8 +338,8 @@ impl PublicScalarOps {
     pub fn elem_less_than(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>)
                           -> bool {
         let num_limbs = self.public_key_ops.common.num_limbs;
-        limb::limbs_less_than_limbs_vartime(&a.limbs[..num_limbs],
-                                            &b.limbs[..num_limbs])
+        limbs_less_than_limbs_vartime(&a.limbs[..num_limbs],
+                                      &b.limbs[..num_limbs])
     }
 
     #[inline]
@@ -958,7 +958,7 @@ mod tests {
         let bytes = test::from_hex(elems[i]).unwrap();
         let bytes = untrusted::Input::from(&bytes);
         let r: Elem<Unencoded> =
-            super::elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
+            elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
         // XXX: “Transmute” this to `Elem<R>` limbs.
         limbs_out[(i * ops.num_limbs)..((i + 1) * ops.num_limbs)]
             .copy_from_slice(&r.limbs[..ops.num_limbs]);
@@ -976,8 +976,7 @@ mod tests {
             let bytes = test::from_hex(elems[i]).unwrap();
             let bytes = untrusted::Input::from(&bytes);
             let unencoded: Elem<Unencoded> =
-                super::elem_parse_big_endian_fixed_consttime(ops, bytes)
-                    .unwrap();
+                elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
             // XXX: “Transmute” this to `Elem<R>` limbs.
             Elem {
                 limbs: unencoded.limbs,
@@ -1022,7 +1021,7 @@ mod tests {
         let bytes = consume_padded_bytes(ops, test_case, name);
         let bytes = untrusted::Input::from(&bytes);
         let r: Elem<Unencoded> =
-            super::elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
+            elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
         // XXX: “Transmute” this to an `Elem<R>`.
         Elem {
             limbs: r.limbs,
@@ -1035,16 +1034,15 @@ mod tests {
                       name: &str) -> Scalar {
         let bytes = test_case.consume_bytes(name);
         let bytes = untrusted::Input::from(&bytes);
-        super::scalar_parse_big_endian_variable(ops, AllowZero::Yes, bytes)
-            .unwrap()
+        scalar_parse_big_endian_variable(ops, AllowZero::Yes, bytes).unwrap()
     }
 
     fn consume_scalar_mont(ops: &CommonOps, test_case: &mut test::TestCase,
                            name: &str) -> Scalar<R> {
         let bytes = test_case.consume_bytes(name);
         let bytes = untrusted::Input::from(&bytes);
-        let s = super::scalar_parse_big_endian_variable(ops, AllowZero::Yes,
-                                                        bytes).unwrap();
+        let s = scalar_parse_big_endian_variable(ops, AllowZero::Yes, bytes)
+            .unwrap();
         // “Transmute” it to a `Scalar<R>`.
         Scalar {
             limbs: s.limbs,

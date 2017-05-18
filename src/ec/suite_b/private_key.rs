@@ -15,7 +15,7 @@
 //! Functionality shared by operations on private keys (ECC keygen and
 //! ECDSA signing).
 
-use {ec, error, limb, rand};
+use {ec, error, rand};
 use super::ops::*;
 use super::verify_affine_point_is_on_the_curve;
 use untrusted;
@@ -115,7 +115,7 @@ pub fn scalar_from_big_endian_bytes(ops: &PrivateKeyOps, bytes: &[u8])
     // way, we avoid needing to compute or store the value (n - 1), we avoid the
     // need to implement a function to add one to a scalar, and we avoid needing
     // to convert the scalar back into an array of bytes.
-    super::ops::scalar_parse_big_endian_fixed_consttime(
+    scalar_parse_big_endian_fixed_consttime(
         ops.common, untrusted::Input::from(bytes))
 }
 
@@ -166,11 +166,11 @@ pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
     let num_limbs = ops.common.num_limbs;
     if let Some(x_out) = x_out {
         let x = ops.common.elem_unencoded(&x_aff);
-        limb::big_endian_from_limbs_padded(&x.limbs[..num_limbs], x_out);
+        big_endian_from_limbs_padded(&x.limbs[..num_limbs], x_out);
     }
     if let Some(y_out) = y_out {
         let y = ops.common.elem_unencoded(&y_aff);
-        limb::big_endian_from_limbs_padded(&y.limbs[..num_limbs], y_out);
+        big_endian_from_limbs_padded(&y.limbs[..num_limbs], y_out);
     }
 
     Ok(())

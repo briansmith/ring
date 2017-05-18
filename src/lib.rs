@@ -42,9 +42,6 @@
     missing_debug_implementations,
     unknown_lints,
     unsafe_code,
-    // TODO: Deny `unused_qualifications` after
-    // https://github.com/rust-lang/rust/issues/37345 is fixed.
-    unused_qualifications,
 )]
 #![deny(
     const_err,
@@ -80,6 +77,7 @@
     unused_features,
     unused_imports,
     unused_import_braces,
+    unused_qualifications,
     unused_must_use,
     unused_mut,
     unused_parens,

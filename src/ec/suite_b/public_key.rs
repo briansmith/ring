@@ -98,7 +98,7 @@ mod tests {
     }
 
     fn public_key_ops_from_curve_name(curve_name: &str)
-                                      -> &'static ops::PublicKeyOps {
+                                      -> &'static PublicKeyOps {
         if curve_name == "P-256" {
             &ops::p256::PUBLIC_KEY_OPS
         } else if curve_name == "P-384" {
