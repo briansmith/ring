@@ -121,6 +121,79 @@ fn encode_point(x: Elem, y: Elem, z: Elem) -> EncodedPoint {
     bytes
 }
 
+// If the target architecture is non-Windows x86-64, then it is faster to
+// compute base point scalar multiplication using the target-optimized general
+// scalar multiplication.
+#[cfg(all(target_arch = "x86_64", not(windows)))]
+pub fn scalar_mult_with_base_point(scalar: &Scalar) -> EncodedPoint {
+    let mut point = [0u8; ELEM_LEN];
+    unsafe { GFp_x25519_scalar_mult(&mut point, scalar, &BASE_POINT); }
+    point
+}
+
+// If the target architecture is NEON-capable ARM, then it is faster to compute
+// base point scalar multiplication using the target-optimized general scalar
+// multiplication. Otherwise, if NEON is not available, we fall back on the
+// architecture-generic base point multiplication.
+#[cfg(target_arch = "arm")]
+pub fn scalar_mult_with_base_point(scalar: &Scalar) -> EncodedPoint {
+    if is_neon_capable() {
+        let mut point = [0u8; ELEM_LEN];
+
+        // We could use `GFp_x25519_scalar_mult()` here, instead. When compiled
+        // for ARM, that function performs the same NEON capability check we
+        // just did, then calls the following function when it succeeds. Since
+        // we already know we're in a branch where it is appropriate, we can
+        // skip the extra check and call the NEON-optimized implementation.
+        unsafe { GFp_x25519_NEON(&mut point, scalar, &BASE_POINT); }
+
+        return point;
+    }
+
+    scalar_mult_with_base_point_generic(scalar)
+}
+
+#[cfg(any(all(target_arch = "x86_64", not(windows)), target_arch = "arm"))]
+static BASE_POINT: EncodedPoint = [
+    9, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+];
+
+#[cfg(not(any(all(target_arch = "x86_64", not(windows)), target_arch = "arm")))]
+pub fn scalar_mult_with_base_point(scalar: &Scalar) -> EncodedPoint {
+    scalar_mult_with_base_point_generic(scalar)
+}
+
+#[cfg(not(all(target_arch = "x86_64", not(windows))))]
+fn scalar_mult_with_base_point_generic(scalar: &Scalar) -> EncodedPoint {
+    let mut point = ExtPoint::new_at_infinity();
+
+    unsafe { GFp_x25519_ge_scalarmult_base(&mut point, scalar); }
+
+    let mut z_plus_y = [0i32; ELEM_LIMBS];
+    let mut z_minus_y = [0i32; ELEM_LIMBS];
+    let mut z_minus_y_inv = [0i32; ELEM_LIMBS];
+    let mut u_coord = [0i32; ELEM_LIMBS];
+    unsafe {
+        GFp_fe_add(&mut z_plus_y, &point.z, &point.y);
+        GFp_fe_sub(&mut z_minus_y, &point.z, &point.y);
+        GFp_fe_invert(&mut z_minus_y_inv, &z_minus_y);
+        GFp_fe_mul(&mut u_coord, &z_plus_y, &z_minus_y_inv);
+    }
+
+    let mut encoded_point = [0u8; ELEM_LEN];
+    unsafe { GFp_fe_tobytes(&mut encoded_point, &u_coord); }
+
+    encoded_point
+}
+
+#[cfg(target_arch = "arm")]
+fn is_neon_capable() -> bool {
+    unsafe { GFp_is_NEON_capable_at_runtime() == 1 }
+}
+
 extern {
     fn GFp_fe_invert(out: &mut Elem, z: &Elem);
     fn GFp_fe_isnegative(elem: &Elem) -> u8;
@@ -128,4 +201,25 @@ extern {
     fn GFp_fe_tobytes(bytes: &mut EncodedPoint, elem: &Elem);
     fn GFp_x25519_ge_frombytes_vartime(h: &mut ExtPoint, s: &EncodedPoint)
                                        -> c::int;
+}
+
+// Externs needed for the generic base point multiplication impl.
+#[cfg(not(all(target_arch = "x86_64", not(windows))))]
+extern {
+    fn GFp_fe_add(out: &mut Elem, f: &Elem, g: &Elem);
+    fn GFp_fe_sub(out: &mut Elem, f: &Elem, g: &Elem);
+    fn GFp_x25519_ge_scalarmult_base(point: &mut ExtPoint, scalar: &Scalar);
+}
+
+#[cfg(target_arch = "arm")]
+extern {
+    fn GFp_is_NEON_capable_at_runtime() -> u8;
+    fn GFp_x25519_NEON(out: &mut EncodedPoint, scalar: &Scalar,
+                       point: &EncodedPoint);
+}
+
+#[cfg(all(target_arch = "x86_64", not(windows)))]
+extern {
+    fn GFp_x25519_scalar_mult(out: &mut EncodedPoint, scalar: &Scalar,
+                              point: &EncodedPoint);
 }
