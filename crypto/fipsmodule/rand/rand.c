@@ -122,14 +122,20 @@ static int hwrand(uint8_t *buf, size_t len) {
 static void rand_get_seed(struct rand_thread_state *state,
                           uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
   if (!state->last_block_valid) {
-    CRYPTO_sysrand(state->last_block, sizeof(state->last_block));
+    if (!hwrand(state->last_block, sizeof(state->last_block))) {
+      CRYPTO_sysrand(state->last_block, sizeof(state->last_block));
+    }
     state->last_block_valid = 1;
   }
 
-  /* We overread from /dev/urandom by a factor of 10 and XOR to whiten. */
+  /* We overread from /dev/urandom or RDRAND by a factor of 10 and XOR to
+   * whiten. */
 #define FIPS_OVERREAD 10
   uint8_t entropy[CTR_DRBG_ENTROPY_LEN * FIPS_OVERREAD];
-  CRYPTO_sysrand(entropy, sizeof(entropy));
+
+  if (!hwrand(entropy, sizeof(entropy))) {
+    CRYPTO_sysrand(entropy, sizeof(entropy));
+  }
 
   /* See FIPS 140-2, section 4.9.2. This is the “continuous random number
    * generator test” which causes the program to randomly abort. Hopefully the
@@ -165,7 +171,8 @@ static void rand_get_seed(struct rand_thread_state *state,
 
 static void rand_get_seed(struct rand_thread_state *state,
                           uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
-  /* If not in FIPS mode, we don't overread from the system entropy source. */
+  /* If not in FIPS mode, we don't overread from the system entropy source and
+   * we don't depend only on the hardware RDRAND. */
   CRYPTO_sysrand(seed, CTR_DRBG_ENTROPY_LEN);
 }
 
