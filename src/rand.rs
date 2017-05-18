@@ -177,7 +177,7 @@ mod sysrand {
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         let mut read_len = 0;
         while read_len < dest.len() {
-            let chunk_len = try!(chunk(&mut dest[read_len..]));
+            let chunk_len = chunk(&mut dest[read_len..])?;
             read_len += chunk_len;
         }
         Ok(())
