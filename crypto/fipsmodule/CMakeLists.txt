@@ -199,16 +199,6 @@ else()
 endif()
 
 add_executable(
-  aes_test
-
-  aes/aes_test.cc
-  $<TARGET_OBJECTS:test_support>
-)
-
-target_link_libraries(aes_test crypto)
-add_dependencies(all_tests aes_test)
-
-add_executable(
   bn_test
 
   bn/bn_test.cc

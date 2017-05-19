@@ -36,7 +36,6 @@
 	["crypto/ecdh/ecdh_test", "crypto/ecdh/ecdh_tests.txt"],
 	["crypto/evp/evp_test", "crypto/evp/evp_tests.txt"],
 	["crypto/evp/pbkdf_test"],
-	["crypto/fipsmodule/aes_test", "crypto/fipsmodule/aes/aes_tests.txt"],
 	["crypto/fipsmodule/bn_test", "crypto/fipsmodule/bn/bn_tests.txt"],
 	["crypto/fipsmodule/ctrdrbg_vector_test", "crypto/fipsmodule/rand/ctrdrbg_vectors.txt"],
 	["crypto/fipsmodule/ecdsa_sign_test", "crypto/fipsmodule/ecdsa/ecdsa_sign_tests.txt"],

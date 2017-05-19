@@ -22,6 +22,7 @@
 
 #include <iosfwd>
 #include <string>
+#include <vector>
 
 #include "../internal.h"
 
@@ -42,6 +43,8 @@ struct Bytes {
       : data(reinterpret_cast<const uint8_t *>(str)), len(strlen(str)) {}
   explicit Bytes(const std::string &str)
       : data(reinterpret_cast<const uint8_t *>(str.data())), len(str.size()) {}
+  explicit Bytes(const std::vector<uint8_t> &vec)
+      : data(vec.data()), len(vec.size()) {}
 
   template <size_t N>
   explicit Bytes(const uint8_t (&array)[N]) : data(array), len(N) {}

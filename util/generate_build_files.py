@@ -486,8 +486,8 @@ def NoTestRunnerFiles(path, dent, is_dir):
   return not is_dir or dent != 'runner'
 
 
-def NotGTestMain(path, dent, is_dir):
-  return dent != 'gtest_main.cc'
+def NotGTestSupport(path, dent, is_dir):
+  return 'gtest' not in dent
 
 
 def SSLHeaderFiles(path, dent, is_dir):
@@ -630,12 +630,42 @@ def WriteAsmFiles(perlasms):
   return asmfiles
 
 
+def ExtractVariablesFromCMakeFile(cmakefile):
+  """Parses the contents of the CMakeLists.txt file passed as an argument and
+  returns a dictionary of exported source lists."""
+  variables = {}
+  in_set_command = False
+  set_command = []
+  with open(cmakefile) as f:
+    for line in f:
+      if '#' in line:
+        line = line[:line.index('#')]
+      line = line.strip()
+
+      if not in_set_command:
+        if line.startswith('set('):
+          in_set_command = True
+          set_command = []
+      elif line == ')':
+        in_set_command = False
+        if not set_command:
+          raise ValueError('Empty set command')
+        variables[set_command[0]] = set_command[1:]
+      else:
+        set_command.extend([c for c in line.split(' ') if c])
+
+  if in_set_command:
+    raise ValueError('Unfinished set command')
+  return variables
+
+
 def IsGTest(path):
   with open(path) as f:
     return "#include <gtest/gtest.h>" in f.read()
 
 
 def main(platforms):
+  cmake = ExtractVariablesFromCMakeFile(os.path.join('src', 'sources.cmake'))
   crypto_c_files = FindCFiles(os.path.join('src', 'crypto'), NoTestsNorFIPSFragments)
   fips_fragments = FindCFiles(os.path.join('src', 'crypto', 'fipsmodule'), OnlyFIPSFragments)
   ssl_source_files = FindCFiles(os.path.join('src', 'ssl'), NoTests)
@@ -650,13 +680,24 @@ def main(platforms):
   crypto_c_files.append('err_data.c')
 
   test_support_c_files = FindCFiles(os.path.join('src', 'crypto', 'test'),
-                                    NotGTestMain)
+                                    NotGTestSupport)
   test_support_h_files = (
       FindHeaderFiles(os.path.join('src', 'crypto', 'test'), AllFiles) +
       FindHeaderFiles(os.path.join('src', 'ssl', 'test'), NoTestRunnerFiles))
 
+  # Generate crypto_test_data.cc
+  with open('crypto_test_data.cc', 'w+') as out:
+    subprocess.check_call(
+        ['go', 'run', 'util/embed_test_data.go'] + cmake['CRYPTO_TEST_DATA'],
+        cwd='src',
+        stdout=out)
+
   test_c_files = []
-  crypto_test_files = ['src/crypto/test/gtest_main.cc']
+  crypto_test_files = [
+      'crypto_test_data.cc',
+      'src/crypto/test/file_test_gtest.cc',
+      'src/crypto/test/gtest_main.cc',
+  ]
   # TODO(davidben): Remove this loop once all tests are converted.
   for path in FindCFiles(os.path.join('src', 'crypto'), OnlyTests):
     if IsGTest(path):

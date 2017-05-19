@@ -18,77 +18,50 @@
 #include <memory>
 #include <vector>
 
+#include <gtest/gtest.h>
+
 #include <openssl/aes.h>
-#include <openssl/crypto.h>
 
 #include "../../internal.h"
 #include "../../test/file_test.h"
+#include "../../test/test_util.h"
 
 
-static bool TestRaw(FileTest *t) {
+static void TestRaw(FileTest *t) {
   std::vector<uint8_t> key, plaintext, ciphertext;
-  if (!t->GetBytes(&key, "Key") ||
-      !t->GetBytes(&plaintext, "Plaintext") ||
-      !t->GetBytes(&ciphertext, "Ciphertext")) {
-    return false;
-  }
+  ASSERT_TRUE(t->GetBytes(&key, "Key"));
+  ASSERT_TRUE(t->GetBytes(&plaintext, "Plaintext"));
+  ASSERT_TRUE(t->GetBytes(&ciphertext, "Ciphertext"));
 
-  if (plaintext.size() != AES_BLOCK_SIZE ||
-      ciphertext.size() != AES_BLOCK_SIZE) {
-    t->PrintLine("Plaintext or Ciphertext not a block size.");
-    return false;
-  }
+  ASSERT_EQ(static_cast<unsigned>(AES_BLOCK_SIZE), plaintext.size());
+  ASSERT_EQ(static_cast<unsigned>(AES_BLOCK_SIZE), ciphertext.size());
 
   AES_KEY aes_key;
-  if (AES_set_encrypt_key(key.data(), 8 * key.size(), &aes_key) != 0) {
-    t->PrintLine("AES_set_encrypt_key failed.");
-    return false;
-  }
+  ASSERT_EQ(0, AES_set_encrypt_key(key.data(), 8 * key.size(), &aes_key));
 
   // Test encryption.
   uint8_t block[AES_BLOCK_SIZE];
   AES_encrypt(plaintext.data(), block, &aes_key);
-  if (!t->ExpectBytesEqual(block, AES_BLOCK_SIZE, ciphertext.data(),
-                           ciphertext.size())) {
-    t->PrintLine("AES_encrypt gave the wrong output.");
-    return false;
-  }
+  EXPECT_EQ(Bytes(ciphertext), Bytes(block));
 
   // Test in-place encryption.
   OPENSSL_memcpy(block, plaintext.data(), AES_BLOCK_SIZE);
   AES_encrypt(block, block, &aes_key);
-  if (!t->ExpectBytesEqual(block, AES_BLOCK_SIZE, ciphertext.data(),
-                           ciphertext.size())) {
-    t->PrintLine("In-place AES_encrypt gave the wrong output.");
-    return false;
-  }
+  EXPECT_EQ(Bytes(ciphertext), Bytes(block));
 
-  if (AES_set_decrypt_key(key.data(), 8 * key.size(), &aes_key) != 0) {
-    t->PrintLine("AES_set_decrypt_key failed.");
-    return false;
-  }
+  ASSERT_EQ(0, AES_set_decrypt_key(key.data(), 8 * key.size(), &aes_key));
 
   // Test decryption.
   AES_decrypt(ciphertext.data(), block, &aes_key);
-  if (!t->ExpectBytesEqual(block, AES_BLOCK_SIZE, plaintext.data(),
-                           plaintext.size())) {
-    t->PrintLine("AES_decrypt gave the wrong output.");
-    return false;
-  }
+  EXPECT_EQ(Bytes(plaintext), Bytes(block));
 
   // Test in-place decryption.
   OPENSSL_memcpy(block, ciphertext.data(), AES_BLOCK_SIZE);
   AES_decrypt(block, block, &aes_key);
-  if (!t->ExpectBytesEqual(block, AES_BLOCK_SIZE, plaintext.data(),
-                           plaintext.size())) {
-    t->PrintLine("In-place AES_decrypt gave the wrong output.");
-    return false;
-  }
-
-  return true;
+  EXPECT_EQ(Bytes(plaintext), Bytes(block));
 }
 
-static bool TestKeyWrap(FileTest *t) {
+static void TestKeyWrap(FileTest *t) {
   // All test vectors use the default IV, so test both with implicit and
   // explicit IV.
   //
@@ -98,93 +71,61 @@ static bool TestKeyWrap(FileTest *t) {
   };
 
   std::vector<uint8_t> key, plaintext, ciphertext;
-  if (!t->GetBytes(&key, "Key") ||
-      !t->GetBytes(&plaintext, "Plaintext") ||
-      !t->GetBytes(&ciphertext, "Ciphertext")) {
-    return false;
-  }
+  ASSERT_TRUE(t->GetBytes(&key, "Key"));
+  ASSERT_TRUE(t->GetBytes(&plaintext, "Plaintext"));
+  ASSERT_TRUE(t->GetBytes(&ciphertext, "Ciphertext"));
 
-  if (plaintext.size() + 8 != ciphertext.size()) {
-    t->PrintLine("Invalid Plaintext and Ciphertext lengths.");
-    return false;
-  }
+  ASSERT_EQ(plaintext.size() + 8, ciphertext.size())
+      << "Invalid Plaintext and Ciphertext lengths.";
 
+  // Test encryption.
   AES_KEY aes_key;
-  if (AES_set_encrypt_key(key.data(), 8 * key.size(), &aes_key) != 0) {
-    t->PrintLine("AES_set_encrypt_key failed.");
-    return false;
-  }
+  ASSERT_EQ(0, AES_set_encrypt_key(key.data(), 8 * key.size(), &aes_key));
 
+  // Test with implicit IV.
   std::unique_ptr<uint8_t[]> buf(new uint8_t[ciphertext.size()]);
-  if (AES_wrap_key(&aes_key, nullptr /* iv */, buf.get(), plaintext.data(),
-                   plaintext.size()) != static_cast<int>(ciphertext.size()) ||
-      !t->ExpectBytesEqual(buf.get(), ciphertext.size(), ciphertext.data(),
-                           ciphertext.size())) {
-    t->PrintLine("AES_wrap_key with implicit IV failed.");
-    return false;
-  }
+  int len = AES_wrap_key(&aes_key, nullptr /* iv */, buf.get(),
+                         plaintext.data(), plaintext.size());
+  ASSERT_GE(len, 0);
+  EXPECT_EQ(Bytes(ciphertext), Bytes(buf.get(), static_cast<size_t>(len)));
 
+  // Test with explicit IV.
   OPENSSL_memset(buf.get(), 0, ciphertext.size());
-  if (AES_wrap_key(&aes_key, kDefaultIV, buf.get(), plaintext.data(),
-                   plaintext.size()) != static_cast<int>(ciphertext.size()) ||
-      !t->ExpectBytesEqual(buf.get(), ciphertext.size(), ciphertext.data(),
-                           ciphertext.size())) {
-    t->PrintLine("AES_wrap_key with explicit IV failed.");
-    return false;
-  }
+  len = AES_wrap_key(&aes_key, kDefaultIV, buf.get(), plaintext.data(),
+                     plaintext.size());
+  ASSERT_GE(len, 0);
+  EXPECT_EQ(Bytes(ciphertext), Bytes(buf.get(), static_cast<size_t>(len)));
 
-  if (AES_set_decrypt_key(key.data(), 8 * key.size(), &aes_key) != 0) {
-    t->PrintLine("AES_set_decrypt_key failed.");
-    return false;
-  }
+  // Test decryption.
+  ASSERT_EQ(0, AES_set_decrypt_key(key.data(), 8 * key.size(), &aes_key));
 
+  // Test with implicit IV.
   buf.reset(new uint8_t[plaintext.size()]);
-  if (AES_unwrap_key(&aes_key, nullptr /* iv */, buf.get(), ciphertext.data(),
-                     ciphertext.size()) != static_cast<int>(plaintext.size()) ||
-      !t->ExpectBytesEqual(buf.get(), plaintext.size(), plaintext.data(),
-                           plaintext.size())) {
-    t->PrintLine("AES_unwrap_key with implicit IV failed.");
-    return false;
-  }
+  len = AES_unwrap_key(&aes_key, nullptr /* iv */, buf.get(), ciphertext.data(),
+                       ciphertext.size());
+  ASSERT_GE(len, 0);
+  EXPECT_EQ(Bytes(plaintext), Bytes(buf.get(), static_cast<size_t>(len)));
 
+  // Test with explicit IV.
   OPENSSL_memset(buf.get(), 0, plaintext.size());
-  if (AES_unwrap_key(&aes_key, kDefaultIV, buf.get(), ciphertext.data(),
-                     ciphertext.size()) != static_cast<int>(plaintext.size()) ||
-      !t->ExpectBytesEqual(buf.get(), plaintext.size(), plaintext.data(),
-                           plaintext.size())) {
-    t->PrintLine("AES_unwrap_key with explicit IV failed.");
-    return false;
-  }
+  len = AES_unwrap_key(&aes_key, kDefaultIV, buf.get(), ciphertext.data(),
+                       ciphertext.size());
+  ASSERT_GE(len, 0);
 
+  // Test corrupted ciphertext.
   ciphertext[0] ^= 1;
-  if (AES_unwrap_key(&aes_key, nullptr /* iv */, buf.get(), ciphertext.data(),
-                     ciphertext.size()) != -1) {
-    t->PrintLine("AES_unwrap_key with bad input unexpectedly succeeded.");
-    return false;
-  }
-
-  return true;
+  EXPECT_EQ(-1, AES_unwrap_key(&aes_key, nullptr /* iv */, buf.get(),
+                               ciphertext.data(), ciphertext.size()));
 }
 
-static bool TestAES(FileTest *t, void *arg) {
-  if (t->GetParameter() == "Raw") {
-    return TestRaw(t);
-  }
-  if (t->GetParameter() == "KeyWrap") {
-    return TestKeyWrap(t);
-  }
-
-  t->PrintLine("Unknown mode '%s'.", t->GetParameter().c_str());
-  return false;
-}
-
-int main(int argc, char **argv) {
-  CRYPTO_library_init();
-
-  if (argc != 2) {
-    fprintf(stderr, "%s <test file.txt>\n", argv[0]);
-    return 1;
-  }
-
-  return FileTestMain(TestAES, nullptr, argv[1]);
+TEST(AESTest, TestVectors) {
+  FileTestGTest("crypto/fipsmodule/aes/aes_tests.txt", [](FileTest *t) {
+    if (t->GetParameter() == "Raw") {
+      TestRaw(t);
+    } else if (t->GetParameter() == "KeyWrap") {
+      TestKeyWrap(t);
+    } else {
+      ADD_FAILURE() << "Unknown mode " << t->GetParameter();
+    }
+  });
 }

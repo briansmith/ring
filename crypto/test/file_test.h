@@ -22,6 +22,7 @@
 OPENSSL_MSVC_PRAGMA(warning(push))
 OPENSSL_MSVC_PRAGMA(warning(disable : 4702))
 
+#include <functional>
 #include <map>
 #include <memory>
 #include <set>
@@ -218,5 +219,9 @@ int FileTestMain(FileTestFunc run_test, void *arg, const char *path);
 // FileTestMainSilent behaves like FileTestMain but does not print a final
 // FAIL/PASS message to stdout.
 int FileTestMainSilent(FileTestFunc run_test, void *arg, const char *path);
+
+// FileTestGTest behaves like FileTestMain, but for GTest. |path| must be the
+// name of a test file embedded in the test binary.
+void FileTestGTest(const char *path, std::function<void(FileTest *)> run_test);
 
 #endif /* OPENSSL_HEADER_CRYPTO_TEST_FILE_TEST_H */

@@ -251,10 +251,13 @@ add_executable(
   dsa/dsa_test.cc
   err/err_test.cc
   evp/evp_extra_test.cc
+  fipsmodule/aes/aes_test.cc
   fipsmodule/ec/ec_test.cc
   fipsmodule/rand/ctrdrbg_test.cc
+  test/file_test_gtest.cc
   rsa_extra/rsa_test.cc
 
+  $<TARGET_OBJECTS:crypto_test_data>
   $<TARGET_OBJECTS:gtest_main>
   $<TARGET_OBJECTS:test_support>
 )
