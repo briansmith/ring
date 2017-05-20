@@ -61,6 +61,7 @@
 #include "../../internal.h"
 #include "../aes/internal.h"
 #include "../modes/internal.h"
+#include "../delocate.h"
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 #include <openssl/arm_arch.h>
