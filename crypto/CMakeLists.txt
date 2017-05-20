@@ -223,15 +223,6 @@ add_executable(
 target_link_libraries(thread_test crypto)
 add_dependencies(all_tests thread_test)
 
-add_executable(
-  refcount_test
-
-  refcount_test.cc
-)
-
-target_link_libraries(refcount_test crypto)
-add_dependencies(all_tests refcount_test)
-
 # TODO(davidben): Convert the remaining tests to GTest.
 add_executable(
   crypto_test
@@ -252,11 +243,16 @@ add_executable(
   dsa/dsa_test.cc
   err/err_test.cc
   evp/evp_extra_test.cc
+  evp/pbkdf_test.cc
   fipsmodule/aes/aes_test.cc
   fipsmodule/ec/ec_test.cc
   fipsmodule/rand/ctrdrbg_test.cc
-  test/file_test_gtest.cc
+  hkdf/hkdf_test.cc
+  lhash/lhash_test.cc
+  pool/pool_test.cc
+  refcount_test.cc
   rsa_extra/rsa_test.cc
+  test/file_test_gtest.cc
 
   $<TARGET_OBJECTS:crypto_test_data>
   $<TARGET_OBJECTS:gtest_main>

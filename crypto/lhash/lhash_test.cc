@@ -16,7 +16,6 @@
 #define _POSIX_C_SOURCE 201410L
 #endif
 
-#include <openssl/crypto.h>
 #include <openssl/lhash.h>
 
 #include <stdio.h>
@@ -29,6 +28,8 @@
 #include <string>
 #include <utility>
 #include <vector>
+
+#include <gtest/gtest.h>
 
 
 static std::unique_ptr<char[]> RandString(void) {
@@ -57,14 +58,10 @@ static const char *Lookup(
   return iter->second.get();
 }
 
-int main(int argc, char **argv) {
-  CRYPTO_library_init();
-
+TEST(LHashTest, Basic) {
   std::unique_ptr<_LHASH, FreeLHASH> lh(
       lh_new((lhash_hash_func)lh_strhash, (lhash_cmp_func)strcmp));
-  if (!lh) {
-    return 1;
-  }
+  ASSERT_TRUE(lh);
 
   // lh is expected to store a canonical instance of each string. dummy_lh
   // mirrors what it stores for comparison. It also manages ownership of the
@@ -72,10 +69,7 @@ int main(int argc, char **argv) {
   std::map<std::string, std::unique_ptr<char[]>> dummy_lh;
 
   for (unsigned i = 0; i < 100000; i++) {
-    if (dummy_lh.size() != lh_num_items(lh.get())) {
-      fprintf(stderr, "Length mismatch\n");
-      return 1;
-    }
+    EXPECT_EQ(dummy_lh.size(), lh_num_items(lh.get()));
 
     // Check the entire contents and test |lh_doall_arg|. This takes O(N) time,
     // so only do it every few iterations.
@@ -98,10 +92,7 @@ int main(int argc, char **argv) {
                    &actual);
       std::sort(actual.begin(), actual.end());
 
-      if (expected != actual) {
-        fprintf(stderr, "Contents mismatch\n");
-        return 1;
-      }
+      EXPECT_EQ(expected, actual);
     }
 
     enum Action {
@@ -115,25 +106,15 @@ int main(int argc, char **argv) {
       case kRetrieve: {
         std::unique_ptr<char[]> key = RandString();
         void *value = lh_retrieve(lh.get(), key.get());
-        if (value != Lookup(&dummy_lh, key.get())) {
-          fprintf(stderr, "lh_retrieve failure\n");
-          return 1;
-        }
+        EXPECT_EQ(Lookup(&dummy_lh, key.get()), value);
         break;
       }
 
       case kInsert: {
         std::unique_ptr<char[]> key = RandString();
         void *previous;
-        if (!lh_insert(lh.get(), &previous, key.get())) {
-          return 1;
-        }
-
-        if (previous != Lookup(&dummy_lh, key.get())) {
-          fprintf(stderr, "lh_insert failure\n");
-          return 1;
-        }
-
+        ASSERT_TRUE(lh_insert(lh.get(), &previous, key.get()));
+        EXPECT_EQ(Lookup(&dummy_lh, key.get()), previous);
         dummy_lh[key.get()] = std::move(key);
         break;
       }
@@ -141,21 +122,10 @@ int main(int argc, char **argv) {
       case kDelete: {
         std::unique_ptr<char[]> key = RandString();
         void *value = lh_delete(lh.get(), key.get());
-
-        if (value != Lookup(&dummy_lh, key.get())) {
-          fprintf(stderr, "lh_delete failure\n");
-          return 1;
-        }
-
+        EXPECT_EQ(Lookup(&dummy_lh, key.get()), value);
         dummy_lh.erase(key.get());
         break;
       }
-
-      default:
-        abort();
     }
   }
-
-  printf("PASS\n");
-  return 0;
 }
