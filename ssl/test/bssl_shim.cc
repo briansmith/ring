@@ -970,34 +970,51 @@ static int ServerNameCallback(SSL *ssl, int *out_alert, void *arg) {
 // Connect returns a new socket connected to localhost on |port| or -1 on
 // error.
 static int Connect(uint16_t port) {
-  int sock = socket(AF_INET, SOCK_STREAM, 0);
-  if (sock == -1) {
-    PrintSocketError("socket");
-    return -1;
-  }
-  int nodelay = 1;
-  if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
-          reinterpret_cast<const char*>(&nodelay), sizeof(nodelay)) != 0) {
-    PrintSocketError("setsockopt");
+  for (int af : { AF_INET6, AF_INET }) {
+    int sock = socket(af, SOCK_STREAM, 0);
+    if (sock == -1) {
+      PrintSocketError("socket");
+      return -1;
+    }
+    int nodelay = 1;
+    if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
+            reinterpret_cast<const char*>(&nodelay), sizeof(nodelay)) != 0) {
+      PrintSocketError("setsockopt");
+      closesocket(sock);
+      return -1;
+    }
+
+    sockaddr_storage ss;
+    OPENSSL_memset(&ss, 0, sizeof(ss));
+    ss.ss_family = af;
+    socklen_t len = 0;
+
+    if (af == AF_INET6) {
+      sockaddr_in6 *sin6 = (sockaddr_in6 *) &ss;
+      len = sizeof(*sin6);
+      sin6->sin6_port = htons(port);
+      if (!inet_pton(AF_INET6, "::1", &sin6->sin6_addr)) {
+        PrintSocketError("inet_pton");
+        closesocket(sock);
+        return -1;
+      }
+    } else if (af == AF_INET) {
+      sockaddr_in *sin = (sockaddr_in *) &ss;
+      len = sizeof(*sin);
+      sin->sin_port = htons(port);
+      if (!inet_pton(AF_INET, "127.0.0.1", &sin->sin_addr)) {
+        PrintSocketError("inet_pton");
+        closesocket(sock);
+        return -1;
+      }
+    }
+
+    if (connect(sock, reinterpret_cast<const sockaddr*>(&ss), len) == 0) {
+      return sock;
+    }
     closesocket(sock);
-    return -1;
   }
-  sockaddr_in sin;
-  OPENSSL_memset(&sin, 0, sizeof(sin));
-  sin.sin_family = AF_INET;
-  sin.sin_port = htons(port);
-  if (!inet_pton(AF_INET, "127.0.0.1", &sin.sin_addr)) {
-    PrintSocketError("inet_pton");
-    closesocket(sock);
-    return -1;
-  }
-  if (connect(sock, reinterpret_cast<const sockaddr*>(&sin),
-              sizeof(sin)) != 0) {
-    PrintSocketError("connect");
-    closesocket(sock);
-    return -1;
-  }
-  return sock;
+  return -1;
 }
 
 class SocketCloser {
