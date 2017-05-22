@@ -88,7 +88,7 @@ $code.=<<___;
 .text
 
 .align	7
-rcon:
+Lrcon:
 .long	0x01000000, 0x01000000, 0x01000000, 0x01000000	?rev
 .long	0x1b000000, 0x1b000000, 0x1b000000, 0x1b000000	?rev
 .long	0x0d0e0f0c, 0x0d0e0f0c, 0x0d0e0f0c, 0x0d0e0f0c	?rev
@@ -372,7 +372,7 @@ Lenc_key_abort:
 .${prefix}_set_decrypt_key:
 	$STU		$sp,-$FRAME($sp)
 	mflr		r10
-	$PUSH		r10,$FRAME+$LRSAVE($sp)
+	$PUSH		r10,`$FRAME+$LRSAVE`($sp)
 	bl		Lset_encrypt_key
 	mtlr		r10
 
@@ -728,7 +728,7 @@ _aesp8_cbc_decrypt8x:
 	addi		$key,$key,0x20
 	lvx		v31,$x00,$key
 	?vperm		$rndkey0,$rndkey0,v30,$keyperm
-	addi		$key_,$sp,$FRAME+15
+	addi		$key_,$sp,`$FRAME+15`
 	mtctr		$rounds
 
 Load_cbc_dec_key:
@@ -749,7 +749,7 @@ Load_cbc_dec_key:
 	?vperm		v25,v31,v26,$keyperm
 	lvx		v28,$x30,$key
 	stvx		v25,$x10,$key_		# off-load round[4]
-	addi		$key_,$sp,$FRAME+15	# rewind $key_
+	addi		$key_,$sp,`$FRAME+15`	# rewind $key_
 	?vperm		v26,v26,v27,$keyperm
 	lvx		v29,$x40,$key
 	?vperm		v27,v27,v28,$keyperm
@@ -866,7 +866,7 @@ Loop_cbc_dec8x:
 	vncipher	$out6,$out6,v27
 	vncipher	$out7,$out7,v27
 
-	addi		$key_,$sp,$FRAME+15	# rewind $key_
+	addi		$key_,$sp,`$FRAME+15`	# rewind $key_
 	vncipher	$out0,$out0,v28
 	vncipher	$out1,$out1,v28
 	vncipher	$out2,$out2,v28
@@ -1434,7 +1434,7 @@ _aesp8_ctr32_encrypt8x:
 	addi		$key,$key,0x20
 	lvx		v31,$x00,$key
 	?vperm		$rndkey0,$rndkey0,v30,$keyperm
-	addi		$key_,$sp,$FRAME+15
+	addi		$key_,$sp,`$FRAME+15`
 	mtctr		$rounds
 
 Load_ctr32_enc_key:
@@ -1455,7 +1455,7 @@ Load_ctr32_enc_key:
 	?vperm		v25,v31,v26,$keyperm
 	lvx		v28,$x30,$key
 	stvx		v25,$x10,$key_		# off-load round[4]
-	addi		$key_,$sp,$FRAME+15	# rewind $key_
+	addi		$key_,$sp,`$FRAME+15`	# rewind $key_
 	?vperm		v26,v26,v27,$keyperm
 	lvx		v29,$x40,$key
 	?vperm		v27,v27,v28,$keyperm
@@ -1542,7 +1542,7 @@ Loop_ctr32_enc8x_middle:
 	vcipher		$out7,$out7,v25
 
 	and		r0,r0,r11
-	addi		$key_,$sp,$FRAME+15	# rewind $key_
+	addi		$key_,$sp,`$FRAME+15`	# rewind $key_
 	vcipher		$out0,$out0,v26
 	vcipher		$out1,$out1,v26
 	vcipher		$out2,$out2,v26
@@ -2461,7 +2461,7 @@ _aesp8_xts_encrypt6x:
 	addi		$key1,$key1,0x20
 	lvx		v31,$x00,$key1
 	?vperm		$rndkey0,$rndkey0,v30,$keyperm
-	addi		$key_,$sp,$FRAME+15
+	addi		$key_,$sp,`$FRAME+15`
 	mtctr		$rounds
 
 Load_xts_enc_key:
@@ -2482,7 +2482,7 @@ Load_xts_enc_key:
 	?vperm		v25,v31,v26,$keyperm
 	lvx		v28,$x30,$key1
 	stvx		v25,$x10,$key_		# off-load round[4]
-	addi		$key_,$sp,$FRAME+15	# rewind $key_
+	addi		$key_,$sp,`$FRAME+15`	# rewind $key_
 	?vperm		v26,v26,v27,$keyperm
 	lvx		v29,$x40,$key1
 	?vperm		v27,v27,v28,$keyperm
@@ -2639,7 +2639,7 @@ Loop_xts_enc6x:
 	vcipher		$out4,$out4,v27
 	vcipher		$out5,$out5,v27
 
-	addi		$key_,$sp,$FRAME+15	# rewind $key_
+	addi		$key_,$sp,`$FRAME+15`	# rewind $key_
 	 vxor		$tweak,$tweak,$tmp
 	vcipher		$out0,$out0,v28
 	vcipher		$out1,$out1,v28
@@ -2858,7 +2858,7 @@ Loop_xts_enc1x:
 	lvx_u		$in0,0,$inp
 	vcipher		$out0,$out0,v27
 
-	addi		$key_,$sp,$FRAME+15	# rewind $key_
+	addi		$key_,$sp,`$FRAME+15`	# rewind $key_
 	vcipher		$out0,$out0,v28
 	lvx		v24,$x00,$key_		# re-pre-load round[1]
 
@@ -3026,7 +3026,7 @@ _aesp8_xts_enc5x:
 	vcipher		$out4,$out4,v27
 	 vxor		$in2,$twk2,v31
 
-	addi		$key_,$sp,$FRAME+15	# rewind $key_
+	addi		$key_,$sp,`$FRAME+15`	# rewind $key_
 	vcipher		$out0,$out0,v28
 	vcipher		$out1,$out1,v28
 	vcipher		$out2,$out2,v28
@@ -3113,7 +3113,7 @@ _aesp8_xts_decrypt6x:
 	addi		$key1,$key1,0x20
 	lvx		v31,$x00,$key1
 	?vperm		$rndkey0,$rndkey0,v30,$keyperm
-	addi		$key_,$sp,$FRAME+15
+	addi		$key_,$sp,`$FRAME+15`
 	mtctr		$rounds
 
 Load_xts_dec_key:
@@ -3134,7 +3134,7 @@ Load_xts_dec_key:
 	?vperm		v25,v31,v26,$keyperm
 	lvx		v28,$x30,$key1
 	stvx		v25,$x10,$key_		# off-load round[4]
-	addi		$key_,$sp,$FRAME+15	# rewind $key_
+	addi		$key_,$sp,`$FRAME+15`	# rewind $key_
 	?vperm		v26,v26,v27,$keyperm
 	lvx		v29,$x40,$key1
 	?vperm		v27,v27,v28,$keyperm
@@ -3291,7 +3291,7 @@ Loop_xts_dec6x:
 	vncipher	$out4,$out4,v27
 	vncipher	$out5,$out5,v27
 
-	addi		$key_,$sp,$FRAME+15	# rewind $key_
+	addi		$key_,$sp,`$FRAME+15`	# rewind $key_
 	 vxor		$tweak,$tweak,$tmp
 	vncipher	$out0,$out0,v28
 	vncipher	$out1,$out1,v28
@@ -3512,7 +3512,7 @@ Loop_xts_dec1x:
 	lvx_u		$in0,0,$inp
 	vncipher	$out0,$out0,v27
 
-	addi		$key_,$sp,$FRAME+15	# rewind $key_
+	addi		$key_,$sp,`$FRAME+15`	# rewind $key_
 	vncipher	$out0,$out0,v28
 	lvx		v24,$x00,$key_		# re-pre-load round[1]
 
@@ -3564,7 +3564,7 @@ Lxts_dec6x_steal:
 	lvsr		$inpperm,0,$taillen	# $in5 is no more
 	vncipher	$out0,$out0,v27
 
-	addi		$key_,$sp,$FRAME+15	# rewind $key_
+	addi		$key_,$sp,`$FRAME+15`	# rewind $key_
 	vncipher	$out0,$out0,v28
 	lvx		v24,$x00,$key_		# re-pre-load round[1]
 
@@ -3714,7 +3714,7 @@ _aesp8_xts_dec5x:
 	vncipher	$out4,$out4,v27
 	 vxor		$in2,$twk2,v31
 
-	addi		$key_,$sp,$FRAME+15	# rewind $key_
+	addi		$key_,$sp,`$FRAME+15`	# rewind $key_
 	vncipher	$out0,$out0,v28
 	vncipher	$out1,$out1,v28
 	vncipher	$out2,$out2,v28

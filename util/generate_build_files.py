@@ -26,7 +26,7 @@ import json
 OS_ARCH_COMBOS = [
     ('linux', 'arm', 'linux32', [], 'S'),
     ('linux', 'aarch64', 'linux64', [], 'S'),
-    ('linux', 'ppc64le', 'ppc64le', [], 'S'),
+    ('linux', 'ppc64le', 'linux64le', [], 'S'),
     ('linux', 'x86', 'elf', ['-fPIC', '-DOPENSSL_IA32_SSE2'], 'S'),
     ('linux', 'x86_64', 'elf', [], 'S'),
     ('mac', 'x86', 'macosx', ['-fPIC', '-DOPENSSL_IA32_SSE2'], 'S'),
