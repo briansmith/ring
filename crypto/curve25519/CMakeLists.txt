@@ -27,13 +27,3 @@ add_library(
 
   ${CURVE25519_ARCH_SOURCES}
 )
-
-add_executable(
-  ed25519_test
-
-  ed25519_test.cc
-  $<TARGET_OBJECTS:test_support>
-)
-
-target_link_libraries(ed25519_test crypto)
-add_dependencies(all_tests ed25519_test)
