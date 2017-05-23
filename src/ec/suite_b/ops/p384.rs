@@ -99,44 +99,37 @@ fn p384_elem_inv(a: &Elem<R>) -> Elem<R> {
     }
 
     let b_1 = &a;
-    let b_11    = sqr_mul(b_1,     1, b_1);
-    let f       = sqr_mul(&b_11,   2, &b_11);
-    let ff      = sqr_mul(&f,      4, &f);
-    let ffff    = sqr_mul(&ff,     8, &ff);
-    let ffffff  = sqr_mul(&ffff,   8, &ff);
-    let fffffff = sqr_mul(&ffffff, 4, &f);
+    let b_11       = sqr_mul(b_1,       1, b_1);
+    let b_111      = sqr_mul(&b_11,     1, b_1);
+    let f_11       = sqr_mul(&b_111,    3, &b_111);
+    let fff        = sqr_mul(&f_11,     6, &f_11);
+    let fff_111    = sqr_mul(&fff,      3, &b_111);
+    let fffffff_11 = sqr_mul(&fff_111, 15, &fff_111);
 
-    let ffffffffffffff = sqr_mul(&fffffff, 0 + 28, &fffffff);
+    let fffffffffffffff = sqr_mul(&fffffff_11, 30, &fffffff_11);
 
-    let ffffffffffffffffffffffffffff =
-        sqr_mul(&ffffffffffffff, 0 + 56, &ffffffffffffff);
+    let ffffffffffffffffffffffffffffff =
+        sqr_mul(&fffffffffffffff, 60, &fffffffffffffff);
 
-    // ffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-    let mut acc = sqr_mul(&ffffffffffffffffffffffffffff, 0 + 112,
-                          &ffffffffffffffffffffffffffff);
+    // ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+    let mut acc = sqr_mul(&ffffffffffffffffffffffffffffff, 120,
+                          &ffffffffffffffffffffffffffffff);
 
-    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-    sqr_mul_acc(&mut acc, 0 + 28, &fffffff);
+    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff_111
+    sqr_mul_acc(&mut acc, 15, &fff_111);
 
-    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff[11]
-    sqr_mul_acc(&mut acc, 0 + 2, &b_11);
-
-    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff[111]
-    sqr_mul_acc(&mut acc, 0 + 1, b_1);
-
-    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffff
-    sqr_mul_acc(&mut acc, 1 + 28, &fffffff);
+    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffff_11
+    sqr_mul_acc(&mut acc, 1 + 30, &fffffff_11);
 
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
-    sqr_mul_acc(&mut acc, 0 + 4, &f);
+    sqr_mul_acc(&mut acc, 2, &b_11);
 
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
-    // 0000000000000000fffffff
-    sqr_mul_acc(&mut acc, 64 + 28, &fffffff);
+    // 0000000000000000fffffff_11
+    sqr_mul_acc(&mut acc, 64 + 30, &fffffff_11);
 
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
     // 0000000000000000fffffffd
-    sqr_mul_acc(&mut acc, 0 + 2, &b_11);
     sqr_mul(&acc, 1 + 1, b_1)
 }
 
