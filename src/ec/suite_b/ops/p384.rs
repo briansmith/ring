@@ -115,7 +115,7 @@ fn p384_elem_inv(a: &Elem<R>) -> Elem<R> {
     let mut acc = sqr_mul(&ffffffffffffffffffffffffffff, 0 + 112,
                           &ffffffffffffffffffffffffffff);
 
-    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff */
+    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
     sqr_mul_acc(&mut acc, 0 + 28, &fffffff);
 
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff[11]
