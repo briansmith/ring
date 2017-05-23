@@ -232,6 +232,7 @@ add_executable(
   bio/bio_test.cc
   bytestring/bytestring_test.cc
   chacha/chacha_test.cc
+  cipher_extra/aead_extra_test.cc
   cmac/cmac_test.cc
   compiler_test.cc
   constant_time_test.cc

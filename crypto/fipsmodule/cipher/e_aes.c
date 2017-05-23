@@ -1193,6 +1193,11 @@ static int aead_aes_gcm_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
   const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
   GCM128_CONTEXT gcm;
 
+  if (nonce_len == 0) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
+    return 0;
+  }
+
   if (in_len + gcm_ctx->tag_len < in_len) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
@@ -1237,6 +1242,11 @@ static int aead_aes_gcm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
   uint8_t tag[EVP_AEAD_AES_GCM_TAG_LEN];
   size_t plaintext_len;
   GCM128_CONTEXT gcm;
+
+  if (nonce_len == 0) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
+    return 0;
+  }
 
   if (in_len < gcm_ctx->tag_len) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
