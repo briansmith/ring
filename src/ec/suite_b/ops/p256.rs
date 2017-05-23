@@ -114,7 +114,7 @@ fn p256_elem_inv(a: &Elem<R>) -> Elem<R> {
     // ffffffff00000001000000000000000000000000fffffffffffffffffffffff_11
     sqr_mul_acc(&mut acc, 30, &fffffff_11);
 
-    // ffffffff00000001000000000000000000000000fffffffffffffffffffffff
+    // ffffffff00000001000000000000000000000000fffffffffffffffffffffffd
     sqr_mul(&acc, 1 + 1, b_1)
 }
 
