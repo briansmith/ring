@@ -106,8 +106,6 @@ fn p384_elem_inv(a: &Elem<R>) -> Elem<R> {
     let ffffff  = sqr_mul(&ffff,   8, &ff);
     let fffffff = sqr_mul(&ffffff, 4, &f);
 
-    let b_1 = &a;
-
     let ffffffffffffff = sqr_mul(&fffffff, 0 + 28, &fffffff);
 
     let ffffffffffffffffffffffffffff =
