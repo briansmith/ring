@@ -338,7 +338,8 @@ static int tls1_setup_key_block(SSL_HANDSHAKE *hs) {
   size_t mac_secret_len, fixed_iv_len;
   if (session->cipher == NULL ||
       !ssl_cipher_get_evp_aead(&aead, &mac_secret_len, &fixed_iv_len,
-                               session->cipher, ssl3_protocol_version(ssl))) {
+                               session->cipher, ssl3_protocol_version(ssl),
+                               SSL_is_dtls(ssl))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CIPHER_OR_HASH_UNAVAILABLE);
     return 0;
   }
@@ -428,7 +429,7 @@ int tls1_change_cipher_state(SSL_HANDSHAKE *hs, int which) {
   }
 
   SSL_AEAD_CTX *aead_ctx = SSL_AEAD_CTX_new(
-      is_read ? evp_aead_open : evp_aead_seal, ssl3_protocol_version(ssl),
+      is_read ? evp_aead_open : evp_aead_seal, ssl3_protocol_version(ssl), SSL_is_dtls(ssl),
       hs->new_cipher, key, key_len, mac_secret, mac_secret_len, iv, iv_len);
   if (aead_ctx == NULL) {
     return 0;

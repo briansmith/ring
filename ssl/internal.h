@@ -215,8 +215,8 @@ extern "C" {
  * ciphers. It returns 1 on success and 0 on error. */
 int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
                             size_t *out_mac_secret_len,
-                            size_t *out_fixed_iv_len,
-                            const SSL_CIPHER *cipher, uint16_t version);
+                            size_t *out_fixed_iv_len, const SSL_CIPHER *cipher,
+                            uint16_t version, int is_dtls);
 
 /* ssl_get_handshake_digest returns the |EVP_MD| corresponding to
  * |algorithm_prf| and the |version|. */
@@ -379,10 +379,11 @@ typedef struct ssl_aead_ctx_st {
  * |direction|. |version| is the normalized protocol version, so DTLS 1.0 is
  * represented as 0x0301, not 0xffef. */
 SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
-                               uint16_t version, const SSL_CIPHER *cipher,
-                               const uint8_t *enc_key, size_t enc_key_len,
-                               const uint8_t *mac_key, size_t mac_key_len,
-                               const uint8_t *fixed_iv, size_t fixed_iv_len);
+                               uint16_t version, int is_dtls,
+                               const SSL_CIPHER *cipher, const uint8_t *enc_key,
+                               size_t enc_key_len, const uint8_t *mac_key,
+                               size_t mac_key_len, const uint8_t *fixed_iv,
+                               size_t fixed_iv_len);
 
 /* SSL_AEAD_CTX_free frees |ctx|. */
 void SSL_AEAD_CTX_free(SSL_AEAD_CTX *ctx);

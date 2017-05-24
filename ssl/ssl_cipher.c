@@ -624,17 +624,21 @@ const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
 int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
                             size_t *out_mac_secret_len,
                             size_t *out_fixed_iv_len,
-                            const SSL_CIPHER *cipher, uint16_t version) {
+                            const SSL_CIPHER *cipher, uint16_t version, int is_dtls) {
   *out_aead = NULL;
   *out_mac_secret_len = 0;
   *out_fixed_iv_len = 0;
 
+  const int is_tls12 = version == TLS1_2_VERSION && !is_dtls;
+
   if (cipher->algorithm_mac == SSL_AEAD) {
     if (cipher->algorithm_enc == SSL_AES128GCM) {
-      *out_aead = EVP_aead_aes_128_gcm();
+      *out_aead =
+          is_tls12 ? EVP_aead_aes_128_gcm_tls12() : EVP_aead_aes_128_gcm();
       *out_fixed_iv_len = 4;
     } else if (cipher->algorithm_enc == SSL_AES256GCM) {
-      *out_aead = EVP_aead_aes_256_gcm();
+      *out_aead =
+          is_tls12 ? EVP_aead_aes_256_gcm_tls12() : EVP_aead_aes_256_gcm();
       *out_fixed_iv_len = 4;
     } else if (cipher->algorithm_enc == SSL_CHACHA20POLY1305) {
       *out_aead = EVP_aead_chacha20_poly1305();

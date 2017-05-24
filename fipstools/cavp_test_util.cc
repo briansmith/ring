@@ -117,17 +117,16 @@ bool AEADEncrypt(const EVP_AEAD *aead, std::vector<uint8_t> *ct,
   }
 
   std::vector<uint8_t> out;
+  iv->resize(EVP_AEAD_nonce_length(aead));
   out.resize(pt.size() + EVP_AEAD_max_overhead(aead));
   size_t out_len;
   if (!EVP_AEAD_CTX_seal(ctx.get(), out.data(), &out_len, out.size(),
-                         nullptr /* iv */, 0 /* iv_len */, pt.data(), pt.size(),
+                         iv->data(), iv->size(), pt.data(), pt.size(),
                          aad.data(), aad.size())) {
     return false;
   }
 
-  static const size_t iv_len = EVP_AEAD_nonce_length(aead);
-  iv->assign(out.begin(), out.begin() + iv_len);
-  ct->assign(out.begin() + iv_len, out.end() - tag_len);
+  ct->assign(out.begin(), out.end() - tag_len);
   tag->assign(out.end() - tag_len, out.end());
 
   return true;
@@ -143,16 +142,15 @@ bool AEADDecrypt(const EVP_AEAD *aead, std::vector<uint8_t> *pt,
                                         tag.size(), evp_aead_open)) {
     return false;
   }
-  std::vector<uint8_t> in = iv;
-  in.reserve(in.size() + ct.size() + tag.size());
-  in.insert(in.end(), ct.begin(), ct.end());
+  std::vector<uint8_t> in = ct;
+  in.reserve(ct.size() + tag.size());
   in.insert(in.end(), tag.begin(), tag.end());
 
   pt->resize(pt_len);
   aad->resize(aad_len);
   size_t out_pt_len;
   if (!EVP_AEAD_CTX_open(ctx.get(), pt->data(), &out_pt_len, pt->size(),
-                         nullptr /* iv */, 0 /* iv_len */, in.data(), in.size(),
+                         iv.data(), iv.size(), in.data(), in.size(),
                          aad->data(), aad->size()) ||
       out_pt_len != pt_len) {
     return false;

@@ -137,7 +137,7 @@ int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
   const EVP_AEAD *aead;
   size_t discard;
   if (!ssl_cipher_get_evp_aead(&aead, &discard, &discard, session->cipher,
-                               version)) {
+                               version, SSL_is_dtls(ssl))) {
     return 0;
   }
 
@@ -160,8 +160,9 @@ int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
     return 0;
   }
 
-  SSL_AEAD_CTX *traffic_aead = SSL_AEAD_CTX_new(
-      direction, version, session->cipher, key, key_len, NULL, 0, iv, iv_len);
+  SSL_AEAD_CTX *traffic_aead =
+      SSL_AEAD_CTX_new(direction, version, SSL_is_dtls(ssl), session->cipher,
+                       key, key_len, NULL, 0, iv, iv_len);
   if (traffic_aead == NULL) {
     return 0;
   }

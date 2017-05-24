@@ -27,14 +27,16 @@
 
 
 SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
-                               uint16_t version, const SSL_CIPHER *cipher,
-                               const uint8_t *enc_key, size_t enc_key_len,
-                               const uint8_t *mac_key, size_t mac_key_len,
-                               const uint8_t *fixed_iv, size_t fixed_iv_len) {
+                               uint16_t version, int is_dtls,
+                               const SSL_CIPHER *cipher, const uint8_t *enc_key,
+                               size_t enc_key_len, const uint8_t *mac_key,
+                               size_t mac_key_len, const uint8_t *fixed_iv,
+                               size_t fixed_iv_len) {
   const EVP_AEAD *aead;
   size_t expected_mac_key_len, expected_fixed_iv_len;
   if (!ssl_cipher_get_evp_aead(&aead, &expected_mac_key_len,
-                               &expected_fixed_iv_len, cipher, version) ||
+                               &expected_fixed_iv_len, cipher, version,
+                               is_dtls) ||
       /* Ensure the caller returned correct key sizes. */
       expected_fixed_iv_len != fixed_iv_len ||
       expected_mac_key_len != mac_key_len) {
