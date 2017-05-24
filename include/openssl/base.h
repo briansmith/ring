@@ -197,7 +197,7 @@ extern "C" {
 #define OPENSSL_MSVC_PRAGMA(arg)
 #endif
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) || defined(__clang__)
 #define OPENSSL_UNUSED __attribute__((unused))
 #else
 #define OPENSSL_UNUSED
