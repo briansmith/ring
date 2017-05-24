@@ -206,28 +206,6 @@ target_link_libraries(bn_test crypto)
 add_dependencies(all_tests bn_test)
 
 add_executable(
-  gcm_test
-
-  modes/gcm_test.cc
-
-  $<TARGET_OBJECTS:test_support>
-)
-
-target_link_libraries(gcm_test crypto)
-add_dependencies(all_tests gcm_test)
-
-add_executable(
-  ctrdrbg_vector_test
-
-  rand/ctrdrbg_vector_test.cc
-
-  $<TARGET_OBJECTS:test_support>
-)
-
-target_link_libraries(ctrdrbg_vector_test crypto)
-add_dependencies(all_tests ctrdrbg_vector_test)
-
-add_executable(
   example_mul
 
   ec/example_mul.c

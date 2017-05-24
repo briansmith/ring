@@ -54,18 +54,17 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <stdio.h>
-#include <string.h>
-
 #include <memory>
 #include <string>
 #include <vector>
 
-#include <openssl/crypto.h>
+#include <gtest/gtest.h>
+
 #include <openssl/digest.h>
 #include <openssl/hmac.h>
 
 #include "../test/file_test.h"
+#include "../test/test_util.h"
 
 
 static const EVP_MD *GetDigest(const std::string &name) {
@@ -85,85 +84,47 @@ static const EVP_MD *GetDigest(const std::string &name) {
   return nullptr;
 }
 
-static bool TestHMAC(FileTest *t, void *arg) {
-  std::string digest_str;
-  if (!t->GetAttribute(&digest_str, "HMAC")) {
-    return false;
-  }
-  const EVP_MD *digest = GetDigest(digest_str);
-  if (digest == nullptr) {
-    t->PrintLine("Unknown digest '%s'", digest_str.c_str());
-    return false;
-  }
+TEST(HMACTest, TestVectors) {
+  FileTestGTest("crypto/hmac_extra/hmac_tests.txt", [](FileTest *t) {
+    std::string digest_str;
+    ASSERT_TRUE(t->GetAttribute(&digest_str, "HMAC"));
+    const EVP_MD *digest = GetDigest(digest_str);
+    ASSERT_TRUE(digest) << "Unknown digest: " << digest_str;
 
-  std::vector<uint8_t> key, input, output;
-  if (!t->GetBytes(&key, "Key") ||
-      !t->GetBytes(&input, "Input") ||
-      !t->GetBytes(&output, "Output")) {
-    return false;
-  }
+    std::vector<uint8_t> key, input, output;
+    ASSERT_TRUE(t->GetBytes(&key, "Key"));
+    ASSERT_TRUE(t->GetBytes(&input, "Input"));
+    ASSERT_TRUE(t->GetBytes(&output, "Output"));
+    ASSERT_EQ(EVP_MD_size(digest), output.size());
 
-  // Test using the one-shot API.
-  unsigned expected_mac_len = EVP_MD_size(digest);
-  std::unique_ptr<uint8_t[]> mac(new uint8_t[expected_mac_len]);
-  unsigned mac_len;
-  if (nullptr == HMAC(digest, key.data(), key.size(), input.data(),
-                      input.size(), mac.get(), &mac_len) ||
-      mac_len != expected_mac_len ||
-      !t->ExpectBytesEqual(output.data(), output.size(), mac.get(), mac_len)) {
-    t->PrintLine("One-shot API failed.");
-    return false;
-  }
+    // Test using the one-shot API.
+    unsigned expected_mac_len = EVP_MD_size(digest);
+    std::unique_ptr<uint8_t[]> mac(new uint8_t[expected_mac_len]);
+    unsigned mac_len;
+    ASSERT_TRUE(HMAC(digest, key.data(), key.size(), input.data(), input.size(),
+                     mac.get(), &mac_len));
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
 
-  // Test using HMAC_CTX.
-  bssl::ScopedHMAC_CTX ctx;
-  if (!HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr) ||
-      !HMAC_Update(ctx.get(), input.data(), input.size()) ||
-      !HMAC_Final(ctx.get(), mac.get(), &mac_len) ||
-      mac_len != expected_mac_len ||
-      !t->ExpectBytesEqual(output.data(), output.size(), mac.get(), mac_len)) {
-    t->PrintLine("HMAC_CTX failed.");
-   return false;
-  }
+    // Test using HMAC_CTX.
+    bssl::ScopedHMAC_CTX ctx;
+    ASSERT_TRUE(
+        HMAC_Init_ex(ctx.get(), key.data(), key.size(), digest, nullptr));
+    ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
+    ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
 
-  // Test that an HMAC_CTX may be reset with the same key.
-  if (!HMAC_Init_ex(ctx.get(), nullptr, 0, digest, nullptr) ||
-      !HMAC_Update(ctx.get(), input.data(), input.size()) ||
-      !HMAC_Final(ctx.get(), mac.get(), &mac_len) ||
-      mac_len != expected_mac_len ||
-      !t->ExpectBytesEqual(output.data(), output.size(), mac.get(), mac_len)) {
-    t->PrintLine("HMAC_CTX with reset failed.");
-   return false;
-  }
+    // Test that an HMAC_CTX may be reset with the same key.
+    ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, digest, nullptr));
+    ASSERT_TRUE(HMAC_Update(ctx.get(), input.data(), input.size()));
+    ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
 
-  // Test feeding the input in byte by byte.
-  if (!HMAC_Init_ex(ctx.get(), nullptr, 0, nullptr, nullptr)) {
-   t->PrintLine("HMAC_CTX streaming failed.");
-   return false;
-  }
-  for (size_t i = 0; i < input.size(); i++) {
-    if (!HMAC_Update(ctx.get(), &input[i], 1)) {
-      t->PrintLine("HMAC_CTX streaming failed.");
-      return false;
+    // Test feeding the input in byte by byte.
+    ASSERT_TRUE(HMAC_Init_ex(ctx.get(), nullptr, 0, nullptr, nullptr));
+    for (size_t i = 0; i < input.size(); i++) {
+      ASSERT_TRUE(HMAC_Update(ctx.get(), &input[i], 1));
     }
-  }
-  if (!HMAC_Final(ctx.get(), mac.get(), &mac_len) ||
-      mac_len != expected_mac_len ||
-      !t->ExpectBytesEqual(output.data(), output.size(), mac.get(), mac_len)) {
-    t->PrintLine("HMAC_CTX streaming failed.");
-    return false;
-  }
-
-  return true;
-}
-
-int main(int argc, char *argv[]) {
-  CRYPTO_library_init();
-
-  if (argc != 2) {
-    fprintf(stderr, "%s <test file.txt>\n", argv[0]);
-    return 1;
-  }
-
-  return FileTestMain(TestHMAC, nullptr, argv[1]);
+    ASSERT_TRUE(HMAC_Final(ctx.get(), mac.get(), &mac_len));
+    EXPECT_EQ(Bytes(output), Bytes(mac.get(), mac_len));
+  });
 }

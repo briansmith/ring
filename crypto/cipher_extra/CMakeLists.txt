@@ -31,23 +31,5 @@ add_library(
   ${CIPHER_ARCH_SOURCES}
 )
 
-add_executable(
-  cipher_test
-
-  cipher_test.cc
-  $<TARGET_OBJECTS:test_support>
-)
-
-add_executable(
-  aead_test
-
-  aead_test.cc
-  $<TARGET_OBJECTS:test_support>
-)
-
 perlasm(aes128gcmsiv-x86_64.${ASM_EXT} asm/aes128gcmsiv-x86_64.pl)
 perlasm(chacha20_poly1305_x86_64.${ASM_EXT} asm/chacha20_poly1305_x86_64.pl)
-
-target_link_libraries(cipher_test crypto)
-target_link_libraries(aead_test crypto)
-add_dependencies(all_tests cipher_test aead_test)

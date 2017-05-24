@@ -18,6 +18,7 @@
 #include <openssl/sha.h>
 
 #include "internal.h"
+#include "../../test/file_test.h"
 #include "../../test/test_util.h"
 
 
@@ -80,4 +81,39 @@ TEST(CTRDRBGTest, Large) {
   EXPECT_EQ(Bytes(kExpected), Bytes(digest));
 
   CTR_DRBG_clear(&drbg);
+}
+
+TEST(CTRDRBGTest, TestVectors) {
+  FileTestGTest("crypto/fipsmodule/rand/ctrdrbg_vectors.txt", [](FileTest *t) {
+    std::vector<uint8_t> seed, personalisation, reseed, ai_reseed, ai1, ai2,
+        expected;
+    ASSERT_TRUE(t->GetBytes(&seed, "EntropyInput"));
+    ASSERT_TRUE(t->GetBytes(&personalisation, "PersonalizationString"));
+    ASSERT_TRUE(t->GetBytes(&reseed, "EntropyInputReseed"));
+    ASSERT_TRUE(t->GetBytes(&ai_reseed, "AdditionalInputReseed"));
+    ASSERT_TRUE(t->GetBytes(&ai1, "AdditionalInput1"));
+    ASSERT_TRUE(t->GetBytes(&ai2, "AdditionalInput2"));
+    ASSERT_TRUE(t->GetBytes(&expected, "ReturnedBits"));
+
+    ASSERT_EQ(static_cast<size_t>(CTR_DRBG_ENTROPY_LEN), seed.size());
+    ASSERT_EQ(static_cast<size_t>(CTR_DRBG_ENTROPY_LEN), reseed.size());
+
+    CTR_DRBG_STATE drbg;
+    CTR_DRBG_init(&drbg, seed.data(),
+                  personalisation.size() > 0 ? personalisation.data() : nullptr,
+                  personalisation.size());
+    CTR_DRBG_reseed(&drbg, reseed.data(),
+                    ai_reseed.size() > 0 ? ai_reseed.data() : nullptr,
+                    ai_reseed.size());
+
+    std::vector<uint8_t> out;
+    out.resize(expected.size());
+
+    CTR_DRBG_generate(&drbg, out.data(), out.size(),
+                      ai1.size() > 0 ? ai1.data() : nullptr, ai1.size());
+    CTR_DRBG_generate(&drbg, out.data(), out.size(),
+                      ai2.size() > 0 ? ai2.data() : nullptr, ai2.size());
+
+    EXPECT_EQ(Bytes(expected), Bytes(out));
+  });
 }

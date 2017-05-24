@@ -23,6 +23,8 @@
 
 #include <gtest/gtest.h>
 
+#include <openssl/err.h>
+
 
 std::string GetTestData(const char *path);
 
@@ -81,5 +83,8 @@ void FileTestGTest(const char *path, std::function<void(FileTest *)> run_test) {
 
     SCOPED_TRACE(testing::Message() << path << ", line " << t.start_line());
     run_test(&t);
+
+    // Clean up the error queue for the next test.
+    ERR_clear_error();
   }
 }

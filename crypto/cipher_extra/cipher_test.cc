@@ -57,11 +57,13 @@
 #include <string>
 #include <vector>
 
+#include <gtest/gtest.h>
+
 #include <openssl/cipher.h>
-#include <openssl/crypto.h>
 #include <openssl/err.h>
 
 #include "../test/file_test.h"
+#include "../test/test_util.h"
 
 
 static const EVP_CIPHER *GetCipher(const std::string &name) {
@@ -109,11 +111,8 @@ static const EVP_CIPHER *GetCipher(const std::string &name) {
   return nullptr;
 }
 
-static bool TestOperation(FileTest *t,
-                          const EVP_CIPHER *cipher,
-                          bool encrypt,
-                          size_t chunk_size,
-                          const std::vector<uint8_t> &key,
+static void TestOperation(FileTest *t, const EVP_CIPHER *cipher, bool encrypt,
+                          size_t chunk_size, const std::vector<uint8_t> &key,
                           const std::vector<uint8_t> &iv,
                           const std::vector<uint8_t> &plaintext,
                           const std::vector<uint8_t> &ciphertext,
@@ -131,48 +130,36 @@ static bool TestOperation(FileTest *t,
   bool is_aead = EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE;
 
   bssl::ScopedEVP_CIPHER_CTX ctx;
-  if (!EVP_CipherInit_ex(ctx.get(), cipher, nullptr, nullptr, nullptr,
-                         encrypt ? 1 : 0)) {
-    return false;
-  }
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), cipher, nullptr, nullptr, nullptr,
+                         encrypt ? 1 : 0));
   if (t->HasAttribute("IV")) {
     if (is_aead) {
-      if (!EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_IVLEN,
-                               iv.size(), 0)) {
-        return false;
-      }
-    } else if (iv.size() != EVP_CIPHER_CTX_iv_length(ctx.get())) {
-      t->PrintLine("Bad IV length.");
-      return false;
+      ASSERT_TRUE(
+          EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_IVLEN, iv.size(), 0));
+    } else {
+      ASSERT_EQ(iv.size(), EVP_CIPHER_CTX_iv_length(ctx.get()));
     }
   }
-  if (is_aead && !encrypt &&
-      !EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, tag.size(),
-                           const_cast<uint8_t*>(tag.data()))) {
-    return false;
+  if (is_aead && !encrypt) {
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, tag.size(),
+                                    const_cast<uint8_t *>(tag.data())));
   }
   // The ciphers are run with no padding. For each of the ciphers we test, the
   // output size matches the input size.
   std::vector<uint8_t> result(in->size());
-  if (in->size() != out->size()) {
-    t->PrintLine("Input/output size mismatch (%u vs %u).", (unsigned)in->size(),
-                 (unsigned)out->size());
-    return false;
-  }
+  ASSERT_EQ(in->size(), out->size());
+  int unused, result_len1 = 0, result_len2;
+  ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
+  ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), nullptr, nullptr, key.data(),
+                                iv.data(), -1));
   // Note: the deprecated |EVP_CIPHER|-based AES-GCM API is sensitive to whether
   // parameters are NULL, so it is important to skip the |in| and |aad|
   // |EVP_CipherUpdate| calls when empty.
-  int unused, result_len1 = 0, result_len2;
-  if (!EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()) ||
-      !EVP_CipherInit_ex(ctx.get(), nullptr, nullptr, key.data(), iv.data(),
-                         -1) ||
-      (!aad.empty() &&
-       !EVP_CipherUpdate(ctx.get(), nullptr, &unused, aad.data(),
-                         aad.size())) ||
-      !EVP_CIPHER_CTX_set_padding(ctx.get(), 0)) {
-    t->PrintLine("Operation failed.");
-    return false;
+  if (!aad.empty()) {
+    ASSERT_TRUE(
+        EVP_CipherUpdate(ctx.get(), nullptr, &unused, aad.data(), aad.size()));
   }
+  ASSERT_TRUE(EVP_CIPHER_CTX_set_padding(ctx.get(), 0));
   if (chunk_size != 0) {
     for (size_t i = 0; i < in->size();) {
       size_t todo = chunk_size;
@@ -181,72 +168,44 @@ static bool TestOperation(FileTest *t,
       }
 
       int len;
-      if (!EVP_CipherUpdate(ctx.get(), result.data() + result_len1, &len,
-                            in->data() + i, todo)) {
-        t->PrintLine("Operation failed.");
-        return false;
-      }
+      ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), result.data() + result_len1, &len,
+                                   in->data() + i, todo));
       result_len1 += len;
       i += todo;
     }
-  } else if (!in->empty() &&
-             !EVP_CipherUpdate(ctx.get(), result.data(), &result_len1,
-                               in->data(), in->size())) {
-    t->PrintLine("Operation failed.");
-    return false;
+  } else if (!in->empty()) {
+    ASSERT_TRUE(EVP_CipherUpdate(ctx.get(), result.data(), &result_len1,
+                                 in->data(), in->size()));
   }
-  if (!EVP_CipherFinal_ex(ctx.get(), result.data() + result_len1,
-                          &result_len2)) {
-    t->PrintLine("Operation failed.");
-    return false;
-  }
+  ASSERT_TRUE(
+      EVP_CipherFinal_ex(ctx.get(), result.data() + result_len1, &result_len2));
   result.resize(result_len1 + result_len2);
-  if (!t->ExpectBytesEqual(out->data(), out->size(), result.data(),
-                           result.size())) {
-    return false;
-  }
+  EXPECT_EQ(Bytes(*out), Bytes(result));
   if (encrypt && is_aead) {
     uint8_t rtag[16];
-    if (tag.size() > sizeof(rtag)) {
-      t->PrintLine("Bad tag length.");
-      return false;
-    }
-    if (!EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, tag.size(),
-                             rtag) ||
-        !t->ExpectBytesEqual(tag.data(), tag.size(), rtag,
-                             tag.size())) {
-      return false;
-    }
+    ASSERT_LE(tag.size(), sizeof(rtag));
+    ASSERT_TRUE(
+        EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, tag.size(), rtag));
+    EXPECT_EQ(Bytes(tag), Bytes(rtag, tag.size()));
   }
-  return true;
 }
 
-static bool TestCipher(FileTest *t, void *arg) {
+static void TestCipher(FileTest *t) {
   std::string cipher_str;
-  if (!t->GetAttribute(&cipher_str, "Cipher")) {
-    return false;
-  }
+  ASSERT_TRUE(t->GetAttribute(&cipher_str, "Cipher"));
   const EVP_CIPHER *cipher = GetCipher(cipher_str);
-  if (cipher == nullptr) {
-    t->PrintLine("Unknown cipher: '%s'.", cipher_str.c_str());
-    return false;
-  }
+  ASSERT_TRUE(cipher);
 
   std::vector<uint8_t> key, iv, plaintext, ciphertext, aad, tag;
-  if (!t->GetBytes(&key, "Key") ||
-      !t->GetBytes(&plaintext, "Plaintext") ||
-      !t->GetBytes(&ciphertext, "Ciphertext")) {
-    return false;
-  }
-  if (EVP_CIPHER_iv_length(cipher) > 0 &&
-      !t->GetBytes(&iv, "IV")) {
-    return false;
+  ASSERT_TRUE(t->GetBytes(&key, "Key"));
+  ASSERT_TRUE(t->GetBytes(&plaintext, "Plaintext"));
+  ASSERT_TRUE(t->GetBytes(&ciphertext, "Ciphertext"));
+  if (EVP_CIPHER_iv_length(cipher) > 0) {
+    ASSERT_TRUE(t->GetBytes(&iv, "IV"));
   }
   if (EVP_CIPHER_mode(cipher) == EVP_CIPH_GCM_MODE) {
-    if (!t->GetBytes(&aad, "AAD") ||
-        !t->GetBytes(&tag, "Tag")) {
-      return false;
-    }
+    ASSERT_TRUE(t->GetBytes(&aad, "AAD"));
+    ASSERT_TRUE(t->GetBytes(&tag, "Tag"));
   }
 
   enum {
@@ -261,8 +220,7 @@ static bool TestCipher(FileTest *t, void *arg) {
     } else if (str == "DECRYPT") {
       operation = kDecrypt;
     } else {
-      t->PrintLine("Unknown operation: '%s'.", str.c_str());
-      return false;
+      FAIL() << "Unknown operation: " << str;
     }
   }
 
@@ -270,30 +228,60 @@ static bool TestCipher(FileTest *t, void *arg) {
                                            17, 31, 32, 33, 63, 64, 65, 512};
 
   for (size_t chunk_size : chunk_sizes) {
+    SCOPED_TRACE(chunk_size);
     // By default, both directions are run, unless overridden by the operation.
-    if (operation != kDecrypt &&
-        !TestOperation(t, cipher, true /* encrypt */, chunk_size, key, iv,
-                       plaintext, ciphertext, aad, tag)) {
-      return false;
+    if (operation != kDecrypt) {
+      SCOPED_TRACE("encrypt");
+      TestOperation(t, cipher, true /* encrypt */, chunk_size, key, iv,
+                    plaintext, ciphertext, aad, tag);
     }
 
-    if (operation != kEncrypt &&
-        !TestOperation(t, cipher, false /* decrypt */, chunk_size, key, iv,
-                       plaintext, ciphertext, aad, tag)) {
-      return false;
+    if (operation != kEncrypt) {
+      SCOPED_TRACE("decrypt");
+      TestOperation(t, cipher, false /* decrypt */, chunk_size, key, iv,
+                    plaintext, ciphertext, aad, tag);
     }
   }
-
-  return true;
 }
 
-int main(int argc, char **argv) {
-  CRYPTO_library_init();
+TEST(CipherTest, TestVectors) {
+  FileTestGTest("crypto/cipher_extra/test/cipher_tests.txt", TestCipher);
+}
 
-  if (argc != 2) {
-    fprintf(stderr, "%s <test file>\n", argv[0]);
-    return 1;
-  }
+TEST(CipherTest, CAVP_AES_128_CBC) {
+  FileTestGTest("crypto/cipher_extra/test/nist_cavp/aes_128_cbc.txt",
+                TestCipher);
+}
 
-  return FileTestMain(TestCipher, nullptr, argv[1]);
+TEST(CipherTest, CAVP_AES_128_CTR) {
+  FileTestGTest("crypto/cipher_extra/test/nist_cavp/aes_128_ctr.txt",
+                TestCipher);
+}
+
+TEST(CipherTest, CAVP_AES_192_CBC) {
+  FileTestGTest("crypto/cipher_extra/test/nist_cavp/aes_192_cbc.txt",
+                TestCipher);
+}
+
+TEST(CipherTest, CAVP_AES_192_CTR) {
+  FileTestGTest("crypto/cipher_extra/test/nist_cavp/aes_192_ctr.txt",
+                TestCipher);
+}
+
+TEST(CipherTest, CAVP_AES_256_CBC) {
+  FileTestGTest("crypto/cipher_extra/test/nist_cavp/aes_256_cbc.txt",
+                TestCipher);
+}
+
+TEST(CipherTest, CAVP_AES_256_CTR) {
+  FileTestGTest("crypto/cipher_extra/test/nist_cavp/aes_256_ctr.txt",
+                TestCipher);
+}
+
+TEST(CipherTest, CAVP_TDES_CBC) {
+  FileTestGTest("crypto/cipher_extra/test/nist_cavp/tdes_cbc.txt", TestCipher);
+}
+
+TEST(CipherTest, CAVP_TDES_ECB) {
+  FileTestGTest("crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt", TestCipher);
 }

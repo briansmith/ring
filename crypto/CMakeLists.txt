@@ -108,7 +108,6 @@ add_subdirectory(rsa_extra)
 add_subdirectory(ec_extra)
 add_subdirectory(ecdh)
 add_subdirectory(ecdsa_extra)
-add_subdirectory(hmac_extra)
 
 # Level 3
 add_subdirectory(cmac)
@@ -232,13 +231,15 @@ add_executable(
   bio/bio_test.cc
   bytestring/bytestring_test.cc
   chacha/chacha_test.cc
-  cipher_extra/aead_extra_test.cc
+  cipher_extra/aead_test.cc
+  cipher_extra/cipher_test.cc
   cmac/cmac_test.cc
   compiler_test.cc
   constant_time_test.cc
   curve25519/ed25519_test.cc
   curve25519/spake25519_test.cc
   curve25519/x25519_test.cc
+  ecdh/ecdh_test.cc
   dh/dh_test.cc
   digest_extra/digest_test.cc
   dsa/dsa_test.cc
@@ -247,9 +248,12 @@ add_executable(
   evp/pbkdf_test.cc
   fipsmodule/aes/aes_test.cc
   fipsmodule/ec/ec_test.cc
+  fipsmodule/modes/gcm_test.cc
   fipsmodule/rand/ctrdrbg_test.cc
   hkdf/hkdf_test.cc
+  hmac_extra/hmac_test.cc
   lhash/lhash_test.cc
+  poly1305/poly1305_test.cc
   pool/pool_test.cc
   refcount_test.cc
   rsa_extra/rsa_test.cc
