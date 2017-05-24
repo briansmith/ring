@@ -118,18 +118,13 @@ fn p384_elem_inv(a: &Elem<R>) -> Elem<R> {
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff_111
     sqr_mul_acc(&mut acc, 15, &fff_111);
 
-    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffff_11
-    sqr_mul_acc(&mut acc, 1 + 30, &fffffff_11);
-
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
+    sqr_mul_acc(&mut acc, 1 + 30, &fffffff_11);
     sqr_mul_acc(&mut acc, 2, &b_11);
 
     // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
-    // 0000000000000000fffffff_11
-    sqr_mul_acc(&mut acc, 64 + 30, &fffffff_11);
-
-    // fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff
     // 0000000000000000fffffffd
+    sqr_mul_acc(&mut acc, 64 + 30, &fffffff_11);
     sqr_mul(&acc, 1 + 1, b_1)
 }
 
