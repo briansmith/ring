@@ -208,7 +208,7 @@ struct Mont {
 /// Operations on private keys, for ECDH and ECDSA signing.
 pub struct PrivateKeyOps {
     pub common: &'static CommonOps,
-    elem_inv: fn(a: &Elem<R>) -> Elem<R>,
+    elem_inv_squared: fn(a: &Elem<R>) -> Elem<R>,
     point_mul_base_impl: fn(a: &Scalar) -> Point,
     point_mul_impl: unsafe extern fn(r: *mut Limb/*[3][num_limbs]*/,
                                      p_scalar: *const Limb/*[num_limbs]*/,
@@ -234,8 +234,8 @@ impl PrivateKeyOps {
     }
 
     #[inline]
-    pub fn elem_inverse(&self, a: &Elem<R>) -> Elem<R> {
-        (self.elem_inv)(a)
+    pub fn elem_inverse_squared(&self, a: &Elem<R>) -> Elem<R> {
+        (self.elem_inv_squared)(a)
     }
 }
 
@@ -913,11 +913,14 @@ mod tests {
                 assert_elems_are_equal(cops, &actual_z, &zero);
             },
             &TestPoint::Affine(ref expected_x, ref expected_y) => {
-                let z_inv = ops.elem_inverse(&actual_z);
-                let zz_inv = cops.elem_squared(&z_inv);
+                let zz_inv = ops.elem_inverse_squared(&actual_z);
                 let x_aff = cops.elem_product(&actual_x, &zz_inv);
-                let zzz_inv = cops.elem_product(&z_inv, &zz_inv);
-                let y_aff = cops.elem_product(&actual_y, &zzz_inv);
+                let y_aff = {
+                    let zzzz_inv = cops.elem_squared(&zz_inv);
+                    let zzz_inv = cops.elem_product(&actual_z, &zzzz_inv);
+                    cops.elem_product(&actual_y, &zzz_inv)
+                };
+
                 assert_elems_are_equal(cops, &x_aff, &expected_x);
                 assert_elems_are_equal(cops, &y_aff, &expected_y);
             },
@@ -1091,8 +1094,8 @@ macro_rules! bench_curve {
         use bench;
 
         #[bench]
-        fn elem_inverse_bench(bench: &mut bench::Bencher) {
-            // This benchmark assumes that the `elem_inverse()` is
+        fn elem_inverse_squared_bench(bench: &mut bench::Bencher) {
+            // This benchmark assumes that the `elem_inverse_squared()` is
             // constant-time so inverting 1 mod q is as good of a choice as
             // anything.
             let mut a = Elem::zero();

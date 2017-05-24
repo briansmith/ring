@@ -68,20 +68,17 @@ pub static COMMON_OPS: CommonOps = CommonOps {
 
 pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
-    elem_inv: p256_elem_inv,
+    elem_inv_squared: p256_elem_inv_squared,
     point_mul_base_impl: p256_point_mul_base_impl,
     point_mul_impl: GFp_nistz256_point_mul,
 };
 
-fn p256_elem_inv(a: &Elem<R>) -> Elem<R> {
-    // Calculate the modular inverse of field element |a| using Fermat's Little
-    // Theorem:
+fn p256_elem_inv_squared(a: &Elem<R>) -> Elem<R> {
+    // Calculate a**-2 (mod q) == a**(q - 3) (mod q)
     //
-    //    a**-1 (mod q) == a**(q - 2) (mod q)
+    // The exponent (q - 3) is:
     //
-    // The exponent (q - 2) is:
-    //
-    //    0xffffffff00000001000000000000000000000000fffffffffffffffffffffffd
+    //    0xffffffff00000001000000000000000000000000fffffffffffffffffffffffc
 
     #[inline]
     fn sqr_mul(a: &Elem<R>, squarings: usize, b: &Elem<R>) -> Elem<R> {
@@ -114,8 +111,11 @@ fn p256_elem_inv(a: &Elem<R>) -> Elem<R> {
     // ffffffff00000001000000000000000000000000fffffffffffffffffffffff_11
     sqr_mul_acc(&mut acc, 30, &fffffff_11);
 
-    // ffffffff00000001000000000000000000000000fffffffffffffffffffffffd
-    sqr_mul(&acc, 1 + 1, b_1)
+    // ffffffff00000001000000000000000000000000fffffffffffffffffffffffc
+    COMMON_OPS.elem_square(&mut acc);
+    COMMON_OPS.elem_square(&mut acc);
+
+    acc
 }
 
 fn p256_point_mul_base_impl(g_scalar: &Scalar) -> Point {

@@ -151,15 +151,15 @@ pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
     let x = ops.common.point_x(p);
     let y = ops.common.point_y(p);
 
-    let z_inv = ops.elem_inverse(&z);
-    let zz_inv = ops.common.elem_squared(&z_inv);
+    let zz_inv = ops.elem_inverse_squared(&z);
 
     let x_aff = ops.common.elem_product(&x, &zz_inv);
 
     // `y_aff` is needed to validate the point is on the curve. It is also
     // needed in the non-ECDH case where we need to output it.
     let y_aff = {
-        let zzz_inv = ops.common.elem_product(&z_inv, &zz_inv);
+        let zzzz_inv = ops.common.elem_squared(&zz_inv);
+        let zzz_inv = ops.common.elem_product(&z, &zzzz_inv);
         ops.common.elem_product(&y, &zzz_inv)
     };
 
