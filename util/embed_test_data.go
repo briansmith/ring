@@ -81,6 +81,8 @@ func main() {
 	fmt.Printf(" */\n")
 
 	fmt.Printf(`
+/* clang-format off */
+
 #include <stdlib.h>
 #include <string.h>
 
