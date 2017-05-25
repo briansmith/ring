@@ -387,7 +387,8 @@ class GN(object):
         out.write('      configs -= invoker.configs_exclude\n')
         out.write('    }\n')
         out.write('    configs += invoker.configs\n')
-        out.write('    deps = invoker.deps\n')
+        out.write('    deps = invoker.deps + ')
+        out.write('[ "//build/config:exe_and_shlib_deps" ]\n')
         out.write('  }\n')
         out.write('\n')
 
