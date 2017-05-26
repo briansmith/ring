@@ -45,6 +45,16 @@ matrix:
           packages:
             - expect
 
+    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-clang FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: stable
+      os: linux
+      dist: trusty
+
+    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      dist: trusty
+
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
@@ -252,6 +262,16 @@ matrix:
           packages:
             - expect
 
+    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-clang FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: nightly
+      os: linux
+      dist: trusty
+
+    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      dist: trusty
+
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
@@ -443,6 +463,16 @@ matrix:
         apt:
           packages:
             - expect
+
+    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-clang FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: beta
+      os: linux
+      dist: trusty
+
+    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      dist: trusty
 
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta

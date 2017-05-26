@@ -26,17 +26,33 @@ aarch64-unknown-linux-gnu)
 arm-unknown-linux-gnueabihf)
   export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
   ;;
+aarch64-linux-android)
+  ANDROID_ARCH=arm64
+  ANDROID_ABI=arm64-v8a
+  ANDROID_API=26
+  ANDROID_SYS_IMG_API=24
+  ;;
 armv7-linux-androideabi)
-  # install the android sdk/ndk
-  mk/travis-install-android.sh
-
-  export PATH=$HOME/android/armv7a-linux-androideabi26/bin:$PATH
-  export PATH=$HOME/android/android-sdk-linux/platform-tools:$PATH
-  export PATH=$HOME/android/android-sdk-linux/tools:$PATH
+  ANDROID_ARCH=arm
+  ANDROID_ABI=armeabi-v7a
+  ANDROID_API=26
+  ANDROID_SYS_IMG_API=24
   ;;
 *)
   ;;
 esac
+
+if [[ "$TARGET_X" =~ android ]]; then
+  # install the android sdk/ndk
+  mk/travis-install-android.sh --arch ${ANDROID_ARCH} \
+                               --api-level ${ANDROID_API} \
+                               --abi-name ${ANDROID_ABI} \
+                               --sys-img-api-level ${ANDROID_SYS_IMG_API}
+
+  export PATH=$HOME/android/${ANDROID_ABI}-${ANDROID_API}/bin:$PATH
+  export PATH=$HOME/android/android-sdk-linux/platform-tools:$PATH
+  export PATH=$HOME/android/android-sdk-linux/tools:$PATH
+fi
 
 if [[ "$TARGET_X" =~ ^(arm|aarch64) && ! "$TARGET_X" =~ android ]]; then
   # We need a newer QEMU than Travis has.
@@ -92,15 +108,15 @@ else
 fi
 
 case $TARGET_X in
-armv7-linux-androideabi)
+*-linux-android*)
   cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X
 
   # Building the AVD is slow. Do it here, after we build the code so that any
   # build breakage is reported sooner, instead of being delayed by this.
-  echo no | android create avd --name arm-24 --target android-24 --abi armeabi-v7a
+  echo no | android create avd --name ${ANDROID_ABI}-${ANDROID_SYS_IMG_API} --target android-${ANDROID_SYS_IMG_API} --abi ${ANDROID_ABI}
   android list avd
 
-  emulator @arm-24 -memory 2048 -no-skin -no-boot-anim -no-window &
+  emulator -avd ${ANDROID_ABI}-${ANDROID_SYS_IMG_API} -memory 2048 -no-skin -no-boot-anim -no-window&
   adb wait-for-device
   adb root
   adb wait-for-device

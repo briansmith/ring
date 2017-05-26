@@ -44,6 +44,7 @@ osx_compilers = [
 compilers = {
     "aarch64-unknown-linux-gnu" : [ "aarch64-linux-gnu-gcc" ],
     "armv7-linux-androideabi" : [ "arm-linux-androideabi-clang" ],
+    "aarch64-linux-android" : [ "aarch64-linux-android-clang" ],
     "arm-unknown-linux-gnueabihf" : [ "arm-linux-gnueabihf-gcc" ],
     "i686-unknown-linux-gnu" : linux_compilers,
     "x86_64-unknown-linux-gnu" : linux_compilers,
@@ -72,6 +73,7 @@ targets = {
     ],
     "linux" : [
         "armv7-linux-androideabi",
+        "aarch64-linux-android",
         "x86_64-unknown-linux-gnu",
         "aarch64-unknown-linux-gnu",
         "i686-unknown-linux-gnu",
@@ -129,7 +131,7 @@ def format_entry(os, target, compiler, rust, mode, features):
     if sys == "darwin":
         abi = sys
         sys = "macos"
-    elif sys == "androideabi":
+    elif sys.startswith("android"):
         abi = sys
         sys = "linux"
     else:

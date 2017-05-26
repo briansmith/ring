@@ -19,7 +19,43 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-set -ex
+set -eux -o pipefail
+
+ARGS=$(getopt -o a:l:b:s: --long arch:,api-level:,abi-name:,sys-img-api-level: -n 'travis-install-android.sh' -- "$@" )
+eval set -- "${ARGS}"
+
+while true; do
+  case $1 in
+  -a|--arch)
+    ARCH="${2}"
+    shift 2
+    ;;
+  -l|--api-level)
+    API_LEVEL="${2}"
+    shift 2
+    ;;
+  -l|--abi-name)
+    ABI="${2}"
+    shift 2
+    ;;
+  -s|--sys-img-api-level)
+    SYS_IMG_API="${2}"
+    shift 2
+    ;;
+  -r|--rust-target)
+    RUST_TARGET="${2}"
+    shift 2
+    ;;
+  --)
+    shift
+    break
+    ;;
+  *)
+    echo "Error!"
+    exit 1
+    ;;
+  esac
+done
 
 ANDROID_SDK_VERSION=${ANDROID_SDK_VERSION:-24.4.1}
 ANDROID_SDK_URL=https://dl.google.com/android/android-sdk_r${ANDROID_SDK_VERSION}-linux.tgz
@@ -29,7 +65,10 @@ ANDROID_NDK_URL=https://dl.google.com/android/repository/android-ndk-r${ANDROID_
 
 ANDROID_INSTALL_PREFIX="${HOME}/android"
 ANDROID_SDK_INSTALL_DIR="${ANDROID_INSTALL_PREFIX}/android-sdk-linux"
-ANDROID_NDK_INSTALL_DIR="${ANDROID_INSTALL_PREFIX}/armv7a-linux-androideabi26"
+ANDROID_NDK_INSTALL_DIR="${ANDROID_INSTALL_PREFIX}/${ABI}-${API_LEVEL}"
+
+ANDROID_PKGS="tools,platform-tools,android-${SYS_IMG_API},android-${SYS_IMG_API}"
+ANDROID_PKGS="${ANDROID_PKGS},sys-img-${ABI}-android-${SYS_IMG_API}"
 
 if [[ ! -f $ANDROID_SDK_INSTALL_DIR/tools/emulator ]];then
   mkdir -p "${ANDROID_INSTALL_PREFIX}"
@@ -37,18 +76,18 @@ if [[ ! -f $ANDROID_SDK_INSTALL_DIR/tools/emulator ]];then
 
   curl ${ANDROID_SDK_URL} | tar -zxf -
 
-  expect -c '
+  expect -c "
 set timeout 600;
-spawn ./android-sdk-linux/tools/android update sdk -a --no-ui --filter tools,platform-tools,android-24,sys-img-armeabi-v7a-android-24;
+spawn ./android-sdk-linux/tools/android update sdk -a --no-ui --filter ${ANDROID_PKGS};
 expect {
-    "Do you accept the license" { exp_send "y\r" ; exp_continue }
+    \"Do you accept the license\" { exp_send \"y\r\" ; exp_continue }
     eof
 }
-'
+"
   popd
 fi
 
-if [[ ! -d $ANDROID_NDK_INSTALL_DIR/sysroot/usr/include/arm-linux-androideabi ]];then
+if [[ ! -f $ANDROID_NDK_INSTALL_DIR/bin/$CC_X ]];then
   mkdir -p "${ANDROID_INSTALL_PREFIX}/downloads"
   pushd "${ANDROID_INSTALL_PREFIX}/downloads"
 
@@ -57,8 +96,8 @@ if [[ ! -d $ANDROID_NDK_INSTALL_DIR/sysroot/usr/include/arm-linux-androideabi ]]
 
   ./android-ndk-r${ANDROID_NDK_VERSION}/build/tools/make_standalone_toolchain.py \
 		 --force \
-		 --arch arm \
-		 --api 26 \
+		 --arch ${ARCH} \
+		 --api ${API_LEVEL} \
 		 --install-dir ${ANDROID_NDK_INSTALL_DIR}
 
   popd
