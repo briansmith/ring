@@ -28,19 +28,23 @@ ANDROID_NDK_VERSION=${ANDROID_NDK_VERSION:-14}
 ANDROID_NDK_URL=https://dl.google.com/android/repository/android-ndk-r${ANDROID_NDK_VERSION}-linux-x86_64.zip
 
 ANDROID_INSTALL_PREFIX="${HOME}/android"
-ANDROID_SDK_INSTALL_DIR="${HOME}/android/android-sdk-linux"
-ANDROID_NDK_INSTALL_DIR="${ANDROID_INSTALL_PREFIX}/android-18-arm-linux-androideabi-4.8"
+ANDROID_SDK_INSTALL_DIR="${ANDROID_INSTALL_PREFIX}/android-sdk-linux"
+ANDROID_NDK_INSTALL_DIR="${ANDROID_INSTALL_PREFIX}/android-ndk"
+
+ANDROID_PKGS="android-18,android-18,sys-img-armeabiv7a-android-18"
+
+mkdir -p "${ANDROID_INSTALL_PREFIX}"
+pushd "${ANDROID_INSTALL_PREFIX}"
 
 if [[ ! -f $ANDROID_SDK_INSTALL_DIR/tools/emulator ]];then
-  mkdir -p "${ANDROID_INSTALL_PREFIX}"
-  pushd "${ANDROID_INSTALL_PREFIX}"
-
   curl ${ANDROID_SDK_URL} | tar -zxf -
 
-  echo y | ./android-sdk-linux/tools/android update sdk -a --no-ui --filter tools,platform-tools,android-18,sys-img-armeabi-v7a-android-18
-
-  popd
+  ANDROID_PKGS="tools,platform-tools,${ANDROID_PKGS}"
 fi
+
+echo y | ./android-sdk-linux/tools/android update sdk -a --no-ui --filter ${ANDROID_PKGS}
+
+popd
 
 if [[ ! -d $ANDROID_NDK_INSTALL_DIR/sysroot/usr/include/arm-linux-androideabi ]];then
   mkdir -p "${ANDROID_INSTALL_PREFIX}/downloads"
