@@ -100,8 +100,6 @@ contribute already, see these curated lists of open issues:
   just the hardness of the work.
 * [oxidation](https://github.com/briansmith/ring/projects/1): Replacing
   C code with Rust code.
-* [tls-1.3](https://github.com/briansmith/ring/projects/2): Issues blocking
-  a complete implementation of TLS 1.3:
 * [rsa](https://github.com/briansmith/ring/labels/rsa): The primary *ring*
   developer is less interested in RSA than ECC and other things, and it would
   be great to have somebody jump in and "own" the RSA work. *ring* has
