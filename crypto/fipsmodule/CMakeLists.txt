@@ -71,7 +71,7 @@ endif()
 
 if (${ARCH} STREQUAL "ppc64le")
   set(
-    AES_ARCH_SOURCES
+    BCM_ASM_SOURCES
 
     aesp8-ppc.${ASM_EXT}
     ghashp8-ppc.${ASM_EXT}
