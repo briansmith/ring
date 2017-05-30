@@ -58,8 +58,8 @@ var aesGCMTests = testSuite{
 	[]test{
 		{"gcmDecrypt128", []string{"dec", "aes-128-gcm"}, false},
 		{"gcmDecrypt256", []string{"dec", "aes-256-gcm"}, false},
-		{"gcmEncryptIntIV128", []string{"enc", "aes-128-gcm"}, true},
-		{"gcmEncryptIntIV256", []string{"enc", "aes-256-gcm"}, true},
+		{"gcmEncryptExtIV128", []string{"enc", "aes-128-gcm"}, false},
+		{"gcmEncryptExtIV256", []string{"enc", "aes-256-gcm"}, false},
 	},
 }
 

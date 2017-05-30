@@ -36,9 +36,9 @@ struct TestCtx {
 
 static const EVP_AEAD *GetAEAD(const std::string &name, const bool enc) {
   if (name == "aes-128-gcm") {
-    return EVP_aead_aes_128_gcm_tls12();
+    return EVP_aead_aes_128_gcm();
   } else if (name == "aes-256-gcm") {
-    return EVP_aead_aes_256_gcm_tls12();
+    return EVP_aead_aes_256_gcm();
   }
   return nullptr;
 }
@@ -59,20 +59,22 @@ static bool TestAEADEncrypt(FileTest *t, void *arg) {
   std::vector<uint8_t> key, iv, pt, aad, tag, ct;
   if (!t->GetAttribute(&count, "Count") ||
       !t->GetBytes(&key, "Key") ||
-      !t->GetBytes(&aad, "AAD") ||
+      !t->GetBytes(&iv, "IV") ||
       !t->GetBytes(&pt, "PT") ||
+      !t->GetBytes(&aad, "AAD") ||
       key.size() * 8 != strtoul(key_len_str.c_str(), nullptr, 0) ||
+      iv.size() * 8 != strtoul(iv_len_str.c_str(), nullptr, 0) ||
       pt.size() * 8 != strtoul(pt_len_str.c_str(), nullptr, 0) ||
-      aad.size() * 8 != strtoul(aad_len_str.c_str(), nullptr, 0)) {
+      aad.size() * 8 != strtoul(aad_len_str.c_str(), nullptr, 0) ||
+      iv.size() != 12) {
     return false;
   }
 
-  size_t tag_len = strtoul(tag_len_str.c_str(), nullptr, 0) / 8;
-  if (!AEADEncrypt(ctx->aead, &ct, &tag, tag_len, key, pt, aad, &iv)) {
+  const size_t tag_len = strtoul(tag_len_str.c_str(), nullptr, 0) / 8;
+  if (!AEADEncrypt(ctx->aead, &ct, &tag, tag_len, key, pt, aad, iv)) {
     return false;
   }
   printf("%s", t->CurrentTestToString().c_str());
-  printf("IV = %s\r\n", EncodeHex(iv.data(), iv.size()).c_str());
   printf("CT = %s\r\n", EncodeHex(ct.data(), ct.size()).c_str());
   printf("Tag = %s\r\n\r\n", EncodeHex(tag.data(), tag.size()).c_str());
 
@@ -113,7 +115,7 @@ static bool TestAEADDecrypt(FileTest *t, void *arg) {
 
   printf("%s", t->CurrentTestToString().c_str());
   bool aead_result =
-      AEADDecrypt(ctx->aead, &pt, &aad, pt_len, aad_len, key, ct, tag, iv);
+      AEADDecrypt(ctx->aead, &pt, pt_len, key, aad, ct, tag, iv);
   if (aead_result) {
     printf("PT = %s\r\n\r\n", EncodeHex(pt.data(), pt.size()).c_str());
   } else {

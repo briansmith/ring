@@ -38,13 +38,15 @@ bool AEADEncrypt(const EVP_AEAD *aead, std::vector<uint8_t> *ct,
                  std::vector<uint8_t> *tag, size_t tag_len,
                  const std::vector<uint8_t> &key,
                  const std::vector<uint8_t> &pt,
-                 const std::vector<uint8_t> &aad, std::vector<uint8_t> *iv);
+                 const std::vector<uint8_t> &aad,
+                 const std::vector<uint8_t> &iv);
 
-bool AEADDecrypt(const EVP_AEAD *aead, std::vector<uint8_t> *pt,
-                 std::vector<uint8_t> *aad, size_t pt_len, size_t aad_len,
+bool AEADDecrypt(const EVP_AEAD *aead, std::vector<uint8_t> *pt, size_t pt_len,
                  const std::vector<uint8_t> &key,
+                 const std::vector<uint8_t> &aad,
                  const std::vector<uint8_t> &ct,
-                 const std::vector<uint8_t> &tag, std::vector<uint8_t> &iv);
+                 const std::vector<uint8_t> &tag,
+                 const std::vector<uint8_t> &iv);
 
 bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attribute);
 

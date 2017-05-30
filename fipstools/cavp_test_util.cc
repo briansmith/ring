@@ -109,22 +109,23 @@ bool AEADEncrypt(const EVP_AEAD *aead, std::vector<uint8_t> *ct,
                  std::vector<uint8_t> *tag, size_t tag_len,
                  const std::vector<uint8_t> &key,
                  const std::vector<uint8_t> &pt,
-                 const std::vector<uint8_t> &aad, std::vector<uint8_t> *iv) {
+                 const std::vector<uint8_t> &aad,
+                 const std::vector<uint8_t> &iv) {
   bssl::ScopedEVP_AEAD_CTX ctx;
-  if (!EVP_AEAD_CTX_init_with_direction(ctx.get(), aead, key.data(), key.size(),
-                                        tag->size(), evp_aead_seal)) {
+  if (!EVP_AEAD_CTX_init(ctx.get(), aead, key.data(), key.size(), tag_len,
+                         nullptr)) {
     return false;
   }
 
   std::vector<uint8_t> out;
-  iv->resize(EVP_AEAD_nonce_length(aead));
   out.resize(pt.size() + EVP_AEAD_max_overhead(aead));
   size_t out_len;
-  if (!EVP_AEAD_CTX_seal(ctx.get(), out.data(), &out_len, out.size(),
-                         iv->data(), iv->size(), pt.data(), pt.size(),
-                         aad.data(), aad.size())) {
+  if (!EVP_AEAD_CTX_seal(ctx.get(), out.data(), &out_len, out.size(), iv.data(),
+                         iv.size(), pt.data(), pt.size(), aad.data(),
+                         aad.size())) {
     return false;
   }
+  out.resize(out_len);
 
   ct->assign(out.begin(), out.end() - tag_len);
   tag->assign(out.end() - tag_len, out.end());
@@ -132,11 +133,12 @@ bool AEADEncrypt(const EVP_AEAD *aead, std::vector<uint8_t> *ct,
   return true;
 }
 
-bool AEADDecrypt(const EVP_AEAD *aead, std::vector<uint8_t> *pt,
-                 std::vector<uint8_t> *aad, size_t pt_len, size_t aad_len,
+bool AEADDecrypt(const EVP_AEAD *aead, std::vector<uint8_t> *pt, size_t pt_len,
                  const std::vector<uint8_t> &key,
+                 const std::vector<uint8_t> &aad,
                  const std::vector<uint8_t> &ct,
-                 const std::vector<uint8_t> &tag, std::vector<uint8_t> &iv) {
+                 const std::vector<uint8_t> &tag,
+                 const std::vector<uint8_t> &iv) {
   bssl::ScopedEVP_AEAD_CTX ctx;
   if (!EVP_AEAD_CTX_init_with_direction(ctx.get(), aead, key.data(), key.size(),
                                         tag.size(), evp_aead_open)) {
@@ -147,11 +149,10 @@ bool AEADDecrypt(const EVP_AEAD *aead, std::vector<uint8_t> *pt,
   in.insert(in.end(), tag.begin(), tag.end());
 
   pt->resize(pt_len);
-  aad->resize(aad_len);
   size_t out_pt_len;
   if (!EVP_AEAD_CTX_open(ctx.get(), pt->data(), &out_pt_len, pt->size(),
-                         iv.data(), iv.size(), in.data(), in.size(),
-                         aad->data(), aad->size()) ||
+                         iv.data(), iv.size(), in.data(), in.size(), aad.data(),
+                         aad.size()) ||
       out_pt_len != pt_len) {
     return false;
   }
