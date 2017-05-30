@@ -643,6 +643,14 @@ Args:
 				// this by unconditionally erasing the toc@ha
 				// instructions and doing the full lookup when
 				// processing toc@l.
+				//
+				// Note that any offset here applies before @ha
+				// and @l. That is, 42+foo@toc@ha is
+				// #ha(42+foo-.TOC.), not 42+#ha(foo-.TOC.). Any
+				// corresponding toc@l references are required
+				// by the ABI to have the same offset. The
+				// offset will be incorporated in full when
+				// those are processed.
 				if instructionName != "addis" || len(argNodes) != 3 || i != 2 || args[1] != "2" {
 					return nil, errors.New("can't process toc@ha reference")
 				}
@@ -668,7 +676,7 @@ Args:
 				switch instructionName {
 				case "addi":
 					// The original instruction was:
-					//   addi destReg, tocHaReg, symbol@toc@l+offset
+					//   addi destReg, tocHaReg, offset+symbol@toc@l
 					//
 					// All that is left is adding the offset, if any.
 					instructionName = ""
@@ -679,7 +687,7 @@ Args:
 					}
 				case "ld", "lhz", "lwz":
 					// The original instruction was:
-					//   l?? destReg, symbol@toc@l+offset(tocHaReg)
+					//   l?? destReg, offset+symbol@toc@l(tocHaReg)
 					//
 					// We transform that into the
 					// equivalent dereference of destReg:
