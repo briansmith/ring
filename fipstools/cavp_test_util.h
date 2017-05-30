@@ -54,6 +54,8 @@ int GetECGroupNIDFromInstruction(FileTest *t, const char **out_str = nullptr);
 
 const EVP_MD *GetDigestFromInstruction(FileTest *t);
 
+void EchoComment(const std::string& comment);
+
 int cavp_aes_gcm_test_main(int argc, char **argv);
 int cavp_aes_test_main(int argc, char **argv);
 int cavp_ctr_drbg_test_main(int argc, char **argv);

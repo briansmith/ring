@@ -66,7 +66,7 @@ class StringLineReader : public FileTest::LineReader {
 void FileTestGTest(const char *path, std::function<void(FileTest *)> run_test) {
   std::unique_ptr<StringLineReader> reader(
       new StringLineReader(GetTestData(path)));
-  FileTest t(std::move(reader));
+  FileTest t(std::move(reader), nullptr);
 
   while (true) {
     switch (t.ReadNext()) {

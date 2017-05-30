@@ -30,8 +30,9 @@
 #include "../internal.h"
 
 
-FileTest::FileTest(std::unique_ptr<FileTest::LineReader> reader)
-    : reader_(std::move(reader)) {}
+FileTest::FileTest(std::unique_ptr<FileTest::LineReader> reader,
+                   std::function<void(const std::string &)> comment_callback)
+    : reader_(std::move(reader)), comment_callback_(comment_callback) {}
 
 FileTest::~FileTest() {}
 
@@ -121,12 +122,15 @@ FileTest::ReadResult FileTest::ReadNext() {
         // Delimit instruction block from test with a blank line.
         current_test_ += "\r\n";
       }
-    } else if (buf[0] == '#' ||
-               strcmp("[B.4.2 Key Pair Generation by Testing Candidates]\r\n",
+    } else if (buf[0] == '#') {
+      if (comment_callback_) {
+        comment_callback_(buf.get());
+      }
+      // Otherwise ignore comments.
+    } else if (strcmp("[B.4.2 Key Pair Generation by Testing Candidates]\r\n",
                       buf.get()) == 0) {
-      // Ignore comments. The above instruction-like line is treated as a
-      // comment because the FIPS lab's request files are hopelessly
-      // inconsistent.
+      // The above instruction-like line is ignored because the FIPS lab's
+      // request files are hopelessly inconsistent.
     } else if (buf[0] == '[') {  // Inside an instruction block.
       is_at_new_instruction_block_ = true;
       if (start_line_ != 0) {
@@ -399,14 +403,26 @@ class FileLineReader : public FileTest::LineReader {
   FileLineReader &operator=(const FileLineReader &) = delete;
 };
 
-int FileTestMainSilent(FileTestFunc run_test, void *arg, const char *path) {
-  std::unique_ptr<FileLineReader> reader(new FileLineReader(path));
+int FileTestMain(FileTestFunc run_test, void *arg, const char *path) {
+  FileTest::Options opts;
+  opts.callback = run_test;
+  opts.arg = arg;
+  opts.path = path;
+
+  return FileTestMain(opts);
+}
+
+int FileTestMain(const FileTest::Options &opts) {
+  std::unique_ptr<FileLineReader> reader(
+      new FileLineReader(opts.path));
   if (!reader->is_open()) {
-    fprintf(stderr, "Could not open file %s: %s.\n", path, strerror(errno));
+    fprintf(stderr, "Could not open file %s: %s.\n", opts.path,
+            strerror(errno));
     return 1;
   }
 
-  FileTest t(std::move(reader));
+  FileTest t(std::move(reader), opts.comment_callback);
+
   bool failed = false;
   while (true) {
     FileTest::ReadResult ret = t.ReadNext();
@@ -416,7 +432,7 @@ int FileTestMainSilent(FileTestFunc run_test, void *arg, const char *path) {
       break;
     }
 
-    bool result = run_test(&t, arg);
+    bool result = opts.callback(&t, opts.arg);
     if (t.HasAttribute("Error")) {
       if (result) {
         t.PrintLine("Operation unexpectedly succeeded.");
@@ -443,13 +459,9 @@ int FileTestMainSilent(FileTestFunc run_test, void *arg, const char *path) {
     }
   }
 
-  return failed ? 1 : 0;
-}
-
-int FileTestMain(FileTestFunc run_test, void *arg, const char *path) {
-  int result = FileTestMainSilent(run_test, arg, path);
-  if (!result) {
+  if (!opts.silent && !failed) {
     printf("PASS\n");
   }
-  return result;
+
+  return failed ? 1 : 0;
 }

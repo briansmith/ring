@@ -225,3 +225,7 @@ const EVP_MD *GetDigestFromInstruction(FileTest *t) {
   t->PrintLine("No supported digest function specified.");
   return nullptr;
 }
+
+void EchoComment(const std::string& comment) {
+  fwrite(comment.c_str(), comment.size(), 1, stdout);
+}
