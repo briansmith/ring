@@ -143,7 +143,7 @@ pub fn derive(prf: &'static PRF, iterations: u32, salt: &[u8],
               secret: &[u8], out: &mut [u8]) {
     assert!(iterations >= 1);
 
-    let output_len = prf.digest_alg.output_len;
+    let output_len = prf.digest_alg.output_len();
 
     // This implementation's performance is asymptotically optimal as described
     // in https://jbp.io/2015/08/11/pbkdf2-performance-matters/. However, it
@@ -219,7 +219,7 @@ pub fn verify(prf: &'static PRF, iterations: u32, salt: &[u8],
 
     let mut derived_buf = [0u8; digest::MAX_OUTPUT_LEN];
 
-    let output_len = prf.digest_alg.output_len;
+    let output_len = prf.digest_alg.output_len();
     let secret = hmac::SigningKey::new(prf.digest_alg, secret);
     let mut idx: u32 = 0;
 

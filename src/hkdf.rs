@@ -96,8 +96,8 @@ pub fn extract(salt: &hmac::SigningKey, secret: &[u8]) -> hmac::SigningKey {
 /// the 8-bit iteration counter in the expansion step.
 pub fn expand(prk: &hmac::SigningKey, info: &[u8], out: &mut [u8]) {
     let digest_alg = prk.digest_algorithm();
-    assert!(out.len() <= 255 * digest_alg.output_len);
-    assert!(digest_alg.block_len >= digest_alg.output_len);
+    assert!(out.len() <= 255 * digest_alg.output_len());
+    assert!(digest_alg.block_len() >= digest_alg.output_len());
 
     let mut ctx = hmac::SigningContext::with_key(prk);
 
@@ -110,19 +110,19 @@ pub fn expand(prk: &hmac::SigningKey, info: &[u8], out: &mut [u8]) {
         let t = ctx.sign();
 
         // Append `t` to the output.
-        let to_copy = if out.len() - pos < digest_alg.output_len {
+        let to_copy = if out.len() - pos < digest_alg.output_len() {
             out.len() - pos
         } else {
-            digest_alg.output_len
+            digest_alg.output_len()
         };
         let t_bytes = t.as_ref();
         for i in 0..to_copy {
             out[pos + i] = t_bytes[i];
         }
-        if to_copy < digest_alg.output_len {
+        if to_copy < digest_alg.output_len() {
             break;
         }
-        pos += digest_alg.output_len;
+        pos += digest_alg.output_len();
 
         ctx = hmac::SigningContext::with_key(prk);
         ctx.update(t_bytes);

@@ -488,7 +488,7 @@ mod tests {
             };
 
             let num_limbs = ops.public_key_ops.common.num_limbs;
-            assert_eq!(input.len(), digest_alg.output_len);
+            assert_eq!(input.len(), digest_alg.output_len());
             assert_eq!(output.len(),
                        ops.public_key_ops.common.num_limbs * LIMB_BYTES);
 
