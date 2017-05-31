@@ -604,7 +604,7 @@ static void BORINGSSL_bcm_power_on_self_test(void) {
   if (sig == NULL ||
       !ECDSA_do_verify(kPlaintextSHA256, sizeof(kPlaintextSHA256), sig,
                        ec_key)) {
-    printf("ECDSA Sign/Verify PWCT failed.\n");
+    printf("ECDSA Sign/Verify power-on PWCT failed.\n");
     goto err;
   }
 
