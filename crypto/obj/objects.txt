@@ -1335,4 +1335,4 @@ secg-scheme 14 3 : dhSinglePass-cofactorDH-sha512kdf-scheme
  : X25519
 
 # See draft-ietf-curdle-pkix-04.
-1 3 101 112 : Ed25519
+1 3 101 112 : ED25519

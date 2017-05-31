@@ -373,21 +373,27 @@ static int pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
   return 1;
 }
 
-static int setup_ctx(SSL *ssl, EVP_PKEY_CTX *ctx, uint16_t sigalg) {
-  if (!pkey_supports_algorithm(ssl, EVP_PKEY_CTX_get0_pkey(ctx), sigalg)) {
+static int setup_ctx(SSL *ssl, EVP_MD_CTX *ctx, EVP_PKEY *pkey, uint16_t sigalg,
+                     int is_verify) {
+  if (!pkey_supports_algorithm(ssl, pkey, sigalg)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
     return 0;
   }
 
   const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
-  if (alg->digest_func != NULL &&
-      !EVP_PKEY_CTX_set_signature_md(ctx, alg->digest_func())) {
+  const EVP_MD *digest = alg->digest_func != NULL ? alg->digest_func() : NULL;
+  EVP_PKEY_CTX *pctx;
+  if (is_verify) {
+    if (!EVP_DigestVerifyInit(ctx, &pctx, digest, NULL, pkey)) {
+      return 0;
+    }
+  } else if (!EVP_DigestSignInit(ctx, &pctx, digest, NULL, pkey)) {
     return 0;
   }
 
   if (alg->is_rsa_pss) {
-    if (!EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING) ||
-        !EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, -1 /* salt len = hash len */)) {
+    if (!EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING) ||
+        !EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, -1 /* salt len = hash len */)) {
       return 0;
     }
   }
@@ -430,24 +436,22 @@ enum ssl_private_key_result_t ssl_private_key_sign(
   }
 
   *out_len = max_out;
-  EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(ssl->cert->privatekey, NULL);
-  int ret = ctx != NULL &&
-            EVP_PKEY_sign_init(ctx) &&
-            setup_ctx(ssl, ctx, sigalg) &&
-            EVP_PKEY_sign_message(ctx, out, out_len, in, in_len);
-  EVP_PKEY_CTX_free(ctx);
+  EVP_MD_CTX ctx;
+  EVP_MD_CTX_init(&ctx);
+  int ret = setup_ctx(ssl, &ctx, ssl->cert->privatekey, sigalg, 0 /* sign */) &&
+            EVP_DigestSign(&ctx, out, out_len, in, in_len);
+  EVP_MD_CTX_cleanup(&ctx);
   return ret ? ssl_private_key_success : ssl_private_key_failure;
 }
 
 int ssl_public_key_verify(SSL *ssl, const uint8_t *signature,
-                          size_t signature_len, uint16_t signature_algorithm,
-                          EVP_PKEY *pkey, const uint8_t *in, size_t in_len) {
-  EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(pkey, NULL);
-  int ret = ctx != NULL &&
-            EVP_PKEY_verify_init(ctx) &&
-            setup_ctx(ssl, ctx, signature_algorithm) &&
-            EVP_PKEY_verify_message(ctx, signature, signature_len, in, in_len);
-  EVP_PKEY_CTX_free(ctx);
+                          size_t signature_len, uint16_t sigalg, EVP_PKEY *pkey,
+                          const uint8_t *in, size_t in_len) {
+  EVP_MD_CTX ctx;
+  EVP_MD_CTX_init(&ctx);
+  int ret = setup_ctx(ssl, &ctx, pkey, sigalg, 1 /* verify */) &&
+            EVP_DigestVerify(&ctx, signature, signature_len, in, in_len);
+  EVP_MD_CTX_cleanup(&ctx);
   return ret;
 }
 

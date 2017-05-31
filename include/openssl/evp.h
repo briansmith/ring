@@ -171,7 +171,7 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_ed25519_private(
 #define EVP_PKEY_RSA NID_rsaEncryption
 #define EVP_PKEY_DSA NID_dsa
 #define EVP_PKEY_EC NID_X9_62_id_ecPublicKey
-#define EVP_PKEY_ED25519 NID_Ed25519
+#define EVP_PKEY_ED25519 NID_ED25519
 
 /* EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
  * the given type. The |type| argument should be one of the |EVP_PKEY_*|
@@ -238,9 +238,9 @@ OPENSSL_EXPORT void EVP_set_buggy_rsa_parser(int buggy);
  * operation will be written to |*pctx|; this can be used to set alternative
  * signing options.
  *
- * This function performs a streaming signing operation and will fail for
- * signature algorithms which do not support this. Use |EVP_PKEY_sign_message|
- * for a single-shot operation.
+ * For single-shot signing algorithms which do not use a pre-hash, such as
+ * Ed25519, |type| should be NULL. The |EVP_MD_CTX| itself is unused but is
+ * present so the API is uniform. See |EVP_DigestSign|.
  *
  * It returns one on success, or zero on error. */
 OPENSSL_EXPORT int EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
@@ -248,7 +248,11 @@ OPENSSL_EXPORT int EVP_DigestSignInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
                                       EVP_PKEY *pkey);
 
 /* EVP_DigestSignUpdate appends |len| bytes from |data| to the data which will
- * be signed in |EVP_DigestSignFinal|. It returns one. */
+ * be signed in |EVP_DigestSignFinal|. It returns one.
+ *
+ * This function performs a streaming signing operation and will fail for
+ * signature algorithms which do not support this. Use |EVP_DigestSign| for a
+ * single-shot operation. */
 OPENSSL_EXPORT int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data,
                                         size_t len);
 
@@ -259,9 +263,24 @@ OPENSSL_EXPORT int EVP_DigestSignUpdate(EVP_MD_CTX *ctx, const void *data,
  * is successful, the signature is written to |out_sig| and |*out_sig_len| is
  * set to its length.
  *
+ * This function performs a streaming signing operation and will fail for
+ * signature algorithms which do not support this. Use |EVP_DigestSign| for a
+ * single-shot operation.
+ *
  * It returns one on success, or zero on error. */
 OPENSSL_EXPORT int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
                                        size_t *out_sig_len);
+
+/* EVP_DigestSign signs |data_len| bytes from |data| using |ctx|. If |out_sig|
+ * is NULL then |*out_sig_len| is set to the maximum number of output
+ * bytes. Otherwise, on entry, |*out_sig_len| must contain the length of the
+ * |out_sig| buffer. If the call is successful, the signature is written to
+ * |out_sig| and |*out_sig_len| is set to its length.
+ *
+ * It returns one on success and zero on error. */
+OPENSSL_EXPORT int EVP_DigestSign(EVP_MD_CTX *ctx, uint8_t *out_sig,
+                                  size_t *out_sig_len, const uint8_t *data,
+                                  size_t data_len);
 
 
 /* Verifying */
@@ -272,9 +291,9 @@ OPENSSL_EXPORT int EVP_DigestSignFinal(EVP_MD_CTX *ctx, uint8_t *out_sig,
  * operation will be written to |*pctx|; this can be used to set alternative
  * signing options.
  *
- * This function performs streaming signature verification and will fail for
- * signature algorithms which do not support this. Use |EVP_PKEY_verify_message|
- * for a single-shot verification.
+ * For single-shot signing algorithms which do not use a pre-hash, such as
+ * Ed25519, |type| should be NULL. The |EVP_MD_CTX| itself is unused but is
+ * present so the API is uniform. See |EVP_DigestVerify|.
  *
  * It returns one on success, or zero on error. */
 OPENSSL_EXPORT int EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
@@ -282,15 +301,29 @@ OPENSSL_EXPORT int EVP_DigestVerifyInit(EVP_MD_CTX *ctx, EVP_PKEY_CTX **pctx,
                                         EVP_PKEY *pkey);
 
 /* EVP_DigestVerifyUpdate appends |len| bytes from |data| to the data which
- * will be verified by |EVP_DigestVerifyFinal|. It returns one. */
+ * will be verified by |EVP_DigestVerifyFinal|. It returns one.
+ *
+ * This function performs streaming signature verification and will fail for
+ * signature algorithms which do not support this. Use |EVP_PKEY_verify_message|
+ * for a single-shot verification. */
 OPENSSL_EXPORT int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data,
                                           size_t len);
 
 /* EVP_DigestVerifyFinal verifies that |sig_len| bytes of |sig| are a valid
  * signature for the data that has been included by one or more calls to
- * |EVP_DigestVerifyUpdate|. It returns one on success and zero otherwise. */
+ * |EVP_DigestVerifyUpdate|. It returns one on success and zero otherwise.
+ *
+ * This function performs streaming signature verification and will fail for
+ * signature algorithms which do not support this. Use |EVP_PKEY_verify_message|
+ * for a single-shot verification. */
 OPENSSL_EXPORT int EVP_DigestVerifyFinal(EVP_MD_CTX *ctx, const uint8_t *sig,
                                          size_t sig_len);
+
+/* EVP_DigestVerify verifies that |sig_len| bytes from |sig| are a valid
+ * signature for |data|. It returns one on success or zero on error. */
+OPENSSL_EXPORT int EVP_DigestVerify(EVP_MD_CTX *ctx, const uint8_t *sig,
+                                    size_t sig_len, const uint8_t *data,
+                                    size_t len);
 
 
 /* Signing (old functions) */
@@ -439,8 +472,8 @@ OPENSSL_EXPORT int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
  * |sig| and |*sig_len| updated with the true length.
  *
  * This function expects a pre-hashed input and will fail for signature
- * algorithms which do not support this. Use |EVP_PKEY_sign_message| or
- * |EVP_DigestSignInit| to sign an unhashed input.
+ * algorithms which do not support this. Use |EVP_DigestSignInit| to sign an
+ * unhashed input.
  *
  * WARNING: Setting |sig| to NULL only gives the maximum size of the
  * signature. The actual signature may be smaller.
@@ -450,21 +483,6 @@ OPENSSL_EXPORT int EVP_PKEY_sign_init(EVP_PKEY_CTX *ctx);
 OPENSSL_EXPORT int EVP_PKEY_sign(EVP_PKEY_CTX *ctx, uint8_t *sig,
                                  size_t *sig_len, const uint8_t *digest,
                                  size_t digest_len);
-
-/* EVP_PKEY_sign_message signs |data_len| bytes from |data| using |ctx|. If
- * |sig| is NULL, the maximum size of the signature is written to |out_sig_len|.
- * Otherwise, |*sig_len| must contain the number of bytes of space available at
- * |sig|. If sufficient, the signature will be written to |sig| and |*sig_len|
- * updated with the true length.
- *
- * WARNING: Setting |sig| to NULL only gives the maximum size of the
- * signature. The actual signature may be smaller.
- *
- * It returns one on success or zero on error. (Note: this differs from
- * OpenSSL, which can also return negative values to indicate an error. ) */
-OPENSSL_EXPORT int EVP_PKEY_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
-                                         size_t *sig_len, const uint8_t *data,
-                                         size_t data_len);
 
 /* EVP_PKEY_verify_init initialises an |EVP_PKEY_CTX| for a signature
  * verification operation. It should be called before |EVP_PKEY_verify|.
@@ -476,20 +494,13 @@ OPENSSL_EXPORT int EVP_PKEY_verify_init(EVP_PKEY_CTX *ctx);
  * signature for |digest|.
  *
  * This function expects a pre-hashed input and will fail for signature
- * algorithms which do not support this. Use |EVP_PKEY_verify_message| or
- * |EVP_DigestVerifyInit| to verify a signature given the unhashed input.
+ * algorithms which do not support this. Use |EVP_DigestVerifyInit| to verify a
+ * signature given the unhashed input.
  *
  * It returns one on success or zero on error. */
 OPENSSL_EXPORT int EVP_PKEY_verify(EVP_PKEY_CTX *ctx, const uint8_t *sig,
                                    size_t sig_len, const uint8_t *digest,
                                    size_t digest_len);
-
-/* EVP_PKEY_verify_message verifies that |sig_len| bytes from |sig| are a valid
- * signature for |data|. It returns one on success or zero on error. */
-OPENSSL_EXPORT int EVP_PKEY_verify_message(EVP_PKEY_CTX *ctx,
-                                           const uint8_t *sig, size_t sig_len,
-                                           const uint8_t *data,
-                                           size_t data_len);
 
 /* EVP_PKEY_encrypt_init initialises an |EVP_PKEY_CTX| for an encryption
  * operation. It should be called before |EVP_PKEY_encrypt|.

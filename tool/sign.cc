@@ -46,24 +46,19 @@ bool Sign(const std::vector<std::string> &args) {
     return false;
   }
 
-  // Setup the signing operation.
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(key.get(), nullptr));
-  if (!ctx ||
-      !EVP_PKEY_sign_init(ctx.get())) {
-    return false;
-  }
-
+  const EVP_MD *md = nullptr;
   if (args_map.count("-digest")) {
-    const EVP_MD *md = EVP_get_digestbyname(args_map["-digest"].c_str());
+    md = EVP_get_digestbyname(args_map["-digest"].c_str());
     if (md == nullptr) {
       fprintf(stderr, "Unknown digest algorithm: %s\n",
               args_map["-digest"].c_str());
       return false;
     }
+  }
 
-    if (!EVP_PKEY_CTX_set_signature_md(ctx.get(), md)) {
-      return false;
-    }
+  bssl::ScopedEVP_MD_CTX ctx;
+  if (!EVP_DigestSignInit(ctx.get(), nullptr, md, nullptr, key.get())) {
+    return false;
   }
 
   std::vector<uint8_t> data;
@@ -74,8 +69,8 @@ bool Sign(const std::vector<std::string> &args) {
 
   size_t sig_len = EVP_PKEY_size(key.get());
   std::unique_ptr<uint8_t[]> sig(new uint8_t[sig_len]);
-  if (!EVP_PKEY_sign_message(ctx.get(), sig.get(), &sig_len, data.data(),
-                             data.size())) {
+  if (!EVP_DigestSign(ctx.get(), sig.get(), &sig_len, data.data(),
+                      data.size())) {
     return false;
   }
 

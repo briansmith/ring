@@ -621,4 +621,20 @@ TEST(EVPExtraTest, Ed25519) {
   ASSERT_TRUE(pubkey2);
   EXPECT_FALSE(EVP_PKEY_cmp(pubkey.get(), pubkey2.get()));
   EXPECT_FALSE(EVP_PKEY_cmp(privkey.get(), pubkey2.get()));
+
+  // Ed25519 may not be used streaming.
+  bssl::ScopedEVP_MD_CTX ctx;
+  ASSERT_TRUE(
+      EVP_DigestSignInit(ctx.get(), nullptr, nullptr, nullptr, privkey.get()));
+  EXPECT_FALSE(EVP_DigestSignUpdate(ctx.get(), nullptr, 0));
+  size_t len;
+  EXPECT_FALSE(EVP_DigestSignFinal(ctx.get(), nullptr, &len));
+  ERR_clear_error();
+
+  ctx.Reset();
+  ASSERT_TRUE(EVP_DigestVerifyInit(ctx.get(), nullptr, nullptr, nullptr,
+                                   privkey.get()));
+  EXPECT_FALSE(EVP_DigestVerifyUpdate(ctx.get(), nullptr, 0));
+  EXPECT_FALSE(EVP_DigestVerifyFinal(ctx.get(), nullptr, 0));
+  ERR_clear_error();
 }

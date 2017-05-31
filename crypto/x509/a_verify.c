@@ -73,6 +73,7 @@
 int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *a,
                      ASN1_BIT_STRING *signature, void *asn, EVP_PKEY *pkey)
 {
+    EVP_MD_CTX ctx;
     uint8_t *buf_in = NULL;
     int ret = 0, inl = 0;
 
@@ -86,9 +87,9 @@ int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *a,
         return 0;
     }
 
-    EVP_PKEY_CTX *ctx = EVP_PKEY_CTX_new(pkey, NULL);
-    if (ctx == NULL ||
-        !x509_digest_verify_init(ctx, a)) {
+    EVP_MD_CTX_init(&ctx);
+
+    if (!x509_digest_verify_init(&ctx, a, pkey)) {
         goto err;
     }
 
@@ -99,19 +100,19 @@ int ASN1_item_verify(const ASN1_ITEM *it, X509_ALGOR *a,
         goto err;
     }
 
-    if (!EVP_PKEY_verify_message(ctx, signature->data,
-                                 (size_t)signature->length, buf_in, inl)) {
+    if (!EVP_DigestVerify(&ctx, signature->data, (size_t)signature->length,
+                          buf_in, inl)) {
         OPENSSL_PUT_ERROR(X509, ERR_R_EVP_LIB);
         goto err;
     }
 
     ret = 1;
 
- err:
+err:
     if (buf_in != NULL) {
-        OPENSSL_cleanse(buf_in, (unsigned int)inl);
+        OPENSSL_cleanse(buf_in, inl);
         OPENSSL_free(buf_in);
     }
-    EVP_PKEY_CTX_free(ctx);
+    EVP_MD_CTX_cleanup(&ctx);
     return ret;
 }

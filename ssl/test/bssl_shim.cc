@@ -295,13 +295,6 @@ static ssl_private_key_result_t AsyncPrivateKeySign(
     abort();
   }
 
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx(
-      EVP_PKEY_CTX_new(test_state->private_key.get(), nullptr));
-  if (!ctx ||
-      !EVP_PKEY_sign_init(ctx.get())) {
-    return ssl_private_key_failure;
-  }
-
   // Determine the hash.
   const EVP_MD *md;
   switch (signature_algorithm) {
@@ -336,8 +329,10 @@ static ssl_private_key_result_t AsyncPrivateKeySign(
       return ssl_private_key_failure;
   }
 
-  if (md != nullptr &&
-      !EVP_PKEY_CTX_set_signature_md(ctx.get(), md)) {
+  bssl::ScopedEVP_MD_CTX ctx;
+  EVP_PKEY_CTX *pctx;
+  if (!EVP_DigestSignInit(ctx.get(), &pctx, md, nullptr,
+                          test_state->private_key.get())) {
     return ssl_private_key_failure;
   }
 
@@ -346,8 +341,8 @@ static ssl_private_key_result_t AsyncPrivateKeySign(
     case SSL_SIGN_RSA_PSS_SHA256:
     case SSL_SIGN_RSA_PSS_SHA384:
     case SSL_SIGN_RSA_PSS_SHA512:
-      if (!EVP_PKEY_CTX_set_rsa_padding(ctx.get(), RSA_PKCS1_PSS_PADDING) ||
-          !EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx.get(),
+      if (!EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING) ||
+          !EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx,
                                             -1 /* salt len = hash len */)) {
         return ssl_private_key_failure;
       }
@@ -355,12 +350,12 @@ static ssl_private_key_result_t AsyncPrivateKeySign(
 
   // Write the signature into |test_state|.
   size_t len = 0;
-  if (!EVP_PKEY_sign_message(ctx.get(), nullptr, &len, in, in_len)) {
+  if (!EVP_DigestSign(ctx.get(), nullptr, &len, in, in_len)) {
     return ssl_private_key_failure;
   }
   test_state->private_key_result.resize(len);
-  if (!EVP_PKEY_sign_message(ctx.get(), test_state->private_key_result.data(),
-                             &len, in, in_len)) {
+  if (!EVP_DigestSign(ctx.get(), test_state->private_key_result.data(), &len,
+                      in, in_len)) {
     return ssl_private_key_failure;
   }
   test_state->private_key_result.resize(len);

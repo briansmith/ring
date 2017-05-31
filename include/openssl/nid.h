@@ -65,6 +65,7 @@
 extern "C" {
 #endif
 
+
 /* The nid library provides numbered values for ASN.1 object identifiers and
  * other symbols. These values are used by other libraries to identify
  * cryptographic primitives.
@@ -77,6 +78,7 @@ extern "C" {
  *
  * These values should not be used outside of a single process; they are not
  * stable identifiers. */
+
 
 #define SN_undef "UNDEF"
 #define LN_undef "undefined"
@@ -4192,9 +4194,9 @@ extern "C" {
 #define SN_X25519 "X25519"
 #define NID_X25519 948
 
-#define SN_Ed25519 "Ed25519"
-#define NID_Ed25519 949
-#define OBJ_Ed25519 1L, 3L, 101L, 112L
+#define SN_ED25519 "ED25519"
+#define NID_ED25519 949
+#define OBJ_ED25519 1L, 3L, 101L, 112L
 
 
 #if defined(__cplusplus)

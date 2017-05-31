@@ -28,8 +28,9 @@ extern "C" {
 
 /* x509_rsa_pss_to_ctx configures |ctx| for an RSA-PSS operation based on
  * signature algorithm parameters in |sigalg| (which must have type
- * |NID_rsassaPss|). It returns one on success and zero on error. */
-int x509_rsa_pss_to_ctx(EVP_PKEY_CTX *ctx, X509_ALGOR *sigalg);
+ * |NID_rsassaPss|) and key |pkey|. It returns one on success and zero on
+ * error. */
+int x509_rsa_pss_to_ctx(EVP_MD_CTX *ctx, X509_ALGOR *sigalg, EVP_PKEY *pkey);
 
 /* x509_rsa_pss_to_ctx sets |algor| to the signature algorithm parameters for
  * |ctx|, which must have been configured for an RSA-PSS signing operation. It
@@ -51,9 +52,11 @@ int x509_print_rsa_pss_params(BIO *bp, const X509_ALGOR *sigalg, int indent,
 int x509_digest_sign_algorithm(EVP_MD_CTX *ctx, X509_ALGOR *algor);
 
 /* x509_digest_verify_init sets up |ctx| for a signature verification operation
- * with parameters from |algor|. The |ctx| argument must have been constructed
- * with the public key. It returns one on success, or zero on error. */
-int x509_digest_verify_init(EVP_PKEY_CTX *ctx, X509_ALGOR *sigalg);
+ * with public key |pkey| and parameters from |algor|. The |ctx| argument must
+ * have been initialised with |EVP_MD_CTX_init|. It returns one on success, or
+ * zero on error. */
+int x509_digest_verify_init(EVP_MD_CTX *ctx, X509_ALGOR *sigalg,
+                            EVP_PKEY *pkey);
 
 
 #if defined(__cplusplus)

@@ -185,6 +185,30 @@ static bool ImportKey(FileTest *t, KeyMap *key_map,
   return true;
 }
 
+// SetupContext configures |ctx| based on attributes in |t|, with the exception
+// of the signing digest which must be configured externally.
+static bool SetupContext(FileTest *t, EVP_PKEY_CTX *ctx) {
+  if (t->HasAttribute("RSAPadding")) {
+    int padding;
+    if (!GetRSAPadding(t, &padding, t->GetAttributeOrDie("RSAPadding")) ||
+        !EVP_PKEY_CTX_set_rsa_padding(ctx, padding)) {
+      return false;
+    }
+  }
+  if (t->HasAttribute("PSSSaltLength") &&
+      !EVP_PKEY_CTX_set_rsa_pss_saltlen(
+          ctx, atoi(t->GetAttributeOrDie("PSSSaltLength").c_str()))) {
+    return false;
+  }
+  if (t->HasAttribute("MGF1Digest")) {
+    const EVP_MD *digest = GetDigest(t, t->GetAttributeOrDie("MGF1Digest"));
+    if (digest == nullptr || !EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, digest)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static bool TestEVP(FileTest *t, KeyMap *key_map) {
   if (t->GetType() == "PrivateKey") {
     return ImportKey(t, key_map, EVP_parse_private_key,
@@ -195,26 +219,26 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
     return ImportKey(t, key_map, EVP_parse_public_key, EVP_marshal_public_key);
   }
 
-  int (*key_op_init)(EVP_PKEY_CTX *ctx);
+  int (*key_op_init)(EVP_PKEY_CTX *ctx) = nullptr;
   int (*key_op)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
                 const uint8_t *in, size_t in_len) = nullptr;
-  int (*verify_op)(EVP_PKEY_CTX * ctx, const uint8_t *sig, size_t sig_len,
-                   const uint8_t *in, size_t in_len) = nullptr;
+  int (*md_op_init)(EVP_MD_CTX * ctx, EVP_PKEY_CTX * *pctx, const EVP_MD *type,
+                    ENGINE *e, EVP_PKEY *pkey) = nullptr;
+  bool is_verify = false;
   if (t->GetType() == "Decrypt") {
     key_op_init = EVP_PKEY_decrypt_init;
     key_op = EVP_PKEY_decrypt;
   } else if (t->GetType() == "Sign") {
     key_op_init = EVP_PKEY_sign_init;
     key_op = EVP_PKEY_sign;
-  } else if (t->GetType() == "SignMessage") {
-    key_op_init = EVP_PKEY_sign_init;
-    key_op = EVP_PKEY_sign_message;
   } else if (t->GetType() == "Verify") {
     key_op_init = EVP_PKEY_verify_init;
-    verify_op = EVP_PKEY_verify;
+    is_verify = true;
+  } else if (t->GetType() == "SignMessage") {
+    md_op_init = EVP_DigestSignInit;
   } else if (t->GetType() == "VerifyMessage") {
-    key_op_init = EVP_PKEY_verify_init;
-    verify_op = EVP_PKEY_verify_message;
+    md_op_init = EVP_DigestVerifyInit;
+    is_verify = true;
   } else {
     ADD_FAILURE() << "Unknown test " << t->GetType();
     return false;
@@ -228,67 +252,75 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
   }
   EVP_PKEY *key = (*key_map)[key_name].get();
 
-  std::vector<uint8_t> input;
-  if (!t->GetBytes(&input, "Input")) {
-    return false;
-  }
-
-  // Set up the EVP_PKEY_CTX.
-  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(key, nullptr));
-  if (!ctx || !key_op_init(ctx.get())) {
-    return false;
-  }
+  const EVP_MD *digest = nullptr;
   if (t->HasAttribute("Digest")) {
-    const EVP_MD *digest = GetDigest(t, t->GetAttributeOrDie("Digest"));
-    if (digest == nullptr ||
-        !EVP_PKEY_CTX_set_signature_md(ctx.get(), digest)) {
-      return false;
-    }
-  }
-  if (t->HasAttribute("RSAPadding")) {
-    int padding;
-    if (!GetRSAPadding(t, &padding, t->GetAttributeOrDie("RSAPadding")) ||
-        !EVP_PKEY_CTX_set_rsa_padding(ctx.get(), padding)) {
-      return false;
-    }
-  }
-  if (t->HasAttribute("PSSSaltLength") &&
-      !EVP_PKEY_CTX_set_rsa_pss_saltlen(
-          ctx.get(), atoi(t->GetAttributeOrDie("PSSSaltLength").c_str()))) {
-    return false;
-  }
-  if (t->HasAttribute("MGF1Digest")) {
-    const EVP_MD *digest = GetDigest(t, t->GetAttributeOrDie("MGF1Digest"));
-    if (digest == nullptr ||
-        !EVP_PKEY_CTX_set_rsa_mgf1_md(ctx.get(), digest)) {
+    digest = GetDigest(t, t->GetAttributeOrDie("Digest"));
+    if (digest == nullptr) {
       return false;
     }
   }
 
-  if (verify_op != nullptr) {
-    std::vector<uint8_t> output;
-    if (!t->GetBytes(&output, "Output") ||
-        !verify_op(ctx.get(), output.data(), output.size(), input.data(),
-                   input.size())) {
+  // For verify tests, the "output" is the signature. Read it now so that, for
+  // tests which expect a failure in SetupContext, the attribute is still
+  // consumed.
+  std::vector<uint8_t> input, actual, output;
+  if (!t->GetBytes(&input, "Input") ||
+      (is_verify && !t->GetBytes(&output, "Output"))) {
+    return false;
+  }
+
+  if (md_op_init) {
+    bssl::ScopedEVP_MD_CTX ctx;
+    EVP_PKEY_CTX *pctx;
+    if (!md_op_init(ctx.get(), &pctx, digest, nullptr, key) ||
+        !SetupContext(t, pctx)) {
       return false;
     }
+
+    if (is_verify) {
+      return !!EVP_DigestVerify(ctx.get(), output.data(), output.size(),
+                                input.data(), input.size());
+    }
+
+    size_t len;
+    if (!EVP_DigestSign(ctx.get(), nullptr, &len, input.data(), input.size())) {
+      return false;
+    }
+    actual.resize(len);
+    if (!EVP_DigestSign(ctx.get(), actual.data(), &len, input.data(),
+                        input.size()) ||
+        !t->GetBytes(&output, "Output")) {
+      return false;
+    }
+    actual.resize(len);
+    EXPECT_EQ(Bytes(output), Bytes(actual));
     return true;
   }
 
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(key, nullptr));
+  if (!ctx ||
+      !key_op_init(ctx.get()) ||
+      (digest != nullptr &&
+       !EVP_PKEY_CTX_set_signature_md(ctx.get(), digest)) ||
+      !SetupContext(t, ctx.get())) {
+    return false;
+  }
+
+  if (is_verify) {
+    return !!EVP_PKEY_verify(ctx.get(), output.data(), output.size(),
+                             input.data(), input.size());
+  }
+
   size_t len;
-  std::vector<uint8_t> actual, output;
   if (!key_op(ctx.get(), nullptr, &len, input.data(), input.size())) {
     return false;
   }
   actual.resize(len);
-  if (!key_op(ctx.get(), actual.data(), &len, input.data(), input.size())) {
+  if (!key_op(ctx.get(), actual.data(), &len, input.data(), input.size()) ||
+      !t->GetBytes(&output, "Output")) {
     return false;
   }
   actual.resize(len);
-  if (!t->GetBytes(&output, "Output")) {
-    return false;
-  }
-
   EXPECT_EQ(Bytes(output), Bytes(actual));
   return true;
 }
@@ -301,8 +333,9 @@ TEST(EVPTest, TestVectors) {
       ASSERT_FALSE(result) << "Operation unexpectedly succeeded.";
       uint32_t err = ERR_peek_error();
       EXPECT_EQ(t->GetAttributeOrDie("Error"), ERR_reason_error_string(err));
-    } else {
-      ASSERT_TRUE(result) << "Operation unexpectedly failed.";
+    } else if (!result) {
+      ADD_FAILURE() << "Operation unexpectedly failed.";
+      ERR_print_errors_fp(stdout);
     }
   });
 }

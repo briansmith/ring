@@ -937,4 +937,4 @@ dhSinglePass_cofactorDH_sha512kdf_scheme		945
 dh_std_kdf		946
 dh_cofactor_kdf		947
 X25519		948
-Ed25519		949
+ED25519		949

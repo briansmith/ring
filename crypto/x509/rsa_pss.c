@@ -242,7 +242,7 @@ err:
   return ret;
 }
 
-int x509_rsa_pss_to_ctx(EVP_PKEY_CTX *ctx, X509_ALGOR *sigalg) {
+int x509_rsa_pss_to_ctx(EVP_MD_CTX *ctx, X509_ALGOR *sigalg, EVP_PKEY *pkey) {
   assert(OBJ_obj2nid(sigalg->algorithm) == NID_rsassaPss);
 
   /* Decode PSS parameters */
@@ -279,10 +279,11 @@ int x509_rsa_pss_to_ctx(EVP_PKEY_CTX *ctx, X509_ALGOR *sigalg) {
     goto err;
   }
 
-  if (!EVP_PKEY_CTX_set_signature_md(ctx, md) ||
-      !EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_PSS_PADDING) ||
-      !EVP_PKEY_CTX_set_rsa_pss_saltlen(ctx, saltlen) ||
-      !EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, mgf1md)) {
+  EVP_PKEY_CTX *pctx;
+  if (!EVP_DigestVerifyInit(ctx, &pctx, md, NULL, pkey) ||
+      !EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING) ||
+      !EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, saltlen) ||
+      !EVP_PKEY_CTX_set_rsa_mgf1_md(pctx, mgf1md)) {
     goto err;
   }
 

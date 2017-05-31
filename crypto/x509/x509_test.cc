@@ -19,6 +19,7 @@
 
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
+#include <openssl/curve25519.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
@@ -714,7 +715,7 @@ static bool SignatureRoundTrips(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
   return !!X509_verify(cert.get(), pkey);
 }
 
-TEST(X509Test, TestSignCtx) {
+TEST(X509Test, RSASign) {
   bssl::UniquePtr<EVP_PKEY> pkey(PrivateKeyFromPEM(kRSAKey));
   ASSERT_TRUE(pkey);
   // Test PKCS#1 v1.5.
@@ -731,6 +732,21 @@ TEST(X509Test, TestSignCtx) {
   ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING));
   ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_mgf1_md(pkey_ctx, EVP_sha512()));
   ASSERT_TRUE(SignatureRoundTrips(md_ctx.get(), pkey.get()));
+}
+
+TEST(X509Test, Ed25519Sign) {
+  uint8_t pub_bytes[32], priv_bytes[64];
+  ED25519_keypair(pub_bytes, priv_bytes);
+
+  bssl::UniquePtr<EVP_PKEY> pub(EVP_PKEY_new_ed25519_public(pub_bytes));
+  ASSERT_TRUE(pub);
+  bssl::UniquePtr<EVP_PKEY> priv(EVP_PKEY_new_ed25519_private(priv_bytes));
+  ASSERT_TRUE(priv);
+
+  bssl::ScopedEVP_MD_CTX md_ctx;
+  ASSERT_TRUE(
+      EVP_DigestSignInit(md_ctx.get(), nullptr, nullptr, nullptr, priv.get()));
+  ASSERT_TRUE(SignatureRoundTrips(md_ctx.get(), pub.get()));
 }
 
 static bool PEMToDER(bssl::UniquePtr<uint8_t> *out, size_t *out_len,
