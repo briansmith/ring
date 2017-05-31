@@ -41,16 +41,6 @@ pub struct Ed25519KeyPair {
 }
 
 impl<'a> Ed25519KeyPair {
-    /// Generates a new random key pair. There is no way to extract the private
-    /// key bytes to save them. If you need to save the private key bytes for
-    /// future use then use `generate_serializable()` instead.
-    pub fn generate(rng: &rand::SecureRandom)
-                    -> Result<Ed25519KeyPair, error::Unspecified> {
-        let mut seed = [0u8; SEED_LEN];
-        rng.fill(&mut seed)?;
-        Ok(Ed25519KeyPair::from_seed_(&seed))
-    }
-
     /// Generates a new key pair and returns the key pair serialized as a
     /// PKCS#8 document.
     ///
