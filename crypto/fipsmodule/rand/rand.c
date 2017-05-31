@@ -134,7 +134,7 @@ static int have_rdrand(void) {
   return (OPENSSL_ia32cap_get()[1] & (1u << 30)) != 0;
 }
 
-static int hwrand(uint8_t *buf, size_t len) {
+static int hwrand(uint8_t *buf, const size_t len) {
   if (!have_rdrand()) {
     return 0;
   }
@@ -143,17 +143,23 @@ static int hwrand(uint8_t *buf, size_t len) {
   if (!CRYPTO_rdrand_multiple8_buf(buf, len_multiple8)) {
     return 0;
   }
-  len -= len_multiple8;
+  const size_t remainder = len - len_multiple8;
 
-  if (len != 0) {
-    assert(len < 8);
+  if (remainder != 0) {
+    assert(remainder < 8);
 
     uint8_t rand_buf[8];
     if (!CRYPTO_rdrand(rand_buf)) {
       return 0;
     }
-    OPENSSL_memcpy(buf + len_multiple8, rand_buf, len);
+    OPENSSL_memcpy(buf + len_multiple8, rand_buf, remainder);
   }
+
+#if defined(BORINGSSL_FIPS_BREAK_CRNG)
+  // This breaks the "continuous random number generator test" defined in FIPS
+  // 140-2, section 4.9.2, and implemented in rand_get_seed().
+  OPENSSL_memset(buf, 0, len);
+#endif
 
   return 1;
 }
@@ -190,6 +196,7 @@ static void rand_get_seed(struct rand_thread_state *state,
    * generator test” which causes the program to randomly abort. Hopefully the
    * rate of failure is small enough not to be a problem in practice. */
   if (CRYPTO_memcmp(state->last_block, entropy, CRNGT_BLOCK_SIZE) == 0) {
+    printf("CRNGT failed.\n");
     BORINGSSL_FIPS_abort();
   }
 
@@ -197,6 +204,7 @@ static void rand_get_seed(struct rand_thread_state *state,
        i += CRNGT_BLOCK_SIZE) {
     if (CRYPTO_memcmp(entropy + i - CRNGT_BLOCK_SIZE, entropy + i,
                       CRNGT_BLOCK_SIZE) == 0) {
+      printf("CRNGT failed.\n");
       BORINGSSL_FIPS_abort();
     }
   }
