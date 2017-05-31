@@ -15,6 +15,7 @@
 #include "internal.h"
 
 #include <openssl/crypto.h>
+#include <openssl/rand.h>
 
 #include <stdio.h>
 
@@ -232,9 +233,32 @@ static int test_thread_local(void) {
   return 1;
 }
 
+static void rand_state_test_thread(void) {
+  uint8_t buf[1];
+  RAND_bytes(buf, sizeof(buf));
+}
+
+static int test_rand_state(void) {
+  /* In FIPS mode, rand.c maintains a linked-list of thread-local data because
+   * we're required to clear it on process exit. This test exercises removing a
+   * value from that list. */
+  uint8_t buf[1];
+  RAND_bytes(buf, sizeof(buf));
+
+  thread_t thread;
+  if (!run_thread(&thread, rand_state_test_thread) ||
+      !wait_for_thread(thread)) {
+    fprintf(stderr, "thread failed.\n");
+    return 0;
+  }
+
+  return 1;
+}
+
 int main(int argc, char **argv) {
   if (!test_once() ||
-      !test_thread_local()) {
+      !test_thread_local() ||
+      !test_rand_state()) {
     return 1;
   }
 
