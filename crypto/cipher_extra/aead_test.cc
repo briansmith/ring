@@ -49,12 +49,10 @@ static const struct KnownAEAD kAEADs[] = {
     {"AES_256_GCM", EVP_aead_aes_256_gcm, "aes_256_gcm_tests.txt", false, true},
     {"AES_256_GCM_NIST", EVP_aead_aes_256_gcm, "nist_cavp/aes_256_gcm.txt",
      false, true},
-#if !defined(OPENSSL_SMALL)
     {"AES_128_GCM_SIV", EVP_aead_aes_128_gcm_siv, "aes_128_gcm_siv_tests.txt",
      false, false},
     {"AES_256_GCM_SIV", EVP_aead_aes_256_gcm_siv, "aes_256_gcm_siv_tests.txt",
      false, false},
-#endif
     {"ChaCha20Poly1305", EVP_aead_chacha20_poly1305,
      "chacha20_poly1305_tests.txt", false, true},
     {"AES_128_CBC_SHA1_TLS", EVP_aead_aes_128_cbc_sha1_tls,

@@ -14,8 +14,6 @@
 
 #include <openssl/base.h>
 
-#if !defined(OPENSSL_SMALL)
-
 #include <assert.h>
 #include <string.h>
 
@@ -91,6 +89,3 @@ void CRYPTO_POLYVAL_finish(const struct polyval_ctx *ctx, uint8_t out[16]) {
   byte_reverse(&S);
   OPENSSL_memcpy(out, &S.c, sizeof(polyval_block));
 }
-
-
-#endif  /* !OPENSSL_SMALL */

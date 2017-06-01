@@ -283,7 +283,6 @@ static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name,
                         evp_aead_seal);
 }
 
-#if !defined(OPENSSL_SMALL)
 static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
                           size_t ad_len, const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
@@ -297,7 +296,6 @@ static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
          SpeedAEADChunk(aead, name + " (8192 bytes)", 8192, ad_len,
                         evp_aead_open);
 }
-#endif  /* !SMALL */
 
 static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
                            size_t chunk_len) {
@@ -653,7 +651,6 @@ bool Speed(const std::vector<std::string> &args) {
                  kLegacyADLen, selected) ||
       !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1",
                  kLegacyADLen, selected) ||
-#if !defined(OPENSSL_SMALL)
       !SpeedAEAD(EVP_aead_aes_128_gcm_siv(), "AES-128-GCM-SIV", kTLSADLen,
                  selected) ||
       !SpeedAEAD(EVP_aead_aes_256_gcm_siv(), "AES-256-GCM-SIV", kTLSADLen,
@@ -662,7 +659,6 @@ bool Speed(const std::vector<std::string> &args) {
                      selected) ||
       !SpeedAEADOpen(EVP_aead_aes_256_gcm_siv(), "AES-256-GCM-SIV", kTLSADLen,
                      selected) ||
-#endif
       !SpeedHash(EVP_sha1(), "SHA-1", selected) ||
       !SpeedHash(EVP_sha256(), "SHA-256", selected) ||
       !SpeedHash(EVP_sha512(), "SHA-512", selected) ||
