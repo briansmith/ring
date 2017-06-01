@@ -40,52 +40,58 @@ struct KnownAEAD {
   // truncated_tags is true if the AEAD supports truncating tags to arbitrary
   // lengths.
   bool truncated_tags;
+  // ad_len, if non-zero, is the required length of the AD.
+  size_t ad_len;
 };
 
 static const struct KnownAEAD kAEADs[] = {
-    {"AES_128_GCM", EVP_aead_aes_128_gcm, "aes_128_gcm_tests.txt", false, true},
+    {"AES_128_GCM", EVP_aead_aes_128_gcm, "aes_128_gcm_tests.txt", false, true,
+     0},
     {"AES_128_GCM_NIST", EVP_aead_aes_128_gcm, "nist_cavp/aes_128_gcm.txt",
-     false, true},
-    {"AES_256_GCM", EVP_aead_aes_256_gcm, "aes_256_gcm_tests.txt", false, true},
+     false, true, 0},
+    {"AES_256_GCM", EVP_aead_aes_256_gcm, "aes_256_gcm_tests.txt", false, true,
+     0},
     {"AES_256_GCM_NIST", EVP_aead_aes_256_gcm, "nist_cavp/aes_256_gcm.txt",
-     false, true},
+     false, true, 0},
+#if !defined(OPENSSL_SMALL)
     {"AES_128_GCM_SIV", EVP_aead_aes_128_gcm_siv, "aes_128_gcm_siv_tests.txt",
-     false, false},
+     false, false, 0},
     {"AES_256_GCM_SIV", EVP_aead_aes_256_gcm_siv, "aes_256_gcm_siv_tests.txt",
-     false, false},
+     false, false, 0},
+#endif
     {"ChaCha20Poly1305", EVP_aead_chacha20_poly1305,
-     "chacha20_poly1305_tests.txt", false, true},
+     "chacha20_poly1305_tests.txt", false, true, 0},
     {"AES_128_CBC_SHA1_TLS", EVP_aead_aes_128_cbc_sha1_tls,
-     "aes_128_cbc_sha1_tls_tests.txt", true, false},
+     "aes_128_cbc_sha1_tls_tests.txt", true, false, 11},
     {"AES_128_CBC_SHA1_TLSImplicitIV",
      EVP_aead_aes_128_cbc_sha1_tls_implicit_iv,
-     "aes_128_cbc_sha1_tls_implicit_iv_tests.txt", true, false},
+     "aes_128_cbc_sha1_tls_implicit_iv_tests.txt", true, false, 11},
     {"AES_128_CBC_SHA256_TLS", EVP_aead_aes_128_cbc_sha256_tls,
-     "aes_128_cbc_sha256_tls_tests.txt", true, false},
+     "aes_128_cbc_sha256_tls_tests.txt", true, false, 11},
     {"AES_256_CBC_SHA1_TLS", EVP_aead_aes_256_cbc_sha1_tls,
-     "aes_256_cbc_sha1_tls_tests.txt", true, false},
+     "aes_256_cbc_sha1_tls_tests.txt", true, false, 11},
     {"AES_256_CBC_SHA1_TLSImplicitIV",
      EVP_aead_aes_256_cbc_sha1_tls_implicit_iv,
-     "aes_256_cbc_sha1_tls_implicit_iv_tests.txt", true, false},
+     "aes_256_cbc_sha1_tls_implicit_iv_tests.txt", true, false, 11},
     {"AES_256_CBC_SHA256_TLS", EVP_aead_aes_256_cbc_sha256_tls,
-     "aes_256_cbc_sha256_tls_tests.txt", true, false},
+     "aes_256_cbc_sha256_tls_tests.txt", true, false, 11},
     {"AES_256_CBC_SHA384_TLS", EVP_aead_aes_256_cbc_sha384_tls,
-     "aes_256_cbc_sha384_tls_tests.txt", true, false},
+     "aes_256_cbc_sha384_tls_tests.txt", true, false, 11},
     {"DES_EDE3_CBC_SHA1_TLS", EVP_aead_des_ede3_cbc_sha1_tls,
-     "des_ede3_cbc_sha1_tls_tests.txt", true, false},
+     "des_ede3_cbc_sha1_tls_tests.txt", true, false, 11},
     {"DES_EDE3_CBC_SHA1_TLSImplicitIV",
      EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv,
-     "des_ede3_cbc_sha1_tls_implicit_iv_tests.txt", true, false},
+     "des_ede3_cbc_sha1_tls_implicit_iv_tests.txt", true, false, 11},
     {"AES_128_CBC_SHA1_SSL3", EVP_aead_aes_128_cbc_sha1_ssl3,
-     "aes_128_cbc_sha1_ssl3_tests.txt", true, false},
+     "aes_128_cbc_sha1_ssl3_tests.txt", true, false, 9},
     {"AES_256_CBC_SHA1_SSL3", EVP_aead_aes_256_cbc_sha1_ssl3,
-     "aes_256_cbc_sha1_ssl3_tests.txt", true, false},
+     "aes_256_cbc_sha1_ssl3_tests.txt", true, false, 9},
     {"DES_EDE3_CBC_SHA1_SSL3", EVP_aead_des_ede3_cbc_sha1_ssl3,
-     "des_ede3_cbc_sha1_ssl3_tests.txt", true, false},
+     "des_ede3_cbc_sha1_ssl3_tests.txt", true, false, 9},
     {"AES_128_CTR_HMAC_SHA256", EVP_aead_aes_128_ctr_hmac_sha256,
-     "aes_128_ctr_hmac_sha256.txt", false, true},
+     "aes_128_ctr_hmac_sha256.txt", false, true, 0},
     {"AES_256_CTR_HMAC_SHA256", EVP_aead_aes_256_ctr_hmac_sha256,
-     "aes_256_ctr_hmac_sha256.txt", false, true},
+     "aes_256_ctr_hmac_sha256.txt", false, true, 0},
 };
 
 class PerAEADTest : public testing::TestWithParam<KnownAEAD> {
@@ -348,6 +354,49 @@ TEST_P(PerAEADTest, AliasedBuffers) {
                                 nonce.data(), nonce_len, in,
                                 valid_encryption_len, nullptr, 0));
   EXPECT_EQ(Bytes(kPlaintext), Bytes(in, out_len));
+}
+
+TEST_P(PerAEADTest, UnalignedInput) {
+  alignas(64) uint8_t key[EVP_AEAD_MAX_KEY_LENGTH + 1];
+  alignas(64) uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH + 1];
+  alignas(64) uint8_t plaintext[32 + 1];
+  alignas(64) uint8_t ad[32 + 1];
+  OPENSSL_memset(key, 'K', sizeof(key));
+  OPENSSL_memset(nonce, 'N', sizeof(nonce));
+  OPENSSL_memset(plaintext, 'P', sizeof(plaintext));
+  OPENSSL_memset(ad, 'A', sizeof(ad));
+  const size_t key_len = EVP_AEAD_key_length(aead());
+  ASSERT_GE(sizeof(key) - 1, key_len);
+  const size_t nonce_len = EVP_AEAD_nonce_length(aead());
+  ASSERT_GE(sizeof(nonce) - 1, nonce_len);
+  const size_t ad_len =
+      GetParam().ad_len != 0 ? GetParam().ad_len : sizeof(ad) - 1;
+  ASSERT_GE(sizeof(ad) - 1, ad_len);
+
+  // Encrypt some input.
+  bssl::ScopedEVP_AEAD_CTX ctx;
+  ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
+      ctx.get(), aead(), key + 1, key_len, EVP_AEAD_DEFAULT_TAG_LENGTH,
+      evp_aead_seal));
+  alignas(64) uint8_t ciphertext[sizeof(plaintext) + EVP_AEAD_MAX_OVERHEAD];
+  size_t ciphertext_len;
+  ASSERT_TRUE(EVP_AEAD_CTX_seal(ctx.get(), ciphertext + 1, &ciphertext_len,
+                                sizeof(ciphertext) - 1, nonce + 1, nonce_len,
+                                plaintext + 1, sizeof(plaintext) - 1, ad + 1,
+                                ad_len));
+
+  // It must successfully decrypt.
+  alignas(64) uint8_t out[sizeof(ciphertext)];
+  ctx.Reset();
+  ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(
+      ctx.get(), aead(), key + 1, key_len, EVP_AEAD_DEFAULT_TAG_LENGTH,
+      evp_aead_open));
+  size_t out_len;
+  ASSERT_TRUE(EVP_AEAD_CTX_open(ctx.get(), out + 1, &out_len, sizeof(out) - 1,
+                                nonce + 1, nonce_len, ciphertext + 1,
+                                ciphertext_len, ad + 1, ad_len));
+  EXPECT_EQ(Bytes(plaintext + 1, sizeof(plaintext) - 1),
+            Bytes(out + 1, out_len));
 }
 
 // Test that EVP_aead_aes_128_gcm and EVP_aead_aes_256_gcm reject empty nonces.
