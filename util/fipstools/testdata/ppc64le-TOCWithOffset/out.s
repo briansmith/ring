@@ -9,26 +9,24 @@ foo:
 	addi 1, 1, -288
 	mflr 3
 	std 3, -8(1)
-	bl .Lbcm_loadtoc__dot_Lfoo_local_target
+	bl .Lbcm_loadtoc__dot_Lfoo_local_target__plus_10
 	std 3, -24(1)
 	ld 3, -8(1)
 	mtlr 3
 	ld 3, -24(1)
 	addi 1, 1, 288
-	addi 3, 3, +10
 
 # WAS addis 3, 2, 15+foo@toc@ha
 # WAS addi 3, 3, 20+foo@toc@l
 	addi 1, 1, -288
 	mflr 3
 	std 3, -8(1)
-	bl .Lbcm_loadtoc__dot_Lfoo_local_target
+	bl .Lbcm_loadtoc__dot_Lfoo_local_target__plus_20
 	std 3, -24(1)
 	ld 3, -8(1)
 	mtlr 3
 	ld 3, -24(1)
 	addi 1, 1, 288
-	addi 3, 3, +20
 
 # WAS addis 4, 2, foo@toc@ha
 # WAS addi 4, 4, foo@toc@l
@@ -50,14 +48,28 @@ foo:
 	mflr 5
 	std 5, -8(1)
 	std 3, -16(1)
-	bl .Lbcm_loadtoc__dot_Lfoo_local_target
+	bl .Lbcm_loadtoc__dot_Lfoo_local_target__plus_10
 	std 3, -24(1)
 	ld 3, -8(1)
 	mtlr 3
 	ld 5, -24(1)
 	ld 3, -16(1)
 	addi 1, 1, 288
-	ld 5, +10(5)
+	ld 5, 0(5)
+
+# WAS addis 4, 2, foo-10@toc@ha
+# WAS addi 4, 4, foo-10@toc@l
+	addi 1, 1, -288
+	mflr 4
+	std 4, -8(1)
+	std 3, -16(1)
+	bl .Lbcm_loadtoc__dot_Lfoo_local_target__minus_10
+	std 3, -24(1)
+	ld 3, -8(1)
+	mtlr 3
+	ld 4, -24(1)
+	ld 3, -16(1)
+	addi 1, 1, 288
 .text
 BORINGSSL_bcm_text_end:
 .type bcm_loadtoc__dot_Lfoo_local_target, @function
@@ -65,6 +77,24 @@ bcm_loadtoc__dot_Lfoo_local_target:
 .Lbcm_loadtoc__dot_Lfoo_local_target:
 	addis 3, 2, .Lfoo_local_target@toc@ha
 	addi 3, 3, .Lfoo_local_target@toc@l
+	blr
+.type bcm_loadtoc__dot_Lfoo_local_target__plus_10, @function
+bcm_loadtoc__dot_Lfoo_local_target__plus_10:
+.Lbcm_loadtoc__dot_Lfoo_local_target__plus_10:
+	addis 3, 2, .Lfoo_local_target+10@toc@ha
+	addi 3, 3, .Lfoo_local_target+10@toc@l
+	blr
+.type bcm_loadtoc__dot_Lfoo_local_target__plus_20, @function
+bcm_loadtoc__dot_Lfoo_local_target__plus_20:
+.Lbcm_loadtoc__dot_Lfoo_local_target__plus_20:
+	addis 3, 2, .Lfoo_local_target+20@toc@ha
+	addi 3, 3, .Lfoo_local_target+20@toc@l
+	blr
+.type bcm_loadtoc__dot_Lfoo_local_target__minus_10, @function
+bcm_loadtoc__dot_Lfoo_local_target__minus_10:
+.Lbcm_loadtoc__dot_Lfoo_local_target__minus_10:
+	addis 3, 2, .Lfoo_local_target-10@toc@ha
+	addi 3, 3, .Lfoo_local_target-10@toc@l
 	blr
 .LBORINGSSL_external_toc:
 .quad .TOC.-.LBORINGSSL_external_toc

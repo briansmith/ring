@@ -479,13 +479,27 @@ func establishTOC(w stringWriter) {
 }
 
 // loadTOCFuncName returns the name of a synthesized function that sets r3 to
-// the value of “symbol”.
-func loadTOCFuncName(symbol string) string {
-	return ".Lbcm_loadtoc_" + strings.Replace(symbol, ".", "_dot_", -1)
+// the value of “symbol+offset”.
+func loadTOCFuncName(symbol, offset string) string {
+	ret := ".Lbcm_loadtoc_" + strings.Replace(symbol, ".", "_dot_", -1)
+	switch {
+	case len(offset) == 0:
+		break
+	case offset[0] == '+':
+		ret += "__plus_" + offset[1:]
+	case offset[0] == '-':
+		ret += "__minus_" + offset[1:]
+	default:
+		// parseMemRef will prepend a plus to bare offsets.
+		panic("bad offset: " + offset)
+	}
+
+	return ret
 }
 
-func (d *delocation) loadFromTOC(w stringWriter, symbol, dest string) wrapperFunc {
-	d.tocLoaders[symbol] = struct{}{}
+func (d *delocation) loadFromTOC(w stringWriter, symbol, offset, dest string) wrapperFunc {
+	d.tocLoaders[symbol + "\x00" + offset] = struct{}{}
+
 	return func(k func()) {
 		w.WriteString("\taddi 1, 1, -288\n")   // Clear the red zone.
 		w.WriteString("\tmflr " + dest + "\n") // Stash the link register.
@@ -497,7 +511,7 @@ func (d *delocation) loadFromTOC(w stringWriter, symbol, dest string) wrapperFun
 
 		// Because loadTOCFuncName returns a “.L” name, we don't need a
 		// nop after this call.
-		w.WriteString("\tbl " + loadTOCFuncName(symbol) + "\n")
+		w.WriteString("\tbl " + loadTOCFuncName(symbol, offset) + "\n")
 
 		// Cycle registers around. We need r3 -> destReg, -8(1) ->
 		// lr and, optionally, -16(1) -> r3.
@@ -672,26 +686,20 @@ Args:
 				// destination register is the first argument.
 				destReg := args[0]
 
-				wrappers = append(wrappers, d.loadFromTOC(d.output, symbol, destReg))
+				wrappers = append(wrappers, d.loadFromTOC(d.output, symbol, offset, destReg))
 				switch instructionName {
 				case "addi":
 					// The original instruction was:
 					//   addi destReg, tocHaReg, offset+symbol@toc@l
-					//
-					// All that is left is adding the offset, if any.
 					instructionName = ""
-					if len(offset) != 0 {
-						wrappers = append(wrappers, func(k func()) {
-							d.output.WriteString("\taddi " + destReg + ", " + destReg + ", " + offset + "\n")
-						})
-					}
+
 				case "ld", "lhz", "lwz":
 					// The original instruction was:
 					//   l?? destReg, offset+symbol@toc@l(tocHaReg)
 					//
 					// We transform that into the
 					// equivalent dereference of destReg:
-					//   l?? destReg, offset(destReg)
+					//   l?? destReg, 0(destReg)
 					origInstructionName := instructionName
 					instructionName = ""
 
@@ -702,11 +710,7 @@ Args:
 					}
 
 					wrappers = append(wrappers, func(k func()) {
-						fixedOffset := offset
-						if len(fixedOffset) == 0 {
-							fixedOffset = "0"
-						}
-						d.output.WriteString("\t" + origInstructionName + " " + destReg + ", " + fixedOffset + "(" + destReg + ")\n")
+						d.output.WriteString("\t" + origInstructionName + " " + destReg + ", 0(" + destReg + ")\n")
 					})
 				default:
 					return nil, fmt.Errorf("can't process TOC argument to %q", instructionName)
@@ -1212,14 +1216,18 @@ func transform(w stringWriter, inputs []inputFile) error {
 
 	if d.processor == ppc64le {
 		loadTOCNames := sortedSet(d.tocLoaders)
-		for _, symbol := range loadTOCNames {
-			funcName := loadTOCFuncName(symbol)
+		for _, symbolAndOffset := range loadTOCNames {
+			parts := strings.SplitN(symbolAndOffset, "\x00", 2)
+			symbol, offset := parts[0], parts[1]
+
+			funcName := loadTOCFuncName(symbol, offset)
+			ref := symbol + offset
 
 			w.WriteString(".type " + funcName[2:] + ", @function\n")
 			w.WriteString(funcName[2:] + ":\n")
 			w.WriteString(funcName + ":\n")
-			w.WriteString("\taddis 3, 2, " + symbol + "@toc@ha\n")
-			w.WriteString("\taddi 3, 3, " + symbol + "@toc@l\n")
+			w.WriteString("\taddis 3, 2, " + ref + "@toc@ha\n")
+			w.WriteString("\taddi 3, 3, " + ref + "@toc@l\n")
 			w.WriteString("\tblr\n")
 		}
 
