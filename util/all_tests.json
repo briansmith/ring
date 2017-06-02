@@ -7,7 +7,6 @@
 	["crypto/fipsmodule/example_mul"],
 	["crypto/fipsmodule/p256-x86_64_test", "crypto/fipsmodule/ec/p256-x86_64_tests.txt"],
 	["crypto/obj/obj_test"],
-	["crypto/pkcs8/pkcs12_test"],
 	["crypto/x509v3/tab_test"],
 	["crypto/x509v3/v3name_test"],
 	["crypto/x509/x509_test"],

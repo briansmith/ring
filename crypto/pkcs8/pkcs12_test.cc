@@ -12,7 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <stdio.h>
+#include <gtest/gtest.h>
 
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
@@ -900,89 +900,60 @@ static const uint8_t kPBES2[] = {
 
 static const char kPassword[] = "foo";
 
-static bool Test(const char *name, const uint8_t *der, size_t der_len) {
+static void TestImpl(const char *name, const uint8_t *der, size_t der_len) {
   bssl::UniquePtr<STACK_OF(X509)> certs(sk_X509_new_null());
-  if (!certs) {
-    return false;
-  }
+  ASSERT_TRUE(certs);
 
   CBS pkcs12;
   EVP_PKEY *key = nullptr;
   CBS_init(&pkcs12, der, der_len);
-  if (!PKCS12_get_key_and_certs(&key, certs.get(), &pkcs12, kPassword)) {
-    fprintf(stderr, "PKCS12 failed on %s data.\n", name);
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+  ASSERT_TRUE(PKCS12_get_key_and_certs(&key, certs.get(), &pkcs12, kPassword));
   bssl::UniquePtr<EVP_PKEY> delete_key(key);
 
-  if (sk_X509_num(certs.get()) != 1 || key == nullptr) {
-    fprintf(stderr, "Bad result from %s data.\n", name);
-    return false;
-  }
-
-  return true;
+  ASSERT_EQ(1u, sk_X509_num(certs.get()));
+  ASSERT_TRUE(key);
 }
 
-static bool TestCompat(const uint8_t *der, size_t der_len) {
+static void TestCompat(const uint8_t *der, size_t der_len) {
   bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(der, der_len));
-  if (!bio) {
-    return false;
-  }
+  ASSERT_TRUE(bio);
 
   bssl::UniquePtr<PKCS12> p12(d2i_PKCS12_bio(bio.get(), nullptr));
-  if (!p12) {
-    fprintf(stderr, "PKCS12_parse failed.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+  ASSERT_TRUE(p12);
 
-  if (PKCS12_verify_mac(p12.get(), "badpass", 7)) {
-    fprintf(stderr, "PKCS12_verify_mac accepted bad password.\n");
-    return false;
-  }
-
-  if (!PKCS12_verify_mac(p12.get(), kPassword, sizeof(kPassword) - 1)) {
-    fprintf(stderr, "PKCS12_verify_mac rejected good password.\n");
-    return false;
-  }
+  ASSERT_FALSE(PKCS12_verify_mac(p12.get(), "badpass", 7));
+  ASSERT_TRUE(PKCS12_verify_mac(p12.get(), kPassword, sizeof(kPassword) - 1));
 
   EVP_PKEY *key = nullptr;
   X509 *cert = nullptr;
   STACK_OF(X509) *ca_certs = nullptr;
-  if (!PKCS12_parse(p12.get(), kPassword, &key, &cert, &ca_certs)) {
-    fprintf(stderr, "PKCS12_parse failed.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
+  ASSERT_TRUE(PKCS12_parse(p12.get(), kPassword, &key, &cert, &ca_certs));
+
   bssl::UniquePtr<EVP_PKEY> delete_key(key);
   bssl::UniquePtr<X509> delete_cert(cert);
   bssl::UniquePtr<STACK_OF(X509)> delete_ca_certs(ca_certs);
 
-  if (key == nullptr || cert == nullptr) {
-    fprintf(stderr, "Bad result from PKCS12_parse.\n");
-    return false;
-  }
-
-  if (sk_X509_num(ca_certs) != 0) {
-    fprintf(stderr, "Bad result from PKCS12_parse.\n");
-    return false;
-  }
-
-  return true;
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(cert);
+  ASSERT_EQ(0u, sk_X509_num(ca_certs));
 }
 
-int main(int argc, char **argv) {
-  CRYPTO_library_init();
+TEST(PKCS12Test, TestOpenSSL) {
+  TestImpl("OpenSSL", kOpenSSL, sizeof(kOpenSSL));
+}
 
-  if (!Test("OpenSSL", kOpenSSL, sizeof(kOpenSSL)) ||
-      !Test("NSS", kNSS, sizeof(kNSS)) ||
-      !Test("Windows", kWindows, sizeof(kWindows)) ||
-      !Test("PBES2", kPBES2, sizeof(kPBES2)) ||
-      !TestCompat(kWindows, sizeof(kWindows))) {
-    return 1;
-  }
+TEST(PKCS12Test, TestNSS) {
+  TestImpl("NSS", kNSS, sizeof(kNSS));
+}
 
-  printf("PASS\n");
-  return 0;
+TEST(PKCS12Test, TestWindows) {
+  TestImpl("Windows", kWindows, sizeof(kWindows));
+}
+
+TEST(PKCS12Test, TestPBES2) {
+  TestImpl("PBES2", kPBES2, sizeof(kPBES2));
+}
+
+TEST(PKCS12Test, TestWindowsCompat) {
+  TestCompat(kWindows, sizeof(kWindows));
 }
