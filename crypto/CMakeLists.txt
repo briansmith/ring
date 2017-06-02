@@ -253,6 +253,8 @@ add_executable(
   hkdf/hkdf_test.cc
   hmac_extra/hmac_test.cc
   lhash/lhash_test.cc
+  pkcs7/pkcs7_test.cc
+  pkcs8/pkcs8_test.cc
   poly1305/poly1305_test.cc
   pool/pool_test.cc
   refcount_test.cc

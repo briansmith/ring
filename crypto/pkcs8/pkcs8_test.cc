@@ -12,9 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <gtest/gtest.h>
 
 #include <openssl/crypto.h>
 #include <openssl/err.h>
@@ -168,27 +166,19 @@ static const uint8_t kExplicitHMACWithSHA1[] = {
     0x68, 0xf9, 0x5e, 0x01, 0x66, 0x59, 0x5f, 0x3f, 0x05, 0x57, 0xcd,
 };
 
-static bool TestDecrypt(const uint8_t *der, size_t der_len,
+static void TestDecrypt(const uint8_t *der, size_t der_len,
                         const char *password) {
   const uint8_t *data = der;
   bssl::UniquePtr<X509_SIG> sig(d2i_X509_SIG(NULL, &data, der_len));
-  if (sig.get() == NULL || data != der + der_len) {
-    fprintf(stderr, "d2i_X509_SIG failed or did not consume all bytes.\n");
-    return false;
-  }
+  ASSERT_TRUE(sig.get());
+  ASSERT_EQ(der + der_len, data);
 
   bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> keypair(
       PKCS8_decrypt(sig.get(), password, -1));
-  if (!keypair) {
-    fprintf(stderr, "PKCS8_decrypt failed.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-
-  return true;
+  ASSERT_TRUE(keypair);
 }
 
-static bool TestRoundTrip(int pbe_nid, const EVP_CIPHER *cipher,
+static void TestRoundTrip(int pbe_nid, const EVP_CIPHER *cipher,
                           const char *password, const uint8_t *salt,
                           size_t salt_len, int iterations) {
   static const uint8_t kSampleKey[] = {
@@ -209,76 +199,82 @@ static bool TestRoundTrip(int pbe_nid, const EVP_CIPHER *cipher,
   const uint8_t *ptr = kSampleKey;
   bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> key(
       d2i_PKCS8_PRIV_KEY_INFO(nullptr, &ptr, sizeof(kSampleKey)));
-  if (!key || ptr != kSampleKey + sizeof(kSampleKey)) {
-    return false;
-  }
+  ASSERT_TRUE(key);
+  ASSERT_EQ(kSampleKey + sizeof(kSampleKey), ptr);
 
   bssl::UniquePtr<X509_SIG> encrypted(PKCS8_encrypt(
       pbe_nid, cipher, password, -1, salt, salt_len, iterations, key.get()));
-  if (!encrypted) {
-    fprintf(stderr, "Failed to encrypt private key.\n");
-    return false;
-  }
+  ASSERT_TRUE(encrypted);
 
   bssl::UniquePtr<PKCS8_PRIV_KEY_INFO> key2(
       PKCS8_decrypt(encrypted.get(), password, -1));
-  if (!key2) {
-    fprintf(stderr, "Failed to decrypt private key.\n");
-    return false;
-  }
+  ASSERT_TRUE(key2);
 
   uint8_t *encoded = nullptr;
   int len = i2d_PKCS8_PRIV_KEY_INFO(key2.get(), &encoded);
   bssl::UniquePtr<uint8_t> free_encoded(encoded);
-  if (len < 0 ||
-      static_cast<size_t>(len) != sizeof(kSampleKey) ||
-      OPENSSL_memcmp(encoded, kSampleKey, sizeof(kSampleKey)) != 0) {
-    fprintf(stderr, "Decrypted private key did not round-trip.");
-    return false;
-  }
-
-  return true;
+  ASSERT_GE(len, 0);
+  ASSERT_EQ(static_cast<size_t>(len), sizeof(kSampleKey));
+  ASSERT_EQ(0, OPENSSL_memcmp(encoded, kSampleKey, sizeof(kSampleKey)));
 }
 
-int main(int argc, char **argv) {
-  CRYPTO_library_init();
+TEST(PKCS8Test, DecryptString) {
+  TestDecrypt(kDER, sizeof(kDER), "testing");
+}
 
-  if (!TestDecrypt(kDER, sizeof(kDER), "testing") ||
-      !TestDecrypt(kNullPassword, sizeof(kNullPassword), NULL) ||
-      !TestDecrypt(kNullPasswordNSS, sizeof(kNullPasswordNSS), NULL) ||
-      !TestDecrypt(kEmptyPasswordOpenSSL, sizeof(kEmptyPasswordOpenSSL), "") ||
-      !TestDecrypt(kExplicitHMACWithSHA1, sizeof(kExplicitHMACWithSHA1),
-                   "foo") ||
-      !TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr,
-                     "password", nullptr, 0, 10) ||
-      // Vary the salt
-      !TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr,
-                     "password", nullptr, 4, 10) ||
-      !TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr,
-                     "password", (const uint8_t *)"salt", 4, 10) ||
-      // Vary the iteration count.
-      !TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr,
-                     "password", nullptr, 0, 1) ||
-      // Vary the password.
-      !TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr, "",
-                     nullptr, 0, 1) ||
-      !TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr, nullptr,
-                     nullptr, 0, 1) ||
-      // Vary the PBE suite.
-      !TestRoundTrip(NID_pbe_WithSHA1And40BitRC2_CBC, nullptr, "password",
-                     nullptr, 0, 10) ||
-      !TestRoundTrip(NID_pbe_WithSHA1And128BitRC4, nullptr, "password", nullptr,
-                     0, 10) ||
-      // Test PBES2.
-      !TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 0, 10) ||
-      !TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 4, 10) ||
-      !TestRoundTrip(-1, EVP_aes_128_cbc(), "password", (const uint8_t *)"salt",
-                     4, 10) ||
-      !TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 0, 1) ||
-      !TestRoundTrip(-1, EVP_rc2_cbc(), "password", nullptr, 0, 10)) {
-    return 1;
-  }
+TEST(PKCS8Test, DecryptNull) {
+  TestDecrypt(kNullPassword, sizeof(kNullPassword), NULL);
+}
 
-  printf("PASS\n");
-  return 0;
+TEST(PKCS8Test, DecryptNullNSS) {
+  TestDecrypt(kNullPasswordNSS, sizeof(kNullPasswordNSS), NULL);
+}
+
+TEST(PKCS8Test, DecryptEmptyStringOpenSSL) {
+  TestDecrypt(kEmptyPasswordOpenSSL, sizeof(kEmptyPasswordOpenSSL), "");
+}
+
+TEST(PKCS8Test, DecryptExplicitHMACWithSHA1) {
+  TestDecrypt(kExplicitHMACWithSHA1, sizeof(kExplicitHMACWithSHA1), "foo");
+}
+
+TEST(PKCS8Test, RoundTripPBEWithrSHA1And3KeyTripleDES) {
+  // Test with different salts.
+  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr,
+                "password", nullptr, 0, 10);
+  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr,
+                "password", nullptr, 4, 10);
+  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr,
+                "password", (const uint8_t *)"salt", 4, 10);
+  // Test with a different iteration count.
+  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr,
+                "password", nullptr, 0, 1);
+}
+
+// Test that both "" (empty password, encoded as "\0\0") and nullptr (no
+// password, encoded as "") work.
+TEST(PKCS8Test, RoundTripPBEWithSHA1And3KeyTripleDESEmptyPassword) {
+  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr, "",
+                nullptr, 0, 1);
+  TestRoundTrip(NID_pbe_WithSHA1And3_Key_TripleDES_CBC, nullptr, nullptr,
+                nullptr, 0, 1);
+}
+
+TEST(PKCS8Test, RoundTripPBEWithSHA1And40BitRC2CBC) {
+  TestRoundTrip(NID_pbe_WithSHA1And40BitRC2_CBC, nullptr, "password",
+                nullptr, 0, 10);
+}
+
+TEST(PKCS8Test, RoundTripPBEWithSHA1And128BitRC4) {
+  TestRoundTrip(NID_pbe_WithSHA1And128BitRC4, nullptr, "password",
+                nullptr, 0, 10);
+}
+
+TEST(PKCS8Test, RoundTripPBES2) {
+  TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 0, 10);
+  TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 4, 10);
+  TestRoundTrip(-1, EVP_aes_128_cbc(), "password", (const uint8_t *)"salt",
+                4, 10);
+  TestRoundTrip(-1, EVP_aes_128_cbc(), "password", nullptr, 0, 1);
+  TestRoundTrip(-1, EVP_rc2_cbc(), "password", nullptr, 0, 10);
 }
