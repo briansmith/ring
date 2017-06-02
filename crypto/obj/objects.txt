@@ -899,7 +899,7 @@ aes 48			: id-aes256-wrap-pad
 			: DES-EDE3-CFB1		: des-ede3-cfb1
 			: DES-EDE3-CFB8		: des-ede3-cfb8
 
-# OIDs for SHA224, SHA256, SHA385 and SHA512, according to x9.84.
+# OIDs for SHA224, SHA256, SHA384 and SHA512, according to x9.84.
 !Alias nist_hashalgs nistAlgorithms 2
 nist_hashalgs 1		: SHA256		: sha256
 nist_hashalgs 2		: SHA384		: sha384
