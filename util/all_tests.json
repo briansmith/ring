@@ -6,7 +6,6 @@
 	["crypto/fipsmodule/ecdsa_verify_test", "crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt"],
 	["crypto/fipsmodule/example_mul"],
 	["crypto/fipsmodule/p256-x86_64_test", "crypto/fipsmodule/ec/p256-x86_64_tests.txt"],
-	["crypto/obj/obj_test"],
 	["crypto/x509v3/tab_test"],
 	["crypto/x509v3/v3name_test"],
 	["crypto/x509/x509_test"],

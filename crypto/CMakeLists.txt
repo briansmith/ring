@@ -245,6 +245,7 @@ add_executable(
   hkdf/hkdf_test.cc
   hmac_extra/hmac_test.cc
   lhash/lhash_test.cc
+  obj/obj_test.cc
   pkcs7/pkcs7_test.cc
   pkcs8/pkcs8_test.cc
   pkcs8/pkcs12_test.cc

@@ -12,8 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <stdio.h>
-#include <string.h>
+#include <gtest/gtest.h>
 
 #include <openssl/asn1.h>
 #include <openssl/bytestring.h>
@@ -23,7 +22,7 @@
 #include "../internal.h"
 
 
-static bool TestBasic() {
+TEST(ObjTest, TestBasic) {
   static const int kNID = NID_sha256WithRSAEncryption;
   static const char kShortName[] = "RSA-SHA256";
   static const char kLongName[] = "sha256WithRSAEncryption";
@@ -34,66 +33,44 @@ static bool TestBasic() {
 
   CBS cbs;
   CBS_init(&cbs, kDER, sizeof(kDER));
-  if (OBJ_cbs2nid(&cbs) != kNID ||
-      OBJ_sn2nid(kShortName) != kNID ||
-      OBJ_ln2nid(kLongName) != kNID ||
-      OBJ_txt2nid(kShortName) != kNID ||
-      OBJ_txt2nid(kLongName) != kNID ||
-      OBJ_txt2nid(kText) != kNID) {
-    return false;
-  }
+  ASSERT_EQ(kNID, OBJ_cbs2nid(&cbs));
+  ASSERT_EQ(kNID, OBJ_sn2nid(kShortName));
+  ASSERT_EQ(kNID, OBJ_ln2nid(kLongName));
+  ASSERT_EQ(kNID, OBJ_txt2nid(kShortName));
+  ASSERT_EQ(kNID, OBJ_txt2nid(kLongName));
+  ASSERT_EQ(kNID, OBJ_txt2nid(kText));
 
-  if (strcmp(kShortName, OBJ_nid2sn(kNID)) != 0 ||
-      strcmp(kLongName, OBJ_nid2ln(kNID)) != 0) {
-    return false;
-  }
+  ASSERT_STREQ(kShortName, OBJ_nid2sn(kNID));
+  ASSERT_STREQ(kLongName, OBJ_nid2ln(kNID));
 
-  if (OBJ_sn2nid("this is not an OID") != NID_undef ||
-      OBJ_ln2nid("this is not an OID") != NID_undef ||
-      OBJ_txt2nid("this is not an OID") != NID_undef) {
-    return false;
-  }
+  ASSERT_EQ(NID_undef, OBJ_sn2nid("this is not an OID"));
+  ASSERT_EQ(NID_undef, OBJ_ln2nid("this is not an OID"));
+  ASSERT_EQ(NID_undef, OBJ_txt2nid("this is not an OID"));
 
   CBS_init(&cbs, NULL, 0);
-  if (OBJ_cbs2nid(&cbs) != NID_undef) {
-    return false;
-  }
+  ASSERT_EQ(NID_undef, OBJ_cbs2nid(&cbs));
 
   // 1.2.840.113554.4.1.72585.2 (https://davidben.net/oid).
   static const uint8_t kUnknownDER[] = {
       0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x02,
   };
   CBS_init(&cbs, kUnknownDER, sizeof(kUnknownDER));
-  if (OBJ_cbs2nid(&cbs) != NID_undef) {
-    return false;
-  }
-
-  return true;
+  ASSERT_EQ(NID_undef, OBJ_cbs2nid(&cbs));
 }
 
-static bool TestSignatureAlgorithms() {
+TEST(ObjTest, TestSignatureAlgorithms) {
   int digest_nid, pkey_nid;
-  if (!OBJ_find_sigid_algs(NID_sha256WithRSAEncryption, &digest_nid,
-                           &pkey_nid) ||
-      digest_nid != NID_sha256 || pkey_nid != NID_rsaEncryption) {
-    return false;
-  }
+  ASSERT_TRUE(OBJ_find_sigid_algs(NID_sha256WithRSAEncryption, &digest_nid,
+                                  &pkey_nid));
+  ASSERT_EQ(digest_nid, NID_sha256);
+  ASSERT_EQ(pkey_nid, NID_rsaEncryption);
 
-  if (OBJ_find_sigid_algs(NID_sha256, &digest_nid, &pkey_nid)) {
-    return false;
-  }
+  ASSERT_FALSE(OBJ_find_sigid_algs(NID_sha256, &digest_nid, &pkey_nid));
 
   int sign_nid;
-  if (!OBJ_find_sigid_by_algs(&sign_nid, NID_sha256, NID_rsaEncryption) ||
-      sign_nid != NID_sha256WithRSAEncryption) {
-    return false;
-  }
-
-  if (OBJ_find_sigid_by_algs(&sign_nid, NID_dsa, NID_rsaEncryption)) {
-    return false;
-  }
-
-  return true;
+  ASSERT_TRUE(OBJ_find_sigid_by_algs(&sign_nid, NID_sha256, NID_rsaEncryption));
+  ASSERT_EQ(sign_nid, NID_sha256WithRSAEncryption);
+  ASSERT_FALSE(OBJ_find_sigid_by_algs(&sign_nid, NID_dsa, NID_rsaEncryption));
 }
 
 static bool ExpectObj2Txt(const uint8_t *der, size_t der_len,
@@ -149,7 +126,7 @@ static bool ExpectObj2Txt(const uint8_t *der, size_t der_len,
   return true;
 }
 
-static bool TestObj2Txt() {
+TEST(ObjTest, TestObj2Txt) {
   // kSHA256WithRSAEncryption is the DER representation of
   // 1.2.840.113549.1.1.11, id-sha256WithRSAEncryption.
   static const uint8_t kSHA256WithRSAEncryption[] = {
@@ -168,24 +145,26 @@ static bool TestObj2Txt() {
       0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7, 0x09, 0x00,
   };
 
-  if (!ExpectObj2Txt(kSHA256WithRSAEncryption, sizeof(kSHA256WithRSAEncryption),
-                     true /* don't return name */, "1.2.840.113549.1.1.11") ||
-      !ExpectObj2Txt(kSHA256WithRSAEncryption, sizeof(kSHA256WithRSAEncryption),
-                     false /* return name */, "sha256WithRSAEncryption") ||
-      !ExpectObj2Txt(kBasicConstraints, sizeof(kBasicConstraints),
-                     true /* don't return name */, "2.5.29.19") ||
-      !ExpectObj2Txt(kBasicConstraints, sizeof(kBasicConstraints),
-                     false /* return name */, "X509v3 Basic Constraints") ||
-      !ExpectObj2Txt(kTestOID, sizeof(kTestOID), true /* don't return name */,
-                     "1.2.840.113554.4.1.72585.0") ||
-      !ExpectObj2Txt(kTestOID, sizeof(kTestOID), false /* return name */,
-                     "1.2.840.113554.4.1.72585.0") ||
-      // Python depends on the empty OID successfully encoding as the empty
-      // string.
-      !ExpectObj2Txt(nullptr, 0, false /* return name */, "") ||
-      !ExpectObj2Txt(nullptr, 0, true /* don't return name */, "")) {
-    return false;
-  }
+  ASSERT_TRUE(
+      ExpectObj2Txt(kSHA256WithRSAEncryption, sizeof(kSHA256WithRSAEncryption),
+                    true /* don't return name */, "1.2.840.113549.1.1.11"));
+  ASSERT_TRUE(
+      ExpectObj2Txt(kSHA256WithRSAEncryption, sizeof(kSHA256WithRSAEncryption),
+                    false /* return name */, "sha256WithRSAEncryption"));
+  ASSERT_TRUE(ExpectObj2Txt(kBasicConstraints, sizeof(kBasicConstraints),
+                            true /* don't return name */, "2.5.29.19"));
+  ASSERT_TRUE(ExpectObj2Txt(kBasicConstraints, sizeof(kBasicConstraints),
+                            false /* return name */,
+                            "X509v3 Basic Constraints"));
+  ASSERT_TRUE(ExpectObj2Txt(kTestOID, sizeof(kTestOID),
+                            true /* don't return name */,
+                            "1.2.840.113554.4.1.72585.0"));
+  ASSERT_TRUE(ExpectObj2Txt(kTestOID, sizeof(kTestOID), false /* return name */,
+                            "1.2.840.113554.4.1.72585.0"));
+  // Python depends on the empty OID successfully encoding as the empty
+  // string.
+  ASSERT_TRUE(ExpectObj2Txt(nullptr, 0, false /* return name */, ""));
+  ASSERT_TRUE(ExpectObj2Txt(nullptr, 0, true /* don't return name */, ""));
 
   ASN1_OBJECT obj;
   OPENSSL_memset(&obj, 0, sizeof(obj));
@@ -197,10 +176,7 @@ static bool TestObj2Txt() {
   };
   obj.data = kNonMinimalOID;
   obj.length = sizeof(kNonMinimalOID);
-  if (OBJ_obj2txt(NULL, 0, &obj, 0) != -1) {
-    fprintf(stderr, "OBJ_obj2txt accepted non-minimal OIDs.\n");
-    return false;
-  }
+  ASSERT_EQ(-1, OBJ_obj2txt(NULL, 0, &obj, 0));
 
   // kOverflowOID is the DER representation of
   // 1.2.840.113554.4.1.72585.18446744073709551616. (The final value is 2^64.)
@@ -210,10 +186,7 @@ static bool TestObj2Txt() {
   };
   obj.data = kOverflowOID;
   obj.length = sizeof(kOverflowOID);
-  if (OBJ_obj2txt(NULL, 0, &obj, 0) != -1) {
-    fprintf(stderr, "OBJ_obj2txt accepted an OID with a large component.\n");
-    return false;
-  }
+  ASSERT_EQ(-1, OBJ_obj2txt(NULL, 0, &obj, 0));
 
   // kInvalidOID is a mis-encoded version of kBasicConstraints with the final
   // octet having the high bit set.
@@ -222,23 +195,5 @@ static bool TestObj2Txt() {
   };
   obj.data = kInvalidOID;
   obj.length = sizeof(kInvalidOID);
-  if (OBJ_obj2txt(NULL, 0, &obj, 0) != -1) {
-    fprintf(stderr, "OBJ_obj2txt accepted a mis-encoded OID.\n");
-    return false;
-  }
-
-  return true;
-}
-
-int main() {
-  CRYPTO_library_init();
-
-  if (!TestBasic() ||
-      !TestSignatureAlgorithms() ||
-      !TestObj2Txt()) {
-    return 1;
-  }
-
-  printf("PASS\n");
-  return 0;
+  ASSERT_EQ(-1, OBJ_obj2txt(NULL, 0, &obj, 0));
 }
