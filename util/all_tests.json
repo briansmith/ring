@@ -1,7 +1,6 @@
 [
 	["crypto/crypto_test"],
 	["crypto/evp/evp_test", "crypto/evp/evp_tests.txt"],
-	["crypto/fipsmodule/bn_test", "crypto/fipsmodule/bn/bn_tests.txt"],
 	["crypto/fipsmodule/ecdsa_sign_test", "crypto/fipsmodule/ecdsa/ecdsa_sign_tests.txt"],
 	["crypto/fipsmodule/ecdsa_test"],
 	["crypto/fipsmodule/ecdsa_verify_test", "crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt"],

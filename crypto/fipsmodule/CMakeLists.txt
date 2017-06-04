@@ -195,17 +195,6 @@ else()
 endif()
 
 add_executable(
-  bn_test
-
-  bn/bn_test.cc
-
-  $<TARGET_OBJECTS:test_support>
-)
-
-target_link_libraries(bn_test crypto)
-add_dependencies(all_tests bn_test)
-
-add_executable(
   example_mul
 
   ec/example_mul.c
