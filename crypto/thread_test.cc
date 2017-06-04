@@ -14,10 +14,12 @@
 
 #include "internal.h"
 
+#include <gtest/gtest.h>
+
 #include <openssl/crypto.h>
 #include <openssl/rand.h>
 
-#include <stdio.h>
+#include "test/test_util.h"
 
 
 #if !defined(OPENSSL_NO_THREADS)
@@ -62,14 +64,14 @@ static int wait_for_thread(thread_t thread) {
 typedef pthread_t thread_t;
 
 static void *thread_run(void *arg) {
-  void (*thread_func)(void) = arg;
+  void (*thread_func)(void) = reinterpret_cast<void (*)(void)>(arg);
   thread_func();
   return NULL;
 }
 
 static int run_thread(thread_t *out_thread, void (*thread_func)(void)) {
   return pthread_create(out_thread, NULL /* default attributes */, thread_run,
-                        thread_func) == 0;
+                        reinterpret_cast<void *>(thread_func)) == 0;
 }
 
 static int wait_for_thread(thread_t thread) {
@@ -110,56 +112,35 @@ static struct CRYPTO_STATIC_MUTEX mutex_bss;
 static CRYPTO_EX_DATA_CLASS ex_data_class_value = CRYPTO_EX_DATA_CLASS_INIT;
 static CRYPTO_EX_DATA_CLASS ex_data_class_bss;
 
-static int test_once(void) {
-  if (g_once_init_called != 0) {
-    fprintf(stderr, "g_once_init_called was non-zero at start.\n");
-    return 0;
-  }
+TEST(ThreadTest, Once) {
+  ASSERT_EQ(0u, g_once_init_called)
+      << "g_once_init_called was non-zero at start.";
 
   thread_t thread1, thread2;
-  if (!run_thread(&thread1, call_once_thread) ||
-      !run_thread(&thread2, call_once_thread) ||
-      !wait_for_thread(thread1) ||
-      !wait_for_thread(thread2)) {
-    fprintf(stderr, "thread failed.\n");
-    return 0;
-  }
+  ASSERT_TRUE(run_thread(&thread1, call_once_thread));
+  ASSERT_TRUE(run_thread(&thread2, call_once_thread));
+  ASSERT_TRUE(wait_for_thread(thread1));
+  ASSERT_TRUE(wait_for_thread(thread2));
 
   CRYPTO_once(&g_test_once, once_init);
 
-  if (g_once_init_called != 1) {
-    fprintf(stderr, "Expected init function to be called once, but found %u.\n",
-            g_once_init_called);
-    return 0;
-  }
+  EXPECT_EQ(1u, g_once_init_called);
+}
 
+TEST(ThreadTest, InitZeros) {
   if (FIPS_mode()) {
     /* Our FIPS tooling currently requires that |CRYPTO_ONCE_INIT|,
      * |CRYPTO_STATIC_MUTEX_INIT| and |CRYPTO_EX_DATA_CLASS| are all zeros and
      * so can be placed in the BSS section. */
-    if (OPENSSL_memcmp((void *)&once_init_value, (void *)&once_bss,
-                       sizeof(CRYPTO_once_t)) != 0) {
-      fprintf(stderr, "CRYPTO_ONCE_INIT did not expand to all zeros.\n");
-      return 0;
-    }
-
-    if (OPENSSL_memcmp((void *)&mutex_init_value, (void *)&mutex_bss,
-                       sizeof(struct CRYPTO_STATIC_MUTEX)) != 0) {
-      fprintf(stderr, "CRYPTO_STATIC_MUTEX did not expand to all zeros.\n");
-      return 0;
-    }
-
-    if (OPENSSL_memcmp((void *)&ex_data_class_value, (void *)&ex_data_class_bss,
-                       sizeof(CRYPTO_EX_DATA_CLASS))) {
-      fprintf(stderr,
-              "CRYPTO_EX_DATA_CLASS_INIT did not expand to all zeros.\n");
-      return 0;
-    }
+    EXPECT_EQ(Bytes((uint8_t *)&once_bss, sizeof(once_bss)),
+              Bytes((uint8_t *)&once_init_value, sizeof(once_init_value)));
+    EXPECT_EQ(Bytes((uint8_t *)&mutex_bss, sizeof(mutex_bss)),
+              Bytes((uint8_t *)&mutex_init_value, sizeof(mutex_init_value)));
+    EXPECT_EQ(
+        Bytes((uint8_t *)&ex_data_class_bss, sizeof(ex_data_class_bss)),
+        Bytes((uint8_t *)&ex_data_class_value, sizeof(ex_data_class_value)));
   }
-
-  return 1;
 }
-
 
 static int g_test_thread_ok = 0;
 static unsigned g_destructor_called_count = 0;
@@ -169,76 +150,39 @@ static void thread_local_destructor(void *arg) {
     return;
   }
 
-  unsigned *count = arg;
+  unsigned *count = reinterpret_cast<unsigned*>(arg);
   (*count)++;
 }
 
-static void thread_local_test_thread(void) {
-  void *ptr = CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_TEST);
-  if (ptr != NULL) {
-    return;
-  }
-
-  if (!CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_TEST,
-                               &g_destructor_called_count,
-                               thread_local_destructor)) {
-    return;
-  }
-
-  if (CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_TEST) !=
-      &g_destructor_called_count) {
-    return;
-  }
-
-  g_test_thread_ok = 1;
-}
-
-static void thread_local_test2_thread(void) {}
-
-static int test_thread_local(void) {
-  void *ptr = CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_TEST);
-  if (ptr != NULL) {
-    fprintf(stderr, "Thread-local data was non-NULL at start.\n");
-  }
+TEST(ThreadTest, ThreadLocal) {
+  ASSERT_EQ(nullptr, CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_TEST))
+      << "Thread-local data was non-NULL at start.";
 
   thread_t thread;
-  if (!run_thread(&thread, thread_local_test_thread) ||
-      !wait_for_thread(thread)) {
-    fprintf(stderr, "thread failed.\n");
-    return 0;
-  }
+  ASSERT_TRUE(run_thread(&thread, []() {
+    if (CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_TEST) != NULL ||
+        !CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_TEST,
+                                 &g_destructor_called_count,
+                                 thread_local_destructor) ||
+        CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_TEST) !=
+            &g_destructor_called_count) {
+      return;
+    }
 
-  if (!g_test_thread_ok) {
-    fprintf(stderr, "Thread-local data didn't work in thread.\n");
-    return 0;
-  }
+    g_test_thread_ok = 1;
+  }));
+  ASSERT_TRUE(wait_for_thread(thread));
 
-  if (g_destructor_called_count != 1) {
-    fprintf(stderr,
-            "Destructor should have been called once, but actually called %u "
-            "times.\n",
-            g_destructor_called_count);
-    return 0;
-  }
+  EXPECT_TRUE(g_test_thread_ok) << "Thread-local data didn't work in thread.";
+  EXPECT_EQ(1u, g_destructor_called_count);
 
-  /* thread_local_test2_thread doesn't do anything, but it tests that the
-   * thread destructor function works even if thread-local storage wasn't used
-   * for a thread. */
-  if (!run_thread(&thread, thread_local_test2_thread) ||
-      !wait_for_thread(thread)) {
-    fprintf(stderr, "thread failed.\n");
-    return 0;
-  }
-
-  return 1;
+  // Create a no-op thread to test test that the thread destructor function
+  // works even if thread-local storage wasn't used for a thread.
+  ASSERT_TRUE(run_thread(&thread, []() {}));
+  ASSERT_TRUE(wait_for_thread(thread));
 }
 
-static void rand_state_test_thread(void) {
-  uint8_t buf[1];
-  RAND_bytes(buf, sizeof(buf));
-}
-
-static int test_rand_state(void) {
+TEST(ThreadTest, RandState) {
   /* In FIPS mode, rand.c maintains a linked-list of thread-local data because
    * we're required to clear it on process exit. This test exercises removing a
    * value from that list. */
@@ -246,31 +190,11 @@ static int test_rand_state(void) {
   RAND_bytes(buf, sizeof(buf));
 
   thread_t thread;
-  if (!run_thread(&thread, rand_state_test_thread) ||
-      !wait_for_thread(thread)) {
-    fprintf(stderr, "thread failed.\n");
-    return 0;
-  }
-
-  return 1;
+  ASSERT_TRUE(run_thread(&thread, []() {
+    uint8_t buf2[1];
+    RAND_bytes(buf2, sizeof(buf2));
+  }));
+  ASSERT_TRUE(wait_for_thread(thread));
 }
 
-int main(int argc, char **argv) {
-  if (!test_once() ||
-      !test_thread_local() ||
-      !test_rand_state()) {
-    return 1;
-  }
-
-  printf("PASS\n");
-  return 0;
-}
-
-#else  /* OPENSSL_NO_THREADS */
-
-int main(int argc, char **argv) {
-  printf("PASS\n");
-  return 0;
-}
-
-#endif
+#endif /* !OPENSSL_NO_THREADS */

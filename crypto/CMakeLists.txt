@@ -211,17 +211,6 @@ if(NOT MSVC AND NOT ANDROID)
   target_link_libraries(crypto pthread)
 endif()
 
-add_executable(
-  thread_test
-
-  thread_test.c
-
-  $<TARGET_OBJECTS:test_support>
-)
-
-target_link_libraries(thread_test crypto)
-add_dependencies(all_tests thread_test)
-
 # TODO(davidben): Convert the remaining tests to GTest.
 add_executable(
   crypto_test
@@ -261,6 +250,7 @@ add_executable(
   refcount_test.cc
   rsa_extra/rsa_test.cc
   test/file_test_gtest.cc
+  thread_test.cc
 
   $<TARGET_OBJECTS:crypto_test_data>
   $<TARGET_OBJECTS:gtest_main>
