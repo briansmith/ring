@@ -235,234 +235,250 @@ static bool GetString(std::string *out, CBS *cbs) {
   return true;
 }
 
-static const std::function<void(SSL_CTX *, CBS *)> kAPIs[] = {
-    [](SSL_CTX *ctx, CBS *cbs) {
-      uint8_t b;
-      if (!CBS_get_u8(cbs, &b)) {
-        return;
-      }
-      SSL_CTX_set_quiet_shutdown(ctx, b);
-    },
-    [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_get_quiet_shutdown(ctx); },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      uint16_t version;
-      if (!CBS_get_u16(cbs, &version)) {
-        return;
-      }
-      SSL_CTX_set_min_proto_version(ctx, version);
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      uint16_t version;
-      if (!CBS_get_u16(cbs, &version)) {
-        return;
-      }
-      SSL_CTX_set_max_proto_version(ctx, version);
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      uint32_t options;
-      if (!CBS_get_u32(cbs, &options)) {
-        return;
-      }
-      SSL_CTX_set_options(ctx, options);
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      uint32_t options;
-      if (!CBS_get_u32(cbs, &options)) {
-        return;
-      }
-      SSL_CTX_clear_options(ctx, options);
-    },
-    [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_get_options(ctx); },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      uint32_t mode;
-      if (!CBS_get_u32(cbs, &mode)) {
-        return;
-      }
-      SSL_CTX_set_mode(ctx, mode);
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      uint32_t mode;
-      if (!CBS_get_u32(cbs, &mode)) {
-        return;
-      }
-      SSL_CTX_clear_mode(ctx, mode);
-    },
-    [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_get_mode(ctx); },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      SSL_CTX_use_certificate(ctx, g_state.cert_.get());
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      SSL_CTX_use_PrivateKey(ctx, g_state.pkey_.get());
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      SSL_CTX_set1_chain(ctx, g_state.certs_.get());
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      SSL_CTX_add1_chain_cert(ctx, g_state.cert_.get());
-    },
-    [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_clear_chain_certs(ctx); },
-    [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_clear_extra_chain_certs(ctx); },
-    [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_check_private_key(ctx); },
-    [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_get0_certificate(ctx); },
-    [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_get0_privatekey(ctx); },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      STACK_OF(X509) * chains;
-      SSL_CTX_get0_chain_certs(ctx, &chains);
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      std::string sct_data;
-      if (!GetString(&sct_data, cbs)) {
-        return;
-      }
-
-      SSL_CTX_set_signed_cert_timestamp_list(
-          ctx, reinterpret_cast<const uint8_t *>(sct_data.data()),
-          sct_data.size());
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      std::string ocsp_data;
-      if (!GetString(&ocsp_data, cbs)) {
-        return;
-      }
-
-      SSL_CTX_set_ocsp_response(
-          ctx, reinterpret_cast<const uint8_t *>(ocsp_data.data()),
-          ocsp_data.size());
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      std::string signing_algos;
-      if (!GetString(&signing_algos, cbs)) {
-        return;
-      }
-
-      SSL_CTX_set_signing_algorithm_prefs(
-          ctx, reinterpret_cast<const uint16_t *>(signing_algos.data()),
-          signing_algos.size() / sizeof(uint16_t));
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      std::string ciphers;
-      if (!GetString(&ciphers, cbs)) {
-        return;
-      }
-      SSL_CTX_set_strict_cipher_list(ctx, ciphers.c_str());
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      std::string ciphers;
-      if (!GetString(&ciphers, cbs)) {
-        return;
-      }
-      SSL_CTX_set_cipher_list(ctx, ciphers.c_str());
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      std::string verify_algos;
-      if (!GetString(&verify_algos, cbs)) {
-        return;
-      }
-
-      SSL_CTX_set_verify_algorithm_prefs(
-          ctx, reinterpret_cast<const uint16_t *>(verify_algos.data()),
-          verify_algos.size() / sizeof(uint16_t));
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      std::string ciphers;
-      if (!GetString(&ciphers, cbs)) {
-        return;
-      }
-      SSL_CTX_set_session_id_context(
-          ctx, reinterpret_cast<const uint8_t *>(ciphers.data()),
-          ciphers.size());
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      uint32_t size;
-      if (!CBS_get_u32(cbs, &size)) {
-        return;
-      }
-      SSL_CTX_sess_set_cache_size(ctx, size);
-    },
-    [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_sess_get_cache_size(ctx); },
-    [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_sess_number(ctx); },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      uint32_t time;
-      if (!CBS_get_u32(cbs, &time)) {
-        return;
-      }
-      SSL_CTX_flush_sessions(ctx, time);
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      std::string keys;
-      if (!GetString(&keys, cbs)) {
-        return;
-      }
-      SSL_CTX_set_tlsext_ticket_keys(
-          ctx, reinterpret_cast<const uint8_t *>(keys.data()), keys.size());
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      std::string curves;
-      if (!GetString(&curves, cbs)) {
-        return;
-      }
-      SSL_CTX_set1_curves(ctx, reinterpret_cast<const int *>(curves.data()),
-                          curves.size() / sizeof(int));
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      std::string curves;
-      if (!GetString(&curves, cbs)) {
-        return;
-      }
-      SSL_CTX_set1_curves_list(ctx, curves.c_str());
-    },
-    [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_enable_signed_cert_timestamps(ctx); },
-    [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_enable_ocsp_stapling(ctx); },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      SSL_CTX_add_client_CA(ctx, g_state.cert_.get());
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      std::string protos;
-      if (!GetString(&protos, cbs)) {
-        return;
-      }
-      SSL_CTX_set_alpn_protos(
-          ctx, reinterpret_cast<const uint8_t *>(protos.data()), protos.size());
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      std::string profiles;
-      if (!GetString(&profiles, cbs)) {
-        return;
-      }
-      SSL_CTX_set_srtp_profiles(ctx, profiles.c_str());
-    },
-    [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_get_max_cert_list(ctx); },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      uint32_t size;
-      if (!CBS_get_u32(cbs, &size)) {
-        return;
-      }
-      SSL_CTX_set_max_cert_list(ctx, size);
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      uint32_t size;
-      if (!CBS_get_u32(cbs, &size)) {
-        return;
-      }
-      SSL_CTX_set_max_send_fragment(ctx, size);
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      uint8_t b;
-      if (!CBS_get_u8(cbs, &b)) {
-        return;
-      }
-      SSL_CTX_set_retain_only_sha256_of_client_certs(ctx, b);
-    },
-    [](SSL_CTX *ctx, CBS *cbs) {
-      uint8_t b;
-      if (!CBS_get_u8(cbs, &b)) {
-        return;
-      }
-      SSL_CTX_set_grease_enabled(ctx, b);
-    },
-};
-
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
+  constexpr size_t kMaxExpensiveAPIs = 1000;
+  unsigned expensive_api_count = 0;
+
+  const std::function<void(SSL_CTX *, CBS *)> kAPIs[] = {
+      [](SSL_CTX *ctx, CBS *cbs) {
+        uint8_t b;
+        if (!CBS_get_u8(cbs, &b)) {
+          return;
+        }
+        SSL_CTX_set_quiet_shutdown(ctx, b);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_get_quiet_shutdown(ctx); },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        uint16_t version;
+        if (!CBS_get_u16(cbs, &version)) {
+          return;
+        }
+        SSL_CTX_set_min_proto_version(ctx, version);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        uint16_t version;
+        if (!CBS_get_u16(cbs, &version)) {
+          return;
+        }
+        SSL_CTX_set_max_proto_version(ctx, version);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        uint32_t options;
+        if (!CBS_get_u32(cbs, &options)) {
+          return;
+        }
+        SSL_CTX_set_options(ctx, options);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        uint32_t options;
+        if (!CBS_get_u32(cbs, &options)) {
+          return;
+        }
+        SSL_CTX_clear_options(ctx, options);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_get_options(ctx); },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        uint32_t mode;
+        if (!CBS_get_u32(cbs, &mode)) {
+          return;
+        }
+        SSL_CTX_set_mode(ctx, mode);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        uint32_t mode;
+        if (!CBS_get_u32(cbs, &mode)) {
+          return;
+        }
+        SSL_CTX_clear_mode(ctx, mode);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_get_mode(ctx); },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        SSL_CTX_use_certificate(ctx, g_state.cert_.get());
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        SSL_CTX_use_PrivateKey(ctx, g_state.pkey_.get());
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        SSL_CTX_set1_chain(ctx, g_state.certs_.get());
+      },
+      [&](SSL_CTX *ctx, CBS *cbs) {
+        // Avoid an unbounded certificate chain.
+        if (++expensive_api_count >= kMaxExpensiveAPIs) {
+          return;
+        }
+
+        SSL_CTX_add1_chain_cert(ctx, g_state.cert_.get());
+      },
+      [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_clear_chain_certs(ctx); },
+      [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_clear_extra_chain_certs(ctx); },
+      [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_check_private_key(ctx); },
+      [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_get0_certificate(ctx); },
+      [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_get0_privatekey(ctx); },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        STACK_OF(X509) * chains;
+        SSL_CTX_get0_chain_certs(ctx, &chains);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        std::string sct_data;
+        if (!GetString(&sct_data, cbs)) {
+          return;
+        }
+
+        SSL_CTX_set_signed_cert_timestamp_list(
+            ctx, reinterpret_cast<const uint8_t *>(sct_data.data()),
+            sct_data.size());
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        std::string ocsp_data;
+        if (!GetString(&ocsp_data, cbs)) {
+          return;
+        }
+
+        SSL_CTX_set_ocsp_response(
+            ctx, reinterpret_cast<const uint8_t *>(ocsp_data.data()),
+            ocsp_data.size());
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        std::string signing_algos;
+        if (!GetString(&signing_algos, cbs)) {
+          return;
+        }
+
+        SSL_CTX_set_signing_algorithm_prefs(
+            ctx, reinterpret_cast<const uint16_t *>(signing_algos.data()),
+            signing_algos.size() / sizeof(uint16_t));
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        std::string ciphers;
+        if (!GetString(&ciphers, cbs)) {
+          return;
+        }
+        SSL_CTX_set_strict_cipher_list(ctx, ciphers.c_str());
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        std::string ciphers;
+        if (!GetString(&ciphers, cbs)) {
+          return;
+        }
+        SSL_CTX_set_cipher_list(ctx, ciphers.c_str());
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        std::string verify_algos;
+        if (!GetString(&verify_algos, cbs)) {
+          return;
+        }
+
+        SSL_CTX_set_verify_algorithm_prefs(
+            ctx, reinterpret_cast<const uint16_t *>(verify_algos.data()),
+            verify_algos.size() / sizeof(uint16_t));
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        std::string ciphers;
+        if (!GetString(&ciphers, cbs)) {
+          return;
+        }
+        SSL_CTX_set_session_id_context(
+            ctx, reinterpret_cast<const uint8_t *>(ciphers.data()),
+            ciphers.size());
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        uint32_t size;
+        if (!CBS_get_u32(cbs, &size)) {
+          return;
+        }
+        SSL_CTX_sess_set_cache_size(ctx, size);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_sess_get_cache_size(ctx); },
+      [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_sess_number(ctx); },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        uint32_t time;
+        if (!CBS_get_u32(cbs, &time)) {
+          return;
+        }
+        SSL_CTX_flush_sessions(ctx, time);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        std::string keys;
+        if (!GetString(&keys, cbs)) {
+          return;
+        }
+        SSL_CTX_set_tlsext_ticket_keys(
+            ctx, reinterpret_cast<const uint8_t *>(keys.data()), keys.size());
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        std::string curves;
+        if (!GetString(&curves, cbs)) {
+          return;
+        }
+        SSL_CTX_set1_curves(ctx, reinterpret_cast<const int *>(curves.data()),
+                            curves.size() / sizeof(int));
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        std::string curves;
+        if (!GetString(&curves, cbs)) {
+          return;
+        }
+        SSL_CTX_set1_curves_list(ctx, curves.c_str());
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        SSL_CTX_enable_signed_cert_timestamps(ctx);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_enable_ocsp_stapling(ctx); },
+      [&](SSL_CTX *ctx, CBS *cbs) {
+        // Avoid an unbounded client CA list.
+        if (++expensive_api_count >= kMaxExpensiveAPIs) {
+          return;
+        }
+
+        SSL_CTX_add_client_CA(ctx, g_state.cert_.get());
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        std::string protos;
+        if (!GetString(&protos, cbs)) {
+          return;
+        }
+        SSL_CTX_set_alpn_protos(
+            ctx, reinterpret_cast<const uint8_t *>(protos.data()),
+            protos.size());
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        std::string profiles;
+        if (!GetString(&profiles, cbs)) {
+          return;
+        }
+        SSL_CTX_set_srtp_profiles(ctx, profiles.c_str());
+      },
+      [](SSL_CTX *ctx, CBS *cbs) { SSL_CTX_get_max_cert_list(ctx); },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        uint32_t size;
+        if (!CBS_get_u32(cbs, &size)) {
+          return;
+        }
+        SSL_CTX_set_max_cert_list(ctx, size);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        uint32_t size;
+        if (!CBS_get_u32(cbs, &size)) {
+          return;
+        }
+        SSL_CTX_set_max_send_fragment(ctx, size);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        uint8_t b;
+        if (!CBS_get_u8(cbs, &b)) {
+          return;
+        }
+        SSL_CTX_set_retain_only_sha256_of_client_certs(ctx, b);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        uint8_t b;
+        if (!CBS_get_u8(cbs, &b)) {
+          return;
+        }
+        SSL_CTX_set_grease_enabled(ctx, b);
+      },
+  };
+
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
 
   // If the number of functions exceeds this limit then the code needs to do
