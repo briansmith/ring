@@ -68,10 +68,6 @@
 #endif
 
 
-#if !defined(UINT64_MAX)
-#define UINT64_MAX 18446744073709551615ULL
-#endif
-
 OPENSSL_MSVC_PRAGMA(warning(disable: 4702)) /* Unreachable code. */
 
 typedef struct {
