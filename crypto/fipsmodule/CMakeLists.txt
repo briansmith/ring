@@ -214,35 +214,3 @@ add_executable(
 
 target_link_libraries(p256-x86_64_test crypto)
 add_dependencies(all_tests example_mul p256-x86_64_test)
-
-add_executable(
-  ecdsa_test
-
-  ecdsa/ecdsa_test.cc
-
-  $<TARGET_OBJECTS:test_support>
-)
-
-target_link_libraries(ecdsa_test crypto)
-
-add_executable(
-  ecdsa_sign_test
-
-  ecdsa/ecdsa_sign_test.cc
-
-  $<TARGET_OBJECTS:test_support>
-)
-
-target_link_libraries(ecdsa_sign_test crypto)
-
-add_executable(
-  ecdsa_verify_test
-
-  ecdsa/ecdsa_verify_test.cc
-
-  $<TARGET_OBJECTS:test_support>
-)
-
-target_link_libraries(ecdsa_verify_test crypto)
-
-add_dependencies(all_tests ecdsa_test ecdsa_sign_test ecdsa_verify_test)
