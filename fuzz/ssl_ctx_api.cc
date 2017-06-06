@@ -236,7 +236,7 @@ static bool GetString(std::string *out, CBS *cbs) {
 }
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
-  constexpr size_t kMaxExpensiveAPIs = 1000;
+  constexpr size_t kMaxExpensiveAPIs = 100;
   unsigned expensive_api_count = 0;
 
   const std::function<void(SSL_CTX *, CBS *)> kAPIs[] = {
