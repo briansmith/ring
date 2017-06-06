@@ -23,6 +23,7 @@ load(
     "crypto_sources",
     "crypto_sources_linux_x86_64",
     "crypto_sources_mac_x86_64",
+    "fips_fragments",
     "ssl_headers",
     "ssl_internal_headers",
     "ssl_c_sources",
@@ -92,7 +93,7 @@ boringssl_copts_cxx = boringssl_copts + [
 cc_library(
     name = "crypto",
     srcs = crypto_sources + crypto_internal_headers + crypto_sources_asm,
-    hdrs = crypto_headers,
+    hdrs = crypto_headers + fips_fragments,
     copts = boringssl_copts_c11,
     includes = ["src/include"],
     linkopts = select({
