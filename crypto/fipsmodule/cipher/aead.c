@@ -115,10 +115,13 @@ int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
                       size_t max_out_len, const uint8_t *nonce,
                       size_t nonce_len, const uint8_t *in, size_t in_len,
                       const uint8_t *ad, size_t ad_len) {
-  size_t possible_out_len = in_len + ctx->aead->overhead;
-
-  if (possible_out_len < in_len /* overflow */) {
+  if (in_len + ctx->aead->overhead < in_len /* overflow */) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
+    goto error;
+  }
+
+  if (max_out_len < in_len) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     goto error;
   }
 
@@ -127,8 +130,11 @@ int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
     goto error;
   }
 
-  if (ctx->aead->seal(ctx, out, out_len, max_out_len, nonce, nonce_len, in,
-                      in_len, ad, ad_len)) {
+  size_t out_tag_len;
+  if (ctx->aead->seal_scatter(ctx, out, out + in_len, &out_tag_len,
+                              max_out_len - in_len, nonce, nonce_len, in,
+                              in_len, ad, ad_len)) {
+    *out_len = in_len + out_tag_len;
     return 1;
   }
 
@@ -137,6 +143,33 @@ error:
    * that doesn't check the return value doesn't send raw data. */
   OPENSSL_memset(out, 0, max_out_len);
   *out_len = 0;
+  return 0;
+}
+
+int EVP_AEAD_CTX_seal_scatter(
+    const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
+    size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
+    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *ad,
+    size_t ad_len) {
+  // |in| and |out| may alias exactly, |out_tag| may not alias.
+  if (!check_alias(in, in_len, out, in_len) ||
+      buffers_alias(out, in_len, out_tag, max_out_tag_len) ||
+      buffers_alias(in, in_len, out_tag, max_out_tag_len)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_OUTPUT_ALIASES_INPUT);
+    goto error;
+  }
+
+  if (ctx->aead->seal_scatter(ctx, out, out_tag, out_tag_len, max_out_tag_len,
+                              nonce, nonce_len, in, in_len, ad, ad_len)) {
+    return 1;
+  }
+
+error:
+  /* In the event of an error, clear the output buffer so that a caller
+   * that doesn't check the return value doesn't send raw data. */
+  OPENSSL_memset(out, 0, in_len);
+  OPENSSL_memset(out_tag, 0, max_out_tag_len);
+  *out_tag_len = 0;
   return 0;
 }
 
@@ -149,8 +182,31 @@ int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
     goto error;
   }
 
-  if (ctx->aead->open(ctx, out, out_len, max_out_len, nonce, nonce_len, in,
-                      in_len, ad, ad_len)) {
+  if (ctx->aead->open) {
+    if (!ctx->aead->open(ctx, out, out_len, max_out_len, nonce, nonce_len, in,
+                        in_len, ad, ad_len)) {
+      goto error;
+    }
+    return 1;
+  }
+
+  // AEADs that use the default implementation of open() must set |tag_len| at
+  // initialization time.
+  assert(ctx->tag_len);
+
+  if (in_len < ctx->tag_len) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
+    goto error;
+  }
+
+  size_t plaintext_len = in_len - ctx->tag_len;
+  if (max_out_len < plaintext_len) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
+    goto error;
+  }
+  if (EVP_AEAD_CTX_open_gather(ctx, out, nonce, nonce_len, in, plaintext_len,
+                               in + plaintext_len, ctx->tag_len, ad, ad_len)) {
+    *out_len = plaintext_len;
     return 1;
   }
 
@@ -160,6 +216,34 @@ error:
    * data. */
   OPENSSL_memset(out, 0, max_out_len);
   *out_len = 0;
+  return 0;
+}
+
+int EVP_AEAD_CTX_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
+                             const uint8_t *nonce, size_t nonce_len,
+                             const uint8_t *in, size_t in_len,
+                             const uint8_t *in_tag, size_t in_tag_len,
+                             const uint8_t *ad, size_t ad_len) {
+  if (!check_alias(in, in_len, out, in_len)) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_OUTPUT_ALIASES_INPUT);
+    goto error;
+  }
+
+  if (!ctx->aead->open_gather) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_CTRL_NOT_IMPLEMENTED);
+    goto error;
+  }
+
+  if (ctx->aead->open_gather(ctx, out, nonce, nonce_len, in, in_len, in_tag,
+                             in_tag_len, ad, ad_len)) {
+    return 1;
+  }
+
+error:
+  /* In the event of an error, clear the output buffer so that a caller
+   * that doesn't check the return value doesn't try and process bad
+   * data. */
+  OPENSSL_memset(out, 0, in_len);
   return 0;
 }
 

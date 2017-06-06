@@ -88,15 +88,20 @@ struct evp_aead_st {
                              size_t tag_len, enum evp_aead_direction_t dir);
   void (*cleanup)(EVP_AEAD_CTX *);
 
-  int (*seal)(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
-              size_t max_out_len, const uint8_t *nonce, size_t nonce_len,
-              const uint8_t *in, size_t in_len, const uint8_t *ad,
-              size_t ad_len);
-
   int (*open)(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
               size_t max_out_len, const uint8_t *nonce, size_t nonce_len,
               const uint8_t *in, size_t in_len, const uint8_t *ad,
               size_t ad_len);
+
+  int (*seal_scatter)(const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
+                      size_t *out_tag_len, size_t max_out_tag_len,
+                      const uint8_t *nonce, size_t nonce_len, const uint8_t *in,
+                      size_t in_len, const uint8_t *ad, size_t ad_len);
+
+  int (*open_gather)(const EVP_AEAD_CTX *ctx, uint8_t *out,
+                     const uint8_t *nonce, size_t nonce_len, const uint8_t *in,
+                     size_t in_len, const uint8_t *in_tag, size_t in_tag_len,
+                     const uint8_t *ad, size_t ad_len);
 
   int (*get_iv)(const EVP_AEAD_CTX *ctx, const uint8_t **out_iv,
                 size_t *out_len);

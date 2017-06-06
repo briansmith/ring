@@ -31,7 +31,6 @@
 
 struct aead_chacha20_poly1305_ctx {
   unsigned char key[32];
-  unsigned char tag_len;
 };
 
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
@@ -102,8 +101,8 @@ static int aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   }
 
   OPENSSL_memcpy(c20_ctx->key, key, key_len);
-  c20_ctx->tag_len = tag_len;
   ctx->aead_state = c20_ctx;
+  ctx->tag_len = tag_len;
 
   return 1;
 }
@@ -155,13 +154,12 @@ static void calc_tag(uint8_t tag[POLY1305_TAG_LEN],
   CRYPTO_poly1305_finish(&ctx, tag);
 }
 
-static int aead_chacha20_poly1305_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
-                                       size_t *out_len, size_t max_out_len,
-                                       const uint8_t *nonce, size_t nonce_len,
-                                       const uint8_t *in, size_t in_len,
-                                       const uint8_t *ad, size_t ad_len) {
+static int aead_chacha20_poly1305_seal_scatter(
+    const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
+    size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
+    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *ad,
+    size_t ad_len) {
   const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
-  const uint64_t in_len_64 = in_len;
 
   if (nonce_len != 12) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
@@ -174,17 +172,13 @@ static int aead_chacha20_poly1305_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
    * 32-bits and this produces a warning because it's always false.
    * Casting to uint64_t inside the conditional is not sufficient to stop
    * the warning. */
+  const uint64_t in_len_64 = in_len;
   if (in_len_64 >= (UINT64_C(1) << 32) * 64 - 64) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
   }
 
-  if (in_len + c20_ctx->tag_len < in_len) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
-    return 0;
-  }
-
-  if (max_out_len < in_len + c20_ctx->tag_len) {
+  if (max_out_tag_len < ctx->tag_len) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
@@ -201,26 +195,23 @@ static int aead_chacha20_poly1305_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
     calc_tag(tag, c20_ctx, nonce, ad, ad_len, out, in_len);
   }
 
-  OPENSSL_memcpy(out + in_len, tag, c20_ctx->tag_len);
-  *out_len = in_len + c20_ctx->tag_len;
+  OPENSSL_memcpy(out_tag, tag, ctx->tag_len);
+  *out_tag_len = ctx->tag_len;
   return 1;
 }
 
-static int aead_chacha20_poly1305_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
-                                       size_t *out_len, size_t max_out_len,
-                                       const uint8_t *nonce, size_t nonce_len,
-                                       const uint8_t *in, size_t in_len,
-                                       const uint8_t *ad, size_t ad_len) {
+static int aead_chacha20_poly1305_open_gather(
+    const EVP_AEAD_CTX *ctx, uint8_t *out, const uint8_t *nonce,
+    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *in_tag,
+    size_t in_tag_len, const uint8_t *ad, size_t ad_len) {
   const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
-  size_t plaintext_len;
-  const uint64_t in_len_64 = in_len;
 
   if (nonce_len != 12) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
   }
 
-  if (in_len < c20_ctx->tag_len) {
+  if (in_tag_len != ctx->tag_len) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
@@ -231,30 +222,29 @@ static int aead_chacha20_poly1305_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
    * 32-bits and this produces a warning because it's always false.
    * Casting to uint64_t inside the conditional is not sufficient to stop
    * the warning. */
+  const uint64_t in_len_64 = in_len;
   if (in_len_64 >= (UINT64_C(1) << 32) * 64 - 64) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
     return 0;
   }
 
-  plaintext_len = in_len - c20_ctx->tag_len;
   alignas(16) uint8_t tag[48];
 
   if (asm_capable()) {
     OPENSSL_memcpy(tag, c20_ctx->key, 32);
     OPENSSL_memset(tag + 32, 0, 4);
     OPENSSL_memcpy(tag + 32 + 4, nonce, 12);
-    chacha20_poly1305_open(out, in, plaintext_len, ad, ad_len, tag);
+    chacha20_poly1305_open(out, in, in_len, ad, ad_len, tag);
   } else {
-    calc_tag(tag, c20_ctx, nonce, ad, ad_len, in, plaintext_len);
-    CRYPTO_chacha_20(out, in, plaintext_len, c20_ctx->key, nonce, 1);
+    calc_tag(tag, c20_ctx, nonce, ad, ad_len, in, in_len);
+    CRYPTO_chacha_20(out, in, in_len, c20_ctx->key, nonce, 1);
   }
 
-  if (CRYPTO_memcmp(tag, in + plaintext_len, c20_ctx->tag_len) != 0) {
+  if (CRYPTO_memcmp(tag, in_tag, ctx->tag_len) != 0) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
 
-  *out_len = plaintext_len;
   return 1;
 }
 
@@ -266,8 +256,9 @@ static const EVP_AEAD aead_chacha20_poly1305 = {
     aead_chacha20_poly1305_init,
     NULL, /* init_with_direction */
     aead_chacha20_poly1305_cleanup,
-    aead_chacha20_poly1305_seal,
-    aead_chacha20_poly1305_open,
+    NULL /* open */,
+    aead_chacha20_poly1305_seal_scatter,
+    aead_chacha20_poly1305_open_gather,
     NULL,               /* get_iv */
 };
 

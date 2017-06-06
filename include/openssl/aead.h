@@ -151,6 +151,9 @@ typedef struct evp_aead_ctx_st {
   /* aead_state is an opaque pointer to whatever state the AEAD needs to
    * maintain. */
   void *aead_state;
+  /* tag_len may contain the actual length of the authentication tag if it is
+   * known at initialization time. */
+  uint8_t tag_len;
 } EVP_AEAD_CTX;
 
 /* EVP_AEAD_MAX_KEY_LENGTH contains the maximum key length used by
@@ -208,8 +211,8 @@ OPENSSL_EXPORT void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx);
  * authenticates |ad_len| bytes from |ad| and writes the result to |out|. It
  * returns one on success and zero otherwise.
  *
- * This function may be called (with the same |EVP_AEAD_CTX|) concurrently with
- * itself or |EVP_AEAD_CTX_open|.
+ * This function may be called concurrently with itself or any other seal/open
+ * function on the same |EVP_AEAD_CTX|.
  *
  * At most |max_out_len| bytes are written to |out| and, in order to ensure
  * success, |max_out_len| should be |in_len| plus the result of
@@ -229,13 +232,12 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                      const uint8_t *nonce, size_t nonce_len,
                                      const uint8_t *in, size_t in_len,
                                      const uint8_t *ad, size_t ad_len);
-
 /* EVP_AEAD_CTX_open authenticates |in_len| bytes from |in| and |ad_len| bytes
  * from |ad| and decrypts at most |in_len| bytes into |out|. It returns one on
  * success and zero otherwise.
  *
- * This function may be called (with the same |EVP_AEAD_CTX|) concurrently with
- * itself or |EVP_AEAD_CTX_seal|.
+ * This function may be called concurrently with itself or any other seal/open
+ * function on the same |EVP_AEAD_CTX|.
  *
  * At most |in_len| bytes are written to |out|. In order to ensure success,
  * |max_out_len| should be at least |in_len|. On successful return, |*out_len|
@@ -254,6 +256,52 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                      const uint8_t *nonce, size_t nonce_len,
                                      const uint8_t *in, size_t in_len,
                                      const uint8_t *ad, size_t ad_len);
+
+/* EVP_AEAD_CTX_seal_scatter encrypts and authenticates |in_len| bytes from |in|
+ * and authenticates |ad_len| bytes from |ad|. It writes |in_len| bytes of
+ * ciphertext to |out| and the authentication tag to |out_tag|. It returns one
+ * on success and zero otherwise.
+ *
+ * This function may be called concurrently with itself or any other seal/open
+ * function on the same |EVP_AEAD_CTX|.
+ *
+ * Exactly |in_len| bytes are written to |out|, and up to
+ * |EVP_AEAD_max_overhead| bytes to |out_tag|. On successful return,
+ * |*out_tag_len| is set to the actual number of bytes written to |out_tag|.
+ *
+ * The length of |nonce|, |nonce_len|, must be equal to the result of
+ * |EVP_AEAD_nonce_length| for this AEAD.
+ *
+ * |EVP_AEAD_CTX_seal_scatter| never results in a partial output. If
+ * |max_out_tag_len| is insufficient, zero will be returned. (In this case,
+ * |*out_tag_len| is set to zero.)
+ *
+ * If |in| and |out| alias then |out| must be == |in|. |out_tag| may not alias
+ * any other argument. */
+OPENSSL_EXPORT int EVP_AEAD_CTX_seal_scatter(
+    const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
+    size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
+    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *ad,
+    size_t ad_len);
+
+/* EVP_AEAD_CTX_open_gather decrypts and authenticates |in_len| bytes from |in|
+ * and authenticates |ad_len| bytes from |ad| using |in_tag_len| bytes of
+ * authentication tag from |in_tag|. If successful, it writes |in_len| bytes of
+ * plaintext to |out|. It returns one on success and zero otherwise.
+ *
+ * This function may be called concurrently with itself or any other seal/open
+ * function on the same |EVP_AEAD_CTX|.
+ *
+ * The length of |nonce|, |nonce_len|, must be equal to the result of
+ * |EVP_AEAD_nonce_length| for this AEAD.
+ *
+ * |EVP_AEAD_CTX_open_gather| never results in a partial output.
+ *
+ * If |in| and |out| alias then |out| must be == |in|. */
+OPENSSL_EXPORT int EVP_AEAD_CTX_open_gather(
+    const EVP_AEAD_CTX *ctx, uint8_t *out, const uint8_t *nonce,
+    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *in_tag,
+    size_t in_tag_len, const uint8_t *ad, size_t ad_len);
 
 /* EVP_AEAD_CTX_aead returns the underlying AEAD for |ctx|, or NULL if one has
  * not been set. */
