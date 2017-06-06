@@ -70,6 +70,34 @@ foo:
 	ld 4, -24(1)
 	ld 3, -16(1)
 	addi 1, 1, 288
+
+# WAS addis 4, 2, foo@toc@ha+25
+# WAS addi 4, 4, foo@toc@l+25
+	addi 1, 1, -288
+	mflr 4
+	std 4, -8(1)
+	std 3, -16(1)
+	bl .Lbcm_loadtoc__dot_Lfoo_local_target__plus_25
+	std 3, -24(1)
+	ld 3, -8(1)
+	mtlr 3
+	ld 4, -24(1)
+	ld 3, -16(1)
+	addi 1, 1, 288
+
+# WAS addis 4, 2, 1+foo-2@toc@ha+3
+# WAS addi 4, 4, 1+foo-2@toc@l+3
+	addi 1, 1, -288
+	mflr 4
+	std 4, -8(1)
+	std 3, -16(1)
+	bl .Lbcm_loadtoc__dot_Lfoo_local_target__plus_1_minus_2_plus_3
+	std 3, -24(1)
+	ld 3, -8(1)
+	mtlr 3
+	ld 4, -24(1)
+	ld 3, -16(1)
+	addi 1, 1, 288
 .text
 BORINGSSL_bcm_text_end:
 .type bcm_loadtoc__dot_Lfoo_local_target, @function
@@ -77,6 +105,12 @@ bcm_loadtoc__dot_Lfoo_local_target:
 .Lbcm_loadtoc__dot_Lfoo_local_target:
 	addis 3, 2, .Lfoo_local_target@toc@ha
 	addi 3, 3, .Lfoo_local_target@toc@l
+	blr
+.type bcm_loadtoc__dot_Lfoo_local_target__plus_1_minus_2_plus_3, @function
+bcm_loadtoc__dot_Lfoo_local_target__plus_1_minus_2_plus_3:
+.Lbcm_loadtoc__dot_Lfoo_local_target__plus_1_minus_2_plus_3:
+	addis 3, 2, .Lfoo_local_target+1-2+3@toc@ha
+	addi 3, 3, .Lfoo_local_target+1-2+3@toc@l
 	blr
 .type bcm_loadtoc__dot_Lfoo_local_target__plus_10, @function
 bcm_loadtoc__dot_Lfoo_local_target__plus_10:
@@ -89,6 +123,12 @@ bcm_loadtoc__dot_Lfoo_local_target__plus_20:
 .Lbcm_loadtoc__dot_Lfoo_local_target__plus_20:
 	addis 3, 2, .Lfoo_local_target+20@toc@ha
 	addi 3, 3, .Lfoo_local_target+20@toc@l
+	blr
+.type bcm_loadtoc__dot_Lfoo_local_target__plus_25, @function
+bcm_loadtoc__dot_Lfoo_local_target__plus_25:
+.Lbcm_loadtoc__dot_Lfoo_local_target__plus_25:
+	addis 3, 2, .Lfoo_local_target+25@toc@ha
+	addi 3, 3, .Lfoo_local_target+25@toc@l
 	blr
 .type bcm_loadtoc__dot_Lfoo_local_target__minus_10, @function
 bcm_loadtoc__dot_Lfoo_local_target__minus_10:

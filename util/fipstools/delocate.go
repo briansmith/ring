@@ -481,24 +481,18 @@ func establishTOC(w stringWriter) {
 // loadTOCFuncName returns the name of a synthesized function that sets r3 to
 // the value of “symbol+offset”.
 func loadTOCFuncName(symbol, offset string) string {
-	ret := ".Lbcm_loadtoc_" + strings.Replace(symbol, ".", "_dot_", -1)
-	switch {
-	case len(offset) == 0:
-		break
-	case offset[0] == '+':
-		ret += "__plus_" + offset[1:]
-	case offset[0] == '-':
-		ret += "__minus_" + offset[1:]
-	default:
-		// parseMemRef will prepend a plus to bare offsets.
-		panic("bad offset: " + offset)
+	symbol = strings.Replace(symbol, ".", "_dot_", -1)
+	ret := ".Lbcm_loadtoc_" + symbol
+	if len(offset) != 0 {
+		offset = strings.Replace(offset, "+", "_plus_", -1)
+		offset = strings.Replace(offset, "-", "_minus_", -1)
+		ret += "_" + offset
 	}
-
 	return ret
 }
 
 func (d *delocation) loadFromTOC(w stringWriter, symbol, offset, dest string) wrapperFunc {
-	d.tocLoaders[symbol + "\x00" + offset] = struct{}{}
+	d.tocLoaders[symbol+"\x00"+offset] = struct{}{}
 
 	return func(k func()) {
 		w.WriteString("\taddi 1, 1, -288\n")   // Clear the red zone.
@@ -528,6 +522,18 @@ func (d *delocation) loadFromTOC(w stringWriter, symbol, offset, dest string) wr
 	}
 }
 
+func (d *delocation) gatherOffsets(symRef *node32, offsets string) (*node32, string) {
+	for symRef != nil && symRef.pegRule == ruleOffset {
+		offset := d.contents(symRef)
+		if offset[0] != '+' && offset[0] != '-' {
+			offset = "+" + offset
+		}
+		offsets = offsets + offset
+		symRef = symRef.next
+	}
+	return symRef, offsets
+}
+
 func (d *delocation) parseMemRef(memRef *node32) (symbol, offset, section string, didChange, symbolIsLocal bool, nextRef *node32) {
 	if memRef.pegRule != ruleSymbolRef {
 		return "", "", "", false, false, memRef
@@ -536,14 +542,10 @@ func (d *delocation) parseMemRef(memRef *node32) (symbol, offset, section string
 	symRef := memRef.up
 	nextRef = memRef.next
 
-	if symRef.pegRule == ruleOffset {
-		offset = d.contents(symRef)
-		if offset[0] != '+' && offset[0] != '-' {
-			offset = "+" + offset
-		}
-		symRef = symRef.next
-	}
+	// (Offset* '+')?
+	symRef, offset = d.gatherOffsets(symRef, offset)
 
+	// (LocalSymbol / SymbolName)
 	symbol = d.contents(symRef)
 	if symRef.pegRule == ruleLocalSymbol {
 		symbolIsLocal = true
@@ -553,20 +555,18 @@ func (d *delocation) parseMemRef(memRef *node32) (symbol, offset, section string
 			didChange = true
 		}
 	}
-
 	symRef = symRef.next
-	if symRef != nil && symRef.pegRule == ruleOffset {
-		if len(offset) != 0 {
-			panic("symref has two offsets")
-		}
-		offset = d.contents(symRef)
-		symRef = symRef.next
-	}
 
+	// Offset*
+	symRef, offset = d.gatherOffsets(symRef, offset)
+
+	// ('@' Section / Offset*)?
 	if symRef != nil {
 		assertNodeType(symRef, ruleSection)
 		section = d.contents(symRef)
 		symRef = symRef.next
+
+		symRef, offset = d.gatherOffsets(symRef, offset)
 	}
 
 	if symRef != nil {

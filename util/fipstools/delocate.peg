@@ -66,18 +66,13 @@ RegisterOrConstant <- (('%'[[A-Z]][[A-Z0-9]]*) / ('$'? ((Offset Offset) / Offset
 # implement a full expression parser, this enumerate those forms plus a few
 # that appear in our hand-written assembly.
 MemoryRef <- (SymbolRef BaseIndexScale /
-              # Some hand-written assembly has two offsets together, e.g.
-              # “foo+16+32”. These are never GOT references.
-              SymbolRef Offset BaseIndexScale /
               SymbolRef /
-              Offset BaseIndexScale /
-              Offset Offset BaseIndexScale /
-              Offset Offset Offset BaseIndexScale /
+              Offset* BaseIndexScale /
               SegmentRegister Offset BaseIndexScale /
               SegmentRegister BaseIndexScale /
               SegmentRegister Offset /
               BaseIndexScale)
-SymbolRef <- (Offset '+')? (LocalSymbol / SymbolName) Offset? ('@' Section)?
+SymbolRef <- (Offset* '+')? (LocalSymbol / SymbolName) Offset* ('@' Section Offset*)?
 BaseIndexScale <- '(' RegisterOrConstant? WS? (',' WS? RegisterOrConstant WS? (',' [0-9]+)? )? ')'
 Operator <- [+\-]
 Offset <- '+'? '-'? (("0b" [01]+) / ("0x" [[0-9A-F]]+) / [0-9]+)
