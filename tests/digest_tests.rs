@@ -17,9 +17,9 @@ extern crate ring;
 use std::vec::Vec;
 use ring::{digest, test};
 
-/// Test vectors from BoringSSL.
+/// Test vectors from BoringSSL, Go, and other sources.
 #[test]
-fn digest_bssl() {
+fn digest_misc() {
     test::from_file("tests/digest_tests.txt", |section, test_case| {
         assert_eq!(section, "");
         let digest_alg = test_case.consume_digest_alg("Hash").unwrap();
@@ -279,12 +279,16 @@ test_large_digest!(digest_test_large_digest_sha512, digest::SHA512, 512 / 8, [
     0xA6, 0xA9, 0x88, 0x3E, 0x2F, 0x09, 0xB9, 0x9A
 ]);
 
+// TODO: test_large_digest!(digest_test_large_digest_sha512_256,
+//                            digest::SHA512_256, 256 / 8, [ ... ]);
+
 #[test]
 fn test_fmt_algorithm() {
     assert_eq!("SHA1", &format!("{:?}", digest::SHA1));
     assert_eq!("SHA256", &format!("{:?}", digest::SHA256));
     assert_eq!("SHA384", &format!("{:?}", digest::SHA384));
     assert_eq!("SHA512", &format!("{:?}", digest::SHA512));
+    assert_eq!("SHA512_256", &format!("{:?}", digest::SHA512_256));
 }
 
 #[test]
@@ -307,4 +311,8 @@ fn digest_test_fmt() {
                &format!("{:?}",
                         digest::digest(&digest::SHA512, b"hello, world")));
 
+    assert_eq!("SHA512_256:11f2c88c04f0a9c3d0970894ad2472505e\
+                0bc6e8c7ec46b5211cd1fa3e253e62",
+               &format!("{:?}",
+                        digest::digest(&digest::SHA512_256, b"hello, world")));
 }

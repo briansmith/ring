@@ -149,6 +149,7 @@ impl TestCase {
             "SHA256" => Some(&digest::SHA256),
             "SHA384" => Some(&digest::SHA384),
             "SHA512" => Some(&digest::SHA512),
+            "SHA512_256" => Some(&digest::SHA512_256),
             _ => panic!("Unsupported digest algorithm: {}", name),
         }
     }

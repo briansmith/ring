@@ -300,13 +300,17 @@ pub struct Algorithm {
 impl core::fmt::Debug for Algorithm {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
         // This would have to change if/when we add other algorithms with the
-        // same output lengths.
-        let n = if self.output_len == 20 {
-            1
+        // same lengths.
+        let (n, suffix) =
+            if self.output_len == SHA512_256_OUTPUT_LEN &&
+               self.block_len == SHA512_BLOCK_LEN {
+            (512, "_256")
+        } else if self.output_len == 20 {
+            (1, "")
         } else {
-            self.output_len * 8
+            (self.output_len * 8, "")
         };
-        write!(fmt, "SHA{:?}", n)
+        write!(fmt, "SHA{}{}", n, suffix)
     }
 }
 
@@ -391,6 +395,32 @@ pub static SHA512: Algorithm = Algorithm {
     ],
 };
 
+/// SHA-512/256 as specified in [FIPS 180-4].
+///
+/// This is *not* the same as just truncating the output of SHA-512, as
+/// SHA-512/256 has its own initial state distinct from SHA-512's initial
+/// state.
+///
+/// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
+pub static SHA512_256: Algorithm = Algorithm {
+    output_len: SHA512_256_OUTPUT_LEN,
+    chaining_len: SHA512_OUTPUT_LEN,
+    block_len: SHA512_BLOCK_LEN,
+    len_len: SHA512_LEN_LEN,
+    block_data_order: GFp_sha512_block_data_order,
+    format_output: sha512_format_output,
+    initial_state: [
+        0x22312194fc2bf72c,
+        0x9f555fa3c84c64c2,
+        0x2393b86b6f53b151,
+        0x963877195940eabd,
+        0x96283ee2a88effe3,
+        0xbe5e1e2553863992,
+        0x2b0199fc2c85b8aa,
+        0x0eb72ddc81c52ca2,
+    ],
+};
+
 // We use u64 to try to ensure 64-bit alignment/padding.
 type State = [u64; MAX_CHAINING_LEN / 8];
 
@@ -443,6 +473,9 @@ pub const SHA384_OUTPUT_LEN: usize = 384 / 8;
 /// The length of the output of SHA-512, in bytes.
 pub const SHA512_OUTPUT_LEN: usize = 512 / 8;
 
+/// The length of the output of SHA-512/256, in bytes.
+pub const SHA512_256_OUTPUT_LEN: usize = 256 / 8;
+
 /// The length of a block for SHA-512-based algorithms, in bytes.
 const SHA512_BLOCK_LEN: usize = 1024 / 8;
 
@@ -461,11 +494,12 @@ extern {
 pub mod test_util {
     use super::super::digest;
 
-    pub static ALL_ALGORITHMS: [&'static digest::Algorithm; 4] = [
+    pub static ALL_ALGORITHMS: [&'static digest::Algorithm; 5] = [
         &digest::SHA1,
         &digest::SHA256,
         &digest::SHA384,
         &digest::SHA512,
+        &digest::SHA512_256,
     ];
 }
 
