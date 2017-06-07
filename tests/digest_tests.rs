@@ -19,7 +19,7 @@ use ring::{digest, test};
 
 /// Test vectors from BoringSSL.
 #[test]
-fn test_bssl() {
+fn digest_bssl() {
     test::from_file("tests/digest_tests.txt", |section, test_case| {
         assert_eq!(section, "");
         let digest_alg = test_case.consume_digest_alg("Hash").unwrap();
@@ -43,7 +43,7 @@ fn test_bssl() {
     });
 }
 
-mod shavs {
+mod digest_shavs {
     use std::vec::Vec;
     use ring::{digest, test};
 
@@ -196,10 +196,10 @@ macro_rules! test_i_u_f {
         }
     }
 }
-test_i_u_f!(test_i_u_f_sha1, digest::SHA1);
-test_i_u_f!(test_i_u_f_sha256, digest::SHA256);
-test_i_u_f!(test_i_u_f_sha384, digest::SHA384);
-test_i_u_f!(test_i_u_f_sha512, digest::SHA512);
+test_i_u_f!(digest_test_i_u_f_sha1, digest::SHA1);
+test_i_u_f!(digest_test_i_u_f_sha256, digest::SHA256);
+test_i_u_f!(digest_test_i_u_f_sha384, digest::SHA384);
+test_i_u_f!(digest_test_i_u_f_sha512, digest::SHA512);
 
 /// See https://bugzilla.mozilla.org/show_bug.cgi?id=610162. This tests the
 /// calculation of 8GB of the byte 123.
@@ -248,19 +248,19 @@ macro_rules! test_large_digest {
 
 /// XXX: This test is too slow on Android ARM.
 #[cfg(any(not(target_os = "android"), not(target_arch = "arm")))]
-test_large_digest!(test_large_digest_sha1, digest::SHA1, 160 / 8, [
+test_large_digest!(digest_test_large_digest_sha1, digest::SHA1, 160 / 8, [
     0xCA, 0xC3, 0x4C, 0x31, 0x90, 0x5B, 0xDE, 0x3B,
     0xE4, 0x0D, 0x46, 0x6D, 0x70, 0x76, 0xAD, 0x65,
     0x3C, 0x20, 0xE4, 0xBD
 ]);
 
-test_large_digest!(test_large_digest_sha256, digest::SHA256, 256 / 8, [
+test_large_digest!(digest_test_large_digest_sha256, digest::SHA256, 256 / 8, [
     0x8D, 0xD1, 0x6D, 0xD8, 0xB2, 0x5A, 0x29, 0xCB,
     0x7F, 0xB9, 0xAE, 0x86, 0x72, 0xE9, 0xCE, 0xD6,
     0x65, 0x4C, 0xB6, 0xC3, 0x5C, 0x58, 0x21, 0xA7,
     0x07, 0x97, 0xC5, 0xDD, 0xAE, 0x5C, 0x68, 0xBD
 ]);
-test_large_digest!(test_large_digest_sha384, digest::SHA384, 384 / 8, [
+test_large_digest!(digest_test_large_digest_sha384, digest::SHA384, 384 / 8, [
     0x3D, 0xFE, 0xC1, 0xA9, 0xD0, 0x9F, 0x08, 0xD5,
     0xBB, 0xE8, 0x7C, 0x9E, 0xE0, 0x0A, 0x87, 0x0E,
     0xB0, 0xEA, 0x8E, 0xEA, 0xDB, 0x82, 0x36, 0xAE,
@@ -268,7 +268,7 @@ test_large_digest!(test_large_digest_sha384, digest::SHA384, 384 / 8, [
     0xB0, 0x68, 0xCD, 0x19, 0x3E, 0x39, 0x90, 0x02,
     0xE1, 0x58, 0x5D, 0x66, 0xC4, 0x55, 0x11, 0x9B
 ]);
-test_large_digest!(test_large_digest_sha512, digest::SHA512, 512 / 8, [
+test_large_digest!(digest_test_large_digest_sha512, digest::SHA512, 512 / 8, [
     0xFC, 0x8A, 0x98, 0x20, 0xFC, 0x82, 0xD8, 0x55,
     0xF8, 0xFF, 0x2F, 0x6E, 0xAE, 0x41, 0x60, 0x04,
     0x08, 0xE9, 0x49, 0xD7, 0xCD, 0x1A, 0xED, 0x22,
@@ -288,7 +288,7 @@ fn test_fmt_algorithm() {
 }
 
 #[test]
-fn test_fmt_digest() {
+fn digest_test_fmt() {
     assert_eq!("SHA-1:b7e23ec29af22b0b4e41da31e868d57226121c84",
                &format!("{:?}",
                         digest::digest(&digest::SHA1, b"hello, world")));
