@@ -238,6 +238,27 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     return;
   }
 
+  /* Additional data is mixed into every CTR-DRBG call to protect, as best we
+   * can, against forks & VM clones. We do not over-read this information and
+   * don't reseed with it so, from the point of view of FIPS, this doesn't
+   * provide “prediction resistance”. But, in practice, it does. */
+  uint8_t additional_data[32];
+  if (!hwrand(additional_data, sizeof(additional_data))) {
+    /* Without a hardware RNG to save us from address-space duplication, the OS
+     * entropy is used. This can be expensive (one read per |RAND_bytes| call)
+     * and so can be disabled by applications that we have ensured don't fork
+     * and aren't at risk of VM cloning. */
+    if (!rand_fork_unsafe_buffering_enabled()) {
+      CRYPTO_sysrand(additional_data, sizeof(additional_data));
+    } else {
+      OPENSSL_memset(additional_data, 0, sizeof(additional_data));
+    }
+  }
+
+  for (size_t i = 0; i < sizeof(additional_data); i++) {
+    additional_data[i] ^= user_additional_data[i];
+  }
+
   struct rand_thread_state stack_state;
   struct rand_thread_state *state =
       CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
@@ -275,38 +296,28 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 #endif
   }
 
-#if defined(BORINGSSL_FIPS)
-  CRYPTO_STATIC_MUTEX_lock_read(thread_states_list_lock_bss_get());
-#endif
-
   if (state->calls >= kReseedInterval) {
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
     rand_get_seed(state, seed);
+#if defined(BORINGSSL_FIPS)
+    /* Take a read lock around accesses to |state->drbg|. This is needed to
+     * avoid returning bad entropy if we race with
+     * |rand_thread_state_clear_all|.
+     *
+     * This lock must be taken after any calls to |CRYPTO_sysrand| to avoid a
+     * bug on ppc64le. glibc may implement locks by wrapping the critical
+     * section in a hardware transaction. This appears to sometimes break
+     * |getrandom|. */
+    CRYPTO_STATIC_MUTEX_lock_read(thread_states_list_lock_bss_get());
+#endif
     if (!CTR_DRBG_reseed(&state->drbg, seed, NULL, 0)) {
       abort();
     }
     state->calls = 0;
-  }
-
-  /* Additional data is mixed into every CTR-DRBG call to protect, as best we
-   * can, against forks & VM clones. We do not over-read this information and
-   * don't reseed with it so, from the point of view of FIPS, this doesn't
-   * provide “prediction resistance”. But, in practice, it does. */
-  uint8_t additional_data[32];
-  if (!hwrand(additional_data, sizeof(additional_data))) {
-    /* Without a hardware RNG to save us from address-space duplication, the OS
-     * entropy is used. This can be expensive (one read per |RAND_bytes| call)
-     * and so can be disabled by applications that we have ensured don't fork
-     * and aren't at risk of VM cloning. */
-    if (!rand_fork_unsafe_buffering_enabled()) {
-      CRYPTO_sysrand(additional_data, sizeof(additional_data));
-    } else {
-      OPENSSL_memset(additional_data, 0, sizeof(additional_data));
-    }
-  }
-
-  for (size_t i = 0; i < sizeof(additional_data); i++) {
-    additional_data[i] ^= user_additional_data[i];
+  } else {
+#if defined(BORINGSSL_FIPS)
+    CRYPTO_STATIC_MUTEX_lock_read(thread_states_list_lock_bss_get());
+#endif
   }
 
   int first_call = 1;
