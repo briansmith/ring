@@ -332,8 +332,8 @@ pub static SHA1: Algorithm = Algorithm {
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 pub static SHA256: Algorithm = Algorithm {
-    output_len: 256 / 8,
-    chaining_len: 256 / 8,
+    output_len: SHA256_OUTPUT_LEN,
+    chaining_len: SHA256_OUTPUT_LEN,
     block_len: 512 / 8,
     len_len: 64 / 8,
     block_data_order: GFp_sha256_block_data_order,
@@ -351,10 +351,10 @@ pub static SHA256: Algorithm = Algorithm {
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 pub static SHA384: Algorithm = Algorithm {
-    output_len: 384 / 8,
-    chaining_len: 512 / 8,
-    block_len: 1024 / 8,
-    len_len: 128 / 8,
+    output_len: SHA384_OUTPUT_LEN,
+    chaining_len: SHA512_OUTPUT_LEN,
+    block_len: SHA512_BLOCK_LEN,
+    len_len: SHA512_LEN_LEN,
     block_data_order: GFp_sha512_block_data_order,
     format_output: sha512_format_output,
     initial_state: [
@@ -373,10 +373,10 @@ pub static SHA384: Algorithm = Algorithm {
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
 pub static SHA512: Algorithm = Algorithm {
-    output_len: 512 / 8,
-    chaining_len: 512 / 8,
-    block_len: 1024 / 8,
-    len_len: 128 / 8,
+    output_len: SHA512_OUTPUT_LEN,
+    chaining_len: SHA512_OUTPUT_LEN,
+    block_len: SHA512_BLOCK_LEN,
+    len_len: SHA512_LEN_LEN,
     block_data_order: GFp_sha512_block_data_order,
     format_output: sha512_format_output,
     initial_state: [
@@ -443,6 +443,11 @@ pub const SHA384_OUTPUT_LEN: usize = 384 / 8;
 /// The length of the output of SHA-512, in bytes.
 pub const SHA512_OUTPUT_LEN: usize = 512 / 8;
 
+/// The length of a block for SHA-512-based algorithms, in bytes.
+const SHA512_BLOCK_LEN: usize = 1024 / 8;
+
+/// The length of the length field for SHA-512-based algorithms, in bytes.
+const SHA512_LEN_LEN: usize = 128 / 8;
 
 extern {
     fn GFp_sha256_block_data_order(state: &mut State, data: *const u8,
