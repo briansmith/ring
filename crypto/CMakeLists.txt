@@ -255,6 +255,7 @@ add_executable(
   rsa_extra/rsa_test.cc
   test/file_test_gtest.cc
   thread_test.cc
+  x509/x509_test.cc
 
   $<TARGET_OBJECTS:crypto_test_data>
   $<TARGET_OBJECTS:gtest_main>

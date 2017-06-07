@@ -12,10 +12,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <string>
 #include <vector>
 
-#include <assert.h>
-#include <string.h>
+#include <gtest/gtest.h>
 
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
@@ -553,7 +553,7 @@ static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
   return r1;
 }
 
-static bool TestVerify() {
+TEST(X509Test, TestVerify) {
   bssl::UniquePtr<X509> cross_signing_root(CertFromPEM(kCrossSigningRootPEM));
   bssl::UniquePtr<X509> root(CertFromPEM(kRootCAPEM));
   bssl::UniquePtr<X509> root_cross_signed(CertFromPEM(kRootCrossSignedPEM));
@@ -564,94 +564,53 @@ static bool TestVerify() {
   bssl::UniquePtr<X509> leaf_no_key_usage(CertFromPEM(kLeafNoKeyUsagePEM));
   bssl::UniquePtr<X509> forgery(CertFromPEM(kForgeryPEM));
 
-  if (!cross_signing_root ||
-      !root ||
-      !root_cross_signed ||
-      !intermediate ||
-      !intermediate_self_signed ||
-      !leaf ||
-      !leaf_no_key_usage ||
-      !forgery) {
-    fprintf(stderr, "Failed to parse certificates\n");
-    return false;
-  }
+  ASSERT_TRUE(cross_signing_root);
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(root_cross_signed);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(intermediate_self_signed);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(forgery);
+  ASSERT_TRUE(leaf_no_key_usage);
 
   std::vector<X509*> empty;
   std::vector<X509_CRL*> empty_crls;
-  if (Verify(leaf.get(), empty, empty, empty_crls) !=
-      X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY) {
-    fprintf(stderr, "Leaf verified with no roots!\n");
-    return false;
-  }
+  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+            Verify(leaf.get(), empty, empty, empty_crls));
+  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+            Verify(leaf.get(), empty, {intermediate.get()}, empty_crls));
 
-  if (Verify(leaf.get(), empty, {intermediate.get()}, empty_crls) !=
-      X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY) {
-    fprintf(stderr, "Leaf verified with no roots!\n");
-    return false;
-  }
-
-  if (Verify(leaf.get(), {root.get()}, {intermediate.get()}, empty_crls) !=
-      X509_V_OK) {
-    ERR_print_errors_fp(stderr);
-    fprintf(stderr, "Basic chain didn't verify.\n");
-    return false;
-  }
-
-  if (Verify(leaf.get(), {cross_signing_root.get()},
-             {intermediate.get(), root_cross_signed.get()},
-             empty_crls) != X509_V_OK) {
-    ERR_print_errors_fp(stderr);
-    fprintf(stderr, "Cross-signed chain didn't verify.\n");
-    return false;
-  }
-
-  if (Verify(leaf.get(), {cross_signing_root.get(), root.get()},
-             {intermediate.get(), root_cross_signed.get()},
-             empty_crls) != X509_V_OK) {
-    ERR_print_errors_fp(stderr);
-    fprintf(stderr, "Cross-signed chain with root didn't verify.\n");
-    return false;
-  }
+  ASSERT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, empty_crls));
+  ASSERT_EQ(X509_V_OK,
+            Verify(leaf.get(), {cross_signing_root.get()},
+                   {intermediate.get(), root_cross_signed.get()}, empty_crls));
+  ASSERT_EQ(X509_V_OK,
+            Verify(leaf.get(), {cross_signing_root.get(), root.get()},
+                   {intermediate.get(), root_cross_signed.get()}, empty_crls));
 
   /* This is the “altchains” test – we remove the cross-signing CA but include
    * the cross-sign in the intermediates. */
-  if (Verify(leaf.get(), {root.get()},
-             {intermediate.get(), root_cross_signed.get()},
-             empty_crls) != X509_V_OK) {
-    ERR_print_errors_fp(stderr);
-    fprintf(stderr, "Chain with cross-sign didn't backtrack to find root.\n");
-    return false;
-  }
-
-  if (Verify(leaf.get(), {root.get()},
-             {intermediate.get(), root_cross_signed.get()}, empty_crls,
-             X509_V_FLAG_NO_ALT_CHAINS) !=
-      X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY) {
-    fprintf(stderr, "Altchains test still passed when disabled.\n");
-    return false;
-  }
-
-  if (Verify(forgery.get(), {intermediate_self_signed.get()},
-             {leaf_no_key_usage.get()},
-             empty_crls) != X509_V_ERR_INVALID_CA) {
-    fprintf(stderr, "Basic constraints weren't checked.\n");
-    return false;
-  }
+  ASSERT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()},
+                   {intermediate.get(), root_cross_signed.get()}, empty_crls));
+  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY,
+            Verify(leaf.get(), {root.get()},
+                   {intermediate.get(), root_cross_signed.get()}, empty_crls,
+                   X509_V_FLAG_NO_ALT_CHAINS));
+  ASSERT_EQ(X509_V_ERR_INVALID_CA,
+            Verify(forgery.get(), {intermediate_self_signed.get()},
+                   {leaf_no_key_usage.get()}, empty_crls));
 
   /* Test that one cannot skip Basic Constraints checking with a contorted set
    * of roots and intermediates. This is a regression test for CVE-2015-1793. */
-  if (Verify(forgery.get(),
-             {intermediate_self_signed.get(), root_cross_signed.get()},
-             {leaf_no_key_usage.get(), intermediate.get()},
-             empty_crls) != X509_V_ERR_INVALID_CA) {
-    fprintf(stderr, "Basic constraints weren't checked.\n");
-    return false;
-  }
-
-  return true;
+  ASSERT_EQ(X509_V_ERR_INVALID_CA,
+            Verify(forgery.get(),
+                   {intermediate_self_signed.get(), root_cross_signed.get()},
+                   {leaf_no_key_usage.get(), intermediate.get()}, empty_crls));
 }
 
-static bool TestCRL() {
+TEST(X509Test, TestCRL) {
   bssl::UniquePtr<X509> root(CertFromPEM(kCRLTestRoot));
   bssl::UniquePtr<X509> leaf(CertFromPEM(kCRLTestLeaf));
   bssl::UniquePtr<X509_CRL> basic_crl(CRLFromPEM(kBasicCRL));
@@ -663,145 +622,84 @@ static bool TestCRL() {
   bssl::UniquePtr<X509_CRL> unknown_critical_crl2(
       CRLFromPEM(kUnknownCriticalCRL2));
 
-  if (!root ||
-      !leaf ||
-      !basic_crl ||
-      !revoked_crl ||
-      !bad_issuer_crl ||
-      !known_critical_crl ||
-      !unknown_critical_crl ||
-      !unknown_critical_crl2) {
-    fprintf(stderr, "Failed to parse certificates and CRLs.\n");
-    return false;
-  }
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(leaf);
+  ASSERT_TRUE(basic_crl);
+  ASSERT_TRUE(revoked_crl);
+  ASSERT_TRUE(bad_issuer_crl);
+  ASSERT_TRUE(known_critical_crl);
+  ASSERT_TRUE(unknown_critical_crl);
+  ASSERT_TRUE(unknown_critical_crl2);
 
-  if (Verify(leaf.get(), {root.get()}, {root.get()}, {basic_crl.get()},
-             X509_V_FLAG_CRL_CHECK) != X509_V_OK) {
-    fprintf(stderr, "Cert with CRL didn't verify.\n");
-    return false;
-  }
-
-  if (Verify(leaf.get(), {root.get()}, {root.get()},
-             {basic_crl.get(), revoked_crl.get()},
-             X509_V_FLAG_CRL_CHECK) != X509_V_ERR_CERT_REVOKED) {
-    fprintf(stderr, "Revoked CRL wasn't checked.\n");
-    return false;
-  }
+  ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {root.get()},
+                              {basic_crl.get()}, X509_V_FLAG_CRL_CHECK));
+  ASSERT_EQ(
+      X509_V_ERR_CERT_REVOKED,
+      Verify(leaf.get(), {root.get()}, {root.get()},
+             {basic_crl.get(), revoked_crl.get()}, X509_V_FLAG_CRL_CHECK));
 
   std::vector<X509_CRL *> empty_crls;
-  if (Verify(leaf.get(), {root.get()}, {root.get()}, empty_crls,
-             X509_V_FLAG_CRL_CHECK) != X509_V_ERR_UNABLE_TO_GET_CRL) {
-    fprintf(stderr, "CRLs were not required.\n");
-    return false;
-  }
-
-  if (Verify(leaf.get(), {root.get()}, {root.get()}, {bad_issuer_crl.get()},
-             X509_V_FLAG_CRL_CHECK) != X509_V_ERR_UNABLE_TO_GET_CRL) {
-    fprintf(stderr, "Bad CRL issuer was unnoticed.\n");
-    return false;
-  }
-
-  if (Verify(leaf.get(), {root.get()}, {root.get()}, {known_critical_crl.get()},
-             X509_V_FLAG_CRL_CHECK) != X509_V_OK) {
-    fprintf(stderr, "CRL with known critical extension was rejected.\n");
-    return false;
-  }
-
-  if (Verify(leaf.get(), {root.get()}, {root.get()},
-             {unknown_critical_crl.get()}, X509_V_FLAG_CRL_CHECK) !=
-      X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION) {
-    fprintf(stderr, "CRL with unknown critical extension was accepted.\n");
-    return false;
-  }
-
-  if (Verify(leaf.get(), {root.get()}, {root.get()},
-             {unknown_critical_crl2.get()}, X509_V_FLAG_CRL_CHECK) !=
-      X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION) {
-    fprintf(stderr, "CRL with unknown critical extension (2) was accepted.\n");
-    return false;
-  }
-
-  return true;
+  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_CRL,
+            Verify(leaf.get(), {root.get()}, {root.get()}, empty_crls,
+                   X509_V_FLAG_CRL_CHECK));
+  ASSERT_EQ(X509_V_ERR_UNABLE_TO_GET_CRL,
+            Verify(leaf.get(), {root.get()}, {root.get()},
+                   {bad_issuer_crl.get()}, X509_V_FLAG_CRL_CHECK));
+  ASSERT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {root.get()},
+                   {known_critical_crl.get()}, X509_V_FLAG_CRL_CHECK));
+  ASSERT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION,
+            Verify(leaf.get(), {root.get()}, {root.get()},
+                   {unknown_critical_crl.get()}, X509_V_FLAG_CRL_CHECK));
+  ASSERT_EQ(X509_V_ERR_UNHANDLED_CRITICAL_CRL_EXTENSION,
+            Verify(leaf.get(), {root.get()}, {root.get()},
+                   {unknown_critical_crl2.get()}, X509_V_FLAG_CRL_CHECK));
 }
 
-static bool TestPSS() {
+TEST(X509Test, TestPSS) {
   bssl::UniquePtr<X509> cert(CertFromPEM(kExamplePSSCert));
-  if (!cert) {
-    return false;
-  }
+  ASSERT_TRUE(cert);
 
   bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
-  if (!pkey) {
-    return false;
-  }
+  ASSERT_TRUE(pkey);
 
-  if (!X509_verify(cert.get(), pkey.get())) {
-    fprintf(stderr, "Could not verify certificate.\n");
-    return false;
-  }
-  return true;
+  ASSERT_TRUE(X509_verify(cert.get(), pkey.get()));
 }
 
-static bool TestBadPSSParameters() {
+TEST(X509Test, TestPSSBadParameters) {
   bssl::UniquePtr<X509> cert(CertFromPEM(kBadPSSCertPEM));
-  if (!cert) {
-    return false;
-  }
+  ASSERT_TRUE(cert);
 
   bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
-  if (!pkey) {
-    return false;
-  }
+  ASSERT_TRUE(pkey);
 
-  if (X509_verify(cert.get(), pkey.get())) {
-    fprintf(stderr, "Unexpectedly verified bad certificate.\n");
-    return false;
-  }
+  ASSERT_FALSE(X509_verify(cert.get(), pkey.get()));
   ERR_clear_error();
-  return true;
 }
 
-static bool TestEd25519() {
+TEST(X509Test, TestEd25519) {
   bssl::UniquePtr<X509> cert(CertFromPEM(kEd25519Cert));
-  if (!cert) {
-    return false;
-  }
+  ASSERT_TRUE(cert);
 
   bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
-  if (!pkey) {
-    return false;
-  }
+  ASSERT_TRUE(pkey);
 
-  if (!X509_verify(cert.get(), pkey.get())) {
-    fprintf(stderr, "Could not verify certificate.\n");
-    return false;
-  }
-  return true;
+  ASSERT_TRUE(X509_verify(cert.get(), pkey.get()));
 }
 
-static bool TestBadEd25519Parameters() {
+TEST(X509Test, TestEd25519BadParameters) {
   bssl::UniquePtr<X509> cert(CertFromPEM(kEd25519CertNull));
-  if (!cert) {
-    return false;
-  }
+  ASSERT_TRUE(cert);
 
   bssl::UniquePtr<EVP_PKEY> pkey(X509_get_pubkey(cert.get()));
-  if (!pkey) {
-    return false;
-  }
+  ASSERT_TRUE(pkey);
 
-  if (X509_verify(cert.get(), pkey.get())) {
-    fprintf(stderr, "Unexpectedly verified bad certificate.\n");
-    return false;
-  }
+  ASSERT_FALSE(X509_verify(cert.get(), pkey.get()));
+
   uint32_t err = ERR_get_error();
-  if (ERR_GET_LIB(err) != ERR_LIB_X509 ||
-      ERR_GET_REASON(err) != X509_R_INVALID_PARAMETER) {
-    fprintf(stderr, "Did not get X509_R_INVALID_PARAMETER as expected.\n");
-    return false;
-  }
+  ASSERT_EQ(ERR_LIB_X509, ERR_GET_LIB(err));
+  ASSERT_EQ(X509_R_INVALID_PARAMETER, ERR_GET_REASON(err));
   ERR_clear_error();
-  return true;
 }
 
 static bool SignatureRoundTrips(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
@@ -816,33 +714,23 @@ static bool SignatureRoundTrips(EVP_MD_CTX *md_ctx, EVP_PKEY *pkey) {
   return !!X509_verify(cert.get(), pkey);
 }
 
-static bool TestSignCtx() {
+TEST(X509Test, TestSignCtx) {
   bssl::UniquePtr<EVP_PKEY> pkey(PrivateKeyFromPEM(kRSAKey));
-  if (!pkey) {
-    return false;
-  }
-
+  ASSERT_TRUE(pkey);
   // Test PKCS#1 v1.5.
   bssl::ScopedEVP_MD_CTX md_ctx;
-  if (!EVP_DigestSignInit(md_ctx.get(), NULL, EVP_sha256(), NULL, pkey.get()) ||
-      !SignatureRoundTrips(md_ctx.get(), pkey.get())) {
-    fprintf(stderr, "RSA PKCS#1 with SHA-256 failed\n");
-    return false;
-  }
+  ASSERT_TRUE(
+      EVP_DigestSignInit(md_ctx.get(), NULL, EVP_sha256(), NULL, pkey.get()));
+  ASSERT_TRUE(SignatureRoundTrips(md_ctx.get(), pkey.get()));
 
   // Test RSA-PSS with custom parameters.
   md_ctx.Reset();
   EVP_PKEY_CTX *pkey_ctx;
-  if (!EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, EVP_sha256(), NULL,
-                          pkey.get()) ||
-      !EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING) ||
-      !EVP_PKEY_CTX_set_rsa_mgf1_md(pkey_ctx, EVP_sha512()) ||
-      !SignatureRoundTrips(md_ctx.get(), pkey.get())) {
-    fprintf(stderr, "RSA-PSS failed\n");
-    return false;
-  }
-
-  return true;
+  ASSERT_TRUE(EVP_DigestSignInit(md_ctx.get(), &pkey_ctx, EVP_sha256(), NULL,
+                                 pkey.get()));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_padding(pkey_ctx, RSA_PKCS1_PSS_PADDING));
+  ASSERT_TRUE(EVP_PKEY_CTX_set_rsa_mgf1_md(pkey_ctx, EVP_sha512()));
+  ASSERT_TRUE(SignatureRoundTrips(md_ctx.get(), pkey.get()));
 }
 
 static bool PEMToDER(bssl::UniquePtr<uint8_t> *out, size_t *out_len,
@@ -868,149 +756,89 @@ static bool PEMToDER(bssl::UniquePtr<uint8_t> *out, size_t *out_len,
   return true;
 }
 
-static bool TestFromBuffer() {
+TEST(X509Test, TestFromBuffer) {
   size_t data_len;
   bssl::UniquePtr<uint8_t> data;
-  if (!PEMToDER(&data, &data_len, kRootCAPEM)) {
-    return false;
-  }
+  ASSERT_TRUE(PEMToDER(&data, &data_len, kRootCAPEM));
 
   bssl::UniquePtr<CRYPTO_BUFFER> buf(
       CRYPTO_BUFFER_new(data.get(), data_len, nullptr));
-  if (!buf) {
-    return false;
-  }
-
+  ASSERT_TRUE(buf);
   bssl::UniquePtr<X509> root(X509_parse_from_buffer(buf.get()));
-  if (!root) {
-    return false;
-  }
+  ASSERT_TRUE(root);
 
   const uint8_t *enc_pointer = root->cert_info->enc.enc;
   const uint8_t *buf_pointer = CRYPTO_BUFFER_data(buf.get());
-  if (enc_pointer < buf_pointer ||
-      enc_pointer >= buf_pointer + CRYPTO_BUFFER_len(buf.get())) {
-    fprintf(stderr, "TestFromBuffer: enc does not alias the buffer.\n");
-    return false;
-  }
-
+  ASSERT_GE(enc_pointer, buf_pointer);
+  ASSERT_LT(enc_pointer, buf_pointer + CRYPTO_BUFFER_len(buf.get()));
   buf.reset();
 
   /* This ensures the X509 took a reference to |buf|, otherwise this will be a
    * reference to free memory and ASAN should notice. */
-  if (enc_pointer[0] != CBS_ASN1_SEQUENCE) {
-    fprintf(stderr, "TestFromBuffer: enc data is not a SEQUENCE.\n");
-    return false;
-  }
-
-  return true;
+  ASSERT_EQ(CBS_ASN1_SEQUENCE, enc_pointer[0]);
 }
 
-static bool TestFromBufferTrailingData() {
+TEST(X509Test, TestFromBufferWithTrailingData) {
   size_t data_len;
   bssl::UniquePtr<uint8_t> data;
-  if (!PEMToDER(&data, &data_len, kRootCAPEM)) {
-    return false;
-  }
+  ASSERT_TRUE(PEMToDER(&data, &data_len, kRootCAPEM));
 
   std::unique_ptr<uint8_t[]> trailing_data(new uint8_t[data_len + 1]);
   OPENSSL_memcpy(trailing_data.get(), data.get(), data_len);
 
   bssl::UniquePtr<CRYPTO_BUFFER> buf_trailing_data(
       CRYPTO_BUFFER_new(trailing_data.get(), data_len + 1, nullptr));
-  if (!buf_trailing_data) {
-    return false;
-  }
+  ASSERT_TRUE(buf_trailing_data);
 
   bssl::UniquePtr<X509> root_trailing_data(
       X509_parse_from_buffer(buf_trailing_data.get()));
-  if (root_trailing_data) {
-    fprintf(stderr, "TestFromBuffer: trailing data was not rejected.\n");
-    return false;
-  }
-
-  return true;
+  ASSERT_FALSE(root_trailing_data);
 }
 
-static bool TestFromBufferModified() {
+TEST(X509Test, TestFromBufferModified) {
   size_t data_len;
   bssl::UniquePtr<uint8_t> data;
-  if (!PEMToDER(&data, &data_len, kRootCAPEM)) {
-    return false;
-  }
+  ASSERT_TRUE(PEMToDER(&data, &data_len, kRootCAPEM));
 
   bssl::UniquePtr<CRYPTO_BUFFER> buf(
       CRYPTO_BUFFER_new(data.get(), data_len, nullptr));
-  if (!buf) {
-    return false;
-  }
+  ASSERT_TRUE(buf);
 
   bssl::UniquePtr<X509> root(X509_parse_from_buffer(buf.get()));
-  if (!root) {
-    return false;
-  }
+  ASSERT_TRUE(root);
 
   bssl::UniquePtr<ASN1_INTEGER> fourty_two(ASN1_INTEGER_new());
   ASN1_INTEGER_set(fourty_two.get(), 42);
   X509_set_serialNumber(root.get(), fourty_two.get());
 
-  if (i2d_X509(root.get(), nullptr) != static_cast<long>(data_len)) {
-    fprintf(stderr,
-            "TestFromBufferModified: i2d_X509 gives different answer before "
-            "marking as modified.\n");
-    return false;
-  }
+  ASSERT_EQ(static_cast<long>(data_len), i2d_X509(root.get(), nullptr));
 
   X509_CINF_set_modified(root->cert_info);
 
-  if (i2d_X509(root.get(), nullptr) == static_cast<long>(data_len)) {
-    fprintf(stderr,
-            "TestFromBufferModified: i2d_X509 gives same answer after marking "
-            "as modified.\n");
-    return false;
-  }
-
-  return true;
+  ASSERT_NE(static_cast<long>(data_len), i2d_X509(root.get(), nullptr));
 }
 
-static bool TestFromBufferReused() {
+TEST(X509Test, TestFromBufferReused) {
   size_t data_len;
   bssl::UniquePtr<uint8_t> data;
-  if (!PEMToDER(&data, &data_len, kRootCAPEM)) {
-    return false;
-  }
+  ASSERT_TRUE(PEMToDER(&data, &data_len, kRootCAPEM));
 
   bssl::UniquePtr<CRYPTO_BUFFER> buf(
       CRYPTO_BUFFER_new(data.get(), data_len, nullptr));
-  if (!buf) {
-    return false;
-  }
+  ASSERT_TRUE(buf);
 
   bssl::UniquePtr<X509> root(X509_parse_from_buffer(buf.get()));
-  if (!root) {
-    return false;
-  }
+  ASSERT_TRUE(root);
 
   size_t data2_len;
   bssl::UniquePtr<uint8_t> data2;
-  if (!PEMToDER(&data2, &data2_len, kLeafPEM)) {
-    return false;
-  }
+  ASSERT_TRUE(PEMToDER(&data2, &data2_len, kLeafPEM));
 
   X509 *x509p = root.get();
   const uint8_t *inp = data2.get();
   X509 *ret = d2i_X509(&x509p, &inp, data2_len);
-  if (ret != root.get()) {
-    fprintf(stderr,
-            "TestFromBufferReused: d2i_X509 parsed into a different object.\n");
-    return false;
-  }
-
-  if (root->buf != nullptr) {
-    fprintf(stderr,
-            "TestFromBufferReused: d2i_X509 didn't clear |buf| pointer.\n");
-    return false;
-  }
+  ASSERT_EQ(root.get(), ret);
+  ASSERT_EQ(nullptr, root->buf);
 
   // Free |data2| and ensure that |root| took its own copy. Otherwise the
   // following will trigger a use-after-free.
@@ -1018,50 +846,31 @@ static bool TestFromBufferReused() {
 
   uint8_t *i2d = nullptr;
   int i2d_len = i2d_X509(root.get(), &i2d);
-  if (i2d_len < 0) {
-    return false;
-  }
+  ASSERT_GE(i2d_len, 0);
   bssl::UniquePtr<uint8_t> i2d_storage(i2d);
 
-  if (!PEMToDER(&data2, &data2_len, kLeafPEM)) {
-    return false;
-  }
-  if (i2d_len != static_cast<long>(data2_len) ||
-      OPENSSL_memcmp(data2.get(), i2d, i2d_len) != 0) {
-    fprintf(stderr, "TestFromBufferReused: i2d gave wrong result.\n");
-    return false;
-  }
+  ASSERT_TRUE(PEMToDER(&data2, &data2_len, kLeafPEM));
 
-  if (root->buf != NULL) {
-    fprintf(stderr, "TestFromBufferReused: X509.buf was not cleared.\n");
-    return false;
-  }
-
-  return true;
+  ASSERT_EQ(static_cast<long>(data2_len), i2d_len);
+  ASSERT_EQ(0, OPENSSL_memcmp(data2.get(), i2d, i2d_len));
+  ASSERT_EQ(nullptr, root->buf);
 }
 
-static bool TestFailedParseFromBuffer() {
+TEST(X509Test, TestFailedParseFromBuffer) {
   static const uint8_t kNonsense[] = {1, 2, 3, 4, 5};
 
   bssl::UniquePtr<CRYPTO_BUFFER> buf(
       CRYPTO_BUFFER_new(kNonsense, sizeof(kNonsense), nullptr));
-  if (!buf) {
-    return false;
-  }
+  ASSERT_TRUE(buf);
 
   bssl::UniquePtr<X509> cert(X509_parse_from_buffer(buf.get()));
-  if (cert) {
-    fprintf(stderr, "Nonsense somehow parsed.\n");
-    return false;
-  }
+  ASSERT_FALSE(cert);
   ERR_clear_error();
 
   // Test a buffer with trailing data.
   size_t data_len;
   bssl::UniquePtr<uint8_t> data;
-  if (!PEMToDER(&data, &data_len, kRootCAPEM)) {
-    return false;
-  }
+  ASSERT_TRUE(PEMToDER(&data, &data_len, kRootCAPEM));
 
   std::unique_ptr<uint8_t[]> data_with_trailing_byte(new uint8_t[data_len + 1]);
   OPENSSL_memcpy(data_with_trailing_byte.get(), data.get(), data_len);
@@ -1069,22 +878,15 @@ static bool TestFailedParseFromBuffer() {
 
   bssl::UniquePtr<CRYPTO_BUFFER> buf_with_trailing_byte(
       CRYPTO_BUFFER_new(data_with_trailing_byte.get(), data_len + 1, nullptr));
-  if (!buf_with_trailing_byte) {
-    return false;
-  }
+  ASSERT_TRUE(buf_with_trailing_byte);
 
   bssl::UniquePtr<X509> root(
       X509_parse_from_buffer(buf_with_trailing_byte.get()));
-  if (root) {
-    fprintf(stderr, "Parsed buffer with trailing byte.\n");
-    return false;
-  }
+  ASSERT_FALSE(root);
   ERR_clear_error();
-
-  return true;
 }
 
-static bool TestPrintUTCTIME() {
+TEST(X509Test, TestPrintUTCTIME) {
   static const struct {
     const char *val, *want;
   } asn1_utctime_tests[] = {
@@ -1116,6 +918,7 @@ static bool TestPrintUTCTIME() {
   };
 
   for (auto t : asn1_utctime_tests) {
+    SCOPED_TRACE(t.val);
     bssl::UniquePtr<ASN1_UTCTIME> tm(ASN1_UTCTIME_new());
     bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
 
@@ -1123,53 +926,14 @@ static bool TestPrintUTCTIME() {
     // type-confused and pass ASN1_GENERALIZEDTIME to ASN1_UTCTIME_print().
     // ASN1_UTCTIME_set_string() is stricter, and would reject the inputs in
     // question.
-    if (!ASN1_STRING_set(tm.get(), t.val, strlen(t.val))) {
-      fprintf(stderr, "ASN1_STRING_set\n");
-      return false;
-    }
+    ASSERT_TRUE(ASN1_STRING_set(tm.get(), t.val, strlen(t.val)));
     const int ok = ASN1_UTCTIME_print(bio.get(), tm.get());
 
     const uint8_t *contents;
     size_t len;
-    if (!BIO_mem_contents(bio.get(), &contents, &len)) {
-      fprintf(stderr, "BIO_mem_contents\n");
-      return false;
-    }
-
-    if (ok != (strcmp(t.want, "Bad time value") != 0)) {
-      fprintf(stderr, "ASN1_UTCTIME_print(%s): bad return value\n", t.val);
-      return false;
-    }
-    if (len != strlen(t.want) || memcmp(contents, t.want, len)) {
-      fprintf(stderr, "ASN1_UTCTIME_print(%s): got %.*s, want %s\n", t.val,
-              static_cast<int>(len),
-              reinterpret_cast<const char *>(contents), t.want);
-      return false;
-    }
+    ASSERT_TRUE(BIO_mem_contents(bio.get(), &contents, &len));
+    EXPECT_EQ(ok, (strcmp(t.want, "Bad time value") != 0) ? 1 : 0);
+    EXPECT_EQ(t.want,
+              std::string(reinterpret_cast<const char *>(contents), len));
   }
-
-  return true;
-}
-
-int main() {
-  CRYPTO_library_init();
-
-  if (!TestVerify() ||
-      !TestCRL() ||
-      !TestPSS() ||
-      !TestBadPSSParameters() ||
-      !TestEd25519() ||
-      !TestBadEd25519Parameters() ||
-      !TestSignCtx() ||
-      !TestFromBuffer() ||
-      !TestFromBufferTrailingData() ||
-      !TestFromBufferModified() ||
-      !TestFromBufferReused() ||
-      !TestFailedParseFromBuffer() ||
-      !TestPrintUTCTIME()) {
-    return 1;
-  }
-
-  printf("PASS\n");
-  return 0;
 }

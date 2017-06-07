@@ -8,7 +8,6 @@
 	["crypto/fipsmodule/p256-x86_64_test", "crypto/fipsmodule/ec/p256-x86_64_tests.txt"],
 	["crypto/x509v3/tab_test"],
 	["crypto/x509v3/v3name_test"],
-	["crypto/x509/x509_test"],
 	["decrepit/decrepit_test"],
 	["ssl/ssl_test"]
 ]
