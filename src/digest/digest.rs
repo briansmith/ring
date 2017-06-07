@@ -306,7 +306,7 @@ impl core::fmt::Debug for Algorithm {
         } else {
             self.output_len * 8
         };
-        write!(fmt, "SHA-{:?}", n)
+        write!(fmt, "SHA{:?}", n)
     }
 }
 
