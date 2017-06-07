@@ -15,10 +15,12 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path"
@@ -253,7 +255,7 @@ func runTest(test test) (bool, error) {
 func shortTestName(test test) string {
 	var args []string
 	for _, arg := range test.args {
-		if test.args[0] == "crypto/evp/evp_test" || test.args[0] == "crypto/cipher_extra/cipher_test" || test.args[0] == "crypto/cipher_extra/aead_test" || !strings.HasSuffix(arg, ".txt") {
+		if test.args[0] == "crypto/evp/evp_test" || test.args[0] == "crypto/cipher_extra/cipher_test" || test.args[0] == "crypto/cipher_extra/aead_test" || !strings.HasSuffix(arg, ".txt") || strings.HasPrefix(arg, "--gtest_filter=") {
 			args = append(args, arg)
 		}
 	}
@@ -309,6 +311,80 @@ func (t test) cpuMsg() string {
 	return fmt.Sprintf(" (for CPU %q)", t.cpu)
 }
 
+func (t test) getGTestShards() ([]test, error) {
+	if *numWorkers == 1 || len(t.args) != 1 {
+		return []test{t}, nil
+	}
+
+	// Only shard the three GTest-based tests.
+	if t.args[0] != "crypto/crypto_test" && t.args[0] != "ssl/ssl_test" && t.args[0] != "decrepit/decrepit_test" {
+		return []test{t}, nil
+	}
+
+	prog := path.Join(*buildDir, t.args[0])
+	cmd := exec.Command(prog, "--gtest_list_tests")
+	var stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	if err := cmd.Wait(); err != nil {
+		return nil, err
+	}
+
+	var group string
+	var tests []string
+	scanner := bufio.NewScanner(&stdout)
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// Remove the parameter comment and trailing space.
+		if idx := strings.Index(line, "#"); idx >= 0 {
+			line = line[:idx]
+		}
+		line = strings.TrimSpace(line)
+		if len(line) == 0 {
+			continue
+		}
+
+		if line[len(line)-1] == '.' {
+			group = line
+			continue
+		}
+
+		if len(group) == 0 {
+			return nil, fmt.Errorf("found test case %q without group", line)
+		}
+		tests = append(tests, group+line)
+	}
+
+	const testsPerShard = 20
+	if len(tests) <= testsPerShard {
+		return []test{t}, nil
+	}
+
+	// Slow tests which process large test vector files tend to be grouped
+	// together, so shuffle the order.
+	shuffled := make([]string, len(tests))
+	perm := rand.Perm(len(tests))
+	for i, j := range perm {
+		shuffled[i] = tests[j]
+	}
+
+	var shards []test
+	for i := 0; i < len(shuffled); i += testsPerShard {
+		n := len(shuffled) - i
+		if n > testsPerShard {
+			n = testsPerShard
+		}
+		shard := t
+		shard.args = []string{shard.args[0], "--gtest_filter=" + strings.Join(shuffled[i:i+n], ":")}
+		shards = append(shards, shard)
+	}
+
+	return shards, nil
+}
+
 func main() {
 	flag.Parse()
 	setWorkingDirectory()
@@ -331,13 +407,22 @@ func main() {
 	go func() {
 		for _, test := range testCases {
 			if *useSDE {
+				// SDE generates plenty of tasks and gets slower
+				// with additional sharding.
 				for _, cpu := range sdeCPUs {
 					testForCPU := test
 					testForCPU.cpu = cpu
 					tests <- testForCPU
 				}
 			} else {
-				tests <- test
+				shards, err := test.getGTestShards()
+				if err != nil {
+					fmt.Printf("Error listing tests: %s\n", err)
+					os.Exit(1)
+				}
+				for _, shard := range shards {
+					tests <- shard
+				}
 			}
 		}
 		close(tests)
