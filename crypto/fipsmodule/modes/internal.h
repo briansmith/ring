@@ -109,16 +109,6 @@ static inline void PUTU32(void *out, uint32_t v) {
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
-static inline uint32_t GETU32_aligned(const void *in) {
-  const char *alias = (const char *) in;
-  return CRYPTO_bswap4(*((const uint32_t *) alias));
-}
-
-static inline void PUTU32_aligned(void *in, uint32_t v) {
-  char *alias = (char *) in;
-  *((uint32_t *) alias) = CRYPTO_bswap4(v);
-}
-
 /* block128_f is the type of a 128-bit, block cipher. */
 typedef void (*block128_f)(const uint8_t in[16], uint8_t out[16],
                            const void *key);
