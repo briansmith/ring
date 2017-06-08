@@ -14,18 +14,13 @@
 
 extern crate ring;
 
-use ring::{error, pbkdf2, test};
+use ring::{digest, error, pbkdf2, test};
 
 #[test]
 pub fn pbkdf2_tests() {
     test::from_file("tests/pbkdf2_tests.txt", |section, test_case| {
         assert_eq!(section, "");
-        let prf_digest_alg = &test_case.consume_string("Hash");
-        let prf = match prf_digest_alg.as_ref() {
-            "SHA256" => &pbkdf2::HMAC_SHA256,
-            "SHA512" => &pbkdf2::HMAC_SHA512,
-            _ => panic!("Unexpected digest algorithm in PBKDF2 test"),
-        };
+        let digest_alg = &test_case.consume_digest_alg("Hash").unwrap();
         let iterations = test_case.consume_usize("c");
         let secret = test_case.consume_bytes("P");
         let salt = test_case.consume_bytes("S");
@@ -40,13 +35,13 @@ pub fn pbkdf2_tests() {
 
         {
             let mut out = vec![0u8; dk.len()];
-            pbkdf2::derive(prf, iterations as u32, &salt, &secret,
+            pbkdf2::derive(digest_alg, iterations as u32, &salt, &secret,
                            &mut out);
             assert_eq!(dk == out,
                        verify_expected_result.is_ok() || dk.is_empty());
         }
 
-        assert_eq!(pbkdf2::verify(prf, iterations as u32, &salt, &secret,
+        assert_eq!(pbkdf2::verify(digest_alg, iterations as u32, &salt, &secret,
                                   &dk),
                    verify_expected_result);
 
@@ -57,21 +52,19 @@ pub fn pbkdf2_tests() {
 #[test]
 #[should_panic]
 pub fn pbkdf2_zero_iterations() {
-    let prf = &pbkdf2::HMAC_SHA256;
     let secret = "ZeroIterationsTest".as_bytes();
     let iterations: u32 = 0;
     let salt = "salt".as_bytes();
     let mut out = vec![0u8; 2];
-    pbkdf2::derive(prf, iterations, &salt, &secret, &mut out);
+    pbkdf2::derive(&digest::SHA256, iterations, &salt, &secret, &mut out);
 }
 
 // Control for pkbdf2_zero_iterations
 #[test]
 pub fn pbkdf2_one_iteration() {
-    let prf = &pbkdf2::HMAC_SHA256;
     let secret = "ZeroIterationsTest".as_bytes();
     let iterations: u32 = 1;
     let salt = "salt".as_bytes();
     let mut out = vec![0u8; 2];
-    pbkdf2::derive(prf, iterations, &salt, &secret, &mut out);
+    pbkdf2::derive(&digest::SHA256, iterations, &salt, &secret, &mut out);
 }

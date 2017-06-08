@@ -30,11 +30,11 @@
 //! ## Password Database Example
 //!
 //! ```
-//! use ring::pbkdf2;
+//! use ring::{digest, pbkdf2};
 //! use std::collections::HashMap;
 //!
-//! static PBKDF2_PRF: &'static pbkdf2::PRF = &pbkdf2::HMAC_SHA256;
-//! const CREDENTIAL_LEN: usize = 32; // digest::SHA256.output_len()
+//! static DIGEST_ALG: &'static digest::Algorithm = &digest::SHA256;
+//! const CREDENTIAL_LEN: usize = digest::SHA256_OUTPUT_LEN;
 //! pub type Credential = [u8; CREDENTIAL_LEN];
 //!
 //! enum Error {
@@ -53,7 +53,7 @@
 //!     pub fn store_password(&mut self, username: &str, password: &str) {
 //!         let salt = self.salt(username);
 //!         let mut to_store: Credential = [0u8; CREDENTIAL_LEN];
-//!         pbkdf2::derive(PBKDF2_PRF, self.pbkdf2_iterations, &salt,
+//!         pbkdf2::derive(DIGEST_ALG, self.pbkdf2_iterations, &salt,
 //!                        password.as_bytes(), &mut to_store);
 //!         self.storage.insert(String::from(username), to_store);
 //!     }
@@ -63,7 +63,7 @@
 //!         match self.storage.get(username) {
 //!            Some(actual_password) => {
 //!                let salt = self.salt(username);
-//!                pbkdf2::verify(PBKDF2_PRF, self.pbkdf2_iterations, &salt,
+//!                pbkdf2::verify(DIGEST_ALG, self.pbkdf2_iterations, &salt,
 //!                               attempted_password.as_bytes(),
 //!                               actual_password)
 //!                     .map_err(|_| Error::WrongUsernameOrPassword)
@@ -119,12 +119,12 @@ use {constant_time, digest, error, hmac, polyfill};
 /// Do not use `derive` as part of verifying a secret; use `verify` instead, to
 /// minimize the effectiveness of timing attacks.
 ///
-/// `out.len()` must be no larger than the output length of the digest function
-/// used in the PRF algorithm * (2**32 - 1), per the PBKDF2 specification.
+/// `out.len()` must be no larger than the digest length * (2**32 - 1), per the
+/// PBKDF2 specification.
 ///
 /// | Parameter   | RFC 2898 Section 5.2 Term
-/// |-------------|---------------------------------------
-/// | prf         | PRF
+/// |-------------|-------------------------------------------
+/// | digest_alg  | PRF (HMAC with the given digest algorithm)
 /// | iterations  | c (iteration count)
 /// | salt        | S (salt)
 /// | secret      | P (password)
@@ -137,20 +137,20 @@ use {constant_time, digest, error, hmac, polyfill};
 ///
 /// `derive` panics if `iterations < 1`.
 ///
-/// `derive` panics if `out.len()` is larger than (2**32 - 1) * the PRF digest
-/// length, per the PBKDF2 specification.
-pub fn derive(prf: &'static PRF, iterations: u32, salt: &[u8],
-              secret: &[u8], out: &mut [u8]) {
+/// `derive` panics if `out.len()` is larger than (2**32 - 1) * the digest
+/// algorithm's output length, per the PBKDF2 specification.
+pub fn derive(digest_alg: &'static digest::Algorithm, iterations: u32,
+              salt: &[u8], secret: &[u8], out: &mut [u8]) {
     assert!(iterations >= 1);
 
-    let output_len = prf.digest_alg.output_len;
+    let output_len = digest_alg.output_len;
 
     // This implementation's performance is asymptotically optimal as described
     // in https://jbp.io/2015/08/11/pbkdf2-performance-matters/. However, it
     // hasn't been optimized to the same extent as fastpbkdf2. In particular,
     // this implementation is probably doing a lot of unnecessary copying.
 
-    let secret = hmac::SigningKey::new(prf.digest_alg, secret);
+    let secret = hmac::SigningKey::new(digest_alg, secret);
 
     // Clear |out|.
     polyfill::slice::fill(out, 0);
@@ -194,8 +194,8 @@ fn derive_block(secret: &hmac::SigningKey, iterations: u32, salt: &[u8],
 /// zero).
 ///
 /// | Parameter                  | RFC 2898 Section 5.2 Term
-/// |----------------------------|---------------------------------------
-/// | `prf`                      | PRF
+/// |----------------------------|--------------------------------------------
+/// | digest_alg                 | PRF (HMAC with the given digest algorithm).
 /// | `iterations`               | c (iteration count)
 /// | `salt`                     | S (salt)
 /// | `secret`                   | P (password)
@@ -208,10 +208,10 @@ fn derive_block(secret: &hmac::SigningKey, iterations: u32, salt: &[u8],
 ///
 /// `verify` panics if `iterations < 1`.
 ///
-/// `derive` panics if `out.len()` is larger than (2**32 - 1) * the PRF digest
-/// length, per the PBKDF2 specification.
-pub fn verify(prf: &'static PRF, iterations: u32, salt: &[u8],
-              secret: &[u8], previously_derived: &[u8])
+/// `verify` panics if `out.len()` is larger than (2**32 - 1) * the digest
+/// algorithm's output length, per the PBKDF2 specification.
+pub fn verify(digest_alg: &'static digest::Algorithm, iterations: u32,
+              salt: &[u8], secret: &[u8], previously_derived: &[u8])
               -> Result<(), error::Unspecified> {
     if previously_derived.is_empty() {
         return Err(error::Unspecified);
@@ -219,8 +219,8 @@ pub fn verify(prf: &'static PRF, iterations: u32, salt: &[u8],
 
     let mut derived_buf = [0u8; digest::MAX_OUTPUT_LEN];
 
-    let output_len = prf.digest_alg.output_len;
-    let secret = hmac::SigningKey::new(prf.digest_alg, secret);
+    let output_len = digest_alg.output_len;
+    let secret = hmac::SigningKey::new(digest_alg, secret);
     let mut idx: u32 = 0;
 
     let mut matches = 1;
@@ -251,14 +251,3 @@ pub fn verify(prf: &'static PRF, iterations: u32, salt: &[u8],
 
     Ok(())
 }
-
-/// A PRF algorithm for use with `derive` and `verify`.
-pub struct PRF {
-    digest_alg: &'static digest::Algorithm,
-}
-
-/// HMAC-SHA256.
-pub static HMAC_SHA256: PRF = PRF { digest_alg: &digest::SHA256 };
-
-/// HMAC-SHA512.
-pub static HMAC_SHA512: PRF = PRF { digest_alg: &digest::SHA512 };
