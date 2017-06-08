@@ -47,27 +47,3 @@ macro_rules! bssl_test {
         }
     }
 }
-
-// Adapt a BoringSSL test suite to a Rust test like `bssl_test`, passing the
-// test suite function a `rand::SecureRandom`.
-#[cfg(test)]
-macro_rules! bssl_test {
-    ( $fn_name:ident, $bssl_test_main_fn_name:ident ) => {
-        #[test]
-        #[allow(improper_ctypes)]
-        fn $fn_name() {
-            use $crate::{c, init};
-            extern {
-                fn $bssl_test_main_fn_name() -> c::int;
-            }
-
-            init::init_once();
-            ::std::env::set_current_dir(::test::ring_src_path()).unwrap();
-
-            let result = unsafe {
-                $bssl_test_main_fn_name()
-            };
-            assert_eq!(result, 0);
-        }
-    }
-}
