@@ -68,6 +68,8 @@ OPENSSL_MSVC_PRAGMA(warning(disable: 4702))
 
 OPENSSL_MSVC_PRAGMA(warning(pop))
 
+#include <gtest/gtest.h>
+
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
@@ -75,6 +77,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <openssl/rsa.h>
 
 #include "../test/file_test.h"
+#include "../test/test_util.h"
 
 
 // evp_test dispatches between multiple test types. PrivateKey tests take a key
@@ -96,7 +99,7 @@ static const EVP_MD *GetDigest(FileTest *t, const std::string &name) {
   } else if (name == "SHA512") {
     return EVP_sha512();
   }
-  t->PrintLine("Unknown digest: '%s'", name.c_str());
+  ADD_FAILURE() << "Unknown digest: " << name;
   return nullptr;
 }
 
@@ -113,7 +116,7 @@ static int GetKeyType(FileTest *t, const std::string &name) {
   if (name == "Ed25519") {
     return EVP_PKEY_ED25519;
   }
-  t->PrintLine("Unknown key type: '%s'", name.c_str());
+  ADD_FAILURE() << "Unknown key type: " << name;
   return EVP_PKEY_NONE;
 }
 
@@ -130,7 +133,7 @@ static int GetRSAPadding(FileTest *t, int *out, const std::string &name) {
     *out = RSA_PKCS1_OAEP_PADDING;
     return true;
   }
-  t->PrintLine("Unknown RSA padding mode: '%s'", name.c_str());
+  ADD_FAILURE() << "Unknown RSA padding mode: " << name;
   return false;
 }
 
@@ -155,10 +158,7 @@ static bool ImportKey(FileTest *t, KeyMap *key_map,
   if (!t->GetAttribute(&key_type, "Type")) {
     return false;
   }
-  if (EVP_PKEY_id(pkey.get()) != GetKeyType(t, key_type)) {
-    t->PrintLine("Bad key type.");
-    return false;
-  }
+  EXPECT_EQ(GetKeyType(t, key_type), EVP_PKEY_id(pkey.get()));
 
   // The key must re-encode correctly.
   bssl::ScopedCBB cbb;
@@ -176,23 +176,16 @@ static bool ImportKey(FileTest *t, KeyMap *key_map,
       !t->GetBytes(&output, "Output")) {
     return false;
   }
-  if (!t->ExpectBytesEqual(output.data(), output.size(), der, der_len)) {
-    t->PrintLine("Re-encoding the key did not match.");
-    return false;
-  }
+  EXPECT_EQ(Bytes(output), Bytes(der, der_len)) << "Re-encoding the key did not match.";
 
   // Save the key for future tests.
   const std::string &key_name = t->GetParameter();
-  if (key_map->count(key_name) > 0) {
-    t->PrintLine("Duplicate key '%s'.", key_name.c_str());
-    return false;
-  }
+  EXPECT_EQ(0u, key_map->count(key_name)) << "Duplicate key: " << key_name;
   (*key_map)[key_name] = std::move(pkey);
   return true;
 }
 
-static bool TestEVP(FileTest *t, void *arg) {
-  KeyMap *key_map = reinterpret_cast<KeyMap*>(arg);
+static bool TestEVP(FileTest *t, KeyMap *key_map) {
   if (t->GetType() == "PrivateKey") {
     return ImportKey(t, key_map, EVP_parse_private_key,
                      EVP_marshal_private_key);
@@ -223,14 +216,14 @@ static bool TestEVP(FileTest *t, void *arg) {
     key_op_init = EVP_PKEY_verify_init;
     verify_op = EVP_PKEY_verify_message;
   } else {
-    t->PrintLine("Unknown test '%s'", t->GetType().c_str());
+    ADD_FAILURE() << "Unknown test " << t->GetType();
     return false;
   }
 
   // Load the key.
   const std::string &key_name = t->GetParameter();
   if (key_map->count(key_name) == 0) {
-    t->PrintLine("Could not find key '%s'.", key_name.c_str());
+    ADD_FAILURE() << "Could not find key " << key_name;
     return false;
   }
   EVP_PKEY *key = (*key_map)[key_name].get();
@@ -292,20 +285,24 @@ static bool TestEVP(FileTest *t, void *arg) {
     return false;
   }
   actual.resize(len);
-  if (!t->GetBytes(&output, "Output") ||
-      !t->ExpectBytesEqual(output.data(), output.size(), actual.data(), len)) {
+  if (!t->GetBytes(&output, "Output")) {
     return false;
   }
+
+  EXPECT_EQ(Bytes(output), Bytes(actual));
   return true;
 }
 
-int main(int argc, char *argv[]) {
-  CRYPTO_library_init();
-  if (argc != 2) {
-    fprintf(stderr, "%s <test file.txt>\n", argv[0]);
-    return 1;
-  }
-
-  KeyMap map;
-  return FileTestMain(TestEVP, &map, argv[1]);
+TEST(EVPTest, TestVectors) {
+  KeyMap key_map;
+  FileTestGTest("crypto/evp/evp_tests.txt", [&](FileTest *t) {
+    bool result = TestEVP(t, &key_map);
+    if (t->HasAttribute("Error")) {
+      ASSERT_FALSE(result) << "Operation unexpectedly succeeded.";
+      uint32_t err = ERR_peek_error();
+      EXPECT_EQ(t->GetAttributeOrDie("Error"), ERR_reason_error_string(err));
+    } else {
+      ASSERT_TRUE(result) << "Operation unexpectedly failed.";
+    }
+  });
 }

@@ -236,6 +236,7 @@ add_executable(
   dsa/dsa_test.cc
   err/err_test.cc
   evp/evp_extra_test.cc
+  evp/evp_test.cc
   evp/pbkdf_test.cc
   fipsmodule/aes/aes_test.cc
   fipsmodule/bn/bn_test.cc

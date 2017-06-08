@@ -1,6 +1,5 @@
 [
 	["crypto/crypto_test"],
-	["crypto/evp/evp_test", "crypto/evp/evp_tests.txt"],
 	["crypto/fipsmodule/example_mul"],
 	["crypto/fipsmodule/p256-x86_64_test", "crypto/fipsmodule/ec/p256-x86_64_tests.txt"],
 	["crypto/x509v3/tab_test"],

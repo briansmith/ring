@@ -38,6 +38,7 @@ set(
   crypto/cipher_extra/test/nist_cavp/tdes_ecb.txt
   crypto/curve25519/ed25519_tests.txt
   crypto/ecdh/ecdh_tests.txt
+  crypto/evp/evp_tests.txt
   crypto/fipsmodule/aes/aes_tests.txt
   crypto/fipsmodule/bn/bn_tests.txt
   crypto/fipsmodule/ecdsa/ecdsa_sign_tests.txt
