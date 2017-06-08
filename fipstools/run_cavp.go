@@ -348,7 +348,11 @@ func doTest(suite *testSuite, test test) error {
 	args = append(args, test.args...)
 	args = append(args, filepath.Join(suite.getDirectory(), "req", test.inFile+".req"))
 
-	outPath := filepath.Join(suite.getDirectory(), "resp", test.inFile+".rsp")
+	respDir := filepath.Join(suite.getDirectory(), "resp")
+	if err := os.Mkdir(respDir, 0755); err != nil && !os.IsExist(err) {
+		return fmt.Errorf("cannot create resp directory: %s", err)
+	}
+	outPath := filepath.Join(respDir, test.inFile+".rsp")
 	outFile, err := os.OpenFile(outPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("cannot open output file for %q %q: %s", suite.getDirectory(), test.inFile, err)
