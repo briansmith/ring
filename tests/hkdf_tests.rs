@@ -1,0 +1,43 @@
+// Copyright 2015 Brian Smith.
+//
+// Permission to use, copy, modify, and/or distribute this software for any
+// purpose with or without fee is hereby granted, provided that the above
+// copyright notice and this permission notice appear in all copies.
+//
+// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHORS DISCLAIM ALL WARRANTIES
+// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+// SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+// OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+// CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+extern crate ring;
+
+use ring::{error, hkdf, hmac, test};
+
+#[test]
+fn hkdf_tests() {
+    test::from_file("tests/hkdf_tests.txt", |section, test_case| {
+        assert_eq!(section, "");
+        let digest_alg =
+            test_case.consume_digest_alg("Hash").ok_or(error::Unspecified)?;
+        let secret = test_case.consume_bytes("IKM");
+        let salt = test_case.consume_bytes("salt");
+        let info = test_case.consume_bytes("info");
+
+        // The PRK is an intermediate value that we can't test, but we
+        // have to consume it to make test::from_file happy.
+        let _ = test_case.consume_bytes("PRK");
+
+        let expected_out = test_case.consume_bytes("OKM");
+
+        let salt = hmac::SigningKey::new(digest_alg, &salt);
+
+        let mut out = vec![0u8; expected_out.len()];
+        hkdf::extract_and_expand(&salt, &secret, &info, &mut out);
+        assert_eq!(out, expected_out);
+
+        Ok(())
+    });
+}
