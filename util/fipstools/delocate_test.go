@@ -46,6 +46,7 @@ var delocateTests = []delocateTest{
 	{"ppc64le-Sample", []string{"in.s"}, "out.s"},
 	{"ppc64le-Sample2", []string{"in.s"}, "out.s"},
 	{"ppc64le-TOCWithOffset", []string{"in.s"}, "out.s"},
+	{"ppc64le-GlobalEntry", []string{"in.s"}, "out.s"},
 }
 
 func TestDelocate(t *testing.T) {
