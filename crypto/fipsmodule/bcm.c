@@ -297,9 +297,8 @@ extern const uint8_t BORINGSSL_bcm_text_end[];
 extern const uint8_t BORINGSSL_bcm_text_hash[];
 #endif
 
-static void BORINGSSL_bcm_power_on_self_test(void) __attribute__((constructor));
-
-static void BORINGSSL_bcm_power_on_self_test(void) {
+static void __attribute__((constructor))
+BORINGSSL_bcm_power_on_self_test(void) {
   CRYPTO_library_init();
 
 #if !defined(OPENSSL_ASAN)
