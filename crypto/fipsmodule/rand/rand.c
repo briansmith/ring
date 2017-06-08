@@ -305,9 +305,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
      * |rand_thread_state_clear_all|.
      *
      * This lock must be taken after any calls to |CRYPTO_sysrand| to avoid a
-     * bug on ppc64le. glibc may implement locks by wrapping the critical
-     * section in a hardware transaction. This appears to sometimes break
-     * |getrandom|. */
+     * bug on ppc64le. glibc may implement pthread locks by wrapping user code
+     * in a hardware transaction, but, on some older versions of glibc and the
+     * kernel, syscalls made with |syscall| did not abort the transaction. */
     CRYPTO_STATIC_MUTEX_lock_read(thread_states_list_lock_bss_get());
 #endif
     if (!CTR_DRBG_reseed(&state->drbg, seed, NULL, 0)) {
