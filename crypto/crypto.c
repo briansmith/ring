@@ -73,16 +73,16 @@ uint32_t OPENSSL_armcap_P =
 #if defined(OPENSSL_STATIC_ARMCAP_NEON) || defined(__ARM_NEON__)
     ARMV7_NEON |
 #endif
-#if defined(OPENSSL_STATIC_ARMCAP_AES)
+#if defined(OPENSSL_STATIC_ARMCAP_AES) || defined(__ARM_FEATURE_CRYPTO)
     ARMV8_AES |
 #endif
-#if defined(OPENSSL_STATIC_ARMCAP_SHA1)
+#if defined(OPENSSL_STATIC_ARMCAP_SHA1) || defined(__ARM_FEATURE_CRYPTO)
     ARMV8_SHA1 |
 #endif
-#if defined(OPENSSL_STATIC_ARMCAP_SHA256)
+#if defined(OPENSSL_STATIC_ARMCAP_SHA256) || defined(__ARM_FEATURE_CRYPTO)
     ARMV8_SHA256 |
 #endif
-#if defined(OPENSSL_STATIC_ARMCAP_PMULL)
+#if defined(OPENSSL_STATIC_ARMCAP_PMULL) || defined(__ARM_FEATURE_CRYPTO)
     ARMV8_PMULL |
 #endif
     0;

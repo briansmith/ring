@@ -156,7 +156,7 @@ static inline int CRYPTO_is_NEON_capable(void) {
 }
 
 static inline int CRYPTO_is_ARMv8_AES_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_AES)
+#if defined(OPENSSL_STATIC_ARMCAP_AES) || defined(__ARM_FEATURE_CRYPTO)
   return 1;
 #else
   return 0;
@@ -164,7 +164,7 @@ static inline int CRYPTO_is_ARMv8_AES_capable(void) {
 }
 
 static inline int CRYPTO_is_ARMv8_PMULL_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_PMULL)
+#if defined(OPENSSL_STATIC_ARMCAP_PMULL) || defined(__ARM_FEATURE_CRYPTO)
   return 1;
 #else
   return 0;
