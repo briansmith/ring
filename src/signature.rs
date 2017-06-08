@@ -369,10 +369,3 @@ pub fn verify(alg: &VerificationAlgorithm, public_key: untrusted::Input,
     init::init_once();
     alg.verify(public_key, msg, signature)
 }
-
-
-#[cfg(test)]
-mod tests {
-    // ECDSA tests are in crypto/ec/ecdsa.rs.
-    // EdDSA tests are in crypto/ec/eddsa.rs.
-}
