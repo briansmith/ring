@@ -91,15 +91,3 @@ fn poly1305_update_padded_16(ctx: &mut poly1305::SigningContext, data: &[u8]) {
         ctx.update(&PADDING[..PADDING.len() - (data.len() % 16)])
     }
 }
-
-
-#[cfg(test)]
-mod tests {
-    use aead;
-
-    #[test]
-    pub fn test_chacha20_poly1305() {
-        aead::tests::test_aead(&aead::CHACHA20_POLY1305,
-            "src/aead/chacha20_poly1305_tests.txt");
-    }
-}

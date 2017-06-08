@@ -34,8 +34,6 @@ include = [
     "build.rs",
 
     "src/aead/aead.rs",
-    "src/aead/aes_128_gcm_tests.txt",
-    "src/aead/aes_256_gcm_tests.txt",
     "src/aead/aes_gcm.rs",
     "src/aead/aes_tests.txt",
     "src/aead/chacha20_poly1305.rs",
@@ -230,6 +228,8 @@ include = [
     "include/GFp/mem.h",
     "include/GFp/type_check.h",
     "examples/checkdigest.rs",
+    "tests/aead_aes_128_gcm_tests.txt",
+    "tests/aead_aes_256_gcm_tests.txt",
     "tests/digest_tests.rs",
     "tests/digest_tests.txt",
     "tests/ecdsa_from_pkcs8_tests.txt",

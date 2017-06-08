@@ -110,19 +110,7 @@ extern {
 #[cfg(test)]
 mod tests {
     use {c, test};
-    use super::super::super::aead;
-    use super::super::tests::test_aead;
     use super::AES_MAX_ROUNDS;
-
-    #[test]
-    pub fn test_aes_gcm_128() {
-        test_aead(&aead::AES_128_GCM, "src/aead/aes_128_gcm_tests.txt");
-    }
-
-    #[test]
-    pub fn test_aes_gcm_256() {
-        test_aead(&aead::AES_256_GCM, "src/aead/aes_256_gcm_tests.txt");
-    }
 
     #[test]
     pub fn test_aes() {
