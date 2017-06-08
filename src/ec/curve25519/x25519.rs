@@ -172,9 +172,9 @@ mod tests {
 
     fn x25519_(private_key: &[u8], public_key: &[u8])
                -> Result<std::vec::Vec<u8>, error::Unspecified> {
+        let rng = test::rand::FixedSliceRandom { bytes: private_key };
         let private_key =
-            agreement::EphemeralPrivateKey::from_test_vector(
-                &agreement::X25519, untrusted::Input::from(private_key));
+            agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng)?;
         let public_key = untrusted::Input::from(public_key);
         agreement::agree_ephemeral(private_key, &agreement::X25519, public_key,
                                    error::Unspecified, |agreed_value| {
