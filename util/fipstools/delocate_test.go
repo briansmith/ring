@@ -38,15 +38,16 @@ func (test *delocateTest) Path(file string) string {
 }
 
 var delocateTests = []delocateTest{
-	{"x86_64-Basic", []string{"in.s"}, "out.s"},
-	{"x86_64-Sections", []string{"in.s"}, "out.s"},
-	{"x86_64-LabelRewrite", []string{"in1.s", "in2.s"}, "out.s"},
-	{"x86_64-GOTRewrite", []string{"in.s"}, "out.s"},
-	{"x86_64-BSS", []string{"in.s"}, "out.s"},
-	{"ppc64le-Sample", []string{"in.s"}, "out.s"},
-	{"ppc64le-Sample2", []string{"in.s"}, "out.s"},
-	{"ppc64le-TOCWithOffset", []string{"in.s"}, "out.s"},
 	{"ppc64le-GlobalEntry", []string{"in.s"}, "out.s"},
+	{"ppc64le-LoadToR0", []string{"in.s"}, "out.s"},
+	{"ppc64le-Sample2", []string{"in.s"}, "out.s"},
+	{"ppc64le-Sample", []string{"in.s"}, "out.s"},
+	{"ppc64le-TOCWithOffset", []string{"in.s"}, "out.s"},
+	{"x86_64-Basic", []string{"in.s"}, "out.s"},
+	{"x86_64-BSS", []string{"in.s"}, "out.s"},
+	{"x86_64-GOTRewrite", []string{"in.s"}, "out.s"},
+	{"x86_64-LabelRewrite", []string{"in1.s", "in2.s"}, "out.s"},
+	{"x86_64-Sections", []string{"in.s"}, "out.s"},
 }
 
 func TestDelocate(t *testing.T) {

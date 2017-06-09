@@ -709,8 +709,23 @@ Args:
 						return nil, errors.New("expected single register in BaseIndexScale for ld argument")
 					}
 
+					baseReg := destReg
+					if baseReg == "0" {
+						// Register zero is special as the base register for a load.
+						// Avoid it by spilling and using r3 instead.
+						baseReg = "3"
+						wrappers = append(wrappers, func(k func()) {
+							d.output.WriteString("\taddi 1, 1, -288\n")   // Clear the red zone.
+							d.output.WriteString("\tstd " + baseReg + ", -8(1)\n")
+							d.output.WriteString("\tmr " + baseReg + ", " + destReg + "\n")
+							k()
+							d.output.WriteString("\tld " + baseReg + ", -8(1)\n")
+							d.output.WriteString("\taddi 1, 1, 288\n")   // Clear the red zone.
+						})
+					}
+
 					wrappers = append(wrappers, func(k func()) {
-						d.output.WriteString("\t" + origInstructionName + " " + destReg + ", 0(" + destReg + ")\n")
+						d.output.WriteString("\t" + origInstructionName + " " + destReg + ", 0(" + baseReg + ")\n")
 					})
 				default:
 					return nil, fmt.Errorf("can't process TOC argument to %q", instructionName)
