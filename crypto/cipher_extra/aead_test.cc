@@ -42,57 +42,56 @@ struct KnownAEAD {
   bool truncated_tags;
   // ad_len, if non-zero, is the required length of the AD.
   size_t ad_len;
-  bool has_open_gather;
 };
 
 static const struct KnownAEAD kAEADs[] = {
     {"AES_128_GCM", EVP_aead_aes_128_gcm, "aes_128_gcm_tests.txt", false, true,
-     0, true},
+     0},
     {"AES_128_GCM_NIST", EVP_aead_aes_128_gcm, "nist_cavp/aes_128_gcm.txt",
-     false, true, 0, true},
+     false, true, 0},
     {"AES_256_GCM", EVP_aead_aes_256_gcm, "aes_256_gcm_tests.txt", false, true,
-     0, true},
+     0},
     {"AES_256_GCM_NIST", EVP_aead_aes_256_gcm, "nist_cavp/aes_256_gcm.txt",
-     false, true, 0, true},
+     false, true, 0},
 #if !defined(OPENSSL_SMALL)
     {"AES_128_GCM_SIV", EVP_aead_aes_128_gcm_siv, "aes_128_gcm_siv_tests.txt",
-     false, false, 0, false},
+     false, false, 0},
     {"AES_256_GCM_SIV", EVP_aead_aes_256_gcm_siv, "aes_256_gcm_siv_tests.txt",
-     false, false, 0, false},
+     false, false, 0},
 #endif
     {"ChaCha20Poly1305", EVP_aead_chacha20_poly1305,
-     "chacha20_poly1305_tests.txt", false, true, 0, true},
+     "chacha20_poly1305_tests.txt", false, true, 0},
     {"AES_128_CBC_SHA1_TLS", EVP_aead_aes_128_cbc_sha1_tls,
-     "aes_128_cbc_sha1_tls_tests.txt", true, false, 11, false},
+     "aes_128_cbc_sha1_tls_tests.txt", true, false, 11},
     {"AES_128_CBC_SHA1_TLSImplicitIV",
      EVP_aead_aes_128_cbc_sha1_tls_implicit_iv,
-     "aes_128_cbc_sha1_tls_implicit_iv_tests.txt", true, false, 11, false},
+     "aes_128_cbc_sha1_tls_implicit_iv_tests.txt", true, false, 11},
     {"AES_128_CBC_SHA256_TLS", EVP_aead_aes_128_cbc_sha256_tls,
-     "aes_128_cbc_sha256_tls_tests.txt", true, false, 11, false},
+     "aes_128_cbc_sha256_tls_tests.txt", true, false, 11},
     {"AES_256_CBC_SHA1_TLS", EVP_aead_aes_256_cbc_sha1_tls,
-     "aes_256_cbc_sha1_tls_tests.txt", true, false, 11, false},
+     "aes_256_cbc_sha1_tls_tests.txt", true, false, 11},
     {"AES_256_CBC_SHA1_TLSImplicitIV",
      EVP_aead_aes_256_cbc_sha1_tls_implicit_iv,
-     "aes_256_cbc_sha1_tls_implicit_iv_tests.txt", true, false, 11, false},
+     "aes_256_cbc_sha1_tls_implicit_iv_tests.txt", true, false, 11},
     {"AES_256_CBC_SHA256_TLS", EVP_aead_aes_256_cbc_sha256_tls,
-     "aes_256_cbc_sha256_tls_tests.txt", true, false, 11, false},
+     "aes_256_cbc_sha256_tls_tests.txt", true, false, 11},
     {"AES_256_CBC_SHA384_TLS", EVP_aead_aes_256_cbc_sha384_tls,
-     "aes_256_cbc_sha384_tls_tests.txt", true, false, 11, false},
+     "aes_256_cbc_sha384_tls_tests.txt", true, false, 11},
     {"DES_EDE3_CBC_SHA1_TLS", EVP_aead_des_ede3_cbc_sha1_tls,
-     "des_ede3_cbc_sha1_tls_tests.txt", true, false, 11, false},
+     "des_ede3_cbc_sha1_tls_tests.txt", true, false, 11},
     {"DES_EDE3_CBC_SHA1_TLSImplicitIV",
      EVP_aead_des_ede3_cbc_sha1_tls_implicit_iv,
-     "des_ede3_cbc_sha1_tls_implicit_iv_tests.txt", true, false, 11, false},
+     "des_ede3_cbc_sha1_tls_implicit_iv_tests.txt", true, false, 11},
     {"AES_128_CBC_SHA1_SSL3", EVP_aead_aes_128_cbc_sha1_ssl3,
-     "aes_128_cbc_sha1_ssl3_tests.txt", true, false, 9, false},
+     "aes_128_cbc_sha1_ssl3_tests.txt", true, false, 9},
     {"AES_256_CBC_SHA1_SSL3", EVP_aead_aes_256_cbc_sha1_ssl3,
-     "aes_256_cbc_sha1_ssl3_tests.txt", true, false, 9, false},
+     "aes_256_cbc_sha1_ssl3_tests.txt", true, false, 9},
     {"DES_EDE3_CBC_SHA1_SSL3", EVP_aead_des_ede3_cbc_sha1_ssl3,
-     "des_ede3_cbc_sha1_ssl3_tests.txt", true, false, 9, false},
+     "des_ede3_cbc_sha1_ssl3_tests.txt", true, false, 9},
     {"AES_128_CTR_HMAC_SHA256", EVP_aead_aes_128_ctr_hmac_sha256,
-     "aes_128_ctr_hmac_sha256.txt", false, true, 0, true},
+     "aes_128_ctr_hmac_sha256.txt", false, true, 0},
     {"AES_256_CTR_HMAC_SHA256", EVP_aead_aes_256_ctr_hmac_sha256,
-     "aes_256_ctr_hmac_sha256.txt", false, true, 0, true},
+     "aes_256_ctr_hmac_sha256.txt", false, true, 0},
 };
 
 class PerAEADTest : public testing::TestWithParam<KnownAEAD> {
@@ -256,12 +255,6 @@ TEST_P(PerAEADTest, TestVectorScatterGather) {
       OPENSSL_memcpy(out_tag.data(), tag.data(), tag.size());
     }
 
-    // Skip decryption for AEADs that don't implement open_gather().
-    if (!aead_config.has_open_gather) {
-      (void) t->HasAttribute("FAILS");  // All attributes need to be used.
-      return;
-    }
-
     // The "stateful" AEADs for implementing pre-AEAD cipher suites need to be
     // reset after each operation.
     ctx.Reset();
@@ -272,6 +265,17 @@ TEST_P(PerAEADTest, TestVectorScatterGather) {
     int ret = EVP_AEAD_CTX_open_gather(
         ctx.get(), out2.data(), nonce.data(), nonce.size(), out.data(),
         out.size(), out_tag.data(), out_tag.size(), ad.data(), ad.size());
+
+    // Skip decryption for AEADs that don't implement open_gather().
+    if (!ret) {
+      int err = ERR_peek_error();
+      if (ERR_GET_LIB(err) == ERR_LIB_CIPHER &&
+          ERR_GET_REASON(err) == CIPHER_R_CTRL_NOT_IMPLEMENTED) {
+          (void)t->HasAttribute("FAILS");  // All attributes need to be used.
+          return;
+        }
+    }
+
     if (t->HasAttribute("FAILS")) {
       ASSERT_FALSE(ret) << "Decrypted bad data";
       ERR_clear_error();
