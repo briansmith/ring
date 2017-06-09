@@ -609,6 +609,7 @@ fn cc(file: &Path, ext: &str, target: &Target, warnings_are_errors: bool,
         // http://www.openwall.com/lists/musl/2015/02/04/3
         // http://www.openwall.com/lists/musl/2015/06/17/1
         let _ = c.flag("-U_FORTIFY_SOURCE");
+        let _ = c.flag("-shared");
     }
     if target.os() == "android" {
         // Define __ANDROID_API__ to the Android API level we want.
