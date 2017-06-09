@@ -238,6 +238,7 @@ add_executable(
   evp/evp_extra_test.cc
   evp/evp_test.cc
   evp/pbkdf_test.cc
+  evp/scrypt_test.cc
   fipsmodule/aes/aes_test.cc
   fipsmodule/bn/bn_test.cc
   fipsmodule/ec/ec_test.cc

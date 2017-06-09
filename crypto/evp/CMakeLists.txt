@@ -18,5 +18,6 @@ add_library(
   p_rsa_asn1.c
   pbkdf.c
   print.c
+  scrypt.c
   sign.c
 )

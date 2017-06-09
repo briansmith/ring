@@ -433,6 +433,20 @@ OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC_SHA1(const char *password,
                                           unsigned iterations, size_t key_len,
                                           uint8_t *out_key);
 
+/* EVP_PBE_scrypt expands |password| into a secret key of length |key_len| using
+ * scrypt, as described in RFC 7914, and writes the result to |out_key|. It
+ * returns one on success and zero on error.
+ *
+ * |N|, |r|, and |p| are as described in RFC 7914 section 6. They determine the
+ * cost of the operation. If the memory required exceeds |max_mem|, the
+ * operation will fail instead. If |max_mem| is zero, a defult limit of 32MiB
+ * will be used. */
+OPENSSL_EXPORT int EVP_PBE_scrypt(const char *password, size_t password_len,
+                                  const uint8_t *salt, size_t salt_len,
+                                  uint64_t N, uint64_t r, uint64_t p,
+                                  size_t max_mem, uint8_t *out_key,
+                                  size_t key_len);
+
 
 /* Public key contexts.
  *
@@ -857,5 +871,7 @@ BORINGSSL_MAKE_DELETER(EVP_PKEY_CTX, EVP_PKEY_CTX_free)
 #define EVP_R_UNSUPPORTED_PUBLIC_KEY_TYPE 129
 #define EVP_R_NOT_A_PRIVATE_KEY 130
 #define EVP_R_INVALID_SIGNATURE 131
+#define EVP_R_MEMORY_LIMIT_EXCEEDED 132
+#define EVP_R_INVALID_PARAMETERS 133
 
 #endif  /* OPENSSL_HEADER_EVP_H */

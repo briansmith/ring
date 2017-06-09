@@ -29,6 +29,7 @@
 #include <openssl/ec.h>
 #include <openssl/ecdsa.h>
 #include <openssl/ec_key.h>
+#include <openssl/evp.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
@@ -576,6 +577,41 @@ static bool SpeedSPAKE2(const std::string &selected) {
   return true;
 }
 
+static bool SpeedScrypt(const std::string &selected) {
+  if (!selected.empty() && selected.find("scrypt") == std::string::npos) {
+    return true;
+  }
+
+  TimeResults results;
+
+  static const char kPassword[] = "password";
+  static const uint8_t kSalt[] = "NaCl";
+
+  if (!TimeFunction(&results, [&]() -> bool {
+        uint8_t out[64];
+        return !!EVP_PBE_scrypt(kPassword, sizeof(kPassword) - 1, kSalt,
+                                sizeof(kSalt) - 1, 1024, 8, 16, 0 /* max_mem */,
+                                out, sizeof(out));
+      })) {
+    fprintf(stderr, "scrypt failed.\n");
+    return false;
+  }
+  results.Print("scrypt (N = 1024, r = 8, p = 16)");
+
+  if (!TimeFunction(&results, [&]() -> bool {
+        uint8_t out[64];
+        return !!EVP_PBE_scrypt(kPassword, sizeof(kPassword) - 1, kSalt,
+                                sizeof(kSalt) - 1, 16384, 8, 1, 0 /* max_mem */,
+                                out, sizeof(out));
+      })) {
+    fprintf(stderr, "scrypt failed.\n");
+    return false;
+  }
+  results.Print("scrypt (N = 16384, r = 8, p = 1)");
+
+  return true;
+}
+
 static const struct argument kArguments[] = {
     {
      "-filter", kOptionalArgument,
@@ -666,7 +702,8 @@ bool Speed(const std::vector<std::string> &args) {
       !SpeedECDH(selected) ||
       !SpeedECDSA(selected) ||
       !Speed25519(selected) ||
-      !SpeedSPAKE2(selected)) {
+      !SpeedSPAKE2(selected) ||
+      !SpeedScrypt(selected)) {
     return false;
   }
 
