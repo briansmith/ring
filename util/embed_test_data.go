@@ -46,7 +46,7 @@ func quote(in []byte) string {
 		case '"':
 			buf.WriteString(`\"`)
 		default:
-			if unicode.IsPrint(rune(b)) {
+			if rune(b) > 127 || unicode.IsPrint(rune(b)) {
 				buf.WriteByte(b)
 			} else {
 				fmt.Fprintf(&buf, "\\x%02x", b)

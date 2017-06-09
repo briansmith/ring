@@ -21,11 +21,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <gtest/gtest.h>
+
 #include <openssl/bn.h>
 #include <openssl/mem.h>
 
 #include "../bn/internal.h"
 #include "../../test/file_test.h"
+#include "../../test/test_util.h"
 #include "p256-x86_64.h"
 
 
@@ -34,7 +37,7 @@
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
     !defined(OPENSSL_SMALL) && !defined(BORINGSSL_SHARED_LIBRARY)
 
-static bool TestSelectW5() {
+TEST(P256_X86_64Test, SelectW5) {
   // Fill a table with some garbage input.
   P256_POINT table[16];
   for (size_t i = 0; i < 16; i++) {
@@ -54,16 +57,12 @@ static bool TestSelectW5() {
       expected = table[i-1];
     }
 
-    if (OPENSSL_memcmp(&val, &expected, sizeof(P256_POINT)) != 0) {
-      fprintf(stderr, "ecp_nistz256_select_w5(%d) gave the wrong value.\n", i);
-      return false;
-    }
+    EXPECT_EQ(Bytes(reinterpret_cast<const char *>(&expected), sizeof(expected)),
+              Bytes(reinterpret_cast<const char *>(&val), sizeof(val)));
   }
-
-  return true;
 }
 
-static bool TestSelectW7() {
+TEST(P256_X86_64Test, SelectW7) {
   // Fill a table with some garbage input.
   P256_POINT_AFFINE table[64];
   for (size_t i = 0; i < 64; i++) {
@@ -82,13 +81,9 @@ static bool TestSelectW7() {
       expected = table[i-1];
     }
 
-    if (OPENSSL_memcmp(&val, &expected, sizeof(P256_POINT_AFFINE)) != 0) {
-      fprintf(stderr, "ecp_nistz256_select_w7(%d) gave the wrong value.\n", i);
-      return false;
-    }
+    EXPECT_EQ(Bytes(reinterpret_cast<const char *>(&expected), sizeof(expected)),
+              Bytes(reinterpret_cast<const char *>(&val), sizeof(val)));
   }
-
-  return true;
 }
 
 static bool GetFieldElement(FileTest *t, BN_ULONG out[P256_LIMBS],
@@ -99,7 +94,7 @@ static bool GetFieldElement(FileTest *t, BN_ULONG out[P256_LIMBS],
   }
 
   if (bytes.size() != BN_BYTES * P256_LIMBS) {
-    t->PrintLine("Invalid length: %s", name);
+    ADD_FAILURE() << "Invalid length: " << name;
     return false;
   }
 
@@ -124,18 +119,22 @@ static std::string FieldElementToString(const BN_ULONG a[P256_LIMBS]) {
   return ret;
 }
 
-static bool ExpectFieldElementsEqual(FileTest *t, const char *message,
-                                     const BN_ULONG expected[P256_LIMBS],
-                                     const BN_ULONG actual[P256_LIMBS]) {
+static testing::AssertionResult ExpectFieldElementsEqual(
+    const char *expected_expr, const char *actual_expr,
+    const BN_ULONG expected[P256_LIMBS], const BN_ULONG actual[P256_LIMBS]) {
   if (OPENSSL_memcmp(expected, actual, sizeof(BN_ULONG) * P256_LIMBS) == 0) {
-    return true;
+    return testing::AssertionSuccess();
   }
 
-  t->PrintLine("%s", message);
-  t->PrintLine("Expected: %s", FieldElementToString(expected).c_str());
-  t->PrintLine("Actual:   %s", FieldElementToString(actual).c_str());
-  return false;
+  return testing::AssertionFailure()
+         << "Expected: " << FieldElementToString(expected) << " ("
+         << expected_expr << ")\n"
+         << "Actual:   " << FieldElementToString(actual) << " (" << actual_expr
+         << ")";
 }
+
+#define EXPECT_FIELD_ELEMENTS_EQUAL(a, b) \
+  EXPECT_PRED_FORMAT2(ExpectFieldElementsEqual, a, b)
 
 static bool PointToAffine(P256_POINT_AFFINE *out, const P256_POINT *in) {
   static const uint8_t kP[] = {
@@ -194,315 +193,194 @@ static bool PointToAffine(P256_POINT_AFFINE *out, const P256_POINT *in) {
   return true;
 }
 
-static bool ExpectPointsEqual(FileTest *t, const char *message,
-                              const P256_POINT_AFFINE *expected,
-                              const P256_POINT *point) {
+static testing::AssertionResult ExpectPointsEqual(
+    const char *expected_expr, const char *actual_expr,
+    const P256_POINT_AFFINE *expected, const P256_POINT *actual) {
   // There are multiple representations of the same |P256_POINT|, so convert to
   // |P256_POINT_AFFINE| and compare.
   P256_POINT_AFFINE affine;
-  if (!PointToAffine(&affine, point)) {
-    t->PrintLine("%s", message);
-    t->PrintLine("Could not convert to affine: (%s, %s, %s)",
-                 FieldElementToString(point->X).c_str(),
-                 FieldElementToString(point->Y).c_str(),
-                 FieldElementToString(point->Z).c_str());
-    return false;
+  if (!PointToAffine(&affine, actual)) {
+    return testing::AssertionFailure()
+           << "Could not convert " << actual_expr << " to affine: ("
+           << FieldElementToString(actual->X) << ", "
+           << FieldElementToString(actual->Y) << ", "
+           << FieldElementToString(actual->Z) << ")";
   }
 
   if (OPENSSL_memcmp(expected, &affine, sizeof(P256_POINT_AFFINE)) != 0) {
-    t->PrintLine("%s", message);
-    t->PrintLine("Expected: (%s, %s)",
-                 FieldElementToString(expected->X).c_str(),
-                 FieldElementToString(expected->Y).c_str());
-    t->PrintLine("Actual:   (%s, %s)", FieldElementToString(affine.X).c_str(),
-                 FieldElementToString(affine.Y).c_str());
-    return false;
+    return testing::AssertionFailure()
+           << "Expected: (" << FieldElementToString(expected->X) << ", "
+           << FieldElementToString(expected->Y) << ") (" << expected_expr
+           << "; affine)\n"
+           << "Actual:   (" << FieldElementToString(affine.X) << ", "
+           << FieldElementToString(affine.Y) << ") (" << actual_expr << ")";
   }
 
-  return true;
+  return testing::AssertionSuccess();
 }
 
-static bool TestNegate(FileTest *t) {
+#define EXPECT_POINTS_EQUAL(a, b) EXPECT_PRED_FORMAT2(ExpectPointsEqual, a, b)
+
+static void TestNegate(FileTest *t) {
   BN_ULONG a[P256_LIMBS], b[P256_LIMBS];
-  if (!GetFieldElement(t, a, "A") ||
-      !GetFieldElement(t, b, "B")) {
-    return false;
-  }
+  ASSERT_TRUE(GetFieldElement(t, a, "A"));
+  ASSERT_TRUE(GetFieldElement(t, b, "B"));
 
   // Test that -A = B.
   BN_ULONG ret[P256_LIMBS];
   ecp_nistz256_neg(ret, a);
-  if (!ExpectFieldElementsEqual(t, "ecp_nistz256_neg(A) was incorrect.", b,
-                                ret)) {
-    return false;
-  }
+  EXPECT_FIELD_ELEMENTS_EQUAL(b, ret);
 
   OPENSSL_memcpy(ret, a, sizeof(ret));
-  ecp_nistz256_neg(ret, ret);
-  if (!ExpectFieldElementsEqual(
-          t, "In-place ecp_nistz256_neg(A) was incorrect.", b, ret)) {
-    return false;
-  }
+  ecp_nistz256_neg(ret, ret /* a */);
+  EXPECT_FIELD_ELEMENTS_EQUAL(b, ret);
 
   // Test that -B = A.
   ecp_nistz256_neg(ret, b);
-  if (!ExpectFieldElementsEqual(t, "ecp_nistz256_neg(B) was incorrect.", a,
-                                ret)) {
-    return false;
-  }
+  EXPECT_FIELD_ELEMENTS_EQUAL(a, ret);
 
   OPENSSL_memcpy(ret, b, sizeof(ret));
-  ecp_nistz256_neg(ret, ret);
-  if (!ExpectFieldElementsEqual(
-          t, "In-place ecp_nistz256_neg(B) was incorrect.", a, ret)) {
-    return false;
-  }
-
-  return true;
+  ecp_nistz256_neg(ret, ret /* b */);
+  EXPECT_FIELD_ELEMENTS_EQUAL(a, ret);
 }
 
-static bool TestMulMont(FileTest *t) {
+static void TestMulMont(FileTest *t) {
   BN_ULONG a[P256_LIMBS], b[P256_LIMBS], result[P256_LIMBS];
-  if (!GetFieldElement(t, a, "A") ||
-      !GetFieldElement(t, b, "B") ||
-      !GetFieldElement(t, result, "Result")) {
-    return false;
-  }
+  ASSERT_TRUE(GetFieldElement(t, a, "A"));
+  ASSERT_TRUE(GetFieldElement(t, b, "B"));
+  ASSERT_TRUE(GetFieldElement(t, result, "Result"));
 
   BN_ULONG ret[P256_LIMBS];
   ecp_nistz256_mul_mont(ret, a, b);
-  if (!ExpectFieldElementsEqual(t, "ecp_nistz256_mul_mont(A, B) was incorrect.",
-                                result, ret)) {
-    return false;
-  }
+  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
 
   ecp_nistz256_mul_mont(ret, b, a);
-  if (!ExpectFieldElementsEqual(t, "ecp_nistz256_mul_mont(B, A) was incorrect.",
-                                result, ret)) {
-    return false;
-  }
+  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
 
   OPENSSL_memcpy(ret, a, sizeof(ret));
-  ecp_nistz256_mul_mont(ret, ret, b);
-  if (!ExpectFieldElementsEqual(
-          t, "ecp_nistz256_mul_mont(ret = A, B) was incorrect.", result, ret)) {
-    return false;
-  }
+  ecp_nistz256_mul_mont(ret, ret /* a */, b);
+  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
 
   OPENSSL_memcpy(ret, a, sizeof(ret));
   ecp_nistz256_mul_mont(ret, b, ret);
-  if (!ExpectFieldElementsEqual(
-          t, "ecp_nistz256_mul_mont(B, ret = A) was incorrect.", result, ret)) {
-    return false;
-  }
+  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
 
   OPENSSL_memcpy(ret, b, sizeof(ret));
-  ecp_nistz256_mul_mont(ret, a, ret);
-  if (!ExpectFieldElementsEqual(
-          t, "ecp_nistz256_mul_mont(A, ret = B) was incorrect.", result, ret)) {
-    return false;
-  }
+  ecp_nistz256_mul_mont(ret, a, ret /* b */);
+  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
 
   OPENSSL_memcpy(ret, b, sizeof(ret));
-  ecp_nistz256_mul_mont(ret, ret, a);
-  if (!ExpectFieldElementsEqual(
-          t, "ecp_nistz256_mul_mont(ret = B, A) was incorrect.", result, ret)) {
-    return false;
-  }
+  ecp_nistz256_mul_mont(ret, ret /* b */, a);
+  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
 
   if (OPENSSL_memcmp(a, b, sizeof(a)) == 0) {
     ecp_nistz256_sqr_mont(ret, a);
-    if (!ExpectFieldElementsEqual(t, "ecp_nistz256_sqr_mont(A) was incorrect.",
-                                  result, ret)) {
-      return false;
-    }
+    EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
 
     OPENSSL_memcpy(ret, a, sizeof(ret));
-    ecp_nistz256_sqr_mont(ret, ret);
-    if (!ExpectFieldElementsEqual(
-            t, "ecp_nistz256_sqr_mont(ret = A) was incorrect.", result, ret)) {
-      return false;
-    }
+    ecp_nistz256_sqr_mont(ret, ret /* a */);
+    EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
   }
-
-  return true;
 }
 
-static bool TestFromMont(FileTest *t) {
+static void TestFromMont(FileTest *t) {
   BN_ULONG a[P256_LIMBS], result[P256_LIMBS];
-  if (!GetFieldElement(t, a, "A") ||
-      !GetFieldElement(t, result, "Result")) {
-    return false;
-  }
+  ASSERT_TRUE(GetFieldElement(t, a, "A"));
+  ASSERT_TRUE(GetFieldElement(t, result, "Result"));
 
   BN_ULONG ret[P256_LIMBS];
   ecp_nistz256_from_mont(ret, a);
-  if (!ExpectFieldElementsEqual(t, "ecp_nistz256_from_mont(A) was incorrect.",
-                                result, ret)) {
-    return false;
-  }
+  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
 
   OPENSSL_memcpy(ret, a, sizeof(ret));
-  ecp_nistz256_from_mont(ret, ret);
-  if (!ExpectFieldElementsEqual(
-          t, "ecp_nistz256_from_mont(ret = A) was incorrect.", result, ret)) {
-    return false;
-  }
-
-  return true;
+  ecp_nistz256_from_mont(ret, ret /* a */);
+  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
 }
 
-static bool TestPointAdd(FileTest *t) {
+static void TestPointAdd(FileTest *t) {
   P256_POINT a, b;
   P256_POINT_AFFINE result;
-  if (!GetFieldElement(t, a.X, "A.X") ||
-      !GetFieldElement(t, a.Y, "A.Y") ||
-      !GetFieldElement(t, a.Z, "A.Z") ||
-      !GetFieldElement(t, b.X, "B.X") ||
-      !GetFieldElement(t, b.Y, "B.Y") ||
-      !GetFieldElement(t, b.Z, "B.Z") ||
-      !GetFieldElement(t, result.X, "Result.X") ||
-      !GetFieldElement(t, result.Y, "Result.Y")) {
-    return false;
-  }
+  ASSERT_TRUE(GetFieldElement(t, a.X, "A.X"));
+  ASSERT_TRUE(GetFieldElement(t, a.Y, "A.Y"));
+  ASSERT_TRUE(GetFieldElement(t, a.Z, "A.Z"));
+  ASSERT_TRUE(GetFieldElement(t, b.X, "B.X"));
+  ASSERT_TRUE(GetFieldElement(t, b.Y, "B.Y"));
+  ASSERT_TRUE(GetFieldElement(t, b.Z, "B.Z"));
+  ASSERT_TRUE(GetFieldElement(t, result.X, "Result.X"));
+  ASSERT_TRUE(GetFieldElement(t, result.Y, "Result.Y"));
 
   P256_POINT ret;
   ecp_nistz256_point_add(&ret, &a, &b);
-  if (!ExpectPointsEqual(t, "ecp_nistz256_point_add(A, B) was incorrect.",
-                         &result, &ret)) {
-    return false;
-  }
+  EXPECT_POINTS_EQUAL(&result, &ret);
 
   ecp_nistz256_point_add(&ret, &b, &a);
-  if (!ExpectPointsEqual(t, "ecp_nistz256_point_add(B, A) was incorrect.",
-                         &result, &ret)) {
-    return false;
-  }
+  EXPECT_POINTS_EQUAL(&result, &ret);
 
   OPENSSL_memcpy(&ret, &a, sizeof(ret));
-  ecp_nistz256_point_add(&ret, &ret, &b);
-  if (!ExpectPointsEqual(t, "ecp_nistz256_point_add(ret = A, B) was incorrect.",
-                         &result, &ret)) {
-    return false;
-  }
+  ecp_nistz256_point_add(&ret, &ret /* a */, &b);
+  EXPECT_POINTS_EQUAL(&result, &ret);
 
   OPENSSL_memcpy(&ret, &a, sizeof(ret));
-  ecp_nistz256_point_add(&ret, &b, &ret);
-  if (!ExpectPointsEqual(t, "ecp_nistz256_point_add(B, ret = A) was incorrect.",
-                         &result, &ret)) {
-    return false;
-  }
+  ecp_nistz256_point_add(&ret, &b, &ret /* a */);
+  EXPECT_POINTS_EQUAL(&result, &ret);
 
   OPENSSL_memcpy(&ret, &b, sizeof(ret));
-  ecp_nistz256_point_add(&ret, &a, &ret);
-  if (!ExpectPointsEqual(t, "ecp_nistz256_point_add(ret = A, B) was incorrect.",
-                         &result, &ret)) {
-    return false;
-  }
+  ecp_nistz256_point_add(&ret, &a, &ret /* b */);
+  EXPECT_POINTS_EQUAL(&result, &ret);
 
   OPENSSL_memcpy(&ret, &b, sizeof(ret));
-  ecp_nistz256_point_add(&ret, &ret, &a);
-  if (!ExpectPointsEqual(t, "ecp_nistz256_point_add(ret = B, A) was incorrect.",
-                         &result, &ret)) {
-    return false;
-  }
+  ecp_nistz256_point_add(&ret, &ret /* b */, &a);
+  EXPECT_POINTS_EQUAL(&result, &ret);
 
   P256_POINT_AFFINE a_affine, b_affine, infinity;
   OPENSSL_memset(&infinity, 0, sizeof(infinity));
-  if (!PointToAffine(&a_affine, &a) ||
-      !PointToAffine(&b_affine, &b)) {
-    return false;
-  }
+  ASSERT_TRUE(PointToAffine(&a_affine, &a));
+  ASSERT_TRUE(PointToAffine(&b_affine, &b));
 
   // ecp_nistz256_point_add_affine does not work when a == b unless doubling the
   // point at infinity.
   if (OPENSSL_memcmp(&a_affine, &b_affine, sizeof(a_affine)) != 0 ||
       OPENSSL_memcmp(&a_affine, &infinity, sizeof(a_affine)) == 0) {
     ecp_nistz256_point_add_affine(&ret, &a, &b_affine);
-    if (!ExpectPointsEqual(t,
-                           "ecp_nistz256_point_add_affine(A, B) was incorrect.",
-                           &result, &ret)) {
-      return false;
-    }
+    EXPECT_POINTS_EQUAL(&result, &ret);
 
     OPENSSL_memcpy(&ret, &a, sizeof(ret));
-    ecp_nistz256_point_add_affine(&ret, &ret, &b_affine);
-    if (!ExpectPointsEqual(
-            t, "ecp_nistz256_point_add_affine(ret = A, B) was incorrect.",
-            &result, &ret)) {
-      return false;
-    }
+    ecp_nistz256_point_add_affine(&ret, &ret /* a */, &b_affine);
+    EXPECT_POINTS_EQUAL(&result, &ret);
 
     ecp_nistz256_point_add_affine(&ret, &b, &a_affine);
-    if (!ExpectPointsEqual(t,
-                           "ecp_nistz256_point_add_affine(B, A) was incorrect.",
-                           &result, &ret)) {
-      return false;
-    }
+    EXPECT_POINTS_EQUAL(&result, &ret);
 
     OPENSSL_memcpy(&ret, &b, sizeof(ret));
-    ecp_nistz256_point_add_affine(&ret, &ret, &a_affine);
-    if (!ExpectPointsEqual(
-            t, "ecp_nistz256_point_add_affine(ret = B, A) was incorrect.",
-            &result, &ret)) {
-      return false;
-    }
+    ecp_nistz256_point_add_affine(&ret, &ret /* b */, &a_affine);
+    EXPECT_POINTS_EQUAL(&result, &ret);
   }
 
   if (OPENSSL_memcmp(&a, &b, sizeof(a)) == 0) {
     ecp_nistz256_point_double(&ret, &a);
-    if (!ExpectPointsEqual(t, "ecp_nistz256_point_double(A) was incorrect.",
-                           &result, &ret)) {
-      return false;
-    }
+    EXPECT_POINTS_EQUAL(&result, &ret);
 
     ret = a;
-    ecp_nistz256_point_double(&ret, &ret);
-    if (!ExpectPointsEqual(
-            t, "In-place ecp_nistz256_point_double(A) was incorrect.", &result,
-            &ret)) {
-      return false;
-    }
+    ecp_nistz256_point_double(&ret, &ret /* a */);
+    EXPECT_POINTS_EQUAL(&result, &ret);
   }
-
-  return true;
 }
 
-int main(int argc, char **argv) {
-  if (argc != 2) {
-    fprintf(stderr, "%s TEST_FILE\n", argv[0]);
-    return 1;
-  }
-
-  if (!TestSelectW5() ||
-      !TestSelectW7()) {
-    return 1;
-  }
-
-  return FileTestMain([](FileTest *t, void *) -> bool {
+TEST(P256_X86_64Test, TestVectors) {
+  return FileTestGTest("crypto/fipsmodule/ec/p256-x86_64_tests.txt",
+                       [](FileTest *t) {
     if (t->GetParameter() == "Negate") {
-      return TestNegate(t);
+      TestNegate(t);
+    } else if (t->GetParameter() == "MulMont") {
+      TestMulMont(t);
+    } else if (t->GetParameter() == "FromMont") {
+      TestFromMont(t);
+    } else if (t->GetParameter() == "PointAdd") {
+      TestPointAdd(t);
+    } else {
+      FAIL() << "Unknown test type:" << t->GetParameter();
     }
-    if (t->GetParameter() == "MulMont") {
-      return TestMulMont(t);
-    }
-    if (t->GetParameter() == "FromMont") {
-      return TestFromMont(t);
-    }
-    if (t->GetParameter() == "PointAdd") {
-      return TestPointAdd(t);
-    }
-
-    t->PrintLine("Unknown test type: %s", t->GetParameter().c_str());
-    return false;
-  }, nullptr, argv[1]);
-}
-
-#else
-
-int main() {
-  printf("PASS\n");
-  return 0;
+  });
 }
 
 #endif

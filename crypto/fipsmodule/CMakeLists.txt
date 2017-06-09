@@ -203,14 +203,4 @@ add_executable(
 )
 
 target_link_libraries(example_mul crypto)
-
-add_executable(
-  p256-x86_64_test
-
-  ec/p256-x86_64_test.cc
-
-  $<TARGET_OBJECTS:test_support>
-)
-
-target_link_libraries(p256-x86_64_test crypto)
-add_dependencies(all_tests example_mul p256-x86_64_test)
+add_dependencies(all_tests example_mul)
