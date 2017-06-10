@@ -165,6 +165,7 @@ impl signature::VerificationAlgorithm for ECDSAVerificationAlgorithm {
 impl private::Private for ECDSAVerificationAlgorithm {}
 
 /// An ECDSA key pair, used for signing.
+#[doc(hidden)]
 pub struct ECDSAKeyPair {
     #[allow(dead_code)] // XXX: Temporary, since signing isn't implemented yet.
     key_pair: ec::KeyPair,
@@ -312,6 +313,7 @@ fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
+#[doc(hidden)]
 pub static ECDSA_P256_SHA256_FIXED_SIGNING: ECDSASigningAlgorithm =
         ECDSASigningAlgorithm {
     curve: &ec::suite_b::curve::P256,
@@ -336,6 +338,7 @@ pub static ECDSA_P256_SHA256_FIXED: ECDSAVerificationAlgorithm =
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
+#[doc(hidden)]
 pub static ECDSA_P384_SHA384_FIXED_SIGNING: ECDSASigningAlgorithm =
         ECDSASigningAlgorithm {
     curve: &ec::suite_b::curve::P384,
@@ -360,6 +363,7 @@ pub static ECDSA_P384_SHA384_FIXED: ECDSAVerificationAlgorithm =
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
+#[doc(hidden)]
 pub static ECDSA_P256_SHA256_ASN1_SIGNING: ECDSASigningAlgorithm =
         ECDSASigningAlgorithm {
     curve: &ec::suite_b::curve::P256,
@@ -420,6 +424,7 @@ pub static ECDSA_P384_SHA256_ASN1: ECDSAVerificationAlgorithm =
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
+#[doc(hidden)]
 pub static ECDSA_P384_SHA384_ASN1_SIGNING: ECDSASigningAlgorithm =
         ECDSASigningAlgorithm {
     curve: &ec::suite_b::curve::P384,
