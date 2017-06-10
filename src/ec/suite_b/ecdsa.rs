@@ -332,7 +332,7 @@ pub static ECDSA_P256_SHA256_FIXED: ECDSAVerificationAlgorithm =
 };
 
 /// Signing of fixed-length (PKCS#11 style) ECDSA signatures using the
-/// P-256 curve and SHA-256.
+/// P-384 curve and SHA-384.
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
@@ -355,8 +355,8 @@ pub static ECDSA_P384_SHA384_FIXED: ECDSAVerificationAlgorithm =
     id: ECDSAVerificationAlgorithmID::ECDSA_P384_SHA384_FIXED,
 };
 
-/// Signing of fixed-length (PKCS#11 style) ECDSA signatures using the
-/// P-256 curve and SHA-256.
+/// Signing of ASN.1 DER-encoded ECDSA signatures using the P-256 curve and
+/// SHA-256.
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
@@ -415,8 +415,8 @@ pub static ECDSA_P384_SHA256_ASN1: ECDSAVerificationAlgorithm =
     id: ECDSAVerificationAlgorithmID::ECDSA_P384_SHA256_ASN1,
 };
 
-/// Signing of fixed-length (PKCS#11 style) ECDSA signatures using the
-/// P-384 curve and SHA-384.
+/// Signing of ASN.1 DER-encoded ECDSA signatures using the P-384 curve and
+/// SHA-384.
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
