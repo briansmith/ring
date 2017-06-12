@@ -1672,4 +1672,4 @@ matrix:
 
     # END GENERATED
 
-script: if [[ "$TARGET_X" =~ ^a*.*linux-.*(droid|eabi) && "$MODE_X" == "RELWITHDEBINFO" ]]; then travis_wait 60 mk/travis.sh; else mk/travis.sh; fi
+script: if [[ "$TARGET_X" =~ ^a*.*linux-.*eabi && "$MODE_X" == "RELWITHDEBINFO" ]]; then travis_wait 60 mk/travis.sh; else mk/travis.sh; fi
