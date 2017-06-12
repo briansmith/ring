@@ -614,12 +614,7 @@ fn cc(file: &Path, ext: &str, target: &Target, warnings_are_errors: bool,
         // Define __ANDROID_API__ to the Android API level we want.
         // Needed for Android NDK Unified Headers, see:
         // https://android.googlesource.com/platform/ndk/+/master/docs/UnifiedHeaders.md#Supporting-Unified-Headers-in-Your-Build-System
-        if target.arch() == "aarch64" {
-            // Minimum API level where AArch64 is available is 21.
-            let _ = c.define("__ANDROID_API__", Some("21"));
-        } else {
-            let _ = c.define("__ANDROID_API__", Some("18"));
-        }
+        let _ = c.define("__ANDROID_API__", Some("18"));
     }
 
     let mut c = c.get_compiler().to_command();
