@@ -149,7 +149,7 @@ the table below. The C compilers listed are used for compiling the C portions.
         <code>qemu-user-arm</code>.</td>
 </tr>
 <tr><td>Android</td>
-    <td>32&#8209;bit&nbsp;ARM, AAarch64</td>
+    <td>32&#8209;bit&nbsp;ARM</td>
     <td>Built using the Android SDK 24.4.1 and Android NDK 14, tested using the
         Android emulator.</td>
 </tr>
