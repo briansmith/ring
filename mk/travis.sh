@@ -26,34 +26,21 @@ aarch64-unknown-linux-gnu)
 arm-unknown-linux-gnueabihf)
   export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
   ;;
-aarch64-linux-android)
-  ANDROID_ARCH=arm64
-  ANDROID_ABI=arm64-v8a
-  ANDROID_API=21
-  ANDROID_SYS_IMG_API=24
-  ;;
 armv7-linux-androideabi)
-  ANDROID_ARCH=arm
-  ANDROID_ABI=armeabi-v7a
-  ANDROID_API=18
-  ANDROID_SYS_IMG_API=18
-  ;;
-*)
-  ;;
-esac
-
-if [[ "$TARGET_X" =~ android ]]; then
   # install the android sdk/ndk
-  mk/travis-install-android.sh --arch ${ANDROID_ARCH} \
-                               --api-level ${ANDROID_API} \
-                               --abi-name ${ANDROID_ABI} \
-                               --sys-img-api-level ${ANDROID_SYS_IMG_API} \
+  mk/travis-install-android.sh --arch arm \
+                               --api-level 18 \
+                               --abi-name armeabi-v7a \
+                               --sys-img-api-level 18 \
                                --rust-target ${TARGET_X}
 
   export PATH=$HOME/android/android-ndk/bin:$PATH
   export PATH=$HOME/android/android-sdk-linux/platform-tools:$PATH
   export PATH=$HOME/android/android-sdk-linux/tools:$PATH
-fi
+  ;;
+*)
+  ;;
+esac
 
 if [[ "$TARGET_X" =~ ^(arm|aarch64) && ! "$TARGET_X" =~ android ]]; then
   # We need a newer QEMU than Travis has.
@@ -103,17 +90,15 @@ else
 fi
 
 case $TARGET_X in
-*-linux-android*)
+armv7-linux-androideabi)
   cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X
 
   # Building the AVD is slow. Do it here, after we build the code so that any
   # build breakage is reported sooner, instead of being delayed by this.
-  echo no | android create avd --name test --target "android-${ANDROID_SYS_IMG_API}"
+  echo no | android create avd --name arm-18 --target android-18 --abi armeabi-v7a
   android list avd
 
-  emulator @test -memory 2048 -no-skin -no-boot-anim -no-window &
-  adb wait-for-device
-  adb root
+  emulator @arm-18 -memory 2048 -no-skin -no-boot-anim -no-window &
   adb wait-for-device
 
   # Run the unit tests first.

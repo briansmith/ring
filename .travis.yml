@@ -38,30 +38,6 @@ matrix:
       os: osx
       osx_image: xcode8.2
 
-    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-gcc CXX_X=aarch64-linux-android-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
-      rust: stable
-      os: linux
-      dist: trusty
-      sudo: required
-
-    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-gcc CXX_X=aarch64-linux-android-g++ FEATURES_X= MODE_X=DEBUG KCOV=0
-      rust: stable
-      os: linux
-      dist: trusty
-      sudo: required
-
-    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-gcc CXX_X=aarch64-linux-android-g++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
-      rust: stable
-      os: linux
-      dist: trusty
-      sudo: required
-
-    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-gcc CXX_X=aarch64-linux-android-g++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
-      rust: stable
-      os: linux
-      dist: trusty
-      sudo: required
-
     - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
@@ -581,30 +557,6 @@ matrix:
       rust: nightly
       os: osx
       osx_image: xcode8.2
-
-    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-gcc CXX_X=aarch64-linux-android-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
-      rust: nightly
-      os: linux
-      dist: trusty
-      sudo: required
-
-    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-gcc CXX_X=aarch64-linux-android-g++ FEATURES_X= MODE_X=DEBUG KCOV=0
-      rust: nightly
-      os: linux
-      dist: trusty
-      sudo: required
-
-    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-gcc CXX_X=aarch64-linux-android-g++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
-      rust: nightly
-      os: linux
-      dist: trusty
-      sudo: required
-
-    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-gcc CXX_X=aarch64-linux-android-g++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
-      rust: nightly
-      os: linux
-      dist: trusty
-      sudo: required
 
     - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
@@ -1145,30 +1097,6 @@ matrix:
       rust: beta
       os: osx
       osx_image: xcode8.2
-
-    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-gcc CXX_X=aarch64-linux-android-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
-      rust: beta
-      os: linux
-      dist: trusty
-      sudo: required
-
-    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-gcc CXX_X=aarch64-linux-android-g++ FEATURES_X= MODE_X=DEBUG KCOV=0
-      rust: beta
-      os: linux
-      dist: trusty
-      sudo: required
-
-    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-gcc CXX_X=aarch64-linux-android-g++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
-      rust: beta
-      os: linux
-      dist: trusty
-      sudo: required
-
-    - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-gcc CXX_X=aarch64-linux-android-g++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
-      rust: beta
-      os: linux
-      dist: trusty
-      sudo: required
 
     - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
