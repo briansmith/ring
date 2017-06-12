@@ -37,8 +37,14 @@ if [[ ! -f $ANDROID_SDK_INSTALL_DIR/tools/emulator ]];then
 
   curl ${ANDROID_SDK_URL} | tar -zxf -
 
-  echo y | ./android-sdk-linux/tools/android update sdk -a --no-ui --filter tools,platform-tools,android-18,sys-img-armeabi-v7a-android-18
-
+  expect -c '
+set timeout 600;
+spawn ./android-sdk-linux/tools/android update sdk -a --no-ui --filter tools,platform-tools,android-18,sys-img-armeabi-v7a-android-18;
+expect {
+    "Do you accept the license" { exp_send "y\r" ; exp_continue }
+    eof
+}
+'
   popd
 fi
 
