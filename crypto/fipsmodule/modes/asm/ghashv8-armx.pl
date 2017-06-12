@@ -71,7 +71,11 @@ $code.=<<___ if ($flavour =~ /64/);
 .arch  armv8-a+crypto
 #endif
 ___
-$code.=".fpu	neon\n.code	32\n"	if ($flavour !~ /64/);
+$code.=<<___				if ($flavour !~ /64/);
+.fpu	neon
+.code	32
+#undef	__thumb2__
+___
 
 ################################################################################
 # void gcm_init_v8(u128 Htable[16],const u64 H[2]);
