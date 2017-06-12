@@ -1,4 +1,11 @@
-#!/usr/bin/env perl
+#! /usr/bin/env perl
+# Copyright 2007-2016 The OpenSSL Project Authors. All Rights Reserved.
+#
+# Licensed under the OpenSSL license (the "License").  You may not use
+# this file except in compliance with the License.  You can obtain a copy
+# in the file LICENSE in the source distribution or at
+# https://www.openssl.org/source/license.html
+
 
 # ====================================================================
 # Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
@@ -767,7 +774,7 @@ _armv4_AES_set_enc2dec_key:
 	ldr	$rounds,[r0,#240]
 	mov	$i1,r0			@ input
 	add	$i2,r0,$rounds,lsl#4
-	mov	$key,r1			@ ouput
+	mov	$key,r1			@ output
 	add	$tbl,r1,$rounds,lsl#4
 	str	$rounds,[r1,#240]
 
