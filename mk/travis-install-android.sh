@@ -21,42 +21,6 @@
 # SOFTWARE.
 set -ex
 
-ARGS=$(getopt -o a:l:b:s:r: --long arch:,api-level:,abi-name:,sys-img-api-level:,rust-target: -n 'travis-install-android.sh' -- "$@" )
-eval set -- "${ARGS}"
-
-while true; do
-  case $1 in
-  -a|--arch)
-    ARCH="${2}"
-    shift 2
-    ;;
-  -l|--api-level)
-    API="${2}"
-    shift 2
-    ;;
-  -l|--abi-name)
-    ABI="${2}"
-    shift 2
-    ;;
-  -s|--sys-img-api-level)
-    SYS_IMG_API="${2}"
-    shift 2
-    ;;
-  -r|--rust-target)
-    RUST_TARGET="${2}"
-    shift 2
-    ;;
-  --)
-    shift
-    break
-    ;;
-  *)
-    echo "Error!"
-    exit 1
-    ;;
-  esac
-done
-
 ANDROID_SDK_VERSION=${ANDROID_SDK_VERSION:-24.4.1}
 ANDROID_SDK_URL=https://dl.google.com/android/android-sdk_r${ANDROID_SDK_VERSION}-linux.tgz
 
@@ -67,10 +31,7 @@ ANDROID_INSTALL_PREFIX="${HOME}/android"
 ANDROID_SDK_INSTALL_DIR="${ANDROID_INSTALL_PREFIX}/android-sdk-linux"
 ANDROID_NDK_INSTALL_DIR="${ANDROID_INSTALL_PREFIX}/android-ndk"
 
-# We're using API 21 for AArch24 and 18 for everything else.
-# Unfortunately the only available AArch64 images have API level 24.
-# Install the extra API package and have a different option for the system image.
-ANDROID_PKGS="android-${API},android-${SYS_IMG_API},sys-img-${ABI}-android-${SYS_IMG_API}"
+ANDROID_PKGS="android-18,android-18,sys-img-armeabiv7a-android-18"
 
 mkdir -p "${ANDROID_INSTALL_PREFIX}"
 pushd "${ANDROID_INSTALL_PREFIX}"
@@ -85,11 +46,7 @@ echo y | ./android-sdk-linux/tools/android update sdk -a --no-ui --filter ${ANDR
 
 popd
 
-# Test all these directories because of the mismatch between Android arch name and rustc targets.
-if [[ ! ( -d $ANDROID_NDK_INSTALL_DIR/sysroot/usr/include/${ARCH}-linux-androideabi ||
-          -d $ANDROID_NDK_INSTALL_DIR/sysroot/usr/include/${ARCH}-linux-android     ||
-          -d $ANDROID_NDK_INSTALL_DIR/sysroot/usr/include/${RUST_TARGET} )]];then
-
+if [[ ! -d $ANDROID_NDK_INSTALL_DIR/sysroot/usr/include/arm-linux-androideabi ]];then
   mkdir -p "${ANDROID_INSTALL_PREFIX}/downloads"
   pushd "${ANDROID_INSTALL_PREFIX}/downloads"
 
@@ -98,8 +55,8 @@ if [[ ! ( -d $ANDROID_NDK_INSTALL_DIR/sysroot/usr/include/${ARCH}-linux-androide
 
   ./android-ndk-r${ANDROID_NDK_VERSION}/build/tools/make_standalone_toolchain.py \
 		 --force \
-		 --arch ${ARCH} \
-		 --api ${API} \
+		 --arch arm \
+		 --api 18 \
 		 --unified-headers \
 		 --install-dir ${ANDROID_NDK_INSTALL_DIR}
 

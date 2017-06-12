@@ -28,11 +28,7 @@ arm-unknown-linux-gnueabihf)
   ;;
 armv7-linux-androideabi)
   # install the android sdk/ndk
-  mk/travis-install-android.sh --arch arm \
-                               --api-level 18 \
-                               --abi-name armeabi-v7a \
-                               --sys-img-api-level 18 \
-                               --rust-target ${TARGET_X}
+  mk/travis-install-android.sh
 
   export PATH=$HOME/android/android-ndk/bin:$PATH
   export PATH=$HOME/android/android-sdk-linux/platform-tools:$PATH
