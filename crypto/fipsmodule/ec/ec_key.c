@@ -152,6 +152,7 @@ void EC_KEY_free(EC_KEY *r) {
   EC_GROUP_free(r->group);
   EC_POINT_free(r->pub_key);
   BN_clear_free(r->priv_key);
+  BN_free(r->fixed_k);
 
   CRYPTO_free_ex_data(g_ec_ex_data_class_bss_get(), r, &r->ex_data);
 

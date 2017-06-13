@@ -262,7 +262,11 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
     /* If possible, we'll include the private key and message digest in the k
      * generation. The |digest| argument is only empty if |ECDSA_sign_setup| is
      * being used. */
-    if (digest_len > 0) {
+    if (eckey->fixed_k != NULL) {
+      if (!BN_copy(k, eckey->fixed_k)) {
+        goto err;
+      }
+    } else if (digest_len > 0) {
       do {
         if (!BN_generate_dsa_nonce(k, order, EC_KEY_get0_private_key(eckey),
                                    digest, digest_len, ctx)) {

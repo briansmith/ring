@@ -245,8 +245,7 @@ static RSA *self_test_rsa_key(void) {
       !set_bignum(&rsa->q, kQ, sizeof(kQ)) ||
       !set_bignum(&rsa->dmp1, kDModPMinusOne, sizeof(kDModPMinusOne)) ||
       !set_bignum(&rsa->dmq1, kDModQMinusOne, sizeof(kDModQMinusOne)) ||
-      !set_bignum(&rsa->iqmp, kQInverseModP, sizeof(kQInverseModP)) ||
-      !RSA_check_fips(rsa)) {
+      !set_bignum(&rsa->iqmp, kQInverseModP, sizeof(kQInverseModP))) {
     RSA_free(rsa);
     return NULL;
   }
@@ -277,8 +276,7 @@ static EC_KEY *self_test_ecdsa_key(void) {
   BIGNUM *d = BN_bin2bn(kD, sizeof(kD), NULL);
   if (ec_key == NULL || qx == NULL || qy == NULL || d == NULL ||
       !EC_KEY_set_public_key_affine_coordinates(ec_key, qx, qy) ||
-      !EC_KEY_set_private_key(ec_key, d) ||
-      !EC_KEY_check_fips(ec_key)) {
+      !EC_KEY_set_private_key(ec_key, d)) {
     EC_KEY_free(ec_key);
     ec_key = NULL;
   }
@@ -460,6 +458,21 @@ BORINGSSL_bcm_power_on_self_test(void) {
       0xd5, 0xa8, 0x66, 0x16, 0xbd, 0x18, 0x3c, 0xf2, 0xaa, 0x7a, 0x2b,
       0x37, 0xf9, 0xab, 0x35, 0x64, 0x15, 0x01, 0x3f, 0xc4,
   };
+  const uint8_t kECDSASigR[32] = {
+      0x67, 0x80, 0xc5, 0xfc, 0x70, 0x27, 0x5e, 0x2c, 0x70, 0x61, 0xa0,
+      0xe7, 0x87, 0x7b, 0xb1, 0x74, 0xde, 0xad, 0xeb, 0x98, 0x87, 0x02,
+      0x7f, 0x3f, 0xa8, 0x36, 0x54, 0x15, 0x8b, 0xa7, 0xf5,
+#if !defined(BORINGSSL_FIPS_BREAK_ECDSA_SIG)
+      0x0c,
+#else
+      0x00,
+#endif
+  };
+  const uint8_t kECDSASigS[32] = {
+      0xa5, 0x93, 0xe0, 0x23, 0x91, 0xe7, 0x4b, 0x8d, 0x77, 0x25, 0xa6,
+      0xba, 0x4d, 0xd9, 0x86, 0x77, 0xda, 0x7d, 0x8f, 0xef, 0xc4, 0x1a,
+      0xf0, 0xcc, 0x81, 0xe5, 0xea, 0x3f, 0xc2, 0x41, 0x7f, 0xd8,
+  };
 
   AES_KEY aes_key;
   uint8_t aes_iv[16];
@@ -572,6 +585,11 @@ BORINGSSL_bcm_power_on_self_test(void) {
 
   /* RSA Sign KAT */
   unsigned sig_len;
+
+  /* Disable blinding for the power-on tests because it's not needed and
+   * triggers an entropy draw. */
+  rsa_key->flags |= RSA_FLAG_NO_BLINDING;
+
   if (!RSA_sign(NID_sha256, kPlaintextSHA256, sizeof(kPlaintextSHA256), output,
                 &sig_len, rsa_key) ||
       !check_test(kRSASignature, output, sizeof(kRSASignature),
@@ -595,15 +613,28 @@ BORINGSSL_bcm_power_on_self_test(void) {
   }
 
   /* ECDSA Sign/Verify PWCT */
+
+  /* The 'k' value for ECDSA is fixed to avoid an entropy draw. */
+  ec_key->fixed_k = BN_new();
+  if (ec_key->fixed_k == NULL ||
+      !BN_set_word(ec_key->fixed_k, 42)) {
+    printf("Out of memory\n");
+    goto err;
+  }
+
   ECDSA_SIG *sig =
       ECDSA_do_sign(kPlaintextSHA256, sizeof(kPlaintextSHA256), ec_key);
-#if defined(BORINGSSL_FIPS_BREAK_ECDSA_SIG)
-  sig->r->d[0] = ~sig->r->d[0];
-#endif
+
+  uint8_t ecdsa_r_bytes[sizeof(kECDSASigR)];
+  uint8_t ecdsa_s_bytes[sizeof(kECDSASigS)];
   if (sig == NULL ||
-      !ECDSA_do_verify(kPlaintextSHA256, sizeof(kPlaintextSHA256), sig,
-                       ec_key)) {
-    printf("ECDSA Sign/Verify power-on PWCT failed.\n");
+      BN_num_bytes(sig->r) != sizeof(ecdsa_r_bytes) ||
+      !BN_bn2bin(sig->r, ecdsa_r_bytes) ||
+      BN_num_bytes(sig->s) != sizeof(ecdsa_s_bytes) ||
+      !BN_bn2bin(sig->s, ecdsa_s_bytes) ||
+      !check_test(kECDSASigR, ecdsa_r_bytes, sizeof(kECDSASigR), "ECDSA R") ||
+      !check_test(kECDSASigS, ecdsa_s_bytes, sizeof(kECDSASigS), "ECDSA S")) {
+    printf("ECDSA KAT failed.\n");
     goto err;
   }
 
