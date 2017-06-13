@@ -679,6 +679,24 @@ TEST(RSATest, RoundKeyLengths) {
   EXPECT_EQ(1152u, BN_num_bits(rsa->n));
 }
 
+TEST(RSATest, BlindingDisabled) {
+  bssl::UniquePtr<RSA> rsa(
+      RSA_private_key_from_bytes(kTwoPrimeKey, sizeof(kTwoPrimeKey) - 1));
+  ASSERT_TRUE(rsa);
+
+  rsa->flags |= RSA_FLAG_NO_BLINDING;
+
+  uint8_t sig[256];
+  ASSERT_GE(sizeof(sig), RSA_size(rsa.get()));
+
+  static const uint8_t kZeros[32] = {0};
+  unsigned sig_len;
+  ASSERT_TRUE(
+      RSA_sign(NID_sha256, kZeros, sizeof(kZeros), sig, &sig_len, rsa.get()));
+  EXPECT_TRUE(
+      RSA_verify(NID_sha256, kZeros, sizeof(kZeros), sig, sig_len, rsa.get()));
+}
+
 #if !defined(BORINGSSL_SHARED_LIBRARY)
 TEST(RSATest, SqrtTwo) {
   bssl::UniquePtr<BIGNUM> sqrt(BN_new()), pow2(BN_new());

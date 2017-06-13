@@ -567,20 +567,18 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     goto err;
   }
 
-  /* We cannot do blinding or verification without |e|, and continuing without
-   * those countermeasures is dangerous. However, the Java/Android RSA API
-   * requires support for keys where only |d| and |n| (and not |e|) are known.
-   * The callers that require that bad behavior set |RSA_FLAG_NO_BLINDING|. */
-  int disable_security = (rsa->flags & RSA_FLAG_NO_BLINDING) && rsa->e == NULL;
+  const int do_blinding = (rsa->flags & RSA_FLAG_NO_BLINDING) == 0;
 
-  if (!disable_security) {
-    /* Keys without public exponents must have blinding explicitly disabled to
-     * be used. */
-    if (rsa->e == NULL) {
-      OPENSSL_PUT_ERROR(RSA, RSA_R_NO_PUBLIC_EXPONENT);
-      goto err;
-    }
+  if (rsa->e == NULL && do_blinding) {
+    /* We cannot do blinding or verification without |e|, and continuing without
+     * those countermeasures is dangerous. However, the Java/Android RSA API
+     * requires support for keys where only |d| and |n| (and not |e|) are known.
+     * The callers that require that bad behavior set |RSA_FLAG_NO_BLINDING|. */
+    OPENSSL_PUT_ERROR(RSA, RSA_R_NO_PUBLIC_EXPONENT);
+    goto err;
+  }
 
+  if (do_blinding) {
     blinding = rsa_blinding_get(rsa, &blinding_index, ctx);
     if (blinding == NULL) {
       OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
@@ -610,7 +608,7 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
    * than the CRT attack, but there have likely been improvements since 1997.
    *
    * This check is cheap assuming |e| is small; it almost always is. */
-  if (!disable_security) {
+  if (rsa->e != NULL) {
     BIGNUM *vrfy = BN_CTX_get(ctx);
     if (vrfy == NULL ||
         !BN_mod_exp_mont(vrfy, result, rsa->e, rsa->n, ctx, rsa->mont_n) ||
@@ -619,9 +617,11 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
       goto err;
     }
 
-    if (!BN_BLINDING_invert(result, blinding, rsa->mont_n, ctx)) {
-      goto err;
-    }
+  }
+
+  if (do_blinding &&
+      !BN_BLINDING_invert(result, blinding, rsa->mont_n, ctx)) {
+    goto err;
   }
 
   if (!BN_bn2bin_padded(out, len, result)) {
