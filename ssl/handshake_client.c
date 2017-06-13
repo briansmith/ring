@@ -653,17 +653,30 @@ int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
   }
 
   /* Renegotiations do not participate in session resumption. */
-  int has_session = ssl->session != NULL &&
-                    !ssl->s3->initial_handshake_complete;
+  int has_session_id = ssl->session != NULL &&
+                       !ssl->s3->initial_handshake_complete &&
+                       ssl->session->session_id_length > 0;
 
   CBB child;
   if (!CBB_add_u16(&body, hs->client_version) ||
       !CBB_add_bytes(&body, ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
-      !CBB_add_u8_length_prefixed(&body, &child) ||
-      (has_session &&
-       !CBB_add_bytes(&child, ssl->session->session_id,
-                      ssl->session->session_id_length))) {
+      !CBB_add_u8_length_prefixed(&body, &child)) {
     goto err;
+  }
+
+  if (has_session_id) {
+    if (!CBB_add_bytes(&child, ssl->session->session_id,
+                       ssl->session->session_id_length)) {
+      goto err;
+    }
+  } else {
+    /* In TLS 1.3 experimental encodings, send a fake placeholder session ID
+     * when we do not otherwise have one to send. */
+    if (hs->max_version >= TLS1_3_VERSION &&
+        ssl->ctx->tls13_variant != tls13_default &&
+        !CBB_add_bytes(&child, hs->session_id, hs->session_id_len)) {
+      goto err;
+    }
   }
 
   if (SSL_is_dtls(ssl)) {
@@ -746,6 +759,14 @@ static int ssl3_send_client_hello(SSL_HANDSHAKE *hs) {
   if ((!SSL_is_dtls(ssl) || !ssl->d1->send_cookie) &&
       !RAND_bytes(ssl->s3->client_random, sizeof(ssl->s3->client_random))) {
     return -1;
+  }
+
+  /* Initialize a random session ID for the experimental TLS 1.3 variant. */
+  if (ssl->ctx->tls13_variant != tls13_default) {
+    hs->session_id_len = sizeof(hs->session_id);
+    if (!RAND_bytes(hs->session_id, hs->session_id_len)) {
+      return -1;
+    }
   }
 
   if (!ssl_write_client_hello(hs)) {

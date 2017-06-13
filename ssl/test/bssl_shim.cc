@@ -1171,6 +1171,9 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx,
     SSL_CTX_set_early_data_enabled(ssl_ctx.get(), 1);
   }
 
+  SSL_CTX_set_tls13_variant(
+      ssl_ctx.get(), static_cast<enum tls13_variant_t>(config->tls13_variant));
+
   if (config->allow_unknown_alpn_protos) {
     SSL_CTX_set_allow_unknown_alpn_protos(ssl_ctx.get(), 1);
   }

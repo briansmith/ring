@@ -853,12 +853,12 @@ func (m *serverHelloMsg) marshal() []byte {
 	}
 
 	hello.addBytes(m.random)
-	if vers < VersionTLS13 {
+	if vers < VersionTLS13 || m.vers == tls13ExperimentVersion {
 		sessionId := hello.addU8LengthPrefixed()
 		sessionId.addBytes(m.sessionId)
 	}
 	hello.addU16(m.cipherSuite)
-	if vers < VersionTLS13 {
+	if vers < VersionTLS13 || m.vers == tls13ExperimentVersion {
 		hello.addU8(m.compressionMethod)
 	}
 
@@ -913,7 +913,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	}
 	m.random = data[6:38]
 	data = data[38:]
-	if vers < VersionTLS13 {
+	if vers < VersionTLS13 || m.vers == tls13ExperimentVersion {
 		sessionIdLen := int(data[0])
 		if sessionIdLen > 32 || len(data) < 1+sessionIdLen {
 			return false
@@ -926,7 +926,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	}
 	m.cipherSuite = uint16(data[0])<<8 | uint16(data[1])
 	data = data[2:]
-	if vers < VersionTLS13 {
+	if vers < VersionTLS13 || m.vers == tls13ExperimentVersion {
 		if len(data) < 1 {
 			return false
 		}

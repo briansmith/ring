@@ -64,6 +64,14 @@ int tls13_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
         break;
       }
 
+      case ssl_hs_read_change_cipher_spec: {
+        int ret = ssl->method->read_change_cipher_spec(ssl);
+        if (ret <= 0) {
+          return ret;
+        }
+        break;
+      }
+
       case ssl_hs_read_end_of_early_data: {
         if (ssl->s3->hs->can_early_read) {
           /* While we are processing early data, the handshake returns early. */

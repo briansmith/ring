@@ -578,6 +578,7 @@ OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 #define DTLS1_2_VERSION 0xfefd
 
 #define TLS1_3_DRAFT_VERSION 0x7f12
+#define TLS1_3_EXPERIMENT_VERSION 0x7e01
 
 /* SSL_CTX_set_min_proto_version sets the minimum protocol version for |ctx| to
  * |version|. If |version| is zero, the default minimum version is used. It
@@ -3136,6 +3137,17 @@ OPENSSL_EXPORT int SSL_renegotiate_pending(SSL *ssl);
  * performed by |ssl|. This includes the pending renegotiation, if any. */
 OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
 
+enum tls13_variant_t {
+  tls13_default = 0,
+  tls13_experiment = 1,
+};
+
+/* SSL_CTX_set_tls13_variant sets which variant of TLS 1.3 we negotiate. On the
+ * server, if |variant| is not |tls13_default|, all variants are enabled. On the
+ * client, only the configured variant is enabled. */
+OPENSSL_EXPORT void SSL_CTX_set_tls13_variant(SSL_CTX *ctx,
+                                              enum tls13_variant_t variant);
+
 /* SSL_MAX_CERT_LIST_DEFAULT is the default maximum length, in bytes, of a peer
  * certificate chain. */
 #define SSL_MAX_CERT_LIST_DEFAULT (1024 * 100)
@@ -4123,6 +4135,10 @@ struct ssl_ctx_st {
    * |SSL_CTX_set_min_proto_version|. Note this version is normalized in DTLS
    * and is further constrainted by |SSL_OP_NO_*|. */
   uint16_t conf_min_version;
+
+  /* tls13_variant is the variant of TLS 1.3 we are using for this
+   * configuration. */
+  enum tls13_variant_t tls13_variant;
 
   struct ssl_cipher_preference_list_st *cipher_list;
 

@@ -974,6 +974,7 @@ enum ssl_hs_wait_t {
   ssl_hs_pending_ticket,
   ssl_hs_early_data_rejected,
   ssl_hs_read_end_of_early_data,
+  ssl_hs_read_change_cipher_spec,
 };
 
 struct ssl_handshake_st {
@@ -1006,6 +1007,11 @@ struct ssl_handshake_st {
   /* max_version is the maximum accepted protocol version, taking account both
    * |SSL_OP_NO_*| and |SSL_CTX_set_max_proto_version| APIs. */
   uint16_t max_version;
+
+  /* session_id is the session ID in the ClientHello, used for the experimental
+   * TLS 1.3 variant. */
+  uint8_t session_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
+  uint8_t session_id_len;
 
   size_t hash_len;
   uint8_t secret[EVP_MAX_MD_SIZE];

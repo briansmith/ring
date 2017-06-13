@@ -732,6 +732,12 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		hs.finishedHash.addEntropy(zeroSecret)
 	}
 
+	if c.wireVersion == tls13ExperimentVersion {
+		if err := c.readRecord(recordTypeChangeCipherSpec); err != nil {
+			return err
+		}
+	}
+
 	// Derive handshake traffic keys and switch read key to handshake
 	// traffic key.
 	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
@@ -911,6 +917,11 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		}
 		c.sendAlert(alertEndOfEarlyData)
 	}
+
+	if c.wireVersion == tls13ExperimentVersion {
+		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
+	}
+
 	c.out.useTrafficSecret(c.vers, hs.suite, clientHandshakeTrafficSecret, clientWrite)
 
 	if certReq != nil && !c.config.Bugs.SkipClientCertificate {

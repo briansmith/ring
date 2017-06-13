@@ -281,7 +281,7 @@ func (hs *serverHandshakeState) readClientHello() error {
 	}
 
 	if config.Bugs.ExpectNoTLS12Session {
-		if len(hs.clientHello.sessionId) > 0 {
+		if len(hs.clientHello.sessionId) > 0 && c.wireVersion != tls13ExperimentVersion {
 			return fmt.Errorf("tls: client offered an unexpected session ID")
 		}
 		if len(hs.clientHello.sessionTicket) > 0 {
@@ -361,6 +361,7 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 	hs.hello = &serverHelloMsg{
 		isDTLS:          c.isDTLS,
 		vers:            c.wireVersion,
+		sessionId:       hs.clientHello.sessionId,
 		versOverride:    config.Bugs.SendServerHelloVersion,
 		customExtension: config.Bugs.CustomUnencryptedExtension,
 		unencryptedALPN: config.Bugs.SendUnencryptedALPN,
@@ -753,6 +754,10 @@ ResendHelloRetryRequest:
 	}
 	c.flushHandshake()
 
+	if c.wireVersion == tls13ExperimentVersion {
+		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
+	}
+
 	// Switch to handshake traffic keys.
 	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverHandshakeTrafficLabel)
 	c.out.useTrafficSecret(c.vers, hs.suite, serverHandshakeTrafficSecret, serverWrite)
@@ -909,6 +914,12 @@ ResendHelloRetryRequest:
 			if err == nil {
 				panic("readRecord(recordTypeAlert) returned nil")
 			}
+			return err
+		}
+	}
+
+	if c.wireVersion == tls13ExperimentVersion && !c.skipEarlyData {
+		if err := c.readRecord(recordTypeChangeCipherSpec); err != nil {
 			return err
 		}
 	}

@@ -845,6 +845,10 @@ void SSL_CTX_set_early_data_enabled(SSL_CTX *ctx, int enabled) {
   ctx->cert->enable_early_data = !!enabled;
 }
 
+void SSL_CTX_set_tls13_variant(SSL_CTX *ctx, enum tls13_variant_t variant) {
+  ctx->tls13_variant = variant;
+}
+
 void SSL_set_early_data_enabled(SSL *ssl, int enabled) {
   ssl->cert->enable_early_data = !!enabled;
 }

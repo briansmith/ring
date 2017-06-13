@@ -32,6 +32,7 @@ enum client_hs_state_t {
   state_process_hello_retry_request = 0,
   state_send_second_client_hello,
   state_process_server_hello,
+  state_process_change_cipher_spec,
   state_process_encrypted_extensions,
   state_continue_second_server_flight,
   state_process_certificate_request,
@@ -165,13 +166,18 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  CBS cbs, server_random, extensions;
+  CBS cbs, server_random, session_id, extensions;
   uint16_t server_wire_version;
   uint16_t cipher_suite;
+  uint8_t compression_method;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
   if (!CBS_get_u16(&cbs, &server_wire_version) ||
       !CBS_get_bytes(&cbs, &server_random, SSL3_RANDOM_SIZE) ||
+      (ssl->version == TLS1_3_EXPERIMENT_VERSION &&
+       !CBS_get_u8_length_prefixed(&cbs, &session_id)) ||
       !CBS_get_u16(&cbs, &cipher_suite) ||
+      (ssl->version == TLS1_3_EXPERIMENT_VERSION &&
+       (!CBS_get_u8(&cbs, &compression_method) || compression_method != 0)) ||
       !CBS_get_u16_length_prefixed(&cbs, &extensions) ||
       CBS_len(&cbs) != 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
@@ -313,18 +319,31 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
   OPENSSL_free(dhe_secret);
 
   if (!ssl_hash_current_message(hs) ||
-      !tls13_derive_handshake_secrets(hs) ||
-      !tls13_set_traffic_key(ssl, evp_aead_open, hs->server_handshake_secret,
+      !tls13_derive_handshake_secrets(hs)) {
+    return ssl_hs_error;
+  }
+  hs->tls13_state = state_process_change_cipher_spec;
+  return ssl->version == TLS1_3_EXPERIMENT_VERSION
+             ? ssl_hs_read_change_cipher_spec
+             : ssl_hs_ok;
+}
+
+static enum ssl_hs_wait_t do_process_change_cipher_spec(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  if (!tls13_set_traffic_key(ssl, evp_aead_open, hs->server_handshake_secret,
                              hs->hash_len)) {
     return ssl_hs_error;
   }
 
-  /* If not sending early data, set client traffic keys now so that alerts are
-   * encrypted. */
-  if (!hs->early_data_offered &&
-      !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
-                             hs->hash_len)) {
-    return ssl_hs_error;
+  if (!hs->early_data_offered) {
+    /* If not sending early data, set client traffic keys now so that alerts are
+     * encrypted. */
+    if ((ssl->version == TLS1_3_EXPERIMENT_VERSION &&
+         !ssl3_add_change_cipher_spec(ssl)) ||
+        !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
+                               hs->hash_len)) {
+      return ssl_hs_error;
+    }
   }
 
   hs->tls13_state = state_process_encrypted_extensions;
@@ -500,10 +519,13 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (hs->early_data_offered &&
-      !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
-                             hs->hash_len)) {
-    return ssl_hs_error;
+  if (hs->early_data_offered) {
+    if ((ssl->version == TLS1_3_EXPERIMENT_VERSION &&
+         !ssl3_add_change_cipher_spec(ssl)) ||
+        !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
+                               hs->hash_len)) {
+      return ssl_hs_error;
+    }
   }
 
   hs->tls13_state = state_send_client_certificate;
@@ -621,6 +643,9 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
         break;
       case state_process_server_hello:
         ret = do_process_server_hello(hs);
+        break;
+      case state_process_change_cipher_spec:
+        ret = do_process_change_cipher_spec(hs);
         break;
       case state_process_encrypted_extensions:
         ret = do_process_encrypted_extensions(hs);

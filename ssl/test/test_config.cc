@@ -189,6 +189,7 @@ const Flag<int> kIntFlags[] = {
   { "-max-send-fragment", &TestConfig::max_send_fragment },
   { "-read-size", &TestConfig::read_size },
   { "-expect-ticket-age-skew", &TestConfig::expect_ticket_age_skew },
+  { "-tls13-variant", &TestConfig::tls13_variant },
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {

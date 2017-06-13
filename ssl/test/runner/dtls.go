@@ -35,7 +35,7 @@ func wireToVersion(vers uint16, isDTLS bool) (uint16, bool) {
 		switch vers {
 		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12:
 			return vers, true
-		case tls13DraftVersion:
+		case tls13DraftVersion, tls13ExperimentVersion:
 			return VersionTLS13, true
 		}
 	}
