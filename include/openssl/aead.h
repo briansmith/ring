@@ -223,8 +223,8 @@ OPENSSL_EXPORT void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx);
  * |EVP_AEAD_nonce_length| for this AEAD.
  *
  * |EVP_AEAD_CTX_seal| never results in a partial output. If |max_out_len| is
- * insufficient, zero will be returned. (In this case, |*out_len| is set to
- * zero.)
+ * insufficient, zero will be returned. If any error occurs, |out| will be
+ * filled with zero bytes and |*out_len| set to zero.
  *
  * If |in| and |out| alias then |out| must be == |in|. */
 OPENSSL_EXPORT int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
@@ -232,6 +232,7 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                      const uint8_t *nonce, size_t nonce_len,
                                      const uint8_t *in, size_t in_len,
                                      const uint8_t *ad, size_t ad_len);
+
 /* EVP_AEAD_CTX_open authenticates |in_len| bytes from |in| and |ad_len| bytes
  * from |ad| and decrypts at most |in_len| bytes into |out|. It returns one on
  * success and zero otherwise.
@@ -247,8 +248,8 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out,
  * |EVP_AEAD_nonce_length| for this AEAD.
  *
  * |EVP_AEAD_CTX_open| never results in a partial output. If |max_out_len| is
- * insufficient, zero will be returned. (In this case, |*out_len| is set to
- * zero.)
+ * insufficient, zero will be returned. If any error occurs, |out| will be
+ * filled with zero bytes and |*out_len| set to zero.
  *
  * If |in| and |out| alias then |out| must be == |in|. */
 OPENSSL_EXPORT int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
@@ -273,8 +274,9 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
  * |EVP_AEAD_nonce_length| for this AEAD.
  *
  * |EVP_AEAD_CTX_seal_scatter| never results in a partial output. If
- * |max_out_tag_len| is insufficient, zero will be returned. (In this case,
- * |*out_tag_len| is set to zero.)
+ * |max_out_tag_len| is insufficient, zero will be returned. If any error
+ * occurs, |out| and |out_tag| will be filled with zero bytes and |*out_tag_len|
+ * set to zero.
  *
  * If |in| and |out| alias then |out| must be == |in|. |out_tag| may not alias
  * any other argument. */
@@ -295,7 +297,8 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_seal_scatter(
  * The length of |nonce|, |nonce_len|, must be equal to the result of
  * |EVP_AEAD_nonce_length| for this AEAD.
  *
- * |EVP_AEAD_CTX_open_gather| never results in a partial output.
+ * |EVP_AEAD_CTX_open_gather| never results in a partial output. If any error
+ * occurs, |out| will be filled with zero bytes.
  *
  * If |in| and |out| alias then |out| must be == |in|. */
 OPENSSL_EXPORT int EVP_AEAD_CTX_open_gather(
