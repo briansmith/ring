@@ -467,7 +467,10 @@ void SSL_free(SSL *ssl) {
     return;
   }
 
-  ssl->ctx->x509_method->ssl_free(ssl);
+  if (ssl->ctx != NULL) {
+    ssl->ctx->x509_method->ssl_free(ssl);
+  }
+
   CRYPTO_free_ex_data(&g_ex_data_class_ssl, ssl, &ssl->ex_data);
 
   BIO_free_all(ssl->rbio);

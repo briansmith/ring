@@ -189,6 +189,7 @@ static int ssl_x25519_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
 
   uint8_t *secret = OPENSSL_malloc(32);
   if (secret == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 

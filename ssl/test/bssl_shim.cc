@@ -265,6 +265,9 @@ static bssl::UniquePtr<STACK_OF(X509_NAME)> DecodeHexX509Names(
     const std::string &hex_names) {
   const std::vector<std::string> der_names = DecodeHexStrings(hex_names);
   bssl::UniquePtr<STACK_OF(X509_NAME)> ret(sk_X509_NAME_new_null());
+  if (!ret) {
+    return nullptr;
+  }
 
   for (const auto &der_name : der_names) {
     const uint8_t *const data =
