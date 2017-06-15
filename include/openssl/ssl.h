@@ -2626,35 +2626,21 @@ OPENSSL_EXPORT void SSL_get0_next_proto_negotiated(const SSL *ssl,
  * expected that this function is called from the callback set by
  * |SSL_CTX_set_next_proto_select_cb|.
  *
- * The protocol data is assumed to be a vector of 8-bit, length prefixed byte
- * strings. The length byte itself is not included in the length. A byte
- * string of length 0 is invalid. No byte string may be truncated.
+ * |peer| and |supported| must be vectors of 8-bit, length-prefixed byte strings
+ * containing the peer and locally-configured protocols, respectively. The
+ * length byte itself is not included in the length. A byte string of length 0
+ * is invalid. No byte string may be truncated. |supported| is assumed to be
+ * non-empty.
  *
- * The current, but experimental algorithm for selecting the protocol is:
- *
- * 1) If the server doesn't support NPN then this is indicated to the
- * callback. In this case, the client application has to abort the connection
- * or have a default application level protocol.
- *
- * 2) If the server supports NPN, but advertises an empty list then the
- * client selects the first protocol in its list, but indicates via the
- * API that this fallback case was enacted.
- *
- * 3) Otherwise, the client finds the first protocol in the server's list
- * that it supports and selects this protocol. This is because it's
- * assumed that the server has better information about which protocol
- * a client should use.
- *
- * 4) If the client doesn't support any of the server's advertised
- * protocols, then this is treated the same as case 2.
- *
- * It returns either |OPENSSL_NPN_NEGOTIATED| if a common protocol was found, or
- * |OPENSSL_NPN_NO_OVERLAP| if the fallback case was reached. */
+ * This function finds the first protocol in |peer| which is also in
+ * |supported|. If one was found, it sets |*out| and |*out_len| to point to it
+ * and returns |OPENSSL_NPN_NEGOTIATED|. Otherwise, it returns
+ * |OPENSSL_NPN_NO_OVERLAP| and sets |*out| and |*out_len| to the first
+ * supported protocol. */
 OPENSSL_EXPORT int SSL_select_next_proto(uint8_t **out, uint8_t *out_len,
-                                         const uint8_t *server,
-                                         unsigned server_len,
-                                         const uint8_t *client,
-                                         unsigned client_len);
+                                         const uint8_t *peer, unsigned peer_len,
+                                         const uint8_t *supported,
+                                         unsigned supported_len);
 
 #define OPENSSL_NPN_UNSUPPORTED 0
 #define OPENSSL_NPN_NEGOTIATED 1

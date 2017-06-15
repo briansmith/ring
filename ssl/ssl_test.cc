@@ -1497,6 +1497,7 @@ TEST(SSLTest, SessionDuplication) {
 }
 
 static void ExpectFDs(const SSL *ssl, int rfd, int wfd) {
+  EXPECT_EQ(rfd, SSL_get_fd(ssl));
   EXPECT_EQ(rfd, SSL_get_rfd(ssl));
   EXPECT_EQ(wfd, SSL_get_wfd(ssl));
 
@@ -3452,6 +3453,49 @@ TEST(SSLTest, SSL3Method) {
   err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
   EXPECT_EQ(SSL_R_NO_SUPPORTED_VERSIONS_ENABLED, ERR_GET_REASON(err));
+}
+
+TEST(SSLTest, SelectNextProto) {
+  uint8_t *result;
+  uint8_t result_len;
+
+  // If there is an overlap, it should be returned.
+  EXPECT_EQ(OPENSSL_NPN_NEGOTIATED,
+            SSL_select_next_proto(&result, &result_len,
+                                  (const uint8_t *)"\1a\2bb\3ccc", 9,
+                                  (const uint8_t *)"\1x\1y\1a\1z", 8));
+  EXPECT_EQ(Bytes("a"), Bytes(result, result_len));
+
+  EXPECT_EQ(OPENSSL_NPN_NEGOTIATED,
+            SSL_select_next_proto(&result, &result_len,
+                                  (const uint8_t *)"\1a\2bb\3ccc", 9,
+                                  (const uint8_t *)"\1x\1y\2bb\1z", 9));
+  EXPECT_EQ(Bytes("bb"), Bytes(result, result_len));
+
+  EXPECT_EQ(OPENSSL_NPN_NEGOTIATED,
+            SSL_select_next_proto(&result, &result_len,
+                                  (const uint8_t *)"\1a\2bb\3ccc", 9,
+                                  (const uint8_t *)"\1x\1y\3ccc\1z", 10));
+  EXPECT_EQ(Bytes("ccc"), Bytes(result, result_len));
+
+  // Peer preference order takes precedence over local.
+  EXPECT_EQ(OPENSSL_NPN_NEGOTIATED,
+            SSL_select_next_proto(&result, &result_len,
+                                  (const uint8_t *)"\1a\2bb\3ccc", 9,
+                                  (const uint8_t *)"\3ccc\2bb\1a", 9));
+  EXPECT_EQ(Bytes("a"), Bytes(result, result_len));
+
+  // If there is no overlap, return the first local protocol.
+  EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
+            SSL_select_next_proto(&result, &result_len,
+                                  (const uint8_t *)"\1a\2bb\3ccc", 9,
+                                  (const uint8_t *)"\1x\2yy\3zzz", 9));
+  EXPECT_EQ(Bytes("x"), Bytes(result, result_len));
+
+  EXPECT_EQ(OPENSSL_NPN_NO_OVERLAP,
+            SSL_select_next_proto(&result, &result_len, nullptr, 0,
+                                  (const uint8_t *)"\1x\2yy\3zzz", 9));
+  EXPECT_EQ(Bytes("x"), Bytes(result, result_len));
 }
 
 // TODO(davidben): Convert this file to GTest properly.

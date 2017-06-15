@@ -1678,32 +1678,31 @@ int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg) {
   return 1;
 }
 
-int SSL_select_next_proto(uint8_t **out, uint8_t *out_len,
-                          const uint8_t *server, unsigned server_len,
-                          const uint8_t *client, unsigned client_len) {
-  unsigned int i, j;
+int SSL_select_next_proto(uint8_t **out, uint8_t *out_len, const uint8_t *peer,
+                          unsigned peer_len, const uint8_t *supported,
+                          unsigned supported_len) {
   const uint8_t *result;
-  int status = OPENSSL_NPN_UNSUPPORTED;
+  int status;
 
-  /* For each protocol in server preference order, see if we support it. */
-  for (i = 0; i < server_len;) {
-    for (j = 0; j < client_len;) {
-      if (server[i] == client[j] &&
-          OPENSSL_memcmp(&server[i + 1], &client[j + 1], server[i]) == 0) {
+  /* For each protocol in peer preference order, see if we support it. */
+  for (unsigned i = 0; i < peer_len;) {
+    for (unsigned j = 0; j < supported_len;) {
+      if (peer[i] == supported[j] &&
+          OPENSSL_memcmp(&peer[i + 1], &supported[j + 1], peer[i]) == 0) {
         /* We found a match */
-        result = &server[i];
+        result = &peer[i];
         status = OPENSSL_NPN_NEGOTIATED;
         goto found;
       }
-      j += client[j];
+      j += supported[j];
       j++;
     }
-    i += server[i];
+    i += peer[i];
     i++;
   }
 
-  /* There's no overlap between our protocols and the server's list. */
-  result = client;
+  /* There's no overlap between our protocols and the peer's list. */
+  result = supported;
   status = OPENSSL_NPN_NO_OVERLAP;
 
 found:
