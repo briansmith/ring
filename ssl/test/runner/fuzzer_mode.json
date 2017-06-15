@@ -40,7 +40,12 @@
     "TLS13-EarlyData-NonZeroRTTSession-Server": "Trial decryption does not work with the NULL cipher.",
     "TLS13-EarlyData-SkipEndOfEarlyData": "Trial decryption does not work with the NULL cipher.",
     "TLS13-EarlyData-ALPNMismatch-Server": "Trial decryption does not work with the NULL cipher.",
+    "TLS13-EarlyData-ALPNOmitted1-Client": "Trial decryption does not work with the NULL cipher.",
+    "TLS13-EarlyData-ALPNOmitted2-Client": "Trial decryption does not work with the NULL cipher.",
     "TLS13-EarlyData-ALPNOmitted1-Server": "Trial decryption does not work with the NULL cipher.",
-    "TLS13-EarlyData-ALPNOmitted2-Server": "Trial decryption does not work with the NULL cipher."
+    "TLS13-EarlyData-ALPNOmitted2-Server": "Trial decryption does not work with the NULL cipher.",
+    "TLS13-EarlyData-RejectUnfinishedWrite-Client-*": "Trial decryption does not work with the NULL cipher.",
+    "TLS13-EarlyData-Reject-Client": "Trial decryption does not work with the NULL cipher.",
+    "TLS13-EarlyData-RejectTicket-Client": "Trial decryption does not work with the NULL cipher."
   }
 }
