@@ -184,7 +184,7 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs);
 static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs);
 static int ssl3_get_next_proto(SSL_HANDSHAKE *hs);
 static int ssl3_get_channel_id(SSL_HANDSHAKE *hs);
-static int ssl3_send_new_session_ticket(SSL_HANDSHAKE *hs);
+static int ssl3_send_server_finished(SSL_HANDSHAKE *hs);
 
 static struct CRYPTO_STATIC_MUTEX g_v2clienthello_lock =
     CRYPTO_STATIC_MUTEX_INIT;
@@ -255,7 +255,7 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
           goto end;
         }
         if (ssl->session != NULL) {
-          hs->state = SSL3_ST_SW_SESSION_TICKET_A;
+          hs->state = SSL3_ST_SW_FINISHED_A;
         } else {
           hs->state = SSL3_ST_SW_CERT_A;
         }
@@ -388,7 +388,7 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
         if (ssl->session != NULL) {
           hs->state = SSL_ST_OK;
         } else {
-          hs->state = SSL3_ST_SW_SESSION_TICKET_A;
+          hs->state = SSL3_ST_SW_FINISHED_A;
         }
 
         /* If this is a full handshake with ChannelID then record the handshake
@@ -402,28 +402,8 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
         }
         break;
 
-      case SSL3_ST_SW_SESSION_TICKET_A:
-        if (hs->ticket_expected) {
-          ret = ssl3_send_new_session_ticket(hs);
-          if (ret <= 0) {
-            goto end;
-          }
-        }
-        hs->state = SSL3_ST_SW_CHANGE;
-        break;
-
-      case SSL3_ST_SW_CHANGE:
-        if (!ssl->method->add_change_cipher_spec(ssl) ||
-            !tls1_change_cipher_state(hs, SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
-          ret = -1;
-          goto end;
-        }
-
-        hs->state = SSL3_ST_SW_FINISHED_A;
-        break;
-
       case SSL3_ST_SW_FINISHED_A:
-        ret = ssl3_send_finished(hs);
+        ret = ssl3_send_server_finished(hs);
         if (ret <= 0) {
           goto end;
         }
@@ -1825,40 +1805,46 @@ static int ssl3_get_channel_id(SSL_HANDSHAKE *hs) {
   return 1;
 }
 
-static int ssl3_send_new_session_ticket(SSL_HANDSHAKE *hs) {
+static int ssl3_send_server_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  const SSL_SESSION *session;
-  SSL_SESSION *session_copy = NULL;
-  if (ssl->session == NULL) {
-    /* Fix the timeout to measure from the ticket issuance time. */
-    ssl_session_rebase_time(ssl, hs->new_session);
-    session = hs->new_session;
-  } else {
-    /* We are renewing an existing session. Duplicate the session to adjust the
-     * timeout. */
-    session_copy = SSL_SESSION_dup(ssl->session, SSL_SESSION_INCLUDE_NONAUTH);
-    if (session_copy == NULL) {
-      return -1;
+
+  if (hs->ticket_expected) {
+    const SSL_SESSION *session;
+    SSL_SESSION *session_copy = NULL;
+    if (ssl->session == NULL) {
+      /* Fix the timeout to measure from the ticket issuance time. */
+      ssl_session_rebase_time(ssl, hs->new_session);
+      session = hs->new_session;
+    } else {
+      /* We are renewing an existing session. Duplicate the session to adjust
+       * the timeout. */
+      session_copy = SSL_SESSION_dup(ssl->session, SSL_SESSION_INCLUDE_NONAUTH);
+      if (session_copy == NULL) {
+        return -1;
+      }
+
+      ssl_session_rebase_time(ssl, session_copy);
+      session = session_copy;
     }
 
-    ssl_session_rebase_time(ssl, session_copy);
-    session = session_copy;
+    CBB cbb, body, ticket;
+    int ok = ssl->method->init_message(ssl, &cbb, &body,
+                                       SSL3_MT_NEW_SESSION_TICKET) &&
+             CBB_add_u32(&body, session->timeout) &&
+             CBB_add_u16_length_prefixed(&body, &ticket) &&
+             ssl_encrypt_ticket(ssl, &ticket, session) &&
+             ssl_add_message_cbb(ssl, &cbb);
+    SSL_SESSION_free(session_copy);
+    CBB_cleanup(&cbb);
+    if (!ok) {
+      return -1;
+    }
   }
 
-  CBB cbb, body, ticket;
-  int ok =
-      ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_NEW_SESSION_TICKET) &&
-      CBB_add_u32(&body, session->timeout) &&
-      CBB_add_u16_length_prefixed(&body, &ticket) &&
-      ssl_encrypt_ticket(ssl, &ticket, session) &&
-      ssl_add_message_cbb(ssl, &cbb);
-
-  SSL_SESSION_free(session_copy);
-  CBB_cleanup(&cbb);
-
-  if (!ok) {
+  if (!ssl->method->add_change_cipher_spec(ssl) ||
+      !tls1_change_cipher_state(hs, SSL3_CHANGE_CIPHER_SERVER_WRITE)) {
     return -1;
   }
 
-  return 1;
+  return ssl3_send_finished(hs);
 }
