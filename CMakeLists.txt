@@ -89,11 +89,9 @@ elseif(MSVC)
       "C4706" # assignment within conditional expression
       "C4710" # 'function': function not inlined
       "C4711" # function 'function' selected for inline expansion
-      "C4774" # format string is not a string literal
       "C4800" # 'int' : forcing value to bool 'true' or 'false'
               # (performance warning)
       "C4820" # 'bytes' bytes padding added after construct 'member_name'
-      "C4987" # nonstandard extension used: 'throw (...)'
       "C5026" # move constructor was implicitly defined as deleted
       "C5027" # move assignment operator was implicitly defined as deleted
       )
@@ -111,7 +109,10 @@ elseif(MSVC)
   add_definitions(-D_HAS_EXCEPTIONS=0)
   add_definitions(-DWIN32_LEAN_AND_MEAN)
   add_definitions(-DNOMINMAX)
-  add_definitions(-D_CRT_SECURE_NO_WARNINGS) # Allow use of fopen
+  # Allow use of fopen.
+  add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+  # VS 2017 and higher supports STL-only warning suppressions.
+  add_definitions("-D_STL_EXTRA_DISABLED_WARNINGS=4774 4987")
 endif()
 
 if((CMAKE_COMPILER_IS_GNUCXX AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.7.99") OR
