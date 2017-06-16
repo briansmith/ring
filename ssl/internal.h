@@ -1305,7 +1305,7 @@ int tls12_add_verify_sigalgs(const SSL *ssl, CBB *out);
 /* tls12_check_peer_sigalg checks if |sigalg| is acceptable for the peer
  * signature. It returns one on success and zero on error, setting |*out_alert|
  * to an alert to send. */
-int tls12_check_peer_sigalg(SSL *ssl, int *out_alert, uint16_t sigalg);
+int tls12_check_peer_sigalg(SSL *ssl, uint8_t *out_alert, uint16_t sigalg);
 
 
 /* Underdocumented functions.

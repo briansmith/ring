@@ -384,9 +384,9 @@ int tls13_process_certificate_verify(SSL_HANDSHAKE *hs) {
     goto err;
   }
 
-  int al;
-  if (!tls12_check_peer_sigalg(ssl, &al, signature_algorithm)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
+  uint8_t alert = SSL_AD_DECODE_ERROR;
+  if (!tls12_check_peer_sigalg(ssl, &alert, signature_algorithm)) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     goto err;
   }
   hs->new_session->peer_signature_algorithm = signature_algorithm;

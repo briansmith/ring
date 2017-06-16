@@ -1718,7 +1718,9 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       goto f_err;
     }
-    if (!tls12_check_peer_sigalg(ssl, &al, signature_algorithm)) {
+    uint8_t alert = SSL_AD_DECODE_ERROR;
+    if (!tls12_check_peer_sigalg(ssl, &alert, signature_algorithm)) {
+      al = alert;
       goto f_err;
     }
     hs->new_session->peer_signature_algorithm = signature_algorithm;

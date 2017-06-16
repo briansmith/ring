@@ -536,7 +536,7 @@ int tls12_add_verify_sigalgs(const SSL *ssl, CBB *out) {
   return 1;
 }
 
-int tls12_check_peer_sigalg(SSL *ssl, int *out_alert, uint16_t sigalg) {
+int tls12_check_peer_sigalg(SSL *ssl, uint8_t *out_alert, uint16_t sigalg) {
   const uint16_t *sigalgs = kVerifySignatureAlgorithms;
   size_t num_sigalgs = OPENSSL_ARRAY_SIZE(kVerifySignatureAlgorithms);
   if (ssl->ctx->num_verify_sigalgs != 0) {
