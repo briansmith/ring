@@ -32,7 +32,7 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
     size_t bytes_drawn;
     mx_status_t status =
         mx_cprng_draw(out, output_bytes_this_pass, &bytes_drawn);
-    if (status != NO_ERROR) {
+    if (status != MX_OK) {
       abort();
     }
     requested -= bytes_drawn;
