@@ -184,17 +184,6 @@ static int ssl3_get_next_proto(SSL_HANDSHAKE *hs);
 static int ssl3_get_channel_id(SSL_HANDSHAKE *hs);
 static int ssl3_send_server_finished(SSL_HANDSHAKE *hs);
 
-static struct CRYPTO_STATIC_MUTEX g_v2clienthello_lock =
-    CRYPTO_STATIC_MUTEX_INIT;
-static uint64_t g_v2clienthello_count = 0;
-
-uint64_t SSL_get_v2clienthello_count(void) {
-  CRYPTO_STATIC_MUTEX_lock_read(&g_v2clienthello_lock);
-  uint64_t ret = g_v2clienthello_count;
-  CRYPTO_STATIC_MUTEX_unlock_read(&g_v2clienthello_lock);
-  return ret;
-}
-
 int ssl3_accept(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   uint32_t alg_a;
@@ -439,12 +428,6 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
           ssl->s3->established_session = hs->new_session;
           ssl->s3->established_session->not_resumable = 0;
           hs->new_session = NULL;
-        }
-
-        if (hs->v2_clienthello) {
-          CRYPTO_STATIC_MUTEX_lock_write(&g_v2clienthello_lock);
-          g_v2clienthello_count++;
-          CRYPTO_STATIC_MUTEX_unlock_write(&g_v2clienthello_lock);
         }
 
         ssl->s3->initial_handshake_complete = 1;

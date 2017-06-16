@@ -1124,9 +1124,6 @@ struct ssl_handshake_st {
    * or received. */
   unsigned ticket_expected:1;
 
-  /* v2_clienthello is one if we received a V2ClientHello. */
-  unsigned v2_clienthello:1;
-
   /* extended_master_secret is one if the extended master secret extension is
    * negotiated in this handshake. */
   unsigned extended_master_secret:1;

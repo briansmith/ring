@@ -678,8 +678,6 @@ static int read_v2_client_hello(SSL *ssl) {
   ssl_read_buffer_discard(ssl);
 
   ssl->s3->is_v2_hello = 1;
-  /* This is the first message, so hs must be non-NULL. */
-  ssl->s3->hs->v2_clienthello = 1;
   return 1;
 }
 
