@@ -533,8 +533,7 @@ err:
   return 0;
 }
 
-enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs,
-                                                           int is_first_run) {
+enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   enum ssl_private_key_result_t ret = ssl_private_key_failure;
   uint8_t *msg = NULL;
@@ -564,20 +563,15 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs,
     goto err;
   }
 
-  enum ssl_private_key_result_t sign_result;
-  if (is_first_run) {
-    if (!tls13_get_cert_verify_signature_input(
-            hs, &msg, &msg_len,
-            ssl->server ? ssl_cert_verify_server : ssl_cert_verify_client)) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      goto err;
-    }
-    sign_result = ssl_private_key_sign(ssl, sig, &sig_len, max_sig_len,
-                                       signature_algorithm, msg, msg_len);
-  } else {
-    sign_result = ssl_private_key_complete(ssl, sig, &sig_len, max_sig_len);
+  if (!tls13_get_cert_verify_signature_input(
+          hs, &msg, &msg_len,
+          ssl->server ? ssl_cert_verify_server : ssl_cert_verify_client)) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    goto err;
   }
 
+  enum ssl_private_key_result_t sign_result = ssl_private_key_sign(
+      hs, sig, &sig_len, max_sig_len, signature_algorithm, msg, msg_len);
   if (sign_result != ssl_private_key_success) {
     ret = sign_result;
     goto err;

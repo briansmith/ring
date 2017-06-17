@@ -36,7 +36,6 @@ enum server_hs_state_t {
   state_process_second_client_hello,
   state_send_server_hello,
   state_send_server_certificate_verify,
-  state_complete_server_certificate_verify,
   state_send_server_finished,
   state_read_second_client_flight,
   state_process_end_of_early_data,
@@ -583,15 +582,14 @@ err:
   return ssl_hs_error;
 }
 
-static enum ssl_hs_wait_t do_send_server_certificate_verify(SSL_HANDSHAKE *hs,
-                                                            int is_first_run) {
-  switch (tls13_add_certificate_verify(hs, is_first_run)) {
+static enum ssl_hs_wait_t do_send_server_certificate_verify(SSL_HANDSHAKE *hs) {
+  switch (tls13_add_certificate_verify(hs)) {
     case ssl_private_key_success:
       hs->tls13_state = state_send_server_finished;
       return ssl_hs_ok;
 
     case ssl_private_key_retry:
-      hs->tls13_state = state_complete_server_certificate_verify;
+      hs->tls13_state = state_send_server_certificate_verify;
       return ssl_hs_private_key_operation;
 
     case ssl_private_key_failure:
@@ -802,10 +800,7 @@ enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs) {
         ret = do_send_server_hello(hs);
         break;
       case state_send_server_certificate_verify:
-        ret = do_send_server_certificate_verify(hs, 1 /* first run */);
-      break;
-      case state_complete_server_certificate_verify:
-        ret = do_send_server_certificate_verify(hs, 0 /* complete */);
+        ret = do_send_server_certificate_verify(hs);
         break;
       case state_send_server_finished:
         ret = do_send_server_finished(hs);

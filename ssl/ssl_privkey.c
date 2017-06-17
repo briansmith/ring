@@ -56,6 +56,7 @@
 
 #include <openssl/ssl.h>
 
+#include <assert.h>
 #include <limits.h>
 
 #include <openssl/ec.h>
@@ -406,33 +407,43 @@ static int legacy_sign_digest_supported(const SSL_SIGNATURE_ALGORITHM *alg) {
          !alg->is_rsa_pss;
 }
 
+static enum ssl_private_key_result_t legacy_sign(
+    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out, uint16_t sigalg,
+    const uint8_t *in, size_t in_len) {
+  /* TODO(davidben): Remove support for |sign_digest|-only
+   * |SSL_PRIVATE_KEY_METHOD|s. */
+  const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
+  if (alg == NULL || !legacy_sign_digest_supported(alg)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL_FOR_CUSTOM_KEY);
+    return ssl_private_key_failure;
+  }
+
+  const EVP_MD *md = alg->digest_func();
+  uint8_t hash[EVP_MAX_MD_SIZE];
+  unsigned hash_len;
+  if (!EVP_Digest(in, in_len, hash, &hash_len, md, NULL)) {
+    return ssl_private_key_failure;
+  }
+
+  return ssl->cert->key_method->sign_digest(ssl, out, out_len, max_out, md,
+                                            hash, hash_len);
+}
+
 enum ssl_private_key_result_t ssl_private_key_sign(
-    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
+    SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, size_t max_out,
     uint16_t sigalg, const uint8_t *in, size_t in_len) {
+  SSL *const ssl = hs->ssl;
   if (ssl->cert->key_method != NULL) {
-    if (ssl->cert->key_method->sign != NULL) {
-      return ssl->cert->key_method->sign(ssl, out, out_len, max_out, sigalg, in,
-                                         in_len);
+    enum ssl_private_key_result_t ret;
+    if (hs->pending_private_key_op) {
+      ret = ssl->cert->key_method->complete(ssl, out, out_len, max_out);
+    } else {
+      ret = (ssl->cert->key_method->sign != NULL
+                 ? ssl->cert->key_method->sign
+                 : legacy_sign)(ssl, out, out_len, max_out, sigalg, in, in_len);
     }
-
-    /* TODO(davidben): Remove support for |sign_digest|-only
-     * |SSL_PRIVATE_KEY_METHOD|s. */
-    const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
-    if (alg == NULL ||
-        !legacy_sign_digest_supported(alg)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL_FOR_CUSTOM_KEY);
-      return ssl_private_key_failure;
-    }
-
-    const EVP_MD *md = alg->digest_func();
-    uint8_t hash[EVP_MAX_MD_SIZE];
-    unsigned hash_len;
-    if (!EVP_Digest(in, in_len, hash, &hash_len, md, NULL)) {
-      return ssl_private_key_failure;
-    }
-
-    return ssl->cert->key_method->sign_digest(ssl, out, out_len, max_out, md,
-                                              hash, hash_len);
+    hs->pending_private_key_op = ret == ssl_private_key_retry;
+    return ret;
   }
 
   *out_len = max_out;
@@ -456,11 +467,19 @@ int ssl_public_key_verify(SSL *ssl, const uint8_t *signature,
 }
 
 enum ssl_private_key_result_t ssl_private_key_decrypt(
-    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
+    SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, size_t max_out,
     const uint8_t *in, size_t in_len) {
+  SSL *const ssl = hs->ssl;
   if (ssl->cert->key_method != NULL) {
-    return ssl->cert->key_method->decrypt(ssl, out, out_len, max_out, in,
-                                          in_len);
+    enum ssl_private_key_result_t ret;
+    if (hs->pending_private_key_op) {
+      ret = ssl->cert->key_method->complete(ssl, out, out_len, max_out);
+    } else {
+      ret = ssl->cert->key_method->decrypt(ssl, out, out_len, max_out, in,
+                                           in_len);
+    }
+    hs->pending_private_key_op = ret == ssl_private_key_retry;
+    return ret;
   }
 
   RSA *rsa = EVP_PKEY_get0_RSA(ssl->cert->privatekey);
@@ -476,13 +495,6 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(
     return ssl_private_key_failure;
   }
   return ssl_private_key_success;
-}
-
-enum ssl_private_key_result_t ssl_private_key_complete(SSL *ssl, uint8_t *out,
-                                                       size_t *out_len,
-                                                       size_t max_out) {
-  /* Only custom keys may be asynchronous. */
-  return ssl->cert->key_method->complete(ssl, out, out_len, max_out);
 }
 
 int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,

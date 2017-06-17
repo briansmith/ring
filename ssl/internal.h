@@ -548,21 +548,19 @@ typedef struct ssl_handshake_st SSL_HANDSHAKE;
  * configured and zero otherwise. */
 int ssl_has_private_key(const SSL *ssl);
 
-/* ssl_private_key_* call the corresponding function on the
- * |SSL_PRIVATE_KEY_METHOD| for |ssl|, if configured. Otherwise, they implement
- * the operation with |EVP_PKEY|. */
+/* ssl_private_key_* perform the corresponding operation on
+ * |SSL_PRIVATE_KEY_METHOD|. If there is a custom private key configured, they
+ * call the corresponding function or |complete| depending on whether there is a
+ * pending operation. Otherwise, they implement the operation with
+ * |EVP_PKEY|. */
 
 enum ssl_private_key_result_t ssl_private_key_sign(
-    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
+    SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, size_t max_out,
     uint16_t signature_algorithm, const uint8_t *in, size_t in_len);
 
 enum ssl_private_key_result_t ssl_private_key_decrypt(
-    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
+    SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, size_t max_out,
     const uint8_t *in, size_t in_len);
-
-enum ssl_private_key_result_t ssl_private_key_complete(SSL *ssl, uint8_t *out,
-                                                       size_t *out_len,
-                                                       size_t max_out);
 
 /* ssl_private_key_supports_signature_algorithm returns one if |hs|'s private
  * key supports |sigalg| and zero otherwise. */
@@ -1023,8 +1021,9 @@ struct ssl_handshake_st {
   uint8_t *peer_key;
   size_t peer_key_len;
 
-  /* server_params, in TLS 1.2, stores the ServerKeyExchange parameters to be
-   * signed while the signature is being computed. */
+  /* server_params, in a TLS 1.2 server, stores the ServerKeyExchange
+   * parameters. It has client and server randoms prepended for signing
+   * convenience. */
   uint8_t *server_params;
   size_t server_params_len;
 
@@ -1128,6 +1127,10 @@ struct ssl_handshake_st {
    * negotiated in this handshake. */
   unsigned extended_master_secret:1;
 
+  /* pending_private_key_op is one if there is a pending private key operation
+   * in progress. */
+  unsigned pending_private_key_op:1;
+
   /* client_version is the value sent or received in the ClientHello version. */
   uint16_t client_version;
 
@@ -1172,8 +1175,12 @@ int tls13_process_certificate_verify(SSL_HANDSHAKE *hs);
 int tls13_process_finished(SSL_HANDSHAKE *hs, int use_saved_value);
 
 int tls13_add_certificate(SSL_HANDSHAKE *hs);
-enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs,
-                                                           int is_first_run);
+
+/* tls13_add_certificate_verify adds a TLS 1.3 CertificateVerify message to the
+ * handshake. If it returns |ssl_private_key_retry|, it should be called again
+ * to retry when the signing operation is completed. */
+enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs);
+
 int tls13_add_finished(SSL_HANDSHAKE *hs);
 int tls13_process_new_session_ticket(SSL *ssl);
 

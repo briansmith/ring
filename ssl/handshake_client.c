@@ -346,7 +346,6 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
         break;
 
       case SSL3_ST_CW_CERT_VRFY_A:
-      case SSL3_ST_CW_CERT_VRFY_B:
         if (hs->cert_request && ssl_has_certificate(ssl)) {
           ret = ssl3_send_cert_verify(hs);
           if (ret <= 0) {
@@ -1660,58 +1659,43 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
   }
 
   size_t sig_len = max_sig_len;
-  enum ssl_private_key_result_t sign_result;
-  if (hs->state == SSL3_ST_CW_CERT_VRFY_A) {
-    /* The SSL3 construction for CertificateVerify does not decompose into a
-     * single final digest and signature, and must be special-cased. */
-    if (ssl3_protocol_version(ssl) == SSL3_VERSION) {
-      if (ssl->cert->key_method != NULL) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL_FOR_CUSTOM_KEY);
-        goto err;
-      }
-
-      uint8_t digest[EVP_MAX_MD_SIZE];
-      size_t digest_len;
-      if (!SSL_TRANSCRIPT_ssl3_cert_verify_hash(&hs->transcript, digest,
-                                                &digest_len, hs->new_session,
-                                                signature_algorithm)) {
-        goto err;
-      }
-
-      sign_result = ssl_private_key_success;
-
-      EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new(ssl->cert->privatekey, NULL);
-      if (pctx == NULL ||
-          !EVP_PKEY_sign_init(pctx) ||
-          !EVP_PKEY_sign(pctx, ptr, &sig_len, digest, digest_len)) {
-        EVP_PKEY_CTX_free(pctx);
-        sign_result = ssl_private_key_failure;
-        goto err;
-      }
-      EVP_PKEY_CTX_free(pctx);
-    } else {
-      sign_result = ssl_private_key_sign(
-          ssl, ptr, &sig_len, max_sig_len, signature_algorithm,
-          (const uint8_t *)hs->transcript.buffer->data,
-          hs->transcript.buffer->length);
+  /* The SSL3 construction for CertificateVerify does not decompose into a
+   * single final digest and signature, and must be special-cased. */
+  if (ssl3_protocol_version(ssl) == SSL3_VERSION) {
+    if (ssl->cert->key_method != NULL) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL_FOR_CUSTOM_KEY);
+      goto err;
     }
 
-    /* The handshake buffer is no longer necessary. */
-    SSL_TRANSCRIPT_free_buffer(&hs->transcript);
-  } else {
-    assert(hs->state == SSL3_ST_CW_CERT_VRFY_B);
-    sign_result = ssl_private_key_complete(ssl, ptr, &sig_len, max_sig_len);
-  }
+    uint8_t digest[EVP_MAX_MD_SIZE];
+    size_t digest_len;
+    if (!SSL_TRANSCRIPT_ssl3_cert_verify_hash(&hs->transcript, digest,
+                                              &digest_len, hs->new_session,
+                                              signature_algorithm)) {
+      goto err;
+    }
 
-  switch (sign_result) {
-    case ssl_private_key_success:
-      break;
-    case ssl_private_key_failure:
+    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new(ssl->cert->privatekey, NULL);
+    int ok = pctx != NULL &&
+             EVP_PKEY_sign_init(pctx) &&
+             EVP_PKEY_sign(pctx, ptr, &sig_len, digest, digest_len);
+    EVP_PKEY_CTX_free(pctx);
+    if (!ok) {
       goto err;
-    case ssl_private_key_retry:
-      ssl->rwstate = SSL_PRIVATE_KEY_OPERATION;
-      hs->state = SSL3_ST_CW_CERT_VRFY_B;
-      goto err;
+    }
+  } else {
+    switch (ssl_private_key_sign(hs, ptr, &sig_len, max_sig_len,
+                                 signature_algorithm,
+                                 (const uint8_t *)hs->transcript.buffer->data,
+                                 hs->transcript.buffer->length)) {
+      case ssl_private_key_success:
+        break;
+      case ssl_private_key_failure:
+        goto err;
+      case ssl_private_key_retry:
+        ssl->rwstate = SSL_PRIVATE_KEY_OPERATION;
+        goto err;
+    }
   }
 
   if (!CBB_did_write(&child, sig_len) ||
@@ -1719,6 +1703,8 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
     goto err;
   }
 
+  /* The handshake buffer is no longer necessary. */
+  SSL_TRANSCRIPT_free_buffer(&hs->transcript);
   return 1;
 
 err:

@@ -142,9 +142,6 @@ const char *SSL_state_string_long(const SSL *ssl) {
     case SSL3_ST_CW_CERT_VRFY_A:
       return "SSLv3 write certificate verify A";
 
-    case SSL3_ST_CW_CERT_VRFY_B:
-      return "SSLv3 write certificate verify B";
-
     case SSL3_ST_CW_CHANGE:
       return "SSLv3 write change cipher spec";
 
@@ -249,9 +246,6 @@ const char *SSL_state_string(const SSL *ssl) {
     case SSL3_ST_CW_CERT_VRFY_A:
       return "3WCV_A";
 
-    case SSL3_ST_CW_CERT_VRFY_B:
-      return "3WCV_B";
-
     case SSL3_ST_CW_CHANGE:
       return "3WCCS_";
 
@@ -284,9 +278,6 @@ const char *SSL_state_string(const SSL *ssl) {
 
     case SSL3_ST_SW_KEY_EXCH_A:
       return "3WSKEA";
-
-    case SSL3_ST_SW_KEY_EXCH_B:
-      return "3WSKEB";
 
     case SSL3_ST_SW_SRVR_DONE_A:
       return "3WSD_A";
