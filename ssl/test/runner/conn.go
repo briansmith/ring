@@ -35,6 +35,7 @@ type Conn struct {
 	// constant after handshake; protected by handshakeMutex
 	handshakeMutex       sync.Mutex // handshakeMutex < in.Mutex, out.Mutex, errMutex
 	handshakeErr         error      // error resulting from handshake
+	wireVersion          uint16     // TLS wire version
 	vers                 uint16     // TLS version
 	haveVers             bool       // version has been negotiated
 	config               *Config    // configuration passed to constructor

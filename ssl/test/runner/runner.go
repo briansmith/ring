@@ -263,6 +263,31 @@ func getShimKey(t testCert) string {
 	panic("Unknown test certificate")
 }
 
+// configVersionToWire maps a protocol version to the default wire version to
+// test at that protocol.
+//
+// TODO(davidben): Rather than mapping these, make tlsVersions contains a list
+// of wire versions and test all of them.
+func configVersionToWire(vers uint16, protocol protocol) uint16 {
+	if protocol == dtls {
+		switch vers {
+		case VersionTLS12:
+			return VersionDTLS12
+		case VersionTLS10:
+			return VersionDTLS10
+		}
+	} else {
+		switch vers {
+		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12:
+			return vers
+		case VersionTLS13:
+			return tls13DraftVersion
+		}
+	}
+
+	panic("unknown version")
+}
+
 // encodeDERValues encodes a series of bytestrings in comma-separated-hex form.
 func encodeDERValues(values [][]byte) string {
 	var ret string
@@ -4577,12 +4602,12 @@ func addVersionNegotiationTests() {
 				if clientVers > VersionTLS10 {
 					clientVers = VersionTLS10
 				}
-				clientVers = versionToWire(clientVers, protocol == dtls)
+				clientVers = configVersionToWire(clientVers, protocol)
 				serverVers := expectedVersion
 				if expectedVersion >= VersionTLS13 {
 					serverVers = VersionTLS10
 				}
-				serverVers = versionToWire(serverVers, protocol == dtls)
+				serverVers = configVersionToWire(serverVers, protocol)
 
 				testCases = append(testCases, testCase{
 					protocol: protocol,
@@ -4653,7 +4678,7 @@ func addVersionNegotiationTests() {
 				suffix += "-DTLS"
 			}
 
-			wireVersion := versionToWire(vers.version, protocol == dtls)
+			wireVersion := configVersionToWire(vers.version, protocol)
 			testCases = append(testCases, testCase{
 				protocol: protocol,
 				testType: serverTest,
@@ -4926,7 +4951,7 @@ func addMinimumVersionTests() {
 							// Ensure the server does not decline to
 							// select a version (versions extension) or
 							// cipher (some ciphers depend on versions).
-							NegotiateVersion:            runnerVers.version,
+							NegotiateVersion:            configVersionToWire(runnerVers.version, protocol),
 							IgnorePeerCipherPreferences: shouldFail,
 						},
 					},
@@ -4946,7 +4971,7 @@ func addMinimumVersionTests() {
 							// Ensure the server does not decline to
 							// select a version (versions extension) or
 							// cipher (some ciphers depend on versions).
-							NegotiateVersion:            runnerVers.version,
+							NegotiateVersion:            configVersionToWire(runnerVers.version, protocol),
 							IgnorePeerCipherPreferences: shouldFail,
 						},
 					},

@@ -23,32 +23,12 @@ import (
 	"net"
 )
 
-func versionToWire(vers uint16, isDTLS bool) uint16 {
-	if isDTLS {
-		switch vers {
-		case VersionTLS12:
-			return 0xfefd
-		case VersionTLS10:
-			return 0xfeff
-		}
-	} else {
-		switch vers {
-		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12:
-			return vers
-		case VersionTLS13:
-			return tls13DraftVersion
-		}
-	}
-
-	panic("unknown version")
-}
-
 func wireToVersion(vers uint16, isDTLS bool) (uint16, bool) {
 	if isDTLS {
 		switch vers {
-		case 0xfefd:
+		case VersionDTLS12:
 			return VersionTLS12, true
-		case 0xfeff:
+		case VersionDTLS10:
 			return VersionTLS10, true
 		}
 	} else {
@@ -102,9 +82,9 @@ func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
 	// version is irrelevant.)
 	if typ != recordTypeAlert {
 		if c.haveVers {
-			if wireVers := versionToWire(c.vers, c.isDTLS); vers != wireVers {
+			if vers != c.wireVersion {
 				c.sendAlert(alertProtocolVersion)
-				return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: received record with version %x when expecting version %x", vers, wireVers))
+				return 0, nil, c.in.setErrorLocked(fmt.Errorf("dtls: received record with version %x when expecting version %x", vers, c.wireVersion))
 			}
 		} else {
 			// Pre-version-negotiation alerts may be sent with any version.
@@ -368,13 +348,16 @@ func (c *Conn) dtlsSealRecord(typ recordType, data []byte) (b *block, err error)
 	// TODO(nharper): DTLS 1.3 will likely need to set this to
 	// recordTypeApplicationData if c.out.cipher != nil.
 	b.data[0] = byte(typ)
-	vers := c.vers
+	vers := c.wireVersion
 	if vers == 0 {
 		// Some TLS servers fail if the record version is greater than
 		// TLS 1.0 for the initial ClientHello.
-		vers = VersionTLS10
+		if c.isDTLS {
+			vers = VersionDTLS10
+		} else {
+			vers = VersionTLS10
+		}
 	}
-	vers = versionToWire(vers, c.isDTLS)
 	b.data[1] = byte(vers >> 8)
 	b.data[2] = byte(vers)
 	// DTLS records include an explicit sequence number.

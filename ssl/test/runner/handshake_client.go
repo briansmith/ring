@@ -35,6 +35,21 @@ type clientHandshakeState struct {
 	finishedBytes []byte
 }
 
+func mapClientHelloVersion(vers uint16, isDTLS bool) uint16 {
+	if !isDTLS {
+		return vers
+	}
+
+	switch vers {
+	case VersionTLS12:
+		return VersionDTLS12
+	case VersionTLS10:
+		return VersionDTLS10
+	}
+
+	panic("Unknown ClientHello version.")
+}
+
 func (c *Conn) clientHandshake() error {
 	if c.config == nil {
 		c.config = defaultConfig()
@@ -63,7 +78,6 @@ func (c *Conn) clientHandshake() error {
 	maxVersion := c.config.maxVersion(c.isDTLS)
 	hello := &clientHelloMsg{
 		isDTLS:                  c.isDTLS,
-		vers:                    versionToWire(maxVersion, c.isDTLS),
 		compressionMethods:      []uint8{compressionNone},
 		random:                  make([]byte, 32),
 		ocspStapling:            !c.config.Bugs.NoOCSPStapling,
@@ -83,6 +97,23 @@ func (c *Conn) clientHandshake() error {
 		srtpMasterKeyIdentifier: c.config.Bugs.SRTPMasterKeyIdentifer,
 		customExtension:         c.config.Bugs.CustomExtension,
 		pskBinderFirst:          c.config.Bugs.PSKBinderFirst,
+	}
+
+	if maxVersion >= VersionTLS13 {
+		hello.vers = mapClientHelloVersion(VersionTLS12, c.isDTLS)
+		if !c.config.Bugs.OmitSupportedVersions {
+			hello.supportedVersions = c.config.supportedVersions(c.isDTLS)
+		}
+	} else {
+		hello.vers = mapClientHelloVersion(maxVersion, c.isDTLS)
+	}
+
+	if c.config.Bugs.SendClientVersion != 0 {
+		hello.vers = c.config.Bugs.SendClientVersion
+	}
+
+	if len(c.config.Bugs.SendSupportedVersions) > 0 {
+		hello.supportedVersions = c.config.Bugs.SendSupportedVersions
 	}
 
 	disableEMS := c.config.Bugs.NoExtendedMasterSecret
@@ -310,23 +341,6 @@ NextCipherSuite:
 		}
 	}
 
-	if maxVersion == VersionTLS13 && !c.config.Bugs.OmitSupportedVersions {
-		if hello.vers >= VersionTLS13 {
-			hello.vers = VersionTLS12
-		}
-		for version := maxVersion; version >= minVersion; version-- {
-			hello.supportedVersions = append(hello.supportedVersions, versionToWire(version, c.isDTLS))
-		}
-	}
-
-	if len(c.config.Bugs.SendSupportedVersions) > 0 {
-		hello.supportedVersions = c.config.Bugs.SendSupportedVersions
-	}
-
-	if c.config.Bugs.SendClientVersion != 0 {
-		hello.vers = c.config.Bugs.SendClientVersion
-	}
-
 	if c.config.Bugs.SendCipherSuites != nil {
 		hello.cipherSuites = c.config.Bugs.SendCipherSuites
 	}
@@ -409,7 +423,7 @@ NextCipherSuite:
 	if c.isDTLS {
 		helloVerifyRequest, ok := msg.(*helloVerifyRequestMsg)
 		if ok {
-			if helloVerifyRequest.vers != versionToWire(VersionTLS10, c.isDTLS) {
+			if helloVerifyRequest.vers != VersionDTLS10 {
 				// Per RFC 6347, the version field in
 				// HelloVerifyRequest SHOULD be always DTLS
 				// 1.0. Enforce this for testing purposes.
@@ -443,14 +457,12 @@ NextCipherSuite:
 		return fmt.Errorf("tls: received unexpected message of type %T when waiting for HelloRetryRequest or ServerHello", msg)
 	}
 
-	serverVersion, ok := wireToVersion(serverWireVersion, c.isDTLS)
-	if ok {
-		ok = c.config.isSupportedVersion(serverVersion, c.isDTLS)
-	}
+	serverVersion, ok := c.config.isSupportedVersion(serverWireVersion, c.isDTLS)
 	if !ok {
 		c.sendAlert(alertProtocolVersion)
 		return fmt.Errorf("tls: server selected unsupported protocol version %x", c.vers)
 	}
+	c.wireVersion = serverWireVersion
 	c.vers = serverVersion
 	c.haveVers = true
 
