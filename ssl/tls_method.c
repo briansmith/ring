@@ -65,39 +65,6 @@
 #include "internal.h"
 
 
-static int ssl3_version_from_wire(uint16_t *out_version,
-                                  uint16_t wire_version) {
-  switch (wire_version) {
-    case SSL3_VERSION:
-    case TLS1_VERSION:
-    case TLS1_1_VERSION:
-    case TLS1_2_VERSION:
-      *out_version = wire_version;
-      return 1;
-    case TLS1_3_DRAFT_VERSION:
-      *out_version = TLS1_3_VERSION;
-      return 1;
-  }
-
-  return 0;
-}
-
-static uint16_t ssl3_version_to_wire(uint16_t version) {
-  switch (version) {
-    case SSL3_VERSION:
-    case TLS1_VERSION:
-    case TLS1_1_VERSION:
-    case TLS1_2_VERSION:
-      return version;
-    case TLS1_3_VERSION:
-      return TLS1_3_DRAFT_VERSION;
-  }
-
-  /* It is an error to use this function with an invalid version. */
-  assert(0);
-  return 0;
-}
-
 static int ssl3_supports_cipher(const SSL_CIPHER *cipher) { return 1; }
 
 static void ssl3_expect_flight(SSL *ssl) {}
@@ -130,10 +97,6 @@ static int ssl3_set_write_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
 
 static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     0 /* is_dtls */,
-    SSL3_VERSION,
-    TLS1_3_VERSION,
-    ssl3_version_from_wire,
-    ssl3_version_to_wire,
     ssl3_new,
     ssl3_free,
     ssl3_get_message,

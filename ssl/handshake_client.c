@@ -717,33 +717,26 @@ static int ssl3_send_client_hello(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
-  uint16_t max_wire_version = ssl->method->version_to_wire(hs->max_version);
-  assert(hs->state == SSL3_ST_CW_CLNT_HELLO_A);
-  if (!ssl->s3->have_version) {
-    ssl->version = max_wire_version;
-  }
-
   /* Always advertise the ClientHello version from the original maximum version,
    * even on renegotiation. The static RSA key exchange uses this field, and
    * some servers fail when it changes across handshakes. */
-  hs->client_version = max_wire_version;
-  if (hs->max_version >= TLS1_3_VERSION) {
-    hs->client_version = ssl->method->version_to_wire(TLS1_2_VERSION);
+  if (SSL_is_dtls(hs->ssl)) {
+    hs->client_version =
+        hs->max_version >= TLS1_2_VERSION ? DTLS1_2_VERSION : DTLS1_VERSION;
+  } else {
+    hs->client_version =
+        hs->max_version >= TLS1_2_VERSION ? TLS1_2_VERSION : hs->max_version;
   }
 
   /* If the configured session has expired or was created at a disabled
    * version, drop it. */
   if (ssl->session != NULL) {
-    uint16_t session_version;
     if (ssl->session->is_server ||
-        !ssl->method->version_from_wire(&session_version,
-                                        ssl->session->ssl_version) ||
-        (session_version < TLS1_3_VERSION &&
-         ssl->session->session_id_length == 0) ||
+        !ssl_supports_version(hs, ssl->session->ssl_version) ||
+        (ssl->session->session_id_length == 0 &&
+         ssl->session->tlsext_ticklen == 0) ||
         ssl->session->not_resumable ||
-        !ssl_session_is_time_valid(ssl, ssl->session) ||
-        session_version < hs->min_version ||
-        session_version > hs->max_version) {
+        !ssl_session_is_time_valid(ssl, ssl->session)) {
       ssl_set_session(ssl, NULL);
     }
   }
@@ -798,7 +791,7 @@ static int dtls1_get_hello_verify_request(SSL_HANDSHAKE *hs) {
 static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   CBS server_hello, server_random, session_id;
-  uint16_t server_wire_version, cipher_suite;
+  uint16_t server_version, cipher_suite;
   uint8_t compression_method;
 
   int ret = ssl->method->ssl_get_message(ssl);
@@ -826,15 +819,13 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
 
   CBS_init(&server_hello, ssl->init_msg, ssl->init_num);
 
-  if (!CBS_get_u16(&server_hello, &server_wire_version)) {
+  if (!CBS_get_u16(&server_hello, &server_version)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return -1;
   }
 
-  uint16_t server_version;
-  if (!ssl->method->version_from_wire(&server_version, server_wire_version) ||
-      server_version < hs->min_version || server_version > hs->max_version) {
+  if (!ssl_supports_version(hs, server_version)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
     return -1;
@@ -842,11 +833,11 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
 
   assert(ssl->s3->have_version == ssl->s3->initial_handshake_complete);
   if (!ssl->s3->have_version) {
-    ssl->version = server_wire_version;
+    ssl->version = server_version;
     /* At this point, the connection's version is known and ssl->version is
      * fixed. Begin enforcing the record-layer version. */
     ssl->s3->have_version = 1;
-  } else if (server_wire_version != ssl->version) {
+  } else if (server_version != ssl->version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
     return -1;

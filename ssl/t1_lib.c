@@ -970,14 +970,11 @@ static int ext_ticket_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
    * advertise the extension to avoid potentially breaking servers which carry
    * over the state from the previous handshake, such as OpenSSL servers
    * without upstream's 3c3f0259238594d77264a78944d409f2127642c4. */
-  uint16_t session_version;
   if (!ssl->s3->initial_handshake_complete &&
       ssl->session != NULL &&
       ssl->session->tlsext_tick != NULL &&
       /* Don't send TLS 1.3 session tickets in the ticket extension. */
-      ssl->method->version_from_wire(&session_version,
-                                     ssl->session->ssl_version) &&
-      session_version < TLS1_3_VERSION) {
+      SSL_SESSION_protocol_version(ssl->session) < TLS1_3_VERSION) {
     ticket_data = ssl->session->tlsext_tick;
     ticket_len = ssl->session->tlsext_ticklen;
   }
@@ -1863,31 +1860,19 @@ static int ext_ec_point_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static size_t ext_pre_shared_key_clienthello_length(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  uint16_t session_version;
   if (hs->max_version < TLS1_3_VERSION || ssl->session == NULL ||
-      !ssl->method->version_from_wire(&session_version,
-                                      ssl->session->ssl_version) ||
-      session_version < TLS1_3_VERSION) {
+      SSL_SESSION_protocol_version(ssl->session) < TLS1_3_VERSION) {
     return 0;
   }
 
-  const EVP_MD *digest = SSL_SESSION_get_digest(ssl->session, ssl);
-  if (digest == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
-  size_t binder_len = EVP_MD_size(digest);
+  size_t binder_len = EVP_MD_size(SSL_SESSION_get_digest(ssl->session));
   return 15 + ssl->session->tlsext_ticklen + binder_len;
 }
 
 static int ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  uint16_t session_version;
   if (hs->max_version < TLS1_3_VERSION || ssl->session == NULL ||
-      !ssl->method->version_from_wire(&session_version,
-                                      ssl->session->ssl_version) ||
-      session_version < TLS1_3_VERSION) {
+      SSL_SESSION_protocol_version(ssl->session) < TLS1_3_VERSION) {
     return 1;
   }
 
@@ -1899,14 +1884,7 @@ static int ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   /* Fill in a placeholder zero binder of the appropriate length. It will be
    * computed and filled in later after length prefixes are computed. */
   uint8_t zero_binder[EVP_MAX_MD_SIZE] = {0};
-
-  const EVP_MD *digest = SSL_SESSION_get_digest(ssl->session, ssl);
-  if (digest == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
-  size_t binder_len = EVP_MD_size(digest);
+  size_t binder_len = EVP_MD_size(SSL_SESSION_get_digest(ssl->session));
 
   CBB contents, identity, ticket, binders, binder;
   if (!CBB_add_u16(out, TLSEXT_TYPE_pre_shared_key) ||
@@ -2071,11 +2049,8 @@ static int ext_psk_key_exchange_modes_parse_clienthello(SSL_HANDSHAKE *hs,
 
 static int ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  uint16_t session_version;
   if (ssl->session == NULL ||
-      !ssl->method->version_from_wire(&session_version,
-                                      ssl->session->ssl_version) ||
-      session_version < TLS1_3_VERSION ||
+      SSL_SESSION_protocol_version(ssl->session) < TLS1_3_VERSION ||
       ssl->session->ticket_max_early_data == 0 ||
       hs->received_hello_retry_request ||
       !ssl->cert->enable_early_data) {
@@ -2375,14 +2350,8 @@ static int ext_supported_versions_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return 0;
   }
 
-  for (uint16_t version = hs->max_version; version >= hs->min_version;
-       version--) {
-    if (!CBB_add_u16(&versions, ssl->method->version_to_wire(version))) {
-      return 0;
-    }
-  }
-
-  if (!CBB_flush(out)) {
+  if (!ssl_add_supported_versions(hs, &versions) ||
+      !CBB_flush(out)) {
     return 0;
   }
 

@@ -163,6 +163,57 @@ extern "C" {
 #endif
 
 
+typedef struct ssl_handshake_st SSL_HANDSHAKE;
+
+/* Protocol versions.
+ *
+ * Due to DTLS's historical wire version differences and to support multiple
+ * variants of the same protocol during development, we maintain two notions of
+ * version.
+ *
+ * The "version" or "wire version" is the actual 16-bit value that appears on
+ * the wire. It uniquely identifies a version and is also used at API
+ * boundaries. The set of supported versions differs between TLS and DTLS. Wire
+ * versions are opaque values and may not be compared numerically.
+ *
+ * The "protocol version" identifies the high-level handshake variant being
+ * used. DTLS versions map to the corresponding TLS versions. Draft TLS 1.3
+ * variants all map to TLS 1.3. Protocol versions are sequential and may be
+ * compared numerically. */
+
+/* ssl_protocol_version_from_wire sets |*out| to the protocol version
+ * corresponding to wire version |version| and returns one. If |version| is not
+ * a valid TLS or DTLS version, it returns zero.
+ *
+ * Note this simultaneously handles both DTLS and TLS. Use one of the
+ * higher-level functions below for most operations. */
+int ssl_protocol_version_from_wire(uint16_t *out, uint16_t version);
+
+/* ssl_get_version_range sets |*out_min_version| and |*out_max_version| to the
+ * minimum and maximum enabled protocol versions, respectively. */
+int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
+                          uint16_t *out_max_version);
+
+/* ssl_supports_version returns one if |hs| supports |version| and zero
+ * otherwise. */
+int ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version);
+
+/* ssl_add_supported_versions writes the supported versions of |hs| to |cbb|, in
+ * decreasing preference order. */
+int ssl_add_supported_versions(SSL_HANDSHAKE *hs, CBB *cbb);
+
+/* ssl_negotiate_version negotiates a common version based on |hs|'s preferences
+ * and the peer preference list in |peer_versions|. On success, it returns one
+ * and sets |*out_version| to the selected version. Otherwise, it returns zero
+ * and sets |*out_alert| to an alert to send. */
+int ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
+                          uint16_t *out_version, const CBS *peer_versions);
+
+/* ssl3_protocol_version returns |ssl|'s protocol version. It is an error to
+ * call this function before the version is determined. */
+uint16_t ssl3_protocol_version(const SSL *ssl);
+
+
 /* Cipher suites. */
 
 /* Bits for |algorithm_mkey| (key exchange algorithm). */
@@ -541,8 +592,6 @@ enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
 
 
 /* Private key operations. */
-
-typedef struct ssl_handshake_st SSL_HANDSHAKE;
 
 /* ssl_has_private_key returns one if |ssl| has a private key
  * configured and zero otherwise. */
@@ -1414,17 +1463,6 @@ struct ssl_method_st {
 struct ssl_protocol_method_st {
   /* is_dtls is one if the protocol is DTLS and zero otherwise. */
   char is_dtls;
-  /* min_version is the minimum implemented version. */
-  uint16_t min_version;
-  /* max_version is the maximum implemented version. */
-  uint16_t max_version;
-  /* version_from_wire maps |wire_version| to a protocol version. On success, it
-   * sets |*out_version| to the result and returns one. If the version is
-   * unknown, it returns zero. */
-  int (*version_from_wire)(uint16_t *out_version, uint16_t wire_version);
-  /* version_to_wire maps |version| to the wire representation. It is an error
-   * to call it with an invalid version. */
-  uint16_t (*version_to_wire)(uint16_t version);
   int (*ssl_new)(SSL *ssl);
   void (*ssl_free)(SSL *ssl);
   /* ssl_get_message reads the next handshake message. On success, it returns
@@ -1846,7 +1884,7 @@ struct ssl_st {
   const SSL_PROTOCOL_METHOD *method;
 
   /* version is the protocol version. */
-  int version;
+  uint16_t version;
 
   /* conf_max_version is the maximum acceptable protocol version configured by
    * |SSL_set_max_proto_version|. Note this version is normalized in DTLS and is
@@ -2049,10 +2087,12 @@ int ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session);
 int ssl_session_is_resumable(const SSL_HANDSHAKE *hs,
                              const SSL_SESSION *session);
 
-/* SSL_SESSION_get_digest returns the digest used in |session|. If the digest is
- * invalid, it returns NULL. */
-const EVP_MD *SSL_SESSION_get_digest(const SSL_SESSION *session,
-                                     const SSL *ssl);
+/* SSL_SESSION_protocol_version returns the protocol version associated with
+ * |session|. */
+uint16_t SSL_SESSION_protocol_version(const SSL_SESSION *session);
+
+/* SSL_SESSION_get_digest returns the digest used in |session|. */
+const EVP_MD *SSL_SESSION_get_digest(const SSL_SESSION *session);
 
 void ssl_set_session(SSL *ssl, SSL_SESSION *session);
 
@@ -2284,15 +2324,6 @@ int ssl_can_write(const SSL *ssl);
 
 /* ssl_can_read returns one if |ssl| is allowed to read and zero otherwise. */
 int ssl_can_read(const SSL *ssl);
-
-/* ssl_get_version_range sets |*out_min_version| and |*out_max_version| to the
- * minimum and maximum enabled protocol versions, respectively. */
-int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
-                          uint16_t *out_max_version);
-
-/* ssl3_protocol_version returns |ssl|'s protocol version. It is an error to
- * call this function before the version is determined. */
-uint16_t ssl3_protocol_version(const SSL *ssl);
 
 void ssl_get_current_time(const SSL *ssl, struct OPENSSL_timeval *out_clock);
 

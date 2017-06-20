@@ -29,6 +29,7 @@ add_library(
   ssl_session.c
   ssl_stat.c
   ssl_transcript.c
+  ssl_versions.c
   ssl_x509.c
   t1_enc.c
   t1_lib.c

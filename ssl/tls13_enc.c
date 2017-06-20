@@ -54,15 +54,8 @@ int tls13_init_key_schedule(SSL_HANDSHAKE *hs) {
 
 int tls13_init_early_key_schedule(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  uint16_t session_version;
-  if (!ssl->method->version_from_wire(&session_version,
-                                      ssl->session->ssl_version) ||
-      !init_key_schedule(hs, session_version,
-                         ssl->session->cipher->algorithm_prf)) {
-    return 0;
-  }
-
-  return 1;
+  return init_key_schedule(hs, SSL_SESSION_protocol_version(ssl->session),
+                           ssl->session->cipher->algorithm_prf);
 }
 
 int tls13_advance_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *in,
@@ -122,11 +115,7 @@ int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
                           const uint8_t *traffic_secret,
                           size_t traffic_secret_len) {
   const SSL_SESSION *session = SSL_get_session(ssl);
-  uint16_t version;
-  if (!ssl->method->version_from_wire(&version, session->ssl_version)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
+  uint16_t version = SSL_SESSION_protocol_version(session);
 
   if (traffic_secret_len > 0xff) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
@@ -141,8 +130,7 @@ int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
     return 0;
   }
 
-  const EVP_MD *digest = ssl_get_handshake_digest(
-      session->cipher->algorithm_prf, version);
+  const EVP_MD *digest = SSL_SESSION_get_digest(session);
 
   /* Derive the key. */
   size_t key_len = EVP_AEAD_key_length(aead);
@@ -383,11 +371,7 @@ static int tls13_psk_binder(uint8_t *out, const EVP_MD *digest, uint8_t *psk,
 
 int tls13_write_psk_binder(SSL_HANDSHAKE *hs, uint8_t *msg, size_t len) {
   SSL *const ssl = hs->ssl;
-  const EVP_MD *digest = SSL_SESSION_get_digest(ssl->session, ssl);
-  if (digest == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
+  const EVP_MD *digest = SSL_SESSION_get_digest(ssl->session);
   size_t hash_len = EVP_MD_size(digest);
 
   if (len < hash_len + 3) {

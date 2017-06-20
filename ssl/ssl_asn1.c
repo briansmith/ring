@@ -576,10 +576,17 @@ SSL_SESSION *SSL_SESSION_parse(CBS *cbs, const SSL_X509_METHOD *x509_method,
 
   CBS session;
   uint64_t version, ssl_version;
+  uint16_t unused;
   if (!CBS_get_asn1(cbs, &session, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1_uint64(&session, &version) ||
       version != kVersion ||
-      !CBS_get_asn1_uint64(&session, &ssl_version)) {
+      !CBS_get_asn1_uint64(&session, &ssl_version) ||
+      /* Require sessions have versions valid in either TLS or DTLS. The session
+       * will not be used by the handshake if not applicable, but, for
+       * simplicity, never parse a session that does not pass
+       * |ssl_protocol_version_from_wire|. */
+      ssl_version > UINT16_MAX ||
+      !ssl_protocol_version_from_wire(&unused, ssl_version)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     goto err;
   }

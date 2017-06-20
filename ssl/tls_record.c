@@ -389,8 +389,10 @@ static int do_seal_record(SSL *ssl, uint8_t *out, size_t *out_len,
    * ClientHellos should use SSL 3.0 and pre-TLS-1.3 expects the version
    * to change after version negotiation. */
   uint16_t wire_version = TLS1_VERSION;
-  if (ssl->version == SSL3_VERSION ||
-      (ssl->s3->have_version && ssl3_protocol_version(ssl) < TLS1_3_VERSION)) {
+  if (ssl->s3->hs != NULL && ssl->s3->hs->max_version == SSL3_VERSION) {
+    wire_version = SSL3_VERSION;
+  }
+  if (ssl->s3->have_version && ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
     wire_version = ssl->version;
   }
 
