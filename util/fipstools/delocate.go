@@ -339,7 +339,7 @@ func instructionArgs(node *node32) (argNodes []*node32) {
 
 /* ppc64le
 
-[PABI]: “64-bit ELF v2 ABI Specification. Power Architechture.” March 21st,
+[PABI]: “64-Bit ELF V2 ABI Specification. Power Architecture.” March 21st,
         2017
 
 (Also useful is “Power ISA Version 2.07 B”. Note that version three of that
