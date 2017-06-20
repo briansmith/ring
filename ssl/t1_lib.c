@@ -722,13 +722,8 @@ static int ext_sni_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static int ext_ri_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
-    return 0;
-  }
-
   /* Renegotiation indication is not necessary in TLS 1.3. */
-  if (min_version >= TLS1_3_VERSION) {
+  if (hs->min_version >= TLS1_3_VERSION) {
     return 1;
   }
 
@@ -883,13 +878,8 @@ static int ext_ri_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
  * https://tools.ietf.org/html/rfc7627 */
 
 static int ext_ems_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(hs->ssl, &min_version, &max_version)) {
-    return 0;
-  }
-
   /* Extended master secret is not necessary in TLS 1.3. */
-  if (min_version >= TLS1_3_VERSION || max_version <= SSL3_VERSION) {
+  if (hs->min_version >= TLS1_3_VERSION || hs->max_version <= SSL3_VERSION) {
     return 1;
   }
 
@@ -967,13 +957,8 @@ static int ext_ems_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static int ext_ticket_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
-    return 0;
-  }
-
   /* TLS 1.3 uses a different ticket extension. */
-  if (min_version >= TLS1_3_VERSION ||
+  if (hs->min_version >= TLS1_3_VERSION ||
       SSL_get_options(ssl) & SSL_OP_NO_TICKET) {
     return 1;
   }
@@ -1055,12 +1040,7 @@ static int ext_ticket_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static int ext_sigalgs_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
-    return 0;
-  }
-
-  if (max_version < TLS1_2_VERSION) {
+  if (hs->max_version < TLS1_2_VERSION) {
     return 1;
   }
 
@@ -1814,13 +1794,8 @@ static int ext_ec_point_add_extension(SSL_HANDSHAKE *hs, CBB *out) {
 }
 
 static int ext_ec_point_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(hs->ssl, &min_version, &max_version)) {
-    return 0;
-  }
-
   /* The point format extension is unneccessary in TLS 1.3. */
-  if (min_version >= TLS1_3_VERSION) {
+  if (hs->min_version >= TLS1_3_VERSION) {
     return 1;
   }
 
@@ -1888,13 +1863,8 @@ static int ext_ec_point_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static size_t ext_pre_shared_key_clienthello_length(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
-    return 0;
-  }
-
   uint16_t session_version;
-  if (max_version < TLS1_3_VERSION || ssl->session == NULL ||
+  if (hs->max_version < TLS1_3_VERSION || ssl->session == NULL ||
       !ssl->method->version_from_wire(&session_version,
                                       ssl->session->ssl_version) ||
       session_version < TLS1_3_VERSION) {
@@ -1913,13 +1883,8 @@ static size_t ext_pre_shared_key_clienthello_length(SSL_HANDSHAKE *hs) {
 
 static int ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
-    return 0;
-  }
-
   uint16_t session_version;
-  if (max_version < TLS1_3_VERSION || ssl->session == NULL ||
+  if (hs->max_version < TLS1_3_VERSION || ssl->session == NULL ||
       !ssl->method->version_from_wire(&session_version,
                                       ssl->session->ssl_version) ||
       session_version < TLS1_3_VERSION) {
@@ -2062,13 +2027,7 @@ int ssl_ext_pre_shared_key_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static int ext_psk_key_exchange_modes_add_clienthello(SSL_HANDSHAKE *hs,
                                                       CBB *out) {
-  SSL *const ssl = hs->ssl;
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
-    return 0;
-  }
-
-  if (max_version < TLS1_3_VERSION) {
+  if (hs->max_version < TLS1_3_VERSION) {
     return 1;
   }
 
@@ -2194,12 +2153,7 @@ static int ext_early_data_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static int ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
-    return 0;
-  }
-
-  if (max_version < TLS1_3_VERSION) {
+  if (hs->max_version < TLS1_3_VERSION) {
     return 1;
   }
 
@@ -2404,12 +2358,7 @@ int ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static int ext_supported_versions_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
-    return 0;
-  }
-
-  if (max_version <= TLS1_2_VERSION) {
+  if (hs->max_version <= TLS1_2_VERSION) {
     return 1;
   }
 
@@ -2426,7 +2375,8 @@ static int ext_supported_versions_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return 0;
   }
 
-  for (uint16_t version = max_version; version >= min_version; version--) {
+  for (uint16_t version = hs->max_version; version >= hs->min_version;
+       version--) {
     if (!CBB_add_u16(&versions, ssl->method->version_to_wire(version))) {
       return 0;
     }

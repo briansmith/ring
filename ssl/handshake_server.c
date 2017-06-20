@@ -471,12 +471,6 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                              const SSL_CLIENT_HELLO *client_hello) {
   SSL *const ssl = hs->ssl;
   assert(!ssl->s3->have_version);
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
-    *out_alert = SSL_AD_PROTOCOL_VERSION;
-    return 0;
-  }
-
   uint16_t version = 0;
   /* Check supported_versions extension if it is present. */
   CBS supported_versions;
@@ -505,8 +499,8 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       if (!ssl->method->version_from_wire(&ext_version, ext_version)) {
         continue;
       }
-      if (min_version <= ext_version &&
-          ext_version <= max_version &&
+      if (hs->min_version <= ext_version &&
+          ext_version <= hs->max_version &&
           (!found_version || version < ext_version)) {
         version = ext_version;
         found_version = 1;
@@ -542,11 +536,11 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     }
 
     /* Apply our minimum and maximum version. */
-    if (version > max_version) {
-      version = max_version;
+    if (version > hs->max_version) {
+      version = hs->max_version;
     }
 
-    if (version < min_version) {
+    if (version < hs->min_version) {
       goto unsupported_protocol;
     }
   }
@@ -554,7 +548,7 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   /* Handle FALLBACK_SCSV. */
   if (ssl_client_cipher_list_contains_cipher(client_hello,
                                              SSL3_CK_FALLBACK_SCSV & 0xffff) &&
-      version < max_version) {
+      version < hs->max_version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INAPPROPRIATE_FALLBACK);
     *out_alert = SSL3_AD_INAPPROPRIATE_FALLBACK;
     return 0;
@@ -752,6 +746,11 @@ static int ssl3_process_client_hello(SSL_HANDSHAKE *hs) {
       default:
         /* fallthrough */;
     }
+  }
+
+  /* Freeze the version range after the early callback. */
+  if (!ssl_get_version_range(ssl, &hs->min_version, &hs->max_version)) {
+    return -1;
   }
 
   uint8_t alert = SSL_AD_DECODE_ERROR;

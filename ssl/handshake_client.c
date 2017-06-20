@@ -567,9 +567,8 @@ static void ssl_get_client_disabled(SSL *ssl, uint32_t *out_mask_a,
   }
 }
 
-static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
-                                        uint16_t min_version,
-                                        uint16_t max_version) {
+static int ssl_write_client_cipher_list(SSL_HANDSHAKE *hs, CBB *out) {
+  SSL *const ssl = hs->ssl;
   uint32_t mask_a, mask_k;
   ssl_get_client_disabled(ssl, &mask_a, &mask_k);
 
@@ -586,7 +585,7 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
 
   /* Add TLS 1.3 ciphers. Order ChaCha20-Poly1305 relative to AES-GCM based on
    * hardware support. */
-  if (max_version >= TLS1_3_VERSION) {
+  if (hs->max_version >= TLS1_3_VERSION) {
     if (!EVP_has_aes_hardware() &&
         !CBB_add_u16(&child, TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
       return 0;
@@ -601,7 +600,7 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
     }
   }
 
-  if (min_version < TLS1_3_VERSION) {
+  if (hs->min_version < TLS1_3_VERSION) {
     STACK_OF(SSL_CIPHER) *ciphers = SSL_get_ciphers(ssl);
     int any_enabled = 0;
     for (size_t i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
@@ -611,8 +610,8 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
           (cipher->algorithm_auth & mask_a)) {
         continue;
       }
-      if (SSL_CIPHER_get_min_version(cipher) > max_version ||
-          SSL_CIPHER_get_max_version(cipher) < min_version) {
+      if (SSL_CIPHER_get_min_version(cipher) > hs->max_version ||
+          SSL_CIPHER_get_max_version(cipher) < hs->min_version) {
         continue;
       }
       any_enabled = 1;
@@ -622,7 +621,7 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
     }
 
     /* If all ciphers were disabled, return the error to the caller. */
-    if (!any_enabled && max_version < TLS1_3_VERSION) {
+    if (!any_enabled && hs->max_version < TLS1_3_VERSION) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CIPHERS_AVAILABLE);
       return 0;
     }
@@ -630,7 +629,7 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
 
   /* For SSLv3, the SCSV is added. Otherwise the renegotiation extension is
    * added. */
-  if (max_version == SSL3_VERSION &&
+  if (hs->max_version == SSL3_VERSION &&
       !ssl->s3->initial_handshake_complete) {
     if (!CBB_add_u16(&child, SSL3_CK_SCSV & 0xffff)) {
       return 0;
@@ -648,11 +647,6 @@ static int ssl_write_client_cipher_list(SSL *ssl, CBB *out,
 
 int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
-    return 0;
-  }
-
   CBB cbb, body;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CLIENT_HELLO)) {
     goto err;
@@ -681,7 +675,7 @@ int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
 
   size_t header_len =
       SSL_is_dtls(ssl) ? DTLS1_HM_HEADER_LENGTH : SSL3_HM_HEADER_LENGTH;
-  if (!ssl_write_client_cipher_list(ssl, &body, min_version, max_version) ||
+  if (!ssl_write_client_cipher_list(hs, &body) ||
       !CBB_add_u8(&body, 1 /* one compression method */) ||
       !CBB_add_u8(&body, 0 /* null compression */) ||
       !ssl_add_clienthello_tlsext(hs, &body, header_len + CBB_len(&body))) {
@@ -718,12 +712,12 @@ static int ssl3_send_client_hello(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
-  uint16_t min_version, max_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version)) {
+  /* Freeze the version range. */
+  if (!ssl_get_version_range(ssl, &hs->min_version, &hs->max_version)) {
     return -1;
   }
 
-  uint16_t max_wire_version = ssl->method->version_to_wire(max_version);
+  uint16_t max_wire_version = ssl->method->version_to_wire(hs->max_version);
   assert(hs->state == SSL3_ST_CW_CLNT_HELLO_A);
   if (!ssl->s3->have_version) {
     ssl->version = max_wire_version;
@@ -733,7 +727,7 @@ static int ssl3_send_client_hello(SSL_HANDSHAKE *hs) {
    * even on renegotiation. The static RSA key exchange uses this field, and
    * some servers fail when it changes across handshakes. */
   hs->client_version = max_wire_version;
-  if (max_version >= TLS1_3_VERSION) {
+  if (hs->max_version >= TLS1_3_VERSION) {
     hs->client_version = ssl->method->version_to_wire(TLS1_2_VERSION);
   }
 
@@ -748,7 +742,8 @@ static int ssl3_send_client_hello(SSL_HANDSHAKE *hs) {
          ssl->session->session_id_length == 0) ||
         ssl->session->not_resumable ||
         !ssl_session_is_time_valid(ssl, ssl->session) ||
-        session_version < min_version || session_version > max_version) {
+        session_version < hs->min_version ||
+        session_version > hs->max_version) {
       ssl_set_session(ssl, NULL);
     }
   }
@@ -837,10 +832,9 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
-  uint16_t min_version, max_version, server_version;
-  if (!ssl_get_version_range(ssl, &min_version, &max_version) ||
-      !ssl->method->version_from_wire(&server_version, server_wire_version) ||
-      server_version < min_version || server_version > max_version) {
+  uint16_t server_version;
+  if (!ssl->method->version_from_wire(&server_version, server_wire_version) ||
+      server_version < hs->min_version || server_version > hs->max_version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
     return -1;

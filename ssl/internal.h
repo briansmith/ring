@@ -950,6 +950,14 @@ struct ssl_handshake_st {
    * depend on |do_tls13_handshake| but the starting state is always zero. */
   int tls13_state;
 
+  /* min_version is the minimum accepted protocol version, taking account both
+   * |SSL_OP_NO_*| and |SSL_CTX_set_min_proto_version| APIs. */
+  uint16_t min_version;
+
+  /* max_version is the maximum accepted protocol version, taking account both
+   * |SSL_OP_NO_*| and |SSL_CTX_set_max_proto_version| APIs. */
+  uint16_t max_version;
+
   size_t hash_len;
   uint8_t secret[EVP_MAX_MD_SIZE];
   uint8_t early_traffic_secret[EVP_MAX_MD_SIZE];
