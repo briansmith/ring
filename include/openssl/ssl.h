@@ -4079,13 +4079,15 @@ struct ssl_ctx_st {
   /* lock is used to protect various operations on this object. */
   CRYPTO_MUTEX lock;
 
-  /* max_version is the maximum acceptable protocol version. Note this version
-   * is normalized in DTLS. */
-  uint16_t max_version;
+  /* conf_max_version is the maximum acceptable protocol version configured by
+   * |SSL_CTX_set_max_proto_version|. Note this version is normalized in DTLS
+   * and is further constrainted by |SSL_OP_NO_*|. */
+  uint16_t conf_max_version;
 
-  /* min_version is the minimum acceptable protocol version. Note this version
-   * is normalized in DTLS. */
-  uint16_t min_version;
+  /* conf_min_version is the minimum acceptable protocol version configured by
+   * |SSL_CTX_set_min_proto_version|. Note this version is normalized in DTLS
+   * and is further constrainted by |SSL_OP_NO_*|. */
+  uint16_t conf_min_version;
 
   struct ssl_cipher_preference_list_st *cipher_list;
 

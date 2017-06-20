@@ -371,8 +371,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
   }
   OPENSSL_memset(ssl, 0, sizeof(SSL));
 
-  ssl->min_version = ctx->min_version;
-  ssl->max_version = ctx->max_version;
+  ssl->conf_min_version = ctx->conf_min_version;
+  ssl->conf_max_version = ctx->conf_max_version;
 
   /* RFC 6347 states that implementations SHOULD use an initial timer value of
    * 1 second. */
@@ -1017,19 +1017,19 @@ static int set_max_version(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
 }
 
 int SSL_CTX_set_min_proto_version(SSL_CTX *ctx, uint16_t version) {
-  return set_min_version(ctx->method, &ctx->min_version, version);
+  return set_min_version(ctx->method, &ctx->conf_min_version, version);
 }
 
 int SSL_CTX_set_max_proto_version(SSL_CTX *ctx, uint16_t version) {
-  return set_max_version(ctx->method, &ctx->max_version, version);
+  return set_max_version(ctx->method, &ctx->conf_max_version, version);
 }
 
 int SSL_set_min_proto_version(SSL *ssl, uint16_t version) {
-  return set_min_version(ssl->method, &ssl->min_version, version);
+  return set_min_version(ssl->method, &ssl->conf_min_version, version);
 }
 
 int SSL_set_max_proto_version(SSL *ssl, uint16_t version) {
-  return set_max_version(ssl->method, &ssl->max_version, version);
+  return set_max_version(ssl->method, &ssl->conf_max_version, version);
 }
 
 uint32_t SSL_CTX_set_options(SSL_CTX *ctx, uint32_t options) {
@@ -2374,8 +2374,8 @@ int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
     }
   }
 
-  uint16_t min_version = ssl->min_version;
-  uint16_t max_version = ssl->max_version;
+  uint16_t min_version = ssl->conf_min_version;
+  uint16_t max_version = ssl->conf_max_version;
 
   /* Bound the range to only those implemented in this protocol. */
   if (min_version < ssl->method->min_version) {

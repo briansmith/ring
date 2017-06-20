@@ -1840,13 +1840,15 @@ struct ssl_st {
   /* version is the protocol version. */
   int version;
 
-  /* max_version is the maximum acceptable protocol version. Note this version
-   * is normalized in DTLS. */
-  uint16_t max_version;
+  /* conf_max_version is the maximum acceptable protocol version configured by
+   * |SSL_set_max_proto_version|. Note this version is normalized in DTLS and is
+   * further constrainted by |SSL_OP_NO_*|. */
+  uint16_t conf_max_version;
 
-  /* min_version is the minimum acceptable protocol version. Note this version
-   * is normalized in DTLS. */
-  uint16_t min_version;
+  /* conf_min_version is the minimum acceptable protocol version configured by
+   * |SSL_set_min_proto_version|. Note this version is normalized in DTLS and is
+   * further constrainted by |SSL_OP_NO_*|. */
+  uint16_t conf_min_version;
 
   uint16_t max_send_fragment;
 
