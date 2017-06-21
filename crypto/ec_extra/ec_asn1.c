@@ -388,18 +388,18 @@ EC_GROUP *EC_KEY_parse_parameters(CBS *cbs) {
   const struct built_in_curves *const curves = OPENSSL_built_in_curves();
   for (size_t i = 0; i < OPENSSL_NUM_BUILT_IN_CURVES; i++) {
     const struct built_in_curve *curve = &curves->curves[i];
-    const unsigned param_len = curve->data->param_len;
-    /* |curve->data->data| is ordered p, a, b, x, y, order, each component
+    const unsigned param_len = curve->param_len;
+    /* |curve->params| is ordered p, a, b, x, y, order, each component
      * zero-padded up to the field length. Although SEC 1 states that the
      * Field-Element-to-Octet-String conversion also pads, OpenSSL mis-encodes
      * |a| and |b|, so this comparison must allow omitting leading zeros. (This
      * is relevant for P-521 whose |b| has a leading 0.) */
-    if (integers_equal(&prime, curve->data->data, param_len) &&
-        integers_equal(&a, curve->data->data + param_len, param_len) &&
-        integers_equal(&b, curve->data->data + param_len * 2, param_len) &&
-        integers_equal(&base_x, curve->data->data + param_len * 3, param_len) &&
-        integers_equal(&base_y, curve->data->data + param_len * 4, param_len) &&
-        integers_equal(&order, curve->data->data + param_len * 5, param_len)) {
+    if (integers_equal(&prime, curve->params, param_len) &&
+        integers_equal(&a, curve->params + param_len, param_len) &&
+        integers_equal(&b, curve->params + param_len * 2, param_len) &&
+        integers_equal(&base_x, curve->params + param_len * 3, param_len) &&
+        integers_equal(&base_y, curve->params + param_len * 4, param_len) &&
+        integers_equal(&order, curve->params + param_len * 5, param_len)) {
       return EC_GROUP_new_by_curve_name(curve->nid);
     }
   }

@@ -249,23 +249,18 @@ struct ec_key_st {
   CRYPTO_EX_DATA ex_data;
 } /* EC_KEY */;
 
-/* curve_data contains data about a built-in elliptic curve. */
-struct curve_data {
-  /* comment is a human-readable string describing the curve. */
-  const char *comment;
-  /* param_len is the number of bytes needed to store a field element. */
-  uint8_t param_len;
-  /* data points to an array of 6*|param_len| bytes which hold the field
-   * elements of the following (in big-endian order): prime, a, b, generator x,
-   * generator y, order. */
-  const uint8_t *data;
-};
-
 struct built_in_curve {
   int nid;
   const uint8_t *oid;
   uint8_t oid_len;
-  const struct curve_data *data;
+  /* comment is a human-readable string describing the curve. */
+  const char *comment;
+  /* param_len is the number of bytes needed to store a field element. */
+  uint8_t param_len;
+  /* params points to an array of 6*|param_len| bytes which hold the field
+   * elements of the following (in big-endian order): prime, a, b, generator x,
+   * generator y, order. */
+  const uint8_t *params;
   const EC_METHOD *method;
 };
 
