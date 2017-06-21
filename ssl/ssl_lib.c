@@ -2136,52 +2136,36 @@ void SSL_set_tmp_dh_callback(SSL *ssl, DH *(*callback)(SSL *ssl, int is_export,
                                                        int keylength)) {
 }
 
-int SSL_CTX_use_psk_identity_hint(SSL_CTX *ctx, const char *identity_hint) {
-  if (identity_hint != NULL && strlen(identity_hint) > PSK_MAX_IDENTITY_LEN) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
-    return 0;
-  }
-
-  OPENSSL_free(ctx->psk_identity_hint);
-
-  if (identity_hint != NULL) {
-    ctx->psk_identity_hint = BUF_strdup(identity_hint);
-    if (ctx->psk_identity_hint == NULL) {
-      return 0;
-    }
-  } else {
-    ctx->psk_identity_hint = NULL;
-  }
-
-  return 1;
-}
-
-int SSL_use_psk_identity_hint(SSL *ssl, const char *identity_hint) {
-  if (ssl == NULL) {
-    return 0;
-  }
-
+static int use_psk_identity_hint(char **out, const char *identity_hint) {
   if (identity_hint != NULL && strlen(identity_hint) > PSK_MAX_IDENTITY_LEN) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
     return 0;
   }
 
   /* Clear currently configured hint, if any. */
-  OPENSSL_free(ssl->psk_identity_hint);
-  ssl->psk_identity_hint = NULL;
+  OPENSSL_free(*out);
+  *out = NULL;
 
   /* Treat the empty hint as not supplying one. Plain PSK makes it possible to
    * send either no hint (omit ServerKeyExchange) or an empty hint, while
    * ECDHE_PSK can only spell empty hint. Having different capabilities is odd,
    * so we interpret empty and missing as identical. */
   if (identity_hint != NULL && identity_hint[0] != '\0') {
-    ssl->psk_identity_hint = BUF_strdup(identity_hint);
-    if (ssl->psk_identity_hint == NULL) {
+    *out = BUF_strdup(identity_hint);
+    if (*out == NULL) {
       return 0;
     }
   }
 
   return 1;
+}
+
+int SSL_CTX_use_psk_identity_hint(SSL_CTX *ctx, const char *identity_hint) {
+  return use_psk_identity_hint(&ctx->psk_identity_hint, identity_hint);
+}
+
+int SSL_use_psk_identity_hint(SSL *ssl, const char *identity_hint) {
+  return use_psk_identity_hint(&ssl->psk_identity_hint, identity_hint);
 }
 
 const char *SSL_get_psk_identity_hint(const SSL *ssl) {
