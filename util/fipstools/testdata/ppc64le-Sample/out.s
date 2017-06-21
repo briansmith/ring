@@ -134,6 +134,7 @@ function:
 	addi 1, 1, 288
 # WAS bl fprintf
 	bl	bcm_redirector_fprintf
+	ld 2, 24(1)
 	nop
 # WAS addis 10,2,.LC0@toc@ha
 # WAS ld 9,.LC0@toc@l(10)
@@ -180,6 +181,7 @@ function:
 	ld 5, 0(5)
 # WAS bl fprintf
 	bl	bcm_redirector_fprintf
+	ld 2, 24(1)
 	nop
 # WAS addis 10,2,.LC0@toc@ha
 # WAS ld 9,.LC0@toc@l(10)
@@ -225,6 +227,7 @@ function:
 	addi 1, 1, 288
 # WAS bl fprintf
 	bl	bcm_redirector_fprintf
+	ld 2, 24(1)
 	nop
 # WAS addis 10,2,.LC0@toc@ha
 # WAS ld 9,.LC0@toc@l(10)
@@ -271,6 +274,7 @@ function:
 	ld 5, 0(5)
 # WAS bl fprintf
 	bl	bcm_redirector_fprintf
+	ld 2, 24(1)
 	nop
 # WAS addis 10,2,.LC0@toc@ha
 # WAS ld 9,.LC0@toc@l(10)
@@ -317,6 +321,7 @@ function:
 	ld 5, 0(5)
 # WAS bl fprintf
 	bl	bcm_redirector_fprintf
+	ld 2, 24(1)
 	nop
 # WAS addis 10,2,.LC0@toc@ha
 # WAS ld 9,.LC0@toc@l(10)
@@ -363,6 +368,7 @@ function:
 	ld 5, 0(5)
 # WAS bl fprintf
 	bl	bcm_redirector_fprintf
+	ld 2, 24(1)
 	nop
 # WAS bl exported_function
 	bl	.Lexported_function_local_entry
@@ -410,17 +416,17 @@ exported_function:
 	.section	.note.GNU-stack,"",@progbits
 .text
 BORINGSSL_bcm_text_end:
+.section ".toc", "aw"
+.Lredirector_toc_fprintf:
+.quad fprintf
+.text
 .type bcm_redirector_fprintf, @function
 bcm_redirector_fprintf:
-	mflr 0
-	std 0,16(1)
-	stdu 1,-32(1)
-	bl	fprintf
-	nop
-	addi 1,1,32
-	ld 0,16(1)
-	mtlr 0
-	blr
+	std 2, 24(1)
+	addis 12, 2, .Lredirector_toc_fprintf@toc@ha
+	ld 12, .Lredirector_toc_fprintf@toc@l(12)
+	mtctr 12
+	bctr
 .type bss_bss_get, @function
 bss_bss_get:
 	addis 3, 2, bss@toc@ha

@@ -639,6 +639,14 @@ Args:
 					changed = true
 					d.redirectors[symbol] = redirectorName(symbol)
 					symbol = redirectorName(symbol)
+					// TODO(davidben): This should sanity-check the next
+					// instruction is a nop and ideally remove it.
+					wrappers = append(wrappers, func(k func()) {
+						k()
+						// Like the linker's PLT stubs, redirector functions
+						// expect callers to restore r2.
+						d.output.WriteString("\tld 2, 24(1)\n")
+					})
 				}
 			}
 
@@ -715,12 +723,12 @@ Args:
 						// Avoid it by spilling and using r3 instead.
 						baseReg = "3"
 						wrappers = append(wrappers, func(k func()) {
-							d.output.WriteString("\taddi 1, 1, -288\n")   // Clear the red zone.
+							d.output.WriteString("\taddi 1, 1, -288\n") // Clear the red zone.
 							d.output.WriteString("\tstd " + baseReg + ", -8(1)\n")
 							d.output.WriteString("\tmr " + baseReg + ", " + destReg + "\n")
 							k()
 							d.output.WriteString("\tld " + baseReg + ", -8(1)\n")
-							d.output.WriteString("\taddi 1, 1, 288\n")   // Clear the red zone.
+							d.output.WriteString("\taddi 1, 1, 288\n") // Clear the red zone.
 						})
 					}
 
@@ -1190,19 +1198,24 @@ func transform(w stringWriter, inputs []inputFile) error {
 
 	for _, name := range redirectorNames {
 		redirector := d.redirectors[name]
-		w.WriteString(".type " + redirector + ", @function\n")
-		w.WriteString(redirector + ":\n")
 		if d.processor == ppc64le {
-			w.WriteString("\tmflr 0\n")
-			w.WriteString("\tstd 0,16(1)\n")
-			w.WriteString("\tstdu 1,-32(1)\n")
-			w.WriteString("\tbl\t" + name + "\n")
-			w.WriteString("\tnop\n")
-			w.WriteString("\taddi 1,1,32\n")
-			w.WriteString("\tld 0,16(1)\n")
-			w.WriteString("\tmtlr 0\n")
-			w.WriteString("\tblr\n")
+			w.WriteString(".section \".toc\", \"aw\"\n")
+			w.WriteString(".Lredirector_toc_" + name + ":\n")
+			w.WriteString(".quad " + name + "\n")
+			w.WriteString(".text\n")
+			w.WriteString(".type " + redirector + ", @function\n")
+			w.WriteString(redirector + ":\n")
+			// |name| will clobber r2, so save it. This is matched by a restore in
+			// redirector calls.
+			w.WriteString("\tstd 2, 24(1)\n")
+			// Load and call |name|'s global entry point.
+			w.WriteString("\taddis 12, 2, .Lredirector_toc_" + name + "@toc@ha\n")
+			w.WriteString("\tld 12, .Lredirector_toc_" + name + "@toc@l(12)\n")
+			w.WriteString("\tmtctr 12\n")
+			w.WriteString("\tbctr\n")
 		} else {
+			w.WriteString(".type " + redirector + ", @function\n")
+			w.WriteString(redirector + ":\n")
 			w.WriteString("\tjmp\t" + name + "\n")
 		}
 	}
