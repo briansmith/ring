@@ -1714,11 +1714,7 @@ found:
 void SSL_get0_next_proto_negotiated(const SSL *ssl, const uint8_t **out_data,
                                     unsigned *out_len) {
   *out_data = ssl->s3->next_proto_negotiated;
-  if (*out_data == NULL) {
-    *out_len = 0;
-  } else {
-    *out_len = ssl->s3->next_proto_negotiated_len;
-  }
+  *out_len = ssl->s3->next_proto_negotiated_len;
 }
 
 void SSL_CTX_set_next_protos_advertised_cb(
