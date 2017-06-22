@@ -697,6 +697,22 @@ TEST(RSATest, BlindingDisabled) {
       RSA_verify(NID_sha256, kZeros, sizeof(kZeros), sig, sig_len, rsa.get()));
 }
 
+// Test that decrypting with a public key fails gracefully rather than crashing.
+TEST(RSATest, DecryptPublic) {
+  bssl::UniquePtr<RSA> pub(
+      RSA_public_key_from_bytes(kFIPSPublicKey, sizeof(kFIPSPublicKey) - 1));
+  ASSERT_TRUE(pub);
+  ASSERT_EQ(1024u / 8u, RSA_size(pub.get()));
+
+  size_t len;
+  uint8_t in[1024 / 8] = {0}, out[1024 / 8];
+  EXPECT_FALSE(RSA_decrypt(pub.get(), &len, out, sizeof(out), in, sizeof(in),
+                           RSA_PKCS1_PADDING));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_RSA, ERR_GET_LIB(err));
+  EXPECT_EQ(RSA_R_VALUE_MISSING, ERR_GET_REASON(err));
+}
+
 #if !defined(BORINGSSL_SHARED_LIBRARY)
 TEST(RSATest, SqrtTwo) {
   bssl::UniquePtr<BIGNUM> sqrt(BN_new()), pow2(BN_new());
