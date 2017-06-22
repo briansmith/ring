@@ -33,26 +33,37 @@ OPENSSL_COMPILE_ASSERT(0xffff <= INT_MAX, uint16_fits_in_int);
 OPENSSL_COMPILE_ASSERT((SSL3_ALIGN_PAYLOAD & (SSL3_ALIGN_PAYLOAD - 1)) == 0,
                        align_to_a_power_of_two);
 
-/* setup_buffer initializes |buf| with capacity |cap|, aligned such that data
- * written after |header_len| is aligned to a |SSL3_ALIGN_PAYLOAD|-byte
+/* ensure_buffer ensures |buf| has capacity at least |cap|, aligned such that
+ * data written after |header_len| is aligned to a |SSL3_ALIGN_PAYLOAD|-byte
  * boundary. It returns one on success and zero on error. */
-static int setup_buffer(SSL3_BUFFER *buf, size_t header_len, size_t cap) {
-  if (buf->buf != NULL || cap > 0xffff) {
+static int ensure_buffer(SSL3_BUFFER *buf, size_t header_len, size_t cap) {
+  if (cap > 0xffff) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
+  if (buf->cap >= cap) {
+    return 1;
+  }
+
   /* Add up to |SSL3_ALIGN_PAYLOAD| - 1 bytes of slack for alignment. */
-  buf->buf = OPENSSL_malloc(cap + SSL3_ALIGN_PAYLOAD - 1);
-  if (buf->buf == NULL) {
+  uint8_t *new_buf = OPENSSL_malloc(cap + SSL3_ALIGN_PAYLOAD - 1);
+  if (new_buf == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
-  /* Arrange the buffer such that the record body is aligned. */
-  buf->offset = (0 - header_len - (uintptr_t)buf->buf) &
-                (SSL3_ALIGN_PAYLOAD - 1);
-  buf->len = 0;
+  /* Offset the buffer such that the record body is aligned. */
+  size_t new_offset =
+      (0 - header_len - (uintptr_t)new_buf) & (SSL3_ALIGN_PAYLOAD - 1);
+
+  if (buf->buf != NULL) {
+    OPENSSL_memcpy(new_buf + new_offset, buf->buf + buf->offset, buf->len);
+    OPENSSL_free(buf->buf);
+  }
+
+  buf->buf = new_buf;
+  buf->offset = new_offset;
   buf->cap = cap;
   return 1;
 }
@@ -69,30 +80,6 @@ static void consume_buffer(SSL3_BUFFER *buf, size_t len) {
 static void clear_buffer(SSL3_BUFFER *buf) {
   OPENSSL_free(buf->buf);
   OPENSSL_memset(buf, 0, sizeof(SSL3_BUFFER));
-}
-
-OPENSSL_COMPILE_ASSERT(DTLS1_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH <=
-                           0xffff,
-                       maximum_read_buffer_too_large);
-
-/* setup_read_buffer initializes the read buffer if not already initialized. It
- * returns one on success and zero on failure. */
-static int setup_read_buffer(SSL *ssl) {
-  SSL3_BUFFER *buf = &ssl->s3->read_buffer;
-
-  if (buf->buf != NULL) {
-    return 1;
-  }
-
-  size_t header_len = ssl_record_prefix_len(ssl);
-  size_t cap = SSL3_RT_MAX_ENCRYPTED_LENGTH;
-  if (SSL_is_dtls(ssl)) {
-    cap += DTLS1_RT_HEADER_LENGTH;
-  } else {
-    cap += SSL3_RT_HEADER_LENGTH;
-  }
-
-  return setup_buffer(buf, header_len, cap);
 }
 
 uint8_t *ssl_read_buffer(SSL *ssl) {
@@ -154,7 +141,16 @@ int ssl_read_buffer_extend_to(SSL *ssl, size_t len) {
   /* |ssl_read_buffer_extend_to| implicitly discards any consumed data. */
   ssl_read_buffer_discard(ssl);
 
-  if (!setup_read_buffer(ssl)) {
+  if (SSL_is_dtls(ssl)) {
+    OPENSSL_COMPILE_ASSERT(
+        DTLS1_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH <= 0xffff,
+        dtls_read_buffer_too_large);
+
+    /* The |len| parameter is ignored in DTLS. */
+    len = DTLS1_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH;
+  }
+
+  if (!ensure_buffer(&ssl->s3->read_buffer, ssl_record_prefix_len(ssl), len)) {
     return -1;
   }
 
@@ -225,7 +221,7 @@ int ssl_write_buffer_init(SSL *ssl, uint8_t **out_ptr, size_t max_len) {
     return 0;
   }
 
-  if (!setup_buffer(buf, ssl_seal_align_prefix_len(ssl), max_len)) {
+  if (!ensure_buffer(buf, ssl_seal_align_prefix_len(ssl), max_len)) {
     return 0;
   }
   *out_ptr = buf->buf + buf->offset;
