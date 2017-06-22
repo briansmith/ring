@@ -577,11 +577,10 @@ struct rsa_meth_st {
   int (*sign)(int type, const uint8_t *m, unsigned int m_length,
               uint8_t *sigret, unsigned int *siglen, const RSA *rsa);
 
-  /* Ignored. Set this to NULL. */
-  int (*verify)(int dtype, const uint8_t *m, unsigned int m_length,
-                const uint8_t *sigbuf, unsigned int siglen, const RSA *rsa);
-
-  /* Ignored. Set this to NULL. */
+  /* Ignored. Set this to NULL.
+   * TODO(davidben): Remove this when
+   * https://github.com/google/conscrypt/commit/bb0571e358e95e1c70ac7a6984fc4d7236cac72f
+   * is in all BoringSSL consumers. */
   int (*encrypt)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                  const uint8_t *in, size_t in_len, int padding);
 
@@ -590,9 +589,6 @@ struct rsa_meth_st {
                   const uint8_t *in, size_t in_len, int padding);
   int (*decrypt)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                  const uint8_t *in, size_t in_len, int padding);
-  /* Ignored. Set this to NULL. */
-  int (*verify_raw)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                    const uint8_t *in, size_t in_len, int padding);
 
   /* private_transform takes a big-endian integer from |in|, calculates the
    * d'th power of it, modulo the RSA modulus and writes the result as a
@@ -609,25 +605,7 @@ struct rsa_meth_st {
   int (*private_transform)(RSA *rsa, uint8_t *out, const uint8_t *in,
                            size_t len);
 
-  /* mod_exp is deprecated and ignored. Set it to NULL. */
-  int (*mod_exp)(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx);
-
-  /* bn_mod_exp is deprecated and ignored. Set it to NULL. */
-  int (*bn_mod_exp)(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
-                    const BIGNUM *m, BN_CTX *ctx,
-                    const BN_MONT_CTX *mont);
-
   int flags;
-
-  /* Ignored. Set this to NULL. */
-  int (*keygen)(RSA *rsa, int bits, BIGNUM *e, BN_GENCB *cb);
-
-  /* Ignored. Set this to NULL. */
-  int (*multi_prime_keygen)(RSA *rsa, int bits, int num_primes, BIGNUM *e,
-                            BN_GENCB *cb);
-
-  /* supports_digest is deprecated and ignored. Set it to NULL. */
-  int (*supports_digest)(const RSA *rsa, const EVP_MD *md);
 };
 
 
