@@ -398,14 +398,12 @@ static int do_seal_record(SSL *ssl, uint8_t *out, size_t *out_len,
   out[0] = type;
   out[1] = wire_version >> 8;
   out[2] = wire_version & 0xff;
-  out += 3;
-  max_out -= 3;
 
   /* Write the ciphertext, leaving two bytes for the length. */
   size_t ciphertext_len;
-  if (!SSL_AEAD_CTX_seal(ssl->s3->aead_write_ctx, out + 2, &ciphertext_len,
-                         max_out - 2, type, wire_version,
-                         ssl->s3->write_sequence, in, in_len) ||
+  if (!SSL_AEAD_CTX_seal(ssl->s3->aead_write_ctx, out + SSL3_RT_HEADER_LENGTH,
+                         &ciphertext_len, max_out - SSL3_RT_HEADER_LENGTH, type,
+                         wire_version, ssl->s3->write_sequence, in, in_len) ||
       !ssl_record_sequence_update(ssl->s3->write_sequence, 8)) {
     return 0;
   }
@@ -415,8 +413,8 @@ static int do_seal_record(SSL *ssl, uint8_t *out, size_t *out_len,
     OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
     return 0;
   }
-  out[0] = ciphertext_len >> 8;
-  out[1] = ciphertext_len & 0xff;
+  out[3] = ciphertext_len >> 8;
+  out[4] = ciphertext_len & 0xff;
 
   *out_len = SSL3_RT_HEADER_LENGTH + ciphertext_len;
 
