@@ -1246,19 +1246,18 @@ OPENSSL_EXPORT uint16_t SSL_CIPHER_get_min_version(const SSL_CIPHER *cipher);
  * supports |cipher|. */
 OPENSSL_EXPORT uint16_t SSL_CIPHER_get_max_version(const SSL_CIPHER *cipher);
 
-/* SSL_CIPHER_get_name returns the OpenSSL name of |cipher|. */
+/* SSL_CIPHER_standard_name returns the standard IETF name for |cipher|. For
+ * example, "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256". */
+OPENSSL_EXPORT const char *SSL_CIPHER_standard_name(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_get_name returns the OpenSSL name of |cipher|. For example,
+ * "ECDHE-RSA-AES128-GCM-SHA256". */
 OPENSSL_EXPORT const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher);
 
 /* SSL_CIPHER_get_kx_name returns a string that describes the key-exchange
  * method used by |cipher|. For example, "ECDHE_ECDSA". TLS 1.3 AEAD-only
  * ciphers return the string "GENERIC". */
 OPENSSL_EXPORT const char *SSL_CIPHER_get_kx_name(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_get_rfc_name returns a newly-allocated string with the standard
- * name for |cipher| or NULL on error. For example,
- * "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256". The caller is responsible for
- * calling |OPENSSL_free| on the result. */
-OPENSSL_EXPORT char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher);
 
 /* SSL_CIPHER_get_bits returns the strength, in bits, of |cipher|. If
  * |out_alg_bits| is not NULL, it writes the number of bits consumed by the
@@ -1295,10 +1294,10 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
  *   |!| deletes all matching ciphers, enabled or not, from either list. Deleted
  *   ciphers will not matched by future operations.
  *
- * A selector may be a specific cipher (using the OpenSSL name for the cipher)
- * or one or more rules separated by |+|. The final selector matches the
- * intersection of each rule. For instance, |AESGCM+aECDSA| matches
- * ECDSA-authenticated AES-GCM ciphers.
+ * A selector may be a specific cipher (using either the standard or OpenSSL
+ * name for the cipher) or one or more rules separated by |+|. The final
+ * selector matches the intersection of each rule. For instance, |AESGCM+aECDSA|
+ * matches ECDSA-authenticated AES-GCM ciphers.
  *
  * Available cipher rules are:
  *
@@ -3386,12 +3385,19 @@ OPENSSL_EXPORT int SSL_library_init(void);
  * The description includes a trailing newline and has the form:
  * AES128-SHA              Kx=RSA      Au=RSA  Enc=AES(128)  Mac=SHA1
  *
- * Consider |SSL_CIPHER_get_name| or |SSL_CIPHER_get_rfc_name| instead. */
+ * Consider |SSL_CIPHER_standard_name| or |SSL_CIPHER_get_name| instead. */
 OPENSSL_EXPORT const char *SSL_CIPHER_description(const SSL_CIPHER *cipher,
                                                   char *buf, int len);
 
 /* SSL_CIPHER_get_version returns the string "TLSv1/SSLv3". */
 OPENSSL_EXPORT const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_get_rfc_name returns a newly-allocated string containing the
+ * result of |SSL_CIPHER_standard_name| or NULL on error. The caller is
+ * responsible for calling |OPENSSL_free| on the result.
+ *
+ * Use |SSL_CIPHER_standard_name| instead. */
+OPENSSL_EXPORT char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher);
 
 typedef void COMP_METHOD;
 
@@ -3890,6 +3896,8 @@ typedef struct ssl_x509_method_st SSL_X509_METHOD;
 struct ssl_cipher_st {
   /* name is the OpenSSL name for the cipher. */
   const char *name;
+  /* standard_name is the IETF name for the cipher. */
+  const char *standard_name;
   /* id is the cipher suite value bitwise OR-d with 0x03000000. */
   uint32_t id;
 

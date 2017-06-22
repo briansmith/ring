@@ -251,7 +251,7 @@ void PrintConnectionInfo(const SSL *ssl) {
   fprintf(stderr, "  Version: %s\n", SSL_get_version(ssl));
   fprintf(stderr, "  Resumed session: %s\n",
           SSL_session_reused(ssl) ? "yes" : "no");
-  fprintf(stderr, "  Cipher: %s\n", SSL_CIPHER_get_name(cipher));
+  fprintf(stderr, "  Cipher: %s\n", SSL_CIPHER_standard_name(cipher));
   uint16_t curve = SSL_get_curve_id(ssl);
   if (curve != 0) {
     fprintf(stderr, "  ECDHE curve: %s\n", SSL_get_curve_name(curve));

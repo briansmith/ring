@@ -52,7 +52,7 @@ bool Ciphers(const std::vector<std::string> &args) {
       printf("  ");
     }
 
-    printf("%s\n", SSL_CIPHER_get_name(cipher));
+    printf("%s\n", SSL_CIPHER_standard_name(cipher));
 
     if (!in_group && last_in_group) {
       printf("]\n");

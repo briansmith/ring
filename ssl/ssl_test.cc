@@ -177,6 +177,20 @@ static const CipherTest kCipherTests[] = {
         },
         false,
     },
+    // Standard names may be used instead of OpenSSL names.
+    {
+        "[TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256|"
+         "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256]:"
+        "[TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256]:"
+        "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+        {
+            {TLS1_CK_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 1},
+            {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0},
+            {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
+            {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
+        },
+        false,
+    },
     // @STRENGTH performs a stable strength-sort of the selected ciphers and
     // only the selected ciphers.
     {
@@ -730,43 +744,42 @@ TEST(SSLTest, DefaultVersion) {
   ExpectDefaultVersion(TLS1_2_VERSION, TLS1_2_VERSION, &DTLSv1_2_method);
 }
 
-typedef struct {
-  int id;
-  const char *rfc_name;
-} CIPHER_RFC_NAME_TEST;
+TEST(SSLTest, CipherGetStandardName) {
+  static const struct {
+    int id;
+    const char *standard_name;
+  } kTests[] = {
+      {SSL3_CK_RSA_DES_192_CBC3_SHA, "TLS_RSA_WITH_3DES_EDE_CBC_SHA"},
+      {TLS1_CK_RSA_WITH_AES_128_SHA, "TLS_RSA_WITH_AES_128_CBC_SHA"},
+      {TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256,
+       "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"},
+      {TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384,
+       "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384"},
+      {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+       "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"},
+      {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+       "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"},
+      {TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+       "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"},
+      {TLS1_CK_ECDHE_PSK_WITH_AES_128_CBC_SHA,
+       "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA"},
+      {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+       "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"},
+      {TLS1_CK_AES_256_GCM_SHA384, "TLS_AES_256_GCM_SHA384"},
+      {TLS1_CK_AES_128_GCM_SHA256, "TLS_AES_128_GCM_SHA256"},
+      {TLS1_CK_CHACHA20_POLY1305_SHA256, "TLS_CHACHA20_POLY1305_SHA256"},
+  };
 
-static const CIPHER_RFC_NAME_TEST kCipherRFCNameTests[] = {
-    {SSL3_CK_RSA_DES_192_CBC3_SHA, "TLS_RSA_WITH_3DES_EDE_CBC_SHA"},
-    {TLS1_CK_RSA_WITH_AES_128_SHA, "TLS_RSA_WITH_AES_128_CBC_SHA"},
-    {TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256,
-     "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"},
-    {TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384,
-     "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384"},
-    {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-     "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"},
-    {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-     "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"},
-    {TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-     "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"},
-    {TLS1_CK_ECDHE_PSK_WITH_AES_128_CBC_SHA,
-     "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA"},
-    {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-     "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"},
-    {TLS1_CK_AES_256_GCM_SHA384, "TLS_AES_256_GCM_SHA384"},
-    {TLS1_CK_AES_128_GCM_SHA256, "TLS_AES_128_GCM_SHA256"},
-    {TLS1_CK_CHACHA20_POLY1305_SHA256, "TLS_CHACHA20_POLY1305_SHA256"},
-};
-
-TEST(SSLTest, CipherGetRFCName) {
-  for (const CIPHER_RFC_NAME_TEST &t : kCipherRFCNameTests) {
-    SCOPED_TRACE(t.rfc_name);
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.standard_name);
 
     const SSL_CIPHER *cipher = SSL_get_cipher_by_value(t.id & 0xffff);
     ASSERT_TRUE(cipher);
+    EXPECT_STREQ(t.standard_name, SSL_CIPHER_standard_name(cipher));
+
     bssl::UniquePtr<char> rfc_name(SSL_CIPHER_get_rfc_name(cipher));
     ASSERT_TRUE(rfc_name);
-
-    EXPECT_STREQ(t.rfc_name, rfc_name.get());
+    EXPECT_STREQ(t.standard_name, rfc_name.get());
   }
 }
 
