@@ -1577,7 +1577,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":UNEXPECTED_RECORD:",
+			expectedError: ":APPLICATION_DATA_INSTEAD_OF_HANDSHAKE:",
 		},
 		{
 			name: "AppDataBeforeHandshake-Empty",
@@ -1587,7 +1587,7 @@ func addBasicTests() {
 				},
 			},
 			shouldFail:    true,
-			expectedError: ":UNEXPECTED_RECORD:",
+			expectedError: ":APPLICATION_DATA_INSTEAD_OF_HANDSHAKE:",
 		},
 		{
 			protocol: dtls,
@@ -1757,7 +1757,7 @@ func addBasicTests() {
 			},
 			shimWritesFirst: true,
 			shouldFail:      true,
-			expectedError:   ":UNEXPECTED_RECORD:",
+			expectedError:   ":APPLICATION_DATA_INSTEAD_OF_HANDSHAKE:",
 		},
 		{
 			name: "FalseStart-SkipServerSecondLeg-Implicit",
@@ -1778,7 +1778,7 @@ func addBasicTests() {
 				"-advertise-alpn", "\x03foo",
 			},
 			shouldFail:    true,
-			expectedError: ":UNEXPECTED_RECORD:",
+			expectedError: ":APPLICATION_DATA_INSTEAD_OF_HANDSHAKE:",
 		},
 		{
 			testType:           serverTest,
