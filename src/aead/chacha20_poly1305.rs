@@ -24,6 +24,7 @@ pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
     init: chacha20_poly1305_init,
     seal: chacha20_poly1305_seal,
     open: chacha20_poly1305_open,
+    id: aead::AlgorithmID::CHACHA20_POLY1305,
 };
 
 /// Copies |key| into |ctx_buf|.

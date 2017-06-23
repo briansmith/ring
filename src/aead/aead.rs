@@ -279,6 +279,7 @@ pub struct Algorithm {
              tag_out: &mut [u8; TAG_LEN]) -> Result<(), error::Unspecified>,
 
     key_len: usize,
+    id: AlgorithmID,
 }
 
 impl Algorithm {
@@ -309,6 +310,19 @@ impl Algorithm {
     pub fn nonce_len(&self) -> usize { NONCE_LEN }
 }
 
+#[allow(non_camel_case_types)]
+#[derive(Eq, PartialEq)]
+enum AlgorithmID {
+    AES_128_GCM,
+    AES_256_GCM,
+    CHACHA20_POLY1305,
+}
+
+impl PartialEq for Algorithm {
+    fn eq(&self, other: &Self) -> bool { self.id == other.id }
+}
+
+impl Eq for Algorithm {}
 
 /// The maximum length of a tag for the algorithms in this module.
 pub const MAX_TAG_LEN: usize = TAG_LEN;

@@ -295,7 +295,25 @@ pub struct Algorithm {
     format_output: fn(input: &State) -> Output,
 
     initial_state: State,
+
+    id: AlgorithmID,
 }
+
+#[derive(Eq, PartialEq)]
+#[allow(non_camel_case_types)]
+enum AlgorithmID {
+    SHA1,
+    SHA256,
+    SHA384,
+    SHA512,
+    SHA512_256,
+}
+
+impl PartialEq for Algorithm {
+    fn eq(&self, other: &Self) -> bool { self.id == other.id }
+}
+
+impl Eq for Algorithm {}
 
 impl core::fmt::Debug for Algorithm {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
@@ -330,6 +348,7 @@ pub static SHA1: Algorithm = Algorithm {
         u32x2!(0xc3d2e1f0u32, 0u32),
         0, 0, 0, 0, 0,
     ],
+    id: AlgorithmID::SHA1,
 };
 
 /// SHA-256 as specified in [FIPS 180-4].
@@ -349,6 +368,7 @@ pub static SHA256: Algorithm = Algorithm {
         u32x2!(0x1f83d9abu32, 0x5be0cd19u32),
         0, 0, 0, 0,
     ],
+    id: AlgorithmID::SHA256,
 };
 
 /// SHA-384 as specified in [FIPS 180-4].
@@ -371,6 +391,7 @@ pub static SHA384: Algorithm = Algorithm {
         0xdb0c2e0d64f98fa7,
         0x47b5481dbefa4fa4,
     ],
+    id: AlgorithmID::SHA384,
 };
 
 /// SHA-512 as specified in [FIPS 180-4].
@@ -393,6 +414,7 @@ pub static SHA512: Algorithm = Algorithm {
         0x1f83d9abfb41bd6b,
         0x5be0cd19137e2179,
     ],
+    id: AlgorithmID::SHA512,
 };
 
 /// SHA-512/256 as specified in [FIPS 180-4].
@@ -419,6 +441,7 @@ pub static SHA512_256: Algorithm = Algorithm {
         0x2b0199fc2c85b8aa,
         0x0eb72ddc81c52ca2,
     ],
+    id: AlgorithmID::SHA512_256,
 };
 
 // We use u64 to try to ensure 64-bit alignment/padding.

@@ -24,6 +24,7 @@ pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
     init: aes_gcm_init,
     seal: aes_gcm_seal,
     open: aes_gcm_open,
+    id: aead::AlgorithmID::AES_128_GCM,
 };
 
 /// AES-256 in GCM mode with 128-bit tags and 96 bit nonces.
@@ -36,6 +37,7 @@ pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
     init: aes_gcm_init,
     seal: aes_gcm_seal,
     open: aes_gcm_open,
+    id: aead::AlgorithmID::AES_256_GCM,
 };
 
 fn aes_gcm_init(ctx_buf: &mut [u8], key: &[u8])

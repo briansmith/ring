@@ -26,8 +26,23 @@ use untrusted;
 pub struct ECDSASigningAlgorithm {
     curve: &'static ec::Curve,
     pkcs8_template: &'static pkcs8::Template,
+    id: ECDSASigningAlgorithmID
 }
 
+#[allow(non_camel_case_types)]
+#[derive(PartialEq, Eq)]
+enum ECDSASigningAlgorithmID {
+    ECDSA_P256_SHA256_FIXED_SIGNING,
+    ECDSA_P384_SHA384_FIXED_SIGNING,
+    ECDSA_P256_SHA256_ASN1_SIGNING,
+    ECDSA_P384_SHA384_ASN1_SIGNING,
+}
+
+impl PartialEq for ECDSASigningAlgorithm {
+    fn eq(&self, other: &Self) -> bool { self.id == other.id }
+}
+
+impl Eq for ECDSASigningAlgorithm {}
 
 /// An ECDSA verification algorithm.
 pub struct ECDSAVerificationAlgorithm {
@@ -41,6 +56,7 @@ pub struct ECDSAVerificationAlgorithm {
 }
 
 #[allow(non_camel_case_types)]
+#[derive(PartialEq, Eq)]
 enum ECDSAVerificationAlgorithmID {
     ECDSA_P256_SHA256_ASN1,
     ECDSA_P256_SHA256_FIXED,
@@ -318,6 +334,7 @@ pub static ECDSA_P256_SHA256_FIXED_SIGNING: ECDSASigningAlgorithm =
         ECDSASigningAlgorithm {
     curve: &ec::suite_b::curve::P256,
     pkcs8_template: &EC_PUBLIC_KEY_P256_PKCS8_V1_TEMPLATE,
+    id: ECDSASigningAlgorithmID::ECDSA_P256_SHA256_FIXED_SIGNING,
 };
 
 /// Verification of fixed-length (PKCS#11 style) ECDSA signatures using the
@@ -343,6 +360,7 @@ pub static ECDSA_P384_SHA384_FIXED_SIGNING: ECDSASigningAlgorithm =
         ECDSASigningAlgorithm {
     curve: &ec::suite_b::curve::P384,
     pkcs8_template: &EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE,
+    id: ECDSASigningAlgorithmID::ECDSA_P384_SHA384_FIXED_SIGNING,
 };
 
 /// Verification of fixed-length (PKCS#11 style) ECDSA signatures using the
@@ -368,6 +386,7 @@ pub static ECDSA_P256_SHA256_ASN1_SIGNING: ECDSASigningAlgorithm =
         ECDSASigningAlgorithm {
     curve: &ec::suite_b::curve::P256,
     pkcs8_template: &EC_PUBLIC_KEY_P256_PKCS8_V1_TEMPLATE,
+    id: ECDSASigningAlgorithmID::ECDSA_P256_SHA256_ASN1_SIGNING,
 };
 
 /// Verification of ASN.1 DER-encoded ECDSA signatures using the P-256 curve
@@ -429,6 +448,7 @@ pub static ECDSA_P384_SHA384_ASN1_SIGNING: ECDSASigningAlgorithm =
         ECDSASigningAlgorithm {
     curve: &ec::suite_b::curve::P384,
     pkcs8_template: &EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE,
+    id: ECDSASigningAlgorithmID::ECDSA_P384_SHA384_ASN1_SIGNING,
 };
 
 /// Verification of ASN.1 DER-encoded ECDSA signatures using the P-384 curve
