@@ -1207,6 +1207,8 @@ static int aead_aes_gcm_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                      size_t max_out_tag_len,
                                      const uint8_t *nonce, size_t nonce_len,
                                      const uint8_t *in, size_t in_len,
+                                     const uint8_t *extra_in,
+                                     size_t extra_in_len,
                                      const uint8_t *ad, size_t ad_len) {
   const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
   GCM128_CONTEXT gcm;
@@ -1351,8 +1353,8 @@ static void aead_aes_gcm_tls12_cleanup(EVP_AEAD_CTX *ctx) {
 static int aead_aes_gcm_tls12_seal_scatter(
     const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
     size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
-    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *ad,
-    size_t ad_len) {
+    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
+    size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
   struct aead_aes_gcm_tls12_ctx *gcm_ctx = ctx->aead_state;
   if (gcm_ctx->counter == UINT64_MAX) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE);
@@ -1374,7 +1376,7 @@ static int aead_aes_gcm_tls12_seal_scatter(
 
   return aead_aes_gcm_seal_scatter(ctx, out, out_tag, out_tag_len,
                                    max_out_tag_len, nonce, nonce_len, in,
-                                   in_len, ad, ad_len);
+                                   in_len, extra_in, extra_in_len, ad, ad_len);
 }
 
 DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm_tls12) {

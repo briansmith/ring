@@ -157,8 +157,8 @@ static void calc_tag(uint8_t tag[POLY1305_TAG_LEN],
 static int aead_chacha20_poly1305_seal_scatter(
     const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
     size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
-    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *ad,
-    size_t ad_len) {
+    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
+    size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
   const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
 
   if (nonce_len != 12) {
@@ -249,17 +249,19 @@ static int aead_chacha20_poly1305_open_gather(
 }
 
 static const EVP_AEAD aead_chacha20_poly1305 = {
-    32,                 /* key len */
-    12,                 /* nonce len */
-    POLY1305_TAG_LEN,   /* overhead */
-    POLY1305_TAG_LEN,   /* max tag length */
+    32,               /* key len */
+    12,               /* nonce len */
+    POLY1305_TAG_LEN, /* overhead */
+    POLY1305_TAG_LEN, /* max tag length */
+    0,                /* seal_scatter_supports_extra_in */
+
     aead_chacha20_poly1305_init,
     NULL, /* init_with_direction */
     aead_chacha20_poly1305_cleanup,
     NULL /* open */,
     aead_chacha20_poly1305_seal_scatter,
     aead_chacha20_poly1305_open_gather,
-    NULL,               /* get_iv */
+    NULL, /* get_iv */
 };
 
 const EVP_AEAD *EVP_aead_chacha20_poly1305(void) {

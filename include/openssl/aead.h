@@ -267,8 +267,15 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
  * function on the same |EVP_AEAD_CTX|.
  *
  * Exactly |in_len| bytes are written to |out|, and up to
- * |EVP_AEAD_max_overhead| bytes to |out_tag|. On successful return,
- * |*out_tag_len| is set to the actual number of bytes written to |out_tag|.
+ * |EVP_AEAD_max_overhead+extra_in_len| bytes to |out_tag|. On successful
+ * return, |*out_tag_len| is set to the actual number of bytes written to
+ * |out_tag|.
+ *
+ * |extra_in| may point to an additional plaintext input buffer if the cipher
+ * supports it. If present, |extra_in_len| additional bytes of plaintext are
+ * encrypted and authenticated, and the ciphertext is written (before the tag)
+ * to |out_tag|. |max_out_tag_len| must be sized to allow for the additional
+ * |extra_in_len| bytes.
  *
  * The length of |nonce|, |nonce_len|, must be equal to the result of
  * |EVP_AEAD_nonce_length| for this AEAD.
@@ -281,10 +288,12 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
  * If |in| and |out| alias then |out| must be == |in|. |out_tag| may not alias
  * any other argument. */
 OPENSSL_EXPORT int EVP_AEAD_CTX_seal_scatter(
-    const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
-    size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
-    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *ad,
-    size_t ad_len);
+    const EVP_AEAD_CTX *ctx, uint8_t *out,
+    uint8_t *out_tag, size_t *out_tag_len, size_t max_out_tag_len,
+    const uint8_t *nonce, size_t nonce_len,
+    const uint8_t *in, size_t in_len,
+    const uint8_t *extra_in, size_t extra_in_len,
+    const uint8_t *ad, size_t ad_len);
 
 /* EVP_AEAD_CTX_open_gather decrypts and authenticates |in_len| bytes from |in|
  * and authenticates |ad_len| bytes from |ad| using |in_tag_len| bytes of

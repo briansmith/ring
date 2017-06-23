@@ -178,8 +178,8 @@ static void aead_aes_ctr_hmac_sha256_crypt(
 static int aead_aes_ctr_hmac_sha256_seal_scatter(
     const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
     size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
-    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *ad,
-    size_t ad_len) {
+    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
+    size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
   const struct aead_aes_ctr_hmac_sha256_ctx *aes_ctx = ctx->aead_state;
   const uint64_t in_len_64 = in_len;
 
@@ -242,9 +242,10 @@ static int aead_aes_ctr_hmac_sha256_open_gather(
 
 static const EVP_AEAD aead_aes_128_ctr_hmac_sha256 = {
     16 /* AES key */ + 32 /* HMAC key */,
-    12,                                       /* nonce length */
-    EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN,     /* overhead */
-    EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN,     /* max tag length */
+    12,                                   /* nonce length */
+    EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN, /* overhead */
+    EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN, /* max tag length */
+    0,                                    /* seal_scatter_supports_extra_in */
 
     aead_aes_ctr_hmac_sha256_init,
     NULL /* init_with_direction */,
@@ -257,9 +258,10 @@ static const EVP_AEAD aead_aes_128_ctr_hmac_sha256 = {
 
 static const EVP_AEAD aead_aes_256_ctr_hmac_sha256 = {
     32 /* AES key */ + 32 /* HMAC key */,
-    12,                                       /* nonce length */
-    EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN,     /* overhead */
-    EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN,     /* max tag length */
+    12,                                   /* nonce length */
+    EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN, /* overhead */
+    EVP_AEAD_AES_CTR_HMAC_SHA256_TAG_LEN, /* max tag length */
+    0,                                    /* seal_scatter_supports_extra_in */
 
     aead_aes_ctr_hmac_sha256_init,
     NULL /* init_with_direction */,

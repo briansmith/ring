@@ -103,7 +103,8 @@ static int aead_tls_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                  uint8_t *out_tag, size_t *out_tag_len,
                                  size_t max_out_tag_len, const uint8_t *nonce,
                                  size_t nonce_len, const uint8_t *in,
-                                 size_t in_len, const uint8_t *ad,
+                                 size_t in_len, const uint8_t *extra_in,
+                                 size_t extra_in_len, const uint8_t *ad,
                                  size_t ad_len) {
   AEAD_TLS_CTX *tls_ctx = (AEAD_TLS_CTX *)ctx->aead_state;
 
@@ -457,7 +458,9 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_tls = {
     16,                     /* nonce len (IV) */
     16 + SHA_DIGEST_LENGTH, /* overhead (padding + SHA1) */
     SHA_DIGEST_LENGTH,      /* max tag length */
-    NULL,                   /* init */
+    0,                      /* seal_scatter_supports_extra_in */
+
+    NULL, /* init */
     aead_aes_128_cbc_sha1_tls_init,
     aead_tls_cleanup,
     aead_tls_open,
@@ -471,7 +474,9 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_tls_implicit_iv = {
     0,                           /* nonce len */
     16 + SHA_DIGEST_LENGTH,      /* overhead (padding + SHA1) */
     SHA_DIGEST_LENGTH,           /* max tag length */
-    NULL,                        /* init */
+    0,                           /* seal_scatter_supports_extra_in */
+
+    NULL, /* init */
     aead_aes_128_cbc_sha1_tls_implicit_iv_init,
     aead_tls_cleanup,
     aead_tls_open,
@@ -485,7 +490,9 @@ static const EVP_AEAD aead_aes_128_cbc_sha256_tls = {
     16,                        /* nonce len (IV) */
     16 + SHA256_DIGEST_LENGTH, /* overhead (padding + SHA256) */
     SHA256_DIGEST_LENGTH,      /* max tag length */
-    NULL,                      /* init */
+    0,                         /* seal_scatter_supports_extra_in */
+
+    NULL, /* init */
     aead_aes_128_cbc_sha256_tls_init,
     aead_tls_cleanup,
     aead_tls_open,
@@ -499,7 +506,9 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_tls = {
     16,                     /* nonce len (IV) */
     16 + SHA_DIGEST_LENGTH, /* overhead (padding + SHA1) */
     SHA_DIGEST_LENGTH,      /* max tag length */
-    NULL,                   /* init */
+    0,                      /* seal_scatter_supports_extra_in */
+
+    NULL, /* init */
     aead_aes_256_cbc_sha1_tls_init,
     aead_tls_cleanup,
     aead_tls_open,
@@ -513,7 +522,9 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_tls_implicit_iv = {
     0,                           /* nonce len */
     16 + SHA_DIGEST_LENGTH,      /* overhead (padding + SHA1) */
     SHA_DIGEST_LENGTH,           /* max tag length */
-    NULL,                        /* init */
+    0,                           /* seal_scatter_supports_extra_in */
+
+    NULL, /* init */
     aead_aes_256_cbc_sha1_tls_implicit_iv_init,
     aead_tls_cleanup,
     aead_tls_open,
@@ -527,7 +538,9 @@ static const EVP_AEAD aead_aes_256_cbc_sha256_tls = {
     16,                        /* nonce len (IV) */
     16 + SHA256_DIGEST_LENGTH, /* overhead (padding + SHA256) */
     SHA256_DIGEST_LENGTH,      /* max tag length */
-    NULL,                      /* init */
+    0,                         /* seal_scatter_supports_extra_in */
+
+    NULL, /* init */
     aead_aes_256_cbc_sha256_tls_init,
     aead_tls_cleanup,
     aead_tls_open,
@@ -541,7 +554,9 @@ static const EVP_AEAD aead_aes_256_cbc_sha384_tls = {
     16,                        /* nonce len (IV) */
     16 + SHA384_DIGEST_LENGTH, /* overhead (padding + SHA384) */
     SHA384_DIGEST_LENGTH,      /* max tag length */
-    NULL,                      /* init */
+    0,                         /* seal_scatter_supports_extra_in */
+
+    NULL, /* init */
     aead_aes_256_cbc_sha384_tls_init,
     aead_tls_cleanup,
     aead_tls_open,
@@ -555,7 +570,9 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_tls = {
     8,                      /* nonce len (IV) */
     8 + SHA_DIGEST_LENGTH,  /* overhead (padding + SHA1) */
     SHA_DIGEST_LENGTH,      /* max tag length */
-    NULL,                   /* init */
+    0,                      /* seal_scatter_supports_extra_in */
+
+    NULL, /* init */
     aead_des_ede3_cbc_sha1_tls_init,
     aead_tls_cleanup,
     aead_tls_open,
@@ -569,7 +586,9 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_tls_implicit_iv = {
     0,                          /* nonce len */
     8 + SHA_DIGEST_LENGTH,      /* overhead (padding + SHA1) */
     SHA_DIGEST_LENGTH,          /* max tag length */
-    NULL,                       /* init */
+    0,                          /* seal_scatter_supports_extra_in */
+
+    NULL, /* init */
     aead_des_ede3_cbc_sha1_tls_implicit_iv_init,
     aead_tls_cleanup,
     aead_tls_open,
@@ -583,7 +602,9 @@ static const EVP_AEAD aead_null_sha1_tls = {
     0,                 /* nonce len */
     SHA_DIGEST_LENGTH, /* overhead (SHA1) */
     SHA_DIGEST_LENGTH, /* max tag length */
-    NULL,              /* init */
+    0,                 /* seal_scatter_supports_extra_in */
+
+    NULL, /* init */
     aead_null_sha1_tls_init,
     aead_tls_cleanup,
     aead_tls_open,

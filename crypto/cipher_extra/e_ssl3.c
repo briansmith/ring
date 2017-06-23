@@ -127,7 +127,8 @@ static int aead_ssl3_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                   uint8_t *out_tag, size_t *out_tag_len,
                                   size_t max_out_tag_len, const uint8_t *nonce,
                                   size_t nonce_len, const uint8_t *in,
-                                  size_t in_len, const uint8_t *ad,
+                                  size_t in_len, const uint8_t *extra_in,
+                                  size_t extra_in_len, const uint8_t *ad,
                                   size_t ad_len) {
   AEAD_SSL3_CTX *ssl3_ctx = (AEAD_SSL3_CTX *)ctx->aead_state;
 
@@ -362,6 +363,8 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_ssl3 = {
     0,                           /* nonce len */
     16 + SHA_DIGEST_LENGTH,      /* overhead (padding + SHA1) */
     SHA_DIGEST_LENGTH,           /* max tag length */
+    0,                           /* seal_scatter_supports_extra_in */
+
     NULL, /* init */
     aead_aes_128_cbc_sha1_ssl3_init,
     aead_ssl3_cleanup,
@@ -376,6 +379,8 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_ssl3 = {
     0,                           /* nonce len */
     16 + SHA_DIGEST_LENGTH,      /* overhead (padding + SHA1) */
     SHA_DIGEST_LENGTH,           /* max tag length */
+    0,                           /* seal_scatter_supports_extra_in */
+
     NULL, /* init */
     aead_aes_256_cbc_sha1_ssl3_init,
     aead_ssl3_cleanup,
@@ -390,6 +395,8 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_ssl3 = {
     0,                          /* nonce len */
     8 + SHA_DIGEST_LENGTH,      /* overhead (padding + SHA1) */
     SHA_DIGEST_LENGTH,          /* max tag length */
+    0,                          /* seal_scatter_supports_extra_in */
+
     NULL, /* init */
     aead_des_ede3_cbc_sha1_ssl3_init,
     aead_ssl3_cleanup,
@@ -400,11 +407,13 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_ssl3 = {
 };
 
 static const EVP_AEAD aead_null_sha1_ssl3 = {
-    SHA_DIGEST_LENGTH,          /* key len */
-    0,                          /* nonce len */
-    SHA_DIGEST_LENGTH,          /* overhead (SHA1) */
-    SHA_DIGEST_LENGTH,          /* max tag length */
-    NULL,                       /* init */
+    SHA_DIGEST_LENGTH, /* key len */
+    0,                 /* nonce len */
+    SHA_DIGEST_LENGTH, /* overhead (SHA1) */
+    SHA_DIGEST_LENGTH, /* max tag length */
+    0,                 /* seal_scatter_supports_extra_in */
+
+    NULL, /* init */
     aead_null_sha1_ssl3_init,
     aead_ssl3_cleanup,
     aead_ssl3_open,

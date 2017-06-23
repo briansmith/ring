@@ -240,8 +240,8 @@ TEST_P(PerAEADTest, TestVectorScatterGather) {
       size_t out_tag_len;
       ASSERT_TRUE(EVP_AEAD_CTX_seal_scatter(
           ctx.get(), out.data(), out_tag.data(), &out_tag_len, out_tag.size(),
-          nonce.data(), nonce.size(), in.data(), in.size(), ad.data(),
-          ad.size()));
+          nonce.data(), nonce.size(), in.data(), in.size(), nullptr, 0,
+          ad.data(), ad.size()));
       out_tag.resize(out_tag_len);
 
       ASSERT_EQ(out.size(), ct.size());

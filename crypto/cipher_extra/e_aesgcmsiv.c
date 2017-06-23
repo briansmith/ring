@@ -322,8 +322,8 @@ static void aead_aes_gcm_siv_kdf(
 static int aead_aes_gcm_siv_asm_seal_scatter(
     const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
     size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
-    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *ad,
-    size_t ad_len) {
+    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
+    size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
   const struct aead_aes_gcm_siv_asm_ctx *gcm_siv_ctx = ctx->aead_state;
   const uint64_t in_len_64 = in_len;
   const uint64_t ad_len_64 = ad_len;
@@ -505,6 +505,7 @@ static const EVP_AEAD aead_aes_128_gcm_siv_asm = {
     EVP_AEAD_AES_GCM_SIV_NONCE_LEN, /* nonce length */
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,   /* overhead */
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,   /* max tag length */
+    0,                              /* seal_scatter_supports_extra_in */
 
     aead_aes_gcm_siv_asm_init,
     NULL /* init_with_direction */,
@@ -520,6 +521,7 @@ static const EVP_AEAD aead_aes_256_gcm_siv_asm = {
     EVP_AEAD_AES_GCM_SIV_NONCE_LEN, /* nonce length */
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,   /* overhead */
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,   /* max tag length */
+    0,                              /* seal_scatter_supports_extra_in */
 
     aead_aes_gcm_siv_asm_init,
     NULL /* init_with_direction */,
@@ -698,12 +700,11 @@ static void gcm_siv_keys(
                   key_material + 16, gcm_siv_ctx->is_256 ? 32 : 16);
 }
 
-static int aead_aes_gcm_siv_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
-                                         uint8_t *out_tag, size_t *out_tag_len,
-                                         size_t max_out_tag_len,
-                                         const uint8_t *nonce, size_t nonce_len,
-                                         const uint8_t *in, size_t in_len,
-                                         const uint8_t *ad, size_t ad_len) {
+static int aead_aes_gcm_siv_seal_scatter(
+    const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
+    size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
+    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
+    size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
   const struct aead_aes_gcm_siv_ctx *gcm_siv_ctx = ctx->aead_state;
   const uint64_t in_len_64 = in_len;
   const uint64_t ad_len_64 = ad_len;
@@ -788,6 +789,7 @@ static const EVP_AEAD aead_aes_128_gcm_siv = {
     EVP_AEAD_AES_GCM_SIV_NONCE_LEN, /* nonce length */
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,   /* overhead */
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,   /* max tag length */
+    0,                              /* seal_scatter_supports_extra_in */
 
     aead_aes_gcm_siv_init,
     NULL /* init_with_direction */,
@@ -803,6 +805,7 @@ static const EVP_AEAD aead_aes_256_gcm_siv = {
     EVP_AEAD_AES_GCM_SIV_NONCE_LEN, /* nonce length */
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,   /* overhead */
     EVP_AEAD_AES_GCM_SIV_TAG_LEN,   /* max tag length */
+    0,                              /* seal_scatter_supports_extra_in */
 
     aead_aes_gcm_siv_init,
     NULL /* init_with_direction */,

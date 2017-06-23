@@ -79,6 +79,7 @@ struct evp_aead_st {
   uint8_t nonce_len;
   uint8_t overhead;
   uint8_t max_tag_len;
+  int seal_scatter_supports_extra_in;
 
   /* init initialises an |EVP_AEAD_CTX|. If this call returns zero then
    * |cleanup| will not be called for that context. */
@@ -96,7 +97,8 @@ struct evp_aead_st {
   int (*seal_scatter)(const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
                       size_t *out_tag_len, size_t max_out_tag_len,
                       const uint8_t *nonce, size_t nonce_len, const uint8_t *in,
-                      size_t in_len, const uint8_t *ad, size_t ad_len);
+                      size_t in_len, const uint8_t *extra_in,
+                      size_t extra_in_len, const uint8_t *ad, size_t ad_len);
 
   int (*open_gather)(const EVP_AEAD_CTX *ctx, uint8_t *out,
                      const uint8_t *nonce, size_t nonce_len, const uint8_t *in,
