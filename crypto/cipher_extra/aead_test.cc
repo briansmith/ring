@@ -23,6 +23,7 @@
 #include <openssl/cipher.h>
 #include <openssl/err.h>
 
+#include "../fipsmodule/cipher/internal.h"
 #include "../internal.h"
 #include "../test/file_test.h"
 #include "../test/test_util.h"
@@ -208,6 +209,55 @@ TEST_P(PerAEADTest, TestVector) {
   });
 }
 
+TEST_P(PerAEADTest, TestExtraInput) {
+  const KnownAEAD &aead_config = GetParam();
+  if (!aead()->seal_scatter_supports_extra_in) {
+    return;
+  }
+
+  const std::string test_vectors =
+      "crypto/cipher_extra/test/" + std::string(aead_config.test_vectors);
+  FileTestGTest(test_vectors.c_str(), [&](FileTest *t) {
+    if (t->HasAttribute("NO_SEAL") ||
+        t->HasAttribute("FAILS")) {
+      t->SkipCurrent();
+      return;
+    }
+
+    std::vector<uint8_t> key, nonce, in, ad, ct, tag;
+    ASSERT_TRUE(t->GetBytes(&key, "KEY"));
+    ASSERT_TRUE(t->GetBytes(&nonce, "NONCE"));
+    ASSERT_TRUE(t->GetBytes(&in, "IN"));
+    ASSERT_TRUE(t->GetBytes(&ad, "AD"));
+    ASSERT_TRUE(t->GetBytes(&ct, "CT"));
+    ASSERT_TRUE(t->GetBytes(&tag, "TAG"));
+
+    bssl::ScopedEVP_AEAD_CTX ctx;
+    ASSERT_TRUE(EVP_AEAD_CTX_init(ctx.get(), aead(), key.data(), key.size(),
+                                  tag.size(), nullptr));
+    std::vector<uint8_t> out_tag(EVP_AEAD_max_overhead(aead()) + in.size());
+    std::vector<uint8_t> out(in.size());
+
+    for (size_t extra_in_size = 0; extra_in_size < in.size(); extra_in_size++) {
+      size_t tag_bytes_written;
+      ASSERT_TRUE(EVP_AEAD_CTX_seal_scatter(
+          ctx.get(), out.data(), out_tag.data(), &tag_bytes_written,
+          out_tag.size(), nonce.data(), nonce.size(), in.data(),
+          in.size() - extra_in_size, in.data() + in.size() - extra_in_size,
+          extra_in_size, ad.data(), ad.size()));
+
+      ASSERT_EQ(tag_bytes_written, extra_in_size + tag.size());
+
+      memcpy(out.data() + in.size() - extra_in_size, out_tag.data(),
+             extra_in_size);
+
+      EXPECT_EQ(Bytes(ct), Bytes(out.data(), in.size()));
+      EXPECT_EQ(Bytes(tag), Bytes(out_tag.data() + extra_in_size,
+                                  tag_bytes_written - extra_in_size));
+    }
+  });
+}
+
 TEST_P(PerAEADTest, TestVectorScatterGather) {
   std::string test_vectors = "crypto/cipher_extra/test/";
   const KnownAEAD &aead_config = GetParam();
@@ -271,7 +321,7 @@ TEST_P(PerAEADTest, TestVectorScatterGather) {
       int err = ERR_peek_error();
       if (ERR_GET_LIB(err) == ERR_LIB_CIPHER &&
           ERR_GET_REASON(err) == CIPHER_R_CTRL_NOT_IMPLEMENTED) {
-          (void)t->HasAttribute("FAILS");  // All attributes need to be used.
+          t->SkipCurrent();
           return;
         }
     }

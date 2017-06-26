@@ -465,3 +465,7 @@ int FileTestMain(const FileTest::Options &opts) {
 
   return failed ? 1 : 0;
 }
+
+void FileTest::SkipCurrent() {
+  ClearTest();
+}

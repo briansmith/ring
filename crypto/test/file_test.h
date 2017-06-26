@@ -184,6 +184,9 @@ class FileTest {
   // instructions.
   void InjectInstruction(const std::string &key, const std::string &value);
 
+  // SkipCurrent passes the current test case. Unused attributes are ignored.
+  void SkipCurrent();
+
  private:
   void ClearTest();
   void ClearInstructions();
