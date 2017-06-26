@@ -298,12 +298,10 @@ static hm_fragment *dtls1_get_incoming_message(
   return frag;
 }
 
-/* dtls1_process_handshake_record reads a handshake record and processes it. It
- * returns one if the record was successfully processed and 0 or -1 on error. */
+/* dtls1_process_handshake_record reads a record for the handshake and processes
+ * it. It returns one on success and 0 or -1 on error. */
 static int dtls1_process_handshake_record(SSL *ssl) {
   SSL3_RECORD *rr = &ssl->s3->rrec;
-
-start:
   if (rr->length == 0) {
     int ret = dtls1_get_record(ssl);
     if (ret <= 0) {
@@ -311,27 +309,53 @@ start:
     }
   }
 
-  /* Cross-epoch records are discarded, but we may receive out-of-order
-   * application data between ChangeCipherSpec and Finished or a
-   * ChangeCipherSpec before the appropriate point in the handshake. Those must
-   * be silently discarded.
-   *
-   * However, only allow the out-of-order records in the correct epoch.
-   * Application data must come in the encrypted epoch, and ChangeCipherSpec in
-   * the unencrypted epoch (we never renegotiate). Other cases fall through and
-   * fail with a fatal error. */
-  if ((rr->type == SSL3_RT_APPLICATION_DATA &&
-       !ssl->s3->aead_read_ctx->is_null_cipher()) ||
-      (rr->type == SSL3_RT_CHANGE_CIPHER_SPEC &&
-       ssl->s3->aead_read_ctx->is_null_cipher())) {
-    rr->length = 0;
-    goto start;
-  }
+  switch (rr->type) {
+    case SSL3_RT_APPLICATION_DATA:
+      /* Unencrypted application data records are always illegal. */
+      if (ssl->s3->aead_read_ctx->is_null_cipher()) {
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+        OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+        return -1;
+      }
 
-  if (rr->type != SSL3_RT_HANDSHAKE) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
-    return -1;
+      /* Out-of-order application data may be received between ChangeCipherSpec
+       * and finished. Discard it. */
+      rr->length = 0;
+      ssl_read_buffer_discard(ssl);
+      return 1;
+
+    case SSL3_RT_CHANGE_CIPHER_SPEC:
+      /* We do not support renegotiation, so encrypted ChangeCipherSpec records
+       * are illegal. */
+      if (!ssl->s3->aead_read_ctx->is_null_cipher()) {
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+        OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+        return -1;
+      }
+
+      if (rr->length != 1 || rr->data[0] != SSL3_MT_CCS) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_CHANGE_CIPHER_SPEC);
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+        return -1;
+      }
+
+      /* Flag the ChangeCipherSpec for later. */
+      ssl->d1->has_change_cipher_spec = true;
+      ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_CHANGE_CIPHER_SPEC,
+                          rr->data, rr->length);
+
+      rr->length = 0;
+      ssl_read_buffer_discard(ssl);
+      return 1;
+
+    case SSL3_RT_HANDSHAKE:
+      /* Break out to main processing. */
+      break;
+
+    default:
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+      return -1;
   }
 
   CBS cbs;
@@ -487,6 +511,19 @@ int dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
     return 0;
   }
 
+  return 1;
+}
+
+int dtls1_read_change_cipher_spec(SSL *ssl) {
+  /* Process handshake records until there is a ChangeCipherSpec. */
+  while (!ssl->d1->has_change_cipher_spec) {
+    int ret = dtls1_process_handshake_record(ssl);
+    if (ret <= 0) {
+      return ret;
+    }
+  }
+
+  ssl->d1->has_change_cipher_spec = false;
   return 1;
 }
 

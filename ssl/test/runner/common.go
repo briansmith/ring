@@ -584,6 +584,11 @@ type ProtocolBugs struct {
 	// may be used to test DTLS's handling of reordered ChangeCipherSpec.
 	StrayChangeCipherSpec bool
 
+	// ReorderChangeCipherSpec causes the ChangeCipherSpec message to be
+	// sent at start of each flight in DTLS. Unlike EarlyChangeCipherSpec,
+	// the cipher change happens at the usual time.
+	ReorderChangeCipherSpec bool
+
 	// FragmentAcrossChangeCipherSpec causes the implementation to fragment
 	// the Finished (or NextProto) message around the ChangeCipherSpec
 	// messages.

@@ -1792,9 +1792,13 @@ struct OPENSSL_timeval {
 };
 
 struct DTLS1_STATE {
-  /* send_cookie is true if we are resending the ClientHello
-   * with a cookie from a HelloVerifyRequest. */
-  unsigned int send_cookie;
+  /* send_cookie is true if we are resending the ClientHello with a cookie from
+   * a HelloVerifyRequest. */
+  bool send_cookie:1;
+
+  /* has_change_cipher_spec is true if we have received a ChangeCipherSpec from
+   * the peer in this epoch. */
+  bool has_change_cipher_spec:1;
 
   uint8_t cookie[DTLS1_COOKIE_LENGTH];
   size_t cookie_len;

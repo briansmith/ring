@@ -150,10 +150,27 @@ func (c *Conn) makeFragment(header, data []byte, fragOffset, fragLen int) []byte
 
 func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 	if typ != recordTypeHandshake {
+		reorder := typ == recordTypeChangeCipherSpec && c.config.Bugs.ReorderChangeCipherSpec
+
+		// Flush pending handshake messages before writing a new record.
+		if !reorder {
+			err = c.dtlsFlushHandshake()
+			if err != nil {
+				return
+			}
+		}
+
 		// Only handshake messages are fragmented.
 		n, err = c.dtlsWriteRawRecord(typ, data)
 		if err != nil {
 			return
+		}
+
+		if reorder {
+			err = c.dtlsFlushHandshake()
+			if err != nil {
+				return
+			}
 		}
 
 		if typ == recordTypeChangeCipherSpec {

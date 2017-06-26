@@ -10040,6 +10040,31 @@ func addChangeCipherSpecTests() {
 		},
 	})
 
+	// Test that reordered ChangeCipherSpecs are tolerated.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		name:     "ReorderChangeCipherSpec-DTLS-Client",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				ReorderChangeCipherSpec: true,
+			},
+		},
+		resumeSession: true,
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		protocol: dtls,
+		name:     "ReorderChangeCipherSpec-DTLS-Server",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				ReorderChangeCipherSpec: true,
+			},
+		},
+		resumeSession: true,
+	})
+
 	// Test that the contents of ChangeCipherSpec are checked.
 	testCases = append(testCases, testCase{
 		name: "BadChangeCipherSpec-1",

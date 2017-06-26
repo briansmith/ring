@@ -1819,7 +1819,6 @@ func (hs *serverHandshakeState) sendFinished(out []byte) error {
 		c.writeRecord(recordTypeHandshake, postCCSBytes)
 		postCCSBytes = nil
 	}
-	c.flushHandshake()
 
 	if !c.config.Bugs.SkipChangeCipherSpec {
 		ccs := []byte{1}
@@ -1842,11 +1841,11 @@ func (hs *serverHandshakeState) sendFinished(out []byte) error {
 		if c.config.Bugs.SendExtraFinished {
 			c.writeRecord(recordTypeHandshake, finished.marshal())
 		}
+	}
 
-		if !c.config.Bugs.PackHelloRequestWithFinished {
-			// Defer flushing until renegotiation.
-			c.flushHandshake()
-		}
+	if !c.config.Bugs.PackHelloRequestWithFinished {
+		// Defer flushing until renegotiation.
+		c.flushHandshake()
 	}
 
 	c.cipherSuite = hs.suite

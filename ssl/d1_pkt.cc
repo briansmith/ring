@@ -288,46 +288,6 @@ again:
   return len;
 }
 
-int dtls1_read_change_cipher_spec(SSL *ssl) {
-  SSL3_RECORD *rr = &ssl->s3->rrec;
-
-again:
-  if (rr->length == 0) {
-    int ret = dtls1_get_record(ssl);
-    if (ret <= 0) {
-      return ret;
-    }
-  }
-
-  /* Drop handshake records silently. The epochs match, so this must be a
-   * retransmit of a message we already received. */
-  if (rr->type == SSL3_RT_HANDSHAKE) {
-    rr->length = 0;
-    goto again;
-  }
-
-  /* Other record types are illegal in this epoch. Note all application data
-   * records come in the encrypted epoch. */
-  if (rr->type != SSL3_RT_CHANGE_CIPHER_SPEC) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
-    return -1;
-  }
-
-  if (rr->length != 1 || rr->data[0] != SSL3_MT_CCS) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_CHANGE_CIPHER_SPEC);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-    return -1;
-  }
-
-  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_CHANGE_CIPHER_SPEC, rr->data,
-                      rr->length);
-
-  rr->length = 0;
-  ssl_read_buffer_discard(ssl);
-  return 1;
-}
-
 void dtls1_read_close_notify(SSL *ssl) {
   /* Bidirectional shutdown doesn't make sense for an unordered transport. DTLS
    * alerts also aren't delivered reliably, so we may even time out because the

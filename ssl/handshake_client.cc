@@ -781,7 +781,7 @@ static int dtls1_get_hello_verify_request(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl->s3->tmp.message_type != DTLS1_MT_HELLO_VERIFY_REQUEST) {
-    ssl->d1->send_cookie = 0;
+    ssl->d1->send_cookie = false;
     ssl->s3->tmp.reuse_message = 1;
     return 1;
   }
@@ -799,7 +799,7 @@ static int dtls1_get_hello_verify_request(SSL_HANDSHAKE *hs) {
   OPENSSL_memcpy(ssl->d1->cookie, CBS_data(&cookie), CBS_len(&cookie));
   ssl->d1->cookie_len = CBS_len(&cookie);
 
-  ssl->d1->send_cookie = 1;
+  ssl->d1->send_cookie = true;
   return 1;
 }
 

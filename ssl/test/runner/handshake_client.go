@@ -1587,7 +1587,6 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 		c.writeRecord(recordTypeHandshake, postCCSMsgs[0])
 		postCCSMsgs = postCCSMsgs[1:]
 	}
-	c.flushHandshake()
 
 	if !c.config.Bugs.SkipChangeCipherSpec &&
 		c.config.Bugs.EarlyChangeCipherSpec == 0 {
@@ -1614,9 +1613,9 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 		if c.config.Bugs.SendExtraFinished {
 			c.writeRecord(recordTypeHandshake, finished.marshal())
 		}
-
-		c.flushHandshake()
 	}
+
+	c.flushHandshake()
 	return nil
 }
 

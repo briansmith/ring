@@ -1023,10 +1023,8 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 			newData[0] = msgType
 			data = newData
 		}
-	}
 
-	if msgType := c.config.Bugs.SendTrailingMessageData; msgType != 0 {
-		if typ == recordTypeHandshake && data[0] == msgType {
+		if c.config.Bugs.SendTrailingMessageData != 0 && msgType == c.config.Bugs.SendTrailingMessageData {
 			newData := make([]byte, len(data))
 			copy(newData, data)
 
@@ -1058,6 +1056,11 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 			c.pendingFlight.Write(data)
 			return len(data), nil
 		}
+	}
+
+	// Flush buffered data before writing anything.
+	if err := c.flushHandshake(); err != nil {
+		return 0, err
 	}
 
 	return c.doWriteRecord(typ, data)
