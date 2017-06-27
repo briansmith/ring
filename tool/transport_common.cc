@@ -149,48 +149,56 @@ out:
   return ok;
 }
 
-bool Accept(int *out_sock, const std::string &port) {
-  struct sockaddr_in6 addr, cli_addr;
-  socklen_t cli_addr_len = sizeof(cli_addr);
+Listener::~Listener() {
+  if (server_sock_ >= 0) {
+    closesocket(server_sock_);
+  }
+}
+
+bool Listener::Init(const std::string &port) {
+  if (server_sock_ >= 0) {
+    return false;
+  }
+
+  struct sockaddr_in6 addr;
   OPENSSL_memset(&addr, 0, sizeof(addr));
 
   addr.sin6_family = AF_INET6;
   addr.sin6_addr = IN6ADDR_ANY_INIT;
   addr.sin6_port = htons(atoi(port.c_str()));
 
-  bool ok = false;
 #if defined(OPENSSL_WINDOWS)
   const BOOL enable = TRUE;
 #else
   const int enable = 1;
 #endif
-  int server_sock = -1;
 
-  server_sock =
-      socket(addr.sin6_family, SOCK_STREAM, 0);
-  if (server_sock < 0) {
+  server_sock_ = socket(addr.sin6_family, SOCK_STREAM, 0);
+  if (server_sock_ < 0) {
     perror("socket");
-    goto out;
+    return false;
   }
 
-  if (setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, (const char *)&enable,
+  if (setsockopt(server_sock_, SOL_SOCKET, SO_REUSEADDR, (const char *)&enable,
                  sizeof(enable)) < 0) {
     perror("setsockopt");
-    goto out;
+    return false;
   }
 
-  if (bind(server_sock, (struct sockaddr*)&addr, sizeof(addr)) != 0) {
+  if (bind(server_sock_, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
     perror("connect");
-    goto out;
+    return false;
   }
-  listen(server_sock, 1);
-  *out_sock = accept(server_sock, (struct sockaddr*)&cli_addr, &cli_addr_len);
 
-  ok = true;
+  listen(server_sock_, SOMAXCONN);
+  return true;
+}
 
-out:
-  closesocket(server_sock);
-  return ok;
+bool Listener::Accept(int *out_sock) {
+  struct sockaddr_in6 addr;
+  socklen_t addr_len = sizeof(addr);
+  *out_sock = accept(server_sock_, (struct sockaddr *)&addr, &addr_len);
+  return *out_sock >= 0;
 }
 
 bool VersionFromString(uint16_t *out_version, const std::string &version) {

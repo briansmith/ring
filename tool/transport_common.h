@@ -26,10 +26,24 @@ bool InitSocketLibrary();
 // It returns true on success and false otherwise.
 bool Connect(int *out_sock, const std::string &hostname_and_port);
 
-// Accept sets |*out_sock| to be a socket connected to the port given
-// in |port|, which should be of the form "123".
-// It returns true on success and false otherwise.
-bool Accept(int *out_sock, const std::string &port);
+class Listener {
+ public:
+  Listener() {}
+  ~Listener();
+
+  // Init initializes the listener to listen on |port|, which should be of the
+  // form "123".
+  bool Init(const std::string &port);
+
+  // Accept sets |*out_sock| to be a socket connected to the listener.
+  bool Accept(int *out_sock);
+
+ private:
+  int server_sock_ = -1;
+
+  Listener(const Listener &) = delete;
+  Listener &operator=(const Listener &) = delete;
+};
 
 bool VersionFromString(uint16_t *out_version, const std::string &version);
 

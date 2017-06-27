@@ -233,10 +233,15 @@ bool Server(const std::vector<std::string> &args) {
     SSL_CTX_set_early_data_enabled(ctx.get(), 1);
   }
 
+  Listener listener;
+  if (!listener.Init(args_map["-accept"])) {
+    return false;
+  }
+
   bool result = true;
   do {
     int sock = -1;
-    if (!Accept(&sock, args_map["-accept"])) {
+    if (!listener.Accept(&sock)) {
       return false;
     }
 
