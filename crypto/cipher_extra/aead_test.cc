@@ -240,6 +240,7 @@ TEST_P(PerAEADTest, TestExtraInput) {
 
     for (size_t extra_in_size = 0; extra_in_size < in.size(); extra_in_size++) {
       size_t tag_bytes_written;
+      SCOPED_TRACE(extra_in_size);
       ASSERT_TRUE(EVP_AEAD_CTX_seal_scatter(
           ctx.get(), out.data(), out_tag.data(), &tag_bytes_written,
           out_tag.size(), nonce.data(), nonce.size(), in.data(),
