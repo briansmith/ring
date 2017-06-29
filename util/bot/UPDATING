@@ -45,3 +45,10 @@ yasm-win32.exe: Update to the appropriate release of Yasm. Use the same version
     https://chromium.googlesource.com/chromium/src/+/master/third_party/yasm/README.chromium
     Use the release at http://yasm.tortall.net/Download.html labeled
     "Win32 .exe". The download will be named yasm-VERSION-win32.exe.
+
+Finally, update sde-linux64.tar.bz2 by downloading the latet release from intel
+at
+https://software.intel.com/en-us/articles/intel-software-development-emulator,
+but upload it with the following command. (Note the bucket is different.)
+
+    upload_to_google_storage.py -b chrome-boringssl-sde sde-linux64.tar.bz2
