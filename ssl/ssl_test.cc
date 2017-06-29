@@ -2567,6 +2567,10 @@ TEST(SSLTest, SetVersion) {
   EXPECT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_3_VERSION));
   EXPECT_EQ(TLS1_3_VERSION, ctx->conf_max_version);
 
+  // TLS1_3_DRAFT_VERSION is not an API-level version.
+  EXPECT_FALSE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_3_DRAFT_VERSION));
+  ERR_clear_error();
+
   ctx.reset(SSL_CTX_new(DTLS_method()));
   ASSERT_TRUE(ctx);
 

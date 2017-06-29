@@ -26,6 +26,11 @@ const (
 	VersionTLS13 = 0x0304
 )
 
+const (
+	VersionDTLS10 = 0xfeff
+	VersionDTLS12 = 0xfefd
+)
+
 // A draft version of TLS 1.3 that is sent over the wire for the current draft.
 const tls13DraftVersion = 0x7f12
 

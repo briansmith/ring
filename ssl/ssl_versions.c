@@ -95,12 +95,21 @@ static int set_version_bound(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
   /* The public API uses wire versions, except we use |TLS1_3_VERSION|
    * everywhere to refer to any draft TLS 1.3 versions. In this direction, we
    * map it to some representative TLS 1.3 draft version. */
+  if (version == TLS1_3_DRAFT_VERSION) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_SSL_VERSION);
+    return 0;
+  }
   if (version == TLS1_3_VERSION) {
     version = TLS1_3_DRAFT_VERSION;
   }
 
-  return method_supports_version(method, version) &&
-         ssl_protocol_version_from_wire(out, version);
+  if (!method_supports_version(method, version) ||
+      !ssl_protocol_version_from_wire(out, version)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_SSL_VERSION);
+    return 0;
+  }
+
+  return 1;
 }
 
 static int set_min_version(const SSL_PROTOCOL_METHOD *method, uint16_t *out,

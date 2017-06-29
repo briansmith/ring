@@ -1155,16 +1155,27 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 type tlsVersion struct {
 	name    string
 	version uint16
-	flag    string
-	hasDTLS bool
+	// excludeFlag is the legacy shim flag to disable the version.
+	excludeFlag string
+	hasDTLS     bool
+	// shimTLS and shimDTLS are values the shim uses to refer to these
+	// versions in TLS and DTLS, respectively.
+	shimTLS, shimDTLS int
+}
+
+func (vers tlsVersion) shimFlag(protocol protocol) string {
+	if protocol == dtls {
+		return strconv.Itoa(vers.shimDTLS)
+	}
+	return strconv.Itoa(vers.shimTLS)
 }
 
 var tlsVersions = []tlsVersion{
-	{"SSL3", VersionSSL30, "-no-ssl3", false},
-	{"TLS1", VersionTLS10, "-no-tls1", true},
-	{"TLS11", VersionTLS11, "-no-tls11", false},
-	{"TLS12", VersionTLS12, "-no-tls12", true},
-	{"TLS13", VersionTLS13, "-no-tls13", false},
+	{"SSL3", VersionSSL30, "-no-ssl3", false, VersionSSL30, 0},
+	{"TLS1", VersionTLS10, "-no-tls1", true, VersionTLS10, VersionDTLS10},
+	{"TLS11", VersionTLS11, "-no-tls11", false, VersionTLS11, 0},
+	{"TLS12", VersionTLS12, "-no-tls12", true, VersionTLS12, VersionDTLS12},
+	{"TLS13", VersionTLS13, "-no-tls13", false, VersionTLS13, 0},
 }
 
 type testCipherSuite struct {
@@ -4541,7 +4552,7 @@ func addVersionNegotiationTests() {
 		// Assemble flags to disable all newer versions on the shim.
 		var flags []string
 		for _, vers := range tlsVersions[i+1:] {
-			flags = append(flags, vers.flag)
+			flags = append(flags, vers.excludeFlag)
 		}
 
 		// Test configuring the runner's maximum version.
@@ -4560,8 +4571,6 @@ func addVersionNegotiationTests() {
 				if protocol == dtls {
 					suffix += "-DTLS"
 				}
-
-				shimVersFlag := strconv.Itoa(int(versionToWire(shimVers.version, protocol == dtls)))
 
 				// Determine the expected initial record-layer versions.
 				clientVers := shimVers.version
@@ -4598,7 +4607,7 @@ func addVersionNegotiationTests() {
 							ExpectInitialRecordVersion: clientVers,
 						},
 					},
-					flags:           []string{"-max-version", shimVersFlag},
+					flags:           []string{"-max-version", shimVers.shimFlag(protocol)},
 					expectedVersion: expectedVersion,
 				})
 
@@ -4625,7 +4634,7 @@ func addVersionNegotiationTests() {
 							ExpectInitialRecordVersion: serverVers,
 						},
 					},
-					flags:           []string{"-max-version", shimVersFlag},
+					flags:           []string{"-max-version", shimVers.shimFlag(protocol)},
 					expectedVersion: expectedVersion,
 				})
 			}
@@ -4882,7 +4891,7 @@ func addMinimumVersionTests() {
 		// Assemble flags to disable all older versions on the shim.
 		var flags []string
 		for _, vers := range tlsVersions[:i] {
-			flags = append(flags, vers.flag)
+			flags = append(flags, vers.excludeFlag)
 		}
 
 		for _, runnerVers := range tlsVersions {
@@ -4895,7 +4904,6 @@ func addMinimumVersionTests() {
 				if protocol == dtls {
 					suffix += "-DTLS"
 				}
-				shimVersFlag := strconv.Itoa(int(versionToWire(shimVers.version, protocol == dtls)))
 
 				var expectedVersion uint16
 				var shouldFail bool
@@ -4942,7 +4950,7 @@ func addMinimumVersionTests() {
 							IgnorePeerCipherPreferences: shouldFail,
 						},
 					},
-					flags:              []string{"-min-version", shimVersFlag},
+					flags:              []string{"-min-version", shimVers.shimFlag(protocol)},
 					expectedVersion:    expectedVersion,
 					shouldFail:         shouldFail,
 					expectedError:      expectedError,
@@ -4969,7 +4977,7 @@ func addMinimumVersionTests() {
 					config: Config{
 						MaxVersion: runnerVers.version,
 					},
-					flags:              []string{"-min-version", shimVersFlag},
+					flags:              []string{"-min-version", shimVers.shimFlag(protocol)},
 					expectedVersion:    expectedVersion,
 					shouldFail:         shouldFail,
 					expectedError:      expectedError,
