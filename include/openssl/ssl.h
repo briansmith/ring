@@ -1706,25 +1706,39 @@ OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *session,
 
 /* Session caching.
  *
- * Session caching allows clients to reconnect to a server based on saved
- * parameters from a previous connection.
+ * Session caching allows connections to be established more efficiently based
+ * on saved parameters from a previous connection, called a session (see
+ * |SSL_SESSION|). The client offers a saved session, using an opaque identifier
+ * from a previous connection. The server may accept the session, if it has the
+ * parameters available. Otherwise, it will decline and continue with a full
+ * handshake.
+ *
+ * This requires both the client and the server to retain session state. A
+ * client does so with a stateful session cache. A server may do the same or, if
+ * supported by both sides, statelessly using session tickets. For more
+ * information on the latter, see the next section.
  *
  * For a server, the library implements a built-in internal session cache as an
- * in-memory hash table. One may also register callbacks to implement a custom
- * external session cache. An external cache may be used in addition to or
- * instead of the internal one. Use |SSL_CTX_set_session_cache_mode| to toggle
- * the internal cache.
+ * in-memory hash table. Servers may also use |SSL_CTX_sess_set_get_cb| and
+ * |SSL_CTX_sess_set_new_cb| to implement a custom external session cache. In
+ * particular, this may be used to share a session cache between multiple
+ * servers in a large deployment. An external cache may be used in addition to
+ * or instead of the internal one. Use |SSL_CTX_set_session_cache_mode| to
+ * toggle the internal cache.
  *
- * For a client, the only option is an external session cache. Prior to
- * handshaking, the consumer should look up a session externally (keyed, for
- * instance, by hostname) and use |SSL_set_session| to configure which session
- * to offer. The callbacks may be used to determine when new sessions are
- * available.
+ * For a client, the only option is an external session cache. Clients may use
+ * |SSL_CTX_sess_set_new_cb| to register a callback for when new sessions are
+ * available. These may be cached and, in subsequent compatible connections,
+ * configured with |SSL_set_session|.
  *
- * Note that offering or accepting a session short-circuits most parameter
- * negotiation. Resuming sessions across different configurations may result in
- * surprising behavior. So, for instance, a client implementing a version
- * fallback should shard its session cache by maximum protocol version. */
+ * Note that offering or accepting a session short-circuits certificate
+ * verification and most parameter negotiation. Resuming sessions across
+ * different contexts may result in security failures and surprising
+ * behavior. For a typical client, this means sessions for different hosts must
+ * be cached under different keys. A client that connects to the same host with,
+ * e.g., different cipher suite settings or client certificates should also use
+ * separate session caches between those contexts. Servers should also partition
+ * session caches between SNI hosts with |SSL_CTX_set_session_id_context|.  */
 
 /* SSL_SESS_CACHE_OFF disables all session caching. */
 #define SSL_SESS_CACHE_OFF 0x0000
@@ -1771,25 +1785,6 @@ OPENSSL_EXPORT int SSL_CTX_get_session_cache_mode(const SSL_CTX *ctx);
  * It is an error to call this function after the handshake has begun. */
 OPENSSL_EXPORT int SSL_set_session(SSL *ssl, SSL_SESSION *session);
 
-/* SSL_get_session returns a non-owning pointer to |ssl|'s session. For
- * historical reasons, which session it returns depends on |ssl|'s state.
- *
- * Prior to the start of the initial handshake, it returns the session the
- * caller set with |SSL_set_session|. After the initial handshake has finished
- * and if no additional handshakes are in progress, it returns the currently
- * active session. Its behavior is undefined while a handshake is in progress.
- *
- * Using this function to add new sessions to an external session cache is
- * deprecated. Use |SSL_CTX_sess_set_new_cb| instead. */
-OPENSSL_EXPORT SSL_SESSION *SSL_get_session(const SSL *ssl);
-
-/* SSL_get0_session is an alias for |SSL_get_session|. */
-#define SSL_get0_session SSL_get_session
-
-/* SSL_get1_session acts like |SSL_get_session| but returns a new reference to
- * the session. */
-OPENSSL_EXPORT SSL_SESSION *SSL_get1_session(SSL *ssl);
-
 /* SSL_DEFAULT_SESSION_TIMEOUT is the default lifetime, in seconds, of a
  * session in TLS 1.2 or earlier. This is how long we are willing to use the
  * secret to encrypt traffic without fresh key material. */
@@ -1824,11 +1819,7 @@ OPENSSL_EXPORT uint32_t SSL_CTX_get_timeout(const SSL_CTX *ctx);
  * connection without a matching session ID context.
  *
  * For a server, if |SSL_VERIFY_PEER| is enabled, it is an error to not set a
- * session ID context.
- *
- * TODO(davidben): Is that check needed? That seems a special case of taking
- * care not to cross-resume across configuration changes, and this is only
- * relevant if a server requires client auth. */
+ * session ID context. */
 OPENSSL_EXPORT int SSL_CTX_set_session_id_context(SSL_CTX *ctx,
                                                   const uint8_t *sid_ctx,
                                                   size_t sid_ctx_len);
@@ -1889,12 +1880,7 @@ OPENSSL_EXPORT void SSL_CTX_flush_sessions(SSL_CTX *ctx, uint64_t time);
  * ticket is renewed. Further, it may not be called until some time after
  * |SSL_do_handshake| or |SSL_connect| completes if False Start is enabled. Thus
  * it's recommended to use this callback over checking |SSL_session_reused| on
- * handshake completion.
- *
- * TODO(davidben): Conditioning callbacks on |SSL_SESS_CACHE_CLIENT| or
- * |SSL_SESS_CACHE_SERVER| doesn't make any sense when one could just as easily
- * not supply the callbacks. Removing that condition and the client internal
- * cache would simplify things. */
+ * handshake completion. */
 OPENSSL_EXPORT void SSL_CTX_sess_set_new_cb(
     SSL_CTX *ctx, int (*new_session_cb)(SSL *ssl, SSL_SESSION *session));
 
@@ -1959,23 +1945,36 @@ OPENSSL_EXPORT SSL_SESSION *SSL_magic_pending_session_ptr(void);
 /* Session tickets.
  *
  * Session tickets, from RFC 5077, allow session resumption without server-side
- * state. Session tickets are supported in by default but may be disabled with
+ * state. The server maintains a secret ticket key and sends the client opaque
+ * encrypted session parameters, called a ticket. When offering the session, the
+ * client sends the ticket which the server decrypts to recover session state.
+ * Session tickets are enabled by default but may be disabled with
  * |SSL_OP_NO_TICKET|.
  *
  * On the client, ticket-based sessions use the same APIs as ID-based tickets.
  * Callers do not need to handle them differently.
  *
  * On the server, tickets are encrypted and authenticated with a secret key. By
- * default, an |SSL_CTX| generates a key on creation. Tickets are minted and
- * processed transparently. The following functions may be used to configure a
- * persistent key or implement more custom behavior. There are three levels of
- * customisation possible:
+ * default, an |SSL_CTX| generates a key on creation and uses it for the
+ * lifetime of the |SSL_CTX|. Tickets are minted and processed
+ * transparently. The following functions may be used to configure a persistent
+ * key or implement more custom behavior, including key rotation and sharing
+ * keys between multiple servers in a large deployment. There are three levels
+ * of customisation possible:
  *
  * 1) One can simply set the keys with |SSL_CTX_set_tlsext_ticket_keys|.
  * 2) One can configure an |EVP_CIPHER_CTX| and |HMAC_CTX| directly for
  *    encryption and authentication.
  * 3) One can configure an |SSL_TICKET_ENCRYPTION_METHOD| to have more control
- *    and the option of asynchronous decryption. */
+ *    and the option of asynchronous decryption.
+ *
+ * An attacker that compromises a server's session ticket key can impersonate
+ * the server and, prior to TLS 1.3, retroactively decrypt all application
+ * traffic from sessions using that ticket key. Thus ticket keys must be
+ * regularly rotated for forward secrecy. Note the default key is currently not
+ * rotated.
+ *
+ * TODO(davidben): This is silly. Rotate the default key automatically. */
 
 /* SSL_CTX_get_tlsext_ticket_keys writes |ctx|'s session ticket key material to
  * |len| bytes of |out|. It returns one on success and zero if |len| is not
@@ -3883,6 +3882,29 @@ OPENSSL_EXPORT long BIO_set_ssl(BIO *bio, SSL *ssl, int take_owership);
 
 /* SSL_set_ecdh_auto returns one. */
 #define SSL_set_ecdh_auto(ssl, onoff) 1
+
+/* SSL_get_session returns a non-owning pointer to |ssl|'s session. For
+ * historical reasons, which session it returns depends on |ssl|'s state.
+ *
+ * Prior to the start of the initial handshake, it returns the session the
+ * caller set with |SSL_set_session|. After the initial handshake has finished
+ * and if no additional handshakes are in progress, it returns the currently
+ * active session. Its behavior is undefined while a handshake is in progress.
+ *
+ * If trying to add new sessions to an external session cache, use
+ * |SSL_CTX_sess_set_new_cb| instead. In particular, using the callback is
+ * required as of TLS 1.3. For compatibility, this function will return an
+ * unresumable session which may be cached, but will never be resumed.
+ *
+ * If querying properties of the connection, use APIs on the |SSL| object. */
+OPENSSL_EXPORT SSL_SESSION *SSL_get_session(const SSL *ssl);
+
+/* SSL_get0_session is an alias for |SSL_get_session|. */
+#define SSL_get0_session SSL_get_session
+
+/* SSL_get1_session acts like |SSL_get_session| but returns a new reference to
+ * the session. */
+OPENSSL_EXPORT SSL_SESSION *SSL_get1_session(SSL *ssl);
 
 
 /* Private structures.
