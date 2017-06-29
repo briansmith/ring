@@ -22,8 +22,8 @@ import urllib
 # CLANG_REVISION and CLANG_SUB_REVISION determine the build of clang
 # to use. These should be synced with tools/clang/scripts/update.py in
 # Chromium.
-CLANG_REVISION = "305281"
-CLANG_SUB_REVISION = "1"
+CLANG_REVISION = "305735"
+CLANG_SUB_REVISION = "2"
 
 PACKAGE_VERSION = "%s-%s" % (CLANG_REVISION, CLANG_SUB_REVISION)
 LLVM_BUILD_DIR = os.path.join(os.path.dirname(__file__), "llvm-build")

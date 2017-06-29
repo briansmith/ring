@@ -29,16 +29,24 @@ cmake-linux64.tar.gz: Download the latest CMake source tarball, found at
         ./bootstrap --prefix=$PWD/cmake-linux64 && make && make install
         tar -czf cmake-linux64.tar.gz cmake-linux64/
 
+    The current revision was built against cmake-3.5.0.tar.gz.
+
 cmake-mac.tar.gz: Follow the same instructions as above on a Mac, but replace
     cmake-linux64 with cmake-mac.
+
+    The current revision was built against cmake-3.5.0.tar.gz.
 
 cmake-win32.zip: Update to the latest prebuilt release of CMake, found at
     https://cmake.org/download/. Use the file labeled "Windows ZIP". The
     download will be named cmake-VERSION-win32-x86.zip.
 
+    The current revision is cmake-3.5.0-win32-x86.zip.
+
 perl-win32.zip: Update to the latest 32-bit prebuilt "PortableZip" edition of
     Strawberry Perl, found at http://strawberryperl.com/releases.html. The
     download will be named strawberry-perl-VERSION-32bit-portable.zip.
+
+    The current revision is strawberry-perl-5.22.1.2-32bit-portable.zip.
 
 yasm-win32.exe: Update to the appropriate release of Yasm. Use the same version
     as Chromium, found at
@@ -46,9 +54,13 @@ yasm-win32.exe: Update to the appropriate release of Yasm. Use the same version
     Use the release at http://yasm.tortall.net/Download.html labeled
     "Win32 .exe". The download will be named yasm-VERSION-win32.exe.
 
+    The current revision is yasm-1.2.0-win32.exe.
+
 Finally, update sde-linux64.tar.bz2 by downloading the latet release from intel
 at
 https://software.intel.com/en-us/articles/intel-software-development-emulator,
 but upload it with the following command. (Note the bucket is different.)
 
     upload_to_google_storage.py -b chrome-boringssl-sde sde-linux64.tar.bz2
+
+The current revision is sde-external-8.5.0-2017-06-08-lin.tar.bz2.

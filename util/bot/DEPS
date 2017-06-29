@@ -24,7 +24,7 @@ deps = {
 deps_os = {
   'android': {
     'boringssl/util/bot/android_tools':
-      Var('chromium_git') + '/android_tools.git' + '@' + '023e2f65409a2b7886b8d644d6a88542ead6cd0a',
+      Var('chromium_git') + '/android_tools.git' + '@' + 'e9d4018e149d50172ed462a7c21137aa915940ec',
   },
   'unix': {
     'boringssl/util/bot/libFuzzer':
