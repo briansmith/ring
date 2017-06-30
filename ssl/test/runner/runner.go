@@ -465,30 +465,20 @@ type testCase struct {
 
 var testCases []testCase
 
-func writeTranscript(test *testCase, num int, data []byte) {
+func writeTranscript(test *testCase, path string, data []byte) {
 	if len(data) == 0 {
 		return
 	}
 
-	protocol := "tls"
-	if test.protocol == dtls {
-		protocol = "dtls"
-	}
-
-	side := "client"
-	if test.testType == serverTest {
-		side = "server"
-	}
-
-	dir := path.Join(*transcriptDir, protocol, side)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		fmt.Fprintf(os.Stderr, "Error making %s: %s\n", dir, err)
+	settings, err := ioutil.ReadFile(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading %s: %s.\n", path, err)
 		return
 	}
 
-	name := fmt.Sprintf("%s-%d", test.name, num)
-	if err := ioutil.WriteFile(path.Join(dir, name), data, 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing %s: %s\n", name, err)
+	settings = append(settings, data...)
+	if err := ioutil.WriteFile(path, settings, 0644); err != nil {
+		fmt.Fprintf(os.Stderr, "Error writing %s: %s\n", path, err)
 	}
 }
 
@@ -512,7 +502,7 @@ func (t *timeoutConn) Write(b []byte) (int, error) {
 	return t.Conn.Write(b)
 }
 
-func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, num int) error {
+func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, transcriptPrefix string, num int) error {
 	if !test.noSessionCache {
 		if config.ClientSessionCache == nil {
 			config.ClientSessionCache = NewLRUClientSessionCache(1)
@@ -561,9 +551,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, nu
 		if *flagDebug {
 			defer connDebug.WriteTo(os.Stdout)
 		}
-		if len(*transcriptDir) != 0 {
+		if len(transcriptPrefix) != 0 {
 			defer func() {
-				writeTranscript(test, num, connDebug.Transcript())
+				path := transcriptPrefix + strconv.Itoa(num)
+				writeTranscript(test, path, connDebug.Transcript())
 			}()
 		}
 
@@ -1025,6 +1016,26 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		flags = append(flags, "-tls-unique")
 	}
 
+	var transcriptPrefix string
+	if len(*transcriptDir) != 0 {
+		protocol := "tls"
+		if test.protocol == dtls {
+			protocol = "dtls"
+		}
+
+		side := "client"
+		if test.testType == serverTest {
+			side = "server"
+		}
+
+		dir := filepath.Join(*transcriptDir, protocol, side)
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+		transcriptPrefix = filepath.Join(dir, test.name+"-")
+		flags = append(flags, "-write-settings", transcriptPrefix)
+	}
+
 	flags = append(flags, test.flags...)
 
 	var shim *exec.Cmd
@@ -1064,7 +1075,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 
 	conn, err := acceptOrWait(listener, waitChan)
 	if err == nil {
-		err = doExchange(test, &config, conn, false /* not a resumption */, 0)
+		err = doExchange(test, &config, conn, false /* not a resumption */, transcriptPrefix, 0)
 		conn.Close()
 	}
 
@@ -1084,7 +1095,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		var connResume net.Conn
 		connResume, err = acceptOrWait(listener, waitChan)
 		if err == nil {
-			err = doExchange(test, &resumeConfig, connResume, true /* resumption */, i+1)
+			err = doExchange(test, &resumeConfig, connResume, true /* resumption */, transcriptPrefix, i+1)
 			connResume.Close()
 		}
 	}

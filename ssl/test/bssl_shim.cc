@@ -62,6 +62,7 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #include "../../crypto/internal.h"
 #include "../internal.h"
 #include "async_bio.h"
+#include "fuzzer.h"
 #include "packeted_bio.h"
 #include "test_config.h"
 
@@ -1645,6 +1646,61 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
   return true;
 }
 
+static bool WriteSettings(int i, const TestConfig *config,
+                          const SSL_SESSION *session) {
+  if (config->write_settings.empty()) {
+    return true;
+  }
+
+  // Treat write_settings as a path prefix for each connection in the run.
+  char buf[DECIMAL_SIZE(int)];
+  snprintf(buf, sizeof(buf), "%d", i);
+  std::string path = config->write_settings + buf;
+
+  bssl::ScopedCBB cbb;
+  if (!CBB_init(cbb.get(), 64)) {
+    return false;
+  }
+
+  if (session != nullptr) {
+    uint8_t *data;
+    size_t len;
+    if (!SSL_SESSION_to_bytes(session, &data, &len)) {
+      return false;
+    }
+    bssl::UniquePtr<uint8_t> free_data(data);
+    CBB child;
+    if (!CBB_add_u16(cbb.get(), kSessionTag) ||
+        !CBB_add_u24_length_prefixed(cbb.get(), &child) ||
+        !CBB_add_bytes(&child, data, len) ||
+        !CBB_flush(cbb.get())) {
+      return false;
+    }
+  }
+
+  if (config->is_server &&
+      (config->require_any_client_certificate || config->verify_peer) &&
+      !CBB_add_u16(cbb.get(), kRequestClientCert)) {
+    return false;
+  }
+
+  uint8_t *settings;
+  size_t settings_len;
+  if (!CBB_add_u16(cbb.get(), kDataTag) ||
+      !CBB_finish(cbb.get(), &settings, &settings_len)) {
+    return false;
+  }
+  bssl::UniquePtr<uint8_t> free_settings(settings);
+
+  using ScopedFILE = std::unique_ptr<FILE, decltype(&fclose)>;
+  ScopedFILE file(fopen(path.c_str(), "w"), fclose);
+  if (!file) {
+    return false;
+  }
+
+  return fwrite(settings, settings_len, 1, file.get()) == 1;
+}
+
 static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session, SSL *ssl,
                        const TestConfig *config, bool is_resume, bool is_retry);
 
@@ -2227,6 +2283,10 @@ int main(int argc, char **argv) {
     }
 
     bssl::UniquePtr<SSL_SESSION> offer_session = std::move(session);
+    if (!WriteSettings(i, config, offer_session.get())) {
+      fprintf(stderr, "Error writing settings.\n");
+      return 1;
+    }
     if (!DoConnection(&session, ssl_ctx.get(), config, &retry_config, is_resume,
                       offer_session.get())) {
       fprintf(stderr, "Connection %d failed.\n", i + 1);

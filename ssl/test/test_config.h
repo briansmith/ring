@@ -24,6 +24,7 @@ struct TestConfig {
   bool is_server = false;
   bool is_dtls = false;
   int resume_count = 0;
+  std::string write_settings;
   bool fallback_scsv = false;
   std::string digest_prefs;
   std::vector<int> signing_prefs;
