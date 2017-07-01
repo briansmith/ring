@@ -112,6 +112,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
 
   SSL_set_renegotiate_mode(client.get(), ssl_renegotiate_freely);
   SSL_set_max_proto_version(client.get(), TLS1_3_VERSION);
+  SSL_set_min_proto_version(client.get(), SSL3_VERSION);
   SSL_enable_ocsp_stapling(client.get());
   SSL_enable_signed_cert_timestamps(client.get());
   SSL_set_tlsext_host_name(client.get(), "hostname");

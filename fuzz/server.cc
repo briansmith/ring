@@ -109,6 +109,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   }
 
   SSL_set_max_proto_version(server.get(), TLS1_3_VERSION);
+  SSL_set_min_proto_version(server.get(), SSL3_VERSION);
   SSL_set_tls_channel_id_enabled(server.get(), 1);
 
   // Enable ciphers that are off by default.
