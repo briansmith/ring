@@ -537,11 +537,14 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     goto err;
   }
 
-  /* Determine whether to request a client certificate. */
-  hs->cert_request = !!(ssl->verify_mode & SSL_VERIFY_PEER);
-  /* CertificateRequest may only be sent in non-resumption handshakes. */
-  if (ssl->s3->session_reused) {
-    hs->cert_request = 0;
+  if (!ssl->s3->session_reused) {
+    /* Determine whether to request a client certificate. */
+    hs->cert_request = !!(ssl->verify_mode & SSL_VERIFY_PEER);
+    /* Only request a certificate if Channel ID isn't negotiated. */
+    if ((ssl->verify_mode & SSL_VERIFY_PEER_IF_NO_OBC) &&
+        ssl->s3->tlsext_channel_id_valid) {
+      hs->cert_request = 0;
+    }
   }
 
   /* Send a CertificateRequest, if necessary. */

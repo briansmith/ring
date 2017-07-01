@@ -95,6 +95,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-shim-shuts-down", &TestConfig::shim_shuts_down },
   { "-verify-fail", &TestConfig::verify_fail },
   { "-verify-peer", &TestConfig::verify_peer },
+  { "-verify-peer-if-no-obc", &TestConfig::verify_peer_if_no_obc },
   { "-expect-verify-result", &TestConfig::expect_verify_result },
   { "-renegotiate-once", &TestConfig::renegotiate_once },
   { "-renegotiate-freely", &TestConfig::renegotiate_freely },

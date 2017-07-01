@@ -1739,11 +1739,19 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     SSL_set_cert_cb(ssl.get(), CertCallback, nullptr);
   }
   if (config->require_any_client_certificate) {
-    SSL_set_verify(ssl.get(), SSL_VERIFY_PEER|SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+    SSL_set_verify(ssl.get(), SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
                    NULL);
   }
   if (config->verify_peer) {
     SSL_set_verify(ssl.get(), SSL_VERIFY_PEER, NULL);
+  }
+  if (config->verify_peer_if_no_obc) {
+    // Set SSL_VERIFY_FAIL_IF_NO_PEER_CERT so testing whether client
+    // certificates were requested is easy.
+    SSL_set_verify(ssl.get(),
+                   SSL_VERIFY_PEER | SSL_VERIFY_PEER_IF_NO_OBC |
+                       SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
+                   NULL);
   }
   if (config->false_start) {
     SSL_set_mode(ssl.get(), SSL_MODE_ENABLE_FALSE_START);

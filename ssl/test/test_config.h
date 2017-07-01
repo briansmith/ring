@@ -101,6 +101,7 @@ struct TestConfig {
   bool shim_shuts_down = false;
   bool verify_fail = false;
   bool verify_peer = false;
+  bool verify_peer_if_no_obc = false;
   bool expect_verify_result = false;
   std::string signed_cert_timestamps;
   int expect_total_renegotiations = 0;
