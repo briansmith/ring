@@ -3210,36 +3210,46 @@ func addCBCPaddingTests() {
 }
 
 func addCBCSplittingTests() {
-	testCases = append(testCases, testCase{
-		name: "CBCRecordSplitting",
-		config: Config{
-			MaxVersion:   VersionTLS10,
-			MinVersion:   VersionTLS10,
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
-		},
-		messageLen:    -1, // read until EOF
-		resumeSession: true,
-		flags: []string{
-			"-async",
-			"-write-different-record-sizes",
-			"-cbc-record-splitting",
-		},
-	})
-	testCases = append(testCases, testCase{
-		name: "CBCRecordSplittingPartialWrite",
-		config: Config{
-			MaxVersion:   VersionTLS10,
-			MinVersion:   VersionTLS10,
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
-		},
-		messageLen: -1, // read until EOF
-		flags: []string{
-			"-async",
-			"-write-different-record-sizes",
-			"-cbc-record-splitting",
-			"-partial-write",
-		},
-	})
+	var cbcCiphers = []struct {
+		name   string
+		cipher uint16
+	}{
+		{"3DES", TLS_RSA_WITH_3DES_EDE_CBC_SHA},
+		{"AES128", TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA},
+		{"AES256", TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA},
+	}
+	for _, t := range cbcCiphers {
+		testCases = append(testCases, testCase{
+			name: "CBCRecordSplitting-" + t.name,
+			config: Config{
+				MaxVersion:   VersionTLS10,
+				MinVersion:   VersionTLS10,
+				CipherSuites: []uint16{t.cipher},
+			},
+			messageLen:    -1, // read until EOF
+			resumeSession: true,
+			flags: []string{
+				"-async",
+				"-write-different-record-sizes",
+				"-cbc-record-splitting",
+			},
+		})
+		testCases = append(testCases, testCase{
+			name: "CBCRecordSplittingPartialWrite-" + t.name,
+			config: Config{
+				MaxVersion:   VersionTLS10,
+				MinVersion:   VersionTLS10,
+				CipherSuites: []uint16{t.cipher},
+			},
+			messageLen: -1, // read until EOF
+			flags: []string{
+				"-async",
+				"-write-different-record-sizes",
+				"-cbc-record-splitting",
+				"-partial-write",
+			},
+		})
+	}
 }
 
 func addClientAuthTests() {
