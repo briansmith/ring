@@ -728,8 +728,12 @@ type ProtocolBugs struct {
 	EmptyRenegotiationInfo bool
 
 	// BadRenegotiationInfo causes the renegotiation extension value in a
-	// renegotiation handshake to be incorrect.
+	// renegotiation handshake to be incorrect at the start.
 	BadRenegotiationInfo bool
+
+	// BadRenegotiationInfoEnd causes the renegotiation extension value in
+	// a renegotiation handshake to be incorrect at the end.
+	BadRenegotiationInfoEnd bool
 
 	// NoRenegotiationInfo disables renegotiation info support in all
 	// handshakes.

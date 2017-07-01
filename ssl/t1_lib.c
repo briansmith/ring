@@ -799,16 +799,24 @@ static int ext_ri_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
 
   const uint8_t *d = CBS_data(&renegotiated_connection);
-  if (CRYPTO_memcmp(d, ssl->s3->previous_client_finished,
-        ssl->s3->previous_client_finished_len)) {
+  int ok = CRYPTO_memcmp(d, ssl->s3->previous_client_finished,
+                         ssl->s3->previous_client_finished_len) == 0;
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  ok = 1;
+#endif
+  if (!ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_MISMATCH);
     *out_alert = SSL_AD_HANDSHAKE_FAILURE;
     return 0;
   }
   d += ssl->s3->previous_client_finished_len;
 
-  if (CRYPTO_memcmp(d, ssl->s3->previous_server_finished,
-        ssl->s3->previous_server_finished_len)) {
+  ok = CRYPTO_memcmp(d, ssl->s3->previous_server_finished,
+                     ssl->s3->previous_server_finished_len) == 0;
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  ok = 1;
+#endif
+  if (!ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_MISMATCH);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;

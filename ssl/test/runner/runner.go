@@ -6508,6 +6508,19 @@ func addRenegotiationTests() {
 		expectedError: ":RENEGOTIATION_MISMATCH:",
 	})
 	testCases = append(testCases, testCase{
+		name:        "Renegotiate-Client-BadExt2",
+		renegotiate: 1,
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				BadRenegotiationInfoEnd: true,
+			},
+		},
+		flags:         []string{"-renegotiate-freely"},
+		shouldFail:    true,
+		expectedError: ":RENEGOTIATION_MISMATCH:",
+	})
+	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-Downgrade",
 		renegotiate: 1,
 		config: Config{

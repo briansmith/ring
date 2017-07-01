@@ -46,6 +46,8 @@
     "TLS13-EarlyData-ALPNOmitted2-Server": "Trial decryption does not work with the NULL cipher.",
     "TLS13-EarlyData-RejectUnfinishedWrite-Client-*": "Trial decryption does not work with the NULL cipher.",
     "TLS13-EarlyData-Reject-Client": "Trial decryption does not work with the NULL cipher.",
-    "TLS13-EarlyData-RejectTicket-Client": "Trial decryption does not work with the NULL cipher."
+    "TLS13-EarlyData-RejectTicket-Client": "Trial decryption does not work with the NULL cipher.",
+
+    "Renegotiate-Client-BadExt*": "Fuzzer mode does not check renegotiation_info."
   }
 }

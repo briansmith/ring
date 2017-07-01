@@ -68,6 +68,8 @@ Additionally, if `BORINGSSL_UNSAFE_FUZZER_MODE` is set, BoringSSL will:
 
 * Tickets are unencrypted and the MAC check is performed but ignored.
 
+* renegotiation\_info checks are ignored.
+
 This is to prevent the fuzzer from getting stuck at a cryptographic invariant in the protocol.
 
 ## TLS transcripts
