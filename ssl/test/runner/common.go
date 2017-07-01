@@ -1279,6 +1279,10 @@ type ProtocolBugs struct {
 	// send in the ClientHello.
 	SendCompressionMethods []byte
 
+	// SendCompressionMethod is the compression method to send in the
+	// ServerHello.
+	SendCompressionMethod byte
+
 	// AlwaysSendPreSharedKeyIdentityHint, if true, causes the server to
 	// always send a ServerKeyExchange for PSK ciphers, even if the identity
 	// hint is empty.

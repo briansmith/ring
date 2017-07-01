@@ -1044,7 +1044,7 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 		isDTLS:            c.isDTLS,
 		vers:              c.wireVersion,
 		versOverride:      config.Bugs.SendServerHelloVersion,
-		compressionMethod: compressionNone,
+		compressionMethod: config.Bugs.SendCompressionMethod,
 	}
 
 	hs.hello.random = make([]byte, 32)

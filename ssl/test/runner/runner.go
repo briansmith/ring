@@ -2508,6 +2508,21 @@ func addBasicTests() {
 			expectedError:      ":INVALID_COMPRESSION_LIST:",
 			expectedLocalError: "remote error: illegal parameter",
 		},
+		// Test that the client rejects invalid compression methods
+		// from the server.
+		{
+			testType: clientTest,
+			name:     "InvalidCompressionMethod",
+			config: Config{
+				MaxVersion: VersionTLS12,
+				Bugs: ProtocolBugs{
+					SendCompressionMethod: 1,
+				},
+			},
+			shouldFail:         true,
+			expectedError:      ":UNSUPPORTED_COMPRESSION_ALGORITHM:",
+			expectedLocalError: "remote error: illegal parameter",
+		},
 		{
 			name: "GREASE-Client-TLS12",
 			config: Config{
