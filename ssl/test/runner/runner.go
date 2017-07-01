@@ -3019,6 +3019,116 @@ func addCipherSuiteTests() {
 		shouldFail:    true,
 		expectedError: ":NO_SHARED_CIPHER:",
 	})
+
+	// Test cipher suite negotiation works as expected. Configure a
+	// complicated cipher suite configuration.
+	const negotiationTestCiphers = "" +
+		"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256:" +
+		"[TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384|TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256|TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA]:" +
+		"TLS_RSA_WITH_AES_128_GCM_SHA256:" +
+		"TLS_RSA_WITH_AES_128_CBC_SHA:" +
+		"[TLS_RSA_WITH_AES_256_GCM_SHA384|TLS_RSA_WITH_AES_256_CBC_SHA]"
+	negotiationTests := []struct {
+		ciphers  []uint16
+		expected uint16
+	}{
+		// Server preferences are honored, including when
+		// equipreference groups are involved.
+		{
+			[]uint16{
+				TLS_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_RSA_WITH_AES_128_CBC_SHA,
+				TLS_RSA_WITH_AES_128_GCM_SHA256,
+				TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			},
+			TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		},
+		{
+			[]uint16{
+				TLS_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_RSA_WITH_AES_128_CBC_SHA,
+				TLS_RSA_WITH_AES_128_GCM_SHA256,
+				TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+			},
+			TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+		},
+		{
+			[]uint16{
+				TLS_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_RSA_WITH_AES_128_CBC_SHA,
+				TLS_RSA_WITH_AES_128_GCM_SHA256,
+			},
+			TLS_RSA_WITH_AES_128_GCM_SHA256,
+		},
+		{
+			[]uint16{
+				TLS_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_RSA_WITH_AES_128_CBC_SHA,
+			},
+			TLS_RSA_WITH_AES_128_CBC_SHA,
+		},
+		// Equipreference groups use the client preference.
+		{
+			[]uint16{
+				TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+				TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+				TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			},
+			TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+		},
+		{
+			[]uint16{
+				TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+				TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			},
+			TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+		},
+		{
+			[]uint16{
+				TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+			},
+			TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		},
+		{
+			[]uint16{
+				TLS_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_RSA_WITH_AES_256_CBC_SHA,
+			},
+			TLS_RSA_WITH_AES_256_GCM_SHA384,
+		},
+		{
+			[]uint16{
+				TLS_RSA_WITH_AES_256_CBC_SHA,
+				TLS_RSA_WITH_AES_256_GCM_SHA384,
+			},
+			TLS_RSA_WITH_AES_256_CBC_SHA,
+		},
+		// If there are two equipreference groups, the preferred one
+		// takes precedence.
+		{
+			[]uint16{
+				TLS_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_RSA_WITH_AES_256_CBC_SHA,
+				TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+			},
+			TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		},
+	}
+	for i, t := range negotiationTests {
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "CipherNegotiation-" + strconv.Itoa(i),
+			config: Config{
+				MaxVersion:   VersionTLS12,
+				CipherSuites: t.ciphers,
+			},
+			flags:          []string{"-cipher", negotiationTestCiphers},
+			expectedCipher: t.expected,
+		})
+	}
 }
 
 func addBadECDSASignatureTests() {
