@@ -959,7 +959,6 @@ static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *session, int lock) {
     }
 
     if (ret) {
-      found_session->not_resumable = 1;
       if (ctx->remove_session_cb != NULL) {
         ctx->remove_session_cb(ctx, found_session);
       }
@@ -1038,7 +1037,6 @@ static void timeout_doall_arg(SSL_SESSION *session, void *void_param) {
      * save on locking overhead */
     (void) lh_SSL_SESSION_delete(param->cache, session);
     SSL_SESSION_list_remove(param->ctx, session);
-    session->not_resumable = 1;
     if (param->ctx->remove_session_cb != NULL) {
       param->ctx->remove_session_cb(param->ctx, session);
     }
