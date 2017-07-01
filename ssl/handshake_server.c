@@ -582,12 +582,6 @@ static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
                                               uint32_t *out_mask_k,
                                               uint32_t *out_mask_a) {
   SSL *const ssl = hs->ssl;
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
-    *out_mask_k = SSL_kGENERIC;
-    *out_mask_a = SSL_aGENERIC;
-    return;
-  }
-
   uint32_t mask_k = 0;
   uint32_t mask_a = 0;
 
