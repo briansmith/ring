@@ -343,7 +343,7 @@ RSAPadding = PSS
 PSSSaltLength = 223
 Digest = SHA256
 Input = "0123456789ABCDEF0123456789ABCDEF"
-Error = DATA_TOO_LARGE_FOR_KEY_SIZE
+Error = DATA_TOO_LARGE
 
 # The salt length is too large for the modulus (verifying).
 Verify = RSA-2048
@@ -360,14 +360,14 @@ RSAPadding = PSS
 PSSSaltLength = 0
 Digest = SHA512
 Input = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
-Error = DATA_TOO_LARGE_FOR_KEY_SIZE
+Error = DATA_TOO_LARGE
 
 Sign = RSA-512
 RSAPadding = PSS
 PSSSaltLength = -2
 Digest = SHA512
 Input = "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
-Error = DATA_TOO_LARGE_FOR_KEY_SIZE
+Error = DATA_TOO_LARGE
 
 # The hash is too large for the modulus (verifying).
 Verify = RSA-512
