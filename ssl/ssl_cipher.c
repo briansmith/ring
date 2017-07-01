@@ -1035,7 +1035,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
   uint32_t alg_mkey, alg_auth, alg_enc, alg_mac;
   uint16_t min_version;
   const char *l, *buf;
-  int multi, skip_rule, rule, ok, in_group = 0, has_group = 0;
+  int multi, skip_rule, rule, in_group = 0, has_group = 0;
   size_t j, buf_len;
   uint32_t cipher_id;
   char ch;
@@ -1082,10 +1082,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
       rule = CIPHER_SPECIAL;
       l++;
     } else if (ch == '[') {
-      if (in_group) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_NESTED_GROUP);
-        return 0;
-      }
+      assert(!in_group);
       in_group = 1;
       has_group = 1;
       l++;
@@ -1185,15 +1182,11 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
 
     /* Ok, we have the rule, now apply it. */
     if (rule == CIPHER_SPECIAL) {
-      /* special command */
-      ok = 0;
-      if (buf_len == 8 && !strncmp(buf, "STRENGTH", 8)) {
-        ok = ssl_cipher_strength_sort(head_p, tail_p);
-      } else {
+      if (buf_len != 8 || strncmp(buf, "STRENGTH", 8) != 0) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_COMMAND);
+        return 0;
       }
-
-      if (ok == 0) {
+      if (!ssl_cipher_strength_sort(head_p, tail_p)) {
         return 0;
       }
 

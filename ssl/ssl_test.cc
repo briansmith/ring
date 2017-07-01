@@ -180,7 +180,7 @@ static const CipherTest kCipherTests[] = {
     // Standard names may be used instead of OpenSSL names.
     {
         "[TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256|"
-         "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256]:"
+        "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256]:"
         "[TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256]:"
         "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
         {
@@ -211,6 +211,32 @@ static const CipherTest kCipherTests[] = {
             {TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA, 0},
             {TLS1_CK_RSA_WITH_AES_128_SHA, 0},
             {TLS1_CK_RSA_WITH_AES_256_SHA, 0},
+        },
+        false,
+    },
+    // Additional masks after @STRENGTH get silently discarded.
+    //
+    // TODO(davidben): Make this an error. If not silently discarded, they get
+    // interpreted as + opcodes which are very different.
+    {
+        "ECDHE-RSA-AES128-GCM-SHA256:"
+        "ECDHE-RSA-AES256-GCM-SHA384:"
+        "@STRENGTH+AES256",
+        {
+            {TLS1_CK_ECDHE_RSA_WITH_AES_256_GCM_SHA384, 0},
+            {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
+        },
+        false,
+    },
+    {
+        "ECDHE-RSA-AES128-GCM-SHA256:"
+        "ECDHE-RSA-AES256-GCM-SHA384:"
+        "@STRENGTH+AES256:"
+        "ECDHE-RSA-CHACHA20-POLY1305",
+        {
+            {TLS1_CK_ECDHE_RSA_WITH_AES_256_GCM_SHA384, 0},
+            {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
+            {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256, 0},
         },
         false,
     },
