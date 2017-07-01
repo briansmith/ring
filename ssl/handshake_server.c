@@ -1048,7 +1048,7 @@ static int ssl3_send_server_certificate(SSL_HANDSHAKE *hs) {
       /* Determine the group to use. */
       uint16_t group_id;
       if (!tls1_get_shared_group(hs, &group_id)) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_TMP_ECDH_KEY);
+        OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
         goto err;
       }
@@ -1443,7 +1443,7 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {
     /* The key exchange state may now be discarded. */
     SSL_ECDH_CTX_cleanup(&hs->ecdh_ctx);
   } else if (!(alg_k & SSL_kPSK)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CIPHER_TYPE);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     goto err;
   }
@@ -1452,7 +1452,7 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {
    * pre-shared key. */
   if (alg_a & SSL_aPSK) {
     if (ssl->psk_server_callback == NULL) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_PSK_NO_SERVER_CB);
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       goto err;
     }
