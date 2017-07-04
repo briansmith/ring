@@ -2167,8 +2167,8 @@ OPENSSL_EXPORT const char *SSL_get_curve_name(uint16_t curve_id);
 #define SSL_VERIFY_PEER 0x01
 
 /* SSL_VERIFY_FAIL_IF_NO_PEER_CERT configures a server to reject connections if
- * the client declines to send a certificate. Otherwise |SSL_VERIFY_PEER| still
- * allows anonymous clients. */
+ * the client declines to send a certificate. This flag must be used together
+ * with |SSL_VERIFY_PEER|, otherwise it won't work. */
 #define SSL_VERIFY_FAIL_IF_NO_PEER_CERT 0x02
 
 /* SSL_VERIFY_PEER_IF_NO_OBC configures a server to request a client certificate
