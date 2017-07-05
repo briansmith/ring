@@ -580,6 +580,31 @@ TEST_P(PerAEADTest, UnalignedInput) {
             Bytes(out + 1, out_len));
 }
 
+TEST_P(PerAEADTest, Overflow) {
+  alignas(64) uint8_t key[EVP_AEAD_MAX_KEY_LENGTH];
+  OPENSSL_memset(key, 'K', sizeof(key));
+
+  bssl::ScopedEVP_AEAD_CTX ctx;
+  const size_t max_tag_len = EVP_AEAD_max_tag_len(aead());
+  ASSERT_TRUE(EVP_AEAD_CTX_init_with_direction(ctx.get(), aead(), key,
+                                               EVP_AEAD_key_length(aead()),
+                                               max_tag_len, evp_aead_seal));
+
+  uint8_t plaintext[1] = {0};
+  uint8_t ciphertext[1024] = {0};
+  size_t ciphertext_len;
+  // The AEAD must not overflow when calculating the ciphertext length.
+  ASSERT_FALSE(EVP_AEAD_CTX_seal(
+      ctx.get(), ciphertext, &ciphertext_len, sizeof(ciphertext), nullptr, 0,
+      plaintext, std::numeric_limits<size_t>::max() - max_tag_len + 1, nullptr,
+      0));
+  ERR_clear_error();
+
+  // (Can't test the scatter interface because it'll attempt to zero the output
+  // buffer on error and the primary output buffer is implicitly the same size
+  // as the input.)
+}
+
 // Test that EVP_aead_aes_128_gcm and EVP_aead_aes_256_gcm reject empty nonces.
 // AES-GCM is not defined for those.
 TEST(AEADTest, AESGCMEmptyNonce) {
