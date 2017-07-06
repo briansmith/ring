@@ -1874,12 +1874,17 @@ OPENSSL_EXPORT void SSL_CTX_flush_sessions(SSL_CTX *ctx, uint64_t time);
  * unset), the callback is not called.
  *
  * The callback is passed a reference to |session|. It returns one if it takes
- * ownership and zero otherwise.
+ * ownership (and then calls |SSL_SESSION_free| when done) and zero otherwise. A
+ * consumer which places |session| into an in-memory cache will likely return
+ * one, with the cache calling |SSL_SESSION_free|. A consumer which serializes
+ * |session| with |SSL_SESSION_to_bytes| may not need to retain |session| and
+ * will likely return zero. Returning one is equivalent to calling
+ * |SSL_SESSION_up_ref| and then returning zero.
  *
  * Note: For a client, the callback may be called on abbreviated handshakes if a
  * ticket is renewed. Further, it may not be called until some time after
  * |SSL_do_handshake| or |SSL_connect| completes if False Start is enabled. Thus
- * it's recommended to use this callback over checking |SSL_session_reused| on
+ * it's recommended to use this callback over calling |SSL_get_session| on
  * handshake completion. */
 OPENSSL_EXPORT void SSL_CTX_sess_set_new_cb(
     SSL_CTX *ctx, int (*new_session_cb)(SSL *ssl, SSL_SESSION *session));
