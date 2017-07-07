@@ -89,11 +89,7 @@ pub use ec::curve25519::x25519::X25519;
 
 /// A key agreement algorithm.
 pub struct Algorithm {
-    // XXX: This is public so that `Algorithms`s can be defined in other `ring`
-    // submodules, but it isn't actually useful outside `ring` since
-    // `ec::AgreementAlgorithmImpl` isn't public.
-    #[doc(hidden)]
-    pub i: ec::AgreementAlgorithmImpl,
+    pub(crate) i: ec::AgreementAlgorithmImpl,
 }
 
 /// An ephemeral private key for use (only) with `agree_ephemeral`. The
