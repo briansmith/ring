@@ -47,6 +47,7 @@ macro_rules! ecdh {
                 curve: $curve,
                 ecdh: $ecdh,
             },
+            id: agreement::AlgorithmID::$NAME,
         };
 
         fn $ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
