@@ -56,7 +56,6 @@ pub struct ECDSAVerificationAlgorithm {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(PartialEq, Eq)]
 enum ECDSAVerificationAlgorithmID {
     ECDSA_P256_SHA256_ASN1,
     ECDSA_P256_SHA256_FIXED,
@@ -65,12 +64,6 @@ enum ECDSAVerificationAlgorithmID {
     ECDSA_P384_SHA384_ASN1,
     ECDSA_P384_SHA384_FIXED,
 }
-
-impl PartialEq for ECDSAVerificationAlgorithm {
-    fn eq(&self, other: &Self) -> bool { self.id == other.id }
-}
-
-impl Eq for ECDSAVerificationAlgorithm {}
 
 impl core::fmt::Debug for ECDSAVerificationAlgorithm {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
