@@ -88,25 +88,10 @@ pub use ec::curve25519::x25519::X25519;
 
 
 /// A key agreement algorithm.
+#[derive(Eq, PartialEq)]
 pub struct Algorithm {
     pub(crate) i: ec::AgreementAlgorithmImpl,
-    pub(crate) id: AlgorithmID,
 }
-
-/// Key agreement algorithm types.
-#[allow(non_camel_case_types)]
-#[derive(PartialEq, Eq)]
-pub(crate) enum AlgorithmID {
-    ECDH_P256,
-    ECDH_P384,
-    X25519,
-}
-
-impl PartialEq for Algorithm {
-    fn eq(&self, other: &Self) -> bool { self.id == other.id }
-}
-
-impl Eq for Algorithm {}
 
 /// An ephemeral private key for use (only) with `agree_ephemeral`. The
 /// signature of `agree_ephemeral` ensures that an `EphemeralPrivateKey` can be

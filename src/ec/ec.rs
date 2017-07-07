@@ -24,6 +24,12 @@ pub struct AgreementAlgorithmImpl {
                  -> Result<(), error::Unspecified>,
 }
 
+impl PartialEq for AgreementAlgorithmImpl {
+    fn eq(&self, other: &Self) -> bool { self.curve.id == other.curve.id }
+}
+
+impl Eq for AgreementAlgorithmImpl {}
+
 pub struct Curve {
     pub public_key_len: usize,
     pub elem_and_scalar_len: usize,

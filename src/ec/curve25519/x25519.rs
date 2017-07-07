@@ -41,7 +41,6 @@ pub static X25519: agreement::Algorithm = agreement::Algorithm {
         curve: &CURVE25519,
         ecdh: x25519_ecdh,
     },
-    id: agreement::AlgorithmID::X25519,
 };
 
 fn x25519_check_private_key_bytes(bytes: &[u8])
