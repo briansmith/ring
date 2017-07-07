@@ -18,6 +18,8 @@
 #include <openssl/ssl.h>
 #include <string.h>
 
+#include <string>
+
 // InitSocketLibrary calls the Windows socket init functions, if needed.
 bool InitSocketLibrary();
 
@@ -58,5 +60,9 @@ bool TransferData(SSL *ssl, int sock);
 // DoSMTPStartTLS performs the SMTP STARTTLS mini-protocol over |sock|. It
 // returns true on success and false otherwise.
 bool DoSMTPStartTLS(int sock);
+
+// DoHTTPTunnel sends an HTTP CONNECT request over |sock|. It returns true on
+// success and false otherwise.
+bool DoHTTPTunnel(int sock, const std::string &hostname_and_port);
 
 #endif  /* !OPENSSL_HEADER_TOOL_TRANSPORT_COMMON_H */

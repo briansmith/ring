@@ -127,6 +127,10 @@ static const struct argument kArguments[] = {
         "-ed25519", kBooleanArgument, "Advertise Ed25519 support",
     },
     {
+        "-http-tunnel", kOptionalArgument,
+        "An HTTP proxy server to tunnel the TCP connection through",
+    },
+    {
         "", kOptionalArgument, "",
     },
 };
@@ -208,7 +212,12 @@ static bool DoConnection(SSL_CTX *ctx,
                          std::map<std::string, std::string> args_map,
                          bool (*cb)(SSL *ssl, int sock)) {
   int sock = -1;
-  if (!Connect(&sock, args_map["-connect"])) {
+  if (args_map.count("-http-tunnel") != 0) {
+    if (!Connect(&sock, args_map["-http-tunnel"]) ||
+        !DoHTTPTunnel(sock, args_map["-connect"])) {
+      return false;
+    }
+  } else if (!Connect(&sock, args_map["-connect"])) {
     return false;
   }
 

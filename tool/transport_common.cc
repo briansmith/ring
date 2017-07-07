@@ -70,10 +70,8 @@ bool InitSocketLibrary() {
   return true;
 }
 
-// Connect sets |*out_sock| to be a socket connected to the destination given
-// in |hostname_and_port|, which should be of the form "www.example.com:123".
-// It returns true on success and false otherwise.
-bool Connect(int *out_sock, const std::string &hostname_and_port) {
+static void SplitHostPort(std::string *out_hostname, std::string *out_port,
+                          const std::string &hostname_and_port) {
   size_t colon_offset = hostname_and_port.find_last_of(':');
   const size_t bracket_offset = hostname_and_port.find_last_of(']');
   std::string hostname, port;
@@ -85,12 +83,20 @@ bool Connect(int *out_sock, const std::string &hostname_and_port) {
   }
 
   if (colon_offset == std::string::npos) {
-    hostname = hostname_and_port;
-    port = "443";
+    *out_hostname = hostname_and_port;
+    *out_port = "443";
   } else {
-    hostname = hostname_and_port.substr(0, colon_offset);
-    port = hostname_and_port.substr(colon_offset + 1);
+    *out_hostname = hostname_and_port.substr(0, colon_offset);
+    *out_port = hostname_and_port.substr(colon_offset + 1);
   }
+}
+
+// Connect sets |*out_sock| to be a socket connected to the destination given
+// in |hostname_and_port|, which should be of the form "www.example.com:123".
+// It returns true on success and false otherwise.
+bool Connect(int *out_sock, const std::string &hostname_and_port) {
+  std::string hostname, port;
+  SplitHostPort(&hostname, &port, hostname_and_port);
 
   // Handle IPv6 literals.
   if (hostname.size() >= 2 && hostname[0] == '[' &&
@@ -630,4 +636,32 @@ bool DoSMTPStartTLS(int sock) {
   }
 
   return true;
+}
+
+bool DoHTTPTunnel(int sock, const std::string &hostname_and_port) {
+  std::string hostname, port;
+  SplitHostPort(&hostname, &port, hostname_and_port);
+
+  fprintf(stderr, "Establishing HTTP tunnel to %s:%s.\n", hostname.c_str(),
+          port.c_str());
+  char buf[1024];
+  snprintf(buf, sizeof(buf), "CONNECT %s:%s HTTP/1.0\r\n\r\n", hostname.c_str(),
+           port.c_str());
+  if (!SendAll(sock, buf, strlen(buf))) {
+    return false;
+  }
+
+  SocketLineReader line_reader(sock);
+
+  // Read until an empty line, signaling the end of the HTTP response.
+  std::string line;
+  for (;;) {
+    if (!line_reader.Next(&line)) {
+      return false;
+    }
+    if (line.empty()) {
+      return true;
+    }
+    fprintf(stderr, "%s\n", line.c_str());
+  }
 }
