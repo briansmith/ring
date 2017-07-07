@@ -159,12 +159,7 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 		if typ == recordTypeChangeCipherSpec {
 			err = c.out.changeCipherSpec(c.config)
 			if err != nil {
-				// Cannot call sendAlert directly,
-				// because we already hold c.out.Mutex.
-				c.tmp[0] = alertLevelError
-				c.tmp[1] = byte(err.(alert))
-				c.writeRecord(recordTypeAlert, c.tmp[0:2])
-				return n, c.out.setErrorLocked(&net.OpError{Op: "local error", Err: err})
+				return n, c.sendAlertLocked(alertLevelError, err.(alert))
 			}
 		}
 		return
