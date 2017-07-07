@@ -224,13 +224,21 @@ int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
   return 1;
 }
 
+static uint16_t ssl_version(const SSL *ssl) {
+  /* In early data, we report the predicted version. */
+  if (SSL_in_early_data(ssl) && !ssl->server) {
+    return ssl->s3->hs->early_session->ssl_version;
+  }
+  return ssl->version;
+}
+
 int SSL_version(const SSL *ssl) {
+  uint16_t ret = ssl_version(ssl);
   /* Report TLS 1.3 draft version as TLS 1.3 in the public API. */
-  if (ssl->version == TLS1_3_DRAFT_VERSION) {
+  if (ret == TLS1_3_DRAFT_VERSION) {
     return TLS1_3_VERSION;
   }
-
-  return ssl->version;
+  return ret;
 }
 
 static const char *ssl_get_version(int version) {
@@ -263,7 +271,7 @@ static const char *ssl_get_version(int version) {
 }
 
 const char *SSL_get_version(const SSL *ssl) {
-  return ssl_get_version(ssl->version);
+  return ssl_get_version(ssl_version(ssl));
 }
 
 const char *SSL_SESSION_get_version(const SSL_SESSION *session) {

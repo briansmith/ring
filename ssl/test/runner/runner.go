@@ -11155,6 +11155,24 @@ func addTLS13HandshakeTests() {
 			"-enable-early-data",
 		},
 	})
+
+	// Test that the client reports TLS 1.3 as the version while sending
+	// early data.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-EarlyData-Client-VersionAPI",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-early-data-info",
+			"-expect-accept-early-data",
+			"-expect-version", strconv.Itoa(VersionTLS13),
+		},
+	})
 }
 
 func addTLS13CipherPreferenceTests() {

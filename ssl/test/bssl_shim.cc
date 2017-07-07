@@ -1372,6 +1372,13 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     return false;
   }
 
+  if (config->expect_version != 0 &&
+      SSL_version(ssl) != config->expect_version) {
+    fprintf(stderr, "want version %04x, got %04x\n", config->expect_version,
+            SSL_version(ssl));
+    return false;
+  }
+
   bool expect_resume =
       is_resume && (!config->expect_session_miss || SSL_in_early_data(ssl));
   if (!!SSL_session_reused(ssl) != expect_resume) {
