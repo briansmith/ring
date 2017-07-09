@@ -163,9 +163,7 @@
 
 
 int ssl3_new(SSL *ssl) {
-  SSL3_STATE *s3;
-
-  s3 = OPENSSL_malloc(sizeof *s3);
+  SSL3_STATE *s3 = (SSL3_STATE *)OPENSSL_malloc(sizeof *s3);
   if (s3 == NULL) {
     return 0;
   }

@@ -3,21 +3,21 @@ include_directories(../include)
 add_library(
   ssl
 
-  bio_ssl.c
-  custom_extensions.c
-  d1_both.c
-  d1_lib.c
-  d1_pkt.c
-  d1_srtp.c
-  dtls_method.c
-  dtls_record.c
+  bio_ssl.cc
+  custom_extensions.cc
+  d1_both.cc
+  d1_lib.cc
+  d1_pkt.cc
+  d1_srtp.cc
+  dtls_method.cc
+  dtls_record.cc
   handshake_client.c
   handshake_server.c
-  s3_both.c
-  s3_lib.c
-  s3_pkt.c
+  s3_both.cc
+  s3_lib.cc
+  s3_pkt.cc
   ssl_aead_ctx.c
-  ssl_asn1.c
+  ssl_asn1.cc
   ssl_buffer.c
   ssl_cert.c
   ssl_cipher.c
@@ -30,7 +30,7 @@ add_library(
   ssl_stat.c
   ssl_transcript.c
   ssl_versions.c
-  ssl_x509.c
+  ssl_x509.cc
   t1_enc.c
   t1_lib.c
   tls_method.c

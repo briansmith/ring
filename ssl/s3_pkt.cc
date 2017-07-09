@@ -157,7 +157,7 @@ again:
       goto again;
     }
 
-    case ssl_open_record_success:
+    case ssl_open_record_success: {
       if (CBS_len(&body) > 0xffff) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
         return -1;
@@ -168,6 +168,7 @@ again:
       rr->length = (uint16_t)CBS_len(&body);
       rr->data = (uint8_t *)CBS_data(&body);
       return 1;
+    }
 
     case ssl_open_record_discard:
       goto again;

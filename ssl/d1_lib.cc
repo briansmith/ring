@@ -78,12 +78,10 @@
 #define DTLS1_MAX_TIMEOUTS                     12
 
 int dtls1_new(SSL *ssl) {
-  DTLS1_STATE *d1;
-
   if (!ssl3_new(ssl)) {
     return 0;
   }
-  d1 = OPENSSL_malloc(sizeof *d1);
+  DTLS1_STATE *d1 = (DTLS1_STATE *)OPENSSL_malloc(sizeof *d1);
   if (d1 == NULL) {
     ssl3_free(ssl);
     return 0;

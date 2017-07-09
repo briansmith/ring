@@ -12,8 +12,12 @@
 #include <openssl/bio.h>
 
 
+static SSL *get_ssl(BIO *bio) {
+  return reinterpret_cast<SSL *>(bio->ptr);
+}
+
 static int ssl_read(BIO *bio, char *out, int outl) {
-  SSL *ssl = bio->ptr;
+  SSL *ssl = get_ssl(bio);
   if (ssl == NULL) {
     return 0;
   }
@@ -53,7 +57,7 @@ static int ssl_read(BIO *bio, char *out, int outl) {
 }
 
 static int ssl_write(BIO *bio, const char *out, int outl) {
-  SSL *ssl = bio->ptr;
+  SSL *ssl = get_ssl(bio);
   if (ssl == NULL) {
     return 0;
   }
@@ -87,7 +91,7 @@ static int ssl_write(BIO *bio, const char *out, int outl) {
 }
 
 static long ssl_ctrl(BIO *bio, int cmd, long num, void *ptr) {
-  SSL *ssl = bio->ptr;
+  SSL *ssl = get_ssl(bio);
   if (ssl == NULL && cmd != BIO_C_SET_SSL) {
     return 0;
   }
@@ -134,7 +138,7 @@ static int ssl_new(BIO *bio) {
 }
 
 static int ssl_free(BIO *bio) {
-  SSL *ssl = bio->ptr;
+  SSL *ssl = get_ssl(bio);
 
   if (ssl == NULL) {
     return 1;
@@ -149,7 +153,7 @@ static int ssl_free(BIO *bio) {
 }
 
 static long ssl_callback_ctrl(BIO *bio, int cmd, bio_info_cb fp) {
-  SSL *ssl = bio->ptr;
+  SSL *ssl = get_ssl(bio);
   if (ssl == NULL) {
     return 0;
   }

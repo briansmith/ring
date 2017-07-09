@@ -214,7 +214,8 @@ static int custom_ext_append(STACK_OF(SSL_CUSTOM_EXTENSION) **stack,
     return 0;
   }
 
-  SSL_CUSTOM_EXTENSION *ext = OPENSSL_malloc(sizeof(SSL_CUSTOM_EXTENSION));
+  SSL_CUSTOM_EXTENSION *ext =
+      (SSL_CUSTOM_EXTENSION *)OPENSSL_malloc(sizeof(SSL_CUSTOM_EXTENSION));
   if (ext == NULL) {
     return 0;
   }

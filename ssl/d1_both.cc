@@ -153,7 +153,7 @@ static void dtls1_hm_fragment_free(hm_fragment *frag) {
 }
 
 static hm_fragment *dtls1_hm_fragment_new(const struct hm_header_st *msg_hdr) {
-  hm_fragment *frag = OPENSSL_malloc(sizeof(hm_fragment));
+  hm_fragment *frag = (hm_fragment *)OPENSSL_malloc(sizeof(hm_fragment));
   if (frag == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
@@ -164,7 +164,8 @@ static hm_fragment *dtls1_hm_fragment_new(const struct hm_header_st *msg_hdr) {
   frag->msg_len = msg_hdr->msg_len;
 
   /* Allocate space for the reassembled message and fill in the header. */
-  frag->data = OPENSSL_malloc(DTLS1_HM_HEADER_LENGTH + msg_hdr->msg_len);
+  frag->data =
+      (uint8_t *)OPENSSL_malloc(DTLS1_HM_HEADER_LENGTH + msg_hdr->msg_len);
   if (frag->data == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;
@@ -191,7 +192,7 @@ static hm_fragment *dtls1_hm_fragment_new(const struct hm_header_st *msg_hdr) {
       goto err;
     }
     size_t bitmask_len = (msg_hdr->msg_len + 7) / 8;
-    frag->reassembly = OPENSSL_malloc(bitmask_len);
+    frag->reassembly = (uint8_t *)OPENSSL_malloc(bitmask_len);
     if (frag->reassembly == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
@@ -760,7 +761,7 @@ int dtls1_flush_flight(SSL *ssl) {
   dtls1_update_mtu(ssl);
 
   int ret = -1;
-  uint8_t *packet = OPENSSL_malloc(ssl->d1->mtu);
+  uint8_t *packet = (uint8_t *)OPENSSL_malloc(ssl->d1->mtu);
   if (packet == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;

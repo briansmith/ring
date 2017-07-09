@@ -131,7 +131,7 @@
 
 
 SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl) {
-  SSL_HANDSHAKE *hs = OPENSSL_malloc(sizeof(SSL_HANDSHAKE));
+  SSL_HANDSHAKE *hs = (SSL_HANDSHAKE *)OPENSSL_malloc(sizeof(SSL_HANDSHAKE));
   if (hs == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
