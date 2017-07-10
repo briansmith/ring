@@ -57,6 +57,8 @@
 #include <stdarg.h>
 #include <string.h>
 
+#include <gtest/gtest.h>
+
 #include <openssl/crypto.h>
 #include <openssl/mem.h>
 #include <openssl/x509.h>
@@ -335,7 +337,7 @@ static void run_cert(X509 *crt, const char *nameincert,
     while (*pname) {
         int samename = OPENSSL_strcasecmp(nameincert, *pname) == 0;
         size_t namelen = strlen(*pname);
-        char *name = malloc(namelen);
+        char *name = (char *)malloc(namelen);
         int match, ret;
         OPENSSL_memcpy(name, *pname, namelen);
 
@@ -383,31 +385,19 @@ static void run_cert(X509 *crt, const char *nameincert,
     }
 }
 
-int main(void)
-{
-    CRYPTO_library_init();
-
+// TOOD(davidben): Convert this test to GTest more thoroughly.
+TEST(X509V3Test, NameTest) {
     const struct set_name_fn *pfn = name_fns;
     while (pfn->name) {
         const char *const *pname = names;
         while (*pname) {
-            X509 *crt = make_cert();
-            if (crt == NULL) {
-                fprintf(stderr, "make_cert failed\n");
-                return 1;
-            }
-            if (!pfn->fn(crt, *pname)) {
-                fprintf(stderr, "X509 name setting failed\n");
-                return 1;
-            }
-            run_cert(crt, *pname, pfn);
-            X509_free(crt);
+            bssl::UniquePtr<X509> crt(make_cert());
+            ASSERT_TRUE(crt);
+            ASSERT_TRUE(pfn->fn(crt.get(), *pname));
+            run_cert(crt.get(), *pname, pfn);
             ++pname;
         }
         ++pfn;
     }
-    if (errors == 0) {
-        printf("PASS\n");
-    }
-    return errors > 0 ? 1 : 0;
+    EXPECT_EQ(0, errors);
 }

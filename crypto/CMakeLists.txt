@@ -260,6 +260,8 @@ add_executable(
   test/file_test_gtest.cc
   thread_test.cc
   x509/x509_test.cc
+  x509v3/tab_test.cc
+  x509v3/v3name_test.cc
 
   $<TARGET_OBJECTS:crypto_test_data>
   $<TARGET_OBJECTS:gtest_main>

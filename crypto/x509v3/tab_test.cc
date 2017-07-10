@@ -57,52 +57,22 @@
  *
  */
 
-/*
- * Simple program to check the ext_dat.h is correct and print out problems if
- * it is not.
- */
+#if !defined(BORINGSSL_SHARED_LIBRARY)
 
-#include <stdio.h>
+#include <gtest/gtest.h>
 
-#include <openssl/base.h>
-#include <openssl/crypto.h>
-#include <openssl/obj.h>
 #include <openssl/x509v3.h>
 
-#if !defined(BORINGSSL_SHARED_LIBRARY)
-# include "ext_dat.h"
-#endif
+#include "../internal.h"
+#include "ext_dat.h"
 
-int main(void)
-{
-#if !defined(BORINGSSL_SHARED_LIBRARY)
-    unsigned i;
-    int prev = -1, bad = 0;
-    const X509V3_EXT_METHOD *const *tmp;
-    CRYPTO_library_init();
-    i = sizeof(standard_exts) / sizeof(X509V3_EXT_METHOD *);
-    if (i != STANDARD_EXTENSION_COUNT)
-        fprintf(stderr, "Extension number invalid expecting %d\n", i);
-    tmp = standard_exts;
-    for (i = 0; i < STANDARD_EXTENSION_COUNT; i++, tmp++) {
-        if ((*tmp)->ext_nid < prev)
-            bad = 1;
-        prev = (*tmp)->ext_nid;
-
-    }
-    if (bad) {
-        tmp = standard_exts;
-        fprintf(stderr, "Extensions out of order!\n");
-        for (i = 0; i < STANDARD_EXTENSION_COUNT; i++, tmp++)
-            printf("%d : %s\n", (*tmp)->ext_nid, OBJ_nid2sn((*tmp)->ext_nid));
-        return 1;
-    } else {
-        printf("PASS\n");
-        return 0;
-    }
-#else
-    /* TODO(davidben): Fix this test in the shared library build. */
-    printf("PASS\n");
-    return 0;
-#endif
+// Check ext_data.h is correct.
+TEST(X509V3Test, TabTest) {
+  EXPECT_EQ(OPENSSL_ARRAY_SIZE(standard_exts), STANDARD_EXTENSION_COUNT);
+  for (size_t i = 1; i < OPENSSL_ARRAY_SIZE(standard_exts); i++) {
+    SCOPED_TRACE(i);
+    EXPECT_LT(standard_exts[i-1]->ext_nid, standard_exts[i]->ext_nid);
+  }
 }
+
+#endif  // !BORINGSSL_SHARED_LIBRARY
