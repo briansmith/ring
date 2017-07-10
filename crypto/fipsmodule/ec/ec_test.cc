@@ -380,6 +380,31 @@ TEST_P(ECCurveTest, MulZero) {
       << "p * 0 did not return point at infinity.";
 }
 
+// Test that 10×∞ + G = G.
+TEST_P(ECCurveTest, Mul) {
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(GetParam().nid));
+  ASSERT_TRUE(group);
+  bssl::UniquePtr<EC_POINT> p(EC_POINT_new(group.get()));
+  ASSERT_TRUE(p);
+  bssl::UniquePtr<EC_POINT> result(EC_POINT_new(group.get()));
+  ASSERT_TRUE(result);
+  bssl::UniquePtr<BIGNUM> n(BN_new());
+  ASSERT_TRUE(n);
+  ASSERT_TRUE(EC_POINT_set_to_infinity(group.get(), p.get()));
+  ASSERT_TRUE(BN_set_word(n.get(), 10));
+
+  // First check that 10×∞ = ∞.
+  ASSERT_TRUE(EC_POINT_mul(group.get(), result.get(), nullptr, p.get(), n.get(),
+                           nullptr));
+  EXPECT_TRUE(EC_POINT_is_at_infinity(group.get(), result.get()));
+
+  // Now check that 10×∞ + G = G.
+  const EC_POINT *generator = EC_GROUP_get0_generator(group.get());
+  ASSERT_TRUE(EC_POINT_mul(group.get(), result.get(), BN_value_one(), p.get(),
+                           n.get(), nullptr));
+  EXPECT_EQ(0, EC_POINT_cmp(group.get(), result.get(), generator, nullptr));
+}
+
 static std::vector<EC_builtin_curve> AllCurves() {
   const size_t num_curves = EC_get_builtin_curves(nullptr, 0);
   std::vector<EC_builtin_curve> curves(num_curves);

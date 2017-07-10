@@ -1,6 +1,5 @@
 [
 	["crypto/crypto_test"],
-	["crypto/fipsmodule/example_mul"],
 	["decrepit/decrepit_test"],
 	["ssl/ssl_test"]
 ]
