@@ -13,6 +13,9 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <openssl/aead.h>
+
+#include <assert.h>
+
 #include <openssl/cipher.h>
 #include <openssl/cpu.h>
 #include <openssl/crypto.h>
@@ -29,7 +32,7 @@
 /* Optimised AES-GCM-SIV */
 
 struct aead_aes_gcm_siv_asm_ctx {
-  alignas(64) uint8_t key[16*15];
+  alignas(16) uint8_t key[16*15];
   int is_128_bit;
 };
 
@@ -66,6 +69,9 @@ static int aead_aes_gcm_siv_asm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   if (gcm_siv_ctx == NULL) {
     return 0;
   }
+
+  /* malloc should return a 16-byte-aligned address. */
+  assert((((uintptr_t)gcm_siv_ctx) & 15) == 0);
 
   if (key_bits == 128) {
     aes128gcmsiv_aes_ks(key, &gcm_siv_ctx->key[0]);
