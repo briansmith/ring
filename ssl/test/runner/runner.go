@@ -456,6 +456,10 @@ type testCase struct {
 	// resumeShimPrefix is the prefix that the shim will send to the server on a
 	// resumption.
 	resumeShimPrefix string
+	// tls13Variant, if non-zero, causes both runner and shim to be
+	// configured with the specified TLS 1.3 variant. This is a convenience
+	// option for configuring both concurrently.
+	tls13Variant int
 }
 
 var testCases []testCase
@@ -930,11 +934,23 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 			continue
 		}
 
-		if test.config.MaxVersion != 0 || test.config.MinVersion != 0 || test.expectedVersion != 0 {
-			continue
+		if test.config.MaxVersion == 0 && test.config.MinVersion == 0 && test.expectedVersion == 0 {
+			panic(fmt.Sprintf("The name of test %q suggests that it's version specific, but min/max version in the Config is %x/%x. One of them should probably be %x", test.name, test.config.MinVersion, test.config.MaxVersion, ver.version))
 		}
 
-		panic(fmt.Sprintf("The name of test %q suggests that it's version specific, but min/max version in the Config is %x/%x. One of them should probably be %x", test.name, test.config.MinVersion, test.config.MaxVersion, ver.version))
+		if ver.tls13Variant != 0 {
+			var foundFlag bool
+			for _, flag := range test.flags {
+				if flag == "-tls13-variant" {
+					foundFlag = true
+					break
+				}
+			}
+			if !foundFlag && test.config.TLS13Variant != ver.tls13Variant && test.tls13Variant != ver.tls13Variant {
+				panic(fmt.Sprintf("The name of test %q suggests that uses an experimental TLS 1.3 variant, but neither the shim nor the runner configures it", test.name))
+			}
+		}
+
 	}
 
 	listener, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv6loopback})
@@ -1011,6 +1027,11 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 
 	if test.testTLSUnique {
 		flags = append(flags, "-tls-unique")
+	}
+
+	if test.tls13Variant != 0 {
+		test.config.TLS13Variant = test.tls13Variant
+		flags = append(flags, "-tls13-variant", strconv.Itoa(test.tls13Variant))
 	}
 
 	var transcriptPrefix string
@@ -2794,6 +2815,7 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 				AdvertiseAllConfiguredCiphers: true,
 			},
 		},
+		tls13Variant:         ver.tls13Variant,
 		certFile:             certFile,
 		keyFile:              keyFile,
 		flags:                flags,
@@ -2819,6 +2841,7 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 				SendCipherSuite:             sendCipherSuite,
 			},
 		},
+		tls13Variant:         ver.tls13Variant,
 		flags:                flags,
 		resumeSession:        true,
 		shouldFail:           shouldClientFail,
@@ -2842,8 +2865,9 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 			PreSharedKey:         []byte(psk),
 			PreSharedKeyIdentity: pskIdentity,
 		},
-		flags:      flags,
-		messageLen: maxPlaintext,
+		tls13Variant: ver.tls13Variant,
+		flags:        flags,
+		messageLen:   maxPlaintext,
 	})
 
 	// Test bad records for all ciphers. Bad records are fatal in TLS
@@ -2866,6 +2890,7 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 			PreSharedKey:         []byte(psk),
 			PreSharedKeyIdentity: pskIdentity,
 		},
+		tls13Variant:     ver.tls13Variant,
 		flags:            flags,
 		damageFirstWrite: true,
 		messageLen:       maxPlaintext,
@@ -3333,6 +3358,7 @@ func addClientAuthTests() {
 				ClientAuth: RequireAnyClientCert,
 				ClientCAs:  certPool,
 			},
+			tls13Variant: ver.tls13Variant,
 			flags: []string{
 				"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 				"-key-file", path.Join(*resourceDir, rsaKeyFile),
@@ -3346,7 +3372,8 @@ func addClientAuthTests() {
 				MaxVersion:   ver.version,
 				Certificates: []Certificate{rsaCertificate},
 			},
-			flags: []string{"-require-any-client-certificate"},
+			tls13Variant: ver.tls13Variant,
+			flags:        []string{"-require-any-client-certificate"},
 		})
 		if ver.version != VersionSSL30 {
 			testCases = append(testCases, testCase{
@@ -3357,7 +3384,8 @@ func addClientAuthTests() {
 					MaxVersion:   ver.version,
 					Certificates: []Certificate{ecdsaP256Certificate},
 				},
-				flags: []string{"-require-any-client-certificate"},
+				tls13Variant: ver.tls13Variant,
+				flags:        []string{"-require-any-client-certificate"},
 			})
 			testCases = append(testCases, testCase{
 				testType: clientTest,
@@ -3368,6 +3396,7 @@ func addClientAuthTests() {
 					ClientAuth: RequireAnyClientCert,
 					ClientCAs:  certPool,
 				},
+				tls13Variant: ver.tls13Variant,
 				flags: []string{
 					"-cert-file", path.Join(*resourceDir, ecdsaP256CertificateFile),
 					"-key-file", path.Join(*resourceDir, ecdsaP256KeyFile),
@@ -3382,6 +3411,7 @@ func addClientAuthTests() {
 				MaxVersion: ver.version,
 				ClientAuth: RequireAnyClientCert,
 			},
+			tls13Variant:       ver.tls13Variant,
 			shouldFail:         true,
 			expectedLocalError: "client didn't provide a certificate",
 		})
@@ -3395,6 +3425,7 @@ func addClientAuthTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 			},
+			tls13Variant: ver.tls13Variant,
 			flags: []string{
 				"-expect-verify-result",
 			},
@@ -3410,6 +3441,7 @@ func addClientAuthTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 			},
+			tls13Variant: ver.tls13Variant,
 			flags: []string{
 				"-expect-verify-result",
 				"-verify-peer",
@@ -3431,6 +3463,7 @@ func addClientAuthTests() {
 				MaxVersion: ver.version,
 			},
 			flags:              []string{"-require-any-client-certificate"},
+			tls13Variant:       ver.tls13Variant,
 			shouldFail:         true,
 			expectedError:      ":PEER_DID_NOT_RETURN_A_CERTIFICATE:",
 			expectedLocalError: certificateRequired,
@@ -3449,6 +3482,7 @@ func addClientAuthTests() {
 				},
 				// Setting SSL_VERIFY_PEER allows anonymous clients.
 				flags:         []string{"-verify-peer"},
+				tls13Variant:  ver.tls13Variant,
 				shouldFail:    true,
 				expectedError: ":UNEXPECTED_MESSAGE:",
 			})
@@ -3464,6 +3498,7 @@ func addClientAuthTests() {
 					"-enable-channel-id",
 					"-verify-peer-if-no-obc",
 				},
+				tls13Variant:       ver.tls13Variant,
 				shouldFail:         true,
 				expectedError:      ":PEER_DID_NOT_RETURN_A_CERTIFICATE:",
 				expectedLocalError: certificateRequired,
@@ -3478,6 +3513,7 @@ func addClientAuthTests() {
 					ChannelID:  channelIDKey,
 				},
 				expectChannelID: true,
+				tls13Variant:    ver.tls13Variant,
 				flags: []string{
 					"-enable-channel-id",
 					"-verify-peer-if-no-obc",
@@ -3496,6 +3532,7 @@ func addClientAuthTests() {
 					ExpectCertificateReqNames: caNames,
 				},
 			},
+			tls13Variant: ver.tls13Variant,
 			flags: []string{
 				"-require-any-client-certificate",
 				"-use-client-ca-list", encodeDERValues(caNames),
@@ -3512,6 +3549,7 @@ func addClientAuthTests() {
 				ClientAuth:   RequireAnyClientCert,
 				ClientCAs:    certPool,
 			},
+			tls13Variant: ver.tls13Variant,
 			flags: []string{
 				"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 				"-key-file", path.Join(*resourceDir, rsaKeyFile),
@@ -3611,8 +3649,9 @@ func addExtendedMasterSecretTests() {
 							RequireExtendedMasterSecret: with,
 						},
 					},
-					flags:      flags,
-					shouldFail: ver.version == VersionSSL30 && with,
+					tls13Variant: ver.tls13Variant,
+					flags:        flags,
+					shouldFail:   ver.version == VersionSSL30 && with,
 				}
 				if test.shouldFail {
 					test.expectedLocalError = "extended master secret required but not supported by peer"
@@ -4462,6 +4501,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					MaxVersion:   vers.version,
 					Certificates: []Certificate{rsaCertificate},
 				},
+				tls13Variant: vers.tls13Variant,
 				flags: []string{
 					flag,
 					"-expect-verify-result",
@@ -4475,6 +4515,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					MaxVersion:   vers.version,
 					Certificates: []Certificate{rsaCertificate},
 				},
+				tls13Variant: vers.tls13Variant,
 				flags: []string{
 					flag,
 					"-verify-fail",
@@ -4493,6 +4534,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				MaxVersion:   vers.version,
 				Certificates: []Certificate{rsaCertificate},
 			},
+			tls13Variant: vers.tls13Variant,
 			flags: []string{
 				"-verify-fail",
 				"-expect-verify-result",
@@ -4652,6 +4694,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					MaxVersion:       ver.version,
 					RequestChannelID: true,
 				},
+				tls13Variant:    ver.tls13Variant,
 				flags:           []string{"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile)},
 				resumeSession:   true,
 				expectChannelID: true,
@@ -4665,6 +4708,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					MaxVersion: ver.version,
 					ChannelID:  channelIDKey,
 				},
+				tls13Variant: ver.tls13Variant,
 				flags: []string{
 					"-expect-channel-id",
 					base64.StdEncoding.EncodeToString(channelIDBytes),
@@ -4683,6 +4727,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 						InvalidChannelIDSignature: true,
 					},
 				},
+				tls13Variant:  ver.tls13Variant,
 				flags:         []string{"-enable-channel-id"},
 				shouldFail:    true,
 				expectedError: ":CHANNEL_ID_SIGNATURE_INVALID:",
@@ -5423,6 +5468,7 @@ func addExtensionTests() {
 					DuplicateExtension: true,
 				},
 			},
+			tls13Variant:       ver.tls13Variant,
 			shouldFail:         true,
 			expectedLocalError: "remote error: error decoding message",
 		})
@@ -5435,6 +5481,7 @@ func addExtensionTests() {
 					DuplicateExtension: true,
 				},
 			},
+			tls13Variant:       ver.tls13Variant,
 			shouldFail:         true,
 			expectedLocalError: "remote error: error decoding message",
 		})
@@ -5449,7 +5496,8 @@ func addExtensionTests() {
 					ExpectServerName: "example.com",
 				},
 			},
-			flags: []string{"-host-name", "example.com"},
+			tls13Variant: ver.tls13Variant,
+			flags:        []string{"-host-name", "example.com"},
 		})
 		testCases = append(testCases, testCase{
 			testType: clientTest,
@@ -5461,6 +5509,7 @@ func addExtensionTests() {
 				},
 			},
 			flags:              []string{"-host-name", "example.com"},
+			tls13Variant:       ver.tls13Variant,
 			shouldFail:         true,
 			expectedLocalError: "tls: unexpected server name",
 		})
@@ -5473,6 +5522,7 @@ func addExtensionTests() {
 					ExpectServerName: "missing.com",
 				},
 			},
+			tls13Variant:       ver.tls13Variant,
 			shouldFail:         true,
 			expectedLocalError: "tls: unexpected server name",
 		})
@@ -5485,6 +5535,7 @@ func addExtensionTests() {
 					SendServerNameAck: true,
 				},
 			},
+			tls13Variant:  ver.tls13Variant,
 			flags:         []string{"-host-name", "example.com"},
 			resumeSession: true,
 		})
@@ -5497,6 +5548,7 @@ func addExtensionTests() {
 					SendServerNameAck: true,
 				},
 			},
+			tls13Variant:       ver.tls13Variant,
 			shouldFail:         true,
 			expectedError:      ":UNEXPECTED_EXTENSION:",
 			expectedLocalError: "remote error: unsupported extension",
@@ -5508,6 +5560,7 @@ func addExtensionTests() {
 				MaxVersion: ver.version,
 				ServerName: "example.com",
 			},
+			tls13Variant:  ver.tls13Variant,
 			flags:         []string{"-expect-server-name", "example.com"},
 			resumeSession: true,
 		})
@@ -5524,6 +5577,7 @@ func addExtensionTests() {
 				"-advertise-alpn", "\x03foo\x03bar\x03baz",
 				"-expect-alpn", "foo",
 			},
+			tls13Variant:          ver.tls13Variant,
 			expectedNextProto:     "foo",
 			expectedNextProtoType: alpn,
 			resumeSession:         true,
@@ -5540,6 +5594,7 @@ func addExtensionTests() {
 			flags: []string{
 				"-advertise-alpn", "\x03foo\x03bar",
 			},
+			tls13Variant:       ver.tls13Variant,
 			shouldFail:         true,
 			expectedError:      ":INVALID_ALPN_PROTOCOL:",
 			expectedLocalError: "remote error: illegal parameter",
@@ -5558,6 +5613,7 @@ func addExtensionTests() {
 				"-allow-unknown-alpn-protos",
 				"-expect-alpn", "baz",
 			},
+			tls13Variant: ver.tls13Variant,
 		})
 		testCases = append(testCases, testCase{
 			testType: serverTest,
@@ -5570,6 +5626,7 @@ func addExtensionTests() {
 				"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
 				"-select-alpn", "foo",
 			},
+			tls13Variant:          ver.tls13Variant,
 			expectedNextProto:     "foo",
 			expectedNextProtoType: alpn,
 			resumeSession:         true,
@@ -5582,6 +5639,7 @@ func addExtensionTests() {
 				NextProtos: []string{"foo", "bar", "baz"},
 			},
 			flags:             []string{"-decline-alpn"},
+			tls13Variant:      ver.tls13Variant,
 			expectNoNextProto: true,
 			resumeSession:     true,
 		})
@@ -5602,6 +5660,7 @@ func addExtensionTests() {
 				"-select-alpn", "foo",
 				"-async",
 			},
+			tls13Variant:          ver.tls13Variant,
 			expectedNextProto:     "foo",
 			expectedNextProtoType: alpn,
 			resumeSession:         true,
@@ -5623,6 +5682,7 @@ func addExtensionTests() {
 			flags: []string{
 				"-advertise-alpn", "\x03foo",
 			},
+			tls13Variant:  ver.tls13Variant,
 			shouldFail:    true,
 			expectedError: ":PARSE_TLSEXT:",
 		})
@@ -5638,6 +5698,7 @@ func addExtensionTests() {
 			flags: []string{
 				"-select-alpn", "foo",
 			},
+			tls13Variant:  ver.tls13Variant,
 			shouldFail:    true,
 			expectedError: ":PARSE_TLSEXT:",
 		})
@@ -5657,6 +5718,7 @@ func addExtensionTests() {
 					"-select-alpn", "foo",
 					"-advertise-npn", "\x03foo\x03bar\x03baz",
 				},
+				tls13Variant:          ver.tls13Variant,
 				expectedNextProto:     "foo",
 				expectedNextProtoType: alpn,
 				resumeSession:         true,
@@ -5676,6 +5738,7 @@ func addExtensionTests() {
 					"-select-alpn", "foo",
 					"-advertise-npn", "\x03foo\x03bar\x03baz",
 				},
+				tls13Variant:          ver.tls13Variant,
 				expectedNextProto:     "foo",
 				expectedNextProtoType: alpn,
 				resumeSession:         true,
@@ -5695,6 +5758,7 @@ func addExtensionTests() {
 					"-advertise-alpn", "\x03foo",
 					"-select-next-proto", "foo",
 				},
+				tls13Variant:  ver.tls13Variant,
 				shouldFail:    true,
 				expectedError: ":NEGOTIATED_BOTH_NPN_AND_ALPN:",
 			})
@@ -5712,6 +5776,7 @@ func addExtensionTests() {
 					"-advertise-alpn", "\x03foo",
 					"-select-next-proto", "foo",
 				},
+				tls13Variant:  ver.tls13Variant,
 				shouldFail:    true,
 				expectedError: ":NEGOTIATED_BOTH_NPN_AND_ALPN:",
 			})
@@ -5732,6 +5797,7 @@ func addExtensionTests() {
 					},
 				},
 			},
+			tls13Variant:         ver.tls13Variant,
 			resumeSession:        true,
 			expectResumeRejected: true,
 		})
@@ -5742,6 +5808,7 @@ func addExtensionTests() {
 			config: Config{
 				MaxVersion: ver.version,
 			},
+			tls13Variant:  ver.tls13Variant,
 			resumeSession: true,
 			flags:         []string{"-use-ticket-callback"},
 		})
@@ -5754,6 +5821,7 @@ func addExtensionTests() {
 					ExpectNewTicket: true,
 				},
 			},
+			tls13Variant:  ver.tls13Variant,
 			flags:         []string{"-use-ticket-callback", "-renew-ticket"},
 			resumeSession: true,
 		})
@@ -5773,6 +5841,7 @@ func addExtensionTests() {
 					},
 				},
 			},
+			tls13Variant:         ver.tls13Variant,
 			resumeSession:        true,
 			expectResumeRejected: true,
 			flags: []string{
@@ -5928,6 +5997,7 @@ func addExtensionTests() {
 				"-expect-signed-cert-timestamps",
 				base64.StdEncoding.EncodeToString(testSCTList),
 			},
+			tls13Variant:  ver.tls13Variant,
 			resumeSession: true,
 		})
 
@@ -5950,6 +6020,7 @@ func addExtensionTests() {
 				"-expect-signed-cert-timestamps",
 				base64.StdEncoding.EncodeToString(testSCTList),
 			},
+			tls13Variant:  ver.tls13Variant,
 			resumeSession: true,
 		})
 
@@ -5963,6 +6034,7 @@ func addExtensionTests() {
 				"-signed-cert-timestamps",
 				base64.StdEncoding.EncodeToString(testSCTList),
 			},
+			tls13Variant:    ver.tls13Variant,
 			expectedSCTList: testSCTList,
 			resumeSession:   true,
 		})
@@ -5981,6 +6053,7 @@ func addExtensionTests() {
 			flags: []string{
 				"-enable-signed-cert-timestamps",
 			},
+			tls13Variant:  ver.tls13Variant,
 			shouldFail:    true,
 			expectedError: ":ERROR_PARSING_EXTENSION:",
 		})
@@ -5999,6 +6072,7 @@ func addExtensionTests() {
 			flags: []string{
 				"-enable-signed-cert-timestamps",
 			},
+			tls13Variant:  ver.tls13Variant,
 			shouldFail:    true,
 			expectedError: ":ERROR_PARSING_EXTENSION:",
 		})
@@ -6014,6 +6088,7 @@ func addExtensionTests() {
 					NoSignedCertificateTimestamps: true,
 				},
 			},
+			tls13Variant: ver.tls13Variant,
 			flags: []string{
 				"-ocsp-response",
 				base64.StdEncoding.EncodeToString(testOCSPResponse),
@@ -7460,6 +7535,7 @@ func addSignatureAlgorithmTests() {
 					"-enable-all-curves",
 					"-enable-ed25519",
 				},
+				tls13Variant:                   ver.tls13Variant,
 				shouldFail:                     shouldSignFail,
 				expectedError:                  signError,
 				expectedPeerSignatureAlgorithm: alg.id,
@@ -7481,6 +7557,7 @@ func addSignatureAlgorithmTests() {
 						IgnorePeerSignatureAlgorithmPreferences: shouldVerifyFail,
 					},
 				},
+				tls13Variant: ver.tls13Variant,
 				flags: []string{
 					"-require-any-client-certificate",
 					"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
@@ -7508,6 +7585,7 @@ func addSignatureAlgorithmTests() {
 							fakeSigAlg2,
 						},
 					},
+					tls13Variant: ver.tls13Variant,
 					flags: []string{
 						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
 						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
@@ -7536,6 +7614,7 @@ func addSignatureAlgorithmTests() {
 						IgnorePeerSignatureAlgorithmPreferences: shouldVerifyFail,
 					},
 				},
+				tls13Variant: ver.tls13Variant,
 				flags: []string{
 					"-expect-peer-signature-algorithm", strconv.Itoa(int(alg.id)),
 					"-enable-all-curves",
@@ -7562,6 +7641,7 @@ func addSignatureAlgorithmTests() {
 							InvalidSignature: true,
 						},
 					},
+					tls13Variant: ver.tls13Variant,
 					flags: []string{
 						"-require-any-client-certificate",
 						"-enable-all-curves",
@@ -7584,6 +7664,7 @@ func addSignatureAlgorithmTests() {
 							InvalidSignature: true,
 						},
 					},
+					tls13Variant: ver.tls13Variant,
 					flags: []string{
 						"-enable-all-curves",
 						"-enable-ed25519",
@@ -7601,6 +7682,7 @@ func addSignatureAlgorithmTests() {
 						ClientAuth:                RequireAnyClientCert,
 						VerifySignatureAlgorithms: allAlgorithms,
 					},
+					tls13Variant: ver.tls13Variant,
 					flags: []string{
 						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
 						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
@@ -7619,6 +7701,7 @@ func addSignatureAlgorithmTests() {
 						CipherSuites:              signingCiphers,
 						VerifySignatureAlgorithms: allAlgorithms,
 					},
+					tls13Variant: ver.tls13Variant,
 					flags: []string{
 						"-cert-file", path.Join(*resourceDir, getShimCertificate(alg.cert)),
 						"-key-file", path.Join(*resourceDir, getShimKey(alg.cert)),
@@ -8549,6 +8632,7 @@ func addExportKeyingMaterialTests() {
 			config: Config{
 				MaxVersion: vers.version,
 			},
+			tls13Variant:         vers.tls13Variant,
 			exportKeyingMaterial: 1024,
 			exportLabel:          "label",
 			exportContext:        "context",
@@ -8559,6 +8643,7 @@ func addExportKeyingMaterialTests() {
 			config: Config{
 				MaxVersion: vers.version,
 			},
+			tls13Variant:         vers.tls13Variant,
 			exportKeyingMaterial: 1024,
 		})
 		testCases = append(testCases, testCase{
@@ -8566,6 +8651,7 @@ func addExportKeyingMaterialTests() {
 			config: Config{
 				MaxVersion: vers.version,
 			},
+			tls13Variant:         vers.tls13Variant,
 			exportKeyingMaterial: 1024,
 			useExportContext:     true,
 		})
@@ -8574,6 +8660,7 @@ func addExportKeyingMaterialTests() {
 			config: Config{
 				MaxVersion: vers.version,
 			},
+			tls13Variant:         vers.tls13Variant,
 			exportKeyingMaterial: 1,
 			exportLabel:          "label",
 			exportContext:        "context",
@@ -10377,7 +10464,7 @@ func addTLS13HandshakeTests() {
 
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name:     "SkipEarlyData-Experiment",
+		name:     "SkipEarlyData-TLS13Experiment",
 		config: Config{
 			MaxVersion:   VersionTLS13,
 			TLS13Variant: TLS13Experiment,
@@ -11556,6 +11643,7 @@ func addRecordVersionTests() {
 					SendRecordVersion: 0x03ff,
 				},
 			},
+			tls13Variant:  ver.tls13Variant,
 			shouldFail:    true,
 			expectedError: ":WRONG_VERSION_NUMBER:",
 		})
@@ -11572,6 +11660,7 @@ func addRecordVersionTests() {
 					SendInitialRecordVersion: 0x03ff,
 				},
 			},
+			tls13Variant: ver.tls13Variant,
 		})
 
 		// Test that garbage ClientHello record versions are rejected.
@@ -11585,6 +11674,7 @@ func addRecordVersionTests() {
 					SendInitialRecordVersion: 0xffff,
 				},
 			},
+			tls13Variant:  ver.tls13Variant,
 			shouldFail:    true,
 			expectedError: ":WRONG_VERSION_NUMBER:",
 		})
@@ -11604,6 +11694,7 @@ func addCertificateTests() {
 				Certificates: []Certificate{rsaChainCertificate},
 				ClientAuth:   RequireAnyClientCert,
 			},
+			tls13Variant:          ver.tls13Variant,
 			expectPeerCertificate: &rsaChainCertificate,
 			flags: []string{
 				"-cert-file", path.Join(*resourceDir, rsaChainCertificateFile),
@@ -11620,6 +11711,7 @@ func addCertificateTests() {
 				MaxVersion:   ver.version,
 				Certificates: []Certificate{rsaChainCertificate},
 			},
+			tls13Variant:          ver.tls13Variant,
 			expectPeerCertificate: &rsaChainCertificate,
 			flags: []string{
 				"-cert-file", path.Join(*resourceDir, rsaChainCertificateFile),
@@ -11643,6 +11735,7 @@ func addRetainOnlySHA256ClientCertTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 			},
+			tls13Variant: ver.tls13Variant,
 			flags: []string{
 				"-retain-only-sha256-client-cert-initial",
 				"-retain-only-sha256-client-cert-resume",
@@ -11660,6 +11753,7 @@ func addRetainOnlySHA256ClientCertTests() {
 				MaxVersion:   ver.version,
 				Certificates: []Certificate{rsaCertificate},
 			},
+			tls13Variant: ver.tls13Variant,
 			flags: []string{
 				"-verify-peer",
 				"-retain-only-sha256-client-cert-initial",
@@ -11681,6 +11775,7 @@ func addRetainOnlySHA256ClientCertTests() {
 				MaxVersion:   ver.version,
 				Certificates: []Certificate{rsaCertificate},
 			},
+			tls13Variant: ver.tls13Variant,
 			flags: []string{
 				"-verify-peer",
 				"-retain-only-sha256-client-cert-initial",
@@ -11701,6 +11796,7 @@ func addRetainOnlySHA256ClientCertTests() {
 				MaxVersion:   ver.version,
 				Certificates: []Certificate{rsaCertificate},
 			},
+			tls13Variant: ver.tls13Variant,
 			flags: []string{
 				"-verify-peer",
 				"-retain-only-sha256-client-cert-resume",
@@ -11763,6 +11859,7 @@ func addECDSAKeyUsageTests() {
 				MaxVersion:   ver.version,
 				Certificates: []Certificate{cert},
 			},
+			tls13Variant:  ver.tls13Variant,
 			shouldFail:    true,
 			expectedError: ":ECC_CERT_NOT_FOR_SIGNING:",
 		})
