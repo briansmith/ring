@@ -164,14 +164,6 @@ class Android(object):
       blueprint.write('    ],\n')
       blueprint.write('}\n\n')
 
-      blueprint.write('cc_defaults {\n')
-      blueprint.write('    name: "boringssl_tests_sources",\n')
-      blueprint.write('    srcs: [\n')
-      for f in sorted(files['test']):
-        blueprint.write('        "%s",\n' % f)
-      blueprint.write('    ],\n')
-      blueprint.write('}\n')
-
     # Legacy Android.mk format, only used by Trusty in new branches
     with open('sources.mk', 'w+') as makefile:
       makefile.write(self.header)
@@ -245,79 +237,6 @@ class Bazel(object):
                                 files['crypto_test'])
       self.PrintVariableSection(out, 'ssl_test_sources', files['ssl_test'])
 
-      out.write('def create_tests(copts, crypto, ssl):\n')
-      name_counts = {}
-      for test in files['tests']:
-        name = os.path.basename(test[0])
-        name_counts[name] = name_counts.get(name, 0) + 1
-
-      first = True
-      test_names = set()
-      for test in files['tests']:
-        name = os.path.basename(test[0])
-        if name_counts[name] > 1:
-          if '/' in test[-1]:
-            arg = test[-1].replace('crypto/cipher/test/','')  # boooring
-            arg = arg.replace('/', '_')
-            arg = os.path.splitext(arg)[0]  # remove .txt
-            arg = arg.replace('_tests', '')
-            name += '_' + arg
-          else:
-            name += '_' + test[-1].replace('-', '_')
-
-        if name in test_names:
-          raise ValueError("test name %s is not unique" % name)
-        test_names.add(name)
-
-        if not first:
-          out.write('\n')
-        first = False
-
-        for src in files['test']:
-          # For example, basename(src/crypto/fipsmodule/aes/aes_test.cc)
-          # startswith basename(crypto/fipsmodule/aes_test).
-          if os.path.basename(src).startswith(os.path.basename(test[0]) + '.'):
-            src = src
-            break
-        else:
-          raise ValueError("Can't find source for %s" % test[0])
-
-        out.write('  native.cc_test(\n')
-        out.write('      name = "%s",\n' % name)
-        out.write('      size = "small",\n')
-        out.write('      srcs = ["%s"] + test_support_sources,\n' %
-            PathOf(src))
-
-        data_files = []
-        if len(test) > 1:
-
-          out.write('      args = [\n')
-          for arg in test[1:]:
-            if '/' in arg:
-              out.write('          "$(location %s)",\n' %
-                  PathOf(os.path.join('src', arg)))
-              data_files.append('src/%s' % arg)
-            else:
-              out.write('          "%s",\n' % arg)
-          out.write('      ],\n')
-
-        out.write('      copts = copts,\n')
-
-        if len(data_files) > 0:
-          out.write('      data = [\n')
-          for filename in data_files:
-            out.write('          "%s",\n' % PathOf(filename))
-          out.write('      ],\n')
-
-        if 'ssl/' in test[0]:
-          out.write('      deps = [\n')
-          out.write('          crypto,\n')
-          out.write('          ssl,\n')
-          out.write('      ],\n')
-        else:
-          out.write('      deps = [crypto],\n')
-        out.write('  )\n')
-
 
 class GN(object):
 
@@ -371,36 +290,6 @@ class GN(object):
       self.PrintVariableSection(out, 'crypto_test_sources',
                                 files['crypto_test'])
       self.PrintVariableSection(out, 'ssl_test_sources', files['ssl_test'])
-      out.write('\n')
-
-      out.write('template("create_tests") {\n')
-
-      all_tests = []
-      for test in sorted(files['test']):
-        test_name = 'boringssl_%s' % os.path.splitext(os.path.basename(test))[0]
-        all_tests.append(test_name)
-
-        out.write('  executable("%s") {\n' % test_name)
-        out.write('    sources = [\n')
-        out.write('      "%s",\n' % test)
-        out.write('    ]\n')
-        out.write('    sources += test_support_sources\n')
-        out.write('    if (defined(invoker.configs_exclude)) {\n')
-        out.write('      configs -= invoker.configs_exclude\n')
-        out.write('    }\n')
-        out.write('    configs += invoker.configs\n')
-        out.write('    deps = invoker.deps + ')
-        out.write('[ "//build/config:exe_and_shlib_deps" ]\n')
-        out.write('  }\n')
-        out.write('\n')
-
-      out.write('  group(target_name) {\n')
-      out.write('    deps = [\n')
-      for test_name in sorted(all_tests):
-        out.write('      ":%s",\n' % test_name)
-      out.write('    ]\n')
-      out.write('  }\n')
-      out.write('}\n')
 
 
 class GYP(object):
@@ -464,7 +353,7 @@ def NoTests(path, dent, is_dir):
   sources."""
   if is_dir:
     return dent != 'test'
-  return 'test.' not in dent and not dent.startswith('example_')
+  return 'test.' not in dent
 
 
 def OnlyTests(path, dent, is_dir):
@@ -472,7 +361,7 @@ def OnlyTests(path, dent, is_dir):
   non-test sources."""
   if is_dir:
     return dent != 'test'
-  return '_test.' in dent or dent.startswith('example_')
+  return '_test.' in dent
 
 
 def AllFiles(path, dent, is_dir):
@@ -662,11 +551,6 @@ def ExtractVariablesFromCMakeFile(cmakefile):
   return variables
 
 
-def IsGTest(path):
-  with open(path) as f:
-    return "#include <gtest/gtest.h>" in f.read()
-
-
 def main(platforms):
   cmake = ExtractVariablesFromCMakeFile(os.path.join('src', 'sources.cmake'))
   crypto_c_files = FindCFiles(os.path.join('src', 'crypto'), NoTestsNorFIPSFragments)
@@ -695,18 +579,12 @@ def main(platforms):
         cwd='src',
         stdout=out)
 
-  test_c_files = []
-  crypto_test_files = [
+  crypto_test_files = FindCFiles(os.path.join('src', 'crypto'), OnlyTests)
+  crypto_test_files += [
       'crypto_test_data.cc',
       'src/crypto/test/file_test_gtest.cc',
       'src/crypto/test/gtest_main.cc',
   ]
-  # TODO(davidben): Remove this loop once all tests are converted.
-  for path in FindCFiles(os.path.join('src', 'crypto'), OnlyTests):
-    if IsGTest(path):
-      crypto_test_files.append(path)
-    else:
-      test_c_files.append(path)
 
   ssl_test_files = FindCFiles(os.path.join('src', 'ssl'), OnlyTests)
   ssl_test_files.append('src/crypto/test/gtest_main.cc')
@@ -729,37 +607,6 @@ def main(platforms):
   crypto_internal_h_files = FindHeaderFiles(
       os.path.join('src', 'crypto'), NoTests)
 
-  with open('src/util/all_tests.json', 'r') as f:
-    tests = json.load(f)
-  # For now, GTest-based tests are specified manually.
-  tests = [test for test in tests if test[0] not in ['crypto/crypto_test',
-                                                     'decrepit/decrepit_test',
-                                                     'ssl/ssl_test']]
-  # The same test name can appear multiple times with different arguments.  So,
-  # make a set to get a list of unique test binaries.
-  test_names = set([test[0] for test in tests])
-  test_binaries = set(map(os.path.basename, test_names))
-  # Make sure the test basenames are unique.
-  if len(test_binaries) != len(set(test_names)):
-    raise ValueError('non-unique test basename')
-  # Ensure a 1:1 correspondence between test sources and tests.  This
-  # guarantees that the Bazel output includes everything in the JSON.
-  # Sometimes, a test's source isn't in the same directory as the test,
-  # which we handle by considering only the basename.
-  test_sources = set(map(os.path.basename, [
-      test.replace('.cc', '').replace('.c', '').replace(
-          'src/',
-          '')
-      for test in test_c_files]))
-  if test_binaries != test_sources:
-    print 'Test sources and configured tests do not match'
-    a = test_binaries.difference(test_sources)
-    if len(a) > 0:
-      print 'These tests are configured without sources: ' + str(a)
-    b = test_sources.difference(test_binaries)
-    if len(b) > 0:
-      print 'These test sources are not configured: ' + str(b)
-
   files = {
       'crypto': crypto_c_files,
       'crypto_headers': crypto_h_files,
@@ -775,10 +622,8 @@ def main(platforms):
       'ssl_test': sorted(ssl_test_files),
       'tool': tool_c_files,
       'tool_headers': tool_h_files,
-      'test': test_c_files,
       'test_support': test_support_c_files,
       'test_support_headers': test_support_h_files,
-      'tests': tests,
   }
 
   asm_outputs = sorted(WriteAsmFiles(ReadPerlAsmOperations()).iteritems())
