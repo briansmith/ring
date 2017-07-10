@@ -5032,7 +5032,6 @@ func addVersionNegotiationTests() {
 				flags:           []string{"-tls13-variant", strconv.Itoa(vers.tls13Variant)},
 			})
 		}
-
 	}
 
 	// If all versions are unknown, negotiation fails.
@@ -5110,6 +5109,36 @@ func addVersionNegotiationTests() {
 		// We currently implement a draft TLS 1.3 version. Ensure that
 		// the true TLS 1.3 value is ignored for now.
 		expectedVersion: VersionTLS12,
+	})
+
+	// Test that TLS 1.2 isn't negotiated by the supported_versions extension in
+	// the ServerHello.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "SupportedVersionSelection-TLS12",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SendServerSupportedExtensionVersion: VersionTLS12,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_EXTENSION:",
+	})
+
+	// Test that the non-experimental TLS 1.3 isn't negotiated by the
+	// supported_versions extension in the ServerHello.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "SupportedVersionSelection-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendServerSupportedExtensionVersion: tls13DraftVersion,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":UNEXPECTED_EXTENSION:",
 	})
 
 	// Test that the maximum version is selected regardless of the

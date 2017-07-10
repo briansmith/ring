@@ -85,6 +85,19 @@ static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, int *out_need_retry,
   return ok;
 }
 
+static int ssl_ext_supported_versions_add_serverhello(SSL_HANDSHAKE *hs,
+                                                      CBB *out) {
+  CBB contents;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_supported_versions) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u16(&contents, hs->ssl->version) ||
+      !CBB_flush(out)) {
+    return 0;
+  }
+
+  return 1;
+}
+
 static const SSL_CIPHER *choose_tls13_cipher(
     const SSL *ssl, const SSL_CLIENT_HELLO *client_hello) {
   if (client_hello->cipher_suites_len % 2 != 0) {
@@ -514,10 +527,15 @@ static enum ssl_hs_wait_t do_process_second_client_hello(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
+  uint16_t version = ssl->version;
+  if (ssl->version == TLS1_3_EXPERIMENT_VERSION) {
+    version = TLS1_2_VERSION;
+  }
+
   /* Send a ServerHello. */
   CBB cbb, body, extensions, session_id;
   if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_SERVER_HELLO) ||
-      !CBB_add_u16(&body, ssl->version) ||
+      !CBB_add_u16(&body, version) ||
       !RAND_bytes(ssl->s3->server_random, sizeof(ssl->s3->server_random)) ||
       !CBB_add_bytes(&body, ssl->s3->server_random, SSL3_RANDOM_SIZE) ||
       (ssl->version == TLS1_3_EXPERIMENT_VERSION &&
@@ -528,6 +546,8 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
       !CBB_add_u16_length_prefixed(&body, &extensions) ||
       !ssl_ext_pre_shared_key_add_serverhello(hs, &extensions) ||
       !ssl_ext_key_share_add_serverhello(hs, &extensions) ||
+      (ssl->version == TLS1_3_EXPERIMENT_VERSION &&
+       !ssl_ext_supported_versions_add_serverhello(hs, &extensions)) ||
       !ssl_add_message_cbb(ssl, &cbb)) {
     goto err;
   }

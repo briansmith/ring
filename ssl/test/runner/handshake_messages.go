@@ -813,21 +813,22 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 }
 
 type serverHelloMsg struct {
-	raw               []byte
-	isDTLS            bool
-	vers              uint16
-	versOverride      uint16
-	random            []byte
-	sessionId         []byte
-	cipherSuite       uint16
-	hasKeyShare       bool
-	keyShare          keyShareEntry
-	hasPSKIdentity    bool
-	pskIdentity       uint16
-	compressionMethod uint8
-	customExtension   string
-	unencryptedALPN   string
-	extensions        serverExtensions
+	raw                   []byte
+	isDTLS                bool
+	vers                  uint16
+	versOverride          uint16
+	supportedVersOverride uint16
+	random                []byte
+	sessionId             []byte
+	cipherSuite           uint16
+	hasKeyShare           bool
+	keyShare              keyShareEntry
+	hasPSKIdentity        bool
+	pskIdentity           uint16
+	compressionMethod     uint8
+	customExtension       string
+	unencryptedALPN       string
+	extensions            serverExtensions
 }
 
 func (m *serverHelloMsg) marshal() []byte {
@@ -848,6 +849,8 @@ func (m *serverHelloMsg) marshal() []byte {
 	}
 	if m.versOverride != 0 {
 		hello.addU16(m.versOverride)
+	} else if m.vers == tls13ExperimentVersion {
+		hello.addU16(VersionTLS12)
 	} else {
 		hello.addU16(m.vers)
 	}
@@ -876,6 +879,15 @@ func (m *serverHelloMsg) marshal() []byte {
 			extensions.addU16(extensionPreSharedKey)
 			extensions.addU16(2) // Length
 			extensions.addU16(m.pskIdentity)
+		}
+		if m.vers == tls13ExperimentVersion || m.supportedVersOverride != 0 {
+			extensions.addU16(extensionSupportedVersions)
+			extensions.addU16(2) // Length
+			if m.supportedVersOverride != 0 {
+				extensions.addU16(m.supportedVersOverride)
+			} else {
+				extensions.addU16(m.vers)
+			}
 		}
 		if len(m.customExtension) > 0 {
 			extensions.addU16(extensionCustom)
@@ -949,6 +961,36 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 		return false
 	}
 
+	// Parse out the version from supported_versions if available.
+	if m.vers == VersionTLS12 {
+		vdata := data
+		for len(vdata) != 0 {
+			if len(vdata) < 4 {
+				return false
+			}
+			extension := uint16(vdata[0])<<8 | uint16(vdata[1])
+			length := int(vdata[2])<<8 | int(vdata[3])
+			vdata = vdata[4:]
+
+			if len(vdata) < length {
+				return false
+			}
+			d := vdata[:length]
+			vdata = vdata[length:]
+
+			if extension == extensionSupportedVersions {
+				if len(d) < 2 {
+					return false
+				}
+				m.vers = uint16(d[0])<<8 | uint16(d[1])
+				vers, ok = wireToVersion(m.vers, m.isDTLS)
+				if !ok {
+					return false
+				}
+			}
+		}
+	}
+
 	if vers >= VersionTLS13 {
 		for len(data) != 0 {
 			if len(data) < 4 {
@@ -983,6 +1025,10 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 				}
 				m.pskIdentity = uint16(d[0])<<8 | uint16(d[1])
 				m.hasPSKIdentity = true
+			case extensionSupportedVersions:
+				if m.vers != tls13ExperimentVersion {
+					return false
+				}
 			default:
 				// Only allow the 3 extensions that are sent in
 				// the clear in TLS 1.3.
@@ -1059,6 +1105,7 @@ type serverExtensions struct {
 	hasKeyShare             bool
 	hasEarlyData            bool
 	keyShare                keyShareEntry
+	supportedVersion        uint16
 	supportedPoints         []uint8
 	serverNameAck           bool
 }
@@ -1154,6 +1201,11 @@ func (m *serverExtensions) marshal(extensions *byteBuilder) {
 		keyShare.addU16(uint16(m.keyShare.group))
 		keyExchange := keyShare.addU16LengthPrefixed()
 		keyExchange.addBytes(m.keyShare.keyExchange)
+	}
+	if m.supportedVersion != 0 {
+		extensions.addU16(extensionSupportedVersions)
+		extensions.addU16(2) // Length
+		extensions.addU16(m.supportedVersion)
 	}
 	if len(m.supportedPoints) > 0 {
 		// http://tools.ietf.org/html/rfc4492#section-5.1.2

@@ -846,6 +846,47 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
+  /* Parse out server version from supported_versions if available. */
+  if (ssl->s3->tmp.message_type == SSL3_MT_SERVER_HELLO &&
+      server_version == TLS1_2_VERSION) {
+    CBS copy = server_hello;
+    CBS extensions;
+    uint8_t sid_length;
+    if (!CBS_skip(&copy, SSL3_RANDOM_SIZE) ||
+        !CBS_get_u8(&copy, &sid_length) ||
+        !CBS_skip(&copy, sid_length + 2 /* cipher_suite */ +
+                             1 /* compression_method */) ||
+        !CBS_get_u16_length_prefixed(&copy, &extensions) ||
+        CBS_len(&copy) != 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      return -1;
+    }
+
+    int have_supported_versions;
+    CBS supported_versions;
+    const SSL_EXTENSION_TYPE ext_types[] = {
+        {TLSEXT_TYPE_supported_versions, &have_supported_versions,
+         &supported_versions},
+    };
+
+    uint8_t alert = SSL_AD_DECODE_ERROR;
+    if (!ssl_parse_extensions(&extensions, &alert, ext_types,
+                              OPENSSL_ARRAY_SIZE(ext_types),
+                              1 /* ignore unknown */)) {
+      ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+      return -1;
+    }
+
+    if (have_supported_versions) {
+      if (!CBS_get_u16(&supported_versions, &server_version) ||
+          CBS_len(&supported_versions) != 0) {
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+        return -1;
+      }
+    }
+  }
+
   if (!ssl_supports_version(hs, server_version)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);

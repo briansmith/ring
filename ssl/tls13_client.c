@@ -56,9 +56,9 @@ static enum ssl_hs_wait_t do_process_hello_retry_request(SSL_HANDSHAKE *hs) {
   }
 
   CBS cbs, extensions;
-  uint16_t server_wire_version;
+  uint16_t server_version;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  if (!CBS_get_u16(&cbs, &server_wire_version) ||
+  if (!CBS_get_u16(&cbs, &server_version) ||
       !CBS_get_u16_length_prefixed(&cbs, &extensions) ||
       /* HelloRetryRequest may not be empty. */
       CBS_len(&extensions) == 0 ||
@@ -167,11 +167,11 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   CBS cbs, server_random, session_id, extensions;
-  uint16_t server_wire_version;
+  uint16_t server_version;
   uint16_t cipher_suite;
   uint8_t compression_method;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  if (!CBS_get_u16(&cbs, &server_wire_version) ||
+  if (!CBS_get_u16(&cbs, &server_version) ||
       !CBS_get_bytes(&cbs, &server_random, SSL3_RANDOM_SIZE) ||
       (ssl->version == TLS1_3_EXPERIMENT_VERSION &&
        !CBS_get_u8_length_prefixed(&cbs, &session_id)) ||
@@ -185,7 +185,9 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (server_wire_version != ssl->version) {
+  uint16_t expected_version =
+      ssl->version == TLS1_3_EXPERIMENT_VERSION ? TLS1_2_VERSION : ssl->version;
+  if (server_version != expected_version) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_NUMBER);
     return ssl_hs_error;
@@ -211,11 +213,13 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   /* Parse out the extensions. */
-  int have_key_share = 0, have_pre_shared_key = 0;
-  CBS key_share, pre_shared_key;
+  int have_key_share = 0, have_pre_shared_key = 0, have_supported_versions = 0;
+  CBS key_share, pre_shared_key, supported_versions;
   const SSL_EXTENSION_TYPE ext_types[] = {
       {TLSEXT_TYPE_key_share, &have_key_share, &key_share},
       {TLSEXT_TYPE_pre_shared_key, &have_pre_shared_key, &pre_shared_key},
+      {TLSEXT_TYPE_supported_versions, &have_supported_versions,
+       &supported_versions},
   };
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
@@ -223,6 +227,14 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
                             OPENSSL_ARRAY_SIZE(ext_types),
                             0 /* reject unknown */)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    return ssl_hs_error;
+  }
+
+  /* supported_versions is parsed in handshake_client to select the experimental
+   * TLS 1.3 version. */
+  if (have_supported_versions && ssl->version != TLS1_3_EXPERIMENT_VERSION) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
     return ssl_hs_error;
   }
 
