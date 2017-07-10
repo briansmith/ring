@@ -181,12 +181,18 @@ static const p224_felem g_p224_pre_comp[2][16][3] = {
       {0x32477c61b6e8c6, 0xb46a97570f018b, 0x91176d0a7e95d1, 0x3df90fbc4c7d0e},
       {1, 0, 0, 0}}}};
 
+static uint64_t p224_load_u64(const uint8_t in[8]) {
+  uint64_t ret;
+  OPENSSL_memcpy(&ret, in, sizeof(ret));
+  return ret;
+}
+
 /* Helper functions to convert field elements to/from internal representation */
 static void p224_bin28_to_felem(p224_felem out, const uint8_t in[28]) {
-  out[0] = *((const uint64_t *)(in)) & 0x00ffffffffffffff;
-  out[1] = (*((const uint64_t *)(in + 7))) & 0x00ffffffffffffff;
-  out[2] = (*((const uint64_t *)(in + 14))) & 0x00ffffffffffffff;
-  out[3] = (*((const uint64_t *)(in + 20))) >> 8;
+  out[0] = p224_load_u64(in) & 0x00ffffffffffffff;
+  out[1] = p224_load_u64(in + 7) & 0x00ffffffffffffff;
+  out[2] = p224_load_u64(in + 14) & 0x00ffffffffffffff;
+  out[3] = p224_load_u64(in + 20) >> 8;
 }
 
 static void p224_felem_to_bin28(uint8_t out[28], const p224_felem in) {

@@ -71,22 +71,32 @@ static const uint64_t kPrime[4] = {0xfffffffffffffffful, 0xffffffff, 0,
                               0xffffffff00000001ul};
 static const uint64_t bottom63bits = 0x7ffffffffffffffful;
 
+static uint64_t load_u64(const uint8_t in[8]) {
+  uint64_t ret;
+  OPENSSL_memcpy(&ret, in, sizeof(ret));
+  return ret;
+}
+
+static void store_u64(uint8_t out[8], uint64_t in) {
+  OPENSSL_memcpy(out, &in, sizeof(in));
+}
+
 /* bin32_to_felem takes a little-endian byte array and converts it into felem
  * form. This assumes that the CPU is little-endian. */
 static void bin32_to_felem(felem out, const uint8_t in[32]) {
-  out[0] = *((const uint64_t *)&in[0]);
-  out[1] = *((const uint64_t *)&in[8]);
-  out[2] = *((const uint64_t *)&in[16]);
-  out[3] = *((const uint64_t *)&in[24]);
+  out[0] = load_u64(&in[0]);
+  out[1] = load_u64(&in[8]);
+  out[2] = load_u64(&in[16]);
+  out[3] = load_u64(&in[24]);
 }
 
 /* smallfelem_to_bin32 takes a smallfelem and serialises into a little endian,
  * 32 byte array. This assumes that the CPU is little-endian. */
 static void smallfelem_to_bin32(uint8_t out[32], const smallfelem in) {
-  *((uint64_t *)&out[0]) = in[0];
-  *((uint64_t *)&out[8]) = in[1];
-  *((uint64_t *)&out[16]) = in[2];
-  *((uint64_t *)&out[24]) = in[3];
+  store_u64(&out[0], in[0]);
+  store_u64(&out[8], in[1]);
+  store_u64(&out[16], in[2]);
+  store_u64(&out[24], in[3]);
 }
 
 /* To preserve endianness when using BN_bn2bin and BN_bin2bn. */
