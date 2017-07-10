@@ -1694,6 +1694,12 @@ static bool WriteSettings(int i, const TestConfig *config,
     return false;
   }
 
+  if (config->tls13_variant != 0 &&
+      (!CBB_add_u16(cbb.get(), kTLS13Variant) ||
+       !CBB_add_u8(cbb.get(), static_cast<uint8_t>(config->tls13_variant)))) {
+    return false;
+  }
+
   uint8_t *settings;
   size_t settings_len;
   if (!CBB_add_u16(cbb.get(), kDataTag) ||

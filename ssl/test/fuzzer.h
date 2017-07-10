@@ -40,13 +40,18 @@ static const uint16_t kSessionTag = 1;
 // certificates.
 static const uint16_t kRequestClientCert = 2;
 
+// kTLS13Variant is followed by a u8 denoting the TLS 1.3 variant to configure.
+static const uint16_t kTLS13Variant = 3;
+
 // SetupTest parses parameters from |cbs| and returns a newly-configured |SSL|
 // object or nullptr on error. On success, the caller should feed the remaining
 // input in |cbs| to the SSL stack.
 static inline bssl::UniquePtr<SSL> SetupTest(CBS *cbs, SSL_CTX *ctx,
                                              bool is_server) {
-  // Clear any sessions saved in |ctx| from the previous run.
+  // |ctx| is shared between runs, so we must clear any modifications to it made
+  // later on in this function.
   SSL_CTX_flush_sessions(ctx, 0);
+  SSL_CTX_set_tls13_variant(ctx, tls13_default);
 
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx));
   if (is_server) {
@@ -89,6 +94,18 @@ static inline bssl::UniquePtr<SSL> SetupTest(CBS *cbs, SSL_CTX *ctx,
         }
         SSL_set_verify(ssl.get(), SSL_VERIFY_PEER, nullptr);
         break;
+
+      case kTLS13Variant: {
+        uint8_t variant;
+        if (!CBS_get_u8(cbs, &variant)) {
+          return nullptr;
+        }
+        SSL_CTX_set_tls13_variant(ctx, static_cast<tls13_variant_t>(variant));
+        break;
+      }
+
+      default:
+        return nullptr;
     }
   }
 }
