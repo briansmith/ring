@@ -300,14 +300,14 @@ int ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version) {
    * support all TLS 1.3 variants as long as tls13_variant is set to a
    * non-default value. */
   if (ssl->server) {
-    if (ssl->ctx->tls13_variant == tls13_default &&
+    if (ssl->tls13_variant == tls13_default &&
         version == TLS1_3_EXPERIMENT_VERSION) {
       return 0;
     }
   } else {
-    if ((ssl->ctx->tls13_variant != tls13_experiment &&
+    if ((ssl->tls13_variant != tls13_experiment &&
          version == TLS1_3_EXPERIMENT_VERSION) ||
-        (ssl->ctx->tls13_variant != tls13_default &&
+        (ssl->tls13_variant != tls13_default &&
          version == TLS1_3_DRAFT_VERSION)) {
       return 0;
     }

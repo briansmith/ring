@@ -373,6 +373,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
   ssl->conf_min_version = ctx->conf_min_version;
   ssl->conf_max_version = ctx->conf_max_version;
+  ssl->tls13_variant = ctx->tls13_variant;
 
   /* RFC 6347 states that implementations SHOULD use an initial timer value of
    * 1 second. */
@@ -847,6 +848,10 @@ void SSL_CTX_set_early_data_enabled(SSL_CTX *ctx, int enabled) {
 
 void SSL_CTX_set_tls13_variant(SSL_CTX *ctx, enum tls13_variant_t variant) {
   ctx->tls13_variant = variant;
+}
+
+void SSL_set_tls13_variant(SSL *ssl, enum tls13_variant_t variant) {
+  ssl->tls13_variant = variant;
 }
 
 void SSL_set_early_data_enabled(SSL *ssl, int enabled) {

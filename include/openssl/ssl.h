@@ -3148,6 +3148,12 @@ enum tls13_variant_t {
 OPENSSL_EXPORT void SSL_CTX_set_tls13_variant(SSL_CTX *ctx,
                                               enum tls13_variant_t variant);
 
+/* SSL_set_tls13_variant sets which variant of TLS 1.3 we negotiate. On the
+ * server, if |variant| is not |tls13_default|, all variants are enabled. On the
+ * client, only the configured variant is enabled. */
+OPENSSL_EXPORT void SSL_set_tls13_variant(SSL *ssl,
+                                          enum tls13_variant_t variant);
+
 /* SSL_MAX_CERT_LIST_DEFAULT is the default maximum length, in bytes, of a peer
  * certificate chain. */
 #define SSL_MAX_CERT_LIST_DEFAULT (1024 * 100)

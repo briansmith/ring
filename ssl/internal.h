@@ -1902,6 +1902,10 @@ struct ssl_st {
    * further constrainted by |SSL_OP_NO_*|. */
   uint16_t conf_min_version;
 
+  /* tls13_variant is the variant of TLS 1.3 we are using for this
+   * configuration. */
+  enum tls13_variant_t tls13_variant;
+
   uint16_t max_send_fragment;
 
   /* There are 2 BIO's even though they are normally both the same. This is so
