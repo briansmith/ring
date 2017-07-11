@@ -334,6 +334,7 @@ OPENSSL_COMPILE_ASSERT(
 /* server */
 /* extra state */
 #define SSL3_ST_SW_FLUSH (0x100 | SSL_ST_ACCEPT)
+#define SSL3_ST_VERIFY_CLIENT_CERT (0x101 | SSL_ST_ACCEPT)
 /* read from client */
 #define SSL3_ST_SR_CLNT_HELLO_A (0x110 | SSL_ST_ACCEPT)
 #define SSL3_ST_SR_CLNT_HELLO_B (0x111 | SSL_ST_ACCEPT)

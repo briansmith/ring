@@ -173,7 +173,6 @@ static int dtls1_get_hello_verify_request(SSL_HANDSHAKE *hs);
 static int ssl3_get_server_hello(SSL_HANDSHAKE *hs);
 static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs);
 static int ssl3_get_cert_status(SSL_HANDSHAKE *hs);
-static int ssl3_verify_server_cert(SSL_HANDSHAKE *hs);
 static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs);
 static int ssl3_get_certificate_request(SSL_HANDSHAKE *hs);
 static int ssl3_get_server_hello_done(SSL_HANDSHAKE *hs);
@@ -292,9 +291,16 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
 
       case SSL3_ST_VERIFY_SERVER_CERT:
         if (ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
-          ret = ssl3_verify_server_cert(hs);
-          if (ret <= 0) {
-            goto end;
+          switch (ssl_verify_peer_cert(hs)) {
+            case ssl_verify_ok:
+              break;
+            case ssl_verify_invalid:
+              ret = -1;
+              goto end;
+            case ssl_verify_retry:
+              ssl->rwstate = SSL_CERTIFICATE_VERIFY;
+              ret = -1;
+              goto end;
           }
         }
         hs->state = SSL3_ST_CR_KEY_EXCH_A;
@@ -1179,15 +1185,6 @@ static int ssl3_get_cert_status(SSL_HANDSHAKE *hs) {
                 &hs->new_session->ocsp_response_length)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    return -1;
-  }
-
-  return 1;
-}
-
-static int ssl3_verify_server_cert(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-  if (!ssl->ctx->x509_method->session_verify_cert_chain(hs->new_session, ssl)) {
     return -1;
   }
 

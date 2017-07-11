@@ -129,6 +129,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-handshake-twice", &TestConfig::handshake_twice },
   { "-allow-unknown-alpn-protos", &TestConfig::allow_unknown_alpn_protos },
   { "-enable-ed25519", &TestConfig::enable_ed25519 },
+  { "-use-custom-verify-callback", &TestConfig::use_custom_verify_callback },
 };
 
 const Flag<std::string> kStringFlags[] = {

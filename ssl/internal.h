@@ -1007,6 +1007,7 @@ enum ssl_hs_wait_t {
   ssl_hs_early_data_rejected,
   ssl_hs_read_end_of_early_data,
   ssl_hs_read_change_cipher_spec,
+  ssl_hs_certificate_verify,
 };
 
 struct ssl_handshake_st {
@@ -1341,6 +1342,9 @@ int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
                          const SSL_EXTENSION_TYPE *ext_types,
                          size_t num_ext_types, int ignore_unknown);
 
+/* ssl_verify_peer_cert verifies the peer certificate for |hs|. */
+enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs);
+
 
 /* SSLKEYLOGFILE functions. */
 
@@ -1597,7 +1601,8 @@ struct ssl_x509_method_st {
   /* session_verify_cert_chain verifies the certificate chain in |session|,
    * sets |session->verify_result| and returns one on success or zero on
    * error. */
-  int (*session_verify_cert_chain)(SSL_SESSION *session, SSL *ssl);
+  int (*session_verify_cert_chain)(SSL_SESSION *session, SSL *ssl,
+                                   uint8_t *out_alert);
 
   /* hs_flush_cached_ca_names drops any cached |X509_NAME|s from |hs|. */
   void (*hs_flush_cached_ca_names)(SSL_HANDSHAKE *hs);
@@ -1989,6 +1994,9 @@ struct ssl_st {
 
   int (*verify_callback)(int ok,
                          X509_STORE_CTX *ctx); /* fail if callback returns 0 */
+
+  enum ssl_verify_result_t (*custom_verify_callback)(SSL *ssl,
+                                                     uint8_t *out_alert);
 
   void (*info_callback)(const SSL *ssl, int type, int value);
 

@@ -392,6 +392,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->msg_callback_arg = ctx->msg_callback_arg;
   ssl->verify_mode = ctx->verify_mode;
   ssl->verify_callback = ctx->default_verify_callback;
+  ssl->custom_verify_callback = ctx->custom_verify_callback;
   ssl->retain_only_sha256_of_client_certs =
       ctx->retain_only_sha256_of_client_certs;
 
@@ -984,6 +985,9 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
 
     case SSL_EARLY_DATA_REJECTED:
       return SSL_ERROR_EARLY_DATA_REJECTED;
+
+    case SSL_CERTIFICATE_VERIFY:
+      return SSL_ERROR_WANT_CERTIFICATE_VERIFY;
   }
 
   return SSL_ERROR_SYSCALL;
@@ -1554,12 +1558,22 @@ int SSL_get_servername_type(const SSL *ssl) {
   return TLSEXT_NAMETYPE_host_name;
 }
 
-void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx) {
-  ctx->signed_cert_timestamps_enabled = 1;
+void SSL_CTX_set_custom_verify(
+    SSL_CTX *ctx, int mode,
+    enum ssl_verify_result_t (*callback)(SSL *ssl, uint8_t *out_alert)) {
+  ctx->verify_mode = mode;
+  ctx->custom_verify_callback = callback;
 }
 
-void SSL_CTX_i_promise_to_verify_certs_after_the_handshake(SSL_CTX *ctx) {
-  ctx->i_promise_to_verify_certs_after_the_handshake = 1;
+void SSL_set_custom_verify(
+    SSL *ssl, int mode,
+    enum ssl_verify_result_t (*callback)(SSL *ssl, uint8_t *out_alert)) {
+  ssl->verify_mode = mode;
+  ssl->custom_verify_callback = callback;
+}
+
+void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx) {
+  ctx->signed_cert_timestamps_enabled = 1;
 }
 
 void SSL_enable_signed_cert_timestamps(SSL *ssl) {

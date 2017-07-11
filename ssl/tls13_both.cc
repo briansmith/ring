@@ -102,6 +102,11 @@ int tls13_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
         hs->wait = ssl_hs_ok;
         return -1;
 
+      case ssl_hs_certificate_verify:
+        ssl->rwstate = SSL_CERTIFICATE_VERIFY;
+        hs->wait = ssl_hs_ok;
+        return -1;
+
       case ssl_hs_early_data_rejected:
         ssl->rwstate = SSL_EARLY_DATA_REJECTED;
         /* Cause |SSL_write| to start failing immediately. */
@@ -357,12 +362,6 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
   }
 
   hs->new_session->peer_sha256_valid = retain_sha256;
-
-  if (!ssl->ctx->x509_method->session_verify_cert_chain(hs->new_session,
-                                                        ssl)) {
-    goto err;
-  }
-
   ret = 1;
 
 err:

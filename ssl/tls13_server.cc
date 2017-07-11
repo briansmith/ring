@@ -766,6 +766,16 @@ static enum ssl_hs_wait_t do_process_client_certificate_verify(
     return ssl_hs_ok;
   }
 
+  switch (ssl_verify_peer_cert(hs)) {
+    case ssl_verify_ok:
+      break;
+    case ssl_verify_invalid:
+      return ssl_hs_error;
+    case ssl_verify_retry:
+      hs->tls13_state = state_process_client_certificate_verify;
+      return ssl_hs_certificate_verify;
+  }
+
   if (!ssl_check_message_type(ssl, SSL3_MT_CERTIFICATE_VERIFY) ||
       !tls13_process_certificate_verify(hs) ||
       !ssl_hash_current_message(hs)) {

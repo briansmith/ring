@@ -830,3 +830,34 @@ int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
 
   return 1;
 }
+
+enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  uint8_t alert = SSL_AD_CERTIFICATE_UNKNOWN;
+  enum ssl_verify_result_t ret;
+  if (ssl->custom_verify_callback != nullptr) {
+    ret = ssl->custom_verify_callback(ssl, &alert);
+    switch (ret) {
+      case ssl_verify_ok:
+        hs->new_session->verify_result = X509_V_OK;
+        break;
+      case ssl_verify_invalid:
+        hs->new_session->verify_result = X509_V_ERR_APPLICATION_VERIFICATION;
+        break;
+      case ssl_verify_retry:
+        break;
+    }
+  } else {
+    ret = ssl->ctx->x509_method->session_verify_cert_chain(hs->new_session, ssl,
+                                                           &alert)
+              ? ssl_verify_ok
+              : ssl_verify_invalid;
+  }
+
+  if (ret == ssl_verify_invalid) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+  }
+
+  return ret;
+}

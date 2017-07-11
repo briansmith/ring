@@ -112,6 +112,7 @@ struct TestState {
   bool alpn_select_done = false;
   bool is_resume = false;
   bool early_callback_ready = false;
+  bool custom_verify_ready = false;
 };
 
 static void TestStateExFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
@@ -684,27 +685,52 @@ static int CertCallback(SSL *ssl, void *arg) {
   return 1;
 }
 
-static int VerifySucceed(X509_STORE_CTX *store_ctx, void *arg) {
-  SSL* ssl = (SSL*)X509_STORE_CTX_get_ex_data(store_ctx,
-      SSL_get_ex_data_X509_STORE_CTX_idx());
+static bool CheckVerifyCallback(SSL *ssl) {
   const TestConfig *config = GetTestConfig(ssl);
-
   if (!config->expected_ocsp_response.empty()) {
     const uint8_t *data;
     size_t len;
     SSL_get0_ocsp_response(ssl, &data, &len);
     if (len == 0) {
       fprintf(stderr, "OCSP response not available in verify callback\n");
-      return 0;
+      return false;
     }
+  }
+
+  return true;
+}
+
+static int CertVerifyCallback(X509_STORE_CTX *store_ctx, void *arg) {
+  SSL* ssl = (SSL*)X509_STORE_CTX_get_ex_data(store_ctx,
+      SSL_get_ex_data_X509_STORE_CTX_idx());
+  const TestConfig *config = GetTestConfig(ssl);
+  if (!CheckVerifyCallback(ssl)) {
+    return 0;
+  }
+
+  if (config->verify_fail) {
+    store_ctx->error = X509_V_ERR_APPLICATION_VERIFICATION;
+    return 0;
   }
 
   return 1;
 }
 
-static int VerifyFail(X509_STORE_CTX *store_ctx, void *arg) {
-  store_ctx->error = X509_V_ERR_APPLICATION_VERIFICATION;
-  return 0;
+static ssl_verify_result_t CustomVerifyCallback(SSL *ssl, uint8_t *out_alert) {
+  const TestConfig *config = GetTestConfig(ssl);
+  if (!CheckVerifyCallback(ssl)) {
+    return ssl_verify_invalid;
+  }
+
+  if (config->async && !GetTestState(ssl)->custom_verify_ready) {
+    return ssl_verify_retry;
+  }
+
+  if (config->verify_fail) {
+    return ssl_verify_invalid;
+  }
+
+  return ssl_verify_ok;
 }
 
 static int NextProtosAdvertisedCallback(SSL *ssl, const uint8_t **out,
@@ -1139,10 +1165,8 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx,
     return nullptr;
   }
 
-  if (config->verify_fail) {
-    SSL_CTX_set_cert_verify_callback(ssl_ctx.get(), VerifyFail, NULL);
-  } else {
-    SSL_CTX_set_cert_verify_callback(ssl_ctx.get(), VerifySucceed, NULL);
+  if (!config->use_custom_verify_callback) {
+    SSL_CTX_set_cert_verify_callback(ssl_ctx.get(), CertVerifyCallback, NULL);
   }
 
   if (!config->signed_cert_timestamps.empty() &&
@@ -1269,6 +1293,9 @@ static bool RetryAsync(SSL *ssl, int ret) {
       return true;
     case SSL_ERROR_WANT_PRIVATE_KEY_OPERATION:
       test_state->private_key_retries++;
+      return true;
+    case SSL_ERROR_WANT_CERTIFICATE_VERIFY:
+      test_state->custom_verify_ready = true;
       return true;
     default:
       return false;
@@ -1763,20 +1790,23 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   if (!config->use_old_client_cert_callback) {
     SSL_set_cert_cb(ssl.get(), CertCallback, nullptr);
   }
+  int mode = SSL_VERIFY_NONE;
   if (config->require_any_client_certificate) {
-    SSL_set_verify(ssl.get(), SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
-                   NULL);
+    mode = SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
   }
   if (config->verify_peer) {
-    SSL_set_verify(ssl.get(), SSL_VERIFY_PEER, NULL);
+    mode = SSL_VERIFY_PEER;
   }
   if (config->verify_peer_if_no_obc) {
     // Set SSL_VERIFY_FAIL_IF_NO_PEER_CERT so testing whether client
     // certificates were requested is easy.
-    SSL_set_verify(ssl.get(),
-                   SSL_VERIFY_PEER | SSL_VERIFY_PEER_IF_NO_OBC |
-                       SSL_VERIFY_FAIL_IF_NO_PEER_CERT,
-                   NULL);
+    mode = SSL_VERIFY_PEER | SSL_VERIFY_PEER_IF_NO_OBC |
+           SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+  }
+  if (config->use_custom_verify_callback) {
+    SSL_set_custom_verify(ssl.get(), mode, CustomVerifyCallback);
+  } else if (mode != SSL_VERIFY_NONE) {
+    SSL_set_verify(ssl.get(), mode, NULL);
   }
   if (config->false_start) {
     SSL_set_mode(ssl.get(), SSL_MODE_ENABLE_FALSE_START);

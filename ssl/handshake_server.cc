@@ -282,6 +282,23 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
             goto end;
           }
         }
+        hs->state = SSL3_ST_VERIFY_CLIENT_CERT;
+        break;
+
+      case SSL3_ST_VERIFY_CLIENT_CERT:
+        if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) > 0) {
+          switch (ssl_verify_peer_cert(hs)) {
+            case ssl_verify_ok:
+              break;
+            case ssl_verify_invalid:
+              ret = -1;
+              goto end;
+            case ssl_verify_retry:
+              ssl->rwstate = SSL_CERTIFICATE_VERIFY;
+              ret = -1;
+              goto end;
+          }
+        }
         hs->state = SSL3_ST_SR_KEY_EXCH_A;
         break;
 
@@ -1262,10 +1279,6 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
   /* The hash will have been filled in. */
   if (ssl->retain_only_sha256_of_client_certs) {
     hs->new_session->peer_sha256_valid = 1;
-  }
-
-  if (!ssl->ctx->x509_method->session_verify_cert_chain(hs->new_session, ssl)) {
-    return -1;
   }
 
   return 1;
