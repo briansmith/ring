@@ -69,7 +69,7 @@ pub trait SecureRandom {
 /// opened until `fill` is called. In particular, `SystemRandom::new()` will
 /// not open `/dev/urandom` or do other potentially-high-latency things. The
 /// file handle will never be closed, until the operating system closes it at
-/// process shutdown. All instance of `SystemRandom` will share a single file
+/// process shutdown. All instances of `SystemRandom` will share a single file
 /// handle.
 ///
 /// On Linux, to properly implement seccomp filtering when the
