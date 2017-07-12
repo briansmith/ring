@@ -11,8 +11,8 @@ add_library(
   d1_srtp.cc
   dtls_method.cc
   dtls_record.cc
-  handshake_client.c
-  handshake_server.c
+  handshake_client.cc
+  handshake_server.cc
   s3_both.cc
   s3_lib.cc
   s3_pkt.cc

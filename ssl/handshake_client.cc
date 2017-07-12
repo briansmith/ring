@@ -647,9 +647,10 @@ static int ssl_write_client_cipher_list(SSL_HANDSHAKE *hs, CBB *out) {
 
 int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  CBB cbb, body;
-  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CLIENT_HELLO)) {
-    goto err;
+  bssl::ScopedCBB cbb;
+  CBB body;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CLIENT_HELLO)) {
+    return 0;
   }
 
   /* Renegotiations do not participate in session resumption. */
@@ -661,13 +662,13 @@ int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
   if (!CBB_add_u16(&body, hs->client_version) ||
       !CBB_add_bytes(&body, ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
       !CBB_add_u8_length_prefixed(&body, &child)) {
-    goto err;
+    return 0;
   }
 
   if (has_session_id) {
     if (!CBB_add_bytes(&child, ssl->session->session_id,
                        ssl->session->session_id_length)) {
-      goto err;
+      return 0;
     }
   } else {
     /* In TLS 1.3 experimental encodings, send a fake placeholder session ID
@@ -675,14 +676,14 @@ int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
     if (hs->max_version >= TLS1_3_VERSION &&
         ssl->tls13_variant != tls13_default &&
         !CBB_add_bytes(&child, hs->session_id, hs->session_id_len)) {
-      goto err;
+      return 0;
     }
   }
 
   if (SSL_is_dtls(ssl)) {
     if (!CBB_add_u8_length_prefixed(&body, &child) ||
         !CBB_add_bytes(&child, ssl->d1->cookie, ssl->d1->cookie_len)) {
-      goto err;
+      return 0;
     }
   }
 
@@ -692,13 +693,13 @@ int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
       !CBB_add_u8(&body, 1 /* one compression method */) ||
       !CBB_add_u8(&body, 0 /* null compression */) ||
       !ssl_add_clienthello_tlsext(hs, &body, header_len + CBB_len(&body))) {
-    goto err;
+    return 0;
   }
 
   uint8_t *msg = NULL;
   size_t len;
-  if (!ssl->method->finish_message(ssl, &cbb, &msg, &len)) {
-    goto err;
+  if (!ssl->method->finish_message(ssl, cbb.get(), &msg, &len)) {
+    return 0;
   }
 
   /* Now that the length prefixes have been computed, fill in the placeholder
@@ -706,14 +707,10 @@ int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
   if (hs->needs_psk_binder &&
       !tls13_write_psk_binder(hs, msg, len)) {
     OPENSSL_free(msg);
-    goto err;
+    return 0;
   }
 
   return ssl->method->add_message(ssl, msg, len);
-
- err:
-  CBB_cleanup(&cbb);
-  return 0;
 }
 
 static int ssl3_send_client_hello(SSL_HANDSHAKE *hs) {
@@ -1498,14 +1495,15 @@ OPENSSL_COMPILE_ASSERT(sizeof(size_t) >= sizeof(unsigned),
 
 static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  uint8_t *pms = NULL;
-  size_t pms_len = 0;
-  CBB cbb, body;
-  if (!ssl->method->init_message(ssl, &cbb, &body,
+  bssl::ScopedCBB cbb;
+  CBB body;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_CLIENT_KEY_EXCHANGE)) {
-    goto err;
+    return -1;
   }
 
+  uint8_t *pms = NULL;
+  size_t pms_len = 0;
   uint32_t alg_k = hs->new_cipher->algorithm_mkey;
   uint32_t alg_a = hs->new_cipher->algorithm_auth;
 
@@ -1550,7 +1548,7 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
   /* Depending on the key exchange method, compute |pms| and |pms_len|. */
   if (alg_k & SSL_kRSA) {
     pms_len = SSL_MAX_MASTER_KEY_LENGTH;
-    pms = OPENSSL_malloc(pms_len);
+    pms = (uint8_t *)OPENSSL_malloc(pms_len);
     if (pms == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
@@ -1613,7 +1611,7 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     /* For plain PSK, other_secret is a block of 0s with the same length as
      * the pre-shared key. */
     pms_len = psk_len;
-    pms = OPENSSL_malloc(pms_len);
+    pms = (uint8_t *)OPENSSL_malloc(pms_len);
     if (pms == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
@@ -1651,7 +1649,7 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
 
   /* The message must be added to the finished hash before calculating the
    * master secret. */
-  if (!ssl_add_message_cbb(ssl, &cbb)) {
+  if (!ssl_add_message_cbb(ssl, cbb.get())) {
     goto err;
   }
 
@@ -1667,7 +1665,6 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
   return 1;
 
 err:
-  CBB_cleanup(&cbb);
   if (pms != NULL) {
     OPENSSL_cleanse(pms, pms_len);
     OPENSSL_free(pms);
@@ -1679,21 +1676,22 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   assert(ssl_has_private_key(ssl));
 
-  CBB cbb, body, child;
-  if (!ssl->method->init_message(ssl, &cbb, &body,
+  bssl::ScopedCBB cbb;
+  CBB body, child;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_CERTIFICATE_VERIFY)) {
-    goto err;
+    return -1;
   }
 
   uint16_t signature_algorithm;
   if (!tls1_choose_signature_algorithm(hs, &signature_algorithm)) {
-    goto err;
+    return -1;
   }
   if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
     /* Write out the digest type in TLS 1.2. */
     if (!CBB_add_u16(&body, signature_algorithm)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      goto err;
+      return -1;
     }
   }
 
@@ -1702,7 +1700,7 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
   uint8_t *ptr;
   if (!CBB_add_u16_length_prefixed(&body, &child) ||
       !CBB_reserve(&child, &ptr, max_sig_len)) {
-    goto err;
+    return -1;
   }
 
   size_t sig_len = max_sig_len;
@@ -1711,7 +1709,7 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
   if (ssl3_protocol_version(ssl) == SSL3_VERSION) {
     if (ssl->cert->key_method != NULL) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL_FOR_CUSTOM_KEY);
-      goto err;
+      return -1;
     }
 
     uint8_t digest[EVP_MAX_MD_SIZE];
@@ -1719,7 +1717,7 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
     if (!SSL_TRANSCRIPT_ssl3_cert_verify_hash(&hs->transcript, digest,
                                               &digest_len, hs->new_session,
                                               signature_algorithm)) {
-      goto err;
+      return -1;
     }
 
     EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new(ssl->cert->privatekey, NULL);
@@ -1728,7 +1726,7 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
              EVP_PKEY_sign(pctx, ptr, &sig_len, digest, digest_len);
     EVP_PKEY_CTX_free(pctx);
     if (!ok) {
-      goto err;
+      return -1;
     }
   } else {
     switch (ssl_private_key_sign(hs, ptr, &sig_len, max_sig_len,
@@ -1738,25 +1736,21 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
       case ssl_private_key_success:
         break;
       case ssl_private_key_failure:
-        goto err;
+        return -1;
       case ssl_private_key_retry:
         ssl->rwstate = SSL_PRIVATE_KEY_OPERATION;
-        goto err;
+        return -1;
     }
   }
 
   if (!CBB_did_write(&child, sig_len) ||
-      !ssl_add_message_cbb(ssl, &cbb)) {
-    goto err;
+      !ssl_add_message_cbb(ssl, cbb.get())) {
+    return -1;
   }
 
   /* The handshake buffer is no longer necessary. */
   SSL_TRANSCRIPT_free_buffer(&hs->transcript);
   return 1;
-
-err:
-  CBB_cleanup(&cbb);
-  return -1;
 }
 
 static int ssl3_send_next_proto(SSL_HANDSHAKE *hs) {

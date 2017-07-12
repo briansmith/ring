@@ -800,9 +800,6 @@ static int ssl3_select_certificate(SSL_HANDSHAKE *hs) {
 
 static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  int ret = -1;
-  SSL_SESSION *session = NULL;
-
   SSL_CLIENT_HELLO client_hello;
   if (!ssl_client_hello_init(ssl, &client_hello, ssl->init_msg,
                              ssl->init_num)) {
@@ -811,49 +808,52 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
 
   /* Determine whether we are doing session resumption. */
   int tickets_supported = 0, renew_ticket = 0;
-  switch (ssl_get_prev_session(ssl, &session, &tickets_supported, &renew_ticket,
-                               &client_hello)) {
+  /* TODO(davidben): Switch |ssl_get_prev_session| to take a |bssl::UniquePtr|
+   * output and simplify this. */
+  SSL_SESSION *session_raw = nullptr;
+  auto session_ret = ssl_get_prev_session(ssl, &session_raw, &tickets_supported,
+                                          &renew_ticket, &client_hello);
+  bssl::UniquePtr<SSL_SESSION> session(session_raw);
+  switch (session_ret) {
     case ssl_session_success:
       break;
     case ssl_session_error:
-      goto err;
+      return -1;
     case ssl_session_retry:
       ssl->rwstate = SSL_PENDING_SESSION;
-      goto err;
+      return -1;
     case ssl_session_ticket_retry:
       ssl->rwstate = SSL_PENDING_TICKET;
-      goto err;
+      return -1;
   }
 
-  if (session != NULL) {
+  if (session) {
     if (session->extended_master_secret && !hs->extended_master_secret) {
       /* A ClientHello without EMS that attempts to resume a session with EMS
        * is fatal to the connection. */
       OPENSSL_PUT_ERROR(SSL, SSL_R_RESUMED_EMS_SESSION_WITHOUT_EMS_EXTENSION);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-      goto err;
+      return -1;
     }
 
-    if (!ssl_session_is_resumable(hs, session) ||
+    if (!ssl_session_is_resumable(hs, session.get()) ||
         /* If the client offers the EMS extension, but the previous session
          * didn't use it, then negotiate a new session. */
         hs->extended_master_secret != session->extended_master_secret) {
-      SSL_SESSION_free(session);
-      session = NULL;
+      session.reset();
     }
   }
 
-  if (session != NULL) {
+  if (session) {
     /* Use the old session. */
     hs->ticket_expected = renew_ticket;
-    ssl->session = session;
-    session = NULL;
+    ssl->session = session.release();
     ssl->s3->session_reused = 1;
   } else {
     hs->ticket_expected = tickets_supported;
     ssl_set_session(ssl, NULL);
     if (!ssl_get_new_session(hs, 1 /* server */)) {
-      goto err;
+      return -1;
     }
 
     /* Clear the session ID if we want the session to be single-use. */
@@ -867,7 +867,7 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
     /* Connection rejected for DOS reasons. */
     OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    goto err;
+    return -1;
   }
 
   if (ssl->session == NULL) {
@@ -879,7 +879,7 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
       hs->new_session->tlsext_hostname = BUF_strdup(hs->hostname);
       if (hs->new_session->tlsext_hostname == NULL) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-        goto err;
+        return -1;
       }
     }
 
@@ -907,7 +907,7 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
   uint8_t alert = SSL_AD_DECODE_ERROR;
   if (!ssl_negotiate_alpn(hs, &alert, &client_hello)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
-    goto err;
+    return -1;
   }
 
   /* Now that all parameters are known, initialize the handshake hash and hash
@@ -916,7 +916,7 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
                                 hs->new_cipher->algorithm_prf) ||
       !ssl_hash_current_message(hs)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    goto err;
+    return -1;
   }
 
   /* Release the handshake buffer if client authentication isn't required. */
@@ -924,11 +924,7 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
     SSL_TRANSCRIPT_free_buffer(&hs->transcript);
   }
 
-  ret = 1;
-
-err:
-  SSL_SESSION_free(session);
-  return ret;
+  return 1;
 }
 
 static int ssl3_send_server_hello(SSL_HANDSHAKE *hs) {
@@ -988,32 +984,30 @@ static int ssl3_send_server_hello(SSL_HANDSHAKE *hs) {
 
 static int ssl3_send_server_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  int ret = -1;
-  CBB cbb;
-  CBB_zero(&cbb);
+  bssl::ScopedCBB cbb;
 
   if (ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
     if (!ssl_has_certificate(ssl)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
-      goto err;
+      return -1;
     }
 
     if (!ssl3_output_cert_chain(ssl)) {
-      goto err;
+      return -1;
     }
 
     if (hs->certificate_status_expected) {
       CBB body, ocsp_response;
-      if (!ssl->method->init_message(ssl, &cbb, &body,
+      if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                      SSL3_MT_CERTIFICATE_STATUS) ||
           !CBB_add_u8(&body, TLSEXT_STATUSTYPE_ocsp) ||
           !CBB_add_u24_length_prefixed(&body, &ocsp_response) ||
           !CBB_add_bytes(&ocsp_response,
                          CRYPTO_BUFFER_data(ssl->cert->ocsp_response),
                          CRYPTO_BUFFER_len(ssl->cert->ocsp_response)) ||
-          !ssl_add_message_cbb(ssl, &cbb)) {
+          !ssl_add_message_cbb(ssl, cbb.get())) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-        goto err;
+        return -1;
       }
     }
   }
@@ -1027,20 +1021,20 @@ static int ssl3_send_server_certificate(SSL_HANDSHAKE *hs) {
     /* Pre-allocate enough room to comfortably fit an ECDHE public key. Prepend
      * the client and server randoms for the signing transcript. */
     CBB child;
-    if (!CBB_init(&cbb, SSL3_RANDOM_SIZE * 2 + 128) ||
-        !CBB_add_bytes(&cbb, ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
-        !CBB_add_bytes(&cbb, ssl->s3->server_random, SSL3_RANDOM_SIZE)) {
-      goto err;
+    if (!CBB_init(cbb.get(), SSL3_RANDOM_SIZE * 2 + 128) ||
+        !CBB_add_bytes(cbb.get(), ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
+        !CBB_add_bytes(cbb.get(), ssl->s3->server_random, SSL3_RANDOM_SIZE)) {
+      return -1;
     }
 
     /* PSK ciphers begin with an identity hint. */
     if (alg_a & SSL_aPSK) {
       size_t len =
           (ssl->psk_identity_hint == NULL) ? 0 : strlen(ssl->psk_identity_hint);
-      if (!CBB_add_u16_length_prefixed(&cbb, &child) ||
+      if (!CBB_add_u16_length_prefixed(cbb.get(), &child) ||
           !CBB_add_bytes(&child, (const uint8_t *)ssl->psk_identity_hint,
                          len)) {
-        goto err;
+        return -1;
       }
     }
 
@@ -1050,32 +1044,28 @@ static int ssl3_send_server_certificate(SSL_HANDSHAKE *hs) {
       if (!tls1_get_shared_group(hs, &group_id)) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-        goto err;
-      }
+        return -1;
+       }
       hs->new_session->group_id = group_id;
 
       /* Set up ECDH, generate a key, and emit the public half. */
       if (!SSL_ECDH_CTX_init(&hs->ecdh_ctx, group_id) ||
-          !CBB_add_u8(&cbb, NAMED_CURVE_TYPE) ||
-          !CBB_add_u16(&cbb, group_id) ||
-          !CBB_add_u8_length_prefixed(&cbb, &child) ||
+          !CBB_add_u8(cbb.get(), NAMED_CURVE_TYPE) ||
+          !CBB_add_u16(cbb.get(), group_id) ||
+          !CBB_add_u8_length_prefixed(cbb.get(), &child) ||
           !SSL_ECDH_CTX_offer(&hs->ecdh_ctx, &child)) {
-        goto err;
+        return -1;
       }
     } else {
       assert(alg_k & SSL_kPSK);
     }
 
-    if (!CBB_finish(&cbb, &hs->server_params, &hs->server_params_len)) {
-      goto err;
+    if (!CBB_finish(cbb.get(), &hs->server_params, &hs->server_params_len)) {
+      return -1;
     }
   }
 
-  ret = 1;
-
-err:
-  CBB_cleanup(&cbb);
-  return ret;
+  return 1;
 }
 
 static int ssl3_send_server_key_exchange(SSL_HANDSHAKE *hs) {
@@ -1348,7 +1338,7 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     /* Allocate a buffer large enough for an RSA decryption. */
     const size_t rsa_size = EVP_PKEY_size(hs->local_pubkey);
-    decrypt_buf = OPENSSL_malloc(rsa_size);
+    decrypt_buf = (uint8_t *)OPENSSL_malloc(rsa_size);
     if (decrypt_buf == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
@@ -1379,7 +1369,7 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {
     /* Prepare a random premaster, to be used on invalid padding. See RFC 5246,
      * section 7.4.7.1. */
     premaster_secret_len = SSL_MAX_MASTER_KEY_LENGTH;
-    premaster_secret = OPENSSL_malloc(premaster_secret_len);
+    premaster_secret = (uint8_t *)OPENSSL_malloc(premaster_secret_len);
     if (premaster_secret == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
@@ -1476,7 +1466,7 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {
       /* In plain PSK, other_secret is a block of 0s with the same length as the
        * pre-shared key. */
       premaster_secret_len = psk_len;
-      premaster_secret = OPENSSL_malloc(premaster_secret_len);
+      premaster_secret = (uint8_t *)OPENSSL_malloc(premaster_secret_len);
       if (premaster_secret == NULL) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         goto err;
