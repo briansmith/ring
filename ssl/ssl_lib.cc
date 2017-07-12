@@ -234,7 +234,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
     return NULL;
   }
 
-  ret = OPENSSL_malloc(sizeof(SSL_CTX));
+  ret = (SSL_CTX *)OPENSSL_malloc(sizeof(SSL_CTX));
   if (ret == NULL) {
     goto err;
   }
@@ -365,7 +365,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
     return NULL;
   }
 
-  SSL *ssl = OPENSSL_malloc(sizeof(SSL));
+  SSL *ssl = (SSL *)OPENSSL_malloc(sizeof(SSL));
   if (ssl == NULL) {
     goto err;
   }
@@ -408,8 +408,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
   }
 
   if (ctx->supported_group_list) {
-    ssl->supported_group_list = BUF_memdup(ctx->supported_group_list,
-                                           ctx->supported_group_list_len * 2);
+    ssl->supported_group_list = (uint16_t *)BUF_memdup(
+        ctx->supported_group_list, ctx->supported_group_list_len * 2);
     if (!ssl->supported_group_list) {
       goto err;
     }
@@ -417,8 +417,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
   }
 
   if (ctx->alpn_client_proto_list) {
-    ssl->alpn_client_proto_list = BUF_memdup(ctx->alpn_client_proto_list,
-                                             ctx->alpn_client_proto_list_len);
+    ssl->alpn_client_proto_list = (uint8_t *)BUF_memdup(
+        ctx->alpn_client_proto_list, ctx->alpn_client_proto_list_len);
     if (ssl->alpn_client_proto_list == NULL) {
       goto err;
     }
@@ -720,7 +720,8 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
     }
 
     int got_handshake;
-    int ret = ssl->method->read_app_data(ssl, &got_handshake, buf, num, peek);
+    int ret = ssl->method->read_app_data(ssl, &got_handshake, (uint8_t *)buf,
+                                         num, peek);
     if (ret > 0 || !got_handshake) {
       ssl->s3->key_update_count = 0;
       return ret;
@@ -775,7 +776,8 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
       }
     }
 
-    ret = ssl->method->write_app_data(ssl, &needs_handshake, buf, num);
+    ret = ssl->method->write_app_data(ssl, &needs_handshake,
+                                      (const uint8_t *)buf, num);
   } while (needs_handshake);
   return ret;
 }
@@ -1041,11 +1043,14 @@ void SSL_CTX_set0_buffer_pool(SSL_CTX *ctx, CRYPTO_BUFFER_POOL *pool) {
 
 int SSL_get_tls_unique(const SSL *ssl, uint8_t *out, size_t *out_len,
                        size_t max_out) {
+  *out_len = 0;
+  OPENSSL_memset(out, 0, max_out);
+
   /* tls-unique is not defined for SSL 3.0 or TLS 1.3. */
   if (!ssl->s3->initial_handshake_complete ||
       ssl3_protocol_version(ssl) < TLS1_VERSION ||
       ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
-    goto err;
+    return 0;
   }
 
   /* The tls-unique value is the first Finished message in the handshake, which
@@ -1056,7 +1061,7 @@ int SSL_get_tls_unique(const SSL *ssl, uint8_t *out, size_t *out_len,
   if (ssl->session != NULL) {
     /* tls-unique is broken for resumed sessions unless EMS is used. */
     if (!ssl->session->extended_master_secret) {
-      goto err;
+      return 0;
     }
     finished = ssl->s3->previous_server_finished;
     finished_len = ssl->s3->previous_server_finished_len;
@@ -1069,11 +1074,6 @@ int SSL_get_tls_unique(const SSL *ssl, uint8_t *out, size_t *out_len,
 
   OPENSSL_memcpy(out, finished, *out_len);
   return 1;
-
-err:
-  *out_len = 0;
-  OPENSSL_memset(out, 0, max_out);
-  return 0;
 }
 
 static int set_session_id_context(CERT *cert, const uint8_t *sid_ctx,
@@ -1392,7 +1392,7 @@ int SSL_CTX_get_tlsext_ticket_keys(SSL_CTX *ctx, void *out, size_t len) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_TICKET_KEYS_LENGTH);
     return 0;
   }
-  uint8_t *out_bytes = out;
+  uint8_t *out_bytes = reinterpret_cast<uint8_t *>(out);
   OPENSSL_memcpy(out_bytes, ctx->tlsext_tick_key_name, 16);
   OPENSSL_memcpy(out_bytes + 16, ctx->tlsext_tick_hmac_key, 16);
   OPENSSL_memcpy(out_bytes + 32, ctx->tlsext_tick_aes_key, 16);
@@ -1407,7 +1407,7 @@ int SSL_CTX_set_tlsext_ticket_keys(SSL_CTX *ctx, const void *in, size_t len) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_TICKET_KEYS_LENGTH);
     return 0;
   }
-  const uint8_t *in_bytes = in;
+  const uint8_t *in_bytes = reinterpret_cast<const uint8_t *>(in);
   OPENSSL_memcpy(ctx->tlsext_tick_key_name, in_bytes, 16);
   OPENSSL_memcpy(ctx->tlsext_tick_hmac_key, in_bytes + 16, 16);
   OPENSSL_memcpy(ctx->tlsext_tick_aes_key, in_bytes + 32, 16);
@@ -1691,7 +1691,7 @@ void SSL_CTX_set_next_proto_select_cb(
 int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
                             unsigned protos_len) {
   OPENSSL_free(ctx->alpn_client_proto_list);
-  ctx->alpn_client_proto_list = BUF_memdup(protos, protos_len);
+  ctx->alpn_client_proto_list = (uint8_t *)BUF_memdup(protos, protos_len);
   if (!ctx->alpn_client_proto_list) {
     return 1;
   }
@@ -1702,7 +1702,7 @@ int SSL_CTX_set_alpn_protos(SSL_CTX *ctx, const uint8_t *protos,
 
 int SSL_set_alpn_protos(SSL *ssl, const uint8_t *protos, unsigned protos_len) {
   OPENSSL_free(ssl->alpn_client_proto_list);
-  ssl->alpn_client_proto_list = BUF_memdup(protos, protos_len);
+  ssl->alpn_client_proto_list = (uint8_t *)BUF_memdup(protos, protos_len);
   if (!ssl->alpn_client_proto_list) {
     return 1;
   }

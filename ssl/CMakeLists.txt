@@ -16,14 +16,14 @@ add_library(
   s3_both.cc
   s3_lib.cc
   s3_pkt.cc
-  ssl_aead_ctx.c
+  ssl_aead_ctx.cc
   ssl_asn1.cc
   ssl_buffer.cc
   ssl_cert.cc
   ssl_cipher.cc
   ssl_ecdh.cc
-  ssl_file.c
-  ssl_lib.c
+  ssl_file.cc
+  ssl_lib.cc
   ssl_privkey.c
   ssl_privkey_cc.cc
   ssl_session.c
