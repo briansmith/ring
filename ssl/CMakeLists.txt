@@ -18,9 +18,9 @@ add_library(
   s3_pkt.cc
   ssl_aead_ctx.c
   ssl_asn1.cc
-  ssl_buffer.c
-  ssl_cert.c
-  ssl_cipher.c
+  ssl_buffer.cc
+  ssl_cert.cc
+  ssl_cipher.cc
   ssl_ecdh.c
   ssl_file.c
   ssl_lib.c

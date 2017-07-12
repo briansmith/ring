@@ -631,8 +631,8 @@ static const CIPHER_ALIAS kCipherAliases[] = {
 static const size_t kCipherAliasesLen = OPENSSL_ARRAY_SIZE(kCipherAliases);
 
 static int ssl_cipher_id_cmp(const void *in_a, const void *in_b) {
-  const SSL_CIPHER *a = in_a;
-  const SSL_CIPHER *b = in_b;
+  const SSL_CIPHER *a = reinterpret_cast<const SSL_CIPHER *>(in_a);
+  const SSL_CIPHER *b = reinterpret_cast<const SSL_CIPHER *>(in_b);
 
   if (a->id > b->id) {
     return 1;
@@ -647,8 +647,8 @@ const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
   SSL_CIPHER c;
 
   c.id = 0x03000000L | value;
-  return bsearch(&c, kCiphers, kCiphersLen, sizeof(SSL_CIPHER),
-                 ssl_cipher_id_cmp);
+  return reinterpret_cast<const SSL_CIPHER *>(bsearch(
+      &c, kCiphers, kCiphersLen, sizeof(SSL_CIPHER), ssl_cipher_id_cmp));
 }
 
 int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
@@ -1001,7 +1001,7 @@ static int ssl_cipher_strength_sort(CIPHER_ORDER **head_p,
     curr = curr->next;
   }
 
-  number_uses = OPENSSL_malloc((max_strength_bits + 1) * sizeof(int));
+  number_uses = (int *)OPENSSL_malloc((max_strength_bits + 1) * sizeof(int));
   if (!number_uses) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
@@ -1227,7 +1227,7 @@ int ssl_create_cipher_list(
   /* Now we have to collect the available ciphers from the compiled in ciphers.
    * We cannot get more than the number compiled in, so it is used for
    * allocation. */
-  co_list = OPENSSL_malloc(sizeof(CIPHER_ORDER) * kCiphersLen);
+  co_list = (CIPHER_ORDER *)OPENSSL_malloc(sizeof(CIPHER_ORDER) * kCiphersLen);
   if (co_list == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
@@ -1314,7 +1314,7 @@ int ssl_create_cipher_list(
     goto err;
   }
 
-  in_group_flags = OPENSSL_malloc(kCiphersLen);
+  in_group_flags = (uint8_t *)OPENSSL_malloc(kCiphersLen);
   if (!in_group_flags) {
     goto err;
   }
@@ -1332,12 +1332,13 @@ int ssl_create_cipher_list(
   OPENSSL_free(co_list); /* Not needed any longer */
   co_list = NULL;
 
-  pref_list = OPENSSL_malloc(sizeof(struct ssl_cipher_preference_list_st));
+  pref_list = (ssl_cipher_preference_list_st *)OPENSSL_malloc(
+      sizeof(struct ssl_cipher_preference_list_st));
   if (!pref_list) {
     goto err;
   }
   pref_list->ciphers = cipherstack;
-  pref_list->in_group_flags = OPENSSL_malloc(num_in_group_flags);
+  pref_list->in_group_flags = (uint8_t *)OPENSSL_malloc(num_in_group_flags);
   if (!pref_list->in_group_flags) {
     goto err;
   }
@@ -1672,7 +1673,7 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
 
   if (buf == NULL) {
     len = 128;
-    buf = OPENSSL_malloc(len);
+    buf = (char *)OPENSSL_malloc(len);
     if (buf == NULL) {
       return NULL;
     }

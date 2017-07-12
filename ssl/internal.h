@@ -217,38 +217,38 @@ uint16_t ssl3_protocol_version(const SSL *ssl);
 /* Cipher suites. */
 
 /* Bits for |algorithm_mkey| (key exchange algorithm). */
-#define SSL_kRSA 0x00000001L
-#define SSL_kECDHE 0x00000002L
+#define SSL_kRSA 0x00000001u
+#define SSL_kECDHE 0x00000002u
 /* SSL_kPSK is only set for plain PSK, not ECDHE_PSK. */
-#define SSL_kPSK 0x00000004L
-#define SSL_kGENERIC 0x00000008L
+#define SSL_kPSK 0x00000004u
+#define SSL_kGENERIC 0x00000008u
 
 /* Bits for |algorithm_auth| (server authentication). */
-#define SSL_aRSA 0x00000001L
-#define SSL_aECDSA 0x00000002L
+#define SSL_aRSA 0x00000001u
+#define SSL_aECDSA 0x00000002u
 /* SSL_aPSK is set for both PSK and ECDHE_PSK. */
-#define SSL_aPSK 0x00000004L
-#define SSL_aGENERIC 0x00000008L
+#define SSL_aPSK 0x00000004u
+#define SSL_aGENERIC 0x00000008u
 
 #define SSL_aCERT (SSL_aRSA | SSL_aECDSA)
 
 /* Bits for |algorithm_enc| (symmetric encryption). */
-#define SSL_3DES                 0x00000001L
-#define SSL_AES128               0x00000002L
-#define SSL_AES256               0x00000004L
-#define SSL_AES128GCM            0x00000008L
-#define SSL_AES256GCM            0x00000010L
-#define SSL_eNULL                0x00000020L
-#define SSL_CHACHA20POLY1305     0x00000040L
+#define SSL_3DES                 0x00000001u
+#define SSL_AES128               0x00000002u
+#define SSL_AES256               0x00000004u
+#define SSL_AES128GCM            0x00000008u
+#define SSL_AES256GCM            0x00000010u
+#define SSL_eNULL                0x00000020u
+#define SSL_CHACHA20POLY1305     0x00000040u
 
 #define SSL_AES (SSL_AES128 | SSL_AES256 | SSL_AES128GCM | SSL_AES256GCM)
 
 /* Bits for |algorithm_mac| (symmetric authentication). */
-#define SSL_SHA1 0x00000001L
-#define SSL_SHA256 0x00000002L
-#define SSL_SHA384 0x00000004L
+#define SSL_SHA1 0x00000001u
+#define SSL_SHA256 0x00000002u
+#define SSL_SHA384 0x00000004u
 /* SSL_AEAD is set for all AEADs. */
-#define SSL_AEAD 0x00000008L
+#define SSL_AEAD 0x00000008u
 
 /* Bits for |algorithm_prf| (handshake digest). */
 #define SSL_HANDSHAKE_MAC_DEFAULT 0x1

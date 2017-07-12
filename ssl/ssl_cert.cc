@@ -132,7 +132,7 @@
 
 
 CERT *ssl_cert_new(const SSL_X509_METHOD *x509_method) {
-  CERT *ret = OPENSSL_malloc(sizeof(CERT));
+  CERT *ret = (CERT *)OPENSSL_malloc(sizeof(CERT));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
@@ -149,7 +149,7 @@ static CRYPTO_BUFFER *buffer_up_ref(CRYPTO_BUFFER *buffer) {
 }
 
 CERT *ssl_cert_dup(CERT *cert) {
-  CERT *ret = OPENSSL_malloc(sizeof(CERT));
+  CERT *ret = (CERT *)OPENSSL_malloc(sizeof(CERT));
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return NULL;
@@ -168,8 +168,8 @@ CERT *ssl_cert_dup(CERT *cert) {
   ret->x509_method = cert->x509_method;
 
   if (cert->sigalgs != NULL) {
-    ret->sigalgs =
-        BUF_memdup(cert->sigalgs, cert->num_sigalgs * sizeof(cert->sigalgs[0]));
+    ret->sigalgs = (uint16_t *)BUF_memdup(
+        cert->sigalgs, cert->num_sigalgs * sizeof(cert->sigalgs[0]));
     if (ret->sigalgs == NULL) {
       goto err;
     }
@@ -496,7 +496,8 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
 
   CBB certs;
   if (!CBB_add_u24_length_prefixed(cbb, &certs)) {
-    goto err;
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
   }
 
   STACK_OF(CRYPTO_BUFFER) *chain = ssl->cert->chain;
@@ -507,15 +508,12 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
         !CBB_add_bytes(&child, CRYPTO_BUFFER_data(buffer),
                        CRYPTO_BUFFER_len(buffer)) ||
         !CBB_flush(&certs)) {
-      goto err;
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return 0;
     }
   }
 
   return CBB_flush(cbb);
-
-err:
-  OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-  return 0;
 }
 
 /* ssl_cert_skip_to_spki parses a DER-encoded, X.509 certificate from |in| and

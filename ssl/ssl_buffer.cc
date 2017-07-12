@@ -47,7 +47,7 @@ static int ensure_buffer(SSL3_BUFFER *buf, size_t header_len, size_t cap) {
   }
 
   /* Add up to |SSL3_ALIGN_PAYLOAD| - 1 bytes of slack for alignment. */
-  uint8_t *new_buf = OPENSSL_malloc(cap + SSL3_ALIGN_PAYLOAD - 1);
+  uint8_t *new_buf = (uint8_t *)OPENSSL_malloc(cap + SSL3_ALIGN_PAYLOAD - 1);
   if (new_buf == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
