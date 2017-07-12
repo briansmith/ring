@@ -365,7 +365,7 @@ static int tls1_setup_key_block(SSL_HANDSHAKE *hs) {
 
   size_t key_block_len = SSL_get_key_block_len(ssl);
 
-  uint8_t *keyblock = OPENSSL_malloc(key_block_len);
+  uint8_t *keyblock = (uint8_t *)OPENSSL_malloc(key_block_len);
   if (keyblock == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
@@ -533,7 +533,7 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
     }
     seed_len += 2 + context_len;
   }
-  uint8_t *seed = OPENSSL_malloc(seed_len);
+  uint8_t *seed = (uint8_t *)OPENSSL_malloc(seed_len);
   if (seed == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;

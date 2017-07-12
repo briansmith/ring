@@ -25,14 +25,14 @@ add_library(
   ssl_file.cc
   ssl_lib.cc
   ssl_privkey.cc
-  ssl_session.c
-  ssl_stat.c
-  ssl_transcript.c
-  ssl_versions.c
+  ssl_session.cc
+  ssl_stat.cc
+  ssl_transcript.cc
+  ssl_versions.cc
   ssl_x509.cc
-  t1_enc.c
+  t1_enc.cc
   t1_lib.c
-  tls_method.c
+  tls_method.cc
   tls_record.c
   tls13_both.c
   tls13_client.c

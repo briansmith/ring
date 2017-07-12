@@ -161,7 +161,7 @@ static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *session);
 static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *session, int lock);
 
 SSL_SESSION *ssl_session_new(const SSL_X509_METHOD *x509_method) {
-  SSL_SESSION *session = OPENSSL_malloc(sizeof(SSL_SESSION));
+  SSL_SESSION *session = (SSL_SESSION *)OPENSSL_malloc(sizeof(SSL_SESSION));
   if (session == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
@@ -228,8 +228,8 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
 
   new_session->ocsp_response_length = session->ocsp_response_length;
   if (session->ocsp_response != NULL) {
-    new_session->ocsp_response = BUF_memdup(session->ocsp_response,
-                                            session->ocsp_response_length);
+    new_session->ocsp_response = (uint8_t *)BUF_memdup(
+        session->ocsp_response, session->ocsp_response_length);
     if (new_session->ocsp_response == NULL) {
       goto err;
     }
@@ -238,9 +238,9 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
   new_session->tlsext_signed_cert_timestamp_list_length =
       session->tlsext_signed_cert_timestamp_list_length;
   if (session->tlsext_signed_cert_timestamp_list != NULL) {
-    new_session->tlsext_signed_cert_timestamp_list =
-        BUF_memdup(session->tlsext_signed_cert_timestamp_list,
-                   session->tlsext_signed_cert_timestamp_list_length);
+    new_session->tlsext_signed_cert_timestamp_list = (uint8_t *)BUF_memdup(
+        session->tlsext_signed_cert_timestamp_list,
+        session->tlsext_signed_cert_timestamp_list_length);
     if (new_session->tlsext_signed_cert_timestamp_list == NULL) {
       goto err;
     }
@@ -283,7 +283,7 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
 
     if (session->early_alpn != NULL) {
       new_session->early_alpn =
-          BUF_memdup(session->early_alpn, session->early_alpn_len);
+          (uint8_t *)BUF_memdup(session->early_alpn, session->early_alpn_len);
       if (new_session->early_alpn == NULL) {
         goto err;
       }
@@ -295,7 +295,7 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
   if (dup_flags & SSL_SESSION_INCLUDE_TICKET) {
     if (session->tlsext_tick != NULL) {
       new_session->tlsext_tick =
-          BUF_memdup(session->tlsext_tick, session->tlsext_ticklen);
+          (uint8_t *)BUF_memdup(session->tlsext_tick, session->tlsext_ticklen);
       if (new_session->tlsext_tick == NULL) {
         goto err;
       }
@@ -595,12 +595,8 @@ err:
 static int ssl_encrypt_ticket_with_cipher_ctx(SSL *ssl, CBB *out,
                                               const uint8_t *session_buf,
                                               size_t session_len) {
-  int ret = 0;
-
-  EVP_CIPHER_CTX ctx;
-  EVP_CIPHER_CTX_init(&ctx);
-  HMAC_CTX hctx;
-  HMAC_CTX_init(&hctx);
+  bssl::ScopedEVP_CIPHER_CTX ctx;
+  bssl::ScopedHMAC_CTX hctx;
 
   /* If the session is too long, emit a dummy value rather than abort the
    * connection. */
@@ -608,11 +604,8 @@ static int ssl_encrypt_ticket_with_cipher_ctx(SSL *ssl, CBB *out,
       16 + EVP_MAX_IV_LENGTH + EVP_MAX_BLOCK_LENGTH + EVP_MAX_MD_SIZE;
   if (session_len > 0xffff - kMaxTicketOverhead) {
     static const char kTicketPlaceholder[] = "TICKET TOO LARGE";
-    if (CBB_add_bytes(out, (const uint8_t *)kTicketPlaceholder,
-                      strlen(kTicketPlaceholder))) {
-      ret = 1;
-    }
-    goto err;
+    return CBB_add_bytes(out, (const uint8_t *)kTicketPlaceholder,
+                         strlen(kTicketPlaceholder));
   }
 
   /* Initialize HMAC and cipher contexts. If callback present it does all the
@@ -621,26 +614,26 @@ static int ssl_encrypt_ticket_with_cipher_ctx(SSL *ssl, CBB *out,
   uint8_t iv[EVP_MAX_IV_LENGTH];
   uint8_t key_name[16];
   if (tctx->tlsext_ticket_key_cb != NULL) {
-    if (tctx->tlsext_ticket_key_cb(ssl, key_name, iv, &ctx, &hctx,
+    if (tctx->tlsext_ticket_key_cb(ssl, key_name, iv, ctx.get(), hctx.get(),
                                    1 /* encrypt */) < 0) {
-      goto err;
+      return 0;
     }
   } else {
     if (!RAND_bytes(iv, 16) ||
-        !EVP_EncryptInit_ex(&ctx, EVP_aes_128_cbc(), NULL,
+        !EVP_EncryptInit_ex(ctx.get(), EVP_aes_128_cbc(), NULL,
                             tctx->tlsext_tick_aes_key, iv) ||
-        !HMAC_Init_ex(&hctx, tctx->tlsext_tick_hmac_key, 16, tlsext_tick_md(),
-                      NULL)) {
-      goto err;
+        !HMAC_Init_ex(hctx.get(), tctx->tlsext_tick_hmac_key, 16,
+                      tlsext_tick_md(), NULL)) {
+      return 0;
     }
     OPENSSL_memcpy(key_name, tctx->tlsext_tick_key_name, 16);
   }
 
   uint8_t *ptr;
   if (!CBB_add_bytes(out, key_name, 16) ||
-      !CBB_add_bytes(out, iv, EVP_CIPHER_CTX_iv_length(&ctx)) ||
+      !CBB_add_bytes(out, iv, EVP_CIPHER_CTX_iv_length(ctx.get())) ||
       !CBB_reserve(out, &ptr, session_len + EVP_MAX_BLOCK_LENGTH)) {
-    goto err;
+    return 0;
   }
 
   size_t total = 0;
@@ -649,33 +642,28 @@ static int ssl_encrypt_ticket_with_cipher_ctx(SSL *ssl, CBB *out,
   total = session_len;
 #else
   int len;
-  if (!EVP_EncryptUpdate(&ctx, ptr + total, &len, session_buf, session_len)) {
-    goto err;
+  if (!EVP_EncryptUpdate(ctx.get(), ptr + total, &len, session_buf, session_len)) {
+    return 0;
   }
   total += len;
-  if (!EVP_EncryptFinal_ex(&ctx, ptr + total, &len)) {
-    goto err;
+  if (!EVP_EncryptFinal_ex(ctx.get(), ptr + total, &len)) {
+    return 0;
   }
   total += len;
 #endif
   if (!CBB_did_write(out, total)) {
-    goto err;
+    return 0;
   }
 
   unsigned hlen;
-  if (!HMAC_Update(&hctx, CBB_data(out), CBB_len(out)) ||
+  if (!HMAC_Update(hctx.get(), CBB_data(out), CBB_len(out)) ||
       !CBB_reserve(out, &ptr, EVP_MAX_MD_SIZE) ||
-      !HMAC_Final(&hctx, ptr, &hlen) ||
+      !HMAC_Final(hctx.get(), ptr, &hlen) ||
       !CBB_did_write(out, hlen)) {
-    goto err;
+    return 0;
   }
 
-  ret = 1;
-
-err:
-  EVP_CIPHER_CTX_cleanup(&ctx);
-  HMAC_CTX_cleanup(&hctx);
-  return ret;
+  return 1;
 }
 
 static int ssl_encrypt_ticket_with_method(SSL *ssl, CBB *out,
@@ -1027,7 +1015,7 @@ typedef struct timeout_param_st {
 } TIMEOUT_PARAM;
 
 static void timeout_doall_arg(SSL_SESSION *session, void *void_param) {
-  TIMEOUT_PARAM *param = void_param;
+  TIMEOUT_PARAM *param = reinterpret_cast<TIMEOUT_PARAM *>(void_param);
 
   if (param->time == 0 ||
       session->time + session->timeout < session->time ||
