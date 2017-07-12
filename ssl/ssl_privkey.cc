@@ -119,6 +119,16 @@ int SSL_use_RSAPrivateKey(SSL *ssl, RSA *rsa) {
   return ret;
 }
 
+int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
+  bssl::UniquePtr<RSA> rsa(RSA_private_key_from_bytes(der, der_len));
+  if (!rsa) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
+    return 0;
+  }
+
+  return SSL_use_RSAPrivateKey(ssl, rsa.get());
+}
+
 int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey) {
   if (pkey == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
@@ -228,7 +238,7 @@ static int set_algorithm_prefs(uint16_t **out_prefs, size_t *out_num_prefs,
   OPENSSL_free(*out_prefs);
 
   *out_num_prefs = 0;
-  *out_prefs = BUF_memdup(prefs, num_prefs * sizeof(prefs[0]));
+  *out_prefs = (uint16_t *)BUF_memdup(prefs, num_prefs * sizeof(prefs[0]));
   if (*out_prefs == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
@@ -265,7 +275,8 @@ int SSL_set_private_key_digest_prefs(SSL *ssl, const int *digest_nids,
                          digest_list_conversion_cannot_overflow);
 
   ssl->cert->num_sigalgs = 0;
-  ssl->cert->sigalgs = OPENSSL_malloc(sizeof(uint16_t) * 2 * num_digests);
+  ssl->cert->sigalgs =
+      (uint16_t *)OPENSSL_malloc(sizeof(uint16_t) * 2 * num_digests);
   if (ssl->cert->sigalgs == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;

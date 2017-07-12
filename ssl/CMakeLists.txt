@@ -24,8 +24,7 @@ add_library(
   ssl_ecdh.cc
   ssl_file.cc
   ssl_lib.cc
-  ssl_privkey.c
-  ssl_privkey_cc.cc
+  ssl_privkey.cc
   ssl_session.c
   ssl_stat.c
   ssl_transcript.c
