@@ -938,6 +938,7 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 #if defined(__cplusplus)
 }  /* extern C */
 
+#if !defined(OPENSSL_NO_CXX)
 extern "C++" {
 
 namespace bssl {
@@ -946,9 +947,22 @@ BORINGSSL_MAKE_DELETER(BIGNUM, BN_free)
 BORINGSSL_MAKE_DELETER(BN_CTX, BN_CTX_free)
 BORINGSSL_MAKE_DELETER(BN_MONT_CTX, BN_MONT_CTX_free)
 
+class BN_CTXScope {
+ public:
+  BN_CTXScope(BN_CTX *ctx) : ctx_(ctx) { BN_CTX_start(ctx_); }
+  ~BN_CTXScope() { BN_CTX_end(ctx_); }
+
+ private:
+  BN_CTX *ctx_;
+
+  BN_CTXScope(BN_CTXScope &) = delete;
+  BN_CTXScope &operator=(BN_CTXScope &) = delete;
+};
+
 }  // namespace bssl
 
 }  /* extern C++ */
+#endif
 
 #endif
 

@@ -21,7 +21,7 @@ add_library(
   ssl_buffer.cc
   ssl_cert.cc
   ssl_cipher.cc
-  ssl_ecdh.c
+  ssl_ecdh.cc
   ssl_file.c
   ssl_lib.c
   ssl_privkey.c

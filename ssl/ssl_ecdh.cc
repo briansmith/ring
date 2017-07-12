@@ -37,49 +37,35 @@ static void ssl_ec_point_cleanup(SSL_ECDH_CTX *ctx) {
 }
 
 static int ssl_ec_point_offer(SSL_ECDH_CTX *ctx, CBB *out) {
-  assert(ctx->data == NULL);
-  BIGNUM *private_key = BN_new();
-  if (private_key == NULL) {
-    return 0;
-  }
-  ctx->data = private_key;
-
   /* Set up a shared |BN_CTX| for all operations. */
-  BN_CTX *bn_ctx = BN_CTX_new();
-  if (bn_ctx == NULL) {
+  bssl::UniquePtr<BN_CTX> bn_ctx(BN_CTX_new());
+  if (!bn_ctx) {
     return 0;
   }
-  BN_CTX_start(bn_ctx);
-
-  int ret = 0;
-  EC_POINT *public_key = NULL;
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(ctx->method->nid);
-  if (group == NULL) {
-    goto err;
-  }
+  bssl::BN_CTXScope scope(bn_ctx.get());
 
   /* Generate a private key. */
-  if (!BN_rand_range_ex(private_key, 1, EC_GROUP_get0_order(group))) {
-    goto err;
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(ctx->method->nid));
+  bssl::UniquePtr<BIGNUM> private_key(BN_new());
+  if (!group || !private_key ||
+      !BN_rand_range_ex(private_key.get(), 1,
+                        EC_GROUP_get0_order(group.get()))) {
+    return 0;
   }
 
   /* Compute the corresponding public key and serialize it. */
-  public_key = EC_POINT_new(group);
-  if (public_key == NULL ||
-      !EC_POINT_mul(group, public_key, private_key, NULL, NULL, bn_ctx) ||
-      !EC_POINT_point2cbb(out, group, public_key, POINT_CONVERSION_UNCOMPRESSED,
-                          bn_ctx)) {
-    goto err;
+  bssl::UniquePtr<EC_POINT> public_key(EC_POINT_new(group.get()));
+  if (!public_key ||
+      !EC_POINT_mul(group.get(), public_key.get(), private_key.get(), NULL,
+                    NULL, bn_ctx.get()) ||
+      !EC_POINT_point2cbb(out, group.get(), public_key.get(),
+                          POINT_CONVERSION_UNCOMPRESSED, bn_ctx.get())) {
+    return 0;
   }
 
-  ret = 1;
-
-err:
-  EC_GROUP_free(group);
-  EC_POINT_free(public_key);
-  BN_CTX_end(bn_ctx);
-  BN_CTX_free(bn_ctx);
-  return ret;
+  assert(ctx->data == NULL);
+  ctx->data = private_key.release();
+  return 1;
 }
 
 static int ssl_ec_point_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
@@ -90,59 +76,48 @@ static int ssl_ec_point_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
   *out_alert = SSL_AD_INTERNAL_ERROR;
 
   /* Set up a shared |BN_CTX| for all operations. */
-  BN_CTX *bn_ctx = BN_CTX_new();
-  if (bn_ctx == NULL) {
+  bssl::UniquePtr<BN_CTX> bn_ctx(BN_CTX_new());
+  if (!bn_ctx) {
     return 0;
   }
-  BN_CTX_start(bn_ctx);
+  bssl::BN_CTXScope scope(bn_ctx.get());
 
-  int ret = 0;
-  EC_GROUP *group = EC_GROUP_new_by_curve_name(ctx->method->nid);
-  EC_POINT *peer_point = NULL, *result = NULL;
-  uint8_t *secret = NULL;
-  if (group == NULL) {
-    goto err;
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(ctx->method->nid));
+  if (!group) {
+    return 0;
+  }
+
+  bssl::UniquePtr<EC_POINT> peer_point(EC_POINT_new(group.get()));
+  bssl::UniquePtr<EC_POINT> result(EC_POINT_new(group.get()));
+  BIGNUM *x = BN_CTX_get(bn_ctx.get());
+  if (!peer_point || !result || !x) {
+    return 0;
+  }
+
+  if (!EC_POINT_oct2point(group.get(), peer_point.get(), peer_key, peer_key_len,
+                          bn_ctx.get())) {
+    *out_alert = SSL_AD_DECODE_ERROR;
+    return 0;
   }
 
   /* Compute the x-coordinate of |peer_key| * |private_key|. */
-  peer_point = EC_POINT_new(group);
-  result = EC_POINT_new(group);
-  if (peer_point == NULL || result == NULL) {
-    goto err;
-  }
-  BIGNUM *x = BN_CTX_get(bn_ctx);
-  if (x == NULL) {
-    goto err;
-  }
-  if (!EC_POINT_oct2point(group, peer_point, peer_key, peer_key_len, bn_ctx)) {
-    *out_alert = SSL_AD_DECODE_ERROR;
-    goto err;
-  }
-  if (!EC_POINT_mul(group, result, NULL, peer_point, private_key, bn_ctx) ||
-      !EC_POINT_get_affine_coordinates_GFp(group, result, x, NULL, bn_ctx)) {
-    goto err;
+  if (!EC_POINT_mul(group.get(), result.get(), NULL, peer_point.get(),
+                    private_key, bn_ctx.get()) ||
+      !EC_POINT_get_affine_coordinates_GFp(group.get(), result.get(), x, NULL,
+                                           bn_ctx.get())) {
+    return 0;
   }
 
   /* Encode the x-coordinate left-padded with zeros. */
-  size_t secret_len = (EC_GROUP_get_degree(group) + 7) / 8;
-  secret = OPENSSL_malloc(secret_len);
-  if (secret == NULL || !BN_bn2bin_padded(secret, secret_len, x)) {
-    goto err;
+  size_t secret_len = (EC_GROUP_get_degree(group.get()) + 7) / 8;
+  bssl::UniquePtr<uint8_t> secret((uint8_t *)OPENSSL_malloc(secret_len));
+  if (!secret || !BN_bn2bin_padded(secret.get(), secret_len, x)) {
+    return 0;
   }
 
-  *out_secret = secret;
+  *out_secret = secret.release();
   *out_secret_len = secret_len;
-  secret = NULL;
-  ret = 1;
-
-err:
-  EC_GROUP_free(group);
-  EC_POINT_free(peer_point);
-  EC_POINT_free(result);
-  BN_CTX_end(bn_ctx);
-  BN_CTX_free(bn_ctx);
-  OPENSSL_free(secret);
-  return ret;
+  return 1;
 }
 
 static int ssl_ec_point_accept(SSL_ECDH_CTX *ctx, CBB *out_public_key,
@@ -187,7 +162,7 @@ static int ssl_x25519_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
   assert(ctx->data != NULL);
   *out_alert = SSL_AD_INTERNAL_ERROR;
 
-  uint8_t *secret = OPENSSL_malloc(32);
+  uint8_t *secret = (uint8_t *)OPENSSL_malloc(32);
   if (secret == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
