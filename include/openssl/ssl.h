@@ -492,8 +492,7 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 
 /* SSL_ERROR_PENDING_CERTIFICATE indicates the operation failed because the
  * early callback indicated certificate lookup was incomplete. The caller may
- * retry the operation when lookup has completed. Note: when the operation is
- * retried, the early callback will not be called a second time.
+ * retry the operation when lookup has completed.
  *
  * See also |SSL_CTX_set_select_certificate_cb|. */
 #define SSL_ERROR_PENDING_CERTIFICATE 12
