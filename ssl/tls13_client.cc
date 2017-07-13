@@ -382,8 +382,8 @@ static enum ssl_hs_wait_t do_process_encrypted_extensions(SSL_HANDSHAKE *hs) {
 
   /* Store the negotiated ALPN in the session. */
   if (ssl->s3->alpn_selected != NULL) {
-    hs->new_session->early_alpn =
-        BUF_memdup(ssl->s3->alpn_selected, ssl->s3->alpn_selected_len);
+    hs->new_session->early_alpn = (uint8_t *)BUF_memdup(
+        ssl->s3->alpn_selected, ssl->s3->alpn_selected_len);
     if (hs->new_session->early_alpn == NULL) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
@@ -645,7 +645,8 @@ static enum ssl_hs_wait_t do_complete_second_flight(SSL_HANDSHAKE *hs) {
 enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
   while (hs->tls13_state != state_done) {
     enum ssl_hs_wait_t ret = ssl_hs_error;
-    enum client_hs_state_t state = hs->tls13_state;
+    enum client_hs_state_t state =
+        static_cast<enum client_hs_state_t>(hs->tls13_state);
     switch (state) {
       case state_process_hello_retry_request:
         ret = do_process_hello_retry_request(hs);
@@ -703,14 +704,13 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
 }
 
 int tls13_process_new_session_ticket(SSL *ssl) {
-  int ret = 0;
-  SSL_SESSION *session = SSL_SESSION_dup(ssl->s3->established_session,
-                                         SSL_SESSION_INCLUDE_NONAUTH);
-  if (session == NULL) {
+  bssl::UniquePtr<SSL_SESSION> session(SSL_SESSION_dup(
+      ssl->s3->established_session, SSL_SESSION_INCLUDE_NONAUTH));
+  if (!session) {
     return 0;
   }
 
-  ssl_session_rebase_time(ssl, session);
+  ssl_session_rebase_time(ssl, session.get());
 
   uint32_t server_timeout;
   CBS cbs, ticket, extensions;
@@ -723,7 +723,7 @@ int tls13_process_new_session_ticket(SSL *ssl) {
       CBS_len(&cbs) != 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    goto err;
+    return 0;
   }
 
   /* Cap the renewable lifetime by the server advertised value. This avoids
@@ -745,7 +745,7 @@ int tls13_process_new_session_ticket(SSL *ssl) {
                             OPENSSL_ARRAY_SIZE(ext_types),
                             1 /* ignore unknown */)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
-    goto err;
+    return 0;
   }
 
   if (have_early_data_info && ssl->cert->enable_early_data) {
@@ -753,7 +753,7 @@ int tls13_process_new_session_ticket(SSL *ssl) {
         CBS_len(&early_data_info) != 0) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      goto err;
+      return 0;
     }
   }
 
@@ -761,16 +761,12 @@ int tls13_process_new_session_ticket(SSL *ssl) {
   session->not_resumable = 0;
 
   if (ssl->ctx->new_session_cb != NULL &&
-      ssl->ctx->new_session_cb(ssl, session)) {
+      ssl->ctx->new_session_cb(ssl, session.get())) {
     /* |new_session_cb|'s return value signals that it took ownership. */
-    session = NULL;
+    session.release();
   }
 
-  ret = 1;
-
-err:
-  SSL_SESSION_free(session);
-  return ret;
+  return 1;
 }
 
 void ssl_clear_tls13_state(SSL_HANDSHAKE *hs) {

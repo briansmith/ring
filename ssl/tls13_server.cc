@@ -12,6 +12,13 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+/* Per C99, various stdint.h macros are unavailable in C++ unless some macros
+ * are defined. C++11 overruled this decision, but older Android NDKs still
+ * require it. */
+#if !defined(__STDC_LIMIT_MACROS)
+#define __STDC_LIMIT_MACROS
+#endif
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -417,8 +424,8 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
 
   /* Store the initial negotiated ALPN in the session. */
   if (ssl->s3->alpn_selected != NULL) {
-    hs->new_session->early_alpn =
-        BUF_memdup(ssl->s3->alpn_selected, ssl->s3->alpn_selected_len);
+    hs->new_session->early_alpn = (uint8_t *)BUF_memdup(
+        ssl->s3->alpn_selected, ssl->s3->alpn_selected_len);
     if (hs->new_session->early_alpn == NULL) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
@@ -670,7 +677,8 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
      *
      * TODO(davidben): This will need to be updated for DTLS 1.3. */
     assert(!SSL_is_dtls(hs->ssl));
-    uint8_t header[4] = {SSL3_MT_FINISHED, 0, 0, hs->hash_len};
+    assert(hs->hash_len <= 0xff);
+    uint8_t header[4] = {SSL3_MT_FINISHED, 0, 0, static_cast<uint8_t>(hs->hash_len)};
     if (!SSL_TRANSCRIPT_update(&hs->transcript, header, sizeof(header)) ||
         !SSL_TRANSCRIPT_update(&hs->transcript, hs->expected_client_finished,
                                hs->hash_len) ||
@@ -832,7 +840,8 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
 enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs) {
   while (hs->tls13_state != state_done) {
     enum ssl_hs_wait_t ret = ssl_hs_error;
-    enum server_hs_state_t state = hs->tls13_state;
+    enum server_hs_state_t state =
+        static_cast<enum server_hs_state_t>(hs->tls13_state);
     switch (state) {
       case state_select_parameters:
         ret = do_select_parameters(hs);

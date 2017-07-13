@@ -35,9 +35,9 @@ add_library(
   tls_method.cc
   tls_record.cc
   tls13_both.cc
-  tls13_client.c
+  tls13_client.cc
   tls13_enc.cc
-  tls13_server.c
+  tls13_server.cc
 )
 
 target_link_libraries(ssl crypto)
