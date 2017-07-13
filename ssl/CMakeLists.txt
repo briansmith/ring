@@ -31,12 +31,12 @@ add_library(
   ssl_versions.cc
   ssl_x509.cc
   t1_enc.cc
-  t1_lib.c
+  t1_lib.cc
   tls_method.cc
-  tls_record.c
-  tls13_both.c
+  tls_record.cc
+  tls13_both.cc
   tls13_client.c
-  tls13_enc.c
+  tls13_enc.cc
   tls13_server.c
 )
 

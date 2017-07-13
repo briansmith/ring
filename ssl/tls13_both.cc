@@ -373,12 +373,9 @@ err:
 
 int tls13_process_certificate_verify(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  int ret = 0;
-  uint8_t *msg = NULL;
-  size_t msg_len;
-
   if (hs->peer_pubkey == NULL) {
-    goto err;
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
   }
 
   CBS cbs, signature;
@@ -389,22 +386,25 @@ int tls13_process_certificate_verify(SSL_HANDSHAKE *hs) {
       CBS_len(&cbs) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    goto err;
+    return 0;
   }
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
   if (!tls12_check_peer_sigalg(ssl, &alert, signature_algorithm)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
-    goto err;
+    return 0;
   }
   hs->new_session->peer_signature_algorithm = signature_algorithm;
 
+  uint8_t *msg = NULL;
+  size_t msg_len;
   if (!tls13_get_cert_verify_signature_input(
           hs, &msg, &msg_len,
           ssl->server ? ssl_cert_verify_client : ssl_cert_verify_server)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    goto err;
+    return 0;
   }
+  bssl::UniquePtr<uint8_t> free_msg(msg);
 
   int sig_ok =
       ssl_public_key_verify(ssl, CBS_data(&signature), CBS_len(&signature),
@@ -416,14 +416,10 @@ int tls13_process_certificate_verify(SSL_HANDSHAKE *hs) {
   if (!sig_ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SIGNATURE);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
-    goto err;
+    return 0;
   }
 
-  ret = 1;
-
-err:
-  OPENSSL_free(msg);
-  return ret;
+  return 1;
 }
 
 int tls13_process_finished(SSL_HANDSHAKE *hs, int use_saved_value) {
@@ -460,21 +456,18 @@ int tls13_process_finished(SSL_HANDSHAKE *hs, int use_saved_value) {
 
 int tls13_add_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  CBB cbb, body, certificate_list;
-  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CERTIFICATE) ||
+  bssl::ScopedCBB cbb;
+  CBB body, certificate_list;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CERTIFICATE) ||
       /* The request context is always empty in the handshake. */
       !CBB_add_u8(&body, 0) ||
       !CBB_add_u24_length_prefixed(&body, &certificate_list)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    goto err;
+    return 0;
   }
 
   if (!ssl_has_certificate(ssl)) {
-    if (!ssl_add_message_cbb(ssl, &cbb)) {
-      goto err;
-    }
-
-    return 1;
+    return ssl_add_message_cbb(ssl, cbb.get());
   }
 
   CERT *cert = ssl->cert;
@@ -485,7 +478,7 @@ int tls13_add_certificate(SSL_HANDSHAKE *hs) {
                      CRYPTO_BUFFER_len(leaf_buf)) ||
       !CBB_add_u16_length_prefixed(&certificate_list, &extensions)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    goto err;
+    return 0;
   }
 
   if (hs->scts_requested && ssl->cert->signed_cert_timestamp_list != NULL) {
@@ -498,7 +491,7 @@ int tls13_add_certificate(SSL_HANDSHAKE *hs) {
             CRYPTO_BUFFER_len(ssl->cert->signed_cert_timestamp_list)) ||
         !CBB_flush(&extensions)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      goto err;
+      return 0;
     }
   }
 
@@ -514,7 +507,7 @@ int tls13_add_certificate(SSL_HANDSHAKE *hs) {
                        CRYPTO_BUFFER_len(ssl->cert->ocsp_response)) ||
         !CBB_flush(&extensions)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      goto err;
+      return 0;
     }
   }
 
@@ -526,38 +519,27 @@ int tls13_add_certificate(SSL_HANDSHAKE *hs) {
                        CRYPTO_BUFFER_len(cert_buf)) ||
         !CBB_add_u16(&certificate_list, 0 /* no extensions */)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      goto err;
+      return 0;
     }
   }
 
-  if (!ssl_add_message_cbb(ssl, &cbb)) {
-    goto err;
-  }
-
-  return 1;
-
-err:
-  CBB_cleanup(&cbb);
-  return 0;
+  return ssl_add_message_cbb(ssl, cbb.get());
 }
 
 enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  enum ssl_private_key_result_t ret = ssl_private_key_failure;
-  uint8_t *msg = NULL;
-  size_t msg_len;
-  CBB cbb, body;
-  CBB_zero(&cbb);
-
   uint16_t signature_algorithm;
   if (!tls1_choose_signature_algorithm(hs, &signature_algorithm)) {
-    goto err;
+    return ssl_private_key_failure;
   }
-  if (!ssl->method->init_message(ssl, &cbb, &body,
+
+  bssl::ScopedCBB cbb;
+  CBB body;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_CERTIFICATE_VERIFY) ||
       !CBB_add_u16(&body, signature_algorithm)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    goto err;
+    return ssl_private_key_failure;
   }
 
   /* Sign the digest. */
@@ -568,34 +550,31 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs) {
   if (!CBB_add_u16_length_prefixed(&body, &child) ||
       !CBB_reserve(&child, &sig, max_sig_len)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    goto err;
+    return ssl_private_key_failure;
   }
 
+  uint8_t *msg = NULL;
+  size_t msg_len;
   if (!tls13_get_cert_verify_signature_input(
           hs, &msg, &msg_len,
           ssl->server ? ssl_cert_verify_server : ssl_cert_verify_client)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-    goto err;
+    return ssl_private_key_failure;
   }
+  bssl::UniquePtr<uint8_t> free_msg(msg);
 
   enum ssl_private_key_result_t sign_result = ssl_private_key_sign(
       hs, sig, &sig_len, max_sig_len, signature_algorithm, msg, msg_len);
   if (sign_result != ssl_private_key_success) {
-    ret = sign_result;
-    goto err;
+    return sign_result;
   }
 
   if (!CBB_did_write(&child, sig_len) ||
-      !ssl_add_message_cbb(ssl, &cbb)) {
-    goto err;
+      !ssl_add_message_cbb(ssl, cbb.get())) {
+    return ssl_private_key_failure;
   }
 
-  ret = ssl_private_key_success;
-
-err:
-  CBB_cleanup(&cbb);
-  OPENSSL_free(msg);
-  return ret;
+  return ssl_private_key_success;
 }
 
 int tls13_add_finished(SSL_HANDSHAKE *hs) {

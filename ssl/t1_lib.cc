@@ -168,7 +168,8 @@ static int tls1_check_duplicate_extensions(const CBS *cbs) {
     return 1;
   }
 
-  extension_types = OPENSSL_malloc(sizeof(uint16_t) * num_extensions);
+  extension_types =
+      (uint16_t *)OPENSSL_malloc(sizeof(uint16_t) * num_extensions);
   if (extension_types == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto done;
@@ -362,9 +363,7 @@ int tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id) {
 
 int tls1_set_curves(uint16_t **out_group_ids, size_t *out_group_ids_len,
                     const int *curves, size_t ncurves) {
-  uint16_t *group_ids;
-
-  group_ids = OPENSSL_malloc(ncurves * sizeof(uint16_t));
+  uint16_t *group_ids = (uint16_t *)OPENSSL_malloc(ncurves * sizeof(uint16_t));
   if (group_ids == NULL) {
     return 0;
   }
@@ -400,8 +399,8 @@ int tls1_set_curves_list(uint16_t **out_group_ids, size_t *out_group_ids_len,
       goto err;
     }
 
-    uint16_t *new_group_ids = OPENSSL_realloc(group_ids,
-                                              (ncurves + 1) * sizeof(uint16_t));
+    uint16_t *new_group_ids = (uint16_t *)OPENSSL_realloc(
+        group_ids, (ncurves + 1) * sizeof(uint16_t));
     if (new_group_ids == NULL) {
       goto err;
     }
@@ -1233,7 +1232,8 @@ static int ext_npn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
 
   OPENSSL_free(ssl->s3->next_proto_negotiated);
-  ssl->s3->next_proto_negotiated = BUF_memdup(selected, selected_len);
+  ssl->s3->next_proto_negotiated =
+      (uint8_t *)BUF_memdup(selected, selected_len);
   if (ssl->s3->next_proto_negotiated == NULL) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return 0;
@@ -1522,7 +1522,7 @@ int ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
           CBS_len(&protocol_name_list),
           ssl->ctx->alpn_select_cb_arg) == SSL_TLSEXT_ERR_OK) {
     OPENSSL_free(ssl->s3->alpn_selected);
-    ssl->s3->alpn_selected = BUF_memdup(selected, selected_len);
+    ssl->s3->alpn_selected = (uint8_t *)BUF_memdup(selected, selected_len);
     if (ssl->s3->alpn_selected == NULL) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
       return 0;
@@ -2197,7 +2197,8 @@ static int ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     /* Save the contents of the extension to repeat it in the second
      * ClientHello. */
     hs->key_share_bytes_len = CBB_len(&kse_bytes);
-    hs->key_share_bytes = BUF_memdup(CBB_data(&kse_bytes), CBB_len(&kse_bytes));
+    hs->key_share_bytes =
+        (uint8_t *)BUF_memdup(CBB_data(&kse_bytes), CBB_len(&kse_bytes));
     if (hs->key_share_bytes == NULL) {
       return 0;
     }
@@ -2451,7 +2452,7 @@ static int ext_supported_groups_parse_clienthello(SSL_HANDSHAKE *hs,
   }
 
   hs->peer_supported_group_list =
-      OPENSSL_malloc(CBS_len(&supported_group_list));
+      (uint16_t *)OPENSSL_malloc(CBS_len(&supported_group_list));
   if (hs->peer_supported_group_list == NULL) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return 0;
@@ -2674,7 +2675,8 @@ int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
 
   CBB extensions;
   if (!CBB_add_u16_length_prefixed(out, &extensions)) {
-    goto err;
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
   }
 
   hs->extensions.sent = 0;
@@ -2692,7 +2694,8 @@ int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
     grease_ext1 = ssl_get_grease_value(ssl, ssl_grease_extension1);
     if (!CBB_add_u16(&extensions, grease_ext1) ||
         !CBB_add_u16(&extensions, 0 /* zero length */)) {
-      goto err;
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return 0;
     }
   }
 
@@ -2701,7 +2704,7 @@ int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
     if (!kExtensions[i].add_clienthello(hs, &extensions)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_ADDING_EXTENSION);
       ERR_add_error_dataf("extension %u", (unsigned)kExtensions[i].value);
-      goto err;
+      return 0;
     }
 
     if (CBB_len(&extensions) != len_before) {
@@ -2710,7 +2713,8 @@ int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
   }
 
   if (!custom_ext_add_clienthello(hs, &extensions)) {
-    goto err;
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
   }
 
   if (ssl->ctx->grease_enabled) {
@@ -2727,7 +2731,8 @@ int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
     if (!CBB_add_u16(&extensions, grease_ext2) ||
         !CBB_add_u16(&extensions, 1 /* one byte length */) ||
         !CBB_add_u8(&extensions, 0 /* single zero byte as contents */)) {
-      goto err;
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return 0;
     }
   }
 
@@ -2754,7 +2759,8 @@ int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
       if (!CBB_add_u16(&extensions, TLSEXT_TYPE_padding) ||
           !CBB_add_u16(&extensions, padding_len) ||
           !CBB_add_space(&extensions, &padding_bytes, padding_len)) {
-        goto err;
+        OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+        return 0;
       }
 
       OPENSSL_memset(padding_bytes, 0, padding_len);
@@ -2763,7 +2769,8 @@ int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
 
   /* The PSK extension must be last, including after the padding. */
   if (!ext_pre_shared_key_add_clienthello(hs, &extensions)) {
-    goto err;
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
   }
 
   /* Discard empty extensions blocks. */
@@ -2772,10 +2779,6 @@ int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
   }
 
   return CBB_flush(out);
-
-err:
-  OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-  return 0;
 }
 
 int ssl_add_serverhello_tlsext(SSL_HANDSHAKE *hs, CBB *out) {
@@ -3040,33 +3043,28 @@ static enum ssl_ticket_aead_result_t
 ssl_decrypt_ticket_with_cipher_ctx(SSL *ssl, uint8_t **out, size_t *out_len,
                                    int *out_renew_ticket, const uint8_t *ticket,
                                    size_t ticket_len) {
-  enum ssl_ticket_aead_result_t ret = ssl_ticket_aead_ignore_ticket;
   const SSL_CTX *const ssl_ctx = ssl->session_ctx;
-  uint8_t *plaintext = NULL;
 
-  HMAC_CTX hmac_ctx;
-  HMAC_CTX_init(&hmac_ctx);
-  EVP_CIPHER_CTX cipher_ctx;
-  EVP_CIPHER_CTX_init(&cipher_ctx);
+  bssl::ScopedHMAC_CTX hmac_ctx;
+  bssl::ScopedEVP_CIPHER_CTX cipher_ctx;
 
   /* Ensure there is room for the key name and the largest IV
    * |tlsext_ticket_key_cb| may try to consume. The real limit may be lower, but
    * the maximum IV length should be well under the minimum size for the
    * session material and HMAC. */
   if (ticket_len < SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH) {
-    goto out;
+    return ssl_ticket_aead_ignore_ticket;
   }
   const uint8_t *iv = ticket + SSL_TICKET_KEY_NAME_LEN;
 
   if (ssl_ctx->tlsext_ticket_key_cb != NULL) {
     int cb_ret = ssl_ctx->tlsext_ticket_key_cb(
-        ssl, (uint8_t *)ticket /* name */, (uint8_t *)iv, &cipher_ctx,
-        &hmac_ctx, 0 /* decrypt */);
+        ssl, (uint8_t *)ticket /* name */, (uint8_t *)iv, cipher_ctx.get(),
+        hmac_ctx.get(), 0 /* decrypt */);
     if (cb_ret < 0) {
-      ret = ssl_ticket_aead_error;
-      goto out;
+      return ssl_ticket_aead_error;
     } else if (cb_ret == 0) {
-      goto out;
+      return ssl_ticket_aead_ignore_ticket;
     } else if (cb_ret == 2) {
       *out_renew_ticket = 1;
     }
@@ -3074,80 +3072,71 @@ ssl_decrypt_ticket_with_cipher_ctx(SSL *ssl, uint8_t **out, size_t *out_len,
     /* Check the key name matches. */
     if (OPENSSL_memcmp(ticket, ssl_ctx->tlsext_tick_key_name,
                        SSL_TICKET_KEY_NAME_LEN) != 0) {
-      goto out;
+      return ssl_ticket_aead_ignore_ticket;
     }
-    if (!HMAC_Init_ex(&hmac_ctx, ssl_ctx->tlsext_tick_hmac_key,
+    if (!HMAC_Init_ex(hmac_ctx.get(), ssl_ctx->tlsext_tick_hmac_key,
                       sizeof(ssl_ctx->tlsext_tick_hmac_key), tlsext_tick_md(),
                       NULL) ||
-        !EVP_DecryptInit_ex(&cipher_ctx, EVP_aes_128_cbc(), NULL,
+        !EVP_DecryptInit_ex(cipher_ctx.get(), EVP_aes_128_cbc(), NULL,
                             ssl_ctx->tlsext_tick_aes_key, iv)) {
-      ret = ssl_ticket_aead_error;
-      goto out;
+      return ssl_ticket_aead_error;
     }
   }
-  size_t iv_len = EVP_CIPHER_CTX_iv_length(&cipher_ctx);
+  size_t iv_len = EVP_CIPHER_CTX_iv_length(cipher_ctx.get());
 
   /* Check the MAC at the end of the ticket. */
   uint8_t mac[EVP_MAX_MD_SIZE];
-  size_t mac_len = HMAC_size(&hmac_ctx);
+  size_t mac_len = HMAC_size(hmac_ctx.get());
   if (ticket_len < SSL_TICKET_KEY_NAME_LEN + iv_len + 1 + mac_len) {
     /* The ticket must be large enough for key name, IV, data, and MAC. */
-    goto out;
+    return ssl_ticket_aead_ignore_ticket;
   }
-  HMAC_Update(&hmac_ctx, ticket, ticket_len - mac_len);
-  HMAC_Final(&hmac_ctx, mac, NULL);
+  HMAC_Update(hmac_ctx.get(), ticket, ticket_len - mac_len);
+  HMAC_Final(hmac_ctx.get(), mac, NULL);
   int mac_ok =
       CRYPTO_memcmp(mac, ticket + (ticket_len - mac_len), mac_len) == 0;
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   mac_ok = 1;
 #endif
   if (!mac_ok) {
-    goto out;
+    return ssl_ticket_aead_ignore_ticket;
   }
 
   /* Decrypt the session data. */
   const uint8_t *ciphertext = ticket + SSL_TICKET_KEY_NAME_LEN + iv_len;
   size_t ciphertext_len = ticket_len - SSL_TICKET_KEY_NAME_LEN - iv_len -
                           mac_len;
-  plaintext = OPENSSL_malloc(ciphertext_len);
-  if (plaintext == NULL) {
-    ret = ssl_ticket_aead_error;
-    goto out;
+  bssl::UniquePtr<uint8_t> plaintext((uint8_t *)OPENSSL_malloc(ciphertext_len));
+  if (!plaintext) {
+    return ssl_ticket_aead_error;
   }
   size_t plaintext_len;
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-  OPENSSL_memcpy(plaintext, ciphertext, ciphertext_len);
+  OPENSSL_memcpy(plaintext.get(), ciphertext, ciphertext_len);
   plaintext_len = ciphertext_len;
 #else
   if (ciphertext_len >= INT_MAX) {
-    goto out;
+    return ssl_ticket_aead_ignore_ticket;
   }
   int len1, len2;
-  if (!EVP_DecryptUpdate(&cipher_ctx, plaintext, &len1, ciphertext,
+  if (!EVP_DecryptUpdate(cipher_ctx.get(), plaintext.get(), &len1, ciphertext,
                          (int)ciphertext_len) ||
-      !EVP_DecryptFinal_ex(&cipher_ctx, plaintext + len1, &len2)) {
+      !EVP_DecryptFinal_ex(cipher_ctx.get(), plaintext.get() + len1, &len2)) {
     ERR_clear_error();
-    goto out;
+    return ssl_ticket_aead_ignore_ticket;
   }
   plaintext_len = (size_t)(len1) + len2;
 #endif
 
-  *out = plaintext;
-  plaintext = NULL;
+  *out = plaintext.release();
   *out_len = plaintext_len;
-  ret = ssl_ticket_aead_success;
-
-out:
-  OPENSSL_free(plaintext);
-  HMAC_CTX_cleanup(&hmac_ctx);
-  EVP_CIPHER_CTX_cleanup(&cipher_ctx);
-  return ret;
+  return ssl_ticket_aead_success;
 }
 
 static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_method(
     SSL *ssl, uint8_t **out, size_t *out_len, int *out_renew_ticket,
     const uint8_t *ticket, size_t ticket_len) {
-  uint8_t *plaintext = OPENSSL_malloc(ticket_len);
+  uint8_t *plaintext = (uint8_t *)OPENSSL_malloc(ticket_len);
   if (plaintext == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return ssl_ticket_aead_error;
@@ -3238,7 +3227,7 @@ int tls1_parse_peer_sigalgs(SSL_HANDSHAKE *hs, const CBS *in_sigalgs) {
 
   /* This multiplication doesn't overflow because sizeof(uint16_t) is two
    * and we just divided |num_sigalgs| by two. */
-  hs->peer_sigalgs = OPENSSL_malloc(num_sigalgs * sizeof(uint16_t));
+  hs->peer_sigalgs = (uint16_t *)OPENSSL_malloc(num_sigalgs * sizeof(uint16_t));
   if (hs->peer_sigalgs == NULL) {
     return 0;
   }
@@ -3324,7 +3313,6 @@ int tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
 
 int tls1_verify_channel_id(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  int ret = 0;
   uint16_t extension_type;
   CBS extension, channel_id;
 
@@ -3341,52 +3329,44 @@ int tls1_verify_channel_id(SSL_HANDSHAKE *hs) {
     return 0;
   }
 
-  EC_GROUP *p256 = EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1);
+  bssl::UniquePtr<EC_GROUP> p256(
+      EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
   if (!p256) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_P256_SUPPORT);
     return 0;
   }
 
-  EC_KEY *key = NULL;
-  EC_POINT *point = NULL;
-  BIGNUM x, y;
-  ECDSA_SIG sig;
-  BN_init(&x);
-  BN_init(&y);
-  sig.r = BN_new();
-  sig.s = BN_new();
-  if (sig.r == NULL || sig.s == NULL) {
-    goto err;
+  bssl::UniquePtr<ECDSA_SIG> sig(ECDSA_SIG_new());
+  bssl::UniquePtr<BIGNUM> x(BN_new()), y(BN_new());
+  if (!sig || !x || !y) {
+    return 0;
   }
 
   const uint8_t *p = CBS_data(&extension);
-  if (BN_bin2bn(p + 0, 32, &x) == NULL ||
-      BN_bin2bn(p + 32, 32, &y) == NULL ||
-      BN_bin2bn(p + 64, 32, sig.r) == NULL ||
-      BN_bin2bn(p + 96, 32, sig.s) == NULL) {
-    goto err;
+  if (BN_bin2bn(p + 0, 32, x.get()) == NULL ||
+      BN_bin2bn(p + 32, 32, y.get()) == NULL ||
+      BN_bin2bn(p + 64, 32, sig->r) == NULL ||
+      BN_bin2bn(p + 96, 32, sig->s) == NULL) {
+    return 0;
   }
 
-  point = EC_POINT_new(p256);
-  if (point == NULL ||
-      !EC_POINT_set_affine_coordinates_GFp(p256, point, &x, &y, NULL)) {
-    goto err;
-  }
-
-  key = EC_KEY_new();
-  if (key == NULL ||
-      !EC_KEY_set_group(key, p256) ||
-      !EC_KEY_set_public_key(key, point)) {
-    goto err;
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(p256.get()));
+  if (!key || !point ||
+      !EC_POINT_set_affine_coordinates_GFp(p256.get(), point.get(), x.get(),
+                                           y.get(), nullptr) ||
+      !EC_KEY_set_group(key.get(), p256.get()) ||
+      !EC_KEY_set_public_key(key.get(), point.get())) {
+    return 0;
   }
 
   uint8_t digest[EVP_MAX_MD_SIZE];
   size_t digest_len;
   if (!tls1_channel_id_hash(hs, digest, &digest_len)) {
-    goto err;
+    return 0;
   }
 
-  int sig_ok = ECDSA_do_verify(digest, digest_len, &sig, key);
+  int sig_ok = ECDSA_do_verify(digest, digest_len, sig.get(), key.get());
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   sig_ok = 1;
 #endif
@@ -3394,21 +3374,11 @@ int tls1_verify_channel_id(SSL_HANDSHAKE *hs) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CHANNEL_ID_SIGNATURE_INVALID);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
     ssl->s3->tlsext_channel_id_valid = 0;
-    goto err;
+    return 0;
   }
 
   OPENSSL_memcpy(ssl->s3->tlsext_channel_id, p, 64);
-  ret = 1;
-
-err:
-  BN_free(&x);
-  BN_free(&y);
-  BN_free(sig.r);
-  BN_free(sig.s);
-  EC_KEY_free(key);
-  EC_POINT_free(point);
-  EC_GROUP_free(p256);
-  return ret;
+  return 1;
 }
 
 int tls1_write_channel_id(SSL_HANDSHAKE *hs, CBB *cbb) {
