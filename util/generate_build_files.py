@@ -206,8 +206,6 @@ class Bazel(object):
       self.PrintVariableSection(
           out, 'ssl_internal_headers', files['ssl_internal_headers'])
       self.PrintVariableSection(out, 'ssl_sources', files['ssl'])
-      self.PrintVariableSection(out, 'ssl_c_sources', files['ssl_c'])
-      self.PrintVariableSection(out, 'ssl_cc_sources', files['ssl_cc'])
       self.PrintVariableSection(out, 'crypto_headers', files['crypto_headers'])
       self.PrintVariableSection(
           out, 'crypto_internal_headers', files['crypto_internal_headers'])
@@ -615,8 +613,6 @@ def main(platforms):
       'fips_fragments': fips_fragments,
       'fuzz': fuzz_c_files,
       'ssl': ssl_source_files,
-      'ssl_c': [s for s in ssl_source_files if s.endswith('.c')],
-      'ssl_cc': [s for s in ssl_source_files if s.endswith('.cc')],
       'ssl_headers': ssl_h_files,
       'ssl_internal_headers': ssl_internal_h_files,
       'ssl_test': sorted(ssl_test_files),
