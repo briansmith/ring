@@ -144,7 +144,7 @@ mod sysrand_chunk {
     use core;
     use {c, error};
 
-    #[link(name = "Advapi32")]
+    #[link(name = "advapi32")]
     extern "system" {
         #[link_name = "SystemFunction036"]
         fn RtlGenRandom(random_buffer: *mut u8,
