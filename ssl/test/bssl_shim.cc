@@ -1013,6 +1013,7 @@ static int Connect(uint16_t port) {
     }
     closesocket(sock);
   }
+  PrintSocketError("connect");
   return -1;
 }
 
