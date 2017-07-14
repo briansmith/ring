@@ -1280,6 +1280,13 @@ var tlsVersions = []tlsVersion{
 		versionWire:  tls13ExperimentVersion,
 		tls13Variant: TLS13Experiment,
 	},
+	{
+		name:         "TLS13RecordTypeExperiment",
+		version:      VersionTLS13,
+		excludeFlag:  "-no-tls13",
+		versionWire:  tls13RecordTypeExperimentVersion,
+		tls13Variant: TLS13RecordTypeExperiment,
+	},
 }
 
 func allVersions(protocol protocol) []tlsVersion {
@@ -4018,6 +4025,34 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 
 		tests = append(tests, testCase{
 			testType: clientTest,
+			name:     "TLS13RecordTypeExperiment-EarlyData-Client",
+			config: Config{
+				MaxVersion:       VersionTLS13,
+				MinVersion:       VersionTLS13,
+				TLS13Variant:     TLS13RecordTypeExperiment,
+				MaxEarlyDataSize: 16384,
+			},
+			resumeConfig: &Config{
+				MaxVersion:       VersionTLS13,
+				MinVersion:       VersionTLS13,
+				TLS13Variant:     TLS13RecordTypeExperiment,
+				MaxEarlyDataSize: 16384,
+				Bugs: ProtocolBugs{
+					ExpectEarlyData: [][]byte{{'h', 'e', 'l', 'l', 'o'}},
+				},
+			},
+			resumeSession: true,
+			flags: []string{
+				"-enable-early-data",
+				"-expect-early-data-info",
+				"-expect-accept-early-data",
+				"-on-resume-shim-writes-first",
+				"-tls13-variant", "2",
+			},
+		})
+
+		tests = append(tests, testCase{
+			testType: clientTest,
 			name:     "TLS13-EarlyData-TooMuchData-Client",
 			config: Config{
 				MaxVersion:       VersionTLS13,
@@ -4141,6 +4176,28 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				"-enable-early-data",
 				"-expect-accept-early-data",
 				"-tls13-variant", "1",
+			},
+		})
+
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "TLS13RecordTypeExperiment-EarlyData-Server",
+			config: Config{
+				MaxVersion:   VersionTLS13,
+				MinVersion:   VersionTLS13,
+				TLS13Variant: TLS13RecordTypeExperiment,
+				Bugs: ProtocolBugs{
+					SendEarlyData:           [][]byte{{1, 2, 3, 4}},
+					ExpectEarlyDataAccepted: true,
+					ExpectHalfRTTData:       [][]byte{{254, 253, 252, 251}},
+				},
+			},
+			messageCount:  2,
+			resumeSession: true,
+			flags: []string{
+				"-enable-early-data",
+				"-expect-accept-early-data",
+				"-tls13-variant", "2",
 			},
 		})
 
@@ -10477,6 +10534,19 @@ func addTLS13HandshakeTests() {
 
 	testCases = append(testCases, testCase{
 		testType: serverTest,
+		name:     "SkipEarlyData-TLS13RecordTypeExperiment",
+		config: Config{
+			MaxVersion:   VersionTLS13,
+			TLS13Variant: TLS13RecordTypeExperiment,
+			Bugs: ProtocolBugs{
+				SendFakeEarlyDataLength: 4,
+			},
+		},
+		flags: []string{"-tls13-variant", "2"},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
 		name:     "SkipEarlyData-OmitEarlyDataExtension",
 		config: Config{
 			MaxVersion: VersionTLS13,
@@ -10998,6 +11068,32 @@ func addTLS13HandshakeTests() {
 			"-expect-reject-early-data",
 			"-on-resume-shim-writes-first",
 			"-tls13-variant", "1",
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13RecordTypeExperiment-EarlyData-Reject-Client",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			TLS13Variant:     TLS13RecordTypeExperiment,
+		},
+		resumeConfig: &Config{
+			MaxVersion:       VersionTLS13,
+			TLS13Variant:     TLS13RecordTypeExperiment,
+			MaxEarlyDataSize: 16384,
+			Bugs: ProtocolBugs{
+				AlwaysRejectEarlyData: true,
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-early-data-info",
+			"-expect-reject-early-data",
+			"-on-resume-shim-writes-first",
+			"-tls13-variant", "2",
 		},
 	})
 

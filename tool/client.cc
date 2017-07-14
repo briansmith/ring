@@ -124,8 +124,8 @@ static const struct argument kArguments[] = {
         "-early-data", kOptionalArgument, "Allow early data",
     },
     {
-        "-tls13-variant", kBooleanArgument,
-        "Enable the experimental TLS 1.3 variant",
+        "-tls13-variant", kOptionalArgument,
+        "Enable the specified experimental TLS 1.3 variant",
     },
     {
         "-ed25519", kBooleanArgument, "Advertise Ed25519 support",
@@ -464,7 +464,9 @@ bool Client(const std::vector<std::string> &args) {
   }
 
   if (args_map.count("-tls13-variant") != 0) {
-    SSL_CTX_set_tls13_variant(ctx.get(), tls13_experiment);
+    SSL_CTX_set_tls13_variant(ctx.get(),
+                              static_cast<enum tls13_variant_t>(
+                                  atoi(args_map["-tls13-variant"].c_str())));
   }
 
   if (args_map.count("-ed25519") != 0) {

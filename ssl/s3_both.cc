@@ -266,7 +266,15 @@ int ssl3_add_message(SSL *ssl, uint8_t *msg, size_t len) {
       todo = ssl->max_send_fragment;
     }
 
-    if (!add_record_to_flight(ssl, SSL3_RT_HANDSHAKE, msg + added, todo)) {
+    uint8_t type = SSL3_RT_HANDSHAKE;
+    if (ssl->server &&
+        ssl->s3->have_version &&
+        ssl->version == TLS1_3_RECORD_TYPE_EXPERIMENT_VERSION &&
+        ssl->s3->aead_write_ctx == NULL) {
+      type = SSL3_RT_PLAINTEXT_HANDSHAKE;
+    }
+
+    if (!add_record_to_flight(ssl, type, msg + added, todo)) {
       goto err;
     }
     added += todo;

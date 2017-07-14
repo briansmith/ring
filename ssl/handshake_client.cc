@@ -674,7 +674,7 @@ int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
     /* In TLS 1.3 experimental encodings, send a fake placeholder session ID
      * when we do not otherwise have one to send. */
     if (hs->max_version >= TLS1_3_VERSION &&
-        ssl->tls13_variant != tls13_default &&
+        ssl->tls13_variant == tls13_experiment &&
         !CBB_add_bytes(&child, hs->session_id, hs->session_id_len)) {
       return 0;
     }
@@ -759,7 +759,7 @@ static int ssl3_send_client_hello(SSL_HANDSHAKE *hs) {
   }
 
   /* Initialize a random session ID for the experimental TLS 1.3 variant. */
-  if (ssl->tls13_variant != tls13_default) {
+  if (ssl->tls13_variant == tls13_experiment) {
     hs->session_id_len = sizeof(hs->session_id);
     if (!RAND_bytes(hs->session_id, hs->session_id_len)) {
       return -1;

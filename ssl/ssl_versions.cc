@@ -34,6 +34,7 @@ int ssl_protocol_version_from_wire(uint16_t *out, uint16_t version) {
 
     case TLS1_3_DRAFT_VERSION:
     case TLS1_3_EXPERIMENT_VERSION:
+    case TLS1_3_RECORD_TYPE_EXPERIMENT_VERSION:
       *out = TLS1_3_VERSION;
       return 1;
 
@@ -55,8 +56,9 @@ int ssl_protocol_version_from_wire(uint16_t *out, uint16_t version) {
  * decreasing preference. */
 
 static const uint16_t kTLSVersions[] = {
-    TLS1_3_DRAFT_VERSION,
     TLS1_3_EXPERIMENT_VERSION,
+    TLS1_3_RECORD_TYPE_EXPERIMENT_VERSION,
+    TLS1_3_DRAFT_VERSION,
     TLS1_2_VERSION,
     TLS1_1_VERSION,
     TLS1_VERSION,
@@ -98,7 +100,8 @@ static int set_version_bound(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
    * everywhere to refer to any draft TLS 1.3 versions. In this direction, we
    * map it to some representative TLS 1.3 draft version. */
   if (version == TLS1_3_DRAFT_VERSION ||
-      version == TLS1_3_EXPERIMENT_VERSION) {
+      version == TLS1_3_EXPERIMENT_VERSION ||
+      version == TLS1_3_RECORD_TYPE_EXPERIMENT_VERSION) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_SSL_VERSION);
     return 0;
   }
@@ -238,7 +241,8 @@ static uint16_t ssl_version(const SSL *ssl) {
 int SSL_version(const SSL *ssl) {
   uint16_t ret = ssl_version(ssl);
   /* Report TLS 1.3 draft version as TLS 1.3 in the public API. */
-  if (ret == TLS1_3_DRAFT_VERSION || ret == TLS1_3_EXPERIMENT_VERSION) {
+  if (ret == TLS1_3_DRAFT_VERSION || ret == TLS1_3_EXPERIMENT_VERSION ||
+      ret == TLS1_3_RECORD_TYPE_EXPERIMENT_VERSION) {
     return TLS1_3_VERSION;
   }
   return ret;
@@ -249,6 +253,7 @@ static const char *ssl_get_version(int version) {
     /* Report TLS 1.3 draft version as TLS 1.3 in the public API. */
     case TLS1_3_DRAFT_VERSION:
     case TLS1_3_EXPERIMENT_VERSION:
+    case TLS1_3_RECORD_TYPE_EXPERIMENT_VERSION:
       return "TLSv1.3";
 
     case TLS1_2_VERSION:
@@ -301,12 +306,15 @@ int ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version) {
    * non-default value. */
   if (ssl->server) {
     if (ssl->tls13_variant == tls13_default &&
-        version == TLS1_3_EXPERIMENT_VERSION) {
+        (version == TLS1_3_EXPERIMENT_VERSION ||
+         version == TLS1_3_RECORD_TYPE_EXPERIMENT_VERSION)) {
       return 0;
     }
   } else {
     if ((ssl->tls13_variant != tls13_experiment &&
          version == TLS1_3_EXPERIMENT_VERSION) ||
+        (ssl->tls13_variant != tls13_record_type_experiment &&
+         version == TLS1_3_RECORD_TYPE_EXPERIMENT_VERSION) ||
         (ssl->tls13_variant != tls13_default &&
          version == TLS1_3_DRAFT_VERSION)) {
       return 0;
