@@ -51,7 +51,6 @@ static inline bssl::UniquePtr<SSL> SetupTest(CBS *cbs, SSL_CTX *ctx,
   // |ctx| is shared between runs, so we must clear any modifications to it made
   // later on in this function.
   SSL_CTX_flush_sessions(ctx, 0);
-  SSL_CTX_set_tls13_variant(ctx, tls13_default);
 
   bssl::UniquePtr<SSL> ssl(SSL_new(ctx));
   if (is_server) {
@@ -100,7 +99,7 @@ static inline bssl::UniquePtr<SSL> SetupTest(CBS *cbs, SSL_CTX *ctx,
         if (!CBS_get_u8(cbs, &variant)) {
           return nullptr;
         }
-        SSL_CTX_set_tls13_variant(ctx, static_cast<tls13_variant_t>(variant));
+        SSL_set_tls13_variant(ssl.get(), static_cast<tls13_variant_t>(variant));
         break;
       }
 
