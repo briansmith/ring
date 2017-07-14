@@ -806,12 +806,80 @@ static int dtls1_get_hello_verify_request(SSL_HANDSHAKE *hs) {
   return 1;
 }
 
+static int parse_server_version(SSL_HANDSHAKE *hs, uint16_t *out) {
+  SSL *const ssl = hs->ssl;
+  if (ssl->s3->tmp.message_type != SSL3_MT_SERVER_HELLO &&
+      ssl->s3->tmp.message_type != SSL3_MT_HELLO_RETRY_REQUEST) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
+    return 0;
+  }
+
+  CBS server_hello;
+  CBS_init(&server_hello, ssl->init_msg, ssl->init_num);
+  if (!CBS_get_u16(&server_hello, out)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    return 0;
+  }
+
+  /* The server version may also be in the supported_versions extension if
+   * applicable. */
+  if (ssl->s3->tmp.message_type != SSL3_MT_SERVER_HELLO ||
+      *out != TLS1_2_VERSION) {
+    return 1;
+  }
+
+  uint8_t sid_length;
+  if (!CBS_skip(&server_hello, SSL3_RANDOM_SIZE) ||
+      !CBS_get_u8(&server_hello, &sid_length) ||
+      !CBS_skip(&server_hello, sid_length + 2 /* cipher_suite */ +
+                1 /* compression_method */)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    return 0;
+  }
+
+  /* The extensions block may not be present. */
+  if (CBS_len(&server_hello) == 0) {
+    return 1;
+  }
+
+  CBS extensions;
+  if (!CBS_get_u16_length_prefixed(&server_hello, &extensions) ||
+      CBS_len(&server_hello) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    return 0;
+  }
+
+  int have_supported_versions;
+  CBS supported_versions;
+  const SSL_EXTENSION_TYPE ext_types[] = {
+    {TLSEXT_TYPE_supported_versions, &have_supported_versions,
+     &supported_versions},
+  };
+
+  uint8_t alert = SSL_AD_DECODE_ERROR;
+  if (!ssl_parse_extensions(&extensions, &alert, ext_types,
+                            OPENSSL_ARRAY_SIZE(ext_types),
+                            1 /* ignore unknown */)) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    return 0;
+  }
+
+  if (have_supported_versions &&
+      (!CBS_get_u16(&supported_versions, out) ||
+       CBS_len(&supported_versions) != 0)) {
+    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    return 0;
+  }
+
+  return 1;
+}
+
 static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  CBS server_hello, server_random, session_id;
-  uint16_t server_version, cipher_suite;
-  uint8_t compression_method;
-
   int ret = ssl->method->ssl_get_message(ssl);
   if (ret <= 0) {
     uint32_t err = ERR_peek_error();
@@ -828,60 +896,9 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
     return ret;
   }
 
-  if (ssl->s3->tmp.message_type != SSL3_MT_SERVER_HELLO &&
-      ssl->s3->tmp.message_type != SSL3_MT_HELLO_RETRY_REQUEST) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
+  uint16_t server_version;
+  if (!parse_server_version(hs, &server_version)) {
     return -1;
-  }
-
-  CBS_init(&server_hello, ssl->init_msg, ssl->init_num);
-
-  if (!CBS_get_u16(&server_hello, &server_version)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return -1;
-  }
-
-  /* Parse out server version from supported_versions if available. */
-  if (ssl->s3->tmp.message_type == SSL3_MT_SERVER_HELLO &&
-      server_version == TLS1_2_VERSION) {
-    CBS copy = server_hello;
-    CBS extensions;
-    uint8_t sid_length;
-    if (!CBS_skip(&copy, SSL3_RANDOM_SIZE) ||
-        !CBS_get_u8(&copy, &sid_length) ||
-        !CBS_skip(&copy, sid_length + 2 /* cipher_suite */ +
-                             1 /* compression_method */) ||
-        !CBS_get_u16_length_prefixed(&copy, &extensions) ||
-        CBS_len(&copy) != 0) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      return -1;
-    }
-
-    int have_supported_versions;
-    CBS supported_versions;
-    const SSL_EXTENSION_TYPE ext_types[] = {
-        {TLSEXT_TYPE_supported_versions, &have_supported_versions,
-         &supported_versions},
-    };
-
-    uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!ssl_parse_extensions(&extensions, &alert, ext_types,
-                              OPENSSL_ARRAY_SIZE(ext_types),
-                              1 /* ignore unknown */)) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
-      return -1;
-    }
-
-    if (have_supported_versions) {
-      if (!CBS_get_u16(&supported_versions, &server_version) ||
-          CBS_len(&supported_versions) != 0) {
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-        return -1;
-      }
-    }
   }
 
   if (!ssl_supports_version(hs, server_version)) {
@@ -920,7 +937,12 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
-  if (!CBS_get_bytes(&server_hello, &server_random, SSL3_RANDOM_SIZE) ||
+  CBS server_hello, server_random, session_id;
+  uint16_t cipher_suite;
+  uint8_t compression_method;
+  CBS_init(&server_hello, ssl->init_msg, ssl->init_num);
+  if (!CBS_skip(&server_hello, 2 /* version */) ||
+      !CBS_get_bytes(&server_hello, &server_random, SSL3_RANDOM_SIZE) ||
       !CBS_get_u8_length_prefixed(&server_hello, &session_id) ||
       CBS_len(&session_id) > SSL3_SESSION_ID_SIZE ||
       !CBS_get_u16(&server_hello, &cipher_suite) ||

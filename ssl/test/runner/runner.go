@@ -12074,6 +12074,75 @@ func addExtraHandshakeTests() {
 	})
 }
 
+// Test that omitted and empty extensions blocks are tolerated.
+func addOmitExtensionsTests() {
+	for _, ver := range tlsVersions {
+		if ver.version > VersionTLS12 {
+			continue
+		}
+
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "OmitExtensions-ClientHello-" + ver.name,
+			config: Config{
+				MinVersion:             ver.version,
+				MaxVersion:             ver.version,
+				SessionTicketsDisabled: true,
+				Bugs: ProtocolBugs{
+					OmitExtensions: true,
+				},
+			},
+		})
+
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "EmptyExtensions-ClientHello-" + ver.name,
+			config: Config{
+				MinVersion:             ver.version,
+				MaxVersion:             ver.version,
+				SessionTicketsDisabled: true,
+				Bugs: ProtocolBugs{
+					EmptyExtensions: true,
+				},
+			},
+		})
+
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "OmitExtensions-ServerHello-" + ver.name,
+			config: Config{
+				MinVersion:             ver.version,
+				MaxVersion:             ver.version,
+				SessionTicketsDisabled: true,
+				Bugs: ProtocolBugs{
+					OmitExtensions: true,
+					// Disable all ServerHello extensions so
+					// OmitExtensions works.
+					NoExtendedMasterSecret: true,
+					NoRenegotiationInfo:    true,
+				},
+			},
+		})
+
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "EmptyExtensions-ServerHello-" + ver.name,
+			config: Config{
+				MinVersion:             ver.version,
+				MaxVersion:             ver.version,
+				SessionTicketsDisabled: true,
+				Bugs: ProtocolBugs{
+					EmptyExtensions: true,
+					// Disable all ServerHello extensions so
+					// EmptyExtensions works.
+					NoExtendedMasterSecret: true,
+					NoRenegotiationInfo:    true,
+				},
+			},
+		})
+	}
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -12201,6 +12270,7 @@ func main() {
 	addRetainOnlySHA256ClientCertTests()
 	addECDSAKeyUsageTests()
 	addExtraHandshakeTests()
+	addOmitExtensionsTests()
 
 	var wg sync.WaitGroup
 

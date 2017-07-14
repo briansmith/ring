@@ -1384,6 +1384,14 @@ type ProtocolBugs struct {
 	// RejectUnsolicitedKeyUpdate, if true, causes all unsolicited
 	// KeyUpdates from the peer to be rejected.
 	RejectUnsolicitedKeyUpdate bool
+
+	// OmitExtensions, if true, causes the extensions field in ClientHello
+	// and ServerHello messages to be omitted.
+	OmitExtensions bool
+
+	// EmptyExtensions, if true, causese the extensions field in ClientHello
+	// and ServerHello messages to be present, but empty.
+	EmptyExtensions bool
 }
 
 func (c *Config) serverInit() {

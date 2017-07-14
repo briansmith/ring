@@ -1068,6 +1068,8 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 		extensions: serverExtensions{
 			supportedVersion: config.Bugs.SendServerSupportedExtensionVersion,
 		},
+		omitExtensions:  config.Bugs.OmitExtensions,
+		emptyExtensions: config.Bugs.EmptyExtensions,
 	}
 
 	hs.hello.random = make([]byte, 32)

@@ -7,6 +7,7 @@ package runner
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 )
 
 func writeLen(buf []byte, v, size int) {
@@ -33,6 +34,11 @@ func newByteBuilder() *byteBuilder {
 
 func (bb *byteBuilder) len() int {
 	return len(*bb.buf) - bb.start - bb.prefixLen
+}
+
+func (bb *byteBuilder) data() []byte {
+	bb.flush()
+	return (*bb.buf)[bb.start+bb.prefixLen:]
 }
 
 func (bb *byteBuilder) flush() {
@@ -112,11 +118,11 @@ func (bb *byteBuilder) createChild(lengthPrefixSize int) *byteBuilder {
 }
 
 func (bb *byteBuilder) discardChild() {
-	if bb.child != nil {
+	if bb.child == nil {
 		return
 	}
+	*bb.buf = (*bb.buf)[:bb.child.start]
 	bb.child = nil
-	*bb.buf = (*bb.buf)[:bb.start]
 }
 
 type keyShareEntry struct {
@@ -167,6 +173,8 @@ type clientHelloMsg struct {
 	customExtension         string
 	hasGREASEExtension      bool
 	pskBinderFirst          bool
+	omitExtensions          bool
+	emptyExtensions         bool
 }
 
 func (m *clientHelloMsg) equal(i interface{}) bool {
@@ -212,7 +220,9 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.sctListSupported == m1.sctListSupported &&
 		m.customExtension == m1.customExtension &&
 		m.hasGREASEExtension == m1.hasGREASEExtension &&
-		m.pskBinderFirst == m1.pskBinderFirst
+		m.pskBinderFirst == m1.pskBinderFirst &&
+		m.omitExtensions == m1.omitExtensions &&
+		m.emptyExtensions == m1.emptyExtensions
 }
 
 func (m *clientHelloMsg) marshal() []byte {
@@ -444,8 +454,12 @@ func (m *clientHelloMsg) marshal() []byte {
 		}
 	}
 
-	if extensions.len() == 0 {
+	if m.omitExtensions || m.emptyExtensions {
+		// Silently erase any extensions which were sent.
 		hello.discardChild()
+		if m.emptyExtensions {
+			hello.addU16(0)
+		}
 	}
 
 	m.raw = handshakeMsg.finish()
@@ -828,6 +842,8 @@ type serverHelloMsg struct {
 	compressionMethod     uint8
 	customExtension       string
 	unencryptedALPN       string
+	omitExtensions        bool
+	emptyExtensions       bool
 	extensions            serverExtensions
 }
 
@@ -904,8 +920,17 @@ func (m *serverHelloMsg) marshal() []byte {
 		}
 	} else {
 		m.extensions.marshal(extensions)
-		if extensions.len() == 0 {
+		if m.omitExtensions || m.emptyExtensions {
+			// Silently erasing server extensions will break the handshake. Instead,
+			// assert that tests which use this field also disable all features which
+			// would write an extension.
+			if extensions.len() != 0 {
+				panic(fmt.Sprintf("ServerHello unexpectedly contained extensions: %x, %+v", extensions.data(), m))
+			}
 			hello.discardChild()
+			if m.emptyExtensions {
+				hello.addU16(0)
+			}
 		}
 	}
 
