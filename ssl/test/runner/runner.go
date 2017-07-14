@@ -881,18 +881,26 @@ var (
 // exit first.
 func acceptOrWait(listener *net.TCPListener, waitChan chan error) (net.Conn, error) {
 	type connOrError struct {
-		conn net.Conn
-		err  error
+		conn               net.Conn
+		err                error
+		startTime, endTime time.Time
 	}
 	connChan := make(chan connOrError, 1)
 	go func() {
+		startTime := time.Now()
 		listener.SetDeadline(time.Now().Add(*idleTimeout))
 		conn, err := listener.Accept()
-		connChan <- connOrError{conn, err}
+		endTime := time.Now()
+		connChan <- connOrError{conn, err, startTime, endTime}
 		close(connChan)
 	}()
 	select {
 	case result := <-connChan:
+		if result.err != nil {
+			// TODO(davidben): Remove this logging when
+			// https://crbug.com/boringssl/199 is resolved.
+			fmt.Fprintf(os.Stderr, "acceptOrWait failed, startTime=%v, endTime=%v\n", result.startTime, result.endTime)
+		}
 		return result.conn, result.err
 	case childErr := <-waitChan:
 		waitChan <- childErr

@@ -39,6 +39,7 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #include <assert.h>
 #include <inttypes.h>
 #include <string.h>
+#include <time.h>
 
 #include <openssl/aead.h>
 #include <openssl/bio.h>
@@ -969,6 +970,7 @@ static int ServerNameCallback(SSL *ssl, int *out_alert, void *arg) {
 // Connect returns a new socket connected to localhost on |port| or -1 on
 // error.
 static int Connect(uint16_t port) {
+  time_t start_time = time(nullptr);
   for (int af : { AF_INET6, AF_INET }) {
     int sock = socket(af, SOCK_STREAM, 0);
     if (sock == -1) {
@@ -1013,7 +1015,13 @@ static int Connect(uint16_t port) {
     }
     closesocket(sock);
   }
+
   PrintSocketError("connect");
+  // TODO(davidben): Remove this logging when https://crbug.com/boringssl/199 is
+  // resolved.
+  fprintf(stderr, "start_time = %lld, end_time = %lld\n",
+          static_cast<long long>(start_time),
+          static_cast<long long>(time(nullptr)));
   return -1;
 }
 
