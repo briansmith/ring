@@ -1512,8 +1512,8 @@ static int ssl3_send_client_certificate(SSL_HANDSHAKE *hs) {
   return 1;
 }
 
-OPENSSL_COMPILE_ASSERT(sizeof(size_t) >= sizeof(unsigned),
-                       SIZE_T_IS_SMALLER_THAN_UNSIGNED);
+static_assert(sizeof(size_t) >= sizeof(unsigned),
+              "size_t is smaller than unsigned");
 
 static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;

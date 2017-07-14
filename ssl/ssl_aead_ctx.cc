@@ -20,7 +20,6 @@
 #include <openssl/aead.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
-#include <openssl/type_check.h>
 
 #include "../crypto/internal.h"
 #include "internal.h"
@@ -78,8 +77,8 @@ SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
   }
 
   assert(EVP_AEAD_nonce_length(aead) <= EVP_AEAD_MAX_NONCE_LENGTH);
-  OPENSSL_COMPILE_ASSERT(EVP_AEAD_MAX_NONCE_LENGTH < 256,
-                         variable_nonce_len_doesnt_fit_in_uint8_t);
+  static_assert(EVP_AEAD_MAX_NONCE_LENGTH < 256,
+                "variable_nonce_len doesn't fit in uint8_t");
   aead_ctx->variable_nonce_len = (uint8_t)EVP_AEAD_nonce_length(aead);
   if (mac_key_len == 0) {
     assert(fixed_iv_len <= sizeof(aead_ctx->fixed_nonce));

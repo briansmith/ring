@@ -173,9 +173,9 @@ OPENSSL_DECLARE_ERROR_REASON(SSL, NO_CIPHERS_SPECIFIED)
 
 /* Some error codes are special. Ensure the make_errors.go script never
  * regresses this. */
-OPENSSL_COMPILE_ASSERT(SSL_R_TLSV1_ALERT_NO_RENEGOTIATION ==
-                           SSL_AD_NO_RENEGOTIATION + SSL_AD_REASON_OFFSET,
-                       ssl_alert_reason_code_mismatch);
+static_assert(SSL_R_TLSV1_ALERT_NO_RENEGOTIATION ==
+                  SSL_AD_NO_RENEGOTIATION + SSL_AD_REASON_OFFSET,
+              "alert reason code mismatch");
 
 /* kMaxHandshakeSize is the maximum size, in bytes, of a handshake message. */
 static const size_t kMaxHandshakeSize = (1u << 24) - 1;
@@ -1083,7 +1083,7 @@ static int set_session_id_context(CERT *cert, const uint8_t *sid_ctx,
     return 0;
   }
 
-  OPENSSL_COMPILE_ASSERT(sizeof(cert->sid_ctx) < 256, sid_ctx_too_large);
+  static_assert(sizeof(cert->sid_ctx) < 256, "sid_ctx too large");
   cert->sid_ctx_length = (uint8_t)sid_ctx_len;
   OPENSSL_memcpy(cert->sid_ctx, sid_ctx, sid_ctx_len);
   return 1;

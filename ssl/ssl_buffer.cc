@@ -22,16 +22,17 @@
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
-#include <openssl/type_check.h>
 
 #include "../crypto/internal.h"
 #include "internal.h"
 
 
-OPENSSL_COMPILE_ASSERT(0xffff <= INT_MAX, uint16_fits_in_int);
+/* BIO uses int instead of size_t. No lengths will exceed uint16_t, so this will
+ * not overflow. */
+static_assert(0xffff <= INT_MAX, "uint16_t does not fit in int");
 
-OPENSSL_COMPILE_ASSERT((SSL3_ALIGN_PAYLOAD & (SSL3_ALIGN_PAYLOAD - 1)) == 0,
-                       align_to_a_power_of_two);
+static_assert((SSL3_ALIGN_PAYLOAD & (SSL3_ALIGN_PAYLOAD - 1)) == 0,
+              "SSL3_ALIGN_PAYLOAD must be a power of 2");
 
 /* ensure_buffer ensures |buf| has capacity at least |cap|, aligned such that
  * data written after |header_len| is aligned to a |SSL3_ALIGN_PAYLOAD|-byte
@@ -142,9 +143,9 @@ int ssl_read_buffer_extend_to(SSL *ssl, size_t len) {
   ssl_read_buffer_discard(ssl);
 
   if (SSL_is_dtls(ssl)) {
-    OPENSSL_COMPILE_ASSERT(
+    static_assert(
         DTLS1_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH <= 0xffff,
-        dtls_read_buffer_too_large);
+        "DTLS read buffer is too large");
 
     /* The |len| parameter is ignored in DTLS. */
     len = DTLS1_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH;
@@ -203,15 +204,16 @@ int ssl_write_buffer_is_pending(const SSL *ssl) {
   return ssl->s3->write_buffer.len > 0;
 }
 
-OPENSSL_COMPILE_ASSERT(SSL3_RT_HEADER_LENGTH * 2 +
-                           SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD * 2 +
-                           SSL3_RT_MAX_PLAIN_LENGTH <= 0xffff,
-                       maximum_tls_write_buffer_too_large);
+static_assert(SSL3_RT_HEADER_LENGTH * 2 +
+                      SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD * 2 +
+                      SSL3_RT_MAX_PLAIN_LENGTH <=
+                  0xffff,
+              "maximum TLS write buffer is too large");
 
-OPENSSL_COMPILE_ASSERT(DTLS1_RT_HEADER_LENGTH +
-                           SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD +
-                           SSL3_RT_MAX_PLAIN_LENGTH <= 0xffff,
-                       maximum_dtls_write_buffer_too_large);
+static_assert(DTLS1_RT_HEADER_LENGTH + SSL3_RT_SEND_MAX_ENCRYPTED_OVERHEAD +
+                      SSL3_RT_MAX_PLAIN_LENGTH <=
+                  0xffff,
+              "maximum DTLS write buffer is too large");
 
 int ssl_write_buffer_init(SSL *ssl, uint8_t **out_ptr, size_t max_len) {
   SSL3_BUFFER *buf = &ssl->s3->write_buffer;

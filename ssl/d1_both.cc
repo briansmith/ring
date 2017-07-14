@@ -122,7 +122,6 @@
 #include <openssl/evp.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
-#include <openssl/type_check.h>
 
 #include "../crypto/internal.h"
 #include "internal.h"
@@ -538,9 +537,9 @@ int dtls1_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
  * it takes ownership of |data| and releases it with |OPENSSL_free| when
  * done. */
 static int add_outgoing(SSL *ssl, int is_ccs, uint8_t *data, size_t len) {
-  OPENSSL_COMPILE_ASSERT(SSL_MAX_HANDSHAKE_FLIGHT <
-                             (1 << 8 * sizeof(ssl->d1->outgoing_messages_len)),
-                         outgoing_messages_len_is_too_small);
+  static_assert(SSL_MAX_HANDSHAKE_FLIGHT <
+                    (1 << 8 * sizeof(ssl->d1->outgoing_messages_len)),
+                "outgoing_messages_len is too small");
   if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT) {
     assert(0);
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);

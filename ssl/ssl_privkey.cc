@@ -64,7 +64,6 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/mem.h>
-#include <openssl/type_check.h>
 
 #include "internal.h"
 #include "../crypto/internal.h"
@@ -271,8 +270,8 @@ int SSL_set_private_key_digest_prefs(SSL *ssl, const int *digest_nids,
                                      size_t num_digests) {
   OPENSSL_free(ssl->cert->sigalgs);
 
-  OPENSSL_COMPILE_ASSERT(sizeof(int) >= 2 * sizeof(uint16_t),
-                         digest_list_conversion_cannot_overflow);
+  static_assert(sizeof(int) >= 2 * sizeof(uint16_t),
+                "sigalgs allocation may overflow");
 
   ssl->cert->num_sigalgs = 0;
   ssl->cert->sigalgs =

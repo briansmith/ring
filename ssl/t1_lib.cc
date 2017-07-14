@@ -121,7 +121,6 @@
 #include <openssl/mem.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
-#include <openssl/type_check.h>
 
 #include "internal.h"
 #include "../crypto/internal.h"
@@ -2639,12 +2638,12 @@ static const struct tls_extension kExtensions[] = {
 
 #define kNumExtensions (sizeof(kExtensions) / sizeof(struct tls_extension))
 
-OPENSSL_COMPILE_ASSERT(kNumExtensions <=
-                           sizeof(((SSL_HANDSHAKE *)NULL)->extensions.sent) * 8,
-                       too_many_extensions_for_sent_bitset);
-OPENSSL_COMPILE_ASSERT(
-    kNumExtensions <= sizeof(((SSL_HANDSHAKE *)NULL)->extensions.received) * 8,
-    too_many_extensions_for_received_bitset);
+static_assert(kNumExtensions <=
+                  sizeof(((SSL_HANDSHAKE *)NULL)->extensions.sent) * 8,
+              "too many extensions for sent bitset");
+static_assert(kNumExtensions <=
+                  sizeof(((SSL_HANDSHAKE *)NULL)->extensions.received) * 8,
+              "too many extensions for received bitset");
 
 static const struct tls_extension *tls_extension_find(uint32_t *out_index,
                                                       uint16_t value) {
@@ -2960,8 +2959,8 @@ static int ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs,
       continue;
     }
 
-    OPENSSL_COMPILE_ASSERT(kNumExtensions <= sizeof(hs->extensions.sent) * 8,
-                           too_many_bits);
+    static_assert(kNumExtensions <= sizeof(hs->extensions.sent) * 8,
+                  "too many bits");
 
     if (!(hs->extensions.sent & (1u << ext_index)) &&
         type != TLSEXT_TYPE_renegotiate) {
@@ -3486,9 +3485,9 @@ int tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
-  OPENSSL_COMPILE_ASSERT(
+  static_assert(
       sizeof(hs->new_session->original_handshake_hash) == EVP_MAX_MD_SIZE,
-      original_handshake_hash_is_too_small);
+      "original_handshake_hash is too small");
 
   size_t digest_len;
   if (!SSL_TRANSCRIPT_get_hash(&hs->transcript,
@@ -3497,7 +3496,8 @@ int tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
-  OPENSSL_COMPILE_ASSERT(EVP_MAX_MD_SIZE <= 0xff, max_md_size_is_too_large);
+  static_assert(EVP_MAX_MD_SIZE <= 0xff,
+                "EVP_MAX_MD_SIZE does not fit in uint8_t");
   hs->new_session->original_handshake_hash_len = (uint8_t)digest_len;
 
   return 1;
