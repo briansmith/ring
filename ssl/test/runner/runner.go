@@ -3324,6 +3324,9 @@ func addCBCSplittingTests() {
 				MaxVersion:   VersionTLS10,
 				MinVersion:   VersionTLS10,
 				CipherSuites: []uint16{t.cipher},
+				Bugs: ProtocolBugs{
+					ExpectRecordSplitting: true,
+				},
 			},
 			messageLen:    -1, // read until EOF
 			resumeSession: true,
@@ -3339,6 +3342,9 @@ func addCBCSplittingTests() {
 				MaxVersion:   VersionTLS10,
 				MinVersion:   VersionTLS10,
 				CipherSuites: []uint16{t.cipher},
+				Bugs: ProtocolBugs{
+					ExpectRecordSplitting: true,
+				},
 			},
 			messageLen: -1, // read until EOF
 			flags: []string{

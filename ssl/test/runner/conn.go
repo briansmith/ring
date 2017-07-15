@@ -98,6 +98,7 @@ type Conn struct {
 	pendingFragments [][]byte // pending outgoing handshake fragments.
 
 	keyUpdateRequested bool
+	seenOneByteRecord  bool
 
 	tmp [16]byte
 }
@@ -844,6 +845,13 @@ RestartReadRecord:
 		}
 		typ = encTyp
 	}
+
+	length := len(b.data[b.off:])
+	if c.config.Bugs.ExpectRecordSplitting && typ == recordTypeApplicationData && length != 1 && !c.seenOneByteRecord {
+		return 0, nil, c.in.setErrorLocked(fmt.Errorf("tls: application data records were not split"))
+	}
+
+	c.seenOneByteRecord = typ == recordTypeApplicationData && length == 1
 	return typ, b, nil
 }
 

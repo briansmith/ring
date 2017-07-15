@@ -1389,9 +1389,13 @@ type ProtocolBugs struct {
 	// and ServerHello messages to be omitted.
 	OmitExtensions bool
 
-	// EmptyExtensions, if true, causese the extensions field in ClientHello
+	// EmptyExtensions, if true, causes the extensions field in ClientHello
 	// and ServerHello messages to be present, but empty.
 	EmptyExtensions bool
+
+	// ExpectRecordSplitting, if true, causes application records to only be
+	// accepted if they follow a 1/n-1 record split.
+	ExpectRecordSplitting bool
 }
 
 func (c *Config) serverInit() {
