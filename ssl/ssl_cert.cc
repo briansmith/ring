@@ -904,3 +904,15 @@ int SSL_set_ocsp_response(SSL *ssl, const uint8_t *response,
   ssl->cert->ocsp_response = CRYPTO_BUFFER_new(response, response_len, NULL);
   return ssl->cert->ocsp_response != NULL;
 }
+
+void SSL_CTX_set0_client_CAs(SSL_CTX *ctx, STACK_OF(CRYPTO_BUFFER) *name_list) {
+  ctx->x509_method->ssl_ctx_flush_cached_client_CA(ctx);
+  sk_CRYPTO_BUFFER_pop_free(ctx->client_CA, CRYPTO_BUFFER_free);
+  ctx->client_CA = name_list;
+}
+
+void SSL_set0_client_CAs(SSL *ssl, STACK_OF(CRYPTO_BUFFER) *name_list) {
+  ssl->ctx->x509_method->ssl_flush_cached_client_CA(ssl);
+  sk_CRYPTO_BUFFER_pop_free(ssl->client_CA, CRYPTO_BUFFER_free);
+  ssl->client_CA = name_list;
+}

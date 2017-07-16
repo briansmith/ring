@@ -1293,6 +1293,15 @@ static bssl::UniquePtr<EVP_PKEY> GetChainTestKey() {
       PEM_read_bio_PrivateKey(bio.get(), nullptr, nullptr, nullptr));
 }
 
+static const uint8_t kTestName[] = {
+    0x30, 0x45, 0x31, 0x0b, 0x30, 0x09, 0x06, 0x03, 0x55, 0x04, 0x06, 0x13,
+    0x02, 0x41, 0x55, 0x31, 0x13, 0x30, 0x11, 0x06, 0x03, 0x55, 0x04, 0x08,
+    0x0c, 0x0a, 0x53, 0x6f, 0x6d, 0x65, 0x2d, 0x53, 0x74, 0x61, 0x74, 0x65,
+    0x31, 0x21, 0x30, 0x1f, 0x06, 0x03, 0x55, 0x04, 0x0a, 0x0c, 0x18, 0x49,
+    0x6e, 0x74, 0x65, 0x72, 0x6e, 0x65, 0x74, 0x20, 0x57, 0x69, 0x64, 0x67,
+    0x69, 0x74, 0x73, 0x20, 0x50, 0x74, 0x79, 0x20, 0x4c, 0x74, 0x64,
+};
+
 static bool CompleteHandshakes(SSL *client, SSL *server) {
   // Drive both their handshakes to completion.
   for (;;) {
@@ -3286,6 +3295,70 @@ TEST(SSLTest, SetChainAndKey) {
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
                                      server_ctx.get(),
                                      nullptr /* no session */));
+}
+
+TEST(SSLTest, ClientCABuffers) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_with_buffers_method()));
+  ASSERT_TRUE(client_ctx);
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_with_buffers_method()));
+  ASSERT_TRUE(server_ctx);
+
+  bssl::UniquePtr<EVP_PKEY> key = GetChainTestKey();
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<CRYPTO_BUFFER> leaf = GetChainTestCertificateBuffer();
+  ASSERT_TRUE(leaf);
+  bssl::UniquePtr<CRYPTO_BUFFER> intermediate =
+      GetChainTestIntermediateBuffer();
+  ASSERT_TRUE(intermediate);
+  std::vector<CRYPTO_BUFFER *> chain = {
+      leaf.get(),
+      intermediate.get(),
+  };
+  ASSERT_TRUE(SSL_CTX_set_chain_and_key(server_ctx.get(), &chain[0],
+                                        chain.size(), key.get(), nullptr));
+
+  bssl::UniquePtr<CRYPTO_BUFFER> ca_name(
+      CRYPTO_BUFFER_new(kTestName, sizeof(kTestName), nullptr));
+  ASSERT_TRUE(ca_name);
+  bssl::UniquePtr<STACK_OF(CRYPTO_BUFFER)> ca_names(
+      sk_CRYPTO_BUFFER_new_null());
+  ASSERT_TRUE(ca_names);
+  ASSERT_TRUE(sk_CRYPTO_BUFFER_push(ca_names.get(), ca_name.get()));
+  ca_name.release();
+  SSL_CTX_set0_client_CAs(server_ctx.get(), ca_names.release());
+
+  // Configure client and server to accept all certificates.
+  SSL_CTX_set_custom_verify(
+      client_ctx.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+        return ssl_verify_ok;
+      });
+  SSL_CTX_set_custom_verify(
+      server_ctx.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+        return ssl_verify_ok;
+      });
+
+  bool cert_cb_called = false;
+  SSL_CTX_set_cert_cb(
+      client_ctx.get(),
+      [](SSL *ssl, void *arg) -> int {
+        STACK_OF(CRYPTO_BUFFER) *peer_names =
+            SSL_get0_server_requested_CAs(ssl);
+        EXPECT_EQ(1u, sk_CRYPTO_BUFFER_num(peer_names));
+        CRYPTO_BUFFER *peer_name = sk_CRYPTO_BUFFER_value(peer_names, 0);
+        EXPECT_EQ(Bytes(kTestName), Bytes(CRYPTO_BUFFER_data(peer_name),
+                                          CRYPTO_BUFFER_len(peer_name)));
+        *reinterpret_cast<bool *>(arg) = true;
+        return 1;
+      },
+      &cert_cb_called);
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(),
+                                     nullptr /* no session */));
+  EXPECT_TRUE(cert_cb_called);
 }
 
 // Configuring the empty cipher list, though an error, should still modify the

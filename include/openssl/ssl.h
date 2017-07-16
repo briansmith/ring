@@ -2440,6 +2440,18 @@ OPENSSL_EXPORT void SSL_set_client_CA_list(SSL *ssl,
 OPENSSL_EXPORT void SSL_CTX_set_client_CA_list(SSL_CTX *ctx,
                                                STACK_OF(X509_NAME) *name_list);
 
+/* SSL_set0_client_CAs sets |ssl|'s client certificate CA list to |name_list|,
+ * which should contain DER-encoded distinguished names (RFC 5280). It takes
+ * ownership of |name_list|. */
+OPENSSL_EXPORT void SSL_set0_client_CAs(SSL *ssl,
+                                        STACK_OF(CRYPTO_BUFFER) *name_list);
+
+/* SSL_CTX_set0_client_CAs sets |ctx|'s client certificate CA list to
+ * |name_list|, which should contain DER-encoded distinguished names (RFC 5280).
+ * It takes ownership of |name_list|. */
+OPENSSL_EXPORT void SSL_CTX_set0_client_CAs(SSL_CTX *ctx,
+                                            STACK_OF(CRYPTO_BUFFER) *name_list);
+
 /* SSL_get_client_CA_list returns |ssl|'s client certificate CA list. If |ssl|
  * has not been configured as a client, this is the list configured by
  * |SSL_CTX_set_client_CA_list|.
