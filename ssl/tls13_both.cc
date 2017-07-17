@@ -53,7 +53,7 @@ int tls13_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
         }
         ssl->method->expect_flight(ssl);
         hs->wait = ssl_hs_read_message;
-        /* Fall-through. */
+        SSL_FALLTHROUGH;
       }
 
       case ssl_hs_read_message: {

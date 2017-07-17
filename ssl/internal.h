@@ -2373,6 +2373,16 @@ void ssl_get_current_time(const SSL *ssl, struct OPENSSL_timeval *out_clock);
 void ssl_reset_error_state(SSL *ssl);
 
 
+/* Utility macros */
+
+#if defined(__clang__)
+/* SSL_FALLTHROUGH annotates a fallthough case in a switch statement. */
+#define SSL_FALLTHROUGH [[clang::fallthrough]]
+#else
+#define SSL_FALLTHROUGH
+#endif
+
+
 #if defined(__cplusplus)
 } /* extern C */
 #endif

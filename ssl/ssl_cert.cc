@@ -593,6 +593,7 @@ int ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
       break;
     case -2:
       OPENSSL_PUT_ERROR(X509, X509_R_UNKNOWN_KEY_TYPE);
+      break;
     default:
       assert(0);
       break;
