@@ -358,6 +358,9 @@ NextCipherSuite:
 	if c.config.Bugs.OmitEarlyDataExtension {
 		hello.hasEarlyData = false
 	}
+	if c.config.Bugs.SendClientHelloSessionID != nil {
+		hello.sessionId = c.config.Bugs.SendClientHelloSessionID
+	}
 
 	var helloBytes []byte
 	if c.config.Bugs.SendV2ClientHello {
@@ -683,6 +686,10 @@ NextCipherSuite:
 
 func (hs *clientHandshakeState) doTLS13Handshake() error {
 	c := hs.c
+
+	if c.wireVersion == tls13ExperimentVersion && !bytes.Equal(hs.hello.sessionId, hs.serverHello.sessionId) {
+		return errors.New("tls: session IDs did not match.")
+	}
 
 	// Once the PRF hash is known, TLS 1.3 does not require a handshake
 	// buffer.

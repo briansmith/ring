@@ -312,6 +312,7 @@ int ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version) {
     }
   } else {
     if ((ssl->tls13_variant != tls13_experiment &&
+         ssl->tls13_variant != tls13_no_session_id_experiment &&
          version == TLS1_3_EXPERIMENT_VERSION) ||
         (ssl->tls13_variant != tls13_record_type_experiment &&
          version == TLS1_3_RECORD_TYPE_EXPERIMENT_VERSION) ||

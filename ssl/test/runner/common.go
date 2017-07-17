@@ -39,9 +39,10 @@ const (
 )
 
 const (
-	TLS13Default              = 0
-	TLS13Experiment           = 1
-	TLS13RecordTypeExperiment = 2
+	TLS13Default               = 0
+	TLS13Experiment            = 1
+	TLS13RecordTypeExperiment  = 2
+	TLS13NoSessionIDExperiment = 3
 )
 
 var allTLSWireVersions = []uint16{
@@ -716,6 +717,18 @@ type ProtocolBugs struct {
 	// ID as a resumption. (A client which sends empty session ID is
 	// normally expected to look ahead for ChangeCipherSpec.)
 	EmptyTicketSessionID bool
+
+	// SendClientHelloSessionID, if not nil, is the session ID sent in the
+	// ClientHello.
+	SendClientHelloSessionID []byte
+
+	// ExpectClientHelloSessionID, if true, causes the server to fail the
+	// connection if there is not a SessionID in the ClientHello.
+	ExpectClientHelloSessionID bool
+
+	// ExpectEmptyClientHelloSessionID, if true, causes the server to fail the
+	// connection if there is a SessionID in the ClientHello.
+	ExpectEmptyClientHelloSessionID bool
 
 	// ExpectNoTLS12Session, if true, causes the server to fail the
 	// connection if either a session ID or TLS 1.2 ticket is offered.
@@ -1500,7 +1513,7 @@ func (c *Config) defaultCurves() map[CurveID]bool {
 // it returns true and the corresponding protocol version. Otherwise, it returns
 // false.
 func (c *Config) isSupportedVersion(wireVers uint16, isDTLS bool) (uint16, bool) {
-	if (c.TLS13Variant != TLS13Experiment && wireVers == tls13ExperimentVersion) ||
+	if (c.TLS13Variant != TLS13Experiment && c.TLS13Variant != TLS13NoSessionIDExperiment && wireVers == tls13ExperimentVersion) ||
 		(c.TLS13Variant != TLS13RecordTypeExperiment && wireVers == tls13RecordTypeExperimentVersion) ||
 		(c.TLS13Variant != TLS13Default && wireVers == tls13DraftVersion) {
 		return 0, false

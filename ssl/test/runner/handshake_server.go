@@ -1087,6 +1087,13 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 		copy(hs.hello.random[len(hs.hello.random)-8:], downgradeTLS12)
 	}
 
+	if len(hs.clientHello.sessionId) > 0 && c.config.Bugs.ExpectEmptyClientHelloSessionID {
+		return false, errors.New("tls: expected empty session ID from client")
+	}
+	if len(hs.clientHello.sessionId) == 0 && c.config.Bugs.ExpectClientHelloSessionID {
+		return false, errors.New("tls: expected non-empty session ID from client")
+	}
+
 	foundCompression := false
 	// We only support null compression, so check that the client offered it.
 	for _, compression := range hs.clientHello.compressionMethods {

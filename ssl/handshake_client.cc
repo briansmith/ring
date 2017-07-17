@@ -764,7 +764,8 @@ static int ssl3_send_client_hello(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
-  /* Initialize a random session ID for the experimental TLS 1.3 variant. */
+  /* Initialize a random session ID for the experimental TLS 1.3 variant
+   * requiring a session id. */
   if (ssl->tls13_variant == tls13_experiment) {
     hs->session_id_len = sizeof(hs->session_id);
     if (!RAND_bytes(hs->session_id, hs->session_id_len)) {
