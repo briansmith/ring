@@ -162,7 +162,16 @@ func gdbOf(path string, args ...string) *exec.Cmd {
 }
 
 func sdeOf(cpu, path string, args ...string) *exec.Cmd {
-	sdeArgs := []string{"-" + cpu, "--", path}
+	sdeArgs := []string{"-" + cpu}
+	// The kernel's vdso code for gettimeofday sometimes uses the RDTSCP
+	// instruction. Although SDE has a -chip_check_vsyscall flag that
+	// excludes such code by default, it does not seem to work. Instead,
+	// pass the -chip_check_exe_only flag which retains test coverage when
+	// statically linked and excludes the vdso.
+	if cpu == "p4p" || cpu == "pnr" || cpu == "mrm" || cpu == "slt" {
+		sdeArgs = append(sdeArgs, "-chip_check_exe_only")
+	}
+	sdeArgs = append(sdeArgs, "--", path)
 	sdeArgs = append(sdeArgs, args...)
 	return exec.Command(*sdePath, sdeArgs...)
 }
