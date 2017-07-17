@@ -51,7 +51,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # https://clang.llvm.org/docs/DiagnosticsReference.html#wmissing-prototypes
   # https://clang.llvm.org/docs/DiagnosticsReference.html#wmissing-declarations
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wmissing-prototypes")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wmissing-prototypes -Wimplicit-fallthrough")
   endif()
 elseif(MSVC)
   set(MSVC_DISABLED_WARNINGS_LIST
