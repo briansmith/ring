@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -27,6 +29,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 enum client_hs_state_t {
   state_process_hello_retry_request = 0,
@@ -714,8 +718,8 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
 }
 
 int tls13_process_new_session_ticket(SSL *ssl) {
-  bssl::UniquePtr<SSL_SESSION> session(SSL_SESSION_dup(
-      ssl->s3->established_session, SSL_SESSION_INCLUDE_NONAUTH));
+  UniquePtr<SSL_SESSION> session(SSL_SESSION_dup(ssl->s3->established_session,
+                                                 SSL_SESSION_INCLUDE_NONAUTH));
   if (!session) {
     return 0;
   }
@@ -786,3 +790,5 @@ void ssl_clear_tls13_state(SSL_HANDSHAKE *hs) {
   hs->key_share_bytes = NULL;
   hs->key_share_bytes_len = 0;
 }
+
+}  // namespace bssl

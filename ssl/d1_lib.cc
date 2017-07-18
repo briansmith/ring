@@ -54,6 +54,8 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -68,6 +70,7 @@
 #include "internal.h"
 
 
+namespace bssl {
 
 /* DTLS1_MTU_TIMEOUTS is the maximum number of timeouts to expire
  * before starting to decrease the MTU. */
@@ -113,10 +116,6 @@ void dtls1_free(SSL *ssl) {
   ssl->d1 = NULL;
 }
 
-void DTLSv1_set_initial_timeout_duration(SSL *ssl, unsigned int duration_ms) {
-  ssl->initial_timeout_duration_ms = duration_ms;
-}
-
 void dtls1_start_timer(SSL *ssl) {
   /* If timer is not set, initialize duration (by default, 1 second) */
   if (ssl->d1->next_timeout.tv_sec == 0 && ssl->d1->next_timeout.tv_usec == 0) {
@@ -133,56 +132,6 @@ void dtls1_start_timer(SSL *ssl) {
     ssl->d1->next_timeout.tv_sec++;
     ssl->d1->next_timeout.tv_usec -= 1000000;
   }
-}
-
-int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out) {
-  if (!SSL_is_dtls(ssl)) {
-    return 0;
-  }
-
-  /* If no timeout is set, just return NULL */
-  if (ssl->d1->next_timeout.tv_sec == 0 && ssl->d1->next_timeout.tv_usec == 0) {
-    return 0;
-  }
-
-  struct OPENSSL_timeval timenow;
-  ssl_get_current_time(ssl, &timenow);
-
-  /* If timer already expired, set remaining time to 0 */
-  if (ssl->d1->next_timeout.tv_sec < timenow.tv_sec ||
-      (ssl->d1->next_timeout.tv_sec == timenow.tv_sec &&
-       ssl->d1->next_timeout.tv_usec <= timenow.tv_usec)) {
-    OPENSSL_memset(out, 0, sizeof(*out));
-    return 1;
-  }
-
-  /* Calculate time left until timer expires */
-  struct OPENSSL_timeval ret;
-  OPENSSL_memcpy(&ret, &ssl->d1->next_timeout, sizeof(ret));
-  ret.tv_sec -= timenow.tv_sec;
-  if (ret.tv_usec >= timenow.tv_usec) {
-    ret.tv_usec -= timenow.tv_usec;
-  } else {
-    ret.tv_usec = 1000000 + ret.tv_usec - timenow.tv_usec;
-    ret.tv_sec--;
-  }
-
-  /* If remaining time is less than 15 ms, set it to 0 to prevent issues
-   * because of small divergences with socket timeouts. */
-  if (ret.tv_sec == 0 && ret.tv_usec < 15000) {
-    OPENSSL_memset(&ret, 0, sizeof(ret));
-  }
-
-  /* Clamp the result in case of overflow. */
-  if (ret.tv_sec > INT_MAX) {
-    assert(0);
-    out->tv_sec = INT_MAX;
-  } else {
-    out->tv_sec = ret.tv_sec;
-  }
-
-  out->tv_usec = ret.tv_usec;
-  return 1;
 }
 
 int dtls1_is_timer_expired(SSL *ssl) {
@@ -239,6 +188,64 @@ int dtls1_check_timeout_num(SSL *ssl) {
   }
 
   return 0;
+}
+
+}  // namespace bssl
+
+using namespace bssl;
+
+void DTLSv1_set_initial_timeout_duration(SSL *ssl, unsigned int duration_ms) {
+  ssl->initial_timeout_duration_ms = duration_ms;
+}
+
+int DTLSv1_get_timeout(const SSL *ssl, struct timeval *out) {
+  if (!SSL_is_dtls(ssl)) {
+    return 0;
+  }
+
+  /* If no timeout is set, just return NULL */
+  if (ssl->d1->next_timeout.tv_sec == 0 && ssl->d1->next_timeout.tv_usec == 0) {
+    return 0;
+  }
+
+  struct OPENSSL_timeval timenow;
+  ssl_get_current_time(ssl, &timenow);
+
+  /* If timer already expired, set remaining time to 0 */
+  if (ssl->d1->next_timeout.tv_sec < timenow.tv_sec ||
+      (ssl->d1->next_timeout.tv_sec == timenow.tv_sec &&
+       ssl->d1->next_timeout.tv_usec <= timenow.tv_usec)) {
+    OPENSSL_memset(out, 0, sizeof(*out));
+    return 1;
+  }
+
+  /* Calculate time left until timer expires */
+  struct OPENSSL_timeval ret;
+  OPENSSL_memcpy(&ret, &ssl->d1->next_timeout, sizeof(ret));
+  ret.tv_sec -= timenow.tv_sec;
+  if (ret.tv_usec >= timenow.tv_usec) {
+    ret.tv_usec -= timenow.tv_usec;
+  } else {
+    ret.tv_usec = 1000000 + ret.tv_usec - timenow.tv_usec;
+    ret.tv_sec--;
+  }
+
+  /* If remaining time is less than 15 ms, set it to 0 to prevent issues
+   * because of small divergences with socket timeouts. */
+  if (ret.tv_sec == 0 && ret.tv_usec < 15000) {
+    OPENSSL_memset(&ret, 0, sizeof(ret));
+  }
+
+  /* Clamp the result in case of overflow. */
+  if (ret.tv_sec > INT_MAX) {
+    assert(0);
+    out->tv_sec = INT_MAX;
+  } else {
+    out->tv_sec = ret.tv_sec;
+  }
+
+  out->tv_usec = ret.tv_usec;
+  return 1;
 }
 
 int DTLSv1_handle_timeout(SSL *ssl) {

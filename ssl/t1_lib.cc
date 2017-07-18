@@ -106,6 +106,8 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -125,6 +127,8 @@
 #include "internal.h"
 #include "../crypto/internal.h"
 
+
+namespace bssl {
 
 static int ssl_check_clienthello_tlsext(SSL_HANDSHAKE *hs);
 
@@ -287,20 +291,6 @@ int ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
   }
 
   return 0;
-}
-
-int SSL_early_callback_ctx_extension_get(const SSL_CLIENT_HELLO *client_hello,
-                                         uint16_t extension_type,
-                                         const uint8_t **out_data,
-                                         size_t *out_len) {
-  CBS cbs;
-  if (!ssl_client_hello_get_extension(client_hello, &cbs, extension_type)) {
-    return 0;
-  }
-
-  *out_data = CBS_data(&cbs);
-  *out_len = CBS_len(&cbs);
-  return 1;
 }
 
 static const uint16_t kDefaultGroups[] = {
@@ -507,10 +497,6 @@ static const uint16_t kSignSignatureAlgorithms[] = {
     SSL_SIGN_ECDSA_SHA1,
     SSL_SIGN_RSA_PKCS1_SHA1,
 };
-
-void SSL_CTX_set_ed25519_enabled(SSL_CTX *ctx, int enabled) {
-  ctx->ed25519_enabled = !!enabled;
-}
 
 int tls12_add_verify_sigalgs(const SSL *ssl, CBB *out) {
   const uint16_t *sigalgs = kVerifySignatureAlgorithms;
@@ -2658,12 +2644,6 @@ static const struct tls_extension *tls_extension_find(uint32_t *out_index,
   return NULL;
 }
 
-int SSL_extension_supported(unsigned extension_value) {
-  uint32_t index;
-  return extension_value == TLSEXT_TYPE_padding ||
-         tls_extension_find(&index, extension_value) != NULL;
-}
-
 int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
   SSL *const ssl = hs->ssl;
   /* Don't add extensions for SSLv3 unless doing secure renegotiation. */
@@ -3044,8 +3024,8 @@ ssl_decrypt_ticket_with_cipher_ctx(SSL *ssl, uint8_t **out, size_t *out_len,
                                    size_t ticket_len) {
   const SSL_CTX *const ssl_ctx = ssl->session_ctx;
 
-  bssl::ScopedHMAC_CTX hmac_ctx;
-  bssl::ScopedEVP_CIPHER_CTX cipher_ctx;
+  ScopedHMAC_CTX hmac_ctx;
+  ScopedEVP_CIPHER_CTX cipher_ctx;
 
   /* Ensure there is room for the key name and the largest IV
    * |tlsext_ticket_key_cb| may try to consume. The real limit may be lower, but
@@ -3105,7 +3085,7 @@ ssl_decrypt_ticket_with_cipher_ctx(SSL *ssl, uint8_t **out, size_t *out_len,
   const uint8_t *ciphertext = ticket + SSL_TICKET_KEY_NAME_LEN + iv_len;
   size_t ciphertext_len = ticket_len - SSL_TICKET_KEY_NAME_LEN - iv_len -
                           mac_len;
-  bssl::UniquePtr<uint8_t> plaintext((uint8_t *)OPENSSL_malloc(ciphertext_len));
+  UniquePtr<uint8_t> plaintext((uint8_t *)OPENSSL_malloc(ciphertext_len));
   if (!plaintext) {
     return ssl_ticket_aead_error;
   }
@@ -3328,15 +3308,14 @@ int tls1_verify_channel_id(SSL_HANDSHAKE *hs) {
     return 0;
   }
 
-  bssl::UniquePtr<EC_GROUP> p256(
-      EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
+  UniquePtr<EC_GROUP> p256(EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
   if (!p256) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_P256_SUPPORT);
     return 0;
   }
 
-  bssl::UniquePtr<ECDSA_SIG> sig(ECDSA_SIG_new());
-  bssl::UniquePtr<BIGNUM> x(BN_new()), y(BN_new());
+  UniquePtr<ECDSA_SIG> sig(ECDSA_SIG_new());
+  UniquePtr<BIGNUM> x(BN_new()), y(BN_new());
   if (!sig || !x || !y) {
     return 0;
   }
@@ -3349,8 +3328,8 @@ int tls1_verify_channel_id(SSL_HANDSHAKE *hs) {
     return 0;
   }
 
-  bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
-  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(p256.get()));
+  UniquePtr<EC_KEY> key(EC_KEY_new());
+  UniquePtr<EC_POINT> point(EC_POINT_new(p256.get()));
   if (!key || !point ||
       !EC_POINT_set_affine_coordinates_GFp(p256.get(), point.get(), x.get(),
                                            y.get(), nullptr) ||
@@ -3542,4 +3521,32 @@ int ssl_is_sct_list_valid(const CBS *contents) {
   }
 
   return 1;
+}
+
+}  // namespace bssl
+
+using namespace bssl;
+
+int SSL_early_callback_ctx_extension_get(const SSL_CLIENT_HELLO *client_hello,
+                                         uint16_t extension_type,
+                                         const uint8_t **out_data,
+                                         size_t *out_len) {
+  CBS cbs;
+  if (!ssl_client_hello_get_extension(client_hello, &cbs, extension_type)) {
+    return 0;
+  }
+
+  *out_data = CBS_data(&cbs);
+  *out_len = CBS_len(&cbs);
+  return 1;
+}
+
+void SSL_CTX_set_ed25519_enabled(SSL_CTX *ctx, int enabled) {
+  ctx->ed25519_enabled = !!enabled;
+}
+
+int SSL_extension_supported(unsigned extension_value) {
+  uint32_t index;
+  return extension_value == TLSEXT_TYPE_padding ||
+         tls_extension_find(&index, extension_value) != NULL;
 }

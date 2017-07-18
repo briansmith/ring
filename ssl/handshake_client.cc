@@ -147,6 +147,8 @@
  * OTHERWISE.
  */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -167,6 +169,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 static int ssl3_send_client_hello(SSL_HANDSHAKE *hs);
 static int dtls1_get_hello_verify_request(SSL_HANDSHAKE *hs);
@@ -653,7 +657,7 @@ static int ssl_write_client_cipher_list(SSL_HANDSHAKE *hs, CBB *out) {
 
 int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  bssl::ScopedCBB cbb;
+  ScopedCBB cbb;
   CBB body;
   if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CLIENT_HELLO)) {
     return 0;
@@ -1515,7 +1519,7 @@ static_assert(sizeof(size_t) >= sizeof(unsigned),
 
 static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  bssl::ScopedCBB cbb;
+  ScopedCBB cbb;
   CBB body;
   if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_CLIENT_KEY_EXCHANGE)) {
@@ -1696,7 +1700,7 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   assert(ssl_has_private_key(ssl));
 
-  bssl::ScopedCBB cbb;
+  ScopedCBB cbb;
   CBB body, child;
   if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_CERTIFICATE_VERIFY)) {
@@ -1894,3 +1898,5 @@ err:
   }
   return -1;
 }
+
+}  // namespace bssl

@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -1527,7 +1529,7 @@ TEST(SSLTest, SessionDuplication) {
 
   SSL_SESSION *session0 = SSL_get_session(client.get());
   bssl::UniquePtr<SSL_SESSION> session1(
-      SSL_SESSION_dup(session0, SSL_SESSION_DUP_ALL));
+      bssl::SSL_SESSION_dup(session0, SSL_SESSION_DUP_ALL));
   ASSERT_TRUE(session1);
 
   session1->not_resumable = 0;

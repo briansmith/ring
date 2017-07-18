@@ -54,6 +54,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -64,6 +66,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 static int ssl3_supports_cipher(const SSL_CIPHER *cipher) { return 1; }
 
@@ -120,6 +124,64 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     ssl3_set_write_state,
 };
 
+static int ssl_noop_x509_check_client_CA_names(
+    STACK_OF(CRYPTO_BUFFER) *names) {
+  return 1;
+}
+
+static void ssl_noop_x509_clear(CERT *cert) {}
+static void ssl_noop_x509_free(CERT *cert) {}
+static void ssl_noop_x509_dup(CERT *new_cert, const CERT *cert) {}
+static void ssl_noop_x509_flush_cached_leaf(CERT *cert) {}
+static void ssl_noop_x509_flush_cached_chain(CERT *cert) {}
+static int ssl_noop_x509_session_cache_objects(SSL_SESSION *sess) {
+  return 1;
+}
+static int ssl_noop_x509_session_dup(SSL_SESSION *new_session,
+                                       const SSL_SESSION *session) {
+  return 1;
+}
+static void ssl_noop_x509_session_clear(SSL_SESSION *session) {}
+static int ssl_noop_x509_session_verify_cert_chain(SSL_SESSION *session,
+                                                   SSL *ssl,
+                                                   uint8_t *out_alert) {
+  return 0;
+}
+
+static void ssl_noop_x509_hs_flush_cached_ca_names(SSL_HANDSHAKE *hs) {}
+static int ssl_noop_x509_ssl_new(SSL *ctx) { return 1; }
+static void ssl_noop_x509_ssl_free(SSL *ctx) { }
+static void ssl_noop_x509_ssl_flush_cached_client_CA(SSL *ssl) {}
+static int ssl_noop_x509_ssl_auto_chain_if_needed(SSL *ssl) { return 1; }
+static int ssl_noop_x509_ssl_ctx_new(SSL_CTX *ctx) { return 1; }
+static void ssl_noop_x509_ssl_ctx_free(SSL_CTX *ctx) { }
+static void ssl_noop_x509_ssl_ctx_flush_cached_client_CA(SSL_CTX *ctx) {}
+
+static const SSL_X509_METHOD ssl_noop_x509_method = {
+  ssl_noop_x509_check_client_CA_names,
+  ssl_noop_x509_clear,
+  ssl_noop_x509_free,
+  ssl_noop_x509_dup,
+  ssl_noop_x509_flush_cached_chain,
+  ssl_noop_x509_flush_cached_leaf,
+  ssl_noop_x509_session_cache_objects,
+  ssl_noop_x509_session_dup,
+  ssl_noop_x509_session_clear,
+  ssl_noop_x509_session_verify_cert_chain,
+  ssl_noop_x509_hs_flush_cached_ca_names,
+  ssl_noop_x509_ssl_new,
+  ssl_noop_x509_ssl_free,
+  ssl_noop_x509_ssl_flush_cached_client_CA,
+  ssl_noop_x509_ssl_auto_chain_if_needed,
+  ssl_noop_x509_ssl_ctx_new,
+  ssl_noop_x509_ssl_ctx_free,
+  ssl_noop_x509_ssl_ctx_flush_cached_client_CA,
+};
+
+}  // namespace bssl
+
+using namespace bssl;
+
 const SSL_METHOD *TLS_method(void) {
   static const SSL_METHOD kMethod = {
       0,
@@ -131,6 +193,15 @@ const SSL_METHOD *TLS_method(void) {
 
 const SSL_METHOD *SSLv23_method(void) {
   return TLS_method();
+}
+
+const SSL_METHOD *TLS_with_buffers_method(void) {
+  static const SSL_METHOD kMethod = {
+      0,
+      &kTLSProtocolMethod,
+      &ssl_noop_x509_method,
+  };
+  return &kMethod;
 }
 
 /* Legacy version-locked methods. */
@@ -219,67 +290,4 @@ const SSL_METHOD *TLS_server_method(void) {
 
 const SSL_METHOD *TLS_client_method(void) {
   return TLS_method();
-}
-
-static int ssl_noop_x509_check_client_CA_names(
-    STACK_OF(CRYPTO_BUFFER) *names) {
-  return 1;
-}
-
-static void ssl_noop_x509_clear(CERT *cert) {}
-static void ssl_noop_x509_free(CERT *cert) {}
-static void ssl_noop_x509_dup(CERT *new_cert, const CERT *cert) {}
-static void ssl_noop_x509_flush_cached_leaf(CERT *cert) {}
-static void ssl_noop_x509_flush_cached_chain(CERT *cert) {}
-static int ssl_noop_x509_session_cache_objects(SSL_SESSION *sess) {
-  return 1;
-}
-static int ssl_noop_x509_session_dup(SSL_SESSION *new_session,
-                                       const SSL_SESSION *session) {
-  return 1;
-}
-static void ssl_noop_x509_session_clear(SSL_SESSION *session) {}
-static int ssl_noop_x509_session_verify_cert_chain(SSL_SESSION *session,
-                                                   SSL *ssl,
-                                                   uint8_t *out_alert) {
-  return 0;
-}
-
-static void ssl_noop_x509_hs_flush_cached_ca_names(SSL_HANDSHAKE *hs) {}
-static int ssl_noop_x509_ssl_new(SSL *ctx) { return 1; }
-static void ssl_noop_x509_ssl_free(SSL *ctx) { }
-static void ssl_noop_x509_ssl_flush_cached_client_CA(SSL *ssl) {}
-static int ssl_noop_x509_ssl_auto_chain_if_needed(SSL *ssl) { return 1; }
-static int ssl_noop_x509_ssl_ctx_new(SSL_CTX *ctx) { return 1; }
-static void ssl_noop_x509_ssl_ctx_free(SSL_CTX *ctx) { }
-static void ssl_noop_x509_ssl_ctx_flush_cached_client_CA(SSL_CTX *ctx) {}
-
-static const SSL_X509_METHOD ssl_noop_x509_method = {
-  ssl_noop_x509_check_client_CA_names,
-  ssl_noop_x509_clear,
-  ssl_noop_x509_free,
-  ssl_noop_x509_dup,
-  ssl_noop_x509_flush_cached_chain,
-  ssl_noop_x509_flush_cached_leaf,
-  ssl_noop_x509_session_cache_objects,
-  ssl_noop_x509_session_dup,
-  ssl_noop_x509_session_clear,
-  ssl_noop_x509_session_verify_cert_chain,
-  ssl_noop_x509_hs_flush_cached_ca_names,
-  ssl_noop_x509_ssl_new,
-  ssl_noop_x509_ssl_free,
-  ssl_noop_x509_ssl_flush_cached_client_CA,
-  ssl_noop_x509_ssl_auto_chain_if_needed,
-  ssl_noop_x509_ssl_ctx_new,
-  ssl_noop_x509_ssl_ctx_free,
-  ssl_noop_x509_ssl_ctx_flush_cached_client_CA,
-};
-
-const SSL_METHOD *TLS_with_buffers_method(void) {
-  static const SSL_METHOD kMethod = {
-      0,
-      &kTLSProtocolMethod,
-      &ssl_noop_x509_method,
-  };
-  return &kMethod;
 }

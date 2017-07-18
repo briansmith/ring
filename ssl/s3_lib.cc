@@ -146,6 +146,8 @@
  * OTHER ENTITY BASED ON INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS OR
  * OTHERWISE. */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -161,6 +163,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 int ssl3_new(SSL *ssl) {
   SSL3_STATE *s3 = (SSL3_STATE *)OPENSSL_malloc(sizeof *s3);
@@ -215,3 +219,5 @@ const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
 
   return ssl->ctx->cipher_list;
 }
+
+}  // namespace bssl

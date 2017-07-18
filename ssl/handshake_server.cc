@@ -146,6 +146,8 @@
  * OTHER ENTITY BASED ON INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS OR
  * OTHERWISE. */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -169,6 +171,8 @@
 #include "internal.h"
 #include "../crypto/internal.h"
 
+
+namespace bssl {
 
 static int ssl3_process_client_hello(SSL_HANDSHAKE *hs);
 static int ssl3_select_certificate(SSL_HANDSHAKE *hs);
@@ -825,12 +829,12 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
 
   /* Determine whether we are doing session resumption. */
   int tickets_supported = 0, renew_ticket = 0;
-  /* TODO(davidben): Switch |ssl_get_prev_session| to take a |bssl::UniquePtr|
+  /* TODO(davidben): Switch |ssl_get_prev_session| to take a |UniquePtr|
    * output and simplify this. */
   SSL_SESSION *session_raw = nullptr;
   auto session_ret = ssl_get_prev_session(ssl, &session_raw, &tickets_supported,
                                           &renew_ticket, &client_hello);
-  bssl::UniquePtr<SSL_SESSION> session(session_raw);
+  UniquePtr<SSL_SESSION> session(session_raw);
   switch (session_ret) {
     case ssl_session_success:
       break;
@@ -1001,7 +1005,7 @@ static int ssl3_send_server_hello(SSL_HANDSHAKE *hs) {
 
 static int ssl3_send_server_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  bssl::ScopedCBB cbb;
+  ScopedCBB cbb;
 
   if (ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
     if (!ssl_has_certificate(ssl)) {
@@ -1722,3 +1726,5 @@ static int ssl3_send_server_finished(SSL_HANDSHAKE *hs) {
 
   return ssl3_send_finished(hs);
 }
+
+}  // namespace bssl

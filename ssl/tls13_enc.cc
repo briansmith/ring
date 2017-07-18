@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -27,6 +29,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 static int init_key_schedule(SSL_HANDSHAKE *hs, uint16_t version,
                               int algorithm_prf) {
@@ -452,3 +456,5 @@ int tls13_verify_psk_binder(SSL_HANDSHAKE *hs, SSL_SESSION *session,
 
   return 1;
 }
+
+}  // namespace bssl

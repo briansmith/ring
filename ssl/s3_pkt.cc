@@ -106,6 +106,8 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -121,6 +123,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len);
 
@@ -590,3 +594,5 @@ int ssl3_dispatch_alert(SSL *ssl) {
 
   return 1;
 }
+
+}  // namespace bssl

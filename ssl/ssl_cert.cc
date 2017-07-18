@@ -112,6 +112,8 @@
  * ECC cipher suite support in OpenSSL originally developed by
  * SUN MICROSYSTEMS, INC., and contributed to the OpenSSL project. */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -130,6 +132,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 CERT *ssl_cert_new(const SSL_X509_METHOD *x509_method) {
   CERT *ret = (CERT *)OPENSSL_malloc(sizeof(CERT));
@@ -340,20 +344,6 @@ static int cert_set_chain_and_key(
   return 1;
 }
 
-int SSL_set_chain_and_key(SSL *ssl, CRYPTO_BUFFER *const *certs,
-                          size_t num_certs, EVP_PKEY *privkey,
-                          const SSL_PRIVATE_KEY_METHOD *privkey_method) {
-  return cert_set_chain_and_key(ssl->cert, certs, num_certs, privkey,
-                                privkey_method);
-}
-
-int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
-                              size_t num_certs, EVP_PKEY *privkey,
-                              const SSL_PRIVATE_KEY_METHOD *privkey_method) {
-  return cert_set_chain_and_key(ctx->cert, certs, num_certs, privkey,
-                                privkey_method);
-}
-
 int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer) {
   switch (check_leaf_cert_and_privkey(buffer, cert->privatekey)) {
     case leaf_cert_and_privkey_error:
@@ -391,29 +381,6 @@ int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer) {
   CRYPTO_BUFFER_up_ref(buffer);
 
   return 1;
-}
-
-int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, size_t der_len,
-                                 const uint8_t *der) {
-  CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new(der, der_len, NULL);
-  if (buffer == NULL) {
-    return 0;
-  }
-
-  const int ok = ssl_set_cert(ctx->cert, buffer);
-  CRYPTO_BUFFER_free(buffer);
-  return ok;
-}
-
-int SSL_use_certificate_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
-  CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new(der, der_len, NULL);
-  if (buffer == NULL) {
-    return 0;
-  }
-
-  const int ok = ssl_set_cert(ssl->cert, buffer);
-  CRYPTO_BUFFER_free(buffer);
-  return ok;
 }
 
 int ssl_has_certificate(const SSL *ssl) {
@@ -781,31 +748,6 @@ int ssl_add_client_CA_list(SSL *ssl, CBB *cbb) {
   return CBB_flush(cbb);
 }
 
-void SSL_CTX_set_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl, void *arg),
-                         void *arg) {
-  ssl_cert_set_cert_cb(ctx->cert, cb, arg);
-}
-
-void SSL_set_cert_cb(SSL *ssl, int (*cb)(SSL *ssl, void *arg), void *arg) {
-  ssl_cert_set_cert_cb(ssl->cert, cb, arg);
-}
-
-STACK_OF(CRYPTO_BUFFER) *SSL_get0_peer_certificates(const SSL *ssl) {
-  SSL_SESSION *session = SSL_get_session(ssl);
-  if (session == NULL) {
-    return NULL;
-  }
-
-  return session->certs;
-}
-
-STACK_OF(CRYPTO_BUFFER) *SSL_get0_server_requested_CAs(const SSL *ssl) {
-  if (ssl->s3->hs == NULL) {
-    return NULL;
-  }
-  return ssl->s3->hs->ca_names;
-}
-
 int ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
                                const CRYPTO_BUFFER *leaf) {
   SSL *const ssl = hs->ssl;
@@ -864,6 +806,72 @@ int ssl_on_certificate_selected(SSL_HANDSHAKE *hs) {
   EVP_PKEY_free(hs->local_pubkey);
   hs->local_pubkey = ssl_cert_parse_pubkey(&leaf);
   return hs->local_pubkey != NULL;
+}
+
+}  // namespace bssl
+
+using namespace bssl;
+
+int SSL_set_chain_and_key(SSL *ssl, CRYPTO_BUFFER *const *certs,
+                          size_t num_certs, EVP_PKEY *privkey,
+                          const SSL_PRIVATE_KEY_METHOD *privkey_method) {
+  return cert_set_chain_and_key(ssl->cert, certs, num_certs, privkey,
+                                privkey_method);
+}
+
+int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
+                              size_t num_certs, EVP_PKEY *privkey,
+                              const SSL_PRIVATE_KEY_METHOD *privkey_method) {
+  return cert_set_chain_and_key(ctx->cert, certs, num_certs, privkey,
+                                privkey_method);
+}
+
+int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, size_t der_len,
+                                 const uint8_t *der) {
+  CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new(der, der_len, NULL);
+  if (buffer == NULL) {
+    return 0;
+  }
+
+  const int ok = ssl_set_cert(ctx->cert, buffer);
+  CRYPTO_BUFFER_free(buffer);
+  return ok;
+}
+
+int SSL_use_certificate_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
+  CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new(der, der_len, NULL);
+  if (buffer == NULL) {
+    return 0;
+  }
+
+  const int ok = ssl_set_cert(ssl->cert, buffer);
+  CRYPTO_BUFFER_free(buffer);
+  return ok;
+}
+
+void SSL_CTX_set_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl, void *arg),
+                         void *arg) {
+  ssl_cert_set_cert_cb(ctx->cert, cb, arg);
+}
+
+void SSL_set_cert_cb(SSL *ssl, int (*cb)(SSL *ssl, void *arg), void *arg) {
+  ssl_cert_set_cert_cb(ssl->cert, cb, arg);
+}
+
+STACK_OF(CRYPTO_BUFFER) *SSL_get0_peer_certificates(const SSL *ssl) {
+  SSL_SESSION *session = SSL_get_session(ssl);
+  if (session == NULL) {
+    return NULL;
+  }
+
+  return session->certs;
+}
+
+STACK_OF(CRYPTO_BUFFER) *SSL_get0_server_requested_CAs(const SSL *ssl) {
+  if (ssl->s3->hs == NULL) {
+    return NULL;
+  }
+  return ssl->s3->hs->ca_names;
 }
 
 static int set_signed_cert_timestamp_list(CERT *cert, const uint8_t *list,

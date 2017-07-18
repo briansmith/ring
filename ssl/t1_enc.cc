@@ -133,6 +133,8 @@
  * OTHER ENTITY BASED ON INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS OR
  * OTHERWISE. */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -149,6 +151,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 /* tls1_P_hash computes the TLS P_<hash> function as described in RFC 5246,
  * section 5. It XORs |out_len| bytes to |out|, using |md| as the hash and
@@ -442,34 +446,6 @@ int tls1_change_cipher_state(SSL_HANDSHAKE *hs, int which) {
   return ssl->method->set_write_state(ssl, aead_ctx);
 }
 
-size_t SSL_get_key_block_len(const SSL *ssl) {
-  return 2 * ((size_t)ssl->s3->tmp.new_mac_secret_len +
-              (size_t)ssl->s3->tmp.new_key_len +
-              (size_t)ssl->s3->tmp.new_fixed_iv_len);
-}
-
-int SSL_generate_key_block(const SSL *ssl, uint8_t *out, size_t out_len) {
-  if (ssl3_protocol_version(ssl) == SSL3_VERSION) {
-    return ssl3_prf(out, out_len, SSL_get_session(ssl)->master_key,
-                    SSL_get_session(ssl)->master_key_length,
-                    TLS_MD_KEY_EXPANSION_CONST, TLS_MD_KEY_EXPANSION_CONST_SIZE,
-                    ssl->s3->server_random, SSL3_RANDOM_SIZE,
-                    ssl->s3->client_random, SSL3_RANDOM_SIZE);
-  }
-
-  const EVP_MD *digest = ssl_get_handshake_digest(
-      SSL_get_session(ssl)->cipher->algorithm_prf, ssl3_protocol_version(ssl));
-  if (digest == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-  return tls1_prf(digest, out, out_len, SSL_get_session(ssl)->master_key,
-                  SSL_get_session(ssl)->master_key_length,
-                  TLS_MD_KEY_EXPANSION_CONST, TLS_MD_KEY_EXPANSION_CONST_SIZE,
-                  ssl->s3->server_random, SSL3_RANDOM_SIZE,
-                  ssl->s3->client_random, SSL3_RANDOM_SIZE);
-}
-
 int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
                                 const uint8_t *premaster,
                                 size_t premaster_len) {
@@ -505,6 +481,38 @@ int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
   }
 
   return SSL3_MASTER_SECRET_SIZE;
+}
+
+}  // namespace bssl
+
+using namespace bssl;
+
+size_t SSL_get_key_block_len(const SSL *ssl) {
+  return 2 * ((size_t)ssl->s3->tmp.new_mac_secret_len +
+              (size_t)ssl->s3->tmp.new_key_len +
+              (size_t)ssl->s3->tmp.new_fixed_iv_len);
+}
+
+int SSL_generate_key_block(const SSL *ssl, uint8_t *out, size_t out_len) {
+  if (ssl3_protocol_version(ssl) == SSL3_VERSION) {
+    return ssl3_prf(out, out_len, SSL_get_session(ssl)->master_key,
+                    SSL_get_session(ssl)->master_key_length,
+                    TLS_MD_KEY_EXPANSION_CONST, TLS_MD_KEY_EXPANSION_CONST_SIZE,
+                    ssl->s3->server_random, SSL3_RANDOM_SIZE,
+                    ssl->s3->client_random, SSL3_RANDOM_SIZE);
+  }
+
+  const EVP_MD *digest = ssl_get_handshake_digest(
+      SSL_get_session(ssl)->cipher->algorithm_prf, ssl3_protocol_version(ssl));
+  if (digest == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+  return tls1_prf(digest, out, out_len, SSL_get_session(ssl)->master_key,
+                  SSL_get_session(ssl)->master_key_length,
+                  TLS_MD_KEY_EXPANSION_CONST, TLS_MD_KEY_EXPANSION_CONST_SIZE,
+                  ssl->s3->server_random, SSL3_RANDOM_SIZE,
+                  ssl->s3->client_random, SSL3_RANDOM_SIZE);
 }
 
 int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,

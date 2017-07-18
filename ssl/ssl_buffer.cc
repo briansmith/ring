@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -26,6 +28,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 /* BIO uses int instead of size_t. No lengths will exceed uint16_t, so this will
  * not overflow. */
@@ -289,3 +293,5 @@ int ssl_write_buffer_flush(SSL *ssl) {
 void ssl_write_buffer_clear(SSL *ssl) {
   clear_buffer(&ssl->s3->write_buffer);
 }
+
+}  // namespace bssl

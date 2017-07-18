@@ -109,6 +109,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -125,6 +127,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 int dtls1_get_record(SSL *ssl) {
 again:
@@ -415,3 +419,5 @@ int dtls1_dispatch_alert(SSL *ssl) {
 
   return 1;
 }
+
+}  // namespace bssl

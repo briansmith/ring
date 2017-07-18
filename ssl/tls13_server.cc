@@ -19,6 +19,8 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -35,6 +37,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 enum server_hs_state_t {
   state_select_parameters = 0,
@@ -910,3 +914,5 @@ enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs) {
 
   return ssl_hs_ok;
 }
+
+}  // namespace bssl

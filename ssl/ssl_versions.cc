@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -22,6 +24,8 @@
 #include "internal.h"
 #include "../crypto/internal.h"
 
+
+namespace bssl {
 
 int ssl_protocol_version_from_wire(uint16_t *out, uint16_t version) {
   switch (version) {
@@ -141,22 +145,6 @@ static int set_max_version(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
   return set_version_bound(method, out, version);
 }
 
-int SSL_CTX_set_min_proto_version(SSL_CTX *ctx, uint16_t version) {
-  return set_min_version(ctx->method, &ctx->conf_min_version, version);
-}
-
-int SSL_CTX_set_max_proto_version(SSL_CTX *ctx, uint16_t version) {
-  return set_max_version(ctx->method, &ctx->conf_max_version, version);
-}
-
-int SSL_set_min_proto_version(SSL *ssl, uint16_t version) {
-  return set_min_version(ssl->method, &ssl->conf_min_version, version);
-}
-
-int SSL_set_max_proto_version(SSL *ssl, uint16_t version) {
-  return set_max_version(ssl->method, &ssl->conf_max_version, version);
-}
-
 const struct {
   uint16_t version;
   uint32_t flag;
@@ -238,17 +226,7 @@ static uint16_t ssl_version(const SSL *ssl) {
   return ssl->version;
 }
 
-int SSL_version(const SSL *ssl) {
-  uint16_t ret = ssl_version(ssl);
-  /* Report TLS 1.3 draft version as TLS 1.3 in the public API. */
-  if (ret == TLS1_3_DRAFT_VERSION || ret == TLS1_3_EXPERIMENT_VERSION ||
-      ret == TLS1_3_RECORD_TYPE_EXPERIMENT_VERSION) {
-    return TLS1_3_VERSION;
-  }
-  return ret;
-}
-
-static const char *ssl_get_version(int version) {
+static const char *ssl_version_to_string(uint16_t version) {
   switch (version) {
     /* Report TLS 1.3 draft version as TLS 1.3 in the public API. */
     case TLS1_3_DRAFT_VERSION:
@@ -277,14 +255,6 @@ static const char *ssl_get_version(int version) {
     default:
       return "unknown";
   }
-}
-
-const char *SSL_get_version(const SSL *ssl) {
-  return ssl_get_version(ssl_version(ssl));
-}
-
-const char *SSL_SESSION_get_version(const SSL_SESSION *session) {
-  return ssl_get_version(session->ssl_version);
 }
 
 uint16_t ssl3_protocol_version(const SSL *ssl) {
@@ -371,4 +341,42 @@ int ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
   *out_alert = SSL_AD_PROTOCOL_VERSION;
   return 0;
+}
+
+}  // namespace bssl
+
+using namespace bssl;
+
+int SSL_CTX_set_min_proto_version(SSL_CTX *ctx, uint16_t version) {
+  return set_min_version(ctx->method, &ctx->conf_min_version, version);
+}
+
+int SSL_CTX_set_max_proto_version(SSL_CTX *ctx, uint16_t version) {
+  return set_max_version(ctx->method, &ctx->conf_max_version, version);
+}
+
+int SSL_set_min_proto_version(SSL *ssl, uint16_t version) {
+  return set_min_version(ssl->method, &ssl->conf_min_version, version);
+}
+
+int SSL_set_max_proto_version(SSL *ssl, uint16_t version) {
+  return set_max_version(ssl->method, &ssl->conf_max_version, version);
+}
+
+int SSL_version(const SSL *ssl) {
+  uint16_t ret = ssl_version(ssl);
+  /* Report TLS 1.3 draft version as TLS 1.3 in the public API. */
+  if (ret == TLS1_3_DRAFT_VERSION || ret == TLS1_3_EXPERIMENT_VERSION ||
+      ret == TLS1_3_RECORD_TYPE_EXPERIMENT_VERSION) {
+    return TLS1_3_VERSION;
+  }
+  return ret;
+}
+
+const char *SSL_get_version(const SSL *ssl) {
+  return ssl_version_to_string(ssl_version(ssl));
+}
+
+const char *SSL_SESSION_get_version(const SSL_SESSION *session) {
+  return ssl_version_to_string(session->ssl_version);
 }

@@ -142,6 +142,10 @@
 #ifndef OPENSSL_HEADER_SSL_INTERNAL_H
 #define OPENSSL_HEADER_SSL_INTERNAL_H
 
+#if !defined(BORINGSSL_INTERNAL_CXX_TYPES)
+#error "Files including this header must define BORINGSSL_INTERNAL_CXX_TYPES before including any headers"
+#endif
+
 #include <openssl/base.h>
 
 #include <openssl/aead.h>
@@ -158,12 +162,10 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <sys/time.h>
 #endif
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
 
+namespace bssl {
 
-typedef struct ssl_handshake_st SSL_HANDSHAKE;
+struct SSL_HANDSHAKE;
 
 /* Protocol versions.
  *
@@ -314,7 +316,7 @@ size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher);
 
 /* SSL_TRANSCRIPT maintains the handshake transcript as a combination of a
  * buffer and running hash. */
-typedef struct ssl_transcript_st {
+struct SSL_TRANSCRIPT {
   /* buffer, if non-NULL, contains the handshake transcript. */
   BUF_MEM *buffer;
   /* hash, if initialized with an |EVP_MD|, maintains the handshake hash. For
@@ -323,7 +325,7 @@ typedef struct ssl_transcript_st {
   /* md5, if initialized with an |EVP_MD|, maintains the MD5 half of the
    * handshake hash for TLS 1.1 and below. */
   EVP_MD_CTX md5;
-} SSL_TRANSCRIPT;
+};
 
 /* SSL_TRANSCRIPT_init initializes the handshake transcript. If called on an
  * existing transcript, it resets the transcript and hash. It returns one on
@@ -395,7 +397,7 @@ int tls1_prf(const EVP_MD *digest, uint8_t *out, size_t out_len,
 
 /* SSL_AEAD_CTX contains information about an AEAD that is being used to encrypt
  * an SSL connection. */
-typedef struct ssl_aead_ctx_st {
+struct SSL_AEAD_CTX {
   const SSL_CIPHER *cipher;
   EVP_AEAD_CTX ctx;
   /* fixed_nonce contains any bytes of the nonce that are fixed for all
@@ -422,7 +424,7 @@ typedef struct ssl_aead_ctx_st {
   /* xor_fixed_nonce is non-zero if the fixed nonce should be XOR'd into the
    * variable nonce rather than prepended. */
   unsigned xor_fixed_nonce : 1;
-} SSL_AEAD_CTX;
+};
 
 /* SSL_AEAD_CTX_new creates a newly-allocated |SSL_AEAD_CTX| using the supplied
  * key material. It returns NULL on error. Only one of |SSL_AEAD_CTX_open| or
@@ -502,14 +504,14 @@ int SSL_AEAD_CTX_seal_scatter(SSL_AEAD_CTX *aead, uint8_t *out_prefix,
 
 /* DTLS1_BITMAP maintains a sliding window of 64 sequence numbers to detect
  * replayed packets. It should be initialized by zeroing every field. */
-typedef struct dtls1_bitmap_st {
+struct DTLS1_BITMAP {
   /* map is a bit mask of the last 64 sequence numbers. Bit
    * |1<<i| corresponds to |max_seq_num - i|. */
   uint64_t map;
   /* max_seq_num is the largest sequence number seen so far as a 64-bit
    * integer. */
   uint64_t max_seq_num;
-} DTLS1_BITMAP;
+};
 
 
 /* Record layer. */
@@ -658,20 +660,25 @@ int ssl_public_key_verify(
 
 /* Custom extensions */
 
-/* ssl_custom_extension (a.k.a. SSL_CUSTOM_EXTENSION) is a structure that
- * contains information about custom-extension callbacks. */
-struct ssl_custom_extension {
+}  // namespace bssl
+
+/* |SSL_CUSTOM_EXTENSION| is a structure that contains information about
+ * custom-extension callbacks. It is defined unnamespaced for compatibility with
+ * |STACK_OF(SSL_CUSTOM_EXTENSION)|. */
+typedef struct ssl_custom_extension {
   SSL_custom_ext_add_cb add_callback;
   void *add_arg;
   SSL_custom_ext_free_cb free_callback;
   SSL_custom_ext_parse_cb parse_callback;
   void *parse_arg;
   uint16_t value;
-};
-
-void SSL_CUSTOM_EXTENSION_free(SSL_CUSTOM_EXTENSION *custom_extension);
+} SSL_CUSTOM_EXTENSION;
 
 DEFINE_STACK_OF(SSL_CUSTOM_EXTENSION)
+
+namespace bssl {
+
+void SSL_CUSTOM_EXTENSION_free(SSL_CUSTOM_EXTENSION *custom_extension);
 
 int custom_ext_add_clienthello(SSL_HANDSHAKE *hs, CBB *extensions);
 int custom_ext_parse_serverhello(SSL_HANDSHAKE *hs, int *out_alert,
@@ -683,11 +690,11 @@ int custom_ext_add_serverhello(SSL_HANDSHAKE *hs, CBB *extensions);
 
 /* ECDH groups. */
 
-typedef struct ssl_ecdh_ctx_st SSL_ECDH_CTX;
+struct SSL_ECDH_CTX;
 
 /* An SSL_ECDH_METHOD is an implementation of ECDH-like key exchanges for
  * TLS. */
-typedef struct ssl_ecdh_method_st {
+struct SSL_ECDH_METHOD {
   int nid;
   uint16_t group_id;
   const char name[8];
@@ -718,9 +725,9 @@ typedef struct ssl_ecdh_method_st {
   int (*finish)(SSL_ECDH_CTX *ctx, uint8_t **out_secret, size_t *out_secret_len,
                 uint8_t *out_alert, const uint8_t *peer_key,
                 size_t peer_key_len);
-} SSL_ECDH_METHOD;
+};
 
-struct ssl_ecdh_ctx_st {
+struct SSL_ECDH_CTX {
   const SSL_ECDH_METHOD *method;
   void *data;
 };
@@ -785,12 +792,12 @@ void dtls_clear_incoming_messages(SSL *ssl);
  * messages ahead of the current message and zero otherwise. */
 int dtls_has_incoming_messages(const SSL *ssl);
 
-typedef struct dtls_outgoing_message_st {
+struct DTLS_OUTGOING_MESSAGE {
   uint8_t *data;
   uint32_t len;
   uint16_t epoch;
   char is_ccs;
-} DTLS_OUTGOING_MESSAGE;
+};
 
 /* dtls_clear_outgoing_messages releases all buffered outgoing messages. */
 void dtls_clear_outgoing_messages(SSL *ssl);
@@ -1010,7 +1017,7 @@ enum ssl_hs_wait_t {
   ssl_hs_certificate_verify,
 };
 
-struct ssl_handshake_st {
+struct SSL_HANDSHAKE {
   /* ssl is a non-owning pointer to the parent |SSL| object. */
   SSL *ssl;
 
@@ -1237,7 +1244,7 @@ struct ssl_handshake_st {
   /* early_data_written is the amount of early data that has been written by the
    * record layer. */
   uint16_t early_data_written;
-} /* SSL_HANDSHAKE */;
+};
 
 SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl);
 
@@ -1327,11 +1334,11 @@ int tls13_get_cert_verify_signature_input(
 int ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                        const SSL_CLIENT_HELLO *client_hello);
 
-typedef struct {
+struct SSL_EXTENSION_TYPE {
   uint16_t type;
   int *out_present;
   CBS *out_data;
-} SSL_EXTENSION_TYPE;
+};
 
 /* ssl_parse_extensions parses a TLS extensions block out of |cbs| and advances
  * it. It writes the parsed extensions to pointers denoted by |ext_types|. On
@@ -1420,7 +1427,7 @@ int tls12_check_peer_sigalg(SSL *ssl, uint8_t *out_alert, uint16_t sigalg);
 /* From RFC4492, used in encoding the curve type in ECParameters */
 #define NAMED_CURVE_TYPE 3
 
-typedef struct cert_st {
+struct CERT {
   EVP_PKEY *privatekey;
 
   /* chain contains the certificate chain, with the leaf at the beginning. The
@@ -1485,11 +1492,11 @@ typedef struct cert_st {
 
   /* If enable_early_data is non-zero, early data can be sent and accepted. */
   unsigned enable_early_data:1;
-} CERT;
+};
 
-/* SSL_METHOD is a compatibility structure to support the legacy version-locked
- * methods. */
-struct ssl_method_st {
+/* SSLMethod backs the public |SSL_METHOD| type. It is a compatibility structure
+ * to support the legacy version-locked methods. */
+struct SSLMethod {
   /* version, if non-zero, is the only protocol version acceptable to an
    * SSL_CTX initialized from this method. */
   uint16_t version;
@@ -1501,8 +1508,9 @@ struct ssl_method_st {
   const SSL_X509_METHOD *x509_method;
 };
 
-/* Used to hold functions for SSLv2 or SSLv3/TLSv1 functions */
-struct ssl_protocol_method_st {
+/* SSLProtocolMethod is use to hold functions for SSLv2 or SSLv3/TLSv1
+ * functions */
+struct SSLProtocolMethod {
   /* is_dtls is one if the protocol is DTLS and zero otherwise. */
   char is_dtls;
   int (*ssl_new)(SSL *ssl);
@@ -1570,7 +1578,7 @@ struct ssl_protocol_method_st {
   int (*set_write_state)(SSL *ssl, SSL_AEAD_CTX *aead_ctx);
 };
 
-struct ssl_x509_method_st {
+struct SSLX509Method {
   /* check_client_CA_list returns one if |names| is a good list of X.509
    * distinguished names and zero otherwise. This is used to ensure that we can
    * reject unparsable values at handshake time when using crypto/x509. */
@@ -1626,20 +1634,20 @@ struct ssl_x509_method_st {
   void (*ssl_ctx_flush_cached_client_CA)(SSL_CTX *ssl);
 };
 
-/* ssl_crypto_x509_method provides the |ssl_x509_method_st| functions using
+/* ssl_crypto_x509_method provides the |SSL_X509_METHOD| functions using
  * crypto/x509. */
-extern const struct ssl_x509_method_st ssl_crypto_x509_method;
+extern const SSL_X509_METHOD ssl_crypto_x509_method;
 
-typedef struct ssl3_record_st {
+struct SSL3_RECORD {
   /* type is the record type. */
   uint8_t type;
   /* length is the number of unconsumed bytes in the record. */
   uint16_t length;
   /* data is a non-owning pointer to the first unconsumed byte of the record. */
   uint8_t *data;
-} SSL3_RECORD;
+};
 
-typedef struct ssl3_buffer_st {
+struct SSL3_BUFFER {
   /* buf is the memory allocated for this buffer. */
   uint8_t *buf;
   /* offset is the offset into |buf| which the buffer contents start at. */
@@ -1648,7 +1656,7 @@ typedef struct ssl3_buffer_st {
   uint16_t len;
   /* cap is how much memory beyond |buf| + |offset| is available. */
   uint16_t cap;
-} SSL3_BUFFER;
+};
 
 /* An ssl_shutdown_t describes the shutdown state of one end of the connection,
  * whether it is alive or has been shutdown via close_notify or fatal alert. */
@@ -1658,7 +1666,7 @@ enum ssl_shutdown_t {
   ssl_shutdown_fatal_alert = 2,
 };
 
-typedef struct ssl3_state_st {
+struct SSL3_STATE {
   uint8_t read_sequence[8];
   uint8_t write_sequence[8];
 
@@ -1825,7 +1833,7 @@ typedef struct ssl3_state_st {
    * ticket age and the server-computed value in TLS 1.3 server connections
    * which resumed a session. */
   int32_t ticket_age_skew;
-} SSL3_STATE;
+};
 
 /* lengths of messages */
 #define DTLS1_COOKIE_LENGTH 256
@@ -1847,7 +1855,7 @@ struct hm_header_st {
 };
 
 /* An hm_fragment is an incoming DTLS message, possibly not yet assembled. */
-typedef struct hm_fragment_st {
+struct hm_fragment {
   /* type is the type of the message. */
   uint8_t type;
   /* seq is the sequence number of this message. */
@@ -1860,14 +1868,14 @@ typedef struct hm_fragment_st {
   /* reassembly is a bitmask of |msg_len| bits corresponding to which parts of
    * the message have been received. It is NULL if the message is complete. */
   uint8_t *reassembly;
-} hm_fragment;
+};
 
 struct OPENSSL_timeval {
   uint64_t tv_sec;
   uint32_t tv_usec;
 };
 
-typedef struct dtls1_state_st {
+struct DTLS1_STATE {
   /* send_cookie is true if we are resending the ClientHello
    * with a cookie from a HelloVerifyRequest. */
   unsigned int send_cookie;
@@ -1919,9 +1927,10 @@ typedef struct dtls1_state_st {
 
   /* timeout_duration_ms is the timeout duration in milliseconds. */
   unsigned timeout_duration_ms;
-} DTLS1_STATE;
+};
 
-struct ssl_st {
+/* SSLConnection backs the public |SSL| type. */
+struct SSLConnection {
   /* method is the method table corresponding to the current protocol (DTLS or
    * TLS). */
   const SSL_PROTOCOL_METHOD *method;
@@ -1960,8 +1969,8 @@ struct ssl_st {
   /* init_num is the length of the current handshake message body. */
   uint32_t init_num;
 
-  struct ssl3_state_st *s3;  /* SSLv3 variables */
-  struct dtls1_state_st *d1; /* DTLSv1 variables */
+  SSL3_STATE *s3;  /* SSLv3 variables */
+  DTLS1_STATE *d1; /* DTLSv1 variables */
 
   /* callback that allows applications to peek at protocol messages */
   void (*msg_callback)(int write_p, int version, int content_type,
@@ -1977,7 +1986,7 @@ struct ssl_st {
 
   /* client cert? */
   /* This is used to hold the server certificate used */
-  struct cert_st /* CERT */ *cert;
+  CERT *cert;
 
   /* This holds a variable that indicates what we were doing when a 0 or -1 is
    * returned.  This is needed for non-blocking IO so we know what request
@@ -2390,9 +2399,7 @@ void ssl_reset_error_state(SSL *ssl);
 #define SSL_FALLTHROUGH
 #endif
 
+}  // namespace bssl
 
-#if defined(__cplusplus)
-} /* extern C */
-#endif
 
 #endif /* OPENSSL_HEADER_SSL_INTERNAL_H */

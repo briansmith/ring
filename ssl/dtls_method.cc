@@ -54,6 +54,8 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -65,6 +67,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+using namespace bssl;
 
 static int dtls1_supports_cipher(const SSL_CIPHER *cipher) {
   return cipher->algorithm_enc != SSL_eNULL;

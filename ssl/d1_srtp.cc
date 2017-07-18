@@ -114,6 +114,8 @@
   Copyright (C) 2011, RTFM, Inc.
 */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <string.h>
@@ -123,6 +125,8 @@
 
 #include "internal.h"
 
+
+using namespace bssl;
 
 static const SRTP_PROTECTION_PROFILE kSRTPProfiles[] = {
     {
@@ -143,9 +147,7 @@ static const SRTP_PROTECTION_PROFILE kSRTPProfiles[] = {
 static int find_profile_by_name(const char *profile_name,
                                 const SRTP_PROTECTION_PROFILE **pptr,
                                 size_t len) {
-  const SRTP_PROTECTION_PROFILE *p;
-
-  p = kSRTPProfiles;
+  const SRTP_PROTECTION_PROFILE *p = kSRTPProfiles;
   while (p->name) {
     if (len == strlen(p->name) && !strncmp(p->name, profile_name, len)) {
       *pptr = p;

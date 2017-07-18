@@ -87,6 +87,8 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <limits.h>
@@ -101,6 +103,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 /* An SSL_SESSION is serialized as the following ASN.1 structure:
  *
@@ -420,55 +424,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
  err:
   CBB_cleanup(&cbb);
   return 0;
-}
-
-int SSL_SESSION_to_bytes(const SSL_SESSION *in, uint8_t **out_data,
-                         size_t *out_len) {
-  if (in->not_resumable) {
-    /* If the caller has an unresumable session, e.g. if |SSL_get_session| were
-     * called on a TLS 1.3 or False Started connection, serialize with a
-     * placeholder value so it is not accidentally deserialized into a resumable
-     * one. */
-    static const char kNotResumableSession[] = "NOT RESUMABLE";
-
-    *out_len = strlen(kNotResumableSession);
-    *out_data = (uint8_t *)BUF_memdup(kNotResumableSession, *out_len);
-    if (*out_data == NULL) {
-      return 0;
-    }
-
-    return 1;
-  }
-
-  return SSL_SESSION_to_bytes_full(in, out_data, out_len, 0);
-}
-
-int SSL_SESSION_to_bytes_for_ticket(const SSL_SESSION *in, uint8_t **out_data,
-                                    size_t *out_len) {
-  return SSL_SESSION_to_bytes_full(in, out_data, out_len, 1);
-}
-
-int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
-  uint8_t *out;
-  size_t len;
-
-  if (!SSL_SESSION_to_bytes(in, &out, &len)) {
-    return -1;
-  }
-
-  if (len > INT_MAX) {
-    OPENSSL_free(out);
-    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-    return -1;
-  }
-
-  if (pp) {
-    OPENSSL_memcpy(*pp, out, len);
-    *pp += len;
-  }
-  OPENSSL_free(out);
-
-  return len;
 }
 
 /* SSL_SESSION_parse_string gets an optional ASN.1 OCTET STRING
@@ -803,6 +758,59 @@ SSL_SESSION *SSL_SESSION_parse(CBS *cbs, const SSL_X509_METHOD *x509_method,
 err:
   SSL_SESSION_free(ret);
   return NULL;
+}
+
+}  // namespace bssl
+
+using namespace bssl;
+
+int SSL_SESSION_to_bytes(const SSL_SESSION *in, uint8_t **out_data,
+                         size_t *out_len) {
+  if (in->not_resumable) {
+    /* If the caller has an unresumable session, e.g. if |SSL_get_session| were
+     * called on a TLS 1.3 or False Started connection, serialize with a
+     * placeholder value so it is not accidentally deserialized into a resumable
+     * one. */
+    static const char kNotResumableSession[] = "NOT RESUMABLE";
+
+    *out_len = strlen(kNotResumableSession);
+    *out_data = (uint8_t *)BUF_memdup(kNotResumableSession, *out_len);
+    if (*out_data == NULL) {
+      return 0;
+    }
+
+    return 1;
+  }
+
+  return SSL_SESSION_to_bytes_full(in, out_data, out_len, 0);
+}
+
+int SSL_SESSION_to_bytes_for_ticket(const SSL_SESSION *in, uint8_t **out_data,
+                                    size_t *out_len) {
+  return SSL_SESSION_to_bytes_full(in, out_data, out_len, 1);
+}
+
+int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
+  uint8_t *out;
+  size_t len;
+
+  if (!SSL_SESSION_to_bytes(in, &out, &len)) {
+    return -1;
+  }
+
+  if (len > INT_MAX) {
+    OPENSSL_free(out);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+    return -1;
+  }
+
+  if (pp) {
+    OPENSSL_memcpy(*pp, out, len);
+    *pp += len;
+  }
+  OPENSSL_free(out);
+
+  return len;
 }
 
 SSL_SESSION *SSL_SESSION_from_bytes(const uint8_t *in, size_t in_len,

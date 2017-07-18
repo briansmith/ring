@@ -138,6 +138,8 @@
  * OTHER ENTITY BASED ON INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS OR
  * OTHERWISE. */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -153,6 +155,8 @@
 #include "internal.h"
 #include "../crypto/internal.h"
 
+
+namespace bssl {
 
 /* kCiphers is an array of all supported ciphers, sorted by id. */
 static const SSL_CIPHER kCiphers[] = {
@@ -641,14 +645,6 @@ static int ssl_cipher_id_cmp(const void *in_a, const void *in_b) {
   } else {
     return 0;
   }
-}
-
-const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
-  SSL_CIPHER c;
-
-  c.id = 0x03000000L | value;
-  return reinterpret_cast<const SSL_CIPHER *>(bsearch(
-      &c, kCiphers, kCiphersLen, sizeof(SSL_CIPHER), ssl_cipher_id_cmp));
 }
 
 int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
@@ -1371,14 +1367,74 @@ err:
   return 0;
 }
 
-uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher) { return cipher->id; }
-
 uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher) {
   uint32_t id = cipher->id;
   /* All ciphers are SSLv3. */
   assert((id & 0xff000000) == 0x03000000);
   return id & 0xffff;
 }
+
+uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key) {
+  switch (EVP_PKEY_id(key)) {
+    case EVP_PKEY_RSA:
+      return SSL_aRSA;
+    case EVP_PKEY_EC:
+    case EVP_PKEY_ED25519:
+      /* Ed25519 keys in TLS 1.2 repurpose the ECDSA ciphers. */
+      return SSL_aECDSA;
+    default:
+      return 0;
+  }
+}
+
+int ssl_cipher_uses_certificate_auth(const SSL_CIPHER *cipher) {
+  return (cipher->algorithm_auth & SSL_aCERT) != 0;
+}
+
+int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher) {
+  /* Ephemeral Diffie-Hellman key exchanges require a ServerKeyExchange. */
+  if (cipher->algorithm_mkey & SSL_kECDHE) {
+    return 1;
+  }
+
+  /* It is optional in all others. */
+  return 0;
+}
+
+size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher) {
+  size_t block_size;
+  switch (cipher->algorithm_enc) {
+    case SSL_3DES:
+      block_size = 8;
+      break;
+    case SSL_AES128:
+    case SSL_AES256:
+      block_size = 16;
+      break;
+    default:
+      return 0;
+  }
+
+  /* All supported TLS 1.0 ciphers use SHA-1. */
+  assert(cipher->algorithm_mac == SSL_SHA1);
+  size_t ret = 1 + SHA_DIGEST_LENGTH;
+  ret += block_size - (ret % block_size);
+  return ret;
+}
+
+}  // namespace bssl
+
+using namespace bssl;
+
+const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
+  SSL_CIPHER c;
+
+  c.id = 0x03000000L | value;
+  return reinterpret_cast<const SSL_CIPHER *>(bsearch(
+      &c, kCiphers, kCiphersLen, sizeof(SSL_CIPHER), ssl_cipher_id_cmp));
+}
+
+uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher) { return cipher->id; }
 
 int SSL_CIPHER_is_AES(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_enc & SSL_AES) != 0;
@@ -1697,51 +1753,3 @@ int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm) { return 1; }
 const char *SSL_COMP_get_name(const COMP_METHOD *comp) { return NULL; }
 
 void SSL_COMP_free_compression_methods(void) {}
-
-uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key) {
-  switch (EVP_PKEY_id(key)) {
-    case EVP_PKEY_RSA:
-      return SSL_aRSA;
-    case EVP_PKEY_EC:
-    case EVP_PKEY_ED25519:
-      /* Ed25519 keys in TLS 1.2 repurpose the ECDSA ciphers. */
-      return SSL_aECDSA;
-    default:
-      return 0;
-  }
-}
-
-int ssl_cipher_uses_certificate_auth(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_auth & SSL_aCERT) != 0;
-}
-
-int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher) {
-  /* Ephemeral Diffie-Hellman key exchanges require a ServerKeyExchange. */
-  if (cipher->algorithm_mkey & SSL_kECDHE) {
-    return 1;
-  }
-
-  /* It is optional in all others. */
-  return 0;
-}
-
-size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher) {
-  size_t block_size;
-  switch (cipher->algorithm_enc) {
-    case SSL_3DES:
-      block_size = 8;
-      break;
-    case SSL_AES128:
-    case SSL_AES256:
-      block_size = 16;
-      break;
-    default:
-      return 0;
-  }
-
-  /* All supported TLS 1.0 ciphers use SHA-1. */
-  assert(cipher->algorithm_mac == SSL_SHA1);
-  size_t ret = 1 + SHA_DIGEST_LENGTH;
-  ret += block_size - (ret % block_size);
-  return ret;
-}

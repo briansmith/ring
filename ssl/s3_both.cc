@@ -110,6 +110,8 @@
  * ECC cipher suite support in OpenSSL originally developed by
  * SUN MICROSYSTEMS, INC., and contributed to the OpenSSL project. */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -129,6 +131,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl) {
   SSL_HANDSHAKE *hs = (SSL_HANDSHAKE *)OPENSSL_malloc(sizeof(SSL_HANDSHAKE));
@@ -861,3 +865,5 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
 
   return ret;
 }
+
+}  // namespace bssl

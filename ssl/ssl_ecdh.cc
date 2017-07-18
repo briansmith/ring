@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -29,6 +31,8 @@
 #include "../crypto/internal.h"
 
 
+namespace bssl {
+
 /* |EC_POINT| implementation. */
 
 static void ssl_ec_point_cleanup(SSL_ECDH_CTX *ctx) {
@@ -38,15 +42,15 @@ static void ssl_ec_point_cleanup(SSL_ECDH_CTX *ctx) {
 
 static int ssl_ec_point_offer(SSL_ECDH_CTX *ctx, CBB *out) {
   /* Set up a shared |BN_CTX| for all operations. */
-  bssl::UniquePtr<BN_CTX> bn_ctx(BN_CTX_new());
+  UniquePtr<BN_CTX> bn_ctx(BN_CTX_new());
   if (!bn_ctx) {
     return 0;
   }
-  bssl::BN_CTXScope scope(bn_ctx.get());
+  BN_CTXScope scope(bn_ctx.get());
 
   /* Generate a private key. */
-  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(ctx->method->nid));
-  bssl::UniquePtr<BIGNUM> private_key(BN_new());
+  UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(ctx->method->nid));
+  UniquePtr<BIGNUM> private_key(BN_new());
   if (!group || !private_key ||
       !BN_rand_range_ex(private_key.get(), 1,
                         EC_GROUP_get0_order(group.get()))) {
@@ -54,7 +58,7 @@ static int ssl_ec_point_offer(SSL_ECDH_CTX *ctx, CBB *out) {
   }
 
   /* Compute the corresponding public key and serialize it. */
-  bssl::UniquePtr<EC_POINT> public_key(EC_POINT_new(group.get()));
+  UniquePtr<EC_POINT> public_key(EC_POINT_new(group.get()));
   if (!public_key ||
       !EC_POINT_mul(group.get(), public_key.get(), private_key.get(), NULL,
                     NULL, bn_ctx.get()) ||
@@ -76,19 +80,19 @@ static int ssl_ec_point_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
   *out_alert = SSL_AD_INTERNAL_ERROR;
 
   /* Set up a shared |BN_CTX| for all operations. */
-  bssl::UniquePtr<BN_CTX> bn_ctx(BN_CTX_new());
+  UniquePtr<BN_CTX> bn_ctx(BN_CTX_new());
   if (!bn_ctx) {
     return 0;
   }
-  bssl::BN_CTXScope scope(bn_ctx.get());
+  BN_CTXScope scope(bn_ctx.get());
 
-  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(ctx->method->nid));
+  UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(ctx->method->nid));
   if (!group) {
     return 0;
   }
 
-  bssl::UniquePtr<EC_POINT> peer_point(EC_POINT_new(group.get()));
-  bssl::UniquePtr<EC_POINT> result(EC_POINT_new(group.get()));
+  UniquePtr<EC_POINT> peer_point(EC_POINT_new(group.get()));
+  UniquePtr<EC_POINT> result(EC_POINT_new(group.get()));
   BIGNUM *x = BN_CTX_get(bn_ctx.get());
   if (!peer_point || !result || !x) {
     return 0;
@@ -110,7 +114,7 @@ static int ssl_ec_point_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
 
   /* Encode the x-coordinate left-padded with zeros. */
   size_t secret_len = (EC_GROUP_get_degree(group.get()) + 7) / 8;
-  bssl::UniquePtr<uint8_t> secret((uint8_t *)OPENSSL_malloc(secret_len));
+  UniquePtr<uint8_t> secret((uint8_t *)OPENSSL_malloc(secret_len));
   if (!secret || !BN_bn2bin_padded(secret.get(), secret_len, x)) {
     return 0;
   }
@@ -271,14 +275,6 @@ static const SSL_ECDH_METHOD *method_from_name(const char *name, size_t len) {
   return NULL;
 }
 
-const char* SSL_get_curve_name(uint16_t group_id) {
-  const SSL_ECDH_METHOD *method = method_from_group_id(group_id);
-  if (method == NULL) {
-    return NULL;
-  }
-  return method->name;
-}
-
 int ssl_nid_to_group_id(uint16_t *out_group_id, int nid) {
   const SSL_ECDH_METHOD *method = method_from_nid(nid);
   if (method == NULL) {
@@ -339,4 +335,16 @@ int SSL_ECDH_CTX_finish(SSL_ECDH_CTX *ctx, uint8_t **out_secret,
                         const uint8_t *peer_key, size_t peer_key_len) {
   return ctx->method->finish(ctx, out_secret, out_secret_len, out_alert,
                              peer_key, peer_key_len);
+}
+
+}  // namespace bssl
+
+using namespace bssl;
+
+const char* SSL_get_curve_name(uint16_t group_id) {
+  const SSL_ECDH_METHOD *method = method_from_group_id(group_id);
+  if (method == NULL) {
+    return NULL;
+  }
+  return method->name;
 }

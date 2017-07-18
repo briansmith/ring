@@ -133,6 +133,8 @@
  * OTHER ENTITY BASED ON INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS OR
  * OTHERWISE. */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -149,6 +151,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 int SSL_TRANSCRIPT_init(SSL_TRANSCRIPT *transcript) {
   SSL_TRANSCRIPT_cleanup(transcript);
@@ -403,3 +407,5 @@ int SSL_TRANSCRIPT_finish_mac(SSL_TRANSCRIPT *transcript, uint8_t *out,
   *out_len = kFinishedLen;
   return 1;
 }
+
+}  // namespace bssl

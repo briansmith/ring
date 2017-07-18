@@ -16,6 +16,8 @@
 #define __STDC_FORMAT_MACROS
 #endif
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/base.h>
 
 #if !defined(OPENSSL_WINDOWS)
@@ -1077,12 +1079,12 @@ class SocketCloser {
 };
 
 static void ssl_ctx_add_session(SSL_SESSION *session, void *void_param) {
-  SSL_SESSION *new_session = SSL_SESSION_dup(
-      session, SSL_SESSION_INCLUDE_NONAUTH | SSL_SESSION_INCLUDE_TICKET);
+  SSL_CTX *ctx = reinterpret_cast<SSL_CTX *>(void_param);
+  bssl::UniquePtr<SSL_SESSION> new_session(bssl::SSL_SESSION_dup(
+      session, SSL_SESSION_INCLUDE_NONAUTH | SSL_SESSION_INCLUDE_TICKET));
   if (new_session != nullptr) {
-    SSL_CTX_add_session((SSL_CTX *)void_param, new_session);
+    SSL_CTX_add_session(ctx, new_session.get());
   }
-  SSL_SESSION_free(new_session);
 }
 
 static bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx,

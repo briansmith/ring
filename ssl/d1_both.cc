@@ -111,6 +111,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -126,6 +128,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 /* TODO(davidben): 28 comes from the size of IP + UDP header. Is this reasonable
  * for these values? Notably, why is kMinMTU a function of the transport
@@ -812,3 +816,5 @@ int dtls1_retransmit_outgoing_messages(SSL *ssl) {
 unsigned int dtls1_min_mtu(void) {
   return kMinMTU;
 }
+
+}  // namespace bssl

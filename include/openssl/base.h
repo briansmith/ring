@@ -317,11 +317,8 @@ typedef struct spake2_ctx_st SPAKE2_CTX;
 typedef struct srtp_protection_profile_st SRTP_PROTECTION_PROFILE;
 typedef struct ssl_cipher_st SSL_CIPHER;
 typedef struct ssl_ctx_st SSL_CTX;
-typedef struct ssl_custom_extension SSL_CUSTOM_EXTENSION;
-typedef struct ssl_method_st SSL_METHOD;
 typedef struct ssl_private_key_method_st SSL_PRIVATE_KEY_METHOD;
 typedef struct ssl_session_st SSL_SESSION;
-typedef struct ssl_st SSL;
 typedef struct ssl_ticket_aead_method_st SSL_TICKET_AEAD_METHOD;
 typedef struct st_ERR_FNS ERR_FNS;
 typedef struct v3_ext_ctx X509V3_CTX;
@@ -337,6 +334,25 @@ typedef struct x509_store_st X509_STORE;
 typedef struct x509_trust_st X509_TRUST;
 
 typedef void *OPENSSL_BLOCK;
+
+/* The following opaque types are visible in public header files but are defined
+ * internally in C++. For compatibility with projects which copy the historical
+ * typedefs in forward declarations, the typedefs cannot change for external
+ * consumers. The C++ implementation files define |BORINGSSL_INTERNAL_CXX_TYPES|
+ * to namespace the underlying types. */
+#if defined(BORINGSSL_INTERNAL_CXX_TYPES)
+extern "C++" {
+namespace bssl {
+struct SSLConnection;
+struct SSLMethod;
+}
+using SSL = bssl::SSLConnection;
+using SSL_METHOD = bssl::SSLMethod;
+}
+#else
+typedef struct ssl_st SSL;
+typedef struct ssl_method_st SSL_METHOD;
+#endif
 
 
 #if defined(__cplusplus)

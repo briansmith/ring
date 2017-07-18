@@ -54,6 +54,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -68,6 +70,8 @@
 #include "internal.h"
 #include "../crypto/internal.h"
 
+
+namespace bssl {
 
 int ssl_is_key_type_supported(int key_type) {
   return key_type == EVP_PKEY_RSA || key_type == EVP_PKEY_EC ||
@@ -90,227 +94,6 @@ static int ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
   EVP_PKEY_free(cert->privatekey);
   EVP_PKEY_up_ref(pkey);
   cert->privatekey = pkey;
-
-  return 1;
-}
-
-int SSL_use_RSAPrivateKey(SSL *ssl, RSA *rsa) {
-  EVP_PKEY *pkey;
-  int ret;
-
-  if (rsa == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  pkey = EVP_PKEY_new();
-  if (pkey == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_EVP_LIB);
-    return 0;
-  }
-
-  RSA_up_ref(rsa);
-  EVP_PKEY_assign_RSA(pkey, rsa);
-
-  ret = ssl_set_pkey(ssl->cert, pkey);
-  EVP_PKEY_free(pkey);
-
-  return ret;
-}
-
-int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
-  bssl::UniquePtr<RSA> rsa(RSA_private_key_from_bytes(der, der_len));
-  if (!rsa) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
-    return 0;
-  }
-
-  return SSL_use_RSAPrivateKey(ssl, rsa.get());
-}
-
-int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey) {
-  if (pkey == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  return ssl_set_pkey(ssl->cert, pkey);
-}
-
-int SSL_use_PrivateKey_ASN1(int type, SSL *ssl, const uint8_t *der,
-                            size_t der_len) {
-  if (der_len > LONG_MAX) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-    return 0;
-  }
-
-  const uint8_t *p = der;
-  EVP_PKEY *pkey = d2i_PrivateKey(type, NULL, &p, (long)der_len);
-  if (pkey == NULL || p != der + der_len) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
-    EVP_PKEY_free(pkey);
-    return 0;
-  }
-
-  int ret = SSL_use_PrivateKey(ssl, pkey);
-  EVP_PKEY_free(pkey);
-  return ret;
-}
-
-int SSL_CTX_use_RSAPrivateKey(SSL_CTX *ctx, RSA *rsa) {
-  int ret;
-  EVP_PKEY *pkey;
-
-  if (rsa == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  pkey = EVP_PKEY_new();
-  if (pkey == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_EVP_LIB);
-    return 0;
-  }
-
-  RSA_up_ref(rsa);
-  EVP_PKEY_assign_RSA(pkey, rsa);
-
-  ret = ssl_set_pkey(ctx->cert, pkey);
-  EVP_PKEY_free(pkey);
-  return ret;
-}
-
-int SSL_CTX_use_RSAPrivateKey_ASN1(SSL_CTX *ctx, const uint8_t *der,
-                                   size_t der_len) {
-  RSA *rsa = RSA_private_key_from_bytes(der, der_len);
-  if (rsa == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
-    return 0;
-  }
-
-  int ret = SSL_CTX_use_RSAPrivateKey(ctx, rsa);
-  RSA_free(rsa);
-  return ret;
-}
-
-int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey) {
-  if (pkey == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  return ssl_set_pkey(ctx->cert, pkey);
-}
-
-int SSL_CTX_use_PrivateKey_ASN1(int type, SSL_CTX *ctx, const uint8_t *der,
-                                size_t der_len) {
-  if (der_len > LONG_MAX) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-    return 0;
-  }
-
-  const uint8_t *p = der;
-  EVP_PKEY *pkey = d2i_PrivateKey(type, NULL, &p, (long)der_len);
-  if (pkey == NULL || p != der + der_len) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
-    EVP_PKEY_free(pkey);
-    return 0;
-  }
-
-  int ret = SSL_CTX_use_PrivateKey(ctx, pkey);
-  EVP_PKEY_free(pkey);
-  return ret;
-}
-
-void SSL_set_private_key_method(SSL *ssl,
-                                const SSL_PRIVATE_KEY_METHOD *key_method) {
-  ssl->cert->key_method = key_method;
-}
-
-void SSL_CTX_set_private_key_method(SSL_CTX *ctx,
-                                    const SSL_PRIVATE_KEY_METHOD *key_method) {
-  ctx->cert->key_method = key_method;
-}
-
-static int set_algorithm_prefs(uint16_t **out_prefs, size_t *out_num_prefs,
-                               const uint16_t *prefs, size_t num_prefs) {
-  OPENSSL_free(*out_prefs);
-
-  *out_num_prefs = 0;
-  *out_prefs = (uint16_t *)BUF_memdup(prefs, num_prefs * sizeof(prefs[0]));
-  if (*out_prefs == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-  *out_num_prefs = num_prefs;
-
-  return 1;
-}
-
-int SSL_CTX_set_signing_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
-                                        size_t num_prefs) {
-  return set_algorithm_prefs(&ctx->cert->sigalgs, &ctx->cert->num_sigalgs,
-                             prefs, num_prefs);
-}
-
-
-int SSL_set_signing_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
-                                    size_t num_prefs) {
-  return set_algorithm_prefs(&ssl->cert->sigalgs, &ssl->cert->num_sigalgs,
-                             prefs, num_prefs);
-}
-
-int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
-                                       size_t num_prefs) {
-  return set_algorithm_prefs(&ctx->verify_sigalgs, &ctx->num_verify_sigalgs,
-                             prefs, num_prefs);
-}
-
-int SSL_set_private_key_digest_prefs(SSL *ssl, const int *digest_nids,
-                                     size_t num_digests) {
-  OPENSSL_free(ssl->cert->sigalgs);
-
-  static_assert(sizeof(int) >= 2 * sizeof(uint16_t),
-                "sigalgs allocation may overflow");
-
-  ssl->cert->num_sigalgs = 0;
-  ssl->cert->sigalgs =
-      (uint16_t *)OPENSSL_malloc(sizeof(uint16_t) * 2 * num_digests);
-  if (ssl->cert->sigalgs == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-
-  /* Convert the digest list to a signature algorithms list.
-   *
-   * TODO(davidben): Replace this API with one that can express RSA-PSS, etc. */
-  for (size_t i = 0; i < num_digests; i++) {
-    switch (digest_nids[i]) {
-      case NID_sha1:
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA1;
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] = SSL_SIGN_ECDSA_SHA1;
-        ssl->cert->num_sigalgs += 2;
-        break;
-      case NID_sha256:
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA256;
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] =
-            SSL_SIGN_ECDSA_SECP256R1_SHA256;
-        ssl->cert->num_sigalgs += 2;
-        break;
-      case NID_sha384:
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA384;
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] =
-            SSL_SIGN_ECDSA_SECP384R1_SHA384;
-        ssl->cert->num_sigalgs += 2;
-        break;
-      case NID_sha512:
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA512;
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] =
-            SSL_SIGN_ECDSA_SECP521R1_SHA512;
-        ssl->cert->num_sigalgs += 2;
-        break;
-    }
-  }
 
   return 1;
 }
@@ -533,6 +316,231 @@ int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
       ssl->cert->key_method->sign == NULL &&
       !legacy_sign_digest_supported(alg)) {
     return 0;
+  }
+
+  return 1;
+}
+
+}  // namespace bssl
+
+using namespace bssl;
+
+int SSL_use_RSAPrivateKey(SSL *ssl, RSA *rsa) {
+  EVP_PKEY *pkey;
+  int ret;
+
+  if (rsa == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  pkey = EVP_PKEY_new();
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_EVP_LIB);
+    return 0;
+  }
+
+  RSA_up_ref(rsa);
+  EVP_PKEY_assign_RSA(pkey, rsa);
+
+  ret = ssl_set_pkey(ssl->cert, pkey);
+  EVP_PKEY_free(pkey);
+
+  return ret;
+}
+
+int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
+  UniquePtr<RSA> rsa(RSA_private_key_from_bytes(der, der_len));
+  if (!rsa) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
+    return 0;
+  }
+
+  return SSL_use_RSAPrivateKey(ssl, rsa.get());
+}
+
+int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey) {
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  return ssl_set_pkey(ssl->cert, pkey);
+}
+
+int SSL_use_PrivateKey_ASN1(int type, SSL *ssl, const uint8_t *der,
+                            size_t der_len) {
+  if (der_len > LONG_MAX) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+    return 0;
+  }
+
+  const uint8_t *p = der;
+  EVP_PKEY *pkey = d2i_PrivateKey(type, NULL, &p, (long)der_len);
+  if (pkey == NULL || p != der + der_len) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
+    EVP_PKEY_free(pkey);
+    return 0;
+  }
+
+  int ret = SSL_use_PrivateKey(ssl, pkey);
+  EVP_PKEY_free(pkey);
+  return ret;
+}
+
+int SSL_CTX_use_RSAPrivateKey(SSL_CTX *ctx, RSA *rsa) {
+  int ret;
+  EVP_PKEY *pkey;
+
+  if (rsa == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  pkey = EVP_PKEY_new();
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_EVP_LIB);
+    return 0;
+  }
+
+  RSA_up_ref(rsa);
+  EVP_PKEY_assign_RSA(pkey, rsa);
+
+  ret = ssl_set_pkey(ctx->cert, pkey);
+  EVP_PKEY_free(pkey);
+  return ret;
+}
+
+int SSL_CTX_use_RSAPrivateKey_ASN1(SSL_CTX *ctx, const uint8_t *der,
+                                   size_t der_len) {
+  RSA *rsa = RSA_private_key_from_bytes(der, der_len);
+  if (rsa == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
+    return 0;
+  }
+
+  int ret = SSL_CTX_use_RSAPrivateKey(ctx, rsa);
+  RSA_free(rsa);
+  return ret;
+}
+
+int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey) {
+  if (pkey == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  return ssl_set_pkey(ctx->cert, pkey);
+}
+
+int SSL_CTX_use_PrivateKey_ASN1(int type, SSL_CTX *ctx, const uint8_t *der,
+                                size_t der_len) {
+  if (der_len > LONG_MAX) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+    return 0;
+  }
+
+  const uint8_t *p = der;
+  EVP_PKEY *pkey = d2i_PrivateKey(type, NULL, &p, (long)der_len);
+  if (pkey == NULL || p != der + der_len) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
+    EVP_PKEY_free(pkey);
+    return 0;
+  }
+
+  int ret = SSL_CTX_use_PrivateKey(ctx, pkey);
+  EVP_PKEY_free(pkey);
+  return ret;
+}
+
+void SSL_set_private_key_method(SSL *ssl,
+                                const SSL_PRIVATE_KEY_METHOD *key_method) {
+  ssl->cert->key_method = key_method;
+}
+
+void SSL_CTX_set_private_key_method(SSL_CTX *ctx,
+                                    const SSL_PRIVATE_KEY_METHOD *key_method) {
+  ctx->cert->key_method = key_method;
+}
+
+static int set_algorithm_prefs(uint16_t **out_prefs, size_t *out_num_prefs,
+                               const uint16_t *prefs, size_t num_prefs) {
+  OPENSSL_free(*out_prefs);
+
+  *out_num_prefs = 0;
+  *out_prefs = (uint16_t *)BUF_memdup(prefs, num_prefs * sizeof(prefs[0]));
+  if (*out_prefs == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+  *out_num_prefs = num_prefs;
+
+  return 1;
+}
+
+int SSL_CTX_set_signing_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
+                                        size_t num_prefs) {
+  return set_algorithm_prefs(&ctx->cert->sigalgs, &ctx->cert->num_sigalgs,
+                             prefs, num_prefs);
+}
+
+
+int SSL_set_signing_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
+                                    size_t num_prefs) {
+  return set_algorithm_prefs(&ssl->cert->sigalgs, &ssl->cert->num_sigalgs,
+                             prefs, num_prefs);
+}
+
+int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
+                                       size_t num_prefs) {
+  return set_algorithm_prefs(&ctx->verify_sigalgs, &ctx->num_verify_sigalgs,
+                             prefs, num_prefs);
+}
+
+int SSL_set_private_key_digest_prefs(SSL *ssl, const int *digest_nids,
+                                     size_t num_digests) {
+  OPENSSL_free(ssl->cert->sigalgs);
+
+  static_assert(sizeof(int) >= 2 * sizeof(uint16_t),
+                "sigalgs allocation may overflow");
+
+  ssl->cert->num_sigalgs = 0;
+  ssl->cert->sigalgs =
+      (uint16_t *)OPENSSL_malloc(sizeof(uint16_t) * 2 * num_digests);
+  if (ssl->cert->sigalgs == NULL) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  /* Convert the digest list to a signature algorithms list.
+   *
+   * TODO(davidben): Replace this API with one that can express RSA-PSS, etc. */
+  for (size_t i = 0; i < num_digests; i++) {
+    switch (digest_nids[i]) {
+      case NID_sha1:
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA1;
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] = SSL_SIGN_ECDSA_SHA1;
+        ssl->cert->num_sigalgs += 2;
+        break;
+      case NID_sha256:
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA256;
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] =
+            SSL_SIGN_ECDSA_SECP256R1_SHA256;
+        ssl->cert->num_sigalgs += 2;
+        break;
+      case NID_sha384:
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA384;
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] =
+            SSL_SIGN_ECDSA_SECP384R1_SHA384;
+        ssl->cert->num_sigalgs += 2;
+        break;
+      case NID_sha512:
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA512;
+        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] =
+            SSL_SIGN_ECDSA_SECP521R1_SHA512;
+        ssl->cert->num_sigalgs += 2;
+        break;
+    }
   }
 
   return 1;

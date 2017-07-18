@@ -12,6 +12,8 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -27,6 +29,8 @@
 #include "../crypto/internal.h"
 #include "internal.h"
 
+
+namespace bssl {
 
 /* kMaxKeyUpdates is the number of consecutive KeyUpdates that will be
  * processed. Without this limit an attacker could force unbounded processing
@@ -403,7 +407,7 @@ int tls13_process_certificate_verify(SSL_HANDSHAKE *hs) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return 0;
   }
-  bssl::UniquePtr<uint8_t> free_msg(msg);
+  UniquePtr<uint8_t> free_msg(msg);
 
   int sig_ok =
       ssl_public_key_verify(ssl, CBS_data(&signature), CBS_len(&signature),
@@ -455,7 +459,7 @@ int tls13_process_finished(SSL_HANDSHAKE *hs, int use_saved_value) {
 
 int tls13_add_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  bssl::ScopedCBB cbb;
+  ScopedCBB cbb;
   CBB body, certificate_list;
   if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CERTIFICATE) ||
       /* The request context is always empty in the handshake. */
@@ -532,7 +536,7 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs) {
     return ssl_private_key_failure;
   }
 
-  bssl::ScopedCBB cbb;
+  ScopedCBB cbb;
   CBB body;
   if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_CERTIFICATE_VERIFY) ||
@@ -560,7 +564,7 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_private_key_failure;
   }
-  bssl::UniquePtr<uint8_t> free_msg(msg);
+  UniquePtr<uint8_t> free_msg(msg);
 
   enum ssl_private_key_result_t sign_result = ssl_private_key_sign(
       hs, sig, &sig_len, max_sig_len, signature_algorithm, msg, msg_len);
@@ -660,3 +664,5 @@ int tls13_post_handshake(SSL *ssl) {
   OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
   return 0;
 }
+
+}  // namespace bssl

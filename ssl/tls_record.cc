@@ -106,6 +106,8 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -118,6 +120,8 @@
 #include "internal.h"
 #include "../crypto/internal.h"
 
+
+namespace bssl {
 
 /* kMaxEmptyRecords is the number of consecutive, empty records that will be
  * processed. Without this limit an attacker could send empty records at a
@@ -182,24 +186,6 @@ size_t ssl_seal_align_prefix_len(const SSL *ssl) {
   if (ssl_needs_record_splitting(ssl)) {
     ret += SSL3_RT_HEADER_LENGTH;
     ret += ssl_cipher_get_record_split_len(ssl->s3->aead_write_ctx->cipher);
-  }
-  return ret;
-}
-
-size_t SSL_max_seal_overhead(const SSL *ssl) {
-  if (SSL_is_dtls(ssl)) {
-    return dtls_max_seal_overhead(ssl, dtls1_use_current_epoch);
-  }
-
-  size_t ret = SSL3_RT_HEADER_LENGTH;
-  ret += SSL_AEAD_CTX_max_overhead(ssl->s3->aead_write_ctx);
-  /* TLS 1.3 needs an extra byte for the encrypted record type. */
-  if (ssl->s3->aead_write_ctx != NULL &&
-      ssl->s3->aead_write_ctx->version >= TLS1_3_VERSION) {
-    ret += 1;
-  }
-  if (ssl_needs_record_splitting(ssl)) {
-    ret *= 2;
   }
   return ret;
 }
@@ -585,4 +571,26 @@ enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
   *out_alert = SSL_AD_ILLEGAL_PARAMETER;
   OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_ALERT_TYPE);
   return ssl_open_record_error;
+}
+
+}  // namespace bssl
+
+using namespace bssl;
+
+size_t SSL_max_seal_overhead(const SSL *ssl) {
+  if (SSL_is_dtls(ssl)) {
+    return dtls_max_seal_overhead(ssl, dtls1_use_current_epoch);
+  }
+
+  size_t ret = SSL3_RT_HEADER_LENGTH;
+  ret += SSL_AEAD_CTX_max_overhead(ssl->s3->aead_write_ctx);
+  /* TLS 1.3 needs an extra byte for the encrypted record type. */
+  if (ssl->s3->aead_write_ctx != NULL &&
+      ssl->s3->aead_write_ctx->version >= TLS1_3_VERSION) {
+    ret += 1;
+  }
+  if (ssl_needs_record_splitting(ssl)) {
+    ret *= 2;
+  }
+  return ret;
 }

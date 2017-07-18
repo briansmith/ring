@@ -3983,8 +3983,26 @@ OPENSSL_EXPORT SSL_SESSION *SSL_get1_session(SSL *ssl);
  * This structures are exposed for historical reasons, but access to them is
  * deprecated. */
 
+/* TODO(davidben): Opaquify most or all of |SSL_CTX| and |SSL_SESSION| so these
+ * forward declarations are not needed. */
+#if defined(BORINGSSL_INTERNAL_CXX_TYPES)
+extern "C++" {
+namespace bssl {
+struct CERT;
+struct SSLProtocolMethod;
+struct SSLX509Method;
+}
+using SSL_CERT_CONFIG = bssl::CERT;
+using SSL_PROTOCOL_METHOD = bssl::SSLProtocolMethod;
+using SSL_X509_METHOD = bssl::SSLX509Method;
+}
+#else
+typedef struct ssl_cert_config_st SSL_CERT_CONFIG;
 typedef struct ssl_protocol_method_st SSL_PROTOCOL_METHOD;
 typedef struct ssl_x509_method_st SSL_X509_METHOD;
+#endif
+
+DECLARE_STACK_OF(SSL_CUSTOM_EXTENSION)
 
 struct ssl_cipher_st {
   /* name is the OpenSSL name for the cipher. */
@@ -4169,8 +4187,6 @@ struct ssl_cipher_preference_list_st {
   uint8_t *in_group_flags;
 };
 
-DECLARE_STACK_OF(SSL_CUSTOM_EXTENSION)
-
 /* ssl_ctx_st (aka |SSL_CTX|) contains configuration common to several SSL
  * connections. */
 struct ssl_ctx_st {
@@ -4282,7 +4298,7 @@ struct ssl_ctx_st {
   uint32_t mode;
   uint32_t max_cert_list;
 
-  struct cert_st /* CERT */ *cert;
+  SSL_CERT_CONFIG *cert;
 
   /* callback that allows applications to peek at protocol messages */
   void (*msg_callback)(int write_p, int version, int content_type,

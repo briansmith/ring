@@ -109,6 +109,8 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
+#define BORINGSSL_INTERNAL_CXX_TYPES
+
 #include <openssl/ssl.h>
 
 #include <assert.h>
@@ -120,6 +122,8 @@
 #include "internal.h"
 #include "../crypto/internal.h"
 
+
+namespace bssl {
 
 /* to_u64_be treats |in| as a 8-byte big-endian integer and returns the value as
  * a |uint64_t|. */
@@ -332,3 +336,5 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
 
   return 1;
 }
+
+}  // namespace bssl
