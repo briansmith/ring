@@ -3693,6 +3693,194 @@ TEST(SSLTest, SelectNextProto) {
   EXPECT_EQ(Bytes("x"), Bytes(result, result_len));
 }
 
+TEST(SSLTest, SealRecord) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method())),
+      server_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(),
+                                     nullptr /* no session */));
+
+  const std::vector<uint8_t> record = {1, 2, 3, 4, 5};
+  std::vector<uint8_t> prefix(
+      bssl::SealRecordPrefixLen(client.get(), record.size())),
+      body(record.size()), suffix(bssl::SealRecordMaxSuffixLen(client.get()));
+  size_t suffix_size;
+  ASSERT_TRUE(bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
+                               bssl::MakeSpan(body), bssl::MakeSpan(suffix),
+                               &suffix_size, record));
+  suffix.resize(suffix_size);
+
+  std::vector<uint8_t> sealed;
+  sealed.insert(sealed.end(), prefix.begin(), prefix.end());
+  sealed.insert(sealed.end(), body.begin(), body.end());
+  sealed.insert(sealed.end(), suffix.begin(), suffix.end());
+  std::vector<uint8_t> sealed_copy = sealed;
+
+  bssl::Span<uint8_t> plaintext;
+  size_t record_len;
+  uint8_t alert = 255;
+  EXPECT_EQ(bssl::OpenRecord(server.get(), &plaintext, &record_len, &alert,
+                             bssl::MakeSpan(sealed)),
+            bssl::OpenRecordResult::kOK);
+  EXPECT_EQ(record_len, sealed.size());
+  EXPECT_EQ(plaintext, record);
+  EXPECT_EQ(255, alert);
+}
+
+TEST(SSLTest, SealRecordInPlace) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method())),
+      server_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(),
+                                     nullptr /* no session */));
+
+  const std::vector<uint8_t> plaintext = {1, 2, 3, 4, 5};
+  std::vector<uint8_t> record = plaintext;
+  std::vector<uint8_t> prefix(
+      bssl::SealRecordPrefixLen(client.get(), record.size())),
+      suffix(bssl::SealRecordMaxSuffixLen(client.get()));
+  size_t suffix_size;
+  ASSERT_TRUE(bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
+                               bssl::MakeSpan(record), bssl::MakeSpan(suffix),
+                               &suffix_size, record));
+  suffix.resize(suffix_size);
+  record.insert(record.begin(), prefix.begin(), prefix.end());
+  record.insert(record.end(), suffix.begin(), suffix.end());
+
+  bssl::Span<uint8_t> result;
+  size_t record_len;
+  uint8_t alert;
+  EXPECT_EQ(bssl::OpenRecord(server.get(), &result, &record_len, &alert,
+                             bssl::MakeSpan(record)),
+            bssl::OpenRecordResult::kOK);
+  EXPECT_EQ(record_len, record.size());
+  EXPECT_EQ(plaintext, result);
+}
+
+TEST(SSLTest, SealRecordTrailingData) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method())),
+      server_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(),
+                                     nullptr /* no session */));
+
+  const std::vector<uint8_t> plaintext = {1, 2, 3, 4, 5};
+  std::vector<uint8_t> record = plaintext;
+  std::vector<uint8_t> prefix(
+      bssl::SealRecordPrefixLen(client.get(), record.size())),
+      suffix(bssl::SealRecordMaxSuffixLen(client.get()));
+  size_t suffix_size;
+  ASSERT_TRUE(bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
+                               bssl::MakeSpan(record), bssl::MakeSpan(suffix),
+                               &suffix_size, record));
+  suffix.resize(suffix_size);
+  record.insert(record.begin(), prefix.begin(), prefix.end());
+  record.insert(record.end(), suffix.begin(), suffix.end());
+  record.insert(record.end(), {5, 4, 3, 2, 1});
+
+  bssl::Span<uint8_t> result;
+  size_t record_len;
+  uint8_t alert;
+  EXPECT_EQ(bssl::OpenRecord(server.get(), &result, &record_len, &alert,
+                             bssl::MakeSpan(record)),
+            bssl::OpenRecordResult::kOK);
+  EXPECT_EQ(record_len, record.size() - 5);
+  EXPECT_EQ(plaintext, result);
+}
+
+TEST(SSLTest, SealRecordInvalidSpanSize) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method())),
+      server_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get(),
+                                     nullptr /* no session */));
+
+  std::vector<uint8_t> record = {1, 2, 3, 4, 5};
+  std::vector<uint8_t> prefix(
+      bssl::SealRecordPrefixLen(client.get(), record.size())),
+      suffix(bssl::SealRecordMaxSuffixLen(client.get()));
+  size_t suffix_size;
+
+  auto expect_err = []() {
+    int err = ERR_get_error();
+    EXPECT_EQ(ERR_GET_LIB(err), ERR_LIB_SSL);
+    EXPECT_EQ(ERR_GET_REASON(err), SSL_R_BUFFER_TOO_SMALL);
+    ERR_clear_error();
+  };
+  EXPECT_FALSE(bssl::SealRecord(
+      client.get(), bssl::MakeSpan(prefix.data(), prefix.size() - 1),
+      bssl::MakeSpan(record), bssl::MakeSpan(suffix), &suffix_size, record));
+  expect_err();
+  EXPECT_FALSE(bssl::SealRecord(
+      client.get(), bssl::MakeSpan(prefix.data(), prefix.size() + 1),
+      bssl::MakeSpan(record), bssl::MakeSpan(suffix), &suffix_size, record));
+  expect_err();
+
+  EXPECT_FALSE(
+      bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
+                       bssl::MakeSpan(record.data(), record.size() - 1),
+                       bssl::MakeSpan(suffix), &suffix_size, record));
+  expect_err();
+  EXPECT_FALSE(
+      bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
+                       bssl::MakeSpan(record.data(), record.size() + 1),
+                       bssl::MakeSpan(suffix), &suffix_size, record));
+  expect_err();
+
+  EXPECT_FALSE(bssl::SealRecord(
+      client.get(), bssl::MakeSpan(prefix), bssl::MakeSpan(record),
+      bssl::MakeSpan(suffix.data(), suffix.size() - 1), &suffix_size, record));
+  expect_err();
+  EXPECT_FALSE(bssl::SealRecord(
+      client.get(), bssl::MakeSpan(prefix), bssl::MakeSpan(record),
+      bssl::MakeSpan(suffix.data(), suffix.size() + 1), &suffix_size, record));
+  expect_err();
+}
+
 // TODO(davidben): Convert this file to GTest properly.
 TEST(SSLTest, AllTests) {
   if (!TestSSL_SESSIONEncoding(kOpenSSLSession) ||

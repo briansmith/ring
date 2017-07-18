@@ -45,6 +45,7 @@ target_link_libraries(ssl crypto)
 add_executable(
   ssl_test
 
+  span_test.cc
   ssl_test.cc
 
   $<TARGET_OBJECTS:gtest_main>
