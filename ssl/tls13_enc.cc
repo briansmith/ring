@@ -19,6 +19,8 @@
 #include <assert.h>
 #include <string.h>
 
+#include <utility>
+
 #include <openssl/aead.h>
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
@@ -152,19 +154,19 @@ int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
     return 0;
   }
 
-  SSL_AEAD_CTX *traffic_aead =
-      SSL_AEAD_CTX_new(direction, version, SSL_is_dtls(ssl), session->cipher,
-                       key, key_len, NULL, 0, iv, iv_len);
-  if (traffic_aead == NULL) {
+  UniquePtr<SSLAEADContext> traffic_aead = SSLAEADContext::Create(
+      direction, version, SSL_is_dtls(ssl), session->cipher, key, key_len, NULL,
+      0, iv, iv_len);
+  if (!traffic_aead) {
     return 0;
   }
 
   if (direction == evp_aead_open) {
-    if (!ssl->method->set_read_state(ssl, traffic_aead)) {
+    if (!ssl->method->set_read_state(ssl, std::move(traffic_aead))) {
       return 0;
     }
   } else {
-    if (!ssl->method->set_write_state(ssl, traffic_aead)) {
+    if (!ssl->method->set_write_state(ssl, std::move(traffic_aead))) {
       return 0;
     }
   }

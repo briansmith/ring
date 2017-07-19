@@ -196,7 +196,7 @@ again:
 int ssl3_write_app_data(SSL *ssl, int *out_needs_handshake, const uint8_t *buf,
                         int len) {
   assert(ssl_can_write(ssl));
-  assert(ssl->s3->aead_write_ctx != NULL);
+  assert(!ssl->s3->aead_write_ctx->is_null_cipher());
 
   *out_needs_handshake = 0;
 
@@ -376,7 +376,7 @@ static int consume_record(SSL *ssl, uint8_t *out, int len, int peek) {
 int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
                        int peek) {
   assert(ssl_can_read(ssl));
-  assert(ssl->s3->aead_read_ctx != NULL);
+  assert(!ssl->s3->aead_read_ctx->is_null_cipher());
   *out_got_handshake = 0;
 
   ssl->method->release_current_message(ssl, 0 /* don't free buffer */);
@@ -521,7 +521,7 @@ int ssl3_read_handshake_bytes(SSL *ssl, uint8_t *buf, int len) {
      * as-is. This manifests as an application data record when we expect
      * handshake. Report a dedicated error code for this case. */
     if (!ssl->server && rr->type == SSL3_RT_APPLICATION_DATA &&
-        ssl->s3->aead_read_ctx == NULL) {
+        ssl->s3->aead_read_ctx->is_null_cipher()) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_APPLICATION_DATA_INSTEAD_OF_HANDSHAKE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
       return -1;
@@ -532,7 +532,7 @@ int ssl3_read_handshake_bytes(SSL *ssl, uint8_t *buf, int len) {
     if (rr->type != SSL3_RT_HANDSHAKE &&
         !(!ssl->server &&
           ssl->tls13_variant == tls13_record_type_experiment &&
-          ssl->s3->aead_read_ctx == NULL &&
+          ssl->s3->aead_read_ctx->is_null_cipher() &&
           rr->type == SSL3_RT_PLAINTEXT_HANDSHAKE)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);

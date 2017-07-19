@@ -111,6 +111,7 @@ void dtls1_free(SSL *ssl) {
 
   dtls_clear_incoming_messages(ssl);
   dtls_clear_outgoing_messages(ssl);
+  Delete(ssl->d1->last_aead_write_ctx);
 
   OPENSSL_free(ssl->d1);
   ssl->d1 = NULL;

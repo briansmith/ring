@@ -148,7 +148,12 @@
 
 #include <openssl/base.h>
 
+#include <type_traits>
+#include <utility>
+
 #include <openssl/aead.h>
+#include <openssl/err.h>
+#include <openssl/mem.h>
 #include <openssl/ssl.h>
 #include <openssl/stack.h>
 
@@ -166,6 +171,54 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 namespace bssl {
 
 struct SSL_HANDSHAKE;
+
+/* C++ utilities. */
+
+/* New behaves like |new| but uses |OPENSSL_malloc| for memory allocation. It
+ * returns nullptr on allocation error. It only implements single-object
+ * allocation and not new T[n].
+ *
+ * Note: unlike |new|, this does not support non-public constructors. */
+template <typename T, typename... Args>
+T *New(Args &&... args) {
+  T *t = reinterpret_cast<T *>(OPENSSL_malloc(sizeof(T)));
+  if (t == nullptr) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return nullptr;
+  }
+  new (t) T(std::forward<Args>(args)...);
+  return t;
+}
+
+/* Delete behaves like |delete| but uses |OPENSSL_free| to release memory.
+ *
+ * Note: unlike |delete| this does not support non-public destructors. */
+template <typename T>
+void Delete(T *t) {
+  if (t != nullptr) {
+    t->~T();
+    OPENSSL_free(t);
+  }
+}
+
+/* Register all types with non-trivial destructors with |UniquePtr|. Types with
+ * trivial destructors may be C structs which require a |BORINGSSL_MAKE_DELETER|
+ * registration. */
+namespace internal {
+template <typename T>
+struct DeleterImpl<T, typename std::enable_if<
+                          !std::is_trivially_destructible<T>::value>::type> {
+  static void Free(T *t) { Delete(t); }
+};
+}
+
+/* MakeUnique behaves like |std::make_unique| but returns nullptr on allocation
+ * error. */
+template <typename T, typename... Args>
+UniquePtr<T> MakeUnique(Args &&... args) {
+  return UniquePtr<T>(New<T>(std::forward<Args>(args)...));
+}
+
 
 /* Protocol versions.
  *
@@ -395,109 +448,117 @@ int tls1_prf(const EVP_MD *digest, uint8_t *out, size_t out_len,
 
 /* Encryption layer. */
 
-/* SSL_AEAD_CTX contains information about an AEAD that is being used to encrypt
- * an SSL connection. */
-struct SSL_AEAD_CTX {
-  const SSL_CIPHER *cipher;
-  EVP_AEAD_CTX ctx;
-  /* fixed_nonce contains any bytes of the nonce that are fixed for all
+/* SSLAEADContext contains information about an AEAD that is being used to
+ * encrypt an SSL connection. */
+class SSLAEADContext {
+ public:
+  SSLAEADContext(uint16_t version, const SSL_CIPHER *cipher);
+  ~SSLAEADContext();
+  SSLAEADContext(const SSLAEADContext &&) = delete;
+  SSLAEADContext &operator=(const SSLAEADContext &&) = delete;
+
+  /* CreateNullCipher creates an |SSLAEADContext| for the null cipher. */
+  static UniquePtr<SSLAEADContext> CreateNullCipher();
+
+  /* Create creates an |SSLAEADContext| using the supplied key material. It
+   * returns nullptr on error. Only one of |Open| or |Seal| may be used with the
+   * resulting object, depending on |direction|. |version| is the normalized
+   * protocol version, so DTLS 1.0 is represented as 0x0301, not 0xffef. */
+  static UniquePtr<SSLAEADContext> Create(
+      enum evp_aead_direction_t direction, uint16_t version, int is_dtls,
+      const SSL_CIPHER *cipher, const uint8_t *enc_key, size_t enc_key_len,
+      const uint8_t *mac_key, size_t mac_key_len, const uint8_t *fixed_iv,
+      size_t fixed_iv_len);
+
+  uint16_t version() const { return version_; }
+  const SSL_CIPHER *cipher() const { return cipher_; }
+
+  /* is_null_cipher returns true if this is the null cipher. */
+  bool is_null_cipher() const { return !cipher_; }
+
+  /* ExplicitNonceLen returns the length of the explicit nonce. */
+  size_t ExplicitNonceLen() const;
+
+  /* MaxOverhead returns the maximum overhead of calling |Seal|. */
+  size_t MaxOverhead() const;
+
+  /* MaxSuffixLen returns the maximum suffix length written by |SealScatter|.
+   * |extra_in_len| should equal the argument of the same name passed to
+   * |SealScatter|. */
+  size_t MaxSuffixLen(size_t extra_in_len) const;
+
+  /* Open authenticates and decrypts |in_len| bytes from |in| in-place. On
+   * success, it sets |*out| to the plaintext in |in| and returns true.
+   * Otherwise, it returns false. The output will always be |ExplicitNonceLen|
+   * bytes ahead of |in|. */
+  bool Open(CBS *out, uint8_t type, uint16_t wire_version,
+            const uint8_t seqnum[8], uint8_t *in, size_t in_len);
+
+  /* Seal encrypts and authenticates |in_len| bytes from |in| and writes the
+   * result to |out|. It returns true on success and false on error.
+   *
+   * If |in| and |out| alias then |out| + |ExplicitNonceLen| must be == |in|. */
+  bool Seal(uint8_t *out, size_t *out_len, size_t max_out, uint8_t type,
+            uint16_t wire_version, const uint8_t seqnum[8], const uint8_t *in,
+            size_t in_len);
+
+  /* SealScatter encrypts and authenticates |in_len| bytes from |in| and splits
+   * the result between |out_prefix|, |out| and |out_suffix|. It returns one on
+   * success and zero on error.
+   *
+   * On successful return, exactly |ExplicitNonceLen| bytes are written to
+   * |out_prefix|, |in_len| bytes to |out|, and up to |MaxSuffixLen| bytes to
+   * |out_suffix|. |*out_suffix_len| is set to the actual number of bytes
+   * written to |out_suffix|.
+   *
+   * |extra_in| may point to an additional plaintext buffer. If present,
+   * |extra_in_len| additional bytes are encrypted and authenticated, and the
+   * ciphertext is written to the beginning of |out_suffix|.  |MaxSuffixLen|
+   * may be used to size |out_suffix| accordingly.
+   *
+   * If |in| and |out| alias then |out| must be == |in|. Other arguments may not
+   * alias anything. */
+  bool SealScatter(uint8_t *out_prefix, uint8_t *out, uint8_t *out_suffix,
+                   size_t *out_suffix_len, size_t max_out_suffix_len,
+                   uint8_t type, uint16_t wire_version, const uint8_t seqnum[8],
+                   const uint8_t *in, size_t in_len, const uint8_t *extra_in,
+                   size_t extra_in_len);
+
+  bool GetIV(const uint8_t **out_iv, size_t *out_iv_len) const;
+
+ private:
+  /* GetAdditionalData writes the additional data into |out| and returns the
+   * number of bytes written. */
+  size_t GetAdditionalData(uint8_t out[13], uint8_t type, uint16_t wire_version,
+                           const uint8_t seqnum[8], size_t plaintext_len);
+
+  const SSL_CIPHER *cipher_;
+  ScopedEVP_AEAD_CTX ctx_;
+  /* fixed_nonce_ contains any bytes of the nonce that are fixed for all
    * records. */
-  uint8_t fixed_nonce[12];
-  uint8_t fixed_nonce_len, variable_nonce_len;
-  /* version is the protocol version that should be used with this AEAD. */
-  uint16_t version;
-  /* variable_nonce_included_in_record is non-zero if the variable nonce
+  uint8_t fixed_nonce_[12];
+  uint8_t fixed_nonce_len_ = 0, variable_nonce_len_ = 0;
+  /* version_ is the protocol version that should be used with this AEAD. */
+  uint16_t version_;
+  /* variable_nonce_included_in_record_ is true if the variable nonce
    * for a record is included as a prefix before the ciphertext. */
-  unsigned variable_nonce_included_in_record : 1;
-  /* random_variable_nonce is non-zero if the variable nonce is
+  bool variable_nonce_included_in_record_ : 1;
+  /* random_variable_nonce_ is true if the variable nonce is
    * randomly generated, rather than derived from the sequence
    * number. */
-  unsigned random_variable_nonce : 1;
-  /* omit_length_in_ad is non-zero if the length should be omitted in the
+  bool random_variable_nonce_ : 1;
+  /* omit_length_in_ad_ is true if the length should be omitted in the
    * AEAD's ad parameter. */
-  unsigned omit_length_in_ad : 1;
-  /* omit_version_in_ad is non-zero if the version should be omitted
+  bool omit_length_in_ad_ : 1;
+  /* omit_version_in_ad_ is true if the version should be omitted
    * in the AEAD's ad parameter. */
-  unsigned omit_version_in_ad : 1;
-  /* omit_ad is non-zero if the AEAD's ad parameter should be omitted. */
-  unsigned omit_ad : 1;
-  /* xor_fixed_nonce is non-zero if the fixed nonce should be XOR'd into the
+  bool omit_version_in_ad_ : 1;
+  /* omit_ad_ is true if the AEAD's ad parameter should be omitted. */
+  bool omit_ad_ : 1;
+  /* xor_fixed_nonce_ is true if the fixed nonce should be XOR'd into the
    * variable nonce rather than prepended. */
-  unsigned xor_fixed_nonce : 1;
+  bool xor_fixed_nonce_ : 1;
 };
-
-/* SSL_AEAD_CTX_new creates a newly-allocated |SSL_AEAD_CTX| using the supplied
- * key material. It returns NULL on error. Only one of |SSL_AEAD_CTX_open| or
- * |SSL_AEAD_CTX_seal| may be used with the resulting object, depending on
- * |direction|. |version| is the normalized protocol version, so DTLS 1.0 is
- * represented as 0x0301, not 0xffef. */
-SSL_AEAD_CTX *SSL_AEAD_CTX_new(enum evp_aead_direction_t direction,
-                               uint16_t version, int is_dtls,
-                               const SSL_CIPHER *cipher, const uint8_t *enc_key,
-                               size_t enc_key_len, const uint8_t *mac_key,
-                               size_t mac_key_len, const uint8_t *fixed_iv,
-                               size_t fixed_iv_len);
-
-/* SSL_AEAD_CTX_free frees |ctx|. */
-void SSL_AEAD_CTX_free(SSL_AEAD_CTX *ctx);
-
-/* SSL_AEAD_CTX_explicit_nonce_len returns the length of the explicit nonce for
- * |ctx|, if any. |ctx| may be NULL to denote the null cipher. */
-size_t SSL_AEAD_CTX_explicit_nonce_len(const SSL_AEAD_CTX *ctx);
-
-/* SSL_AEAD_CTX_max_overhead returns the maximum overhead of calling
- * |SSL_AEAD_CTX_seal|. |ctx| may be NULL to denote the null cipher. */
-size_t SSL_AEAD_CTX_max_overhead(const SSL_AEAD_CTX *ctx);
-
-/* SSL_AEAD_CTX_max_suffix_len returns the maximum suffix length written by
- * |SSL_AEAD_CTX_seal_scatter|. |ctx| may be NULL to denote the null cipher.
- * |extra_in_len| should equal the argument of the same name passed to
- * |SSL_AEAD_CTX_seal_scatter|. */
-size_t SSL_AEAD_CTX_max_suffix_len(const SSL_AEAD_CTX *ctx,
-                                   size_t extra_in_len);
-
-/* SSL_AEAD_CTX_open authenticates and decrypts |in_len| bytes from |in|
- * in-place. On success, it sets |*out| to the plaintext in |in| and returns
- * one. Otherwise, it returns zero. |ctx| may be NULL to denote the null cipher.
- * The output will always be |explicit_nonce_len| bytes ahead of |in|. */
-int SSL_AEAD_CTX_open(SSL_AEAD_CTX *ctx, CBS *out, uint8_t type,
-                      uint16_t wire_version, const uint8_t seqnum[8],
-                      uint8_t *in, size_t in_len);
-
-/* SSL_AEAD_CTX_seal encrypts and authenticates |in_len| bytes from |in| and
- * writes the result to |out|. It returns one on success and zero on
- * error. |ctx| may be NULL to denote the null cipher.
- *
- * If |in| and |out| alias then |out| + |explicit_nonce_len| must be == |in|. */
-int SSL_AEAD_CTX_seal(SSL_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
-                      size_t max_out, uint8_t type, uint16_t wire_version,
-                      const uint8_t seqnum[8], const uint8_t *in,
-                      size_t in_len);
-
-/* SSL_AEAD_CTX_seal_scatter encrypts and authenticates |in_len| bytes from |in|
- * and splits the result between |out_prefix|, |out| and |out_suffix|. It
- * returns one on success and zero on error. |ctx| may be NULL to denote the
- * null cipher.
- *
- * On successful return, exactly |SSL_AEAD_CTX_explicit_nonce_len| bytes are
- * written to |out_prefix|, |in_len| bytes to |out|, and up to
- * |SSL_AEAD_CTX_max_suffix_len| bytes to |out_suffix|. |*out_suffix_len| is set
- * to the actual number of bytes written to |out_suffix|.
- *
- * |extra_in| may point to an additional plaintext buffer. If present,
- * |extra_in_len| additional bytes are encrypted and authenticated, and the
- * ciphertext is written to the beginning of |out_suffix|.
- * |SSL_AEAD_CTX_max_suffix_len| may be used to size |out_suffix| accordingly.
- *
- * If |in| and |out| alias then |out| must be == |in|. Other arguments may not
- * alias anything. */
-int SSL_AEAD_CTX_seal_scatter(SSL_AEAD_CTX *aead, uint8_t *out_prefix,
-                              uint8_t *out, uint8_t *out_suffix,
-                              size_t *out_suffix_len, size_t max_out_suffix_len,
-                              uint8_t type, uint16_t wire_version,
-                              const uint8_t seqnum[8], const uint8_t *in,
-                              size_t in_len, const uint8_t *extra_in,
-                              size_t extra_in_len);
 
 
 /* DTLS replay bitmap. */
@@ -1568,14 +1629,14 @@ struct SSLProtocolMethod {
   /* received_flight is called when the handshake has received a flight of
    * messages from the peer. */
   void (*received_flight)(SSL *ssl);
-  /* set_read_state sets |ssl|'s read cipher state to |aead_ctx|. It takes
-   * ownership of |aead_ctx|. It returns one on success and zero if changing the
-   * read state is forbidden at this point. */
-  int (*set_read_state)(SSL *ssl, SSL_AEAD_CTX *aead_ctx);
-  /* set_write_state sets |ssl|'s write cipher state to |aead_ctx|. It takes
-   * ownership of |aead_ctx|. It returns one on success and zero if changing the
-   * write state is forbidden at this point. */
-  int (*set_write_state)(SSL *ssl, SSL_AEAD_CTX *aead_ctx);
+  /* set_read_state sets |ssl|'s read cipher state to |aead_ctx|. It returns
+   * one on success and zero if changing the read state is forbidden at this
+   * point. */
+  int (*set_read_state)(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx);
+  /* set_write_state sets |ssl|'s write cipher state to |aead_ctx|. It returns
+   * one on success and zero if changing the write state is forbidden at this
+   * point. */
+  int (*set_write_state)(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx);
 };
 
 struct SSLX509Method {
@@ -1762,10 +1823,10 @@ struct SSL3_STATE {
   uint32_t pending_flight_offset;
 
   /* aead_read_ctx is the current read cipher state. */
-  SSL_AEAD_CTX *aead_read_ctx;
+  SSLAEADContext *aead_read_ctx;
 
   /* aead_write_ctx is the current write cipher state. */
-  SSL_AEAD_CTX *aead_write_ctx;
+  SSLAEADContext *aead_write_ctx;
 
   /* hs is the handshake state for the current handshake or NULL if there isn't
    * one. */
@@ -1896,6 +1957,7 @@ struct DTLS1_STATE {
 
   /* save last sequence number for retransmissions */
   uint8_t last_write_sequence[8];
+  SSLAEADContext *last_aead_write_ctx;
 
   /* incoming_messages is a ring buffer of incoming handshake messages that have
    * yet to be processed. The front of the ring buffer is message number

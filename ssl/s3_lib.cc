@@ -167,6 +167,12 @@
 namespace bssl {
 
 int ssl3_new(SSL *ssl) {
+  UniquePtr<SSLAEADContext> aead_read_ctx = SSLAEADContext::CreateNullCipher();
+  UniquePtr<SSLAEADContext> aead_write_ctx = SSLAEADContext::CreateNullCipher();
+  if (!aead_read_ctx || !aead_write_ctx) {
+    return 0;
+  }
+
   SSL3_STATE *s3 = (SSL3_STATE *)OPENSSL_malloc(sizeof *s3);
   if (s3 == NULL) {
     return 0;
@@ -179,6 +185,8 @@ int ssl3_new(SSL *ssl) {
     return 0;
   }
 
+  s3->aead_read_ctx = aead_read_ctx.release();
+  s3->aead_write_ctx = aead_write_ctx.release();
   ssl->s3 = s3;
 
   /* Set the version to the highest supported version.
@@ -202,8 +210,8 @@ void ssl3_free(SSL *ssl) {
   ssl_handshake_free(ssl->s3->hs);
   OPENSSL_free(ssl->s3->next_proto_negotiated);
   OPENSSL_free(ssl->s3->alpn_selected);
-  SSL_AEAD_CTX_free(ssl->s3->aead_read_ctx);
-  SSL_AEAD_CTX_free(ssl->s3->aead_write_ctx);
+  Delete(ssl->s3->aead_read_ctx);
+  Delete(ssl->s3->aead_write_ctx);
   BUF_MEM_free(ssl->s3->pending_flight);
 
   OPENSSL_cleanse(ssl->s3, sizeof *ssl->s3);

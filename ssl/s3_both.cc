@@ -274,7 +274,7 @@ int ssl3_add_message(SSL *ssl, uint8_t *msg, size_t len) {
     if (ssl->server &&
         ssl->s3->have_version &&
         ssl->version == TLS1_3_RECORD_TYPE_EXPERIMENT_VERSION &&
-        ssl->s3->aead_write_ctx == NULL) {
+        ssl->s3->aead_write_ctx->is_null_cipher()) {
       type = SSL3_RT_PLAINTEXT_HANDSHAKE;
     }
 

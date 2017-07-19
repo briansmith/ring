@@ -140,6 +140,8 @@
 #include <assert.h>
 #include <string.h>
 
+#include <utility>
+
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
@@ -432,18 +434,19 @@ int tls1_change_cipher_state(SSL_HANDSHAKE *hs, int which) {
     iv = server_write_iv;
   }
 
-  SSL_AEAD_CTX *aead_ctx = SSL_AEAD_CTX_new(
-      is_read ? evp_aead_open : evp_aead_seal, ssl3_protocol_version(ssl), SSL_is_dtls(ssl),
-      hs->new_cipher, key, key_len, mac_secret, mac_secret_len, iv, iv_len);
-  if (aead_ctx == NULL) {
+  UniquePtr<SSLAEADContext> aead_ctx = SSLAEADContext::Create(
+      is_read ? evp_aead_open : evp_aead_seal, ssl3_protocol_version(ssl),
+      SSL_is_dtls(ssl), hs->new_cipher, key, key_len, mac_secret,
+      mac_secret_len, iv, iv_len);
+  if (!aead_ctx) {
     return 0;
   }
 
   if (is_read) {
-    return ssl->method->set_read_state(ssl, aead_ctx);
+    return ssl->method->set_read_state(ssl, std::move(aead_ctx));
   }
 
-  return ssl->method->set_write_state(ssl, aead_ctx);
+  return ssl->method->set_write_state(ssl, std::move(aead_ctx));
 }
 
 int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,

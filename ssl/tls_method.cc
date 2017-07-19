@@ -75,27 +75,26 @@ static void ssl3_expect_flight(SSL *ssl) {}
 
 static void ssl3_received_flight(SSL *ssl) {}
 
-static int ssl3_set_read_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
+static int ssl3_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   if (ssl->s3->rrec.length != 0) {
     /* There may not be unprocessed record data at a cipher change. */
     OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    SSL_AEAD_CTX_free(aead_ctx);
     return 0;
   }
 
   OPENSSL_memset(ssl->s3->read_sequence, 0, sizeof(ssl->s3->read_sequence));
 
-  SSL_AEAD_CTX_free(ssl->s3->aead_read_ctx);
-  ssl->s3->aead_read_ctx = aead_ctx;
+  Delete(ssl->s3->aead_read_ctx);
+  ssl->s3->aead_read_ctx = aead_ctx.release();
   return 1;
 }
 
-static int ssl3_set_write_state(SSL *ssl, SSL_AEAD_CTX *aead_ctx) {
+static int ssl3_set_write_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   OPENSSL_memset(ssl->s3->write_sequence, 0, sizeof(ssl->s3->write_sequence));
 
-  SSL_AEAD_CTX_free(ssl->s3->aead_write_ctx);
-  ssl->s3->aead_write_ctx = aead_ctx;
+  Delete(ssl->s3->aead_write_ctx);
+  ssl->s3->aead_write_ctx = aead_ctx.release();
   return 1;
 }
 

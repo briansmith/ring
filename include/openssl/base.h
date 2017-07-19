@@ -393,7 +393,9 @@ namespace bssl {
 
 namespace internal {
 
-template <typename T>
+// The Enable parameter is ignored and only exists so specializations can use
+// SFINAE.
+template <typename T, typename Enable = void>
 struct DeleterImpl {};
 
 template <typename T>

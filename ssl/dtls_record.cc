@@ -217,8 +217,9 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
   }
 
   /* Decrypt the body in-place. */
-  if (!SSL_AEAD_CTX_open(ssl->s3->aead_read_ctx, out, type, version, sequence,
-                         (uint8_t *)CBS_data(&body), CBS_len(&body))) {
+  if (!ssl->s3->aead_read_ctx->Open(out, type, version, sequence,
+                                    (uint8_t *)CBS_data(&body),
+                                    CBS_len(&body))) {
     /* Bad packets are silently dropped in DTLS. See section 4.2.1 of RFC 6347.
      * Clear the error queue of any errors decryption may have added. Drop the
      * entire packet as it must not have come from the peer.
@@ -253,13 +254,11 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
   return ssl_open_record_success;
 }
 
-static const SSL_AEAD_CTX *get_write_aead(const SSL *ssl,
-                                          enum dtls1_use_epoch_t use_epoch) {
+static const SSLAEADContext *get_write_aead(const SSL *ssl,
+                                            enum dtls1_use_epoch_t use_epoch) {
   if (use_epoch == dtls1_use_previous_epoch) {
-    /* DTLS renegotiation is unsupported, so only epochs 0 (NULL cipher) and 1
-     * (negotiated cipher) exist. */
-    assert(ssl->d1->w_epoch == 1);
-    return NULL;
+    assert(ssl->d1->w_epoch >= 1);
+    return ssl->d1->last_aead_write_ctx;
   }
 
   return ssl->s3->aead_write_ctx;
@@ -267,13 +266,12 @@ static const SSL_AEAD_CTX *get_write_aead(const SSL *ssl,
 
 size_t dtls_max_seal_overhead(const SSL *ssl,
                               enum dtls1_use_epoch_t use_epoch) {
-  return DTLS1_RT_HEADER_LENGTH +
-         SSL_AEAD_CTX_max_overhead(get_write_aead(ssl, use_epoch));
+  return DTLS1_RT_HEADER_LENGTH + get_write_aead(ssl, use_epoch)->MaxOverhead();
 }
 
 size_t dtls_seal_prefix_len(const SSL *ssl, enum dtls1_use_epoch_t use_epoch) {
   return DTLS1_RT_HEADER_LENGTH +
-         SSL_AEAD_CTX_explicit_nonce_len(get_write_aead(ssl, use_epoch));
+         get_write_aead(ssl, use_epoch)->ExplicitNonceLen();
 }
 
 int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
@@ -288,14 +286,12 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
 
   /* Determine the parameters for the current epoch. */
   uint16_t epoch = ssl->d1->w_epoch;
-  SSL_AEAD_CTX *aead = ssl->s3->aead_write_ctx;
+  SSLAEADContext *aead = ssl->s3->aead_write_ctx;
   uint8_t *seq = ssl->s3->write_sequence;
   if (use_epoch == dtls1_use_previous_epoch) {
-    /* DTLS renegotiation is unsupported, so only epochs 0 (NULL cipher) and 1
-     * (negotiated cipher) exist. */
-    assert(ssl->d1->w_epoch == 1);
+    assert(ssl->d1->w_epoch >= 1);
     epoch = ssl->d1->w_epoch - 1;
-    aead = NULL;
+    aead = ssl->d1->last_aead_write_ctx;
     seq = ssl->d1->last_write_sequence;
   }
 
@@ -315,9 +311,9 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
   OPENSSL_memcpy(&out[5], &seq[2], 6);
 
   size_t ciphertext_len;
-  if (!SSL_AEAD_CTX_seal(aead, out + DTLS1_RT_HEADER_LENGTH, &ciphertext_len,
-                         max_out - DTLS1_RT_HEADER_LENGTH, type, wire_version,
-                         &out[3] /* seq */, in, in_len) ||
+  if (!aead->Seal(out + DTLS1_RT_HEADER_LENGTH, &ciphertext_len,
+                  max_out - DTLS1_RT_HEADER_LENGTH, type, wire_version,
+                  &out[3] /* seq */, in, in_len) ||
       !ssl_record_sequence_update(&seq[2], 6)) {
     return 0;
   }

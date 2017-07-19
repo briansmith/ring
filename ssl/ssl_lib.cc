@@ -2034,10 +2034,7 @@ EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
 }
 
 const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl) {
-  if (ssl->s3->aead_write_ctx == NULL) {
-    return NULL;
-  }
-  return ssl->s3->aead_write_ctx->cipher;
+  return ssl->s3->aead_write_ctx->cipher();
 }
 
 int SSL_session_reused(const SSL *ssl) {
@@ -2364,15 +2361,9 @@ void SSL_set_renegotiate_mode(SSL *ssl, enum ssl_renegotiate_mode_t mode) {
 
 int SSL_get_ivs(const SSL *ssl, const uint8_t **out_read_iv,
                 const uint8_t **out_write_iv, size_t *out_iv_len) {
-  if (ssl->s3->aead_read_ctx == NULL || ssl->s3->aead_write_ctx == NULL) {
-    return 0;
-  }
-
   size_t write_iv_len;
-  if (!EVP_AEAD_CTX_get_iv(&ssl->s3->aead_read_ctx->ctx, out_read_iv,
-                           out_iv_len) ||
-      !EVP_AEAD_CTX_get_iv(&ssl->s3->aead_write_ctx->ctx, out_write_iv,
-                           &write_iv_len) ||
+  if (!ssl->s3->aead_read_ctx->GetIV(out_read_iv, out_iv_len) ||
+      !ssl->s3->aead_write_ctx->GetIV(out_write_iv, &write_iv_len) ||
       *out_iv_len != write_iv_len) {
     return 0;
   }
