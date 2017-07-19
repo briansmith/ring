@@ -861,4 +861,21 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
   return ret;
 }
 
+uint16_t ssl_get_grease_value(const SSL *ssl, enum ssl_grease_index_t index) {
+  /* Use the client_random or server_random for entropy. This both avoids
+   * calling |RAND_bytes| on a single byte repeatedly and ensures the values are
+   * deterministic. This allows the same ClientHello be sent twice for a
+   * HelloRetryRequest or the same group be advertised in both supported_groups
+   * and key_shares. */
+  uint16_t ret = ssl->server ? ssl->s3->server_random[index]
+                             : ssl->s3->client_random[index];
+  /* The first four bytes of server_random are a timestamp prior to TLS 1.3, but
+   * servers have no fields to GREASE until TLS 1.3. */
+  assert(!ssl->server || ssl3_protocol_version(ssl) >= TLS1_3_VERSION);
+  /* This generates a random value of the form 0xωaωa, for all 0 ≤ ω < 16. */
+  ret = (ret & 0xf0) | 0x0a;
+  ret |= ret << 8;
+  return ret;
+}
+
 }  // namespace bssl
