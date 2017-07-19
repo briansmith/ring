@@ -443,10 +443,9 @@ int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
   if (hs->extended_master_secret) {
     uint8_t digests[EVP_MAX_MD_SIZE];
     size_t digests_len;
-    if (!SSL_TRANSCRIPT_get_hash(&hs->transcript, digests, &digests_len) ||
-        !tls1_prf(SSL_TRANSCRIPT_md(&hs->transcript), out,
-                  SSL3_MASTER_SECRET_SIZE, premaster, premaster_len,
-                  TLS_MD_EXTENDED_MASTER_SECRET_CONST,
+    if (!hs->transcript.GetHash(digests, &digests_len) ||
+        !tls1_prf(hs->transcript.Digest(), out, SSL3_MASTER_SECRET_SIZE,
+                  premaster, premaster_len, TLS_MD_EXTENDED_MASTER_SECRET_CONST,
                   TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE, digests,
                   digests_len, NULL, 0)) {
       return 0;
@@ -460,11 +459,11 @@ int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
         return 0;
       }
     } else {
-      if (!tls1_prf(SSL_TRANSCRIPT_md(&hs->transcript), out,
-                    SSL3_MASTER_SECRET_SIZE, premaster, premaster_len,
-                    TLS_MD_MASTER_SECRET_CONST, TLS_MD_MASTER_SECRET_CONST_SIZE,
-                    ssl->s3->client_random, SSL3_RANDOM_SIZE,
-                    ssl->s3->server_random, SSL3_RANDOM_SIZE)) {
+      if (!tls1_prf(hs->transcript.Digest(), out, SSL3_MASTER_SECRET_SIZE,
+                    premaster, premaster_len, TLS_MD_MASTER_SECRET_CONST,
+                    TLS_MD_MASTER_SECRET_CONST_SIZE, ssl->s3->client_random,
+                    SSL3_RANDOM_SIZE, ssl->s3->server_random,
+                    SSL3_RANDOM_SIZE)) {
         return 0;
       }
     }

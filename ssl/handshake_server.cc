@@ -930,8 +930,8 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
 
   /* Now that all parameters are known, initialize the handshake hash and hash
    * the ClientHello. */
-  if (!SSL_TRANSCRIPT_init_hash(&hs->transcript, ssl3_protocol_version(ssl),
-                                hs->new_cipher->algorithm_prf) ||
+  if (!hs->transcript.InitHash(ssl3_protocol_version(ssl),
+                               hs->new_cipher->algorithm_prf) ||
       !ssl_hash_current_message(hs)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return -1;
@@ -939,7 +939,7 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
 
   /* Release the handshake buffer if client authentication isn't required. */
   if (!hs->cert_request) {
-    SSL_TRANSCRIPT_free_buffer(&hs->transcript);
+    hs->transcript.FreeBuffer();
   }
 
   return 1;
@@ -1251,7 +1251,7 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
 
   if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) == 0) {
     /* No client certificate so the handshake buffer may be discarded. */
-    SSL_TRANSCRIPT_free_buffer(&hs->transcript);
+    hs->transcript.FreeBuffer();
 
     /* In SSL 3.0, sending no certificate is signaled by omitting the
      * Certificate message. */
@@ -1540,7 +1540,7 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
    * CertificateVerify is required if and only if there's a client certificate.
    * */
   if (!hs->peer_pubkey) {
-    SSL_TRANSCRIPT_free_buffer(&hs->transcript);
+    hs->transcript.FreeBuffer();
     return 1;
   }
 
@@ -1590,9 +1590,8 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
   if (ssl3_protocol_version(ssl) == SSL3_VERSION) {
     uint8_t digest[EVP_MAX_MD_SIZE];
     size_t digest_len;
-    if (!SSL_TRANSCRIPT_ssl3_cert_verify_hash(
-            &hs->transcript, digest, &digest_len, hs->new_session.get(),
-            signature_algorithm)) {
+    if (!hs->transcript.GetSSL3CertVerifyHash(
+            digest, &digest_len, hs->new_session.get(), signature_algorithm)) {
       return -1;
     }
 
@@ -1605,8 +1604,8 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
   } else {
     sig_ok = ssl_public_key_verify(
         ssl, CBS_data(&signature), CBS_len(&signature), signature_algorithm,
-        hs->peer_pubkey.get(), (const uint8_t *)hs->transcript.buffer->data,
-        hs->transcript.buffer->length);
+        hs->peer_pubkey.get(), hs->transcript.buffer_data(),
+        hs->transcript.buffer_len());
   }
 
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
@@ -1621,7 +1620,7 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
 
   /* The handshake buffer is no longer necessary, and we may hash the current
    * message.*/
-  SSL_TRANSCRIPT_free_buffer(&hs->transcript);
+  hs->transcript.FreeBuffer();
   if (!ssl_hash_current_message(hs)) {
     return -1;
   }

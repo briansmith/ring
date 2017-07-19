@@ -181,8 +181,7 @@ int tls13_get_cert_verify_signature_input(
 
   uint8_t context_hash[EVP_MAX_MD_SIZE];
   size_t context_hash_len;
-  if (!SSL_TRANSCRIPT_get_hash(&hs->transcript, context_hash,
-                               &context_hash_len) ||
+  if (!hs->transcript.GetHash(context_hash, &context_hash_len) ||
       !CBB_add_bytes(cbb.get(), context_hash, context_hash_len) ||
       !CBB_finish(cbb.get(), out, out_len)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);

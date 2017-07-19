@@ -671,12 +671,11 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
      * TODO(davidben): This will need to be updated for DTLS 1.3. */
     assert(!SSL_is_dtls(hs->ssl));
     assert(hs->hash_len <= 0xff);
-    uint8_t header[4] = {SSL3_MT_FINISHED, 0, 0, static_cast<uint8_t>(hs->hash_len)};
-    if (!SSL_TRANSCRIPT_update(&hs->transcript, header, sizeof(header)) ||
-        !SSL_TRANSCRIPT_update(&hs->transcript, hs->expected_client_finished,
-                               hs->hash_len) ||
-        !tls13_derive_resumption_secret(hs) ||
-        !add_new_session_tickets(hs)) {
+    uint8_t header[4] = {SSL3_MT_FINISHED, 0, 0,
+                         static_cast<uint8_t>(hs->hash_len)};
+    if (!hs->transcript.Update(header, sizeof(header)) ||
+        !hs->transcript.Update(hs->expected_client_finished, hs->hash_len) ||
+        !tls13_derive_resumption_secret(hs) || !add_new_session_tickets(hs)) {
       return ssl_hs_error;
     }
   }

@@ -365,74 +365,74 @@ size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher);
 
 /* Transcript layer. */
 
-/* SSL_TRANSCRIPT maintains the handshake transcript as a combination of a
+/* SSLTranscript maintains the handshake transcript as a combination of a
  * buffer and running hash. */
-struct SSL_TRANSCRIPT {
-  /* buffer, if non-NULL, contains the handshake transcript. */
-  BUF_MEM *buffer;
+class SSLTranscript {
+ public:
+  SSLTranscript();
+  ~SSLTranscript();
+
+  /* Init initializes the handshake transcript. If called on an existing
+   * transcript, it resets the transcript and hash. It returns true on success
+   * and false on failure. */
+  bool Init();
+
+  /* InitHash initializes the handshake hash based on the PRF and contents of
+   * the handshake transcript. Subsequent calls to |Update| will update the
+   * rolling hash. It returns one on success and zero on failure. It is an error
+   * to call this function after the handshake buffer is released. */
+  bool InitHash(uint16_t version, int algorithm_prf);
+
+  const uint8_t *buffer_data() const {
+    return reinterpret_cast<const uint8_t *>(buffer_->data);
+  }
+  size_t buffer_len() const { return buffer_->length; }
+
+  /* FreeBuffer releases the handshake buffer. Subsequent calls to
+   * |Update| will not update the handshake buffer. */
+  void FreeBuffer();
+
+  /* DigestLen returns the length of the PRF hash. */
+  size_t DigestLen() const;
+
+  /* Digest returns the PRF hash. For TLS 1.1 and below, this is
+   * |EVP_md5_sha1|. */
+  const EVP_MD *Digest() const;
+
+  /* Update adds |in| to the handshake buffer and handshake hash, whichever is
+   * enabled. It returns true on success and false on failure. */
+  bool Update(const uint8_t *in, size_t in_len);
+
+  /* GetHash writes the handshake hash to |out| which must have room for at
+   * least |DigestLen| bytes. On success, it returns true and sets |*out_len| to
+   * the number of bytes written. Otherwise, it returns false. */
+  bool GetHash(uint8_t *out, size_t *out_len);
+
+  /* GetSSL3CertVerifyHash writes the SSL 3.0 CertificateVerify hash into the
+   * bytes pointed to by |out| and writes the number of bytes to
+   * |*out_len|. |out| must have room for |EVP_MAX_MD_SIZE| bytes. It returns
+   * one on success and zero on failure. */
+  bool GetSSL3CertVerifyHash(uint8_t *out, size_t *out_len,
+                             const SSL_SESSION *session,
+                             uint16_t signature_algorithm);
+
+  /* GetFinishedMAC computes the MAC for the Finished message into the bytes
+   * pointed by |out| and writes the number of bytes to |*out_len|. |out| must
+   * have room for |EVP_MAX_MD_SIZE| bytes. It returns true on success and false
+   * on failure. */
+  bool GetFinishedMAC(uint8_t *out, size_t *out_len, const SSL_SESSION *session,
+                      bool from_server, uint16_t version);
+
+ private:
+  /* buffer_, if non-null, contains the handshake transcript. */
+  UniquePtr<BUF_MEM> buffer_;
   /* hash, if initialized with an |EVP_MD|, maintains the handshake hash. For
    * TLS 1.1 and below, it is the SHA-1 half. */
-  EVP_MD_CTX hash;
+  ScopedEVP_MD_CTX hash_;
   /* md5, if initialized with an |EVP_MD|, maintains the MD5 half of the
    * handshake hash for TLS 1.1 and below. */
-  EVP_MD_CTX md5;
+  ScopedEVP_MD_CTX md5_;
 };
-
-/* SSL_TRANSCRIPT_init initializes the handshake transcript. If called on an
- * existing transcript, it resets the transcript and hash. It returns one on
- * success and zero on failure. */
-int SSL_TRANSCRIPT_init(SSL_TRANSCRIPT *transcript);
-
-/* SSL_TRANSCRIPT_init_hash initializes the handshake hash based on the PRF and
- * contents of the handshake transcript. Subsequent calls to
- * |SSL_TRANSCRIPT_update| will update the rolling hash. It returns one on
- * success and zero on failure. It is an error to call this function after the
- * handshake buffer is released. */
-int SSL_TRANSCRIPT_init_hash(SSL_TRANSCRIPT *transcript, uint16_t version,
-                             int algorithm_prf);
-
-/* SSL_TRANSCRIPT_cleanup cleans up the hash and transcript. */
-void SSL_TRANSCRIPT_cleanup(SSL_TRANSCRIPT *transcript);
-
-/* SSL_TRANSCRIPT_free_buffer releases the handshake buffer. Subsequent calls to
- * |SSL_TRANSCRIPT_update| will not update the handshake buffer. */
-void SSL_TRANSCRIPT_free_buffer(SSL_TRANSCRIPT *transcript);
-
-/* SSL_TRANSCRIPT_digest_len returns the length of the PRF hash. */
-size_t SSL_TRANSCRIPT_digest_len(const SSL_TRANSCRIPT *transcript);
-
-/* SSL_TRANSCRIPT_md returns the PRF hash. For TLS 1.1 and below, this is
- * |EVP_md5_sha1|. */
-const EVP_MD *SSL_TRANSCRIPT_md(const SSL_TRANSCRIPT *transcript);
-
-/* SSL_TRANSCRIPT_update adds |in| to the handshake buffer and handshake hash,
- * whichever is enabled. It returns one on success and zero on failure. */
-int SSL_TRANSCRIPT_update(SSL_TRANSCRIPT *transcript, const uint8_t *in,
-                          size_t in_len);
-
-/* SSL_TRANSCRIPT_get_hash writes the handshake hash to |out| which must have
- * room for at least |SSL_TRANSCRIPT_digest_len| bytes. On success, it returns
- * one and sets |*out_len| to the number of bytes written. Otherwise, it returns
- * zero. */
-int SSL_TRANSCRIPT_get_hash(const SSL_TRANSCRIPT *transcript, uint8_t *out,
-                            size_t *out_len);
-
-/* SSL_TRANSCRIPT_ssl3_cert_verify_hash writes the SSL 3.0 CertificateVerify
- * hash into the bytes pointed to by |out| and writes the number of bytes to
- * |*out_len|. |out| must have room for |EVP_MAX_MD_SIZE| bytes. It returns one
- * on success and zero on failure. */
-int SSL_TRANSCRIPT_ssl3_cert_verify_hash(SSL_TRANSCRIPT *transcript,
-                                         uint8_t *out, size_t *out_len,
-                                         const SSL_SESSION *session,
-                                         int signature_algorithm);
-
-/* SSL_TRANSCRIPT_finish_mac computes the MAC for the Finished message into the
- * bytes pointed by |out| and writes the number of bytes to |*out_len|. |out|
- * must have room for |EVP_MAX_MD_SIZE| bytes. It returns one on success and
- * zero on failure. */
-int SSL_TRANSCRIPT_finish_mac(SSL_TRANSCRIPT *transcript, uint8_t *out,
-                              size_t *out_len, const SSL_SESSION *session,
-                              int from_server, uint16_t version);
 
 /* tls1_prf computes the PRF function for |ssl|. It writes |out_len| bytes to
  * |out|, using |secret| as the secret and |label| as the label. |seed1| and
@@ -1152,7 +1152,7 @@ struct SSL_HANDSHAKE {
   SSL_ECDH_CTX ecdh_ctx;
 
   /* transcript is the current handshake transcript. */
-  SSL_TRANSCRIPT transcript;
+  SSLTranscript transcript;
 
   /* cookie is the value of the cookie received from the server, if any. */
   uint8_t *cookie = nullptr;

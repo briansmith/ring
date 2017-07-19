@@ -152,7 +152,6 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       extended_master_secret(0),
       pending_private_key_op(0) {
   OPENSSL_memset(&ecdh_ctx, 0, sizeof(ecdh_ctx));
-  OPENSSL_memset(&transcript, 0, sizeof(transcript));
 }
 
 SSL_HANDSHAKE::~SSL_HANDSHAKE() {
@@ -163,7 +162,6 @@ SSL_HANDSHAKE::~SSL_HANDSHAKE() {
   OPENSSL_cleanse(client_traffic_secret_0, sizeof(client_traffic_secret_0));
   OPENSSL_cleanse(server_traffic_secret_0, sizeof(server_traffic_secret_0));
   SSL_ECDH_CTX_cleanup(&ecdh_ctx);
-  SSL_TRANSCRIPT_cleanup(&transcript);
   OPENSSL_free(cookie);
   OPENSSL_free(key_share_bytes);
   OPENSSL_free(ecdh_public_key);
@@ -183,7 +181,7 @@ SSL_HANDSHAKE::~SSL_HANDSHAKE() {
 SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl) {
   UniquePtr<SSL_HANDSHAKE> hs = MakeUnique<SSL_HANDSHAKE>(ssl);
   if (!hs ||
-      !SSL_TRANSCRIPT_init(&hs->transcript)) {
+      !hs->transcript.Init()) {
     return nullptr;
   }
   return hs.release();
@@ -283,10 +281,10 @@ int ssl3_add_message(SSL *ssl, uint8_t *msg, size_t len) {
   } while (added < len);
 
   ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE, msg, len);
-  /* TODO(svaldez): Move this up a layer to fix abstraction for SSL_TRANSCRIPT
-   * on hs. */
+  /* TODO(svaldez): Move this up a layer to fix abstraction for SSLTranscript on
+   * hs. */
   if (ssl->s3->hs != NULL &&
-      !SSL_TRANSCRIPT_update(&ssl->s3->hs->transcript, msg, len)) {
+      !ssl->s3->hs->transcript.Update(msg, len)) {
     goto err;
   }
   ret = 1;
@@ -383,9 +381,8 @@ int ssl3_send_finished(SSL_HANDSHAKE *hs) {
 
   uint8_t finished[EVP_MAX_MD_SIZE];
   size_t finished_len;
-  if (!SSL_TRANSCRIPT_finish_mac(&hs->transcript, finished, &finished_len,
-                                 session, ssl->server,
-                                 ssl3_protocol_version(ssl))) {
+  if (!hs->transcript.GetFinishedMAC(finished, &finished_len, session,
+                                     ssl->server, ssl3_protocol_version(ssl))) {
     return 0;
   }
 
@@ -439,9 +436,9 @@ int ssl3_get_finished(SSL_HANDSHAKE *hs) {
   /* Snapshot the finished hash before incorporating the new message. */
   uint8_t finished[EVP_MAX_MD_SIZE];
   size_t finished_len;
-  if (!SSL_TRANSCRIPT_finish_mac(&hs->transcript, finished, &finished_len,
-                                 SSL_get_session(ssl), !ssl->server,
-                                 ssl3_protocol_version(ssl)) ||
+  if (!hs->transcript.GetFinishedMAC(finished, &finished_len,
+                                     SSL_get_session(ssl), !ssl->server,
+                                     ssl3_protocol_version(ssl)) ||
       !ssl_hash_current_message(hs)) {
     return -1;
   }
@@ -593,9 +590,8 @@ static int read_v2_client_hello(SSL *ssl) {
   /* The V2ClientHello without the length is incorporated into the handshake
    * hash. This is only ever called at the start of the handshake, so hs is
    * guaranteed to be non-NULL. */
-  if (!SSL_TRANSCRIPT_update(&ssl->s3->hs->transcript,
-                             CBS_data(&v2_client_hello),
-                             CBS_len(&v2_client_hello))) {
+  if (!ssl->s3->hs->transcript.Update(CBS_data(&v2_client_hello),
+                                      CBS_len(&v2_client_hello))) {
     return -1;
   }
 
@@ -758,7 +754,7 @@ int ssl_hash_current_message(SSL_HANDSHAKE *hs) {
 
   CBS cbs;
   hs->ssl->method->get_current_message(hs->ssl, &cbs);
-  return SSL_TRANSCRIPT_update(&hs->transcript, CBS_data(&cbs), CBS_len(&cbs));
+  return hs->transcript.Update(CBS_data(&cbs), CBS_len(&cbs));
 }
 
 void ssl3_release_current_message(SSL *ssl, int free_buffer) {

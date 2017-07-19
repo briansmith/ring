@@ -715,7 +715,7 @@ static int ssl3_send_client_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   /* The handshake buffer is reset on every ClientHello. Notably, in DTLS, we
    * may send multiple ClientHellos if we receive HelloVerifyRequest. */
-  if (!SSL_TRANSCRIPT_init(&hs->transcript)) {
+  if (!hs->transcript.Init()) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }
@@ -1022,8 +1022,7 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
 
   /* Now that the cipher is known, initialize the handshake hash and hash the
    * ServerHello. */
-  if (!SSL_TRANSCRIPT_init_hash(&hs->transcript, ssl3_protocol_version(ssl),
-                                c->algorithm_prf) ||
+  if (!hs->transcript.InitHash(ssl3_protocol_version(ssl), c->algorithm_prf) ||
       !ssl_hash_current_message(hs)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return -1;
@@ -1034,7 +1033,7 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
    * buffer may be released. */
   if (ssl->session != NULL ||
       !ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
-    SSL_TRANSCRIPT_free_buffer(&hs->transcript);
+    hs->transcript.FreeBuffer();
   }
 
   /* Only the NULL compression algorithm is supported. */
@@ -1382,7 +1381,7 @@ static int ssl3_get_certificate_request(SSL_HANDSHAKE *hs) {
     ssl->s3->tmp.reuse_message = 1;
     /* If we get here we don't need the handshake buffer as we won't be doing
      * client auth. */
-    SSL_TRANSCRIPT_free_buffer(&hs->transcript);
+    hs->transcript.FreeBuffer();
     return 1;
   }
 
@@ -1478,7 +1477,7 @@ static int ssl3_send_client_certificate(SSL_HANDSHAKE *hs) {
 
   if (!ssl_has_certificate(ssl)) {
     /* Without a client certificate, the handshake buffer may be released. */
-    SSL_TRANSCRIPT_free_buffer(&hs->transcript);
+    hs->transcript.FreeBuffer();
 
     /* In SSL 3.0, the Certificate message is replaced with a warning alert. */
     if (ssl->version == SSL3_VERSION) {
@@ -1720,9 +1719,8 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
 
     uint8_t digest[EVP_MAX_MD_SIZE];
     size_t digest_len;
-    if (!SSL_TRANSCRIPT_ssl3_cert_verify_hash(
-            &hs->transcript, digest, &digest_len, hs->new_session.get(),
-            signature_algorithm)) {
+    if (!hs->transcript.GetSSL3CertVerifyHash(
+            digest, &digest_len, hs->new_session.get(), signature_algorithm)) {
       return -1;
     }
 
@@ -1733,10 +1731,9 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
       return -1;
     }
   } else {
-    switch (ssl_private_key_sign(hs, ptr, &sig_len, max_sig_len,
-                                 signature_algorithm,
-                                 (const uint8_t *)hs->transcript.buffer->data,
-                                 hs->transcript.buffer->length)) {
+    switch (ssl_private_key_sign(
+        hs, ptr, &sig_len, max_sig_len, signature_algorithm,
+        hs->transcript.buffer_data(), hs->transcript.buffer_len())) {
       case ssl_private_key_success:
         break;
       case ssl_private_key_failure:
@@ -1753,7 +1750,7 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
   }
 
   /* The handshake buffer is no longer necessary. */
-  SSL_TRANSCRIPT_free_buffer(&hs->transcript);
+  hs->transcript.FreeBuffer();
   return 1;
 }
 

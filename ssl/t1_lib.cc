@@ -3443,7 +3443,7 @@ int tls1_channel_id_hash(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len) {
 
   uint8_t hs_hash[EVP_MAX_MD_SIZE];
   size_t hs_hash_len;
-  if (!SSL_TRANSCRIPT_get_hash(&hs->transcript, hs_hash, &hs_hash_len)) {
+  if (!hs->transcript.GetHash(hs_hash, &hs_hash_len)) {
     return 0;
   }
   SHA256_Update(&ctx, hs_hash, (size_t)hs_hash_len);
@@ -3469,9 +3469,8 @@ int tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs) {
       "original_handshake_hash is too small");
 
   size_t digest_len;
-  if (!SSL_TRANSCRIPT_get_hash(&hs->transcript,
-                               hs->new_session->original_handshake_hash,
-                               &digest_len)) {
+  if (!hs->transcript.GetHash(hs->new_session->original_handshake_hash,
+                              &digest_len)) {
     return -1;
   }
 
