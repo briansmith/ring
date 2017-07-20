@@ -165,36 +165,33 @@ static int tls1_P_hash(uint8_t *out, size_t out_len, const EVP_MD *md,
                        const uint8_t *seed1, size_t seed1_len,
                        const uint8_t *seed2, size_t seed2_len,
                        const uint8_t *seed3, size_t seed3_len) {
-  HMAC_CTX ctx, ctx_tmp, ctx_init;
+  ScopedHMAC_CTX ctx, ctx_tmp, ctx_init;
   uint8_t A1[EVP_MAX_MD_SIZE];
   unsigned A1_len;
   int ret = 0;
 
   size_t chunk = EVP_MD_size(md);
 
-  HMAC_CTX_init(&ctx);
-  HMAC_CTX_init(&ctx_tmp);
-  HMAC_CTX_init(&ctx_init);
-  if (!HMAC_Init_ex(&ctx_init, secret, secret_len, md, NULL) ||
-      !HMAC_CTX_copy_ex(&ctx, &ctx_init) ||
-      !HMAC_Update(&ctx, seed1, seed1_len) ||
-      !HMAC_Update(&ctx, seed2, seed2_len) ||
-      !HMAC_Update(&ctx, seed3, seed3_len) ||
-      !HMAC_Final(&ctx, A1, &A1_len)) {
+  if (!HMAC_Init_ex(ctx_init.get(), secret, secret_len, md, NULL) ||
+      !HMAC_CTX_copy_ex(ctx.get(), ctx_init.get()) ||
+      !HMAC_Update(ctx.get(), seed1, seed1_len) ||
+      !HMAC_Update(ctx.get(), seed2, seed2_len) ||
+      !HMAC_Update(ctx.get(), seed3, seed3_len) ||
+      !HMAC_Final(ctx.get(), A1, &A1_len)) {
     goto err;
   }
 
   for (;;) {
     unsigned len;
     uint8_t hmac[EVP_MAX_MD_SIZE];
-    if (!HMAC_CTX_copy_ex(&ctx, &ctx_init) ||
-        !HMAC_Update(&ctx, A1, A1_len) ||
+    if (!HMAC_CTX_copy_ex(ctx.get(), ctx_init.get()) ||
+        !HMAC_Update(ctx.get(), A1, A1_len) ||
         /* Save a copy of |ctx| to compute the next A1 value below. */
-        (out_len > chunk && !HMAC_CTX_copy_ex(&ctx_tmp, &ctx)) ||
-        !HMAC_Update(&ctx, seed1, seed1_len) ||
-        !HMAC_Update(&ctx, seed2, seed2_len) ||
-        !HMAC_Update(&ctx, seed3, seed3_len) ||
-        !HMAC_Final(&ctx, hmac, &len)) {
+        (out_len > chunk && !HMAC_CTX_copy_ex(ctx_tmp.get(), ctx.get())) ||
+        !HMAC_Update(ctx.get(), seed1, seed1_len) ||
+        !HMAC_Update(ctx.get(), seed2, seed2_len) ||
+        !HMAC_Update(ctx.get(), seed3, seed3_len) ||
+        !HMAC_Final(ctx.get(), hmac, &len)) {
       goto err;
     }
     assert(len == chunk);
@@ -215,7 +212,7 @@ static int tls1_P_hash(uint8_t *out, size_t out_len, const EVP_MD *md,
     }
 
     /* Calculate the next A1 value. */
-    if (!HMAC_Final(&ctx_tmp, A1, &A1_len)) {
+    if (!HMAC_Final(ctx_tmp.get(), A1, &A1_len)) {
       goto err;
     }
   }
@@ -223,9 +220,6 @@ static int tls1_P_hash(uint8_t *out, size_t out_len, const EVP_MD *md,
   ret = 1;
 
 err:
-  HMAC_CTX_cleanup(&ctx);
-  HMAC_CTX_cleanup(&ctx_tmp);
-  HMAC_CTX_cleanup(&ctx_init);
   OPENSSL_cleanse(A1, sizeof(A1));
   return ret;
 }
@@ -270,15 +264,13 @@ static int ssl3_prf(uint8_t *out, size_t out_len, const uint8_t *secret,
                     size_t secret_len, const char *label, size_t label_len,
                     const uint8_t *seed1, size_t seed1_len,
                     const uint8_t *seed2, size_t seed2_len) {
-  EVP_MD_CTX md5;
-  EVP_MD_CTX sha1;
+  ScopedEVP_MD_CTX md5;
+  ScopedEVP_MD_CTX sha1;
   uint8_t buf[16], smd[SHA_DIGEST_LENGTH];
   uint8_t c = 'A';
   size_t i, j, k;
 
   k = 0;
-  EVP_MD_CTX_init(&md5);
-  EVP_MD_CTX_init(&sha1);
   for (i = 0; i < out_len; i += MD5_DIGEST_LENGTH) {
     k++;
     if (k > sizeof(buf)) {
@@ -291,41 +283,38 @@ static int ssl3_prf(uint8_t *out, size_t out_len, const uint8_t *secret,
       buf[j] = c;
     }
     c++;
-    if (!EVP_DigestInit_ex(&sha1, EVP_sha1(), NULL)) {
+    if (!EVP_DigestInit_ex(sha1.get(), EVP_sha1(), NULL)) {
       OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
       return 0;
     }
-    EVP_DigestUpdate(&sha1, buf, k);
-    EVP_DigestUpdate(&sha1, secret, secret_len);
+    EVP_DigestUpdate(sha1.get(), buf, k);
+    EVP_DigestUpdate(sha1.get(), secret, secret_len);
     /* |label| is ignored for SSLv3. */
     if (seed1_len) {
-      EVP_DigestUpdate(&sha1, seed1, seed1_len);
+      EVP_DigestUpdate(sha1.get(), seed1, seed1_len);
     }
     if (seed2_len) {
-      EVP_DigestUpdate(&sha1, seed2, seed2_len);
+      EVP_DigestUpdate(sha1.get(), seed2, seed2_len);
     }
-    EVP_DigestFinal_ex(&sha1, smd, NULL);
+    EVP_DigestFinal_ex(sha1.get(), smd, NULL);
 
-    if (!EVP_DigestInit_ex(&md5, EVP_md5(), NULL)) {
+    if (!EVP_DigestInit_ex(md5.get(), EVP_md5(), NULL)) {
       OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
       return 0;
     }
-    EVP_DigestUpdate(&md5, secret, secret_len);
-    EVP_DigestUpdate(&md5, smd, SHA_DIGEST_LENGTH);
+    EVP_DigestUpdate(md5.get(), secret, secret_len);
+    EVP_DigestUpdate(md5.get(), smd, SHA_DIGEST_LENGTH);
     if (i + MD5_DIGEST_LENGTH > out_len) {
-      EVP_DigestFinal_ex(&md5, smd, NULL);
+      EVP_DigestFinal_ex(md5.get(), smd, NULL);
       OPENSSL_memcpy(out, smd, out_len - i);
     } else {
-      EVP_DigestFinal_ex(&md5, out, NULL);
+      EVP_DigestFinal_ex(md5.get(), out, NULL);
     }
 
     out += MD5_DIGEST_LENGTH;
   }
 
   OPENSSL_cleanse(smd, SHA_DIGEST_LENGTH);
-  EVP_MD_CTX_cleanup(&md5);
-  EVP_MD_CTX_cleanup(&sha1);
-
   return 1;
 }
 

@@ -287,19 +287,18 @@ int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
     return 1;
   }
 
-  CBB cbb;
+  ScopedCBB cbb;
   uint8_t *out;
   size_t out_len;
-  if (!CBB_init(&cbb, strlen(label) + 1 + SSL3_RANDOM_SIZE * 2 + 1 +
+  if (!CBB_init(cbb.get(), strlen(label) + 1 + SSL3_RANDOM_SIZE * 2 + 1 +
                           secret_len * 2 + 1) ||
-      !CBB_add_bytes(&cbb, (const uint8_t *)label, strlen(label)) ||
-      !CBB_add_bytes(&cbb, (const uint8_t *)" ", 1) ||
-      !cbb_add_hex(&cbb, ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
-      !CBB_add_bytes(&cbb, (const uint8_t *)" ", 1) ||
-      !cbb_add_hex(&cbb, secret, secret_len) ||
-      !CBB_add_u8(&cbb, 0 /* NUL */) ||
-      !CBB_finish(&cbb, &out, &out_len)) {
-    CBB_cleanup(&cbb);
+      !CBB_add_bytes(cbb.get(), (const uint8_t *)label, strlen(label)) ||
+      !CBB_add_bytes(cbb.get(), (const uint8_t *)" ", 1) ||
+      !cbb_add_hex(cbb.get(), ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
+      !CBB_add_bytes(cbb.get(), (const uint8_t *)" ", 1) ||
+      !cbb_add_hex(cbb.get(), secret, secret_len) ||
+      !CBB_add_u8(cbb.get(), 0 /* NUL */) ||
+      !CBB_finish(cbb.get(), &out, &out_len)) {
     return 0;
   }
 

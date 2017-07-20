@@ -77,20 +77,20 @@ static int hkdf_expand_label(uint8_t *out, const EVP_MD *digest,
                              const uint8_t *hash, size_t hash_len, size_t len) {
   static const char kTLS13LabelVersion[] = "TLS 1.3, ";
 
-  CBB cbb, child;
+  ScopedCBB cbb;
+  CBB child;
   uint8_t *hkdf_label;
   size_t hkdf_label_len;
-  if (!CBB_init(&cbb, 2 + 1 + strlen(kTLS13LabelVersion) + label_len + 1 +
-                          hash_len) ||
-      !CBB_add_u16(&cbb, len) ||
-      !CBB_add_u8_length_prefixed(&cbb, &child) ||
+  if (!CBB_init(cbb.get(), 2 + 1 + strlen(kTLS13LabelVersion) + label_len + 1 +
+                               hash_len) ||
+      !CBB_add_u16(cbb.get(), len) ||
+      !CBB_add_u8_length_prefixed(cbb.get(), &child) ||
       !CBB_add_bytes(&child, (const uint8_t *)kTLS13LabelVersion,
                      strlen(kTLS13LabelVersion)) ||
       !CBB_add_bytes(&child, label, label_len) ||
-      !CBB_add_u8_length_prefixed(&cbb, &child) ||
+      !CBB_add_u8_length_prefixed(cbb.get(), &child) ||
       !CBB_add_bytes(&child, hash, hash_len) ||
-      !CBB_finish(&cbb, &hkdf_label, &hkdf_label_len)) {
-    CBB_cleanup(&cbb);
+      !CBB_finish(cbb.get(), &hkdf_label, &hkdf_label_len)) {
     return 0;
   }
 
@@ -385,20 +385,16 @@ int tls13_write_psk_binder(SSL_HANDSHAKE *hs, uint8_t *msg, size_t len) {
     return 0;
   }
 
-  EVP_MD_CTX ctx;
-  EVP_MD_CTX_init(&ctx);
+  ScopedEVP_MD_CTX ctx;
   uint8_t context[EVP_MAX_MD_SIZE];
   unsigned context_len;
-  if (!EVP_DigestInit_ex(&ctx, digest, NULL) ||
-      !EVP_DigestUpdate(&ctx, hs->transcript.buffer->data,
+  if (!EVP_DigestInit_ex(ctx.get(), digest, NULL) ||
+      !EVP_DigestUpdate(ctx.get(), hs->transcript.buffer->data,
                         hs->transcript.buffer->length) ||
-      !EVP_DigestUpdate(&ctx, msg, len - hash_len - 3) ||
-      !EVP_DigestFinal_ex(&ctx, context, &context_len)) {
-    EVP_MD_CTX_cleanup(&ctx);
+      !EVP_DigestUpdate(ctx.get(), msg, len - hash_len - 3) ||
+      !EVP_DigestFinal_ex(ctx.get(), context, &context_len)) {
     return 0;
   }
-
-  EVP_MD_CTX_cleanup(&ctx);
 
   uint8_t verify_data[EVP_MAX_MD_SIZE] = {0};
   if (!tls13_psk_binder(verify_data, digest, ssl->session->master_key,

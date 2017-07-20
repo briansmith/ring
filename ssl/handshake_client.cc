@@ -1198,9 +1198,6 @@ static int ssl3_get_cert_status(SSL_HANDSHAKE *hs) {
 
 static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  EC_KEY *ecdh = NULL;
-  EC_POINT *srvr_ecpoint = NULL;
-
   int ret = ssl->method->ssl_get_message(ssl);
   if (ret <= 0) {
     return ret;
@@ -1238,7 +1235,7 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
                                      &psk_identity_hint)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      goto err;
+      return -1;
     }
 
     /* Store PSK identity hint for later use, hint is used in
@@ -1252,7 +1249,7 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
         CBS_contains_zero_byte(&psk_identity_hint)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-      goto err;
+      return -1;
     }
 
     /* Save non-empty identity hints as a C string. Empty identity hints we
@@ -1264,7 +1261,7 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
         !CBS_strdup(&psk_identity_hint, &hs->peer_psk_identity_hint)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      goto err;
+      return -1;
     }
   }
 
@@ -1279,7 +1276,7 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
         !CBS_get_u8_length_prefixed(&server_key_exchange, &point)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      goto err;
+      return -1;
     }
     hs->new_session->group_id = group_id;
 
@@ -1287,18 +1284,18 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
     if (!tls1_check_group_id(ssl, group_id)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-      goto err;
+      return -1;
     }
 
     /* Initialize ECDH and save the peer public key for later. */
     if (!SSL_ECDH_CTX_init(&hs->ecdh_ctx, group_id) ||
         !CBS_stow(&point, &hs->peer_key, &hs->peer_key_len)) {
-      goto err;
+      return -1;
     }
   } else if (!(alg_k & SSL_kPSK)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    goto err;
+    return -1;
   }
 
   /* At this point, |server_key_exchange| contains the signature, if any, while
@@ -1315,19 +1312,19 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
       if (!CBS_get_u16(&server_key_exchange, &signature_algorithm)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-        goto err;
+        return -1;
       }
       uint8_t alert = SSL_AD_DECODE_ERROR;
       if (!tls12_check_peer_sigalg(ssl, &alert, signature_algorithm)) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
-        goto err;
+        return -1;
       }
       hs->new_session->peer_signature_algorithm = signature_algorithm;
     } else if (!tls1_get_legacy_signature_algorithm(&signature_algorithm,
                                                     hs->peer_pubkey)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_ERROR_UNSUPPORTED_CERTIFICATE_TYPE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_CERTIFICATE);
-      goto err;
+      return -1;
     }
 
     /* The last field in |server_key_exchange| is the signature. */
@@ -1336,21 +1333,24 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
         CBS_len(&server_key_exchange) != 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      goto err;
+      return -1;
     }
 
-    CBB transcript;
+    ScopedCBB transcript;
     uint8_t *transcript_data;
     size_t transcript_len;
-    if (!CBB_init(&transcript, 2*SSL3_RANDOM_SIZE + CBS_len(&parameter)) ||
-        !CBB_add_bytes(&transcript, ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
-        !CBB_add_bytes(&transcript, ssl->s3->server_random, SSL3_RANDOM_SIZE) ||
-        !CBB_add_bytes(&transcript, CBS_data(&parameter), CBS_len(&parameter)) ||
-        !CBB_finish(&transcript, &transcript_data, &transcript_len)) {
-      CBB_cleanup(&transcript);
+    if (!CBB_init(transcript.get(),
+                  2 * SSL3_RANDOM_SIZE + CBS_len(&parameter)) ||
+        !CBB_add_bytes(transcript.get(), ssl->s3->client_random,
+                       SSL3_RANDOM_SIZE) ||
+        !CBB_add_bytes(transcript.get(), ssl->s3->server_random,
+                       SSL3_RANDOM_SIZE) ||
+        !CBB_add_bytes(transcript.get(), CBS_data(&parameter),
+                       CBS_len(&parameter)) ||
+        !CBB_finish(transcript.get(), &transcript_data, &transcript_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      goto err;
+      return -1;
     }
 
     int sig_ok = ssl_public_key_verify(
@@ -1366,7 +1366,7 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
       /* bad signature */
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SIGNATURE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
-      goto err;
+      return -1;
     }
   } else {
     /* PSK ciphers are the only supported certificate-less ciphers. */
@@ -1375,15 +1375,10 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
     if (CBS_len(&server_key_exchange) > 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_EXTRA_DATA_IN_MESSAGE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      goto err;
+      return -1;
     }
   }
   return 1;
-
-err:
-  EC_POINT_free(srvr_ecpoint);
-  EC_KEY_free(ecdh);
-  return -1;
 }
 
 static int ssl3_get_certificate_request(SSL_HANDSHAKE *hs) {
@@ -1650,18 +1645,17 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
   /* For a PSK cipher suite, other_secret is combined with the pre-shared
    * key. */
   if (alg_a & SSL_aPSK) {
-    CBB pms_cbb, child;
+    ScopedCBB pms_cbb;
+    CBB child;
     uint8_t *new_pms;
     size_t new_pms_len;
 
-    CBB_zero(&pms_cbb);
-    if (!CBB_init(&pms_cbb, 2 + psk_len + 2 + pms_len) ||
-        !CBB_add_u16_length_prefixed(&pms_cbb, &child) ||
+    if (!CBB_init(pms_cbb.get(), 2 + psk_len + 2 + pms_len) ||
+        !CBB_add_u16_length_prefixed(pms_cbb.get(), &child) ||
         !CBB_add_bytes(&child, pms, pms_len) ||
-        !CBB_add_u16_length_prefixed(&pms_cbb, &child) ||
+        !CBB_add_u16_length_prefixed(pms_cbb.get(), &child) ||
         !CBB_add_bytes(&child, psk, psk_len) ||
-        !CBB_finish(&pms_cbb, &new_pms, &new_pms_len)) {
-      CBB_cleanup(&pms_cbb);
+        !CBB_finish(pms_cbb.get(), &new_pms, &new_pms_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
@@ -1744,12 +1738,10 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
       return -1;
     }
 
-    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new(ssl->cert->privatekey, NULL);
-    int ok = pctx != NULL &&
-             EVP_PKEY_sign_init(pctx) &&
-             EVP_PKEY_sign(pctx, ptr, &sig_len, digest, digest_len);
-    EVP_PKEY_CTX_free(pctx);
-    if (!ok) {
+    UniquePtr<EVP_PKEY_CTX> pctx(EVP_PKEY_CTX_new(ssl->cert->privatekey, NULL));
+    if (!pctx ||
+        !EVP_PKEY_sign_init(pctx.get()) ||
+        !EVP_PKEY_sign(pctx.get(), ptr, &sig_len, digest, digest_len)) {
       return -1;
     }
   } else {
@@ -1782,16 +1774,16 @@ static int ssl3_send_next_proto(SSL_HANDSHAKE *hs) {
   static const uint8_t kZero[32] = {0};
   size_t padding_len = 32 - ((ssl->s3->next_proto_negotiated_len + 2) % 32);
 
-  CBB cbb, body, child;
-  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_NEXT_PROTO) ||
+  ScopedCBB cbb;
+  CBB body, child;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_NEXT_PROTO) ||
       !CBB_add_u8_length_prefixed(&body, &child) ||
       !CBB_add_bytes(&child, ssl->s3->next_proto_negotiated,
                      ssl->s3->next_proto_negotiated_len) ||
       !CBB_add_u8_length_prefixed(&body, &child) ||
       !CBB_add_bytes(&child, kZero, padding_len) ||
-      !ssl_add_message_cbb(ssl, &cbb)) {
+      !ssl_add_message_cbb(ssl, cbb.get())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    CBB_cleanup(&cbb);
     return -1;
   }
 
@@ -1809,12 +1801,12 @@ static int ssl3_send_channel_id(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
-  CBB cbb, body;
-  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CHANNEL_ID) ||
+  ScopedCBB cbb;
+  CBB body;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CHANNEL_ID) ||
       !tls1_write_channel_id(hs, &body) ||
-      !ssl_add_message_cbb(ssl, &cbb)) {
+      !ssl_add_message_cbb(ssl, cbb.get())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    CBB_cleanup(&cbb);
     return -1;
   }
 
@@ -1852,18 +1844,20 @@ static int ssl3_get_new_session_ticket(SSL_HANDSHAKE *hs) {
     return 1;
   }
 
-  int session_renewed = ssl->session != NULL;
   SSL_SESSION *session = hs->new_session;
-  if (session_renewed) {
+  UniquePtr<SSL_SESSION> renewed_session;
+  if (ssl->session != NULL) {
     /* The server is sending a new ticket for an existing session. Sessions are
      * immutable once established, so duplicate all but the ticket of the
      * existing session. */
-    session = SSL_SESSION_dup(ssl->session, SSL_SESSION_INCLUDE_NONAUTH);
-    if (session == NULL) {
+    renewed_session.reset(
+        SSL_SESSION_dup(ssl->session, SSL_SESSION_INCLUDE_NONAUTH));
+    if (!renewed_session) {
       /* This should never happen. */
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      goto err;
+      return -1;
     }
+    session = renewed_session.get();
   }
 
   /* |tlsext_tick_lifetime_hint| is measured from when the ticket was issued. */
@@ -1871,7 +1865,7 @@ static int ssl3_get_new_session_ticket(SSL_HANDSHAKE *hs) {
 
   if (!CBS_stow(&ticket, &session->tlsext_tick, &session->tlsext_ticklen)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    goto err;
+    return -1;
   }
   session->tlsext_tick_lifetime_hint = tlsext_tick_lifetime_hint;
 
@@ -1881,22 +1875,16 @@ static int ssl3_get_new_session_ticket(SSL_HANDSHAKE *hs) {
   if (!EVP_Digest(CBS_data(&ticket), CBS_len(&ticket),
                   session->session_id, &session->session_id_length,
                   EVP_sha256(), NULL)) {
-    goto err;
+    return -1;
   }
 
-  if (session_renewed) {
+  if (renewed_session) {
     session->not_resumable = 0;
     SSL_SESSION_free(ssl->session);
-    ssl->session = session;
+    ssl->session = renewed_session.release();
   }
 
   return 1;
-
-err:
-  if (session_renewed) {
-    SSL_SESSION_free(session);
-  }
-  return -1;
 }
 
 }  // namespace bssl

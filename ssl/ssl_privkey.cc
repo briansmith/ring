@@ -240,23 +240,20 @@ enum ssl_private_key_result_t ssl_private_key_sign(
   }
 
   *out_len = max_out;
-  EVP_MD_CTX ctx;
-  EVP_MD_CTX_init(&ctx);
-  int ret = setup_ctx(ssl, &ctx, ssl->cert->privatekey, sigalg, 0 /* sign */) &&
-            EVP_DigestSign(&ctx, out, out_len, in, in_len);
-  EVP_MD_CTX_cleanup(&ctx);
-  return ret ? ssl_private_key_success : ssl_private_key_failure;
+  ScopedEVP_MD_CTX ctx;
+  if (!setup_ctx(ssl, ctx.get(), ssl->cert->privatekey, sigalg, 0 /* sign */) ||
+      !EVP_DigestSign(ctx.get(), out, out_len, in, in_len)) {
+    return ssl_private_key_failure;
+  }
+  return ssl_private_key_success;
 }
 
 int ssl_public_key_verify(SSL *ssl, const uint8_t *signature,
                           size_t signature_len, uint16_t sigalg, EVP_PKEY *pkey,
                           const uint8_t *in, size_t in_len) {
-  EVP_MD_CTX ctx;
-  EVP_MD_CTX_init(&ctx);
-  int ret = setup_ctx(ssl, &ctx, pkey, sigalg, 1 /* verify */) &&
-            EVP_DigestVerify(&ctx, signature, signature_len, in, in_len);
-  EVP_MD_CTX_cleanup(&ctx);
-  return ret;
+  ScopedEVP_MD_CTX ctx;
+  return setup_ctx(ssl, ctx.get(), pkey, sigalg, 1 /* verify */) &&
+         EVP_DigestVerify(ctx.get(), signature, signature_len, in, in_len);
 }
 
 enum ssl_private_key_result_t ssl_private_key_decrypt(

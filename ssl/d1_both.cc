@@ -156,6 +156,7 @@ static void dtls1_hm_fragment_free(hm_fragment *frag) {
 }
 
 static hm_fragment *dtls1_hm_fragment_new(const struct hm_header_st *msg_hdr) {
+  ScopedCBB cbb;
   hm_fragment *frag = (hm_fragment *)OPENSSL_malloc(sizeof(hm_fragment));
   if (frag == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -174,15 +175,13 @@ static hm_fragment *dtls1_hm_fragment_new(const struct hm_header_st *msg_hdr) {
     goto err;
   }
 
-  CBB cbb;
-  if (!CBB_init_fixed(&cbb, frag->data, DTLS1_HM_HEADER_LENGTH) ||
-      !CBB_add_u8(&cbb, msg_hdr->type) ||
-      !CBB_add_u24(&cbb, msg_hdr->msg_len) ||
-      !CBB_add_u16(&cbb, msg_hdr->seq) ||
-      !CBB_add_u24(&cbb, 0 /* frag_off */) ||
-      !CBB_add_u24(&cbb, msg_hdr->msg_len) ||
-      !CBB_finish(&cbb, NULL, NULL)) {
-    CBB_cleanup(&cbb);
+  if (!CBB_init_fixed(cbb.get(), frag->data, DTLS1_HM_HEADER_LENGTH) ||
+      !CBB_add_u8(cbb.get(), msg_hdr->type) ||
+      !CBB_add_u24(cbb.get(), msg_hdr->msg_len) ||
+      !CBB_add_u16(cbb.get(), msg_hdr->seq) ||
+      !CBB_add_u24(cbb.get(), 0 /* frag_off */) ||
+      !CBB_add_u24(cbb.get(), msg_hdr->msg_len) ||
+      !CBB_finish(cbb.get(), NULL, NULL)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     goto err;
   }
@@ -681,18 +680,17 @@ static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
   }
 
   /* Assemble a fragment, to be sealed in-place. */
-  CBB cbb;
+  ScopedCBB cbb;
   uint8_t *frag = out + prefix;
   size_t max_frag = max_out - prefix, frag_len;
-  if (!CBB_init_fixed(&cbb, frag, max_frag) ||
-      !CBB_add_u8(&cbb, hdr.type) ||
-      !CBB_add_u24(&cbb, hdr.msg_len) ||
-      !CBB_add_u16(&cbb, hdr.seq) ||
-      !CBB_add_u24(&cbb, ssl->d1->outgoing_offset) ||
-      !CBB_add_u24(&cbb, todo) ||
-      !CBB_add_bytes(&cbb, CBS_data(&body), todo) ||
-      !CBB_finish(&cbb, NULL, &frag_len)) {
-    CBB_cleanup(&cbb);
+  if (!CBB_init_fixed(cbb.get(), frag, max_frag) ||
+      !CBB_add_u8(cbb.get(), hdr.type) ||
+      !CBB_add_u24(cbb.get(), hdr.msg_len) ||
+      !CBB_add_u16(cbb.get(), hdr.seq) ||
+      !CBB_add_u24(cbb.get(), ssl->d1->outgoing_offset) ||
+      !CBB_add_u24(cbb.get(), todo) ||
+      !CBB_add_bytes(cbb.get(), CBS_data(&body), todo) ||
+      !CBB_finish(cbb.get(), NULL, &frag_len)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return seal_error;
   }

@@ -141,14 +141,16 @@ int tls13_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
 int tls13_get_cert_verify_signature_input(
     SSL_HANDSHAKE *hs, uint8_t **out, size_t *out_len,
     enum ssl_cert_verify_context_t cert_verify_context) {
-  CBB cbb;
-  if (!CBB_init(&cbb, 64 + 33 + 1 + 2 * EVP_MAX_MD_SIZE)) {
-    goto err;
+  ScopedCBB cbb;
+  if (!CBB_init(cbb.get(), 64 + 33 + 1 + 2 * EVP_MAX_MD_SIZE)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
   }
 
   for (size_t i = 0; i < 64; i++) {
-    if (!CBB_add_u8(&cbb, 0x20)) {
-      goto err;
+    if (!CBB_add_u8(cbb.get(), 0x20)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
     }
   }
 
@@ -168,28 +170,26 @@ int tls13_get_cert_verify_signature_input(
     context = (const uint8_t *)kContext;
     context_len = sizeof(kContext);
   } else {
-    goto err;
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
   }
 
-  if (!CBB_add_bytes(&cbb, context, context_len)) {
-    goto err;
+  if (!CBB_add_bytes(cbb.get(), context, context_len)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
   }
 
   uint8_t context_hash[EVP_MAX_MD_SIZE];
   size_t context_hash_len;
   if (!SSL_TRANSCRIPT_get_hash(&hs->transcript, context_hash,
                                &context_hash_len) ||
-      !CBB_add_bytes(&cbb, context_hash, context_hash_len) ||
-      !CBB_finish(&cbb, out, out_len)) {
-    goto err;
+      !CBB_add_bytes(cbb.get(), context_hash, context_hash_len) ||
+      !CBB_finish(cbb.get(), out, out_len)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
   }
 
   return 1;
-
-err:
-  OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-  CBB_cleanup(&cbb);
-  return 0;
 }
 
 int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
@@ -591,11 +591,11 @@ int tls13_add_finished(SSL_HANDSHAKE *hs) {
     return 0;
   }
 
-  CBB cbb, body;
-  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_FINISHED) ||
+  ScopedCBB cbb;
+  CBB body;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_FINISHED) ||
       !CBB_add_bytes(&body, verify_data, verify_data_len) ||
-      !ssl_add_message_cbb(ssl, &cbb)) {
-    CBB_cleanup(&cbb);
+      !ssl_add_message_cbb(ssl, cbb.get())) {
     return 0;
   }
 
@@ -622,12 +622,12 @@ static int tls13_receive_key_update(SSL *ssl) {
   /* Acknowledge the KeyUpdate */
   if (key_update_request == SSL_KEY_UPDATE_REQUESTED &&
       !ssl->s3->key_update_pending) {
-    CBB cbb, body;
-    if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_KEY_UPDATE) ||
+    ScopedCBB cbb;
+    CBB body;
+    if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_KEY_UPDATE) ||
         !CBB_add_u8(&body, SSL_KEY_UPDATE_NOT_REQUESTED) ||
-        !ssl_add_message_cbb(ssl, &cbb) ||
+        !ssl_add_message_cbb(ssl, cbb.get()) ||
         !tls13_rotate_traffic_key(ssl, evp_aead_seal)) {
-      CBB_cleanup(&cbb);
       return 0;
     }
 

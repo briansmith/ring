@@ -632,11 +632,11 @@ static enum ssl_hs_wait_t do_complete_second_flight(SSL_HANDSHAKE *hs) {
       return ssl_hs_channel_id_lookup;
     }
 
-    CBB cbb, body;
-    if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CHANNEL_ID) ||
+    ScopedCBB cbb;
+    CBB body;
+    if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CHANNEL_ID) ||
         !tls1_write_channel_id(hs, &body) ||
-        !ssl_add_message_cbb(ssl, &cbb)) {
-      CBB_cleanup(&cbb);
+        !ssl_add_message_cbb(ssl, cbb.get())) {
       return ssl_hs_error;
     }
   }

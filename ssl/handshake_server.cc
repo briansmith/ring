@@ -984,8 +984,9 @@ static int ssl3_send_server_hello(SSL_HANDSHAKE *hs) {
     session = ssl->session;
   }
 
-  CBB cbb, body, session_id;
-  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_SERVER_HELLO) ||
+  ScopedCBB cbb;
+  CBB body, session_id;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_SERVER_HELLO) ||
       !CBB_add_u16(&body, ssl->version) ||
       !CBB_add_bytes(&body, ssl->s3->server_random, SSL3_RANDOM_SIZE) ||
       !CBB_add_u8_length_prefixed(&body, &session_id) ||
@@ -994,9 +995,8 @@ static int ssl3_send_server_hello(SSL_HANDSHAKE *hs) {
       !CBB_add_u16(&body, ssl_cipher_get_value(hs->new_cipher)) ||
       !CBB_add_u8(&body, 0 /* no compression */) ||
       !ssl_add_serverhello_tlsext(hs, &body) ||
-      !ssl_add_message_cbb(ssl, &cbb)) {
+      !ssl_add_message_cbb(ssl, cbb.get())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    CBB_cleanup(&cbb);
     return -1;
   }
 
@@ -1091,33 +1091,34 @@ static int ssl3_send_server_certificate(SSL_HANDSHAKE *hs) {
 
 static int ssl3_send_server_key_exchange(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  CBB cbb, body, child;
-  if (!ssl->method->init_message(ssl, &cbb, &body,
+  ScopedCBB cbb;
+  CBB body, child;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_SERVER_KEY_EXCHANGE) ||
       /* |hs->server_params| contains a prefix for signing. */
       hs->server_params_len < 2 * SSL3_RANDOM_SIZE ||
       !CBB_add_bytes(&body, hs->server_params + 2 * SSL3_RANDOM_SIZE,
                      hs->server_params_len - 2 * SSL3_RANDOM_SIZE)) {
-    goto err;
+    return -1;
   }
 
   /* Add a signature. */
   if (ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
     if (!ssl_has_private_key(ssl)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      goto err;
+      return -1;
     }
 
     /* Determine the signature algorithm. */
     uint16_t signature_algorithm;
     if (!tls1_choose_signature_algorithm(hs, &signature_algorithm)) {
-      goto err;
+      return -1;
     }
     if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
       if (!CBB_add_u16(&body, signature_algorithm)) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-        goto err;
+        return -1;
       }
     }
 
@@ -1126,7 +1127,7 @@ static int ssl3_send_server_key_exchange(SSL_HANDSHAKE *hs) {
     uint8_t *ptr;
     if (!CBB_add_u16_length_prefixed(&body, &child) ||
         !CBB_reserve(&child, &ptr, max_sig_len)) {
-      goto err;
+      return -1;
     }
 
     size_t sig_len;
@@ -1135,19 +1136,19 @@ static int ssl3_send_server_key_exchange(SSL_HANDSHAKE *hs) {
                                  hs->server_params_len)) {
       case ssl_private_key_success:
         if (!CBB_did_write(&child, sig_len)) {
-          goto err;
+          return -1;
         }
         break;
       case ssl_private_key_failure:
-        goto err;
+        return -1;
       case ssl_private_key_retry:
         ssl->rwstate = SSL_PRIVATE_KEY_OPERATION;
-        goto err;
+        return -1;
     }
   }
 
-  if (!ssl_add_message_cbb(ssl, &cbb)) {
-    goto err;
+  if (!ssl_add_message_cbb(ssl, cbb.get())) {
+    return -1;
   }
 
   OPENSSL_free(hs->server_params);
@@ -1155,19 +1156,16 @@ static int ssl3_send_server_key_exchange(SSL_HANDSHAKE *hs) {
   hs->server_params_len = 0;
 
   return 1;
-
-err:
-  CBB_cleanup(&cbb);
-  return -1;
 }
 
 static int ssl3_send_server_hello_done(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  CBB cbb, body;
+  ScopedCBB cbb;
+  CBB body;
 
   if (hs->cert_request) {
     CBB cert_types, sigalgs_cbb;
-    if (!ssl->method->init_message(ssl, &cbb, &body,
+    if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                    SSL3_MT_CERTIFICATE_REQUEST) ||
         !CBB_add_u8_length_prefixed(&body, &cert_types) ||
         !CBB_add_u8(&cert_types, SSL3_CT_RSA_SIGN) ||
@@ -1177,22 +1175,20 @@ static int ssl3_send_server_hello_done(SSL_HANDSHAKE *hs) {
          (!CBB_add_u16_length_prefixed(&body, &sigalgs_cbb) ||
           !tls12_add_verify_sigalgs(ssl, &sigalgs_cbb))) ||
         !ssl_add_client_CA_list(ssl, &body) ||
-        !ssl_add_message_cbb(ssl, &cbb)) {
-      goto err;
+        !ssl_add_message_cbb(ssl, cbb.get())) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return -1;
     }
   }
 
-  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_SERVER_HELLO_DONE) ||
-      !ssl_add_message_cbb(ssl, &cbb)) {
-    goto err;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body,
+                                 SSL3_MT_SERVER_HELLO_DONE) ||
+      !ssl_add_message_cbb(ssl, cbb.get())) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
   }
 
   return 1;
-
-err:
-  OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-  CBB_cleanup(&cbb);
-  return -1;
 }
 
 static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
@@ -1491,18 +1487,18 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {
       OPENSSL_memset(premaster_secret, 0, premaster_secret_len);
     }
 
-    CBB new_premaster, child;
+    ScopedCBB new_premaster;
+    CBB child;
     uint8_t *new_data;
     size_t new_len;
-    CBB_zero(&new_premaster);
-    if (!CBB_init(&new_premaster, 2 + psk_len + 2 + premaster_secret_len) ||
-        !CBB_add_u16_length_prefixed(&new_premaster, &child) ||
+    if (!CBB_init(new_premaster.get(),
+                  2 + psk_len + 2 + premaster_secret_len) ||
+        !CBB_add_u16_length_prefixed(new_premaster.get(), &child) ||
         !CBB_add_bytes(&child, premaster_secret, premaster_secret_len) ||
-        !CBB_add_u16_length_prefixed(&new_premaster, &child) ||
+        !CBB_add_u16_length_prefixed(new_premaster.get(), &child) ||
         !CBB_add_bytes(&child, psk, psk_len) ||
-        !CBB_finish(&new_premaster, &new_data, &new_len)) {
+        !CBB_finish(new_premaster.get(), &new_data, &new_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      CBB_cleanup(&new_premaster);
       goto err;
     }
 
@@ -1602,12 +1598,11 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
       return -1;
     }
 
-    EVP_PKEY_CTX *pctx = EVP_PKEY_CTX_new(hs->peer_pubkey, NULL);
-    sig_ok = pctx != NULL &&
-             EVP_PKEY_verify_init(pctx) &&
-             EVP_PKEY_verify(pctx, CBS_data(&signature), CBS_len(&signature),
-                             digest, digest_len);
-    EVP_PKEY_CTX_free(pctx);
+    UniquePtr<EVP_PKEY_CTX> pctx(EVP_PKEY_CTX_new(hs->peer_pubkey, NULL));
+    sig_ok = pctx &&
+             EVP_PKEY_verify_init(pctx.get()) &&
+             EVP_PKEY_verify(pctx.get(), CBS_data(&signature),
+                             CBS_len(&signature), digest, digest_len);
   } else {
     sig_ok = ssl_public_key_verify(
         ssl, CBS_data(&signature), CBS_len(&signature), signature_algorithm,
@@ -1688,7 +1683,7 @@ static int ssl3_send_server_finished(SSL_HANDSHAKE *hs) {
 
   if (hs->ticket_expected) {
     const SSL_SESSION *session;
-    SSL_SESSION *session_copy = NULL;
+    UniquePtr<SSL_SESSION> session_copy;
     if (ssl->session == NULL) {
       /* Fix the timeout to measure from the ticket issuance time. */
       ssl_session_rebase_time(ssl, hs->new_session);
@@ -1696,25 +1691,24 @@ static int ssl3_send_server_finished(SSL_HANDSHAKE *hs) {
     } else {
       /* We are renewing an existing session. Duplicate the session to adjust
        * the timeout. */
-      session_copy = SSL_SESSION_dup(ssl->session, SSL_SESSION_INCLUDE_NONAUTH);
-      if (session_copy == NULL) {
+      session_copy.reset(
+          SSL_SESSION_dup(ssl->session, SSL_SESSION_INCLUDE_NONAUTH));
+      if (!session_copy) {
         return -1;
       }
 
-      ssl_session_rebase_time(ssl, session_copy);
-      session = session_copy;
+      ssl_session_rebase_time(ssl, session_copy.get());
+      session = session_copy.get();
     }
 
-    CBB cbb, body, ticket;
-    int ok = ssl->method->init_message(ssl, &cbb, &body,
-                                       SSL3_MT_NEW_SESSION_TICKET) &&
-             CBB_add_u32(&body, session->timeout) &&
-             CBB_add_u16_length_prefixed(&body, &ticket) &&
-             ssl_encrypt_ticket(ssl, &ticket, session) &&
-             ssl_add_message_cbb(ssl, &cbb);
-    SSL_SESSION_free(session_copy);
-    CBB_cleanup(&cbb);
-    if (!ok) {
+    ScopedCBB cbb;
+    CBB body, ticket;
+    if (!ssl->method->init_message(ssl, cbb.get(), &body,
+                                   SSL3_MT_NEW_SESSION_TICKET) ||
+        !CBB_add_u32(&body, session->timeout) ||
+        !CBB_add_u16_length_prefixed(&body, &ticket) ||
+        !ssl_encrypt_ticket(ssl, &ticket, session) ||
+        !ssl_add_message_cbb(ssl, cbb.get())) {
       return -1;
     }
   }

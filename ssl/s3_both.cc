@@ -415,12 +415,12 @@ int ssl3_send_finished(SSL_HANDSHAKE *hs) {
     }
   }
 
-  CBB cbb, body;
-  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_FINISHED) ||
+  ScopedCBB cbb;
+  CBB body;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_FINISHED) ||
       !CBB_add_bytes(&body, finished, finished_len) ||
-      !ssl_add_message_cbb(ssl, &cbb)) {
+      !ssl_add_message_cbb(ssl, cbb.get())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    CBB_cleanup(&cbb);
     return -1;
   }
 
@@ -480,12 +480,12 @@ int ssl3_get_finished(SSL_HANDSHAKE *hs) {
 }
 
 int ssl3_output_cert_chain(SSL *ssl) {
-  CBB cbb, body;
-  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_CERTIFICATE) ||
+  ScopedCBB cbb;
+  CBB body;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CERTIFICATE) ||
       !ssl_add_cert_chain(ssl, &body) ||
-      !ssl_add_message_cbb(ssl, &cbb)) {
+      !ssl_add_message_cbb(ssl, cbb.get())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    CBB_cleanup(&cbb);
     return 0;
   }
 
@@ -640,19 +640,18 @@ static int read_v2_client_hello(SSL *ssl) {
                                2 /* cipher list length */ +
                                CBS_len(&cipher_specs) / 3 * 2 +
                                1 /* compression length */ + 1 /* compression */;
-  CBB client_hello, hello_body, cipher_suites;
-  CBB_zero(&client_hello);
+  ScopedCBB client_hello;
+  CBB hello_body, cipher_suites;
   if (!BUF_MEM_reserve(ssl->init_buf, max_v3_client_hello) ||
-      !CBB_init_fixed(&client_hello, (uint8_t *)ssl->init_buf->data,
+      !CBB_init_fixed(client_hello.get(), (uint8_t *)ssl->init_buf->data,
                       ssl->init_buf->max) ||
-      !CBB_add_u8(&client_hello, SSL3_MT_CLIENT_HELLO) ||
-      !CBB_add_u24_length_prefixed(&client_hello, &hello_body) ||
+      !CBB_add_u8(client_hello.get(), SSL3_MT_CLIENT_HELLO) ||
+      !CBB_add_u24_length_prefixed(client_hello.get(), &hello_body) ||
       !CBB_add_u16(&hello_body, version) ||
       !CBB_add_bytes(&hello_body, random, SSL3_RANDOM_SIZE) ||
       /* No session id. */
       !CBB_add_u8(&hello_body, 0) ||
       !CBB_add_u16_length_prefixed(&hello_body, &cipher_suites)) {
-    CBB_cleanup(&client_hello);
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return -1;
   }
@@ -661,7 +660,6 @@ static int read_v2_client_hello(SSL *ssl) {
   while (CBS_len(&cipher_specs) > 0) {
     uint32_t cipher_spec;
     if (!CBS_get_u24(&cipher_specs, &cipher_spec)) {
-      CBB_cleanup(&client_hello);
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       return -1;
     }
@@ -671,16 +669,15 @@ static int read_v2_client_hello(SSL *ssl) {
       continue;
     }
     if (!CBB_add_u16(&cipher_suites, cipher_spec)) {
-      CBB_cleanup(&client_hello);
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return -1;
     }
   }
 
   /* Add the null compression scheme and finish. */
-  if (!CBB_add_u8(&hello_body, 1) || !CBB_add_u8(&hello_body, 0) ||
-      !CBB_finish(&client_hello, NULL, &ssl->init_buf->length)) {
-    CBB_cleanup(&client_hello);
+  if (!CBB_add_u8(&hello_body, 1) ||
+      !CBB_add_u8(&hello_body, 0) ||
+      !CBB_finish(client_hello.get(), NULL, &ssl->init_buf->length)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }

@@ -2276,16 +2276,16 @@ int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, int *out_found,
   size_t secret_len;
   SSL_ECDH_CTX group;
   OPENSSL_memset(&group, 0, sizeof(SSL_ECDH_CTX));
-  CBB public_key;
-  if (!CBB_init(&public_key, 32) ||
+  ScopedCBB public_key;
+  if (!CBB_init(public_key.get(), 32) ||
       !SSL_ECDH_CTX_init(&group, group_id) ||
-      !SSL_ECDH_CTX_accept(&group, &public_key, &secret, &secret_len, out_alert,
-                           CBS_data(&peer_key), CBS_len(&peer_key)) ||
-      !CBB_finish(&public_key, &hs->ecdh_public_key,
+      !SSL_ECDH_CTX_accept(&group, public_key.get(), &secret, &secret_len,
+                           out_alert, CBS_data(&peer_key),
+                           CBS_len(&peer_key)) ||
+      !CBB_finish(public_key.get(), &hs->ecdh_public_key,
                   &hs->ecdh_public_key_len)) {
     OPENSSL_free(secret);
     SSL_ECDH_CTX_cleanup(&group);
-    CBB_cleanup(&public_key);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }

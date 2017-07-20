@@ -162,8 +162,6 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
   static const int kNumTickets = 2;
 
   SSL_SESSION *session = hs->new_session;
-  CBB cbb;
-  CBB_zero(&cbb);
 
   /* Rebase the session timestamp so that it is measured from ticket
    * issuance. */
@@ -171,19 +169,20 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
 
   for (int i = 0; i < kNumTickets; i++) {
     if (!RAND_bytes((uint8_t *)&session->ticket_age_add, 4)) {
-      goto err;
+      return 0;
     }
     session->ticket_age_add_valid = 1;
 
+    ScopedCBB cbb;
     CBB body, ticket, extensions;
-    if (!ssl->method->init_message(ssl, &cbb, &body,
+    if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                    SSL3_MT_NEW_SESSION_TICKET) ||
         !CBB_add_u32(&body, session->timeout) ||
         !CBB_add_u32(&body, session->ticket_age_add) ||
         !CBB_add_u16_length_prefixed(&body, &ticket) ||
         !ssl_encrypt_ticket(ssl, &ticket, session) ||
         !CBB_add_u16_length_prefixed(&body, &extensions)) {
-      goto err;
+      return 0;
     }
 
     if (ssl->cert->enable_early_data) {
@@ -194,7 +193,7 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
           !CBB_add_u16_length_prefixed(&extensions, &early_data_info) ||
           !CBB_add_u32(&early_data_info, session->ticket_max_early_data) ||
           !CBB_flush(&extensions)) {
-        goto err;
+        return 0;
       }
     }
 
@@ -202,19 +201,15 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
     if (!CBB_add_u16(&extensions,
                      ssl_get_grease_value(ssl, ssl_grease_ticket_extension)) ||
         !CBB_add_u16(&extensions, 0 /* empty */)) {
-      goto err;
+      return 0;
     }
 
-    if (!ssl_add_message_cbb(ssl, &cbb)) {
-      goto err;
+    if (!ssl_add_message_cbb(ssl, cbb.get())) {
+      return 0;
     }
   }
 
   return 1;
-
-err:
-  CBB_cleanup(&cbb);
-  return 0;
 }
 
 static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
@@ -483,9 +478,10 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_send_hello_retry_request(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  CBB cbb, body, extensions;
+  ScopedCBB cbb;
+  CBB body, extensions;
   uint16_t group_id;
-  if (!ssl->method->init_message(ssl, &cbb, &body,
+  if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_HELLO_RETRY_REQUEST) ||
       !CBB_add_u16(&body, ssl->version) ||
       !tls1_get_shared_group(hs, &group_id) ||
@@ -493,8 +489,7 @@ static enum ssl_hs_wait_t do_send_hello_retry_request(SSL_HANDSHAKE *hs) {
       !CBB_add_u16(&extensions, TLSEXT_TYPE_key_share) ||
       !CBB_add_u16(&extensions, 2 /* length */) ||
       !CBB_add_u16(&extensions, group_id) ||
-      !ssl_add_message_cbb(ssl, &cbb)) {
-    CBB_cleanup(&cbb);
+      !ssl_add_message_cbb(ssl, cbb.get())) {
     return ssl_hs_error;
   }
 
@@ -544,8 +539,9 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   /* Send a ServerHello. */
-  CBB cbb, body, extensions, session_id;
-  if (!ssl->method->init_message(ssl, &cbb, &body, SSL3_MT_SERVER_HELLO) ||
+  ScopedCBB cbb;
+  CBB body, extensions, session_id;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_SERVER_HELLO) ||
       !CBB_add_u16(&body, version) ||
       !RAND_bytes(ssl->s3->server_random, sizeof(ssl->s3->server_random)) ||
       !CBB_add_bytes(&body, ssl->s3->server_random, SSL3_RANDOM_SIZE) ||
@@ -559,28 +555,28 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
       !ssl_ext_key_share_add_serverhello(hs, &extensions) ||
       (ssl->version == TLS1_3_EXPERIMENT_VERSION &&
        !ssl_ext_supported_versions_add_serverhello(hs, &extensions)) ||
-      !ssl_add_message_cbb(ssl, &cbb)) {
-    goto err;
+      !ssl_add_message_cbb(ssl, cbb.get())) {
+    return ssl_hs_error;
   }
 
   if (ssl->version == TLS1_3_EXPERIMENT_VERSION &&
       !ssl3_add_change_cipher_spec(ssl)) {
-    goto err;
+    return ssl_hs_error;
   }
 
   /* Derive and enable the handshake traffic secrets. */
   if (!tls13_derive_handshake_secrets(hs) ||
       !tls13_set_traffic_key(ssl, evp_aead_seal, hs->server_handshake_secret,
                              hs->hash_len)) {
-    goto err;
+    return ssl_hs_error;
   }
 
   /* Send EncryptedExtensions. */
-  if (!ssl->method->init_message(ssl, &cbb, &body,
+  if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_ENCRYPTED_EXTENSIONS) ||
       !ssl_add_serverhello_tlsext(hs, &body) ||
-      !ssl_add_message_cbb(ssl, &cbb)) {
-    goto err;
+      !ssl_add_message_cbb(ssl, cbb.get())) {
+    return ssl_hs_error;
   }
 
   if (!ssl->s3->session_reused) {
@@ -596,15 +592,15 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   /* Send a CertificateRequest, if necessary. */
   if (hs->cert_request) {
     CBB sigalgs_cbb;
-    if (!ssl->method->init_message(ssl, &cbb, &body,
+    if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                    SSL3_MT_CERTIFICATE_REQUEST) ||
         !CBB_add_u8(&body, 0 /* no certificate_request_context. */) ||
         !CBB_add_u16_length_prefixed(&body, &sigalgs_cbb) ||
         !tls12_add_verify_sigalgs(ssl, &sigalgs_cbb) ||
         !ssl_add_client_CA_list(ssl, &body) ||
         !CBB_add_u16(&body, 0 /* empty certificate_extensions. */) ||
-        !ssl_add_message_cbb(ssl, &cbb)) {
-      goto err;
+        !ssl_add_message_cbb(ssl, cbb.get())) {
+      return ssl_hs_error;
     }
   }
 
@@ -612,11 +608,11 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   if (!ssl->s3->session_reused) {
     if (!ssl_has_certificate(ssl)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
-      goto err;
+      return ssl_hs_error;
     }
 
     if (!tls13_add_certificate(hs)) {
-      goto err;
+      return ssl_hs_error;
     }
 
     hs->tls13_state = state_send_server_certificate_verify;
@@ -625,10 +621,6 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
 
   hs->tls13_state = state_send_server_finished;
   return ssl_hs_ok;
-
-err:
-  CBB_cleanup(&cbb);
-  return ssl_hs_error;
 }
 
 static enum ssl_hs_wait_t do_send_server_certificate_verify(SSL_HANDSHAKE *hs) {
