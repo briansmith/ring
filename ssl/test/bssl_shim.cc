@@ -16,8 +16,6 @@
 #define __STDC_FORMAT_MACROS
 #endif
 
-#define BORINGSSL_INTERNAL_CXX_TYPES
-
 #include <openssl/base.h>
 
 #if !defined(OPENSSL_WINDOWS)

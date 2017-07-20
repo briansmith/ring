@@ -109,8 +109,6 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#define BORINGSSL_INTERNAL_CXX_TYPES
-
 #include <openssl/ssl.h>
 
 #include <assert.h>

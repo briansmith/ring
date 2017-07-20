@@ -108,8 +108,6 @@
  *
  */
 
-#define BORINGSSL_INTERNAL_CXX_TYPES
-
 #include <openssl/ssl.h>
 
 #include <errno.h>

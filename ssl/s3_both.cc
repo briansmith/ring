@@ -110,8 +110,6 @@
  * ECC cipher suite support in OpenSSL originally developed by
  * SUN MICROSYSTEMS, INC., and contributed to the OpenSSL project. */
 
-#define BORINGSSL_INTERNAL_CXX_TYPES
-
 #include <openssl/ssl.h>
 
 #include <assert.h>

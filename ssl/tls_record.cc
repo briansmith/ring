@@ -106,8 +106,6 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#define BORINGSSL_INTERNAL_CXX_TYPES
-
 #include <openssl/ssl.h>
 
 #include <assert.h>

@@ -3985,22 +3985,8 @@ OPENSSL_EXPORT SSL_SESSION *SSL_get1_session(SSL *ssl);
 
 /* TODO(davidben): Opaquify most or all of |SSL_CTX| and |SSL_SESSION| so these
  * forward declarations are not needed. */
-#if defined(BORINGSSL_INTERNAL_CXX_TYPES)
-extern "C++" {
-namespace bssl {
-struct CERT;
-struct SSLProtocolMethod;
-struct SSLX509Method;
-}
-using SSL_CERT_CONFIG = bssl::CERT;
-using SSL_PROTOCOL_METHOD = bssl::SSLProtocolMethod;
-using SSL_X509_METHOD = bssl::SSLX509Method;
-}
-#else
-typedef struct ssl_cert_config_st SSL_CERT_CONFIG;
 typedef struct ssl_protocol_method_st SSL_PROTOCOL_METHOD;
 typedef struct ssl_x509_method_st SSL_X509_METHOD;
-#endif
 
 DECLARE_STACK_OF(SSL_CUSTOM_EXTENSION)
 
@@ -4298,7 +4284,7 @@ struct ssl_ctx_st {
   uint32_t mode;
   uint32_t max_cert_list;
 
-  SSL_CERT_CONFIG *cert;
+  struct cert_st *cert;
 
   /* callback that allows applications to peek at protocol messages */
   void (*msg_callback)(int write_p, int version, int content_type,

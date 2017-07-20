@@ -114,8 +114,6 @@
   Copyright (C) 2011, RTFM, Inc.
 */
 
-#define BORINGSSL_INTERNAL_CXX_TYPES
-
 #include <openssl/ssl.h>
 
 #include <string.h>

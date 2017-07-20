@@ -142,10 +142,6 @@
 #ifndef OPENSSL_HEADER_SSL_INTERNAL_H
 #define OPENSSL_HEADER_SSL_INTERNAL_H
 
-#if !defined(BORINGSSL_INTERNAL_CXX_TYPES)
-#error "Files including this header must define BORINGSSL_INTERNAL_CXX_TYPES before including any headers"
-#endif
-
 #include <openssl/base.h>
 
 #include <type_traits>
@@ -167,6 +163,8 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <sys/time.h>
 #endif
 
+
+typedef struct cert_st CERT;
 
 namespace bssl {
 
@@ -1488,7 +1486,7 @@ int tls12_check_peer_sigalg(SSL *ssl, uint8_t *out_alert, uint16_t sigalg);
 /* From RFC4492, used in encoding the curve type in ECParameters */
 #define NAMED_CURVE_TYPE 3
 
-struct CERT {
+struct SSLCertConfig {
   EVP_PKEY *privatekey;
 
   /* chain contains the certificate chain, with the leaf at the beginning. The
@@ -1553,146 +1551,6 @@ struct CERT {
 
   /* If enable_early_data is non-zero, early data can be sent and accepted. */
   unsigned enable_early_data:1;
-};
-
-/* SSLMethod backs the public |SSL_METHOD| type. It is a compatibility structure
- * to support the legacy version-locked methods. */
-struct SSLMethod {
-  /* version, if non-zero, is the only protocol version acceptable to an
-   * SSL_CTX initialized from this method. */
-  uint16_t version;
-  /* method is the underlying SSL_PROTOCOL_METHOD that initializes the
-   * SSL_CTX. */
-  const SSL_PROTOCOL_METHOD *method;
-  /* x509_method contains pointers to functions that might deal with |X509|
-   * compatibility, or might be a no-op, depending on the application. */
-  const SSL_X509_METHOD *x509_method;
-};
-
-/* SSLProtocolMethod is use to hold functions for SSLv2 or SSLv3/TLSv1
- * functions */
-struct SSLProtocolMethod {
-  /* is_dtls is one if the protocol is DTLS and zero otherwise. */
-  char is_dtls;
-  int (*ssl_new)(SSL *ssl);
-  void (*ssl_free)(SSL *ssl);
-  /* ssl_get_message reads the next handshake message. On success, it returns
-   * one and sets |ssl->s3->tmp.message_type|, |ssl->init_msg|, and
-   * |ssl->init_num|. Otherwise, it returns <= 0. */
-  int (*ssl_get_message)(SSL *ssl);
-  /* get_current_message sets |*out| to the current handshake message. This
-   * includes the protocol-specific message header. */
-  void (*get_current_message)(const SSL *ssl, CBS *out);
-  /* release_current_message is called to release the current handshake message.
-   * If |free_buffer| is one, buffers will also be released. */
-  void (*release_current_message)(SSL *ssl, int free_buffer);
-  /* read_app_data reads up to |len| bytes of application data into |buf|. On
-   * success, it returns the number of bytes read. Otherwise, it returns <= 0
-   * and sets |*out_got_handshake| to whether the failure was due to a
-   * post-handshake handshake message. If so, it fills in the current message as
-   * in |ssl_get_message|. */
-  int (*read_app_data)(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
-                       int peek);
-  int (*read_change_cipher_spec)(SSL *ssl);
-  void (*read_close_notify)(SSL *ssl);
-  int (*write_app_data)(SSL *ssl, int *out_needs_handshake, const uint8_t *buf,
-                        int len);
-  int (*dispatch_alert)(SSL *ssl);
-  /* supports_cipher returns one if |cipher| is supported by this protocol and
-   * zero otherwise. */
-  int (*supports_cipher)(const SSL_CIPHER *cipher);
-  /* init_message begins a new handshake message of type |type|. |cbb| is the
-   * root CBB to be passed into |finish_message|. |*body| is set to a child CBB
-   * the caller should write to. It returns one on success and zero on error. */
-  int (*init_message)(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
-  /* finish_message finishes a handshake message. It sets |*out_msg| to a
-   * newly-allocated buffer with the serialized message. The caller must
-   * release it with |OPENSSL_free| when done. It returns one on success and
-   * zero on error. */
-  int (*finish_message)(SSL *ssl, CBB *cbb, uint8_t **out_msg, size_t *out_len);
-  /* add_message adds a handshake message to the pending flight. It returns one
-   * on success and zero on error. In either case, it takes ownership of |msg|
-   * and releases it with |OPENSSL_free| when done. */
-  int (*add_message)(SSL *ssl, uint8_t *msg, size_t len);
-  /* add_change_cipher_spec adds a ChangeCipherSpec record to the pending
-   * flight. It returns one on success and zero on error. */
-  int (*add_change_cipher_spec)(SSL *ssl);
-  /* add_alert adds an alert to the pending flight. It returns one on success
-   * and zero on error. */
-  int (*add_alert)(SSL *ssl, uint8_t level, uint8_t desc);
-  /* flush_flight flushes the pending flight to the transport. It returns one on
-   * success and <= 0 on error. */
-  int (*flush_flight)(SSL *ssl);
-  /* expect_flight is called when the handshake expects a flight of messages from
-   * the peer. */
-  void (*expect_flight)(SSL *ssl);
-  /* received_flight is called when the handshake has received a flight of
-   * messages from the peer. */
-  void (*received_flight)(SSL *ssl);
-  /* set_read_state sets |ssl|'s read cipher state to |aead_ctx|. It returns
-   * one on success and zero if changing the read state is forbidden at this
-   * point. */
-  int (*set_read_state)(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx);
-  /* set_write_state sets |ssl|'s write cipher state to |aead_ctx|. It returns
-   * one on success and zero if changing the write state is forbidden at this
-   * point. */
-  int (*set_write_state)(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx);
-};
-
-struct SSLX509Method {
-  /* check_client_CA_list returns one if |names| is a good list of X.509
-   * distinguished names and zero otherwise. This is used to ensure that we can
-   * reject unparsable values at handshake time when using crypto/x509. */
-  int (*check_client_CA_list)(STACK_OF(CRYPTO_BUFFER) *names);
-
-  /* cert_clear frees and NULLs all X509 certificate-related state. */
-  void (*cert_clear)(CERT *cert);
-  /* cert_free frees all X509-related state. */
-  void (*cert_free)(CERT *cert);
-  /* cert_flush_cached_chain drops any cached |X509|-based certificate chain
-   * from |cert|. */
-  /* cert_dup duplicates any needed fields from |cert| to |new_cert|. */
-  void (*cert_dup)(CERT *new_cert, const CERT *cert);
-  void (*cert_flush_cached_chain)(CERT *cert);
-  /* cert_flush_cached_chain drops any cached |X509|-based leaf certificate
-   * from |cert|. */
-  void (*cert_flush_cached_leaf)(CERT *cert);
-
-  /* session_cache_objects fills out |sess->x509_peer| and |sess->x509_chain|
-   * from |sess->certs| and erases |sess->x509_chain_without_leaf|. It returns
-   * one on success or zero on error. */
-  int (*session_cache_objects)(SSL_SESSION *session);
-  /* session_dup duplicates any needed fields from |session| to |new_session|.
-   * It returns one on success or zero on error. */
-  int (*session_dup)(SSL_SESSION *new_session, const SSL_SESSION *session);
-  /* session_clear frees any X509-related state from |session|. */
-  void (*session_clear)(SSL_SESSION *session);
-  /* session_verify_cert_chain verifies the certificate chain in |session|,
-   * sets |session->verify_result| and returns one on success or zero on
-   * error. */
-  int (*session_verify_cert_chain)(SSL_SESSION *session, SSL *ssl,
-                                   uint8_t *out_alert);
-
-  /* hs_flush_cached_ca_names drops any cached |X509_NAME|s from |hs|. */
-  void (*hs_flush_cached_ca_names)(SSL_HANDSHAKE *hs);
-  /* ssl_new does any neccessary initialisation of |ssl|. It returns one on
-   * success or zero on error. */
-  int (*ssl_new)(SSL *ssl);
-  /* ssl_free frees anything created by |ssl_new|. */
-  void (*ssl_free)(SSL *ssl);
-  /* ssl_flush_cached_client_CA drops any cached |X509_NAME|s from |ssl|. */
-  void (*ssl_flush_cached_client_CA)(SSL *ssl);
-  /* ssl_auto_chain_if_needed runs the deprecated auto-chaining logic if
-   * necessary. On success, it updates |ssl|'s certificate configuration as
-   * needed and returns one. Otherwise, it returns zero. */
-  int (*ssl_auto_chain_if_needed)(SSL *ssl);
-  /* ssl_ctx_new does any neccessary initialisation of |ctx|. It returns one on
-   * success or zero on error. */
-  int (*ssl_ctx_new)(SSL_CTX *ctx);
-  /* ssl_ctx_free frees anything created by |ssl_ctx_new|. */
-  void (*ssl_ctx_free)(SSL_CTX *ctx);
-  /* ssl_ctx_flush_cached_client_CA drops any cached |X509_NAME|s from |ctx|. */
-  void (*ssl_ctx_flush_cached_client_CA)(SSL_CTX *ssl);
 };
 
 /* ssl_crypto_x509_method provides the |SSL_X509_METHOD| functions using
@@ -1991,7 +1849,8 @@ struct DTLS1_STATE {
   unsigned timeout_duration_ms;
 };
 
-/* SSLConnection backs the public |SSL| type. */
+/* SSLConnection backs the public |SSL| type. Due to compatibility constraints,
+ * it is a base class for |ssl_st|. */
 struct SSLConnection {
   /* method is the method table corresponding to the current protocol (DTLS or
    * TLS). */
@@ -2462,6 +2321,161 @@ void ssl_reset_error_state(SSL *ssl);
 #endif
 
 }  // namespace bssl
+
+
+/* Opaque C types.
+ *
+ * The following types are exported to C code as public typedefs, so they must
+ * be defined outside of the namespace. */
+
+/* ssl_method_st backs the public |SSL_METHOD| type. It is a compatibility
+ * structure to support the legacy version-locked methods. */
+struct ssl_method_st {
+  /* version, if non-zero, is the only protocol version acceptable to an
+   * SSL_CTX initialized from this method. */
+  uint16_t version;
+  /* method is the underlying SSL_PROTOCOL_METHOD that initializes the
+   * SSL_CTX. */
+  const SSL_PROTOCOL_METHOD *method;
+  /* x509_method contains pointers to functions that might deal with |X509|
+   * compatibility, or might be a no-op, depending on the application. */
+  const SSL_X509_METHOD *x509_method;
+};
+
+/* ssl_protocol_method_st, aka |SSL_PROTOCOL_METHOD| abstracts between TLS and
+ * DTLS. */
+struct ssl_protocol_method_st {
+  /* is_dtls is one if the protocol is DTLS and zero otherwise. */
+  char is_dtls;
+  int (*ssl_new)(SSL *ssl);
+  void (*ssl_free)(SSL *ssl);
+  /* ssl_get_message reads the next handshake message. On success, it returns
+   * one and sets |ssl->s3->tmp.message_type|, |ssl->init_msg|, and
+   * |ssl->init_num|. Otherwise, it returns <= 0. */
+  int (*ssl_get_message)(SSL *ssl);
+  /* get_current_message sets |*out| to the current handshake message. This
+   * includes the protocol-specific message header. */
+  void (*get_current_message)(const SSL *ssl, CBS *out);
+  /* release_current_message is called to release the current handshake message.
+   * If |free_buffer| is one, buffers will also be released. */
+  void (*release_current_message)(SSL *ssl, int free_buffer);
+  /* read_app_data reads up to |len| bytes of application data into |buf|. On
+   * success, it returns the number of bytes read. Otherwise, it returns <= 0
+   * and sets |*out_got_handshake| to whether the failure was due to a
+   * post-handshake handshake message. If so, it fills in the current message as
+   * in |ssl_get_message|. */
+  int (*read_app_data)(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
+                       int peek);
+  int (*read_change_cipher_spec)(SSL *ssl);
+  void (*read_close_notify)(SSL *ssl);
+  int (*write_app_data)(SSL *ssl, int *out_needs_handshake, const uint8_t *buf,
+                        int len);
+  int (*dispatch_alert)(SSL *ssl);
+  /* supports_cipher returns one if |cipher| is supported by this protocol and
+   * zero otherwise. */
+  int (*supports_cipher)(const SSL_CIPHER *cipher);
+  /* init_message begins a new handshake message of type |type|. |cbb| is the
+   * root CBB to be passed into |finish_message|. |*body| is set to a child CBB
+   * the caller should write to. It returns one on success and zero on error. */
+  int (*init_message)(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
+  /* finish_message finishes a handshake message. It sets |*out_msg| to a
+   * newly-allocated buffer with the serialized message. The caller must
+   * release it with |OPENSSL_free| when done. It returns one on success and
+   * zero on error. */
+  int (*finish_message)(SSL *ssl, CBB *cbb, uint8_t **out_msg, size_t *out_len);
+  /* add_message adds a handshake message to the pending flight. It returns one
+   * on success and zero on error. In either case, it takes ownership of |msg|
+   * and releases it with |OPENSSL_free| when done. */
+  int (*add_message)(SSL *ssl, uint8_t *msg, size_t len);
+  /* add_change_cipher_spec adds a ChangeCipherSpec record to the pending
+   * flight. It returns one on success and zero on error. */
+  int (*add_change_cipher_spec)(SSL *ssl);
+  /* add_alert adds an alert to the pending flight. It returns one on success
+   * and zero on error. */
+  int (*add_alert)(SSL *ssl, uint8_t level, uint8_t desc);
+  /* flush_flight flushes the pending flight to the transport. It returns one on
+   * success and <= 0 on error. */
+  int (*flush_flight)(SSL *ssl);
+  /* expect_flight is called when the handshake expects a flight of messages from
+   * the peer. */
+  void (*expect_flight)(SSL *ssl);
+  /* received_flight is called when the handshake has received a flight of
+   * messages from the peer. */
+  void (*received_flight)(SSL *ssl);
+  /* set_read_state sets |ssl|'s read cipher state to |aead_ctx|. It returns
+   * one on success and zero if changing the read state is forbidden at this
+   * point. */
+  int (*set_read_state)(SSL *ssl,
+                        bssl::UniquePtr<bssl::SSLAEADContext> aead_ctx);
+  /* set_write_state sets |ssl|'s write cipher state to |aead_ctx|. It returns
+   * one on success and zero if changing the write state is forbidden at this
+   * point. */
+  int (*set_write_state)(SSL *ssl,
+                         bssl::UniquePtr<bssl::SSLAEADContext> aead_ctx);
+};
+
+struct ssl_x509_method_st {
+  /* check_client_CA_list returns one if |names| is a good list of X.509
+   * distinguished names and zero otherwise. This is used to ensure that we can
+   * reject unparsable values at handshake time when using crypto/x509. */
+  int (*check_client_CA_list)(STACK_OF(CRYPTO_BUFFER) *names);
+
+  /* cert_clear frees and NULLs all X509 certificate-related state. */
+  void (*cert_clear)(CERT *cert);
+  /* cert_free frees all X509-related state. */
+  void (*cert_free)(CERT *cert);
+  /* cert_flush_cached_chain drops any cached |X509|-based certificate chain
+   * from |cert|. */
+  /* cert_dup duplicates any needed fields from |cert| to |new_cert|. */
+  void (*cert_dup)(CERT *new_cert, const CERT *cert);
+  void (*cert_flush_cached_chain)(CERT *cert);
+  /* cert_flush_cached_chain drops any cached |X509|-based leaf certificate
+   * from |cert|. */
+  void (*cert_flush_cached_leaf)(CERT *cert);
+
+  /* session_cache_objects fills out |sess->x509_peer| and |sess->x509_chain|
+   * from |sess->certs| and erases |sess->x509_chain_without_leaf|. It returns
+   * one on success or zero on error. */
+  int (*session_cache_objects)(SSL_SESSION *session);
+  /* session_dup duplicates any needed fields from |session| to |new_session|.
+   * It returns one on success or zero on error. */
+  int (*session_dup)(SSL_SESSION *new_session, const SSL_SESSION *session);
+  /* session_clear frees any X509-related state from |session|. */
+  void (*session_clear)(SSL_SESSION *session);
+  /* session_verify_cert_chain verifies the certificate chain in |session|,
+   * sets |session->verify_result| and returns one on success or zero on
+   * error. */
+  int (*session_verify_cert_chain)(SSL_SESSION *session, SSL *ssl,
+                                   uint8_t *out_alert);
+
+  /* hs_flush_cached_ca_names drops any cached |X509_NAME|s from |hs|. */
+  void (*hs_flush_cached_ca_names)(bssl::SSL_HANDSHAKE *hs);
+  /* ssl_new does any neccessary initialisation of |ssl|. It returns one on
+   * success or zero on error. */
+  int (*ssl_new)(SSL *ssl);
+  /* ssl_free frees anything created by |ssl_new|. */
+  void (*ssl_free)(SSL *ssl);
+  /* ssl_flush_cached_client_CA drops any cached |X509_NAME|s from |ssl|. */
+  void (*ssl_flush_cached_client_CA)(SSL *ssl);
+  /* ssl_auto_chain_if_needed runs the deprecated auto-chaining logic if
+   * necessary. On success, it updates |ssl|'s certificate configuration as
+   * needed and returns one. Otherwise, it returns zero. */
+  int (*ssl_auto_chain_if_needed)(SSL *ssl);
+  /* ssl_ctx_new does any neccessary initialisation of |ctx|. It returns one on
+   * success or zero on error. */
+  int (*ssl_ctx_new)(SSL_CTX *ctx);
+  /* ssl_ctx_free frees anything created by |ssl_ctx_new|. */
+  void (*ssl_ctx_free)(SSL_CTX *ctx);
+  /* ssl_ctx_flush_cached_client_CA drops any cached |X509_NAME|s from |ctx|. */
+  void (*ssl_ctx_flush_cached_client_CA)(SSL_CTX *ssl);
+};
+
+/* ssl_st backs the public |SSL| type. It subclasses the true type so that
+ * SSLConnection may be a C++ type with methods and destructor without
+ * polluting the global namespace. */
+struct ssl_st : public bssl::SSLConnection {};
+
+struct cert_st : public bssl::SSLCertConfig {};
 
 
 #endif /* OPENSSL_HEADER_SSL_INTERNAL_H */

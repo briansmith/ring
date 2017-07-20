@@ -19,8 +19,6 @@
 #define __STDC_LIMIT_MACROS
 #endif
 
-#define BORINGSSL_INTERNAL_CXX_TYPES
-
 #include <openssl/ssl.h>
 
 #include <assert.h>
