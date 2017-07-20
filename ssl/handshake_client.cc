@@ -1277,7 +1277,8 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
     }
 
     /* Initialize ECDH and save the peer public key for later. */
-    if (!SSL_ECDH_CTX_init(&hs->ecdh_ctx, group_id) ||
+    hs->key_share = SSLKeyShare::Create(group_id);
+    if (!hs->key_share ||
         !CBS_stow(&point, &hs->peer_key, &hs->peer_key_len)) {
       return -1;
     }
@@ -1599,8 +1600,8 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     /* Compute the premaster. */
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!SSL_ECDH_CTX_accept(&hs->ecdh_ctx, &child, &pms, &pms_len, &alert,
-                             hs->peer_key, hs->peer_key_len)) {
+    if (!hs->key_share->Accept(&child, &pms, &pms_len, &alert, hs->peer_key,
+                              hs->peer_key_len)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
       goto err;
     }
@@ -1609,7 +1610,7 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     }
 
     /* The key exchange state may now be discarded. */
-    SSL_ECDH_CTX_cleanup(&hs->ecdh_ctx);
+    hs->key_share.reset();
     OPENSSL_free(hs->peer_key);
     hs->peer_key = NULL;
     hs->peer_key_len = 0;

@@ -130,13 +130,13 @@ static enum ssl_hs_wait_t do_process_hello_retry_request(SSL_HANDSHAKE *hs) {
 
     /* Check that the HelloRetryRequest does not request the key share that
      * was provided in the initial ClientHello. */
-    if (SSL_ECDH_CTX_get_id(&hs->ecdh_ctx) == group_id) {
+    if (hs->key_share->GroupID() == group_id) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
       return ssl_hs_error;
     }
 
-    SSL_ECDH_CTX_cleanup(&hs->ecdh_ctx);
+    hs->key_share.reset();
     hs->retry_group = group_id;
   }
 
@@ -785,7 +785,7 @@ int tls13_process_new_session_ticket(SSL *ssl) {
 }
 
 void ssl_clear_tls13_state(SSL_HANDSHAKE *hs) {
-  SSL_ECDH_CTX_cleanup(&hs->ecdh_ctx);
+  hs->key_share.reset();
 
   OPENSSL_free(hs->key_share_bytes);
   hs->key_share_bytes = NULL;

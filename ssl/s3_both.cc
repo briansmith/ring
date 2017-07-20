@@ -151,7 +151,6 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       ticket_expected(0),
       extended_master_secret(0),
       pending_private_key_op(0) {
-  OPENSSL_memset(&ecdh_ctx, 0, sizeof(ecdh_ctx));
 }
 
 SSL_HANDSHAKE::~SSL_HANDSHAKE() {
@@ -161,7 +160,6 @@ SSL_HANDSHAKE::~SSL_HANDSHAKE() {
   OPENSSL_cleanse(server_handshake_secret, sizeof(server_handshake_secret));
   OPENSSL_cleanse(client_traffic_secret_0, sizeof(client_traffic_secret_0));
   OPENSSL_cleanse(server_traffic_secret_0, sizeof(server_traffic_secret_0));
-  SSL_ECDH_CTX_cleanup(&ecdh_ctx);
   OPENSSL_free(cookie);
   OPENSSL_free(key_share_bytes);
   OPENSSL_free(ecdh_public_key);

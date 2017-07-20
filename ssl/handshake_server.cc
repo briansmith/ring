@@ -1067,11 +1067,12 @@ static int ssl3_send_server_certificate(SSL_HANDSHAKE *hs) {
       hs->new_session->group_id = group_id;
 
       /* Set up ECDH, generate a key, and emit the public half. */
-      if (!SSL_ECDH_CTX_init(&hs->ecdh_ctx, group_id) ||
+      hs->key_share = SSLKeyShare::Create(group_id);
+      if (!hs->key_share ||
           !CBB_add_u8(cbb.get(), NAMED_CURVE_TYPE) ||
           !CBB_add_u16(cbb.get(), group_id) ||
           !CBB_add_u8_length_prefixed(cbb.get(), &child) ||
-          !SSL_ECDH_CTX_offer(&hs->ecdh_ctx, &child)) {
+          !hs->key_share->Offer(&child)) {
         return -1;
       }
     } else {
@@ -1434,15 +1435,14 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     /* Compute the premaster. */
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!SSL_ECDH_CTX_finish(&hs->ecdh_ctx, &premaster_secret,
-                             &premaster_secret_len, &alert, CBS_data(&peer_key),
-                             CBS_len(&peer_key))) {
+    if (!hs->key_share->Finish(&premaster_secret, &premaster_secret_len, &alert,
+                               CBS_data(&peer_key), CBS_len(&peer_key))) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
       goto err;
     }
 
     /* The key exchange state may now be discarded. */
-    SSL_ECDH_CTX_cleanup(&hs->ecdh_ctx);
+    hs->key_share.reset();
   } else if (!(alg_k & SSL_kPSK)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);

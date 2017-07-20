@@ -2135,7 +2135,7 @@ static int ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   uint16_t group_id = hs->retry_group;
   if (hs->received_hello_retry_request) {
     /* We received a HelloRetryRequest without a new curve, so there is no new
-     * share to append. Leave |ecdh_ctx| as-is. */
+     * share to append. Leave |hs->key_share| as-is. */
     if (group_id == 0 &&
         !CBB_add_bytes(&kse_bytes, hs->key_share_bytes,
                        hs->key_share_bytes_len)) {
@@ -2169,11 +2169,12 @@ static int ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     group_id = groups[0];
   }
 
+  hs->key_share = SSLKeyShare::Create(group_id);
   CBB key_exchange;
-  if (!CBB_add_u16(&kse_bytes, group_id) ||
+  if (!hs->key_share ||
+      !CBB_add_u16(&kse_bytes, group_id) ||
       !CBB_add_u16_length_prefixed(&kse_bytes, &key_exchange) ||
-      !SSL_ECDH_CTX_init(&hs->ecdh_ctx, group_id) ||
-      !SSL_ECDH_CTX_offer(&hs->ecdh_ctx, &key_exchange) ||
+      !hs->key_share->Offer(&key_exchange) ||
       !CBB_flush(&kse_bytes)) {
     return 0;
   }
@@ -2204,20 +2205,20 @@ int ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t **out_secret,
     return 0;
   }
 
-  if (SSL_ECDH_CTX_get_id(&hs->ecdh_ctx) != group_id) {
+  if (hs->key_share->GroupID() != group_id) {
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
     return 0;
   }
 
-  if (!SSL_ECDH_CTX_finish(&hs->ecdh_ctx, out_secret, out_secret_len, out_alert,
-                           CBS_data(&peer_key), CBS_len(&peer_key))) {
+  if (!hs->key_share->Finish(out_secret, out_secret_len, out_alert,
+                             CBS_data(&peer_key), CBS_len(&peer_key))) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return 0;
   }
 
   hs->new_session->group_id = group_id;
-  SSL_ECDH_CTX_cleanup(&hs->ecdh_ctx);
+  hs->key_share.reset();
   return 1;
 }
 
@@ -2274,23 +2275,18 @@ int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, int *out_found,
   /* Compute the DH secret. */
   uint8_t *secret = NULL;
   size_t secret_len;
-  SSL_ECDH_CTX group;
-  OPENSSL_memset(&group, 0, sizeof(SSL_ECDH_CTX));
   ScopedCBB public_key;
-  if (!CBB_init(public_key.get(), 32) ||
-      !SSL_ECDH_CTX_init(&group, group_id) ||
-      !SSL_ECDH_CTX_accept(&group, public_key.get(), &secret, &secret_len,
-                           out_alert, CBS_data(&peer_key),
-                           CBS_len(&peer_key)) ||
+  UniquePtr<SSLKeyShare> key_share = SSLKeyShare::Create(group_id);
+  if (!key_share ||
+      !CBB_init(public_key.get(), 32) ||
+      !key_share->Accept(public_key.get(), &secret, &secret_len, out_alert,
+                         CBS_data(&peer_key), CBS_len(&peer_key)) ||
       !CBB_finish(public_key.get(), &hs->ecdh_public_key,
                   &hs->ecdh_public_key_len)) {
     OPENSSL_free(secret);
-    SSL_ECDH_CTX_cleanup(&group);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
-
-  SSL_ECDH_CTX_cleanup(&group);
 
   *out_secret = secret;
   *out_secret_len = secret_len;
