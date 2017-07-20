@@ -674,10 +674,12 @@ static int ext_sni_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
 
   /* Copy the hostname as a string. */
-  if (!CBS_strdup(&host_name, &hs->hostname)) {
+  char *hostname_raw = nullptr;
+  if (!CBS_strdup(&host_name, &hostname_raw)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return 0;
   }
+  hs->hostname.reset(hostname_raw);
 
   hs->should_ack_sni = 1;
   return 1;
@@ -3241,7 +3243,7 @@ int tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   /* Before TLS 1.2, the signature algorithm isn't negotiated as part of the
    * handshake. */
   if (ssl3_protocol_version(ssl) < TLS1_2_VERSION) {
-    if (!tls1_get_legacy_signature_algorithm(out, hs->local_pubkey)) {
+    if (!tls1_get_legacy_signature_algorithm(out, hs->local_pubkey.get())) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
       return 0;
     }

@@ -1085,8 +1085,7 @@ void SSL_reset_early_data_reject(SSL *ssl) {
 
   hs->wait = ssl_hs_ok;
   hs->in_early_data = 0;
-  SSL_SESSION_free(hs->early_session);
-  hs->early_session = NULL;
+  hs->early_session.reset();
 
   /* Discard any unfinished writes from the perspective of |SSL_write|'s
    * retry. The handshake will transparently flush out the pending record
@@ -1730,7 +1729,7 @@ const char *SSL_get_servername(const SSL *ssl, const int type) {
 
   /* During the handshake, report the handshake value. */
   if (ssl->s3->hs != NULL) {
-    return ssl->s3->hs->hostname;
+    return ssl->s3->hs->hostname.get();
   }
 
   /* SSL_get_servername may also be called after the handshake to look up the

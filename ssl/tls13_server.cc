@@ -159,37 +159,36 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
    * the client makes several connections before getting a renewal. */
   static const int kNumTickets = 2;
 
-  SSL_SESSION *session = hs->new_session;
-
   /* Rebase the session timestamp so that it is measured from ticket
    * issuance. */
-  ssl_session_rebase_time(ssl, session);
+  ssl_session_rebase_time(ssl, hs->new_session.get());
 
   for (int i = 0; i < kNumTickets; i++) {
-    if (!RAND_bytes((uint8_t *)&session->ticket_age_add, 4)) {
+    if (!RAND_bytes((uint8_t *)&hs->new_session->ticket_age_add, 4)) {
       return 0;
     }
-    session->ticket_age_add_valid = 1;
+    hs->new_session->ticket_age_add_valid = 1;
 
     ScopedCBB cbb;
     CBB body, ticket, extensions;
     if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                    SSL3_MT_NEW_SESSION_TICKET) ||
-        !CBB_add_u32(&body, session->timeout) ||
-        !CBB_add_u32(&body, session->ticket_age_add) ||
+        !CBB_add_u32(&body, hs->new_session->timeout) ||
+        !CBB_add_u32(&body, hs->new_session->ticket_age_add) ||
         !CBB_add_u16_length_prefixed(&body, &ticket) ||
-        !ssl_encrypt_ticket(ssl, &ticket, session) ||
+        !ssl_encrypt_ticket(ssl, &ticket, hs->new_session.get()) ||
         !CBB_add_u16_length_prefixed(&body, &extensions)) {
       return 0;
     }
 
     if (ssl->cert->enable_early_data) {
-      session->ticket_max_early_data = kMaxEarlyDataAccepted;
+      hs->new_session->ticket_max_early_data = kMaxEarlyDataAccepted;
 
       CBB early_data_info;
       if (!CBB_add_u16(&extensions, TLSEXT_TYPE_ticket_early_data_info) ||
           !CBB_add_u16_length_prefixed(&extensions, &early_data_info) ||
-          !CBB_add_u32(&early_data_info, session->ticket_max_early_data) ||
+          !CBB_add_u32(&early_data_info,
+                       hs->new_session->ticket_max_early_data) ||
           !CBB_flush(&extensions)) {
         return 0;
       }
@@ -394,7 +393,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       ssl->s3->session_reused = 1;
 
       /* Resumption incorporates fresh key material, so refresh the timeout. */
-      ssl_session_renew_timeout(ssl, hs->new_session,
+      ssl_session_renew_timeout(ssl, hs->new_session.get(),
                                 ssl->session_ctx->session_psk_dhe_timeout);
       break;
 
@@ -412,7 +411,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
 
   if (hs->hostname != NULL) {
     OPENSSL_free(hs->new_session->tlsext_hostname);
-    hs->new_session->tlsext_hostname = BUF_strdup(hs->hostname);
+    hs->new_session->tlsext_hostname = BUF_strdup(hs->hostname.get());
     if (hs->new_session->tlsext_hostname == NULL) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;

@@ -1526,8 +1526,8 @@ TEST(SSLTest, SessionDuplication) {
                                      nullptr /* no session */));
 
   SSL_SESSION *session0 = SSL_get_session(client.get());
-  bssl::UniquePtr<SSL_SESSION> session1(
-      bssl::SSL_SESSION_dup(session0, SSL_SESSION_DUP_ALL));
+  bssl::UniquePtr<SSL_SESSION> session1 =
+      bssl::SSL_SESSION_dup(session0, SSL_SESSION_DUP_ALL);
   ASSERT_TRUE(session1);
 
   session1->not_resumable = 0;

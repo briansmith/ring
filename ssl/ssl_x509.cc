@@ -1052,7 +1052,7 @@ int SSL_get0_chain_certs(const SSL *ssl, STACK_OF(X509) **out_chain) {
 }
 
 static SSL_SESSION *ssl_session_new_with_crypto_x509(void) {
-  return ssl_session_new(&ssl_crypto_x509_method);
+  return ssl_session_new(&ssl_crypto_x509_method).release();
 }
 
 SSL_SESSION *d2i_SSL_SESSION_bio(BIO *bio, SSL_SESSION **out) {
@@ -1075,18 +1075,18 @@ SSL_SESSION *d2i_SSL_SESSION(SSL_SESSION **a, const uint8_t **pp, long length) {
   CBS cbs;
   CBS_init(&cbs, *pp, length);
 
-  SSL_SESSION *ret = SSL_SESSION_parse(&cbs, &ssl_crypto_x509_method,
-                                       NULL /* no buffer pool */);
-  if (ret == NULL) {
+  UniquePtr<SSL_SESSION> ret = SSL_SESSION_parse(&cbs, &ssl_crypto_x509_method,
+                                                 NULL /* no buffer pool */);
+  if (!ret) {
     return NULL;
   }
 
   if (a) {
     SSL_SESSION_free(*a);
-    *a = ret;
+    *a = ret.get();
   }
   *pp = CBS_data(&cbs);
-  return ret;
+  return ret.release();
 }
 
 STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *list) {
@@ -1186,7 +1186,7 @@ STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
    * indeterminate mode and |ssl->server| is unset. */
   if (ssl->handshake_func != NULL && !ssl->server) {
     if (ssl->s3->hs != NULL) {
-      return buffer_names_to_x509(ssl->s3->hs->ca_names,
+      return buffer_names_to_x509(ssl->s3->hs->ca_names.get(),
                                   &ssl->s3->hs->cached_x509_ca_names);
     }
 

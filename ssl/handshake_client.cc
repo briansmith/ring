@@ -152,6 +152,8 @@
 #include <assert.h>
 #include <string.h>
 
+#include <utility>
+
 #include <openssl/aead.h>
 #include <openssl/bn.h>
 #include <openssl/buf.h>
@@ -247,8 +249,8 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
         /* Stash the early data session, so connection properties may be queried
          * out of it. */
         hs->in_early_data = 1;
-        hs->early_session = ssl->session;
         SSL_SESSION_up_ref(ssl->session);
+        hs->early_session.reset(ssl->session);
 
         hs->state = SSL3_ST_CR_SRVR_HELLO_A;
         hs->can_early_write = 1;
@@ -506,15 +508,15 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
            * of the new established_session due to False Start. The caller may
            * have taken a reference to the temporary session. */
           ssl->s3->established_session =
-              SSL_SESSION_dup(hs->new_session, SSL_SESSION_DUP_ALL);
+              SSL_SESSION_dup(hs->new_session.get(), SSL_SESSION_DUP_ALL)
+                  .release();
           if (ssl->s3->established_session == NULL) {
             ret = -1;
             goto end;
           }
           ssl->s3->established_session->not_resumable = 0;
 
-          SSL_SESSION_free(hs->new_session);
-          hs->new_session = NULL;
+          hs->new_session.reset();
         }
 
         hs->state = SSL_ST_OK;
@@ -1099,10 +1101,10 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
   sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
-  EVP_PKEY_free(hs->peer_pubkey);
-  hs->peer_pubkey = NULL;
-  hs->new_session->certs = ssl_parse_cert_chain(&alert, &hs->peer_pubkey, NULL,
-                                                &cbs, ssl->ctx->pool);
+  hs->peer_pubkey.reset();
+  hs->new_session->certs =
+      ssl_parse_cert_chain(&alert, &hs->peer_pubkey, NULL, &cbs, ssl->ctx->pool)
+          .release();
   if (hs->new_session->certs == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return -1;
@@ -1110,14 +1112,14 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
 
   if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) == 0 ||
       CBS_len(&cbs) != 0 ||
-      !ssl->ctx->x509_method->session_cache_objects(hs->new_session)) {
+      !ssl->ctx->x509_method->session_cache_objects(hs->new_session.get())) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return -1;
   }
 
   if (!ssl_check_leaf_certificate(
-          hs, hs->peer_pubkey,
+          hs, hs->peer_pubkey.get(),
           sk_CRYPTO_BUFFER_value(hs->new_session->certs, 0))) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return -1;
@@ -1255,12 +1257,14 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
      * (omit ServerKeyExchange) or an empty hint, while ECDHE_PSK can only spell
      * empty hint. Having different capabilities is odd, so we interpret empty
      * and missing as identical. */
+    char *raw = nullptr;
     if (CBS_len(&psk_identity_hint) != 0 &&
-        !CBS_strdup(&psk_identity_hint, &hs->peer_psk_identity_hint)) {
+        !CBS_strdup(&psk_identity_hint, &raw)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return -1;
     }
+    hs->peer_psk_identity_hint.reset(raw);
   }
 
   if (alg_k & SSL_kECDHE) {
@@ -1319,7 +1323,7 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
       }
       hs->new_session->peer_signature_algorithm = signature_algorithm;
     } else if (!tls1_get_legacy_signature_algorithm(&signature_algorithm,
-                                                    hs->peer_pubkey)) {
+                                                    hs->peer_pubkey.get())) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_ERROR_UNSUPPORTED_CERTIFICATE_TYPE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_CERTIFICATE);
       return -1;
@@ -1353,7 +1357,7 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
 
     int sig_ok = ssl_public_key_verify(
         ssl, CBS_data(&signature), CBS_len(&signature), signature_algorithm,
-        hs->peer_pubkey, transcript_data, transcript_len);
+        hs->peer_pubkey.get(), transcript_data, transcript_len);
     OPENSSL_free(transcript_data);
 
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
@@ -1427,23 +1431,21 @@ static int ssl3_get_certificate_request(SSL_HANDSHAKE *hs) {
   }
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  STACK_OF(CRYPTO_BUFFER) *ca_names =
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> ca_names =
       ssl_parse_client_CA_list(ssl, &alert, &cbs);
-  if (ca_names == NULL) {
+  if (!ca_names) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return -1;
   }
 
   if (CBS_len(&cbs) != 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    sk_CRYPTO_BUFFER_pop_free(ca_names, CRYPTO_BUFFER_free);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return -1;
   }
 
   hs->cert_request = 1;
-  sk_CRYPTO_BUFFER_pop_free(hs->ca_names, CRYPTO_BUFFER_free);
-  hs->ca_names = ca_names;
+  hs->ca_names = std::move(ca_names);
   ssl->ctx->x509_method->hs_flush_cached_ca_names(hs);
   return 1;
 }
@@ -1536,8 +1538,8 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     char identity[PSK_MAX_IDENTITY_LEN + 1];
     OPENSSL_memset(identity, 0, sizeof(identity));
     psk_len =
-        ssl->psk_client_callback(ssl, hs->peer_psk_identity_hint, identity,
-                                 sizeof(identity), psk, sizeof(psk));
+        ssl->psk_client_callback(ssl, hs->peer_psk_identity_hint.get(),
+                                 identity, sizeof(identity), psk, sizeof(psk));
     if (psk_len == 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PSK_IDENTITY_NOT_FOUND);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
@@ -1571,7 +1573,7 @@ static int ssl3_send_client_key_exchange(SSL_HANDSHAKE *hs) {
       goto err;
     }
 
-    RSA *rsa = EVP_PKEY_get0_RSA(hs->peer_pubkey);
+    RSA *rsa = EVP_PKEY_get0_RSA(hs->peer_pubkey.get());
     if (rsa == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       goto err;
@@ -1712,7 +1714,7 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
   }
 
   /* Set aside space for the signature. */
-  const size_t max_sig_len = EVP_PKEY_size(hs->local_pubkey);
+  const size_t max_sig_len = EVP_PKEY_size(hs->local_pubkey.get());
   uint8_t *ptr;
   if (!CBB_add_u16_length_prefixed(&body, &child) ||
       !CBB_reserve(&child, &ptr, max_sig_len)) {
@@ -1730,9 +1732,9 @@ static int ssl3_send_cert_verify(SSL_HANDSHAKE *hs) {
 
     uint8_t digest[EVP_MAX_MD_SIZE];
     size_t digest_len;
-    if (!SSL_TRANSCRIPT_ssl3_cert_verify_hash(&hs->transcript, digest,
-                                              &digest_len, hs->new_session,
-                                              signature_algorithm)) {
+    if (!SSL_TRANSCRIPT_ssl3_cert_verify_hash(
+            &hs->transcript, digest, &digest_len, hs->new_session.get(),
+            signature_algorithm)) {
       return -1;
     }
 
@@ -1842,14 +1844,14 @@ static int ssl3_get_new_session_ticket(SSL_HANDSHAKE *hs) {
     return 1;
   }
 
-  SSL_SESSION *session = hs->new_session;
+  SSL_SESSION *session = hs->new_session.get();
   UniquePtr<SSL_SESSION> renewed_session;
   if (ssl->session != NULL) {
     /* The server is sending a new ticket for an existing session. Sessions are
      * immutable once established, so duplicate all but the ticket of the
      * existing session. */
-    renewed_session.reset(
-        SSL_SESSION_dup(ssl->session, SSL_SESSION_INCLUDE_NONAUTH));
+    renewed_session =
+        SSL_SESSION_dup(ssl->session, SSL_SESSION_INCLUDE_NONAUTH);
     if (!renewed_session) {
       /* This should never happen. */
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);

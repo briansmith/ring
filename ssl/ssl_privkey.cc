@@ -288,7 +288,7 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(
 int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
                                                  uint16_t sigalg) {
   SSL *const ssl = hs->ssl;
-  if (!pkey_supports_algorithm(ssl, hs->local_pubkey, sigalg)) {
+  if (!pkey_supports_algorithm(ssl, hs->local_pubkey.get(), sigalg)) {
     return 0;
   }
 
@@ -299,9 +299,8 @@ int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
    * SHA-512. 1024-bit RSA is sometimes used for test credentials, so check the
    * size so that we can fall back to another algorithm in that case. */
   const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
-  if (alg->is_rsa_pss &&
-      (size_t)EVP_PKEY_size(hs->local_pubkey) <
-          2 * EVP_MD_size(alg->digest_func()) + 2) {
+  if (alg->is_rsa_pss && (size_t)EVP_PKEY_size(hs->local_pubkey.get()) <
+                             2 * EVP_MD_size(alg->digest_func()) + 2) {
     return 0;
   }
 

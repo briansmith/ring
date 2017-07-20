@@ -139,6 +139,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <utility>
+
 #include <openssl/err.h>
 #include <openssl/lhash.h>
 #include <openssl/mem.h>
@@ -162,13 +164,14 @@ static void SSL_SESSION_list_remove(SSL_CTX *ctx, SSL_SESSION *session);
 static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *session);
 static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *session, int lock);
 
-SSL_SESSION *ssl_session_new(const SSL_X509_METHOD *x509_method) {
-  SSL_SESSION *session = (SSL_SESSION *)OPENSSL_malloc(sizeof(SSL_SESSION));
-  if (session == NULL) {
+UniquePtr<SSL_SESSION> ssl_session_new(const SSL_X509_METHOD *x509_method) {
+  UniquePtr<SSL_SESSION> session(
+      (SSL_SESSION *)OPENSSL_malloc(sizeof(SSL_SESSION)));
+  if (!session) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
-  OPENSSL_memset(session, 0, sizeof(SSL_SESSION));
+  OPENSSL_memset(session.get(), 0, sizeof(SSL_SESSION));
 
   session->x509_method = x509_method;
   session->verify_result = X509_V_ERR_INVALID_CALL;
@@ -180,10 +183,10 @@ SSL_SESSION *ssl_session_new(const SSL_X509_METHOD *x509_method) {
   return session;
 }
 
-SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
-  SSL_SESSION *new_session = ssl_session_new(session->x509_method);
-  if (new_session == NULL) {
-    goto err;
+UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
+  UniquePtr<SSL_SESSION> new_session = ssl_session_new(session->x509_method);
+  if (!new_session) {
+    return nullptr;
   }
 
   new_session->is_server = session->is_server;
@@ -201,25 +204,25 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
   if (session->psk_identity != NULL) {
     new_session->psk_identity = BUF_strdup(session->psk_identity);
     if (new_session->psk_identity == NULL) {
-      goto err;
+      return nullptr;
     }
   }
   if (session->certs != NULL) {
     new_session->certs = sk_CRYPTO_BUFFER_new_null();
     if (new_session->certs == NULL) {
-      goto err;
+      return nullptr;
     }
     for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(session->certs); i++) {
       CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(session->certs, i);
       if (!sk_CRYPTO_BUFFER_push(new_session->certs, buffer)) {
-        goto err;
+        return nullptr;
       }
       CRYPTO_BUFFER_up_ref(buffer);
     }
   }
 
-  if (!session->x509_method->session_dup(new_session, session)) {
-    goto err;
+  if (!session->x509_method->session_dup(new_session.get(), session)) {
+    return nullptr;
   }
 
   new_session->verify_result = session->verify_result;
@@ -229,7 +232,7 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
     new_session->ocsp_response = (uint8_t *)BUF_memdup(
         session->ocsp_response, session->ocsp_response_length);
     if (new_session->ocsp_response == NULL) {
-      goto err;
+      return nullptr;
     }
   }
 
@@ -240,7 +243,7 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
         session->tlsext_signed_cert_timestamp_list,
         session->tlsext_signed_cert_timestamp_list_length);
     if (new_session->tlsext_signed_cert_timestamp_list == NULL) {
-      goto err;
+      return nullptr;
     }
   }
 
@@ -251,7 +254,7 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
   if (session->tlsext_hostname != NULL) {
     new_session->tlsext_hostname = BUF_strdup(session->tlsext_hostname);
     if (new_session->tlsext_hostname == NULL) {
-      goto err;
+      return nullptr;
     }
   }
 
@@ -283,7 +286,7 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
       new_session->early_alpn =
           (uint8_t *)BUF_memdup(session->early_alpn, session->early_alpn_len);
       if (new_session->early_alpn == NULL) {
-        goto err;
+        return nullptr;
       }
     }
     new_session->early_alpn_len = session->early_alpn_len;
@@ -295,7 +298,7 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
       new_session->tlsext_tick =
           (uint8_t *)BUF_memdup(session->tlsext_tick, session->tlsext_ticklen);
       if (new_session->tlsext_tick == NULL) {
-        goto err;
+        return nullptr;
       }
     }
     new_session->tlsext_ticklen = session->tlsext_ticklen;
@@ -305,11 +308,6 @@ SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
 
   new_session->not_resumable = 1;
   return new_session;
-
-err:
-  SSL_SESSION_free(new_session);
-  OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-  return 0;
 }
 
 void ssl_session_rebase_time(SSL *ssl, SSL_SESSION *session) {
@@ -381,7 +379,7 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
     return 0;
   }
 
-  SSL_SESSION *session = ssl_session_new(ssl->ctx->x509_method);
+  UniquePtr<SSL_SESSION> session = ssl_session_new(ssl->ctx->x509_method);
   if (session == NULL) {
     return 0;
   }
@@ -415,7 +413,7 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
     } else {
       session->session_id_length = SSL3_SSL_SESSION_ID_LENGTH;
       if (!RAND_bytes(session->session_id, session->session_id_length)) {
-        goto err;
+        return 0;
       }
     }
   } else {
@@ -424,7 +422,7 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
 
   if (ssl->cert->sid_ctx_length > sizeof(session->sid_ctx)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    goto err;
+    return 0;
   }
   OPENSSL_memcpy(session->sid_ctx, ssl->cert->sid_ctx,
                  ssl->cert->sid_ctx_length);
@@ -434,14 +432,9 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
   session->not_resumable = 1;
   session->verify_result = X509_V_ERR_INVALID_CALL;
 
-  SSL_SESSION_free(hs->new_session);
-  hs->new_session = session;
+  hs->new_session = std::move(session);
   ssl_set_session(ssl, NULL);
   return 1;
-
-err:
-  SSL_SESSION_free(session);
-  return 0;
 }
 
 static int ssl_encrypt_ticket_with_cipher_ctx(SSL *ssl, CBB *out,
@@ -827,7 +820,7 @@ static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *session) {
 using namespace bssl;
 
 SSL_SESSION *SSL_SESSION_new(const SSL_CTX *ctx) {
-  return ssl_session_new(ctx->x509_method);
+  return ssl_session_new(ctx->x509_method).release();
 }
 
 int SSL_SESSION_up_ref(SSL_SESSION *session) {
@@ -939,11 +932,11 @@ SSL_SESSION *SSL_get_session(const SSL *ssl) {
     return ssl->s3->established_session;
   }
   SSL_HANDSHAKE *hs = ssl->s3->hs;
-  if (hs->early_session != NULL) {
-    return hs->early_session;
+  if (hs->early_session) {
+    return hs->early_session.get();
   }
-  if (hs->new_session != NULL) {
-    return hs->new_session;
+  if (hs->new_session) {
+    return hs->new_session.get();
   }
   return ssl->session;
 }

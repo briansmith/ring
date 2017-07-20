@@ -18,6 +18,8 @@
 #include <limits.h>
 #include <string.h>
 
+#include <utility>
+
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
@@ -280,14 +282,14 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
     ssl->s3->session_reused = 1;
     /* Only authentication information carries over in TLS 1.3. */
     hs->new_session = SSL_SESSION_dup(ssl->session, SSL_SESSION_DUP_AUTH_ONLY);
-    if (hs->new_session == NULL) {
+    if (!hs->new_session) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
     ssl_set_session(ssl, NULL);
 
     /* Resumption incorporates fresh key material, so refresh the timeout. */
-    ssl_session_renew_timeout(ssl, hs->new_session,
+    ssl_session_renew_timeout(ssl, hs->new_session.get(),
                               ssl->session_ctx->session_psk_dhe_timeout);
   } else if (!ssl_get_new_session(hs, 0)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
@@ -454,9 +456,9 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL_HANDSHAKE *hs) {
   }
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  STACK_OF(CRYPTO_BUFFER) *ca_names =
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> ca_names =
       ssl_parse_client_CA_list(ssl, &alert, &cbs);
-  if (ca_names == NULL) {
+  if (!ca_names) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
@@ -466,14 +468,12 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL_HANDSHAKE *hs) {
   if (!CBS_get_u16_length_prefixed(&cbs, &extensions) ||
       CBS_len(&cbs) != 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    sk_CRYPTO_BUFFER_pop_free(ca_names, CRYPTO_BUFFER_free);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return ssl_hs_error;
   }
 
   hs->cert_request = 1;
-  sk_CRYPTO_BUFFER_pop_free(hs->ca_names, CRYPTO_BUFFER_free);
-  hs->ca_names = ca_names;
+  hs->ca_names = std::move(ca_names);
   ssl->ctx->x509_method->hs_flush_cached_ca_names(hs);
 
   if (!ssl_hash_current_message(hs)) {

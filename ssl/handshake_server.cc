@@ -430,7 +430,7 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
             ssl->retain_only_sha256_of_client_certs) {
           sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
           hs->new_session->certs = NULL;
-          ssl->ctx->x509_method->session_clear(hs->new_session);
+          ssl->ctx->x509_method->session_clear(hs->new_session.get());
         }
 
         SSL_SESSION_free(ssl->s3->established_session);
@@ -438,9 +438,8 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
           SSL_SESSION_up_ref(ssl->session);
           ssl->s3->established_session = ssl->session;
         } else {
-          ssl->s3->established_session = hs->new_session;
+          ssl->s3->established_session = hs->new_session.release();
           ssl->s3->established_session->not_resumable = 0;
-          hs->new_session = NULL;
         }
 
         ssl->s3->initial_handshake_complete = 1;
@@ -605,8 +604,8 @@ static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
   uint32_t mask_a = 0;
 
   if (ssl_has_certificate(ssl)) {
-    mask_a |= ssl_cipher_auth_mask_for_key(hs->local_pubkey);
-    if (EVP_PKEY_id(hs->local_pubkey) == EVP_PKEY_RSA) {
+    mask_a |= ssl_cipher_auth_mask_for_key(hs->local_pubkey.get());
+    if (EVP_PKEY_id(hs->local_pubkey.get()) == EVP_PKEY_RSA) {
       mask_k |= SSL_kRSA;
     }
   }
@@ -895,7 +894,7 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
     /* On new sessions, stash the SNI value in the session. */
     if (hs->hostname != NULL) {
       OPENSSL_free(hs->new_session->tlsext_hostname);
-      hs->new_session->tlsext_hostname = BUF_strdup(hs->hostname);
+      hs->new_session->tlsext_hostname = BUF_strdup(hs->hostname.get());
       if (hs->new_session->tlsext_hostname == NULL) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         return -1;
@@ -977,7 +976,7 @@ static int ssl3_send_server_hello(SSL_HANDSHAKE *hs) {
   /* TODO(davidben): Implement the TLS 1.1 and 1.2 downgrade sentinels once TLS
    * 1.3 is finalized and we are not implementing a draft version. */
 
-  const SSL_SESSION *session = hs->new_session;
+  const SSL_SESSION *session = hs->new_session.get();
   if (ssl->session != NULL) {
     session = ssl->session;
   }
@@ -1121,7 +1120,7 @@ static int ssl3_send_server_key_exchange(SSL_HANDSHAKE *hs) {
     }
 
     /* Add space for the signature. */
-    const size_t max_sig_len = EVP_PKEY_size(hs->local_pubkey);
+    const size_t max_sig_len = EVP_PKEY_size(hs->local_pubkey.get());
     uint8_t *ptr;
     if (!CBB_add_u16_length_prefixed(&body, &child) ||
         !CBB_reserve(&child, &ptr, max_sig_len)) {
@@ -1229,21 +1228,22 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
   CBS_init(&certificate_msg, ssl->init_msg, ssl->init_num);
 
   sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
-  EVP_PKEY_free(hs->peer_pubkey);
-  hs->peer_pubkey = NULL;
+  hs->peer_pubkey.reset();
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  hs->new_session->certs = ssl_parse_cert_chain(
-      &alert, &hs->peer_pubkey,
-      ssl->retain_only_sha256_of_client_certs ? hs->new_session->peer_sha256
-                                              : NULL,
-      &certificate_msg, ssl->ctx->pool);
+  hs->new_session->certs =
+      ssl_parse_cert_chain(&alert, &hs->peer_pubkey,
+                           ssl->retain_only_sha256_of_client_certs
+                               ? hs->new_session->peer_sha256
+                               : NULL,
+                           &certificate_msg, ssl->ctx->pool)
+          .release();
   if (hs->new_session->certs == NULL) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return -1;
   }
 
   if (CBS_len(&certificate_msg) != 0 ||
-      !ssl->ctx->x509_method->session_cache_objects(hs->new_session)) {
+      !ssl->ctx->x509_method->session_cache_objects(hs->new_session.get())) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return -1;
@@ -1348,7 +1348,7 @@ static int ssl3_get_client_key_exchange(SSL_HANDSHAKE *hs) {
     }
 
     /* Allocate a buffer large enough for an RSA decryption. */
-    const size_t rsa_size = EVP_PKEY_size(hs->local_pubkey);
+    const size_t rsa_size = EVP_PKEY_size(hs->local_pubkey.get());
     decrypt_buf = (uint8_t *)OPENSSL_malloc(rsa_size);
     if (decrypt_buf == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -1539,7 +1539,7 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
   /* Only RSA and ECDSA client certificates are supported, so a
    * CertificateVerify is required if and only if there's a client certificate.
    * */
-  if (hs->peer_pubkey == NULL) {
+  if (!hs->peer_pubkey) {
     SSL_TRANSCRIPT_free_buffer(&hs->transcript);
     return 1;
   }
@@ -1570,7 +1570,7 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
     }
     hs->new_session->peer_signature_algorithm = signature_algorithm;
   } else if (!tls1_get_legacy_signature_algorithm(&signature_algorithm,
-                                                  hs->peer_pubkey)) {
+                                                  hs->peer_pubkey.get())) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_ERROR_UNSUPPORTED_CERTIFICATE_TYPE);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_CERTIFICATE);
     return -1;
@@ -1590,13 +1590,14 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
   if (ssl3_protocol_version(ssl) == SSL3_VERSION) {
     uint8_t digest[EVP_MAX_MD_SIZE];
     size_t digest_len;
-    if (!SSL_TRANSCRIPT_ssl3_cert_verify_hash(&hs->transcript, digest,
-                                              &digest_len, hs->new_session,
-                                              signature_algorithm)) {
+    if (!SSL_TRANSCRIPT_ssl3_cert_verify_hash(
+            &hs->transcript, digest, &digest_len, hs->new_session.get(),
+            signature_algorithm)) {
       return -1;
     }
 
-    UniquePtr<EVP_PKEY_CTX> pctx(EVP_PKEY_CTX_new(hs->peer_pubkey, NULL));
+    UniquePtr<EVP_PKEY_CTX> pctx(
+        EVP_PKEY_CTX_new(hs->peer_pubkey.get(), nullptr));
     sig_ok = pctx &&
              EVP_PKEY_verify_init(pctx.get()) &&
              EVP_PKEY_verify(pctx.get(), CBS_data(&signature),
@@ -1604,7 +1605,7 @@ static int ssl3_get_cert_verify(SSL_HANDSHAKE *hs) {
   } else {
     sig_ok = ssl_public_key_verify(
         ssl, CBS_data(&signature), CBS_len(&signature), signature_algorithm,
-        hs->peer_pubkey, (const uint8_t *)hs->transcript.buffer->data,
+        hs->peer_pubkey.get(), (const uint8_t *)hs->transcript.buffer->data,
         hs->transcript.buffer->length);
   }
 
@@ -1684,13 +1685,12 @@ static int ssl3_send_server_finished(SSL_HANDSHAKE *hs) {
     UniquePtr<SSL_SESSION> session_copy;
     if (ssl->session == NULL) {
       /* Fix the timeout to measure from the ticket issuance time. */
-      ssl_session_rebase_time(ssl, hs->new_session);
-      session = hs->new_session;
+      ssl_session_rebase_time(ssl, hs->new_session.get());
+      session = hs->new_session.get();
     } else {
       /* We are renewing an existing session. Duplicate the session to adjust
        * the timeout. */
-      session_copy.reset(
-          SSL_SESSION_dup(ssl->session, SSL_SESSION_INCLUDE_NONAUTH));
+      session_copy = SSL_SESSION_dup(ssl->session, SSL_SESSION_INCLUDE_NONAUTH);
       if (!session_copy) {
         return -1;
       }

@@ -323,8 +323,8 @@ static int tls1_setup_key_block(SSL_HANDSHAKE *hs) {
   }
 
   SSL_SESSION *session = ssl->session;
-  if (hs->new_session != NULL) {
-    session = hs->new_session;
+  if (hs->new_session) {
+    session = hs->new_session.get();
   }
 
   const EVP_AEAD *aead = NULL;

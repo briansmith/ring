@@ -935,19 +935,17 @@ int ssl_has_certificate(const SSL *ssl);
 
 /* ssl_parse_cert_chain parses a certificate list from |cbs| in the format used
  * by a TLS Certificate message. On success, it returns a newly-allocated
- * |CRYPTO_BUFFER| list and advances |cbs|. Otherwise, it returns NULL and sets
- * |*out_alert| to an alert to send to the peer.
+ * |CRYPTO_BUFFER| list and advances |cbs|. Otherwise, it returns nullptr and
+ * sets |*out_alert| to an alert to send to the peer.
  *
  * If the list is non-empty then |*out_pubkey| will be set to a freshly
  * allocated public-key from the leaf certificate.
  *
  * If the list is non-empty and |out_leaf_sha256| is non-NULL, it writes the
  * SHA-256 hash of the leaf to |out_leaf_sha256|. */
-STACK_OF(CRYPTO_BUFFER) *ssl_parse_cert_chain(uint8_t *out_alert,
-                                              EVP_PKEY **out_pubkey,
-                                              uint8_t *out_leaf_sha256,
-                                              CBS *cbs,
-                                              CRYPTO_BUFFER_POOL *pool);
+UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_cert_chain(
+    uint8_t *out_alert, UniquePtr<EVP_PKEY> *out_pubkey,
+    uint8_t *out_leaf_sha256, CBS *cbs, CRYPTO_BUFFER_POOL *pool);
 
 /* ssl_add_cert_chain adds |ssl|'s certificate chain to |cbb| in the format used
  * by a TLS Certificate message. If there is no certificate chain, it emits an
@@ -961,16 +959,17 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb);
 int ssl_cert_check_digital_signature_key_usage(const CBS *in);
 
 /* ssl_cert_parse_pubkey extracts the public key from the DER-encoded, X.509
- * certificate in |in|. It returns an allocated |EVP_PKEY| or else returns NULL
- * and pushes to the error queue. */
-EVP_PKEY *ssl_cert_parse_pubkey(const CBS *in);
+ * certificate in |in|. It returns an allocated |EVP_PKEY| or else returns
+ * nullptr and pushes to the error queue. */
+UniquePtr<EVP_PKEY> ssl_cert_parse_pubkey(const CBS *in);
 
 /* ssl_parse_client_CA_list parses a CA list from |cbs| in the format used by a
  * TLS CertificateRequest message. On success, it returns a newly-allocated
- * |CRYPTO_BUFFER| list and advances |cbs|. Otherwise, it returns NULL and sets
- * |*out_alert| to an alert to send to the peer. */
-STACK_OF(CRYPTO_BUFFER) *
-    ssl_parse_client_CA_list(SSL *ssl, uint8_t *out_alert, CBS *cbs);
+ * |CRYPTO_BUFFER| list and advances |cbs|. Otherwise, it returns nullptr and
+ * sets |*out_alert| to an alert to send to the peer. */
+UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_client_CA_list(SSL *ssl,
+                                                            uint8_t *out_alert,
+                                                            CBS *cbs);
 
 /* ssl_add_client_CA_list adds the configured CA list to |cbb| in the format
  * used by a TLS CertificateRequest message. It returns one on success and zero
@@ -1194,11 +1193,11 @@ struct SSL_HANDSHAKE {
 
   /* peer_psk_identity_hint, on the client, is the psk_identity_hint sent by the
    * server when using a TLS 1.2 PSK key exchange. */
-  char *peer_psk_identity_hint = nullptr;
+  UniquePtr<char> peer_psk_identity_hint;
 
   /* ca_names, on the client, contains the list of CAs received in a
    * CertificateRequest message. */
-  STACK_OF(CRYPTO_BUFFER) *ca_names = nullptr;
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> ca_names;
 
   /* cached_x509_ca_names contains a cache of parsed versions of the elements
    * of |ca_names|. */
@@ -1210,21 +1209,21 @@ struct SSL_HANDSHAKE {
   size_t num_certificate_types = 0;
 
   /* hostname, on the server, is the value of the SNI extension. */
-  char *hostname = nullptr;
+  UniquePtr<char> hostname;
 
   /* local_pubkey is the public key we are authenticating as. */
-  EVP_PKEY *local_pubkey = nullptr;
+  UniquePtr<EVP_PKEY> local_pubkey;
 
   /* peer_pubkey is the public key parsed from the peer's leaf certificate. */
-  EVP_PKEY *peer_pubkey = nullptr;
+  UniquePtr<EVP_PKEY> peer_pubkey;
 
   /* new_session is the new mutable session being established by the current
    * handshake. It should not be cached. */
-  SSL_SESSION *new_session = nullptr;
+  UniquePtr<SSL_SESSION> new_session;
 
   /* early_session is the session corresponding to the current 0-RTT state on
    * the client if |in_early_data| is true. */
-  SSL_SESSION *early_session = nullptr;
+  UniquePtr<SSL_SESSION> early_session;
 
   /* new_cipher is the cipher being negotiated in this handshake. */
   const SSL_CIPHER *new_cipher = nullptr;
@@ -2048,14 +2047,15 @@ int ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey);
 int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server);
 int ssl_encrypt_ticket(SSL *ssl, CBB *out, const SSL_SESSION *session);
 
-/* ssl_session_new returns a newly-allocated blank |SSL_SESSION| or NULL on
+/* ssl_session_new returns a newly-allocated blank |SSL_SESSION| or nullptr on
  * error. */
-SSL_SESSION *ssl_session_new(const SSL_X509_METHOD *x509_method);
+UniquePtr<SSL_SESSION> ssl_session_new(const SSL_X509_METHOD *x509_method);
 
 /* SSL_SESSION_parse parses an |SSL_SESSION| from |cbs| and advances |cbs| over
  * the parsed data. */
-SSL_SESSION *SSL_SESSION_parse(CBS *cbs, const SSL_X509_METHOD *x509_method,
-                               CRYPTO_BUFFER_POOL *pool);
+UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
+                                         const SSL_X509_METHOD *x509_method,
+                                         CRYPTO_BUFFER_POOL *pool);
 
 /* ssl_session_is_context_valid returns one if |session|'s session ID context
  * matches the one set on |ssl| and zero otherwise. */
@@ -2104,10 +2104,10 @@ enum ssl_session_result_t ssl_get_prev_session(
   (SSL_SESSION_INCLUDE_TICKET | SSL_SESSION_INCLUDE_NONAUTH)
 
 /* SSL_SESSION_dup returns a newly-allocated |SSL_SESSION| with a copy of the
- * fields in |session| or NULL on error. The new session is non-resumable and
+ * fields in |session| or nullptr on error. The new session is non-resumable and
  * must be explicitly marked resumable once it has been filled in. */
-OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_dup(SSL_SESSION *session,
-                                            int dup_flags);
+OPENSSL_EXPORT UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session,
+                                                      int dup_flags);
 
 /* ssl_session_rebase_time updates |session|'s start time to the current time,
  * adjusting the timeout so the expiration time is unchanged. */

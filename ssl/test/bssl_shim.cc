@@ -1078,8 +1078,8 @@ class SocketCloser {
 
 static void ssl_ctx_add_session(SSL_SESSION *session, void *void_param) {
   SSL_CTX *ctx = reinterpret_cast<SSL_CTX *>(void_param);
-  bssl::UniquePtr<SSL_SESSION> new_session(bssl::SSL_SESSION_dup(
-      session, SSL_SESSION_INCLUDE_NONAUTH | SSL_SESSION_INCLUDE_TICKET));
+  bssl::UniquePtr<SSL_SESSION> new_session = bssl::SSL_SESSION_dup(
+      session, SSL_SESSION_INCLUDE_NONAUTH | SSL_SESSION_INCLUDE_TICKET);
   if (new_session != nullptr) {
     SSL_CTX_add_session(ctx, new_session.get());
   }

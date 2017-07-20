@@ -167,14 +167,10 @@ SSL_HANDSHAKE::~SSL_HANDSHAKE() {
   OPENSSL_free(cookie);
   OPENSSL_free(key_share_bytes);
   OPENSSL_free(ecdh_public_key);
-  SSL_SESSION_free(new_session);
-  SSL_SESSION_free(early_session);
   OPENSSL_free(peer_sigalgs);
   OPENSSL_free(peer_supported_group_list);
   OPENSSL_free(peer_key);
   OPENSSL_free(server_params);
-  OPENSSL_free(peer_psk_identity_hint);
-  sk_CRYPTO_BUFFER_pop_free(ca_names, CRYPTO_BUFFER_free);
   ssl->ctx->x509_method->hs_flush_cached_ca_names(this);
   OPENSSL_free(certificate_types);
 
@@ -182,10 +178,6 @@ SSL_HANDSHAKE::~SSL_HANDSHAKE() {
     OPENSSL_cleanse(key_block, key_block_len);
     OPENSSL_free(key_block);
   }
-
-  OPENSSL_free(hostname);
-  EVP_PKEY_free(peer_pubkey);
-  EVP_PKEY_free(local_pubkey);
 }
 
 SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl) {
@@ -855,8 +847,8 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
         break;
     }
   } else {
-    ret = ssl->ctx->x509_method->session_verify_cert_chain(hs->new_session, ssl,
-                                                           &alert)
+    ret = ssl->ctx->x509_method->session_verify_cert_chain(
+              hs->new_session.get(), ssl, &alert)
               ? ssl_verify_ok
               : ssl_verify_invalid;
   }
