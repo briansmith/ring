@@ -1077,6 +1077,9 @@ enum ssl_hs_wait_t {
 };
 
 struct SSL_HANDSHAKE {
+  explicit SSL_HANDSHAKE(SSL *ssl);
+  ~SSL_HANDSHAKE();
+
   /* ssl is a non-owning pointer to the parent |SSL| object. */
   SSL *ssl;
 
@@ -1087,45 +1090,45 @@ struct SSL_HANDSHAKE {
 
   /* wait contains the operation |do_tls13_handshake| is currently blocking on
    * or |ssl_hs_ok| if none. */
-  enum ssl_hs_wait_t wait;
+  enum ssl_hs_wait_t wait = ssl_hs_ok;
 
   /* state contains one of the SSL3_ST_* values. */
-  int state;
+  int state = SSL_ST_INIT;
 
   /* next_state is used when SSL_ST_FLUSH_DATA is entered */
-  int next_state;
+  int next_state = 0;
 
   /* tls13_state is the internal state for the TLS 1.3 handshake. Its values
    * depend on |do_tls13_handshake| but the starting state is always zero. */
-  int tls13_state;
+  int tls13_state = 0;
 
   /* min_version is the minimum accepted protocol version, taking account both
    * |SSL_OP_NO_*| and |SSL_CTX_set_min_proto_version| APIs. */
-  uint16_t min_version;
+  uint16_t min_version = 0;
 
   /* max_version is the maximum accepted protocol version, taking account both
    * |SSL_OP_NO_*| and |SSL_CTX_set_max_proto_version| APIs. */
-  uint16_t max_version;
+  uint16_t max_version = 0;
 
   /* session_id is the session ID in the ClientHello, used for the experimental
    * TLS 1.3 variant. */
-  uint8_t session_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
-  uint8_t session_id_len;
+  uint8_t session_id[SSL_MAX_SSL_SESSION_ID_LENGTH] = {0};
+  uint8_t session_id_len = 0;
 
-  size_t hash_len;
-  uint8_t secret[EVP_MAX_MD_SIZE];
-  uint8_t early_traffic_secret[EVP_MAX_MD_SIZE];
-  uint8_t client_handshake_secret[EVP_MAX_MD_SIZE];
-  uint8_t server_handshake_secret[EVP_MAX_MD_SIZE];
-  uint8_t client_traffic_secret_0[EVP_MAX_MD_SIZE];
-  uint8_t server_traffic_secret_0[EVP_MAX_MD_SIZE];
-  uint8_t expected_client_finished[EVP_MAX_MD_SIZE];
+  size_t hash_len = 0;
+  uint8_t secret[EVP_MAX_MD_SIZE] = {0};
+  uint8_t early_traffic_secret[EVP_MAX_MD_SIZE] = {0};
+  uint8_t client_handshake_secret[EVP_MAX_MD_SIZE] = {0};
+  uint8_t server_handshake_secret[EVP_MAX_MD_SIZE] = {0};
+  uint8_t client_traffic_secret_0[EVP_MAX_MD_SIZE] = {0};
+  uint8_t server_traffic_secret_0[EVP_MAX_MD_SIZE] = {0};
+  uint8_t expected_client_finished[EVP_MAX_MD_SIZE] = {0};
 
   union {
     /* sent is a bitset where the bits correspond to elements of kExtensions
      * in t1_lib.c. Each bit is set if that extension was sent in a
      * ClientHello. It's not used by servers. */
-    uint32_t sent;
+    uint32_t sent = 0;
     /* received is a bitset, like |sent|, but is used by servers to record
      * which extensions were received from a client. */
     uint32_t received;
@@ -1135,7 +1138,7 @@ struct SSL_HANDSHAKE {
     /* sent is a bitset where the bits correspond to elements of
      * |client_custom_extensions| in the |SSL_CTX|. Each bit is set if that
      * extension was sent in a ClientHello. It's not used by servers. */
-    uint16_t sent;
+    uint16_t sent = 0;
     /* received is a bitset, like |sent|, but is used by servers to record
      * which custom extensions were received from a client. The bits here
      * correspond to |server_custom_extensions|. */
@@ -1144,7 +1147,7 @@ struct SSL_HANDSHAKE {
 
   /* retry_group is the group ID selected by the server in HelloRetryRequest in
    * TLS 1.3. */
-  uint16_t retry_group;
+  uint16_t retry_group = 0;
 
   /* ecdh_ctx is the current ECDH instance. */
   SSL_ECDH_CTX ecdh_ctx;
@@ -1153,82 +1156,82 @@ struct SSL_HANDSHAKE {
   SSL_TRANSCRIPT transcript;
 
   /* cookie is the value of the cookie received from the server, if any. */
-  uint8_t *cookie;
-  size_t cookie_len;
+  uint8_t *cookie = nullptr;
+  size_t cookie_len = 0;
 
   /* key_share_bytes is the value of the previously sent KeyShare extension by
    * the client in TLS 1.3. */
-  uint8_t *key_share_bytes;
-  size_t key_share_bytes_len;
+  uint8_t *key_share_bytes = nullptr;
+  size_t key_share_bytes_len = 0;
 
   /* ecdh_public_key, for servers, is the key share to be sent to the client in
    * TLS 1.3. */
-  uint8_t *ecdh_public_key;
-  size_t ecdh_public_key_len;
+  uint8_t *ecdh_public_key = nullptr;
+  size_t ecdh_public_key_len = 0;
 
   /* peer_sigalgs are the signature algorithms that the peer supports. These are
    * taken from the contents of the signature algorithms extension for a server
    * or from the CertificateRequest for a client. */
-  uint16_t *peer_sigalgs;
+  uint16_t *peer_sigalgs = nullptr;
   /* num_peer_sigalgs is the number of entries in |peer_sigalgs|. */
-  size_t num_peer_sigalgs;
+  size_t num_peer_sigalgs = 0;
 
   /* peer_supported_group_list contains the supported group IDs advertised by
    * the peer. This is only set on the server's end. The server does not
    * advertise this extension to the client. */
-  uint16_t *peer_supported_group_list;
-  size_t peer_supported_group_list_len;
+  uint16_t *peer_supported_group_list = nullptr;
+  size_t peer_supported_group_list_len = 0;
 
   /* peer_key is the peer's ECDH key for a TLS 1.2 client. */
-  uint8_t *peer_key;
-  size_t peer_key_len;
+  uint8_t *peer_key = nullptr;
+  size_t peer_key_len = 0;
 
   /* server_params, in a TLS 1.2 server, stores the ServerKeyExchange
    * parameters. It has client and server randoms prepended for signing
    * convenience. */
-  uint8_t *server_params;
-  size_t server_params_len;
+  uint8_t *server_params = nullptr;
+  size_t server_params_len = 0;
 
   /* peer_psk_identity_hint, on the client, is the psk_identity_hint sent by the
    * server when using a TLS 1.2 PSK key exchange. */
-  char *peer_psk_identity_hint;
+  char *peer_psk_identity_hint = nullptr;
 
   /* ca_names, on the client, contains the list of CAs received in a
    * CertificateRequest message. */
-  STACK_OF(CRYPTO_BUFFER) *ca_names;
+  STACK_OF(CRYPTO_BUFFER) *ca_names = nullptr;
 
   /* cached_x509_ca_names contains a cache of parsed versions of the elements
    * of |ca_names|. */
-  STACK_OF(X509_NAME) *cached_x509_ca_names;
+  STACK_OF(X509_NAME) *cached_x509_ca_names = nullptr;
 
   /* certificate_types, on the client, contains the set of certificate types
    * received in a CertificateRequest message. */
-  uint8_t *certificate_types;
-  size_t num_certificate_types;
+  uint8_t *certificate_types = nullptr;
+  size_t num_certificate_types = 0;
 
   /* hostname, on the server, is the value of the SNI extension. */
-  char *hostname;
+  char *hostname = nullptr;
 
   /* local_pubkey is the public key we are authenticating as. */
-  EVP_PKEY *local_pubkey;
+  EVP_PKEY *local_pubkey = nullptr;
 
   /* peer_pubkey is the public key parsed from the peer's leaf certificate. */
-  EVP_PKEY *peer_pubkey;
+  EVP_PKEY *peer_pubkey = nullptr;
 
   /* new_session is the new mutable session being established by the current
    * handshake. It should not be cached. */
-  SSL_SESSION *new_session;
+  SSL_SESSION *new_session = nullptr;
 
   /* early_session is the session corresponding to the current 0-RTT state on
    * the client if |in_early_data| is true. */
-  SSL_SESSION *early_session;
+  SSL_SESSION *early_session = nullptr;
 
   /* new_cipher is the cipher being negotiated in this handshake. */
-  const SSL_CIPHER *new_cipher;
+  const SSL_CIPHER *new_cipher = nullptr;
 
   /* key_block is the record-layer key block for TLS 1.2 and earlier. */
-  uint8_t *key_block;
-  uint8_t key_block_len;
+  uint8_t *key_block = nullptr;
+  uint8_t key_block_len = 0;
 
   /* scts_requested is one if the SCT extension is in the ClientHello. */
   unsigned scts_requested:1;
@@ -1294,15 +1297,15 @@ struct SSL_HANDSHAKE {
   unsigned pending_private_key_op:1;
 
   /* client_version is the value sent or received in the ClientHello version. */
-  uint16_t client_version;
+  uint16_t client_version = 0;
 
   /* early_data_read is the amount of early data that has been read by the
    * record layer. */
-  uint16_t early_data_read;
+  uint16_t early_data_read = 0;
 
   /* early_data_written is the amount of early data that has been written by the
    * record layer. */
-  uint16_t early_data_written;
+  uint16_t early_data_written = 0;
 };
 
 SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl);

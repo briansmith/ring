@@ -132,64 +132,72 @@
 
 namespace bssl {
 
+SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
+    : ssl(ssl_arg),
+      scts_requested(0),
+      needs_psk_binder(0),
+      received_hello_retry_request(0),
+      accept_psk_mode(0),
+      cert_request(0),
+      certificate_status_expected(0),
+      ocsp_stapling_requested(0),
+      should_ack_sni(0),
+      in_false_start(0),
+      in_early_data(0),
+      early_data_offered(0),
+      can_early_read(0),
+      can_early_write(0),
+      next_proto_neg_seen(0),
+      ticket_expected(0),
+      extended_master_secret(0),
+      pending_private_key_op(0) {
+  OPENSSL_memset(&ecdh_ctx, 0, sizeof(ecdh_ctx));
+  OPENSSL_memset(&transcript, 0, sizeof(transcript));
+}
+
+SSL_HANDSHAKE::~SSL_HANDSHAKE() {
+  OPENSSL_cleanse(secret, sizeof(secret));
+  OPENSSL_cleanse(early_traffic_secret, sizeof(early_traffic_secret));
+  OPENSSL_cleanse(client_handshake_secret, sizeof(client_handshake_secret));
+  OPENSSL_cleanse(server_handshake_secret, sizeof(server_handshake_secret));
+  OPENSSL_cleanse(client_traffic_secret_0, sizeof(client_traffic_secret_0));
+  OPENSSL_cleanse(server_traffic_secret_0, sizeof(server_traffic_secret_0));
+  SSL_ECDH_CTX_cleanup(&ecdh_ctx);
+  SSL_TRANSCRIPT_cleanup(&transcript);
+  OPENSSL_free(cookie);
+  OPENSSL_free(key_share_bytes);
+  OPENSSL_free(ecdh_public_key);
+  SSL_SESSION_free(new_session);
+  SSL_SESSION_free(early_session);
+  OPENSSL_free(peer_sigalgs);
+  OPENSSL_free(peer_supported_group_list);
+  OPENSSL_free(peer_key);
+  OPENSSL_free(server_params);
+  OPENSSL_free(peer_psk_identity_hint);
+  sk_CRYPTO_BUFFER_pop_free(ca_names, CRYPTO_BUFFER_free);
+  ssl->ctx->x509_method->hs_flush_cached_ca_names(this);
+  OPENSSL_free(certificate_types);
+
+  if (key_block != NULL) {
+    OPENSSL_cleanse(key_block, key_block_len);
+    OPENSSL_free(key_block);
+  }
+
+  OPENSSL_free(hostname);
+  EVP_PKEY_free(peer_pubkey);
+  EVP_PKEY_free(local_pubkey);
+}
+
 SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl) {
-  SSL_HANDSHAKE *hs = (SSL_HANDSHAKE *)OPENSSL_malloc(sizeof(SSL_HANDSHAKE));
-  if (hs == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return NULL;
+  UniquePtr<SSL_HANDSHAKE> hs = MakeUnique<SSL_HANDSHAKE>(ssl);
+  if (!hs ||
+      !SSL_TRANSCRIPT_init(&hs->transcript)) {
+    return nullptr;
   }
-  OPENSSL_memset(hs, 0, sizeof(SSL_HANDSHAKE));
-  hs->ssl = ssl;
-  hs->wait = ssl_hs_ok;
-  hs->state = SSL_ST_INIT;
-  if (!SSL_TRANSCRIPT_init(&hs->transcript)) {
-    ssl_handshake_free(hs);
-    return NULL;
-  }
-  return hs;
+  return hs.release();
 }
 
-void ssl_handshake_free(SSL_HANDSHAKE *hs) {
-  if (hs == NULL) {
-    return;
-  }
-
-  OPENSSL_cleanse(hs->secret, sizeof(hs->secret));
-  OPENSSL_cleanse(hs->early_traffic_secret, sizeof(hs->early_traffic_secret));
-  OPENSSL_cleanse(hs->client_handshake_secret,
-                  sizeof(hs->client_handshake_secret));
-  OPENSSL_cleanse(hs->server_handshake_secret,
-                  sizeof(hs->server_handshake_secret));
-  OPENSSL_cleanse(hs->client_traffic_secret_0,
-                  sizeof(hs->client_traffic_secret_0));
-  OPENSSL_cleanse(hs->server_traffic_secret_0,
-                  sizeof(hs->server_traffic_secret_0));
-  SSL_ECDH_CTX_cleanup(&hs->ecdh_ctx);
-  SSL_TRANSCRIPT_cleanup(&hs->transcript);
-  OPENSSL_free(hs->cookie);
-  OPENSSL_free(hs->key_share_bytes);
-  OPENSSL_free(hs->ecdh_public_key);
-  SSL_SESSION_free(hs->new_session);
-  SSL_SESSION_free(hs->early_session);
-  OPENSSL_free(hs->peer_sigalgs);
-  OPENSSL_free(hs->peer_supported_group_list);
-  OPENSSL_free(hs->peer_key);
-  OPENSSL_free(hs->server_params);
-  OPENSSL_free(hs->peer_psk_identity_hint);
-  sk_CRYPTO_BUFFER_pop_free(hs->ca_names, CRYPTO_BUFFER_free);
-  hs->ssl->ctx->x509_method->hs_flush_cached_ca_names(hs);
-  OPENSSL_free(hs->certificate_types);
-
-  if (hs->key_block != NULL) {
-    OPENSSL_cleanse(hs->key_block, hs->key_block_len);
-    OPENSSL_free(hs->key_block);
-  }
-
-  OPENSSL_free(hs->hostname);
-  EVP_PKEY_free(hs->peer_pubkey);
-  EVP_PKEY_free(hs->local_pubkey);
-  OPENSSL_free(hs);
-}
+void ssl_handshake_free(SSL_HANDSHAKE *hs) { Delete(hs); }
 
 int ssl_check_message_type(SSL *ssl, int type) {
   if (ssl->s3->tmp.message_type != type) {
