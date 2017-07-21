@@ -3773,12 +3773,11 @@ TEST(SSLTest, SealRecord) {
   const std::vector<uint8_t> record = {1, 2, 3, 4, 5};
   std::vector<uint8_t> prefix(
       bssl::SealRecordPrefixLen(client.get(), record.size())),
-      body(record.size()), suffix(bssl::SealRecordMaxSuffixLen(client.get()));
-  size_t suffix_size;
+      body(record.size()),
+      suffix(bssl::SealRecordSuffixLen(client.get(), record.size()));
   ASSERT_TRUE(bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
                                bssl::MakeSpan(body), bssl::MakeSpan(suffix),
-                               &suffix_size, record));
-  suffix.resize(suffix_size);
+                               record));
 
   std::vector<uint8_t> sealed;
   sealed.insert(sealed.end(), prefix.begin(), prefix.end());
@@ -3819,12 +3818,10 @@ TEST(SSLTest, SealRecordInPlace) {
   std::vector<uint8_t> record = plaintext;
   std::vector<uint8_t> prefix(
       bssl::SealRecordPrefixLen(client.get(), record.size())),
-      suffix(bssl::SealRecordMaxSuffixLen(client.get()));
-  size_t suffix_size;
+      suffix(bssl::SealRecordSuffixLen(client.get(), record.size()));
   ASSERT_TRUE(bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
                                bssl::MakeSpan(record), bssl::MakeSpan(suffix),
-                               &suffix_size, record));
-  suffix.resize(suffix_size);
+                               record));
   record.insert(record.begin(), prefix.begin(), prefix.end());
   record.insert(record.end(), suffix.begin(), suffix.end());
 
@@ -3860,12 +3857,10 @@ TEST(SSLTest, SealRecordTrailingData) {
   std::vector<uint8_t> record = plaintext;
   std::vector<uint8_t> prefix(
       bssl::SealRecordPrefixLen(client.get(), record.size())),
-      suffix(bssl::SealRecordMaxSuffixLen(client.get()));
-  size_t suffix_size;
+      suffix(bssl::SealRecordSuffixLen(client.get(), record.size()));
   ASSERT_TRUE(bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
                                bssl::MakeSpan(record), bssl::MakeSpan(suffix),
-                               &suffix_size, record));
-  suffix.resize(suffix_size);
+                               record));
   record.insert(record.begin(), prefix.begin(), prefix.end());
   record.insert(record.end(), suffix.begin(), suffix.end());
   record.insert(record.end(), {5, 4, 3, 2, 1});
@@ -3901,8 +3896,8 @@ TEST(SSLTest, SealRecordInvalidSpanSize) {
   std::vector<uint8_t> record = {1, 2, 3, 4, 5};
   std::vector<uint8_t> prefix(
       bssl::SealRecordPrefixLen(client.get(), record.size())),
-      suffix(bssl::SealRecordMaxSuffixLen(client.get()));
-  size_t suffix_size;
+      body(record.size()),
+      suffix(bssl::SealRecordSuffixLen(client.get(), record.size()));
 
   auto expect_err = []() {
     int err = ERR_get_error();
@@ -3912,31 +3907,31 @@ TEST(SSLTest, SealRecordInvalidSpanSize) {
   };
   EXPECT_FALSE(bssl::SealRecord(
       client.get(), bssl::MakeSpan(prefix.data(), prefix.size() - 1),
-      bssl::MakeSpan(record), bssl::MakeSpan(suffix), &suffix_size, record));
+      bssl::MakeSpan(record), bssl::MakeSpan(suffix), record));
   expect_err();
   EXPECT_FALSE(bssl::SealRecord(
       client.get(), bssl::MakeSpan(prefix.data(), prefix.size() + 1),
-      bssl::MakeSpan(record), bssl::MakeSpan(suffix), &suffix_size, record));
+      bssl::MakeSpan(record), bssl::MakeSpan(suffix), record));
   expect_err();
 
   EXPECT_FALSE(
       bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
                        bssl::MakeSpan(record.data(), record.size() - 1),
-                       bssl::MakeSpan(suffix), &suffix_size, record));
+                       bssl::MakeSpan(suffix), record));
   expect_err();
   EXPECT_FALSE(
       bssl::SealRecord(client.get(), bssl::MakeSpan(prefix),
                        bssl::MakeSpan(record.data(), record.size() + 1),
-                       bssl::MakeSpan(suffix), &suffix_size, record));
+                       bssl::MakeSpan(suffix), record));
   expect_err();
 
   EXPECT_FALSE(bssl::SealRecord(
       client.get(), bssl::MakeSpan(prefix), bssl::MakeSpan(record),
-      bssl::MakeSpan(suffix.data(), suffix.size() - 1), &suffix_size, record));
+      bssl::MakeSpan(suffix.data(), suffix.size() - 1), record));
   expect_err();
   EXPECT_FALSE(bssl::SealRecord(
       client.get(), bssl::MakeSpan(prefix), bssl::MakeSpan(record),
-      bssl::MakeSpan(suffix.data(), suffix.size() + 1), &suffix_size, record));
+      bssl::MakeSpan(suffix.data(), suffix.size() + 1), record));
   expect_err();
 }
 

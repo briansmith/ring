@@ -520,6 +520,7 @@ static const EVP_AEAD aead_aes_128_gcm_siv_asm = {
     aead_aes_gcm_siv_asm_seal_scatter,
     NULL /* open_gather */,
     NULL /* get_iv */,
+    NULL /* tag_len */,
 };
 
 static const EVP_AEAD aead_aes_256_gcm_siv_asm = {
@@ -536,6 +537,7 @@ static const EVP_AEAD aead_aes_256_gcm_siv_asm = {
     aead_aes_gcm_siv_asm_seal_scatter,
     NULL /* open_gather */,
     NULL /* get_iv */,
+    NULL /* tag_len */,
 };
 
 #endif  /* X86_64 && !NO_ASM */
@@ -804,6 +806,7 @@ static const EVP_AEAD aead_aes_128_gcm_siv = {
     aead_aes_gcm_siv_seal_scatter,
     aead_aes_gcm_siv_open_gather,
     NULL /* get_iv */,
+    NULL /* tag_len */,
 };
 
 static const EVP_AEAD aead_aes_256_gcm_siv = {
@@ -820,6 +823,7 @@ static const EVP_AEAD aead_aes_256_gcm_siv = {
     aead_aes_gcm_siv_seal_scatter,
     aead_aes_gcm_siv_open_gather,
     NULL /* get_iv */,
+    NULL /* tag_len */,
 };
 
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM)

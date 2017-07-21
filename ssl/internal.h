@@ -498,10 +498,12 @@ class SSLAEADContext {
   /* MaxOverhead returns the maximum overhead of calling |Seal|. */
   size_t MaxOverhead() const;
 
-  /* MaxSuffixLen returns the maximum suffix length written by |SealScatter|.
-   * |extra_in_len| should equal the argument of the same name passed to
-   * |SealScatter|. */
-  size_t MaxSuffixLen(size_t extra_in_len) const;
+  /* SuffixLen calculates the suffix length written by |SealScatter| and writes
+   * it to |*out_suffix_len|. It returns true on success and false on error.
+   * |in_len| and |extra_in_len| should equal the argument of the same names
+   * passed to |SealScatter|. */
+  bool SuffixLen(size_t *out_suffix_len, size_t in_len,
+                 size_t extra_in_len) const;
 
   /* Open authenticates and decrypts |in_len| bytes from |in| in-place. On
    * success, it sets |*out| to the plaintext in |in| and returns true.
@@ -523,19 +525,17 @@ class SSLAEADContext {
    * success and zero on error.
    *
    * On successful return, exactly |ExplicitNonceLen| bytes are written to
-   * |out_prefix|, |in_len| bytes to |out|, and up to |MaxSuffixLen| bytes to
-   * |out_suffix|. |*out_suffix_len| is set to the actual number of bytes
-   * written to |out_suffix|.
+   * |out_prefix|, |in_len| bytes to |out|, and |SuffixLen| bytes to
+   * |out_suffix|.
    *
    * |extra_in| may point to an additional plaintext buffer. If present,
    * |extra_in_len| additional bytes are encrypted and authenticated, and the
-   * ciphertext is written to the beginning of |out_suffix|.  |MaxSuffixLen|
-   * may be used to size |out_suffix| accordingly.
+   * ciphertext is written to the beginning of |out_suffix|. |SuffixLen| should
+   * be used to size |out_suffix| accordingly.
    *
    * If |in| and |out| alias then |out| must be == |in|. Other arguments may not
    * alias anything. */
   bool SealScatter(uint8_t *out_prefix, uint8_t *out, uint8_t *out_suffix,
-                   size_t *out_suffix_len, size_t max_out_suffix_len,
                    uint8_t type, uint16_t wire_version, const uint8_t seqnum[8],
                    const uint8_t *in, size_t in_len, const uint8_t *extra_in,
                    size_t extra_in_len);

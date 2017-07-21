@@ -99,13 +99,33 @@ static int aead_tls_init(EVP_AEAD_CTX *ctx, const uint8_t *key, size_t key_len,
   return 1;
 }
 
+static size_t aead_tls_tag_len(const EVP_AEAD_CTX *ctx, const size_t in_len,
+                               const size_t extra_in_len) {
+  assert(extra_in_len == 0);
+  AEAD_TLS_CTX *tls_ctx = (AEAD_TLS_CTX *)ctx->aead_state;
+
+  const size_t hmac_len = HMAC_size(&tls_ctx->hmac_ctx);
+  if (EVP_CIPHER_CTX_mode(&tls_ctx->cipher_ctx) != EVP_CIPH_CBC_MODE) {
+    // The NULL cipher.
+    return hmac_len;
+  }
+
+  const size_t block_size = EVP_CIPHER_CTX_block_size(&tls_ctx->cipher_ctx);
+  /* An overflow of |in_len + hmac_len| doesn't affect the result mod
+   * |block_size|, provided that |block_size| is a smaller power of two. */
+  assert(block_size != 0 && (block_size & (block_size - 1)) == 0);
+  const size_t pad_len = block_size - (in_len + hmac_len) % block_size;
+  return hmac_len + pad_len;
+}
+
 static int aead_tls_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                  uint8_t *out_tag, size_t *out_tag_len,
-                                 size_t max_out_tag_len, const uint8_t *nonce,
-                                 size_t nonce_len, const uint8_t *in,
-                                 size_t in_len, const uint8_t *extra_in,
-                                 size_t extra_in_len, const uint8_t *ad,
-                                 size_t ad_len) {
+                                 const size_t max_out_tag_len,
+                                 const uint8_t *nonce, const size_t nonce_len,
+                                 const uint8_t *in, const size_t in_len,
+                                 const uint8_t *extra_in,
+                                 const size_t extra_in_len, const uint8_t *ad,
+                                 const size_t ad_len) {
   AEAD_TLS_CTX *tls_ctx = (AEAD_TLS_CTX *)ctx->aead_state;
 
   if (!tls_ctx->cipher_ctx.encrypt) {
@@ -120,8 +140,7 @@ static int aead_tls_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
     return 0;
   }
 
-  const size_t max_overhead = EVP_AEAD_max_overhead(ctx->aead);
-  if (max_out_tag_len < max_overhead) {
+  if (max_out_tag_len < aead_tls_tag_len(ctx, in_len, extra_in_len)) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BUFFER_TOO_SMALL);
     return 0;
   }
@@ -173,7 +192,8 @@ static int aead_tls_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
    * block from encrypting the input and split the result between |out| and
    * |out_tag|. Then feed the rest. */
 
-  size_t early_mac_len = (block_size - (in_len % block_size)) % block_size;
+  const size_t early_mac_len =
+      (block_size - (in_len % block_size) % block_size);
   if (early_mac_len != 0) {
     assert(len + block_size - early_mac_len == in_len);
     uint8_t buf[EVP_MAX_BLOCK_LENGTH];
@@ -212,8 +232,8 @@ static int aead_tls_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
   if (!EVP_EncryptFinal_ex(&tls_ctx->cipher_ctx, out_tag + tag_len, &len)) {
     return 0;
   }
-  tag_len += len;
-  assert(tag_len <= max_overhead);
+  assert(len == 0); /* Padding is explicit. */
+  assert(tag_len == aead_tls_tag_len(ctx, in_len, extra_in_len));
 
   *out_tag_len = tag_len;
   return 1;
@@ -467,6 +487,7 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_tls = {
     aead_tls_seal_scatter,
     NULL, /* open_gather */
     NULL, /* get_iv */
+    aead_tls_tag_len,
 };
 
 static const EVP_AEAD aead_aes_128_cbc_sha1_tls_implicit_iv = {
@@ -483,6 +504,7 @@ static const EVP_AEAD aead_aes_128_cbc_sha1_tls_implicit_iv = {
     aead_tls_seal_scatter,
     NULL,            /* open_gather */
     aead_tls_get_iv, /* get_iv */
+    aead_tls_tag_len,
 };
 
 static const EVP_AEAD aead_aes_128_cbc_sha256_tls = {
@@ -499,6 +521,7 @@ static const EVP_AEAD aead_aes_128_cbc_sha256_tls = {
     aead_tls_seal_scatter,
     NULL, /* open_gather */
     NULL, /* get_iv */
+    aead_tls_tag_len,
 };
 
 static const EVP_AEAD aead_aes_256_cbc_sha1_tls = {
@@ -515,6 +538,7 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_tls = {
     aead_tls_seal_scatter,
     NULL, /* open_gather */
     NULL, /* get_iv */
+    aead_tls_tag_len,
 };
 
 static const EVP_AEAD aead_aes_256_cbc_sha1_tls_implicit_iv = {
@@ -531,6 +555,7 @@ static const EVP_AEAD aead_aes_256_cbc_sha1_tls_implicit_iv = {
     aead_tls_seal_scatter,
     NULL,            /* open_gather */
     aead_tls_get_iv, /* get_iv */
+    aead_tls_tag_len,
 };
 
 static const EVP_AEAD aead_aes_256_cbc_sha256_tls = {
@@ -547,6 +572,7 @@ static const EVP_AEAD aead_aes_256_cbc_sha256_tls = {
     aead_tls_seal_scatter,
     NULL, /* open_gather */
     NULL, /* get_iv */
+    aead_tls_tag_len,
 };
 
 static const EVP_AEAD aead_aes_256_cbc_sha384_tls = {
@@ -563,6 +589,7 @@ static const EVP_AEAD aead_aes_256_cbc_sha384_tls = {
     aead_tls_seal_scatter,
     NULL, /* open_gather */
     NULL, /* get_iv */
+    aead_tls_tag_len,
 };
 
 static const EVP_AEAD aead_des_ede3_cbc_sha1_tls = {
@@ -579,6 +606,7 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_tls = {
     aead_tls_seal_scatter,
     NULL, /* open_gather */
     NULL, /* get_iv */
+    aead_tls_tag_len,
 };
 
 static const EVP_AEAD aead_des_ede3_cbc_sha1_tls_implicit_iv = {
@@ -595,6 +623,7 @@ static const EVP_AEAD aead_des_ede3_cbc_sha1_tls_implicit_iv = {
     aead_tls_seal_scatter,
     NULL,            /* open_gather */
     aead_tls_get_iv, /* get_iv */
+    aead_tls_tag_len,
 };
 
 static const EVP_AEAD aead_null_sha1_tls = {
@@ -611,6 +640,7 @@ static const EVP_AEAD aead_null_sha1_tls = {
     aead_tls_seal_scatter,
     NULL, /* open_gather */
     NULL, /* get_iv */
+    aead_tls_tag_len,
 };
 
 const EVP_AEAD *EVP_aead_aes_128_cbc_sha1_tls(void) {

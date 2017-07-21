@@ -294,6 +294,7 @@ static const EVP_AEAD aead_chacha20_poly1305 = {
     aead_chacha20_poly1305_seal_scatter,
     aead_chacha20_poly1305_open_gather,
     NULL, /* get_iv */
+    NULL, /* tag_len */
 };
 
 const EVP_AEAD *EVP_aead_chacha20_poly1305(void) {

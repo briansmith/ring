@@ -264,3 +264,21 @@ int EVP_AEAD_CTX_get_iv(const EVP_AEAD_CTX *ctx, const uint8_t **out_iv,
 
   return ctx->aead->get_iv(ctx, out_iv, out_len);
 }
+
+int EVP_AEAD_CTX_tag_len(const EVP_AEAD_CTX *ctx, size_t *out_tag_len,
+                         const size_t in_len, const size_t extra_in_len) {
+  assert(ctx->aead->seal_scatter_supports_extra_in || !extra_in_len);
+
+  if (ctx->aead->tag_len) {
+    *out_tag_len = ctx->aead->tag_len(ctx, in_len, extra_in_len);
+    return 1;
+  }
+
+  if (extra_in_len + ctx->tag_len < extra_in_len) {
+    OPENSSL_PUT_ERROR(CIPHER, ERR_R_OVERFLOW);
+    *out_tag_len = 0;
+    return 0;
+  }
+  *out_tag_len = extra_in_len + ctx->tag_len;
+  return 1;
+}

@@ -150,15 +150,21 @@ size_t SSLAEADContext::ExplicitNonceLen() const {
   return 0;
 }
 
-size_t SSLAEADContext::MaxSuffixLen(size_t extra_in_len) const {
-  return extra_in_len +
-         (is_null_cipher() || FUZZER_MODE
-              ? 0
-              : EVP_AEAD_max_overhead(EVP_AEAD_CTX_aead(ctx_.get())));
+bool SSLAEADContext::SuffixLen(size_t *out_suffix_len, const size_t in_len,
+                               const size_t extra_in_len) const {
+  if (is_null_cipher() || FUZZER_MODE) {
+    *out_suffix_len = extra_in_len;
+    return true;
+  }
+  return !!EVP_AEAD_CTX_tag_len(ctx_.get(), out_suffix_len, in_len,
+                                extra_in_len);
 }
 
 size_t SSLAEADContext::MaxOverhead() const {
-  return ExplicitNonceLen() + MaxSuffixLen(0);
+  return ExplicitNonceLen() +
+         (is_null_cipher() || FUZZER_MODE
+              ? 0
+              : EVP_AEAD_max_overhead(EVP_AEAD_CTX_aead(ctx_.get())));
 }
 
 size_t SSLAEADContext::GetAdditionalData(uint8_t out[13], uint8_t type,
@@ -255,18 +261,20 @@ bool SSLAEADContext::Open(CBS *out, uint8_t type, uint16_t wire_version,
 }
 
 bool SSLAEADContext::SealScatter(uint8_t *out_prefix, uint8_t *out,
-                                 uint8_t *out_suffix, size_t *out_suffix_len,
-                                 size_t max_out_suffix_len, uint8_t type,
+                                 uint8_t *out_suffix, uint8_t type,
                                  uint16_t wire_version, const uint8_t seqnum[8],
                                  const uint8_t *in, size_t in_len,
                                  const uint8_t *extra_in, size_t extra_in_len) {
-  if ((in != out && buffers_alias(in, in_len, out, in_len)) ||
-      buffers_alias(in, in_len, out_suffix, max_out_suffix_len)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_OUTPUT_ALIASES_INPUT);
+  const size_t prefix_len = ExplicitNonceLen();
+  size_t suffix_len;
+  if (!SuffixLen(&suffix_len, in_len, extra_in_len)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_TOO_LARGE);
     return false;
   }
-  if (extra_in_len > max_out_suffix_len) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
+  if ((in != out && buffers_alias(in, in_len, out, in_len)) ||
+      buffers_alias(in, in_len, out_prefix, prefix_len) ||
+      buffers_alias(in, in_len, out_suffix, suffix_len)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_OUTPUT_ALIASES_INPUT);
     return false;
   }
 
@@ -274,7 +282,6 @@ bool SSLAEADContext::SealScatter(uint8_t *out_prefix, uint8_t *out,
     /* Handle the initial NULL cipher. */
     OPENSSL_memmove(out, in, in_len);
     OPENSSL_memmove(out_suffix, extra_in, extra_in_len);
-    *out_suffix_len = extra_in_len;
     return true;
   }
 
@@ -327,32 +334,38 @@ bool SSLAEADContext::SealScatter(uint8_t *out_prefix, uint8_t *out,
     }
   }
 
-  return !!EVP_AEAD_CTX_seal_scatter(
-      ctx_.get(), out, out_suffix, out_suffix_len, max_out_suffix_len, nonce,
+  size_t written_suffix_len;
+  bool result = !!EVP_AEAD_CTX_seal_scatter(
+      ctx_.get(), out, out_suffix, &written_suffix_len, suffix_len, nonce,
       nonce_len, in, in_len, extra_in, extra_in_len, ad, ad_len);
+  assert(!result || written_suffix_len == suffix_len);
+  return result;
 }
 
 bool SSLAEADContext::Seal(uint8_t *out, size_t *out_len, size_t max_out_len,
                           uint8_t type, uint16_t wire_version,
                           const uint8_t seqnum[8], const uint8_t *in,
                           size_t in_len) {
-  size_t prefix_len = ExplicitNonceLen();
-  if (in_len + prefix_len < in_len) {
+  const size_t prefix_len = ExplicitNonceLen();
+  size_t suffix_len;
+  if (!SuffixLen(&suffix_len, in_len, 0)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_TOO_LARGE);
+    return false;
+  }
+  if (in_len + prefix_len < in_len ||
+      in_len + prefix_len + suffix_len < in_len + prefix_len) {
     OPENSSL_PUT_ERROR(CIPHER, SSL_R_RECORD_TOO_LARGE);
     return false;
   }
-  if (in_len + prefix_len > max_out_len) {
+  if (in_len + prefix_len + suffix_len > max_out_len) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
     return false;
   }
 
-  size_t suffix_len;
-  if (!SealScatter(out, out + prefix_len, out + prefix_len + in_len,
-                   &suffix_len, max_out_len - prefix_len - in_len, type,
+  if (!SealScatter(out, out + prefix_len, out + prefix_len + in_len, type,
                    wire_version, seqnum, in, in_len, 0, 0)) {
     return false;
   }
-  assert(suffix_len <= MaxSuffixLen(0));
   *out_len = prefix_len + in_len + suffix_len;
   return true;
 }
