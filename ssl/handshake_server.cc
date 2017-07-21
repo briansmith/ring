@@ -1228,20 +1228,18 @@ static int ssl3_get_client_certificate(SSL_HANDSHAKE *hs) {
   CBS certificate_msg;
   CBS_init(&certificate_msg, ssl->init_msg, ssl->init_num);
 
-  sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
-  hs->peer_pubkey.reset();
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  hs->new_session->certs =
-      ssl_parse_cert_chain(&alert, &hs->peer_pubkey,
-                           ssl->retain_only_sha256_of_client_certs
-                               ? hs->new_session->peer_sha256
-                               : NULL,
-                           &certificate_msg, ssl->ctx->pool)
-          .release();
-  if (hs->new_session->certs == NULL) {
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> chain;
+  if (!ssl_parse_cert_chain(&alert, &chain, &hs->peer_pubkey,
+                            ssl->retain_only_sha256_of_client_certs
+                                ? hs->new_session->peer_sha256
+                                : NULL,
+                            &certificate_msg, ssl->ctx->pool)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return -1;
   }
+  sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
+  hs->new_session->certs = chain.release();
 
   if (CBS_len(&certificate_msg) != 0 ||
       !ssl->ctx->x509_method->session_cache_objects(hs->new_session.get())) {

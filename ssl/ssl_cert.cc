@@ -382,39 +382,47 @@ int ssl_has_certificate(const SSL *ssl) {
          ssl_has_private_key(ssl);
 }
 
-UniquePtr<STACK_OF(CRYPTO_BUFFER)>
-    ssl_parse_cert_chain(uint8_t *out_alert, UniquePtr<EVP_PKEY> *out_pubkey,
-                         uint8_t *out_leaf_sha256, CBS *cbs,
-                         CRYPTO_BUFFER_POOL *pool) {
-  UniquePtr<EVP_PKEY> pubkey;
-  UniquePtr<STACK_OF(CRYPTO_BUFFER)> ret(sk_CRYPTO_BUFFER_new_null());
-  if (!ret) {
-    *out_alert = SSL_AD_INTERNAL_ERROR;
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return nullptr;
-  }
+bool ssl_parse_cert_chain(uint8_t *out_alert,
+                          UniquePtr<STACK_OF(CRYPTO_BUFFER)> *out_chain,
+                          UniquePtr<EVP_PKEY> *out_pubkey,
+                          uint8_t *out_leaf_sha256, CBS *cbs,
+                          CRYPTO_BUFFER_POOL *pool) {
+  out_chain->reset();
+  out_pubkey->reset();
 
   CBS certificate_list;
   if (!CBS_get_u24_length_prefixed(cbs, &certificate_list)) {
     *out_alert = SSL_AD_DECODE_ERROR;
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return nullptr;
+    return false;
   }
 
+  if (CBS_len(&certificate_list) == 0) {
+    return true;
+  }
+
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> chain(sk_CRYPTO_BUFFER_new_null());
+  if (!chain) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return false;
+  }
+
+  UniquePtr<EVP_PKEY> pubkey;
   while (CBS_len(&certificate_list) > 0) {
     CBS certificate;
     if (!CBS_get_u24_length_prefixed(&certificate_list, &certificate) ||
         CBS_len(&certificate) == 0) {
       *out_alert = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_LENGTH_MISMATCH);
-      return nullptr;
+      return false;
     }
 
-    if (sk_CRYPTO_BUFFER_num(ret.get()) == 0) {
+    if (sk_CRYPTO_BUFFER_num(chain.get()) == 0) {
       pubkey = ssl_cert_parse_pubkey(&certificate);
       if (!pubkey) {
         *out_alert = SSL_AD_DECODE_ERROR;
-        return nullptr;
+        return false;
       }
 
       /* Retain the hash of the leaf certificate if requested. */
@@ -426,16 +434,17 @@ UniquePtr<STACK_OF(CRYPTO_BUFFER)>
     CRYPTO_BUFFER *buf =
         CRYPTO_BUFFER_new_from_CBS(&certificate, pool);
     if (buf == NULL ||
-        !sk_CRYPTO_BUFFER_push(ret.get(), buf)) {
+        !sk_CRYPTO_BUFFER_push(chain.get(), buf)) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
       CRYPTO_BUFFER_free(buf);
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      return nullptr;
+      return false;
     }
   }
 
+  *out_chain = std::move(chain);
   *out_pubkey = std::move(pubkey);
-  return ret;
+  return true;
 }
 
 int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {

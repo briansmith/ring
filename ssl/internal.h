@@ -920,18 +920,21 @@ void ssl_write_buffer_clear(SSL *ssl);
 int ssl_has_certificate(const SSL *ssl);
 
 /* ssl_parse_cert_chain parses a certificate list from |cbs| in the format used
- * by a TLS Certificate message. On success, it returns a newly-allocated
- * |CRYPTO_BUFFER| list and advances |cbs|. Otherwise, it returns nullptr and
- * sets |*out_alert| to an alert to send to the peer.
+ * by a TLS Certificate message. On success, it advances |cbs| and returns
+ * true. Otherwise, it returns false and sets |*out_alert| to an alert to send
+ * to the peer.
  *
- * If the list is non-empty then |*out_pubkey| will be set to a freshly
- * allocated public-key from the leaf certificate.
+ * If the list is non-empty then |*out_chain| and |*out_pubkey| will be set to
+ * the certificate chain and the leaf certificate's public key
+ * respectively. Otherwise, both will be set to nullptr.
  *
  * If the list is non-empty and |out_leaf_sha256| is non-NULL, it writes the
  * SHA-256 hash of the leaf to |out_leaf_sha256|. */
-UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_cert_chain(
-    uint8_t *out_alert, UniquePtr<EVP_PKEY> *out_pubkey,
-    uint8_t *out_leaf_sha256, CBS *cbs, CRYPTO_BUFFER_POOL *pool);
+bool ssl_parse_cert_chain(uint8_t *out_alert,
+                          UniquePtr<STACK_OF(CRYPTO_BUFFER)> *out_chain,
+                          UniquePtr<EVP_PKEY> *out_pubkey,
+                          uint8_t *out_leaf_sha256, CBS *cbs,
+                          CRYPTO_BUFFER_POOL *pool);
 
 /* ssl_add_cert_chain adds |ssl|'s certificate chain to |cbb| in the format used
  * by a TLS Certificate message. If there is no certificate chain, it emits an

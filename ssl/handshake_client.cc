@@ -1087,15 +1087,14 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
-  hs->peer_pubkey.reset();
-  hs->new_session->certs =
-      ssl_parse_cert_chain(&alert, &hs->peer_pubkey, NULL, &cbs, ssl->ctx->pool)
-          .release();
-  if (hs->new_session->certs == NULL) {
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> chain;
+  if (!ssl_parse_cert_chain(&alert, &chain, &hs->peer_pubkey, NULL, &cbs,
+                            ssl->ctx->pool)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return -1;
   }
+  sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
+  hs->new_session->certs = chain.release();
 
   if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) == 0 ||
       CBS_len(&cbs) != 0 ||

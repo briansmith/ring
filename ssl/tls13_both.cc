@@ -196,7 +196,9 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
   CBS cbs, context, certificate_list;
   CBS_init(&cbs, ssl->init_msg, ssl->init_num);
   if (!CBS_get_u8_length_prefixed(&cbs, &context) ||
-      CBS_len(&context) != 0) {
+      CBS_len(&context) != 0 ||
+      !CBS_get_u24_length_prefixed(&cbs, &certificate_list) ||
+      CBS_len(&cbs) != 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return 0;
@@ -206,12 +208,6 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
   if (!certs) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-
-  if (!CBS_get_u24_length_prefixed(&cbs, &certificate_list)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return 0;
   }
 
@@ -326,10 +322,10 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
     }
   }
 
-  if (CBS_len(&cbs) != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return 0;
+  /* Store a null certificate list rather than an empty one if the peer didn't
+   * send certificates. */
+  if (sk_CRYPTO_BUFFER_num(certs.get()) == 0) {
+    certs.reset();
   }
 
   hs->peer_pubkey = std::move(pkey);

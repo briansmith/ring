@@ -1716,15 +1716,59 @@ static bool TestGetPeerCertificate(bool is_dtls, const SSL_METHOD *method,
     return false;
   }
 
-  // However, for historical reasons, the chain includes the leaf on the
+  // However, for historical reasons, the X509 chain includes the leaf on the
   // client, but does not on the server.
-  if (sk_X509_num(SSL_get_peer_cert_chain(client.get())) != 1) {
+  if (sk_X509_num(SSL_get_peer_cert_chain(client.get())) != 1 ||
+      sk_CRYPTO_BUFFER_num(SSL_get0_peer_certificates(client.get())) != 1) {
     fprintf(stderr, "Client peer chain was incorrect.\n");
     return false;
   }
 
-  if (sk_X509_num(SSL_get_peer_cert_chain(server.get())) != 0) {
+  if (sk_X509_num(SSL_get_peer_cert_chain(server.get())) != 0 ||
+      sk_CRYPTO_BUFFER_num(SSL_get0_peer_certificates(server.get())) != 1) {
     fprintf(stderr, "Server peer chain was incorrect.\n");
+    return false;
+  }
+
+  return true;
+}
+
+static bool TestNoPeerCertificate(bool is_dtls, const SSL_METHOD *method,
+                                  uint16_t version) {
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  if (!cert || !key) {
+    return false;
+  }
+
+  // Configure an anonymous client.
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(method)),
+      client_ctx(SSL_CTX_new(method));
+  if (!server_ctx || !client_ctx ||
+      !SSL_CTX_use_certificate(server_ctx.get(), cert.get()) ||
+      !SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()) ||
+      !SSL_CTX_set_min_proto_version(server_ctx.get(), version) ||
+      !SSL_CTX_set_max_proto_version(server_ctx.get(), version) ||
+      !SSL_CTX_set_min_proto_version(client_ctx.get(), version) ||
+      !SSL_CTX_set_max_proto_version(client_ctx.get(), version)) {
+    return false;
+  }
+  SSL_CTX_set_verify(
+      server_ctx.get(), SSL_VERIFY_PEER, nullptr);
+  SSL_CTX_set_cert_verify_callback(server_ctx.get(), VerifySucceed, NULL);
+  SSL_CTX_set_cert_verify_callback(client_ctx.get(), VerifySucceed, NULL);
+
+  bssl::UniquePtr<SSL> client, server;
+  if (!ConnectClientAndServer(&client, &server, client_ctx.get(),
+                              server_ctx.get(), nullptr /* no session */)) {
+    return false;
+  }
+
+  // Client and server should both see the leaf certificate.
+  bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(server.get()));
+  if (peer ||
+      SSL_get0_peer_certificates(server.get()) != nullptr) {
+    fprintf(stderr, "Server peer certificate was non-null.\n");
     return false;
   }
 
@@ -3900,6 +3944,7 @@ TEST(SSLTest, AllTests) {
       !ForEachVersion(TestSequenceNumber) ||
       !ForEachVersion(TestOneSidedShutdown) ||
       !ForEachVersion(TestGetPeerCertificate) ||
+      !ForEachVersion(TestNoPeerCertificate) ||
       !ForEachVersion(TestRetainOnlySHA256OfCerts) ||
       !TestClientHello() ||
       !ForEachVersion(TestSessionIDContext) ||
