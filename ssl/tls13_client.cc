@@ -336,22 +336,16 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   // Resolve ECDHE and incorporate it into the secret.
-  uint8_t *dhe_secret;
-  size_t dhe_secret_len;
+  Array<uint8_t> dhe_secret;
   alert = SSL_AD_DECODE_ERROR;
-  if (!ssl_ext_key_share_parse_serverhello(hs, &dhe_secret, &dhe_secret_len,
-                                           &alert, &key_share)) {
+  if (!ssl_ext_key_share_parse_serverhello(hs, &dhe_secret, &alert,
+                                           &key_share)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
 
-  if (!tls13_advance_key_schedule(hs, dhe_secret, dhe_secret_len)) {
-    OPENSSL_free(dhe_secret);
-    return ssl_hs_error;
-  }
-  OPENSSL_free(dhe_secret);
-
-  if (!ssl_hash_message(hs, msg) ||
+  if (!tls13_advance_key_schedule(hs, dhe_secret.data(), dhe_secret.size()) ||
+      !ssl_hash_message(hs, msg) ||
       !tls13_derive_handshake_secrets(hs)) {
     return ssl_hs_error;
   }

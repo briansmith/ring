@@ -113,6 +113,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <utility>
+
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
@@ -2167,8 +2169,8 @@ static int ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   return CBB_flush(out);
 }
 
-int ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t **out_secret,
-                                        size_t *out_secret_len,
+int ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
+                                        Array<uint8_t> *out_secret,
                                         uint8_t *out_alert, CBS *contents) {
   CBS peer_key;
   uint16_t group_id;
@@ -2185,8 +2187,9 @@ int ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t **out_secret,
     return 0;
   }
 
-  if (!hs->key_share->Finish(out_secret, out_secret_len, out_alert,
-                             CBS_data(&peer_key), CBS_len(&peer_key))) {
+  if (!hs->key_share->Finish(
+          out_secret, out_alert,
+          MakeConstSpan(CBS_data(&peer_key), CBS_len(&peer_key)))) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return 0;
   }
@@ -2197,8 +2200,7 @@ int ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t **out_secret,
 }
 
 int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
-                                        uint8_t **out_secret,
-                                        size_t *out_secret_len,
+                                        Array<uint8_t> *out_secret,
                                         uint8_t *out_alert, CBS *contents) {
   uint16_t group_id;
   CBS key_shares;
@@ -2241,29 +2243,25 @@ int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
 
   if (!found) {
     *out_found = false;
-    *out_secret = NULL;
-    *out_secret_len = 0;
+    out_secret->Reset();
     return 1;
   }
 
   // Compute the DH secret.
-  uint8_t *secret = NULL;
-  size_t secret_len;
+  Array<uint8_t> secret;
   ScopedCBB public_key;
   UniquePtr<SSLKeyShare> key_share = SSLKeyShare::Create(group_id);
-  if (!key_share ||
-      !CBB_init(public_key.get(), 32) ||
-      !key_share->Accept(public_key.get(), &secret, &secret_len, out_alert,
-                         CBS_data(&peer_key), CBS_len(&peer_key)) ||
+  if (!key_share || !CBB_init(public_key.get(), 32) ||
+      !key_share->Accept(
+          public_key.get(), &secret, out_alert,
+          MakeConstSpan(CBS_data(&peer_key), CBS_len(&peer_key))) ||
       !CBB_finish(public_key.get(), &hs->ecdh_public_key,
                   &hs->ecdh_public_key_len)) {
-    OPENSSL_free(secret);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
 
-  *out_secret = secret;
-  *out_secret_len = secret_len;
+  *out_secret = std::move(secret);
   *out_found = true;
   return 1;
 }

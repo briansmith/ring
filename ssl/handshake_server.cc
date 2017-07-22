@@ -1048,12 +1048,6 @@ static enum ssl_hs_wait_t do_verify_client_certificate(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-
-  ssl_hs_wait_t ret = ssl_hs_error;
-  uint8_t *premaster_secret = NULL;
-  size_t premaster_secret_len = 0;
-  uint8_t *decrypt_buf = NULL;
-
   SSLMessage msg;
   if (!ssl->method->get_message(ssl, &msg)) {
     return ssl_hs_read_message;
@@ -1077,25 +1071,25 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
         ((alg_k & SSL_kPSK) && CBS_len(&client_key_exchange) != 0)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      goto err;
+      return ssl_hs_error;
     }
 
     if (CBS_len(&psk_identity) > PSK_MAX_IDENTITY_LEN ||
         CBS_contains_zero_byte(&psk_identity)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-      goto err;
+      return ssl_hs_error;
     }
 
     if (!CBS_strdup(&psk_identity, &hs->new_session->psk_identity)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      goto err;
+      return ssl_hs_error;
     }
   }
 
-  // Depending on the key exchange method, compute |premaster_secret| and
-  // |premaster_secret_len|.
+  // Depending on the key exchange method, compute |premaster_secret|.
+  Array<uint8_t> premaster_secret;
   if (alg_k & SSL_kRSA) {
     CBS encrypted_premaster_secret;
     if (ssl->version > SSL3_VERSION) {
@@ -1104,63 +1098,56 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
           CBS_len(&client_key_exchange) != 0) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-        goto err;
+        return ssl_hs_error;
       }
     } else {
       encrypted_premaster_secret = client_key_exchange;
     }
 
     // Allocate a buffer large enough for an RSA decryption.
-    const size_t rsa_size = EVP_PKEY_size(hs->local_pubkey.get());
-    decrypt_buf = (uint8_t *)OPENSSL_malloc(rsa_size);
-    if (decrypt_buf == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
+    Array<uint8_t> decrypt_buf;
+    if (!decrypt_buf.Init(EVP_PKEY_size(hs->local_pubkey.get()))) {
+      return ssl_hs_error;
     }
 
     // Decrypt with no padding. PKCS#1 padding will be removed as part of the
     // timing-sensitive code below.
     size_t decrypt_len;
-    switch (ssl_private_key_decrypt(hs, decrypt_buf, &decrypt_len, rsa_size,
+    switch (ssl_private_key_decrypt(hs, decrypt_buf.data(), &decrypt_len,
+                                    decrypt_buf.size(),
                                     CBS_data(&encrypted_premaster_secret),
                                     CBS_len(&encrypted_premaster_secret))) {
       case ssl_private_key_success:
         break;
       case ssl_private_key_failure:
-        goto err;
+        return ssl_hs_error;
       case ssl_private_key_retry:
-        ret = ssl_hs_private_key_operation;
-        goto err;
+        return ssl_hs_private_key_operation;
     }
 
-    if (decrypt_len != rsa_size) {
+    if (decrypt_len != decrypt_buf.size()) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
-      goto err;
+      return ssl_hs_error;
     }
 
     // Prepare a random premaster, to be used on invalid padding. See RFC 5246,
     // section 7.4.7.1.
-    premaster_secret_len = SSL_MAX_MASTER_KEY_LENGTH;
-    premaster_secret = (uint8_t *)OPENSSL_malloc(premaster_secret_len);
-    if (premaster_secret == NULL) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
-    }
-    if (!RAND_bytes(premaster_secret, premaster_secret_len)) {
-      goto err;
+    if (!premaster_secret.Init(SSL_MAX_MASTER_KEY_LENGTH) ||
+        !RAND_bytes(premaster_secret.data(), premaster_secret.size())) {
+      return ssl_hs_error;
     }
 
     // The smallest padded premaster is 11 bytes of overhead. Small keys are
     // publicly invalid.
-    if (decrypt_len < 11 + premaster_secret_len) {
+    if (decrypt_len < 11 + premaster_secret.size()) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
-      goto err;
+      return ssl_hs_error;
     }
 
     // Check the padding. See RFC 3447, section 7.2.2.
-    size_t padding_len = decrypt_len - premaster_secret_len;
+    size_t padding_len = decrypt_len - premaster_secret.size();
     uint8_t good = constant_time_eq_int_8(decrypt_buf[0], 0) &
                    constant_time_eq_int_8(decrypt_buf[1], 2);
     for (size_t i = 2; i < padding_len - 1; i++) {
@@ -1177,13 +1164,10 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     // Select, in constant time, either the decrypted premaster or the random
     // premaster based on |good|.
-    for (size_t i = 0; i < premaster_secret_len; i++) {
+    for (size_t i = 0; i < premaster_secret.size(); i++) {
       premaster_secret[i] = constant_time_select_8(
           good, decrypt_buf[padding_len + i], premaster_secret[i]);
     }
-
-    OPENSSL_free(decrypt_buf);
-    decrypt_buf = NULL;
   } else if (alg_k & SSL_kECDHE) {
     // Parse the ClientKeyExchange.
     CBS peer_key;
@@ -1191,15 +1175,16 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
         CBS_len(&client_key_exchange) != 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-      goto err;
+      return ssl_hs_error;
     }
 
     // Compute the premaster.
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!hs->key_share->Finish(&premaster_secret, &premaster_secret_len, &alert,
-                               CBS_data(&peer_key), CBS_len(&peer_key))) {
+    if (!hs->key_share->Finish(
+            &premaster_secret, &alert,
+            MakeConstSpan(CBS_data(&peer_key), CBS_len(&peer_key)))) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
-      goto err;
+      return ssl_hs_error;
     }
 
     // The key exchange state may now be discarded.
@@ -1207,7 +1192,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
   } else if (!(alg_k & SSL_kPSK)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-    goto err;
+    return ssl_hs_error;
   }
 
   // For a PSK cipher suite, the actual pre-master secret is combined with the
@@ -1216,7 +1201,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     if (ssl->psk_server_callback == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      goto err;
+      return ssl_hs_error;
     }
 
     // Look up the key for the identity.
@@ -1226,24 +1211,21 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     if (psk_len > PSK_MAX_PSK_LEN) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      goto err;
+      return ssl_hs_error;
     } else if (psk_len == 0) {
       // PSK related to the given identity not found.
       OPENSSL_PUT_ERROR(SSL, SSL_R_PSK_IDENTITY_NOT_FOUND);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNKNOWN_PSK_IDENTITY);
-      goto err;
+      return ssl_hs_error;
     }
 
     if (alg_k & SSL_kPSK) {
       // In plain PSK, other_secret is a block of 0s with the same length as the
       // pre-shared key.
-      premaster_secret_len = psk_len;
-      premaster_secret = (uint8_t *)OPENSSL_malloc(premaster_secret_len);
-      if (premaster_secret == NULL) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-        goto err;
+      if (!premaster_secret.Init(psk_len)) {
+        return ssl_hs_error;
       }
-      OPENSSL_memset(premaster_secret, 0, premaster_secret_len);
+      OPENSSL_memset(premaster_secret.data(), 0, premaster_secret.size());
     }
 
     ScopedCBB new_premaster;
@@ -1251,47 +1233,36 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     uint8_t *new_data;
     size_t new_len;
     if (!CBB_init(new_premaster.get(),
-                  2 + psk_len + 2 + premaster_secret_len) ||
+                  2 + psk_len + 2 + premaster_secret.size()) ||
         !CBB_add_u16_length_prefixed(new_premaster.get(), &child) ||
-        !CBB_add_bytes(&child, premaster_secret, premaster_secret_len) ||
+        !CBB_add_bytes(&child, premaster_secret.data(),
+                       premaster_secret.size()) ||
         !CBB_add_u16_length_prefixed(new_premaster.get(), &child) ||
         !CBB_add_bytes(&child, psk, psk_len) ||
         !CBB_finish(new_premaster.get(), &new_data, &new_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
+      return ssl_hs_error;
     }
 
-    OPENSSL_cleanse(premaster_secret, premaster_secret_len);
-    OPENSSL_free(premaster_secret);
-    premaster_secret = new_data;
-    premaster_secret_len = new_len;
+    premaster_secret.Reset(new_data, new_len);
   }
 
   if (!ssl_hash_message(hs, msg)) {
-    goto err;
+    return ssl_hs_error;
   }
 
   // Compute the master secret.
   hs->new_session->master_key_length = tls1_generate_master_secret(
-      hs, hs->new_session->master_key, premaster_secret, premaster_secret_len);
+      hs, hs->new_session->master_key, premaster_secret.data(),
+      premaster_secret.size());
   if (hs->new_session->master_key_length == 0) {
-    goto err;
+    return ssl_hs_error;
   }
   hs->new_session->extended_master_secret = hs->extended_master_secret;
 
   ssl->method->next_message(ssl);
   hs->state = state_read_client_certificate_verify;
-  ret = ssl_hs_ok;
-
-err:
-  if (premaster_secret != NULL) {
-    OPENSSL_cleanse(premaster_secret, premaster_secret_len);
-    OPENSSL_free(premaster_secret);
-  }
-  OPENSSL_free(decrypt_buf);
-
-  return ret;
-
+  return ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {

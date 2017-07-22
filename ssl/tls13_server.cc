@@ -74,12 +74,10 @@ static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, bool *out_need_retry,
   }
 
   bool found_key_share;
-  uint8_t *dhe_secret;
-  size_t dhe_secret_len;
+  Array<uint8_t> dhe_secret;
   uint8_t alert = SSL_AD_DECODE_ERROR;
   if (!ssl_ext_key_share_parse_clienthello(hs, &found_key_share, &dhe_secret,
-                                           &dhe_secret_len, &alert,
-                                           &key_share)) {
+                                           &alert, &key_share)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return 0;
   }
@@ -89,9 +87,7 @@ static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, bool *out_need_retry,
     return 0;
   }
 
-  int ok = tls13_advance_key_schedule(hs, dhe_secret, dhe_secret_len);
-  OPENSSL_free(dhe_secret);
-  return ok;
+  return tls13_advance_key_schedule(hs, dhe_secret.data(), dhe_secret.size());
 }
 
 static int ssl_ext_supported_versions_add_serverhello(SSL_HANDSHAKE *hs,
