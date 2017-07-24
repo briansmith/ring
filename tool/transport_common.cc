@@ -348,6 +348,60 @@ bool SocketSetNonBlocking(int sock, bool is_non_blocking) {
   return ok;
 }
 
+static bool SocketSelect(int sock, bool stdin_open, bool *socket_ready,
+                         bool *stdin_ready) {
+#if !defined(OPENSSL_WINDOWS)
+  fd_set read_fds;
+  FD_ZERO(&read_fds);
+  if (stdin_open) {
+    FD_SET(0, &read_fds);
+  }
+  FD_SET(sock, &read_fds);
+  if (select(sock + 1, &read_fds, NULL, NULL, NULL) <= 0) {
+    perror("select");
+    return false;
+  }
+
+  if (FD_ISSET(0, &read_fds)) {
+    *stdin_ready = true;
+  }
+  if (FD_ISSET(sock, &read_fds)) {
+    *socket_ready = true;
+  }
+
+  return true;
+#else
+  WSAEVENT socket_handle = WSACreateEvent();
+  if (socket_handle == WSA_INVALID_EVENT ||
+      WSAEventSelect(sock, socket_handle, FD_READ) != 0) {
+    WSACloseEvent(socket_handle);
+    return false;
+  }
+
+  HANDLE read_fds[2];
+  read_fds[0] = socket_handle;
+  read_fds[1] = GetStdHandle(STD_INPUT_HANDLE);
+
+  switch (
+      WaitForMultipleObjects(stdin_open ? 2 : 1, read_fds, FALSE, INFINITE)) {
+    case WAIT_OBJECT_0 + 0:
+      *socket_ready = true;
+      break;
+    case WAIT_OBJECT_0 + 1:
+      *stdin_ready = true;
+      break;
+    case WAIT_TIMEOUT:
+      break;
+    default:
+      WSACloseEvent(socket_handle);
+      return false;
+  }
+
+  WSACloseEvent(socket_handle);
+  return true;
+#endif
+}
+
 // PrintErrorCallback is a callback function from OpenSSL's
 // |ERR_print_errors_cb| that writes errors to a given |FILE*|.
 int PrintErrorCallback(const char *str, size_t len, void *ctx) {
@@ -356,28 +410,19 @@ int PrintErrorCallback(const char *str, size_t len, void *ctx) {
 }
 
 bool TransferData(SSL *ssl, int sock) {
-  bool stdin_open = true;
-
-  fd_set read_fds;
-  FD_ZERO(&read_fds);
-
   if (!SocketSetNonBlocking(sock, true)) {
     return false;
   }
 
+  bool stdin_open = true;
   for (;;) {
-    if (stdin_open) {
-      FD_SET(0, &read_fds);
-    }
-    FD_SET(sock, &read_fds);
-
-    int ret = select(sock + 1, &read_fds, NULL, NULL, NULL);
-    if (ret <= 0) {
-      perror("select");
+    bool socket_ready = false;
+    bool stdin_ready = false;
+    if (!SocketSelect(sock, stdin_open, &socket_ready, &stdin_ready)) {
       return false;
     }
 
-    if (FD_ISSET(0, &read_fds)) {
+    if (stdin_ready) {
       uint8_t buffer[512];
       ssize_t n;
 
@@ -386,7 +431,6 @@ bool TransferData(SSL *ssl, int sock) {
       } while (n == -1 && errno == EINTR);
 
       if (n == 0) {
-        FD_CLR(0, &read_fds);
         stdin_open = false;
 #if !defined(OPENSSL_WINDOWS)
         shutdown(sock, SHUT_WR);
@@ -399,9 +443,12 @@ bool TransferData(SSL *ssl, int sock) {
         return false;
       }
 
+      // On Windows, SocketSelect ends up setting sock to non-blocking.
+#if !defined(OPENSSL_WINDOWS)
       if (!SocketSetNonBlocking(sock, false)) {
         return false;
       }
+#endif
       int ssl_ret = SSL_write(ssl, buffer, n);
       if (!SocketSetNonBlocking(sock, true)) {
         return false;
@@ -418,7 +465,7 @@ bool TransferData(SSL *ssl, int sock) {
       }
     }
 
-    if (FD_ISSET(sock, &read_fds)) {
+    if (socket_ready) {
       uint8_t buffer[512];
       int ssl_ret = SSL_read(ssl, buffer, sizeof(buffer));
 
