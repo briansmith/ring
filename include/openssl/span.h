@@ -39,17 +39,22 @@ class SpanBase {
   static_assert(std::is_const<T>::value,
                 "Span<T> must be derived from SpanBase<const T>");
 
-  OPENSSL_MSVC_PRAGMA(warning(push))
-  /* MSVC issues warning C4996 for calls to any unsafe methods in the stdlib.
-   * In this case, it complains about three-parameter std::equal, however
-   * the four-parameter variant is C++14. See
-   * https://msdn.microsoft.com/en-us/library/aa985974.aspx. */
-  OPENSSL_MSVC_PRAGMA(warning(disable : 4996))
   friend bool operator==(Span<T> lhs, Span<T> rhs) {
-    return lhs.size() == rhs.size() &&
-           std::equal(lhs.begin(), lhs.end(), rhs.begin());
+    /* MSVC issues warning C4996 because std::equal is unsafe. The pragma to
+     * suppress the warning mysteriously has no effect, hence this
+     * implementation. See
+     * https://msdn.microsoft.com/en-us/library/aa985974.aspx. */
+    if (lhs.size() != rhs.size()) {
+      return false;
+    }
+    for (T *l = lhs.begin(), *r = rhs.begin(); l != lhs.end() && r != rhs.end();
+         ++l, ++r) {
+      if (*l != *r) {
+        return false;
+      }
+    }
+    return true;
   }
-  OPENSSL_MSVC_PRAGMA(warning(pop))
 
   friend bool operator!=(Span<T> lhs, Span<T> rhs) { return !(lhs == rhs); }
 };
