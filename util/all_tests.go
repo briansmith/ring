@@ -96,6 +96,7 @@ var sdeCPUs = []string{
 	"slt", // Saltwell
 	"slm", // Silvermont
 	"glm", // Goldmont
+	"knm", // Knights Mill
 }
 
 func newTestOutput() *testOutput {

@@ -207,6 +207,14 @@ void OPENSSL_cpuid_setup(void) {
   /* Reserved bit #30 is repurposed to signal an Intel CPU. */
   if (is_intel) {
     edx |= (1 << 30);
+
+    /* Clear the XSAVE bit on Knights Landing to mimic Silvermont. This enables
+     * some Silvermont-specific codepaths which perform better. See OpenSSL
+     * commit 64d92d74985ebb3d0be58a9718f9e080a14a8e7f. */
+    if ((eax & 0x0fff0ff0) == 0x00050670 /* Knights Landing */ ||
+        (eax & 0x0fff0ff0) == 0x00080650 /* Knights Mill (per SDE) */) {
+      ecx &= ~(1 << 26);
+    }
   } else {
     edx &= ~(1 << 30);
   }
@@ -241,6 +249,12 @@ void OPENSSL_cpuid_setup(void) {
     /* Clear AVX512F. Note we don't touch other AVX512 extensions because they
      * can be used with YMM. */
     extended_features &= ~(1 << 16);
+  }
+
+  /* Disable ADX instructions on Knights Landing. See OpenSSL commit
+   * 64d92d74985ebb3d0be58a9718f9e080a14a8e7f. */
+  if ((ecx & (1 << 26)) == 0) {
+    extended_features &= ~(1 << 19);
   }
 
   OPENSSL_ia32cap_P[0] = edx;
