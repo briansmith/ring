@@ -159,27 +159,50 @@ size_t OPENSSL_strnlen(const char *s, size_t len) {
 
 char *OPENSSL_strdup(const char *s) { return _strdup(s); }
 
-int OPENSSL_strcasecmp(const char *a, const char *b) {
-  return _stricmp(a, b);
-}
-
-int OPENSSL_strncasecmp(const char *a, const char *b, size_t n) {
-  return _strnicmp(a, b, n);
-}
-
 #else
 
 char *OPENSSL_strdup(const char *s) { return strdup(s); }
 
+#endif
+
+int OPENSSL_tolower(int c) {
+  if (c >= 'A' && c <= 'Z') {
+    return c + ('a' - 'A');
+  }
+  return c;
+}
+
 int OPENSSL_strcasecmp(const char *a, const char *b) {
-  return strcasecmp(a, b);
+  for (size_t i = 0;; i++) {
+    const int aa = OPENSSL_tolower(a[i]);
+    const int bb = OPENSSL_tolower(b[i]);
+
+    if (aa < bb) {
+      return -1;
+    } else if (aa > bb) {
+      return 1;
+    } else if (aa == 0) {
+      return 0;
+    }
+  }
 }
 
 int OPENSSL_strncasecmp(const char *a, const char *b, size_t n) {
-  return strncasecmp(a, b, n);
-}
+  for (size_t i = 0; i < n; i++) {
+    const int aa = OPENSSL_tolower(a[i]);
+    const int bb = OPENSSL_tolower(b[i]);
 
-#endif
+    if (aa < bb) {
+      return -1;
+    } else if (aa > bb) {
+      return 1;
+    } else if (aa == 0) {
+      return 0;
+    }
+  }
+
+  return 0;
+}
 
 int BIO_snprintf(char *buf, size_t n, const char *format, ...) {
   va_list args;

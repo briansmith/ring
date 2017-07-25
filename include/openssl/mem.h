@@ -104,10 +104,13 @@ OPENSSL_EXPORT char *OPENSSL_strdup(const char *s);
 /* OPENSSL_strnlen has the same behaviour as strnlen(3). */
 OPENSSL_EXPORT size_t OPENSSL_strnlen(const char *s, size_t len);
 
-/* OPENSSL_strcasecmp has the same behaviour as strcasecmp(3). */
+/* OPENSSL_tolower is a locale-independent version of tolower(3). */
+OPENSSL_EXPORT int OPENSSL_tolower(int c);
+
+/* OPENSSL_strcasecmp is a locale-independent version of strcasecmp(3). */
 OPENSSL_EXPORT int OPENSSL_strcasecmp(const char *a, const char *b);
 
-/* OPENSSL_strncasecmp has the same behaviour as strncasecmp(3). */
+/* OPENSSL_strncasecmp is a locale-independent version of strncasecmp(3). */
 OPENSSL_EXPORT int OPENSSL_strncasecmp(const char *a, const char *b, size_t n);
 
 /* DECIMAL_SIZE returns an upper bound for the length of the decimal

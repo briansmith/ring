@@ -492,7 +492,7 @@ static int asn1_string_canon(ASN1_STRING *out, ASN1_STRING *in)
             }
             while (!(*from & 0x80) && isspace(*from));
         } else {
-            *to++ = tolower(*from);
+            *to++ = OPENSSL_tolower(*from);
             from++;
             i++;
         }
