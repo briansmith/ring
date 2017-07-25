@@ -116,7 +116,9 @@ response in (unpipelined) HTTP/1.1.
 
 Things which do not work:
 
-* There is no support for renegotiation as a server.
+* There is no support for renegotiation as a server. (Attempts by clients will
+  result in a fatal alert so that ClientHello messages cannot be used to flood
+  a server and escape higher-level limits.)
 
 * There is no support for renegotiation in DTLS.
 
