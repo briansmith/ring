@@ -219,6 +219,10 @@ UniquePtr<T> MakeUnique(Args &&... args) {
   return UniquePtr<T>(New<T>(std::forward<Args>(args)...));
 }
 
+#if defined(BORINGSSL_ALLOW_CXX_RUNTIME)
+#define HAS_VIRTUAL_DESTRUCTOR
+#define PURE_VIRTUAL = 0
+#else
 /* HAS_VIRTUAL_DESTRUCTOR should be declared in any base class which defines a
  * virtual destructor. This avoids a dependency on |_ZdlPv| and prevents the
  * class from being used with |delete|. */
@@ -229,6 +233,7 @@ UniquePtr<T> MakeUnique(Args &&... args) {
  * functions. This avoids a dependency on |__cxa_pure_virtual| but loses
  * compile-time checking. */
 #define PURE_VIRTUAL { abort(); }
+#endif
 
 
 /* Protocol versions.
