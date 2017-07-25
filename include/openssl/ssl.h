@@ -1350,8 +1350,9 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
  *   be used.
  *
  * Unknown rules are silently ignored by legacy APIs, and rejected by APIs with
- * "strict" in the name, which should be preferred. Cipher lists can be long and
- * it's easy to commit typos.
+ * "strict" in the name, which should be preferred. Cipher lists can be long
+ * and it's easy to commit typos. Strict functions will also reject the use of
+ * spaces, semi-colons and commas as alternative separators.
  *
  * The special |@STRENGTH| directive will sort all enabled ciphers by strength.
  *
@@ -1369,7 +1370,7 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
  *   [ECDHE-ECDSA-CHACHA20-POLY1305|ECDHE-ECDSA-AES128-GCM-SHA256]
  *
  * Once an equal-preference group is used, future directives must be
- * opcode-less.
+ * opcode-less. Inside an equal-preference group, spaces are not allowed.
  *
  * TLS 1.3 ciphers do not participate in this mechanism and instead have a
  * built-in preference order. Functions to set cipher lists do not affect TLS

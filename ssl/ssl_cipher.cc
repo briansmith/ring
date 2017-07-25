@@ -756,8 +756,12 @@ const EVP_MD *ssl_get_handshake_digest(uint32_t algorithm_prf,
   }
 }
 
-#define ITEM_SEP(a) \
-  (((a) == ':') || ((a) == ' ') || ((a) == ';') || ((a) == ','))
+static bool is_cipher_list_separator(char c, int is_strict) {
+  if (c == ':') {
+    return true;
+  }
+  return !is_strict && (c == ' ' || c == ';' || c == ',');
+}
 
 /* rule_equals returns one iff the NUL-terminated string |rule| is equal to the
  * |buf_len| bytes at |buf|. */
@@ -1092,7 +1096,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
       return 0;
     }
 
-    if (ITEM_SEP(ch)) {
+    if (is_cipher_list_separator(ch, strict)) {
       l++;
       continue;
     }
@@ -1186,7 +1190,7 @@ static int ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
 
       /* We do not support any "multi" options together with "@", so throw away
        * the rest of the command, if any left, until end or ':' is found. */
-      while (*l != '\0' && !ITEM_SEP(*l)) {
+      while (*l != '\0' && !is_cipher_list_separator(*l, strict)) {
         l++;
       }
     } else if (!skip_rule) {

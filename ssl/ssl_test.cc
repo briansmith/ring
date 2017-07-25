@@ -279,6 +279,19 @@ static const CipherTest kCipherTests[] = {
         },
         false,
     },
+    // Spaces, semi-colons and commas are separators.
+    {
+        "AES128-SHA: AES128-SHA256 AES256-SHA ,AES256-SHA256 ; AES128-GCM-SHA256",
+        {
+            {TLS1_CK_RSA_WITH_AES_128_SHA, 0},
+            {TLS1_CK_RSA_WITH_AES_128_SHA256, 0},
+            {TLS1_CK_RSA_WITH_AES_256_SHA, 0},
+            {TLS1_CK_RSA_WITH_AES_256_SHA256, 0},
+            {TLS1_CK_RSA_WITH_AES_128_GCM_SHA256, 0},
+        },
+        // …but not in strict mode.
+        true,
+    },
 };
 
 static const char *kBadRules[] = {
@@ -304,6 +317,8 @@ static const char *kBadRules[] = {
   "[ECDHE-RSA-CHACHA20-POLY1305|ECDHE-RSA-AES128-GCM-SHA256]:@STRENGTH",
   // Opcode supplied, but missing selector.
   "+",
+  // Spaces are forbidden in equal-preference groups.
+  "[AES128-SHA | AES128-SHA256]",
 };
 
 static const char *kMustNotIncludeNull[] = {
