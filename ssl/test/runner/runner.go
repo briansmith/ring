@@ -7047,6 +7047,7 @@ func addRenegotiationTests() {
 		flags:         []string{"-renegotiate-freely"},
 		shouldFail:    true,
 		expectedError: ":RENEGOTIATION_MISMATCH:",
+		expectedLocalError: "handshake failure",
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-BadExt",
@@ -7060,6 +7061,7 @@ func addRenegotiationTests() {
 		flags:         []string{"-renegotiate-freely"},
 		shouldFail:    true,
 		expectedError: ":RENEGOTIATION_MISMATCH:",
+		expectedLocalError: "handshake failure",
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-BadExt2",
@@ -7073,6 +7075,7 @@ func addRenegotiationTests() {
 		flags:         []string{"-renegotiate-freely"},
 		shouldFail:    true,
 		expectedError: ":RENEGOTIATION_MISMATCH:",
+		expectedLocalError: "handshake failure",
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-Downgrade",
@@ -7086,6 +7089,7 @@ func addRenegotiationTests() {
 		flags:         []string{"-renegotiate-freely"},
 		shouldFail:    true,
 		expectedError: ":RENEGOTIATION_MISMATCH:",
+		expectedLocalError: "handshake failure",
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-Upgrade",
@@ -7099,6 +7103,7 @@ func addRenegotiationTests() {
 		flags:         []string{"-renegotiate-freely"},
 		shouldFail:    true,
 		expectedError: ":RENEGOTIATION_MISMATCH:",
+		expectedLocalError: "handshake failure",
 	})
 	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-NoExt-Allowed",

@@ -802,7 +802,7 @@ static int ext_ri_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 #endif
   if (!ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_MISMATCH);
-    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    *out_alert = SSL_AD_HANDSHAKE_FAILURE;
     return 0;
   }
   ssl->s3->send_connection_binding = 1;
