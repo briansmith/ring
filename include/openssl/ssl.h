@@ -2519,7 +2519,8 @@ OPENSSL_EXPORT int SSL_set_tlsext_host_name(SSL *ssl, const char *name);
 
 /* SSL_get_servername, for a server, returns the hostname supplied by the
  * client or NULL if there was none. The |type| argument must be
- * |TLSEXT_NAMETYPE_host_name|. */
+ * |TLSEXT_NAMETYPE_host_name|. Note that the returned pointer points inside
+ * |ssl| and is only valid until the next operation on |ssl|. */
 OPENSSL_EXPORT const char *SSL_get_servername(const SSL *ssl, const int type);
 
 /* SSL_get_servername_type, for a server, returns |TLSEXT_NAMETYPE_host_name|
