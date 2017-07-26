@@ -201,13 +201,11 @@ void Delete(T *t) {
   }
 }
 
-/* Register all types with non-trivial destructors with |UniquePtr|. Types with
- * trivial destructors may be C structs which require a |BORINGSSL_MAKE_DELETER|
- * registration. */
+/* All types with kAllowUniquePtr set may be used with UniquePtr. Other types
+ * may be C structs which require a |BORINGSSL_MAKE_DELETER| registration. */
 namespace internal {
 template <typename T>
-struct DeleterImpl<T, typename std::enable_if<
-                          !std::is_trivially_destructible<T>::value>::type> {
+struct DeleterImpl<T, typename std::enable_if<T::kAllowUniquePtr>::type> {
   static void Free(T *t) { Delete(t); }
 };
 }
@@ -223,7 +221,7 @@ UniquePtr<T> MakeUnique(Args &&... args) {
 #define HAS_VIRTUAL_DESTRUCTOR
 #define PURE_VIRTUAL = 0
 #else
-/* HAS_VIRTUAL_DESTRUCTOR should be declared in any base class which defines a
+/* HAS_VIRTUAL_DESTRUCTOR should be declared in any base clas ~s which defines a
  * virtual destructor. This avoids a dependency on |_ZdlPv| and prevents the
  * class from being used with |delete|. */
 #define HAS_VIRTUAL_DESTRUCTOR \
@@ -470,6 +468,8 @@ class SSLAEADContext {
  public:
   SSLAEADContext(uint16_t version, const SSL_CIPHER *cipher);
   ~SSLAEADContext();
+  static constexpr bool kAllowUniquePtr = true;
+
   SSLAEADContext(const SSLAEADContext &&) = delete;
   SSLAEADContext &operator=(const SSLAEADContext &&) = delete;
 
@@ -771,6 +771,7 @@ int custom_ext_add_serverhello(SSL_HANDSHAKE *hs, CBB *extensions);
 class SSLKeyShare {
  public:
   virtual ~SSLKeyShare() {}
+  static constexpr bool kAllowUniquePtr = true;
   HAS_VIRTUAL_DESTRUCTOR
 
   /* Create returns a SSLKeyShare instance for use with group |group_id| or
@@ -1072,6 +1073,7 @@ enum ssl_hs_wait_t {
 struct SSL_HANDSHAKE {
   explicit SSL_HANDSHAKE(SSL *ssl);
   ~SSL_HANDSHAKE();
+  static constexpr bool kAllowUniquePtr = true;
 
   /* ssl is a non-owning pointer to the parent |SSL| object. */
   SSL *ssl;
