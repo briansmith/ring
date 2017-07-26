@@ -222,21 +222,22 @@ struct StackTraits {};
 }
 }
 
-#define BORINGSSL_DEFINE_STACK_TRAITS(name, is_const) \
-  extern "C++" {                                      \
-  namespace bssl {                                    \
-  namespace internal {                                \
-  template <>                                         \
-  struct StackTraits<STACK_OF(name)> {                \
-    using Type = name;                                \
-    static constexpr bool kIsConst = is_const;        \
-  };                                                  \
-  }                                                   \
-  }                                                   \
+#define BORINGSSL_DEFINE_STACK_TRAITS(name, type, is_const) \
+  extern "C++" {                                            \
+  namespace bssl {                                          \
+  namespace internal {                                      \
+  template <>                                               \
+  struct StackTraits<STACK_OF(name)> {                      \
+    static constexpr bool kIsStack = true;                  \
+    using Type = type;                                      \
+    static constexpr bool kIsConst = is_const;              \
+  };                                                        \
+  }                                                         \
+  }                                                         \
   }
 
 #else
-#define BORINGSSL_DEFINE_STACK_TRAITS(name, is_const)
+#define BORINGSSL_DEFINE_STACK_TRAITS(name, type, is_const)
 #endif
 
 /* Stack functions must be tagged unused to support file-local stack types.
@@ -350,15 +351,15 @@ struct StackTraits {};
 
 /* DEFINE_STACK_OF defines |STACK_OF(type)| to be a stack whose elements are
  * |type| *. */
-#define DEFINE_STACK_OF(type) \
+#define DEFINE_STACK_OF(type)                                \
   BORINGSSL_DEFINE_STACK_OF_IMPL(type, type *, const type *) \
-  BORINGSSL_DEFINE_STACK_TRAITS(type, false)
+  BORINGSSL_DEFINE_STACK_TRAITS(type, type, false)
 
 /* DEFINE_CONST_STACK_OF defines |STACK_OF(type)| to be a stack whose elements
  * are const |type| *. */
-#define DEFINE_CONST_STACK_OF(type) \
+#define DEFINE_CONST_STACK_OF(type)                                \
   BORINGSSL_DEFINE_STACK_OF_IMPL(type, const type *, const type *) \
-  BORINGSSL_DEFINE_STACK_TRAITS(type, true)
+  BORINGSSL_DEFINE_STACK_TRAITS(type, const type, true)
 
 /* DEFINE_SPECIAL_STACK_OF defines |STACK_OF(type)| to be a stack whose elements
  * are |type|, where |type| must be a typedef for a pointer. */
@@ -407,9 +408,61 @@ struct DeleterImpl<
   }
 };
 
+template <typename Stack>
+class StackIteratorImpl {
+ public:
+  using Type = typename StackTraits<Stack>::Type;
+  // Iterators must be default-constructable.
+  StackIteratorImpl() : sk_(nullptr), idx_(0) {}
+  StackIteratorImpl(const Stack *sk, size_t idx) : sk_(sk), idx_(idx) {}
+
+  bool operator==(StackIteratorImpl other) const {
+    return sk_ == other.sk_ && idx_ == other.idx_;
+  }
+  bool operator!=(StackIteratorImpl other) const {
+    return !(*this == other);
+  }
+
+  Type *operator*() const {
+    return reinterpret_cast<Type *>(
+        sk_value(reinterpret_cast<const _STACK *>(sk_), idx_));
+  }
+
+  StackIteratorImpl &operator++(/* prefix */) {
+    idx_++;
+    return *this;
+  }
+
+  StackIteratorImpl operator++(int /* postfix */) {
+    StackIteratorImpl copy(*this);
+    ++(*this);
+    return copy;
+  }
+
+ private:
+  const Stack *sk_;
+  size_t idx_;
+};
+
+template <typename Stack>
+using StackIterator = typename std::enable_if<StackTraits<Stack>::kIsStack,
+                                              StackIteratorImpl<Stack>>::type;
+
 }  // namespace internal
 
 }  // namespace bssl
+
+// Define begin() and end() for stack types so C++ range for loops work.
+template <typename Stack>
+static inline bssl::internal::StackIterator<Stack> begin(const Stack *sk) {
+  return bssl::internal::StackIterator<Stack>(sk, 0);
+}
+
+template <typename Stack>
+static inline bssl::internal::StackIterator<Stack> end(const Stack *sk) {
+  return bssl::internal::StackIterator<Stack>(
+      sk, sk_num(reinterpret_cast<const _STACK *>(sk)));
+}
 
 }  // extern C++
 #endif

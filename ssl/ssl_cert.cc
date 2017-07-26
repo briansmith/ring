@@ -721,9 +721,7 @@ int ssl_add_client_CA_list(SSL *ssl, CBB *cbb) {
     return CBB_flush(cbb);
   }
 
-  for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(names); i++) {
-    const CRYPTO_BUFFER *name = sk_CRYPTO_BUFFER_value(names, i);
-
+  for (const CRYPTO_BUFFER *name : names) {
     if (!CBB_add_u16_length_prefixed(&child, &name_cbb) ||
         !CBB_add_bytes(&name_cbb, CRYPTO_BUFFER_data(name),
                        CRYPTO_BUFFER_len(name))) {
