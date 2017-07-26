@@ -245,11 +245,10 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
       }
     }
 
-    CRYPTO_BUFFER *buf =
-        CRYPTO_BUFFER_new_from_CBS(&certificate, ssl->ctx->pool);
-    if (buf == NULL ||
-        !sk_CRYPTO_BUFFER_push(certs.get(), buf)) {
-      CRYPTO_BUFFER_free(buf);
+    UniquePtr<CRYPTO_BUFFER> buf(
+        CRYPTO_BUFFER_new_from_CBS(&certificate, ssl->ctx->pool));
+    if (!buf ||
+        !PushToStack(certs.get(), std::move(buf))) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;

@@ -450,6 +450,21 @@ using StackIterator = typename std::enable_if<StackTraits<Stack>::kIsStack,
 
 }  // namespace internal
 
+// PushToStack pushes |elem| to |sk|. It returns true on success and false on
+// allocation failure.
+template <typename Stack>
+static inline
+    typename std::enable_if<!internal::StackTraits<Stack>::kIsConst, bool>::type
+    PushToStack(Stack *sk,
+                UniquePtr<typename internal::StackTraits<Stack>::Type> elem) {
+  if (!sk_push(reinterpret_cast<_STACK *>(sk), elem.get())) {
+    return false;
+  }
+  // sk_push takes ownership on success.
+  elem.release();
+  return true;
+}
+
 }  // namespace bssl
 
 // Define begin() and end() for stack types so C++ range for loops work.
