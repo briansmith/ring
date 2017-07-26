@@ -32,6 +32,10 @@ if (NOT GO_EXECUTABLE)
   message(FATAL_ERROR "Could not find Go")
 endif()
 
+if (BORINGSSL_ALLOW_CXX_RUNTIME)
+  add_definitions(-DBORINGSSL_ALLOW_CXX_RUNTIME)
+endif()
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(C_CXX_FLAGS "-Wall -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings -ggdb -fvisibility=hidden -fno-common")
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -42,7 +46,12 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-free-nonheap-object")
   endif()
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_CXX_FLAGS} -Wmissing-prototypes -Wold-style-definition -Wstrict-prototypes")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${C_CXX_FLAGS} -Wmissing-declarations -fno-exceptions -fno-rtti")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${C_CXX_FLAGS} -Wmissing-declarations")
+
+  if(NOT BORINGSSL_ALLOW_CXX_RUNTIME)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti")
+  endif()
+
   # In GCC, -Wmissing-declarations is the C++ spelling of -Wmissing-prototypes
   # and using the wrong one is an error. In Clang, -Wmissing-prototypes is the
   # spelling for both and -Wmissing-declarations is some other warning.
