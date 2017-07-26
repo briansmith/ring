@@ -212,11 +212,38 @@ OPENSSL_EXPORT _STACK *sk_deep_copy(const _STACK *sk,
  * This set of macros is used to emit the typed functions that act on a
  * |STACK_OF(T)|. */
 
+#if !defined(BORINGSSL_NO_CXX)
+extern "C++" {
+namespace bssl {
+namespace internal {
+template <typename T>
+struct StackTraits {};
+}
+}
+}
+
+#define BORINGSSL_DEFINE_STACK_TRAITS(name, is_const) \
+  extern "C++" {                                      \
+  namespace bssl {                                    \
+  namespace internal {                                \
+  template <>                                         \
+  struct StackTraits<STACK_OF(name)> {                \
+    using Type = name;                                \
+    static constexpr bool kIsConst = is_const;        \
+  };                                                  \
+  }                                                   \
+  }                                                   \
+  }
+
+#else
+#define BORINGSSL_DEFINE_STACK_TRAITS(name, is_const)
+#endif
+
 /* Stack functions must be tagged unused to support file-local stack types.
  * Clang's -Wunused-function only allows unused static inline functions if they
  * are defined in a header. */
 
-#define DEFINE_STACK_OF_IMPL(name, ptrtype, constptrtype)                      \
+#define BORINGSSL_DEFINE_STACK_OF_IMPL(name, ptrtype, constptrtype)            \
   DECLARE_STACK_OF(name);                                                      \
                                                                                \
   typedef int (*stack_##name##_cmp_func)(constptrtype *a, constptrtype *b);    \
@@ -323,19 +350,22 @@ OPENSSL_EXPORT _STACK *sk_deep_copy(const _STACK *sk,
 
 /* DEFINE_STACK_OF defines |STACK_OF(type)| to be a stack whose elements are
  * |type| *. */
-#define DEFINE_STACK_OF(type) DEFINE_STACK_OF_IMPL(type, type *, const type *)
+#define DEFINE_STACK_OF(type) \
+  BORINGSSL_DEFINE_STACK_OF_IMPL(type, type *, const type *) \
+  BORINGSSL_DEFINE_STACK_TRAITS(type, false)
 
 /* DEFINE_CONST_STACK_OF defines |STACK_OF(type)| to be a stack whose elements
  * are const |type| *. */
 #define DEFINE_CONST_STACK_OF(type) \
-  DEFINE_STACK_OF_IMPL(type, const type *, const type *)
+  BORINGSSL_DEFINE_STACK_OF_IMPL(type, const type *, const type *) \
+  BORINGSSL_DEFINE_STACK_TRAITS(type, true)
 
 /* DEFINE_SPECIAL_STACK_OF defines |STACK_OF(type)| to be a stack whose elements
  * are |type|, where |type| must be a typedef for a pointer. */
 #define DEFINE_SPECIAL_STACK_OF(type)                          \
   OPENSSL_COMPILE_ASSERT(sizeof(type) == sizeof(void *),       \
                          special_stack_of_non_pointer_##type); \
-  DEFINE_STACK_OF_IMPL(type, type, const type)
+  BORINGSSL_DEFINE_STACK_OF_IMPL(type, type, const type)
 
 
 typedef char *OPENSSL_STRING;
@@ -346,6 +376,42 @@ DEFINE_SPECIAL_STACK_OF(OPENSSL_STRING)
 
 #if defined(__cplusplus)
 }  /* extern C */
+#endif
+
+#if !defined(BORINGSSL_NO_CXX)
+extern "C++" {
+
+#include <type_traits>
+
+namespace bssl {
+
+namespace internal {
+
+// Stacks defined with |DEFINE_CONST_STACK_OF| are freed with |sk_free|.
+template <typename Stack>
+struct DeleterImpl<
+    Stack, typename std::enable_if<StackTraits<Stack>::kIsConst>::type> {
+  static void Free(Stack *sk) { sk_free(reinterpret_cast<_STACK *>(sk)); }
+};
+
+// Stacks defined with |DEFINE_STACK_OF| are freed with |sk_pop_free| and the
+// corresponding type's deleter.
+template <typename Stack>
+struct DeleterImpl<
+    Stack, typename std::enable_if<!StackTraits<Stack>::kIsConst>::type> {
+  static void Free(Stack *sk) {
+    sk_pop_free(
+        reinterpret_cast<_STACK *>(sk),
+        reinterpret_cast<void (*)(void *)>(
+            DeleterImpl<typename StackTraits<Stack>::Type>::Free));
+  }
+};
+
+}  // namespace internal
+
+}  // namespace bssl
+
+}  // extern C++
 #endif
 
 #endif  /* OPENSSL_HEADER_STACK_H */
