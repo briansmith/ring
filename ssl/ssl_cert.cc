@@ -337,8 +337,8 @@ static int cert_set_chain_and_key(
   return 1;
 }
 
-int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer) {
-  switch (check_leaf_cert_and_privkey(buffer, cert->privatekey)) {
+int ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
+  switch (check_leaf_cert_and_privkey(buffer.get(), cert->privatekey)) {
     case leaf_cert_and_privkey_error:
       return 0;
     case leaf_cert_and_privkey_mismatch:
@@ -356,8 +356,7 @@ int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer) {
 
   if (cert->chain != NULL) {
     CRYPTO_BUFFER_free(sk_CRYPTO_BUFFER_value(cert->chain, 0));
-    sk_CRYPTO_BUFFER_set(cert->chain, 0, buffer);
-    CRYPTO_BUFFER_up_ref(buffer);
+    sk_CRYPTO_BUFFER_set(cert->chain, 0, buffer.release());
     return 1;
   }
 
@@ -366,12 +365,11 @@ int ssl_set_cert(CERT *cert, CRYPTO_BUFFER *buffer) {
     return 0;
   }
 
-  if (!sk_CRYPTO_BUFFER_push(cert->chain, buffer)) {
+  if (!PushToStack(cert->chain, std::move(buffer))) {
     sk_CRYPTO_BUFFER_free(cert->chain);
     cert->chain = NULL;
     return 0;
   }
-  CRYPTO_BUFFER_up_ref(buffer);
 
   return 1;
 }
@@ -431,12 +429,11 @@ bool ssl_parse_cert_chain(uint8_t *out_alert,
       }
     }
 
-    CRYPTO_BUFFER *buf =
-        CRYPTO_BUFFER_new_from_CBS(&certificate, pool);
-    if (buf == NULL ||
-        !sk_CRYPTO_BUFFER_push(chain.get(), buf)) {
+    UniquePtr<CRYPTO_BUFFER> buf(
+        CRYPTO_BUFFER_new_from_CBS(&certificate, pool));
+    if (!buf ||
+        !PushToStack(chain.get(), std::move(buf))) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
-      CRYPTO_BUFFER_free(buf);
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
@@ -687,11 +684,10 @@ UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_client_CA_list(SSL *ssl,
       return nullptr;
     }
 
-    CRYPTO_BUFFER *buffer =
-        CRYPTO_BUFFER_new_from_CBS(&distinguished_name, pool);
-    if (buffer == NULL ||
-        !sk_CRYPTO_BUFFER_push(ret.get(), buffer)) {
-      CRYPTO_BUFFER_free(buffer);
+    UniquePtr<CRYPTO_BUFFER> buffer(
+        CRYPTO_BUFFER_new_from_CBS(&distinguished_name, pool));
+    if (!buffer ||
+        !PushToStack(ret.get(), std::move(buffer))) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return nullptr;
@@ -811,25 +807,21 @@ int SSL_CTX_set_chain_and_key(SSL_CTX *ctx, CRYPTO_BUFFER *const *certs,
 
 int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, size_t der_len,
                                  const uint8_t *der) {
-  CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new(der, der_len, NULL);
-  if (buffer == NULL) {
+  UniquePtr<CRYPTO_BUFFER> buffer(CRYPTO_BUFFER_new(der, der_len, NULL));
+  if (!buffer) {
     return 0;
   }
 
-  const int ok = ssl_set_cert(ctx->cert, buffer);
-  CRYPTO_BUFFER_free(buffer);
-  return ok;
+  return ssl_set_cert(ctx->cert, std::move(buffer));
 }
 
 int SSL_use_certificate_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
-  CRYPTO_BUFFER *buffer = CRYPTO_BUFFER_new(der, der_len, NULL);
-  if (buffer == NULL) {
+  UniquePtr<CRYPTO_BUFFER> buffer(CRYPTO_BUFFER_new(der, der_len, NULL));
+  if (!buffer) {
     return 0;
   }
 
-  const int ok = ssl_set_cert(ssl->cert, buffer);
-  CRYPTO_BUFFER_free(buffer);
-  return ok;
+  return ssl_set_cert(ssl->cert, std::move(buffer));
 }
 
 void SSL_CTX_set_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl, void *arg),

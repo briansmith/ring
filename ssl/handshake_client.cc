@@ -599,10 +599,8 @@ static int ssl_write_client_cipher_list(SSL_HANDSHAKE *hs, CBB *out) {
   }
 
   if (hs->min_version < TLS1_3_VERSION) {
-    STACK_OF(SSL_CIPHER) *ciphers = SSL_get_ciphers(ssl);
     int any_enabled = 0;
-    for (size_t i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
-      const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
+    for (const SSL_CIPHER *cipher : SSL_get_ciphers(ssl)) {
       /* Skip disabled ciphers */
       if ((cipher->algorithm_mkey & mask_k) ||
           (cipher->algorithm_auth & mask_a)) {

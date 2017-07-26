@@ -1624,11 +1624,8 @@ static void ext_srtp_init(SSL_HANDSHAKE *hs) {
 static int ext_srtp_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   STACK_OF(SRTP_PROTECTION_PROFILE) *profiles = SSL_get_srtp_profiles(ssl);
-  if (profiles == NULL) {
-    return 1;
-  }
-  const size_t num_profiles = sk_SRTP_PROTECTION_PROFILE_num(profiles);
-  if (num_profiles == 0) {
+  if (profiles == NULL ||
+      sk_SRTP_PROTECTION_PROFILE_num(profiles) == 0) {
     return 1;
   }
 
@@ -1639,9 +1636,8 @@ static int ext_srtp_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return 0;
   }
 
-  for (size_t i = 0; i < num_profiles; i++) {
-    if (!CBB_add_u16(&profile_ids,
-                     sk_SRTP_PROTECTION_PROFILE_value(profiles, i)->id)) {
+  for (const SRTP_PROTECTION_PROFILE *profile : profiles) {
+    if (!CBB_add_u16(&profile_ids, profile->id)) {
       return 0;
     }
   }
@@ -1687,10 +1683,7 @@ static int ext_srtp_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
   /* Check to see if the server gave us something we support (and presumably
    * offered). */
-  for (size_t i = 0; i < sk_SRTP_PROTECTION_PROFILE_num(profiles); i++) {
-    const SRTP_PROTECTION_PROFILE *profile =
-        sk_SRTP_PROTECTION_PROFILE_value(profiles, i);
-
+  for (const SRTP_PROTECTION_PROFILE *profile : profiles) {
     if (profile->id == profile_id) {
       ssl->srtp_profile = profile;
       return 1;
@@ -1723,10 +1716,7 @@ static int ext_srtp_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       SSL_get_srtp_profiles(ssl);
 
   /* Pick the server's most preferred profile. */
-  for (size_t i = 0; i < sk_SRTP_PROTECTION_PROFILE_num(server_profiles); i++) {
-    const SRTP_PROTECTION_PROFILE *server_profile =
-        sk_SRTP_PROTECTION_PROFILE_value(server_profiles, i);
-
+  for (const SRTP_PROTECTION_PROFILE *server_profile : server_profiles) {
     CBS profile_ids_tmp;
     CBS_init(&profile_ids_tmp, CBS_data(&profile_ids), CBS_len(&profile_ids));
 

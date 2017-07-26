@@ -558,16 +558,16 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   return 1;
 }
 
-static STACK_OF(SSL_CIPHER) *
-    ssl_parse_client_cipher_list(const SSL_CLIENT_HELLO *client_hello) {
+static UniquePtr<STACK_OF(SSL_CIPHER)> ssl_parse_client_cipher_list(
+    const SSL_CLIENT_HELLO *client_hello) {
   CBS cipher_suites;
   CBS_init(&cipher_suites, client_hello->cipher_suites,
            client_hello->cipher_suites_len);
 
-  STACK_OF(SSL_CIPHER) *sk = sk_SSL_CIPHER_new_null();
-  if (sk == NULL) {
+  UniquePtr<STACK_OF(SSL_CIPHER)> sk(sk_SSL_CIPHER_new_null());
+  if (!sk) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    goto err;
+    return nullptr;
   }
 
   while (CBS_len(&cipher_suites) > 0) {
@@ -575,21 +575,17 @@ static STACK_OF(SSL_CIPHER) *
 
     if (!CBS_get_u16(&cipher_suites, &cipher_suite)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_IN_RECEIVED_CIPHER_LIST);
-      goto err;
+      return nullptr;
     }
 
     const SSL_CIPHER *c = SSL_get_cipher_by_value(cipher_suite);
-    if (c != NULL && !sk_SSL_CIPHER_push(sk, c)) {
+    if (c != NULL && !sk_SSL_CIPHER_push(sk.get(), c)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
+      return nullptr;
     }
   }
 
   return sk;
-
-err:
-  sk_SSL_CIPHER_free(sk);
-  return NULL;
 }
 
 /* ssl_get_compatible_server_ciphers determines the key exchange and
@@ -640,18 +636,18 @@ static const SSL_CIPHER *ssl3_choose_cipher(
    * such value exists yet. */
   int group_min = -1;
 
-  STACK_OF(SSL_CIPHER) *client_pref =
+  UniquePtr<STACK_OF(SSL_CIPHER)> client_pref =
       ssl_parse_client_cipher_list(client_hello);
-  if (client_pref == NULL) {
-    return NULL;
+  if (!client_pref) {
+    return nullptr;
   }
 
   if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
     prio = server_pref->ciphers;
     in_group_flags = server_pref->in_group_flags;
-    allow = client_pref;
+    allow = client_pref.get();
   } else {
-    prio = client_pref;
+    prio = client_pref.get();
     in_group_flags = NULL;
     allow = server_pref->ciphers;
   }
@@ -659,7 +655,6 @@ static const SSL_CIPHER *ssl3_choose_cipher(
   uint32_t mask_k, mask_a;
   ssl_get_compatible_server_ciphers(hs, &mask_k, &mask_a);
 
-  const SSL_CIPHER *ret = NULL;
   for (size_t i = 0; i < sk_SSL_CIPHER_num(prio); i++) {
     const SSL_CIPHER *c = sk_SSL_CIPHER_value(prio, i);
 
@@ -682,21 +677,18 @@ static const SSL_CIPHER *ssl3_choose_cipher(
         if (group_min != -1 && (size_t)group_min < cipher_index) {
           cipher_index = group_min;
         }
-        ret = sk_SSL_CIPHER_value(allow, cipher_index);
-        break;
+        return sk_SSL_CIPHER_value(allow, cipher_index);
       }
     }
 
     if (in_group_flags != NULL && in_group_flags[i] == 0 && group_min != -1) {
       /* We are about to leave a group, but we found a match in it, so that's
        * our answer. */
-      ret = sk_SSL_CIPHER_value(allow, group_min);
-      break;
+      return sk_SSL_CIPHER_value(allow, group_min);
     }
   }
 
-  sk_SSL_CIPHER_free(client_pref);
-  return ret;
+  return nullptr;
 }
 
 static int ssl3_process_client_hello(SSL_HANDSHAKE *hs) {
