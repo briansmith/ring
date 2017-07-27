@@ -229,7 +229,7 @@ class Bazel(object):
           continue
         out.write('    "%s",\n' % PathOf(filename))
 
-      out.write(']\n\n')
+      out.write(']\n')
 
       self.PrintVariableSection(out, 'crypto_test_sources',
                                 files['crypto_test'])
