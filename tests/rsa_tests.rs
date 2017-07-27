@@ -73,7 +73,7 @@ fn test_signature_rsa_pkcs1_sign() {
         let mut signing_state =
             signature::RSASigningState::new(key_pair).unwrap();
         let mut actual: std::vec::Vec<u8> =
-            vec![0; signing_state.key_pair().public_modulus_len()];
+            vec![0xBE; signing_state.key_pair().public_modulus_len()];
         signing_state.sign(alg, &rng, &msg, actual.as_mut_slice()).unwrap();
         assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
         Ok(())
@@ -131,7 +131,7 @@ fn test_signature_rsa_pss_sign() {
         let mut signing_state =
             signature::RSASigningState::new(key_pair).unwrap();
         let mut actual: std::vec::Vec<u8> =
-            vec![0; signing_state.key_pair().public_modulus_len()];
+            vec![0xEF; signing_state.key_pair().public_modulus_len()];
         signing_state.sign(alg, &new_rng, &msg, actual.as_mut_slice())?;
         assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
         Ok(())
