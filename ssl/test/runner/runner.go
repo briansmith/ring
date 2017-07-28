@@ -488,15 +488,19 @@ type timeoutConn struct {
 }
 
 func (t *timeoutConn) Read(b []byte) (int, error) {
-	if err := t.SetReadDeadline(time.Now().Add(t.timeout)); err != nil {
-		return 0, err
+	if !*useGDB {
+		if err := t.SetReadDeadline(time.Now().Add(t.timeout)); err != nil {
+			return 0, err
+		}
 	}
 	return t.Conn.Read(b)
 }
 
 func (t *timeoutConn) Write(b []byte) (int, error) {
-	if err := t.SetWriteDeadline(time.Now().Add(t.timeout)); err != nil {
-		return 0, err
+	if !*useGDB {
+		if err := t.SetWriteDeadline(time.Now().Add(t.timeout)); err != nil {
+			return 0, err
+		}
 	}
 	return t.Conn.Write(b)
 }
@@ -891,7 +895,9 @@ func acceptOrWait(listener *net.TCPListener, waitChan chan error) (net.Conn, err
 	connChan := make(chan connOrError, 1)
 	go func() {
 		startTime := time.Now()
-		listener.SetDeadline(time.Now().Add(*idleTimeout))
+		if !*useGDB {
+			listener.SetDeadline(time.Now().Add(*idleTimeout))
+		}
 		conn, err := listener.Accept()
 		endTime := time.Now()
 		connChan <- connOrError{conn, err, startTime, endTime}
