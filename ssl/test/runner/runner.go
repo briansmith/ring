@@ -7044,9 +7044,9 @@ func addRenegotiationTests() {
 				EmptyRenegotiationInfo: true,
 			},
 		},
-		flags:         []string{"-renegotiate-freely"},
-		shouldFail:    true,
-		expectedError: ":RENEGOTIATION_MISMATCH:",
+		flags:              []string{"-renegotiate-freely"},
+		shouldFail:         true,
+		expectedError:      ":RENEGOTIATION_MISMATCH:",
 		expectedLocalError: "handshake failure",
 	})
 	testCases = append(testCases, testCase{
@@ -7058,9 +7058,9 @@ func addRenegotiationTests() {
 				BadRenegotiationInfo: true,
 			},
 		},
-		flags:         []string{"-renegotiate-freely"},
-		shouldFail:    true,
-		expectedError: ":RENEGOTIATION_MISMATCH:",
+		flags:              []string{"-renegotiate-freely"},
+		shouldFail:         true,
+		expectedError:      ":RENEGOTIATION_MISMATCH:",
 		expectedLocalError: "handshake failure",
 	})
 	testCases = append(testCases, testCase{
@@ -7072,9 +7072,9 @@ func addRenegotiationTests() {
 				BadRenegotiationInfoEnd: true,
 			},
 		},
-		flags:         []string{"-renegotiate-freely"},
-		shouldFail:    true,
-		expectedError: ":RENEGOTIATION_MISMATCH:",
+		flags:              []string{"-renegotiate-freely"},
+		shouldFail:         true,
+		expectedError:      ":RENEGOTIATION_MISMATCH:",
 		expectedLocalError: "handshake failure",
 	})
 	testCases = append(testCases, testCase{
@@ -7086,9 +7086,9 @@ func addRenegotiationTests() {
 				NoRenegotiationInfoAfterInitial: true,
 			},
 		},
-		flags:         []string{"-renegotiate-freely"},
-		shouldFail:    true,
-		expectedError: ":RENEGOTIATION_MISMATCH:",
+		flags:              []string{"-renegotiate-freely"},
+		shouldFail:         true,
+		expectedError:      ":RENEGOTIATION_MISMATCH:",
 		expectedLocalError: "handshake failure",
 	})
 	testCases = append(testCases, testCase{
@@ -7100,9 +7100,9 @@ func addRenegotiationTests() {
 				NoRenegotiationInfoInInitial: true,
 			},
 		},
-		flags:         []string{"-renegotiate-freely"},
-		shouldFail:    true,
-		expectedError: ":RENEGOTIATION_MISMATCH:",
+		flags:              []string{"-renegotiate-freely"},
+		shouldFail:         true,
+		expectedError:      ":RENEGOTIATION_MISMATCH:",
 		expectedLocalError: "handshake failure",
 	})
 	testCases = append(testCases, testCase{
