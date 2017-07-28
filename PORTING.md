@@ -249,3 +249,23 @@ parameter.
 `SSL_CTRL_SET_TMP_ECDH_CB` | `SSL_CTX_set_tmp_ecdh_callback`
 `SSL_CTRL_SET_TMP_RSA` | `SSL_CTX_set_tmp_rsa` is equivalent, but [*do not use this function*](https://freakattack.com/). (It is a no-op in BoringSSL.)
 `SSL_CTRL_SET_TMP_RSA_CB` | `SSL_CTX_set_tmp_rsa_callback` is equivalent, but [*do not use this function*](https://freakattack.com/). (It is a no-op in BoringSSL.)
+
+## Significant API additions
+
+In some places, BoringSSL has added significant APIs. Use of these APIs goes beyound “porting” and means giving up on OpenSSL compatibility.
+
+One example of this has already been mentioned: the [CBS and CBB](https://commondatastorage.googleapis.com/chromium-boringssl-docs/bytestring.h.html) functions should be used whenever parsing or serialising data.
+
+### CRYPTO\_BUFFER
+
+With the standard OpenSSL APIs, when making many TLS connections, the certificate data for each connection is retained in memory in an expensive `X509` structure. Additionally, common certificates often appear in the chains for multiple connections and are needlessly duplicated in memory.
+
+A [`CRYPTO_BUFFER`](https://commondatastorage.googleapis.com/chromium-boringssl-docs/pool.h.html) is just an opaque byte string. A `CRYPTO_BUFFER_POOL` is an intern table for these buffers, i.e. it ensures that only a single copy of any given byte string is kept for each pool.
+
+The function `TLS_with_buffers_method` returns an `SSL_METHOD` that avoids creating `X509` objects for certificates. Additionally, `SSL_CTX_set0_buffer_pool` can be used to install a pool on an `SSL_CTX` so that certificates can be deduplicated across connections and across `SSL_CTX`s.
+
+When using these functions, the application also needs to ensure that it doesn't call other functions that deal with `X509` or `X509_NAME` objects. For example, `SSL_get_peer_certificate` or `SSL_get_peer_cert_chain`. Doing so will trigger an assert in debug mode and will result in NULLs in release mode. Instead, call the buffer-based alternatives such as `SSL_get0_peer_certificates`. (See [ssl.h](https://commondatastorage.googleapis.com/chromium-boringssl-docs/ssl.h.html) for functions taking or returning `CRYPTO_BUFFER`.) The buffer-based alternative functions will work even when not using `TLS_with_buffers_method`, thus application code can transition gradually.
+
+In order to use buffers, the application code also needs to implement its own certificate verification using `SSL_[CTX_]set_custom_verify`. Otherwise all connections will fail with a verification error. Auto-chaining is also disabled when using buffers.
+
+Once those changes have been completed, the whole of the OpenSSL X.509 and ASN.1 code should be eliminated by the linker if BoringSSL is linked statically.
