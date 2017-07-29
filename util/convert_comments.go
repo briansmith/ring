@@ -186,7 +186,7 @@ func convertComments(in []byte) []byte {
 			// comment if it is on the same line as code,
 			// but clang-format has been placing one space
 			// for block comments. Fix this.
-			if !allSpaces(line[:idx]) {
+			if !allSpaces(line[:idx]) && line[idx-1] != '(' {
 				if line[idx-1] != ' ' {
 					out.WriteString("  ")
 				} else if line[idx-2] != ' ' {
