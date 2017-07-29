@@ -165,12 +165,10 @@ func convertComments(in []byte) []byte {
 
 			endIdx := indexFrom(line, "*/", idx)
 			if endIdx < 0 {
+				// The comment is, so far, eligible for conversion.
 				inComment = true
-				if allSpaces(line[:idx]) {
-					// The comment is, so far, eligible for conversion.
-					column = idx
-					comment = []string{line}
-				}
+				column = idx
+				comment = []string{line}
 				break
 			}
 
