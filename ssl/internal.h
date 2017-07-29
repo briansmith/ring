@@ -2083,13 +2083,13 @@ enum ssl_session_result_t {
 };
 
 /* ssl_get_prev_session looks up the previous session based on |client_hello|.
- * On success, it sets |*out_session| to the session or NULL if none was found.
- * If the session could not be looked up synchronously, it returns
+ * On success, it sets |*out_session| to the session or nullptr if none was
+ * found. If the session could not be looked up synchronously, it returns
  * |ssl_session_retry| and should be called again. If a ticket could not be
  * decrypted immediately it returns |ssl_session_ticket_retry| and should also
  * be called again. Otherwise, it returns |ssl_session_error|.  */
 enum ssl_session_result_t ssl_get_prev_session(
-    SSL *ssl, SSL_SESSION **out_session, int *out_tickets_supported,
+    SSL *ssl, UniquePtr<SSL_SESSION> *out_session, int *out_tickets_supported,
     int *out_renew_ticket, const SSL_CLIENT_HELLO *client_hello);
 
 /* The following flags determine which parts of the session are duplicated. */
@@ -2267,7 +2267,7 @@ int ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs);
  *       Retry later.
  *   |ssl_ticket_aead_error|: an error occured that is fatal to the connection. */
 enum ssl_ticket_aead_result_t ssl_process_ticket(
-    SSL *ssl, SSL_SESSION **out_session, int *out_renew_ticket,
+    SSL *ssl, UniquePtr<SSL_SESSION> *out_session, int *out_renew_ticket,
     const uint8_t *ticket, size_t ticket_len, const uint8_t *session_id,
     size_t session_id_len);
 

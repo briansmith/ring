@@ -610,18 +610,17 @@ int ssl_session_is_resumable(const SSL_HANDSHAKE *hs,
 }
 
 /* ssl_lookup_session looks up |session_id| in the session cache and sets
- * |*out_session| to an |SSL_SESSION| object if found. The caller takes
- * ownership of the result. */
+ * |*out_session| to an |SSL_SESSION| object if found. */
 static enum ssl_session_result_t ssl_lookup_session(
-    SSL *ssl, SSL_SESSION **out_session, const uint8_t *session_id,
+    SSL *ssl, UniquePtr<SSL_SESSION> *out_session, const uint8_t *session_id,
     size_t session_id_len) {
-  *out_session = NULL;
+  out_session->reset();
 
   if (session_id_len == 0 || session_id_len > SSL_MAX_SSL_SESSION_ID_LENGTH) {
     return ssl_session_success;
   }
 
-  SSL_SESSION *session = NULL;
+  UniquePtr<SSL_SESSION> session;
   /* Try the internal cache, if it exists. */
   if (!(ssl->session_ctx->session_cache_mode &
         SSL_SESS_CACHE_NO_INTERNAL_LOOKUP)) {
@@ -631,26 +630,27 @@ static enum ssl_session_result_t ssl_lookup_session(
     OPENSSL_memcpy(data.session_id, session_id, session_id_len);
 
     CRYPTO_MUTEX_lock_read(&ssl->session_ctx->lock);
-    session = lh_SSL_SESSION_retrieve(ssl->session_ctx->sessions, &data);
-    if (session != NULL) {
-      SSL_SESSION_up_ref(session);
+    session.reset(lh_SSL_SESSION_retrieve(ssl->session_ctx->sessions, &data));
+    if (session) {
+      /* |lh_SSL_SESSION_retrieve| returns a non-owning pointer. */
+      SSL_SESSION_up_ref(session.get());
     }
     /* TODO(davidben): This should probably move it to the front of the list. */
     CRYPTO_MUTEX_unlock_read(&ssl->session_ctx->lock);
   }
 
   /* Fall back to the external cache, if it exists. */
-  if (session == NULL &&
-      ssl->session_ctx->get_session_cb != NULL) {
+  if (!session && ssl->session_ctx->get_session_cb != NULL) {
     int copy = 1;
-    session = ssl->session_ctx->get_session_cb(ssl, (uint8_t *)session_id,
-                                               session_id_len, &copy);
+    session.reset(ssl->session_ctx->get_session_cb(ssl, (uint8_t *)session_id,
+                                                   session_id_len, &copy));
 
-    if (session == NULL) {
+    if (!session) {
       return ssl_session_success;
     }
 
-    if (session == SSL_magic_pending_session_ptr()) {
+    if (session.get() == SSL_magic_pending_session_ptr()) {
+      session.release();  // This pointer is not actually owned.
       return ssl_session_retry;
     }
 
@@ -659,34 +659,32 @@ static enum ssl_session_result_t ssl_lookup_session(
      * between threads, it must handle the reference count itself [i.e. copy ==
      * 0], or things won't be thread-safe). */
     if (copy) {
-      SSL_SESSION_up_ref(session);
+      SSL_SESSION_up_ref(session.get());
     }
 
     /* Add the externally cached session to the internal cache if necessary. */
     if (!(ssl->session_ctx->session_cache_mode &
           SSL_SESS_CACHE_NO_INTERNAL_STORE)) {
-      SSL_CTX_add_session(ssl->session_ctx, session);
+      SSL_CTX_add_session(ssl->session_ctx, session.get());
     }
   }
 
-  if (session != NULL &&
-      !ssl_session_is_time_valid(ssl, session)) {
+  if (session && !ssl_session_is_time_valid(ssl, session.get())) {
     /* The session was from the cache, so remove it. */
-    SSL_CTX_remove_session(ssl->session_ctx, session);
-    SSL_SESSION_free(session);
-    session = NULL;
+    SSL_CTX_remove_session(ssl->session_ctx, session.get());
+    session.reset();
   }
 
-  *out_session = session;
+  *out_session = std::move(session);
   return ssl_session_success;
 }
 
 enum ssl_session_result_t ssl_get_prev_session(
-    SSL *ssl, SSL_SESSION **out_session, int *out_tickets_supported,
+    SSL *ssl, UniquePtr<SSL_SESSION> *out_session, int *out_tickets_supported,
     int *out_renew_ticket, const SSL_CLIENT_HELLO *client_hello) {
   /* This is used only by servers. */
   assert(ssl->server);
-  SSL_SESSION *session = NULL;
+  UniquePtr<SSL_SESSION> session;
   int renew_ticket = 0;
 
   /* If tickets are disabled, always behave as if no tickets are present. */
@@ -704,7 +702,7 @@ enum ssl_session_result_t ssl_get_prev_session(
       case ssl_ticket_aead_success:
         break;
       case ssl_ticket_aead_ignore_ticket:
-        assert(session == NULL);
+        assert(!session);
         break;
       case ssl_ticket_aead_error:
         return ssl_session_error;
@@ -720,7 +718,7 @@ enum ssl_session_result_t ssl_get_prev_session(
     }
   }
 
-  *out_session = session;
+  *out_session = std::move(session);
   *out_tickets_supported = tickets_supported;
   *out_renew_ticket = renew_ticket;
   return ssl_session_success;

@@ -817,14 +817,10 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
   }
 
   /* Determine whether we are doing session resumption. */
+  UniquePtr<SSL_SESSION> session;
   int tickets_supported = 0, renew_ticket = 0;
-  /* TODO(davidben): Switch |ssl_get_prev_session| to take a |UniquePtr|
-   * output and simplify this. */
-  SSL_SESSION *session_raw = nullptr;
-  auto session_ret = ssl_get_prev_session(ssl, &session_raw, &tickets_supported,
-                                          &renew_ticket, &client_hello);
-  UniquePtr<SSL_SESSION> session(session_raw);
-  switch (session_ret) {
+  switch (ssl_get_prev_session(ssl, &session, &tickets_supported, &renew_ticket,
+                               &client_hello)) {
     case ssl_session_success:
       break;
     case ssl_session_error:

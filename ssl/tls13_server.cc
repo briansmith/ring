@@ -255,7 +255,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
 }
 
 static enum ssl_ticket_aead_result_t select_session(
-    SSL_HANDSHAKE *hs, uint8_t *out_alert, SSL_SESSION **out_session,
+    SSL_HANDSHAKE *hs, uint8_t *out_alert, UniquePtr<SSL_SESSION> *out_session,
     int32_t *out_ticket_age_skew, const SSL_CLIENT_HELLO *client_hello) {
   SSL *const ssl = hs->ssl;
   *out_session = NULL;
@@ -288,7 +288,7 @@ static enum ssl_ticket_aead_result_t select_session(
   /* TLS 1.3 session tickets are renewed separately as part of the
    * NewSessionTicket. */
   int unused_renew;
-  SSL_SESSION *session = NULL;
+  UniquePtr<SSL_SESSION> session;
   enum ssl_ticket_aead_result_t ret =
       ssl_process_ticket(ssl, &session, &unused_renew, CBS_data(&ticket),
                          CBS_len(&ticket), NULL, 0);
@@ -302,10 +302,9 @@ static enum ssl_ticket_aead_result_t select_session(
       return ret;
   }
 
-  if (!ssl_session_is_resumable(hs, session) ||
+  if (!ssl_session_is_resumable(hs, session.get()) ||
       /* Historically, some TLS 1.3 tickets were missing ticket_age_add. */
       !session->ticket_age_add_valid) {
-    SSL_SESSION_free(session);
     return ssl_ticket_aead_ignore_ticket;
   }
 
@@ -323,7 +322,6 @@ static enum ssl_ticket_aead_result_t select_session(
   /* To avoid overflowing |hs->ticket_age_skew|, we will not resume
    * 68-year-old sessions. */
   if (server_ticket_age > INT32_MAX) {
-    SSL_SESSION_free(session);
     return ssl_ticket_aead_ignore_ticket;
   }
 
@@ -333,13 +331,12 @@ static enum ssl_ticket_aead_result_t select_session(
       (int32_t)client_ticket_age - (int32_t)server_ticket_age;
 
   /* Check the PSK binder. */
-  if (!tls13_verify_psk_binder(hs, session, &binders)) {
-    SSL_SESSION_free(session);
+  if (!tls13_verify_psk_binder(hs, session.get(), &binders)) {
     *out_alert = SSL_AD_DECRYPT_ERROR;
     return ssl_ticket_aead_error;
   }
 
-  *out_session = session;
+  *out_session = std::move(session);
   return ssl_ticket_aead_success;
 }
 
@@ -354,11 +351,11 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
   }
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  SSL_SESSION *session = NULL;
+  UniquePtr<SSL_SESSION> session;
   switch (select_session(hs, &alert, &session, &ssl->s3->ticket_age_skew,
                          &client_hello)) {
     case ssl_ticket_aead_ignore_ticket:
-      assert(session == NULL);
+      assert(!session);
       if (!ssl_get_new_session(hs, 1 /* server */)) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         return ssl_hs_error;
@@ -368,7 +365,8 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     case ssl_ticket_aead_success:
       /* Carry over authentication information from the previous handshake into
        * a fresh session. */
-      hs->new_session = SSL_SESSION_dup(session, SSL_SESSION_DUP_AUTH_ONLY);
+      hs->new_session =
+          SSL_SESSION_dup(session.get(), SSL_SESSION_DUP_AUTH_ONLY);
 
       if (/* Early data must be acceptable for this ticket. */
           ssl->cert->enable_early_data &&
@@ -384,7 +382,6 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
         ssl->early_data_accepted = 1;
       }
 
-      SSL_SESSION_free(session);
       if (hs->new_session == NULL) {
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         return ssl_hs_error;

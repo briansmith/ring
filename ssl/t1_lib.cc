@@ -3123,11 +3123,11 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_method(
 }
 
 enum ssl_ticket_aead_result_t ssl_process_ticket(
-    SSL *ssl, SSL_SESSION **out_session, int *out_renew_ticket,
+    SSL *ssl, UniquePtr<SSL_SESSION> *out_session, int *out_renew_ticket,
     const uint8_t *ticket, size_t ticket_len, const uint8_t *session_id,
     size_t session_id_len) {
   *out_renew_ticket = 0;
-  *out_session = NULL;
+  out_session->reset();
 
   if ((SSL_get_options(ssl) & SSL_OP_NO_TICKET) ||
       session_id_len > SSL_MAX_SSL_SESSION_ID_LENGTH) {
@@ -3150,11 +3150,11 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
   }
 
   /* Decode the session. */
-  SSL_SESSION *session =
-      SSL_SESSION_from_bytes(plaintext, plaintext_len, ssl->ctx);
+  UniquePtr<SSL_SESSION> session(
+      SSL_SESSION_from_bytes(plaintext, plaintext_len, ssl->ctx));
   OPENSSL_free(plaintext);
 
-  if (session == NULL) {
+  if (!session) {
     ERR_clear_error(); /* Don't leave an error on the queue. */
     return ssl_ticket_aead_ignore_ticket;
   }
@@ -3164,7 +3164,7 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
   OPENSSL_memcpy(session->session_id, session_id, session_id_len);
   session->session_id_length = session_id_len;
 
-  *out_session = session;
+  *out_session = std::move(session);
   return ssl_ticket_aead_success;
 }
 
