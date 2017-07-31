@@ -181,13 +181,12 @@ struct SSL_HANDSHAKE;
  * Note: unlike |new|, this does not support non-public constructors. */
 template <typename T, typename... Args>
 T *New(Args &&... args) {
-  T *t = reinterpret_cast<T *>(OPENSSL_malloc(sizeof(T)));
+  void *t = OPENSSL_malloc(sizeof(T));
   if (t == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return nullptr;
   }
-  new (t) T(std::forward<Args>(args)...);
-  return t;
+  return new (t) T(std::forward<Args>(args)...);
 }
 
 /* Delete behaves like |delete| but uses |OPENSSL_free| to release memory.
