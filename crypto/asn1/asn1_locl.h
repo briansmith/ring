@@ -72,7 +72,7 @@ extern "C" {
 /* Wrapper functions for time functions. */
 
 /* OPENSSL_gmtime wraps |gmtime_r|. See the manual page for that function. */
-struct tm *OPENSSL_gmtime(const time_t *timer, struct tm *result);
+struct tm *OPENSSL_gmtime(const time_t *time, struct tm *result);
 
 /* OPENSSL_gmtime_adj updates |tm| by adding |offset_day| days and |offset_sec|
  * seconds. */

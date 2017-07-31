@@ -50,7 +50,7 @@ OPENSSL_EXPORT void X25519_keypair(uint8_t out_public_value[32],
  * public values as inputs. */
 OPENSSL_EXPORT int X25519(uint8_t out_shared_key[32],
                           const uint8_t private_key[32],
-                          const uint8_t peers_public_value[32]);
+                          const uint8_t peer_public_value[32]);
 
 /* X25519_public_from_private calculates a Diffie-Hellman public value from the
  * given private key and writes it to |out_public_value|. */

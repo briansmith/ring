@@ -2148,8 +2148,8 @@ int SSL_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
   return index;
 }
 
-int SSL_set_ex_data(SSL *ssl, int idx, void *arg) {
-  return CRYPTO_set_ex_data(&ssl->ex_data, idx, arg);
+int SSL_set_ex_data(SSL *ssl, int idx, void *data) {
+  return CRYPTO_set_ex_data(&ssl->ex_data, idx, data);
 }
 
 void *SSL_get_ex_data(const SSL *ssl, int idx) {
@@ -2167,8 +2167,8 @@ int SSL_CTX_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
   return index;
 }
 
-int SSL_CTX_set_ex_data(SSL_CTX *ctx, int idx, void *arg) {
-  return CRYPTO_set_ex_data(&ctx->ex_data, idx, arg);
+int SSL_CTX_set_ex_data(SSL_CTX *ctx, int idx, void *data) {
+  return CRYPTO_set_ex_data(&ctx->ex_data, idx, data);
 }
 
 void *SSL_CTX_get_ex_data(const SSL_CTX *ctx, int idx) {
@@ -2179,21 +2179,17 @@ int SSL_want(const SSL *ssl) { return ssl->rwstate; }
 
 void SSL_CTX_set_tmp_rsa_callback(SSL_CTX *ctx,
                                   RSA *(*cb)(SSL *ssl, int is_export,
-                                             int keylength)) {
-}
+                                             int keylength)) {}
 
 void SSL_set_tmp_rsa_callback(SSL *ssl, RSA *(*cb)(SSL *ssl, int is_export,
-                                                   int keylength)) {
-}
+                                                   int keylength)) {}
 
 void SSL_CTX_set_tmp_dh_callback(SSL_CTX *ctx,
-                                 DH *(*callback)(SSL *ssl, int is_export,
-                                                 int keylength)) {
-}
+                                 DH *(*cb)(SSL *ssl, int is_export,
+                                           int keylength)) {}
 
-void SSL_set_tmp_dh_callback(SSL *ssl, DH *(*callback)(SSL *ssl, int is_export,
-                                                       int keylength)) {
-}
+void SSL_set_tmp_dh_callback(SSL *ssl, DH *(*cb)(SSL *ssl, int is_export,
+                                                 int keylength)) {}
 
 static int use_psk_identity_hint(char **out, const char *identity_hint) {
   if (identity_hint != NULL && strlen(identity_hint) > PSK_MAX_IDENTITY_LEN) {

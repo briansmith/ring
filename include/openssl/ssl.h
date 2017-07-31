@@ -2819,20 +2819,17 @@ OPENSSL_EXPORT const SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(
  * The callback returns the length of the PSK or 0 if no suitable identity was
  * found. */
 OPENSSL_EXPORT void SSL_CTX_set_psk_client_callback(
-    SSL_CTX *ctx,
-    unsigned (*psk_client_callback)(
-        SSL *ssl, const char *hint, char *identity,
-        unsigned max_identity_len, uint8_t *psk, unsigned max_psk_len));
+    SSL_CTX *ctx, unsigned (*cb)(SSL *ssl, const char *hint, char *identity,
+                                 unsigned max_identity_len, uint8_t *psk,
+                                 unsigned max_psk_len));
 
 /* SSL_set_psk_client_callback sets the callback to be called when PSK is
  * negotiated on the client. This callback must be set to enable PSK cipher
  * suites on the client. See also |SSL_CTX_set_psk_client_callback|. */
 OPENSSL_EXPORT void SSL_set_psk_client_callback(
-    SSL *ssl, unsigned (*psk_client_callback)(SSL *ssl, const char *hint,
-                                              char *identity,
-                                              unsigned max_identity_len,
-                                              uint8_t *psk,
-                                              unsigned max_psk_len));
+    SSL *ssl, unsigned (*cb)(SSL *ssl, const char *hint, char *identity,
+                             unsigned max_identity_len, uint8_t *psk,
+                             unsigned max_psk_len));
 
 /* SSL_CTX_set_psk_server_callback sets the callback to be called when PSK is
  * negotiated on the server. This callback must be set to enable PSK cipher
@@ -2842,19 +2839,15 @@ OPENSSL_EXPORT void SSL_set_psk_client_callback(
  * length at most |max_psk_len| to |psk| and return the number of bytes written
  * or zero if the PSK identity is unknown. */
 OPENSSL_EXPORT void SSL_CTX_set_psk_server_callback(
-    SSL_CTX *ctx,
-    unsigned (*psk_server_callback)(SSL *ssl, const char *identity,
-                                    uint8_t *psk,
-                                    unsigned max_psk_len));
+    SSL_CTX *ctx, unsigned (*cb)(SSL *ssl, const char *identity, uint8_t *psk,
+                                 unsigned max_psk_len));
 
 /* SSL_set_psk_server_callback sets the callback to be called when PSK is
  * negotiated on the server. This callback must be set to enable PSK cipher
  * suites on the server. See also |SSL_CTX_set_psk_server_callback|. */
 OPENSSL_EXPORT void SSL_set_psk_server_callback(
-    SSL *ssl,
-    unsigned (*psk_server_callback)(SSL *ssl, const char *identity,
-                                    uint8_t *psk,
-                                    unsigned max_psk_len));
+    SSL *ssl, unsigned (*cb)(SSL *ssl, const char *identity, uint8_t *psk,
+                             unsigned max_psk_len));
 
 /* SSL_CTX_use_psk_identity_hint configures server connections to advertise an
  * identity hint of |identity_hint|. It returns one on success and zero on
@@ -3572,7 +3565,7 @@ OPENSSL_EXPORT int SSL_CTX_sess_timeouts(const SSL_CTX *ctx);
 OPENSSL_EXPORT int SSL_CTX_sess_cache_full(const SSL_CTX *ctx);
 
 /* SSL_cutthrough_complete calls |SSL_in_false_start|. */
-OPENSSL_EXPORT int SSL_cutthrough_complete(const SSL *s);
+OPENSSL_EXPORT int SSL_cutthrough_complete(const SSL *ssl);
 
 /* SSL_num_renegotiations calls |SSL_total_renegotiations|. */
 OPENSSL_EXPORT int SSL_num_renegotiations(const SSL *ssl);
@@ -3596,10 +3589,10 @@ OPENSSL_EXPORT int SSL_CTX_get_read_ahead(const SSL_CTX *ctx);
 OPENSSL_EXPORT void SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes);
 
 /* SSL_get_read_ahead returns zero. */
-OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *s);
+OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *ssl);
 
 /* SSL_set_read_ahead does nothing. */
-OPENSSL_EXPORT void SSL_set_read_ahead(SSL *s, int yes);
+OPENSSL_EXPORT void SSL_set_read_ahead(SSL *ssl, int yes);
 
 /* SSL_renegotiate put an error on the error queue and returns zero. */
 OPENSSL_EXPORT int SSL_renegotiate(SSL *ssl);
@@ -3664,10 +3657,10 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx,
 OPENSSL_EXPORT int SSL_set_tlsext_use_srtp(SSL *ssl, const char *profiles);
 
 /* SSL_get_current_compression returns NULL. */
-OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_compression(SSL *s);
+OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_compression(SSL *ssl);
 
 /* SSL_get_current_expansion returns NULL. */
-OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_expansion(SSL *s);
+OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_expansion(SSL *ssl);
 
 /* SSL_get_server_tmp_key returns zero. */
 OPENSSL_EXPORT int *SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key);
@@ -3680,11 +3673,11 @@ OPENSSL_EXPORT int SSL_set_tmp_dh(SSL *ssl, const DH *dh);
 
 /* SSL_CTX_set_tmp_dh_callback does nothing. */
 OPENSSL_EXPORT void SSL_CTX_set_tmp_dh_callback(
-    SSL_CTX *ctx, DH *(*callback)(SSL *ssl, int is_export, int keylength));
+    SSL_CTX *ctx, DH *(*cb)(SSL *ssl, int is_export, int keylength));
 
 /* SSL_set_tmp_dh_callback does nothing. */
 OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
-                                            DH *(*dh)(SSL *ssl, int is_export,
+                                            DH *(*cb)(SSL *ssl, int is_export,
                                                       int keylength));
 
 
@@ -3784,8 +3777,7 @@ OPENSSL_EXPORT const char *SSL_get_cipher_list(const SSL *ssl, int n);
  * this function is confusing. This callback may not be registered concurrently
  * with |SSL_CTX_set_cert_cb| or |SSL_set_cert_cb|. */
 OPENSSL_EXPORT void SSL_CTX_set_client_cert_cb(
-    SSL_CTX *ctx,
-    int (*client_cert_cb)(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey));
+    SSL_CTX *ctx, int (*cb)(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey));
 
 #define SSL_NOTHING 1
 #define SSL_WRITING 2
@@ -4368,7 +4360,7 @@ struct ssl_ctx_st {
    *   in: points to the client's list of supported protocols in
    *       wire-format.
    *   inlen: the length of |in|. */
-  int (*alpn_select_cb)(SSL *s, const uint8_t **out, uint8_t *out_len,
+  int (*alpn_select_cb)(SSL *ssl, const uint8_t **out, uint8_t *out_len,
                         const uint8_t *in, unsigned in_len, void *arg);
   void *alpn_select_cb_arg;
 

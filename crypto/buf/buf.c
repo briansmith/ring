@@ -153,12 +153,12 @@ size_t BUF_MEM_grow_clean(BUF_MEM *buf, size_t len) {
   return buf_mem_grow(buf, len, 1 /* clear old buffer contents. */);
 }
 
-char *BUF_strdup(const char *buf) {
-  if (buf == NULL) {
+char *BUF_strdup(const char *str) {
+  if (str == NULL) {
     return NULL;
   }
 
-  return BUF_strndup(buf, strlen(buf));
+  return BUF_strndup(str, strlen(str));
 }
 
 size_t BUF_strnlen(const char *str, size_t max_len) {
@@ -173,15 +173,15 @@ size_t BUF_strnlen(const char *str, size_t max_len) {
   return i;
 }
 
-char *BUF_strndup(const char *buf, size_t size) {
+char *BUF_strndup(const char *str, size_t size) {
   char *ret;
   size_t alloc_size;
 
-  if (buf == NULL) {
+  if (str == NULL) {
     return NULL;
   }
 
-  size = BUF_strnlen(buf, size);
+  size = BUF_strnlen(str, size);
 
   alloc_size = size + 1;
   if (alloc_size < size) {
@@ -195,7 +195,7 @@ char *BUF_strndup(const char *buf, size_t size) {
     return NULL;
   }
 
-  OPENSSL_memcpy(ret, buf, size);
+  OPENSSL_memcpy(ret, str, size);
   ret[size] = '\0';
   return ret;
 }
@@ -223,19 +223,17 @@ size_t BUF_strlcat(char *dst, const char *src, size_t dst_size) {
   return l + BUF_strlcpy(dst, src, dst_size);
 }
 
-void *BUF_memdup(const void *data, size_t dst_size) {
-  void *ret;
-
-  if (dst_size == 0) {
+void *BUF_memdup(const void *data, size_t size) {
+  if (size == 0) {
     return NULL;
   }
 
-  ret = OPENSSL_malloc(dst_size);
+  void *ret = OPENSSL_malloc(size);
   if (ret == NULL) {
     OPENSSL_PUT_ERROR(BUF, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
-  OPENSSL_memcpy(ret, data, dst_size);
+  OPENSSL_memcpy(ret, data, size);
   return ret;
 }

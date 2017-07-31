@@ -91,7 +91,7 @@ OPENSSL_EXPORT size_t BUF_MEM_grow(BUF_MEM *buf, size_t len);
 
 /* BUF_MEM_grow_clean acts the same as |BUF_MEM_grow|, but clears the previous
  * contents of memory if reallocing. */
-OPENSSL_EXPORT size_t BUF_MEM_grow_clean(BUF_MEM *str, size_t len);
+OPENSSL_EXPORT size_t BUF_MEM_grow_clean(BUF_MEM *buf, size_t len);
 
 /* BUF_strdup returns an allocated, duplicate of |str|. */
 OPENSSL_EXPORT char *BUF_strdup(const char *str);
@@ -112,7 +112,7 @@ OPENSSL_EXPORT void *BUF_memdup(const void *data, size_t size);
 OPENSSL_EXPORT size_t BUF_strlcpy(char *dst, const char *src, size_t dst_size);
 
 /* BUF_strlcat acts like strlcat(3). */
-OPENSSL_EXPORT size_t BUF_strlcat(char *dst, const char *src, size_t size);
+OPENSSL_EXPORT size_t BUF_strlcat(char *dst, const char *src, size_t dst_size);
 
 
 #if defined(__cplusplus)

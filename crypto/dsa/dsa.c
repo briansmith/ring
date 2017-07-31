@@ -917,35 +917,35 @@ int DSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
   return index;
 }
 
-int DSA_set_ex_data(DSA *d, int idx, void *arg) {
-  return CRYPTO_set_ex_data(&d->ex_data, idx, arg);
+int DSA_set_ex_data(DSA *dsa, int idx, void *arg) {
+  return CRYPTO_set_ex_data(&dsa->ex_data, idx, arg);
 }
 
-void *DSA_get_ex_data(const DSA *d, int idx) {
-  return CRYPTO_get_ex_data(&d->ex_data, idx);
+void *DSA_get_ex_data(const DSA *dsa, int idx) {
+  return CRYPTO_get_ex_data(&dsa->ex_data, idx);
 }
 
-DH *DSA_dup_DH(const DSA *r) {
-  DH *ret = NULL;
-
-  if (r == NULL) {
-    goto err;
+DH *DSA_dup_DH(const DSA *dsa) {
+  if (dsa == NULL) {
+    return NULL;
   }
-  ret = DH_new();
+
+  DH *ret = DH_new();
   if (ret == NULL) {
     goto err;
   }
-  if (r->q != NULL) {
-    ret->priv_length = BN_num_bits(r->q);
-    if ((ret->q = BN_dup(r->q)) == NULL) {
+  if (dsa->q != NULL) {
+    ret->priv_length = BN_num_bits(dsa->q);
+    if ((ret->q = BN_dup(dsa->q)) == NULL) {
       goto err;
     }
   }
-  if ((r->p != NULL && (ret->p = BN_dup(r->p)) == NULL) ||
-      (r->g != NULL && (ret->g = BN_dup(r->g)) == NULL) ||
-      (r->pub_key != NULL && (ret->pub_key = BN_dup(r->pub_key)) == NULL) ||
-      (r->priv_key != NULL && (ret->priv_key = BN_dup(r->priv_key)) == NULL)) {
-      goto err;
+  if ((dsa->p != NULL && (ret->p = BN_dup(dsa->p)) == NULL) ||
+      (dsa->g != NULL && (ret->g = BN_dup(dsa->g)) == NULL) ||
+      (dsa->pub_key != NULL && (ret->pub_key = BN_dup(dsa->pub_key)) == NULL) ||
+      (dsa->priv_key != NULL &&
+       (ret->priv_key = BN_dup(dsa->priv_key)) == NULL)) {
+    goto err;
   }
 
   return ret;

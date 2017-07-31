@@ -911,7 +911,7 @@ int SSL_SESSION_set1_id_context(SSL_SESSION *session, const uint8_t *sid_ctx,
     return 0;
   }
 
-  assert(sizeof(session->sid_ctx) < 256);
+  static_assert(sizeof(session->sid_ctx) < 256, "sid_ctx_len does not fit");
   session->sid_ctx_length = (uint8_t)sid_ctx_len;
   OPENSSL_memcpy(session->sid_ctx, sid_ctx, sid_ctx_len);
 

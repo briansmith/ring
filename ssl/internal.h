@@ -716,7 +716,7 @@ int ssl_has_private_key(const SSL *ssl);
 
 enum ssl_private_key_result_t ssl_private_key_sign(
     SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, size_t max_out,
-    uint16_t signature_algorithm, const uint8_t *in, size_t in_len);
+    uint16_t sigalg, const uint8_t *in, size_t in_len);
 
 enum ssl_private_key_result_t ssl_private_key_decrypt(
     SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, size_t max_out,
@@ -728,11 +728,10 @@ int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
                                                  uint16_t sigalg);
 
 /* ssl_public_key_verify verifies that the |signature| is valid for the public
- * key |pkey| and input |in|, using the |signature_algorithm| specified. */
-int ssl_public_key_verify(
-    SSL *ssl, const uint8_t *signature, size_t signature_len,
-    uint16_t signature_algorithm, EVP_PKEY *pkey,
-    const uint8_t *in, size_t in_len);
+ * key |pkey| and input |in|, using the signature algorithm |sigalg|. */
+int ssl_public_key_verify(SSL *ssl, const uint8_t *signature,
+                          size_t signature_len, uint16_t sigalg, EVP_PKEY *pkey,
+                          const uint8_t *in, size_t in_len);
 
 
 /* Custom extensions */
@@ -2030,8 +2029,8 @@ static const size_t kMaxEarlyDataAccepted = 14336;
 
 CERT *ssl_cert_new(const SSL_X509_METHOD *x509_method);
 CERT *ssl_cert_dup(CERT *cert);
-void ssl_cert_clear_certs(CERT *c);
-void ssl_cert_free(CERT *c);
+void ssl_cert_clear_certs(CERT *cert);
+void ssl_cert_free(CERT *cert);
 int ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer);
 int ssl_is_key_type_supported(int key_type);
 /* ssl_compare_public_and_private_key returns one if |pubkey| is the public

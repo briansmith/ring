@@ -293,12 +293,12 @@ int RSA_get_ex_new_index(long argl, void *argp, CRYPTO_EX_unused *unused,
   return index;
 }
 
-int RSA_set_ex_data(RSA *d, int idx, void *arg) {
-  return CRYPTO_set_ex_data(&d->ex_data, idx, arg);
+int RSA_set_ex_data(RSA *rsa, int idx, void *arg) {
+  return CRYPTO_set_ex_data(&rsa->ex_data, idx, arg);
 }
 
-void *RSA_get_ex_data(const RSA *d, int idx) {
-  return CRYPTO_get_ex_data(&d->ex_data, idx);
+void *RSA_get_ex_data(const RSA *rsa, int idx) {
+  return CRYPTO_get_ex_data(&rsa->ex_data, idx);
 }
 
 /* SSL_SIG_LENGTH is the size of an SSL/TLS (prior to TLS 1.2) signature: it's

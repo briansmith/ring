@@ -345,8 +345,6 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 #if defined(BORINGSSL_FIPS)
   CRYPTO_STATIC_MUTEX_unlock_read(thread_states_list_lock_bss_get());
 #endif
-
-  return;
 }
 
 int RAND_bytes(uint8_t *out, size_t out_len) {

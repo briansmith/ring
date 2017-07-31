@@ -222,24 +222,24 @@ void ssl_cert_clear_certs(CERT *cert) {
   cert->key_method = NULL;
 }
 
-void ssl_cert_free(CERT *c) {
-  if (c == NULL) {
+void ssl_cert_free(CERT *cert) {
+  if (cert == NULL) {
     return;
   }
 
-  ssl_cert_clear_certs(c);
-  c->x509_method->cert_free(c);
-  OPENSSL_free(c->sigalgs);
-  CRYPTO_BUFFER_free(c->signed_cert_timestamp_list);
-  CRYPTO_BUFFER_free(c->ocsp_response);
+  ssl_cert_clear_certs(cert);
+  cert->x509_method->cert_free(cert);
+  OPENSSL_free(cert->sigalgs);
+  CRYPTO_BUFFER_free(cert->signed_cert_timestamp_list);
+  CRYPTO_BUFFER_free(cert->ocsp_response);
 
-  OPENSSL_free(c);
+  OPENSSL_free(cert);
 }
 
-static void ssl_cert_set_cert_cb(CERT *c, int (*cb)(SSL *ssl, void *arg),
+static void ssl_cert_set_cert_cb(CERT *cert, int (*cb)(SSL *ssl, void *arg),
                                  void *arg) {
-  c->cert_cb = cb;
-  c->cert_cb_arg = arg;
+  cert->cert_cb = cb;
+  cert->cert_cb_arg = arg;
 }
 
 enum leaf_cert_and_privkey_result_t {

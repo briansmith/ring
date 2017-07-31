@@ -79,9 +79,9 @@ extern "C" {
 
 DEFINE_STACK_OF(BIO)
 
-/* BIO_new creates a new BIO with the given type and a reference count of one.
+/* BIO_new creates a new BIO with the given method and a reference count of one.
  * It returns the fresh |BIO|, or NULL on error. */
-OPENSSL_EXPORT BIO *BIO_new(const BIO_METHOD *type);
+OPENSSL_EXPORT BIO *BIO_new(const BIO_METHOD *method);
 
 /* BIO_free decrements the reference count of |bio|. If the reference count
  * drops to zero, it (optionally) calls the BIO's callback with |BIO_CB_FREE|,
