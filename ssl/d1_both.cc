@@ -442,14 +442,16 @@ int dtls1_get_message(SSL *ssl) {
   assert(frag->reassembly == NULL);
   assert(ssl->d1->handshake_read_seq == frag->seq);
 
+  if (ssl->init_msg == NULL) {
+    ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE, frag->data,
+                        frag->msg_len + DTLS1_HM_HEADER_LENGTH);
+  }
+
   /* TODO(davidben): This function has a lot of implicit outputs. Simplify the
    * |ssl_get_message| API. */
   ssl->s3->tmp.message_type = frag->type;
   ssl->init_msg = frag->data + DTLS1_HM_HEADER_LENGTH;
   ssl->init_num = frag->msg_len;
-
-  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE, frag->data,
-                      ssl->init_num + DTLS1_HM_HEADER_LENGTH);
   return 1;
 }
 

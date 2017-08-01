@@ -731,8 +731,10 @@ int ssl3_get_message(SSL *ssl) {
   }
 
   /* We have now received a complete message. */
-  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE, ssl->init_buf->data,
-                      ssl->init_buf->length);
+  if (ssl->init_msg == NULL && !ssl->s3->is_v2_hello) {
+    ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE,
+                        ssl->init_buf->data, ssl->init_buf->length);
+  }
 
   ssl->s3->tmp.message_type = ((const uint8_t *)ssl->init_buf->data)[0];
   ssl->init_msg = (uint8_t*)ssl->init_buf->data + SSL3_HM_HEADER_LENGTH;

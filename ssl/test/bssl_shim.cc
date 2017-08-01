@@ -113,6 +113,8 @@ struct TestState {
   bool is_resume = false;
   bool early_callback_ready = false;
   bool custom_verify_ready = false;
+  std::string msg_callback_text;
+  bool msg_callback_ok = true;
 };
 
 static void TestStateExFree(void *parent, void *ptr, CRYPTO_EX_DATA *ad,
@@ -993,6 +995,84 @@ static int ServerNameCallback(SSL *ssl, int *out_alert, void *arg) {
   return SSL_TLSEXT_ERR_OK;
 }
 
+static void MessageCallback(int is_write, int version, int content_type,
+                            const void *buf, size_t len, SSL *ssl, void *arg) {
+  const uint8_t *buf_u8 = reinterpret_cast<const uint8_t *>(buf);
+  const TestConfig *config = GetTestConfig(ssl);
+  TestState *state = GetTestState(ssl);
+  if (!state->msg_callback_ok) {
+    return;
+  }
+
+  if (content_type == SSL3_RT_HEADER) {
+    if (len !=
+        (config->is_dtls ? DTLS1_RT_HEADER_LENGTH : SSL3_RT_HEADER_LENGTH)) {
+      fprintf(stderr, "Incorrect length for record header: %zu\n", len);
+      state->msg_callback_ok = false;
+    }
+    return;
+  }
+
+  state->msg_callback_text += is_write ? "write " : "read ";
+  switch (content_type) {
+    case 0:
+      if (version != SSL2_VERSION) {
+        fprintf(stderr, "Incorrect version for V2ClientHello: %x\n", version);
+        state->msg_callback_ok = false;
+        return;
+      }
+      state->msg_callback_text += "v2clienthello\n";
+      return;
+
+    case SSL3_RT_HANDSHAKE: {
+      CBS cbs;
+      CBS_init(&cbs, buf_u8, len);
+      uint8_t type;
+      uint32_t msg_len;
+      if (!CBS_get_u8(&cbs, &type) ||
+          /* TODO(davidben): Reporting on entire messages would be more
+           * consistent than fragments. */
+          (config->is_dtls &&
+           !CBS_skip(&cbs, 3 /* total */ + 2 /* seq */ + 3 /* frag_off */)) ||
+          !CBS_get_u24(&cbs, &msg_len) ||
+          !CBS_skip(&cbs, msg_len) ||
+          CBS_len(&cbs) != 0) {
+        fprintf(stderr, "Could not parse handshake message.\n");
+        state->msg_callback_ok = false;
+        return;
+      }
+      char text[16];
+      snprintf(text, sizeof(text), "hs %d\n", type);
+      state->msg_callback_text += text;
+      return;
+    }
+
+    case SSL3_RT_CHANGE_CIPHER_SPEC:
+      if (len != 1 || buf_u8[0] != 1) {
+        fprintf(stderr, "Invalid ChangeCipherSpec.\n");
+        state->msg_callback_ok = false;
+        return;
+      }
+      state->msg_callback_text += "ccs\n";
+      return;
+
+    case SSL3_RT_ALERT:
+      if (len != 2) {
+        fprintf(stderr, "Invalid alert.\n");
+        state->msg_callback_ok = false;
+        return;
+      }
+      char text[16];
+      snprintf(text, sizeof(text), "alert %d %d\n", buf_u8[0], buf_u8[1]);
+      state->msg_callback_text += text;
+      return;
+
+    default:
+      fprintf(stderr, "Invalid content_type: %d\n", content_type);
+      state->msg_callback_ok = false;
+  }
+}
+
 // Connect returns a new socket connected to localhost on |port| or -1 on
 // error.
 static int Connect(uint16_t port) {
@@ -1223,6 +1303,8 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx,
       return nullptr;
     }
   }
+
+  SSL_CTX_set_msg_callback(ssl_ctx.get(), MessageCallback);
 
   if (old_ctx) {
     uint8_t keys[48];
@@ -2026,7 +2108,25 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
 
     ret = DoExchange(out_session, ssl.get(), retry_config, is_resume, true);
   }
-  return ret;
+
+  if (!ret) {
+    return false;
+  }
+
+  if (!GetTestState(ssl.get())->msg_callback_ok) {
+    return false;
+  }
+
+  if (!config->expect_msg_callback.empty() &&
+      GetTestState(ssl.get())->msg_callback_text !=
+          config->expect_msg_callback) {
+    fprintf(stderr, "Bad message callback trace. Wanted:\n%s\nGot:\n%s\n",
+            config->expect_msg_callback.c_str(),
+            GetTestState(ssl.get())->msg_callback_text.c_str());
+    return false;
+  }
+
+  return true;
 }
 
 static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session, SSL *ssl,

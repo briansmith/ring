@@ -157,6 +157,7 @@ const Flag<std::string> kStringFlags[] = {
   { "-expect-peer-cert-file", &TestConfig::expect_peer_cert_file },
   { "-use-client-ca-list", &TestConfig::use_client_ca_list },
   { "-expect-client-ca-list", &TestConfig::expected_client_ca_list },
+  { "-expect-msg-callback", &TestConfig::expect_msg_callback },
 };
 
 const Flag<std::string> kBase64Flags[] = {

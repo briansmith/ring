@@ -1448,6 +1448,54 @@ func addBasicTests() {
 			},
 			flags: []string{
 				"-enable-ocsp-stapling",
+				// This test involves an optional message. Test the message callback
+				// trace to ensure we do not miss or double-report any.
+				"-expect-msg-callback",
+				`write hs 1
+read hs 2
+read hs 11
+read hs 12
+read hs 14
+write hs 16
+write ccs
+write hs 20
+read hs 4
+read ccs
+read hs 20
+read alert 1 0
+`,
+			},
+		},
+		{
+			protocol: dtls,
+			name:     "SkipCertificateStatus-DTLS",
+			config: Config{
+				MaxVersion:   VersionTLS12,
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					SkipCertificateStatus: true,
+				},
+			},
+			flags: []string{
+				"-enable-ocsp-stapling",
+				// This test involves an optional message. Test the message callback
+				// trace to ensure we do not miss or double-report any.
+				"-expect-msg-callback",
+				`write hs 1
+read hs 3
+write hs 1
+read hs 2
+read hs 11
+read hs 12
+read hs 14
+write hs 16
+write ccs
+write hs 20
+read hs 4
+read ccs
+read hs 20
+read alert 1 0
+`,
 			},
 		},
 		{
@@ -4758,6 +4806,20 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				Bugs: ProtocolBugs{
 					SendV2ClientHello: true,
 				},
+			},
+			flags: []string{
+				"-expect-msg-callback",
+				`read v2clienthello
+write hs 2
+write hs 11
+write hs 14
+read hs 16
+read ccs
+read hs 20
+write ccs
+write hs 20
+read alert 1 0
+`,
 			},
 		})
 
