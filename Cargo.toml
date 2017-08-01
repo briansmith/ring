@@ -9,7 +9,7 @@ license-file = "LICENSE"
 name = "ring"
 readme = "README.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.11.0"
+version = "0.11.1"
 
 # Prevent multiple versions of *ring* from being linked into the same program.
 links = "ring-asm"
@@ -288,7 +288,7 @@ lazy_static = "0.2.6"
 # parallelism ourself. This gives us a much higher level of
 # control about what should be parallised in which way
 gcc = "0.3"
-rayon = "0.7"
+rayon = "0.8"
 
 [features]
 # These features are documented in the top-level module's documentation.
