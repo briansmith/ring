@@ -2894,14 +2894,14 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *ssl);
  *
  * Early data as a client is more complex. If the offered session (see
  * |SSL_set_session|) is 0-RTT-capable, the handshake will return after sending
- * the ClientHello. The predicted peer certificate and ALPN protocol will be
+ * the ClientHello. The predicted peer certificates and ALPN protocol will be
  * available via the usual APIs. |SSL_write| will write early data, up to the
  * session's limit. Writes past this limit and |SSL_read| will complete the
  * handshake before continuing. Callers may also call |SSL_do_handshake| again
  * to complete the handshake sooner.
  *
  * If the server accepts early data, the handshake will succeed. |SSL_read| and
- * |SSL_write| will then act as in a 1-RTT handshake. The peer certificate and
+ * |SSL_write| will then act as in a 1-RTT handshake. The peer certificates and
  * ALPN protocol will be as predicted and need not be re-queried.
  *
  * If the server rejects early data, |SSL_do_handshake| (and thus |SSL_read| and
@@ -2911,10 +2911,12 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *ssl);
  * have processed the early data due to attacker replays.
  *
  * To then continue the handshake on the original connection, use
- * |SSL_reset_early_data_reject|. This allows a faster retry than making a fresh
- * connection. |SSL_do_handshake| will the complete the full handshake as in a
- * fresh connection. Once reset, the peer certificate, ALPN protocol, and other
- * properties may change so the caller must query them again.
+ * |SSL_reset_early_data_reject|. The connection will then behave as one which
+ * had not yet completed the handshake. This allows a faster retry than making a
+ * fresh connection. |SSL_do_handshake| will complete the full handshake,
+ * possibly resulting in different peer certificates, ALPN protocol, and other
+ * properties. The caller must disregard any values from before the reset and
+ * query again.
  *
  * Finally, to implement the fallback described in draft-ietf-tls-tls13-18
  * appendix C.3, retry on a fresh connection without 0-RTT if the handshake
