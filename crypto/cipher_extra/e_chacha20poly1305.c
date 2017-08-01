@@ -22,6 +22,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/poly1305.h>
+#include <openssl/type_check.h>
 
 #include "../fipsmodule/cipher/internal.h"
 #include "../internal.h"
@@ -30,7 +31,34 @@
 #define POLY1305_TAG_LEN 16
 
 struct aead_chacha20_poly1305_ctx {
-  unsigned char key[32];
+  uint8_t key[32];
+};
+
+// For convenience (the x86_64 calling convention allows only six parameters in
+// registers), the final parameter for the assembly functions is both an input
+// and output parameter.
+union open_data {
+  struct {
+    alignas(16) uint8_t key[32];
+    uint32_t counter;
+    uint8_t nonce[12];
+  } in;
+  struct {
+    uint8_t tag[POLY1305_TAG_LEN];
+  } out;
+};
+
+union seal_data {
+  struct {
+    alignas(16) uint8_t key[32];
+    uint32_t counter;
+    uint8_t nonce[12];
+    const uint8_t *extra_ciphertext;
+    size_t extra_ciphertext_len;
+  } in;
+  struct {
+    uint8_t tag[POLY1305_TAG_LEN];
+  } out;
 };
 
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
@@ -40,42 +68,42 @@ static int asm_capable(void) {
   return sse41_capable;
 }
 
-// chacha20_poly1305_open is defined in chacha20_poly1305_x86_64.pl. It
-// decrypts |plaintext_len| bytes from |ciphertext| and writes them to
-// |out_plaintext|. On entry, |aead_data| must contain the final 48 bytes of
-// the initial ChaCha20 block, i.e. the key, followed by four zeros, followed
-// by the nonce. On exit, it will contain the calculated tag value, which the
-// caller must check.
+OPENSSL_COMPILE_ASSERT(sizeof(union open_data) == 48, wrong_open_data_size);
+OPENSSL_COMPILE_ASSERT(sizeof(union seal_data) == 48 + 8 + 8,
+                       wrong_seal_data_size);
+
+// chacha20_poly1305_open is defined in chacha20_poly1305_x86_64.pl. It decrypts
+// |plaintext_len| bytes from |ciphertext| and writes them to |out_plaintext|.
+// Additional input parameters are passed in |aead_data->in|. On exit, it will
+// write calculated tag value to |aead_data->out.tag|, which the caller must
+// check.
 extern void chacha20_poly1305_open(uint8_t *out_plaintext,
                                    const uint8_t *ciphertext,
                                    size_t plaintext_len, const uint8_t *ad,
-                                   size_t ad_len, uint8_t *aead_data);
+                                   size_t ad_len, union open_data *aead_data);
 
-// chacha20_poly1305_open is defined in chacha20_poly1305_x86_64.pl. It
-// encrypts |plaintext_len| bytes from |plaintext| and writes them to
-// |out_ciphertext|. On entry, |aead_data| must contain the final 48 bytes of
-// the initial ChaCha20 block, i.e. the key, followed by four zeros, followed
-// by the nonce. On exit, it will contain the calculated tag value, which the
-// caller must append to the ciphertext.
+// chacha20_poly1305_open is defined in chacha20_poly1305_x86_64.pl. It encrypts
+// |plaintext_len| bytes from |plaintext| and writes them to |out_ciphertext|.
+// Additional input parameters are passed in |aead_data->in|. The calculated tag
+// value is over the computed ciphertext concatenated with |extra_ciphertext|
+// and written to |aead_data->out.tag|.
 extern void chacha20_poly1305_seal(uint8_t *out_ciphertext,
                                    const uint8_t *plaintext,
                                    size_t plaintext_len, const uint8_t *ad,
-                                   size_t ad_len, uint8_t *aead_data);
+                                   size_t ad_len, union seal_data *aead_data);
 #else
-static int asm_capable(void) {
-  return 0;
-}
+static int asm_capable(void) { return 0; }
 
 
 static void chacha20_poly1305_open(uint8_t *out_plaintext,
                                    const uint8_t *ciphertext,
                                    size_t plaintext_len, const uint8_t *ad,
-                                   size_t ad_len, uint8_t *aead_data) {}
+                                   size_t ad_len, union open_data *aead_data) {}
 
 static void chacha20_poly1305_seal(uint8_t *out_ciphertext,
                                    const uint8_t *plaintext,
                                    size_t plaintext_len, const uint8_t *ad,
-                                   size_t ad_len, uint8_t *aead_data) {}
+                                   size_t ad_len, union seal_data *aead_data) {}
 #endif
 
 static int aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
@@ -212,22 +240,21 @@ static int aead_chacha20_poly1305_seal_scatter(
     }
   }
 
-  alignas(16) uint8_t tag[48 + 8 + 8];
-
+  union seal_data data;
   if (asm_capable()) {
-    OPENSSL_memcpy(tag, c20_ctx->key, 32);
-    OPENSSL_memset(tag + 32, 0, 4);
-    OPENSSL_memcpy(tag + 32 + 4, nonce, 12);
-    OPENSSL_memcpy(tag + 48, &out_tag, sizeof(out_tag));
-    OPENSSL_memcpy(tag + 56, &extra_in_len, sizeof(extra_in_len));
-    chacha20_poly1305_seal(out, in, in_len, ad, ad_len, tag);
+    OPENSSL_memcpy(data.in.key, c20_ctx->key, 32);
+    data.in.counter = 0;
+    OPENSSL_memcpy(data.in.nonce, nonce, 12);
+    data.in.extra_ciphertext = out_tag;
+    data.in.extra_ciphertext_len = extra_in_len;
+    chacha20_poly1305_seal(out, in, in_len, ad, ad_len, &data);
   } else {
     CRYPTO_chacha_20(out, in, in_len, c20_ctx->key, nonce, 1);
-    calc_tag(tag, c20_ctx, nonce, ad, ad_len, out, in_len,
-             out_tag, extra_in_len);
+    calc_tag(data.out.tag, c20_ctx, nonce, ad, ad_len, out, in_len, out_tag,
+             extra_in_len);
   }
 
-  OPENSSL_memcpy(out_tag + extra_in_len, tag, ctx->tag_len);
+  OPENSSL_memcpy(out_tag + extra_in_len, data.out.tag, ctx->tag_len);
   *out_tag_len = extra_in_len + ctx->tag_len;
   return 1;
 }
@@ -260,19 +287,18 @@ static int aead_chacha20_poly1305_open_gather(
     return 0;
   }
 
-  alignas(16) uint8_t tag[48];
-
+  union open_data data;
   if (asm_capable()) {
-    OPENSSL_memcpy(tag, c20_ctx->key, 32);
-    OPENSSL_memset(tag + 32, 0, 4);
-    OPENSSL_memcpy(tag + 32 + 4, nonce, 12);
-    chacha20_poly1305_open(out, in, in_len, ad, ad_len, tag);
+    OPENSSL_memcpy(data.in.key, c20_ctx->key, 32);
+    data.in.counter = 0;
+    OPENSSL_memcpy(data.in.nonce, nonce, 12);
+    chacha20_poly1305_open(out, in, in_len, ad, ad_len, &data);
   } else {
-    calc_tag(tag, c20_ctx, nonce, ad, ad_len, in, in_len, NULL, 0);
+    calc_tag(data.out.tag, c20_ctx, nonce, ad, ad_len, in, in_len, NULL, 0);
     CRYPTO_chacha_20(out, in, in_len, c20_ctx->key, nonce, 1);
   }
 
-  if (CRYPTO_memcmp(tag, in_tag, ctx->tag_len) != 0) {
+  if (CRYPTO_memcmp(data.out.tag, in_tag, ctx->tag_len) != 0) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_DECRYPT);
     return 0;
   }
