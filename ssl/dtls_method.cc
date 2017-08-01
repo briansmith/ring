@@ -73,7 +73,6 @@ static int dtls1_supports_cipher(const SSL_CIPHER *cipher) {
 }
 
 static void dtls1_on_handshake_complete(SSL *ssl) {
-  dtls1_release_current_message(ssl);
   /* If we wrote the last flight, we'll have a timer left over without waiting
    * for a read. Stop the timer but leave the flight around for post-handshake
    * transmission logic. */
@@ -115,7 +114,7 @@ static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     dtls1_free,
     dtls1_get_message,
     dtls1_get_current_message,
-    dtls1_release_current_message,
+    dtls1_next_message,
     dtls1_read_app_data,
     dtls1_read_change_cipher_spec,
     dtls1_read_close_notify,

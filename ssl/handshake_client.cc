@@ -776,7 +776,6 @@ static int dtls1_get_hello_verify_request(SSL_HANDSHAKE *hs) {
 
   if (ssl->s3->tmp.message_type != DTLS1_MT_HELLO_VERIFY_REQUEST) {
     ssl->d1->send_cookie = false;
-    ssl->s3->tmp.reuse_message = 1;
     return 1;
   }
 
@@ -794,6 +793,7 @@ static int dtls1_get_hello_verify_request(SSL_HANDSHAKE *hs) {
   ssl->d1->cookie_len = CBS_len(&cookie);
 
   ssl->d1->send_cookie = true;
+  ssl->method->next_message(ssl);
   return 1;
 }
 
@@ -1060,6 +1060,7 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
+  ssl->method->next_message(ssl);
   return 1;
 }
 
@@ -1130,6 +1131,7 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
+  ssl->method->next_message(ssl);
   return 1;
 }
 
@@ -1143,7 +1145,6 @@ static int ssl3_get_cert_status(SSL_HANDSHAKE *hs) {
   if (ssl->s3->tmp.message_type != SSL3_MT_CERTIFICATE_STATUS) {
     /* A server may send status_request in ServerHello and then change
      * its mind about sending CertificateStatus. */
-    ssl->s3->tmp.reuse_message = 1;
     return 1;
   }
 
@@ -1171,6 +1172,7 @@ static int ssl3_get_cert_status(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
+  ssl->method->next_message(ssl);
   return 1;
 }
 
@@ -1189,7 +1191,6 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
       return -1;
     }
 
-    ssl->s3->tmp.reuse_message = 1;
     return 1;
   }
 
@@ -1359,6 +1360,8 @@ static int ssl3_get_server_key_exchange(SSL_HANDSHAKE *hs) {
       return -1;
     }
   }
+
+  ssl->method->next_message(ssl);
   return 1;
 }
 
@@ -1370,7 +1373,6 @@ static int ssl3_get_certificate_request(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl->s3->tmp.message_type == SSL3_MT_SERVER_HELLO_DONE) {
-    ssl->s3->tmp.reuse_message = 1;
     /* If we get here we don't need the handshake buffer as we won't be doing
      * client auth. */
     hs->transcript.FreeBuffer();
@@ -1426,6 +1428,7 @@ static int ssl3_get_certificate_request(SSL_HANDSHAKE *hs) {
   hs->cert_request = 1;
   hs->ca_names = std::move(ca_names);
   ssl->ctx->x509_method->hs_flush_cached_ca_names(hs);
+  ssl->method->next_message(ssl);
   return 1;
 }
 
@@ -1448,6 +1451,7 @@ static int ssl3_get_server_hello_done(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
+  ssl->method->next_message(ssl);
   return 1;
 }
 
@@ -1818,6 +1822,7 @@ static int ssl3_get_new_session_ticket(SSL_HANDSHAKE *hs) {
      * negotiating the extension. The value of |ticket_expected| is checked in
      * |ssl_update_cache| so is cleared here to avoid an unnecessary update. */
     hs->ticket_expected = 0;
+    ssl->method->next_message(ssl);
     return 1;
   }
 
@@ -1861,6 +1866,7 @@ static int ssl3_get_new_session_ticket(SSL_HANDSHAKE *hs) {
     ssl->session = renewed_session.release();
   }
 
+  ssl->method->next_message(ssl);
   return 1;
 }
 

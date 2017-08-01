@@ -144,6 +144,7 @@ static enum ssl_hs_wait_t do_process_hello_retry_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  ssl->method->next_message(ssl);
   hs->received_hello_retry_request = 1;
   hs->tls13_state = state_send_second_client_hello;
   /* 0-RTT is rejected if we receive a HelloRetryRequest. */
@@ -341,6 +342,8 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
       !tls13_derive_handshake_secrets(hs)) {
     return ssl_hs_error;
   }
+
+  ssl->method->next_message(ssl);
   hs->tls13_state = state_process_change_cipher_spec;
   return ssl->version == TLS1_3_EXPERIMENT_VERSION
              ? ssl_hs_read_change_cipher_spec
@@ -416,6 +419,7 @@ static enum ssl_hs_wait_t do_process_encrypted_extensions(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  ssl->method->next_message(ssl);
   hs->tls13_state = state_continue_second_server_flight;
   if (hs->in_early_data && !ssl->early_data_accepted) {
     return ssl_hs_early_data_rejected;
@@ -480,6 +484,7 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  ssl->method->next_message(ssl);
   hs->tls13_state = state_process_server_certificate;
   return ssl_hs_read_message;
 }
@@ -492,6 +497,7 @@ static enum ssl_hs_wait_t do_process_server_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  ssl->method->next_message(ssl);
   hs->tls13_state = state_process_server_certificate_verify;
   return ssl_hs_read_message;
 }
@@ -515,6 +521,7 @@ static enum ssl_hs_wait_t do_process_server_certificate_verify(
     return ssl_hs_error;
   }
 
+  ssl->method->next_message(ssl);
   hs->tls13_state = state_process_server_finished;
   return ssl_hs_read_message;
 }
@@ -530,6 +537,7 @@ static enum ssl_hs_wait_t do_process_server_finished(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  ssl->method->next_message(ssl);
   hs->tls13_state = state_send_end_of_early_data;
   return ssl_hs_ok;
 }

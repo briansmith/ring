@@ -1713,8 +1713,6 @@ struct SSL3_STATE {
   struct {
     int message_type;
 
-    int reuse_message;
-
     uint8_t new_mac_secret_len;
     uint8_t new_key_len;
     uint8_t new_fixed_iv_len;
@@ -2141,7 +2139,7 @@ int ssl3_get_finished(SSL_HANDSHAKE *hs);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
 int ssl3_get_message(SSL *ssl);
 void ssl3_get_current_message(const SSL *ssl, CBS *out);
-void ssl3_release_current_message(SSL *ssl);
+void ssl3_next_message(SSL *ssl);
 
 int ssl3_send_finished(SSL_HANDSHAKE *hs);
 int ssl3_dispatch_alert(SSL *ssl);
@@ -2220,7 +2218,7 @@ void dtls1_free(SSL *ssl);
 
 int dtls1_get_message(SSL *ssl);
 void dtls1_get_current_message(const SSL *ssl, CBS *out);
-void dtls1_release_current_message(SSL *ssl);
+void dtls1_next_message(SSL *ssl);
 int dtls1_dispatch_alert(SSL *ssl);
 
 int tls1_change_cipher_state(SSL_HANDSHAKE *hs, int which);
@@ -2359,16 +2357,15 @@ struct ssl_protocol_method_st {
   char is_dtls;
   int (*ssl_new)(SSL *ssl);
   void (*ssl_free)(SSL *ssl);
-  /* ssl_get_message reads the next handshake message. On success, it returns
-   * one and sets |ssl->s3->tmp.message_type|, |ssl->init_msg|, and
+  /* ssl_get_message completes the current next handshake message. On success,
+   * it returns one and sets |ssl->s3->tmp.message_type|, |ssl->init_msg|, and
    * |ssl->init_num|. Otherwise, it returns <= 0. */
   int (*ssl_get_message)(SSL *ssl);
   /* get_current_message sets |*out| to the current handshake message. This
    * includes the protocol-specific message header. */
   void (*get_current_message)(const SSL *ssl, CBS *out);
-  /* release_current_message is called to release the current handshake
-   * message. */
-  void (*release_current_message)(SSL *ssl);
+  /* next_message is called to release the current handshake message. */
+  void (*next_message)(SSL *ssl);
   /* read_app_data reads up to |len| bytes of application data into |buf|. On
    * success, it returns the number of bytes read. Otherwise, it returns <= 0
    * and sets |*out_got_handshake| to whether the failure was due to a

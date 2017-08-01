@@ -420,14 +420,6 @@ static int dtls1_process_handshake_record(SSL *ssl) {
 }
 
 int dtls1_get_message(SSL *ssl) {
-  if (ssl->s3->tmp.reuse_message) {
-    /* There must be a current message. */
-    assert(ssl->init_msg != NULL);
-    ssl->s3->tmp.reuse_message = 0;
-  } else {
-    dtls1_release_current_message(ssl);
-  }
-
   /* Process handshake records until the current message is ready. */
   while (!dtls1_is_current_message_complete(ssl)) {
     int ret = dtls1_process_handshake_record(ssl);
@@ -463,11 +455,8 @@ void dtls1_get_current_message(const SSL *ssl, CBS *out) {
   CBS_init(out, frag->data, DTLS1_HM_HEADER_LENGTH + frag->msg_len);
 }
 
-void dtls1_release_current_message(SSL *ssl) {
-  if (ssl->init_msg == NULL) {
-    return;
-  }
-
+void dtls1_next_message(SSL *ssl) {
+  assert(ssl->init_msg != NULL);
   assert(dtls1_is_current_message_complete(ssl));
   size_t index = ssl->d1->handshake_read_seq % SSL_MAX_HANDSHAKE_FLIGHT;
   dtls1_hm_fragment_free(ssl->d1->incoming_messages[index]);

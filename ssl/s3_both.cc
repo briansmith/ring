@@ -469,6 +469,7 @@ int ssl3_get_finished(SSL_HANDSHAKE *hs) {
     }
   }
 
+  ssl->method->next_message(ssl);
   return 1;
 }
 
@@ -683,14 +684,6 @@ static int read_v2_client_hello(SSL *ssl) {
 }
 
 int ssl3_get_message(SSL *ssl) {
-  if (ssl->s3->tmp.reuse_message) {
-    /* There must be a current message. */
-    assert(ssl->init_msg != NULL);
-    ssl->s3->tmp.reuse_message = 0;
-  } else {
-    ssl3_release_current_message(ssl);
-  }
-
   /* Re-create the handshake buffer if needed. */
   if (ssl->init_buf == NULL) {
     ssl->init_buf = BUF_MEM_new();
@@ -757,10 +750,8 @@ int ssl_hash_current_message(SSL_HANDSHAKE *hs) {
   return hs->transcript.Update(CBS_data(&cbs), CBS_len(&cbs));
 }
 
-void ssl3_release_current_message(SSL *ssl) {
-  if (ssl->init_msg == NULL) {
-    return;
-  }
+void ssl3_next_message(SSL *ssl) {
+  assert(ssl->init_msg != NULL);
 
   /* |init_buf| never contains data beyond the current message. */
   assert(SSL3_HM_HEADER_LENGTH + ssl->init_num == ssl->init_buf->length);
