@@ -46,21 +46,16 @@ int tls13_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_HANDSHAKE_FAILURE);
         return -1;
 
-      case ssl_hs_flush:
-      case ssl_hs_flush_and_read_message: {
+      case ssl_hs_flush: {
         int ret = ssl->method->flush_flight(ssl);
         if (ret <= 0) {
           return ret;
         }
-        if (hs->wait != ssl_hs_flush_and_read_message) {
-          break;
-        }
-        hs->wait = ssl_hs_read_message;
-        SSL_FALLTHROUGH;
+        break;
       }
 
       case ssl_hs_read_message: {
-        int ret = ssl->method->ssl_get_message(ssl);
+        int ret = ssl->method->read_message(ssl);
         if (ret <= 0) {
           return ret;
         }
@@ -190,14 +185,14 @@ int tls13_get_cert_verify_signature_input(
   return 1;
 }
 
-int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
+int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
+                              int allow_anonymous) {
   SSL *const ssl = hs->ssl;
-  CBS cbs, context, certificate_list;
-  CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  if (!CBS_get_u8_length_prefixed(&cbs, &context) ||
+  CBS body = msg.body, context, certificate_list;
+  if (!CBS_get_u8_length_prefixed(&body, &context) ||
       CBS_len(&context) != 0 ||
-      !CBS_get_u24_length_prefixed(&cbs, &certificate_list) ||
-      CBS_len(&cbs) != 0) {
+      !CBS_get_u24_length_prefixed(&body, &certificate_list) ||
+      CBS_len(&body) != 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return 0;
@@ -356,19 +351,18 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous) {
   return 1;
 }
 
-int tls13_process_certificate_verify(SSL_HANDSHAKE *hs) {
+int tls13_process_certificate_verify(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
   SSL *const ssl = hs->ssl;
   if (hs->peer_pubkey == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
-  CBS cbs, signature;
+  CBS body = msg.body, signature;
   uint16_t signature_algorithm;
-  CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  if (!CBS_get_u16(&cbs, &signature_algorithm) ||
-      !CBS_get_u16_length_prefixed(&cbs, &signature) ||
-      CBS_len(&cbs) != 0) {
+  if (!CBS_get_u16(&body, &signature_algorithm) ||
+      !CBS_get_u16_length_prefixed(&body, &signature) ||
+      CBS_len(&body) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return 0;
@@ -381,19 +375,19 @@ int tls13_process_certificate_verify(SSL_HANDSHAKE *hs) {
   }
   hs->new_session->peer_signature_algorithm = signature_algorithm;
 
-  uint8_t *msg = NULL;
-  size_t msg_len;
+  uint8_t *input = NULL;
+  size_t input_len;
   if (!tls13_get_cert_verify_signature_input(
-          hs, &msg, &msg_len,
+          hs, &input, &input_len,
           ssl->server ? ssl_cert_verify_client : ssl_cert_verify_server)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return 0;
   }
-  UniquePtr<uint8_t> free_msg(msg);
+  UniquePtr<uint8_t> free_input(input);
 
   int sig_ok = ssl_public_key_verify(ssl, CBS_data(&signature),
                                      CBS_len(&signature), signature_algorithm,
-                                     hs->peer_pubkey.get(), msg, msg_len);
+                                     hs->peer_pubkey.get(), input, input_len);
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   sig_ok = 1;
   ERR_clear_error();
@@ -407,7 +401,8 @@ int tls13_process_certificate_verify(SSL_HANDSHAKE *hs) {
   return 1;
 }
 
-int tls13_process_finished(SSL_HANDSHAKE *hs, int use_saved_value) {
+int tls13_process_finished(SSL_HANDSHAKE *hs, const SSLMessage &msg,
+                           int use_saved_value) {
   SSL *const ssl = hs->ssl;
   uint8_t verify_data_buf[EVP_MAX_MD_SIZE];
   const uint8_t *verify_data;
@@ -424,9 +419,7 @@ int tls13_process_finished(SSL_HANDSHAKE *hs, int use_saved_value) {
     verify_data = verify_data_buf;
   }
 
-  int finished_ok =
-      ssl->init_num == verify_data_len &&
-      CRYPTO_memcmp(verify_data, ssl->init_msg, verify_data_len) == 0;
+  int finished_ok = CBS_mem_equal(&msg.body, verify_data, verify_data_len);
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   finished_ok = 1;
 #endif
@@ -584,12 +577,11 @@ int tls13_add_finished(SSL_HANDSHAKE *hs) {
   return 1;
 }
 
-static int tls13_receive_key_update(SSL *ssl) {
-  CBS cbs;
+static int tls13_receive_key_update(SSL *ssl, const SSLMessage &msg) {
+  CBS body = msg.body;
   uint8_t key_update_request;
-  CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  if (!CBS_get_u8(&cbs, &key_update_request) ||
-      CBS_len(&cbs) != 0 ||
+  if (!CBS_get_u8(&body, &key_update_request) ||
+      CBS_len(&body) != 0 ||
       (key_update_request != SSL_KEY_UPDATE_NOT_REQUESTED &&
        key_update_request != SSL_KEY_UPDATE_REQUESTED)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
@@ -605,9 +597,10 @@ static int tls13_receive_key_update(SSL *ssl) {
   if (key_update_request == SSL_KEY_UPDATE_REQUESTED &&
       !ssl->s3->key_update_pending) {
     ScopedCBB cbb;
-    CBB body;
-    if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_KEY_UPDATE) ||
-        !CBB_add_u8(&body, SSL_KEY_UPDATE_NOT_REQUESTED) ||
+    CBB body_cbb;
+    if (!ssl->method->init_message(ssl, cbb.get(), &body_cbb,
+                                   SSL3_MT_KEY_UPDATE) ||
+        !CBB_add_u8(&body_cbb, SSL_KEY_UPDATE_NOT_REQUESTED) ||
         !ssl_add_message_cbb(ssl, cbb.get()) ||
         !tls13_rotate_traffic_key(ssl, evp_aead_seal)) {
       return 0;
@@ -623,8 +616,8 @@ static int tls13_receive_key_update(SSL *ssl) {
   return 1;
 }
 
-int tls13_post_handshake(SSL *ssl) {
-  if (ssl->s3->tmp.message_type == SSL3_MT_KEY_UPDATE) {
+int tls13_post_handshake(SSL *ssl, const SSLMessage &msg) {
+  if (msg.type == SSL3_MT_KEY_UPDATE) {
     ssl->s3->key_update_count++;
     if (ssl->s3->key_update_count > kMaxKeyUpdates) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MANY_KEY_UPDATES);
@@ -632,14 +625,13 @@ int tls13_post_handshake(SSL *ssl) {
       return 0;
     }
 
-    return tls13_receive_key_update(ssl);
+    return tls13_receive_key_update(ssl, msg);
   }
 
   ssl->s3->key_update_count = 0;
 
-  if (ssl->s3->tmp.message_type == SSL3_MT_NEW_SESSION_TICKET &&
-      !ssl->server) {
-    return tls13_process_new_session_ticket(ssl);
+  if (msg.type == SSL3_MT_NEW_SESSION_TICKET && !ssl->server) {
+    return tls13_process_new_session_ticket(ssl, msg);
   }
 
   ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);

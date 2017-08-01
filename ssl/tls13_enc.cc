@@ -402,23 +402,21 @@ int tls13_write_psk_binder(SSL_HANDSHAKE *hs, uint8_t *msg, size_t len) {
 }
 
 int tls13_verify_psk_binder(SSL_HANDSHAKE *hs, SSL_SESSION *session,
-                            CBS *binders) {
+                            const SSLMessage &msg, CBS *binders) {
   size_t hash_len = hs->transcript.DigestLen();
 
-  /* Get the full ClientHello, including message header. It must be large enough
-   * to exclude the binders. */
-  CBS message;
-  hs->ssl->method->get_current_message(hs->ssl, &message);
-  if (CBS_len(&message) < CBS_len(binders) + 2) {
+  /* The message must be large enough to exclude the binders. */
+  if (CBS_len(&msg.raw) < CBS_len(binders) + 2) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
-  /* Hash a ClientHello prefix up to the binders. For now, this assumes we only
-   * ever verify PSK binders on initial ClientHellos. */
+  /* Hash a ClientHello prefix up to the binders. This includes the header. For
+   * now, this assumes we only ever verify PSK binders on initial
+   * ClientHellos. */
   uint8_t context[EVP_MAX_MD_SIZE];
   unsigned context_len;
-  if (!EVP_Digest(CBS_data(&message), CBS_len(&message) - CBS_len(binders) - 2,
+  if (!EVP_Digest(CBS_data(&msg.raw), CBS_len(&msg.raw) - CBS_len(binders) - 2,
                   context, &context_len, hs->transcript.Digest(), NULL)) {
     return 0;
   }

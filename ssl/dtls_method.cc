@@ -113,7 +113,7 @@ static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     dtls1_new,
     dtls1_free,
     dtls1_get_message,
-    dtls1_get_current_message,
+    dtls1_read_message,
     dtls1_next_message,
     dtls1_read_app_data,
     dtls1_read_change_cipher_spec,

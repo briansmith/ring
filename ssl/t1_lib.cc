@@ -204,12 +204,12 @@ done:
   return ret;
 }
 
-int ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out, const uint8_t *in,
-                          size_t in_len) {
+int ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out,
+                          const SSLMessage &msg) {
   OPENSSL_memset(out, 0, sizeof(*out));
   out->ssl = ssl;
-  out->client_hello = in;
-  out->client_hello_len = in_len;
+  out->client_hello = CBS_data(&msg.body);
+  out->client_hello_len = CBS_len(&msg.body);
 
   CBS client_hello, random, session_id;
   CBS_init(&client_hello, out->client_hello, out->client_hello_len);
@@ -3276,14 +3276,12 @@ int tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   return 0;
 }
 
-int tls1_verify_channel_id(SSL_HANDSHAKE *hs) {
+int tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
   SSL *const ssl = hs->ssl;
-  uint16_t extension_type;
-  CBS extension, channel_id;
-
   /* A Channel ID handshake message is structured to contain multiple
    * extensions, but the only one that can be present is Channel ID. */
-  CBS_init(&channel_id, ssl->init_msg, ssl->init_num);
+  uint16_t extension_type;
+  CBS channel_id = msg.body, extension;
   if (!CBS_get_u16(&channel_id, &extension_type) ||
       !CBS_get_u16_length_prefixed(&channel_id, &extension) ||
       CBS_len(&channel_id) != 0 ||

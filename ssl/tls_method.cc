@@ -71,7 +71,7 @@ static int ssl3_supports_cipher(const SSL_CIPHER *cipher) { return 1; }
 
 static void ssl3_on_handshake_complete(SSL *ssl) {
   /* The handshake should have released its final message. */
-  assert(ssl->init_msg == NULL);
+  assert(!ssl->s3->has_message);
 
   /* During the handshake, |init_buf| is retained. Release if it there is no
    * excess in it.
@@ -113,7 +113,7 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     ssl3_new,
     ssl3_free,
     ssl3_get_message,
-    ssl3_get_current_message,
+    ssl3_read_message,
     ssl3_next_message,
     ssl3_read_app_data,
     ssl3_read_change_cipher_spec,

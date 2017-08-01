@@ -411,7 +411,7 @@ int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
       }
 
       /* Parse post-handshake handshake messages. */
-      int ret = ssl3_get_message(ssl);
+      int ret = ssl3_read_message(ssl);
       if (ret <= 0) {
         return ret;
       }

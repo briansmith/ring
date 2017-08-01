@@ -825,6 +825,15 @@ int ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len);
 
 /* Handshake messages. */
 
+struct SSLMessage {
+  bool is_v2_hello;
+  uint8_t type;
+  CBS body;
+  /* raw is the entire serialized handshake message, including the TLS or DTLS
+   * message header. */
+  CBS raw;
+};
+
 /* SSL_MAX_HANDSHAKE_FLIGHT is the number of messages, including
  * ChangeCipherSpec, in the longest handshake flight. Currently this is the
  * client's second leg in a full handshake when client certificates, NPN, and
@@ -834,6 +843,11 @@ int ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len);
 /* ssl_max_handshake_message_len returns the maximum number of bytes permitted
  * in a handshake message for |ssl|. */
 size_t ssl_max_handshake_message_len(const SSL *ssl);
+
+/* ssl_read_message reads a message for the old |BIO|-based state machine. On
+ * success, it returns one and sets |*out| to the current message. Otherwise, it
+ * returns <= 0. */
+int ssl_read_message(SSL *ssl, SSLMessage *out);
 
 /* dtls_clear_incoming_messages releases all buffered incoming messages. */
 void dtls_clear_incoming_messages(SSL *ssl);
@@ -1048,7 +1062,7 @@ int tls13_write_psk_binder(SSL_HANDSHAKE *hs, uint8_t *msg, size_t len);
  * up to the binders has a valid signature using the value of |session|'s
  * resumption secret. It returns 1 on success, and 0 on failure. */
 int tls13_verify_psk_binder(SSL_HANDSHAKE *hs, SSL_SESSION *session,
-                            CBS *binders);
+                            const SSLMessage &msg, CBS *binders);
 
 
 /* Handshake functions. */
@@ -1058,7 +1072,6 @@ enum ssl_hs_wait_t {
   ssl_hs_ok,
   ssl_hs_read_message,
   ssl_hs_flush,
-  ssl_hs_flush_and_read_message,
   ssl_hs_x509_lookup,
   ssl_hs_channel_id_lookup,
   ssl_hs_private_key_operation,
@@ -1307,9 +1320,9 @@ SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl);
 /* ssl_handshake_free releases all memory associated with |hs|. */
 void ssl_handshake_free(SSL_HANDSHAKE *hs);
 
-/* ssl_check_message_type checks if the current message has type |type|. If so
- * it returns one. Otherwise, it sends an alert and returns zero. */
-int ssl_check_message_type(SSL *ssl, int type);
+/* ssl_check_message_type checks if |msg| has type |type|. If so it returns
+ * one. Otherwise, it sends an alert and returns zero. */
+int ssl_check_message_type(SSL *ssl, const SSLMessage &msg, int type);
 
 /* tls13_handshake runs the TLS 1.3 handshake. It returns one on success and <=
  * 0 on error. It sets |out_early_return| to one if we've completed the
@@ -1323,15 +1336,17 @@ enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs);
 
 /* tls13_post_handshake processes a post-handshake message. It returns one on
  * success and zero on failure. */
-int tls13_post_handshake(SSL *ssl);
+int tls13_post_handshake(SSL *ssl, const SSLMessage &msg);
 
-int tls13_process_certificate(SSL_HANDSHAKE *hs, int allow_anonymous);
-int tls13_process_certificate_verify(SSL_HANDSHAKE *hs);
+int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
+                              int allow_anonymous);
+int tls13_process_certificate_verify(SSL_HANDSHAKE *hs, const SSLMessage &msg);
 
-/* tls13_process_finished processes the current message as a Finished message
- * from the peer. If |use_saved_value| is one, the verify_data is compared
- * against |hs->expected_client_finished| rather than computed fresh. */
-int tls13_process_finished(SSL_HANDSHAKE *hs, int use_saved_value);
+/* tls13_process_finished processes |msg| as a Finished message from the
+ * peer. If |use_saved_value| is one, the verify_data is compared against
+ * |hs->expected_client_finished| rather than computed fresh. */
+int tls13_process_finished(SSL_HANDSHAKE *hs, const SSLMessage &msg,
+                           int use_saved_value);
 
 int tls13_add_certificate(SSL_HANDSHAKE *hs);
 
@@ -1341,7 +1356,7 @@ int tls13_add_certificate(SSL_HANDSHAKE *hs);
 enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs);
 
 int tls13_add_finished(SSL_HANDSHAKE *hs);
-int tls13_process_new_session_ticket(SSL *ssl);
+int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg);
 
 int ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t **out_secret,
                                         size_t *out_secret_len,
@@ -1419,8 +1434,8 @@ int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
 
 /* ClientHello functions. */
 
-int ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out, const uint8_t *in,
-                          size_t in_len);
+int ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out,
+                          const SSLMessage &msg);
 
 int ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
                                    CBS *out, uint16_t extension_type);
@@ -1648,6 +1663,10 @@ struct SSL3_STATE {
    * V2ClientHello rather than received from the peer directly. */
   unsigned is_v2_hello:1;
 
+  /* has_message is true if the current handshake message has been returned
+   * at least once by |get_message| and false otherwise. */
+  unsigned has_message:1;
+
   /* initial_handshake_complete is true if the initial handshake has
    * completed. */
   unsigned initial_handshake_complete:1;
@@ -1711,8 +1730,6 @@ struct SSL3_STATE {
    * TODO(davidben): Move everything not needed after the handshake completes to
    * |hs| and remove this. */
   struct {
-    int message_type;
-
     uint8_t new_mac_secret_len;
     uint8_t new_key_len;
     uint8_t new_fixed_iv_len;
@@ -1892,11 +1909,6 @@ struct SSLConnection {
   int (*handshake_func)(SSL_HANDSHAKE *hs);
 
   BUF_MEM *init_buf; /* buffer used during init */
-
-  /* init_msg is a pointer to the current handshake message body. */
-  const uint8_t *init_msg;
-  /* init_num is the length of the current handshake message body. */
-  uint32_t init_num;
 
   SSL3_STATE *s3;  /* SSLv3 variables */
   DTLS1_STATE *d1; /* DTLSv1 variables */
@@ -2137,8 +2149,8 @@ void ssl_update_cache(SSL_HANDSHAKE *hs, int mode);
 
 int ssl3_get_finished(SSL_HANDSHAKE *hs);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
-int ssl3_get_message(SSL *ssl);
-void ssl3_get_current_message(const SSL *ssl, CBS *out);
+bool ssl3_get_message(SSL *ssl, SSLMessage *out);
+int ssl3_read_message(SSL *ssl);
 void ssl3_next_message(SSL *ssl);
 
 int ssl3_send_finished(SSL_HANDSHAKE *hs);
@@ -2176,9 +2188,9 @@ int dtls1_flush_flight(SSL *ssl);
  * the pending flight. It returns one on success and zero on error. */
 int ssl_add_message_cbb(SSL *ssl, CBB *cbb);
 
-/* ssl_hash_current_message incorporates the current handshake message into the
- * handshake hash. It returns one on success and zero on allocation failure. */
-int ssl_hash_current_message(SSL_HANDSHAKE *hs);
+/* ssl_hash_message incorporates |msg| into the handshake hash. It returns one
+ * on success and zero on allocation failure. */
+bool ssl_hash_message(SSL_HANDSHAKE *hs, const SSLMessage &msg);
 
 /* dtls1_get_record reads a new input record. On success, it places it in
  * |ssl->s3->rrec| and returns one. Otherwise it returns <= 0 on error or if
@@ -2216,8 +2228,8 @@ int dtls1_accept(SSL *ssl);
 int dtls1_connect(SSL *ssl);
 void dtls1_free(SSL *ssl);
 
-int dtls1_get_message(SSL *ssl);
-void dtls1_get_current_message(const SSL *ssl, CBS *out);
+bool dtls1_get_message(SSL *ssl, SSLMessage *out);
+int dtls1_read_message(SSL *ssl);
 void dtls1_next_message(SSL *ssl);
 int dtls1_dispatch_alert(SSL *ssl);
 
@@ -2280,10 +2292,10 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
     const uint8_t *ticket, size_t ticket_len, const uint8_t *session_id,
     size_t session_id_len);
 
-/* tls1_verify_channel_id processes the current message as a Channel ID message,
- * and verifies the signature. If the key is valid, it saves the Channel ID and
- * returns one. Otherwise, it returns zero. */
-int tls1_verify_channel_id(SSL_HANDSHAKE *hs);
+/* tls1_verify_channel_id processes |msg| as a Channel ID message, and verifies
+ * the signature. If the key is valid, it saves the Channel ID and returns
+ * one. Otherwise, it returns zero. */
+int tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg);
 
 /* tls1_write_channel_id generates a Channel ID message and puts the output in
  * |cbb|. |ssl->tlsext_channel_id_private| must already be set before calling.
@@ -2357,20 +2369,19 @@ struct ssl_protocol_method_st {
   char is_dtls;
   int (*ssl_new)(SSL *ssl);
   void (*ssl_free)(SSL *ssl);
-  /* ssl_get_message completes the current next handshake message. On success,
-   * it returns one and sets |ssl->s3->tmp.message_type|, |ssl->init_msg|, and
-   * |ssl->init_num|. Otherwise, it returns <= 0. */
-  int (*ssl_get_message)(SSL *ssl);
-  /* get_current_message sets |*out| to the current handshake message. This
-   * includes the protocol-specific message header. */
-  void (*get_current_message)(const SSL *ssl, CBS *out);
+  /* get_message sets |*out| to the current handshake message and returns true
+   * if one has been received. It returns false if more input is needed. */
+  bool (*get_message)(SSL *ssl, bssl::SSLMessage *out);
+  /* read_message reads additional handshake data for |get_message|. On success,
+   * it returns one. Otherwise, it returns <= 0. */
+  int (*read_message)(SSL *ssl);
   /* next_message is called to release the current handshake message. */
   void (*next_message)(SSL *ssl);
   /* read_app_data reads up to |len| bytes of application data into |buf|. On
    * success, it returns the number of bytes read. Otherwise, it returns <= 0
    * and sets |*out_got_handshake| to whether the failure was due to a
-   * post-handshake handshake message. If so, it fills in the current message as
-   * in |ssl_get_message|. */
+   * post-handshake handshake message. If so, any handshake messages consumed
+   * may be read with |get_message|. */
   int (*read_app_data)(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
                        int peek);
   int (*read_change_cipher_spec)(SSL *ssl);

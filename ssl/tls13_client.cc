@@ -33,16 +33,15 @@
 namespace bssl {
 
 enum client_hs_state_t {
-  state_process_hello_retry_request = 0,
+  state_read_hello_retry_request = 0,
   state_send_second_client_hello,
-  state_process_server_hello,
+  state_read_server_hello,
   state_process_change_cipher_spec,
-  state_process_encrypted_extensions,
-  state_continue_second_server_flight,
-  state_process_certificate_request,
-  state_process_server_certificate,
-  state_process_server_certificate_verify,
-  state_process_server_finished,
+  state_read_encrypted_extensions,
+  state_read_certificate_request,
+  state_read_server_certificate,
+  state_read_server_certificate_verify,
+  state_read_server_finished,
   state_send_end_of_early_data,
   state_send_client_certificate,
   state_send_client_certificate_verify,
@@ -52,21 +51,24 @@ enum client_hs_state_t {
 
 static const uint8_t kZeroes[EVP_MAX_MD_SIZE] = {0};
 
-static enum ssl_hs_wait_t do_process_hello_retry_request(SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (ssl->s3->tmp.message_type != SSL3_MT_HELLO_RETRY_REQUEST) {
-    hs->tls13_state = state_process_server_hello;
+  SSLMessage msg;
+  if (!ssl->method->get_message(ssl, &msg)) {
+    return ssl_hs_read_message;
+  }
+  if (msg.type != SSL3_MT_HELLO_RETRY_REQUEST) {
+    hs->tls13_state = state_read_server_hello;
     return ssl_hs_ok;
   }
 
-  CBS cbs, extensions;
+  CBS body = msg.body, extensions;
   uint16_t server_version;
-  CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  if (!CBS_get_u16(&cbs, &server_version) ||
-      !CBS_get_u16_length_prefixed(&cbs, &extensions) ||
+  if (!CBS_get_u16(&body, &server_version) ||
+      !CBS_get_u16_length_prefixed(&body, &extensions) ||
       /* HelloRetryRequest may not be empty. */
       CBS_len(&extensions) == 0 ||
-      CBS_len(&cbs) != 0) {
+      CBS_len(&body) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
@@ -140,7 +142,7 @@ static enum ssl_hs_wait_t do_process_hello_retry_request(SSL_HANDSHAKE *hs) {
     hs->retry_group = group_id;
   }
 
-  if (!ssl_hash_current_message(hs)) {
+  if (!ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
   }
 
@@ -164,30 +166,33 @@ static enum ssl_hs_wait_t do_send_second_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  hs->tls13_state = state_process_server_hello;
-  return ssl_hs_flush_and_read_message;
+  hs->tls13_state = state_read_server_hello;
+  return ssl_hs_flush;
 }
 
-static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!ssl_check_message_type(ssl, SSL3_MT_SERVER_HELLO)) {
+  SSLMessage msg;
+  if (!ssl->method->get_message(ssl, &msg)) {
+    return ssl_hs_read_message;
+  }
+  if (!ssl_check_message_type(ssl, msg, SSL3_MT_SERVER_HELLO)) {
     return ssl_hs_error;
   }
 
-  CBS cbs, server_random, session_id, extensions;
+  CBS body = msg.body, server_random, session_id, extensions;
   uint16_t server_version;
   uint16_t cipher_suite;
   uint8_t compression_method;
-  CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  if (!CBS_get_u16(&cbs, &server_version) ||
-      !CBS_get_bytes(&cbs, &server_random, SSL3_RANDOM_SIZE) ||
+  if (!CBS_get_u16(&body, &server_version) ||
+      !CBS_get_bytes(&body, &server_random, SSL3_RANDOM_SIZE) ||
       (ssl->version == TLS1_3_EXPERIMENT_VERSION &&
-       !CBS_get_u8_length_prefixed(&cbs, &session_id)) ||
-      !CBS_get_u16(&cbs, &cipher_suite) ||
+       !CBS_get_u8_length_prefixed(&body, &session_id)) ||
+      !CBS_get_u16(&body, &cipher_suite) ||
       (ssl->version == TLS1_3_EXPERIMENT_VERSION &&
-       (!CBS_get_u8(&cbs, &compression_method) || compression_method != 0)) ||
-      !CBS_get_u16_length_prefixed(&cbs, &extensions) ||
-      CBS_len(&cbs) != 0) {
+       (!CBS_get_u8(&body, &compression_method) || compression_method != 0)) ||
+      !CBS_get_u16_length_prefixed(&body, &extensions) ||
+      CBS_len(&body) != 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return ssl_hs_error;
@@ -338,7 +343,7 @@ static enum ssl_hs_wait_t do_process_server_hello(SSL_HANDSHAKE *hs) {
   }
   OPENSSL_free(dhe_secret);
 
-  if (!ssl_hash_current_message(hs) ||
+  if (!ssl_hash_message(hs, msg) ||
       !tls13_derive_handshake_secrets(hs)) {
     return ssl_hs_error;
   }
@@ -368,23 +373,26 @@ static enum ssl_hs_wait_t do_process_change_cipher_spec(SSL_HANDSHAKE *hs) {
     }
   }
 
-  hs->tls13_state = state_process_encrypted_extensions;
-  return ssl_hs_read_message;
+  hs->tls13_state = state_read_encrypted_extensions;
+  return ssl_hs_ok;
 }
 
-static enum ssl_hs_wait_t do_process_encrypted_extensions(SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!ssl_check_message_type(ssl, SSL3_MT_ENCRYPTED_EXTENSIONS)) {
+  SSLMessage msg;
+  if (!ssl->method->get_message(ssl, &msg)) {
+    return ssl_hs_read_message;
+  }
+  if (!ssl_check_message_type(ssl, msg, SSL3_MT_ENCRYPTED_EXTENSIONS)) {
     return ssl_hs_error;
   }
 
-  CBS cbs;
-  CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  if (!ssl_parse_serverhello_tlsext(hs, &cbs)) {
+  CBS body = msg.body;
+  if (!ssl_parse_serverhello_tlsext(hs, &body)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
     return ssl_hs_error;
   }
-  if (CBS_len(&cbs) != 0) {
+  if (CBS_len(&body) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
@@ -415,43 +423,42 @@ static enum ssl_hs_wait_t do_process_encrypted_extensions(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl_hash_current_message(hs)) {
+  if (!ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
   }
 
   ssl->method->next_message(ssl);
-  hs->tls13_state = state_continue_second_server_flight;
+  hs->tls13_state = state_read_certificate_request;
   if (hs->in_early_data && !ssl->early_data_accepted) {
     return ssl_hs_early_data_rejected;
   }
   return ssl_hs_ok;
 }
 
-static enum ssl_hs_wait_t do_continue_second_server_flight(SSL_HANDSHAKE *hs) {
-  hs->tls13_state = state_process_certificate_request;
-  return ssl_hs_read_message;
-}
-
-static enum ssl_hs_wait_t do_process_certificate_request(SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_read_certificate_request(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   /* CertificateRequest may only be sent in non-resumption handshakes. */
   if (ssl->s3->session_reused) {
-    hs->tls13_state = state_process_server_finished;
+    hs->tls13_state = state_read_server_finished;
     return ssl_hs_ok;
+  }
+
+  SSLMessage msg;
+  if (!ssl->method->get_message(ssl, &msg)) {
+    return ssl_hs_read_message;
   }
 
   /* CertificateRequest is optional. */
-  if (ssl->s3->tmp.message_type != SSL3_MT_CERTIFICATE_REQUEST) {
-    hs->tls13_state = state_process_server_certificate;
+  if (msg.type != SSL3_MT_CERTIFICATE_REQUEST) {
+    hs->tls13_state = state_read_server_certificate;
     return ssl_hs_ok;
   }
 
-  CBS cbs, context, supported_signature_algorithms;
-  CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  if (!CBS_get_u8_length_prefixed(&cbs, &context) ||
+  CBS body = msg.body, context, supported_signature_algorithms;
+  if (!CBS_get_u8_length_prefixed(&body, &context) ||
       /* The request context is always empty during the handshake. */
       CBS_len(&context) != 0 ||
-      !CBS_get_u16_length_prefixed(&cbs, &supported_signature_algorithms) ||
+      !CBS_get_u16_length_prefixed(&body, &supported_signature_algorithms) ||
       CBS_len(&supported_signature_algorithms) == 0 ||
       !tls1_parse_peer_sigalgs(hs, &supported_signature_algorithms)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
@@ -461,7 +468,7 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL_HANDSHAKE *hs) {
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> ca_names =
-      ssl_parse_client_CA_list(ssl, &alert, &cbs);
+      ssl_parse_client_CA_list(ssl, &alert, &body);
   if (!ca_names) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
@@ -469,8 +476,8 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL_HANDSHAKE *hs) {
 
   /* Ignore extensions. */
   CBS extensions;
-  if (!CBS_get_u16_length_prefixed(&cbs, &extensions) ||
-      CBS_len(&cbs) != 0) {
+  if (!CBS_get_u16_length_prefixed(&body, &extensions) ||
+      CBS_len(&body) != 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return ssl_hs_error;
@@ -480,57 +487,69 @@ static enum ssl_hs_wait_t do_process_certificate_request(SSL_HANDSHAKE *hs) {
   hs->ca_names = std::move(ca_names);
   ssl->ctx->x509_method->hs_flush_cached_ca_names(hs);
 
-  if (!ssl_hash_current_message(hs)) {
+  if (!ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
   }
 
   ssl->method->next_message(ssl);
-  hs->tls13_state = state_process_server_certificate;
-  return ssl_hs_read_message;
+  hs->tls13_state = state_read_server_certificate;
+  return ssl_hs_ok;
 }
 
-static enum ssl_hs_wait_t do_process_server_certificate(SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_read_server_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!ssl_check_message_type(ssl, SSL3_MT_CERTIFICATE) ||
-      !tls13_process_certificate(hs, 0 /* certificate required */) ||
-      !ssl_hash_current_message(hs)) {
+  SSLMessage msg;
+  if (!ssl->method->get_message(ssl, &msg)) {
+    return ssl_hs_read_message;
+  }
+  if (!ssl_check_message_type(ssl, msg, SSL3_MT_CERTIFICATE) ||
+      !tls13_process_certificate(hs, msg, 0 /* certificate required */) ||
+      !ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
   }
 
   ssl->method->next_message(ssl);
-  hs->tls13_state = state_process_server_certificate_verify;
-  return ssl_hs_read_message;
+  hs->tls13_state = state_read_server_certificate_verify;
+  return ssl_hs_ok;
 }
 
-static enum ssl_hs_wait_t do_process_server_certificate_verify(
+static enum ssl_hs_wait_t do_read_server_certificate_verify(
     SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
+  SSLMessage msg;
+  if (!ssl->method->get_message(ssl, &msg)) {
+    return ssl_hs_read_message;
+  }
   switch (ssl_verify_peer_cert(hs)) {
     case ssl_verify_ok:
       break;
     case ssl_verify_invalid:
       return ssl_hs_error;
     case ssl_verify_retry:
-      hs->tls13_state = state_process_server_certificate_verify;
+      hs->tls13_state = state_read_server_certificate_verify;
       return ssl_hs_certificate_verify;
   }
 
-  if (!ssl_check_message_type(ssl, SSL3_MT_CERTIFICATE_VERIFY) ||
-      !tls13_process_certificate_verify(hs) ||
-      !ssl_hash_current_message(hs)) {
+  if (!ssl_check_message_type(ssl, msg, SSL3_MT_CERTIFICATE_VERIFY) ||
+      !tls13_process_certificate_verify(hs, msg) ||
+      !ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
   }
 
   ssl->method->next_message(ssl);
-  hs->tls13_state = state_process_server_finished;
-  return ssl_hs_read_message;
+  hs->tls13_state = state_read_server_finished;
+  return ssl_hs_ok;
 }
 
-static enum ssl_hs_wait_t do_process_server_finished(SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_read_server_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!ssl_check_message_type(ssl, SSL3_MT_FINISHED) ||
-      !tls13_process_finished(hs, 0 /* don't use saved value */) ||
-      !ssl_hash_current_message(hs) ||
+  SSLMessage msg;
+  if (!ssl->method->get_message(ssl, &msg)) {
+    return ssl_hs_read_message;
+  }
+  if (!ssl_check_message_type(ssl, msg, SSL3_MT_FINISHED) ||
+      !tls13_process_finished(hs, msg, 0 /* don't use saved value */) ||
+      !ssl_hash_message(hs, msg) ||
       /* Update the secret to the master secret and derive traffic keys. */
       !tls13_advance_key_schedule(hs, kZeroes, hs->hash_len) ||
       !tls13_derive_application_secrets(hs)) {
@@ -670,35 +689,32 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
     enum client_hs_state_t state =
         static_cast<enum client_hs_state_t>(hs->tls13_state);
     switch (state) {
-      case state_process_hello_retry_request:
-        ret = do_process_hello_retry_request(hs);
+      case state_read_hello_retry_request:
+        ret = do_read_hello_retry_request(hs);
         break;
       case state_send_second_client_hello:
         ret = do_send_second_client_hello(hs);
         break;
-      case state_process_server_hello:
-        ret = do_process_server_hello(hs);
+      case state_read_server_hello:
+        ret = do_read_server_hello(hs);
         break;
       case state_process_change_cipher_spec:
         ret = do_process_change_cipher_spec(hs);
         break;
-      case state_process_encrypted_extensions:
-        ret = do_process_encrypted_extensions(hs);
+      case state_read_encrypted_extensions:
+        ret = do_read_encrypted_extensions(hs);
         break;
-      case state_continue_second_server_flight:
-        ret = do_continue_second_server_flight(hs);
+      case state_read_certificate_request:
+        ret = do_read_certificate_request(hs);
         break;
-      case state_process_certificate_request:
-        ret = do_process_certificate_request(hs);
+      case state_read_server_certificate:
+        ret = do_read_server_certificate(hs);
         break;
-      case state_process_server_certificate:
-        ret = do_process_server_certificate(hs);
+      case state_read_server_certificate_verify:
+        ret = do_read_server_certificate_verify(hs);
         break;
-      case state_process_server_certificate_verify:
-        ret = do_process_server_certificate_verify(hs);
-        break;
-      case state_process_server_finished:
-        ret = do_process_server_finished(hs);
+      case state_read_server_finished:
+        ret = do_read_server_finished(hs);
         break;
       case state_send_end_of_early_data:
         ret = do_send_end_of_early_data(hs);
@@ -725,7 +741,7 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
   return ssl_hs_ok;
 }
 
-int tls13_process_new_session_ticket(SSL *ssl) {
+int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
   UniquePtr<SSL_SESSION> session(SSL_SESSION_dup(ssl->s3->established_session,
                                                  SSL_SESSION_INCLUDE_NONAUTH));
   if (!session) {
@@ -735,14 +751,13 @@ int tls13_process_new_session_ticket(SSL *ssl) {
   ssl_session_rebase_time(ssl, session.get());
 
   uint32_t server_timeout;
-  CBS cbs, ticket, extensions;
-  CBS_init(&cbs, ssl->init_msg, ssl->init_num);
-  if (!CBS_get_u32(&cbs, &server_timeout) ||
-      !CBS_get_u32(&cbs, &session->ticket_age_add) ||
-      !CBS_get_u16_length_prefixed(&cbs, &ticket) ||
+  CBS body = msg.body, ticket, extensions;
+  if (!CBS_get_u32(&body, &server_timeout) ||
+      !CBS_get_u32(&body, &session->ticket_age_add) ||
+      !CBS_get_u16_length_prefixed(&body, &ticket) ||
       !CBS_stow(&ticket, &session->tlsext_tick, &session->tlsext_ticklen) ||
-      !CBS_get_u16_length_prefixed(&cbs, &extensions) ||
-      CBS_len(&cbs) != 0) {
+      !CBS_get_u16_length_prefixed(&body, &extensions) ||
+      CBS_len(&body) != 0) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return 0;
