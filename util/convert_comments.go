@@ -16,6 +16,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -67,26 +68,46 @@ func indexFrom(s, sep string, idx int) int {
 	return idx + ret
 }
 
+// A lineGroup is a contiguous group of lines with an eligible comment at the
+// same column. Any trailing '*/'s will already be removed.
+type lineGroup struct {
+	// column is the column where the eligible comment begins. line[column]
+	// and line[column+1] will both be replaced with '/'. It is -1 if this
+	// group is not to be converted.
+	column int
+	lines  []string
+}
+
+func addLine(groups *[]lineGroup, line string, column int) {
+	if len(*groups) == 0 || (*groups)[len(*groups)-1].column != column {
+		*groups = append(*groups, lineGroup{column, nil})
+	}
+	(*groups)[len(*groups)-1].lines = append((*groups)[len(*groups)-1].lines, line)
+}
+
 // writeLine writes |line| to |out|, followed by a newline.
 func writeLine(out *bytes.Buffer, line string) {
 	out.WriteString(line)
 	out.WriteByte('\n')
 }
 
-func convertComments(in []byte) []byte {
+func convertComments(path string, in []byte) []byte {
 	lines := strings.Split(string(in), "\n")
-	var out bytes.Buffer
 
 	// Account for the trailing newline.
 	if len(lines) > 0 && len(lines[len(lines)-1]) == 0 {
 		lines = lines[:len(lines)-1]
 	}
 
+	// First pass: identify all comments to be converted. Group them into
+	// lineGroups with the same column.
+	var groups []lineGroup
+
 	// Find the license block separator.
 	for len(lines) > 0 {
 		line := lines[0]
 		lines = lines[1:]
-		writeLine(&out, line)
+		addLine(&groups, line, -1)
 		if len(line) == 0 {
 			break
 		}
@@ -109,7 +130,7 @@ func convertComments(in []byte) []byte {
 			// Stop buffering if this comment isn't eligible.
 			if comment != nil && !isContinuation(line, column) {
 				for _, l := range comment {
-					writeLine(&out, l)
+					addLine(&groups, l, -1)
 				}
 				comment = nil
 			}
@@ -120,7 +141,7 @@ func convertComments(in []byte) []byte {
 				if comment != nil {
 					comment = append(comment, line)
 				} else {
-					writeLine(&out, line)
+					addLine(&groups, line, -1)
 				}
 				continue
 			}
@@ -137,9 +158,7 @@ func convertComments(in []byte) []byte {
 						comment = append(comment, line[:idx])
 					}
 					for _, l := range comment {
-						out.WriteString(l[:column])
-						out.WriteString("//")
-						writeLine(&out, strings.TrimRight(l[column+2:], " "))
+						addLine(&groups, l, column)
 					}
 					comment = nil
 					continue
@@ -147,7 +166,7 @@ func convertComments(in []byte) []byte {
 
 				// Flush the buffered comment unmodified.
 				for _, l := range comment {
-					writeLine(&out, l)
+					addLine(&groups, l, -1)
 				}
 				comment = nil
 			}
@@ -159,7 +178,7 @@ func convertComments(in []byte) []byte {
 		for {
 			idx = indexFrom(line, "/*", idx)
 			if idx < 0 {
-				writeLine(&out, line)
+				addLine(&groups, line, -1)
 				break
 			}
 
@@ -178,26 +197,51 @@ func convertComments(in []byte) []byte {
 				continue
 			}
 
-			out.WriteString(line[:idx])
-
-			// Google C++ style prefers two spaces before a
-			// comment if it is on the same line as code,
-			// but clang-format has been placing one space
-			// for block comments. Fix this.
-			if !allSpaces(line[:idx]) && line[idx-1] != '(' {
-				if line[idx-1] != ' ' {
-					out.WriteString("  ")
-				} else if line[idx-2] != ' ' {
-					out.WriteString(" ")
-				}
-			}
-
-			out.WriteString("//")
-			writeLine(&out, strings.TrimRight(line[idx+2:endIdx], " "))
+			addLine(&groups, line[:endIdx], idx)
 			break
 		}
 	}
 
+	// Second pass: convert the lineGroups, adjusting spacing as needed.
+	var out bytes.Buffer
+	var lineNo int
+	for _, group := range groups {
+		if group.column < 0 {
+			for _, line := range group.lines {
+				writeLine(&out, line)
+			}
+		} else {
+			// Google C++ style prefers two spaces before a comment
+			// if it is on the same line as code, but clang-format
+			// has been placing one space for block comments. All
+			// comments within a group should be adjusted by the
+			// same amount.
+			var adjust string
+			for _, line := range group.lines {
+				if !allSpaces(line[:group.column]) && line[group.column-1] != '(' {
+					if line[group.column-1] != ' ' {
+						if len(adjust) < 2 {
+							adjust = "  "
+						}
+					} else if line[group.column-2] != ' ' {
+						if len(adjust) < 1 {
+							adjust = " "
+						}
+					}
+				}
+			}
+
+			for i, line := range group.lines {
+				newLine := fmt.Sprintf("%s%s//%s", line[:group.column], adjust, strings.TrimRight(line[group.column+2:], " "))
+				if len(newLine) > 80 {
+					fmt.Fprintf(os.Stderr, "%s:%d: Line is now longer than 80 characters\n", path, lineNo+i+1)
+				}
+				writeLine(&out, newLine)
+			}
+
+		}
+		lineNo += len(group.lines)
+	}
 	return out.Bytes()
 }
 
@@ -207,7 +251,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		if err := ioutil.WriteFile(arg, convertComments(in), 0666); err != nil {
+		if err := ioutil.WriteFile(arg, convertComments(arg, in), 0666); err != nil {
 			panic(err)
 		}
 	}
