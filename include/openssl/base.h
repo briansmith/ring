@@ -413,6 +413,9 @@ class StackAllocated {
   T *get() { return &ctx_; }
   const T *get() const { return &ctx_; }
 
+  T *operator->() { return &ctx_; }
+  const T *operator->() const { return &ctx_; }
+
   void Reset() {
     cleanup(&ctx_);
     init(&ctx_);

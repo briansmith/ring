@@ -1094,7 +1094,9 @@ DECLARE_ASN1_FUNCTIONS(RSA_PSS_PARAMS)
 
 #ifdef  __cplusplus
 }
+#endif
 
+#if !defined(BORINGSSL_NO_CXX)
 extern "C++" {
 
 namespace bssl {
@@ -1118,11 +1120,14 @@ BORINGSSL_MAKE_DELETER(X509_STORE, X509_STORE_free)
 BORINGSSL_MAKE_DELETER(X509_STORE_CTX, X509_STORE_CTX_free)
 BORINGSSL_MAKE_DELETER(X509_VERIFY_PARAM, X509_VERIFY_PARAM_free)
 
+using ScopedX509_STORE_CTX =
+    internal::StackAllocated<X509_STORE_CTX, void, X509_STORE_CTX_zero,
+                             X509_STORE_CTX_cleanup>;
+
 }  // namespace bssl
 
 }  /* extern C++ */
-
-#endif
+#endif  /* !BORINGSSL_NO_CXX */
 
 #define X509_R_AKID_MISMATCH 100
 #define X509_R_BAD_PKCS7_VERSION 101

@@ -320,27 +320,19 @@ int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
 using namespace bssl;
 
 int SSL_use_RSAPrivateKey(SSL *ssl, RSA *rsa) {
-  EVP_PKEY *pkey;
-  int ret;
-
   if (rsa == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
-  pkey = EVP_PKEY_new();
-  if (pkey == NULL) {
+  UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  if (!pkey ||
+      !EVP_PKEY_set1_RSA(pkey.get(), rsa)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_EVP_LIB);
     return 0;
   }
 
-  RSA_up_ref(rsa);
-  EVP_PKEY_assign_RSA(pkey, rsa);
-
-  ret = ssl_set_pkey(ssl->cert, pkey);
-  EVP_PKEY_free(pkey);
-
-  return ret;
+  return ssl_set_pkey(ssl->cert, pkey.get());
 }
 
 int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
@@ -370,52 +362,40 @@ int SSL_use_PrivateKey_ASN1(int type, SSL *ssl, const uint8_t *der,
   }
 
   const uint8_t *p = der;
-  EVP_PKEY *pkey = d2i_PrivateKey(type, NULL, &p, (long)der_len);
-  if (pkey == NULL || p != der + der_len) {
+  UniquePtr<EVP_PKEY> pkey(d2i_PrivateKey(type, NULL, &p, (long)der_len));
+  if (!pkey || p != der + der_len) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
-    EVP_PKEY_free(pkey);
     return 0;
   }
 
-  int ret = SSL_use_PrivateKey(ssl, pkey);
-  EVP_PKEY_free(pkey);
-  return ret;
+  return SSL_use_PrivateKey(ssl, pkey.get());
 }
 
 int SSL_CTX_use_RSAPrivateKey(SSL_CTX *ctx, RSA *rsa) {
-  int ret;
-  EVP_PKEY *pkey;
-
   if (rsa == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
-  pkey = EVP_PKEY_new();
-  if (pkey == NULL) {
+  UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+  if (!pkey ||
+      !EVP_PKEY_set1_RSA(pkey.get(), rsa)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_EVP_LIB);
     return 0;
   }
 
-  RSA_up_ref(rsa);
-  EVP_PKEY_assign_RSA(pkey, rsa);
-
-  ret = ssl_set_pkey(ctx->cert, pkey);
-  EVP_PKEY_free(pkey);
-  return ret;
+  return ssl_set_pkey(ctx->cert, pkey.get());
 }
 
 int SSL_CTX_use_RSAPrivateKey_ASN1(SSL_CTX *ctx, const uint8_t *der,
                                    size_t der_len) {
-  RSA *rsa = RSA_private_key_from_bytes(der, der_len);
-  if (rsa == NULL) {
+  UniquePtr<RSA> rsa(RSA_private_key_from_bytes(der, der_len));
+  if (!rsa) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
     return 0;
   }
 
-  int ret = SSL_CTX_use_RSAPrivateKey(ctx, rsa);
-  RSA_free(rsa);
-  return ret;
+  return SSL_CTX_use_RSAPrivateKey(ctx, rsa.get());
 }
 
 int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey) {
@@ -435,16 +415,13 @@ int SSL_CTX_use_PrivateKey_ASN1(int type, SSL_CTX *ctx, const uint8_t *der,
   }
 
   const uint8_t *p = der;
-  EVP_PKEY *pkey = d2i_PrivateKey(type, NULL, &p, (long)der_len);
-  if (pkey == NULL || p != der + der_len) {
+  UniquePtr<EVP_PKEY> pkey(d2i_PrivateKey(type, NULL, &p, (long)der_len));
+  if (!pkey || p != der + der_len) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_ASN1_LIB);
-    EVP_PKEY_free(pkey);
     return 0;
   }
 
-  int ret = SSL_CTX_use_PrivateKey(ctx, pkey);
-  EVP_PKEY_free(pkey);
-  return ret;
+  return SSL_CTX_use_PrivateKey(ctx, pkey.get());
 }
 
 void SSL_set_private_key_method(SSL *ssl,

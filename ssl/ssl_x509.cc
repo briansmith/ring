@@ -429,50 +429,47 @@ static int ssl_crypto_x509_session_verify_cert_chain(SSL_SESSION *session,
   }
 
   X509 *leaf = sk_X509_value(cert_chain, 0);
-  int ret = 0;
-  X509_STORE_CTX ctx;
-  if (!X509_STORE_CTX_init(&ctx, verify_store, leaf, cert_chain)) {
+  ScopedX509_STORE_CTX ctx;
+  if (!X509_STORE_CTX_init(ctx.get(), verify_store, leaf, cert_chain)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return 0;
   }
-  if (!X509_STORE_CTX_set_ex_data(&ctx, SSL_get_ex_data_X509_STORE_CTX_idx(),
-                                  ssl)) {
-    goto err;
+  if (!X509_STORE_CTX_set_ex_data(ctx.get(),
+                                  SSL_get_ex_data_X509_STORE_CTX_idx(), ssl)) {
+    return 0;
   }
 
   /* We need to inherit the verify parameters. These can be determined by the
    * context: if its a server it will verify SSL client certificates or vice
    * versa. */
-  X509_STORE_CTX_set_default(&ctx, ssl->server ? "ssl_client" : "ssl_server");
+  X509_STORE_CTX_set_default(ctx.get(),
+                             ssl->server ? "ssl_client" : "ssl_server");
 
   /* Anything non-default in "param" should overwrite anything in the ctx. */
-  X509_VERIFY_PARAM_set1(X509_STORE_CTX_get0_param(&ctx), ssl->param);
+  X509_VERIFY_PARAM_set1(X509_STORE_CTX_get0_param(ctx.get()), ssl->param);
 
   if (ssl->verify_callback) {
-    X509_STORE_CTX_set_verify_cb(&ctx, ssl->verify_callback);
+    X509_STORE_CTX_set_verify_cb(ctx.get(), ssl->verify_callback);
   }
 
   int verify_ret;
   if (ssl->ctx->app_verify_callback != NULL) {
-    verify_ret = ssl->ctx->app_verify_callback(&ctx, ssl->ctx->app_verify_arg);
+    verify_ret =
+        ssl->ctx->app_verify_callback(ctx.get(), ssl->ctx->app_verify_arg);
   } else {
-    verify_ret = X509_verify_cert(&ctx);
+    verify_ret = X509_verify_cert(ctx.get());
   }
 
-  session->verify_result = ctx.error;
+  session->verify_result = ctx->error;
 
   /* If |SSL_VERIFY_NONE|, the error is non-fatal, but we keep the result. */
   if (verify_ret <= 0 && ssl->verify_mode != SSL_VERIFY_NONE) {
-    *out_alert = ssl_verify_alarm_type(ctx.error);
-    goto err;
+    *out_alert = ssl_verify_alarm_type(ctx->error);
+    return 0;
   }
 
   ERR_clear_error();
-  ret = 1;
-
-err:
-  X509_STORE_CTX_cleanup(&ctx);
-  return ret;
+  return 1;
 }
 
 static void ssl_crypto_x509_hs_flush_cached_ca_names(SSL_HANDSHAKE *hs) {
@@ -509,31 +506,27 @@ static int ssl_crypto_x509_ssl_auto_chain_if_needed(SSL *ssl) {
     return 1;
   }
 
-  X509 *leaf =
-      X509_parse_from_buffer(sk_CRYPTO_BUFFER_value(ssl->cert->chain, 0));
+  UniquePtr<X509> leaf(
+      X509_parse_from_buffer(sk_CRYPTO_BUFFER_value(ssl->cert->chain, 0)));
   if (!leaf) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return 0;
   }
 
-  X509_STORE_CTX ctx;
-  if (!X509_STORE_CTX_init(&ctx, ssl->ctx->cert_store, leaf, NULL)) {
-    X509_free(leaf);
+  ScopedX509_STORE_CTX ctx;
+  if (!X509_STORE_CTX_init(ctx.get(), ssl->ctx->cert_store, leaf.get(), NULL)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return 0;
   }
 
   /* Attempt to build a chain, ignoring the result. */
-  X509_verify_cert(&ctx);
-  X509_free(leaf);
+  X509_verify_cert(ctx.get());
   ERR_clear_error();
 
   /* Remove the leaf from the generated chain. */
-  X509_free(sk_X509_shift(ctx.chain));
+  X509_free(sk_X509_shift(ctx->chain));
 
-  const int ok = ssl_cert_set_chain(ssl->cert, ctx.chain);
-  X509_STORE_CTX_cleanup(&ctx);
-  if (!ok) {
+  if (!ssl_cert_set_chain(ssl->cert, ctx->chain)) {
     return 0;
   }
 
@@ -1248,6 +1241,8 @@ static int do_client_cert_cb(SSL *ssl, void *arg) {
   if (ret < 0) {
     return -1;
   }
+  UniquePtr<X509> free_x509(x509);
+  UniquePtr<EVP_PKEY> free_pkey(pkey);
 
   if (ret != 0) {
     if (!SSL_use_certificate(ssl, x509) ||
@@ -1256,8 +1251,6 @@ static int do_client_cert_cb(SSL *ssl, void *arg) {
     }
   }
 
-  X509_free(x509);
-  EVP_PKEY_free(pkey);
   return 1;
 }
 
