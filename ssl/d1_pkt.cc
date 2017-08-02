@@ -239,7 +239,7 @@ again:
         /* Retransmit our last flight of messages. If the peer sends the second
          * Finished, they may not have received ours. Only do this for the
          * first fragment, in case the Finished was fragmented. */
-        if (dtls1_check_timeout_num(ssl) < 0) {
+        if (!dtls1_check_timeout_num(ssl)) {
           return -1;
         }
 

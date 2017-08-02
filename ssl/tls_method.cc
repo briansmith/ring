@@ -69,9 +69,7 @@ namespace bssl {
 
 static int ssl3_supports_cipher(const SSL_CIPHER *cipher) { return 1; }
 
-static void ssl3_expect_flight(SSL *ssl) {}
-
-static void ssl3_received_flight(SSL *ssl) {}
+static void ssl3_on_handshake_complete(SSL *ssl) {}
 
 static int ssl3_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   if (ssl->s3->rrec.length != 0) {
@@ -115,8 +113,7 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     ssl3_add_change_cipher_spec,
     ssl3_add_alert,
     ssl3_flush_flight,
-    ssl3_expect_flight,
-    ssl3_received_flight,
+    ssl3_on_handshake_complete,
     ssl3_set_read_state,
     ssl3_set_write_state,
 };

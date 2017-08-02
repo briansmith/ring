@@ -1800,6 +1800,11 @@ struct DTLS1_STATE {
    * the peer in this epoch. */
   bool has_change_cipher_spec:1;
 
+  /* outgoing_messages_complete is true if |outgoing_messages| has been
+   * completed by an attempt to flush it. Future calls to |add_message| and
+   * |add_change_cipher_spec| will start a new flight. */
+  bool outgoing_messages_complete:1;
+
   uint8_t cookie[DTLS1_COOKIE_LENGTH];
   size_t cookie_len;
 
@@ -2202,7 +2207,6 @@ int dtls1_handshake_write(SSL *ssl);
 void dtls1_start_timer(SSL *ssl);
 void dtls1_stop_timer(SSL *ssl);
 int dtls1_is_timer_expired(SSL *ssl);
-void dtls1_double_timeout(SSL *ssl);
 unsigned int dtls1_min_mtu(void);
 
 int dtls1_new(SSL *ssl);
@@ -2398,12 +2402,8 @@ struct ssl_protocol_method_st {
   /* flush_flight flushes the pending flight to the transport. It returns one on
    * success and <= 0 on error. */
   int (*flush_flight)(SSL *ssl);
-  /* expect_flight is called when the handshake expects a flight of messages from
-   * the peer. */
-  void (*expect_flight)(SSL *ssl);
-  /* received_flight is called when the handshake has received a flight of
-   * messages from the peer. */
-  void (*received_flight)(SSL *ssl);
+  /* on_handshake_complete is called when the handshake is complete. */
+  void (*on_handshake_complete)(SSL *ssl);
   /* set_read_state sets |ssl|'s read cipher state to |aead_ctx|. It returns
    * one on success and zero if changing the read state is forbidden at this
    * point. */

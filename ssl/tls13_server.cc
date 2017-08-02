@@ -452,8 +452,6 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     ssl->s3->skip_early_data = 1;
   }
 
-  ssl->method->received_flight(ssl);
-
   /* Resolve ECDHE and incorporate it into the secret. */
   int need_retry;
   if (!resolve_ecdhe_secret(hs, &need_retry, &client_hello)) {
@@ -519,7 +517,6 @@ static enum ssl_hs_wait_t do_process_second_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  ssl->method->received_flight(ssl);
   hs->tls13_state = state_send_server_hello;
   return ssl_hs_ok;
 }
@@ -802,8 +799,6 @@ static enum ssl_hs_wait_t do_process_client_finished(SSL_HANDSHAKE *hs) {
                              hs->hash_len)) {
     return ssl_hs_error;
   }
-
-  ssl->method->received_flight(ssl);
 
   if (!ssl->early_data_accepted) {
     if (!ssl_hash_current_message(hs) ||

@@ -233,7 +233,6 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
         if (ret <= 0) {
           goto end;
         }
-        ssl->method->received_flight(ssl);
         hs->state = SSL3_ST_SW_SRVR_HELLO_A;
         break;
 
@@ -362,7 +361,6 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
           goto end;
         }
 
-        ssl->method->received_flight(ssl);
         if (ssl->session != NULL) {
           hs->state = SSL_ST_OK;
         } else {
@@ -400,9 +398,6 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
         }
 
         hs->state = hs->next_state;
-        if (hs->state != SSL_ST_OK) {
-          ssl->method->expect_flight(ssl);
-        }
         break;
 
       case SSL_ST_TLS13: {
@@ -422,6 +417,7 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
       }
 
       case SSL_ST_OK:
+        ssl->method->on_handshake_complete(ssl);
         ssl->method->release_current_message(ssl, 1 /* free_buffer */);
 
         /* If we aren't retaining peer certificates then we can discard it

@@ -72,9 +72,12 @@ static int dtls1_supports_cipher(const SSL_CIPHER *cipher) {
   return cipher->algorithm_enc != SSL_eNULL;
 }
 
-static void dtls1_expect_flight(SSL *ssl) { dtls1_start_timer(ssl); }
-
-static void dtls1_received_flight(SSL *ssl) { dtls1_stop_timer(ssl); }
+static void dtls1_on_handshake_complete(SSL *ssl) {
+  /* If we wrote the last flight, we'll have a timer left over without waiting
+   * for a read. Stop the timer but leave the flight around for post-handshake
+   * transmission logic. */
+  dtls1_stop_timer(ssl);
+}
 
 static int dtls1_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   /* Cipher changes are illegal when there are buffered incoming messages. */
@@ -124,8 +127,7 @@ static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     dtls1_add_change_cipher_spec,
     dtls1_add_alert,
     dtls1_flush_flight,
-    dtls1_expect_flight,
-    dtls1_received_flight,
+    dtls1_on_handshake_complete,
     dtls1_set_read_state,
     dtls1_set_write_state,
 };

@@ -530,7 +530,6 @@ static enum ssl_hs_wait_t do_process_server_finished(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  ssl->method->received_flight(ssl);
   hs->tls13_state = state_send_end_of_early_data;
   return ssl_hs_ok;
 }

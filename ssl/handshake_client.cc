@@ -238,7 +238,6 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
           goto end;
         }
         if (ssl->d1->send_cookie) {
-          ssl->method->received_flight(ssl);
           hs->state = SSL3_ST_CW_CLNT_HELLO_A;
         } else {
           hs->state = SSL3_ST_CR_SRVR_HELLO_A;
@@ -333,7 +332,6 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
         if (ret <= 0) {
           goto end;
         }
-        ssl->method->received_flight(ssl);
         hs->state = SSL3_ST_CW_CERT_A;
         break;
 
@@ -460,7 +458,6 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
         if (ret <= 0) {
           goto end;
         }
-        ssl->method->received_flight(ssl);
 
         if (ssl->session != NULL) {
           hs->state = SSL3_ST_CW_CHANGE;
@@ -475,9 +472,6 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
           goto end;
         }
         hs->state = hs->next_state;
-        if (hs->state != SSL3_ST_FINISH_CLIENT_HANDSHAKE) {
-          ssl->method->expect_flight(ssl);
-        }
         break;
 
       case SSL_ST_TLS13: {
@@ -497,6 +491,7 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
       }
 
       case SSL3_ST_FINISH_CLIENT_HANDSHAKE:
+        ssl->method->on_handshake_complete(ssl);
         ssl->method->release_current_message(ssl, 1 /* free_buffer */);
 
         SSL_SESSION_free(ssl->s3->established_session);

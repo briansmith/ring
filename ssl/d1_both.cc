@@ -540,6 +540,7 @@ void dtls_clear_outgoing_messages(SSL *ssl) {
   ssl->d1->outgoing_messages_len = 0;
   ssl->d1->outgoing_written = 0;
   ssl->d1->outgoing_offset = 0;
+  ssl->d1->outgoing_messages_complete = false;
 }
 
 int dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
@@ -577,6 +578,13 @@ int dtls1_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
  * it takes ownership of |data| and releases it with |OPENSSL_free| when
  * done. */
 static int add_outgoing(SSL *ssl, int is_ccs, uint8_t *data, size_t len) {
+  if (ssl->d1->outgoing_messages_complete) {
+    /* If we've begun writing a new flight, we received the peer flight. Discard
+     * the timer and the our flight. */
+    dtls1_stop_timer(ssl);
+    dtls_clear_outgoing_messages(ssl);
+  }
+
   static_assert(SSL_MAX_HANDSHAKE_FLIGHT <
                     (1 << 8 * sizeof(ssl->d1->outgoing_messages_len)),
                 "outgoing_messages_len is too small");
@@ -795,7 +803,7 @@ packet_full:
   return 1;
 }
 
-int dtls1_flush_flight(SSL *ssl) {
+static int send_flight(SSL *ssl) {
   dtls1_update_mtu(ssl);
 
   int ret = -1;
@@ -837,6 +845,13 @@ err:
   return ret;
 }
 
+int dtls1_flush_flight(SSL *ssl) {
+  ssl->d1->outgoing_messages_complete = true;
+  /* Start the retransmission timer for the next flight (if any). */
+  dtls1_start_timer(ssl);
+  return send_flight(ssl);
+}
+
 int dtls1_retransmit_outgoing_messages(SSL *ssl) {
   /* Rewind to the start of the flight and write it again.
    *
@@ -845,7 +860,7 @@ int dtls1_retransmit_outgoing_messages(SSL *ssl) {
   ssl->d1->outgoing_written = 0;
   ssl->d1->outgoing_offset = 0;
 
-  return dtls1_flush_flight(ssl);
+  return send_flight(ssl);
 }
 
 unsigned int dtls1_min_mtu(void) {
