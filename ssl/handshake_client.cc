@@ -492,7 +492,6 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
 
       case SSL3_ST_FINISH_CLIENT_HANDSHAKE:
         ssl->method->on_handshake_complete(ssl);
-        ssl->method->release_current_message(ssl, 1 /* free_buffer */);
 
         SSL_SESSION_free(ssl->s3->established_session);
         if (ssl->session != NULL) {

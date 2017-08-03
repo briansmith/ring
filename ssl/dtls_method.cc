@@ -73,6 +73,7 @@ static int dtls1_supports_cipher(const SSL_CIPHER *cipher) {
 }
 
 static void dtls1_on_handshake_complete(SSL *ssl) {
+  dtls1_release_current_message(ssl);
   /* If we wrote the last flight, we'll have a timer left over without waiting
    * for a read. Stop the timer but leave the flight around for post-handshake
    * transmission logic. */

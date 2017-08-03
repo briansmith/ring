@@ -2137,7 +2137,7 @@ int ssl3_get_finished(SSL_HANDSHAKE *hs);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
 int ssl3_get_message(SSL *ssl);
 void ssl3_get_current_message(const SSL *ssl, CBS *out);
-void ssl3_release_current_message(SSL *ssl, int free_buffer);
+void ssl3_release_current_message(SSL *ssl);
 
 int ssl3_send_finished(SSL_HANDSHAKE *hs);
 int ssl3_dispatch_alert(SSL *ssl);
@@ -2216,7 +2216,7 @@ void dtls1_free(SSL *ssl);
 
 int dtls1_get_message(SSL *ssl);
 void dtls1_get_current_message(const SSL *ssl, CBS *out);
-void dtls1_release_current_message(SSL *ssl, int free_buffer);
+void dtls1_release_current_message(SSL *ssl);
 int dtls1_dispatch_alert(SSL *ssl);
 
 int tls1_change_cipher_state(SSL_HANDSHAKE *hs, int which);
@@ -2362,9 +2362,9 @@ struct ssl_protocol_method_st {
   /* get_current_message sets |*out| to the current handshake message. This
    * includes the protocol-specific message header. */
   void (*get_current_message)(const SSL *ssl, CBS *out);
-  /* release_current_message is called to release the current handshake message.
-   * If |free_buffer| is one, buffers will also be released. */
-  void (*release_current_message)(SSL *ssl, int free_buffer);
+  /* release_current_message is called to release the current handshake
+   * message. */
+  void (*release_current_message)(SSL *ssl);
   /* read_app_data reads up to |len| bytes of application data into |buf|. On
    * success, it returns the number of bytes read. Otherwise, it returns <= 0
    * and sets |*out_got_handshake| to whether the failure was due to a

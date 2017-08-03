@@ -418,7 +418,6 @@ int ssl3_accept(SSL_HANDSHAKE *hs) {
 
       case SSL_ST_OK:
         ssl->method->on_handshake_complete(ssl);
-        ssl->method->release_current_message(ssl, 1 /* free_buffer */);
 
         /* If we aren't retaining peer certificates then we can discard it
          * now. */

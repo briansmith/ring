@@ -942,7 +942,7 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
     if (!ssl_do_post_handshake(ssl)) {
       return -1;
     }
-    ssl->method->release_current_message(ssl, 1 /* free buffer */);
+    ssl->method->release_current_message(ssl);
   }
 }
 

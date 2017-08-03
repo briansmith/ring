@@ -683,6 +683,14 @@ static int read_v2_client_hello(SSL *ssl) {
 }
 
 int ssl3_get_message(SSL *ssl) {
+  if (ssl->s3->tmp.reuse_message) {
+    /* There must be a current message. */
+    assert(ssl->init_msg != NULL);
+    ssl->s3->tmp.reuse_message = 0;
+  } else {
+    ssl3_release_current_message(ssl);
+  }
+
   /* Re-create the handshake buffer if needed. */
   if (ssl->init_buf == NULL) {
     ssl->init_buf = BUF_MEM_new();
@@ -698,14 +706,6 @@ int ssl3_get_message(SSL *ssl) {
       return ret;
     }
     ssl->s3->v2_hello_done = 1;
-  }
-
-  if (ssl->s3->tmp.reuse_message) {
-    /* There must be a current message. */
-    assert(ssl->init_msg != NULL);
-    ssl->s3->tmp.reuse_message = 0;
-  } else {
-    ssl3_release_current_message(ssl, 0 /* don't free buffer */);
   }
 
   /* Read the message header, if we haven't yet. */
@@ -757,19 +757,23 @@ int ssl_hash_current_message(SSL_HANDSHAKE *hs) {
   return hs->transcript.Update(CBS_data(&cbs), CBS_len(&cbs));
 }
 
-void ssl3_release_current_message(SSL *ssl, int free_buffer) {
-  if (ssl->init_msg != NULL) {
-    /* |init_buf| never contains data beyond the current message. */
-    assert(SSL3_HM_HEADER_LENGTH + ssl->init_num == ssl->init_buf->length);
-
-    /* Clear the current message. */
-    ssl->init_msg = NULL;
-    ssl->init_num = 0;
-    ssl->init_buf->length = 0;
-    ssl->s3->is_v2_hello = 0;
+void ssl3_release_current_message(SSL *ssl) {
+  if (ssl->init_msg == NULL) {
+    return;
   }
 
-  if (free_buffer) {
+  /* |init_buf| never contains data beyond the current message. */
+  assert(SSL3_HM_HEADER_LENGTH + ssl->init_num == ssl->init_buf->length);
+
+  /* Clear the current message. */
+  ssl->init_msg = NULL;
+  ssl->init_num = 0;
+  ssl->init_buf->length = 0;
+  ssl->s3->is_v2_hello = 0;
+
+  /* Post-handshake messages are rare, so release the buffer after every
+   * message. During the handshake, |on_handshake_complete| will release it. */
+  if (!SSL_in_init(ssl)) {
     BUF_MEM_free(ssl->init_buf);
     ssl->init_buf = NULL;
   }

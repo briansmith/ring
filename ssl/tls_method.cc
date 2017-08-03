@@ -69,7 +69,11 @@ namespace bssl {
 
 static int ssl3_supports_cipher(const SSL_CIPHER *cipher) { return 1; }
 
-static void ssl3_on_handshake_complete(SSL *ssl) {}
+static void ssl3_on_handshake_complete(SSL *ssl) {
+  ssl3_release_current_message(ssl);
+  BUF_MEM_free(ssl->init_buf);
+  ssl->init_buf = NULL;
+}
 
 static int ssl3_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   if (ssl->s3->rrec.length != 0) {

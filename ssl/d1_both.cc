@@ -425,7 +425,7 @@ int dtls1_get_message(SSL *ssl) {
     assert(ssl->init_msg != NULL);
     ssl->s3->tmp.reuse_message = 0;
   } else {
-    dtls1_release_current_message(ssl, 0 /* don't free buffer */);
+    dtls1_release_current_message(ssl);
   }
 
   /* Process handshake records until the current message is ready. */
@@ -463,7 +463,7 @@ void dtls1_get_current_message(const SSL *ssl, CBS *out) {
   CBS_init(out, frag->data, DTLS1_HM_HEADER_LENGTH + frag->msg_len);
 }
 
-void dtls1_release_current_message(SSL *ssl, int free_buffer) {
+void dtls1_release_current_message(SSL *ssl) {
   if (ssl->init_msg == NULL) {
     return;
   }

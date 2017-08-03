@@ -377,7 +377,7 @@ int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
   assert(!ssl->s3->aead_read_ctx->is_null_cipher());
   *out_got_handshake = 0;
 
-  ssl->method->release_current_message(ssl, 0 /* don't free buffer */);
+  ssl->method->release_current_message(ssl);
 
   SSL3_RECORD *rr = &ssl->s3->rrec;
 
