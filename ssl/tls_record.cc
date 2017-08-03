@@ -596,44 +596,33 @@ OpenRecordResult OpenRecord(SSL *ssl, Span<uint8_t> *out,
     return OpenRecordResult::kError;
   }
 
-  *out = Span<uint8_t>();
-  *out_record_len = 0;
-
   CBS plaintext;
   uint8_t type;
-  size_t record_len;
   const ssl_open_record_t result = tls_open_record(
-      ssl, &type, &plaintext, &record_len, out_alert, in.data(), in.size());
-  if (type != SSL3_RT_APPLICATION_DATA && type != SSL3_RT_ALERT) {
-    *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
-    return OpenRecordResult::kError;
-  }
+      ssl, &type, &plaintext, out_record_len, out_alert, in.data(), in.size());
 
-  OpenRecordResult ret = OpenRecordResult::kError;
   switch (result) {
     case ssl_open_record_success:
-      ret = OpenRecordResult::kOK;
-      break;
+      if (type != SSL3_RT_APPLICATION_DATA && type != SSL3_RT_ALERT) {
+        *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+        return OpenRecordResult::kError;
+      }
+      *out = MakeSpan(
+          const_cast<uint8_t*>(CBS_data(&plaintext)), CBS_len(&plaintext));
+      return OpenRecordResult::kOK;
     case ssl_open_record_discard:
-      ret = OpenRecordResult::kDiscard;
-      break;
+      return OpenRecordResult::kDiscard;
     case ssl_open_record_partial:
-      ret = OpenRecordResult::kIncompleteRecord;
-      break;
+      return OpenRecordResult::kIncompleteRecord;
     case ssl_open_record_close_notify:
-      ret = OpenRecordResult::kAlertCloseNotify;
-      break;
+      return OpenRecordResult::kAlertCloseNotify;
     case ssl_open_record_fatal_alert:
-      ret = OpenRecordResult::kAlertFatal;
-      break;
+      return OpenRecordResult::kAlertFatal;
     case ssl_open_record_error:
-      ret = OpenRecordResult::kError;
-      break;
+      return OpenRecordResult::kError;
   }
-  *out =
-      MakeSpan(const_cast<uint8_t*>(CBS_data(&plaintext)), CBS_len(&plaintext));
-  *out_record_len = record_len;
-  return ret;
+  assert(false);
+  return OpenRecordResult::kError;
 }
 
 size_t SealRecordPrefixLen(const SSL *ssl, const size_t record_len) {
