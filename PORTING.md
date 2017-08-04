@@ -269,3 +269,7 @@ When using these functions, the application also needs to ensure that it doesn't
 In order to use buffers, the application code also needs to implement its own certificate verification using `SSL_[CTX_]set_custom_verify`. Otherwise all connections will fail with a verification error. Auto-chaining is also disabled when using buffers.
 
 Once those changes have been completed, the whole of the OpenSSL X.509 and ASN.1 code should be eliminated by the linker if BoringSSL is linked statically.
+
+### Asynchronous and opaque private keys
+
+OpenSSL offers the ENGINE API for implementing opaque private keys (i.e. private keys where software only has oracle access because the secrets are held in special hardware or on another machine). While the ENGINE API has been mostly removed from BoringSSL, it is still possible to support opaque keys in this way. However, when using such keys with TLS and BoringSSL, you should strongly prefer using `SSL_PRIVATE_KEY_METHOD` via `SSL[_CTX]_set_private_key_method`. This allows a handshake to be suspended while the private operation is in progress. It also supports more forms of opaque key as it exposes higher-level information about the operation to be performed.
