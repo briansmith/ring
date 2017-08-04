@@ -3004,60 +3004,20 @@ int ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs) {
   return 1;
 }
 
-static enum ssl_ticket_aead_result_t
-ssl_decrypt_ticket_with_cipher_ctx(SSL *ssl, uint8_t **out, size_t *out_len,
-                                   int *out_renew_ticket, const uint8_t *ticket,
-                                   size_t ticket_len) {
-  const SSL_CTX *const ssl_ctx = ssl->session_ctx;
-
-  ScopedHMAC_CTX hmac_ctx;
-  ScopedEVP_CIPHER_CTX cipher_ctx;
-
-  /* Ensure there is room for the key name and the largest IV
-   * |tlsext_ticket_key_cb| may try to consume. The real limit may be lower, but
-   * the maximum IV length should be well under the minimum size for the
-   * session material and HMAC. */
-  if (ticket_len < SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH) {
-    return ssl_ticket_aead_ignore_ticket;
-  }
-  const uint8_t *iv = ticket + SSL_TICKET_KEY_NAME_LEN;
-
-  if (ssl_ctx->tlsext_ticket_key_cb != NULL) {
-    int cb_ret = ssl_ctx->tlsext_ticket_key_cb(
-        ssl, (uint8_t *)ticket /* name */, (uint8_t *)iv, cipher_ctx.get(),
-        hmac_ctx.get(), 0 /* decrypt */);
-    if (cb_ret < 0) {
-      return ssl_ticket_aead_error;
-    } else if (cb_ret == 0) {
-      return ssl_ticket_aead_ignore_ticket;
-    } else if (cb_ret == 2) {
-      *out_renew_ticket = 1;
-    }
-  } else {
-    /* Check the key name matches. */
-    if (OPENSSL_memcmp(ticket, ssl_ctx->tlsext_tick_key_name,
-                       SSL_TICKET_KEY_NAME_LEN) != 0) {
-      return ssl_ticket_aead_ignore_ticket;
-    }
-    if (!HMAC_Init_ex(hmac_ctx.get(), ssl_ctx->tlsext_tick_hmac_key,
-                      sizeof(ssl_ctx->tlsext_tick_hmac_key), tlsext_tick_md(),
-                      NULL) ||
-        !EVP_DecryptInit_ex(cipher_ctx.get(), EVP_aes_128_cbc(), NULL,
-                            ssl_ctx->tlsext_tick_aes_key, iv)) {
-      return ssl_ticket_aead_error;
-    }
-  }
-  size_t iv_len = EVP_CIPHER_CTX_iv_length(cipher_ctx.get());
+static enum ssl_ticket_aead_result_t decrypt_ticket_with_cipher_ctx(
+    uint8_t **out, size_t *out_len, EVP_CIPHER_CTX *cipher_ctx,
+    HMAC_CTX *hmac_ctx, const uint8_t *ticket, size_t ticket_len) {
+  size_t iv_len = EVP_CIPHER_CTX_iv_length(cipher_ctx);
 
   /* Check the MAC at the end of the ticket. */
   uint8_t mac[EVP_MAX_MD_SIZE];
-  size_t mac_len = HMAC_size(hmac_ctx.get());
+  size_t mac_len = HMAC_size(hmac_ctx);
   if (ticket_len < SSL_TICKET_KEY_NAME_LEN + iv_len + 1 + mac_len) {
     /* The ticket must be large enough for key name, IV, data, and MAC. */
     return ssl_ticket_aead_ignore_ticket;
   }
-  HMAC_Update(hmac_ctx.get(), ticket, ticket_len - mac_len);
-  HMAC_Final(hmac_ctx.get(), mac, NULL);
+  HMAC_Update(hmac_ctx, ticket, ticket_len - mac_len);
+  HMAC_Final(hmac_ctx, mac, NULL);
   int mac_ok =
       CRYPTO_memcmp(mac, ticket + (ticket_len - mac_len), mac_len) == 0;
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
@@ -3084,9 +3044,9 @@ ssl_decrypt_ticket_with_cipher_ctx(SSL *ssl, uint8_t **out, size_t *out_len,
     return ssl_ticket_aead_ignore_ticket;
   }
   int len1, len2;
-  if (!EVP_DecryptUpdate(cipher_ctx.get(), plaintext.get(), &len1, ciphertext,
+  if (!EVP_DecryptUpdate(cipher_ctx, plaintext.get(), &len1, ciphertext,
                          (int)ciphertext_len) ||
-      !EVP_DecryptFinal_ex(cipher_ctx.get(), plaintext.get() + len1, &len2)) {
+      !EVP_DecryptFinal_ex(cipher_ctx, plaintext.get() + len1, &len2)) {
     ERR_clear_error();
     return ssl_ticket_aead_ignore_ticket;
   }
@@ -3096,6 +3056,69 @@ ssl_decrypt_ticket_with_cipher_ctx(SSL *ssl, uint8_t **out, size_t *out_len,
   *out = plaintext.release();
   *out_len = plaintext_len;
   return ssl_ticket_aead_success;
+}
+
+static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_cb(
+    SSL *ssl, uint8_t **out, size_t *out_len, int *out_renew_ticket,
+    const uint8_t *ticket, size_t ticket_len) {
+  assert(ticket_len >= SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH);
+  ScopedEVP_CIPHER_CTX cipher_ctx;
+  ScopedHMAC_CTX hmac_ctx;
+  const uint8_t *iv = ticket + SSL_TICKET_KEY_NAME_LEN;
+  int cb_ret = ssl->session_ctx->tlsext_ticket_key_cb(
+      ssl, (uint8_t *)ticket /* name */, (uint8_t *)iv, cipher_ctx.get(),
+      hmac_ctx.get(), 0 /* decrypt */);
+  if (cb_ret < 0) {
+    return ssl_ticket_aead_error;
+  } else if (cb_ret == 0) {
+    return ssl_ticket_aead_ignore_ticket;
+  } else if (cb_ret == 2) {
+    *out_renew_ticket = 1;
+  } else {
+    assert(cb_ret == 1);
+  }
+  return decrypt_ticket_with_cipher_ctx(out, out_len, cipher_ctx.get(),
+                                        hmac_ctx.get(), ticket, ticket_len);
+}
+
+static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_ticket_keys(
+    SSL *ssl, uint8_t **out, size_t *out_len, const uint8_t *ticket,
+    size_t ticket_len) {
+  assert(ticket_len >= SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH);
+  SSL_CTX *ctx = ssl->session_ctx;
+
+  /* Rotate the ticket key if necessary. */
+  if (!ssl_ctx_rotate_ticket_encryption_key(ctx)) {
+    return ssl_ticket_aead_error;
+  }
+
+  /* Pick the matching ticket key and decrypt. */
+  ScopedEVP_CIPHER_CTX cipher_ctx;
+  ScopedHMAC_CTX hmac_ctx;
+  {
+    MutexReadLock lock(&ctx->lock);
+    const tlsext_ticket_key *key;
+    if (ctx->tlsext_ticket_key_current &&
+        !OPENSSL_memcmp(ctx->tlsext_ticket_key_current->name, ticket,
+                        SSL_TICKET_KEY_NAME_LEN)) {
+      key = ctx->tlsext_ticket_key_current;
+    } else if (ctx->tlsext_ticket_key_prev &&
+               !OPENSSL_memcmp(ctx->tlsext_ticket_key_prev->name, ticket,
+                               SSL_TICKET_KEY_NAME_LEN)) {
+      key = ctx->tlsext_ticket_key_prev;
+    } else {
+      return ssl_ticket_aead_ignore_ticket;
+    }
+    const uint8_t *iv = ticket + SSL_TICKET_KEY_NAME_LEN;
+    if (!HMAC_Init_ex(hmac_ctx.get(), key->hmac_key, sizeof(key->hmac_key),
+                      tlsext_tick_md(), NULL) ||
+        !EVP_DecryptInit_ex(cipher_ctx.get(), EVP_aes_128_cbc(), NULL,
+                            key->aes_key, iv)) {
+      return ssl_ticket_aead_error;
+    }
+  }
+  return decrypt_ticket_with_cipher_ctx(out, out_len, cipher_ctx.get(),
+                                        hmac_ctx.get(), ticket, ticket_len);
 }
 
 static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_method(
@@ -3141,8 +3164,20 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
     result = ssl_decrypt_ticket_with_method(
         ssl, &plaintext, &plaintext_len, out_renew_ticket, ticket, ticket_len);
   } else {
-    result = ssl_decrypt_ticket_with_cipher_ctx(
-        ssl, &plaintext, &plaintext_len, out_renew_ticket, ticket, ticket_len);
+    /* Ensure there is room for the key name and the largest IV
+     * |tlsext_ticket_key_cb| may try to consume. The real limit may be lower,
+     * but the maximum IV length should be well under the minimum size for the
+     * session material and HMAC. */
+    if (ticket_len < SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH) {
+      return ssl_ticket_aead_ignore_ticket;
+    }
+    if (ssl->session_ctx->tlsext_ticket_key_cb != NULL) {
+      result = ssl_decrypt_ticket_with_cb(ssl, &plaintext, &plaintext_len,
+                                          out_renew_ticket, ticket, ticket_len);
+    } else {
+      result = ssl_decrypt_ticket_with_ticket_keys(
+          ssl, &plaintext, &plaintext_len, ticket, ticket_len);
+    }
   }
 
   if (result != ssl_ticket_aead_success) {

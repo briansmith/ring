@@ -113,6 +113,7 @@
 #include <openssl/stack.h>
 #include <openssl/thread.h>
 
+#include <assert.h>
 #include <string.h>
 
 #if defined(_MSC_VER)
@@ -461,6 +462,42 @@ OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_unlock_read(
 /* CRYPTO_STATIC_MUTEX_unlock_write unlocks |lock| for writing. */
 OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_unlock_write(
     struct CRYPTO_STATIC_MUTEX *lock);
+
+#if defined(__cplusplus)
+extern "C++" {
+
+namespace bssl {
+
+namespace internal {
+
+/* MutexLockBase is a RAII helper for CRYPTO_MUTEX locking. */
+template <void (*LockFunc)(CRYPTO_MUTEX *), void (*ReleaseFunc)(CRYPTO_MUTEX *)>
+class MutexLockBase {
+ public:
+  explicit MutexLockBase(CRYPTO_MUTEX *mu) : mu_(mu) {
+    assert(mu_ != nullptr);
+    LockFunc(mu_);
+  }
+  ~MutexLockBase() { ReleaseFunc(mu_); }
+  MutexLockBase(const MutexLockBase<LockFunc, ReleaseFunc> &) = delete;
+  MutexLockBase &operator=(const MutexLockBase<LockFunc, ReleaseFunc> &) =
+      delete;
+
+ private:
+  CRYPTO_MUTEX *const mu_;
+};
+
+}  // namespace internal
+
+using MutexWriteLock =
+    internal::MutexLockBase<CRYPTO_MUTEX_lock_write, CRYPTO_MUTEX_unlock_write>;
+using MutexReadLock =
+    internal::MutexLockBase<CRYPTO_MUTEX_lock_read, CRYPTO_MUTEX_unlock_read>;
+
+}  // namespace bssl
+
+}  // extern "C++"
+#endif  // defined(__cplusplus)
 
 
 /* Thread local storage. */

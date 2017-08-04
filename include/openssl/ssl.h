@@ -1975,10 +1975,14 @@ OPENSSL_EXPORT SSL_SESSION *SSL_magic_pending_session_ptr(void);
  * An attacker that compromises a server's session ticket key can impersonate
  * the server and, prior to TLS 1.3, retroactively decrypt all application
  * traffic from sessions using that ticket key. Thus ticket keys must be
- * regularly rotated for forward secrecy. Note the default key is currently not
- * rotated.
- *
- * TODO(davidben): This is silly. Rotate the default key automatically. */
+ * regularly rotated for forward secrecy. Note the default key is rotated
+ * automatically once every 48 hours but manually configured keys are not. */
+
+/* SSL_DEFAULT_TICKET_KEY_ROTATION_INTERVAL is the interval with which the
+ * default session ticket encryption key is rotated, if in use. If any
+ * non-default ticket encryption mechanism is configured, automatic rotation is
+ * disabled. */
+#define SSL_DEFAULT_TICKET_KEY_ROTATION_INTERVAL (2 * 24 * 60 * 60)
 
 /* SSL_CTX_get_tlsext_ticket_keys writes |ctx|'s session ticket key material to
  * |len| bytes of |out|. It returns one on success and zero if |len| is not
@@ -3134,7 +3138,8 @@ OPENSSL_EXPORT void (*SSL_CTX_get_keylog_callback(const SSL_CTX *ctx))(
 /* SSL_CTX_set_current_time_cb configures a callback to retrieve the current
  * time, which should be set in |*out_clock|. This can be used for testing
  * purposes; for example, a callback can be configured that returns a time
- * set explicitly by the test. */
+ * set explicitly by the test. The |ssl| pointer passed to |cb| is always null.
+ */
 OPENSSL_EXPORT void SSL_CTX_set_current_time_cb(
     SSL_CTX *ctx, void (*cb)(const SSL *ssl, struct timeval *out_clock));
 
@@ -4217,6 +4222,17 @@ struct ssl_cipher_preference_list_st {
   uint8_t *in_group_flags;
 };
 
+struct tlsext_ticket_key {
+  uint8_t name[SSL_TICKET_KEY_NAME_LEN];
+  uint8_t hmac_key[16];
+  uint8_t aes_key[16];
+  /* next_rotation_tv_sec is the time (in seconds from the epoch) when the
+   * current key should be superseded by a new key, or the time when a previous
+   * key should be dropped. If zero, then the key should not be automatically
+   * rotated. */
+  uint64_t next_rotation_tv_sec;
+};
+
 /* ssl_ctx_st (aka |SSL_CTX|) contains configuration common to several SSL
  * connections. */
 struct ssl_ctx_st {
@@ -4359,10 +4375,14 @@ struct ssl_ctx_st {
   /* TLS extensions servername callback */
   int (*tlsext_servername_callback)(SSL *, int *, void *);
   void *tlsext_servername_arg;
-  /* RFC 4507 session ticket keys */
-  uint8_t tlsext_tick_key_name[SSL_TICKET_KEY_NAME_LEN];
-  uint8_t tlsext_tick_hmac_key[16];
-  uint8_t tlsext_tick_aes_key[16];
+
+  /* RFC 4507 session ticket keys. |tlsext_ticket_key_current| may be NULL
+   * before the first handshake and |tlsext_ticket_key_prev| may be NULL at any
+   * time. Automatically generated ticket keys are rotated as needed at
+   * handshake time. Hence, all access must be synchronized through |lock|. */
+  struct tlsext_ticket_key *tlsext_ticket_key_current;
+  struct tlsext_ticket_key *tlsext_ticket_key_prev;
+
   /* Callback to support customisation of ticket key setting */
   int (*tlsext_ticket_key_cb)(SSL *ssl, uint8_t *name, uint8_t *iv,
                               EVP_CIPHER_CTX *ectx, HMAC_CTX *hctx, int enc);
@@ -4433,8 +4453,8 @@ struct ssl_ctx_st {
   void (*keylog_callback)(const SSL *ssl, const char *line);
 
   /* current_time_cb, if not NULL, is the function to use to get the current
-   * time. It sets |*out_clock| to the current time. See
-   * |SSL_CTX_set_current_time_cb|. */
+   * time. It sets |*out_clock| to the current time. The |ssl| argument is
+   * always NULL. See |SSL_CTX_set_current_time_cb|. */
   void (*current_time_cb)(const SSL *ssl, struct timeval *out_clock);
 
   /* pool is used for all |CRYPTO_BUFFER|s in case we wish to share certificate
@@ -4633,6 +4653,7 @@ namespace bssl {
 BORINGSSL_MAKE_DELETER(SSL, SSL_free)
 BORINGSSL_MAKE_DELETER(SSL_CTX, SSL_CTX_free)
 BORINGSSL_MAKE_DELETER(SSL_SESSION, SSL_SESSION_free)
+BORINGSSL_MAKE_DELETER(tlsext_ticket_key, OPENSSL_free);
 
 enum class OpenRecordResult {
   kOK,

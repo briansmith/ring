@@ -49,6 +49,31 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 
+namespace bssl {
+
+namespace {
+
+struct VersionParam {
+  uint16_t version;
+  enum { is_tls, is_dtls } ssl_method;
+  const char name[8];
+};
+
+static const size_t kTicketKeyLen = 48;
+
+static const VersionParam kAllVersions[] = {
+    {SSL3_VERSION, VersionParam::is_tls, "SSL3"},
+    {TLS1_VERSION, VersionParam::is_tls, "TLS1"},
+    {TLS1_1_VERSION, VersionParam::is_tls, "TLS1_1"},
+    {TLS1_2_VERSION, VersionParam::is_tls, "TLS1_2"},
+// TLS 1.3 requires RSA-PSS, which is disabled for Android system builds.
+#if !defined(BORINGSSL_ANDROID_SYSTEM)
+    {TLS1_3_VERSION, VersionParam::is_tls, "TLS1_3"},
+#endif
+    {DTLS1_VERSION, VersionParam::is_dtls, "DTLS1"},
+    {DTLS1_2_VERSION, VersionParam::is_dtls, "DTLS1_2"},
+};
+
 struct ExpectedCipher {
   unsigned long id;
   int in_group_flag;
@@ -2232,6 +2257,23 @@ static bssl::UniquePtr<SSL_SESSION> ExpectSessionRenewed(SSL_CTX *client_ctx,
   return std::move(g_last_session);
 }
 
+static bool ExpectTicketKeyChanged(SSL_CTX *ctx, uint8_t *inout_key,
+                                   bool changed) {
+  uint8_t new_key[kTicketKeyLen];
+  int res = SSL_CTX_get_tlsext_ticket_keys(ctx, new_key, kTicketKeyLen) == 1;
+  if (res != 1) { /* May return 0, 1 or 48. */
+    fprintf(stderr, "SSL_CTX_get_tlsext_ticket_keys() returned %d.\n", res);
+    return false;
+  }
+  if (changed != !!OPENSSL_memcmp(inout_key, new_key, kTicketKeyLen)) {
+    fprintf(stderr, "Ticket key unexpectedly %s.\n",
+            changed ? "did not change" : "changed");
+    return false;
+  }
+  OPENSSL_memcpy(inout_key, new_key, kTicketKeyLen);
+  return true;
+}
+
 static int SwitchSessionIDContextSNI(SSL *ssl, int *out_alert, void *arg) {
   static const uint8_t kContext[] = {3};
 
@@ -2601,6 +2643,126 @@ static bool TestSessionTimeout(bool is_dtls, const SSL_METHOD *method,
 
   return true;
 }
+
+class DefaultSessionTicketKeyTest
+    : public ::testing::TestWithParam<VersionParam> {
+ public:
+  bssl::UniquePtr<SSL_CTX> CreateContext() const {
+    const VersionParam version = GetParam();
+    const SSL_METHOD *method = version.ssl_method == VersionParam::is_dtls
+                                   ? DTLS_method()
+                                   : TLS_method();
+    bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(method));
+    if (!ctx ||
+        !SSL_CTX_set_min_proto_version(ctx.get(), version.version) ||
+        !SSL_CTX_set_max_proto_version(ctx.get(), version.version)) {
+      return nullptr;
+    }
+    return ctx;
+  }
+};
+
+
+TEST_P(DefaultSessionTicketKeyTest, Initialization) {
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<SSL_CTX> server_ctx = CreateContext();
+  ASSERT_TRUE(server_ctx);
+  static const uint8_t kZeroKey[kTicketKeyLen] = {};
+  uint8_t ticket_key[kTicketKeyLen];
+  ASSERT_EQ(1, SSL_CTX_get_tlsext_ticket_keys(server_ctx.get(), ticket_key,
+                                              kTicketKeyLen));
+  ASSERT_NE(0, OPENSSL_memcmp(ticket_key, kZeroKey, kTicketKeyLen));
+}
+
+TEST_P(DefaultSessionTicketKeyTest, Rotation) {
+  if (GetParam().version == SSL3_VERSION) {
+    return;
+  }
+
+  static const time_t kStartTime = 1001;
+  g_current_time.tv_sec = kStartTime;
+  uint8_t ticket_key[kTicketKeyLen];
+
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  ASSERT_TRUE(cert);
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<SSL_CTX> server_ctx = CreateContext();
+  ASSERT_TRUE(server_ctx);
+  bssl::UniquePtr<SSL_CTX> client_ctx = CreateContext();
+  ASSERT_TRUE(client_ctx);
+
+  /* We use session reuse as a proxy for ticket decryption success, hence
+   * disable session timeouts. */
+  SSL_CTX_set_timeout(server_ctx.get(), std::numeric_limits<uint32_t>::max());
+  SSL_CTX_set_session_psk_dhe_timeout(server_ctx.get(),
+                                      std::numeric_limits<uint32_t>::max());
+
+  SSL_CTX_set_current_time_cb(client_ctx.get(), FrozenTimeCallback);
+  SSL_CTX_set_current_time_cb(server_ctx.get(), CurrentTimeCallback);
+
+  SSL_CTX_set_session_cache_mode(client_ctx.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx.get(), SSL_SESS_CACHE_OFF);
+
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+
+  /* Initialize ticket_key with the current key. */
+  ASSERT_TRUE(
+      ExpectTicketKeyChanged(server_ctx.get(), ticket_key, true /* changed */));
+
+  /* Verify ticket resumption actually works. */
+  bssl::UniquePtr<SSL> client, server;
+  bssl::UniquePtr<SSL_SESSION> session =
+      CreateClientSession(client_ctx.get(), server_ctx.get());
+  ASSERT_TRUE(session);
+  EXPECT_TRUE(ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                                  session.get(), true /* reused */));
+
+  /* Advance time to just before key rotation. */
+  g_current_time.tv_sec += SSL_DEFAULT_TICKET_KEY_ROTATION_INTERVAL - 1;
+  EXPECT_TRUE(ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                                  session.get(), true /* reused */));
+  ASSERT_TRUE(ExpectTicketKeyChanged(server_ctx.get(), ticket_key,
+                                     false /* NOT changed */));
+
+  /* Force key rotation. */
+  g_current_time.tv_sec += 1;
+  bssl::UniquePtr<SSL_SESSION> new_session =
+      CreateClientSession(client_ctx.get(), server_ctx.get());
+  ASSERT_TRUE(
+      ExpectTicketKeyChanged(server_ctx.get(), ticket_key, true /* changed */));
+
+  /* Resumption with both old and new ticket should work. */
+  EXPECT_TRUE(ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                                  session.get(), true /* reused */));
+  EXPECT_TRUE(ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                                  new_session.get(), true /* reused */));
+  ASSERT_TRUE(ExpectTicketKeyChanged(server_ctx.get(), ticket_key,
+                                     false /* NOT changed */));
+
+  /* Force key rotation again. Resumption with the old ticket now fails. */
+  g_current_time.tv_sec += SSL_DEFAULT_TICKET_KEY_ROTATION_INTERVAL;
+  EXPECT_TRUE(ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                                  session.get(), false /* NOT reused */));
+  ASSERT_TRUE(
+      ExpectTicketKeyChanged(server_ctx.get(), ticket_key, true /* changed */));
+
+  /* But resumption with the newer session still works. */
+  EXPECT_TRUE(ExpectSessionReused(client_ctx.get(), server_ctx.get(),
+                                  new_session.get(), true /* reused */));
+}
+
+INSTANTIATE_TEST_CASE_P(WithTLSVersion, DefaultSessionTicketKeyTest,
+                        testing::ValuesIn(kAllVersions),
+                        [](const testing::TestParamInfo<VersionParam> &i) {
+                          return i.param.name;
+                        });
 
 static int SwitchContext(SSL *ssl, int *out_alert, void *arg) {
   SSL_CTX *ctx = reinterpret_cast<SSL_CTX*>(arg);
@@ -3313,39 +3475,21 @@ static bool TestRecordCallback(bool is_dtls, const SSL_METHOD *method,
   return true;
 }
 
-
 static bool ForEachVersion(bool (*test_func)(bool is_dtls,
                                              const SSL_METHOD *method,
                                              uint16_t version)) {
-  static uint16_t kTLSVersions[] = {
-      SSL3_VERSION,
-      TLS1_VERSION,
-      TLS1_1_VERSION,
-      TLS1_2_VERSION,
-// TLS 1.3 requires RSA-PSS, which is disabled for Android system builds.
-#if !defined(BORINGSSL_ANDROID_SYSTEM)
-      TLS1_3_VERSION,
-#endif
-  };
-
-  static uint16_t kDTLSVersions[] = {
-      DTLS1_VERSION, DTLS1_2_VERSION,
-  };
-
-  for (uint16_t version : kTLSVersions) {
-    if (!test_func(false, TLS_method(), version)) {
-      fprintf(stderr, "Test failed at TLS version %04x.\n", version);
+  for (auto version : kAllVersions) {
+    const bool is_dtls = version.ssl_method == VersionParam::is_dtls;
+    const SSL_METHOD *method = is_dtls ? DTLS_method() : TLS_method();
+    if (!test_func(is_dtls, method, version.version)) {
+      if (is_dtls) {
+        fprintf(stderr, "Test failed at DTLS version %04x.\n", version.version);
+      } else {
+        fprintf(stderr, "Test failed at TLS version %04x.\n", version.version);
+      }
       return false;
     }
   }
-
-  for (uint16_t version : kDTLSVersions) {
-    if (!test_func(true, DTLS_method(), version)) {
-      fprintf(stderr, "Test failed at DTLS version %04x.\n", version);
-      return false;
-    }
-  }
-
   return true;
 }
 
@@ -4064,3 +4208,6 @@ TEST(SSLTest, AllTests) {
     ADD_FAILURE() << "Tests failed";
   }
 }
+
+}  // namespace
+}  // namespace bssl

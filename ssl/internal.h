@@ -2066,6 +2066,7 @@ int ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
 int ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey);
 int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server);
 int ssl_encrypt_ticket(SSL *ssl, CBB *out, const SSL_SESSION *session);
+int ssl_ctx_rotate_ticket_encryption_key(SSL_CTX *ctx);
 
 /* ssl_session_new returns a newly-allocated blank |SSL_SESSION| or nullptr on
  * error. */
@@ -2328,6 +2329,8 @@ int ssl_can_write(const SSL *ssl);
 int ssl_can_read(const SSL *ssl);
 
 void ssl_get_current_time(const SSL *ssl, struct OPENSSL_timeval *out_clock);
+void ssl_ctx_get_current_time(const SSL_CTX *ctx,
+                              struct OPENSSL_timeval *out_clock);
 
 /* ssl_reset_error_state resets state for |SSL_get_error|. */
 void ssl_reset_error_state(SSL *ssl);
