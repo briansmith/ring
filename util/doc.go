@@ -459,7 +459,13 @@ func firstSentence(paragraphs []string) string {
 	return s
 }
 
+// markupPipeWords converts |s| into an HTML string, safe to be included outside
+// a tag, while also marking up words surrounded by |.
 func markupPipeWords(allDecls map[string]string, s string) template.HTML {
+	// It is safe to look for '|' in the HTML-escaped version of |s|
+	// below. The escaped version cannot include '|' instead tags because
+	// there are no tags by construction.
+	s = template.HTMLEscapeString(s)
 	ret := ""
 
 	for {
@@ -549,12 +555,12 @@ func generate(outPath string, config *Config) (map[string]string, error) {
       <a href="headers.html">All headers</a>
     </div>
 
-    {{range .Preamble}}<p>{{. | html | markupPipeWords}}</p>{{end}}
+    {{range .Preamble}}<p>{{. | markupPipeWords}}</p>{{end}}
 
     <ol>
       {{range .Sections}}
         {{if not .IsPrivate}}
-          {{if .Anchor}}<li class="header"><a href="#{{.Anchor}}">{{.Preamble | firstSentence | html | markupPipeWords}}</a></li>{{end}}
+          {{if .Anchor}}<li class="header"><a href="#{{.Anchor}}">{{.Preamble | firstSentence | markupPipeWords}}</a></li>{{end}}
           {{range .Decls}}
             {{if .Anchor}}<li><a href="#{{.Anchor}}"><tt>{{.Name}}</tt></a></li>{{end}}
           {{end}}
@@ -567,14 +573,14 @@ func generate(outPath string, config *Config) (map[string]string, error) {
         <div class="section" {{if .Anchor}}id="{{.Anchor}}"{{end}}>
         {{if .Preamble}}
           <div class="sectionpreamble">
-          {{range .Preamble}}<p>{{. | html | markupPipeWords}}</p>{{end}}
+          {{range .Preamble}}<p>{{. | markupPipeWords}}</p>{{end}}
           </div>
         {{end}}
 
         {{range .Decls}}
           <div class="decl" {{if .Anchor}}id="{{.Anchor}}"{{end}}>
           {{range .Comment}}
-            <p>{{. | html | markupPipeWords | newlinesToBR | markupFirstWord}}</p>
+            <p>{{. | markupPipeWords | newlinesToBR | markupFirstWord}}</p>
           {{end}}
           <pre>{{.Decl}}</pre>
           </div>
