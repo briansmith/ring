@@ -142,6 +142,15 @@ const SSL_METHOD *DTLS_method(void) {
   return &kMethod;
 }
 
+const SSL_METHOD *DTLS_with_buffers_method(void) {
+  static const SSL_METHOD kMethod = {
+      0,
+      &kDTLSProtocolMethod,
+      &ssl_noop_x509_method,
+  };
+  return &kMethod;
+}
+
 /* Legacy version-locked methods. */
 
 const SSL_METHOD *DTLSv1_2_method(void) {

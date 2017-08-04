@@ -1554,6 +1554,10 @@ struct SSLCertConfig {
  * crypto/x509. */
 extern const SSL_X509_METHOD ssl_crypto_x509_method;
 
+/* ssl_noop_x509_method provides the |SSL_X509_METHOD| functions that avoid
+ * crypto/x509. */
+extern const SSL_X509_METHOD ssl_noop_x509_method;
+
 struct SSL3_RECORD {
   /* type is the record type. */
   uint8_t type;

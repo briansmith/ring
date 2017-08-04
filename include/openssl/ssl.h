@@ -192,6 +192,10 @@ OPENSSL_EXPORT const SSL_METHOD *DTLS_method(void);
  * crypto/x509. */
 OPENSSL_EXPORT const SSL_METHOD *TLS_with_buffers_method(void);
 
+/* DTLS_with_buffers_method is like |DTLS_method|, but avoids all use of
+ * crypto/x509. */
+OPENSSL_EXPORT const SSL_METHOD *DTLS_with_buffers_method(void);
+
 /* SSL_CTX_new returns a newly-allocated |SSL_CTX| with default settings or NULL
  * on error. */
 OPENSSL_EXPORT SSL_CTX *SSL_CTX_new(const SSL_METHOD *method);

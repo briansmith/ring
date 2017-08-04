@@ -155,7 +155,7 @@ static int ssl_noop_x509_ssl_ctx_new(SSL_CTX *ctx) { return 1; }
 static void ssl_noop_x509_ssl_ctx_free(SSL_CTX *ctx) { }
 static void ssl_noop_x509_ssl_ctx_flush_cached_client_CA(SSL_CTX *ctx) {}
 
-static const SSL_X509_METHOD ssl_noop_x509_method = {
+const SSL_X509_METHOD ssl_noop_x509_method = {
   ssl_noop_x509_check_client_CA_names,
   ssl_noop_x509_clear,
   ssl_noop_x509_free,
