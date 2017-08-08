@@ -56,9 +56,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 # In upstream, this is controlled by shelling out to the compiler to check
 # versions, but BoringSSL is intended to be used with pre-generated perlasm
 # output, so this isn't useful anyway.
-#
-# TODO(davidben): Enable this option after testing. $addx goes up to 1.
-$addx = 0;
+$addx = 1;
 
 # int bn_mul_mont(
 $rp="%rdi";	# BN_ULONG *rp,
