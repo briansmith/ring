@@ -1658,8 +1658,15 @@ int SSL_set_tmp_dh(SSL *ssl, const DH *dh) {
   return 1;
 }
 
-OPENSSL_EXPORT STACK_OF(SSL_CIPHER) *SSL_CTX_get_ciphers(const SSL_CTX *ctx) {
+STACK_OF(SSL_CIPHER) *SSL_CTX_get_ciphers(const SSL_CTX *ctx) {
   return ctx->cipher_list->ciphers;
+}
+
+int SSL_CTX_cipher_in_group(const SSL_CTX *ctx, size_t i) {
+  if (i >= sk_SSL_CIPHER_num(ctx->cipher_list->ciphers)) {
+    return 0;
+  }
+  return ctx->cipher_list->in_group_flags[i];
 }
 
 STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {

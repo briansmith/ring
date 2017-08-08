@@ -361,12 +361,13 @@ static const char *kBadCurvesLists[] = {
   ":X25519:P-256",
 };
 
-static std::string CipherListToString(ssl_cipher_preference_list_st *list) {
+static std::string CipherListToString(SSL_CTX *ctx) {
   bool in_group = false;
   std::string ret;
-  for (size_t i = 0; i < sk_SSL_CIPHER_num(list->ciphers); i++) {
-    const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(list->ciphers, i);
-    if (!in_group && list->in_group_flags[i]) {
+  const STACK_OF(SSL_CIPHER) *ciphers = SSL_CTX_get_ciphers(ctx);
+  for (size_t i = 0; i < sk_SSL_CIPHER_num(ciphers); i++) {
+    const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
+    if (!in_group && SSL_CTX_cipher_in_group(ctx, i)) {
       ret += "\t[\n";
       in_group = true;
     }
@@ -376,7 +377,7 @@ static std::string CipherListToString(ssl_cipher_preference_list_st *list) {
     }
     ret += SSL_CIPHER_get_name(cipher);
     ret += "\n";
-    if (in_group && !list->in_group_flags[i]) {
+    if (in_group && !SSL_CTX_cipher_in_group(ctx, i)) {
       ret += "\t]\n";
       in_group = false;
     }
@@ -384,16 +385,17 @@ static std::string CipherListToString(ssl_cipher_preference_list_st *list) {
   return ret;
 }
 
-static bool CipherListsEqual(ssl_cipher_preference_list_st *list,
+static bool CipherListsEqual(SSL_CTX *ctx,
                              const std::vector<ExpectedCipher> &expected) {
-  if (sk_SSL_CIPHER_num(list->ciphers) != expected.size()) {
+  const STACK_OF(SSL_CIPHER) *ciphers = SSL_CTX_get_ciphers(ctx);
+  if (sk_SSL_CIPHER_num(ciphers) != expected.size()) {
     return false;
   }
 
   for (size_t i = 0; i < expected.size(); i++) {
-    const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(list->ciphers, i);
+    const SSL_CIPHER *cipher = sk_SSL_CIPHER_value(ciphers, i);
     if (expected[i].id != SSL_CIPHER_get_id(cipher) ||
-        expected[i].in_group_flag != list->in_group_flags[i]) {
+        expected[i].in_group_flag != !!SSL_CTX_cipher_in_group(ctx, i)) {
       return false;
     }
   }
@@ -409,18 +411,18 @@ TEST(SSLTest, CipherRules) {
 
     // Test lax mode.
     ASSERT_TRUE(SSL_CTX_set_cipher_list(ctx.get(), t.rule));
-    EXPECT_TRUE(CipherListsEqual(ctx->cipher_list, t.expected))
+    EXPECT_TRUE(CipherListsEqual(ctx.get(), t.expected))
         << "Cipher rule evaluated to:\n"
-        << CipherListToString(ctx->cipher_list);
+        << CipherListToString(ctx.get());
 
     // Test strict mode.
     if (t.strict_fail) {
       EXPECT_FALSE(SSL_CTX_set_strict_cipher_list(ctx.get(), t.rule));
     } else {
       ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(ctx.get(), t.rule));
-      EXPECT_TRUE(CipherListsEqual(ctx->cipher_list, t.expected))
+      EXPECT_TRUE(CipherListsEqual(ctx.get(), t.expected))
           << "Cipher rule evaluated to:\n"
-          << CipherListToString(ctx->cipher_list);
+          << CipherListToString(ctx.get());
     }
   }
 
@@ -439,9 +441,8 @@ TEST(SSLTest, CipherRules) {
     ASSERT_TRUE(ctx);
 
     ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(ctx.get(), rule));
-    for (size_t i = 0; i < sk_SSL_CIPHER_num(ctx->cipher_list->ciphers); i++) {
-      EXPECT_FALSE(SSL_CIPHER_is_NULL(
-          sk_SSL_CIPHER_value(ctx->cipher_list->ciphers, i)));
+    for (const SSL_CIPHER *cipher : SSL_CTX_get_ciphers(ctx.get())) {
+      EXPECT_FALSE(SSL_CIPHER_is_NULL(cipher));
     }
   }
 }
