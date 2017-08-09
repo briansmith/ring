@@ -2,8 +2,7 @@
   "DisabledTests": {
     "BadCBCPadding*": "Fuzzer mode has no CBC padding.",
 
-    "BadFinished-*": "Fuzzer mode ignores Finished checks.",
-    "FalseStart-BadFinished": "Fuzzer mode ignores Finished checks.",
+    "*BadFinished*": "Fuzzer mode ignores Finished checks.",
     "TrailingMessageData-*Finished*": "Fuzzer mode ignores Finished checks.",
 
     "DTLSIgnoreBadPackets*": "Fuzzer mode has no bad packets.",
