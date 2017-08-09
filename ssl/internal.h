@@ -338,10 +338,10 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
                             size_t *out_fixed_iv_len, const SSL_CIPHER *cipher,
                             uint16_t version, int is_dtls);
 
-/* ssl_get_handshake_digest returns the |EVP_MD| corresponding to
- * |algorithm_prf| and the |version|. */
-const EVP_MD *ssl_get_handshake_digest(uint32_t algorithm_prf,
-                                       uint16_t version);
+/* ssl_get_handshake_digest returns the |EVP_MD| corresponding to |version| and
+ * |cipher|. */
+const EVP_MD *ssl_get_handshake_digest(uint16_t version,
+                                       const SSL_CIPHER *cipher);
 
 /* ssl_create_cipher_list evaluates |rule_str| according to the ciphers in
  * |ssl_method|. It sets |*out_cipher_list| to a newly-allocated
@@ -397,7 +397,7 @@ class SSLTranscript {
    * the handshake transcript. Subsequent calls to |Update| will update the
    * rolling hash. It returns one on success and zero on failure. It is an error
    * to call this function after the handshake buffer is released. */
-  bool InitHash(uint16_t version, int algorithm_prf);
+  bool InitHash(uint16_t version, const SSL_CIPHER *cipher);
 
   const uint8_t *buffer_data() const {
     return reinterpret_cast<const uint8_t *>(buffer_->data);

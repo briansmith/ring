@@ -742,9 +742,9 @@ int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
   return 1;
 }
 
-const EVP_MD *ssl_get_handshake_digest(uint32_t algorithm_prf,
-                                       uint16_t version) {
-  switch (algorithm_prf) {
+const EVP_MD *ssl_get_handshake_digest(uint16_t version,
+                                       const SSL_CIPHER *cipher) {
+  switch (cipher->algorithm_prf) {
     case SSL_HANDSHAKE_MAC_DEFAULT:
       return version >= TLS1_2_VERSION ? EVP_sha256() : EVP_md5_sha1();
     case SSL_HANDSHAKE_MAC_SHA256:
@@ -752,6 +752,7 @@ const EVP_MD *ssl_get_handshake_digest(uint32_t algorithm_prf,
     case SSL_HANDSHAKE_MAC_SHA384:
       return EVP_sha384();
     default:
+      assert(0);
       return NULL;
   }
 }

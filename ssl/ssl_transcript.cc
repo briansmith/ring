@@ -178,8 +178,8 @@ static bool InitDigestWithData(EVP_MD_CTX *ctx, const EVP_MD *md,
   return true;
 }
 
-bool SSLTranscript::InitHash(uint16_t version, int algorithm_prf) {
-  const EVP_MD *md = ssl_get_handshake_digest(algorithm_prf, version);
+bool SSLTranscript::InitHash(uint16_t version, const SSL_CIPHER *cipher) {
+  const EVP_MD *md = ssl_get_handshake_digest(version, cipher);
 
   /* To support SSL 3.0's Finished and CertificateVerify constructions,
    * EVP_md5_sha1() is split into MD5 and SHA-1 halves. When SSL 3.0 is removed,

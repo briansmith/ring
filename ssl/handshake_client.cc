@@ -967,8 +967,8 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
                    CBS_len(&session_id));
   }
 
-  const SSL_CIPHER *c = SSL_get_cipher_by_value(cipher_suite);
-  if (c == NULL) {
+  const SSL_CIPHER *cipher = SSL_get_cipher_by_value(cipher_suite);
+  if (cipher == NULL) {
     /* unknown cipher */
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CIPHER_RETURNED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
@@ -978,10 +978,10 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
   /* The cipher must be allowed in the selected version and enabled. */
   uint32_t mask_a, mask_k;
   ssl_get_client_disabled(ssl, &mask_a, &mask_k);
-  if ((c->algorithm_mkey & mask_k) || (c->algorithm_auth & mask_a) ||
-      SSL_CIPHER_get_min_version(c) > ssl3_protocol_version(ssl) ||
-      SSL_CIPHER_get_max_version(c) < ssl3_protocol_version(ssl) ||
-      !sk_SSL_CIPHER_find(SSL_get_ciphers(ssl), NULL, c)) {
+  if ((cipher->algorithm_mkey & mask_k) || (cipher->algorithm_auth & mask_a) ||
+      SSL_CIPHER_get_min_version(cipher) > ssl3_protocol_version(ssl) ||
+      SSL_CIPHER_get_max_version(cipher) < ssl3_protocol_version(ssl) ||
+      !sk_SSL_CIPHER_find(SSL_get_ciphers(ssl), NULL, cipher)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return -1;
@@ -993,7 +993,7 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return -1;
     }
-    if (ssl->session->cipher != c) {
+    if (ssl->session->cipher != cipher) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_OLD_SESSION_CIPHER_NOT_RETURNED);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return -1;
@@ -1006,13 +1006,13 @@ static int ssl3_get_server_hello(SSL_HANDSHAKE *hs) {
       return -1;
     }
   } else {
-    hs->new_session->cipher = c;
+    hs->new_session->cipher = cipher;
   }
-  hs->new_cipher = c;
+  hs->new_cipher = cipher;
 
   /* Now that the cipher is known, initialize the handshake hash and hash the
    * ServerHello. */
-  if (!hs->transcript.InitHash(ssl3_protocol_version(ssl), c->algorithm_prf) ||
+  if (!hs->transcript.InitHash(ssl3_protocol_version(ssl), hs->new_cipher) ||
       !ssl_hash_message(hs, msg)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return -1;

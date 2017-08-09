@@ -33,8 +33,8 @@
 namespace bssl {
 
 static int init_key_schedule(SSL_HANDSHAKE *hs, uint16_t version,
-                              int algorithm_prf) {
-  if (!hs->transcript.InitHash(version, algorithm_prf)) {
+                             const SSL_CIPHER *cipher) {
+  if (!hs->transcript.InitHash(version, cipher)) {
     return 0;
   }
 
@@ -47,8 +47,7 @@ static int init_key_schedule(SSL_HANDSHAKE *hs, uint16_t version,
 }
 
 int tls13_init_key_schedule(SSL_HANDSHAKE *hs) {
-  if (!init_key_schedule(hs, ssl3_protocol_version(hs->ssl),
-                         hs->new_cipher->algorithm_prf)) {
+  if (!init_key_schedule(hs, ssl3_protocol_version(hs->ssl), hs->new_cipher)) {
     return 0;
   }
 
@@ -59,7 +58,7 @@ int tls13_init_key_schedule(SSL_HANDSHAKE *hs) {
 int tls13_init_early_key_schedule(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   return init_key_schedule(hs, SSL_SESSION_protocol_version(ssl->session),
-                           ssl->session->cipher->algorithm_prf);
+                           ssl->session->cipher);
 }
 
 int tls13_advance_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *in,
@@ -243,9 +242,6 @@ static const char kTLS13LabelApplicationTraffic[] =
     "application traffic secret";
 
 int tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
-  const EVP_MD *digest = ssl_get_handshake_digest(
-      SSL_get_session(ssl)->cipher->algorithm_prf, ssl3_protocol_version(ssl));
-
   uint8_t *secret;
   size_t secret_len;
   if (direction == evp_aead_open) {
@@ -256,6 +252,7 @@ int tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
     secret_len = ssl->s3->write_traffic_secret_len;
   }
 
+  const EVP_MD *digest = SSL_SESSION_get_digest(SSL_get_session(ssl));
   if (!hkdf_expand_label(secret, digest, secret, secret_len,
                          (const uint8_t *)kTLS13LabelApplicationTraffic,
                          strlen(kTLS13LabelApplicationTraffic), NULL, 0,
@@ -323,15 +320,14 @@ int tls13_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
                                  const char *label, size_t label_len,
                                  const uint8_t *context, size_t context_len,
                                  int use_context) {
-  const EVP_MD *digest = ssl_get_handshake_digest(
-      SSL_get_session(ssl)->cipher->algorithm_prf, ssl3_protocol_version(ssl));
-
   const uint8_t *hash = NULL;
   size_t hash_len = 0;
   if (use_context) {
     hash = context;
     hash_len = context_len;
   }
+
+  const EVP_MD *digest = SSL_SESSION_get_digest(SSL_get_session(ssl));
   return hkdf_expand_label(out, digest, ssl->s3->exporter_secret,
                            ssl->s3->exporter_secret_len, (const uint8_t *)label,
                            label_len, hash, hash_len, out_len);

@@ -917,8 +917,7 @@ static int ssl3_select_parameters(SSL_HANDSHAKE *hs) {
 
   /* Now that all parameters are known, initialize the handshake hash and hash
    * the ClientHello. */
-  if (!hs->transcript.InitHash(ssl3_protocol_version(ssl),
-                               hs->new_cipher->algorithm_prf) ||
+  if (!hs->transcript.InitHash(ssl3_protocol_version(ssl), hs->new_cipher) ||
       !ssl_hash_message(hs, msg)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return -1;

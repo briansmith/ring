@@ -368,8 +368,8 @@ uint16_t SSL_SESSION_protocol_version(const SSL_SESSION *session) {
 }
 
 const EVP_MD *SSL_SESSION_get_digest(const SSL_SESSION *session) {
-  return ssl_get_handshake_digest(session->cipher->algorithm_prf,
-                                  SSL_SESSION_protocol_version(session));
+  return ssl_get_handshake_digest(SSL_SESSION_protocol_version(session),
+                                  session->cipher);
 }
 
 int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {

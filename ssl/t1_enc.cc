@@ -483,25 +483,19 @@ size_t SSL_get_key_block_len(const SSL *ssl) {
 }
 
 int SSL_generate_key_block(const SSL *ssl, uint8_t *out, size_t out_len) {
+  const SSL_SESSION *session = SSL_get_session(ssl);
   if (ssl3_protocol_version(ssl) == SSL3_VERSION) {
-    return ssl3_prf(out, out_len, SSL_get_session(ssl)->master_key,
-                    SSL_get_session(ssl)->master_key_length,
-                    TLS_MD_KEY_EXPANSION_CONST, TLS_MD_KEY_EXPANSION_CONST_SIZE,
-                    ssl->s3->server_random, SSL3_RANDOM_SIZE,
-                    ssl->s3->client_random, SSL3_RANDOM_SIZE);
+    return ssl3_prf(out, out_len, session->master_key,
+                    session->master_key_length, TLS_MD_KEY_EXPANSION_CONST,
+                    TLS_MD_KEY_EXPANSION_CONST_SIZE, ssl->s3->server_random,
+                    SSL3_RANDOM_SIZE, ssl->s3->client_random, SSL3_RANDOM_SIZE);
   }
 
-  const EVP_MD *digest = ssl_get_handshake_digest(
-      SSL_get_session(ssl)->cipher->algorithm_prf, ssl3_protocol_version(ssl));
-  if (digest == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-  return tls1_prf(digest, out, out_len, SSL_get_session(ssl)->master_key,
-                  SSL_get_session(ssl)->master_key_length,
-                  TLS_MD_KEY_EXPANSION_CONST, TLS_MD_KEY_EXPANSION_CONST_SIZE,
-                  ssl->s3->server_random, SSL3_RANDOM_SIZE,
-                  ssl->s3->client_random, SSL3_RANDOM_SIZE);
+  const EVP_MD *digest = SSL_SESSION_get_digest(session);
+  return tls1_prf(digest, out, out_len, session->master_key,
+                  session->master_key_length, TLS_MD_KEY_EXPANSION_CONST,
+                  TLS_MD_KEY_EXPANSION_CONST_SIZE, ssl->s3->server_random,
+                  SSL3_RANDOM_SIZE, ssl->s3->client_random, SSL3_RANDOM_SIZE);
 }
 
 int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
@@ -545,15 +539,11 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
     OPENSSL_memcpy(seed + 2 * SSL3_RANDOM_SIZE + 2, context, context_len);
   }
 
-  const EVP_MD *digest = ssl_get_handshake_digest(
-      SSL_get_session(ssl)->cipher->algorithm_prf, ssl3_protocol_version(ssl));
-  if (digest == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-  int ret = tls1_prf(digest, out, out_len, SSL_get_session(ssl)->master_key,
-                     SSL_get_session(ssl)->master_key_length, label, label_len,
-                     seed, seed_len, NULL, 0);
+  const SSL_SESSION *session = SSL_get_session(ssl);
+  const EVP_MD *digest = SSL_SESSION_get_digest(session);
+  int ret = tls1_prf(digest, out, out_len, session->master_key,
+                     session->master_key_length, label, label_len, seed,
+                     seed_len, NULL, 0);
   OPENSSL_free(seed);
   return ret;
 }
