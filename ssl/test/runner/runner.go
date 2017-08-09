@@ -4229,21 +4229,20 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			testType: serverTest,
 			name:     "TLS13Experiment-EarlyData-Server",
 			config: Config{
-				MaxVersion:   VersionTLS13,
-				MinVersion:   VersionTLS13,
-				TLS13Variant: TLS13Experiment,
+				MaxVersion: VersionTLS13,
+				MinVersion: VersionTLS13,
 				Bugs: ProtocolBugs{
 					SendEarlyData:           [][]byte{{1, 2, 3, 4}},
 					ExpectEarlyDataAccepted: true,
 					ExpectHalfRTTData:       [][]byte{{254, 253, 252, 251}},
 				},
 			},
+			tls13Variant:  TLS13Experiment,
 			messageCount:  2,
 			resumeSession: true,
 			flags: []string{
 				"-enable-early-data",
 				"-expect-accept-early-data",
-				"-tls13-variant", "1",
 			},
 		})
 
@@ -4251,21 +4250,20 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			testType: serverTest,
 			name:     "TLS13RecordTypeExperiment-EarlyData-Server",
 			config: Config{
-				MaxVersion:   VersionTLS13,
-				MinVersion:   VersionTLS13,
-				TLS13Variant: TLS13RecordTypeExperiment,
+				MaxVersion: VersionTLS13,
+				MinVersion: VersionTLS13,
 				Bugs: ProtocolBugs{
 					SendEarlyData:           [][]byte{{1, 2, 3, 4}},
 					ExpectEarlyDataAccepted: true,
 					ExpectHalfRTTData:       [][]byte{{254, 253, 252, 251}},
 				},
 			},
+			tls13Variant:  TLS13RecordTypeExperiment,
 			messageCount:  2,
 			resumeSession: true,
 			flags: []string{
 				"-enable-early-data",
 				"-expect-accept-early-data",
-				"-tls13-variant", "2",
 			},
 		})
 
@@ -10637,26 +10635,24 @@ func addTLS13HandshakeTests() {
 		testType: serverTest,
 		name:     "SkipEarlyData-TLS13Experiment",
 		config: Config{
-			MaxVersion:   VersionTLS13,
-			TLS13Variant: TLS13Experiment,
+			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
 				SendFakeEarlyDataLength: 4,
 			},
 		},
-		flags: []string{"-tls13-variant", "1"},
+		tls13Variant: TLS13Experiment,
 	})
 
 	testCases = append(testCases, testCase{
 		testType: serverTest,
 		name:     "SkipEarlyData-TLS13RecordTypeExperiment",
 		config: Config{
-			MaxVersion:   VersionTLS13,
-			TLS13Variant: TLS13RecordTypeExperiment,
+			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
 				SendFakeEarlyDataLength: 4,
 			},
 		},
-		flags: []string{"-tls13-variant", "2"},
+		tls13Variant: TLS13RecordTypeExperiment,
 	})
 
 	testCases = append(testCases, testCase{
