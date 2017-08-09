@@ -297,6 +297,26 @@ static bool DoConnection(SSL_CTX *ctx,
   return cb(ssl.get(), sock);
 }
 
+static bool GetTLS13Variant(tls13_variant_t *out, const std::string &in) {
+  if (in == "draft") {
+    *out = tls13_default;
+    return true;
+  }
+  if (in == "experiment") {
+    *out = tls13_experiment;
+    return true;
+  }
+  if (in == "record-type") {
+    *out = tls13_record_type_experiment;
+    return true;
+  }
+  if (in == "no-session-id") {
+    *out = tls13_no_session_id_experiment;
+    return true;
+  }
+  return false;
+}
+
 bool Client(const std::vector<std::string> &args) {
   if (!InitSocketLibrary()) {
     return false;
@@ -464,9 +484,13 @@ bool Client(const std::vector<std::string> &args) {
   }
 
   if (args_map.count("-tls13-variant") != 0) {
-    SSL_CTX_set_tls13_variant(ctx.get(),
-                              static_cast<enum tls13_variant_t>(
-                                  atoi(args_map["-tls13-variant"].c_str())));
+    tls13_variant_t variant;
+    if (!GetTLS13Variant(&variant, args_map["-tls13-variant"])) {
+      fprintf(stderr, "Unknown TLS 1.3 variant: %s\n",
+              args_map["-tls13-variant"].c_str());
+      return false;
+    }
+    SSL_CTX_set_tls13_variant(ctx.get(), variant);
   }
 
   if (args_map.count("-ed25519") != 0) {
