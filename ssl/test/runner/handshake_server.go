@@ -863,8 +863,10 @@ ResendHelloRetryRequest:
 			certVerify.signatureAlgorithm = config.Bugs.SendSignatureAlgorithm
 		}
 
-		hs.writeServerHash(certVerify.marshal())
-		c.writeRecord(recordTypeHandshake, certVerify.marshal())
+		if !config.Bugs.SkipCertificateVerify {
+			hs.writeServerHash(certVerify.marshal())
+			c.writeRecord(recordTypeHandshake, certVerify.marshal())
+		}
 	} else if hs.sessionState != nil {
 		// Pick up certificates from the session instead.
 		if len(hs.sessionState.certificates) > 0 {

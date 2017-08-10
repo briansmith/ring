@@ -1512,6 +1512,24 @@ read alert 1 0
 		},
 		{
 			testType: serverTest,
+			name:     "ServerSkipCertificateVerify",
+			config: Config{
+				MaxVersion:   VersionTLS12,
+				Certificates: []Certificate{rsaChainCertificate},
+				Bugs: ProtocolBugs{
+					SkipCertificateVerify: true,
+				},
+			},
+			expectPeerCertificate: &rsaChainCertificate,
+			flags: []string{
+				"-require-any-client-certificate",
+			},
+			shouldFail:         true,
+			expectedError:      ":UNEXPECTED_RECORD:",
+			expectedLocalError: "remote error: unexpected message",
+		},
+		{
+			testType: serverTest,
 			name:     "Alert",
 			config: Config{
 				Bugs: ProtocolBugs{
@@ -11849,6 +11867,47 @@ func addTLS13HandshakeTests() {
 		shouldFail:         true,
 		expectedError:      ":DIGEST_CHECK_FAILED:",
 		expectedLocalError: "remote error: error decrypting message",
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-ServerSkipCertificateVerify",
+		config: Config{
+			MinVersion:   VersionTLS13,
+			MaxVersion:   VersionTLS13,
+			Certificates: []Certificate{rsaChainCertificate},
+			Bugs: ProtocolBugs{
+				SkipCertificateVerify: true,
+			},
+		},
+		expectPeerCertificate: &rsaChainCertificate,
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaChainCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaChainKeyFile),
+			"-require-any-client-certificate",
+		},
+		shouldFail:         true,
+		expectedError:      ":UNEXPECTED_MESSAGE:",
+		expectedLocalError: "remote error: unexpected message",
+	})
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-ClientSkipCertificateVerify",
+		config: Config{
+			MinVersion:   VersionTLS13,
+			MaxVersion:   VersionTLS13,
+			Certificates: []Certificate{rsaChainCertificate},
+			Bugs: ProtocolBugs{
+				SkipCertificateVerify: true,
+			},
+		},
+		expectPeerCertificate: &rsaChainCertificate,
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaChainCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaChainKeyFile),
+		},
+		shouldFail:         true,
+		expectedError:      ":UNEXPECTED_MESSAGE:",
+		expectedLocalError: "remote error: unexpected message",
 	})
 }
 

@@ -974,8 +974,10 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 				certVerify.signatureAlgorithm = c.config.Bugs.SendSignatureAlgorithm
 			}
 
-			hs.writeClientHash(certVerify.marshal())
-			c.writeRecord(recordTypeHandshake, certVerify.marshal())
+			if !c.config.Bugs.SkipCertificateVerify {
+				hs.writeClientHash(certVerify.marshal())
+				c.writeRecord(recordTypeHandshake, certVerify.marshal())
+			}
 		}
 	}
 
@@ -1200,8 +1202,10 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 			return errors.New("tls: failed to sign handshake with client certificate: " + err.Error())
 		}
 
-		hs.writeClientHash(certVerify.marshal())
-		c.writeRecord(recordTypeHandshake, certVerify.marshal())
+		if !c.config.Bugs.SkipCertificateVerify {
+			hs.writeClientHash(certVerify.marshal())
+			c.writeRecord(recordTypeHandshake, certVerify.marshal())
+		}
 	}
 	// flushHandshake will be called in sendFinished.
 

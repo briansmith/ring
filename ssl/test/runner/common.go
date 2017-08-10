@@ -573,6 +573,10 @@ type ProtocolBugs struct {
 	// end_of_early_data alert.
 	SkipEndOfEarlyData bool
 
+	// SkipCertificateVerify, if true causes peer to skip sending a
+	// CertificateVerify message after the Certificate message.
+	SkipCertificateVerify bool
+
 	// EarlyChangeCipherSpec causes the client to send an early
 	// ChangeCipherSpec message before the ClientKeyExchange. A value of
 	// zero disables this behavior. One and two configure variants for 0.9.8
