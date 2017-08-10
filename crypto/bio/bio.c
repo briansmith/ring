@@ -127,22 +127,9 @@ void BIO_free_all(BIO *bio) {
   BIO_free(bio);
 }
 
-static int bio_io(BIO *bio, void *buf, int len, size_t method_offset,
-                  int callback_flags, size_t *num) {
+static int bio_io(BIO *bio, void *buf, int len, int callback_flags,
+                  size_t *num) {
   int i;
-  typedef int (*io_func_t)(BIO *, char *, int);
-  io_func_t io_func = NULL;
-
-  if (bio != NULL && bio->method != NULL) {
-    io_func =
-        *((const io_func_t *)(((const uint8_t *)bio->method) + method_offset));
-  }
-
-  if (io_func == NULL) {
-    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
-    return -2;
-  }
-
   if (bio->callback != NULL) {
     i = (int) bio->callback(bio, callback_flags, buf, len, 0L, 1L);
     if (i <= 0) {
@@ -157,7 +144,19 @@ static int bio_io(BIO *bio, void *buf, int len, size_t method_offset,
 
   i = 0;
   if (buf != NULL && len > 0) {
-    i = io_func(bio, buf, len);
+    switch (callback_flags) {
+      case BIO_CB_READ:
+        i = bio->method->bread(bio, buf, len);
+        break;
+      case BIO_CB_GETS:
+        i = bio->method->bgets(bio, buf, len);
+        break;
+      case BIO_CB_WRITE:
+        i = bio->method->bwrite(bio, buf, len);
+        break;
+      default:
+        assert(0);
+    }
   }
 
   if (i > 0) {
@@ -173,18 +172,27 @@ static int bio_io(BIO *bio, void *buf, int len, size_t method_offset,
 }
 
 int BIO_read(BIO *bio, void *buf, int len) {
-  return bio_io(bio, buf, len, offsetof(BIO_METHOD, bread), BIO_CB_READ,
-                &bio->num_read);
+  if (bio == NULL || bio->method == NULL || bio->method->bread == NULL) {
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
+    return -2;
+  }
+  return bio_io(bio, buf, len, BIO_CB_READ, &bio->num_read);
 }
 
 int BIO_gets(BIO *bio, char *buf, int len) {
-  return bio_io(bio, buf, len, offsetof(BIO_METHOD, bgets), BIO_CB_GETS,
-                &bio->num_read);
+  if (bio == NULL || bio->method == NULL || bio->method->bgets == NULL) {
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
+    return -2;
+  }
+  return bio_io(bio, buf, len, BIO_CB_GETS, &bio->num_read);
 }
 
 int BIO_write(BIO *bio, const void *in, int inl) {
-  return bio_io(bio, (char *)in, inl, offsetof(BIO_METHOD, bwrite),
-                BIO_CB_WRITE, &bio->num_write);
+  if (bio == NULL || bio->method == NULL || bio->method->bwrite == NULL) {
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
+    return -2;
+  }
+  return bio_io(bio, (char *)in, inl, BIO_CB_WRITE, &bio->num_write);
 }
 
 int BIO_puts(BIO *bio, const char *in) {
