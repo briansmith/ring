@@ -786,30 +786,119 @@ TEST(SSLTest, DefaultVersion) {
   ExpectDefaultVersion(TLS1_2_VERSION, TLS1_2_VERSION, &DTLSv1_2_method);
 }
 
-TEST(SSLTest, CipherGetStandardName) {
+TEST(SSLTest, CipherProperties) {
   static const struct {
     int id;
     const char *standard_name;
+    int cipher_nid;
+    int digest_nid;
+    int kx_nid;
+    int auth_nid;
   } kTests[] = {
-      {SSL3_CK_RSA_DES_192_CBC3_SHA, "TLS_RSA_WITH_3DES_EDE_CBC_SHA"},
-      {TLS1_CK_RSA_WITH_AES_128_SHA, "TLS_RSA_WITH_AES_128_CBC_SHA"},
-      {TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256,
-       "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"},
-      {TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384,
-       "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384"},
-      {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-       "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"},
-      {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-       "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256"},
-      {TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-       "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384"},
-      {TLS1_CK_ECDHE_PSK_WITH_AES_128_CBC_SHA,
-       "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA"},
-      {TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-       "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"},
-      {TLS1_CK_AES_256_GCM_SHA384, "TLS_AES_256_GCM_SHA384"},
-      {TLS1_CK_AES_128_GCM_SHA256, "TLS_AES_128_GCM_SHA256"},
-      {TLS1_CK_CHACHA20_POLY1305_SHA256, "TLS_CHACHA20_POLY1305_SHA256"},
+      {
+          SSL3_CK_RSA_DES_192_CBC3_SHA,
+          "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
+          NID_des_ede3_cbc,
+          NID_sha1,
+          NID_kx_rsa,
+          NID_auth_rsa,
+      },
+      {
+          TLS1_CK_RSA_WITH_AES_128_SHA,
+          "TLS_RSA_WITH_AES_128_CBC_SHA",
+          NID_aes_128_cbc,
+          NID_sha1,
+          NID_kx_rsa,
+          NID_auth_rsa,
+      },
+      {
+          TLS1_CK_PSK_WITH_AES_256_CBC_SHA,
+          "TLS_PSK_WITH_AES_256_CBC_SHA",
+          NID_aes_256_cbc,
+          NID_sha1,
+          NID_kx_psk,
+          NID_auth_psk,
+      },
+      {
+          TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256,
+          "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+          NID_aes_128_cbc,
+          NID_sha256,
+          NID_kx_ecdhe,
+          NID_auth_rsa,
+      },
+      {
+          TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384,
+          "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",
+          NID_aes_256_cbc,
+          NID_sha384,
+          NID_kx_ecdhe,
+          NID_auth_rsa,
+      },
+      {
+          TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+          "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+          NID_aes_128_gcm,
+          NID_undef,
+          NID_kx_ecdhe,
+          NID_auth_rsa,
+      },
+      {
+          TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+          "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+          NID_aes_128_gcm,
+          NID_undef,
+          NID_kx_ecdhe,
+          NID_auth_ecdsa,
+      },
+      {
+          TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+          "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+          NID_aes_256_gcm,
+          NID_undef,
+          NID_kx_ecdhe,
+          NID_auth_ecdsa,
+      },
+      {
+          TLS1_CK_ECDHE_PSK_WITH_AES_128_CBC_SHA,
+          "TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA",
+          NID_aes_128_cbc,
+          NID_sha1,
+          NID_kx_ecdhe,
+          NID_auth_psk,
+      },
+      {
+          TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
+          "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+          NID_chacha20_poly1305,
+          NID_undef,
+          NID_kx_ecdhe,
+          NID_auth_rsa,
+      },
+      {
+          TLS1_CK_AES_256_GCM_SHA384,
+          "TLS_AES_256_GCM_SHA384",
+          NID_aes_256_gcm,
+          NID_undef,
+          NID_kx_any,
+          NID_auth_any,
+      },
+      {
+          TLS1_CK_AES_128_GCM_SHA256,
+          "TLS_AES_128_GCM_SHA256",
+          NID_aes_128_gcm,
+          NID_undef,
+          NID_kx_any,
+          NID_auth_any,
+      },
+      {
+          TLS1_CK_CHACHA20_POLY1305_SHA256,
+          "TLS_CHACHA20_POLY1305_SHA256",
+          NID_chacha20_poly1305,
+          NID_undef,
+          NID_kx_any,
+          NID_auth_any,
+      },
   };
 
   for (const auto &t : kTests) {
@@ -822,6 +911,11 @@ TEST(SSLTest, CipherGetStandardName) {
     bssl::UniquePtr<char> rfc_name(SSL_CIPHER_get_rfc_name(cipher));
     ASSERT_TRUE(rfc_name);
     EXPECT_STREQ(t.standard_name, rfc_name.get());
+
+    EXPECT_EQ(t.cipher_nid, SSL_CIPHER_get_cipher_nid(cipher));
+    EXPECT_EQ(t.digest_nid, SSL_CIPHER_get_digest_nid(cipher));
+    EXPECT_EQ(t.kx_nid, SSL_CIPHER_get_kx_nid(cipher));
+    EXPECT_EQ(t.auth_nid, SSL_CIPHER_get_auth_nid(cipher));
   }
 }
 

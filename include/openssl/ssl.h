@@ -1200,56 +1200,36 @@ OPENSSL_EXPORT const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value);
  * get the cipher suite value. */
 OPENSSL_EXPORT uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher);
 
-/* SSL_CIPHER_is_AES returns one if |cipher| uses AES (either GCM or CBC
- * mode). */
-OPENSSL_EXPORT int SSL_CIPHER_is_AES(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_has_SHA1_HMAC returns one if |cipher| uses HMAC-SHA1. */
-OPENSSL_EXPORT int SSL_CIPHER_has_SHA1_HMAC(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_has_SHA256_HMAC returns one if |cipher| uses HMAC-SHA256. */
-OPENSSL_EXPORT int SSL_CIPHER_has_SHA256_HMAC(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_has_SHA384_HMAC returns one if |cipher| uses HMAC-SHA384. */
-OPENSSL_EXPORT int SSL_CIPHER_has_SHA384_HMAC(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_is_AEAD returns one if |cipher| uses an AEAD cipher. */
-OPENSSL_EXPORT int SSL_CIPHER_is_AEAD(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_is_AESGCM returns one if |cipher| uses AES-GCM. */
-OPENSSL_EXPORT int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_is_AES128GCM returns one if |cipher| uses 128-bit AES-GCM. */
-OPENSSL_EXPORT int SSL_CIPHER_is_AES128GCM(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_is_AES128CBC returns one if |cipher| uses 128-bit AES in CBC
- * mode. */
-OPENSSL_EXPORT int SSL_CIPHER_is_AES128CBC(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_is_AES256CBC returns one if |cipher| uses 256-bit AES in CBC
- * mode. */
-OPENSSL_EXPORT int SSL_CIPHER_is_AES256CBC(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_is_CHACHA20POLY1305 returns one if |cipher| uses
- * CHACHA20_POLY1305. Note this includes both the RFC 7905 and
- * draft-agl-tls-chacha20poly1305-04 versions. */
-OPENSSL_EXPORT int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *cipher);
-
-/* SSL_CIPHER_is_NULL returns one if |cipher| does not encrypt. */
-OPENSSL_EXPORT int SSL_CIPHER_is_NULL(const SSL_CIPHER *cipher);
+/* SSL_CIPHER_is_aead returns one if |cipher| uses an AEAD cipher. */
+OPENSSL_EXPORT int SSL_CIPHER_is_aead(const SSL_CIPHER *cipher);
 
 /* SSL_CIPHER_is_block_cipher returns one if |cipher| is a block cipher. */
 OPENSSL_EXPORT int SSL_CIPHER_is_block_cipher(const SSL_CIPHER *cipher);
 
-/* SSL_CIPHER_is_ECDSA returns one if |cipher| uses ECDSA. */
-OPENSSL_EXPORT int SSL_CIPHER_is_ECDSA(const SSL_CIPHER *cipher);
+/* SSL_CIPHER_get_cipher_nid returns the NID for |cipher|'s bulk
+ * cipher. Possible values are |NID_aes_128_gcm|, |NID_aes_256_gcm|,
+ * |NID_chacha20_poly1305|, |NID_aes_128_cbc|, |NID_aes_256_cbc|, and
+ * |NID_des_ede3_cbc|. */
+OPENSSL_EXPORT int SSL_CIPHER_get_cipher_nid(const SSL_CIPHER *cipher);
 
-/* SSL_CIPHER_is_ECDHE returns one if |cipher| uses ECDHE. */
-OPENSSL_EXPORT int SSL_CIPHER_is_ECDHE(const SSL_CIPHER *cipher);
+/* SSL_CIPHER_get_digest_nid returns the NID for |cipher|'s HMAC if it is a
+ * legacy cipher suite. For modern AEAD-based ciphers (see
+ * |SSL_CIPHER_is_aead|), it returns |NID_undef|.
+ *
+ * Note this function only returns the legacy HMAC digest, not the PRF hash. */
+OPENSSL_EXPORT int SSL_CIPHER_get_digest_nid(const SSL_CIPHER *cipher);
 
-/* SSL_CIPHER_is_static_RSA returns one if |cipher| uses the static RSA key
- * exchange. */
-OPENSSL_EXPORT int SSL_CIPHER_is_static_RSA(const SSL_CIPHER *cipher);
+/* SSL_CIPHER_get_kx_nid returns the NID for |cipher|'s key exchange. This may
+ * be |NID_kx_rsa|, |NID_kx_ecdhe|, or |NID_kx_psk| for TLS 1.2. In TLS 1.3,
+ * cipher suites do not specify the key exchange, so this function returns
+ * |NID_kx_any|. */
+OPENSSL_EXPORT int SSL_CIPHER_get_kx_nid(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_get_auth_nid returns the NID for |cipher|'s authentication
+ * type. This may be |NID_auth_rsa|, |NID_auth_ecdsa|, or |NID_auth_psk| for TLS
+ * 1.2. In TLS 1.3, cipher suites do not specify authentication, so this
+ * function returns |NID_auth_any|. */
+OPENSSL_EXPORT int SSL_CIPHER_get_auth_nid(const SSL_CIPHER *cipher);
 
 /* SSL_CIPHER_get_min_version returns the minimum protocol version required
  * for |cipher|. */
@@ -3982,6 +3962,64 @@ OPENSSL_EXPORT SSL_SESSION *SSL_get_session(const SSL *ssl);
 /* SSL_get1_session acts like |SSL_get_session| but returns a new reference to
  * the session. */
 OPENSSL_EXPORT SSL_SESSION *SSL_get1_session(SSL *ssl);
+
+/* TODO(davidben): Convert all the callers of these old |SSL_CIPHER| functions
+ * and remove them. */
+
+/* SSL_CIPHER_is_AEAD calls |SSL_CIPHER_is_aead|. */
+OPENSSL_EXPORT int SSL_CIPHER_is_AEAD(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_AES returns one if |cipher| uses AES (either GCM or CBC
+ * mode). Use |SSL_CIPHER_get_cipher_nid| instead. */
+OPENSSL_EXPORT int SSL_CIPHER_is_AES(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_has_SHA1_HMAC returns one if |cipher| uses HMAC-SHA1. Use
+ * |SSL_CIPHER_get_digest_nid| instead. */
+OPENSSL_EXPORT int SSL_CIPHER_has_SHA1_HMAC(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_has_SHA256_HMAC returns one if |cipher| uses HMAC-SHA256. Use
+ * |SSL_CIPHER_get_digest_nid| instead. */
+OPENSSL_EXPORT int SSL_CIPHER_has_SHA256_HMAC(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_has_SHA384_HMAC returns one if |cipher| uses HMAC-SHA384. Use
+ * |SSL_CIPHER_get_digest_nid| instead. */
+OPENSSL_EXPORT int SSL_CIPHER_has_SHA384_HMAC(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_AESGCM returns one if |cipher| uses AES-GCM. Use
+ * |SSL_CIPHER_get_cipher_nid| instead. */
+OPENSSL_EXPORT int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_AES128GCM returns one if |cipher| uses 128-bit AES-GCM. Use
+ * |SSL_CIPHER_get_cipher_nid| instead. */
+OPENSSL_EXPORT int SSL_CIPHER_is_AES128GCM(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_AES128CBC returns one if |cipher| uses 128-bit AES in CBC
+ * mode. Use |SSL_CIPHER_get_cipher_nid| instead. */
+OPENSSL_EXPORT int SSL_CIPHER_is_AES128CBC(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_AES256CBC returns one if |cipher| uses 256-bit AES in CBC
+ * mode. Use |SSL_CIPHER_get_cipher_nid| instead. */
+OPENSSL_EXPORT int SSL_CIPHER_is_AES256CBC(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_CHACHA20POLY1305 returns one if |cipher| uses
+ * CHACHA20_POLY1305. Use |SSL_CIPHER_get_cipher_nid| instead. */
+OPENSSL_EXPORT int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_NULL returns one if |cipher| does not encrypt. Use
+ * |SSL_CIPHER_get_cipher_nid| instead. */
+OPENSSL_EXPORT int SSL_CIPHER_is_NULL(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_ECDSA returns one if |cipher| uses ECDSA. Use
+ * |SSL_CIPHER_get_auth_nid| instead. */
+OPENSSL_EXPORT int SSL_CIPHER_is_ECDSA(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_ECDHE returns one if |cipher| uses ECDHE. Use
+ * |SSL_CIPHER_get_kx_nid| instead. */
+OPENSSL_EXPORT int SSL_CIPHER_is_ECDHE(const SSL_CIPHER *cipher);
+
+/* SSL_CIPHER_is_static_RSA returns one if |cipher| uses the static RSA key
+ * exchange. Use |SSL_CIPHER_get_kx_nid| instead. */
+OPENSSL_EXPORT int SSL_CIPHER_is_static_RSA(const SSL_CIPHER *cipher);
 
 
 /* Private structures.

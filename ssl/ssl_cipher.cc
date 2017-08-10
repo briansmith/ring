@@ -1455,8 +1455,78 @@ int SSL_CIPHER_has_SHA384_HMAC(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_mac & SSL_SHA384) != 0;
 }
 
-int SSL_CIPHER_is_AEAD(const SSL_CIPHER *cipher) {
+int SSL_CIPHER_is_aead(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_mac & SSL_AEAD) != 0;
+}
+
+int SSL_CIPHER_get_cipher_nid(const SSL_CIPHER *cipher) {
+  switch (cipher->algorithm_enc) {
+    case SSL_eNULL:
+      return NID_undef;
+    case SSL_3DES:
+      return NID_des_ede3_cbc;
+    case SSL_AES128:
+      return NID_aes_128_cbc;
+    case SSL_AES256:
+      return NID_aes_256_cbc;
+    case SSL_AES128GCM:
+      return NID_aes_128_gcm;
+    case SSL_AES256GCM:
+      return NID_aes_256_gcm;
+    case SSL_CHACHA20POLY1305:
+      return NID_chacha20_poly1305;
+  }
+  assert(0);
+  return NID_undef;
+}
+
+int SSL_CIPHER_get_digest_nid(const SSL_CIPHER *cipher) {
+  switch (cipher->algorithm_mac) {
+    case SSL_AEAD:
+      return NID_undef;
+    case SSL_SHA1:
+      return NID_sha1;
+    case SSL_SHA256:
+      return NID_sha256;
+    case SSL_SHA384:
+      return NID_sha384;
+  }
+  assert(0);
+  return NID_undef;
+}
+
+int SSL_CIPHER_get_kx_nid(const SSL_CIPHER *cipher) {
+  switch (cipher->algorithm_mkey) {
+    case SSL_kRSA:
+      return NID_kx_rsa;
+    case SSL_kECDHE:
+      return NID_kx_ecdhe;
+    case SSL_kPSK:
+      return NID_kx_psk;
+    case SSL_kGENERIC:
+      return NID_kx_any;
+  }
+  assert(0);
+  return NID_undef;
+}
+
+int SSL_CIPHER_get_auth_nid(const SSL_CIPHER *cipher) {
+  switch (cipher->algorithm_auth) {
+    case SSL_aRSA:
+      return NID_auth_rsa;
+    case SSL_aECDSA:
+      return NID_auth_ecdsa;
+    case SSL_aPSK:
+      return NID_auth_psk;
+    case SSL_aGENERIC:
+      return NID_auth_any;
+  }
+  assert(0);
+  return NID_undef;
+}
+
+int SSL_CIPHER_is_AEAD(const SSL_CIPHER *cipher) {
+  return SSL_CIPHER_is_aead(cipher);
 }
 
 int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *cipher) {
