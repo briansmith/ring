@@ -71,14 +71,6 @@ static int custom_ext_add_hello(SSL_HANDSHAKE *hs, CBB *extensions) {
     return 1;
   }
 
-  if (ssl->cert->enable_early_data) {
-    /* TODO(svaldez): Support Custom Extensions with 0-RTT. For now the caller
-     * is expected not to configure both together.
-     * https://crbug.com/boringssl/173. */
-    OPENSSL_PUT_ERROR(SSL, SSL_R_CUSTOM_EXTENSION_ERROR);
-    return 0;
-  }
-
   for (size_t i = 0; i < sk_SSL_CUSTOM_EXTENSION_num(stack); i++) {
     const SSL_CUSTOM_EXTENSION *ext = sk_SSL_CUSTOM_EXTENSION_value(stack, i);
 

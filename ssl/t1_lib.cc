@@ -2795,7 +2795,6 @@ static int ssl_scan_clienthello_tlsext(SSL_HANDSHAKE *hs,
 
   hs->extensions.received = 0;
   hs->custom_extensions.received = 0;
-
   CBS extensions;
   CBS_init(&extensions, client_hello->extensions, client_hello->extensions_len);
   while (CBS_len(&extensions) != 0) {
@@ -2919,6 +2918,7 @@ static int ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs,
         tls_extension_find(&ext_index, type);
 
     if (ext == NULL) {
+      hs->received_custom_extension = 1;
       if (!custom_ext_parse_serverhello(hs, out_alert, type, &extension)) {
         return 0;
       }
