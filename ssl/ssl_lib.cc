@@ -729,12 +729,12 @@ void SSL_free(SSL *ssl) {
 
 void SSL_set_connect_state(SSL *ssl) {
   ssl->server = 0;
-  ssl->handshake_func = ssl3_connect;
+  ssl->do_handshake = ssl_client_handshake;
 }
 
 void SSL_set_accept_state(SSL *ssl) {
   ssl->server = 1;
-  ssl->handshake_func = ssl3_accept;
+  ssl->do_handshake = ssl_server_handshake;
 }
 
 void SSL_set0_rbio(SSL *ssl, BIO *rbio) {
@@ -788,7 +788,7 @@ BIO *SSL_get_wbio(const SSL *ssl) { return ssl->wbio; }
 int SSL_do_handshake(SSL *ssl) {
   ssl_reset_error_state(ssl);
 
-  if (ssl->handshake_func == NULL) {
+  if (ssl->do_handshake == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_TYPE_NOT_SET);
     return -1;
   }
@@ -797,20 +797,19 @@ int SSL_do_handshake(SSL *ssl) {
     return 1;
   }
 
-  if (ssl->s3->hs == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
-
   /* Run the handshake. */
-  assert(ssl->s3->hs != NULL);
-  int ret = ssl->handshake_func(ssl->s3->hs);
+  SSL_HANDSHAKE *hs = ssl->s3->hs;
+
+  int early_return = 0;
+  int ret = ssl_run_handshake(hs, &early_return);
+  ssl_do_info_callback(
+      ssl, ssl->server ? SSL_CB_ACCEPT_EXIT : SSL_CB_CONNECT_EXIT, ret);
   if (ret <= 0) {
     return ret;
   }
 
   /* Destroy the handshake object if the handshake has completely finished. */
-  if (!SSL_in_init(ssl)) {
+  if (!early_return) {
     ssl_handshake_free(ssl->s3->hs);
     ssl->s3->hs = NULL;
   }
@@ -819,7 +818,7 @@ int SSL_do_handshake(SSL *ssl) {
 }
 
 int SSL_connect(SSL *ssl) {
-  if (ssl->handshake_func == NULL) {
+  if (ssl->do_handshake == NULL) {
     /* Not properly initialized yet */
     SSL_set_connect_state(ssl);
   }
@@ -828,7 +827,7 @@ int SSL_connect(SSL *ssl) {
 }
 
 int SSL_accept(SSL *ssl) {
-  if (ssl->handshake_func == NULL) {
+  if (ssl->do_handshake == NULL) {
     /* Not properly initialized yet */
     SSL_set_accept_state(ssl);
   }
@@ -902,7 +901,7 @@ no_renegotiation:
 static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
   ssl_reset_error_state(ssl);
 
-  if (ssl->handshake_func == NULL) {
+  if (ssl->do_handshake == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
     return -1;
   }
@@ -958,7 +957,7 @@ int SSL_peek(SSL *ssl, void *buf, int num) {
 int SSL_write(SSL *ssl, const void *buf, int num) {
   ssl_reset_error_state(ssl);
 
-  if (ssl->handshake_func == NULL) {
+  if (ssl->do_handshake == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
     return -1;
   }
@@ -991,7 +990,7 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
 int SSL_shutdown(SSL *ssl) {
   ssl_reset_error_state(ssl);
 
-  if (ssl->handshake_func == NULL) {
+  if (ssl->do_handshake == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
     return -1;
   }
@@ -2337,8 +2336,7 @@ int SSL_is_init_finished(const SSL *ssl) {
 }
 
 int SSL_in_init(const SSL *ssl) {
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
-  return hs != NULL && hs->state != SSL_ST_OK;
+  return ssl->s3->hs != NULL;
 }
 
 int SSL_in_false_start(const SSL *ssl) {

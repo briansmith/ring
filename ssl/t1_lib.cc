@@ -3483,7 +3483,7 @@ int tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs) {
    * handshake hashes that we wish to record are for the original, full
    * handshake. */
   if (ssl->session != NULL) {
-    return -1;
+    return 0;
   }
 
   static_assert(
@@ -3493,7 +3493,7 @@ int tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs) {
   size_t digest_len;
   if (!hs->transcript.GetHash(hs->new_session->original_handshake_hash,
                               &digest_len)) {
-    return -1;
+    return 0;
   }
 
   static_assert(EVP_MAX_MD_SIZE <= 0xff,

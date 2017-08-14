@@ -922,7 +922,7 @@ enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs) {
         break;
     }
 
-    if (hs->state != state) {
+    if (hs->tls13_state != state) {
       ssl_do_info_callback(hs->ssl, SSL_CB_ACCEPT_LOOP, 1);
     }
 

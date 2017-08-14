@@ -1143,9 +1143,9 @@ STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
   /* For historical reasons, this function is used both to query configuration
    * state on a server as well as handshake state on a client. However, whether
    * |ssl| is a client or server is not known until explicitly configured with
-   * |SSL_set_connect_state|. If |handshake_func| is NULL, |ssl| is in an
+   * |SSL_set_connect_state|. If |do_handshake| is NULL, |ssl| is in an
    * indeterminate mode and |ssl->server| is unset. */
-  if (ssl->handshake_func != NULL && !ssl->server) {
+  if (ssl->do_handshake != NULL && !ssl->server) {
     if (ssl->s3->hs != NULL) {
       return buffer_names_to_x509(ssl->s3->hs->ca_names.get(),
                                   &ssl->s3->hs->cached_x509_ca_names);

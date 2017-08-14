@@ -3303,7 +3303,6 @@ OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
 #define SSL_ST_INIT (SSL_ST_CONNECT | SSL_ST_ACCEPT)
 #define SSL_ST_OK 0x03
 #define SSL_ST_RENEGOTIATE (0x04 | SSL_ST_INIT)
-#define SSL_ST_TLS13 (0x05 | SSL_ST_INIT)
 
 // SSL_CB_* are possible values for the |type| parameter in the info
 // callback and the bitmasks that make them up.
@@ -3817,6 +3816,10 @@ OPENSSL_EXPORT const char *SSL_alert_type_string(int value);
 // instead.
 OPENSSL_EXPORT const char *SSL_alert_desc_string(int value);
 
+// SSL_state_string returns "!!!!!!". Use |SSL_state_string_long| for a more
+// intelligible string.
+OPENSSL_EXPORT const char *SSL_state_string(const SSL *ssl);
+
 // SSL_TXT_* expand to strings.
 #define SSL_TXT_MEDIUM "MEDIUM"
 #define SSL_TXT_HIGH "HIGH"
@@ -3868,11 +3871,6 @@ typedef struct ssl_conf_ctx_st SSL_CONF_CTX;
 OPENSSL_EXPORT int SSL_state(const SSL *ssl);
 
 #define SSL_get_state(ssl) SSL_state(ssl)
-
-// SSL_state_string returns the current state of the handshake state machine as
-// a six-letter string. Use |SSL_state_string_long| for a more intelligible
-// string.
-OPENSSL_EXPORT const char *SSL_state_string(const SSL *ssl);
 
 // SSL_set_shutdown causes |ssl| to behave as if the shutdown bitmask (see
 // |SSL_get_shutdown|) were |mode|. This may be used to skip sending or

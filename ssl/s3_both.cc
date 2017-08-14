@@ -132,73 +132,6 @@
 
 namespace bssl {
 
-SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
-    : ssl(ssl_arg),
-      scts_requested(0),
-      needs_psk_binder(0),
-      received_hello_retry_request(0),
-      received_custom_extension(0),
-      accept_psk_mode(0),
-      cert_request(0),
-      certificate_status_expected(0),
-      ocsp_stapling_requested(0),
-      should_ack_sni(0),
-      in_false_start(0),
-      in_early_data(0),
-      early_data_offered(0),
-      can_early_read(0),
-      can_early_write(0),
-      next_proto_neg_seen(0),
-      ticket_expected(0),
-      extended_master_secret(0),
-      pending_private_key_op(0) {
-}
-
-SSL_HANDSHAKE::~SSL_HANDSHAKE() {
-  OPENSSL_cleanse(secret, sizeof(secret));
-  OPENSSL_cleanse(early_traffic_secret, sizeof(early_traffic_secret));
-  OPENSSL_cleanse(client_handshake_secret, sizeof(client_handshake_secret));
-  OPENSSL_cleanse(server_handshake_secret, sizeof(server_handshake_secret));
-  OPENSSL_cleanse(client_traffic_secret_0, sizeof(client_traffic_secret_0));
-  OPENSSL_cleanse(server_traffic_secret_0, sizeof(server_traffic_secret_0));
-  OPENSSL_free(cookie);
-  OPENSSL_free(key_share_bytes);
-  OPENSSL_free(ecdh_public_key);
-  OPENSSL_free(peer_sigalgs);
-  OPENSSL_free(peer_supported_group_list);
-  OPENSSL_free(peer_key);
-  OPENSSL_free(server_params);
-  ssl->ctx->x509_method->hs_flush_cached_ca_names(this);
-  OPENSSL_free(certificate_types);
-
-  if (key_block != NULL) {
-    OPENSSL_cleanse(key_block, key_block_len);
-    OPENSSL_free(key_block);
-  }
-}
-
-SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl) {
-  UniquePtr<SSL_HANDSHAKE> hs = MakeUnique<SSL_HANDSHAKE>(ssl);
-  if (!hs ||
-      !hs->transcript.Init()) {
-    return nullptr;
-  }
-  return hs.release();
-}
-
-void ssl_handshake_free(SSL_HANDSHAKE *hs) { Delete(hs); }
-
-int ssl_check_message_type(SSL *ssl, const SSLMessage &msg, int type) {
-  if (msg.type != type) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-    ERR_add_error_dataf("got type %d, wanted type %d", msg.type, type);
-    return 0;
-  }
-
-  return 1;
-}
-
 static int add_record_to_flight(SSL *ssl, uint8_t type, const uint8_t *in,
                                 size_t in_len) {
   /* We'll never add a flight while in the process of writing it out. */
@@ -316,17 +249,6 @@ int ssl3_add_alert(SSL *ssl, uint8_t level, uint8_t desc) {
   return 1;
 }
 
-int ssl_add_message_cbb(SSL *ssl, CBB *cbb) {
-  uint8_t *msg;
-  size_t len;
-  if (!ssl->method->finish_message(ssl, cbb, &msg, &len) ||
-      !ssl->method->add_message(ssl, msg, len)) {
-    return 0;
-  }
-
-  return 1;
-}
-
 int ssl3_flush_flight(SSL *ssl) {
   if (ssl->s3->pending_flight == NULL) {
     return 1;
@@ -396,7 +318,7 @@ int ssl3_send_finished(SSL_HANDSHAKE *hs) {
     if (finished_len > sizeof(ssl->s3->previous_client_finished) ||
         finished_len > sizeof(ssl->s3->previous_server_finished)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return -1;
+      return 0;
     }
 
     if (ssl->server) {
@@ -414,62 +336,9 @@ int ssl3_send_finished(SSL_HANDSHAKE *hs) {
       !CBB_add_bytes(&body, finished, finished_len) ||
       !ssl_add_message_cbb(ssl, cbb.get())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
+    return 0;
   }
 
-  return 1;
-}
-
-int ssl3_get_finished(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-  SSLMessage msg;
-  int ret = ssl_read_message(ssl, &msg);
-  if (ret <= 0) {
-    return ret;
-  }
-
-  if (!ssl_check_message_type(ssl, msg, SSL3_MT_FINISHED)) {
-    return -1;
-  }
-
-  /* Snapshot the finished hash before incorporating the new message. */
-  uint8_t finished[EVP_MAX_MD_SIZE];
-  size_t finished_len;
-  if (!hs->transcript.GetFinishedMAC(finished, &finished_len,
-                                     SSL_get_session(ssl), !ssl->server,
-                                     ssl3_protocol_version(ssl)) ||
-      !ssl_hash_message(hs, msg)) {
-    return -1;
-  }
-
-  int finished_ok = CBS_mem_equal(&msg.body, finished, finished_len);
-#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-  finished_ok = 1;
-#endif
-  if (!finished_ok) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DIGEST_CHECK_FAILED);
-    return -1;
-  }
-
-  /* Copy the Finished so we can use it for renegotiation checks. */
-  if (ssl->version != SSL3_VERSION) {
-    if (finished_len > sizeof(ssl->s3->previous_client_finished) ||
-        finished_len > sizeof(ssl->s3->previous_server_finished)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return -1;
-    }
-
-    if (ssl->server) {
-      OPENSSL_memcpy(ssl->s3->previous_client_finished, finished, finished_len);
-      ssl->s3->previous_client_finished_len = finished_len;
-    } else {
-      OPENSSL_memcpy(ssl->s3->previous_server_finished, finished, finished_len);
-      ssl->s3->previous_server_finished_len = finished_len;
-    }
-  }
-
-  ssl->method->next_message(ssl);
   return 1;
 }
 
@@ -483,46 +352,6 @@ int ssl3_output_cert_chain(SSL *ssl) {
     return 0;
   }
 
-  return 1;
-}
-
-size_t ssl_max_handshake_message_len(const SSL *ssl) {
-  /* kMaxMessageLen is the default maximum message size for handshakes which do
-   * not accept peer certificate chains. */
-  static const size_t kMaxMessageLen = 16384;
-
-  if (SSL_in_init(ssl)) {
-    if ((!ssl->server || (ssl->verify_mode & SSL_VERIFY_PEER)) &&
-        kMaxMessageLen < ssl->max_cert_list) {
-      return ssl->max_cert_list;
-    }
-    return kMaxMessageLen;
-  }
-
-  if (ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
-    /* In TLS 1.2 and below, the largest acceptable post-handshake message is
-     * a HelloRequest. */
-    return 0;
-  }
-
-  if (ssl->server) {
-    /* The largest acceptable post-handshake message for a server is a
-     * KeyUpdate. We will never initiate post-handshake auth. */
-    return 1;
-  }
-
-  /* Clients must accept NewSessionTicket and CertificateRequest, so allow the
-   * default size. */
-  return kMaxMessageLen;
-}
-
-int ssl_read_message(SSL *ssl, SSLMessage *out) {
-  while (!ssl->method->get_message(ssl, out)) {
-    int ret = ssl->method->read_message(ssl);
-    if (ret <= 0) {
-      return ret;
-    }
-  }
   return 1;
 }
 
@@ -769,15 +598,6 @@ int ssl3_read_message(SSL *ssl) {
   return extend_handshake_buffer(ssl, bytes_needed);
 }
 
-bool ssl_hash_message(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
-  /* V2ClientHello messages are pre-hashed. */
-  if (msg.is_v2_hello) {
-    return true;
-  }
-
-  return hs->transcript.Update(CBS_data(&msg.raw), CBS_len(&msg.raw));
-}
-
 void ssl3_next_message(SSL *ssl) {
   SSLMessage msg;
   if (!ssl3_get_message(ssl, &msg) ||
@@ -799,156 +619,6 @@ void ssl3_next_message(SSL *ssl) {
     BUF_MEM_free(ssl->init_buf);
     ssl->init_buf = NULL;
   }
-}
-
-int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
-                         const SSL_EXTENSION_TYPE *ext_types,
-                         size_t num_ext_types, int ignore_unknown) {
-  /* Reset everything. */
-  for (size_t i = 0; i < num_ext_types; i++) {
-    *ext_types[i].out_present = 0;
-    CBS_init(ext_types[i].out_data, NULL, 0);
-  }
-
-  CBS copy = *cbs;
-  while (CBS_len(&copy) != 0) {
-    uint16_t type;
-    CBS data;
-    if (!CBS_get_u16(&copy, &type) ||
-        !CBS_get_u16_length_prefixed(&copy, &data)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
-      *out_alert = SSL_AD_DECODE_ERROR;
-      return 0;
-    }
-
-    const SSL_EXTENSION_TYPE *ext_type = NULL;
-    for (size_t i = 0; i < num_ext_types; i++) {
-      if (type == ext_types[i].type) {
-        ext_type = &ext_types[i];
-        break;
-      }
-    }
-
-    if (ext_type == NULL) {
-      if (ignore_unknown) {
-        continue;
-      }
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-      *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
-      return 0;
-    }
-
-    /* Duplicate ext_types are forbidden. */
-    if (*ext_type->out_present) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_EXTENSION);
-      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-      return 0;
-    }
-
-    *ext_type->out_present = 1;
-    *ext_type->out_data = data;
-  }
-
-  return 1;
-}
-
-static void set_crypto_buffer(CRYPTO_BUFFER **dest, CRYPTO_BUFFER *src) {
-  /* TODO(davidben): Remove this helper once |SSL_SESSION| can use |UniquePtr|
-   * and |UniquePtr| has up_ref helpers. */
-  CRYPTO_BUFFER_free(*dest);
-  *dest = src;
-  if (src != nullptr) {
-    CRYPTO_BUFFER_up_ref(src);
-  }
-}
-
-enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-  const SSL_SESSION *prev_session = ssl->s3->established_session;
-  if (prev_session != NULL) {
-    /* If renegotiating, the server must not change the server certificate. See
-     * https://mitls.org/pages/attacks/3SHAKE. We never resume on renegotiation,
-     * so this check is sufficient to ensure the reported peer certificate never
-     * changes on renegotiation. */
-    assert(!ssl->server);
-    if (sk_CRYPTO_BUFFER_num(prev_session->certs) !=
-        sk_CRYPTO_BUFFER_num(hs->new_session->certs)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SERVER_CERT_CHANGED);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-      return ssl_verify_invalid;
-    }
-
-    for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(hs->new_session->certs); i++) {
-      const CRYPTO_BUFFER *old_cert =
-          sk_CRYPTO_BUFFER_value(prev_session->certs, i);
-      const CRYPTO_BUFFER *new_cert =
-          sk_CRYPTO_BUFFER_value(hs->new_session->certs, i);
-      if (CRYPTO_BUFFER_len(old_cert) != CRYPTO_BUFFER_len(new_cert) ||
-          OPENSSL_memcmp(CRYPTO_BUFFER_data(old_cert),
-                         CRYPTO_BUFFER_data(new_cert),
-                         CRYPTO_BUFFER_len(old_cert)) != 0) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_SERVER_CERT_CHANGED);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-        return ssl_verify_invalid;
-      }
-    }
-
-    /* The certificate is identical, so we may skip re-verifying the
-     * certificate. Since we only authenticated the previous one, copy other
-     * authentication from the established session and ignore what was newly
-     * received. */
-    set_crypto_buffer(&hs->new_session->ocsp_response,
-                      prev_session->ocsp_response);
-    set_crypto_buffer(&hs->new_session->signed_cert_timestamp_list,
-                      prev_session->signed_cert_timestamp_list);
-    hs->new_session->verify_result = prev_session->verify_result;
-    return ssl_verify_ok;
-  }
-
-  uint8_t alert = SSL_AD_CERTIFICATE_UNKNOWN;
-  enum ssl_verify_result_t ret;
-  if (ssl->custom_verify_callback != nullptr) {
-    ret = ssl->custom_verify_callback(ssl, &alert);
-    switch (ret) {
-      case ssl_verify_ok:
-        hs->new_session->verify_result = X509_V_OK;
-        break;
-      case ssl_verify_invalid:
-        hs->new_session->verify_result = X509_V_ERR_APPLICATION_VERIFICATION;
-        break;
-      case ssl_verify_retry:
-        break;
-    }
-  } else {
-    ret = ssl->ctx->x509_method->session_verify_cert_chain(
-              hs->new_session.get(), ssl, &alert)
-              ? ssl_verify_ok
-              : ssl_verify_invalid;
-  }
-
-  if (ret == ssl_verify_invalid) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
-  }
-
-  return ret;
-}
-
-uint16_t ssl_get_grease_value(const SSL *ssl, enum ssl_grease_index_t index) {
-  /* Use the client_random or server_random for entropy. This both avoids
-   * calling |RAND_bytes| on a single byte repeatedly and ensures the values are
-   * deterministic. This allows the same ClientHello be sent twice for a
-   * HelloRetryRequest or the same group be advertised in both supported_groups
-   * and key_shares. */
-  uint16_t ret = ssl->server ? ssl->s3->server_random[index]
-                             : ssl->s3->client_random[index];
-  /* The first four bytes of server_random are a timestamp prior to TLS 1.3, but
-   * servers have no fields to GREASE until TLS 1.3. */
-  assert(!ssl->server || ssl3_protocol_version(ssl) >= TLS1_3_VERSION);
-  /* This generates a random value of the form 0xωaωa, for all 0 ≤ ω < 16. */
-  ret = (ret & 0xf0) | 0x0a;
-  ret |= ret << 8;
-  return ret;
 }
 
 }  // namespace bssl

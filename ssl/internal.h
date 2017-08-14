@@ -844,11 +844,6 @@ struct SSLMessage {
  * in a handshake message for |ssl|. */
 size_t ssl_max_handshake_message_len(const SSL *ssl);
 
-/* ssl_read_message reads a message for the old |BIO|-based state machine. On
- * success, it returns one and sets |*out| to the current message. Otherwise, it
- * returns <= 0. */
-int ssl_read_message(SSL *ssl, SSLMessage *out);
-
 /* dtls_clear_incoming_messages releases all buffered incoming messages. */
 void dtls_clear_incoming_messages(SSL *ssl);
 
@@ -1070,12 +1065,16 @@ int tls13_verify_psk_binder(SSL_HANDSHAKE *hs, SSL_SESSION *session,
 enum ssl_hs_wait_t {
   ssl_hs_error,
   ssl_hs_ok,
+  ssl_hs_read_server_hello,
   ssl_hs_read_message,
   ssl_hs_flush,
+  ssl_hs_certificate_selection_pending,
   ssl_hs_x509_lookup,
   ssl_hs_channel_id_lookup,
   ssl_hs_private_key_operation,
+  ssl_hs_pending_session,
   ssl_hs_pending_ticket,
+  ssl_hs_early_return,
   ssl_hs_early_data_rejected,
   ssl_hs_read_end_of_early_data,
   ssl_hs_read_change_cipher_spec,
@@ -1090,23 +1089,16 @@ struct SSL_HANDSHAKE {
   /* ssl is a non-owning pointer to the parent |SSL| object. */
   SSL *ssl;
 
-  /* do_tls13_handshake runs the TLS 1.3 handshake. On completion, it returns
-   * |ssl_hs_ok|. Otherwise, it returns a value corresponding to what operation
-   * is needed to progress. */
-  enum ssl_hs_wait_t (*do_tls13_handshake)(SSL_HANDSHAKE *hs);
-
-  /* wait contains the operation |do_tls13_handshake| is currently blocking on
-   * or |ssl_hs_ok| if none. */
+  /* wait contains the operation the handshake is currently blocking on or
+   * |ssl_hs_ok| if none. */
   enum ssl_hs_wait_t wait = ssl_hs_ok;
 
-  /* state contains one of the SSL3_ST_* values. */
-  int state = SSL_ST_INIT;
-
-  /* next_state is used when SSL_ST_FLUSH_DATA is entered */
-  int next_state = 0;
+  /* state is the internal state for the TLS 1.2 and below handshake. Its
+   * values depend on |do_handshake| but the starting state is always zero. */
+  int state = 0;
 
   /* tls13_state is the internal state for the TLS 1.3 handshake. Its values
-   * depend on |do_tls13_handshake| but the starting state is always zero. */
+   * depend on |do_handshake| but the starting state is always zero. */
   int tls13_state = 0;
 
   /* min_version is the minimum accepted protocol version, taking account both
@@ -1326,18 +1318,22 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs);
  * one. Otherwise, it sends an alert and returns zero. */
 int ssl_check_message_type(SSL *ssl, const SSLMessage &msg, int type);
 
-/* tls13_handshake runs the TLS 1.3 handshake. It returns one on success and <=
- * 0 on error. It sets |out_early_return| to one if we've completed the
- * handshake early. */
-int tls13_handshake(SSL_HANDSHAKE *hs, int *out_early_return);
+/* ssl_run_handshake runs the TLS handshake. It returns one on success and <= 0
+ * on error. It sets |out_early_return| to one if we've completed the handshake
+ * early. */
+int ssl_run_handshake(SSL_HANDSHAKE *hs, int *out_early_return);
 
-/* The following are implementations of |do_tls13_handshake| for the client and
+/* The following are implementations of |do_handshake| for the client and
  * server. */
+enum ssl_hs_wait_t ssl_client_handshake(SSL_HANDSHAKE *hs);
+enum ssl_hs_wait_t ssl_server_handshake(SSL_HANDSHAKE *hs);
 enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs);
 enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs);
 
-/* The following functions return human-readable representations of the TLS 1.3
+/* The following functions return human-readable representations of the TLS
  * handshake states for debugging. */
+const char *ssl_client_handshake_state(SSL_HANDSHAKE *hs);
+const char *ssl_server_handshake_state(SSL_HANDSHAKE *hs);
 const char *tls13_client_handshake_state(SSL_HANDSHAKE *hs);
 const char *tls13_server_handshake_state(SSL_HANDSHAKE *hs);
 
@@ -1918,7 +1914,10 @@ struct SSLConnection {
   BIO *rbio; /* used by SSL_read */
   BIO *wbio; /* used by SSL_write */
 
-  int (*handshake_func)(SSL_HANDSHAKE *hs);
+  /* do_handshake runs the handshake. On completion, it returns |ssl_hs_ok|.
+   * Otherwise, it returns a value corresponding to what operation is needed to
+   * progress. */
+  enum ssl_hs_wait_t (*do_handshake)(SSL_HANDSHAKE *hs);
 
   BUF_MEM *init_buf; /* buffer used during init */
 
@@ -2160,7 +2159,7 @@ const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
 
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode);
 
-int ssl3_get_finished(SSL_HANDSHAKE *hs);
+enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs);
 int ssl3_send_alert(SSL *ssl, int level, int desc);
 bool ssl3_get_message(SSL *ssl, SSLMessage *out);
 int ssl3_read_message(SSL *ssl);
@@ -2179,8 +2178,6 @@ int ssl3_output_cert_chain(SSL *ssl);
 
 int ssl3_new(SSL *ssl);
 void ssl3_free(SSL *ssl);
-int ssl3_accept(SSL_HANDSHAKE *hs);
-int ssl3_connect(SSL_HANDSHAKE *hs);
 
 int ssl3_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
 int ssl3_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg, size_t *out_len);
