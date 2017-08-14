@@ -96,13 +96,6 @@ int BIO_free(BIO *bio) {
       return 0;
     }
 
-    if (bio->callback != NULL) {
-      int i = (int)bio->callback(bio, BIO_CB_FREE, NULL, 0, 0, 1);
-      if (i <= 0) {
-        return i;
-      }
-    }
-
     next_bio = BIO_pop(bio);
 
     if (bio->method != NULL && bio->method->destroy != NULL) {
@@ -127,56 +120,23 @@ void BIO_free_all(BIO *bio) {
   BIO_free(bio);
 }
 
-static int bio_io(BIO *bio, void *buf, int len, int callback_flags,
-                  size_t *num) {
-  int i;
-  if (bio->callback != NULL) {
-    i = (int) bio->callback(bio, callback_flags, buf, len, 0L, 1L);
-    if (i <= 0) {
-      return i;
-    }
-  }
-
-  if (!bio->init) {
-    OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
-    return -2;
-  }
-
-  i = 0;
-  if (buf != NULL && len > 0) {
-    switch (callback_flags) {
-      case BIO_CB_READ:
-        i = bio->method->bread(bio, buf, len);
-        break;
-      case BIO_CB_GETS:
-        i = bio->method->bgets(bio, buf, len);
-        break;
-      case BIO_CB_WRITE:
-        i = bio->method->bwrite(bio, buf, len);
-        break;
-      default:
-        assert(0);
-    }
-  }
-
-  if (i > 0) {
-    *num += i;
-  }
-
-  if (bio->callback != NULL) {
-    i = (int)(bio->callback(bio, callback_flags | BIO_CB_RETURN, buf, len, 0L,
-                            (long)i));
-  }
-
-  return i;
-}
-
 int BIO_read(BIO *bio, void *buf, int len) {
   if (bio == NULL || bio->method == NULL || bio->method->bread == NULL) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return -2;
   }
-  return bio_io(bio, buf, len, BIO_CB_READ, &bio->num_read);
+  if (!bio->init) {
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
+    return -2;
+  }
+  if (len <= 0) {
+    return 0;
+  }
+  int ret = bio->method->bread(bio, buf, len);
+  if (ret > 0) {
+    bio->num_read += ret;
+  }
+  return ret;
 }
 
 int BIO_gets(BIO *bio, char *buf, int len) {
@@ -184,7 +144,18 @@ int BIO_gets(BIO *bio, char *buf, int len) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return -2;
   }
-  return bio_io(bio, buf, len, BIO_CB_GETS, &bio->num_read);
+  if (!bio->init) {
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
+    return -2;
+  }
+  if (len <= 0) {
+    return 0;
+  }
+  int ret = bio->method->bgets(bio, buf, len);
+  if (ret > 0) {
+    bio->num_read += ret;
+  }
+  return ret;
 }
 
 int BIO_write(BIO *bio, const void *in, int inl) {
@@ -192,7 +163,18 @@ int BIO_write(BIO *bio, const void *in, int inl) {
     OPENSSL_PUT_ERROR(BIO, BIO_R_UNSUPPORTED_METHOD);
     return -2;
   }
-  return bio_io(bio, (char *)in, inl, BIO_CB_WRITE, &bio->num_write);
+  if (!bio->init) {
+    OPENSSL_PUT_ERROR(BIO, BIO_R_UNINITIALIZED);
+    return -2;
+  }
+  if (inl <= 0) {
+    return 0;
+  }
+  int ret = bio->method->bwrite(bio, in, inl);
+  if (ret > 0) {
+    bio->num_write += ret;
+  }
+  return ret;
 }
 
 int BIO_puts(BIO *bio, const char *in) {
@@ -204,8 +186,6 @@ int BIO_flush(BIO *bio) {
 }
 
 long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg) {
-  long ret;
-
   if (bio == NULL) {
     return 0;
   }
@@ -215,20 +195,7 @@ long BIO_ctrl(BIO *bio, int cmd, long larg, void *parg) {
     return -2;
   }
 
-  if (bio->callback != NULL) {
-    ret = bio->callback(bio, BIO_CB_CTRL, parg, cmd, larg, 1);
-    if (ret <= 0) {
-      return ret;
-    }
-  }
-
-  ret = bio->method->ctrl(bio, cmd, larg, parg);
-
-  if (bio->callback != NULL) {
-    ret = bio->callback(bio, BIO_CB_CTRL | BIO_CB_RETURN, parg, cmd, larg, ret);
-  }
-
-  return ret;
+  return bio->method->ctrl(bio, cmd, larg, parg);
 }
 
 char *BIO_ptr_ctrl(BIO *b, int cmd, long larg) {
@@ -313,9 +280,6 @@ void BIO_copy_next_retry(BIO *bio) {
 }
 
 long BIO_callback_ctrl(BIO *bio, int cmd, bio_info_cb fp) {
-  long ret;
-  bio_info_cb cb;
-
   if (bio == NULL) {
     return 0;
   }
@@ -325,22 +289,7 @@ long BIO_callback_ctrl(BIO *bio, int cmd, bio_info_cb fp) {
     return 0;
   }
 
-  cb = bio->callback;
-
-  if (cb != NULL) {
-    ret = cb(bio, BIO_CB_CTRL, (void *)&fp, cmd, 0, 1L);
-    if (ret <= 0) {
-      return ret;
-    }
-  }
-
-  ret = bio->method->callback_ctrl(bio, cmd, fp);
-
-  if (cb != NULL) {
-    ret = cb(bio, BIO_CB_CTRL | BIO_CB_RETURN, (void *)&fp, cmd, 0, ret);
-  }
-
-  return ret;
+  return bio->method->callback_ctrl(bio, cmd, fp);
 }
 
 size_t BIO_pending(const BIO *bio) {
@@ -369,18 +318,6 @@ size_t BIO_wpending(const BIO *bio) {
 
 int BIO_set_close(BIO *bio, int close_flag) {
   return BIO_ctrl(bio, BIO_CTRL_SET_CLOSE, close_flag, NULL);
-}
-
-void BIO_set_callback(BIO *bio, bio_info_cb callback_func) {
-  bio->callback = callback_func;
-}
-
-void BIO_set_callback_arg(BIO *bio, char *arg) {
-  bio->cb_arg = arg;
-}
-
-char *BIO_get_callback_arg(const BIO *bio) {
-  return bio->cb_arg;
 }
 
 OPENSSL_EXPORT size_t BIO_number_read(const BIO *bio) {

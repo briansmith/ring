@@ -84,10 +84,9 @@ DEFINE_STACK_OF(BIO)
 OPENSSL_EXPORT BIO *BIO_new(const BIO_METHOD *method);
 
 /* BIO_free decrements the reference count of |bio|. If the reference count
- * drops to zero, it (optionally) calls the BIO's callback with |BIO_CB_FREE|,
- * frees the ex_data and then, if the BIO has a destroy callback for the
- * method, calls it. Finally it frees |bio| itself. It then repeats that for
- * the next BIO in the chain, if any.
+ * drops to zero, it calls the destroy callback, if present, on the method and
+ * frees |bio| itself. It then repeats that for the next BIO in the chain, if
+ * any.
  *
  * It returns one on success or zero otherwise. */
 OPENSSL_EXPORT int BIO_free(BIO *bio);
@@ -247,18 +246,6 @@ OPENSSL_EXPORT size_t BIO_wpending(const BIO *bio);
  * as meaning that it owns its buffer. It returns one on success and zero
  * otherwise. */
 OPENSSL_EXPORT int BIO_set_close(BIO *bio, int close_flag);
-
-/* BIO_set_callback sets a callback function that will be called before and
- * after most operations. See the comment above |bio_info_cb|. */
-OPENSSL_EXPORT void BIO_set_callback(BIO *bio, bio_info_cb callback_func);
-
-/* BIO_set_callback_arg sets the opaque pointer value that can be read within a
- * callback with |BIO_get_callback_arg|. */
-OPENSSL_EXPORT void BIO_set_callback_arg(BIO *bio, char *arg);
-
-/* BIO_get_callback_arg returns the last value of the opaque callback pointer
- * set by |BIO_set_callback_arg|. */
-OPENSSL_EXPORT char *BIO_get_callback_arg(const BIO *bio);
 
 /* BIO_number_read returns the number of bytes that have been read from
  * |bio|. */
@@ -714,9 +701,6 @@ struct bio_method_st {
 
 struct bio_st {
   const BIO_METHOD *method;
-  /* bio, mode, argp, argi, argl, ret */
-  long (*callback)(BIO *, int, const char *, int, long, long);
-  char *cb_arg; /* first argument for the callback */
 
   /* init is non-zero if this |BIO| has been initialised. */
   int init;
