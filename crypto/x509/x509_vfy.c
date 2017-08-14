@@ -472,13 +472,6 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
     if (!ok)
         goto end;
 
-    /* Check name constraints */
-
-    ok = check_name_constraints(ctx);
-
-    if (!ok)
-        goto end;
-
     ok = check_id(ctx);
 
     if (!ok)
@@ -508,6 +501,12 @@ int X509_verify_cert(X509_STORE_CTX *ctx)
         ok = ctx->verify(ctx);
     else
         ok = internal_verify(ctx);
+    if (!ok)
+        goto end;
+
+    /* Check name constraints */
+
+    ok = check_name_constraints(ctx);
     if (!ok)
         goto end;
 
