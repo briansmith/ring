@@ -56,6 +56,7 @@
 
 #include <openssl/asn1.h>
 
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/err.h>
@@ -137,6 +138,11 @@ ASN1_BIT_STRING *c2i_ASN1_BIT_STRING(ASN1_BIT_STRING **a,
     if (len < 1) {
         OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_SHORT);
         goto err;
+    }
+
+    if (len > INT_MAX) {
+      OPENSSL_PUT_ERROR(ASN1, ASN1_R_STRING_TOO_LONG);
+      goto err;
     }
 
     if ((a == NULL) || ((*a) == NULL)) {
