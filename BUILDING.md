@@ -32,9 +32,8 @@
   * [Go](https://golang.org/dl/) is required. If not found by CMake, the go
     executable may be configured explicitly by setting `GO_EXECUTABLE`.
 
-  * To build the x86 and x86\_64 assembly, your assembler must support AVX2,
-    MOVBE, and ADX. If using GNU binutils, you must have 2.23 or later. If using
-    Yasm, you must have 1.3.0 or later.
+  * To build the x86 and x86\_64 assembly, your assembler must support AVX2
+    instructions and MOVBE. If using GNU binutils, you must have 2.22 or later
 
 ## Building
 
