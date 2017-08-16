@@ -135,6 +135,10 @@ static const struct argument kArguments[] = {
         "An HTTP proxy server to tunnel the TCP connection through",
     },
     {
+        "-renegotiate-freely", kBooleanArgument,
+        "Allow renegotiations from the peer.",
+    },
+    {
         "", kOptionalArgument, "",
     },
 };
@@ -260,6 +264,10 @@ static bool DoConnection(SSL_CTX *ctx,
       return false;
     }
     SSL_set_session(ssl.get(), session.get());
+  }
+
+  if (args_map.count("-renegotiate-freely") != 0) {
+    SSL_set_renegotiate_mode(ssl.get(), ssl_renegotiate_freely);
   }
 
   if (resume_session) {
