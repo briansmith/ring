@@ -59,7 +59,6 @@
 
 #include <openssl/base.h>
 
-#include <openssl/engine.h>
 #include <openssl/ex_data.h>
 #include <openssl/thread.h>
 
@@ -99,16 +98,7 @@ OPENSSL_EXPORT void DH_get0_pqg(const DH *dh, const BIGNUM **out_p,
                                 const BIGNUM **out_q, const BIGNUM **out_g);
 
 
-/* Standard parameters.
- *
- * These functions return new DH objects with standard parameters. They return
- * NULL on allocation failure. The |engine| parameter is ignored. */
-
-/* These parameters are taken from RFC 5114. */
-
-OPENSSL_EXPORT DH *DH_get_1024_160(const ENGINE *engine);
-OPENSSL_EXPORT DH *DH_get_2048_224(const ENGINE *engine);
-OPENSSL_EXPORT DH *DH_get_2048_256(const ENGINE *engine);
+/* Standard parameters. */
 
 /* BN_get_rfc3526_prime_1536 sets |*ret| to the 1536-bit MODP group from RFC
  * 3526 and returns |ret|. If |ret| is NULL then a fresh |BIGNUM| is allocated
