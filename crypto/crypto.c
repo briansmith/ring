@@ -107,7 +107,7 @@ uint32_t OPENSSL_armcap_P = 0;
 
 #if defined(BORINGSSL_NO_STATIC_INITIALIZER)
 static CRYPTO_once_t once = CRYPTO_ONCE_INIT;
-#elif defined(OPENSSL_WINDOWS)
+#elif defined(_MSC_VER)
 #pragma section(".CRT$XCU", read)
 static void __cdecl do_library_init(void);
 __declspec(allocate(".CRT$XCU")) void(*library_init_constructor)(void) =

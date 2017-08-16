@@ -68,7 +68,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if defined(OPENSSL_WINDOWS)
+#if defined(_MSC_VER)
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <immintrin.h>
 #include <intrin.h>
@@ -83,7 +83,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
  * |*out_edx|. */
 static void OPENSSL_cpuid(uint32_t *out_eax, uint32_t *out_ebx,
                           uint32_t *out_ecx, uint32_t *out_edx, uint32_t leaf) {
-#if defined(OPENSSL_WINDOWS)
+#if defined(_MSC_VER)
   int tmp[4];
   __cpuid(tmp, (int)leaf);
   *out_eax = (uint32_t)tmp[0];
@@ -114,7 +114,7 @@ static void OPENSSL_cpuid(uint32_t *out_eax, uint32_t *out_ebx,
 /* OPENSSL_xgetbv returns the value of an Intel Extended Control Register (XCR).
  * Currently only XCR0 is defined by Intel so |xcr| should always be zero. */
 static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
-#if defined(OPENSSL_WINDOWS)
+#if defined(_MSC_VER)
   return (uint64_t)_xgetbv(xcr);
 #else
   uint32_t eax, edx;

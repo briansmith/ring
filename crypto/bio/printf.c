@@ -83,7 +83,7 @@ int BIO_printf(BIO *bio, const char *format, ...) {
     va_start(args, format);
     out_len = _vscprintf(format, args);
     va_end(args);
-    assert(out_len >= sizeof(buf));
+    assert(out_len >= (int)sizeof(buf));
   }
 #endif
 
