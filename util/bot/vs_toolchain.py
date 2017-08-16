@@ -73,6 +73,11 @@ def FindDepotTools():
   raise Exception("depot_tools not found!")
 
 
+def GetVisualStudioVersion():
+  """Return GYP_MSVS_VERSION of Visual Studio."""
+  return os.environ.get('GYP_MSVS_VERSION', TOOLCHAIN_VERSION)
+
+
 def Update():
   """Requests an update of the toolchain to the specific hashes we have at
   this revision. The update outputs a .json of the various configuration
