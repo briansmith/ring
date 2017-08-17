@@ -55,7 +55,7 @@ static int NPNSelectCallback(SSL *ssl, uint8_t **out, uint8_t *out_len,
 }
 
 struct GlobalState {
-  GlobalState() : ctx(SSL_CTX_new(SSLv23_method())) {
+  GlobalState() : ctx(SSL_CTX_new(TLS_method())) {
     debug = getenv("BORINGSSL_FUZZER_DEBUG") != nullptr;
 
     const uint8_t *bufp = kRSAPrivateKeyDER;

@@ -50,7 +50,7 @@ static int NPNAdvertiseCallback(SSL *ssl, const uint8_t **out,
 
 struct GlobalState {
   GlobalState()
-      : ctx(SSL_CTX_new(SSLv23_method())) {
+      : ctx(SSL_CTX_new(TLS_method())) {
     debug = getenv("BORINGSSL_FUZZER_DEBUG") != nullptr;
 
     const uint8_t *bufp = kRSAPrivateKeyDER;
