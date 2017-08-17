@@ -58,7 +58,7 @@
 #define OPENSSL_HEADER_DECREPIT_MACROS_H
 
 
-/* NOTE - c is not incremented as per n2l */
+// NOTE - c is not incremented as per n2l
 #define n2ln(c, l1, l2, n)                       \
   {                                              \
     c += n;                                      \
@@ -83,7 +83,7 @@
     }                                            \
   }
 
-/* NOTE - c is not incremented as per l2n */
+// NOTE - c is not incremented as per l2n
 #define l2nn(l1, l2, c, n)                               \
   {                                                      \
     c += n;                                              \
@@ -120,4 +120,4 @@
    l |= ((unsigned long)(*((c)++))))
 
 
-#endif  /* OPENSSL_HEADER_DECREPIT_MACROS_H */
+#endif  // OPENSSL_HEADER_DECREPIT_MACROS_H
