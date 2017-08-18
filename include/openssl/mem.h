@@ -69,20 +69,28 @@ extern "C" {
 
 // Memory and string functions, see also buf.h.
 //
-// OpenSSL has, historically, had a complex set of malloc debugging options.
-// However, that was written in a time before Valgrind and ASAN. Since we now
-// have those tools, the OpenSSL allocation functions are simply macros around
-// the standard memory functions.
+// BoringSSL has its own set of allocation functions, which keep track of
+// allocation lengths and zero them out before freeing. All memory returned by
+// BoringSSL API calls must therefore generally be freed using |OPENSSL_free|
+// unless stated otherwise.
 
 
-#define OPENSSL_malloc malloc
-#define OPENSSL_realloc realloc
-#define OPENSSL_free free
+// OPENSSL_malloc acts like a regular |malloc|.
+OPENSSL_EXPORT void *OPENSSL_malloc(size_t size);
 
-// OPENSSL_realloc_clean acts like |realloc|, but clears the previous memory
-// buffer.  Because this is implemented as a wrapper around |malloc|, it needs
-// to be given the size of the buffer pointed to by |ptr|.
-void *OPENSSL_realloc_clean(void *ptr, size_t old_size, size_t new_size);
+// OPENSSL_free does nothing if |ptr| is NULL. Otherwise it zeros out the
+// memory allocated at |ptr| and frees it.
+OPENSSL_EXPORT void OPENSSL_free(void *ptr);
+
+// OPENSSL_realloc returns a pointer to a buffer of |new_size| bytes that
+// contains the contents of |ptr|. Unlike |realloc|, a new buffer is always
+// allocated and the data at |ptr| is always wiped and freed.
+OPENSSL_EXPORT void *OPENSSL_realloc(void *ptr, size_t new_size);
+
+// OPENSSL_realloc_clean behaves exactly like |OPENSSL_realloc|.
+// TODO(martinkr): Remove.
+OPENSSL_EXPORT void *OPENSSL_realloc_clean(void *ptr, size_t old_size,
+                                           size_t new_size);
 
 // OPENSSL_cleanse zeros out |len| bytes of memory at |ptr|. This is similar to
 // |memset_s| from C11.

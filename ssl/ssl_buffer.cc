@@ -50,7 +50,11 @@ static int ensure_buffer(SSL3_BUFFER *buf, size_t header_len, size_t cap) {
   }
 
   // Add up to |SSL3_ALIGN_PAYLOAD| - 1 bytes of slack for alignment.
-  uint8_t *new_buf = (uint8_t *)OPENSSL_malloc(cap + SSL3_ALIGN_PAYLOAD - 1);
+  //
+  // Since this buffer gets allocated quite frequently and doesn't contain any
+  // sensitive data, we allocate with malloc rather than |OPENSSL_malloc| and
+  // avoid zeroing on free.
+  uint8_t *new_buf = (uint8_t *)malloc(cap + SSL3_ALIGN_PAYLOAD - 1);
   if (new_buf == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
@@ -62,7 +66,7 @@ static int ensure_buffer(SSL3_BUFFER *buf, size_t header_len, size_t cap) {
 
   if (buf->buf != NULL) {
     OPENSSL_memcpy(new_buf + new_offset, buf->buf + buf->offset, buf->len);
-    OPENSSL_free(buf->buf);
+    free(buf->buf);  // Allocated with malloc().
   }
 
   buf->buf = new_buf;
@@ -81,7 +85,7 @@ static void consume_buffer(SSL3_BUFFER *buf, size_t len) {
 }
 
 static void clear_buffer(SSL3_BUFFER *buf) {
-  OPENSSL_free(buf->buf);
+  free(buf->buf);  // Allocated with malloc().
   OPENSSL_memset(buf, 0, sizeof(SSL3_BUFFER));
 }
 

@@ -76,30 +76,64 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include "internal.h"
 
 
-void *OPENSSL_realloc_clean(void *ptr, size_t old_size, size_t new_size) {
+#define OPENSSL_MALLOC_PREFIX 8
+
+
+void *OPENSSL_malloc(size_t size) {
+  void *ptr = malloc(size + OPENSSL_MALLOC_PREFIX);
   if (ptr == NULL) {
+    return NULL;
+  }
+
+  *(size_t *)ptr = size;
+
+  return ((uint8_t *)ptr) + OPENSSL_MALLOC_PREFIX;
+}
+
+void OPENSSL_free(void *orig_ptr) {
+  if (orig_ptr == NULL) {
+    return;
+  }
+
+  void *ptr = ((uint8_t *)orig_ptr) - OPENSSL_MALLOC_PREFIX;
+
+  size_t size = *(size_t *)ptr;
+  OPENSSL_cleanse(ptr, size + OPENSSL_MALLOC_PREFIX);
+  free(ptr);
+}
+
+void *OPENSSL_realloc(void *orig_ptr, size_t new_size) {
+  if (orig_ptr == NULL) {
     return OPENSSL_malloc(new_size);
   }
 
-  if (new_size == 0) {
-    return NULL;
-  }
-
-  // We don't support shrinking the buffer. Note the memcpy that copies
-  // |old_size| bytes to the new buffer, below.
-  if (new_size < old_size) {
-    return NULL;
-  }
+  void *ptr = ((uint8_t *)orig_ptr) - OPENSSL_MALLOC_PREFIX;
+  size_t old_size = *(size_t *)ptr;
 
   void *ret = OPENSSL_malloc(new_size);
   if (ret == NULL) {
     return NULL;
   }
 
-  OPENSSL_memcpy(ret, ptr, old_size);
-  OPENSSL_cleanse(ptr, old_size);
-  OPENSSL_free(ptr);
+  size_t to_copy = new_size;
+  if (old_size < to_copy) {
+    to_copy = old_size;
+  }
+
+  memcpy(ret, orig_ptr, to_copy);
+  OPENSSL_free(orig_ptr);
+
   return ret;
+}
+
+void *OPENSSL_realloc_clean(void *orig_ptr, size_t old_size, size_t new_size) {
+  void *ptr = ((uint8_t *)orig_ptr) - OPENSSL_MALLOC_PREFIX;
+  size_t actual_size = *(size_t *)ptr;
+  if (actual_size != old_size) {
+    return NULL;
+  }
+
+  return OPENSSL_realloc(orig_ptr, new_size);
 }
 
 void OPENSSL_cleanse(void *ptr, size_t len) {
@@ -155,15 +189,15 @@ size_t OPENSSL_strnlen(const char *s, size_t len) {
   return len;
 }
 
-#if defined(OPENSSL_WINDOWS)
-
-char *OPENSSL_strdup(const char *s) { return _strdup(s); }
-
-#else
-
-char *OPENSSL_strdup(const char *s) { return strdup(s); }
-
-#endif
+char *OPENSSL_strdup(const char *s) {
+  const size_t len = strlen(s) + 1;
+  char *ret = OPENSSL_malloc(len);
+  if (ret == NULL) {
+    return NULL;
+  }
+  OPENSSL_memcpy(ret, s, len);
+  return ret;
+}
 
 int OPENSSL_tolower(int c) {
   if (c >= 'A' && c <= 'Z') {

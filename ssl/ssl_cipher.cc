@@ -1337,11 +1337,15 @@ int ssl_create_cipher_list(
     goto err;
   }
   pref_list->ciphers = cipherstack;
-  pref_list->in_group_flags = (uint8_t *)OPENSSL_malloc(num_in_group_flags);
-  if (!pref_list->in_group_flags) {
-    goto err;
+  pref_list->in_group_flags = NULL;
+  if (num_in_group_flags) {
+    pref_list->in_group_flags = (uint8_t *)OPENSSL_malloc(num_in_group_flags);
+    if (!pref_list->in_group_flags) {
+      goto err;
+    }
+    OPENSSL_memcpy(pref_list->in_group_flags, in_group_flags,
+                   num_in_group_flags);
   }
-  OPENSSL_memcpy(pref_list->in_group_flags, in_group_flags, num_in_group_flags);
   OPENSSL_free(in_group_flags);
   in_group_flags = NULL;
   if (*out_cipher_list != NULL) {
