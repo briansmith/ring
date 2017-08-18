@@ -456,7 +456,7 @@ static EC_GROUP *ec_group_new_from_data(unsigned built_in_index) {
 
   const BN_MONT_CTX **monts = *built_in_curve_scalar_field_monts();
   if (monts != NULL) {
-    group->mont_data = monts[built_in_index];
+    group->order_mont = monts[built_in_index];
   }
 
   group->generator = P;
@@ -514,8 +514,8 @@ void EC_GROUP_free(EC_GROUP *group) {
   OPENSSL_free(group);
 }
 
-const BN_MONT_CTX *ec_group_get_mont_data(const EC_GROUP *group) {
-  return group->mont_data;
+const BN_MONT_CTX *ec_group_get_order_mont(const EC_GROUP *group) {
+  return group->order_mont;
 }
 
 EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
@@ -533,7 +533,7 @@ EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
     return NULL;
   }
 
-  ret->mont_data = a->mont_data;
+  ret->order_mont = a->order_mont;
   ret->curve_name = a->curve_name;
 
   if (a->generator != NULL) {

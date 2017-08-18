@@ -119,7 +119,7 @@ struct ec_group_st {
 
   int curve_name; /* optional NID for named curve */
 
-  const BN_MONT_CTX *mont_data; /* data for ECDSA inverse */
+  const BN_MONT_CTX *order_mont; /* data for ECDSA inverse */
 
   /* The following members are handled by the method functions,
    * even if they appear generic */
@@ -147,10 +147,10 @@ struct ec_point_st {
 EC_GROUP *ec_group_new(const EC_METHOD *meth);
 int ec_group_copy(EC_GROUP *dest, const EC_GROUP *src);
 
-/* ec_group_get_mont_data returns a Montgomery context for operations in the
- * scalar field of |group|. It may return NULL in the case that |group| is not
- * a built-in group. */
-const BN_MONT_CTX *ec_group_get_mont_data(const EC_GROUP *group);
+/* ec_group_get_order_mont returns a Montgomery context for operations modulo
+ * |group|'s order. It may return NULL in the case that |group| is not a
+ * built-in group. */
+const BN_MONT_CTX *ec_group_get_order_mont(const EC_GROUP *group);
 
 int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
                 const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx);
