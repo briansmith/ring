@@ -32,16 +32,16 @@ class Span;
 namespace internal {
 template <typename T>
 class SpanBase {
-  /* Put comparison operator implementations into a base class with const T, so
-   * they can be used with any type that implicitly converts into a Span. */
+  // Put comparison operator implementations into a base class with const T, so
+  // they can be used with any type that implicitly converts into a Span.
   static_assert(std::is_const<T>::value,
                 "Span<T> must be derived from SpanBase<const T>");
 
   friend bool operator==(Span<T> lhs, Span<T> rhs) {
-    /* MSVC issues warning C4996 because std::equal is unsafe. The pragma to
-     * suppress the warning mysteriously has no effect, hence this
-     * implementation. See
-     * https://msdn.microsoft.com/en-us/library/aa985974.aspx. */
+    // MSVC issues warning C4996 because std::equal is unsafe. The pragma to
+    // suppress the warning mysteriously has no effect, hence this
+    // implementation. See
+    // https://msdn.microsoft.com/en-us/library/aa985974.aspx.
     if (lhs.size() != rhs.size()) {
       return false;
     }
@@ -58,37 +58,37 @@ class SpanBase {
 };
 }  // namespace internal
 
-/* A Span<T> is a non-owning reference to a contiguous array of objects of type
- * |T|. Conceptually, a Span is a simple a pointer to |T| and a count of
- * elements accessible via that pointer. The elements referenced by the Span can
- * be mutated if |T| is mutable.
- *
- * A Span can be constructed from container types implementing |data()| and
- * |size()| methods. If |T| is constant, construction from a container type is
- * implicit. This allows writing methods that accept data from some unspecified
- * container type:
- *
- * // Foo views data referenced by v.
- * void Foo(bssl::Span<const uint8_t> v) { ... }
- *
- * std::vector<uint8_t> vec;
- * Foo(vec);
- *
- * For mutable Spans, conversion is explicit:
- *
- * // FooMutate mutates data referenced by v.
- * void FooMutate(bssl::Span<uint8_t> v) { ... }
- *
- * FooMutate(bssl::Span<uint8_t>(vec));
- *
- * You can also use the |MakeSpan| and |MakeConstSpan| factory methods to
- * construct Spans in order to deduce the type of the Span automatically.
- *
- * FooMutate(bssl::MakeSpan(vec));
- *
- * Note that Spans have value type sematics. They are cheap to construct and
- * copy, and should be passed by value whenever a method would otherwise accept
- * a reference or pointer to a container or array. */
+// A Span<T> is a non-owning reference to a contiguous array of objects of type
+// |T|. Conceptually, a Span is a simple a pointer to |T| and a count of
+// elements accessible via that pointer. The elements referenced by the Span can
+// be mutated if |T| is mutable.
+//
+// A Span can be constructed from container types implementing |data()| and
+// |size()| methods. If |T| is constant, construction from a container type is
+// implicit. This allows writing methods that accept data from some unspecified
+// container type:
+//
+// // Foo views data referenced by v.
+// void Foo(bssl::Span<const uint8_t> v) { ... }
+//
+// std::vector<uint8_t> vec;
+// Foo(vec);
+//
+// For mutable Spans, conversion is explicit:
+//
+// // FooMutate mutates data referenced by v.
+// void FooMutate(bssl::Span<uint8_t> v) { ... }
+//
+// FooMutate(bssl::Span<uint8_t>(vec));
+//
+// You can also use the |MakeSpan| and |MakeConstSpan| factory methods to
+// construct Spans in order to deduce the type of the Span automatically.
+//
+// FooMutate(bssl::MakeSpan(vec));
+//
+// Note that Spans have value type sematics. They are cheap to construct and
+// copy, and should be passed by value whenever a method would otherwise accept
+// a reference or pointer to a container or array.
 template <typename T>
 class Span : private internal::SpanBase<const T> {
  private:
@@ -160,4 +160,4 @@ auto MakeConstSpan(const C &c) -> decltype(MakeConstSpan(c.data(), c.size())) {
 
 #endif  // !defined(BORINGSSL_NO_CXX)
 
-#endif /* OPENSSL_HEADER_SSL_SPAN_H */
+#endif  // OPENSSL_HEADER_SSL_SPAN_H

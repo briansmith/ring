@@ -67,67 +67,67 @@ extern "C" {
 #endif
 
 
-/* Memory and string functions, see also buf.h.
- *
- * OpenSSL has, historically, had a complex set of malloc debugging options.
- * However, that was written in a time before Valgrind and ASAN. Since we now
- * have those tools, the OpenSSL allocation functions are simply macros around
- * the standard memory functions. */
+// Memory and string functions, see also buf.h.
+//
+// OpenSSL has, historically, had a complex set of malloc debugging options.
+// However, that was written in a time before Valgrind and ASAN. Since we now
+// have those tools, the OpenSSL allocation functions are simply macros around
+// the standard memory functions.
 
 
 #define OPENSSL_malloc malloc
 #define OPENSSL_realloc realloc
 #define OPENSSL_free free
 
-/* OPENSSL_realloc_clean acts like |realloc|, but clears the previous memory
- * buffer.  Because this is implemented as a wrapper around |malloc|, it needs
- * to be given the size of the buffer pointed to by |ptr|. */
+// OPENSSL_realloc_clean acts like |realloc|, but clears the previous memory
+// buffer.  Because this is implemented as a wrapper around |malloc|, it needs
+// to be given the size of the buffer pointed to by |ptr|.
 void *OPENSSL_realloc_clean(void *ptr, size_t old_size, size_t new_size);
 
-/* OPENSSL_cleanse zeros out |len| bytes of memory at |ptr|. This is similar to
- * |memset_s| from C11. */
+// OPENSSL_cleanse zeros out |len| bytes of memory at |ptr|. This is similar to
+// |memset_s| from C11.
 OPENSSL_EXPORT void OPENSSL_cleanse(void *ptr, size_t len);
 
-/* CRYPTO_memcmp returns zero iff the |len| bytes at |a| and |b| are equal. It
- * takes an amount of time dependent on |len|, but independent of the contents
- * of |a| and |b|. Unlike memcmp, it cannot be used to put elements into a
- * defined order as the return value when a != b is undefined, other than to be
- * non-zero. */
+// CRYPTO_memcmp returns zero iff the |len| bytes at |a| and |b| are equal. It
+// takes an amount of time dependent on |len|, but independent of the contents
+// of |a| and |b|. Unlike memcmp, it cannot be used to put elements into a
+// defined order as the return value when a != b is undefined, other than to be
+// non-zero.
 OPENSSL_EXPORT int CRYPTO_memcmp(const void *a, const void *b, size_t len);
 
-/* OPENSSL_hash32 implements the 32 bit, FNV-1a hash. */
+// OPENSSL_hash32 implements the 32 bit, FNV-1a hash.
 OPENSSL_EXPORT uint32_t OPENSSL_hash32(const void *ptr, size_t len);
 
-/* OPENSSL_strdup has the same behaviour as strdup(3). */
+// OPENSSL_strdup has the same behaviour as strdup(3).
 OPENSSL_EXPORT char *OPENSSL_strdup(const char *s);
 
-/* OPENSSL_strnlen has the same behaviour as strnlen(3). */
+// OPENSSL_strnlen has the same behaviour as strnlen(3).
 OPENSSL_EXPORT size_t OPENSSL_strnlen(const char *s, size_t len);
 
-/* OPENSSL_tolower is a locale-independent version of tolower(3). */
+// OPENSSL_tolower is a locale-independent version of tolower(3).
 OPENSSL_EXPORT int OPENSSL_tolower(int c);
 
-/* OPENSSL_strcasecmp is a locale-independent version of strcasecmp(3). */
+// OPENSSL_strcasecmp is a locale-independent version of strcasecmp(3).
 OPENSSL_EXPORT int OPENSSL_strcasecmp(const char *a, const char *b);
 
-/* OPENSSL_strncasecmp is a locale-independent version of strncasecmp(3). */
+// OPENSSL_strncasecmp is a locale-independent version of strncasecmp(3).
 OPENSSL_EXPORT int OPENSSL_strncasecmp(const char *a, const char *b, size_t n);
 
-/* DECIMAL_SIZE returns an upper bound for the length of the decimal
- * representation of the given type. */
+// DECIMAL_SIZE returns an upper bound for the length of the decimal
+// representation of the given type.
 #define DECIMAL_SIZE(type)	((sizeof(type)*8+2)/3+1)
 
-/* BIO_snprintf has the same behavior as snprintf(3). */
+// BIO_snprintf has the same behavior as snprintf(3).
 OPENSSL_EXPORT int BIO_snprintf(char *buf, size_t n, const char *format, ...)
     OPENSSL_PRINTF_FORMAT_FUNC(3, 4);
 
-/* BIO_vsnprintf has the same behavior as vsnprintf(3). */
+// BIO_vsnprintf has the same behavior as vsnprintf(3).
 OPENSSL_EXPORT int BIO_vsnprintf(char *buf, size_t n, const char *format,
                                  va_list args)
     OPENSSL_PRINTF_FORMAT_FUNC(3, 0);
 
 
-/* Deprecated functions. */
+// Deprecated functions.
 
 #define CRYPTO_malloc OPENSSL_malloc
 #define CRYPTO_realloc OPENSSL_realloc
@@ -135,7 +135,7 @@ OPENSSL_EXPORT int BIO_vsnprintf(char *buf, size_t n, const char *format,
 
 
 #if defined(__cplusplus)
-}  /* extern C */
+}  // extern C
 
 extern "C++" {
 
@@ -146,8 +146,8 @@ BORINGSSL_MAKE_DELETER(uint8_t, OPENSSL_free)
 
 }  // namespace bssl
 
-}  /* extern C++ */
+}  // extern C++
 
 #endif
 
-#endif  /* OPENSSL_HEADER_MEM_H */
+#endif  // OPENSSL_HEADER_MEM_H
