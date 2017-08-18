@@ -75,4 +75,4 @@ inline void SetupGoogleTest() {
 }  // namespace bssl
 
 
-#endif /* OPENSSL_HEADER_CRYPTO_TEST_GTEST_MAIN_H */
+#endif  // OPENSSL_HEADER_CRYPTO_TEST_GTEST_MAIN_H

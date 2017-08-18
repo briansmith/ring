@@ -157,7 +157,7 @@ int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
     }
   } else {
     if (n == 0) {
-      return 1; /* or the copying loop will go berserk */
+      return 1;  // or the copying loop will go berserk
     }
   }
 

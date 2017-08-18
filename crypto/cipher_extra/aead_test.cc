@@ -393,14 +393,14 @@ TEST_P(PerAEADTest, CleanupAfterInitFailure) {
       9999 /* a silly tag length to trigger an error */, NULL /* ENGINE */));
   ERR_clear_error();
 
-  /* Running a second, failed _init should not cause a memory leak. */
+  // Running a second, failed _init should not cause a memory leak.
   ASSERT_FALSE(EVP_AEAD_CTX_init(
       &ctx, aead(), key, key_len,
       9999 /* a silly tag length to trigger an error */, NULL /* ENGINE */));
   ERR_clear_error();
 
-  /* Calling _cleanup on an |EVP_AEAD_CTX| after a failed _init should be a
-   * no-op. */
+  // Calling _cleanup on an |EVP_AEAD_CTX| after a failed _init should be a
+  // no-op.
   EVP_AEAD_CTX_cleanup(&ctx);
 }
 

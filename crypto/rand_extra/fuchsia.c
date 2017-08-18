@@ -40,4 +40,4 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   }
 }
 
-#endif /* OPENSSL_FUCHSIA && !BORINGSSL_UNSAFE_DETERMINISTIC_MODE */
+#endif  // OPENSSL_FUCHSIA && !BORINGSSL_UNSAFE_DETERMINISTIC_MODE

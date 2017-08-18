@@ -242,13 +242,13 @@ TEST(ECDSATest, MaxSigLen) {
     SCOPED_TRACE(bits);
     size_t order_len = BitsToBytes(bits);
 
-    /* Create the largest possible |ECDSA_SIG| of the given constraints. */
+    // Create the largest possible |ECDSA_SIG| of the given constraints.
     bssl::UniquePtr<ECDSA_SIG> sig(ECDSA_SIG_new());
     ASSERT_TRUE(sig);
     std::vector<uint8_t> bytes(order_len, 0xff);
     ASSERT_TRUE(BN_bin2bn(bytes.data(), bytes.size(), sig->r));
     ASSERT_TRUE(BN_bin2bn(bytes.data(), bytes.size(), sig->s));
-    /* Serialize it. */
+    // Serialize it.
     uint8_t *der;
     size_t der_len;
     ASSERT_TRUE(ECDSA_SIG_to_bytes(&der, &der_len, sig.get()));

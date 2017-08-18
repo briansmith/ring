@@ -12,12 +12,12 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-/* This code is mostly taken from the ref10 version of Ed25519 in SUPERCOP
- * 20141124 (http://bench.cr.yp.to/supercop.html). That code is released as
- * public domain but this file has the ISC license just to keep licencing
- * simple.
- *
- * The field functions are shared by Ed25519 and X25519 where possible. */
+// This code is mostly taken from the ref10 version of Ed25519 in SUPERCOP
+// 20141124 (http://bench.cr.yp.to/supercop.html). That code is released as
+// public domain but this file has the ISC license just to keep licencing
+// simple.
+//
+// The field functions are shared by Ed25519 and X25519 where possible.
 
 #include <openssl/curve25519.h>
 
@@ -55,7 +55,7 @@ static uint64_t load_4(const uint8_t *in) {
 }
 
 static void fe_frombytes(fe h, const uint8_t *s) {
-  /* Ignores top bit of h. */
+  // Ignores top bit of h.
   int64_t h0 = load_4(s);
   int64_t h1 = load_3(s + 4) << 6;
   int64_t h2 = load_3(s + 7) << 5;
@@ -101,28 +101,28 @@ static void fe_frombytes(fe h, const uint8_t *s) {
   h[9] = h9;
 }
 
-/* Preconditions:
- *  |h| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc.
- *
- * Write p=2^255-19; q=floor(h/p).
- * Basic claim: q = floor(2^(-255)(h + 19 2^(-25)h9 + 2^(-1))).
- *
- * Proof:
- *   Have |h|<=p so |q|<=1 so |19^2 2^(-255) q|<1/4.
- *   Also have |h-2^230 h9|<2^231 so |19 2^(-255)(h-2^230 h9)|<1/4.
- *
- *   Write y=2^(-1)-19^2 2^(-255)q-19 2^(-255)(h-2^230 h9).
- *   Then 0<y<1.
- *
- *   Write r=h-pq.
- *   Have 0<=r<=p-1=2^255-20.
- *   Thus 0<=r+19(2^-255)r<r+19(2^-255)2^255<=2^255-1.
- *
- *   Write x=r+19(2^-255)r+y.
- *   Then 0<x<2^255 so floor(2^(-255)x) = 0 so floor(q+2^(-255)x) = q.
- *
- *   Have q+2^(-255)x = 2^(-255)(h + 19 2^(-25) h9 + 2^(-1))
- *   so floor(2^(-255)(h + 19 2^(-25) h9 + 2^(-1))) = q. */
+// Preconditions:
+//  |h| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc.
+//
+// Write p=2^255-19; q=floor(h/p).
+// Basic claim: q = floor(2^(-255)(h + 19 2^(-25)h9 + 2^(-1))).
+//
+// Proof:
+//   Have |h|<=p so |q|<=1 so |19^2 2^(-255) q|<1/4.
+//   Also have |h-2^230 h9|<2^231 so |19 2^(-255)(h-2^230 h9)|<1/4.
+//
+//   Write y=2^(-1)-19^2 2^(-255)q-19 2^(-255)(h-2^230 h9).
+//   Then 0<y<1.
+//
+//   Write r=h-pq.
+//   Have 0<=r<=p-1=2^255-20.
+//   Thus 0<=r+19(2^-255)r<r+19(2^-255)2^255<=2^255-1.
+//
+//   Write x=r+19(2^-255)r+y.
+//   Then 0<x<2^255 so floor(2^(-255)x) = 0 so floor(q+2^(-255)x) = q.
+//
+//   Have q+2^(-255)x = 2^(-255)(h + 19 2^(-25) h9 + 2^(-1))
+//   so floor(2^(-255)(h + 19 2^(-25) h9 + 2^(-1))) = q.
 static void fe_tobytes(uint8_t *s, const fe h) {
   int32_t h0 = h[0];
   int32_t h1 = h[1];
@@ -148,9 +148,9 @@ static void fe_tobytes(uint8_t *s, const fe h) {
   q = (h8 + q) >> 26;
   q = (h9 + q) >> 25;
 
-  /* Goal: Output h-(2^255-19)q, which is between 0 and 2^255-20. */
+  // Goal: Output h-(2^255-19)q, which is between 0 and 2^255-20.
   h0 += 19 * q;
-  /* Goal: Output h-2^255 q, which is between 0 and 2^255-20. */
+  // Goal: Output h-2^255 q, which is between 0 and 2^255-20.
 
   h1 += h0 >> 26; h0 &= kBottom26Bits;
   h2 += h1 >> 25; h1 &= kBottom25Bits;
@@ -162,12 +162,12 @@ static void fe_tobytes(uint8_t *s, const fe h) {
   h8 += h7 >> 25; h7 &= kBottom25Bits;
   h9 += h8 >> 26; h8 &= kBottom26Bits;
                   h9 &= kBottom25Bits;
-                  /* h10 = carry9 */
+                  // h10 = carry9
 
-  /* Goal: Output h0+...+2^255 h10-2^255 q, which is between 0 and 2^255-20.
-   * Have h0+...+2^230 h9 between 0 and 2^255-1;
-   * evidently 2^255 h10-2^255 q = 0.
-   * Goal: Output h0+...+2^230 h9.  */
+  // Goal: Output h0+...+2^255 h10-2^255 q, which is between 0 and 2^255-20.
+  // Have h0+...+2^230 h9 between 0 and 2^255-1;
+  // evidently 2^255 h10-2^255 q = 0.
+  // Goal: Output h0+...+2^230 h9.
 
   s[0] = h0 >> 0;
   s[1] = h0 >> 8;
@@ -203,29 +203,29 @@ static void fe_tobytes(uint8_t *s, const fe h) {
   s[31] = h9 >> 18;
 }
 
-/* h = f */
+// h = f
 static void fe_copy(fe h, const fe f) {
   OPENSSL_memmove(h, f, sizeof(int32_t) * 10);
 }
 
-/* h = 0 */
+// h = 0
 static void fe_0(fe h) { OPENSSL_memset(h, 0, sizeof(int32_t) * 10); }
 
-/* h = 1 */
+// h = 1
 static void fe_1(fe h) {
   OPENSSL_memset(h, 0, sizeof(int32_t) * 10);
   h[0] = 1;
 }
 
-/* h = f + g
- * Can overlap h with f or g.
- *
- * Preconditions:
- *    |f| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
- *    |g| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
- *
- * Postconditions:
- *    |h| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc. */
+// h = f + g
+// Can overlap h with f or g.
+//
+// Preconditions:
+//    |f| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
+//    |g| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
+//
+// Postconditions:
+//    |h| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc.
 static void fe_add(fe h, const fe f, const fe g) {
   unsigned i;
   for (i = 0; i < 10; i++) {
@@ -233,15 +233,15 @@ static void fe_add(fe h, const fe f, const fe g) {
   }
 }
 
-/* h = f - g
- * Can overlap h with f or g.
- *
- * Preconditions:
- *    |f| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
- *    |g| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
- *
- * Postconditions:
- *    |h| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc. */
+// h = f - g
+// Can overlap h with f or g.
+//
+// Preconditions:
+//    |f| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
+//    |g| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
+//
+// Postconditions:
+//    |h| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc.
 static void fe_sub(fe h, const fe f, const fe g) {
   unsigned i;
   for (i = 0; i < 10; i++) {
@@ -249,33 +249,33 @@ static void fe_sub(fe h, const fe f, const fe g) {
   }
 }
 
-/* h = f * g
- * Can overlap h with f or g.
- *
- * Preconditions:
- *    |f| bounded by 1.65*2^26,1.65*2^25,1.65*2^26,1.65*2^25,etc.
- *    |g| bounded by 1.65*2^26,1.65*2^25,1.65*2^26,1.65*2^25,etc.
- *
- * Postconditions:
- *    |h| bounded by 1.01*2^25,1.01*2^24,1.01*2^25,1.01*2^24,etc.
- *
- * Notes on implementation strategy:
- *
- * Using schoolbook multiplication.
- * Karatsuba would save a little in some cost models.
- *
- * Most multiplications by 2 and 19 are 32-bit precomputations;
- * cheaper than 64-bit postcomputations.
- *
- * There is one remaining multiplication by 19 in the carry chain;
- * one *19 precomputation can be merged into this,
- * but the resulting data flow is considerably less clean.
- *
- * There are 12 carries below.
- * 10 of them are 2-way parallelizable and vectorizable.
- * Can get away with 11 carries, but then data flow is much deeper.
- *
- * With tighter constraints on inputs can squeeze carries into int32. */
+// h = f * g
+// Can overlap h with f or g.
+//
+// Preconditions:
+//    |f| bounded by 1.65*2^26,1.65*2^25,1.65*2^26,1.65*2^25,etc.
+//    |g| bounded by 1.65*2^26,1.65*2^25,1.65*2^26,1.65*2^25,etc.
+//
+// Postconditions:
+//    |h| bounded by 1.01*2^25,1.01*2^24,1.01*2^25,1.01*2^24,etc.
+//
+// Notes on implementation strategy:
+//
+// Using schoolbook multiplication.
+// Karatsuba would save a little in some cost models.
+//
+// Most multiplications by 2 and 19 are 32-bit precomputations;
+// cheaper than 64-bit postcomputations.
+//
+// There is one remaining multiplication by 19 in the carry chain;
+// one *19 precomputation can be merged into this,
+// but the resulting data flow is considerably less clean.
+//
+// There are 12 carries below.
+// 10 of them are 2-way parallelizable and vectorizable.
+// Can get away with 11 carries, but then data flow is much deeper.
+//
+// With tighter constraints on inputs can squeeze carries into int32.
 static void fe_mul(fe h, const fe f, const fe g) {
   int32_t f0 = f[0];
   int32_t f1 = f[1];
@@ -297,8 +297,8 @@ static void fe_mul(fe h, const fe f, const fe g) {
   int32_t g7 = g[7];
   int32_t g8 = g[8];
   int32_t g9 = g[9];
-  int32_t g1_19 = 19 * g1; /* 1.959375*2^29 */
-  int32_t g2_19 = 19 * g2; /* 1.959375*2^30; still ok */
+  int32_t g1_19 = 19 * g1;  // 1.959375*2^29
+  int32_t g2_19 = 19 * g2;  // 1.959375*2^30; still ok
   int32_t g3_19 = 19 * g3;
   int32_t g4_19 = 19 * g4;
   int32_t g5_19 = 19 * g5;
@@ -432,53 +432,53 @@ static void fe_mul(fe h, const fe f, const fe g) {
   int64_t carry8;
   int64_t carry9;
 
-  /* |h0| <= (1.65*1.65*2^52*(1+19+19+19+19)+1.65*1.65*2^50*(38+38+38+38+38))
-   *   i.e. |h0| <= 1.4*2^60; narrower ranges for h2, h4, h6, h8
-   * |h1| <= (1.65*1.65*2^51*(1+1+19+19+19+19+19+19+19+19))
-   *   i.e. |h1| <= 1.7*2^59; narrower ranges for h3, h5, h7, h9 */
+  // |h0| <= (1.65*1.65*2^52*(1+19+19+19+19)+1.65*1.65*2^50*(38+38+38+38+38))
+  //   i.e. |h0| <= 1.4*2^60; narrower ranges for h2, h4, h6, h8
+  // |h1| <= (1.65*1.65*2^51*(1+1+19+19+19+19+19+19+19+19))
+  //   i.e. |h1| <= 1.7*2^59; narrower ranges for h3, h5, h7, h9
 
   carry0 = h0 + (1 << 25); h1 += carry0 >> 26; h0 -= carry0 & kTop38Bits;
   carry4 = h4 + (1 << 25); h5 += carry4 >> 26; h4 -= carry4 & kTop38Bits;
-  /* |h0| <= 2^25 */
-  /* |h4| <= 2^25 */
-  /* |h1| <= 1.71*2^59 */
-  /* |h5| <= 1.71*2^59 */
+  // |h0| <= 2^25
+  // |h4| <= 2^25
+  // |h1| <= 1.71*2^59
+  // |h5| <= 1.71*2^59
 
   carry1 = h1 + (1 << 24); h2 += carry1 >> 25; h1 -= carry1 & kTop39Bits;
   carry5 = h5 + (1 << 24); h6 += carry5 >> 25; h5 -= carry5 & kTop39Bits;
-  /* |h1| <= 2^24; from now on fits into int32 */
-  /* |h5| <= 2^24; from now on fits into int32 */
-  /* |h2| <= 1.41*2^60 */
-  /* |h6| <= 1.41*2^60 */
+  // |h1| <= 2^24; from now on fits into int32
+  // |h5| <= 2^24; from now on fits into int32
+  // |h2| <= 1.41*2^60
+  // |h6| <= 1.41*2^60
 
   carry2 = h2 + (1 << 25); h3 += carry2 >> 26; h2 -= carry2 & kTop38Bits;
   carry6 = h6 + (1 << 25); h7 += carry6 >> 26; h6 -= carry6 & kTop38Bits;
-  /* |h2| <= 2^25; from now on fits into int32 unchanged */
-  /* |h6| <= 2^25; from now on fits into int32 unchanged */
-  /* |h3| <= 1.71*2^59 */
-  /* |h7| <= 1.71*2^59 */
+  // |h2| <= 2^25; from now on fits into int32 unchanged
+  // |h6| <= 2^25; from now on fits into int32 unchanged
+  // |h3| <= 1.71*2^59
+  // |h7| <= 1.71*2^59
 
   carry3 = h3 + (1 << 24); h4 += carry3 >> 25; h3 -= carry3 & kTop39Bits;
   carry7 = h7 + (1 << 24); h8 += carry7 >> 25; h7 -= carry7 & kTop39Bits;
-  /* |h3| <= 2^24; from now on fits into int32 unchanged */
-  /* |h7| <= 2^24; from now on fits into int32 unchanged */
-  /* |h4| <= 1.72*2^34 */
-  /* |h8| <= 1.41*2^60 */
+  // |h3| <= 2^24; from now on fits into int32 unchanged
+  // |h7| <= 2^24; from now on fits into int32 unchanged
+  // |h4| <= 1.72*2^34
+  // |h8| <= 1.41*2^60
 
   carry4 = h4 + (1 << 25); h5 += carry4 >> 26; h4 -= carry4 & kTop38Bits;
   carry8 = h8 + (1 << 25); h9 += carry8 >> 26; h8 -= carry8 & kTop38Bits;
-  /* |h4| <= 2^25; from now on fits into int32 unchanged */
-  /* |h8| <= 2^25; from now on fits into int32 unchanged */
-  /* |h5| <= 1.01*2^24 */
-  /* |h9| <= 1.71*2^59 */
+  // |h4| <= 2^25; from now on fits into int32 unchanged
+  // |h8| <= 2^25; from now on fits into int32 unchanged
+  // |h5| <= 1.01*2^24
+  // |h9| <= 1.71*2^59
 
   carry9 = h9 + (1 << 24); h0 += (carry9 >> 25) * 19; h9 -= carry9 & kTop39Bits;
-  /* |h9| <= 2^24; from now on fits into int32 unchanged */
-  /* |h0| <= 1.1*2^39 */
+  // |h9| <= 2^24; from now on fits into int32 unchanged
+  // |h0| <= 1.1*2^39
 
   carry0 = h0 + (1 << 25); h1 += carry0 >> 26; h0 -= carry0 & kTop38Bits;
-  /* |h0| <= 2^25; from now on fits into int32 unchanged */
-  /* |h1| <= 1.01*2^24 */
+  // |h0| <= 2^25; from now on fits into int32 unchanged
+  // |h1| <= 1.01*2^24
 
   h[0] = h0;
   h[1] = h1;
@@ -492,16 +492,16 @@ static void fe_mul(fe h, const fe f, const fe g) {
   h[9] = h9;
 }
 
-/* h = f * f
- * Can overlap h with f.
- *
- * Preconditions:
- *    |f| bounded by 1.65*2^26,1.65*2^25,1.65*2^26,1.65*2^25,etc.
- *
- * Postconditions:
- *    |h| bounded by 1.01*2^25,1.01*2^24,1.01*2^25,1.01*2^24,etc.
- *
- * See fe_mul.c for discussion of implementation strategy. */
+// h = f * f
+// Can overlap h with f.
+//
+// Preconditions:
+//    |f| bounded by 1.65*2^26,1.65*2^25,1.65*2^26,1.65*2^25,etc.
+//
+// Postconditions:
+//    |h| bounded by 1.01*2^25,1.01*2^24,1.01*2^25,1.01*2^24,etc.
+//
+// See fe_mul.c for discussion of implementation strategy.
 static void fe_sq(fe h, const fe f) {
   int32_t f0 = f[0];
   int32_t f1 = f[1];
@@ -521,11 +521,11 @@ static void fe_sq(fe h, const fe f) {
   int32_t f5_2 = 2 * f5;
   int32_t f6_2 = 2 * f6;
   int32_t f7_2 = 2 * f7;
-  int32_t f5_38 = 38 * f5; /* 1.959375*2^30 */
-  int32_t f6_19 = 19 * f6; /* 1.959375*2^30 */
-  int32_t f7_38 = 38 * f7; /* 1.959375*2^30 */
-  int32_t f8_19 = 19 * f8; /* 1.959375*2^30 */
-  int32_t f9_38 = 38 * f9; /* 1.959375*2^30 */
+  int32_t f5_38 = 38 * f5;  // 1.959375*2^30
+  int32_t f6_19 = 19 * f6;  // 1.959375*2^30
+  int32_t f7_38 = 38 * f7;  // 1.959375*2^30
+  int32_t f8_19 = 19 * f8;  // 1.959375*2^30
+  int32_t f9_38 = 38 * f9;  // 1.959375*2^30
   int64_t f0f0    = f0   * (int64_t) f0;
   int64_t f0f1_2  = f0_2 * (int64_t) f1;
   int64_t f0f2_2  = f0_2 * (int64_t) f2;
@@ -691,13 +691,13 @@ static void fe_invert(fe out, const fe z) {
   fe_mul(out, t1, t0);
 }
 
-/* h = -f
- *
- * Preconditions:
- *    |f| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
- *
- * Postconditions:
- *    |h| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc. */
+// h = -f
+//
+// Preconditions:
+//    |f| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
+//
+// Postconditions:
+//    |h| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
 static void fe_neg(fe h, const fe f) {
   unsigned i;
   for (i = 0; i < 10; i++) {
@@ -705,10 +705,10 @@ static void fe_neg(fe h, const fe f) {
   }
 }
 
-/* Replace (f,g) with (g,g) if b == 1;
- * replace (f,g) with (f,g) if b == 0.
- *
- * Preconditions: b in {0,1}. */
+// Replace (f,g) with (g,g) if b == 1;
+// replace (f,g) with (f,g) if b == 0.
+//
+// Preconditions: b in {0,1}.
 static void fe_cmov(fe f, const fe g, unsigned b) {
   b = 0-b;
   unsigned i;
@@ -719,11 +719,11 @@ static void fe_cmov(fe f, const fe g, unsigned b) {
   }
 }
 
-/* return 0 if f == 0
- * return 1 if f != 0
- *
- * Preconditions:
- *    |f| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc. */
+// return 0 if f == 0
+// return 1 if f != 0
+//
+// Preconditions:
+//    |f| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc.
 static int fe_isnonzero(const fe f) {
   uint8_t s[32];
   fe_tobytes(s, f);
@@ -732,27 +732,27 @@ static int fe_isnonzero(const fe f) {
   return CRYPTO_memcmp(s, zero, sizeof(zero)) != 0;
 }
 
-/* return 1 if f is in {1,3,5,...,q-2}
- * return 0 if f is in {0,2,4,...,q-1}
- *
- * Preconditions:
- *    |f| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc. */
+// return 1 if f is in {1,3,5,...,q-2}
+// return 0 if f is in {0,2,4,...,q-1}
+//
+// Preconditions:
+//    |f| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc.
 static int fe_isnegative(const fe f) {
   uint8_t s[32];
   fe_tobytes(s, f);
   return s[0] & 1;
 }
 
-/* h = 2 * f * f
- * Can overlap h with f.
- *
- * Preconditions:
- *    |f| bounded by 1.65*2^26,1.65*2^25,1.65*2^26,1.65*2^25,etc.
- *
- * Postconditions:
- *    |h| bounded by 1.01*2^25,1.01*2^24,1.01*2^25,1.01*2^24,etc.
- *
- * See fe_mul.c for discussion of implementation strategy. */
+// h = 2 * f * f
+// Can overlap h with f.
+//
+// Preconditions:
+//    |f| bounded by 1.65*2^26,1.65*2^25,1.65*2^26,1.65*2^25,etc.
+//
+// Postconditions:
+//    |h| bounded by 1.01*2^25,1.01*2^24,1.01*2^25,1.01*2^24,etc.
+//
+// See fe_mul.c for discussion of implementation strategy.
 static void fe_sq2(fe h, const fe f) {
   int32_t f0 = f[0];
   int32_t f1 = f[1];
@@ -772,11 +772,11 @@ static void fe_sq2(fe h, const fe f) {
   int32_t f5_2 = 2 * f5;
   int32_t f6_2 = 2 * f6;
   int32_t f7_2 = 2 * f7;
-  int32_t f5_38 = 38 * f5; /* 1.959375*2^30 */
-  int32_t f6_19 = 19 * f6; /* 1.959375*2^30 */
-  int32_t f7_38 = 38 * f7; /* 1.959375*2^30 */
-  int32_t f8_19 = 19 * f8; /* 1.959375*2^30 */
-  int32_t f9_38 = 38 * f9; /* 1.959375*2^30 */
+  int32_t f5_38 = 38 * f5;  // 1.959375*2^30
+  int32_t f6_19 = 19 * f6;  // 1.959375*2^30
+  int32_t f7_38 = 38 * f7;  // 1.959375*2^30
+  int32_t f8_19 = 19 * f8;  // 1.959375*2^30
+  int32_t f9_38 = 38 * f9;  // 1.959375*2^30
   int64_t f0f0    = f0   * (int64_t) f0;
   int64_t f0f1_2  = f0_2 * (int64_t) f1;
   int64_t f0f2_2  = f0_2 * (int64_t) f2;
@@ -993,24 +993,24 @@ int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   fe_1(h->Z);
   fe_sq(u, h->Y);
   fe_mul(v, u, d);
-  fe_sub(u, u, h->Z); /* u = y^2-1 */
-  fe_add(v, v, h->Z); /* v = dy^2+1 */
+  fe_sub(u, u, h->Z);  // u = y^2-1
+  fe_add(v, v, h->Z);  // v = dy^2+1
 
   fe_sq(v3, v);
-  fe_mul(v3, v3, v); /* v3 = v^3 */
+  fe_mul(v3, v3, v);  // v3 = v^3
   fe_sq(h->X, v3);
   fe_mul(h->X, h->X, v);
-  fe_mul(h->X, h->X, u); /* x = uv^7 */
+  fe_mul(h->X, h->X, u);  // x = uv^7
 
-  fe_pow22523(h->X, h->X); /* x = (uv^7)^((q-5)/8) */
+  fe_pow22523(h->X, h->X);  // x = (uv^7)^((q-5)/8)
   fe_mul(h->X, h->X, v3);
-  fe_mul(h->X, h->X, u); /* x = uv^3(uv^7)^((q-5)/8) */
+  fe_mul(h->X, h->X, u);  // x = uv^3(uv^7)^((q-5)/8)
 
   fe_sq(vxx, h->X);
   fe_mul(vxx, vxx, v);
-  fe_sub(check, vxx, u); /* vx^2-u */
+  fe_sub(check, vxx, u);  // vx^2-u
   if (fe_isnonzero(check)) {
-    fe_add(check, vxx, u); /* vx^2+u */
+    fe_add(check, vxx, u);  // vx^2+u
     if (fe_isnonzero(check)) {
       return -1;
     }
@@ -1051,7 +1051,7 @@ static void ge_precomp_0(ge_precomp *h) {
   fe_0(h->xy2d);
 }
 
-/* r = p */
+// r = p
 static void ge_p3_to_p2(ge_p2 *r, const ge_p3 *p) {
   fe_copy(r->X, p->X);
   fe_copy(r->Y, p->Y);
@@ -1061,7 +1061,7 @@ static void ge_p3_to_p2(ge_p2 *r, const ge_p3 *p) {
 static const fe d2 = {-21827239, -5839606,  -30745221, 13898782, 229458,
                       15978800,  -12551817, -6495438,  29715968, 9444199};
 
-/* r = p */
+// r = p
 void x25519_ge_p3_to_cached(ge_cached *r, const ge_p3 *p) {
   fe_add(r->YplusX, p->Y, p->X);
   fe_sub(r->YminusX, p->Y, p->X);
@@ -1069,14 +1069,14 @@ void x25519_ge_p3_to_cached(ge_cached *r, const ge_p3 *p) {
   fe_mul(r->T2d, p->T, d2);
 }
 
-/* r = p */
+// r = p
 void x25519_ge_p1p1_to_p2(ge_p2 *r, const ge_p1p1 *p) {
   fe_mul(r->X, p->X, p->T);
   fe_mul(r->Y, p->Y, p->Z);
   fe_mul(r->Z, p->Z, p->T);
 }
 
-/* r = p */
+// r = p
 void x25519_ge_p1p1_to_p3(ge_p3 *r, const ge_p1p1 *p) {
   fe_mul(r->X, p->X, p->T);
   fe_mul(r->Y, p->Y, p->Z);
@@ -1084,14 +1084,14 @@ void x25519_ge_p1p1_to_p3(ge_p3 *r, const ge_p1p1 *p) {
   fe_mul(r->T, p->X, p->Y);
 }
 
-/* r = p */
+// r = p
 static void ge_p1p1_to_cached(ge_cached *r, const ge_p1p1 *p) {
   ge_p3 t;
   x25519_ge_p1p1_to_p3(&t, p);
   x25519_ge_p3_to_cached(r, &t);
 }
 
-/* r = 2 * p */
+// r = 2 * p
 static void ge_p2_dbl(ge_p1p1 *r, const ge_p2 *p) {
   fe t0;
 
@@ -1106,14 +1106,14 @@ static void ge_p2_dbl(ge_p1p1 *r, const ge_p2 *p) {
   fe_sub(r->T, r->T, r->Z);
 }
 
-/* r = 2 * p */
+// r = 2 * p
 static void ge_p3_dbl(ge_p1p1 *r, const ge_p3 *p) {
   ge_p2 q;
   ge_p3_to_p2(&q, p);
   ge_p2_dbl(r, &q);
 }
 
-/* r = p + q */
+// r = p + q
 static void ge_madd(ge_p1p1 *r, const ge_p3 *p, const ge_precomp *q) {
   fe t0;
 
@@ -1129,7 +1129,7 @@ static void ge_madd(ge_p1p1 *r, const ge_p3 *p, const ge_precomp *q) {
   fe_sub(r->T, t0, r->T);
 }
 
-/* r = p - q */
+// r = p - q
 static void ge_msub(ge_p1p1 *r, const ge_p3 *p, const ge_precomp *q) {
   fe t0;
 
@@ -1145,7 +1145,7 @@ static void ge_msub(ge_p1p1 *r, const ge_p3 *p, const ge_precomp *q) {
   fe_add(r->T, t0, r->T);
 }
 
-/* r = p + q */
+// r = p + q
 void x25519_ge_add(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q) {
   fe t0;
 
@@ -1162,7 +1162,7 @@ void x25519_ge_add(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q) {
   fe_sub(r->T, t0, r->T);
 }
 
-/* r = p - q */
+// r = p - q
 void x25519_ge_sub(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q) {
   fe t0;
 
@@ -1182,10 +1182,10 @@ void x25519_ge_sub(ge_p1p1 *r, const ge_p3 *p, const ge_cached *q) {
 static uint8_t equal(signed char b, signed char c) {
   uint8_t ub = b;
   uint8_t uc = c;
-  uint8_t x = ub ^ uc; /* 0: yes; 1..255: no */
-  uint32_t y = x;      /* 0: yes; 1..255: no */
-  y -= 1;              /* 4294967295: yes; 0..254: no */
-  y >>= 31;            /* 1: yes; 0: no */
+  uint8_t x = ub ^ uc;  // 0: yes; 1..255: no
+  uint32_t y = x;       // 0: yes; 1..255: no
+  y -= 1;               // 4294967295: yes; 0..254: no
+  y >>= 31;             // 1: yes; 0: no
   return y;
 }
 
@@ -1197,8 +1197,8 @@ static void cmov(ge_precomp *t, const ge_precomp *u, uint8_t b) {
 
 void x25519_ge_scalarmult_small_precomp(
     ge_p3 *h, const uint8_t a[32], const uint8_t precomp_table[15 * 2 * 32]) {
-  /* precomp_table is first expanded into matching |ge_precomp|
-   * elements. */
+  // precomp_table is first expanded into matching |ge_precomp|
+  // elements.
   ge_precomp multiples[15];
 
   unsigned i;
@@ -1215,9 +1215,9 @@ void x25519_ge_scalarmult_small_precomp(
     fe_mul(out->xy2d, out->xy2d, d2);
   }
 
-  /* See the comment above |k25519SmallPrecomp| about the structure of the
-   * precomputed elements. This loop does 64 additions and 64 doublings to
-   * calculate the result. */
+  // See the comment above |k25519SmallPrecomp| about the structure of the
+  // precomputed elements. This loop does 64 additions and 64 doublings to
+  // calculate the result.
   ge_p3_0(h);
 
   for (i = 63; i < 64; i--) {
@@ -1249,14 +1249,14 @@ void x25519_ge_scalarmult_small_precomp(
 
 #if defined(OPENSSL_SMALL)
 
-/* This block of code replaces the standard base-point table with a much smaller
- * one. The standard table is 30,720 bytes while this one is just 960.
- *
- * This table contains 15 pairs of group elements, (x, y), where each field
- * element is serialised with |fe_tobytes|. If |i| is the index of the group
- * element then consider i+1 as a four-bit number: (i₀, i₁, i₂, i₃) (where i₀
- * is the most significant bit). The value of the group element is then:
- * (i₀×2^192 + i₁×2^128 + i₂×2^64 + i₃)G, where G is the generator. */
+// This block of code replaces the standard base-point table with a much smaller
+// one. The standard table is 30,720 bytes while this one is just 960.
+//
+// This table contains 15 pairs of group elements, (x, y), where each field
+// element is serialised with |fe_tobytes|. If |i| is the index of the group
+// element then consider i+1 as a four-bit number: (i₀, i₁, i₂, i₃) (where i₀
+// is the most significant bit). The value of the group element is then:
+// (i₀×2^192 + i₁×2^128 + i₂×2^64 + i₃)G, where G is the generator.
 static const uint8_t k25519SmallPrecomp[15 * 2 * 32] = {
     0x1a, 0xd5, 0x25, 0x8f, 0x60, 0x2d, 0x56, 0xc9, 0xb2, 0xa7, 0x25, 0x95,
     0x60, 0xc7, 0x2c, 0x69, 0x5c, 0xdc, 0xd6, 0xfd, 0x31, 0xe2, 0xa4, 0xc0,
@@ -1346,7 +1346,7 @@ void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
 
 #else
 
-/* k25519Precomp[i][j] = (j+1)*256^i*B */
+// k25519Precomp[i][j] = (j+1)*256^i*B
 static const ge_precomp k25519Precomp[32][8] = {
     {
         {
@@ -3464,7 +3464,7 @@ static const ge_precomp k25519Precomp[32][8] = {
 
 static uint8_t negative(signed char b) {
   uint32_t x = b;
-  x >>= 31; /* 1: yes; 0: no */
+  x >>= 31;  // 1: yes; 0: no
   return x;
 }
 
@@ -3488,12 +3488,12 @@ static void table_select(ge_precomp *t, int pos, signed char b) {
   cmov(t, &minust, bnegative);
 }
 
-/* h = a * B
- * where a = a[0]+256*a[1]+...+256^31 a[31]
- * B is the Ed25519 base point (x,4/5) with x positive.
- *
- * Preconditions:
- *   a[31] <= 127 */
+// h = a * B
+// where a = a[0]+256*a[1]+...+256^31 a[31]
+// B is the Ed25519 base point (x,4/5) with x positive.
+//
+// Preconditions:
+//   a[31] <= 127
 void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t *a) {
   signed char e[64];
   signed char carry;
@@ -3506,8 +3506,8 @@ void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t *a) {
     e[2 * i + 0] = (a[i] >> 0) & 15;
     e[2 * i + 1] = (a[i] >> 4) & 15;
   }
-  /* each e[i] is between 0 and 15 */
-  /* e[63] is between 0 and 7 */
+  // each e[i] is between 0 and 15
+  // e[63] is between 0 and 7
 
   carry = 0;
   for (i = 0; i < 63; ++i) {
@@ -3517,7 +3517,7 @@ void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t *a) {
     e[i] -= carry << 4;
   }
   e[63] += carry;
-  /* each e[i] is between -8 and 8 */
+  // each e[i] is between -8 and 8
 
   ge_p3_0(h);
   for (i = 1; i < 64; i += 2) {
@@ -3551,8 +3551,8 @@ static void cmov_cached(ge_cached *t, ge_cached *u, uint8_t b) {
   fe_cmov(t->T2d, u->T2d, b);
 }
 
-/* r = scalar * A.
- * where a = a[0]+256*a[1]+...+256^31 a[31]. */
+// r = scalar * A.
+// where a = a[0]+256*a[1]+...+256^31 a[31].
 void x25519_ge_scalarmult(ge_p2 *r, const uint8_t *scalar, const ge_p3 *A) {
   ge_p2 Ai_p2[8];
   ge_cached Ai[16];
@@ -3706,15 +3706,15 @@ static const ge_precomp Bi[8] = {
     },
 };
 
-/* r = a * A + b * B
- * where a = a[0]+256*a[1]+...+256^31 a[31].
- * and b = b[0]+256*b[1]+...+256^31 b[31].
- * B is the Ed25519 base point (x,4/5) with x positive. */
+// r = a * A + b * B
+// where a = a[0]+256*a[1]+...+256^31 a[31].
+// and b = b[0]+256*b[1]+...+256^31 b[31].
+// B is the Ed25519 base point (x,4/5) with x positive.
 static void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
                                          const ge_p3 *A, const uint8_t *b) {
   signed char aslide[256];
   signed char bslide[256];
-  ge_cached Ai[8]; /* A,3A,5A,7A,9A,11A,13A,15A */
+  ge_cached Ai[8];  // A,3A,5A,7A,9A,11A,13A,15A
   ge_p1p1 t;
   ge_p3 u;
   ge_p3 A2;
@@ -3779,16 +3779,16 @@ static void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
   }
 }
 
-/* The set of scalars is \Z/l
- * where l = 2^252 + 27742317777372353535851937790883648493. */
+// The set of scalars is \Z/l
+// where l = 2^252 + 27742317777372353535851937790883648493.
 
-/* Input:
- *   s[0]+256*s[1]+...+256^63*s[63] = s
- *
- * Output:
- *   s[0]+256*s[1]+...+256^31*s[31] = s mod l
- *   where l = 2^252 + 27742317777372353535851937790883648493.
- *   Overwrites s in place. */
+// Input:
+//   s[0]+256*s[1]+...+256^63*s[63] = s
+//
+// Output:
+//   s[0]+256*s[1]+...+256^31*s[31] = s mod l
+//   where l = 2^252 + 27742317777372353535851937790883648493.
+//   Overwrites s in place.
 void x25519_sc_reduce(uint8_t *s) {
   int64_t s0 = 2097151 & load_3(s);
   int64_t s1 = 2097151 & (load_4(s + 2) >> 5);
@@ -4122,14 +4122,14 @@ void x25519_sc_reduce(uint8_t *s) {
   s[31] = s11 >> 17;
 }
 
-/* Input:
- *   a[0]+256*a[1]+...+256^31*a[31] = a
- *   b[0]+256*b[1]+...+256^31*b[31] = b
- *   c[0]+256*c[1]+...+256^31*c[31] = c
- *
- * Output:
- *   s[0]+256*s[1]+...+256^31*s[31] = (ab+c) mod l
- *   where l = 2^252 + 27742317777372353535851937790883648493. */
+// Input:
+//   a[0]+256*a[1]+...+256^31*a[31] = a
+//   b[0]+256*b[1]+...+256^31*b[31] = b
+//   c[0]+256*c[1]+...+256^31*c[31] = c
+//
+// Output:
+//   s[0]+256*s[1]+...+256^31*s[31] = (ab+c) mod l
+//   where l = 2^252 + 27742317777372353535851937790883648493.
 static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
                       const uint8_t *c) {
   int64_t a0 = 2097151 & load_3(a);
@@ -4716,10 +4716,10 @@ static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
 
 #else
 
-/* Replace (f,g) with (g,f) if b == 1;
- * replace (f,g) with (f,g) if b == 0.
- *
- * Preconditions: b in {0,1}. */
+// Replace (f,g) with (g,f) if b == 1;
+// replace (f,g) with (f,g) if b == 0.
+//
+// Preconditions: b in {0,1}.
 static void fe_cswap(fe f, fe g, unsigned int b) {
   b = 0-b;
   unsigned i;
@@ -4731,14 +4731,14 @@ static void fe_cswap(fe f, fe g, unsigned int b) {
   }
 }
 
-/* h = f * 121666
- * Can overlap h with f.
- *
- * Preconditions:
- *    |f| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc.
- *
- * Postconditions:
- *    |h| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc. */
+// h = f * 121666
+// Can overlap h with f.
+//
+// Preconditions:
+//    |f| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc.
+//
+// Postconditions:
+//    |h| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
 static void fe_mul121666(fe h, fe f) {
   int32_t f0 = f[0];
   int32_t f1 = f[1];
@@ -4858,25 +4858,25 @@ static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
   x25519_scalar_mult_generic(out, scalar, point);
 }
 
-#endif  /* BORINGSSL_X25519_X86_64 */
+#endif  // BORINGSSL_X25519_X86_64
 
 
 void X25519_keypair(uint8_t out_public_value[32], uint8_t out_private_key[32]) {
   RAND_bytes(out_private_key, 32);
 
-  /* All X25519 implementations should decode scalars correctly (see
-   * https://tools.ietf.org/html/rfc7748#section-5). However, if an
-   * implementation doesn't then it might interoperate with random keys a
-   * fraction of the time because they'll, randomly, happen to be correctly
-   * formed.
-   *
-   * Thus we do the opposite of the masking here to make sure that our private
-   * keys are never correctly masked and so, hopefully, any incorrect
-   * implementations are deterministically broken.
-   *
-   * This does not affect security because, although we're throwing away
-   * entropy, a valid implementation of scalarmult should throw away the exact
-   * same bits anyway. */
+  // All X25519 implementations should decode scalars correctly (see
+  // https://tools.ietf.org/html/rfc7748#section-5). However, if an
+  // implementation doesn't then it might interoperate with random keys a
+  // fraction of the time because they'll, randomly, happen to be correctly
+  // formed.
+  //
+  // Thus we do the opposite of the masking here to make sure that our private
+  // keys are never correctly masked and so, hopefully, any incorrect
+  // implementations are deterministically broken.
+  //
+  // This does not affect security because, although we're throwing away
+  // entropy, a valid implementation of scalarmult should throw away the exact
+  // same bits anyway.
   out_private_key[0] |= 7;
   out_private_key[31] &= 63;
   out_private_key[31] |= 128;
@@ -4888,15 +4888,15 @@ int X25519(uint8_t out_shared_key[32], const uint8_t private_key[32],
            const uint8_t peer_public_value[32]) {
   static const uint8_t kZeros[32] = {0};
   x25519_scalar_mult(out_shared_key, private_key, peer_public_value);
-  /* The all-zero output results when the input is a point of small order. */
+  // The all-zero output results when the input is a point of small order.
   return CRYPTO_memcmp(kZeros, out_shared_key, 32) != 0;
 }
 
 #if defined(BORINGSSL_X25519_X86_64)
 
-/* When |BORINGSSL_X25519_X86_64| is set, base point multiplication is done with
- * the Montgomery ladder because it's faster. Otherwise it's done using the
- * Ed25519 tables. */
+// When |BORINGSSL_X25519_X86_64| is set, base point multiplication is done with
+// the Montgomery ladder because it's faster. Otherwise it's done using the
+// Ed25519 tables.
 
 void X25519_public_from_private(uint8_t out_public_value[32],
                                 const uint8_t private_key[32]) {
@@ -4925,8 +4925,8 @@ void X25519_public_from_private(uint8_t out_public_value[32],
   ge_p3 A;
   x25519_ge_scalarmult_base(&A, e);
 
-  /* We only need the u-coordinate of the curve25519 point. The map is
-   * u=(y+1)/(1-y). Since y=Y/Z, this gives u=(Z+Y)/(Z-Y). */
+  // We only need the u-coordinate of the curve25519 point. The map is
+  // u=(y+1)/(1-y). Since y=Y/Z, this gives u=(Z+Y)/(Z-Y).
   fe zplusy, zminusy, zminusy_inv;
   fe_add(zplusy, A.Z, A.Y);
   fe_sub(zminusy, A.Z, A.Y);
@@ -4935,4 +4935,4 @@ void X25519_public_from_private(uint8_t out_public_value[32],
   fe_tobytes(out_public_value, zplusy);
 }
 
-#endif  /* BORINGSSL_X25519_X86_64 */
+#endif  // BORINGSSL_X25519_X86_64

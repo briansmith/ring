@@ -30,9 +30,9 @@ TEST(ErrTest, Overflow) {
   for (unsigned i = 0; i < ERR_NUM_ERRORS - 1; i++) {
     SCOPED_TRACE(i);
     uint32_t err = ERR_get_error();
-    /* Errors are returned in order they were pushed, with the least recent ones
-     * removed, up to |ERR_NUM_ERRORS - 1| errors. So the errors returned are
-     * |ERR_NUM_ERRORS + 2| through |ERR_NUM_ERRORS * 2|, inclusive. */
+    // Errors are returned in order they were pushed, with the least recent ones
+    // removed, up to |ERR_NUM_ERRORS - 1| errors. So the errors returned are
+    // |ERR_NUM_ERRORS + 2| through |ERR_NUM_ERRORS * 2|, inclusive.
     EXPECT_NE(0u, err);
     EXPECT_EQ(static_cast<int>(i + ERR_NUM_ERRORS + 2), ERR_GET_REASON(err));
   }

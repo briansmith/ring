@@ -78,8 +78,8 @@
 
 #define OPENSSL_DSA_MAX_MODULUS_BITS 10000
 
-/* Primality test according to FIPS PUB 186[-1], Appendix 2.1: 50 rounds of
- * Rabin-Miller */
+// Primality test according to FIPS PUB 186[-1], Appendix 2.1: 50 rounds of
+// Rabin-Miller
 #define DSS_prime_checks 50
 
 static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
@@ -186,7 +186,7 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
       return 0;
     }
     if (seed_len > (size_t)qsize) {
-      /* Only consume as much seed as is expected. */
+      // Only consume as much seed as is expected.
       seed_len = qsize;
     }
     OPENSSL_memcpy(seed, seed_in, seed_len);
@@ -217,9 +217,9 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
   }
 
   for (;;) {
-    /* Find q. */
+    // Find q.
     for (;;) {
-      /* step 1 */
+      // step 1
       if (!BN_GENCB_call(cb, 0, m++)) {
         goto err;
       }
@@ -230,12 +230,12 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
           goto err;
         }
       } else {
-        /* If we come back through, use random seed next time. */
+        // If we come back through, use random seed next time.
         seed_in = NULL;
       }
       OPENSSL_memcpy(buf, seed, qsize);
       OPENSSL_memcpy(buf2, seed, qsize);
-      /* precompute "SEED + 1" for step 7: */
+      // precompute "SEED + 1" for step 7:
       for (i = qsize - 1; i < qsize; i--) {
         buf[i]++;
         if (buf[i] != 0) {
@@ -243,7 +243,7 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
         }
       }
 
-      /* step 2 */
+      // step 2
       if (!EVP_Digest(seed, qsize, md, NULL, evpmd, NULL) ||
           !EVP_Digest(buf, qsize, buf2, NULL, evpmd, NULL)) {
         goto err;
@@ -252,14 +252,14 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
         md[i] ^= buf2[i];
       }
 
-      /* step 3 */
+      // step 3
       md[0] |= 0x80;
       md[qsize - 1] |= 0x01;
       if (!BN_bin2bn(md, qsize, q)) {
         goto err;
       }
 
-      /* step 4 */
+      // step 4
       r = BN_is_prime_fasttest_ex(q, DSS_prime_checks, ctx, use_random_seed, cb);
       if (r > 0) {
         break;
@@ -268,17 +268,17 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
         goto err;
       }
 
-      /* do a callback call */
-      /* step 5 */
+      // do a callback call
+      // step 5
     }
 
     if (!BN_GENCB_call(cb, 2, 0) || !BN_GENCB_call(cb, 3, 0)) {
       goto err;
     }
 
-    /* step 6 */
+    // step 6
     counter = 0;
-    /* "offset = 2" */
+    // "offset = 2"
 
     n = (bits - 1) / 160;
 
@@ -287,11 +287,11 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
         goto err;
       }
 
-      /* step 7 */
+      // step 7
       BN_zero(W);
-      /* now 'buf' contains "SEED + offset - 1" */
+      // now 'buf' contains "SEED + offset - 1"
       for (k = 0; k <= n; k++) {
-        /* obtain "SEED + offset + k" by incrementing: */
+        // obtain "SEED + offset + k" by incrementing:
         for (i = qsize - 1; i < qsize; i--) {
           buf[i]++;
           if (buf[i] != 0) {
@@ -303,7 +303,7 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
           goto err;
         }
 
-        /* step 8 */
+        // step 8
         if (!BN_bin2bn(md, qsize, r0) ||
             !BN_lshift(r0, r0, (qsize << 3) * k) ||
             !BN_add(W, W, r0)) {
@@ -311,14 +311,14 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
         }
       }
 
-      /* more of step 8 */
+      // more of step 8
       if (!BN_mask_bits(W, bits - 1) ||
           !BN_copy(X, W) ||
           !BN_add(X, X, test)) {
         goto err;
       }
 
-      /* step 9 */
+      // step 9
       if (!BN_lshift1(r0, q) ||
           !BN_mod(c, X, r0, ctx) ||
           !BN_sub(r0, c, BN_value_one()) ||
@@ -326,23 +326,23 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
         goto err;
       }
 
-      /* step 10 */
+      // step 10
       if (BN_cmp(p, test) >= 0) {
-        /* step 11 */
+        // step 11
         r = BN_is_prime_fasttest_ex(p, DSS_prime_checks, ctx, 1, cb);
         if (r > 0) {
-          goto end; /* found it */
+          goto end;  // found it
         }
         if (r != 0) {
           goto err;
         }
       }
 
-      /* step 13 */
+      // step 13
       counter++;
-      /* "offset = offset + n + 1" */
+      // "offset = offset + n + 1"
 
-      /* step 14 */
+      // step 14
       if (counter >= 4096) {
         break;
       }
@@ -353,8 +353,8 @@ end:
     goto err;
   }
 
-  /* We now need to generate g */
-  /* Set r0=(p-1)/q */
+  // We now need to generate g
+  // Set r0=(p-1)/q
   if (!BN_sub(test, p, BN_value_one()) ||
       !BN_div(r0, NULL, test, q, ctx)) {
     goto err;
@@ -366,7 +366,7 @@ end:
   }
 
   for (;;) {
-    /* g=test^r0%p */
+    // g=test^r0%p
     if (!BN_mod_exp_mont(g, test, r0, p, ctx, mont)) {
       goto err;
     }
@@ -544,9 +544,9 @@ redo:
   }
 
   if (digest_len > BN_num_bytes(dsa->q)) {
-    /* if the digest length is greater than the size of q use the
-     * BN_num_bits(dsa->q) leftmost bits of the digest, see
-     * fips 186-3, 4.2 */
+    // if the digest length is greater than the size of q use the
+    // BN_num_bits(dsa->q) leftmost bits of the digest, see
+    // fips 186-3, 4.2
     digest_len = BN_num_bytes(dsa->q);
   }
 
@@ -554,12 +554,12 @@ redo:
     goto err;
   }
 
-  /* Compute  s = inv(k) (m + xr) mod q */
+  // Compute  s = inv(k) (m + xr) mod q
   if (!BN_mod_mul(&xr, dsa->priv_key, r, dsa->q, ctx)) {
-    goto err; /* s = xr */
+    goto err;  // s = xr
   }
   if (!BN_add(s, &xr, &m)) {
-    goto err; /* s = m + xr */
+    goto err;  // s = m + xr
   }
   if (BN_cmp(s, dsa->q) > 0) {
     if (!BN_sub(s, s, dsa->q)) {
@@ -570,8 +570,8 @@ redo:
     goto err;
   }
 
-  /* Redo if r or s is zero as required by FIPS 186-3: this is
-   * very unlikely. */
+  // Redo if r or s is zero as required by FIPS 186-3: this is
+  // very unlikely.
   if (BN_is_zero(r) || BN_is_zero(s)) {
     if (noredo) {
       reason = DSA_R_NEED_NEW_SETUP_VALUES;
@@ -624,7 +624,7 @@ int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
   }
 
   i = BN_num_bits(dsa->q);
-  /* fips 186-3 allows only different sizes for q */
+  // fips 186-3 allows only different sizes for q
   if (i != 160 && i != 224 && i != 256) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_BAD_Q_VALUE);
     return 0;
@@ -655,17 +655,17 @@ int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
     goto err;
   }
 
-  /* Calculate W = inv(S) mod Q
-   * save W in u2 */
+  // Calculate W = inv(S) mod Q
+  // save W in u2
   if (BN_mod_inverse(&u2, sig->s, dsa->q, ctx) == NULL) {
     goto err;
   }
 
-  /* save M in u1 */
+  // save M in u1
   if (digest_len > (i >> 3)) {
-    /* if the digest length is greater than the size of q use the
-     * BN_num_bits(dsa->q) leftmost bits of the digest, see
-     * fips 186-3, 4.2 */
+    // if the digest length is greater than the size of q use the
+    // BN_num_bits(dsa->q) leftmost bits of the digest, see
+    // fips 186-3, 4.2
     digest_len = (i >> 3);
   }
 
@@ -673,12 +673,12 @@ int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
     goto err;
   }
 
-  /* u1 = M * w mod q */
+  // u1 = M * w mod q
   if (!BN_mod_mul(&u1, &u1, &u2, dsa->q, ctx)) {
     goto err;
   }
 
-  /* u2 = r * w mod q */
+  // u2 = r * w mod q
   if (!BN_mod_mul(&u2, sig->r, &u2, dsa->q, ctx)) {
     goto err;
   }
@@ -694,14 +694,14 @@ int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
     goto err;
   }
 
-  /* BN_copy(&u1,&t1); */
-  /* let u1 = u1 mod q */
+  // BN_copy(&u1,&t1);
+  // let u1 = u1 mod q
   if (!BN_mod(&u1, &t1, dsa->q, ctx)) {
     goto err;
   }
 
-  /* V is now in u1.  If the signature is correct, it will be
-   * equal to R. */
+  // V is now in u1.  If the signature is correct, it will be
+  // equal to R.
   *out_valid = BN_ucmp(&u1, sig->r) == 0;
   ret = 1;
 
@@ -758,7 +758,7 @@ int DSA_check_signature(int *out_valid, const uint8_t *digest,
     goto err;
   }
 
-  /* Ensure that the signature uses DER and doesn't have trailing garbage. */
+  // Ensure that the signature uses DER and doesn't have trailing garbage.
   int der_len = i2d_DSA_SIG(s, &der);
   if (der_len < 0 || (size_t)der_len != sig_len ||
       OPENSSL_memcmp(sig, der, sig_len)) {
@@ -773,8 +773,8 @@ err:
   return ret;
 }
 
-/* der_len_len returns the number of bytes needed to represent a length of |len|
- * in DER. */
+// der_len_len returns the number of bytes needed to represent a length of |len|
+// in DER.
 static size_t der_len_len(size_t len) {
   if (len < 0x80) {
     return 1;
@@ -789,18 +789,18 @@ static size_t der_len_len(size_t len) {
 
 int DSA_size(const DSA *dsa) {
   size_t order_len = BN_num_bytes(dsa->q);
-  /* Compute the maximum length of an |order_len| byte integer. Defensively
-   * assume that the leading 0x00 is included. */
+  // Compute the maximum length of an |order_len| byte integer. Defensively
+  // assume that the leading 0x00 is included.
   size_t integer_len = 1 /* tag */ + der_len_len(order_len + 1) + 1 + order_len;
   if (integer_len < order_len) {
     return 0;
   }
-  /* A DSA signature is two INTEGERs. */
+  // A DSA signature is two INTEGERs.
   size_t value_len = 2 * integer_len;
   if (value_len < integer_len) {
     return 0;
   }
-  /* Add the header. */
+  // Add the header.
   size_t ret = 1 /* tag */ + der_len_len(value_len) + value_len;
   if (ret < value_len) {
     return 0;
@@ -835,7 +835,7 @@ int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
     goto err;
   }
 
-  /* Get random k */
+  // Get random k
   if (!BN_rand_range_ex(&k, 1, dsa->q)) {
     goto err;
   }
@@ -849,16 +849,16 @@ int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
     goto err;
   }
 
-  /* Compute r = (g^k mod p) mod q */
+  // Compute r = (g^k mod p) mod q
   if (!BN_copy(&kq, &k)) {
     goto err;
   }
 
-  /* We do not want timing information to leak the length of k,
-   * so we compute g^k using an equivalent exponent of fixed length.
-   *
-   * (This is a kludge that we need because the BN_mod_exp_mont()
-   * does not let us specify the desired timing behaviour.) */
+  // We do not want timing information to leak the length of k,
+  // so we compute g^k using an equivalent exponent of fixed length.
+  //
+  // (This is a kludge that we need because the BN_mod_exp_mont()
+  // does not let us specify the desired timing behaviour.)
 
   if (!BN_add(&kq, &kq, dsa->q)) {
     goto err;
@@ -875,8 +875,8 @@ int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
     goto err;
   }
 
-  /* Compute part of 's = inv(k) (m + xr) mod q' using Fermat's Little
-   * Theorem. */
+  // Compute part of 's = inv(k) (m + xr) mod q' using Fermat's Little
+  // Theorem.
   kinv = BN_new();
   if (kinv == NULL ||
       !bn_mod_inverse_prime(kinv, &k, dsa->q, ctx, dsa->method_mont_q)) {

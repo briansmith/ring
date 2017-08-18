@@ -52,7 +52,7 @@
 
 #include <openssl/bn.h>
 
-/* TODO(davidben): Get this file working on Windows x64. */
+// TODO(davidben): Get this file working on Windows x64.
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__GNUC__)
 
 #include "../internal.h"
@@ -63,11 +63,9 @@
 
 #define asm __asm__
 
-/*
- * "m"(a), "+m"(r)	is the way to favor DirectPath µ-code;
- * "g"(0)		let the compiler to decide where does it
- *			want to keep the value of zero;
- */
+// "m"(a), "+m"(r)	is the way to favor DirectPath µ-code;
+// "g"(0)		let the compiler to decide where does it
+//			want to keep the value of zero;
 #define mul_add(r, a, word, carry)                                     \
   do {                                                                 \
     register BN_ULONG high, low;                                       \
@@ -197,7 +195,7 @@ BN_ULONG bn_add_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
   }
 
   asm volatile (
-      "	subq	%0,%0		\n" /* clear carry */
+      "	subq	%0,%0		\n"  // clear carry
       "	jmp	1f		\n"
       ".p2align 4			\n"
       "1:"
@@ -224,7 +222,7 @@ BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
   }
 
   asm volatile (
-      "	subq	%0,%0		\n" /* clear borrow */
+      "	subq	%0,%0		\n"  // clear borrow
       "	jmp	1f		\n"
       ".p2align 4			\n"
       "1:"
@@ -241,14 +239,13 @@ BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
   return ret & 1;
 }
 
-/* mul_add_c(a,b,c0,c1,c2)  -- c+=a*b for three word number c=(c2,c1,c0) */
-/* mul_add_c2(a,b,c0,c1,c2) -- c+=2*a*b for three word number c=(c2,c1,c0) */
-/* sqr_add_c(a,i,c0,c1,c2)  -- c+=a[i]^2 for three word number c=(c2,c1,c0) */
-/* sqr_add_c2(a,i,c0,c1,c2) -- c+=2*a[i]*a[j] for three word number c=(c2,c1,c0)
- */
+// mul_add_c(a,b,c0,c1,c2)  -- c+=a*b for three word number c=(c2,c1,c0)
+// mul_add_c2(a,b,c0,c1,c2) -- c+=2*a*b for three word number c=(c2,c1,c0)
+// sqr_add_c(a,i,c0,c1,c2)  -- c+=a[i]^2 for three word number c=(c2,c1,c0)
+// sqr_add_c2(a,i,c0,c1,c2) -- c+=2*a[i]*a[j] for three word number c=(c2,c1,c0)
 
-/* Keep in mind that carrying into high part of multiplication result can not
- * overflow, because it cannot be all-ones. */
+// Keep in mind that carrying into high part of multiplication result can not
+// overflow, because it cannot be all-ones.
 #define mul_add_c(a, b, c0, c1, c2)          \
   do {                                       \
     BN_ULONG t1, t2;                \
@@ -539,4 +536,4 @@ void bn_sqr_comba4(BN_ULONG *r, const BN_ULONG *a) {
 #undef mul_add_c2
 #undef sqr_add_c2
 
-#endif  /* !NO_ASM && X86_64 && __GNUC__ */
+#endif  // !NO_ASM && X86_64 && __GNUC__

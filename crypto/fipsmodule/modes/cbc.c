@@ -120,12 +120,12 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
 
   const uintptr_t inptr = (uintptr_t) in;
   const uintptr_t outptr = (uintptr_t) out;
-  /* If |in| and |out| alias, |in| must be ahead. */
+  // If |in| and |out| alias, |in| must be ahead.
   assert(inptr >= outptr || inptr + len <= outptr);
 
   if ((inptr >= 32 && outptr <= inptr - 32) || inptr < outptr) {
-    /* If |out| is at least two blocks behind |in| or completely disjoint, there
-     * is no need to decrypt to a temporary block. */
+    // If |out| is at least two blocks behind |in| or completely disjoint, there
+    // is no need to decrypt to a temporary block.
     const uint8_t *iv = ivec;
 
     if (STRICT_ALIGNMENT &&
@@ -140,7 +140,7 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
         in += 16;
         out += 16;
       }
-    } else if (16 % sizeof(size_t) == 0) { /* always true */
+    } else if (16 % sizeof(size_t) == 0) {  // always true
       while (len >= 16) {
         size_t *out_t = (size_t *)out, *iv_t = (size_t *)iv;
 
@@ -156,9 +156,9 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
     }
     OPENSSL_memcpy(ivec, iv, 16);
   } else {
-    /* |out| is less than two blocks behind |in|. Decrypting an input block
-     * directly to |out| would overwrite a ciphertext block before it is used as
-     * the next block's IV. Decrypt to a temporary block instead. */
+    // |out| is less than two blocks behind |in|. Decrypting an input block
+    // directly to |out| would overwrite a ciphertext block before it is used as
+    // the next block's IV. Decrypt to a temporary block instead.
     if (STRICT_ALIGNMENT &&
         ((size_t)in | (size_t)out | (size_t)ivec) % sizeof(size_t) != 0) {
       uint8_t c;
@@ -173,7 +173,7 @@ void CRYPTO_cbc128_decrypt(const uint8_t *in, uint8_t *out, size_t len,
         in += 16;
         out += 16;
       }
-    } else if (16 % sizeof(size_t) == 0) { /* always true */
+    } else if (16 % sizeof(size_t) == 0) {  // always true
       while (len >= 16) {
         size_t c, *out_t = (size_t *)out, *ivec_t = (size_t *)ivec;
         const size_t *in_t = (const size_t *)in;

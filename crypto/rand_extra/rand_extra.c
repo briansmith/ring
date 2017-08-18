@@ -18,14 +18,14 @@
 
 
 void RAND_seed(const void *buf, int num) {
-  /* OpenSSH calls |RAND_seed| before jailing on the assumption that any needed
-   * file descriptors etc will be opened. */
+  // OpenSSH calls |RAND_seed| before jailing on the assumption that any needed
+  // file descriptors etc will be opened.
   uint8_t unused;
   RAND_bytes(&unused, sizeof(unused));
 }
 
 int RAND_load_file(const char *path, long num) {
-  if (num < 0) {  /* read the "whole file" */
+  if (num < 0) {  // read the "whole file"
     return 1;
   } else if (num <= INT_MAX) {
     return (int) num;

@@ -77,7 +77,7 @@
 
 
 static struct CRYPTO_STATIC_MUTEX global_added_lock = CRYPTO_STATIC_MUTEX_INIT;
-/* These globals are protected by |global_added_lock|. */
+// These globals are protected by |global_added_lock|.
 static LHASH_OF(ASN1_OBJECT) *global_added_by_data = NULL;
 static LHASH_OF(ASN1_OBJECT) *global_added_by_nid = NULL;
 static LHASH_OF(ASN1_OBJECT) *global_added_by_short_name = NULL;
@@ -107,7 +107,7 @@ ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *o) {
   }
 
   if (!(o->flags & ASN1_OBJECT_FLAG_DYNAMIC)) {
-    /* TODO(fork): this is a little dangerous. */
+    // TODO(fork): this is a little dangerous.
     return (ASN1_OBJECT *)o;
   }
 
@@ -126,7 +126,7 @@ ASN1_OBJECT *OBJ_dup(const ASN1_OBJECT *o) {
     OPENSSL_memcpy(data, o->data, o->length);
   }
 
-  /* once data is attached to an object, it remains const */
+  // once data is attached to an object, it remains const
   r->data = data;
   r->length = o->length;
   r->nid = o->nid;
@@ -172,9 +172,9 @@ int OBJ_cmp(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
   return OPENSSL_memcmp(a->data, b->data, a->length);
 }
 
-/* obj_cmp is called to search the kNIDsInOIDOrder array. The |key| argument is
- * an |ASN1_OBJECT|* that we're looking for and |element| is a pointer to an
- * unsigned int in the array. */
+// obj_cmp is called to search the kNIDsInOIDOrder array. The |key| argument is
+// an |ASN1_OBJECT|* that we're looking for and |element| is a pointer to an
+// unsigned int in the array.
 static int obj_cmp(const void *key, const void *element) {
   unsigned nid = *((const unsigned*) element);
   const ASN1_OBJECT *a = key;
@@ -233,9 +233,9 @@ int OBJ_cbs2nid(const CBS *cbs) {
   return OBJ_obj2nid(&obj);
 }
 
-/* short_name_cmp is called to search the kNIDsInShortNameOrder array. The
- * |key| argument is name that we're looking for and |element| is a pointer to
- * an unsigned int in the array. */
+// short_name_cmp is called to search the kNIDsInShortNameOrder array. The
+// |key| argument is name that we're looking for and |element| is a pointer to
+// an unsigned int in the array.
 static int short_name_cmp(const void *key, const void *element) {
   const char *name = (const char *) key;
   unsigned nid = *((unsigned*) element);
@@ -269,9 +269,9 @@ int OBJ_sn2nid(const char *short_name) {
   return kObjects[*nid_ptr].nid;
 }
 
-/* long_name_cmp is called to search the kNIDsInLongNameOrder array. The
- * |key| argument is name that we're looking for and |element| is a pointer to
- * an unsigned int in the array. */
+// long_name_cmp is called to search the kNIDsInLongNameOrder array. The
+// |key| argument is name that we're looking for and |element| is a pointer to
+// an unsigned int in the array.
 static int long_name_cmp(const void *key, const void *element) {
   const char *name = (const char *) key;
   unsigned nid = *((unsigned*) element);
@@ -392,12 +392,12 @@ ASN1_OBJECT *OBJ_txt2obj(const char *s, int dont_search_names) {
     }
   }
 
-  /* Work out size of content octets */
+  // Work out size of content octets
   contents_len = a2d_ASN1_OBJECT(NULL, 0, s, -1);
   if (contents_len <= 0) {
     return NULL;
   }
-  /* Work out total size */
+  // Work out total size
   total_len = ASN1_object_size(0, contents_len, V_ASN1_OBJECT);
 
   buf = OPENSSL_malloc(total_len);
@@ -407,9 +407,9 @@ ASN1_OBJECT *OBJ_txt2obj(const char *s, int dont_search_names) {
   }
 
   p = buf;
-  /* Write out tag+length */
+  // Write out tag+length
   ASN1_put_object(&p, 0, contents_len, V_ASN1_OBJECT, V_ASN1_UNIVERSAL);
-  /* Write out contents */
+  // Write out contents
   a2d_ASN1_OBJECT(p, contents_len, s, -1);
 
   bufp = buf;
@@ -436,16 +436,16 @@ static int parse_oid_component(CBS *cbs, uint64_t *out) {
       return 0;
     }
     if ((v >> (64 - 7)) != 0) {
-      /* The component is too large. */
+      // The component is too large.
       return 0;
     }
     if (v == 0 && b == 0x80) {
-      /* The component must be minimally encoded. */
+      // The component must be minimally encoded.
       return 0;
     }
     v = (v << 7) | (b & 0x7f);
 
-    /* Components end at an octet with the high bit cleared. */
+    // Components end at an octet with the high bit cleared.
   } while (b & 0x80);
 
   *out = v;
@@ -460,8 +460,8 @@ static int add_decimal(CBB *out, uint64_t v) {
 
 int OBJ_obj2txt(char *out, int out_len, const ASN1_OBJECT *obj,
                 int always_return_oid) {
-  /* Python depends on the empty OID successfully encoding as the empty
-   * string. */
+  // Python depends on the empty OID successfully encoding as the empty
+  // string.
   if (obj == NULL || obj->length == 0) {
     return strlcpy_int(out, "", out_len);
   }
@@ -487,7 +487,7 @@ int OBJ_obj2txt(char *out, int out_len, const ASN1_OBJECT *obj,
   CBS cbs;
   CBS_init(&cbs, obj->data, obj->length);
 
-  /* The first component is 40 * value1 + value2, where value1 is 0, 1, or 2. */
+  // The first component is 40 * value1 + value2, where value1 is 0, 1, or 2.
   uint64_t v;
   if (!parse_oid_component(&cbs, &v)) {
     goto err;
@@ -567,8 +567,8 @@ static int cmp_long_name(const ASN1_OBJECT *a, const ASN1_OBJECT *b) {
   return strcmp(a->ln, b->ln);
 }
 
-/* obj_add_object inserts |obj| into the various global hashes for run-time
- * added objects. It returns one on success or zero otherwise. */
+// obj_add_object inserts |obj| into the various global hashes for run-time
+// added objects. It returns one on success or zero otherwise.
 static int obj_add_object(ASN1_OBJECT *obj) {
   int ok;
   ASN1_OBJECT *old_object;
@@ -584,10 +584,10 @@ static int obj_add_object(ASN1_OBJECT *obj) {
     global_added_by_long_name = lh_ASN1_OBJECT_new(hash_long_name, cmp_long_name);
   }
 
-  /* We don't pay attention to |old_object| (which contains any previous object
-   * that was evicted from the hashes) because we don't have a reference count
-   * on ASN1_OBJECT values. Also, we should never have duplicates nids and so
-   * should always have objects in |global_added_by_nid|. */
+  // We don't pay attention to |old_object| (which contains any previous object
+  // that was evicted from the hashes) because we don't have a reference count
+  // on ASN1_OBJECT values. Also, we should never have duplicates nids and so
+  // should always have objects in |global_added_by_nid|.
 
   ok = lh_ASN1_OBJECT_insert(global_added_by_nid, &old_object, obj);
   if (obj->length != 0 && obj->data != NULL) {

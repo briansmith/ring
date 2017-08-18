@@ -32,15 +32,15 @@ void x25519_x86_64(uint8_t out[32], const uint8_t scalar[32],
 #if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_APPLE)
 #define BORINGSSL_X25519_NEON
 
-/* x25519_NEON is defined in asm/x25519-arm.S. */
+// x25519_NEON is defined in asm/x25519-arm.S.
 void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
                  const uint8_t point[32]);
 #endif
 
-/* fe means field element. Here the field is \Z/(2^255-19). An element t,
- * entries t[0]...t[9], represents the integer t[0]+2^26 t[1]+2^51 t[2]+2^77
- * t[3]+2^102 t[4]+...+2^230 t[9]. Bounds on each t[i] vary depending on
- * context.  */
+// fe means field element. Here the field is \Z/(2^255-19). An element t,
+// entries t[0]...t[9], represents the integer t[0]+2^26 t[1]+2^51 t[2]+2^77
+// t[3]+2^102 t[4]+...+2^230 t[9]. Bounds on each t[i] vary depending on
+// context.
 typedef int32_t fe[10];
 
 /* ge means group element.
@@ -103,7 +103,7 @@ void x25519_sc_reduce(uint8_t *s);
 
 
 #if defined(__cplusplus)
-}  /* extern C */
+}  // extern C
 #endif
 
-#endif  /* OPENSSL_HEADER_CURVE25519_INTERNAL_H */
+#endif  // OPENSSL_HEADER_CURVE25519_INTERNAL_H

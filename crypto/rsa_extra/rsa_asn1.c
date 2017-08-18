@@ -87,7 +87,7 @@ static int parse_integer(CBS *cbs, BIGNUM **out) {
 
 static int marshal_integer(CBB *cbb, BIGNUM *bn) {
   if (bn == NULL) {
-    /* An RSA object may be missing some components. */
+    // An RSA object may be missing some components.
     OPENSSL_PUT_ERROR(RSA, RSA_R_VALUE_MISSING);
     return 0;
   }
@@ -124,10 +124,10 @@ RSA *RSA_parse_public_key(CBS *cbs) {
 }
 
 RSA *RSA_parse_public_key_buggy(CBS *cbs) {
-  /* Estonian IDs issued between September 2014 to September 2015 are
-   * broken. See https://crbug.com/532048 and https://crbug.com/534766.
-   *
-   * TODO(davidben): Remove this code and callers in March 2016. */
+  // Estonian IDs issued between September 2014 to September 2015 are
+  // broken. See https://crbug.com/532048 and https://crbug.com/534766.
+  //
+  // TODO(davidben): Remove this code and callers in March 2016.
   return parse_public_key(cbs, 1 /* buggy */);
 }
 
@@ -169,8 +169,8 @@ int RSA_public_key_to_bytes(uint8_t **out_bytes, size_t *out_len,
   return 1;
 }
 
-/* kVersionTwoPrime is the value of the version field for a two-prime
- * RSAPrivateKey structure (RFC 3447). */
+// kVersionTwoPrime is the value of the version field for a two-prime
+// RSAPrivateKey structure (RFC 3447).
 static const uint64_t kVersionTwoPrime = 0;
 
 RSA *RSA_parse_private_key(CBS *cbs) {

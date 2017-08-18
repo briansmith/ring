@@ -64,16 +64,16 @@
 #include "../../internal.h"
 
 
-/* digest_to_bn interprets |digest_len| bytes from |digest| as a big-endian
- * number and sets |out| to that value. It then truncates |out| so that it's,
- * at most, as long as |order|. It returns one on success and zero otherwise. */
+// digest_to_bn interprets |digest_len| bytes from |digest| as a big-endian
+// number and sets |out| to that value. It then truncates |out| so that it's,
+// at most, as long as |order|. It returns one on success and zero otherwise.
 static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
                         const BIGNUM *order) {
   size_t num_bits;
 
   num_bits = BN_num_bits(order);
-  /* Need to truncate digest if it is too long: first truncate whole
-   * bytes. */
+  // Need to truncate digest if it is too long: first truncate whole
+  // bytes.
   if (8 * digest_len > num_bits) {
     digest_len = (num_bits + 7) / 8;
   }
@@ -82,7 +82,7 @@ static int digest_to_bn(BIGNUM *out, const uint8_t *digest, size_t digest_len,
     return 0;
   }
 
-  /* If still too long truncate remaining bits with a shift */
+  // If still too long truncate remaining bits with a shift
   if ((8 * digest_len > num_bits) &&
       !BN_rshift(out, out, 8 - (num_bits & 0x7))) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
@@ -130,7 +130,7 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
   const EC_GROUP *group;
   const EC_POINT *pub_key;
 
-  /* check input values */
+  // check input values
   if ((group = EC_KEY_get0_group(eckey)) == NULL ||
       (pub_key = EC_KEY_get0_public_key(eckey)) == NULL ||
       sig == NULL) {
@@ -160,7 +160,7 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     goto err;
   }
-  /* calculate tmp1 = inv(S) mod order */
+  // calculate tmp1 = inv(S) mod order
   int no_inverse;
   if (!BN_mod_inverse_odd(u2, &no_inverse, sig->s, order, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
@@ -169,12 +169,12 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
   if (!digest_to_bn(m, digest, digest_len, order)) {
     goto err;
   }
-  /* u1 = m * tmp mod order */
+  // u1 = m * tmp mod order
   if (!BN_mod_mul(u1, m, u2, order, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
-  /* u2 = r * w mod q */
+  // u2 = r * w mod q
   if (!BN_mod_mul(u2, sig->r, u2, order, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
@@ -197,7 +197,7 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
-  /* if the signature is correct u1 is equal to sig->r */
+  // if the signature is correct u1 is equal to sig->r
   if (BN_ucmp(u1, sig->r) != 0) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     goto err;
@@ -236,8 +236,8 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
   }
 
   k = BN_new();
-  kinv = BN_new(); /* this value is later returned in *kinvp */
-  r = BN_new(); /* this value is later returned in *rp    */
+  kinv = BN_new();  // this value is later returned in *kinvp
+  r = BN_new();  // this value is later returned in *rp
   tmp = BN_new();
   if (k == NULL || kinv == NULL || r == NULL || tmp == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
@@ -251,17 +251,17 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
 
   const BIGNUM *order = EC_GROUP_get0_order(group);
 
-  /* Check that the size of the group order is FIPS compliant (FIPS 186-4
-   * B.5.2). */
+  // Check that the size of the group order is FIPS compliant (FIPS 186-4
+  // B.5.2).
   if (BN_num_bits(order) < 160) {
     OPENSSL_PUT_ERROR(ECDSA, EC_R_INVALID_GROUP_ORDER);
     goto err;
   }
 
   do {
-    /* If possible, we'll include the private key and message digest in the k
-     * generation. The |digest| argument is only empty if |ECDSA_sign_setup| is
-     * being used. */
+    // If possible, we'll include the private key and message digest in the k
+    // generation. The |digest| argument is only empty if |ECDSA_sign_setup| is
+    // being used.
     if (eckey->fixed_k != NULL) {
       if (!BN_copy(k, eckey->fixed_k)) {
         goto err;
@@ -279,18 +279,18 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
       goto err;
     }
 
-    /* Compute the inverse of k. The order is a prime, so use Fermat's Little
-     * Theorem. Note |ec_group_get_order_mont| may return NULL but
-     * |bn_mod_inverse_prime| allows this. */
+    // Compute the inverse of k. The order is a prime, so use Fermat's Little
+    // Theorem. Note |ec_group_get_order_mont| may return NULL but
+    // |bn_mod_inverse_prime| allows this.
     if (!bn_mod_inverse_prime(kinv, k, order, ctx,
                               ec_group_get_order_mont(group))) {
       OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
       goto err;
     }
 
-    /* We do not want timing information to leak the length of k,
-     * so we compute G*k using an equivalent scalar of fixed
-     * bit-length. */
+    // We do not want timing information to leak the length of k,
+    // so we compute G*k using an equivalent scalar of fixed
+    // bit-length.
 
     if (!BN_add(k, k, order)) {
       goto err;
@@ -301,7 +301,7 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
       }
     }
 
-    /* compute r the x-coordinate of generator * k */
+    // compute r the x-coordinate of generator * k
     if (!EC_POINT_mul(group, tmp_point, k, NULL, NULL, ctx)) {
       OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
       goto err;
@@ -318,11 +318,11 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
     }
   } while (BN_is_zero(r));
 
-  /* clear old values if necessary */
+  // clear old values if necessary
   BN_clear_free(*rp);
   BN_clear_free(*kinvp);
 
-  /* save the pre-computed values  */
+  // save the pre-computed values
   *rp = r;
   *kinvp = kinv;
   ret = 1;
@@ -417,14 +417,14 @@ ECDSA_SIG *ECDSA_do_sign_ex(const uint8_t *digest, size_t digest_len,
       goto err;
     }
     if (BN_is_zero(s)) {
-      /* if kinv and r have been supplied by the caller
-       * don't to generate new kinv and r values */
+      // if kinv and r have been supplied by the caller
+      // don't to generate new kinv and r values
       if (in_kinv != NULL && in_r != NULL) {
         OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_NEED_NEW_SETUP_VALUES);
         goto err;
       }
     } else {
-      /* s != 0 => we have a valid signature */
+      // s != 0 => we have a valid signature
       break;
     }
   }

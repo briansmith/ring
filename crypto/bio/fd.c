@@ -138,7 +138,7 @@ BIO *BIO_new_fd(int fd, int close_flag) {
 }
 
 static int fd_new(BIO *bio) {
-  /* num is used to store the file descriptor. */
+  // num is used to store the file descriptor.
   bio->num = -1;
   return 1;
 }

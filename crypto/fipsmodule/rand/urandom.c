@@ -13,7 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #if !defined(_GNU_SOURCE)
-#define _GNU_SOURCE  /* needed for syscall() on Linux. */
+#define _GNU_SOURCE  // needed for syscall() on Linux.
 #endif
 
 #include <openssl/rand.h>
@@ -65,40 +65,40 @@
 #error "system call number for getrandom is not the expected value"
 #endif
 
-#else  /* __NR_getrandom */
+#else  // __NR_getrandom
 
 #define __NR_getrandom EXPECTED_NR_getrandom
 
-#endif  /* __NR_getrandom */
+#endif  // __NR_getrandom
 
-#endif /* EXPECTED_NR_getrandom */
+#endif  // EXPECTED_NR_getrandom
 
 #if !defined(GRND_NONBLOCK)
 #define GRND_NONBLOCK 1
 #endif
 
-#endif  /* OPENSSL_LINUX */
+#endif  // OPENSSL_LINUX
 
-/* rand_lock is used to protect the |*_requested| variables. */
+// rand_lock is used to protect the |*_requested| variables.
 DEFINE_STATIC_MUTEX(rand_lock);
 
-/* The following constants are magic values of |urandom_fd|. */
+// The following constants are magic values of |urandom_fd|.
 static const int kUnset = 0;
 static const int kHaveGetrandom = -3;
 
-/* urandom_fd_requested is set by |RAND_set_urandom_fd|. It's protected by
- * |rand_lock|. */
+// urandom_fd_requested is set by |RAND_set_urandom_fd|. It's protected by
+// |rand_lock|.
 DEFINE_BSS_GET(int, urandom_fd_requested);
 
-/* urandom_fd is a file descriptor to /dev/urandom. It's protected by |once|. */
+// urandom_fd is a file descriptor to /dev/urandom. It's protected by |once|.
 DEFINE_BSS_GET(int, urandom_fd);
 
 DEFINE_STATIC_ONCE(rand_once);
 
 #if defined(USE_NR_getrandom) || defined(BORINGSSL_FIPS)
-/* message writes |msg| to stderr. We use this because referencing |stderr|
- * with |fprintf| generates relocations, which is a problem inside the FIPS
- * module. */
+// message writes |msg| to stderr. We use this because referencing |stderr|
+// with |fprintf| generates relocations, which is a problem inside the FIPS
+// module.
 static void message(const char *msg) {
   ssize_t r;
   do {
@@ -107,10 +107,10 @@ static void message(const char *msg) {
 }
 #endif
 
-/* init_once initializes the state of this module to values previously
- * requested. This is the only function that modifies |urandom_fd| and
- * |urandom_buffering|, whose values may be read safely after calling the
- * once. */
+// init_once initializes the state of this module to values previously
+// requested. This is the only function that modifies |urandom_fd| and
+// |urandom_buffering|, whose values may be read safely after calling the
+// once.
 static void init_once(void) {
   CRYPTO_STATIC_MUTEX_lock_read(rand_lock_bss_get());
   int fd = *urandom_fd_requested_bss_get();
@@ -140,7 +140,7 @@ static void init_once(void) {
       return;
     }
   }
-#endif  /* USE_NR_getrandom */
+#endif  // USE_NR_getrandom
 
   if (fd == kUnset) {
     do {
@@ -154,9 +154,9 @@ static void init_once(void) {
 
   assert(kUnset == 0);
   if (fd == kUnset) {
-    /* Because we want to keep |urandom_fd| in the BSS, we have to initialise
-     * it to zero. But zero is a valid file descriptor too. Thus if open
-     * returns zero for /dev/urandom, we dup it to get a non-zero number. */
+    // Because we want to keep |urandom_fd| in the BSS, we have to initialise
+    // it to zero. But zero is a valid file descriptor too. Thus if open
+    // returns zero for /dev/urandom, we dup it to get a non-zero number.
     fd = dup(fd);
     close(kUnset);
 
@@ -166,10 +166,10 @@ static void init_once(void) {
   }
 
 #if defined(BORINGSSL_FIPS)
-  /* In FIPS mode we ensure that the kernel has sufficient entropy before
-   * continuing. This is automatically handled by getrandom, which requires
-   * that the entropy pool has been initialised, but for urandom we have to
-   * poll. */
+  // In FIPS mode we ensure that the kernel has sufficient entropy before
+  // continuing. This is automatically handled by getrandom, which requires
+  // that the entropy pool has been initialised, but for urandom we have to
+  // poll.
   for (;;) {
     int entropy_bits;
     if (ioctl(fd, RNDGETENTCNT, &entropy_bits)) {
@@ -190,7 +190,7 @@ static void init_once(void) {
 
   int flags = fcntl(fd, F_GETFD);
   if (flags == -1) {
-    /* Native Client doesn't implement |fcntl|. */
+    // Native Client doesn't implement |fcntl|.
     if (errno != ENOSYS) {
       abort();
     }
@@ -211,9 +211,9 @@ void RAND_set_urandom_fd(int fd) {
 
   assert(kUnset == 0);
   if (fd == kUnset) {
-    /* Because we want to keep |urandom_fd| in the BSS, we have to initialise
-     * it to zero. But zero is a valid file descriptor too. Thus if dup
-     * returned zero we dup it again to get a non-zero number. */
+    // Because we want to keep |urandom_fd| in the BSS, we have to initialise
+    // it to zero. But zero is a valid file descriptor too. Thus if dup
+    // returned zero we dup it again to get a non-zero number.
     fd = dup(fd);
     close(kUnset);
 
@@ -238,8 +238,8 @@ void RAND_set_urandom_fd(int fd) {
 void __msan_unpoison(void *, size_t);
 #endif
 
-/* fill_with_entropy writes |len| bytes of entropy into |out|. It returns one
- * on success and zero on error. */
+// fill_with_entropy writes |len| bytes of entropy into |out|. It returns one
+// on success and zero on error.
 static char fill_with_entropy(uint8_t *out, size_t len) {
   while (len > 0) {
     ssize_t r;
@@ -252,13 +252,13 @@ static char fill_with_entropy(uint8_t *out, size_t len) {
 
 #if defined(OPENSSL_MSAN)
       if (r > 0) {
-        /* MSAN doesn't recognise |syscall| and thus doesn't notice that we
-         * have initialised the output buffer. */
+        // MSAN doesn't recognise |syscall| and thus doesn't notice that we
+        // have initialised the output buffer.
         __msan_unpoison(out, r);
       }
-#endif /* OPENSSL_MSAN */
+#endif  // OPENSSL_MSAN
 
-#else /* USE_NR_getrandom */
+#else  // USE_NR_getrandom
       abort();
 #endif
     } else {
@@ -277,7 +277,7 @@ static char fill_with_entropy(uint8_t *out, size_t len) {
   return 1;
 }
 
-/* CRYPTO_sysrand puts |requested| random bytes into |out|. */
+// CRYPTO_sysrand puts |requested| random bytes into |out|.
 void CRYPTO_sysrand(uint8_t *out, size_t requested) {
   if (requested == 0) {
     return;

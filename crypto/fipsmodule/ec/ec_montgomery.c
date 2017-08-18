@@ -219,7 +219,7 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
   BN_CTX_start(ctx);
 
   if (BN_cmp(&point->Z, &group->one) == 0) {
-    /* |point| is already affine. */
+    // |point| is already affine.
     if (x != NULL && !BN_from_montgomery(x, &point->X, group->mont, ctx)) {
       goto err;
     }
@@ -227,7 +227,7 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
       goto err;
     }
   } else {
-    /* transform  (X, Y, Z)  into  (x, y) := (X/Z^2, Y/Z^3) */
+    // transform  (X, Y, Z)  into  (x, y) := (X/Z^2, Y/Z^3)
 
     BIGNUM *Z_1 = BN_CTX_get(ctx);
     BIGNUM *Z_2 = BN_CTX_get(ctx);
@@ -238,18 +238,18 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
       goto err;
     }
 
-    /* The straightforward way to calculate the inverse of a Montgomery-encoded
-     * value where the result is Montgomery-encoded is:
-     *
-     *    |BN_from_montgomery| + invert + |BN_to_montgomery|.
-     *
-     * This is equivalent, but more efficient, because |BN_from_montgomery|
-     * is more efficient (at least in theory) than |BN_to_montgomery|, since it
-     * doesn't have to do the multiplication before the reduction.
-     *
-     * Use Fermat's Little Theorem instead of |BN_mod_inverse_odd| since this
-     * inversion may be done as the final step of private key operations.
-     * Unfortunately, this is suboptimal for ECDSA verification. */
+    // The straightforward way to calculate the inverse of a Montgomery-encoded
+    // value where the result is Montgomery-encoded is:
+    //
+    //    |BN_from_montgomery| + invert + |BN_to_montgomery|.
+    //
+    // This is equivalent, but more efficient, because |BN_from_montgomery|
+    // is more efficient (at least in theory) than |BN_to_montgomery|, since it
+    // doesn't have to do the multiplication before the reduction.
+    //
+    // Use Fermat's Little Theorem instead of |BN_mod_inverse_odd| since this
+    // inversion may be done as the final step of private key operations.
+    // Unfortunately, this is suboptimal for ECDSA verification.
     if (!BN_from_montgomery(Z_1, &point->Z, group->mont, ctx) ||
         !BN_from_montgomery(Z_1, Z_1, group->mont, ctx) ||
         !bn_mod_inverse_prime(Z_1, Z_1, &group->field, ctx, group->mont)) {
@@ -260,10 +260,10 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
       goto err;
     }
 
-    /* Instead of using |BN_from_montgomery| to convert the |x| coordinate
-     * and then calling |BN_from_montgomery| again to convert the |y|
-     * coordinate below, convert the common factor |Z_2| once now, saving one
-     * reduction. */
+    // Instead of using |BN_from_montgomery| to convert the |x| coordinate
+    // and then calling |BN_from_montgomery| again to convert the |y|
+    // coordinate below, convert the common factor |Z_2| once now, saving one
+    // reduction.
     if (!BN_from_montgomery(Z_2, Z_2, group->mont, ctx)) {
       goto err;
     }

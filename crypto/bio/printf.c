@@ -55,7 +55,7 @@
  * [including the GNU Public Licence.] */
 
 #if !defined(_POSIX_C_SOURCE)
-#define _POSIX_C_SOURCE 201410L  /* for snprintf, vprintf etc */
+#define _POSIX_C_SOURCE 201410L  // for snprintf, vprintf etc
 #endif
 
 #include <openssl/bio.h>
@@ -77,8 +77,8 @@ int BIO_printf(BIO *bio, const char *format, ...) {
   va_end(args);
 
 #if defined(OPENSSL_WINDOWS)
-  /* On Windows, vsnprintf returns -1 rather than the requested length on
-   * truncation */
+  // On Windows, vsnprintf returns -1 rather than the requested length on
+  // truncation
   if (out_len < 0) {
     va_start(args, format);
     out_len = _vscprintf(format, args);
@@ -93,9 +93,9 @@ int BIO_printf(BIO *bio, const char *format, ...) {
 
   if ((size_t) out_len >= sizeof(buf)) {
     const int requested_len = out_len;
-    /* The output was truncated. Note that vsnprintf's return value
-     * does not include a trailing NUL, but the buffer must be sized
-     * for it. */
+    // The output was truncated. Note that vsnprintf's return value
+    // does not include a trailing NUL, but the buffer must be sized
+    // for it.
     out = OPENSSL_malloc(requested_len + 1);
     out_malloced = 1;
     if (out == NULL) {

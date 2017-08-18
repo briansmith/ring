@@ -61,8 +61,8 @@
 #include "internal.h"
 
 
-/* This file has two other implementations: x86 assembly language in
- * asm/bn-586.pl and x86_64 inline assembly in asm/x86_64-gcc.c. */
+// This file has two other implementations: x86 assembly language in
+// asm/bn-586.pl and x86_64 inline assembly in asm/x86_64-gcc.c.
 #if defined(OPENSSL_NO_ASM) || \
     !(defined(OPENSSL_X86) || (defined(OPENSSL_X86_64) && defined(__GNUC__)))
 
@@ -122,7 +122,7 @@
     BN_UMULT_LOHI(r0, r1, tmp, tmp); \
   } while (0)
 
-#endif /* !BN_ULLONG */
+#endif  // !BN_ULLONG
 
 BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
                           BN_ULONG w) {
@@ -242,7 +242,7 @@ BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   return (BN_ULONG)ll;
 }
 
-#else /* !BN_ULLONG */
+#else  // !BN_ULLONG
 
 BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
                       int n) {
@@ -299,7 +299,7 @@ BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   return (BN_ULONG)c;
 }
 
-#endif /* !BN_ULLONG */
+#endif  // !BN_ULLONG
 
 BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
                       int n) {
@@ -356,15 +356,15 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   return c;
 }
 
-/* mul_add_c(a,b,c0,c1,c2)  -- c+=a*b for three word number c=(c2,c1,c0) */
-/* mul_add_c2(a,b,c0,c1,c2) -- c+=2*a*b for three word number c=(c2,c1,c0) */
-/* sqr_add_c(a,i,c0,c1,c2)  -- c+=a[i]^2 for three word number c=(c2,c1,c0) */
-/* sqr_add_c2(a,i,c0,c1,c2) -- c+=2*a[i]*a[j] for three word number c=(c2,c1,c0) */
+// mul_add_c(a,b,c0,c1,c2)  -- c+=a*b for three word number c=(c2,c1,c0)
+// mul_add_c2(a,b,c0,c1,c2) -- c+=2*a*b for three word number c=(c2,c1,c0)
+// sqr_add_c(a,i,c0,c1,c2)  -- c+=a[i]^2 for three word number c=(c2,c1,c0)
+// sqr_add_c2(a,i,c0,c1,c2) -- c+=2*a[i]*a[j] for three word number c=(c2,c1,c0)
 
 #ifdef BN_ULLONG
 
-/* Keep in mind that additions to multiplication result can not overflow,
- * because its high half cannot be all-ones. */
+// Keep in mind that additions to multiplication result can not overflow,
+// because its high half cannot be all-ones.
 #define mul_add_c(a, b, c0, c1, c2)     \
   do {                                  \
     BN_ULONG hi;                        \
@@ -415,8 +415,8 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
 
 #else
 
-/* Keep in mind that additions to hi can not overflow, because the high word of
- * a multiplication result cannot be all-ones. */
+// Keep in mind that additions to hi can not overflow, because the high word of
+// a multiplication result cannot be all-ones.
 #define mul_add_c(a, b, c0, c1, c2) \
   do {                              \
     BN_ULONG ta = (a), tb = (b);    \
@@ -456,7 +456,7 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
 
 #define sqr_add_c2(a, i, j, c0, c1, c2) mul_add_c2((a)[i], (a)[j], c0, c1, c2)
 
-#endif /* !BN_ULLONG */
+#endif  // !BN_ULLONG
 
 void bn_mul_comba8(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b) {
   BN_ULONG c1, c2, c3;

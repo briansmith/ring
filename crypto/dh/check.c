@@ -70,7 +70,7 @@ int DH_check_pub_key(const DH *dh, const BIGNUM *pub_key, int *out_flags) {
 
   int ok = 0;
 
-  /* Check |pub_key| is greater than 1. */
+  // Check |pub_key| is greater than 1.
   BIGNUM *tmp = BN_CTX_get(ctx);
   if (tmp == NULL ||
       !BN_set_word(tmp, 1)) {
@@ -80,7 +80,7 @@ int DH_check_pub_key(const DH *dh, const BIGNUM *pub_key, int *out_flags) {
     *out_flags |= DH_CHECK_PUBKEY_TOO_SMALL;
   }
 
-  /* Check |pub_key| is less than |dh->p| - 1. */
+  // Check |pub_key| is less than |dh->p| - 1.
   if (!BN_copy(tmp, dh->p) ||
       !BN_sub_word(tmp, 1)) {
     goto err;
@@ -90,9 +90,9 @@ int DH_check_pub_key(const DH *dh, const BIGNUM *pub_key, int *out_flags) {
   }
 
   if (dh->q != NULL) {
-    /* Check |pub_key|^|dh->q| is 1 mod |dh->p|. This is necessary for RFC 5114
-     * groups which are not safe primes but pick a generator on a prime-order
-     * subgroup of size |dh->q|. */
+    // Check |pub_key|^|dh->q| is 1 mod |dh->p|. This is necessary for RFC 5114
+    // groups which are not safe primes but pick a generator on a prime-order
+    // subgroup of size |dh->q|.
     if (!BN_mod_exp_mont(tmp, pub_key, dh->q, dh->p, ctx, NULL)) {
       goto err;
     }
@@ -111,13 +111,12 @@ err:
 
 
 int DH_check(const DH *dh, int *out_flags) {
-  /* Check that p is a safe prime and if g is 2, 3 or 5, check that it is a
-   * suitable generator where:
-   *   for 2, p mod 24 == 11
-   *   for 3, p mod 12 == 5
-   *   for 5, p mod 10 == 3 or 7
-   * should hold.
-   */
+  // Check that p is a safe prime and if g is 2, 3 or 5, check that it is a
+  // suitable generator where:
+  //   for 2, p mod 24 == 11
+  //   for 3, p mod 12 == 5
+  //   for 5, p mod 10 == 3 or 7
+  // should hold.
   int ok = 0, r;
   BN_CTX *ctx = NULL;
   BN_ULONG l;
@@ -144,7 +143,7 @@ int DH_check(const DH *dh, int *out_flags) {
     } else if (BN_cmp(dh->g, dh->p) >= 0) {
       *out_flags |= DH_CHECK_NOT_SUITABLE_GENERATOR;
     } else {
-      /* Check g^q == 1 mod p */
+      // Check g^q == 1 mod p
       if (!BN_mod_exp_mont(t1, dh->g, dh->q, dh->p, ctx, NULL)) {
         goto err;
       }
@@ -159,7 +158,7 @@ int DH_check(const DH *dh, int *out_flags) {
     if (!r) {
       *out_flags |= DH_CHECK_Q_NOT_PRIME;
     }
-    /* Check p == 1 mod q  i.e. q divides p - 1 */
+    // Check p == 1 mod q  i.e. q divides p - 1
     if (!BN_div(t1, t2, dh->p, dh->q, ctx)) {
       goto err;
     }

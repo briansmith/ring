@@ -25,7 +25,7 @@
 #include "../internal.h"
 
 
-/* TODO(agl): add tests with fixed vectors once SPAKE2 is nailed down. */
+// TODO(agl): add tests with fixed vectors once SPAKE2 is nailed down.
 
 struct SPAKE2Run {
   bool Run() {

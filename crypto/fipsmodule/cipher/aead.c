@@ -101,8 +101,8 @@ void EVP_AEAD_CTX_cleanup(EVP_AEAD_CTX *ctx) {
   ctx->aead = NULL;
 }
 
-/* check_alias returns 1 if |out| is compatible with |in| and 0 otherwise. If
- * |in| and |out| alias, we require that |in| == |out|. */
+// check_alias returns 1 if |out| is compatible with |in| and 0 otherwise. If
+// |in| and |out| alias, we require that |in| == |out|.
 static int check_alias(const uint8_t *in, size_t in_len, const uint8_t *out,
                        size_t out_len) {
   if (!buffers_alias(in, in_len, out, out_len)) {
@@ -140,8 +140,8 @@ int EVP_AEAD_CTX_seal(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
   }
 
 error:
-  /* In the event of an error, clear the output buffer so that a caller
-   * that doesn't check the return value doesn't send raw data. */
+  // In the event of an error, clear the output buffer so that a caller
+  // that doesn't check the return value doesn't send raw data.
   OPENSSL_memset(out, 0, max_out_len);
   *out_len = 0;
   return 0;
@@ -172,8 +172,8 @@ int EVP_AEAD_CTX_seal_scatter(
   }
 
 error:
-  /* In the event of an error, clear the output buffer so that a caller
-   * that doesn't check the return value doesn't send raw data. */
+  // In the event of an error, clear the output buffer so that a caller
+  // that doesn't check the return value doesn't send raw data.
   OPENSSL_memset(out, 0, in_len);
   OPENSSL_memset(out_tag, 0, max_out_tag_len);
   *out_tag_len = 0;
@@ -218,9 +218,9 @@ int EVP_AEAD_CTX_open(const EVP_AEAD_CTX *ctx, uint8_t *out, size_t *out_len,
   }
 
 error:
-  /* In the event of an error, clear the output buffer so that a caller
-   * that doesn't check the return value doesn't try and process bad
-   * data. */
+  // In the event of an error, clear the output buffer so that a caller
+  // that doesn't check the return value doesn't try and process bad
+  // data.
   OPENSSL_memset(out, 0, max_out_len);
   *out_len = 0;
   return 0;
@@ -247,9 +247,9 @@ int EVP_AEAD_CTX_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
   }
 
 error:
-  /* In the event of an error, clear the output buffer so that a caller
-   * that doesn't check the return value doesn't try and process bad
-   * data. */
+  // In the event of an error, clear the output buffer so that a caller
+  // that doesn't check the return value doesn't try and process bad
+  // data.
   OPENSSL_memset(out, 0, in_len);
   return 0;
 }

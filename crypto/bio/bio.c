@@ -409,14 +409,14 @@ void ERR_print_errors(BIO *bio) {
   ERR_print_errors_cb(print_bio, bio);
 }
 
-/* bio_read_all reads everything from |bio| and prepends |prefix| to it. On
- * success, |*out| is set to an allocated buffer (which should be freed with
- * |OPENSSL_free|), |*out_len| is set to its length and one is returned. The
- * buffer will contain |prefix| followed by the contents of |bio|. On failure,
- * zero is returned.
- *
- * The function will fail if the size of the output would equal or exceed
- * |max_len|. */
+// bio_read_all reads everything from |bio| and prepends |prefix| to it. On
+// success, |*out| is set to an allocated buffer (which should be freed with
+// |OPENSSL_free|), |*out_len| is set to its length and one is returned. The
+// buffer will contain |prefix| followed by the contents of |bio|. On failure,
+// zero is returned.
+//
+// The function will fail if the size of the output would equal or exceed
+// |max_len|.
 static int bio_read_all(BIO *bio, uint8_t **out, size_t *out_len,
                         const uint8_t *prefix, size_t prefix_len,
                         size_t max_len) {
@@ -480,20 +480,20 @@ int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len, size_t max_len) {
   const uint8_t length_byte = header[1];
 
   if ((tag & 0x1f) == 0x1f) {
-    /* Long form tags are not supported. */
+    // Long form tags are not supported.
     return 0;
   }
 
   size_t len, header_len;
   if ((length_byte & 0x80) == 0) {
-    /* Short form length. */
+    // Short form length.
     len = length_byte;
     header_len = kInitialHeaderLen;
   } else {
     const size_t num_bytes = length_byte & 0x7f;
 
     if ((tag & 0x20 /* constructed */) != 0 && num_bytes == 0) {
-      /* indefinite length. */
+      // indefinite length.
       return bio_read_all(bio, out, out_len, header, kInitialHeaderLen,
                           max_len);
     }
@@ -516,12 +516,12 @@ int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len, size_t max_len) {
     }
 
     if (len32 < 128) {
-      /* Length should have used short-form encoding. */
+      // Length should have used short-form encoding.
       return 0;
     }
 
     if ((len32 >> ((num_bytes-1)*8)) == 0) {
-      /* Length should have been at least one byte shorter. */
+      // Length should have been at least one byte shorter.
       return 0;
     }
 

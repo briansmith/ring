@@ -123,9 +123,9 @@ int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in) {
   }
 
   if (out->digest == in->digest) {
-    /* |md_data| will be the correct size in this case so it's removed from
-     * |out| at this point so that |EVP_MD_CTX_cleanup| doesn't free it and
-     * then it's reused. */
+    // |md_data| will be the correct size in this case so it's removed from
+    // |out| at this point so that |EVP_MD_CTX_cleanup| doesn't free it and
+    // then it's reused.
     tmp_buf = out->md_data;
     out->md_data = NULL;
   }

@@ -317,7 +317,7 @@ static void RC2_set_key(RC2_KEY *key, int len, const uint8_t *data, int bits) {
   unsigned int c, d;
 
   k = (uint8_t *)&key->data[0];
-  *k = 0; /* for if there is a zero length key */
+  *k = 0;  // for if there is a zero length key
 
   if (len > 128) {
     len = 128;
@@ -333,7 +333,7 @@ static void RC2_set_key(RC2_KEY *key, int len, const uint8_t *data, int bits) {
     k[i] = data[i];
   }
 
-  /* expand table */
+  // expand table
   d = k[len - 1];
   j = 0;
   for (i = len; i < 128; i++, j++) {
@@ -341,7 +341,7 @@ static void RC2_set_key(RC2_KEY *key, int len, const uint8_t *data, int bits) {
     k[i] = d;
   }
 
-  /* hmm.... key reduction to 'bits' bits */
+  // hmm.... key reduction to 'bits' bits
 
   j = (bits + 7) >> 3;
   i = 128 - j;
@@ -354,7 +354,7 @@ static void RC2_set_key(RC2_KEY *key, int len, const uint8_t *data, int bits) {
     k[i] = d;
   }
 
-  /* copy from bytes into uint16_t's */
+  // copy from bytes into uint16_t's
   ki = &(key->data[63]);
   for (i = 127; i >= 0; i -= 2) {
     *(ki--) = ((k[i] << 8) | k[i - 1]) & 0xffff;
@@ -362,8 +362,8 @@ static void RC2_set_key(RC2_KEY *key, int len, const uint8_t *data, int bits) {
 }
 
 typedef struct {
-  int key_bits; /* effective key bits */
-  RC2_KEY ks;   /* key schedule */
+  int key_bits;  // effective key bits
+  RC2_KEY ks;    // key schedule
 } EVP_RC2_KEY;
 
 static int rc2_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
@@ -399,8 +399,8 @@ static int rc2_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr) {
       key->key_bits = EVP_CIPHER_CTX_key_length(ctx) * 8;
       return 1;
     case EVP_CTRL_SET_RC2_KEY_BITS:
-      /* Should be overridden by later call to |EVP_CTRL_INIT|, but
-       * people call it, so it may as well work. */
+      // Should be overridden by later call to |EVP_CTRL_INIT|, but
+      // people call it, so it may as well work.
       key->key_bits = arg;
       return 1;
 

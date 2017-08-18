@@ -187,18 +187,18 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
     return 0;
   }
 
-  /* Save the modulus. */
+  // Save the modulus.
   if (!BN_copy(&mont->N, mod)) {
     OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
-  /* Find n0 such that n0 * N == -1 (mod r).
-   *
-   * Only certain BN_BITS2<=32 platforms actually make use of n0[1]. For the
-   * others, we could use a shorter R value and use faster |BN_ULONG|-based
-   * math instead of |uint64_t|-based math, which would be double-precision.
-   * However, currently only the assembler files know which is which. */
+  // Find n0 such that n0 * N == -1 (mod r).
+  //
+  // Only certain BN_BITS2<=32 platforms actually make use of n0[1]. For the
+  // others, we could use a shorter R value and use faster |BN_ULONG|-based
+  // math instead of |uint64_t|-based math, which would be double-precision.
+  // However, currently only the assembler files know which is which.
   uint64_t n0 = bn_mont_n0(mod);
   mont->n0[0] = (BN_ULONG)n0;
 #if BN_MONT_CTX_N0_LIMBS == 2
@@ -207,14 +207,14 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   mont->n0[1] = 0;
 #endif
 
-  /* Save RR = R**2 (mod N). R is the smallest power of 2**BN_BITS such that R
-   * > mod. Even though the assembly on some 32-bit platforms works with 64-bit
-   * values, using |BN_BITS2| here, rather than |BN_MONT_CTX_N0_LIMBS *
-   * BN_BITS2|, is correct because R**2 will still be a multiple of the latter
-   * as |BN_MONT_CTX_N0_LIMBS| is either one or two.
-   *
-   * XXX: This is not constant time with respect to |mont->N|, but it should
-   * be. */
+  // Save RR = R**2 (mod N). R is the smallest power of 2**BN_BITS such that R
+  // > mod. Even though the assembly on some 32-bit platforms works with 64-bit
+  // values, using |BN_BITS2| here, rather than |BN_MONT_CTX_N0_LIMBS *
+  // BN_BITS2|, is correct because R**2 will still be a multiple of the latter
+  // as |BN_MONT_CTX_N0_LIMBS| is either one or two.
+  //
+  // XXX: This is not constant time with respect to |mont->N|, but it should
+  // be.
   unsigned lgBigR = (BN_num_bits(mod) + (BN_BITS2 - 1)) / BN_BITS2 * BN_BITS2;
   if (!bn_mod_exp_base_2_vartime(&mont->RR, lgBigR * 2, &mont->N)) {
     return 0;
@@ -272,7 +272,7 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
     return 1;
   }
 
-  max = (2 * nl); /* carry is stored separately */
+  max = (2 * nl);  // carry is stored separately
   if (!bn_wexpand(r, max)) {
     return 0;
   }
@@ -281,7 +281,7 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
   np = n->d;
   rp = r->d;
 
-  /* clear the top words of T */
+  // clear the top words of T
   if (max > r->top) {
     OPENSSL_memset(&rp[r->top], 0, (max - r->top) * sizeof(BN_ULONG));
   }
@@ -311,8 +311,8 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
     uintptr_t m;
 
     v = bn_sub_words(rp, ap, np, nl) - carry;
-    /* if subtraction result is real, then trick unconditional memcpy below to
-     * perform in-place "refresh" instead of actual copy. */
+    // if subtraction result is real, then trick unconditional memcpy below to
+    // perform in-place "refresh" instead of actual copy.
     m = (0u - (uintptr_t)v);
     nrp = (BN_ULONG *)(((uintptr_t)rp & ~m) | ((uintptr_t)ap & m));
 
@@ -371,7 +371,7 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 #else
   int num = mont->N.top;
 
-  /* |bn_mul_mont| requires at least 128 bits of limbs, at least for x86. */
+  // |bn_mul_mont| requires at least 128 bits of limbs, at least for x86.
   if (num < (128 / BN_BITS2) ||
       a->top != num ||
       b->top != num) {
@@ -382,7 +382,7 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     return 0;
   }
   if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
-    /* The check above ensures this won't happen. */
+    // The check above ensures this won't happen.
     assert(0);
     OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
     return 0;
@@ -417,7 +417,7 @@ static int bn_mod_mul_montgomery_fallback(BIGNUM *r, const BIGNUM *a,
     }
   }
 
-  /* reduce from aRR to aR */
+  // reduce from aRR to aR
   if (!BN_from_montgomery_word(r, tmp, mont)) {
     goto err;
   }

@@ -141,7 +141,7 @@ extern "C" {
 #if defined(OPENSSL_64_BIT)
 
 #if !defined(_MSC_VER)
-/* MSVC doesn't support two-word integers on 64-bit. */
+// MSVC doesn't support two-word integers on 64-bit.
 #define BN_ULLONG	uint128_t
 #endif
 
@@ -168,11 +168,11 @@ extern "C" {
 #define BN_MASK2l	(0xffffUL)
 #define BN_MASK2h1	(0xffff8000UL)
 #define BN_MASK2h	(0xffff0000UL)
-/* On some 32-bit platforms, Montgomery multiplication is done using 64-bit
- * arithmetic with SIMD instructions. On such platforms, |BN_MONT_CTX::n0|
- * needs to be two words long. Only certain 32-bit platforms actually make use
- * of n0[1] and shorter R value would suffice for the others. However,
- * currently only the assembly files know which is which. */
+// On some 32-bit platforms, Montgomery multiplication is done using 64-bit
+// arithmetic with SIMD instructions. On such platforms, |BN_MONT_CTX::n0|
+// needs to be two words long. Only certain 32-bit platforms actually make use
+// of n0[1] and shorter R value would suffice for the others. However,
+// currently only the assembly files know which is which.
 #define BN_MONT_CTX_N0_LIMBS 2
 #define BN_TBIT		(0x80000000UL)
 #define BN_DEC_CONV	(1000000000UL)
@@ -195,21 +195,21 @@ extern "C" {
 #define Hw(t) (((BN_ULONG)((t)>>BN_BITS2))&BN_MASK2)
 #endif
 
-/* bn_correct_top decrements |bn->top| until |bn->d[top-1]| is non-zero or
- * until |top| is zero. If |bn| is zero, |bn->neg| is set to zero. */
+// bn_correct_top decrements |bn->top| until |bn->d[top-1]| is non-zero or
+// until |top| is zero. If |bn| is zero, |bn->neg| is set to zero.
 void bn_correct_top(BIGNUM *bn);
 
-/* bn_wexpand ensures that |bn| has at least |words| works of space without
- * altering its value. It returns one on success or zero on allocation
- * failure. */
+// bn_wexpand ensures that |bn| has at least |words| works of space without
+// altering its value. It returns one on success or zero on allocation
+// failure.
 int bn_wexpand(BIGNUM *bn, size_t words);
 
-/* bn_expand acts the same as |bn_wexpand|, but takes a number of bits rather
- * than a number of words. */
+// bn_expand acts the same as |bn_wexpand|, but takes a number of bits rather
+// than a number of words.
 int bn_expand(BIGNUM *bn, size_t bits);
 
-/* bn_set_words sets |bn| to the value encoded in the |num| words in |words|,
- * least significant word first. */
+// bn_set_words sets |bn| to the value encoded in the |num| words in |words|,
+// least significant word first.
 int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num);
 
 BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
@@ -223,14 +223,14 @@ void bn_mul_comba8(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b);
 void bn_sqr_comba8(BN_ULONG *r, const BN_ULONG *a);
 void bn_sqr_comba4(BN_ULONG *r, const BN_ULONG *a);
 
-/* bn_cmp_words returns a value less than, equal to or greater than zero if
- * the, length |n|, array |a| is less than, equal to or greater than |b|. */
+// bn_cmp_words returns a value less than, equal to or greater than zero if
+// the, length |n|, array |a| is less than, equal to or greater than |b|.
 int bn_cmp_words(const BN_ULONG *a, const BN_ULONG *b, int n);
 
-/* bn_cmp_words returns a value less than, equal to or greater than zero if the
- * array |a| is less than, equal to or greater than |b|. The arrays can be of
- * different lengths: |cl| gives the minimum of the two lengths and |dl| gives
- * the length of |a| minus the length of |b|. */
+// bn_cmp_words returns a value less than, equal to or greater than zero if the
+// array |a| is less than, equal to or greater than |b|. The arrays can be of
+// different lengths: |cl| gives the minimum of the two lengths and |dl| gives
+// the length of |a| minus the length of |b|.
 int bn_cmp_part_words(const BN_ULONG *a, const BN_ULONG *b, int cl, int dl);
 
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
@@ -247,25 +247,25 @@ int bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n);
 #error "Either BN_ULLONG or BN_UMULT_LOHI must be defined on every platform."
 #endif
 
-/* bn_mod_inverse_prime sets |out| to the modular inverse of |a| modulo |p|,
- * computed with Fermat's Little Theorem. It returns one on success and zero on
- * error. If |mont_p| is NULL, one will be computed temporarily. */
+// bn_mod_inverse_prime sets |out| to the modular inverse of |a| modulo |p|,
+// computed with Fermat's Little Theorem. It returns one on success and zero on
+// error. If |mont_p| is NULL, one will be computed temporarily.
 int bn_mod_inverse_prime(BIGNUM *out, const BIGNUM *a, const BIGNUM *p,
                          BN_CTX *ctx, const BN_MONT_CTX *mont_p);
 
-/* bn_mod_inverse_secret_prime behaves like |bn_mod_inverse_prime| but uses
- * |BN_mod_exp_mont_consttime| instead of |BN_mod_exp_mont| in hopes of
- * protecting the exponent. */
+// bn_mod_inverse_secret_prime behaves like |bn_mod_inverse_prime| but uses
+// |BN_mod_exp_mont_consttime| instead of |BN_mod_exp_mont| in hopes of
+// protecting the exponent.
 int bn_mod_inverse_secret_prime(BIGNUM *out, const BIGNUM *a, const BIGNUM *p,
                                 BN_CTX *ctx, const BN_MONT_CTX *mont_p);
 
-/* bn_jacobi returns the Jacobi symbol of |a| and |b| (which is -1, 0 or 1), or
- * -2 on error. */
+// bn_jacobi returns the Jacobi symbol of |a| and |b| (which is -1, 0 or 1), or
+// -2 on error.
 int bn_jacobi(const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
 
 
 #if defined(__cplusplus)
-}  /* extern C */
+}  // extern C
 #endif
 
-#endif  /* OPENSSL_HEADER_BN_INTERNAL_H */
+#endif  // OPENSSL_HEADER_BN_INTERNAL_H

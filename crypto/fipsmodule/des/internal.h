@@ -80,7 +80,7 @@ extern "C" {
     *((c)++) = (unsigned char)(((l) >> 24L) & 0xff); \
   } while (0)
 
-/* NOTE - c is not incremented as per c2l */
+// NOTE - c is not incremented as per c2l
 #define c2ln(c, l1, l2, n)                     \
   do {                                         \
     (c) += (n);                                \
@@ -105,7 +105,7 @@ extern "C" {
     }                                          \
   } while (0)
 
-/* NOTE - c is not incremented as per l2c */
+// NOTE - c is not incremented as per l2c
 #define l2cn(l1, l2, c, n)                                \
   do {                                                    \
     (c) += (n);                                           \
@@ -218,7 +218,7 @@ how to use xors :-) I got it to its final state.
 
 
 #if defined(__cplusplus)
-} /* extern C */
+}  // extern C
 #endif
 
-#endif /* OPENSSL_HEADER_DES_INTERNAL_H */
+#endif  // OPENSSL_HEADER_DES_INTERNAL_H

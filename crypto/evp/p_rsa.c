@@ -73,21 +73,21 @@
 
 
 typedef struct {
-  /* Key gen parameters */
+  // Key gen parameters
   int nbits;
   BIGNUM *pub_exp;
-  /* RSA padding mode */
+  // RSA padding mode
   int pad_mode;
-  /* message digest */
+  // message digest
   const EVP_MD *md;
-  /* message digest for MGF1 */
+  // message digest for MGF1
   const EVP_MD *mgf1md;
-  /* PSS salt length */
+  // PSS salt length
   int saltlen;
-  /* tbuf is a buffer which is either NULL, or is the size of the RSA modulus.
-   * It's used to store the output of RSA operations. */
+  // tbuf is a buffer which is either NULL, or is the size of the RSA modulus.
+  // It's used to store the output of RSA operations.
   uint8_t *tbuf;
-  /* OAEP label */
+  // OAEP label
   uint8_t *oaep_label;
   size_t oaep_labellen;
 } RSA_PKEY_CTX;
@@ -260,7 +260,7 @@ static int pkey_rsa_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out,
     return 0;
   }
 
-  /* Assemble the encoded hash, using a placeholder hash value. */
+  // Assemble the encoded hash, using a placeholder hash value.
   static const uint8_t kDummyHash[EVP_MAX_MD_SIZE] = {0};
   const size_t hash_len = EVP_MD_size(rctx->md);
   uint8_t *asn1_prefix;
@@ -278,7 +278,7 @@ static int pkey_rsa_verify_recover(EVP_PKEY_CTX *ctx, uint8_t *out,
   if (!RSA_verify_raw(rsa, &rslen, rctx->tbuf, key_len, sig, sig_len,
                       RSA_PKCS1_PADDING) ||
       rslen != asn1_prefix_len ||
-      /* Compare all but the hash suffix. */
+      // Compare all but the hash suffix.
       CRYPTO_memcmp(rctx->tbuf, asn1_prefix, asn1_prefix_len - hash_len) != 0) {
     ok = 0;
   }

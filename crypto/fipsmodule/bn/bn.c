@@ -175,8 +175,8 @@ DEFINE_METHOD_FUNCTION(BIGNUM, BN_value_one) {
   out->flags = BN_FLG_STATIC_DATA;
 }
 
-/* BN_num_bits_word returns the minimum number of bits needed to represent the
- * value in |l|. */
+// BN_num_bits_word returns the minimum number of bits needed to represent the
+// value in |l|.
 unsigned BN_num_bits_word(BN_ULONG l) {
   static const unsigned char bits[256] = {
       0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
@@ -290,7 +290,7 @@ int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
     return 0;
   }
   OPENSSL_memmove(bn->d, words, num * sizeof(BN_ULONG));
-  /* |bn_wexpand| verified that |num| isn't too large. */
+  // |bn_wexpand| verified that |num| isn't too large.
   bn->top = (int)num;
   bn_correct_top(bn);
   bn->neg = 0;

@@ -301,25 +301,25 @@ void *RSA_get_ex_data(const RSA *rsa, int idx) {
   return CRYPTO_get_ex_data(&rsa->ex_data, idx);
 }
 
-/* SSL_SIG_LENGTH is the size of an SSL/TLS (prior to TLS 1.2) signature: it's
- * the length of an MD5 and SHA1 hash. */
+// SSL_SIG_LENGTH is the size of an SSL/TLS (prior to TLS 1.2) signature: it's
+// the length of an MD5 and SHA1 hash.
 static const unsigned SSL_SIG_LENGTH = 36;
 
-/* pkcs1_sig_prefix contains the ASN.1, DER encoded prefix for a hash that is
- * to be signed with PKCS#1. */
+// pkcs1_sig_prefix contains the ASN.1, DER encoded prefix for a hash that is
+// to be signed with PKCS#1.
 struct pkcs1_sig_prefix {
-  /* nid identifies the hash function. */
+  // nid identifies the hash function.
   int nid;
-  /* hash_len is the expected length of the hash function. */
+  // hash_len is the expected length of the hash function.
   uint8_t hash_len;
-  /* len is the number of bytes of |bytes| which are valid. */
+  // len is the number of bytes of |bytes| which are valid.
   uint8_t len;
-  /* bytes contains the DER bytes. */
+  // bytes contains the DER bytes.
   uint8_t bytes[19];
 };
 
-/* kPKCS1SigPrefixes contains the ASN.1 prefixes for PKCS#1 signatures with
- * different hash functions. */
+// kPKCS1SigPrefixes contains the ASN.1 prefixes for PKCS#1 signatures with
+// different hash functions.
 static const struct pkcs1_sig_prefix kPKCS1SigPrefixes[] = {
     {
      NID_md5,
@@ -374,7 +374,7 @@ int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
   unsigned i;
 
   if (hash_nid == NID_md5_sha1) {
-    /* Special case: SSL signature, just check the length. */
+    // Special case: SSL signature, just check the length.
     if (msg_len != SSL_SIG_LENGTH) {
       OPENSSL_PUT_ERROR(RSA, RSA_R_INVALID_MESSAGE_LENGTH);
       return 0;
@@ -516,8 +516,8 @@ int RSA_verify(int hash_nid, const uint8_t *msg, size_t msg_len,
     goto out;
   }
 
-  /* Check that no other information follows the hash value (FIPS 186-4 Section
-   * 5.5) and it matches the expected hash. */
+  // Check that no other information follows the hash value (FIPS 186-4 Section
+  // 5.5) and it matches the expected hash.
   if (len != signed_msg_len || OPENSSL_memcmp(buf, signed_msg, len) != 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_SIGNATURE);
     goto out;
@@ -571,7 +571,7 @@ int RSA_check_key(const RSA *key) {
   int ok = 0, has_crt_values;
 
   if (RSA_is_opaque(key)) {
-    /* Opaque keys can't be checked. */
+    // Opaque keys can't be checked.
     return 1;
   }
 
@@ -586,8 +586,8 @@ int RSA_check_key(const RSA *key) {
   }
 
   if (!key->d || !key->p) {
-    /* For a public key, or without p and q, there's nothing that can be
-     * checked. */
+    // For a public key, or without p and q, there's nothing that can be
+    // checked.
     return 1;
   }
 
@@ -608,7 +608,7 @@ int RSA_check_key(const RSA *key) {
   BN_init(&iqmp_times_q);
 
   if (!BN_mul(&n, key->p, key->q, ctx) ||
-      /* lcm = lcm(p, q) */
+      // lcm = lcm(p, q)
       !BN_sub(&pm1, key->p, BN_value_one()) ||
       !BN_sub(&qm1, key->q, BN_value_one()) ||
       !BN_mul(&lcm, &pm1, &qm1, ctx) ||
@@ -619,7 +619,7 @@ int RSA_check_key(const RSA *key) {
 
   if (!BN_div(&lcm, NULL, &lcm, &gcd, ctx) ||
       !BN_gcd(&gcd, &pm1, &qm1, ctx) ||
-      /* de = d*e mod lcm(p, q). */
+      // de = d*e mod lcm(p, q).
       !BN_mod_mul(&de, key->d, key->e, &lcm, ctx)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
@@ -643,11 +643,11 @@ int RSA_check_key(const RSA *key) {
   }
 
   if (has_crt_values) {
-    if (/* dmp1 = d mod (p-1) */
+    if (// dmp1 = d mod (p-1)
         !BN_mod(&dmp1, key->d, &pm1, ctx) ||
-        /* dmq1 = d mod (q-1) */
+        // dmq1 = d mod (q-1)
         !BN_mod(&dmq1, key->d, &qm1, ctx) ||
-        /* iqmp = q^-1 mod p */
+        // iqmp = q^-1 mod p
         !BN_mod_mul(&iqmp_times_q, key->iqmp, key->q, key->p, ctx)) {
       OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
       goto out;
@@ -680,7 +680,7 @@ out:
 }
 
 
-/* This is the product of the 132 smallest odd primes, from 3 to 751. */
+// This is the product of the 132 smallest odd primes, from 3 to 751.
 static const BN_ULONG kSmallFactorsLimbs[] = {
     TOBN(0xc4309333, 0x3ef4e3e1), TOBN(0x71161eb6, 0xcd2d655f),
     TOBN(0x95e2238c, 0x0bf94862), TOBN(0x3eb233d3, 0x24f7912b),
@@ -703,7 +703,7 @@ DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
 
 int RSA_check_fips(RSA *key) {
   if (RSA_is_opaque(key)) {
-    /* Opaque keys can't be checked. */
+    // Opaque keys can't be checked.
     OPENSSL_PUT_ERROR(RSA, RSA_R_PUBLIC_KEY_VALIDATION_FAILED);
     return 0;
   }
@@ -723,7 +723,7 @@ int RSA_check_fips(RSA *key) {
 
   int ret = 1;
 
-  /* Perform partial public key validation of RSA keys (SP 800-89 5.3.3). */
+  // Perform partial public key validation of RSA keys (SP 800-89 5.3.3).
   enum bn_primality_result_t primality_result;
   if (BN_num_bits(key->e) <= 16 ||
       BN_num_bits(key->e) > 256 ||
@@ -742,15 +742,15 @@ int RSA_check_fips(RSA *key) {
   BN_CTX_free(ctx);
 
   if (!ret || key->d == NULL || key->p == NULL) {
-    /* On a failure or on only a public key, there's nothing else can be
-     * checked. */
+    // On a failure or on only a public key, there's nothing else can be
+    // checked.
     return ret;
   }
 
-  /* FIPS pairwise consistency test (FIPS 140-2 4.9.2). Per FIPS 140-2 IG,
-   * section 9.9, it is not known whether |rsa| will be used for signing or
-   * encryption, so either pair-wise consistency self-test is acceptable. We
-   * perform a signing test. */
+  // FIPS pairwise consistency test (FIPS 140-2 4.9.2). Per FIPS 140-2 IG,
+  // section 9.9, it is not known whether |rsa| will be used for signing or
+  // encryption, so either pair-wise consistency self-test is acceptable. We
+  // perform a signing test.
   uint8_t data[32] = {0};
   unsigned sig_len = RSA_size(key);
   uint8_t *sig = OPENSSL_malloc(sig_len);

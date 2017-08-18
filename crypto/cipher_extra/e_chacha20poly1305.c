@@ -120,7 +120,7 @@ static int aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   }
 
   if (key_len != sizeof(c20_ctx->key)) {
-    return 0; /* internal error - EVP_AEAD_CTX_init should catch this. */
+    return 0;  // internal error - EVP_AEAD_CTX_init should catch this.
   }
 
   c20_ctx = OPENSSL_malloc(sizeof(struct aead_chacha20_poly1305_ctx));
@@ -152,7 +152,7 @@ static void poly1305_update_length(poly1305_state *poly1305, size_t data_len) {
   CRYPTO_poly1305_update(poly1305, length_bytes, sizeof(length_bytes));
 }
 
-/* calc_tag fills |tag| with the authentication tag for the given inputs. */
+// calc_tag fills |tag| with the authentication tag for the given inputs.
 static void calc_tag(uint8_t tag[POLY1305_TAG_LEN],
                      const struct aead_chacha20_poly1305_ctx *c20_ctx,
                      const uint8_t nonce[12], const uint8_t *ad, size_t ad_len,
@@ -164,7 +164,7 @@ static void calc_tag(uint8_t tag[POLY1305_TAG_LEN],
   CRYPTO_chacha_20(poly1305_key, poly1305_key, sizeof(poly1305_key),
                    c20_ctx->key, nonce, 0);
 
-  static const uint8_t padding[16] = { 0 }; /* Padding is all zeros. */
+  static const uint8_t padding[16] = { 0 };  // Padding is all zeros.
   poly1305_state ctx;
   CRYPTO_poly1305_init(&ctx, poly1305_key);
   CRYPTO_poly1305_update(&ctx, ad, ad_len);
@@ -203,12 +203,12 @@ static int aead_chacha20_poly1305_seal_scatter(
     return 0;
   }
 
-  /* |CRYPTO_chacha_20| uses a 32-bit block counter. Therefore we disallow
-   * individual operations that work on more than 256GB at a time.
-   * |in_len_64| is needed because, on 32-bit platforms, size_t is only
-   * 32-bits and this produces a warning because it's always false.
-   * Casting to uint64_t inside the conditional is not sufficient to stop
-   * the warning. */
+  // |CRYPTO_chacha_20| uses a 32-bit block counter. Therefore we disallow
+  // individual operations that work on more than 256GB at a time.
+  // |in_len_64| is needed because, on 32-bit platforms, size_t is only
+  // 32-bits and this produces a warning because it's always false.
+  // Casting to uint64_t inside the conditional is not sufficient to stop
+  // the warning.
   const uint64_t in_len_64 = in_len;
   if (in_len_64 >= (UINT64_C(1) << 32) * 64 - 64) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
@@ -220,8 +220,8 @@ static int aead_chacha20_poly1305_seal_scatter(
     return 0;
   }
 
-  /* The the extra input is given, it is expected to be very short and so is
-   * encrypted byte-by-byte first. */
+  // The the extra input is given, it is expected to be very short and so is
+  // encrypted byte-by-byte first.
   if (extra_in_len) {
     static const size_t kChaChaBlockSize = 64;
     uint32_t block_counter = 1 + (in_len / kChaChaBlockSize);
@@ -275,12 +275,12 @@ static int aead_chacha20_poly1305_open_gather(
     return 0;
   }
 
-  /* |CRYPTO_chacha_20| uses a 32-bit block counter. Therefore we disallow
-   * individual operations that work on more than 256GB at a time.
-   * |in_len_64| is needed because, on 32-bit platforms, size_t is only
-   * 32-bits and this produces a warning because it's always false.
-   * Casting to uint64_t inside the conditional is not sufficient to stop
-   * the warning. */
+  // |CRYPTO_chacha_20| uses a 32-bit block counter. Therefore we disallow
+  // individual operations that work on more than 256GB at a time.
+  // |in_len_64| is needed because, on 32-bit platforms, size_t is only
+  // 32-bits and this produces a warning because it's always false.
+  // Casting to uint64_t inside the conditional is not sufficient to stop
+  // the warning.
   const uint64_t in_len_64 = in_len;
   if (in_len_64 >= (UINT64_C(1) << 32) * 64 - 64) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
@@ -307,20 +307,20 @@ static int aead_chacha20_poly1305_open_gather(
 }
 
 static const EVP_AEAD aead_chacha20_poly1305 = {
-    32,               /* key len */
-    12,               /* nonce len */
-    POLY1305_TAG_LEN, /* overhead */
-    POLY1305_TAG_LEN, /* max tag length */
-    1,                /* seal_scatter_supports_extra_in */
+    32,                // key len
+    12,                // nonce len
+    POLY1305_TAG_LEN,  // overhead
+    POLY1305_TAG_LEN,  // max tag length
+    1,                 // seal_scatter_supports_extra_in
 
     aead_chacha20_poly1305_init,
-    NULL, /* init_with_direction */
+    NULL,  // init_with_direction
     aead_chacha20_poly1305_cleanup,
     NULL /* open */,
     aead_chacha20_poly1305_seal_scatter,
     aead_chacha20_poly1305_open_gather,
-    NULL, /* get_iv */
-    NULL, /* tag_len */
+    NULL,  // get_iv
+    NULL,  // tag_len
 };
 
 const EVP_AEAD *EVP_aead_chacha20_poly1305(void) {

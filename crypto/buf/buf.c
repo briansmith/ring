@@ -97,14 +97,14 @@ static int buf_mem_reserve(BUF_MEM *buf, size_t cap, int clean) {
 
   size_t n = cap + 3;
   if (n < cap) {
-    /* overflow */
+    // overflow
     OPENSSL_PUT_ERROR(BUF, ERR_R_MALLOC_FAILURE);
     return 0;
   }
   n = n / 3;
   size_t alloc_size = n * 4;
   if (alloc_size / 4 != n) {
-    /* overflow */
+    // overflow
     OPENSSL_PUT_ERROR(BUF, ERR_R_MALLOC_FAILURE);
     return 0;
   }
@@ -185,7 +185,7 @@ char *BUF_strndup(const char *str, size_t size) {
 
   alloc_size = size + 1;
   if (alloc_size < size) {
-    /* overflow */
+    // overflow
     OPENSSL_PUT_ERROR(BUF, ERR_R_MALLOC_FAILURE);
     return NULL;
   }

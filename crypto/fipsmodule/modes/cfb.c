@@ -166,23 +166,23 @@ static void cfbr_encrypt_block(const uint8_t *in, uint8_t *out, unsigned nbits,
     return;
   }
 
-  /* fill in the first half of the new IV with the current IV */
+  // fill in the first half of the new IV with the current IV
   OPENSSL_memcpy(ovec, ivec, 16);
-  /* construct the new IV */
+  // construct the new IV
   (*block)(ivec, ivec, key);
   num = (nbits + 7) / 8;
   if (enc) {
-    /* encrypt the input */
+    // encrypt the input
     for (n = 0; n < num; ++n) {
       out[n] = (ovec[16 + n] = in[n] ^ ivec[n]);
     }
   } else {
-    /* decrypt the input */
+    // decrypt the input
     for (n = 0; n < num; ++n) {
       out[n] = (ovec[16 + n] = in[n]) ^ ivec[n];
     }
   }
-  /* shift ovec left... */
+  // shift ovec left...
   rem = nbits % 8;
   num = nbits / 8;
   if (rem == 0) {
@@ -193,10 +193,10 @@ static void cfbr_encrypt_block(const uint8_t *in, uint8_t *out, unsigned nbits,
     }
   }
 
-  /* it is not necessary to cleanse ovec, since the IV is not secret */
+  // it is not necessary to cleanse ovec, since the IV is not secret
 }
 
-/* N.B. This expects the input to be packed, MS bit first */
+// N.B. This expects the input to be packed, MS bit first
 void CRYPTO_cfb128_1_encrypt(const uint8_t *in, uint8_t *out, size_t bits,
                              const void *key, uint8_t ivec[16], unsigned *num,
                              int enc, block128_f block) {

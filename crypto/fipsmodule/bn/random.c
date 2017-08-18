@@ -158,7 +158,7 @@ static int bn_rand_with_additional_data(BIGNUM *rnd, int bits, int top,
     goto err;
   }
 
-  /* Make a random number and set the top and bottom bits. */
+  // Make a random number and set the top and bottom bits.
   RAND_bytes_with_additional_data(buf, bytes, additional_data);
 
   if (top != BN_RAND_TOP_ANY) {
@@ -176,7 +176,7 @@ static int bn_rand_with_additional_data(BIGNUM *rnd, int bits, int top,
 
   buf[0] &= ~mask;
 
-  /* Set the bottom bit if requested, */
+  // Set the bottom bit if requested,
   if (bottom == BN_RAND_BOTTOM_ODD)  {
     buf[bytes - 1] |= 1;
   }
@@ -212,28 +212,28 @@ static int bn_rand_range_with_additional_data(
     return 0;
   }
 
-  /* This function is used to implement steps 4 through 7 of FIPS 186-4
-   * appendices B.4.2 and B.5.2. When called in those contexts, |max_exclusive|
-   * is n and |min_inclusive| is one. */
+  // This function is used to implement steps 4 through 7 of FIPS 186-4
+  // appendices B.4.2 and B.5.2. When called in those contexts, |max_exclusive|
+  // is n and |min_inclusive| is one.
   unsigned count = 100;
-  unsigned n = BN_num_bits(max_exclusive); /* n > 0 */
+  unsigned n = BN_num_bits(max_exclusive);  // n > 0
   do {
     if (!--count) {
       OPENSSL_PUT_ERROR(BN, BN_R_TOO_MANY_ITERATIONS);
       return 0;
     }
 
-    if (/* steps 4 and 5 */
+    if (// steps 4 and 5
         !bn_rand_with_additional_data(r, n, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY,
                                       additional_data) ||
-        /* step 7 */
+        // step 7
         !BN_add_word(r, min_inclusive)) {
       return 0;
     }
 
-    /* Step 6. This loops if |r| >= |max_exclusive|. This is identical to
-     * checking |r| > |max_exclusive| - 1 or |r| - 1 > |max_exclusive| - 2, the
-     * formulation stated in FIPS 186-4. */
+    // Step 6. This loops if |r| >= |max_exclusive|. This is identical to
+    // checking |r| > |max_exclusive| - 1 or |r| - 1 > |max_exclusive| - 2, the
+    // formulation stated in FIPS 186-4.
   } while (BN_cmp(r, max_exclusive) >= 0);
 
   return 1;
@@ -256,22 +256,22 @@ int BN_pseudo_rand_range(BIGNUM *r, const BIGNUM *range) {
 int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
                           const uint8_t *message, size_t message_len,
                           BN_CTX *ctx) {
-  /* We copy |priv| into a local buffer to avoid furthur exposing its
-   * length. */
+  // We copy |priv| into a local buffer to avoid furthur exposing its
+  // length.
   uint8_t private_bytes[96];
   size_t todo = sizeof(priv->d[0]) * priv->top;
   if (todo > sizeof(private_bytes)) {
-    /* No reasonable DSA or ECDSA key should have a private key
-     * this large and we don't handle this case in order to avoid
-     * leaking the length of the private key. */
+    // No reasonable DSA or ECDSA key should have a private key
+    // this large and we don't handle this case in order to avoid
+    // leaking the length of the private key.
     OPENSSL_PUT_ERROR(BN, BN_R_PRIVATE_KEY_TOO_LARGE);
     return 0;
   }
   OPENSSL_memcpy(private_bytes, priv->d, todo);
   OPENSSL_memset(private_bytes + todo, 0, sizeof(private_bytes) - todo);
 
-  /* Pass a SHA512 hash of the private key and message as additional data into
-   * the RBG. This is a hardening measure against entropy failure. */
+  // Pass a SHA512 hash of the private key and message as additional data into
+  // the RBG. This is a hardening measure against entropy failure.
   OPENSSL_COMPILE_ASSERT(SHA512_DIGEST_LENGTH >= 32,
                          additional_data_is_too_large_for_sha512);
   SHA512_CTX sha;
@@ -281,6 +281,6 @@ int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
   SHA512_Update(&sha, message, message_len);
   SHA512_Final(digest, &sha);
 
-  /* Select a value k from [1, range-1], following FIPS 186-4 appendix B.5.2. */
+  // Select a value k from [1, range-1], following FIPS 186-4 appendix B.5.2.
   return bn_rand_range_with_additional_data(out, 1, range, digest);
 }

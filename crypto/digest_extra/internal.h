@@ -26,7 +26,7 @@ const EVP_MD *EVP_parse_digest_algorithm(CBS *cbs);
 
 
 #if defined(__cplusplus)
-}  /* extern C */
+}  // extern C
 #endif
 
-#endif  /* OPENSSL_HEADER_DIGEST_EXTRA_INTERNAL */
+#endif  // OPENSSL_HEADER_DIGEST_EXTRA_INTERNAL

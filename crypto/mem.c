@@ -55,7 +55,7 @@
  * [including the GNU Public Licence.] */
 
 #if !defined(_POSIX_C_SOURCE)
-#define _POSIX_C_SOURCE 201410L  /* needed for strdup, snprintf, vprintf etc */
+#define _POSIX_C_SOURCE 201410L  // needed for strdup, snprintf, vprintf etc
 #endif
 
 #include <openssl/mem.h>
@@ -85,8 +85,8 @@ void *OPENSSL_realloc_clean(void *ptr, size_t old_size, size_t new_size) {
     return NULL;
   }
 
-  /* We don't support shrinking the buffer. Note the memcpy that copies
-   * |old_size| bytes to the new buffer, below. */
+  // We don't support shrinking the buffer. Note the memcpy that copies
+  // |old_size| bytes to the new buffer, below.
   if (new_size < old_size) {
     return NULL;
   }
@@ -114,7 +114,7 @@ void OPENSSL_cleanse(void *ptr, size_t len) {
      detect memset_s, it would be better to use that. */
   __asm__ __volatile__("" : : "r"(ptr) : "memory");
 #endif
-#endif  /* !OPENSSL_NO_ASM */
+#endif  // !OPENSSL_NO_ASM
 }
 
 int CRYPTO_memcmp(const void *in_a, const void *in_b, size_t len) {
@@ -130,7 +130,7 @@ int CRYPTO_memcmp(const void *in_a, const void *in_b, size_t len) {
 }
 
 uint32_t OPENSSL_hash32(const void *ptr, size_t len) {
-  /* These are the FNV-1a parameters for 32 bits. */
+  // These are the FNV-1a parameters for 32 bits.
   static const uint32_t kPrime = 16777619u;
   static const uint32_t kOffsetBasis = 2166136261u;
 

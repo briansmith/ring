@@ -27,7 +27,7 @@ void CBB_zero(CBB *cbb) {
 }
 
 static int cbb_init(CBB *cbb, uint8_t *buf, size_t cap) {
-  /* This assumes that |cbb| has already been zeroed. */
+  // This assumes that |cbb| has already been zeroed.
   struct cbb_buffer_st *base;
 
   base = OPENSSL_malloc(sizeof(struct cbb_buffer_st));
@@ -75,8 +75,8 @@ int CBB_init_fixed(CBB *cbb, uint8_t *buf, size_t len) {
 
 void CBB_cleanup(CBB *cbb) {
   if (cbb->base) {
-    /* Only top-level |CBB|s are cleaned up. Child |CBB|s are non-owning. They
-     * are implicitly discarded when the parent is flushed or cleaned up. */
+    // Only top-level |CBB|s are cleaned up. Child |CBB|s are non-owning. They
+    // are implicitly discarded when the parent is flushed or cleaned up.
     assert(cbb->is_top_level);
 
     if (cbb->base->can_resize) {
@@ -97,7 +97,7 @@ static int cbb_buffer_reserve(struct cbb_buffer_st *base, uint8_t **out,
 
   newlen = base->len + len;
   if (newlen < base->len) {
-    /* Overflow */
+    // Overflow
     goto err;
   }
 
@@ -137,7 +137,7 @@ static int cbb_buffer_add(struct cbb_buffer_st *base, uint8_t **out,
   if (!cbb_buffer_reserve(base, out, len)) {
     return 0;
   }
-  /* This will not overflow or |cbb_buffer_reserve| would have failed. */
+  // This will not overflow or |cbb_buffer_reserve| would have failed.
   base->len += len;
   return 1;
 }
@@ -176,7 +176,7 @@ int CBB_finish(CBB *cbb, uint8_t **out_data, size_t *out_len) {
   }
 
   if (cbb->base->can_resize && (out_data == NULL || out_len == NULL)) {
-    /* |out_data| and |out_len| can only be NULL if the CBB is fixed. */
+    // |out_data| and |out_len| can only be NULL if the CBB is fixed.
     return 0;
   }
 
@@ -191,15 +191,15 @@ int CBB_finish(CBB *cbb, uint8_t **out_data, size_t *out_len) {
   return 1;
 }
 
-/* CBB_flush recurses and then writes out any pending length prefix. The
- * current length of the underlying base is taken to be the length of the
- * length-prefixed data. */
+// CBB_flush recurses and then writes out any pending length prefix. The
+// current length of the underlying base is taken to be the length of the
+// length-prefixed data.
 int CBB_flush(CBB *cbb) {
   size_t child_start, i, len;
 
-  /* If |cbb->base| has hit an error, the buffer is in an undefined state, so
-   * fail all following calls. In particular, |cbb->child| may point to invalid
-   * memory. */
+  // If |cbb->base| has hit an error, the buffer is in an undefined state, so
+  // fail all following calls. In particular, |cbb->child| may point to invalid
+  // memory.
   if (cbb->base == NULL || cbb->base->error) {
     return 0;
   }
@@ -219,16 +219,16 @@ int CBB_flush(CBB *cbb) {
   len = cbb->base->len - child_start;
 
   if (cbb->child->pending_is_asn1) {
-    /* For ASN.1 we assume that we'll only need a single byte for the length.
-     * If that turned out to be incorrect, we have to move the contents along
-     * in order to make space. */
+    // For ASN.1 we assume that we'll only need a single byte for the length.
+    // If that turned out to be incorrect, we have to move the contents along
+    // in order to make space.
     uint8_t len_len;
     uint8_t initial_length_byte;
 
     assert (cbb->child->pending_len_len == 1);
 
     if (len > 0xfffffffe) {
-      /* Too large. */
+      // Too large.
       goto err;
     } else if (len > 0xffffff) {
       len_len = 5;
@@ -249,7 +249,7 @@ int CBB_flush(CBB *cbb) {
     }
 
     if (len_len != 1) {
-      /* We need to move the contents along in order to make space. */
+      // We need to move the contents along in order to make space.
       size_t extra_bytes = len_len - 1;
       if (!cbb_buffer_add(cbb->base, NULL, extra_bytes)) {
         goto err;
@@ -331,14 +331,14 @@ int CBB_add_u24_length_prefixed(CBB *cbb, CBB *out_contents) {
 int CBB_add_asn1(CBB *cbb, CBB *out_contents, unsigned tag) {
   if (tag > 0xff ||
       (tag & 0x1f) == 0x1f) {
-    /* Long form identifier octets are not supported. Further, all current valid
-     * tag serializations are 8 bits. */
+    // Long form identifier octets are not supported. Further, all current valid
+    // tag serializations are 8 bits.
     cbb->base->error = 1;
     return 0;
   }
 
   if (!CBB_flush(cbb) ||
-      /* |tag|'s representation matches the DER encoding. */
+      // |tag|'s representation matches the DER encoding.
       !CBB_add_u8(cbb, (uint8_t)tag)) {
     return 0;
   }
@@ -451,11 +451,11 @@ int CBB_add_asn1_uint64(CBB *cbb, uint64_t value) {
     uint8_t byte = (value >> 8*(7-i)) & 0xff;
     if (!started) {
       if (byte == 0) {
-        /* Don't encode leading zeros. */
+        // Don't encode leading zeros.
         continue;
       }
-      /* If the high bit is set, add a padding byte to make it
-       * unsigned. */
+      // If the high bit is set, add a padding byte to make it
+      // unsigned.
       if ((byte & 0x80) && !CBB_add_u8(&child, 0)) {
         return 0;
       }
@@ -466,7 +466,7 @@ int CBB_add_asn1_uint64(CBB *cbb, uint64_t value) {
     }
   }
 
-  /* 0 is encoded as a single 0, not the empty string. */
+  // 0 is encoded as a single 0, not the empty string.
   if (!started && !CBB_add_u8(&child, 0)) {
     return 0;
   }
