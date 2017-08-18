@@ -195,6 +195,10 @@ const char *SSL_state_string_long(const SSL *ssl) {
     case DTLS1_ST_CR_HELLO_VERIFY_REQUEST_A:
       return "DTLS1 read hello verify request A";
 
+    case SSL_ST_TLS13:
+      return ssl->server ? tls13_server_handshake_state(ssl->s3->hs)
+                         : tls13_client_handshake_state(ssl->s3->hs);
+
     default:
       return "unknown state";
   }

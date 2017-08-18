@@ -71,6 +71,10 @@ static const struct argument kArguments[] = {
         "-tls13-variant", kBooleanArgument, "Enable TLS 1.3 variants",
     },
     {
+        "-debug", kBooleanArgument,
+        "Print debug information about the handshake",
+    },
+    {
         "", kOptionalArgument, "",
     },
 };
@@ -140,6 +144,20 @@ static bssl::UniquePtr<X509> MakeSelfSignedCert(EVP_PKEY *evp_pkey,
     return nullptr;
   }
   return x509;
+}
+
+static void InfoCallback(const SSL *ssl, int type, int value) {
+  switch (type) {
+    case SSL_CB_HANDSHAKE_START:
+      fprintf(stderr, "Handshake started.\n");
+      break;
+    case SSL_CB_HANDSHAKE_DONE:
+      fprintf(stderr, "Handshake done.\n");
+      break;
+    case SSL_CB_ACCEPT_LOOP:
+      fprintf(stderr, "Handshake progress: %s\n", SSL_state_string_long(ssl));
+      break;
+  }
 }
 
 bool Server(const std::vector<std::string> &args) {
@@ -239,6 +257,10 @@ bool Server(const std::vector<std::string> &args) {
   // Enabling any TLS 1.3 variant on the server enables all of them.
   if (args_map.count("-tls13-variant") != 0) {
     SSL_CTX_set_tls13_variant(ctx.get(), tls13_experiment);
+  }
+
+  if (args_map.count("-debug") != 0) {
+    SSL_CTX_set_info_callback(ctx.get(), InfoCallback);
   }
 
   Listener listener;

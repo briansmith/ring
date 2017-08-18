@@ -1336,6 +1336,11 @@ int tls13_handshake(SSL_HANDSHAKE *hs, int *out_early_return);
 enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs);
 enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs);
 
+/* The following functions return human-readable representations of the TLS 1.3
+ * handshake states for debugging. */
+const char *tls13_client_handshake_state(SSL_HANDSHAKE *hs);
+const char *tls13_server_handshake_state(SSL_HANDSHAKE *hs);
+
 /* tls13_post_handshake processes a post-handshake message. It returns one on
  * success and zero on failure. */
 int tls13_post_handshake(SSL *ssl, const SSLMessage &msg);

@@ -139,6 +139,10 @@ static const struct argument kArguments[] = {
         "Allow renegotiations from the peer.",
     },
     {
+        "-debug", kBooleanArgument,
+        "Print debug information about the handshake",
+    },
+    {
         "", kOptionalArgument, "",
     },
 };
@@ -325,6 +329,20 @@ static bool GetTLS13Variant(tls13_variant_t *out, const std::string &in) {
   return false;
 }
 
+static void InfoCallback(const SSL *ssl, int type, int value) {
+  switch (type) {
+    case SSL_CB_HANDSHAKE_START:
+      fprintf(stderr, "Handshake started.\n");
+      break;
+    case SSL_CB_HANDSHAKE_DONE:
+      fprintf(stderr, "Handshake done.\n");
+      break;
+    case SSL_CB_CONNECT_LOOP:
+      fprintf(stderr, "Handshake progress: %s\n", SSL_state_string_long(ssl));
+      break;
+  }
+}
+
 bool Client(const std::vector<std::string> &args) {
   if (!InitSocketLibrary()) {
     return false;
@@ -503,6 +521,10 @@ bool Client(const std::vector<std::string> &args) {
 
   if (args_map.count("-ed25519") != 0) {
     SSL_CTX_set_ed25519_enabled(ctx.get(), 1);
+  }
+
+  if (args_map.count("-debug") != 0) {
+    SSL_CTX_set_info_callback(ctx.get(), InfoCallback);
   }
 
   if (args_map.count("-test-resumption") != 0) {

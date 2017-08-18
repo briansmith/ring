@@ -733,12 +733,53 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
         break;
     }
 
+    if (hs->state != state) {
+      ssl_do_info_callback(hs->ssl, SSL_CB_CONNECT_LOOP, 1);
+    }
+
     if (ret != ssl_hs_ok) {
       return ret;
     }
   }
 
   return ssl_hs_ok;
+}
+
+const char *tls13_client_handshake_state(SSL_HANDSHAKE *hs) {
+  enum client_hs_state_t state =
+      static_cast<enum client_hs_state_t>(hs->tls13_state);
+  switch (state) {
+    case state_read_hello_retry_request:
+      return "TLS 1.3 client read_hello_retry_request";
+    case state_send_second_client_hello:
+      return "TLS 1.3 client send_second_client_hello";
+    case state_read_server_hello:
+      return "TLS 1.3 client read_server_hello";
+    case state_process_change_cipher_spec:
+      return "TLS 1.3 client process_change_cipher_spec";
+    case state_read_encrypted_extensions:
+      return "TLS 1.3 client read_encrypted_extensions";
+    case state_read_certificate_request:
+      return "TLS 1.3 client read_certificate_request";
+    case state_read_server_certificate:
+      return "TLS 1.3 client read_server_certificate";
+    case state_read_server_certificate_verify:
+      return "TLS 1.3 client read_server_certificate_verify";
+    case state_read_server_finished:
+      return "TLS 1.3 client read_server_finished";
+    case state_send_end_of_early_data:
+      return "TLS 1.3 client send_end_of_early_data";
+    case state_send_client_certificate:
+      return "TLS 1.3 client send_client_certificate";
+    case state_send_client_certificate_verify:
+      return "TLS 1.3 client send_client_certificate_verify";
+    case state_complete_second_flight:
+      return "TLS 1.3 client complete_second_flight";
+    case state_done:
+      return "TLS 1.3 client done";
+  }
+
+  return "TLS 1.3 client unknown";
 }
 
 int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
