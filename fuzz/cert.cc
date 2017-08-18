@@ -19,10 +19,10 @@
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   X509 *x509 = d2i_X509(NULL, &buf, len);
   if (x509 != NULL) {
-    /* Extract the public key. */
+    // Extract the public key.
     EVP_PKEY_free(X509_get_pubkey(x509));
 
-    /* Reserialize the structure. */
+    // Reserialize the structure.
     uint8_t *der = NULL;
     i2d_X509(x509, &der);
     OPENSSL_free(der);

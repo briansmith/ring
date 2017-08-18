@@ -153,9 +153,9 @@ static bool SpeedRSA(const std::string &key_name, RSA *key,
   TimeResults results;
   if (!TimeFunction(&results,
                     [key, &sig, &fake_sha256_hash, &sig_len]() -> bool {
-        /* Usually during RSA signing we're using a long-lived |RSA| that has
-         * already had all of its |BN_MONT_CTX|s constructed, so it makes
-         * sense to use |key| directly here. */
+        // Usually during RSA signing we're using a long-lived |RSA| that has
+        // already had all of its |BN_MONT_CTX|s constructed, so it makes
+        // sense to use |key| directly here.
         return RSA_sign(NID_sha256, fake_sha256_hash, sizeof(fake_sha256_hash),
                         sig.get(), &sig_len, key);
       })) {
@@ -167,11 +167,11 @@ static bool SpeedRSA(const std::string &key_name, RSA *key,
 
   if (!TimeFunction(&results,
                     [key, &fake_sha256_hash, &sig, sig_len]() -> bool {
-        /* Usually during RSA verification we have to parse an RSA key from a
-         * certificate or similar, in which case we'd need to construct a new
-         * RSA key, with a new |BN_MONT_CTX| for the public modulus. If we were
-         * to use |key| directly instead, then these costs wouldn't be
-         * accounted for. */
+        // Usually during RSA verification we have to parse an RSA key from a
+        // certificate or similar, in which case we'd need to construct a new
+        // RSA key, with a new |BN_MONT_CTX| for the public modulus. If we were
+        // to use |key| directly instead, then these costs wouldn't be
+        // accounted for.
         bssl::UniquePtr<RSA> verify_key(RSA_new());
         if (!verify_key) {
           return false;

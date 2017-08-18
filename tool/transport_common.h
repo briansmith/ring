@@ -65,4 +65,4 @@ bool DoSMTPStartTLS(int sock);
 // success and false otherwise.
 bool DoHTTPTunnel(int sock, const std::string &hostname_and_port);
 
-#endif  /* !OPENSSL_HEADER_TOOL_TRANSPORT_COMMON_H */
+#endif  // !OPENSSL_HEADER_TOOL_TRANSPORT_COMMON_H
