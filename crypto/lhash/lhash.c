@@ -309,28 +309,9 @@ void lh_doall_arg(_LHASH *lh, void (*func)(void *, void *), void *arg) {
 }
 
 uint32_t lh_strhash(const char *c) {
-  // The following hash seems to work very well on normal text strings
-  // no collisions on /usr/dict/words and it distributes on %2^n quite
-  // well, not as good as MD5, but still good.
-  unsigned long ret = 0;
-  long n;
-  unsigned long v;
-  int r;
-
-  if ((c == NULL) || (*c == '\0')) {
-    return (ret);
+  if (c == NULL) {
+    return 0;
   }
 
-  n = 0x100;
-  while (*c) {
-    v = n | (*c);
-    n += 0x100;
-    r = (int)((v >> 2) ^ v) & 0x0f;
-    ret = (ret << r) | (ret >> (32 - r));
-    ret &= 0xFFFFFFFFL;
-    ret ^= v * v;
-    c++;
-  }
-
-  return ((ret >> 16) ^ ret);
+  return OPENSSL_hash32(c, strlen(c));
 }
