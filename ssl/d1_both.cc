@@ -444,6 +444,11 @@ void dtls1_next_message(SSL *ssl) {
   ssl->d1->incoming_messages[index] = NULL;
   ssl->d1->handshake_read_seq++;
   ssl->s3->has_message = 0;
+  /* If we previously sent a flight, mark it as having a reply, so
+   * |on_handshake_complete| can manage post-handshake retransmission. */
+  if (ssl->d1->outgoing_messages_complete) {
+    ssl->d1->flight_has_reply = true;
+  }
 }
 
 void dtls_clear_incoming_messages(SSL *ssl) {
@@ -509,6 +514,7 @@ void dtls_clear_outgoing_messages(SSL *ssl) {
   ssl->d1->outgoing_written = 0;
   ssl->d1->outgoing_offset = 0;
   ssl->d1->outgoing_messages_complete = false;
+  ssl->d1->flight_has_reply = false;
 }
 
 int dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {

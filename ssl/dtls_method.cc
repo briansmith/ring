@@ -73,10 +73,13 @@ static int dtls1_supports_cipher(const SSL_CIPHER *cipher) {
 }
 
 static void dtls1_on_handshake_complete(SSL *ssl) {
-  /* If we wrote the last flight, we'll have a timer left over without waiting
-   * for a read. Stop the timer but leave the flight around for post-handshake
-   * transmission logic. */
+  /* Stop the reply timer left by the last flight we sent. */
   dtls1_stop_timer(ssl);
+  /* If the final flight had a reply, we know the peer has received it. If not,
+   * we must leave the flight around for post-handshake retransmission. */
+  if (ssl->d1->flight_has_reply) {
+    dtls_clear_outgoing_messages(ssl);
+  }
 }
 
 static int dtls1_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {

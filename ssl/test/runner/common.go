@@ -886,6 +886,10 @@ type ProtocolBugs struct {
 	// and include a copy of the full one.
 	MixCompleteMessageWithFragments bool
 
+	// RetransmitFinished, if true, causes the DTLS Finished message to be
+	// sent twice.
+	RetransmitFinished bool
+
 	// SendInvalidRecordType, if true, causes a record with an invalid
 	// content type to be sent immediately following the handshake.
 	SendInvalidRecordType bool

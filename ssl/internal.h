@@ -1831,6 +1831,11 @@ struct DTLS1_STATE {
    * |add_change_cipher_spec| will start a new flight. */
   bool outgoing_messages_complete:1;
 
+  /* flight_has_reply is true if the current outgoing flight is complete and has
+   * processed at least one message. This is used to detect whether we or the
+   * peer sent the final flight. */
+  bool flight_has_reply:1;
+
   uint8_t cookie[DTLS1_COOKIE_LENGTH];
   size_t cookie_len;
 

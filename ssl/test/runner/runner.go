@@ -8782,6 +8782,38 @@ func addDTLSRetransmitTests() {
 			"-initial-timeout-duration-ms", "250",
 		},
 	})
+
+	// If the shim sends the last Finished (server full or client resume
+	// handshakes), it must retransmit that Finished when it sees a
+	// post-handshake penultimate Finished from the runner. The above tests
+	// cover this. Conversely, if the shim sends the penultimate Finished
+	// (client full or server resume), test that it does not retransmit.
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: clientTest,
+		name:     "DTLS-StrayRetransmitFinished-ClientFull",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				RetransmitFinished: true,
+			},
+		},
+	})
+	testCases = append(testCases, testCase{
+		protocol: dtls,
+		testType: serverTest,
+		name:     "DTLS-StrayRetransmitFinished-ServerResume",
+		config: Config{
+			MaxVersion: VersionTLS12,
+		},
+		resumeConfig: &Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				RetransmitFinished: true,
+			},
+		},
+		resumeSession: true,
+	})
 }
 
 func addExportKeyingMaterialTests() {

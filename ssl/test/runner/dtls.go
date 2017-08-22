@@ -248,7 +248,11 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 		fragOffset += fragLen
 		n += fragLen
 	}
-	if !isFinished && c.config.Bugs.MixCompleteMessageWithFragments {
+	shouldSendTwice := c.config.Bugs.MixCompleteMessageWithFragments
+	if isFinished {
+		shouldSendTwice = c.config.Bugs.RetransmitFinished
+	}
+	if shouldSendTwice {
 		fragment := c.makeFragment(header, data, 0, len(data))
 		c.pendingFragments = append(c.pendingFragments, fragment)
 	}
