@@ -1162,9 +1162,10 @@ static int ssl3_get_cert_status(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
-  if (!CBS_stow(&ocsp_response, &hs->new_session->ocsp_response,
-                &hs->new_session->ocsp_response_length)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+  CRYPTO_BUFFER_free(hs->new_session->ocsp_response);
+  hs->new_session->ocsp_response =
+      CRYPTO_BUFFER_new_from_CBS(&ocsp_response, ssl->ctx->pool);
+  if (hs->new_session->ocsp_response == nullptr) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return -1;
   }

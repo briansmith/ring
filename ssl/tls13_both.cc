@@ -284,11 +284,14 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
         return 0;
       }
 
-      if (sk_CRYPTO_BUFFER_num(certs.get()) == 1 &&
-          !CBS_stow(&ocsp_response, &hs->new_session->ocsp_response,
-                    &hs->new_session->ocsp_response_length)) {
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-        return 0;
+      if (sk_CRYPTO_BUFFER_num(certs.get()) == 1) {
+        CRYPTO_BUFFER_free(hs->new_session->ocsp_response);
+        hs->new_session->ocsp_response =
+            CRYPTO_BUFFER_new_from_CBS(&ocsp_response, ssl->ctx->pool);
+        if (hs->new_session->ocsp_response == nullptr) {
+          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+          return 0;
+        }
       }
     }
 
@@ -305,12 +308,14 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
         return 0;
       }
 
-      if (sk_CRYPTO_BUFFER_num(certs.get()) == 1 &&
-          !CBS_stow(
-              &sct, &hs->new_session->tlsext_signed_cert_timestamp_list,
-              &hs->new_session->tlsext_signed_cert_timestamp_list_length)) {
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-        return 0;
+      if (sk_CRYPTO_BUFFER_num(certs.get()) == 1) {
+        CRYPTO_BUFFER_free(hs->new_session->signed_cert_timestamp_list);
+        hs->new_session->signed_cert_timestamp_list =
+            CRYPTO_BUFFER_new_from_CBS(&sct, ssl->ctx->pool);
+        if (hs->new_session->signed_cert_timestamp_list == nullptr) {
+          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+          return 0;
+        }
       }
     }
   }

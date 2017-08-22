@@ -4136,12 +4136,10 @@ struct ssl_session_st {
   uint8_t *tlsext_tick;               // Session ticket
   size_t tlsext_ticklen;              // Session ticket length
 
-  size_t tlsext_signed_cert_timestamp_list_length;
-  uint8_t *tlsext_signed_cert_timestamp_list;  // Server's list.
+  CRYPTO_BUFFER *signed_cert_timestamp_list;
 
   // The OCSP response that came with the session.
-  size_t ocsp_response_length;
-  uint8_t *ocsp_response;
+  CRYPTO_BUFFER *ocsp_response;
 
   // peer_sha256 contains the SHA-256 hash of the peer's certificate if
   // |peer_sha256_valid| is true.

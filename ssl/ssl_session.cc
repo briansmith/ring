@@ -227,24 +227,15 @@ UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
 
   new_session->verify_result = session->verify_result;
 
-  new_session->ocsp_response_length = session->ocsp_response_length;
   if (session->ocsp_response != NULL) {
-    new_session->ocsp_response = (uint8_t *)BUF_memdup(
-        session->ocsp_response, session->ocsp_response_length);
-    if (new_session->ocsp_response == NULL) {
-      return nullptr;
-    }
+    new_session->ocsp_response = session->ocsp_response;
+    CRYPTO_BUFFER_up_ref(new_session->ocsp_response);
   }
 
-  new_session->tlsext_signed_cert_timestamp_list_length =
-      session->tlsext_signed_cert_timestamp_list_length;
-  if (session->tlsext_signed_cert_timestamp_list != NULL) {
-    new_session->tlsext_signed_cert_timestamp_list = (uint8_t *)BUF_memdup(
-        session->tlsext_signed_cert_timestamp_list,
-        session->tlsext_signed_cert_timestamp_list_length);
-    if (new_session->tlsext_signed_cert_timestamp_list == NULL) {
-      return nullptr;
-    }
+  if (session->signed_cert_timestamp_list != NULL) {
+    new_session->signed_cert_timestamp_list =
+        session->signed_cert_timestamp_list;
+    CRYPTO_BUFFER_up_ref(new_session->signed_cert_timestamp_list);
   }
 
   OPENSSL_memcpy(new_session->peer_sha256, session->peer_sha256,
@@ -898,8 +889,8 @@ void SSL_SESSION_free(SSL_SESSION *session) {
   session->x509_method->session_clear(session);
   OPENSSL_free(session->tlsext_hostname);
   OPENSSL_free(session->tlsext_tick);
-  OPENSSL_free(session->tlsext_signed_cert_timestamp_list);
-  OPENSSL_free(session->ocsp_response);
+  CRYPTO_BUFFER_free(session->signed_cert_timestamp_list);
+  CRYPTO_BUFFER_free(session->ocsp_response);
   OPENSSL_free(session->psk_identity);
   OPENSSL_free(session->early_alpn);
   OPENSSL_cleanse(session, sizeof(*session));

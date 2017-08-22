@@ -311,20 +311,22 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
     }
   }
 
-  if (in->tlsext_signed_cert_timestamp_list_length > 0) {
+  if (in->signed_cert_timestamp_list != nullptr) {
     if (!CBB_add_asn1(&session, &child, kSignedCertTimestampListTag) ||
         !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
-        !CBB_add_bytes(&child2, in->tlsext_signed_cert_timestamp_list,
-                       in->tlsext_signed_cert_timestamp_list_length)) {
+        !CBB_add_bytes(&child2,
+                       CRYPTO_BUFFER_data(in->signed_cert_timestamp_list),
+                       CRYPTO_BUFFER_len(in->signed_cert_timestamp_list))) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
 
-  if (in->ocsp_response_length > 0) {
+  if (in->ocsp_response != nullptr) {
     if (!CBB_add_asn1(&session, &child, kOCSPResponseTag) ||
         !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
-        !CBB_add_bytes(&child2, in->ocsp_response, in->ocsp_response_length)) {
+        !CBB_add_bytes(&child2, CRYPTO_BUFFER_data(in->ocsp_response),
+                       CRYPTO_BUFFER_len(in->ocsp_response))) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -464,6 +466,29 @@ static int SSL_SESSION_parse_octet_string(CBS *cbs, uint8_t **out_ptr,
     return 0;
   }
   if (!CBS_stow(&value, out_ptr, out_len)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+  return 1;
+}
+
+static int SSL_SESSION_parse_crypto_buffer(CBS *cbs, CRYPTO_BUFFER **out,
+                                           unsigned tag,
+                                           CRYPTO_BUFFER_POOL *pool) {
+  if (!CBS_peek_asn1_tag(cbs, tag)) {
+    return 1;
+  }
+
+  CBS child, value;
+  if (!CBS_get_asn1(cbs, &child, tag) ||
+      !CBS_get_asn1(&child, &value, CBS_ASN1_OCTETSTRING) ||
+      CBS_len(&child) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    return 0;
+  }
+  CRYPTO_BUFFER_free(*out);
+  *out = CRYPTO_BUFFER_new_from_CBS(&value, pool);
+  if (*out == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
@@ -635,13 +660,11 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
           &session, ret->original_handshake_hash,
           &ret->original_handshake_hash_len,
           sizeof(ret->original_handshake_hash), kOriginalHandshakeHashTag) ||
-      !SSL_SESSION_parse_octet_string(
-          &session, &ret->tlsext_signed_cert_timestamp_list,
-          &ret->tlsext_signed_cert_timestamp_list_length,
-          kSignedCertTimestampListTag) ||
-      !SSL_SESSION_parse_octet_string(
-          &session, &ret->ocsp_response, &ret->ocsp_response_length,
-          kOCSPResponseTag)) {
+      !SSL_SESSION_parse_crypto_buffer(&session,
+                                       &ret->signed_cert_timestamp_list,
+                                       kSignedCertTimestampListTag, pool) ||
+      !SSL_SESSION_parse_crypto_buffer(&session, &ret->ocsp_response,
+                                       kOCSPResponseTag, pool)) {
     return nullptr;
   }
 

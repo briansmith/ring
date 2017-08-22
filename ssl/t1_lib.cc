@@ -1327,11 +1327,14 @@ static int ext_sct_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
    * requirement, so tolerate this.
    *
    * TODO(davidben): Enforce this anyway. */
-  if (!ssl->s3->session_reused &&
-      !CBS_stow(contents, &hs->new_session->tlsext_signed_cert_timestamp_list,
-                &hs->new_session->tlsext_signed_cert_timestamp_list_length)) {
-    *out_alert = SSL_AD_INTERNAL_ERROR;
-    return 0;
+  if (!ssl->s3->session_reused) {
+    CRYPTO_BUFFER_free(hs->new_session->signed_cert_timestamp_list);
+    hs->new_session->signed_cert_timestamp_list =
+        CRYPTO_BUFFER_new_from_CBS(contents, ssl->ctx->pool);
+    if (hs->new_session->signed_cert_timestamp_list == nullptr) {
+      *out_alert = SSL_AD_INTERNAL_ERROR;
+      return 0;
+    }
   }
 
   return 1;

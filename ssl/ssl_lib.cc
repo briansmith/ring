@@ -1811,28 +1811,27 @@ void SSL_enable_ocsp_stapling(SSL *ssl) {
 void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, const uint8_t **out,
                                          size_t *out_len) {
   SSL_SESSION *session = SSL_get_session(ssl);
-
-  *out_len = 0;
-  *out = NULL;
-  if (ssl->server || !session || !session->tlsext_signed_cert_timestamp_list) {
+  if (ssl->server || !session || !session->signed_cert_timestamp_list) {
+    *out_len = 0;
+    *out = NULL;
     return;
   }
 
-  *out = session->tlsext_signed_cert_timestamp_list;
-  *out_len = session->tlsext_signed_cert_timestamp_list_length;
+  *out = CRYPTO_BUFFER_data(session->signed_cert_timestamp_list);
+  *out_len = CRYPTO_BUFFER_len(session->signed_cert_timestamp_list);
 }
 
 void SSL_get0_ocsp_response(const SSL *ssl, const uint8_t **out,
                             size_t *out_len) {
   SSL_SESSION *session = SSL_get_session(ssl);
-
-  *out_len = 0;
-  *out = NULL;
   if (ssl->server || !session || !session->ocsp_response) {
+    *out_len = 0;
+    *out = NULL;
     return;
   }
-  *out = session->ocsp_response;
-  *out_len = session->ocsp_response_length;
+
+  *out = CRYPTO_BUFFER_data(session->ocsp_response);
+  *out_len = CRYPTO_BUFFER_len(session->ocsp_response);
 }
 
 int SSL_set_tlsext_host_name(SSL *ssl, const char *name) {
