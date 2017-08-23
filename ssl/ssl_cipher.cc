@@ -1439,22 +1439,6 @@ const SSL_CIPHER *SSL_get_cipher_by_value(uint16_t value) {
 
 uint32_t SSL_CIPHER_get_id(const SSL_CIPHER *cipher) { return cipher->id; }
 
-int SSL_CIPHER_is_AES(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_enc & SSL_AES) != 0;
-}
-
-int SSL_CIPHER_has_SHA1_HMAC(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_mac & SSL_SHA1) != 0;
-}
-
-int SSL_CIPHER_has_SHA256_HMAC(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_mac & SSL_SHA256) != 0;
-}
-
-int SSL_CIPHER_has_SHA384_HMAC(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_mac & SSL_SHA384) != 0;
-}
-
 int SSL_CIPHER_is_aead(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_mac & SSL_AEAD) != 0;
 }
@@ -1525,49 +1509,9 @@ int SSL_CIPHER_get_auth_nid(const SSL_CIPHER *cipher) {
   return NID_undef;
 }
 
-int SSL_CIPHER_is_AEAD(const SSL_CIPHER *cipher) {
-  return SSL_CIPHER_is_aead(cipher);
-}
-
-int SSL_CIPHER_is_AESGCM(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_enc & (SSL_AES128GCM | SSL_AES256GCM)) != 0;
-}
-
-int SSL_CIPHER_is_AES128GCM(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_enc & SSL_AES128GCM) != 0;
-}
-
-int SSL_CIPHER_is_AES128CBC(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_enc & SSL_AES128) != 0;
-}
-
-int SSL_CIPHER_is_AES256CBC(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_enc & SSL_AES256) != 0;
-}
-
-int SSL_CIPHER_is_CHACHA20POLY1305(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_enc & SSL_CHACHA20POLY1305) != 0;
-}
-
-int SSL_CIPHER_is_NULL(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_enc & SSL_eNULL) != 0;
-}
-
 int SSL_CIPHER_is_block_cipher(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_enc & SSL_eNULL) == 0 &&
       cipher->algorithm_mac != SSL_AEAD;
-}
-
-int SSL_CIPHER_is_ECDSA(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_auth & SSL_aECDSA) != 0;
-}
-
-int SSL_CIPHER_is_ECDHE(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_mkey & SSL_kECDHE) != 0;
-}
-
-int SSL_CIPHER_is_static_RSA(const SSL_CIPHER *cipher) {
-  return (cipher->algorithm_mkey & SSL_kRSA) != 0;
 }
 
 uint16_t SSL_CIPHER_get_min_version(const SSL_CIPHER *cipher) {

@@ -476,7 +476,7 @@ TEST(SSLTest, CipherRules) {
 
     ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(ctx.get(), rule));
     for (const SSL_CIPHER *cipher : SSL_CTX_get_ciphers(ctx.get())) {
-      EXPECT_FALSE(SSL_CIPHER_is_NULL(cipher));
+      EXPECT_NE(NID_undef, SSL_CIPHER_get_cipher_nid(cipher));
     }
   }
 }
