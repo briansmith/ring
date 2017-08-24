@@ -2372,6 +2372,13 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session, SSL *ssl,
     return false;
   }
 
+  if (SSL_total_renegotiations(ssl) > 0 &&
+      !SSL_get_session(ssl)->not_resumable) {
+    fprintf(stderr,
+            "Renegotiations should never produce resumable sessions.\n");
+    return false;
+  }
+
   if (SSL_total_renegotiations(ssl) != config->expect_total_renegotiations) {
     fprintf(stderr, "Expected %d renegotiations, got %d\n",
             config->expect_total_renegotiations, SSL_total_renegotiations(ssl));

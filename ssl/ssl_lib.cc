@@ -218,6 +218,7 @@ void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
   SSL_CTX *ctx = ssl->session_ctx;
   /* Never cache sessions with empty session IDs. */
   if (ssl->s3->established_session->session_id_length == 0 ||
+      ssl->s3->established_session->not_resumable ||
       (ctx->session_cache_mode & mode) != mode) {
     return;
   }

@@ -130,6 +130,10 @@ Things which do not work:
 * If a HelloRequest is received while `SSL_write` has unsent application data,
   the renegotiation is rejected.
 
+* Renegotiation does not participate in session resumption. The client will
+  not offer a session on renegotiation or resume any session established by a
+  renegotiation handshake.
+
 ### Lowercase hexadecimal
 
 BoringSSL's `BN_bn2hex` function uses lowercase hexadecimal digits instead of

@@ -508,7 +508,10 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
             ret = -1;
             goto end;
           }
-          ssl->s3->established_session->not_resumable = 0;
+          /* Renegotiations do not participate in session resumption. */
+          if (!ssl->s3->initial_handshake_complete) {
+            ssl->s3->established_session->not_resumable = 0;
+          }
 
           hs->new_session.reset();
         }
@@ -517,12 +520,8 @@ int ssl3_connect(SSL_HANDSHAKE *hs) {
         break;
 
       case SSL_ST_OK: {
-        const int is_initial_handshake = !ssl->s3->initial_handshake_complete;
         ssl->s3->initial_handshake_complete = 1;
-        if (is_initial_handshake) {
-          /* Renegotiations do not participate in session resumption. */
-          ssl_update_cache(hs, SSL_SESS_CACHE_CLIENT);
-        }
+        ssl_update_cache(hs, SSL_SESS_CACHE_CLIENT);
 
         ret = 1;
         ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_DONE, 1);
