@@ -1569,19 +1569,15 @@ static bool CheckAuthProperties(SSL *ssl, bool is_resume,
     }
   }
 
-  bool expected_sha256_client_cert = config->expect_sha256_client_cert_initial;
-  if (is_resume) {
-    expected_sha256_client_cert = config->expect_sha256_client_cert_resume;
-  }
-
-  if (SSL_get_session(ssl)->peer_sha256_valid != expected_sha256_client_cert) {
+  if (SSL_get_session(ssl)->peer_sha256_valid !=
+      config->expect_sha256_client_cert) {
     fprintf(stderr,
             "Unexpected SHA-256 client cert state: expected:%d is_resume:%d.\n",
-            expected_sha256_client_cert, is_resume);
+            config->expect_sha256_client_cert, is_resume);
     return false;
   }
 
-  if (expected_sha256_client_cert &&
+  if (config->expect_sha256_client_cert &&
       SSL_get_session(ssl)->certs != nullptr) {
     fprintf(stderr, "Have both client cert and SHA-256 hash: is_resume:%d.\n",
             is_resume);
@@ -2025,10 +2021,7 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   if (config->max_cert_list > 0) {
     SSL_set_max_cert_list(ssl.get(), config->max_cert_list);
   }
-  if (!is_resume && config->retain_only_sha256_client_cert_initial) {
-    SSL_set_retain_only_sha256_of_client_certs(ssl.get(), 1);
-  }
-  if (is_resume && config->retain_only_sha256_client_cert_resume) {
+  if (config->retain_only_sha256_client_cert) {
     SSL_set_retain_only_sha256_of_client_certs(ssl.get(), 1);
   }
   if (config->max_send_fragment > 0) {

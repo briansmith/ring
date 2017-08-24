@@ -12296,8 +12296,8 @@ func addRetainOnlySHA256ClientCertTests() {
 			},
 			tls13Variant: ver.tls13Variant,
 			flags: []string{
-				"-retain-only-sha256-client-cert-initial",
-				"-retain-only-sha256-client-cert-resume",
+				"-on-initial-retain-only-sha256-client-cert",
+				"-on-resume-retain-only-sha256-client-cert",
 			},
 			resumeSession: true,
 		})
@@ -12315,10 +12315,10 @@ func addRetainOnlySHA256ClientCertTests() {
 			tls13Variant: ver.tls13Variant,
 			flags: []string{
 				"-verify-peer",
-				"-retain-only-sha256-client-cert-initial",
-				"-retain-only-sha256-client-cert-resume",
-				"-expect-sha256-client-cert-initial",
-				"-expect-sha256-client-cert-resume",
+				"-on-initial-retain-only-sha256-client-cert",
+				"-on-resume-retain-only-sha256-client-cert",
+				"-on-initial-expect-sha256-client-cert",
+				"-on-resume-expect-sha256-client-cert",
 			},
 			resumeSession: true,
 		})
@@ -12337,8 +12337,8 @@ func addRetainOnlySHA256ClientCertTests() {
 			tls13Variant: ver.tls13Variant,
 			flags: []string{
 				"-verify-peer",
-				"-retain-only-sha256-client-cert-initial",
-				"-expect-sha256-client-cert-initial",
+				"-on-initial-retain-only-sha256-client-cert",
+				"-on-initial-expect-sha256-client-cert",
 			},
 			resumeSession:        true,
 			expectResumeRejected: true,
@@ -12358,8 +12358,8 @@ func addRetainOnlySHA256ClientCertTests() {
 			tls13Variant: ver.tls13Variant,
 			flags: []string{
 				"-verify-peer",
-				"-retain-only-sha256-client-cert-resume",
-				"-expect-sha256-client-cert-resume",
+				"-on-resume-retain-only-sha256-client-cert",
+				"-on-resume-expect-sha256-client-cert",
 			},
 			resumeSession:        true,
 			expectResumeRejected: true,
