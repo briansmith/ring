@@ -1442,6 +1442,10 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		hs.hello.extensions.sctList = hs.cert.SignedCertificateTimestampList
 	}
 
+	if len(c.clientVerify) > 0 && config.Bugs.SendSCTListOnRenegotiation != nil {
+		hs.hello.extensions.sctList = config.Bugs.SendSCTListOnRenegotiation
+	}
+
 	hs.hello.extensions.ticketSupported = hs.clientHello.ticketSupported && !config.SessionTicketsDisabled && c.vers > VersionSSL30
 	hs.hello.cipherSuite = hs.suite.id
 	if config.Bugs.SendCipherSuite != 0 {
@@ -1488,6 +1492,9 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 		certStatus := new(certificateStatusMsg)
 		certStatus.statusType = statusTypeOCSP
 		certStatus.response = hs.cert.OCSPStaple
+		if len(c.clientVerify) > 0 && config.Bugs.SendOCSPResponseOnRenegotiation != nil {
+			certStatus.response = config.Bugs.SendOCSPResponseOnRenegotiation
+		}
 		hs.writeServerHash(certStatus.marshal())
 		c.writeRecord(recordTypeHandshake, certStatus.marshal())
 	}

@@ -1100,33 +1100,6 @@ static int ssl3_get_server_certificate(SSL_HANDSHAKE *hs) {
     return -1;
   }
 
-  /* Disallow the server certificate from changing during a renegotiation. See
-   * https://mitls.org/pages/attacks/3SHAKE. We never resume on renegotiation,
-   * so this check is sufficient. */
-  if (ssl->s3->established_session != NULL) {
-    if (sk_CRYPTO_BUFFER_num(ssl->s3->established_session->certs) !=
-        sk_CRYPTO_BUFFER_num(hs->new_session->certs)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SERVER_CERT_CHANGED);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-      return -1;
-    }
-
-    for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(hs->new_session->certs); i++) {
-      const CRYPTO_BUFFER *old_cert =
-          sk_CRYPTO_BUFFER_value(ssl->s3->established_session->certs, i);
-      const CRYPTO_BUFFER *new_cert =
-          sk_CRYPTO_BUFFER_value(hs->new_session->certs, i);
-      if (CRYPTO_BUFFER_len(old_cert) != CRYPTO_BUFFER_len(new_cert) ||
-          OPENSSL_memcmp(CRYPTO_BUFFER_data(old_cert),
-                         CRYPTO_BUFFER_data(new_cert),
-                         CRYPTO_BUFFER_len(old_cert)) != 0) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_SERVER_CERT_CHANGED);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-        return -1;
-      }
-    }
-  }
-
   ssl->method->next_message(ssl);
   return 1;
 }

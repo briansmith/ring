@@ -1085,10 +1085,18 @@ type ProtocolBugs struct {
 	// supplied SCT list in resumption handshakes.
 	SendSCTListOnResume []byte
 
+	// SendSCTListOnRenegotiation, if not nil, causes the server to send the
+	// supplied SCT list on renegotiation.
+	SendSCTListOnRenegotiation []byte
+
 	// SendOCSPResponseOnResume, if not nil, causes the server to advertise
 	// OCSP stapling in resumption handshakes and, if applicable, send the
 	// supplied stapled response.
 	SendOCSPResponseOnResume []byte
+
+	// SendOCSPResponseOnResume, if not nil, causes the server to send the
+	// supplied OCSP response on renegotiation.
+	SendOCSPResponseOnRenegotiation []byte
 
 	// SendExtensionOnCertificate, if not nil, causes the runner to send the
 	// supplied bytes in the extensions on the Certificate message.

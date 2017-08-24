@@ -199,7 +199,9 @@ var channelIDKey *ecdsa.PrivateKey
 var channelIDBytes []byte
 
 var testOCSPResponse = []byte{1, 2, 3, 4}
+var testOCSPResponse2 = []byte{5, 6, 7, 8}
 var testSCTList = []byte{0, 6, 0, 4, 5, 6, 7, 8}
+var testSCTList2 = []byte{0, 6, 0, 4, 1, 2, 3, 4}
 
 var testOCSPExtension = append([]byte{byte(extensionStatusRequest) >> 8, byte(extensionStatusRequest), 0, 8, statusTypeOCSP, 0, 0, 4}, testOCSPResponse...)
 var testSCTExtension = append([]byte{byte(extensionSignedCertificateTimestamp) >> 8, byte(extensionSignedCertificateTimestamp), 0, byte(len(testSCTList))}, testSCTList...)
@@ -6473,10 +6475,6 @@ func addExtensionTests() {
 		expectedError: ":UNEXPECTED_EXTENSION:",
 	})
 
-	var differentSCTList []byte
-	differentSCTList = append(differentSCTList, testSCTList...)
-	differentSCTList[len(differentSCTList)-1] ^= 1
-
 	// Test that extensions on intermediates are allowed but ignored.
 	testCases = append(testCases, testCase{
 		name: "IgnoreExtensionsOnIntermediates-TLS13",
@@ -6487,8 +6485,8 @@ func addExtensionTests() {
 				// Send different values on the intermediate. This tests
 				// the intermediate's extensions do not override the
 				// leaf's.
-				SendOCSPOnIntermediates: []byte{1, 3, 3, 7},
-				SendSCTOnIntermediates:  differentSCTList,
+				SendOCSPOnIntermediates: testOCSPResponse2,
+				SendSCTOnIntermediates:  testSCTList2,
 			},
 		},
 		flags: []string{
@@ -7542,6 +7540,34 @@ func addRenegotiationTests() {
 		renegotiate:   1,
 		shouldFail:    true,
 		expectedError: ":UNEXPECTED_EXTENSION:",
+	})
+
+	// The server may send different stapled OCSP responses or SCT lists on
+	// renegotiation, but BoringSSL ignores this and reports the old values.
+	// Also test that non-fatal verify results are preserved.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "Renegotiation-ChangeAuthProperties",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SendOCSPResponseOnRenegotiation: testOCSPResponse2,
+				SendSCTListOnRenegotiation:      testSCTList2,
+			},
+		},
+		renegotiate: 1,
+		flags: []string{
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "1",
+			"-enable-ocsp-stapling",
+			"-expect-ocsp-response",
+			base64.StdEncoding.EncodeToString(testOCSPResponse),
+			"-enable-signed-cert-timestamps",
+			"-expect-signed-cert-timestamps",
+			base64.StdEncoding.EncodeToString(testSCTList),
+			"-verify-fail",
+			"-expect-verify-result",
+		},
 	})
 }
 
