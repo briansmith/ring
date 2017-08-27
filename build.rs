@@ -12,53 +12,29 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#![deny(
-    const_err,
-    dead_code,
-    deprecated,
-    exceeding_bitshifts,
+//! Build the non-Rust components.
+
+#![allow(
+    box_pointers,
+)]
+
+#![forbid(
+    anonymous_parameters,
     fat_ptr_transmutes,
-    improper_ctypes,
+    legacy_directory_ownership,
     missing_copy_implementations,
     missing_debug_implementations,
-    mutable_transmutes,
-    no_mangle_const_items,
-    non_camel_case_types,
-    non_shorthand_field_patterns,
-    non_snake_case,
-    non_upper_case_globals,
-    overflowing_literals,
-    path_statements,
-    plugin_as_library,
-    private_no_mangle_fns,
-    private_no_mangle_statics,
-    stable_features,
+    missing_docs,
     trivial_casts,
     trivial_numeric_casts,
-    unconditional_recursion,
-    unknown_crate_types,
-    unknown_lints,
-    unreachable_code,
     unsafe_code,
     unstable_features,
-    unused_allocation,
-    unused_assignments,
-    unused_attributes,
-    unused_comparisons,
     unused_extern_crates,
-    unused_features,
     unused_import_braces,
-    unused_imports,
-    unused_must_use,
-    unused_mut,
-    unused_parens,
     unused_qualifications,
     unused_results,
-    unused_unsafe,
-    unused_variables,
     variant_size_differences,
     warnings,
-    while_true,
 )]
 
 extern crate gcc;
