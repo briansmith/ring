@@ -37,56 +37,30 @@
 #![doc(html_root_url="https://briansmith.org/rustdoc/")]
 
 #![allow(
+    box_pointers,
     legacy_directory_ownership,
     missing_copy_implementations,
     missing_debug_implementations,
-    unknown_lints,
     unsafe_code,
 )]
+
+// `#[derive(...)]` uses `#[allow(unused_qualifications )]` internally.
 #![deny(
-    const_err,
-    dead_code,
-    deprecated,
-    exceeding_bitshifts,
-    fat_ptr_transmutes,
-    improper_ctypes,
     missing_docs,
-    mutable_transmutes,
-    no_mangle_const_items,
-    non_camel_case_types,
-    non_shorthand_field_patterns,
-    non_snake_case,
-    non_upper_case_globals,
-    overflowing_literals,
-    path_statements,
-    plugin_as_library,
-    private_no_mangle_fns,
-    private_no_mangle_statics,
-    stable_features,
-    trivial_casts,
     trivial_numeric_casts,
-    unconditional_recursion,
-    unknown_crate_types,
-    unreachable_code,
     unstable_features,
-    unused_allocation,
-    unused_assignments,
-    unused_attributes,
-    unused_comparisons,
-    unused_extern_crates,
-    unused_features,
-    unused_imports,
-    unused_import_braces,
     unused_qualifications,
-    unused_must_use,
-    unused_mut,
-    unused_parens,
+)]
+
+#![forbid(
+    anonymous_parameters,
+    fat_ptr_transmutes,
+    trivial_casts,
+    unused_extern_crates,
+    unused_import_braces,
     unused_results,
-    unused_unsafe,
-    unused_variables,
     variant_size_differences,
     warnings,
-    while_true,
 )]
 
 #![no_std]
