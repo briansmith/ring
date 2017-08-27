@@ -12,6 +12,26 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#![forbid(
+    anonymous_parameters,
+    box_pointers,
+    fat_ptr_transmutes,
+    legacy_directory_ownership,
+    missing_copy_implementations,
+    missing_debug_implementations,
+    missing_docs,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unstable_features,
+    unused_extern_crates,
+    unused_import_braces,
+    unused_qualifications,
+    unused_results,
+    variant_size_differences,
+    warnings,
+)]
+
 extern crate ring;
 extern crate untrusted;
 
@@ -72,8 +92,8 @@ fn test_signature_rsa_pkcs1_sign() {
         // TODO: re-enable these tests on Android ARM.
         let mut signing_state =
             signature::RSASigningState::new(key_pair).unwrap();
-        let mut actual: std::vec::Vec<u8> =
-            vec![0; signing_state.key_pair().public_modulus_len()];
+        let mut actual =
+            vec![0u8; signing_state.key_pair().public_modulus_len()];
         signing_state.sign(alg, &rng, &msg, actual.as_mut_slice()).unwrap();
         assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
         Ok(())
@@ -130,8 +150,8 @@ fn test_signature_rsa_pss_sign() {
 
         let mut signing_state =
             signature::RSASigningState::new(key_pair).unwrap();
-        let mut actual: std::vec::Vec<u8> =
-            vec![0; signing_state.key_pair().public_modulus_len()];
+        let mut actual =
+            vec![0u8; signing_state.key_pair().public_modulus_len()];
         signing_state.sign(alg, &new_rng, &msg, actual.as_mut_slice())?;
         assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
         Ok(())
