@@ -79,7 +79,7 @@ use std;
 ///
 /// [`std::error::Error`]: https://doc.rust-lang.org/std/error/trait.Error.html
 /// [“Error Handling” in the Rust Book]:
-///     https://doc.rust-lang.org/book/error-handling.html#the-from-trait
+///     https://doc.rust-lang.org/book/first-edition/error-handling.html#the-from-trait
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Unspecified;
 
