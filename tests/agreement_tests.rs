@@ -12,6 +12,26 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#![forbid(
+    anonymous_parameters,
+    box_pointers,
+    fat_ptr_transmutes,
+    legacy_directory_ownership,
+    missing_copy_implementations,
+    missing_debug_implementations,
+    missing_docs,
+    trivial_casts,
+    trivial_numeric_casts,
+    unsafe_code,
+    unstable_features,
+    unused_extern_crates,
+    unused_import_braces,
+    unused_qualifications,
+    unused_results,
+    variant_size_differences,
+    warnings,
+)]
+
 extern crate ring;
 extern crate untrusted;
 
@@ -78,9 +98,8 @@ fn test_agreement_ecdh_x25519_rfc_iterated() {
     let mut u = k.clone();
 
     fn expect_iterated_x25519(expected_result: &str,
-                              range: std::ops::Range<usize>,
-                              k: &mut std::vec::Vec<u8>,
-                              u: &mut std::vec::Vec<u8>) {
+                              range: std::ops::Range<usize>, k: &mut Vec<u8>,
+                              u: &mut Vec<u8>) {
         for _ in range {
             let new_k = x25519(k, u);
             *u = k.clone();
@@ -110,23 +129,23 @@ fn test_agreement_ecdh_x25519_rfc_iterated() {
     }
 }
 
-fn x25519(private_key: &[u8], public_key: &[u8]) -> std::vec::Vec<u8> {
+fn x25519(private_key: &[u8], public_key: &[u8]) -> Vec<u8> {
     x25519_(private_key, public_key).unwrap()
 }
 
 fn x25519_(private_key: &[u8], public_key: &[u8])
-           -> Result<std::vec::Vec<u8>, error::Unspecified> {
+           -> Result<Vec<u8>, error::Unspecified> {
     let rng = test::rand::FixedSliceRandom { bytes: private_key };
     let private_key =
         agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng)?;
     let public_key = untrusted::Input::from(public_key);
     agreement::agree_ephemeral(private_key, &agreement::X25519, public_key,
                                error::Unspecified, |agreed_value| {
-        Ok(std::vec::Vec::from(agreed_value))
+        Ok(Vec::from(agreed_value))
     })
 }
 
-fn h(s: &str) -> std::vec::Vec<u8> {
+fn h(s: &str) -> Vec<u8> {
     match test::from_hex(s) {
         Ok(v) => v,
         Err(msg) => {
