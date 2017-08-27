@@ -37,7 +37,6 @@
 #![doc(html_root_url="https://briansmith.org/rustdoc/")]
 
 #![allow(
-    box_pointers,
     legacy_directory_ownership,
     missing_copy_implementations,
     missing_debug_implementations,
@@ -46,6 +45,7 @@
 
 // `#[derive(...)]` uses `#[allow(unused_qualifications )]` internally.
 #![deny(
+    box_pointers,
     missing_docs,
     trivial_numeric_casts,
     unstable_features,

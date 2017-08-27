@@ -14,7 +14,7 @@
 
 //! Build the non-Rust components.
 
-#![allow(
+#![deny(
     box_pointers,
 )]
 
@@ -291,6 +291,7 @@ fn ring_build_rs_main() {
             cfg = cfg.num_threads(amt);
         }
     }
+    #[allow(box_pointers)]
     rayon::initialize(cfg).unwrap();
 
     for (key, value) in env::vars() {
@@ -450,6 +451,7 @@ fn build_library(target: &Target, out_dir: &Path, lib_name: &str,
                  srcs: &[PathBuf], additional_srcs: &[PathBuf],
                  warnings_are_errors: bool, includes_modified: SystemTime) {
     // Compile all the (dirty) source files into object files.
+    #[allow(box_pointers)] // XXX
     let objs = additional_srcs.into_par_iter().chain(srcs.into_par_iter())
         .with_max_len(1)
         .filter(|f|

@@ -251,6 +251,7 @@ pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
     let mut current_section = String::from("");
     let mut failed = false;
 
+    #[allow(box_pointers)]
     while let Some(mut test_case) = parse_test_case(&mut current_section,
                                                     &mut lines) {
         let result =
