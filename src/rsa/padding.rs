@@ -230,7 +230,7 @@ impl RSAEncoding for PSS {
         // into `em`, and then XOR the value of db.
 
         // Step 9. First output the mask into the out buffer.
-        let (mut masked_db, mut digest_terminator) =
+        let (mut masked_db, digest_terminator) =
             em.split_at_mut(metrics.db_len);
         mgf1(self.digest_alg, h_hash.as_ref(), &mut masked_db)?;
 
