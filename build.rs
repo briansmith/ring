@@ -511,7 +511,7 @@ fn compile(p: &Path, target: &Target, warnings_are_errors: bool, out_dir: &Path,
         p.to_str().expect("Invalid path").into()
     } else {
         let mut out_path = out_dir.clone().join(p.file_name().unwrap());
-        out_path.set_extension(target.obj_ext);
+        assert!(out_path.set_extension(target.obj_ext));
         if need_run(&p, &out_path, includes_modified) {
             let cmd = if target.os() != WINDOWS || ext != "asm" {
                 cc(p, ext, target, warnings_are_errors, &out_path)
@@ -527,7 +527,7 @@ fn compile(p: &Path, target: &Target, warnings_are_errors: bool, out_dir: &Path,
 
 fn obj_path(out_dir: &Path, src: &Path, obj_ext: &str) -> PathBuf {
     let mut out_path = out_dir.clone().join(src.file_name().unwrap());
-    out_path.set_extension(obj_ext);
+    assert!(out_path.set_extension(obj_ext));
     out_path
 }
 
