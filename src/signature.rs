@@ -207,18 +207,20 @@
 //! use ring::{rand, signature};
 //!
 //! # #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
-//! # fn sign_and_verify_rsa() -> Result<(), ring::error::Unspecified> {
-//!
+//! fn sign_and_verify_rsa(private_key_path: &std::path::Path,
+//!                        public_key_path: &std::path::Path)
+//!                        -> Result<(), MyError> {
 //! // Create an `RSAKeyPair` from the DER-encoded bytes. This example uses
 //! // a 2048-bit key, but larger keys are also supported.
-//! let key_bytes_der =
-//!    untrusted::Input::from(
-//!         include_bytes!("src/rsa/signature_rsa_example_private_key.der"));
-//! let key_pair = signature::RSAKeyPair::from_der(key_bytes_der)?;
+//! let private_key_der = read_file(private_key_path)?;
+//! let private_key_der = untrusted::Input::from(&private_key_der);
+//! let key_pair = signature::RSAKeyPair::from_der(private_key_der)
+//!     .map_err(|ring::error::Unspecified| MyError::BadPrivateKey)?;
 //!
 //! // Create a signing state.
 //! let key_pair = std::sync::Arc::new(key_pair);
-//! let mut signing_state = signature::RSASigningState::new(key_pair)?;
+//! let mut signing_state = signature::RSASigningState::new(key_pair)
+//!     .map_err(|ring::error::Unspecified| MyError::OOM)?;
 //!
 //! // Sign the message "hello, world", using PKCS#1 v1.5 padding and the
 //! // SHA256 digest algorithm.
@@ -226,25 +228,54 @@
 //! let rng = rand::SystemRandom::new();
 //! let mut signature = vec![0; signing_state.key_pair().public_modulus_len()];
 //! signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
-//!                    &mut signature)?;
+//!                    &mut signature)
+//!     .map_err(|ring::error::Unspecified| MyError::OOM)?;
 //!
 //! // Verify the signature.
-//! let public_key_bytes_der =
-//!     untrusted::Input::from(
-//!         include_bytes!("src/rsa/signature_rsa_example_public_key.der"));
+//! let public_key_der = read_file(public_key_path)?;
+//! let public_key_der = untrusted::Input::from(&public_key_der);
 //! let message = untrusted::Input::from(MESSAGE);
 //! let signature = untrusted::Input::from(&signature);
 //! signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256,
-//!                   public_key_bytes_der, message, signature)?;
-//! # Ok(())
-//! # }
+//!                   public_key_der, message, signature)
+//!     .map_err(|ring::error::Unspecified| MyError::BadSignature)?;
+//!
+//! Ok(())
+//! }
+//!
+//! #[derive(Debug)]
+//! enum MyError {
+//! #  #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
+//!    IO(std::io::Error),
+//!    BadPrivateKey,
+//!    OOM,
+//!    BadSignature,
+//! }
+//!
+//! # #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
+//! fn read_file(path: &std::path::Path) -> Result<Vec<u8>, MyError> {
+//!     use std::io::Read;
+//!
+//!     let mut file = std::fs::File::open(path).map_err(|e| MyError::IO(e))?;
+//!     let mut contents: Vec<u8> = Vec::new();
+//!     file.read_to_end(&mut contents).map_err(|e| MyError::IO(e))?;
+//!     Ok(contents)
+//! }
 //! #
 //! # #[cfg(not(all(feature = "rsa_signing", feature = "use_heap")))]
-//! # fn sign_and_verify_rsa() -> Result<(), ring::error::Unspecified> {
+//! # fn sign_and_verify_rsa(_private_key_path: &std::path::Path,
+//! #                        _public_key_path: &std::path::Path)
+//! #                        -> Result<(), ()> {
 //! #     Ok(())
 //! # }
 //! #
-//! # fn main() { sign_and_verify_rsa().unwrap() }
+//! # fn main() {
+//! #     let private_key_path =
+//! #         std::path::Path::new("src/rsa/signature_rsa_example_private_key.der");
+//! #     let public_key_path =
+//! #         std::path::Path::new("src/rsa/signature_rsa_example_public_key.der");
+//! #     sign_and_verify_rsa(&private_key_path, &public_key_path).unwrap()
+//! # }
 //! ```
 
 
