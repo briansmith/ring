@@ -277,7 +277,7 @@ name = "ring"
 
 [dependencies]
 libc = "0.2.29"
-untrusted = "0.5"
+untrusted = "0.5.1"
 
 [target.'cfg(any(target_os = "redox", all(unix, not(any(target_os = "macos", target_os = "ios")))))'.dependencies]
 lazy_static = "0.2.8"
