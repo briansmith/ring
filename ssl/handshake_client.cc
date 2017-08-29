@@ -175,7 +175,6 @@ namespace bssl {
 
 enum ssl_client_hs_state_t {
   state_start_connect = 0,
-  state_send_client_hello,
   state_enter_early_data,
   state_read_hello_verify_request,
   state_read_server_hello,
@@ -430,20 +429,9 @@ static int parse_server_version(SSL_HANDSHAKE *hs, uint16_t *out,
 }
 
 static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
-  ssl_do_info_callback(hs->ssl, SSL_CB_HANDSHAKE_START, 1);
-  hs->state = state_send_client_hello;
-  return ssl_hs_ok;
-}
-
-static enum ssl_hs_wait_t do_send_client_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
-  /* The handshake buffer is reset on every ClientHello. Notably, in DTLS, we
-   * may send multiple ClientHellos if we receive HelloVerifyRequest. */
-  if (!hs->transcript.Init()) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return ssl_hs_error;
-  }
+  ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
 
   /* Freeze the version range. */
   if (!ssl_get_version_range(ssl, &hs->min_version, &hs->max_version)) {
@@ -474,10 +462,7 @@ static enum ssl_hs_wait_t do_send_client_hello(SSL_HANDSHAKE *hs) {
     }
   }
 
-  /* If resending the ClientHello in DTLS after a HelloVerifyRequest, don't
-   * renegerate the client_random. The random must be reused. */
-  if ((!SSL_is_dtls(ssl) || !ssl->d1->send_cookie) &&
-      !RAND_bytes(ssl->s3->client_random, sizeof(ssl->s3->client_random))) {
+  if (!RAND_bytes(ssl->s3->client_random, sizeof(ssl->s3->client_random))) {
     return ssl_hs_error;
   }
 
@@ -501,7 +486,7 @@ static enum ssl_hs_wait_t do_send_client_hello(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_enter_early_data(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
-  if (SSL_is_dtls(ssl) && !ssl->d1->send_cookie) {
+  if (SSL_is_dtls(ssl)) {
     hs->state = state_read_hello_verify_request;
     return ssl_hs_ok;
   }
@@ -542,7 +527,6 @@ static enum ssl_hs_wait_t do_read_hello_verify_request(SSL_HANDSHAKE *hs) {
   }
 
   if (msg.type != DTLS1_MT_HELLO_VERIFY_REQUEST) {
-    ssl->d1->send_cookie = false;
     hs->state = state_read_server_hello;
     return ssl_hs_ok;
   }
@@ -561,10 +545,19 @@ static enum ssl_hs_wait_t do_read_hello_verify_request(SSL_HANDSHAKE *hs) {
   OPENSSL_memcpy(ssl->d1->cookie, CBS_data(&cookie), CBS_len(&cookie));
   ssl->d1->cookie_len = CBS_len(&cookie);
 
-  ssl->d1->send_cookie = true;
   ssl->method->next_message(ssl);
-  hs->state = state_send_client_hello;
-  return ssl_hs_ok;
+
+  /* DTLS resets the handshake buffer after HelloVerifyRequest. */
+  if (!hs->transcript.Init()) {
+    return ssl_hs_error;
+  }
+
+  if (!ssl_write_client_hello(hs)) {
+    return ssl_hs_error;
+  }
+
+  hs->state = state_read_server_hello;
+  return ssl_hs_flush;
 }
 
 static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
@@ -1733,9 +1726,6 @@ enum ssl_hs_wait_t ssl_client_handshake(SSL_HANDSHAKE *hs) {
       case state_start_connect:
         ret = do_start_connect(hs);
         break;
-      case state_send_client_hello:
-        ret = do_send_client_hello(hs);
-        break;
       case state_enter_early_data:
         ret = do_enter_early_data(hs);
         break;
@@ -1823,8 +1813,6 @@ const char *ssl_client_handshake_state(SSL_HANDSHAKE *hs) {
   switch (state) {
     case state_start_connect:
       return "TLS client start_connect";
-    case state_send_client_hello:
-      return "TLS client send_client_hello";
     case state_enter_early_data:
       return "TLS client enter_early_data";
     case state_read_hello_verify_request:

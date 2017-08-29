@@ -1814,10 +1814,6 @@ struct OPENSSL_timeval {
 };
 
 struct DTLS1_STATE {
-  /* send_cookie is true if we are resending the ClientHello with a cookie from
-   * a HelloVerifyRequest. */
-  bool send_cookie:1;
-
   /* has_change_cipher_spec is true if we have received a ChangeCipherSpec from
    * the peer in this epoch. */
   bool has_change_cipher_spec:1;
@@ -2109,22 +2105,17 @@ const EVP_MD *SSL_SESSION_get_digest(const SSL_SESSION *session);
 
 void ssl_set_session(SSL *ssl, SSL_SESSION *session);
 
-enum ssl_session_result_t {
-  ssl_session_success,
-  ssl_session_error,
-  ssl_session_retry,
-  ssl_session_ticket_retry,
-};
-
 /* ssl_get_prev_session looks up the previous session based on |client_hello|.
  * On success, it sets |*out_session| to the session or nullptr if none was
  * found. If the session could not be looked up synchronously, it returns
- * |ssl_session_retry| and should be called again. If a ticket could not be
- * decrypted immediately it returns |ssl_session_ticket_retry| and should also
- * be called again. Otherwise, it returns |ssl_session_error|.  */
-enum ssl_session_result_t ssl_get_prev_session(
-    SSL *ssl, UniquePtr<SSL_SESSION> *out_session, int *out_tickets_supported,
-    int *out_renew_ticket, const SSL_CLIENT_HELLO *client_hello);
+ * |ssl_hs_pending_session| and should be called again. If a ticket could not be
+ * decrypted immediately it returns |ssl_hs_pending_ticket| and should also
+ * be called again. Otherwise, it returns |ssl_hs_error|.  */
+enum ssl_hs_wait_t ssl_get_prev_session(SSL *ssl,
+                                        UniquePtr<SSL_SESSION> *out_session,
+                                        int *out_tickets_supported,
+                                        int *out_renew_ticket,
+                                        const SSL_CLIENT_HELLO *client_hello);
 
 /* The following flags determine which parts of the session are duplicated. */
 #define SSL_SESSION_DUP_AUTH_ONLY 0x0

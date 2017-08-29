@@ -580,16 +580,10 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   /* Determine whether we are doing session resumption. */
   UniquePtr<SSL_SESSION> session;
   int tickets_supported = 0, renew_ticket = 0;
-  switch (ssl_get_prev_session(ssl, &session, &tickets_supported, &renew_ticket,
-                               &client_hello)) {
-    case ssl_session_success:
-      break;
-    case ssl_session_error:
-      return ssl_hs_error;
-    case ssl_session_retry:
-      return ssl_hs_pending_session;
-    case ssl_session_ticket_retry:
-      return ssl_hs_pending_ticket;
+  enum ssl_hs_wait_t wait = ssl_get_prev_session(
+      ssl, &session, &tickets_supported, &renew_ticket, &client_hello);
+  if (wait != ssl_hs_ok) {
+    return wait;
   }
 
   if (session) {

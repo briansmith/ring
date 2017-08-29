@@ -660,13 +660,13 @@ int ssl_session_is_resumable(const SSL_HANDSHAKE *hs,
 
 /* ssl_lookup_session looks up |session_id| in the session cache and sets
  * |*out_session| to an |SSL_SESSION| object if found. */
-static enum ssl_session_result_t ssl_lookup_session(
+static enum ssl_hs_wait_t ssl_lookup_session(
     SSL *ssl, UniquePtr<SSL_SESSION> *out_session, const uint8_t *session_id,
     size_t session_id_len) {
   out_session->reset();
 
   if (session_id_len == 0 || session_id_len > SSL_MAX_SSL_SESSION_ID_LENGTH) {
-    return ssl_session_success;
+    return ssl_hs_ok;
   }
 
   UniquePtr<SSL_SESSION> session;
@@ -695,12 +695,12 @@ static enum ssl_session_result_t ssl_lookup_session(
                                                    session_id_len, &copy));
 
     if (!session) {
-      return ssl_session_success;
+      return ssl_hs_ok;
     }
 
     if (session.get() == SSL_magic_pending_session_ptr()) {
       session.release();  // This pointer is not actually owned.
-      return ssl_session_retry;
+      return ssl_hs_pending_session;
     }
 
     /* Increment reference count now if the session callback asks us to do so
@@ -725,12 +725,14 @@ static enum ssl_session_result_t ssl_lookup_session(
   }
 
   *out_session = std::move(session);
-  return ssl_session_success;
+  return ssl_hs_ok;
 }
 
-enum ssl_session_result_t ssl_get_prev_session(
-    SSL *ssl, UniquePtr<SSL_SESSION> *out_session, int *out_tickets_supported,
-    int *out_renew_ticket, const SSL_CLIENT_HELLO *client_hello) {
+enum ssl_hs_wait_t ssl_get_prev_session(SSL *ssl,
+                                        UniquePtr<SSL_SESSION> *out_session,
+                                        int *out_tickets_supported,
+                                        int *out_renew_ticket,
+                                        const SSL_CLIENT_HELLO *client_hello) {
   /* This is used only by servers. */
   assert(ssl->server);
   UniquePtr<SSL_SESSION> session;
@@ -754,15 +756,15 @@ enum ssl_session_result_t ssl_get_prev_session(
         assert(!session);
         break;
       case ssl_ticket_aead_error:
-        return ssl_session_error;
+        return ssl_hs_error;
       case ssl_ticket_aead_retry:
-        return ssl_session_ticket_retry;
+        return ssl_hs_pending_ticket;
     }
   } else {
     /* The client didn't send a ticket, so the session ID is a real ID. */
-    enum ssl_session_result_t lookup_ret = ssl_lookup_session(
+    enum ssl_hs_wait_t lookup_ret = ssl_lookup_session(
         ssl, &session, client_hello->session_id, client_hello->session_id_len);
-    if (lookup_ret != ssl_session_success) {
+    if (lookup_ret != ssl_hs_ok) {
       return lookup_ret;
     }
   }
@@ -770,7 +772,7 @@ enum ssl_session_result_t ssl_get_prev_session(
   *out_session = std::move(session);
   *out_tickets_supported = tickets_supported;
   *out_renew_ticket = renew_ticket;
-  return ssl_session_success;
+  return ssl_hs_ok;
 }
 
 static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *session, int lock) {
