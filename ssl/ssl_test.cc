@@ -40,7 +40,7 @@
 #include "../crypto/test/test_util.h"
 
 #if defined(OPENSSL_WINDOWS)
-/* Windows defines struct timeval in winsock2.h. */
+// Windows defines struct timeval in winsock2.h.
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <winsock2.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
@@ -1538,9 +1538,9 @@ static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client,
   return true;
 }
 
-/* SSLVersionTest executes its test cases under all available protocol versions.
- * Test cases call |Connect| to create a connection using context objects with
- * the protocol version fixed to the current version under test. */
+// SSLVersionTest executes its test cases under all available protocol versions.
+// Test cases call |Connect| to create a connection using context objects with
+// the protocol version fixed to the current version under test.
 class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
  protected:
   SSLVersionTest() : cert_(GetTestCertificate()), key_(GetTestKey()) {}
@@ -2192,7 +2192,7 @@ static bssl::UniquePtr<SSL_SESSION> ExpectSessionRenewed(SSL_CTX *client_ctx,
 static void ExpectTicketKeyChanged(SSL_CTX *ctx, uint8_t *inout_key,
                                    bool changed) {
   uint8_t new_key[kTicketKeyLen];
-  /* May return 0, 1 or 48. */
+  // May return 0, 1 or 48.
   ASSERT_EQ(SSL_CTX_get_tlsext_ticket_keys(ctx, new_key, kTicketKeyLen), 1);
   if (changed) {
     ASSERT_NE(Bytes(inout_key, kTicketKeyLen), Bytes(new_key));
@@ -2493,8 +2493,8 @@ TEST_P(SSLVersionTest, DefaultTicketKeyRotation) {
   g_current_time.tv_sec = kStartTime;
   uint8_t ticket_key[kTicketKeyLen];
 
-  /* We use session reuse as a proxy for ticket decryption success, hence
-   * disable session timeouts. */
+  // We use session reuse as a proxy for ticket decryption success, hence
+  // disable session timeouts.
   SSL_CTX_set_timeout(server_ctx_.get(), std::numeric_limits<uint32_t>::max());
   SSL_CTX_set_session_psk_dhe_timeout(server_ctx_.get(),
                                       std::numeric_limits<uint32_t>::max());
@@ -2505,11 +2505,11 @@ TEST_P(SSLVersionTest, DefaultTicketKeyRotation) {
   SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
   SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_OFF);
 
-  /* Initialize ticket_key with the current key. */
+  // Initialize ticket_key with the current key.
   TRACED_CALL(ExpectTicketKeyChanged(server_ctx_.get(), ticket_key,
                                      true /* changed */));
 
-  /* Verify ticket resumption actually works. */
+  // Verify ticket resumption actually works.
   bssl::UniquePtr<SSL> client, server;
   bssl::UniquePtr<SSL_SESSION> session =
       CreateClientSession(client_ctx_.get(), server_ctx_.get());
@@ -2517,21 +2517,21 @@ TEST_P(SSLVersionTest, DefaultTicketKeyRotation) {
   TRACED_CALL(ExpectSessionReused(client_ctx_.get(), server_ctx_.get(),
                                   session.get(), true /* reused */));
 
-  /* Advance time to just before key rotation. */
+  // Advance time to just before key rotation.
   g_current_time.tv_sec += SSL_DEFAULT_TICKET_KEY_ROTATION_INTERVAL - 1;
   TRACED_CALL(ExpectSessionReused(client_ctx_.get(), server_ctx_.get(),
                                   session.get(), true /* reused */));
   TRACED_CALL(ExpectTicketKeyChanged(server_ctx_.get(), ticket_key,
                                      false /* NOT changed */));
 
-  /* Force key rotation. */
+  // Force key rotation.
   g_current_time.tv_sec += 1;
   bssl::UniquePtr<SSL_SESSION> new_session =
       CreateClientSession(client_ctx_.get(), server_ctx_.get());
   TRACED_CALL(ExpectTicketKeyChanged(server_ctx_.get(), ticket_key,
                                      true /* changed */));
 
-  /* Resumption with both old and new ticket should work. */
+  // Resumption with both old and new ticket should work.
   TRACED_CALL(ExpectSessionReused(client_ctx_.get(), server_ctx_.get(),
                                   session.get(), true /* reused */));
   TRACED_CALL(ExpectSessionReused(client_ctx_.get(), server_ctx_.get(),
@@ -2539,14 +2539,14 @@ TEST_P(SSLVersionTest, DefaultTicketKeyRotation) {
   TRACED_CALL(ExpectTicketKeyChanged(server_ctx_.get(), ticket_key,
                                      false /* NOT changed */));
 
-  /* Force key rotation again. Resumption with the old ticket now fails. */
+  // Force key rotation again. Resumption with the old ticket now fails.
   g_current_time.tv_sec += SSL_DEFAULT_TICKET_KEY_ROTATION_INTERVAL;
   TRACED_CALL(ExpectSessionReused(client_ctx_.get(), server_ctx_.get(),
                                   session.get(), false /* NOT reused */));
   TRACED_CALL(ExpectTicketKeyChanged(server_ctx_.get(), ticket_key,
                                      true /* changed */));
 
-  /* But resumption with the newer session still works. */
+  // But resumption with the newer session still works.
   TRACED_CALL(ExpectSessionReused(client_ctx_.get(), server_ctx_.get(),
                                   new_session.get(), true /* reused */));
 }

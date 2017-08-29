@@ -1040,8 +1040,8 @@ static void MessageCallback(int is_write, int version, int content_type,
       uint8_t type;
       uint32_t msg_len;
       if (!CBS_get_u8(&cbs, &type) ||
-          /* TODO(davidben): Reporting on entire messages would be more
-           * consistent than fragments. */
+          // TODO(davidben): Reporting on entire messages would be more
+          // consistent than fragments.
           (config->is_dtls &&
            !CBS_skip(&cbs, 3 /* total */ + 2 /* seq */ + 3 /* frag_off */)) ||
           !CBS_get_u24(&cbs, &msg_len) ||
@@ -2421,7 +2421,7 @@ int main(int argc, char **argv) {
   StderrDelimiter delimiter;
 
 #if defined(OPENSSL_WINDOWS)
-  /* Initialize Winsock. */
+  // Initialize Winsock.
   WORD wsa_version = MAKEWORD(2, 2);
   WSADATA wsa_data;
   int wsa_err = WSAStartup(wsa_version, &wsa_data);

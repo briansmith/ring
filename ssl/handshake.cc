@@ -199,8 +199,8 @@ int ssl_add_message_cbb(SSL *ssl, CBB *cbb) {
 }
 
 size_t ssl_max_handshake_message_len(const SSL *ssl) {
-  /* kMaxMessageLen is the default maximum message size for handshakes which do
-   * not accept peer certificate chains. */
+  // kMaxMessageLen is the default maximum message size for handshakes which do
+  // not accept peer certificate chains.
   static const size_t kMaxMessageLen = 16384;
 
   if (SSL_in_init(ssl)) {
@@ -212,24 +212,24 @@ size_t ssl_max_handshake_message_len(const SSL *ssl) {
   }
 
   if (ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
-    /* In TLS 1.2 and below, the largest acceptable post-handshake message is
-     * a HelloRequest. */
+    // In TLS 1.2 and below, the largest acceptable post-handshake message is
+    // a HelloRequest.
     return 0;
   }
 
   if (ssl->server) {
-    /* The largest acceptable post-handshake message for a server is a
-     * KeyUpdate. We will never initiate post-handshake auth. */
+    // The largest acceptable post-handshake message for a server is a
+    // KeyUpdate. We will never initiate post-handshake auth.
     return 1;
   }
 
-  /* Clients must accept NewSessionTicket and CertificateRequest, so allow the
-   * default size. */
+  // Clients must accept NewSessionTicket and CertificateRequest, so allow the
+  // default size.
   return kMaxMessageLen;
 }
 
 bool ssl_hash_message(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
-  /* V2ClientHello messages are pre-hashed. */
+  // V2ClientHello messages are pre-hashed.
   if (msg.is_v2_hello) {
     return true;
   }
@@ -240,7 +240,7 @@ bool ssl_hash_message(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
 int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
                          const SSL_EXTENSION_TYPE *ext_types,
                          size_t num_ext_types, int ignore_unknown) {
-  /* Reset everything. */
+  // Reset everything.
   for (size_t i = 0; i < num_ext_types; i++) {
     *ext_types[i].out_present = 0;
     CBS_init(ext_types[i].out_data, NULL, 0);
@@ -274,7 +274,7 @@ int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
       return 0;
     }
 
-    /* Duplicate ext_types are forbidden. */
+    // Duplicate ext_types are forbidden.
     if (*ext_type->out_present) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_EXTENSION);
       *out_alert = SSL_AD_ILLEGAL_PARAMETER;
@@ -289,8 +289,8 @@ int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
 }
 
 static void set_crypto_buffer(CRYPTO_BUFFER **dest, CRYPTO_BUFFER *src) {
-  /* TODO(davidben): Remove this helper once |SSL_SESSION| can use |UniquePtr|
-   * and |UniquePtr| has up_ref helpers. */
+  // TODO(davidben): Remove this helper once |SSL_SESSION| can use |UniquePtr|
+  // and |UniquePtr| has up_ref helpers.
   CRYPTO_BUFFER_free(*dest);
   *dest = src;
   if (src != nullptr) {
@@ -302,10 +302,10 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   const SSL_SESSION *prev_session = ssl->s3->established_session;
   if (prev_session != NULL) {
-    /* If renegotiating, the server must not change the server certificate. See
-     * https://mitls.org/pages/attacks/3SHAKE. We never resume on renegotiation,
-     * so this check is sufficient to ensure the reported peer certificate never
-     * changes on renegotiation. */
+    // If renegotiating, the server must not change the server certificate. See
+    // https://mitls.org/pages/attacks/3SHAKE. We never resume on renegotiation,
+    // so this check is sufficient to ensure the reported peer certificate never
+    // changes on renegotiation.
     assert(!ssl->server);
     if (sk_CRYPTO_BUFFER_num(prev_session->certs) !=
         sk_CRYPTO_BUFFER_num(hs->new_session->certs)) {
@@ -329,10 +329,10 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
       }
     }
 
-    /* The certificate is identical, so we may skip re-verifying the
-     * certificate. Since we only authenticated the previous one, copy other
-     * authentication from the established session and ignore what was newly
-     * received. */
+    // The certificate is identical, so we may skip re-verifying the
+    // certificate. Since we only authenticated the previous one, copy other
+    // authentication from the established session and ignore what was newly
+    // received.
     set_crypto_buffer(&hs->new_session->ocsp_response,
                       prev_session->ocsp_response);
     set_crypto_buffer(&hs->new_session->signed_cert_timestamp_list,
@@ -371,17 +371,17 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
 }
 
 uint16_t ssl_get_grease_value(const SSL *ssl, enum ssl_grease_index_t index) {
-  /* Use the client_random or server_random for entropy. This both avoids
-   * calling |RAND_bytes| on a single byte repeatedly and ensures the values are
-   * deterministic. This allows the same ClientHello be sent twice for a
-   * HelloRetryRequest or the same group be advertised in both supported_groups
-   * and key_shares. */
+  // Use the client_random or server_random for entropy. This both avoids
+  // calling |RAND_bytes| on a single byte repeatedly and ensures the values are
+  // deterministic. This allows the same ClientHello be sent twice for a
+  // HelloRetryRequest or the same group be advertised in both supported_groups
+  // and key_shares.
   uint16_t ret = ssl->server ? ssl->s3->server_random[index]
                              : ssl->s3->client_random[index];
-  /* The first four bytes of server_random are a timestamp prior to TLS 1.3, but
-   * servers have no fields to GREASE until TLS 1.3. */
+  // The first four bytes of server_random are a timestamp prior to TLS 1.3, but
+  // servers have no fields to GREASE until TLS 1.3.
   assert(!ssl->server || ssl3_protocol_version(ssl) >= TLS1_3_VERSION);
-  /* This generates a random value of the form 0xωaωa, for all 0 ≤ ω < 16. */
+  // This generates a random value of the form 0xωaωa, for all 0 ≤ ω < 16.
   ret = (ret & 0xf0) | 0x0a;
   ret |= ret << 8;
   return ret;
@@ -398,7 +398,7 @@ enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* Snapshot the finished hash before incorporating the new message. */
+  // Snapshot the finished hash before incorporating the new message.
   uint8_t finished[EVP_MAX_MD_SIZE];
   size_t finished_len;
   if (!hs->transcript.GetFinishedMAC(finished, &finished_len,
@@ -418,7 +418,7 @@ enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* Copy the Finished so we can use it for renegotiation checks. */
+  // Copy the Finished so we can use it for renegotiation checks.
   if (ssl->version != SSL3_VERSION) {
     if (finished_len > sizeof(ssl->s3->previous_client_finished) ||
         finished_len > sizeof(ssl->s3->previous_server_finished)) {
@@ -442,7 +442,7 @@ enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs) {
 int ssl_run_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
   SSL *const ssl = hs->ssl;
   for (;;) {
-    /* Resolve the operation the handshake was waiting on. */
+    // Resolve the operation the handshake was waiting on.
     switch (hs->wait) {
       case ssl_hs_error:
         OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_HANDSHAKE_FAILURE);
@@ -464,13 +464,13 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
           if (hs->wait == ssl_hs_read_server_hello &&
               ERR_GET_LIB(err) == ERR_LIB_SSL &&
               ERR_GET_REASON(err) == SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE) {
-            /* Add a dedicated error code to the queue for a handshake_failure
-             * alert in response to ClientHello. This matches NSS's client
-             * behavior and gives a better error on a (probable) failure to
-             * negotiate initial parameters. Note: this error code comes after
-             * the original one.
-             *
-             * See https://crbug.com/446505. */
+            // Add a dedicated error code to the queue for a handshake_failure
+            // alert in response to ClientHello. This matches NSS's client
+            // behavior and gives a better error on a (probable) failure to
+            // negotiate initial parameters. Note: this error code comes after
+            // the original one.
+            //
+            // See https://crbug.com/446505.
             OPENSSL_PUT_ERROR(SSL, SSL_R_HANDSHAKE_FAILURE_ON_CLIENT_HELLO);
           }
           return ret;
@@ -488,7 +488,7 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
 
       case ssl_hs_read_end_of_early_data: {
         if (ssl->s3->hs->can_early_read) {
-          /* While we are processing early data, the handshake returns early. */
+          // While we are processing early data, the handshake returns early.
           *out_early_return = 1;
           return 1;
         }
@@ -533,7 +533,7 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
 
       case ssl_hs_early_data_rejected:
         ssl->rwstate = SSL_EARLY_DATA_REJECTED;
-        /* Cause |SSL_write| to start failing immediately. */
+        // Cause |SSL_write| to start failing immediately.
         hs->can_early_write = 0;
         return -1;
 
@@ -546,20 +546,20 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
         break;
     }
 
-    /* Run the state machine again. */
+    // Run the state machine again.
     hs->wait = ssl->do_handshake(hs);
     if (hs->wait == ssl_hs_error) {
-      /* Don't loop around to avoid a stray |SSL_R_SSL_HANDSHAKE_FAILURE| the
-       * first time around. */
+      // Don't loop around to avoid a stray |SSL_R_SSL_HANDSHAKE_FAILURE| the
+      // first time around.
       return -1;
     }
     if (hs->wait == ssl_hs_ok) {
-      /* The handshake has completed. */
+      // The handshake has completed.
       return 1;
     }
 
-    /* Otherwise, loop to the beginning and resolve what was blocking the
-     * handshake. */
+    // Otherwise, loop to the beginning and resolve what was blocking the
+    // handshake.
   }
 }
 

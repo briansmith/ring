@@ -128,8 +128,8 @@ static int xname_cmp(const X509_NAME **a, const X509_NAME **b) {
   return X509_NAME_cmp(*a, *b);
 }
 
-/* TODO(davidben): Is there any reason this doesn't call
- * |SSL_add_file_cert_subjects_to_stack|? */
+// TODO(davidben): Is there any reason this doesn't call
+// |SSL_add_file_cert_subjects_to_stack|?
 STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
   BIO *in;
   X509 *x = NULL;
@@ -164,7 +164,7 @@ STACK_OF(X509_NAME) *SSL_load_client_CA_file(const char *file) {
       goto err;
     }
 
-    /* Check for duplicates. */
+    // Check for duplicates.
     if (sk_X509_NAME_find(sk, NULL, xn)) {
       continue;
     }
@@ -222,7 +222,7 @@ int SSL_add_file_cert_subjects_to_stack(STACK_OF(X509_NAME) *stack,
       goto err;
     }
 
-    /* Check for duplicates. */
+    // Check for duplicates.
     if (sk_X509_NAME_find(stack, NULL, xn)) {
       continue;
     }
@@ -493,15 +493,15 @@ end:
   return ret;
 }
 
-/* Read a file that contains our certificate in "PEM" format, possibly followed
- * by a sequence of CA certificates that should be sent to the peer in the
- * Certificate message. */
+// Read a file that contains our certificate in "PEM" format, possibly followed
+// by a sequence of CA certificates that should be sent to the peer in the
+// Certificate message.
 int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file) {
   BIO *in;
   int ret = 0;
   X509 *x = NULL;
 
-  ERR_clear_error(); /* clear error stack for SSL_CTX_use_certificate() */
+  ERR_clear_error();  // clear error stack for SSL_CTX_use_certificate()
 
   in = BIO_new(BIO_s_file());
   if (in == NULL) {
@@ -524,12 +524,12 @@ int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file) {
   ret = SSL_CTX_use_certificate(ctx, x);
 
   if (ERR_peek_error() != 0) {
-    ret = 0; /* Key/certificate mismatch doesn't imply ret==0 ... */
+    ret = 0;  // Key/certificate mismatch doesn't imply ret==0 ...
   }
 
   if (ret) {
-    /* If we could set up our certificate, now proceed to the CA
-     * certificates. */
+    // If we could set up our certificate, now proceed to the CA
+    // certificates.
     X509 *ca;
     int r;
     uint32_t err;
@@ -545,18 +545,18 @@ int SSL_CTX_use_certificate_chain_file(SSL_CTX *ctx, const char *file) {
         ret = 0;
         goto end;
       }
-      /* Note that we must not free r if it was successfully added to the chain
-       * (while we must free the main certificate, since its reference count is
-       * increased by SSL_CTX_use_certificate). */
+      // Note that we must not free r if it was successfully added to the chain
+      // (while we must free the main certificate, since its reference count is
+      // increased by SSL_CTX_use_certificate).
     }
 
-    /* When the while loop ends, it's usually just EOF. */
+    // When the while loop ends, it's usually just EOF.
     err = ERR_peek_last_error();
     if (ERR_GET_LIB(err) == ERR_LIB_PEM &&
         ERR_GET_REASON(err) == PEM_R_NO_START_LINE) {
       ERR_clear_error();
     } else {
-      ret = 0; /* some real error */
+      ret = 0;  // some real error
     }
   }
 

@@ -12,9 +12,9 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-/* Per C99, various stdint.h macros are unavailable in C++ unless some macros
- * are defined. C++11 overruled this decision, but older Android NDKs still
- * require it. */
+// Per C99, various stdint.h macros are unavailable in C++ unless some macros
+// are defined. C++11 overruled this decision, but older Android NDKs still
+// require it.
 #if !defined(__STDC_LIMIT_MACROS)
 #define __STDC_LIMIT_MACROS
 #endif
@@ -64,7 +64,7 @@ static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, int *out_need_retry,
   SSL *const ssl = hs->ssl;
   *out_need_retry = 0;
 
-  /* We only support connections that include an ECDHE key exchange. */
+  // We only support connections that include an ECDHE key exchange.
   CBS key_share;
   if (!ssl_client_hello_get_extension(client_hello, &key_share,
                                       TLSEXT_TYPE_key_share)) {
@@ -127,7 +127,7 @@ static const SSL_CIPHER *choose_tls13_cipher(
       return NULL;
     }
 
-    /* Limit to TLS 1.3 ciphers we know about. */
+    // Limit to TLS 1.3 ciphers we know about.
     const SSL_CIPHER *candidate = SSL_get_cipher_by_value(cipher_suite);
     if (candidate == NULL ||
         SSL_CIPHER_get_min_version(candidate) > version ||
@@ -135,8 +135,8 @@ static const SSL_CIPHER *choose_tls13_cipher(
       continue;
     }
 
-    /* TLS 1.3 removes legacy ciphers, so honor the client order, but prefer
-     * ChaCha20 if we do not have AES hardware. */
+    // TLS 1.3 removes legacy ciphers, so honor the client order, but prefer
+    // ChaCha20 if we do not have AES hardware.
     if (aes_is_fine) {
       return candidate;
     }
@@ -155,12 +155,12 @@ static const SSL_CIPHER *choose_tls13_cipher(
 
 static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  /* TLS 1.3 recommends single-use tickets, so issue multiple tickets in case
-   * the client makes several connections before getting a renewal. */
+  // TLS 1.3 recommends single-use tickets, so issue multiple tickets in case
+  // the client makes several connections before getting a renewal.
   static const int kNumTickets = 2;
 
-  /* Rebase the session timestamp so that it is measured from ticket
-   * issuance. */
+  // Rebase the session timestamp so that it is measured from ticket
+  // issuance.
   ssl_session_rebase_time(ssl, hs->new_session.get());
 
   for (int i = 0; i < kNumTickets; i++) {
@@ -194,7 +194,7 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
       }
     }
 
-    /* Add a fake extension. See draft-davidben-tls-grease-01. */
+    // Add a fake extension. See draft-davidben-tls-grease-01.
     if (!CBB_add_u16(&extensions,
                      ssl_get_grease_value(ssl, ssl_grease_ticket_extension)) ||
         !CBB_add_u16(&extensions, 0 /* empty */)) {
@@ -210,8 +210,8 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
 }
 
 static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
-  /* At this point, most ClientHello extensions have already been processed by
-   * the common handshake logic. Resolve the remaining non-PSK parameters. */
+  // At this point, most ClientHello extensions have already been processed by
+  // the common handshake logic. Resolve the remaining non-PSK parameters.
   SSL *const ssl = hs->ssl;
   SSLMessage msg;
   if (!ssl->method->get_message(ssl, &msg)) {
@@ -228,7 +228,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
                  client_hello.session_id_len);
   hs->session_id_len = client_hello.session_id_len;
 
-  /* Negotiate the cipher suite. */
+  // Negotiate the cipher suite.
   hs->new_cipher = choose_tls13_cipher(ssl, &client_hello);
   if (hs->new_cipher == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
@@ -236,16 +236,16 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* HTTP/2 negotiation depends on the cipher suite, so ALPN negotiation was
-   * deferred. Complete it now. */
+  // HTTP/2 negotiation depends on the cipher suite, so ALPN negotiation was
+  // deferred. Complete it now.
   uint8_t alert = SSL_AD_DECODE_ERROR;
   if (!ssl_negotiate_alpn(hs, &alert, &client_hello)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
 
-  /* The PRF hash is now known. Set up the key schedule and hash the
-   * ClientHello. */
+  // The PRF hash is now known. Set up the key schedule and hash the
+  // ClientHello.
   if (!tls13_init_key_schedule(hs) ||
       !ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
@@ -262,7 +262,7 @@ static enum ssl_ticket_aead_result_t select_session(
   SSL *const ssl = hs->ssl;
   *out_session = NULL;
 
-  /* Decode the ticket if we agreed on a PSK key exchange mode. */
+  // Decode the ticket if we agreed on a PSK key exchange mode.
   CBS pre_shared_key;
   if (!hs->accept_psk_mode ||
       !ssl_client_hello_get_extension(client_hello, &pre_shared_key,
@@ -270,8 +270,8 @@ static enum ssl_ticket_aead_result_t select_session(
     return ssl_ticket_aead_ignore_ticket;
   }
 
-  /* Verify that the pre_shared_key extension is the last extension in
-   * ClientHello. */
+  // Verify that the pre_shared_key extension is the last extension in
+  // ClientHello.
   if (CBS_data(&pre_shared_key) + CBS_len(&pre_shared_key) !=
       client_hello->extensions + client_hello->extensions_len) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PRE_SHARED_KEY_MUST_BE_LAST);
@@ -287,8 +287,8 @@ static enum ssl_ticket_aead_result_t select_session(
     return ssl_ticket_aead_error;
   }
 
-  /* TLS 1.3 session tickets are renewed separately as part of the
-   * NewSessionTicket. */
+  // TLS 1.3 session tickets are renewed separately as part of the
+  // NewSessionTicket.
   int unused_renew;
   UniquePtr<SSL_SESSION> session;
   enum ssl_ticket_aead_result_t ret =
@@ -305,34 +305,34 @@ static enum ssl_ticket_aead_result_t select_session(
   }
 
   if (!ssl_session_is_resumable(hs, session.get()) ||
-      /* Historically, some TLS 1.3 tickets were missing ticket_age_add. */
+      // Historically, some TLS 1.3 tickets were missing ticket_age_add.
       !session->ticket_age_add_valid) {
     return ssl_ticket_aead_ignore_ticket;
   }
 
-  /* Recover the client ticket age and convert to seconds. */
+  // Recover the client ticket age and convert to seconds.
   client_ticket_age -= session->ticket_age_add;
   client_ticket_age /= 1000;
 
   struct OPENSSL_timeval now;
   ssl_get_current_time(ssl, &now);
 
-  /* Compute the server ticket age in seconds. */
+  // Compute the server ticket age in seconds.
   assert(now.tv_sec >= session->time);
   uint64_t server_ticket_age = now.tv_sec - session->time;
 
-  /* To avoid overflowing |hs->ticket_age_skew|, we will not resume
-   * 68-year-old sessions. */
+  // To avoid overflowing |hs->ticket_age_skew|, we will not resume
+  // 68-year-old sessions.
   if (server_ticket_age > INT32_MAX) {
     return ssl_ticket_aead_ignore_ticket;
   }
 
-  /* TODO(davidben,svaldez): Measure this value to decide on tolerance. For
-   * now, accept all values. https://crbug.com/boringssl/113. */
+  // TODO(davidben,svaldez): Measure this value to decide on tolerance. For
+  // now, accept all values. https://crbug.com/boringssl/113.
   *out_ticket_age_skew =
       (int32_t)client_ticket_age - (int32_t)server_ticket_age;
 
-  /* Check the PSK binder. */
+  // Check the PSK binder.
   if (!tls13_verify_psk_binder(hs, session.get(), msg, &binders)) {
     *out_alert = SSL_AD_DECRYPT_ERROR;
     return ssl_ticket_aead_error;
@@ -368,21 +368,21 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       break;
 
     case ssl_ticket_aead_success:
-      /* Carry over authentication information from the previous handshake into
-       * a fresh session. */
+      // Carry over authentication information from the previous handshake into
+      // a fresh session.
       hs->new_session =
           SSL_SESSION_dup(session.get(), SSL_SESSION_DUP_AUTH_ONLY);
 
-      if (/* Early data must be acceptable for this ticket. */
+      if (// Early data must be acceptable for this ticket.
           ssl->cert->enable_early_data &&
           session->ticket_max_early_data != 0 &&
-          /* The client must have offered early data. */
+          // The client must have offered early data.
           hs->early_data_offered &&
-          /* Channel ID is incompatible with 0-RTT. */
+          // Channel ID is incompatible with 0-RTT.
           !ssl->s3->tlsext_channel_id_valid &&
-          /* Custom extensions is incompatible with 0-RTT. */
+          // Custom extensions is incompatible with 0-RTT.
           hs->custom_extensions.received == 0 &&
-          /* The negotiated ALPN must match the one in the ticket. */
+          // The negotiated ALPN must match the one in the ticket.
           ssl->s3->alpn_selected_len == session->early_alpn_len &&
           OPENSSL_memcmp(ssl->s3->alpn_selected, session->early_alpn,
                          ssl->s3->alpn_selected_len) == 0) {
@@ -396,7 +396,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
 
       ssl->s3->session_reused = 1;
 
-      /* Resumption incorporates fresh key material, so refresh the timeout. */
+      // Resumption incorporates fresh key material, so refresh the timeout.
       ssl_session_renew_timeout(ssl, hs->new_session.get(),
                                 ssl->session_ctx->session_psk_dhe_timeout);
       break;
@@ -410,7 +410,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       return ssl_hs_pending_ticket;
   }
 
-  /* Record connection properties in the new session. */
+  // Record connection properties in the new session.
   hs->new_session->cipher = hs->new_cipher;
 
   if (hs->hostname != NULL) {
@@ -422,7 +422,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     }
   }
 
-  /* Store the initial negotiated ALPN in the session. */
+  // Store the initial negotiated ALPN in the session.
   if (ssl->s3->alpn_selected != NULL) {
     hs->new_session->early_alpn = (uint8_t *)BUF_memdup(
         ssl->s3->alpn_selected, ssl->s3->alpn_selected_len);
@@ -435,13 +435,13 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
 
   if (ssl->ctx->dos_protection_cb != NULL &&
       ssl->ctx->dos_protection_cb(&client_hello) == 0) {
-    /* Connection rejected for DOS reasons. */
+    // Connection rejected for DOS reasons.
     OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
   }
 
-  /* Incorporate the PSK into the running secret. */
+  // Incorporate the PSK into the running secret.
   if (ssl->s3->session_reused) {
     if (!tls13_advance_key_schedule(hs, hs->new_session->master_key,
                                     hs->new_session->master_key_length)) {
@@ -459,7 +459,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     ssl->s3->skip_early_data = 1;
   }
 
-  /* Resolve ECDHE and incorporate it into the secret. */
+  // Resolve ECDHE and incorporate it into the secret.
   int need_retry;
   if (!resolve_ecdhe_secret(hs, &need_retry, &client_hello)) {
     if (need_retry) {
@@ -517,7 +517,7 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
   int need_retry;
   if (!resolve_ecdhe_secret(hs, &need_retry, &client_hello)) {
     if (need_retry) {
-      /* Only send one HelloRetryRequest. */
+      // Only send one HelloRetryRequest.
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
     }
@@ -541,7 +541,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     version = TLS1_2_VERSION;
   }
 
-  /* Send a ServerHello. */
+  // Send a ServerHello.
   ScopedCBB cbb;
   CBB body, extensions, session_id;
   if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_SERVER_HELLO) ||
@@ -567,14 +567,14 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* Derive and enable the handshake traffic secrets. */
+  // Derive and enable the handshake traffic secrets.
   if (!tls13_derive_handshake_secrets(hs) ||
       !tls13_set_traffic_key(ssl, evp_aead_seal, hs->server_handshake_secret,
                              hs->hash_len)) {
     return ssl_hs_error;
   }
 
-  /* Send EncryptedExtensions. */
+  // Send EncryptedExtensions.
   if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_ENCRYPTED_EXTENSIONS) ||
       !ssl_add_serverhello_tlsext(hs, &body) ||
@@ -583,16 +583,16 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl->s3->session_reused) {
-    /* Determine whether to request a client certificate. */
+    // Determine whether to request a client certificate.
     hs->cert_request = !!(ssl->verify_mode & SSL_VERIFY_PEER);
-    /* Only request a certificate if Channel ID isn't negotiated. */
+    // Only request a certificate if Channel ID isn't negotiated.
     if ((ssl->verify_mode & SSL_VERIFY_PEER_IF_NO_OBC) &&
         ssl->s3->tlsext_channel_id_valid) {
       hs->cert_request = 0;
     }
   }
 
-  /* Send a CertificateRequest, if necessary. */
+  // Send a CertificateRequest, if necessary.
   if (hs->cert_request) {
     CBB sigalgs_cbb;
     if (!ssl->method->init_message(ssl, cbb.get(), &body,
@@ -607,7 +607,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     }
   }
 
-  /* Send the server Certificate message, if necessary. */
+  // Send the server Certificate message, if necessary.
   if (!ssl->s3->session_reused) {
     if (!ssl_has_certificate(ssl)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
@@ -647,7 +647,7 @@ static enum ssl_hs_wait_t do_send_server_certificate_verify(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!tls13_add_finished(hs) ||
-      /* Update the secret to the master secret and derive traffic keys. */
+      // Update the secret to the master secret and derive traffic keys.
       !tls13_advance_key_schedule(hs, kZeroes, hs->hash_len) ||
       !tls13_derive_application_secrets(hs) ||
       !tls13_set_traffic_key(ssl, evp_aead_seal, hs->server_traffic_secret_0,
@@ -656,10 +656,10 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl->early_data_accepted) {
-    /* If accepting 0-RTT, we send tickets half-RTT. This gets the tickets on
-     * the wire sooner and also avoids triggering a write on |SSL_read| when
-     * processing the client Finished. This requires computing the client
-     * Finished early. See draft-ietf-tls-tls13-18, section 4.5.1. */
+    // If accepting 0-RTT, we send tickets half-RTT. This gets the tickets on
+    // the wire sooner and also avoids triggering a write on |SSL_read| when
+    // processing the client Finished. This requires computing the client
+    // Finished early. See draft-ietf-tls-tls13-18, section 4.5.1.
     size_t finished_len;
     if (!tls13_finished_mac(hs, hs->expected_client_finished, &finished_len,
                             0 /* client */)) {
@@ -671,10 +671,10 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    /* Feed the predicted Finished into the transcript. This allows us to derive
-     * the resumption secret early and send half-RTT tickets.
-     *
-     * TODO(davidben): This will need to be updated for DTLS 1.3. */
+    // Feed the predicted Finished into the transcript. This allows us to derive
+    // the resumption secret early and send half-RTT tickets.
+    //
+    // TODO(davidben): This will need to be updated for DTLS 1.3.
     assert(!SSL_is_dtls(hs->ssl));
     assert(hs->hash_len <= 0xff);
     uint8_t header[4] = {SSL3_MT_FINISHED, 0, 0,
@@ -710,8 +710,8 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
   hs->tls13_state = state_process_change_cipher_spec;
-  /* If early data was accepted, the ChangeCipherSpec message will be in the
-   * discarded early data. */
+  // If early data was accepted, the ChangeCipherSpec message will be in the
+  // discarded early data.
   if (hs->early_data_offered && !hs->ssl->early_data_accepted) {
     return ssl_hs_ok;
   }
@@ -734,11 +734,11 @@ static enum ssl_hs_wait_t do_process_change_cipher_spec(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!hs->cert_request) {
-    /* OpenSSL returns X509_V_OK when no certificates are requested. This is
-     * classed by them as a bug, but it's assumed by at least NGINX. */
+    // OpenSSL returns X509_V_OK when no certificates are requested. This is
+    // classed by them as a bug, but it's assumed by at least NGINX.
     hs->new_session->verify_result = X509_V_OK;
 
-    /* Skip this state. */
+    // Skip this state.
     hs->tls13_state = state_read_channel_id;
     return ssl_hs_ok;
   }
@@ -764,7 +764,7 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(
     SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) == 0) {
-    /* Skip this state. */
+    // Skip this state.
     hs->tls13_state = state_read_channel_id;
     return ssl_hs_ok;
   }
@@ -824,10 +824,10 @@ static enum ssl_hs_wait_t do_read_client_finished(SSL_HANDSHAKE *hs) {
     return ssl_hs_read_message;
   }
   if (!ssl_check_message_type(ssl, msg, SSL3_MT_FINISHED) ||
-      /* If early data was accepted, we've already computed the client Finished
-       * and derived the resumption secret. */
+      // If early data was accepted, we've already computed the client Finished
+      // and derived the resumption secret.
       !tls13_process_finished(hs, msg, ssl->early_data_accepted) ||
-      /* evp_aead_seal keys have already been switched. */
+      // evp_aead_seal keys have already been switched.
       !tls13_set_traffic_key(ssl, evp_aead_open, hs->client_traffic_secret_0,
                              hs->hash_len)) {
     return ssl_hs_error;
@@ -839,10 +839,10 @@ static enum ssl_hs_wait_t do_read_client_finished(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    /* We send post-handshake tickets as part of the handshake in 1-RTT. */
+    // We send post-handshake tickets as part of the handshake in 1-RTT.
     hs->tls13_state = state_send_new_session_ticket;
   } else {
-    /* We already sent half-RTT tickets. */
+    // We already sent half-RTT tickets.
     hs->tls13_state = state_done;
   }
 
@@ -851,8 +851,8 @@ static enum ssl_hs_wait_t do_read_client_finished(SSL_HANDSHAKE *hs) {
 }
 
 static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
-  /* If the client doesn't accept resumption with PSK_DHE_KE, don't send a
-   * session ticket. */
+  // If the client doesn't accept resumption with PSK_DHE_KE, don't send a
+  // session ticket.
   if (!hs->accept_psk_mode) {
     hs->tls13_state = state_done;
     return ssl_hs_ok;

@@ -134,7 +134,7 @@ namespace bssl {
 
 static int add_record_to_flight(SSL *ssl, uint8_t type, const uint8_t *in,
                                 size_t in_len) {
-  /* We'll never add a flight while in the process of writing it out. */
+  // We'll never add a flight while in the process of writing it out.
   assert(ssl->s3->pending_flight_offset == 0);
 
   if (ssl->s3->pending_flight == NULL) {
@@ -164,7 +164,7 @@ static int add_record_to_flight(SSL *ssl, uint8_t type, const uint8_t *in,
 }
 
 int ssl3_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
-  /* Pick a modest size hint to save most of the |realloc| calls. */
+  // Pick a modest size hint to save most of the |realloc| calls.
   if (!CBB_init(cbb, 64) ||
       !CBB_add_u8(cbb, type) ||
       !CBB_add_u24_length_prefixed(cbb, body)) {
@@ -187,8 +187,8 @@ int ssl3_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
 }
 
 int ssl3_add_message(SSL *ssl, uint8_t *msg, size_t len) {
-  /* Add the message to the current flight, splitting into several records if
-   * needed. */
+  // Add the message to the current flight, splitting into several records if
+  // needed.
   int ret = 0;
   size_t added = 0;
   do {
@@ -212,8 +212,8 @@ int ssl3_add_message(SSL *ssl, uint8_t *msg, size_t len) {
   } while (added < len);
 
   ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE, msg, len);
-  /* TODO(svaldez): Move this up a layer to fix abstraction for SSLTranscript on
-   * hs. */
+  // TODO(svaldez): Move this up a layer to fix abstraction for SSLTranscript on
+  // hs.
   if (ssl->s3->hs != NULL &&
       !ssl->s3->hs->transcript.Update(msg, len)) {
     goto err;
@@ -260,8 +260,8 @@ int ssl3_flush_flight(SSL *ssl) {
     return -1;
   }
 
-  /* If there is pending data in the write buffer, it must be flushed out before
-   * any new data in pending_flight. */
+  // If there is pending data in the write buffer, it must be flushed out before
+  // any new data in pending_flight.
   if (ssl_write_buffer_is_pending(ssl)) {
     int ret = ssl_write_buffer_flush(ssl);
     if (ret <= 0) {
@@ -270,7 +270,7 @@ int ssl3_flush_flight(SSL *ssl) {
     }
   }
 
-  /* Write the pending flight. */
+  // Write the pending flight.
   while (ssl->s3->pending_flight_offset < ssl->s3->pending_flight->length) {
     int ret = BIO_write(
         ssl->wbio,
@@ -306,14 +306,14 @@ int ssl3_send_finished(SSL_HANDSHAKE *hs) {
     return 0;
   }
 
-  /* Log the master secret, if logging is enabled. */
+  // Log the master secret, if logging is enabled.
   if (!ssl_log_secret(ssl, "CLIENT_RANDOM",
                       session->master_key,
                       session->master_key_length)) {
     return 0;
   }
 
-  /* Copy the Finished so we can use it for renegotiation checks. */
+  // Copy the Finished so we can use it for renegotiation checks.
   if (ssl->version != SSL3_VERSION) {
     if (finished_len > sizeof(ssl->s3->previous_client_finished) ||
         finished_len > sizeof(ssl->s3->previous_server_finished)) {
@@ -372,18 +372,18 @@ static int extend_handshake_buffer(SSL *ssl, size_t length) {
 }
 
 static int read_v2_client_hello(SSL *ssl) {
-  /* Read the first 5 bytes, the size of the TLS record header. This is
-   * sufficient to detect a V2ClientHello and ensures that we never read beyond
-   * the first record. */
+  // Read the first 5 bytes, the size of the TLS record header. This is
+  // sufficient to detect a V2ClientHello and ensures that we never read beyond
+  // the first record.
   int ret = ssl_read_buffer_extend_to(ssl, SSL3_RT_HEADER_LENGTH);
   if (ret <= 0) {
     return ret;
   }
   const uint8_t *p = ssl_read_buffer(ssl);
 
-  /* Some dedicated error codes for protocol mixups should the application wish
-   * to interpret them differently. (These do not overlap with ClientHello or
-   * V2ClientHello.) */
+  // Some dedicated error codes for protocol mixups should the application wish
+  // to interpret them differently. (These do not overlap with ClientHello or
+  // V2ClientHello.)
   if (strncmp("GET ", (const char *)p, 4) == 0 ||
       strncmp("POST ", (const char *)p, 5) == 0 ||
       strncmp("HEAD ", (const char *)p, 5) == 0 ||
@@ -398,25 +398,25 @@ static int read_v2_client_hello(SSL *ssl) {
 
   if ((p[0] & 0x80) == 0 || p[2] != SSL2_MT_CLIENT_HELLO ||
       p[3] != SSL3_VERSION_MAJOR) {
-    /* Not a V2ClientHello. */
+    // Not a V2ClientHello.
     return 1;
   }
 
-  /* Determine the length of the V2ClientHello. */
+  // Determine the length of the V2ClientHello.
   size_t msg_length = ((p[0] & 0x7f) << 8) | p[1];
   if (msg_length > (1024 * 4)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_TOO_LARGE);
     return -1;
   }
   if (msg_length < SSL3_RT_HEADER_LENGTH - 2) {
-    /* Reject lengths that are too short early. We have already read
-     * |SSL3_RT_HEADER_LENGTH| bytes, so we should not attempt to process an
-     * (invalid) V2ClientHello which would be shorter than that. */
+    // Reject lengths that are too short early. We have already read
+    // |SSL3_RT_HEADER_LENGTH| bytes, so we should not attempt to process an
+    // (invalid) V2ClientHello which would be shorter than that.
     OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_LENGTH_MISMATCH);
     return -1;
   }
 
-  /* Read the remainder of the V2ClientHello. */
+  // Read the remainder of the V2ClientHello.
   ret = ssl_read_buffer_extend_to(ssl, 2 + msg_length);
   if (ret <= 0) {
     return ret;
@@ -425,9 +425,9 @@ static int read_v2_client_hello(SSL *ssl) {
   CBS v2_client_hello;
   CBS_init(&v2_client_hello, ssl_read_buffer(ssl) + 2, msg_length);
 
-  /* The V2ClientHello without the length is incorporated into the handshake
-   * hash. This is only ever called at the start of the handshake, so hs is
-   * guaranteed to be non-NULL. */
+  // The V2ClientHello without the length is incorporated into the handshake
+  // hash. This is only ever called at the start of the handshake, so hs is
+  // guaranteed to be non-NULL.
   if (!ssl->s3->hs->transcript.Update(CBS_data(&v2_client_hello),
                                       CBS_len(&v2_client_hello))) {
     return -1;
@@ -452,11 +452,11 @@ static int read_v2_client_hello(SSL *ssl) {
     return -1;
   }
 
-  /* msg_type has already been checked. */
+  // msg_type has already been checked.
   assert(msg_type == SSL2_MT_CLIENT_HELLO);
 
-  /* The client_random is the V2ClientHello challenge. Truncate or
-   * left-pad with zeros as needed. */
+  // The client_random is the V2ClientHello challenge. Truncate or left-pad with
+  // zeros as needed.
   size_t rand_len = CBS_len(&challenge);
   if (rand_len > SSL3_RANDOM_SIZE) {
     rand_len = SSL3_RANDOM_SIZE;
@@ -466,7 +466,7 @@ static int read_v2_client_hello(SSL *ssl) {
   OPENSSL_memcpy(random + (SSL3_RANDOM_SIZE - rand_len), CBS_data(&challenge),
                  rand_len);
 
-  /* Write out an equivalent SSLv3 ClientHello. */
+  // Write out an equivalent SSLv3 ClientHello.
   size_t max_v3_client_hello = SSL3_HM_HEADER_LENGTH + 2 /* version */ +
                                SSL3_RANDOM_SIZE + 1 /* session ID length */ +
                                2 /* cipher list length */ +
@@ -481,14 +481,14 @@ static int read_v2_client_hello(SSL *ssl) {
       !CBB_add_u24_length_prefixed(client_hello.get(), &hello_body) ||
       !CBB_add_u16(&hello_body, version) ||
       !CBB_add_bytes(&hello_body, random, SSL3_RANDOM_SIZE) ||
-      /* No session id. */
+      // No session id.
       !CBB_add_u8(&hello_body, 0) ||
       !CBB_add_u16_length_prefixed(&hello_body, &cipher_suites)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return -1;
   }
 
-  /* Copy the cipher suites. */
+  // Copy the cipher suites.
   while (CBS_len(&cipher_specs) > 0) {
     uint32_t cipher_spec;
     if (!CBS_get_u24(&cipher_specs, &cipher_spec)) {
@@ -496,7 +496,7 @@ static int read_v2_client_hello(SSL *ssl) {
       return -1;
     }
 
-    /* Skip SSLv2 ciphers. */
+    // Skip SSLv2 ciphers.
     if ((cipher_spec & 0xff0000) != 0) {
       continue;
     }
@@ -506,7 +506,7 @@ static int read_v2_client_hello(SSL *ssl) {
     }
   }
 
-  /* Add the null compression scheme and finish. */
+  // Add the null compression scheme and finish.
   if (!CBB_add_u8(&hello_body, 1) ||
       !CBB_add_u8(&hello_body, 0) ||
       !CBB_finish(client_hello.get(), NULL, &ssl->init_buf->length)) {
@@ -514,7 +514,7 @@ static int read_v2_client_hello(SSL *ssl) {
     return -1;
   }
 
-  /* Consume and discard the V2ClientHello. */
+  // Consume and discard the V2ClientHello.
   ssl_read_buffer_consume(ssl, 2 + msg_length);
   ssl_read_buffer_discard(ssl);
 
@@ -522,8 +522,8 @@ static int read_v2_client_hello(SSL *ssl) {
   return 1;
 }
 
-/* TODO(davidben): Remove |out_bytes_needed| and inline into |ssl3_get_message|
- * when the entire record is copied into |init_buf|. */
+// TODO(davidben): Remove |out_bytes_needed| and inline into |ssl3_get_message|
+// when the entire record is copied into |init_buf|.
 static bool parse_message(SSL *ssl, SSLMessage *out, size_t *out_bytes_needed) {
   if (ssl->init_buf == NULL) {
     *out_bytes_needed = 4;
@@ -571,14 +571,14 @@ int ssl3_read_message(SSL *ssl) {
     return -1;
   }
 
-  /* Enforce the limit so the peer cannot force us to buffer 16MB. */
+  // Enforce the limit so the peer cannot force us to buffer 16MB.
   if (bytes_needed > 4 + ssl_max_handshake_message_len(ssl)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
     return -1;
   }
 
-  /* Re-create the handshake buffer if needed. */
+  // Re-create the handshake buffer if needed.
   if (ssl->init_buf == NULL) {
     ssl->init_buf = BUF_MEM_new();
     if (ssl->init_buf == NULL) {
@@ -586,7 +586,7 @@ int ssl3_read_message(SSL *ssl) {
     }
   }
 
-  /* Bypass the record layer for the first message to handle V2ClientHello. */
+  // Bypass the record layer for the first message to handle V2ClientHello.
   if (ssl->server && !ssl->s3->v2_hello_done) {
     int ret = read_v2_client_hello(ssl);
     if (ret > 0) {
@@ -613,8 +613,8 @@ void ssl3_next_message(SSL *ssl) {
   ssl->s3->is_v2_hello = 0;
   ssl->s3->has_message = 0;
 
-  /* Post-handshake messages are rare, so release the buffer after every
-   * message. During the handshake, |on_handshake_complete| will release it. */
+  // Post-handshake messages are rare, so release the buffer after every
+  // message. During the handshake, |on_handshake_complete| will release it.
   if (!SSL_in_init(ssl) && ssl->init_buf->length == 0) {
     BUF_MEM_free(ssl->init_buf);
     ssl->init_buf = NULL;

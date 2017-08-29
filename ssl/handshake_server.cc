@@ -231,18 +231,18 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       return 0;
     }
   } else {
-    /* Convert the ClientHello version to an equivalent supported_versions
-     * extension. */
+    // Convert the ClientHello version to an equivalent supported_versions
+    // extension.
     static const uint8_t kTLSVersions[] = {
-        0x03, 0x03, /* TLS 1.2 */
-        0x03, 0x02, /* TLS 1.1 */
-        0x03, 0x01, /* TLS 1 */
-        0x03, 0x00, /* SSL 3 */
+        0x03, 0x03,  // TLS 1.2
+        0x03, 0x02,  // TLS 1.1
+        0x03, 0x01,  // TLS 1
+        0x03, 0x00,  // SSL 3
     };
 
     static const uint8_t kDTLSVersions[] = {
-        0xfe, 0xfd, /* DTLS 1.2 */
-        0xfe, 0xff, /* DTLS 1.0 */
+        0xfe, 0xfd,  // DTLS 1.2
+        0xfe, 0xff,  // DTLS 1.0
     };
 
     size_t versions_len = 0;
@@ -273,11 +273,11 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return 0;
   }
 
-  /* At this point, the connection's version is known and |ssl->version| is
-   * fixed. Begin enforcing the record-layer version. */
+  // At this point, the connection's version is known and |ssl->version| is
+  // fixed. Begin enforcing the record-layer version.
   ssl->s3->have_version = 1;
 
-  /* Handle FALLBACK_SCSV. */
+  // Handle FALLBACK_SCSV.
   if (ssl_client_cipher_list_contains_cipher(client_hello,
                                              SSL3_CK_FALLBACK_SCSV & 0xffff) &&
       ssl3_protocol_version(ssl) < hs->max_version) {
@@ -319,10 +319,10 @@ static UniquePtr<STACK_OF(SSL_CIPHER)> ssl_parse_client_cipher_list(
   return sk;
 }
 
-/* ssl_get_compatible_server_ciphers determines the key exchange and
- * authentication cipher suite masks compatible with the server configuration
- * and current ClientHello parameters of |hs|. It sets |*out_mask_k| to the key
- * exchange mask and |*out_mask_a| to the authentication mask. */
+// ssl_get_compatible_server_ciphers determines the key exchange and
+// authentication cipher suite masks compatible with the server configuration
+// and current ClientHello parameters of |hs|. It sets |*out_mask_k| to the key
+// exchange mask and |*out_mask_a| to the authentication mask.
 static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
                                               uint32_t *out_mask_k,
                                               uint32_t *out_mask_a) {
@@ -337,13 +337,13 @@ static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
     }
   }
 
-  /* Check for a shared group to consider ECDHE ciphers. */
+  // Check for a shared group to consider ECDHE ciphers.
   uint16_t unused;
   if (tls1_get_shared_group(hs, &unused)) {
     mask_k |= SSL_kECDHE;
   }
 
-  /* PSK requires a server callback. */
+  // PSK requires a server callback.
   if (ssl->psk_server_callback != NULL) {
     mask_k |= SSL_kPSK;
     mask_a |= SSL_aPSK;
@@ -358,13 +358,13 @@ static const SSL_CIPHER *ssl3_choose_cipher(
     const struct ssl_cipher_preference_list_st *server_pref) {
   SSL *const ssl = hs->ssl;
   STACK_OF(SSL_CIPHER) *prio, *allow;
-  /* in_group_flags will either be NULL, or will point to an array of bytes
-   * which indicate equal-preference groups in the |prio| stack. See the
-   * comment about |in_group_flags| in the |ssl_cipher_preference_list_st|
-   * struct. */
+  // in_group_flags will either be NULL, or will point to an array of bytes
+  // which indicate equal-preference groups in the |prio| stack. See the
+  // comment about |in_group_flags| in the |ssl_cipher_preference_list_st|
+  // struct.
   const uint8_t *in_group_flags;
-  /* group_min contains the minimal index so far found in a group, or -1 if no
-   * such value exists yet. */
+  // group_min contains the minimal index so far found in a group, or -1 if no
+  // such value exists yet.
   int group_min = -1;
 
   UniquePtr<STACK_OF(SSL_CIPHER)> client_pref =
@@ -390,17 +390,17 @@ static const SSL_CIPHER *ssl3_choose_cipher(
     const SSL_CIPHER *c = sk_SSL_CIPHER_value(prio, i);
 
     size_t cipher_index;
-    if (/* Check if the cipher is supported for the current version. */
+    if (// Check if the cipher is supported for the current version.
         SSL_CIPHER_get_min_version(c) <= ssl3_protocol_version(ssl) &&
         ssl3_protocol_version(ssl) <= SSL_CIPHER_get_max_version(c) &&
-        /* Check the cipher is supported for the server configuration. */
+        // Check the cipher is supported for the server configuration.
         (c->algorithm_mkey & mask_k) &&
         (c->algorithm_auth & mask_a) &&
-        /* Check the cipher is in the |allow| list. */
+        // Check the cipher is in the |allow| list.
         sk_SSL_CIPHER_find(allow, &cipher_index, c)) {
       if (in_group_flags != NULL && in_group_flags[i] == 1) {
-        /* This element of |prio| is in a group. Update the minimum index found
-         * so far and continue looking. */
+        // This element of |prio| is in a group. Update the minimum index found
+        // so far and continue looking.
         if (group_min == -1 || (size_t)group_min > cipher_index) {
           group_min = cipher_index;
         }
@@ -413,8 +413,8 @@ static const SSL_CIPHER *ssl3_choose_cipher(
     }
 
     if (in_group_flags != NULL && in_group_flags[i] == 0 && group_min != -1) {
-      /* We are about to leave a group, but we found a match in it, so that's
-       * our answer. */
+      // We are about to leave a group, but we found a match in it, so that's
+      // our answer.
       return sk_SSL_CIPHER_value(allow, group_min);
     }
   }
@@ -447,14 +447,14 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* Run the early callback. */
+  // Run the early callback.
   if (ssl->ctx->select_certificate_cb != NULL) {
     switch (ssl->ctx->select_certificate_cb(&client_hello)) {
       case ssl_select_cert_retry:
         return ssl_hs_certificate_selection_pending;
 
       case ssl_select_cert_error:
-        /* Connection rejected. */
+        // Connection rejected.
         OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
         return ssl_hs_error;
@@ -464,7 +464,7 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
     }
   }
 
-  /* Freeze the version range after the early callback. */
+  // Freeze the version range after the early callback.
   if (!ssl_get_version_range(ssl, &hs->min_version, &hs->max_version)) {
     return ssl_hs_error;
   }
@@ -483,8 +483,8 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
   OPENSSL_memcpy(ssl->s3->client_random, client_hello.random,
                  client_hello.random_len);
 
-  /* Only null compression is supported. TLS 1.3 further requires the peer
-   * advertise no other compression. */
+  // Only null compression is supported. TLS 1.3 further requires the peer
+  // advertise no other compression.
   if (OPENSSL_memchr(client_hello.compression_methods, 0,
                      client_hello.compression_methods_len) == NULL ||
       (ssl3_protocol_version(ssl) >= TLS1_3_VERSION &&
@@ -494,7 +494,7 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* TLS extensions. */
+  // TLS extensions.
   if (!ssl_parse_clienthello_tlsext(hs, &client_hello)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PARSE_TLSEXT);
     return ssl_hs_error;
@@ -512,7 +512,7 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_read_message;
   }
 
-  /* Call |cert_cb| to update server certificates if required. */
+  // Call |cert_cb| to update server certificates if required.
   if (ssl->cert->cert_cb != NULL) {
     int rv = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
     if (rv == 0) {
@@ -530,7 +530,7 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
-    /* Jump to the TLS 1.3 state machine. */
+    // Jump to the TLS 1.3 state machine.
     hs->state = state_tls13;
     return ssl_hs_ok;
   }
@@ -540,8 +540,8 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* Negotiate the cipher suite. This must be done after |cert_cb| so the
-   * certificate is finalized. */
+  // Negotiate the cipher suite. This must be done after |cert_cb| so the
+  // certificate is finalized.
   hs->new_cipher =
       ssl3_choose_cipher(hs, &client_hello, ssl_get_cipher_preferences(ssl));
   if (hs->new_cipher == NULL) {
@@ -577,7 +577,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* Determine whether we are doing session resumption. */
+  // Determine whether we are doing session resumption.
   UniquePtr<SSL_SESSION> session;
   int tickets_supported = 0, renew_ticket = 0;
   enum ssl_hs_wait_t wait = ssl_get_prev_session(
@@ -588,23 +588,23 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
 
   if (session) {
     if (session->extended_master_secret && !hs->extended_master_secret) {
-      /* A ClientHello without EMS that attempts to resume a session with EMS
-       * is fatal to the connection. */
+      // A ClientHello without EMS that attempts to resume a session with EMS
+      // is fatal to the connection.
       OPENSSL_PUT_ERROR(SSL, SSL_R_RESUMED_EMS_SESSION_WITHOUT_EMS_EXTENSION);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
       return ssl_hs_error;
     }
 
     if (!ssl_session_is_resumable(hs, session.get()) ||
-        /* If the client offers the EMS extension, but the previous session
-         * didn't use it, then negotiate a new session. */
+        // If the client offers the EMS extension, but the previous session
+        // didn't use it, then negotiate a new session.
         hs->extended_master_secret != session->extended_master_secret) {
       session.reset();
     }
   }
 
   if (session) {
-    /* Use the old session. */
+    // Use the old session.
     hs->ticket_expected = renew_ticket;
     ssl->session = session.release();
     ssl->s3->session_reused = 1;
@@ -615,7 +615,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    /* Clear the session ID if we want the session to be single-use. */
+    // Clear the session ID if we want the session to be single-use.
     if (!(ssl->ctx->session_cache_mode & SSL_SESS_CACHE_SERVER)) {
       hs->new_session->session_id_length = 0;
     }
@@ -623,7 +623,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
 
   if (ssl->ctx->dos_protection_cb != NULL &&
       ssl->ctx->dos_protection_cb(&client_hello) == 0) {
-    /* Connection rejected for DOS reasons. */
+    // Connection rejected for DOS reasons.
     OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
@@ -632,7 +632,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   if (ssl->session == NULL) {
     hs->new_session->cipher = hs->new_cipher;
 
-    /* On new sessions, stash the SNI value in the session. */
+    // On new sessions, stash the SNI value in the session.
     if (hs->hostname != NULL) {
       OPENSSL_free(hs->new_session->tlsext_hostname);
       hs->new_session->tlsext_hostname = BUF_strdup(hs->hostname.get());
@@ -642,42 +642,42 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
       }
     }
 
-    /* Determine whether to request a client certificate. */
+    // Determine whether to request a client certificate.
     hs->cert_request = !!(ssl->verify_mode & SSL_VERIFY_PEER);
-    /* Only request a certificate if Channel ID isn't negotiated. */
+    // Only request a certificate if Channel ID isn't negotiated.
     if ((ssl->verify_mode & SSL_VERIFY_PEER_IF_NO_OBC) &&
         ssl->s3->tlsext_channel_id_valid) {
       hs->cert_request = 0;
     }
-    /* CertificateRequest may only be sent in certificate-based ciphers. */
+    // CertificateRequest may only be sent in certificate-based ciphers.
     if (!ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
       hs->cert_request = 0;
     }
 
     if (!hs->cert_request) {
-      /* OpenSSL returns X509_V_OK when no certificates are requested. This is
-       * classed by them as a bug, but it's assumed by at least NGINX. */
+      // OpenSSL returns X509_V_OK when no certificates are requested. This is
+      // classed by them as a bug, but it's assumed by at least NGINX.
       hs->new_session->verify_result = X509_V_OK;
     }
   }
 
-  /* HTTP/2 negotiation depends on the cipher suite, so ALPN negotiation was
-   * deferred. Complete it now. */
+  // HTTP/2 negotiation depends on the cipher suite, so ALPN negotiation was
+  // deferred. Complete it now.
   uint8_t alert = SSL_AD_DECODE_ERROR;
   if (!ssl_negotiate_alpn(hs, &alert, &client_hello)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
 
-  /* Now that all parameters are known, initialize the handshake hash and hash
-   * the ClientHello. */
+  // Now that all parameters are known, initialize the handshake hash and hash
+  // the ClientHello.
   if (!hs->transcript.InitHash(ssl3_protocol_version(ssl), hs->new_cipher) ||
       !ssl_hash_message(hs, msg)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
   }
 
-  /* Release the handshake buffer if client authentication isn't required. */
+  // Release the handshake buffer if client authentication isn't required.
   if (!hs->cert_request) {
     hs->transcript.FreeBuffer();
   }
@@ -691,16 +691,16 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
-  /* We only accept ChannelIDs on connections with ECDHE in order to avoid a
-   * known attack while we fix ChannelID itself. */
+  // We only accept ChannelIDs on connections with ECDHE in order to avoid a
+  // known attack while we fix ChannelID itself.
   if (ssl->s3->tlsext_channel_id_valid &&
       (hs->new_cipher->algorithm_mkey & SSL_kECDHE) == 0) {
     ssl->s3->tlsext_channel_id_valid = 0;
   }
 
-  /* If this is a resumption and the original handshake didn't support
-   * ChannelID then we didn't record the original handshake hashes in the
-   * session and so cannot resume with ChannelIDs. */
+  // If this is a resumption and the original handshake didn't support
+  // ChannelID then we didn't record the original handshake hashes in the
+  // session and so cannot resume with ChannelIDs.
   if (ssl->session != NULL &&
       ssl->session->original_handshake_hash_len == 0) {
     ssl->s3->tlsext_channel_id_valid = 0;
@@ -716,8 +716,8 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* TODO(davidben): Implement the TLS 1.1 and 1.2 downgrade sentinels once TLS
-   * 1.3 is finalized and we are not implementing a draft version. */
+  // TODO(davidben): Implement the TLS 1.1 and 1.2 downgrade sentinels once TLS
+  // 1.3 is finalized and we are not implementing a draft version.
 
   const SSL_SESSION *session = hs->new_session.get();
   if (ssl->session != NULL) {
@@ -778,14 +778,14 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  /* Assemble ServerKeyExchange parameters if needed. */
+  // Assemble ServerKeyExchange parameters if needed.
   uint32_t alg_k = hs->new_cipher->algorithm_mkey;
   uint32_t alg_a = hs->new_cipher->algorithm_auth;
   if (ssl_cipher_requires_server_key_exchange(hs->new_cipher) ||
       ((alg_a & SSL_aPSK) && ssl->psk_identity_hint)) {
 
-    /* Pre-allocate enough room to comfortably fit an ECDHE public key. Prepend
-     * the client and server randoms for the signing transcript. */
+    // Pre-allocate enough room to comfortably fit an ECDHE public key. Prepend
+    // the client and server randoms for the signing transcript.
     CBB child;
     if (!CBB_init(cbb.get(), SSL3_RANDOM_SIZE * 2 + 128) ||
         !CBB_add_bytes(cbb.get(), ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
@@ -793,7 +793,7 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    /* PSK ciphers begin with an identity hint. */
+    // PSK ciphers begin with an identity hint.
     if (alg_a & SSL_aPSK) {
       size_t len =
           (ssl->psk_identity_hint == NULL) ? 0 : strlen(ssl->psk_identity_hint);
@@ -805,7 +805,7 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
     }
 
     if (alg_k & SSL_kECDHE) {
-      /* Determine the group to use. */
+      // Determine the group to use.
       uint16_t group_id;
       if (!tls1_get_shared_group(hs, &group_id)) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -814,7 +814,7 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
        }
       hs->new_session->group_id = group_id;
 
-      /* Set up ECDH, generate a key, and emit the public half. */
+      // Set up ECDH, generate a key, and emit the public half.
       hs->key_share = SSLKeyShare::Create(group_id);
       if (!hs->key_share ||
           !CBB_add_u8(cbb.get(), NAMED_CURVE_TYPE) ||
@@ -848,21 +848,21 @@ static enum ssl_hs_wait_t do_send_server_key_exchange(SSL_HANDSHAKE *hs) {
   CBB body, child;
   if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_SERVER_KEY_EXCHANGE) ||
-      /* |hs->server_params| contains a prefix for signing. */
+      // |hs->server_params| contains a prefix for signing.
       hs->server_params_len < 2 * SSL3_RANDOM_SIZE ||
       !CBB_add_bytes(&body, hs->server_params + 2 * SSL3_RANDOM_SIZE,
                      hs->server_params_len - 2 * SSL3_RANDOM_SIZE)) {
     return ssl_hs_error;
   }
 
-  /* Add a signature. */
+  // Add a signature.
   if (ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
     if (!ssl_has_private_key(ssl)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
 
-    /* Determine the signature algorithm. */
+    // Determine the signature algorithm.
     uint16_t signature_algorithm;
     if (!tls1_choose_signature_algorithm(hs, &signature_algorithm)) {
       return ssl_hs_error;
@@ -875,7 +875,7 @@ static enum ssl_hs_wait_t do_send_server_key_exchange(SSL_HANDSHAKE *hs) {
       }
     }
 
-    /* Add space for the signature. */
+    // Add space for the signature.
     const size_t max_sig_len = EVP_PKEY_size(hs->local_pubkey.get());
     uint8_t *ptr;
     if (!CBB_add_u16_length_prefixed(&body, &child) ||
@@ -962,16 +962,16 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
   if (msg.type != SSL3_MT_CERTIFICATE) {
     if (ssl->version == SSL3_VERSION &&
         msg.type == SSL3_MT_CLIENT_KEY_EXCHANGE) {
-      /* In SSL 3.0, the Certificate message is omitted to signal no
-       * certificate. */
+      // In SSL 3.0, the Certificate message is omitted to signal no
+      // certificate.
       if (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
         ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
         return ssl_hs_error;
       }
 
-      /* OpenSSL returns X509_V_OK when no certificates are received. This is
-       * classed by them as a bug, but it's assumed by at least NGINX. */
+      // OpenSSL returns X509_V_OK when no certificates are received. This is
+      // classed by them as a bug, but it's assumed by at least NGINX.
       hs->new_session->verify_result = X509_V_OK;
       hs->state = state_verify_client_certificate;
       return ssl_hs_ok;
@@ -1008,11 +1008,11 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
   }
 
   if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) == 0) {
-    /* No client certificate so the handshake buffer may be discarded. */
+    // No client certificate so the handshake buffer may be discarded.
     hs->transcript.FreeBuffer();
 
-    /* In SSL 3.0, sending no certificate is signaled by omitting the
-     * Certificate message. */
+    // In SSL 3.0, sending no certificate is signaled by omitting the
+    // Certificate message.
     if (ssl->version == SSL3_VERSION) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATES_RETURNED);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
@@ -1020,17 +1020,17 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
     }
 
     if (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
-      /* Fail for TLS only if we required a certificate */
+      // Fail for TLS only if we required a certificate
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
       return ssl_hs_error;
     }
 
-    /* OpenSSL returns X509_V_OK when no certificates are received. This is
-     * classed by them as a bug, but it's assumed by at least NGINX. */
+    // OpenSSL returns X509_V_OK when no certificates are received. This is
+    // classed by them as a bug, but it's assumed by at least NGINX.
     hs->new_session->verify_result = X509_V_OK;
   } else if (ssl->retain_only_sha256_of_client_certs) {
-    /* The hash will have been filled in. */
+    // The hash will have been filled in.
     hs->new_session->peer_sha256_valid = 1;
   }
 
@@ -1076,12 +1076,12 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
   uint32_t alg_k = hs->new_cipher->algorithm_mkey;
   uint32_t alg_a = hs->new_cipher->algorithm_auth;
 
-  /* If using a PSK key exchange, parse the PSK identity. */
+  // If using a PSK key exchange, parse the PSK identity.
   if (alg_a & SSL_aPSK) {
     CBS psk_identity;
 
-    /* If using PSK, the ClientKeyExchange contains a psk_identity. If PSK,
-     * then this is the only field in the message. */
+    // If using PSK, the ClientKeyExchange contains a psk_identity. If PSK,
+    // then this is the only field in the message.
     if (!CBS_get_u16_length_prefixed(&client_key_exchange, &psk_identity) ||
         ((alg_k & SSL_kPSK) && CBS_len(&client_key_exchange) != 0)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
@@ -1103,8 +1103,8 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     }
   }
 
-  /* Depending on the key exchange method, compute |premaster_secret| and
-   * |premaster_secret_len|. */
+  // Depending on the key exchange method, compute |premaster_secret| and
+  // |premaster_secret_len|.
   if (alg_k & SSL_kRSA) {
     CBS encrypted_premaster_secret;
     if (ssl->version > SSL3_VERSION) {
@@ -1119,7 +1119,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
       encrypted_premaster_secret = client_key_exchange;
     }
 
-    /* Allocate a buffer large enough for an RSA decryption. */
+    // Allocate a buffer large enough for an RSA decryption.
     const size_t rsa_size = EVP_PKEY_size(hs->local_pubkey.get());
     decrypt_buf = (uint8_t *)OPENSSL_malloc(rsa_size);
     if (decrypt_buf == NULL) {
@@ -1127,8 +1127,8 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
       goto err;
     }
 
-    /* Decrypt with no padding. PKCS#1 padding will be removed as part of the
-     * timing-sensitive code below. */
+    // Decrypt with no padding. PKCS#1 padding will be removed as part of the
+    // timing-sensitive code below.
     size_t decrypt_len;
     switch (ssl_private_key_decrypt(hs, decrypt_buf, &decrypt_len, rsa_size,
                                     CBS_data(&encrypted_premaster_secret),
@@ -1148,8 +1148,8 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
       goto err;
     }
 
-    /* Prepare a random premaster, to be used on invalid padding. See RFC 5246,
-     * section 7.4.7.1. */
+    // Prepare a random premaster, to be used on invalid padding. See RFC 5246,
+    // section 7.4.7.1.
     premaster_secret_len = SSL_MAX_MASTER_KEY_LENGTH;
     premaster_secret = (uint8_t *)OPENSSL_malloc(premaster_secret_len);
     if (premaster_secret == NULL) {
@@ -1160,15 +1160,15 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
       goto err;
     }
 
-    /* The smallest padded premaster is 11 bytes of overhead. Small keys are
-     * publicly invalid. */
+    // The smallest padded premaster is 11 bytes of overhead. Small keys are
+    // publicly invalid.
     if (decrypt_len < 11 + premaster_secret_len) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
       goto err;
     }
 
-    /* Check the padding. See RFC 3447, section 7.2.2. */
+    // Check the padding. See RFC 3447, section 7.2.2.
     size_t padding_len = decrypt_len - premaster_secret_len;
     uint8_t good = constant_time_eq_int_8(decrypt_buf[0], 0) &
                    constant_time_eq_int_8(decrypt_buf[1], 2);
@@ -1177,15 +1177,15 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     }
     good &= constant_time_is_zero_8(decrypt_buf[padding_len - 1]);
 
-    /* The premaster secret must begin with |client_version|. This too must be
-     * checked in constant time (http://eprint.iacr.org/2003/052/). */
+    // The premaster secret must begin with |client_version|. This too must be
+    // checked in constant time (http://eprint.iacr.org/2003/052/).
     good &= constant_time_eq_8(decrypt_buf[padding_len],
                                (unsigned)(hs->client_version >> 8));
     good &= constant_time_eq_8(decrypt_buf[padding_len + 1],
                                (unsigned)(hs->client_version & 0xff));
 
-    /* Select, in constant time, either the decrypted premaster or the random
-     * premaster based on |good|. */
+    // Select, in constant time, either the decrypted premaster or the random
+    // premaster based on |good|.
     for (size_t i = 0; i < premaster_secret_len; i++) {
       premaster_secret[i] = constant_time_select_8(
           good, decrypt_buf[padding_len + i], premaster_secret[i]);
@@ -1194,7 +1194,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     OPENSSL_free(decrypt_buf);
     decrypt_buf = NULL;
   } else if (alg_k & SSL_kECDHE) {
-    /* Parse the ClientKeyExchange. */
+    // Parse the ClientKeyExchange.
     CBS peer_key;
     if (!CBS_get_u8_length_prefixed(&client_key_exchange, &peer_key) ||
         CBS_len(&client_key_exchange) != 0) {
@@ -1203,7 +1203,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
       goto err;
     }
 
-    /* Compute the premaster. */
+    // Compute the premaster.
     uint8_t alert = SSL_AD_DECODE_ERROR;
     if (!hs->key_share->Finish(&premaster_secret, &premaster_secret_len, &alert,
                                CBS_data(&peer_key), CBS_len(&peer_key))) {
@@ -1211,7 +1211,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
       goto err;
     }
 
-    /* The key exchange state may now be discarded. */
+    // The key exchange state may now be discarded.
     hs->key_share.reset();
   } else if (!(alg_k & SSL_kPSK)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -1219,8 +1219,8 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     goto err;
   }
 
-  /* For a PSK cipher suite, the actual pre-master secret is combined with the
-   * pre-shared key. */
+  // For a PSK cipher suite, the actual pre-master secret is combined with the
+  // pre-shared key.
   if (alg_a & SSL_aPSK) {
     if (ssl->psk_server_callback == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -1228,7 +1228,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
       goto err;
     }
 
-    /* Look up the key for the identity. */
+    // Look up the key for the identity.
     uint8_t psk[PSK_MAX_PSK_LEN];
     unsigned psk_len = ssl->psk_server_callback(
         ssl, hs->new_session->psk_identity, psk, sizeof(psk));
@@ -1237,15 +1237,15 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       goto err;
     } else if (psk_len == 0) {
-      /* PSK related to the given identity not found */
+      // PSK related to the given identity not found.
       OPENSSL_PUT_ERROR(SSL, SSL_R_PSK_IDENTITY_NOT_FOUND);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNKNOWN_PSK_IDENTITY);
       goto err;
     }
 
     if (alg_k & SSL_kPSK) {
-      /* In plain PSK, other_secret is a block of 0s with the same length as the
-       * pre-shared key. */
+      // In plain PSK, other_secret is a block of 0s with the same length as the
+      // pre-shared key.
       premaster_secret_len = psk_len;
       premaster_secret = (uint8_t *)OPENSSL_malloc(premaster_secret_len);
       if (premaster_secret == NULL) {
@@ -1280,7 +1280,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     goto err;
   }
 
-  /* Compute the master secret */
+  // Compute the master secret.
   hs->new_session->master_key_length = tls1_generate_master_secret(
       hs, hs->new_session->master_key, premaster_secret, premaster_secret_len);
   if (hs->new_session->master_key_length == 0) {
@@ -1306,9 +1306,8 @@ err:
 static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
-  /* Only RSA and ECDSA client certificates are supported, so a
-   * CertificateVerify is required if and only if there's a client certificate.
-   * */
+  // Only RSA and ECDSA client certificates are supported, so a
+  // CertificateVerify is required if and only if there's a client certificate.
   if (!hs->peer_pubkey) {
     hs->transcript.FreeBuffer();
     hs->state = state_read_change_cipher_spec;
@@ -1326,7 +1325,7 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
 
   CBS certificate_verify = msg.body, signature;
 
-  /* Determine the signature algorithm. */
+  // Determine the signature algorithm.
   uint16_t signature_algorithm = 0;
   if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
     if (!CBS_get_u16(&certificate_verify, &signature_algorithm)) {
@@ -1347,7 +1346,7 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* Parse and verify the signature. */
+  // Parse and verify the signature.
   if (!CBS_get_u16_length_prefixed(&certificate_verify, &signature) ||
       CBS_len(&certificate_verify) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
@@ -1356,8 +1355,8 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
   }
 
   int sig_ok;
-  /* The SSL3 construction for CertificateVerify does not decompose into a
-   * single final digest and signature, and must be special-cased. */
+  // The SSL3 construction for CertificateVerify does not decompose into a
+  // single final digest and signature, and must be special-cased.
   if (ssl3_protocol_version(ssl) == SSL3_VERSION) {
     uint8_t digest[EVP_MAX_MD_SIZE];
     size_t digest_len;
@@ -1389,8 +1388,8 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  /* The handshake buffer is no longer necessary, and we may hash the current
-   * message.*/
+  // The handshake buffer is no longer necessary, and we may hash the current
+  // message.
   hs->transcript.FreeBuffer();
   if (!ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
@@ -1489,9 +1488,9 @@ static enum ssl_hs_wait_t do_read_client_finished(SSL_HANDSHAKE *hs) {
     hs->state = state_send_server_finished;
   }
 
-  /* If this is a full handshake with ChannelID then record the handshake
-   * hashes in |hs->new_session| in case we need them to verify a
-   * ChannelID signature on a resumption of this session in the future. */
+  // If this is a full handshake with ChannelID then record the handshake
+  // hashes in |hs->new_session| in case we need them to verify a
+  // ChannelID signature on a resumption of this session in the future.
   if (ssl->session == NULL && ssl->s3->tlsext_channel_id_valid &&
       !tls1_record_handshake_hashes_for_channel_id(hs)) {
     return ssl_hs_error;
@@ -1507,12 +1506,12 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
     const SSL_SESSION *session;
     UniquePtr<SSL_SESSION> session_copy;
     if (ssl->session == NULL) {
-      /* Fix the timeout to measure from the ticket issuance time. */
+      // Fix the timeout to measure from the ticket issuance time.
       ssl_session_rebase_time(ssl, hs->new_session.get());
       session = hs->new_session.get();
     } else {
-      /* We are renewing an existing session. Duplicate the session to adjust
-       * the timeout. */
+      // We are renewing an existing session. Duplicate the session to adjust
+      // the timeout.
       session_copy = SSL_SESSION_dup(ssl->session, SSL_SESSION_INCLUDE_NONAUTH);
       if (!session_copy) {
         return ssl_hs_error;
@@ -1553,8 +1552,7 @@ static enum ssl_hs_wait_t do_finish_server_handshake(SSL_HANDSHAKE *hs) {
 
   ssl->method->on_handshake_complete(ssl);
 
-  /* If we aren't retaining peer certificates then we can discard it
-   * now. */
+  // If we aren't retaining peer certificates then we can discard it now.
   if (hs->new_session != NULL && ssl->retain_only_sha256_of_client_certs) {
     sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
     hs->new_session->certs = NULL;

@@ -140,15 +140,15 @@ again:
       return 0;
   }
 
-  /* Read a new packet if there is no unconsumed one. */
+  // Read a new packet if there is no unconsumed one.
   if (ssl_read_buffer_len(ssl) == 0) {
     int read_ret = ssl_read_buffer_extend_to(ssl, 0 /* unused */);
     if (read_ret < 0 && dtls1_is_timer_expired(ssl)) {
-      /* Historically, timeouts were handled implicitly if the caller did not
-       * handle them.
-       *
-       * TODO(davidben): This was to support blocking sockets but affected
-       * non-blocking sockets. Can it be removed? */
+      // Historically, timeouts were handled implicitly if the caller did not
+      // handle them.
+      //
+      // TODO(davidben): This was to support blocking sockets but affected
+      // non-blocking sockets. Can it be removed?
       int timeout_ret = DTLSv1_handle_timeout(ssl);
       if (timeout_ret <= 0) {
         return timeout_ret;
@@ -170,7 +170,7 @@ again:
   ssl_read_buffer_consume(ssl, consumed);
   switch (open_ret) {
     case ssl_open_record_partial:
-      /* Impossible in DTLS. */
+      // Impossible in DTLS.
       break;
 
     case ssl_open_record_success: {
@@ -221,9 +221,9 @@ again:
   }
 
   if (rr->type == SSL3_RT_HANDSHAKE) {
-    /* Parse the first fragment header to determine if this is a pre-CCS or
-     * post-CCS handshake record. DTLS resets handshake message numbers on each
-     * handshake, so renegotiations and retransmissions are ambiguous. */
+    // Parse the first fragment header to determine if this is a pre-CCS or
+    // post-CCS handshake record. DTLS resets handshake message numbers on each
+    // handshake, so renegotiations and retransmissions are ambiguous.
     CBS cbs, body;
     struct hm_header_st msg_hdr;
     CBS_init(&cbs, rr->data, rr->length);
@@ -236,9 +236,9 @@ again:
     if (msg_hdr.type == SSL3_MT_FINISHED &&
         msg_hdr.seq == ssl->d1->handshake_read_seq - 1) {
       if (msg_hdr.frag_off == 0) {
-        /* Retransmit our last flight of messages. If the peer sends the second
-         * Finished, they may not have received ours. Only do this for the
-         * first fragment, in case the Finished was fragmented. */
+        // Retransmit our last flight of messages. If the peer sends the second
+        // Finished, they may not have received ours. Only do this for the
+        // first fragment, in case the Finished was fragmented.
         if (!dtls1_check_timeout_num(ssl)) {
           return -1;
         }
@@ -250,8 +250,8 @@ again:
       goto again;
     }
 
-    /* Otherwise, this is a pre-CCS handshake message from an unsupported
-     * renegotiation attempt. Fall through to the error path. */
+    // Otherwise, this is a pre-CCS handshake message from an unsupported
+    // renegotiation attempt. Fall through to the error path.
   }
 
   if (rr->type != SSL3_RT_APPLICATION_DATA) {
@@ -260,7 +260,7 @@ again:
     return -1;
   }
 
-  /* Discard empty records. */
+  // Discard empty records.
   if (rr->length == 0) {
     goto again;
   }
@@ -275,12 +275,12 @@ again:
 
   OPENSSL_memcpy(buf, rr->data, len);
   if (!peek) {
-    /* TODO(davidben): Should the record be truncated instead? This is a
-     * datagram transport. See https://crbug.com/boringssl/65. */
+    // TODO(davidben): Should the record be truncated instead? This is a
+    // datagram transport. See https://crbug.com/boringssl/65.
     rr->length -= len;
     rr->data += len;
     if (rr->length == 0) {
-      /* The record has been consumed, so we may now clear the buffer. */
+      // The record has been consumed, so we may now clear the buffer.
       ssl_read_buffer_discard(ssl);
     }
   }
@@ -289,10 +289,10 @@ again:
 }
 
 void dtls1_read_close_notify(SSL *ssl) {
-  /* Bidirectional shutdown doesn't make sense for an unordered transport. DTLS
-   * alerts also aren't delivered reliably, so we may even time out because the
-   * peer never received our close_notify. Report to the caller that the channel
-   * has fully shut down. */
+  // Bidirectional shutdown doesn't make sense for an unordered transport. DTLS
+  // alerts also aren't delivered reliably, so we may even time out because the
+  // peer never received our close_notify. Report to the caller that the channel
+  // has fully shut down.
   if (ssl->s3->recv_shutdown == ssl_shutdown_none) {
     ssl->s3->recv_shutdown = ssl_shutdown_close_notify;
   }
@@ -328,9 +328,9 @@ int dtls1_write_app_data(SSL *ssl, int *out_needs_handshake, const uint8_t *buf,
 int dtls1_write_record(SSL *ssl, int type, const uint8_t *buf, size_t len,
                        enum dtls1_use_epoch_t use_epoch) {
   assert(len <= SSL3_RT_MAX_PLAIN_LENGTH);
-  /* There should never be a pending write buffer in DTLS. One can't write half
-   * a datagram, so the write buffer is always dropped in
-   * |ssl_write_buffer_flush|. */
+  // There should never be a pending write buffer in DTLS. One can't write half
+  // a datagram, so the write buffer is always dropped in
+  // |ssl_write_buffer_flush|.
   assert(!ssl_write_buffer_is_pending(ssl));
 
   if (len > SSL3_RT_MAX_PLAIN_LENGTH) {
@@ -364,7 +364,7 @@ int dtls1_dispatch_alert(SSL *ssl) {
   }
   ssl->s3->alert_dispatch = 0;
 
-  /* If the alert is fatal, flush the BIO now. */
+  // If the alert is fatal, flush the BIO now.
   if (ssl->s3->send_alert[0] == SSL3_AL_FATAL) {
     BIO_flush(ssl->wbio);
   }

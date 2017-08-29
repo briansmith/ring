@@ -29,16 +29,16 @@
 
 namespace bssl {
 
-/* BIO uses int instead of size_t. No lengths will exceed uint16_t, so this will
- * not overflow. */
+// BIO uses int instead of size_t. No lengths will exceed uint16_t, so this will
+// not overflow.
 static_assert(0xffff <= INT_MAX, "uint16_t does not fit in int");
 
 static_assert((SSL3_ALIGN_PAYLOAD & (SSL3_ALIGN_PAYLOAD - 1)) == 0,
               "SSL3_ALIGN_PAYLOAD must be a power of 2");
 
-/* ensure_buffer ensures |buf| has capacity at least |cap|, aligned such that
- * data written after |header_len| is aligned to a |SSL3_ALIGN_PAYLOAD|-byte
- * boundary. It returns one on success and zero on error. */
+// ensure_buffer ensures |buf| has capacity at least |cap|, aligned such that
+// data written after |header_len| is aligned to a |SSL3_ALIGN_PAYLOAD|-byte
+// boundary. It returns one on success and zero on error.
 static int ensure_buffer(SSL3_BUFFER *buf, size_t header_len, size_t cap) {
   if (cap > 0xffff) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -49,14 +49,14 @@ static int ensure_buffer(SSL3_BUFFER *buf, size_t header_len, size_t cap) {
     return 1;
   }
 
-  /* Add up to |SSL3_ALIGN_PAYLOAD| - 1 bytes of slack for alignment. */
+  // Add up to |SSL3_ALIGN_PAYLOAD| - 1 bytes of slack for alignment.
   uint8_t *new_buf = (uint8_t *)OPENSSL_malloc(cap + SSL3_ALIGN_PAYLOAD - 1);
   if (new_buf == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
 
-  /* Offset the buffer such that the record body is aligned. */
+  // Offset the buffer such that the record body is aligned.
   size_t new_offset =
       (0 - header_len - (uintptr_t)new_buf) & (SSL3_ALIGN_PAYLOAD - 1);
 
@@ -97,19 +97,19 @@ static int dtls_read_buffer_next_packet(SSL *ssl) {
   SSL3_BUFFER *buf = &ssl->s3->read_buffer;
 
   if (buf->len > 0) {
-    /* It is an error to call |dtls_read_buffer_extend| when the read buffer is
-     * not empty. */
+    // It is an error to call |dtls_read_buffer_extend| when the read buffer is
+    // not empty.
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }
 
-  /* Read a single packet from |ssl->rbio|. |buf->cap| must fit in an int. */
+  // Read a single packet from |ssl->rbio|. |buf->cap| must fit in an int.
   int ret = BIO_read(ssl->rbio, buf->buf + buf->offset, (int)buf->cap);
   if (ret <= 0) {
     ssl->rwstate = SSL_READING;
     return ret;
   }
-  /* |BIO_read| was bound by |buf->cap|, so this cannot overflow. */
+  // |BIO_read| was bound by |buf->cap|, so this cannot overflow.
   buf->len = (uint16_t)ret;
   return 1;
 }
@@ -122,18 +122,18 @@ static int tls_read_buffer_extend_to(SSL *ssl, size_t len) {
     return -1;
   }
 
-  /* Read until the target length is reached. */
+  // Read until the target length is reached.
   while (buf->len < len) {
-    /* The amount of data to read is bounded by |buf->cap|, which must fit in an
-     * int. */
+    // The amount of data to read is bounded by |buf->cap|, which must fit in an
+    // int.
     int ret = BIO_read(ssl->rbio, buf->buf + buf->offset + buf->len,
                        (int)(len - buf->len));
     if (ret <= 0) {
       ssl->rwstate = SSL_READING;
       return ret;
     }
-    /* |BIO_read| was bound by |buf->cap - buf->len|, so this cannot
-     * overflow. */
+    // |BIO_read| was bound by |buf->cap - buf->len|, so this cannot
+    // overflow.
     buf->len += (uint16_t)ret;
   }
 
@@ -141,7 +141,7 @@ static int tls_read_buffer_extend_to(SSL *ssl, size_t len) {
 }
 
 int ssl_read_buffer_extend_to(SSL *ssl, size_t len) {
-  /* |ssl_read_buffer_extend_to| implicitly discards any consumed data. */
+  // |ssl_read_buffer_extend_to| implicitly discards any consumed data.
   ssl_read_buffer_discard(ssl);
 
   if (SSL_is_dtls(ssl)) {
@@ -149,7 +149,7 @@ int ssl_read_buffer_extend_to(SSL *ssl, size_t len) {
         DTLS1_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH <= 0xffff,
         "DTLS read buffer is too large");
 
-    /* The |len| parameter is ignored in DTLS. */
+    // The |len| parameter is ignored in DTLS.
     len = DTLS1_RT_HEADER_LENGTH + SSL3_RT_MAX_ENCRYPTED_LENGTH;
   }
 
@@ -164,15 +164,15 @@ int ssl_read_buffer_extend_to(SSL *ssl, size_t len) {
 
   int ret;
   if (SSL_is_dtls(ssl)) {
-    /* |len| is ignored for a datagram transport. */
+    // |len| is ignored for a datagram transport.
     ret = dtls_read_buffer_next_packet(ssl);
   } else {
     ret = tls_read_buffer_extend_to(ssl, len);
   }
 
   if (ret <= 0) {
-    /* If the buffer was empty originally and remained empty after attempting to
-     * extend it, release the buffer until the next attempt. */
+    // If the buffer was empty originally and remained empty after attempting to
+    // extend it, release the buffer until the next attempt.
     ssl_read_buffer_discard(ssl);
   }
   return ret;
@@ -183,11 +183,11 @@ void ssl_read_buffer_consume(SSL *ssl, size_t len) {
 
   consume_buffer(buf, len);
 
-  /* The TLS stack never reads beyond the current record, so there will never be
-   * unconsumed data. If read-ahead is ever reimplemented,
-   * |ssl_read_buffer_discard| will require a |memcpy| to shift the excess back
-   * to the front of the buffer, to ensure there is enough space for the next
-   * record. */
+  // The TLS stack never reads beyond the current record, so there will never be
+  // unconsumed data. If read-ahead is ever reimplemented,
+  // |ssl_read_buffer_discard| will require a |memcpy| to shift the excess back
+  // to the front of the buffer, to ensure there is enough space for the next
+  // record.
   assert(SSL_is_dtls(ssl) || len == 0 || buf->len == 0);
 }
 
@@ -265,9 +265,9 @@ static int dtls_write_buffer_flush(SSL *ssl) {
   int ret = BIO_write(ssl->wbio, buf->buf + buf->offset, buf->len);
   if (ret <= 0) {
     ssl->rwstate = SSL_WRITING;
-    /* If the write failed, drop the write buffer anyway. Datagram transports
-     * can't write half a packet, so the caller is expected to retry from the
-     * top. */
+    // If the write failed, drop the write buffer anyway. Datagram transports
+    // can't write half a packet, so the caller is expected to retry from the
+    // top.
     ssl_write_buffer_clear(ssl);
     return ret;
   }

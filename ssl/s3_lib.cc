@@ -187,11 +187,11 @@ int ssl3_new(SSL *ssl) {
   s3->aead_write_ctx = aead_write_ctx.release();
   ssl->s3 = s3;
 
-  /* Set the version to the highest supported version.
-   *
-   * TODO(davidben): Move this field into |s3|, have it store the normalized
-   * protocol version, and implement this pre-negotiation quirk in |SSL_version|
-   * at the API boundary rather than in internal state. */
+  // Set the version to the highest supported version.
+  //
+  // TODO(davidben): Move this field into |s3|, have it store the normalized
+  // protocol version, and implement this pre-negotiation quirk in |SSL_version|
+  // at the API boundary rather than in internal state.
   ssl->version = TLS1_2_VERSION;
   return 1;
 }

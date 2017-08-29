@@ -207,7 +207,7 @@ err:
   return NULL;
 }
 
-/* Free up and clear all certificates and chains */
+// Free up and clear all certificates and chains
 void ssl_cert_clear_certs(CERT *cert) {
   if (cert == NULL) {
     return;
@@ -248,12 +248,12 @@ enum leaf_cert_and_privkey_result_t {
   leaf_cert_and_privkey_mismatch,
 };
 
-/* check_leaf_cert_and_privkey checks whether the certificate in |leaf_buffer|
- * and the private key in |privkey| are suitable and coherent. It returns
- * |leaf_cert_and_privkey_error| and pushes to the error queue if a problem is
- * found. If the certificate and private key are valid, but incoherent, it
- * returns |leaf_cert_and_privkey_mismatch|. Otherwise it returns
- * |leaf_cert_and_privkey_ok|. */
+// check_leaf_cert_and_privkey checks whether the certificate in |leaf_buffer|
+// and the private key in |privkey| are suitable and coherent. It returns
+// |leaf_cert_and_privkey_error| and pushes to the error queue if a problem is
+// found. If the certificate and private key are valid, but incoherent, it
+// returns |leaf_cert_and_privkey_mismatch|. Otherwise it returns
+// |leaf_cert_and_privkey_ok|.
 static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
     CRYPTO_BUFFER *leaf_buffer, EVP_PKEY *privkey) {
   CBS cert_cbs;
@@ -269,8 +269,8 @@ static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
     return leaf_cert_and_privkey_error;
   }
 
-  /* An ECC certificate may be usable for ECDH or ECDSA. We only support ECDSA
-   * certificates, so sanity-check the key usage extension. */
+  // An ECC certificate may be usable for ECDH or ECDSA. We only support ECDSA
+  // certificates, so sanity-check the key usage extension.
   if (pubkey->type == EVP_PKEY_EC &&
       !ssl_cert_check_digital_signature_key_usage(&cert_cbs)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
@@ -278,7 +278,7 @@ static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
   }
 
   if (privkey != NULL &&
-      /* Sanity-check that the private key and the certificate match. */
+      // Sanity-check that the private key and the certificate match.
       !ssl_compare_public_and_private_key(pubkey.get(), privkey)) {
     ERR_clear_error();
     return leaf_cert_and_privkey_mismatch;
@@ -342,9 +342,9 @@ int ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
     case leaf_cert_and_privkey_error:
       return 0;
     case leaf_cert_and_privkey_mismatch:
-      /* don't fail for a cert/key mismatch, just free current private key
-       * (when switching to a different cert & key, first this function should
-       * be used, then |ssl_set_pkey|. */
+      // don't fail for a cert/key mismatch, just free current private key
+      // (when switching to a different cert & key, first this function should
+      // be used, then |ssl_set_pkey|.
       EVP_PKEY_free(cert->privatekey);
       cert->privatekey = NULL;
       break;
@@ -423,7 +423,7 @@ bool ssl_parse_cert_chain(uint8_t *out_alert,
         return false;
       }
 
-      /* Retain the hash of the leaf certificate if requested. */
+      // Retain the hash of the leaf certificate if requested.
       if (out_leaf_sha256 != NULL) {
         SHA256(CBS_data(&certificate), CBS_len(&certificate), out_leaf_sha256);
       }
@@ -471,9 +471,9 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
   return CBB_flush(cbb);
 }
 
-/* ssl_cert_skip_to_spki parses a DER-encoded, X.509 certificate from |in| and
- * positions |*out_tbs_cert| to cover the TBSCertificate, starting at the
- * subjectPublicKeyInfo. */
+// ssl_cert_skip_to_spki parses a DER-encoded, X.509 certificate from |in| and
+// positions |*out_tbs_cert| to cover the TBSCertificate, starting at the
+// subjectPublicKeyInfo.
 static int ssl_cert_skip_to_spki(const CBS *in, CBS *out_tbs_cert) {
   /* From RFC 5280, section 4.1
    *    Certificate  ::=  SEQUENCE  {
@@ -496,19 +496,19 @@ static int ssl_cert_skip_to_spki(const CBS *in, CBS *out_tbs_cert) {
   if (!CBS_get_asn1(&buf, &toplevel, CBS_ASN1_SEQUENCE) ||
       CBS_len(&buf) != 0 ||
       !CBS_get_asn1(&toplevel, out_tbs_cert, CBS_ASN1_SEQUENCE) ||
-      /* version */
+      // version
       !CBS_get_optional_asn1(
           out_tbs_cert, NULL, NULL,
           CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0) ||
-      /* serialNumber */
+      // serialNumber
       !CBS_get_asn1(out_tbs_cert, NULL, CBS_ASN1_INTEGER) ||
-      /* signature algorithm */
+      // signature algorithm
       !CBS_get_asn1(out_tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
-      /* issuer */
+      // issuer
       !CBS_get_asn1(out_tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
-      /* validity */
+      // validity
       !CBS_get_asn1(out_tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
-      /* subject */
+      // subject
       !CBS_get_asn1(out_tbs_cert, NULL, CBS_ASN1_SEQUENCE)) {
     return 0;
   }
@@ -529,8 +529,8 @@ UniquePtr<EVP_PKEY> ssl_cert_parse_pubkey(const CBS *in) {
 int ssl_compare_public_and_private_key(const EVP_PKEY *pubkey,
                                        const EVP_PKEY *privkey) {
   if (EVP_PKEY_is_opaque(privkey)) {
-    /* We cannot check an opaque private key and have to trust that it
-     * matches. */
+    // We cannot check an opaque private key and have to trust that it
+    // matches.
     return 1;
   }
 
@@ -586,13 +586,13 @@ int ssl_cert_check_digital_signature_key_usage(const CBS *in) {
   CBS tbs_cert, outer_extensions;
   int has_extensions;
   if (!ssl_cert_skip_to_spki(&buf, &tbs_cert) ||
-      /* subjectPublicKeyInfo */
+      // subjectPublicKeyInfo
       !CBS_get_asn1(&tbs_cert, NULL, CBS_ASN1_SEQUENCE) ||
-      /* issuerUniqueID */
+      // issuerUniqueID
       !CBS_get_optional_asn1(
           &tbs_cert, NULL, NULL,
           CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1) ||
-      /* subjectUniqueID */
+      // subjectUniqueID
       !CBS_get_optional_asn1(
           &tbs_cert, NULL, NULL,
           CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 2) ||
@@ -635,8 +635,8 @@ int ssl_cert_check_digital_signature_key_usage(const CBS *in) {
       goto parse_err;
     }
 
-    /* This is the KeyUsage extension. See
-     * https://tools.ietf.org/html/rfc5280#section-4.2.1.3 */
+    // This is the KeyUsage extension. See
+    // https://tools.ietf.org/html/rfc5280#section-4.2.1.3
     if (!CBS_is_valid_asn1_bitstring(&bit_string)) {
       goto parse_err;
     }
@@ -649,7 +649,7 @@ int ssl_cert_check_digital_signature_key_usage(const CBS *in) {
     return 1;
   }
 
-  /* No KeyUsage extension found. */
+  // No KeyUsage extension found.
   return 1;
 
 parse_err:
@@ -733,18 +733,18 @@ int ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
   SSL *const ssl = hs->ssl;
   assert(ssl3_protocol_version(ssl) < TLS1_3_VERSION);
 
-  /* Check the certificate's type matches the cipher. */
+  // Check the certificate's type matches the cipher.
   if (!(hs->new_cipher->algorithm_auth & ssl_cipher_auth_mask_for_key(pkey))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CERTIFICATE_TYPE);
     return 0;
   }
 
-  /* Check key usages for all key types but RSA. This is needed to distinguish
-   * ECDH certificates, which we do not support, from ECDSA certificates. In
-   * principle, we should check RSA key usages based on cipher, but this breaks
-   * buggy antivirus deployments. Other key types are always used for signing.
-   *
-   * TODO(davidben): Get more recent data on RSA key usages. */
+  // Check key usages for all key types but RSA. This is needed to distinguish
+  // ECDH certificates, which we do not support, from ECDSA certificates. In
+  // principle, we should check RSA key usages based on cipher, but this breaks
+  // buggy antivirus deployments. Other key types are always used for signing.
+  //
+  // TODO(davidben): Get more recent data on RSA key usages.
   if (EVP_PKEY_id(pkey) != EVP_PKEY_RSA) {
     CBS leaf_cbs;
     CBS_init(&leaf_cbs, CRYPTO_BUFFER_data(leaf), CRYPTO_BUFFER_len(leaf));
@@ -754,7 +754,7 @@ int ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
   }
 
   if (EVP_PKEY_id(pkey) == EVP_PKEY_EC) {
-    /* Check the key's group and point format are acceptable. */
+    // Check the key's group and point format are acceptable.
     EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(pkey);
     uint16_t group_id;
     if (!ssl_nid_to_group_id(
@@ -772,7 +772,7 @@ int ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
 int ssl_on_certificate_selected(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!ssl_has_certificate(ssl)) {
-    /* Nothing to do. */
+    // Nothing to do.
     return 1;
   }
 

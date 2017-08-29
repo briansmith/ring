@@ -84,7 +84,7 @@ static int ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
 
   if (cert->chain != NULL &&
       sk_CRYPTO_BUFFER_value(cert->chain, 0) != NULL &&
-      /* Sanity-check that the private key and the certificate match. */
+      // Sanity-check that the private key and the certificate match.
       !ssl_cert_check_private_key(cert, pkey)) {
     return 0;
   }
@@ -148,12 +148,12 @@ static int pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
   }
 
   if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
-    /* RSA keys may only be used with RSA-PSS. */
+    // RSA keys may only be used with RSA-PSS.
     if (alg->pkey_type == EVP_PKEY_RSA && !alg->is_rsa_pss) {
       return 0;
     }
 
-    /* EC keys have a curve requirement. */
+    // EC keys have a curve requirement.
     if (alg->pkey_type == EVP_PKEY_EC &&
         (alg->curve == NID_undef ||
          EC_GROUP_get_curve_name(
@@ -201,8 +201,8 @@ static int legacy_sign_digest_supported(const SSL_SIGNATURE_ALGORITHM *alg) {
 static enum ssl_private_key_result_t legacy_sign(
     SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out, uint16_t sigalg,
     const uint8_t *in, size_t in_len) {
-  /* TODO(davidben): Remove support for |sign_digest|-only
-   * |SSL_PRIVATE_KEY_METHOD|s. */
+  // TODO(davidben): Remove support for |sign_digest|-only
+  // |SSL_PRIVATE_KEY_METHOD|s.
   const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
   if (alg == NULL || !legacy_sign_digest_supported(alg)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL_FOR_CUSTOM_KEY);
@@ -272,13 +272,13 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(
 
   RSA *rsa = EVP_PKEY_get0_RSA(ssl->cert->privatekey);
   if (rsa == NULL) {
-    /* Decrypt operations are only supported for RSA keys. */
+    // Decrypt operations are only supported for RSA keys.
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return ssl_private_key_failure;
   }
 
-  /* Decrypt with no padding. PKCS#1 padding will be removed as part
-   * of the timing-sensitive code by the caller. */
+  // Decrypt with no padding. PKCS#1 padding will be removed as part of the
+  // timing-sensitive code by the caller.
   if (!RSA_decrypt(rsa, out_len, out, max_out, in, in_len, RSA_NO_PADDING)) {
     return ssl_private_key_failure;
   }
@@ -292,20 +292,20 @@ int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
     return 0;
   }
 
-  /* Ensure the RSA key is large enough for the hash. RSASSA-PSS requires that
-   * emLen be at least hLen + sLen + 2. Both hLen and sLen are the size of the
-   * hash in TLS. Reasonable RSA key sizes are large enough for the largest
-   * defined RSASSA-PSS algorithm, but 1024-bit RSA is slightly too small for
-   * SHA-512. 1024-bit RSA is sometimes used for test credentials, so check the
-   * size so that we can fall back to another algorithm in that case. */
+  // Ensure the RSA key is large enough for the hash. RSASSA-PSS requires that
+  // emLen be at least hLen + sLen + 2. Both hLen and sLen are the size of the
+  // hash in TLS. Reasonable RSA key sizes are large enough for the largest
+  // defined RSASSA-PSS algorithm, but 1024-bit RSA is slightly too small for
+  // SHA-512. 1024-bit RSA is sometimes used for test credentials, so check the
+  // size so that we can fall back to another algorithm in that case.
   const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
   if (alg->is_rsa_pss && (size_t)EVP_PKEY_size(hs->local_pubkey.get()) <
                              2 * EVP_MD_size(alg->digest_func()) + 2) {
     return 0;
   }
 
-  /* Newer algorithms require message-based private keys.
-   * TODO(davidben): Remove this check when sign_digest is gone. */
+  // Newer algorithms require message-based private keys.
+  // TODO(davidben): Remove this check when sign_digest is gone.
   if (ssl->cert->key_method != NULL &&
       ssl->cert->key_method->sign == NULL &&
       !legacy_sign_digest_supported(alg)) {
@@ -483,9 +483,9 @@ int SSL_set_private_key_digest_prefs(SSL *ssl, const int *digest_nids,
     return 0;
   }
 
-  /* Convert the digest list to a signature algorithms list.
-   *
-   * TODO(davidben): Replace this API with one that can express RSA-PSS, etc. */
+  // Convert the digest list to a signature algorithms list.
+  //
+  // TODO(davidben): Replace this API with one that can express RSA-PSS, etc.
   for (size_t i = 0; i < num_digests; i++) {
     switch (digest_nids[i]) {
       case NID_sha1:

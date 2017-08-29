@@ -226,11 +226,11 @@ const SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *ssl) {
 }
 
 int SSL_CTX_set_tlsext_use_srtp(SSL_CTX *ctx, const char *profiles) {
-  /* This API inverts its return value. */
+  // This API inverts its return value.
   return !SSL_CTX_set_srtp_profiles(ctx, profiles);
 }
 
 int SSL_set_tlsext_use_srtp(SSL *ssl, const char *profiles) {
-  /* This API inverts its return value. */
+  // This API inverts its return value.
   return !SSL_set_srtp_profiles(ssl, profiles);
 }

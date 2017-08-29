@@ -80,9 +80,9 @@
  * OTHER ENTITY BASED ON INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS OR
  * OTHERWISE. */
 
-/* Per C99, various stdint.h macros are unavailable in C++ unless some macros
- * are defined. C++11 overruled this decision, but older Android NDKs still
- * require it. */
+// Per C99, various stdint.h macros are unavailable in C++ unless some macros
+// are defined. C++11 overruled this decision, but older Android NDKs still
+// require it.
 #if !defined(__STDC_LIMIT_MACROS)
 #define __STDC_LIMIT_MACROS
 #endif
@@ -106,50 +106,49 @@
 
 namespace bssl {
 
-/* An SSL_SESSION is serialized as the following ASN.1 structure:
- *
- * SSLSession ::= SEQUENCE {
- *     version                     INTEGER (1),  -- session structure version
- *     sslVersion                  INTEGER,      -- protocol version number
- *     cipher                      OCTET STRING, -- two bytes long
- *     sessionID                   OCTET STRING,
- *     masterKey                   OCTET STRING,
- *     time                    [1] INTEGER, -- seconds since UNIX epoch
- *     timeout                 [2] INTEGER, -- in seconds
- *     peer                    [3] Certificate OPTIONAL,
- *     sessionIDContext        [4] OCTET STRING OPTIONAL,
- *     verifyResult            [5] INTEGER OPTIONAL,  -- one of X509_V_* codes
- *     hostName                [6] OCTET STRING OPTIONAL,
- *                                 -- from server_name extension
- *     pskIdentity             [8] OCTET STRING OPTIONAL,
- *     ticketLifetimeHint      [9] INTEGER OPTIONAL,       -- client-only
- *     ticket                  [10] OCTET STRING OPTIONAL, -- client-only
- *     peerSHA256              [13] OCTET STRING OPTIONAL,
- *     originalHandshakeHash   [14] OCTET STRING OPTIONAL,
- *     signedCertTimestampList [15] OCTET STRING OPTIONAL,
- *                                  -- contents of SCT extension
- *     ocspResponse            [16] OCTET STRING OPTIONAL,
- *                                  -- stapled OCSP response from the server
- *     extendedMasterSecret    [17] BOOLEAN OPTIONAL,
- *     groupID                 [18] INTEGER OPTIONAL,
- *     certChain               [19] SEQUENCE OF Certificate OPTIONAL,
- *     ticketAgeAdd            [21] OCTET STRING OPTIONAL,
- *     isServer                [22] BOOLEAN DEFAULT TRUE,
- *     peerSignatureAlgorithm  [23] INTEGER OPTIONAL,
- *     ticketMaxEarlyData      [24] INTEGER OPTIONAL,
- *     authTimeout             [25] INTEGER OPTIONAL, -- defaults to timeout
- *     earlyALPN               [26] OCTET STRING OPTIONAL,
- * }
- *
- * Note: historically this serialization has included other optional
- * fields. Their presence is currently treated as a parse error:
- *
- *     keyArg                  [0] IMPLICIT OCTET STRING OPTIONAL,
- *     pskIdentityHint         [7] OCTET STRING OPTIONAL,
- *     compressionMethod       [11] OCTET STRING OPTIONAL,
- *     srpUsername             [12] OCTET STRING OPTIONAL,
- *     ticketFlags             [20] INTEGER OPTIONAL,
- */
+// An SSL_SESSION is serialized as the following ASN.1 structure:
+//
+// SSLSession ::= SEQUENCE {
+//     version                     INTEGER (1),  -- session structure version
+//     sslVersion                  INTEGER,      -- protocol version number
+//     cipher                      OCTET STRING, -- two bytes long
+//     sessionID                   OCTET STRING,
+//     masterKey                   OCTET STRING,
+//     time                    [1] INTEGER, -- seconds since UNIX epoch
+//     timeout                 [2] INTEGER, -- in seconds
+//     peer                    [3] Certificate OPTIONAL,
+//     sessionIDContext        [4] OCTET STRING OPTIONAL,
+//     verifyResult            [5] INTEGER OPTIONAL,  -- one of X509_V_* codes
+//     hostName                [6] OCTET STRING OPTIONAL,
+//                                 -- from server_name extension
+//     pskIdentity             [8] OCTET STRING OPTIONAL,
+//     ticketLifetimeHint      [9] INTEGER OPTIONAL,       -- client-only
+//     ticket                  [10] OCTET STRING OPTIONAL, -- client-only
+//     peerSHA256              [13] OCTET STRING OPTIONAL,
+//     originalHandshakeHash   [14] OCTET STRING OPTIONAL,
+//     signedCertTimestampList [15] OCTET STRING OPTIONAL,
+//                                  -- contents of SCT extension
+//     ocspResponse            [16] OCTET STRING OPTIONAL,
+//                                  -- stapled OCSP response from the server
+//     extendedMasterSecret    [17] BOOLEAN OPTIONAL,
+//     groupID                 [18] INTEGER OPTIONAL,
+//     certChain               [19] SEQUENCE OF Certificate OPTIONAL,
+//     ticketAgeAdd            [21] OCTET STRING OPTIONAL,
+//     isServer                [22] BOOLEAN DEFAULT TRUE,
+//     peerSignatureAlgorithm  [23] INTEGER OPTIONAL,
+//     ticketMaxEarlyData      [24] INTEGER OPTIONAL,
+//     authTimeout             [25] INTEGER OPTIONAL, -- defaults to timeout
+//     earlyALPN               [26] OCTET STRING OPTIONAL,
+// }
+//
+// Note: historically this serialization has included other optional
+// fields. Their presence is currently treated as a parse error:
+//
+//     keyArg                  [0] IMPLICIT OCTET STRING OPTIONAL,
+//     pskIdentityHint         [7] OCTET STRING OPTIONAL,
+//     compressionMethod       [11] OCTET STRING OPTIONAL,
+//     srpUsername             [12] OCTET STRING OPTIONAL,
+//     ticketFlags             [20] INTEGER OPTIONAL,
 
 static const unsigned kVersion = 1;
 
@@ -213,7 +212,7 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
       !CBB_add_asn1(&session, &child, CBS_ASN1_OCTETSTRING) ||
       !CBB_add_u16(&child, (uint16_t)(in->cipher->id & 0xffff)) ||
       !CBB_add_asn1(&session, &child, CBS_ASN1_OCTETSTRING) ||
-      /* The session ID is irrelevant for a session ticket. */
+      // The session ID is irrelevant for a session ticket.
       !CBB_add_bytes(&child, in->session_id,
                      for_ticket ? 0 : in->session_id_length) ||
       !CBB_add_asn1(&session, &child, CBS_ASN1_OCTETSTRING) ||
@@ -226,8 +225,8 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
     return 0;
   }
 
-  /* The peer certificate is only serialized if the SHA-256 isn't
-   * serialized instead. */
+  // The peer certificate is only serialized if the SHA-256 isn't
+  // serialized instead.
   if (sk_CRYPTO_BUFFER_num(in->certs) > 0 && !in->peer_sha256_valid) {
     const CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(in->certs, 0);
     if (!CBB_add_asn1(&session, &child, kPeerTag) ||
@@ -238,8 +237,8 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
     }
   }
 
-  /* Although it is OPTIONAL and usually empty, OpenSSL has
-   * historically always encoded the sid_ctx. */
+  // Although it is OPTIONAL and usually empty, OpenSSL has
+  // historically always encoded the sid_ctx.
   if (!CBB_add_asn1(&session, &child, kSessionIDContextTag) ||
       !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
       !CBB_add_bytes(&child2, in->sid_ctx, in->sid_ctx_length)) {
@@ -348,8 +347,8 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
     return 0;
   }
 
-  /* The certificate chain is only serialized if the leaf's SHA-256 isn't
-   * serialized instead. */
+  // The certificate chain is only serialized if the leaf's SHA-256 isn't
+  // serialized instead.
   if (in->certs != NULL &&
       !in->peer_sha256_valid &&
       sk_CRYPTO_BUFFER_num(in->certs) >= 2) {
@@ -423,12 +422,12 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
   return 1;
 }
 
-/* SSL_SESSION_parse_string gets an optional ASN.1 OCTET STRING
- * explicitly tagged with |tag| from |cbs| and saves it in |*out|. On
- * entry, if |*out| is not NULL, it frees the existing contents. If
- * the element was not found, it sets |*out| to NULL. It returns one
- * on success, whether or not the element was found, and zero on
- * decode error. */
+// SSL_SESSION_parse_string gets an optional ASN.1 OCTET STRING
+// explicitly tagged with |tag| from |cbs| and saves it in |*out|. On
+// entry, if |*out| is not NULL, it frees the existing contents. If
+// the element was not found, it sets |*out| to NULL. It returns one
+// on success, whether or not the element was found, and zero on
+// decode error.
 static int SSL_SESSION_parse_string(CBS *cbs, char **out, unsigned tag) {
   CBS value;
   int present;
@@ -452,12 +451,12 @@ static int SSL_SESSION_parse_string(CBS *cbs, char **out, unsigned tag) {
   return 1;
 }
 
-/* SSL_SESSION_parse_string gets an optional ASN.1 OCTET STRING
- * explicitly tagged with |tag| from |cbs| and stows it in |*out_ptr|
- * and |*out_len|. If |*out_ptr| is not NULL, it frees the existing
- * contents. On entry, if the element was not found, it sets
- * |*out_ptr| to NULL. It returns one on success, whether or not the
- * element was found, and zero on decode error. */
+// SSL_SESSION_parse_string gets an optional ASN.1 OCTET STRING
+// explicitly tagged with |tag| from |cbs| and stows it in |*out_ptr|
+// and |*out_len|. If |*out_ptr| is not NULL, it frees the existing
+// contents. On entry, if the element was not found, it sets
+// |*out_ptr| to NULL. It returns one on success, whether or not the
+// element was found, and zero on decode error.
 static int SSL_SESSION_parse_octet_string(CBS *cbs, uint8_t **out_ptr,
                                           size_t *out_len, unsigned tag) {
   CBS value;
@@ -495,8 +494,8 @@ static int SSL_SESSION_parse_crypto_buffer(CBS *cbs, CRYPTO_BUFFER **out,
   return 1;
 }
 
-/* SSL_SESSION_parse_bounded_octet_string parses an optional ASN.1 OCTET STRING
- * explicitly tagged with |tag| of size at most |max_out|. */
+// SSL_SESSION_parse_bounded_octet_string parses an optional ASN.1 OCTET STRING
+// explicitly tagged with |tag| of size at most |max_out|.
 static int SSL_SESSION_parse_bounded_octet_string(
     CBS *cbs, uint8_t *out, uint8_t *out_len, uint8_t max_out, unsigned tag) {
   CBS value;
@@ -564,10 +563,10 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
       !CBS_get_asn1_uint64(&session, &version) ||
       version != kVersion ||
       !CBS_get_asn1_uint64(&session, &ssl_version) ||
-      /* Require sessions have versions valid in either TLS or DTLS. The session
-       * will not be used by the handshake if not applicable, but, for
-       * simplicity, never parse a session that does not pass
-       * |ssl_protocol_version_from_wire|. */
+      // Require sessions have versions valid in either TLS or DTLS. The session
+      // will not be used by the handshake if not applicable, but, for
+      // simplicity, never parse a session that does not pass
+      // |ssl_protocol_version_from_wire|.
       ssl_version > UINT16_MAX ||
       !ssl_protocol_version_from_wire(&unused, ssl_version)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
@@ -622,7 +621,7 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     return nullptr;
   }
-  /* |peer| is processed with the certificate chain. */
+  // |peer| is processed with the certificate chain.
 
   if (!SSL_SESSION_parse_bounded_octet_string(
           &session, ret->sid_ctx, &ret->sid_ctx_length, sizeof(ret->sid_ctx),
@@ -779,10 +778,10 @@ using namespace bssl;
 int SSL_SESSION_to_bytes(const SSL_SESSION *in, uint8_t **out_data,
                          size_t *out_len) {
   if (in->not_resumable) {
-    /* If the caller has an unresumable session, e.g. if |SSL_get_session| were
-     * called on a TLS 1.3 or False Started connection, serialize with a
-     * placeholder value so it is not accidentally deserialized into a resumable
-     * one. */
+    // If the caller has an unresumable session, e.g. if |SSL_get_session| were
+    // called on a TLS 1.3 or False Started connection, serialize with a
+    // placeholder value so it is not accidentally deserialized into a resumable
+    // one.
     static const char kNotResumableSession[] = "NOT RESUMABLE";
 
     *out_len = strlen(kNotResumableSession);

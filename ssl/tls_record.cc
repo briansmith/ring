@@ -121,25 +121,25 @@
 
 namespace bssl {
 
-/* kMaxEmptyRecords is the number of consecutive, empty records that will be
- * processed. Without this limit an attacker could send empty records at a
- * faster rate than we can process and cause record processing to loop
- * forever. */
+// kMaxEmptyRecords is the number of consecutive, empty records that will be
+// processed. Without this limit an attacker could send empty records at a
+// faster rate than we can process and cause record processing to loop
+// forever.
 static const uint8_t kMaxEmptyRecords = 32;
 
-/* kMaxEarlyDataSkipped is the maximum number of rejected early data bytes that
- * will be skipped. Without this limit an attacker could send records at a
- * faster rate than we can process and cause trial decryption to loop forever.
- * This value should be slightly above kMaxEarlyDataAccepted, which is measured
- * in plaintext. */
+// kMaxEarlyDataSkipped is the maximum number of rejected early data bytes that
+// will be skipped. Without this limit an attacker could send records at a
+// faster rate than we can process and cause trial decryption to loop forever.
+// This value should be slightly above kMaxEarlyDataAccepted, which is measured
+// in plaintext.
 static const size_t kMaxEarlyDataSkipped = 16384;
 
-/* kMaxWarningAlerts is the number of consecutive warning alerts that will be
- * processed. */
+// kMaxWarningAlerts is the number of consecutive warning alerts that will be
+// processed.
 static const uint8_t kMaxWarningAlerts = 4;
 
-/* ssl_needs_record_splitting returns one if |ssl|'s current outgoing cipher
- * state needs record-splitting and zero otherwise. */
+// ssl_needs_record_splitting returns one if |ssl|'s current outgoing cipher
+// state needs record-splitting and zero otherwise.
 static int ssl_needs_record_splitting(const SSL *ssl) {
 #if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   return !ssl->s3->aead_write_ctx->is_null_cipher() &&
@@ -195,7 +195,7 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
   CBS cbs;
   CBS_init(&cbs, in, in_len);
 
-  /* Decode the record header. */
+  // Decode the record header.
   uint8_t type;
   uint16_t version, ciphertext_len;
   if (!CBS_get_u8(&cbs, &type) ||
@@ -207,14 +207,14 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
 
   int version_ok;
   if (ssl->s3->aead_read_ctx->is_null_cipher()) {
-    /* Only check the first byte. Enforcing beyond that can prevent decoding
-     * version negotiation failure alerts. */
+    // Only check the first byte. Enforcing beyond that can prevent decoding
+    // version negotiation failure alerts.
     version_ok = (version >> 8) == SSL3_VERSION_MAJOR;
   } else if (ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
-    /* Earlier versions of TLS switch the record version. */
+    // Earlier versions of TLS switch the record version.
     version_ok = version == ssl->version;
   } else {
-    /* Starting TLS 1.3, the version field is frozen at {3, 1}. */
+    // Starting TLS 1.3, the version field is frozen at {3, 1}.
     version_ok = version == TLS1_VERSION;
   }
 
@@ -224,14 +224,14 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
     return ssl_open_record_error;
   }
 
-  /* Check the ciphertext length. */
+  // Check the ciphertext length.
   if (ciphertext_len > SSL3_RT_MAX_ENCRYPTED_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_ENCRYPTED_LENGTH_TOO_LONG);
     *out_alert = SSL_AD_RECORD_OVERFLOW;
     return ssl_open_record_error;
   }
 
-  /* Extract the body. */
+  // Extract the body.
   CBS body;
   if (!CBS_get_bytes(&cbs, &body, ciphertext_len)) {
     *out_consumed = SSL3_RT_HEADER_LENGTH + (size_t)ciphertext_len;
@@ -243,15 +243,15 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
 
   *out_consumed = in_len - CBS_len(&cbs);
 
-  /* Skip early data received when expecting a second ClientHello if we rejected
-   * 0RTT. */
+  // Skip early data received when expecting a second ClientHello if we rejected
+  // 0RTT.
   if (ssl->s3->skip_early_data &&
       ssl->s3->aead_read_ctx->is_null_cipher() &&
       type == SSL3_RT_APPLICATION_DATA) {
     goto skipped_data;
   }
 
-  /* Decrypt the body in-place. */
+  // Decrypt the body in-place.
   if (!ssl->s3->aead_read_ctx->Open(out, type, version, ssl->s3->read_sequence,
                                     (uint8_t *)CBS_data(&body),
                                     CBS_len(&body))) {
@@ -272,10 +272,10 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
     return ssl_open_record_error;
   }
 
-  /* TLS 1.3 hides the record type inside the encrypted data. */
+  // TLS 1.3 hides the record type inside the encrypted data.
   if (!ssl->s3->aead_read_ctx->is_null_cipher() &&
       ssl->s3->aead_read_ctx->version() >= TLS1_3_VERSION) {
-    /* The outer record type is always application_data. */
+    // The outer record type is always application_data.
     if (type != SSL3_RT_APPLICATION_DATA) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_OUTER_RECORD_TYPE);
       *out_alert = SSL_AD_DECODE_ERROR;
@@ -291,14 +291,14 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
     } while (type == 0);
   }
 
-  /* Check the plaintext length. */
+  // Check the plaintext length.
   if (CBS_len(out) > SSL3_RT_MAX_PLAIN_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
     *out_alert = SSL_AD_RECORD_OVERFLOW;
     return ssl_open_record_error;
   }
 
-  /* Limit the number of consecutive empty records. */
+  // Limit the number of consecutive empty records.
   if (CBS_len(out) == 0) {
     ssl->s3->empty_record_count++;
     if (ssl->s3->empty_record_count > kMaxEmptyRecords) {
@@ -306,14 +306,14 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
       *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
       return ssl_open_record_error;
     }
-    /* Apart from the limit, empty records are returned up to the caller. This
-     * allows the caller to reject records of the wrong type. */
+    // Apart from the limit, empty records are returned up to the caller. This
+    // allows the caller to reject records of the wrong type.
   } else {
     ssl->s3->empty_record_count = 0;
   }
 
   if (type == SSL3_RT_ALERT) {
-    /* Return end_of_early_data alerts as-is for the caller to process. */
+    // Return end_of_early_data alerts as-is for the caller to process.
     if (CBS_len(out) == 2 &&
         CBS_data(out)[0] == SSL3_AL_WARNING &&
         CBS_data(out)[1] == TLS1_AD_END_OF_EARLY_DATA) {
@@ -351,7 +351,7 @@ static int do_seal_record(SSL *ssl, uint8_t *out_prefix, uint8_t *out,
   size_t extra_in_len = 0;
   if (!ssl->s3->aead_write_ctx->is_null_cipher() &&
       ssl->s3->aead_write_ctx->version() >= TLS1_3_VERSION) {
-    /* TLS 1.3 hides the actual record type inside the encrypted data. */
+    // TLS 1.3 hides the actual record type inside the encrypted data.
     extra_in = &type;
     extra_in_len = 1;
   }
@@ -379,10 +379,10 @@ static int do_seal_record(SSL *ssl, uint8_t *out_prefix, uint8_t *out,
     out_prefix[0] = type;
   }
 
-  /* The TLS record-layer version number is meaningless and, starting in
-   * TLS 1.3, is frozen at TLS 1.0. But for historical reasons, SSL 3.0
-   * ClientHellos should use SSL 3.0 and pre-TLS-1.3 expects the version
-   * to change after version negotiation. */
+  // The TLS record-layer version number is meaningless and, starting in
+  // TLS 1.3, is frozen at TLS 1.0. But for historical reasons, SSL 3.0
+  // ClientHellos should use SSL 3.0 and pre-TLS-1.3 expects the version
+  // to change after version negotiation.
   uint16_t wire_version = TLS1_VERSION;
   if (ssl->s3->hs != NULL && ssl->s3->hs->max_version == SSL3_VERSION) {
     wire_version = SSL3_VERSION;
@@ -413,10 +413,10 @@ static size_t tls_seal_scatter_prefix_len(const SSL *ssl, uint8_t type,
   size_t ret = SSL3_RT_HEADER_LENGTH;
   if (type == SSL3_RT_APPLICATION_DATA && in_len > 1 &&
       ssl_needs_record_splitting(ssl)) {
-    /* In the case of record splitting, the 1-byte record (of the 1/n-1 split)
-     * will be placed in the prefix, as will four of the five bytes of the
-     * record header for the main record. The final byte will replace the first
-     * byte of the plaintext that was used in the small record. */
+    // In the case of record splitting, the 1-byte record (of the 1/n-1 split)
+    // will be placed in the prefix, as will four of the five bytes of the
+    // record header for the main record. The final byte will replace the first
+    // byte of the plaintext that was used in the small record.
     ret += ssl_cipher_get_record_split_len(ssl->s3->aead_write_ctx->cipher());
     ret += SSL3_RT_HEADER_LENGTH - 1;
   } else {
@@ -430,26 +430,26 @@ static bool tls_seal_scatter_suffix_len(const SSL *ssl, size_t *out_suffix_len,
   size_t extra_in_len = 0;
   if (!ssl->s3->aead_write_ctx->is_null_cipher() &&
       ssl->s3->aead_write_ctx->version() >= TLS1_3_VERSION) {
-    /* TLS 1.3 adds an extra byte for encrypted record type. */
+    // TLS 1.3 adds an extra byte for encrypted record type.
     extra_in_len = 1;
   }
   if (type == SSL3_RT_APPLICATION_DATA &&  // clang-format off
       in_len > 1 &&
       ssl_needs_record_splitting(ssl)) {
-    /* With record splitting enabled, the first byte gets sealed into a separate
-     * record which is written into the prefix. */
+    // With record splitting enabled, the first byte gets sealed into a separate
+    // record which is written into the prefix.
     in_len -= 1;
   }
   return ssl->s3->aead_write_ctx->SuffixLen(out_suffix_len, in_len, extra_in_len);
 }
 
-/* tls_seal_scatter_record seals a new record of type |type| and body |in| and
- * splits it between |out_prefix|, |out|, and |out_suffix|. Exactly
- * |tls_seal_scatter_prefix_len| bytes are written to |out_prefix|, |in_len|
- * bytes to |out|, and |tls_seal_scatter_suffix_len| bytes to |out_suffix|. It
- * returns one on success and zero on error. If enabled,
- * |tls_seal_scatter_record| implements TLS 1.0 CBC 1/n-1 record splitting and
- * may write two records concatenated. */
+// tls_seal_scatter_record seals a new record of type |type| and body |in| and
+// splits it between |out_prefix|, |out|, and |out_suffix|. Exactly
+// |tls_seal_scatter_prefix_len| bytes are written to |out_prefix|, |in_len|
+// bytes to |out|, and |tls_seal_scatter_suffix_len| bytes to |out_suffix|. It
+// returns one on success and zero on error. If enabled,
+// |tls_seal_scatter_record| implements TLS 1.0 CBC 1/n-1 record splitting and
+// may write two records concatenated.
 static int tls_seal_scatter_record(SSL *ssl, uint8_t *out_prefix, uint8_t *out,
                             uint8_t *out_suffix, uint8_t type,
                             const uint8_t *in, size_t in_len) {
@@ -458,7 +458,7 @@ static int tls_seal_scatter_record(SSL *ssl, uint8_t *out_prefix, uint8_t *out,
     assert(ssl->s3->aead_write_ctx->ExplicitNonceLen() == 0);
     const size_t prefix_len = SSL3_RT_HEADER_LENGTH;
 
-    /* Write the 1-byte fragment into |out_prefix|. */
+    // Write the 1-byte fragment into |out_prefix|.
     uint8_t *split_body = out_prefix + prefix_len;
     uint8_t *split_suffix = split_body + 1;
 
@@ -477,8 +477,8 @@ static int tls_seal_scatter_record(SSL *ssl, uint8_t *out_prefix, uint8_t *out,
                                        ssl->s3->aead_write_ctx->cipher()) ==
            split_record_len);
 
-    /* Write the n-1-byte fragment. The header gets split between |out_prefix|
-     * (header[:-1]) and |out| (header[-1:]). */
+    // Write the n-1-byte fragment. The header gets split between |out_prefix|
+    // (header[:-1]) and |out| (header[-1:]).
     uint8_t tmp_prefix[SSL3_RT_HEADER_LENGTH];
     if (!do_seal_record(ssl, tmp_prefix, out + 1, out_suffix, type, in + 1,
                         in_len - 1)) {
@@ -530,7 +530,7 @@ int tls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out_len,
 
 enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
                                          const uint8_t *in, size_t in_len) {
-  /* Alerts records may not contain fragmented or multiple alerts. */
+  // Alerts records may not contain fragmented or multiple alerts.
   if (in_len != 2) {
     *out_alert = SSL_AD_DECODE_ERROR;
     OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ALERT);
@@ -551,7 +551,7 @@ enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
       return ssl_open_record_close_notify;
     }
 
-    /* Warning alerts do not exist in TLS 1.3. */
+    // Warning alerts do not exist in TLS 1.3.
     if (ssl->s3->have_version &&
         ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
       *out_alert = SSL_AD_DECODE_ERROR;
@@ -677,7 +677,7 @@ size_t SSL_max_seal_overhead(const SSL *ssl) {
 
   size_t ret = SSL3_RT_HEADER_LENGTH;
   ret += ssl->s3->aead_write_ctx->MaxOverhead();
-  /* TLS 1.3 needs an extra byte for the encrypted record type. */
+  // TLS 1.3 needs an extra byte for the encrypted record type.
   if (!ssl->s3->aead_write_ctx->is_null_cipher() &&
       ssl->s3->aead_write_ctx->version() >= TLS1_3_VERSION) {
     ret += 1;

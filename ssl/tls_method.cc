@@ -70,15 +70,15 @@ namespace bssl {
 static int ssl3_supports_cipher(const SSL_CIPHER *cipher) { return 1; }
 
 static void ssl3_on_handshake_complete(SSL *ssl) {
-  /* The handshake should have released its final message. */
+  // The handshake should have released its final message.
   assert(!ssl->s3->has_message);
 
-  /* During the handshake, |init_buf| is retained. Release if it there is no
-   * excess in it.
-   *
-   * TODO(davidben): The second check is always true but will not be once we
-   * switch to copying the entire handshake record. Replace this comment with an
-   * explanation when that happens and a TODO to reject it. */
+  // During the handshake, |init_buf| is retained. Release if it there is no
+  // excess in it.
+  //
+  // TODO(davidben): The second check is always true but will not be once we
+  // switch to copying the entire handshake record. Replace this comment with an
+  // explanation when that happens and a TODO to reject it.
   if (ssl->init_buf != NULL && ssl->init_buf->length == 0) {
     BUF_MEM_free(ssl->init_buf);
     ssl->init_buf = NULL;
@@ -87,7 +87,7 @@ static void ssl3_on_handshake_complete(SSL *ssl) {
 
 static int ssl3_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   if (ssl->s3->rrec.length != 0) {
-    /* There may not be unprocessed record data at a cipher change. */
+    // There may not be unprocessed record data at a cipher change.
     OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     return 0;
@@ -212,7 +212,7 @@ const SSL_METHOD *TLS_with_buffers_method(void) {
   return &kMethod;
 }
 
-/* Legacy version-locked methods. */
+// Legacy version-locked methods.
 
 const SSL_METHOD *TLSv1_2_method(void) {
   static const SSL_METHOD kMethod = {
@@ -250,7 +250,7 @@ const SSL_METHOD *SSLv3_method(void) {
   return &kMethod;
 }
 
-/* Legacy side-specific methods. */
+// Legacy side-specific methods.
 
 const SSL_METHOD *TLSv1_2_server_method(void) {
   return TLSv1_2_method();

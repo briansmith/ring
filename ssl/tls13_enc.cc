@@ -40,7 +40,7 @@ static int init_key_schedule(SSL_HANDSHAKE *hs, uint16_t version,
 
   hs->hash_len = hs->transcript.DigestLen();
 
-  /* Initialize the secret to the zero key. */
+  // Initialize the secret to the zero key.
   OPENSSL_memset(hs->secret, 0, hs->hash_len);
 
   return 1;
@@ -96,9 +96,9 @@ static int hkdf_expand_label(uint8_t *out, const EVP_MD *digest,
   return ret;
 }
 
-/* derive_secret derives a secret of length |len| and writes the result in |out|
- * with the given label and the current base secret and most recently-saved
- * handshake context. It returns one on success and zero on error. */
+// derive_secret derives a secret of length |len| and writes the result in |out|
+// with the given label and the current base secret and most recently-saved
+// handshake context. It returns one on success and zero on error.
 static int derive_secret(SSL_HANDSHAKE *hs, uint8_t *out, size_t len,
                          const uint8_t *label, size_t label_len) {
   uint8_t context_hash[EVP_MAX_MD_SIZE];
@@ -123,7 +123,7 @@ int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
     return 0;
   }
 
-  /* Look up cipher suite properties. */
+  // Look up cipher suite properties.
   const EVP_AEAD *aead;
   size_t discard;
   if (!ssl_cipher_get_evp_aead(&aead, &discard, &discard, session->cipher,
@@ -133,7 +133,7 @@ int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
 
   const EVP_MD *digest = SSL_SESSION_get_digest(session);
 
-  /* Derive the key. */
+  // Derive the key.
   size_t key_len = EVP_AEAD_key_length(aead);
   uint8_t key[EVP_AEAD_MAX_KEY_LENGTH];
   if (!hkdf_expand_label(key, digest, traffic_secret, traffic_secret_len,
@@ -141,7 +141,7 @@ int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
     return 0;
   }
 
-  /* Derive the IV. */
+  // Derive the IV.
   size_t iv_len = EVP_AEAD_nonce_length(aead);
   uint8_t iv[EVP_AEAD_MAX_NONCE_LENGTH];
   if (!hkdf_expand_label(iv, digest, traffic_secret, traffic_secret_len,
@@ -166,7 +166,7 @@ int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
     }
   }
 
-  /* Save the traffic secret. */
+  // Save the traffic secret.
   if (direction == evp_aead_open) {
     OPENSSL_memmove(ssl->s3->read_traffic_secret, traffic_secret,
                     traffic_secret_len);
@@ -279,8 +279,8 @@ int tls13_derive_resumption_secret(SSL_HANDSHAKE *hs) {
 
 static const char kTLS13LabelFinished[] = "finished";
 
-/* tls13_verify_data sets |out| to be the HMAC of |context| using a derived
- * Finished key for both Finished messages and the PSK binder. */
+// tls13_verify_data sets |out| to be the HMAC of |context| using a derived
+// Finished key for both Finished messages and the PSK binder.
 static int tls13_verify_data(const EVP_MD *digest, uint8_t *out,
                              size_t *out_len, const uint8_t *secret,
                              size_t hash_len, uint8_t *context,
@@ -401,15 +401,15 @@ int tls13_verify_psk_binder(SSL_HANDSHAKE *hs, SSL_SESSION *session,
                             const SSLMessage &msg, CBS *binders) {
   size_t hash_len = hs->transcript.DigestLen();
 
-  /* The message must be large enough to exclude the binders. */
+  // The message must be large enough to exclude the binders.
   if (CBS_len(&msg.raw) < CBS_len(binders) + 2) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
 
-  /* Hash a ClientHello prefix up to the binders. This includes the header. For
-   * now, this assumes we only ever verify PSK binders on initial
-   * ClientHellos. */
+  // Hash a ClientHello prefix up to the binders. This includes the header. For
+  // now, this assumes we only ever verify PSK binders on initial
+  // ClientHellos.
   uint8_t context[EVP_MAX_MD_SIZE];
   unsigned context_len;
   if (!EVP_Digest(CBS_data(&msg.raw), CBS_len(&msg.raw) - CBS_len(binders) - 2,
@@ -422,7 +422,7 @@ int tls13_verify_psk_binder(SSL_HANDSHAKE *hs, SSL_SESSION *session,
   if (!tls13_psk_binder(verify_data, hs->transcript.Digest(),
                         session->master_key, session->master_key_length,
                         context, context_len, hash_len) ||
-      /* We only consider the first PSK, so compare against the first binder. */
+      // We only consider the first PSK, so compare against the first binder.
       !CBS_get_u8_length_prefixed(binders, &binder)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;

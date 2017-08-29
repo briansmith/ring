@@ -73,17 +73,17 @@ static int dtls1_supports_cipher(const SSL_CIPHER *cipher) {
 }
 
 static void dtls1_on_handshake_complete(SSL *ssl) {
-  /* Stop the reply timer left by the last flight we sent. */
+  // Stop the reply timer left by the last flight we sent.
   dtls1_stop_timer(ssl);
-  /* If the final flight had a reply, we know the peer has received it. If not,
-   * we must leave the flight around for post-handshake retransmission. */
+  // If the final flight had a reply, we know the peer has received it. If not,
+  // we must leave the flight around for post-handshake retransmission.
   if (ssl->d1->flight_has_reply) {
     dtls_clear_outgoing_messages(ssl);
   }
 }
 
 static int dtls1_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
-  /* Cipher changes are illegal when there are buffered incoming messages. */
+  // Cipher changes are illegal when there are buffered incoming messages.
   if (dtls_has_incoming_messages(ssl) || ssl->d1->has_change_cipher_spec) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
@@ -153,7 +153,7 @@ const SSL_METHOD *DTLS_with_buffers_method(void) {
   return &kMethod;
 }
 
-/* Legacy version-locked methods. */
+// Legacy version-locked methods.
 
 const SSL_METHOD *DTLSv1_2_method(void) {
   static const SSL_METHOD kMethod = {
@@ -173,7 +173,7 @@ const SSL_METHOD *DTLSv1_method(void) {
   return &kMethod;
 }
 
-/* Legacy side-specific methods. */
+// Legacy side-specific methods.
 
 const SSL_METHOD *DTLSv1_2_server_method(void) {
   return DTLSv1_2_method();
