@@ -1158,12 +1158,13 @@ STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
     return buffer_names_to_x509(
         ssl->client_CA, (STACK_OF(X509_NAME) **)&ssl->cached_x509_client_CA);
   }
-  return buffer_names_to_x509(ssl->ctx->client_CA,
-                              &ssl->ctx->cached_x509_client_CA);
+  return SSL_CTX_get_client_CA_list(ssl->ctx);
 }
 
 STACK_OF(X509_NAME) *SSL_CTX_get_client_CA_list(const SSL_CTX *ctx) {
   check_ssl_ctx_x509_method(ctx);
+  /* This is a logically const operation that may be called on multiple threads,
+   * so it needs to lock around updating |cached_x509_client_CA|. */
   CRYPTO_MUTEX_lock_write((CRYPTO_MUTEX *) &ctx->lock);
   STACK_OF(X509_NAME) *ret = buffer_names_to_x509(
       ctx->client_CA, (STACK_OF(X509_NAME) **)&ctx->cached_x509_client_CA);
