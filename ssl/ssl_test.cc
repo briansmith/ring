@@ -3697,6 +3697,35 @@ TEST(SSLTest, SealRecordInvalidSpanSize) {
   expect_err();
 }
 
+// The client should gracefully handle no suitable ciphers being enabled.
+TEST(SSLTest, NoCiphersAvailable) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  // Configure |client_ctx| with a cipher list that does not intersect with its
+  // version configuration.
+  ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(
+      ctx.get(), "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_1_VERSION));
+
+  bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+  SSL_set_connect_state(ssl.get());
+
+  UniquePtr<BIO> rbio(BIO_new(BIO_s_mem())), wbio(BIO_new(BIO_s_mem()));
+  ASSERT_TRUE(rbio);
+  ASSERT_TRUE(wbio);
+  SSL_set0_rbio(ssl.get(), rbio.release());
+  SSL_set0_wbio(ssl.get(), wbio.release());
+
+  int ret = SSL_do_handshake(ssl.get());
+  EXPECT_EQ(-1, ret);
+  EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(ssl.get(), ret));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
+  EXPECT_EQ(SSL_R_NO_CIPHERS_AVAILABLE, ERR_GET_REASON(err));
+}
+
 // TODO(davidben): Convert this file to GTest properly.
 TEST(SSLTest, AllTests) {
   if (!TestSSL_SESSIONEncoding(kOpenSSLSession) ||
