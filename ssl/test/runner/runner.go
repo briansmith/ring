@@ -138,6 +138,7 @@ var (
 	ecdsaP384Certificate Certificate
 	ecdsaP521Certificate Certificate
 	ed25519Certificate   Certificate
+	garbageCertificate   Certificate
 )
 
 var testCerts = []struct {
@@ -236,6 +237,9 @@ func initCertificates() {
 	channelIDBytes = make([]byte, 64)
 	writeIntPadded(channelIDBytes[:32], channelIDKey.X)
 	writeIntPadded(channelIDBytes[32:], channelIDKey.Y)
+
+	garbageCertificate.Certificate = [][]byte{[]byte("GARBAGE")}
+	garbageCertificate.PrivateKey = rsaCertificate.PrivateKey
 }
 
 func getRunnerCertificate(t testCert) Certificate {
@@ -12241,9 +12245,9 @@ func addRecordVersionTests() {
 }
 
 func addCertificateTests() {
-	// Test that a certificate chain with intermediate may be sent and
-	// received as both client and server.
 	for _, ver := range tlsVersions {
+		// Test that a certificate chain with intermediate may be sent
+		// and received as both client and server.
 		testCases = append(testCases, testCase{
 			testType: clientTest,
 			name:     "SendReceiveIntermediate-Client-" + ver.name,
@@ -12278,6 +12282,36 @@ func addCertificateTests() {
 				"-require-any-client-certificate",
 				"-expect-peer-cert-file", path.Join(*resourceDir, rsaChainCertificateFile),
 			},
+		})
+
+		// Test that garbage leaf certificates are properly rejected.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "GarbageCertificate-Client-" + ver.name,
+			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
+				Certificates: []Certificate{garbageCertificate},
+			},
+			tls13Variant:       ver.tls13Variant,
+			shouldFail:         true,
+			expectedError:      ":CANNOT_PARSE_LEAF_CERT:",
+			expectedLocalError: "remote error: error decoding message",
+		})
+
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "GarbageCertificate-Server-" + ver.name,
+			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
+				Certificates: []Certificate{garbageCertificate},
+			},
+			tls13Variant:       ver.tls13Variant,
+			flags:              []string{"-require-any-client-certificate"},
+			shouldFail:         true,
+			expectedError:      ":CANNOT_PARSE_LEAF_CERT:",
+			expectedLocalError: "remote error: error decoding message",
 		})
 	}
 }
