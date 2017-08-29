@@ -115,6 +115,8 @@ struct TestState {
   bool custom_verify_ready = false;
   std::string msg_callback_text;
   bool msg_callback_ok = true;
+  // cert_verified is true if certificate verification has been driven to
+  // completion. This tests that the callback is not called again after this.
   bool cert_verified = false;
 };
 
@@ -716,12 +718,12 @@ static int CertVerifyCallback(X509_STORE_CTX *store_ctx, void *arg) {
     return 0;
   }
 
+  GetTestState(ssl)->cert_verified = true;
   if (config->verify_fail) {
     store_ctx->error = X509_V_ERR_APPLICATION_VERIFICATION;
     return 0;
   }
 
-  GetTestState(ssl)->cert_verified = true;
   return 1;
 }
 
@@ -735,11 +737,11 @@ static ssl_verify_result_t CustomVerifyCallback(SSL *ssl, uint8_t *out_alert) {
     return ssl_verify_retry;
   }
 
+  GetTestState(ssl)->cert_verified = true;
   if (config->verify_fail) {
     return ssl_verify_invalid;
   }
 
-  GetTestState(ssl)->cert_verified = true;
   return ssl_verify_ok;
 }
 
