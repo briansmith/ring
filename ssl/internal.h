@@ -221,7 +221,7 @@ UniquePtr<T> MakeUnique(Args &&... args) {
 #define HAS_VIRTUAL_DESTRUCTOR
 #define PURE_VIRTUAL = 0
 #else
-// HAS_VIRTUAL_DESTRUCTOR should be declared in any base clas ~s which defines a
+// HAS_VIRTUAL_DESTRUCTOR should be declared in any base class which defines a
 // virtual destructor. This avoids a dependency on |_ZdlPv| and prevents the
 // class from being used with |delete|.
 #define HAS_VIRTUAL_DESTRUCTOR \

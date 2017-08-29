@@ -31,10 +31,10 @@ Variable declarations in the middle of a function or inside a `for` loop are
 allowed and preferred where possible. Note that the common `goto err` cleanup
 pattern requires lifting some variable declarations.
 
-Comments should be `/* C-style */` for consistency.
+Comments should be `// C99-style` for consistency with C++.
 
-When declaration pointer types, `*` should be placed next to the variable
-name, not the type. So
+When declaring pointer types, `*` should be placed next to the variable name,
+not the type. So
 
     uint8_t *ptr;
 
@@ -58,6 +58,19 @@ confusing undefined behavior.
 For new constants, prefer enums when the values are sequential and typed
 constants for flags. If adding values to an existing set of `#define`s,
 continue with `#define`.
+
+
+## libssl
+
+libssl was originally written in C but is being incrementally rewritten in
+C++11. As of writing, much of the style matches our C conventions rather than
+Google C++. Additionally, libssl on Linux currently may not depend on the C++
+runtime. See the C++ utilities in `ssl/internal.h` for replacements for
+problematic C++ constructs. The `util/check_imported_libraries.go` script may be
+used with a shared library build to check if a new construct is okay.
+
+If unsure, match surrounding code. Discrepancies between it and Google C++ style
+will be fixed over time.
 
 
 ## Formatting
