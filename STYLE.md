@@ -198,23 +198,23 @@ behavior of the function. Pay special note to success/failure behaviors
 and caller obligations on object lifetimes. If this sacrifices
 conciseness, consider simplifying the function's behavior.
 
-    /* EVP_DigestVerifyUpdate appends |len| bytes from |data| to the data which
-     * will be verified by |EVP_DigestVerifyFinal|. It returns one on success and
-     * zero otherwise. */
+    // EVP_DigestVerifyUpdate appends |len| bytes from |data| to the data which
+    // will be verified by |EVP_DigestVerifyFinal|. It returns one on success and
+    // zero otherwise.
     OPENSSL_EXPORT int EVP_DigestVerifyUpdate(EVP_MD_CTX *ctx, const void *data,
                                               size_t len);
 
 Explicitly mention any surprising edge cases or deviations from common
 return value patterns in legacy functions.
 
-    /* RSA_private_encrypt encrypts |flen| bytes from |from| with the private key in
-     * |rsa| and writes the encrypted data to |to|. The |to| buffer must have at
-     * least |RSA_size| bytes of space. It returns the number of bytes written, or
-     * -1 on error. The |padding| argument must be one of the |RSA_*_PADDING|
-     * values. If in doubt, |RSA_PKCS1_PADDING| is the most common.
-     *
-     * WARNING: this function is dangerous because it breaks the usual return value
-     * convention. Use |RSA_sign_raw| instead. */
+    // RSA_private_encrypt encrypts |flen| bytes from |from| with the private key in
+    // |rsa| and writes the encrypted data to |to|. The |to| buffer must have at
+    // least |RSA_size| bytes of space. It returns the number of bytes written, or
+    // -1 on error. The |padding| argument must be one of the |RSA_*_PADDING|
+    // values. If in doubt, |RSA_PKCS1_PADDING| is the most common.
+    //
+    // WARNING: this function is dangerous because it breaks the usual return value
+    // convention. Use |RSA_sign_raw| instead.
     OPENSSL_EXPORT int RSA_private_encrypt(int flen, const uint8_t *from,
                                            uint8_t *to, RSA *rsa, int padding);
 
