@@ -159,11 +159,7 @@ SSL_HANDSHAKE::~SSL_HANDSHAKE() {
   OPENSSL_free(server_params);
   ssl->ctx->x509_method->hs_flush_cached_ca_names(this);
   OPENSSL_free(certificate_types);
-
-  if (key_block != NULL) {
-    OPENSSL_cleanse(key_block, key_block_len);
-    OPENSSL_free(key_block);
-  }
+  OPENSSL_free(key_block);
 }
 
 SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl) {

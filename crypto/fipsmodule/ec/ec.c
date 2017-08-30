@@ -635,7 +635,6 @@ void EC_POINT_clear_free(EC_POINT *point) {
 
   ec_GFp_simple_point_clear_finish(point);
 
-  OPENSSL_cleanse(point, sizeof *point);
   OPENSSL_free(point);
 }
 

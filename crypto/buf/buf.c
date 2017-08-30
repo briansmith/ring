@@ -82,11 +82,7 @@ void BUF_MEM_free(BUF_MEM *buf) {
     return;
   }
 
-  if (buf->data != NULL) {
-    OPENSSL_cleanse(buf->data, buf->max);
-    OPENSSL_free(buf->data);
-  }
-
+  OPENSSL_free(buf->data);
   OPENSSL_free(buf);
 }
 
@@ -109,17 +105,7 @@ static int buf_mem_reserve(BUF_MEM *buf, size_t cap, int clean) {
     return 0;
   }
 
-  char *new_buf;
-  if (buf->data == NULL) {
-    new_buf = OPENSSL_malloc(alloc_size);
-  } else {
-    if (clean) {
-      new_buf = OPENSSL_realloc_clean(buf->data, buf->max, alloc_size);
-    } else {
-      new_buf = OPENSSL_realloc(buf->data, alloc_size);
-    }
-  }
-
+  char *new_buf = OPENSSL_realloc(buf->data, alloc_size);
   if (new_buf == NULL) {
     OPENSSL_PUT_ERROR(BUF, ERR_R_MALLOC_FAILURE);
     return 0;

@@ -214,14 +214,8 @@ int pkcs12_key_gen(const char *pass, size_t pass_len, const uint8_t *salt,
   ret = 1;
 
 err:
-  if (I != NULL) {
-    OPENSSL_cleanse(I, I_len);
-    OPENSSL_free(I);
-  }
-  if (pass_raw != NULL) {
-    OPENSSL_cleanse(pass_raw, pass_raw_len);
-    OPENSSL_free(pass_raw);
-  }
+  OPENSSL_free(I);
+  OPENSSL_free(pass_raw);
   EVP_MD_CTX_cleanup(&ctx);
   return ret;
 }
@@ -431,7 +425,6 @@ EVP_PKEY *PKCS8_parse_encrypted_private_key(CBS *cbs, const char *pass,
   CBS pki;
   CBS_init(&pki, out, out_len);
   EVP_PKEY *ret = EVP_parse_private_key(&pki);
-  OPENSSL_cleanse(out, out_len);
   OPENSSL_free(out);
   return ret;
 }
@@ -513,10 +506,7 @@ int PKCS8_marshal_encrypted_private_key(CBB *out, int pbe_nid,
   ret = 1;
 
 err:
-  if (plaintext != NULL) {
-    OPENSSL_cleanse(plaintext, plaintext_len);
-    OPENSSL_free(plaintext);
-  }
+  OPENSSL_free(plaintext);
   OPENSSL_free(salt_buf);
   EVP_CIPHER_CTX_cleanup(&ctx);
   return ret;

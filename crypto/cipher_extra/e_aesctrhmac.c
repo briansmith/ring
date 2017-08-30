@@ -102,9 +102,7 @@ static int aead_aes_ctr_hmac_sha256_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
 }
 
 static void aead_aes_ctr_hmac_sha256_cleanup(EVP_AEAD_CTX *ctx) {
-  struct aead_aes_ctr_hmac_sha256_ctx *aes_ctx = ctx->aead_state;
-  OPENSSL_cleanse(aes_ctx, sizeof(struct aead_aes_ctr_hmac_sha256_ctx));
-  OPENSSL_free(aes_ctx);
+  OPENSSL_free(ctx->aead_state);
 }
 
 static void hmac_update_uint64(SHA256_CTX *sha256, uint64_t value) {

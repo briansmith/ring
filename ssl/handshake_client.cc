@@ -1367,7 +1367,6 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       goto err;
     }
-    OPENSSL_cleanse(pms, pms_len);
     OPENSSL_free(pms);
     pms = new_pms;
     pms_len = new_pms_len;
@@ -1385,19 +1384,14 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     goto err;
   }
   hs->new_session->extended_master_secret = hs->extended_master_secret;
-  OPENSSL_cleanse(pms, pms_len);
   OPENSSL_free(pms);
 
   hs->state = state_send_client_certificate_verify;
   return ssl_hs_ok;
 
 err:
-  if (pms != NULL) {
-    OPENSSL_cleanse(pms, pms_len);
-    OPENSSL_free(pms);
-  }
+  OPENSSL_free(pms);
   return ssl_hs_error;
-
 }
 
 static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {

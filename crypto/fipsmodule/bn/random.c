@@ -188,11 +188,8 @@ static int bn_rand_with_additional_data(BIGNUM *rnd, int bits, int top,
   ret = 1;
 
 err:
-  if (buf != NULL) {
-    OPENSSL_cleanse(buf, bytes);
-    OPENSSL_free(buf);
-  }
-  return (ret);
+  OPENSSL_free(buf);
+  return ret;
 }
 
 int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {

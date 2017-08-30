@@ -156,7 +156,6 @@ void EC_KEY_free(EC_KEY *r) {
 
   CRYPTO_free_ex_data(g_ec_ex_data_class_bss_get(), r, &r->ex_data);
 
-  OPENSSL_cleanse((void *)r, sizeof(EC_KEY));
   OPENSSL_free(r);
 }
 

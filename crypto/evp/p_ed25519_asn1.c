@@ -24,12 +24,8 @@
 
 
 static void ed25519_free(EVP_PKEY *pkey) {
-  if (pkey->pkey.ptr != NULL) {
-    ED25519_KEY *key = pkey->pkey.ptr;
-    OPENSSL_cleanse(key, sizeof(ED25519_KEY));
-    OPENSSL_free(key);
-    pkey->pkey.ptr = NULL;
-  }
+  OPENSSL_free(pkey->pkey.ptr);
+  pkey->pkey.ptr = NULL;
 }
 
 static int set_pubkey(EVP_PKEY *pkey, const uint8_t pubkey[32]) {

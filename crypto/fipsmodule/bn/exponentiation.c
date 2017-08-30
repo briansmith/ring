@@ -1168,10 +1168,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 err:
   BN_MONT_CTX_free(new_mont);
   BN_clear_free(new_a);
-  if (powerbuf != NULL) {
-    OPENSSL_cleanse(powerbuf, powerbufLen);
-    OPENSSL_free(powerbufFree);
-  }
+  OPENSSL_free(powerbufFree);
   return (ret);
 }
 

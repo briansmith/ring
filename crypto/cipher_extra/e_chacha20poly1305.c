@@ -136,9 +136,7 @@ static int aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
 }
 
 static void aead_chacha20_poly1305_cleanup(EVP_AEAD_CTX *ctx) {
-  struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
-  OPENSSL_cleanse(c20_ctx->key, sizeof(c20_ctx->key));
-  OPENSSL_free(c20_ctx);
+  OPENSSL_free(ctx->aead_state);
 }
 
 static void poly1305_update_length(poly1305_state *poly1305, size_t data_len) {

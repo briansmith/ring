@@ -87,11 +87,6 @@ OPENSSL_EXPORT void OPENSSL_free(void *ptr);
 // allocated and the data at |ptr| is always wiped and freed.
 OPENSSL_EXPORT void *OPENSSL_realloc(void *ptr, size_t new_size);
 
-// OPENSSL_realloc_clean behaves exactly like |OPENSSL_realloc|.
-// TODO(martinkr): Remove.
-OPENSSL_EXPORT void *OPENSSL_realloc_clean(void *ptr, size_t old_size,
-                                           size_t new_size);
-
 // OPENSSL_cleanse zeros out |len| bytes of memory at |ptr|. This is similar to
 // |memset_s| from C11.
 OPENSSL_EXPORT void OPENSSL_cleanse(void *ptr, size_t len);

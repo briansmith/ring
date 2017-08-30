@@ -592,9 +592,7 @@ static int aead_aes_gcm_siv_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
 }
 
 static void aead_aes_gcm_siv_cleanup(EVP_AEAD_CTX *ctx) {
-  struct aead_aes_gcm_siv_ctx *gcm_siv_ctx = ctx->aead_state;
-  OPENSSL_cleanse(gcm_siv_ctx, sizeof(struct aead_aes_gcm_siv_ctx));
-  OPENSSL_free(gcm_siv_ctx);
+  OPENSSL_free(ctx->aead_state);
 }
 
 // gcm_siv_crypt encrypts (or decrypts—it's the same thing) |in_len| bytes from
