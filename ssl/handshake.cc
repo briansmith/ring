@@ -122,25 +122,25 @@ namespace bssl {
 
 SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
     : ssl(ssl_arg),
-      scts_requested(0),
-      needs_psk_binder(0),
-      received_hello_retry_request(0),
-      received_custom_extension(0),
-      handshake_finalized(0),
-      accept_psk_mode(0),
-      cert_request(0),
-      certificate_status_expected(0),
-      ocsp_stapling_requested(0),
-      should_ack_sni(0),
-      in_false_start(0),
-      in_early_data(0),
-      early_data_offered(0),
-      can_early_read(0),
-      can_early_write(0),
-      next_proto_neg_seen(0),
-      ticket_expected(0),
-      extended_master_secret(0),
-      pending_private_key_op(0) {
+      scts_requested(false),
+      needs_psk_binder(false),
+      received_hello_retry_request(false),
+      received_custom_extension(false),
+      handshake_finalized(false),
+      accept_psk_mode(false),
+      cert_request(false),
+      certificate_status_expected(false),
+      ocsp_stapling_requested(false),
+      should_ack_sni(false),
+      in_false_start(false),
+      in_early_data(false),
+      early_data_offered(false),
+      can_early_read(false),
+      can_early_write(false),
+      next_proto_neg_seen(false),
+      ticket_expected(false),
+      extended_master_secret(false),
+      pending_private_key_op(false) {
 }
 
 SSL_HANDSHAKE::~SSL_HANDSHAKE() {
@@ -534,7 +534,7 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
       case ssl_hs_early_data_rejected:
         ssl->rwstate = SSL_EARLY_DATA_REJECTED;
         // Cause |SSL_write| to start failing immediately.
-        hs->can_early_write = 0;
+        hs->can_early_write = false;
         return -1;
 
       case ssl_hs_early_return:

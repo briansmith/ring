@@ -681,7 +681,7 @@ static int ext_sni_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
   hs->hostname.reset(hostname_raw);
 
-  hs->should_ack_sni = 1;
+  hs->should_ack_sni = true;
   return 1;
 }
 
@@ -894,13 +894,13 @@ static int ext_ems_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       return 0;
     }
 
-    hs->extended_master_secret = 1;
+    hs->extended_master_secret = true;
   }
 
   // Whether EMS is negotiated may not change on renegotiation.
   if (ssl->s3->established_session != NULL &&
       hs->extended_master_secret !=
-          ssl->s3->established_session->extended_master_secret) {
+          !!ssl->s3->established_session->extended_master_secret) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_EMS_MISMATCH);
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
@@ -925,7 +925,7 @@ static int ext_ems_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return 0;
   }
 
-  hs->extended_master_secret = 1;
+  hs->extended_master_secret = true;
   return 1;
 }
 
@@ -1002,7 +1002,7 @@ static int ext_ticket_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return 0;
   }
 
-  hs->ticket_expected = 1;
+  hs->ticket_expected = true;
   return 1;
 }
 
@@ -1112,7 +1112,7 @@ static int ext_ocsp_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   // status_request here does not make sense, but OpenSSL does so and the
   // specification does not say anything. Tolerate it but ignore it.
 
-  hs->certificate_status_expected = 1;
+  hs->certificate_status_expected = true;
   return 1;
 }
 
@@ -1144,7 +1144,7 @@ static int ext_ocsp_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
     return 1;
   }
 
-  hs->certificate_status_expected = 1;
+  hs->certificate_status_expected = true;
 
   return CBB_add_u16(out, TLSEXT_TYPE_status_request) &&
          CBB_add_u16(out, 0 /* length */);
@@ -1225,7 +1225,7 @@ static int ext_npn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
 
   ssl->s3->next_proto_negotiated_len = selected_len;
-  hs->next_proto_neg_seen = 1;
+  hs->next_proto_neg_seen = true;
 
   return 1;
 }
@@ -1248,7 +1248,7 @@ static int ext_npn_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return 1;
   }
 
-  hs->next_proto_neg_seen = 1;
+  hs->next_proto_neg_seen = true;
   return 1;
 }
 
@@ -1266,7 +1266,7 @@ static int ext_npn_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   if (ssl->ctx->next_protos_advertised_cb(
           ssl, &npa, &npa_len, ssl->ctx->next_protos_advertised_cb_arg) !=
       SSL_TLSEXT_ERR_OK) {
-    hs->next_proto_neg_seen = 0;
+    hs->next_proto_neg_seen = false;
     return 1;
   }
 
@@ -1350,7 +1350,7 @@ static int ext_sct_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return 0;
   }
 
-  hs->scts_requested = 1;
+  hs->scts_requested = true;
   return 1;
 }
 
@@ -1478,7 +1478,7 @@ int ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
 
   // ALPN takes precedence over NPN.
-  hs->next_proto_neg_seen = 0;
+  hs->next_proto_neg_seen = false;
 
   CBS protocol_name_list;
   if (!CBS_get_u16_length_prefixed(&contents, &protocol_name_list) ||
@@ -1886,7 +1886,7 @@ static int ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return 0;
   }
 
-  hs->needs_psk_binder = 1;
+  hs->needs_psk_binder = true;
   return CBB_flush(out);
 }
 
@@ -2043,7 +2043,7 @@ static int ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return 1;
   }
 
-  hs->early_data_offered = 1;
+  hs->early_data_offered = true;
 
   if (!CBB_add_u16(out, TLSEXT_TYPE_early_data) ||
       !CBB_add_u16(out, 0) ||
@@ -2089,7 +2089,7 @@ static int ext_early_data_parse_clienthello(SSL_HANDSHAKE *hs,
     return 0;
   }
 
-  hs->early_data_offered = 1;
+  hs->early_data_offered = true;
   return 1;
 }
 
@@ -2921,7 +2921,7 @@ static int ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs,
         tls_extension_find(&ext_index, type);
 
     if (ext == NULL) {
-      hs->received_custom_extension = 1;
+      hs->received_custom_extension = true;
       if (!custom_ext_parse_serverhello(hs, out_alert, type, &extension)) {
         return 0;
       }
@@ -2988,7 +2988,7 @@ static int ssl_check_clienthello_tlsext(SSL_HANDSHAKE *hs) {
       return -1;
 
     case SSL_TLSEXT_ERR_NOACK:
-      hs->should_ack_sni = 0;
+      hs->should_ack_sni = false;
       return 1;
 
     default:
@@ -3062,7 +3062,7 @@ static enum ssl_ticket_aead_result_t decrypt_ticket_with_cipher_ctx(
 }
 
 static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_cb(
-    SSL *ssl, uint8_t **out, size_t *out_len, int *out_renew_ticket,
+    SSL *ssl, uint8_t **out, size_t *out_len, bool *out_renew_ticket,
     const uint8_t *ticket, size_t ticket_len) {
   assert(ticket_len >= SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH);
   ScopedEVP_CIPHER_CTX cipher_ctx;
@@ -3076,7 +3076,7 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_cb(
   } else if (cb_ret == 0) {
     return ssl_ticket_aead_ignore_ticket;
   } else if (cb_ret == 2) {
-    *out_renew_ticket = 1;
+    *out_renew_ticket = true;
   } else {
     assert(cb_ret == 1);
   }
@@ -3125,7 +3125,7 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_ticket_keys(
 }
 
 static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_method(
-    SSL *ssl, uint8_t **out, size_t *out_len, int *out_renew_ticket,
+    SSL *ssl, uint8_t **out, size_t *out_len, bool *out_renew_ticket,
     const uint8_t *ticket, size_t ticket_len) {
   uint8_t *plaintext = (uint8_t *)OPENSSL_malloc(ticket_len);
   if (plaintext == NULL) {
@@ -3149,10 +3149,10 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_method(
 }
 
 enum ssl_ticket_aead_result_t ssl_process_ticket(
-    SSL *ssl, UniquePtr<SSL_SESSION> *out_session, int *out_renew_ticket,
+    SSL *ssl, UniquePtr<SSL_SESSION> *out_session, bool *out_renew_ticket,
     const uint8_t *ticket, size_t ticket_len, const uint8_t *session_id,
     size_t session_id_len) {
-  *out_renew_ticket = 0;
+  *out_renew_ticket = false;
   out_session->reset();
 
   if ((SSL_get_options(ssl) & SSL_OP_NO_TICKET) ||

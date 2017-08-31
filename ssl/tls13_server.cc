@@ -289,7 +289,7 @@ static enum ssl_ticket_aead_result_t select_session(
 
   // TLS 1.3 session tickets are renewed separately as part of the
   // NewSessionTicket.
-  int unused_renew;
+  bool unused_renew;
   UniquePtr<SSL_SESSION> session;
   enum ssl_ticket_aead_result_t ret =
       ssl_process_ticket(ssl, &session, &unused_renew, CBS_data(&ticket),
@@ -588,7 +588,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
     // Only request a certificate if Channel ID isn't negotiated.
     if ((ssl->verify_mode & SSL_VERIFY_PEER_IF_NO_OBC) &&
         ssl->s3->tlsext_channel_id_valid) {
-      hs->cert_request = 0;
+      hs->cert_request = false;
     }
   }
 
@@ -698,9 +698,9 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
                                hs->hash_len)) {
       return ssl_hs_error;
     }
-    hs->can_early_write = 1;
-    hs->can_early_read = 1;
-    hs->in_early_data = 1;
+    hs->can_early_write = true;
+    hs->can_early_read = true;
+    hs->in_early_data = true;
     hs->tls13_state = state_process_end_of_early_data;
     return ssl_hs_read_end_of_early_data;
   }

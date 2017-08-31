@@ -579,7 +579,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
 
   // Determine whether we are doing session resumption.
   UniquePtr<SSL_SESSION> session;
-  int tickets_supported = 0, renew_ticket = 0;
+  bool tickets_supported = false, renew_ticket = false;
   enum ssl_hs_wait_t wait = ssl_get_prev_session(
       ssl, &session, &tickets_supported, &renew_ticket, &client_hello);
   if (wait != ssl_hs_ok) {
@@ -647,11 +647,11 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     // Only request a certificate if Channel ID isn't negotiated.
     if ((ssl->verify_mode & SSL_VERIFY_PEER_IF_NO_OBC) &&
         ssl->s3->tlsext_channel_id_valid) {
-      hs->cert_request = 0;
+      hs->cert_request = false;
     }
     // CertificateRequest may only be sent in certificate-based ciphers.
     if (!ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
-      hs->cert_request = 0;
+      hs->cert_request = false;
     }
 
     if (!hs->cert_request) {
@@ -1568,7 +1568,7 @@ static enum ssl_hs_wait_t do_finish_server_handshake(SSL_HANDSHAKE *hs) {
     ssl->s3->established_session->not_resumable = 0;
   }
 
-  hs->handshake_finalized = 1;
+  hs->handshake_finalized = true;
   ssl->s3->initial_handshake_complete = 1;
   ssl_update_cache(hs, SSL_SESS_CACHE_SERVER);
 

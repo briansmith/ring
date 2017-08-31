@@ -507,10 +507,10 @@ static enum ssl_hs_wait_t do_enter_early_data(SSL_HANDSHAKE *hs) {
 
   // Stash the early data session, so connection properties may be queried out
   // of it.
-  hs->in_early_data = 1;
+  hs->in_early_data = true;
   SSL_SESSION_up_ref(ssl->session);
   hs->early_session.reset(ssl->session);
-  hs->can_early_write = 1;
+  hs->can_early_write = true;
 
   hs->state = state_read_server_hello;
   return ssl_hs_early_return;
@@ -1129,7 +1129,7 @@ static enum ssl_hs_wait_t do_read_certificate_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  hs->cert_request = 1;
+  hs->cert_request = true;
   hs->ca_names = std::move(ca_names);
   ssl->ctx->x509_method->hs_flush_cached_ca_names(hs);
 
@@ -1566,8 +1566,8 @@ static enum ssl_hs_wait_t do_finish_flight(SSL_HANDSHAKE *hs) {
       ssl3_can_false_start(ssl) &&
       // No False Start on renegotiation (would complicate the state machine).
       !ssl->s3->initial_handshake_complete) {
-    hs->in_false_start = 1;
-    hs->can_early_write = 1;
+    hs->in_false_start = true;
+    hs->can_early_write = true;
     return ssl_hs_early_return;
   }
 
@@ -1606,7 +1606,7 @@ static enum ssl_hs_wait_t do_read_session_ticket(SSL_HANDSHAKE *hs) {
     // RFC 5077 allows a server to change its mind and send no ticket after
     // negotiating the extension. The value of |ticket_expected| is checked in
     // |ssl_update_cache| so is cleared here to avoid an unnecessary update.
-    hs->ticket_expected = 0;
+    hs->ticket_expected = false;
     ssl->method->next_message(ssl);
     hs->state = state_process_change_cipher_spec;
     return ssl_hs_read_change_cipher_spec;
@@ -1709,7 +1709,7 @@ static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
     hs->new_session.reset();
   }
 
-  hs->handshake_finalized = 1;
+  hs->handshake_finalized = true;
   ssl->s3->initial_handshake_complete = 1;
   ssl_update_cache(hs, SSL_SESS_CACHE_CLIENT);
 

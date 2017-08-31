@@ -730,18 +730,18 @@ static enum ssl_hs_wait_t ssl_lookup_session(
 
 enum ssl_hs_wait_t ssl_get_prev_session(SSL *ssl,
                                         UniquePtr<SSL_SESSION> *out_session,
-                                        int *out_tickets_supported,
-                                        int *out_renew_ticket,
+                                        bool *out_tickets_supported,
+                                        bool *out_renew_ticket,
                                         const SSL_CLIENT_HELLO *client_hello) {
   // This is used only by servers.
   assert(ssl->server);
   UniquePtr<SSL_SESSION> session;
-  int renew_ticket = 0;
+  bool renew_ticket = false;
 
   // If tickets are disabled, always behave as if no tickets are present.
   const uint8_t *ticket = NULL;
   size_t ticket_len = 0;
-  const int tickets_supported =
+  const bool tickets_supported =
       !(SSL_get_options(ssl) & SSL_OP_NO_TICKET) &&
       ssl->version > SSL3_VERSION &&
       SSL_early_callback_ctx_extension_get(

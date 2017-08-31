@@ -1232,74 +1232,73 @@ struct SSL_HANDSHAKE {
   uint8_t *key_block = nullptr;
   uint8_t key_block_len = 0;
 
-  // scts_requested is one if the SCT extension is in the ClientHello.
-  unsigned scts_requested:1;
+  // scts_requested is true if the SCT extension is in the ClientHello.
+  bool scts_requested:1;
 
-  // needs_psk_binder if the ClientHello has a placeholder PSK binder to be
-  // filled in.
-  unsigned needs_psk_binder:1;
+  // needs_psk_binder is true if the ClientHello has a placeholder PSK binder to
+  // be filled in.
+  bool needs_psk_binder:1;
 
-  unsigned received_hello_retry_request:1;
+  bool received_hello_retry_request:1;
 
-  unsigned received_custom_extension:1;
+  bool received_custom_extension:1;
 
   // handshake_finalized is true once the handshake has completed, at which
   // point accessors should use the established state.
-  unsigned handshake_finalized:1;
+  bool handshake_finalized:1;
 
   // accept_psk_mode stores whether the client's PSK mode is compatible with our
   // preferences.
-  unsigned accept_psk_mode:1;
+  bool accept_psk_mode:1;
 
-  // cert_request is one if a client certificate was requested and zero
-  // otherwise.
-  unsigned cert_request:1;
+  // cert_request is true if a client certificate was requested.
+  bool cert_request:1;
 
-  // certificate_status_expected is one if OCSP stapling was negotiated and the
+  // certificate_status_expected is true if OCSP stapling was negotiated and the
   // server is expected to send a CertificateStatus message. (This is used on
   // both the client and server sides.)
-  unsigned certificate_status_expected:1;
+  bool certificate_status_expected:1;
 
-  // ocsp_stapling_requested is one if a client requested OCSP stapling.
-  unsigned ocsp_stapling_requested:1;
+  // ocsp_stapling_requested is true if a client requested OCSP stapling.
+  bool ocsp_stapling_requested:1;
 
   // should_ack_sni is used by a server and indicates that the SNI extension
   // should be echoed in the ServerHello.
-  unsigned should_ack_sni:1;
+  bool should_ack_sni:1;
 
-  // in_false_start is one if there is a pending client handshake in False
+  // in_false_start is true if there is a pending client handshake in False
   // Start. The client may write data at this point.
-  unsigned in_false_start:1;
+  bool in_false_start:1;
 
-  // in_early_data is one if there is a pending handshake that has progressed
+  // in_early_data is true if there is a pending handshake that has progressed
   // enough to send and receive early data.
-  unsigned in_early_data:1;
+  bool in_early_data:1;
 
-  // early_data_offered is one if the client sent the early_data extension.
-  unsigned early_data_offered:1;
+  // early_data_offered is true if the client sent the early_data extension.
+  bool early_data_offered:1;
 
-  // can_early_read is one if application data may be read at this point in the
+  // can_early_read is true if application data may be read at this point in the
   // handshake.
-  unsigned can_early_read:1;
+  bool can_early_read:1;
 
-  // can_early_write is one if application data may be written at this point in
+  // can_early_write is true if application data may be written at this point in
   // the handshake.
-  unsigned can_early_write:1;
+  bool can_early_write:1;
 
   // next_proto_neg_seen is one of NPN was negotiated.
-  unsigned next_proto_neg_seen:1;
+  bool next_proto_neg_seen:1;
 
-  // ticket_expected is one if a TLS 1.2 NewSessionTicket message is to be sent
+  // ticket_expected is true if a TLS 1.2 NewSessionTicket message is to be sent
   // or received.
-  unsigned ticket_expected:1;
+  bool ticket_expected:1;
 
-  // extended_master_secret is one if the extended master secret extension is
+  // extended_master_secret is true if the extended master secret extension is
   // negotiated in this handshake.
-  unsigned extended_master_secret:1;
+  bool extended_master_secret:1;
 
-  // pending_private_key_op is one if there is a pending private key operation
+  // pending_private_key_op is true if there is a pending private key operation
   // in progress.
-  unsigned pending_private_key_op:1;
+  bool pending_private_key_op:1;
 
   // client_version is the value sent or received in the ClientHello version.
   uint16_t client_version = 0;
@@ -2117,8 +2116,8 @@ void ssl_set_session(SSL *ssl, SSL_SESSION *session);
 // be called again. Otherwise, it returns |ssl_hs_error|.
 enum ssl_hs_wait_t ssl_get_prev_session(SSL *ssl,
                                         UniquePtr<SSL_SESSION> *out_session,
-                                        int *out_tickets_supported,
-                                        int *out_renew_ticket,
+                                        bool *out_tickets_supported,
+                                        bool *out_renew_ticket,
                                         const SSL_CLIENT_HELLO *client_hello);
 
 // The following flags determine which parts of the session are duplicated.
@@ -2293,7 +2292,7 @@ int ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs);
 //       Retry later.
 //   |ssl_ticket_aead_error|: an error occured that is fatal to the connection.
 enum ssl_ticket_aead_result_t ssl_process_ticket(
-    SSL *ssl, UniquePtr<SSL_SESSION> *out_session, int *out_renew_ticket,
+    SSL *ssl, UniquePtr<SSL_SESSION> *out_session, bool *out_renew_ticket,
     const uint8_t *ticket, size_t ticket_len, const uint8_t *session_id,
     size_t session_id_len);
 

@@ -228,7 +228,7 @@ int ssl3_write_app_data(SSL *ssl, int *out_needs_handshake, const uint8_t *buf,
       max = ssl->session->ticket_max_early_data - ssl->s3->hs->early_data_written;
       if (max == 0) {
         ssl->s3->wnum = tot;
-        ssl->s3->hs->can_early_write = 0;
+        ssl->s3->hs->can_early_write = false;
         *out_needs_handshake = 1;
         return -1;
       }
@@ -433,7 +433,7 @@ int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
       rr->length = 0;
       ssl_read_buffer_discard(ssl);
       // Stop accepting early data.
-      ssl->s3->hs->can_early_read = 0;
+      ssl->s3->hs->can_early_read = false;
       *out_got_handshake = 1;
       return -1;
     }

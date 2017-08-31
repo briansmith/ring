@@ -1084,7 +1084,7 @@ void SSL_reset_early_data_reject(SSL *ssl) {
   }
 
   hs->wait = ssl_hs_ok;
-  hs->in_early_data = 0;
+  hs->in_early_data = false;
   hs->early_session.reset();
 
   // Discard any unfinished writes from the perspective of |SSL_write|'s

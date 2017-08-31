@@ -147,7 +147,7 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   }
 
   ssl->method->next_message(ssl);
-  hs->received_hello_retry_request = 1;
+  hs->received_hello_retry_request = true;
   hs->tls13_state = state_send_second_client_hello;
   // 0-RTT is rejected if we receive a HelloRetryRequest.
   if (hs->in_early_data) {
@@ -483,7 +483,7 @@ static enum ssl_hs_wait_t do_read_certificate_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  hs->cert_request = 1;
+  hs->cert_request = true;
   hs->ca_names = std::move(ca_names);
   ssl->ctx->x509_method->hs_flush_cached_ca_names(hs);
 
@@ -565,7 +565,7 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   if (ssl->early_data_accepted) {
-    hs->can_early_write = 0;
+    hs->can_early_write = false;
     if (!ssl->method->add_alert(ssl, SSL3_AL_WARNING,
                                 TLS1_AD_END_OF_EARLY_DATA)) {
       return ssl_hs_error;
