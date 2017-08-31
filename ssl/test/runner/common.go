@@ -1427,6 +1427,10 @@ type ProtocolBugs struct {
 	// and ServerHello messages to be present, but empty.
 	EmptyExtensions bool
 
+	// ExpectOmitExtensions, if true, causes the client to reject
+	// ServerHello messages that do not omit extensions.
+	ExpectOmitExtensions bool
+
 	// ExpectRecordSplitting, if true, causes application records to only be
 	// accepted if they follow a 1/n-1 record split.
 	ExpectRecordSplitting bool

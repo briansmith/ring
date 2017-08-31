@@ -974,6 +974,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	if len(data) == 0 && m.vers < VersionTLS13 {
 		// Extension data is optional before TLS 1.3.
 		m.extensions = serverExtensions{}
+		m.omitExtensions = true
 		return true
 	}
 	if len(data) < 2 {

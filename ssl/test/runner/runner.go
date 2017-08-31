@@ -12565,6 +12565,21 @@ func addExtraHandshakeTests() {
 
 // Test that omitted and empty extensions blocks are tolerated.
 func addOmitExtensionsTests() {
+	// Check the ExpectOmitExtensions setting works.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ExpectOmitExtensions",
+		config: Config{
+			MinVersion: VersionTLS12,
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				ExpectOmitExtensions: true,
+			},
+		},
+		shouldFail:         true,
+		expectedLocalError: "tls: ServerHello did not omit extensions",
+	})
+
 	for _, ver := range tlsVersions {
 		if ver.version > VersionTLS12 {
 			continue
@@ -12579,6 +12594,9 @@ func addOmitExtensionsTests() {
 				SessionTicketsDisabled: true,
 				Bugs: ProtocolBugs{
 					OmitExtensions: true,
+					// With no client extensions, the ServerHello must not have
+					// extensions. It should then omit the extensions field.
+					ExpectOmitExtensions: true,
 				},
 			},
 		})
@@ -12592,6 +12610,9 @@ func addOmitExtensionsTests() {
 				SessionTicketsDisabled: true,
 				Bugs: ProtocolBugs{
 					EmptyExtensions: true,
+					// With no client extensions, the ServerHello must not have
+					// extensions. It should then omit the extensions field.
+					ExpectOmitExtensions: true,
 				},
 			},
 		})

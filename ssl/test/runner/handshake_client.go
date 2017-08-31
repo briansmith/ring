@@ -579,6 +579,10 @@ NextCipherSuite:
 		return errors.New("tls: ServerHello parameters did not match HelloRetryRequest")
 	}
 
+	if c.config.Bugs.ExpectOmitExtensions && !serverHello.omitExtensions {
+		return errors.New("tls: ServerHello did not omit extensions")
+	}
+
 	hs := &clientHandshakeState{
 		c:            c,
 		serverHello:  serverHello,
