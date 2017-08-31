@@ -59,10 +59,10 @@ enum server_hs_state_t {
 
 static const uint8_t kZeroes[EVP_MAX_MD_SIZE] = {0};
 
-static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, int *out_need_retry,
+static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, bool *out_need_retry,
                                 SSL_CLIENT_HELLO *client_hello) {
   SSL *const ssl = hs->ssl;
-  *out_need_retry = 0;
+  *out_need_retry = false;
 
   // We only support connections that include an ECDHE key exchange.
   CBS key_share;
@@ -85,7 +85,7 @@ static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, int *out_need_retry,
   }
 
   if (!found_key_share) {
-    *out_need_retry = 1;
+    *out_need_retry = true;
     return 0;
   }
 
@@ -394,7 +394,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
         return ssl_hs_error;
       }
 
-      ssl->s3->session_reused = 1;
+      ssl->s3->session_reused = true;
 
       // Resumption incorporates fresh key material, so refresh the timeout.
       ssl_session_renew_timeout(ssl, hs->new_session.get(),
@@ -456,15 +456,15 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
   } else if (hs->early_data_offered) {
-    ssl->s3->skip_early_data = 1;
+    ssl->s3->skip_early_data = true;
   }
 
   // Resolve ECDHE and incorporate it into the secret.
-  int need_retry;
+  bool need_retry;
   if (!resolve_ecdhe_secret(hs, &need_retry, &client_hello)) {
     if (need_retry) {
       ssl->early_data_accepted = 0;
-      ssl->s3->skip_early_data = 1;
+      ssl->s3->skip_early_data = true;
       ssl->method->next_message(ssl);
       hs->tls13_state = state_send_hello_retry_request;
       return ssl_hs_ok;
@@ -514,7 +514,7 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  int need_retry;
+  bool need_retry;
   if (!resolve_ecdhe_secret(hs, &need_retry, &client_hello)) {
     if (need_retry) {
       // Only send one HelloRetryRequest.

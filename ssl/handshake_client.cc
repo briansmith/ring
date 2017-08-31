@@ -581,7 +581,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     ssl->version = server_version;
     // At this point, the connection's version is known and ssl->version is
     // fixed. Begin enforcing the record-layer version.
-    ssl->s3->have_version = 1;
+    ssl->s3->have_version = true;
   } else if (server_version != ssl->version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
@@ -630,7 +630,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       ssl->session->session_id_length != 0 &&
       CBS_mem_equal(&session_id, ssl->session->session_id,
                     ssl->session->session_id_length)) {
-    ssl->s3->session_reused = 1;
+    ssl->s3->session_reused = true;
   } else {
     // The session wasn't resumed. Create a fresh SSL_SESSION to
     // fill out.
@@ -1695,7 +1695,7 @@ static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
   }
 
   hs->handshake_finalized = true;
-  ssl->s3->initial_handshake_complete = 1;
+  ssl->s3->initial_handshake_complete = true;
   ssl_update_cache(hs, SSL_SESS_CACHE_CLIENT);
 
   hs->state = state_done;

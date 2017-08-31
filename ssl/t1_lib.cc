@@ -805,7 +805,7 @@ static int ext_ri_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     *out_alert = SSL_AD_HANDSHAKE_FAILURE;
     return 0;
   }
-  ssl->s3->send_connection_binding = 1;
+  ssl->s3->send_connection_binding = true;
 
   return 1;
 }
@@ -840,7 +840,7 @@ static int ext_ri_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return 0;
   }
 
-  ssl->s3->send_connection_binding = 1;
+  ssl->s3->send_connection_binding = true;
 
   return 1;
 }
@@ -1547,7 +1547,7 @@ static int ext_alpn_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 // https://tools.ietf.org/html/draft-balfanz-tls-channelid-01
 
 static void ext_channel_id_init(SSL_HANDSHAKE *hs) {
-  hs->ssl->s3->tlsext_channel_id_valid = 0;
+  hs->ssl->s3->tlsext_channel_id_valid = false;
 }
 
 static int ext_channel_id_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
@@ -1579,7 +1579,7 @@ static int ext_channel_id_parse_serverhello(SSL_HANDSHAKE *hs,
     return 0;
   }
 
-  ssl->s3->tlsext_channel_id_valid = 1;
+  ssl->s3->tlsext_channel_id_valid = true;
   return 1;
 }
 
@@ -1596,7 +1596,7 @@ static int ext_channel_id_parse_clienthello(SSL_HANDSHAKE *hs,
     return 0;
   }
 
-  ssl->s3->tlsext_channel_id_valid = 1;
+  ssl->s3->tlsext_channel_id_valid = true;
   return 1;
 }
 
@@ -3373,7 +3373,7 @@ int tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
   if (!sig_ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CHANNEL_ID_SIGNATURE_INVALID);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
-    ssl->s3->tlsext_channel_id_valid = 0;
+    ssl->s3->tlsext_channel_id_valid = false;
     return 0;
   }
 

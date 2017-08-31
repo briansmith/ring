@@ -431,7 +431,7 @@ bool dtls1_get_message(SSL *ssl, SSLMessage *out) {
   if (!ssl->s3->has_message) {
     ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE, frag->data,
                         frag->msg_len + DTLS1_HM_HEADER_LENGTH);
-    ssl->s3->has_message = 1;
+    ssl->s3->has_message = true;
   }
   return true;
 }
@@ -443,7 +443,7 @@ void dtls1_next_message(SSL *ssl) {
   dtls1_hm_fragment_free(ssl->d1->incoming_messages[index]);
   ssl->d1->incoming_messages[index] = NULL;
   ssl->d1->handshake_read_seq++;
-  ssl->s3->has_message = 0;
+  ssl->s3->has_message = false;
   // If we previously sent a flight, mark it as having a reply, so
   // |on_handshake_complete| can manage post-handshake retransmission.
   if (ssl->d1->outgoing_messages_complete) {

@@ -273,7 +273,7 @@ static int ssl3_write_pending(SSL *ssl, int type, const uint8_t *buf,
   if (ret <= 0) {
     return ret;
   }
-  ssl->s3->wpend_pending = 0;
+  ssl->s3->wpend_pending = false;
   return ssl->s3->wpend_ret;
 }
 
@@ -333,7 +333,7 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
 
   // Now that we've made progress on the connection, uncork KeyUpdate
   // acknowledgments.
-  ssl->s3->key_update_pending = 0;
+  ssl->s3->key_update_pending = false;
 
   // Memorize arguments so that ssl3_write_pending can detect bad write retries
   // later.
@@ -341,7 +341,7 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
   ssl->s3->wpend_buf = buf;
   ssl->s3->wpend_type = type;
   ssl->s3->wpend_ret = len;
-  ssl->s3->wpend_pending = 1;
+  ssl->s3->wpend_pending = true;
 
   // We now just need to write the buffer.
   return ssl3_write_pending(ssl, type, buf, len);

@@ -518,7 +518,7 @@ static int read_v2_client_hello(SSL *ssl) {
   ssl_read_buffer_consume(ssl, 2 + msg_length);
   ssl_read_buffer_discard(ssl);
 
-  ssl->s3->is_v2_hello = 1;
+  ssl->s3->is_v2_hello = true;
   return 1;
 }
 
@@ -553,7 +553,7 @@ static bool parse_message(SSL *ssl, SSLMessage *out, size_t *out_bytes_needed) {
       ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE,
                           CBS_data(&out->raw), CBS_len(&out->raw));
     }
-    ssl->s3->has_message = 1;
+    ssl->s3->has_message = true;
   }
   return true;
 }
@@ -590,7 +590,7 @@ int ssl3_read_message(SSL *ssl) {
   if (ssl->server && !ssl->s3->v2_hello_done) {
     int ret = read_v2_client_hello(ssl);
     if (ret > 0) {
-      ssl->s3->v2_hello_done = 1;
+      ssl->s3->v2_hello_done = true;
     }
     return ret;
   }
@@ -610,8 +610,8 @@ void ssl3_next_message(SSL *ssl) {
   OPENSSL_memmove(ssl->init_buf->data, ssl->init_buf->data + CBS_len(&msg.raw),
                   ssl->init_buf->length - CBS_len(&msg.raw));
   ssl->init_buf->length -= CBS_len(&msg.raw);
-  ssl->s3->is_v2_hello = 0;
-  ssl->s3->has_message = 0;
+  ssl->s3->is_v2_hello = false;
+  ssl->s3->has_message = false;
 
   // Post-handshake messages are rare, so release the buffer after every
   // message. During the handshake, |on_handshake_complete| will release it.

@@ -520,7 +520,7 @@ static int tls13_receive_key_update(SSL *ssl, const SSLMessage &msg) {
     // wire. This prevents us from accumulating write obligations when read and
     // write progress at different rates. See draft-ietf-tls-tls13-18, section
     // 4.5.3.
-    ssl->s3->key_update_pending = 1;
+    ssl->s3->key_update_pending = true;
   }
 
   return 1;

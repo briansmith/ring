@@ -275,7 +275,7 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
   // At this point, the connection's version is known and |ssl->version| is
   // fixed. Begin enforcing the record-layer version.
-  ssl->s3->have_version = 1;
+  ssl->s3->have_version = true;
 
   // Handle FALLBACK_SCSV.
   if (ssl_client_cipher_list_contains_cipher(client_hello,
@@ -607,7 +607,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     // Use the old session.
     hs->ticket_expected = renew_ticket;
     ssl->session = session.release();
-    ssl->s3->session_reused = 1;
+    ssl->s3->session_reused = true;
   } else {
     hs->ticket_expected = tickets_supported;
     ssl_set_session(ssl, NULL);
@@ -695,7 +695,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   // known attack while we fix ChannelID itself.
   if (ssl->s3->tlsext_channel_id_valid &&
       (hs->new_cipher->algorithm_mkey & SSL_kECDHE) == 0) {
-    ssl->s3->tlsext_channel_id_valid = 0;
+    ssl->s3->tlsext_channel_id_valid = false;
   }
 
   // If this is a resumption and the original handshake didn't support
@@ -703,7 +703,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   // session and so cannot resume with ChannelIDs.
   if (ssl->session != NULL &&
       ssl->session->original_handshake_hash_len == 0) {
-    ssl->s3->tlsext_channel_id_valid = 0;
+    ssl->s3->tlsext_channel_id_valid = false;
   }
 
   struct OPENSSL_timeval now;
@@ -1569,7 +1569,7 @@ static enum ssl_hs_wait_t do_finish_server_handshake(SSL_HANDSHAKE *hs) {
   }
 
   hs->handshake_finalized = true;
-  ssl->s3->initial_handshake_complete = 1;
+  ssl->s3->initial_handshake_complete = true;
   ssl_update_cache(hs, SSL_SESS_CACHE_SERVER);
 
   hs->state = state_done;

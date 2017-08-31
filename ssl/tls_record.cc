@@ -265,7 +265,7 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
     return ssl_open_record_error;
   }
 
-  ssl->s3->skip_early_data = 0;
+  ssl->s3->skip_early_data = false;
 
   if (!ssl_record_sequence_update(ssl->s3->read_sequence, 8)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;

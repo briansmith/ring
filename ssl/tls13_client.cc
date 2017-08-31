@@ -285,7 +285,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    ssl->s3->session_reused = 1;
+    ssl->s3->session_reused = true;
     // Only authentication information carries over in TLS 1.3.
     hs->new_session = SSL_SESSION_dup(ssl->session, SSL_SESSION_DUP_AUTH_ONLY);
     if (!hs->new_session) {

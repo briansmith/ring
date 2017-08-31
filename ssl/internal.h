@@ -1567,8 +1567,8 @@ struct SSLCertConfig {
   uint8_t sid_ctx_length;
   uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
 
-  // If enable_early_data is non-zero, early data can be sent and accepted.
-  unsigned enable_early_data:1;
+  // If enable_early_data is true, early data can be sent and accepted.
+  bool enable_early_data:1;
 };
 
 // ssl_crypto_x509_method provides the |SSL_X509_METHOD| functions using
@@ -1655,45 +1655,45 @@ struct SSL3_STATE {
 
   // skip_early_data instructs the record layer to skip unexpected early data
   // messages when 0RTT is rejected.
-  unsigned skip_early_data:1;
+  bool skip_early_data:1;
 
   // have_version is true if the connection's final version is known. Otherwise
   // the version has not been negotiated yet.
-  unsigned have_version:1;
+  bool have_version:1;
 
   // v2_hello_done is true if the peer's V2ClientHello, if any, has been handled
   // and future messages should use the record layer.
-  unsigned v2_hello_done:1;
+  bool v2_hello_done:1;
 
   // is_v2_hello is true if the current handshake message was derived from a
   // V2ClientHello rather than received from the peer directly.
-  unsigned is_v2_hello:1;
+  bool is_v2_hello:1;
 
   // has_message is true if the current handshake message has been returned
   // at least once by |get_message| and false otherwise.
-  unsigned has_message:1;
+  bool has_message:1;
 
   // initial_handshake_complete is true if the initial handshake has
   // completed.
-  unsigned initial_handshake_complete:1;
+  bool initial_handshake_complete:1;
 
   // session_reused indicates whether a session was resumed.
-  unsigned session_reused:1;
+  bool session_reused:1;
 
-  unsigned send_connection_binding:1;
+  bool send_connection_binding:1;
 
   // In a client, this means that the server supported Channel ID and that a
   // Channel ID was sent. In a server it means that we echoed support for
   // Channel IDs and that tlsext_channel_id will be valid after the
   // handshake.
-  unsigned tlsext_channel_id_valid:1;
+  bool tlsext_channel_id_valid:1;
 
-  // key_update_pending is one if we have a KeyUpdate acknowledgment
+  // key_update_pending is true if we have a KeyUpdate acknowledgment
   // outstanding.
-  unsigned key_update_pending:1;
+  bool key_update_pending:1;
 
-  // wpend_pending is one if we have a pending write outstanding.
-  unsigned wpend_pending:1;
+  // wpend_pending is true if we have a pending write outstanding.
+  bool wpend_pending:1;
 
   uint8_t send_alert[2];
 
