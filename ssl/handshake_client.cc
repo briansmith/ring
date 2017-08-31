@@ -188,8 +188,6 @@ enum ssl_client_hs_state_t {
   state_send_client_certificate,
   state_send_client_key_exchange,
   state_send_client_certificate_verify,
-  state_send_second_client_flight,
-  state_send_channel_id,
   state_send_client_finished,
   state_finish_flight,
   state_read_session_ticket,
@@ -1397,7 +1395,7 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   if (!hs->cert_request || !ssl_has_certificate(ssl)) {
-    hs->state = state_send_second_client_flight;
+    hs->state = state_send_client_finished;
     return ssl_hs_ok;
   }
 
@@ -1473,12 +1471,23 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
   // The handshake buffer is no longer necessary.
   hs->transcript.FreeBuffer();
 
-  hs->state = state_send_second_client_flight;
+  hs->state = state_send_client_finished;
   return ssl_hs_ok;
 }
 
-static enum ssl_hs_wait_t do_send_second_client_flight(SSL_HANDSHAKE *hs) {
+static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
+  // Resolve Channel ID first, before any non-idempotent operations.
+  if (ssl->s3->tlsext_channel_id_valid) {
+    if (!ssl_do_channel_id_callback(ssl)) {
+      return ssl_hs_error;
+    }
+
+    if (ssl->tlsext_channel_id_private == NULL) {
+      hs->state = state_send_client_finished;
+      return ssl_hs_channel_id_lookup;
+    }
+  }
 
   if (!ssl->method->add_change_cipher_spec(ssl) ||
       !tls1_change_cipher_state(hs, SSL3_CHANGE_CIPHER_CLIENT_WRITE)) {
@@ -1503,41 +1512,17 @@ static enum ssl_hs_wait_t do_send_second_client_flight(SSL_HANDSHAKE *hs) {
     }
   }
 
-  hs->state = state_send_channel_id;
-  return ssl_hs_ok;
-}
-
-static enum ssl_hs_wait_t do_send_channel_id(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-
-  if (!ssl->s3->tlsext_channel_id_valid) {
-    hs->state = state_send_client_finished;
-    return ssl_hs_ok;
+  if (ssl->s3->tlsext_channel_id_valid) {
+    ScopedCBB cbb;
+    CBB body;
+    if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CHANNEL_ID) ||
+        !tls1_write_channel_id(hs, &body) ||
+        !ssl_add_message_cbb(ssl, cbb.get())) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return ssl_hs_error;
+    }
   }
 
-  if (!ssl_do_channel_id_callback(ssl)) {
-    return ssl_hs_error;
-  }
-
-  if (ssl->tlsext_channel_id_private == NULL) {
-    hs->state = state_send_channel_id;
-    return ssl_hs_channel_id_lookup;
-  }
-
-  ScopedCBB cbb;
-  CBB body;
-  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CHANNEL_ID) ||
-      !tls1_write_channel_id(hs, &body) ||
-      !ssl_add_message_cbb(ssl, cbb.get())) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return ssl_hs_error;
-  }
-
-  hs->state = state_send_client_finished;
-  return ssl_hs_ok;
-}
-
-static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
   if (!ssl3_send_finished(hs)) {
     return ssl_hs_error;
   }
@@ -1674,7 +1659,7 @@ static enum ssl_hs_wait_t do_read_server_finished(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl->session != NULL) {
-    hs->state = state_send_second_client_flight;
+    hs->state = state_send_client_finished;
     return ssl_hs_ok;
   }
 
@@ -1765,12 +1750,6 @@ enum ssl_hs_wait_t ssl_client_handshake(SSL_HANDSHAKE *hs) {
       case state_send_client_certificate_verify:
         ret = do_send_client_certificate_verify(hs);
         break;
-      case state_send_second_client_flight:
-        ret = do_send_second_client_flight(hs);
-        break;
-      case state_send_channel_id:
-        ret = do_send_channel_id(hs);
-        break;
       case state_send_client_finished:
         ret = do_send_client_finished(hs);
         break;
@@ -1839,10 +1818,6 @@ const char *ssl_client_handshake_state(SSL_HANDSHAKE *hs) {
       return "TLS client send_client_key_exchange";
     case state_send_client_certificate_verify:
       return "TLS client send_client_certificate_verify";
-    case state_send_second_client_flight:
-      return "TLS client send_second_client_flight";
-    case state_send_channel_id:
-      return "TLS client send_channel_id";
     case state_send_client_finished:
       return "TLS client send_client_finished";
     case state_finish_flight:
