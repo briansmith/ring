@@ -154,7 +154,7 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
     }
 
     // Parse out the extensions.
-    int have_status_request = 0, have_sct = 0;
+    bool have_status_request = false, have_sct = false;
     CBS status_request, sct;
     const SSL_EXTENSION_TYPE ext_types[] = {
         {TLSEXT_TYPE_status_request, &have_status_request, &status_request},

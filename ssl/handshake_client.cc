@@ -401,7 +401,7 @@ static int parse_server_version(SSL_HANDSHAKE *hs, uint16_t *out,
     return 0;
   }
 
-  int have_supported_versions;
+  bool have_supported_versions;
   CBS supported_versions;
   const SSL_EXTENSION_TYPE ext_types[] = {
     {TLSEXT_TYPE_supported_versions, &have_supported_versions,

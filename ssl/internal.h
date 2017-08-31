@@ -1324,7 +1324,7 @@ int ssl_check_message_type(SSL *ssl, const SSLMessage &msg, int type);
 // ssl_run_handshake runs the TLS handshake. It returns one on success and <= 0
 // on error. It sets |out_early_return| to one if we've completed the handshake
 // early.
-int ssl_run_handshake(SSL_HANDSHAKE *hs, int *out_early_return);
+int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return);
 
 // The following are implementations of |do_handshake| for the client and
 // server.
@@ -1367,7 +1367,7 @@ int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg);
 int ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t **out_secret,
                                         size_t *out_secret_len,
                                         uint8_t *out_alert, CBS *contents);
-int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, int *out_found,
+int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
                                         uint8_t **out_secret,
                                         size_t *out_secret_len,
                                         uint8_t *out_alert, CBS *contents);
@@ -1413,7 +1413,7 @@ int ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
 struct SSL_EXTENSION_TYPE {
   uint16_t type;
-  int *out_present;
+  bool *out_present;
   CBS *out_data;
 };
 
@@ -2161,12 +2161,12 @@ void ssl3_next_message(SSL *ssl);
 
 int ssl3_send_finished(SSL_HANDSHAKE *hs);
 int ssl3_dispatch_alert(SSL *ssl);
-int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
+int ssl3_read_app_data(SSL *ssl, bool *out_got_handshake, uint8_t *buf, int len,
                        int peek);
 int ssl3_read_change_cipher_spec(SSL *ssl);
 void ssl3_read_close_notify(SSL *ssl);
 int ssl3_read_handshake_bytes(SSL *ssl, uint8_t *buf, int len);
-int ssl3_write_app_data(SSL *ssl, int *out_needs_handshake, const uint8_t *buf,
+int ssl3_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
                         int len);
 int ssl3_output_cert_chain(SSL *ssl);
 
@@ -2201,13 +2201,13 @@ bool ssl_hash_message(SSL_HANDSHAKE *hs, const SSLMessage &msg);
 // more data is needed.
 int dtls1_get_record(SSL *ssl);
 
-int dtls1_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
-                        int peek);
+int dtls1_read_app_data(SSL *ssl, bool *out_got_handshake, uint8_t *buf,
+                        int len, int peek);
 int dtls1_read_change_cipher_spec(SSL *ssl);
 void dtls1_read_close_notify(SSL *ssl);
 
-int dtls1_write_app_data(SSL *ssl, int *out_needs_handshake, const uint8_t *buf,
-                         int len);
+int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake,
+                         const uint8_t *buf, int len);
 
 // dtls1_write_record sends a record. It returns one on success and <= 0 on
 // error.
@@ -2388,11 +2388,11 @@ struct ssl_protocol_method_st {
   // and sets |*out_got_handshake| to whether the failure was due to a
   // post-handshake handshake message. If so, any handshake messages consumed
   // may be read with |get_message|.
-  int (*read_app_data)(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
+  int (*read_app_data)(SSL *ssl, bool *out_got_handshake, uint8_t *buf, int len,
                        int peek);
   int (*read_change_cipher_spec)(SSL *ssl);
   void (*read_close_notify)(SSL *ssl);
-  int (*write_app_data)(SSL *ssl, int *out_needs_handshake, const uint8_t *buf,
+  int (*write_app_data)(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
                         int len);
   int (*dispatch_alert)(SSL *ssl);
   // supports_cipher returns one if |cipher| is supported by this protocol and

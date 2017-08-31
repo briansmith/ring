@@ -191,12 +191,12 @@ again:
   return -1;
 }
 
-int ssl3_write_app_data(SSL *ssl, int *out_needs_handshake, const uint8_t *buf,
+int ssl3_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
                         int len) {
   assert(ssl_can_write(ssl));
   assert(!ssl->s3->aead_write_ctx->is_null_cipher());
 
-  *out_needs_handshake = 0;
+  *out_needs_handshake = false;
 
   unsigned tot, n, nw;
 
@@ -229,7 +229,7 @@ int ssl3_write_app_data(SSL *ssl, int *out_needs_handshake, const uint8_t *buf,
       if (max == 0) {
         ssl->s3->wnum = tot;
         ssl->s3->hs->can_early_write = false;
-        *out_needs_handshake = 1;
+        *out_needs_handshake = true;
         return -1;
       }
     }
@@ -370,11 +370,11 @@ static int consume_record(SSL *ssl, uint8_t *out, int len, int peek) {
   return len;
 }
 
-int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
+int ssl3_read_app_data(SSL *ssl, bool *out_got_handshake, uint8_t *buf, int len,
                        int peek) {
   assert(ssl_can_read(ssl));
   assert(!ssl->s3->aead_read_ctx->is_null_cipher());
-  *out_got_handshake = 0;
+  *out_got_handshake = false;
 
   SSL3_RECORD *rr = &ssl->s3->rrec;
 
@@ -414,7 +414,7 @@ int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
       if (ret <= 0) {
         return ret;
       }
-      *out_got_handshake = 1;
+      *out_got_handshake = true;
       return -1;
     }
 
@@ -434,7 +434,7 @@ int ssl3_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
       ssl_read_buffer_discard(ssl);
       // Stop accepting early data.
       ssl->s3->hs->can_early_read = false;
-      *out_got_handshake = 1;
+      *out_got_handshake = true;
       return -1;
     }
 

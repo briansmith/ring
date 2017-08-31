@@ -2215,7 +2215,7 @@ int ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t **out_secret,
   return 1;
 }
 
-int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, int *out_found,
+int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
                                         uint8_t **out_secret,
                                         size_t *out_secret_len,
                                         uint8_t *out_alert, CBS *contents) {
@@ -2234,7 +2234,7 @@ int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, int *out_found,
   }
 
   // Find the corresponding key share.
-  int found = 0;
+  bool found = false;
   CBS peer_key;
   while (CBS_len(&key_shares) > 0) {
     uint16_t id;
@@ -2252,14 +2252,14 @@ int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, int *out_found,
         return 0;
       }
 
-      found = 1;
+      found = true;
       peer_key = peer_key_tmp;
       // Continue parsing the structure to keep peers honest.
     }
   }
 
   if (!found) {
-    *out_found = 0;
+    *out_found = false;
     *out_secret = NULL;
     *out_secret_len = 0;
     return 1;
@@ -2283,7 +2283,7 @@ int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, int *out_found,
 
   *out_secret = secret;
   *out_secret_len = secret_len;
-  *out_found = 1;
+  *out_found = true;
   return 1;
 }
 

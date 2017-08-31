@@ -73,7 +73,7 @@ static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, bool *out_need_retry,
     return 0;
   }
 
-  int found_key_share;
+  bool found_key_share;
   uint8_t *dhe_secret;
   size_t dhe_secret_len;
   uint8_t alert = SSL_AD_DECODE_ERROR;

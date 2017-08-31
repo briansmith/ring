@@ -800,7 +800,7 @@ int SSL_do_handshake(SSL *ssl) {
   // Run the handshake.
   SSL_HANDSHAKE *hs = ssl->s3->hs;
 
-  int early_return = 0;
+  bool early_return = false;
   int ret = ssl_run_handshake(hs, &early_return);
   ssl_do_info_callback(
       ssl, ssl->server ? SSL_CB_ACCEPT_EXIT : SSL_CB_CONNECT_EXIT, ret);
@@ -921,7 +921,7 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
       }
     }
 
-    int got_handshake;
+    bool got_handshake = false;
     int ret = ssl->method->read_app_data(ssl, &got_handshake, (uint8_t *)buf,
                                          num, peek);
     if (ret > 0 || !got_handshake) {
@@ -967,7 +967,8 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
     return -1;
   }
 
-  int ret = 0, needs_handshake = 0;
+  int ret = 0;
+  bool needs_handshake = false;
   do {
     // If necessary, complete the handshake implicitly.
     if (!ssl_can_write(ssl)) {

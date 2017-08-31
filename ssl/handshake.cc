@@ -439,7 +439,7 @@ enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs) {
   return ssl_hs_ok;
 }
 
-int ssl_run_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
+int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
   SSL *const ssl = hs->ssl;
   for (;;) {
     // Resolve the operation the handshake was waiting on.
@@ -489,7 +489,7 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
       case ssl_hs_read_end_of_early_data: {
         if (ssl->s3->hs->can_early_read) {
           // While we are processing early data, the handshake returns early.
-          *out_early_return = 1;
+          *out_early_return = true;
           return 1;
         }
         hs->wait = ssl_hs_ok;
@@ -538,7 +538,7 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
         return -1;
 
       case ssl_hs_early_return:
-        *out_early_return = 1;
+        *out_early_return = true;
         hs->wait = ssl_hs_ok;
         return 1;
 
@@ -555,6 +555,7 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, int *out_early_return) {
     }
     if (hs->wait == ssl_hs_ok) {
       // The handshake has completed.
+      *out_early_return = false;
       return 1;
     }
 

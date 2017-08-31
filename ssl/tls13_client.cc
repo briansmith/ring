@@ -74,7 +74,7 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  int have_cookie, have_key_share;
+  bool have_cookie, have_key_share;
   CBS cookie, key_share;
   const SSL_EXTENSION_TYPE ext_types[] = {
       {TLSEXT_TYPE_key_share, &have_key_share, &key_share},
@@ -226,7 +226,8 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   // Parse out the extensions.
-  int have_key_share = 0, have_pre_shared_key = 0, have_supported_versions = 0;
+  bool have_key_share = false, have_pre_shared_key = false,
+       have_supported_versions = false;
   CBS key_share, pre_shared_key, supported_versions;
   const SSL_EXTENSION_TYPE ext_types[] = {
       {TLSEXT_TYPE_key_share, &have_key_share, &key_share},
@@ -811,7 +812,7 @@ int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
   }
 
   // Parse out the extensions.
-  int have_early_data_info = 0;
+  bool have_early_data_info = false;
   CBS early_data_info;
   const SSL_EXTENSION_TYPE ext_types[] = {
       {TLSEXT_TYPE_ticket_early_data_info, &have_early_data_info,

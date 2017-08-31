@@ -205,11 +205,11 @@ again:
   return -1;
 }
 
-int dtls1_read_app_data(SSL *ssl, int *out_got_handshake, uint8_t *buf, int len,
-                        int peek) {
+int dtls1_read_app_data(SSL *ssl, bool *out_got_handshake, uint8_t *buf,
+                        int len, int peek) {
   assert(!SSL_in_init(ssl));
 
-  *out_got_handshake = 0;
+  *out_got_handshake = false;
   SSL3_RECORD *rr = &ssl->s3->rrec;
 
 again:
@@ -298,10 +298,10 @@ void dtls1_read_close_notify(SSL *ssl) {
   }
 }
 
-int dtls1_write_app_data(SSL *ssl, int *out_needs_handshake, const uint8_t *buf,
-                         int len) {
+int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake,
+                         const uint8_t *buf, int len) {
   assert(!SSL_in_init(ssl));
-  *out_needs_handshake = 0;
+  *out_needs_handshake = false;
 
   if (len > SSL3_RT_MAX_PLAIN_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DTLS_MESSAGE_TOO_BIG);
