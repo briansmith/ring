@@ -1709,6 +1709,7 @@ static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
     hs->new_session.reset();
   }
 
+  hs->handshake_finalized = 1;
   ssl->s3->initial_handshake_complete = 1;
   ssl_update_cache(hs, SSL_SESS_CACHE_CLIENT);
 

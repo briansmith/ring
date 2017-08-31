@@ -887,6 +887,12 @@ static void InfoCallback(const SSL *ssl, int type, int val) {
       // test fails.
       abort();
     }
+    // This callback is called when the handshake completes. |SSL_get_session|
+    // must continue to work and |SSL_in_init| must return false.
+    if (SSL_in_init(ssl) || SSL_get_session(ssl) == nullptr) {
+      fprintf(stderr, "Invalid state for SSL_CB_HANDSHAKE_DONE.\n");
+      abort();
+    }
     GetTestState(ssl)->handshake_done = true;
 
     // Callbacks may be called again on a new handshake.
@@ -896,6 +902,14 @@ static void InfoCallback(const SSL *ssl, int type, int val) {
 }
 
 static int NewSessionCallback(SSL *ssl, SSL_SESSION *session) {
+  // This callback is called as the handshake completes. |SSL_get_session|
+  // must continue to work and, historically, |SSL_in_init| returned false at
+  // this point.
+  if (SSL_in_init(ssl) || SSL_get_session(ssl) == nullptr) {
+    fprintf(stderr, "Invalid state for NewSessionCallback.\n");
+    abort();
+  }
+
   GetTestState(ssl)->got_new_session = true;
   GetTestState(ssl)->new_session.reset(session);
   return 1;

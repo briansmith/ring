@@ -126,6 +126,7 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       needs_psk_binder(0),
       received_hello_retry_request(0),
       received_custom_extension(0),
+      handshake_finalized(0),
       accept_psk_mode(0),
       cert_request(0),
       certificate_status_expected(0),

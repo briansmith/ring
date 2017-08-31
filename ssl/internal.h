@@ -1243,6 +1243,10 @@ struct SSL_HANDSHAKE {
 
   unsigned received_custom_extension:1;
 
+  // handshake_finalized is true once the handshake has completed, at which
+  // point accessors should use the established state.
+  unsigned handshake_finalized:1;
+
   // accept_psk_mode stores whether the client's PSK mode is compatible with our
   // preferences.
   unsigned accept_psk_mode:1;

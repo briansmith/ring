@@ -1568,6 +1568,7 @@ static enum ssl_hs_wait_t do_finish_server_handshake(SSL_HANDSHAKE *hs) {
     ssl->s3->established_session->not_resumable = 0;
   }
 
+  hs->handshake_finalized = 1;
   ssl->s3->initial_handshake_complete = 1;
   ssl_update_cache(hs, SSL_SESS_CACHE_SERVER);
 
