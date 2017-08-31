@@ -402,8 +402,7 @@ enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs) {
   uint8_t finished[EVP_MAX_MD_SIZE];
   size_t finished_len;
   if (!hs->transcript.GetFinishedMAC(finished, &finished_len,
-                                     SSL_get_session(ssl), !ssl->server,
-                                     ssl3_protocol_version(ssl)) ||
+                                     SSL_get_session(ssl), !ssl->server) ||
       !ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
   }

@@ -437,7 +437,7 @@ class SSLTranscript {
   // have room for |EVP_MAX_MD_SIZE| bytes. It returns true on success and false
   // on failure.
   bool GetFinishedMAC(uint8_t *out, size_t *out_len, const SSL_SESSION *session,
-                      bool from_server, uint16_t version);
+                      bool from_server);
 
  private:
   // buffer_, if non-null, contains the handshake transcript.

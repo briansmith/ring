@@ -302,7 +302,7 @@ int ssl3_send_finished(SSL_HANDSHAKE *hs) {
   uint8_t finished[EVP_MAX_MD_SIZE];
   size_t finished_len;
   if (!hs->transcript.GetFinishedMAC(finished, &finished_len, session,
-                                     ssl->server, ssl3_protocol_version(ssl))) {
+                                     ssl->server)) {
     return 0;
   }
 

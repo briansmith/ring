@@ -328,9 +328,9 @@ bool SSLTranscript::GetSSL3CertVerifyHash(uint8_t *out, size_t *out_len,
 }
 
 bool SSLTranscript::GetFinishedMAC(uint8_t *out, size_t *out_len,
-                                   const SSL_SESSION *session, bool from_server,
-                                   uint16_t version) {
-  if (version == SSL3_VERSION) {
+                                   const SSL_SESSION *session,
+                                   bool from_server) {
+  if (session->ssl_version == SSL3_VERSION) {
     if (Digest() != EVP_md5_sha1()) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
