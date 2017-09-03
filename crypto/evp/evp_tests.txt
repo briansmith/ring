@@ -261,6 +261,14 @@ Digest = SHA256
 Input = "0123456789ABCDEF0123456789ABCDEF"
 Output = 4de433d5844043ef08d354da03cb29068780d52706d7d1e4d50efb7d58c9d547d83a747ddd0635a96b28f854e50145518482cb49e963054621b53c60c498d07c16e9c2789c893cf38d4d86900de71bde463bd2761d1271e358c7480a1ac0bab930ddf39602ad1bc165b5d7436b516b7a7858e8eb7ab1c420eeb482f4d207f0e462b1724959320a084e13848d11d10fb593e66bf680bf6d3f345fc3e9c3de60abbac37e1c6ec80a268c8d9fc49626c679097aa690bc1aa662b95eb8db70390861aa0898229f9349b4b5fdd030d4928c47084708a933144be23bd3c6e661b85b2c0ef9ed36d498d5b7320e8194d363d4ad478c059bae804181965e0b81b663158a
 
+# A non-zero salt length must be checked by round-tripping.
+Sign = RSA-2048
+RSAPadding = PSS
+PSSSaltLength = 32
+Digest = SHA256
+Input = "0123456789ABCDEF0123456789ABCDEF"
+CheckVerify
+
 # Auto-detected salt length
 Verify = RSA-2048-SPKI
 RSAPadding = PSS
@@ -268,6 +276,24 @@ PSSSaltLength = -2
 Digest = SHA256
 Input = "0123456789ABCDEF0123456789ABCDEF"
 Output = 4de433d5844043ef08d354da03cb29068780d52706d7d1e4d50efb7d58c9d547d83a747ddd0635a96b28f854e50145518482cb49e963054621b53c60c498d07c16e9c2789c893cf38d4d86900de71bde463bd2761d1271e358c7480a1ac0bab930ddf39602ad1bc165b5d7436b516b7a7858e8eb7ab1c420eeb482f4d207f0e462b1724959320a084e13848d11d10fb593e66bf680bf6d3f345fc3e9c3de60abbac37e1c6ec80a268c8d9fc49626c679097aa690bc1aa662b95eb8db70390861aa0898229f9349b4b5fdd030d4928c47084708a933144be23bd3c6e661b85b2c0ef9ed36d498d5b7320e8194d363d4ad478c059bae804181965e0b81b663158a
+
+# Signing with salt length -1 means to match the digest length.
+Sign = RSA-2048
+RSAPadding = PSS
+PSSSaltLength = -1
+VerifyPSSSaltLength = 32
+Digest = SHA256
+Input = "0123456789ABCDEF0123456789ABCDEF"
+CheckVerify
+
+# Signing with salt length -2 means to maximize the salt length.
+Sign = RSA-2048
+RSAPadding = PSS
+PSSSaltLength = -2
+VerifyPSSSaltLength = 222  # 256 - 32 - 2
+Digest = SHA256
+Input = "0123456789ABCDEF0123456789ABCDEF"
+CheckVerify
 
 # Wrong digest
 Verify = RSA-2048-SPKI
@@ -495,6 +521,24 @@ Decrypt = RSA-2048
 RSAPadding = OAEP
 Input = 458708dfbd42a1297ce7a9c86c7087ab80b1754810929b89c5107ca55368587686986fce94d86cc1595b3fb736223a656ec0f34d18ba1cc5665593610f56c58e26b272d584f3d983a5c91085700755aebd921fb280bba3eda7046ec07b43e7298e52d59edc92be4639a8ce08b2f85976ecf6d98cc469eeb9d5d8e2a32ea8a6626edafe1038b3df455668a9f3c77cad8b92fb872e00058c3d2a7ede1a1f03fc5622084ae04d9d24f6bf0995c58d35b93b699b9763595e123f2ab0863cc9229eb290e2ede7715c7a8f39e0b9a3e2e1b56ebb62f1cbfbb5986fb212ebd785b83d01d968b11d1756c7337f70c1f1a63bff03608e24f3a2fd44e67f832a8701c5d5ac
 Error = OAEP_DECODING_ERROR
+
+# Test that RSA encryption successfully round-trips through decryption
+# with various parameters.
+Encrypt = RSA-2048
+Input = "Hello World"
+CheckDecrypt
+
+Encrypt = RSA-2048
+RSAPadding = OAEP
+Input = "Hello World"
+CheckDecrypt
+
+Encrypt = RSA-2048
+RSAPadding = OAEP
+OAEPDigest = SHA512
+OAEPLabel = 00112233445566778899aabbccddeeff
+Input = "Hello World"
+CheckDecrypt
 
 
 # EC tests

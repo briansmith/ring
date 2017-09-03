@@ -261,6 +261,9 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
   } else if (t->GetType() == "VerifyMessage") {
     md_op_init = EVP_DigestVerifyInit;
     is_verify = true;
+  } else if (t->GetType() == "Encrypt") {
+    key_op_init = EVP_PKEY_encrypt_init;
+    key_op = EVP_PKEY_encrypt;
   } else {
     ADD_FAILURE() << "Unknown test " << t->GetType();
     return false;
@@ -338,8 +341,58 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
     return false;
   }
   actual.resize(len);
-  if (!key_op(ctx.get(), actual.data(), &len, input.data(), input.size()) ||
-      !t->GetBytes(&output, "Output")) {
+  if (!key_op(ctx.get(), actual.data(), &len, input.data(), input.size())) {
+    return false;
+  }
+
+  // Encryption is non-deterministic, so we check by decrypting.
+  if (t->HasAttribute("CheckDecrypt")) {
+    size_t plaintext_len;
+    ctx.reset(EVP_PKEY_CTX_new(key, nullptr));
+    if (!ctx ||
+        !EVP_PKEY_decrypt_init(ctx.get()) ||
+        (digest != nullptr &&
+         !EVP_PKEY_CTX_set_signature_md(ctx.get(), digest)) ||
+        !SetupContext(t, ctx.get()) ||
+        !EVP_PKEY_decrypt(ctx.get(), nullptr, &plaintext_len, actual.data(),
+                          actual.size())) {
+      return false;
+    }
+    output.resize(plaintext_len);
+    if (!EVP_PKEY_decrypt(ctx.get(), output.data(), &plaintext_len,
+                          actual.data(), actual.size())) {
+      ADD_FAILURE() << "Could not decrypt result.";
+      return false;
+    }
+    output.resize(plaintext_len);
+    EXPECT_EQ(Bytes(input), Bytes(output)) << "Decrypted result mismatch.";
+    return true;
+  }
+
+  // Some signature schemes are non-deterministic, so we check by verifying.
+  if (t->HasAttribute("CheckVerify")) {
+    ctx.reset(EVP_PKEY_CTX_new(key, nullptr));
+    if (!ctx ||
+        !EVP_PKEY_verify_init(ctx.get()) ||
+        (digest != nullptr &&
+         !EVP_PKEY_CTX_set_signature_md(ctx.get(), digest)) ||
+        !SetupContext(t, ctx.get())) {
+      return false;
+    }
+    if (t->HasAttribute("VerifyPSSSaltLength") &&
+        !EVP_PKEY_CTX_set_rsa_pss_saltlen(
+            ctx.get(),
+            atoi(t->GetAttributeOrDie("VerifyPSSSaltLength").c_str()))) {
+      return false;
+    }
+    EXPECT_TRUE(EVP_PKEY_verify(ctx.get(), actual.data(), actual.size(),
+                                input.data(), input.size()))
+        << "Could not verify result.";
+    return true;
+  }
+
+  // By default, check by comparing the result against Output.
+  if (!t->GetBytes(&output, "Output")) {
     return false;
   }
   actual.resize(len);
