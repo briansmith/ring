@@ -92,6 +92,11 @@ typedef struct {
   size_t oaep_labellen;
 } RSA_PKEY_CTX;
 
+typedef struct {
+  uint8_t *data;
+  size_t len;
+} RSA_OAEP_LABEL_PARAMS;
+
 static int pkey_rsa_init(EVP_PKEY_CTX *ctx) {
   RSA_PKEY_CTX *rctx;
   rctx = OPENSSL_malloc(sizeof(RSA_PKEY_CTX));
@@ -485,20 +490,17 @@ static int pkey_rsa_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2) {
       }
       return 1;
 
-    case EVP_PKEY_CTRL_RSA_OAEP_LABEL:
+    case EVP_PKEY_CTRL_RSA_OAEP_LABEL: {
       if (rctx->pad_mode != RSA_PKCS1_OAEP_PADDING) {
         OPENSSL_PUT_ERROR(EVP, EVP_R_INVALID_PADDING_MODE);
         return 0;
       }
       OPENSSL_free(rctx->oaep_label);
-      if (p2 && p1 > 0) {
-        rctx->oaep_label = p2;
-        rctx->oaep_labellen = p1;
-      } else {
-        rctx->oaep_label = NULL;
-        rctx->oaep_labellen = 0;
-      }
+      RSA_OAEP_LABEL_PARAMS *params = p2;
+      rctx->oaep_label = params->data;
+      rctx->oaep_labellen = params->len;
       return 1;
+    }
 
     case EVP_PKEY_CTRL_GET_RSA_OAEP_LABEL:
       if (rctx->pad_mode != RSA_PKCS1_OAEP_PADDING) {
@@ -611,13 +613,9 @@ int EVP_PKEY_CTX_get_rsa_mgf1_md(EVP_PKEY_CTX *ctx, const EVP_MD **out_md) {
 
 int EVP_PKEY_CTX_set0_rsa_oaep_label(EVP_PKEY_CTX *ctx, uint8_t *label,
                                      size_t label_len) {
-  if (label_len > INT_MAX) {
-    return 0;
-  }
-
+  RSA_OAEP_LABEL_PARAMS params = {label, label_len};
   return EVP_PKEY_CTX_ctrl(ctx, EVP_PKEY_RSA, EVP_PKEY_OP_TYPE_CRYPT,
-                           EVP_PKEY_CTRL_RSA_OAEP_LABEL, (int)label_len,
-                           (void *)label);
+                           EVP_PKEY_CTRL_RSA_OAEP_LABEL, 0, &params);
 }
 
 int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
