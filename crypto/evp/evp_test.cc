@@ -410,7 +410,6 @@ TEST(EVPTest, TestVectors) {
       EXPECT_EQ(t->GetAttributeOrDie("Error"), ERR_reason_error_string(err));
     } else if (!result) {
       ADD_FAILURE() << "Operation unexpectedly failed.";
-      ERR_print_errors_fp(stdout);
     }
   });
 }
