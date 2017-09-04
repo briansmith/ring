@@ -245,7 +245,7 @@ include = [
     "tests/hmac_test.rs",
     "tests/hmac_tests.txt",
     "tests/pbkdf2_tests.rs",
-    "tests/pbkdf2_tests.txt",    
+    "tests/pbkdf2_tests.txt",
     "tests/rsa_from_pkcs8_tests.txt",
     "tests/rsa_pkcs1_sign_tests.txt",
     "tests/rsa_pkcs1_verify_tests.txt",
