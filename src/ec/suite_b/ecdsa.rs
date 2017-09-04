@@ -56,6 +56,7 @@ pub struct ECDSAVerificationAlgorithm {
 }
 
 #[allow(non_camel_case_types)]
+#[derive(PartialEq, Eq)]
 enum ECDSAVerificationAlgorithmID {
     ECDSA_P256_SHA256_ASN1,
     ECDSA_P256_SHA256_FIXED,

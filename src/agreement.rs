@@ -93,6 +93,12 @@ pub struct Algorithm {
     pub(crate) i: ec::AgreementAlgorithmImpl,
 }
 
+impl PartialEq for Algorithm {
+    fn eq(&self, other: &Self) -> bool { self.i.curve.id == other.i.curve.id }
+}
+
+impl Eq for Algorithm {}
+
 /// An ephemeral private key for use (only) with `agree_ephemeral`. The
 /// signature of `agree_ephemeral` ensures that an `EphemeralPrivateKey` can be
 /// used for at most one key agreement.
