@@ -224,17 +224,14 @@ OPENSSL_EXPORT const char *ERR_reason_error_string(uint32_t packed_error);
 typedef int (*ERR_print_errors_callback_t)(const char *str, size_t len,
                                            void *ctx);
 
-// ERR_print_errors_cb calls |callback| with a string representation of each
-// error in the current thread's error queue, from the least recent to the most
-// recent error.
+// ERR_print_errors_cb clears the current thread's error queue, calling
+// |callback| with a string representation of each error, from the least recent
+// to the most recent error.
 //
 // The string will have the following format (which differs from
 // |ERR_error_string|):
 //
-//   [thread id]:error:[error code]:[library name]:OPENSSL_internal:
-//   [reason string]:[file]:[line number]:[optional string data]
-//
-// (All in one line.)
+//   [thread id]:error:[error code]:[library name]:OPENSSL_internal:[reason string]:[file]:[line number]:[optional string data]
 //
 // The callback can return one to continue the iteration or zero to stop it.
 // The |ctx| argument is an opaque value that is passed through to the
@@ -242,8 +239,8 @@ typedef int (*ERR_print_errors_callback_t)(const char *str, size_t len,
 OPENSSL_EXPORT void ERR_print_errors_cb(ERR_print_errors_callback_t callback,
                                         void *ctx);
 
-// ERR_print_errors_fp prints the current contents of the error stack to |file|
-// using human readable strings where possible.
+// ERR_print_errors_fp clears the current thread's error queue, printing each
+// error to |file|. See |ERR_print_errors_cb| for the format.
 OPENSSL_EXPORT void ERR_print_errors_fp(FILE *file);
 
 
