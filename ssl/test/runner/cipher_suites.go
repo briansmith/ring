@@ -48,8 +48,6 @@ const (
 	// client indicates that it supports ECC with a curve and point format
 	// that we're happy with.
 	suiteECDHE = 1 << iota
-	// suiteDHE indicates that the cipher suite involves Diffie-Hellman.
-	suiteDHE
 	// suiteECDSA indicates that the cipher suite involves an ECDSA
 	// signature and therefore may only be selected when the server's
 	// certificate is ECDSA. If this is not set then the cipher suite is
