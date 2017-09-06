@@ -839,7 +839,8 @@ int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
   session->ticket_age_add_valid = 1;
   session->not_resumable = 0;
 
-  if (ssl->ctx->new_session_cb != NULL &&
+  if ((ssl->ctx->session_cache_mode & SSL_SESS_CACHE_CLIENT) &&
+      ssl->ctx->new_session_cb != NULL &&
       ssl->ctx->new_session_cb(ssl, session.get())) {
     // |new_session_cb|'s return value signals that it took ownership.
     session.release();

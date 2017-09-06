@@ -3102,6 +3102,18 @@ TEST_P(SSLVersionTest, GetServerName) {
                SSL_get_servername(server_.get(), TLSEXT_NAMETYPE_host_name));
 }
 
+// Test that session cache mode bits are honored in the client session callback.
+TEST_P(SSLVersionTest, ClientSessionCacheMode) {
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_OFF);
+  EXPECT_FALSE(CreateClientSession(client_ctx_.get(), server_ctx_.get()));
+
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_CLIENT);
+  EXPECT_TRUE(CreateClientSession(client_ctx_.get(), server_ctx_.get()));
+
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_SERVER);
+  EXPECT_FALSE(CreateClientSession(client_ctx_.get(), server_ctx_.get()));
+}
+
 TEST(SSLTest, AddChainCertHack) {
   // Ensure that we don't accidently break the hack that we have in place to
   // keep curl and serf happy when they use an |X509| even after transfering
