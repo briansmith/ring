@@ -15,104 +15,42 @@
 #ifndef HEADER_SSL_TEST_FUZZER
 #define HEADER_SSL_TEST_FUZZER
 
+#include <stdlib.h>
+
+#include <openssl/bio.h>
 #include <openssl/bytestring.h>
+#include <openssl/err.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+#include <openssl/rsa.h>
 #include <openssl/ssl.h>
+#include <openssl/x509.h>
+
+#include "./fuzzer_tags.h"
 
 
-// SSL fuzzer utilities.
-//
-// The TLS client and server fuzzers coordinate with bssl_shim on a common
-// format to encode configuration parameters in a fuzzer file. To add a new
-// configuration, define a tag, update |SetupTest| below to parse it, and
-// update |WriteSettings| in bssl_shim to serialize it. Finally, record
-// transcripts from a test run, and use the BORINGSSL_FUZZER_DEBUG environment
-// variable to confirm the transcripts are compatible.
+namespace {
 
-// kDataTag denotes that the remainder of the input should be passed to the TLS
-// stack.
-static const uint16_t kDataTag = 0;
+const uint8_t kP256KeyPKCS8[] = {
+    0x30, 0x81, 0x87, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86,
+    0x48, 0xce, 0x3d, 0x02, 0x01, 0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d,
+    0x03, 0x01, 0x07, 0x04, 0x6d, 0x30, 0x6b, 0x02, 0x01, 0x01, 0x04, 0x20,
+    0x43, 0x09, 0xc0, 0x67, 0x75, 0x21, 0x47, 0x9d, 0xa8, 0xfa, 0x16, 0xdf,
+    0x15, 0x73, 0x61, 0x34, 0x68, 0x6f, 0xe3, 0x8e, 0x47, 0x91, 0x95, 0xab,
+    0x79, 0x4a, 0x72, 0x14, 0xcb, 0xe2, 0x49, 0x4f, 0xa1, 0x44, 0x03, 0x42,
+    0x00, 0x04, 0xde, 0x09, 0x08, 0x07, 0x03, 0x2e, 0x8f, 0x37, 0x9a, 0xd5,
+    0xad, 0xe5, 0xc6, 0x9d, 0xd4, 0x63, 0xc7, 0x4a, 0xe7, 0x20, 0xcb, 0x90,
+    0xa0, 0x1f, 0x18, 0x18, 0x72, 0xb5, 0x21, 0x88, 0x38, 0xc0, 0xdb, 0xba,
+    0xf6, 0x99, 0xd8, 0xa5, 0x3b, 0x83, 0xe9, 0xe3, 0xd5, 0x61, 0x99, 0x73,
+    0x42, 0xc6, 0x6c, 0xe8, 0x0a, 0x95, 0x40, 0x41, 0x3b, 0x0d, 0x10, 0xa7,
+    0x4a, 0x93, 0xdb, 0x5a, 0xe7, 0xec,
+};
 
-// kSessionTag is followed by a u24-length-prefixed serialized SSL_SESSION to
-// resume.
-static const uint16_t kSessionTag = 1;
+const uint8_t kOCSPResponse[] = {0x01, 0x02, 0x03, 0x04};
 
-// kRequestClientCert denotes that the server should request client
-// certificates.
-static const uint16_t kRequestClientCert = 2;
+const uint8_t kSCT[] = {0x00, 0x06, 0x00, 0x04, 0x05, 0x06, 0x07, 0x08};
 
-// kTLS13Variant is followed by a u8 denoting the TLS 1.3 variant to configure.
-static const uint16_t kTLS13Variant = 3;
-
-// SetupTest parses parameters from |cbs| and returns a newly-configured |SSL|
-// object or nullptr on error. On success, the caller should feed the remaining
-// input in |cbs| to the SSL stack.
-static inline bssl::UniquePtr<SSL> SetupTest(CBS *cbs, SSL_CTX *ctx,
-                                             bool is_server) {
-  // |ctx| is shared between runs, so we must clear any modifications to it made
-  // later on in this function.
-  SSL_CTX_flush_sessions(ctx, 0);
-
-  bssl::UniquePtr<SSL> ssl(SSL_new(ctx));
-  if (is_server) {
-    SSL_set_accept_state(ssl.get());
-  } else {
-    SSL_set_connect_state(ssl.get());
-  }
-
-  for (;;) {
-    uint16_t tag;
-    if (!CBS_get_u16(cbs, &tag)) {
-      return nullptr;
-    }
-    switch (tag) {
-      case kDataTag:
-        return ssl;
-
-      case kSessionTag: {
-        CBS data;
-        if (!CBS_get_u24_length_prefixed(cbs, &data)) {
-          return nullptr;
-        }
-        bssl::UniquePtr<SSL_SESSION> session(
-            SSL_SESSION_from_bytes(CBS_data(&data), CBS_len(&data), ctx));
-        if (!session) {
-          return nullptr;
-        }
-
-        if (is_server) {
-          SSL_CTX_add_session(ctx, session.get());
-        } else {
-          SSL_set_session(ssl.get(), session.get());
-        }
-        break;
-      }
-
-      case kRequestClientCert:
-        if (!is_server) {
-          return nullptr;
-        }
-        SSL_set_verify(ssl.get(), SSL_VERIFY_PEER, nullptr);
-        break;
-
-      case kTLS13Variant: {
-        uint8_t variant;
-        if (!CBS_get_u8(cbs, &variant)) {
-          return nullptr;
-        }
-        SSL_set_tls13_variant(ssl.get(), static_cast<tls13_variant_t>(variant));
-        break;
-      }
-
-      default:
-        return nullptr;
-    }
-  }
-}
-
-
-// Additional shared constants.
-
-static const uint8_t kCertificateDER[] = {
+const uint8_t kCertificateDER[] = {
     0x30, 0x82, 0x02, 0xff, 0x30, 0x82, 0x01, 0xe7, 0xa0, 0x03, 0x02, 0x01,
     0x02, 0x02, 0x11, 0x00, 0xb1, 0x84, 0xee, 0x34, 0x99, 0x98, 0x76, 0xfb,
     0x6f, 0xb2, 0x15, 0xc8, 0x47, 0x79, 0x05, 0x9b, 0x30, 0x0d, 0x06, 0x09,
@@ -180,7 +118,7 @@ static const uint8_t kCertificateDER[] = {
     0x76, 0x8a, 0xbb,
 };
 
-static const uint8_t kRSAPrivateKeyDER[] = {
+const uint8_t kRSAPrivateKeyDER[] = {
     0x30, 0x82, 0x04, 0xa5, 0x02, 0x01, 0x00, 0x02, 0x82, 0x01, 0x01, 0x00,
     0xce, 0x47, 0xcb, 0x11, 0xbb, 0xd2, 0x9d, 0x8e, 0x9e, 0xd2, 0x1e, 0x14,
     0xaf, 0xc7, 0xea, 0xb6, 0xc9, 0x38, 0x2a, 0x6f, 0xb3, 0x7e, 0xfb, 0xbc,
@@ -282,6 +220,228 @@ static const uint8_t kRSAPrivateKeyDER[] = {
     0xb2, 0xc6, 0xb2, 0x0a, 0x2a, 0x7c, 0x6d, 0x6a, 0x40, 0xfc, 0xf5, 0x50,
     0x98, 0x46, 0x89, 0x82, 0x40,
 };
+
+const uint8_t kALPNProtocols[] = {
+    0x01, 'a', 0x02, 'a', 'a', 0x03, 'a', 'a', 'a',
+};
+
+int ALPNSelectCallback(SSL *ssl, const uint8_t **out, uint8_t *out_len,
+                       const uint8_t *in, unsigned in_len, void *arg) {
+  static const uint8_t kProtocol[] = {'a', 'a'};
+  *out = kProtocol;
+  *out_len = sizeof(kProtocol);
+  return SSL_TLSEXT_ERR_OK;
+}
+
+int NPNSelectCallback(SSL *ssl, uint8_t **out, uint8_t *out_len,
+                      const uint8_t *in, unsigned in_len, void *arg) {
+  static const uint8_t kProtocol[] = {'a', 'a'};
+  *out = const_cast<uint8_t *>(kProtocol);
+  *out_len = sizeof(kProtocol);
+  return SSL_TLSEXT_ERR_OK;
+}
+
+int NPNAdvertiseCallback(SSL *ssl, const uint8_t **out, unsigned *out_len,
+                         void *arg) {
+  static const uint8_t kProtocols[] = {
+      0x01, 'a', 0x02, 'a', 'a', 0x03, 'a', 'a', 'a',
+  };
+  *out = kProtocols;
+  *out_len = sizeof(kProtocols);
+  return SSL_TLSEXT_ERR_OK;
+}
+
+class TLSFuzzer {
+ public:
+  enum Role {
+    kClient,
+    kServer,
+  };
+
+  explicit TLSFuzzer(Role role)
+      : debug_(getenv("BORINGSSL_FUZZER_DEBUG") != nullptr),
+        role_(role) {
+    if (!Init()) {
+      abort();
+    }
+  }
+
+  int TestOneInput(const uint8_t *buf, size_t len) {
+    RAND_reset_for_fuzzing();
+
+    CBS cbs;
+    CBS_init(&cbs, buf, len);
+    bssl::UniquePtr<SSL> ssl = SetupTest(&cbs);
+    if (!ssl) {
+      if (debug_) {
+        fprintf(stderr, "Error parsing parameters.\n");
+      }
+      return 0;
+    }
+
+    if (role_ == kClient) {
+      SSL_set_renegotiate_mode(ssl.get(), ssl_renegotiate_freely);
+      SSL_set_tlsext_host_name(ssl.get(), "hostname");
+    }
+
+    BIO *in = BIO_new(BIO_s_mem());
+    BIO *out = BIO_new(BIO_s_mem());
+    SSL_set_bio(ssl.get(), in, out);  // Takes ownership of |in| and |out|.
+
+    BIO_write(in, CBS_data(&cbs), CBS_len(&cbs));
+    if (SSL_do_handshake(ssl.get()) == 1) {
+      // Keep reading application data until error or EOF.
+      uint8_t tmp[1024];
+      for (;;) {
+        if (SSL_read(ssl.get(), tmp, sizeof(tmp)) <= 0) {
+          break;
+        }
+      }
+    } else if (debug_) {
+      fprintf(stderr, "Handshake failed.\n");
+    }
+
+    if (debug_) {
+      ERR_print_errors_fp(stderr);
+    }
+    ERR_clear_error();
+    return 0;
+  }
+
+ private:
+  // Init initializes |ctx_| with settings common to all inputs.
+  bool Init() {
+    ctx_.reset(SSL_CTX_new(TLS_method()));
+    bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
+    bssl::UniquePtr<RSA> privkey(RSA_private_key_from_bytes(
+        kRSAPrivateKeyDER, sizeof(kRSAPrivateKeyDER)));
+    if (!ctx_ || !privkey || !pkey ||
+        !EVP_PKEY_set1_RSA(pkey.get(), privkey.get()) ||
+        !SSL_CTX_use_PrivateKey(ctx_.get(), pkey.get())) {
+      return false;
+    }
+
+    const uint8_t *bufp = kCertificateDER;
+    bssl::UniquePtr<X509> cert(d2i_X509(NULL, &bufp, sizeof(kCertificateDER)));
+    if (!cert ||
+        !SSL_CTX_use_certificate(ctx_.get(), cert.get()) ||
+        !SSL_CTX_set_ocsp_response(ctx_.get(), kOCSPResponse,
+                                   sizeof(kOCSPResponse)) ||
+        !SSL_CTX_set_signed_cert_timestamp_list(ctx_.get(), kSCT,
+                                                sizeof(kSCT))) {
+      return false;
+    }
+
+    // When accepting peer certificates, allow any certificate.
+    SSL_CTX_set_cert_verify_callback(
+        ctx_.get(),
+        [](X509_STORE_CTX *store_ctx, void *arg) -> int { return 1; }, nullptr);
+
+    SSL_CTX_enable_signed_cert_timestamps(ctx_.get());
+    SSL_CTX_enable_ocsp_stapling(ctx_.get());
+
+    // Enable versions and ciphers that are off by default.
+    if (!SSL_CTX_set_strict_cipher_list(ctx_.get(), "ALL:NULL-SHA") ||
+        !SSL_CTX_set_max_proto_version(ctx_.get(), TLS1_3_VERSION) ||
+        !SSL_CTX_set_min_proto_version(ctx_.get(), SSL3_VERSION)) {
+      return false;
+    }
+
+    SSL_CTX_set_early_data_enabled(ctx_.get(), 1);
+
+    SSL_CTX_set_next_proto_select_cb(ctx_.get(), NPNSelectCallback, nullptr);
+    SSL_CTX_set_next_protos_advertised_cb(ctx_.get(), NPNAdvertiseCallback,
+                                          nullptr);
+
+    SSL_CTX_set_alpn_select_cb(ctx_.get(), ALPNSelectCallback, nullptr);
+    if (SSL_CTX_set_alpn_protos(ctx_.get(), kALPNProtocols,
+                                sizeof(kALPNProtocols)) != 0) {
+      return false;
+    }
+
+    CBS cbs;
+    CBS_init(&cbs, kP256KeyPKCS8, sizeof(kP256KeyPKCS8));
+    pkey.reset(EVP_parse_private_key(&cbs));
+    if (!pkey || !SSL_CTX_set1_tls_channel_id(ctx_.get(), pkey.get())) {
+      return false;
+    }
+    SSL_CTX_set_tls_channel_id_enabled(ctx_.get(), 1);
+
+    return true;
+  }
+
+  // SetupTest parses parameters from |cbs| and returns a newly-configured |SSL|
+  // object or nullptr on error. On success, the caller should feed the
+  // remaining input in |cbs| to the SSL stack.
+  bssl::UniquePtr<SSL> SetupTest(CBS *cbs) {
+    // |ctx| is shared between runs, so we must clear any modifications to it
+    // made later on in this function.
+    SSL_CTX_flush_sessions(ctx_.get(), 0);
+
+    bssl::UniquePtr<SSL> ssl(SSL_new(ctx_.get()));
+    if (role_ == kServer) {
+      SSL_set_accept_state(ssl.get());
+    } else {
+      SSL_set_connect_state(ssl.get());
+    }
+
+    for (;;) {
+      uint16_t tag;
+      if (!CBS_get_u16(cbs, &tag)) {
+        return nullptr;
+      }
+      switch (tag) {
+        case kDataTag:
+          return ssl;
+
+        case kSessionTag: {
+          CBS data;
+          if (!CBS_get_u24_length_prefixed(cbs, &data)) {
+            return nullptr;
+          }
+          bssl::UniquePtr<SSL_SESSION> session(SSL_SESSION_from_bytes(
+              CBS_data(&data), CBS_len(&data), ctx_.get()));
+          if (!session) {
+            return nullptr;
+          }
+
+          if (role_ == kServer) {
+            SSL_CTX_add_session(ctx_.get(), session.get());
+          } else {
+            SSL_set_session(ssl.get(), session.get());
+          }
+          break;
+        }
+
+        case kRequestClientCert:
+          if (role_ == kClient) {
+            return nullptr;
+          }
+          SSL_set_verify(ssl.get(), SSL_VERIFY_PEER, nullptr);
+          break;
+
+        case kTLS13Variant: {
+          uint8_t variant;
+          if (!CBS_get_u8(cbs, &variant)) {
+            return nullptr;
+          }
+          SSL_set_tls13_variant(ssl.get(),
+                                static_cast<tls13_variant_t>(variant));
+          break;
+        }
+
+        default:
+          return nullptr;
+      }
+    }
+  }
+
+  bool debug_;
+  Role role_;
+  bssl::UniquePtr<SSL_CTX> ctx_;
+};
+
+}  // namespace
 
 
 #endif  // HEADER_SSL_TEST_FUZZER

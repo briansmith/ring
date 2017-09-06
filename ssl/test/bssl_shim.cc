@@ -63,7 +63,7 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #include "../../crypto/internal.h"
 #include "../internal.h"
 #include "async_bio.h"
-#include "fuzzer.h"
+#include "fuzzer_tags.h"
 #include "packeted_bio.h"
 #include "test_config.h"
 
