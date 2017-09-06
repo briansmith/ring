@@ -2407,6 +2407,11 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session, SSL *ssl,
       return false;
     }
 
+    if (SSL_session_reused(ssl)) {
+      fprintf(stderr, "Renegotiations should never resume sessions.\n");
+      return false;
+    }
+
     // Re-check authentication properties after a renegotiation. The reported
     // values should remain unchanged even if the server sent different SCT
     // lists.

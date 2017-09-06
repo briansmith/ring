@@ -430,6 +430,8 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   ssl_do_info_callback(ssl, SSL_CB_HANDSHAKE_START, 1);
+  // |session_reused| must be reset in case this is a renegotiation.
+  ssl->s3->session_reused = false;
 
   // Freeze the version range.
   if (!ssl_get_version_range(ssl, &hs->min_version, &hs->max_version)) {
