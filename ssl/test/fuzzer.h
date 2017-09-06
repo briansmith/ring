@@ -15,7 +15,11 @@
 #ifndef HEADER_SSL_TEST_FUZZER
 #define HEADER_SSL_TEST_FUZZER
 
+#include <assert.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include <algorithm>
 
 #include <openssl/bio.h>
 #include <openssl/bytestring.h>
@@ -253,13 +257,19 @@ int NPNAdvertiseCallback(SSL *ssl, const uint8_t **out, unsigned *out_len,
 
 class TLSFuzzer {
  public:
+  enum Protocol {
+    kTLS,
+    kDTLS,
+  };
+
   enum Role {
     kClient,
     kServer,
   };
 
-  explicit TLSFuzzer(Role role)
+  TLSFuzzer(Protocol protocol, Role role)
       : debug_(getenv("BORINGSSL_FUZZER_DEBUG") != nullptr),
+        protocol_(protocol),
         role_(role) {
     if (!Init()) {
       abort();
@@ -284,11 +294,9 @@ class TLSFuzzer {
       SSL_set_tlsext_host_name(ssl.get(), "hostname");
     }
 
-    BIO *in = BIO_new(BIO_s_mem());
-    BIO *out = BIO_new(BIO_s_mem());
-    SSL_set_bio(ssl.get(), in, out);  // Takes ownership of |in| and |out|.
+    SSL_set0_rbio(ssl.get(), MakeBIO(CBS_data(&cbs), CBS_len(&cbs)).release());
+    SSL_set0_wbio(ssl.get(), BIO_new(BIO_s_mem()));
 
-    BIO_write(in, CBS_data(&cbs), CBS_len(&cbs));
     if (SSL_do_handshake(ssl.get()) == 1) {
       // Keep reading application data until error or EOF.
       uint8_t tmp[1024];
@@ -311,7 +319,7 @@ class TLSFuzzer {
  private:
   // Init initializes |ctx_| with settings common to all inputs.
   bool Init() {
-    ctx_.reset(SSL_CTX_new(TLS_method()));
+    ctx_.reset(SSL_CTX_new(protocol_ == kDTLS ? DTLS_method() : TLS_method()));
     bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
     bssl::UniquePtr<RSA> privkey(RSA_private_key_from_bytes(
         kRSAPrivateKeyDER, sizeof(kRSAPrivateKeyDER)));
@@ -341,10 +349,14 @@ class TLSFuzzer {
     SSL_CTX_enable_ocsp_stapling(ctx_.get());
 
     // Enable versions and ciphers that are off by default.
-    if (!SSL_CTX_set_strict_cipher_list(ctx_.get(), "ALL:NULL-SHA") ||
-        !SSL_CTX_set_max_proto_version(ctx_.get(), TLS1_3_VERSION) ||
-        !SSL_CTX_set_min_proto_version(ctx_.get(), SSL3_VERSION)) {
+    if (!SSL_CTX_set_strict_cipher_list(ctx_.get(), "ALL:NULL-SHA")) {
       return false;
+    }
+    if (protocol_ == kTLS) {
+      if (!SSL_CTX_set_max_proto_version(ctx_.get(), TLS1_3_VERSION) ||
+          !SSL_CTX_set_min_proto_version(ctx_.get(), SSL3_VERSION)) {
+        return false;
+      }
     }
 
     SSL_CTX_set_early_data_enabled(ctx_.get(), 1);
@@ -436,9 +448,68 @@ class TLSFuzzer {
     }
   }
 
+  struct BIOData {
+    Protocol protocol;
+    CBS cbs;
+  };
+
+  bssl::UniquePtr<BIO> MakeBIO(const uint8_t *in, size_t len) {
+    BIOData *b = new BIOData;
+    b->protocol = protocol_;
+    CBS_init(&b->cbs, in, len);
+
+    bssl::UniquePtr<BIO> bio(BIO_new(&kBIOMethod));
+    bio->init = 1;
+    bio->ptr = b;
+    return bio;
+  }
+
+  static int BIORead(BIO *bio, char *out, int len) {
+    assert(bio->method == &kBIOMethod);
+    BIOData *b = reinterpret_cast<BIOData *>(bio->ptr);
+    if (b->protocol == kTLS) {
+      len = std::min(static_cast<size_t>(len), CBS_len(&b->cbs));
+      memcpy(out, CBS_data(&b->cbs), len);
+      CBS_skip(&b->cbs, len);
+      return len;
+    }
+
+    // Preserve packet boundaries for DTLS.
+    CBS packet;
+    if (!CBS_get_u24_length_prefixed(&b->cbs, &packet)) {
+      return -1;
+    }
+    len = std::min(static_cast<size_t>(len), CBS_len(&packet));
+    memcpy(out, CBS_data(&packet), len);
+    return len;
+  }
+
+  static int BIODestroy(BIO *bio) {
+    assert(bio->method == &kBIOMethod);
+    BIOData *b = reinterpret_cast<BIOData *>(bio->ptr);
+    delete b;
+    return 1;
+  }
+
+  static const BIO_METHOD kBIOMethod;
+
   bool debug_;
+  Protocol protocol_;
   Role role_;
   bssl::UniquePtr<SSL_CTX> ctx_;
+};
+
+const BIO_METHOD TLSFuzzer::kBIOMethod = {
+    0,        // type
+    nullptr,  // name
+    nullptr,  // bwrite
+    TLSFuzzer::BIORead,
+    nullptr,  // bputs
+    nullptr,  // bgets
+    nullptr,  // ctrl
+    nullptr,  // create
+    TLSFuzzer::BIODestroy,
+    nullptr,  // callback_ctrl
 };
 
 }  // namespace

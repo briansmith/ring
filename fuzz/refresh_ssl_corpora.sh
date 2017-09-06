@@ -60,6 +60,8 @@ assert_directory client_corpus
 assert_directory client_corpus_no_fuzzer_mode
 assert_directory server_corpus
 assert_directory server_corpus_no_fuzzer_mode
+assert_directory dtls_client_corpus
+assert_directory dtls_server_corpus
 
 
 # Gather new transcripts. Ignore errors in running the tests.
@@ -102,6 +104,8 @@ minimize_corpus "$fuzzer_mode_build_dir/fuzz/client" client_corpus
 minimize_corpus "$fuzzer_mode_build_dir/fuzz/server" server_corpus
 minimize_corpus "$no_fuzzer_mode_build_dir/fuzz/client" client_corpus_no_fuzzer_mode
 minimize_corpus "$no_fuzzer_mode_build_dir/fuzz/server" server_corpus_no_fuzzer_mode
+minimize_corpus "$fuzzer_mode_build_dir/fuzz/dtls_client" dtls_client_corpus
+minimize_corpus "$fuzzer_mode_build_dir/fuzz/dtls_server" dtls_server_corpus
 
 
 # Incorporate the new transcripts.
@@ -110,3 +114,5 @@ minimize_corpus "$no_fuzzer_mode_build_dir/fuzz/server" server_corpus_no_fuzzer_
 "$fuzzer_mode_build_dir/fuzz/server" -max_len=50000 -merge=1 server_corpus "${fuzzer_mode_transcripts}/tls/server"
 "$no_fuzzer_mode_build_dir/fuzz/client" -max_len=50000 -merge=1 client_corpus_no_fuzzer_mode "${no_fuzzer_mode_transcripts}/tls/client"
 "$no_fuzzer_mode_build_dir/fuzz/server" -max_len=50000 -merge=1 server_corpus_no_fuzzer_mode "${no_fuzzer_mode_transcripts}/tls/server"
+"$fuzzer_mode_build_dir/fuzz/dtls_client" -max_len=50000 -merge=1 dtls_client_corpus "${fuzzer_mode_transcripts}/dtls/client"
+"$fuzzer_mode_build_dir/fuzz/dtls_server" -max_len=50000 -merge=1 dtls_server_corpus "${fuzzer_mode_transcripts}/dtls/server"

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, Google Inc.
+/* Copyright (c) 2017, Google Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,7 @@
 #include "../ssl/test/fuzzer.h"
 
 
-static TLSFuzzer g_fuzzer(TLSFuzzer::kTLS, TLSFuzzer::kServer);
+static TLSFuzzer g_fuzzer(TLSFuzzer::kDTLS, TLSFuzzer::kServer);
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   return g_fuzzer.TestOneInput(buf, len);
