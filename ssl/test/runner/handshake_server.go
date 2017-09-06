@@ -1935,7 +1935,7 @@ func verifyChannelIDMessage(channelIDMsg *channelIDMsg, channelIDHash []byte) (*
 	if !elliptic.P256().IsOnCurve(x, y) {
 		return nil, errors.New("tls: invalid channel ID public key")
 	}
-	channelID := &ecdsa.PublicKey{elliptic.P256(), x, y}
+	channelID := &ecdsa.PublicKey{Curve: elliptic.P256(), X: x, Y: y}
 	if !ecdsa.Verify(channelID, channelIDHash, r, s) {
 		return nil, errors.New("tls: invalid channel ID signature")
 	}
