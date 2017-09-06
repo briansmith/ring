@@ -542,14 +542,14 @@ static const char kOpenSSLSession[] =
 // filling in missing fields from |kOpenSSLSession|. This includes
 // providing |peer_sha256|, so |peer| is not serialized.
 static const char kCustomSession[] =
-    "MIIBdgIBAQICAwMEAsAvBCAG5Q1ndq4Yfmbeo1zwLkNRKmCXGdNgWvGT3cskV0yQ"
+    "MIIBZAIBAQICAwMEAsAvBCAG5Q1ndq4Yfmbeo1zwLkNRKmCXGdNgWvGT3cskV0yQ"
     "kAQwJlrlzkAWBOWiLj/jJ76D7l+UXoizP2KI2C7I2FccqMmIfFmmkUy32nIJ0mZH"
-    "IWoJoQYCBFRDO46iBAICASykAwQBAqUDAgEUphAEDnd3dy5nb29nbGUuY29tqAcE"
-    "BXdvcmxkqQUCAwGJwKqBpwSBpBwUQvoeOk0Kg36SYTcLEkXqKwOBfF9vE4KX0Nxe"
-    "LwjcDTpsuh3qXEaZ992r1N38VDcyS6P7I6HBYN9BsNHM362zZnY27GpTw+Kwd751"
-    "CLoXFPoaMOe57dbBpXoro6Pd3BTbf/Tzr88K06yEOTDKPNj3+inbMaVigtK4PLyP"
-    "q+Topyzvx9USFgRvyuoxn0Hgb+R0A3j6SLRuyOdAi4gv7Y5oliynrSIEIAYGBgYG"
-    "BgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGBgYGrgMEAQevAwQBBLADBAEF";
+    "IWoJoQYCBFRDO46iBAICASykAwQBAqUDAgEUqAcEBXdvcmxkqQUCAwGJwKqBpwSB"
+    "pBwUQvoeOk0Kg36SYTcLEkXqKwOBfF9vE4KX0NxeLwjcDTpsuh3qXEaZ992r1N38"
+    "VDcyS6P7I6HBYN9BsNHM362zZnY27GpTw+Kwd751CLoXFPoaMOe57dbBpXoro6Pd"
+    "3BTbf/Tzr88K06yEOTDKPNj3+inbMaVigtK4PLyPq+Topyzvx9USFgRvyuoxn0Hg"
+    "b+R0A3j6SLRuyOdAi4gv7Y5oliynrSIEIAYGBgYGBgYGBgYGBgYGBgYGBgYGBgYG"
+    "BgYGBgYGBgYGrgMEAQevAwQBBLADBAEF";
 
 // kBoringSSLSession is a serialized SSL_SESSION generated from bssl client.
 static const char kBoringSSLSession[] =
@@ -1508,10 +1508,15 @@ static bool CompleteHandshakes(SSL *client, SSL *server) {
   return true;
 }
 
+struct ClientConfig {
+  SSL_SESSION *session = nullptr;
+  std::string servername;
+};
+
 static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client,
                                    bssl::UniquePtr<SSL> *out_server,
                                    SSL_CTX *client_ctx, SSL_CTX *server_ctx,
-                                   SSL_SESSION *session) {
+                                   const ClientConfig &config = ClientConfig()) {
   bssl::UniquePtr<SSL> client(SSL_new(client_ctx)), server(SSL_new(server_ctx));
   if (!client || !server) {
     return false;
@@ -1519,7 +1524,13 @@ static bool ConnectClientAndServer(bssl::UniquePtr<SSL> *out_client,
   SSL_set_connect_state(client.get());
   SSL_set_accept_state(server.get());
 
-  SSL_set_session(client.get(), session);
+  if (config.session) {
+    SSL_set_session(client.get(), config.session);
+  }
+  if (!config.servername.empty() &&
+      !SSL_set_tlsext_host_name(client.get(), config.servername.c_str())) {
+    return false;
+  }
 
   BIO *bio1, *bio2;
   if (!BIO_new_bio_pair(&bio1, 0, &bio2, 0)) {
@@ -1573,9 +1584,9 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
            SSL_CTX_use_PrivateKey(ctx, key_.get());
   }
 
-  bool Connect() {
+  bool Connect(const ClientConfig &config = ClientConfig()) {
     return ConnectClientAndServer(&client_, &server_, client_ctx_.get(),
-                                  server_ctx_.get(), nullptr /* no session */);
+                                  server_ctx_.get(), config);
   }
 
   uint16_t version() const { return GetParam().version; }
@@ -1679,8 +1690,7 @@ TEST(SSLTest, SessionDuplication) {
 
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get(),
-                                     nullptr /* no session */));
+                                     server_ctx.get()));
 
   SSL_SESSION *session0 = SSL_get_session(client.get());
   bssl::UniquePtr<SSL_SESSION> session1 =
@@ -2117,15 +2127,16 @@ static int SaveLastSession(SSL *ssl, SSL_SESSION *session) {
   return 1;
 }
 
-static bssl::UniquePtr<SSL_SESSION> CreateClientSession(SSL_CTX *client_ctx,
-                                                        SSL_CTX *server_ctx) {
+static bssl::UniquePtr<SSL_SESSION> CreateClientSession(
+    SSL_CTX *client_ctx, SSL_CTX *server_ctx,
+    const ClientConfig &config = ClientConfig()) {
   g_last_session = nullptr;
   SSL_CTX_sess_set_new_cb(client_ctx, SaveLastSession);
 
   // Connect client and server to get a session.
   bssl::UniquePtr<SSL> client, server;
   if (!ConnectClientAndServer(&client, &server, client_ctx, server_ctx,
-                              nullptr /* no session */)) {
+                              config)) {
     fprintf(stderr, "Failed to connect client and server.\n");
     return nullptr;
   }
@@ -2145,8 +2156,10 @@ static bssl::UniquePtr<SSL_SESSION> CreateClientSession(SSL_CTX *client_ctx,
 static void ExpectSessionReused(SSL_CTX *client_ctx, SSL_CTX *server_ctx,
                                 SSL_SESSION *session, bool want_reused) {
   bssl::UniquePtr<SSL> client, server;
-  EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx, server_ctx,
-                                     session));
+  ClientConfig config;
+  config.session = session;
+  EXPECT_TRUE(
+      ConnectClientAndServer(&client, &server, client_ctx, server_ctx, config));
 
   EXPECT_EQ(SSL_session_reused(client.get()), SSL_session_reused(server.get()));
 
@@ -2161,8 +2174,10 @@ static bssl::UniquePtr<SSL_SESSION> ExpectSessionRenewed(SSL_CTX *client_ctx,
   SSL_CTX_sess_set_new_cb(client_ctx, SaveLastSession);
 
   bssl::UniquePtr<SSL> client, server;
-  if (!ConnectClientAndServer(&client, &server, client_ctx,
-                              server_ctx, session)) {
+  ClientConfig config;
+  config.session = session;
+  if (!ConnectClientAndServer(&client, &server, client_ctx, server_ctx,
+                              config)) {
     fprintf(stderr, "Failed to connect client and server.\n");
     return nullptr;
   }
@@ -2640,7 +2655,7 @@ TEST(SSLTest, EarlyCallbackVersionSwitch) {
 
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get(), nullptr));
+                                     server_ctx.get()));
   EXPECT_EQ(TLS1_2_VERSION, SSL_version(client.get()));
 }
 
@@ -3047,6 +3062,46 @@ TEST_P(SSLVersionTest, RecordCallback) {
   }
 }
 
+TEST_P(SSLVersionTest, GetServerName) {
+  // No extensions in SSL 3.0.
+  if (version() == SSL3_VERSION) {
+    return;
+  }
+
+  ClientConfig config;
+  config.servername = "host1";
+
+  SSL_CTX_set_tlsext_servername_callback(
+      server_ctx_.get(), [](SSL *ssl, int *out_alert, void *arg) -> int {
+        // During the handshake, |SSL_get_servername| must match |config|.
+        ClientConfig *config_p = reinterpret_cast<ClientConfig *>(arg);
+        EXPECT_STREQ(config_p->servername.c_str(),
+                     SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name));
+        return SSL_TLSEXT_ERR_OK;
+      });
+  SSL_CTX_set_tlsext_servername_arg(server_ctx_.get(), &config);
+
+  ASSERT_TRUE(Connect(config));
+  // After the handshake, it must also be available.
+  EXPECT_STREQ(config.servername.c_str(),
+               SSL_get_servername(server_.get(), TLSEXT_NAMETYPE_host_name));
+
+  // Establish a session under host1.
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  bssl::UniquePtr<SSL_SESSION> session =
+      CreateClientSession(client_ctx_.get(), server_ctx_.get(), config);
+
+  // If the client resumes a session with a different name, |SSL_get_servername|
+  // must return the new name.
+  ASSERT_TRUE(session);
+  config.session = session.get();
+  config.servername = "host2";
+  ASSERT_TRUE(Connect(config));
+  EXPECT_STREQ(config.servername.c_str(),
+               SSL_get_servername(server_.get(), TLSEXT_NAMETYPE_host_name));
+}
+
 TEST(SSLTest, AddChainCertHack) {
   // Ensure that we don't accidently break the hack that we have in place to
   // keep curl and serf happy when they use an |X509| even after transfering
@@ -3145,8 +3200,7 @@ TEST(SSLTest, SetChainAndKey) {
 
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get(),
-                                     nullptr /* no session */));
+                                     server_ctx.get()));
 }
 
 TEST(SSLTest, ClientCABuffers) {
@@ -3208,8 +3262,7 @@ TEST(SSLTest, ClientCABuffers) {
 
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get(),
-                                     nullptr /* no session */));
+                                     server_ctx.get()));
   EXPECT_TRUE(cert_cb_called);
 }
 
@@ -3487,16 +3540,14 @@ TEST(SSLTest, SSL3Method) {
   // way to enable SSL 3.0.
   bssl::UniquePtr<SSL> client, server;
   EXPECT_FALSE(ConnectClientAndServer(&client, &server, tls_ctx.get(),
-                                      ssl3_ctx.get(),
-                                      nullptr /* no session */));
+                                      ssl3_ctx.get()));
   uint32_t err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
   EXPECT_EQ(SSL_R_NO_SUPPORTED_VERSIONS_ENABLED, ERR_GET_REASON(err));
 
   // Likewise for SSLv3_method clients.
   EXPECT_FALSE(ConnectClientAndServer(&client, &server, ssl3_ctx.get(),
-                                      tls_ctx.get(),
-                                      nullptr /* no session */));
+                                      tls_ctx.get()));
   err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
   EXPECT_EQ(SSL_R_NO_SUPPORTED_VERSIONS_ENABLED, ERR_GET_REASON(err));
@@ -3560,8 +3611,7 @@ TEST(SSLTest, SealRecord) {
 
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get(),
-                                     nullptr /* no session */));
+                                     server_ctx.get()));
 
   const std::vector<uint8_t> record = {1, 2, 3, 4, 5};
   std::vector<uint8_t> prefix(
@@ -3604,8 +3654,7 @@ TEST(SSLTest, SealRecordInPlace) {
 
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get(),
-                                     nullptr /* no session */));
+                                     server_ctx.get()));
 
   const std::vector<uint8_t> plaintext = {1, 2, 3, 4, 5};
   std::vector<uint8_t> record = plaintext;
@@ -3643,8 +3692,7 @@ TEST(SSLTest, SealRecordTrailingData) {
 
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get(),
-                                     nullptr /* no session */));
+                                     server_ctx.get()));
 
   const std::vector<uint8_t> plaintext = {1, 2, 3, 4, 5};
   std::vector<uint8_t> record = plaintext;
@@ -3683,8 +3731,7 @@ TEST(SSLTest, SealRecordInvalidSpanSize) {
 
   bssl::UniquePtr<SSL> client, server;
   ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
-                                     server_ctx.get(),
-                                     nullptr /* no session */));
+                                     server_ctx.get()));
 
   std::vector<uint8_t> record = {1, 2, 3, 4, 5};
   std::vector<uint8_t> prefix(

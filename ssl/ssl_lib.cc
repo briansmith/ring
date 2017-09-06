@@ -1755,25 +1755,11 @@ const char *SSL_get_servername(const SSL *ssl, const int type) {
     return ssl->tlsext_hostname;
   }
 
-  // During the handshake, report the handshake value.
-  if (ssl->s3->hs != NULL) {
-    return ssl->s3->hs->hostname.get();
-  }
-
-  // SSL_get_servername may also be called after the handshake to look up the
-  // SNI value.
-  //
-  // TODO(davidben): This is almost unused. Can we remove it?
-  SSL_SESSION *session = SSL_get_session(ssl);
-  if (session == NULL) {
-    return NULL;
-  }
-  return session->tlsext_hostname;
+  return ssl->s3->hostname;
 }
 
 int SSL_get_servername_type(const SSL *ssl) {
-  SSL_SESSION *session = SSL_get_session(ssl);
-  if (session == NULL || session->tlsext_hostname == NULL) {
+  if (SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name) == NULL) {
     return -1;
   }
   return TLSEXT_NAMETYPE_host_name;

@@ -208,6 +208,7 @@ void ssl3_free(SSL *ssl) {
   ssl_handshake_free(ssl->s3->hs);
   OPENSSL_free(ssl->s3->next_proto_negotiated);
   OPENSSL_free(ssl->s3->alpn_selected);
+  OPENSSL_free(ssl->s3->hostname);
   Delete(ssl->s3->aead_read_ctx);
   Delete(ssl->s3->aead_write_ctx);
   BUF_MEM_free(ssl->s3->pending_flight);

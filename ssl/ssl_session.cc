@@ -242,13 +242,6 @@ UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
                  SHA256_DIGEST_LENGTH);
   new_session->peer_sha256_valid = session->peer_sha256_valid;
 
-  if (session->tlsext_hostname != NULL) {
-    new_session->tlsext_hostname = BUF_strdup(session->tlsext_hostname);
-    if (new_session->tlsext_hostname == NULL) {
-      return nullptr;
-    }
-  }
-
   new_session->peer_signature_algorithm = session->peer_signature_algorithm;
 
   new_session->timeout = session->timeout;
@@ -889,7 +882,6 @@ void SSL_SESSION_free(SSL_SESSION *session) {
   OPENSSL_cleanse(session->session_id, sizeof(session->session_id));
   sk_CRYPTO_BUFFER_pop_free(session->certs, CRYPTO_BUFFER_free);
   session->x509_method->session_clear(session);
-  OPENSSL_free(session->tlsext_hostname);
   OPENSSL_free(session->tlsext_tick);
   CRYPTO_BUFFER_free(session->signed_cert_timestamp_list);
   CRYPTO_BUFFER_free(session->ocsp_response);

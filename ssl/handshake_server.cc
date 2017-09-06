@@ -632,16 +632,6 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   if (ssl->session == NULL) {
     hs->new_session->cipher = hs->new_cipher;
 
-    // On new sessions, stash the SNI value in the session.
-    if (hs->hostname != NULL) {
-      OPENSSL_free(hs->new_session->tlsext_hostname);
-      hs->new_session->tlsext_hostname = BUF_strdup(hs->hostname.get());
-      if (hs->new_session->tlsext_hostname == NULL) {
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-        return ssl_hs_error;
-      }
-    }
-
     // Determine whether to request a client certificate.
     hs->cert_request = !!(ssl->verify_mode & SSL_VERIFY_PEER);
     // Only request a certificate if Channel ID isn't negotiated.

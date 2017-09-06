@@ -119,8 +119,6 @@ namespace bssl {
 //     peer                    [3] Certificate OPTIONAL,
 //     sessionIDContext        [4] OCTET STRING OPTIONAL,
 //     verifyResult            [5] INTEGER OPTIONAL,  -- one of X509_V_* codes
-//     hostName                [6] OCTET STRING OPTIONAL,
-//                                 -- from server_name extension
 //     pskIdentity             [8] OCTET STRING OPTIONAL,
 //     ticketLifetimeHint      [9] INTEGER OPTIONAL,       -- client-only
 //     ticket                  [10] OCTET STRING OPTIONAL, -- client-only
@@ -142,9 +140,11 @@ namespace bssl {
 // }
 //
 // Note: historically this serialization has included other optional
-// fields. Their presence is currently treated as a parse error:
+// fields. Their presence is currently treated as a parse error, except for
+// hostName, which is ignored.
 //
 //     keyArg                  [0] IMPLICIT OCTET STRING OPTIONAL,
+//     hostName                [6] OCTET STRING OPTIONAL,
 //     pskIdentityHint         [7] OCTET STRING OPTIONAL,
 //     compressionMethod       [11] OCTET STRING OPTIONAL,
 //     srpUsername             [12] OCTET STRING OPTIONAL,
@@ -249,16 +249,6 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
   if (in->verify_result != X509_V_OK) {
     if (!CBB_add_asn1(&session, &child, kVerifyResultTag) ||
         !CBB_add_asn1_uint64(&child, in->verify_result)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-  }
-
-  if (in->tlsext_hostname) {
-    if (!CBB_add_asn1(&session, &child, kHostNameTag) ||
-        !CBB_add_asn1(&child, &child2, CBS_ASN1_OCTETSTRING) ||
-        !CBB_add_bytes(&child2, (const uint8_t *)in->tlsext_hostname,
-                       strlen(in->tlsext_hostname))) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -627,10 +617,19 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
           &session, ret->sid_ctx, &ret->sid_ctx_length, sizeof(ret->sid_ctx),
           kSessionIDContextTag) ||
       !SSL_SESSION_parse_long(&session, &ret->verify_result, kVerifyResultTag,
-                              X509_V_OK) ||
-      !SSL_SESSION_parse_string(&session, &ret->tlsext_hostname,
-                                kHostNameTag) ||
-      !SSL_SESSION_parse_string(&session, &ret->psk_identity,
+                              X509_V_OK)) {
+    return nullptr;
+  }
+
+  // Skip the historical hostName field.
+  CBS unused_hostname;
+  if (!CBS_get_optional_asn1(&session, &unused_hostname, nullptr,
+                             kHostNameTag)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
+    return nullptr;
+  }
+
+  if (!SSL_SESSION_parse_string(&session, &ret->psk_identity,
                                 kPSKIdentityTag) ||
       !SSL_SESSION_parse_u32(&session, &ret->tlsext_tick_lifetime_hint,
                              kTicketLifetimeHintTag, 0) ||

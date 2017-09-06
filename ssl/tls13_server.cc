@@ -413,15 +413,6 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
   // Record connection properties in the new session.
   hs->new_session->cipher = hs->new_cipher;
 
-  if (hs->hostname != NULL) {
-    OPENSSL_free(hs->new_session->tlsext_hostname);
-    hs->new_session->tlsext_hostname = BUF_strdup(hs->hostname.get());
-    if (hs->new_session->tlsext_hostname == NULL) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      return ssl_hs_error;
-    }
-  }
-
   // Store the initial negotiated ALPN in the session.
   if (ssl->s3->alpn_selected != NULL) {
     hs->new_session->early_alpn = (uint8_t *)BUF_memdup(

@@ -619,31 +619,14 @@ static int ext_sni_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static int ext_sni_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                      CBS *contents) {
-  SSL *const ssl = hs->ssl;
-  if (contents == NULL) {
-    return 1;
-  }
-
-  if (CBS_len(contents) != 0) {
-    return 0;
-  }
-
-  assert(ssl->tlsext_hostname != NULL);
-
-  if (ssl->session == NULL) {
-    OPENSSL_free(hs->new_session->tlsext_hostname);
-    hs->new_session->tlsext_hostname = BUF_strdup(ssl->tlsext_hostname);
-    if (!hs->new_session->tlsext_hostname) {
-      *out_alert = SSL_AD_INTERNAL_ERROR;
-      return 0;
-    }
-  }
-
-  return 1;
+  // The server may acknowledge SNI with an empty extension. We check the syntax
+  // but otherwise ignore this signal.
+  return contents == NULL || CBS_len(contents) == 0;
 }
 
 static int ext_sni_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                      CBS *contents) {
+  SSL *const ssl = hs->ssl;
   if (contents == NULL) {
     return 1;
   }
@@ -674,12 +657,10 @@ static int ext_sni_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
 
   // Copy the hostname as a string.
-  char *hostname_raw = nullptr;
-  if (!CBS_strdup(&host_name, &hostname_raw)) {
+  if (!CBS_strdup(&host_name, &ssl->s3->hostname)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return 0;
   }
-  hs->hostname.reset(hostname_raw);
 
   hs->should_ack_sni = true;
   return 1;

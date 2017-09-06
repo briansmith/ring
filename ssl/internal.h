@@ -1208,9 +1208,6 @@ struct SSL_HANDSHAKE {
   uint8_t *certificate_types = nullptr;
   size_t num_certificate_types = 0;
 
-  // hostname, on the server, is the value of the SNI extension.
-  UniquePtr<char> hostname;
-
   // local_pubkey is the public key we are authenticating as.
   UniquePtr<EVP_PKEY> local_pubkey;
 
@@ -1763,6 +1760,9 @@ struct SSL3_STATE {
   // that the server selected once the ServerHello has been processed.
   uint8_t *alpn_selected;
   size_t alpn_selected_len;
+
+  // hostname, on the server, is the value of the SNI extension.
+  char *hostname;
 
   // For a server:
   //     If |tlsext_channel_id_valid| is true, then this contains the
