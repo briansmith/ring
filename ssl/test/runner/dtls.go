@@ -209,8 +209,8 @@ func (c *Conn) dtlsWriteRecord(typ recordType, data []byte) (n int, err error) {
 	isFinished := header[0] == typeFinished
 
 	if c.config.Bugs.SendEmptyFragments {
-		fragment := c.makeFragment(header, data, 0, 0)
-		c.pendingFragments = append(c.pendingFragments, fragment)
+		c.pendingFragments = append(c.pendingFragments, c.makeFragment(header, data, 0, 0))
+		c.pendingFragments = append(c.pendingFragments, c.makeFragment(header, data, len(data), 0))
 	}
 
 	firstRun := true

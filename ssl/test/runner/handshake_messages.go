@@ -175,6 +175,7 @@ type clientHelloMsg struct {
 	pskBinderFirst          bool
 	omitExtensions          bool
 	emptyExtensions         bool
+	pad                     int
 }
 
 func (m *clientHelloMsg) equal(i interface{}) bool {
@@ -222,7 +223,8 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.hasGREASEExtension == m1.hasGREASEExtension &&
 		m.pskBinderFirst == m1.pskBinderFirst &&
 		m.omitExtensions == m1.omitExtensions &&
-		m.emptyExtensions == m1.emptyExtensions
+		m.emptyExtensions == m1.emptyExtensions &&
+		m.pad == m1.pad
 }
 
 func (m *clientHelloMsg) marshal() []byte {
@@ -454,6 +456,16 @@ func (m *clientHelloMsg) marshal() []byte {
 		}
 	}
 
+	if m.pad != 0 && hello.len()%m.pad != 0 {
+		extensions.addU16(extensionPadding)
+		padding := extensions.addU16LengthPrefixed()
+		// Note hello.len() has changed at this point from the length
+		// prefix.
+		if l := hello.len() % m.pad; l != 0 {
+			padding.addBytes(make([]byte, m.pad-l))
+		}
+	}
+
 	if m.omitExtensions || m.emptyExtensions {
 		// Silently erase any extensions which were sent.
 		hello.discardChild()
@@ -463,6 +475,10 @@ func (m *clientHelloMsg) marshal() []byte {
 	}
 
 	m.raw = handshakeMsg.finish()
+	// Sanity-check padding.
+	if m.pad != 0 && (len(m.raw)-4)%m.pad != 0 {
+		panic(fmt.Sprintf("%d is not a multiple of %d", len(m.raw)-4, m.pad))
+	}
 	return m.raw
 }
 

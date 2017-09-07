@@ -119,6 +119,7 @@ const (
 	extensionUseSRTP                    uint16 = 14
 	extensionALPN                       uint16 = 16
 	extensionSignedCertificateTimestamp uint16 = 18
+	extensionPadding                    uint16 = 21
 	extensionExtendedMasterSecret       uint16 = 23
 	extensionSessionTicket              uint16 = 35
 	extensionKeyShare                   uint16 = 40    // draft-ietf-tls-tls13-16
@@ -1434,6 +1435,10 @@ type ProtocolBugs struct {
 	// ExpectRecordSplitting, if true, causes application records to only be
 	// accepted if they follow a 1/n-1 record split.
 	ExpectRecordSplitting bool
+
+	// PadClientHello, if non-zero, pads the ClientHello to a multiple of
+	// that many bytes.
+	PadClientHello int
 }
 
 func (c *Config) serverInit() {

@@ -228,6 +228,10 @@ static void dtls1_hm_fragment_mark(hm_fragment *frag, size_t start,
   // A zero-length message will never have a pending reassembly.
   assert(msg_len > 0);
 
+  if (start == end) {
+    return;
+  }
+
   if ((start >> 3) == (end >> 3)) {
     frag->reassembly[start >> 3] |= bit_range(start & 7, end & 7);
   } else {
