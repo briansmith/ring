@@ -165,6 +165,17 @@ recommended to avoid the `out` parameter completely and always pass in `NULL`.
 Note that less error-prone APIs are available for BoringSSL-specific code (see
 below).
 
+### Memory allocation
+
+OpenSSL provides wrappers `OPENSSL_malloc` and `OPENSSL_free` over the standard
+`malloc` and `free`. Memory allocated by OpenSSL should be released with
+`OPENSSL_free`, not the standard `free`. However, by default, they are
+implemented directly using `malloc` and `free`, so code which mixes them up
+usually works.
+
+In BoringSSL, these functions maintain additional book-keeping to zero memory
+on `OPENSSL_free`, so any mixups must be fixed.
+
 ## Optional BoringSSL-specific simplifications
 
 BoringSSL makes some changes to OpenSSL which simplify the API but remain
