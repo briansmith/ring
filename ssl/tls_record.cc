@@ -213,6 +213,8 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
   } else if (ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
     // Earlier versions of TLS switch the record version.
     version_ok = version == ssl->version;
+  } else if (ssl->version == TLS1_3_EXPERIMENT2_VERSION) {
+    version_ok = version == TLS1_2_VERSION;
   } else {
     // Starting TLS 1.3, the version field is frozen at {3, 1}.
     version_ok = version == TLS1_VERSION;
@@ -390,6 +392,10 @@ static int do_seal_record(SSL *ssl, uint8_t *out_prefix, uint8_t *out,
   if (ssl->s3->have_version && ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
     wire_version = ssl->version;
   }
+  if (ssl->s3->have_version && ssl->version == TLS1_3_EXPERIMENT2_VERSION) {
+    wire_version = TLS1_2_VERSION;
+  }
+
   out_prefix[1] = wire_version >> 8;
   out_prefix[2] = wire_version & 0xff;
   out_prefix[3] = ciphertext_len >> 8;

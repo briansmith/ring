@@ -881,19 +881,19 @@ func (m *serverHelloMsg) marshal() []byte {
 	}
 	if m.versOverride != 0 {
 		hello.addU16(m.versOverride)
-	} else if m.vers == tls13ExperimentVersion {
+	} else if isResumptionExperiment(m.vers) {
 		hello.addU16(VersionTLS12)
 	} else {
 		hello.addU16(m.vers)
 	}
 
 	hello.addBytes(m.random)
-	if vers < VersionTLS13 || m.vers == tls13ExperimentVersion {
+	if vers < VersionTLS13 || isResumptionExperiment(m.vers) {
 		sessionId := hello.addU8LengthPrefixed()
 		sessionId.addBytes(m.sessionId)
 	}
 	hello.addU16(m.cipherSuite)
-	if vers < VersionTLS13 || m.vers == tls13ExperimentVersion {
+	if vers < VersionTLS13 || isResumptionExperiment(m.vers) {
 		hello.addU8(m.compressionMethod)
 	}
 
@@ -912,7 +912,7 @@ func (m *serverHelloMsg) marshal() []byte {
 			extensions.addU16(2) // Length
 			extensions.addU16(m.pskIdentity)
 		}
-		if m.vers == tls13ExperimentVersion || m.supportedVersOverride != 0 {
+		if isResumptionExperiment(m.vers) || m.supportedVersOverride != 0 {
 			extensions.addU16(extensionSupportedVersions)
 			extensions.addU16(2) // Length
 			if m.supportedVersOverride != 0 {
@@ -966,7 +966,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	}
 	m.random = data[6:38]
 	data = data[38:]
-	if vers < VersionTLS13 || m.vers == tls13ExperimentVersion {
+	if vers < VersionTLS13 || isResumptionExperiment(m.vers) {
 		sessionIdLen := int(data[0])
 		if sessionIdLen > 32 || len(data) < 1+sessionIdLen {
 			return false
@@ -979,7 +979,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	}
 	m.cipherSuite = uint16(data[0])<<8 | uint16(data[1])
 	data = data[2:]
-	if vers < VersionTLS13 || m.vers == tls13ExperimentVersion {
+	if vers < VersionTLS13 || isResumptionExperiment(m.vers) {
 		if len(data) < 1 {
 			return false
 		}
@@ -1068,7 +1068,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 				m.pskIdentity = uint16(d[0])<<8 | uint16(d[1])
 				m.hasPSKIdentity = true
 			case extensionSupportedVersions:
-				if m.vers != tls13ExperimentVersion {
+				if !isResumptionExperiment(m.vers) {
 					return false
 				}
 			default:

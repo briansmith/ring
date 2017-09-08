@@ -781,6 +781,9 @@ RestartReadRecord:
 			if c.vers >= VersionTLS13 {
 				expect = VersionTLS10
 			}
+			if c.wireVersion == tls13Experiment2Version {
+				expect = VersionTLS12
+			}
 		} else {
 			expect = c.config.Bugs.ExpectInitialRecordVersion
 		}
@@ -929,7 +932,7 @@ Again:
 			c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))
 			break
 		}
-		if c.wireVersion != tls13ExperimentVersion {
+		if !isResumptionExperiment(c.wireVersion) {
 			err := c.in.changeCipherSpec(c.config)
 			if err != nil {
 				c.in.setErrorLocked(c.sendAlert(err.(alert)))
@@ -1125,6 +1128,10 @@ func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
 			// layer to {3, 1}.
 			vers = VersionTLS10
 		}
+		if c.wireVersion == tls13Experiment2Version {
+			vers = VersionTLS12
+		}
+
 		if c.config.Bugs.SendRecordVersion != 0 {
 			vers = c.config.Bugs.SendRecordVersion
 		}
@@ -1156,7 +1163,7 @@ func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
 	}
 	c.out.freeBlock(b)
 
-	if typ == recordTypeChangeCipherSpec && c.wireVersion != tls13ExperimentVersion {
+	if typ == recordTypeChangeCipherSpec && !isResumptionExperiment(c.wireVersion) {
 		err = c.out.changeCipherSpec(c.config)
 		if err != nil {
 			return n, c.sendAlertLocked(alertLevelError, err.(alert))

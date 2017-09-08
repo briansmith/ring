@@ -282,6 +282,9 @@ int ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 // call this function before the version is determined.
 uint16_t ssl3_protocol_version(const SSL *ssl);
 
+// ssl_is_resumption_experiment returns whether the version corresponds to a
+// TLS 1.3 resumption experiment.
+bool ssl_is_resumption_experiment(uint16_t version);
 
 // Cipher suites.
 

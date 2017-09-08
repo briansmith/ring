@@ -690,7 +690,7 @@ NextCipherSuite:
 func (hs *clientHandshakeState) doTLS13Handshake() error {
 	c := hs.c
 
-	if c.wireVersion == tls13ExperimentVersion && !bytes.Equal(hs.hello.sessionId, hs.serverHello.sessionId) {
+	if isResumptionExperiment(c.wireVersion) && !bytes.Equal(hs.hello.sessionId, hs.serverHello.sessionId) {
 		return errors.New("tls: session IDs did not match.")
 	}
 
@@ -744,7 +744,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		hs.finishedHash.addEntropy(zeroSecret)
 	}
 
-	if c.wireVersion == tls13ExperimentVersion {
+	if isResumptionExperiment(c.wireVersion) {
 		if err := c.readRecord(recordTypeChangeCipherSpec); err != nil {
 			return err
 		}
@@ -930,7 +930,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		c.sendAlert(alertEndOfEarlyData)
 	}
 
-	if c.wireVersion == tls13ExperimentVersion {
+	if isResumptionExperiment(c.wireVersion) {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 	}
 

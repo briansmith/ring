@@ -281,7 +281,7 @@ func (hs *serverHandshakeState) readClientHello() error {
 	}
 
 	if config.Bugs.ExpectNoTLS12Session {
-		if len(hs.clientHello.sessionId) > 0 && c.wireVersion != tls13ExperimentVersion {
+		if len(hs.clientHello.sessionId) > 0 && !isResumptionExperiment(c.wireVersion) {
 			return fmt.Errorf("tls: client offered an unexpected session ID")
 		}
 		if len(hs.clientHello.sessionTicket) > 0 {
@@ -763,7 +763,7 @@ ResendHelloRetryRequest:
 	}
 	c.flushHandshake()
 
-	if c.wireVersion == tls13ExperimentVersion {
+	if isResumptionExperiment(c.wireVersion) {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 	}
 
@@ -929,7 +929,7 @@ ResendHelloRetryRequest:
 		}
 	}
 
-	if c.wireVersion == tls13ExperimentVersion && !c.skipEarlyData {
+	if isResumptionExperiment(c.wireVersion) && !c.skipEarlyData {
 		if err := c.readRecord(recordTypeChangeCipherSpec); err != nil {
 			return err
 		}

@@ -1303,6 +1303,13 @@ var tlsVersions = []tlsVersion{
 		tls13Variant: TLS13Experiment,
 	},
 	{
+		name:         "TLS13Experiment2",
+		version:      VersionTLS13,
+		excludeFlag:  "-no-tls13",
+		versionWire:  tls13Experiment2Version,
+		tls13Variant: TLS13Experiment2,
+	},
+	{
 		name:         "TLS13RecordTypeExperiment",
 		version:      VersionTLS13,
 		excludeFlag:  "-no-tls13",
@@ -5163,6 +5170,9 @@ func addVersionNegotiationTests() {
 				serverVers := expectedServerVersion
 				if expectedServerVersion >= VersionTLS13 {
 					serverVers = VersionTLS10
+					if runnerVers.tls13Variant == TLS13Experiment2 {
+						serverVers = VersionTLS12
+					}
 				}
 				serverVers = recordVersionToWire(serverVers, protocol)
 

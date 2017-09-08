@@ -23,26 +23,6 @@ import (
 	"net"
 )
 
-func wireToVersion(vers uint16, isDTLS bool) (uint16, bool) {
-	if isDTLS {
-		switch vers {
-		case VersionDTLS12:
-			return VersionTLS12, true
-		case VersionDTLS10:
-			return VersionTLS10, true
-		}
-	} else {
-		switch vers {
-		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12:
-			return vers, true
-		case tls13DraftVersion, tls13ExperimentVersion, tls13RecordTypeExperimentVersion:
-			return VersionTLS13, true
-		}
-	}
-
-	return 0, false
-}
-
 func (c *Conn) dtlsDoReadRecord(want recordType) (recordType, *block, error) {
 	recordHeaderLen := dtlsRecordHeaderLen
 

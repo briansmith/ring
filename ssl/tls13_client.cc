@@ -186,10 +186,10 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   uint8_t compression_method;
   if (!CBS_get_u16(&body, &server_version) ||
       !CBS_get_bytes(&body, &server_random, SSL3_RANDOM_SIZE) ||
-      (ssl->version == TLS1_3_EXPERIMENT_VERSION &&
+      (ssl_is_resumption_experiment(ssl->version) &&
        !CBS_get_u8_length_prefixed(&body, &session_id)) ||
       !CBS_get_u16(&body, &cipher_suite) ||
-      (ssl->version == TLS1_3_EXPERIMENT_VERSION &&
+      (ssl_is_resumption_experiment(ssl->version) &&
        (!CBS_get_u8(&body, &compression_method) || compression_method != 0)) ||
       !CBS_get_u16_length_prefixed(&body, &extensions) ||
       CBS_len(&body) != 0) {
@@ -198,8 +198,9 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  uint16_t expected_version =
-      ssl->version == TLS1_3_EXPERIMENT_VERSION ? TLS1_2_VERSION : ssl->version;
+  uint16_t expected_version = ssl_is_resumption_experiment(ssl->version)
+                                  ? TLS1_2_VERSION
+                                  : ssl->version;
   if (server_version != expected_version) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_NUMBER);
@@ -246,7 +247,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
   // supported_versions is parsed in handshake_client to select the experimental
   // TLS 1.3 version.
-  if (have_supported_versions && ssl->version != TLS1_3_EXPERIMENT_VERSION) {
+  if (have_supported_versions && !ssl_is_resumption_experiment(ssl->version)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
     return ssl_hs_error;
@@ -351,7 +352,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
   ssl->method->next_message(ssl);
   hs->tls13_state = state_process_change_cipher_spec;
-  return ssl->version == TLS1_3_EXPERIMENT_VERSION
+  return ssl_is_resumption_experiment(ssl->version)
              ? ssl_hs_read_change_cipher_spec
              : ssl_hs_ok;
 }
@@ -366,7 +367,7 @@ static enum ssl_hs_wait_t do_process_change_cipher_spec(SSL_HANDSHAKE *hs) {
   if (!hs->early_data_offered) {
     // If not sending early data, set client traffic keys now so that alerts are
     // encrypted.
-    if ((ssl->version == TLS1_3_EXPERIMENT_VERSION &&
+    if ((ssl_is_resumption_experiment(ssl->version) &&
          !ssl3_add_change_cipher_spec(ssl)) ||
         !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
                                hs->hash_len)) {
@@ -574,7 +575,7 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
   }
 
   if (hs->early_data_offered) {
-    if ((ssl->version == TLS1_3_EXPERIMENT_VERSION &&
+    if ((ssl_is_resumption_experiment(ssl->version) &&
          !ssl3_add_change_cipher_spec(ssl)) ||
         !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
                                hs->hash_len)) {
