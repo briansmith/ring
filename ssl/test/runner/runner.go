@@ -2790,6 +2790,25 @@ read alert 1 0
 			shouldFail:         true,
 			expectedLocalError: "local error: record overflow",
 		},
+		{
+			// Test that Java-like ClientHellos are provided session
+			// IDs but resumption is always declined. This is to
+			// workaround a bug that causes connection failures when
+			// certificates rotate.
+			testType: serverTest,
+			name:     "JavaWorkaround",
+			config: Config{
+				MaxVersion:             VersionTLS12,
+				CurvePreferences:       []CurveID{CurveP256, CurveP384, CurveP521},
+				SessionTicketsDisabled: true,
+				Bugs: ProtocolBugs{
+					SendOnlyECExtensions: true,
+				},
+			},
+			flags:                []string{"-expect-session-id"},
+			resumeSession:        true,
+			expectResumeRejected: true,
+		},
 	}
 	testCases = append(testCases, basicTests...)
 

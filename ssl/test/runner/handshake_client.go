@@ -97,6 +97,7 @@ func (c *Conn) clientHandshake() error {
 		pskBinderFirst:          c.config.Bugs.PSKBinderFirst,
 		omitExtensions:          c.config.Bugs.OmitExtensions,
 		emptyExtensions:         c.config.Bugs.EmptyExtensions,
+		sendOnlyECExtensions:    c.config.Bugs.SendOnlyECExtensions,
 	}
 
 	if maxVersion >= VersionTLS13 {

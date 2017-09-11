@@ -176,6 +176,7 @@ type clientHelloMsg struct {
 	omitExtensions          bool
 	emptyExtensions         bool
 	pad                     int
+	sendOnlyECExtensions    bool
 }
 
 func (m *clientHelloMsg) equal(i interface{}) bool {
@@ -224,7 +225,8 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.pskBinderFirst == m1.pskBinderFirst &&
 		m.omitExtensions == m1.omitExtensions &&
 		m.emptyExtensions == m1.emptyExtensions &&
-		m.pad == m1.pad
+		m.pad == m1.pad &&
+		m.sendOnlyECExtensions == m1.sendOnlyECExtensions
 }
 
 func (m *clientHelloMsg) marshal() []byte {
@@ -311,22 +313,6 @@ func (m *clientHelloMsg) marshal() []byte {
 		// Two zero valued uint16s for the two lengths.
 		certificateStatusRequest.addU16(0) // ResponderID length
 		certificateStatusRequest.addU16(0) // Extensions length
-	}
-	if len(m.supportedCurves) > 0 {
-		// http://tools.ietf.org/html/rfc4492#section-5.1.1
-		extensions.addU16(extensionSupportedCurves)
-		supportedCurvesList := extensions.addU16LengthPrefixed()
-		supportedCurves := supportedCurvesList.addU16LengthPrefixed()
-		for _, curve := range m.supportedCurves {
-			supportedCurves.addU16(uint16(curve))
-		}
-	}
-	if len(m.supportedPoints) > 0 {
-		// http://tools.ietf.org/html/rfc4492#section-5.1.2
-		extensions.addU16(extensionSupportedPoints)
-		supportedPointsList := extensions.addU16LengthPrefixed()
-		supportedPoints := supportedPointsList.addU8LengthPrefixed()
-		supportedPoints.addBytes(m.supportedPoints)
 	}
 	if m.hasKeyShares {
 		extensions.addU16(extensionKeyShare)
@@ -440,6 +426,30 @@ func (m *clientHelloMsg) marshal() []byte {
 		customExt := extensions.addU16LengthPrefixed()
 		customExt.addBytes([]byte(m.customExtension))
 	}
+
+	// Discard all extensions but the curve-related ones to trigger the Java
+	// fingerprinter.
+	if m.sendOnlyECExtensions {
+		hello.discardChild()
+		extensions = hello.addU16LengthPrefixed()
+	}
+	if len(m.supportedCurves) > 0 {
+		// http://tools.ietf.org/html/rfc4492#section-5.1.1
+		extensions.addU16(extensionSupportedCurves)
+		supportedCurvesList := extensions.addU16LengthPrefixed()
+		supportedCurves := supportedCurvesList.addU16LengthPrefixed()
+		for _, curve := range m.supportedCurves {
+			supportedCurves.addU16(uint16(curve))
+		}
+	}
+	if len(m.supportedPoints) > 0 {
+		// http://tools.ietf.org/html/rfc4492#section-5.1.2
+		extensions.addU16(extensionSupportedPoints)
+		supportedPointsList := extensions.addU16LengthPrefixed()
+		supportedPoints := supportedPointsList.addU8LengthPrefixed()
+		supportedPoints.addBytes(m.supportedPoints)
+	}
+
 	// The PSK extension must be last (draft-ietf-tls-tls13-18 section 4.2.6).
 	if len(m.pskIdentities) > 0 && !m.pskBinderFirst {
 		extensions.addU16(extensionPreSharedKey)
@@ -456,6 +466,8 @@ func (m *clientHelloMsg) marshal() []byte {
 		}
 	}
 
+	// This must be swapped with PSK (with some length computation) if we
+	// ever need to support PadClientHello and TLS 1.3.
 	if m.pad != 0 && hello.len()%m.pad != 0 {
 		extensions.addU16(extensionPadding)
 		padding := extensions.addU16LengthPrefixed()
