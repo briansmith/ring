@@ -316,7 +316,7 @@ int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
     // In TLS 1.3 experimental encodings, send a fake placeholder session ID
     // when we do not otherwise have one to send.
     if (hs->max_version >= TLS1_3_VERSION &&
-        ssl->tls13_variant == tls13_experiment &&
+        ssl_is_resumption_variant(ssl->tls13_variant) &&
         !CBB_add_bytes(&child, hs->session_id, hs->session_id_len)) {
       return 0;
     }
@@ -438,6 +438,12 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  // SSL 3.0 ClientHellos should use SSL 3.0 not TLS 1.0, for the record-layer
+  // version.
+  if (hs->max_version == SSL3_VERSION) {
+    ssl->s3->aead_write_ctx->SetVersionIfNullCipher(SSL3_VERSION);
+  }
+
   // Always advertise the ClientHello version from the original maximum version,
   // even on renegotiation. The static RSA key exchange uses this field, and
   // some servers fail when it changes across handshakes.
@@ -468,7 +474,7 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
 
   // Initialize a random session ID for the experimental TLS 1.3 variant
   // requiring a session id.
-  if (ssl->tls13_variant == tls13_experiment) {
+  if (ssl_is_resumption_variant(ssl->tls13_variant)) {
     hs->session_id_len = sizeof(hs->session_id);
     if (!RAND_bytes(hs->session_id, hs->session_id_len)) {
       return ssl_hs_error;
@@ -584,6 +590,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     // At this point, the connection's version is known and ssl->version is
     // fixed. Begin enforcing the record-layer version.
     ssl->s3->have_version = true;
+    ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->version);
   } else if (server_version != ssl->version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);

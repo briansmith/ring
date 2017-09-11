@@ -143,7 +143,7 @@ static const uint8_t kMaxWarningAlerts = 4;
 static int ssl_needs_record_splitting(const SSL *ssl) {
 #if !defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   return !ssl->s3->aead_write_ctx->is_null_cipher() &&
-         ssl->s3->aead_write_ctx->version() < TLS1_1_VERSION &&
+         ssl->s3->aead_write_ctx->ProtocolVersion() < TLS1_1_VERSION &&
          (ssl->mode & SSL_MODE_CBC_RECORD_SPLITTING) != 0 &&
          SSL_CIPHER_is_block_cipher(ssl->s3->aead_write_ctx->cipher());
 #else
@@ -205,19 +205,13 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
     return ssl_open_record_partial;
   }
 
-  int version_ok;
+  bool version_ok;
   if (ssl->s3->aead_read_ctx->is_null_cipher()) {
     // Only check the first byte. Enforcing beyond that can prevent decoding
     // version negotiation failure alerts.
     version_ok = (version >> 8) == SSL3_VERSION_MAJOR;
-  } else if (ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
-    // Earlier versions of TLS switch the record version.
-    version_ok = version == ssl->version;
-  } else if (ssl->version == TLS1_3_EXPERIMENT2_VERSION) {
-    version_ok = version == TLS1_2_VERSION;
   } else {
-    // Starting TLS 1.3, the version field is frozen at {3, 1}.
-    version_ok = version == TLS1_VERSION;
+    version_ok = version == ssl->s3->aead_read_ctx->RecordVersion();
   }
 
   if (!version_ok) {
@@ -276,7 +270,7 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
 
   // TLS 1.3 hides the record type inside the encrypted data.
   if (!ssl->s3->aead_read_ctx->is_null_cipher() &&
-      ssl->s3->aead_read_ctx->version() >= TLS1_3_VERSION) {
+      ssl->s3->aead_read_ctx->ProtocolVersion() >= TLS1_3_VERSION) {
     // The outer record type is always application_data.
     if (type != SSL3_RT_APPLICATION_DATA) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_OUTER_RECORD_TYPE);
@@ -352,7 +346,7 @@ static int do_seal_record(SSL *ssl, uint8_t *out_prefix, uint8_t *out,
   uint8_t *extra_in = NULL;
   size_t extra_in_len = 0;
   if (!ssl->s3->aead_write_ctx->is_null_cipher() &&
-      ssl->s3->aead_write_ctx->version() >= TLS1_3_VERSION) {
+      ssl->s3->aead_write_ctx->ProtocolVersion() >= TLS1_3_VERSION) {
     // TLS 1.3 hides the actual record type inside the encrypted data.
     extra_in = &type;
     extra_in_len = 1;
@@ -381,30 +375,17 @@ static int do_seal_record(SSL *ssl, uint8_t *out_prefix, uint8_t *out,
     out_prefix[0] = type;
   }
 
-  // The TLS record-layer version number is meaningless and, starting in
-  // TLS 1.3, is frozen at TLS 1.0. But for historical reasons, SSL 3.0
-  // ClientHellos should use SSL 3.0 and pre-TLS-1.3 expects the version
-  // to change after version negotiation.
-  uint16_t wire_version = TLS1_VERSION;
-  if (ssl->s3->hs != NULL && ssl->s3->hs->max_version == SSL3_VERSION) {
-    wire_version = SSL3_VERSION;
-  }
-  if (ssl->s3->have_version && ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
-    wire_version = ssl->version;
-  }
-  if (ssl->s3->have_version && ssl->version == TLS1_3_EXPERIMENT2_VERSION) {
-    wire_version = TLS1_2_VERSION;
-  }
+  uint16_t record_version = ssl->s3->aead_write_ctx->RecordVersion();
 
-  out_prefix[1] = wire_version >> 8;
-  out_prefix[2] = wire_version & 0xff;
+  out_prefix[1] = record_version >> 8;
+  out_prefix[2] = record_version & 0xff;
   out_prefix[3] = ciphertext_len >> 8;
   out_prefix[4] = ciphertext_len & 0xff;
 
-  if (!ssl->s3->aead_write_ctx->SealScatter(out_prefix + SSL3_RT_HEADER_LENGTH,
-                                            out, out_suffix, type, wire_version,
-                                            ssl->s3->write_sequence, in, in_len,
-                                            extra_in, extra_in_len) ||
+  if (!ssl->s3->aead_write_ctx->SealScatter(
+          out_prefix + SSL3_RT_HEADER_LENGTH, out, out_suffix, type,
+          record_version, ssl->s3->write_sequence, in, in_len, extra_in,
+          extra_in_len) ||
       !ssl_record_sequence_update(ssl->s3->write_sequence, 8)) {
     return 0;
   }
@@ -435,7 +416,7 @@ static bool tls_seal_scatter_suffix_len(const SSL *ssl, size_t *out_suffix_len,
                                         uint8_t type, size_t in_len) {
   size_t extra_in_len = 0;
   if (!ssl->s3->aead_write_ctx->is_null_cipher() &&
-      ssl->s3->aead_write_ctx->version() >= TLS1_3_VERSION) {
+      ssl->s3->aead_write_ctx->ProtocolVersion() >= TLS1_3_VERSION) {
     // TLS 1.3 adds an extra byte for encrypted record type.
     extra_in_len = 1;
   }
@@ -685,7 +666,7 @@ size_t SSL_max_seal_overhead(const SSL *ssl) {
   ret += ssl->s3->aead_write_ctx->MaxOverhead();
   // TLS 1.3 needs an extra byte for the encrypted record type.
   if (!ssl->s3->aead_write_ctx->is_null_cipher() &&
-      ssl->s3->aead_write_ctx->version() >= TLS1_3_VERSION) {
+      ssl->s3->aead_write_ctx->ProtocolVersion() >= TLS1_3_VERSION) {
     ret += 1;
   }
   if (ssl_needs_record_splitting(ssl)) {

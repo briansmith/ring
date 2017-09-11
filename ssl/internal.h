@@ -286,6 +286,20 @@ uint16_t ssl3_protocol_version(const SSL *ssl);
 // TLS 1.3 resumption experiment.
 bool ssl_is_resumption_experiment(uint16_t version);
 
+// ssl_is_resumption_variant returns whether the version corresponds to a
+// TLS 1.3 resumption experiment.
+bool ssl_is_resumption_variant(enum tls13_variant_t variant);
+
+// ssl_is_resumption_client_ccs_experiment returns whether the version
+// corresponds to a TLS 1.3 resumption experiment that sends a client CCS.
+bool ssl_is_resumption_client_ccs_experiment(uint16_t version);
+
+// ssl_is_resumption_record_version_experiment returns whether the version
+// corresponds to a TLS 1.3 resumption experiment that modifies the record
+// version.
+bool ssl_is_resumption_record_version_experiment(uint16_t version);
+
+
 // Cipher suites.
 
 // Bits for |algorithm_mkey| (key exchange algorithm).
@@ -469,7 +483,7 @@ int tls1_prf(const EVP_MD *digest, uint8_t *out, size_t out_len,
 // encrypt an SSL connection.
 class SSLAEADContext {
  public:
-  SSLAEADContext(uint16_t version, const SSL_CIPHER *cipher);
+  SSLAEADContext(uint16_t version, bool is_dtls, const SSL_CIPHER *cipher);
   ~SSLAEADContext();
   static constexpr bool kAllowUniquePtr = true;
 
@@ -477,7 +491,7 @@ class SSLAEADContext {
   SSLAEADContext &operator=(const SSLAEADContext &&) = delete;
 
   // CreateNullCipher creates an |SSLAEADContext| for the null cipher.
-  static UniquePtr<SSLAEADContext> CreateNullCipher();
+  static UniquePtr<SSLAEADContext> CreateNullCipher(bool is_dtls);
 
   // Create creates an |SSLAEADContext| using the supplied key material. It
   // returns nullptr on error. Only one of |Open| or |Seal| may be used with the
@@ -489,7 +503,20 @@ class SSLAEADContext {
       const uint8_t *mac_key, size_t mac_key_len, const uint8_t *fixed_iv,
       size_t fixed_iv_len);
 
-  uint16_t version() const { return version_; }
+  // SetVersionIfNullCipher sets the version the SSLAEADContext for the null
+  // cipher, to make version-specific determinations in the record layer prior
+  // to a cipher being selected.
+  void SetVersionIfNullCipher(uint16_t version);
+
+  // ProtocolVersion returns the protocol version associated with this
+  // SSLAEADContext. It can only be called once |version_| has been set to a
+  // valid value.
+  uint16_t ProtocolVersion() const;
+
+  // RecordVersion returns the record version that should be used with this
+  // SSLAEADContext for record construction and crypto.
+  uint16_t RecordVersion() const;
+
   const SSL_CIPHER *cipher() const { return cipher_; }
 
   // is_null_cipher returns true if this is the null cipher.
@@ -512,7 +539,7 @@ class SSLAEADContext {
   // success, it sets |*out| to the plaintext in |in| and returns true.
   // Otherwise, it returns false. The output will always be |ExplicitNonceLen|
   // bytes ahead of |in|.
-  bool Open(CBS *out, uint8_t type, uint16_t wire_version,
+  bool Open(CBS *out, uint8_t type, uint16_t record_version,
             const uint8_t seqnum[8], uint8_t *in, size_t in_len);
 
   // Seal encrypts and authenticates |in_len| bytes from |in| and writes the
@@ -520,7 +547,7 @@ class SSLAEADContext {
   //
   // If |in| and |out| alias then |out| + |ExplicitNonceLen| must be == |in|.
   bool Seal(uint8_t *out, size_t *out_len, size_t max_out, uint8_t type,
-            uint16_t wire_version, const uint8_t seqnum[8], const uint8_t *in,
+            uint16_t record_version, const uint8_t seqnum[8], const uint8_t *in,
             size_t in_len);
 
   // SealScatter encrypts and authenticates |in_len| bytes from |in| and splits
@@ -539,17 +566,18 @@ class SSLAEADContext {
   // If |in| and |out| alias then |out| must be == |in|. Other arguments may not
   // alias anything.
   bool SealScatter(uint8_t *out_prefix, uint8_t *out, uint8_t *out_suffix,
-                   uint8_t type, uint16_t wire_version, const uint8_t seqnum[8],
-                   const uint8_t *in, size_t in_len, const uint8_t *extra_in,
-                   size_t extra_in_len);
+                   uint8_t type, uint16_t record_version,
+                   const uint8_t seqnum[8], const uint8_t *in, size_t in_len,
+                   const uint8_t *extra_in, size_t extra_in_len);
 
   bool GetIV(const uint8_t **out_iv, size_t *out_iv_len) const;
 
  private:
   // GetAdditionalData writes the additional data into |out| and returns the
   // number of bytes written.
-  size_t GetAdditionalData(uint8_t out[13], uint8_t type, uint16_t wire_version,
-                           const uint8_t seqnum[8], size_t plaintext_len);
+  size_t GetAdditionalData(uint8_t out[13], uint8_t type,
+                           uint16_t record_version, const uint8_t seqnum[8],
+                           size_t plaintext_len);
 
   const SSL_CIPHER *cipher_;
   ScopedEVP_AEAD_CTX ctx_;
@@ -557,8 +585,10 @@ class SSLAEADContext {
   // records.
   uint8_t fixed_nonce_[12];
   uint8_t fixed_nonce_len_ = 0, variable_nonce_len_ = 0;
-  // version_ is the protocol version that should be used with this AEAD.
+  // version_ is the wire version that should be used with this AEAD.
   uint16_t version_;
+  // is_dtls_ is whether DTLS is being used with this AEAD.
+  bool is_dtls_;
   // variable_nonce_included_in_record_ is true if the variable nonce
   // for a record is included as a prefix before the ciphertext.
   bool variable_nonce_included_in_record_ : 1;

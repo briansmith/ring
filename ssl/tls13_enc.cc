@@ -150,8 +150,8 @@ int tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
   }
 
   UniquePtr<SSLAEADContext> traffic_aead = SSLAEADContext::Create(
-      direction, version, SSL_is_dtls(ssl), session->cipher, key, key_len, NULL,
-      0, iv, iv_len);
+      direction, session->ssl_version, SSL_is_dtls(ssl), session->cipher, key,
+      key_len, NULL, 0, iv, iv_len);
   if (!traffic_aead) {
     return 0;
   }

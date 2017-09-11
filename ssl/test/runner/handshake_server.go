@@ -668,7 +668,7 @@ ResendHelloRetryRequest:
 		}
 		if encryptedExtensions.extensions.hasEarlyData {
 			earlyTrafficSecret := hs.finishedHash.deriveSecret(earlyTrafficLabel)
-			c.in.useTrafficSecret(c.vers, hs.suite, earlyTrafficSecret, clientWrite)
+			c.in.useTrafficSecret(c.wireVersion, hs.suite, earlyTrafficSecret, clientWrite)
 
 			for _, expectedMsg := range config.Bugs.ExpectEarlyData {
 				if err := c.readRecord(recordTypeApplicationData); err != nil {
@@ -769,7 +769,7 @@ ResendHelloRetryRequest:
 
 	// Switch to handshake traffic keys.
 	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverHandshakeTrafficLabel)
-	c.out.useTrafficSecret(c.vers, hs.suite, serverHandshakeTrafficSecret, serverWrite)
+	c.out.useTrafficSecret(c.wireVersion, hs.suite, serverHandshakeTrafficSecret, serverWrite)
 	// Derive handshake traffic read key, but don't switch yet.
 	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
 
@@ -910,7 +910,7 @@ ResendHelloRetryRequest:
 
 	// Switch to application data keys on write. In particular, any alerts
 	// from the client certificate are sent over these keys.
-	c.out.useTrafficSecret(c.vers, hs.suite, serverTrafficSecret, serverWrite)
+	c.out.useTrafficSecret(c.wireVersion, hs.suite, serverTrafficSecret, serverWrite)
 
 	// Send 0.5-RTT messages.
 	for _, halfRTTMsg := range config.Bugs.SendHalfRTTData {
@@ -929,14 +929,14 @@ ResendHelloRetryRequest:
 		}
 	}
 
-	if isResumptionExperiment(c.wireVersion) && !c.skipEarlyData {
+	if isResumptionClientCCSExperiment(c.wireVersion) && !c.skipEarlyData {
 		if err := c.readRecord(recordTypeChangeCipherSpec); err != nil {
 			return err
 		}
 	}
 
 	// Switch input stream to handshake traffic keys.
-	c.in.useTrafficSecret(c.vers, hs.suite, clientHandshakeTrafficSecret, clientWrite)
+	c.in.useTrafficSecret(c.wireVersion, hs.suite, clientHandshakeTrafficSecret, clientWrite)
 
 	// If we requested a client certificate, then the client must send a
 	// certificate message, even if it's empty.
@@ -1040,7 +1040,7 @@ ResendHelloRetryRequest:
 	hs.writeClientHash(clientFinished.marshal())
 
 	// Switch to application data keys on read.
-	c.in.useTrafficSecret(c.vers, hs.suite, clientTrafficSecret, clientWrite)
+	c.in.useTrafficSecret(c.wireVersion, hs.suite, clientTrafficSecret, clientWrite)
 
 	c.cipherSuite = hs.suite
 	c.resumptionSecret = hs.finishedHash.deriveSecret(resumptionLabel)
@@ -1697,8 +1697,8 @@ func (hs *serverHandshakeState) establishKeys() error {
 		serverCipher = hs.suite.aead(c.vers, serverKey, serverIV)
 	}
 
-	c.in.prepareCipherSpec(c.vers, clientCipher, clientHash)
-	c.out.prepareCipherSpec(c.vers, serverCipher, serverHash)
+	c.in.prepareCipherSpec(c.wireVersion, clientCipher, clientHash)
+	c.out.prepareCipherSpec(c.wireVersion, serverCipher, serverHash)
 
 	return nil
 }

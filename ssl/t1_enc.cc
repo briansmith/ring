@@ -422,7 +422,7 @@ int tls1_change_cipher_state(SSL_HANDSHAKE *hs, int which) {
   }
 
   UniquePtr<SSLAEADContext> aead_ctx = SSLAEADContext::Create(
-      is_read ? evp_aead_open : evp_aead_seal, ssl3_protocol_version(ssl),
+      is_read ? evp_aead_open : evp_aead_seal, ssl->version,
       SSL_is_dtls(ssl), hs->new_cipher, key, key_len, mac_secret,
       mac_secret_len, iv, iv_len);
   if (!aead_ctx) {

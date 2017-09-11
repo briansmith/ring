@@ -159,10 +159,16 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_send_second_client_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   // Restore the null cipher. We may have switched due to 0-RTT.
-  bssl::UniquePtr<SSLAEADContext> null_ctx = SSLAEADContext::CreateNullCipher();
+  bssl::UniquePtr<SSLAEADContext> null_ctx =
+      SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
   if (!null_ctx ||
-      !ssl->method->set_write_state(ssl, std::move(null_ctx)) ||
-      !ssl_write_client_hello(hs)) {
+      !ssl->method->set_write_state(ssl, std::move(null_ctx))) {
+    return ssl_hs_error;
+  }
+
+  ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->version);
+
+  if (!ssl_write_client_hello(hs)) {
     return ssl_hs_error;
   }
 
@@ -367,7 +373,7 @@ static enum ssl_hs_wait_t do_process_change_cipher_spec(SSL_HANDSHAKE *hs) {
   if (!hs->early_data_offered) {
     // If not sending early data, set client traffic keys now so that alerts are
     // encrypted.
-    if ((ssl_is_resumption_experiment(ssl->version) &&
+    if ((ssl_is_resumption_client_ccs_experiment(ssl->version) &&
          !ssl3_add_change_cipher_spec(ssl)) ||
         !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
                                hs->hash_len)) {
@@ -575,7 +581,7 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
   }
 
   if (hs->early_data_offered) {
-    if ((ssl_is_resumption_experiment(ssl->version) &&
+    if ((ssl_is_resumption_client_ccs_experiment(ssl->version) &&
          !ssl3_add_change_cipher_spec(ssl)) ||
         !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
                                hs->hash_len)) {

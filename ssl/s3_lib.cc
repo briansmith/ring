@@ -165,8 +165,10 @@
 namespace bssl {
 
 int ssl3_new(SSL *ssl) {
-  UniquePtr<SSLAEADContext> aead_read_ctx = SSLAEADContext::CreateNullCipher();
-  UniquePtr<SSLAEADContext> aead_write_ctx = SSLAEADContext::CreateNullCipher();
+  UniquePtr<SSLAEADContext> aead_read_ctx =
+      SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
+  UniquePtr<SSLAEADContext> aead_write_ctx =
+      SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
   if (!aead_read_ctx || !aead_write_ctx) {
     return 0;
   }

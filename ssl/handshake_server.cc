@@ -276,6 +276,7 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   // At this point, the connection's version is known and |ssl->version| is
   // fixed. Begin enforcing the record-layer version.
   ssl->s3->have_version = true;
+  ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->version);
 
   // Handle FALLBACK_SCSV.
   if (ssl_client_cipher_list_contains_cipher(client_hello,

@@ -412,7 +412,7 @@ NextCipherSuite:
 		finishedHash.addEntropy(session.masterSecret)
 		finishedHash.Write(helloBytes)
 		earlyTrafficSecret := finishedHash.deriveSecret(earlyTrafficLabel)
-		c.out.useTrafficSecret(session.vers, pskCipherSuite, earlyTrafficSecret, clientWrite)
+		c.out.useTrafficSecret(session.wireVersion, pskCipherSuite, earlyTrafficSecret, clientWrite)
 		for _, earlyData := range c.config.Bugs.SendEarlyData {
 			if _, err := c.writeRecord(recordTypeApplicationData, earlyData); err != nil {
 				return err
@@ -755,7 +755,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	// traffic key.
 	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
 	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverHandshakeTrafficLabel)
-	c.in.useTrafficSecret(c.vers, hs.suite, serverHandshakeTrafficSecret, serverWrite)
+	c.in.useTrafficSecret(c.wireVersion, hs.suite, serverHandshakeTrafficSecret, serverWrite)
 
 	msg, err := c.readHandshake()
 	if err != nil {
@@ -889,7 +889,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	// Switch to application data keys on read. In particular, any alerts
 	// from the client certificate are read over these keys.
-	c.in.useTrafficSecret(c.vers, hs.suite, serverTrafficSecret, serverWrite)
+	c.in.useTrafficSecret(c.wireVersion, hs.suite, serverTrafficSecret, serverWrite)
 
 	// If we're expecting 0.5-RTT messages from the server, read them
 	// now.
@@ -931,11 +931,11 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		c.sendAlert(alertEndOfEarlyData)
 	}
 
-	if isResumptionExperiment(c.wireVersion) {
+	if isResumptionClientCCSExperiment(c.wireVersion) {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 	}
 
-	c.out.useTrafficSecret(c.vers, hs.suite, clientHandshakeTrafficSecret, clientWrite)
+	c.out.useTrafficSecret(c.wireVersion, hs.suite, clientHandshakeTrafficSecret, clientWrite)
 
 	if certReq != nil && !c.config.Bugs.SkipClientCertificate {
 		certMsg := &certificateMsg{
@@ -1021,7 +1021,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	c.flushHandshake()
 
 	// Switch to application data keys.
-	c.out.useTrafficSecret(c.vers, hs.suite, clientTrafficSecret, clientWrite)
+	c.out.useTrafficSecret(c.wireVersion, hs.suite, clientTrafficSecret, clientWrite)
 
 	c.resumptionSecret = hs.finishedHash.deriveSecret(resumptionLabel)
 	return nil
@@ -1288,8 +1288,8 @@ func (hs *clientHandshakeState) establishKeys() error {
 		serverCipher = hs.suite.aead(c.vers, serverKey, serverIV)
 	}
 
-	c.in.prepareCipherSpec(c.vers, serverCipher, serverHash)
-	c.out.prepareCipherSpec(c.vers, clientCipher, clientHash)
+	c.in.prepareCipherSpec(c.wireVersion, serverCipher, serverHash)
+	c.out.prepareCipherSpec(c.wireVersion, clientCipher, clientHash)
 	return nil
 }
 

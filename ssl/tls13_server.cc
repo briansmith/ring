@@ -706,7 +706,7 @@ static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
   if (hs->early_data_offered && !hs->ssl->early_data_accepted) {
     return ssl_hs_ok;
   }
-  return ssl_is_resumption_experiment(hs->ssl->version)
+  return ssl_is_resumption_client_ccs_experiment(hs->ssl->version)
              ? ssl_hs_read_change_cipher_spec
              : ssl_hs_ok;
 }
