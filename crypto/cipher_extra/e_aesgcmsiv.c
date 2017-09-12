@@ -34,6 +34,10 @@
 struct aead_aes_gcm_siv_asm_ctx {
   alignas(16) uint8_t key[16*15];
   int is_128_bit;
+  // ptr contains the original pointer from |OPENSSL_malloc|, which may only be
+  // 8-byte aligned. When freeing this structure, actually call |OPENSSL_free|
+  // on this pointer.
+  void *ptr;
 };
 
 // aes128gcmsiv_aes_ks writes an AES-128 key schedule for |key| to
@@ -64,16 +68,18 @@ static int aead_aes_gcm_siv_asm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
     return 0;
   }
 
-  // The asm implementation expects a 16-byte-aligned address here, so we use
-  // |malloc| rather than |OPENSSL_malloc|, which would add a length prefix.
-  struct aead_aes_gcm_siv_asm_ctx *gcm_siv_ctx =
-      malloc(sizeof(struct aead_aes_gcm_siv_asm_ctx));
-  if (gcm_siv_ctx == NULL) {
+  char *ptr = OPENSSL_malloc(sizeof(struct aead_aes_gcm_siv_asm_ctx) + 8);
+  if (ptr == NULL) {
     return 0;
   }
+  assert((((uintptr_t)ptr) & 7) == 0);
 
-  // malloc should return a 16-byte-aligned address.
+  // gcm_siv_ctx needs to be 16-byte aligned in a cross-platform way.
+  struct aead_aes_gcm_siv_asm_ctx *gcm_siv_ctx =
+      (struct aead_aes_gcm_siv_asm_ctx *)(ptr + (((uintptr_t)ptr) & 8));
+
   assert((((uintptr_t)gcm_siv_ctx) & 15) == 0);
+  gcm_siv_ctx->ptr = ptr;
 
   if (key_bits == 128) {
     aes128gcmsiv_aes_ks(key, &gcm_siv_ctx->key[0]);
@@ -89,7 +95,8 @@ static int aead_aes_gcm_siv_asm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
 }
 
 static void aead_aes_gcm_siv_asm_cleanup(EVP_AEAD_CTX *ctx) {
-  free(ctx->aead_state);  // allocated with native |malloc|
+  const struct aead_aes_gcm_siv_asm_ctx *gcm_siv_ctx = ctx->aead_state;
+  OPENSSL_free(gcm_siv_ctx->ptr);
 }
 
 // aesgcmsiv_polyval_horner updates the POLYVAL value in |in_out_poly| to
