@@ -3981,22 +3981,6 @@ typedef struct ssl_x509_method_st SSL_X509_METHOD;
 
 DECLARE_STACK_OF(SSL_CUSTOM_EXTENSION)
 
-struct ssl_cipher_st {
-  // name is the OpenSSL name for the cipher.
-  const char *name;
-  // standard_name is the IETF name for the cipher.
-  const char *standard_name;
-  // id is the cipher suite value bitwise OR-d with 0x03000000.
-  uint32_t id;
-
-  // algorithm_* are internal fields. See ssl/internal.h for their values.
-  uint32_t algorithm_mkey;
-  uint32_t algorithm_auth;
-  uint32_t algorithm_enc;
-  uint32_t algorithm_mac;
-  uint32_t algorithm_prf;
-};
-
 #define SSL_MAX_SSL_SESSION_ID_LENGTH 32
 #define SSL_MAX_SID_CTX_LENGTH 32
 #define SSL_MAX_MASTER_KEY_LENGTH 48

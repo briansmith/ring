@@ -302,6 +302,26 @@ bool ssl_is_resumption_record_version_experiment(uint16_t version);
 
 // Cipher suites.
 
+}  // namespace bssl
+
+struct ssl_cipher_st {
+  // name is the OpenSSL name for the cipher.
+  const char *name;
+  // standard_name is the IETF name for the cipher.
+  const char *standard_name;
+  // id is the cipher suite value bitwise OR-d with 0x03000000.
+  uint32_t id;
+
+  // algorithm_* determine the cipher suite. See constants below for the values.
+  uint32_t algorithm_mkey;
+  uint32_t algorithm_auth;
+  uint32_t algorithm_enc;
+  uint32_t algorithm_mac;
+  uint32_t algorithm_prf;
+};
+
+namespace bssl {
+
 // Bits for |algorithm_mkey| (key exchange algorithm).
 #define SSL_kRSA 0x00000001u
 #define SSL_kECDHE 0x00000002u
