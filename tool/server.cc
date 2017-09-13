@@ -160,6 +160,13 @@ static void InfoCallback(const SSL *ssl, int type, int value) {
   }
 }
 
+static FILE *g_keylog_file = nullptr;
+
+static void KeyLogCallback(const SSL *ssl, const char *line) {
+  fprintf(g_keylog_file, "%s\n", line);
+  fflush(g_keylog_file);
+}
+
 bool Server(const std::vector<std::string> &args) {
   if (!InitSocketLibrary()) {
     return false;
@@ -173,6 +180,16 @@ bool Server(const std::vector<std::string> &args) {
   }
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+
+  const char *keylog_file = getenv("SSLKEYLOGFILE");
+  if (keylog_file) {
+    g_keylog_file = fopen(keylog_file, "a");
+    if (g_keylog_file == nullptr) {
+      perror("fopen");
+      return false;
+    }
+    SSL_CTX_set_keylog_callback(ctx.get(), KeyLogCallback);
+  }
 
   // Server authentication is required.
   if (args_map.count("-key") != 0) {
