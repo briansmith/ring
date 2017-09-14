@@ -410,6 +410,9 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_cbc(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_ctr(void);
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_gcm(void);
 
+// EVP_aes_128_cfb128 is only available in decrepit.
+OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb128(void);
+
 
 // Private functions.
 
