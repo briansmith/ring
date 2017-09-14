@@ -755,10 +755,9 @@ bool ssl_is_probably_java(const SSL_CLIENT_HELLO *client_hello) {
 
   // Java has a very distinctive curve list, but IcedTea patches it to a more
   // standard [P-256, P-384, P-521]. Additionally check the extension
-  // order. This is more likely to lead to false positives but false positives
-  // only mean a loss of resumption. Any client new enough to support one of
-  // X25519, extended master secret, session tickets, or TLS 1.3 will be
-  // unaffected.
+  // order. This may still flag other clients, but false positives only mean a
+  // loss of resumption. Any client new enough to support one of X25519,
+  // extended master secret, session tickets, or TLS 1.3 will be unaffected.
   //
   // Java sends different extensions depending on configuration and version, but
   // those which are present are always in the same order. Check if the
@@ -812,16 +811,21 @@ enum ssl_hs_wait_t ssl_get_prev_session(SSL *ssl,
     // 1. The ClientHello offered a session.
     // 2. The session was successfully resumed previously.
     // 3. The server declines the session.
-    // 4. The server sends a certificate with a different SAN list than in the
-    //    previous session.
+    // 4. The server sends a certificate with a different (see below) SAN list
+    //    than in the previous session.
     //
     // (Note the 3SHAKE mitigation is to reject certificates changes on
     // renegotiation, while Java's logic applies to initial handshakes as well.)
     //
-    // The end result is long-lived Java clients break on some certificate
-    // rotations. Fingerprint Java clients and decline all offered
-    // sessions. This avoids (2) while still introducing new sessions to clear
-    // any existing problematic sessions.
+    // The end result is long-lived Java clients break on certificate rotations
+    // where the SAN list changes too much. Older versions of Java break if the
+    // first DNS name of the two certificates is different. Newer ones will
+    // break if there is no intersection. The new logic mostly mitigates this,
+    // but this can still cause problems if switching to or from wildcards.
+    //
+    // Thus, fingerprint Java clients and decline all offered sessions. This
+    // avoids (2) while still introducing new sessions to clear any existing
+    // problematic sessions.
     *out_session = nullptr;
     *out_tickets_supported = tickets_supported;
     *out_renew_ticket = false;
