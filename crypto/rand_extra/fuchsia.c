@@ -19,7 +19,16 @@
 #include <limits.h>
 #include <stdlib.h>
 
+// TODO(davidben): Remove this once https://crbug.com/765754 is resolved.
+#if defined(CHROMIUM_ROLLING_MAGENTA_TO_ZIRCON)
 #include <zircon/syscalls.h>
+#else
+#include <magenta/syscalls.h>
+#define ZX_CPRNG_DRAW_MAX_LEN MX_CPRNG_DRAW_MAX_LEN
+#define ZX_OK MX_OK
+#define zx_status_t mx_status_t
+#define zx_cprng_draw mx_cprng_draw
+#endif
 
 #include "../fipsmodule/rand/internal.h"
 
