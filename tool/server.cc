@@ -71,6 +71,11 @@ static const struct argument kArguments[] = {
         "-tls13-variant", kBooleanArgument, "Enable TLS 1.3 variants",
     },
     {
+        "-www", kBooleanArgument,
+        "The server will print connection information in response to a "
+        "HTTP GET request.",
+    },
+    {
         "-debug", kBooleanArgument,
         "Print debug information about the handshake",
     },
@@ -165,6 +170,41 @@ static FILE *g_keylog_file = nullptr;
 static void KeyLogCallback(const SSL *ssl, const char *line) {
   fprintf(g_keylog_file, "%s\n", line);
   fflush(g_keylog_file);
+}
+
+static bool HandleWWW(SSL *ssl) {
+  bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+  if (!bio) {
+    fprintf(stderr, "Cannot create BIO for response\n");
+    return false;
+  }
+
+  BIO_puts(bio.get(), "HTTP/1.0 200 OK\r\nContent-Type: text/plain\r\n\r\n");
+  PrintConnectionInfo(bio.get(), ssl);
+
+  char request[4];
+  size_t request_len = 0;
+  while (request_len < sizeof(request)) {
+    int ssl_ret =
+        SSL_read(ssl, request + request_len, sizeof(request) - request_len);
+    if (ssl_ret <= 0) {
+      int ssl_err = SSL_get_error(ssl, ssl_ret);
+      fprintf(stderr, "Error while reading: %d\n", ssl_err);
+      ERR_print_errors_cb(PrintErrorCallback, stderr);
+      return false;
+    }
+    request_len += static_cast<size_t>(ssl_ret);
+  }
+
+  // Assume simple HTTP request, print status.
+  if (memcmp(request, "GET ", 4) == 0) {
+    const uint8_t *response;
+    size_t response_len;
+    if (BIO_mem_contents(bio.get(), &response, &response_len)) {
+      SSL_write(ssl, response, response_len);
+    }
+  }
+  return true;
 }
 
 bool Server(const std::vector<std::string> &args) {
@@ -309,7 +349,11 @@ bool Server(const std::vector<std::string> &args) {
     bssl::UniquePtr<BIO> bio_stderr(BIO_new_fp(stderr, BIO_NOCLOSE));
     PrintConnectionInfo(bio_stderr.get(), ssl.get());
 
-    result = TransferData(ssl.get(), sock);
+    if (args_map.count("-www") != 0) {
+      result = HandleWWW(ssl.get());
+    } else {
+      result = TransferData(ssl.get(), sock);
+    }
   } while (args_map.count("-loop") != 0);
 
   return result;
