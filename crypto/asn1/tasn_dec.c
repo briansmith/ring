@@ -56,6 +56,7 @@
 
 #include <openssl/asn1.h>
 
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/asn1t.h>
@@ -178,6 +179,14 @@ int ASN1_item_ex_d2i(ASN1_VALUE **pval, const unsigned char **in, long len,
         asn1_cb = aux->asn1_cb;
     else
         asn1_cb = 0;
+
+    /*
+     * Bound |len| to comfortably fit in an int. Lengths in this module often
+     * switch between int and long without overflow checks.
+     */
+    if (len > INT_MAX/2) {
+        len = INT_MAX/2;
+    }
 
     switch (it->itype) {
     case ASN1_ITYPE_PRIMITIVE:
