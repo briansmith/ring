@@ -306,7 +306,8 @@ bool Server(const std::vector<std::string> &args) {
     }
 
     fprintf(stderr, "Connected.\n");
-    PrintConnectionInfo(ssl.get());
+    bssl::UniquePtr<BIO> bio_stderr(BIO_new_fp(stderr, BIO_NOCLOSE));
+    PrintConnectionInfo(bio_stderr.get(), ssl.get());
 
     result = TransferData(ssl.get(), sock);
   } while (args_map.count("-loop") != 0);

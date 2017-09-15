@@ -49,7 +49,7 @@ class Listener {
 
 bool VersionFromString(uint16_t *out_version, const std::string &version);
 
-void PrintConnectionInfo(const SSL *ssl);
+void PrintConnectionInfo(BIO *bio, const SSL *ssl);
 
 bool SocketSetNonBlocking(int sock, bool is_non_blocking);
 

@@ -259,68 +259,68 @@ static const char *SignatureAlgorithmToString(uint16_t version, uint16_t sigalg)
   }
 }
 
-void PrintConnectionInfo(const SSL *ssl) {
+void PrintConnectionInfo(BIO *bio, const SSL *ssl) {
   const SSL_CIPHER *cipher = SSL_get_current_cipher(ssl);
 
-  fprintf(stderr, "  Version: %s\n", SSL_get_version(ssl));
-  fprintf(stderr, "  Resumed session: %s\n",
-          SSL_session_reused(ssl) ? "yes" : "no");
-  fprintf(stderr, "  Cipher: %s\n", SSL_CIPHER_standard_name(cipher));
+  BIO_printf(bio, "  Version: %s\n", SSL_get_version(ssl));
+  BIO_printf(bio, "  Resumed session: %s\n",
+             SSL_session_reused(ssl) ? "yes" : "no");
+  BIO_printf(bio, "  Cipher: %s\n", SSL_CIPHER_standard_name(cipher));
   uint16_t curve = SSL_get_curve_id(ssl);
   if (curve != 0) {
-    fprintf(stderr, "  ECDHE curve: %s\n", SSL_get_curve_name(curve));
+    BIO_printf(bio, "  ECDHE curve: %s\n", SSL_get_curve_name(curve));
   }
   uint16_t sigalg = SSL_get_peer_signature_algorithm(ssl);
   if (sigalg != 0) {
-    fprintf(stderr, "  Signature algorithm: %s\n",
-            SignatureAlgorithmToString(SSL_version(ssl), sigalg));
+    BIO_printf(bio, "  Signature algorithm: %s\n",
+               SignatureAlgorithmToString(SSL_version(ssl), sigalg));
   }
-  fprintf(stderr, "  Secure renegotiation: %s\n",
-          SSL_get_secure_renegotiation_support(ssl) ? "yes" : "no");
-  fprintf(stderr, "  Extended master secret: %s\n",
-          SSL_get_extms_support(ssl) ? "yes" : "no");
+  BIO_printf(bio, "  Secure renegotiation: %s\n",
+             SSL_get_secure_renegotiation_support(ssl) ? "yes" : "no");
+  BIO_printf(bio, "  Extended master secret: %s\n",
+             SSL_get_extms_support(ssl) ? "yes" : "no");
 
   const uint8_t *next_proto;
   unsigned next_proto_len;
   SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
-  fprintf(stderr, "  Next protocol negotiated: %.*s\n", next_proto_len,
-          next_proto);
+  BIO_printf(bio, "  Next protocol negotiated: %.*s\n", next_proto_len,
+             next_proto);
 
   const uint8_t *alpn;
   unsigned alpn_len;
   SSL_get0_alpn_selected(ssl, &alpn, &alpn_len);
-  fprintf(stderr, "  ALPN protocol: %.*s\n", alpn_len, alpn);
+  BIO_printf(bio, "  ALPN protocol: %.*s\n", alpn_len, alpn);
 
   const char *host_name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
   if (host_name != nullptr && SSL_is_server(ssl)) {
-    fprintf(stderr, "  Client sent SNI: %s\n", host_name);
+    BIO_printf(bio, "  Client sent SNI: %s\n", host_name);
   }
 
   if (!SSL_is_server(ssl)) {
     const uint8_t *ocsp_staple;
     size_t ocsp_staple_len;
     SSL_get0_ocsp_response(ssl, &ocsp_staple, &ocsp_staple_len);
-    fprintf(stderr, "  OCSP staple: %s\n", ocsp_staple_len > 0 ? "yes" : "no");
+    BIO_printf(bio, "  OCSP staple: %s\n", ocsp_staple_len > 0 ? "yes" : "no");
 
     const uint8_t *sct_list;
     size_t sct_list_len;
     SSL_get0_signed_cert_timestamp_list(ssl, &sct_list, &sct_list_len);
-    fprintf(stderr, "  SCT list: %s\n", sct_list_len > 0 ? "yes" : "no");
+    BIO_printf(bio, "  SCT list: %s\n", sct_list_len > 0 ? "yes" : "no");
   }
 
-  fprintf(stderr, "  Early data: %s\n",
-          SSL_early_data_accepted(ssl) ? "yes" : "no");
+  BIO_printf(bio, "  Early data: %s\n",
+             SSL_early_data_accepted(ssl) ? "yes" : "no");
 
   // Print the server cert subject and issuer names.
   bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(ssl));
   if (peer != nullptr) {
-    fprintf(stderr, "  Cert subject: ");
-    X509_NAME_print_ex_fp(stderr, X509_get_subject_name(peer.get()), 0,
-                          XN_FLAG_ONELINE);
-    fprintf(stderr, "\n  Cert issuer: ");
-    X509_NAME_print_ex_fp(stderr, X509_get_issuer_name(peer.get()), 0,
-                          XN_FLAG_ONELINE);
-    fprintf(stderr, "\n");
+    BIO_printf(bio, "  Cert subject: ");
+    X509_NAME_print_ex(bio, X509_get_subject_name(peer.get()), 0,
+                       XN_FLAG_ONELINE);
+    BIO_printf(bio, "\n  Cert issuer: ");
+    X509_NAME_print_ex(bio, X509_get_issuer_name(peer.get()), 0,
+                       XN_FLAG_ONELINE);
+    BIO_printf(bio, "\n");
   }
 }
 
