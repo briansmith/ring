@@ -135,6 +135,15 @@ pub struct TestCase {
 }
 
 impl TestCase {
+    /// Maps the string "true" to true and the string "false" to false.
+    pub fn consume_bool(&mut self, key: &str) -> bool {
+        match self.consume_string(key).as_ref() {
+            "true" => true,
+            "false" => false,
+            s => panic!("Invalid bool value: {}", s),
+        }
+    }
+
     /// Maps the strings "SHA1", "SHA256", "SHA384", and "SHA512" to digest
     /// algorithms, maps "SHA224" to `None`, and panics on other (erroneous)
     /// inputs. "SHA224" is mapped to None because *ring* intentionally does
