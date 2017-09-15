@@ -158,16 +158,48 @@ impl TestCase {
     /// even number of hex digits, or as a double-quoted UTF-8 string. The
     /// empty (zero-length) value is represented as "".
     pub fn consume_bytes(&mut self, key: &str) -> Vec<u8> {
-        let mut s = self.consume_string(key);
+        let s = self.consume_string(key);
         if s.starts_with('\"') {
-            // The value is a quoted strong.
-            // XXX: We don't deal with any inner quotes.
-            if !s.ends_with('\"') {
-                panic!("expected quoted string, found {}", s);
+            // The value is a quoted UTF-8 string.
+
+            let mut bytes = Vec::with_capacity(s.as_bytes().len() - 2);
+            let mut s = s.as_bytes().iter().skip(1);
+            loop {
+                let b = match s.next() {
+                    Some(&b'\\') => {
+                        match s.next() {
+                            // We don't allow all octal escape sequences, only "\0" for null.
+                            Some(&b'0') => 0u8,
+                            // "\xHH"
+                            Some(&b'x') => {
+                                let hi = s.next().expect("Invalid hex escape sequence in string.");
+                                let lo = s.next().expect("Invalid hex escape sequence in string.");
+                                if let (Ok(hi), Ok(lo)) =
+                                        (from_hex_digit(*hi), from_hex_digit(*lo)) {
+                                    (hi << 4) | lo
+                                } else {
+                                    panic!("Invalid hex escape sequence in string.");
+                                }
+                            },
+                            _ => {
+                                panic!("Invalid hex escape sequence in string.");
+                            }
+                        }
+                    },
+                    Some(&b'"') => {
+                        if s.next().is_some() {
+                            panic!("characters after the closing quote of a quoted string.");
+                        }
+                        break;
+                    },
+                    Some(b) => *b,
+                    None => {
+                        panic!("Missing terminating '\"' in string literal.")
+                    }
+                };
+                bytes.push(b);
             }
-            let _ = s.pop();
-            let _ = s.remove(0);
-            Vec::from(s.as_bytes())
+            bytes
         } else {
             // The value is hex encoded.
             match from_hex(&s) {
@@ -296,18 +328,6 @@ pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
             String::from("Hex string does not have an even number of digits"));
     }
 
-    fn from_hex_digit(d: u8) -> Result<u8, String> {
-        if d >= b'0' && d <= b'9' {
-            Ok(d - b'0')
-        } else if d >= b'a' && d <= b'f' {
-            Ok(d - b'a' + 10u8)
-        } else if d >= b'A' && d <= b'F' {
-            Ok(d - b'A' + 10u8)
-        } else {
-            Err(format!("Invalid hex digit '{}'", d as char))
-        }
-    }
-
     let mut result = Vec::with_capacity(hex_str.len() / 2);
     for digits in hex_str.as_bytes().chunks(2) {
         let hi = from_hex_digit(digits[0])?;
@@ -315,6 +335,18 @@ pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
         result.push((hi * 0x10) | lo);
     }
     Ok(result)
+}
+
+fn from_hex_digit(d: u8) -> Result<u8, String> {
+    if d >= b'0' && d <= b'9' {
+        Ok(d - b'0')
+    } else if d >= b'a' && d <= b'f' {
+        Ok(d - b'a' + 10u8)
+    } else if d >= b'A' && d <= b'F' {
+        Ok(d - b'A' + 10u8)
+    } else {
+        Err(format!("Invalid hex digit '{}'", d as char))
+    }
 }
 
 type FileLines<'a> = std::io::Lines<std::io::BufReader<&'a std::fs::File>>;
