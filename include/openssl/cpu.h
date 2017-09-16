@@ -135,6 +135,10 @@ static inline int CRYPTO_is_NEON_capable(void) {
 // CRYPTO_has_broken_NEON returns one if the current CPU is known to have a
 // broken NEON unit. See https://crbug.com/341598.
 OPENSSL_EXPORT int CRYPTO_has_broken_NEON(void);
+
+// CRYPTO_needs_hwcap2_workaround returns one if the ARMv8 AArch32 AT_HWCAP2
+// workaround was needed. See https://crbug.com/boringssl/46.
+OPENSSL_EXPORT int CRYPTO_needs_hwcap2_workaround(void);
 #endif
 
 // CRYPTO_is_ARMv8_AES_capable returns true if the current CPU supports the

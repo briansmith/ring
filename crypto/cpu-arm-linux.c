@@ -288,7 +288,7 @@ static int has_broken_neon(const STRING_PIECE *cpuinfo) {
 
 extern uint32_t OPENSSL_armcap_P;
 
-static int g_has_broken_neon;
+static int g_has_broken_neon, g_needs_hwcap2_workaround;
 
 void OPENSSL_cpuid_setup(void) {
   char *cpuinfo_data;
@@ -336,6 +336,7 @@ void OPENSSL_cpuid_setup(void) {
     }
     if (hwcap2 == 0) {
       hwcap2 = get_hwcap2_cpuinfo(&cpuinfo);
+      g_needs_hwcap2_workaround = hwcap2 != 0;
     }
 
     if (hwcap2 & HWCAP2_AES) {
@@ -356,5 +357,7 @@ void OPENSSL_cpuid_setup(void) {
 }
 
 int CRYPTO_has_broken_NEON(void) { return g_has_broken_neon; }
+
+int CRYPTO_needs_hwcap2_workaround(void) { return g_needs_hwcap2_workaround; }
 
 #endif  // OPENSSL_ARM && !OPENSSL_STATIC_ARMCAP
