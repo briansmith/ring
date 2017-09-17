@@ -179,6 +179,8 @@ impl TestCase {
                         match s.next() {
                             // We don't allow all octal escape sequences, only "\0" for null.
                             Some(&b'0') => 0u8,
+                            Some(&b't') => b'\t',
+                            Some(&b'n') => b'\n',
                             // "\xHH"
                             Some(&b'x') => {
                                 let hi = s.next().expect("Invalid hex escape sequence in string.");
