@@ -41,7 +41,7 @@ int rand_fork_unsafe_buffering_enabled(void);
 // CTR_DRBG_STATE contains the state of a CTR_DRBG based on AES-256. See SP
 // 800-90Ar1.
 typedef struct {
-  alignas(16) AES_KEY ks;
+  AES_KEY ks;
   block128_f block;
   ctr128_f ctr;
   union {
