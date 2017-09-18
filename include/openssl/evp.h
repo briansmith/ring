@@ -226,7 +226,7 @@ OPENSSL_EXPORT EVP_PKEY *EVP_parse_private_key(CBS *cbs);
 OPENSSL_EXPORT int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key);
 
 // EVP_set_buggy_rsa_parser configures whether |RSA_parse_public_key_buggy| is
-// used by |EVP_parse_public_key|. By default, it is used.
+// used by |EVP_parse_public_key|. By default, it is not used.
 OPENSSL_EXPORT void EVP_set_buggy_rsa_parser(int buggy);
 
 

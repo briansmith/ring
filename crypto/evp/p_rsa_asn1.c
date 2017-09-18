@@ -68,7 +68,7 @@
 
 
 static struct CRYPTO_STATIC_MUTEX g_buggy_lock = CRYPTO_STATIC_MUTEX_INIT;
-static int g_buggy = 1;
+static int g_buggy = 0;
 
 void EVP_set_buggy_rsa_parser(int buggy) {
   CRYPTO_STATIC_MUTEX_lock_write(&g_buggy_lock);
