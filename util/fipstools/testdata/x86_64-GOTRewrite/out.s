@@ -113,6 +113,9 @@ foo:
 	popq %rax
 	leaq 128(%rsp), %rsp
 
+	# movsd without arguments should be left as-is.
+	movsd
+
 	# Synthesized symbols do not use the GOT.
 # WAS movq BORINGSSL_bcm_text_start@GOTPCREL(%rip), %r11
 	leaq	BORINGSSL_bcm_text_start(%rip), %r11
