@@ -98,6 +98,21 @@ foo:
 	leaq	.Lfoo_local_target(%rip), %r11
 999:
 
+# WAS movsd foo@GOTPCREL(%rip), %xmm0
+	leaq -128(%rsp), %rsp
+	pushq %rax
+	leaq	.Lfoo_local_target(%rip), %rax
+	movq %rax, %xmm0
+	popq %rax
+	leaq 128(%rsp), %rsp
+# WAS vmovsd foo@GOTPCREL(%rip), %xmm0
+	leaq -128(%rsp), %rsp
+	pushq %rax
+	leaq	.Lfoo_local_target(%rip), %rax
+	vmovq %rax, %xmm0
+	popq %rax
+	leaq 128(%rsp), %rsp
+
 	# Synthesized symbols do not use the GOT.
 # WAS movq BORINGSSL_bcm_text_start@GOTPCREL(%rip), %r11
 	leaq	BORINGSSL_bcm_text_start(%rip), %r11

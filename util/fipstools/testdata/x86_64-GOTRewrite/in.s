@@ -23,6 +23,9 @@ foo:
 	cmovneq stderr@GOTPCREL(%rip), %r11
 	cmovneq foo@GOTPCREL(%rip), %r11
 
+	movsd foo@GOTPCREL(%rip), %xmm0
+	vmovsd foo@GOTPCREL(%rip), %xmm0
+
 	# Synthesized symbols do not use the GOT.
 	movq BORINGSSL_bcm_text_start@GOTPCREL(%rip), %r11
 	movq foobar_bss_get@GOTPCREL(%rip), %r11
