@@ -58,14 +58,14 @@ foo:
 	addq (%rax), %rax
 	movq (%rax), %rax
 	popf
-	movq %rax, %xmm0
+	vmovq %rax, %xmm0
 	popq %rax
 	leaq 128(%rsp), %rsp
 # WAS vmovq foo@GOTPCREL(%rip), %xmm0
 	leaq -128(%rsp), %rsp
 	pushq %rax
 	leaq	.Lfoo_local_target(%rip), %rax
-	movq %rax, %xmm0
+	vmovq %rax, %xmm0
 	popq %rax
 	leaq 128(%rsp), %rsp
 

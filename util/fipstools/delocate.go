@@ -859,10 +859,14 @@ func saveRegister(w stringWriter) wrapperFunc {
 	}
 }
 
-func moveTo(w stringWriter, target string) wrapperFunc {
+func moveTo(w stringWriter, target string, isAVX bool) wrapperFunc {
 	return func(k func()) {
 		k()
-		w.WriteString("\tmovq %rax, " + target + "\n")
+		prefix := ""
+		if isAVX {
+			prefix = "v"
+		}
+		w.WriteString("\t" + prefix + "movq %rax, " + target + "\n")
 	}
 }
 
@@ -1024,7 +1028,8 @@ Args:
 					// XMM register, which is not a valid target of an LEA
 					// instruction.
 					wrappers = append(wrappers, saveRegister(d.output))
-					wrappers = append(wrappers, moveTo(d.output, targetReg))
+					isAVX := strings.HasPrefix(instructionName, "v")
+					wrappers = append(wrappers, moveTo(d.output, targetReg, isAVX))
 					targetReg = "%rax"
 					redzoneCleared = true
 				}
