@@ -230,11 +230,13 @@ static BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a,
             if (--dl <= 0) {
               break;
             }
+            OPENSSL_FALLTHROUGH;
           case 2:
             r[2] = a[2];
             if (--dl <= 0) {
               break;
             }
+            OPENSSL_FALLTHROUGH;
           case 3:
             r[3] = a[3];
             if (--dl <= 0) {

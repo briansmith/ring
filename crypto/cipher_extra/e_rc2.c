@@ -73,18 +73,25 @@
     switch (n) {                               \
       case 8:                                  \
         (l2) = ((uint32_t)(*(--(c)))) << 24L;  \
+        OPENSSL_FALLTHROUGH;                   \
       case 7:                                  \
         (l2) |= ((uint32_t)(*(--(c)))) << 16L; \
+        OPENSSL_FALLTHROUGH;                   \
       case 6:                                  \
         (l2) |= ((uint32_t)(*(--(c)))) << 8L;  \
+        OPENSSL_FALLTHROUGH;                   \
       case 5:                                  \
         (l2) |= ((uint32_t)(*(--(c))));        \
+        OPENSSL_FALLTHROUGH;                   \
       case 4:                                  \
         (l1) = ((uint32_t)(*(--(c)))) << 24L;  \
+        OPENSSL_FALLTHROUGH;                   \
       case 3:                                  \
         (l1) |= ((uint32_t)(*(--(c)))) << 16L; \
+        OPENSSL_FALLTHROUGH;                   \
       case 2:                                  \
         (l1) |= ((uint32_t)(*(--(c)))) << 8L;  \
+        OPENSSL_FALLTHROUGH;                   \
       case 1:                                  \
         (l1) |= ((uint32_t)(*(--(c))));        \
     }                                          \
@@ -104,18 +111,25 @@
     switch (n) {                                    \
       case 8:                                       \
         *(--(c)) = (uint8_t)(((l2) >> 24L) & 0xff); \
+        OPENSSL_FALLTHROUGH;                        \
       case 7:                                       \
         *(--(c)) = (uint8_t)(((l2) >> 16L) & 0xff); \
+        OPENSSL_FALLTHROUGH;                        \
       case 6:                                       \
         *(--(c)) = (uint8_t)(((l2) >> 8L) & 0xff);  \
+        OPENSSL_FALLTHROUGH;                        \
       case 5:                                       \
         *(--(c)) = (uint8_t)(((l2)) & 0xff);        \
+        OPENSSL_FALLTHROUGH;                        \
       case 4:                                       \
         *(--(c)) = (uint8_t)(((l1) >> 24L) & 0xff); \
+        OPENSSL_FALLTHROUGH;                        \
       case 3:                                       \
         *(--(c)) = (uint8_t)(((l1) >> 16L) & 0xff); \
+        OPENSSL_FALLTHROUGH;                        \
       case 2:                                       \
         *(--(c)) = (uint8_t)(((l1) >> 8L) & 0xff);  \
+        OPENSSL_FALLTHROUGH;                        \
       case 1:                                       \
         *(--(c)) = (uint8_t)(((l1)) & 0xff);        \
     }                                               \

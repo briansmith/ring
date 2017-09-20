@@ -190,6 +190,7 @@ static long fd_ctrl(BIO *b, int cmd, long num, void *ptr) {
   switch (cmd) {
     case BIO_CTRL_RESET:
       num = 0;
+      OPENSSL_FALLTHROUGH;
     case BIO_C_FILE_SEEK:
       ret = 0;
       if (b->init) {

@@ -183,6 +183,7 @@ static long file_ctrl(BIO *b, int cmd, long num, void *ptr) {
   switch (cmd) {
     case BIO_CTRL_RESET:
       num = 0;
+      OPENSSL_FALLTHROUGH;
     case BIO_C_FILE_SEEK:
       ret = (long)fseek(fp, num, 0);
       break;

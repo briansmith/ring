@@ -2396,16 +2396,6 @@ void ssl_ctx_get_current_time(const SSL_CTX *ctx,
 // ssl_reset_error_state resets state for |SSL_get_error|.
 void ssl_reset_error_state(SSL *ssl);
 
-
-// Utility macros
-
-#if defined(__clang__)
-// SSL_FALLTHROUGH annotates a fallthough case in a switch statement.
-#define SSL_FALLTHROUGH [[clang::fallthrough]]
-#else
-#define SSL_FALLTHROUGH
-#endif
-
 }  // namespace bssl
 
 
