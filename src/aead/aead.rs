@@ -24,6 +24,71 @@
 //!
 //! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
+//!
+//! # Examples
+//!
+//!```rust
+//!extern crate ring;
+//!
+//!use ring::aead::*;
+//!use ring::rand::{SecureRandom, SystemRandom};
+//!
+//!fn main() {
+//!    let rand = SystemRandom::new();
+//!
+//!    // Keys must have 32 bytes and also should not be hard coded, it can be generated
+//!    // with SystemRandom
+//!    let mut key = [0; 32];
+//!    rand.fill(&mut key);
+//!
+//!    // Opening key used to decrypt data
+//!    let opening_key = OpeningKey::new(&CHACHA20_POLY1305, &key).unwrap();
+//!
+//!    // Sealing key used to encrypt data
+//!    let sealing_key = SealingKey::new(&CHACHA20_POLY1305, &key).unwrap();
+//!
+//!    // Your private data
+//!    let content = b"content to encrypt".to_vec();
+//!    println!("Content to encrypt's size {}", content.len());
+//!
+//!    // Additional data that you would like to send and it would not be encrypted but it
+//!    // would be signed
+//!    let additional_data: [u8; 0] = [];
+//!
+//!    // Ring uses the same input variable as output
+//!    let mut in_out = content.clone();
+//!
+//!    // The input/output variable need some space to store the tag which will have the
+//!    // signature
+//!    in_out.resize(content.len() + CHACHA20_POLY1305.tag_len(), 0);
+//!
+//!    // Random data must be used only once per encryption and ideally if you encrypt blocks
+//!    // it should be generated on per block see an example of poorly generated nonces
+//!    // where a new nonce is generated at every few pixels at
+//!    // https://github.com/jaysonsantos/bad-encryption-example
+//!    // it must be 12 bytes (96 bits) and you should use a secure random generator, not
+//!    // some pseudo random algorithm without enough entropy
+//!    let mut nonce = vec![0; 12];
+//!
+//!    // Fill nonce with random data
+//!    rand.fill(&mut nonce).unwrap();
+//!
+//!    // Encrypt data into in_out variable
+//!    let output_size = seal_in_place(&sealing_key, &nonce, &additional_data, &mut in_out,
+//!                                    CHACHA20_POLY1305.tag_len()).unwrap();
+//!
+//!    println!("Encrypted data's size {}", output_size);
+//!    // seal_in_place may or may not use all tag's space and it should be truncated in
+//!    // case it didn't use it all
+//!    in_out.truncate(output_size);
+//!
+//!    let decrypted_data = open_in_place(&opening_key, &nonce, &additional_data,
+//!                                       0, &mut in_out).unwrap();
+//!
+//!    println!("{:?}", String::from_utf8(decrypted_data.to_vec()).unwrap());
+//!    assert_eq!(content, decrypted_data);
+//!}
+//!```
 
 pub mod chacha20_poly1305_openssh;
 
