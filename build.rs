@@ -61,7 +61,7 @@
     while_true,
 )]
 
-extern crate gcc;
+extern crate cc;
 extern crate rayon;
 
 // In the `pregenerate_asm_main()` case we don't want to access (Cargo)
@@ -495,7 +495,7 @@ fn build_library(target: &Target, out_dir: &Path, lib_name: &str,
         .with_max_len(1)
         .map(|f| Path::new(f))
         .any(|p| need_run(&p, &lib_path, includes_modified)) {
-        let mut c = gcc::Config::new();
+        let mut c = cc::Build::new();
 
         for f in LD_FLAGS {
             let _ = c.flag(&f);
@@ -556,7 +556,7 @@ fn obj_path(out_dir: &Path, src: &Path, obj_ext: &str) -> PathBuf {
 fn cc(file: &Path, ext: &str, target: &Target, warnings_are_errors: bool,
       out_dir: &Path)
       -> Command {
-    let mut c = gcc::Config::new();
+    let mut c = cc::Build::new();
     let _ = c.include("include");
     match ext {
         "c" => {
