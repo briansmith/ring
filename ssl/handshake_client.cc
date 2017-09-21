@@ -976,13 +976,10 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
 
     // Initialize ECDH and save the peer public key for later.
     hs->key_share = SSLKeyShare::Create(group_id);
-    uint8_t *peer_key = nullptr;
-    size_t peer_key_len = 0;
     if (!hs->key_share ||
-        !CBS_stow(&point, &peer_key, &peer_key_len)) {
+        !hs->peer_key.CopyFrom(point)) {
       return ssl_hs_error;
     }
-    hs->peer_key.Reset(peer_key, peer_key_len);
   } else if (!(alg_k & SSL_kPSK)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
@@ -1109,8 +1106,7 @@ static enum ssl_hs_wait_t do_read_certificate_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!CBS_stow(&certificate_types, &hs->certificate_types,
-                &hs->num_certificate_types)) {
+  if (!hs->certificate_types.CopyFrom(certificate_types)) {
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
   }

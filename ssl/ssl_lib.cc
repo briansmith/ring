@@ -2022,8 +2022,8 @@ size_t SSL_get0_certificate_types(SSL *ssl, const uint8_t **out_types) {
     *out_types = NULL;
     return 0;
   }
-  *out_types = ssl->s3->hs->certificate_types;
-  return ssl->s3->hs->num_certificate_types;
+  *out_types = ssl->s3->hs->certificate_types.data();
+  return ssl->s3->hs->certificate_types.size();
 }
 
 EVP_PKEY *SSL_get_privatekey(const SSL *ssl) {

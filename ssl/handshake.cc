@@ -144,13 +144,10 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
 }
 
 SSL_HANDSHAKE::~SSL_HANDSHAKE() {
-  OPENSSL_free(cookie);
-  OPENSSL_free(key_share_bytes);
   OPENSSL_free(ecdh_public_key);
   OPENSSL_free(peer_sigalgs);
   OPENSSL_free(server_params);
   ssl->ctx->x509_method->hs_flush_cached_ca_names(this);
-  OPENSSL_free(certificate_types);
   OPENSSL_free(key_block);
 }
 

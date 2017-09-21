@@ -99,7 +99,7 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    if (!CBS_stow(&cookie_value, &hs->cookie, &hs->cookie_len)) {
+    if (!hs->cookie.CopyFrom(cookie_value)) {
       return ssl_hs_error;
     }
   }
@@ -841,10 +841,7 @@ int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
 
 void ssl_clear_tls13_state(SSL_HANDSHAKE *hs) {
   hs->key_share.reset();
-
-  OPENSSL_free(hs->key_share_bytes);
-  hs->key_share_bytes = NULL;
-  hs->key_share_bytes_len = 0;
+  hs->key_share_bytes.Reset();
 }
 
 }  // namespace bssl

@@ -149,19 +149,16 @@ static int compare_uint16_t(const void *p1, const void *p2) {
 // This function does an initial scan over the extensions block to filter those
 // out.
 static int tls1_check_duplicate_extensions(const CBS *cbs) {
-  CBS extensions = *cbs;
-  size_t num_extensions = 0, i = 0;
-  uint16_t *extension_types = NULL;
-  int ret = 0;
-
   // First pass: count the extensions.
+  size_t num_extensions = 0;
+  CBS extensions = *cbs;
   while (CBS_len(&extensions) > 0) {
     uint16_t type;
     CBS extension;
 
     if (!CBS_get_u16(&extensions, &type) ||
         !CBS_get_u16_length_prefixed(&extensions, &extension)) {
-      goto done;
+      return 0;
     }
 
     num_extensions++;
@@ -171,39 +168,34 @@ static int tls1_check_duplicate_extensions(const CBS *cbs) {
     return 1;
   }
 
-  extension_types =
-      (uint16_t *)OPENSSL_malloc(sizeof(uint16_t) * num_extensions);
-  if (extension_types == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    goto done;
+  Array<uint16_t> extension_types;
+  if (!extension_types.Init(num_extensions)) {
+    return 0;
   }
 
   // Second pass: gather the extension types.
   extensions = *cbs;
-  for (i = 0; i < num_extensions; i++) {
+  for (size_t i = 0; i < extension_types.size(); i++) {
     CBS extension;
 
     if (!CBS_get_u16(&extensions, &extension_types[i]) ||
         !CBS_get_u16_length_prefixed(&extensions, &extension)) {
       // This should not happen.
-      goto done;
+      return 0;
     }
   }
   assert(CBS_len(&extensions) == 0);
 
   // Sort the extensions and make sure there are no duplicates.
-  qsort(extension_types, num_extensions, sizeof(uint16_t), compare_uint16_t);
-  for (i = 1; i < num_extensions; i++) {
+  qsort(extension_types.data(), extension_types.size(), sizeof(uint16_t),
+        compare_uint16_t);
+  for (size_t i = 1; i < num_extensions; i++) {
     if (extension_types[i - 1] == extension_types[i]) {
-      goto done;
+      return 0;
     }
   }
 
-  ret = 1;
-
-done:
-  OPENSSL_free(extension_types);
-  return ret;
+  return 1;
 }
 
 int ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out,
@@ -2102,13 +2094,11 @@ static int ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     // We received a HelloRetryRequest without a new curve, so there is no new
     // share to append. Leave |hs->key_share| as-is.
     if (group_id == 0 &&
-        !CBB_add_bytes(&kse_bytes, hs->key_share_bytes,
-                       hs->key_share_bytes_len)) {
+        !CBB_add_bytes(&kse_bytes, hs->key_share_bytes.data(),
+                       hs->key_share_bytes.size())) {
       return 0;
     }
-    OPENSSL_free(hs->key_share_bytes);
-    hs->key_share_bytes = NULL;
-    hs->key_share_bytes_len = 0;
+    hs->key_share_bytes.Reset();
     if (group_id == 0) {
       return CBB_flush(out);
     }
@@ -2142,15 +2132,11 @@ static int ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return 0;
   }
 
-  if (!hs->received_hello_retry_request) {
-    // Save the contents of the extension to repeat it in the second
-    // ClientHello.
-    hs->key_share_bytes_len = CBB_len(&kse_bytes);
-    hs->key_share_bytes =
-        (uint8_t *)BUF_memdup(CBB_data(&kse_bytes), CBB_len(&kse_bytes));
-    if (hs->key_share_bytes == NULL) {
-      return 0;
-    }
+  // Save the contents of the extension to repeat it in the second ClientHello.
+  if (!hs->received_hello_retry_request &&
+      !hs->key_share_bytes.CopyFrom(
+          MakeConstSpan(CBB_data(&kse_bytes), CBB_len(&kse_bytes)))) {
+    return 0;
   }
 
   return CBB_flush(out);
@@ -2310,7 +2296,7 @@ static int ext_supported_versions_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 // https://tools.ietf.org/html/draft-ietf-tls-tls13-16#section-4.2.2
 
 static int ext_cookie_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
-  if (hs->cookie == NULL) {
+  if (hs->cookie.size() == 0) {
     return 1;
   }
 
@@ -2318,15 +2304,13 @@ static int ext_cookie_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   if (!CBB_add_u16(out, TLSEXT_TYPE_cookie) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_u16_length_prefixed(&contents, &cookie) ||
-      !CBB_add_bytes(&cookie, hs->cookie, hs->cookie_len) ||
+      !CBB_add_bytes(&cookie, hs->cookie.data(), hs->cookie.size()) ||
       !CBB_flush(out)) {
     return 0;
   }
 
   // The cookie is no longer needed in memory.
-  OPENSSL_free(hs->cookie);
-  hs->cookie = NULL;
-  hs->cookie_len = 0;
+  hs->cookie.Reset();
   return 1;
 }
 
