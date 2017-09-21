@@ -757,6 +757,13 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  if (ssl->token_binding_negotiated &&
+      (!hs->extended_master_secret || !ssl->s3->send_connection_binding)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NEGOTIATED_TB_WITHOUT_EMS_OR_RI);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
+    return ssl_hs_error;
+  }
+
   ssl->method->next_message(ssl);
 
   if (ssl->session != NULL) {

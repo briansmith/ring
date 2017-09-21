@@ -1381,6 +1381,21 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		serverExtensions.channelIDRequested = true
 	}
 
+	if config.TokenBindingParams != nil {
+		if !bytes.Equal(config.ExpectTokenBindingParams, hs.clientHello.tokenBindingParams) {
+			return errors.New("client did not send expected token binding params")
+		}
+
+		// For testing, blindly send whatever is set in config, even if
+		// it is invalid.
+		serverExtensions.tokenBindingParams = config.TokenBindingParams
+		serverExtensions.tokenBindingVersion = config.TokenBindingVersion
+	}
+
+	if len(hs.clientHello.tokenBindingParams) > 0 && (!hs.clientHello.extendedMasterSecret || hs.clientHello.secureRenegotiation == nil) {
+		return errors.New("client sent Token Binding without EMS and/or RI")
+	}
+
 	if hs.clientHello.srtpProtectionProfiles != nil {
 	SRTPLoop:
 		for _, p1 := range c.config.SRTPProtectionProfiles {

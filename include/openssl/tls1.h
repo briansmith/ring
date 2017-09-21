@@ -202,6 +202,9 @@ extern "C" {
 // ExtensionType value from RFC7627
 #define TLSEXT_TYPE_extended_master_secret 23
 
+// ExtensionType value from draft-ietf-tokbind-negotiation-10
+#define TLSEXT_TYPE_token_binding 24
+
 // ExtensionType value from RFC4507
 #define TLSEXT_TYPE_session_ticket 35
 

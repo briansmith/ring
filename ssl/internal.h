@@ -1376,6 +1376,12 @@ struct SSL_HANDSHAKE {
   // peer_key is the peer's ECDH key for a TLS 1.2 client.
   Array<uint8_t> peer_key;
 
+  // negotiated_token_binding_version is used by a server to store the
+  // on-the-wire encoding of the Token Binding protocol version to advertise in
+  // the ServerHello/EncryptedExtensions if the Token Binding extension is to be
+  // sent.
+  uint16_t negotiated_token_binding_version;
+
   // server_params, in a TLS 1.2 server, stores the ServerKeyExchange
   // parameters. It has client and server randoms prepended for signing
   // convenience.
@@ -2606,6 +2612,14 @@ struct SSLConnection {
   uint8_t *alpn_client_proto_list;
   unsigned alpn_client_proto_list_len;
 
+  // Contains a list of supported Token Binding key parameters.
+  uint8_t *token_binding_params;
+  size_t token_binding_params_len;
+
+  // The negotiated Token Binding key parameter. Only valid if
+  // |token_binding_negotiated| is set.
+  uint8_t negotiated_token_binding_param;
+
   // renegotiate_mode controls how peer renegotiation attempts are handled.
   enum ssl_renegotiate_mode_t renegotiate_mode;
 
@@ -2632,6 +2646,9 @@ struct SSLConnection {
   // means that we'll accept Channel IDs from clients. For a client, means that
   // we'll advertise support.
   bool tlsext_channel_id_enabled:1;
+
+  // token_binding_negotiated is set if Token Binding was negotiated.
+  bool token_binding_negotiated:1;
 
   // retain_only_sha256_of_client_certs is true if we should compute the SHA256
   // hash of the peer's certificate and then discard it to save memory and

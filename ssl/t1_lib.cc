@@ -2439,6 +2439,153 @@ static bool ext_supported_groups_parse_clienthello(SSL_HANDSHAKE *hs,
   return true;
 }
 
+// Token Binding
+//
+// https://tools.ietf.org/html/draft-ietf-tokbind-negotiation-10
+
+// The Token Binding version number currently matches the draft number of
+// draft-ietf-tokbind-protocol, and when published as an RFC it will be 0x0100.
+// Since there are no wire changes to the protocol from draft 13 through the
+// current draft (16), this implementation supports all versions in that range.
+static uint16_t kTokenBindingMaxVersion = 16;
+static uint16_t kTokenBindingMinVersion = 13;
+
+static bool ext_token_binding_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
+  SSL *const ssl = hs->ssl;
+  if (ssl->token_binding_params == nullptr || SSL_is_dtls(ssl)) {
+    return true;
+  }
+
+  CBB contents, params;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_token_binding) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u16(&contents, kTokenBindingMaxVersion) ||
+      !CBB_add_u8_length_prefixed(&contents, &params) ||
+      !CBB_add_bytes(&params, ssl->token_binding_params,
+                     ssl->token_binding_params_len) ||
+      !CBB_flush(out)) {
+    return false;
+  }
+
+  return true;
+}
+
+static bool ext_token_binding_parse_serverhello(SSL_HANDSHAKE *hs,
+                                                uint8_t *out_alert,
+                                                CBS *contents) {
+  SSL *const ssl = hs->ssl;
+  if (contents == nullptr) {
+    return true;
+  }
+
+  CBS params_list;
+  uint16_t version;
+  uint8_t param;
+  if (!CBS_get_u16(contents, &version) ||
+      !CBS_get_u8_length_prefixed(contents, &params_list) ||
+      !CBS_get_u8(&params_list, &param) ||
+      CBS_len(&params_list) > 0 ||
+      CBS_len(contents) > 0) {
+    *out_alert = SSL_AD_DECODE_ERROR;
+    return false;
+  }
+
+  // The server-negotiated version must be less than or equal to our version.
+  if (version > kTokenBindingMaxVersion) {
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return false;
+  }
+
+  // If the server-selected version is less than what we support, then Token
+  // Binding wasn't negotiated (but the extension was parsed successfully).
+  if (version < kTokenBindingMinVersion) {
+    return true;
+  }
+
+  for (size_t i = 0; i < ssl->token_binding_params_len; ++i) {
+    if (param == ssl->token_binding_params[i]) {
+      ssl->negotiated_token_binding_param = param;
+      ssl->token_binding_negotiated = true;
+      return true;
+    }
+  }
+
+  *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+  return false;
+}
+
+// select_tb_param looks for the first token binding param in
+// |ssl->token_binding_params| that is also in |params| and puts it in
+// |ssl->negotiated_token_binding_param|. It returns true if a token binding
+// param is found, and false otherwise.
+static bool select_tb_param(SSL *ssl, Span<const uint8_t> peer_params) {
+  for (size_t i = 0; i < ssl->token_binding_params_len; ++i) {
+    uint8_t tb_param = ssl->token_binding_params[i];
+    for (uint8_t peer_param : peer_params) {
+      if (tb_param == peer_param) {
+        ssl->negotiated_token_binding_param = tb_param;
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+static bool ext_token_binding_parse_clienthello(SSL_HANDSHAKE *hs,
+                                                uint8_t *out_alert,
+                                                CBS *contents) {
+  SSL *const ssl = hs->ssl;
+  if (contents == nullptr || ssl->token_binding_params == nullptr) {
+    return true;
+  }
+
+  CBS params;
+  uint16_t version;
+  if (!CBS_get_u16(contents, &version) ||
+      !CBS_get_u8_length_prefixed(contents, &params) ||
+      CBS_len(&params) == 0 ||
+      CBS_len(contents) > 0) {
+    *out_alert = SSL_AD_DECODE_ERROR;
+    return false;
+  }
+
+  // If the client-selected version is less than what we support, then Token
+  // Binding wasn't negotiated (but the extension was parsed successfully).
+  if (version < kTokenBindingMinVersion) {
+    return true;
+  }
+
+  // If the client-selected version is higher than we support, use our max
+  // version. Otherwise, use the client's version.
+  hs->negotiated_token_binding_version =
+      std::min(version, kTokenBindingMaxVersion);
+  if (!select_tb_param(ssl, params)) {
+    return true;
+  }
+
+  ssl->token_binding_negotiated = true;
+  return true;
+}
+
+static bool ext_token_binding_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
+  SSL *const ssl = hs->ssl;
+
+  if (!ssl->token_binding_negotiated) {
+    return true;
+  }
+
+  CBB contents, params;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_token_binding) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_u16(&contents, hs->negotiated_token_binding_version) ||
+      !CBB_add_u8_length_prefixed(&contents, &params) ||
+      !CBB_add_u8(&params, ssl->negotiated_token_binding_param) ||
+      !CBB_flush(out)) {
+    return false;
+  }
+
+  return true;
+}
 
 // kExtensions contains all the supported extensions.
 static const struct tls_extension kExtensions[] = {
@@ -2607,6 +2754,14 @@ static const struct tls_extension kExtensions[] = {
     ext_supported_groups_parse_serverhello,
     ext_supported_groups_parse_clienthello,
     dont_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_token_binding,
+    NULL,
+    ext_token_binding_add_clienthello,
+    ext_token_binding_parse_serverhello,
+    ext_token_binding_parse_clienthello,
+    ext_token_binding_add_serverhello,
   },
 };
 
@@ -2970,6 +3125,15 @@ static int ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs,
 
 static int ssl_check_clienthello_tlsext(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
+
+  if (ssl->token_binding_negotiated &&
+      !(SSL_get_secure_renegotiation_support(ssl) &&
+        SSL_get_extms_support(ssl))) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NEGOTIATED_TB_WITHOUT_EMS_OR_RI);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
+    return -1;
+  }
+
   int ret = SSL_TLSEXT_ERR_NOACK;
   int al = SSL_AD_UNRECOGNIZED_NAME;
 

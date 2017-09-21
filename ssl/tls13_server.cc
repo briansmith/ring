@@ -398,6 +398,8 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
           hs->early_data_offered &&
           // Channel ID is incompatible with 0-RTT.
           !ssl->s3->tlsext_channel_id_valid &&
+          // If Token Binding is negotiated, reject 0-RTT.
+          !ssl->token_binding_negotiated &&
           // Custom extensions is incompatible with 0-RTT.
           hs->custom_extensions.received == 0 &&
           // The negotiated ALPN must match the one in the ticket.

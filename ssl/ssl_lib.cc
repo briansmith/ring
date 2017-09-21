@@ -771,6 +771,7 @@ void SSL_free(SSL *ssl) {
   SSL_CTX_free(ssl->session_ctx);
   OPENSSL_free(ssl->supported_group_list);
   OPENSSL_free(ssl->alpn_client_proto_list);
+  OPENSSL_free(ssl->token_binding_params);
   EVP_PKEY_free(ssl->tlsext_channel_id_private);
   OPENSSL_free(ssl->psk_identity_hint);
   sk_CRYPTO_BUFFER_pop_free(ssl->client_CA, CRYPTO_BUFFER_free);
@@ -2120,6 +2121,28 @@ size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out, size_t max_out) {
   OPENSSL_memcpy(out, ssl->s3->tlsext_channel_id,
                  (max_out < 64) ? max_out : 64);
   return 64;
+}
+
+int SSL_set_token_binding_params(SSL *ssl, const uint8_t *params, size_t len) {
+  if (len > 256) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+    return 0;
+  }
+  OPENSSL_free(ssl->token_binding_params);
+  ssl->token_binding_params = (uint8_t *)BUF_memdup(params, len);
+  if (!ssl->token_binding_params) {
+    return 0;
+  }
+  ssl->token_binding_params_len = len;
+  return 1;
+}
+
+int SSL_is_token_binding_negotiated(const SSL *ssl) {
+  return ssl->token_binding_negotiated;
+}
+
+uint8_t SSL_get_negotiated_token_binding_param(const SSL *ssl) {
+  return ssl->negotiated_token_binding_param;
 }
 
 size_t SSL_get0_certificate_types(SSL *ssl, const uint8_t **out_types) {

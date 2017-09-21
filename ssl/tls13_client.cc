@@ -476,7 +476,8 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ALPN_MISMATCH_ON_EARLY_DATA);
       return ssl_hs_error;
     }
-    if (ssl->s3->tlsext_channel_id_valid || hs->received_custom_extension) {
+    if (ssl->s3->tlsext_channel_id_valid || hs->received_custom_extension ||
+        ssl->token_binding_negotiated) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION_ON_EARLY_DATA);
       return ssl_hs_error;
     }
