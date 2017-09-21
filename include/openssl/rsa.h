@@ -577,13 +577,6 @@ struct rsa_meth_st {
   int (*sign)(int type, const uint8_t *m, unsigned int m_length,
               uint8_t *sigret, unsigned int *siglen, const RSA *rsa);
 
-  // Ignored. Set this to NULL.
-  // TODO(davidben): Remove this when
-  // https://github.com/google/conscrypt/commit/bb0571e358e95e1c70ac7a6984fc4d7236cac72f
-  // is in all BoringSSL consumers.
-  int (*encrypt)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
-                 const uint8_t *in, size_t in_len, int padding);
-
   // These functions mirror the |RSA_*| functions of the same name.
   int (*sign_raw)(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
                   const uint8_t *in, size_t in_len, int padding);
