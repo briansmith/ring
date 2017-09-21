@@ -1513,6 +1513,19 @@ int SSL_CIPHER_get_auth_nid(const SSL_CIPHER *cipher) {
   return NID_undef;
 }
 
+int SSL_CIPHER_get_prf_nid(const SSL_CIPHER *cipher) {
+  switch (cipher->algorithm_prf) {
+    case SSL_HANDSHAKE_MAC_DEFAULT:
+      return NID_md5_sha1;
+    case SSL_HANDSHAKE_MAC_SHA256:
+      return NID_sha256;
+    case SSL_HANDSHAKE_MAC_SHA384:
+      return NID_sha384;
+  }
+  assert(0);
+  return NID_undef;
+}
+
 int SSL_CIPHER_is_block_cipher(const SSL_CIPHER *cipher) {
   return (cipher->algorithm_enc & SSL_eNULL) == 0 &&
       cipher->algorithm_mac != SSL_AEAD;

@@ -828,6 +828,7 @@ TEST(SSLTest, CipherProperties) {
     int digest_nid;
     int kx_nid;
     int auth_nid;
+    int prf_nid;
   } kTests[] = {
       {
           SSL3_CK_RSA_DES_192_CBC3_SHA,
@@ -836,6 +837,7 @@ TEST(SSLTest, CipherProperties) {
           NID_sha1,
           NID_kx_rsa,
           NID_auth_rsa,
+          NID_md5_sha1,
       },
       {
           TLS1_CK_RSA_WITH_AES_128_SHA,
@@ -844,6 +846,7 @@ TEST(SSLTest, CipherProperties) {
           NID_sha1,
           NID_kx_rsa,
           NID_auth_rsa,
+          NID_md5_sha1,
       },
       {
           TLS1_CK_PSK_WITH_AES_256_CBC_SHA,
@@ -852,6 +855,7 @@ TEST(SSLTest, CipherProperties) {
           NID_sha1,
           NID_kx_psk,
           NID_auth_psk,
+          NID_md5_sha1,
       },
       {
           TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256,
@@ -860,6 +864,7 @@ TEST(SSLTest, CipherProperties) {
           NID_sha256,
           NID_kx_ecdhe,
           NID_auth_rsa,
+          NID_sha256,
       },
       {
           TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384,
@@ -868,6 +873,7 @@ TEST(SSLTest, CipherProperties) {
           NID_sha384,
           NID_kx_ecdhe,
           NID_auth_rsa,
+          NID_sha384,
       },
       {
           TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
@@ -876,6 +882,7 @@ TEST(SSLTest, CipherProperties) {
           NID_undef,
           NID_kx_ecdhe,
           NID_auth_rsa,
+          NID_sha256,
       },
       {
           TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
@@ -884,6 +891,7 @@ TEST(SSLTest, CipherProperties) {
           NID_undef,
           NID_kx_ecdhe,
           NID_auth_ecdsa,
+          NID_sha256,
       },
       {
           TLS1_CK_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
@@ -892,6 +900,7 @@ TEST(SSLTest, CipherProperties) {
           NID_undef,
           NID_kx_ecdhe,
           NID_auth_ecdsa,
+          NID_sha384,
       },
       {
           TLS1_CK_ECDHE_PSK_WITH_AES_128_CBC_SHA,
@@ -900,6 +909,7 @@ TEST(SSLTest, CipherProperties) {
           NID_sha1,
           NID_kx_ecdhe,
           NID_auth_psk,
+          NID_md5_sha1,
       },
       {
           TLS1_CK_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
@@ -908,6 +918,7 @@ TEST(SSLTest, CipherProperties) {
           NID_undef,
           NID_kx_ecdhe,
           NID_auth_rsa,
+          NID_sha256,
       },
       {
           TLS1_CK_AES_256_GCM_SHA384,
@@ -916,6 +927,7 @@ TEST(SSLTest, CipherProperties) {
           NID_undef,
           NID_kx_any,
           NID_auth_any,
+          NID_sha384,
       },
       {
           TLS1_CK_AES_128_GCM_SHA256,
@@ -924,6 +936,7 @@ TEST(SSLTest, CipherProperties) {
           NID_undef,
           NID_kx_any,
           NID_auth_any,
+          NID_sha256,
       },
       {
           TLS1_CK_CHACHA20_POLY1305_SHA256,
@@ -932,6 +945,7 @@ TEST(SSLTest, CipherProperties) {
           NID_undef,
           NID_kx_any,
           NID_auth_any,
+          NID_sha256,
       },
   };
 
@@ -950,6 +964,7 @@ TEST(SSLTest, CipherProperties) {
     EXPECT_EQ(t.digest_nid, SSL_CIPHER_get_digest_nid(cipher));
     EXPECT_EQ(t.kx_nid, SSL_CIPHER_get_kx_nid(cipher));
     EXPECT_EQ(t.auth_nid, SSL_CIPHER_get_auth_nid(cipher));
+    EXPECT_EQ(t.prf_nid, SSL_CIPHER_get_prf_nid(cipher));
   }
 }
 
