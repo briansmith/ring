@@ -1312,9 +1312,7 @@ struct SSL_HANDSHAKE {
   // peer_sigalgs are the signature algorithms that the peer supports. These are
   // taken from the contents of the signature algorithms extension for a server
   // or from the CertificateRequest for a client.
-  uint16_t *peer_sigalgs = nullptr;
-  // num_peer_sigalgs is the number of entries in |peer_sigalgs|.
-  size_t num_peer_sigalgs = 0;
+  Array<uint16_t> peer_sigalgs;
 
   // peer_supported_group_list contains the supported group IDs advertised by
   // the peer. This is only set on the server's end. The server does not

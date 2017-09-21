@@ -1011,10 +1011,7 @@ static int ext_sigalgs_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static int ext_sigalgs_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                          CBS *contents) {
-  OPENSSL_free(hs->peer_sigalgs);
-  hs->peer_sigalgs = NULL;
-  hs->num_peer_sigalgs = 0;
-
+  hs->peer_sigalgs.Reset();
   if (contents == NULL) {
     return 1;
   }
@@ -2350,6 +2347,29 @@ static int ext_supported_groups_parse_serverhello(SSL_HANDSHAKE *hs,
   return 1;
 }
 
+static bool parse_u16_array(const CBS *cbs, Array<uint16_t> *out) {
+  CBS copy = *cbs;
+  if ((CBS_len(&copy) & 1) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    return false;
+  }
+
+  Array<uint16_t> ret;
+  if (!ret.Init(CBS_len(&copy) / 2)) {
+    return false;
+  }
+  for (size_t i = 0; i < ret.size(); i++) {
+    if (!CBS_get_u16(&copy, &ret[i])) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return false;
+    }
+  }
+
+  assert(CBS_len(&copy) == 0);
+  *out = std::move(ret);
+  return 1;
+}
+
 static int ext_supported_groups_parse_clienthello(SSL_HANDSHAKE *hs,
                                                   uint8_t *out_alert,
                                                   CBS *contents) {
@@ -2360,24 +2380,11 @@ static int ext_supported_groups_parse_clienthello(SSL_HANDSHAKE *hs,
   CBS supported_group_list;
   if (!CBS_get_u16_length_prefixed(contents, &supported_group_list) ||
       CBS_len(&supported_group_list) == 0 ||
-      (CBS_len(&supported_group_list) & 1) != 0 ||
-      CBS_len(contents) != 0) {
+      CBS_len(contents) != 0 ||
+      !parse_u16_array(&supported_group_list, &hs->peer_supported_group_list)) {
     return 0;
   }
 
-  Array<uint16_t> groups;
-  if (!groups.Init(CBS_len(&supported_group_list) / 2)) {
-    return 0;
-  }
-  for (size_t i = 0; i < groups.size(); i++) {
-    if (!CBS_get_u16(&supported_group_list, &groups[i])) {
-      *out_alert = SSL_AD_INTERNAL_ERROR;
-      return 0;
-    }
-  }
-
-  assert(CBS_len(&supported_group_list) == 0);
-  hs->peer_supported_group_list = std::move(groups);
   return 1;
 }
 
@@ -3141,39 +3148,7 @@ int tls1_parse_peer_sigalgs(SSL_HANDSHAKE *hs, const CBS *in_sigalgs) {
     return 1;
   }
 
-  OPENSSL_free(hs->peer_sigalgs);
-  hs->peer_sigalgs = NULL;
-  hs->num_peer_sigalgs = 0;
-
-  size_t num_sigalgs = CBS_len(in_sigalgs);
-  if (num_sigalgs % 2 != 0) {
-    return 0;
-  }
-  num_sigalgs /= 2;
-
-  // supported_signature_algorithms in the certificate request is
-  // allowed to be empty.
-  if (num_sigalgs == 0) {
-    return 1;
-  }
-
-  // This multiplication doesn't overflow because sizeof(uint16_t) is two
-  // and we just divided |num_sigalgs| by two.
-  hs->peer_sigalgs = (uint16_t *)OPENSSL_malloc(num_sigalgs * sizeof(uint16_t));
-  if (hs->peer_sigalgs == NULL) {
-    return 0;
-  }
-  hs->num_peer_sigalgs = num_sigalgs;
-
-  CBS sigalgs;
-  CBS_init(&sigalgs, CBS_data(in_sigalgs), CBS_len(in_sigalgs));
-  for (size_t i = 0; i < num_sigalgs; i++) {
-    if (!CBS_get_u16(&sigalgs, &hs->peer_sigalgs[i])) {
-      return 0;
-    }
-  }
-
-  return 1;
+  return parse_u16_array(in_sigalgs, &hs->peer_sigalgs);
 }
 
 int tls1_get_legacy_signature_algorithm(uint16_t *out, const EVP_PKEY *pkey) {
@@ -3203,36 +3178,31 @@ int tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
     return 1;
   }
 
-  const uint16_t *sigalgs = cert->sigalgs;
-  size_t num_sigalgs = cert->num_sigalgs;
-  if (sigalgs == NULL) {
-    sigalgs = kSignSignatureAlgorithms;
-    num_sigalgs = OPENSSL_ARRAY_SIZE(kSignSignatureAlgorithms);
+  Span<const uint16_t> sigalgs = kSignSignatureAlgorithms;
+  if (cert->sigalgs != nullptr) {
+    sigalgs = MakeConstSpan(cert->sigalgs, cert->num_sigalgs);
   }
 
-  const uint16_t *peer_sigalgs = hs->peer_sigalgs;
-  size_t num_peer_sigalgs = hs->num_peer_sigalgs;
-  if (num_peer_sigalgs == 0 && ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
+  Span<const uint16_t> peer_sigalgs = hs->peer_sigalgs;
+  if (peer_sigalgs.size() == 0 && ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
     // If the client didn't specify any signature_algorithms extension then
     // we can assume that it supports SHA1. See
     // http://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
     static const uint16_t kDefaultPeerAlgorithms[] = {SSL_SIGN_RSA_PKCS1_SHA1,
                                                       SSL_SIGN_ECDSA_SHA1};
     peer_sigalgs = kDefaultPeerAlgorithms;
-    num_peer_sigalgs = OPENSSL_ARRAY_SIZE(kDefaultPeerAlgorithms);
   }
 
-  for (size_t i = 0; i < num_sigalgs; i++) {
-    uint16_t sigalg = sigalgs[i];
+  for (uint16_t sigalg : sigalgs) {
     // SSL_SIGN_RSA_PKCS1_MD5_SHA1 is an internal value and should never be
     // negotiated.
     if (sigalg == SSL_SIGN_RSA_PKCS1_MD5_SHA1 ||
-        !ssl_private_key_supports_signature_algorithm(hs, sigalgs[i])) {
+        !ssl_private_key_supports_signature_algorithm(hs, sigalg)) {
       continue;
     }
 
-    for (size_t j = 0; j < num_peer_sigalgs; j++) {
-      if (sigalg == peer_sigalgs[j]) {
+    for (uint16_t peer_sigalg : peer_sigalgs) {
+      if (sigalg == peer_sigalg) {
         *out = sigalg;
         return 1;
       }
