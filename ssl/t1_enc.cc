@@ -375,21 +375,19 @@ static int tls1_setup_key_block(SSL_HANDSHAKE *hs) {
   return 1;
 }
 
-int tls1_change_cipher_state(SSL_HANDSHAKE *hs, int which) {
+int tls1_change_cipher_state(SSL_HANDSHAKE *hs,
+                             evp_aead_direction_t direction) {
   SSL *const ssl = hs->ssl;
   // Ensure the key block is set up.
   if (!tls1_setup_key_block(hs)) {
     return 0;
   }
 
-  // is_read is true if we have just read a ChangeCipherSpec message - i.e. we
-  // need to update the read cipherspec. Otherwise we have just written one.
-  const char is_read = (which & SSL3_CC_READ) != 0;
   // use_client_keys is true if we wish to use the keys for the "client write"
   // direction. This is the case if we're a client sending a ChangeCipherSpec,
   // or a server reading a client's ChangeCipherSpec.
-  const char use_client_keys = which == SSL3_CHANGE_CIPHER_CLIENT_WRITE ||
-                               which == SSL3_CHANGE_CIPHER_SERVER_READ;
+  const bool use_client_keys =
+      direction == (ssl->server ? evp_aead_open : evp_aead_seal);
 
   size_t mac_secret_len = ssl->s3->tmp.new_mac_secret_len;
   size_t key_len = ssl->s3->tmp.new_key_len;
@@ -422,14 +420,13 @@ int tls1_change_cipher_state(SSL_HANDSHAKE *hs, int which) {
   }
 
   UniquePtr<SSLAEADContext> aead_ctx = SSLAEADContext::Create(
-      is_read ? evp_aead_open : evp_aead_seal, ssl->version,
-      SSL_is_dtls(ssl), hs->new_cipher, key, key_len, mac_secret,
-      mac_secret_len, iv, iv_len);
+      direction, ssl->version, SSL_is_dtls(ssl), hs->new_cipher, key, key_len,
+      mac_secret, mac_secret_len, iv, iv_len);
   if (!aead_ctx) {
     return 0;
   }
 
-  if (is_read) {
+  if (direction == evp_aead_open) {
     return ssl->method->set_read_state(ssl, std::move(aead_ctx));
   }
 

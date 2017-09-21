@@ -1397,7 +1397,7 @@ static enum ssl_hs_wait_t do_read_change_cipher_spec(SSL_HANDSHAKE *hs) {
 }
 
 static enum ssl_hs_wait_t do_process_change_cipher_spec(SSL_HANDSHAKE *hs) {
-  if (!tls1_change_cipher_state(hs, SSL3_CHANGE_CIPHER_SERVER_READ)) {
+  if (!tls1_change_cipher_state(hs, evp_aead_open)) {
     return ssl_hs_error;
   }
 
@@ -1525,7 +1525,7 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl->method->add_change_cipher_spec(ssl) ||
-      !tls1_change_cipher_state(hs, SSL3_CHANGE_CIPHER_SERVER_WRITE) ||
+      !tls1_change_cipher_state(hs, evp_aead_seal) ||
       !ssl3_send_finished(hs)) {
     return ssl_hs_error;
   }

@@ -2297,7 +2297,7 @@ int dtls1_read_message(SSL *ssl);
 void dtls1_next_message(SSL *ssl);
 int dtls1_dispatch_alert(SSL *ssl);
 
-int tls1_change_cipher_state(SSL_HANDSHAKE *hs, int which);
+int tls1_change_cipher_state(SSL_HANDSHAKE *hs, evp_aead_direction_t direction);
 int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
                                 const uint8_t *premaster, size_t premaster_len);
 
