@@ -600,13 +600,18 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_ok;
   }
 
+  // Clear some TLS 1.3 state that no longer needs to be retained.
+  hs->key_share.reset();
+  hs->key_share_bytes.Reset();
+
+  // A TLS 1.2 server would not know to skip the early data we offered. Report
+  // an error code sooner. The caller may use this error code to implement the
+  // fallback described in draft-ietf-tls-tls13-18 appendix C.3.
   if (hs->early_data_offered) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_ON_EARLY_DATA);
     ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
     return ssl_hs_error;
   }
-
-  ssl_clear_tls13_state(hs);
 
   if (!ssl_check_message_type(ssl, msg, SSL3_MT_SERVER_HELLO)) {
     return ssl_hs_error;

@@ -1517,10 +1517,6 @@ int ssl_is_sct_list_valid(const CBS *contents);
 
 int ssl_write_client_hello(SSL_HANDSHAKE *hs);
 
-// ssl_clear_tls13_state releases client state only needed for TLS 1.3. It
-// should be called once the version is known to be TLS 1.2 or earlier.
-void ssl_clear_tls13_state(SSL_HANDSHAKE *hs);
-
 enum ssl_cert_verify_context_t {
   ssl_cert_verify_server,
   ssl_cert_verify_client,

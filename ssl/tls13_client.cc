@@ -839,9 +839,4 @@ int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
   return 1;
 }
 
-void ssl_clear_tls13_state(SSL_HANDSHAKE *hs) {
-  hs->key_share.reset();
-  hs->key_share_bytes.Reset();
-}
-
 }  // namespace bssl
