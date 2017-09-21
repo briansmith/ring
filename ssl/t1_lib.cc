@@ -2225,8 +2225,7 @@ int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
   if (!key_share ||
       !CBB_init(public_key.get(), 32) ||
       !key_share->Accept(public_key.get(), &secret, out_alert, peer_key) ||
-      !CBB_finish(public_key.get(), &hs->ecdh_public_key,
-                  &hs->ecdh_public_key_len)) {
+      !CBBFinishArray(public_key.get(), &hs->ecdh_public_key)) {
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return 0;
   }
@@ -2244,15 +2243,13 @@ int ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
       !CBB_add_u16_length_prefixed(out, &kse_bytes) ||
       !CBB_add_u16(&kse_bytes, group_id) ||
       !CBB_add_u16_length_prefixed(&kse_bytes, &public_key) ||
-      !CBB_add_bytes(&public_key, hs->ecdh_public_key,
-                     hs->ecdh_public_key_len) ||
+      !CBB_add_bytes(&public_key, hs->ecdh_public_key.data(),
+                     hs->ecdh_public_key.size()) ||
       !CBB_flush(out)) {
     return 0;
   }
 
-  OPENSSL_free(hs->ecdh_public_key);
-  hs->ecdh_public_key = NULL;
-  hs->ecdh_public_key_len = 0;
+  hs->ecdh_public_key.Reset();
 
   hs->new_session->group_id = group_id;
   return 1;

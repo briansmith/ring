@@ -331,6 +331,9 @@ class Array {
   size_t size_ = 0;
 };
 
+// CBBFinishArray behaves like |CBB_finish| but stores the result in an Array.
+bool CBBFinishArray(CBB *cbb, Array<uint8_t> *out);
+
 
 // Protocol versions.
 //
@@ -1304,8 +1307,7 @@ struct SSL_HANDSHAKE {
 
   // ecdh_public_key, for servers, is the key share to be sent to the client in
   // TLS 1.3.
-  uint8_t *ecdh_public_key = nullptr;
-  size_t ecdh_public_key_len = 0;
+  Array<uint8_t> ecdh_public_key;
 
   // peer_sigalgs are the signature algorithms that the peer supports. These are
   // taken from the contents of the signature algorithms extension for a server
@@ -1325,8 +1327,7 @@ struct SSL_HANDSHAKE {
   // server_params, in a TLS 1.2 server, stores the ServerKeyExchange
   // parameters. It has client and server randoms prepended for signing
   // convenience.
-  uint8_t *server_params = nullptr;
-  size_t server_params_len = 0;
+  Array<uint8_t> server_params;
 
   // peer_psk_identity_hint, on the client, is the psk_identity_hint sent by the
   // server when using a TLS 1.2 PSK key exchange.
@@ -2309,16 +2310,15 @@ int ssl3_new(SSL *ssl);
 void ssl3_free(SSL *ssl);
 
 int ssl3_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
-int ssl3_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg, size_t *out_len);
-int ssl3_add_message(SSL *ssl, uint8_t *msg, size_t len);
+int ssl3_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
+int ssl3_add_message(SSL *ssl, Array<uint8_t> msg);
 int ssl3_add_change_cipher_spec(SSL *ssl);
 int ssl3_add_alert(SSL *ssl, uint8_t level, uint8_t desc);
 int ssl3_flush_flight(SSL *ssl);
 
 int dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
-int dtls1_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
-                         size_t *out_len);
-int dtls1_add_message(SSL *ssl, uint8_t *msg, size_t len);
+int dtls1_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
+int dtls1_add_message(SSL *ssl, Array<uint8_t> msg);
 int dtls1_add_change_cipher_spec(SSL *ssl);
 int dtls1_add_alert(SSL *ssl, uint8_t level, uint8_t desc);
 int dtls1_flush_flight(SSL *ssl);
@@ -2525,15 +2525,12 @@ struct ssl_protocol_method_st {
   // root CBB to be passed into |finish_message|. |*body| is set to a child CBB
   // the caller should write to. It returns one on success and zero on error.
   int (*init_message)(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
-  // finish_message finishes a handshake message. It sets |*out_msg| to a
-  // newly-allocated buffer with the serialized message. The caller must
-  // release it with |OPENSSL_free| when done. It returns one on success and
-  // zero on error.
-  int (*finish_message)(SSL *ssl, CBB *cbb, uint8_t **out_msg, size_t *out_len);
+  // finish_message finishes a handshake message. It sets |*out_msg| to the
+  // serialized message. It returns one on success and zero on error.
+  int (*finish_message)(SSL *ssl, CBB *cbb, bssl::Array<uint8_t> *out_msg);
   // add_message adds a handshake message to the pending flight. It returns one
-  // on success and zero on error. In either case, it takes ownership of |msg|
-  // and releases it with |OPENSSL_free| when done.
-  int (*add_message)(SSL *ssl, uint8_t *msg, size_t len);
+  // on success and zero on error.
+  int (*add_message)(SSL *ssl, bssl::Array<uint8_t> msg);
   // add_change_cipher_spec adds a ChangeCipherSpec record to the pending
   // flight. It returns one on success and zero on error.
   int (*add_change_cipher_spec)(SSL *ssl);

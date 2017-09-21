@@ -535,19 +535,17 @@ int dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
   return 1;
 }
 
-int dtls1_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
-                         size_t *out_len) {
-  *out_msg = NULL;
-  if (!CBB_finish(cbb, out_msg, out_len) ||
-      *out_len < DTLS1_HM_HEADER_LENGTH) {
+int dtls1_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg) {
+  if (!CBBFinishArray(cbb, out_msg) ||
+      out_msg->size() < DTLS1_HM_HEADER_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    OPENSSL_free(*out_msg);
     return 0;
   }
 
   // Fix up the header. Copy the fragment length into the total message
   // length.
-  OPENSSL_memcpy(*out_msg + 1, *out_msg + DTLS1_HM_HEADER_LENGTH - 3, 3);
+  OPENSSL_memcpy(out_msg->data() + 1,
+                 out_msg->data() + DTLS1_HM_HEADER_LENGTH - 3, 3);
   return 1;
 }
 
@@ -555,7 +553,7 @@ int dtls1_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
 // outgoing flight. It returns one on success and zero on error. In both cases,
 // it takes ownership of |data| and releases it with |OPENSSL_free| when
 // done.
-static int add_outgoing(SSL *ssl, int is_ccs, uint8_t *data, size_t len) {
+static int add_outgoing(SSL *ssl, int is_ccs, Array<uint8_t> data) {
   if (ssl->d1->outgoing_messages_complete) {
     // If we've begun writing a new flight, we received the peer flight. Discard
     // the timer and the our flight.
@@ -566,10 +564,10 @@ static int add_outgoing(SSL *ssl, int is_ccs, uint8_t *data, size_t len) {
   static_assert(SSL_MAX_HANDSHAKE_FLIGHT <
                     (1 << 8 * sizeof(ssl->d1->outgoing_messages_len)),
                 "outgoing_messages_len is too small");
-  if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT) {
+  if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT ||
+      data.size() > 0xffffffff) {
     assert(0);
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    OPENSSL_free(data);
     return 0;
   }
 
@@ -577,9 +575,8 @@ static int add_outgoing(SSL *ssl, int is_ccs, uint8_t *data, size_t len) {
     // TODO(svaldez): Move this up a layer to fix abstraction for SSLTranscript
     // on hs.
     if (ssl->s3->hs != NULL &&
-        !ssl->s3->hs->transcript.Update(data, len)) {
+        !ssl->s3->hs->transcript.Update(data.data(), data.size())) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      OPENSSL_free(data);
       return 0;
     }
     ssl->d1->handshake_write_seq++;
@@ -587,7 +584,8 @@ static int add_outgoing(SSL *ssl, int is_ccs, uint8_t *data, size_t len) {
 
   DTLS_OUTGOING_MESSAGE *msg =
       &ssl->d1->outgoing_messages[ssl->d1->outgoing_messages_len];
-  msg->data = data;
+  size_t len;
+  data.Release(&msg->data, &len);
   msg->len = len;
   msg->epoch = ssl->d1->w_epoch;
   msg->is_ccs = is_ccs;
@@ -596,12 +594,12 @@ static int add_outgoing(SSL *ssl, int is_ccs, uint8_t *data, size_t len) {
   return 1;
 }
 
-int dtls1_add_message(SSL *ssl, uint8_t *data, size_t len) {
-  return add_outgoing(ssl, 0 /* handshake */, data, len);
+int dtls1_add_message(SSL *ssl, Array<uint8_t> data) {
+  return add_outgoing(ssl, 0 /* handshake */, std::move(data));
 }
 
 int dtls1_add_change_cipher_spec(SSL *ssl) {
-  return add_outgoing(ssl, 1 /* ChangeCipherSpec */, NULL, 0);
+  return add_outgoing(ssl, 1 /* ChangeCipherSpec */, Array<uint8_t>());
 }
 
 int dtls1_add_alert(SSL *ssl, uint8_t level, uint8_t desc) {

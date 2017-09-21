@@ -176,23 +176,16 @@ int ssl3_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
   return 1;
 }
 
-int ssl3_finish_message(SSL *ssl, CBB *cbb, uint8_t **out_msg,
-                        size_t *out_len) {
-  if (!CBB_finish(cbb, out_msg, out_len)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
-  return 1;
+int ssl3_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg) {
+  return CBBFinishArray(cbb, out_msg);
 }
 
-int ssl3_add_message(SSL *ssl, uint8_t *msg, size_t len) {
+int ssl3_add_message(SSL *ssl, Array<uint8_t> msg) {
   // Add the message to the current flight, splitting into several records if
   // needed.
-  int ret = 0;
   size_t added = 0;
   do {
-    size_t todo = len - added;
+    size_t todo = msg.size() - added;
     if (todo > ssl->max_send_fragment) {
       todo = ssl->max_send_fragment;
     }
@@ -205,24 +198,21 @@ int ssl3_add_message(SSL *ssl, uint8_t *msg, size_t len) {
       type = SSL3_RT_PLAINTEXT_HANDSHAKE;
     }
 
-    if (!add_record_to_flight(ssl, type, msg + added, todo)) {
-      goto err;
+    if (!add_record_to_flight(ssl, type, msg.data() + added, todo)) {
+      return 0;
     }
     added += todo;
-  } while (added < len);
+  } while (added < msg.size());
 
-  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE, msg, len);
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE, msg.data(),
+                      msg.size());
   // TODO(svaldez): Move this up a layer to fix abstraction for SSLTranscript on
   // hs.
   if (ssl->s3->hs != NULL &&
-      !ssl->s3->hs->transcript.Update(msg, len)) {
-    goto err;
+      !ssl->s3->hs->transcript.Update(msg.data(), msg.size())) {
+    return 0;
   }
-  ret = 1;
-
-err:
-  OPENSSL_free(msg);
-  return ret;
+  return 1;
 }
 
 int ssl3_add_change_cipher_spec(SSL *ssl) {

@@ -338,21 +338,19 @@ int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
     return 0;
   }
 
-  uint8_t *msg = NULL;
-  size_t len;
-  if (!ssl->method->finish_message(ssl, cbb.get(), &msg, &len)) {
+  Array<uint8_t> msg;
+  if (!ssl->method->finish_message(ssl, cbb.get(), &msg)) {
     return 0;
   }
 
   // Now that the length prefixes have been computed, fill in the placeholder
   // PSK binder.
   if (hs->needs_psk_binder &&
-      !tls13_write_psk_binder(hs, msg, len)) {
-    OPENSSL_free(msg);
+      !tls13_write_psk_binder(hs, msg.data(), msg.size())) {
     return 0;
   }
 
-  return ssl->method->add_message(ssl, msg, len);
+  return ssl->method->add_message(ssl, std::move(msg));
 }
 
 static int parse_server_version(SSL_HANDSHAKE *hs, uint16_t *out,

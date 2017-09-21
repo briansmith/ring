@@ -818,7 +818,7 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
       assert(alg_k & SSL_kPSK);
     }
 
-    if (!CBB_finish(cbb.get(), &hs->server_params, &hs->server_params_len)) {
+    if (!CBBFinishArray(cbb.get(), &hs->server_params)) {
       return ssl_hs_error;
     }
   }
@@ -830,7 +830,7 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_send_server_key_exchange(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
-  if (hs->server_params_len == 0) {
+  if (hs->server_params.size() == 0) {
     hs->state = state_send_server_hello_done;
     return ssl_hs_ok;
   }
@@ -840,9 +840,9 @@ static enum ssl_hs_wait_t do_send_server_key_exchange(SSL_HANDSHAKE *hs) {
   if (!ssl->method->init_message(ssl, cbb.get(), &body,
                                  SSL3_MT_SERVER_KEY_EXCHANGE) ||
       // |hs->server_params| contains a prefix for signing.
-      hs->server_params_len < 2 * SSL3_RANDOM_SIZE ||
-      !CBB_add_bytes(&body, hs->server_params + 2 * SSL3_RANDOM_SIZE,
-                     hs->server_params_len - 2 * SSL3_RANDOM_SIZE)) {
+      hs->server_params.size() < 2 * SSL3_RANDOM_SIZE ||
+      !CBB_add_bytes(&body, hs->server_params.data() + 2 * SSL3_RANDOM_SIZE,
+                     hs->server_params.size() - 2 * SSL3_RANDOM_SIZE)) {
     return ssl_hs_error;
   }
 
@@ -876,8 +876,8 @@ static enum ssl_hs_wait_t do_send_server_key_exchange(SSL_HANDSHAKE *hs) {
 
     size_t sig_len;
     switch (ssl_private_key_sign(hs, ptr, &sig_len, max_sig_len,
-                                 signature_algorithm, hs->server_params,
-                                 hs->server_params_len)) {
+                                 signature_algorithm, hs->server_params.data(),
+                                 hs->server_params.size())) {
       case ssl_private_key_success:
         if (!CBB_did_write(&child, sig_len)) {
           return ssl_hs_error;
@@ -894,9 +894,7 @@ static enum ssl_hs_wait_t do_send_server_key_exchange(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  OPENSSL_free(hs->server_params);
-  hs->server_params = NULL;
-  hs->server_params_len = 0;
+  hs->server_params.Reset();
 
   hs->state = state_send_server_hello_done;
   return ssl_hs_ok;
