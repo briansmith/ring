@@ -113,18 +113,7 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
     }
 
     // The group must be supported.
-    const uint16_t *groups;
-    size_t groups_len;
-    tls1_get_grouplist(ssl, &groups, &groups_len);
-    int found = 0;
-    for (size_t i = 0; i < groups_len; i++) {
-      if (groups[i] == group_id) {
-        found = 1;
-        break;
-      }
-    }
-
-    if (!found) {
+    if (!tls1_check_group_id(ssl, group_id)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
       return ssl_hs_error;

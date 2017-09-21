@@ -1307,8 +1307,7 @@ struct SSL_HANDSHAKE {
   // peer_supported_group_list contains the supported group IDs advertised by
   // the peer. This is only set on the server's end. The server does not
   // advertise this extension to the client.
-  uint16_t *peer_supported_group_list = nullptr;
-  size_t peer_supported_group_list_len = 0;
+  Array<uint16_t> peer_supported_group_list;
 
   // peer_key is the peer's ECDH key for a TLS 1.2 client.
   Array<uint8_t> peer_key;
@@ -2368,14 +2367,12 @@ int tls1_change_cipher_state(SSL_HANDSHAKE *hs, evp_aead_direction_t direction);
 int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
                                 const uint8_t *premaster, size_t premaster_len);
 
-// tls1_get_grouplist sets |*out_group_ids| and |*out_group_ids_len| to the
-// locally-configured group preference list.
-void tls1_get_grouplist(SSL *ssl, const uint16_t **out_group_ids,
-                        size_t *out_group_ids_len);
+// tls1_get_grouplist returns the locally-configured group preference list.
+Span<const uint16_t> tls1_get_grouplist(const SSL *ssl);
 
 // tls1_check_group_id returns one if |group_id| is consistent with
 // locally-configured group preferences.
-int tls1_check_group_id(SSL *ssl, uint16_t group_id);
+int tls1_check_group_id(const SSL *ssl, uint16_t group_id);
 
 // tls1_get_shared_group sets |*out_group_id| to the first preferred shared
 // group between client and server preferences and returns one. If none may be

@@ -299,23 +299,17 @@ static const uint16_t kDefaultGroups[] = {
     SSL_CURVE_SECP384R1,
 };
 
-void tls1_get_grouplist(SSL *ssl, const uint16_t **out_group_ids,
-                        size_t *out_group_ids_len) {
-  *out_group_ids = ssl->supported_group_list;
-  *out_group_ids_len = ssl->supported_group_list_len;
-  if (!*out_group_ids) {
-    *out_group_ids = kDefaultGroups;
-    *out_group_ids_len = OPENSSL_ARRAY_SIZE(kDefaultGroups);
+Span<const uint16_t> tls1_get_grouplist(const SSL *ssl) {
+  if (ssl->supported_group_list != nullptr) {
+    return MakeConstSpan(ssl->supported_group_list,
+                         ssl->supported_group_list_len);
   }
+  return Span<const uint16_t>(kDefaultGroups);
 }
 
 int tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id) {
   SSL *const ssl = hs->ssl;
   assert(ssl->server);
-
-  const uint16_t *groups, *pref, *supp;
-  size_t groups_len, pref_len, supp_len;
-  tls1_get_grouplist(ssl, &groups, &groups_len);
 
   // Clients are not required to send a supported_groups extension. In this
   // case, the server is free to pick any group it likes. See RFC 4492,
@@ -326,22 +320,20 @@ int tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id) {
   // support our favoured group. Thus we do not special-case an emtpy
   // |peer_supported_group_list|.
 
+  Span<const uint16_t> groups = tls1_get_grouplist(ssl);
+  Span<const uint16_t> pref, supp;
   if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
     pref = groups;
-    pref_len = groups_len;
     supp = hs->peer_supported_group_list;
-    supp_len = hs->peer_supported_group_list_len;
   } else {
     pref = hs->peer_supported_group_list;
-    pref_len = hs->peer_supported_group_list_len;
     supp = groups;
-    supp_len = groups_len;
   }
 
-  for (size_t i = 0; i < pref_len; i++) {
-    for (size_t j = 0; j < supp_len; j++) {
-      if (pref[i] == supp[j]) {
-        *out_group_id = pref[i];
+  for (uint16_t pref_group : pref) {
+    for (uint16_t supp_group : supp) {
+      if (pref_group == supp_group) {
+        *out_group_id = pref_group;
         return 1;
       }
     }
@@ -414,12 +406,9 @@ err:
   return 0;
 }
 
-int tls1_check_group_id(SSL *ssl, uint16_t group_id) {
-  const uint16_t *groups;
-  size_t groups_len;
-  tls1_get_grouplist(ssl, &groups, &groups_len);
-  for (size_t i = 0; i < groups_len; i++) {
-    if (groups[i] == group_id) {
+int tls1_check_group_id(const SSL *ssl, uint16_t group_id) {
+  for (uint16_t supported : tls1_get_grouplist(ssl)) {
+    if (supported == group_id) {
       return 1;
     }
   }
@@ -2134,10 +2123,8 @@ static int ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     }
 
     // Predict the most preferred group.
-    const uint16_t *groups;
-    size_t groups_len;
-    tls1_get_grouplist(ssl, &groups, &groups_len);
-    if (groups_len == 0) {
+    Span<const uint16_t> groups = tls1_get_grouplist(ssl);
+    if (groups.size() == 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_GROUPS_SPECIFIED);
       return 0;
     }
@@ -2368,12 +2355,8 @@ static int ext_supported_groups_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return 0;
   }
 
-  const uint16_t *groups;
-  size_t groups_len;
-  tls1_get_grouplist(ssl, &groups, &groups_len);
-
-  for (size_t i = 0; i < groups_len; i++) {
-    if (!CBB_add_u16(&groups_bytes, groups[i])) {
+  for (uint16_t group : tls1_get_grouplist(ssl)) {
+    if (!CBB_add_u16(&groups_bytes, group)) {
       return 0;
     }
   }
@@ -2404,31 +2387,20 @@ static int ext_supported_groups_parse_clienthello(SSL_HANDSHAKE *hs,
     return 0;
   }
 
-  hs->peer_supported_group_list =
-      (uint16_t *)OPENSSL_malloc(CBS_len(&supported_group_list));
-  if (hs->peer_supported_group_list == NULL) {
-    *out_alert = SSL_AD_INTERNAL_ERROR;
+  Array<uint16_t> groups;
+  if (!groups.Init(CBS_len(&supported_group_list) / 2)) {
     return 0;
   }
-
-  const size_t num_groups = CBS_len(&supported_group_list) / 2;
-  for (size_t i = 0; i < num_groups; i++) {
-    if (!CBS_get_u16(&supported_group_list,
-                     &hs->peer_supported_group_list[i])) {
-      goto err;
+  for (size_t i = 0; i < groups.size(); i++) {
+    if (!CBS_get_u16(&supported_group_list, &groups[i])) {
+      *out_alert = SSL_AD_INTERNAL_ERROR;
+      return 0;
     }
   }
 
   assert(CBS_len(&supported_group_list) == 0);
-  hs->peer_supported_group_list_len = num_groups;
-
+  hs->peer_supported_group_list = std::move(groups);
   return 1;
-
-err:
-  OPENSSL_free(hs->peer_supported_group_list);
-  hs->peer_supported_group_list = NULL;
-  *out_alert = SSL_AD_INTERNAL_ERROR;
-  return 0;
 }
 
 static int ext_supported_groups_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
