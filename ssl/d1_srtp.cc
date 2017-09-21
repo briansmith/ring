@@ -160,9 +160,9 @@ static int find_profile_by_name(const char *profile_name,
 
 static int ssl_ctx_make_profiles(const char *profiles_string,
                                  STACK_OF(SRTP_PROTECTION_PROFILE) **out) {
-  STACK_OF(SRTP_PROTECTION_PROFILE) *profiles =
-      sk_SRTP_PROTECTION_PROFILE_new_null();
-  if (profiles == NULL) {
+  UniquePtr<STACK_OF(SRTP_PROTECTION_PROFILE)> profiles(
+      sk_SRTP_PROTECTION_PROFILE_new_null());
+  if (profiles == nullptr) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SRTP_COULD_NOT_ALLOCATE_PROFILES);
     return 0;
   }
@@ -176,11 +176,11 @@ static int ssl_ctx_make_profiles(const char *profiles_string,
     if (!find_profile_by_name(ptr, &profile,
                               col ? (size_t)(col - ptr) : strlen(ptr))) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_SRTP_UNKNOWN_PROTECTION_PROFILE);
-      goto err;
+      return 0;
     }
 
-    if (!sk_SRTP_PROTECTION_PROFILE_push(profiles, profile)) {
-      goto err;
+    if (!sk_SRTP_PROTECTION_PROFILE_push(profiles.get(), profile)) {
+      return 0;
     }
 
     if (col) {
@@ -189,12 +189,8 @@ static int ssl_ctx_make_profiles(const char *profiles_string,
   } while (col);
 
   sk_SRTP_PROTECTION_PROFILE_free(*out);
-  *out = profiles;
+  *out = profiles.release();
   return 1;
-
-err:
-  sk_SRTP_PROTECTION_PROFILE_free(profiles);
-  return 0;
 }
 
 int SSL_CTX_set_srtp_profiles(SSL_CTX *ctx, const char *profiles) {
