@@ -17,6 +17,8 @@
 
 #include <openssl/base.h>
 
+#include <openssl/span.h>
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -37,6 +39,13 @@ extern "C" {
 struct cbs_st {
   const uint8_t *data;
   size_t len;
+
+#if !defined(BORINGSSL_NO_CXX)
+  // Allow implicit conversions to bssl::Span<const uint8_t>.
+  operator bssl::Span<const uint8_t>() const {
+    return bssl::MakeConstSpan(data, len);
+  }
+#endif
 };
 
 // CBS_init sets |cbs| to point to |data|. It does not take ownership of

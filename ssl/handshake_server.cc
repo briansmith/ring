@@ -1180,9 +1180,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     // Compute the premaster.
     uint8_t alert = SSL_AD_DECODE_ERROR;
-    if (!hs->key_share->Finish(
-            &premaster_secret, &alert,
-            MakeConstSpan(CBS_data(&peer_key), CBS_len(&peer_key)))) {
+    if (!hs->key_share->Finish(&premaster_secret, &alert, peer_key)) {
       ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }
