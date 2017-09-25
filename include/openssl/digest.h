@@ -201,6 +201,23 @@ OPENSSL_EXPORT size_t EVP_MD_block_size(const EVP_MD *md);
 #define EVP_MD_FLAG_DIGALGID_ABSENT 2
 
 
+// ASN.1 functions.
+//
+// These functions allow code to parse and serialize AlgorithmIdentifiers for
+// hash functions.
+
+// EVP_parse_digest_algorithm parses an AlgorithmIdentifier structure containing
+// a hash function OID (for example, 2.16.840.1.101.3.4.2.1 is SHA-256) and
+// advances |cbs|. The parameters field may either be omitted or a NULL. It
+// returns the digest function or NULL on error.
+OPENSSL_EXPORT const EVP_MD *EVP_parse_digest_algorithm(CBS *cbs);
+
+// EVP_marshal_digest_algorithm marshals |md| as an AlgorithmIdentifier
+// structure and appends the result to |cbb|. It returns one on success and zero
+// on error.
+OPENSSL_EXPORT int EVP_marshal_digest_algorithm(CBB *cbb, const EVP_MD *md);
+
+
 // Deprecated functions.
 
 // EVP_MD_CTX_copy sets |out|, which must /not/ be initialised, to be a copy of

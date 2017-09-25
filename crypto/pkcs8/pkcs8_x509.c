@@ -71,7 +71,6 @@
 
 #include "internal.h"
 #include "../bytestring/internal.h"
-#include "../digest_extra/internal.h"
 #include "../internal.h"
 
 
