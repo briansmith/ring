@@ -4651,7 +4651,6 @@ enum class OpenRecordResult {
   kDiscard,
   kIncompleteRecord,
   kAlertCloseNotify,
-  kAlertFatal,
   kError,
 };
 
@@ -4665,9 +4664,8 @@ enum class OpenRecordResult {
 // - kIncompleteRecord if |in| did not contain a complete record.
 // - kAlertCloseNotify if a record was successfully processed but is a
 //   close_notify alert.
-// - kAlertFatal if a record was successfully processed but is a fatal alert.
 // - kError if an error occurred or the record is invalid. |*out_alert| will be
-//   set to an alert to emit.
+//   set to an alert to emit, or zero if no alert should be emitted.
 OPENSSL_EXPORT OpenRecordResult OpenRecord(SSL *ssl, Span<uint8_t> *out,
                                            size_t *out_record_len,
                                            uint8_t *out_alert,

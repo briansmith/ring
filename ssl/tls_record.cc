@@ -562,7 +562,8 @@ enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
     OPENSSL_PUT_ERROR(SSL, SSL_AD_REASON_OFFSET + alert_descr);
     BIO_snprintf(tmp, sizeof(tmp), "%d", alert_descr);
     ERR_add_error_data(2, "SSL alert number ", tmp);
-    return ssl_open_record_fatal_alert;
+    *out_alert = 0;  // No alert to send back to the peer.
+    return ssl_open_record_error;
   }
 
   *out_alert = SSL_AD_ILLEGAL_PARAMETER;
@@ -603,8 +604,6 @@ OpenRecordResult OpenRecord(SSL *ssl, Span<uint8_t> *out,
       return OpenRecordResult::kIncompleteRecord;
     case ssl_open_record_close_notify:
       return OpenRecordResult::kAlertCloseNotify;
-    case ssl_open_record_fatal_alert:
-      return OpenRecordResult::kAlertFatal;
     case ssl_open_record_error:
       return OpenRecordResult::kError;
   }

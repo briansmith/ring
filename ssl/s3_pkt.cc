@@ -178,11 +178,10 @@ again:
     case ssl_open_record_close_notify:
       return 0;
 
-    case ssl_open_record_fatal_alert:
-      return -1;
-
     case ssl_open_record_error:
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+      if (alert != 0) {
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+      }
       return -1;
   }
 
@@ -547,6 +546,7 @@ int ssl3_send_alert(SSL *ssl, int level, int desc) {
     ssl->s3->send_shutdown = ssl_shutdown_close_notify;
   } else {
     assert(level == SSL3_AL_FATAL);
+    assert(desc != SSL_AD_CLOSE_NOTIFY);
     ssl->s3->send_shutdown = ssl_shutdown_fatal_alert;
   }
 

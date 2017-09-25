@@ -764,7 +764,6 @@ enum ssl_open_record_t {
   ssl_open_record_discard,
   ssl_open_record_partial,
   ssl_open_record_close_notify,
-  ssl_open_record_fatal_alert,
   ssl_open_record_error,
 };
 
@@ -786,11 +785,11 @@ enum ssl_open_record_t {
 // If a record was successfully processed but should be discarded, it returns
 // |ssl_open_record_discard|.
 //
-// If a record was successfully processed but is a close_notify or fatal alert,
-// it returns |ssl_open_record_close_notify| or |ssl_open_record_fatal_alert|.
+// If a record was successfully processed but is a close_notify, it returns
+// |ssl_open_record_close_notify|.
 //
-// On failure, it returns |ssl_open_record_error| and sets |*out_alert| to an
-// alert to emit.
+// On failure or fatal alert, it returns |ssl_open_record_error| and sets
+// |*out_alert| to an alert to emit, or zero if no alert should be emitted.
 enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
                                        size_t *out_consumed, uint8_t *out_alert,
                                        uint8_t *in, size_t in_len);

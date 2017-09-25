@@ -192,11 +192,10 @@ again:
     case ssl_open_record_close_notify:
       return 0;
 
-    case ssl_open_record_fatal_alert:
-      return -1;
-
     case ssl_open_record_error:
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+      if (alert != 0) {
+        ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+      }
       return -1;
   }
 
