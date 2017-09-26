@@ -1446,11 +1446,6 @@ type ProtocolBugs struct {
 	// PadClientHello, if non-zero, pads the ClientHello to a multiple of
 	// that many bytes.
 	PadClientHello int
-
-	// SendOnlyECExtensions omits all extensions except supported_groups and
-	// ec_point_formats, in order to trigger the Java ClientHello
-	// fingerprint.
-	SendOnlyECExtensions bool
 }
 
 func (c *Config) serverInit() {

@@ -1490,21 +1490,14 @@ int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
 
 // ClientHello functions.
 
-// ssl_client_hello_init parses |msg| as a ClientHello and writes the result to
-// |*out|. It returns one on success and zero on error. This function is
-// exported for unit tests.
-OPENSSL_EXPORT int ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out,
-                                         const SSLMessage &msg);
+int ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out,
+                          const SSLMessage &msg);
 
 int ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
                                    CBS *out, uint16_t extension_type);
 
 int ssl_client_cipher_list_contains_cipher(const SSL_CLIENT_HELLO *client_hello,
                                            uint16_t id);
-
-// ssl_is_probably_java returns true if |client_hello| looks like a Java
-// ClientHello and false otherwise. This function is exported for tests.
-OPENSSL_EXPORT bool ssl_is_probably_java(const SSL_CLIENT_HELLO *client_hello);
 
 
 // GREASE.
