@@ -353,32 +353,31 @@ bool CBBFinishArray(CBB *cbb, Array<uint8_t> *out);
 // compared numerically.
 
 // ssl_protocol_version_from_wire sets |*out| to the protocol version
-// corresponding to wire version |version| and returns one. If |version| is not
-// a valid TLS or DTLS version, it returns zero.
+// corresponding to wire version |version| and returns true. If |version| is not
+// a valid TLS or DTLS version, it returns false.
 //
 // Note this simultaneously handles both DTLS and TLS. Use one of the
 // higher-level functions below for most operations.
-int ssl_protocol_version_from_wire(uint16_t *out, uint16_t version);
+bool ssl_protocol_version_from_wire(uint16_t *out, uint16_t version);
 
 // ssl_get_version_range sets |*out_min_version| and |*out_max_version| to the
 // minimum and maximum enabled protocol versions, respectively.
-int ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
-                          uint16_t *out_max_version);
+bool ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
+                           uint16_t *out_max_version);
 
-// ssl_supports_version returns one if |hs| supports |version| and zero
-// otherwise.
-int ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version);
+// ssl_supports_version returns whether |hs| supports |version|.
+bool ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version);
 
 // ssl_add_supported_versions writes the supported versions of |hs| to |cbb|, in
 // decreasing preference order.
-int ssl_add_supported_versions(SSL_HANDSHAKE *hs, CBB *cbb);
+bool ssl_add_supported_versions(SSL_HANDSHAKE *hs, CBB *cbb);
 
 // ssl_negotiate_version negotiates a common version based on |hs|'s preferences
-// and the peer preference list in |peer_versions|. On success, it returns one
-// and sets |*out_version| to the selected version. Otherwise, it returns zero
+// and the peer preference list in |peer_versions|. On success, it returns true
+// and sets |*out_version| to the selected version. Otherwise, it returns false
 // and sets |*out_alert| to an alert to send.
-int ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
-                          uint16_t *out_version, const CBS *peer_versions);
+bool ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
+                           uint16_t *out_version, const CBS *peer_versions);
 
 // ssl3_protocol_version returns |ssl|'s protocol version. It is an error to
 // call this function before the version is determined.
