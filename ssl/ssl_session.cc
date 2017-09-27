@@ -672,14 +672,13 @@ static enum ssl_hs_wait_t ssl_lookup_session(
     data.session_id_length = session_id_len;
     OPENSSL_memcpy(data.session_id, session_id, session_id_len);
 
-    CRYPTO_MUTEX_lock_read(&ssl->session_ctx->lock);
+    MutexReadLock lock(&ssl->session_ctx->lock);
     session.reset(lh_SSL_SESSION_retrieve(ssl->session_ctx->sessions, &data));
     if (session) {
       // |lh_SSL_SESSION_retrieve| returns a non-owning pointer.
       SSL_SESSION_up_ref(session.get());
     }
     // TODO(davidben): This should probably move it to the front of the list.
-    CRYPTO_MUTEX_unlock_read(&ssl->session_ctx->lock);
   }
 
   // Fall back to the external cache, if it exists.
@@ -1014,27 +1013,30 @@ int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *session) {
   // Although |session| is inserted into two structures (a doubly-linked list
   // and the hash table), |ctx| only takes one reference.
   SSL_SESSION_up_ref(session);
+  UniquePtr<SSL_SESSION> owned_session(session);
 
   SSL_SESSION *old_session;
-  CRYPTO_MUTEX_lock_write(&ctx->lock);
+  MutexWriteLock lock(&ctx->lock);
   if (!lh_SSL_SESSION_insert(ctx->sessions, &old_session, session)) {
-    CRYPTO_MUTEX_unlock_write(&ctx->lock);
-    SSL_SESSION_free(session);
     return 0;
   }
+  // |ctx->sessions| took ownership of |session| and gave us back a reference to
+  // |old_session|. (|old_session| may be the same as |session|, in which case
+  // we traded identical references with |ctx->sessions|.)
+  owned_session.release();
+  owned_session.reset(old_session);
 
   if (old_session != NULL) {
     if (old_session == session) {
-      // |session| was already in the cache.
-      CRYPTO_MUTEX_unlock_write(&ctx->lock);
-      SSL_SESSION_free(old_session);
+      // |session| was already in the cache. There are no linked list pointers
+      // to update.
       return 0;
     }
 
-    // There was a session ID collision. |old_session| must be removed from
-    // the linked list and released.
+    // There was a session ID collision. |old_session| was replaced with
+    // |session| in the hash table, so |old_session| must be removed from the
+    // linked list to match.
     SSL_SESSION_list_remove(ctx, old_session);
-    SSL_SESSION_free(old_session);
   }
 
   SSL_SESSION_list_add(ctx, session);
@@ -1049,7 +1051,6 @@ int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *session) {
     }
   }
 
-  CRYPTO_MUTEX_unlock_write(&ctx->lock);
   return 1;
 }
 
@@ -1128,9 +1129,8 @@ void SSL_CTX_flush_sessions(SSL_CTX *ctx, uint64_t time) {
     return;
   }
   tp.time = time;
-  CRYPTO_MUTEX_lock_write(&ctx->lock);
+  MutexWriteLock lock(&ctx->lock);
   lh_SSL_SESSION_doall_arg(tp.cache, timeout_doall_arg, &tp);
-  CRYPTO_MUTEX_unlock_write(&ctx->lock);
 }
 
 void SSL_CTX_sess_set_new_cb(SSL_CTX *ctx,
