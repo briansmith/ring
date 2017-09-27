@@ -1741,22 +1741,22 @@ const char *SSL_get_cipher_list(const SSL *ssl, int n) {
 
 int SSL_CTX_set_cipher_list(SSL_CTX *ctx, const char *str) {
   return ssl_create_cipher_list(ctx->method, &ctx->cipher_list, str,
-                                0 /* not strict */);
+                                false /* not strict */);
 }
 
 int SSL_CTX_set_strict_cipher_list(SSL_CTX *ctx, const char *str) {
   return ssl_create_cipher_list(ctx->method, &ctx->cipher_list, str,
-                                1 /* strict */);
+                                true /* strict */);
 }
 
 int SSL_set_cipher_list(SSL *ssl, const char *str) {
   return ssl_create_cipher_list(ssl->ctx->method, &ssl->cipher_list, str,
-                                0 /* not strict */);
+                                false /* not strict */);
 }
 
 int SSL_set_strict_cipher_list(SSL *ssl, const char *str) {
   return ssl_create_cipher_list(ssl->ctx->method, &ssl->cipher_list, str,
-                                1 /* strict */);
+                                true /* strict */);
 }
 
 const char *SSL_get_servername(const SSL *ssl, const int type) {

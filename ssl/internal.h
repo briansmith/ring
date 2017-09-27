@@ -470,11 +470,11 @@ namespace bssl {
 // object for |cipher| protocol version |version|. It sets |*out_mac_secret_len|
 // and |*out_fixed_iv_len| to the MAC key length and fixed IV length,
 // respectively. The MAC key length is zero except for legacy block and stream
-// ciphers. It returns 1 on success and 0 on error.
-int ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
-                            size_t *out_mac_secret_len,
-                            size_t *out_fixed_iv_len, const SSL_CIPHER *cipher,
-                            uint16_t version, int is_dtls);
+// ciphers. It returns true on success and false on error.
+bool ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
+                             size_t *out_mac_secret_len,
+                             size_t *out_fixed_iv_len, const SSL_CIPHER *cipher,
+                             uint16_t version, int is_dtls);
 
 // ssl_get_handshake_digest returns the |EVP_MD| corresponding to |version| and
 // |cipher|.
@@ -483,14 +483,14 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 
 // ssl_create_cipher_list evaluates |rule_str| according to the ciphers in
 // |ssl_method|. It sets |*out_cipher_list| to a newly-allocated
-// |ssl_cipher_preference_list_st| containing the result. It returns 1 on
-// success and 0 on failure. If |strict| is true, nonsense will be rejected. If
-// false, nonsense will be silently ignored. An empty result is considered an
-// error regardless of |strict|.
-int ssl_create_cipher_list(
+// |ssl_cipher_preference_list_st| containing the result. It returns true on
+// success and false on failure. If |strict| is true, nonsense will be
+// rejected. If false, nonsense will be silently ignored. An empty result is
+// considered an error regardless of |strict|.
+bool ssl_create_cipher_list(
     const SSL_PROTOCOL_METHOD *ssl_method,
     struct ssl_cipher_preference_list_st **out_cipher_list,
-    const char *rule_str, int strict);
+    const char *rule_str, bool strict);
 
 // ssl_cipher_get_value returns the cipher suite id of |cipher|.
 uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher);
@@ -499,17 +499,16 @@ uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher);
 // values suitable for use with |key| in TLS 1.2 and below.
 uint32_t ssl_cipher_auth_mask_for_key(const EVP_PKEY *key);
 
-// ssl_cipher_uses_certificate_auth returns one if |cipher| authenticates the
-// server and, optionally, the client with a certificate. Otherwise it returns
-// zero.
-int ssl_cipher_uses_certificate_auth(const SSL_CIPHER *cipher);
+// ssl_cipher_uses_certificate_auth returns whether |cipher| authenticates the
+// server and, optionally, the client with a certificate.
+bool ssl_cipher_uses_certificate_auth(const SSL_CIPHER *cipher);
 
-// ssl_cipher_requires_server_key_exchange returns 1 if |cipher| requires a
-// ServerKeyExchange message. Otherwise it returns 0.
+// ssl_cipher_requires_server_key_exchange returns whether |cipher| requires a
+// ServerKeyExchange message.
 //
-// This function may return zero while still allowing |cipher| an optional
+// This function may return false while still allowing |cipher| an optional
 // ServerKeyExchange. This is the case for plain PSK ciphers.
-int ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
+bool ssl_cipher_requires_server_key_exchange(const SSL_CIPHER *cipher);
 
 // ssl_cipher_get_record_split_len, for TLS 1.0 CBC mode ciphers, returns the
 // length of an encrypted 1-byte record, for use in record-splitting. Otherwise
