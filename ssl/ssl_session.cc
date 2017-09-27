@@ -1041,7 +1041,8 @@ int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *session) {
 
   // Enforce any cache size limits.
   if (SSL_CTX_sess_get_cache_size(ctx) > 0) {
-    while (SSL_CTX_sess_number(ctx) > SSL_CTX_sess_get_cache_size(ctx)) {
+    while (lh_SSL_SESSION_num_items(ctx->sessions) >
+           SSL_CTX_sess_get_cache_size(ctx)) {
       if (!remove_session_lock(ctx, ctx->session_cache_tail, 0)) {
         break;
       }

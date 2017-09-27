@@ -1399,7 +1399,7 @@ static bool CacheEquals(SSL_CTX *ctx,
 
   // Check the hash table.
   std::vector<SSL_SESSION*> actual, expected_copy;
-  lh_SSL_SESSION_doall_arg(SSL_CTX_sessions(ctx), AppendSession, &actual);
+  lh_SSL_SESSION_doall_arg(ctx->sessions, AppendSession, &actual);
   expected_copy = expected;
 
   std::sort(actual.begin(), actual.end());

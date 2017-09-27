@@ -1566,9 +1566,8 @@ int SSL_get_secure_renegotiation_support(const SSL *ssl) {
          ssl->s3->send_connection_binding;
 }
 
-LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx) { return ctx->sessions; }
-
 size_t SSL_CTX_sess_number(const SSL_CTX *ctx) {
+  MutexReadLock lock(const_cast<CRYPTO_MUTEX *>(&ctx->lock));
   return lh_SSL_SESSION_num_items(ctx->sessions);
 }
 

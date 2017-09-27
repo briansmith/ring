@@ -1854,9 +1854,6 @@ OPENSSL_EXPORT unsigned long SSL_CTX_sess_set_cache_size(SSL_CTX *ctx,
 // session cache.
 OPENSSL_EXPORT unsigned long SSL_CTX_sess_get_cache_size(const SSL_CTX *ctx);
 
-// SSL_CTX_sessions returns |ctx|'s internal session cache.
-OPENSSL_EXPORT LHASH_OF(SSL_SESSION) *SSL_CTX_sessions(SSL_CTX *ctx);
-
 // SSL_CTX_sess_number returns the number of sessions in |ctx|'s internal
 // session cache.
 OPENSSL_EXPORT size_t SSL_CTX_sess_number(const SSL_CTX *ctx);
