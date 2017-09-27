@@ -318,7 +318,7 @@ static int ssl3_prf(uint8_t *out, size_t out_len, const uint8_t *secret,
 
 static int tls1_setup_key_block(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (hs->key_block_len != 0) {
+  if (!hs->key_block.empty()) {
     return 1;
   }
 
@@ -356,22 +356,13 @@ static int tls1_setup_key_block(SSL_HANDSHAKE *hs) {
   ssl->s3->tmp.new_key_len = (uint8_t)key_len;
   ssl->s3->tmp.new_fixed_iv_len = (uint8_t)fixed_iv_len;
 
-  size_t key_block_len = SSL_get_key_block_len(ssl);
-
-  uint8_t *keyblock = (uint8_t *)OPENSSL_malloc(key_block_len);
-  if (keyblock == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+  Array<uint8_t> key_block;
+  if (!key_block.Init(SSL_get_key_block_len(ssl)) ||
+      !SSL_generate_key_block(ssl, key_block.data(), key_block.size())) {
     return 0;
   }
 
-  if (!SSL_generate_key_block(ssl, keyblock, key_block_len)) {
-    OPENSSL_free(keyblock);
-    return 0;
-  }
-
-  assert(key_block_len < 256);
-  hs->key_block_len = (uint8_t)key_block_len;
-  hs->key_block = keyblock;
+  hs->key_block = std::move(key_block);
   return 1;
 }
 
@@ -383,45 +374,28 @@ int tls1_change_cipher_state(SSL_HANDSHAKE *hs,
     return 0;
   }
 
-  // use_client_keys is true if we wish to use the keys for the "client write"
-  // direction. This is the case if we're a client sending a ChangeCipherSpec,
-  // or a server reading a client's ChangeCipherSpec.
-  const bool use_client_keys =
-      direction == (ssl->server ? evp_aead_open : evp_aead_seal);
-
   size_t mac_secret_len = ssl->s3->tmp.new_mac_secret_len;
   size_t key_len = ssl->s3->tmp.new_key_len;
   size_t iv_len = ssl->s3->tmp.new_fixed_iv_len;
-  assert((mac_secret_len + key_len + iv_len) * 2 == hs->key_block_len);
+  assert((mac_secret_len + key_len + iv_len) * 2 == hs->key_block.size());
 
-  const uint8_t *key_data = hs->key_block;
-  const uint8_t *client_write_mac_secret = key_data;
-  key_data += mac_secret_len;
-  const uint8_t *server_write_mac_secret = key_data;
-  key_data += mac_secret_len;
-  const uint8_t *client_write_key = key_data;
-  key_data += key_len;
-  const uint8_t *server_write_key = key_data;
-  key_data += key_len;
-  const uint8_t *client_write_iv = key_data;
-  key_data += iv_len;
-  const uint8_t *server_write_iv = key_data;
-  key_data += iv_len;
-
-  const uint8_t *mac_secret, *key, *iv;
-  if (use_client_keys) {
-    mac_secret = client_write_mac_secret;
-    key = client_write_key;
-    iv = client_write_iv;
+  Span<const uint8_t> key_block = hs->key_block;
+  Span<const uint8_t> mac_secret, key, iv;
+  if (direction == (ssl->server ? evp_aead_open : evp_aead_seal)) {
+    // Use the client write (server read) keys.
+    mac_secret = key_block.subspan(0, mac_secret_len);
+    key = key_block.subspan(2 * mac_secret_len, key_len);
+    iv = key_block.subspan(2 * mac_secret_len + 2 * key_len, iv_len);
   } else {
-    mac_secret = server_write_mac_secret;
-    key = server_write_key;
-    iv = server_write_iv;
+    // Use the server write (client read) keys.
+    mac_secret = key_block.subspan(mac_secret_len, mac_secret_len);
+    key = key_block.subspan(2 * mac_secret_len + key_len, key_len);
+    iv = key_block.subspan(2 * mac_secret_len + 2 * key_len + iv_len, iv_len);
   }
 
-  UniquePtr<SSLAEADContext> aead_ctx = SSLAEADContext::Create(
-      direction, ssl->version, SSL_is_dtls(ssl), hs->new_cipher, key, key_len,
-      mac_secret, mac_secret_len, iv, iv_len);
+  UniquePtr<SSLAEADContext> aead_ctx =
+      SSLAEADContext::Create(direction, ssl->version, SSL_is_dtls(ssl),
+                             hs->new_cipher, key, mac_secret, iv);
   if (!aead_ctx) {
     return 0;
   }

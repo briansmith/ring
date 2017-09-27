@@ -22,6 +22,7 @@
 extern "C++" {
 
 #include <algorithm>
+#include <cstdlib>
 #include <type_traits>
 
 namespace bssl {
@@ -104,6 +105,8 @@ class Span : private internal::SpanBase<const T> {
       std::is_convertible<decltype(std::declval<C>().data()), T *>::value &&
       std::is_integral<decltype(std::declval<C>().size())>::value>;
 
+  static const size_t npos = -1;
+
  public:
   constexpr Span() : Span(nullptr, 0) {}
   constexpr Span(T *ptr, size_t len) : data_(ptr), size_(len) {}
@@ -124,6 +127,7 @@ class Span : private internal::SpanBase<const T> {
 
   T *data() const { return data_; }
   size_t size() const { return size_; }
+  bool empty() const { return size_ == 0; }
 
   T *begin() const { return data_; }
   const T *cbegin() const { return data_; }
@@ -133,10 +137,20 @@ class Span : private internal::SpanBase<const T> {
   T &operator[](size_t i) const { return data_[i]; }
   T &at(size_t i) const { return data_[i]; }
 
+  Span subspan(size_t pos = 0, size_t len = npos) const {
+    if (pos > size_) {
+      abort();  // absl::Span throws an exception here.
+    }
+    return Span(data_ + pos, std::min(size_ - pos, len));
+  }
+
  private:
   T *data_;
   size_t size_;
 };
+
+template <typename T>
+const size_t Span<T>::npos;
 
 template <typename T>
 Span<T> MakeSpan(T *ptr, size_t size) {

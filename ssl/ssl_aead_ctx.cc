@@ -56,10 +56,8 @@ UniquePtr<SSLAEADContext> SSLAEADContext::CreateNullCipher(bool is_dtls) {
 
 UniquePtr<SSLAEADContext> SSLAEADContext::Create(
     enum evp_aead_direction_t direction, uint16_t version, int is_dtls,
-    const SSL_CIPHER *cipher, const uint8_t *enc_key, size_t enc_key_len,
-    const uint8_t *mac_key, size_t mac_key_len, const uint8_t *fixed_iv,
-    size_t fixed_iv_len) {
-
+    const SSL_CIPHER *cipher, Span<const uint8_t> enc_key,
+    Span<const uint8_t> mac_key, Span<const uint8_t> fixed_iv) {
   const EVP_AEAD *aead;
   uint16_t protocol_version;
   size_t expected_mac_key_len, expected_fixed_iv_len;
@@ -68,27 +66,27 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
                                &expected_fixed_iv_len, cipher, protocol_version,
                                is_dtls) ||
       // Ensure the caller returned correct key sizes.
-      expected_fixed_iv_len != fixed_iv_len ||
-      expected_mac_key_len != mac_key_len) {
+      expected_fixed_iv_len != fixed_iv.size() ||
+      expected_mac_key_len != mac_key.size()) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return nullptr;
   }
 
   uint8_t merged_key[EVP_AEAD_MAX_KEY_LENGTH];
-  if (mac_key_len > 0) {
+  if (!mac_key.empty()) {
     // This is a "stateful" AEAD (for compatibility with pre-AEAD cipher
     // suites).
-    if (mac_key_len + enc_key_len + fixed_iv_len > sizeof(merged_key)) {
+    if (mac_key.size() + enc_key.size() + fixed_iv.size() >
+        sizeof(merged_key)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return nullptr;
     }
-    OPENSSL_memcpy(merged_key, mac_key, mac_key_len);
-    OPENSSL_memcpy(merged_key + mac_key_len, enc_key, enc_key_len);
-    OPENSSL_memcpy(merged_key + mac_key_len + enc_key_len, fixed_iv,
-                   fixed_iv_len);
-    enc_key = merged_key;
-    enc_key_len += mac_key_len;
-    enc_key_len += fixed_iv_len;
+    OPENSSL_memcpy(merged_key, mac_key.data(), mac_key.size());
+    OPENSSL_memcpy(merged_key + mac_key.size(), enc_key.data(), enc_key.size());
+    OPENSSL_memcpy(merged_key + mac_key.size() + enc_key.size(),
+                   fixed_iv.data(), fixed_iv.size());
+    enc_key = MakeConstSpan(merged_key,
+                            enc_key.size() + mac_key.size() + fixed_iv.size());
   }
 
   UniquePtr<SSLAEADContext> aead_ctx =
@@ -101,7 +99,7 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
   assert(aead_ctx->ProtocolVersion() == protocol_version);
 
   if (!EVP_AEAD_CTX_init_with_direction(
-          aead_ctx->ctx_.get(), aead, enc_key, enc_key_len,
+          aead_ctx->ctx_.get(), aead, enc_key.data(), enc_key.size(),
           EVP_AEAD_DEFAULT_TAG_LENGTH, direction)) {
     return nullptr;
   }
@@ -110,10 +108,10 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
   static_assert(EVP_AEAD_MAX_NONCE_LENGTH < 256,
                 "variable_nonce_len doesn't fit in uint8_t");
   aead_ctx->variable_nonce_len_ = (uint8_t)EVP_AEAD_nonce_length(aead);
-  if (mac_key_len == 0) {
-    assert(fixed_iv_len <= sizeof(aead_ctx->fixed_nonce_));
-    OPENSSL_memcpy(aead_ctx->fixed_nonce_, fixed_iv, fixed_iv_len);
-    aead_ctx->fixed_nonce_len_ = fixed_iv_len;
+  if (mac_key.empty()) {
+    assert(fixed_iv.size() <= sizeof(aead_ctx->fixed_nonce_));
+    OPENSSL_memcpy(aead_ctx->fixed_nonce_, fixed_iv.data(), fixed_iv.size());
+    aead_ctx->fixed_nonce_len_ = fixed_iv.size();
 
     if (cipher->algorithm_enc & SSL_CHACHA20POLY1305) {
       // The fixed nonce into the actual nonce (the sequence number).
@@ -121,8 +119,8 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
       aead_ctx->variable_nonce_len_ = 8;
     } else {
       // The fixed IV is prepended to the nonce.
-      assert(fixed_iv_len <= aead_ctx->variable_nonce_len_);
-      aead_ctx->variable_nonce_len_ -= fixed_iv_len;
+      assert(fixed_iv.size() <= aead_ctx->variable_nonce_len_);
+      aead_ctx->variable_nonce_len_ -= fixed_iv.size();
     }
 
     // AES-GCM uses an explicit nonce.
@@ -137,7 +135,7 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
       aead_ctx->variable_nonce_len_ = 8;
       aead_ctx->variable_nonce_included_in_record_ = false;
       aead_ctx->omit_ad_ = true;
-      assert(fixed_iv_len >= aead_ctx->variable_nonce_len_);
+      assert(fixed_iv.size() >= aead_ctx->variable_nonce_len_);
     }
   } else {
     assert(protocol_version < TLS1_3_VERSION);

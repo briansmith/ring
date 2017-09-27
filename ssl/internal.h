@@ -258,6 +258,7 @@ class Array {
   const T *data() const { return data_; }
   T *data() { return data_; }
   size_t size() const { return size_; }
+  bool empty() const { return size_ == 0; }
 
   const T &operator[](size_t i) const { return data_[i]; }
   T &operator[](size_t i) { return data_[i]; }
@@ -618,11 +619,12 @@ class SSLAEADContext {
   // returns nullptr on error. Only one of |Open| or |Seal| may be used with the
   // resulting object, depending on |direction|. |version| is the normalized
   // protocol version, so DTLS 1.0 is represented as 0x0301, not 0xffef.
-  static UniquePtr<SSLAEADContext> Create(
-      enum evp_aead_direction_t direction, uint16_t version, int is_dtls,
-      const SSL_CIPHER *cipher, const uint8_t *enc_key, size_t enc_key_len,
-      const uint8_t *mac_key, size_t mac_key_len, const uint8_t *fixed_iv,
-      size_t fixed_iv_len);
+  static UniquePtr<SSLAEADContext> Create(enum evp_aead_direction_t direction,
+                                          uint16_t version, int is_dtls,
+                                          const SSL_CIPHER *cipher,
+                                          Span<const uint8_t> enc_key,
+                                          Span<const uint8_t> mac_key,
+                                          Span<const uint8_t> fixed_iv);
 
   // SetVersionIfNullCipher sets the version the SSLAEADContext for the null
   // cipher, to make version-specific determinations in the record layer prior
@@ -1335,8 +1337,9 @@ struct SSL_HANDSHAKE {
   // CertificateRequest message.
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> ca_names;
 
-  // cached_x509_ca_names contains a cache of parsed versions of the elements
-  // of |ca_names|.
+  // cached_x509_ca_names contains a cache of parsed versions of the elements of
+  // |ca_names|. This pointer is left non-owning so only
+  // |ssl_crypto_x509_method| needs to link against crypto/x509.
   STACK_OF(X509_NAME) *cached_x509_ca_names = nullptr;
 
   // certificate_types, on the client, contains the set of certificate types
@@ -1361,8 +1364,7 @@ struct SSL_HANDSHAKE {
   const SSL_CIPHER *new_cipher = nullptr;
 
   // key_block is the record-layer key block for TLS 1.2 and earlier.
-  uint8_t *key_block = nullptr;
-  uint8_t key_block_len = 0;
+  Array<uint8_t> key_block;
 
   // scts_requested is true if the SCT extension is in the ClientHello.
   bool scts_requested:1;

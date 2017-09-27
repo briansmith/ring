@@ -2111,7 +2111,7 @@ static int ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 
     // Predict the most preferred group.
     Span<const uint16_t> groups = tls1_get_grouplist(ssl);
-    if (groups.size() == 0) {
+    if (groups.empty()) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_GROUPS_SPECIFIED);
       return 0;
     }
@@ -2290,7 +2290,7 @@ static int ext_supported_versions_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 // https://tools.ietf.org/html/draft-ietf-tls-tls13-16#section-4.2.2
 
 static int ext_cookie_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
-  if (hs->cookie.size() == 0) {
+  if (hs->cookie.empty()) {
     return 1;
   }
 
@@ -3184,7 +3184,7 @@ int tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   }
 
   Span<const uint16_t> peer_sigalgs = hs->peer_sigalgs;
-  if (peer_sigalgs.size() == 0 && ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
+  if (peer_sigalgs.empty() && ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
     // If the client didn't specify any signature_algorithms extension then
     // we can assume that it supports SHA1. See
     // http://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
