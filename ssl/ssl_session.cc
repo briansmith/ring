@@ -960,6 +960,10 @@ int SSL_SESSION_set1_id_context(SSL_SESSION *session, const uint8_t *sid_ctx,
   return 1;
 }
 
+int SSL_SESSION_should_be_single_use(const SSL_SESSION *session) {
+  return SSL_SESSION_protocol_version(session) >= TLS1_3_VERSION;
+}
+
 SSL_SESSION *SSL_magic_pending_session_ptr(void) {
   return (SSL_SESSION *)&g_pending_session_magic;
 }

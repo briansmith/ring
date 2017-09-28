@@ -1709,6 +1709,15 @@ OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *session,
                                                const uint8_t *sid_ctx,
                                                size_t sid_ctx_len);
 
+// SSL_SESSION_should_be_single_use returns one if |session| should be
+// single-use (TLS 1.3 and later) and zero otherwise.
+//
+// If this function returns one, clients retain multiple sessions and use each
+// only once. This prevents passive observers from correlating connections with
+// tickets. See draft-ietf-tls-tls13-18, appendix B.5. If it returns zero,
+// |session| cannot be used without leaking a correlator.
+OPENSSL_EXPORT int SSL_SESSION_should_be_single_use(const SSL_SESSION *session);
+
 
 // Session caching.
 //
@@ -1745,6 +1754,12 @@ OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *session,
 // e.g., different cipher suite settings or client certificates should also use
 // separate session caches between those contexts. Servers should also partition
 // session caches between SNI hosts with |SSL_CTX_set_session_id_context|.
+//
+// Note also, in TLS 1.2 and earlier, offering sessions allows passive observers
+// to correlate different client connections. TLS 1.3 and later fix this,
+// provided clients use sessions at most once. Session caches are managed by the
+// caller in BoringSSL, so this must be implemented externally. See
+// |SSL_SESSION_should_be_single_use| for details.
 
 // SSL_SESS_CACHE_OFF disables all session caching.
 #define SSL_SESS_CACHE_OFF 0x0000
