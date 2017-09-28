@@ -131,11 +131,8 @@ extern const char kOpenSSLReasonStringData[];
 
 // err_clear_data frees the optional |data| member of the given error.
 static void err_clear_data(struct err_error_st *error) {
-  if ((error->flags & ERR_FLAG_MALLOCED) != 0) {
-    OPENSSL_free(error->data);
-  }
+  OPENSSL_free(error->data);
   error->data = NULL;
-  error->flags &= ~ERR_FLAG_MALLOCED;
 }
 
 // err_clear clears the given queued error.
@@ -235,7 +232,7 @@ static uint32_t get_error_values(int inc, int top, const char **file, int *line,
       // ownership and retains it until the next call that affects the
       // error queue.
       if (inc) {
-        if (error->flags & ERR_FLAG_MALLOCED) {
+        if (error->data != NULL) {
           OPENSSL_free(state->to_free);
           state->to_free = error->data;
         }
@@ -585,16 +582,13 @@ void ERR_print_errors_fp(FILE *file) {
   ERR_print_errors_cb(print_errors_to_file, file);
 }
 
-// err_set_error_data sets the data on the most recent error. The |flags|
-// argument is a combination of the |ERR_FLAG_*| values.
-static void err_set_error_data(char *data, int flags) {
+// err_set_error_data sets the data on the most recent error.
+static void err_set_error_data(char *data) {
   ERR_STATE *const state = err_get_state();
   struct err_error_st *error;
 
   if (state == NULL || state->top == state->bottom) {
-    if (flags & ERR_FLAG_MALLOCED) {
-      OPENSSL_free(data);
-    }
+    OPENSSL_free(data);
     return;
   }
 
@@ -602,7 +596,7 @@ static void err_set_error_data(char *data, int flags) {
 
   err_clear_data(error);
   error->data = data;
-  error->flags = flags;
+  error->flags = ERR_FLAG_STRING;
 }
 
 void ERR_put_error(int library, int unused, int reason, const char *file,
@@ -680,7 +674,7 @@ static void err_add_error_vdata(unsigned num, va_list args) {
   }
 
   buf[len] = 0;
-  err_set_error_data(buf, ERR_FLAG_MALLOCED | ERR_FLAG_STRING);
+  err_set_error_data(buf);
 }
 
 void ERR_add_error_data(unsigned count, ...) {
@@ -708,7 +702,7 @@ void ERR_add_error_dataf(const char *format, ...) {
   buf[buf_len] = 0;
   va_end(ap);
 
-  err_set_error_data(buf, ERR_FLAG_MALLOCED | ERR_FLAG_STRING);
+  err_set_error_data(buf);
 }
 
 int ERR_set_mark(void) {

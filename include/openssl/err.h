@@ -331,8 +331,8 @@ OPENSSL_EXPORT int ERR_pop_to_mark(void);
 struct err_error_st {
   // file contains the filename where the error occurred.
   const char *file;
-  // data contains optional data. It must be freed with |OPENSSL_free| if
-  // |flags&ERR_FLAG_MALLOCED|.
+  // data contains a NUL-terminated string with optional data. It must be freed
+  // with |OPENSSL_free|.
   char *data;
   // packed contains the error library and reason, as packed by ERR_PACK.
   uint32_t packed;
@@ -343,7 +343,7 @@ struct err_error_st {
 };
 
 // ERR_FLAG_STRING means that the |data| member is a NUL-terminated string that
-// can be printed.
+// can be printed. This is always set if |data| is non-NULL.
 #define ERR_FLAG_STRING 1
 // ERR_TXT_STRING is provided for compatibility with code that assumes that
 // it's using OpenSSL.
@@ -356,12 +356,9 @@ struct err_error_st {
 // The following flag values are internal and are masked when flags are
 // returned from functions like |ERR_get_error_line_data|.
 
-// ERR_FLAG_MALLOCED means the the |data| member must be freed when no longer
-// needed.
-#define ERR_FLAG_MALLOCED 16
 // ERR_FLAG_MARK is used to indicate a reversion point in the queue. See
 // |ERR_pop_to_mark|.
-#define ERR_FLAG_MARK 32
+#define ERR_FLAG_MARK 16
 
 // ERR_NUM_ERRORS is the limit of the number of errors in the queue.
 #define ERR_NUM_ERRORS 16
