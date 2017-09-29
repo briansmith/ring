@@ -578,7 +578,7 @@ typedef struct cipher_alias_st {
 
 static const CIPHER_ALIAS kCipherAliases[] = {
     // "ALL" doesn't include eNULL. It must be explicitly enabled.
-    {"ALL", ~0u, ~0u, ~SSL_eNULL, ~0u, 0},
+    {"ALL", ~0u, ~0u, ~0u, ~0u, 0},
 
     // The "COMPLEMENTOFDEFAULT" rule is omitted. It matches nothing.
 
@@ -594,7 +594,7 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     {"kPSK", SSL_kPSK, ~0u, ~0u, ~0u, 0},
 
     // server authentication aliases
-    {"aRSA", ~0u, SSL_aRSA, ~SSL_eNULL, ~0u, 0},
+    {"aRSA", ~0u, SSL_aRSA, ~0u, ~0u, 0},
     {"aECDSA", ~0u, SSL_aECDSA, ~0u, ~0u, 0},
     {"ECDSA", ~0u, SSL_aECDSA, ~0u, ~0u, 0},
     {"aPSK", ~0u, SSL_aPSK, ~0u, ~0u, 0},
@@ -602,7 +602,7 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     // aliases combining key exchange and server authentication
     {"ECDHE", SSL_kECDHE, ~0u, ~0u, ~0u, 0},
     {"EECDH", SSL_kECDHE, ~0u, ~0u, ~0u, 0},
-    {"RSA", SSL_kRSA, SSL_aRSA, ~SSL_eNULL, ~0u, 0},
+    {"RSA", SSL_kRSA, SSL_aRSA, ~0u, ~0u, 0},
     {"PSK", SSL_kPSK, SSL_aPSK, ~0u, ~0u, 0},
 
     // symmetric encryption aliases
@@ -614,20 +614,20 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     {"CHACHA20", ~0u, ~0u, SSL_CHACHA20POLY1305, ~0u, 0},
 
     // MAC aliases
-    {"SHA1", ~0u, ~0u, ~SSL_eNULL, SSL_SHA1, 0},
-    {"SHA", ~0u, ~0u, ~SSL_eNULL, SSL_SHA1, 0},
+    {"SHA1", ~0u, ~0u, ~0u, SSL_SHA1, 0},
+    {"SHA", ~0u, ~0u, ~0u, SSL_SHA1, 0},
     {"SHA256", ~0u, ~0u, ~0u, SSL_SHA256, 0},
     {"SHA384", ~0u, ~0u, ~0u, SSL_SHA384, 0},
 
     // Legacy protocol minimum version aliases. "TLSv1" is intentionally the
     // same as "SSLv3".
-    {"SSLv3", ~0u, ~0u, ~SSL_eNULL, ~0u, SSL3_VERSION},
-    {"TLSv1", ~0u, ~0u, ~SSL_eNULL, ~0u, SSL3_VERSION},
-    {"TLSv1.2", ~0u, ~0u, ~SSL_eNULL, ~0u, TLS1_2_VERSION},
+    {"SSLv3", ~0u, ~0u, ~0u, ~0u, SSL3_VERSION},
+    {"TLSv1", ~0u, ~0u, ~0u, ~0u, SSL3_VERSION},
+    {"TLSv1.2", ~0u, ~0u, ~0u, ~0u, TLS1_2_VERSION},
 
     // Legacy strength classes.
-    {"HIGH", ~0u, ~0u, ~SSL_eNULL, ~0u, 0},
-    {"FIPS", ~0u, ~0u, ~SSL_eNULL, ~0u, 0},
+    {"HIGH", ~0u, ~0u, ~0u, ~0u, 0},
+    {"FIPS", ~0u, ~0u, ~0u, ~0u, 0},
 };
 
 static const size_t kCipherAliasesLen = OPENSSL_ARRAY_SIZE(kCipherAliases);
@@ -918,7 +918,9 @@ static void ssl_cipher_apply_rule(
           !(alg_auth & cp->algorithm_auth) ||
           !(alg_enc & cp->algorithm_enc) ||
           !(alg_mac & cp->algorithm_mac) ||
-          (min_version != 0 && SSL_CIPHER_get_min_version(cp) != min_version)) {
+          (min_version != 0 && SSL_CIPHER_get_min_version(cp) != min_version) ||
+          // The NULL cipher must be selected explicitly.
+          cp->algorithm_enc == SSL_eNULL) {
         continue;
       }
     }
