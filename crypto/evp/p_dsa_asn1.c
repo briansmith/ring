@@ -151,8 +151,8 @@ static int dsa_priv_decode(EVP_PKEY *out, CBS *params, CBS *key) {
   // Calculate the public key.
   ctx = BN_CTX_new();
   if (ctx == NULL ||
-      !BN_mod_exp_mont(dsa->pub_key, dsa->g, dsa->priv_key, dsa->p, ctx,
-                       NULL)) {
+      !BN_mod_exp_mont_consttime(dsa->pub_key, dsa->g, dsa->priv_key, dsa->p,
+                                 ctx, NULL)) {
     goto err;
   }
 
