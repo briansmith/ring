@@ -158,6 +158,7 @@
 #include <openssl/span.h>
 #include <openssl/stack.h>
 
+#include "../crypto/err/internal.h"
 #include "../crypto/internal.h"
 
 
@@ -1291,6 +1292,9 @@ struct SSL_HANDSHAKE {
   // retry_group is the group ID selected by the server in HelloRetryRequest in
   // TLS 1.3.
   uint16_t retry_group = 0;
+
+  // error, if |wait| is |ssl_hs_error|, is the error the handshake failed on.
+  UniquePtr<ERR_SAVE_STATE> error;
 
   // key_share is the current key exchange instance.
   UniquePtr<SSLKeyShare> key_share;

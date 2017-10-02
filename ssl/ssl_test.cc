@@ -3760,6 +3760,47 @@ TEST_P(SSLVersionTest, SessionVersion) {
   EXPECT_EQ(version(), SSL_SESSION_get_protocol_version(session.get()));
 }
 
+// Test that a handshake-level errors are sticky.
+TEST_P(SSLVersionTest, StickyErrorHandshake_ParseClientHello) {
+  UniquePtr<SSL_CTX> ctx = CreateContext();
+  ASSERT_TRUE(ctx);
+  UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+  SSL_set_accept_state(ssl.get());
+
+  // Pass in an empty ClientHello.
+  if (is_dtls()) {
+    static const uint8_t kBadClientHello[] = {
+        0x16, 0xfe, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x0c, 0x01, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    SSL_set0_rbio(ssl.get(),
+                  BIO_new_mem_buf(kBadClientHello, sizeof(kBadClientHello)));
+  } else {
+    static const uint8_t kBadClientHello[] = {0x16, 0x03, 0x01, 0x00, 0x04,
+                                              0x01, 0x00, 0x00, 0x00};
+    SSL_set0_rbio(ssl.get(),
+                  BIO_new_mem_buf(kBadClientHello, sizeof(kBadClientHello)));
+  }
+
+  SSL_set0_wbio(ssl.get(), BIO_new(BIO_s_mem()));
+
+  // The handshake logic should reject the ClientHello.
+  int ret = SSL_do_handshake(ssl.get());
+  EXPECT_NE(1, ret);
+  EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(ssl.get(), ret));
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(ERR_peek_error()));
+  EXPECT_EQ(SSL_R_DECODE_ERROR, ERR_GET_REASON(ERR_peek_error()));
+  ERR_clear_error();
+
+  // If we drive the handshake again, the error is replayed.
+  ret = SSL_do_handshake(ssl.get());
+  EXPECT_NE(1, ret);
+  EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(ssl.get(), ret));
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(ERR_peek_error()));
+  EXPECT_EQ(SSL_R_DECODE_ERROR, ERR_GET_REASON(ERR_peek_error()));
+}
+
 // TODO(davidben): Convert this file to GTest properly.
 TEST(SSLTest, AllTests) {
   if (!TestSSL_SESSIONEncoding(kOpenSSLSession) ||

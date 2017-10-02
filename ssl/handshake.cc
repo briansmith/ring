@@ -427,7 +427,7 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
     // Resolve the operation the handshake was waiting on.
     switch (hs->wait) {
       case ssl_hs_error:
-        OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_HANDSHAKE_FAILURE);
+        ERR_restore_state(hs->error.get());
         return -1;
 
       case ssl_hs_flush: {
@@ -531,8 +531,7 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
     // Run the state machine again.
     hs->wait = ssl->do_handshake(hs);
     if (hs->wait == ssl_hs_error) {
-      // Don't loop around to avoid a stray |SSL_R_SSL_HANDSHAKE_FAILURE| the
-      // first time around.
+      hs->error.reset(ERR_save_state());
       return -1;
     }
     if (hs->wait == ssl_hs_ok) {
