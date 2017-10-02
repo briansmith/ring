@@ -158,6 +158,15 @@ OPENSSL_EXPORT void ERR_free_strings(void);
 
 // Reading and formatting errors.
 
+// ERR_GET_LIB returns the library code for the error. This is one of
+// the |ERR_LIB_*| values.
+#define ERR_GET_LIB(packed_error) ((int)(((packed_error) >> 24) & 0xff))
+
+// ERR_GET_REASON returns the reason code for the error. This is one of
+// library-specific |LIB_R_*| values where |LIB| is the library (see
+// |ERR_GET_LIB|). Note that reason codes are specific to the library.
+#define ERR_GET_REASON(packed_error) ((int)((packed_error) & 0xfff))
+
 // ERR_get_error gets the packed error code for the least recent error and
 // removes that error from the queue. If there are no errors in the queue then
 // it returns zero.
@@ -257,6 +266,16 @@ OPENSSL_EXPORT void ERR_clear_error(void);
 // need to call this function. Use |ERR_clear_error|.
 OPENSSL_EXPORT void ERR_remove_thread_state(const CRYPTO_THREADID *tid);
 
+// ERR_set_mark "marks" the most recent error for use with |ERR_pop_to_mark|.
+// It returns one if an error was marked and zero if there are no errors.
+OPENSSL_EXPORT int ERR_set_mark(void);
+
+// ERR_pop_to_mark removes errors from the most recent to the least recent
+// until (and not including) a "marked" error. It returns zero if no marked
+// error was found (and thus all errors were removed) and one otherwise. Errors
+// are marked using |ERR_set_mark|.
+OPENSSL_EXPORT int ERR_pop_to_mark(void);
+
 
 // Custom errors.
 
@@ -264,6 +283,94 @@ OPENSSL_EXPORT void ERR_remove_thread_state(const CRYPTO_THREADID *tid);
 // |library| argument to |ERR_put_error|. This is intended for code that wishes
 // to push its own, non-standard errors to the error queue.
 OPENSSL_EXPORT int ERR_get_next_error_library(void);
+
+
+// Built-in library and reason codes.
+
+// The following values are built-in library codes.
+enum {
+  ERR_LIB_NONE = 1,
+  ERR_LIB_SYS,
+  ERR_LIB_BN,
+  ERR_LIB_RSA,
+  ERR_LIB_DH,
+  ERR_LIB_EVP,
+  ERR_LIB_BUF,
+  ERR_LIB_OBJ,
+  ERR_LIB_PEM,
+  ERR_LIB_DSA,
+  ERR_LIB_X509,
+  ERR_LIB_ASN1,
+  ERR_LIB_CONF,
+  ERR_LIB_CRYPTO,
+  ERR_LIB_EC,
+  ERR_LIB_SSL,
+  ERR_LIB_BIO,
+  ERR_LIB_PKCS7,
+  ERR_LIB_PKCS8,
+  ERR_LIB_X509V3,
+  ERR_LIB_RAND,
+  ERR_LIB_ENGINE,
+  ERR_LIB_OCSP,
+  ERR_LIB_UI,
+  ERR_LIB_COMP,
+  ERR_LIB_ECDSA,
+  ERR_LIB_ECDH,
+  ERR_LIB_HMAC,
+  ERR_LIB_DIGEST,
+  ERR_LIB_CIPHER,
+  ERR_LIB_HKDF,
+  ERR_LIB_USER,
+  ERR_NUM_LIBS
+};
+
+// The following reason codes used to denote an error occuring in another
+// library. They are sometimes used for a stack trace.
+#define ERR_R_SYS_LIB ERR_LIB_SYS
+#define ERR_R_BN_LIB ERR_LIB_BN
+#define ERR_R_RSA_LIB ERR_LIB_RSA
+#define ERR_R_DH_LIB ERR_LIB_DH
+#define ERR_R_EVP_LIB ERR_LIB_EVP
+#define ERR_R_BUF_LIB ERR_LIB_BUF
+#define ERR_R_OBJ_LIB ERR_LIB_OBJ
+#define ERR_R_PEM_LIB ERR_LIB_PEM
+#define ERR_R_DSA_LIB ERR_LIB_DSA
+#define ERR_R_X509_LIB ERR_LIB_X509
+#define ERR_R_ASN1_LIB ERR_LIB_ASN1
+#define ERR_R_CONF_LIB ERR_LIB_CONF
+#define ERR_R_CRYPTO_LIB ERR_LIB_CRYPTO
+#define ERR_R_EC_LIB ERR_LIB_EC
+#define ERR_R_SSL_LIB ERR_LIB_SSL
+#define ERR_R_BIO_LIB ERR_LIB_BIO
+#define ERR_R_PKCS7_LIB ERR_LIB_PKCS7
+#define ERR_R_PKCS8_LIB ERR_LIB_PKCS8
+#define ERR_R_X509V3_LIB ERR_LIB_X509V3
+#define ERR_R_RAND_LIB ERR_LIB_RAND
+#define ERR_R_DSO_LIB ERR_LIB_DSO
+#define ERR_R_ENGINE_LIB ERR_LIB_ENGINE
+#define ERR_R_OCSP_LIB ERR_LIB_OCSP
+#define ERR_R_UI_LIB ERR_LIB_UI
+#define ERR_R_COMP_LIB ERR_LIB_COMP
+#define ERR_R_ECDSA_LIB ERR_LIB_ECDSA
+#define ERR_R_ECDH_LIB ERR_LIB_ECDH
+#define ERR_R_STORE_LIB ERR_LIB_STORE
+#define ERR_R_FIPS_LIB ERR_LIB_FIPS
+#define ERR_R_CMS_LIB ERR_LIB_CMS
+#define ERR_R_TS_LIB ERR_LIB_TS
+#define ERR_R_HMAC_LIB ERR_LIB_HMAC
+#define ERR_R_JPAKE_LIB ERR_LIB_JPAKE
+#define ERR_R_USER_LIB ERR_LIB_USER
+#define ERR_R_DIGEST_LIB ERR_LIB_DIGEST
+#define ERR_R_CIPHER_LIB ERR_LIB_CIPHER
+#define ERR_R_HKDF_LIB ERR_LIB_HKDF
+
+// The following values are global reason codes. They may occur in any library.
+#define ERR_R_FATAL 64
+#define ERR_R_MALLOC_FAILURE (1 | ERR_R_FATAL)
+#define ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED (2 | ERR_R_FATAL)
+#define ERR_R_PASSED_NULL_PARAMETER (3 | ERR_R_FATAL)
+#define ERR_R_INTERNAL_ERROR (4 | ERR_R_FATAL)
+#define ERR_R_OVERFLOW (5 | ERR_R_FATAL)
 
 
 // Deprecated functions.
@@ -285,6 +392,9 @@ OPENSSL_EXPORT const char *ERR_func_error_string(uint32_t packed_error);
 // TODO(fork): remove this function.
 OPENSSL_EXPORT char *ERR_error_string(uint32_t packed_error, char *buf);
 #define ERR_ERROR_STRING_BUF_LEN 256
+
+// ERR_GET_FUNC returns zero. BoringSSL errors do not report a function code.
+#define ERR_GET_FUNC(packed_error) 0
 
 
 // Private functions.
@@ -317,16 +427,6 @@ OPENSSL_EXPORT void ERR_add_error_data(unsigned count, ...);
 // result as the data on the most recent error.
 OPENSSL_EXPORT void ERR_add_error_dataf(const char *format, ...)
     OPENSSL_PRINTF_FORMAT_FUNC(1, 2);
-
-// ERR_set_mark "marks" the most recent error for use with |ERR_pop_to_mark|.
-// It returns one if an error was marked and zero if there are no errors.
-OPENSSL_EXPORT int ERR_set_mark(void);
-
-// ERR_pop_to_mark removes errors from the most recent to the least recent
-// until (and not including) a "marked" error. It returns zero if no marked
-// error was found (and thus all errors were removed) and one otherwise. Errors
-// are marked using |ERR_set_mark|.
-OPENSSL_EXPORT int ERR_pop_to_mark(void);
 
 struct err_error_st {
   // file contains the filename where the error occurred.
@@ -379,94 +479,8 @@ typedef struct err_state_st {
   void *to_free;
 } ERR_STATE;
 
-enum {
-  ERR_LIB_NONE = 1,
-  ERR_LIB_SYS,
-  ERR_LIB_BN,
-  ERR_LIB_RSA,
-  ERR_LIB_DH,
-  ERR_LIB_EVP,
-  ERR_LIB_BUF,
-  ERR_LIB_OBJ,
-  ERR_LIB_PEM,
-  ERR_LIB_DSA,
-  ERR_LIB_X509,
-  ERR_LIB_ASN1,
-  ERR_LIB_CONF,
-  ERR_LIB_CRYPTO,
-  ERR_LIB_EC,
-  ERR_LIB_SSL,
-  ERR_LIB_BIO,
-  ERR_LIB_PKCS7,
-  ERR_LIB_PKCS8,
-  ERR_LIB_X509V3,
-  ERR_LIB_RAND,
-  ERR_LIB_ENGINE,
-  ERR_LIB_OCSP,
-  ERR_LIB_UI,
-  ERR_LIB_COMP,
-  ERR_LIB_ECDSA,
-  ERR_LIB_ECDH,
-  ERR_LIB_HMAC,
-  ERR_LIB_DIGEST,
-  ERR_LIB_CIPHER,
-  ERR_LIB_HKDF,
-  ERR_LIB_USER,
-  ERR_NUM_LIBS
-};
-
-#define ERR_R_SYS_LIB ERR_LIB_SYS
-#define ERR_R_BN_LIB ERR_LIB_BN
-#define ERR_R_RSA_LIB ERR_LIB_RSA
-#define ERR_R_DH_LIB ERR_LIB_DH
-#define ERR_R_EVP_LIB ERR_LIB_EVP
-#define ERR_R_BUF_LIB ERR_LIB_BUF
-#define ERR_R_OBJ_LIB ERR_LIB_OBJ
-#define ERR_R_PEM_LIB ERR_LIB_PEM
-#define ERR_R_DSA_LIB ERR_LIB_DSA
-#define ERR_R_X509_LIB ERR_LIB_X509
-#define ERR_R_ASN1_LIB ERR_LIB_ASN1
-#define ERR_R_CONF_LIB ERR_LIB_CONF
-#define ERR_R_CRYPTO_LIB ERR_LIB_CRYPTO
-#define ERR_R_EC_LIB ERR_LIB_EC
-#define ERR_R_SSL_LIB ERR_LIB_SSL
-#define ERR_R_BIO_LIB ERR_LIB_BIO
-#define ERR_R_PKCS7_LIB ERR_LIB_PKCS7
-#define ERR_R_PKCS8_LIB ERR_LIB_PKCS8
-#define ERR_R_X509V3_LIB ERR_LIB_X509V3
-#define ERR_R_RAND_LIB ERR_LIB_RAND
-#define ERR_R_DSO_LIB ERR_LIB_DSO
-#define ERR_R_ENGINE_LIB ERR_LIB_ENGINE
-#define ERR_R_OCSP_LIB ERR_LIB_OCSP
-#define ERR_R_UI_LIB ERR_LIB_UI
-#define ERR_R_COMP_LIB ERR_LIB_COMP
-#define ERR_R_ECDSA_LIB ERR_LIB_ECDSA
-#define ERR_R_ECDH_LIB ERR_LIB_ECDH
-#define ERR_R_STORE_LIB ERR_LIB_STORE
-#define ERR_R_FIPS_LIB ERR_LIB_FIPS
-#define ERR_R_CMS_LIB ERR_LIB_CMS
-#define ERR_R_TS_LIB ERR_LIB_TS
-#define ERR_R_HMAC_LIB ERR_LIB_HMAC
-#define ERR_R_JPAKE_LIB ERR_LIB_JPAKE
-#define ERR_R_USER_LIB ERR_LIB_USER
-#define ERR_R_DIGEST_LIB ERR_LIB_DIGEST
-#define ERR_R_CIPHER_LIB ERR_LIB_CIPHER
-#define ERR_R_HKDF_LIB ERR_LIB_HKDF
-
-// Global reasons.
-#define ERR_R_FATAL 64
-#define ERR_R_MALLOC_FAILURE (1 | ERR_R_FATAL)
-#define ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED (2 | ERR_R_FATAL)
-#define ERR_R_PASSED_NULL_PARAMETER (3 | ERR_R_FATAL)
-#define ERR_R_INTERNAL_ERROR (4 | ERR_R_FATAL)
-#define ERR_R_OVERFLOW (5 | ERR_R_FATAL)
-
 #define ERR_PACK(lib, reason)                                              \
   (((((uint32_t)(lib)) & 0xff) << 24) | ((((uint32_t)(reason)) & 0xfff)))
-
-#define ERR_GET_LIB(packed_error) ((int)(((packed_error) >> 24) & 0xff))
-#define ERR_GET_FUNC(packed_error) 0
-#define ERR_GET_REASON(packed_error) ((int)((packed_error) & 0xfff))
 
 // OPENSSL_DECLARE_ERROR_REASON is used by util/make_errors.h (which generates
 // the error defines) to recognise that an additional reason value is needed.
