@@ -54,10 +54,6 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#if !defined(_POSIX_C_SOURCE)
-#define _POSIX_C_SOURCE 201410L  // for snprintf, vprintf etc
-#endif
-
 #include <openssl/bio.h>
 
 #include <assert.h>
