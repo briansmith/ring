@@ -573,11 +573,7 @@ ResendHelloRetryRequest:
 	if sendHelloRetryRequest {
 		oldClientHelloBytes := hs.clientHello.marshal()
 		hs.writeServerHash(helloRetryRequest.marshal())
-		if c.vers == tls13RecordTypeExperimentVersion {
-			c.writeRecord(recordTypePlaintextHandshake, helloRetryRequest.marshal())
-		} else {
-			c.writeRecord(recordTypeHandshake, helloRetryRequest.marshal())
-		}
+		c.writeRecord(recordTypeHandshake, helloRetryRequest.marshal())
 		c.flushHandshake()
 
 		if hs.clientHello.hasEarlyData {
@@ -755,11 +751,7 @@ ResendHelloRetryRequest:
 		toWrite = append(toWrite, typeEncryptedExtensions)
 		c.writeRecord(recordTypeHandshake, toWrite)
 	} else {
-		if c.vers == tls13RecordTypeExperimentVersion {
-			c.writeRecord(recordTypePlaintextHandshake, hs.hello.marshal())
-		} else {
-			c.writeRecord(recordTypeHandshake, hs.hello.marshal())
-		}
+		c.writeRecord(recordTypeHandshake, hs.hello.marshal())
 	}
 	c.flushHandshake()
 
@@ -1089,9 +1081,6 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 		copy(hs.hello.random[len(hs.hello.random)-8:], downgradeTLS12)
 	}
 
-	if len(hs.clientHello.sessionId) > 0 && c.config.Bugs.ExpectEmptyClientHelloSessionID {
-		return false, errors.New("tls: expected empty session ID from client")
-	}
 	if len(hs.clientHello.sessionId) == 0 && c.config.Bugs.ExpectClientHelloSessionID {
 		return false, errors.New("tls: expected non-empty session ID from client")
 	}

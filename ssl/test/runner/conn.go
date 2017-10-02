@@ -774,11 +774,6 @@ RestartReadRecord:
 		return 0, nil, c.in.setErrorLocked(errors.New("tls: unsupported SSLv2 handshake received"))
 	}
 
-	// Accept server_plaintext_handshake records when the content type TLS 1.3 variant is enabled.
-	if c.isClient && c.in.cipher == nil && c.config.TLS13Variant == TLS13RecordTypeExperiment && want == recordTypeHandshake && typ == recordTypePlaintextHandshake {
-		typ = recordTypeHandshake
-	}
-
 	vers := uint16(b.data[1])<<8 | uint16(b.data[2])
 	n := int(b.data[3])<<8 | int(b.data[4])
 

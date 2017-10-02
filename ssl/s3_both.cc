@@ -189,15 +189,7 @@ int ssl3_add_message(SSL *ssl, Array<uint8_t> msg) {
     Span<const uint8_t> chunk = rest.subspan(0, ssl->max_send_fragment);
     rest = rest.subspan(chunk.size());
 
-    uint8_t type = SSL3_RT_HANDSHAKE;
-    if (ssl->server &&
-        ssl->s3->have_version &&
-        ssl->version == TLS1_3_RECORD_TYPE_EXPERIMENT_VERSION &&
-        ssl->s3->aead_write_ctx->is_null_cipher()) {
-      type = SSL3_RT_PLAINTEXT_HANDSHAKE;
-    }
-
-    if (!add_record_to_flight(ssl, type, chunk)) {
+    if (!add_record_to_flight(ssl, SSL3_RT_HANDSHAKE, chunk)) {
       return 0;
     }
   } while (!rest.empty());

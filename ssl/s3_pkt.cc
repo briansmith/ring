@@ -522,13 +522,7 @@ int ssl3_read_handshake_bytes(SSL *ssl, uint8_t *buf, int len) {
       return -1;
     }
 
-    // Accept server_plaintext_handshake records when the content type TLS 1.3
-    // variant is enabled.
-    if (rr->type != SSL3_RT_HANDSHAKE &&
-        !(!ssl->server &&
-          ssl->tls13_variant == tls13_record_type_experiment &&
-          ssl->s3->aead_read_ctx->is_null_cipher() &&
-          rr->type == SSL3_RT_PLAINTEXT_HANDSHAKE)) {
+    if (rr->type != SSL3_RT_HANDSHAKE) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
       ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
       return -1;

@@ -327,14 +327,6 @@ static bool GetTLS13Variant(tls13_variant_t *out, const std::string &in) {
     *out = tls13_experiment3;
     return true;
   }
-  if (in == "record-type") {
-    *out = tls13_record_type_experiment;
-    return true;
-  }
-  if (in == "no-session-id") {
-    *out = tls13_no_session_id_experiment;
-    return true;
-  }
   return false;
 }
 

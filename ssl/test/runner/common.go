@@ -33,20 +33,17 @@ const (
 
 // A draft version of TLS 1.3 that is sent over the wire for the current draft.
 const (
-	tls13DraftVersion                = 0x7f12
-	tls13ExperimentVersion           = 0x7e01
-	tls13Experiment2Version          = 0x7e02
-	tls13Experiment3Version          = 0x7e03
-	tls13RecordTypeExperimentVersion = 0x7a12
+	tls13DraftVersion       = 0x7f12
+	tls13ExperimentVersion  = 0x7e01
+	tls13Experiment2Version = 0x7e02
+	tls13Experiment3Version = 0x7e03
 )
 
 const (
-	TLS13Default               = 0
-	TLS13Experiment            = 1
-	TLS13RecordTypeExperiment  = 2
-	TLS13NoSessionIDExperiment = 3
-	TLS13Experiment2           = 4
-	TLS13Experiment3           = 5
+	TLS13Default     = 0
+	TLS13Experiment  = 1
+	TLS13Experiment2 = 2
+	TLS13Experiment3 = 3
 )
 
 var allTLSWireVersions = []uint16{
@@ -54,7 +51,6 @@ var allTLSWireVersions = []uint16{
 	tls13Experiment3Version,
 	tls13Experiment2Version,
 	tls13ExperimentVersion,
-	tls13RecordTypeExperimentVersion,
 	VersionTLS12,
 	VersionTLS11,
 	VersionTLS10,
@@ -742,10 +738,6 @@ type ProtocolBugs struct {
 	// ExpectClientHelloSessionID, if true, causes the server to fail the
 	// connection if there is not a SessionID in the ClientHello.
 	ExpectClientHelloSessionID bool
-
-	// ExpectEmptyClientHelloSessionID, if true, causes the server to fail the
-	// connection if there is a SessionID in the ClientHello.
-	ExpectEmptyClientHelloSessionID bool
 
 	// ExpectNoTLS12Session, if true, causes the server to fail the
 	// connection if either a session ID or TLS 1.2 ticket is offered.
@@ -1558,7 +1550,7 @@ func wireToVersion(vers uint16, isDTLS bool) (uint16, bool) {
 		switch vers {
 		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12:
 			return vers, true
-		case tls13DraftVersion, tls13ExperimentVersion, tls13Experiment2Version, tls13Experiment3Version, tls13RecordTypeExperimentVersion:
+		case tls13DraftVersion, tls13ExperimentVersion, tls13Experiment2Version, tls13Experiment3Version:
 			return VersionTLS13, true
 		}
 	}
@@ -1582,10 +1574,9 @@ func isResumptionRecordVersionExperiment(vers uint16) bool {
 // it returns true and the corresponding protocol version. Otherwise, it returns
 // false.
 func (c *Config) isSupportedVersion(wireVers uint16, isDTLS bool) (uint16, bool) {
-	if (c.TLS13Variant != TLS13Experiment && c.TLS13Variant != TLS13NoSessionIDExperiment && wireVers == tls13ExperimentVersion) ||
+	if (c.TLS13Variant != TLS13Experiment && wireVers == tls13ExperimentVersion) ||
 		(c.TLS13Variant != TLS13Experiment2 && wireVers == tls13Experiment2Version) ||
 		(c.TLS13Variant != TLS13Experiment3 && wireVers == tls13Experiment3Version) ||
-		(c.TLS13Variant != TLS13RecordTypeExperiment && wireVers == tls13RecordTypeExperimentVersion) ||
 		(c.TLS13Variant != TLS13Default && wireVers == tls13DraftVersion) {
 		return 0, false
 	}
