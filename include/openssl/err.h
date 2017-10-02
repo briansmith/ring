@@ -436,38 +436,9 @@ OPENSSL_EXPORT void ERR_add_error_data(unsigned count, ...);
 OPENSSL_EXPORT void ERR_add_error_dataf(const char *format, ...)
     OPENSSL_PRINTF_FORMAT_FUNC(1, 2);
 
-struct err_error_st {
-  // file contains the filename where the error occurred.
-  const char *file;
-  // data contains a NUL-terminated string with optional data. It must be freed
-  // with |OPENSSL_free|.
-  char *data;
-  // packed contains the error library and reason, as packed by ERR_PACK.
-  uint32_t packed;
-  // line contains the line number where the error occurred.
-  uint16_t line;
-  // mark indicates a reversion point in the queue. See |ERR_pop_to_mark|.
-  unsigned mark : 1;
-};
-
-// ERR_NUM_ERRORS is the limit of the number of errors in the queue.
+// ERR_NUM_ERRORS is one more than the limit of the number of errors in the
+// queue.
 #define ERR_NUM_ERRORS 16
-
-// err_state_st (aka |ERR_STATE|) contains the per-thread, error queue.
-typedef struct err_state_st {
-  // errors contains the ERR_NUM_ERRORS most recent errors, organised as a ring
-  // buffer.
-  struct err_error_st errors[ERR_NUM_ERRORS];
-  // top contains the index one past the most recent error. If |top| equals
-  // |bottom| then the queue is empty.
-  unsigned top;
-  // bottom contains the index of the last error in the queue.
-  unsigned bottom;
-
-  // to_free, if not NULL, contains a pointer owned by this structure that was
-  // previously a |data| pointer of one of the elements of |errors|.
-  void *to_free;
-} ERR_STATE;
 
 #define ERR_PACK(lib, reason)                                              \
   (((((uint32_t)(lib)) & 0xff) << 24) | ((((uint32_t)(reason)) & 0xfff)))
