@@ -129,15 +129,9 @@ extern const uint32_t kOpenSSLReasonValues[];
 extern const size_t kOpenSSLReasonValuesLen;
 extern const char kOpenSSLReasonStringData[];
 
-// err_clear_data frees the optional |data| member of the given error.
-static void err_clear_data(struct err_error_st *error) {
-  OPENSSL_free(error->data);
-  error->data = NULL;
-}
-
 // err_clear clears the given queued error.
 static void err_clear(struct err_error_st *error) {
-  err_clear_data(error);
+  OPENSSL_free(error->data);
   OPENSSL_memset(error, 0, sizeof(struct err_error_st));
 }
 
@@ -224,7 +218,7 @@ static uint32_t get_error_values(int inc, int top, const char **file, int *line,
     } else {
       *data = error->data;
       if (flags != NULL) {
-        *flags = error->flags & ERR_FLAG_PUBLIC_MASK;
+        *flags = ERR_FLAG_STRING;
       }
       // If this error is being removed, take ownership of data from
       // the error. The semantics are such that the caller doesn't
@@ -237,7 +231,6 @@ static uint32_t get_error_values(int inc, int top, const char **file, int *line,
           state->to_free = error->data;
         }
         error->data = NULL;
-        error->flags = 0;
       }
     }
   }
@@ -594,9 +587,8 @@ static void err_set_error_data(char *data) {
 
   error = &state->errors[state->top];
 
-  err_clear_data(error);
+  OPENSSL_free(error->data);
   error->data = data;
-  error->flags = ERR_FLAG_STRING;
 }
 
 void ERR_put_error(int library, int unused, int reason, const char *file,
@@ -711,7 +703,7 @@ int ERR_set_mark(void) {
   if (state == NULL || state->bottom == state->top) {
     return 0;
   }
-  state->errors[state->top].flags |= ERR_FLAG_MARK;
+  state->errors[state->top].mark = 1;
   return 1;
 }
 
@@ -725,8 +717,8 @@ int ERR_pop_to_mark(void) {
   while (state->bottom != state->top) {
     struct err_error_st *error = &state->errors[state->top];
 
-    if ((error->flags & ERR_FLAG_MARK) != 0) {
-      error->flags &= ~ERR_FLAG_MARK;
+    if (error->mark) {
+      error->mark = 0;
       return 1;
     }
 

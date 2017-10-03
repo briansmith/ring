@@ -176,6 +176,10 @@ OPENSSL_EXPORT uint32_t ERR_get_error(void);
 // number of the call that added the error are also returned.
 OPENSSL_EXPORT uint32_t ERR_get_error_line(const char **file, int *line);
 
+// ERR_FLAG_STRING means that the |data| member is a NUL-terminated string that
+// can be printed. This is always set if |data| is non-NULL.
+#define ERR_FLAG_STRING 1
+
 // ERR_get_error_line_data acts like |ERR_get_error_line|, but also returns the
 // error-specific data pointer and flags. The flags are a bitwise-OR of
 // |ERR_FLAG_*| values. The error-specific data is owned by the error queue
@@ -396,6 +400,10 @@ OPENSSL_EXPORT char *ERR_error_string(uint32_t packed_error, char *buf);
 // ERR_GET_FUNC returns zero. BoringSSL errors do not report a function code.
 #define ERR_GET_FUNC(packed_error) 0
 
+// ERR_TXT_STRING is provided for compatibility with code that assumes that
+// it's using OpenSSL.
+#define ERR_TXT_STRING ERR_FLAG_STRING
+
 
 // Private functions.
 
@@ -438,27 +446,9 @@ struct err_error_st {
   uint32_t packed;
   // line contains the line number where the error occurred.
   uint16_t line;
-  // flags contains a bitwise-OR of ERR_FLAG_* values.
-  uint8_t flags;
+  // mark indicates a reversion point in the queue. See |ERR_pop_to_mark|.
+  unsigned mark : 1;
 };
-
-// ERR_FLAG_STRING means that the |data| member is a NUL-terminated string that
-// can be printed. This is always set if |data| is non-NULL.
-#define ERR_FLAG_STRING 1
-// ERR_TXT_STRING is provided for compatibility with code that assumes that
-// it's using OpenSSL.
-#define ERR_TXT_STRING ERR_FLAG_STRING
-
-// ERR_FLAG_PUBLIC_MASK is applied to the flags field before it is returned
-// from functions like |ERR_get_error_line_data|.
-#define ERR_FLAG_PUBLIC_MASK 0xf
-
-// The following flag values are internal and are masked when flags are
-// returned from functions like |ERR_get_error_line_data|.
-
-// ERR_FLAG_MARK is used to indicate a reversion point in the queue. See
-// |ERR_pop_to_mark|.
-#define ERR_FLAG_MARK 16
 
 // ERR_NUM_ERRORS is the limit of the number of errors in the queue.
 #define ERR_NUM_ERRORS 16
