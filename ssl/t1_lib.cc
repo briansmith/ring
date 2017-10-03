@@ -930,7 +930,7 @@ static int ext_ticket_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
       ssl->session != NULL &&
       ssl->session->tlsext_tick != NULL &&
       // Don't send TLS 1.3 session tickets in the ticket extension.
-      SSL_SESSION_protocol_version(ssl->session) < TLS1_3_VERSION) {
+      ssl_session_protocol_version(ssl->session) < TLS1_3_VERSION) {
     ticket_data = ssl->session->tlsext_tick;
     ticket_len = ssl->session->tlsext_ticklen;
   }
@@ -1808,18 +1808,18 @@ static int ext_ec_point_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 static size_t ext_pre_shared_key_clienthello_length(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (hs->max_version < TLS1_3_VERSION || ssl->session == NULL ||
-      SSL_SESSION_protocol_version(ssl->session) < TLS1_3_VERSION) {
+      ssl_session_protocol_version(ssl->session) < TLS1_3_VERSION) {
     return 0;
   }
 
-  size_t binder_len = EVP_MD_size(SSL_SESSION_get_digest(ssl->session));
+  size_t binder_len = EVP_MD_size(ssl_session_get_digest(ssl->session));
   return 15 + ssl->session->tlsext_ticklen + binder_len;
 }
 
 static int ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   if (hs->max_version < TLS1_3_VERSION || ssl->session == NULL ||
-      SSL_SESSION_protocol_version(ssl->session) < TLS1_3_VERSION) {
+      ssl_session_protocol_version(ssl->session) < TLS1_3_VERSION) {
     return 1;
   }
 
@@ -1831,7 +1831,7 @@ static int ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   // Fill in a placeholder zero binder of the appropriate length. It will be
   // computed and filled in later after length prefixes are computed.
   uint8_t zero_binder[EVP_MAX_MD_SIZE] = {0};
-  size_t binder_len = EVP_MD_size(SSL_SESSION_get_digest(ssl->session));
+  size_t binder_len = EVP_MD_size(ssl_session_get_digest(ssl->session));
 
   CBB contents, identity, ticket, binders, binder;
   if (!CBB_add_u16(out, TLSEXT_TYPE_pre_shared_key) ||
@@ -1997,7 +1997,7 @@ static int ext_psk_key_exchange_modes_parse_clienthello(SSL_HANDSHAKE *hs,
 static int ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   if (ssl->session == NULL ||
-      SSL_SESSION_protocol_version(ssl->session) < TLS1_3_VERSION ||
+      ssl_session_protocol_version(ssl->session) < TLS1_3_VERSION ||
       ssl->session->ticket_max_early_data == 0 ||
       hs->received_hello_retry_request ||
       !ssl->cert->enable_early_data) {

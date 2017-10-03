@@ -340,7 +340,7 @@ void ssl_session_renew_timeout(SSL *ssl, SSL_SESSION *session,
   }
 }
 
-uint16_t SSL_SESSION_protocol_version(const SSL_SESSION *session) {
+uint16_t ssl_session_protocol_version(const SSL_SESSION *session) {
   uint16_t ret;
   if (!ssl_protocol_version_from_wire(&ret, session->ssl_version)) {
     // An |SSL_SESSION| will never have an invalid version. This is enforced by
@@ -352,8 +352,8 @@ uint16_t SSL_SESSION_protocol_version(const SSL_SESSION *session) {
   return ret;
 }
 
-const EVP_MD *SSL_SESSION_get_digest(const SSL_SESSION *session) {
-  return ssl_get_handshake_digest(SSL_SESSION_protocol_version(session),
+const EVP_MD *ssl_session_get_digest(const SSL_SESSION *session) {
+  return ssl_get_handshake_digest(ssl_session_protocol_version(session),
                                   session->cipher);
 }
 
@@ -967,7 +967,7 @@ int SSL_SESSION_set1_id_context(SSL_SESSION *session, const uint8_t *sid_ctx,
 }
 
 int SSL_SESSION_should_be_single_use(const SSL_SESSION *session) {
-  return SSL_SESSION_protocol_version(session) >= TLS1_3_VERSION;
+  return ssl_session_protocol_version(session) >= TLS1_3_VERSION;
 }
 
 int SSL_SESSION_is_resumable(const SSL_SESSION *session) {

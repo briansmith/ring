@@ -98,23 +98,83 @@ static bool method_supports_version(const SSL_PROTOCOL_METHOD *method,
   return false;
 }
 
-static bool set_version_bound(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
-                              uint16_t version) {
-  // The public API uses wire versions, except we use |TLS1_3_VERSION|
-  // everywhere to refer to any draft TLS 1.3 versions. In this direction, we
-  // map it to some representative TLS 1.3 draft version.
+// The following functions map between API versions and wire versions. The
+// public API works on wire versions, except that TLS 1.3 draft versions all
+// appear as TLS 1.3. This will get collapsed back down when TLS 1.3 is
+// finalized.
+
+static const char *ssl_version_to_string(uint16_t version) {
+  switch (version) {
+    case TLS1_3_DRAFT_VERSION:
+    case TLS1_3_EXPERIMENT_VERSION:
+    case TLS1_3_EXPERIMENT2_VERSION:
+    case TLS1_3_EXPERIMENT3_VERSION:
+      return "TLSv1.3";
+
+    case TLS1_2_VERSION:
+      return "TLSv1.2";
+
+    case TLS1_1_VERSION:
+      return "TLSv1.1";
+
+    case TLS1_VERSION:
+      return "TLSv1";
+
+    case SSL3_VERSION:
+      return "SSLv3";
+
+    case DTLS1_VERSION:
+      return "DTLSv1";
+
+    case DTLS1_2_VERSION:
+      return "DTLSv1.2";
+
+    default:
+      return "unknown";
+  }
+}
+
+static uint16_t wire_version_to_api(uint16_t version) {
+  switch (version) {
+    // Report TLS 1.3 draft versions as TLS 1.3 in the public API.
+    case TLS1_3_DRAFT_VERSION:
+    case TLS1_3_EXPERIMENT_VERSION:
+    case TLS1_3_EXPERIMENT2_VERSION:
+    case TLS1_3_EXPERIMENT3_VERSION:
+      return TLS1_3_VERSION;
+    default:
+      return version;
+  }
+}
+
+// api_version_to_wire maps |version| to some representative wire version. In
+// particular, it picks an arbitrary TLS 1.3 representative. This should only be
+// used in context where that does not matter.
+static bool api_version_to_wire(uint16_t *out, uint16_t version) {
   if (version == TLS1_3_DRAFT_VERSION ||
       version == TLS1_3_EXPERIMENT_VERSION ||
       version == TLS1_3_EXPERIMENT2_VERSION ||
       version == TLS1_3_EXPERIMENT3_VERSION) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_SSL_VERSION);
     return false;
   }
   if (version == TLS1_3_VERSION) {
     version = TLS1_3_DRAFT_VERSION;
   }
 
-  if (!method_supports_version(method, version) ||
+  // Check it is a real protocol version.
+  uint16_t unused;
+  if (!ssl_protocol_version_from_wire(&unused, version)) {
+    return false;
+  }
+
+  *out = version;
+  return true;
+}
+
+static bool set_version_bound(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
+                              uint16_t version) {
+  if (!api_version_to_wire(&version, version) ||
+      !method_supports_version(method, version) ||
       !ssl_protocol_version_from_wire(out, version)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_SSL_VERSION);
     return false;
@@ -225,38 +285,6 @@ static uint16_t ssl_version(const SSL *ssl) {
     return ssl->s3->hs->early_session->ssl_version;
   }
   return ssl->version;
-}
-
-static const char *ssl_version_to_string(uint16_t version) {
-  switch (version) {
-    // Report TLS 1.3 draft version as TLS 1.3 in the public API.
-    case TLS1_3_DRAFT_VERSION:
-    case TLS1_3_EXPERIMENT_VERSION:
-    case TLS1_3_EXPERIMENT2_VERSION:
-    case TLS1_3_EXPERIMENT3_VERSION:
-      return "TLSv1.3";
-
-    case TLS1_2_VERSION:
-      return "TLSv1.2";
-
-    case TLS1_1_VERSION:
-      return "TLSv1.1";
-
-    case TLS1_VERSION:
-      return "TLSv1";
-
-    case SSL3_VERSION:
-      return "SSLv3";
-
-    case DTLS1_VERSION:
-      return "DTLSv1";
-
-    case DTLS1_2_VERSION:
-      return "DTLSv1.2";
-
-    default:
-      return "unknown";
-  }
 }
 
 uint16_t ssl3_protocol_version(const SSL *ssl) {
@@ -389,15 +417,7 @@ int SSL_set_max_proto_version(SSL *ssl, uint16_t version) {
 }
 
 int SSL_version(const SSL *ssl) {
-  uint16_t ret = ssl_version(ssl);
-  // Report TLS 1.3 draft version as TLS 1.3 in the public API.
-  if (ret == TLS1_3_DRAFT_VERSION ||
-      ret == TLS1_3_EXPERIMENT_VERSION ||
-      ret == TLS1_3_EXPERIMENT2_VERSION ||
-      ret == TLS1_3_EXPERIMENT3_VERSION) {
-    return TLS1_3_VERSION;
-  }
-  return ret;
+  return wire_version_to_api(ssl_version(ssl));
 }
 
 const char *SSL_get_version(const SSL *ssl) {
@@ -406,4 +426,14 @@ const char *SSL_get_version(const SSL *ssl) {
 
 const char *SSL_SESSION_get_version(const SSL_SESSION *session) {
   return ssl_version_to_string(session->ssl_version);
+}
+
+uint16_t SSL_SESSION_get_protocol_version(const SSL_SESSION *session) {
+  return wire_version_to_api(session->ssl_version);
+}
+
+int SSL_SESSION_set_protocol_version(SSL_SESSION *session, uint16_t version) {
+  // This picks a representative TLS 1.3 version, but this API should only be
+  // used on unit test sessions anyway.
+  return api_version_to_wire(&session->ssl_version, version);
 }

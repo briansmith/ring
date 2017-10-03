@@ -462,7 +462,7 @@ int SSL_generate_key_block(const SSL *ssl, uint8_t *out, size_t out_len) {
                     SSL3_RANDOM_SIZE, ssl->s3->client_random, SSL3_RANDOM_SIZE);
   }
 
-  const EVP_MD *digest = SSL_SESSION_get_digest(session);
+  const EVP_MD *digest = ssl_session_get_digest(session);
   return tls1_prf(digest, out, out_len, session->master_key,
                   session->master_key_length, TLS_MD_KEY_EXPANSION_CONST,
                   TLS_MD_KEY_EXPANSION_CONST_SIZE, ssl->s3->server_random,
@@ -511,7 +511,7 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
   }
 
   const SSL_SESSION *session = SSL_get_session(ssl);
-  const EVP_MD *digest = SSL_SESSION_get_digest(session);
+  const EVP_MD *digest = ssl_session_get_digest(session);
   int ret = tls1_prf(digest, out, out_len, session->master_key,
                      session->master_key_length, label, label_len, seed,
                      seed_len, NULL, 0);

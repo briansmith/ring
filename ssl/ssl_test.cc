@@ -3740,6 +3740,26 @@ TEST(SSLTest, NoCiphersAvailable) {
   EXPECT_EQ(SSL_R_NO_CIPHERS_AVAILABLE, ERR_GET_REASON(err));
 }
 
+TEST_P(SSLVersionTest, SessionVersion) {
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
+
+  bssl::UniquePtr<SSL_SESSION> session =
+      CreateClientSession(client_ctx_.get(), server_ctx_.get());
+  ASSERT_TRUE(session);
+  EXPECT_EQ(version(), SSL_SESSION_get_protocol_version(session.get()));
+
+  // Sessions in TLS 1.3 and later should be single-use.
+  EXPECT_EQ(version() == TLS1_3_VERSION,
+            !!SSL_SESSION_should_be_single_use(session.get()));
+
+  // Making fake sessions for testing works.
+  session.reset(SSL_SESSION_new(client_ctx_.get()));
+  ASSERT_TRUE(session);
+  ASSERT_TRUE(SSL_SESSION_set_protocol_version(session.get(), version()));
+  EXPECT_EQ(version(), SSL_SESSION_get_protocol_version(session.get()));
+}
+
 // TODO(davidben): Convert this file to GTest properly.
 TEST(SSLTest, AllTests) {
   if (!TestSSL_SESSIONEncoding(kOpenSSLSession) ||

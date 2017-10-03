@@ -2229,12 +2229,13 @@ int ssl_session_is_time_valid(const SSL *ssl, const SSL_SESSION *session);
 int ssl_session_is_resumable(const SSL_HANDSHAKE *hs,
                              const SSL_SESSION *session);
 
-// SSL_SESSION_protocol_version returns the protocol version associated with
-// |session|.
-uint16_t SSL_SESSION_protocol_version(const SSL_SESSION *session);
+// ssl_session_protocol_version returns the protocol version associated with
+// |session|. Note that despite the name, this is not the same as
+// |SSL_SESSION_get_protocol_version|. The latter is based on upstream's name.
+uint16_t ssl_session_protocol_version(const SSL_SESSION *session);
 
-// SSL_SESSION_get_digest returns the digest used in |session|.
-const EVP_MD *SSL_SESSION_get_digest(const SSL_SESSION *session);
+// ssl_session_get_digest returns the digest used in |session|.
+const EVP_MD *ssl_session_get_digest(const SSL_SESSION *session);
 
 void ssl_set_session(SSL *ssl, SSL_SESSION *session);
 

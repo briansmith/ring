@@ -1669,9 +1669,20 @@ OPENSSL_EXPORT int SSL_SESSION_to_bytes_for_ticket(const SSL_SESSION *in,
 OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_from_bytes(
     const uint8_t *in, size_t in_len, const SSL_CTX *ctx);
 
-// SSL_SESSION_get_version returns a string describing the TLS version |session|
-// was established at. For example, "TLSv1.2" or "SSLv3".
+// SSL_SESSION_get_version returns a string describing the TLS or DTLS version
+// |session| was established at. For example, "TLSv1.2" or "SSLv3".
 OPENSSL_EXPORT const char *SSL_SESSION_get_version(const SSL_SESSION *session);
+
+// SSL_SESSION_get_protocol_version returns the TLS or DTLS version |session|
+// was established at.
+OPENSSL_EXPORT uint16_t
+SSL_SESSION_get_protocol_version(const SSL_SESSION *session);
+
+// SSL_SESSION_set_protocol_version sets |session|'s TLS or DTLS version to
+// |version|. This may be useful when writing tests but should otherwise not be
+// used. It returns one on success and zero on error.
+OPENSSL_EXPORT int SSL_SESSION_set_protocol_version(SSL_SESSION *session,
+                                                    uint16_t version);
 
 // SSL_SESSION_get_id returns a pointer to a buffer containing |session|'s
 // session ID and sets |*out_len| to its length.
@@ -4044,7 +4055,7 @@ DECLARE_STACK_OF(SSL_CUSTOM_EXTENSION)
 
 struct ssl_session_st {
   CRYPTO_refcount_t references;
-  int ssl_version;  // what ssl version session info is being kept in here?
+  uint16_t ssl_version;  // what ssl version session info is being kept in here?
 
   // group_id is the ID of the ECDH group used to establish this session or zero
   // if not applicable or unknown.
