@@ -63,10 +63,10 @@
 #include "../../internal.h"
 
 
-#if !defined(OPENSSL_NO_ASM) &&                         \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
-     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64) || \
-     defined(OPENSSL_PPC64LE))
+#if (!defined(OPENSSL_NO_ASM) &&                            \
+     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) ||    \
+      defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))) || \
+    defined(OPENSSL_PPC64LE)
 #define SHA1_ASM
 #endif
 
