@@ -657,12 +657,11 @@ class SSLAEADContext {
   bool SuffixLen(size_t *out_suffix_len, size_t in_len,
                  size_t extra_in_len) const;
 
-  // Open authenticates and decrypts |in_len| bytes from |in| in-place. On
-  // success, it sets |*out| to the plaintext in |in| and returns true.
-  // Otherwise, it returns false. The output will always be |ExplicitNonceLen|
-  // bytes ahead of |in|.
-  bool Open(CBS *out, uint8_t type, uint16_t record_version,
-            const uint8_t seqnum[8], uint8_t *in, size_t in_len);
+  // Open authenticates and decrypts |in| in-place. On success, it sets |*out|
+  // to the plaintext in |in| and returns true.  Otherwise, it returns
+  // false. The output will always be |ExplicitNonceLen| bytes ahead of |in|.
+  bool Open(Span<uint8_t> *out, uint8_t type, uint16_t record_version,
+            const uint8_t seqnum[8], Span<uint8_t> in);
 
   // Seal encrypts and authenticates |in_len| bytes from |in| and writes the
   // result to |out|. It returns true on success and false on error.
@@ -790,16 +789,16 @@ enum ssl_open_record_t {
 //
 // On failure or fatal alert, it returns |ssl_open_record_error| and sets
 // |*out_alert| to an alert to emit, or zero if no alert should be emitted.
-enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
-                                       size_t *out_consumed, uint8_t *out_alert,
-                                       uint8_t *in, size_t in_len);
+enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
+                                       Span<uint8_t> *out, size_t *out_consumed,
+                                       uint8_t *out_alert, Span<uint8_t> in);
 
 // dtls_open_record implements |tls_open_record| for DTLS. It never returns
 // |ssl_open_record_partial| but otherwise behaves analogously.
-enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
+enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
+                                        Span<uint8_t> *out,
                                         size_t *out_consumed,
-                                        uint8_t *out_alert, uint8_t *in,
-                                        size_t in_len);
+                                        uint8_t *out_alert, Span<uint8_t> in);
 
 // ssl_seal_align_prefix_len returns the length of the prefix before the start
 // of the bulk of the ciphertext when sealing a record with |ssl|. Callers may
@@ -853,7 +852,7 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
 // |ssl_open_record_close_notify|, or |ssl_open_record_fatal_alert| as
 // appropriate.
 enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
-                                         const uint8_t *in, size_t in_len);
+                                         Span<const uint8_t> in);
 
 
 // Private key operations.
@@ -1013,16 +1012,13 @@ void ssl_do_info_callback(const SSL *ssl, int type, int value);
 
 // ssl_do_msg_callback calls |ssl|'s message callback, if set.
 void ssl_do_msg_callback(SSL *ssl, int is_write, int content_type,
-                         const void *buf, size_t len);
+                         Span<const uint8_t> in);
 
 
 // Transport buffers.
 
-// ssl_read_buffer returns a pointer to contents of the read buffer.
-uint8_t *ssl_read_buffer(SSL *ssl);
-
-// ssl_read_buffer_len returns the length of the read buffer.
-size_t ssl_read_buffer_len(const SSL *ssl);
+// ssl_read_buffer returns the current read buffer.
+Span<uint8_t> ssl_read_buffer(SSL *ssl);
 
 // ssl_read_buffer_extend_to extends the read buffer to the desired length. For
 // TLS, it reads to the end of the buffer until the buffer is |len| bytes

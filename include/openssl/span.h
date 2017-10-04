@@ -22,6 +22,7 @@
 extern "C++" {
 
 #include <algorithm>
+#include <cassert>
 #include <cstdlib>
 #include <type_traits>
 
@@ -133,6 +134,15 @@ class Span : private internal::SpanBase<const T> {
   const T *cbegin() const { return data_; }
   T *end() const { return data_ + size_; };
   const T *cend() const { return end(); };
+
+  T &front() const {
+    assert(size_ != 0);
+    return data_[0];
+  }
+  T &back() const {
+    assert(size_ != 0);
+    return data_[size_ - 1];
+  }
 
   T &operator[](size_t i) const { return data_[i]; }
   T &at(size_t i) const { return data_[i]; }

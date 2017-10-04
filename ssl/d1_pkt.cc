@@ -141,7 +141,7 @@ again:
   }
 
   // Read a new packet if there is no unconsumed one.
-  if (ssl_read_buffer_len(ssl) == 0) {
+  if (ssl_read_buffer(ssl).empty()) {
     int read_ret = ssl_read_buffer_extend_to(ssl, 0 /* unused */);
     if (read_ret < 0 && dtls1_is_timer_expired(ssl)) {
       // Historically, timeouts were handled implicitly if the caller did not
@@ -159,14 +159,13 @@ again:
       return read_ret;
     }
   }
-  assert(ssl_read_buffer_len(ssl) > 0);
+  assert(!ssl_read_buffer(ssl).empty());
 
-  CBS body;
+  Span<uint8_t> body;
   uint8_t type, alert;
   size_t consumed;
-  enum ssl_open_record_t open_ret =
-      dtls_open_record(ssl, &type, &body, &consumed, &alert,
-                       ssl_read_buffer(ssl), ssl_read_buffer_len(ssl));
+  enum ssl_open_record_t open_ret = dtls_open_record(
+      ssl, &type, &body, &consumed, &alert, ssl_read_buffer(ssl));
   ssl_read_buffer_consume(ssl, consumed);
   switch (open_ret) {
     case ssl_open_record_partial:
@@ -174,15 +173,15 @@ again:
       break;
 
     case ssl_open_record_success: {
-      if (CBS_len(&body) > 0xffff) {
+      if (body.size() > 0xffff) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
         return -1;
       }
 
       SSL3_RECORD *rr = &ssl->s3->rrec;
       rr->type = type;
-      rr->length = (uint16_t)CBS_len(&body);
-      rr->data = (uint8_t *)CBS_data(&body);
+      rr->length = static_cast<uint16_t>(body.size());
+      rr->data = body.data();
       return 1;
     }
 
@@ -368,8 +367,7 @@ int dtls1_dispatch_alert(SSL *ssl) {
     BIO_flush(ssl->wbio);
   }
 
-  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_ALERT, ssl->s3->send_alert,
-                      2);
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_ALERT, ssl->s3->send_alert);
 
   int alert = (ssl->s3->send_alert[0] << 8) | ssl->s3->send_alert[1];
   ssl_do_info_callback(ssl, SSL_CB_WRITE_ALERT, alert);

@@ -194,8 +194,7 @@ int ssl3_add_message(SSL *ssl, Array<uint8_t> msg) {
     }
   } while (!rest.empty());
 
-  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE, msg.data(),
-                      msg.size());
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE, msg);
   // TODO(svaldez): Move this up a layer to fix abstraction for SSLTranscript on
   // hs.
   if (ssl->s3->hs != NULL &&
@@ -214,7 +213,7 @@ int ssl3_add_change_cipher_spec(SSL *ssl) {
   }
 
   ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_CHANGE_CIPHER_SPEC,
-                      kChangeCipherSpec, sizeof(kChangeCipherSpec));
+                      kChangeCipherSpec);
   return 1;
 }
 
@@ -224,7 +223,7 @@ int ssl3_add_alert(SSL *ssl, uint8_t level, uint8_t desc) {
     return 0;
   }
 
-  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_ALERT, alert, sizeof(alert));
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_ALERT, alert);
   ssl_do_info_callback(ssl, SSL_CB_WRITE_ALERT, ((int)level << 8) | desc);
   return 1;
 }
@@ -359,7 +358,7 @@ static int read_v2_client_hello(SSL *ssl) {
   if (ret <= 0) {
     return ret;
   }
-  const uint8_t *p = ssl_read_buffer(ssl);
+  const uint8_t *p = ssl_read_buffer(ssl).data();
 
   // Some dedicated error codes for protocol mixups should the application wish
   // to interpret them differently. (These do not overlap with ClientHello or
@@ -402,9 +401,7 @@ static int read_v2_client_hello(SSL *ssl) {
     return ret;
   }
 
-  CBS v2_client_hello;
-  CBS_init(&v2_client_hello, ssl_read_buffer(ssl) + 2, msg_length);
-
+  CBS v2_client_hello = CBS(ssl_read_buffer(ssl).subspan(2, msg_length));
   // The V2ClientHello without the length is incorporated into the handshake
   // hash. This is only ever called at the start of the handshake, so hs is
   // guaranteed to be non-NULL.
@@ -414,7 +411,7 @@ static int read_v2_client_hello(SSL *ssl) {
   }
 
   ssl_do_msg_callback(ssl, 0 /* read */, 0 /* V2ClientHello */,
-                      CBS_data(&v2_client_hello), CBS_len(&v2_client_hello));
+                      v2_client_hello);
 
   uint8_t msg_type;
   uint16_t version, cipher_spec_length, session_id_length, challenge_length;
@@ -530,8 +527,7 @@ static bool parse_message(SSL *ssl, SSLMessage *out, size_t *out_bytes_needed) {
   out->is_v2_hello = ssl->s3->is_v2_hello;
   if (!ssl->s3->has_message) {
     if (!out->is_v2_hello) {
-      ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE,
-                          CBS_data(&out->raw), CBS_len(&out->raw));
+      ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE, out->raw);
     }
     ssl->s3->has_message = true;
   }

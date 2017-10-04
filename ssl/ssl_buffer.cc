@@ -89,12 +89,9 @@ static void clear_buffer(SSL3_BUFFER *buf) {
   OPENSSL_memset(buf, 0, sizeof(SSL3_BUFFER));
 }
 
-uint8_t *ssl_read_buffer(SSL *ssl) {
-  return ssl->s3->read_buffer.buf + ssl->s3->read_buffer.offset;
-}
-
-size_t ssl_read_buffer_len(const SSL *ssl) {
-  return ssl->s3->read_buffer.len;
+Span<uint8_t> ssl_read_buffer(SSL *ssl) {
+  return MakeSpan(ssl->s3->read_buffer.buf + ssl->s3->read_buffer.offset,
+                  ssl->s3->read_buffer.len);
 }
 
 static int dtls_read_buffer_next_packet(SSL *ssl) {

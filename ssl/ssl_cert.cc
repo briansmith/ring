@@ -599,7 +599,8 @@ int ssl_cert_check_digital_signature_key_usage(const CBS *in) {
       !CBS_get_optional_asn1(
           &tbs_cert, &outer_extensions, &has_extensions,
           CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 3)) {
-    goto parse_err;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CANNOT_PARSE_LEAF_CERT);
+    return 0;
   }
 
   if (!has_extensions) {
@@ -608,7 +609,8 @@ int ssl_cert_check_digital_signature_key_usage(const CBS *in) {
 
   CBS extensions;
   if (!CBS_get_asn1(&outer_extensions, &extensions, CBS_ASN1_SEQUENCE)) {
-    goto parse_err;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_CANNOT_PARSE_LEAF_CERT);
+    return 0;
   }
 
   while (CBS_len(&extensions) > 0) {
@@ -619,7 +621,8 @@ int ssl_cert_check_digital_signature_key_usage(const CBS *in) {
          !CBS_get_asn1(&extension, NULL, CBS_ASN1_BOOLEAN)) ||
         !CBS_get_asn1(&extension, &contents, CBS_ASN1_OCTETSTRING) ||
         CBS_len(&extension) != 0) {
-      goto parse_err;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CANNOT_PARSE_LEAF_CERT);
+      return 0;
     }
 
     static const uint8_t kKeyUsageOID[3] = {0x55, 0x1d, 0x0f};
@@ -632,13 +635,15 @@ int ssl_cert_check_digital_signature_key_usage(const CBS *in) {
     CBS bit_string;
     if (!CBS_get_asn1(&contents, &bit_string, CBS_ASN1_BITSTRING) ||
         CBS_len(&contents) != 0) {
-      goto parse_err;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CANNOT_PARSE_LEAF_CERT);
+      return 0;
     }
 
     // This is the KeyUsage extension. See
     // https://tools.ietf.org/html/rfc5280#section-4.2.1.3
     if (!CBS_is_valid_asn1_bitstring(&bit_string)) {
-      goto parse_err;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CANNOT_PARSE_LEAF_CERT);
+      return 0;
     }
 
     if (!CBS_asn1_bitstring_has_bit(&bit_string, 0)) {
@@ -651,10 +656,6 @@ int ssl_cert_check_digital_signature_key_usage(const CBS *in) {
 
   // No KeyUsage extension found.
   return 1;
-
-parse_err:
-  OPENSSL_PUT_ERROR(SSL, SSL_R_CANNOT_PARSE_LEAF_CERT);
-  return 0;
 }
 
 UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_client_CA_list(SSL *ssl,

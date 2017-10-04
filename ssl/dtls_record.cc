@@ -174,14 +174,13 @@ static void dtls1_bitmap_record(DTLS1_BITMAP *bitmap,
   }
 }
 
-enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
+enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
+                                        Span<uint8_t> *out,
                                         size_t *out_consumed,
-                                        uint8_t *out_alert, uint8_t *in,
-                                        size_t in_len) {
+                                        uint8_t *out_alert, Span<uint8_t> in) {
   *out_consumed = 0;
 
-  CBS cbs;
-  CBS_init(&cbs, in, in_len);
+  CBS cbs = CBS(in);
 
   // Decode the record.
   uint8_t type;
@@ -194,7 +193,7 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
       !CBS_get_u16_length_prefixed(&cbs, &body) ||
       CBS_len(&body) > SSL3_RT_MAX_ENCRYPTED_LENGTH) {
     // The record header was incomplete or malformed. Drop the entire packet.
-    *out_consumed = in_len;
+    *out_consumed = in.size();
     return ssl_open_record_discard;
   }
 
@@ -209,12 +208,12 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
 
   if (!version_ok) {
     // The record header was incomplete or malformed. Drop the entire packet.
-    *out_consumed = in_len;
+    *out_consumed = in.size();
     return ssl_open_record_discard;
   }
 
-  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HEADER, in,
-                      DTLS1_RT_HEADER_LENGTH);
+  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HEADER,
+                      in.subspan(0, DTLS1_RT_HEADER_LENGTH));
 
   uint16_t epoch = (((uint16_t)sequence[0]) << 8) | sequence[1];
   if (epoch != ssl->d1->r_epoch ||
@@ -223,14 +222,14 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
     // |epoch| is the next epoch, the record could be buffered for later. For
     // simplicity, drop it and expect retransmit to handle it later; DTLS must
     // handle packet loss anyway.
-    *out_consumed = in_len - CBS_len(&cbs);
+    *out_consumed = in.size() - CBS_len(&cbs);
     return ssl_open_record_discard;
   }
 
-  // Decrypt the body in-place.
-  if (!ssl->s3->aead_read_ctx->Open(out, type, version, sequence,
-                                    (uint8_t *)CBS_data(&body),
-                                    CBS_len(&body))) {
+  // discard the body in-place.
+  if (!ssl->s3->aead_read_ctx->Open(
+          out, type, version, sequence,
+          MakeSpan(const_cast<uint8_t *>(CBS_data(&body)), CBS_len(&body)))) {
     // Bad packets are silently dropped in DTLS. See section 4.2.1 of RFC 6347.
     // Clear the error queue of any errors decryption may have added. Drop the
     // entire packet as it must not have come from the peer.
@@ -238,13 +237,13 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
     // TODO(davidben): This doesn't distinguish malloc failures from encryption
     // failures.
     ERR_clear_error();
-    *out_consumed = in_len - CBS_len(&cbs);
+    *out_consumed = in.size() - CBS_len(&cbs);
     return ssl_open_record_discard;
   }
-  *out_consumed = in_len - CBS_len(&cbs);
+  *out_consumed = in.size() - CBS_len(&cbs);
 
   // Check the plaintext length.
-  if (CBS_len(out) > SSL3_RT_MAX_PLAIN_LENGTH) {
+  if (out->size() > SSL3_RT_MAX_PLAIN_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
     *out_alert = SSL_AD_RECORD_OVERFLOW;
     return ssl_open_record_error;
@@ -256,7 +255,7 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
   // useful if we also limit discarded packets.
 
   if (type == SSL3_RT_ALERT) {
-    return ssl_process_alert(ssl, out_alert, CBS_data(out), CBS_len(out));
+    return ssl_process_alert(ssl, out_alert, *out);
   }
 
   ssl->s3->warning_alert_count = 0;
@@ -338,8 +337,8 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
 
   *out_len = DTLS1_RT_HEADER_LENGTH + ciphertext_len;
 
-  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HEADER, out,
-                      DTLS1_RT_HEADER_LENGTH);
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HEADER,
+                      MakeSpan(out, DTLS1_RT_HEADER_LENGTH));
 
   return 1;
 }

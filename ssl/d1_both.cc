@@ -344,7 +344,7 @@ int dtls1_read_message(SSL *ssl) {
       // Flag the ChangeCipherSpec for later.
       ssl->d1->has_change_cipher_spec = true;
       ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_CHANGE_CIPHER_SPEC,
-                          rr->data, rr->length);
+                          MakeSpan(rr->data, rr->length));
 
       rr->length = 0;
       ssl_read_buffer_discard(ssl);
@@ -433,8 +433,9 @@ bool dtls1_get_message(SSL *ssl, SSLMessage *out) {
   CBS_init(&out->raw, frag->data, DTLS1_HM_HEADER_LENGTH + frag->msg_len);
   out->is_v2_hello = false;
   if (!ssl->s3->has_message) {
-    ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE, frag->data,
-                        frag->msg_len + DTLS1_HM_HEADER_LENGTH);
+    ssl_do_msg_callback(
+        ssl, 0 /* read */, SSL3_RT_HANDSHAKE,
+        MakeSpan(frag->data, frag->msg_len + DTLS1_HM_HEADER_LENGTH));
     ssl->s3->has_message = true;
   }
   return true;
@@ -673,7 +674,7 @@ static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
     }
 
     ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_CHANGE_CIPHER_SPEC,
-                        kChangeCipherSpec, sizeof(kChangeCipherSpec));
+                        kChangeCipherSpec);
     return seal_success;
   }
 
@@ -716,7 +717,8 @@ static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
     return seal_error;
   }
 
-  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE, frag, frag_len);
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE,
+                      MakeSpan(frag, frag_len));
 
   if (!dtls_seal_record(ssl, out, out_len, max_out, SSL3_RT_HANDSHAKE,
                         out + prefix, frag_len, use_epoch)) {

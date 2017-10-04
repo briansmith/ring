@@ -187,13 +187,12 @@ size_t ssl_seal_align_prefix_len(const SSL *ssl) {
   return ret;
 }
 
-enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
-                                       size_t *out_consumed, uint8_t *out_alert,
-                                       uint8_t *in, size_t in_len) {
+enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
+                                       Span<uint8_t> *out, size_t *out_consumed,
+                                       uint8_t *out_alert, Span<uint8_t> in) {
   *out_consumed = 0;
 
-  CBS cbs;
-  CBS_init(&cbs, in, in_len);
+  CBS cbs = CBS(in);
 
   // Decode the record header.
   uint8_t type;
@@ -234,10 +233,10 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
     return ssl_open_record_partial;
   }
 
-  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HEADER, in,
-                      SSL3_RT_HEADER_LENGTH);
+  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HEADER,
+                      in.subspan(0, SSL3_RT_HEADER_LENGTH));
 
-  *out_consumed = in_len - CBS_len(&cbs);
+  *out_consumed = in.size() - CBS_len(&cbs);
 
   // Skip early data received when expecting a second ClientHello if we rejected
   // 0RTT.
@@ -248,9 +247,9 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
   }
 
   // Decrypt the body in-place.
-  if (!ssl->s3->aead_read_ctx->Open(out, type, version, ssl->s3->read_sequence,
-                                    (uint8_t *)CBS_data(&body),
-                                    CBS_len(&body))) {
+  if (!ssl->s3->aead_read_ctx->Open(
+          out, type, version, ssl->s3->read_sequence,
+          MakeSpan(const_cast<uint8_t *>(CBS_data(&body)), CBS_len(&body)))) {
     if (ssl->s3->skip_early_data && !ssl->s3->aead_read_ctx->is_null_cipher()) {
       ERR_clear_error();
       goto skipped_data;
@@ -279,23 +278,25 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
     }
 
     do {
-      if (!CBS_get_last_u8(out, &type)) {
+      if (out->empty()) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC);
         *out_alert = SSL_AD_DECRYPT_ERROR;
         return ssl_open_record_error;
       }
+      type = out->back();
+      *out = out->subspan(0, out->size() - 1);
     } while (type == 0);
   }
 
   // Check the plaintext length.
-  if (CBS_len(out) > SSL3_RT_MAX_PLAIN_LENGTH) {
+  if (out->size() > SSL3_RT_MAX_PLAIN_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
     *out_alert = SSL_AD_RECORD_OVERFLOW;
     return ssl_open_record_error;
   }
 
   // Limit the number of consecutive empty records.
-  if (CBS_len(out) == 0) {
+  if (out->empty()) {
     ssl->s3->empty_record_count++;
     if (ssl->s3->empty_record_count > kMaxEmptyRecords) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MANY_EMPTY_FRAGMENTS);
@@ -310,14 +311,14 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type, CBS *out,
 
   if (type == SSL3_RT_ALERT) {
     // Return end_of_early_data alerts as-is for the caller to process.
-    if (CBS_len(out) == 2 &&
-        CBS_data(out)[0] == SSL3_AL_WARNING &&
-        CBS_data(out)[1] == TLS1_AD_END_OF_EARLY_DATA) {
+    if (out->size() == 2 &&
+        (*out)[0] == SSL3_AL_WARNING &&
+        (*out)[1] == TLS1_AD_END_OF_EARLY_DATA) {
       *out_type = type;
       return ssl_open_record_success;
     }
 
-    return ssl_process_alert(ssl, out_alert, CBS_data(out), CBS_len(out));
+    return ssl_process_alert(ssl, out_alert, *out);
   }
 
   ssl->s3->warning_alert_count = 0;
@@ -390,8 +391,8 @@ static int do_seal_record(SSL *ssl, uint8_t *out_prefix, uint8_t *out,
     return 0;
   }
 
-  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HEADER, out_prefix,
-                      SSL3_RT_HEADER_LENGTH);
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HEADER,
+                      MakeSpan(out_prefix, SSL3_RT_HEADER_LENGTH));
   return 1;
 }
 
@@ -516,15 +517,15 @@ int tls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out_len,
 }
 
 enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
-                                         const uint8_t *in, size_t in_len) {
+                                         Span<const uint8_t> in) {
   // Alerts records may not contain fragmented or multiple alerts.
-  if (in_len != 2) {
+  if (in.size() != 2) {
     *out_alert = SSL_AD_DECODE_ERROR;
     OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ALERT);
     return ssl_open_record_error;
   }
 
-  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_ALERT, in, in_len);
+  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_ALERT, in);
 
   const uint8_t alert_level = in[0];
   const uint8_t alert_descr = in[1];
@@ -584,10 +585,10 @@ OpenRecordResult OpenRecord(SSL *ssl, Span<uint8_t> *out,
     return OpenRecordResult::kError;
   }
 
-  CBS plaintext;
+  Span<uint8_t> plaintext;
   uint8_t type;
   const ssl_open_record_t result = tls_open_record(
-      ssl, &type, &plaintext, out_record_len, out_alert, in.data(), in.size());
+      ssl, &type, &plaintext, out_record_len, out_alert, in);
 
   switch (result) {
     case ssl_open_record_success:
@@ -595,8 +596,7 @@ OpenRecordResult OpenRecord(SSL *ssl, Span<uint8_t> *out,
         *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
         return OpenRecordResult::kError;
       }
-      *out = MakeSpan(
-          const_cast<uint8_t*>(CBS_data(&plaintext)), CBS_len(&plaintext));
+      *out = plaintext;
       return OpenRecordResult::kOK;
     case ssl_open_record_discard:
       return OpenRecordResult::kDiscard;

@@ -344,7 +344,7 @@ void ssl_do_info_callback(const SSL *ssl, int type, int value) {
 }
 
 void ssl_do_msg_callback(SSL *ssl, int is_write, int content_type,
-                         const void *buf, size_t len) {
+                         Span<const uint8_t> in) {
   if (ssl->msg_callback == NULL) {
     return;
   }
@@ -364,7 +364,7 @@ void ssl_do_msg_callback(SSL *ssl, int is_write, int content_type,
       version = SSL_version(ssl);
   }
 
-  ssl->msg_callback(is_write, version, content_type, buf, len, ssl,
+  ssl->msg_callback(is_write, version, content_type, in.data(), in.size(), ssl,
                     ssl->msg_callback_arg);
 }
 

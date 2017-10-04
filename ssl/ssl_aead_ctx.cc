@@ -225,11 +225,12 @@ size_t SSLAEADContext::GetAdditionalData(uint8_t out[13], uint8_t type,
   return len;
 }
 
-bool SSLAEADContext::Open(CBS *out, uint8_t type, uint16_t record_version,
-                          const uint8_t seqnum[8], uint8_t *in, size_t in_len) {
+bool SSLAEADContext::Open(Span<uint8_t> *out, uint8_t type,
+                          uint16_t record_version, const uint8_t seqnum[8],
+                          Span<uint8_t> in) {
   if (is_null_cipher() || FUZZER_MODE) {
     // Handle the initial NULL cipher.
-    CBS_init(out, in, in_len);
+    *out = in;
     return true;
   }
 
@@ -238,12 +239,12 @@ bool SSLAEADContext::Open(CBS *out, uint8_t type, uint16_t record_version,
   size_t plaintext_len = 0;
   if (!omit_length_in_ad_) {
     size_t overhead = MaxOverhead();
-    if (in_len < overhead) {
+    if (in.size() < overhead) {
       // Publicly invalid.
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_PACKET_LENGTH);
       return false;
     }
-    plaintext_len = in_len - overhead;
+    plaintext_len = in.size() - overhead;
   }
   uint8_t ad[13];
   size_t ad_len =
@@ -264,14 +265,13 @@ bool SSLAEADContext::Open(CBS *out, uint8_t type, uint16_t record_version,
 
   // Add the variable nonce.
   if (variable_nonce_included_in_record_) {
-    if (in_len < variable_nonce_len_) {
+    if (in.size() < variable_nonce_len_) {
       // Publicly invalid.
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_PACKET_LENGTH);
       return false;
     }
-    OPENSSL_memcpy(nonce + nonce_len, in, variable_nonce_len_);
-    in += variable_nonce_len_;
-    in_len -= variable_nonce_len_;
+    OPENSSL_memcpy(nonce + nonce_len, in.data(), variable_nonce_len_);
+    in = in.subspan(variable_nonce_len_);
   } else {
     assert(variable_nonce_len_ == 8);
     OPENSSL_memcpy(nonce + nonce_len, seqnum, variable_nonce_len_);
@@ -288,11 +288,11 @@ bool SSLAEADContext::Open(CBS *out, uint8_t type, uint16_t record_version,
 
   // Decrypt in-place.
   size_t len;
-  if (!EVP_AEAD_CTX_open(ctx_.get(), in, &len, in_len, nonce, nonce_len, in,
-                         in_len, ad, ad_len)) {
+  if (!EVP_AEAD_CTX_open(ctx_.get(), in.data(), &len, in.size(), nonce,
+                         nonce_len, in.data(), in.size(), ad, ad_len)) {
     return false;
   }
-  CBS_init(out, in, len);
+  *out = in.subspan(0, len);
   return true;
 }
 
