@@ -9612,6 +9612,28 @@ func addCurveTests() {
 		expectedError: ":ERROR_PARSING_EXTENSION:",
 	})
 
+	// Server-sent supported groups/curves are legal in TLS 1.3. They are
+	// illegal in TLS 1.2, but some servers send them anyway, so we must
+	// tolerate them.
+	testCases = append(testCases, testCase{
+		name: "SupportedCurves-ServerHello-TLS12",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SendServerSupportedCurves: true,
+			},
+		},
+	})
+	testCases = append(testCases, testCase{
+		name: "SupportedCurves-EncryptedExtensions-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendServerSupportedCurves: true,
+			},
+		},
+	})
+
 	// Test that we tolerate unknown point formats, as long as
 	// pointFormatUncompressed is present. Limit ciphers to ECDHE ciphers to
 	// check they are still functional.

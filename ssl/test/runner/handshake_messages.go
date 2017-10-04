@@ -1149,6 +1149,7 @@ type serverExtensions struct {
 	keyShare                keyShareEntry
 	supportedVersion        uint16
 	supportedPoints         []uint8
+	supportedCurves         []CurveID
 	serverNameAck           bool
 }
 
@@ -1255,6 +1256,15 @@ func (m *serverExtensions) marshal(extensions *byteBuilder) {
 		supportedPointsList := extensions.addU16LengthPrefixed()
 		supportedPoints := supportedPointsList.addU8LengthPrefixed()
 		supportedPoints.addBytes(m.supportedPoints)
+	}
+	if len(m.supportedCurves) > 0 {
+		// https://tools.ietf.org/html/draft-ietf-tls-tls13-18#section-4.2.4
+		extensions.addU16(extensionSupportedCurves)
+		supportedCurvesList := extensions.addU16LengthPrefixed()
+		supportedCurves := supportedCurvesList.addU16LengthPrefixed()
+		for _, curve := range m.supportedCurves {
+			supportedCurves.addU16(uint16(curve))
+		}
 	}
 	if m.hasEarlyData {
 		extensions.addU16(extensionEarlyData)

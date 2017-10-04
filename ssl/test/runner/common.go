@@ -1386,6 +1386,12 @@ type ProtocolBugs struct {
 	// empty slice, no extension will be sent.
 	SendSupportedPointFormats []byte
 
+	// SendServerSupportedCurves, if true, causes the server to send its
+	// supported curves list in the ServerHello (TLS 1.2) or
+	// EncryptedExtensions (TLS 1.3) message. This is invalid in TLS 1.2 and
+	// valid in TLS 1.3.
+	SendServerSupportedCurves bool
+
 	// MaxReceivePlaintext, if non-zero, is the maximum plaintext record
 	// length accepted from the peer.
 	MaxReceivePlaintext int

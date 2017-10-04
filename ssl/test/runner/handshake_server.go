@@ -1297,6 +1297,10 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		serverExtensions.supportedPoints = c.config.Bugs.SendSupportedPointFormats
 	}
 
+	if c.config.Bugs.SendServerSupportedCurves {
+		serverExtensions.supportedCurves = c.config.curvePreferences()
+	}
+
 	if !hs.clientHello.hasGREASEExtension && config.Bugs.ExpectGREASE {
 		return errors.New("tls: no GREASE extension found")
 	}
