@@ -236,7 +236,9 @@ int tls13_derive_application_secrets(SSL_HANDSHAKE *hs) {
                         hs->server_traffic_secret_0, hs->hash_len) &&
          derive_secret(hs, ssl->s3->exporter_secret, hs->hash_len,
                        (const uint8_t *)kTLS13LabelExporter,
-                       strlen(kTLS13LabelExporter));
+                       strlen(kTLS13LabelExporter)) &&
+         ssl_log_secret(ssl, "EXPORTER_SECRET", ssl->s3->exporter_secret,
+                        hs->hash_len);
 }
 
 static const char kTLS13LabelApplicationTraffic[] =
