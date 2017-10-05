@@ -167,7 +167,7 @@ int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g) {
     dh->q = q;
   }
 
-  if (g == NULL) {
+  if (g != NULL) {
     BN_free(dh->g);
     dh->g = g;
   }
