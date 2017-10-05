@@ -170,7 +170,14 @@ bool Listener::Init(const std::string &port) {
   OPENSSL_memset(&addr, 0, sizeof(addr));
 
   addr.sin6_family = AF_INET6;
+  // Windows' IN6ADDR_ANY_INIT does not have enough curly braces for clang-cl
+  // (https://crbug.com/772108), while other platforms like NaCl are missing
+  // in6addr_any, so use a mix of both.
+#if defined(OPENSSL_WINDOWS)
+  addr.sin6_addr = in6addr_any;
+#else
   addr.sin6_addr = IN6ADDR_ANY_INIT;
+#endif
   addr.sin6_port = htons(atoi(port.c_str()));
 
 #if defined(OPENSSL_WINDOWS)

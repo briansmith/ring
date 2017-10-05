@@ -196,7 +196,15 @@ static bool WaitForSession(SSL *ssl, int sock) {
   }
 
   while (!resume_session) {
+#if defined(OPENSSL_WINDOWS)
+    // Windows sockets are really of type SOCKET, not int, but everything here
+    // casts them to ints. Clang gets unhappy about signed values as a result.
+    //
+    // TODO(davidben): Keep everything as the appropriate platform type.
+    FD_SET(static_cast<SOCKET>(sock), &read_fds);
+#else
     FD_SET(sock, &read_fds);
+#endif
     int ret = select(sock + 1, &read_fds, NULL, NULL, NULL);
     if (ret <= 0) {
       perror("select");

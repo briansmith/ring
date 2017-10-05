@@ -180,7 +180,7 @@ extern "C" {
 #endif  // defined(BORINGSSL_SHARED_LIBRARY)
 
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) || defined(__clang__)
 // MinGW has two different printf implementations. Ensure the format macro
 // matches the selected implementation. See
 // https://sourceforge.net/p/mingw-w64/wiki2/gnu%20printf/.

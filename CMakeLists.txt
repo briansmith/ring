@@ -36,10 +36,26 @@ if (BORINGSSL_ALLOW_CXX_RUNTIME)
   add_definitions(-DBORINGSSL_ALLOW_CXX_RUNTIME)
 endif()
 
-if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  set(C_CXX_FLAGS "-Wall -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings -ggdb -fvisibility=hidden -fno-common")
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  set(CLANG 1)
+endif()
 
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
+  # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
+  # primarily on our normal Clang one because the MSVC one is mostly
+  # suppressions for an overaggressive -Wall.
+  set(C_CXX_FLAGS "-Wall -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
+  if(MSVC)
+    # clang-cl sets different default warnings than clang.
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-unused-parameter")
+    # googletest suppresses warning C4996 via a pragma, but clang-cl does not
+    # honor it. Suppress it here to compensate. See https://crbug.com/772117.
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-deprecated-declarations")
+  else()
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -ggdb -fvisibility=hidden -fno-common")
+  endif()
+
+  if(CLANG)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wnewline-eof -fcolor-diagnostics")
   else()
     # GCC (at least 4.8.4) has a bug where it'll find unreachable free() calls
@@ -47,16 +63,18 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-free-nonheap-object")
   endif()
 
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
-     NOT "7.0.0" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
+  if(CLANG OR NOT "7.0.0" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wimplicit-fallthrough")
   endif()
 
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${C_CXX_FLAGS} -Wmissing-prototypes -Wold-style-definition -Wstrict-prototypes")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ${C_CXX_FLAGS} -Wmissing-declarations")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${C_CXX_FLAGS} -Wmissing-declarations")
 
-  if(NOT BORINGSSL_ALLOW_CXX_RUNTIME)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti")
+  if(NOT MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+    if(NOT BORINGSSL_ALLOW_CXX_RUNTIME)
+      set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions -fno-rtti")
+    endif()
   endif()
 
   # In GCC, -Wmissing-declarations is the C++ spelling of -Wmissing-prototypes
@@ -66,7 +84,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # https://gcc.gnu.org/onlinedocs/gcc-7.1.0/gcc/Warning-Options.html#Warning-Options
   # https://clang.llvm.org/docs/DiagnosticsReference.html#wmissing-prototypes
   # https://clang.llvm.org/docs/DiagnosticsReference.html#wmissing-declarations
-  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  if(CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wmissing-prototypes")
   endif()
 elseif(MSVC)
@@ -129,7 +147,6 @@ elseif(MSVC)
                             ${MSVC_LEVEL4_WARNINGS_LIST})
   set(CMAKE_C_FLAGS   "-Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
   set(CMAKE_CXX_FLAGS "-Wall -WX ${MSVC_DISABLED_WARNINGS_STR} ${MSVC_LEVEL4_WARNINGS_STR}")
-  set(CMAKE_ASM_NASM_FLAGS "-g cv8")
 endif()
 
 if(WIN32)
@@ -143,14 +160,13 @@ if(WIN32)
 endif()
 
 if((CMAKE_COMPILER_IS_GNUCXX AND CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.7.99") OR
-   CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+   CLANG)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wshadow")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wshadow")
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX)
-  if ((CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.8.99") OR
-      CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  if ((CMAKE_C_COMPILER_VERSION VERSION_GREATER "4.8.99") OR CLANG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11")
   else()
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
@@ -163,7 +179,7 @@ if(NOT WIN32)
 endif()
 
 if(FUZZ)
-  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  if(NOT CLANG)
     message(FATAL_ERROR "You need to build with Clang for fuzzing to work")
   endif()
 
@@ -191,7 +207,7 @@ if (BUILD_SHARED_LIBS)
 endif()
 
 if (MSAN)
-  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  if(NOT CLANG)
     message(FATAL_ERROR "Cannot enable MSAN unless using Clang")
   endif()
 
@@ -205,7 +221,7 @@ if (MSAN)
 endif()
 
 if (ASAN)
-  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  if(NOT CLANG)
     message(FATAL_ERROR "Cannot enable ASAN unless using Clang")
   endif()
 

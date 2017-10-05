@@ -16,4 +16,5 @@ third_party {
       "https://github.com/google/googletest/pull/991 was applied."
       "https://github.com/google/googletest/pull/1007 was applied."
       "https://github.com/google/googletest/pull/1109 was applied."
+      "clang-cl fixes in https://boringssl-review.googlesource.com/c/boringssl/+/21204"
 }

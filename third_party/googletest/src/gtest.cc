@@ -2889,7 +2889,7 @@ enum GTestColor {
     !GTEST_OS_WINDOWS_PHONE && !GTEST_OS_WINDOWS_RT
 
 // Returns the character attribute for the given color.
-WORD GetColorAttribute(GTestColor color) {
+static WORD GetColorAttribute(GTestColor color) {
   switch (color) {
     case COLOR_RED:    return FOREGROUND_RED;
     case COLOR_GREEN:  return FOREGROUND_GREEN;
