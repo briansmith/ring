@@ -105,7 +105,7 @@ class Span : private internal::SpanBase<const T> {
       std::is_convertible<decltype(std::declval<C>().data()), T *>::value &&
       std::is_integral<decltype(std::declval<C>().size())>::value>;
 
-  static const size_t npos = -1;
+  static const size_t npos = static_cast<size_t>(-1);
 
  public:
   constexpr Span() : Span(nullptr, 0) {}

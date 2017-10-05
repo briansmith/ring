@@ -85,8 +85,6 @@ elseif(MSVC)
               # possible loss of data
       "C4244" # 'function' : conversion from 'int' to 'uint8_t',
               # possible loss of data
-      "C4245" # 'initializing' : conversion from 'long' to
-              # 'unsigned long', signed/unsigned mismatch
       "C4267" # conversion from 'size_t' to 'int', possible loss of data
       "C4371" # layout of class may have changed from a previous version of the
               # compiler due to better packing of member '...'
