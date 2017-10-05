@@ -18,8 +18,8 @@ json_data_file = os.path.join(script_dir, 'win_toolchain.json')
 import gyp
 
 
-TOOLCHAIN_VERSION = '2015'
-TOOLCHAIN_HASH = 'f53e4598951162bad6330f7a167486c7ae5db1e5'
+# Use MSVS2015 as the default toolchain.
+CURRENT_DEFAULT_TOOLCHAIN_VERSION = '2015'
 
 
 def SetEnvironmentAndGetRuntimeDllDirs():
@@ -74,8 +74,22 @@ def FindDepotTools():
 
 
 def GetVisualStudioVersion():
-  """Return GYP_MSVS_VERSION of Visual Studio."""
-  return os.environ.get('GYP_MSVS_VERSION', TOOLCHAIN_VERSION)
+  """Return GYP_MSVS_VERSION of Visual Studio.
+  """
+  return os.environ.get('GYP_MSVS_VERSION', CURRENT_DEFAULT_TOOLCHAIN_VERSION)
+
+
+def _GetDesiredVsToolchainHashes():
+  """Load a list of SHA1s corresponding to the toolchains that we want installed
+  to build with."""
+  env_version = GetVisualStudioVersion()
+  if env_version == '2015':
+    # Update 3 final with 10.0.15063.468 SDK and no vctip.exe.
+    return ['f53e4598951162bad6330f7a167486c7ae5db1e5']
+  if env_version == '2017':
+    # VS 2017 Update 3.2 with 10.0.15063.468 SDK.
+    return ['9bc7ccbf9f4bd50d4a3bd185e8ca94ff1618de0b']
+  raise Exception('Unsupported VS version %s' % env_version)
 
 
 def Update():
@@ -89,14 +103,14 @@ def Update():
     depot_tools_path = FindDepotTools()
     # Necessary so that get_toolchain_if_necessary.py will put the VS toolkit
     # in the correct directory.
-    os.environ['GYP_MSVS_VERSION'] = TOOLCHAIN_VERSION
+    os.environ['GYP_MSVS_VERSION'] = GetVisualStudioVersion()
     get_toolchain_args = [
         sys.executable,
         os.path.join(depot_tools_path,
                     'win_toolchain',
                     'get_toolchain_if_necessary.py'),
-        '--output-json', json_data_file, TOOLCHAIN_HASH,
-      ]
+        '--output-json', json_data_file,
+      ] + _GetDesiredVsToolchainHashes()
     subprocess.check_call(get_toolchain_args)
 
   return 0
