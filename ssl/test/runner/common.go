@@ -583,8 +583,8 @@ type ProtocolBugs struct {
 
 	// EarlyChangeCipherSpec causes the client to send an early
 	// ChangeCipherSpec message before the ClientKeyExchange. A value of
-	// zero disables this behavior. One and two configure variants for 0.9.8
-	// and 1.0.1 modes, respectively.
+	// zero disables this behavior. One and two configure variants for
+	// 1.0.1 and 0.9.8 modes, respectively.
 	EarlyChangeCipherSpec int
 
 	// StrayChangeCipherSpec causes every pre-ChangeCipherSpec handshake
