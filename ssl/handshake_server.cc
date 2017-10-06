@@ -749,7 +749,7 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    if (!ssl3_output_cert_chain(ssl)) {
+    if (!ssl_output_cert_chain(ssl)) {
       return ssl_hs_error;
     }
 
@@ -1493,7 +1493,7 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
 
   if (!ssl->method->add_change_cipher_spec(ssl) ||
       !tls1_change_cipher_state(hs, evp_aead_seal) ||
-      !ssl3_send_finished(hs)) {
+      !ssl_send_finished(hs)) {
     return ssl_hs_error;
   }
 

@@ -274,66 +274,6 @@ int ssl3_flush_flight(SSL *ssl) {
   return 1;
 }
 
-int ssl3_send_finished(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-  const SSL_SESSION *session = SSL_get_session(ssl);
-
-  uint8_t finished[EVP_MAX_MD_SIZE];
-  size_t finished_len;
-  if (!hs->transcript.GetFinishedMAC(finished, &finished_len, session,
-                                     ssl->server)) {
-    return 0;
-  }
-
-  // Log the master secret, if logging is enabled.
-  if (!ssl_log_secret(ssl, "CLIENT_RANDOM",
-                      session->master_key,
-                      session->master_key_length)) {
-    return 0;
-  }
-
-  // Copy the Finished so we can use it for renegotiation checks.
-  if (ssl->version != SSL3_VERSION) {
-    if (finished_len > sizeof(ssl->s3->previous_client_finished) ||
-        finished_len > sizeof(ssl->s3->previous_server_finished)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return 0;
-    }
-
-    if (ssl->server) {
-      OPENSSL_memcpy(ssl->s3->previous_server_finished, finished, finished_len);
-      ssl->s3->previous_server_finished_len = finished_len;
-    } else {
-      OPENSSL_memcpy(ssl->s3->previous_client_finished, finished, finished_len);
-      ssl->s3->previous_client_finished_len = finished_len;
-    }
-  }
-
-  ScopedCBB cbb;
-  CBB body;
-  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_FINISHED) ||
-      !CBB_add_bytes(&body, finished, finished_len) ||
-      !ssl_add_message_cbb(ssl, cbb.get())) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
-  return 1;
-}
-
-int ssl3_output_cert_chain(SSL *ssl) {
-  ScopedCBB cbb;
-  CBB body;
-  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CERTIFICATE) ||
-      !ssl_add_cert_chain(ssl, &body) ||
-      !ssl_add_message_cbb(ssl, cbb.get())) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-
-  return 1;
-}
-
 static int extend_handshake_buffer(SSL *ssl, size_t length) {
   if (!BUF_MEM_reserve(ssl->init_buf, length)) {
     return -1;

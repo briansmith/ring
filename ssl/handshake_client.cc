@@ -1210,7 +1210,7 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl_on_certificate_selected(hs) ||
-      !ssl3_output_cert_chain(ssl)) {
+      !ssl_output_cert_chain(ssl)) {
     return ssl_hs_error;
   }
 
@@ -1511,12 +1511,24 @@ static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl3_send_finished(hs)) {
+  if (!ssl_send_finished(hs)) {
     return ssl_hs_error;
   }
 
   hs->state = state_finish_flight;
   return ssl_hs_flush;
+}
+
+static bool can_false_start(const SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+
+  // False Start only for TLS 1.2 with an ECDHE+AEAD cipher and ALPN or NPN.
+  return !SSL_is_dtls(ssl) &&
+         SSL_version(ssl) == TLS1_2_VERSION &&
+         (ssl->s3->alpn_selected != NULL ||
+          ssl->s3->next_proto_negotiated != NULL) &&
+         hs->new_cipher->algorithm_mkey == SSL_kECDHE &&
+         hs->new_cipher->algorithm_mac == SSL_AEAD;
 }
 
 static enum ssl_hs_wait_t do_finish_flight(SSL_HANDSHAKE *hs) {
@@ -1536,7 +1548,7 @@ static enum ssl_hs_wait_t do_finish_flight(SSL_HANDSHAKE *hs) {
   hs->state = state_read_session_ticket;
 
   if ((SSL_get_mode(ssl) & SSL_MODE_ENABLE_FALSE_START) &&
-      ssl3_can_false_start(ssl) &&
+      can_false_start(hs) &&
       // No False Start on renegotiation (would complicate the state machine).
       !ssl->s3->initial_handshake_complete) {
     hs->in_false_start = true;

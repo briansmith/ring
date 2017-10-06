@@ -317,19 +317,6 @@ int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
   return 1;
 }
 
-int ssl3_can_false_start(const SSL *ssl) {
-  const SSL_CIPHER *const cipher = SSL_get_current_cipher(ssl);
-
-  // False Start only for TLS 1.2 with an ECDHE+AEAD cipher and ALPN or NPN.
-  return !SSL_is_dtls(ssl) &&
-      SSL_version(ssl) == TLS1_2_VERSION &&
-      (ssl->s3->alpn_selected != NULL ||
-       ssl->s3->next_proto_negotiated != NULL) &&
-      cipher != NULL &&
-      cipher->algorithm_mkey == SSL_kECDHE &&
-      cipher->algorithm_mac == SSL_AEAD;
-}
-
 void ssl_do_info_callback(const SSL *ssl, int type, int value) {
   void (*cb)(const SSL *ssl, int type, int value) = NULL;
   if (ssl->info_callback != NULL) {
