@@ -552,7 +552,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl_is_resumption_experiment(ssl->version) &&
-      !ssl3_add_change_cipher_spec(ssl)) {
+      !ssl->method->add_change_cipher_spec(ssl)) {
     return ssl_hs_error;
   }
 
