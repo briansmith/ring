@@ -801,8 +801,9 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
                                        Span<uint8_t> *out, size_t *out_consumed,
                                        uint8_t *out_alert, Span<uint8_t> in);
 
-// dtls_open_record implements |tls_open_record| for DTLS. It never returns
-// |ssl_open_record_partial| but otherwise behaves analogously.
+// dtls_open_record implements |tls_open_record| for DTLS. It only returns
+// |ssl_open_record_partial| if |in| was empty and sets |*out_consumed| to
+// zero. The caller should read one packet and try again.
 enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
                                         Span<uint8_t> *out,
                                         size_t *out_consumed,

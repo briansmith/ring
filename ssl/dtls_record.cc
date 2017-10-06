@@ -179,6 +179,9 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
                                         size_t *out_consumed,
                                         uint8_t *out_alert, Span<uint8_t> in) {
   *out_consumed = 0;
+  if (in.empty()) {
+    return ssl_open_record_partial;
+  }
 
   CBS cbs = CBS(in);
 

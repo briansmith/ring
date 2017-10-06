@@ -140,25 +140,23 @@ again:
       return 0;
   }
 
-  // Read a new packet if there is no unconsumed one.
-  if (ssl_read_buffer(ssl).empty()) {
-    int read_ret = ssl_read_buffer_extend_to(ssl, 0 /* unused */);
-    if (read_ret <= 0) {
-      return read_ret;
-    }
-  }
-  assert(!ssl_read_buffer(ssl).empty());
-
   Span<uint8_t> body;
   uint8_t type, alert;
   size_t consumed;
   enum ssl_open_record_t open_ret = dtls_open_record(
       ssl, &type, &body, &consumed, &alert, ssl_read_buffer(ssl));
-  ssl_read_buffer_consume(ssl, consumed);
+  if (open_ret != ssl_open_record_partial) {
+    ssl_read_buffer_consume(ssl, consumed);
+  }
   switch (open_ret) {
-    case ssl_open_record_partial:
-      // Impossible in DTLS.
-      break;
+    case ssl_open_record_partial: {
+      assert(ssl_read_buffer(ssl).empty());
+      int read_ret = ssl_read_buffer_extend_to(ssl, 0 /* unused */);
+      if (read_ret <= 0) {
+        return read_ret;
+      }
+      goto again;
+    }
 
     case ssl_open_record_success: {
       if (body.size() > 0xffff) {
