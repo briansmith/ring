@@ -143,18 +143,6 @@ again:
   // Read a new packet if there is no unconsumed one.
   if (ssl_read_buffer(ssl).empty()) {
     int read_ret = ssl_read_buffer_extend_to(ssl, 0 /* unused */);
-    if (read_ret < 0 && dtls1_is_timer_expired(ssl)) {
-      // Historically, timeouts were handled implicitly if the caller did not
-      // handle them.
-      //
-      // TODO(davidben): This was to support blocking sockets but affected
-      // non-blocking sockets. Can it be removed?
-      int timeout_ret = DTLSv1_handle_timeout(ssl);
-      if (timeout_ret <= 0) {
-        return timeout_ret;
-      }
-      goto again;
-    }
     if (read_ret <= 0) {
       return read_ret;
     }
