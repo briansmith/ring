@@ -93,6 +93,10 @@ OPENSSL_EXPORT size_t BUF_MEM_grow(BUF_MEM *buf, size_t len);
 // allocated memory on free.
 OPENSSL_EXPORT size_t BUF_MEM_grow_clean(BUF_MEM *buf, size_t len);
 
+// BUF_MEM_append appends |in| to |buf|. It returns one on success and zero on
+// error.
+OPENSSL_EXPORT int BUF_MEM_append(BUF_MEM *buf, const void *in, size_t len);
+
 // BUF_strdup returns an allocated, duplicate of |str|.
 OPENSSL_EXPORT char *BUF_strdup(const char *str);
 

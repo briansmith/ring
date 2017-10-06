@@ -74,11 +74,10 @@ static void ssl3_on_handshake_complete(SSL *ssl) {
   assert(!ssl->s3->has_message);
 
   // During the handshake, |init_buf| is retained. Release if it there is no
-  // excess in it.
+  // excess in it. There may be excess left if there server sent Finished and
+  // HelloRequest in the same record.
   //
-  // TODO(davidben): The second check is always true but will not be once we
-  // switch to copying the entire handshake record. Replace this comment with an
-  // explanation when that happens and a TODO to reject it.
+  // TODO(davidben): SChannel does not support this. Reject this case.
   if (ssl->init_buf != NULL && ssl->init_buf->length == 0) {
     BUF_MEM_free(ssl->init_buf);
     ssl->init_buf = NULL;
@@ -86,8 +85,11 @@ static void ssl3_on_handshake_complete(SSL *ssl) {
 }
 
 static int ssl3_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
-  if (ssl->s3->rrec.length != 0) {
-    // There may not be unprocessed record data at a cipher change.
+  // Cipher changes are forbidden if the current epoch has leftover data.
+  //
+  // TODO(davidben): ssl->s3->rrec.length should be impossible now. Remove it
+  // once it is only used for application data.
+  if (ssl->s3->rrec.length != 0 || tls_has_unprocessed_handshake_data(ssl)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     return 0;

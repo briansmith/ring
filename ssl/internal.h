@@ -1000,9 +1000,13 @@ size_t ssl_max_handshake_message_len(const SSL *ssl);
 // dtls_clear_incoming_messages releases all buffered incoming messages.
 void dtls_clear_incoming_messages(SSL *ssl);
 
-// dtls_has_incoming_messages returns one if there are buffered incoming
-// messages ahead of the current message and zero otherwise.
-int dtls_has_incoming_messages(const SSL *ssl);
+// tls_has_unprocessed_handshake_data returns whether there is buffered
+// handshake data that has not been consumed by |get_message|.
+bool tls_has_unprocessed_handshake_data(const SSL *ssl);
+
+// dtls_has_unprocessed_handshake_data behaves like
+// |tls_has_unprocessed_handshake_data| for DTLS.
+bool dtls_has_unprocessed_handshake_data(const SSL *ssl);
 
 struct DTLS_OUTGOING_MESSAGE {
   uint8_t *data;
@@ -2687,7 +2691,10 @@ int ssl3_read_app_data(SSL *ssl, bool *out_got_handshake, uint8_t *buf, int len,
                        int peek);
 int ssl3_read_change_cipher_spec(SSL *ssl);
 void ssl3_read_close_notify(SSL *ssl);
-int ssl3_read_handshake_bytes(SSL *ssl, uint8_t *buf, int len);
+// ssl3_get_record reads a new input record. On success, it places it in
+// |ssl->s3->rrec| and returns one. Otherwise it returns <= 0 on error or if
+// more data is needed.
+int ssl3_get_record(SSL *ssl);
 int ssl3_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
                         int len);
 

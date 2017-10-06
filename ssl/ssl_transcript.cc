@@ -212,16 +212,9 @@ const EVP_MD *SSLTranscript::Digest() const {
 bool SSLTranscript::Update(Span<const uint8_t> in) {
   // Depending on the state of the handshake, either the handshake buffer may be
   // active, the rolling hash, or both.
-  if (buffer_) {
-    size_t new_len = buffer_->length + in.size();
-    if (new_len < in.size()) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-      return false;
-    }
-    if (!BUF_MEM_grow(buffer_.get(), new_len)) {
-      return false;
-    }
-    OPENSSL_memcpy(buffer_->data + new_len - in.size(), in.data(), in.size());
+  if (buffer_ &&
+      !BUF_MEM_append(buffer_.get(), in.data(), in.size())) {
+    return false;
   }
 
   if (EVP_MD_CTX_md(hash_.get()) != NULL) {

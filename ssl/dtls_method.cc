@@ -83,8 +83,8 @@ static void dtls1_on_handshake_complete(SSL *ssl) {
 }
 
 static int dtls1_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
-  // Cipher changes are illegal when there are buffered incoming messages.
-  if (dtls_has_incoming_messages(ssl) || ssl->d1->has_change_cipher_spec) {
+  // Cipher changes are forbidden if the current epoch has leftover data.
+  if (dtls_has_unprocessed_handshake_data(ssl)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     return 0;

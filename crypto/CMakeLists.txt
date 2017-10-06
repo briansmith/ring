@@ -220,6 +220,7 @@ add_executable(
 
   asn1/asn1_test.cc
   base64/base64_test.cc
+  buf/buf_test.cc
   bio/bio_test.cc
   bytestring/bytestring_test.cc
   chacha/chacha_test.cc

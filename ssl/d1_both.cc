@@ -461,7 +461,11 @@ void dtls_clear_incoming_messages(SSL *ssl) {
   }
 }
 
-int dtls_has_incoming_messages(const SSL *ssl) {
+bool dtls_has_unprocessed_handshake_data(const SSL *ssl) {
+  if (ssl->d1->has_change_cipher_spec) {
+    return true;
+  }
+
   size_t current = ssl->d1->handshake_read_seq % SSL_MAX_HANDSHAKE_FLIGHT;
   for (size_t i = 0; i < SSL_MAX_HANDSHAKE_FLIGHT; i++) {
     // Skip the current message.
@@ -470,10 +474,10 @@ int dtls_has_incoming_messages(const SSL *ssl) {
       continue;
     }
     if (ssl->d1->incoming_messages[i] != NULL) {
-      return 1;
+      return true;
     }
   }
-  return 0;
+  return false;
 }
 
 int dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,

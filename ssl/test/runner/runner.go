@@ -2491,7 +2491,7 @@ read alert 1 0
 				"-expect-total-renegotiations", "1",
 			},
 			shouldFail:    true,
-			expectedError: ":EXCESSIVE_MESSAGE_SIZE:",
+			expectedError: ":BAD_HELLO_REQUEST:",
 		},
 		{
 			name:        "BadHelloRequest-2",

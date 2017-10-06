@@ -274,22 +274,6 @@ int ssl3_flush_flight(SSL *ssl) {
   return 1;
 }
 
-static int extend_handshake_buffer(SSL *ssl, size_t length) {
-  if (!BUF_MEM_reserve(ssl->init_buf, length)) {
-    return -1;
-  }
-  while (ssl->init_buf->length < length) {
-    int ret = ssl3_read_handshake_bytes(
-        ssl, (uint8_t *)ssl->init_buf->data + ssl->init_buf->length,
-        length - ssl->init_buf->length);
-    if (ret <= 0) {
-      return ret;
-    }
-    ssl->init_buf->length += (size_t)ret;
-  }
-  return 1;
-}
-
 static int read_v2_client_hello(SSL *ssl) {
   // Read the first 5 bytes, the size of the TLS record header. This is
   // sufficient to detect a V2ClientHello and ensures that we never read beyond
@@ -438,9 +422,8 @@ static int read_v2_client_hello(SSL *ssl) {
   return 1;
 }
 
-// TODO(davidben): Remove |out_bytes_needed| and inline into |ssl3_get_message|
-// when the entire record is copied into |init_buf|.
-static bool parse_message(SSL *ssl, SSLMessage *out, size_t *out_bytes_needed) {
+static bool parse_message(const SSL *ssl, SSLMessage *out,
+                          size_t *out_bytes_needed) {
   if (ssl->init_buf == NULL) {
     *out_bytes_needed = 4;
     return false;
@@ -481,6 +464,19 @@ bool ssl3_get_message(SSL *ssl, SSLMessage *out) {
   return true;
 }
 
+bool tls_has_unprocessed_handshake_data(const SSL *ssl) {
+  size_t msg_len = 0;
+  if (ssl->s3->has_message) {
+    SSLMessage msg;
+    size_t unused;
+    if (parse_message(ssl, &msg, &unused)) {
+      msg_len = CBS_len(&msg.raw);
+    }
+  }
+
+  return ssl->init_buf != NULL && ssl->init_buf->length > msg_len;
+}
+
 int ssl3_read_message(SSL *ssl) {
   SSLMessage msg;
   size_t bytes_needed;
@@ -513,7 +509,40 @@ int ssl3_read_message(SSL *ssl) {
     return ret;
   }
 
-  return extend_handshake_buffer(ssl, bytes_needed);
+  SSL3_RECORD *rr = &ssl->s3->rrec;
+  // Get new packet if necessary.
+  if (rr->length == 0) {
+    int ret = ssl3_get_record(ssl);
+    if (ret <= 0) {
+      return ret;
+    }
+  }
+
+  // WatchGuard's TLS 1.3 interference bug is very distinctive: they drop the
+  // ServerHello and send the remaining encrypted application data records
+  // as-is. This manifests as an application data record when we expect
+  // handshake. Report a dedicated error code for this case.
+  if (!ssl->server && rr->type == SSL3_RT_APPLICATION_DATA &&
+      ssl->s3->aead_read_ctx->is_null_cipher()) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_APPLICATION_DATA_INSTEAD_OF_HANDSHAKE);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    return -1;
+  }
+
+  if (rr->type != SSL3_RT_HANDSHAKE) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    return -1;
+  }
+
+  // Append the entire handshake record to the buffer.
+  if (!BUF_MEM_append(ssl->init_buf, rr->data, rr->length)) {
+    return -1;
+  }
+
+  rr->length = 0;
+  ssl_read_buffer_discard(ssl);
+  return 1;
 }
 
 void ssl3_next_message(SSL *ssl) {

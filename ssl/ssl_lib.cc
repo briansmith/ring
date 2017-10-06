@@ -924,28 +924,27 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
       }
     }
 
-    bool got_handshake = false;
-    int ret = ssl->method->read_app_data(ssl, &got_handshake, (uint8_t *)buf,
-                                         num, peek);
-    if (ret > 0 || !got_handshake) {
-      ssl->s3->key_update_count = 0;
-      return ret;
-    }
-
-    // If we received an interrupt in early read (the end_of_early_data alert),
-    // loop again for the handshake to process it.
-    if (SSL_in_init(ssl)) {
-      continue;
-    }
-
+    // Process any buffered post-handshake messages.
     SSLMessage msg;
-    while (ssl->method->get_message(ssl, &msg)) {
+    if (ssl->method->get_message(ssl, &msg)) {
       // Handle the post-handshake message and try again.
       if (!ssl_do_post_handshake(ssl, msg)) {
         return -1;
       }
       ssl->method->next_message(ssl);
+      continue;  // Loop again. We may have begun a new handshake.
     }
+
+    bool got_handshake = false;
+    int ret = ssl->method->read_app_data(ssl, &got_handshake, (uint8_t *)buf,
+                                         num, peek);
+    if (got_handshake) {
+      continue;  // Loop again to process the handshake data.
+    }
+    if (ret > 0) {
+      ssl->s3->key_update_count = 0;
+    }
+    return ret;
   }
 }
 
