@@ -126,57 +126,6 @@ namespace bssl {
 
 static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len);
 
-int ssl3_get_record(SSL *ssl) {
-  for (;;) {
-    Span<uint8_t> body;
-    uint8_t type, alert = SSL_AD_DECODE_ERROR;
-    size_t consumed;
-    enum ssl_open_record_t open_ret = tls_open_record(
-        ssl, &type, &body, &consumed, &alert, ssl_read_buffer(ssl));
-    if (open_ret != ssl_open_record_partial) {
-      ssl_read_buffer_consume(ssl, consumed);
-    }
-    switch (open_ret) {
-      case ssl_open_record_partial: {
-        int read_ret = ssl_read_buffer_extend_to(ssl, consumed);
-        if (read_ret <= 0) {
-          return read_ret;
-        }
-        continue;
-      }
-
-      case ssl_open_record_success: {
-        if (body.size() > 0xffff) {
-          OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-          return -1;
-        }
-
-        SSL3_RECORD *rr = &ssl->s3->rrec;
-        rr->type = type;
-        rr->length = static_cast<uint16_t>(body.size());
-        rr->data = body.data();
-        return 1;
-      }
-
-      case ssl_open_record_discard:
-        continue;
-
-      case ssl_open_record_close_notify:
-        return 0;
-
-      case ssl_open_record_error:
-        if (alert != 0) {
-          ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
-        }
-        return -1;
-    }
-
-    assert(0);
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
-}
-
 int ssl3_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
                         int len) {
   assert(ssl_can_write(ssl));
@@ -333,152 +282,120 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
   return ssl3_write_pending(ssl, type, buf, len);
 }
 
-static int consume_record(SSL *ssl, uint8_t *out, int len, int peek) {
-  SSL3_RECORD *rr = &ssl->s3->rrec;
-
-  if (len <= 0) {
-    return len;
-  }
-
-  if (len > (int)rr->length) {
-    len = (int)rr->length;
-  }
-
-  OPENSSL_memcpy(out, rr->data, len);
-  if (!peek) {
-    rr->length -= len;
-    rr->data += len;
-    if (rr->length == 0) {
-      // The record has been consumed, so we may now clear the buffer.
-      ssl_read_buffer_discard(ssl);
-    }
-  }
-  return len;
-}
-
-int ssl3_read_app_data(SSL *ssl, bool *out_got_handshake, uint8_t *buf, int len,
-                       int peek) {
+ssl_open_record_t ssl3_open_app_data(SSL *ssl, Span<uint8_t> *out,
+                                     size_t *out_consumed, uint8_t *out_alert,
+                                     Span<uint8_t> in) {
   assert(ssl_can_read(ssl));
   assert(!ssl->s3->aead_read_ctx->is_null_cipher());
-  *out_got_handshake = false;
 
-  SSL3_RECORD *rr = &ssl->s3->rrec;
+  uint8_t type;
+  Span<uint8_t> body;
+  auto ret = tls_open_record(ssl, &type, &body, out_consumed, out_alert, in);
+  if (ret != ssl_open_record_success) {
+    return ret;
+  }
 
-  for (;;) {
-    // Get new packet if necessary.
-    if (rr->length == 0) {
-      int ret = ssl3_get_record(ssl);
-      if (ret <= 0) {
-        return ret;
-      }
-    }
+  const bool is_early_data_read = ssl->server && SSL_in_early_data(ssl);
 
-    const bool is_early_data_read = ssl->server && SSL_in_early_data(ssl);
-
-    if (rr->type == SSL3_RT_HANDSHAKE) {
-      // If reading 0-RTT data, reject handshake data. 0-RTT data is terminated
-      // by an alert.
-      if (is_early_data_read) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
-        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-        return -1;
-      }
-
-      // Post-handshake data prior to TLS 1.3 is always renegotiation, which we
-      // never accept as a server. Otherwise |ssl3_get_message| will send
-      // |SSL_R_EXCESSIVE_MESSAGE_SIZE|.
-      if (ssl->server && ssl_protocol_version(ssl) < TLS1_3_VERSION) {
-        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_NO_RENEGOTIATION);
-        OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
-        return -1;
-      }
-
-      if (ssl->init_buf == NULL) {
-        ssl->init_buf = BUF_MEM_new();
-      }
-      if (ssl->init_buf == NULL ||
-          !BUF_MEM_append(ssl->init_buf, rr->data, rr->length)) {
-        return -1;
-      }
-      *out_got_handshake = true;
-      rr->length = 0;
-      ssl_read_buffer_discard(ssl);
-      return -1;
-    }
-
-    // Handle the end_of_early_data alert.
-    if (rr->type == SSL3_RT_ALERT &&
-        rr->length == 2 &&
-        rr->data[0] == SSL3_AL_WARNING &&
-        rr->data[1] == TLS1_AD_END_OF_EARLY_DATA &&
-        is_early_data_read) {
-      // Consume the record.
-      rr->length = 0;
-      ssl_read_buffer_discard(ssl);
-      // Stop accepting early data.
-      ssl->s3->hs->can_early_read = false;
-      *out_got_handshake = true;
-      return -1;
-    }
-
-    if (rr->type != SSL3_RT_APPLICATION_DATA) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-      return -1;
-    }
-
+  if (type == SSL3_RT_HANDSHAKE) {
+    // If reading 0-RTT data, reject handshake data. 0-RTT data is terminated
+    // by an alert.
     if (is_early_data_read) {
-      if (rr->length > kMaxEarlyDataAccepted - ssl->s3->hs->early_data_read) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MUCH_READ_EARLY_DATA);
-        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL3_AD_UNEXPECTED_MESSAGE);
-        return -1;
-      }
-
-      ssl->s3->hs->early_data_read += rr->length;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+      *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+      return ssl_open_record_error;
     }
 
-    if (rr->length != 0) {
-      return consume_record(ssl, buf, len, peek);
+    // Post-handshake data prior to TLS 1.3 is always renegotiation, which we
+    // never accept as a server. Otherwise |ssl3_get_message| will send
+    // |SSL_R_EXCESSIVE_MESSAGE_SIZE|.
+    if (ssl->server && ssl_protocol_version(ssl) < TLS1_3_VERSION) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
+      *out_alert = SSL_AD_NO_RENEGOTIATION;
+      return ssl_open_record_error;
     }
 
-    // Discard empty records and loop again.
+    if (ssl->init_buf == NULL) {
+      ssl->init_buf = BUF_MEM_new();
+    }
+    if (ssl->init_buf == NULL ||
+        !BUF_MEM_append(ssl->init_buf, body.data(), body.size())) {
+      *out_alert = SSL_AD_INTERNAL_ERROR;
+      return ssl_open_record_error;
+    }
+    return ssl_open_record_discard;
   }
-}
 
-int ssl3_read_change_cipher_spec(SSL *ssl) {
-  SSL3_RECORD *rr = &ssl->s3->rrec;
-  if (rr->length == 0) {
-    int ret = ssl3_get_record(ssl);
-    if (ret <= 0) {
-      return ret;
-    }
+  // Handle the end_of_early_data alert.
+  static const uint8_t kEndOfEarlyData[2] = {SSL3_AL_WARNING,
+                                             TLS1_AD_END_OF_EARLY_DATA};
+  if (is_early_data_read && type == SSL3_RT_ALERT && body == kEndOfEarlyData) {
+    // Stop accepting early data.
+    ssl->s3->hs->can_early_read = false;
+    return ssl_open_record_discard;
   }
 
-  if (rr->type != SSL3_RT_CHANGE_CIPHER_SPEC) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+  if (type != SSL3_RT_APPLICATION_DATA) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
-    return -1;
+    *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+    return ssl_open_record_error;
   }
 
-  if (rr->length != 1 || rr->data[0] != SSL3_MT_CCS) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_CHANGE_CIPHER_SPEC);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-    return -1;
+  if (is_early_data_read) {
+    if (body.size() > kMaxEarlyDataAccepted - ssl->s3->hs->early_data_read) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MUCH_READ_EARLY_DATA);
+      *out_alert = SSL3_AD_UNEXPECTED_MESSAGE;
+      return ssl_open_record_error;
+    }
+
+    ssl->s3->hs->early_data_read += body.size();
   }
 
-  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_CHANGE_CIPHER_SPEC,
-                      MakeSpan(rr->data, rr->length));
+  if (body.empty()) {
+    return ssl_open_record_discard;
+  }
 
-  rr->length = 0;
-  ssl_read_buffer_discard(ssl);
-  return 1;
+  *out = body;
+  return ssl_open_record_success;
 }
 
-void ssl3_read_close_notify(SSL *ssl) {
-  // Read records until an error or close_notify.
-  while (ssl3_get_record(ssl) > 0) {
-    ;
+ssl_open_record_t ssl3_open_change_cipher_spec(SSL *ssl, size_t *out_consumed,
+                                               uint8_t *out_alert,
+                                               Span<uint8_t> in) {
+  uint8_t type;
+  Span<uint8_t> body;
+  auto ret = tls_open_record(ssl, &type, &body, out_consumed, out_alert, in);
+  if (ret != ssl_open_record_success) {
+    return ret;
   }
+
+  if (type != SSL3_RT_CHANGE_CIPHER_SPEC) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+    *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+    return ssl_open_record_error;
+  }
+
+  if (body.size() != 1 || body[0] != SSL3_MT_CCS) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_CHANGE_CIPHER_SPEC);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return ssl_open_record_error;
+  }
+
+  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_CHANGE_CIPHER_SPEC, body);
+  return ssl_open_record_success;
+}
+
+ssl_open_record_t ssl3_open_close_notify(SSL *ssl, size_t *out_consumed,
+                                         uint8_t *out_alert, Span<uint8_t> in) {
+  // TODO(davidben): Replace this with open_app_data so we actually process
+  // various bad behaviors.
+  uint8_t type;
+  Span<uint8_t> body;
+  auto ret = tls_open_record(ssl, &type, &body, out_consumed, out_alert, in);
+  if (ret == ssl_open_record_success) {
+    return ssl_open_record_discard;
+  }
+  return ret;
 }
 
 int ssl_send_alert(SSL *ssl, int level, int desc) {

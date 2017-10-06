@@ -128,84 +128,29 @@
 
 namespace bssl {
 
-int dtls1_get_record(SSL *ssl) {
-  for (;;) {
-    Span<uint8_t> body;
-    uint8_t type, alert;
-    size_t consumed;
-    enum ssl_open_record_t open_ret = dtls_open_record(
-        ssl, &type, &body, &consumed, &alert, ssl_read_buffer(ssl));
-    if (open_ret != ssl_open_record_partial) {
-      ssl_read_buffer_consume(ssl, consumed);
-    }
-    switch (open_ret) {
-      case ssl_open_record_partial: {
-        assert(ssl_read_buffer(ssl).empty());
-        int read_ret = ssl_read_buffer_extend_to(ssl, 0 /* unused */);
-        if (read_ret <= 0) {
-          return read_ret;
-        }
-        continue;
-      }
-
-      case ssl_open_record_success: {
-        if (body.size() > 0xffff) {
-          OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-          return -1;
-        }
-
-        SSL3_RECORD *rr = &ssl->s3->rrec;
-        rr->type = type;
-        rr->length = static_cast<uint16_t>(body.size());
-        rr->data = body.data();
-        return 1;
-      }
-
-      case ssl_open_record_discard:
-        continue;
-
-      case ssl_open_record_close_notify:
-        return 0;
-
-      case ssl_open_record_error:
-        if (alert != 0) {
-          ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
-        }
-        return -1;
-    }
-
-    assert(0);
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
-}
-
-int dtls1_read_app_data(SSL *ssl, bool *out_got_handshake, uint8_t *buf,
-                        int len, int peek) {
+ssl_open_record_t dtls1_open_app_data(SSL *ssl, Span<uint8_t> *out,
+                                      size_t *out_consumed, uint8_t *out_alert,
+                                      Span<uint8_t> in) {
   assert(!SSL_in_init(ssl));
 
-  *out_got_handshake = false;
-  SSL3_RECORD *rr = &ssl->s3->rrec;
-
-again:
-  if (rr->length == 0) {
-    int ret = dtls1_get_record(ssl);
-    if (ret <= 0) {
-      return ret;
-    }
+  uint8_t type;
+  Span<uint8_t> record;
+  auto ret = dtls_open_record(ssl, &type, &record, out_consumed, out_alert, in);
+  if (ret != ssl_open_record_success) {
+    return ret;
   }
 
-  if (rr->type == SSL3_RT_HANDSHAKE) {
+  if (type == SSL3_RT_HANDSHAKE) {
     // Parse the first fragment header to determine if this is a pre-CCS or
     // post-CCS handshake record. DTLS resets handshake message numbers on each
     // handshake, so renegotiations and retransmissions are ambiguous.
     CBS cbs, body;
     struct hm_header_st msg_hdr;
-    CBS_init(&cbs, rr->data, rr->length);
+    CBS_init(&cbs, record.data(), record.size());
     if (!dtls1_parse_fragment(&cbs, &msg_hdr, &body)) {
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HANDSHAKE_RECORD);
-      return -1;
+      *out_alert = SSL_AD_DECODE_ERROR;
+      return ssl_open_record_error;
     }
 
     if (msg_hdr.type == SSL3_MT_FINISHED &&
@@ -215,62 +160,52 @@ again:
         // Finished, they may not have received ours. Only do this for the
         // first fragment, in case the Finished was fragmented.
         if (!dtls1_check_timeout_num(ssl)) {
-          return -1;
+          *out_alert = 0;  // TODO(davidben): Send an alert?
+          return ssl_open_record_error;
         }
 
         dtls1_retransmit_outgoing_messages(ssl);
       }
-
-      rr->length = 0;
-      goto again;
+      return ssl_open_record_discard;
     }
 
     // Otherwise, this is a pre-CCS handshake message from an unsupported
     // renegotiation attempt. Fall through to the error path.
   }
 
-  if (rr->type != SSL3_RT_APPLICATION_DATA) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+  if (type != SSL3_RT_APPLICATION_DATA) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
-    return -1;
+    *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+    return ssl_open_record_error;
   }
 
-  // Discard empty records.
-  if (rr->length == 0) {
-    goto again;
+  if (record.empty()) {
+    return ssl_open_record_discard;
   }
 
-  if (len <= 0) {
-    return len;
-  }
-
-  if ((unsigned)len > rr->length) {
-    len = rr->length;
-  }
-
-  OPENSSL_memcpy(buf, rr->data, len);
-  if (!peek) {
-    // TODO(davidben): Should the record be truncated instead? This is a
-    // datagram transport. See https://crbug.com/boringssl/65.
-    rr->length -= len;
-    rr->data += len;
-    if (rr->length == 0) {
-      // The record has been consumed, so we may now clear the buffer.
-      ssl_read_buffer_discard(ssl);
-    }
-  }
-
-  return len;
+  *out = record;
+  return ssl_open_record_success;
 }
 
-void dtls1_read_close_notify(SSL *ssl) {
-  // Bidirectional shutdown doesn't make sense for an unordered transport. DTLS
-  // alerts also aren't delivered reliably, so we may even time out because the
-  // peer never received our close_notify. Report to the caller that the channel
-  // has fully shut down.
-  if (ssl->s3->read_shutdown == ssl_shutdown_none) {
-    ssl->s3->read_shutdown = ssl_shutdown_close_notify;
+ssl_open_record_t dtls1_open_close_notify(SSL *ssl, size_t *out_consumed,
+                                          uint8_t *out_alert,
+                                          bssl::Span<uint8_t> in) {
+  switch (ssl->s3->read_shutdown) {
+    // Bidirectional shutdown doesn't make sense for an unordered transport.
+    // DTLS alerts also aren't delivered reliably, so we may even time out
+    // because the peer never received our close_notify. Report to the caller
+    // that the channel has fully shut down.
+    case ssl_shutdown_none:
+    case ssl_shutdown_close_notify:
+      ssl->s3->read_shutdown = ssl_shutdown_close_notify;
+      return ssl_open_record_close_notify;
+    case ssl_shutdown_error:
+      ERR_restore_state(ssl->s3->read_error);
+      *out_alert = 0;
+      return ssl_open_record_error;
   }
+  assert(0);
+  return ssl_open_record_error;
 }
 
 int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake,

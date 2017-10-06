@@ -274,55 +274,28 @@ int ssl3_flush_flight(SSL *ssl) {
   return 1;
 }
 
-static int read_v2_client_hello(SSL *ssl) {
-  // Read the first 5 bytes, the size of the TLS record header. This is
-  // sufficient to detect a V2ClientHello and ensures that we never read beyond
-  // the first record.
-  int ret = ssl_read_buffer_extend_to(ssl, SSL3_RT_HEADER_LENGTH);
-  if (ret <= 0) {
-    return ret;
-  }
-  const uint8_t *p = ssl_read_buffer(ssl).data();
-
-  // Some dedicated error codes for protocol mixups should the application wish
-  // to interpret them differently. (These do not overlap with ClientHello or
-  // V2ClientHello.)
-  if (strncmp("GET ", (const char *)p, 4) == 0 ||
-      strncmp("POST ", (const char *)p, 5) == 0 ||
-      strncmp("HEAD ", (const char *)p, 5) == 0 ||
-      strncmp("PUT ", (const char *)p, 4) == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_HTTP_REQUEST);
-    return -1;
-  }
-  if (strncmp("CONNE", (const char *)p, 5) == 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_HTTPS_PROXY_REQUEST);
-    return -1;
-  }
-
-  if ((p[0] & 0x80) == 0 || p[2] != SSL2_MT_CLIENT_HELLO ||
-      p[3] != SSL3_VERSION_MAJOR) {
-    // Not a V2ClientHello.
-    return 1;
-  }
-
+static ssl_open_record_t read_v2_client_hello(SSL *ssl, size_t *out_consumed,
+                                              Span<const uint8_t> in) {
+  *out_consumed = 0;
+  assert(in.size() >= SSL3_RT_HEADER_LENGTH);
   // Determine the length of the V2ClientHello.
-  size_t msg_length = ((p[0] & 0x7f) << 8) | p[1];
+  size_t msg_length = ((in[0] & 0x7f) << 8) | in[1];
   if (msg_length > (1024 * 4)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_TOO_LARGE);
-    return -1;
+    return ssl_open_record_error;
   }
   if (msg_length < SSL3_RT_HEADER_LENGTH - 2) {
     // Reject lengths that are too short early. We have already read
     // |SSL3_RT_HEADER_LENGTH| bytes, so we should not attempt to process an
     // (invalid) V2ClientHello which would be shorter than that.
     OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_LENGTH_MISMATCH);
-    return -1;
+    return ssl_open_record_error;
   }
 
-  // Read the remainder of the V2ClientHello.
-  ret = ssl_read_buffer_extend_to(ssl, 2 + msg_length);
-  if (ret <= 0) {
-    return ret;
+  // Ask for the remainder of the V2ClientHello.
+  if (in.size() < 2 + msg_length) {
+    *out_consumed = 2 + msg_length;
+    return ssl_open_record_partial;
   }
 
   CBS v2_client_hello = CBS(ssl_read_buffer(ssl).subspan(2, msg_length));
@@ -330,7 +303,7 @@ static int read_v2_client_hello(SSL *ssl) {
   // hash. This is only ever called at the start of the handshake, so hs is
   // guaranteed to be non-NULL.
   if (!ssl->s3->hs->transcript.Update(v2_client_hello)) {
-    return -1;
+    return ssl_open_record_error;
   }
 
   ssl_do_msg_callback(ssl, 0 /* read */, 0 /* V2ClientHello */,
@@ -349,7 +322,7 @@ static int read_v2_client_hello(SSL *ssl) {
       !CBS_get_bytes(&v2_client_hello, &challenge, challenge_length) ||
       CBS_len(&v2_client_hello) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return -1;
+    return ssl_open_record_error;
   }
 
   // msg_type has already been checked.
@@ -385,7 +358,7 @@ static int read_v2_client_hello(SSL *ssl) {
       !CBB_add_u8(&hello_body, 0) ||
       !CBB_add_u16_length_prefixed(&hello_body, &cipher_suites)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return -1;
+    return ssl_open_record_error;
   }
 
   // Copy the cipher suites.
@@ -393,7 +366,7 @@ static int read_v2_client_hello(SSL *ssl) {
     uint32_t cipher_spec;
     if (!CBS_get_u24(&cipher_specs, &cipher_spec)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      return -1;
+      return ssl_open_record_error;
     }
 
     // Skip SSLv2 ciphers.
@@ -402,7 +375,7 @@ static int read_v2_client_hello(SSL *ssl) {
     }
     if (!CBB_add_u16(&cipher_suites, cipher_spec)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return -1;
+      return ssl_open_record_error;
     }
   }
 
@@ -411,15 +384,12 @@ static int read_v2_client_hello(SSL *ssl) {
       !CBB_add_u8(&hello_body, 0) ||
       !CBB_finish(client_hello.get(), NULL, &ssl->init_buf->length)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
+    return ssl_open_record_error;
   }
 
-  // Consume and discard the V2ClientHello.
-  ssl_read_buffer_consume(ssl, 2 + msg_length);
-  ssl_read_buffer_discard(ssl);
-
+  *out_consumed = 2 + msg_length;
   ssl->s3->is_v2_hello = true;
-  return 1;
+  return ssl_open_record_success;
 }
 
 static bool parse_message(const SSL *ssl, SSLMessage *out,
@@ -497,58 +467,92 @@ bool tls_has_unprocessed_handshake_data(const SSL *ssl) {
   return ssl->init_buf != NULL && ssl->init_buf->length > msg_len;
 }
 
-int ssl3_read_message(SSL *ssl) {
+ssl_open_record_t ssl3_open_handshake(SSL *ssl, size_t *out_consumed,
+                                      uint8_t *out_alert, Span<uint8_t> in) {
+  *out_consumed = 0;
   // Re-create the handshake buffer if needed.
   if (ssl->init_buf == NULL) {
     ssl->init_buf = BUF_MEM_new();
     if (ssl->init_buf == NULL) {
-      return -1;
+      *out_alert = SSL_AD_INTERNAL_ERROR;
+      return ssl_open_record_error;
     }
   }
 
   // Bypass the record layer for the first message to handle V2ClientHello.
   if (ssl->server && !ssl->s3->v2_hello_done) {
-    int ret = read_v2_client_hello(ssl);
-    if (ret > 0) {
-      ssl->s3->v2_hello_done = true;
+    // Ask for the first 5 bytes, the size of the TLS record header. This is
+    // sufficient to detect a V2ClientHello and ensures that we never read
+    // beyond the first record.
+    if (in.size() < SSL3_RT_HEADER_LENGTH) {
+      *out_consumed = SSL3_RT_HEADER_LENGTH;
+      return ssl_open_record_partial;
     }
-    return ret;
-  }
 
-  SSL3_RECORD *rr = &ssl->s3->rrec;
-  // Get new packet if necessary.
-  if (rr->length == 0) {
-    int ret = ssl3_get_record(ssl);
-    if (ret <= 0) {
+    // Some dedicated error codes for protocol mixups should the application
+    // wish to interpret them differently. (These do not overlap with
+    // ClientHello or V2ClientHello.)
+    const char *str = reinterpret_cast<const char*>(in.data());
+    if (strncmp("GET ", str, 4) == 0 ||
+        strncmp("POST ", str, 5) == 0 ||
+        strncmp("HEAD ", str, 5) == 0 ||
+        strncmp("PUT ", str, 4) == 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_HTTP_REQUEST);
+      *out_alert = 0;
+      return ssl_open_record_error;
+    }
+    if (strncmp("CONNE", str, 5) == 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_HTTPS_PROXY_REQUEST);
+      *out_alert = 0;
+      return ssl_open_record_error;
+    }
+
+    // Check for a V2ClientHello.
+    if ((in[0] & 0x80) != 0 && in[2] == SSL2_MT_CLIENT_HELLO &&
+        in[3] == SSL3_VERSION_MAJOR) {
+      auto ret = read_v2_client_hello(ssl, out_consumed, in);
+      if (ret == ssl_open_record_error) {
+        *out_alert = 0;
+      } else if (ret == ssl_open_record_success) {
+        ssl->s3->v2_hello_done = true;
+      }
       return ret;
     }
+
+    ssl->s3->v2_hello_done = true;
+  }
+
+  uint8_t type;
+  Span<uint8_t> body;
+  auto ret = tls_open_record(ssl, &type, &body, out_consumed, out_alert, in);
+  if (ret != ssl_open_record_success) {
+    return ret;
   }
 
   // WatchGuard's TLS 1.3 interference bug is very distinctive: they drop the
   // ServerHello and send the remaining encrypted application data records
   // as-is. This manifests as an application data record when we expect
   // handshake. Report a dedicated error code for this case.
-  if (!ssl->server && rr->type == SSL3_RT_APPLICATION_DATA &&
+  if (!ssl->server && type == SSL3_RT_APPLICATION_DATA &&
       ssl->s3->aead_read_ctx->is_null_cipher()) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_APPLICATION_DATA_INSTEAD_OF_HANDSHAKE);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    return -1;
+    *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+    return ssl_open_record_error;
   }
 
-  if (rr->type != SSL3_RT_HANDSHAKE) {
+  if (type != SSL3_RT_HANDSHAKE) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    return -1;
+    *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+    return ssl_open_record_error;
   }
 
   // Append the entire handshake record to the buffer.
-  if (!BUF_MEM_append(ssl->init_buf, rr->data, rr->length)) {
-    return -1;
+  if (!BUF_MEM_append(ssl->init_buf, body.data(), body.size())) {
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return ssl_open_record_error;
   }
 
-  rr->length = 0;
-  ssl_read_buffer_discard(ssl);
-  return 1;
+  return ssl_open_record_success;
 }
 
 void ssl3_next_message(SSL *ssl) {

@@ -907,7 +907,7 @@ no_renegotiation:
   return 0;
 }
 
-static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
+static int ssl_read_impl(SSL *ssl, void *buf, int num, bool peek) {
   ssl_reset_error_state(ssl);
 
   if (ssl->do_handshake == NULL) {
@@ -941,25 +941,48 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, int peek) {
       continue;  // Loop again. We may have begun a new handshake.
     }
 
-    bool got_handshake = false;
-    int ret = ssl->method->read_app_data(ssl, &got_handshake, (uint8_t *)buf,
-                                         num, peek);
-    if (got_handshake) {
-      continue;  // Loop again to process the handshake data.
-    }
-    if (ret > 0) {
+    if (ssl->s3->pending_app_data.empty()) {
+      uint8_t alert = SSL_AD_DECODE_ERROR;
+      size_t consumed = 0;
+      auto ret =
+          ssl->method->open_app_data(ssl, &ssl->s3->pending_app_data, &consumed,
+                                     &alert, ssl_read_buffer(ssl));
+      bool retry;
+      int bio_ret = ssl_handle_open_record(ssl, &retry, ret, consumed, alert);
+      if (bio_ret <= 0) {
+        return bio_ret;
+      }
+      if (retry) {
+        continue;
+      }
       ssl->s3->key_update_count = 0;
     }
-    return ret;
+
+    if (num <= 0) {
+      return num;
+    }
+
+    size_t todo =
+        std::min(ssl->s3->pending_app_data.size(), static_cast<size_t>(num));
+    OPENSSL_memcpy(buf, ssl->s3->pending_app_data.data(), todo);
+    if (!peek) {
+      // TODO(davidben): In DTLS, should the rest of the record be discarded?
+      // DTLS is not a stream. See https://crbug.com/boringssl/65.
+      ssl->s3->pending_app_data = ssl->s3->pending_app_data.subspan(todo);
+      if (ssl->s3->pending_app_data.empty()) {
+        ssl_read_buffer_discard(ssl);
+      }
+    }
+    return static_cast<int>(todo);
   }
 }
 
 int SSL_read(SSL *ssl, void *buf, int num) {
-  return ssl_read_impl(ssl, buf, num, 0 /* consume bytes */);
+  return ssl_read_impl(ssl, buf, num, false /* consume bytes */);
 }
 
 int SSL_peek(SSL *ssl, void *buf, int num) {
-  return ssl_read_impl(ssl, buf, num, 1 /* peek */);
+  return ssl_read_impl(ssl, buf, num, true /* peek */);
 }
 
 int SSL_write(SSL *ssl, const void *buf, int num) {
@@ -1033,8 +1056,19 @@ int SSL_shutdown(SSL *ssl) {
       return -1;
     }
   } else if (ssl->s3->read_shutdown != ssl_shutdown_close_notify) {
-    // Wait for the peer's close_notify.
-    ssl->method->read_close_notify(ssl);
+    ssl->s3->pending_app_data = Span<uint8_t>();
+    for (;;) {
+      uint8_t alert = SSL_AD_DECODE_ERROR;
+      size_t consumed = 0;
+      auto ret = ssl->method->open_close_notify(ssl, &consumed, &alert,
+                                                ssl_read_buffer(ssl));
+      bool retry;
+      int bio_ret = ssl_handle_open_record(ssl, &retry, ret, consumed, alert);
+      if (bio_ret <= 0) {
+        break;
+      }
+      assert(retry);  // open_close_notify never reports success.
+    }
     if (ssl->s3->read_shutdown != ssl_shutdown_close_notify) {
       return -1;
     }
@@ -1467,10 +1501,7 @@ void SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes) { }
 void SSL_set_read_ahead(SSL *ssl, int yes) { }
 
 int SSL_pending(const SSL *ssl) {
-  if (ssl->s3->rrec.type != SSL3_RT_APPLICATION_DATA) {
-    return 0;
-  }
-  return ssl->s3->rrec.length;
+  return static_cast<int>(ssl->s3->pending_app_data.size());
 }
 
 // Fix this so it checks all the valid key/cert options

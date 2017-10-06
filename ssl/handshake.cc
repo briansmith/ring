@@ -498,12 +498,22 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
       }
 
       case ssl_hs_read_server_hello:
-      case ssl_hs_read_message: {
-        int ret = ssl->method->read_message(ssl);
-        if (ret <= 0) {
+      case ssl_hs_read_message:
+      case ssl_hs_read_change_cipher_spec: {
+        uint8_t alert = SSL_AD_DECODE_ERROR;
+        size_t consumed = 0;
+        ssl_open_record_t ret;
+        if (hs->wait == ssl_hs_read_change_cipher_spec) {
+          ret = ssl->method->open_change_cipher_spec(ssl, &consumed, &alert,
+                                                     ssl_read_buffer(ssl));
+        } else {
+          ret = ssl->method->open_handshake(ssl, &consumed, &alert,
+                                            ssl_read_buffer(ssl));
+        }
+        if (ret == ssl_open_record_error &&
+            hs->wait == ssl_hs_read_server_hello) {
           uint32_t err = ERR_peek_error();
-          if (hs->wait == ssl_hs_read_server_hello &&
-              ERR_GET_LIB(err) == ERR_LIB_SSL &&
+          if (ERR_GET_LIB(err) == ERR_LIB_SSL &&
               ERR_GET_REASON(err) == SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE) {
             // Add a dedicated error code to the queue for a handshake_failure
             // alert in response to ClientHello. This matches NSS's client
@@ -514,16 +524,16 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
             // See https://crbug.com/446505.
             OPENSSL_PUT_ERROR(SSL, SSL_R_HANDSHAKE_FAILURE_ON_CLIENT_HELLO);
           }
-          return ret;
         }
-        break;
-      }
-
-      case ssl_hs_read_change_cipher_spec: {
-        int ret = ssl->method->read_change_cipher_spec(ssl);
-        if (ret <= 0) {
-          return ret;
+        bool retry;
+        int bio_ret = ssl_handle_open_record(ssl, &retry, ret, consumed, alert);
+        if (bio_ret <= 0) {
+          return bio_ret;
         }
+        if (retry) {
+          continue;
+        }
+        ssl_read_buffer_discard(ssl);
         break;
       }
 

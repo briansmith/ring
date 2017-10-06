@@ -86,10 +86,7 @@ static void ssl3_on_handshake_complete(SSL *ssl) {
 
 static bool ssl3_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   // Cipher changes are forbidden if the current epoch has leftover data.
-  //
-  // TODO(davidben): ssl->s3->rrec.length should be impossible now. Remove it
-  // once it is only used for application data.
-  if (ssl->s3->rrec.length != 0 || tls_has_unprocessed_handshake_data(ssl)) {
+  if (tls_has_unprocessed_handshake_data(ssl)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     return false;
@@ -115,11 +112,11 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     ssl3_new,
     ssl3_free,
     ssl3_get_message,
-    ssl3_read_message,
     ssl3_next_message,
-    ssl3_read_app_data,
-    ssl3_read_change_cipher_spec,
-    ssl3_read_close_notify,
+    ssl3_open_handshake,
+    ssl3_open_change_cipher_spec,
+    ssl3_open_app_data,
+    ssl3_open_close_notify,
     ssl3_write_app_data,
     ssl3_dispatch_alert,
     ssl3_supports_cipher,

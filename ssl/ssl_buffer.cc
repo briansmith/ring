@@ -202,6 +202,46 @@ void ssl_read_buffer_clear(SSL *ssl) {
   clear_buffer(&ssl->s3->read_buffer);
 }
 
+int ssl_handle_open_record(SSL *ssl, bool *out_retry, ssl_open_record_t ret,
+                           size_t consumed, uint8_t alert) {
+  *out_retry = false;
+  if (ret != ssl_open_record_partial) {
+    ssl_read_buffer_consume(ssl, consumed);
+  }
+  if (ret != ssl_open_record_success) {
+    // Nothing was returned to the caller, so discard anything marked consumed.
+    ssl_read_buffer_discard(ssl);
+  }
+  switch (ret) {
+    case ssl_open_record_success:
+      return 1;
+
+    case ssl_open_record_partial: {
+      int read_ret = ssl_read_buffer_extend_to(ssl, consumed);
+      if (read_ret <= 0) {
+        return read_ret;
+      }
+      *out_retry = true;
+      return 1;
+    }
+
+    case ssl_open_record_discard:
+      *out_retry = true;
+      return 1;
+
+    case ssl_open_record_close_notify:
+      return 0;
+
+    case ssl_open_record_error:
+      if (alert != 0) {
+        ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+      }
+      return -1;
+  }
+  assert(0);
+  return -1;
+}
+
 
 int ssl_write_buffer_is_pending(const SSL *ssl) {
   return ssl->s3->write_buffer.len > 0;
