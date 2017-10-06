@@ -191,6 +191,16 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
                                        Span<uint8_t> *out, size_t *out_consumed,
                                        uint8_t *out_alert, Span<uint8_t> in) {
   *out_consumed = 0;
+  switch (ssl->s3->read_shutdown) {
+    case ssl_shutdown_none:
+      break;
+    case ssl_shutdown_fatal_alert:
+      OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
+      *out_alert = 0;
+      return ssl_open_record_error;
+    case ssl_shutdown_close_notify:
+      return ssl_open_record_close_notify;
+  }
 
   CBS cbs = CBS(in);
 

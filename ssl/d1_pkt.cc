@@ -129,64 +129,55 @@
 namespace bssl {
 
 int dtls1_get_record(SSL *ssl) {
-again:
-  switch (ssl->s3->read_shutdown) {
-    case ssl_shutdown_none:
-      break;
-    case ssl_shutdown_fatal_alert:
-      OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
-      return -1;
-    case ssl_shutdown_close_notify:
-      return 0;
-  }
-
-  Span<uint8_t> body;
-  uint8_t type, alert;
-  size_t consumed;
-  enum ssl_open_record_t open_ret = dtls_open_record(
-      ssl, &type, &body, &consumed, &alert, ssl_read_buffer(ssl));
-  if (open_ret != ssl_open_record_partial) {
-    ssl_read_buffer_consume(ssl, consumed);
-  }
-  switch (open_ret) {
-    case ssl_open_record_partial: {
-      assert(ssl_read_buffer(ssl).empty());
-      int read_ret = ssl_read_buffer_extend_to(ssl, 0 /* unused */);
-      if (read_ret <= 0) {
-        return read_ret;
-      }
-      goto again;
+  for (;;) {
+    Span<uint8_t> body;
+    uint8_t type, alert;
+    size_t consumed;
+    enum ssl_open_record_t open_ret = dtls_open_record(
+        ssl, &type, &body, &consumed, &alert, ssl_read_buffer(ssl));
+    if (open_ret != ssl_open_record_partial) {
+      ssl_read_buffer_consume(ssl, consumed);
     }
+    switch (open_ret) {
+      case ssl_open_record_partial: {
+        assert(ssl_read_buffer(ssl).empty());
+        int read_ret = ssl_read_buffer_extend_to(ssl, 0 /* unused */);
+        if (read_ret <= 0) {
+          return read_ret;
+        }
+        continue;
+      }
 
-    case ssl_open_record_success: {
-      if (body.size() > 0xffff) {
-        OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+      case ssl_open_record_success: {
+        if (body.size() > 0xffff) {
+          OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+          return -1;
+        }
+
+        SSL3_RECORD *rr = &ssl->s3->rrec;
+        rr->type = type;
+        rr->length = static_cast<uint16_t>(body.size());
+        rr->data = body.data();
+        return 1;
+      }
+
+      case ssl_open_record_discard:
+        continue;
+
+      case ssl_open_record_close_notify:
+        return 0;
+
+      case ssl_open_record_error:
+        if (alert != 0) {
+          ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+        }
         return -1;
-      }
-
-      SSL3_RECORD *rr = &ssl->s3->rrec;
-      rr->type = type;
-      rr->length = static_cast<uint16_t>(body.size());
-      rr->data = body.data();
-      return 1;
     }
 
-    case ssl_open_record_discard:
-      goto again;
-
-    case ssl_open_record_close_notify:
-      return 0;
-
-    case ssl_open_record_error:
-      if (alert != 0) {
-        ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
-      }
-      return -1;
+    assert(0);
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return -1;
   }
-
-  assert(0);
-  OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-  return -1;
 }
 
 int dtls1_read_app_data(SSL *ssl, bool *out_got_handshake, uint8_t *buf,
