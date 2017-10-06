@@ -433,9 +433,7 @@ bool dtls1_get_message(SSL *ssl, SSLMessage *out) {
   CBS_init(&out->raw, frag->data, DTLS1_HM_HEADER_LENGTH + frag->msg_len);
   out->is_v2_hello = false;
   if (!ssl->s3->has_message) {
-    ssl_do_msg_callback(
-        ssl, 0 /* read */, SSL3_RT_HANDSHAKE,
-        MakeSpan(frag->data, frag->msg_len + DTLS1_HM_HEADER_LENGTH));
+    ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE, out->raw);
     ssl->s3->has_message = true;
   }
   return true;

@@ -525,6 +525,14 @@ static bool parse_message(SSL *ssl, SSLMessage *out, size_t *out_bytes_needed) {
   CBS_init(&out->raw, reinterpret_cast<const uint8_t *>(ssl->init_buf->data),
            4 + len);
   out->is_v2_hello = ssl->s3->is_v2_hello;
+  return true;
+}
+
+bool ssl3_get_message(SSL *ssl, SSLMessage *out) {
+  size_t unused;
+  if (!parse_message(ssl, out, &unused)) {
+    return false;
+  }
   if (!ssl->s3->has_message) {
     if (!out->is_v2_hello) {
       ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HANDSHAKE, out->raw);
@@ -532,11 +540,6 @@ static bool parse_message(SSL *ssl, SSLMessage *out, size_t *out_bytes_needed) {
     ssl->s3->has_message = true;
   }
   return true;
-}
-
-bool ssl3_get_message(SSL *ssl, SSLMessage *out) {
-  size_t unused;
-  return parse_message(ssl, out, &unused);
 }
 
 int ssl3_read_message(SSL *ssl) {
