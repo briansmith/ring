@@ -130,7 +130,7 @@ namespace bssl {
 
 int dtls1_get_record(SSL *ssl) {
 again:
-  switch (ssl->s3->recv_shutdown) {
+  switch (ssl->s3->read_shutdown) {
     case ssl_shutdown_none:
       break;
     case ssl_shutdown_fatal_alert:
@@ -291,8 +291,8 @@ void dtls1_read_close_notify(SSL *ssl) {
   // alerts also aren't delivered reliably, so we may even time out because the
   // peer never received our close_notify. Report to the caller that the channel
   // has fully shut down.
-  if (ssl->s3->recv_shutdown == ssl_shutdown_none) {
-    ssl->s3->recv_shutdown = ssl_shutdown_close_notify;
+  if (ssl->s3->read_shutdown == ssl_shutdown_none) {
+    ssl->s3->read_shutdown = ssl_shutdown_close_notify;
   }
 }
 

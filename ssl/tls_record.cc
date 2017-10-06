@@ -535,7 +535,7 @@ enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
 
   if (alert_level == SSL3_AL_WARNING) {
     if (alert_descr == SSL_AD_CLOSE_NOTIFY) {
-      ssl->s3->recv_shutdown = ssl_shutdown_close_notify;
+      ssl->s3->read_shutdown = ssl_shutdown_close_notify;
       return ssl_open_record_close_notify;
     }
 
@@ -557,7 +557,7 @@ enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
   }
 
   if (alert_level == SSL3_AL_FATAL) {
-    ssl->s3->recv_shutdown = ssl_shutdown_fatal_alert;
+    ssl->s3->read_shutdown = ssl_shutdown_fatal_alert;
 
     char tmp[16];
     OPENSSL_PUT_ERROR(SSL, SSL_AD_REASON_OFFSET + alert_descr);

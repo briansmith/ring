@@ -978,7 +978,7 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
     return -1;
   }
 
-  if (ssl->s3->send_shutdown != ssl_shutdown_none) {
+  if (ssl->s3->write_shutdown != ssl_shutdown_none) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
     return -1;
   }
@@ -1021,8 +1021,8 @@ int SSL_shutdown(SSL *ssl) {
 
   if (ssl->quiet_shutdown) {
     // Do nothing if configured not to send a close_notify.
-    ssl->s3->send_shutdown = ssl_shutdown_close_notify;
-    ssl->s3->recv_shutdown = ssl_shutdown_close_notify;
+    ssl->s3->write_shutdown = ssl_shutdown_close_notify;
+    ssl->s3->read_shutdown = ssl_shutdown_close_notify;
     return 1;
   }
 
@@ -1030,7 +1030,7 @@ int SSL_shutdown(SSL *ssl) {
   // waits for a close_notify to come in. Perform exactly one action and return
   // whether or not it succeeds.
 
-  if (ssl->s3->send_shutdown != ssl_shutdown_close_notify) {
+  if (ssl->s3->write_shutdown != ssl_shutdown_close_notify) {
     // Send a close_notify.
     if (ssl3_send_alert(ssl, SSL3_AL_WARNING, SSL_AD_CLOSE_NOTIFY) <= 0) {
       return -1;
@@ -1040,16 +1040,16 @@ int SSL_shutdown(SSL *ssl) {
     if (ssl->method->dispatch_alert(ssl) <= 0) {
       return -1;
     }
-  } else if (ssl->s3->recv_shutdown != ssl_shutdown_close_notify) {
+  } else if (ssl->s3->read_shutdown != ssl_shutdown_close_notify) {
     // Wait for the peer's close_notify.
     ssl->method->read_close_notify(ssl);
-    if (ssl->s3->recv_shutdown != ssl_shutdown_close_notify) {
+    if (ssl->s3->read_shutdown != ssl_shutdown_close_notify) {
       return -1;
     }
   }
 
   // Return 0 for unidirectional shutdown and 1 for bidirectional shutdown.
-  return ssl->s3->recv_shutdown == ssl_shutdown_close_notify;
+  return ssl->s3->read_shutdown == ssl_shutdown_close_notify;
 }
 
 int SSL_send_fatal_alert(SSL *ssl, uint8_t alert) {
@@ -1137,7 +1137,7 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
   }
 
   if (ret_code == 0) {
-    if (ssl->s3->recv_shutdown == ssl_shutdown_close_notify) {
+    if (ssl->s3->read_shutdown == ssl_shutdown_close_notify) {
       return SSL_ERROR_ZERO_RETURN;
     }
     // An EOF was observed which violates the protocol, and the underlying
@@ -2091,24 +2091,24 @@ void SSL_set_shutdown(SSL *ssl, int mode) {
   assert((SSL_get_shutdown(ssl) & mode) == SSL_get_shutdown(ssl));
 
   if (mode & SSL_RECEIVED_SHUTDOWN &&
-      ssl->s3->recv_shutdown == ssl_shutdown_none) {
-    ssl->s3->recv_shutdown = ssl_shutdown_close_notify;
+      ssl->s3->read_shutdown == ssl_shutdown_none) {
+    ssl->s3->read_shutdown = ssl_shutdown_close_notify;
   }
 
   if (mode & SSL_SENT_SHUTDOWN &&
-      ssl->s3->send_shutdown == ssl_shutdown_none) {
-    ssl->s3->send_shutdown = ssl_shutdown_close_notify;
+      ssl->s3->write_shutdown == ssl_shutdown_none) {
+    ssl->s3->write_shutdown = ssl_shutdown_close_notify;
   }
 }
 
 int SSL_get_shutdown(const SSL *ssl) {
   int ret = 0;
-  if (ssl->s3->recv_shutdown != ssl_shutdown_none) {
+  if (ssl->s3->read_shutdown != ssl_shutdown_none) {
     // Historically, OpenSSL set |SSL_RECEIVED_SHUTDOWN| on both close_notify
     // and fatal alert.
     ret |= SSL_RECEIVED_SHUTDOWN;
   }
-  if (ssl->s3->send_shutdown == ssl_shutdown_close_notify) {
+  if (ssl->s3->write_shutdown == ssl_shutdown_close_notify) {
     // Historically, OpenSSL set |SSL_SENT_SHUTDOWN| on only close_notify.
     ret |= SSL_SENT_SHUTDOWN;
   }

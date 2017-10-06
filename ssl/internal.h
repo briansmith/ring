@@ -1754,12 +1754,11 @@ struct SSL3_STATE {
   int wpend_ret;  // number of bytes submitted
   const uint8_t *wpend_buf;
 
-  // recv_shutdown is the shutdown state for the receive half of the
-  // connection.
-  enum ssl_shutdown_t recv_shutdown;
+  // read_shutdown is the shutdown state for the read half of the connection.
+  enum ssl_shutdown_t read_shutdown;
 
-  // recv_shutdown is the shutdown state for the send half of the connection.
-  enum ssl_shutdown_t send_shutdown;
+  // write_shutdown is the shutdown state for the write half of the connection.
+  enum ssl_shutdown_t write_shutdown;
 
   int alert_dispatch;
 

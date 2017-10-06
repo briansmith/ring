@@ -131,7 +131,7 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len);
 // more data is needed.
 static int ssl3_get_record(SSL *ssl) {
 again:
-  switch (ssl->s3->recv_shutdown) {
+  switch (ssl->s3->read_shutdown) {
     case ssl_shutdown_none:
       break;
     case ssl_shutdown_fatal_alert:
@@ -536,17 +536,17 @@ int ssl3_read_handshake_bytes(SSL *ssl, uint8_t *buf, int len) {
 
 int ssl3_send_alert(SSL *ssl, int level, int desc) {
   // It is illegal to send an alert when we've already sent a closing one.
-  if (ssl->s3->send_shutdown != ssl_shutdown_none) {
+  if (ssl->s3->write_shutdown != ssl_shutdown_none) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
     return -1;
   }
 
   if (level == SSL3_AL_WARNING && desc == SSL_AD_CLOSE_NOTIFY) {
-    ssl->s3->send_shutdown = ssl_shutdown_close_notify;
+    ssl->s3->write_shutdown = ssl_shutdown_close_notify;
   } else {
     assert(level == SSL3_AL_FATAL);
     assert(desc != SSL_AD_CLOSE_NOTIFY);
-    ssl->s3->send_shutdown = ssl_shutdown_fatal_alert;
+    ssl->s3->write_shutdown = ssl_shutdown_fatal_alert;
   }
 
   ssl->s3->alert_dispatch = 1;
