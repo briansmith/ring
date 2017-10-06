@@ -1145,21 +1145,27 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	listener.Close()
 	listener = nil
 
-	var shimKilledLock sync.Mutex
-	var shimKilled bool
-	waitTimeout := time.AfterFunc(*idleTimeout, func() {
+	var childErr error
+	if *useGDB {
+		childErr = <-waitChan
+	} else {
+		var shimKilledLock sync.Mutex
+		var shimKilled bool
+		waitTimeout := time.AfterFunc(*idleTimeout, func() {
+			shimKilledLock.Lock()
+			shimKilled = true
+			shimKilledLock.Unlock()
+			shim.Process.Kill()
+		})
+		childErr = <-waitChan
+		waitTimeout.Stop()
 		shimKilledLock.Lock()
-		shimKilled = true
+		if shimKilled && err == nil {
+			err = errors.New("timeout waiting for the shim to exit.")
+		}
 		shimKilledLock.Unlock()
-		shim.Process.Kill()
-	})
-	childErr := <-waitChan
-	waitTimeout.Stop()
-	shimKilledLock.Lock()
-	if shimKilled && err == nil {
-		err = errors.New("timeout waiting for the shim to exit.")
 	}
-	shimKilledLock.Unlock()
+
 	var isValgrindError bool
 	if exitError, ok := childErr.(*exec.ExitError); ok {
 		switch exitError.Sys().(syscall.WaitStatus).ExitStatus() {
