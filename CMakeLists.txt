@@ -47,7 +47,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
   set(C_CXX_FLAGS "-Wall -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
   if(MSVC)
     # clang-cl sets different default warnings than clang.
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-unused-parameter")
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-unused-parameter -fmsc-version=1900")
     # googletest suppresses warning C4996 via a pragma, but clang-cl does not
     # honor it. Suppress it here to compensate. See https://crbug.com/772117.
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-deprecated-declarations")
