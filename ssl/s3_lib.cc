@@ -206,6 +206,7 @@ void ssl3_free(SSL *ssl) {
   ssl_read_buffer_clear(ssl);
   ssl_write_buffer_clear(ssl);
 
+  ERR_SAVE_STATE_free(ssl->s3->read_error);
   SSL_SESSION_free(ssl->s3->established_session);
   ssl_handshake_free(ssl->s3->hs);
   OPENSSL_free(ssl->s3->next_proto_negotiated);
@@ -215,7 +216,6 @@ void ssl3_free(SSL *ssl) {
   Delete(ssl->s3->aead_write_ctx);
   BUF_MEM_free(ssl->s3->pending_flight);
 
-  OPENSSL_cleanse(ssl->s3, sizeof *ssl->s3);
   OPENSSL_free(ssl->s3);
   ssl->s3 = NULL;
 }

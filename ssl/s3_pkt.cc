@@ -497,7 +497,7 @@ int ssl_send_alert(SSL *ssl, int level, int desc) {
   } else {
     assert(level == SSL3_AL_FATAL);
     assert(desc != SSL_AD_CLOSE_NOTIFY);
-    ssl->s3->write_shutdown = ssl_shutdown_fatal_alert;
+    ssl->s3->write_shutdown = ssl_shutdown_error;
   }
 
   ssl->s3->alert_dispatch = 1;

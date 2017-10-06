@@ -174,22 +174,11 @@ static void dtls1_bitmap_record(DTLS1_BITMAP *bitmap,
   }
 }
 
-enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
-                                        Span<uint8_t> *out,
-                                        size_t *out_consumed,
-                                        uint8_t *out_alert, Span<uint8_t> in) {
-  *out_consumed = 0;
-  switch (ssl->s3->read_shutdown) {
-    case ssl_shutdown_none:
-      break;
-    case ssl_shutdown_fatal_alert:
-      OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
-      *out_alert = 0;
-      return ssl_open_record_error;
-    case ssl_shutdown_close_notify:
-      return ssl_open_record_close_notify;
-  }
-
+static enum ssl_open_record_t do_dtls_open_record(SSL *ssl, uint8_t *out_type,
+                                                  Span<uint8_t> *out,
+                                                  size_t *out_consumed,
+                                                  uint8_t *out_alert,
+                                                  Span<uint8_t> in) {
   if (in.empty()) {
     return ssl_open_record_partial;
   }
@@ -276,6 +265,30 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
 
   *out_type = type;
   return ssl_open_record_success;
+}
+
+enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
+                                        Span<uint8_t> *out,
+                                        size_t *out_consumed,
+                                        uint8_t *out_alert, Span<uint8_t> in) {
+  *out_consumed = 0;
+  switch (ssl->s3->read_shutdown) {
+    case ssl_shutdown_none:
+      break;
+    case ssl_shutdown_error:
+      ERR_restore_state(ssl->s3->read_error);
+      *out_alert = 0;
+      return ssl_open_record_error;
+    case ssl_shutdown_close_notify:
+      return ssl_open_record_close_notify;
+  }
+
+  enum ssl_open_record_t ret =
+      do_dtls_open_record(ssl, out_type, out, out_consumed, out_alert, in);
+  if (ret == ssl_open_record_error) {
+    ssl_set_read_error(ssl);
+  }
+  return ret;
 }
 
 static const SSLAEADContext *get_write_aead(const SSL *ssl,

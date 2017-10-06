@@ -206,6 +206,12 @@ void ssl_reset_error_state(SSL *ssl) {
   ERR_clear_system_error();
 }
 
+void ssl_set_read_error(SSL* ssl) {
+  ssl->s3->read_shutdown = ssl_shutdown_error;
+  ERR_SAVE_STATE_free(ssl->s3->read_error);
+  ssl->s3->read_error = ERR_save_state();
+}
+
 int ssl_can_write(const SSL *ssl) {
   return !SSL_in_init(ssl) || ssl->s3->hs->can_early_write;
 }

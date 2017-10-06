@@ -3801,6 +3801,109 @@ TEST_P(SSLVersionTest, StickyErrorHandshake_ParseClientHello) {
   EXPECT_EQ(SSL_R_DECODE_ERROR, ERR_GET_REASON(ERR_peek_error()));
 }
 
+// Test that alerts during a handshake are sticky.
+TEST_P(SSLVersionTest, StickyErrorHandshake_Alert) {
+  UniquePtr<SSL_CTX> ctx = CreateContext();
+  ASSERT_TRUE(ctx);
+  UniquePtr<SSL> ssl(SSL_new(ctx.get()));
+  ASSERT_TRUE(ssl);
+  SSL_set_accept_state(ssl.get());
+
+  if (is_dtls()) {
+    static const uint8_t kHandshakeFailureDTLS[] = {
+        0x15, 0xfe, 0xff, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x02, 0x02, 0x28};
+    SSL_set0_rbio(ssl.get(), BIO_new_mem_buf(kHandshakeFailureDTLS,
+                                             sizeof(kHandshakeFailureDTLS)));
+  } else {
+    static const uint8_t kHandshakeFailureTLS[] = {0x15, 0x03, 0x01, 0x00,
+                                                   0x02, 0x02, 0x28};
+    SSL_set0_rbio(ssl.get(), BIO_new_mem_buf(kHandshakeFailureTLS,
+                                             sizeof(kHandshakeFailureTLS)));
+  }
+  SSL_set0_wbio(ssl.get(), BIO_new(BIO_s_mem()));
+
+  int ret = SSL_do_handshake(ssl.get());
+  EXPECT_NE(1, ret);
+  EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(ssl.get(), ret));
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(ERR_peek_error()));
+  EXPECT_EQ(SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE,
+            ERR_GET_REASON(ERR_peek_error()));
+  ERR_clear_error();
+
+  // Driving the handshake again does not consume more records.
+  ret = SSL_do_handshake(ssl.get());
+  EXPECT_NE(1, ret);
+  EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(ssl.get(), ret));
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(ERR_peek_error()));
+  EXPECT_EQ(SSL_R_SSLV3_ALERT_HANDSHAKE_FAILURE,
+            ERR_GET_REASON(ERR_peek_error()));
+}
+
+// Test that a bad record header causes a sticky error.
+TEST_P(SSLVersionTest, StickyErrorRead_BadRecordHeader) {
+  // Bad record headers in DTLS are discarded.
+  if (is_dtls()) {
+    return;
+  }
+
+  ASSERT_TRUE(Connect());
+
+  // Inject a record with invalid version into the stream.
+  static const uint8_t kBadRecord[] = {0x16, 0x00, 0x00, 0x00, 0x00};
+  SSL_set0_rbio(server_.get(), BIO_new_mem_buf(kBadRecord, sizeof(kBadRecord)));
+
+  // The bad header should be rejected.
+  char buf[5];
+  int ret = SSL_read(server_.get(), buf, sizeof(buf));
+  EXPECT_EQ(-1, ret);
+  EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(server_.get(), ret));
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(ERR_peek_error()));
+  EXPECT_EQ(SSL_R_WRONG_VERSION_NUMBER, ERR_GET_REASON(ERR_peek_error()));
+  ERR_clear_error();
+
+  // It should continue to be rejected on a retry.
+  ret = SSL_read(server_.get(), buf, sizeof(buf));
+  EXPECT_EQ(-1, ret);
+  EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(server_.get(), ret));
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(ERR_peek_error()));
+  EXPECT_EQ(SSL_R_WRONG_VERSION_NUMBER, ERR_GET_REASON(ERR_peek_error()));
+}
+
+// Test that a bad encrypted record causes a sticky error.
+TEST_P(SSLVersionTest, StickyErrorRead_BadCiphertext) {
+  // Bad ciphertext in DTLS is discarded.
+  if (is_dtls()) {
+    return;
+  }
+  ASSERT_TRUE(Connect());
+
+  // Inject a record with invalid version into the stream.
+  uint16_t record_version =
+      version() >= TLS1_3_VERSION ? TLS1_VERSION : version();
+  uint8_t record[] = {SSL3_RT_APPLICATION_DATA,
+                      static_cast<uint8_t>(record_version >> 8),
+                      static_cast<uint8_t>(record_version),
+                      0x00,
+                      0x01,
+                      0x42};
+  SSL_set0_rbio(server_.get(), BIO_new_mem_buf(record, sizeof(record)));
+
+  // The bad record should be rejected.
+  char buf[5];
+  int ret = SSL_read(server_.get(), buf, sizeof(buf));
+  EXPECT_EQ(-1, ret);
+  EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(server_.get(), ret));
+  uint32_t err = ERR_get_error();
+  ERR_clear_error();
+
+  // It should continue to be rejected on a retry with the same error.
+  ret = SSL_read(server_.get(), buf, sizeof(buf));
+  EXPECT_EQ(-1, ret);
+  EXPECT_EQ(SSL_ERROR_SSL, SSL_get_error(server_.get(), ret));
+  EXPECT_EQ(err, ERR_peek_error());
+}
+
 TEST_P(SSLVersionTest, SSLPending) {
   UniquePtr<SSL> ssl(SSL_new(client_ctx_.get()));
   ASSERT_TRUE(ssl);

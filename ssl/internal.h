@@ -2130,7 +2130,7 @@ struct SSL3_BUFFER {
 enum ssl_shutdown_t {
   ssl_shutdown_none = 0,
   ssl_shutdown_close_notify = 1,
-  ssl_shutdown_fatal_alert = 2,
+  ssl_shutdown_error = 2,
 };
 
 struct SSL3_STATE {
@@ -2159,6 +2159,10 @@ struct SSL3_STATE {
 
   // write_shutdown is the shutdown state for the write half of the connection.
   enum ssl_shutdown_t write_shutdown;
+
+  // read_error, if |read_shutdown| is |ssl_shutdown_error|, is the error for
+  // the receive half of the connection.
+  ERR_SAVE_STATE *read_error;
 
   int alert_dispatch;
 
@@ -2857,6 +2861,10 @@ void ssl_ctx_get_current_time(const SSL_CTX *ctx,
 
 // ssl_reset_error_state resets state for |SSL_get_error|.
 void ssl_reset_error_state(SSL *ssl);
+
+// ssl_set_read_error sets |ssl|'s read half into an error state, saving the
+// current state of the error queue.
+void ssl_set_read_error(SSL* ssl);
 
 }  // namespace bssl
 
