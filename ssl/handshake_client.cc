@@ -358,7 +358,7 @@ static int parse_server_version(SSL_HANDSHAKE *hs, uint16_t *out,
   SSL *const ssl = hs->ssl;
   if (msg.type != SSL3_MT_SERVER_HELLO &&
       msg.type != SSL3_MT_HELLO_RETRY_REQUEST) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
     return 0;
   }
@@ -366,7 +366,7 @@ static int parse_server_version(SSL_HANDSHAKE *hs, uint16_t *out,
   CBS server_hello = msg.body;
   if (!CBS_get_u16(&server_hello, out)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return 0;
   }
 
@@ -382,7 +382,7 @@ static int parse_server_version(SSL_HANDSHAKE *hs, uint16_t *out,
       !CBS_skip(&server_hello, sid_length + 2 /* cipher_suite */ +
                 1 /* compression_method */)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return 0;
   }
 
@@ -395,7 +395,7 @@ static int parse_server_version(SSL_HANDSHAKE *hs, uint16_t *out,
   if (!CBS_get_u16_length_prefixed(&server_hello, &extensions) ||
       CBS_len(&server_hello) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return 0;
   }
 
@@ -410,14 +410,14 @@ static int parse_server_version(SSL_HANDSHAKE *hs, uint16_t *out,
   if (!ssl_parse_extensions(&extensions, &alert, ext_types,
                             OPENSSL_ARRAY_SIZE(ext_types),
                             1 /* ignore unknown */)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return 0;
   }
 
   if (have_supported_versions &&
       (!CBS_get_u16(&supported_versions, out) ||
        CBS_len(&supported_versions) != 0)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return 0;
   }
 
@@ -542,7 +542,7 @@ static enum ssl_hs_wait_t do_read_hello_verify_request(SSL_HANDSHAKE *hs) {
       CBS_len(&cookie) > sizeof(ssl->d1->cookie) ||
       CBS_len(&hello_verify_request) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 
@@ -578,7 +578,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
   if (!ssl_supports_version(hs, server_version)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
     return ssl_hs_error;
   }
 
@@ -591,11 +591,11 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->version);
   } else if (server_version != ssl->version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
     return ssl_hs_error;
   }
 
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     hs->state = state_tls13;
     return ssl_hs_ok;
   }
@@ -609,7 +609,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   // fallback described in draft-ietf-tls-tls13-18 appendix C.3.
   if (hs->early_data_offered) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_ON_EARLY_DATA);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
     return ssl_hs_error;
   }
 
@@ -627,7 +627,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       !CBS_get_u16(&server_hello, &cipher_suite) ||
       !CBS_get_u8(&server_hello, &compression_method)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 
@@ -648,7 +648,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     // fill out.
     ssl_set_session(ssl, NULL);
     if (!ssl_get_new_session(hs, 0 /* client */)) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
     // Note: session_id could be empty.
@@ -661,7 +661,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   if (cipher == NULL) {
     // unknown cipher
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CIPHER_RETURNED);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
 
@@ -669,30 +669,30 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   uint32_t mask_a, mask_k;
   ssl_get_client_disabled(ssl, &mask_a, &mask_k);
   if ((cipher->algorithm_mkey & mask_k) || (cipher->algorithm_auth & mask_a) ||
-      SSL_CIPHER_get_min_version(cipher) > ssl3_protocol_version(ssl) ||
-      SSL_CIPHER_get_max_version(cipher) < ssl3_protocol_version(ssl) ||
+      SSL_CIPHER_get_min_version(cipher) > ssl_protocol_version(ssl) ||
+      SSL_CIPHER_get_max_version(cipher) < ssl_protocol_version(ssl) ||
       !sk_SSL_CIPHER_find(SSL_get_ciphers(ssl), NULL, cipher)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
 
   if (ssl->session != NULL) {
     if (ssl->session->ssl_version != ssl->version) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_OLD_SESSION_VERSION_NOT_RETURNED);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
     if (ssl->session->cipher != cipher) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_OLD_SESSION_CIPHER_NOT_RETURNED);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
     if (!ssl_session_is_context_valid(ssl, ssl->session)) {
       // This is actually a client application bug.
       OPENSSL_PUT_ERROR(SSL,
                         SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
   } else {
@@ -702,9 +702,9 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
   // Now that the cipher is known, initialize the handshake hash and hash the
   // ServerHello.
-  if (!hs->transcript.InitHash(ssl3_protocol_version(ssl), hs->new_cipher) ||
+  if (!hs->transcript.InitHash(ssl_protocol_version(ssl), hs->new_cipher) ||
       !ssl_hash_message(hs, msg)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
   }
 
@@ -719,7 +719,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   // Only the NULL compression algorithm is supported.
   if (compression_method != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_COMPRESSION_ALGORITHM);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
 
@@ -733,7 +733,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   if (CBS_len(&server_hello) != 0) {
     // wrong packet length
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 
@@ -744,7 +744,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     } else {
       OPENSSL_PUT_ERROR(SSL, SSL_R_RESUMED_NON_EMS_SESSION_WITH_EMS_EXTENSION);
     }
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     return ssl_hs_error;
   }
 
@@ -792,7 +792,7 @@ static enum ssl_hs_wait_t do_read_server_certificate(SSL_HANDSHAKE *hs) {
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> chain;
   if (!ssl_parse_cert_chain(&alert, &chain, &hs->peer_pubkey, NULL, &body,
                             ssl->ctx->pool)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
   sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
@@ -802,14 +802,14 @@ static enum ssl_hs_wait_t do_read_server_certificate(SSL_HANDSHAKE *hs) {
       CBS_len(&body) != 0 ||
       !ssl->ctx->x509_method->session_cache_objects(hs->new_session.get())) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 
   if (!ssl_check_leaf_certificate(
           hs, hs->peer_pubkey.get(),
           sk_CRYPTO_BUFFER_value(hs->new_session->certs, 0))) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
 
@@ -851,7 +851,7 @@ static enum ssl_hs_wait_t do_read_certificate_status(SSL_HANDSHAKE *hs) {
       CBS_len(&ocsp_response) == 0 ||
       CBS_len(&certificate_status) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 
@@ -859,7 +859,7 @@ static enum ssl_hs_wait_t do_read_certificate_status(SSL_HANDSHAKE *hs) {
   hs->new_session->ocsp_response =
       CRYPTO_BUFFER_new_from_CBS(&ocsp_response, ssl->ctx->pool);
   if (hs->new_session->ocsp_response == nullptr) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
   }
 
@@ -900,7 +900,7 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
     // Some ciphers (pure PSK) have an optional ServerKeyExchange message.
     if (ssl_cipher_requires_server_key_exchange(hs->new_cipher)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
       return ssl_hs_error;
     }
 
@@ -922,21 +922,21 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
     if (!CBS_get_u16_length_prefixed(&server_key_exchange,
                                      &psk_identity_hint)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       return ssl_hs_error;
     }
 
-    // Store PSK identity hint for later use, hint is used in
-    // ssl3_send_client_key_exchange.  Assume that the maximum length of a PSK
-    // identity hint can be as long as the maximum length of a PSK identity.
-    // Also do not allow NULL characters; identities are saved as C strings.
+    // Store the PSK identity hint for the ClientKeyExchange. Assume that the
+    // maximum length of a PSK identity hint can be as long as the maximum
+    // length of a PSK identity. Also do not allow NULL characters; identities
+    // are saved as C strings.
     //
     // TODO(davidben): Should invalid hints be ignored? It's a hint rather than
     // a specific identity.
     if (CBS_len(&psk_identity_hint) > PSK_MAX_IDENTITY_LEN ||
         CBS_contains_zero_byte(&psk_identity_hint)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
       return ssl_hs_error;
     }
 
@@ -949,7 +949,7 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
     if (CBS_len(&psk_identity_hint) != 0 &&
         !CBS_strdup(&psk_identity_hint, &raw)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
     hs->peer_psk_identity_hint.reset(raw);
@@ -965,7 +965,7 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
         !CBS_get_u16(&server_key_exchange, &group_id) ||
         !CBS_get_u8_length_prefixed(&server_key_exchange, &point)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       return ssl_hs_error;
     }
     hs->new_session->group_id = group_id;
@@ -973,7 +973,7 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
     // Ensure the group is consistent with preferences.
     if (!tls1_check_group_id(ssl, group_id)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
 
@@ -985,7 +985,7 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
     }
   } else if (!(alg_k & SSL_kPSK)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     return ssl_hs_error;
   }
 
@@ -999,22 +999,22 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
   // ServerKeyExchange should be signed by the server's public key.
   if (ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
     uint16_t signature_algorithm = 0;
-    if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
+    if (ssl_protocol_version(ssl) >= TLS1_2_VERSION) {
       if (!CBS_get_u16(&server_key_exchange, &signature_algorithm)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
         return ssl_hs_error;
       }
       uint8_t alert = SSL_AD_DECODE_ERROR;
       if (!tls12_check_peer_sigalg(ssl, &alert, signature_algorithm)) {
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
         return ssl_hs_error;
       }
       hs->new_session->peer_signature_algorithm = signature_algorithm;
     } else if (!tls1_get_legacy_signature_algorithm(&signature_algorithm,
                                                     hs->peer_pubkey.get())) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_ERROR_UNSUPPORTED_CERTIFICATE_TYPE);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_CERTIFICATE);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_CERTIFICATE);
       return ssl_hs_error;
     }
 
@@ -1023,7 +1023,7 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
     if (!CBS_get_u16_length_prefixed(&server_key_exchange, &signature) ||
         CBS_len(&server_key_exchange) != 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       return ssl_hs_error;
     }
 
@@ -1040,7 +1040,7 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
                        CBS_len(&parameter)) ||
         !CBB_finish(transcript.get(), &transcript_data, &transcript_len)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
 
@@ -1056,7 +1056,7 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
     if (!sig_ok) {
       // bad signature
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SIGNATURE);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
       return ssl_hs_error;
     }
   } else {
@@ -1065,7 +1065,7 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
 
     if (CBS_len(&server_key_exchange) > 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_EXTRA_DATA_IN_MESSAGE);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       return ssl_hs_error;
     }
   }
@@ -1104,21 +1104,21 @@ static enum ssl_hs_wait_t do_read_certificate_request(SSL_HANDSHAKE *hs) {
   // Get the certificate types.
   CBS body = msg.body, certificate_types;
   if (!CBS_get_u8_length_prefixed(&body, &certificate_types)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return ssl_hs_error;
   }
 
   if (!hs->certificate_types.CopyFrom(certificate_types)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
   }
 
-  if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_2_VERSION) {
     CBS supported_signature_algorithms;
     if (!CBS_get_u16_length_prefixed(&body, &supported_signature_algorithms) ||
         !tls1_parse_peer_sigalgs(hs, &supported_signature_algorithms)) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       return ssl_hs_error;
     }
@@ -1128,12 +1128,12 @@ static enum ssl_hs_wait_t do_read_certificate_request(SSL_HANDSHAKE *hs) {
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> ca_names =
       ssl_parse_client_CA_list(ssl, &alert, &body);
   if (!ca_names) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
 
   if (CBS_len(&body) != 0) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return ssl_hs_error;
   }
@@ -1161,7 +1161,7 @@ static enum ssl_hs_wait_t do_read_server_hello_done(SSL_HANDSHAKE *hs) {
 
   // ServerHelloDone is empty.
   if (CBS_len(&msg.body) != 0) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return ssl_hs_error;
   }
@@ -1184,7 +1184,7 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   if (ssl->cert->cert_cb != NULL) {
     int rv = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
     if (rv == 0) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_CB_ERROR);
       return ssl_hs_error;
     }
@@ -1251,7 +1251,7 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
                                  identity, sizeof(identity), psk, sizeof(psk));
     if (psk_len == 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PSK_IDENTITY_NOT_FOUND);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
       return ssl_hs_error;
     }
     assert(psk_len <= PSK_MAX_PSK_LEN);
@@ -1319,7 +1319,7 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     // Compute the premaster.
     uint8_t alert = SSL_AD_DECODE_ERROR;
     if (!hs->key_share->Accept(&child, &pms, &alert, hs->peer_key)) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }
     if (!CBB_flush(&body)) {
@@ -1337,7 +1337,7 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     }
     OPENSSL_memset(pms.data(), 0, pms.size());
   } else {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return ssl_hs_error;
   }
@@ -1399,7 +1399,7 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
   if (!tls1_choose_signature_algorithm(hs, &signature_algorithm)) {
     return ssl_hs_error;
   }
-  if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_2_VERSION) {
     // Write out the digest type in TLS 1.2.
     if (!CBB_add_u16(&body, signature_algorithm)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -1418,7 +1418,7 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
   size_t sig_len = max_sig_len;
   // The SSL3 construction for CertificateVerify does not decompose into a
   // single final digest and signature, and must be special-cased.
-  if (ssl3_protocol_version(ssl) == SSL3_VERSION) {
+  if (ssl_protocol_version(ssl) == SSL3_VERSION) {
     if (ssl->cert->key_method != NULL) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL_FOR_CUSTOM_KEY);
       return ssl_hs_error;
@@ -1570,7 +1570,7 @@ static enum ssl_hs_wait_t do_read_session_ticket(SSL_HANDSHAKE *hs) {
   if (!CBS_get_u32(&new_session_ticket, &tlsext_tick_lifetime_hint) ||
       !CBS_get_u16_length_prefixed(&new_session_ticket, &ticket) ||
       CBS_len(&new_session_ticket) != 0) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return ssl_hs_error;
   }

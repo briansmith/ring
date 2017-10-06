@@ -331,7 +331,7 @@ static int tls1_setup_key_block(SSL_HANDSHAKE *hs) {
   size_t mac_secret_len, fixed_iv_len;
   if (session->cipher == NULL ||
       !ssl_cipher_get_evp_aead(&aead, &mac_secret_len, &fixed_iv_len,
-                               session->cipher, ssl3_protocol_version(ssl),
+                               session->cipher, ssl_protocol_version(ssl),
                                SSL_is_dtls(ssl))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CIPHER_OR_HASH_UNAVAILABLE);
     return 0;
@@ -422,7 +422,7 @@ int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
       return 0;
     }
   } else {
-    if (ssl3_protocol_version(ssl) == SSL3_VERSION) {
+    if (ssl_protocol_version(ssl) == SSL3_VERSION) {
       if (!ssl3_prf(out, SSL3_MASTER_SECRET_SIZE, premaster, premaster_len,
                     TLS_MD_MASTER_SECRET_CONST, TLS_MD_MASTER_SECRET_CONST_SIZE,
                     ssl->s3->client_random, SSL3_RANDOM_SIZE,
@@ -455,7 +455,7 @@ size_t SSL_get_key_block_len(const SSL *ssl) {
 
 int SSL_generate_key_block(const SSL *ssl, uint8_t *out, size_t out_len) {
   const SSL_SESSION *session = SSL_get_session(ssl);
-  if (ssl3_protocol_version(ssl) == SSL3_VERSION) {
+  if (ssl_protocol_version(ssl) == SSL3_VERSION) {
     return ssl3_prf(out, out_len, session->master_key,
                     session->master_key_length, TLS_MD_KEY_EXPANSION_CONST,
                     TLS_MD_KEY_EXPANSION_CONST_SIZE, ssl->s3->server_random,
@@ -482,7 +482,7 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
     return 0;
   }
 
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return tls13_export_keying_material(ssl, out, out_len, label, label_len,
                                         context, context_len, use_context);
   }

@@ -147,7 +147,7 @@ static int pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
     return 0;
   }
 
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     // RSA keys may only be used with RSA-PSS.
     if (alg->pkey_type == EVP_PKEY_RSA && !alg->is_rsa_pss) {
       return 0;

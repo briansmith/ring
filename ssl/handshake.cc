@@ -162,7 +162,7 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs) { Delete(hs); }
 
 int ssl_check_message_type(SSL *ssl, const SSLMessage &msg, int type) {
   if (msg.type != type) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
     ERR_add_error_dataf("got type %d, wanted type %d", msg.type, type);
     return 0;
@@ -194,7 +194,7 @@ size_t ssl_max_handshake_message_len(const SSL *ssl) {
     return kMaxMessageLen;
   }
 
-  if (ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) < TLS1_3_VERSION) {
     // In TLS 1.2 and below, the largest acceptable post-handshake message is
     // a HelloRequest.
     return 0;
@@ -292,7 +292,7 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
     if (sk_CRYPTO_BUFFER_num(prev_session->certs) !=
         sk_CRYPTO_BUFFER_num(hs->new_session->certs)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_SERVER_CERT_CHANGED);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_verify_invalid;
     }
 
@@ -306,7 +306,7 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
                          CRYPTO_BUFFER_data(new_cert),
                          CRYPTO_BUFFER_len(old_cert)) != 0) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_SERVER_CERT_CHANGED);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
         return ssl_verify_invalid;
       }
     }
@@ -346,7 +346,7 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
 
   if (ret == ssl_verify_invalid) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CERTIFICATE_VERIFY_FAILED);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
   }
 
   return ret;
@@ -362,7 +362,7 @@ uint16_t ssl_get_grease_value(const SSL *ssl, enum ssl_grease_index_t index) {
                              : ssl->s3->client_random[index];
   // The first four bytes of server_random are a timestamp prior to TLS 1.3, but
   // servers have no fields to GREASE until TLS 1.3.
-  assert(!ssl->server || ssl3_protocol_version(ssl) >= TLS1_3_VERSION);
+  assert(!ssl->server || ssl_protocol_version(ssl) >= TLS1_3_VERSION);
   // This generates a random value of the form 0xωaωa, for all 0 ≤ ω < 16.
   ret = (ret & 0xf0) | 0x0a;
   ret |= ret << 8;
@@ -394,7 +394,7 @@ enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs) {
   finished_ok = 1;
 #endif
   if (!finished_ok) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DIGEST_CHECK_FAILED);
     return ssl_hs_error;
   }

@@ -287,7 +287,7 @@ static uint16_t ssl_version(const SSL *ssl) {
   return ssl->version;
 }
 
-uint16_t ssl3_protocol_version(const SSL *ssl) {
+uint16_t ssl_protocol_version(const SSL *ssl) {
   assert(ssl->s3->have_version);
   uint16_t version;
   if (!ssl_protocol_version_from_wire(&version, ssl->version)) {

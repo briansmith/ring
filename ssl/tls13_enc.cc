@@ -47,7 +47,7 @@ static int init_key_schedule(SSL_HANDSHAKE *hs, uint16_t version,
 }
 
 int tls13_init_key_schedule(SSL_HANDSHAKE *hs) {
-  if (!init_key_schedule(hs, ssl3_protocol_version(hs->ssl), hs->new_cipher)) {
+  if (!init_key_schedule(hs, ssl_protocol_version(hs->ssl), hs->new_cipher)) {
     return 0;
   }
 

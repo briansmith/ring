@@ -732,7 +732,7 @@ int ssl_add_client_CA_list(SSL *ssl, CBB *cbb) {
 int ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
                                const CRYPTO_BUFFER *leaf) {
   SSL *const ssl = hs->ssl;
-  assert(ssl3_protocol_version(ssl) < TLS1_3_VERSION);
+  assert(ssl_protocol_version(ssl) < TLS1_3_VERSION);
 
   // Check the certificate's type matches the cipher.
   if (!(hs->new_cipher->algorithm_auth & ssl_cipher_auth_mask_for_key(pkey))) {

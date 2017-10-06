@@ -281,7 +281,7 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   // Handle FALLBACK_SCSV.
   if (ssl_client_cipher_list_contains_cipher(client_hello,
                                              SSL3_CK_FALLBACK_SCSV & 0xffff) &&
-      ssl3_protocol_version(ssl) < hs->max_version) {
+      ssl_protocol_version(ssl) < hs->max_version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INAPPROPRIATE_FALLBACK);
     *out_alert = SSL3_AD_INAPPROPRIATE_FALLBACK;
     return 0;
@@ -392,8 +392,8 @@ static const SSL_CIPHER *ssl3_choose_cipher(
 
     size_t cipher_index;
     if (// Check if the cipher is supported for the current version.
-        SSL_CIPHER_get_min_version(c) <= ssl3_protocol_version(ssl) &&
-        ssl3_protocol_version(ssl) <= SSL_CIPHER_get_max_version(c) &&
+        SSL_CIPHER_get_min_version(c) <= ssl_protocol_version(ssl) &&
+        ssl_protocol_version(ssl) <= SSL_CIPHER_get_max_version(c) &&
         // Check the cipher is supported for the server configuration.
         (c->algorithm_mkey & mask_k) &&
         (c->algorithm_auth & mask_a) &&
@@ -444,7 +444,7 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
   SSL_CLIENT_HELLO client_hello;
   if (!ssl_client_hello_init(ssl, &client_hello, msg)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 
@@ -457,7 +457,7 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
       case ssl_select_cert_error:
         // Connection rejected.
         OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
         return ssl_hs_error;
 
       default:
@@ -472,7 +472,7 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
   if (!negotiate_version(hs, &alert, &client_hello)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
 
@@ -488,10 +488,10 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
   // advertise no other compression.
   if (OPENSSL_memchr(client_hello.compression_methods, 0,
                      client_hello.compression_methods_len) == NULL ||
-      (ssl3_protocol_version(ssl) >= TLS1_3_VERSION &&
+      (ssl_protocol_version(ssl) >= TLS1_3_VERSION &&
        client_hello.compression_methods_len != 1)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_COMPRESSION_LIST);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
 
@@ -518,7 +518,7 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     int rv = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
     if (rv == 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_CB_ERROR);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
     if (rv < 0) {
@@ -530,7 +530,7 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     // Jump to the TLS 1.3 state machine.
     hs->state = state_tls13;
     return ssl_hs_ok;
@@ -547,7 +547,7 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
       ssl3_choose_cipher(hs, &client_hello, ssl_get_cipher_preferences(ssl));
   if (hs->new_cipher == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     return ssl_hs_error;
   }
 
@@ -592,7 +592,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
       // A ClientHello without EMS that attempts to resume a session with EMS
       // is fatal to the connection.
       OPENSSL_PUT_ERROR(SSL, SSL_R_RESUMED_EMS_SESSION_WITHOUT_EMS_EXTENSION);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
       return ssl_hs_error;
     }
 
@@ -626,7 +626,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
       ssl->ctx->dos_protection_cb(&client_hello) == 0) {
     // Connection rejected for DOS reasons.
     OPENSSL_PUT_ERROR(SSL, SSL_R_CONNECTION_REJECTED);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
   }
 
@@ -656,15 +656,15 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   // deferred. Complete it now.
   uint8_t alert = SSL_AD_DECODE_ERROR;
   if (!ssl_negotiate_alpn(hs, &alert, &client_hello)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
 
   // Now that all parameters are known, initialize the handshake hash and hash
   // the ClientHello.
-  if (!hs->transcript.InitHash(ssl3_protocol_version(ssl), hs->new_cipher) ||
+  if (!hs->transcript.InitHash(ssl_protocol_version(ssl), hs->new_cipher) ||
       !ssl_hash_message(hs, msg)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
   }
 
@@ -800,7 +800,7 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
       uint16_t group_id;
       if (!tls1_get_shared_group(hs, &group_id)) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
         return ssl_hs_error;
        }
       hs->new_session->group_id = group_id;
@@ -849,7 +849,7 @@ static enum ssl_hs_wait_t do_send_server_key_exchange(SSL_HANDSHAKE *hs) {
   // Add a signature.
   if (ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
     if (!ssl_has_private_key(ssl)) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
 
@@ -858,10 +858,10 @@ static enum ssl_hs_wait_t do_send_server_key_exchange(SSL_HANDSHAKE *hs) {
     if (!tls1_choose_signature_algorithm(hs, &signature_algorithm)) {
       return ssl_hs_error;
     }
-    if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
+    if (ssl_protocol_version(ssl) >= TLS1_2_VERSION) {
       if (!CBB_add_u16(&body, signature_algorithm)) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         return ssl_hs_error;
       }
     }
@@ -912,9 +912,9 @@ static enum ssl_hs_wait_t do_send_server_hello_done(SSL_HANDSHAKE *hs) {
                                    SSL3_MT_CERTIFICATE_REQUEST) ||
         !CBB_add_u8_length_prefixed(&body, &cert_types) ||
         !CBB_add_u8(&cert_types, SSL3_CT_RSA_SIGN) ||
-        (ssl3_protocol_version(ssl) >= TLS1_VERSION &&
+        (ssl_protocol_version(ssl) >= TLS1_VERSION &&
          !CBB_add_u8(&cert_types, TLS_CT_ECDSA_SIGN)) ||
-        (ssl3_protocol_version(ssl) >= TLS1_2_VERSION &&
+        (ssl_protocol_version(ssl) >= TLS1_2_VERSION &&
          (!CBB_add_u16_length_prefixed(&body, &sigalgs_cbb) ||
           !tls12_add_verify_sigalgs(ssl, &sigalgs_cbb))) ||
         !ssl_add_client_CA_list(ssl, &body) ||
@@ -955,7 +955,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
       // certificate.
       if (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
         return ssl_hs_error;
       }
 
@@ -967,7 +967,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
     }
 
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     return ssl_hs_error;
   }
 
@@ -983,7 +983,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
                                 ? hs->new_session->peer_sha256
                                 : NULL,
                             &certificate_msg, ssl->ctx->pool)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
   sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
@@ -992,7 +992,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
   if (CBS_len(&certificate_msg) != 0 ||
       !ssl->ctx->x509_method->session_cache_objects(hs->new_session.get())) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 
@@ -1004,14 +1004,14 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
     // Certificate message.
     if (ssl->version == SSL3_VERSION) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATES_RETURNED);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
       return ssl_hs_error;
     }
 
     if (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
       // Fail for TLS only if we required a certificate
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
       return ssl_hs_error;
     }
 
@@ -1068,20 +1068,20 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     if (!CBS_get_u16_length_prefixed(&client_key_exchange, &psk_identity) ||
         ((alg_k & SSL_kPSK) && CBS_len(&client_key_exchange) != 0)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       return ssl_hs_error;
     }
 
     if (CBS_len(&psk_identity) > PSK_MAX_IDENTITY_LEN ||
         CBS_contains_zero_byte(&psk_identity)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
 
     if (!CBS_strdup(&psk_identity, &hs->new_session->psk_identity)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
   }
@@ -1095,7 +1095,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
                                        &encrypted_premaster_secret) ||
           CBS_len(&client_key_exchange) != 0) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
         return ssl_hs_error;
       }
     } else {
@@ -1125,7 +1125,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     if (decrypt_len != decrypt_buf.size()) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
       return ssl_hs_error;
     }
 
@@ -1140,7 +1140,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     // publicly invalid.
     if (decrypt_len < 11 + premaster_secret.size()) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
       return ssl_hs_error;
     }
 
@@ -1172,14 +1172,14 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     if (!CBS_get_u8_length_prefixed(&client_key_exchange, &peer_key) ||
         CBS_len(&client_key_exchange) != 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       return ssl_hs_error;
     }
 
     // Compute the premaster.
     uint8_t alert = SSL_AD_DECODE_ERROR;
     if (!hs->key_share->Finish(&premaster_secret, &alert, peer_key)) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }
 
@@ -1187,7 +1187,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     hs->key_share.reset();
   } else if (!(alg_k & SSL_kPSK)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
     return ssl_hs_error;
   }
 
@@ -1196,7 +1196,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
   if (alg_a & SSL_aPSK) {
     if (ssl->psk_server_callback == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
 
@@ -1206,12 +1206,12 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
         ssl, hs->new_session->psk_identity, psk, sizeof(psk));
     if (psk_len > PSK_MAX_PSK_LEN) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     } else if (psk_len == 0) {
       // PSK related to the given identity not found.
       OPENSSL_PUT_ERROR(SSL, SSL_R_PSK_IDENTITY_NOT_FOUND);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNKNOWN_PSK_IDENTITY);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNKNOWN_PSK_IDENTITY);
       return ssl_hs_error;
     }
 
@@ -1285,22 +1285,22 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
 
   // Determine the signature algorithm.
   uint16_t signature_algorithm = 0;
-  if (ssl3_protocol_version(ssl) >= TLS1_2_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_2_VERSION) {
     if (!CBS_get_u16(&certificate_verify, &signature_algorithm)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       return ssl_hs_error;
     }
     uint8_t alert = SSL_AD_DECODE_ERROR;
     if (!tls12_check_peer_sigalg(ssl, &alert, signature_algorithm)) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return ssl_hs_error;
     }
     hs->new_session->peer_signature_algorithm = signature_algorithm;
   } else if (!tls1_get_legacy_signature_algorithm(&signature_algorithm,
                                                   hs->peer_pubkey.get())) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_ERROR_UNSUPPORTED_CERTIFICATE_TYPE);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_CERTIFICATE);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_CERTIFICATE);
     return ssl_hs_error;
   }
 
@@ -1308,14 +1308,14 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
   if (!CBS_get_u16_length_prefixed(&certificate_verify, &signature) ||
       CBS_len(&certificate_verify) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 
   int sig_ok;
   // The SSL3 construction for CertificateVerify does not decompose into a
   // single final digest and signature, and must be special-cased.
-  if (ssl3_protocol_version(ssl) == SSL3_VERSION) {
+  if (ssl_protocol_version(ssl) == SSL3_VERSION) {
     uint8_t digest[EVP_MAX_MD_SIZE];
     size_t digest_len;
     if (!hs->transcript.GetSSL3CertVerifyHash(
@@ -1342,7 +1342,7 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
 #endif
   if (!sig_ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SIGNATURE);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
     return ssl_hs_error;
   }
 
@@ -1395,7 +1395,7 @@ static enum ssl_hs_wait_t do_read_next_proto(SSL_HANDSHAKE *hs) {
       !CBS_get_u8_length_prefixed(&next_protocol, &padding) ||
       CBS_len(&next_protocol) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 

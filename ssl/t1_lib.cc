@@ -694,7 +694,7 @@ static bool ext_ri_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 static bool ext_ri_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                      CBS *contents) {
   SSL *const ssl = hs->ssl;
-  if (contents != NULL && ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (contents != NULL && ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     return false;
   }
@@ -781,7 +781,7 @@ static bool ext_ri_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   // called after the initial handshake.
   assert(!ssl->s3->initial_handshake_complete);
 
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return true;
   }
 
@@ -815,7 +815,7 @@ static bool ext_ri_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   // called after the initial handshake.
   assert(!ssl->s3->initial_handshake_complete);
 
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return true;
   }
 
@@ -852,7 +852,7 @@ static bool ext_ems_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   SSL *const ssl = hs->ssl;
 
   if (contents != NULL) {
-    if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION ||
+    if (ssl_protocol_version(ssl) >= TLS1_3_VERSION ||
         ssl->version == SSL3_VERSION ||
         CBS_len(contents) != 0) {
       return false;
@@ -875,7 +875,7 @@ static bool ext_ems_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
 static bool ext_ems_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                       CBS *contents) {
-  uint16_t version = ssl3_protocol_version(hs->ssl);
+  uint16_t version = ssl_protocol_version(hs->ssl);
   if (version >= TLS1_3_VERSION ||
       version == SSL3_VERSION) {
     return true;
@@ -953,7 +953,7 @@ static bool ext_ticket_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return true;
   }
 
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return false;
   }
 
@@ -1059,7 +1059,7 @@ static bool ext_ocsp_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
 
   // TLS 1.3 OCSP responses are included in the Certificate extensions.
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return false;
   }
 
@@ -1097,7 +1097,7 @@ static bool ext_ocsp_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
 static bool ext_ocsp_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION ||
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION ||
       !hs->ocsp_stapling_requested ||
       ssl->cert->ocsp_response == NULL ||
       ssl->s3->session_reused ||
@@ -1139,7 +1139,7 @@ static bool ext_npn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return true;
   }
 
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return false;
   }
 
@@ -1194,7 +1194,7 @@ static bool ext_npn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 static bool ext_npn_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                       CBS *contents) {
   SSL *const ssl = hs->ssl;
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return true;
   }
 
@@ -1269,7 +1269,7 @@ static bool ext_sct_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
 
   // TLS 1.3 SCTs are included in the Certificate extensions.
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     *out_alert = SSL_AD_DECODE_ERROR;
     return false;
   }
@@ -1318,7 +1318,7 @@ static bool ext_sct_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 static bool ext_sct_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   // The extension shouldn't be sent when resuming sessions.
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION ||
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION ||
       ssl->s3->session_reused ||
       ssl->cert->signed_cert_timestamp_list == NULL) {
     return true;
@@ -1754,7 +1754,7 @@ static bool ext_ec_point_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert
     return true;
   }
 
-  if (ssl3_protocol_version(hs->ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(hs->ssl) >= TLS1_3_VERSION) {
     return false;
   }
 
@@ -1778,7 +1778,7 @@ static bool ext_ec_point_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert
 
 static bool ext_ec_point_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                           CBS *contents) {
-  if (ssl3_protocol_version(hs->ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(hs->ssl) >= TLS1_3_VERSION) {
     return true;
   }
 
@@ -1787,7 +1787,7 @@ static bool ext_ec_point_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert
 
 static bool ext_ec_point_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return true;
   }
 
@@ -2043,7 +2043,7 @@ static bool ext_early_data_parse_clienthello(SSL_HANDSHAKE *hs,
                                              uint8_t *out_alert, CBS *contents) {
   SSL *const ssl = hs->ssl;
   if (contents == NULL ||
-      ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
+      ssl_protocol_version(ssl) < TLS1_3_VERSION) {
     return true;
   }
 
@@ -2707,7 +2707,7 @@ int ssl_add_serverhello_tlsext(SSL_HANDSHAKE *hs, CBB *out) {
   }
 
   // Discard empty extensions blocks before TLS 1.3.
-  if (ssl3_protocol_version(ssl) < TLS1_3_VERSION &&
+  if (ssl_protocol_version(ssl) < TLS1_3_VERSION &&
       CBB_len(&extensions) == 0) {
     CBB_discard_child(out);
   }
@@ -2809,7 +2809,7 @@ int ssl_parse_clienthello_tlsext(SSL_HANDSHAKE *hs,
   SSL *const ssl = hs->ssl;
   int alert = SSL_AD_DECODE_ERROR;
   if (ssl_scan_clienthello_tlsext(hs, client_hello, &alert) <= 0) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return 0;
   }
 
@@ -2825,7 +2825,7 @@ static int ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs,
                                        int *out_alert) {
   SSL *const ssl = hs->ssl;
   // Before TLS 1.3, ServerHello extensions blocks may be omitted if empty.
-  if (CBS_len(cbs) == 0 && ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
+  if (CBS_len(cbs) == 0 && ssl_protocol_version(ssl) < TLS1_3_VERSION) {
     return 1;
   }
 
@@ -2917,7 +2917,7 @@ static int ssl_check_clienthello_tlsext(SSL_HANDSHAKE *hs) {
 
   switch (ret) {
     case SSL_TLSEXT_ERR_ALERT_FATAL:
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, al);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, al);
       return -1;
 
     case SSL_TLSEXT_ERR_NOACK:
@@ -2933,7 +2933,7 @@ int ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs) {
   SSL *const ssl = hs->ssl;
   int alert = SSL_AD_DECODE_ERROR;
   if (ssl_scan_serverhello_tlsext(hs, cbs, &alert) <= 0) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return 0;
   }
 
@@ -3141,7 +3141,7 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
 
 int tls1_parse_peer_sigalgs(SSL_HANDSHAKE *hs, const CBS *in_sigalgs) {
   // Extension ignored for inappropriate versions
-  if (ssl3_protocol_version(hs->ssl) < TLS1_2_VERSION) {
+  if (ssl_protocol_version(hs->ssl) < TLS1_2_VERSION) {
     return 1;
   }
 
@@ -3167,7 +3167,7 @@ int tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
 
   // Before TLS 1.2, the signature algorithm isn't negotiated as part of the
   // handshake.
-  if (ssl3_protocol_version(ssl) < TLS1_2_VERSION) {
+  if (ssl_protocol_version(ssl) < TLS1_2_VERSION) {
     if (!tls1_get_legacy_signature_algorithm(out, hs->local_pubkey.get())) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
       return 0;
@@ -3181,7 +3181,7 @@ int tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   }
 
   Span<const uint16_t> peer_sigalgs = hs->peer_sigalgs;
-  if (peer_sigalgs.empty() && ssl3_protocol_version(ssl) < TLS1_3_VERSION) {
+  if (peer_sigalgs.empty() && ssl_protocol_version(ssl) < TLS1_3_VERSION) {
     // If the client didn't specify any signature_algorithms extension then
     // we can assume that it supports SHA1. See
     // http://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
@@ -3222,7 +3222,7 @@ int tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
       extension_type != TLSEXT_TYPE_channel_id ||
       CBS_len(&extension) != TLSEXT_CHANNEL_ID_SIZE) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return 0;
   }
 
@@ -3268,7 +3268,7 @@ int tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
 #endif
   if (!sig_ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CHANNEL_ID_SIGNATURE_INVALID);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
     ssl->s3->tlsext_channel_id_valid = false;
     return 0;
   }
@@ -3329,7 +3329,7 @@ err:
 
 int tls1_channel_id_hash(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len) {
   SSL *const ssl = hs->ssl;
-  if (ssl3_protocol_version(ssl) >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     uint8_t *msg;
     size_t msg_len;
     if (!tls13_get_cert_verify_signature_input(hs, &msg, &msg_len,

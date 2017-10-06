@@ -552,7 +552,7 @@ int ssl3_read_message(SSL *ssl) {
 
   // Enforce the limit so the peer cannot force us to buffer 16MB.
   if (bytes_needed > 4 + ssl_max_handshake_message_len(ssl)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
     return -1;
   }

@@ -114,7 +114,7 @@ static int custom_ext_add_hello(SSL_HANDSHAKE *hs, CBB *extensions) {
         break;
 
       default:
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
         OPENSSL_PUT_ERROR(SSL, SSL_R_CUSTOM_EXTENSION_ERROR);
         ERR_add_error_dataf("extension %u", (unsigned) ext->value);
         return 0;

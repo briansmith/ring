@@ -193,7 +193,7 @@ again:
 
     case ssl_open_record_error:
       if (alert != 0) {
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       }
       return -1;
   }
@@ -226,7 +226,7 @@ again:
     struct hm_header_st msg_hdr;
     CBS_init(&cbs, rr->data, rr->length);
     if (!dtls1_parse_fragment(&cbs, &msg_hdr, &body)) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_HANDSHAKE_RECORD);
       return -1;
     }
@@ -253,7 +253,7 @@ again:
   }
 
   if (rr->type != SSL3_RT_APPLICATION_DATA) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
     return -1;
   }

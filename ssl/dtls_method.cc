@@ -86,7 +86,7 @@ static int dtls1_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   // Cipher changes are illegal when there are buffered incoming messages.
   if (dtls_has_incoming_messages(ssl) || ssl->d1->has_change_cipher_spec) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     return 0;
   }
 

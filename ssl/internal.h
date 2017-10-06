@@ -388,9 +388,9 @@ bool ssl_add_supported_versions(SSL_HANDSHAKE *hs, CBB *cbb);
 bool ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                            uint16_t *out_version, const CBS *peer_versions);
 
-// ssl3_protocol_version returns |ssl|'s protocol version. It is an error to
+// ssl_protocol_version returns |ssl|'s protocol version. It is an error to
 // call this function before the version is determined.
-uint16_t ssl3_protocol_version(const SSL *ssl);
+uint16_t ssl_protocol_version(const SSL *ssl);
 
 // ssl_is_resumption_experiment returns whether the version corresponds to a
 // TLS 1.3 resumption experiment.
@@ -2673,7 +2673,7 @@ const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode);
 
 enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs);
-int ssl3_send_alert(SSL *ssl, int level, int desc);
+int ssl_send_alert(SSL *ssl, int level, int desc);
 bool ssl3_get_message(SSL *ssl, SSLMessage *out);
 int ssl3_read_message(SSL *ssl);
 void ssl3_next_message(SSL *ssl);

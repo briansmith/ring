@@ -98,14 +98,14 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
       CBS_len(&context) != 0 ||
       !CBS_get_u24_length_prefixed(&body, &certificate_list) ||
       CBS_len(&body) != 0) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return 0;
   }
 
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> certs(sk_CRYPTO_BUFFER_new_null());
   if (!certs) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
@@ -118,7 +118,7 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
     if (!CBS_get_u24_length_prefixed(&certificate_list, &certificate) ||
         !CBS_get_u16_length_prefixed(&certificate_list, &extensions) ||
         CBS_len(&certificate) == 0) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_LENGTH_MISMATCH);
       return 0;
     }
@@ -126,14 +126,14 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
     if (sk_CRYPTO_BUFFER_num(certs.get()) == 0) {
       pkey = ssl_cert_parse_pubkey(&certificate);
       if (!pkey) {
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
         OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
         return 0;
       }
       // TLS 1.3 always uses certificate keys for signing thus the correct
       // keyUsage is enforced.
       if (!ssl_cert_check_digital_signature_key_usage(&certificate)) {
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
         return 0;
       }
 
@@ -148,7 +148,7 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
         CRYPTO_BUFFER_new_from_CBS(&certificate, ssl->ctx->pool));
     if (!buf ||
         !PushToStack(certs.get(), std::move(buf))) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -165,7 +165,7 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
     if (!ssl_parse_extensions(&extensions, &alert, ext_types,
                               OPENSSL_ARRAY_SIZE(ext_types),
                               0 /* reject unknown */)) {
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
       return 0;
     }
 
@@ -174,7 +174,7 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
     if (have_status_request) {
       if (ssl->server || !ssl->ocsp_stapling_enabled) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
         return 0;
       }
 
@@ -185,7 +185,7 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
           !CBS_get_u24_length_prefixed(&status_request, &ocsp_response) ||
           CBS_len(&ocsp_response) == 0 ||
           CBS_len(&status_request) != 0) {
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
         return 0;
       }
 
@@ -194,7 +194,7 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
         hs->new_session->ocsp_response =
             CRYPTO_BUFFER_new_from_CBS(&ocsp_response, ssl->ctx->pool);
         if (hs->new_session->ocsp_response == nullptr) {
-          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+          ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
           return 0;
         }
       }
@@ -203,13 +203,13 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
     if (have_sct) {
       if (ssl->server || !ssl->signed_cert_timestamps_enabled) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
         return 0;
       }
 
       if (!ssl_is_sct_list_valid(&sct)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_PARSING_EXTENSION);
-        ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
         return 0;
       }
 
@@ -218,7 +218,7 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
         hs->new_session->signed_cert_timestamp_list =
             CRYPTO_BUFFER_new_from_CBS(&sct, ssl->ctx->pool);
         if (hs->new_session->signed_cert_timestamp_list == nullptr) {
-          ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+          ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
           return 0;
         }
       }
@@ -238,14 +238,14 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
 
   if (!ssl->ctx->x509_method->session_cache_objects(hs->new_session.get())) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return 0;
   }
 
   if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) == 0) {
     if (!allow_anonymous) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_CERTIFICATE_REQUIRED);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_CERTIFICATE_REQUIRED);
       return 0;
     }
 
@@ -274,13 +274,13 @@ int tls13_process_certificate_verify(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
       !CBS_get_u16_length_prefixed(&body, &signature) ||
       CBS_len(&body) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return 0;
   }
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
   if (!tls12_check_peer_sigalg(ssl, &alert, signature_algorithm)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, alert);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return 0;
   }
   hs->new_session->peer_signature_algorithm = signature_algorithm;
@@ -290,7 +290,7 @@ int tls13_process_certificate_verify(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
   if (!tls13_get_cert_verify_signature_input(
           hs, &input, &input_len,
           ssl->server ? ssl_cert_verify_client : ssl_cert_verify_server)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return 0;
   }
   UniquePtr<uint8_t> free_input(input);
@@ -304,7 +304,7 @@ int tls13_process_certificate_verify(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
 #endif
   if (!sig_ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_SIGNATURE);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
     return 0;
   }
 
@@ -334,7 +334,7 @@ int tls13_process_finished(SSL_HANDSHAKE *hs, const SSLMessage &msg,
   finished_ok = 1;
 #endif
   if (!finished_ok) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DIGEST_CHECK_FAILED);
     return 0;
   }
@@ -437,7 +437,7 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs) {
   size_t sig_len;
   if (!CBB_add_u16_length_prefixed(&body, &child) ||
       !CBB_reserve(&child, &sig, max_sig_len)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_private_key_failure;
   }
 
@@ -446,7 +446,7 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs) {
   if (!tls13_get_cert_verify_signature_input(
           hs, &msg, &msg_len,
           ssl->server ? ssl_cert_verify_server : ssl_cert_verify_client)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_private_key_failure;
   }
   UniquePtr<uint8_t> free_msg(msg);
@@ -471,7 +471,7 @@ int tls13_add_finished(SSL_HANDSHAKE *hs) {
   uint8_t verify_data[EVP_MAX_MD_SIZE];
 
   if (!tls13_finished_mac(hs, verify_data, &verify_data_len, ssl->server)) {
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DIGEST_CHECK_FAILED);
     return 0;
   }
@@ -495,7 +495,7 @@ static int tls13_receive_key_update(SSL *ssl, const SSLMessage &msg) {
       (key_update_request != SSL_KEY_UPDATE_NOT_REQUESTED &&
        key_update_request != SSL_KEY_UPDATE_REQUESTED)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return 0;
   }
 
@@ -531,7 +531,7 @@ int tls13_post_handshake(SSL *ssl, const SSLMessage &msg) {
     ssl->s3->key_update_count++;
     if (ssl->s3->key_update_count > kMaxKeyUpdates) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MANY_KEY_UPDATES);
-      ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
       return 0;
     }
 
@@ -544,7 +544,7 @@ int tls13_post_handshake(SSL *ssl, const SSLMessage &msg) {
     return tls13_process_new_session_ticket(ssl, msg);
   }
 
-  ssl3_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+  ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
   OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
   return 0;
 }

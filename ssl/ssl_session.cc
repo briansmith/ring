@@ -377,7 +377,7 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
   ssl_get_current_time(ssl, &now);
   session->time = now.tv_sec;
 
-  uint16_t version = ssl3_protocol_version(ssl);
+  uint16_t version = ssl_protocol_version(ssl);
   if (version >= TLS1_3_VERSION) {
     // TLS 1.3 uses tickets as authenticators, so we are willing to use them for
     // longer.
