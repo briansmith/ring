@@ -206,8 +206,7 @@ size_t ssl_max_handshake_message_len(const SSL *ssl) {
     return 1;
   }
 
-  // Clients must accept NewSessionTicket and CertificateRequest, so allow the
-  // default size.
+  // Clients must accept NewSessionTicket, so allow the default size.
   return kMaxMessageLen;
 }
 
