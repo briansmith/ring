@@ -67,7 +67,7 @@
 
 namespace bssl {
 
-static int ssl3_supports_cipher(const SSL_CIPHER *cipher) { return 1; }
+static bool ssl3_supports_cipher(const SSL_CIPHER *cipher) { return true; }
 
 static void ssl3_on_handshake_complete(SSL *ssl) {
   // The handshake should have released its final message.
@@ -84,7 +84,7 @@ static void ssl3_on_handshake_complete(SSL *ssl) {
   }
 }
 
-static int ssl3_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
+static bool ssl3_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   // Cipher changes are forbidden if the current epoch has leftover data.
   //
   // TODO(davidben): ssl->s3->rrec.length should be impossible now. Remove it
@@ -92,26 +92,26 @@ static int ssl3_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   if (ssl->s3->rrec.length != 0 || tls_has_unprocessed_handshake_data(ssl)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    return 0;
+    return false;
   }
 
   OPENSSL_memset(ssl->s3->read_sequence, 0, sizeof(ssl->s3->read_sequence));
 
   Delete(ssl->s3->aead_read_ctx);
   ssl->s3->aead_read_ctx = aead_ctx.release();
-  return 1;
+  return true;
 }
 
-static int ssl3_set_write_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
+static bool ssl3_set_write_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   OPENSSL_memset(ssl->s3->write_sequence, 0, sizeof(ssl->s3->write_sequence));
 
   Delete(ssl->s3->aead_write_ctx);
   ssl->s3->aead_write_ctx = aead_ctx.release();
-  return 1;
+  return true;
 }
 
 static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
-    0 /* is_dtls */,
+    false /* is_dtls */,
     ssl3_new,
     ssl3_free,
     ssl3_get_message,

@@ -1465,7 +1465,7 @@ void ssl_handshake_free(SSL_HANDSHAKE *hs);
 
 // ssl_check_message_type checks if |msg| has type |type|. If so it returns
 // one. Otherwise, it sends an alert and returns zero.
-int ssl_check_message_type(SSL *ssl, const SSLMessage &msg, int type);
+bool ssl_check_message_type(SSL *ssl, const SSLMessage &msg, int type);
 
 // ssl_run_handshake runs the TLS handshake. It returns one on success and <= 0
 // on error. It sets |out_early_return| to one if we've completed the handshake
@@ -1718,9 +1718,8 @@ struct CERT {
 
 // |SSL_PROTOCOL_METHOD| abstracts between TLS and DTLS.
 struct SSL_PROTOCOL_METHOD {
-  // is_dtls is one if the protocol is DTLS and zero otherwise.
-  char is_dtls;
-  int (*ssl_new)(SSL *ssl);
+  bool is_dtls;
+  bool (*ssl_new)(SSL *ssl);
   void (*ssl_free)(SSL *ssl);
   // get_message sets |*out| to the current handshake message and returns true
   // if one has been received. It returns false if more input is needed.
@@ -1742,38 +1741,37 @@ struct SSL_PROTOCOL_METHOD {
   int (*write_app_data)(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
                         int len);
   int (*dispatch_alert)(SSL *ssl);
-  // supports_cipher returns one if |cipher| is supported by this protocol and
-  // zero otherwise.
-  int (*supports_cipher)(const SSL_CIPHER *cipher);
+  // supports_cipher returns whether |cipher| is supported by this protocol.
+  bool (*supports_cipher)(const SSL_CIPHER *cipher);
   // init_message begins a new handshake message of type |type|. |cbb| is the
   // root CBB to be passed into |finish_message|. |*body| is set to a child CBB
-  // the caller should write to. It returns one on success and zero on error.
-  int (*init_message)(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
+  // the caller should write to. It returns true on success and false on error.
+  bool (*init_message)(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
   // finish_message finishes a handshake message. It sets |*out_msg| to the
-  // serialized message. It returns one on success and zero on error.
-  int (*finish_message)(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
-  // add_message adds a handshake message to the pending flight. It returns one
-  // on success and zero on error.
-  int (*add_message)(SSL *ssl, Array<uint8_t> msg);
+  // serialized message. It returns true on success and false on error.
+  bool (*finish_message)(SSL *ssl, CBB *cbb, bssl::Array<uint8_t> *out_msg);
+  // add_message adds a handshake message to the pending flight. It returns
+  // true on success and false on error.
+  bool (*add_message)(SSL *ssl, bssl::Array<uint8_t> msg);
   // add_change_cipher_spec adds a ChangeCipherSpec record to the pending
-  // flight. It returns one on success and zero on error.
-  int (*add_change_cipher_spec)(SSL *ssl);
-  // add_alert adds an alert to the pending flight. It returns one on success
-  // and zero on error.
-  int (*add_alert)(SSL *ssl, uint8_t level, uint8_t desc);
+  // flight. It returns true on success and false on error.
+  bool (*add_change_cipher_spec)(SSL *ssl);
+  // add_alert adds an alert to the pending flight. It returns true on success
+  // and false on error.
+  bool (*add_alert)(SSL *ssl, uint8_t level, uint8_t desc);
   // flush_flight flushes the pending flight to the transport. It returns one on
   // success and <= 0 on error.
   int (*flush_flight)(SSL *ssl);
   // on_handshake_complete is called when the handshake is complete.
   void (*on_handshake_complete)(SSL *ssl);
   // set_read_state sets |ssl|'s read cipher state to |aead_ctx|. It returns
-  // one on success and zero if changing the read state is forbidden at this
+  // true on success and false if changing the read state is forbidden at this
   // point.
-  int (*set_read_state)(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx);
+  bool (*set_read_state)(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx);
   // set_write_state sets |ssl|'s write cipher state to |aead_ctx|. It returns
-  // one on success and zero if changing the write state is forbidden at this
+  // true on success and false if changing the write state is forbidden at this
   // point.
-  int (*set_write_state)(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx);
+  bool (*set_write_state)(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx);
 };
 
 // ssl_crypto_x509_method provides the |SSL_X509_METHOD| functions using
@@ -2703,29 +2701,29 @@ int ssl3_get_record(SSL *ssl);
 int ssl3_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
                         int len);
 
-int ssl3_new(SSL *ssl);
+bool ssl3_new(SSL *ssl);
 void ssl3_free(SSL *ssl);
 
-int ssl3_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
-int ssl3_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
-int ssl3_add_message(SSL *ssl, Array<uint8_t> msg);
-int ssl3_add_change_cipher_spec(SSL *ssl);
-int ssl3_add_alert(SSL *ssl, uint8_t level, uint8_t desc);
+bool ssl3_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
+bool ssl3_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
+bool ssl3_add_message(SSL *ssl, Array<uint8_t> msg);
+bool ssl3_add_change_cipher_spec(SSL *ssl);
+bool ssl3_add_alert(SSL *ssl, uint8_t level, uint8_t desc);
 int ssl3_flush_flight(SSL *ssl);
 
-int dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
-int dtls1_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
-int dtls1_add_message(SSL *ssl, Array<uint8_t> msg);
-int dtls1_add_change_cipher_spec(SSL *ssl);
-int dtls1_add_alert(SSL *ssl, uint8_t level, uint8_t desc);
+bool dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type);
+bool dtls1_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg);
+bool dtls1_add_message(SSL *ssl, Array<uint8_t> msg);
+bool dtls1_add_change_cipher_spec(SSL *ssl);
+bool dtls1_add_alert(SSL *ssl, uint8_t level, uint8_t desc);
 int dtls1_flush_flight(SSL *ssl);
 
 // ssl_add_message_cbb finishes the handshake message in |cbb| and adds it to
-// the pending flight. It returns one on success and zero on error.
-int ssl_add_message_cbb(SSL *ssl, CBB *cbb);
+// the pending flight. It returns true on success and false on error.
+bool ssl_add_message_cbb(SSL *ssl, CBB *cbb);
 
-// ssl_hash_message incorporates |msg| into the handshake hash. It returns one
-// on success and zero on allocation failure.
+// ssl_hash_message incorporates |msg| into the handshake hash. It returns true
+// on success and false on allocation failure.
 bool ssl_hash_message(SSL_HANDSHAKE *hs, const SSLMessage &msg);
 
 // dtls1_get_record reads a new input record. On success, it places it in
@@ -2746,22 +2744,17 @@ int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake,
 int dtls1_write_record(SSL *ssl, int type, const uint8_t *buf, size_t len,
                        enum dtls1_use_epoch_t use_epoch);
 
-int dtls1_send_finished(SSL *ssl, int a, int b, const char *sender, int slen);
 int dtls1_retransmit_outgoing_messages(SSL *ssl);
-void dtls1_clear_record_buffer(SSL *ssl);
-int dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
+bool dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
                          CBS *out_body);
-int dtls1_check_timeout_num(SSL *ssl);
-int dtls1_handshake_write(SSL *ssl);
+bool dtls1_check_timeout_num(SSL *ssl);
 
 void dtls1_start_timer(SSL *ssl);
 void dtls1_stop_timer(SSL *ssl);
-int dtls1_is_timer_expired(SSL *ssl);
+bool dtls1_is_timer_expired(SSL *ssl);
 unsigned int dtls1_min_mtu(void);
 
-int dtls1_new(SSL *ssl);
-int dtls1_accept(SSL *ssl);
-int dtls1_connect(SSL *ssl);
+bool dtls1_new(SSL *ssl);
 void dtls1_free(SSL *ssl);
 
 bool dtls1_get_message(SSL *ssl, SSLMessage *out);

@@ -132,15 +132,15 @@
 
 namespace bssl {
 
-static int add_record_to_flight(SSL *ssl, uint8_t type,
-                                Span<const uint8_t> in) {
+static bool add_record_to_flight(SSL *ssl, uint8_t type,
+                                 Span<const uint8_t> in) {
   // We'll never add a flight while in the process of writing it out.
   assert(ssl->s3->pending_flight_offset == 0);
 
   if (ssl->s3->pending_flight == NULL) {
     ssl->s3->pending_flight = BUF_MEM_new();
     if (ssl->s3->pending_flight == NULL) {
-      return 0;
+      return false;
     }
   }
 
@@ -148,7 +148,7 @@ static int add_record_to_flight(SSL *ssl, uint8_t type,
   size_t new_cap = ssl->s3->pending_flight->length + max_out;
   if (max_out < in.size() || new_cap < max_out) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-    return 0;
+    return false;
   }
 
   size_t len;
@@ -157,31 +157,31 @@ static int add_record_to_flight(SSL *ssl, uint8_t type,
                        (uint8_t *)ssl->s3->pending_flight->data +
                            ssl->s3->pending_flight->length,
                        &len, max_out, type, in.data(), in.size())) {
-    return 0;
+    return false;
   }
 
   ssl->s3->pending_flight->length += len;
-  return 1;
+  return true;
 }
 
-int ssl3_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
+bool ssl3_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
   // Pick a modest size hint to save most of the |realloc| calls.
   if (!CBB_init(cbb, 64) ||
       !CBB_add_u8(cbb, type) ||
       !CBB_add_u24_length_prefixed(cbb, body)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     CBB_cleanup(cbb);
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
-int ssl3_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg) {
+bool ssl3_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg) {
   return CBBFinishArray(cbb, out_msg);
 }
 
-int ssl3_add_message(SSL *ssl, Array<uint8_t> msg) {
+bool ssl3_add_message(SSL *ssl, Array<uint8_t> msg) {
   // Add the message to the current flight, splitting into several records if
   // needed.
   Span<const uint8_t> rest = msg;
@@ -190,7 +190,7 @@ int ssl3_add_message(SSL *ssl, Array<uint8_t> msg) {
     rest = rest.subspan(chunk.size());
 
     if (!add_record_to_flight(ssl, SSL3_RT_HANDSHAKE, chunk)) {
-      return 0;
+      return false;
     }
   } while (!rest.empty());
 
@@ -199,33 +199,33 @@ int ssl3_add_message(SSL *ssl, Array<uint8_t> msg) {
   // hs.
   if (ssl->s3->hs != NULL &&
       !ssl->s3->hs->transcript.Update(msg)) {
-    return 0;
+    return false;
   }
-  return 1;
+  return true;
 }
 
-int ssl3_add_change_cipher_spec(SSL *ssl) {
+bool ssl3_add_change_cipher_spec(SSL *ssl) {
   static const uint8_t kChangeCipherSpec[1] = {SSL3_MT_CCS};
 
   if (!add_record_to_flight(ssl, SSL3_RT_CHANGE_CIPHER_SPEC,
                             kChangeCipherSpec)) {
-    return 0;
+    return false;
   }
 
   ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_CHANGE_CIPHER_SPEC,
                       kChangeCipherSpec);
-  return 1;
+  return true;
 }
 
-int ssl3_add_alert(SSL *ssl, uint8_t level, uint8_t desc) {
+bool ssl3_add_alert(SSL *ssl, uint8_t level, uint8_t desc) {
   uint8_t alert[2] = {level, desc};
   if (!add_record_to_flight(ssl, SSL3_RT_ALERT, alert)) {
-    return 0;
+    return false;
   }
 
   ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_ALERT, alert);
   ssl_do_info_callback(ssl, SSL_CB_WRITE_ALERT, ((int)level << 8) | desc);
-  return 1;
+  return true;
 }
 
 int ssl3_flush_flight(SSL *ssl) {

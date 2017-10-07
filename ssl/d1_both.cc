@@ -259,9 +259,9 @@ static void dtls1_hm_fragment_mark(hm_fragment *frag, size_t start,
   frag->reassembly = NULL;
 }
 
-// dtls1_is_current_message_complete returns one if the current handshake
-// message is complete and zero otherwise.
-static int dtls1_is_current_message_complete(const SSL *ssl) {
+// dtls1_is_current_message_complete returns whether the current handshake
+// message is complete.
+static bool dtls1_is_current_message_complete(const SSL *ssl) {
   hm_fragment *frag = ssl->d1->incoming_messages[ssl->d1->handshake_read_seq %
                                                  SSL_MAX_HANDSHAKE_FLIGHT];
   return frag != NULL && frag->reassembly == NULL;
@@ -480,8 +480,8 @@ bool dtls_has_unprocessed_handshake_data(const SSL *ssl) {
   return false;
 }
 
-int dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
-                         CBS *out_body) {
+bool dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
+                          CBS *out_body) {
   OPENSSL_memset(out_hdr, 0x00, sizeof(struct hm_header_st));
 
   if (!CBS_get_u8(cbs, &out_hdr->type) ||
@@ -490,10 +490,10 @@ int dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
       !CBS_get_u24(cbs, &out_hdr->frag_off) ||
       !CBS_get_u24(cbs, &out_hdr->frag_len) ||
       !CBS_get_bytes(cbs, out_body, out_hdr->frag_len)) {
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
 int dtls1_read_change_cipher_spec(SSL *ssl) {
@@ -524,7 +524,7 @@ void dtls_clear_outgoing_messages(SSL *ssl) {
   ssl->d1->flight_has_reply = false;
 }
 
-int dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
+bool dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
   // Pick a modest size hint to save most of the |realloc| calls.
   if (!CBB_init(cbb, 64) ||
       !CBB_add_u8(cbb, type) ||
@@ -532,31 +532,29 @@ int dtls1_init_message(SSL *ssl, CBB *cbb, CBB *body, uint8_t type) {
       !CBB_add_u16(cbb, ssl->d1->handshake_write_seq) ||
       !CBB_add_u24(cbb, 0 /* offset */) ||
       !CBB_add_u24_length_prefixed(cbb, body)) {
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
-int dtls1_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg) {
+bool dtls1_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg) {
   if (!CBBFinishArray(cbb, out_msg) ||
       out_msg->size() < DTLS1_HM_HEADER_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
+    return false;
   }
 
   // Fix up the header. Copy the fragment length into the total message
   // length.
   OPENSSL_memcpy(out_msg->data() + 1,
                  out_msg->data() + DTLS1_HM_HEADER_LENGTH - 3, 3);
-  return 1;
+  return true;
 }
 
 // add_outgoing adds a new handshake message or ChangeCipherSpec to the current
-// outgoing flight. It returns one on success and zero on error. In both cases,
-// it takes ownership of |data| and releases it with |OPENSSL_free| when
-// done.
-static int add_outgoing(SSL *ssl, int is_ccs, Array<uint8_t> data) {
+// outgoing flight. It returns true on success and false on error.
+static bool add_outgoing(SSL *ssl, int is_ccs, Array<uint8_t> data) {
   if (ssl->d1->outgoing_messages_complete) {
     // If we've begun writing a new flight, we received the peer flight. Discard
     // the timer and the our flight.
@@ -569,9 +567,9 @@ static int add_outgoing(SSL *ssl, int is_ccs, Array<uint8_t> data) {
                 "outgoing_messages_len is too small");
   if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT ||
       data.size() > 0xffffffff) {
-    assert(0);
+    assert(false);
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
+    return false;
   }
 
   if (!is_ccs) {
@@ -580,7 +578,7 @@ static int add_outgoing(SSL *ssl, int is_ccs, Array<uint8_t> data) {
     if (ssl->s3->hs != NULL &&
         !ssl->s3->hs->transcript.Update(data)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return 0;
+      return false;
     }
     ssl->d1->handshake_write_seq++;
   }
@@ -594,24 +592,24 @@ static int add_outgoing(SSL *ssl, int is_ccs, Array<uint8_t> data) {
   msg->is_ccs = is_ccs;
 
   ssl->d1->outgoing_messages_len++;
-  return 1;
+  return true;
 }
 
-int dtls1_add_message(SSL *ssl, Array<uint8_t> data) {
+bool dtls1_add_message(SSL *ssl, Array<uint8_t> data) {
   return add_outgoing(ssl, 0 /* handshake */, std::move(data));
 }
 
-int dtls1_add_change_cipher_spec(SSL *ssl) {
+bool dtls1_add_change_cipher_spec(SSL *ssl) {
   return add_outgoing(ssl, 1 /* ChangeCipherSpec */, Array<uint8_t>());
 }
 
-int dtls1_add_alert(SSL *ssl, uint8_t level, uint8_t desc) {
+bool dtls1_add_alert(SSL *ssl, uint8_t level, uint8_t desc) {
   // The |add_alert| path is only used for warning alerts for now, which DTLS
   // never sends. This will be implemented later once closure alerts are
   // converted.
-  assert(0);
+  assert(false);
   OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-  return 0;
+  return false;
 }
 
 // dtls1_update_mtu updates the current MTU from the BIO, ensuring it is above
@@ -740,9 +738,9 @@ static enum seal_result_t seal_next_message(SSL *ssl, uint8_t *out,
 // seal_next_packet writes as much of the next flight as possible to |out| and
 // advances |ssl->d1->outgoing_written| and |ssl->d1->outgoing_offset| as
 // appropriate.
-static int seal_next_packet(SSL *ssl, uint8_t *out, size_t *out_len,
-                            size_t max_out) {
-  int made_progress = 0;
+static bool seal_next_packet(SSL *ssl, uint8_t *out, size_t *out_len,
+                             size_t max_out) {
+  bool made_progress = false;
   size_t total = 0;
   assert(ssl->d1->outgoing_written < ssl->d1->outgoing_messages_len);
   for (; ssl->d1->outgoing_written < ssl->d1->outgoing_messages_len;
@@ -753,7 +751,7 @@ static int seal_next_packet(SSL *ssl, uint8_t *out, size_t *out_len,
     enum seal_result_t ret = seal_next_message(ssl, out, &len, max_out, msg);
     switch (ret) {
       case seal_error:
-        return 0;
+        return false;
 
       case seal_no_progress:
         goto packet_full;
@@ -763,7 +761,7 @@ static int seal_next_packet(SSL *ssl, uint8_t *out, size_t *out_len,
         out += len;
         max_out -= len;
         total += len;
-        made_progress = 1;
+        made_progress = true;
 
         if (ret == seal_partial) {
           goto packet_full;
@@ -776,11 +774,11 @@ packet_full:
   // The MTU was too small to make any progress.
   if (!made_progress) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_MTU_TOO_SMALL);
-    return 0;
+    return false;
   }
 
   *out_len = total;
-  return 1;
+  return true;
 }
 
 static int send_flight(SSL *ssl) {

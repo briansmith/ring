@@ -68,7 +68,7 @@
 
 using namespace bssl;
 
-static int dtls1_supports_cipher(const SSL_CIPHER *cipher) {
+static bool dtls1_supports_cipher(const SSL_CIPHER *cipher) {
   return cipher->algorithm_enc != SSL_eNULL;
 }
 
@@ -82,12 +82,12 @@ static void dtls1_on_handshake_complete(SSL *ssl) {
   }
 }
 
-static int dtls1_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
+static bool dtls1_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   // Cipher changes are forbidden if the current epoch has leftover data.
   if (dtls_has_unprocessed_handshake_data(ssl)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFERED_MESSAGES_ON_CIPHER_CHANGE);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    return 0;
+    return false;
   }
 
   ssl->d1->r_epoch++;
@@ -96,10 +96,11 @@ static int dtls1_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
 
   Delete(ssl->s3->aead_read_ctx);
   ssl->s3->aead_read_ctx = aead_ctx.release();
-  return 1;
+  return true;
 }
 
-static int dtls1_set_write_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
+static bool dtls1_set_write_state(SSL *ssl,
+                                  UniquePtr<SSLAEADContext> aead_ctx) {
   ssl->d1->w_epoch++;
   OPENSSL_memcpy(ssl->d1->last_write_sequence, ssl->s3->write_sequence,
                  sizeof(ssl->s3->write_sequence));
@@ -108,11 +109,11 @@ static int dtls1_set_write_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   Delete(ssl->d1->last_aead_write_ctx);
   ssl->d1->last_aead_write_ctx = ssl->s3->aead_write_ctx;
   ssl->s3->aead_write_ctx = aead_ctx.release();
-  return 1;
+  return true;
 }
 
 static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
-    1 /* is_dtls */,
+    true /* is_dtls */,
     dtls1_new,
     dtls1_free,
     dtls1_get_message,

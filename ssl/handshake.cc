@@ -160,25 +160,25 @@ SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl) {
 
 void ssl_handshake_free(SSL_HANDSHAKE *hs) { Delete(hs); }
 
-int ssl_check_message_type(SSL *ssl, const SSLMessage &msg, int type) {
+bool ssl_check_message_type(SSL *ssl, const SSLMessage &msg, int type) {
   if (msg.type != type) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
     ERR_add_error_dataf("got type %d, wanted type %d", msg.type, type);
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
-int ssl_add_message_cbb(SSL *ssl, CBB *cbb) {
+bool ssl_add_message_cbb(SSL *ssl, CBB *cbb) {
   Array<uint8_t> msg;
   if (!ssl->method->finish_message(ssl, cbb, &msg) ||
       !ssl->method->add_message(ssl, std::move(msg))) {
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
 size_t ssl_max_handshake_message_len(const SSL *ssl) {

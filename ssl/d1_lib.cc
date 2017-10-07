@@ -78,14 +78,14 @@ namespace bssl {
 // before failing the DTLS handshake.
 #define DTLS1_MAX_TIMEOUTS                     12
 
-int dtls1_new(SSL *ssl) {
+bool dtls1_new(SSL *ssl) {
   if (!ssl3_new(ssl)) {
-    return 0;
+    return false;
   }
   DTLS1_STATE *d1 = (DTLS1_STATE *)OPENSSL_malloc(sizeof *d1);
   if (d1 == NULL) {
     ssl3_free(ssl);
-    return 0;
+    return false;
   }
   OPENSSL_memset(d1, 0, sizeof *d1);
 
@@ -97,7 +97,7 @@ int dtls1_new(SSL *ssl) {
   // protocol version, and implement this pre-negotiation quirk in |SSL_version|
   // at the API boundary rather than in internal state.
   ssl->version = DTLS1_2_VERSION;
-  return 1;
+  return true;
 }
 
 void dtls1_free(SSL *ssl) {
@@ -133,21 +133,21 @@ void dtls1_start_timer(SSL *ssl) {
   }
 }
 
-int dtls1_is_timer_expired(SSL *ssl) {
+bool dtls1_is_timer_expired(SSL *ssl) {
   struct timeval timeleft;
 
   // Get time left until timeout, return false if no timer running
   if (!DTLSv1_get_timeout(ssl, &timeleft)) {
-    return 0;
+    return false;
   }
 
   // Return false if timer is not expired yet
   if (timeleft.tv_sec > 0 || timeleft.tv_usec > 0) {
-    return 0;
+    return false;
   }
 
   // Timer expired, so return true
-  return 1;
+  return true;
 }
 
 static void dtls1_double_timeout(SSL *ssl) {
@@ -163,7 +163,7 @@ void dtls1_stop_timer(SSL *ssl) {
   ssl->d1->timeout_duration_ms = ssl->initial_timeout_duration_ms;
 }
 
-int dtls1_check_timeout_num(SSL *ssl) {
+bool dtls1_check_timeout_num(SSL *ssl) {
   ssl->d1->num_timeouts++;
 
   // Reduce MTU after 2 unsuccessful retransmissions
@@ -178,10 +178,10 @@ int dtls1_check_timeout_num(SSL *ssl) {
   if (ssl->d1->num_timeouts > DTLS1_MAX_TIMEOUTS) {
     // fail the connection, enough alerts have been sent
     OPENSSL_PUT_ERROR(SSL, SSL_R_READ_TIMEOUT_EXPIRED);
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
 }  // namespace bssl

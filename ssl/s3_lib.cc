@@ -164,25 +164,25 @@
 
 namespace bssl {
 
-int ssl3_new(SSL *ssl) {
+bool ssl3_new(SSL *ssl) {
   UniquePtr<SSLAEADContext> aead_read_ctx =
       SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
   UniquePtr<SSLAEADContext> aead_write_ctx =
       SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
   if (!aead_read_ctx || !aead_write_ctx) {
-    return 0;
+    return false;
   }
 
   SSL3_STATE *s3 = (SSL3_STATE *)OPENSSL_malloc(sizeof *s3);
   if (s3 == NULL) {
-    return 0;
+    return false;
   }
   OPENSSL_memset(s3, 0, sizeof *s3);
 
   s3->hs = ssl_handshake_new(ssl);
   if (s3->hs == NULL) {
     OPENSSL_free(s3);
-    return 0;
+    return false;
   }
 
   s3->aead_read_ctx = aead_read_ctx.release();
@@ -195,7 +195,7 @@ int ssl3_new(SSL *ssl) {
   // protocol version, and implement this pre-negotiation quirk in |SSL_version|
   // at the API boundary rather than in internal state.
   ssl->version = TLS1_2_VERSION;
-  return 1;
+  return true;
 }
 
 void ssl3_free(SSL *ssl) {
