@@ -464,6 +464,26 @@ bool ssl3_get_message(SSL *ssl, SSLMessage *out) {
   return true;
 }
 
+bool tls_can_accept_handshake_data(const SSL *ssl, uint8_t *out_alert) {
+  // If there is a complete message, the caller must have consumed it first.
+  SSLMessage msg;
+  size_t bytes_needed;
+  if (parse_message(ssl, &msg, &bytes_needed)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    *out_alert = SSL_AD_INTERNAL_ERROR;
+    return false;
+  }
+
+  // Enforce the limit so the peer cannot force us to buffer 16MB.
+  if (bytes_needed > 4 + ssl_max_handshake_message_len(ssl)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return false;
+  }
+
+  return true;
+}
+
 bool tls_has_unprocessed_handshake_data(const SSL *ssl) {
   size_t msg_len = 0;
   if (ssl->s3->has_message) {
@@ -478,20 +498,6 @@ bool tls_has_unprocessed_handshake_data(const SSL *ssl) {
 }
 
 int ssl3_read_message(SSL *ssl) {
-  SSLMessage msg;
-  size_t bytes_needed;
-  if (parse_message(ssl, &msg, &bytes_needed)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return -1;
-  }
-
-  // Enforce the limit so the peer cannot force us to buffer 16MB.
-  if (bytes_needed > 4 + ssl_max_handshake_message_len(ssl)) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_EXCESSIVE_MESSAGE_SIZE);
-    return -1;
-  }
-
   // Re-create the handshake buffer if needed.
   if (ssl->init_buf == NULL) {
     ssl->init_buf = BUF_MEM_new();

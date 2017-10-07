@@ -1001,6 +1001,10 @@ size_t ssl_max_handshake_message_len(const SSL *ssl);
 // dtls_clear_incoming_messages releases all buffered incoming messages.
 void dtls_clear_incoming_messages(SSL *ssl);
 
+// tls_can_accept_handshake_data returns whether |ssl| is able to accept more
+// data into handshake buffer.
+bool tls_can_accept_handshake_data(const SSL *ssl, uint8_t *out_alert);
+
 // tls_has_unprocessed_handshake_data returns whether there is buffered
 // handshake data that has not been consumed by |get_message|.
 bool tls_has_unprocessed_handshake_data(const SSL *ssl);

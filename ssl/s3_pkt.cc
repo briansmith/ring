@@ -365,22 +365,20 @@ int ssl3_read_app_data(SSL *ssl, bool *out_got_handshake, uint8_t *buf, int len,
   SSL3_RECORD *rr = &ssl->s3->rrec;
 
   for (;;) {
-    // A previous iteration may have read a partial handshake message. Do not
-    // allow more app data in that case.
-    int has_hs_data = ssl->init_buf != NULL && ssl->init_buf->length > 0;
-
     // Get new packet if necessary.
-    if (rr->length == 0 && !has_hs_data) {
+    if (rr->length == 0) {
       int ret = ssl3_get_record(ssl);
       if (ret <= 0) {
         return ret;
       }
     }
 
-    if (has_hs_data || rr->type == SSL3_RT_HANDSHAKE) {
+    const bool is_early_data_read = ssl->server && SSL_in_early_data(ssl);
+
+    if (rr->type == SSL3_RT_HANDSHAKE) {
       // If reading 0-RTT data, reject handshake data. 0-RTT data is terminated
       // by an alert.
-      if (SSL_in_init(ssl)) {
+      if (is_early_data_read) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
         ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
         return -1;
@@ -395,19 +393,18 @@ int ssl3_read_app_data(SSL *ssl, bool *out_got_handshake, uint8_t *buf, int len,
         return -1;
       }
 
-      // Parse post-handshake handshake messages.
-      int ret = ssl3_read_message(ssl);
-      if (ret <= 0) {
-        return ret;
+      if (ssl->init_buf == NULL) {
+        ssl->init_buf = BUF_MEM_new();
+      }
+      if (ssl->init_buf == NULL ||
+          !BUF_MEM_append(ssl->init_buf, rr->data, rr->length)) {
+        return -1;
       }
       *out_got_handshake = true;
+      rr->length = 0;
+      ssl_read_buffer_discard(ssl);
       return -1;
     }
-
-    const int is_early_data_read = ssl->server &&
-                                   ssl->s3->hs != NULL &&
-                                   ssl->s3->hs->can_early_read &&
-                                   ssl_protocol_version(ssl) >= TLS1_3_VERSION;
 
     // Handle the end_of_early_data alert.
     if (rr->type == SSL3_RT_ALERT &&
@@ -457,8 +454,7 @@ int ssl3_read_change_cipher_spec(SSL *ssl) {
     }
   }
 
-  if (rr->type != SSL3_RT_CHANGE_CIPHER_SPEC ||
-      tls_has_unprocessed_handshake_data(ssl)) {
+  if (rr->type != SSL3_RT_CHANGE_CIPHER_SPEC) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
     return -1;

@@ -192,6 +192,12 @@ static enum ssl_open_record_t do_tls_open_record(SSL *ssl, uint8_t *out_type,
                                                  size_t *out_consumed,
                                                  uint8_t *out_alert,
                                                  Span<uint8_t> in) {
+  // If there is an unprocessed handshake message or we are already buffering
+  // too much, stop before decrypting another handshake record.
+  if (!tls_can_accept_handshake_data(ssl, out_alert)) {
+    return ssl_open_record_error;
+  }
+
   CBS cbs = CBS(in);
 
   // Decode the record header.
@@ -319,6 +325,14 @@ static enum ssl_open_record_t do_tls_open_record(SSL *ssl, uint8_t *out_type,
     }
 
     return ssl_process_alert(ssl, out_alert, *out);
+  }
+
+  // Handshake messages may not interleave with any other record type.
+  if (type != SSL3_RT_HANDSHAKE &&
+      tls_has_unprocessed_handshake_data(ssl)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
+    *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+    return ssl_open_record_error;
   }
 
   ssl->s3->warning_alert_count = 0;
