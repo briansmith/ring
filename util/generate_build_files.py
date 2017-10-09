@@ -236,6 +236,50 @@ class Bazel(object):
       self.PrintVariableSection(out, 'ssl_test_sources', files['ssl_test'])
 
 
+class Eureka(object):
+
+  def __init__(self):
+    self.header = \
+"""# Copyright (C) 2017 The Android Open Source Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This file is created by generate_build_files.py. Do not edit manually.
+
+"""
+
+  def PrintVariableSection(self, out, name, files):
+    out.write('%s := \\\n' % name)
+    for f in sorted(files):
+      out.write('  %s\\\n' % f)
+    out.write('\n')
+
+  def WriteFiles(self, files, asm_outputs):
+    # Legacy Android.mk format
+    with open('eureka.mk', 'w+') as makefile:
+      makefile.write(self.header)
+
+      self.PrintVariableSection(makefile, 'crypto_sources', files['crypto'])
+      self.PrintVariableSection(makefile, 'ssl_sources', files['ssl'])
+      self.PrintVariableSection(makefile, 'tool_sources', files['tool'])
+
+      for ((osname, arch), asm_files) in asm_outputs:
+        if osname != 'linux':
+          continue
+        self.PrintVariableSection(
+            makefile, '%s_%s_sources' % (osname, arch), asm_files)
+
+
 class GN(object):
 
   def __init__(self):
@@ -632,7 +676,7 @@ def main(platforms):
 
 if __name__ == '__main__':
   parser = optparse.OptionParser(usage='Usage: %prog [--prefix=<path>]'
-      ' [android|bazel|gn|gyp]')
+      ' [android|bazel|eureka|gn|gyp]')
   parser.add_option('--prefix', dest='prefix',
       help='For Bazel, prepend argument to all source files')
   options, args = parser.parse_args(sys.argv[1:])
@@ -648,6 +692,8 @@ if __name__ == '__main__':
       platforms.append(Android())
     elif s == 'bazel':
       platforms.append(Bazel())
+    elif s == 'eureka':
+      platforms.append(Eureka())
     elif s == 'gn':
       platforms.append(GN())
     elif s == 'gyp':
