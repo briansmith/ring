@@ -87,6 +87,11 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
   if(CLANG)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wmissing-prototypes")
   endif()
+
+  if(CMAKE_COMPILER_IS_GNUCXX AND "4.8" VERSION_GREATER CMAKE_C_COMPILER_VERSION)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-array-bounds")
+  endif()
+
 elseif(MSVC)
   set(MSVC_DISABLED_WARNINGS_LIST
       "C4061" # enumerator 'identifier' in switch of enum 'enumeration' is not
