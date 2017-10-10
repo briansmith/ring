@@ -560,6 +560,10 @@ type ProtocolBugs struct {
 	// NewSessionTicket message despite promising to in ServerHello.
 	SkipNewSessionTicket bool
 
+	// UseFirstSessionTicket causes the client to cache only the first session
+	// ticket received.
+	UseFirstSessionTicket bool
+
 	// SkipClientCertificate causes the client to skip the Certificate
 	// message.
 	SkipClientCertificate bool

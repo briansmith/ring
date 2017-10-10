@@ -165,6 +165,10 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
     }
     hs->new_session->ticket_age_add_valid = 1;
 
+    if (ssl->cert->enable_early_data) {
+      hs->new_session->ticket_max_early_data = kMaxEarlyDataAccepted;
+    }
+
     ScopedCBB cbb;
     CBB body, ticket, extensions;
     if (!ssl->method->init_message(ssl, cbb.get(), &body,
@@ -178,8 +182,6 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
     }
 
     if (ssl->cert->enable_early_data) {
-      hs->new_session->ticket_max_early_data = kMaxEarlyDataAccepted;
-
       CBB early_data_info;
       if (!CBB_add_u16(&extensions, TLSEXT_TYPE_ticket_early_data_info) ||
           !CBB_add_u16_length_prefixed(&extensions, &early_data_info) ||

@@ -10871,6 +10871,27 @@ func addTLS13HandshakeTests() {
 			},
 		})
 
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "EarlyData-FirstTicket-Server-" + name,
+			config: Config{
+				MaxVersion: VersionTLS13,
+				MinVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					UseFirstSessionTicket:   true,
+					SendEarlyData:           [][]byte{{1, 2, 3, 4}},
+					ExpectEarlyDataAccepted: true,
+					ExpectHalfRTTData:       [][]byte{{254, 253, 252, 251}},
+				},
+			},
+			tls13Variant:  variant,
+			messageCount:  2,
+			resumeSession: true,
+			flags: []string{
+				"-enable-early-data",
+				"-expect-accept-early-data",
+			},
+		})
 	}
 
 	testCases = append(testCases, testCase{

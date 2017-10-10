@@ -1486,7 +1486,10 @@ func (c *Conn) processTLS13NewSessionTicket(newSessionTicket *newSessionTicketMs
 	}
 
 	cacheKey := clientSessionCacheKey(c.conn.RemoteAddr(), c.config)
-	c.config.ClientSessionCache.Put(cacheKey, session)
+	_, ok := c.config.ClientSessionCache.Get(cacheKey)
+	if !ok || !c.config.Bugs.UseFirstSessionTicket {
+		c.config.ClientSessionCache.Put(cacheKey, session)
+	}
 	return nil
 }
 
