@@ -153,6 +153,7 @@
 
 #include <openssl/aead.h>
 #include <openssl/err.h>
+#include <openssl/lhash.h>
 #include <openssl/mem.h>
 #include <openssl/ssl.h>
 #include <openssl/span.h>
@@ -1820,6 +1821,12 @@ struct tlsext_ticket_key {
   // rotated.
   uint64_t next_rotation_tv_sec;
 };
+
+}  // namespace bssl
+
+DECLARE_LHASH_OF(SSL_SESSION)
+
+namespace bssl {
 
 // SSLContext backs the public |SSL_CTX| type. Due to compatibility constraints,
 // it is a base class for |ssl_ctx_st|.

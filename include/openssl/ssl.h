@@ -146,7 +146,6 @@
 
 #include <openssl/bio.h>
 #include <openssl/buf.h>
-#include <openssl/lhash.h>
 #include <openssl/pem.h>
 #include <openssl/span.h>
 #include <openssl/ssl3.h>
@@ -1640,7 +1639,6 @@ OPENSSL_EXPORT int SSL_CTX_add_server_custom_ext(
 // established, an |SSL_SESSION| may be shared by multiple |SSL| objects on
 // different threads and must not be modified.
 
-DECLARE_LHASH_OF(SSL_SESSION)
 DECLARE_PEM_rw(SSL_SESSION, SSL_SESSION)
 
 // SSL_SESSION_new returns a newly-allocated blank |SSL_SESSION| or NULL on
