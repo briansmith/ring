@@ -1502,20 +1502,21 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs);
 int tls13_add_finished(SSL_HANDSHAKE *hs);
 int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg);
 
-int ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
-                                        Array<uint8_t> *out_secret,
-                                        uint8_t *out_alert, CBS *contents);
-int ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
-                                        Array<uint8_t> *out_secret,
-                                        uint8_t *out_alert, CBS *contents);
-int ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
+bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
+                                         Array<uint8_t> *out_secret,
+                                         uint8_t *out_alert, CBS *contents);
+bool ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
+                                         Array<uint8_t> *out_secret,
+                                         uint8_t *out_alert, CBS *contents);
+bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
 
-int ssl_ext_pre_shared_key_parse_serverhello(SSL_HANDSHAKE *hs,
-                                             uint8_t *out_alert, CBS *contents);
-int ssl_ext_pre_shared_key_parse_clienthello(
+bool ssl_ext_pre_shared_key_parse_serverhello(SSL_HANDSHAKE *hs,
+                                              uint8_t *out_alert,
+                                              CBS *contents);
+bool ssl_ext_pre_shared_key_parse_clienthello(
     SSL_HANDSHAKE *hs, CBS *out_ticket, CBS *out_binders,
     uint32_t *out_obfuscated_ticket_age, uint8_t *out_alert, CBS *contents);
-int ssl_ext_pre_shared_key_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
+bool ssl_ext_pre_shared_key_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
 
 // ssl_is_sct_list_valid does a shallow parse of the SCT list in |contents| and
 // returns one iff it's valid.
@@ -1539,10 +1540,10 @@ int tls13_get_cert_verify_signature_input(
     enum ssl_cert_verify_context_t cert_verify_context);
 
 // ssl_negotiate_alpn negotiates the ALPN extension, if applicable. It returns
-// one on successful negotiation or if nothing was negotiated. It returns zero
+// true on successful negotiation or if nothing was negotiated. It returns false
 // and sets |*out_alert| to an alert on error.
-int ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
-                       const SSL_CLIENT_HELLO *client_hello);
+bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
+                        const SSL_CLIENT_HELLO *client_hello);
 
 struct SSL_EXTENSION_TYPE {
   uint16_t type;
