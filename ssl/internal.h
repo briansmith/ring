@@ -1988,11 +1988,6 @@ struct SSLContext {
                                       uint8_t *psk, unsigned int max_psk_len);
 
 
-  // retain_only_sha256_of_client_certs is true if we should compute the SHA256
-  // hash of the peer's certificate and then discard it to save memory and
-  // session space. Only effective on the server side.
-  char retain_only_sha256_of_client_certs;
-
   // Next protocol negotiation information
   // (for experimental NPN extension).
 
@@ -2059,32 +2054,37 @@ struct SSLContext {
   uint16_t *verify_sigalgs;
   size_t num_verify_sigalgs;
 
+  // retain_only_sha256_of_client_certs is true if we should compute the SHA256
+  // hash of the peer's certificate and then discard it to save memory and
+  // session space. Only effective on the server side.
+  bool retain_only_sha256_of_client_certs:1;
+
   // quiet_shutdown is true if the connection should not send a close_notify on
   // shutdown.
-  unsigned quiet_shutdown:1;
+  bool quiet_shutdown:1;
 
   // ocsp_stapling_enabled is only used by client connections and indicates
   // whether OCSP stapling will be requested.
-  unsigned ocsp_stapling_enabled:1;
+  bool ocsp_stapling_enabled:1;
 
   // If true, a client will request certificate timestamps.
-  unsigned signed_cert_timestamps_enabled:1;
+  bool signed_cert_timestamps_enabled:1;
 
   // tlsext_channel_id_enabled is one if Channel ID is enabled and zero
   // otherwise. For a server, means that we'll accept Channel IDs from clients.
   // For a client, means that we'll advertise support.
-  unsigned tlsext_channel_id_enabled:1;
+  bool tlsext_channel_id_enabled:1;
 
   // grease_enabled is one if draft-davidben-tls-grease-01 is enabled and zero
   // otherwise.
-  unsigned grease_enabled:1;
+  bool grease_enabled:1;
 
   // allow_unknown_alpn_protos is one if the client allows unsolicited ALPN
   // protocols from the peer.
-  unsigned allow_unknown_alpn_protos:1;
+  bool allow_unknown_alpn_protos:1;
 
   // ed25519_enabled is one if Ed25519 is advertised in the handshake.
-  unsigned ed25519_enabled:1;
+  bool ed25519_enabled:1;
 };
 
 struct SSL3_RECORD {
@@ -2529,31 +2529,31 @@ struct SSLConnection {
   // server is true iff the this SSL* is the server half. Note: before the SSL*
   // is initialized by either SSL_set_accept_state or SSL_set_connect_state,
   // the side is not determined. In this state, server is always false.
-  unsigned server:1;
+  bool server:1;
 
   // quiet_shutdown is true if the connection should not send a close_notify on
   // shutdown.
-  unsigned quiet_shutdown:1;
+  bool quiet_shutdown:1;
 
   // Enable signed certificate time stamps. Currently client only.
-  unsigned signed_cert_timestamps_enabled:1;
+  bool signed_cert_timestamps_enabled:1;
 
   // ocsp_stapling_enabled is only used by client connections and indicates
   // whether OCSP stapling will be requested.
-  unsigned ocsp_stapling_enabled:1;
+  bool ocsp_stapling_enabled:1;
 
   // tlsext_channel_id_enabled is copied from the |SSL_CTX|. For a server,
   // means that we'll accept Channel IDs from clients. For a client, means that
   // we'll advertise support.
-  unsigned tlsext_channel_id_enabled:1;
+  bool tlsext_channel_id_enabled:1;
 
   // retain_only_sha256_of_client_certs is true if we should compute the SHA256
   // hash of the peer's certificate and then discard it to save memory and
   // session space. Only effective on the server side.
-  unsigned retain_only_sha256_of_client_certs:1;
+  bool retain_only_sha256_of_client_certs:1;
 
   // early_data_accepted is true if early data was accepted by the server.
-  unsigned early_data_accepted:1;
+  bool early_data_accepted:1;
 };
 
 // From draft-ietf-tls-tls13-18, used in determining PSK modes.

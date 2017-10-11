@@ -2033,7 +2033,7 @@ static int ext_early_data_parse_serverhello(SSL_HANDSHAKE *hs,
     return 0;
   }
 
-  ssl->early_data_accepted = 1;
+  ssl->early_data_accepted = true;
   return 1;
 }
 

@@ -384,7 +384,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
           ssl->s3->alpn_selected_len == session->early_alpn_len &&
           OPENSSL_memcmp(ssl->s3->alpn_selected, session->early_alpn,
                          ssl->s3->alpn_selected_len) == 0) {
-        ssl->early_data_accepted = 1;
+        ssl->early_data_accepted = true;
       }
 
       if (hs->new_session == NULL) {
@@ -452,7 +452,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
   bool need_retry;
   if (!resolve_ecdhe_secret(hs, &need_retry, &client_hello)) {
     if (need_retry) {
-      ssl->early_data_accepted = 0;
+      ssl->early_data_accepted = false;
       ssl->s3->skip_early_data = true;
       ssl->method->next_message(ssl);
       hs->tls13_state = state_send_hello_retry_request;

@@ -744,12 +744,12 @@ void SSL_free(SSL *ssl) {
 }
 
 void SSL_set_connect_state(SSL *ssl) {
-  ssl->server = 0;
+  ssl->server = false;
   ssl->do_handshake = ssl_client_handshake;
 }
 
 void SSL_set_accept_state(SSL *ssl) {
-  ssl->server = 1;
+  ssl->server = true;
   ssl->do_handshake = ssl_server_handshake;
 }
 
@@ -1795,19 +1795,19 @@ void SSL_set_custom_verify(
 }
 
 void SSL_CTX_enable_signed_cert_timestamps(SSL_CTX *ctx) {
-  ctx->signed_cert_timestamps_enabled = 1;
+  ctx->signed_cert_timestamps_enabled = true;
 }
 
 void SSL_enable_signed_cert_timestamps(SSL *ssl) {
-  ssl->signed_cert_timestamps_enabled = 1;
+  ssl->signed_cert_timestamps_enabled = true;
 }
 
 void SSL_CTX_enable_ocsp_stapling(SSL_CTX *ctx) {
-  ctx->ocsp_stapling_enabled = 1;
+  ctx->ocsp_stapling_enabled = true;
 }
 
 void SSL_enable_ocsp_stapling(SSL *ssl) {
-  ssl->ocsp_stapling_enabled = 1;
+  ssl->ocsp_stapling_enabled = true;
 }
 
 void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, const uint8_t **out,
@@ -2004,7 +2004,7 @@ int SSL_CTX_set1_tls_channel_id(SSL_CTX *ctx, EVP_PKEY *private_key) {
   EVP_PKEY_free(ctx->tlsext_channel_id_private);
   EVP_PKEY_up_ref(private_key);
   ctx->tlsext_channel_id_private = private_key;
-  ctx->tlsext_channel_id_enabled = 1;
+  ctx->tlsext_channel_id_enabled = true;
 
   return 1;
 }
@@ -2018,7 +2018,7 @@ int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key) {
   EVP_PKEY_free(ssl->tlsext_channel_id_private);
   EVP_PKEY_up_ref(private_key);
   ssl->tlsext_channel_id_private = private_key;
-  ssl->tlsext_channel_id_enabled = 1;
+  ssl->tlsext_channel_id_enabled = true;
 
   return 1;
 }
