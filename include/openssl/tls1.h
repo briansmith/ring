@@ -214,6 +214,7 @@ extern "C" {
 #define TLSEXT_TYPE_cookie 44
 #define TLSEXT_TYPE_psk_key_exchange_modes 45
 #define TLSEXT_TYPE_ticket_early_data_info 46
+#define TLSEXT_TYPE_certificate_authorities 47
 
 // ExtensionType value from RFC5746
 #define TLSEXT_TYPE_renegotiate 0xff01

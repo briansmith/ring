@@ -87,7 +87,7 @@ struct TestConfig {
   bool tls_unique = false;
   bool expect_ticket_renewal = false;
   bool expect_no_session = false;
-  bool expect_early_data_info = false;
+  bool expect_ticket_supports_early_data = false;
   bool expect_accept_early_data = false;
   bool expect_reject_early_data = false;
   bool expect_no_offer_early_data = false;

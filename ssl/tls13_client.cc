@@ -63,8 +63,10 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   }
 
   CBS body = msg.body, extensions;
-  uint16_t server_version;
+  uint16_t server_version, cipher_suite = 0;
   if (!CBS_get_u16(&body, &server_version) ||
+      (ssl_is_draft21(ssl->version) &&
+       !CBS_get_u16(&body, &cipher_suite)) ||
       !CBS_get_u16_length_prefixed(&body, &extensions) ||
       // HelloRetryRequest may not be empty.
       CBS_len(&extensions) == 0 ||
@@ -73,6 +75,26 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
+
+  if (ssl_is_draft21(ssl->version)) {
+    const SSL_CIPHER *cipher = SSL_get_cipher_by_value(cipher_suite);
+    // Check if the cipher is a TLS 1.3 cipher.
+    if (cipher == NULL ||
+        SSL_CIPHER_get_min_version(cipher) > ssl_protocol_version(ssl) ||
+        SSL_CIPHER_get_max_version(cipher) < ssl_protocol_version(ssl)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      return ssl_hs_error;
+    }
+
+    hs->new_cipher = cipher;
+
+    if (!hs->transcript.InitHash(ssl_protocol_version(ssl), hs->new_cipher) ||
+        !hs->transcript.UpdateForHelloRetryRequest()) {
+      return ssl_hs_error;
+    }
+  }
+
 
   bool have_cookie, have_key_share;
   CBS cookie, key_share;
@@ -206,16 +228,20 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   OPENSSL_memcpy(ssl->s3->server_random, CBS_data(&server_random),
                  SSL3_RANDOM_SIZE);
 
+  // Check if the cipher is a TLS 1.3 cipher.
   const SSL_CIPHER *cipher = SSL_get_cipher_by_value(cipher_suite);
-  if (cipher == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CIPHER_RETURNED);
+  if (cipher == nullptr ||
+      SSL_CIPHER_get_min_version(cipher) > ssl_protocol_version(ssl) ||
+      SSL_CIPHER_get_max_version(cipher) < ssl_protocol_version(ssl)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
 
-  // Check if the cipher is a TLS 1.3 cipher.
-  if (SSL_CIPHER_get_min_version(cipher) > ssl_protocol_version(ssl) ||
-      SSL_CIPHER_get_max_version(cipher) < ssl_protocol_version(ssl)) {
+  // Check that the cipher matches the one in the HelloRetryRequest.
+  if (ssl_is_draft21(ssl->version) &&
+      hs->received_hello_retry_request &&
+      hs->new_cipher != cipher) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CIPHER_RETURNED);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
@@ -302,18 +328,16 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   hs->new_session->cipher = cipher;
   hs->new_cipher = cipher;
 
-  // The PRF hash is now known. Set up the key schedule.
-  if (!tls13_init_key_schedule(hs)) {
-    return ssl_hs_error;
-  }
+  size_t hash_len =
+      EVP_MD_size(ssl_get_handshake_digest(ssl_protocol_version(ssl), cipher));
 
-  // Incorporate the PSK into the running secret.
+  // Set up the key schedule and incorporate the PSK into the running secret.
   if (ssl->s3->session_reused) {
-    if (!tls13_advance_key_schedule(hs, hs->new_session->master_key,
-                                    hs->new_session->master_key_length)) {
+    if (!tls13_init_key_schedule(hs, hs->new_session->master_key,
+                                 hs->new_session->master_key_length)) {
       return ssl_hs_error;
     }
-  } else if (!tls13_advance_key_schedule(hs, kZeroes, hs->hash_len)) {
+  } else if (!tls13_init_key_schedule(hs, kZeroes, hash_len)) {
     return ssl_hs_error;
   }
 
@@ -445,37 +469,81 @@ static enum ssl_hs_wait_t do_read_certificate_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_ok;
   }
 
-  CBS body = msg.body, context, supported_signature_algorithms;
-  if (!CBS_get_u8_length_prefixed(&body, &context) ||
-      // The request context is always empty during the handshake.
-      CBS_len(&context) != 0 ||
-      !CBS_get_u16_length_prefixed(&body, &supported_signature_algorithms) ||
-      CBS_len(&supported_signature_algorithms) == 0 ||
-      !tls1_parse_peer_sigalgs(hs, &supported_signature_algorithms)) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return ssl_hs_error;
-  }
 
-  uint8_t alert = SSL_AD_DECODE_ERROR;
-  UniquePtr<STACK_OF(CRYPTO_BUFFER)> ca_names =
-      ssl_parse_client_CA_list(ssl, &alert, &body);
-  if (!ca_names) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
-    return ssl_hs_error;
-  }
+  if (ssl_is_draft21(ssl->version)) {
+    bool have_sigalgs = false, have_ca = false;
+    CBS sigalgs, ca;
+    const SSL_EXTENSION_TYPE ext_types[] = {
+      {TLSEXT_TYPE_signature_algorithms, &have_sigalgs, &sigalgs},
+      {TLSEXT_TYPE_certificate_authorities, &have_ca, &ca},
+    };
 
-  // Ignore extensions.
-  CBS extensions;
-  if (!CBS_get_u16_length_prefixed(&body, &extensions) ||
-      CBS_len(&body) != 0) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    return ssl_hs_error;
+    CBS body = msg.body, context, extensions, supported_signature_algorithms;
+    uint8_t alert = SSL_AD_DECODE_ERROR;
+    if (!CBS_get_u8_length_prefixed(&body, &context) ||
+        // The request context is always empty during the handshake.
+        CBS_len(&context) != 0 ||
+        !CBS_get_u16_length_prefixed(&body, &extensions) ||
+        CBS_len(&body) != 0 ||
+        !ssl_parse_extensions(&extensions, &alert, ext_types,
+                              OPENSSL_ARRAY_SIZE(ext_types),
+                              1 /* accept unknown */) ||
+        (have_ca && CBS_len(&ca) == 0) ||
+        !have_sigalgs ||
+        !CBS_get_u16_length_prefixed(&sigalgs,
+                                     &supported_signature_algorithms) ||
+        CBS_len(&supported_signature_algorithms) == 0 ||
+        !tls1_parse_peer_sigalgs(hs, &supported_signature_algorithms)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      return ssl_hs_error;
+    }
+
+    if (have_ca) {
+      hs->ca_names = ssl_parse_client_CA_list(ssl, &alert, &ca);
+      if (!hs->ca_names) {
+        ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+        return ssl_hs_error;
+      }
+    } else {
+      hs->ca_names.reset(sk_CRYPTO_BUFFER_new_null());
+      if (!hs->ca_names) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+        return ssl_hs_error;
+      }
+    }
+  } else {
+    CBS body = msg.body, context, supported_signature_algorithms;
+    if (!CBS_get_u8_length_prefixed(&body, &context) ||
+        // The request context is always empty during the handshake.
+        CBS_len(&context) != 0 ||
+        !CBS_get_u16_length_prefixed(&body, &supported_signature_algorithms) ||
+        CBS_len(&supported_signature_algorithms) == 0 ||
+        !tls1_parse_peer_sigalgs(hs, &supported_signature_algorithms)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      return ssl_hs_error;
+    }
+
+    uint8_t alert = SSL_AD_DECODE_ERROR;
+    hs->ca_names = ssl_parse_client_CA_list(ssl, &alert, &body);
+    if (!hs->ca_names) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+      return ssl_hs_error;
+    }
+
+    // Ignore extensions.
+    CBS extensions;
+    if (!CBS_get_u16_length_prefixed(&body, &extensions) ||
+        CBS_len(&body) != 0) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      return ssl_hs_error;
+    }
   }
 
   hs->cert_request = true;
-  hs->ca_names = std::move(ca_names);
   ssl->ctx->x509_method->hs_flush_cached_ca_names(hs);
 
   if (!ssl_hash_message(hs, msg)) {
@@ -557,9 +625,19 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
 
   if (ssl->early_data_accepted) {
     hs->can_early_write = false;
-    if (!ssl->method->add_alert(ssl, SSL3_AL_WARNING,
-                                TLS1_AD_END_OF_EARLY_DATA)) {
-      return ssl_hs_error;
+    if (ssl_is_draft21(ssl->version)) {
+      ScopedCBB cbb;
+      CBB body;
+      if (!ssl->method->init_message(ssl, cbb.get(), &body,
+                                     SSL3_MT_END_OF_EARLY_DATA) ||
+          !ssl_add_message_cbb(ssl, cbb.get())) {
+        return ssl_hs_error;
+      }
+    } else {
+      if (!ssl->method->add_alert(ssl, SSL3_AL_WARNING,
+                                  TLS1_AD_END_OF_EARLY_DATA)) {
+        return ssl_hs_error;
+      }
     }
   }
 
@@ -790,9 +868,11 @@ int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
   ssl_session_rebase_time(ssl, session.get());
 
   uint32_t server_timeout;
-  CBS body = msg.body, ticket, extensions;
+  CBS body = msg.body, ticket_nonce, ticket, extensions;
   if (!CBS_get_u32(&body, &server_timeout) ||
       !CBS_get_u32(&body, &session->ticket_age_add) ||
+      (ssl_is_draft21(ssl->version) &&
+       !CBS_get_u8_length_prefixed(&body, &ticket_nonce)) ||
       !CBS_get_u16_length_prefixed(&body, &ticket) ||
       !CBS_stow(&ticket, &session->tlsext_tick, &session->tlsext_ticklen) ||
       !CBS_get_u16_length_prefixed(&body, &extensions) ||
@@ -808,12 +888,18 @@ int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
     session->timeout = server_timeout;
   }
 
+  if (!tls13_derive_session_psk(session.get(), ticket_nonce)) {
+    return 0;
+  }
+
   // Parse out the extensions.
   bool have_early_data_info = false;
   CBS early_data_info;
+  uint16_t ext_id = ssl_is_draft21(ssl->version)
+                        ? TLSEXT_TYPE_early_data
+                        : TLSEXT_TYPE_ticket_early_data_info;
   const SSL_EXTENSION_TYPE ext_types[] = {
-      {TLSEXT_TYPE_ticket_early_data_info, &have_early_data_info,
-       &early_data_info},
+      {ext_id, &have_early_data_info, &early_data_info},
   };
 
   uint8_t alert = SSL_AD_DECODE_ERROR;

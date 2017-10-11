@@ -704,6 +704,17 @@ UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_client_CA_list(SSL *ssl,
   return ret;
 }
 
+bool ssl_has_client_CAs(SSL *ssl) {
+  STACK_OF(CRYPTO_BUFFER) *names = ssl->client_CA;
+  if (names == NULL) {
+    names = ssl->ctx->client_CA;
+  }
+  if (names == NULL) {
+    return false;
+  }
+  return sk_CRYPTO_BUFFER_num(names) > 0;
+}
+
 int ssl_add_client_CA_list(SSL *ssl, CBB *cbb) {
   CBB child, name_cbb;
   if (!CBB_add_u16_length_prefixed(cbb, &child)) {

@@ -986,6 +986,13 @@ static int ssl_read_impl(SSL *ssl) {
     // Process any buffered post-handshake messages.
     SSLMessage msg;
     if (ssl->method->get_message(ssl, &msg)) {
+      // If we received an interrupt in early read (EndOfEarlyData), loop again
+      // for the handshake to process it.
+      if (SSL_in_init(ssl)) {
+        ssl->s3->hs->can_early_read = false;
+        continue;
+      }
+
       // Handle the post-handshake message and try again.
       if (!ssl_do_post_handshake(ssl, msg)) {
         ssl_set_read_error(ssl);

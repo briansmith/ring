@@ -1278,6 +1278,9 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx,
   if (!config->use_client_ca_list.empty()) {
     if (config->use_client_ca_list == "<NULL>") {
       SSL_CTX_set_client_CA_list(ssl_ctx.get(), nullptr);
+    } else if (config->use_client_ca_list == "<EMPTY>") {
+      bssl::UniquePtr<STACK_OF(X509_NAME)> names;
+      SSL_CTX_set_client_CA_list(ssl_ctx.get(), names.release());
     } else {
       bssl::UniquePtr<STACK_OF(X509_NAME)> names =
           DecodeHexX509Names(config->use_client_ca_list);
@@ -2396,14 +2399,13 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session, SSL *ssl,
     }
 
     if (expect_new_session) {
-      bool got_early_data_info =
+      bool got_early_data =
           GetTestState(ssl)->new_session->ticket_max_early_data != 0;
-      if (config->expect_early_data_info != got_early_data_info) {
-        fprintf(
-            stderr,
-            "new session did%s include ticket_early_data_info, but we expected "
-            "the opposite\n",
-            got_early_data_info ? "" : " not");
+      if (config->expect_ticket_supports_early_data != got_early_data) {
+        fprintf(stderr,
+                "new session did%s support early data, but we expected the "
+                "opposite\n",
+                got_early_data ? "" : " not");
         return false;
       }
     }

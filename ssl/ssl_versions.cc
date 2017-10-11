@@ -35,6 +35,7 @@ bool ssl_protocol_version_from_wire(uint16_t *out, uint16_t version) {
       return true;
 
     case TLS1_3_DRAFT_VERSION:
+    case TLS1_3_DRAFT21_VERSION:
     case TLS1_3_EXPERIMENT_VERSION:
     case TLS1_3_EXPERIMENT2_VERSION:
     case TLS1_3_EXPERIMENT3_VERSION:
@@ -63,6 +64,7 @@ static const uint16_t kTLSVersions[] = {
     TLS1_3_EXPERIMENT2_VERSION,
     TLS1_3_EXPERIMENT_VERSION,
     TLS1_3_DRAFT_VERSION,
+    TLS1_3_DRAFT21_VERSION,
     TLS1_2_VERSION,
     TLS1_1_VERSION,
     TLS1_VERSION,
@@ -106,6 +108,7 @@ static bool method_supports_version(const SSL_PROTOCOL_METHOD *method,
 static const char *ssl_version_to_string(uint16_t version) {
   switch (version) {
     case TLS1_3_DRAFT_VERSION:
+    case TLS1_3_DRAFT21_VERSION:
     case TLS1_3_EXPERIMENT_VERSION:
     case TLS1_3_EXPERIMENT2_VERSION:
     case TLS1_3_EXPERIMENT3_VERSION:
@@ -138,6 +141,7 @@ static uint16_t wire_version_to_api(uint16_t version) {
   switch (version) {
     // Report TLS 1.3 draft versions as TLS 1.3 in the public API.
     case TLS1_3_DRAFT_VERSION:
+    case TLS1_3_DRAFT21_VERSION:
     case TLS1_3_EXPERIMENT_VERSION:
     case TLS1_3_EXPERIMENT2_VERSION:
     case TLS1_3_EXPERIMENT3_VERSION:
@@ -152,6 +156,7 @@ static uint16_t wire_version_to_api(uint16_t version) {
 // used in context where that does not matter.
 static bool api_version_to_wire(uint16_t *out, uint16_t version) {
   if (version == TLS1_3_DRAFT_VERSION ||
+      version == TLS1_3_DRAFT21_VERSION ||
       version == TLS1_3_EXPERIMENT_VERSION ||
       version == TLS1_3_EXPERIMENT2_VERSION ||
       version == TLS1_3_EXPERIMENT3_VERSION) {
@@ -301,34 +306,42 @@ uint16_t ssl_protocol_version(const SSL *ssl) {
 
 bool ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version) {
   SSL *const ssl = hs->ssl;
-  // As a client, only allow the configured TLS 1.3 variant. As a server,
-  // support all TLS 1.3 variants as long as tls13_variant is set to a
-  // non-default value.
-  if (ssl->server) {
-    if (ssl->tls13_variant == tls13_default &&
-        (version == TLS1_3_EXPERIMENT_VERSION ||
-         version == TLS1_3_EXPERIMENT2_VERSION ||
-         version == TLS1_3_EXPERIMENT3_VERSION)) {
-      return false;
-    }
-  } else {
-    if ((ssl->tls13_variant != tls13_experiment &&
-         version == TLS1_3_EXPERIMENT_VERSION) ||
-        (ssl->tls13_variant != tls13_experiment2 &&
-         version == TLS1_3_EXPERIMENT2_VERSION) ||
-        (ssl->tls13_variant != tls13_experiment3 &&
-         version == TLS1_3_EXPERIMENT3_VERSION) ||
-        (ssl->tls13_variant != tls13_default &&
-         version == TLS1_3_DRAFT_VERSION)) {
-      return false;
-    }
+  uint16_t protocol_version;
+  if (!method_supports_version(ssl->method, version) ||
+      !ssl_protocol_version_from_wire(&protocol_version, version) ||
+      hs->min_version > protocol_version ||
+      protocol_version > hs->max_version) {
+    return false;
   }
 
-  uint16_t protocol_version;
-  return method_supports_version(ssl->method, version) &&
-         ssl_protocol_version_from_wire(&protocol_version, version) &&
-         hs->min_version <= protocol_version &&
-         protocol_version <= hs->max_version;
+  // TLS 1.3 variants must additionally match |tls13_variant|.
+  if (protocol_version != TLS1_3_VERSION ||
+      (ssl->tls13_variant == tls13_experiment &&
+       version == TLS1_3_EXPERIMENT_VERSION) ||
+      (ssl->tls13_variant == tls13_experiment2 &&
+       version == TLS1_3_EXPERIMENT2_VERSION) ||
+      (ssl->tls13_variant == tls13_experiment3 &&
+       version == TLS1_3_EXPERIMENT3_VERSION) ||
+      (ssl->tls13_variant == tls13_draft21 &&
+       version == TLS1_3_DRAFT21_VERSION) ||
+      (ssl->tls13_variant == tls13_default &&
+       version == TLS1_3_DRAFT_VERSION)) {
+    return true;
+  }
+
+  // The server, when not configured at |tls13_default|, should additionally
+  // enable all variants, except draft-21 which is implemented solely for QUIC
+  // interop testing and will not be deployed. Currently, this is to implement
+  // the draft-18 vs. experiments field trials. In the future, this will be to
+  // transition cleanly to a future draft-22 which hopefully includes the
+  // deployability fixes.
+  if (ssl->server &&
+      ssl->tls13_variant != tls13_default &&
+      version != TLS1_3_DRAFT21_VERSION) {
+    return true;
+  }
+
+  return false;
 }
 
 bool ssl_add_supported_versions(SSL_HANDSHAKE *hs, CBB *cbb) {
@@ -373,6 +386,10 @@ bool ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
   *out_alert = SSL_AD_PROTOCOL_VERSION;
   return false;
+}
+
+bool ssl_is_draft21(uint16_t version) {
+  return version == TLS1_3_DRAFT21_VERSION;
 }
 
 bool ssl_is_resumption_experiment(uint16_t version) {

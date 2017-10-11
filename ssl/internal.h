@@ -392,6 +392,10 @@ bool ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 // call this function before the version is determined.
 uint16_t ssl_protocol_version(const SSL *ssl);
 
+// ssl_is_draft21 returns whether the version corresponds to a draft21 TLS 1.3
+// variant.
+bool ssl_is_draft21(uint16_t version);
+
 // ssl_is_resumption_experiment returns whether the version corresponds to a
 // TLS 1.3 resumption experiment.
 bool ssl_is_resumption_experiment(uint16_t version);
@@ -542,6 +546,16 @@ class SSLTranscript {
   // rolling hash. It returns one on success and zero on failure. It is an error
   // to call this function after the handshake buffer is released.
   bool InitHash(uint16_t version, const SSL_CIPHER *cipher);
+
+  // UpdateForHelloRetryRequest resets the rolling hash with the
+  // HelloRetryRequest construction. It returns true on success and false on
+  // failure. It is an error to call this function before the handshake buffer
+  // is released.
+  bool UpdateForHelloRetryRequest();
+
+  // CopyHashContext copies the hash context into |ctx| and returns true on
+  // success.
+  bool CopyHashContext(EVP_MD_CTX *ctx);
 
   Span<const uint8_t> buffer() {
     return MakeConstSpan(reinterpret_cast<const uint8_t *>(buffer_->data),
@@ -1157,6 +1171,9 @@ UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_client_CA_list(SSL *ssl,
                                                             uint8_t *out_alert,
                                                             CBS *cbs);
 
+// ssl_has_client_CAs returns there are configured CAs.
+bool ssl_has_client_CAs(SSL *ssl);
+
 // ssl_add_client_CA_list adds the configured CA list to |cbb| in the format
 // used by a TLS CertificateRequest message. It returns one on success and zero
 // on error.
@@ -1177,14 +1194,16 @@ int ssl_on_certificate_selected(SSL_HANDSHAKE *hs);
 // TLS 1.3 key derivation.
 
 // tls13_init_key_schedule initializes the handshake hash and key derivation
-// state. The cipher suite and PRF hash must have been selected at this point.
-// It returns one on success and zero on error.
-int tls13_init_key_schedule(SSL_HANDSHAKE *hs);
+// state, and incorporates the PSK. The cipher suite and PRF hash must have been
+// selected at this point. It returns one on success and zero on error.
+int tls13_init_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *psk,
+                            size_t psk_len);
 
 // tls13_init_early_key_schedule initializes the handshake hash and key
-// derivation state from the resumption secret to derive the early secrets. It
-// returns one on success and zero on error.
-int tls13_init_early_key_schedule(SSL_HANDSHAKE *hs);
+// derivation state from the resumption secret and incorporates the PSK to
+// derive the early secrets. It returns one on success and zero on error.
+int tls13_init_early_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *psk,
+                                  size_t psk_len);
 
 // tls13_advance_key_schedule incorporates |in| into the key schedule with
 // HKDF-Extract. It returns one on success and zero on error.
@@ -1230,6 +1249,11 @@ int tls13_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
 // 0 for the Client Finished.
 int tls13_finished_mac(SSL_HANDSHAKE *hs, uint8_t *out,
                        size_t *out_len, int is_server);
+
+// tls13_derive_session_psk calculates the PSK for this session based on the
+// resumption master secret and |nonce|. It returns true on success, and false
+// on failure.
+bool tls13_derive_session_psk(SSL_SESSION *session, Span<const uint8_t> nonce);
 
 // tls13_write_psk_binder calculates the PSK binder value and replaces the last
 // bytes of |msg| with the resulting value. It returns 1 on success, and 0 on

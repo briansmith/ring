@@ -1800,8 +1800,18 @@ static size_t ext_pre_shared_key_clienthello_length(SSL_HANDSHAKE *hs) {
 
 static bool ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
+  hs->needs_psk_binder = false;
   if (hs->max_version < TLS1_3_VERSION || ssl->session == NULL ||
       ssl_session_protocol_version(ssl->session) < TLS1_3_VERSION) {
+    return true;
+  }
+
+  // Per draft-ietf-tls-tls13-21 section 4.1.4, skip offering the session if the
+  // selected cipher in HelloRetryRequest does not match. This avoids performing
+  // the transcript hash transformation for multiple hashes.
+  if (hs->received_hello_retry_request &&
+      ssl_is_draft21(ssl->version) &&
+      ssl->session->cipher->algorithm_prf != hs->new_cipher->algorithm_prf) {
     return true;
   }
 
