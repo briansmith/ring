@@ -1046,8 +1046,8 @@ OPENSSL_EXPORT int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, const uint8_t *der,
 // |type| parameter is one of the |SSL_FILETYPE_*| values and determines whether
 // the file's contents are read as PEM or DER.
 
-#define SSL_FILETYPE_ASN1 X509_FILETYPE_ASN1
-#define SSL_FILETYPE_PEM X509_FILETYPE_PEM
+#define SSL_FILETYPE_PEM 1
+#define SSL_FILETYPE_ASN1 2
 
 OPENSSL_EXPORT int SSL_CTX_use_RSAPrivateKey_file(SSL_CTX *ctx,
                                                   const char *file,
