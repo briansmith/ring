@@ -4042,8 +4042,7 @@ extern "C++" OPENSSL_EXPORT void SSL_CTX_sess_set_get_cb(
 // This structures are exposed for historical reasons, but access to them is
 // deprecated.
 
-// TODO(davidben): Remove this forward declaration when is |SSL_SESSION| is
-// opaque.
+// TODO(davidben): Remove this forward declaration when |SSL_SESSION| is opaque.
 typedef struct ssl_x509_method_st SSL_X509_METHOD;
 
 #define SSL_MAX_SSL_SESSION_ID_LENGTH 32
