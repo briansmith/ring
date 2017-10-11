@@ -216,7 +216,7 @@ bool ssl_hash_message(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
     return true;
   }
 
-  return hs->transcript.Update(CBS_data(&msg.raw), CBS_len(&msg.raw));
+  return hs->transcript.Update(msg.raw);
 }
 
 int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,

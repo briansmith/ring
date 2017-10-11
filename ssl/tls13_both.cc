@@ -37,57 +37,55 @@ namespace bssl {
 // without being able to return application data.
 static const uint8_t kMaxKeyUpdates = 32;
 
-int tls13_get_cert_verify_signature_input(
-    SSL_HANDSHAKE *hs, uint8_t **out, size_t *out_len,
+bool tls13_get_cert_verify_signature_input(
+    SSL_HANDSHAKE *hs, Array<uint8_t> *out,
     enum ssl_cert_verify_context_t cert_verify_context) {
   ScopedCBB cbb;
   if (!CBB_init(cbb.get(), 64 + 33 + 1 + 2 * EVP_MAX_MD_SIZE)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
+    return false;
   }
 
   for (size_t i = 0; i < 64; i++) {
     if (!CBB_add_u8(cbb.get(), 0x20)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      return 0;
+      return false;
     }
   }
 
-  const uint8_t *context;
-  size_t context_len;
+  Span<const char> context;
   if (cert_verify_context == ssl_cert_verify_server) {
-    // Include the NUL byte.
     static const char kContext[] = "TLS 1.3, server CertificateVerify";
-    context = (const uint8_t *)kContext;
-    context_len = sizeof(kContext);
+    context = kContext;
   } else if (cert_verify_context == ssl_cert_verify_client) {
     static const char kContext[] = "TLS 1.3, client CertificateVerify";
-    context = (const uint8_t *)kContext;
-    context_len = sizeof(kContext);
+    context = kContext;
   } else if (cert_verify_context == ssl_cert_verify_channel_id) {
     static const char kContext[] = "TLS 1.3, Channel ID";
-    context = (const uint8_t *)kContext;
-    context_len = sizeof(kContext);
+    context = kContext;
   } else {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
+    return false;
   }
 
-  if (!CBB_add_bytes(cbb.get(), context, context_len)) {
+  // Note |context| includes the NUL byte separator.
+  if (!CBB_add_bytes(cbb.get(),
+                     reinterpret_cast<const uint8_t *>(context.data()),
+                     context.size())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
+    return false;
   }
 
   uint8_t context_hash[EVP_MAX_MD_SIZE];
   size_t context_hash_len;
   if (!hs->transcript.GetHash(context_hash, &context_hash_len) ||
       !CBB_add_bytes(cbb.get(), context_hash, context_hash_len) ||
-      !CBB_finish(cbb.get(), out, out_len)) {
+      !CBBFinishArray(cbb.get(), out)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
 int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
@@ -285,21 +283,18 @@ int tls13_process_certificate_verify(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
   }
   hs->new_session->peer_signature_algorithm = signature_algorithm;
 
-  uint8_t *input = NULL;
-  size_t input_len;
+  Array<uint8_t> input;
   if (!tls13_get_cert_verify_signature_input(
-          hs, &input, &input_len,
+          hs, &input,
           ssl->server ? ssl_cert_verify_client : ssl_cert_verify_server)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return 0;
   }
-  UniquePtr<uint8_t> free_input(input);
 
-  int sig_ok = ssl_public_key_verify(ssl, CBS_data(&signature),
-                                     CBS_len(&signature), signature_algorithm,
-                                     hs->peer_pubkey.get(), input, input_len);
+  bool sig_ok = ssl_public_key_verify(ssl, signature, signature_algorithm,
+                                      hs->peer_pubkey.get(), input);
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-  sig_ok = 1;
+  sig_ok = true;
   ERR_clear_error();
 #endif
   if (!sig_ok) {
@@ -441,18 +436,16 @@ enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs) {
     return ssl_private_key_failure;
   }
 
-  uint8_t *msg = NULL;
-  size_t msg_len;
+  Array<uint8_t> msg;
   if (!tls13_get_cert_verify_signature_input(
-          hs, &msg, &msg_len,
+          hs, &msg,
           ssl->server ? ssl_cert_verify_server : ssl_cert_verify_client)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_private_key_failure;
   }
-  UniquePtr<uint8_t> free_msg(msg);
 
   enum ssl_private_key_result_t sign_result = ssl_private_key_sign(
-      hs, sig, &sig_len, max_sig_len, signature_algorithm, msg, msg_len);
+      hs, sig, &sig_len, max_sig_len, signature_algorithm, msg);
   if (sign_result != ssl_private_key_success) {
     return sign_result;
   }

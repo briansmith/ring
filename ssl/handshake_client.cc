@@ -1028,8 +1028,7 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
     }
 
     ScopedCBB transcript;
-    uint8_t *transcript_data;
-    size_t transcript_len;
+    Array<uint8_t> transcript_data;
     if (!CBB_init(transcript.get(),
                   2 * SSL3_RANDOM_SIZE + CBS_len(&parameter)) ||
         !CBB_add_bytes(transcript.get(), ssl->s3->client_random,
@@ -1038,19 +1037,16 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
                        SSL3_RANDOM_SIZE) ||
         !CBB_add_bytes(transcript.get(), CBS_data(&parameter),
                        CBS_len(&parameter)) ||
-        !CBB_finish(transcript.get(), &transcript_data, &transcript_len)) {
+        !CBBFinishArray(transcript.get(), &transcript_data)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
 
-    int sig_ok = ssl_public_key_verify(
-        ssl, CBS_data(&signature), CBS_len(&signature), signature_algorithm,
-        hs->peer_pubkey.get(), transcript_data, transcript_len);
-    OPENSSL_free(transcript_data);
-
+    bool sig_ok = ssl_public_key_verify(ssl, signature, signature_algorithm,
+                                        hs->peer_pubkey.get(), transcript_data);
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-    sig_ok = 1;
+    sig_ok = true;
     ERR_clear_error();
 #endif
     if (!sig_ok) {
@@ -1347,19 +1343,15 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
   if (alg_a & SSL_aPSK) {
     ScopedCBB pms_cbb;
     CBB child;
-    uint8_t *new_pms;
-    size_t new_pms_len;
-
     if (!CBB_init(pms_cbb.get(), 2 + psk_len + 2 + pms.size()) ||
         !CBB_add_u16_length_prefixed(pms_cbb.get(), &child) ||
         !CBB_add_bytes(&child, pms.data(), pms.size()) ||
         !CBB_add_u16_length_prefixed(pms_cbb.get(), &child) ||
         !CBB_add_bytes(&child, psk, psk_len) ||
-        !CBB_finish(pms_cbb.get(), &new_pms, &new_pms_len)) {
+        !CBBFinishArray(pms_cbb.get(), &pms)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return ssl_hs_error;
     }
-    pms.Reset(new_pms, new_pms_len);
   }
 
   // The message must be added to the finished hash before calculating the
@@ -1438,9 +1430,9 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
   } else {
-    switch (ssl_private_key_sign(
-        hs, ptr, &sig_len, max_sig_len, signature_algorithm,
-        hs->transcript.buffer_data(), hs->transcript.buffer_len())) {
+    switch (ssl_private_key_sign(hs, ptr, &sig_len, max_sig_len,
+                                 signature_algorithm,
+                                 hs->transcript.buffer())) {
       case ssl_private_key_success:
         break;
       case ssl_private_key_failure:

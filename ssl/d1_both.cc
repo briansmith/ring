@@ -574,7 +574,7 @@ static int add_outgoing(SSL *ssl, int is_ccs, Array<uint8_t> data) {
     // TODO(svaldez): Move this up a layer to fix abstraction for SSLTranscript
     // on hs.
     if (ssl->s3->hs != NULL &&
-        !ssl->s3->hs->transcript.Update(data.data(), data.size())) {
+        !ssl->s3->hs->transcript.Update(data)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return 0;
     }

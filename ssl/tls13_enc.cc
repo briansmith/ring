@@ -382,8 +382,8 @@ int tls13_write_psk_binder(SSL_HANDSHAKE *hs, uint8_t *msg, size_t len) {
   uint8_t context[EVP_MAX_MD_SIZE];
   unsigned context_len;
   if (!EVP_DigestInit_ex(ctx.get(), digest, NULL) ||
-      !EVP_DigestUpdate(ctx.get(), hs->transcript.buffer_data(),
-                        hs->transcript.buffer_len()) ||
+      !EVP_DigestUpdate(ctx.get(), hs->transcript.buffer().data(),
+                        hs->transcript.buffer().size()) ||
       !EVP_DigestUpdate(ctx.get(), msg, len - hash_len - 3) ||
       !EVP_DigestFinal_ex(ctx.get(), context, &context_len)) {
     return 0;

@@ -222,16 +222,16 @@ static enum ssl_private_key_result_t legacy_sign(
 
 enum ssl_private_key_result_t ssl_private_key_sign(
     SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, size_t max_out,
-    uint16_t sigalg, const uint8_t *in, size_t in_len) {
+    uint16_t sigalg, Span<const uint8_t> in) {
   SSL *const ssl = hs->ssl;
   if (ssl->cert->key_method != NULL) {
     enum ssl_private_key_result_t ret;
     if (hs->pending_private_key_op) {
       ret = ssl->cert->key_method->complete(ssl, out, out_len, max_out);
     } else {
-      ret = (ssl->cert->key_method->sign != NULL
-                 ? ssl->cert->key_method->sign
-                 : legacy_sign)(ssl, out, out_len, max_out, sigalg, in, in_len);
+      ret = (ssl->cert->key_method->sign != NULL ? ssl->cert->key_method->sign
+                                                 : legacy_sign)(
+          ssl, out, out_len, max_out, sigalg, in.data(), in.size());
     }
     hs->pending_private_key_op = ret == ssl_private_key_retry;
     return ret;
@@ -240,31 +240,34 @@ enum ssl_private_key_result_t ssl_private_key_sign(
   *out_len = max_out;
   ScopedEVP_MD_CTX ctx;
   if (!setup_ctx(ssl, ctx.get(), ssl->cert->privatekey, sigalg, 0 /* sign */) ||
-      !EVP_DigestSign(ctx.get(), out, out_len, in, in_len)) {
+      !EVP_DigestSign(ctx.get(), out, out_len, in.data(), in.size())) {
     return ssl_private_key_failure;
   }
   return ssl_private_key_success;
 }
 
-int ssl_public_key_verify(SSL *ssl, const uint8_t *signature,
-                          size_t signature_len, uint16_t sigalg, EVP_PKEY *pkey,
-                          const uint8_t *in, size_t in_len) {
+bool ssl_public_key_verify(SSL *ssl, Span<const uint8_t> signature,
+                           uint16_t sigalg, EVP_PKEY *pkey,
+                           Span<const uint8_t> in) {
   ScopedEVP_MD_CTX ctx;
   return setup_ctx(ssl, ctx.get(), pkey, sigalg, 1 /* verify */) &&
-         EVP_DigestVerify(ctx.get(), signature, signature_len, in, in_len);
+         EVP_DigestVerify(ctx.get(), signature.data(), signature.size(),
+                          in.data(), in.size());
 }
 
-enum ssl_private_key_result_t ssl_private_key_decrypt(
-    SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, size_t max_out,
-    const uint8_t *in, size_t in_len) {
+enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
+                                                      uint8_t *out,
+                                                      size_t *out_len,
+                                                      size_t max_out,
+                                                      Span<const uint8_t> in) {
   SSL *const ssl = hs->ssl;
   if (ssl->cert->key_method != NULL) {
     enum ssl_private_key_result_t ret;
     if (hs->pending_private_key_op) {
       ret = ssl->cert->key_method->complete(ssl, out, out_len, max_out);
     } else {
-      ret = ssl->cert->key_method->decrypt(ssl, out, out_len, max_out, in,
-                                           in_len);
+      ret = ssl->cert->key_method->decrypt(ssl, out, out_len, max_out,
+                                           in.data(), in.size());
     }
     hs->pending_private_key_op = ret == ssl_private_key_retry;
     return ret;
@@ -279,17 +282,18 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(
 
   // Decrypt with no padding. PKCS#1 padding will be removed as part of the
   // timing-sensitive code by the caller.
-  if (!RSA_decrypt(rsa, out_len, out, max_out, in, in_len, RSA_NO_PADDING)) {
+  if (!RSA_decrypt(rsa, out_len, out, max_out, in.data(), in.size(),
+                   RSA_NO_PADDING)) {
     return ssl_private_key_failure;
   }
   return ssl_private_key_success;
 }
 
-int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
-                                                 uint16_t sigalg) {
+bool ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
+                                                  uint16_t sigalg) {
   SSL *const ssl = hs->ssl;
   if (!pkey_supports_algorithm(ssl, hs->local_pubkey.get(), sigalg)) {
-    return 0;
+    return false;
   }
 
   // Ensure the RSA key is large enough for the hash. RSASSA-PSS requires that
@@ -301,7 +305,7 @@ int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
   const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
   if (alg->is_rsa_pss && (size_t)EVP_PKEY_size(hs->local_pubkey.get()) <
                              2 * EVP_MD_size(alg->digest_func()) + 2) {
-    return 0;
+    return false;
   }
 
   // Newer algorithms require message-based private keys.
@@ -309,10 +313,10 @@ int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
   if (ssl->cert->key_method != NULL &&
       ssl->cert->key_method->sign == NULL &&
       !legacy_sign_digest_supported(alg)) {
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
 }  // namespace bssl

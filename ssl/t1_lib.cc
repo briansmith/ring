@@ -3330,15 +3330,13 @@ err:
 int tls1_channel_id_hash(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len) {
   SSL *const ssl = hs->ssl;
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
-    uint8_t *msg;
-    size_t msg_len;
-    if (!tls13_get_cert_verify_signature_input(hs, &msg, &msg_len,
+    Array<uint8_t> msg;
+    if (!tls13_get_cert_verify_signature_input(hs, &msg,
                                                ssl_cert_verify_channel_id)) {
       return 0;
     }
-    SHA256(msg, msg_len, out);
+    SHA256(msg.data(), msg.size(), out);
     *out_len = SHA256_DIGEST_LENGTH;
-    OPENSSL_free(msg);
     return 1;
   }
 

@@ -876,8 +876,7 @@ static enum ssl_hs_wait_t do_send_server_key_exchange(SSL_HANDSHAKE *hs) {
 
     size_t sig_len;
     switch (ssl_private_key_sign(hs, ptr, &sig_len, max_sig_len,
-                                 signature_algorithm, hs->server_params.data(),
-                                 hs->server_params.size())) {
+                                 signature_algorithm, hs->server_params)) {
       case ssl_private_key_success:
         if (!CBB_did_write(&child, sig_len)) {
           return ssl_hs_error;
@@ -1113,8 +1112,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     size_t decrypt_len;
     switch (ssl_private_key_decrypt(hs, decrypt_buf.data(), &decrypt_len,
                                     decrypt_buf.size(),
-                                    CBS_data(&encrypted_premaster_secret),
-                                    CBS_len(&encrypted_premaster_secret))) {
+                                    encrypted_premaster_secret)) {
       case ssl_private_key_success:
         break;
       case ssl_private_key_failure:
@@ -1226,8 +1224,6 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
 
     ScopedCBB new_premaster;
     CBB child;
-    uint8_t *new_data;
-    size_t new_len;
     if (!CBB_init(new_premaster.get(),
                   2 + psk_len + 2 + premaster_secret.size()) ||
         !CBB_add_u16_length_prefixed(new_premaster.get(), &child) ||
@@ -1235,12 +1231,10 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
                        premaster_secret.size()) ||
         !CBB_add_u16_length_prefixed(new_premaster.get(), &child) ||
         !CBB_add_bytes(&child, psk, psk_len) ||
-        !CBB_finish(new_premaster.get(), &new_data, &new_len)) {
+        !CBBFinishArray(new_premaster.get(), &premaster_secret)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return ssl_hs_error;
     }
-
-    premaster_secret.Reset(new_data, new_len);
   }
 
   if (!ssl_hash_message(hs, msg)) {
@@ -1312,7 +1306,7 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  int sig_ok;
+  bool sig_ok;
   // The SSL3 construction for CertificateVerify does not decompose into a
   // single final digest and signature, and must be special-cased.
   if (ssl_protocol_version(ssl) == SSL3_VERSION) {
@@ -1330,14 +1324,13 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
              EVP_PKEY_verify(pctx.get(), CBS_data(&signature),
                              CBS_len(&signature), digest, digest_len);
   } else {
-    sig_ok = ssl_public_key_verify(
-        ssl, CBS_data(&signature), CBS_len(&signature), signature_algorithm,
-        hs->peer_pubkey.get(), hs->transcript.buffer_data(),
-        hs->transcript.buffer_len());
+    sig_ok =
+        ssl_public_key_verify(ssl, signature, signature_algorithm,
+                              hs->peer_pubkey.get(), hs->transcript.buffer());
   }
 
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-  sig_ok = 1;
+  sig_ok = true;
   ERR_clear_error();
 #endif
   if (!sig_ok) {

@@ -198,7 +198,7 @@ int ssl3_add_message(SSL *ssl, Array<uint8_t> msg) {
   // TODO(svaldez): Move this up a layer to fix abstraction for SSLTranscript on
   // hs.
   if (ssl->s3->hs != NULL &&
-      !ssl->s3->hs->transcript.Update(msg.data(), msg.size())) {
+      !ssl->s3->hs->transcript.Update(msg)) {
     return 0;
   }
   return 1;
@@ -345,8 +345,7 @@ static int read_v2_client_hello(SSL *ssl) {
   // The V2ClientHello without the length is incorporated into the handshake
   // hash. This is only ever called at the start of the handshake, so hs is
   // guaranteed to be non-NULL.
-  if (!ssl->s3->hs->transcript.Update(CBS_data(&v2_client_hello),
-                                      CBS_len(&v2_client_hello))) {
+  if (!ssl->s3->hs->transcript.Update(v2_client_hello)) {
     return -1;
   }
 

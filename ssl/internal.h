@@ -545,10 +545,10 @@ class SSLTranscript {
   // to call this function after the handshake buffer is released.
   bool InitHash(uint16_t version, const SSL_CIPHER *cipher);
 
-  const uint8_t *buffer_data() const {
-    return reinterpret_cast<const uint8_t *>(buffer_->data);
+  Span<const uint8_t> buffer() {
+    return MakeConstSpan(reinterpret_cast<const uint8_t *>(buffer_->data),
+                         buffer_->length);
   }
-  size_t buffer_len() const { return buffer_->length; }
 
   // FreeBuffer releases the handshake buffer. Subsequent calls to
   // |Update| will not update the handshake buffer.
@@ -563,7 +563,7 @@ class SSLTranscript {
 
   // Update adds |in| to the handshake buffer and handshake hash, whichever is
   // enabled. It returns true on success and false on failure.
-  bool Update(const uint8_t *in, size_t in_len);
+  bool Update(Span<const uint8_t> in);
 
   // GetHash writes the handshake hash to |out| which must have room for at
   // least |DigestLen| bytes. On success, it returns true and sets |*out_len| to
@@ -877,22 +877,24 @@ int ssl_has_private_key(const SSL *ssl);
 
 enum ssl_private_key_result_t ssl_private_key_sign(
     SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, size_t max_out,
-    uint16_t sigalg, const uint8_t *in, size_t in_len);
+    uint16_t sigalg, Span<const uint8_t> in);
 
-enum ssl_private_key_result_t ssl_private_key_decrypt(
-    SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, size_t max_out,
-    const uint8_t *in, size_t in_len);
+enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
+                                                      uint8_t *out,
+                                                      size_t *out_len,
+                                                      size_t max_out,
+                                                      Span<const uint8_t> in);
 
-// ssl_private_key_supports_signature_algorithm returns one if |hs|'s private
-// key supports |sigalg| and zero otherwise.
-int ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
+// ssl_private_key_supports_signature_algorithm returns whether |hs|'s private
+// key supports |sigalg|.
+bool ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
                                                  uint16_t sigalg);
 
 // ssl_public_key_verify verifies that the |signature| is valid for the public
 // key |pkey| and input |in|, using the signature algorithm |sigalg|.
-int ssl_public_key_verify(SSL *ssl, const uint8_t *signature,
-                          size_t signature_len, uint16_t sigalg, EVP_PKEY *pkey,
-                          const uint8_t *in, size_t in_len);
+bool ssl_public_key_verify(SSL *ssl, Span<const uint8_t> signature,
+                           uint16_t sigalg, EVP_PKEY *pkey,
+                           Span<const uint8_t> in);
 
 
 // Custom extensions
@@ -1533,11 +1535,10 @@ enum ssl_cert_verify_context_t {
 
 // tls13_get_cert_verify_signature_input generates the message to be signed for
 // TLS 1.3's CertificateVerify message. |cert_verify_context| determines the
-// type of signature. It sets |*out| and |*out_len| to a newly allocated buffer
-// containing the result. The caller must free it with |OPENSSL_free| to release
-// it. This function returns one on success and zero on failure.
-int tls13_get_cert_verify_signature_input(
-    SSL_HANDSHAKE *hs, uint8_t **out, size_t *out_len,
+// type of signature. It sets |*out| to a newly allocated buffer containing the
+// result. This function returns true on success and false on failure.
+bool tls13_get_cert_verify_signature_input(
+    SSL_HANDSHAKE *hs, Array<uint8_t> *out,
     enum ssl_cert_verify_context_t cert_verify_context);
 
 // ssl_negotiate_alpn negotiates the ALPN extension, if applicable. It returns
