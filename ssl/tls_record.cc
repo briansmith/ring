@@ -586,7 +586,7 @@ OpenRecordResult OpenRecord(SSL *ssl, Span<uint8_t> *out,
   }
 
   Span<uint8_t> plaintext;
-  uint8_t type;
+  uint8_t type = 0;
   const ssl_open_record_t result = tls_open_record(
       ssl, &type, &plaintext, out_record_len, out_alert, in);
 
