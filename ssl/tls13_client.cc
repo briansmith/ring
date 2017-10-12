@@ -774,6 +774,13 @@ const char *tls13_client_handshake_state(SSL_HANDSHAKE *hs) {
 }
 
 int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
+  if (ssl->s3->write_shutdown != ssl_shutdown_none) {
+    // Ignore tickets on shutdown. Callers tend to indiscriminately call
+    // |SSL_shutdown| before destroying an |SSL|, at which point calling the new
+    // session callback may be confusing.
+    return 1;
+  }
+
   UniquePtr<SSL_SESSION> session(SSL_SESSION_dup(ssl->s3->established_session,
                                                  SSL_SESSION_INCLUDE_NONAUTH));
   if (!session) {

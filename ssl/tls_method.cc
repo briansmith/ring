@@ -116,7 +116,6 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     ssl3_open_handshake,
     ssl3_open_change_cipher_spec,
     ssl3_open_app_data,
-    ssl3_open_close_notify,
     ssl3_write_app_data,
     ssl3_dispatch_alert,
     ssl3_supports_cipher,

@@ -187,27 +187,6 @@ ssl_open_record_t dtls1_open_app_data(SSL *ssl, Span<uint8_t> *out,
   return ssl_open_record_success;
 }
 
-ssl_open_record_t dtls1_open_close_notify(SSL *ssl, size_t *out_consumed,
-                                          uint8_t *out_alert,
-                                          bssl::Span<uint8_t> in) {
-  switch (ssl->s3->read_shutdown) {
-    // Bidirectional shutdown doesn't make sense for an unordered transport.
-    // DTLS alerts also aren't delivered reliably, so we may even time out
-    // because the peer never received our close_notify. Report to the caller
-    // that the channel has fully shut down.
-    case ssl_shutdown_none:
-    case ssl_shutdown_close_notify:
-      ssl->s3->read_shutdown = ssl_shutdown_close_notify;
-      return ssl_open_record_close_notify;
-    case ssl_shutdown_error:
-      ERR_restore_state(ssl->s3->read_error);
-      *out_alert = 0;
-      return ssl_open_record_error;
-  }
-  assert(0);
-  return ssl_open_record_error;
-}
-
 int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake,
                          const uint8_t *buf, int len) {
   assert(!SSL_in_init(ssl));

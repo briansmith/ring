@@ -884,7 +884,8 @@ static int ssl_do_post_handshake(SSL *ssl, const SSLMessage &msg) {
   // protocol, namely in HTTPS, just before reading the HTTP response. Require
   // the record-layer be idle and avoid complexities of sending a handshake
   // record while an application_data record is being written.
-  if (ssl_write_buffer_is_pending(ssl)) {
+  if (ssl_write_buffer_is_pending(ssl) ||
+      ssl->s3->write_shutdown != ssl_shutdown_none) {
     goto no_renegotiation;
   }
 
@@ -902,12 +903,12 @@ static int ssl_do_post_handshake(SSL *ssl, const SSLMessage &msg) {
   return 1;
 
 no_renegotiation:
-  ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_NO_RENEGOTIATION);
   OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
+  ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_NO_RENEGOTIATION);
   return 0;
 }
 
-static int ssl_read_impl(SSL *ssl, void *buf, int num, bool peek) {
+static int ssl_read_impl(SSL *ssl) {
   ssl_reset_error_state(ssl);
 
   if (ssl->do_handshake == NULL) {
@@ -915,7 +916,7 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, bool peek) {
     return -1;
   }
 
-  for (;;) {
+  while (ssl->s3->pending_app_data.empty()) {
     // Complete the current handshake, if any. False Start will cause
     // |SSL_do_handshake| to return mid-handshake, so this may require multiple
     // iterations.
@@ -941,48 +942,52 @@ static int ssl_read_impl(SSL *ssl, void *buf, int num, bool peek) {
       continue;  // Loop again. We may have begun a new handshake.
     }
 
-    if (ssl->s3->pending_app_data.empty()) {
-      uint8_t alert = SSL_AD_DECODE_ERROR;
-      size_t consumed = 0;
-      auto ret =
-          ssl->method->open_app_data(ssl, &ssl->s3->pending_app_data, &consumed,
-                                     &alert, ssl_read_buffer(ssl));
-      bool retry;
-      int bio_ret = ssl_handle_open_record(ssl, &retry, ret, consumed, alert);
-      if (bio_ret <= 0) {
-        return bio_ret;
-      }
-      if (retry) {
-        continue;
-      }
+    uint8_t alert = SSL_AD_DECODE_ERROR;
+    size_t consumed = 0;
+    auto ret =
+        ssl->method->open_app_data(ssl, &ssl->s3->pending_app_data, &consumed,
+                                   &alert, ssl_read_buffer(ssl));
+    bool retry;
+    int bio_ret = ssl_handle_open_record(ssl, &retry, ret, consumed, alert);
+    if (bio_ret <= 0) {
+      return bio_ret;
+    }
+    if (!retry) {
+      assert(!ssl->s3->pending_app_data.empty());
       ssl->s3->key_update_count = 0;
     }
-
-    if (num <= 0) {
-      return num;
-    }
-
-    size_t todo =
-        std::min(ssl->s3->pending_app_data.size(), static_cast<size_t>(num));
-    OPENSSL_memcpy(buf, ssl->s3->pending_app_data.data(), todo);
-    if (!peek) {
-      // TODO(davidben): In DTLS, should the rest of the record be discarded?
-      // DTLS is not a stream. See https://crbug.com/boringssl/65.
-      ssl->s3->pending_app_data = ssl->s3->pending_app_data.subspan(todo);
-      if (ssl->s3->pending_app_data.empty()) {
-        ssl_read_buffer_discard(ssl);
-      }
-    }
-    return static_cast<int>(todo);
   }
+
+  return 1;
 }
 
 int SSL_read(SSL *ssl, void *buf, int num) {
-  return ssl_read_impl(ssl, buf, num, false /* consume bytes */);
+  int ret = SSL_peek(ssl, buf, num);
+  if (ret <= 0) {
+    return ret;
+  }
+  // TODO(davidben): In DTLS, should the rest of the record be discarded?  DTLS
+  // is not a stream. See https://crbug.com/boringssl/65.
+  ssl->s3->pending_app_data =
+      ssl->s3->pending_app_data.subspan(static_cast<size_t>(ret));
+  if (ssl->s3->pending_app_data.empty()) {
+    ssl_read_buffer_discard(ssl);
+  }
+  return ret;
 }
 
 int SSL_peek(SSL *ssl, void *buf, int num) {
-  return ssl_read_impl(ssl, buf, num, true /* peek */);
+  int ret = ssl_read_impl(ssl);
+  if (ret <= 0) {
+    return ret;
+  }
+  if (num <= 0) {
+    return num;
+  }
+  size_t todo =
+      std::min(ssl->s3->pending_app_data.size(), static_cast<size_t>(num));
+  OPENSSL_memcpy(buf, ssl->s3->pending_app_data.data(), todo);
+  return static_cast<int>(todo);
 }
 
 int SSL_write(SSL *ssl, const void *buf, int num) {
@@ -1056,21 +1061,28 @@ int SSL_shutdown(SSL *ssl) {
       return -1;
     }
   } else if (ssl->s3->read_shutdown != ssl_shutdown_close_notify) {
-    ssl->s3->pending_app_data = Span<uint8_t>();
-    for (;;) {
-      uint8_t alert = SSL_AD_DECODE_ERROR;
-      size_t consumed = 0;
-      auto ret = ssl->method->open_close_notify(ssl, &consumed, &alert,
-                                                ssl_read_buffer(ssl));
-      bool retry;
-      int bio_ret = ssl_handle_open_record(ssl, &retry, ret, consumed, alert);
-      if (bio_ret <= 0) {
-        break;
+    if (SSL_is_dtls(ssl)) {
+      // Bidirectional shutdown doesn't make sense for an unordered
+      // transport. DTLS alerts also aren't delivered reliably, so we may even
+      // time out because the peer never received our close_notify. Report to
+      // the caller that the channel has fully shut down.
+      if (ssl->s3->read_shutdown == ssl_shutdown_error) {
+        ERR_restore_state(ssl->s3->read_error);
+        return -1;
       }
-      assert(retry);  // open_close_notify never reports success.
-    }
-    if (ssl->s3->read_shutdown != ssl_shutdown_close_notify) {
-      return -1;
+      ssl->s3->read_shutdown = ssl_shutdown_close_notify;
+    } else {
+      // Keep discarding data until we see a close_notify.
+      for (;;) {
+        ssl->s3->pending_app_data = Span<uint8_t>();
+        int ret = ssl_read_impl(ssl);
+        if (ret <= 0) {
+          break;
+        }
+      }
+      if (ssl->s3->read_shutdown != ssl_shutdown_close_notify) {
+        return -1;
+      }
     }
   }
 

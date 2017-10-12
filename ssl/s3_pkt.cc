@@ -390,19 +390,6 @@ ssl_open_record_t ssl3_open_change_cipher_spec(SSL *ssl, size_t *out_consumed,
   return ssl_open_record_success;
 }
 
-ssl_open_record_t ssl3_open_close_notify(SSL *ssl, size_t *out_consumed,
-                                         uint8_t *out_alert, Span<uint8_t> in) {
-  // TODO(davidben): Replace this with open_app_data so we actually process
-  // various bad behaviors.
-  uint8_t type;
-  Span<uint8_t> body;
-  auto ret = tls_open_record(ssl, &type, &body, out_consumed, out_alert, in);
-  if (ret == ssl_open_record_success) {
-    return ssl_open_record_discard;
-  }
-  return ret;
-}
-
 int ssl_send_alert(SSL *ssl, int level, int desc) {
   // It is illegal to send an alert when we've already sent a closing one.
   if (ssl->s3->write_shutdown != ssl_shutdown_none) {

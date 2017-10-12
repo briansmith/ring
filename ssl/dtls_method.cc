@@ -121,7 +121,6 @@ static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     dtls1_open_handshake,
     dtls1_open_change_cipher_spec,
     dtls1_open_app_data,
-    dtls1_open_close_notify,
     dtls1_write_app_data,
     dtls1_dispatch_alert,
     dtls1_supports_cipher,

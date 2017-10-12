@@ -1754,11 +1754,6 @@ struct SSL_PROTOCOL_METHOD {
   ssl_open_record_t (*open_app_data)(SSL *ssl, Span<uint8_t> *out,
                                      size_t *out_consumed, uint8_t *out_alert,
                                      Span<uint8_t> in);
-  // open_close_notify processes a record from |in| for reading close_notify.
-  // It discards all records and returns |ssl_open_record_close_notify| when it
-  // receives one.
-  ssl_open_record_t (*open_close_notify)(SSL *ssl, size_t *out_consumed,
-                                         uint8_t *out_alert, Span<uint8_t> in);
   int (*write_app_data)(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
                         int len);
   int (*dispatch_alert)(SSL *ssl);
@@ -2711,8 +2706,6 @@ ssl_open_record_t ssl3_open_app_data(SSL *ssl, Span<uint8_t> *out,
 ssl_open_record_t ssl3_open_change_cipher_spec(SSL *ssl, size_t *out_consumed,
                                                uint8_t *out_alert,
                                                Span<uint8_t> in);
-ssl_open_record_t ssl3_open_close_notify(SSL *ssl, size_t *out_consumed,
-                                         uint8_t *out_alert, Span<uint8_t> in);
 int ssl3_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
                         int len);
 
@@ -2747,8 +2740,6 @@ ssl_open_record_t dtls1_open_app_data(SSL *ssl, Span<uint8_t> *out,
 ssl_open_record_t dtls1_open_change_cipher_spec(SSL *ssl, size_t *out_consumed,
                                                 uint8_t *out_alert,
                                                 Span<uint8_t> in);
-ssl_open_record_t dtls1_open_close_notify(SSL *ssl, size_t *out_consumed,
-                                          uint8_t *out_alert, Span<uint8_t> in);
 
 int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake,
                          const uint8_t *buf, int len);
