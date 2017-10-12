@@ -1622,7 +1622,9 @@ func (hs *clientHandshakeState) sendFinished(out []byte, isResume bool) error {
 		}
 	}
 
-	c.flushHandshake()
+	if !isResume || !c.config.Bugs.PackAppDataWithHandshake {
+		c.flushHandshake()
+	}
 	return nil
 }
 

@@ -96,6 +96,7 @@ type Conn struct {
 	handMsg          []byte   // pending assembled handshake message
 	handMsgLen       int      // handshake message length, not including the header
 	pendingFragments [][]byte // pending outgoing handshake fragments.
+	pendingPacket    []byte   // pending outgoing packet.
 
 	keyUpdateRequested bool
 	seenOneByteRecord  bool
@@ -1399,10 +1400,6 @@ func (c *Conn) Write(b []byte) (int, error) {
 
 	c.out.Lock()
 	defer c.out.Unlock()
-
-	// Flush any pending handshake data. PackHelloRequestWithFinished may
-	// have been set and the handshake not followed by Renegotiate.
-	c.flushHandshake()
 
 	if err := c.out.err; err != nil {
 		return 0, err

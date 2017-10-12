@@ -80,7 +80,7 @@ func (c *Conn) serverHandshake() error {
 					return err
 				}
 			}
-			if err := hs.sendFinished(c.firstFinished[:]); err != nil {
+			if err := hs.sendFinished(c.firstFinished[:], isResume); err != nil {
 				return err
 			}
 			// Most retransmits are triggered by a timeout, but the final
@@ -120,7 +120,7 @@ func (c *Conn) serverHandshake() error {
 			if err := hs.sendSessionTicket(); err != nil {
 				return err
 			}
-			if err := hs.sendFinished(nil); err != nil {
+			if err := hs.sendFinished(nil, isResume); err != nil {
 				return err
 			}
 		}
@@ -1800,7 +1800,7 @@ func (hs *serverHandshakeState) sendSessionTicket() error {
 	return nil
 }
 
-func (hs *serverHandshakeState) sendFinished(out []byte) error {
+func (hs *serverHandshakeState) sendFinished(out []byte, isResume bool) error {
 	c := hs.c
 
 	finished := new(finishedMsg)
@@ -1845,8 +1845,8 @@ func (hs *serverHandshakeState) sendFinished(out []byte) error {
 		}
 	}
 
-	if !c.config.Bugs.PackHelloRequestWithFinished {
-		// Defer flushing until renegotiation.
+	if isResume || (!c.config.Bugs.PackHelloRequestWithFinished && !c.config.Bugs.PackAppDataWithHandshake) {
+		// Defer flushing until Renegotiate() or Write().
 		c.flushHandshake()
 	}
 

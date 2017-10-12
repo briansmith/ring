@@ -837,6 +837,13 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 			if err != nil {
 				return err
 			}
+			if config.Bugs.SplitAndPackAppData {
+				m, err := tlsConn.Read(bufTmp[n:])
+				if err != nil {
+					return err
+				}
+				n += m
+			}
 			if n != len(buf) {
 				return fmt.Errorf("bad reply; length mismatch (%d vs %d)", n, len(buf))
 			}
@@ -2293,17 +2300,6 @@ read alert 1 0
 			flags: []string{"-async"},
 		},
 		{
-			protocol: dtls,
-			name:     "PackDTLSHandshake",
-			config: Config{
-				Bugs: ProtocolBugs{
-					MaxHandshakeRecordLength: 2,
-					PackHandshakeFragments:   20,
-					PackHandshakeRecords:     200,
-				},
-			},
-		},
-		{
 			name:             "SendEmptyRecords-Pass",
 			sendEmptyRecords: 32,
 		},
@@ -2795,6 +2791,27 @@ read alert 1 0
 			},
 			shouldFail:         true,
 			expectedLocalError: "local error: record overflow",
+		},
+		{
+			// Test that DTLS can handle multiple application data
+			// records in a single packet.
+			protocol: dtls,
+			name:     "SplitAndPackAppData-DTLS",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SplitAndPackAppData: true,
+				},
+			},
+		},
+		{
+			protocol: dtls,
+			name:     "SplitAndPackAppData-DTLS-Async",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SplitAndPackAppData: true,
+				},
+			},
+			flags: []string{"-async"},
 		},
 	}
 	testCases = append(testCases, basicTests...)
@@ -3931,11 +3948,11 @@ func addExtendedMasterSecretTests() {
 }
 
 type stateMachineTestConfig struct {
-	protocol            protocol
-	async               bool
-	splitHandshake      bool
-	packHandshakeFlight bool
-	implicitHandshake   bool
+	protocol          protocol
+	async             bool
+	splitHandshake    bool
+	packHandshake     bool
+	implicitHandshake bool
 }
 
 // Adds tests that try to cover the range of the handshake state machine, under
@@ -3958,13 +3975,11 @@ func addAllStateMachineCoverageTests() {
 				async:          async,
 				splitHandshake: true,
 			})
-			if protocol == tls {
-				addStateMachineCoverageTests(stateMachineTestConfig{
-					protocol:            protocol,
-					async:               async,
-					packHandshakeFlight: true,
-				})
-			}
+			addStateMachineCoverageTests(stateMachineTestConfig{
+				protocol:      protocol,
+				async:         async,
+				packHandshake: true,
+			})
 		}
 	}
 }
@@ -4603,7 +4618,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			config: Config{
 				MaxVersion: VersionTLS12,
 				Bugs: ProtocolBugs{
-					PackHelloRequestWithFinished: config.packHandshakeFlight,
+					PackHelloRequestWithFinished: config.packHandshake,
 				},
 			},
 			sendHalfHelloRequest: true,
@@ -4913,9 +4928,16 @@ read alert 1 0
 				test.flags = append(test.flags, "-mtu", "256")
 			}
 		}
-		if config.packHandshakeFlight {
-			test.name += "-PackHandshakeFlight"
-			test.config.Bugs.PackHandshakeFlight = true
+		if config.packHandshake {
+			test.name += "-PackHandshake"
+			if config.protocol == dtls {
+				test.config.Bugs.MaxHandshakeRecordLength = 2
+				test.config.Bugs.PackHandshakeFragments = 20
+				test.config.Bugs.PackHandshakeRecords = 1500
+				test.config.Bugs.PackAppDataWithHandshake = true
+			} else {
+				test.config.Bugs.PackHandshakeFlight = true
+			}
 		}
 		if config.implicitHandshake {
 			test.name += "-ImplicitHandshake"
