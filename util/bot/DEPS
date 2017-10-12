@@ -15,10 +15,8 @@
 vars = {
   'chromium_git': 'https://chromium.googlesource.com',
 
-  # TODO(davidben): Switch this to False by default once the recipes configure it.
-  'checkout_clang': True,
-  # TODO(davidben): Switch this to False by default once the recipes configure it.
-  'checkout_fuzzer': 'checkout_linux',
+  'checkout_clang': False,
+  'checkout_fuzzer': False,
   'checkout_sde': False,
 }
 
