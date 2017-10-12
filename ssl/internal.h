@@ -1736,21 +1736,14 @@ struct SSL_PROTOCOL_METHOD {
   bool (*get_message)(SSL *ssl, SSLMessage *out);
   // next_message is called to release the current handshake message.
   void (*next_message)(SSL *ssl);
-  // open_handshake processes a record from |in| for reading a handshake
-  // message.
+  // Use the |ssl_open_handshake| wrapper.
   ssl_open_record_t (*open_handshake)(SSL *ssl, size_t *out_consumed,
                                       uint8_t *out_alert, Span<uint8_t> in);
-  // open_change_cipher_spec processes a record from |in| for reading a
-  // ChangeCipherSpec. If an out-of-order record was received in DTLS, it
-  // succeeds without consuming input.
+  // Use the |ssl_open_change_cipher_spec| wrapper.
   ssl_open_record_t (*open_change_cipher_spec)(SSL *ssl, size_t *out_consumed,
                                                uint8_t *out_alert,
                                                Span<uint8_t> in);
-  // open_app_data processes a record from |in| for reading application data.
-  // On success, it returns |ssl_open_record_success| and sets |*out| to the
-  // input. If it encounters a post-handshake message, it returns
-  // |ssl_open_record_discard|. The caller should then retry, after processing
-  // any messages received with |get_message|.
+  // Use the |ssl_open_app_data| wrapper.
   ssl_open_record_t (*open_app_data)(SSL *ssl, Span<uint8_t> *out,
                                      size_t *out_consumed, uint8_t *out_alert,
                                      Span<uint8_t> in);
@@ -1789,6 +1782,28 @@ struct SSL_PROTOCOL_METHOD {
   // point.
   bool (*set_write_state)(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx);
 };
+
+// The following wrappers call |open_*| but handle |read_shutdown| correctly.
+
+// ssl_open_handshake processes a record from |in| for reading a handshake
+// message.
+ssl_open_record_t ssl_open_handshake(SSL *ssl, size_t *out_consumed,
+                                     uint8_t *out_alert, Span<uint8_t> in);
+
+// ssl_open_change_cipher_spec processes a record from |in| for reading a
+// ChangeCipherSpec.
+ssl_open_record_t ssl_open_change_cipher_spec(SSL *ssl, size_t *out_consumed,
+                                              uint8_t *out_alert,
+                                              Span<uint8_t> in);
+
+// ssl_open_app_data processes a record from |in| for reading application data.
+// On success, it returns |ssl_open_record_success| and sets |*out| to the
+// input. If it encounters a post-handshake message, it returns
+// |ssl_open_record_discard|. The caller should then retry, after processing any
+// messages received with |get_message|.
+ssl_open_record_t ssl_open_app_data(SSL *ssl, Span<uint8_t> *out,
+                                    size_t *out_consumed, uint8_t *out_alert,
+                                    Span<uint8_t> in);
 
 // ssl_crypto_x509_method provides the |SSL_X509_METHOD| functions using
 // crypto/x509.

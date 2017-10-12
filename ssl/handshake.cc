@@ -504,11 +504,11 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         size_t consumed = 0;
         ssl_open_record_t ret;
         if (hs->wait == ssl_hs_read_change_cipher_spec) {
-          ret = ssl->method->open_change_cipher_spec(ssl, &consumed, &alert,
-                                                     ssl_read_buffer(ssl));
-        } else {
-          ret = ssl->method->open_handshake(ssl, &consumed, &alert,
+          ret = ssl_open_change_cipher_spec(ssl, &consumed, &alert,
                                             ssl_read_buffer(ssl));
+        } else {
+          ret =
+              ssl_open_handshake(ssl, &consumed, &alert, ssl_read_buffer(ssl));
         }
         if (ret == ssl_open_record_error &&
             hs->wait == ssl_hs_read_server_hello) {

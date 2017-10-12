@@ -212,12 +212,65 @@ void ssl_set_read_error(SSL* ssl) {
   ssl->s3->read_error = ERR_save_state();
 }
 
+static bool check_read_error(const SSL *ssl) {
+  if (ssl->s3->read_shutdown == ssl_shutdown_error) {
+    ERR_restore_state(ssl->s3->read_error);
+    return false;
+  }
+  return true;
+}
+
 int ssl_can_write(const SSL *ssl) {
   return !SSL_in_init(ssl) || ssl->s3->hs->can_early_write;
 }
 
 int ssl_can_read(const SSL *ssl) {
   return !SSL_in_init(ssl) || ssl->s3->hs->can_early_read;
+}
+
+ssl_open_record_t ssl_open_handshake(SSL *ssl, size_t *out_consumed,
+                                     uint8_t *out_alert, Span<uint8_t> in) {
+  *out_consumed = 0;
+  if (!check_read_error(ssl)) {
+    *out_alert = 0;
+    return ssl_open_record_error;
+  }
+  auto ret = ssl->method->open_handshake(ssl, out_consumed, out_alert, in);
+  if (ret == ssl_open_record_error) {
+    ssl_set_read_error(ssl);
+  }
+  return ret;
+}
+
+ssl_open_record_t ssl_open_change_cipher_spec(SSL *ssl, size_t *out_consumed,
+                                              uint8_t *out_alert,
+                                              Span<uint8_t> in) {
+  *out_consumed = 0;
+  if (!check_read_error(ssl)) {
+    *out_alert = 0;
+    return ssl_open_record_error;
+  }
+  auto ret =
+      ssl->method->open_change_cipher_spec(ssl, out_consumed, out_alert, in);
+  if (ret == ssl_open_record_error) {
+    ssl_set_read_error(ssl);
+  }
+  return ret;
+}
+
+ssl_open_record_t ssl_open_app_data(SSL *ssl, Span<uint8_t> *out,
+                                    size_t *out_consumed, uint8_t *out_alert,
+                                    Span<uint8_t> in) {
+  *out_consumed = 0;
+  if (!check_read_error(ssl)) {
+    *out_alert = 0;
+    return ssl_open_record_error;
+  }
+  auto ret = ssl->method->open_app_data(ssl, out, out_consumed, out_alert, in);
+  if (ret == ssl_open_record_error) {
+    ssl_set_read_error(ssl);
+  }
+  return ret;
 }
 
 void ssl_cipher_preference_list_free(
@@ -916,6 +969,11 @@ static int ssl_read_impl(SSL *ssl) {
     return -1;
   }
 
+  // Replay post-handshake message errors.
+  if (!check_read_error(ssl)) {
+    return -1;
+  }
+
   while (ssl->s3->pending_app_data.empty()) {
     // Complete the current handshake, if any. False Start will cause
     // |SSL_do_handshake| to return mid-handshake, so this may require multiple
@@ -936,6 +994,7 @@ static int ssl_read_impl(SSL *ssl) {
     if (ssl->method->get_message(ssl, &msg)) {
       // Handle the post-handshake message and try again.
       if (!ssl_do_post_handshake(ssl, msg)) {
+        ssl_set_read_error(ssl);
         return -1;
       }
       ssl->method->next_message(ssl);
@@ -944,9 +1003,8 @@ static int ssl_read_impl(SSL *ssl) {
 
     uint8_t alert = SSL_AD_DECODE_ERROR;
     size_t consumed = 0;
-    auto ret =
-        ssl->method->open_app_data(ssl, &ssl->s3->pending_app_data, &consumed,
-                                   &alert, ssl_read_buffer(ssl));
+    auto ret = ssl_open_app_data(ssl, &ssl->s3->pending_app_data, &consumed,
+                                 &alert, ssl_read_buffer(ssl));
     bool retry;
     int bio_ret = ssl_handle_open_record(ssl, &retry, ret, consumed, alert);
     if (bio_ret <= 0) {

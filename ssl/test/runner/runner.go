@@ -1173,13 +1173,15 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		shimKilledLock.Unlock()
 	}
 
-	var isValgrindError bool
+	var isValgrindError, mustFail bool
 	if exitError, ok := childErr.(*exec.ExitError); ok {
 		switch exitError.Sys().(syscall.WaitStatus).ExitStatus() {
 		case 88:
 			return errMoreMallocs
 		case 89:
 			return errUnimplemented
+		case 90:
+			mustFail = true
 		case 99:
 			isValgrindError = true
 		}
@@ -1209,7 +1211,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		correctFailure = correctFailure && strings.Contains(localError, test.expectedLocalError)
 	}
 
-	if failed != test.shouldFail || failed && !correctFailure {
+	if failed != test.shouldFail || failed && !correctFailure || mustFail {
 		childError := "none"
 		if childErr != nil {
 			childError = childErr.Error()
@@ -1223,6 +1225,8 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 			msg = "unexpected success"
 		case failed && !correctFailure:
 			msg = "bad error (wanted '" + expectedError + "' / '" + test.expectedLocalError + "')"
+		case mustFail:
+			msg = "test failure"
 		default:
 			panic("internal error")
 		}

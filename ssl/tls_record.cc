@@ -187,11 +187,14 @@ size_t ssl_seal_align_prefix_len(const SSL *ssl) {
   return ret;
 }
 
-static enum ssl_open_record_t do_tls_open_record(SSL *ssl, uint8_t *out_type,
-                                                 Span<uint8_t> *out,
-                                                 size_t *out_consumed,
-                                                 uint8_t *out_alert,
-                                                 Span<uint8_t> in) {
+enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
+                                       Span<uint8_t> *out, size_t *out_consumed,
+                                       uint8_t *out_alert, Span<uint8_t> in) {
+  *out_consumed = 0;
+  if (ssl->s3->read_shutdown == ssl_shutdown_close_notify) {
+    return ssl_open_record_close_notify;
+  }
+
   // If there is an unprocessed handshake message or we are already buffering
   // too much, stop before decrypting another handshake record.
   if (!tls_can_accept_handshake_data(ssl, out_alert)) {
@@ -353,29 +356,6 @@ skipped_data:
   }
 
   return ssl_open_record_discard;
-}
-
-enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
-                                       Span<uint8_t> *out, size_t *out_consumed,
-                                       uint8_t *out_alert, Span<uint8_t> in) {
-  *out_consumed = 0;
-  switch (ssl->s3->read_shutdown) {
-    case ssl_shutdown_none:
-      break;
-    case ssl_shutdown_error:
-      ERR_restore_state(ssl->s3->read_error);
-      *out_alert = 0;
-      return ssl_open_record_error;
-    case ssl_shutdown_close_notify:
-      return ssl_open_record_close_notify;
-  }
-
-  enum ssl_open_record_t ret =
-      do_tls_open_record(ssl, out_type, out, out_consumed, out_alert, in);
-  if (ret == ssl_open_record_error) {
-    ssl_set_read_error(ssl);
-  }
-  return ret;
 }
 
 static int do_seal_record(SSL *ssl, uint8_t *out_prefix, uint8_t *out,

@@ -56,6 +56,7 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #include <openssl/ssl.h>
 #include <openssl/x509.h>
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -1408,6 +1409,32 @@ static bool RetryAsync(SSL *ssl, int ret) {
   }
 }
 
+// CheckIdempotentError runs |func|, an operation on |ssl|, ensuring that
+// errors are idempotent.
+static int CheckIdempotentError(const char *name, SSL *ssl,
+                                std::function<int()> func) {
+  int ret = func();
+  int ssl_err = SSL_get_error(ssl, ret);
+  uint32_t err = ERR_peek_error();
+  if (ssl_err == SSL_ERROR_SSL || ssl_err == SSL_ERROR_ZERO_RETURN) {
+    int ret2 = func();
+    int ssl_err2 = SSL_get_error(ssl, ret2);
+    uint32_t err2 = ERR_peek_error();
+    if (ret != ret2 || ssl_err != ssl_err2 || err != err2) {
+      fprintf(stderr, "Repeating %s did not replay the error.\n", name);
+      char buf[256];
+      ERR_error_string_n(err, buf, sizeof(buf));
+      fprintf(stderr, "Wanted: %d %d %s\n", ret, ssl_err, buf);
+      ERR_error_string_n(err2, buf, sizeof(buf));
+      fprintf(stderr, "Got:    %d %d %s\n", ret2, ssl_err2, buf);
+      // runner treats exit code 90 as always failing. Otherwise, it may
+      // accidentally consider the result an expected protocol failure.
+      exit(90);
+    }
+  }
+  return ret;
+}
+
 // DoRead reads from |ssl|, resolving any asynchronous operations. It returns
 // the result value of the final |SSL_read| call.
 static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
@@ -1421,8 +1448,10 @@ static int DoRead(SSL *ssl, uint8_t *out, size_t max_out) {
       // trigger a retransmit, so disconnect the write quota.
       AsyncBioEnforceWriteQuota(test_state->async_bio, false);
     }
-    ret = config->peek_then_read ? SSL_peek(ssl, out, max_out)
-                                 : SSL_read(ssl, out, max_out);
+    ret = CheckIdempotentError("SSL_peek/SSL_read", ssl, [&]() -> int {
+      return config->peek_then_read ? SSL_peek(ssl, out, max_out)
+                                    : SSL_read(ssl, out, max_out);
+    });
     if (config->async) {
       AsyncBioEnforceWriteQuota(test_state->async_bio, true);
     }
@@ -2163,7 +2192,9 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session, SSL *ssl,
   int ret;
   if (!config->implicit_handshake) {
     do {
-      ret = SSL_do_handshake(ssl);
+      ret = CheckIdempotentError("SSL_do_handshake", ssl, [&]() -> int {
+        return SSL_do_handshake(ssl);
+      });
     } while (config->async && RetryAsync(ssl, ret));
     if (ret != 1 ||
         !CheckHandshakeProperties(ssl, is_resume, config)) {
