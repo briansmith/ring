@@ -90,8 +90,8 @@ int BN_lshift(BIGNUM *r, const BIGNUM *a, int n) {
   } else {
     for (i = a->top - 1; i >= 0; i--) {
       l = f[i];
-      t[nw + i + 1] |= (l >> rb) & BN_MASK2;
-      t[nw + i] = (l << lb) & BN_MASK2;
+      t[nw + i + 1] |= l >> rb;
+      t[nw + i] = l << lb;
     }
   }
   OPENSSL_memset(t, 0, nw * sizeof(t[0]));
@@ -121,7 +121,7 @@ int BN_lshift1(BIGNUM *r, const BIGNUM *a) {
   c = 0;
   for (i = 0; i < a->top; i++) {
     t = *(ap++);
-    *(rp++) = ((t << 1) | c) & BN_MASK2;
+    *(rp++) = (t << 1) | c;
     c = (t & BN_TBIT) ? 1 : 0;
   }
   if (c) {
@@ -173,11 +173,12 @@ int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
   } else {
     l = *(f++);
     for (i = j - 1; i != 0; i--) {
-      tmp = (l >> rb) & BN_MASK2;
+      tmp = l >> rb;
       l = *(f++);
-      *(t++) = (tmp | (l << lb)) & BN_MASK2;
+      *(t++) = tmp | (l << lb);
     }
-    if ((l = (l >> rb) & BN_MASK2)) {
+    l >>= rb;
+    if (l) {
       *(t) = l;
     }
   }
@@ -214,7 +215,7 @@ int BN_rshift1(BIGNUM *r, const BIGNUM *a) {
   }
   while (i > 0) {
     t = ap[--i];
-    rp[i] = ((t >> 1) & BN_MASK2) | c;
+    rp[i] = (t >> 1) | c;
     c = (t & 1) ? BN_TBIT : 0;
   }
   r->top = j;
@@ -227,19 +228,17 @@ int BN_rshift1(BIGNUM *r, const BIGNUM *a) {
 }
 
 int BN_set_bit(BIGNUM *a, int n) {
-  int i, j, k;
-
   if (n < 0) {
     return 0;
   }
 
-  i = n / BN_BITS2;
-  j = n % BN_BITS2;
+  int i = n / BN_BITS2;
+  int j = n % BN_BITS2;
   if (a->top <= i) {
     if (!bn_wexpand(a, i + 1)) {
       return 0;
     }
-    for (k = a->top; k < i + 1; k++) {
+    for (int k = a->top; k < i + 1; k++) {
       a->d[k] = 0;
     }
     a->top = i + 1;
@@ -269,13 +268,11 @@ int BN_clear_bit(BIGNUM *a, int n) {
 }
 
 int BN_is_bit_set(const BIGNUM *a, int n) {
-  int i, j;
-
   if (n < 0) {
     return 0;
   }
-  i = n / BN_BITS2;
-  j = n % BN_BITS2;
+  int i = n / BN_BITS2;
+  int j = n % BN_BITS2;
   if (a->top <= i) {
     return 0;
   }
@@ -284,14 +281,12 @@ int BN_is_bit_set(const BIGNUM *a, int n) {
 }
 
 int BN_mask_bits(BIGNUM *a, int n) {
-  int b, w;
-
   if (n < 0) {
     return 0;
   }
 
-  w = n / BN_BITS2;
-  b = n % BN_BITS2;
+  int w = n / BN_BITS2;
+  int b = n % BN_BITS2;
   if (w >= a->top) {
     return 0;
   }

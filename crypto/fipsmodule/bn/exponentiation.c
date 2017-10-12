@@ -655,9 +655,9 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
       goto err;
     }
     // 2^(top*BN_BITS2) - m
-    r->d[0] = (0 - m->d[0]) & BN_MASK2;
+    r->d[0] = 0 - m->d[0];
     for (i = 1; i < j; i++) {
-      r->d[i] = (~m->d[i]) & BN_MASK2;
+      r->d[i] = ~m->d[i];
     }
     r->top = j;
     // Upper words will be zero if the corresponding words of 'm'
@@ -963,9 +963,9 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 // by Shay Gueron's suggestion
   if (m->d[top - 1] & (((BN_ULONG)1) << (BN_BITS2 - 1))) {
     // 2^(top*BN_BITS2) - m
-    tmp.d[0] = (0 - m->d[0]) & BN_MASK2;
+    tmp.d[0] = 0 - m->d[0];
     for (i = 1; i < top; i++) {
-      tmp.d[i] = (~m->d[i]) & BN_MASK2;
+      tmp.d[i] = ~m->d[i];
     }
     tmp.top = top;
   } else if (!BN_to_montgomery(&tmp, BN_value_one(), mont, ctx)) {

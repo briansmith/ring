@@ -128,7 +128,7 @@ static BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d) {
     }
 
     ret = q << BN_BITS4;
-    h = ((h << BN_BITS4) | (l >> BN_BITS4)) & BN_MASK2;
+    h = (h << BN_BITS4) | (l >> BN_BITS4);
     l = (l & BN_MASK2l) << BN_BITS4;
   }
 
@@ -569,8 +569,6 @@ BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w) {
   BN_ULONG ret = 0;
   int i, j;
 
-  w &= BN_MASK2;
-
   if (!w) {
     // actually this an error (division by zero)
     return (BN_ULONG) - 1;
@@ -592,7 +590,7 @@ BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w) {
     BN_ULONG d;
     BN_ULONG unused_rem;
     bn_div_rem_words(&d, &unused_rem, ret, l, w);
-    ret = (l - ((d * w) & BN_MASK2)) & BN_MASK2;
+    ret = l - (d * w);
     a->d[i] = d;
   }
 
@@ -634,7 +632,6 @@ BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w) {
   }
 #endif
 
-  w &= BN_MASK2;
   for (i = a->top - 1; i >= 0; i--) {
 #ifndef BN_ULLONG
     ret = ((ret << BN_BITS4) | ((a->d[i] >> BN_BITS4) & BN_MASK2l)) % w;

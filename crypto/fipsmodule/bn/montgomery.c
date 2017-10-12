@@ -290,8 +290,8 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
   n0 = mont->n0[0];
 
   for (carry = 0, i = 0; i < nl; i++, rp++) {
-    v = bn_mul_add_words(rp, np, nl, (rp[0] * n0) & BN_MASK2);
-    v = (v + carry + rp[nl]) & BN_MASK2;
+    v = bn_mul_add_words(rp, np, nl, rp[0] * n0);
+    v += carry + rp[nl];
     carry |= (v != rp[nl]);
     carry &= (v <= rp[nl]);
     rp[nl] = v;

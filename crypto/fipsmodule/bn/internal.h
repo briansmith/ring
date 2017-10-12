@@ -191,8 +191,8 @@ extern "C" {
   }
 
 #if defined(BN_ULLONG)
-#define Lw(t) (((BN_ULONG)(t))&BN_MASK2)
-#define Hw(t) (((BN_ULONG)((t)>>BN_BITS2))&BN_MASK2)
+#define Lw(t) ((BN_ULONG)(t))
+#define Hw(t) ((BN_ULONG)((t) >> BN_BITS2))
 #endif
 
 // bn_correct_top decrements |bn->top| until |bn->d[top-1]| is non-zero or

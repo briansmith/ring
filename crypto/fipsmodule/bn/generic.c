@@ -209,21 +209,21 @@ BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
 
   assert(n >= 0);
   if (n <= 0) {
-    return (BN_ULONG)0;
+    return 0;
   }
 
   while (n & ~3) {
     ll += (BN_ULLONG)a[0] + b[0];
-    r[0] = (BN_ULONG)ll & BN_MASK2;
+    r[0] = (BN_ULONG)ll;
     ll >>= BN_BITS2;
     ll += (BN_ULLONG)a[1] + b[1];
-    r[1] = (BN_ULONG)ll & BN_MASK2;
+    r[1] = (BN_ULONG)ll;
     ll >>= BN_BITS2;
     ll += (BN_ULLONG)a[2] + b[2];
-    r[2] = (BN_ULONG)ll & BN_MASK2;
+    r[2] = (BN_ULONG)ll;
     ll >>= BN_BITS2;
     ll += (BN_ULLONG)a[3] + b[3];
-    r[3] = (BN_ULONG)ll & BN_MASK2;
+    r[3] = (BN_ULONG)ll;
     ll >>= BN_BITS2;
     a += 4;
     b += 4;
@@ -232,7 +232,7 @@ BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   }
   while (n) {
     ll += (BN_ULLONG)a[0] + b[0];
-    r[0] = (BN_ULONG)ll & BN_MASK2;
+    r[0] = (BN_ULONG)ll;
     ll >>= BN_BITS2;
     a++;
     b++;
@@ -256,27 +256,27 @@ BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   c = 0;
   while (n & ~3) {
     t = a[0];
-    t = (t + c) & BN_MASK2;
+    t += c;
     c = (t < c);
-    l = (t + b[0]) & BN_MASK2;
+    l = t + b[0];
     c += (l < t);
     r[0] = l;
     t = a[1];
-    t = (t + c) & BN_MASK2;
+    t += c;
     c = (t < c);
-    l = (t + b[1]) & BN_MASK2;
+    l = t + b[1];
     c += (l < t);
     r[1] = l;
     t = a[2];
-    t = (t + c) & BN_MASK2;
+    t += c;
     c = (t < c);
-    l = (t + b[2]) & BN_MASK2;
+    l = t + b[2];
     c += (l < t);
     r[2] = l;
     t = a[3];
-    t = (t + c) & BN_MASK2;
+    t += c;
     c = (t < c);
-    l = (t + b[3]) & BN_MASK2;
+    l = t + b[3];
     c += (l < t);
     r[3] = l;
     a += 4;
@@ -286,9 +286,9 @@ BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   }
   while (n) {
     t = a[0];
-    t = (t + c) & BN_MASK2;
+    t += c;
     c = (t < c);
-    l = (t + b[0]) & BN_MASK2;
+    l = t + b[0];
     c += (l < t);
     r[0] = l;
     a++;
@@ -314,25 +314,25 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   while (n & ~3) {
     t1 = a[0];
     t2 = b[0];
-    r[0] = (t1 - t2 - c) & BN_MASK2;
+    r[0] = t1 - t2 - c;
     if (t1 != t2) {
       c = (t1 < t2);
     }
     t1 = a[1];
     t2 = b[1];
-    r[1] = (t1 - t2 - c) & BN_MASK2;
+    r[1] = t1 - t2 - c;
     if (t1 != t2) {
       c = (t1 < t2);
     }
     t1 = a[2];
     t2 = b[2];
-    r[2] = (t1 - t2 - c) & BN_MASK2;
+    r[2] = t1 - t2 - c;
     if (t1 != t2) {
       c = (t1 < t2);
     }
     t1 = a[3];
     t2 = b[3];
-    r[3] = (t1 - t2 - c) & BN_MASK2;
+    r[3] = t1 - t2 - c;
     if (t1 != t2) {
       c = (t1 < t2);
     }
@@ -344,7 +344,7 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   while (n) {
     t1 = a[0];
     t2 = b[0];
-    r[0] = (t1 - t2 - c) & BN_MASK2;
+    r[0] = t1 - t2 - c;
     if (t1 != t2) {
       c = (t1 < t2);
     }
@@ -372,7 +372,7 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
     t += (c0); /* no carry */           \
     (c0) = (BN_ULONG)Lw(t);             \
     hi = (BN_ULONG)Hw(t);               \
-    (c1) = ((c1) + (hi)) & BN_MASK2;    \
+    (c1) += (hi);                       \
     if ((c1) < hi) {                    \
       (c2)++;                           \
     }                                   \
@@ -385,14 +385,14 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
     BN_ULLONG tt = t + (c0); /* no carry */ \
     (c0) = (BN_ULONG)Lw(tt);                \
     hi = (BN_ULONG)Hw(tt);                  \
-    (c1) = ((c1) + hi) & BN_MASK2;          \
+    (c1) += hi;                             \
     if ((c1) < hi) {                        \
       (c2)++;                               \
     }                                       \
     t += (c0); /* no carry */               \
     (c0) = (BN_ULONG)Lw(t);                 \
     hi = (BN_ULONG)Hw(t);                   \
-    (c1) = ((c1) + hi) & BN_MASK2;          \
+    (c1) += hi;                             \
     if ((c1) < hi) {                        \
       (c2)++;                               \
     }                                       \
@@ -405,7 +405,7 @@ BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
     t += (c0); /* no carry */                 \
     (c0) = (BN_ULONG)Lw(t);                   \
     hi = (BN_ULONG)Hw(t);                     \
-    (c1) = ((c1) + hi) & BN_MASK2;            \
+    (c1) += hi;                               \
     if ((c1) < hi) {                          \
       (c2)++;                                 \
     }                                         \

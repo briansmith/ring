@@ -141,7 +141,7 @@ static BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a,
   if (dl < 0) {
     for (;;) {
       t = b[0];
-      r[0] = (0 - t - c) & BN_MASK2;
+      r[0] = 0 - t - c;
       if (t != 0) {
         c = 1;
       }
@@ -150,7 +150,7 @@ static BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a,
       }
 
       t = b[1];
-      r[1] = (0 - t - c) & BN_MASK2;
+      r[1] = 0 - t - c;
       if (t != 0) {
         c = 1;
       }
@@ -159,7 +159,7 @@ static BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a,
       }
 
       t = b[2];
-      r[2] = (0 - t - c) & BN_MASK2;
+      r[2] = 0 - t - c;
       if (t != 0) {
         c = 1;
       }
@@ -168,7 +168,7 @@ static BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a,
       }
 
       t = b[3];
-      r[3] = (0 - t - c) & BN_MASK2;
+      r[3] = 0 - t - c;
       if (t != 0) {
         c = 1;
       }
@@ -183,7 +183,7 @@ static BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a,
     int save_dl = dl;
     while (c) {
       t = a[0];
-      r[0] = (t - c) & BN_MASK2;
+      r[0] = t - c;
       if (t != 0) {
         c = 0;
       }
@@ -192,7 +192,7 @@ static BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a,
       }
 
       t = a[1];
-      r[1] = (t - c) & BN_MASK2;
+      r[1] = t - c;
       if (t != 0) {
         c = 0;
       }
@@ -201,7 +201,7 @@ static BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a,
       }
 
       t = a[2];
-      r[2] = (t - c) & BN_MASK2;
+      r[2] = t - c;
       if (t != 0) {
         c = 0;
       }
@@ -210,7 +210,7 @@ static BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a,
       }
 
       t = a[3];
-      r[3] = (t - c) & BN_MASK2;
+      r[3] = t - c;
       if (t != 0) {
         c = 0;
       }
@@ -407,7 +407,7 @@ static void bn_mul_recursive(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n2,
   if (c1) {
     p = &(r[n + n2]);
     lo = *p;
-    ln = (lo + c1) & BN_MASK2;
+    ln = lo + c1;
     *p = ln;
 
     // The overflow will stop before we over write
@@ -416,7 +416,7 @@ static void bn_mul_recursive(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n2,
       do {
         p++;
         lo = *p;
-        ln = (lo + 1) & BN_MASK2;
+        ln = lo + 1;
         *p = ln;
       } while (ln == 0);
     }
@@ -544,7 +544,7 @@ static void bn_mul_part_recursive(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n,
   if (c1) {
     p = &(r[n + n2]);
     lo = *p;
-    ln = (lo + c1) & BN_MASK2;
+    ln = lo + c1;
     *p = ln;
 
     // The overflow will stop before we over write
@@ -553,7 +553,7 @@ static void bn_mul_part_recursive(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n,
       do {
         p++;
         lo = *p;
-        ln = (lo + 1) & BN_MASK2;
+        ln = lo + 1;
         *p = ln;
       } while (ln == 0);
     }
@@ -757,7 +757,7 @@ static void bn_sqr_recursive(BN_ULONG *r, const BN_ULONG *a, int n2, BN_ULONG *t
   if (c1) {
     p = &(r[n + n2]);
     lo = *p;
-    ln = (lo + c1) & BN_MASK2;
+    ln = lo + c1;
     *p = ln;
 
     // The overflow will stop before we over write
@@ -766,7 +766,7 @@ static void bn_sqr_recursive(BN_ULONG *r, const BN_ULONG *a, int n2, BN_ULONG *t
       do {
         p++;
         lo = *p;
-        ln = (lo + 1) & BN_MASK2;
+        ln = lo + 1;
         *p = ln;
       } while (ln == 0);
     }
@@ -774,9 +774,6 @@ static void bn_sqr_recursive(BN_ULONG *r, const BN_ULONG *a, int n2, BN_ULONG *t
 }
 
 int BN_mul_word(BIGNUM *bn, BN_ULONG w) {
-  BN_ULONG ll;
-
-  w &= BN_MASK2;
   if (!bn->top) {
     return 1;
   }
@@ -786,7 +783,7 @@ int BN_mul_word(BIGNUM *bn, BN_ULONG w) {
     return 1;
   }
 
-  ll = bn_mul_words(bn->d, bn->d, bn->top, w);
+  BN_ULONG ll = bn_mul_words(bn->d, bn->d, bn->top, w);
   if (ll) {
     if (!bn_wexpand(bn, bn->top + 1)) {
       return 0;
