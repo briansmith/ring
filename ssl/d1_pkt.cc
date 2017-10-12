@@ -213,6 +213,11 @@ int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake,
   assert(!SSL_in_init(ssl));
   *out_needs_handshake = false;
 
+  if (ssl->s3->write_shutdown != ssl_shutdown_none) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
+    return -1;
+  }
+
   if (len > SSL3_RT_MAX_PLAIN_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DTLS_MESSAGE_TOO_BIG);
     return -1;

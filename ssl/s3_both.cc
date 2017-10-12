@@ -233,6 +233,11 @@ int ssl3_flush_flight(SSL *ssl) {
     return 1;
   }
 
+  if (ssl->s3->write_shutdown != ssl_shutdown_none) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
+    return -1;
+  }
+
   if (ssl->s3->pending_flight->length > 0xffffffff ||
       ssl->s3->pending_flight->length > INT_MAX) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);

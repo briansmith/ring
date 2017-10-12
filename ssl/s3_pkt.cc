@@ -133,6 +133,11 @@ int ssl3_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
 
   *out_needs_handshake = false;
 
+  if (ssl->s3->write_shutdown != ssl_shutdown_none) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
+    return -1;
+  }
+
   unsigned tot, n, nw;
 
   assert(ssl->s3->wnum <= INT_MAX);

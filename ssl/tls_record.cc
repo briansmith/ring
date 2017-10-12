@@ -476,8 +476,8 @@ static bool tls_seal_scatter_suffix_len(const SSL *ssl, size_t *out_suffix_len,
 // |tls_seal_scatter_record| implements TLS 1.0 CBC 1/n-1 record splitting and
 // may write two records concatenated.
 static int tls_seal_scatter_record(SSL *ssl, uint8_t *out_prefix, uint8_t *out,
-                            uint8_t *out_suffix, uint8_t type,
-                            const uint8_t *in, size_t in_len) {
+                                   uint8_t *out_suffix, uint8_t type,
+                                   const uint8_t *in, size_t in_len) {
   if (type == SSL3_RT_APPLICATION_DATA && in_len > 1 &&
       ssl_needs_record_splitting(ssl)) {
     assert(ssl->s3->aead_write_ctx->ExplicitNonceLen() == 0);

@@ -780,6 +780,11 @@ packet_full:
 }
 
 static int send_flight(SSL *ssl) {
+  if (ssl->s3->write_shutdown != ssl_shutdown_none) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PROTOCOL_IS_SHUTDOWN);
+    return -1;
+  }
+
   dtls1_update_mtu(ssl);
 
   int ret = -1;
