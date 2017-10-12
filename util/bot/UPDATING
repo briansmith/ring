@@ -41,11 +41,11 @@ cmake-win32.zip: Update to the latest prebuilt release of CMake, found at
 
     The current revision is cmake-3.5.0-win32-x86.zip.
 
-perl-win32.zip: Update to the latest 32-bit prebuilt "PortableZip" edition of
+perl-win32.zip: Update to the latest 32-bit prebuilt "Portable" edition of
     Strawberry Perl, found at http://strawberryperl.com/releases.html. The
     download will be named strawberry-perl-VERSION-32bit-portable.zip.
 
-    The current revision is strawberry-perl-5.22.1.2-32bit-portable.zip.
+    The current revision is strawberry-perl-5.26.1.1-32bit-portable.zip.
 
 yasm-win32.exe: Update to the appropriate release of Yasm. Use the same version
     as Chromium, found at
@@ -62,4 +62,4 @@ but upload it with the following command. (Note the bucket is different.)
 
     upload_to_google_storage.py -b chrome-boringssl-sde sde-linux64.tar.bz2
 
-The current revision is sde-external-8.5.0-2017-06-08-lin.tar.bz2.
+The current revision is sde-external-8.9.0-2017-08-06-lin.tar.bz2.
