@@ -3801,6 +3801,32 @@ TEST_P(SSLVersionTest, StickyErrorHandshake_ParseClientHello) {
   EXPECT_EQ(SSL_R_DECODE_ERROR, ERR_GET_REASON(ERR_peek_error()));
 }
 
+TEST_P(SSLVersionTest, SSLPending) {
+  UniquePtr<SSL> ssl(SSL_new(client_ctx_.get()));
+  ASSERT_TRUE(ssl);
+  EXPECT_EQ(0, SSL_pending(ssl.get()));
+
+  ASSERT_TRUE(Connect());
+  EXPECT_EQ(0, SSL_pending(client_.get()));
+
+  ASSERT_EQ(5, SSL_write(server_.get(), "hello", 5));
+  ASSERT_EQ(5, SSL_write(server_.get(), "world", 5));
+  EXPECT_EQ(0, SSL_pending(client_.get()));
+
+  char buf[10];
+  ASSERT_EQ(1, SSL_peek(client_.get(), buf, 1));
+  EXPECT_EQ(5, SSL_pending(client_.get()));
+
+  ASSERT_EQ(1, SSL_read(client_.get(), buf, 1));
+  EXPECT_EQ(4, SSL_pending(client_.get()));
+
+  ASSERT_EQ(4, SSL_read(client_.get(), buf, 10));
+  EXPECT_EQ(0, SSL_pending(client_.get()));
+
+  ASSERT_EQ(2, SSL_read(client_.get(), buf, 2));
+  EXPECT_EQ(3, SSL_pending(client_.get()));
+}
+
 // TODO(davidben): Convert this file to GTest properly.
 TEST(SSLTest, AllTests) {
   if (!TestSSL_SESSIONEncoding(kOpenSSLSession) ||
