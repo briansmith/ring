@@ -17,9 +17,13 @@
 
 #include <openssl/base.h>
 
-#ifdef  __cplusplus
+#if defined(__cplusplus)
 extern "C" {
 #endif
+
+// ChaCha20.
+//
+// ChaCha20 is a stream cipher. See https://tools.ietf.org/html/rfc7539.
 
 
 // CRYPTO_chacha_20 encrypts |in_len| bytes from |in| with the given key and
