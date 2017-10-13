@@ -2161,11 +2161,16 @@ enum ssl_shutdown_t {
 };
 
 struct SSL3_STATE {
-  uint8_t read_sequence[8];
-  uint8_t write_sequence[8];
+  static constexpr bool kAllowUniquePtr = true;
 
-  uint8_t server_random[SSL3_RANDOM_SIZE];
-  uint8_t client_random[SSL3_RANDOM_SIZE];
+  SSL3_STATE();
+  ~SSL3_STATE();
+
+  uint8_t read_sequence[8] = {0};
+  uint8_t write_sequence[8] = {0};
+
+  uint8_t server_random[SSL3_RANDOM_SIZE] = {0};
+  uint8_t client_random[SSL3_RANDOM_SIZE] = {0};
 
   // read_buffer holds data from the transport to be processed.
   SSLBuffer read_buffer;
@@ -2177,39 +2182,39 @@ struct SSL3_STATE {
   Span<uint8_t> pending_app_data;
 
   // partial write - check the numbers match
-  unsigned int wnum;  // number of bytes sent so far
-  int wpend_tot;      // number bytes written
-  int wpend_type;
-  int wpend_ret;  // number of bytes submitted
-  const uint8_t *wpend_buf;
+  unsigned int wnum = 0;  // number of bytes sent so far
+  int wpend_tot = 0;      // number bytes written
+  int wpend_type = 0;
+  int wpend_ret = 0;  // number of bytes submitted
+  const uint8_t *wpend_buf = nullptr;
 
   // read_shutdown is the shutdown state for the read half of the connection.
-  enum ssl_shutdown_t read_shutdown;
+  enum ssl_shutdown_t read_shutdown = ssl_shutdown_none;
 
   // write_shutdown is the shutdown state for the write half of the connection.
-  enum ssl_shutdown_t write_shutdown;
+  enum ssl_shutdown_t write_shutdown = ssl_shutdown_none;
 
   // read_error, if |read_shutdown| is |ssl_shutdown_error|, is the error for
   // the receive half of the connection.
-  ERR_SAVE_STATE *read_error;
+  ERR_SAVE_STATE *read_error = nullptr;
 
-  int alert_dispatch;
+  int alert_dispatch = 0;
 
-  int total_renegotiations;
+  int total_renegotiations = 0;
 
   // early_data_skipped is the amount of early data that has been skipped by the
   // record layer.
-  uint16_t early_data_skipped;
+  uint16_t early_data_skipped = 0;
 
   // empty_record_count is the number of consecutive empty records received.
-  uint8_t empty_record_count;
+  uint8_t empty_record_count = 0;
 
   // warning_alert_count is the number of consecutive warning alerts
   // received.
-  uint8_t warning_alert_count;
+  uint8_t warning_alert_count = 0;
 
   // key_update_count is the number of consecutive KeyUpdates received.
-  uint8_t key_update_count;
+  uint8_t key_update_count = 0;
 
   // skip_early_data instructs the record layer to skip unexpected early data
   // messages when 0RTT is rejected.
@@ -2253,41 +2258,41 @@ struct SSL3_STATE {
   // wpend_pending is true if we have a pending write outstanding.
   bool wpend_pending:1;
 
-  uint8_t send_alert[2];
+  uint8_t send_alert[2] = {0};
 
   // pending_flight is the pending outgoing flight. This is used to flush each
   // handshake flight in a single write. |write_buffer| must be written out
   // before this data.
-  BUF_MEM *pending_flight;
+  BUF_MEM *pending_flight = nullptr;
 
   // pending_flight_offset is the number of bytes of |pending_flight| which have
   // been successfully written.
-  uint32_t pending_flight_offset;
+  uint32_t pending_flight_offset = 0;
 
   // aead_read_ctx is the current read cipher state.
-  SSLAEADContext *aead_read_ctx;
+  SSLAEADContext *aead_read_ctx = nullptr;
 
   // aead_write_ctx is the current write cipher state.
-  SSLAEADContext *aead_write_ctx;
+  SSLAEADContext *aead_write_ctx = nullptr;
 
   // hs is the handshake state for the current handshake or NULL if there isn't
   // one.
-  SSL_HANDSHAKE *hs;
+  SSL_HANDSHAKE *hs = nullptr;
 
-  uint8_t write_traffic_secret[EVP_MAX_MD_SIZE];
-  uint8_t read_traffic_secret[EVP_MAX_MD_SIZE];
-  uint8_t exporter_secret[EVP_MAX_MD_SIZE];
-  uint8_t early_exporter_secret[EVP_MAX_MD_SIZE];
-  uint8_t write_traffic_secret_len;
-  uint8_t read_traffic_secret_len;
-  uint8_t exporter_secret_len;
-  uint8_t early_exporter_secret_len;
+  uint8_t write_traffic_secret[EVP_MAX_MD_SIZE] = {0};
+  uint8_t read_traffic_secret[EVP_MAX_MD_SIZE] = {0};
+  uint8_t exporter_secret[EVP_MAX_MD_SIZE] = {0};
+  uint8_t early_exporter_secret[EVP_MAX_MD_SIZE] = {0};
+  uint8_t write_traffic_secret_len = 0;
+  uint8_t read_traffic_secret_len = 0;
+  uint8_t exporter_secret_len = 0;
+  uint8_t early_exporter_secret_len = 0;
 
   // Connection binding to prevent renegotiation attacks
-  uint8_t previous_client_finished[12];
-  uint8_t previous_client_finished_len;
-  uint8_t previous_server_finished_len;
-  uint8_t previous_server_finished[12];
+  uint8_t previous_client_finished[12] = {0};
+  uint8_t previous_client_finished_len = 0;
+  uint8_t previous_server_finished_len = 0;
+  uint8_t previous_server_finished[12] = {0};
 
   // State pertaining to the pending handshake.
   //
@@ -2297,12 +2302,12 @@ struct SSL3_STATE {
     uint8_t new_mac_secret_len;
     uint8_t new_key_len;
     uint8_t new_fixed_iv_len;
-  } tmp;
+  } tmp = {0, 0, 0};
 
   // established_session is the session established by the connection. This
   // session is only filled upon the completion of the handshake and is
   // immutable.
-  SSL_SESSION *established_session;
+  SSL_SESSION *established_session = nullptr;
 
   // Next protocol negotiation. For the client, this is the protocol that we
   // sent in NextProtocol and is set when handling ServerHello extensions.
@@ -2310,8 +2315,8 @@ struct SSL3_STATE {
   // For a server, this is the client's selected_protocol from NextProtocol and
   // is set when handling the NextProtocol message, before the Finished
   // message.
-  uint8_t *next_proto_negotiated;
-  size_t next_proto_negotiated_len;
+  uint8_t *next_proto_negotiated = nullptr;
+  size_t next_proto_negotiated_len = 0;
 
   // ALPN information
   // (we are in the process of transitioning from NPN to ALPN.)
@@ -2319,22 +2324,22 @@ struct SSL3_STATE {
   // In a server these point to the selected ALPN protocol after the
   // ClientHello has been processed. In a client these contain the protocol
   // that the server selected once the ServerHello has been processed.
-  uint8_t *alpn_selected;
-  size_t alpn_selected_len;
+  uint8_t *alpn_selected = nullptr;
+  size_t alpn_selected_len = 0;
 
   // hostname, on the server, is the value of the SNI extension.
-  char *hostname;
+  char *hostname = nullptr;
 
   // For a server:
   //     If |tlsext_channel_id_valid| is true, then this contains the
   //     verified Channel ID from the client: a P256 point, (x,y), where
   //     each are big-endian values.
-  uint8_t tlsext_channel_id[64];
+  uint8_t tlsext_channel_id[64] = {0};
 
   // ticket_age_skew is the difference, in seconds, between the client-sent
   // ticket age and the server-computed value in TLS 1.3 server connections
   // which resumed a session.
-  int32_t ticket_age_skew;
+  int32_t ticket_age_skew = 0;
 };
 
 // lengths of messages
