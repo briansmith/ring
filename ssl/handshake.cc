@@ -505,10 +505,10 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         ssl_open_record_t ret;
         if (hs->wait == ssl_hs_read_change_cipher_spec) {
           ret = ssl_open_change_cipher_spec(ssl, &consumed, &alert,
-                                            ssl_read_buffer(ssl));
+                                            ssl->s3->read_buffer.span());
         } else {
-          ret =
-              ssl_open_handshake(ssl, &consumed, &alert, ssl_read_buffer(ssl));
+          ret = ssl_open_handshake(ssl, &consumed, &alert,
+                                   ssl->s3->read_buffer.span());
         }
         if (ret == ssl_open_record_error &&
             hs->wait == ssl_hs_read_server_hello) {
@@ -533,7 +533,7 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         if (retry) {
           continue;
         }
-        ssl_read_buffer_discard(ssl);
+        ssl->s3->read_buffer.DiscardConsumed();
         break;
       }
 

@@ -187,8 +187,8 @@ ssl_open_record_t dtls1_open_app_data(SSL *ssl, Span<uint8_t> *out,
   return ssl_open_record_success;
 }
 
-int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake,
-                         const uint8_t *buf, int len) {
+int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *in,
+                         int len) {
   assert(!SSL_in_init(ssl));
   *out_needs_handshake = false;
 
@@ -211,7 +211,7 @@ int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake,
     return 0;
   }
 
-  int ret = dtls1_write_record(ssl, SSL3_RT_APPLICATION_DATA, buf, (size_t)len,
+  int ret = dtls1_write_record(ssl, SSL3_RT_APPLICATION_DATA, in, (size_t)len,
                                dtls1_use_current_epoch);
   if (ret <= 0) {
     return ret;
@@ -219,29 +219,29 @@ int dtls1_write_app_data(SSL *ssl, bool *out_needs_handshake,
   return len;
 }
 
-int dtls1_write_record(SSL *ssl, int type, const uint8_t *buf, size_t len,
+int dtls1_write_record(SSL *ssl, int type, const uint8_t *in, size_t len,
                        enum dtls1_use_epoch_t use_epoch) {
+  SSLBuffer *buf = &ssl->s3->write_buffer;
   assert(len <= SSL3_RT_MAX_PLAIN_LENGTH);
   // There should never be a pending write buffer in DTLS. One can't write half
   // a datagram, so the write buffer is always dropped in
   // |ssl_write_buffer_flush|.
-  assert(!ssl_write_buffer_is_pending(ssl));
+  assert(buf->empty());
 
   if (len > SSL3_RT_MAX_PLAIN_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }
 
-  size_t max_out = len + SSL_max_seal_overhead(ssl);
-  uint8_t *out;
   size_t ciphertext_len;
-  if (!ssl_write_buffer_init(ssl, &out, max_out) ||
-      !dtls_seal_record(ssl, out, &ciphertext_len, max_out, type, buf, len,
-                        use_epoch)) {
-    ssl_write_buffer_clear(ssl);
+  if (!buf->EnsureCap(ssl_seal_align_prefix_len(ssl),
+                      len + SSL_max_seal_overhead(ssl)) ||
+      !dtls_seal_record(ssl, buf->remaining().data(), &ciphertext_len,
+                        buf->remaining().size(), type, in, len, use_epoch)) {
+    buf->Clear();
     return -1;
   }
-  ssl_write_buffer_set_len(ssl, ciphertext_len);
+  buf->DidWrite(ciphertext_len);
 
   int ret = ssl_write_buffer_flush(ssl);
   if (ret <= 0) {

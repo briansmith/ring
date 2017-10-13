@@ -1036,8 +1036,57 @@ void ssl_do_msg_callback(SSL *ssl, int is_write, int content_type,
 
 // Transport buffers.
 
-// ssl_read_buffer returns the current read buffer.
-Span<uint8_t> ssl_read_buffer(SSL *ssl);
+class SSLBuffer {
+ public:
+  SSLBuffer() {}
+  ~SSLBuffer() { Clear(); }
+
+  SSLBuffer(const SSLBuffer &) = delete;
+  SSLBuffer &operator=(const SSLBuffer &) = delete;
+
+  uint8_t *data() { return buf_ + offset_; }
+  size_t size() const { return size_; }
+  bool empty() const { return size_ == 0; }
+  size_t cap() const { return cap_; }
+
+  Span<uint8_t> span() { return MakeSpan(data(), size()); }
+
+  Span<uint8_t> remaining() {
+    return MakeSpan(data() + size(), cap() - size());
+  }
+
+  // Clear releases the buffer.
+  void Clear();
+
+  // EnsureCap ensures the buffer has capacity at least |new_cap|, aligned such
+  // that data written after |header_len| is aligned to a
+  // |SSL3_ALIGN_PAYLOAD|-byte boundary. It returns true on success and false
+  // on error.
+  bool EnsureCap(size_t header_len, size_t new_cap);
+
+  // DidWrite extends the buffer by |len|. The caller must have filled in to
+  // this point.
+  void DidWrite(size_t len);
+
+  // Consume consumes |len| bytes from the front of the buffer.  The memory
+  // consumed will remain valid until the next call to |DiscardConsumed| or
+  // |Clear|.
+  void Consume(size_t len);
+
+  // DiscardConsumed discards the consumed bytes from the buffer. If the buffer
+  // is now empty, it releases memory used by it.
+  void DiscardConsumed();
+
+ private:
+  // buf_ is the memory allocated for this buffer.
+  uint8_t *buf_ = nullptr;
+  // offset_ is the offset into |buf_| which the buffer contents start at.
+  uint16_t offset_ = 0;
+  // size_ is the size of the buffer contents from |buf_| + |offset_|.
+  uint16_t size_ = 0;
+  // cap_ is how much memory beyond |buf_| + |offset_| is available.
+  uint16_t cap_ = 0;
+};
 
 // ssl_read_buffer_extend_to extends the read buffer to the desired length. For
 // TLS, it reads to the end of the buffer until the buffer is |len| bytes
@@ -1048,48 +1097,17 @@ Span<uint8_t> ssl_read_buffer(SSL *ssl);
 // non-empty.
 int ssl_read_buffer_extend_to(SSL *ssl, size_t len);
 
-// ssl_read_buffer_consume consumes |len| bytes from the read buffer. It
-// advances the data pointer and decrements the length. The memory consumed will
-// remain valid until the next call to |ssl_read_buffer_extend| or it is
-// discarded with |ssl_read_buffer_discard|.
-void ssl_read_buffer_consume(SSL *ssl, size_t len);
-
-// ssl_read_buffer_discard discards the consumed bytes from the read buffer. If
-// the buffer is now empty, it releases memory used by it.
-void ssl_read_buffer_discard(SSL *ssl);
-
-// ssl_read_buffer_clear releases all memory associated with the read buffer and
-// zero-initializes it.
-void ssl_read_buffer_clear(SSL *ssl);
-
-// ssl_handle_open_record handles the result of passing |ssl_read_buffer| to a
-// record-processing function. If |ret| is a success or if the caller should
-// retry, it returns one and sets |*out_retry|. Otherwise, it returns <= 0.
+// ssl_handle_open_record handles the result of passing |ssl->s3->read_buffer|
+// to a record-processing function. If |ret| is a success or if the caller
+// should retry, it returns one and sets |*out_retry|. Otherwise, it returns <=
+// 0.
 int ssl_handle_open_record(SSL *ssl, bool *out_retry, ssl_open_record_t ret,
                            size_t consumed, uint8_t alert);
-
-// ssl_write_buffer_is_pending returns one if the write buffer has pending data
-// and zero if is empty.
-int ssl_write_buffer_is_pending(const SSL *ssl);
-
-// ssl_write_buffer_init initializes the write buffer. On success, it sets
-// |*out_ptr| to the start of the write buffer with space for up to |max_len|
-// bytes. It returns one on success and zero on failure. Call
-// |ssl_write_buffer_set_len| to complete initialization.
-int ssl_write_buffer_init(SSL *ssl, uint8_t **out_ptr, size_t max_len);
-
-// ssl_write_buffer_set_len is called after |ssl_write_buffer_init| to complete
-// initialization after |len| bytes are written to the buffer.
-void ssl_write_buffer_set_len(SSL *ssl, size_t len);
 
 // ssl_write_buffer_flush flushes the write buffer to the transport. It returns
 // one on success and <= 0 on error. For DTLS, whether or not the write
 // succeeds, the write buffer will be cleared.
 int ssl_write_buffer_flush(SSL *ssl);
-
-// ssl_write_buffer_clear releases all memory associated with the write buffer
-// and zero-initializes it.
-void ssl_write_buffer_clear(SSL *ssl);
 
 
 // Certificate functions.
@@ -2134,17 +2152,6 @@ struct SSLContext {
   bool ed25519_enabled:1;
 };
 
-struct SSL3_BUFFER {
-  // buf is the memory allocated for this buffer.
-  uint8_t *buf;
-  // offset is the offset into |buf| which the buffer contents start at.
-  uint16_t offset;
-  // len is the length of the buffer contents from |buf| + |offset|.
-  uint16_t len;
-  // cap is how much memory beyond |buf| + |offset| is available.
-  uint16_t cap;
-};
-
 // An ssl_shutdown_t describes the shutdown state of one end of the connection,
 // whether it is alive or has been shutdown via close_notify or fatal alert.
 enum ssl_shutdown_t {
@@ -2161,9 +2168,9 @@ struct SSL3_STATE {
   uint8_t client_random[SSL3_RANDOM_SIZE];
 
   // read_buffer holds data from the transport to be processed.
-  SSL3_BUFFER read_buffer;
+  SSLBuffer read_buffer;
   // write_buffer holds data to be written to the transport.
-  SSL3_BUFFER write_buffer;
+  SSLBuffer write_buffer;
 
   // pending_app_data is the unconsumed application data. It points into
   // |read_buffer|.

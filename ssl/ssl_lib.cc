@@ -937,7 +937,7 @@ static int ssl_do_post_handshake(SSL *ssl, const SSLMessage &msg) {
   // protocol, namely in HTTPS, just before reading the HTTP response. Require
   // the record-layer be idle and avoid complexities of sending a handshake
   // record while an application_data record is being written.
-  if (ssl_write_buffer_is_pending(ssl) ||
+  if (!ssl->s3->write_buffer.empty() ||
       ssl->s3->write_shutdown != ssl_shutdown_none) {
     goto no_renegotiation;
   }
@@ -1004,7 +1004,7 @@ static int ssl_read_impl(SSL *ssl) {
     uint8_t alert = SSL_AD_DECODE_ERROR;
     size_t consumed = 0;
     auto ret = ssl_open_app_data(ssl, &ssl->s3->pending_app_data, &consumed,
-                                 &alert, ssl_read_buffer(ssl));
+                                 &alert, ssl->s3->read_buffer.span());
     bool retry;
     int bio_ret = ssl_handle_open_record(ssl, &retry, ret, consumed, alert);
     if (bio_ret <= 0) {
@@ -1029,7 +1029,7 @@ int SSL_read(SSL *ssl, void *buf, int num) {
   ssl->s3->pending_app_data =
       ssl->s3->pending_app_data.subspan(static_cast<size_t>(ret));
   if (ssl->s3->pending_app_data.empty()) {
-    ssl_read_buffer_discard(ssl);
+    ssl->s3->read_buffer.DiscardConsumed();
   }
   return ret;
 }

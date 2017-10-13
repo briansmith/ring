@@ -178,6 +178,8 @@ bool ssl3_new(SSL *ssl) {
     return false;
   }
   OPENSSL_memset(s3, 0, sizeof *s3);
+  new (&s3->read_buffer) SSLBuffer();
+  new (&s3->write_buffer) SSLBuffer();
 
   s3->hs = ssl_handshake_new(ssl);
   if (s3->hs == NULL) {
@@ -203,9 +205,8 @@ void ssl3_free(SSL *ssl) {
     return;
   }
 
-  ssl_read_buffer_clear(ssl);
-  ssl_write_buffer_clear(ssl);
-
+  ssl->s3->read_buffer.~SSLBuffer();
+  ssl->s3->write_buffer.~SSLBuffer();
   ERR_SAVE_STATE_free(ssl->s3->read_error);
   SSL_SESSION_free(ssl->s3->established_session);
   ssl_handshake_free(ssl->s3->hs);

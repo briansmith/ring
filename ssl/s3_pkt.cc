@@ -124,9 +124,9 @@
 
 namespace bssl {
 
-static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len);
+static int do_ssl3_write(SSL *ssl, int type, const uint8_t *in, unsigned len);
 
-int ssl3_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
+int ssl3_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *in,
                         int len) {
   assert(ssl_can_write(ssl));
   assert(!ssl->s3->aead_write_ctx->is_null_cipher());
@@ -180,7 +180,7 @@ int ssl3_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
       nw = n;
     }
 
-    int ret = do_ssl3_write(ssl, SSL3_RT_APPLICATION_DATA, &buf[tot], nw);
+    int ret = do_ssl3_write(ssl, SSL3_RT_APPLICATION_DATA, &in[tot], nw);
     if (ret <= 0) {
       ssl->s3->wnum = tot;
       return ret;
@@ -199,11 +199,11 @@ int ssl3_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
   }
 }
 
-static int ssl3_write_pending(SSL *ssl, int type, const uint8_t *buf,
+static int ssl3_write_pending(SSL *ssl, int type, const uint8_t *in,
                               unsigned int len) {
   if (ssl->s3->wpend_tot > (int)len ||
       (!(ssl->mode & SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER) &&
-       ssl->s3->wpend_buf != buf) ||
+       ssl->s3->wpend_buf != in) ||
       ssl->s3->wpend_type != type) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_WRITE_RETRY);
     return -1;
@@ -218,13 +218,14 @@ static int ssl3_write_pending(SSL *ssl, int type, const uint8_t *buf,
 }
 
 // do_ssl3_write writes an SSL record of the given type.
-static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
+static int do_ssl3_write(SSL *ssl, int type, const uint8_t *in, unsigned len) {
   // If there is still data from the previous record, flush it.
   if (ssl->s3->wpend_pending) {
-    return ssl3_write_pending(ssl, type, buf, len);
+    return ssl3_write_pending(ssl, type, in, len);
   }
 
-  if (len > SSL3_RT_MAX_PLAIN_LENGTH) {
+  SSLBuffer *buf = &ssl->s3->write_buffer;
+  if (len > SSL3_RT_MAX_PLAIN_LENGTH || buf->size() > 0) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }
@@ -246,9 +247,7 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
   }
   max_out += flight_len;
 
-  uint8_t *out;
-  size_t ciphertext_len;
-  if (!ssl_write_buffer_init(ssl, &out, max_out)) {
+  if (!buf->EnsureCap(flight_len + ssl_seal_align_prefix_len(ssl), max_out)) {
     return -1;
   }
 
@@ -258,18 +257,21 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
   // order.
   if (ssl->s3->pending_flight != NULL) {
     OPENSSL_memcpy(
-        out, ssl->s3->pending_flight->data + ssl->s3->pending_flight_offset,
+        buf->remaining().data(),
+        ssl->s3->pending_flight->data + ssl->s3->pending_flight_offset,
         flight_len);
     BUF_MEM_free(ssl->s3->pending_flight);
     ssl->s3->pending_flight = NULL;
     ssl->s3->pending_flight_offset = 0;
+    buf->DidWrite(flight_len);
   }
 
-  if (!tls_seal_record(ssl, out + flight_len, &ciphertext_len,
-                       max_out - flight_len, type, buf, len)) {
+  size_t ciphertext_len;
+  if (!tls_seal_record(ssl, buf->remaining().data(), &ciphertext_len,
+                       buf->remaining().size(), type, in, len)) {
     return -1;
   }
-  ssl_write_buffer_set_len(ssl, flight_len + ciphertext_len);
+  buf->DidWrite(ciphertext_len);
 
   // Now that we've made progress on the connection, uncork KeyUpdate
   // acknowledgments.
@@ -278,13 +280,13 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *buf, unsigned len) {
   // Memorize arguments so that ssl3_write_pending can detect bad write retries
   // later.
   ssl->s3->wpend_tot = len;
-  ssl->s3->wpend_buf = buf;
+  ssl->s3->wpend_buf = in;
   ssl->s3->wpend_type = type;
   ssl->s3->wpend_ret = len;
   ssl->s3->wpend_pending = true;
 
   // We now just need to write the buffer.
-  return ssl3_write_pending(ssl, type, buf, len);
+  return ssl3_write_pending(ssl, type, in, len);
 }
 
 ssl_open_record_t ssl3_open_app_data(SSL *ssl, Span<uint8_t> *out,
@@ -408,7 +410,7 @@ int ssl_send_alert(SSL *ssl, int level, int desc) {
   ssl->s3->alert_dispatch = 1;
   ssl->s3->send_alert[0] = level;
   ssl->s3->send_alert[1] = desc;
-  if (!ssl_write_buffer_is_pending(ssl)) {
+  if (ssl->s3->write_buffer.empty()) {
     // Nothing is being written out, so the alert may be dispatched
     // immediately.
     return ssl->method->dispatch_alert(ssl);
