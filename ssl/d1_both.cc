@@ -808,14 +808,14 @@ static int send_flight(SSL *ssl) {
       // Retry this packet the next time around.
       ssl->d1->outgoing_written = old_written;
       ssl->d1->outgoing_offset = old_offset;
-      ssl->rwstate = SSL_WRITING;
+      ssl->s3->rwstate = SSL_WRITING;
       ret = bio_ret;
       goto err;
     }
   }
 
   if (BIO_flush(ssl->wbio) <= 0) {
-    ssl->rwstate = SSL_WRITING;
+    ssl->s3->rwstate = SSL_WRITING;
     goto err;
   }
 

@@ -249,7 +249,7 @@ int ssl3_flush_flight(SSL *ssl) {
   if (!ssl->s3->write_buffer.empty()) {
     int ret = ssl_write_buffer_flush(ssl);
     if (ret <= 0) {
-      ssl->rwstate = SSL_WRITING;
+      ssl->s3->rwstate = SSL_WRITING;
       return ret;
     }
   }
@@ -261,7 +261,7 @@ int ssl3_flush_flight(SSL *ssl) {
         ssl->s3->pending_flight->data + ssl->s3->pending_flight_offset,
         ssl->s3->pending_flight->length - ssl->s3->pending_flight_offset);
     if (ret <= 0) {
-      ssl->rwstate = SSL_WRITING;
+      ssl->s3->rwstate = SSL_WRITING;
       return ret;
     }
 
@@ -269,7 +269,7 @@ int ssl3_flush_flight(SSL *ssl) {
   }
 
   if (BIO_flush(ssl->wbio) <= 0) {
-    ssl->rwstate = SSL_WRITING;
+    ssl->s3->rwstate = SSL_WRITING;
     return -1;
   }
 
@@ -351,9 +351,9 @@ static ssl_open_record_t read_v2_client_hello(SSL *ssl, size_t *out_consumed,
                                1 /* compression length */ + 1 /* compression */;
   ScopedCBB client_hello;
   CBB hello_body, cipher_suites;
-  if (!BUF_MEM_reserve(ssl->init_buf, max_v3_client_hello) ||
-      !CBB_init_fixed(client_hello.get(), (uint8_t *)ssl->init_buf->data,
-                      ssl->init_buf->max) ||
+  if (!BUF_MEM_reserve(ssl->s3->hs_buf.get(), max_v3_client_hello) ||
+      !CBB_init_fixed(client_hello.get(), (uint8_t *)ssl->s3->hs_buf->data,
+                      ssl->s3->hs_buf->max) ||
       !CBB_add_u8(client_hello.get(), SSL3_MT_CLIENT_HELLO) ||
       !CBB_add_u24_length_prefixed(client_hello.get(), &hello_body) ||
       !CBB_add_u16(&hello_body, version) ||
@@ -386,7 +386,7 @@ static ssl_open_record_t read_v2_client_hello(SSL *ssl, size_t *out_consumed,
   // Add the null compression scheme and finish.
   if (!CBB_add_u8(&hello_body, 1) ||
       !CBB_add_u8(&hello_body, 0) ||
-      !CBB_finish(client_hello.get(), NULL, &ssl->init_buf->length)) {
+      !CBB_finish(client_hello.get(), NULL, &ssl->s3->hs_buf->length)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return ssl_open_record_error;
   }
@@ -398,15 +398,15 @@ static ssl_open_record_t read_v2_client_hello(SSL *ssl, size_t *out_consumed,
 
 static bool parse_message(const SSL *ssl, SSLMessage *out,
                           size_t *out_bytes_needed) {
-  if (ssl->init_buf == NULL) {
+  if (!ssl->s3->hs_buf) {
     *out_bytes_needed = 4;
     return false;
   }
 
   CBS cbs;
   uint32_t len;
-  CBS_init(&cbs, reinterpret_cast<const uint8_t *>(ssl->init_buf->data),
-           ssl->init_buf->length);
+  CBS_init(&cbs, reinterpret_cast<const uint8_t *>(ssl->s3->hs_buf->data),
+           ssl->s3->hs_buf->length);
   if (!CBS_get_u8(&cbs, &out->type) ||
       !CBS_get_u24(&cbs, &len)) {
     *out_bytes_needed = 4;
@@ -418,7 +418,7 @@ static bool parse_message(const SSL *ssl, SSLMessage *out,
     return false;
   }
 
-  CBS_init(&out->raw, reinterpret_cast<const uint8_t *>(ssl->init_buf->data),
+  CBS_init(&out->raw, reinterpret_cast<const uint8_t *>(ssl->s3->hs_buf->data),
            4 + len);
   out->is_v2_hello = ssl->s3->is_v2_hello;
   return true;
@@ -468,16 +468,16 @@ bool tls_has_unprocessed_handshake_data(const SSL *ssl) {
     }
   }
 
-  return ssl->init_buf != NULL && ssl->init_buf->length > msg_len;
+  return ssl->s3->hs_buf && ssl->s3->hs_buf->length > msg_len;
 }
 
 ssl_open_record_t ssl3_open_handshake(SSL *ssl, size_t *out_consumed,
                                       uint8_t *out_alert, Span<uint8_t> in) {
   *out_consumed = 0;
   // Re-create the handshake buffer if needed.
-  if (ssl->init_buf == NULL) {
-    ssl->init_buf = BUF_MEM_new();
-    if (ssl->init_buf == NULL) {
+  if (!ssl->s3->hs_buf) {
+    ssl->s3->hs_buf.reset(BUF_MEM_new());
+    if (!ssl->s3->hs_buf) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
       return ssl_open_record_error;
     }
@@ -551,7 +551,7 @@ ssl_open_record_t ssl3_open_handshake(SSL *ssl, size_t *out_consumed,
   }
 
   // Append the entire handshake record to the buffer.
-  if (!BUF_MEM_append(ssl->init_buf, body.data(), body.size())) {
+  if (!BUF_MEM_append(ssl->s3->hs_buf.get(), body.data(), body.size())) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return ssl_open_record_error;
   }
@@ -562,23 +562,23 @@ ssl_open_record_t ssl3_open_handshake(SSL *ssl, size_t *out_consumed,
 void ssl3_next_message(SSL *ssl) {
   SSLMessage msg;
   if (!ssl3_get_message(ssl, &msg) ||
-      ssl->init_buf == NULL ||
-      ssl->init_buf->length < CBS_len(&msg.raw)) {
+      !ssl->s3->hs_buf ||
+      ssl->s3->hs_buf->length < CBS_len(&msg.raw)) {
     assert(0);
     return;
   }
 
-  OPENSSL_memmove(ssl->init_buf->data, ssl->init_buf->data + CBS_len(&msg.raw),
-                  ssl->init_buf->length - CBS_len(&msg.raw));
-  ssl->init_buf->length -= CBS_len(&msg.raw);
+  OPENSSL_memmove(ssl->s3->hs_buf->data,
+                  ssl->s3->hs_buf->data + CBS_len(&msg.raw),
+                  ssl->s3->hs_buf->length - CBS_len(&msg.raw));
+  ssl->s3->hs_buf->length -= CBS_len(&msg.raw);
   ssl->s3->is_v2_hello = false;
   ssl->s3->has_message = false;
 
   // Post-handshake messages are rare, so release the buffer after every
   // message. During the handshake, |on_handshake_complete| will release it.
-  if (!SSL_in_init(ssl) && ssl->init_buf->length == 0) {
-    BUF_MEM_free(ssl->init_buf);
-    ssl->init_buf = NULL;
+  if (!SSL_in_init(ssl) && ssl->s3->hs_buf->length == 0) {
+    ssl->s3->hs_buf.reset();
   }
 }
 

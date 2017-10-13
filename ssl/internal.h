@@ -2199,6 +2199,11 @@ struct SSL3_STATE {
 
   int total_renegotiations = 0;
 
+  // This holds a variable that indicates what we were doing when a 0 or -1 is
+  // returned.  This is needed for non-blocking IO so we know what request
+  // needs re-doing when in SSL_accept or SSL_connect
+  int rwstate = SSL_NOTHING;
+
   // early_data_skipped is the amount of early data that has been skipped by the
   // record layer.
   uint16_t early_data_skipped = 0;
@@ -2256,6 +2261,9 @@ struct SSL3_STATE {
   bool wpend_pending:1;
 
   uint8_t send_alert[2] = {0};
+
+  // hs_buf is the buffer of handshake data to process.
+  UniquePtr<BUF_MEM> hs_buf;
 
   // pending_flight is the pending outgoing flight. This is used to flush each
   // handshake flight in a single write. |write_buffer| must be written out
@@ -2479,8 +2487,6 @@ struct SSLConnection {
   // progress.
   enum ssl_hs_wait_t (*do_handshake)(SSL_HANDSHAKE *hs);
 
-  BUF_MEM *init_buf;  // buffer used during init
-
   SSL3_STATE *s3;   // SSLv3 variables
   DTLS1_STATE *d1;  // DTLSv1 variables
 
@@ -2499,11 +2505,6 @@ struct SSLConnection {
   // client cert?
   // This is used to hold the server certificate used
   CERT *cert;
-
-  // This holds a variable that indicates what we were doing when a 0 or -1 is
-  // returned.  This is needed for non-blocking IO so we know what request
-  // needs re-doing when in SSL_accept or SSL_connect
-  int rwstate;
 
   // initial_timeout_duration_ms is the default DTLS timeout duration in
   // milliseconds. It's used to initialize the timer any time it's restarted.

@@ -201,7 +201,7 @@ bool CBBFinishArray(CBB *cbb, Array<uint8_t> *out) {
 void ssl_reset_error_state(SSL *ssl) {
   // Functions which use |SSL_get_error| must reset I/O and error state on
   // entry.
-  ssl->rwstate = SSL_NOTHING;
+  ssl->s3->rwstate = SSL_NOTHING;
   ERR_clear_error();
   ERR_clear_system_error();
 }
@@ -716,8 +716,6 @@ SSL *SSL_new(SSL_CTX *ctx) {
     goto err;
   }
 
-  ssl->rwstate = SSL_NOTHING;
-
   CRYPTO_new_ex_data(&ssl->ex_data);
 
   ssl->psk_identity_hint = NULL;
@@ -761,8 +759,6 @@ void SSL_free(SSL *ssl) {
 
   BIO_free_all(ssl->rbio);
   BIO_free_all(ssl->wbio);
-
-  BUF_MEM_free(ssl->init_buf);
 
   // add extra stuff
   ssl_cipher_preference_list_free(ssl->cipher_list);
@@ -1240,7 +1236,7 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     return SSL_ERROR_SYSCALL;
   }
 
-  switch (ssl->rwstate) {
+  switch (ssl->s3->rwstate) {
     case SSL_PENDING_SESSION:
       return SSL_ERROR_PENDING_SESSION;
 
@@ -2294,7 +2290,7 @@ void *SSL_CTX_get_ex_data(const SSL_CTX *ctx, int idx) {
   return CRYPTO_get_ex_data(&ctx->ex_data, idx);
 }
 
-int SSL_want(const SSL *ssl) { return ssl->rwstate; }
+int SSL_want(const SSL *ssl) { return ssl->s3->rwstate; }
 
 void SSL_CTX_set_tmp_rsa_callback(SSL_CTX *ctx,
                                   RSA *(*cb)(SSL *ssl, int is_export,
@@ -2577,17 +2573,6 @@ int SSL_clear(SSL *ssl) {
     session.reset(ssl->s3->established_session.get());
     SSL_SESSION_up_ref(session.get());
   }
-
-  // TODO(davidben): Some state on |ssl| is reset both in |SSL_new| and
-  // |SSL_clear| because it is per-connection state rather than configuration
-  // state. Per-connection state should be on |ssl->s3| and |ssl->d1| so it is
-  // naturally reset at the right points between |SSL_new|, |SSL_clear|, and
-  // |ssl3_new|.
-
-  ssl->rwstate = SSL_NOTHING;
-
-  BUF_MEM_free(ssl->init_buf);
-  ssl->init_buf = NULL;
 
   // The ssl->d1->mtu is simultaneously configuration (preserved across
   // clear) and connection-specific state (gets reset).
