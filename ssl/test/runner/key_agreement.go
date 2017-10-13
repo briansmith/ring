@@ -136,12 +136,47 @@ func (ka *rsaKeyAgreement) processServerKeyExchange(config *Config, clientHello 
 	return errors.New("tls: unexpected ServerKeyExchange")
 }
 
+func rsaSize(pub *rsa.PublicKey) int {
+	return (pub.N.BitLen() + 7) / 8
+}
+
+func rsaRawEncrypt(pub *rsa.PublicKey, msg []byte) ([]byte, error) {
+	k := rsaSize(pub)
+	if len(msg) != k {
+		return nil, errors.New("tls: bad padded RSA input")
+	}
+	m := new(big.Int).SetBytes(msg)
+	e := big.NewInt(int64(pub.E))
+	m.Exp(m, e, pub.N)
+	unpadded := m.Bytes()
+	ret := make([]byte, k)
+	copy(ret[len(ret)-len(unpadded):], unpadded)
+	return ret, nil
+}
+
+// nonZeroRandomBytes fills the given slice with non-zero random octets.
+func nonZeroRandomBytes(s []byte, rand io.Reader) {
+	if _, err := io.ReadFull(rand, s); err != nil {
+		panic(err)
+	}
+
+	for i := range s {
+		for s[i] == 0 {
+			if _, err := io.ReadFull(rand, s[i:i+1]); err != nil {
+				panic(err)
+			}
+		}
+	}
+}
+
 func (ka *rsaKeyAgreement) generateClientKeyExchange(config *Config, clientHello *clientHelloMsg, cert *x509.Certificate) ([]byte, *clientKeyExchangeMsg, error) {
 	bad := config.Bugs.BadRSAClientKeyExchange
 	preMasterSecret := make([]byte, 48)
 	vers := clientHello.vers
-	if bad == RSABadValueWrongVersion {
+	if bad == RSABadValueWrongVersion1 {
 		vers ^= 1
+	} else if bad == RSABadValueWrongVersion2 {
+		vers ^= 0x100
 	}
 	preMasterSecret[0] = byte(vers >> 8)
 	preMasterSecret[1] = byte(vers)
@@ -152,13 +187,31 @@ func (ka *rsaKeyAgreement) generateClientKeyExchange(config *Config, clientHello
 
 	sentPreMasterSecret := preMasterSecret
 	if bad == RSABadValueTooLong {
-		sentPreMasterSecret = make([]byte, len(sentPreMasterSecret)+1)
-		copy(sentPreMasterSecret, preMasterSecret)
+		sentPreMasterSecret = make([]byte, 1, len(sentPreMasterSecret)+1)
+		sentPreMasterSecret = append(sentPreMasterSecret, preMasterSecret...)
 	} else if bad == RSABadValueTooShort {
 		sentPreMasterSecret = sentPreMasterSecret[:len(sentPreMasterSecret)-1]
 	}
 
-	encrypted, err := rsa.EncryptPKCS1v15(config.rand(), cert.PublicKey.(*rsa.PublicKey), sentPreMasterSecret)
+	// Pad for PKCS#1 v1.5.
+	padded := make([]byte, rsaSize(cert.PublicKey.(*rsa.PublicKey)))
+	padded[1] = 2
+	nonZeroRandomBytes(padded[2:len(padded)-len(sentPreMasterSecret)-1], config.rand())
+	copy(padded[len(padded)-len(sentPreMasterSecret):], sentPreMasterSecret)
+
+	if bad == RSABadValueWrongBlockType {
+		padded[1] = 3
+	} else if bad == RSABadValueWrongLeadingByte {
+		padded[0] = 1
+	} else if bad == RSABadValueNoZero {
+		for i := 2; i < len(padded); i++ {
+			if padded[i] == 0 {
+				padded[i]++
+			}
+		}
+	}
+
+	encrypted, err := rsaRawEncrypt(cert.PublicKey.(*rsa.PublicKey), padded)
 	if err != nil {
 		return nil, nil, err
 	}

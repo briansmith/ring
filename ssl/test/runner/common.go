@@ -497,7 +497,11 @@ const (
 	RSABadValueCorrupt
 	RSABadValueTooLong
 	RSABadValueTooShort
-	RSABadValueWrongVersion
+	RSABadValueWrongVersion1
+	RSABadValueWrongVersion2
+	RSABadValueWrongBlockType
+	RSABadValueWrongLeadingByte
+	RSABadValueNoZero
 	NumRSABadValues
 )
 
