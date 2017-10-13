@@ -999,9 +999,9 @@ SSL_SESSION *SSL_get_session(const SSL *ssl) {
   // we return the intermediate session, either |session| (for resumption) or
   // |new_session| if doing a full handshake.
   if (!SSL_in_init(ssl)) {
-    return ssl->s3->established_session;
+    return ssl->s3->established_session.get();
   }
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
+  SSL_HANDSHAKE *hs = ssl->s3->hs.get();
   if (hs->early_session) {
     return hs->early_session.get();
   }

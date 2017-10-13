@@ -390,21 +390,21 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
   }
 
   // Store the negotiated ALPN in the session.
-  if (ssl->s3->alpn_selected != NULL) {
+  if (!ssl->s3->alpn_selected.empty()) {
     hs->new_session->early_alpn = (uint8_t *)BUF_memdup(
-        ssl->s3->alpn_selected, ssl->s3->alpn_selected_len);
+        ssl->s3->alpn_selected.data(), ssl->s3->alpn_selected.size());
     if (hs->new_session->early_alpn == NULL) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
-    hs->new_session->early_alpn_len = ssl->s3->alpn_selected_len;
+    hs->new_session->early_alpn_len = ssl->s3->alpn_selected.size();
   }
 
   if (ssl->early_data_accepted) {
     if (hs->early_session->cipher != hs->new_session->cipher ||
-        hs->early_session->early_alpn_len != ssl->s3->alpn_selected_len ||
-        OPENSSL_memcmp(hs->early_session->early_alpn, ssl->s3->alpn_selected,
-                       ssl->s3->alpn_selected_len) != 0) {
+        MakeConstSpan(hs->early_session->early_alpn,
+                      hs->early_session->early_alpn_len) !=
+            ssl->s3->alpn_selected) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ALPN_MISMATCH_ON_EARLY_DATA);
       return ssl_hs_error;
     }
@@ -781,8 +781,8 @@ int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
     return 1;
   }
 
-  UniquePtr<SSL_SESSION> session(SSL_SESSION_dup(ssl->s3->established_session,
-                                                 SSL_SESSION_INCLUDE_NONAUTH));
+  UniquePtr<SSL_SESSION> session = SSL_SESSION_dup(
+      ssl->s3->established_session.get(), SSL_SESSION_INCLUDE_NONAUTH);
   if (!session) {
     return 0;
   }

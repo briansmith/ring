@@ -1486,10 +1486,7 @@ struct SSL_HANDSHAKE {
   uint16_t early_data_written = 0;
 };
 
-SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl);
-
-// ssl_handshake_free releases all memory associated with |hs|.
-void ssl_handshake_free(SSL_HANDSHAKE *hs);
+UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl);
 
 // ssl_check_message_type checks if |msg| has type |type|. If so it returns
 // one. Otherwise, it sends an alert and returns zero.
@@ -2196,7 +2193,7 @@ struct SSL3_STATE {
 
   // read_error, if |read_shutdown| is |ssl_shutdown_error|, is the error for
   // the receive half of the connection.
-  ERR_SAVE_STATE *read_error = nullptr;
+  UniquePtr<ERR_SAVE_STATE> read_error;
 
   int alert_dispatch = 0;
 
@@ -2263,21 +2260,21 @@ struct SSL3_STATE {
   // pending_flight is the pending outgoing flight. This is used to flush each
   // handshake flight in a single write. |write_buffer| must be written out
   // before this data.
-  BUF_MEM *pending_flight = nullptr;
+  UniquePtr<BUF_MEM> pending_flight;
 
   // pending_flight_offset is the number of bytes of |pending_flight| which have
   // been successfully written.
   uint32_t pending_flight_offset = 0;
 
   // aead_read_ctx is the current read cipher state.
-  SSLAEADContext *aead_read_ctx = nullptr;
+  UniquePtr<SSLAEADContext> aead_read_ctx;
 
   // aead_write_ctx is the current write cipher state.
-  SSLAEADContext *aead_write_ctx = nullptr;
+  UniquePtr<SSLAEADContext> aead_write_ctx;
 
   // hs is the handshake state for the current handshake or NULL if there isn't
   // one.
-  SSL_HANDSHAKE *hs = nullptr;
+  UniquePtr<SSL_HANDSHAKE> hs;
 
   uint8_t write_traffic_secret[EVP_MAX_MD_SIZE] = {0};
   uint8_t read_traffic_secret[EVP_MAX_MD_SIZE] = {0};
@@ -2307,7 +2304,7 @@ struct SSL3_STATE {
   // established_session is the session established by the connection. This
   // session is only filled upon the completion of the handshake and is
   // immutable.
-  SSL_SESSION *established_session = nullptr;
+  UniquePtr<SSL_SESSION> established_session;
 
   // Next protocol negotiation. For the client, this is the protocol that we
   // sent in NextProtocol and is set when handling ServerHello extensions.
@@ -2315,8 +2312,7 @@ struct SSL3_STATE {
   // For a server, this is the client's selected_protocol from NextProtocol and
   // is set when handling the NextProtocol message, before the Finished
   // message.
-  uint8_t *next_proto_negotiated = nullptr;
-  size_t next_proto_negotiated_len = 0;
+  Array<uint8_t> next_proto_negotiated;
 
   // ALPN information
   // (we are in the process of transitioning from NPN to ALPN.)
@@ -2324,11 +2320,10 @@ struct SSL3_STATE {
   // In a server these point to the selected ALPN protocol after the
   // ClientHello has been processed. In a client these contain the protocol
   // that the server selected once the ServerHello has been processed.
-  uint8_t *alpn_selected = nullptr;
-  size_t alpn_selected_len = 0;
+  Array<uint8_t> alpn_selected;
 
   // hostname, on the server, is the value of the SNI extension.
-  char *hostname = nullptr;
+  UniquePtr<char> hostname;
 
   // For a server:
   //     If |tlsext_channel_id_valid| is true, then this contains the

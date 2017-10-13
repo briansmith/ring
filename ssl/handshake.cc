@@ -149,16 +149,14 @@ SSL_HANDSHAKE::~SSL_HANDSHAKE() {
   ssl->ctx->x509_method->hs_flush_cached_ca_names(this);
 }
 
-SSL_HANDSHAKE *ssl_handshake_new(SSL *ssl) {
+UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl) {
   UniquePtr<SSL_HANDSHAKE> hs = MakeUnique<SSL_HANDSHAKE>(ssl);
   if (!hs ||
       !hs->transcript.Init()) {
     return nullptr;
   }
-  return hs.release();
+  return hs;
 }
-
-void ssl_handshake_free(SSL_HANDSHAKE *hs) { Delete(hs); }
 
 bool ssl_check_message_type(SSL *ssl, const SSLMessage &msg, int type) {
   if (msg.type != type) {
@@ -282,7 +280,7 @@ static void set_crypto_buffer(CRYPTO_BUFFER **dest, CRYPTO_BUFFER *src) {
 
 enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  const SSL_SESSION *prev_session = ssl->s3->established_session;
+  const SSL_SESSION *prev_session = ssl->s3->established_session.get();
   if (prev_session != NULL) {
     // If renegotiating, the server must not change the server certificate. See
     // https://mitls.org/pages/attacks/3SHAKE. We never resume on renegotiation,

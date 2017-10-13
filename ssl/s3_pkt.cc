@@ -235,7 +235,7 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *in, unsigned len) {
   }
 
   size_t flight_len = 0;
-  if (ssl->s3->pending_flight != NULL) {
+  if (ssl->s3->pending_flight != nullptr) {
     flight_len =
         ssl->s3->pending_flight->length - ssl->s3->pending_flight_offset;
   }
@@ -255,13 +255,12 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *in, unsigned len) {
   // acknowledgment or 0-RTT key change messages. |pending_flight| must be clear
   // when data is added to |write_buffer| or it will be written in the wrong
   // order.
-  if (ssl->s3->pending_flight != NULL) {
+  if (ssl->s3->pending_flight != nullptr) {
     OPENSSL_memcpy(
         buf->remaining().data(),
         ssl->s3->pending_flight->data + ssl->s3->pending_flight_offset,
         flight_len);
-    BUF_MEM_free(ssl->s3->pending_flight);
-    ssl->s3->pending_flight = NULL;
+    ssl->s3->pending_flight.reset();
     ssl->s3->pending_flight_offset = 0;
     buf->DidWrite(flight_len);
   }

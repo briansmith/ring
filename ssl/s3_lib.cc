@@ -177,39 +177,21 @@ SSL3_STATE::SSL3_STATE()
       key_update_pending(false),
       wpend_pending(false) {}
 
-SSL3_STATE::~SSL3_STATE() {
-  ERR_SAVE_STATE_free(read_error);
-  SSL_SESSION_free(established_session);
-  ssl_handshake_free(hs);
-  OPENSSL_free(next_proto_negotiated);
-  OPENSSL_free(alpn_selected);
-  OPENSSL_free(hostname);
-  Delete(aead_read_ctx);
-  Delete(aead_write_ctx);
-  BUF_MEM_free(pending_flight);
-}
+SSL3_STATE::~SSL3_STATE() {}
 
 bool ssl3_new(SSL *ssl) {
-  UniquePtr<SSLAEADContext> aead_read_ctx =
-      SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
-  UniquePtr<SSLAEADContext> aead_write_ctx =
-      SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
-  if (!aead_read_ctx || !aead_write_ctx) {
-    return false;
-  }
-
   UniquePtr<SSL3_STATE> s3 = MakeUnique<SSL3_STATE>();
   if (!s3) {
     return false;
   }
 
+  s3->aead_read_ctx = SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
+  s3->aead_write_ctx = SSLAEADContext::CreateNullCipher(SSL_is_dtls(ssl));
   s3->hs = ssl_handshake_new(ssl);
-  if (s3->hs == NULL) {
+  if (!s3->aead_read_ctx || !s3->aead_write_ctx || !s3->hs) {
     return false;
   }
 
-  s3->aead_read_ctx = aead_read_ctx.release();
-  s3->aead_write_ctx = aead_write_ctx.release();
   ssl->s3 = s3.release();
 
   // Set the version to the highest supported version.

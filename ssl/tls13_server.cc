@@ -371,8 +371,8 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       hs->new_session =
           SSL_SESSION_dup(session.get(), SSL_SESSION_DUP_AUTH_ONLY);
 
-      if (// Early data must be acceptable for this ticket.
-          ssl->cert->enable_early_data &&
+      if (ssl->cert->enable_early_data &&
+          // Early data must be acceptable for this ticket.
           session->ticket_max_early_data != 0 &&
           // The client must have offered early data.
           hs->early_data_offered &&
@@ -381,9 +381,8 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
           // Custom extensions is incompatible with 0-RTT.
           hs->custom_extensions.received == 0 &&
           // The negotiated ALPN must match the one in the ticket.
-          ssl->s3->alpn_selected_len == session->early_alpn_len &&
-          OPENSSL_memcmp(ssl->s3->alpn_selected, session->early_alpn,
-                         ssl->s3->alpn_selected_len) == 0) {
+          ssl->s3->alpn_selected ==
+              MakeConstSpan(session->early_alpn, session->early_alpn_len)) {
         ssl->early_data_accepted = true;
       }
 
@@ -412,14 +411,14 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
   hs->new_session->cipher = hs->new_cipher;
 
   // Store the initial negotiated ALPN in the session.
-  if (ssl->s3->alpn_selected != NULL) {
+  if (!ssl->s3->alpn_selected.empty()) {
     hs->new_session->early_alpn = (uint8_t *)BUF_memdup(
-        ssl->s3->alpn_selected, ssl->s3->alpn_selected_len);
+        ssl->s3->alpn_selected.data(), ssl->s3->alpn_selected.size());
     if (hs->new_session->early_alpn == NULL) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
-    hs->new_session->early_alpn_len = ssl->s3->alpn_selected_len;
+    hs->new_session->early_alpn_len = ssl->s3->alpn_selected.size();
   }
 
   if (ssl->ctx->dos_protection_cb != NULL &&

@@ -208,13 +208,12 @@ void ssl_reset_error_state(SSL *ssl) {
 
 void ssl_set_read_error(SSL* ssl) {
   ssl->s3->read_shutdown = ssl_shutdown_error;
-  ERR_SAVE_STATE_free(ssl->s3->read_error);
-  ssl->s3->read_error = ERR_save_state();
+  ssl->s3->read_error.reset(ERR_save_state());
 }
 
 static bool check_read_error(const SSL *ssl) {
   if (ssl->s3->read_shutdown == ssl_shutdown_error) {
-    ERR_restore_state(ssl->s3->read_error);
+    ERR_restore_state(ssl->s3->read_error.get());
     return false;
   }
   return true;
@@ -300,16 +299,16 @@ void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
   // A client may see new sessions on abbreviated handshakes if the server
   // decides to renew the ticket. Once the handshake is completed, it should be
   // inserted into the cache.
-  if (ssl->s3->established_session != ssl->session ||
+  if (ssl->s3->established_session.get() != ssl->session ||
       (!ssl->server && hs->ticket_expected)) {
     if (use_internal_cache) {
-      SSL_CTX_add_session(ctx, ssl->s3->established_session);
+      SSL_CTX_add_session(ctx, ssl->s3->established_session.get());
     }
     if (ctx->new_session_cb != NULL) {
-      SSL_SESSION_up_ref(ssl->s3->established_session);
-      if (!ctx->new_session_cb(ssl, ssl->s3->established_session)) {
+      SSL_SESSION_up_ref(ssl->s3->established_session.get());
+      if (!ctx->new_session_cb(ssl, ssl->s3->established_session.get())) {
         // |new_session_cb|'s return value signals whether it took ownership.
-        SSL_SESSION_free(ssl->s3->established_session);
+        SSL_SESSION_free(ssl->s3->established_session.get());
       }
     }
   }
@@ -860,7 +859,7 @@ int SSL_do_handshake(SSL *ssl) {
   }
 
   // Run the handshake.
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
+  SSL_HANDSHAKE *hs = ssl->s3->hs.get();
 
   bool early_return = false;
   int ret = ssl_run_handshake(hs, &early_return);
@@ -872,8 +871,7 @@ int SSL_do_handshake(SSL *ssl) {
 
   // Destroy the handshake object if the handshake has completely finished.
   if (!early_return) {
-    ssl_handshake_free(ssl->s3->hs);
-    ssl->s3->hs = NULL;
+    ssl->s3->hs.reset();
   }
 
   return 1;
@@ -943,12 +941,12 @@ static int ssl_do_post_handshake(SSL *ssl, const SSLMessage &msg) {
   }
 
   // Begin a new handshake.
-  if (ssl->s3->hs != NULL) {
+  if (ssl->s3->hs != nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
   ssl->s3->hs = ssl_handshake_new(ssl);
-  if (ssl->s3->hs == NULL) {
+  if (ssl->s3->hs == nullptr) {
     return 0;
   }
 
@@ -1125,7 +1123,7 @@ int SSL_shutdown(SSL *ssl) {
       // time out because the peer never received our close_notify. Report to
       // the caller that the channel has fully shut down.
       if (ssl->s3->read_shutdown == ssl_shutdown_error) {
-        ERR_restore_state(ssl->s3->read_error);
+        ERR_restore_state(ssl->s3->read_error.get());
         return -1;
       }
       ssl->s3->read_shutdown = ssl_shutdown_close_notify;
@@ -1190,7 +1188,7 @@ int SSL_early_data_accepted(const SSL *ssl) {
 }
 
 void SSL_reset_early_data_reject(SSL *ssl) {
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
+  SSL_HANDSHAKE *hs = ssl->s3->hs.get();
   if (hs == NULL ||
       hs->wait != ssl_hs_early_data_rejected) {
     abort();
@@ -1863,7 +1861,7 @@ const char *SSL_get_servername(const SSL *ssl, const int type) {
     return ssl->tlsext_hostname;
   }
 
-  return ssl->s3->hostname;
+  return ssl->s3->hostname.get();
 }
 
 int SSL_get_servername_type(const SSL *ssl) {
@@ -1996,8 +1994,8 @@ found:
 
 void SSL_get0_next_proto_negotiated(const SSL *ssl, const uint8_t **out_data,
                                     unsigned *out_len) {
-  *out_data = ssl->s3->next_proto_negotiated;
-  *out_len = ssl->s3->next_proto_negotiated_len;
+  *out_data = ssl->s3->next_proto_negotiated.data();
+  *out_len = ssl->s3->next_proto_negotiated.size();
 }
 
 void SSL_CTX_set_next_protos_advertised_cb(
@@ -2054,8 +2052,8 @@ void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **out_data,
     *out_data = ssl->s3->hs->early_session->early_alpn;
     *out_len = ssl->s3->hs->early_session->early_alpn_len;
   } else {
-    *out_data = ssl->s3->alpn_selected;
-    *out_len = ssl->s3->alpn_selected_len;
+    *out_data = ssl->s3->alpn_selected.data();
+    *out_len = ssl->s3->alpn_selected.size();
   }
 }
 
@@ -2434,7 +2432,7 @@ int SSL_in_init(const SSL *ssl) {
   // This returns false once all the handshake state has been finalized, to
   // allow callbacks and getters based on SSL_in_init to return the correct
   // values.
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
+  SSL_HANDSHAKE *hs = ssl->s3->hs.get();
   return hs != nullptr && !hs->handshake_finalized;
 }
 
@@ -2547,7 +2545,7 @@ size_t SSL_get_server_random(const SSL *ssl, uint8_t *out, size_t max_out) {
 }
 
 const SSL_CIPHER *SSL_get_pending_cipher(const SSL *ssl) {
-  SSL_HANDSHAKE *hs = ssl->s3->hs;
+  SSL_HANDSHAKE *hs = ssl->s3->hs.get();
   if (hs == NULL) {
     return NULL;
   }
@@ -2574,10 +2572,10 @@ int SSL_clear(SSL *ssl) {
   // In OpenSSL, reusing a client |SSL| with |SSL_clear| causes the previously
   // established session to be offered the next time around. wpa_supplicant
   // depends on this behavior, so emulate it.
-  SSL_SESSION *session = NULL;
+  UniquePtr<SSL_SESSION> session;
   if (!ssl->server && ssl->s3->established_session != NULL) {
-    session = ssl->s3->established_session;
-    SSL_SESSION_up_ref(session);
+    session.reset(ssl->s3->established_session.get());
+    SSL_SESSION_up_ref(session.get());
   }
 
   // TODO(davidben): Some state on |ssl| is reset both in |SSL_new| and
@@ -2602,7 +2600,6 @@ int SSL_clear(SSL *ssl) {
 
   ssl->method->ssl_free(ssl);
   if (!ssl->method->ssl_new(ssl)) {
-    SSL_SESSION_free(session);
     return 0;
   }
 
@@ -2610,9 +2607,8 @@ int SSL_clear(SSL *ssl) {
     ssl->d1->mtu = mtu;
   }
 
-  if (session != NULL) {
-    SSL_set_session(ssl, session);
-    SSL_SESSION_free(session);
+  if (session != nullptr) {
+    SSL_set_session(ssl, session.get());
   }
 
   return 1;

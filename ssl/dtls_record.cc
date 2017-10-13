@@ -278,7 +278,7 @@ static const SSLAEADContext *get_write_aead(const SSL *ssl,
     return ssl->d1->last_aead_write_ctx;
   }
 
-  return ssl->s3->aead_write_ctx;
+  return ssl->s3->aead_write_ctx.get();
 }
 
 size_t dtls_max_seal_overhead(const SSL *ssl,
@@ -303,7 +303,7 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
 
   // Determine the parameters for the current epoch.
   uint16_t epoch = ssl->d1->w_epoch;
-  SSLAEADContext *aead = ssl->s3->aead_write_ctx;
+  SSLAEADContext *aead = ssl->s3->aead_write_ctx.get();
   uint8_t *seq = ssl->s3->write_sequence;
   if (use_epoch == dtls1_use_previous_epoch) {
     assert(ssl->d1->w_epoch >= 1);

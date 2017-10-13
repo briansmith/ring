@@ -137,9 +137,9 @@ static bool add_record_to_flight(SSL *ssl, uint8_t type,
   // We'll never add a flight while in the process of writing it out.
   assert(ssl->s3->pending_flight_offset == 0);
 
-  if (ssl->s3->pending_flight == NULL) {
-    ssl->s3->pending_flight = BUF_MEM_new();
-    if (ssl->s3->pending_flight == NULL) {
+  if (ssl->s3->pending_flight == nullptr) {
+    ssl->s3->pending_flight.reset(BUF_MEM_new());
+    if (ssl->s3->pending_flight == nullptr) {
       return false;
     }
   }
@@ -152,7 +152,7 @@ static bool add_record_to_flight(SSL *ssl, uint8_t type,
   }
 
   size_t len;
-  if (!BUF_MEM_reserve(ssl->s3->pending_flight, new_cap) ||
+  if (!BUF_MEM_reserve(ssl->s3->pending_flight.get(), new_cap) ||
       !tls_seal_record(ssl,
                        (uint8_t *)ssl->s3->pending_flight->data +
                            ssl->s3->pending_flight->length,
@@ -229,7 +229,7 @@ bool ssl3_add_alert(SSL *ssl, uint8_t level, uint8_t desc) {
 }
 
 int ssl3_flush_flight(SSL *ssl) {
-  if (ssl->s3->pending_flight == NULL) {
+  if (ssl->s3->pending_flight == nullptr) {
     return 1;
   }
 
@@ -273,8 +273,7 @@ int ssl3_flush_flight(SSL *ssl) {
     return -1;
   }
 
-  BUF_MEM_free(ssl->s3->pending_flight);
-  ssl->s3->pending_flight = NULL;
+  ssl->s3->pending_flight.reset();
   ssl->s3->pending_flight_offset = 0;
   return 1;
 }

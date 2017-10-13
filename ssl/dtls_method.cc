@@ -94,8 +94,7 @@ static bool dtls1_set_read_state(SSL *ssl, UniquePtr<SSLAEADContext> aead_ctx) {
   OPENSSL_memset(&ssl->d1->bitmap, 0, sizeof(ssl->d1->bitmap));
   OPENSSL_memset(ssl->s3->read_sequence, 0, sizeof(ssl->s3->read_sequence));
 
-  Delete(ssl->s3->aead_read_ctx);
-  ssl->s3->aead_read_ctx = aead_ctx.release();
+  ssl->s3->aead_read_ctx = std::move(aead_ctx);
   return true;
 }
 
@@ -107,8 +106,8 @@ static bool dtls1_set_write_state(SSL *ssl,
   OPENSSL_memset(ssl->s3->write_sequence, 0, sizeof(ssl->s3->write_sequence));
 
   Delete(ssl->d1->last_aead_write_ctx);
-  ssl->d1->last_aead_write_ctx = ssl->s3->aead_write_ctx;
-  ssl->s3->aead_write_ctx = aead_ctx.release();
+  ssl->d1->last_aead_write_ctx = ssl->s3->aead_write_ctx.release();
+  ssl->s3->aead_write_ctx = std::move(aead_ctx);
   return true;
 }
 

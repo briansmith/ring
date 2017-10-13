@@ -640,10 +640,12 @@ static bool ext_sni_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
 
   // Copy the hostname as a string.
-  if (!CBS_strdup(&host_name, &ssl->s3->hostname)) {
+  char *raw = nullptr;
+  if (!CBS_strdup(&host_name, &raw)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return false;
   }
+  ssl->s3->hostname.reset(raw);
 
   hs->should_ack_sni = true;
   return true;
@@ -862,7 +864,7 @@ static bool ext_ems_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
 
   // Whether EMS is negotiated may not change on renegotiation.
-  if (ssl->s3->established_session != NULL &&
+  if (ssl->s3->established_session != nullptr &&
       hs->extended_master_secret !=
           !!ssl->s3->established_session->extended_master_secret) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RENEGOTIATION_EMS_MISMATCH);
@@ -1150,7 +1152,7 @@ static bool ext_npn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   assert(!SSL_is_dtls(ssl));
   assert(ssl->ctx->next_proto_select_cb != NULL);
 
-  if (ssl->s3->alpn_selected != NULL) {
+  if (!ssl->s3->alpn_selected.empty()) {
     // NPN and ALPN may not be negotiated in the same connection.
     *out_alert = SSL_AD_ILLEGAL_PARAMETER;
     OPENSSL_PUT_ERROR(SSL, SSL_R_NEGOTIATED_BOTH_NPN_AND_ALPN);
@@ -1172,22 +1174,14 @@ static bool ext_npn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   uint8_t selected_len;
   if (ssl->ctx->next_proto_select_cb(
           ssl, &selected, &selected_len, orig_contents, orig_len,
-          ssl->ctx->next_proto_select_cb_arg) != SSL_TLSEXT_ERR_OK) {
+          ssl->ctx->next_proto_select_cb_arg) != SSL_TLSEXT_ERR_OK ||
+      !ssl->s3->next_proto_negotiated.CopyFrom(
+          MakeConstSpan(selected, selected_len))) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return false;
   }
 
-  OPENSSL_free(ssl->s3->next_proto_negotiated);
-  ssl->s3->next_proto_negotiated =
-      (uint8_t *)BUF_memdup(selected, selected_len);
-  if (ssl->s3->next_proto_negotiated == NULL) {
-    *out_alert = SSL_AD_INTERNAL_ERROR;
-    return false;
-  }
-
-  ssl->s3->next_proto_negotiated_len = selected_len;
   hs->next_proto_neg_seen = true;
-
   return true;
 }
 
@@ -1417,8 +1411,7 @@ static bool ext_alpn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     }
   }
 
-  if (!CBS_stow(&protocol_name, &ssl->s3->alpn_selected,
-                &ssl->s3->alpn_selected_len)) {
+  if (!ssl->s3->alpn_selected.CopyFrom(protocol_name)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return false;
   }
@@ -1470,13 +1463,11 @@ bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
           ssl, &selected, &selected_len, CBS_data(&protocol_name_list),
           CBS_len(&protocol_name_list),
           ssl->ctx->alpn_select_cb_arg) == SSL_TLSEXT_ERR_OK) {
-    OPENSSL_free(ssl->s3->alpn_selected);
-    ssl->s3->alpn_selected = (uint8_t *)BUF_memdup(selected, selected_len);
-    if (ssl->s3->alpn_selected == NULL) {
+    if (!ssl->s3->alpn_selected.CopyFrom(
+            MakeConstSpan(selected, selected_len))) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
       return false;
     }
-    ssl->s3->alpn_selected_len = selected_len;
   }
 
   return true;
@@ -1484,7 +1475,7 @@ bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
 static bool ext_alpn_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  if (ssl->s3->alpn_selected == NULL) {
+  if (ssl->s3->alpn_selected.empty()) {
     return true;
   }
 
@@ -1493,8 +1484,8 @@ static bool ext_alpn_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_u16_length_prefixed(&contents, &proto_list) ||
       !CBB_add_u8_length_prefixed(&proto_list, &proto) ||
-      !CBB_add_bytes(&proto, ssl->s3->alpn_selected,
-                     ssl->s3->alpn_selected_len) ||
+      !CBB_add_bytes(&proto, ssl->s3->alpn_selected.data(),
+                     ssl->s3->alpn_selected.size()) ||
       !CBB_flush(out)) {
     return false;
   }

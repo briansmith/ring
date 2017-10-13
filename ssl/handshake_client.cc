@@ -1476,14 +1476,15 @@ static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
 
   if (hs->next_proto_neg_seen) {
     static const uint8_t kZero[32] = {0};
-    size_t padding_len = 32 - ((ssl->s3->next_proto_negotiated_len + 2) % 32);
+    size_t padding_len =
+        32 - ((ssl->s3->next_proto_negotiated.size() + 2) % 32);
 
     ScopedCBB cbb;
     CBB body, child;
     if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_NEXT_PROTO) ||
         !CBB_add_u8_length_prefixed(&body, &child) ||
-        !CBB_add_bytes(&child, ssl->s3->next_proto_negotiated,
-                       ssl->s3->next_proto_negotiated_len) ||
+        !CBB_add_bytes(&child, ssl->s3->next_proto_negotiated.data(),
+                       ssl->s3->next_proto_negotiated.size()) ||
         !CBB_add_u8_length_prefixed(&body, &child) ||
         !CBB_add_bytes(&child, kZero, padding_len) ||
         !ssl_add_message_cbb(ssl, cbb.get())) {
@@ -1517,8 +1518,8 @@ static bool can_false_start(const SSL_HANDSHAKE *hs) {
   // False Start only for TLS 1.2 with an ECDHE+AEAD cipher and ALPN or NPN.
   return !SSL_is_dtls(ssl) &&
          SSL_version(ssl) == TLS1_2_VERSION &&
-         (ssl->s3->alpn_selected != NULL ||
-          ssl->s3->next_proto_negotiated != NULL) &&
+         (!ssl->s3->alpn_selected.empty() ||
+          !ssl->s3->next_proto_negotiated.empty()) &&
          hs->new_cipher->algorithm_mkey == SSL_kECDHE &&
          hs->new_cipher->algorithm_mac == SSL_AEAD;
 }
@@ -1664,18 +1665,16 @@ static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
 
   ssl->method->on_handshake_complete(ssl);
 
-  SSL_SESSION_free(ssl->s3->established_session);
   if (ssl->session != NULL) {
     SSL_SESSION_up_ref(ssl->session);
-    ssl->s3->established_session = ssl->session;
+    ssl->s3->established_session.reset(ssl->session);
   } else {
     // We make a copy of the session in order to maintain the immutability
     // of the new established_session due to False Start. The caller may
     // have taken a reference to the temporary session.
     ssl->s3->established_session =
-        SSL_SESSION_dup(hs->new_session.get(), SSL_SESSION_DUP_ALL)
-        .release();
-    if (ssl->s3->established_session == NULL) {
+        SSL_SESSION_dup(hs->new_session.get(), SSL_SESSION_DUP_ALL);
+    if (!ssl->s3->established_session) {
       return ssl_hs_error;
     }
     // Renegotiations do not participate in session resumption.

@@ -1392,8 +1392,7 @@ static enum ssl_hs_wait_t do_read_next_proto(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!CBS_stow(&selected_protocol, &ssl->s3->next_proto_negotiated,
-                &ssl->s3->next_proto_negotiated_len)) {
+  if (!ssl->s3->next_proto_negotiated.CopyFrom(selected_protocol)) {
     return ssl_hs_error;
   }
 
@@ -1510,12 +1509,11 @@ static enum ssl_hs_wait_t do_finish_server_handshake(SSL_HANDSHAKE *hs) {
     ssl->ctx->x509_method->session_clear(hs->new_session.get());
   }
 
-  SSL_SESSION_free(ssl->s3->established_session);
   if (ssl->session != NULL) {
     SSL_SESSION_up_ref(ssl->session);
-    ssl->s3->established_session = ssl->session;
+    ssl->s3->established_session.reset(ssl->session);
   } else {
-    ssl->s3->established_session = hs->new_session.release();
+    ssl->s3->established_session = std::move(hs->new_session);
     ssl->s3->established_session->not_resumable = 0;
   }
 
