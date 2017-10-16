@@ -316,68 +316,65 @@ static int ssl3_prf(uint8_t *out, size_t out_len, const uint8_t *secret,
   return 1;
 }
 
-static int tls1_setup_key_block(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-  if (!hs->key_block.empty()) {
-    return 1;
-  }
-
-  SSL_SESSION *session = ssl->session;
-  if (hs->new_session) {
-    session = hs->new_session.get();
-  }
-
+static bool get_key_block_lengths(const SSL *ssl, size_t *out_mac_secret_len,
+                                  size_t *out_key_len, size_t *out_iv_len,
+                                  const SSL_CIPHER *cipher) {
   const EVP_AEAD *aead = NULL;
-  size_t mac_secret_len, fixed_iv_len;
-  if (session->cipher == NULL ||
-      !ssl_cipher_get_evp_aead(&aead, &mac_secret_len, &fixed_iv_len,
-                               session->cipher, ssl_protocol_version(ssl),
-                               SSL_is_dtls(ssl))) {
+  if (!ssl_cipher_get_evp_aead(&aead, out_mac_secret_len, out_iv_len, cipher,
+                               ssl_protocol_version(ssl), SSL_is_dtls(ssl))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CIPHER_OR_HASH_UNAVAILABLE);
-    return 0;
+    return false;
   }
-  size_t key_len = EVP_AEAD_key_length(aead);
-  if (mac_secret_len > 0) {
+
+  *out_key_len = EVP_AEAD_key_length(aead);
+  if (*out_mac_secret_len > 0) {
     // For "stateful" AEADs (i.e. compatibility with pre-AEAD cipher suites) the
     // key length reported by |EVP_AEAD_key_length| will include the MAC key
     // bytes and initial implicit IV.
-    if (key_len < mac_secret_len + fixed_iv_len) {
+    if (*out_key_len < *out_mac_secret_len + *out_iv_len) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return 0;
+      return false;
     }
-    key_len -= mac_secret_len + fixed_iv_len;
+    *out_key_len -= *out_mac_secret_len + *out_iv_len;
   }
 
-  assert(mac_secret_len < 256);
-  assert(key_len < 256);
-  assert(fixed_iv_len < 256);
+  return true;
+}
 
-  ssl->s3->tmp.new_mac_secret_len = (uint8_t)mac_secret_len;
-  ssl->s3->tmp.new_key_len = (uint8_t)key_len;
-  ssl->s3->tmp.new_fixed_iv_len = (uint8_t)fixed_iv_len;
+static bool setup_key_block(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  if (!hs->key_block.empty()) {
+    return true;
+  }
 
+  size_t mac_secret_len, key_len, fixed_iv_len;
   Array<uint8_t> key_block;
-  if (!key_block.Init(SSL_get_key_block_len(ssl)) ||
+  if (!get_key_block_lengths(ssl, &mac_secret_len, &key_len, &fixed_iv_len,
+                             hs->new_cipher) ||
+      !key_block.Init(2 * (mac_secret_len + key_len + fixed_iv_len)) ||
       !SSL_generate_key_block(ssl, key_block.data(), key_block.size())) {
-    return 0;
+    return false;
   }
 
   hs->key_block = std::move(key_block);
-  return 1;
+  return true;
 }
 
 int tls1_change_cipher_state(SSL_HANDSHAKE *hs,
                              evp_aead_direction_t direction) {
   SSL *const ssl = hs->ssl;
   // Ensure the key block is set up.
-  if (!tls1_setup_key_block(hs)) {
+  size_t mac_secret_len, key_len, iv_len;
+  if (!setup_key_block(hs) ||
+      !get_key_block_lengths(ssl, &mac_secret_len, &key_len, &iv_len,
+                             hs->new_cipher)) {
     return 0;
   }
 
-  size_t mac_secret_len = ssl->s3->tmp.new_mac_secret_len;
-  size_t key_len = ssl->s3->tmp.new_key_len;
-  size_t iv_len = ssl->s3->tmp.new_fixed_iv_len;
-  assert((mac_secret_len + key_len + iv_len) * 2 == hs->key_block.size());
+  if ((mac_secret_len + key_len + iv_len) * 2 != hs->key_block.size()) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
 
   Span<const uint8_t> key_block = hs->key_block;
   Span<const uint8_t> mac_secret, key, iv;
@@ -448,9 +445,14 @@ int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
 using namespace bssl;
 
 size_t SSL_get_key_block_len(const SSL *ssl) {
-  return 2 * ((size_t)ssl->s3->tmp.new_mac_secret_len +
-              (size_t)ssl->s3->tmp.new_key_len +
-              (size_t)ssl->s3->tmp.new_fixed_iv_len);
+  size_t mac_secret_len, key_len, fixed_iv_len;
+  if (!get_key_block_lengths(ssl, &mac_secret_len, &key_len, &fixed_iv_len,
+                             SSL_get_current_cipher(ssl))) {
+    ERR_clear_error();
+    return 0;
+  }
+
+  return 2 * (mac_secret_len + key_len + fixed_iv_len);
 }
 
 int SSL_generate_key_block(const SSL *ssl, uint8_t *out, size_t out_len) {

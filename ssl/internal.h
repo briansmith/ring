@@ -2299,16 +2299,6 @@ struct SSL3_STATE {
   uint8_t previous_server_finished_len = 0;
   uint8_t previous_server_finished[12] = {0};
 
-  // State pertaining to the pending handshake.
-  //
-  // TODO(davidben): Move everything not needed after the handshake completes to
-  // |hs| and remove this.
-  struct {
-    uint8_t new_mac_secret_len;
-    uint8_t new_key_len;
-    uint8_t new_fixed_iv_len;
-  } tmp = {0, 0, 0};
-
   // established_session is the session established by the connection. This
   // session is only filled upon the completion of the handshake and is
   // immutable.
