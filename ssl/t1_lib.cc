@@ -2187,31 +2187,31 @@ bool ssl_ext_key_share_parse_clienthello(SSL_HANDSHAKE *hs, bool *out_found,
   }
 
   // Find the corresponding key share.
-  bool found = false;
   CBS peer_key;
+  CBS_init(&peer_key, NULL, 0);
   while (CBS_len(&key_shares) > 0) {
     uint16_t id;
     CBS peer_key_tmp;
     if (!CBS_get_u16(&key_shares, &id) ||
-        !CBS_get_u16_length_prefixed(&key_shares, &peer_key_tmp)) {
+        !CBS_get_u16_length_prefixed(&key_shares, &peer_key_tmp) ||
+        CBS_len(&peer_key_tmp) == 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       return false;
     }
 
     if (id == group_id) {
-      if (found) {
+      if (CBS_len(&peer_key) != 0) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_DUPLICATE_KEY_SHARE);
         *out_alert = SSL_AD_ILLEGAL_PARAMETER;
         return false;
       }
 
-      found = true;
       peer_key = peer_key_tmp;
       // Continue parsing the structure to keep peers honest.
     }
   }
 
-  if (!found) {
+  if (CBS_len(&peer_key) == 0) {
     *out_found = false;
     out_secret->Reset();
     return true;
