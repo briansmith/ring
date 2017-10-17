@@ -734,13 +734,17 @@ func (hc *halfConn) splitBlock(b *block, n int) (*block, *block) {
 	return b, bb
 }
 
-func (c *Conn) useInTrafficSecret(version uint16, suite *cipherSuite, secret []byte) {
+func (c *Conn) useInTrafficSecret(version uint16, suite *cipherSuite, secret []byte) error {
+	if c.hand.Len() != 0 {
+		return c.in.setErrorLocked(errors.New("tls: buffered handshake messages on cipher change"))
+	}
 	side := serverWrite
 	if !c.isClient {
 		side = clientWrite
 	}
 	c.in.useTrafficSecret(version, suite, secret, side)
 	c.seenHandshakePackEnd = false
+	return nil
 }
 
 func (c *Conn) useOutTrafficSecret(version uint16, suite *cipherSuite, secret []byte) {
@@ -961,8 +965,11 @@ Again:
 			break
 		}
 		if !isResumptionExperiment(c.wireVersion) {
-			err := c.in.changeCipherSpec(c.config)
-			if err != nil {
+			if c.hand.Len() != 0 {
+				c.in.setErrorLocked(errors.New("tls: buffered handshake messages on cipher change"))
+				break
+			}
+			if err := c.in.changeCipherSpec(c.config); err != nil {
 				c.in.setErrorLocked(c.sendAlert(err.(alert)))
 			}
 		}
@@ -1547,7 +1554,9 @@ func (c *Conn) handlePostHandshakeMessage() error {
 		if c.config.Bugs.RejectUnsolicitedKeyUpdate {
 			return errors.New("tls: unexpected KeyUpdate message")
 		}
-		c.useInTrafficSecret(c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.in.trafficSecret))
+		if err := c.useInTrafficSecret(c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.in.trafficSecret)); err != nil {
+			return err
+		}
 		if keyUpdate.keyUpdateRequest == keyUpdateRequested {
 			c.keyUpdateRequested = true
 		}
@@ -1579,8 +1588,7 @@ func (c *Conn) ReadKeyUpdateACK() error {
 		return errors.New("tls: received invalid KeyUpdate message")
 	}
 
-	c.useInTrafficSecret(c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.in.trafficSecret))
-	return nil
+	return c.useInTrafficSecret(c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.in.trafficSecret))
 }
 
 func (c *Conn) Renegotiate() error {

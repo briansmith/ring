@@ -754,7 +754,9 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	// traffic key.
 	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
 	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverHandshakeTrafficLabel)
-	c.useInTrafficSecret(c.wireVersion, hs.suite, serverHandshakeTrafficSecret)
+	if err := c.useInTrafficSecret(c.wireVersion, hs.suite, serverHandshakeTrafficSecret); err != nil {
+		return err
+	}
 
 	msg, err := c.readHandshake()
 	if err != nil {
@@ -888,7 +890,9 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	// Switch to application data keys on read. In particular, any alerts
 	// from the client certificate are read over these keys.
-	c.useInTrafficSecret(c.wireVersion, hs.suite, serverTrafficSecret)
+	if err := c.useInTrafficSecret(c.wireVersion, hs.suite, serverTrafficSecret); err != nil {
+		return err
+	}
 
 	// If we're expecting 0.5-RTT messages from the server, read them
 	// now.

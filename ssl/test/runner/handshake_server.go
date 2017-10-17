@@ -648,8 +648,7 @@ ResendHelloRetryRequest:
 		// AcceptAnyBinder is set. See https://crbug.com/115.
 		if hs.sessionState != nil && !config.Bugs.AcceptAnySession {
 			binderToVerify := newClientHello.pskBinders[pskIndex]
-			err := verifyPSKBinder(newClientHello, hs.sessionState, binderToVerify, append(oldClientHelloBytes, helloRetryRequest.marshal()...))
-			if err != nil {
+			if err := verifyPSKBinder(newClientHello, hs.sessionState, binderToVerify, append(oldClientHelloBytes, helloRetryRequest.marshal()...)); err != nil {
 				return err
 			}
 		}
@@ -664,7 +663,9 @@ ResendHelloRetryRequest:
 		}
 		if encryptedExtensions.extensions.hasEarlyData {
 			earlyTrafficSecret := hs.finishedHash.deriveSecret(earlyTrafficLabel)
-			c.useInTrafficSecret(c.wireVersion, hs.suite, earlyTrafficSecret)
+			if err := c.useInTrafficSecret(c.wireVersion, hs.suite, earlyTrafficSecret); err != nil {
+				return err
+			}
 
 			for _, expectedMsg := range config.Bugs.ExpectEarlyData {
 				if err := c.readRecord(recordTypeApplicationData); err != nil {
@@ -928,7 +929,9 @@ ResendHelloRetryRequest:
 	}
 
 	// Switch input stream to handshake traffic keys.
-	c.useInTrafficSecret(c.wireVersion, hs.suite, clientHandshakeTrafficSecret)
+	if err := c.useInTrafficSecret(c.wireVersion, hs.suite, clientHandshakeTrafficSecret); err != nil {
+		return err
+	}
 
 	// If we requested a client certificate, then the client must send a
 	// certificate message, even if it's empty.
@@ -1032,7 +1035,9 @@ ResendHelloRetryRequest:
 	hs.writeClientHash(clientFinished.marshal())
 
 	// Switch to application data keys on read.
-	c.useInTrafficSecret(c.wireVersion, hs.suite, clientTrafficSecret)
+	if err := c.useInTrafficSecret(c.wireVersion, hs.suite, clientTrafficSecret); err != nil {
+		return err
+	}
 
 	c.cipherSuite = hs.suite
 	c.resumptionSecret = hs.finishedHash.deriveSecret(resumptionLabel)
