@@ -1010,6 +1010,9 @@ bool tls_has_unprocessed_handshake_data(const SSL *ssl);
 // |tls_has_unprocessed_handshake_data| for DTLS.
 bool dtls_has_unprocessed_handshake_data(const SSL *ssl);
 
+// tls_flush_pending_hs_data flushes any handshake plaintext data.
+bool tls_flush_pending_hs_data(SSL *ssl);
+
 struct DTLS_OUTGOING_MESSAGE {
   DTLS_OUTGOING_MESSAGE() {}
   DTLS_OUTGOING_MESSAGE(const DTLS_OUTGOING_MESSAGE &) = delete;
@@ -2272,6 +2275,11 @@ struct SSL3_STATE {
 
   // hs_buf is the buffer of handshake data to process.
   UniquePtr<BUF_MEM> hs_buf;
+
+  // pending_hs_data contains the pending handshake data that has not yet
+  // been encrypted to |pending_flight|. This allows packing the handshake into
+  // fewer records.
+  UniquePtr<BUF_MEM> pending_hs_data;
 
   // pending_flight is the pending outgoing flight. This is used to flush each
   // handshake flight in a single write. |write_buffer| must be written out

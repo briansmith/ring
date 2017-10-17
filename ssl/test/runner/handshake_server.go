@@ -664,7 +664,7 @@ ResendHelloRetryRequest:
 		}
 		if encryptedExtensions.extensions.hasEarlyData {
 			earlyTrafficSecret := hs.finishedHash.deriveSecret(earlyTrafficLabel)
-			c.in.useTrafficSecret(c.wireVersion, hs.suite, earlyTrafficSecret, clientWrite)
+			c.useInTrafficSecret(c.wireVersion, hs.suite, earlyTrafficSecret)
 
 			for _, expectedMsg := range config.Bugs.ExpectEarlyData {
 				if err := c.readRecord(recordTypeApplicationData); err != nil {
@@ -761,7 +761,7 @@ ResendHelloRetryRequest:
 
 	// Switch to handshake traffic keys.
 	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverHandshakeTrafficLabel)
-	c.out.useTrafficSecret(c.wireVersion, hs.suite, serverHandshakeTrafficSecret, serverWrite)
+	c.useOutTrafficSecret(c.wireVersion, hs.suite, serverHandshakeTrafficSecret)
 	// Derive handshake traffic read key, but don't switch yet.
 	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
 
@@ -902,7 +902,7 @@ ResendHelloRetryRequest:
 
 	// Switch to application data keys on write. In particular, any alerts
 	// from the client certificate are sent over these keys.
-	c.out.useTrafficSecret(c.wireVersion, hs.suite, serverTrafficSecret, serverWrite)
+	c.useOutTrafficSecret(c.wireVersion, hs.suite, serverTrafficSecret)
 
 	// Send 0.5-RTT messages.
 	for _, halfRTTMsg := range config.Bugs.SendHalfRTTData {
@@ -928,7 +928,7 @@ ResendHelloRetryRequest:
 	}
 
 	// Switch input stream to handshake traffic keys.
-	c.in.useTrafficSecret(c.wireVersion, hs.suite, clientHandshakeTrafficSecret, clientWrite)
+	c.useInTrafficSecret(c.wireVersion, hs.suite, clientHandshakeTrafficSecret)
 
 	// If we requested a client certificate, then the client must send a
 	// certificate message, even if it's empty.
@@ -1032,7 +1032,7 @@ ResendHelloRetryRequest:
 	hs.writeClientHash(clientFinished.marshal())
 
 	// Switch to application data keys on read.
-	c.in.useTrafficSecret(c.wireVersion, hs.suite, clientTrafficSecret, clientWrite)
+	c.useInTrafficSecret(c.wireVersion, hs.suite, clientTrafficSecret)
 
 	c.cipherSuite = hs.suite
 	c.resumptionSecret = hs.finishedHash.deriveSecret(resumptionLabel)

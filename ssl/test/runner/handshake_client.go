@@ -411,7 +411,7 @@ NextCipherSuite:
 		finishedHash.addEntropy(session.masterSecret)
 		finishedHash.Write(helloBytes)
 		earlyTrafficSecret := finishedHash.deriveSecret(earlyTrafficLabel)
-		c.out.useTrafficSecret(session.wireVersion, pskCipherSuite, earlyTrafficSecret, clientWrite)
+		c.useOutTrafficSecret(session.wireVersion, pskCipherSuite, earlyTrafficSecret)
 		for _, earlyData := range c.config.Bugs.SendEarlyData {
 			if _, err := c.writeRecord(recordTypeApplicationData, earlyData); err != nil {
 				return err
@@ -754,7 +754,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	// traffic key.
 	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
 	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverHandshakeTrafficLabel)
-	c.in.useTrafficSecret(c.wireVersion, hs.suite, serverHandshakeTrafficSecret, serverWrite)
+	c.useInTrafficSecret(c.wireVersion, hs.suite, serverHandshakeTrafficSecret)
 
 	msg, err := c.readHandshake()
 	if err != nil {
@@ -888,7 +888,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	// Switch to application data keys on read. In particular, any alerts
 	// from the client certificate are read over these keys.
-	c.in.useTrafficSecret(c.wireVersion, hs.suite, serverTrafficSecret, serverWrite)
+	c.useInTrafficSecret(c.wireVersion, hs.suite, serverTrafficSecret)
 
 	// If we're expecting 0.5-RTT messages from the server, read them
 	// now.
@@ -934,7 +934,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 	}
 
-	c.out.useTrafficSecret(c.wireVersion, hs.suite, clientHandshakeTrafficSecret, clientWrite)
+	c.useOutTrafficSecret(c.wireVersion, hs.suite, clientHandshakeTrafficSecret)
 
 	if certReq != nil && !c.config.Bugs.SkipClientCertificate {
 		certMsg := &certificateMsg{
@@ -1020,7 +1020,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	c.flushHandshake()
 
 	// Switch to application data keys.
-	c.out.useTrafficSecret(c.wireVersion, hs.suite, clientTrafficSecret, clientWrite)
+	c.useOutTrafficSecret(c.wireVersion, hs.suite, clientTrafficSecret)
 
 	c.resumptionSecret = hs.finishedHash.deriveSecret(resumptionLabel)
 	return nil

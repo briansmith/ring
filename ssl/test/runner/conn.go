@@ -101,6 +101,11 @@ type Conn struct {
 	keyUpdateRequested bool
 	seenOneByteRecord  bool
 
+	// seenHandshakePackEnd is whether the most recent handshake record was
+	// not full for ExpectPackedEncryptedHandshake. If true, no more
+	// handshake data may be received until the next flight or epoch change.
+	seenHandshakePackEnd bool
+
 	tmp [16]byte
 }
 
@@ -242,14 +247,6 @@ func (hc *halfConn) useTrafficSecret(version uint16, suite *cipherSuite, secret 
 func (hc *halfConn) resetCipher() {
 	hc.cipher = nil
 	hc.incEpoch()
-}
-
-func (hc *halfConn) doKeyUpdate(c *Conn, isOutgoing bool) {
-	side := serverWrite
-	if c.isClient == isOutgoing {
-		side = clientWrite
-	}
-	hc.useTrafficSecret(hc.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), hc.trafficSecret), side)
 }
 
 // incSeq increments the sequence number.
@@ -737,6 +734,23 @@ func (hc *halfConn) splitBlock(b *block, n int) (*block, *block) {
 	return b, bb
 }
 
+func (c *Conn) useInTrafficSecret(version uint16, suite *cipherSuite, secret []byte) {
+	side := serverWrite
+	if !c.isClient {
+		side = clientWrite
+	}
+	c.in.useTrafficSecret(version, suite, secret, side)
+	c.seenHandshakePackEnd = false
+}
+
+func (c *Conn) useOutTrafficSecret(version uint16, suite *cipherSuite, secret []byte) {
+	side := serverWrite
+	if c.isClient {
+		side = clientWrite
+	}
+	c.out.useTrafficSecret(version, suite, secret, side)
+}
+
 func (c *Conn) doReadRecord(want recordType) (recordType, *block, error) {
 RestartReadRecord:
 	if c.isDTLS {
@@ -901,6 +915,13 @@ Again:
 		return c.in.setErrorLocked(err)
 	}
 
+	if typ != recordTypeHandshake {
+		c.seenHandshakePackEnd = false
+	} else if c.seenHandshakePackEnd {
+		c.in.freeBlock(b)
+		return c.in.setErrorLocked(errors.New("tls: peer violated ExpectPackedEncryptedHandshake"))
+	}
+
 	switch typ {
 	default:
 		c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))
@@ -962,6 +983,9 @@ Again:
 			return c.in.setErrorLocked(c.sendAlert(alertNoRenegotiation))
 		}
 		c.hand.Write(data)
+		if pack := c.config.Bugs.ExpectPackedEncryptedHandshake; pack > 0 && len(data) < pack && c.out.cipher != nil {
+			c.seenHandshakePackEnd = true
+		}
 	}
 
 	if b != nil {
@@ -1020,6 +1044,7 @@ func (c *Conn) writeV2Record(data []byte) (n int, err error) {
 // to the connection and updates the record layer state.
 // c.out.Mutex <= L.
 func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
+	c.seenHandshakePackEnd = false
 	if typ == recordTypeHandshake {
 		msgType := data[0]
 		if c.config.Bugs.SendWrongMessageType != 0 && msgType == c.config.Bugs.SendWrongMessageType {
@@ -1522,7 +1547,7 @@ func (c *Conn) handlePostHandshakeMessage() error {
 		if c.config.Bugs.RejectUnsolicitedKeyUpdate {
 			return errors.New("tls: unexpected KeyUpdate message")
 		}
-		c.in.doKeyUpdate(c, false)
+		c.useInTrafficSecret(c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.in.trafficSecret))
 		if keyUpdate.keyUpdateRequest == keyUpdateRequested {
 			c.keyUpdateRequested = true
 		}
@@ -1554,7 +1579,7 @@ func (c *Conn) ReadKeyUpdateACK() error {
 		return errors.New("tls: received invalid KeyUpdate message")
 	}
 
-	c.in.doKeyUpdate(c, false)
+	c.useInTrafficSecret(c.in.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.in.trafficSecret))
 	return nil
 }
 
@@ -1885,7 +1910,7 @@ func (c *Conn) sendKeyUpdateLocked(keyUpdateRequest byte) error {
 	if err := c.flushHandshake(); err != nil {
 		return err
 	}
-	c.out.doKeyUpdate(c, true)
+	c.useOutTrafficSecret(c.out.wireVersion, c.cipherSuite, updateTrafficSecret(c.cipherSuite.hash(), c.out.trafficSecret))
 	return nil
 }
 

@@ -2761,11 +2761,12 @@ read alert 1 0
 			},
 		},
 		{
-			// Test the server so there is a large certificate as
-			// well as application data.
+			// Test the TLS 1.2 server so there is a large
+			// unencrypted certificate as well as application data.
 			testType: serverTest,
-			name:     "MaxSendFragment",
+			name:     "MaxSendFragment-TLS12",
 			config: Config{
+				MaxVersion: VersionTLS12,
 				Bugs: ProtocolBugs{
 					MaxReceivePlaintext: 512,
 				},
@@ -2777,11 +2778,12 @@ read alert 1 0
 			},
 		},
 		{
-			// Test the server so there is a large certificate as
-			// well as application data.
+			// Test the TLS 1.2 server so there is a large
+			// unencrypted certificate as well as application data.
 			testType: serverTest,
-			name:     "MaxSendFragment-TooLarge",
+			name:     "MaxSendFragment-TLS12-TooLarge",
 			config: Config{
+				MaxVersion: VersionTLS12,
 				Bugs: ProtocolBugs{
 					// Ensure that some of the records are
 					// 512.
@@ -2795,6 +2797,57 @@ read alert 1 0
 			},
 			shouldFail:         true,
 			expectedLocalError: "local error: record overflow",
+		},
+		{
+			// Test the TLS 1.3 server so there is a large encrypted
+			// certificate as well as application data.
+			testType: serverTest,
+			name:     "MaxSendFragment-TLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					MaxReceivePlaintext:            512,
+					ExpectPackedEncryptedHandshake: 512,
+				},
+			},
+			messageLen: 1024,
+			flags: []string{
+				"-max-send-fragment", "512",
+				"-read-size", "1024",
+			},
+		},
+		{
+			// Test the TLS 1.3 server so there is a large encrypted
+			// certificate as well as application data.
+			testType: serverTest,
+			name:     "MaxSendFragment-TLS13-TooLarge",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					// Ensure that some of the records are
+					// 512.
+					MaxReceivePlaintext: 511,
+				},
+			},
+			messageLen: 1024,
+			flags: []string{
+				"-max-send-fragment", "512",
+				"-read-size", "1024",
+			},
+			shouldFail:         true,
+			expectedLocalError: "local error: record overflow",
+		},
+		{
+			// Test that, by default, handshake data is tightly
+			// packed in TLS 1.3.
+			testType: serverTest,
+			name:     "PackedEncryptedHandshake-TLS13",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					ExpectPackedEncryptedHandshake: 16384,
+				},
+			},
 		},
 		{
 			// Test that DTLS can handle multiple application data
