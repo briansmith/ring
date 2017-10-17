@@ -275,7 +275,7 @@ static const SSLAEADContext *get_write_aead(const SSL *ssl,
                                             enum dtls1_use_epoch_t use_epoch) {
   if (use_epoch == dtls1_use_previous_epoch) {
     assert(ssl->d1->w_epoch >= 1);
-    return ssl->d1->last_aead_write_ctx;
+    return ssl->d1->last_aead_write_ctx.get();
   }
 
   return ssl->s3->aead_write_ctx.get();
@@ -308,7 +308,7 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
   if (use_epoch == dtls1_use_previous_epoch) {
     assert(ssl->d1->w_epoch >= 1);
     epoch = ssl->d1->w_epoch - 1;
-    aead = ssl->d1->last_aead_write_ctx;
+    aead = ssl->d1->last_aead_write_ctx.get();
     seq = ssl->d1->last_write_sequence;
   }
 

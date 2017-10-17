@@ -746,10 +746,10 @@ class SSLAEADContext {
 struct DTLS1_BITMAP {
   // map is a bit mask of the last 64 sequence numbers. Bit
   // |1<<i| corresponds to |max_seq_num - i|.
-  uint64_t map;
+  uint64_t map = 0;
   // max_seq_num is the largest sequence number seen so far as a 64-bit
   // integer.
-  uint64_t max_seq_num;
+  uint64_t max_seq_num = 0;
 };
 
 
@@ -997,9 +997,6 @@ struct SSLMessage {
 // ssl_max_handshake_message_len returns the maximum number of bytes permitted
 // in a handshake message for |ssl|.
 size_t ssl_max_handshake_message_len(const SSL *ssl);
-
-// dtls_clear_incoming_messages releases all buffered incoming messages.
-void dtls_clear_incoming_messages(SSL *ssl);
 
 // tls_can_accept_handshake_data returns whether |ssl| is able to accept more
 // data into handshake buffer.
@@ -2391,6 +2388,11 @@ struct OPENSSL_timeval {
 };
 
 struct DTLS1_STATE {
+  static constexpr bool kAllowUniquePtr = true;
+
+  DTLS1_STATE();
+  ~DTLS1_STATE();
+
   // has_change_cipher_spec is true if we have received a ChangeCipherSpec from
   // the peer in this epoch.
   bool has_change_cipher_spec:1;
@@ -2405,54 +2407,54 @@ struct DTLS1_STATE {
   // peer sent the final flight.
   bool flight_has_reply:1;
 
-  uint8_t cookie[DTLS1_COOKIE_LENGTH];
-  size_t cookie_len;
+  uint8_t cookie[DTLS1_COOKIE_LENGTH] = {0};
+  size_t cookie_len = 0;
 
   // The current data and handshake epoch.  This is initially undefined, and
   // starts at zero once the initial handshake is completed.
-  uint16_t r_epoch;
-  uint16_t w_epoch;
+  uint16_t r_epoch = 0;
+  uint16_t w_epoch = 0;
 
   // records being received in the current epoch
   DTLS1_BITMAP bitmap;
 
-  uint16_t handshake_write_seq;
-  uint16_t handshake_read_seq;
+  uint16_t handshake_write_seq = 0;
+  uint16_t handshake_read_seq = 0;
 
   // save last sequence number for retransmissions
-  uint8_t last_write_sequence[8];
-  SSLAEADContext *last_aead_write_ctx;
+  uint8_t last_write_sequence[8] = {0};
+  UniquePtr<SSLAEADContext> last_aead_write_ctx;
 
   // incoming_messages is a ring buffer of incoming handshake messages that have
   // yet to be processed. The front of the ring buffer is message number
   // |handshake_read_seq|, at position |handshake_read_seq| %
   // |SSL_MAX_HANDSHAKE_FLIGHT|.
-  hm_fragment *incoming_messages[SSL_MAX_HANDSHAKE_FLIGHT];
+  UniquePtr<hm_fragment> incoming_messages[SSL_MAX_HANDSHAKE_FLIGHT];
 
   // outgoing_messages is the queue of outgoing messages from the last handshake
   // flight.
   DTLS_OUTGOING_MESSAGE outgoing_messages[SSL_MAX_HANDSHAKE_FLIGHT];
-  uint8_t outgoing_messages_len;
+  uint8_t outgoing_messages_len = 0;
 
   // outgoing_written is the number of outgoing messages that have been
   // written.
-  uint8_t outgoing_written;
+  uint8_t outgoing_written = 0;
   // outgoing_offset is the number of bytes of the next outgoing message have
   // been written.
-  uint32_t outgoing_offset;
+  uint32_t outgoing_offset = 0;
 
-  unsigned int mtu;  // max DTLS packet size
+  unsigned mtu = 0;  // max DTLS packet size
 
   // num_timeouts is the number of times the retransmit timer has fired since
   // the last time it was reset.
-  unsigned int num_timeouts;
+  unsigned num_timeouts = 0;
 
   // Indicates when the last handshake msg or heartbeat sent will
   // timeout.
-  struct OPENSSL_timeval next_timeout;
+  struct OPENSSL_timeval next_timeout = {0, 0};
 
   // timeout_duration_ms is the timeout duration in milliseconds.
-  unsigned timeout_duration_ms;
+  unsigned timeout_duration_ms = 0;
 };
 
 // SSLConnection backs the public |SSL| type. Due to compatibility constraints,

@@ -78,18 +78,24 @@ namespace bssl {
 // before failing the DTLS handshake.
 #define DTLS1_MAX_TIMEOUTS                     12
 
+DTLS1_STATE::DTLS1_STATE()
+    : has_change_cipher_spec(false),
+      outgoing_messages_complete(false),
+      flight_has_reply(false) {}
+
+DTLS1_STATE::~DTLS1_STATE() {}
+
 bool dtls1_new(SSL *ssl) {
   if (!ssl3_new(ssl)) {
     return false;
   }
-  DTLS1_STATE *d1 = (DTLS1_STATE *)OPENSSL_malloc(sizeof *d1);
-  if (d1 == NULL) {
+  UniquePtr<DTLS1_STATE> d1 = MakeUnique<DTLS1_STATE>();
+  if (!d1) {
     ssl3_free(ssl);
     return false;
   }
-  OPENSSL_memset(d1, 0, sizeof *d1);
 
-  ssl->d1 = d1;
+  ssl->d1 = d1.release();
 
   // Set the version to the highest supported version.
   //
@@ -103,15 +109,11 @@ bool dtls1_new(SSL *ssl) {
 void dtls1_free(SSL *ssl) {
   ssl3_free(ssl);
 
-  if (ssl == NULL || ssl->d1 == NULL) {
+  if (ssl == NULL) {
     return;
   }
 
-  dtls_clear_incoming_messages(ssl);
-  dtls_clear_outgoing_messages(ssl);
-  Delete(ssl->d1->last_aead_write_ctx);
-
-  OPENSSL_free(ssl->d1);
+  Delete(ssl->d1);
   ssl->d1 = NULL;
 }
 

@@ -253,8 +253,8 @@ static void dtls1_hm_fragment_mark(hm_fragment *frag, size_t start,
 // dtls1_is_current_message_complete returns whether the current handshake
 // message is complete.
 static bool dtls1_is_current_message_complete(const SSL *ssl) {
-  hm_fragment *frag = ssl->d1->incoming_messages[ssl->d1->handshake_read_seq %
-                                                 SSL_MAX_HANDSHAKE_FLIGHT];
+  size_t idx = ssl->d1->handshake_read_seq % SSL_MAX_HANDSHAKE_FLIGHT;
+  hm_fragment *frag = ssl->d1->incoming_messages[idx].get();
   return frag != NULL && frag->reassembly == NULL;
 }
 
@@ -271,7 +271,7 @@ static hm_fragment *dtls1_get_incoming_message(
   }
 
   size_t idx = msg_hdr->seq % SSL_MAX_HANDSHAKE_FLIGHT;
-  hm_fragment *frag = ssl->d1->incoming_messages[idx];
+  hm_fragment *frag = ssl->d1->incoming_messages[idx].get();
   if (frag != NULL) {
     assert(frag->seq == msg_hdr->seq);
     // The new fragment must be compatible with the previous fragments from this
@@ -286,13 +286,12 @@ static hm_fragment *dtls1_get_incoming_message(
   }
 
   // This is the first fragment from this message.
-  frag = dtls1_hm_fragment_new(msg_hdr).release();
-  if (frag == NULL) {
+  ssl->d1->incoming_messages[idx] = dtls1_hm_fragment_new(msg_hdr);
+  if (!ssl->d1->incoming_messages[idx]) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return NULL;
   }
-  ssl->d1->incoming_messages[idx] = frag;
-  return frag;
+  return ssl->d1->incoming_messages[idx].get();
 }
 
 ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
@@ -411,8 +410,8 @@ bool dtls1_get_message(SSL *ssl, SSLMessage *out) {
     return false;
   }
 
-  hm_fragment *frag = ssl->d1->incoming_messages[ssl->d1->handshake_read_seq %
-                                                 SSL_MAX_HANDSHAKE_FLIGHT];
+  size_t idx = ssl->d1->handshake_read_seq % SSL_MAX_HANDSHAKE_FLIGHT;
+  hm_fragment *frag = ssl->d1->incoming_messages[idx].get();
   out->type = frag->type;
   CBS_init(&out->body, frag->data + DTLS1_HM_HEADER_LENGTH, frag->msg_len);
   CBS_init(&out->raw, frag->data, DTLS1_HM_HEADER_LENGTH + frag->msg_len);
@@ -428,21 +427,13 @@ void dtls1_next_message(SSL *ssl) {
   assert(ssl->s3->has_message);
   assert(dtls1_is_current_message_complete(ssl));
   size_t index = ssl->d1->handshake_read_seq % SSL_MAX_HANDSHAKE_FLIGHT;
-  Delete(ssl->d1->incoming_messages[index]);
-  ssl->d1->incoming_messages[index] = NULL;
+  ssl->d1->incoming_messages[index].reset();
   ssl->d1->handshake_read_seq++;
   ssl->s3->has_message = false;
   // If we previously sent a flight, mark it as having a reply, so
   // |on_handshake_complete| can manage post-handshake retransmission.
   if (ssl->d1->outgoing_messages_complete) {
     ssl->d1->flight_has_reply = true;
-  }
-}
-
-void dtls_clear_incoming_messages(SSL *ssl) {
-  for (size_t i = 0; i < SSL_MAX_HANDSHAKE_FLIGHT; i++) {
-    Delete(ssl->d1->incoming_messages[i]);
-    ssl->d1->incoming_messages[i] = NULL;
   }
 }
 
@@ -458,7 +449,7 @@ bool dtls_has_unprocessed_handshake_data(const SSL *ssl) {
       assert(dtls1_is_current_message_complete(ssl));
       continue;
     }
-    if (ssl->d1->incoming_messages[i] != NULL) {
+    if (ssl->d1->incoming_messages[i] != nullptr) {
       return true;
     }
   }
