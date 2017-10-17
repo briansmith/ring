@@ -2026,7 +2026,7 @@ OPENSSL_EXPORT SSL_SESSION *SSL_magic_pending_session_ptr(void);
 // 1) One can simply set the keys with |SSL_CTX_set_tlsext_ticket_keys|.
 // 2) One can configure an |EVP_CIPHER_CTX| and |HMAC_CTX| directly for
 //    encryption and authentication.
-// 3) One can configure an |SSL_TICKET_ENCRYPTION_METHOD| to have more control
+// 3) One can configure an |SSL_TICKET_AEAD_METHOD| to have more control
 //    and the option of asynchronous decryption.
 //
 // An attacker that compromises a server's session ticket key can impersonate
@@ -2103,8 +2103,8 @@ enum ssl_ticket_aead_result_t {
   ssl_ticket_aead_error,
 };
 
-// ssl_ticket_aead_method_st (aka |SSL_TICKET_ENCRYPTION_METHOD|) contains
-// methods for encrypting and decrypting session tickets.
+// ssl_ticket_aead_method_st (aka |SSL_TICKET_AEAD_METHOD|) contains methods
+// for encrypting and decrypting session tickets.
 struct ssl_ticket_aead_method_st {
   // max_overhead returns the maximum number of bytes of overhead that |seal|
   // may add.
