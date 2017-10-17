@@ -144,23 +144,18 @@ static const unsigned int kDefaultMTU = 1500 - 28;
 
 // Receiving handshake messages.
 
-static void dtls1_hm_fragment_free(hm_fragment *frag) {
-  if (frag == NULL) {
-    return;
-  }
-  OPENSSL_free(frag->data);
-  OPENSSL_free(frag->reassembly);
-  OPENSSL_free(frag);
+hm_fragment::~hm_fragment() {
+  OPENSSL_free(data);
+  OPENSSL_free(reassembly);
 }
 
-static hm_fragment *dtls1_hm_fragment_new(const struct hm_header_st *msg_hdr) {
+static UniquePtr<hm_fragment> dtls1_hm_fragment_new(
+    const struct hm_header_st *msg_hdr) {
   ScopedCBB cbb;
-  hm_fragment *frag = (hm_fragment *)OPENSSL_malloc(sizeof(hm_fragment));
-  if (frag == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return NULL;
+  UniquePtr<hm_fragment> frag = MakeUnique<hm_fragment>();
+  if (!frag) {
+    return nullptr;
   }
-  OPENSSL_memset(frag, 0, sizeof(hm_fragment));
   frag->type = msg_hdr->type;
   frag->seq = msg_hdr->seq;
   frag->msg_len = msg_hdr->msg_len;
@@ -170,7 +165,7 @@ static hm_fragment *dtls1_hm_fragment_new(const struct hm_header_st *msg_hdr) {
       (uint8_t *)OPENSSL_malloc(DTLS1_HM_HEADER_LENGTH + msg_hdr->msg_len);
   if (frag->data == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    goto err;
+    return nullptr;
   }
 
   if (!CBB_init_fixed(cbb.get(), frag->data, DTLS1_HM_HEADER_LENGTH) ||
@@ -181,7 +176,7 @@ static hm_fragment *dtls1_hm_fragment_new(const struct hm_header_st *msg_hdr) {
       !CBB_add_u24(cbb.get(), msg_hdr->msg_len) ||
       !CBB_finish(cbb.get(), NULL, NULL)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    goto err;
+    return nullptr;
   }
 
   // If the handshake message is empty, |frag->reassembly| is NULL.
@@ -189,22 +184,18 @@ static hm_fragment *dtls1_hm_fragment_new(const struct hm_header_st *msg_hdr) {
     // Initialize reassembly bitmask.
     if (msg_hdr->msg_len + 7 < msg_hdr->msg_len) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-      goto err;
+      return nullptr;
     }
     size_t bitmask_len = (msg_hdr->msg_len + 7) / 8;
     frag->reassembly = (uint8_t *)OPENSSL_malloc(bitmask_len);
     if (frag->reassembly == NULL) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-      goto err;
+      return nullptr;
     }
     OPENSSL_memset(frag->reassembly, 0, bitmask_len);
   }
 
   return frag;
-
-err:
-  dtls1_hm_fragment_free(frag);
-  return NULL;
 }
 
 // bit_range returns a |uint8_t| with bits |start|, inclusive, to |end|,
@@ -295,7 +286,7 @@ static hm_fragment *dtls1_get_incoming_message(
   }
 
   // This is the first fragment from this message.
-  frag = dtls1_hm_fragment_new(msg_hdr);
+  frag = dtls1_hm_fragment_new(msg_hdr).release();
   if (frag == NULL) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return NULL;
@@ -437,7 +428,7 @@ void dtls1_next_message(SSL *ssl) {
   assert(ssl->s3->has_message);
   assert(dtls1_is_current_message_complete(ssl));
   size_t index = ssl->d1->handshake_read_seq % SSL_MAX_HANDSHAKE_FLIGHT;
-  dtls1_hm_fragment_free(ssl->d1->incoming_messages[index]);
+  Delete(ssl->d1->incoming_messages[index]);
   ssl->d1->incoming_messages[index] = NULL;
   ssl->d1->handshake_read_seq++;
   ssl->s3->has_message = false;
@@ -450,7 +441,7 @@ void dtls1_next_message(SSL *ssl) {
 
 void dtls_clear_incoming_messages(SSL *ssl) {
   for (size_t i = 0; i < SSL_MAX_HANDSHAKE_FLIGHT; i++) {
-    dtls1_hm_fragment_free(ssl->d1->incoming_messages[i]);
+    Delete(ssl->d1->incoming_messages[i]);
     ssl->d1->incoming_messages[i] = NULL;
   }
 }
@@ -510,10 +501,14 @@ ssl_open_record_t dtls1_open_change_cipher_spec(SSL *ssl, size_t *out_consumed,
 
 // Sending handshake messages.
 
+void DTLS_OUTGOING_MESSAGE::Clear() {
+  OPENSSL_free(data);
+  data = nullptr;
+}
+
 void dtls_clear_outgoing_messages(SSL *ssl) {
   for (size_t i = 0; i < ssl->d1->outgoing_messages_len; i++) {
-    OPENSSL_free(ssl->d1->outgoing_messages[i].data);
-    ssl->d1->outgoing_messages[i].data = NULL;
+    ssl->d1->outgoing_messages[i].Clear();
   }
   ssl->d1->outgoing_messages_len = 0;
   ssl->d1->outgoing_written = 0;
@@ -552,7 +547,7 @@ bool dtls1_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg) {
 
 // add_outgoing adds a new handshake message or ChangeCipherSpec to the current
 // outgoing flight. It returns true on success and false on error.
-static bool add_outgoing(SSL *ssl, int is_ccs, Array<uint8_t> data) {
+static bool add_outgoing(SSL *ssl, bool is_ccs, Array<uint8_t> data) {
   if (ssl->d1->outgoing_messages_complete) {
     // If we've begun writing a new flight, we received the peer flight. Discard
     // the timer and the our flight.
@@ -594,11 +589,11 @@ static bool add_outgoing(SSL *ssl, int is_ccs, Array<uint8_t> data) {
 }
 
 bool dtls1_add_message(SSL *ssl, Array<uint8_t> data) {
-  return add_outgoing(ssl, 0 /* handshake */, std::move(data));
+  return add_outgoing(ssl, false /* handshake */, std::move(data));
 }
 
 bool dtls1_add_change_cipher_spec(SSL *ssl) {
-  return add_outgoing(ssl, 1 /* ChangeCipherSpec */, Array<uint8_t>());
+  return add_outgoing(ssl, true /* ChangeCipherSpec */, Array<uint8_t>());
 }
 
 bool dtls1_add_alert(SSL *ssl, uint8_t level, uint8_t desc) {

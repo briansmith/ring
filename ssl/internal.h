@@ -1014,10 +1014,17 @@ bool tls_has_unprocessed_handshake_data(const SSL *ssl);
 bool dtls_has_unprocessed_handshake_data(const SSL *ssl);
 
 struct DTLS_OUTGOING_MESSAGE {
-  uint8_t *data;
-  uint32_t len;
-  uint16_t epoch;
-  char is_ccs;
+  DTLS_OUTGOING_MESSAGE() {}
+  DTLS_OUTGOING_MESSAGE(const DTLS_OUTGOING_MESSAGE &) = delete;
+  DTLS_OUTGOING_MESSAGE &operator=(const DTLS_OUTGOING_MESSAGE &) = delete;
+  ~DTLS_OUTGOING_MESSAGE() { Clear(); }
+
+  void Clear();
+
+  uint8_t *data = nullptr;
+  uint32_t len = 0;
+  uint16_t epoch = 0;
+  bool is_ccs = false;
 };
 
 // dtls_clear_outgoing_messages releases all buffered outgoing messages.
@@ -2356,18 +2363,26 @@ struct hm_header_st {
 
 // An hm_fragment is an incoming DTLS message, possibly not yet assembled.
 struct hm_fragment {
+  static constexpr bool kAllowUniquePtr = true;
+
+  hm_fragment() {}
+  hm_fragment(const hm_fragment &) = delete;
+  hm_fragment &operator=(const hm_fragment &) = delete;
+
+  ~hm_fragment();
+
   // type is the type of the message.
-  uint8_t type;
+  uint8_t type = 0;
   // seq is the sequence number of this message.
-  uint16_t seq;
+  uint16_t seq = 0;
   // msg_len is the length of the message body.
-  uint32_t msg_len;
+  uint32_t msg_len = 0;
   // data is a pointer to the message, including message header. It has length
   // |DTLS1_HM_HEADER_LENGTH| + |msg_len|.
-  uint8_t *data;
+  uint8_t *data = nullptr;
   // reassembly is a bitmask of |msg_len| bits corresponding to which parts of
   // the message have been received. It is NULL if the message is complete.
-  uint8_t *reassembly;
+  uint8_t *reassembly = nullptr;
 };
 
 struct OPENSSL_timeval {
