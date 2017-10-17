@@ -1575,6 +1575,10 @@ bool tls13_get_cert_verify_signature_input(
     SSL_HANDSHAKE *hs, Array<uint8_t> *out,
     enum ssl_cert_verify_context_t cert_verify_context);
 
+// ssl_is_alpn_protocol_allowed returns whether |protocol| is a valid server
+// selection for |ssl|'s client preferences.
+bool ssl_is_alpn_protocol_allowed(const SSL *ssl, Span<const uint8_t> protocol);
+
 // ssl_negotiate_alpn negotiates the ALPN extension, if applicable. It returns
 // true on successful negotiation or if nothing was negotiated. It returns false
 // and sets |*out_alert| to an alert on error.

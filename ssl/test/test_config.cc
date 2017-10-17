@@ -121,6 +121,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-expect-no-session-id", &TestConfig::expect_no_session_id },
   { "-expect-accept-early-data", &TestConfig::expect_accept_early_data },
   { "-expect-reject-early-data", &TestConfig::expect_reject_early_data },
+  { "-expect-no-offer-early-data", &TestConfig::expect_no_offer_early_data },
   { "-no-op-extra-handshake", &TestConfig::no_op_extra_handshake },
   { "-handshake-twice", &TestConfig::handshake_twice },
   { "-allow-unknown-alpn-protos", &TestConfig::allow_unknown_alpn_protos },

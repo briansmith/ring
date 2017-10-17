@@ -11726,6 +11726,28 @@ func addTLS13HandshakeTests() {
 		expectedError: ":ALPN_MISMATCH_ON_EARLY_DATA:",
 	})
 
+	// Test that the client does not offer early data if it is incompatible
+	// with ALPN preferences.
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name:     "TLS13-EarlyData-ALPNPreferenceChanged",
+		config: Config{
+			MaxVersion:       VersionTLS13,
+			MaxEarlyDataSize: 16384,
+			NextProtos:       []string{"foo", "bar"},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-enable-early-data",
+			"-expect-early-data-info",
+			"-expect-no-offer-early-data",
+			"-on-initial-advertise-alpn", "\x03foo",
+			"-on-resume-advertise-alpn", "\x03bar",
+			"-on-initial-expect-alpn", "foo",
+			"-on-resume-expect-alpn", "bar",
+		},
+	})
+
 	// Test that the server correctly rejects 0-RTT when the previous
 	// session did not allow early data on resumption.
 	testCases = append(testCases, testCase{

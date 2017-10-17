@@ -2201,6 +2201,12 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session, SSL *ssl,
       return false;
     }
 
+    if (is_resume && !is_retry && !config->is_server &&
+        config->expect_no_offer_early_data && SSL_in_early_data(ssl)) {
+      fprintf(stderr, "Client unexpectedly offered early data.\n");
+      return false;
+    }
+
     if (config->handshake_twice) {
       do {
         ret = SSL_do_handshake(ssl);

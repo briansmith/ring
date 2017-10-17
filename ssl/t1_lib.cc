@@ -1382,33 +1382,10 @@ static bool ext_alpn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
     return false;
   }
 
-  if (!ssl->ctx->allow_unknown_alpn_protos) {
-    // Check that the protocol name is one of the ones we advertised.
-    bool protocol_ok = false;
-    CBS client_protocol_name_list, client_protocol_name;
-    CBS_init(&client_protocol_name_list, ssl->alpn_client_proto_list,
-             ssl->alpn_client_proto_list_len);
-    while (CBS_len(&client_protocol_name_list) > 0) {
-      if (!CBS_get_u8_length_prefixed(&client_protocol_name_list,
-                                      &client_protocol_name)) {
-        *out_alert = SSL_AD_INTERNAL_ERROR;
-        return false;
-      }
-
-      if (CBS_len(&client_protocol_name) == CBS_len(&protocol_name) &&
-          OPENSSL_memcmp(CBS_data(&client_protocol_name),
-                         CBS_data(&protocol_name),
-                         CBS_len(&protocol_name)) == 0) {
-        protocol_ok = true;
-        break;
-      }
-    }
-
-    if (!protocol_ok) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ALPN_PROTOCOL);
-      *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-      return false;
-    }
+  if (!ssl_is_alpn_protocol_allowed(ssl, protocol_name)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ALPN_PROTOCOL);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return false;
   }
 
   if (!ssl->s3->alpn_selected.CopyFrom(protocol_name)) {
@@ -1417,6 +1394,34 @@ static bool ext_alpn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
 
   return true;
+}
+
+bool ssl_is_alpn_protocol_allowed(const SSL *ssl,
+                                  Span<const uint8_t> protocol) {
+  if (ssl->alpn_client_proto_list == nullptr) {
+    return false;
+  }
+
+  if (ssl->ctx->allow_unknown_alpn_protos) {
+    return true;
+  }
+
+  // Check that the protocol name is one of the ones we advertised.
+  CBS client_protocol_name_list, client_protocol_name;
+  CBS_init(&client_protocol_name_list, ssl->alpn_client_proto_list,
+           ssl->alpn_client_proto_list_len);
+  while (CBS_len(&client_protocol_name_list) > 0) {
+    if (!CBS_get_u8_length_prefixed(&client_protocol_name_list,
+                                    &client_protocol_name)) {
+      return false;
+    }
+
+    if (client_protocol_name == protocol) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
@@ -1989,11 +1994,19 @@ static bool ext_psk_key_exchange_modes_parse_clienthello(SSL_HANDSHAKE *hs,
 
 static bool ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  if (ssl->session == NULL ||
+  if (!ssl->cert->enable_early_data ||
+      // Session must be 0-RTT capable.
+      ssl->session == NULL ||
       ssl_session_protocol_version(ssl->session) < TLS1_3_VERSION ||
       ssl->session->ticket_max_early_data == 0 ||
+      // The second ClientHello never offers early data.
       hs->received_hello_retry_request ||
-      !ssl->cert->enable_early_data) {
+      // In case ALPN preferences changed since this session was established,
+      // avoid reporting a confusing value in |SSL_get0_alpn_selected|.
+      (ssl->session->early_alpn_len != 0 &&
+       !ssl_is_alpn_protocol_allowed(
+           ssl, MakeConstSpan(ssl->session->early_alpn,
+                              ssl->session->early_alpn_len)))) {
     return true;
   }
 

@@ -90,6 +90,7 @@ struct TestConfig {
   bool expect_early_data_info = false;
   bool expect_accept_early_data = false;
   bool expect_reject_early_data = false;
+  bool expect_no_offer_early_data = false;
   bool use_ticket_callback = false;
   bool renew_ticket = false;
   bool enable_early_data = false;
