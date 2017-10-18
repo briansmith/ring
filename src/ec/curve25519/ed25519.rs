@@ -202,6 +202,100 @@ impl<'a> Ed25519KeyPair {
     }
 }
 
+/// The components of an Ed25519 key pair. This type cannot be used
+/// for signing, see [Ed25519KeyPair](./Ed25519KeyPair.html) instead.
+pub struct Ed25519KeyPairComponents {
+    /// The 32-byte private part of this pair, i.e. the seed.
+    pub private_key: [u8; 32],
+    /// The 32-byte public part of this key.
+    pub public_key: [u8; 32],
+}
+
+impl<'a> Ed25519KeyPairComponents {
+    /// Constructs an Ed25519 key pair by parsing an unencrypted PKCS#8 v2
+    /// Ed25519 private key.
+    ///
+    /// The input must be in PKCS#8 v2 format, and in particular it must contain
+    /// the public key in addition to the private key. `from_pkcs8()` will
+    /// verify that the public key and the private key are consistent with each
+    /// other.
+    ///
+    /// If you need to parse PKCS#8 v1 files (without the public key) then use
+    /// `Ed25519KeyPair::from_pkcs8_maybe_unchecked()` instead.
+    pub fn from_pkcs8(input: untrusted::Input)
+                      -> Result<Ed25519KeyPairComponents, error::Unspecified> {
+        let (seed, public_key) = unwrap_pkcs8(pkcs8::Version::V2Only, input)?;
+        Self::from_seed_and_public_key(seed, public_key.unwrap())
+    }
+
+    /// Constructs an Ed25519 key pair from the private key seed `seed` and its
+    /// public key `public_key`.
+    ///
+    /// It is recommended to use `Ed25519KeyPair::from_pkcs8()` instead.
+    ///
+    /// The private and public keys will be verified to be consistent with each
+    /// other. This helps avoid misuse of the key (e.g. accidentally swapping
+    /// the private key and public key, or using the wrong private key for the
+    /// public key). This also detects any corruption of the public or private
+    /// key.
+    pub fn from_seed_and_public_key(seed: untrusted::Input,
+                                    public_key: untrusted::Input)
+            -> Result<Ed25519KeyPairComponents, error::Unspecified> {
+        let pair = Self::from_seed_unchecked(seed)?;
+
+        // This implicitly verifies that `public_key` is the right length.
+        // XXX: This rejects ~18 keys when they are partially reduced, though
+        // those keys are virtually impossible to find.
+        if public_key != pair.public_key_bytes() {
+            return Err(error::Unspecified);
+        }
+
+        Ok(pair)
+    }
+
+    /// Constructs a Ed25519 key pair from the private key seed `seed`.
+    ///
+    /// It is recommended to use `Ed25519KeyPair::from_pkcs8()` instead. When
+    /// that is not practical, it is recommended to use
+    /// `Ed25519KeyPair::from_seed_and_public_key()` instead.
+    ///
+    /// Since the public key is not given, the public key will be computed from
+    /// the private key. It is not possible to detect misuse or corruption of
+    /// the private key since the public key isn't given as input.
+    pub fn from_seed_unchecked(seed: untrusted::Input)
+                               -> Result<Ed25519KeyPairComponents, error::Unspecified> {
+        let seed = slice_as_array_ref!(seed.as_slice_less_safe(), SEED_LEN)?;
+        Ok(Self::from_seed_(seed))
+    }
+
+    /// Returns a reference to the little-endian-encoded public key bytes.
+    pub fn public_key_bytes(&'a self) -> &'a [u8] {
+        &self.public_key
+    }
+
+    fn from_seed_(seed: &Seed) -> Ed25519KeyPairComponents {
+        let h = digest::digest(&digest::SHA512, seed);
+        let (scalar_encoded, prefix_encoded) = h.as_ref().split_at(SCALAR_LEN);
+
+        let mut scalar = [0u8; SCALAR_LEN];
+        scalar.copy_from_slice(&scalar_encoded);
+        unsafe { GFp_curve25519_scalar_mask(&mut scalar) };
+
+        let mut prefix = [0u8; PREFIX_LEN];
+        prefix.copy_from_slice(prefix_encoded);
+
+        let mut a = ExtPoint::new_at_infinity();
+        unsafe {
+            GFp_x25519_ge_scalarmult_base(&mut a, &scalar);
+        }
+
+        Ed25519KeyPairComponents {
+            private_key: seed.clone(),
+            public_key: a.into_encoded_point(),
+        }
+    }
+}
+
 fn unwrap_pkcs8(version: pkcs8::Version, input: untrusted::Input)
         -> Result<(untrusted::Input, Option<untrusted::Input>),
                   error::Unspecified> {
