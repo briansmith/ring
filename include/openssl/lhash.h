@@ -125,24 +125,7 @@ typedef int (*lhash_cmp_func)(const void *a, const void *b);
 // uint32_t.
 typedef uint32_t (*lhash_hash_func)(const void *a);
 
-typedef struct lhash_st {
-  // num_items contains the total number of items in the hash table.
-  size_t num_items;
-  // buckets is an array of |num_buckets| pointers. Each points to the head of
-  // a chain of LHASH_ITEM objects that have the same hash value, mod
-  // |num_buckets|.
-  LHASH_ITEM **buckets;
-  // num_buckets contains the length of |buckets|. This value is always >=
-  // kMinNumBuckets.
-  size_t num_buckets;
-  // callback_depth contains the current depth of |lh_doall| or |lh_doall_arg|
-  // calls. If non-zero then this suppresses resizing of the |buckets| array,
-  // which would otherwise disrupt the iteration.
-  unsigned callback_depth;
-
-  lhash_cmp_func comp;
-  lhash_hash_func hash;
-} _LHASH;
+typedef struct lhash_st _LHASH;
 
 // lh_new returns a new, empty hash table or NULL on error.
 OPENSSL_EXPORT _LHASH *lh_new(lhash_hash_func hash, lhash_cmp_func comp);

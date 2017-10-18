@@ -73,6 +73,25 @@ static const size_t kMinNumBuckets = 16;
 static const size_t kMaxAverageChainLength = 2;
 static const size_t kMinAverageChainLength = 1;
 
+struct lhash_st {
+  // num_items contains the total number of items in the hash table.
+  size_t num_items;
+  // buckets is an array of |num_buckets| pointers. Each points to the head of
+  // a chain of LHASH_ITEM objects that have the same hash value, mod
+  // |num_buckets|.
+  LHASH_ITEM **buckets;
+  // num_buckets contains the length of |buckets|. This value is always >=
+  // kMinNumBuckets.
+  size_t num_buckets;
+  // callback_depth contains the current depth of |lh_doall| or |lh_doall_arg|
+  // calls. If non-zero then this suppresses resizing of the |buckets| array,
+  // which would otherwise disrupt the iteration.
+  unsigned callback_depth;
+
+  lhash_cmp_func comp;
+  lhash_hash_func hash;
+};
+
 _LHASH *lh_new(lhash_hash_func hash, lhash_cmp_func comp) {
   _LHASH *ret = OPENSSL_malloc(sizeof(_LHASH));
   if (ret == NULL) {

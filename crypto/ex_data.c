@@ -113,7 +113,6 @@
 
 #include <openssl/crypto.h>
 #include <openssl/err.h>
-#include <openssl/lhash.h>
 #include <openssl/mem.h>
 #include <openssl/stack.h>
 #include <openssl/thread.h>

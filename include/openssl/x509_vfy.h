@@ -64,8 +64,6 @@
 #ifndef HEADER_X509_VFY_H
 #define HEADER_X509_VFY_H
 
-#include <openssl/bio.h>
-#include <openssl/lhash.h>
 #include <openssl/thread.h>
 
 #ifdef  __cplusplus
