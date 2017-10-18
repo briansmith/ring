@@ -386,6 +386,70 @@ impl RSAKeyPair {
     }
 }
 
+
+
+/// An RSA key pair, used for signing. Feature: `rsa_signing`.
+pub struct RSAKeyPairComponents<'a> {
+    /// The public composite modulus (big endian).
+    pub n: untrusted::Input<'a>,
+    /// The public exponent (big endian).
+    pub e: untrusted::Input<'a>,
+    /// The secret exponent (big endian).
+    pub d: untrusted::Input<'a>,
+    /// The inverse of q modulo p (big endian).
+    pub iqmp: untrusted::Input<'a>,
+    /// Prime factor of n (big endian).
+    pub p: untrusted::Input<'a>,
+    /// Prime factor of n (big endian).
+    pub q: untrusted::Input<'a>,
+}
+
+impl<'a> RSAKeyPairComponents<'a> {
+    /// Parses an unencrypted PKCS#8-encoded RSA private key into its
+    /// atomic components. See
+    /// [RSAKeyPair::from_pkcs8()](./struct.RSAKeyPair.html#from_pkcs8)
+    /// to get a usable `KeyPair` instead, and for more detail.
+    pub fn from_pkcs8(input: untrusted::Input)
+                      -> Result<RSAKeyPairComponents, error::Unspecified> {
+        const RSA_ENCRYPTION: &'static [u8] =
+            include_bytes!("../data/alg-rsa-encryption.der");
+        let (der, _) = pkcs8::unwrap_key_(&RSA_ENCRYPTION,
+                                          pkcs8::Version::V1Only, input)?;
+        Self::from_der(der)
+    }
+
+    /// Parse the private components into its atomic components. See
+    /// [RSAKeyPair::from_der()](./struct.RSAKeyPair.html#from_der)
+    /// to get a usable `KeyPair` instead, and for more detail.
+    pub fn from_der(input: untrusted::Input) -> Result<RSAKeyPairComponents, error::Unspecified> {
+        input.read_all(error::Unspecified, |input| {
+            der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
+                let version = der::small_nonnegative_integer(input)?;
+                if version != 0 {
+                    return Err(error::Unspecified);
+                }
+                let n = der::positive_integer(input)?;
+                let e = der::positive_integer(input)?;
+                let d = der::positive_integer(input)?;
+                let p = der::positive_integer(input)?;
+                let q = der::positive_integer(input)?;
+                let _dP = der::positive_integer(input)?;
+                let _dQ = der::positive_integer(input)?;
+                let iqmp = der::positive_integer(input)?;
+                Ok(RSAKeyPairComponents {
+                    n,
+                    e,
+                    d,
+                    iqmp,
+                    p,
+                    q,
+                })
+            })
+        })
+    }
+}
+
+
 struct PrivatePrime<M: Prime> {
     modulus: bigint::Modulus<M>,
     exponent: bigint::OddPositive,

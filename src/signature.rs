@@ -309,7 +309,7 @@ pub use ec::curve25519::ed25519::{
 pub use pkcs8::PKCS8Document;
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
-pub use rsa::signing::{RSAKeyPair, RSASigningState};
+pub use rsa::signing::{RSAKeyPair, RSAKeyPairComponents, RSASigningState};
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::{
