@@ -254,6 +254,7 @@ const LD_FLAGS: &'static [&'static str] = &[];
 const ASM_TARGETS:
     &'static [(&'static str, Option<&'static str>, &'static str)] =
 &[
+    ("x86_64", Some("ios"), "macosx"),
     ("x86_64", Some("macos"), "macosx"),
     ("x86_64", Some(WINDOWS), "nasm"),
     ("x86_64", None, "elf"),
