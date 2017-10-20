@@ -206,7 +206,7 @@ impl<'a> Ed25519KeyPair {
 /// for signing, see [Ed25519KeyPair](./Ed25519KeyPair.html) instead.
 pub struct Ed25519KeyPairComponents {
     /// The 32-byte private part of this pair, i.e. the seed.
-    pub private_key: [u8; 32],
+    pub seed: [u8; 32],
     /// The 32-byte public part of this key.
     pub public_key: [u8; 32],
 }
@@ -224,9 +224,10 @@ impl<'a> Ed25519KeyPairComponents {
     /// `Ed25519KeyPair::from_pkcs8_maybe_unchecked()` instead.
     pub fn from_pkcs8(input: untrusted::Input)
                       -> Result<Ed25519KeyPairComponents, error::Unspecified> {
-        let (seed, public_key) = unwrap_pkcs8(pkcs8::Version::V2Only, input)?;
-        Self::from_seed_and_public_key(seed, public_key.unwrap())
+        let (seed, _) = unwrap_pkcs8(pkcs8::Version::V2Only, input)?;
+        Self::from_seed_unchecked(seed)
     }
+
 
     /// Constructs an Ed25519 key pair from the private key seed `seed` and its
     /// public key `public_key`.
@@ -252,7 +253,6 @@ impl<'a> Ed25519KeyPairComponents {
 
         Ok(pair)
     }
-
     /// Constructs a Ed25519 key pair from the private key seed `seed`.
     ///
     /// It is recommended to use `Ed25519KeyPair::from_pkcs8()` instead. When
@@ -290,7 +290,7 @@ impl<'a> Ed25519KeyPairComponents {
         }
 
         Ed25519KeyPairComponents {
-            private_key: seed.clone(),
+            seed: seed.clone(),
             public_key: a.into_encoded_point(),
         }
     }

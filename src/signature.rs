@@ -302,7 +302,6 @@ pub use ec::curve25519::ed25519::{
     ED25519,
 
     Ed25519KeyPair,
-    Ed25519KeyPairComponents,
     ED25519_PKCS8_V2_LEN,
     ED25519_PUBLIC_KEY_LEN,
 };
@@ -310,7 +309,7 @@ pub use ec::curve25519::ed25519::{
 pub use pkcs8::PKCS8Document;
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
-pub use rsa::signing::{RSAKeyPair, RSAKeyPairComponents, RSASigningState};
+pub use rsa::signing::{RSAKeyPair, RSASigningState};
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::{
@@ -353,6 +352,9 @@ pub use signature_impl::Signature;
 /// formats, as it also handles the parsing.
 #[cfg(feature = "use_heap")]
 pub mod primitive {
+    pub use ec::curve25519::ed25519::Ed25519KeyPairComponents;
+    #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
+    pub use rsa::signing::RSAKeyPairComponents;
     pub use rsa::verification::verify_rsa;
 }
 

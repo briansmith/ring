@@ -164,218 +164,7 @@ impl RSAKeyPair {
     ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Br1.pdf
     pub fn from_der(input: untrusted::Input)
                     -> Result<RSAKeyPair, error::Unspecified> {
-        input.read_all(error::Unspecified, |input| {
-            der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-                let version = der::small_nonnegative_integer(input)?;
-                if version != 0 {
-                    return Err(error::Unspecified);
-                }
-                let n = bigint::Positive::from_der(input)?;
-                let e = bigint::Positive::from_der(input)?;
-                let d = bigint::Positive::from_der(input)?;
-                let p = bigint::Positive::from_der(input)?;
-                let q = bigint::Positive::from_der(input)?;
-                let dP = bigint::Positive::from_der(input)?;
-                let dQ = bigint::Positive::from_der(input)?;
-                let qInv = bigint::Positive::from_der(input)?;
-
-                let n_bits = n.bit_length();
-
-                // XXX: Some steps are done out of order, but the NIST steps
-                // are worded in such a way that it is clear that NIST intends
-                // for them to be done in order. TODO: Does this matter at all?
-
-                // 6.4.1.4.3/6.4.1.2.1 - Step 1.
-
-                // Step 1.a is omitted, as explained above.
-
-                // Step 1.b is omitted per above. Instead, we chek that the
-                // public modulus is 2048 to
-                // `PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS` bits. XXX: The maximum
-                // limit of 4096 bits is primarily due to lack of testing of
-                // larger key sizes; see, in particular,
-                // https://www.mail-archive.com/openssl-dev@openssl.org/msg44586.html
-                // and
-                // https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html.
-                // Also, this limit might help with memory management decisions
-                // later.
-
-                // Step 1.c. We validate e >= 2**16 = 65536, which, since e is odd,
-                // implies e >= 65537.
-                let (n, e) = super::check_public_modulus_and_exponent(
-                    n, e, bits::BitLength::from_usize_bits(2048),
-                    super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
-                    bits::BitLength::from_usize_bits(17))?;
-
-                // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
-
-                // 6.4.1.4.3 Step 3.
-
-                // Step 3.a is done below, out of order.
-                // Step 3.b is unneeded since `n_bits` is derived here from `n`.
-
-                // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 4. (We don't need to
-                // recover the prime factors since they are already given.)
-
-                // 6.4.1.4.3 - Step 5.
-
-                // Steps 5.a and 5.b are omitted, as explained above.
-
-                // Step 5.c.
-                //
-                // TODO: First, stop if `p < (√2) * 2**((nBits/2) - 1)`.
-                //
-                // Second, stop if `p > 2**(nBits/2) - 1`.
-                let half_n_bits = n_bits.half_rounded_up();
-                if p.bit_length() != half_n_bits {
-                    return Err(error::Unspecified);
-                }
-                let p = p.into_odd_positive()?;
-
-                // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
-
-                // Steps 5.e and 5.f are omitted as explained above.
-
-                // Step 5.g.
-                //
-                // TODO: First, stop if `q < (√2) * 2**((nBits/2) - 1)`.
-                //
-                // Second, stop if `q > 2**(nBits/2) - 1`.
-                if p.bit_length() != q.bit_length() {
-                    return Err(error::Unspecified);
-                }
-                let q = q.into_odd_positive()?;
-
-                // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
-
-                let n = n.into_modulus::<N>()?;
-                let oneRR_mod_n = bigint::One::newRR(&n)?;
-
-                let q_mod_n_decoded = q.try_clone()?.into_elem(&n)?;
-
-                // Step 5.i
-                //
-                // XXX: |p < q| is actually OK, it seems, but our implementation
-                // of CRT-based moduluar exponentiation used requires that
-                // |q > p|. (|p == q| is just wrong.)
-                //
-                // Also, because we just check the bit length of p - q, we
-                // accept if the difference is exactly 2**(n_bits/2 - 100), even
-                // though the spec says that is the largest value that should be
-                // rejected. We assume there are no security implications to
-                // this simplification.
-                //
-                // 3.b is unneeded since `n_bits` is derived here from `n`.
-                q.verify_less_than(&p)?;
-                {
-                    let p_mod_n = {
-                        let p = p.try_clone()?;
-                        p.into_elem(&n)?
-                    };
-                    let p_minus_q_bits = {
-                        // Modular subtraction isn't necessary since we already
-                        // verified q < p, but we're doing modular subtraction
-                        // to avoid having to implement non-modular subtraction.
-                        // Modular subtraction without having already verified
-                        // q < p would be wrong.
-                        let p_minus_q =
-                            bigint::elem_sub(p_mod_n, &q_mod_n_decoded, &n)?;
-                        p_minus_q.bit_length()
-                    };
-                    let min_pq_bitlen_diff = half_n_bits.try_sub(
-                            bits::BitLength::from_usize_bits(100))?;
-                    if p_minus_q_bits <= min_pq_bitlen_diff {
-                        return Err(error::Unspecified);
-                    }
-                }
-
-                // 6.4.1.4.3 - Step 3.a (out of order).
-                //
-                // Verify that p * q == n. We restrict ourselves to modular
-                // multiplication. We rely on the fact that we've verified
-                // 0 < q < p < n. We check that q and p are close to sqrt(n)
-                // and then assume that these preconditions are enough to
-                // let us assume that checking p * q == 0 (mod n) is equivalent
-                // to checking p * q == n.
-                let q_mod_n = {
-                    let clone = q_mod_n_decoded.try_clone()?;
-                    bigint::elem_mul(oneRR_mod_n.as_ref(), clone, &n)?
-                };
-                let p_mod_n = p.try_clone()?.into_elem(&n)?;
-                let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, &n)?;
-                if !pq_mod_n.is_zero() {
-                    return Err(error::Unspecified);
-                }
-
-                // 6.4.1.4.3/6.4.1.2.1 - Step 6.
-
-                // Step 6.a, partial.
-                //
-                // First, validate `2**half_n_bits < d`. Since 2**half_n_bits
-                // has a bit length of half_n_bits + 1, this check gives us
-                // 2**half_n_bits <= d, and knowing d is odd makes the
-                // inequality strict.
-                if !(half_n_bits < d.bit_length()) {
-                    return Err(error::Unspecified);
-                }
-                // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we
-                // don't have a good way of calculating LCM, so it is omitted,
-                // as explained above.
-                let d = d.into_odd_positive()?;
-                d.verify_less_than(&n.value())?;
-
-                // Step 6.b is omitted as explained above.
-
-                // 6.4.1.4.3 - Step 7.
-
-                // Step 7.a.
-                //
-                // We need to prove that `dP < p - 1`. If we verify
-                // `dP < p` then we'll know that either `dP == p - 1` or
-                // `dP < p - 1`. Since `p` is odd, `p - 1` is even. `d` is odd,
-                // and an odd number modulo an even number is odd.
-                // Therefore `dP` must be odd. But then it cannot be `p - 1`
-                // and so we know `dP < p - 1`.
-                let p = PrivatePrime::new(p, dP)?;
-
-                // Step 7.b is done out-of-order below.
-
-                // Step 7.c.
-                let qInv = qInv.into_elem(&p.modulus)?;
-
-                // Steps 7.d and 7.e are omitted per the documentation above,
-                // and because we don't (in the long term) have a good way to
-                // do modulo with an even modulus.
-
-                // Step 7.f.
-                let qInv =
-                    bigint::elem_mul(p.oneRR.as_ref(), qInv, &p.modulus)?;
-                let q_mod_p = q.try_clone()?.into_elem(&p.modulus)?;
-                let qInv_times_q_mod_p =
-                    bigint::elem_mul(&qInv, q_mod_p, &p.modulus)?;
-                if !qInv_times_q_mod_p.is_one() {
-                    return Err(error::Unspecified);
-                }
-
-                // Step 7.b (out of order). Same proof as for `dP < p - 1`.
-                let q = PrivatePrime::new(q, dQ)?;
-
-                let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &n)?
-                    .into_modulus::<QQ>()?;
-
-                Ok(RSAKeyPair {
-                    n,
-                    e,
-                    p,
-                    q,
-                    qInv,
-                    oneRR_mod_n,
-                    q_mod_n,
-                    qq,
-                    n_bits
-                })
-            })
-        })
+        RSAKeyPairComponents::from_der(input)?.to_key_pair()
     }
 
     /// Returns the length in bytes of the key pair's public modulus.
@@ -389,6 +178,7 @@ impl RSAKeyPair {
 
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
+#[derive(Debug)]
 pub struct RSAKeyPairComponents<'a> {
     /// The public composite modulus (big endian).
     pub n: untrusted::Input<'a>,
@@ -396,12 +186,16 @@ pub struct RSAKeyPairComponents<'a> {
     pub e: untrusted::Input<'a>,
     /// The secret exponent (big endian).
     pub d: untrusted::Input<'a>,
-    /// The inverse of q modulo p (big endian).
-    pub iqmp: untrusted::Input<'a>,
     /// Prime factor of n (big endian).
     pub p: untrusted::Input<'a>,
     /// Prime factor of n (big endian).
     pub q: untrusted::Input<'a>,
+    /// This is d mod (p-1)
+    pub dP: untrusted::Input<'a>,
+    /// This is d mod (q-1)
+    pub dQ: untrusted::Input<'a>,
+    /// The inverse of q modulo p (big endian).
+    pub qInv: untrusted::Input<'a>,
 }
 
 impl<'a> RSAKeyPairComponents<'a> {
@@ -433,18 +227,233 @@ impl<'a> RSAKeyPairComponents<'a> {
                 let d = der::positive_integer(input)?;
                 let p = der::positive_integer(input)?;
                 let q = der::positive_integer(input)?;
-                let _dP = der::positive_integer(input)?;
-                let _dQ = der::positive_integer(input)?;
-                let iqmp = der::positive_integer(input)?;
+                let dP = der::positive_integer(input)?;
+                let dQ = der::positive_integer(input)?;
+                let qInv = der::positive_integer(input)?;
                 Ok(RSAKeyPairComponents {
                     n,
                     e,
                     d,
-                    iqmp,
+                    dP,
+                    dQ,
+                    qInv,
                     p,
                     q,
                 })
             })
+        })
+    }
+
+    /// Create a `RSAKeyPair` from this set of components.
+    pub fn to_key_pair(&self) -> Result<RSAKeyPair, error::Unspecified> {
+
+        let n = bigint::Positive::from_be_bytes(self.n)?;
+        let e = bigint::Positive::from_be_bytes(self.e)?;
+        let d = bigint::Positive::from_be_bytes(self.d)?;
+        let p = bigint::Positive::from_be_bytes(self.p)?;
+        let q = bigint::Positive::from_be_bytes(self.q)?;
+        let dP = bigint::Positive::from_be_bytes(self.dP)?;
+        let dQ = bigint::Positive::from_be_bytes(self.dQ)?;
+        let qInv = bigint::Positive::from_be_bytes(self.qInv)?;
+        println!("file {} line {}", file!(), line!());
+
+        let n_bits = n.bit_length();
+
+        // XXX: Some steps are done out of order, but the NIST steps
+        // are worded in such a way that it is clear that NIST intends
+        // for them to be done in order. TODO: Does this matter at all?
+
+        // 6.4.1.4.3/6.4.1.2.1 - Step 1.
+
+        // Step 1.a is omitted, as explained above.
+
+        // Step 1.b is omitted per above. Instead, we chek that the
+        // public modulus is 2048 to
+        // `PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS` bits. XXX: The maximum
+        // limit of 4096 bits is primarily due to lack of testing of
+        // larger key sizes; see, in particular,
+        // https://www.mail-archive.com/openssl-dev@openssl.org/msg44586.html
+        // and
+        // https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html.
+        // Also, this limit might help with memory management decisions
+        // later.
+
+        // Step 1.c. We validate e >= 2**16 = 65536, which, since e is odd,
+        // implies e >= 65537.
+        let (n, e) = super::check_public_modulus_and_exponent(
+            n, e, bits::BitLength::from_usize_bits(2048),
+            super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
+            bits::BitLength::from_usize_bits(17))?;
+        println!("file {} line {}", file!(), line!());
+        // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
+
+        // 6.4.1.4.3 Step 3.
+
+        // Step 3.a is done below, out of order.
+        // Step 3.b is unneeded since `n_bits` is derived here from `n`.
+
+        // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 4. (We don't need to
+        // recover the prime factors since they are already given.)
+
+        // 6.4.1.4.3 - Step 5.
+
+        // Steps 5.a and 5.b are omitted, as explained above.
+
+        // Step 5.c.
+        //
+        // TODO: First, stop if `p < (√2) * 2**((nBits/2) - 1)`.
+        //
+        // Second, stop if `p > 2**(nBits/2) - 1`.
+        let half_n_bits = n_bits.half_rounded_up();
+        if p.bit_length() != half_n_bits {
+            return Err(error::Unspecified);
+        }
+        let p = p.into_odd_positive()?;
+        println!("file {} line {}", file!(), line!());
+
+        // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
+
+        // Steps 5.e and 5.f are omitted as explained above.
+
+        // Step 5.g.
+        //
+        // TODO: First, stop if `q < (√2) * 2**((nBits/2) - 1)`.
+        //
+        // Second, stop if `q > 2**(nBits/2) - 1`.
+        if p.bit_length() != q.bit_length() {
+            return Err(error::Unspecified);
+        }
+        let q = q.into_odd_positive()?;
+        println!("file {} line {}", file!(), line!());
+
+        // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
+
+        let n = n.into_modulus::<N>()?;
+        let oneRR_mod_n = bigint::One::newRR(&n)?;
+
+        let q_mod_n_decoded = q.try_clone()?.into_elem(&n)?;
+
+        // Step 5.i
+        //
+        // XXX: |p < q| is actually OK, it seems, but our implementation
+        // of CRT-based moduluar exponentiation used requires that
+        // |q > p|. (|p == q| is just wrong.)
+        //
+        // Also, because we just check the bit length of p - q, we
+        // accept if the difference is exactly 2**(n_bits/2 - 100), even
+        // though the spec says that is the largest value that should be
+        // rejected. We assume there are no security implications to
+        // this simplification.
+        //
+        // 3.b is unneeded since `n_bits` is derived here from `n`.
+        q.verify_less_than(&p)?;
+        {
+            let p_mod_n = {
+                let p = p.try_clone()?;
+                p.into_elem(&n)?
+            };
+            let p_minus_q_bits = {
+                // Modular subtraction isn't necessary since we already
+                // verified q < p, but we're doing modular subtraction
+                // to avoid having to implement non-modular subtraction.
+                // Modular subtraction without having already verified
+                // q < p would be wrong.
+                let p_minus_q =
+                    bigint::elem_sub(p_mod_n, &q_mod_n_decoded, &n)?;
+                p_minus_q.bit_length()
+            };
+            let min_pq_bitlen_diff = half_n_bits.try_sub(
+                bits::BitLength::from_usize_bits(100))?;
+            if p_minus_q_bits <= min_pq_bitlen_diff {
+                return Err(error::Unspecified);
+            }
+        }
+        println!("file {} line {}", file!(), line!());
+
+        // 6.4.1.4.3 - Step 3.a (out of order).
+        //
+        // Verify that p * q == n. We restrict ourselves to modular
+        // multiplication. We rely on the fact that we've verified
+        // 0 < q < p < n. We check that q and p are close to sqrt(n)
+        // and then assume that these preconditions are enough to
+        // let us assume that checking p * q == 0 (mod n) is equivalent
+        // to checking p * q == n.
+        let q_mod_n = {
+            let clone = q_mod_n_decoded.try_clone()?;
+            bigint::elem_mul(oneRR_mod_n.as_ref(), clone, &n)?
+        };
+        let p_mod_n = p.try_clone()?.into_elem(&n)?;
+        let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, &n)?;
+        if !pq_mod_n.is_zero() {
+            return Err(error::Unspecified);
+        }
+
+        // 6.4.1.4.3/6.4.1.2.1 - Step 6.
+
+        // Step 6.a, partial.
+        //
+        // First, validate `2**half_n_bits < d`. Since 2**half_n_bits
+        // has a bit length of half_n_bits + 1, this check gives us
+        // 2**half_n_bits <= d, and knowing d is odd makes the
+        // inequality strict.
+        if !(half_n_bits < d.bit_length()) {
+            return Err(error::Unspecified);
+        }
+        // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we
+        // don't have a good way of calculating LCM, so it is omitted,
+        // as explained above.
+        let d = d.into_odd_positive()?;
+        d.verify_less_than(&n.value())?;
+
+        // Step 6.b is omitted as explained above.
+
+        // 6.4.1.4.3 - Step 7.
+
+        // Step 7.a.
+        //
+        // We need to prove that `dP < p - 1`. If we verify
+        // `dP < p` then we'll know that either `dP == p - 1` or
+        // `dP < p - 1`. Since `p` is odd, `p - 1` is even. `d` is odd,
+        // and an odd number modulo an even number is odd.
+        // Therefore `dP` must be odd. But then it cannot be `p - 1`
+        // and so we know `dP < p - 1`.
+        let p = PrivatePrime::new(p, dP)?;
+
+        // Step 7.b is done out-of-order below.
+
+        // Step 7.c.
+        let qInv = qInv.into_elem(&p.modulus)?;
+
+        // Steps 7.d and 7.e are omitted per the documentation above,
+        // and because we don't (in the long term) have a good way to
+        // do modulo with an even modulus.
+
+        // Step 7.f.
+        let qInv =
+            bigint::elem_mul(p.oneRR.as_ref(), qInv, &p.modulus)?;
+        let q_mod_p = q.try_clone()?.into_elem(&p.modulus)?;
+        let qInv_times_q_mod_p =
+            bigint::elem_mul(&qInv, q_mod_p, &p.modulus)?;
+        if !qInv_times_q_mod_p.is_one() {
+            return Err(error::Unspecified);
+        }
+
+        // Step 7.b (out of order). Same proof as for `dP < p - 1`.
+        let q = PrivatePrime::new(q, dQ)?;
+
+        let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &n)?
+        .into_modulus::<QQ>()?;
+
+        Ok(RSAKeyPair {
+            n,
+            e,
+            p,
+            q,
+            qInv,
+            oneRR_mod_n,
+            q_mod_n,
+            qq,
+            n_bits
         })
     }
 }
