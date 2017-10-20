@@ -247,30 +247,17 @@ impl<'a> Ed25519KeyPairComponents {
         // This implicitly verifies that `public_key` is the right length.
         // XXX: This rejects ~18 keys when they are partially reduced, though
         // those keys are virtually impossible to find.
-        if public_key != pair.public_key_bytes() {
+        if public_key != &pair.public_key[..] {
             return Err(error::Unspecified);
         }
 
         Ok(pair)
     }
-    /// Constructs a Ed25519 key pair from the private key seed `seed`.
-    ///
-    /// It is recommended to use `Ed25519KeyPair::from_pkcs8()` instead. When
-    /// that is not practical, it is recommended to use
-    /// `Ed25519KeyPair::from_seed_and_public_key()` instead.
-    ///
-    /// Since the public key is not given, the public key will be computed from
-    /// the private key. It is not possible to detect misuse or corruption of
-    /// the private key since the public key isn't given as input.
-    pub fn from_seed_unchecked(seed: untrusted::Input)
+
+    fn from_seed_unchecked(seed: untrusted::Input)
                                -> Result<Ed25519KeyPairComponents, error::Unspecified> {
         let seed = slice_as_array_ref!(seed.as_slice_less_safe(), SEED_LEN)?;
         Ok(Self::from_seed_(seed))
-    }
-
-    /// Returns a reference to the little-endian-encoded public key bytes.
-    pub fn public_key_bytes(&'a self) -> &'a [u8] {
-        &self.public_key
     }
 
     fn from_seed_(seed: &Seed) -> Ed25519KeyPairComponents {
