@@ -39,9 +39,14 @@ void x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
 
 // fe means field element. Here the field is \Z/(2^255-19). An element t,
 // entries t[0]...t[9], represents the integer t[0]+2^26 t[1]+2^51 t[2]+2^77
-// t[3]+2^102 t[4]+...+2^230 t[9]. Bounds on each t[i] vary depending on
-// context.
-typedef int32_t fe[10];
+// t[3]+2^102 t[4]+...+2^230 t[9].
+// fe limbs are bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
+// Multiplication and carrying produce fe from fe_loose.
+typedef struct fe { int32_t v[10]; } fe;
+
+// fe_loose limbs are bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc.
+// Addition and subtraction produce fe_loose from (fe, fe).
+typedef struct fe_loose { int32_t v[10]; } fe_loose;
 
 /* ge means group element.
 
@@ -69,23 +74,23 @@ typedef struct {
 } ge_p3;
 
 typedef struct {
-  fe X;
-  fe Y;
-  fe Z;
-  fe T;
+  fe_loose X;
+  fe_loose Y;
+  fe_loose Z;
+  fe_loose T;
 } ge_p1p1;
 
 typedef struct {
-  fe yplusx;
-  fe yminusx;
-  fe xy2d;
+  fe_loose yplusx;
+  fe_loose yminusx;
+  fe_loose xy2d;
 } ge_precomp;
 
 typedef struct {
-  fe YplusX;
-  fe YminusX;
-  fe Z;
-  fe T2d;
+  fe_loose YplusX;
+  fe_loose YminusX;
+  fe_loose Z;
+  fe_loose T2d;
 } ge_cached;
 
 void x25519_ge_tobytes(uint8_t *s, const ge_p2 *h);
