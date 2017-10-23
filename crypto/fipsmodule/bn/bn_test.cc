@@ -1000,16 +1000,11 @@ static const ASN1InvalidTest kASN1InvalidTests[] = {
     {"\x03\x01\x00", 3},
     // Empty contents.
     {"\x02\x00", 2},
-};
-
-// kASN1BuggyTests contains incorrect encodings and the corresponding, expected
-// results of |BN_parse_asn1_unsigned_buggy| given that input.
-static const ASN1Test kASN1BuggyTests[] = {
     // Negative numbers.
-    {"128", "\x02\x01\x80", 3},
-    {"255", "\x02\x01\xff", 3},
+    {"\x02\x01\x80", 3},
+    {"\x02\x01\xff", 3},
     // Unnecessary leading zeros.
-    {"1", "\x02\x02\x00\x01", 4},
+    {"\x02\x02\x00\x01", 4},
 };
 
 TEST_F(BNTest, ASN1) {
@@ -1036,12 +1031,6 @@ TEST_F(BNTest, ASN1) {
     ASSERT_TRUE(CBB_finish(cbb.get(), &der, &der_len));
     bssl::UniquePtr<uint8_t> delete_der(der);
     EXPECT_EQ(Bytes(test.der, test.der_len), Bytes(der, der_len));
-
-    // |BN_parse_asn1_unsigned_buggy| parses all valid input.
-    CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
-    ASSERT_TRUE(BN_parse_asn1_unsigned_buggy(&cbs, bn2.get()));
-    EXPECT_EQ(0u, CBS_len(&cbs));
-    EXPECT_BIGNUMS_EQUAL("decode ASN.1 buggy", bn.get(), bn2.get());
   }
 
   for (const ASN1InvalidTest &test : kASN1InvalidTests) {
@@ -1053,35 +1042,6 @@ TEST_F(BNTest, ASN1) {
     EXPECT_FALSE(BN_parse_asn1_unsigned(&cbs, bn.get()))
         << "Parsed invalid input.";
     ERR_clear_error();
-
-    // All tests in kASN1InvalidTests are also rejected by
-    // |BN_parse_asn1_unsigned_buggy|.
-    CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
-    EXPECT_FALSE(BN_parse_asn1_unsigned_buggy(&cbs, bn.get()))
-        << "Parsed invalid input.";
-    ERR_clear_error();
-  }
-
-  for (const ASN1Test &test : kASN1BuggyTests) {
-    SCOPED_TRACE(Bytes(test.der, test.der_len));
-
-    // These broken encodings are rejected by |BN_parse_asn1_unsigned|.
-    bssl::UniquePtr<BIGNUM> bn(BN_new());
-    ASSERT_TRUE(bn);
-    CBS cbs;
-    CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
-    EXPECT_FALSE(BN_parse_asn1_unsigned(&cbs, bn.get()))
-        << "Parsed invalid input.";
-    ERR_clear_error();
-
-    // However |BN_parse_asn1_unsigned_buggy| accepts them.
-    bssl::UniquePtr<BIGNUM> bn2 = ASCIIToBIGNUM(test.value_ascii);
-    ASSERT_TRUE(bn2);
-
-    CBS_init(&cbs, reinterpret_cast<const uint8_t*>(test.der), test.der_len);
-    ASSERT_TRUE(BN_parse_asn1_unsigned_buggy(&cbs, bn.get()));
-    EXPECT_EQ(0u, CBS_len(&cbs));
-    EXPECT_BIGNUMS_EQUAL("decode ASN.1 buggy", bn2.get(), bn.get());
   }
 
   // Serializing negative numbers is not supported.

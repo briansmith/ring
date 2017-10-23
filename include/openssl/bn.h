@@ -317,10 +317,6 @@ OPENSSL_EXPORT int BN_get_u64(const BIGNUM *bn, uint64_t *out);
 // the result to |ret|. It returns one on success and zero on failure.
 OPENSSL_EXPORT int BN_parse_asn1_unsigned(CBS *cbs, BIGNUM *ret);
 
-// BN_parse_asn1_unsigned_buggy acts like |BN_parse_asn1_unsigned| but tolerates
-// some invalid encodings. Do not use this function.
-OPENSSL_EXPORT int BN_parse_asn1_unsigned_buggy(CBS *cbs, BIGNUM *ret);
-
 // BN_marshal_asn1 marshals |bn| as a non-negative DER INTEGER and appends the
 // result to |cbb|. It returns one on success and zero on failure.
 OPENSSL_EXPORT int BN_marshal_asn1(CBB *cbb, const BIGNUM *bn);

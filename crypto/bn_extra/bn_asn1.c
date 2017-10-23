@@ -42,22 +42,6 @@ int BN_parse_asn1_unsigned(CBS *cbs, BIGNUM *ret) {
   return BN_bin2bn(CBS_data(&child), CBS_len(&child), ret) != NULL;
 }
 
-int BN_parse_asn1_unsigned_buggy(CBS *cbs, BIGNUM *ret) {
-  CBS child;
-  if (!CBS_get_asn1(cbs, &child, CBS_ASN1_INTEGER) ||
-      CBS_len(&child) == 0) {
-    OPENSSL_PUT_ERROR(BN, BN_R_BAD_ENCODING);
-    return 0;
-  }
-
-  // This function intentionally does not reject negative numbers or non-minimal
-  // encodings. Estonian IDs issued between September 2014 to September 2015 are
-  // broken. See https://crbug.com/532048 and https://crbug.com/534766.
-  //
-  // TODO(davidben): Remove this code and callers in March 2016.
-  return BN_bin2bn(CBS_data(&child), CBS_len(&child), ret) != NULL;
-}
-
 int BN_marshal_asn1(CBB *cbb, const BIGNUM *bn) {
   // Negative numbers are unsupported.
   if (BN_is_negative(bn)) {

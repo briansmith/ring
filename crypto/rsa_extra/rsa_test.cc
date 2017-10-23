@@ -622,13 +622,6 @@ TEST(RSATest, ASN1) {
                                       sizeof(kEstonianRSAKey)));
   EXPECT_FALSE(rsa);
   ERR_clear_error();
-
-  // But |RSA_parse_public_key_buggy| will accept it.
-  CBS cbs;
-  CBS_init(&cbs, kEstonianRSAKey, sizeof(kEstonianRSAKey));
-  rsa.reset(RSA_parse_public_key_buggy(&cbs));
-  EXPECT_TRUE(rsa);
-  EXPECT_EQ(0u, CBS_len(&cbs));
 }
 
 TEST(RSATest, BadExponent) {

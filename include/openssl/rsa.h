@@ -428,10 +428,6 @@ OPENSSL_EXPORT int RSA_add_pkcs1_prefix(uint8_t **out_msg, size_t *out_msg_len,
 // error.
 OPENSSL_EXPORT RSA *RSA_parse_public_key(CBS *cbs);
 
-// RSA_parse_public_key_buggy behaves like |RSA_parse_public_key|, but it
-// tolerates some invalid encodings. Do not use this function.
-OPENSSL_EXPORT RSA *RSA_parse_public_key_buggy(CBS *cbs);
-
 // RSA_public_key_from_bytes parses |in| as a DER-encoded RSAPublicKey structure
 // (RFC 3447). It returns a newly-allocated |RSA| or NULL on error.
 OPENSSL_EXPORT RSA *RSA_public_key_from_bytes(const uint8_t *in, size_t in_len);

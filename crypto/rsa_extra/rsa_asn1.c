@@ -69,20 +69,13 @@
 #include "../internal.h"
 
 
-static int parse_integer_buggy(CBS *cbs, BIGNUM **out, int buggy) {
+static int parse_integer(CBS *cbs, BIGNUM **out) {
   assert(*out == NULL);
   *out = BN_new();
   if (*out == NULL) {
     return 0;
   }
-  if (buggy) {
-    return BN_parse_asn1_unsigned_buggy(cbs, *out);
-  }
   return BN_parse_asn1_unsigned(cbs, *out);
-}
-
-static int parse_integer(CBS *cbs, BIGNUM **out) {
-  return parse_integer_buggy(cbs, out, 0 /* not buggy */);
 }
 
 static int marshal_integer(CBB *cbb, BIGNUM *bn) {
@@ -94,14 +87,14 @@ static int marshal_integer(CBB *cbb, BIGNUM *bn) {
   return BN_marshal_asn1(cbb, bn);
 }
 
-static RSA *parse_public_key(CBS *cbs, int buggy) {
+RSA *RSA_parse_public_key(CBS *cbs) {
   RSA *ret = RSA_new();
   if (ret == NULL) {
     return NULL;
   }
   CBS child;
   if (!CBS_get_asn1(cbs, &child, CBS_ASN1_SEQUENCE) ||
-      !parse_integer_buggy(&child, &ret->n, buggy) ||
+      !parse_integer(&child, &ret->n) ||
       !parse_integer(&child, &ret->e) ||
       CBS_len(&child) != 0) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_ENCODING);
@@ -117,18 +110,6 @@ static RSA *parse_public_key(CBS *cbs, int buggy) {
   }
 
   return ret;
-}
-
-RSA *RSA_parse_public_key(CBS *cbs) {
-  return parse_public_key(cbs, 0 /* not buggy */);
-}
-
-RSA *RSA_parse_public_key_buggy(CBS *cbs) {
-  // Estonian IDs issued between September 2014 to September 2015 are
-  // broken. See https://crbug.com/532048 and https://crbug.com/534766.
-  //
-  // TODO(davidben): Remove this code and callers in March 2016.
-  return parse_public_key(cbs, 1 /* buggy */);
 }
 
 RSA *RSA_public_key_from_bytes(const uint8_t *in, size_t in_len) {

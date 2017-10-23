@@ -63,18 +63,10 @@
 #include <openssl/rsa.h>
 
 #include "../fipsmodule/rsa/internal.h"
-#include "../internal.h"
 #include "internal.h"
 
 
-static struct CRYPTO_STATIC_MUTEX g_buggy_lock = CRYPTO_STATIC_MUTEX_INIT;
-static int g_buggy = 0;
-
-void EVP_set_buggy_rsa_parser(int buggy) {
-  CRYPTO_STATIC_MUTEX_lock_write(&g_buggy_lock);
-  g_buggy = buggy;
-  CRYPTO_STATIC_MUTEX_unlock_write(&g_buggy_lock);
-}
+void EVP_set_buggy_rsa_parser(int buggy) {}
 
 static int rsa_pub_encode(CBB *out, const EVP_PKEY *key) {
   // See RFC 3279, section 2.3.1.
@@ -96,11 +88,6 @@ static int rsa_pub_encode(CBB *out, const EVP_PKEY *key) {
 }
 
 static int rsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
-  int buggy;
-  CRYPTO_STATIC_MUTEX_lock_read(&g_buggy_lock);
-  buggy = g_buggy;
-  CRYPTO_STATIC_MUTEX_unlock_read(&g_buggy_lock);
-
   // See RFC 3279, section 2.3.1.
 
   // The parameters must be NULL.
@@ -112,13 +99,7 @@ static int rsa_pub_decode(EVP_PKEY *out, CBS *params, CBS *key) {
     return 0;
   }
 
-  // Estonian IDs issued between September 2014 to September 2015 are
-  // broken. See https://crbug.com/532048 and https://crbug.com/534766.
-  //
-  // TODO(davidben): Switch this to the strict version in March 2016 or when
-  // Chromium can force client certificates down a different codepath, whichever
-  // comes first.
-  RSA *rsa = buggy ? RSA_parse_public_key_buggy(key) : RSA_parse_public_key(key);
+  RSA *rsa = RSA_parse_public_key(key);
   if (rsa == NULL || CBS_len(key) != 0) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
     RSA_free(rsa);
