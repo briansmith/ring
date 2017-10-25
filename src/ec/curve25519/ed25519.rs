@@ -228,6 +228,13 @@ impl<'a> Ed25519KeyPairComponents {
         Self::from_seed_unchecked(seed)
     }
 
+    /// Constructs an `Ed25519KeyPair` from these components.
+    pub fn to_key_pair(&self) -> Result<Ed25519KeyPair, error::Unspecified> {
+        Ed25519KeyPair::from_seed_and_public_key(
+            untrusted::Input::from(&self.seed),
+            untrusted::Input::from(&self.public_key)
+        )
+    }
 
     /// Constructs an Ed25519 key pair from the private key seed `seed` and its
     /// public key `public_key`.
