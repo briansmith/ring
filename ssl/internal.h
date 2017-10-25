@@ -2628,7 +2628,6 @@ struct SSLConnection {
 };
 
 // From draft-ietf-tls-tls13-18, used in determining PSK modes.
-#define SSL_PSK_KE     0x0
 #define SSL_PSK_DHE_KE 0x1
 
 // From draft-ietf-tls-tls13-16, used in determining whether to respond with a
