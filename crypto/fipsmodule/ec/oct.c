@@ -251,7 +251,7 @@ err:
 
 int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
                        const uint8_t *buf, size_t len, BN_CTX *ctx) {
-  if (group->meth != point->meth) {
+  if (EC_GROUP_cmp(group, point->group, NULL) != 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
@@ -261,7 +261,7 @@ int EC_POINT_oct2point(const EC_GROUP *group, EC_POINT *point,
 size_t EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *point,
                           point_conversion_form_t form, uint8_t *buf,
                           size_t len, BN_CTX *ctx) {
-  if (group->meth != point->meth) {
+  if (EC_GROUP_cmp(group, point->group, NULL) != 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
@@ -396,7 +396,7 @@ err:
 int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group,
                                             EC_POINT *point, const BIGNUM *x,
                                             int y_bit, BN_CTX *ctx) {
-  if (group->meth != point->meth) {
+  if (EC_GROUP_cmp(group, point->group, NULL) != 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }

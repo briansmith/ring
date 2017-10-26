@@ -796,11 +796,11 @@ int ec_GFp_simple_cmp(const EC_GROUP *group, const EC_POINT *a,
   const BIGNUM *tmp1_, *tmp2_;
   int ret = -1;
 
-  if (EC_POINT_is_at_infinity(group, a)) {
-    return EC_POINT_is_at_infinity(group, b) ? 0 : 1;
+  if (ec_GFp_simple_is_at_infinity(group, a)) {
+    return ec_GFp_simple_is_at_infinity(group, b) ? 0 : 1;
   }
 
-  if (EC_POINT_is_at_infinity(group, b)) {
+  if (ec_GFp_simple_is_at_infinity(group, b)) {
     return 1;
   }
 

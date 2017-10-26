@@ -113,6 +113,8 @@ const EC_METHOD *EC_GFp_mont_method(void);
 struct ec_group_st {
   const EC_METHOD *meth;
 
+  // Unlike all other |EC_POINT|s, |generator| does not own |generator->group|
+  // to avoid a reference cycle.
   EC_POINT *generator;
   BIGNUM order;
 
@@ -137,7 +139,9 @@ struct ec_group_st {
 } /* EC_GROUP */;
 
 struct ec_point_st {
-  const EC_METHOD *meth;
+  // group is an owning reference to |group|, unless this is
+  // |group->generator|.
+  EC_GROUP *group;
 
   BIGNUM X;
   BIGNUM Y;
