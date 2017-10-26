@@ -354,6 +354,7 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth) {
   }
   OPENSSL_memset(ret, 0, sizeof(EC_GROUP));
 
+  ret->references = 1;
   ret->meth = meth;
   BN_init(&ret->order);
 
@@ -500,11 +501,12 @@ EC_GROUP *EC_GROUP_new_by_curve_name(int nid) {
 }
 
 void EC_GROUP_free(EC_GROUP *group) {
-  if (!group) {
+  if (!group ||
+      !CRYPTO_refcount_dec_and_test_zero(&group->references)) {
     return;
   }
 
-  if (group->meth->group_finish != 0) {
+  if (group->meth->group_finish != NULL) {
     group->meth->group_finish(group);
   }
 
@@ -523,36 +525,11 @@ EC_GROUP *EC_GROUP_dup(const EC_GROUP *a) {
     return NULL;
   }
 
-  if (a->meth->group_copy == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return NULL;
-  }
-
-  EC_GROUP *ret = ec_group_new(a->meth);
-  if (ret == NULL) {
-    return NULL;
-  }
-
-  ret->order_mont = a->order_mont;
-  ret->curve_name = a->curve_name;
-
-  if (a->generator != NULL) {
-    ret->generator = EC_POINT_dup(a->generator, ret);
-    if (ret->generator == NULL) {
-      goto err;
-    }
-  }
-
-  if (!BN_copy(&ret->order, &a->order) ||
-      !ret->meth->group_copy(ret, a)) {
-    goto err;
-  }
-
-  return ret;
-
-err:
-  EC_GROUP_free(ret);
-  return NULL;
+  // Groups are logically immutable (but for |EC_GROUP_set_generator| which must
+  // be called early on), so we simply take a reference.
+  EC_GROUP *group = (EC_GROUP *)a;
+  CRYPTO_refcount_inc(&group->references);
+  return group;
 }
 
 int EC_GROUP_cmp(const EC_GROUP *a, const EC_GROUP *b, BN_CTX *ignored) {

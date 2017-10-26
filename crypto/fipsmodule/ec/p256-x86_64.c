@@ -547,7 +547,6 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {
   out->group_init = ec_GFp_mont_group_init;
   out->group_finish = ec_GFp_mont_group_finish;
-  out->group_copy = ec_GFp_mont_group_copy;
   out->group_set_curve = ec_GFp_mont_group_set_curve;
   out->point_get_affine_coordinates = ecp_nistz256_get_affine;
   out->mul = ecp_nistz256_points_mul;

@@ -90,32 +90,6 @@ void ec_GFp_mont_group_finish(EC_GROUP *group) {
   ec_GFp_simple_group_finish(group);
 }
 
-int ec_GFp_mont_group_copy(EC_GROUP *dest, const EC_GROUP *src) {
-  BN_MONT_CTX_free(dest->mont);
-  dest->mont = NULL;
-
-  if (!ec_GFp_simple_group_copy(dest, src)) {
-    return 0;
-  }
-
-  if (src->mont != NULL) {
-    dest->mont = BN_MONT_CTX_new();
-    if (dest->mont == NULL) {
-      return 0;
-    }
-    if (!BN_MONT_CTX_copy(dest->mont, src->mont)) {
-      goto err;
-    }
-  }
-
-  return 1;
-
-err:
-  BN_MONT_CTX_free(dest->mont);
-  dest->mont = NULL;
-  return 0;
-}
-
 int ec_GFp_mont_group_set_curve(EC_GROUP *group, const BIGNUM *p,
                                 const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
   BN_CTX *new_ctx = NULL;
@@ -293,7 +267,6 @@ err:
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_mont_method) {
   out->group_init = ec_GFp_mont_group_init;
   out->group_finish = ec_GFp_mont_group_finish;
-  out->group_copy = ec_GFp_mont_group_copy;
   out->group_set_curve = ec_GFp_mont_group_set_curve;
   out->point_get_affine_coordinates = ec_GFp_mont_point_get_affine_coordinates;
   out->mul = ec_wNAF_mul /* XXX: Not constant time. */;
