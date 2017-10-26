@@ -234,9 +234,6 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *in, unsigned len) {
     return 0;
   }
 
-  if (!tls_flush_pending_hs_data(ssl)) {
-    return -1;
-  }
   size_t flight_len = 0;
   if (ssl->s3->pending_flight != nullptr) {
     flight_len =

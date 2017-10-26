@@ -134,8 +134,6 @@ namespace bssl {
 
 static bool add_record_to_flight(SSL *ssl, uint8_t type,
                                  Span<const uint8_t> in) {
-  // The caller should have flushed |pending_hs_data| first.
-  assert(!ssl->s3->pending_hs_data);
   // We'll never add a flight while in the process of writing it out.
   assert(ssl->s3->pending_flight_offset == 0);
 
@@ -184,49 +182,17 @@ bool ssl3_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg) {
 }
 
 bool ssl3_add_message(SSL *ssl, Array<uint8_t> msg) {
-  // Pack handshake data into the minimal number of records. This avoids
-  // unnecessary encryption overhead, notably in TLS 1.3 where we send several
-  // encrypted messages in a row. For now, we do not do this for the null
-  // cipher. The benefit is smaller and there is a risk of breaking buggy
-  // implementations.
-  //
-  // TODO(davidben): See if we can do this uniformly.
+  // Add the message to the current flight, splitting into several records if
+  // needed.
   Span<const uint8_t> rest = msg;
-  if (ssl->s3->aead_write_ctx->is_null_cipher()) {
-    while (!rest.empty()) {
-      Span<const uint8_t> chunk = rest.subspan(0, ssl->max_send_fragment);
-      rest = rest.subspan(chunk.size());
+  do {
+    Span<const uint8_t> chunk = rest.subspan(0, ssl->max_send_fragment);
+    rest = rest.subspan(chunk.size());
 
-      if (!add_record_to_flight(ssl, SSL3_RT_HANDSHAKE, chunk)) {
-        return false;
-      }
+    if (!add_record_to_flight(ssl, SSL3_RT_HANDSHAKE, chunk)) {
+      return false;
     }
-  } else {
-    while (!rest.empty()) {
-      // Flush if |pending_hs_data| is full.
-      if (ssl->s3->pending_hs_data &&
-          ssl->s3->pending_hs_data->length >= ssl->max_send_fragment &&
-          !tls_flush_pending_hs_data(ssl)) {
-        return false;
-      }
-
-      size_t pending_len =
-          ssl->s3->pending_hs_data ? ssl->s3->pending_hs_data->length : 0;
-      Span<const uint8_t> chunk =
-          rest.subspan(0, ssl->max_send_fragment - pending_len);
-      assert(!chunk.empty());
-      rest = rest.subspan(chunk.size());
-
-      if (!ssl->s3->pending_hs_data) {
-        ssl->s3->pending_hs_data.reset(BUF_MEM_new());
-      }
-      if (!ssl->s3->pending_hs_data ||
-          !BUF_MEM_append(ssl->s3->pending_hs_data.get(), chunk.data(),
-                          chunk.size())) {
-        return false;
-      }
-    }
-  }
+  } while (!rest.empty());
 
   ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HANDSHAKE, msg);
   // TODO(svaldez): Move this up a layer to fix abstraction for SSLTranscript on
@@ -238,23 +204,10 @@ bool ssl3_add_message(SSL *ssl, Array<uint8_t> msg) {
   return true;
 }
 
-bool tls_flush_pending_hs_data(SSL *ssl) {
-  if (!ssl->s3->pending_hs_data || ssl->s3->pending_hs_data->length == 0) {
-    return true;
-  }
-
-  UniquePtr<BUF_MEM> pending_hs_data = std::move(ssl->s3->pending_hs_data);
-  return add_record_to_flight(
-      ssl, SSL3_RT_HANDSHAKE,
-      MakeConstSpan(reinterpret_cast<const uint8_t *>(pending_hs_data->data),
-                    pending_hs_data->length));
-}
-
 bool ssl3_add_change_cipher_spec(SSL *ssl) {
   static const uint8_t kChangeCipherSpec[1] = {SSL3_MT_CCS};
 
-  if (!tls_flush_pending_hs_data(ssl) ||
-      !add_record_to_flight(ssl, SSL3_RT_CHANGE_CIPHER_SPEC,
+  if (!add_record_to_flight(ssl, SSL3_RT_CHANGE_CIPHER_SPEC,
                             kChangeCipherSpec)) {
     return false;
   }
@@ -266,8 +219,7 @@ bool ssl3_add_change_cipher_spec(SSL *ssl) {
 
 bool ssl3_add_alert(SSL *ssl, uint8_t level, uint8_t desc) {
   uint8_t alert[2] = {level, desc};
-  if (!tls_flush_pending_hs_data(ssl) ||
-      !add_record_to_flight(ssl, SSL3_RT_ALERT, alert)) {
+  if (!add_record_to_flight(ssl, SSL3_RT_ALERT, alert)) {
     return false;
   }
 
@@ -277,10 +229,6 @@ bool ssl3_add_alert(SSL *ssl, uint8_t level, uint8_t desc) {
 }
 
 int ssl3_flush_flight(SSL *ssl) {
-  if (!tls_flush_pending_hs_data(ssl)) {
-    return -1;
-  }
-
   if (ssl->s3->pending_flight == nullptr) {
     return 1;
   }
