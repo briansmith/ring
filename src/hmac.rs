@@ -346,6 +346,12 @@ impl VerificationKey {
                -> VerificationKey {
         VerificationKey { wrapped: SigningKey::new(digest_alg, key_value) }
     }
+
+    /// The digest algorithm for the key.
+    #[inline]
+    pub fn digest_algorithm(&self) -> &'static digest::Algorithm {
+        self.wrapped.digest_algorithm()
+    }
 }
 
 /// Calculates the HMAC of `data` using the key `key`, and verifies whether the
