@@ -79,6 +79,13 @@ extern "C" {
 #endif
 
 
+// MSan appears to have a bug that causes code to be miscompiled in opt mode.
+// While that is being looked at, don't run the uint128_t code under MSan.
+#if defined(OPENSSL_64_BIT) && (!defined(_MSC_VER) || defined(__clang__)) && \
+    !defined(MEMORY_SANITIZER)
+#define BORINGSSL_USE_INT128_CODE
+#endif
+
 struct ec_method_st {
   int (*group_init)(EC_GROUP *);
   void (*group_finish)(EC_GROUP *);
