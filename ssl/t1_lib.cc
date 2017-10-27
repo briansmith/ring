@@ -418,25 +418,15 @@ static const uint16_t kVerifySignatureAlgorithms[] = {
     // List our preferred algorithms first.
     SSL_SIGN_ED25519,
     SSL_SIGN_ECDSA_SECP256R1_SHA256,
-#if !defined(BORINGSSL_ANDROID_SYSTEM)
     SSL_SIGN_RSA_PSS_SHA256,
-#endif
     SSL_SIGN_RSA_PKCS1_SHA256,
 
     // Larger hashes are acceptable.
     SSL_SIGN_ECDSA_SECP384R1_SHA384,
-#if !defined(BORINGSSL_ANDROID_SYSTEM)
     SSL_SIGN_RSA_PSS_SHA384,
-#endif
     SSL_SIGN_RSA_PKCS1_SHA384,
 
-    // TODO(davidben): Remove this.
-#if defined(BORINGSSL_ANDROID_SYSTEM)
-    SSL_SIGN_ECDSA_SECP521R1_SHA512,
-#endif
-#if !defined(BORINGSSL_ANDROID_SYSTEM)
     SSL_SIGN_RSA_PSS_SHA512,
-#endif
     SSL_SIGN_RSA_PKCS1_SHA512,
 
     // For now, SHA-1 is still accepted but least preferable.
@@ -454,24 +444,18 @@ static const uint16_t kSignSignatureAlgorithms[] = {
     // List our preferred algorithms first.
     SSL_SIGN_ED25519,
     SSL_SIGN_ECDSA_SECP256R1_SHA256,
-#if !defined(BORINGSSL_ANDROID_SYSTEM)
     SSL_SIGN_RSA_PSS_SHA256,
-#endif
     SSL_SIGN_RSA_PKCS1_SHA256,
 
     // If needed, sign larger hashes.
     //
     // TODO(davidben): Determine which of these may be pruned.
     SSL_SIGN_ECDSA_SECP384R1_SHA384,
-#if !defined(BORINGSSL_ANDROID_SYSTEM)
     SSL_SIGN_RSA_PSS_SHA384,
-#endif
     SSL_SIGN_RSA_PKCS1_SHA384,
 
     SSL_SIGN_ECDSA_SECP521R1_SHA512,
-#if !defined(BORINGSSL_ANDROID_SYSTEM)
     SSL_SIGN_RSA_PSS_SHA512,
-#endif
     SSL_SIGN_RSA_PKCS1_SHA512,
 
     // If the peer supports nothing else, sign with SHA-1.
