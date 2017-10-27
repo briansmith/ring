@@ -261,6 +261,7 @@ const ASM_TARGETS:
     ("aarch64", Some("ios"), "ios64"),
     ("aarch64", None, "linux64"),
     ("x86", Some(WINDOWS), "win32n"),
+    ("x86", Some("ios"), "macosx"),
     ("x86", None, "elf"),
     ("arm", Some("ios"), "ios32"),
     ("arm", None, "linux32"),
