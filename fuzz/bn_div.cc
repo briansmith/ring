@@ -28,10 +28,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   CBS cbs, child0, child1;
   uint8_t sign0, sign1;
   CBS_init(&cbs, buf, len);
-  if (!CBS_get_u8_length_prefixed(&cbs, &child0) ||
+  if (!CBS_get_u16_length_prefixed(&cbs, &child0) ||
       !CBS_get_u8(&child0, &sign0) ||
       CBS_len(&child0) == 0 ||
-      !CBS_get_u8_length_prefixed(&cbs, &child1) ||
+      !CBS_get_u16_length_prefixed(&cbs, &child1) ||
       !CBS_get_u8(&child1, &sign1) ||
       CBS_len(&child1) == 0) {
     return 0;
