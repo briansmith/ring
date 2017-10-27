@@ -212,6 +212,13 @@ static const uint8_t kP521Params[6 * 66] = {
     0xB7, 0x1E, 0x91, 0x38, 0x64, 0x09,
 };
 
+// MSan appears to have a bug that causes code to be miscompiled in opt mode.
+// While that is being looked at, don't run the uint128_t code under MSan.
+#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS) && \
+    !defined(MEMORY_SANITIZER)
+#define BORINGSSL_USE_INT128_CODE
+#endif
+
 DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   // 1.3.132.0.35
   static const uint8_t kOIDP521[] = {0x2b, 0x81, 0x04, 0x00, 0x23};

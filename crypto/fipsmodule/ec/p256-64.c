@@ -21,6 +21,8 @@
 
 #include <openssl/base.h>
 
+#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS)
+
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
@@ -32,8 +34,6 @@
 #include "../../internal.h"
 #include "internal.h"
 
-
-#if defined(BORINGSSL_USE_INT128_CODE)
 
 // The underlying field. P256 operates over GF(2^256-2^224+2^192+2^96-1). We
 // can serialise an element of this field into 32 bytes. We call this an
@@ -1705,4 +1705,4 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp256_method) {
   out->field_decode = NULL;
 };
 
-#endif  // BORINGSSL_USE_INT128_CODE
+#endif  // 64_BIT && !WINDOWS

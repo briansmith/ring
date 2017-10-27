@@ -155,18 +155,18 @@ static inline void bn_div_rem_words(BN_ULONG *quotient_out, BN_ULONG *rem_out,
   //
   // These issues aren't specific to x86 and x86_64, so it might be worthwhile
   // to add more assembly language implementations.
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86) && \
-    (defined(__GNUC__) || defined(__clang__))
-  __asm__ volatile("divl %4"
-                   : "=a"(*quotient_out), "=d"(*rem_out)
-                   : "a"(n1), "d"(n0), "rm"(d0)
-                   : "cc");
-#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
-    (defined(__GNUC__) || defined(__clang__))
-  __asm__ volatile("divq %4"
-                   : "=a"(*quotient_out), "=d"(*rem_out)
-                   : "a"(n1), "d"(n0), "rm"(d0)
-                   : "cc");
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86) && defined(__GNUC__)
+  __asm__ volatile (
+    "divl %4"
+    : "=a"(*quotient_out), "=d"(*rem_out)
+    : "a"(n1), "d"(n0), "rm"(d0)
+    : "cc" );
+#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__GNUC__)
+  __asm__ volatile (
+    "divq %4"
+    : "=a"(*quotient_out), "=d"(*rem_out)
+    : "a"(n1), "d"(n0), "rm"(d0)
+    : "cc" );
 #else
 #if defined(BN_ULLONG)
   BN_ULLONG n = (((BN_ULLONG)n0) << BN_BITS2) | n1;

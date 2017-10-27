@@ -64,8 +64,7 @@
 // This file has two other implementations: x86 assembly language in
 // asm/bn-586.pl and x86_64 inline assembly in asm/x86_64-gcc.c.
 #if defined(OPENSSL_NO_ASM) || \
-    !(defined(OPENSSL_X86) ||  \
-      (defined(OPENSSL_X86_64) && (defined(__GNUC__) || defined(__clang__))))
+    !(defined(OPENSSL_X86) || (defined(OPENSSL_X86_64) && defined(__GNUC__)))
 
 #ifdef BN_ULLONG
 #define mul_add(r, a, w, c)               \
