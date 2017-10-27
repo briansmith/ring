@@ -66,8 +66,6 @@
 #include "internal.h"
 
 
-void EVP_set_buggy_rsa_parser(int buggy) {}
-
 static int rsa_pub_encode(CBB *out, const EVP_PKEY *key) {
   // See RFC 3279, section 2.3.1.
   CBB spki, algorithm, oid, null, key_bitstring;

@@ -796,9 +796,6 @@ OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
 // EVP_PKEY_get0_DH returns NULL.
 OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(EVP_PKEY *pkey);
 
-// EVP_set_buggy_rsa_parser does nothing.
-OPENSSL_EXPORT void EVP_set_buggy_rsa_parser(int buggy);
-
 
 // Private structures.
 
