@@ -3265,54 +3265,45 @@ int tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
   return 1;
 }
 
-int tls1_write_channel_id(SSL_HANDSHAKE *hs, CBB *cbb) {
+bool tls1_write_channel_id(SSL_HANDSHAKE *hs, CBB *cbb) {
   SSL *const ssl = hs->ssl;
   uint8_t digest[EVP_MAX_MD_SIZE];
   size_t digest_len;
   if (!tls1_channel_id_hash(hs, digest, &digest_len)) {
-    return 0;
+    return false;
   }
 
   EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(ssl->tlsext_channel_id_private);
-  if (ec_key == NULL) {
+  if (ec_key == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
+    return false;
   }
 
-  int ret = 0;
-  BIGNUM *x = BN_new();
-  BIGNUM *y = BN_new();
-  ECDSA_SIG *sig = NULL;
-  if (x == NULL || y == NULL ||
+  UniquePtr<BIGNUM> x(BN_new()), y(BN_new());
+  if (!x || !y ||
       !EC_POINT_get_affine_coordinates_GFp(EC_KEY_get0_group(ec_key),
                                            EC_KEY_get0_public_key(ec_key),
-                                           x, y, NULL)) {
-    goto err;
+                                           x.get(), y.get(), nullptr)) {
+    return false;
   }
 
-  sig = ECDSA_do_sign(digest, digest_len, ec_key);
-  if (sig == NULL) {
-    goto err;
+  UniquePtr<ECDSA_SIG> sig(ECDSA_do_sign(digest, digest_len, ec_key));
+  if (!sig) {
+    return false;
   }
 
   CBB child;
   if (!CBB_add_u16(cbb, TLSEXT_TYPE_channel_id) ||
       !CBB_add_u16_length_prefixed(cbb, &child) ||
-      !BN_bn2cbb_padded(&child, 32, x) ||
-      !BN_bn2cbb_padded(&child, 32, y) ||
+      !BN_bn2cbb_padded(&child, 32, x.get()) ||
+      !BN_bn2cbb_padded(&child, 32, y.get()) ||
       !BN_bn2cbb_padded(&child, 32, sig->r) ||
       !BN_bn2cbb_padded(&child, 32, sig->s) ||
       !CBB_flush(cbb)) {
-    goto err;
+    return false;
   }
 
-  ret = 1;
-
-err:
-  BN_free(x);
-  BN_free(y);
-  ECDSA_SIG_free(sig);
-  return ret;
+  return true;
 }
 
 int tls1_channel_id_hash(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len) {

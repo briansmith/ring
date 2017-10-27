@@ -2863,8 +2863,8 @@ int tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg);
 
 // tls1_write_channel_id generates a Channel ID message and puts the output in
 // |cbb|. |ssl->tlsext_channel_id_private| must already be set before calling.
-// This function returns one on success and zero on error.
-int tls1_write_channel_id(SSL_HANDSHAKE *hs, CBB *cbb);
+// This function returns true on success and false on error.
+bool tls1_write_channel_id(SSL_HANDSHAKE *hs, CBB *cbb);
 
 // tls1_channel_id_hash computes the hash to be signed by Channel ID and writes
 // it to |out|, which must contain at least |EVP_MAX_MD_SIZE| bytes. It returns
