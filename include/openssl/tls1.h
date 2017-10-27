@@ -600,22 +600,6 @@ extern "C" {
 #define TLS_CT_ECDSA_FIXED_ECDH 66
 
 #define TLS_MD_MAX_CONST_SIZE 20
-#define TLS_MD_CLIENT_FINISH_CONST "client finished"
-#define TLS_MD_CLIENT_FINISH_CONST_SIZE 15
-#define TLS_MD_SERVER_FINISH_CONST "server finished"
-#define TLS_MD_SERVER_FINISH_CONST_SIZE 15
-#define TLS_MD_KEY_EXPANSION_CONST "key expansion"
-#define TLS_MD_KEY_EXPANSION_CONST_SIZE 13
-#define TLS_MD_CLIENT_WRITE_KEY_CONST "client write key"
-#define TLS_MD_CLIENT_WRITE_KEY_CONST_SIZE 16
-#define TLS_MD_SERVER_WRITE_KEY_CONST "server write key"
-#define TLS_MD_SERVER_WRITE_KEY_CONST_SIZE 16
-#define TLS_MD_IV_BLOCK_CONST "IV block"
-#define TLS_MD_IV_BLOCK_CONST_SIZE 8
-#define TLS_MD_MASTER_SECRET_CONST "master secret"
-#define TLS_MD_MASTER_SECRET_CONST_SIZE 13
-#define TLS_MD_EXTENDED_MASTER_SECRET_CONST "extended master secret"
-#define TLS_MD_EXTENDED_MASTER_SECRET_CONST_SIZE 22
 
 
 #ifdef  __cplusplus

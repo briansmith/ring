@@ -596,14 +596,12 @@ class SSLTranscript {
   ScopedEVP_MD_CTX md5_;
 };
 
-// tls1_prf computes the PRF function for |ssl|. It writes |out_len| bytes to
-// |out|, using |secret| as the secret and |label| as the label. |seed1| and
-// |seed2| are concatenated to form the seed parameter. It returns one on
-// success and zero on failure.
-int tls1_prf(const EVP_MD *digest, uint8_t *out, size_t out_len,
-             const uint8_t *secret, size_t secret_len, const char *label,
-             size_t label_len, const uint8_t *seed1, size_t seed1_len,
-             const uint8_t *seed2, size_t seed2_len);
+// tls1_prf computes the PRF function for |ssl|. It fills |out|, using |secret|
+// as the secret and |label| as the label. |seed1| and |seed2| are concatenated
+// to form the seed parameter. It returns true on success and false on failure.
+bool tls1_prf(const EVP_MD *digest, Span<uint8_t> out,
+              Span<const uint8_t> secret, Span<const char> label,
+              Span<const uint8_t> seed1, Span<const uint8_t> seed2);
 
 
 // Encryption layer.
@@ -2803,7 +2801,7 @@ int dtls1_dispatch_alert(SSL *ssl);
 
 int tls1_change_cipher_state(SSL_HANDSHAKE *hs, evp_aead_direction_t direction);
 int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
-                                const uint8_t *premaster, size_t premaster_len);
+                                Span<const uint8_t> premaster);
 
 // tls1_get_grouplist returns the locally-configured group preference list.
 Span<const uint16_t> tls1_get_grouplist(const SSL *ssl);

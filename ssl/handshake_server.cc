@@ -1243,8 +1243,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
 
   // Compute the master secret.
   hs->new_session->master_key_length = tls1_generate_master_secret(
-      hs, hs->new_session->master_key, premaster_secret.data(),
-      premaster_secret.size());
+      hs, hs->new_session->master_key, premaster_secret);
   if (hs->new_session->master_key_length == 0) {
     return ssl_hs_error;
   }

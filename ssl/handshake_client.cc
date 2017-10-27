@@ -1360,8 +1360,8 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  hs->new_session->master_key_length = tls1_generate_master_secret(
-      hs, hs->new_session->master_key, pms.data(), pms.size());
+  hs->new_session->master_key_length =
+      tls1_generate_master_secret(hs, hs->new_session->master_key, pms);
   if (hs->new_session->master_key_length == 0) {
     return ssl_hs_error;
   }

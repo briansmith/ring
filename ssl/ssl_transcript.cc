@@ -348,12 +348,11 @@ bool SSLTranscript::GetFinishedMAC(uint8_t *out, size_t *out_len,
   // its own.
   assert(!buffer_);
 
-  const char *label = TLS_MD_CLIENT_FINISH_CONST;
-  size_t label_len = TLS_MD_SERVER_FINISH_CONST_SIZE;
-  if (from_server) {
-    label = TLS_MD_SERVER_FINISH_CONST;
-    label_len = TLS_MD_SERVER_FINISH_CONST_SIZE;
-  }
+  static const char kClientLabel[] = "client finished";
+  static const char kServerLabel[] = "server finished";
+  auto label = from_server
+                   ? MakeConstSpan(kServerLabel, sizeof(kServerLabel) - 1)
+                   : MakeConstSpan(kClientLabel, sizeof(kClientLabel) - 1);
 
   uint8_t digests[EVP_MAX_MD_SIZE];
   size_t digests_len;
@@ -362,9 +361,9 @@ bool SSLTranscript::GetFinishedMAC(uint8_t *out, size_t *out_len,
   }
 
   static const size_t kFinishedLen = 12;
-  if (!tls1_prf(Digest(), out, kFinishedLen, session->master_key,
-                session->master_key_length, label, label_len, digests,
-                digests_len, NULL, 0)) {
+  if (!tls1_prf(Digest(), MakeSpan(out, kFinishedLen),
+                MakeConstSpan(session->master_key, session->master_key_length),
+                label, MakeConstSpan(digests, digests_len), {})) {
     return false;
   }
 
