@@ -162,10 +162,6 @@ OPENSSL_EXPORT EC_POINT *EC_POINT_new(const EC_GROUP *group);
 // EC_POINT_free frees |point| and the data that it points to.
 OPENSSL_EXPORT void EC_POINT_free(EC_POINT *point);
 
-// EC_POINT_clear_free clears the data that |point| points to, frees it and
-// then frees |point| itself.
-OPENSSL_EXPORT void EC_POINT_clear_free(EC_POINT *point);
-
 // EC_POINT_copy sets |*dest| equal to |*src|. It returns one on success and
 // zero otherwise.
 OPENSSL_EXPORT int EC_POINT_copy(EC_POINT *dest, const EC_POINT *src);
@@ -349,6 +345,9 @@ typedef struct {
 // The |EC_builtin_curve| items describe the supported elliptic curves.
 OPENSSL_EXPORT size_t EC_get_builtin_curves(EC_builtin_curve *out_curves,
                                             size_t max_num_curves);
+
+// EC_POINT_clear_free calls |EC_POINT_free|.
+OPENSSL_EXPORT void EC_POINT_clear_free(EC_POINT *point);
 
 // Old code expects to get EC_KEY from ec.h.
 #include <openssl/ec_key.h>

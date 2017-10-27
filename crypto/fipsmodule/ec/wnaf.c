@@ -446,7 +446,7 @@ err:
   }
   if (val != NULL) {
     for (i = 0; i < num_val; i++) {
-      EC_POINT_clear_free(val[i]);
+      EC_POINT_free(val[i]);
     }
 
     OPENSSL_free(val);

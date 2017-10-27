@@ -249,12 +249,6 @@ void ec_GFp_simple_point_finish(EC_POINT *point) {
   BN_free(&point->Z);
 }
 
-void ec_GFp_simple_point_clear_finish(EC_POINT *point) {
-  BN_clear_free(&point->X);
-  BN_clear_free(&point->Y);
-  BN_clear_free(&point->Z);
-}
-
 int ec_GFp_simple_point_copy(EC_POINT *dest, const EC_POINT *src) {
   if (!BN_copy(&dest->X, &src->X) ||
       !BN_copy(&dest->Y, &src->Y) ||

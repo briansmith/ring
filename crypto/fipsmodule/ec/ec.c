@@ -628,15 +628,7 @@ void EC_POINT_free(EC_POINT *point) {
   OPENSSL_free(point);
 }
 
-void EC_POINT_clear_free(EC_POINT *point) {
-  if (!point) {
-    return;
-  }
-
-  ec_GFp_simple_point_clear_finish(point);
-
-  OPENSSL_free(point);
-}
+void EC_POINT_clear_free(EC_POINT *point) { EC_POINT_free(point); }
 
 int EC_POINT_copy(EC_POINT *dest, const EC_POINT *src) {
   if (dest->meth != src->meth) {
