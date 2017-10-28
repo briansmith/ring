@@ -11,7 +11,6 @@ import (
 	"crypto/des"
 	"crypto/hmac"
 	"crypto/md5"
-	"crypto/rc4"
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
@@ -62,9 +61,6 @@ const (
 	// suiteSHA384 indicates that the cipher suite uses SHA384 as the
 	// handshake hash.
 	suiteSHA384
-	// suiteNoDTLS indicates that the cipher suite cannot be used
-	// in DTLS.
-	suiteNoDTLS
 	// suitePSK indicates that the cipher suite authenticates with
 	// a pre-shared key rather than a server private key.
 	suitePSK
@@ -99,8 +95,6 @@ func (cs cipherSuite) hash() crypto.Hash {
 }
 
 var cipherSuites = []*cipherSuite{
-	// Ciphersuite order is chosen so that ECDHE comes before plain RSA
-	// and RC4 comes before AES (because of the Lucky13 attack).
 	{TLS_CHACHA20_POLY1305_SHA256, 32, 0, ivLenChaCha20Poly1305, nil, suiteTLS13, nil, nil, aeadCHACHA20POLY1305},
 	{TLS_AES_128_GCM_SHA256, 16, 0, ivLenAESGCM, nil, suiteTLS13, nil, nil, aeadAESGCM},
 	{TLS_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, nil, suiteTLS13 | suiteSHA384, nil, nil, aeadAESGCM},
@@ -110,8 +104,6 @@ var cipherSuites = []*cipherSuite{
 	{TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 16, 0, ivLenAESGCM, ecdheECDSAKA, suiteECDHE | suiteECDSA | suiteTLS12, nil, nil, aeadAESGCM},
 	{TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, ecdheRSAKA, suiteECDHE | suiteTLS12 | suiteSHA384, nil, nil, aeadAESGCM},
 	{TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, ecdheECDSAKA, suiteECDHE | suiteECDSA | suiteTLS12 | suiteSHA384, nil, nil, aeadAESGCM},
-	{TLS_ECDHE_RSA_WITH_RC4_128_SHA, 16, 20, noIV, ecdheRSAKA, suiteECDHE | suiteNoDTLS, cipherRC4, macSHA1, nil},
-	{TLS_ECDHE_ECDSA_WITH_RC4_128_SHA, 16, 20, noIV, ecdheECDSAKA, suiteECDHE | suiteECDSA | suiteNoDTLS, cipherRC4, macSHA1, nil},
 	{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256, 16, 32, ivLenAES, ecdheRSAKA, suiteECDHE | suiteTLS12, cipherAES, macSHA256, nil},
 	{TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256, 16, 32, ivLenAES, ecdheECDSAKA, suiteECDHE | suiteECDSA | suiteTLS12, cipherAES, macSHA256, nil},
 	{TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA, 16, 20, ivLenAES, ecdheRSAKA, suiteECDHE, cipherAES, macSHA1, nil},
@@ -122,8 +114,6 @@ var cipherSuites = []*cipherSuite{
 	{TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA, 32, 20, ivLenAES, ecdheECDSAKA, suiteECDHE | suiteECDSA, cipherAES, macSHA1, nil},
 	{TLS_RSA_WITH_AES_128_GCM_SHA256, 16, 0, ivLenAESGCM, rsaKA, suiteTLS12, nil, nil, aeadAESGCM},
 	{TLS_RSA_WITH_AES_256_GCM_SHA384, 32, 0, ivLenAESGCM, rsaKA, suiteTLS12 | suiteSHA384, nil, nil, aeadAESGCM},
-	{TLS_RSA_WITH_RC4_128_SHA, 16, 20, noIV, rsaKA, suiteNoDTLS, cipherRC4, macSHA1, nil},
-	{TLS_RSA_WITH_RC4_128_MD5, 16, 16, noIV, rsaKA, suiteNoDTLS, cipherRC4, macMD5, nil},
 	{TLS_RSA_WITH_AES_128_CBC_SHA256, 16, 32, ivLenAES, rsaKA, suiteTLS12, cipherAES, macSHA256, nil},
 	{TLS_RSA_WITH_AES_256_CBC_SHA256, 32, 32, ivLenAES, rsaKA, suiteTLS12, cipherAES, macSHA256, nil},
 	{TLS_RSA_WITH_AES_128_CBC_SHA, 16, 20, ivLenAES, rsaKA, 0, cipherAES, macSHA1, nil},
@@ -133,7 +123,6 @@ var cipherSuites = []*cipherSuite{
 	{TLS_ECDHE_PSK_WITH_CHACHA20_POLY1305_SHA256, 32, 0, ivLenChaCha20Poly1305, ecdhePSKKA, suiteECDHE | suitePSK | suiteTLS12, nil, nil, aeadCHACHA20POLY1305},
 	{TLS_ECDHE_PSK_WITH_AES_128_CBC_SHA, 16, 20, ivLenAES, ecdhePSKKA, suiteECDHE | suitePSK, cipherAES, macSHA1, nil},
 	{TLS_ECDHE_PSK_WITH_AES_256_CBC_SHA, 32, 20, ivLenAES, ecdhePSKKA, suiteECDHE | suitePSK, cipherAES, macSHA1, nil},
-	{TLS_PSK_WITH_RC4_128_SHA, 16, 20, noIV, pskKA, suiteNoDTLS | suitePSK, cipherRC4, macSHA1, nil},
 	{TLS_PSK_WITH_AES_128_CBC_SHA, 16, 20, ivLenAES, pskKA, suitePSK, cipherAES, macSHA1, nil},
 	{TLS_PSK_WITH_AES_256_CBC_SHA, 32, 20, ivLenAES, pskKA, suitePSK, cipherAES, macSHA1, nil},
 	{TLS_RSA_WITH_NULL_SHA, 0, 20, noIV, rsaKA, 0, cipherNull, macSHA1, nil},
@@ -166,11 +155,6 @@ type nullCipher struct{}
 
 func cipherNull(key, iv []byte, isRead bool) interface{} {
 	return nullCipher{}
-}
-
-func cipherRC4(key, iv []byte, isRead bool) interface{} {
-	cipher, _ := rc4.NewCipher(key)
-	return cipher
 }
 
 func cipher3DES(key, iv []byte, isRead bool) interface{} {
@@ -448,22 +432,17 @@ func cipherSuiteFromID(id uint16) *cipherSuite {
 // http://www.iana.org/assignments/tls-parameters/tls-parameters.xml
 const (
 	TLS_RSA_WITH_NULL_SHA                         uint16 = 0x0002
-	TLS_RSA_WITH_RC4_128_MD5                      uint16 = 0x0004
-	TLS_RSA_WITH_RC4_128_SHA                      uint16 = 0x0005
 	TLS_RSA_WITH_3DES_EDE_CBC_SHA                 uint16 = 0x000a
 	TLS_RSA_WITH_AES_128_CBC_SHA                  uint16 = 0x002f
 	TLS_RSA_WITH_AES_256_CBC_SHA                  uint16 = 0x0035
 	TLS_RSA_WITH_AES_128_CBC_SHA256               uint16 = 0x003c
 	TLS_RSA_WITH_AES_256_CBC_SHA256               uint16 = 0x003d
-	TLS_PSK_WITH_RC4_128_SHA                      uint16 = 0x008a
 	TLS_PSK_WITH_AES_128_CBC_SHA                  uint16 = 0x008c
 	TLS_PSK_WITH_AES_256_CBC_SHA                  uint16 = 0x008d
 	TLS_RSA_WITH_AES_128_GCM_SHA256               uint16 = 0x009c
 	TLS_RSA_WITH_AES_256_GCM_SHA384               uint16 = 0x009d
-	TLS_ECDHE_ECDSA_WITH_RC4_128_SHA              uint16 = 0xc007
 	TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA          uint16 = 0xc009
 	TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA          uint16 = 0xc00a
-	TLS_ECDHE_RSA_WITH_RC4_128_SHA                uint16 = 0xc011
 	TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA           uint16 = 0xc012
 	TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA            uint16 = 0xc013
 	TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA            uint16 = 0xc014

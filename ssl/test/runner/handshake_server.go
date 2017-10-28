@@ -2000,9 +2000,6 @@ func (c *Conn) tryCipherSuite(id uint16, supportedCipherSuites []uint16, version
 			if version < VersionTLS12 && candidate.flags&suiteTLS12 != 0 {
 				continue
 			}
-			if c.isDTLS && candidate.flags&suiteNoDTLS != 0 {
-				continue
-			}
 			return candidate
 		}
 	}

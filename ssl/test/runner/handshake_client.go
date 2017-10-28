@@ -211,10 +211,6 @@ NextCipherSuite:
 			if maxVersion < VersionTLS12 && suite.flags&suiteTLS12 != 0 {
 				continue
 			}
-			// Don't advertise non-DTLS cipher suites in DTLS.
-			if c.isDTLS && suite.flags&suiteNoDTLS != 0 {
-				continue
-			}
 			hello.cipherSuites = append(hello.cipherSuites, suiteId)
 			continue NextCipherSuite
 		}
