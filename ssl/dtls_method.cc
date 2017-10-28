@@ -68,10 +68,6 @@
 
 using namespace bssl;
 
-static bool dtls1_supports_cipher(const SSL_CIPHER *cipher) {
-  return cipher->algorithm_enc != SSL_eNULL;
-}
-
 static void dtls1_on_handshake_complete(SSL *ssl) {
   // Stop the reply timer left by the last flight we sent.
   dtls1_stop_timer(ssl);
@@ -121,7 +117,6 @@ static const SSL_PROTOCOL_METHOD kDTLSProtocolMethod = {
     dtls1_open_app_data,
     dtls1_write_app_data,
     dtls1_dispatch_alert,
-    dtls1_supports_cipher,
     dtls1_init_message,
     dtls1_finish_message,
     dtls1_add_message,

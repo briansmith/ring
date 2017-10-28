@@ -1394,10 +1394,6 @@ func isTLS13Suite(suiteName string) bool {
 	return strings.HasPrefix(suiteName, "AEAD-")
 }
 
-func isDTLSCipher(suiteName string) bool {
-	return !hasComponent(suiteName, "RC4") && !hasComponent(suiteName, "NULL")
-}
-
 func bigFromHex(hex string) *big.Int {
 	ret, ok := new(big.Int).SetString(hex, 16)
 	if !ok {
@@ -2945,10 +2941,6 @@ func addTestForCipherSuite(suite testCipherSuite, ver tlsVersion, protocol proto
 		shouldServerFail = true
 	}
 	if isTLS13Suite(suite.name) && ver.version < VersionTLS13 {
-		shouldClientFail = true
-		shouldServerFail = true
-	}
-	if !isDTLSCipher(suite.name) && protocol == dtls {
 		shouldClientFail = true
 		shouldServerFail = true
 	}

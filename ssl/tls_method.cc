@@ -67,8 +67,6 @@
 
 namespace bssl {
 
-static bool ssl3_supports_cipher(const SSL_CIPHER *cipher) { return true; }
-
 static void ssl3_on_handshake_complete(SSL *ssl) {
   // The handshake should have released its final message.
   assert(!ssl->s3->has_message);
@@ -113,7 +111,6 @@ static const SSL_PROTOCOL_METHOD kTLSProtocolMethod = {
     ssl3_open_app_data,
     ssl3_write_app_data,
     ssl3_dispatch_alert,
-    ssl3_supports_cipher,
     ssl3_init_message,
     ssl3_finish_message,
     ssl3_add_message,

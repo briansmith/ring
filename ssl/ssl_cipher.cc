@@ -811,19 +811,14 @@ static void ll_append_head(CIPHER_ORDER **head, CIPHER_ORDER *curr,
   *head = curr;
 }
 
-static void ssl_cipher_collect_ciphers(const SSL_PROTOCOL_METHOD *ssl_method,
-                                       CIPHER_ORDER *co_list,
+static void ssl_cipher_collect_ciphers(CIPHER_ORDER *co_list,
                                        CIPHER_ORDER **head_p,
                                        CIPHER_ORDER **tail_p) {
-  // The set of ciphers is static, but some subset may be unsupported by
-  // |ssl_method|, so the list may be smaller.
   size_t co_list_num = 0;
-  for (size_t i = 0; i < kCiphersLen; i++) {
-    const SSL_CIPHER *cipher = &kCiphers[i];
-    if (ssl_method->supports_cipher(cipher) &&
-        // TLS 1.3 ciphers do not participate in this mechanism.
-        cipher->algorithm_mkey != SSL_kGENERIC) {
-      co_list[co_list_num].cipher = cipher;
+  for (const SSL_CIPHER &cipher : kCiphers) {
+    // TLS 1.3 ciphers do not participate in this mechanism.
+    if (cipher.algorithm_mkey != SSL_kGENERIC) {
+      co_list[co_list_num].cipher = &cipher;
       co_list[co_list_num].next = NULL;
       co_list[co_list_num].prev = NULL;
       co_list[co_list_num].active = false;
@@ -1023,8 +1018,7 @@ static bool ssl_cipher_strength_sort(CIPHER_ORDER **head_p,
   return true;
 }
 
-static bool ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
-                                       const char *rule_str,
+static bool ssl_cipher_process_rulestr(const char *rule_str,
                                        CIPHER_ORDER **head_p,
                                        CIPHER_ORDER **tail_p, bool strict) {
   uint32_t alg_mkey, alg_auth, alg_enc, alg_mac;
@@ -1206,7 +1200,6 @@ static bool ssl_cipher_process_rulestr(const SSL_PROTOCOL_METHOD *ssl_method,
 }
 
 bool ssl_create_cipher_list(
-    const SSL_PROTOCOL_METHOD *ssl_method,
     struct ssl_cipher_preference_list_st **out_cipher_list,
     const char *rule_str, bool strict) {
   STACK_OF(SSL_CIPHER) *cipherstack = NULL;
@@ -1229,7 +1222,7 @@ bool ssl_create_cipher_list(
     return false;
   }
 
-  ssl_cipher_collect_ciphers(ssl_method, co_list, &head, &tail);
+  ssl_cipher_collect_ciphers(co_list, &head, &tail);
 
   // Now arrange all ciphers by preference:
   // TODO(davidben): Compute this order once and copy it.
@@ -1288,8 +1281,8 @@ bool ssl_create_cipher_list(
   // using the (possibly available) additional rules.
   const char *rule_p = rule_str;
   if (strncmp(rule_str, "DEFAULT", 7) == 0) {
-    if (!ssl_cipher_process_rulestr(ssl_method, SSL_DEFAULT_CIPHER_LIST, &head,
-                                    &tail, strict)) {
+    if (!ssl_cipher_process_rulestr(SSL_DEFAULT_CIPHER_LIST, &head, &tail,
+                                    strict)) {
       goto err;
     }
     rule_p += 7;
@@ -1299,7 +1292,7 @@ bool ssl_create_cipher_list(
   }
 
   if (*rule_p != '\0' &&
-      !ssl_cipher_process_rulestr(ssl_method, rule_p, &head, &tail, strict)) {
+      !ssl_cipher_process_rulestr(rule_p, &head, &tail, strict)) {
     goto err;
   }
 

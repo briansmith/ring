@@ -136,7 +136,7 @@ var cipherSuites = []*cipherSuite{
 	{TLS_PSK_WITH_RC4_128_SHA, 16, 20, noIV, pskKA, suiteNoDTLS | suitePSK, cipherRC4, macSHA1, nil},
 	{TLS_PSK_WITH_AES_128_CBC_SHA, 16, 20, ivLenAES, pskKA, suitePSK, cipherAES, macSHA1, nil},
 	{TLS_PSK_WITH_AES_256_CBC_SHA, 32, 20, ivLenAES, pskKA, suitePSK, cipherAES, macSHA1, nil},
-	{TLS_RSA_WITH_NULL_SHA, 0, 20, noIV, rsaKA, suiteNoDTLS, cipherNull, macSHA1, nil},
+	{TLS_RSA_WITH_NULL_SHA, 0, 20, noIV, rsaKA, 0, cipherNull, macSHA1, nil},
 }
 
 func noIV(vers uint16) int {

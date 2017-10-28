@@ -490,14 +490,12 @@ bool ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
 const EVP_MD *ssl_get_handshake_digest(uint16_t version,
                                        const SSL_CIPHER *cipher);
 
-// ssl_create_cipher_list evaluates |rule_str| according to the ciphers in
-// |ssl_method|. It sets |*out_cipher_list| to a newly-allocated
-// |ssl_cipher_preference_list_st| containing the result. It returns true on
-// success and false on failure. If |strict| is true, nonsense will be
-// rejected. If false, nonsense will be silently ignored. An empty result is
-// considered an error regardless of |strict|.
+// ssl_create_cipher_list evaluates |rule_str|. It sets |*out_cipher_list| to a
+// newly-allocated |ssl_cipher_preference_list_st| containing the result. It
+// returns true on success and false on failure. If |strict| is true, nonsense
+// will be rejected. If false, nonsense will be silently ignored. An empty
+// result is considered an error regardless of |strict|.
 bool ssl_create_cipher_list(
-    const SSL_PROTOCOL_METHOD *ssl_method,
     struct ssl_cipher_preference_list_st **out_cipher_list,
     const char *rule_str, bool strict);
 
@@ -1771,8 +1769,6 @@ struct SSL_PROTOCOL_METHOD {
   int (*write_app_data)(SSL *ssl, bool *out_needs_handshake, const uint8_t *buf,
                         int len);
   int (*dispatch_alert)(SSL *ssl);
-  // supports_cipher returns whether |cipher| is supported by this protocol.
-  bool (*supports_cipher)(const SSL_CIPHER *cipher);
   // init_message begins a new handshake message of type |type|. |cbb| is the
   // root CBB to be passed into |finish_message|. |*body| is set to a child CBB
   // the caller should write to. It returns true on success and false on error.
