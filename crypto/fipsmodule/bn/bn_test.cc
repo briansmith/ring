@@ -778,27 +778,27 @@ static int DecimalToBIGNUM(bssl::UniquePtr<BIGNUM> *out, const char *in) {
 TEST_F(BNTest, Dec2BN) {
   bssl::UniquePtr<BIGNUM> bn;
   int ret = DecimalToBIGNUM(&bn, "0");
-  EXPECT_EQ(1, ret);
+  ASSERT_EQ(1, ret);
   EXPECT_TRUE(BN_is_zero(bn.get()));
   EXPECT_FALSE(BN_is_negative(bn.get()));
 
   ret = DecimalToBIGNUM(&bn, "256");
-  EXPECT_EQ(3, ret);
+  ASSERT_EQ(3, ret);
   EXPECT_TRUE(BN_is_word(bn.get(), 256));
   EXPECT_FALSE(BN_is_negative(bn.get()));
 
   ret = DecimalToBIGNUM(&bn, "-42");
-  EXPECT_EQ(3, ret);
+  ASSERT_EQ(3, ret);
   EXPECT_TRUE(BN_abs_is_word(bn.get(), 42));
   EXPECT_TRUE(BN_is_negative(bn.get()));
 
   ret = DecimalToBIGNUM(&bn, "-0");
-  EXPECT_EQ(2, ret);
+  ASSERT_EQ(2, ret);
   EXPECT_TRUE(BN_is_zero(bn.get()));
   EXPECT_FALSE(BN_is_negative(bn.get()));
 
   ret = DecimalToBIGNUM(&bn, "42trailing garbage is ignored");
-  EXPECT_EQ(2, ret);
+  ASSERT_EQ(2, ret);
   EXPECT_TRUE(BN_abs_is_word(bn.get(), 42));
   EXPECT_FALSE(BN_is_negative(bn.get()));
 }
@@ -806,27 +806,27 @@ TEST_F(BNTest, Dec2BN) {
 TEST_F(BNTest, Hex2BN) {
   bssl::UniquePtr<BIGNUM> bn;
   int ret = HexToBIGNUM(&bn, "0");
-  EXPECT_EQ(1, ret);
+  ASSERT_EQ(1, ret);
   EXPECT_TRUE(BN_is_zero(bn.get()));
   EXPECT_FALSE(BN_is_negative(bn.get()));
 
   ret = HexToBIGNUM(&bn, "256");
-  EXPECT_EQ(3, ret);
+  ASSERT_EQ(3, ret);
   EXPECT_TRUE(BN_is_word(bn.get(), 0x256));
   EXPECT_FALSE(BN_is_negative(bn.get()));
 
   ret = HexToBIGNUM(&bn, "-42");
-  EXPECT_EQ(3, ret);
+  ASSERT_EQ(3, ret);
   EXPECT_TRUE(BN_abs_is_word(bn.get(), 0x42));
   EXPECT_TRUE(BN_is_negative(bn.get()));
 
   ret = HexToBIGNUM(&bn, "-0");
-  EXPECT_EQ(2, ret);
+  ASSERT_EQ(2, ret);
   EXPECT_TRUE(BN_is_zero(bn.get()));
   EXPECT_FALSE(BN_is_negative(bn.get()));
 
   ret = HexToBIGNUM(&bn, "abctrailing garbage is ignored");
-  EXPECT_EQ(3, ret);
+  ASSERT_EQ(3, ret);
   EXPECT_TRUE(BN_is_word(bn.get(), 0xabc));
   EXPECT_FALSE(BN_is_negative(bn.get()));
 }
