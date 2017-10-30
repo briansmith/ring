@@ -101,6 +101,26 @@ void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]);
 void x25519_ge_scalarmult(ge_p2 *r, const uint8_t *scalar, const ge_p3 *A);
 void x25519_sc_reduce(uint8_t *s);
 
+enum spake2_state_t {
+  spake2_state_init = 0,
+  spake2_state_msg_generated,
+  spake2_state_key_generated,
+};
+
+struct spake2_ctx_st {
+  uint8_t private_key[32];
+  uint8_t my_msg[32];
+  uint8_t password_scalar[32];
+  uint8_t password_hash[64];
+  uint8_t *my_name;
+  size_t my_name_len;
+  uint8_t *their_name;
+  size_t their_name_len;
+  enum spake2_role_t my_role;
+  enum spake2_state_t state;
+  char disable_password_scalar_hack;
+};
+
 
 #if defined(__cplusplus)
 }  // extern C
