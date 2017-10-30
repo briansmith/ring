@@ -90,6 +90,9 @@ int OPENSSL_gmtime_diff(int *out_days, int *out_secs, const struct tm *from,
 int asn1_utctime_to_tm(struct tm *tm, const ASN1_UTCTIME *d);
 int asn1_generalizedtime_to_tm(struct tm *tm, const ASN1_GENERALIZEDTIME *d);
 
+void asn1_item_combine_free(ASN1_VALUE **pval, const ASN1_ITEM *it,
+                            int combine);
+
 
 #if defined(__cplusplus)
 }  /* extern C */
