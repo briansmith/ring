@@ -43,14 +43,14 @@
 // see curve25519.c in this directory.
 //
 // Exact copies of the source code are kept in bug 27296743.
-//
-// import hashlib
-// import ed25519 as E  # http://ed25519.cr.yp.to/python/ed25519.py
-//
-// SEED_N = 'edwards25519 point generation seed (N)'
-// SEED_M = 'edwards25519 point generation seed (M)'
 
 /*
+import hashlib
+import ed25519 as E  # http://ed25519.cr.yp.to/python/ed25519.py
+
+SEED_N = 'edwards25519 point generation seed (N)'
+SEED_M = 'edwards25519 point generation seed (M)'
+
 def genpoint(seed):
     v = hashlib.sha256(seed).digest()
     it = 1
@@ -72,10 +72,10 @@ def genpoint(seed):
 def gentable(P):
     t = []
     for i in range(1,16):
-        k = (i >> 3 & 1) * (1 << 192) + \
-            (i >> 2 & 1) * (1 << 128) + \
-            (i >> 1 & 1) * (1 <<  64) + \
-            (i      & 1)
+        k = ((i >> 3 & 1) * (1 << 192) +
+             (i >> 2 & 1) * (1 << 128) +
+             (i >> 1 & 1) * (1 <<  64) +
+             (i      & 1))
         t.append(E.scalarmult(P, k))
     return ''.join(E.encodeint(x) + E.encodeint(y) for (x,y) in t)
 
