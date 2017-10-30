@@ -30,7 +30,7 @@
 #include <openssl/sha.h>
 
 #include "internal.h"
-#include "../internal.h"
+#include "../../crypto/internal.h"
 
 
 static const int64_t kBottom25Bits = INT64_C(0x1ffffff);

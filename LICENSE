@@ -6,7 +6,8 @@ Contributors to BoringSSL are required to follow the CLA rules for Chromium:
 https://cla.developers.google.com/clas
 
 Some files from Intel are under yet another license, which is also included
-underneath.
+underneath. Files in third_party/ have their own licenses, as described
+therein.
 
 The OpenSSL toolkit stays under a dual license, i.e. both the conditions of the
 OpenSSL License and the original SSLeay license apply to the toolkit. See below

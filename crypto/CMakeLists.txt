@@ -179,6 +179,7 @@ add_library(
   $<TARGET_OBJECTS:chacha>
   $<TARGET_OBJECTS:poly1305>
   $<TARGET_OBJECTS:curve25519>
+  $<TARGET_OBJECTS:fiat>
   $<TARGET_OBJECTS:buf>
   $<TARGET_OBJECTS:bn_extra>
   $<TARGET_OBJECTS:bio>

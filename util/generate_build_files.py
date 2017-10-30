@@ -587,7 +587,8 @@ def ExtractVariablesFromCMakeFile(cmakefile):
 
 def main(platforms):
   cmake = ExtractVariablesFromCMakeFile(os.path.join('src', 'sources.cmake'))
-  crypto_c_files = FindCFiles(os.path.join('src', 'crypto'), NoTestsNorFIPSFragments)
+  crypto_c_files = (FindCFiles(os.path.join('src', 'crypto'), NoTestsNorFIPSFragments) +
+                    FindCFiles(os.path.join('src', 'third_party', 'fiat'), NoTestsNorFIPSFragments))
   fips_fragments = FindCFiles(os.path.join('src', 'crypto', 'fipsmodule'), OnlyFIPSFragments)
   ssl_source_files = FindCFiles(os.path.join('src', 'ssl'), NoTests)
   tool_c_files = FindCFiles(os.path.join('src', 'tool'), NoTests)
@@ -638,8 +639,9 @@ def main(platforms):
           NotSSLHeaderFiles))
 
   ssl_internal_h_files = FindHeaderFiles(os.path.join('src', 'ssl'), NoTests)
-  crypto_internal_h_files = FindHeaderFiles(
-      os.path.join('src', 'crypto'), NoTests)
+  crypto_internal_h_files = (
+      FindHeaderFiles(os.path.join('src', 'crypto'), NoTests) +
+      FindHeaderFiles(os.path.join('src', 'third_party', 'fiat'), NoTests))
 
   files = {
       'crypto': crypto_c_files,
