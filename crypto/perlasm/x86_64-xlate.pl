@@ -753,7 +753,11 @@ my %globals;
 		$self->{value} = $dir . "\t" . $$line;
 
 		if ($dir =~ /\.extern/) {
-		    $self->{value} = ""; # swallow extern
+		    if ($flavour eq "elf") {
+			$self->{value} .= "\n.hidden $$line";
+		    } else {
+			$self->{value} = "";
+		    }
 		} elsif (!$elf && $dir =~ /\.type/) {
 		    $self->{value} = "";
 		    $self->{value} = ".def\t" . ($globals{$1} or $1) . ";\t" .
