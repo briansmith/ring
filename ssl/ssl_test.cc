@@ -3822,6 +3822,31 @@ TEST(SSLTest, ShutdownIgnoresTickets) {
   EXPECT_EQ(1, SSL_shutdown(client.get()));
 }
 
+TEST(SSLTest, SignatureAlgorithmProperties) {
+  EXPECT_EQ(EVP_PKEY_NONE, SSL_get_signature_algorithm_key_type(0x1234));
+  EXPECT_EQ(nullptr, SSL_get_signature_algorithm_digest(0x1234));
+  EXPECT_FALSE(SSL_is_signature_algorithm_rsa_pss(0x1234));
+
+  EXPECT_EQ(EVP_PKEY_RSA,
+            SSL_get_signature_algorithm_key_type(SSL_SIGN_RSA_PKCS1_MD5_SHA1));
+  EXPECT_EQ(EVP_md5_sha1(),
+            SSL_get_signature_algorithm_digest(SSL_SIGN_RSA_PKCS1_MD5_SHA1));
+  EXPECT_FALSE(SSL_is_signature_algorithm_rsa_pss(SSL_SIGN_RSA_PKCS1_MD5_SHA1));
+
+  EXPECT_EQ(EVP_PKEY_EC, SSL_get_signature_algorithm_key_type(
+                             SSL_SIGN_ECDSA_SECP256R1_SHA256));
+  EXPECT_EQ(EVP_sha256(), SSL_get_signature_algorithm_digest(
+                              SSL_SIGN_ECDSA_SECP256R1_SHA256));
+  EXPECT_FALSE(
+      SSL_is_signature_algorithm_rsa_pss(SSL_SIGN_ECDSA_SECP256R1_SHA256));
+
+  EXPECT_EQ(EVP_PKEY_RSA,
+            SSL_get_signature_algorithm_key_type(SSL_SIGN_RSA_PSS_SHA384));
+  EXPECT_EQ(EVP_sha384(),
+            SSL_get_signature_algorithm_digest(SSL_SIGN_RSA_PSS_SHA384));
+  EXPECT_TRUE(SSL_is_signature_algorithm_rsa_pss(SSL_SIGN_RSA_PSS_SHA384));
+}
+
 // TODO(davidben): Convert this file to GTest properly.
 TEST(SSLTest, AllTests) {
   if (!TestSSL_SESSIONEncoding(kOpenSSLSession) ||

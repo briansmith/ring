@@ -438,6 +438,56 @@ void SSL_CTX_set_private_key_method(SSL_CTX *ctx,
   ctx->cert->key_method = key_method;
 }
 
+const char *SSL_get_signature_algorithm_name(uint16_t sigalg,
+                                             int include_curve) {
+  switch (sigalg) {
+    case SSL_SIGN_RSA_PKCS1_SHA1:
+      return "rsa_pkcs1_sha1";
+    case SSL_SIGN_RSA_PKCS1_SHA256:
+      return "rsa_pkcs1_sha256";
+    case SSL_SIGN_RSA_PKCS1_SHA384:
+      return "rsa_pkcs1_sha384";
+    case SSL_SIGN_RSA_PKCS1_SHA512:
+      return "rsa_pkcs1_sha512";
+    case SSL_SIGN_ECDSA_SHA1:
+      return "ecdsa_sha1";
+    case SSL_SIGN_ECDSA_SECP256R1_SHA256:
+      return include_curve ? "ecdsa_secp256r1_sha256" : "ecdsa_sha256";
+    case SSL_SIGN_ECDSA_SECP384R1_SHA384:
+      return include_curve ? "ecdsa_secp384r1_sha384" : "ecdsa_sha384";
+    case SSL_SIGN_ECDSA_SECP521R1_SHA512:
+      return include_curve ? "ecdsa_secp521r1_sha512" : "ecdsa_sha512";
+    case SSL_SIGN_RSA_PSS_SHA256:
+      return "rsa_pss_sha256";
+    case SSL_SIGN_RSA_PSS_SHA384:
+      return "rsa_pss_sha384";
+    case SSL_SIGN_RSA_PSS_SHA512:
+      return "rsa_pss_sha512";
+    case SSL_SIGN_ED25519:
+      return "ed25519";
+    default:
+      return NULL;
+  }
+}
+
+int SSL_get_signature_algorithm_key_type(uint16_t sigalg) {
+  const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
+  return alg != nullptr ? alg->pkey_type : EVP_PKEY_NONE;
+}
+
+const EVP_MD *SSL_get_signature_algorithm_digest(uint16_t sigalg) {
+  const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
+  if (alg == nullptr || alg->digest_func == nullptr) {
+    return nullptr;
+  }
+  return alg->digest_func();
+}
+
+int SSL_is_signature_algorithm_rsa_pss(uint16_t sigalg) {
+  const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
+  return alg != nullptr && alg->is_rsa_pss;
+}
+
 static int set_algorithm_prefs(uint16_t **out_prefs, size_t *out_num_prefs,
                                const uint16_t *prefs, size_t num_prefs) {
   OPENSSL_free(*out_prefs);

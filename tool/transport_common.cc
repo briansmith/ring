@@ -234,38 +234,6 @@ bool VersionFromString(uint16_t *out_version, const std::string &version) {
   return false;
 }
 
-static const char *SignatureAlgorithmToString(uint16_t version, uint16_t sigalg) {
-  const bool is_tls12 = version == TLS1_2_VERSION || version == DTLS1_2_VERSION;
-  switch (sigalg) {
-    case SSL_SIGN_RSA_PKCS1_SHA1:
-      return "rsa_pkcs1_sha1";
-    case SSL_SIGN_RSA_PKCS1_SHA256:
-      return "rsa_pkcs1_sha256";
-    case SSL_SIGN_RSA_PKCS1_SHA384:
-      return "rsa_pkcs1_sha384";
-    case SSL_SIGN_RSA_PKCS1_SHA512:
-      return "rsa_pkcs1_sha512";
-    case SSL_SIGN_ECDSA_SHA1:
-      return "ecdsa_sha1";
-    case SSL_SIGN_ECDSA_SECP256R1_SHA256:
-      return is_tls12 ? "ecdsa_sha256" : "ecdsa_secp256r1_sha256";
-    case SSL_SIGN_ECDSA_SECP384R1_SHA384:
-      return is_tls12 ? "ecdsa_sha384" : "ecdsa_secp384r1_sha384";
-    case SSL_SIGN_ECDSA_SECP521R1_SHA512:
-      return is_tls12 ? "ecdsa_sha512" : "ecdsa_secp521r1_sha512";
-    case SSL_SIGN_RSA_PSS_SHA256:
-      return "rsa_pss_sha256";
-    case SSL_SIGN_RSA_PSS_SHA384:
-      return "rsa_pss_sha384";
-    case SSL_SIGN_RSA_PSS_SHA512:
-      return "rsa_pss_sha512";
-    case SSL_SIGN_ED25519:
-      return "ed25519";
-    default:
-      return "(unknown)";
-  }
-}
-
 void PrintConnectionInfo(BIO *bio, const SSL *ssl) {
   const SSL_CIPHER *cipher = SSL_get_current_cipher(ssl);
 
@@ -280,7 +248,8 @@ void PrintConnectionInfo(BIO *bio, const SSL *ssl) {
   uint16_t sigalg = SSL_get_peer_signature_algorithm(ssl);
   if (sigalg != 0) {
     BIO_printf(bio, "  Signature algorithm: %s\n",
-               SignatureAlgorithmToString(SSL_version(ssl), sigalg));
+               SSL_get_signature_algorithm_name(
+                   sigalg, SSL_version(ssl) != TLS1_2_VERSION));
   }
   BIO_printf(bio, "  Secure renegotiation: %s\n",
              SSL_get_secure_renegotiation_support(ssl) ? "yes" : "no");
