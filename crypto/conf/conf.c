@@ -791,13 +791,13 @@ int CONF_parse_list(const char *list, char sep, int remove_whitespace,
   }
 }
 
-int CONF_modules_load_file(CONF_MUST_BE_NULL *filename, const char *appname,
+int CONF_modules_load_file(const char *filename, const char *appname,
                            unsigned long flags) {
   return 1;
 }
 
 void CONF_modules_free(void) {}
 
-void OPENSSL_config(CONF_MUST_BE_NULL *config_name) {}
+void OPENSSL_config(const char *config_name) {}
 
 void OPENSSL_no_config(void) {}

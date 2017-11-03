@@ -417,6 +417,16 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_192_gcm(void);
 // EVP_aes_128_cfb128 is only available in decrepit.
 OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb128(void);
 
+// The following flags do nothing and are included only to make it easier to
+// compile code with BoringSSL.
+#define EVP_CIPH_CCM_MODE 0
+#define EVP_CIPH_WRAP_MODE 0
+#define EVP_CIPHER_CTX_FLAG_WRAP_ALLOW 0
+
+// EVP_CIPHER_CTX_set_flags does nothing.
+OPENSSL_EXPORT void EVP_CIPHER_CTX_set_flags(const EVP_CIPHER_CTX *ctx,
+                                             uint32_t flags);
+
 
 // Private functions.
 

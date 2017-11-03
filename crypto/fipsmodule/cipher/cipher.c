@@ -611,3 +611,5 @@ int EVP_DecryptInit(EVP_CIPHER_CTX *ctx, const EVP_CIPHER *cipher,
 int EVP_add_cipher_alias(const char *a, const char *b) {
   return 1;
 }
+
+void EVP_CIPHER_CTX_set_flags(const EVP_CIPHER_CTX *ctx, uint32_t flags) {}
