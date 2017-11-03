@@ -178,28 +178,33 @@ static inline void bn_div_rem_words(BN_ULONG *quotient_out, BN_ULONG *rem_out,
 #endif
 }
 
-// BN_div computes  dv := num / divisor,  rounding towards
-// zero, and sets up rm  such that  dv*divisor + rm = num  holds.
+// BN_div computes "quotient := numerator / divisor", rounding towards zero,
+// and sets up |rem| such that "quotient * divisor + rem = numerator" holds.
+//
 // Thus:
-//     dv->neg == num->neg ^ divisor->neg  (unless the result is zero)
-//     rm->neg == num->neg                 (unless the remainder is zero)
-// If 'dv' or 'rm' is NULL, the respective value is not returned.
+//
+//     quotient->neg == numerator->neg ^ divisor->neg
+//        (unless the result is zero)
+//     rem->neg == numerator->neg
+//        (unless the remainder is zero)
+//
+// If |quotient| or |rem| is NULL, the respective value is not returned.
 //
 // This was specifically designed to contain fewer branches that may leak
 // sensitive information; see "New Branch Prediction Vulnerabilities in OpenSSL
 // and Necessary Software Countermeasures" by Onur Acıçmez, Shay Gueron, and
 // Jean-Pierre Seifert.
-int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
-           BN_CTX *ctx) {
-  int norm_shift, i, loop;
-  BIGNUM *tmp, wnum, *snum, *sdiv, *res;
+int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
+           const BIGNUM *divisor, BN_CTX *ctx) {
+  int norm_shift, loop;
+  BIGNUM wnum;
   BN_ULONG *resp, *wnump;
   BN_ULONG d0, d1;
   int num_n, div_n;
 
   // Invalid zero-padding would have particularly bad consequences
   // so don't just rely on bn_check_top() here
-  if ((num->top > 0 && num->d[num->top - 1] == 0) ||
+  if ((numerator->top > 0 && numerator->d[numerator->top - 1] == 0) ||
       (divisor->top > 0 && divisor->d[divisor->top - 1] == 0)) {
     OPENSSL_PUT_ERROR(BN, BN_R_NOT_INITIALIZED);
     return 0;
@@ -211,26 +216,27 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
   }
 
   BN_CTX_start(ctx);
-  tmp = BN_CTX_get(ctx);
-  snum = BN_CTX_get(ctx);
-  sdiv = BN_CTX_get(ctx);
-  if (dv == NULL) {
+  BIGNUM *tmp = BN_CTX_get(ctx);
+  BIGNUM *snum = BN_CTX_get(ctx);
+  BIGNUM *sdiv = BN_CTX_get(ctx);
+  BIGNUM *res = NULL;
+  if (quotient == NULL) {
     res = BN_CTX_get(ctx);
   } else {
-    res = dv;
+    res = quotient;
   }
-  if (sdiv == NULL || res == NULL || tmp == NULL || snum == NULL) {
+  if (sdiv == NULL || res == NULL) {
     goto err;
   }
 
   // First we normalise the numbers
-  norm_shift = BN_BITS2 - ((BN_num_bits(divisor)) % BN_BITS2);
-  if (!(BN_lshift(sdiv, divisor, norm_shift))) {
+  norm_shift = BN_BITS2 - (BN_num_bits(divisor) % BN_BITS2);
+  if (!BN_lshift(sdiv, divisor, norm_shift)) {
     goto err;
   }
   sdiv->neg = 0;
   norm_shift += BN_BITS2;
-  if (!(BN_lshift(snum, num, norm_shift))) {
+  if (!BN_lshift(snum, numerator, norm_shift)) {
     goto err;
   }
   snum->neg = 0;
@@ -242,7 +248,7 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
     if (!bn_wexpand(snum, sdiv->top + 2)) {
       goto err;
     }
-    for (i = snum->top; i < sdiv->top + 2; i++) {
+    for (int i = snum->top; i < sdiv->top + 2; i++) {
       snum->d[i] = 0;
     }
     snum->top = sdiv->top + 2;
@@ -275,15 +281,15 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
   wnump = &(snum->d[num_n - 1]);
 
   // Setup to 'res'
-  res->neg = (num->neg ^ divisor->neg);
-  if (!bn_wexpand(res, (loop + 1))) {
+  res->neg = (numerator->neg ^ divisor->neg);
+  if (!bn_wexpand(res, loop + 1)) {
     goto err;
   }
   res->top = loop - 1;
   resp = &(res->d[loop - 1]);
 
   // space for temp
-  if (!bn_wexpand(tmp, (div_n + 1))) {
+  if (!bn_wexpand(tmp, div_n + 1)) {
     goto err;
   }
 
@@ -295,11 +301,11 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
     resp--;
   }
 
-  for (i = 0; i < loop - 1; i++, wnump--, resp--) {
+  for (int i = 0; i < loop - 1; i++, wnump--, resp--) {
     BN_ULONG q, l0;
     // the first part of the loop uses the top two words of snum and sdiv to
     // calculate a BN_ULONG q such that | wnum - sdiv * q | < sdiv
-    BN_ULONG n0, n1, rem = 0;
+    BN_ULONG n0, n1, rm = 0;
 
     n0 = wnump[0];
     n1 = wnump[-1];
@@ -307,18 +313,18 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
       q = BN_MASK2;
     } else {
       // n0 < d0
-      bn_div_rem_words(&q, &rem, n0, n1, d0);
+      bn_div_rem_words(&q, &rm, n0, n1, d0);
 
 #ifdef BN_ULLONG
       BN_ULLONG t2 = (BN_ULLONG)d1 * q;
       for (;;) {
-        if (t2 <= ((((BN_ULLONG)rem) << BN_BITS2) | wnump[-2])) {
+        if (t2 <= ((((BN_ULLONG)rm) << BN_BITS2) | wnump[-2])) {
           break;
         }
         q--;
-        rem += d0;
-        if (rem < d0) {
-          break;  // don't let rem overflow
+        rm += d0;
+        if (rm < d0) {
+          break;  // don't let rm overflow
         }
         t2 -= d1;
       }
@@ -326,13 +332,14 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
       BN_ULONG t2l, t2h;
       BN_UMULT_LOHI(t2l, t2h, d1, q);
       for (;;) {
-        if ((t2h < rem) || ((t2h == rem) && (t2l <= wnump[-2]))) {
+        if (t2h < rm ||
+            (t2h == rm && t2l <= wnump[-2])) {
           break;
         }
         q--;
-        rem += d0;
-        if (rem < d0) {
-          break;  // don't let rem overflow
+        rm += d0;
+        if (rm < d0) {
+          break;  // don't let rm overflow
         }
         if (t2l < d1) {
           t2h--;
@@ -363,18 +370,21 @@ int BN_div(BIGNUM *dv, BIGNUM *rm, const BIGNUM *num, const BIGNUM *divisor,
     // store part of the result
     *resp = q;
   }
+
   bn_correct_top(snum);
-  if (rm != NULL) {
-    // Keep a copy of the neg flag in num because if rm==num
-    // BN_rshift() will overwrite it.
-    int neg = num->neg;
-    if (!BN_rshift(rm, snum, norm_shift)) {
+
+  if (rem != NULL) {
+    // Keep a copy of the neg flag in numerator because if |rem| == |numerator|
+    // |BN_rshift| will overwrite it.
+    int neg = numerator->neg;
+    if (!BN_rshift(rem, snum, norm_shift)) {
       goto err;
     }
-    if (!BN_is_zero(rm)) {
-      rm->neg = neg;
+    if (!BN_is_zero(rem)) {
+      rem->neg = neg;
     }
   }
+
   bn_correct_top(res);
   BN_CTX_end(ctx);
   return 1;
