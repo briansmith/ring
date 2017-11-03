@@ -42,7 +42,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 # versions, but BoringSSL is intended to be used with pre-generated perlasm
 # output, so this isn't useful anyway.
 #
-# TODO(davidben): Enable this after testing. $addx goes up to 1.
+# TODO(davidben): Set $addx to one once build problems are resolved.
 $addx = 0;
 
 # int GFp_bn_mul_mont_gather5(
@@ -81,7 +81,8 @@ GFp_bn_mul_mont_gather5:
 	jnz	.Lmul_enter
 ___
 $code.=<<___ if ($addx);
-	mov	GFp_ia32cap_P+8(%rip),%r11d
+	leaq	GFp_ia32cap_P(%rip),%r11
+	mov	8(%r11),%r11d
 ___
 $code.=<<___;
 	jmp	.Lmul4x_enter
@@ -395,7 +396,8 @@ $code.=<<___;
 	mov	$num,$j			# j=num
 	jmp	.Lsub
 .align	16
-.Lsub:	sbb	($np,$i,8),%rax
+.Lsub:
+	sbb	($np,$i,8),%rax
 	mov	%rax,($rp,$i,8)		# rp[i]=tp[i]-np[i]
 	mov	8($ap,$i,8),%rax	# tp[i+1]
 	lea	1($i),$i		# i++
@@ -1082,7 +1084,8 @@ GFp_bn_power5:
 .cfi_def_cfa_register	%rax
 ___
 $code.=<<___ if ($addx);
-	mov	GFp_ia32cap_P+8(%rip),%r11d
+	leaq	GFp_ia32cap_P(%rip),%r11
+	mov	8(%r11),%r11d
 	and	\$0x80108,%r11d
 	cmp	\$0x80108,%r11d		# check for AD*X+BMI2+BMI1
 	je	.Lpowerx5_enter
@@ -2202,7 +2205,8 @@ bn_from_mont8x:
 	movq	%r10, %xmm3		# -num
 ___
 $code.=<<___ if ($addx);
-	mov	GFp_ia32cap_P+8(%rip),%r11d
+	leaq	GFp_ia32cap_P(%rip),%r11
+	mov	8(%r11),%r11d
 	and	\$0x80108,%r11d
 	cmp	\$0x80108,%r11d		# check for AD*X+BMI2+BMI1
 	jne	.Lfrom_mont_nox
