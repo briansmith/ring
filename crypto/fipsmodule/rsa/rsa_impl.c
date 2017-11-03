@@ -807,11 +807,16 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
     return 0;
   }
 
-  // Ensure the bound on |tries| does not overflow.
-  if (bits >= INT_MAX/5) {
+  // See FIPS 186-4 appendix B.3.3, steps 4 and 5. Note |bits| here is nlen/2.
+
+  // Use the limit from steps 4.7 and 5.8 for most values of |e|. When |e| is 3,
+  // the 186-4 limit is too low, so we use a higher one. Note this case is not
+  // reachable from |RSA_generate_key_fips|.
+  if (bits >= INT_MAX/32) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
     return 0;
   }
+  int limit = BN_is_word(e, 3) ? bits * 32 : bits * 5;
 
   int ret = 0, tries = 0, rand_tries = 0;
   BN_CTX_start(ctx);
@@ -820,8 +825,6 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
     goto err;
   }
 
-  // See FIPS 186-4 appendix B.3.3, steps 4 and 5. Note |bits| here is
-  // nlen/2.
   for (;;) {
     // Generate a random number of length |bits| where the bottom bit is set
     // (steps 4.2, 4.3, 5.2 and 5.3) and the top bit is set (implied by the
@@ -890,7 +893,7 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
     // If we've tried too many times to find a prime, abort (steps 4.7 and
     // 5.8).
     tries++;
-    if (tries >= bits * 5) {
+    if (tries >= limit) {
       OPENSSL_PUT_ERROR(RSA, RSA_R_TOO_MANY_ITERATIONS);
       goto err;
     }
