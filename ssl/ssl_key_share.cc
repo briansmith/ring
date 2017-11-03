@@ -171,13 +171,13 @@ class X25519KeyShare : public SSLKeyShare {
 CONSTEXPR_ARRAY struct {
   int nid;
   uint16_t group_id;
-  const char name[8];
+  const char name[8], alias[11];
 } kNamedGroups[] = {
-    {NID_secp224r1, SSL_CURVE_SECP224R1, "P-224"},
-    {NID_X9_62_prime256v1, SSL_CURVE_SECP256R1, "P-256"},
-    {NID_secp384r1, SSL_CURVE_SECP384R1, "P-384"},
-    {NID_secp521r1, SSL_CURVE_SECP521R1, "P-521"},
-    {NID_X25519, SSL_CURVE_X25519, "X25519"},
+    {NID_secp224r1, SSL_CURVE_SECP224R1, "P-224", "secp224r1"},
+    {NID_X9_62_prime256v1, SSL_CURVE_SECP256R1, "P-256", "prime256v1"},
+    {NID_secp384r1, SSL_CURVE_SECP384R1, "P-384", "secp384r1"},
+    {NID_secp521r1, SSL_CURVE_SECP521R1, "P-521", "secp521r1"},
+    {NID_X25519, SSL_CURVE_X25519, "X25519", "x25519"},
 };
 
 }  // namespace
@@ -224,6 +224,11 @@ int ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len) {
   for (const auto &group : kNamedGroups) {
     if (len == strlen(group.name) &&
         !strncmp(group.name, name, len)) {
+      *out_group_id = group.group_id;
+      return 1;
+    }
+    if (len == strlen(group.alias) &&
+        !strncmp(group.alias, name, len)) {
       *out_group_id = group.group_id;
       return 1;
     }
