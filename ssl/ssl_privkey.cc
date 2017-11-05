@@ -441,6 +441,8 @@ void SSL_CTX_set_private_key_method(SSL_CTX *ctx,
 const char *SSL_get_signature_algorithm_name(uint16_t sigalg,
                                              int include_curve) {
   switch (sigalg) {
+    case SSL_SIGN_RSA_PKCS1_MD5_SHA1:
+      return "rsa_pkcs1_md5_sha1";
     case SSL_SIGN_RSA_PKCS1_SHA1:
       return "rsa_pkcs1_sha1";
     case SSL_SIGN_RSA_PKCS1_SHA256:
