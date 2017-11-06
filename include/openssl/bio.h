@@ -622,7 +622,9 @@ OPENSSL_EXPORT int BIO_get_new_index(void);
 // Use the |BIO_meth_set_*| functions below to initialize the |BIO_METHOD|. The
 // function implementations may use |BIO_set_data| and |BIO_get_data| to add
 // method-specific state to associated |BIO|s. Additionally, |BIO_set_init| must
-// be called after an associated |BIO| is fully initialized.
+// be called after an associated |BIO| is fully initialized. State set via
+// |BIO_set_data| may be released by configuring a destructor with
+// |BIO_meth_set_destroy|.
 OPENSSL_EXPORT BIO_METHOD *BIO_meth_new(int type, const char *name);
 
 // BIO_meth_free releases memory associated with |method|.
@@ -640,7 +642,8 @@ OPENSSL_EXPORT int BIO_meth_set_destroy(BIO_METHOD *method,
                                         int (*destroy)(BIO *));
 
 // BIO_meth_set_write sets the implementation of |BIO_write| for |method| and
-// returns one.
+// returns one. |BIO_METHOD|s which implement |BIO_write| should also implement
+// |BIO_CTRL_FLUSH|. (See |BIO_meth_set_ctrl|.)
 OPENSSL_EXPORT int BIO_meth_set_write(BIO_METHOD *method,
                                       int (*write)(BIO *, const char *, int));
 
