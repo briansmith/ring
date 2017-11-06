@@ -27,7 +27,14 @@
  * We test with MSVC 2015 update 2, so make sure we're using a version at least
  * as new as that. */
 #if _MSC_FULL_VER < 190023918
-#error "MSVC 2015 or later is required."
+  #if _MSC_VER == 1900
+      #if _MSC_FULL_VER == 190023026
+        #error "MSVC 2015 Update 2 or later is required, found MSVC 2015."
+      #elif _MSC_FULL_VER == 190023506
+        #error "MSVC 2015 Update 2 or later is required, found MSVC 2015 Update 1."
+      #endif
+  #endif
+  #error "MSVC 2015 Update 2 or later is required."
 #endif
 typedef uint8_t Carry;
 #if LIMB_BITS == 64
