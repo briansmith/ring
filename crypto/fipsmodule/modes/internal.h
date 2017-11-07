@@ -109,6 +109,16 @@ static inline void PUTU32(void *out, uint32_t v) {
   OPENSSL_memcpy(out, &v, sizeof(v));
 }
 
+static inline size_t load_word_le(const void *in) {
+  size_t v;
+  OPENSSL_memcpy(&v, in, sizeof(v));
+  return v;
+}
+
+static inline void store_word_le(void *out, size_t v) {
+  OPENSSL_memcpy(out, &v, sizeof(v));
+}
+
 // block128_f is the type of a 128-bit, block cipher.
 typedef void (*block128_f)(const uint8_t in[16], uint8_t out[16],
                            const void *key);

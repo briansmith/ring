@@ -550,8 +550,7 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
 }
 
 int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
-                          const unsigned char *in, unsigned char *out,
-                          size_t len) {
+                          const uint8_t *in, uint8_t *out, size_t len) {
   unsigned int n, ctr;
   uint64_t mlen = ctx->len.u[1];
   block128_f block = ctx->block;
@@ -592,7 +591,8 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
       return 1;
     }
   }
-  if (STRICT_ALIGNMENT && ((size_t)in | (size_t)out) % sizeof(size_t) != 0) {
+  if (STRICT_ALIGNMENT &&
+      ((uintptr_t)in | (uintptr_t)out) % sizeof(size_t) != 0) {
     for (size_t i = 0; i < len; ++i) {
       if (n == 0) {
         (*block)(ctx->Yi.c, ctx->EKi.c, key);
@@ -614,14 +614,12 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
     size_t j = GHASH_CHUNK;
 
     while (j) {
-      size_t *out_t = (size_t *)out;
-      const size_t *in_t = (const size_t *)in;
-
       (*block)(ctx->Yi.c, ctx->EKi.c, key);
       ++ctr;
       ctx->Yi.d[3] = CRYPTO_bswap4(ctr);
-      for (size_t i = 0; i < 16 / sizeof(size_t); ++i) {
-        out_t[i] = in_t[i] ^ ctx->EKi.t[i];
+      for (size_t i = 0; i < 16; i += sizeof(size_t)) {
+        store_word_le(out + i,
+                      load_word_le(in + i) ^ ctx->EKi.t[i / sizeof(size_t)]);
       }
       out += 16;
       in += 16;
@@ -633,14 +631,12 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
   size_t len_blocks = len & kSizeTWithoutLower4Bits;
   if (len_blocks != 0) {
     while (len >= 16) {
-      size_t *out_t = (size_t *)out;
-      const size_t *in_t = (const size_t *)in;
-
       (*block)(ctx->Yi.c, ctx->EKi.c, key);
       ++ctr;
       ctx->Yi.d[3] = CRYPTO_bswap4(ctr);
-      for (size_t i = 0; i < 16 / sizeof(size_t); ++i) {
-        out_t[i] = in_t[i] ^ ctx->EKi.t[i];
+      for (size_t i = 0; i < 16; i += sizeof(size_t)) {
+        store_word_le(out + i,
+                      load_word_le(in + i) ^ ctx->EKi.t[i / sizeof(size_t)]);
       }
       out += 16;
       in += 16;
@@ -650,14 +646,13 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
   }
 #else
   while (len >= 16) {
-    size_t *out_t = (size_t *)out;
-    const size_t *in_t = (const size_t *)in;
-
     (*block)(ctx->Yi.c, ctx->EKi.c, key);
     ++ctr;
     ctx->Yi.d[3] = CRYPTO_bswap4(ctr);
-    for (size_t i = 0; i < 16 / sizeof(size_t); ++i) {
-      ctx->Xi.t[i] ^= out_t[i] = in_t[i] ^ ctx->EKi.t[i];
+    for (size_t i = 0; i < 16; i += sizeof(size_t)) {
+      size_t tmp = load_word_le(in + i) ^ ctx->EKi.t[i / sizeof(size_t)];
+      store_word_le(out + i, tmp);
+      ctx->Xi.t[i / sizeof(size_t)] ^= tmp;
     }
     GCM_MUL(ctx, Xi);
     out += 16;
@@ -724,7 +719,8 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
       return 1;
     }
   }
-  if (STRICT_ALIGNMENT && ((size_t)in | (size_t)out) % sizeof(size_t) != 0) {
+  if (STRICT_ALIGNMENT &&
+      ((uintptr_t)in | (uintptr_t)out) % sizeof(size_t) != 0) {
     for (size_t i = 0; i < len; ++i) {
       uint8_t c;
       if (n == 0) {
@@ -750,14 +746,12 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
 
     GHASH(ctx, in, GHASH_CHUNK);
     while (j) {
-      size_t *out_t = (size_t *)out;
-      const size_t *in_t = (const size_t *)in;
-
       (*block)(ctx->Yi.c, ctx->EKi.c, key);
       ++ctr;
       ctx->Yi.d[3] = CRYPTO_bswap4(ctr);
-      for (size_t i = 0; i < 16 / sizeof(size_t); ++i) {
-        out_t[i] = in_t[i] ^ ctx->EKi.t[i];
+      for (size_t i = 0; i < 16; i += sizeof(size_t)) {
+        store_word_le(out + i,
+                      load_word_le(in + i) ^ ctx->EKi.t[i / sizeof(size_t)]);
       }
       out += 16;
       in += 16;
@@ -769,14 +763,12 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
   if (len_blocks != 0) {
     GHASH(ctx, in, len_blocks);
     while (len >= 16) {
-      size_t *out_t = (size_t *)out;
-      const size_t *in_t = (const size_t *)in;
-
       (*block)(ctx->Yi.c, ctx->EKi.c, key);
       ++ctr;
       ctx->Yi.d[3] = CRYPTO_bswap4(ctr);
-      for (size_t i = 0; i < 16 / sizeof(size_t); ++i) {
-        out_t[i] = in_t[i] ^ ctx->EKi.t[i];
+      for (size_t i = 0; i < 16; i += sizeof(size_t)) {
+        store_word_le(out + i,
+                      load_word_le(in + i) ^ ctx->EKi.t[i / sizeof(size_t)]);
       }
       out += 16;
       in += 16;
@@ -785,16 +777,13 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
   }
 #else
   while (len >= 16) {
-    size_t *out_t = (size_t *)out;
-    const size_t *in_t = (const size_t *)in;
-
     (*block)(ctx->Yi.c, ctx->EKi.c, key);
     ++ctr;
     ctx->Yi.d[3] = CRYPTO_bswap4(ctr);
-    for (size_t i = 0; i < 16 / sizeof(size_t); ++i) {
-      size_t c = in_t[i];
-      out_t[i] = c ^ ctx->EKi.t[i];
-      ctx->Xi.t[i] ^= c;
+    for (size_t i = 0; i < 16; i += sizeof(size_t)) {
+      size_t c = load_word_le(in + i);
+      store_word_le(out + i, c ^ ctx->EKi.t[i / sizeof(size_t)]);
+      ctx->Xi.t[i / sizeof(size_t)] ^= c;
     }
     GCM_MUL(ctx, Xi);
     out += 16;

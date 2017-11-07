@@ -100,7 +100,8 @@ void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   }
 
 #if STRICT_ALIGNMENT
-  if (((size_t)in | (size_t)out | (size_t)ecount_buf) % sizeof(size_t) != 0) {
+  if (((uintptr_t)in | (uintptr_t)out |
+        (uintptr_t)ecount_buf) % sizeof(size_t) != 0) {
     size_t l = 0;
     while (l < len) {
       if (n == 0) {
@@ -121,8 +122,8 @@ void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
     (*block)(ivec, ecount_buf, key);
     ctr128_inc(ivec);
     for (n = 0; n < 16; n += sizeof(size_t)) {
-      *(size_t *)(out + n) = *(const size_t *)(in + n) ^
-                             *(const size_t *)(ecount_buf + n);
+      store_word_le(out + n,
+                    load_word_le(in + n) ^ load_word_le(ecount_buf + n));
     }
     len -= 16;
     out += 16;
