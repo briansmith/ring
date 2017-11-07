@@ -5,7 +5,7 @@ description:
 
 third_party {
   url {
-    type: HOMEPAGE
+    type: GIT
     value: "https://github.com/taka-no-me/android-cmake/"
   }
   version: "556cc14296c226f753a3778d99d8b60778b7df4f"
