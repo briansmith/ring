@@ -247,6 +247,21 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
 
   *out_consumed = in.size() - CBS_len(&cbs);
 
+  if (ssl->s3->have_version &&
+      ssl_is_resumption_experiment(ssl->version) &&
+      SSL_in_init(ssl) &&
+      type == SSL3_RT_CHANGE_CIPHER_SPEC &&
+      ciphertext_len == 1 &&
+      CBS_data(&body)[0] == 1) {
+    ssl->s3->empty_record_count++;
+    if (ssl->s3->empty_record_count > kMaxEmptyRecords) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MANY_EMPTY_FRAGMENTS);
+      *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+      return ssl_open_record_error;
+    }
+    return ssl_open_record_discard;
+  }
+
   // Skip early data received when expecting a second ClientHello if we rejected
   // 0RTT.
   if (ssl->s3->skip_early_data &&

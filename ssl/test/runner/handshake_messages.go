@@ -1406,6 +1406,8 @@ func (m *serverExtensions) unmarshal(data []byte, version uint16) bool {
 type helloRetryRequestMsg struct {
 	raw                 []byte
 	vers                uint16
+	isServerHello       bool
+	sessionId           []byte
 	cipherSuite         uint16
 	hasSelectedGroup    bool
 	selectedGroup       CurveID
@@ -1420,11 +1422,25 @@ func (m *helloRetryRequestMsg) marshal() []byte {
 	}
 
 	retryRequestMsg := newByteBuilder()
-	retryRequestMsg.addU8(typeHelloRetryRequest)
+	if isDraft22(m.vers) {
+		retryRequestMsg.addU8(typeServerHello)
+	} else {
+		retryRequestMsg.addU8(typeHelloRetryRequest)
+	}
 	retryRequest := retryRequestMsg.addU24LengthPrefixed()
-	retryRequest.addU16(m.vers)
-	if isDraft21(m.vers) {
+
+	if isDraft22(m.vers) {
+		retryRequest.addU16(VersionTLS12)
+		retryRequest.addBytes(tls13HelloRetryRequest)
+		sessionId := retryRequest.addU8LengthPrefixed()
+		sessionId.addBytes(m.sessionId)
 		retryRequest.addU16(m.cipherSuite)
+		retryRequest.addU8(0)
+	} else {
+		retryRequest.addU16(m.vers)
+		if isDraft21(m.vers) {
+			retryRequest.addU16(m.cipherSuite)
+		}
 	}
 	extensions := retryRequest.addU16LengthPrefixed()
 
@@ -1434,6 +1450,11 @@ func (m *helloRetryRequestMsg) marshal() []byte {
 	}
 
 	for i := 0; i < count; i++ {
+		if isDraft22(m.vers) {
+			extensions.addU16(extensionSupportedVersions)
+			extensions.addU16(2) // Length
+			extensions.addU16(m.vers)
+		}
 		if m.hasSelectedGroup {
 			extensions.addU16(extensionKeyShare)
 			extensions.addU16(2) // length
@@ -1461,9 +1482,25 @@ func (m *helloRetryRequestMsg) unmarshal(data []byte) bool {
 	}
 	m.vers = uint16(data[4])<<8 | uint16(data[5])
 	data = data[6:]
-	if isDraft21(m.vers) {
+	if m.isServerHello {
+		if len(data) < 33 {
+			return false
+		}
+		data = data[32:] // Random
+		sessionIdLen := int(data[0])
+		if sessionIdLen > 32 || len(data) < 1+sessionIdLen+3 {
+			return false
+		}
+		m.sessionId = data[1 : 1+sessionIdLen]
+		data = data[1+sessionIdLen:]
 		m.cipherSuite = uint16(data[0])<<8 | uint16(data[1])
 		data = data[2:]
+		data = data[1:] // Compression Method
+	} else {
+		if isDraft21(m.vers) {
+			m.cipherSuite = uint16(data[0])<<8 | uint16(data[1])
+			data = data[2:]
+		}
 	}
 	extLen := int(data[0])<<8 | int(data[1])
 	data = data[2:]
@@ -1482,6 +1519,11 @@ func (m *helloRetryRequestMsg) unmarshal(data []byte) bool {
 		}
 
 		switch extension {
+		case extensionSupportedVersions:
+			if length != 2 || !m.isServerHello {
+				return false
+			}
+			m.vers = uint16(data[0])<<8 | uint16(data[1])
 		case extensionKeyShare:
 			if length != 2 {
 				return false

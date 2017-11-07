@@ -593,6 +593,7 @@ OPENSSL_EXPORT int DTLSv1_handle_timeout(SSL *ssl);
 
 #define TLS1_3_DRAFT_VERSION 0x7f12
 #define TLS1_3_DRAFT21_VERSION 0x7f15
+#define TLS1_3_DRAFT22_VERSION 0x7e04
 #define TLS1_3_EXPERIMENT_VERSION 0x7e01
 #define TLS1_3_EXPERIMENT2_VERSION 0x7e02
 #define TLS1_3_EXPERIMENT3_VERSION 0x7e03
@@ -3255,6 +3256,7 @@ enum tls13_variant_t {
   tls13_experiment2 = 2,
   tls13_experiment3 = 3,
   tls13_draft21 = 4,
+  tls13_draft22 = 5,
 };
 
 // SSL_CTX_set_tls13_variant sets which variant of TLS 1.3 we negotiate. On the

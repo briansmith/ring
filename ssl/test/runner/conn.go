@@ -39,6 +39,7 @@ type Conn struct {
 	vers                 uint16     // TLS version
 	haveVers             bool       // version has been negotiated
 	config               *Config    // configuration passed to constructor
+	hadHelloRetryRequest bool
 	handshakeComplete    bool
 	skipEarlyData        bool // On a server, indicates that the client is sending early data that must be skipped over.
 	didResume            bool // whether this connection was a session resumption
@@ -1152,7 +1153,6 @@ func (c *Conn) doWriteRecord(typ recordType, data []byte) (n int, err error) {
 		}
 		if isResumptionRecordVersionExperiment(c.wireVersion) || isResumptionRecordVersionExperiment(c.out.wireVersion) {
 			vers = VersionTLS12
-		} else {
 		}
 
 		if c.config.Bugs.SendRecordVersion != 0 {
@@ -1321,6 +1321,14 @@ func (c *Conn) readHandshake() (interface{}, error) {
 	// expect to be able to keep references to data,
 	// so pass in a fresh copy that won't be overwritten.
 	data = append([]byte(nil), data...)
+
+	if data[0] == typeServerHello && len(data) >= 38 {
+		vers := uint16(data[4])<<8 | uint16(data[5])
+		if vers == VersionTLS12 && bytes.Equal(data[6:38], tls13HelloRetryRequest) {
+			m = new(helloRetryRequestMsg)
+			m.(*helloRetryRequestMsg).isServerHello = true
+		}
+	}
 
 	if !m.unmarshal(data) {
 		return nil, c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))
@@ -1936,7 +1944,7 @@ func (c *Conn) sendFakeEarlyData(len int) error {
 	payload[0] = byte(recordTypeApplicationData)
 	payload[1] = 3
 	payload[2] = 1
-	if c.config.TLS13Variant == TLS13Experiment2 || c.config.TLS13Variant == TLS13Experiment3 {
+	if isResumptionRecordVersionVariant(c.config.TLS13Variant) {
 		payload[1] = 3
 		payload[2] = 3
 	}

@@ -419,6 +419,12 @@ NextCipherSuite:
 			earlyLabel = earlyTrafficLabelDraft21
 		}
 
+		if !c.config.Bugs.SkipChangeCipherSpec && isDraft22(session.wireVersion) {
+			c.wireVersion = session.wireVersion
+			c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
+			c.wireVersion = 0
+		}
+
 		earlyTrafficSecret := finishedHash.deriveSecret(earlyLabel)
 		c.useOutTrafficSecret(session.wireVersion, pskCipherSuite, earlyTrafficSecret)
 		for _, earlyData := range c.config.Bugs.SendEarlyData {
@@ -482,6 +488,13 @@ NextCipherSuite:
 	helloRetryRequest, haveHelloRetryRequest := msg.(*helloRetryRequestMsg)
 	var secondHelloBytes []byte
 	if haveHelloRetryRequest {
+		c.hadHelloRetryRequest = true
+		if isDraft22(c.wireVersion) {
+			if err := c.readRecord(recordTypeChangeCipherSpec); err != nil {
+				return err
+			}
+		}
+
 		c.out.resetCipher()
 		if len(helloRetryRequest.cookie) > 0 {
 			hello.tls13Cookie = helloRetryRequest.cookie
@@ -761,7 +774,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		hs.finishedHash.addEntropy(zeroSecret)
 	}
 
-	if isResumptionExperiment(c.wireVersion) {
+	if isResumptionExperiment(c.wireVersion) && !c.hadHelloRetryRequest {
 		if err := c.readRecord(recordTypeChangeCipherSpec); err != nil {
 			return err
 		}
@@ -979,7 +992,11 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		}
 	}
 
-	if isResumptionClientCCSExperiment(c.wireVersion) {
+	if !c.config.Bugs.SkipChangeCipherSpec && isResumptionClientCCSExperiment(c.wireVersion) && !hs.hello.hasEarlyData {
+		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
+	}
+
+	for i := 0; i < c.config.Bugs.SendExtraChangeCipherSpec; i++ {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 	}
 

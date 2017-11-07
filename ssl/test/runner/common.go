@@ -38,6 +38,7 @@ const (
 	tls13ExperimentVersion  = 0x7e01
 	tls13Experiment2Version = 0x7e02
 	tls13Experiment3Version = 0x7e03
+	tls13Draft22Version     = 0x7e04
 )
 
 const (
@@ -46,10 +47,12 @@ const (
 	TLS13Experiment2 = 2
 	TLS13Experiment3 = 3
 	TLS13Draft21     = 4
+	TLS13Draft22     = 5
 )
 
 var allTLSWireVersions = []uint16{
 	tls13DraftVersion,
+	tls13Draft22Version,
 	tls13Draft21Version,
 	tls13Experiment3Version,
 	tls13Experiment2Version,
@@ -147,6 +150,12 @@ const (
 const (
 	scsvRenegotiation uint16 = 0x00ff
 )
+
+var tls13HelloRetryRequest = []uint8{
+	0xcf, 0x21, 0xad, 0x74, 0xe5, 0x9a, 0x61, 0x11, 0xbe, 0x1d, 0x8c,
+	0x02, 0x1e, 0x65, 0xb8, 0x91, 0xc2, 0xa2, 0x11, 0x16, 0x7a, 0xbb,
+	0x8c, 0x5e, 0x07, 0x9e, 0x09, 0xe2, 0xc8, 0xa8, 0x33, 0x9c,
+}
 
 // CurveID is the type of a TLS identifier for an elliptic curve. See
 // http://www.iana.org/assignments/tls-parameters/tls-parameters.xml#tls-parameters-8
@@ -618,6 +627,10 @@ type ProtocolBugs struct {
 	// the Finished (or NextProto) message around the ChangeCipherSpec
 	// messages.
 	FragmentAcrossChangeCipherSpec bool
+
+	// SendExtraChangeCipherSpec causes the implementation to send extra
+	// ChangeCipherSpec messages.
+	SendExtraChangeCipherSpec int
 
 	// SendUnencryptedFinished, if true, causes the Finished message to be
 	// send unencrypted before ChangeCipherSpec rather than after it.
@@ -1605,7 +1618,7 @@ func wireToVersion(vers uint16, isDTLS bool) (uint16, bool) {
 		switch vers {
 		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12:
 			return vers, true
-		case tls13DraftVersion, tls13Draft21Version, tls13ExperimentVersion, tls13Experiment2Version, tls13Experiment3Version:
+		case tls13DraftVersion, tls13Draft22Version, tls13Draft21Version, tls13ExperimentVersion, tls13Experiment2Version, tls13Experiment3Version:
 			return VersionTLS13, true
 		}
 	}
@@ -1614,19 +1627,27 @@ func wireToVersion(vers uint16, isDTLS bool) (uint16, bool) {
 }
 
 func isDraft21(vers uint16) bool {
-	return vers == tls13Draft21Version
+	return vers == tls13Draft21Version || vers == tls13Draft22Version
+}
+
+func isDraft22(vers uint16) bool {
+	return vers == tls13Draft22Version
 }
 
 func isResumptionExperiment(vers uint16) bool {
-	return vers == tls13ExperimentVersion || vers == tls13Experiment2Version || vers == tls13Experiment3Version
+	return vers == tls13ExperimentVersion || vers == tls13Experiment2Version || vers == tls13Experiment3Version || vers == tls13Draft22Version
 }
 
 func isResumptionClientCCSExperiment(vers uint16) bool {
-	return vers == tls13ExperimentVersion || vers == tls13Experiment2Version
+	return vers == tls13ExperimentVersion || vers == tls13Experiment2Version || vers == tls13Draft22Version
 }
 
 func isResumptionRecordVersionExperiment(vers uint16) bool {
-	return vers == tls13Experiment2Version || vers == tls13Experiment3Version
+	return vers == tls13Experiment2Version || vers == tls13Experiment3Version || vers == tls13Draft22Version
+}
+
+func isResumptionRecordVersionVariant(variant int) bool {
+	return variant == TLS13Experiment2 || variant == TLS13Experiment3 || variant == TLS13Draft22
 }
 
 // isSupportedVersion checks if the specified wire version is acceptable. If so,
@@ -1636,6 +1657,7 @@ func (c *Config) isSupportedVersion(wireVers uint16, isDTLS bool) (uint16, bool)
 	if (c.TLS13Variant != TLS13Experiment && wireVers == tls13ExperimentVersion) ||
 		(c.TLS13Variant != TLS13Experiment2 && wireVers == tls13Experiment2Version) ||
 		(c.TLS13Variant != TLS13Experiment3 && wireVers == tls13Experiment3Version) ||
+		(c.TLS13Variant != TLS13Draft22 && wireVers == tls13Draft22Version) ||
 		(c.TLS13Variant != TLS13Draft21 && wireVers == tls13Draft21Version) ||
 		(c.TLS13Variant != TLS13Default && wireVers == tls13DraftVersion) {
 		return 0, false

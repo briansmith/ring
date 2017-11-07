@@ -340,6 +340,10 @@ static bool GetTLS13Variant(tls13_variant_t *out, const std::string &in) {
     *out = tls13_experiment3;
     return true;
   }
+  if (in == "draft22") {
+    *out = tls13_draft22;
+    return true;
+  }
   return false;
 }
 

@@ -36,7 +36,6 @@ enum client_hs_state_t {
   state_read_hello_retry_request = 0,
   state_send_second_client_hello,
   state_read_server_hello,
-  state_process_change_cipher_spec,
   state_read_encrypted_extensions,
   state_read_certificate_request,
   state_read_server_certificate,
@@ -57,23 +56,52 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   if (!ssl->method->get_message(ssl, &msg)) {
     return ssl_hs_read_message;
   }
-  if (msg.type != SSL3_MT_HELLO_RETRY_REQUEST) {
-    hs->tls13_state = state_read_server_hello;
-    return ssl_hs_ok;
-  }
 
-  CBS body = msg.body, extensions;
-  uint16_t server_version, cipher_suite = 0;
-  if (!CBS_get_u16(&body, &server_version) ||
-      (ssl_is_draft21(ssl->version) &&
-       !CBS_get_u16(&body, &cipher_suite)) ||
-      !CBS_get_u16_length_prefixed(&body, &extensions) ||
-      // HelloRetryRequest may not be empty.
-      CBS_len(&extensions) == 0 ||
-      CBS_len(&body) != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return ssl_hs_error;
+  CBS extensions;
+  uint16_t cipher_suite = 0;
+  if (ssl_is_draft22(ssl->version)) {
+    if (!ssl_check_message_type(ssl, msg, SSL3_MT_SERVER_HELLO)) {
+      return ssl_hs_error;
+    }
+
+    CBS body = msg.body, server_random, session_id;
+    uint16_t server_version;
+    if (!CBS_get_u16(&body, &server_version) ||
+        !CBS_get_bytes(&body, &server_random, SSL3_RANDOM_SIZE) ||
+        !CBS_get_u8_length_prefixed(&body, &session_id) ||
+        !CBS_get_u16(&body, &cipher_suite) ||
+        !CBS_skip(&body, 1) ||
+        !CBS_get_u16_length_prefixed(&body, &extensions) ||
+        CBS_len(&extensions) == 0 ||
+        CBS_len(&body) != 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      return ssl_hs_error;
+    }
+
+    if (!CBS_mem_equal(&server_random, kHelloRetryRequest, SSL3_RANDOM_SIZE)) {
+      hs->tls13_state = state_read_server_hello;
+      return ssl_hs_ok;
+    }
+  } else {
+    if (msg.type != SSL3_MT_HELLO_RETRY_REQUEST) {
+      hs->tls13_state = state_read_server_hello;
+      return ssl_hs_ok;
+    }
+
+    CBS body = msg.body;
+    uint16_t server_version;
+    if (!CBS_get_u16(&body, &server_version) ||
+        (ssl_is_draft21(ssl->version) &&
+         !CBS_get_u16(&body, &cipher_suite)) ||
+        !CBS_get_u16_length_prefixed(&body, &extensions) ||
+        // HelloRetryRequest may not be empty.
+        CBS_len(&extensions) == 0 ||
+        CBS_len(&body) != 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      return ssl_hs_error;
+    }
   }
 
   if (ssl_is_draft21(ssl->version)) {
@@ -96,11 +124,13 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   }
 
 
-  bool have_cookie, have_key_share;
-  CBS cookie, key_share;
+  bool have_cookie, have_key_share, have_supported_versions;
+  CBS cookie, key_share, supported_versions;
   const SSL_EXTENSION_TYPE ext_types[] = {
       {TLSEXT_TYPE_key_share, &have_key_share, &key_share},
       {TLSEXT_TYPE_cookie, &have_cookie, &cookie},
+      {TLSEXT_TYPE_supported_versions, &have_supported_versions,
+       &supported_versions},
   };
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
@@ -111,6 +141,11 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  if (!ssl_is_draft22(ssl->version) && have_supported_versions) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
+    return ssl_hs_error;
+  }
   if (have_cookie) {
     CBS cookie_value;
     if (!CBS_get_u16_length_prefixed(&cookie, &cookie_value) ||
@@ -359,20 +394,8 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
   if (!tls13_advance_key_schedule(hs, dhe_secret.data(), dhe_secret.size()) ||
       !ssl_hash_message(hs, msg) ||
-      !tls13_derive_handshake_secrets(hs)) {
-    return ssl_hs_error;
-  }
-
-  ssl->method->next_message(ssl);
-  hs->tls13_state = state_process_change_cipher_spec;
-  return ssl_is_resumption_experiment(ssl->version)
-             ? ssl_hs_read_change_cipher_spec
-             : ssl_hs_ok;
-}
-
-static enum ssl_hs_wait_t do_process_change_cipher_spec(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-  if (!tls13_set_traffic_key(ssl, evp_aead_open, hs->server_handshake_secret,
+      !tls13_derive_handshake_secrets(hs) ||
+      !tls13_set_traffic_key(ssl, evp_aead_open, hs->server_handshake_secret,
                              hs->hash_len)) {
     return ssl_hs_error;
   }
@@ -388,6 +411,7 @@ static enum ssl_hs_wait_t do_process_change_cipher_spec(SSL_HANDSHAKE *hs) {
     }
   }
 
+  ssl->method->next_message(ssl);
   hs->tls13_state = state_read_encrypted_extensions;
   return ssl_hs_ok;
 }
@@ -642,9 +666,7 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
   }
 
   if (hs->early_data_offered) {
-    if ((ssl_is_resumption_client_ccs_experiment(ssl->version) &&
-         !ssl->method->add_change_cipher_spec(ssl)) ||
-        !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
+    if (!tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
                                hs->hash_len)) {
       return ssl_hs_error;
     }
@@ -767,9 +789,6 @@ enum ssl_hs_wait_t tls13_client_handshake(SSL_HANDSHAKE *hs) {
       case state_read_server_hello:
         ret = do_read_server_hello(hs);
         break;
-      case state_process_change_cipher_spec:
-        ret = do_process_change_cipher_spec(hs);
-        break;
       case state_read_encrypted_extensions:
         ret = do_read_encrypted_extensions(hs);
         break;
@@ -824,8 +843,6 @@ const char *tls13_client_handshake_state(SSL_HANDSHAKE *hs) {
       return "TLS 1.3 client send_second_client_hello";
     case state_read_server_hello:
       return "TLS 1.3 client read_server_hello";
-    case state_process_change_cipher_spec:
-      return "TLS 1.3 client process_change_cipher_spec";
     case state_read_encrypted_extensions:
       return "TLS 1.3 client read_encrypted_extensions";
     case state_read_certificate_request:

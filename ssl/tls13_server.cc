@@ -47,7 +47,6 @@ enum server_hs_state_t {
   state_send_server_certificate_verify,
   state_send_server_finished,
   state_read_second_client_flight,
-  state_process_change_cipher_spec,
   state_process_end_of_early_data,
   state_read_client_certificate,
   state_read_client_certificate_verify,
@@ -490,23 +489,55 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_send_hello_retry_request(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  ScopedCBB cbb;
-  CBB body, extensions;
-  uint16_t group_id;
-  if (!ssl->method->init_message(ssl, cbb.get(), &body,
-                                 SSL3_MT_HELLO_RETRY_REQUEST) ||
-      !CBB_add_u16(&body, ssl->version) ||
-      (ssl_is_draft21(ssl->version) &&
-       !CBB_add_u16(&body, ssl_cipher_get_value(hs->new_cipher))) ||
-      !tls1_get_shared_group(hs, &group_id) ||
-      !CBB_add_u16_length_prefixed(&body, &extensions) ||
-      !CBB_add_u16(&extensions, TLSEXT_TYPE_key_share) ||
-      !CBB_add_u16(&extensions, 2 /* length */) ||
-      !CBB_add_u16(&extensions, group_id) ||
-      !ssl_add_message_cbb(ssl, cbb.get())) {
-    return ssl_hs_error;
+
+
+  if (ssl_is_draft22(ssl->version)) {
+    ScopedCBB cbb;
+    CBB body, session_id, extensions;
+    uint16_t group_id;
+    if (!ssl->method->init_message(ssl, cbb.get(), &body,
+                                   SSL3_MT_SERVER_HELLO) ||
+        !CBB_add_u16(&body, TLS1_2_VERSION) ||
+        !CBB_add_bytes(&body, kHelloRetryRequest, SSL3_RANDOM_SIZE) ||
+        !CBB_add_u8_length_prefixed(&body, &session_id) ||
+        !CBB_add_bytes(&session_id, hs->session_id, hs->session_id_len) ||
+        !CBB_add_u16(&body, ssl_cipher_get_value(hs->new_cipher)) ||
+        !CBB_add_u8(&body, 0 /* no compression */) ||
+        !tls1_get_shared_group(hs, &group_id) ||
+        !CBB_add_u16_length_prefixed(&body, &extensions) ||
+        !CBB_add_u16(&extensions, TLSEXT_TYPE_supported_versions) ||
+        !CBB_add_u16(&extensions, 2 /* length */) ||
+        !CBB_add_u16(&extensions, ssl->version) ||
+        !CBB_add_u16(&extensions, TLSEXT_TYPE_key_share) ||
+        !CBB_add_u16(&extensions, 2 /* length */) ||
+        !CBB_add_u16(&extensions, group_id) ||
+        !ssl_add_message_cbb(ssl, cbb.get())) {
+      return ssl_hs_error;
+    }
+
+    if (!ssl->method->add_change_cipher_spec(ssl)) {
+      return ssl_hs_error;
+    }
+  } else {
+    ScopedCBB cbb;
+    CBB body, extensions;
+    uint16_t group_id;
+    if (!ssl->method->init_message(ssl, cbb.get(), &body,
+                                   SSL3_MT_HELLO_RETRY_REQUEST) ||
+        !CBB_add_u16(&body, ssl->version) ||
+        (ssl_is_draft21(ssl->version) &&
+         !CBB_add_u16(&body, ssl_cipher_get_value(hs->new_cipher))) ||
+        !tls1_get_shared_group(hs, &group_id) ||
+        !CBB_add_u16_length_prefixed(&body, &extensions) ||
+        !CBB_add_u16(&extensions, TLSEXT_TYPE_key_share) ||
+        !CBB_add_u16(&extensions, 2 /* length */) ||
+        !CBB_add_u16(&extensions, group_id) ||
+        !ssl_add_message_cbb(ssl, cbb.get())) {
+      return ssl_hs_error;
+    }
   }
 
+  hs->sent_hello_retry_request = true;
   hs->tls13_state = state_read_second_client_hello;
   return ssl_hs_flush;
 }
@@ -576,6 +607,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl_is_resumption_experiment(ssl->version) &&
+      (!ssl_is_draft22(ssl->version) || !hs->sent_hello_retry_request) &&
       !ssl->method->add_change_cipher_spec(ssl)) {
     return ssl_hs_error;
   }
@@ -756,46 +788,35 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
     hs->can_early_write = true;
     hs->can_early_read = true;
     hs->in_early_data = true;
-    hs->tls13_state = state_process_end_of_early_data;
-    return ssl_hs_read_end_of_early_data;
   }
   hs->tls13_state = state_process_end_of_early_data;
-  return ssl_hs_ok;
+  return ssl->early_data_accepted ? ssl_hs_read_end_of_early_data : ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  hs->tls13_state = state_process_change_cipher_spec;
   if (hs->early_data_offered) {
     // If early data was not accepted, the EndOfEarlyData and ChangeCipherSpec
     // message will be in the discarded early data.
-    if (!hs->ssl->early_data_accepted) {
-      return ssl_hs_ok;
-    }
-    if (ssl_is_draft21(ssl->version)) {
-      SSLMessage msg;
-      if (!ssl->method->get_message(ssl, &msg)) {
-        return ssl_hs_read_message;
-      }
+    if (hs->ssl->early_data_accepted) {
+      if (ssl_is_draft21(ssl->version)) {
+        SSLMessage msg;
+        if (!ssl->method->get_message(ssl, &msg)) {
+          return ssl_hs_read_message;
+        }
 
-      if (!ssl_check_message_type(ssl, msg, SSL3_MT_END_OF_EARLY_DATA)) {
-        return ssl_hs_error;
+        if (!ssl_check_message_type(ssl, msg, SSL3_MT_END_OF_EARLY_DATA)) {
+          return ssl_hs_error;
+        }
+        if (CBS_len(&msg.body) != 0) {
+          ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+          OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+          return ssl_hs_error;
+        }
+        ssl->method->next_message(ssl);
       }
-      if (CBS_len(&msg.body) != 0) {
-        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-        OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-        return ssl_hs_error;
-      }
-      ssl->method->next_message(ssl);
     }
   }
-  return ssl_is_resumption_client_ccs_experiment(hs->ssl->version)
-             ? ssl_hs_read_change_cipher_spec
-             : ssl_hs_ok;
-}
-
-static enum ssl_hs_wait_t do_process_change_cipher_spec(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
   if (!tls13_set_traffic_key(ssl, evp_aead_open, hs->client_handshake_secret,
                              hs->hash_len)) {
     return ssl_hs_error;
@@ -973,9 +994,6 @@ enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs) {
       case state_process_end_of_early_data:
         ret = do_process_end_of_early_data(hs);
         break;
-      case state_process_change_cipher_spec:
-        ret = do_process_change_cipher_spec(hs);
-        break;
       case state_read_client_certificate:
         ret = do_read_client_certificate(hs);
         break;
@@ -1028,8 +1046,6 @@ const char *tls13_server_handshake_state(SSL_HANDSHAKE *hs) {
       return "TLS 1.3 server send_server_finished";
     case state_read_second_client_flight:
       return "TLS 1.3 server read_second_client_flight";
-    case state_process_change_cipher_spec:
-      return "TLS 1.3 server process_change_cipher_spec";
     case state_process_end_of_early_data:
       return "TLS 1.3 server process_end_of_early_data";
     case state_read_client_certificate:

@@ -396,6 +396,10 @@ uint16_t ssl_protocol_version(const SSL *ssl);
 // variant.
 bool ssl_is_draft21(uint16_t version);
 
+// ssl_is_draft22 returns whether the version corresponds to a draft22 TLS 1.3
+// variant.
+bool ssl_is_draft22(uint16_t version);
+
 // ssl_is_resumption_experiment returns whether the version corresponds to a
 // TLS 1.3 resumption experiment.
 bool ssl_is_resumption_experiment(uint16_t version);
@@ -1004,6 +1008,8 @@ struct SSLMessage {
 // Channel ID, are all enabled.
 #define SSL_MAX_HANDSHAKE_FLIGHT 7
 
+extern const uint8_t kHelloRetryRequest[SSL3_RANDOM_SIZE];
+
 // ssl_max_handshake_message_len returns the maximum number of bytes permitted
 // in a handshake message for |ssl|.
 size_t ssl_max_handshake_message_len(const SSL *ssl);
@@ -1438,6 +1444,7 @@ struct SSL_HANDSHAKE {
   bool needs_psk_binder:1;
 
   bool received_hello_retry_request:1;
+  bool sent_hello_retry_request:1;
 
   bool received_custom_extension:1;
 

@@ -1312,6 +1312,13 @@ var tlsVersions = []tlsVersion{
 		tls13Variant: TLS13Draft21,
 	},
 	{
+		name:         "TLS13Draft22",
+		version:      VersionTLS13,
+		excludeFlag:  "-no-tls13",
+		versionWire:  tls13Draft22Version,
+		tls13Variant: TLS13Draft22,
+	},
+	{
 		name:         "TLS13Experiment",
 		version:      VersionTLS13,
 		excludeFlag:  "-no-tls13",
@@ -4160,6 +4167,37 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		})
 
 		tests = append(tests, testCase{
+			name: "TLS13Draft22-HelloRetryRequest-Client",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				MinVersion: VersionTLS13,
+				// P-384 requires a HelloRetryRequest against BoringSSL's default
+				// configuration. Assert this with ExpectMissingKeyShare.
+				CurvePreferences: []CurveID{CurveP384},
+				Bugs: ProtocolBugs{
+					ExpectMissingKeyShare: true,
+				},
+			},
+			tls13Variant: TLS13Draft22,
+			// Cover HelloRetryRequest during an ECDHE-PSK resumption.
+			resumeSession: true,
+		})
+
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "TLS13Draft22-HelloRetryRequest-Server",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				MinVersion: VersionTLS13,
+				// Require a HelloRetryRequest for every curve.
+				DefaultCurves: []CurveID{},
+			},
+			tls13Variant: TLS13Draft22,
+			// Cover HelloRetryRequest during an ECDHE-PSK resumption.
+			resumeSession: true,
+		})
+
+		tests = append(tests, testCase{
 			testType: clientTest,
 			name:     "TLS13-EarlyData-TooMuchData-Client",
 			config: Config{
@@ -5196,7 +5234,7 @@ func addVersionNegotiationTests() {
 				serverVers := expectedServerVersion
 				if expectedServerVersion >= VersionTLS13 {
 					serverVers = VersionTLS10
-					if runnerVers.tls13Variant == TLS13Experiment2 || runnerVers.tls13Variant == TLS13Experiment3 {
+					if runnerVers.tls13Variant == TLS13Experiment2 || runnerVers.tls13Variant == TLS13Experiment3 || runnerVers.tls13Variant == TLS13Draft22 {
 						serverVers = VersionTLS12
 					}
 				}
@@ -11732,6 +11770,58 @@ func addTLS13HandshakeTests() {
 		},
 		shouldFail:    true,
 		expectedError: ":UNEXPECTED_EXTENSION:",
+	})
+
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name: "TLS13Draft22-SkipChangeCipherSpec-Client",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SkipChangeCipherSpec: true,
+			},
+		},
+		tls13Variant: TLS13Draft22,
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name: "TLS13Draft22-SkipChangeCipherSpec-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SkipChangeCipherSpec: true,
+			},
+		},
+		tls13Variant: TLS13Draft22,
+	})
+
+	testCases = append(testCases, testCase{
+		testType: clientTest,
+		name: "TLS13Draft22-TooManyChangeCipherSpec-Client",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendExtraChangeCipherSpec: 33,
+			},
+		},
+		tls13Variant: TLS13Draft22,
+		shouldFail:       true,
+		expectedError:    ":TOO_MANY_EMPTY_FRAGMENTS:",
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name: "TLS13Draft22-TooManyChangeCipherSpec-Server",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendExtraChangeCipherSpec: 33,
+			},
+		},
+		tls13Variant: TLS13Draft22,
+		shouldFail:       true,
+		expectedError:    ":TOO_MANY_EMPTY_FRAGMENTS:",
 	})
 
 	fooString := "foo"
