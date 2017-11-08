@@ -215,13 +215,6 @@ static const uint8_t kP521Params[6 * 66] = {
     0xB7, 0x1E, 0x91, 0x38, 0x64, 0x09,
 };
 
-// MSan appears to have a bug that causes code to be miscompiled in opt mode.
-// While that is being looked at, don't run the uint128_t code under MSan.
-#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS) && \
-    !defined(MEMORY_SANITIZER)
-#define BORINGSSL_USE_INT128_CODE
-#endif
-
 DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   // 1.3.132.0.35
   static const uint8_t kOIDP521[] = {0x2b, 0x81, 0x04, 0x00, 0x23};
@@ -253,15 +246,18 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   out->curves[2].param_len = 32;
   out->curves[2].params = kP256Params;
   out->curves[2].method =
-#if defined(BORINGSSL_USE_INT128_CODE)
+// MSan appears to have a bug that causes code to be miscompiled in opt mode.
+// While that is being looked at, don't run the uint128_t code under MSan.
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
-    !defined(OPENSSL_SMALL)
+    !defined(OPENSSL_SMALL) && !defined(MEMORY_SANITIZER)
       EC_GFp_nistz256_method();
 #else
+#if defined(OPENSSL_32_BIT) || \
+    (defined(OPENSSL_64_BIT) && !defined(MEMORY_SANITIZER))
       EC_GFp_nistp256_method();
-#endif
 #else
       EC_GFp_mont_method();
+#endif
 #endif
 
   // 1.3.132.0.33
@@ -273,7 +269,8 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   out->curves[3].param_len = 28;
   out->curves[3].params = kP224Params;
   out->curves[3].method =
-#if defined(BORINGSSL_USE_INT128_CODE) && !defined(OPENSSL_SMALL)
+#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS) && \
+    !defined(MEMORY_SANITIZER) && !defined(OPENSSL_SMALL)
       EC_GFp_nistp224_method();
 #else
       EC_GFp_mont_method();
@@ -881,6 +878,24 @@ err:
   OPENSSL_cleanse(&g_scalar_storage, sizeof(g_scalar_storage));
   OPENSSL_cleanse(&p_scalar_storage, sizeof(p_scalar_storage));
   return ret;
+}
+
+int ec_point_mul_scalar_public(const EC_GROUP *group, EC_POINT *r,
+                               const EC_SCALAR *g_scalar, const EC_POINT *p,
+                               const EC_SCALAR *p_scalar, BN_CTX *ctx) {
+  if ((g_scalar == NULL && p_scalar == NULL) ||
+      (p == NULL) != (p_scalar == NULL))  {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  if (EC_GROUP_cmp(group, r->group, NULL) != 0 ||
+      (p != NULL && EC_GROUP_cmp(group, p->group, NULL) != 0)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
+    return 0;
+  }
+
+  return group->meth->mul_public(group, r, g_scalar, p, p_scalar, ctx);
 }
 
 int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,

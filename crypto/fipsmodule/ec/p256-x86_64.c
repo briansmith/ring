@@ -446,6 +446,7 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {
   out->group_set_curve = ec_GFp_mont_group_set_curve;
   out->point_get_affine_coordinates = ecp_nistz256_get_affine;
   out->mul = ecp_nistz256_points_mul;
+  out->mul_public = ecp_nistz256_points_mul;
   out->field_mul = ec_GFp_mont_field_mul;
   out->field_sqr = ec_GFp_mont_field_sqr;
   out->field_encode = ec_GFp_mont_field_encode;

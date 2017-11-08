@@ -270,6 +270,7 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_mont_method) {
   out->group_set_curve = ec_GFp_mont_group_set_curve;
   out->point_get_affine_coordinates = ec_GFp_mont_point_get_affine_coordinates;
   out->mul = ec_wNAF_mul /* XXX: Not constant time. */;
+  out->mul_public = ec_wNAF_mul;
   out->field_mul = ec_GFp_mont_field_mul;
   out->field_sqr = ec_GFp_mont_field_sqr;
   out->field_encode = ec_GFp_mont_field_encode;

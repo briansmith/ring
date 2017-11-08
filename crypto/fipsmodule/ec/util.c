@@ -14,9 +14,6 @@
 
 #include <openssl/base.h>
 
-
-#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS)
-
 #include <openssl/ec.h>
 
 #include "internal.h"
@@ -105,5 +102,3 @@ void ec_GFp_nistp_recode_scalar_bits(uint8_t *sign, uint8_t *digit,
   *sign = s & 1;
   *digit = d;
 }
-
-#endif  // 64_BIT && !WINDOWS

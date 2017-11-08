@@ -1122,6 +1122,7 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp224_method) {
   out->point_get_affine_coordinates =
       ec_GFp_nistp224_point_get_affine_coordinates;
   out->mul = ec_GFp_nistp224_points_mul;
+  out->mul_public = ec_GFp_nistp224_points_mul;
   out->field_mul = ec_GFp_simple_field_mul;
   out->field_sqr = ec_GFp_simple_field_sqr;
   out->field_encode = NULL;

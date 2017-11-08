@@ -275,7 +275,7 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
-  if (!ec_point_mul_scalar(group, point, &u1, pub_key, &u2, ctx)) {
+  if (!ec_point_mul_scalar_public(group, point, &u1, pub_key, &u2, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
     goto err;
   }

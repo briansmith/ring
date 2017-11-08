@@ -115,6 +115,12 @@ struct ec_method_st {
   // non-null.
   int (*mul)(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
              const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx);
+  // mul_public performs the same computation as mul. It further assumes that
+  // the inputs are public so there is no concern about leaking their values
+  // through timing.
+  int (*mul_public)(const EC_GROUP *group, EC_POINT *r,
+                    const EC_SCALAR *g_scalar, const EC_POINT *p,
+                    const EC_SCALAR *p_scalar, BN_CTX *ctx);
 
   // 'field_mul' and 'field_sqr' can be used by 'add' and 'dbl' so that the
   // same implementations of point operations can be used with different
@@ -194,6 +200,13 @@ int ec_random_nonzero_scalar(const EC_GROUP *group, EC_SCALAR *out,
 int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,
                         const EC_SCALAR *g_scalar, const EC_POINT *p,
                         const EC_SCALAR *p_scalar, BN_CTX *ctx);
+
+// ec_point_mul_scalar_public performs the same computation as
+// ec_point_mul_scalar.  It further assumes that the inputs are public so
+// there is no concern about leaking their values through timing.
+int ec_point_mul_scalar_public(const EC_GROUP *group, EC_POINT *r,
+                               const EC_SCALAR *g_scalar, const EC_POINT *p,
+                               const EC_SCALAR *p_scalar, BN_CTX *ctx);
 
 int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
                 const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx);
