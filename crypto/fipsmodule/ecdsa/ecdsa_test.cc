@@ -67,17 +67,17 @@
 #include "../../test/file_test.h"
 
 
-enum Api {
-  kEncodedApi,
-  kRawApi,
+enum API {
+  kEncodedAPI,
+  kRawAPI,
 };
 
 // VerifyECDSASig checks that verifying |ecdsa_sig| gives |expected_result|.
-static void VerifyECDSASig(Api api, const uint8_t *digest, size_t digest_len,
+static void VerifyECDSASig(API api, const uint8_t *digest, size_t digest_len,
                            const ECDSA_SIG *ecdsa_sig, EC_KEY *eckey,
                            int expected_result) {
   switch (api) {
-    case kEncodedApi: {
+    case kEncodedAPI: {
       uint8_t *der;
       size_t der_len;
       ASSERT_TRUE(ECDSA_SIG_to_bytes(&der, &der_len, ecdsa_sig));
@@ -87,7 +87,7 @@ static void VerifyECDSASig(Api api, const uint8_t *digest, size_t digest_len,
       break;
     }
 
-    case kRawApi:
+    case kRawAPI:
       EXPECT_EQ(expected_result,
                 ECDSA_do_verify(digest, digest_len, ecdsa_sig, eckey));
       break;
@@ -100,7 +100,7 @@ static void VerifyECDSASig(Api api, const uint8_t *digest, size_t digest_len,
 // TestTamperedSig verifies that signature verification fails when a valid
 // signature is tampered with. |ecdsa_sig| must be a valid signature, which will
 // be modified.
-static void TestTamperedSig(Api api, const uint8_t *digest,
+static void TestTamperedSig(API api, const uint8_t *digest,
                             size_t digest_len, ECDSA_SIG *ecdsa_sig,
                             EC_KEY *eckey, const BIGNUM *order) {
   SCOPED_TRACE(api);
@@ -206,7 +206,7 @@ TEST(ECDSATest, BuiltinCurves) {
     bssl::UniquePtr<ECDSA_SIG> ecdsa_sig(
         ECDSA_SIG_from_bytes(signature.data(), signature.size()));
     ASSERT_TRUE(ecdsa_sig);
-    TestTamperedSig(kEncodedApi, digest, 20, ecdsa_sig.get(), eckey.get(),
+    TestTamperedSig(kEncodedAPI, digest, 20, ecdsa_sig.get(), eckey.get(),
                     order);
 
     // Test ECDSA_SIG signing and verification.
@@ -228,7 +228,7 @@ TEST(ECDSATest, BuiltinCurves) {
     ERR_clear_error();
 
     // Verify a tampered signature.
-    TestTamperedSig(kRawApi, digest, 20, ecdsa_sig.get(), eckey.get(), order);
+    TestTamperedSig(kRawAPI, digest, 20, ecdsa_sig.get(), eckey.get(), order);
   }
 }
 
