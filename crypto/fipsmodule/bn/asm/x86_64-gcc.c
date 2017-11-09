@@ -280,7 +280,7 @@ BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
 
 #define sqr_add_c2(a, i, j, c0, c1, c2) mul_add_c2((a)[i], (a)[j], c0, c1, c2)
 
-void bn_mul_comba8(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b) {
+void bn_mul_comba8(BN_ULONG r[16], BN_ULONG a[8], BN_ULONG b[8]) {
   BN_ULONG c1, c2, c3;
 
   c1 = 0;
@@ -382,7 +382,7 @@ void bn_mul_comba8(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b) {
   r[15] = c1;
 }
 
-void bn_mul_comba4(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b) {
+void bn_mul_comba4(BN_ULONG r[8], BN_ULONG a[4], BN_ULONG b[4]) {
   BN_ULONG c1, c2, c3;
 
   c1 = 0;
@@ -420,7 +420,7 @@ void bn_mul_comba4(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b) {
   r[7] = c2;
 }
 
-void bn_sqr_comba8(BN_ULONG *r, const BN_ULONG *a) {
+void bn_sqr_comba8(BN_ULONG r[16], const BN_ULONG a[8]) {
   BN_ULONG c1, c2, c3;
 
   c1 = 0;
@@ -494,7 +494,7 @@ void bn_sqr_comba8(BN_ULONG *r, const BN_ULONG *a) {
   r[15] = c1;
 }
 
-void bn_sqr_comba4(BN_ULONG *r, const BN_ULONG *a) {
+void bn_sqr_comba4(BN_ULONG r[8], const BN_ULONG a[4]) {
   BN_ULONG c1, c2, c3;
 
   c1 = 0;

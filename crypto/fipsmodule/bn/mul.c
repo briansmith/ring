@@ -659,37 +659,37 @@ err:
 }
 
 // tmp must have 2*n words
-static void bn_sqr_normal(BN_ULONG *r, const BN_ULONG *a, int n, BN_ULONG *tmp) {
-  int i, j, max;
-  const BN_ULONG *ap;
-  BN_ULONG *rp;
-
-  max = n * 2;
-  ap = a;
-  rp = r;
+static void bn_sqr_normal(BN_ULONG *r, const BN_ULONG *a, int n,
+                          BN_ULONG *tmp) {
+  int max = n * 2;
+  const BN_ULONG *ap = a;
+  BN_ULONG *rp = r;
   rp[0] = rp[max - 1] = 0;
   rp++;
-  j = n;
+  int j = n;
 
+  // Compute the contribution of a[i] * a[j] for all i < j.
   if (--j > 0) {
     ap++;
     rp[j] = bn_mul_words(rp, ap, j, ap[-1]);
     rp += 2;
   }
 
-  for (i = n - 2; i > 0; i--) {
+  for (int i = n - 2; i > 0; i--) {
     j--;
     ap++;
     rp[j] = bn_mul_add_words(rp, ap, j, ap[-1]);
     rp += 2;
   }
 
+  // The final result fits in |max| words, so none of the following operations
+  // will overflow.
+
+  // Double |r|, giving the contribution of a[i] * a[j] for all i != j.
   bn_add_words(r, r, r, max);
 
-  // There will not be a carry
-
+  // Add in the contribution of a[i] * a[i] for all i.
   bn_sqr_words(tmp, a, n);
-
   bn_add_words(r, r, tmp, max);
 }
 
@@ -702,7 +702,8 @@ static void bn_sqr_normal(BN_ULONG *r, const BN_ULONG *a, int n, BN_ULONG *tmp) 
 // a[0]*b[0]
 // a[0]*b[0]+a[1]*b[1]+(a[0]-a[1])*(b[1]-b[0])
 // a[1]*b[1]
-static void bn_sqr_recursive(BN_ULONG *r, const BN_ULONG *a, int n2, BN_ULONG *t) {
+static void bn_sqr_recursive(BN_ULONG *r, const BN_ULONG *a, int n2,
+                             BN_ULONG *t) {
   int n = n2 / 2;
   int zero, c1;
   BN_ULONG ln, lo, *p;
