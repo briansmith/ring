@@ -85,57 +85,6 @@ static inline poly1305_state_internal *poly1305_aligned_state(
   return (poly1305_state_internal *)(((uint64_t)state + 63) & ~63);
 }
 
-// copy 0-63 bytes
-static inline void
-poly1305_block_copy(uint8_t *dst, const uint8_t *src, size_t bytes) {
-  size_t offset = src - dst;
-  if (bytes & 32) {
-    _mm_storeu_si128((xmmi *)(dst + 0),
-                     _mm_loadu_si128((const xmmi *)(dst + offset + 0)));
-    _mm_storeu_si128((xmmi *)(dst + 16),
-                     _mm_loadu_si128((const xmmi *)(dst + offset + 16)));
-    dst += 32;
-  }
-  if (bytes & 16) {
-    _mm_storeu_si128((xmmi *)dst, _mm_loadu_si128((const xmmi *)(dst + offset)));
-    dst += 16;
-  }
-  if (bytes & 8) {
-    *(uint64_t *)dst = *(const uint64_t *)(dst + offset);
-    dst += 8;
-  }
-  if (bytes & 4) {
-    *(uint32_t *)dst = *(const uint32_t *)(dst + offset);
-    dst += 4;
-  }
-  if (bytes & 2) {
-    *(uint16_t *)dst = *(uint16_t *)(dst + offset);
-    dst += 2;
-  }
-  if (bytes & 1) {
-    *(uint8_t *)dst = *(uint8_t *)(dst + offset);
-  }
-}
-
-// zero 0-15 bytes
-static inline void poly1305_block_zero(uint8_t *dst, size_t bytes) {
-  if (bytes & 8) {
-    *(uint64_t *)dst = 0;
-    dst += 8;
-  }
-  if (bytes & 4) {
-    *(uint32_t *)dst = 0;
-    dst += 4;
-  }
-  if (bytes & 2) {
-    *(uint16_t *)dst = 0;
-    dst += 2;
-  }
-  if (bytes & 1) {
-    *(uint8_t *)dst = 0;
-  }
-}
-
 static inline size_t poly1305_min(size_t a, size_t b) {
   return (a < b) ? a : b;
 }
@@ -721,7 +670,7 @@ void CRYPTO_poly1305_update(poly1305_state *state, const uint8_t *m,
       bytes -= 32;
     } else {
       want = poly1305_min(32 - st->leftover, bytes);
-      poly1305_block_copy(st->buffer + st->leftover, m, want);
+      OPENSSL_memcpy(st->buffer + st->leftover, m, want);
       bytes -= want;
       m += want;
       st->leftover += want;
@@ -737,7 +686,7 @@ void CRYPTO_poly1305_update(poly1305_state *state, const uint8_t *m,
   // handle leftover
   if (st->leftover) {
     want = poly1305_min(64 - st->leftover, bytes);
-    poly1305_block_copy(st->buffer + st->leftover, m, want);
+    OPENSSL_memcpy(st->buffer + st->leftover, m, want);
     bytes -= want;
     m += want;
     st->leftover += want;
@@ -757,7 +706,7 @@ void CRYPTO_poly1305_update(poly1305_state *state, const uint8_t *m,
   }
 
   if (bytes) {
-    poly1305_block_copy(st->buffer + st->leftover, m, bytes);
+    OPENSSL_memcpy(st->buffer + st->leftover, m, bytes);
     st->leftover += bytes;
   }
 }
@@ -833,7 +782,7 @@ poly1305_donna_atmost15bytes:
   }
 
   m[leftover++] = 1;
-  poly1305_block_zero(m + leftover, 16 - leftover);
+  OPENSSL_memset(m + leftover, 0, 16 - leftover);
   leftover = 16;
 
   t0 = U8TO64_LE(m + 0);
