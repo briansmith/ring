@@ -267,13 +267,11 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
         goto err;
       }
     } else if (digest_len > 0) {
-      do {
-        if (!BN_generate_dsa_nonce(k, order, EC_KEY_get0_private_key(eckey),
-                                   digest, digest_len, ctx)) {
-          OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED);
-          goto err;
-        }
-      } while (BN_is_zero(k));
+      if (!BN_generate_dsa_nonce(k, order, EC_KEY_get0_private_key(eckey),
+                                 digest, digest_len, ctx)) {
+        OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED);
+        goto err;
+      }
     } else if (!BN_rand_range_ex(k, 1, order)) {
       OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED);
       goto err;
