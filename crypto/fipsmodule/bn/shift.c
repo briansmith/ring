@@ -122,7 +122,7 @@ int BN_lshift1(BIGNUM *r, const BIGNUM *a) {
   for (i = 0; i < a->top; i++) {
     t = *(ap++);
     *(rp++) = (t << 1) | c;
-    c = (t & BN_TBIT) ? 1 : 0;
+    c = t >> (BN_BITS2 - 1);
   }
   if (c) {
     *rp = 1;
@@ -209,14 +209,14 @@ int BN_rshift1(BIGNUM *r, const BIGNUM *a) {
   }
   rp = r->d;
   t = ap[--i];
-  c = (t & 1) ? BN_TBIT : 0;
+  c = t << (BN_BITS2 - 1);
   if (t >>= 1) {
     rp[i] = t;
   }
   while (i > 0) {
     t = ap[--i];
     rp[i] = (t >> 1) | c;
-    c = (t & 1) ? BN_TBIT : 0;
+    c = t << (BN_BITS2 - 1);
   }
   r->top = j;
 

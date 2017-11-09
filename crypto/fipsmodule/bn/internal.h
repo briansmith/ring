@@ -153,7 +153,6 @@ extern "C" {
 #define BN_MASK2h (0xffffffff00000000UL)
 #define BN_MASK2h1 (0xffffffff80000000UL)
 #define BN_MONT_CTX_N0_LIMBS 1
-#define BN_TBIT (0x8000000000000000UL)
 #define BN_DEC_CONV (10000000000000000000UL)
 #define BN_DEC_NUM 19
 #define TOBN(hi, lo) ((BN_ULONG)(hi) << 32 | (lo))
@@ -174,7 +173,6 @@ extern "C" {
 // of n0[1] and shorter R value would suffice for the others. However,
 // currently only the assembly files know which is which.
 #define BN_MONT_CTX_N0_LIMBS 2
-#define BN_TBIT (0x80000000UL)
 #define BN_DEC_CONV (1000000000UL)
 #define BN_DEC_NUM 9
 #define TOBN(hi, lo) (lo), (hi)
