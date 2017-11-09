@@ -265,6 +265,18 @@ int bn_cmp_words(const BN_ULONG *a, const BN_ULONG *b, int n);
 // the length of |a| minus the length of |b|.
 int bn_cmp_part_words(const BN_ULONG *a, const BN_ULONG *b, int cl, int dl);
 
+// bn_less_than_words returns one if |a| < |b| and zero otherwise, where |a|
+// and |b| both are |len| words long. It runs in constant time.
+int bn_less_than_words(const BN_ULONG *a, const BN_ULONG *b, size_t len);
+
+// bn_in_range_words returns one if |min_inclusive| <= |a| < |max_exclusive|,
+// where |a| and |max_exclusive| both are |len| words long. This function leaks
+// which of [0, min_inclusive), [min_inclusive, max_exclusive), and
+// [max_exclusive, 2^(BN_BITS2*len)) contains |a|, but otherwise the value of
+// |a| is secret.
+int bn_in_range_words(const BN_ULONG *a, BN_ULONG min_inclusive,
+                      const BN_ULONG *max_exclusive, size_t len);
+
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, int num);
 

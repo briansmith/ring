@@ -775,19 +775,6 @@ const BN_ULONG kBoringSSLRSASqrtTwo[] = {
 };
 const size_t kBoringSSLRSASqrtTwoLen = OPENSSL_ARRAY_SIZE(kBoringSSLRSASqrtTwo);
 
-int rsa_less_than_words(const BN_ULONG *a, const BN_ULONG *b, size_t len) {
-  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
-                         crypto_word_t_too_small);
-  int ret = 0;
-  // Process the words in little-endian order.
-  for (size_t i = 0; i < len; i++) {
-    crypto_word_t eq = constant_time_eq_w(a[i], b[i]);
-    crypto_word_t lt = constant_time_lt_w(a[i], b[i]);
-    ret = constant_time_select_int(eq, ret, constant_time_select_int(lt, 1, 0));
-  }
-  return ret;
-}
-
 int rsa_greater_than_pow2(const BIGNUM *b, int n) {
   if (BN_is_negative(b) || n == INT_MAX) {
     return 0;
@@ -866,7 +853,7 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
     if (to_check > out_len) {
       to_check = out_len;
     }
-    if (!rsa_less_than_words(
+    if (!bn_less_than_words(
             kBoringSSLRSASqrtTwo + kBoringSSLRSASqrtTwoLen - to_check,
             out->d + out_len - to_check, to_check)) {
       continue;
