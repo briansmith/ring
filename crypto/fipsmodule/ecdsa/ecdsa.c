@@ -160,7 +160,7 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     goto err;
   }
-  // calculate tmp1 = inv(S) mod order
+  // tmp = inv(s) mod order
   int no_inverse;
   if (!BN_mod_inverse_odd(u2, &no_inverse, sig->s, order, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
@@ -174,7 +174,7 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
-  // u2 = r * w mod q
+  // u2 = r * tmp mod order
   if (!BN_mod_mul(u2, sig->r, u2, order, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
