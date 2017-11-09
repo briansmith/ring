@@ -114,6 +114,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/thread.h>
+#include <openssl/type_check.h>
 
 #include "internal.h"
 #include "../../internal.h"
@@ -261,35 +262,36 @@ int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont,
 
 static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
                                    const BN_MONT_CTX *mont) {
-  BN_ULONG *ap, *np, *rp, n0, v, carry;
-  int nl, max, i;
-
   const BIGNUM *n = &mont->N;
-  nl = n->top;
+  int nl = n->top;
   if (nl == 0) {
     ret->top = 0;
     return 1;
   }
 
-  max = (2 * nl);  // carry is stored separately
+  int max = (2 * nl);  // carry is stored separately
   if (!bn_wexpand(r, max)) {
     return 0;
   }
 
   r->neg ^= n->neg;
-  np = n->d;
-  rp = r->d;
+  BN_ULONG *np = n->d;
+  BN_ULONG *rp = r->d;
 
-  // clear the top words of T
+  // Clear the top words of T.
   if (max > r->top) {
     OPENSSL_memset(&rp[r->top], 0, (max - r->top) * sizeof(BN_ULONG));
   }
 
   r->top = max;
-  n0 = mont->n0[0];
+  BN_ULONG n0 = mont->n0[0];
 
-  for (carry = 0, i = 0; i < nl; i++, rp++) {
-    v = bn_mul_add_words(rp, np, nl, rp[0] * n0);
+  // Add multiples of |n| to |r| until R = 2^(nl * BN_BITS2) divides it. On
+  // input, we had |r| < |n| * R, so now |r| < 2 * |n| * R. Note that |r|
+  // includes |carry| which is stored separately.
+  BN_ULONG carry = 0;
+  for (int i = 0; i < nl; i++, rp++) {
+    BN_ULONG v = bn_mul_add_words(rp, np, nl, rp[0] * n0);
     v += carry + rp[nl];
     carry |= (v != rp[nl]);
     carry &= (v <= rp[nl]);
@@ -301,40 +303,24 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
   }
   ret->top = nl;
   ret->neg = r->neg;
-
   rp = ret->d;
-  ap = &(r->d[nl]);
 
-  {
-    BN_ULONG *nrp;
-    uintptr_t m;
+  // Shift |nl| words to divide by R. We have |ap| < 2 * |n|. Note that |ap|
+  // includes |carry| which is stored separately.
+  BN_ULONG *ap = &(r->d[nl]);
 
-    v = bn_sub_words(rp, ap, np, nl) - carry;
-    // if subtraction result is real, then trick unconditional memcpy below to
-    // perform in-place "refresh" instead of actual copy.
-    m = (0u - (uintptr_t)v);
-    nrp = (BN_ULONG *)(((uintptr_t)rp & ~m) | ((uintptr_t)ap & m));
-
-    for (i = 0, nl -= 4; i < nl; i += 4) {
-      BN_ULONG t1, t2, t3, t4;
-
-      t1 = nrp[i + 0];
-      t2 = nrp[i + 1];
-      t3 = nrp[i + 2];
-      ap[i + 0] = 0;
-      t4 = nrp[i + 3];
-      ap[i + 1] = 0;
-      rp[i + 0] = t1;
-      ap[i + 2] = 0;
-      rp[i + 1] = t2;
-      ap[i + 3] = 0;
-      rp[i + 2] = t3;
-      rp[i + 3] = t4;
-    }
-
-    for (nl += 4; i < nl; i++) {
-      rp[i] = nrp[i], ap[i] = 0;
-    }
+  // |ap| thus requires at most one additional subtraction |n| to be reduced.
+  // Subtract |n| and select the answer in constant time.
+  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
+                         crypto_word_t_too_small);
+  BN_ULONG v = bn_sub_words(rp, ap, np, nl) - carry;
+  // |v| is one if |ap| - |np| underflowed or zero if it did not. Note |v|
+  // cannot be -1. That would imply the subtraction did not fit in |nl| words,
+  // and we know at most one subtraction is needed.
+  v = 0u - v;
+  for (int i = 0; i < nl; i++) {
+    rp[i] = constant_time_select_w(v, ap[i], rp[i]);
+    ap[i] = 0;
   }
 
   bn_correct_top(r);
