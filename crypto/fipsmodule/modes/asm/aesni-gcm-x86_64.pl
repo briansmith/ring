@@ -86,6 +86,7 @@ $code=<<___;
 .type	_aesni_ctr32_ghash_6x,\@abi-omnipotent
 .align	32
 _aesni_ctr32_ghash_6x:
+.cfi_startproc
 	vmovdqu		0x20($const),$T2	# borrow $T2, .Lone_msb
 	sub		\$6,$len
 	vpxor		$Z0,$Z0,$Z0		# $Z0   = 0
@@ -410,6 +411,7 @@ _aesni_ctr32_ghash_6x:
 	vpxor		$Z0,$Xi,$Xi		# modulo-scheduled
 
 	ret
+.cfi_endproc
 .size	_aesni_ctr32_ghash_6x,.-_aesni_ctr32_ghash_6x
 ___
 ######################################################################
@@ -567,6 +569,7 @@ $code.=<<___;
 .type	_aesni_ctr32_6x,\@abi-omnipotent
 .align	32
 _aesni_ctr32_6x:
+.cfi_startproc
 	vmovdqu		0x00-0x80($key),$Z0	# borrow $Z0 for $rndkey
 	vmovdqu		0x20($const),$T2	# borrow $T2, .Lone_msb
 	lea		-1($rounds),%r13
@@ -653,6 +656,7 @@ _aesni_ctr32_6x:
 	vpshufb		$Ii,$T1,$T1		# next counter value
 	vpxor		$Z0,$inout5,$inout5
 	jmp	.Loop_ctr32
+.cfi_endproc
 .size	_aesni_ctr32_6x,.-_aesni_ctr32_6x
 
 .globl	aesni_gcm_encrypt
