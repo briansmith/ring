@@ -73,11 +73,23 @@
 #include <openssl/bn.h>
 #include <openssl/ex_data.h>
 #include <openssl/thread.h>
+#include <openssl/type_check.h>
+
+#include "../bn/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
 
+
+// Cap the size of all field elements and scalars, including custom curves, to
+// 66 bytes, large enough to fit secp521r1 and brainpoolP512r1, which appear to
+// be the largest fields anyone plausibly uses.
+#define EC_MAX_SCALAR_BYTES 66
+#define EC_MAX_SCALAR_WORDS ((66 + BN_BYTES - 1) / BN_BYTES)
+
+OPENSSL_COMPILE_ASSERT(EC_MAX_SCALAR_WORDS <= BN_SMALL_MAX_WORDS,
+                       bn_small_functions_applicable);
 
 struct ec_method_st {
   int (*group_init)(EC_GROUP *);

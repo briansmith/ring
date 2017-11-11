@@ -383,6 +383,11 @@ static void ec_group_set0_generator(EC_GROUP *group, EC_POINT *generator) {
 
 EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
                                  const BIGNUM *b, BN_CTX *ctx) {
+  if (BN_num_bytes(p) > EC_MAX_SCALAR_BYTES) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_FIELD);
+    return NULL;
+  }
+
   EC_GROUP *ret = ec_group_new(EC_GFp_mont_method());
   if (ret == NULL) {
     return NULL;
@@ -409,12 +414,43 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
     // Additionally, |generator| must been created from
     // |EC_GROUP_new_curve_GFp|, not a copy, so that
     // |generator->group->generator| is set correctly.
+    OPENSSL_PUT_ERROR(EC, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  if (BN_num_bytes(order) > EC_MAX_SCALAR_BYTES) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_FIELD);
     return 0;
   }
 
   // Require a cofactor of one for custom curves, which implies prime order.
   if (!BN_is_one(cofactor)) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_COFACTOR);
+    return 0;
+  }
+
+  // Require that p < 2×order. This simplifies some ECDSA operations.
+  //
+  // Note any curve which did not satisfy this must have been invalid or use a
+  // tiny prime (less than 17). We only work with prime order curves, so the
+  // number of points on the curve is the order. Thus Hasse's theorem gives:
+  //
+  //     |order - (p + 1)| <= 2×sqrt(p)
+  //         p + 1 - order <= 2×sqrt(p)
+  //     p + 1 - 2×sqrt(p) <= order
+  //       p + 1 - 2×(p/4)  < order       (p/4 > sqrt(p) for p >= 17)
+  //         p/2 < p/2 + 1  < order
+  //                     p  < 2×order
+  BIGNUM *tmp = BN_new();
+  if (tmp == NULL ||
+      !BN_lshift1(tmp, order)) {
+    BN_free(tmp);
+    return 0;
+  }
+  int ok = BN_cmp(tmp, &group->field) > 0;
+  BN_free(tmp);
+  if (!ok) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_GROUP_ORDER);
     return 0;
   }
 
