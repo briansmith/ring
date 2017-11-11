@@ -284,8 +284,9 @@ void PrintConnectionInfo(BIO *bio, const SSL *ssl) {
     BIO_printf(bio, "  SCT list: %s\n", sct_list_len > 0 ? "yes" : "no");
   }
 
-  BIO_printf(bio, "  Early data: %s\n",
-             SSL_early_data_accepted(ssl) ? "yes" : "no");
+  BIO_printf(
+      bio, "  Early data: %s\n",
+      (SSL_early_data_accepted(ssl) || SSL_in_early_data(ssl)) ? "yes" : "no");
 
   // Print the server cert subject and issuer names.
   bssl::UniquePtr<X509> peer(SSL_get_peer_certificate(ssl));
