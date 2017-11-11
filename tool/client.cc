@@ -121,7 +121,8 @@ static const struct argument kArguments[] = {
         "verification is required.",
     },
     {
-        "-early-data", kOptionalArgument, "Allow early data",
+        "-early-data", kOptionalArgument, "Enable early data. The argument to "
+        "this flag is the early data to send.",
     },
     {
         "-tls13-variant", kOptionalArgument,
