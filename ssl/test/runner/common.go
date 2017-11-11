@@ -38,7 +38,7 @@ const (
 	tls13ExperimentVersion  = 0x7e01
 	tls13Experiment2Version = 0x7e02
 	tls13Experiment3Version = 0x7e03
-	tls13Draft22Version     = 0x7e04
+	tls13Draft22Version     = 0x7f16
 )
 
 const (
