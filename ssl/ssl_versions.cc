@@ -338,13 +338,15 @@ bool ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version) {
 
   // The server, when not configured at |tls13_default|, should additionally
   // enable all variants, except draft-21 which is implemented solely for QUIC
-  // interop testing and will not be deployed. Currently, this is to implement
-  // the draft-18 vs. experiments field trials. In the future, this will be to
-  // transition cleanly to a future draft-22 which hopefully includes the
-  // deployability fixes.
+  // interop testing and will not be deployed, and draft-22 which will be
+  // enabled once the draft is finalized and ready to be deployed in Chrome.
+  // Currently, this is to implement the draft-18 vs. experiments field trials.
+  // In the future, this will be to transition cleanly to a final draft-22
+  // which hopefully includes the deployability fixes.
   if (ssl->server &&
       ssl->tls13_variant != tls13_default &&
-      version != TLS1_3_DRAFT21_VERSION) {
+      version != TLS1_3_DRAFT21_VERSION &&
+      version != TLS1_3_DRAFT22_VERSION) {
     return true;
   }
 

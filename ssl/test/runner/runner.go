@@ -5215,7 +5215,7 @@ func addVersionNegotiationTests() {
 				if expectedVersion == VersionTLS13 && runnerVers.tls13Variant != shimVers.tls13Variant {
 					expectedClientVersion = VersionTLS12
 					expectedServerVersion = VersionTLS12
-					if shimVers.tls13Variant != TLS13Default && runnerVers.tls13Variant != TLS13Draft21 {
+					if shimVers.tls13Variant != TLS13Default && runnerVers.tls13Variant != TLS13Draft21 && runnerVers.tls13Variant != TLS13Draft22 {
 						expectedServerVersion = VersionTLS13
 					}
 				}
