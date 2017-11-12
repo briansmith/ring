@@ -59,6 +59,8 @@
 #include <assert.h>
 #include <string.h>
 
+#include <openssl/err.h>
+
 #include "internal.h"
 #include "../../internal.h"
 
@@ -654,6 +656,22 @@ err:
   return ret;
 }
 
+int bn_mul_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a,
+                 const BN_ULONG *b, size_t num_b) {
+  if (num_r != num_a + num_b) {
+    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+  // TODO(davidben): Should this call |bn_mul_comba4| too? |BN_mul| does not
+  // hit that code.
+  if (num_a == 8 && num_b == 8) {
+    bn_mul_comba8(r, a, b);
+  } else {
+    bn_mul_normal(r, a, num_a, b, num_b);
+  }
+  return 1;
+}
+
 // tmp must have 2*n words
 static void bn_sqr_normal(BN_ULONG *r, const BN_ULONG *a, size_t n,
                           BN_ULONG *tmp) {
@@ -863,4 +881,21 @@ int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
 err:
   BN_CTX_end(ctx);
   return ret;
+}
+
+int bn_sqr_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a) {
+  if (num_r != 2 * num_a || num_a > BN_SMALL_MAX_WORDS) {
+    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+  if (num_a == 4) {
+    bn_sqr_comba4(r, a);
+  } else if (num_a == 8) {
+    bn_sqr_comba8(r, a);
+  } else {
+    BN_ULONG tmp[2 * BN_SMALL_MAX_WORDS];
+    bn_sqr_normal(r, a, num_a, tmp);
+    OPENSSL_cleanse(tmp, 2 * num_a * sizeof(BN_ULONG));
+  }
+  return 1;
 }

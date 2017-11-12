@@ -308,6 +308,34 @@ int bn_mod_inverse_secret_prime(BIGNUM *out, const BIGNUM *a, const BIGNUM *p,
 int bn_jacobi(const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
 
 
+// Low-level operations for small numbers.
+//
+// The following functions implement algorithms suitable for use with scalars
+// and field elements in elliptic curves. They rely on the number being small
+// both to stack-allocate various temporaries and because they do not implement
+// optimizations useful for the larger values used in RSA.
+
+// BN_SMALL_MAX_WORDS is the largest size input these functions handle. This
+// limit allows temporaries to be more easily stack-allocated. This limit is set
+// to accommodate P-521.
+#if defined(OPENSSL_32_BIT)
+#define BN_SMALL_MAX_WORDS 17
+#else
+#define BN_SMALL_MAX_WORDS 9
+#endif
+
+// bn_mul_small sets |r| to |a|*|b|. |num_r| must be |num_a| + |num_b|. |r| may
+// not alias with |a| or |b|. This function returns one on success and zero if
+// lengths are inconsistent.
+int bn_mul_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a,
+                 const BN_ULONG *b, size_t num_b);
+
+// bn_sqr_small sets |r| to |a|^2. |num_a| must be at most |BN_SMALL_MAX_WORDS|.
+// |num_r| must be |num_a|*2. |r| and |a| may not alias. This function returns
+// one on success and zero on programmer error.
+int bn_sqr_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a);
+
+
 #if defined(__cplusplus)
 }  // extern C
 #endif

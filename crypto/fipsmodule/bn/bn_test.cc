@@ -357,9 +357,11 @@ static void TestSquare(FileTest *t, BN_CTX *ctx) {
   ASSERT_TRUE(BN_mul(ret.get(), a.get(), a.get(), ctx));
   EXPECT_BIGNUMS_EQUAL("A * A", square.get(), ret.get());
 
-  ASSERT_TRUE(BN_div(ret.get(), remainder.get(), square.get(), a.get(), ctx));
-  EXPECT_BIGNUMS_EQUAL("Square / A", a.get(), ret.get());
-  EXPECT_BIGNUMS_EQUAL("Square % A", zero.get(), remainder.get());
+  if (!BN_is_zero(a.get())) {
+    ASSERT_TRUE(BN_div(ret.get(), remainder.get(), square.get(), a.get(), ctx));
+    EXPECT_BIGNUMS_EQUAL("Square / A", a.get(), ret.get());
+    EXPECT_BIGNUMS_EQUAL("Square % A", zero.get(), remainder.get());
+  }
 
   BN_set_negative(a.get(), 0);
   ASSERT_TRUE(BN_sqrt(ret.get(), square.get(), ctx));
@@ -382,6 +384,31 @@ static void TestSquare(FileTest *t, BN_CTX *ctx) {
         << "BN_sqrt succeeded on a non-square";
     ERR_clear_error();
   }
+
+#if !defined(BORINGSSL_SHARED_LIBRARY)
+  if (static_cast<size_t>(a->top) <= BN_SMALL_MAX_WORDS) {
+    for (size_t num_a = a->top; num_a <= BN_SMALL_MAX_WORDS; num_a++) {
+      SCOPED_TRACE(num_a);
+      size_t num_r = 2 * num_a;
+      // Use newly-allocated buffers so ASan will catch out-of-bounds writes.
+      std::unique_ptr<BN_ULONG[]> a_words(new BN_ULONG[num_a]),
+          r_words(new BN_ULONG[num_r]);
+      OPENSSL_memset(a_words.get(), 0, num_a * sizeof(BN_ULONG));
+      OPENSSL_memcpy(a_words.get(), a->d, a->top * sizeof(BN_ULONG));
+
+      ASSERT_TRUE(bn_mul_small(r_words.get(), num_r, a_words.get(), num_a,
+                               a_words.get(), num_a));
+      ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), num_r));
+      EXPECT_BIGNUMS_EQUAL("A * A (words)", square.get(), ret.get());
+
+      OPENSSL_memset(r_words.get(), 'A', num_r * sizeof(BN_ULONG));
+      ASSERT_TRUE(bn_sqr_small(r_words.get(), num_r, a_words.get(), num_a));
+
+      ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), num_r));
+      EXPECT_BIGNUMS_EQUAL("A^2 (words)", square.get(), ret.get());
+    }
+  }
+#endif
 }
 
 static void TestProduct(FileTest *t, BN_CTX *ctx) {
@@ -402,13 +429,46 @@ static void TestProduct(FileTest *t, BN_CTX *ctx) {
   ASSERT_TRUE(BN_mul(ret.get(), a.get(), b.get(), ctx));
   EXPECT_BIGNUMS_EQUAL("A * B", product.get(), ret.get());
 
-  ASSERT_TRUE(BN_div(ret.get(), remainder.get(), product.get(), a.get(), ctx));
-  EXPECT_BIGNUMS_EQUAL("Product / A", b.get(), ret.get());
-  EXPECT_BIGNUMS_EQUAL("Product % A", zero.get(), remainder.get());
+  if (!BN_is_zero(a.get())) {
+    ASSERT_TRUE(
+        BN_div(ret.get(), remainder.get(), product.get(), a.get(), ctx));
+    EXPECT_BIGNUMS_EQUAL("Product / A", b.get(), ret.get());
+    EXPECT_BIGNUMS_EQUAL("Product % A", zero.get(), remainder.get());
+  }
 
-  ASSERT_TRUE(BN_div(ret.get(), remainder.get(), product.get(), b.get(), ctx));
-  EXPECT_BIGNUMS_EQUAL("Product / B", a.get(), ret.get());
-  EXPECT_BIGNUMS_EQUAL("Product % B", zero.get(), remainder.get());
+  if (!BN_is_zero(b.get())) {
+    ASSERT_TRUE(
+        BN_div(ret.get(), remainder.get(), product.get(), b.get(), ctx));
+    EXPECT_BIGNUMS_EQUAL("Product / B", a.get(), ret.get());
+    EXPECT_BIGNUMS_EQUAL("Product % B", zero.get(), remainder.get());
+  }
+
+#if !defined(BORINGSSL_SHARED_LIBRARY)
+  if (!BN_is_negative(product.get()) &&
+      static_cast<size_t>(a->top) <= BN_SMALL_MAX_WORDS &&
+      static_cast<size_t>(b->top) <= BN_SMALL_MAX_WORDS) {
+    for (size_t num_a = a->top; num_a <= BN_SMALL_MAX_WORDS; num_a++) {
+      SCOPED_TRACE(num_a);
+      for (size_t num_b = b->top; num_b <= BN_SMALL_MAX_WORDS; num_b++) {
+        SCOPED_TRACE(num_b);
+        size_t num_r = num_a + num_b;
+        // Use newly-allocated buffers so ASan will catch out-of-bounds writes.
+        std::unique_ptr<BN_ULONG[]> a_words(new BN_ULONG[num_a]),
+            b_words(new BN_ULONG[num_b]), r_words(new BN_ULONG[num_r]);
+        OPENSSL_memset(a_words.get(), 0, num_a * sizeof(BN_ULONG));
+        OPENSSL_memcpy(a_words.get(), a->d, a->top * sizeof(BN_ULONG));
+
+        OPENSSL_memset(b_words.get(), 0, num_b * sizeof(BN_ULONG));
+        OPENSSL_memcpy(b_words.get(), b->d, b->top * sizeof(BN_ULONG));
+
+        ASSERT_TRUE(bn_mul_small(r_words.get(), num_r, a_words.get(), num_a,
+                                 b_words.get(), num_b));
+        ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), num_r));
+        EXPECT_BIGNUMS_EQUAL("A * B (words)", product.get(), ret.get());
+      }
+    }
+  }
+#endif
 }
 
 static void TestQuotient(FileTest *t, BN_CTX *ctx) {
