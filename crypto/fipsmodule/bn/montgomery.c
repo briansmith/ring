@@ -416,3 +416,68 @@ err:
   BN_CTX_end(ctx);
   return ret;
 }
+
+int bn_to_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
+                           size_t num_a, const BN_MONT_CTX *mont) {
+  return bn_mod_mul_montgomery_small(r, num_r, a, num_a, mont->RR.d,
+                                     mont->RR.top, mont);
+}
+
+int bn_from_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
+                             size_t num_a, const BN_MONT_CTX *mont) {
+  size_t num_n = mont->N.top;
+  if (num_a > 2 * num_n || num_r != num_n || num_n > BN_SMALL_MAX_WORDS) {
+    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+  BN_ULONG tmp[BN_SMALL_MAX_WORDS * 2];
+  size_t num_tmp = 2 * num_n;
+  OPENSSL_memcpy(tmp, a, num_a * sizeof(BN_ULONG));
+  OPENSSL_memset(tmp + num_a, 0, (num_tmp - num_a) * sizeof(BN_ULONG));
+  int ret = bn_from_montgomery_in_place(r, num_r, tmp, num_tmp, mont);
+  OPENSSL_cleanse(tmp, num_tmp * sizeof(BN_ULONG));
+  return ret;
+}
+
+int bn_mod_mul_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
+                                size_t num_a, const BN_ULONG *b, size_t num_b,
+                                const BN_MONT_CTX *mont) {
+  size_t num_n = mont->N.top;
+  if (num_r != num_n || num_a + num_b > 2 * num_n ||
+      num_n > BN_SMALL_MAX_WORDS) {
+    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+#if defined(OPENSSL_BN_ASM_MONT)
+  // |bn_mul_mont| requires at least 128 bits of limbs, at least for x86.
+  if (num_n >= (128 / BN_BITS2) &&
+      num_a == num_n &&
+      num_b == num_n) {
+    if (!bn_mul_mont(r, a, b, mont->N.d, mont->n0, num_n)) {
+      assert(0);  // The check above ensures this won't happen.
+      OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
+      return 0;
+    }
+    return 1;
+  }
+#endif
+
+  // Compute the product.
+  BN_ULONG tmp[2 * BN_SMALL_MAX_WORDS];
+  size_t num_tmp = 2 * num_n;
+  size_t num_ab = num_a + num_b;
+  if (a == b && num_a == num_b) {
+    if (!bn_sqr_small(tmp, num_ab, a, num_a)) {
+      return 0;
+    }
+  } else if (!bn_mul_small(tmp, num_ab, a, num_a, b, num_b)) {
+    return 0;
+  }
+
+  // Zero-extend to full width and reduce.
+  OPENSSL_memset(tmp + num_ab, 0, (num_tmp - num_ab) * sizeof(BN_ULONG));
+  int ret = bn_from_montgomery_in_place(r, num_r, tmp, num_tmp, mont);
+  OPENSSL_cleanse(tmp, num_tmp * sizeof(BN_ULONG));
+  return ret;
+}

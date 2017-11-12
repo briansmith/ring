@@ -542,15 +542,39 @@ static void TestModMul(FileTest *t, BN_CTX *ctx) {
     ASSERT_TRUE(a_tmp);
     ASSERT_TRUE(b_tmp);
     ASSERT_TRUE(BN_MONT_CTX_set(mont.get(), m.get(), ctx));
-    ASSERT_TRUE(BN_nnmod(a_tmp.get(), a.get(), m.get(), ctx));
-    ASSERT_TRUE(BN_nnmod(b_tmp.get(), b.get(), m.get(), ctx));
-    ASSERT_TRUE(BN_to_montgomery(a_tmp.get(), a_tmp.get(), mont.get(), ctx));
-    ASSERT_TRUE(BN_to_montgomery(b_tmp.get(), b_tmp.get(), mont.get(), ctx));
+    ASSERT_TRUE(BN_nnmod(a.get(), a.get(), m.get(), ctx));
+    ASSERT_TRUE(BN_nnmod(b.get(), b.get(), m.get(), ctx));
+    ASSERT_TRUE(BN_to_montgomery(a_tmp.get(), a.get(), mont.get(), ctx));
+    ASSERT_TRUE(BN_to_montgomery(b_tmp.get(), b.get(), mont.get(), ctx));
     ASSERT_TRUE(BN_mod_mul_montgomery(ret.get(), a_tmp.get(), b_tmp.get(),
                                       mont.get(), ctx));
     ASSERT_TRUE(BN_from_montgomery(ret.get(), ret.get(), mont.get(), ctx));
     EXPECT_BIGNUMS_EQUAL("A * B (mod M) (Montgomery)", mod_mul.get(),
                          ret.get());
+
+#if !defined(BORINGSSL_SHARED_LIBRARY)
+    if (m->top <= BN_SMALL_MAX_WORDS) {
+      std::unique_ptr<BN_ULONG[]> a_words(new BN_ULONG[m->top]),
+          b_words(new BN_ULONG[m->top]), r_words(new BN_ULONG[m->top]);
+      OPENSSL_memset(a_words.get(), 0, m->top * sizeof(BN_ULONG));
+      OPENSSL_memcpy(a_words.get(), a->d, a->top * sizeof(BN_ULONG));
+      OPENSSL_memset(b_words.get(), 0, m->top * sizeof(BN_ULONG));
+      OPENSSL_memcpy(b_words.get(), b->d, b->top * sizeof(BN_ULONG));
+      ASSERT_TRUE(bn_to_montgomery_small(a_words.get(), m->top, a_words.get(),
+                                         m->top, mont.get()));
+      ASSERT_TRUE(bn_to_montgomery_small(b_words.get(), m->top, b_words.get(),
+                                         m->top, mont.get()));
+      ASSERT_TRUE(bn_mod_mul_montgomery_small(
+          r_words.get(), m->top, a_words.get(), m->top, b_words.get(), m->top,
+          mont.get()));
+      // Use the second half of |tmp| so ASan will catch out-of-bounds writes.
+      ASSERT_TRUE(bn_from_montgomery_small(r_words.get(), m->top, r_words.get(),
+                                           m->top, mont.get()));
+      ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), m->top));
+      EXPECT_BIGNUMS_EQUAL("A * B (mod M) (Montgomery, words)", mod_mul.get(),
+                           ret.get());
+    }
+#endif
   }
 }
 
@@ -581,8 +605,8 @@ static void TestModSquare(FileTest *t, BN_CTX *ctx) {
     ASSERT_TRUE(mont);
     ASSERT_TRUE(a_tmp);
     ASSERT_TRUE(BN_MONT_CTX_set(mont.get(), m.get(), ctx));
-    ASSERT_TRUE(BN_nnmod(a_tmp.get(), a.get(), m.get(), ctx));
-    ASSERT_TRUE(BN_to_montgomery(a_tmp.get(), a_tmp.get(), mont.get(), ctx));
+    ASSERT_TRUE(BN_nnmod(a.get(), a.get(), m.get(), ctx));
+    ASSERT_TRUE(BN_to_montgomery(a_tmp.get(), a.get(), mont.get(), ctx));
     ASSERT_TRUE(BN_mod_mul_montgomery(ret.get(), a_tmp.get(), a_tmp.get(),
                                       mont.get(), ctx));
     ASSERT_TRUE(BN_from_montgomery(ret.get(), ret.get(), mont.get(), ctx));
@@ -596,6 +620,38 @@ static void TestModSquare(FileTest *t, BN_CTX *ctx) {
     ASSERT_TRUE(BN_from_montgomery(ret.get(), ret.get(), mont.get(), ctx));
     EXPECT_BIGNUMS_EQUAL("A * A_copy (mod M) (Montgomery)", mod_square.get(),
                          ret.get());
+
+#if !defined(BORINGSSL_SHARED_LIBRARY)
+    if (m->top <= BN_SMALL_MAX_WORDS) {
+      std::unique_ptr<BN_ULONG[]> a_words(new BN_ULONG[m->top]),
+          a_copy_words(new BN_ULONG[m->top]), r_words(new BN_ULONG[m->top]);
+      OPENSSL_memset(a_words.get(), 0, m->top * sizeof(BN_ULONG));
+      OPENSSL_memcpy(a_words.get(), a->d, a->top * sizeof(BN_ULONG));
+      ASSERT_TRUE(bn_to_montgomery_small(a_words.get(), m->top, a_words.get(),
+                                         m->top, mont.get()));
+      ASSERT_TRUE(bn_mod_mul_montgomery_small(
+          r_words.get(), m->top, a_words.get(), m->top, a_words.get(), m->top,
+          mont.get()));
+      ASSERT_TRUE(bn_from_montgomery_small(r_words.get(), m->top, r_words.get(),
+                                           m->top, mont.get()));
+      ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), m->top));
+      EXPECT_BIGNUMS_EQUAL("A * A (mod M) (Montgomery, words)",
+                           mod_square.get(), ret.get());
+
+      // Repeat the operation with |a_copy_words|.
+      OPENSSL_memcpy(a_copy_words.get(), a_words.get(),
+                     m->top * sizeof(BN_ULONG));
+      ASSERT_TRUE(bn_mod_mul_montgomery_small(
+          r_words.get(), m->top, a_words.get(), m->top, a_copy_words.get(),
+          m->top, mont.get()));
+      // Use the second half of |tmp| so ASan will catch out-of-bounds writes.
+      ASSERT_TRUE(bn_from_montgomery_small(r_words.get(), m->top, r_words.get(),
+                                           m->top, mont.get()));
+      ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), m->top));
+      EXPECT_BIGNUMS_EQUAL("A * A_copy (mod M) (Montgomery, words)",
+                           mod_square.get(), ret.get());
+    }
+#endif
   }
 }
 

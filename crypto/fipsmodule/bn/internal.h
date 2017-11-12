@@ -335,6 +335,38 @@ int bn_mul_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a,
 // one on success and zero on programmer error.
 int bn_sqr_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a);
 
+// In the following functions, the modulus must be at most |BN_SMALL_MAX_WORDS|
+// words long.
+
+// bn_to_montgomery_small sets |r| to |a| translated to the Montgomery domain.
+// |num_a| and |num_r| must be the length of the modulus, which is
+// |mont->N.top|. |a| must be fully reduced. This function returns one on
+// success and zero if lengths are inconsistent. |r| and |a| may alias.
+int bn_to_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
+                           size_t num_a, const BN_MONT_CTX *mont);
+
+// bn_from_montgomery_small sets |r| to |a| translated out of the Montgomery
+// domain. |num_r| must be the length of the modulus, which is |mont->N.top|.
+// |a| must be at most |mont->N.top| * R and |num_a| must be at most 2 *
+// |mont->N.top|. This function returns one on success and zero if lengths are
+// inconsistent. |r| and |a| may alias.
+int bn_from_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
+                             size_t num_a, const BN_MONT_CTX *mont);
+
+// bn_mod_mul_montgomery_small sets |r| to |a| * |b| mod |mont->N|. Both inputs
+// and outputs are in the Montgomery domain. |num_r| must be the length of the
+// modulus, which is |mont->N.top|. This function returns one on success and
+// zero on internal error or inconsistent lengths. Any two of |r|, |a|, and |b|
+// may alias.
+//
+// This function requires |a| * |b| < N * R, where N is the modulus and R is the
+// Montgomery divisor, 2^(N.top * BN_BITS2). This should generally be satisfied
+// by ensuring |a| and |b| are fully reduced, however ECDSA has one computation
+// which requires the more general bound.
+int bn_mod_mul_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
+                                size_t num_a, const BN_ULONG *b, size_t num_b,
+                                const BN_MONT_CTX *mont);
+
 
 #if defined(__cplusplus)
 }  // extern C
