@@ -680,6 +680,28 @@ static void TestModExp(FileTest *t, BN_CTX *ctx) {
                                           ctx, NULL));
     EXPECT_BIGNUMS_EQUAL("A ^ E (mod M) (constant-time)", mod_exp.get(),
                          ret.get());
+
+#if !defined(BORINGSSL_SHARED_LIBRARY)
+    if (m->top <= BN_SMALL_MAX_WORDS) {
+      bssl::UniquePtr<BN_MONT_CTX> mont(BN_MONT_CTX_new());
+      ASSERT_TRUE(mont.get());
+      ASSERT_TRUE(BN_MONT_CTX_set(mont.get(), m.get(), ctx));
+      ASSERT_TRUE(BN_nnmod(a.get(), a.get(), m.get(), ctx));
+      std::unique_ptr<BN_ULONG[]> r_words(new BN_ULONG[m->top]),
+          a_words(new BN_ULONG[m->top]);
+      OPENSSL_memset(a_words.get(), 0, m->top * sizeof(BN_ULONG));
+      OPENSSL_memcpy(a_words.get(), a->d, a->top * sizeof(BN_ULONG));
+      ASSERT_TRUE(bn_to_montgomery_small(a_words.get(), m->top, a_words.get(),
+                                         m->top, mont.get()));
+      ASSERT_TRUE(bn_mod_exp_mont_small(r_words.get(), m->top, a_words.get(),
+                                        m->top, e->d, e->top, mont.get()));
+      ASSERT_TRUE(bn_from_montgomery_small(r_words.get(), m->top, r_words.get(),
+                                           m->top, mont.get()));
+      ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), m->top));
+      EXPECT_BIGNUMS_EQUAL("A ^ E (mod M) (Montgomery, words)", mod_exp.get(),
+                           ret.get());
+    }
+#endif
   }
 }
 

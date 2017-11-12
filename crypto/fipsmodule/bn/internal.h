@@ -307,6 +307,10 @@ int bn_mod_inverse_secret_prime(BIGNUM *out, const BIGNUM *a, const BIGNUM *p,
 // -2 on error.
 int bn_jacobi(const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
 
+// bn_is_bit_set_words returns one if bit |bit| is set in |a| and zero
+// otherwise.
+int bn_is_bit_set_words(const BN_ULONG *a, size_t num, unsigned bit);
+
 
 // Low-level operations for small numbers.
 //
@@ -366,6 +370,29 @@ int bn_from_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
 int bn_mod_mul_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
                                 size_t num_a, const BN_ULONG *b, size_t num_b,
                                 const BN_MONT_CTX *mont);
+
+// bn_mod_exp_mont_small sets |r| to |a|^|p| mod |mont->N|. It returns one on
+// success and zero on programmer or internal error. Both inputs and outputs are
+// in the Montgomery domain. |num_r| and |num_a| must be |mont->N.top|, which
+// must be at most |BN_SMALL_MAX_WORDS|. |a| must be fully-reduced. This
+// function runs in time independent of |a|, but |p| and |mont->N| are public
+// values.
+//
+// Note this function differs from |BN_mod_exp_mont| which uses Montgomery
+// reduction but takes input and output outside the Montgomery domain. Combine
+// this function with |bn_from_montgomery_small| and |bn_to_montgomery_small|
+// if necessary.
+int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
+                          size_t num_a, const BN_ULONG *p, size_t num_p,
+                          const BN_MONT_CTX *mont);
+
+// bn_mod_inverse_prime_mont_small sets |r| to |a|^-1 mod |mont->N|. |mont->N|
+// must be a prime. |num_r| and |num_a| must be |mont->N.top|, which must be at
+// most |BN_SMALL_MAX_WORDS|. |a| must be fully-reduced. This function runs in
+// time independent of |a|, but |mont->N| is a public value.
+int bn_mod_inverse_prime_mont_small(BN_ULONG *r, size_t num_r,
+                                    const BN_ULONG *a, size_t num_a,
+                                    const BN_MONT_CTX *mont);
 
 
 #if defined(__cplusplus)

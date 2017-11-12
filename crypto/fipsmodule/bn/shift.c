@@ -267,17 +267,20 @@ int BN_clear_bit(BIGNUM *a, int n) {
   return 1;
 }
 
+int bn_is_bit_set_words(const BN_ULONG *a, size_t num, unsigned bit) {
+  unsigned i = bit / BN_BITS2;
+  unsigned j = bit % BN_BITS2;
+  if (i >= num) {
+    return 0;
+  }
+  return (a[i] >> j) & 1;
+}
+
 int BN_is_bit_set(const BIGNUM *a, int n) {
   if (n < 0) {
     return 0;
   }
-  int i = n / BN_BITS2;
-  int j = n % BN_BITS2;
-  if (a->top <= i) {
-    return 0;
-  }
-
-  return (a->d[i]>>j)&1;
+  return bn_is_bit_set_words(a->d, a->top, n);
 }
 
 int BN_mask_bits(BIGNUM *a, int n) {

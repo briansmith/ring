@@ -434,6 +434,15 @@ static int BN_window_bits_for_exponent_size(int b) {
 // value returned from |BN_window_bits_for_exponent_size|.
 #define TABLE_SIZE 32
 
+// TABLE_BITS_SMALL is the smallest value returned from
+// |BN_window_bits_for_exponent_size| when |b| is at most |BN_BITS2| *
+// |BN_SMALL_MAX_WORDS| words.
+#define TABLE_BITS_SMALL 5
+
+// TABLE_SIZE_SMALL is the same as |TABLE_SIZE|, but when |b| is at most
+// |BN_BITS2| * |BN_SMALL_MAX_WORDS|.
+#define TABLE_SIZE_SMALL (1 << (TABLE_BITS_SMALL - 1))
+
 static int mod_exp_recp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
                         const BIGNUM *m, BN_CTX *ctx) {
   int i, j, bits, ret = 0, wstart, window;
@@ -732,6 +741,152 @@ err:
   BN_MONT_CTX_free(new_mont);
   BN_CTX_end(ctx);
   return ret;
+}
+
+int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
+                          size_t num_a, const BN_ULONG *p, size_t num_p,
+                          const BN_MONT_CTX *mont) {
+  const BN_ULONG *n = mont->N.d;
+  size_t num_n = mont->N.top;
+  if (num_n != num_a || num_n != num_r || num_n > BN_SMALL_MAX_WORDS) {
+    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+  if (!BN_is_odd(&mont->N)) {
+    OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
+    return 0;
+  }
+  unsigned bits = 0;
+  if (num_p != 0) {
+    bits = BN_num_bits_word(p[num_p - 1]) + (num_p - 1) * BN_BITS2;
+  }
+  if (bits == 0) {
+    OPENSSL_memset(r, 0, num_r * sizeof(BN_ULONG));
+    if (!BN_is_one(&mont->N)) {
+      r[0] = 1;
+    }
+    return 1;
+  }
+
+  // We exponentiate by looking at sliding windows of the exponent and
+  // precomputing powers of |a|. Windows may be shifted so they always end on a
+  // set bit, so only precompute odd powers. We compute val[i] = a^(2*i + 1) for
+  // i = 0 to 2^(window-1), all in Montgomery form.
+  unsigned window = BN_window_bits_for_exponent_size(bits);
+  if (window > TABLE_BITS_SMALL) {
+    window = TABLE_BITS_SMALL;  // Tolerate excessively large |p|.
+  }
+  int ret = 0;
+  BN_ULONG val[TABLE_SIZE_SMALL][BN_SMALL_MAX_WORDS];
+  OPENSSL_memcpy(val[0], a, num_n * sizeof(BN_ULONG));
+  if (window > 1) {
+    BN_ULONG d[BN_SMALL_MAX_WORDS];
+    if (!bn_mod_mul_montgomery_small(d, num_n, val[0], num_n, val[0], num_n,
+                                     mont)) {
+      goto err;
+    }
+    for (unsigned i = 1; i < 1u << (window - 1); i++) {
+      if (!bn_mod_mul_montgomery_small(val[i], num_n, val[i - 1], num_n, d,
+                                       num_n, mont)) {
+        goto err;
+      }
+    }
+  }
+
+  // Set |r| to one in Montgomery form. If the high bit of |m| is set, |m| is
+  // close to R and we subtract rather than perform Montgomery reduction.
+  if (n[num_n - 1] & (((BN_ULONG)1) << (BN_BITS2 - 1))) {
+    // r = 2^(top*BN_BITS2) - m
+    r[0] = 0 - n[0];
+    for (size_t i = 1; i < num_n; i++) {
+      r[i] = ~n[i];
+    }
+  } else if (!bn_from_montgomery_small(r, num_r, mont->RR.d, mont->RR.top,
+                                       mont)) {
+    goto err;
+  }
+
+  int r_is_one = 1;
+  unsigned wstart = bits - 1;  // The top bit of the window.
+  for (;;) {
+    if (!bn_is_bit_set_words(p, num_p, wstart)) {
+      if (!r_is_one &&
+          !bn_mod_mul_montgomery_small(r, num_r, r, num_r, r, num_r, mont)) {
+        goto err;
+      }
+      if (wstart == 0) {
+        break;
+      }
+      wstart--;
+      continue;
+    }
+
+    // We now have wstart on a set bit. Find the largest window we can use.
+    unsigned wvalue = 1;
+    unsigned wsize = 0;
+    for (unsigned i = 1; i < window && i <= wstart; i++) {
+      if (bn_is_bit_set_words(p, num_p, wstart - i)) {
+        wvalue <<= (i - wsize);
+        wvalue |= 1;
+        wsize = i;
+      }
+    }
+
+    // Shift |r| to the end of the window.
+    if (!r_is_one) {
+      for (unsigned i = 0; i < wsize + 1; i++) {
+        if (!bn_mod_mul_montgomery_small(r, num_r, r, num_r, r, num_r, mont)) {
+          goto err;
+        }
+      }
+    }
+
+    assert(wvalue & 1);
+    assert(wvalue < (1u << window));
+    if (!bn_mod_mul_montgomery_small(r, num_r, r, num_r, val[wvalue >> 1],
+                                     num_n, mont)) {
+      goto err;
+    }
+
+    r_is_one = 0;
+    if (wstart == wsize) {
+      break;
+    }
+    wstart -= wsize + 1;
+  }
+
+  ret = 1;
+
+err:
+  OPENSSL_cleanse(val, sizeof(val));
+  return ret;
+}
+
+int bn_mod_inverse_prime_mont_small(BN_ULONG *r, size_t num_r,
+                                    const BN_ULONG *a, size_t num_a,
+                                    const BN_MONT_CTX *mont) {
+  const BN_ULONG *p = mont->N.d;
+  size_t num_p = mont->N.top;
+  if (num_p > BN_SMALL_MAX_WORDS || num_p == 0) {
+    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  // Per Fermat's Little Theorem, a^-1 = a^(p-2) (mod p) for p prime.
+  BN_ULONG p_minus_two[BN_SMALL_MAX_WORDS];
+  OPENSSL_memcpy(p_minus_two, p, num_p * sizeof(BN_ULONG));
+  if (p_minus_two[0] >= 2) {
+    p_minus_two[0] -= 2;
+  } else {
+    p_minus_two[0] -= 2;
+    for (size_t i = 1; i < num_p; i++) {
+      if (p_minus_two[i]-- != 0) {
+        break;
+      }
+    }
+  }
+
+  return bn_mod_exp_mont_small(r, num_r, a, num_a, p_minus_two, num_p, mont);
 }
 
 
