@@ -60,49 +60,44 @@
 #include <string.h>
 
 #include "internal.h"
+#include "../../internal.h"
 
 
 #define BN_MUL_RECURSIVE_SIZE_NORMAL 16
 #define BN_SQR_RECURSIVE_SIZE_NORMAL BN_MUL_RECURSIVE_SIZE_NORMAL
 
 
-static void bn_mul_normal(BN_ULONG *r, BN_ULONG *a, int na, BN_ULONG *b,
-                          int nb) {
-  BN_ULONG *rr;
-
+static void bn_mul_normal(BN_ULONG *r, BN_ULONG *a, size_t na, BN_ULONG *b,
+                          size_t nb) {
   if (na < nb) {
-    int itmp;
-    BN_ULONG *ltmp;
-
-    itmp = na;
+    size_t itmp = na;
     na = nb;
     nb = itmp;
-    ltmp = a;
+    BN_ULONG *ltmp = a;
     a = b;
     b = ltmp;
   }
-  rr = &(r[na]);
-  if (nb <= 0) {
-    (void)bn_mul_words(r, a, na, 0);
+  BN_ULONG *rr = &(r[na]);
+  if (nb == 0) {
+    OPENSSL_memset(r, 0, na * sizeof(BN_ULONG));
     return;
-  } else {
-    rr[0] = bn_mul_words(r, a, na, b[0]);
   }
+  rr[0] = bn_mul_words(r, a, na, b[0]);
 
   for (;;) {
-    if (--nb <= 0) {
+    if (--nb == 0) {
       return;
     }
     rr[1] = bn_mul_add_words(&(r[1]), a, na, b[1]);
-    if (--nb <= 0) {
+    if (--nb == 0) {
       return;
     }
     rr[2] = bn_mul_add_words(&(r[2]), a, na, b[2]);
-    if (--nb <= 0) {
+    if (--nb == 0) {
       return;
     }
     rr[3] = bn_mul_add_words(&(r[3]), a, na, b[3]);
-    if (--nb <= 0) {
+    if (--nb == 0) {
       return;
     }
     rr[4] = bn_mul_add_words(&(r[4]), a, na, b[4]);
@@ -659,27 +654,30 @@ err:
 }
 
 // tmp must have 2*n words
-static void bn_sqr_normal(BN_ULONG *r, const BN_ULONG *a, int n,
+static void bn_sqr_normal(BN_ULONG *r, const BN_ULONG *a, size_t n,
                           BN_ULONG *tmp) {
-  int max = n * 2;
+  if (n == 0) {
+    return;
+  }
+
+  size_t max = n * 2;
   const BN_ULONG *ap = a;
   BN_ULONG *rp = r;
   rp[0] = rp[max - 1] = 0;
   rp++;
-  int j = n;
 
   // Compute the contribution of a[i] * a[j] for all i < j.
-  if (--j > 0) {
+  if (n > 1) {
     ap++;
-    rp[j] = bn_mul_words(rp, ap, j, ap[-1]);
+    rp[n - 1] = bn_mul_words(rp, ap, n - 1, ap[-1]);
     rp += 2;
   }
-
-  for (int i = n - 2; i > 0; i--) {
-    j--;
-    ap++;
-    rp[j] = bn_mul_add_words(rp, ap, j, ap[-1]);
-    rp += 2;
+  if (n > 2) {
+    for (size_t i = n - 2; i > 0; i--) {
+      ap++;
+      rp[i] = bn_mul_add_words(rp, ap, i, ap[-1]);
+      rp += 2;
+    }
   }
 
   // The final result fits in |max| words, so none of the following operations

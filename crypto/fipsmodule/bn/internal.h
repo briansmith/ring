@@ -214,34 +214,34 @@ int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num);
 // the result in |rp|. |ap| and |rp| must both be |num| words long. It returns
 // the carry word of the operation. |ap| and |rp| may be equal but otherwise may
 // not alias.
-BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
+BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
                           BN_ULONG w);
 
 // bn_mul_words multiples |ap| by |w| and places the result in |rp|. |ap| and
 // |rp| must both be |num| words long. It returns the carry word of the
 // operation. |ap| and |rp| may be equal but otherwise may not alias.
-BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w);
+BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num, BN_ULONG w);
 
 // bn_sqr_words sets |rp[2*i]| and |rp[2*i+1]| to |ap[i]|'s square, for all |i|
 // up to |num|. |ap| is an array of |num| words and |rp| an array of |2*num|
 // words. |ap| and |rp| may not alias.
 //
 // This gives the contribution of the |ap[i]*ap[i]| terms when squaring |ap|.
-void bn_sqr_words(BN_ULONG *rp, const BN_ULONG *ap, int num);
+void bn_sqr_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num);
 
 // bn_add_words adds |ap| to |bp| and places the result in |rp|, each of which
 // are |num| words long. It returns the carry bit, which is one if the operation
 // overflowed and zero otherwise. Any pair of |ap|, |bp|, and |rp| may be equal
 // to each other but otherwise may not alias.
 BN_ULONG bn_add_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-                      int num);
+                      size_t num);
 
 // bn_sub_words subtracts |bp| from |ap| and places the result in |rp|. It
 // returns the borrow bit, which is one if the computation underflowed and zero
 // otherwise. Any pair of |ap|, |bp|, and |rp| may be equal to each other but
 // otherwise may not alias.
 BN_ULONG bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-                      int num);
+                      size_t num);
 
 // bn_mul_comba4 sets |r| to the product of |a| and |b|.
 void bn_mul_comba4(BN_ULONG r[8], BN_ULONG a[4], BN_ULONG b[4]);

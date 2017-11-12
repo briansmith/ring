@@ -124,12 +124,11 @@
 
 #endif  // !BN_ULLONG
 
-BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
+BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
                           BN_ULONG w) {
   BN_ULONG c1 = 0;
 
-  assert(num >= 0);
-  if (num <= 0) {
+  if (num == 0) {
     return c1;
   }
 
@@ -153,11 +152,11 @@ BN_ULONG bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
   return c1;
 }
 
-BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w) {
+BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
+                      BN_ULONG w) {
   BN_ULONG c1 = 0;
 
-  assert(num >= 0);
-  if (num <= 0) {
+  if (num == 0) {
     return c1;
   }
 
@@ -179,9 +178,8 @@ BN_ULONG bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num, BN_ULONG w) {
   return c1;
 }
 
-void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, int n) {
-  assert(n >= 0);
-  if (n <= 0) {
+void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, size_t n) {
+  if (n == 0) {
     return;
   }
 
@@ -204,11 +202,10 @@ void bn_sqr_words(BN_ULONG *r, const BN_ULONG *a, int n) {
 
 #ifdef BN_ULLONG
 BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
-                      int n) {
+                      size_t n) {
   BN_ULLONG ll = 0;
 
-  assert(n >= 0);
-  if (n <= 0) {
+  if (n == 0) {
     return 0;
   }
 
@@ -245,11 +242,10 @@ BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
 #else  // !BN_ULLONG
 
 BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
-                      int n) {
+                      size_t n) {
   BN_ULONG c, l, t;
 
-  assert(n >= 0);
-  if (n <= 0) {
+  if (n == 0) {
     return (BN_ULONG)0;
   }
 
@@ -302,12 +298,11 @@ BN_ULONG bn_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
 #endif  // !BN_ULLONG
 
 BN_ULONG bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
-                      int n) {
+                      size_t n) {
   BN_ULONG t1, t2;
   int c = 0;
 
-  assert(n >= 0);
-  if (n <= 0) {
+  if (n == 0) {
     return (BN_ULONG)0;
   }
 
