@@ -368,6 +368,7 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 		isDTLS:                c.isDTLS,
 		vers:                  c.wireVersion,
 		sessionId:             hs.clientHello.sessionId,
+		compressionMethod:     config.Bugs.SendCompressionMethod,
 		versOverride:          config.Bugs.SendServerHelloVersion,
 		supportedVersOverride: config.Bugs.SendServerSupportedExtensionVersion,
 		customExtension:       config.Bugs.CustomUnencryptedExtension,
@@ -534,6 +535,7 @@ ResendHelloRetryRequest:
 		vers:                c.wireVersion,
 		sessionId:           hs.clientHello.sessionId,
 		cipherSuite:         cipherSuite,
+		compressionMethod:   config.Bugs.SendCompressionMethod,
 		duplicateExtensions: config.Bugs.DuplicateHelloRetryRequestExtensions,
 	}
 

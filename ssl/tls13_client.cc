@@ -75,11 +75,14 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
 
     CBS body = msg.body, server_random, session_id;
     uint16_t server_version;
+    uint8_t compression_method;
     if (!CBS_get_u16(&body, &server_version) ||
         !CBS_get_bytes(&body, &server_random, SSL3_RANDOM_SIZE) ||
         !CBS_get_u8_length_prefixed(&body, &session_id) ||
+        !CBS_mem_equal(&session_id, hs->session_id, hs->session_id_len) ||
         !CBS_get_u16(&body, &cipher_suite) ||
-        !CBS_skip(&body, 1) ||
+        !CBS_get_u8(&body, &compression_method) ||
+        compression_method != 0 ||
         !CBS_get_u16_length_prefixed(&body, &extensions) ||
         CBS_len(&extensions) == 0 ||
         CBS_len(&body) != 0) {
@@ -251,7 +254,8 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   if (!CBS_get_u16(&body, &server_version) ||
       !CBS_get_bytes(&body, &server_random, SSL3_RANDOM_SIZE) ||
       (ssl_is_resumption_experiment(ssl->version) &&
-       !CBS_get_u8_length_prefixed(&body, &session_id)) ||
+       (!CBS_get_u8_length_prefixed(&body, &session_id) ||
+        !CBS_mem_equal(&session_id, hs->session_id, hs->session_id_len))) ||
       !CBS_get_u16(&body, &cipher_suite) ||
       (ssl_is_resumption_experiment(ssl->version) &&
        (!CBS_get_u8(&body, &compression_method) || compression_method != 0)) ||
