@@ -67,13 +67,13 @@
 #define BN_SQR_RECURSIVE_SIZE_NORMAL BN_MUL_RECURSIVE_SIZE_NORMAL
 
 
-static void bn_mul_normal(BN_ULONG *r, BN_ULONG *a, size_t na, BN_ULONG *b,
-                          size_t nb) {
+static void bn_mul_normal(BN_ULONG *r, const BN_ULONG *a, size_t na,
+                          const BN_ULONG *b, size_t nb) {
   if (na < nb) {
     size_t itmp = na;
     na = nb;
     nb = itmp;
-    BN_ULONG *ltmp = a;
+    const BN_ULONG *ltmp = a;
     a = b;
     b = ltmp;
   }
@@ -289,8 +289,8 @@ BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
 // a[0]*b[0]+a[1]*b[1]+(a[0]-a[1])*(b[1]-b[0])
 // a[1]*b[1]
 // dnX may not be positive, but n2/2+dnX has to be
-static void bn_mul_recursive(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n2,
-                             int dna, int dnb, BN_ULONG *t) {
+static void bn_mul_recursive(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
+                             int n2, int dna, int dnb, BN_ULONG *t) {
   int n = n2 / 2, c1, c2;
   int tna = n + dna, tnb = n + dnb;
   unsigned int neg, zero;
@@ -421,8 +421,9 @@ static void bn_mul_recursive(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n2,
 // n+tn is the word length
 // t needs to be n*4 is size, as does r
 // tnX may not be negative but less than n
-static void bn_mul_part_recursive(BN_ULONG *r, BN_ULONG *a, BN_ULONG *b, int n,
-                                  int tna, int tnb, BN_ULONG *t) {
+static void bn_mul_part_recursive(BN_ULONG *r, const BN_ULONG *a,
+                                  const BN_ULONG *b, int n, int tna, int tnb,
+                                  BN_ULONG *t) {
   int i, j, n2 = n * 2;
   int c1, c2, neg;
   BN_ULONG ln, lo, *p;
