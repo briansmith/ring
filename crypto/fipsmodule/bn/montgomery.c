@@ -260,72 +260,75 @@ int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont,
   return BN_mod_mul_montgomery(ret, a, &mont->RR, mont, ctx);
 }
 
-static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
-                                   const BN_MONT_CTX *mont) {
-  const BIGNUM *n = &mont->N;
-  int nl = n->top;
-  if (nl == 0) {
-    ret->top = 0;
-    return 1;
-  }
-
-  int max = (2 * nl);  // carry is stored separately
-  if (!bn_wexpand(r, max)) {
+static int bn_from_montgomery_in_place(BN_ULONG *r, size_t num_r, BN_ULONG *a,
+                                       size_t num_a, const BN_MONT_CTX *mont) {
+  const BN_ULONG *n = mont->N.d;
+  size_t num_n = mont->N.top;
+  if (num_r != num_n || num_a != 2 * num_n) {
+    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
-
-  r->neg ^= n->neg;
-  BN_ULONG *np = n->d;
-  BN_ULONG *rp = r->d;
-
-  // Clear the top words of T.
-  if (max > r->top) {
-    OPENSSL_memset(&rp[r->top], 0, (max - r->top) * sizeof(BN_ULONG));
-  }
-
-  r->top = max;
-  BN_ULONG n0 = mont->n0[0];
 
   // Add multiples of |n| to |r| until R = 2^(nl * BN_BITS2) divides it. On
   // input, we had |r| < |n| * R, so now |r| < 2 * |n| * R. Note that |r|
   // includes |carry| which is stored separately.
+  BN_ULONG n0 = mont->n0[0];
   BN_ULONG carry = 0;
-  for (int i = 0; i < nl; i++, rp++) {
-    BN_ULONG v = bn_mul_add_words(rp, np, nl, rp[0] * n0);
-    v += carry + rp[nl];
-    carry |= (v != rp[nl]);
-    carry &= (v <= rp[nl]);
-    rp[nl] = v;
+  for (size_t i = 0; i < num_n; i++) {
+    BN_ULONG v = bn_mul_add_words(a + i, n, num_n, a[i] * n0);
+    v += carry + a[i + num_n];
+    carry |= (v != a[i + num_n]);
+    carry &= (v <= a[i + num_n]);
+    a[i + num_n] = v;
   }
 
-  if (!bn_wexpand(ret, nl)) {
-    return 0;
-  }
-  ret->top = nl;
-  ret->neg = r->neg;
-  rp = ret->d;
-
-  // Shift |nl| words to divide by R. We have |ap| < 2 * |n|. Note that |ap|
+  // Shift |num_n| words to divide by R. We have |a| < 2 * |n|. Note that |a|
   // includes |carry| which is stored separately.
-  BN_ULONG *ap = &(r->d[nl]);
+  a += num_n;
 
-  // |ap| thus requires at most one additional subtraction |n| to be reduced.
+  // |a| thus requires at most one additional subtraction |n| to be reduced.
   // Subtract |n| and select the answer in constant time.
   OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
                          crypto_word_t_too_small);
-  BN_ULONG v = bn_sub_words(rp, ap, np, nl) - carry;
-  // |v| is one if |ap| - |np| underflowed or zero if it did not. Note |v|
-  // cannot be -1. That would imply the subtraction did not fit in |nl| words,
-  // and we know at most one subtraction is needed.
+  BN_ULONG v = bn_sub_words(r, a, n, num_n) - carry;
+  // |v| is one if |a| - |n| underflowed or zero if it did not. Note |v| cannot
+  // be -1. That would imply the subtraction did not fit in |num_n| words, and
+  // we know at most one subtraction is needed.
   v = 0u - v;
-  for (int i = 0; i < nl; i++) {
-    rp[i] = constant_time_select_w(v, ap[i], rp[i]);
-    ap[i] = 0;
+  for (size_t i = 0; i < num_n; i++) {
+    r[i] = constant_time_select_w(v, a[i], r[i]);
+    a[i] = 0;
   }
+  return 1;
+}
+
+static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
+                                   const BN_MONT_CTX *mont) {
+  const BIGNUM *n = &mont->N;
+  if (n->top == 0) {
+    ret->top = 0;
+    return 1;
+  }
+
+  int max = (2 * n->top);  // carry is stored separately
+  if (!bn_wexpand(r, max) ||
+      !bn_wexpand(ret, n->top)) {
+    return 0;
+  }
+  // Clear the top words of |r|.
+  if (max > r->top) {
+    OPENSSL_memset(r->d + r->top, 0, (max - r->top) * sizeof(BN_ULONG));
+  }
+  r->top = max;
+  ret->top = n->top;
+
+  if (!bn_from_montgomery_in_place(ret->d, ret->top, r->d, r->top, mont)) {
+    return 0;
+  }
+  ret->neg = r->neg;
 
   bn_correct_top(r);
   bn_correct_top(ret);
-
   return 1;
 }
 
