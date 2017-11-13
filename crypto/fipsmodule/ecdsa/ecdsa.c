@@ -174,62 +174,64 @@ int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s) {
 
 int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
                     const ECDSA_SIG *sig, const EC_KEY *eckey) {
-  int ret = 0;
-  BN_CTX *ctx;
-  BIGNUM *u1, *u2, *m, *X;
-  EC_POINT *point = NULL;
-  const EC_GROUP *group;
-  const EC_POINT *pub_key;
-
-  // check input values
-  if ((group = EC_KEY_get0_group(eckey)) == NULL ||
-      (pub_key = EC_KEY_get0_public_key(eckey)) == NULL ||
-      sig == NULL) {
+  const EC_GROUP *group = EC_KEY_get0_group(eckey);
+  const EC_POINT *pub_key = EC_KEY_get0_public_key(eckey);
+  if (group == NULL || pub_key == NULL || sig == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_MISSING_PARAMETERS);
     return 0;
   }
 
-  ctx = BN_CTX_new();
+  BN_CTX *ctx = BN_CTX_new();
   if (!ctx) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
     return 0;
   }
+  int ret = 0;
+  EC_POINT *point = NULL;
   BN_CTX_start(ctx);
-  u1 = BN_CTX_get(ctx);
-  u2 = BN_CTX_get(ctx);
-  m = BN_CTX_get(ctx);
-  X = BN_CTX_get(ctx);
-  if (u1 == NULL || u2 == NULL || m == NULL || X == NULL) {
+  BIGNUM *X = BN_CTX_get(ctx);
+  if (X == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
 
+  EC_SCALAR r, s, m, u1, u2, s_inv_mont;
   const BIGNUM *order = EC_GROUP_get0_order(group);
-  if (BN_is_zero(sig->r) || BN_is_negative(sig->r) ||
-      BN_ucmp(sig->r, order) >= 0 || BN_is_zero(sig->s) ||
-      BN_is_negative(sig->s) || BN_ucmp(sig->s, order) >= 0) {
+  if (BN_is_zero(sig->r) ||
+      BN_is_negative(sig->r) ||
+      BN_ucmp(sig->r, order) >= 0 ||
+      !ec_bignum_to_scalar(group, &r, sig->r) ||
+      BN_is_zero(sig->s) ||
+      BN_is_negative(sig->s) ||
+      BN_ucmp(sig->s, order) >= 0 ||
+      !ec_bignum_to_scalar(group, &s, sig->s)) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     goto err;
   }
-  // tmp = inv(s) mod order
+  // s_inv_mont = s^-1 mod order. We convert the result to Montgomery form for
+  // the products below.
   int no_inverse;
-  if (!BN_mod_inverse_odd(u2, &no_inverse, sig->s, order, ctx)) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
+  if (!BN_mod_inverse_odd(X, &no_inverse, sig->s, order, ctx) ||
+      !ec_bignum_to_scalar(group, &s_inv_mont, X) ||
+      !bn_to_montgomery_small(s_inv_mont.words, order->top, s_inv_mont.words,
+                              order->top, group->order_mont)) {
     goto err;
   }
-  EC_SCALAR m_scalar;
-  digest_to_scalar(group, &m_scalar, digest, digest_len);
-  if (!bn_set_words(m, m_scalar.words, order->top)) {
-    goto err;
-  }
-  // u1 = m * tmp mod order
-  if (!BN_mod_mul(u1, m, u2, order, ctx)) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
-    goto err;
-  }
-  // u2 = r * tmp mod order
-  if (!BN_mod_mul(u2, sig->r, u2, order, ctx)) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
+  // u1 = m * s_inv_mont mod order
+  // u2 = r * s_inv_mont mod order
+  //
+  // |s_inv_mont| is in Montgomery form while |m| and |r| are not, so |u1| and
+  // |u2| will be taken out of Montgomery form, as desired. Note that, although
+  // |m| is not fully reduced, |bn_mod_mul_montgomery_small| only requires the
+  // product not exceed R * |order|. |s_inv_mont| is fully reduced and |m| <
+  // 2^BN_num_bits(order) <= R, so this holds.
+  digest_to_scalar(group, &m, digest, digest_len);
+  if (!bn_mod_mul_montgomery_small(u1.words, order->top, m.words, order->top,
+                                   s_inv_mont.words, order->top,
+                                   group->order_mont) ||
+      !bn_mod_mul_montgomery_small(u2.words, order->top, r.words, order->top,
+                                   s_inv_mont.words, order->top,
+                                   group->order_mont)) {
     goto err;
   }
 
@@ -238,7 +240,7 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
-  if (!EC_POINT_mul(group, point, u1, pub_key, u2, ctx)) {
+  if (!ec_point_mul_scalar(group, point, &u1, pub_key, &u2, ctx)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
     goto err;
   }
