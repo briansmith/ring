@@ -64,6 +64,7 @@
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 
+#include "../ec/internal.h"
 #include "../../test/file_test.h"
 
 
@@ -396,14 +397,10 @@ TEST(ECDSATest, SignTestVectors) {
       ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
       ASSERT_TRUE(EC_KEY_check_key(key.get()));
 
-      // |ECDSA_do_sign_ex| expects |k| to already be inverted.
-      bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
-      ASSERT_TRUE(ctx);
-      ASSERT_TRUE(BN_mod_inverse(k.get(), k.get(),
-                                 EC_GROUP_get0_order(group.get()), ctx.get()));
-
-      bssl::UniquePtr<ECDSA_SIG> sig(ECDSA_do_sign_ex(
-          digest.data(), digest.size(), k.get(), r.get(), key.get()));
+      // Set the fixed k for testing purposes.
+      key->fixed_k = k.release();
+      bssl::UniquePtr<ECDSA_SIG> sig(
+          ECDSA_do_sign(digest.data(), digest.size(), key.get()));
       ASSERT_TRUE(sig);
 
       EXPECT_EQ(0, BN_cmp(r.get(), sig->r));

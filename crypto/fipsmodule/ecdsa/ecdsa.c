@@ -137,11 +137,6 @@ int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s) {
   return 1;
 }
 
-ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
-                         const EC_KEY *key) {
-  return ECDSA_do_sign_ex(digest, digest_len, NULL, NULL, key);
-}
-
 int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
                     const ECDSA_SIG *sig, const EC_KEY *eckey) {
   int ret = 0;
@@ -233,10 +228,9 @@ err:
   return ret;
 }
 
-static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
+static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx, BIGNUM **kinvp,
                             BIGNUM **rp, const uint8_t *digest,
                             size_t digest_len) {
-  BN_CTX *ctx = NULL;
   BIGNUM *k = NULL, *kinv = NULL, *r = NULL, *tmp = NULL;
   EC_POINT *tmp_point = NULL;
   const EC_GROUP *group;
@@ -245,15 +239,6 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
   if (eckey == NULL || (group = EC_KEY_get0_group(eckey)) == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
-  }
-
-  if (ctx_in == NULL) {
-    if ((ctx = BN_CTX_new()) == NULL) {
-      OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
-  } else {
-    ctx = ctx_in;
   }
 
   k = BN_new();
@@ -280,20 +265,13 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
   }
 
   do {
-    // If possible, we'll include the private key and message digest in the k
-    // generation. The |digest| argument is only empty if |ECDSA_sign_setup| is
-    // being used.
+    // Include the private key and message digest in the k generation.
     if (eckey->fixed_k != NULL) {
       if (!BN_copy(k, eckey->fixed_k)) {
         goto err;
       }
-    } else if (digest_len > 0) {
-      if (!BN_generate_dsa_nonce(k, order, EC_KEY_get0_private_key(eckey),
-                                 digest, digest_len, ctx)) {
-        OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED);
-        goto err;
-      }
-    } else if (!BN_rand_range_ex(k, 1, order)) {
+    } else if (!BN_generate_dsa_nonce(k, order, EC_KEY_get0_private_key(eckey),
+                                      digest, digest_len, ctx)) {
       OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_RANDOM_NUMBER_GENERATION_FAILED);
       goto err;
     }
@@ -350,25 +328,15 @@ err:
     BN_clear_free(kinv);
     BN_clear_free(r);
   }
-  if (ctx_in == NULL) {
-    BN_CTX_free(ctx);
-  }
   EC_POINT_free(tmp_point);
   BN_clear_free(tmp);
   return ret;
 }
 
-int ECDSA_sign_setup(const EC_KEY *eckey, BN_CTX *ctx, BIGNUM **kinv,
-                     BIGNUM **rp) {
-  return ecdsa_sign_setup(eckey, ctx, kinv, rp, NULL, 0);
-}
-
-ECDSA_SIG *ECDSA_do_sign_ex(const uint8_t *digest, size_t digest_len,
-                            const BIGNUM *in_kinv, const BIGNUM *in_r,
-                            const EC_KEY *eckey) {
+ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
+                         const EC_KEY *eckey) {
   int ok = 0;
   BIGNUM *kinv = NULL, *s, *m = NULL, *tmp = NULL;
-  const BIGNUM *ckinv;
   BN_CTX *ctx = NULL;
   const EC_GROUP *group;
   ECDSA_SIG *ret;
@@ -407,18 +375,9 @@ ECDSA_SIG *ECDSA_do_sign_ex(const uint8_t *digest, size_t digest_len,
     goto err;
   }
   for (;;) {
-    if (in_kinv == NULL || in_r == NULL) {
-      if (!ecdsa_sign_setup(eckey, ctx, &kinv, &ret->r, digest, digest_len)) {
-        OPENSSL_PUT_ERROR(ECDSA, ERR_R_ECDSA_LIB);
-        goto err;
-      }
-      ckinv = kinv;
-    } else {
-      ckinv = in_kinv;
-      if (BN_copy(ret->r, in_r) == NULL) {
-        OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
-        goto err;
-      }
+    if (!ecdsa_sign_setup(eckey, ctx, &kinv, &ret->r, digest, digest_len)) {
+      OPENSSL_PUT_ERROR(ECDSA, ERR_R_ECDSA_LIB);
+      goto err;
     }
 
     if (!BN_mod_mul(tmp, priv_key, ret->r, order, ctx)) {
@@ -429,18 +388,11 @@ ECDSA_SIG *ECDSA_do_sign_ex(const uint8_t *digest, size_t digest_len,
       OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
       goto err;
     }
-    if (!BN_mod_mul(s, s, ckinv, order, ctx)) {
+    if (!BN_mod_mul(s, s, kinv, order, ctx)) {
       OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
       goto err;
     }
-    if (BN_is_zero(s)) {
-      // if kinv and r have been supplied by the caller
-      // don't to generate new kinv and r values
-      if (in_kinv != NULL && in_r != NULL) {
-        OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_NEED_NEW_SETUP_VALUES);
-        goto err;
-      }
-    } else {
+    if (!BN_is_zero(s)) {
       // s != 0 => we have a valid signature
       break;
     }

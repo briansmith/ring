@@ -73,13 +73,6 @@ int ECDSA_sign(int type, const uint8_t *digest, size_t digest_len, uint8_t *sig,
                                    (EC_KEY*) eckey /* cast away const */);
   }
 
-  return ECDSA_sign_ex(type, digest, digest_len, sig, sig_len, NULL, NULL,
-                       eckey);
-}
-
-int ECDSA_sign_ex(int type, const uint8_t *digest, size_t digest_len,
-                  uint8_t *sig, unsigned int *sig_len, const BIGNUM *kinv,
-                  const BIGNUM *r, const EC_KEY *eckey) {
   int ret = 0;
   ECDSA_SIG *s = NULL;
 
@@ -89,7 +82,7 @@ int ECDSA_sign_ex(int type, const uint8_t *digest, size_t digest_len,
     goto err;
   }
 
-  s = ECDSA_do_sign_ex(digest, digest_len, kinv, r, eckey);
+  s = ECDSA_do_sign(digest, digest_len, eckey);
   if (s == NULL) {
     *sig_len = 0;
     goto err;
