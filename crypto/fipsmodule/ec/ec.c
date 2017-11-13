@@ -77,6 +77,7 @@
 
 #include "internal.h"
 #include "../../internal.h"
+#include "../bn/internal.h"
 #include "../delocate.h"
 
 
@@ -829,7 +830,53 @@ int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
   // nothing to multiply. But, nobody should be calling this function with
   // nothing to multiply in the first place.
   if ((g_scalar == NULL && p_scalar == NULL) ||
-      ((p == NULL) != (p_scalar == NULL)))  {
+      (p == NULL) != (p_scalar == NULL))  {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  // We cannot easily process arbitrary scalars in constant-time, and there is
+  // no need to do so. Require that scalars be the same size as the order.
+  //
+  // One could require they be fully reduced, but some consumers try to check
+  // that |order| * |pubkey| is the identity. This comes from following NIST SP
+  // 800-56A section 5.6.2.3.2. (Though all our curves have cofactor one, so
+  // this check isn't useful.)
+  int ret = 0;
+  EC_SCALAR g_scalar_storage, p_scalar_storage;
+  EC_SCALAR *g_scalar_arg = NULL, *p_scalar_arg = NULL;
+  unsigned order_bits = BN_num_bits(&group->order);
+  if (g_scalar != NULL) {
+    if (BN_is_negative(g_scalar) || BN_num_bits(g_scalar) > order_bits ||
+        !ec_bignum_to_scalar(group, &g_scalar_storage, g_scalar)) {
+      OPENSSL_PUT_ERROR(EC, EC_R_INVALID_SCALAR);
+      goto err;
+    }
+    g_scalar_arg = &g_scalar_storage;
+  }
+
+  if (p_scalar != NULL) {
+    if (BN_is_negative(p_scalar) || BN_num_bits(p_scalar) > order_bits ||
+        !ec_bignum_to_scalar(group, &p_scalar_storage, p_scalar)) {
+      OPENSSL_PUT_ERROR(EC, EC_R_INVALID_SCALAR);
+      goto err;
+    }
+    p_scalar_arg = &p_scalar_storage;
+  }
+
+  ret = ec_point_mul_scalar(group, r, g_scalar_arg, p, p_scalar_arg, ctx);
+
+err:
+  OPENSSL_cleanse(&g_scalar_storage, sizeof(g_scalar_storage));
+  OPENSSL_cleanse(&p_scalar_storage, sizeof(p_scalar_storage));
+  return ret;
+}
+
+int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,
+                        const EC_SCALAR *g_scalar, const EC_POINT *p,
+                        const EC_SCALAR *p_scalar, BN_CTX *ctx) {
+  if ((g_scalar == NULL && p_scalar == NULL) ||
+      (p == NULL) != (p_scalar == NULL))  {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -883,4 +930,21 @@ size_t EC_get_builtin_curves(EC_builtin_curve *out_curves,
   }
 
   return OPENSSL_NUM_BUILT_IN_CURVES;
+}
+
+int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
+                        const BIGNUM *in) {
+  if (BN_is_negative(in) || in->top > group->order.top) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_SCALAR);
+    return 0;
+  }
+  OPENSSL_memset(out->words, 0, group->order.top * sizeof(BN_ULONG));
+  OPENSSL_memcpy(out->words, in->d, in->top * sizeof(BN_ULONG));
+  return 1;
+}
+
+int ec_random_nonzero_scalar(const EC_GROUP *group, EC_SCALAR *out,
+                             const uint8_t additional_data[32]) {
+  return bn_rand_range_words(out->words, 1, group->order.d, group->order.top,
+                             additional_data);
 }

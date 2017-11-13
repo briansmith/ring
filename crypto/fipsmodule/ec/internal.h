@@ -91,6 +91,16 @@ extern "C" {
 OPENSSL_COMPILE_ASSERT(EC_MAX_SCALAR_WORDS <= BN_SMALL_MAX_WORDS,
                        bn_small_functions_applicable);
 
+// An EC_SCALAR is a |BN_num_bits(order)|-bit integer. Only the first
+// |order->top| words are used. An |EC_SCALAR| is specific to an |EC_GROUP| and
+// must not be mixed between groups. Unless otherwise specified, it is fully
+// reduced modulo the |order|.
+typedef union {
+  // bytes is the representation of the scalar in little-endian order.
+  uint8_t bytes[EC_MAX_SCALAR_BYTES];
+  BN_ULONG words[EC_MAX_SCALAR_WORDS];
+} EC_SCALAR;
+
 struct ec_method_st {
   int (*group_init)(EC_GROUP *);
   void (*group_finish)(EC_GROUP *);
@@ -104,8 +114,8 @@ struct ec_method_st {
   // Computes |r = p_scalar*p| if g_scalar is null. At least one of |g_scalar|
   // and |p_scalar| must be non-null, and |p| must be non-null if |p_scalar| is
   // non-null.
-  int (*mul)(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
-             const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx);
+  int (*mul)(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
+             const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx);
 
   // 'field_mul' and 'field_sqr' can be used by 'add' and 'dbl' so that the
   // same implementations of point operations can be used with different
@@ -163,8 +173,28 @@ struct ec_point_st {
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth);
 
-int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
-                const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx);
+// ec_bignum_to_scalar converts |in| to an |EC_SCALAR| and writes it to |*out|.
+// |in| must be non-negative and have at most |BN_num_bits(&group->order)| bits.
+// It returns one on success and zero on error. It does not ensure |in| is fully
+// reduced.
+int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
+                        const BIGNUM *in);
+
+// ec_random_nonzero_scalar sets |out| to a uniformly selected random value from
+// 1 to |group->order| - 1. It returns one on success and zero on error.
+int ec_random_nonzero_scalar(const EC_GROUP *group, EC_SCALAR *out,
+                             const uint8_t additional_data[32]);
+
+// ec_point_mul_scalar sets |r| to generator * |g_scalar| + |p| *
+// |p_scalar|. Unlike other functions which take |EC_SCALAR|, |g_scalar| and
+// |p_scalar| need not be fully reduced. They need only contain as many bits as
+// the order.
+int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,
+                        const EC_SCALAR *g_scalar, const EC_POINT *p,
+                        const EC_SCALAR *p_scalar, BN_CTX *ctx);
+
+int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
+                const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx);
 
 // method functions in simple.c
 int ec_GFp_simple_group_init(EC_GROUP *);

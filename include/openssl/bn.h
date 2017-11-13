@@ -618,17 +618,6 @@ OPENSSL_EXPORT int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
 // BN_pseudo_rand_range is an alias for BN_rand_range.
 OPENSSL_EXPORT int BN_pseudo_rand_range(BIGNUM *rnd, const BIGNUM *range);
 
-// BN_generate_dsa_nonce generates a random number 0 <= out < range. Unlike
-// BN_rand_range, it also includes the contents of |priv| and |message| in the
-// generation so that an RNG failure isn't fatal as long as |priv| remains
-// secret. This is intended for use in DSA and ECDSA where an RNG weakness
-// leads directly to private key exposure unless this function is used.
-// It returns one on success and zero on error.
-OPENSSL_EXPORT int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range,
-                                         const BIGNUM *priv,
-                                         const uint8_t *message,
-                                         size_t message_len, BN_CTX *ctx);
-
 // BN_GENCB holds a callback function that is used by generation functions that
 // can take a very long time to complete. Use |BN_GENCB_set| to initialise a
 // |BN_GENCB| structure.

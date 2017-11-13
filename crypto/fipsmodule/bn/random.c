@@ -113,7 +113,6 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/rand.h>
-#include <openssl/sha.h>
 #include <openssl/type_check.h>
 
 #include "internal.h"
@@ -225,16 +224,9 @@ int bn_in_range_words(const BN_ULONG *a, BN_ULONG min_inclusive,
          !bn_less_than_word(a, len, min_inclusive);
 }
 
-// bn_rand_range_words sets |out| to a uniformly distributed random number from
-// |min_inclusive| to |max_exclusive|. Both |out| and |max_exclusive| are |len|
-// words long.
-//
-// This function runs in time independent of the result, but |min_inclusive| and
-// |max_exclusive| are public data. (Information about the range is unavoidably
-// leaked by how many iterations it took to select a number.)
-static int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
-                               const BN_ULONG *max_exclusive, size_t len,
-                               const uint8_t additional_data[32]) {
+int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
+                        const BN_ULONG *max_exclusive, size_t len,
+                        const uint8_t additional_data[32]) {
   // This function implements the equivalent of steps 4 through 7 of FIPS 186-4
   // appendices B.4.2 and B.5.2. When called in those contexts, |max_exclusive|
   // is n and |min_inclusive| is one.
@@ -284,28 +276,18 @@ static int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
   return 1;
 }
 
-static int bn_rand_range_with_additional_data(
-    BIGNUM *r, BN_ULONG min_inclusive, const BIGNUM *max_exclusive,
-    const uint8_t additional_data[32]) {
+int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
+                     const BIGNUM *max_exclusive) {
   if (!bn_wexpand(r, max_exclusive->top) ||
       !bn_rand_range_words(r->d, min_inclusive, max_exclusive->d,
-                           max_exclusive->top, additional_data)) {
+                           max_exclusive->top, kDefaultAdditionalData)) {
     return 0;
   }
 
-  // TODO(davidben): |bn_correct_top| is not constant-time. Make
-  // |BN_generate_dsa_nonce| call |bn_rand_range_words| directly and then inline
-  // this function into |BN_rand_range_ex|.
   r->neg = 0;
   r->top = max_exclusive->top;
   bn_correct_top(r);
   return 1;
-}
-
-int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
-                     const BIGNUM *max_exclusive) {
-  return bn_rand_range_with_additional_data(r, min_inclusive, max_exclusive,
-                                            kDefaultAdditionalData);
 }
 
 int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
@@ -314,36 +296,4 @@ int BN_rand_range(BIGNUM *r, const BIGNUM *range) {
 
 int BN_pseudo_rand_range(BIGNUM *r, const BIGNUM *range) {
   return BN_rand_range(r, range);
-}
-
-int BN_generate_dsa_nonce(BIGNUM *out, const BIGNUM *range, const BIGNUM *priv,
-                          const uint8_t *message, size_t message_len,
-                          BN_CTX *ctx) {
-  // We copy |priv| into a local buffer to avoid furthur exposing its
-  // length.
-  uint8_t private_bytes[96];
-  size_t todo = sizeof(priv->d[0]) * priv->top;
-  if (todo > sizeof(private_bytes)) {
-    // No reasonable DSA or ECDSA key should have a private key
-    // this large and we don't handle this case in order to avoid
-    // leaking the length of the private key.
-    OPENSSL_PUT_ERROR(BN, BN_R_PRIVATE_KEY_TOO_LARGE);
-    return 0;
-  }
-  OPENSSL_memcpy(private_bytes, priv->d, todo);
-  OPENSSL_memset(private_bytes + todo, 0, sizeof(private_bytes) - todo);
-
-  // Pass a SHA512 hash of the private key and message as additional data into
-  // the RBG. This is a hardening measure against entropy failure.
-  OPENSSL_COMPILE_ASSERT(SHA512_DIGEST_LENGTH >= 32,
-                         additional_data_is_too_large_for_sha512);
-  SHA512_CTX sha;
-  uint8_t digest[SHA512_DIGEST_LENGTH];
-  SHA512_Init(&sha);
-  SHA512_Update(&sha, private_bytes, sizeof(private_bytes));
-  SHA512_Update(&sha, message, message_len);
-  SHA512_Final(digest, &sha);
-
-  // Select a value k from [1, range-1], following FIPS 186-4 appendix B.5.2.
-  return bn_rand_range_with_additional_data(out, 1, range, digest);
 }

@@ -277,6 +277,17 @@ int bn_less_than_words(const BN_ULONG *a, const BN_ULONG *b, size_t len);
 int bn_in_range_words(const BN_ULONG *a, BN_ULONG min_inclusive,
                       const BN_ULONG *max_exclusive, size_t len);
 
+// bn_rand_range_words sets |out| to a uniformly distributed random number from
+// |min_inclusive| to |max_exclusive|. Both |out| and |max_exclusive| are |len|
+// words long.
+//
+// This function runs in time independent of the result, but |min_inclusive| and
+// |max_exclusive| are public data. (Information about the range is unavoidably
+// leaked by how many iterations it took to select a number.)
+int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
+                        const BN_ULONG *max_exclusive, size_t len,
+                        const uint8_t additional_data[32]);
+
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, int num);
 

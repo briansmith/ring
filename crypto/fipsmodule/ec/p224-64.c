@@ -1038,14 +1038,13 @@ static int ec_GFp_nistp224_point_get_affine_coordinates(const EC_GROUP *group,
 }
 
 static int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
-                                      const BIGNUM *g_scalar, const EC_POINT *p,
-                                      const BIGNUM *p_scalar, BN_CTX *ctx) {
+                                      const EC_SCALAR *g_scalar,
+                                      const EC_POINT *p,
+                                      const EC_SCALAR *p_scalar, BN_CTX *ctx) {
   int ret = 0;
   BN_CTX *new_ctx = NULL;
   BIGNUM *x, *y, *z, *tmp_scalar;
-  p224_felem_bytearray g_secret, p_secret;
   p224_felem p_pre_comp[17][3];
-  p224_felem_bytearray tmp;
   p224_felem x_in, y_in, z_in, x_out, y_out, z_out;
 
   if (ctx == NULL) {
@@ -1067,23 +1066,7 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
   if (p != NULL && p_scalar != NULL) {
     // We treat NULL scalars as 0, and NULL points as points at infinity, i.e.,
     // they contribute nothing to the linear combination.
-    OPENSSL_memset(&p_secret, 0, sizeof(p_secret));
     OPENSSL_memset(&p_pre_comp, 0, sizeof(p_pre_comp));
-    size_t num_bytes;
-    // reduce g_scalar to 0 <= g_scalar < 2^224
-    if (BN_num_bits(p_scalar) > 224 || BN_is_negative(p_scalar)) {
-      // this is an unusual input, and we don't guarantee
-      // constant-timeness
-      if (!BN_nnmod(tmp_scalar, p_scalar, &group->order, ctx)) {
-        OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-        goto err;
-      }
-      num_bytes = BN_bn2bin(tmp_scalar, tmp);
-    } else {
-      num_bytes = BN_bn2bin(p_scalar, tmp);
-    }
-
-    p224_flip_endian(p_secret, tmp, num_bytes);
     // precompute multiples
     if (!p224_BN_to_felem(x_out, &p->X) ||
         !p224_BN_to_felem(y_out, &p->Y) ||
@@ -1109,26 +1092,10 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
     }
   }
 
-  if (g_scalar != NULL) {
-    OPENSSL_memset(g_secret, 0, sizeof(g_secret));
-    size_t num_bytes;
-    // reduce g_scalar to 0 <= g_scalar < 2^224
-    if (BN_num_bits(g_scalar) > 224 || BN_is_negative(g_scalar)) {
-      // this is an unusual input, and we don't guarantee constant-timeness
-      if (!BN_nnmod(tmp_scalar, g_scalar, &group->order, ctx)) {
-        OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-        goto err;
-      }
-      num_bytes = BN_bn2bin(tmp_scalar, tmp);
-    } else {
-      num_bytes = BN_bn2bin(g_scalar, tmp);
-    }
-
-    p224_flip_endian(g_secret, tmp, num_bytes);
-  }
-  p224_batch_mul(
-      x_out, y_out, z_out, (p != NULL && p_scalar != NULL) ? p_secret : NULL,
-      g_scalar != NULL ? g_secret : NULL, (const p224_felem(*)[3])p_pre_comp);
+  p224_batch_mul(x_out, y_out, z_out,
+                 (p != NULL && p_scalar != NULL) ? p_scalar->bytes : NULL,
+                 g_scalar != NULL ? g_scalar->bytes : NULL,
+                 (const p224_felem(*)[3])p_pre_comp);
 
   // reduce the output to its unique minimal representation
   p224_felem_contract(x_in, x_out);

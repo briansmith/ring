@@ -122,11 +122,6 @@ static int8_t *compute_wNAF(const BIGNUM *scalar, int w, size_t *ret_len) {
     sign = -1;
   }
 
-  if (scalar->d == NULL || scalar->top == 0) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-
   len = BN_num_bits(scalar);
   // The modified wNAF may be one digit longer than binary representation
   // (*ret_len will be set to the actual length, i.e. at most
@@ -236,8 +231,9 @@ static size_t window_bits_for_scalar_size(size_t b) {
   return 1;
 }
 
-int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
-                const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx) {
+int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r,
+                const EC_SCALAR *g_scalar_raw, const EC_POINT *p,
+                const EC_SCALAR *p_scalar_raw, BN_CTX *ctx) {
   BN_CTX *new_ctx = NULL;
   const EC_POINT *generator = NULL;
   EC_POINT *tmp = NULL;
@@ -262,13 +258,32 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
       goto err;
     }
   }
+  BN_CTX_start(ctx);
+
+  // Convert from |EC_SCALAR| to |BIGNUM|. |BIGNUM| is not constant-time, but
+  // neither is the rest of this function.
+  BIGNUM *g_scalar = NULL, *p_scalar = NULL;
+  if (g_scalar_raw != NULL) {
+    g_scalar = BN_CTX_get(ctx);
+    if (g_scalar == NULL ||
+        !bn_set_words(g_scalar, g_scalar_raw->words, group->order.top)) {
+      goto err;
+    }
+  }
+  if (p_scalar_raw != NULL) {
+    p_scalar = BN_CTX_get(ctx);
+    if (p_scalar == NULL ||
+        !bn_set_words(p_scalar, p_scalar_raw->words, group->order.top)) {
+      goto err;
+    }
+  }
 
   // TODO: This function used to take |points| and |scalars| as arrays of
   // |num| elements. The code below should be simplified to work in terms of |p|
   // and |p_scalar|.
   size_t num = p != NULL ? 1 : 0;
   const EC_POINT **points = p != NULL ? &p : NULL;
-  const BIGNUM **scalars = p != NULL ? &p_scalar : NULL;
+  BIGNUM **scalars = p != NULL ? &p_scalar : NULL;
 
   total_num = num;
 
@@ -433,6 +448,9 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
   ret = 1;
 
 err:
+  if (ctx != NULL) {
+    BN_CTX_end(ctx);
+  }
   BN_CTX_free(new_ctx);
   EC_POINT_free(tmp);
   OPENSSL_free(wsize);
