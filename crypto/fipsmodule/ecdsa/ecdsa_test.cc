@@ -282,6 +282,32 @@ static bssl::UniquePtr<EC_GROUP> GetCurve(FileTest *t, const char *key) {
   return nullptr;
 }
 
+static bssl::UniquePtr<EC_GROUP> MakeCustomClone(const EC_GROUP *group) {
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  bssl::UniquePtr<BIGNUM> p(BN_new()), a(BN_new()), b(BN_new()), x(BN_new()),
+      y(BN_new());
+  if (!ctx || !p || !a || !b || !x || !y ||
+      !EC_GROUP_get_curve_GFp(group, p.get(), a.get(), b.get(), ctx.get()) ||
+      !EC_POINT_get_affine_coordinates_GFp(
+          group, EC_GROUP_get0_generator(group), x.get(), y.get(), ctx.get())) {
+    return nullptr;
+  }
+  bssl::UniquePtr<EC_GROUP> ret(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
+  if (!ret) {
+    return nullptr;
+  }
+  bssl::UniquePtr<EC_POINT> g(EC_POINT_new(ret.get()));
+  if (!g ||
+      !EC_POINT_set_affine_coordinates_GFp(ret.get(), g.get(), x.get(), y.get(),
+                                           ctx.get()) ||
+      !EC_GROUP_set_generator(ret.get(), g.get(), EC_GROUP_get0_order(group),
+                              BN_value_one())) {
+    return nullptr;
+  }
+  return ret;
+}
+
 static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *key) {
   std::vector<uint8_t> bytes;
   if (!t->GetBytes(&bytes, key)) {
@@ -294,80 +320,94 @@ static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *key) {
 TEST(ECDSATest, VerifyTestVectors) {
   FileTestGTest("crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt",
                 [](FileTest *t) {
-    bssl::UniquePtr<EC_GROUP> group = GetCurve(t, "Curve");
-    ASSERT_TRUE(group);
-    bssl::UniquePtr<BIGNUM> x = GetBIGNUM(t, "X");
-    ASSERT_TRUE(x);
-    bssl::UniquePtr<BIGNUM> y = GetBIGNUM(t, "Y");
-    ASSERT_TRUE(y);
-    bssl::UniquePtr<BIGNUM> r = GetBIGNUM(t, "R");
-    ASSERT_TRUE(r);
-    bssl::UniquePtr<BIGNUM> s = GetBIGNUM(t, "S");
-    ASSERT_TRUE(s);
-    std::vector<uint8_t> digest;
-    ASSERT_TRUE(t->GetBytes(&digest, "Digest"));
+    for (bool custom_group : {false, true}) {
+      SCOPED_TRACE(custom_group);
+      bssl::UniquePtr<EC_GROUP> group = GetCurve(t, "Curve");
+      ASSERT_TRUE(group);
+      if (custom_group) {
+        group = MakeCustomClone(group.get());
+        ASSERT_TRUE(group);
+      }
+      bssl::UniquePtr<BIGNUM> x = GetBIGNUM(t, "X");
+      ASSERT_TRUE(x);
+      bssl::UniquePtr<BIGNUM> y = GetBIGNUM(t, "Y");
+      ASSERT_TRUE(y);
+      bssl::UniquePtr<BIGNUM> r = GetBIGNUM(t, "R");
+      ASSERT_TRUE(r);
+      bssl::UniquePtr<BIGNUM> s = GetBIGNUM(t, "S");
+      ASSERT_TRUE(s);
+      std::vector<uint8_t> digest;
+      ASSERT_TRUE(t->GetBytes(&digest, "Digest"));
 
-    bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
-    ASSERT_TRUE(key);
-    bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
-    ASSERT_TRUE(pub_key);
-    bssl::UniquePtr<ECDSA_SIG> sig(ECDSA_SIG_new());
-    ASSERT_TRUE(sig);
-    ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
-    ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(group.get(), pub_key.get(),
-                                                    x.get(), y.get(), nullptr));
-    ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
-    ASSERT_TRUE(BN_copy(sig->r, r.get()));
-    ASSERT_TRUE(BN_copy(sig->s, s.get()));
+      bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
+      ASSERT_TRUE(key);
+      bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
+      ASSERT_TRUE(pub_key);
+      bssl::UniquePtr<ECDSA_SIG> sig(ECDSA_SIG_new());
+      ASSERT_TRUE(sig);
+      ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
+      ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+          group.get(), pub_key.get(), x.get(), y.get(), nullptr));
+      ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
+      ASSERT_TRUE(BN_copy(sig->r, r.get()));
+      ASSERT_TRUE(BN_copy(sig->s, s.get()));
 
-    EXPECT_EQ(
-        t->HasAttribute("Invalid") ? 0 : 1,
-        ECDSA_do_verify(digest.data(), digest.size(), sig.get(), key.get()));
+      EXPECT_EQ(
+          t->HasAttribute("Invalid") ? 0 : 1,
+          ECDSA_do_verify(digest.data(), digest.size(), sig.get(), key.get()));
+    }
   });
 }
 
 TEST(ECDSATest, SignTestVectors) {
   FileTestGTest("crypto/fipsmodule/ecdsa/ecdsa_sign_tests.txt",
                 [](FileTest *t) {
-    bssl::UniquePtr<EC_GROUP> group = GetCurve(t, "Curve");
-    ASSERT_TRUE(group);
-    bssl::UniquePtr<BIGNUM> priv_key = GetBIGNUM(t, "Private");
-    ASSERT_TRUE(priv_key);
-    bssl::UniquePtr<BIGNUM> x = GetBIGNUM(t, "X");
-    ASSERT_TRUE(x);
-    bssl::UniquePtr<BIGNUM> y = GetBIGNUM(t, "Y");
-    ASSERT_TRUE(y);
-    bssl::UniquePtr<BIGNUM> k = GetBIGNUM(t, "K");
-    ASSERT_TRUE(k);
-    bssl::UniquePtr<BIGNUM> r = GetBIGNUM(t, "R");
-    ASSERT_TRUE(r);
-    bssl::UniquePtr<BIGNUM> s = GetBIGNUM(t, "S");
-    ASSERT_TRUE(s);
-    std::vector<uint8_t> digest;
-    ASSERT_TRUE(t->GetBytes(&digest, "Digest"));
+    for (bool custom_group : {false, true}) {
+      SCOPED_TRACE(custom_group);
+      bssl::UniquePtr<EC_GROUP> group = GetCurve(t, "Curve");
+      ASSERT_TRUE(group);
+      if (custom_group) {
+        group = MakeCustomClone(group.get());
+        ASSERT_TRUE(group);
+      }
+      bssl::UniquePtr<BIGNUM> priv_key = GetBIGNUM(t, "Private");
+      ASSERT_TRUE(priv_key);
+      bssl::UniquePtr<BIGNUM> x = GetBIGNUM(t, "X");
+      ASSERT_TRUE(x);
+      bssl::UniquePtr<BIGNUM> y = GetBIGNUM(t, "Y");
+      ASSERT_TRUE(y);
+      bssl::UniquePtr<BIGNUM> k = GetBIGNUM(t, "K");
+      ASSERT_TRUE(k);
+      bssl::UniquePtr<BIGNUM> r = GetBIGNUM(t, "R");
+      ASSERT_TRUE(r);
+      bssl::UniquePtr<BIGNUM> s = GetBIGNUM(t, "S");
+      ASSERT_TRUE(s);
+      std::vector<uint8_t> digest;
+      ASSERT_TRUE(t->GetBytes(&digest, "Digest"));
 
-    bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
-    ASSERT_TRUE(key);
-    bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
-    ASSERT_TRUE(pub_key);
-    ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
-    ASSERT_TRUE(EC_KEY_set_private_key(key.get(), priv_key.get()));
-    ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(group.get(), pub_key.get(),
-                                                    x.get(), y.get(), nullptr));
-    ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
-    ASSERT_TRUE(EC_KEY_check_key(key.get()));
+      bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
+      ASSERT_TRUE(key);
+      bssl::UniquePtr<EC_POINT> pub_key(EC_POINT_new(group.get()));
+      ASSERT_TRUE(pub_key);
+      ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
+      ASSERT_TRUE(EC_KEY_set_private_key(key.get(), priv_key.get()));
+      ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+          group.get(), pub_key.get(), x.get(), y.get(), nullptr));
+      ASSERT_TRUE(EC_KEY_set_public_key(key.get(), pub_key.get()));
+      ASSERT_TRUE(EC_KEY_check_key(key.get()));
 
-    // |ECDSA_do_sign_ex| expects |k| to already be inverted.
-    bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
-    ASSERT_TRUE(ctx);
-    ASSERT_TRUE(BN_mod_inverse(k.get(), k.get(),
-                               EC_GROUP_get0_order(group.get()), ctx.get()));
+      // |ECDSA_do_sign_ex| expects |k| to already be inverted.
+      bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+      ASSERT_TRUE(ctx);
+      ASSERT_TRUE(BN_mod_inverse(k.get(), k.get(),
+                                 EC_GROUP_get0_order(group.get()), ctx.get()));
 
-    bssl::UniquePtr<ECDSA_SIG> sig(ECDSA_do_sign_ex(
-        digest.data(), digest.size(), k.get(), r.get(), key.get()));
-    ASSERT_TRUE(sig);
+      bssl::UniquePtr<ECDSA_SIG> sig(ECDSA_do_sign_ex(
+          digest.data(), digest.size(), k.get(), r.get(), key.get()));
+      ASSERT_TRUE(sig);
 
-    EXPECT_EQ(0, BN_cmp(r.get(), sig->r));
-    EXPECT_EQ(0, BN_cmp(s.get(), sig->s));
+      EXPECT_EQ(0, BN_cmp(r.get(), sig->r));
+      EXPECT_EQ(0, BN_cmp(s.get(), sig->s));
+    }
   });
 }
