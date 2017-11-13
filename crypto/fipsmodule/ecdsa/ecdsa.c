@@ -278,10 +278,8 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx_in, BIGNUM **kinvp,
     }
 
     // Compute the inverse of k. The order is a prime, so use Fermat's Little
-    // Theorem. Note |ec_group_get_order_mont| may return NULL but
-    // |bn_mod_inverse_prime| allows this.
-    if (!bn_mod_inverse_prime(kinv, k, order, ctx,
-                              ec_group_get_order_mont(group))) {
+    // Theorem.
+    if (!bn_mod_inverse_prime(kinv, k, order, ctx, group->order_mont)) {
       OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
       goto err;
     }
