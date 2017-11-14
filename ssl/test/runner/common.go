@@ -632,6 +632,10 @@ type ProtocolBugs struct {
 	// ChangeCipherSpec messages.
 	SendExtraChangeCipherSpec int
 
+	// SendPostHandshakeChangeCipherSpec causes the implementation to send
+	// a ChangeCipherSpec record before every application data record.
+	SendPostHandshakeChangeCipherSpec bool
+
 	// SendUnencryptedFinished, if true, causes the Finished message to be
 	// send unencrypted before ChangeCipherSpec rather than after it.
 	SendUnencryptedFinished bool

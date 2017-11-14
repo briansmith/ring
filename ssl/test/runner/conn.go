@@ -1089,6 +1089,12 @@ func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
 		return 0, err
 	}
 
+	if typ == recordTypeApplicationData && c.config.Bugs.SendPostHandshakeChangeCipherSpec {
+		if _, err := c.doWriteRecord(recordTypeChangeCipherSpec, []byte{1}); err != nil {
+			return 0, err
+		}
+	}
+
 	return c.doWriteRecord(typ, data)
 }
 

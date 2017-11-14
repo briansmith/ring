@@ -11880,6 +11880,20 @@ func addTLS13HandshakeTests() {
 		expectedError: ":TOO_MANY_EMPTY_FRAGMENTS:",
 	})
 
+	testCases = append(testCases, testCase{
+		name: "TLS13Draft22-SendPostHandshakeChangeCipherSpec",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendPostHandshakeChangeCipherSpec: true,
+			},
+		},
+		tls13Variant:       TLS13Draft22,
+		shouldFail:         true,
+		expectedError:      ":UNEXPECTED_RECORD:",
+		expectedLocalError: "remote error: unexpected message",
+	})
+
 	fooString := "foo"
 	barString := "bar"
 
