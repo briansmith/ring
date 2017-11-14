@@ -376,15 +376,8 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
   // Require that p < 2×order. This simplifies some ECDSA operations.
   //
   // Note any curve which did not satisfy this must have been invalid or use a
-  // tiny prime (less than 17). We only work with prime order curves, so the
-  // number of points on the curve is the order. Thus Hasse's theorem gives:
-  //
-  //     |order - (p + 1)| <= 2×sqrt(p)
-  //         p + 1 - order <= 2×sqrt(p)
-  //     p + 1 - 2×sqrt(p) <= order
-  //       p + 1 - 2×(p/4)  < order       (p/4 > sqrt(p) for p >= 17)
-  //         p/2 < p/2 + 1  < order
-  //                     p  < 2×order
+  // tiny prime (less than 17). See the proof in |field_element_to_scalar| in
+  // the ECDSA implementation.
   BIGNUM *tmp = BN_new();
   if (tmp == NULL ||
       !BN_lshift1(tmp, order)) {

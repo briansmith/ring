@@ -93,6 +93,40 @@ static void digest_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
   }
 }
 
+// field_element_to_scalar reduces |r| modulo |group->order|. |r| must
+// previously have been reduced modulo |group->field|.
+static int field_element_to_scalar(const EC_GROUP *group, BIGNUM *r) {
+  // We must have p < 2×order, assuming p is not tiny (p >= 17). Thus rather we
+  // can reduce by performing at most one subtraction.
+  //
+  // Proof: We only work with prime order curves, so the number of points on
+  // the curve is the order. Thus Hasse's theorem gives:
+  //
+  //     |order - (p + 1)| <= 2×sqrt(p)
+  //         p + 1 - order <= 2×sqrt(p)
+  //     p + 1 - 2×sqrt(p) <= order
+  //       p + 1 - 2×(p/4)  < order       (p/4 > sqrt(p) for p >= 17)
+  //         p/2 < p/2 + 1  < order
+  //                     p  < 2×order
+  //
+  // Additionally, one can manually check this property for built-in curves. It
+  // is enforced for legacy custom curves in |EC_GROUP_set_generator|.
+  //
+  // TODO(davidben): Introduce |EC_FIELD_ELEMENT|, make this a function from
+  // |EC_FIELD_ELEMENT| to |EC_SCALAR|, and cut out the |BIGNUM|. Does this need
+  // to be constant-time for signing? |r| is the x-coordinate for kG, which is
+  // public unless k was rerolled because |s| was zero.
+  assert(!BN_is_negative(r));
+  assert(BN_cmp(r, &group->field) < 0);
+  if (BN_cmp(r, &group->order) >= 0 &&
+      !BN_sub(r, r, &group->order)) {
+    return 0;
+  }
+  assert(!BN_is_negative(r));
+  assert(BN_cmp(r, &group->order) < 0);
+  return 1;
+}
+
 ECDSA_SIG *ECDSA_SIG_new(void) {
   ECDSA_SIG *sig = OPENSSL_malloc(sizeof(ECDSA_SIG));
   if (sig == NULL) {
@@ -212,12 +246,12 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
     goto err;
   }
-  if (!BN_nnmod(u1, X, order, ctx)) {
+  if (!field_element_to_scalar(group, X)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
     goto err;
   }
-  // if the signature is correct u1 is equal to sig->r
-  if (BN_ucmp(u1, sig->r) != 0) {
+  // The signature is correct iff |X| is equal to |sig->r|.
+  if (BN_ucmp(X, sig->r) != 0) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     goto err;
   }
@@ -239,8 +273,7 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx,
   int ret = 0;
   EC_SCALAR k;
   BIGNUM *r = BN_new();  // this value is later returned in *rp
-  BIGNUM *tmp = BN_new();
-  if (r == NULL || tmp == NULL) {
+  if (r == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
@@ -293,12 +326,12 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx,
 
     // Compute r, the x-coordinate of generator * k.
     if (!ec_point_mul_scalar(group, tmp_point, &k, NULL, NULL, ctx) ||
-        !EC_POINT_get_affine_coordinates_GFp(group, tmp_point, tmp, NULL,
+        !EC_POINT_get_affine_coordinates_GFp(group, tmp_point, r, NULL,
                                              ctx)) {
       goto err;
     }
 
-    if (!BN_nnmod(r, tmp, order, ctx)) {
+    if (!field_element_to_scalar(group, r)) {
       goto err;
     }
   } while (BN_is_zero(r));
@@ -312,7 +345,6 @@ err:
   OPENSSL_cleanse(&k, sizeof(k));
   BN_clear_free(r);
   EC_POINT_free(tmp_point);
-  BN_clear_free(tmp);
   return ret;
 }
 
