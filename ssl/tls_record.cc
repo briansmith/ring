@@ -187,9 +187,25 @@ size_t ssl_seal_align_prefix_len(const SSL *ssl) {
   return ret;
 }
 
-enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
-                                       Span<uint8_t> *out, size_t *out_consumed,
-                                       uint8_t *out_alert, Span<uint8_t> in) {
+static ssl_open_record_t skip_early_data(SSL *ssl, uint8_t *out_alert,
+                                         size_t consumed) {
+  ssl->s3->early_data_skipped += consumed;
+  if (ssl->s3->early_data_skipped < consumed) {
+    ssl->s3->early_data_skipped = kMaxEarlyDataSkipped + 1;
+  }
+
+  if (ssl->s3->early_data_skipped > kMaxEarlyDataSkipped) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MUCH_SKIPPED_EARLY_DATA);
+    *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
+    return ssl_open_record_error;
+  }
+
+  return ssl_open_record_discard;
+}
+
+ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
+                                  Span<uint8_t> *out, size_t *out_consumed,
+                                  uint8_t *out_alert, Span<uint8_t> in) {
   *out_consumed = 0;
   if (ssl->s3->read_shutdown == ssl_shutdown_close_notify) {
     return ssl_open_record_close_notify;
@@ -267,7 +283,7 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
   if (ssl->s3->skip_early_data &&
       ssl->s3->aead_read_ctx->is_null_cipher() &&
       type == SSL3_RT_APPLICATION_DATA) {
-    goto skipped_data;
+    return skip_early_data(ssl, out_alert, *out_consumed);
   }
 
   // Decrypt the body in-place.
@@ -276,7 +292,7 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
           MakeSpan(const_cast<uint8_t *>(CBS_data(&body)), CBS_len(&body)))) {
     if (ssl->s3->skip_early_data && !ssl->s3->aead_read_ctx->is_null_cipher()) {
       ERR_clear_error();
-      goto skipped_data;
+      return skip_early_data(ssl, out_alert, *out_consumed);
     }
 
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECRYPTION_FAILED_OR_BAD_RECORD_MAC);
@@ -292,8 +308,21 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
   }
 
   // TLS 1.3 hides the record type inside the encrypted data.
-  if (!ssl->s3->aead_read_ctx->is_null_cipher() &&
-      ssl->s3->aead_read_ctx->ProtocolVersion() >= TLS1_3_VERSION) {
+  bool has_padding =
+      !ssl->s3->aead_read_ctx->is_null_cipher() &&
+      ssl->s3->aead_read_ctx->ProtocolVersion() >= TLS1_3_VERSION;
+
+  // If there is padding, the plaintext limit includes the padding, but includes
+  // extra room for the inner content type.
+  size_t plaintext_limit =
+      has_padding ? SSL3_RT_MAX_PLAIN_LENGTH + 1 : SSL3_RT_MAX_PLAIN_LENGTH;
+  if (out->size() > plaintext_limit) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
+    *out_alert = SSL_AD_RECORD_OVERFLOW;
+    return ssl_open_record_error;
+  }
+
+  if (has_padding) {
     // The outer record type is always application_data.
     if (type != SSL3_RT_APPLICATION_DATA) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_OUTER_RECORD_TYPE);
@@ -310,13 +339,6 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
       type = out->back();
       *out = out->subspan(0, out->size() - 1);
     } while (type == 0);
-  }
-
-  // Check the plaintext length.
-  if (out->size() > SSL3_RT_MAX_PLAIN_LENGTH) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DATA_LENGTH_TOO_LONG);
-    *out_alert = SSL_AD_RECORD_OVERFLOW;
-    return ssl_open_record_error;
   }
 
   // Limit the number of consecutive empty records.
@@ -358,20 +380,6 @@ enum ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
 
   *out_type = type;
   return ssl_open_record_success;
-
-skipped_data:
-  ssl->s3->early_data_skipped += *out_consumed;
-  if (ssl->s3->early_data_skipped < *out_consumed) {
-    ssl->s3->early_data_skipped = kMaxEarlyDataSkipped + 1;
-  }
-
-  if (ssl->s3->early_data_skipped > kMaxEarlyDataSkipped) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MUCH_SKIPPED_EARLY_DATA);
-    *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
-    return ssl_open_record_error;
-  }
-
-  return ssl_open_record_discard;
 }
 
 static int do_seal_record(SSL *ssl, uint8_t *out_prefix, uint8_t *out,

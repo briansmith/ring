@@ -2442,9 +2442,10 @@ read alert 1 0
 					SendLargeRecords: true,
 				},
 			},
-			messageLen:    maxPlaintext + 1,
-			shouldFail:    true,
-			expectedError: ":DATA_LENGTH_TOO_LONG:",
+			messageLen:         maxPlaintext + 1,
+			shouldFail:         true,
+			expectedError:      ":DATA_LENGTH_TOO_LONG:",
+			expectedLocalError: "remote error: record overflow",
 		},
 		{
 			protocol: dtls,
@@ -2454,9 +2455,64 @@ read alert 1 0
 					SendLargeRecords: true,
 				},
 			},
-			messageLen:    maxPlaintext + 1,
-			shouldFail:    true,
-			expectedError: ":DATA_LENGTH_TOO_LONG:",
+			messageLen:         maxPlaintext + 1,
+			shouldFail:         true,
+			expectedError:      ":DATA_LENGTH_TOO_LONG:",
+			expectedLocalError: "remote error: record overflow",
+		},
+		{
+			name: "LargePlaintext-TLS13-Padded-8192-8192",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					RecordPadding:    8192,
+					SendLargeRecords: true,
+				},
+			},
+			messageLen: 8192,
+		},
+		{
+			name: "LargePlaintext-TLS13-Padded-8193-8192",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					RecordPadding:    8193,
+					SendLargeRecords: true,
+				},
+			},
+			messageLen:         8192,
+			shouldFail:         true,
+			expectedError:      ":DATA_LENGTH_TOO_LONG:",
+			expectedLocalError: "remote error: record overflow",
+		},
+		{
+			name: "LargePlaintext-TLS13-Padded-16383-1",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					RecordPadding:    1,
+					SendLargeRecords: true,
+				},
+			},
+			messageLen: 16383,
+		},
+		{
+			name: "LargePlaintext-TLS13-Padded-16384-1",
+			config: Config{
+				MinVersion: VersionTLS13,
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					RecordPadding:    1,
+					SendLargeRecords: true,
+				},
+			},
+			messageLen:         16384,
+			shouldFail:         true,
+			expectedError:      ":DATA_LENGTH_TOO_LONG:",
+			expectedLocalError: "remote error: record overflow",
 		},
 		{
 			name: "LargeCiphertext",
@@ -11774,7 +11830,7 @@ func addTLS13HandshakeTests() {
 
 	testCases = append(testCases, testCase{
 		testType: clientTest,
-		name: "TLS13Draft22-SkipChangeCipherSpec-Client",
+		name:     "TLS13Draft22-SkipChangeCipherSpec-Client",
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
@@ -11786,7 +11842,7 @@ func addTLS13HandshakeTests() {
 
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name: "TLS13Draft22-SkipChangeCipherSpec-Server",
+		name:     "TLS13Draft22-SkipChangeCipherSpec-Server",
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
@@ -11798,30 +11854,30 @@ func addTLS13HandshakeTests() {
 
 	testCases = append(testCases, testCase{
 		testType: clientTest,
-		name: "TLS13Draft22-TooManyChangeCipherSpec-Client",
+		name:     "TLS13Draft22-TooManyChangeCipherSpec-Client",
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
 				SendExtraChangeCipherSpec: 33,
 			},
 		},
-		tls13Variant: TLS13Draft22,
-		shouldFail:       true,
-		expectedError:    ":TOO_MANY_EMPTY_FRAGMENTS:",
+		tls13Variant:  TLS13Draft22,
+		shouldFail:    true,
+		expectedError: ":TOO_MANY_EMPTY_FRAGMENTS:",
 	})
 
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name: "TLS13Draft22-TooManyChangeCipherSpec-Server",
+		name:     "TLS13Draft22-TooManyChangeCipherSpec-Server",
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
 				SendExtraChangeCipherSpec: 33,
 			},
 		},
-		tls13Variant: TLS13Draft22,
-		shouldFail:       true,
-		expectedError:    ":TOO_MANY_EMPTY_FRAGMENTS:",
+		tls13Variant:  TLS13Draft22,
+		shouldFail:    true,
+		expectedError: ":TOO_MANY_EMPTY_FRAGMENTS:",
 	})
 
 	fooString := "foo"
