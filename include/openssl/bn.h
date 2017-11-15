@@ -487,8 +487,8 @@ OPENSSL_EXPORT int BN_set_bit(BIGNUM *a, int n);
 // zero on allocation failure.
 OPENSSL_EXPORT int BN_clear_bit(BIGNUM *a, int n);
 
-// BN_is_bit_set returns the value of the |n|th, least-significant bit in |a|,
-// or zero if the bit doesn't exist.
+// BN_is_bit_set returns one if the |n|th least-significant bit in |a| exists
+// and is set. Otherwise, it returns zero.
 OPENSSL_EXPORT int BN_is_bit_set(const BIGNUM *a, int n);
 
 // BN_mask_bits truncates |a| so that it is only |n| bits long. It returns one
