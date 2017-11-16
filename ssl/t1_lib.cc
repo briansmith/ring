@@ -2147,6 +2147,7 @@ bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
   if (!CBS_get_u16(contents, &group_id) ||
       !CBS_get_u16_length_prefixed(contents, &peer_key) ||
       CBS_len(contents) != 0) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     *out_alert = SSL_AD_DECODE_ERROR;
     return false;
   }
