@@ -407,6 +407,38 @@ TEST_P(ECCurveTest, MulZero) {
       << "p * 0 did not return point at infinity.";
 }
 
+// Test that multiplying by the order produces ∞ and, moreover, that callers may
+// do so. |EC_POINT_mul| is almost exclusively used with reduced scalars, with
+// this exception. This comes from consumers following NIST SP 800-56A section
+// 5.6.2.3.2. (Though all our curves have cofactor one, so this check isn't
+// useful.)
+TEST_P(ECCurveTest, MulOrder) {
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(GetParam().nid));
+  ASSERT_TRUE(group);
+
+  // Test that g × order = ∞.
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group.get()));
+  ASSERT_TRUE(point);
+  ASSERT_TRUE(EC_POINT_mul(group.get(), point.get(),
+                           EC_GROUP_get0_order(group.get()), nullptr, nullptr,
+                           nullptr));
+
+  EXPECT_TRUE(EC_POINT_is_at_infinity(group.get(), point.get()))
+      << "g * order did not return point at infinity.";
+
+  // Test that p × order = ∞, for some arbitrary p.
+  bssl::UniquePtr<BIGNUM> forty_two(BN_new());
+  ASSERT_TRUE(forty_two);
+  ASSERT_TRUE(BN_set_word(forty_two.get(), 42));
+  ASSERT_TRUE(EC_POINT_mul(group.get(), point.get(), forty_two.get(), nullptr,
+                           nullptr, nullptr));
+  ASSERT_TRUE(EC_POINT_mul(group.get(), point.get(), nullptr, point.get(),
+                           EC_GROUP_get0_order(group.get()), nullptr));
+
+  EXPECT_TRUE(EC_POINT_is_at_infinity(group.get(), point.get()))
+      << "p * order did not return point at infinity.";
+}
+
 // Test that 10×∞ + G = G.
 TEST_P(ECCurveTest, Mul) {
   bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(GetParam().nid));
