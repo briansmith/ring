@@ -1460,7 +1460,8 @@ func (m *helloRetryRequestMsg) marshal() []byte {
 			extensions.addU16(2) // length
 			extensions.addU16(uint16(m.selectedGroup))
 		}
-		if len(m.cookie) > 0 {
+		// m.cookie may be a non-nil empty slice for empty cookie tests.
+		if m.cookie != nil {
 			extensions.addU16(extensionCookie)
 			body := extensions.addU16LengthPrefixed()
 			body.addU16LengthPrefixed().addBytes(m.cookie)

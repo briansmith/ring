@@ -485,12 +485,18 @@ NextCipherSuite:
 	c.vers = serverVersion
 	c.haveVers = true
 
+	if isDraft22(c.wireVersion) {
+		// The first server message must be followed by a ChangeCipherSpec.
+		c.expectTLS13ChangeCipherSpec = true
+	}
+
 	helloRetryRequest, haveHelloRetryRequest := msg.(*helloRetryRequestMsg)
 	var secondHelloBytes []byte
 	if haveHelloRetryRequest {
-		c.hadHelloRetryRequest = true
 		if isDraft22(c.wireVersion) {
-			if err := c.readRecord(recordTypeChangeCipherSpec); err != nil {
+			// Explicitly read the ChangeCipherSpec now; it should
+			// be attached to the first flight, not the second flight.
+			if err := c.readTLS13ChangeCipherSpec(); err != nil {
 				return err
 			}
 		}
@@ -718,6 +724,12 @@ NextCipherSuite:
 func (hs *clientHandshakeState) doTLS13Handshake() error {
 	c := hs.c
 
+	if isResumptionExperiment(c.wireVersion) && !isDraft22(c.wireVersion) {
+		// Early versions of the middlebox hacks inserted
+		// ChangeCipherSpec differently on 0-RTT and 2-RTT handshakes.
+		c.expectTLS13ChangeCipherSpec = true
+	}
+
 	if isResumptionExperiment(c.wireVersion) && !bytes.Equal(hs.hello.sessionId, hs.serverHello.sessionId) {
 		return errors.New("tls: session IDs did not match.")
 	}
@@ -772,12 +784,6 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	} else {
 		hs.finishedHash.nextSecret()
 		hs.finishedHash.addEntropy(zeroSecret)
-	}
-
-	if isResumptionExperiment(c.wireVersion) && !c.hadHelloRetryRequest {
-		if err := c.readRecord(recordTypeChangeCipherSpec); err != nil {
-			return err
-		}
 	}
 
 	clientLabel := clientHandshakeTrafficLabel

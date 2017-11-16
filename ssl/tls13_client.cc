@@ -52,6 +52,7 @@ static const uint8_t kZeroes[EVP_MAX_MD_SIZE] = {0};
 
 static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
+  assert(ssl->s3->have_version);
   SSLMessage msg;
   if (!ssl->method->get_message(ssl, &msg)) {
     return ssl_hs_read_message;
@@ -60,6 +61,14 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   CBS extensions;
   uint16_t cipher_suite = 0;
   if (ssl_is_draft22(ssl->version)) {
+    // Queue up a ChangeCipherSpec for whenever we next send something. This
+    // will be before the second ClientHello. If we offered early data, this was
+    // already done.
+    if (!hs->early_data_offered &&
+        !ssl->method->add_change_cipher_spec(ssl)) {
+      return ssl_hs_error;
+    }
+
     if (!ssl_check_message_type(ssl, msg, SSL3_MT_SERVER_HELLO)) {
       return ssl_hs_error;
     }
@@ -95,8 +104,6 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
         (ssl_is_draft21(ssl->version) &&
          !CBS_get_u16(&body, &cipher_suite)) ||
         !CBS_get_u16_length_prefixed(&body, &extensions) ||
-        // HelloRetryRequest may not be empty.
-        CBS_len(&extensions) == 0 ||
         CBS_len(&body) != 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
@@ -144,6 +151,11 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   if (!ssl_is_draft22(ssl->version) && have_supported_versions) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNSUPPORTED_EXTENSION);
+    return ssl_hs_error;
+  }
+  if (!have_cookie && !have_key_share) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_EMPTY_HELLO_RETRY_REQUEST);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
   if (have_cookie) {
@@ -259,7 +271,14 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  assert(ssl->s3->have_version);
+  // Forbid a second HelloRetryRequest.
+  if (ssl_is_draft22(ssl->version) &&
+      CBS_mem_equal(&server_random, kHelloRetryRequest, SSL3_RANDOM_SIZE)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
+    return ssl_hs_error;
+  }
+
   OPENSSL_memcpy(ssl->s3->server_random, CBS_data(&server_random),
                  SSL3_RANDOM_SIZE);
 
@@ -401,11 +420,17 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   if (!hs->early_data_offered) {
+    // Earlier versions of the resumption experiment added ChangeCipherSpec just
+    // before the Finished flight.
+    if (ssl_is_resumption_client_ccs_experiment(ssl->version) &&
+        !ssl_is_draft22(ssl->version) &&
+        !ssl->method->add_change_cipher_spec(ssl)) {
+      return ssl_hs_error;
+    }
+
     // If not sending early data, set client traffic keys now so that alerts are
     // encrypted.
-    if ((ssl_is_resumption_client_ccs_experiment(ssl->version) &&
-         !ssl->method->add_change_cipher_spec(ssl)) ||
-        !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
+    if (!tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
                                hs->hash_len)) {
       return ssl_hs_error;
     }

@@ -358,6 +358,12 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 	c := hs.c
 	config := c.config
 
+	// We've read the ClientHello, so the next record in draft 22 must be
+	// preceded with ChangeCipherSpec.
+	if isDraft22(c.wireVersion) {
+		c.expectTLS13ChangeCipherSpec = true
+	}
+
 	hs.hello = &serverHelloMsg{
 		isDTLS:                c.isDTLS,
 		vers:                  c.wireVersion,
@@ -691,12 +697,6 @@ ResendHelloRetryRequest:
 				earlyLabel = earlyTrafficLabelDraft21
 			}
 
-			if isDraft22(c.wireVersion) {
-				if err := c.readRecord(recordTypeChangeCipherSpec); err != nil {
-					return err
-				}
-			}
-
 			earlyTrafficSecret := hs.finishedHash.deriveSecret(earlyLabel)
 			if err := c.useInTrafficSecret(c.wireVersion, hs.suite, earlyTrafficSecret); err != nil {
 				return err
@@ -996,11 +996,10 @@ ResendHelloRetryRequest:
 			}
 		}
 	}
-
-	if isResumptionClientCCSExperiment(c.wireVersion) && !c.skipEarlyData && !encryptedExtensions.extensions.hasEarlyData {
-		if err := c.readRecord(recordTypeChangeCipherSpec); err != nil {
-			return err
-		}
+	if isResumptionClientCCSExperiment(c.wireVersion) && !isDraft22(c.wireVersion) && !hs.clientHello.hasEarlyData {
+		// Early versions of the middlebox hacks inserted
+		// ChangeCipherSpec differently on 0-RTT and 2-RTT handshakes.
+		c.expectTLS13ChangeCipherSpec = true
 	}
 
 	// Switch input stream to handshake traffic keys.
