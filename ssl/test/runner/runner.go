@@ -10849,13 +10849,38 @@ func makePerMessageTests() []perMessageTest {
 		},
 	})
 
+	ret = append(ret, perMessageTest{
+		messageType: typeEndOfEarlyData,
+		test: testCase{
+			testType: serverTest,
+			name:     "TLS13Draft22-EndOfEarlyData",
+			config: Config{
+				MaxVersion: VersionTLS13,
+			},
+			resumeConfig: &Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					SendEarlyData:           [][]byte{{1, 2, 3, 4}},
+					ExpectEarlyDataAccepted: true,
+				},
+			},
+			tls13Variant:  TLS13Draft22,
+			resumeSession: true,
+			flags:         []string{"-enable-early-data"},
+		},
+	})
+
 	return ret
 }
 
 func addWrongMessageTypeTests() {
 	for _, t := range makePerMessageTests() {
 		t.test.name = "WrongMessageType-" + t.test.name
-		t.test.config.Bugs.SendWrongMessageType = t.messageType
+		if t.test.resumeConfig != nil {
+			t.test.resumeConfig.Bugs.SendWrongMessageType = t.messageType
+		} else {
+			t.test.config.Bugs.SendWrongMessageType = t.messageType
+		}
 		t.test.shouldFail = true
 		t.test.expectedError = ":UNEXPECTED_MESSAGE:"
 		t.test.expectedLocalError = "remote error: unexpected message"
@@ -10890,7 +10915,11 @@ func addWrongMessageTypeTests() {
 func addTrailingMessageDataTests() {
 	for _, t := range makePerMessageTests() {
 		t.test.name = "TrailingMessageData-" + t.test.name
-		t.test.config.Bugs.SendTrailingMessageData = t.messageType
+		if t.test.resumeConfig != nil {
+			t.test.resumeConfig.Bugs.SendTrailingMessageData = t.messageType
+		} else {
+			t.test.config.Bugs.SendTrailingMessageData = t.messageType
+		}
 		t.test.shouldFail = true
 		t.test.expectedError = ":DECODE_ERROR:"
 		t.test.expectedLocalError = "remote error: error decoding message"
