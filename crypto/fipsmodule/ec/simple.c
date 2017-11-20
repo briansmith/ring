@@ -295,49 +295,6 @@ err:
   return ret;
 }
 
-int ec_GFp_simple_get_Jprojective_coordinates_GFp(const EC_GROUP *group,
-                                                  const EC_POINT *point,
-                                                  BIGNUM *x, BIGNUM *y,
-                                                  BIGNUM *z, BN_CTX *ctx) {
-  BN_CTX *new_ctx = NULL;
-  int ret = 0;
-
-  if (group->meth->field_decode != 0) {
-    if (ctx == NULL) {
-      ctx = new_ctx = BN_CTX_new();
-      if (ctx == NULL) {
-        return 0;
-      }
-    }
-
-    if (x != NULL && !group->meth->field_decode(group, x, &point->X, ctx)) {
-      goto err;
-    }
-    if (y != NULL && !group->meth->field_decode(group, y, &point->Y, ctx)) {
-      goto err;
-    }
-    if (z != NULL && !group->meth->field_decode(group, z, &point->Z, ctx)) {
-      goto err;
-    }
-  } else {
-    if (x != NULL && !BN_copy(x, &point->X)) {
-      goto err;
-    }
-    if (y != NULL && !BN_copy(y, &point->Y)) {
-      goto err;
-    }
-    if (z != NULL && !BN_copy(z, &point->Z)) {
-      goto err;
-    }
-  }
-
-  ret = 1;
-
-err:
-  BN_CTX_free(new_ctx);
-  return ret;
-}
-
 int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *group,
                                                EC_POINT *point, const BIGNUM *x,
                                                const BIGNUM *y, BN_CTX *ctx) {
