@@ -116,6 +116,7 @@
 #include <openssl/sha.h>
 #include <openssl/type_check.h>
 
+#include "internal.h"
 #include "../../internal.h"
 #include "../rand/internal.h"
 
