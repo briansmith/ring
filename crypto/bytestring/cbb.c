@@ -329,17 +329,36 @@ int CBB_add_u24_length_prefixed(CBB *cbb, CBB *out_contents) {
 }
 
 int CBB_add_asn1(CBB *cbb, CBB *out_contents, unsigned tag) {
-  if (tag > 0xff ||
-      (tag & 0x1f) == 0x1f) {
-    // Long form identifier octets are not supported. Further, all current valid
-    // tag serializations are 8 bits.
-    cbb->base->error = 1;
+  if (!CBB_flush(cbb)) {
     return 0;
   }
 
-  if (!CBB_flush(cbb) ||
-      // |tag|'s representation matches the DER encoding.
-      !CBB_add_u8(cbb, (uint8_t)tag)) {
+  // Split the tag into leading bits and tag number.
+  uint8_t tag_bits = (tag >> CBS_ASN1_TAG_SHIFT) & 0xe0;
+  unsigned tag_number = tag & CBS_ASN1_TAG_NUMBER_MASK;
+  if (tag_number >= 0x1f) {
+    // Set all the bits in the tag number to signal high tag number form.
+    if (!CBB_add_u8(cbb, tag_bits | 0x1f)) {
+      return 0;
+    }
+
+    unsigned len_len = 0;
+    unsigned copy = tag_number;
+    while (copy > 0) {
+      len_len++;
+      copy >>= 7;
+    }
+    for (unsigned i = len_len - 1; i < len_len; i--) {
+      uint8_t byte = (tag_number >> (7 * i)) & 0x7f;
+      if (i != 0) {
+        // The high bit denotes whether there is more data.
+        byte |= 0x80;
+      }
+      if (!CBB_add_u8(cbb, byte)) {
+        return 0;
+      }
+    }
+  } else if (!CBB_add_u8(cbb, tag_bits | tag_number)) {
     return 0;
   }
 

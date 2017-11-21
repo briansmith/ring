@@ -67,9 +67,9 @@
 #include "../internal.h"
 
 
-static const uint8_t kParametersTag =
+static const unsigned kParametersTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 0;
-static const uint8_t kPublicKeyTag =
+static const unsigned kPublicKeyTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 1;
 
 EC_KEY *EC_KEY_parse_private_key(CBS *cbs, const EC_GROUP *group) {
