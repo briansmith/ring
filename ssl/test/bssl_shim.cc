@@ -433,10 +433,7 @@ static ssl_private_key_result_t AsyncPrivateKeyComplete(
 }
 
 static const SSL_PRIVATE_KEY_METHOD g_async_private_key_method = {
-    nullptr /* type */,
-    nullptr /* max_signature_len */,
     AsyncPrivateKeySign,
-    nullptr /* sign_digest */,
     AsyncPrivateKeyDecrypt,
     AsyncPrivateKeyComplete,
 };
@@ -452,27 +449,6 @@ static bool GetCertificate(SSL *ssl, bssl::UniquePtr<X509> *out_x509,
                            bssl::UniquePtr<STACK_OF(X509)> *out_chain,
                            bssl::UniquePtr<EVP_PKEY> *out_pkey) {
   const TestConfig *config = GetTestConfig(ssl);
-
-  if (!config->digest_prefs.empty()) {
-    bssl::UniquePtr<char> digest_prefs(
-        OPENSSL_strdup(config->digest_prefs.c_str()));
-    std::vector<int> digest_list;
-
-    for (;;) {
-      char *token =
-          strtok(digest_list.empty() ? digest_prefs.get() : nullptr, ",");
-      if (token == nullptr) {
-        break;
-      }
-
-      digest_list.push_back(EVP_MD_type(EVP_get_digestbyname(token)));
-    }
-
-    if (!SSL_set_private_key_digest_prefs(ssl, digest_list.data(),
-                                          digest_list.size())) {
-      return false;
-    }
-  }
 
   if (!config->signing_prefs.empty()) {
     std::vector<uint16_t> u16s(config->signing_prefs.begin(),

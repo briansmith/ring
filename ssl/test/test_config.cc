@@ -132,7 +132,6 @@ const Flag<bool> kBoolFlags[] = {
 
 const Flag<std::string> kStringFlags[] = {
   { "-write-settings", &TestConfig::write_settings },
-  { "-digest-prefs", &TestConfig::digest_prefs },
   { "-key-file", &TestConfig::key_file },
   { "-cert-file", &TestConfig::cert_file },
   { "-expect-server-name", &TestConfig::expected_server_name },

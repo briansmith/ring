@@ -8306,8 +8306,8 @@ func addSignatureAlgorithmTests() {
 		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
 	})
 
-	// Test that hash preferences are enforced. BoringSSL does not implement
-	// MD5 signatures.
+	// Test that signature preferences are enforced. BoringSSL does not
+	// implement MD5 signatures.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
 		name:     "ClientAuth-Enforced",
@@ -8376,26 +8376,8 @@ func addSignatureAlgorithmTests() {
 		expectedError: ":WRONG_SIGNATURE_TYPE:",
 	})
 
-	// Test that the agreed upon digest respects the client preferences and
-	// the server digests.
-	testCases = append(testCases, testCase{
-		name: "NoCommonAlgorithms-Digests",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			ClientAuth: RequireAnyClientCert,
-			VerifySignatureAlgorithms: []signatureAlgorithm{
-				signatureRSAPKCS1WithSHA512,
-				signatureRSAPKCS1WithSHA1,
-			},
-		},
-		flags: []string{
-			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
-			"-key-file", path.Join(*resourceDir, rsaKeyFile),
-			"-digest-prefs", "SHA256",
-		},
-		shouldFail:    true,
-		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
-	})
+	// Test that the negotiated signature algorithm respects the client and
+	// server preferences.
 	testCases = append(testCases, testCase{
 		name: "NoCommonAlgorithms",
 		config: Config{
@@ -8445,7 +8427,8 @@ func addSignatureAlgorithmTests() {
 		flags: []string{
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
-			"-digest-prefs", "SHA256,SHA1",
+			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
+			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA1)),
 		},
 		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA256,
 	})
@@ -8461,7 +8444,9 @@ func addSignatureAlgorithmTests() {
 		flags: []string{
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
-			"-digest-prefs", "SHA512,SHA256,SHA1",
+			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA512)),
+			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA256)),
+			"-signing-prefs", strconv.Itoa(int(signatureRSAPKCS1WithSHA1)),
 		},
 		expectedPeerSignatureAlgorithm: signatureRSAPKCS1WithSHA1,
 	})

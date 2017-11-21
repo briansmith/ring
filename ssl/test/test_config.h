@@ -26,7 +26,6 @@ struct TestConfig {
   int resume_count = 0;
   std::string write_settings;
   bool fallback_scsv = false;
-  std::string digest_prefs;
   std::vector<int> signing_prefs;
   std::vector<int> verify_prefs;
   std::string key_file;

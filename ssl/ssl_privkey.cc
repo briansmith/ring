@@ -193,33 +193,6 @@ static int setup_ctx(SSL *ssl, EVP_MD_CTX *ctx, EVP_PKEY *pkey, uint16_t sigalg,
   return 1;
 }
 
-static int legacy_sign_digest_supported(const SSL_SIGNATURE_ALGORITHM *alg) {
-  return (alg->pkey_type == EVP_PKEY_EC || alg->pkey_type == EVP_PKEY_RSA) &&
-         !alg->is_rsa_pss;
-}
-
-static enum ssl_private_key_result_t legacy_sign(
-    SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out, uint16_t sigalg,
-    const uint8_t *in, size_t in_len) {
-  // TODO(davidben): Remove support for |sign_digest|-only
-  // |SSL_PRIVATE_KEY_METHOD|s.
-  const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
-  if (alg == NULL || !legacy_sign_digest_supported(alg)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL_FOR_CUSTOM_KEY);
-    return ssl_private_key_failure;
-  }
-
-  const EVP_MD *md = alg->digest_func();
-  uint8_t hash[EVP_MAX_MD_SIZE];
-  unsigned hash_len;
-  if (!EVP_Digest(in, in_len, hash, &hash_len, md, NULL)) {
-    return ssl_private_key_failure;
-  }
-
-  return ssl->cert->key_method->sign_digest(ssl, out, out_len, max_out, md,
-                                            hash, hash_len);
-}
-
 enum ssl_private_key_result_t ssl_private_key_sign(
     SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, size_t max_out,
     uint16_t sigalg, Span<const uint8_t> in) {
@@ -229,9 +202,8 @@ enum ssl_private_key_result_t ssl_private_key_sign(
     if (hs->pending_private_key_op) {
       ret = ssl->cert->key_method->complete(ssl, out, out_len, max_out);
     } else {
-      ret = (ssl->cert->key_method->sign != NULL ? ssl->cert->key_method->sign
-                                                 : legacy_sign)(
-          ssl, out, out_len, max_out, sigalg, in.data(), in.size());
+      ret = ssl->cert->key_method->sign(ssl, out, out_len, max_out, sigalg,
+                                        in.data(), in.size());
     }
     hs->pending_private_key_op = ret == ssl_private_key_retry;
     return ret;
@@ -305,14 +277,6 @@ bool ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
   const SSL_SIGNATURE_ALGORITHM *alg = get_signature_algorithm(sigalg);
   if (alg->is_rsa_pss && (size_t)EVP_PKEY_size(hs->local_pubkey.get()) <
                              2 * EVP_MD_size(alg->digest_func()) + 2) {
-    return false;
-  }
-
-  // Newer algorithms require message-based private keys.
-  // TODO(davidben): Remove this check when sign_digest is gone.
-  if (ssl->cert->key_method != NULL &&
-      ssl->cert->key_method->sign == NULL &&
-      !legacy_sign_digest_supported(alg)) {
     return false;
   }
 
@@ -511,7 +475,6 @@ int SSL_CTX_set_signing_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
                              prefs, num_prefs);
 }
 
-
 int SSL_set_signing_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
                                     size_t num_prefs) {
   return set_algorithm_prefs(&ssl->cert->sigalgs, &ssl->cert->num_sigalgs,
@@ -522,53 +485,4 @@ int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
                                        size_t num_prefs) {
   return set_algorithm_prefs(&ctx->verify_sigalgs, &ctx->num_verify_sigalgs,
                              prefs, num_prefs);
-}
-
-int SSL_set_private_key_digest_prefs(SSL *ssl, const int *digest_nids,
-                                     size_t num_digests) {
-  OPENSSL_free(ssl->cert->sigalgs);
-
-  static_assert(sizeof(int) >= 2 * sizeof(uint16_t),
-                "sigalgs allocation may overflow");
-
-  ssl->cert->num_sigalgs = 0;
-  ssl->cert->sigalgs =
-      (uint16_t *)OPENSSL_malloc(sizeof(uint16_t) * 2 * num_digests);
-  if (ssl->cert->sigalgs == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-
-  // Convert the digest list to a signature algorithms list.
-  //
-  // TODO(davidben): Replace this API with one that can express RSA-PSS, etc.
-  for (size_t i = 0; i < num_digests; i++) {
-    switch (digest_nids[i]) {
-      case NID_sha1:
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA1;
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] = SSL_SIGN_ECDSA_SHA1;
-        ssl->cert->num_sigalgs += 2;
-        break;
-      case NID_sha256:
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA256;
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] =
-            SSL_SIGN_ECDSA_SECP256R1_SHA256;
-        ssl->cert->num_sigalgs += 2;
-        break;
-      case NID_sha384:
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA384;
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] =
-            SSL_SIGN_ECDSA_SECP384R1_SHA384;
-        ssl->cert->num_sigalgs += 2;
-        break;
-      case NID_sha512:
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs] = SSL_SIGN_RSA_PKCS1_SHA512;
-        ssl->cert->sigalgs[ssl->cert->num_sigalgs + 1] =
-            SSL_SIGN_ECDSA_SECP521R1_SHA512;
-        ssl->cert->num_sigalgs += 2;
-        break;
-    }
-  }
-
-  return 1;
 }
