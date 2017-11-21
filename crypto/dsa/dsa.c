@@ -82,6 +82,9 @@
 // Rabin-Miller
 #define DSS_prime_checks 50
 
+static int dsa_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
+                          BIGNUM **out_r);
+
 static CRYPTO_EX_DATA_CLASS g_ex_data_class = CRYPTO_EX_DATA_CLASS_INIT;
 
 DSA *DSA_new(void) {
@@ -117,8 +120,6 @@ void DSA_free(DSA *dsa) {
   BN_clear_free(dsa->g);
   BN_clear_free(dsa->pub_key);
   BN_clear_free(dsa->priv_key);
-  BN_clear_free(dsa->kinv);
-  BN_clear_free(dsa->r);
   BN_MONT_CTX_free(dsa->method_mont_p);
   BN_MONT_CTX_free(dsa->method_mont_q);
   CRYPTO_MUTEX_cleanup(&dsa->method_mont_lock);
@@ -544,14 +545,13 @@ void DSA_SIG_free(DSA_SIG *sig) {
   OPENSSL_free(sig);
 }
 
-DSA_SIG *DSA_do_sign(const uint8_t *digest, size_t digest_len, DSA *dsa) {
+DSA_SIG *DSA_do_sign(const uint8_t *digest, size_t digest_len, const DSA *dsa) {
   BIGNUM *kinv = NULL, *r = NULL, *s = NULL;
   BIGNUM m;
   BIGNUM xr;
   BN_CTX *ctx = NULL;
   int reason = ERR_R_BN_LIB;
   DSA_SIG *ret = NULL;
-  int noredo = 0;
 
   BN_init(&m);
   BN_init(&xr);
@@ -571,16 +571,8 @@ DSA_SIG *DSA_do_sign(const uint8_t *digest, size_t digest_len, DSA *dsa) {
   }
 
 redo:
-  if (dsa->kinv == NULL || dsa->r == NULL) {
-    if (!DSA_sign_setup(dsa, ctx, &kinv, &r)) {
-      goto err;
-    }
-  } else {
-    kinv = dsa->kinv;
-    dsa->kinv = NULL;
-    r = dsa->r;
-    dsa->r = NULL;
-    noredo = 1;
+  if (!dsa_sign_setup(dsa, ctx, &kinv, &r)) {
+    goto err;
   }
 
   if (digest_len > BN_num_bytes(dsa->q)) {
@@ -613,10 +605,6 @@ redo:
   // Redo if r or s is zero as required by FIPS 186-3: this is
   // very unlikely.
   if (BN_is_zero(r) || BN_is_zero(s)) {
-    if (noredo) {
-      reason = DSA_R_NEED_NEW_SETUP_VALUES;
-      goto err;
-    }
     goto redo;
   }
   ret = DSA_SIG_new();
@@ -758,7 +746,7 @@ err:
 }
 
 int DSA_sign(int type, const uint8_t *digest, size_t digest_len,
-             uint8_t *out_sig, unsigned int *out_siglen, DSA *dsa) {
+             uint8_t *out_sig, unsigned int *out_siglen, const DSA *dsa) {
   DSA_SIG *s;
 
   s = DSA_do_sign(digest, digest_len, dsa);
@@ -848,8 +836,8 @@ int DSA_size(const DSA *dsa) {
   return ret;
 }
 
-int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
-                   BIGNUM **out_r) {
+static int dsa_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
+                          BIGNUM **out_r) {
   BN_CTX *ctx;
   BIGNUM k, kq, *kinv = NULL, *r = NULL;
   int ret = 0;

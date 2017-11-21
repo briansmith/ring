@@ -172,7 +172,7 @@ OPENSSL_EXPORT void DSA_SIG_free(DSA_SIG *sig);
 // DSA_do_sign returns a signature of the hash in |digest| by the key in |dsa|
 // and returns an allocated, DSA_SIG structure, or NULL on error.
 OPENSSL_EXPORT DSA_SIG *DSA_do_sign(const uint8_t *digest, size_t digest_len,
-                                    DSA *dsa);
+                                    const DSA *dsa);
 
 // DSA_do_verify verifies that |sig| is a valid signature, by the public key in
 // |dsa|, of the hash in |digest|. It returns one if so, zero if invalid and -1
@@ -212,7 +212,7 @@ OPENSSL_EXPORT int DSA_do_check_signature(int *out_valid, const uint8_t *digest,
 // (The |type| argument is ignored.)
 OPENSSL_EXPORT int DSA_sign(int type, const uint8_t *digest, size_t digest_len,
                             uint8_t *out_sig, unsigned int *out_siglen,
-                            DSA *dsa);
+                            const DSA *dsa);
 
 // DSA_verify verifies that |sig| is a valid, ASN.1 signature, by the public
 // key in |dsa|, of the hash in |digest|. It returns one if so, zero if invalid
@@ -282,19 +282,6 @@ OPENSSL_EXPORT DSA *DSA_parse_parameters(CBS *cbs);
 // (RFC 3447) and appends the result to |cbb|. It returns one on success and
 // zero on failure.
 OPENSSL_EXPORT int DSA_marshal_parameters(CBB *cbb, const DSA *dsa);
-
-
-// Precomputation.
-
-// DSA_sign_setup precomputes the message independent part of the DSA signature
-// and writes them to |*out_kinv| and |*out_r|. Returns one on success, zero on
-// error.
-//
-// TODO(fork): decide what to do with this. Since making DSA* opaque there's no
-// way for the user to install them. Also, it forces the DSA* not to be const
-// when passing to the signing function.
-OPENSSL_EXPORT int DSA_sign_setup(const DSA *dsa, BN_CTX *ctx,
-                                  BIGNUM **out_kinv, BIGNUM **out_r);
 
 
 // Conversion.
@@ -410,9 +397,6 @@ struct dsa_st {
 
   BIGNUM *pub_key;   // y public key
   BIGNUM *priv_key;  // x private key
-
-  BIGNUM *kinv;  // Signing pre-calc
-  BIGNUM *r;     // Signing pre-calc
 
   int flags;
   // Normally used to cache montgomery values
