@@ -238,6 +238,24 @@ if (ASAN)
   set(OPENSSL_NO_ASM "1")
 endif()
 
+if(CFI)
+  if(NOT CLANG)
+    message(FATAL_ERROR "Cannot enable CFI unless using Clang")
+  endif()
+
+  # TODO(crbug.com/785442): Remove -fsanitize-cfi-icall-generalize-pointers.
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=cfi -fno-sanitize-trap=cfi -fsanitize-cfi-icall-generalize-pointers -flto")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=cfi -fno-sanitize-trap=cfi -fsanitize-cfi-icall-generalize-pointers -flto")
+  # We use Chromium's copy of clang, which requires -fuse-ld=lld if building
+  # with -flto. That, in turn, can't handle -ggdb.
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld")
+  string(REPLACE "-ggdb" "-g" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+  string(REPLACE "-ggdb" "-g" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  # -flto causes object files to contain LLVM bitcode. Mixing those with
+  # assembly output in the same static library breaks the linker.
+  set(OPENSSL_NO_ASM "1")
+endif()
+
 if (GCOV)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
