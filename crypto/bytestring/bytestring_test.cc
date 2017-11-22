@@ -886,3 +886,57 @@ TEST(CBSTest, BitString) {
               CBS_asn1_bitstring_has_bit(&cbs, test.bit));
   }
 }
+
+TEST(CBBTest, AddOIDFromText) {
+  const struct {
+    const char *in;
+    bool ok;
+    std::vector<uint8_t> out;
+  } kTests[] = {
+      // Some valid values.
+      {"1.2.3.4", true, {0x2a, 0x3, 0x4}},
+      {"1.2.840.113554.4.1.72585",
+       true,
+       {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7, 0x09}},
+      // Test edge cases around the first component.
+      {"0.39", true, {0x27}},
+      {"0.40", false, {}},
+      {"1.0", true, {0x28}},
+      {"1.39", true, {0x4f}},
+      {"1.40", false, {}},
+      {"2.0", true, {0x50}},
+      {"2.1", true, {0x51}},
+      {"2.40", true, {0x78}},
+      // The empty string is not an OID.
+      {"", false, {}},
+      // No empty components.
+      {".1.2.3.4.5", false, {}},
+      {"1..2.3.4.5", false, {}},
+      {"1.2.3.4.5.", false, {}},
+      // There must be at least two components.
+      {"1", false, {}},
+      // No extra leading zeros.
+      {"00.1.2.3.4", false, {}},
+      {"01.1.2.3.4", false, {}},
+      // Check for overflow.
+      {"1.2.4294967295", true, {0x2a, 0x8f, 0xff, 0xff, 0xff, 0x7f}},
+      {"1.2.4294967296", false, {}},
+      // 40*A + B overflows.
+      {"2.4294967215", true, {0x8f, 0xff, 0xff, 0xff, 0x7f}},
+      {"2.4294967216", false, {}},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(t.in);
+    bssl::ScopedCBB cbb;
+    ASSERT_TRUE(CBB_init(cbb.get(), 0));
+    int ok = CBB_add_asn1_oid_from_text(cbb.get(), t.in, strlen(t.in));
+    EXPECT_EQ(t.ok, static_cast<bool>(ok));
+    if (ok) {
+      uint8_t *out;
+      size_t len;
+      ASSERT_TRUE(CBB_finish(cbb.get(), &out, &len));
+      bssl::UniquePtr<uint8_t> free_out(out);
+      EXPECT_EQ(Bytes(t.out), Bytes(out, len));
+    }
+  }
+}

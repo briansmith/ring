@@ -389,16 +389,30 @@ const char *OBJ_nid2ln(int nid) {
   return obj->ln;
 }
 
-ASN1_OBJECT *OBJ_txt2obj(const char *s, int dont_search_names) {
-  int nid = NID_undef;
-  ASN1_OBJECT *op = NULL;
-  unsigned char *buf;
-  unsigned char *p;
-  const unsigned char *bufp;
-  int contents_len, total_len;
+static ASN1_OBJECT *create_object_with_text_oid(int (*get_nid)(void),
+                                                const char *oid,
+                                                const char *short_name,
+                                                const char *long_name) {
+  uint8_t *buf;
+  size_t len;
+  CBB cbb;
+  if (!CBB_init(&cbb, 32) ||
+      !CBB_add_asn1_oid_from_text(&cbb, oid, strlen(oid)) ||
+      !CBB_finish(&cbb, &buf, &len)) {
+    OPENSSL_PUT_ERROR(OBJ, OBJ_R_INVALID_OID_STRING);
+    CBB_cleanup(&cbb);
+    return NULL;
+  }
 
+  ASN1_OBJECT *ret = ASN1_OBJECT_create(get_nid ? get_nid() : NID_undef, buf,
+                                        len, short_name, long_name);
+  OPENSSL_free(buf);
+  return ret;
+}
+
+ASN1_OBJECT *OBJ_txt2obj(const char *s, int dont_search_names) {
   if (!dont_search_names) {
-    nid = OBJ_sn2nid(s);
+    int nid = OBJ_sn2nid(s);
     if (nid == NID_undef) {
       nid = OBJ_ln2nid(s);
     }
@@ -408,31 +422,7 @@ ASN1_OBJECT *OBJ_txt2obj(const char *s, int dont_search_names) {
     }
   }
 
-  // Work out size of content octets
-  contents_len = a2d_ASN1_OBJECT(NULL, 0, s, -1);
-  if (contents_len <= 0) {
-    return NULL;
-  }
-  // Work out total size
-  total_len = ASN1_object_size(0, contents_len, V_ASN1_OBJECT);
-
-  buf = OPENSSL_malloc(total_len);
-  if (buf == NULL) {
-    OPENSSL_PUT_ERROR(OBJ, ERR_R_MALLOC_FAILURE);
-    return NULL;
-  }
-
-  p = buf;
-  // Write out tag+length
-  ASN1_put_object(&p, 0, contents_len, V_ASN1_OBJECT, V_ASN1_UNIVERSAL);
-  // Write out contents
-  a2d_ASN1_OBJECT(p, contents_len, s, -1);
-
-  bufp = buf;
-  op = d2i_ASN1_OBJECT(NULL, &bufp, total_len);
-  OPENSSL_free(buf);
-
-  return op;
+  return create_object_with_text_oid(NULL, s, NULL, NULL);
 }
 
 static int strlcpy_int(char *dst, const char *src, int dst_size) {
@@ -621,41 +611,11 @@ static int obj_add_object(ASN1_OBJECT *obj) {
 }
 
 int OBJ_create(const char *oid, const char *short_name, const char *long_name) {
-  int ret = NID_undef;
-  ASN1_OBJECT *op = NULL;
-  unsigned char *buf = NULL;
-  int len;
-
-  len = a2d_ASN1_OBJECT(NULL, 0, oid, -1);
-  if (len <= 0) {
-    goto err;
+  ASN1_OBJECT *op =
+      create_object_with_text_oid(obj_next_nid, oid, short_name, long_name);
+  if (op == NULL ||
+      !obj_add_object(op)) {
+    return NID_undef;
   }
-
-  buf = OPENSSL_malloc(len);
-  if (buf == NULL) {
-    OPENSSL_PUT_ERROR(OBJ, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  len = a2d_ASN1_OBJECT(buf, len, oid, -1);
-  if (len == 0) {
-    goto err;
-  }
-
-  op = (ASN1_OBJECT *)ASN1_OBJECT_create(obj_next_nid(), buf, len, short_name,
-                                         long_name);
-  if (op == NULL) {
-    goto err;
-  }
-
-  if (obj_add_object(op)) {
-    ret = op->nid;
-  }
-  op = NULL;
-
-err:
-  ASN1_OBJECT_free(op);
-  OPENSSL_free(buf);
-
-  return ret;
+  return op->nid;
 }

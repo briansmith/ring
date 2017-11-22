@@ -15,6 +15,7 @@
 #include <openssl/bytestring.h>
 
 #include <assert.h>
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/mem.h>
@@ -328,6 +329,32 @@ int CBB_add_u24_length_prefixed(CBB *cbb, CBB *out_contents) {
   return cbb_add_length_prefixed(cbb, out_contents, 3);
 }
 
+// add_base128_integer encodes |v| as a big-endian base-128 integer where the
+// high bit of each byte indicates where there is more data. This is the
+// encoding used in DER for both high tag number form and OID components.
+static int add_base128_integer(CBB *cbb, uint32_t v) {
+  unsigned len_len = 0;
+  unsigned copy = v;
+  while (copy > 0) {
+    len_len++;
+    copy >>= 7;
+  }
+  if (len_len == 0) {
+    len_len = 1;  // Zero is encoded with one byte.
+  }
+  for (unsigned i = len_len - 1; i < len_len; i--) {
+    uint8_t byte = (v >> (7 * i)) & 0x7f;
+    if (i != 0) {
+      // The high bit denotes whether there is more data.
+      byte |= 0x80;
+    }
+    if (!CBB_add_u8(cbb, byte)) {
+      return 0;
+    }
+  }
+  return 1;
+}
+
 int CBB_add_asn1(CBB *cbb, CBB *out_contents, unsigned tag) {
   if (!CBB_flush(cbb)) {
     return 0;
@@ -338,25 +365,9 @@ int CBB_add_asn1(CBB *cbb, CBB *out_contents, unsigned tag) {
   unsigned tag_number = tag & CBS_ASN1_TAG_NUMBER_MASK;
   if (tag_number >= 0x1f) {
     // Set all the bits in the tag number to signal high tag number form.
-    if (!CBB_add_u8(cbb, tag_bits | 0x1f)) {
+    if (!CBB_add_u8(cbb, tag_bits | 0x1f) ||
+        !add_base128_integer(cbb, tag_number)) {
       return 0;
-    }
-
-    unsigned len_len = 0;
-    unsigned copy = tag_number;
-    while (copy > 0) {
-      len_len++;
-      copy >>= 7;
-    }
-    for (unsigned i = len_len - 1; i < len_len; i--) {
-      uint8_t byte = (tag_number >> (7 * i)) & 0x7f;
-      if (i != 0) {
-        // The high bit denotes whether there is more data.
-        byte |= 0x80;
-      }
-      if (!CBB_add_u8(cbb, byte)) {
-        return 0;
-      }
     }
   } else if (!CBB_add_u8(cbb, tag_bits | tag_number)) {
     return 0;
@@ -491,4 +502,70 @@ int CBB_add_asn1_uint64(CBB *cbb, uint64_t value) {
   }
 
   return CBB_flush(cbb);
+}
+
+// parse_dotted_decimal parses one decimal component from |cbs|, where |cbs| is
+// an OID literal, e.g., "1.2.840.113554.4.1.72585". It consumes both the
+// component and the dot, so |cbs| may be passed into the function again for the
+// next value.
+static int parse_dotted_decimal(CBS *cbs, uint32_t *out) {
+  *out = 0;
+  int seen_digit = 0;
+  for (;;) {
+    // Valid terminators for a component are the end of the string or a
+    // non-terminal dot. If the string ends with a dot, this is not a valid OID
+    // string.
+    uint8_t u;
+    if (!CBS_get_u8(cbs, &u) ||
+        (u == '.' && CBS_len(cbs) > 0)) {
+      break;
+    }
+    if (u < '0' || u > '9' ||
+        // Forbid stray leading zeros.
+        (seen_digit && *out == 0) ||
+        // Check for overflow.
+        *out > UINT32_MAX / 10 ||
+        *out * 10 > UINT32_MAX - (u - '0')) {
+      return 0;
+    }
+    *out = *out * 10 + (u - '0');
+    seen_digit = 1;
+  }
+  // The empty string is not a legal OID component.
+  return seen_digit;
+}
+
+int CBB_add_asn1_oid_from_text(CBB *cbb, const char *text, size_t len) {
+  if (!CBB_flush(cbb)) {
+    return 0;
+  }
+
+  CBS cbs;
+  CBS_init(&cbs, (const uint8_t *)text, len);
+
+  // OIDs must have at least two components.
+  uint32_t a, b;
+  if (!parse_dotted_decimal(&cbs, &a) ||
+      !parse_dotted_decimal(&cbs, &b)) {
+    return 0;
+  }
+
+  // The first component is encoded as 40 * |a| + |b|. This assumes that |a| is
+  // 0, 1, or 2 and that, when it is 0 or 1, |b| is at most 39.
+  if (a > 2 ||
+      (a < 2 && b > 39) ||
+      b > UINT32_MAX - 80 ||
+      !add_base128_integer(cbb, 40 * a + b)) {
+    return 0;
+  }
+
+  // The remaining components are encoded unmodified.
+  while (CBS_len(&cbs) > 0) {
+    if (!parse_dotted_decimal(&cbs, &a) ||
+        !add_base128_integer(cbb, a)) {
+      return 0;
+    }
+  }
+
+  return 1;
 }

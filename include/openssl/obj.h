@@ -228,5 +228,6 @@ OPENSSL_EXPORT void OBJ_NAME_do_all(int type, void (*callback)(const OBJ_NAME *,
 #endif
 
 #define OBJ_R_UNKNOWN_NID 100
+#define OBJ_R_INVALID_OID_STRING 101
 
 #endif  // OPENSSL_HEADER_OBJ_H

@@ -443,6 +443,17 @@ OPENSSL_EXPORT void CBB_discard_child(CBB *cbb);
 // error.
 OPENSSL_EXPORT int CBB_add_asn1_uint64(CBB *cbb, uint64_t value);
 
+// CBB_add_asn1_oid_from_text decodes |len| bytes from |text| as an ASCII OID
+// representation, e.g. "1.2.840.113554.4.1.72585", and writes the DER-encoded
+// contents to |cbb|. It returns one on success and zero on malloc failure or if
+// |text| was invalid. It does not include the OBJECT IDENTIFER framing, only
+// the element's contents.
+//
+// This function considers OID strings with components which do not fit in a
+// |uint32_t| to be invalid.
+OPENSSL_EXPORT int CBB_add_asn1_oid_from_text(CBB *cbb, const char *text,
+                                              size_t len);
+
 
 #if defined(__cplusplus)
 }  // extern C
