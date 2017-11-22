@@ -106,6 +106,16 @@ OPENSSL_EXPORT ECDSA_SIG *ECDSA_SIG_new(void);
 // ECDSA_SIG_free frees |sig| its member |BIGNUM|s.
 OPENSSL_EXPORT void ECDSA_SIG_free(ECDSA_SIG *sig);
 
+// ECDSA_SIG_get0 sets |*out_r| and |*out_s|, if non-NULL, to the two
+// components of |sig|.
+OPENSSL_EXPORT void ECDSA_SIG_get0(const ECDSA_SIG *sig, const BIGNUM **out_r,
+                                   const BIGNUM **out_s);
+
+// ECDSA_SIG_set0 sets |sig|'s components to |r| and |s|, neither of which may
+// be NULL. On success, it takes ownership of each argument and returns one.
+// Otherwise, it returns zero.
+OPENSSL_EXPORT int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s);
+
 // ECDSA_do_sign signs |digest_len| bytes from |digest| with |key| and returns
 // the resulting signature structure, or NULL on error.
 OPENSSL_EXPORT ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest,

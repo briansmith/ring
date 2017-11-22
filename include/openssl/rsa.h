@@ -89,6 +89,9 @@ OPENSSL_EXPORT int RSA_up_ref(RSA *rsa);
 
 // Properties.
 
+// RSA_bits returns the size of |rsa|, in bits.
+OPENSSL_EXPORT unsigned RSA_bits(const RSA *rsa);
+
 // RSA_get0_key sets |*out_n|, |*out_e|, and |*out_d|, if non-NULL, to |rsa|'s
 // modulus, public exponent, and private exponent, respectively. If |rsa| is a
 // public key, the private exponent will be set to NULL.

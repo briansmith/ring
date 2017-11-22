@@ -116,6 +116,27 @@ void ECDSA_SIG_free(ECDSA_SIG *sig) {
   OPENSSL_free(sig);
 }
 
+void ECDSA_SIG_get0(const ECDSA_SIG *sig, const BIGNUM **out_r,
+                    const BIGNUM **out_s) {
+  if (out_r != NULL) {
+    *out_r = sig->r;
+  }
+  if (out_s != NULL) {
+    *out_s = sig->s;
+  }
+}
+
+int ECDSA_SIG_set0(ECDSA_SIG *sig, BIGNUM *r, BIGNUM *s) {
+  if (r == NULL || s == NULL) {
+    return 0;
+  }
+  BN_free(sig->r);
+  BN_free(sig->s);
+  sig->r = r;
+  sig->s = s;
+  return 1;
+}
+
 ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
                          const EC_KEY *key) {
   return ECDSA_do_sign_ex(digest, digest_len, NULL, NULL, key);

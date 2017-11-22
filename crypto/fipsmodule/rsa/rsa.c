@@ -157,6 +157,8 @@ int RSA_up_ref(RSA *rsa) {
   return 1;
 }
 
+unsigned RSA_bits(const RSA *rsa) { return BN_num_bits(rsa->n); }
+
 void RSA_get0_key(const RSA *rsa, const BIGNUM **out_n, const BIGNUM **out_e,
                   const BIGNUM **out_d) {
   if (out_n != NULL) {
