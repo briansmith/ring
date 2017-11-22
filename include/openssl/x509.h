@@ -680,8 +680,9 @@ OPENSSL_EXPORT X509_REVOKED *X509_REVOKED_dup(X509_REVOKED *rev);
 OPENSSL_EXPORT X509_REQ *X509_REQ_dup(X509_REQ *req);
 OPENSSL_EXPORT X509_ALGOR *X509_ALGOR_dup(X509_ALGOR *xn);
 OPENSSL_EXPORT int X509_ALGOR_set0(X509_ALGOR *alg, const ASN1_OBJECT *aobj, int ptype, void *pval);
-OPENSSL_EXPORT void X509_ALGOR_get0(ASN1_OBJECT **paobj, int *pptype, void **ppval,
-						X509_ALGOR *algor);
+OPENSSL_EXPORT void X509_ALGOR_get0(const ASN1_OBJECT **paobj, int *pptype,
+                                    const void **ppval,
+                                    const X509_ALGOR *algor);
 OPENSSL_EXPORT void X509_ALGOR_set_md(X509_ALGOR *alg, const EVP_MD *md);
 OPENSSL_EXPORT int X509_ALGOR_cmp(const X509_ALGOR *a, const X509_ALGOR *b);
 
