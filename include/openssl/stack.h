@@ -245,7 +245,7 @@ struct StackTraits {};
 // are defined in a header.
 
 #define BORINGSSL_DEFINE_STACK_OF_IMPL(name, ptrtype, constptrtype)            \
-  DECLARE_STACK_OF(name);                                                      \
+  DECLARE_STACK_OF(name)                                                       \
                                                                                \
   typedef int (*stack_##name##_cmp_func)(constptrtype *a, constptrtype *b);    \
                                                                                \
