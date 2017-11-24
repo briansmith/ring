@@ -593,6 +593,22 @@ func (m *clientHelloMsg) marshal() []byte {
 	return m.raw
 }
 
+func parseSignatureAlgorithms(reader *byteReader, out *[]signatureAlgorithm) bool {
+	var sigAlgs byteReader
+	if !reader.readU16LengthPrefixed(&sigAlgs) {
+		return false
+	}
+	*out = make([]signatureAlgorithm, 0, len(sigAlgs)/2)
+	for len(sigAlgs) > 0 {
+		var v uint16
+		if !sigAlgs.readU16(&v) {
+			return false
+		}
+		*out = append(*out, signatureAlgorithm(v))
+	}
+	return true
+}
+
 func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	m.raw = data
 	reader := byteReader(data[4:])
@@ -765,17 +781,8 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 			}
 		case extensionSignatureAlgorithms:
 			// https://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
-			var sigAlgs byteReader
-			if !body.readU16LengthPrefixed(&sigAlgs) || len(body) != 0 {
+			if !parseSignatureAlgorithms(&body, &m.signatureAlgorithms) || len(body) != 0 {
 				return false
-			}
-			m.signatureAlgorithms = make([]signatureAlgorithm, 0, len(sigAlgs)/2)
-			for len(sigAlgs) > 0 {
-				var v uint16
-				if !sigAlgs.readU16(&v) {
-					return false
-				}
-				m.signatureAlgorithms = append(m.signatureAlgorithms, signatureAlgorithm(v))
 			}
 		case extensionSupportedVersions:
 			var versions byteReader
@@ -1898,167 +1905,72 @@ func (m *certificateRequestMsg) marshal() []byte {
 	return m.raw
 }
 
-func parseSignatureAlgorithms(data []byte) ([]signatureAlgorithm, []byte, bool) {
-	if len(data) < 2 {
-		return nil, nil, false
+func parseCAs(reader *byteReader, out *[][]byte) bool {
+	var cas byteReader
+	if !reader.readU16LengthPrefixed(&cas) {
+		return false
 	}
-	sigAlgsLen := int(data[0])<<8 | int(data[1])
-	data = data[2:]
-	if sigAlgsLen&1 != 0 {
-		return nil, nil, false
-	}
-	if len(data) < int(sigAlgsLen) {
-		return nil, nil, false
-	}
-	numSigAlgs := sigAlgsLen / 2
-	signatureAlgorithms := make([]signatureAlgorithm, numSigAlgs)
-	for i := range signatureAlgorithms {
-		signatureAlgorithms[i] = signatureAlgorithm(data[0])<<8 | signatureAlgorithm(data[1])
-		data = data[2:]
-	}
-
-	return signatureAlgorithms, data, true
-}
-
-func parseCAs(data []byte) ([][]byte, []byte, bool) {
-	if len(data) < 2 {
-		return nil, nil, false
-	}
-	casLength := uint16(data[0])<<8 | uint16(data[1])
-	data = data[2:]
-	if len(data) < int(casLength) {
-		return nil, nil, false
-	}
-
-	cas := data[:casLength]
-	data = data[casLength:]
-
-	var certificateAuthorities [][]byte
 	for len(cas) > 0 {
-		if len(cas) < 2 {
-			return nil, nil, false
+		var ca []byte
+		if !cas.readU16LengthPrefixedBytes(&ca) {
+			return false
 		}
-		caLen := uint16(cas[0])<<8 | uint16(cas[1])
-		cas = cas[2:]
-
-		if len(cas) < int(caLen) {
-			return nil, nil, false
-		}
-
-		certificateAuthorities = append(certificateAuthorities, cas[:caLen])
-		cas = cas[caLen:]
+		*out = append(*out, ca)
 	}
-	return certificateAuthorities, data, true
+	return true
 }
 
 func (m *certificateRequestMsg) unmarshal(data []byte) bool {
 	m.raw = data
+	reader := byteReader(data[4:])
 
-	if len(data) < 5 {
-		return false
-	}
-	data = data[4:]
-
-	if m.hasRequestContext {
-		contextLen := int(data[0])
-		if len(data) < 1+contextLen {
+	if isDraft21(m.vers) {
+		var extensions byteReader
+		if !reader.readU8LengthPrefixedBytes(&m.requestContext) ||
+			!reader.readU16LengthPrefixed(&extensions) ||
+			len(reader) != 0 {
 			return false
 		}
-		m.requestContext = make([]byte, contextLen)
-		copy(m.requestContext, data[1:])
-		data = data[1+contextLen:]
-		if isDraft21(m.vers) {
-			if len(data) < 2 {
+		for len(extensions) > 0 {
+			var extension uint16
+			var body byteReader
+			if !extensions.readU16(&extension) ||
+				!extensions.readU16LengthPrefixed(&body) {
 				return false
 			}
-			extensionsLen := int(data[0])<<8 | int(data[1])
-			if len(data) < 2+extensionsLen {
-				return false
-			}
-			extensions := data[2 : 2+extensionsLen]
-			data = data[2+extensionsLen:]
-			for len(extensions) != 0 {
-				if len(extensions) < 4 {
+			switch extension {
+			case extensionSignatureAlgorithms:
+				if !parseSignatureAlgorithms(&body, &m.signatureAlgorithms) || len(body) != 0 {
 					return false
 				}
-				extension := uint16(extensions[0])<<8 | uint16(extensions[1])
-				length := int(extensions[2])<<8 | int(extensions[3])
-				if len(extensions) < 4+length {
+			case extensionCertificateAuthorities:
+				if !parseCAs(&body, &m.certificateAuthorities) || len(body) != 0 {
 					return false
 				}
-				contents := extensions[4 : 4+length]
-				extensions = extensions[4+length:]
-				switch extension {
-				case extensionSignatureAlgorithms:
-					sigAlgs, rest, ok := parseSignatureAlgorithms(contents)
-					if !ok || len(rest) != 0 {
-						return false
-					}
-					m.signatureAlgorithms = sigAlgs
-				case extensionCertificateAuthorities:
-					cas, rest, ok := parseCAs(contents)
-					if !ok || len(rest) != 0 {
-						return false
-					}
-					m.hasCAExtension = true
-					m.certificateAuthorities = cas
-				}
+				m.hasCAExtension = true
 			}
-		} else {
-			if m.hasSignatureAlgorithm {
-				sigAlgs, rest, ok := parseSignatureAlgorithms(data)
-				if !ok {
-					return false
-				}
-				m.signatureAlgorithms = sigAlgs
-				data = rest
-			}
-
-			cas, rest, ok := parseCAs(data)
-			if !ok {
-				return false
-			}
-			m.certificateAuthorities = cas
-			data = rest
-
-			// Ignore certificate extensions.
-			if len(data) < 2 {
-				return false
-			}
-			extsLength := int(data[0])<<8 | int(data[1])
-			if len(data) < 2+extsLength {
-				return false
-			}
-			data = data[2+extsLength:]
 		}
+	} else if m.hasRequestContext {
+		var extensions byteReader
+		if !reader.readU8LengthPrefixedBytes(&m.requestContext) ||
+			!parseSignatureAlgorithms(&reader, &m.signatureAlgorithms) ||
+			!parseCAs(&reader, &m.certificateAuthorities) ||
+			!reader.readU16LengthPrefixed(&extensions) ||
+			len(reader) != 0 {
+			return false
+		}
+		// Ignore certificate extensions.
 	} else {
-		numCertTypes := int(data[0])
-		if len(data) < 1+numCertTypes {
+		if !reader.readU8LengthPrefixedBytes(&m.certificateTypes) {
 			return false
 		}
-		m.certificateTypes = make([]byte, numCertTypes)
-		copy(m.certificateTypes, data[1:])
-		data = data[1+numCertTypes:]
-
-		if m.hasSignatureAlgorithm {
-			sigAlgs, rest, ok := parseSignatureAlgorithms(data)
-			if !ok {
-				return false
-			}
-			m.signatureAlgorithms = sigAlgs
-			data = rest
-		}
-
-		cas, rest, ok := parseCAs(data)
-		if !ok {
+		if m.hasSignatureAlgorithm && !parseSignatureAlgorithms(&reader, &m.signatureAlgorithms) {
 			return false
 		}
-		m.certificateAuthorities = cas
-		data = rest
-	}
-
-	if len(data) > 0 {
-		return false
+		if !parseCAs(&reader, &m.certificateAuthorities) ||
+			len(reader) != 0 {
+			return false
+		}
 	}
 
 	return true
