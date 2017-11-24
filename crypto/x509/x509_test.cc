@@ -26,6 +26,7 @@
 #include <openssl/pem.h>
 #include <openssl/pool.h>
 #include <openssl/x509.h>
+#include <openssl/x509v3.h>
 
 #include "../internal.h"
 
@@ -994,5 +995,43 @@ TEST(X509Test, TestPrintUTCTIME) {
     EXPECT_EQ(ok, (strcmp(t.want, "Bad time value") != 0) ? 1 : 0);
     EXPECT_EQ(t.want,
               std::string(reinterpret_cast<const char *>(contents), len));
+  }
+}
+
+TEST(X509Test, PrettyPrintIntegers) {
+  static const char *kTests[] = {
+      // Small numbers are pretty-printed in decimal.
+      "0",
+      "-1",
+      "1",
+      "42",
+      "-42",
+      "256",
+      "-256",
+      // Large numbers are pretty-printed in hex to avoid taking quadratic time.
+      "0x0123456789",
+      "-0x0123456789",
+  };
+  for (const char *in : kTests) {
+    SCOPED_TRACE(in);
+    BIGNUM *bn = nullptr;
+    ASSERT_TRUE(BN_asc2bn(&bn, in));
+    bssl::UniquePtr<BIGNUM> free_bn(bn);
+
+    {
+      bssl::UniquePtr<ASN1_INTEGER> asn1(BN_to_ASN1_INTEGER(bn, nullptr));
+      ASSERT_TRUE(asn1);
+      bssl::UniquePtr<char> out(i2s_ASN1_INTEGER(nullptr, asn1.get()));
+      ASSERT_TRUE(out.get());
+      EXPECT_STREQ(in, out.get());
+    }
+
+    {
+      bssl::UniquePtr<ASN1_ENUMERATED> asn1(BN_to_ASN1_ENUMERATED(bn, nullptr));
+      ASSERT_TRUE(asn1);
+      bssl::UniquePtr<char> out(i2s_ASN1_ENUMERATED(nullptr, asn1.get()));
+      ASSERT_TRUE(out.get());
+      EXPECT_STREQ(in, out.get());
+    }
   }
 }
