@@ -1383,7 +1383,7 @@ func (c *Conn) readHandshake() (interface{}, error) {
 	}
 
 	if !m.unmarshal(data) {
-		return nil, c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))
+		return nil, c.in.setErrorLocked(c.sendAlert(alertDecodeError))
 	}
 	return m, nil
 }
