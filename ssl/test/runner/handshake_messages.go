@@ -1536,85 +1536,46 @@ func (m *certificateMsg) marshal() (x []byte) {
 }
 
 func (m *certificateMsg) unmarshal(data []byte) bool {
-	if len(data) < 4 {
-		return false
-	}
-
 	m.raw = data
-	data = data[4:]
+	reader := byteReader(data[4:])
 
-	if m.hasRequestContext {
-		if len(data) == 0 {
-			return false
-		}
-		contextLen := int(data[0])
-		if len(data) < 1+contextLen {
-			return false
-		}
-		m.requestContext = make([]byte, contextLen)
-		copy(m.requestContext, data[1:])
-		data = data[1+contextLen:]
-	}
-
-	if len(data) < 3 {
-		return false
-	}
-	certsLen := int(data[0])<<16 | int(data[1])<<8 | int(data[2])
-	data = data[3:]
-	if len(data) != certsLen {
+	if m.hasRequestContext && !reader.readU8LengthPrefixedBytes(&m.requestContext) {
 		return false
 	}
 
+	var certs byteReader
+	if !reader.readU24LengthPrefixed(&certs) || len(reader) != 0 {
+		return false
+	}
 	m.certificates = nil
-	for len(data) != 0 {
-		if len(data) < 3 {
+	for len(certs) > 0 {
+		var cert certificateEntry
+		if !certs.readU24LengthPrefixedBytes(&cert.data) {
 			return false
 		}
-		certLen := int(data[0])<<16 | int(data[1])<<8 | int(data[2])
-		if len(data) < 3+certLen {
-			return false
-		}
-		cert := certificateEntry{
-			data: data[3 : 3+certLen],
-		}
-		data = data[3+certLen:]
 		if m.hasRequestContext {
-			if len(data) < 2 {
+			var extensions byteReader
+			if !certs.readU16LengthPrefixed(&extensions) {
 				return false
 			}
-			extensionsLen := int(data[0])<<8 | int(data[1])
-			if len(data) < 2+extensionsLen {
-				return false
-			}
-			extensions := data[2 : 2+extensionsLen]
-			data = data[2+extensionsLen:]
-			for len(extensions) != 0 {
-				if len(extensions) < 4 {
+			for len(extensions) > 0 {
+				var extension uint16
+				var body byteReader
+				if !extensions.readU16(&extension) ||
+					!extensions.readU16LengthPrefixed(&body) {
 					return false
 				}
-				extension := uint16(extensions[0])<<8 | uint16(extensions[1])
-				length := int(extensions[2])<<8 | int(extensions[3])
-				if len(extensions) < 4+length {
-					return false
-				}
-				contents := extensions[4 : 4+length]
-				extensions = extensions[4+length:]
-
 				switch extension {
 				case extensionStatusRequest:
-					if length < 4 {
+					var statusType byte
+					if !body.readU8(&statusType) ||
+						statusType != statusTypeOCSP ||
+						!body.readU24LengthPrefixedBytes(&cert.ocspResponse) ||
+						len(body) != 0 {
 						return false
 					}
-					if contents[0] != statusTypeOCSP {
-						return false
-					}
-					respLen := int(contents[1])<<16 | int(contents[2])<<8 | int(contents[3])
-					if respLen+4 != len(contents) || respLen == 0 {
-						return false
-					}
-					cert.ocspResponse = contents[4:]
 				case extensionSignedCertificateTimestamp:
-					cert.sctList = contents
+					cert.sctList = []byte(body)
 				default:
 					return false
 				}
