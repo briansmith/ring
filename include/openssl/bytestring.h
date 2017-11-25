@@ -176,9 +176,8 @@ OPENSSL_EXPORT int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out);
 // tag.
 #define CBS_ASN1_CONSTRUCTED (0x20u << CBS_ASN1_TAG_SHIFT)
 
-// The following values specify the constructed bit or tag class and may be ORed
-// into a tag number to produce the final tag. If none is used, the tag will be
-// UNIVERSAL.
+// The following values specify the tag class and may be ORed into a tag number
+// to produce the final tag. If none is used, the tag will be UNIVERSAL.
 #define CBS_ASN1_UNIVERSAL (0u << CBS_ASN1_TAG_SHIFT)
 #define CBS_ASN1_APPLICATION (0x40u << CBS_ASN1_TAG_SHIFT)
 #define CBS_ASN1_CONTEXT_SPECIFIC (0x80u << CBS_ASN1_TAG_SHIFT)
