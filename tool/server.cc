@@ -71,6 +71,9 @@ static const struct argument kArguments[] = {
         "-tls13-variant", kBooleanArgument, "Enable TLS 1.3 variants",
     },
     {
+        "-tls13-draft22-variant", kBooleanArgument, "Enable TLS 1.3 Draft 22.",
+    },
+    {
         "-www", kBooleanArgument,
         "The server will print connection information in response to a "
         "HTTP GET request.",
@@ -315,8 +318,10 @@ bool Server(const std::vector<std::string> &args) {
     SSL_CTX_set_early_data_enabled(ctx.get(), 1);
   }
 
-  // Enabling any TLS 1.3 variant on the server enables all of them.
-  if (args_map.count("-tls13-variant") != 0) {
+  // Draft 22 variants need to be explicitly enabled.
+  if (args_map.count("-tls13-draft22-variant") != 0) {
+    SSL_CTX_set_tls13_variant(ctx.get(), tls13_draft22);
+  } else if (args_map.count("-tls13-variant") != 0) {
     SSL_CTX_set_tls13_variant(ctx.get(), tls13_experiment);
   }
 
