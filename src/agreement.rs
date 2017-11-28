@@ -144,6 +144,115 @@ impl<'a> EphemeralPrivateKey {
     }
 }
 
+/// A static key pair for static X25519 scheme.
+///
+/// Refer NIST.SP.800-56A Chapter 6 for more details.
+pub struct X22519StaticKeyPair {
+    private_key: ec::PrivateKey,
+    public_key:  [u8; 32usize],
+    alg: &'static Algorithm,
+}
+
+impl X22519StaticKeyPair {
+    /// Generate new key pair for X25519.
+    pub fn generate(rng: &rand::SecureRandom)
+                    -> Result<X22519StaticKeyPair, error::Unspecified> {
+        let private_key = ec::PrivateKey::generate(&X25519.i.curve, rng)?;
+        Self::from_private_key(private_key)
+    }
+
+    /// Generate a pair of keys according given private key.
+    pub fn from_private_key(private_key: ec::PrivateKey)
+        -> Result<X22519StaticKeyPair, error::Unspecified> {
+        let mut public_key = [0u8; 32usize];
+        private_key.compute_public_key(&X25519.i.curve, &mut public_key)?;
+
+        Ok(X22519StaticKeyPair {
+            private_key,
+            public_key,
+            alg: &X25519,
+        })
+    }
+
+    /// Generate a pair of keys according given serialized private key.
+    pub fn from_bytes(bytes: untrusted::Input)
+        -> Result<X22519StaticKeyPair, error::Unspecified> {
+        let private_key = ec::PrivateKey::from_bytes(&X25519.i.curve, bytes)?;
+        Self::from_private_key(private_key)
+    }
+
+    /// Access to the public key.
+    #[inline]
+    pub fn public_key(&self) -> &[u8] {
+        &self.public_key
+    }
+
+    /// The size in bytes of the encoded public key.
+    #[inline(always)]
+    pub fn public_key_len(&self) -> usize {
+        self.alg.i.curve.public_key_len // 32
+    }
+
+    /// Access to the private key.
+    #[inline]
+    pub fn private_key(&self) -> &ec::PrivateKey {
+        &self.private_key
+    }
+
+    /// The size in bytes of the encoded private key.
+    #[inline(always)]
+    pub fn private_key_len(&self) -> usize {
+        self.private_key.bytes(self.alg.i.curve).len() // 32
+    }
+
+    /// Performs a key agreement with an static keys and the given public key.
+    ///
+    /// Refer [`agree_ephemeral`](fn.agree_ephemeral.html) for more details.
+    pub fn agree<F, R, E>(&self, peer_public_key_alg: &Algorithm,
+                          peer_public_key: untrusted::Input,
+                          error_value: E, kdf: F) -> Result<R, E>
+        where F: FnOnce(&[u8]) -> Result<R, E> {
+        // The following code from the `agree_ephemeral`
+        //
+        // NSA Guide Prerequisite 1.
+        //
+        // The domain parameters are hard-coded. This check verifies that the
+        // peer's public key's domain parameters match the domain parameters of
+        // this private key.
+        if peer_public_key_alg.i.curve.id != self.alg.i.curve.id {
+            return Err(error_value);
+        }
+
+        let alg = &self.alg.i;
+
+        // NSA Guide Prerequisite 2, regarding which KDFs are allowed, is delegated
+        // to the caller.
+
+        // NSA Guide Prerequisite 3, "Prior to or during the key-agreement process,
+        // each party shall obtain the identifier associated with the other party
+        // during the key-agreement scheme," is delegated to the caller.
+
+        // NSA Guide Step 1 is handled by `EphemeralPrivateKey::generate()` and
+        // `EphemeralPrivateKey::compute_public_key()`.
+
+        let mut shared_key = [0u8; ec::ELEM_MAX_BYTES];
+        let shared_key = &mut shared_key[..alg.curve.elem_and_scalar_len];
+
+        // NSA Guide Steps 2, 3, and 4.
+        //
+        // We have a pretty liberal interpretation of the NIST's spec's "Destroy"
+        // that doesn't meet the NSA requirement to "zeroize."
+        (alg.ecdh)(shared_key, &self.private_key, peer_public_key)
+            .map_err(|_| error_value)?;
+
+        // NSA Guide Steps 5 and 6.
+        //
+        // Again, we have a pretty liberal interpretation of the NIST's spec's
+        // "Destroy" that doesn't meet the NSA requirement to "zeroize."
+        kdf(shared_key)
+    }
+}
+
 /// Performs a key agreement with an ephemeral private key and the given public
 /// key.
 ///
