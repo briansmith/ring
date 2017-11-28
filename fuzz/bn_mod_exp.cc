@@ -70,6 +70,16 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
       CBS_len(&child2) == 0) {
     return 0;
   }
+
+  // Don't fuzz inputs larger than 512 bytes (4096 bits). This isn't ideal, but
+  // the naive |mod_exp| above is somewhat slow, so this otherwise causes the
+  // fuzzers to spend a lot of time exploring timeouts.
+  if (CBS_len(&child0) > 512 ||
+      CBS_len(&child1) > 512 ||
+      CBS_len(&child2) > 512) {
+    return 0;
+  }
+
   bssl::UniquePtr<BIGNUM> base(
       BN_bin2bn(CBS_data(&child0), CBS_len(&child0), nullptr));
   BN_set_negative(base.get(), sign % 2);
