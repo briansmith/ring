@@ -147,27 +147,27 @@ impl<'a> EphemeralPrivateKey {
 /// A static key pair for static X25519 scheme.
 ///
 /// Refer NIST.SP.800-56A Chapter 6 for more details.
-pub struct X22519StaticKeyPair {
+pub struct X25519StaticKeyPair {
     private_key: ec::PrivateKey,
     public_key:  [u8; 32usize],
     alg: &'static Algorithm,
 }
 
-impl X22519StaticKeyPair {
+impl X25519StaticKeyPair {
     /// Generate new key pair for X25519.
     pub fn generate(rng: &rand::SecureRandom)
-                    -> Result<X22519StaticKeyPair, error::Unspecified> {
+                    -> Result<X25519StaticKeyPair, error::Unspecified> {
         let private_key = ec::PrivateKey::generate(&X25519.i.curve, rng)?;
         Self::from_private_key(private_key)
     }
 
     /// Generate a pair of keys according given private key.
     pub fn from_private_key(private_key: ec::PrivateKey)
-        -> Result<X22519StaticKeyPair, error::Unspecified> {
+        -> Result<X25519StaticKeyPair, error::Unspecified> {
         let mut public_key = [0u8; 32usize];
         private_key.compute_public_key(&X25519.i.curve, &mut public_key)?;
 
-        Ok(X22519StaticKeyPair {
+        Ok(X25519StaticKeyPair {
             private_key,
             public_key,
             alg: &X25519,
@@ -176,14 +176,14 @@ impl X22519StaticKeyPair {
 
     /// Generate a pair of keys according given serialized private key.
     pub fn from_bytes(bytes: untrusted::Input)
-        -> Result<X22519StaticKeyPair, error::Unspecified> {
+        -> Result<X25519StaticKeyPair, error::Unspecified> {
         let private_key = ec::PrivateKey::from_bytes(&X25519.i.curve, bytes)?;
         Self::from_private_key(private_key)
     }
 
-    /// Access to the public key.
+    /// Returns a reference to the little-endian-encoded public key bytes.
     #[inline]
-    pub fn public_key(&self) -> &[u8] {
+    pub fn public_key_bytes(&self) -> &[u8] {
         &self.public_key
     }
 
@@ -193,7 +193,7 @@ impl X22519StaticKeyPair {
         self.alg.i.curve.public_key_len // 32
     }
 
-    /// Access to the private key.
+    /// Returns a reference to the private key.
     #[inline]
     pub fn private_key(&self) -> &ec::PrivateKey {
         &self.private_key
@@ -202,7 +202,13 @@ impl X22519StaticKeyPair {
     /// The size in bytes of the encoded private key.
     #[inline(always)]
     pub fn private_key_len(&self) -> usize {
-        self.private_key.bytes(self.alg.i.curve).len() // 32
+        self.private_key_bytes().len() // 32
+    }
+
+    /// Returns a reference to the private key bytes.
+    #[inline]
+    pub fn private_key_bytes(&self) -> &[u8] {
+        &self.private_key.bytes(&self.alg.i.curve)
     }
 
     /// Performs a key agreement with an static keys and the given public key.
