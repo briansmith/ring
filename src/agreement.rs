@@ -86,50 +86,43 @@ pub use ec::suite_b::ecdh::{ECDH_P256, ECDH_P384};
 
 pub use ec::curve25519::x25519::X25519;
 
-
 /// A key agreement algorithm.
 #[derive(Eq, PartialEq)]
 pub struct Algorithm {
     pub(crate) i: ec::AgreementAlgorithmImpl,
 }
 
-/// An ephemeral private key for use (only) with `agree_ephemeral`. The
-/// signature of `agree_ephemeral` ensures that an `EphemeralPrivateKey` can be
-/// used for at most one key agreement.
-pub struct EphemeralPrivateKey {
+struct Inner {
     private_key: ec::PrivateKey,
     alg: &'static Algorithm,
 }
 
-impl<'a> EphemeralPrivateKey {
-    /// Generate a new ephemeral private key for the given algorithm.
-    ///
-    /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
-    pub fn generate(alg: &'static Algorithm, rng: &rand::SecureRandom)
-                    -> Result<EphemeralPrivateKey, error::Unspecified> {
+impl Inner {
+    /// Generate a new private key for the given algorithm.
+    fn generate(alg: &'static Algorithm, rng: &rand::SecureRandom)
+        -> Result<Inner, error::Unspecified> {
         // NSA Guide Step 1.
         //
         // This only handles the key generation part of step 1. The rest of
         // step one is done by `compute_public_key()`.
         let private_key = ec::PrivateKey::generate(&alg.i.curve, rng)?;
-        Ok(EphemeralPrivateKey { private_key, alg })
+
+        Ok(Inner { private_key, alg })
     }
 
-    /// The key exchange algorithm.
     #[inline]
-    pub fn algorithm(&self) -> &'static Algorithm { self.alg }
+    fn algorithm(&self) -> &'static Algorithm {
+        self.alg
+    }
 
-    /// The size in bytes of the encoded public key.
     #[inline(always)]
-    pub fn public_key_len(&self) -> usize { self.alg.i.curve.public_key_len }
+    fn public_key_len(&self) -> usize {
+        self.alg.i.curve.public_key_len
+    }
 
-    /// Computes the public key from the private key's value and fills `out`
-    /// with the public point encoded in the standard form for the algorithm.
-    ///
-    /// `out.len()` must be equal to the value returned by `public_key_len`.
     #[inline(always)]
-    pub fn compute_public_key(&self, out: &mut [u8])
-                              -> Result<(), error::Unspecified> {
+    fn compute_public_key(&self, out: &mut [u8])
+        -> Result<(), error::Unspecified> {
         // NSA Guide Step 1.
         //
         // Obviously, this only handles the part of Step 1 between the private
@@ -138,9 +131,164 @@ impl<'a> EphemeralPrivateKey {
         self.private_key.compute_public_key(&self.alg.i.curve, out)
     }
 
+    #[inline(always)]
+    fn private_key_len(&self) -> usize {
+        self.private_key_bytes().len()
+    }
+
+    #[inline(always)]
+    fn private_key_bytes(&self) -> &[u8] {
+        self.private_key.bytes(&self.alg.i.curve)
+    }
+
+    fn agree<F: FnOnce(&[u8]) -> Result<R, E>, R, E>(
+        &self,
+        peer_public_key_alg: &Algorithm,
+        peer_public_key: untrusted::Input,
+        error_value: E,
+        kdf: F
+    ) -> Result<R, E> {
+        // NSA Guide Prerequisite 1.
+        //
+        // The domain parameters are hard-coded. This check verifies that the
+        // peer's public key's domain parameters match the domain parameters of
+        // this private key.
+        if peer_public_key_alg.i.curve.id != self.alg.i.curve.id {
+            return Err(error_value);
+        }
+
+        let alg = &self.alg.i;
+
+        // NSA Guide Prerequisite 2, regarding which KDFs are allowed, is delegated
+        // to the caller.
+
+        // NSA Guide Prerequisite 3, "Prior to or during the key-agreement process,
+        // each party shall obtain the identifier associated with the other party
+        // during the key-agreement scheme," is delegated to the caller.
+
+        // NSA Guide Step 1 is handled by `EphemeralPrivateKey::generate()` and
+        // `EphemeralPrivateKey::compute_public_key()`.
+
+        let mut shared_key = [0u8; ec::ELEM_MAX_BYTES];
+        let shared_key =
+            &mut shared_key[..alg.curve.elem_and_scalar_len];
+
+        // NSA Guide Steps 2, 3, and 4.
+        //
+        // We have a pretty liberal interpretation of the NIST's spec's "Destroy"
+        // that doesn't meet the NSA requirement to "zeroize."
+        (alg.ecdh)(shared_key, &self.private_key, peer_public_key)
+            .map_err(|_| error_value)?;
+
+        // NSA Guide Steps 5 and 6.
+        //
+        // Again, we have a pretty liberal interpretation of the NIST's spec's
+        // "Destroy" that doesn't meet the NSA requirement to "zeroize."
+        kdf(shared_key)
+    }
+}
+
+/// An ephemeral private key for use (only) with `agree_ephemeral`. The
+/// signature of `agree_ephemeral` ensures that an `EphemeralPrivateKey` can be
+/// used for at most one key agreement.
+pub struct EphemeralPrivateKey {
+    inner: Inner,
+}
+
+impl<'a> EphemeralPrivateKey {
+    /// Generate a new ephemeral private key for the given algorithm.
+    ///
+    /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
+    pub fn generate(alg: &'static Algorithm, rng: &rand::SecureRandom)
+                    -> Result<EphemeralPrivateKey, error::Unspecified> {
+        let inner = Inner::generate(alg, rng)?;
+        Ok(EphemeralPrivateKey { inner })
+    }
+
+    /// The key exchange algorithm.
+    #[inline]
+    pub fn algorithm(&self) -> &'static Algorithm { self.inner.algorithm() }
+
+    /// The size in bytes of the encoded public key.
+    #[inline(always)]
+    pub fn public_key_len(&self) -> usize { self.inner.public_key_len() }
+
+    /// Computes the public key from the private key's value and fills `out`
+    /// with the public point encoded in the standard form for the algorithm.
+    ///
+    /// `out.len()` must be equal to the value returned by `public_key_len`.
+    #[inline(always)]
+    pub fn compute_public_key(&self, out: &mut [u8])
+                              -> Result<(), error::Unspecified> {
+        self.inner.compute_public_key(out)
+    }
+
     #[cfg(test)]
     pub fn bytes(&'a self, curve: &ec::Curve) -> &'a [u8] {
-        self.private_key.bytes(curve)
+        self.inner.private_key.bytes(curve)
+    }
+}
+
+/// A reusable private key.
+///
+/// Refer NIST.SP.800-56A Chapter 6 for more details.
+pub struct ReusablePrivateKey {
+    inner: Inner,
+    public_key: [u8; PUBLIC_KEY_MAX_LEN],
+}
+
+impl ReusablePrivateKey {
+    /// Generate a new reusable private key for the given algorithm.
+    pub fn generate(alg: &'static Algorithm, rng: &rand::SecureRandom)
+                    -> Result<ReusablePrivateKey, error::Unspecified> {
+        let private_key = ec::PrivateKey::generate(alg.i.curve, rng)?;
+        Self::from_private_key(alg, private_key)
+    }
+
+    /// Generate a new reusable private key from given algorithm and private key.
+    pub fn from_private_key(alg: &'static Algorithm, private_key: ec::PrivateKey)
+        -> Result<ReusablePrivateKey, error::Unspecified> {
+        let inner = Inner { private_key, alg };
+
+        let public_key_len = inner.public_key_len();
+        let mut public_key = [0u8; PUBLIC_KEY_MAX_LEN];
+        inner.compute_public_key(&mut public_key[..public_key_len])?;
+
+        Ok(ReusablePrivateKey {
+            inner,
+            public_key,
+        })
+    }
+
+    /// Generate a new reusable private key from given algorithm and encoded private key.
+    pub fn from_bytes(alg: &'static Algorithm, bytes: untrusted::Input)
+        -> Result<ReusablePrivateKey, error::Unspecified> {
+        let private_key = ec::PrivateKey::from_bytes(&alg.i.curve, bytes)?;
+        Self::from_private_key(alg, private_key)
+    }
+
+    /// The size in bytes of the encoded public key.
+    #[inline(always)]
+    pub fn public_key_len(&self) -> usize {
+        self.inner.alg.i.curve.public_key_len
+    }
+
+    /// Returns a reference to the little-endian-encoded public key bytes.
+    #[inline(always)]
+    pub fn public_key_bytes(&self) -> &[u8] {
+        &self.public_key[..self.public_key_len()]
+    }
+
+    /// The size in bytes of the encoded private key.
+    #[inline(always)]
+    pub fn private_key_len(&self) -> usize {
+        self.inner.private_key_len()
+    }
+
+    /// Returns a reference to the encoded private key bytes.
+    #[inline]
+    pub fn private_key_bytes(&self) -> &[u8] {
+        &self.inner.private_key_bytes()
     }
 }
 
@@ -174,41 +322,17 @@ pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
                                 peer_public_key: untrusted::Input,
                                 error_value: E, kdf: F) -> Result<R, E>
                                 where F: FnOnce(&[u8]) -> Result<R, E> {
-    // NSA Guide Prerequisite 1.
-    //
-    // The domain parameters are hard-coded. This check verifies that the
-    // peer's public key's domain parameters match the domain parameters of
-    // this private key.
-    if peer_public_key_alg.i.curve.id != my_private_key.alg.i.curve.id {
-        return Err(error_value);
-    }
+    my_private_key.inner.agree(peer_public_key_alg, peer_public_key, error_value, kdf)
+}
 
-    let alg = &my_private_key.alg.i;
-
-    // NSA Guide Prerequisite 2, regarding which KDFs are allowed, is delegated
-    // to the caller.
-
-    // NSA Guide Prerequisite 3, "Prior to or during the key-agreement process,
-    // each party shall obtain the identifier associated with the other party
-    // during the key-agreement scheme," is delegated to the caller.
-
-    // NSA Guide Step 1 is handled by `EphemeralPrivateKey::generate()` and
-    // `EphemeralPrivateKey::compute_public_key()`.
-
-    let mut shared_key = [0u8; ec::ELEM_MAX_BYTES];
-    let shared_key =
-        &mut shared_key[..alg.curve.elem_and_scalar_len];
-
-    // NSA Guide Steps 2, 3, and 4.
-    //
-    // We have a pretty liberal interpretation of the NIST's spec's "Destroy"
-    // that doesn't meet the NSA requirement to "zeroize."
-    (alg.ecdh)(shared_key, &my_private_key.private_key, peer_public_key)
-        .map_err(|_| error_value)?;
-
-    // NSA Guide Steps 5 and 6.
-    //
-    // Again, we have a pretty liberal interpretation of the NIST's spec's
-    // "Destroy" that doesn't meet the NSA requirement to "zeroize."
-    kdf(shared_key)
+/// Performs a key agreement with an reusable private key and the given public
+/// key.
+///
+/// Refer [`agree_ephemeral`](fn.agree_ephemeral.html) for more details.
+pub fn agree_reusable<F, R, E>(my_private_key: &ReusablePrivateKey,
+                               peer_public_key_alg: &Algorithm,
+                               peer_public_key: untrusted::Input,
+                               error_value: E, kdf: F) -> Result<R, E>
+    where F: FnOnce(&[u8]) -> Result<R, E> {
+    my_private_key.inner.agree(peer_public_key_alg, peer_public_key, error_value, kdf)
 }
