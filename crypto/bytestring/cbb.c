@@ -332,9 +332,9 @@ int CBB_add_u24_length_prefixed(CBB *cbb, CBB *out_contents) {
 // add_base128_integer encodes |v| as a big-endian base-128 integer where the
 // high bit of each byte indicates where there is more data. This is the
 // encoding used in DER for both high tag number form and OID components.
-static int add_base128_integer(CBB *cbb, uint32_t v) {
+static int add_base128_integer(CBB *cbb, uint64_t v) {
   unsigned len_len = 0;
-  unsigned copy = v;
+  uint64_t copy = v;
   while (copy > 0) {
     len_len++;
     copy >>= 7;
@@ -508,7 +508,7 @@ int CBB_add_asn1_uint64(CBB *cbb, uint64_t value) {
 // an OID literal, e.g., "1.2.840.113554.4.1.72585". It consumes both the
 // component and the dot, so |cbs| may be passed into the function again for the
 // next value.
-static int parse_dotted_decimal(CBS *cbs, uint32_t *out) {
+static int parse_dotted_decimal(CBS *cbs, uint64_t *out) {
   *out = 0;
   int seen_digit = 0;
   for (;;) {
@@ -524,8 +524,8 @@ static int parse_dotted_decimal(CBS *cbs, uint32_t *out) {
         // Forbid stray leading zeros.
         (seen_digit && *out == 0) ||
         // Check for overflow.
-        *out > UINT32_MAX / 10 ||
-        *out * 10 > UINT32_MAX - (u - '0')) {
+        *out > UINT64_MAX / 10 ||
+        *out * 10 > UINT64_MAX - (u - '0')) {
       return 0;
     }
     *out = *out * 10 + (u - '0');
@@ -544,7 +544,7 @@ int CBB_add_asn1_oid_from_text(CBB *cbb, const char *text, size_t len) {
   CBS_init(&cbs, (const uint8_t *)text, len);
 
   // OIDs must have at least two components.
-  uint32_t a, b;
+  uint64_t a, b;
   if (!parse_dotted_decimal(&cbs, &a) ||
       !parse_dotted_decimal(&cbs, &b)) {
     return 0;
@@ -554,8 +554,8 @@ int CBB_add_asn1_oid_from_text(CBB *cbb, const char *text, size_t len) {
   // 0, 1, or 2 and that, when it is 0 or 1, |b| is at most 39.
   if (a > 2 ||
       (a < 2 && b > 39) ||
-      b > UINT32_MAX - 80 ||
-      !add_base128_integer(cbb, 40 * a + b)) {
+      b > UINT64_MAX - 80 ||
+      !add_base128_integer(cbb, 40u * a + b)) {
     return 0;
   }
 

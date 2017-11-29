@@ -889,54 +889,95 @@ TEST(CBSTest, BitString) {
 
 TEST(CBBTest, AddOIDFromText) {
   const struct {
-    const char *in;
-    bool ok;
-    std::vector<uint8_t> out;
-  } kTests[] = {
+    const char *text;
+    std::vector<uint8_t> der;
+  } kValidOIDs[] = {
       // Some valid values.
-      {"1.2.3.4", true, {0x2a, 0x3, 0x4}},
+      {"0.0", {0x00}},
+      {"0.2.3.4", {0x2, 0x3, 0x4}},
+      {"1.2.3.4", {0x2a, 0x3, 0x4}},
+      {"2.2.3.4", {0x52, 0x3, 0x4}},
       {"1.2.840.113554.4.1.72585",
-       true,
        {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7, 0x09}},
       // Test edge cases around the first component.
-      {"0.39", true, {0x27}},
-      {"0.40", false, {}},
-      {"1.0", true, {0x28}},
-      {"1.39", true, {0x4f}},
-      {"1.40", false, {}},
-      {"2.0", true, {0x50}},
-      {"2.1", true, {0x51}},
-      {"2.40", true, {0x78}},
-      // The empty string is not an OID.
-      {"", false, {}},
-      // No empty components.
-      {".1.2.3.4.5", false, {}},
-      {"1..2.3.4.5", false, {}},
-      {"1.2.3.4.5.", false, {}},
-      // There must be at least two components.
-      {"1", false, {}},
-      // No extra leading zeros.
-      {"00.1.2.3.4", false, {}},
-      {"01.1.2.3.4", false, {}},
-      // Check for overflow.
-      {"1.2.4294967295", true, {0x2a, 0x8f, 0xff, 0xff, 0xff, 0x7f}},
-      {"1.2.4294967296", false, {}},
-      // 40*A + B overflows.
-      {"2.4294967215", true, {0x8f, 0xff, 0xff, 0xff, 0x7f}},
-      {"2.4294967216", false, {}},
+      {"0.39", {0x27}},
+      {"1.0", {0x28}},
+      {"1.39", {0x4f}},
+      {"2.0", {0x50}},
+      {"2.1", {0x51}},
+      {"2.40", {0x78}},
+      // Edge cases near an overflow.
+      {"1.2.18446744073709551615",
+       {0x2a, 0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f}},
+      {"2.18446744073709551535",
+       {0x81, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f}},
   };
-  for (const auto &t : kTests) {
-    SCOPED_TRACE(t.in);
+
+  const char *kInvalidTexts[] = {
+      // Invalid second component.
+      "0.40",
+      "1.40",
+      // Invalid first component.
+      "3.1",
+      // The empty string is not an OID.
+      "",
+      // No empty components.
+      ".1.2.3.4.5",
+      "1..2.3.4.5",
+      "1.2.3.4.5.",
+      // There must be at least two components.
+      "1",
+      // No extra leading zeros.
+      "00.1.2.3.4",
+      "01.1.2.3.4",
+      // Overflow for both components or 40*A + B.
+      "1.2.18446744073709551616",
+      "2.18446744073709551536",
+  };
+
+  const std::vector<uint8_t> kInvalidDER[] = {
+      // The empty string is not an OID.
+      {},
+      // Non-minimal representation.
+      {0x80, 0x01},
+      // Overflow. This is the DER representation of
+      // 1.2.840.113554.4.1.72585.18446744073709551616. (The final value is
+      // 2^64.)
+      {0x2a, 0x86, 0x48, 0x86, 0xf7, 0x12, 0x04, 0x01, 0x84, 0xb7, 0x09,
+       0x82, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00},
+  };
+
+  for (const auto &t : kValidOIDs) {
+    SCOPED_TRACE(t.text);
+
     bssl::ScopedCBB cbb;
     ASSERT_TRUE(CBB_init(cbb.get(), 0));
-    int ok = CBB_add_asn1_oid_from_text(cbb.get(), t.in, strlen(t.in));
-    EXPECT_EQ(t.ok, static_cast<bool>(ok));
-    if (ok) {
-      uint8_t *out;
-      size_t len;
-      ASSERT_TRUE(CBB_finish(cbb.get(), &out, &len));
-      bssl::UniquePtr<uint8_t> free_out(out);
-      EXPECT_EQ(Bytes(t.out), Bytes(out, len));
-    }
+    ASSERT_TRUE(CBB_add_asn1_oid_from_text(cbb.get(), t.text, strlen(t.text)));
+    uint8_t *out;
+    size_t len;
+    ASSERT_TRUE(CBB_finish(cbb.get(), &out, &len));
+    bssl::UniquePtr<uint8_t> free_out(out);
+    EXPECT_EQ(Bytes(t.der), Bytes(out, len));
+
+    CBS cbs;
+    CBS_init(&cbs, t.der.data(), t.der.size());
+    bssl::UniquePtr<char> text(CBS_asn1_oid_to_text(&cbs));
+    ASSERT_TRUE(text.get());
+    EXPECT_STREQ(t.text, text.get());
+  }
+
+  for (const char *t : kInvalidTexts) {
+    SCOPED_TRACE(t);
+    bssl::ScopedCBB cbb;
+    ASSERT_TRUE(CBB_init(cbb.get(), 0));
+    EXPECT_FALSE(CBB_add_asn1_oid_from_text(cbb.get(), t, strlen(t)));
+  }
+
+  for (const auto &t : kInvalidDER) {
+    SCOPED_TRACE(Bytes(t));
+    CBS cbs;
+    CBS_init(&cbs, t.data(), t.size());
+    bssl::UniquePtr<char> text(CBS_asn1_oid_to_text(&cbs));
+    EXPECT_FALSE(text);
   }
 }

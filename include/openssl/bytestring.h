@@ -279,6 +279,13 @@ OPENSSL_EXPORT int CBS_is_valid_asn1_bitstring(const CBS *cbs);
 // is indexed starting from zero.
 OPENSSL_EXPORT int CBS_asn1_bitstring_has_bit(const CBS *cbs, unsigned bit);
 
+// CBS_asn1_oid_to_text interprets |cbs| as DER-encoded ASN.1 OBJECT IDENTIFIER
+// contents (not including the element framing) and returns the ASCII
+// representation (e.g., "1.2.840.113554.4.1.72585") in a newly-allocated
+// string, or NULL on failure. The caller must release the result with
+// |OPENSSL_free|.
+OPENSSL_EXPORT char *CBS_asn1_oid_to_text(const CBS *cbs);
+
 
 // CRYPTO ByteBuilder.
 //
@@ -450,7 +457,7 @@ OPENSSL_EXPORT int CBB_add_asn1_uint64(CBB *cbb, uint64_t value);
 // the element's contents.
 //
 // This function considers OID strings with components which do not fit in a
-// |uint32_t| to be invalid.
+// |uint64_t| to be invalid.
 OPENSSL_EXPORT int CBB_add_asn1_oid_from_text(CBB *cbb, const char *text,
                                               size_t len);
 
