@@ -819,20 +819,22 @@ int EC_POINT_invert(const EC_GROUP *group, EC_POINT *a, BN_CTX *ctx) {
 
 static int arbitrary_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
                                       const BIGNUM *in, BN_CTX *ctx) {
-  const BIGNUM *order = EC_GROUP_get0_order(group);
-  if (BN_is_negative(in) || BN_num_bits(in) > BN_num_bits(order)) {
-    // This is an unusual input, so we do not guarantee constant-time
-    // processing, even ignoring |bn_correct_top|.
-    BN_CTX_start(ctx);
-    BIGNUM *tmp = BN_CTX_get(ctx);
-    int ok = tmp != NULL &&
-             BN_nnmod(tmp, in, order, ctx) &&
-             ec_bignum_to_scalar(group, out, tmp);
-    BN_CTX_end(ctx);
-    return ok;
+  if (ec_bignum_to_scalar(group, out, in)) {
+    return 1;
   }
 
-  return ec_bignum_to_scalar(group, out, in);
+  ERR_clear_error();
+
+  // This is an unusual input, so we do not guarantee constant-time
+  // processing, even ignoring |bn_correct_top|.
+  const BIGNUM *order = &group->order;
+  BN_CTX_start(ctx);
+  BIGNUM *tmp = BN_CTX_get(ctx);
+  int ok = tmp != NULL &&
+           BN_nnmod(tmp, in, order, ctx) &&
+           ec_bignum_to_scalar_unchecked(group, out, tmp);
+  BN_CTX_end(ctx);
+  return ok;
 }
 
 int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
@@ -943,6 +945,18 @@ size_t EC_get_builtin_curves(EC_builtin_curve *out_curves,
 
 int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
                         const BIGNUM *in) {
+  if (!ec_bignum_to_scalar_unchecked(group, out, in)) {
+    return 0;
+  }
+  if (!bn_less_than_words(out->words, group->order.d, group->order.top)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_SCALAR);
+    return 0;
+  }
+  return 1;
+}
+
+int ec_bignum_to_scalar_unchecked(const EC_GROUP *group, EC_SCALAR *out,
+                                  const BIGNUM *in) {
   if (BN_is_negative(in) || in->top > group->order.top) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_SCALAR);
     return 0;

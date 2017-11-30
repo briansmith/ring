@@ -91,10 +91,9 @@ extern "C" {
 OPENSSL_COMPILE_ASSERT(EC_MAX_SCALAR_WORDS <= BN_SMALL_MAX_WORDS,
                        bn_small_functions_applicable);
 
-// An EC_SCALAR is a |BN_num_bits(order)|-bit integer. Only the first
+// An EC_SCALAR is an integer fully reduced modulo the order. Only the first
 // |order->top| words are used. An |EC_SCALAR| is specific to an |EC_GROUP| and
-// must not be mixed between groups. Unless otherwise specified, it is fully
-// reduced modulo the |order|.
+// must not be mixed between groups.
 typedef union {
   // bytes is the representation of the scalar in little-endian order.
   uint8_t bytes[EC_MAX_SCALAR_BYTES];
@@ -173,12 +172,15 @@ struct ec_point_st {
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth);
 
-// ec_bignum_to_scalar converts |in| to an |EC_SCALAR| and writes it to |*out|.
-// |in| must be non-negative and have at most |BN_num_bits(&group->order)| bits.
-// It returns one on success and zero on error. It does not ensure |in| is fully
-// reduced.
+// ec_bignum_to_scalar converts |in| to an |EC_SCALAR| and writes it to
+// |*out|. It returns one on success and zero if |in| is out of range.
 int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
                         const BIGNUM *in);
+
+// ec_bignum_to_scalar_unchecked behaves like |ec_bignum_to_scalar| but does not
+// check |in| is fully reduced.
+int ec_bignum_to_scalar_unchecked(const EC_GROUP *group, EC_SCALAR *out,
+                                  const BIGNUM *in);
 
 // ec_random_nonzero_scalar sets |out| to a uniformly selected random value from
 // 1 to |group->order| - 1. It returns one on success and zero on error.
