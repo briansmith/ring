@@ -817,6 +817,24 @@ int EC_POINT_invert(const EC_GROUP *group, EC_POINT *a, BN_CTX *ctx) {
   return ec_GFp_simple_invert(group, a, ctx);
 }
 
+static int arbitrary_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
+                                      const BIGNUM *in, BN_CTX *ctx) {
+  const BIGNUM *order = EC_GROUP_get0_order(group);
+  if (BN_is_negative(in) || BN_num_bits(in) > BN_num_bits(order)) {
+    // This is an unusual input, so we do not guarantee constant-time
+    // processing, even ignoring |bn_correct_top|.
+    BN_CTX_start(ctx);
+    BIGNUM *tmp = BN_CTX_get(ctx);
+    int ok = tmp != NULL &&
+             BN_nnmod(tmp, in, order, ctx) &&
+             ec_bignum_to_scalar(group, out, tmp);
+    BN_CTX_end(ctx);
+    return ok;
+  }
+
+  return ec_bignum_to_scalar(group, out, in);
+}
+
 int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
                  const EC_POINT *p, const BIGNUM *p_scalar, BN_CTX *ctx) {
   // Previously, this function set |r| to the point at infinity if there was
@@ -828,30 +846,27 @@ int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
     return 0;
   }
 
-  // We cannot easily process arbitrary scalars in constant-time, and there is
-  // no need to do so. Require that scalars be the same size as the order.
-  //
-  // One could require they be fully reduced, but some consumers try to check
-  // that |order| * |pubkey| is the identity. This comes from following NIST SP
-  // 800-56A section 5.6.2.3.2. (Though all our curves have cofactor one, so
-  // this check isn't useful.)
   int ret = 0;
   EC_SCALAR g_scalar_storage, p_scalar_storage;
   EC_SCALAR *g_scalar_arg = NULL, *p_scalar_arg = NULL;
-  unsigned order_bits = BN_num_bits(&group->order);
+  BN_CTX *new_ctx = NULL;
+  if (ctx == NULL) {
+    new_ctx = BN_CTX_new();
+    if (new_ctx == NULL) {
+      goto err;
+    }
+    ctx = new_ctx;
+  }
+
   if (g_scalar != NULL) {
-    if (BN_is_negative(g_scalar) || BN_num_bits(g_scalar) > order_bits ||
-        !ec_bignum_to_scalar(group, &g_scalar_storage, g_scalar)) {
-      OPENSSL_PUT_ERROR(EC, EC_R_INVALID_SCALAR);
+    if (!arbitrary_bignum_to_scalar(group, &g_scalar_storage, g_scalar, ctx)) {
       goto err;
     }
     g_scalar_arg = &g_scalar_storage;
   }
 
   if (p_scalar != NULL) {
-    if (BN_is_negative(p_scalar) || BN_num_bits(p_scalar) > order_bits ||
-        !ec_bignum_to_scalar(group, &p_scalar_storage, p_scalar)) {
-      OPENSSL_PUT_ERROR(EC, EC_R_INVALID_SCALAR);
+    if (!arbitrary_bignum_to_scalar(group, &p_scalar_storage, p_scalar, ctx)) {
       goto err;
     }
     p_scalar_arg = &p_scalar_storage;
@@ -860,6 +875,7 @@ int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
   ret = ec_point_mul_scalar(group, r, g_scalar_arg, p, p_scalar_arg, ctx);
 
 err:
+  BN_CTX_free(new_ctx);
   OPENSSL_cleanse(&g_scalar_storage, sizeof(g_scalar_storage));
   OPENSSL_cleanse(&p_scalar_storage, sizeof(p_scalar_storage));
   return ret;

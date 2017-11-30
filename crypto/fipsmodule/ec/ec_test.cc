@@ -439,6 +439,52 @@ TEST_P(ECCurveTest, MulOrder) {
       << "p * order did not return point at infinity.";
 }
 
+// Test that |EC_POINT_mul| works with out-of-range scalars. Even beyond the
+// usual |bn_correct_top| disclaimer, we completely disclaim all hope here as a
+// reduction is needed, but we'll compute the right answer.
+TEST_P(ECCurveTest, MulOutOfRange) {
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(GetParam().nid));
+  ASSERT_TRUE(group);
+
+  bssl::UniquePtr<BIGNUM> n_minus_one(BN_dup(EC_GROUP_get0_order(group.get())));
+  ASSERT_TRUE(n_minus_one);
+  ASSERT_TRUE(BN_sub_word(n_minus_one.get(), 1));
+
+  bssl::UniquePtr<BIGNUM> minus_one(BN_new());
+  ASSERT_TRUE(minus_one);
+  ASSERT_TRUE(BN_one(minus_one.get()));
+  BN_set_negative(minus_one.get(), 1);
+
+  bssl::UniquePtr<BIGNUM> seven(BN_new());
+  ASSERT_TRUE(seven);
+  ASSERT_TRUE(BN_set_word(seven.get(), 7));
+
+  bssl::UniquePtr<BIGNUM> ten_n_plus_seven(
+      BN_dup(EC_GROUP_get0_order(group.get())));
+  ASSERT_TRUE(ten_n_plus_seven);
+  ASSERT_TRUE(BN_mul_word(ten_n_plus_seven.get(), 10));
+  ASSERT_TRUE(BN_add_word(ten_n_plus_seven.get(), 7));
+
+  bssl::UniquePtr<EC_POINT> point1(EC_POINT_new(group.get())),
+      point2(EC_POINT_new(group.get()));
+  ASSERT_TRUE(point1);
+  ASSERT_TRUE(point2);
+
+  ASSERT_TRUE(EC_POINT_mul(group.get(), point1.get(), n_minus_one.get(),
+                           nullptr, nullptr, nullptr));
+  ASSERT_TRUE(EC_POINT_mul(group.get(), point2.get(), minus_one.get(), nullptr,
+                           nullptr, nullptr));
+  EXPECT_EQ(0, EC_POINT_cmp(group.get(), point1.get(), point2.get(), nullptr))
+      << "-1 * G and (n-1) * G did not give the same result";
+
+  ASSERT_TRUE(EC_POINT_mul(group.get(), point1.get(), seven.get(), nullptr,
+                           nullptr, nullptr));
+  ASSERT_TRUE(EC_POINT_mul(group.get(), point2.get(), ten_n_plus_seven.get(),
+                           nullptr, nullptr, nullptr));
+  EXPECT_EQ(0, EC_POINT_cmp(group.get(), point1.get(), point2.get(), nullptr))
+      << "7 * G and (10n + 7) * G did not give the same result";
+}
+
 // Test that 10×∞ + G = G.
 TEST_P(ECCurveTest, Mul) {
   bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(GetParam().nid));
