@@ -91,14 +91,6 @@ static const struct argument kArguments[] = {
     },
 };
 
-struct FileCloser {
-  void operator()(FILE *file) {
-    fclose(file);
-  }
-};
-
-using ScopedFILE = std::unique_ptr<FILE, FileCloser>;
-
 static bool LoadOCSPResponse(SSL_CTX *ctx, const char *filename) {
   ScopedFILE f(fopen(filename, "rb"));
   std::vector<uint8_t> data;
