@@ -1604,16 +1604,11 @@ func (m *serverKeyExchangeMsg) marshal() []byte {
 	if m.raw != nil {
 		return m.raw
 	}
-	length := len(m.key)
-	x := make([]byte, length+4)
-	x[0] = typeServerKeyExchange
-	x[1] = uint8(length >> 16)
-	x[2] = uint8(length >> 8)
-	x[3] = uint8(length)
-	copy(x[4:], m.key)
-
-	m.raw = x
-	return x
+	msg := newByteBuilder()
+	msg.addU8(typeServerKeyExchange)
+	msg.addU24LengthPrefixed().addBytes(m.key)
+	m.raw = msg.finish()
+	return m.raw
 }
 
 func (m *serverKeyExchangeMsg) unmarshal(data []byte) bool {
@@ -1638,19 +1633,12 @@ func (m *certificateStatusMsg) marshal() []byte {
 
 	var x []byte
 	if m.statusType == statusTypeOCSP {
-		x = make([]byte, 4+4+len(m.response))
-		x[0] = typeCertificateStatus
-		l := len(m.response) + 4
-		x[1] = byte(l >> 16)
-		x[2] = byte(l >> 8)
-		x[3] = byte(l)
-		x[4] = statusTypeOCSP
-
-		l -= 4
-		x[5] = byte(l >> 16)
-		x[6] = byte(l >> 8)
-		x[7] = byte(l)
-		copy(x[8:], m.response)
+		msg := newByteBuilder()
+		msg.addU8(typeCertificateStatus)
+		body := msg.addU24LengthPrefixed()
+		body.addU8(statusTypeOCSP)
+		body.addU24LengthPrefixed().addBytes(m.response)
+		x = msg.finish()
 	} else {
 		x = []byte{typeCertificateStatus, 0, 0, 1, m.statusType}
 	}
@@ -1661,21 +1649,12 @@ func (m *certificateStatusMsg) marshal() []byte {
 
 func (m *certificateStatusMsg) unmarshal(data []byte) bool {
 	m.raw = data
-	if len(data) < 5 {
+	reader := byteReader(data[4:])
+	if !reader.readU8(&m.statusType) ||
+		m.statusType != statusTypeOCSP ||
+		!reader.readU24LengthPrefixedBytes(&m.response) ||
+		len(reader) != 0 {
 		return false
-	}
-	m.statusType = data[4]
-
-	m.response = nil
-	if m.statusType == statusTypeOCSP {
-		if len(data) < 8 {
-			return false
-		}
-		respLen := uint32(data[5])<<16 | uint32(data[6])<<8 | uint32(data[7])
-		if uint32(len(data)) != 4+4+respLen {
-			return false
-		}
-		m.response = data[8:]
 	}
 	return true
 }
@@ -1701,16 +1680,11 @@ func (m *clientKeyExchangeMsg) marshal() []byte {
 	if m.raw != nil {
 		return m.raw
 	}
-	length := len(m.ciphertext)
-	x := make([]byte, length+4)
-	x[0] = typeClientKeyExchange
-	x[1] = uint8(length >> 16)
-	x[2] = uint8(length >> 8)
-	x[3] = uint8(length)
-	copy(x[4:], m.ciphertext)
-
-	m.raw = x
-	return x
+	msg := newByteBuilder()
+	msg.addU8(typeClientKeyExchange)
+	msg.addU24LengthPrefixed().addBytes(m.ciphertext)
+	m.raw = msg.finish()
+	return m.raw
 }
 
 func (m *clientKeyExchangeMsg) unmarshal(data []byte) bool {
@@ -1731,17 +1705,16 @@ type finishedMsg struct {
 	verifyData []byte
 }
 
-func (m *finishedMsg) marshal() (x []byte) {
+func (m *finishedMsg) marshal() []byte {
 	if m.raw != nil {
 		return m.raw
 	}
 
-	x = make([]byte, 4+len(m.verifyData))
-	x[0] = typeFinished
-	x[3] = byte(len(m.verifyData))
-	copy(x[4:], m.verifyData)
-	m.raw = x
-	return
+	msg := newByteBuilder()
+	msg.addU8(typeFinished)
+	msg.addU24LengthPrefixed().addBytes(m.verifyData)
+	m.raw = msg.finish()
+	return m.raw
 }
 
 func (m *finishedMsg) unmarshal(data []byte) bool {
@@ -1762,52 +1735,38 @@ func (m *nextProtoMsg) marshal() []byte {
 	if m.raw != nil {
 		return m.raw
 	}
-	l := len(m.proto)
-	if l > 255 {
-		l = 255
-	}
 
-	padding := 32 - (l+2)%32
-	length := l + padding + 2
-	x := make([]byte, length+4)
-	x[0] = typeNextProtocol
-	x[1] = uint8(length >> 16)
-	x[2] = uint8(length >> 8)
-	x[3] = uint8(length)
+	padding := 32 - (len(m.proto)+2)%32
 
-	y := x[4:]
-	y[0] = byte(l)
-	copy(y[1:], []byte(m.proto[0:l]))
-	y = y[1+l:]
-	y[0] = byte(padding)
-
-	m.raw = x
-
-	return x
+	msg := newByteBuilder()
+	msg.addU8(typeNextProtocol)
+	body := msg.addU24LengthPrefixed()
+	body.addU8LengthPrefixed().addBytes([]byte(m.proto))
+	body.addU8LengthPrefixed().addBytes(make([]byte, padding))
+	m.raw = msg.finish()
+	return m.raw
 }
 
 func (m *nextProtoMsg) unmarshal(data []byte) bool {
 	m.raw = data
+	reader := byteReader(data[4:])
+	var proto, padding []byte
+	if !reader.readU8LengthPrefixedBytes(&proto) ||
+		!reader.readU8LengthPrefixedBytes(&padding) ||
+		len(reader) != 0 {
+		return false
+	}
+	m.proto = string(proto)
 
-	if len(data) < 5 {
+	// Padding is not meant to be checked normally, but as this is a testing
+	// implementation, we check the padding is as expected.
+	if len(padding) != 32-(len(m.proto)+2)%32 {
 		return false
 	}
-	data = data[4:]
-	protoLen := int(data[0])
-	data = data[1:]
-	if len(data) < protoLen {
-		return false
-	}
-	m.proto = string(data[0:protoLen])
-	data = data[protoLen:]
-
-	if len(data) < 1 {
-		return false
-	}
-	paddingLen := int(data[0])
-	data = data[1:]
-	if len(data) != paddingLen {
-		return false
+	for _, v := range padding {
+		if v != 0 {
+			return false
+		}
 	}
 
 	return true
