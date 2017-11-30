@@ -242,7 +242,8 @@ int EC_KEY_set_group(EC_KEY *key, const EC_GROUP *group) {
   }
   // XXX: |BN_cmp| is not constant time.
   if (key->priv_key != NULL &&
-      BN_cmp(key->priv_key, EC_GROUP_get0_order(group)) >= 0) {
+      (BN_is_negative(key->priv_key) ||
+       BN_cmp(key->priv_key, EC_GROUP_get0_order(group)) >= 0)) {
     return 0;
   }
   return 1;
@@ -255,7 +256,8 @@ const BIGNUM *EC_KEY_get0_private_key(const EC_KEY *key) {
 int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *priv_key) {
   // XXX: |BN_cmp| is not constant time.
   if (key->group != NULL &&
-      BN_cmp(priv_key, EC_GROUP_get0_order(key->group)) >= 0) {
+      (BN_is_negative(priv_key) ||
+       BN_cmp(priv_key, EC_GROUP_get0_order(key->group)) >= 0)) {
     OPENSSL_PUT_ERROR(EC, EC_R_WRONG_ORDER);
     return 0;
   }
@@ -318,7 +320,8 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
   // check if generator * priv_key == pub_key
   if (eckey->priv_key) {
     // XXX: |BN_cmp| is not constant time.
-    if (BN_cmp(eckey->priv_key, EC_GROUP_get0_order(eckey->group)) >= 0) {
+    if (BN_is_negative(eckey->priv_key) ||
+        BN_cmp(eckey->priv_key, EC_GROUP_get0_order(eckey->group)) >= 0) {
       OPENSSL_PUT_ERROR(EC, EC_R_WRONG_ORDER);
       goto err;
     }

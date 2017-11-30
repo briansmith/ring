@@ -510,6 +510,25 @@ TEST_P(ECCurveTest, Mul) {
   EXPECT_EQ(0, EC_POINT_cmp(group.get(), result.get(), generator, nullptr));
 }
 
+// Test that EC_KEY_set_private_key rejects invalid values.
+TEST_P(ECCurveTest, SetInvalidPrivateKey) {
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(GetParam().nid));
+  ASSERT_TRUE(key);
+
+  bssl::UniquePtr<BIGNUM> bn(BN_new());
+  ASSERT_TRUE(BN_one(bn.get()));
+  BN_set_negative(bn.get(), 1);
+  EXPECT_FALSE(EC_KEY_set_private_key(key.get(), bn.get()))
+      << "Unexpectedly set a key of -1";
+  ERR_clear_error();
+
+  ASSERT_TRUE(
+      BN_copy(bn.get(), EC_GROUP_get0_order(EC_KEY_get0_group(key.get()))));
+  EXPECT_FALSE(EC_KEY_set_private_key(key.get(), bn.get()))
+      << "Unexpectedly set a key of the group order.";
+  ERR_clear_error();
+}
+
 static std::vector<EC_builtin_curve> AllCurves() {
   const size_t num_curves = EC_get_builtin_curves(nullptr, 0);
   std::vector<EC_builtin_curve> curves(num_curves);
