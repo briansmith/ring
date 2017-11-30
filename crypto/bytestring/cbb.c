@@ -356,20 +356,17 @@ static int add_base128_integer(CBB *cbb, uint64_t v) {
 }
 
 int CBB_add_asn1(CBB *cbb, CBB *out_contents, unsigned tag) {
-  if (!CBB_flush(cbb)) {
+  if (tag > 0xff ||
+      (tag & 0x1f) == 0x1f) {
+    // Long form identifier octets are not supported. Further, all current valid
+    // tag serializations are 8 bits.
+    cbb->base->error = 1;
     return 0;
   }
 
-  // Split the tag into leading bits and tag number.
-  uint8_t tag_bits = (tag >> CBS_ASN1_TAG_SHIFT) & 0xe0;
-  unsigned tag_number = tag & CBS_ASN1_TAG_NUMBER_MASK;
-  if (tag_number >= 0x1f) {
-    // Set all the bits in the tag number to signal high tag number form.
-    if (!CBB_add_u8(cbb, tag_bits | 0x1f) ||
-        !add_base128_integer(cbb, tag_number)) {
-      return 0;
-    }
-  } else if (!CBB_add_u8(cbb, tag_bits | tag_number)) {
+  if (!CBB_flush(cbb) ||
+      // |tag|'s representation matches the DER encoding.
+      !CBB_add_u8(cbb, (uint8_t)tag)) {
     return 0;
   }
 
