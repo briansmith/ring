@@ -298,7 +298,12 @@ int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
   CBB child;
   if (!CBB_add_u16(&body, hs->client_version) ||
       !CBB_add_bytes(&body, ssl->s3->client_random, SSL3_RANDOM_SIZE) ||
-      !CBB_add_u8_length_prefixed(&body, &child) ||
+      !CBB_add_u8_length_prefixed(&body, &child)) {
+    return 0;
+  }
+
+  // Do not send a session ID on renegotiation.
+  if (!ssl->s3->initial_handshake_complete &&
       !CBB_add_bytes(&child, hs->session_id, hs->session_id_len)) {
     return 0;
   }

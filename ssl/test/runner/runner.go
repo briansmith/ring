@@ -7296,6 +7296,25 @@ func addRenegotiationTests() {
 		},
 	})
 	testCases = append(testCases, testCase{
+		name: "Renegotiate-Client-TLS13Draft22",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				FailIfResumeOnRenego: true,
+			},
+		},
+		tls13Variant: TLS13Draft22,
+		renegotiate:  1,
+		// Test renegotiation after both an initial and resumption
+		// handshake.
+		resumeSession: true,
+		flags: []string{
+			"-renegotiate-freely",
+			"-expect-total-renegotiations", "1",
+			"-expect-secure-renegotiation",
+		},
+	})
+	testCases = append(testCases, testCase{
 		name:        "Renegotiate-Client-EmptyExt",
 		renegotiate: 1,
 		config: Config{
