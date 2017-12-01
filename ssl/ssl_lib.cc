@@ -2567,6 +2567,10 @@ int32_t SSL_get_ticket_age_skew(const SSL *ssl) {
   return ssl->s3->ticket_age_skew;
 }
 
+void SSL_CTX_set_false_start_allowed_without_alpn(SSL_CTX *ctx, int allowed) {
+  ctx->false_start_allowed_without_alpn = !!allowed;
+}
+
 int SSL_clear(SSL *ssl) {
   // In OpenSSL, reusing a client |SSL| with |SSL_clear| causes the previously
   // established session to be offered the next time around. wpa_supplicant

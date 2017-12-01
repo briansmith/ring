@@ -2165,21 +2165,24 @@ struct SSLContext {
   // If true, a client will request certificate timestamps.
   bool signed_cert_timestamps_enabled:1;
 
-  // tlsext_channel_id_enabled is one if Channel ID is enabled and zero
-  // otherwise. For a server, means that we'll accept Channel IDs from clients.
-  // For a client, means that we'll advertise support.
+  // tlsext_channel_id_enabled is whether Channel ID is enabled. For a server,
+  // means that we'll accept Channel IDs from clients.  For a client, means that
+  // we'll advertise support.
   bool tlsext_channel_id_enabled:1;
 
-  // grease_enabled is one if draft-davidben-tls-grease-01 is enabled and zero
-  // otherwise.
+  // grease_enabled is whether draft-davidben-tls-grease-01 is enabled.
   bool grease_enabled:1;
 
-  // allow_unknown_alpn_protos is one if the client allows unsolicited ALPN
+  // allow_unknown_alpn_protos is whether the client allows unsolicited ALPN
   // protocols from the peer.
   bool allow_unknown_alpn_protos:1;
 
-  // ed25519_enabled is one if Ed25519 is advertised in the handshake.
+  // ed25519_enabled is whether Ed25519 is advertised in the handshake.
   bool ed25519_enabled:1;
+
+  // false_start_allowed_without_alpn is whether False Start (if
+  // |SSL_MODE_ENABLE_FALSE_START| is enabled) is allowed without ALPN.
+  bool false_start_allowed_without_alpn:1;
 };
 
 // An ssl_shutdown_t describes the shutdown state of one end of the connection,

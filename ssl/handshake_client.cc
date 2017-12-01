@@ -1512,13 +1512,25 @@ static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
 static bool can_false_start(const SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
-  // False Start only for TLS 1.2 with an ECDHE+AEAD cipher and ALPN or NPN.
-  return !SSL_is_dtls(ssl) &&
-         SSL_version(ssl) == TLS1_2_VERSION &&
-         (!ssl->s3->alpn_selected.empty() ||
-          !ssl->s3->next_proto_negotiated.empty()) &&
-         hs->new_cipher->algorithm_mkey == SSL_kECDHE &&
-         hs->new_cipher->algorithm_mac == SSL_AEAD;
+  // False Start only for TLS 1.2 with an ECDHE+AEAD cipher.
+  if (SSL_is_dtls(ssl) ||
+      SSL_version(ssl) != TLS1_2_VERSION ||
+      hs->new_cipher->algorithm_mkey != SSL_kECDHE ||
+      hs->new_cipher->algorithm_mac != SSL_AEAD) {
+    return false;
+  }
+
+  // Additionally require ALPN or NPN by default.
+  //
+  // TODO(davidben): Can this constraint be relaxed globally now that cipher
+  // suite requirements have been relaxed?
+  if (!ssl->ctx->false_start_allowed_without_alpn &&
+      ssl->s3->alpn_selected.empty() &&
+      ssl->s3->next_proto_negotiated.empty()) {
+    return false;
+  }
+
+  return true;
 }
 
 static enum ssl_hs_wait_t do_finish_flight(SSL_HANDSHAKE *hs) {

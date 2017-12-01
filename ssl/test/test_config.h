@@ -144,6 +144,7 @@ struct TestConfig {
   bool enable_ed25519 = false;
   bool use_custom_verify_callback = false;
   std::string expect_msg_callback;
+  bool allow_false_start_without_alpn = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_initial,

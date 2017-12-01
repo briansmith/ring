@@ -3477,6 +3477,12 @@ OPENSSL_EXPORT size_t SSL_max_seal_overhead(const SSL *ssl);
 // connections which resumed a session.
 OPENSSL_EXPORT int32_t SSL_get_ticket_age_skew(const SSL *ssl);
 
+// SSL_CTX_set_false_start_allowed_without_alpn configures whether connections
+// on |ctx| may use False Start (if |SSL_MODE_ENABLE_FALSE_START| is enabled)
+// without negotiating ALPN.
+OPENSSL_EXPORT void SSL_CTX_set_false_start_allowed_without_alpn(SSL_CTX *ctx,
+                                                                 int allowed);
+
 
 // Deprecated functions.
 

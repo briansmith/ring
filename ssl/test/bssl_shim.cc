@@ -1304,6 +1304,10 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx,
 
   SSL_CTX_set_msg_callback(ssl_ctx.get(), MessageCallback);
 
+  if (config->allow_false_start_without_alpn) {
+    SSL_CTX_set_false_start_allowed_without_alpn(ssl_ctx.get(), 1);
+  }
+
   if (old_ctx) {
     uint8_t keys[48];
     if (!SSL_CTX_get_tlsext_ticket_keys(old_ctx, &keys, sizeof(keys)) ||

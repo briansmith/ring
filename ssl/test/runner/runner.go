@@ -2247,6 +2247,21 @@ read alert 1 0
 			expectedLocalError: "tls: peer did not false start: EOF",
 		},
 		{
+			name: "FalseStart-NoALPNAllowed",
+			config: Config{
+				MaxVersion:   VersionTLS12,
+				CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+				Bugs: ProtocolBugs{
+					ExpectFalseStart: true,
+				},
+			},
+			flags: []string{
+				"-false-start",
+				"-allow-false-start-without-alpn",
+			},
+			shimWritesFirst: true,
+		},
+		{
 			name: "NoFalseStart-NoAEAD",
 			config: Config{
 				MaxVersion:   VersionTLS12,
@@ -4830,8 +4845,6 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			expectedNextProto:     "bar",
 			expectedNextProtoType: npn,
 		})
-
-		// TODO(davidben): Add tests for when False Start doesn't trigger.
 
 		// Client does False Start and negotiates NPN.
 		tests = append(tests, testCase{
