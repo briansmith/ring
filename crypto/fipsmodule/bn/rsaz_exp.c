@@ -227,7 +227,9 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
 
 		rsaz_1024_sqr_avx2(result, result, m, k0, 5);
 
-		wvalue = *((const unsigned short*)&p_str[index / 8]);
+		uint16_t wvalue_16;
+		memcpy(&wvalue_16, &p_str[index / 8], sizeof(wvalue_16));
+		wvalue = wvalue_16;
 		wvalue = (wvalue>> (index%8)) & 31;
 		index-=5;
 
