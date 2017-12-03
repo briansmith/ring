@@ -280,7 +280,7 @@ libc = "0.2.30"
 untrusted = "0.6"
 
 [target.'cfg(any(target_os = "redox", all(unix, not(any(target_os = "macos", target_os = "ios")))))'.dependencies]
-lazy_static = "0.2.8"
+lazy_static = "1.0"
 
 # Keep this in sync with `[dependencies]` in pregenerate_asm/Cargo.toml.
 [build-dependencies]
