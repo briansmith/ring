@@ -61,17 +61,19 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 
+#include "asn1_locl.h"
+
 static int traverse_string(const unsigned char *p, int len, int inform,
-                           int (*rfunc) (unsigned long value, void *in),
+                           int (*rfunc) (uint32_t value, void *in),
                            void *arg);
-static int in_utf8(unsigned long value, void *arg);
-static int out_utf8(unsigned long value, void *arg);
-static int type_str(unsigned long value, void *arg);
-static int cpy_asc(unsigned long value, void *arg);
-static int cpy_bmp(unsigned long value, void *arg);
-static int cpy_univ(unsigned long value, void *arg);
-static int cpy_utf8(unsigned long value, void *arg);
-static int is_printable(unsigned long value);
+static int in_utf8(uint32_t value, void *arg);
+static int out_utf8(uint32_t value, void *arg);
+static int type_str(uint32_t value, void *arg);
+static int cpy_asc(uint32_t value, void *arg);
+static int cpy_bmp(uint32_t value, void *arg);
+static int cpy_univ(uint32_t value, void *arg);
+static int cpy_utf8(uint32_t value, void *arg);
+static int is_printable(uint32_t value);
 
 /*
  * These functions take a string in UTF8, ASCII or multibyte form and a mask
@@ -100,7 +102,7 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
     unsigned char *p;
     int nchar;
     char strbuf[32];
-    int (*cpyfunc) (unsigned long, void *) = NULL;
+    int (*cpyfunc) (uint32_t, void *) = NULL;
     if (len == -1)
         len = strlen((const char *)in);
     if (!mask)
@@ -253,10 +255,10 @@ int ASN1_mbstring_ncopy(ASN1_STRING **out, const unsigned char *in, int len,
  */
 
 static int traverse_string(const unsigned char *p, int len, int inform,
-                           int (*rfunc) (unsigned long value, void *in),
+                           int (*rfunc) (uint32_t value, void *in),
                            void *arg)
 {
-    unsigned long value;
+    uint32_t value;
     int ret;
     while (len) {
         if (inform == MBSTRING_ASC) {
@@ -267,8 +269,8 @@ static int traverse_string(const unsigned char *p, int len, int inform,
             value |= *p++;
             len -= 2;
         } else if (inform == MBSTRING_UNIV) {
-            value = ((unsigned long)*p++) << 24;
-            value |= ((unsigned long)*p++) << 16;
+            value = ((uint32_t)*p++) << 24;
+            value |= ((uint32_t)*p++) << 16;
             value |= *p++ << 8;
             value |= *p++;
             len -= 4;
@@ -292,7 +294,7 @@ static int traverse_string(const unsigned char *p, int len, int inform,
 
 /* Just count number of characters */
 
-static int in_utf8(unsigned long value, void *arg)
+static int in_utf8(uint32_t value, void *arg)
 {
     int *nchar;
     nchar = arg;
@@ -302,7 +304,7 @@ static int in_utf8(unsigned long value, void *arg)
 
 /* Determine size of output as a UTF8 String */
 
-static int out_utf8(unsigned long value, void *arg)
+static int out_utf8(uint32_t value, void *arg)
 {
     int *outlen;
     outlen = arg;
@@ -315,7 +317,7 @@ static int out_utf8(unsigned long value, void *arg)
  * "mask".
  */
 
-static int type_str(unsigned long value, void *arg)
+static int type_str(uint32_t value, void *arg)
 {
     unsigned long types;
     types = *((unsigned long *)arg);
@@ -335,7 +337,7 @@ static int type_str(unsigned long value, void *arg)
 
 /* Copy one byte per character ASCII like strings */
 
-static int cpy_asc(unsigned long value, void *arg)
+static int cpy_asc(uint32_t value, void *arg)
 {
     unsigned char **p, *q;
     p = arg;
@@ -347,7 +349,7 @@ static int cpy_asc(unsigned long value, void *arg)
 
 /* Copy two byte per character BMPStrings */
 
-static int cpy_bmp(unsigned long value, void *arg)
+static int cpy_bmp(uint32_t value, void *arg)
 {
     unsigned char **p, *q;
     p = arg;
@@ -360,7 +362,7 @@ static int cpy_bmp(unsigned long value, void *arg)
 
 /* Copy four byte per character UniversalStrings */
 
-static int cpy_univ(unsigned long value, void *arg)
+static int cpy_univ(uint32_t value, void *arg)
 {
     unsigned char **p, *q;
     p = arg;
@@ -375,7 +377,7 @@ static int cpy_univ(unsigned long value, void *arg)
 
 /* Copy to a UTF8String */
 
-static int cpy_utf8(unsigned long value, void *arg)
+static int cpy_utf8(uint32_t value, void *arg)
 {
     unsigned char **p;
     int ret;
@@ -387,7 +389,7 @@ static int cpy_utf8(unsigned long value, void *arg)
 }
 
 /* Return 1 if the character is permitted in a PrintableString */
-static int is_printable(unsigned long value)
+static int is_printable(uint32_t value)
 {
     int ch;
     if (value > 0x7f)
