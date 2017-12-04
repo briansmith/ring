@@ -262,14 +262,6 @@ OPENSSL_EXPORT void ERR_print_errors_fp(FILE *file);
 // ERR_clear_error clears the error queue for the current thread.
 OPENSSL_EXPORT void ERR_clear_error(void);
 
-// ERR_remove_thread_state clears the error queue for the current thread if
-// |tid| is NULL. Otherwise it calls |assert(0)|, because it's no longer
-// possible to delete the error queue for other threads.
-//
-// Error queues are thread-local data and are deleted automatically. You do not
-// need to call this function. Use |ERR_clear_error|.
-OPENSSL_EXPORT void ERR_remove_thread_state(const CRYPTO_THREADID *tid);
-
 // ERR_set_mark "marks" the most recent error for use with |ERR_pop_to_mark|.
 // It returns one if an error was marked and zero if there are no errors.
 OPENSSL_EXPORT int ERR_set_mark(void);
@@ -381,6 +373,14 @@ enum {
 
 // ERR_remove_state calls |ERR_clear_error|.
 OPENSSL_EXPORT void ERR_remove_state(unsigned long pid);
+
+// ERR_remove_thread_state clears the error queue for the current thread if
+// |tid| is NULL. Otherwise it calls |assert(0)|, because it's no longer
+// possible to delete the error queue for other threads.
+//
+// Use |ERR_clear_error| instead. Note error queues are deleted automatically on
+// thread exit. You do not need to call this function to release memory.
+OPENSSL_EXPORT void ERR_remove_thread_state(const CRYPTO_THREADID *tid);
 
 // ERR_func_error_string returns the string "OPENSSL_internal".
 OPENSSL_EXPORT const char *ERR_func_error_string(uint32_t packed_error);
