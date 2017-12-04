@@ -1810,7 +1810,7 @@ static bool ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   // selected cipher in HelloRetryRequest does not match. This avoids performing
   // the transcript hash transformation for multiple hashes.
   if (hs->received_hello_retry_request &&
-      ssl_is_draft21(ssl->version) &&
+      ssl_is_draft22(ssl->version) &&
       ssl->session->cipher->algorithm_prf != hs->new_cipher->algorithm_prf) {
     return true;
   }

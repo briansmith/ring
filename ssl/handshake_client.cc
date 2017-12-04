@@ -464,7 +464,7 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
     hs->session_id_len = ssl->session->session_id_length;
     OPENSSL_memcpy(hs->session_id, ssl->session->session_id,
                    hs->session_id_len);
-  } else if (ssl_is_resumption_variant(hs->max_version, ssl->tls13_variant)) {
+  } else if (hs->max_version >= TLS1_3_VERSION) {
     hs->session_id_len = sizeof(hs->session_id);
     if (!RAND_bytes(hs->session_id, hs->session_id_len)) {
       return ssl_hs_error;

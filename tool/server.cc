@@ -68,10 +68,7 @@ static const struct argument kArguments[] = {
         "-early-data", kBooleanArgument, "Allow early data",
     },
     {
-        "-tls13-variant", kBooleanArgument, "Enable TLS 1.3 variants",
-    },
-    {
-        "-tls13-draft22-variant", kBooleanArgument, "Enable TLS 1.3 Draft 22.",
+        "-tls13-variant", kBooleanArgument, "Enables all TLS 1.3 variants",
     },
     {
         "-www", kBooleanArgument,
@@ -310,11 +307,8 @@ bool Server(const std::vector<std::string> &args) {
     SSL_CTX_set_early_data_enabled(ctx.get(), 1);
   }
 
-  // Draft 22 variants need to be explicitly enabled.
-  if (args_map.count("-tls13-draft22-variant") != 0) {
-    SSL_CTX_set_tls13_variant(ctx.get(), tls13_draft22);
-  } else if (args_map.count("-tls13-variant") != 0) {
-    SSL_CTX_set_tls13_variant(ctx.get(), tls13_experiment);
+  if (args_map.count("-tls13-variant") != 0) {
+    SSL_CTX_set_tls13_variant(ctx.get(), tls13_experiment2);
   }
 
   if (args_map.count("-debug") != 0) {

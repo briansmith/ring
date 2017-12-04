@@ -377,7 +377,7 @@ NextCipherSuite:
 			// set. Fill in an arbitrary TLS 1.3 version to compute
 			// the binder.
 			if session.vers < VersionTLS13 {
-				version = tls13DraftVersion
+				version = tls13Draft22Version
 			}
 			generatePSKBinders(version, hello, pskCipherSuite, session.masterSecret, []byte{}, []byte{}, c.config)
 		}
@@ -416,14 +416,16 @@ NextCipherSuite:
 
 		if !c.config.Bugs.SkipChangeCipherSpec && isDraft22(session.wireVersion) {
 			c.wireVersion = session.wireVersion
+			c.vers = VersionTLS13
 			c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 			c.wireVersion = 0
+			c.vers = 0
 		}
 
 		var earlyTrafficSecret []byte
-		if isDraft21(session.wireVersion) {
-			earlyTrafficSecret = finishedHash.deriveSecret(earlyTrafficLabelDraft21)
-			c.earlyExporterSecret = finishedHash.deriveSecret(earlyExporterLabelDraft21)
+		if isDraft22(session.wireVersion) {
+			earlyTrafficSecret = finishedHash.deriveSecret(earlyTrafficLabelDraft22)
+			c.earlyExporterSecret = finishedHash.deriveSecret(earlyExporterLabelDraft22)
 		} else {
 			earlyTrafficSecret = finishedHash.deriveSecret(earlyTrafficLabel)
 			c.earlyExporterSecret = finishedHash.deriveSecret(earlyExporterLabel)
@@ -626,7 +628,7 @@ NextCipherSuite:
 
 	hs.writeHash(helloBytes, hs.c.sendHandshakeSeq-1)
 	if haveHelloRetryRequest {
-		if isDraft21(c.wireVersion) {
+		if isDraft22(c.wireVersion) {
 			err = hs.finishedHash.UpdateForHelloRetryRequest()
 			if err != nil {
 				return err
@@ -727,13 +729,13 @@ NextCipherSuite:
 func (hs *clientHandshakeState) doTLS13Handshake() error {
 	c := hs.c
 
-	if isResumptionExperiment(c.wireVersion) && !isDraft22(c.wireVersion) {
+	if !isDraft22(c.wireVersion) {
 		// Early versions of the middlebox hacks inserted
 		// ChangeCipherSpec differently on 0-RTT and 2-RTT handshakes.
 		c.expectTLS13ChangeCipherSpec = true
 	}
 
-	if isResumptionExperiment(c.wireVersion) && !bytes.Equal(hs.hello.sessionId, hs.serverHello.sessionId) {
+	if !bytes.Equal(hs.hello.sessionId, hs.serverHello.sessionId) {
 		return errors.New("tls: session IDs did not match.")
 	}
 
@@ -791,9 +793,9 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 	clientLabel := clientHandshakeTrafficLabel
 	serverLabel := serverHandshakeTrafficLabel
-	if isDraft21(c.wireVersion) {
-		clientLabel = clientHandshakeTrafficLabelDraft21
-		serverLabel = serverHandshakeTrafficLabelDraft21
+	if isDraft22(c.wireVersion) {
+		clientLabel = clientHandshakeTrafficLabelDraft22
+		serverLabel = serverHandshakeTrafficLabelDraft22
 	}
 
 	// Derive handshake traffic keys and switch read key to handshake
@@ -939,10 +941,10 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	clientLabel = clientApplicationTrafficLabel
 	serverLabel = serverApplicationTrafficLabel
 	exportLabel := exporterLabel
-	if isDraft21(c.wireVersion) {
-		clientLabel = clientApplicationTrafficLabelDraft21
-		serverLabel = serverApplicationTrafficLabelDraft21
-		exportLabel = exporterLabelDraft21
+	if isDraft22(c.wireVersion) {
+		clientLabel = clientApplicationTrafficLabelDraft22
+		serverLabel = serverApplicationTrafficLabelDraft22
+		exportLabel = exporterLabelDraft22
 	}
 
 	clientTrafficSecret := hs.finishedHash.deriveSecret(clientLabel)
@@ -991,7 +993,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 			helloRequest := new(helloRequestMsg)
 			c.writeRecord(recordTypeHandshake, helloRequest.marshal())
 		}
-		if isDraft21(c.wireVersion) {
+		if isDraft22(c.wireVersion) {
 			endOfEarlyData := new(endOfEarlyDataMsg)
 			endOfEarlyData.nonEmpty = c.config.Bugs.NonEmptyEndOfEarlyData
 			c.writeRecord(recordTypeHandshake, endOfEarlyData.marshal())
@@ -1001,7 +1003,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		}
 	}
 
-	if !c.config.Bugs.SkipChangeCipherSpec && isResumptionClientCCSExperiment(c.wireVersion) && !hs.hello.hasEarlyData {
+	if !c.config.Bugs.SkipChangeCipherSpec && !hs.hello.hasEarlyData {
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 	}
 
@@ -1098,8 +1100,8 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 	c.useOutTrafficSecret(c.wireVersion, hs.suite, clientTrafficSecret)
 
 	resumeLabel := resumptionLabel
-	if isDraft21(c.wireVersion) {
-		resumeLabel = resumptionLabelDraft21
+	if isDraft22(c.wireVersion) {
+		resumeLabel = resumptionLabelDraft22
 	}
 
 	c.resumptionSecret = hs.finishedHash.deriveSecret(resumeLabel)
@@ -1845,8 +1847,8 @@ func generatePSKBinders(version uint16, hello *clientHelloMsg, pskCipherSuite *c
 	binderSize := len(hello.pskBinders)*(binderLen+1) + 2
 	truncatedHello := helloBytes[:len(helloBytes)-binderSize]
 	binderLabel := resumptionPSKBinderLabel
-	if isDraft21(version) {
-		binderLabel = resumptionPSKBinderLabelDraft21
+	if isDraft22(version) {
+		binderLabel = resumptionPSKBinderLabelDraft22
 	}
 	binder := computePSKBinder(psk, version, binderLabel, pskCipherSuite, firstClientHello, helloRetryRequest, truncatedHello)
 	if config.Bugs.SendShortPSKBinder {

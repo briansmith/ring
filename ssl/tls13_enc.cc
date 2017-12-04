@@ -72,7 +72,7 @@ static int hkdf_expand_label(uint8_t *out, uint16_t version,
                              size_t label_len, const uint8_t *hash,
                              size_t hash_len, size_t len) {
   const char *kTLS13LabelVersion =
-      ssl_is_draft21(version) ? "tls13 " : "TLS 1.3, ";
+      ssl_is_draft22(version) ? "tls13 " : "TLS 1.3, ";
 
   ScopedCBB cbb;
   CBB child;
@@ -104,7 +104,7 @@ int tls13_advance_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *in,
   SSL *const ssl = hs->ssl;
 
   // Draft 18 does not include the extra Derive-Secret step.
-  if (ssl_is_draft21(ssl->version)) {
+  if (ssl_is_draft22(ssl->version)) {
     uint8_t derive_context[EVP_MAX_MD_SIZE];
     unsigned derive_context_len;
     if (!EVP_Digest(nullptr, 0, derive_context, &derive_context_len,
@@ -224,24 +224,24 @@ static const char kTLS13LabelClientApplicationTraffic[] =
 static const char kTLS13LabelServerApplicationTraffic[] =
     "server application traffic secret";
 
-static const char kTLS13Draft21LabelExporter[] = "exp master";
-static const char kTLS13Draft21LabelEarlyExporter[] = "e exp master";
+static const char kTLS13Draft22LabelExporter[] = "exp master";
+static const char kTLS13Draft22LabelEarlyExporter[] = "e exp master";
 
-static const char kTLS13Draft21LabelClientEarlyTraffic[] = "c e traffic";
-static const char kTLS13Draft21LabelClientHandshakeTraffic[] = "c hs traffic";
-static const char kTLS13Draft21LabelServerHandshakeTraffic[] = "s hs traffic";
-static const char kTLS13Draft21LabelClientApplicationTraffic[] = "c ap traffic";
-static const char kTLS13Draft21LabelServerApplicationTraffic[] = "s ap traffic";
+static const char kTLS13Draft22LabelClientEarlyTraffic[] = "c e traffic";
+static const char kTLS13Draft22LabelClientHandshakeTraffic[] = "c hs traffic";
+static const char kTLS13Draft22LabelServerHandshakeTraffic[] = "s hs traffic";
+static const char kTLS13Draft22LabelClientApplicationTraffic[] = "c ap traffic";
+static const char kTLS13Draft22LabelServerApplicationTraffic[] = "s ap traffic";
 
 int tls13_derive_early_secrets(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   uint16_t version = SSL_get_session(ssl)->ssl_version;
 
-  const char *early_traffic_label = ssl_is_draft21(version)
-                                        ? kTLS13Draft21LabelClientEarlyTraffic
+  const char *early_traffic_label = ssl_is_draft22(version)
+                                        ? kTLS13Draft22LabelClientEarlyTraffic
                                         : kTLS13LabelClientEarlyTraffic;
-  const char *early_exporter_label = ssl_is_draft21(version)
-                                         ? kTLS13Draft21LabelEarlyExporter
+  const char *early_exporter_label = ssl_is_draft22(version)
+                                         ? kTLS13Draft22LabelEarlyExporter
                                          : kTLS13LabelEarlyExporter;
   if (!derive_secret(hs, hs->early_traffic_secret, hs->hash_len,
                      early_traffic_label, strlen(early_traffic_label)) ||
@@ -257,11 +257,11 @@ int tls13_derive_early_secrets(SSL_HANDSHAKE *hs) {
 
 int tls13_derive_handshake_secrets(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  const char *client_label = ssl_is_draft21(ssl->version)
-                                 ? kTLS13Draft21LabelClientHandshakeTraffic
+  const char *client_label = ssl_is_draft22(ssl->version)
+                                 ? kTLS13Draft22LabelClientHandshakeTraffic
                                  : kTLS13LabelClientHandshakeTraffic;
-  const char *server_label = ssl_is_draft21(ssl->version)
-                                 ? kTLS13Draft21LabelServerHandshakeTraffic
+  const char *server_label = ssl_is_draft22(ssl->version)
+                                 ? kTLS13Draft22LabelServerHandshakeTraffic
                                  : kTLS13LabelServerHandshakeTraffic;
   return derive_secret(hs, hs->client_handshake_secret, hs->hash_len,
                        client_label, strlen(client_label)) &&
@@ -276,14 +276,14 @@ int tls13_derive_handshake_secrets(SSL_HANDSHAKE *hs) {
 int tls13_derive_application_secrets(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   ssl->s3->exporter_secret_len = hs->hash_len;
-  const char *client_label = ssl_is_draft21(ssl->version)
-                                 ? kTLS13Draft21LabelClientApplicationTraffic
+  const char *client_label = ssl_is_draft22(ssl->version)
+                                 ? kTLS13Draft22LabelClientApplicationTraffic
                                  : kTLS13LabelClientApplicationTraffic;
-  const char *server_label = ssl_is_draft21(ssl->version)
-                                 ? kTLS13Draft21LabelServerApplicationTraffic
+  const char *server_label = ssl_is_draft22(ssl->version)
+                                 ? kTLS13Draft22LabelServerApplicationTraffic
                                  : kTLS13LabelServerApplicationTraffic;
-  const char *exporter_label = ssl_is_draft21(ssl->version)
-                                   ? kTLS13Draft21LabelExporter
+  const char *exporter_label = ssl_is_draft22(ssl->version)
+                                   ? kTLS13Draft22LabelExporter
                                    : kTLS13LabelExporter;
   return derive_secret(hs, hs->client_traffic_secret_0, hs->hash_len,
                        client_label, strlen(client_label)) &&
@@ -301,7 +301,7 @@ int tls13_derive_application_secrets(SSL_HANDSHAKE *hs) {
 
 static const char kTLS13LabelApplicationTraffic[] =
     "application traffic secret";
-static const char kTLS13Draft21LabelApplicationTraffic[] = "traffic upd";
+static const char kTLS13Draft22LabelApplicationTraffic[] = "traffic upd";
 
 int tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
   uint8_t *secret;
@@ -314,8 +314,8 @@ int tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
     secret_len = ssl->s3->write_traffic_secret_len;
   }
 
-  const char *traffic_label = ssl_is_draft21(ssl->version)
-                                  ? kTLS13Draft21LabelApplicationTraffic
+  const char *traffic_label = ssl_is_draft22(ssl->version)
+                                  ? kTLS13Draft22LabelApplicationTraffic
                                   : kTLS13LabelApplicationTraffic;
 
   const EVP_MD *digest = ssl_session_get_digest(SSL_get_session(ssl));
@@ -329,15 +329,15 @@ int tls13_rotate_traffic_key(SSL *ssl, enum evp_aead_direction_t direction) {
 }
 
 static const char kTLS13LabelResumption[] = "resumption master secret";
-static const char kTLS13Draft21LabelResumption[] = "res master";
+static const char kTLS13Draft22LabelResumption[] = "res master";
 
 int tls13_derive_resumption_secret(SSL_HANDSHAKE *hs) {
   if (hs->hash_len > SSL_MAX_MASTER_KEY_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
   }
-  const char *resumption_label = ssl_is_draft21(hs->ssl->version)
-                                     ? kTLS13Draft21LabelResumption
+  const char *resumption_label = ssl_is_draft22(hs->ssl->version)
+                                     ? kTLS13Draft22LabelResumption
                                      : kTLS13LabelResumption;
   hs->new_session->master_key_length = hs->hash_len;
   return derive_secret(hs, hs->new_session->master_key,
@@ -388,7 +388,7 @@ int tls13_finished_mac(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len,
 static const char kTLS13LabelResumptionPSK[] = "resumption";
 
 bool tls13_derive_session_psk(SSL_SESSION *session, Span<const uint8_t> nonce) {
-  if (!ssl_is_draft21(session->ssl_version)) {
+  if (!ssl_is_draft22(session->ssl_version)) {
     return true;
   }
 
@@ -413,7 +413,7 @@ int tls13_export_keying_material(SSL *ssl, Span<uint8_t> out,
   }
 
   uint16_t version = SSL_get_session(ssl)->ssl_version;
-  if (!ssl_is_draft21(version)) {
+  if (!ssl_is_draft22(version)) {
     const EVP_MD *digest = ssl_session_get_digest(SSL_get_session(ssl));
     return hkdf_expand_label(out.data(), version, digest, secret.data(),
                              secret.size(), label.data(), label.size(),
@@ -443,7 +443,7 @@ int tls13_export_keying_material(SSL *ssl, Span<uint8_t> out,
 }
 
 static const char kTLS13LabelPSKBinder[] = "resumption psk binder key";
-static const char kTLS13Draft21LabelPSKBinder[] = "res binder";
+static const char kTLS13Draft22LabelPSKBinder[] = "res binder";
 
 static int tls13_psk_binder(uint8_t *out, uint16_t version,
                             const EVP_MD *digest, uint8_t *psk, size_t psk_len,
@@ -461,8 +461,8 @@ static int tls13_psk_binder(uint8_t *out, uint16_t version,
                     NULL, 0)) {
     return 0;
   }
-  const char *binder_label = ssl_is_draft21(version)
-                                 ? kTLS13Draft21LabelPSKBinder
+  const char *binder_label = ssl_is_draft22(version)
+                                 ? kTLS13Draft22LabelPSKBinder
                                  : kTLS13LabelPSKBinder;
 
   uint8_t binder_key[EVP_MAX_MD_SIZE] = {0};

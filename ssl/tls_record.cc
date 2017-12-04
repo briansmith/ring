@@ -264,7 +264,7 @@ ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
   *out_consumed = in.size() - CBS_len(&cbs);
 
   if (ssl->s3->have_version &&
-      ssl_is_resumption_experiment(ssl->version) &&
+      ssl_protocol_version(ssl) >= TLS1_3_VERSION &&
       SSL_in_init(ssl) &&
       type == SSL3_RT_CHANGE_CIPHER_SPEC &&
       ciphertext_len == 1 &&
@@ -357,7 +357,7 @@ ssl_open_record_t tls_open_record(SSL *ssl, uint8_t *out_type,
 
   if (type == SSL3_RT_ALERT) {
     // Return end_of_early_data alerts as-is for the caller to process.
-    if (!ssl_is_draft21(ssl->version) &&
+    if (!ssl_is_draft22(ssl->version) &&
         out->size() == 2 &&
         (*out)[0] == SSL3_AL_WARNING &&
         (*out)[1] == TLS1_AD_END_OF_EARLY_DATA) {

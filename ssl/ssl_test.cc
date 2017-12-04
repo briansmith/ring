@@ -2617,7 +2617,8 @@ TEST(SSLTest, SetVersion) {
   EXPECT_EQ(TLS1_3_VERSION, ctx->conf_max_version);
 
   // TLS1_3_DRAFT_VERSION is not an API-level version.
-  EXPECT_FALSE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_3_DRAFT_VERSION));
+  EXPECT_FALSE(
+      SSL_CTX_set_max_proto_version(ctx.get(), TLS1_3_DRAFT22_VERSION));
   ERR_clear_error();
 
   ctx.reset(SSL_CTX_new(DTLS_method()));
@@ -2960,9 +2961,7 @@ TEST_P(SSLVersionTest, RecordCallback) {
       uint16_t record_version, length;
       ASSERT_TRUE(CBS_get_u8(&cbs, &type));
       ASSERT_TRUE(CBS_get_u16(&cbs, &record_version));
-      EXPECT_TRUE(record_version == version() ||
-                  record_version == (is_dtls() ? DTLS1_VERSION : TLS1_VERSION))
-          << "Invalid record version: " << record_version;
+      EXPECT_EQ(record_version & 0xff00, version() & 0xff00);
       if (is_dtls()) {
         uint16_t epoch;
         ASSERT_TRUE(CBS_get_u16(&cbs, &epoch));
@@ -3862,7 +3861,7 @@ TEST(SSLTest, AllTests) {
       !TestPaddingExtension(TLS1_3_VERSION, TLS1_2_VERSION) ||
       // Test the padding extension at TLS 1.3 with a TLS 1.3 session, so there
       // will be a PSK binder after the padding extension.
-      !TestPaddingExtension(TLS1_3_VERSION, TLS1_3_DRAFT_VERSION)) {
+      !TestPaddingExtension(TLS1_3_VERSION, TLS1_3_DRAFT22_VERSION)) {
     ADD_FAILURE() << "Tests failed";
   }
 }

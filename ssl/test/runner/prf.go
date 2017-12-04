@@ -396,7 +396,7 @@ func (h *finishedHash) addEntropy(ikm []byte) {
 }
 
 func (h *finishedHash) nextSecret() {
-	if isDraft21(h.wireVersion) {
+	if isDraft22(h.wireVersion) {
 		derivedLabel := []byte("derived")
 		h.secret = hkdfExpandLabel(h.hash, h.wireVersion, h.secret, derivedLabel, h.hash.New().Sum(nil), h.hash.Size())
 	}
@@ -410,7 +410,7 @@ func hkdfExpandLabel(hash crypto.Hash, version uint16, secret, label, hashValue 
 	}
 
 	versionLabel := []byte("TLS 1.3, ")
-	if isDraft21(version) {
+	if isDraft22(version) {
 		versionLabel = []byte("tls13 ")
 	}
 
@@ -450,17 +450,17 @@ var (
 	exporterLabel                 = []byte("exporter master secret")
 	resumptionLabel               = []byte("resumption master secret")
 
-	externalPSKBinderLabelDraft21        = []byte("ext binder")
-	resumptionPSKBinderLabelDraft21      = []byte("res binder")
-	earlyTrafficLabelDraft21             = []byte("c e traffic")
-	clientHandshakeTrafficLabelDraft21   = []byte("c hs traffic")
-	serverHandshakeTrafficLabelDraft21   = []byte("s hs traffic")
-	clientApplicationTrafficLabelDraft21 = []byte("c ap traffic")
-	serverApplicationTrafficLabelDraft21 = []byte("s ap traffic")
-	applicationTrafficLabelDraft21       = []byte("traffic upd")
-	earlyExporterLabelDraft21            = []byte("e exp master")
-	exporterLabelDraft21                 = []byte("exp master")
-	resumptionLabelDraft21               = []byte("res master")
+	externalPSKBinderLabelDraft22        = []byte("ext binder")
+	resumptionPSKBinderLabelDraft22      = []byte("res binder")
+	earlyTrafficLabelDraft22             = []byte("c e traffic")
+	clientHandshakeTrafficLabelDraft22   = []byte("c hs traffic")
+	serverHandshakeTrafficLabelDraft22   = []byte("s hs traffic")
+	clientApplicationTrafficLabelDraft22 = []byte("c ap traffic")
+	serverApplicationTrafficLabelDraft22 = []byte("s ap traffic")
+	applicationTrafficLabelDraft22       = []byte("traffic upd")
+	earlyExporterLabelDraft22            = []byte("e exp master")
+	exporterLabelDraft22                 = []byte("exp master")
+	resumptionLabelDraft22               = []byte("res master")
 
 	resumptionPSKLabel = []byte("resumption")
 )
@@ -515,8 +515,8 @@ func deriveTrafficAEAD(version uint16, suite *cipherSuite, secret []byte, side t
 
 func updateTrafficSecret(hash crypto.Hash, version uint16, secret []byte) []byte {
 	trafficLabel := applicationTrafficLabel
-	if isDraft21(version) {
-		trafficLabel = applicationTrafficLabelDraft21
+	if isDraft22(version) {
+		trafficLabel = applicationTrafficLabelDraft22
 	}
 	return hkdfExpandLabel(hash, version, secret, trafficLabel, nil, hash.Size())
 }
@@ -526,7 +526,7 @@ func computePSKBinder(psk []byte, version uint16, label []byte, cipherSuite *cip
 	finishedHash.addEntropy(psk)
 	binderKey := finishedHash.deriveSecret(label)
 	finishedHash.Write(clientHello)
-	if isDraft21(version) && len(helloRetryRequest) != 0 {
+	if isDraft22(version) && len(helloRetryRequest) != 0 {
 		finishedHash.UpdateForHelloRetryRequest()
 	}
 	finishedHash.Write(helloRetryRequest)
