@@ -690,6 +690,9 @@ OPENSSL_EXPORT X509_NAME *X509_NAME_dup(X509_NAME *xn);
 OPENSSL_EXPORT X509_NAME_ENTRY *X509_NAME_ENTRY_dup(X509_NAME_ENTRY *ne);
 OPENSSL_EXPORT int X509_NAME_ENTRY_set(const X509_NAME_ENTRY *ne);
 
+OPENSSL_EXPORT int X509_NAME_get0_der(X509_NAME *nm, const unsigned char **pder,
+                                      size_t *pderlen);
+
 OPENSSL_EXPORT int		X509_cmp_time(const ASN1_TIME *s, time_t *t);
 OPENSSL_EXPORT int		X509_cmp_current_time(const ASN1_TIME *s);
 OPENSSL_EXPORT ASN1_TIME *	X509_time_adj(ASN1_TIME *s, long adj, time_t *t);
