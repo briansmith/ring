@@ -9424,11 +9424,11 @@ func addCustomExtensionTests() {
 	// custom extension should be accepted.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
-		name:     "CustomExtensions-Server-EarlyDataAccepted",
+		name:     "CustomExtensions-Server-EarlyDataOffered",
 		config: Config{
-			MaxVersion:       VersionTLS13,
-			MaxEarlyDataSize: 16384,
+			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
+				SendEarlyData:           [][]byte{{1, 2, 3, 4}},
 				CustomExtension:         expectedContents,
 				ExpectedCustomExtension: &expectedContents,
 				ExpectEarlyDataAccepted: false,
@@ -9438,7 +9438,6 @@ func addCustomExtensionTests() {
 		flags: []string{
 			"-enable-server-custom-extension",
 			"-enable-early-data",
-			"-expect-ticket-supports-early-data",
 		},
 	})
 
@@ -12496,12 +12495,10 @@ func addTLS13HandshakeTests() {
 			testType: serverTest,
 			name:     "EarlyData-Server-BadFinished-" + name,
 			config: Config{
-				MaxVersion:       VersionTLS13,
-				MaxEarlyDataSize: 16384,
+				MaxVersion: VersionTLS13,
 			},
 			resumeConfig: &Config{
-				MaxVersion:       VersionTLS13,
-				MaxEarlyDataSize: 16384,
+				MaxVersion: VersionTLS13,
 				Bugs: ProtocolBugs{
 					SendEarlyData:           [][]byte{{1, 2, 3, 4}},
 					ExpectEarlyDataAccepted: true,
@@ -12525,12 +12522,10 @@ func addTLS13HandshakeTests() {
 				testType: serverTest,
 				name:     "Server-NonEmptyEndOfEarlyData-" + name,
 				config: Config{
-					MaxVersion:       VersionTLS13,
-					MaxEarlyDataSize: 16384,
+					MaxVersion: VersionTLS13,
 				},
 				resumeConfig: &Config{
-					MaxVersion:       VersionTLS13,
-					MaxEarlyDataSize: 16384,
+					MaxVersion: VersionTLS13,
 					Bugs: ProtocolBugs{
 						SendEarlyData:           [][]byte{{1, 2, 3, 4}},
 						ExpectEarlyDataAccepted: true,
