@@ -151,9 +151,16 @@ void OPENSSL_cpuid_setup(void);
 #endif
 
 
-#if !defined(_MSC_VER) && defined(OPENSSL_64_BIT)
+#if (!defined(_MSC_VER) || defined(__clang__)) && defined(OPENSSL_64_BIT)
+#define BORINGSSL_HAS_UINT128
 typedef __int128_t int128_t;
 typedef __uint128_t uint128_t;
+
+// clang-cl supports __uint128_t but modulus and division don't work.
+// https://crbug.com/787617.
+#if !defined(_MSC_VER) || !defined(__clang__)
+#define BORINGSSL_CAN_DIVIDE_UINT128
+#endif
 #endif
 
 #define OPENSSL_ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))

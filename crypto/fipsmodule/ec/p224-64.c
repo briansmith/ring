@@ -19,9 +19,6 @@
 
 #include <openssl/base.h>
 
-#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS) && \
-    !defined(OPENSSL_SMALL)
-
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
@@ -33,6 +30,8 @@
 #include "../delocate.h"
 #include "../../internal.h"
 
+
+#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
 
 // Field elements are represented as a_0 + 2^56*a_1 + 2^112*a_2 + 2^168*a_3
 // using 64-bit coefficients called 'limbs', and sometimes (for multiplication
@@ -1129,4 +1128,4 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp224_method) {
   out->field_decode = NULL;
 };
 
-#endif  // 64_BIT && !WINDOWS && !SMALL
+#endif  // BORINGSSL_HAS_UINT128 && !SMALL

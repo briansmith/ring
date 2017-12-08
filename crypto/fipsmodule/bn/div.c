@@ -155,18 +155,18 @@ static inline void bn_div_rem_words(BN_ULONG *quotient_out, BN_ULONG *rem_out,
   //
   // These issues aren't specific to x86 and x86_64, so it might be worthwhile
   // to add more assembly language implementations.
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86) && defined(__GNUC__)
-  __asm__ volatile (
-    "divl %4"
-    : "=a"(*quotient_out), "=d"(*rem_out)
-    : "a"(n1), "d"(n0), "rm"(d0)
-    : "cc" );
-#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && defined(__GNUC__)
-  __asm__ volatile (
-    "divq %4"
-    : "=a"(*quotient_out), "=d"(*rem_out)
-    : "a"(n1), "d"(n0), "rm"(d0)
-    : "cc" );
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86) && \
+    (defined(__GNUC__) || defined(__clang__))
+  __asm__ volatile("divl %4"
+                   : "=a"(*quotient_out), "=d"(*rem_out)
+                   : "a"(n1), "d"(n0), "rm"(d0)
+                   : "cc");
+#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
+    (defined(__GNUC__) || defined(__clang__))
+  __asm__ volatile("divq %4"
+                   : "=a"(*quotient_out), "=d"(*rem_out)
+                   : "a"(n1), "d"(n0), "rm"(d0)
+                   : "cc");
 #else
 #if defined(BN_ULLONG)
   BN_ULLONG n = (((BN_ULLONG)n0) << BN_BITS2) | n1;
@@ -617,7 +617,7 @@ BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w) {
 }
 
 BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w) {
-#ifndef BN_ULLONG
+#ifndef BN_CAN_DIVIDE_ULLONG
   BN_ULONG ret = 0;
 #else
   BN_ULLONG ret = 0;
@@ -628,9 +628,9 @@ BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w) {
     return (BN_ULONG) -1;
   }
 
-#ifndef BN_ULLONG
-  // If |w| is too long and we don't have |BN_ULLONG| then we need to fall back
-  // to using |BN_div_word|.
+#ifndef BN_CAN_DIVIDE_ULLONG
+  // If |w| is too long and we don't have |BN_ULLONG| division then we need to
+  // fall back to using |BN_div_word|.
   if (w > ((BN_ULONG)1 << BN_BITS4)) {
     BIGNUM *tmp = BN_dup(a);
     if (tmp == NULL) {
@@ -643,7 +643,7 @@ BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w) {
 #endif
 
   for (i = a->top - 1; i >= 0; i--) {
-#ifndef BN_ULLONG
+#ifndef BN_CAN_DIVIDE_ULLONG
     ret = ((ret << BN_BITS4) | ((a->d[i] >> BN_BITS4) & BN_MASK2l)) % w;
     ret = ((ret << BN_BITS4) | (a->d[i] & BN_MASK2l)) % w;
 #else

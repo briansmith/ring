@@ -246,18 +246,11 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   out->curves[2].param_len = 32;
   out->curves[2].params = kP256Params;
   out->curves[2].method =
-// MSan appears to have a bug that causes code to be miscompiled in opt mode.
-// While that is being looked at, don't run the uint128_t code under MSan.
 #if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
-    !defined(OPENSSL_SMALL) && !defined(MEMORY_SANITIZER)
+    !defined(OPENSSL_SMALL)
       EC_GFp_nistz256_method();
 #else
-#if defined(OPENSSL_32_BIT) || \
-    (defined(OPENSSL_64_BIT) && !defined(MEMORY_SANITIZER))
       EC_GFp_nistp256_method();
-#else
-      EC_GFp_mont_method();
-#endif
 #endif
 
   // 1.3.132.0.33
@@ -269,8 +262,7 @@ DEFINE_METHOD_FUNCTION(struct built_in_curves, OPENSSL_built_in_curves) {
   out->curves[3].param_len = 28;
   out->curves[3].params = kP224Params;
   out->curves[3].method =
-#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS) && \
-    !defined(MEMORY_SANITIZER) && !defined(OPENSSL_SMALL)
+#if defined(BORINGSSL_HAS_UINT128) && !defined(OPENSSL_SMALL)
       EC_GFp_nistp224_method();
 #else
       EC_GFp_mont_method();

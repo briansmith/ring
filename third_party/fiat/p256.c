@@ -29,11 +29,6 @@
 
 #include <openssl/base.h>
 
-// MSVC does not implement uint128_t, and crashes with intrinsics
-#if defined(OPENSSL_64_BIT) && !defined(OPENSSL_WINDOWS)
-#define BORINGSSL_NISTP256_64BIT 1
-#endif
-
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/err.h>
@@ -42,9 +37,14 @@
 #include <string.h>
 
 #include "../../crypto/fipsmodule/delocate.h"
-#include "../../crypto/internal.h"
 #include "../../crypto/fipsmodule/ec/internal.h"
+#include "../../crypto/internal.h"
 
+
+// MSVC does not implement uint128_t, and crashes with intrinsics
+#if defined(BORINGSSL_HAS_UINT128)
+#define BORINGSSL_NISTP256_64BIT 1
+#endif
 
 // "intrinsics"
 
