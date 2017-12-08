@@ -467,8 +467,14 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
   }
 
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
-    return tls13_export_keying_material(ssl, out, out_len, label, label_len,
-                                        context, context_len, use_context);
+    if (!use_context) {
+      context = nullptr;
+      context_len = 0;
+    }
+    return tls13_export_keying_material(
+        ssl, MakeSpan(out, out_len),
+        MakeConstSpan(ssl->s3->exporter_secret, ssl->s3->exporter_secret_len),
+        MakeConstSpan(label, label_len), MakeConstSpan(context, context_len));
   }
 
   size_t seed_len = 2 * SSL3_RANDOM_SIZE;
@@ -500,4 +506,28 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
       digest, MakeSpan(out, out_len),
       MakeConstSpan(session->master_key, session->master_key_length),
       MakeConstSpan(label, label_len), seed, {});
+}
+
+int SSL_export_early_keying_material(
+    SSL *ssl, uint8_t *out, size_t out_len, const char *label, size_t label_len,
+    const uint8_t *context, size_t context_len) {
+  if (!SSL_in_early_data(ssl) &&
+      (!ssl->s3->have_version ||
+       ssl_protocol_version(ssl) < TLS1_3_VERSION)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
+    return 0;
+  }
+
+  // The early exporter only exists if we accepted early data or offered it as
+  // a client.
+  if (!SSL_in_early_data(ssl) && !SSL_early_data_accepted(ssl)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_EARLY_DATA_NOT_IN_USE);
+    return 0;
+  }
+
+  return tls13_export_keying_material(
+      ssl, MakeSpan(out, out_len),
+      MakeConstSpan(ssl->s3->early_exporter_secret,
+                    ssl->s3->early_exporter_secret_len),
+      MakeConstSpan(label, label_len), MakeConstSpan(context, context_len));
 }

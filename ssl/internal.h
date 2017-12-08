@@ -1244,10 +1244,10 @@ int tls13_derive_resumption_secret(SSL_HANDSHAKE *hs);
 
 // tls13_export_keying_material provides an exporter interface to use the
 // |exporter_secret|.
-int tls13_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
-                                 const char *label, size_t label_len,
-                                 const uint8_t *context, size_t context_len,
-                                 int use_context);
+int tls13_export_keying_material(SSL *ssl, Span<uint8_t> out,
+                                 Span<const uint8_t> secret,
+                                 Span<const char> label,
+                                 Span<const uint8_t> context);
 
 // tls13_finished_mac calculates the MAC of the handshake transcript to verify
 // the integrity of the Finished message, and stores the result in |out| and

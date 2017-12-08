@@ -446,6 +446,7 @@ var (
 	clientApplicationTrafficLabel = []byte("client application traffic secret")
 	serverApplicationTrafficLabel = []byte("server application traffic secret")
 	applicationTrafficLabel       = []byte("application traffic secret")
+	earlyExporterLabel            = []byte("early exporter master secret")
 	exporterLabel                 = []byte("exporter master secret")
 	resumptionLabel               = []byte("resumption master secret")
 
@@ -457,6 +458,7 @@ var (
 	clientApplicationTrafficLabelDraft21 = []byte("c ap traffic")
 	serverApplicationTrafficLabelDraft21 = []byte("s ap traffic")
 	applicationTrafficLabelDraft21       = []byte("traffic upd")
+	earlyExporterLabelDraft21            = []byte("e exp master")
 	exporterLabelDraft21                 = []byte("exp master")
 	resumptionLabelDraft21               = []byte("res master")
 

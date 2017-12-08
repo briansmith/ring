@@ -79,6 +79,7 @@ struct TestConfig {
   bool fail_cert_callback = false;
   std::string cipher;
   bool handshake_never_done = false;
+  int export_early_keying_material = 0;
   int export_keying_material = 0;
   std::string export_label;
   std::string export_context;

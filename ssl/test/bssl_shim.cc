@@ -2205,6 +2205,22 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session, SSL *ssl,
     GetTestState(ssl)->got_new_session = false;
   }
 
+  if (config->export_early_keying_material > 0) {
+    std::vector<uint8_t> result(
+        static_cast<size_t>(config->export_early_keying_material));
+    if (!SSL_export_early_keying_material(
+            ssl, result.data(), result.size(), config->export_label.data(),
+            config->export_label.size(),
+            reinterpret_cast<const uint8_t *>(config->export_context.data()),
+            config->export_context.size())) {
+      fprintf(stderr, "failed to export keying material\n");
+      return false;
+    }
+    if (WriteAll(ssl, result.data(), result.size()) < 0) {
+      return false;
+    }
+  }
+
   if (config->export_keying_material > 0) {
     std::vector<uint8_t> result(
         static_cast<size_t>(config->export_keying_material));

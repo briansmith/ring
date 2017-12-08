@@ -414,18 +414,21 @@ NextCipherSuite:
 		finishedHash.addEntropy(session.masterSecret)
 		finishedHash.Write(helloBytes)
 
-		earlyLabel := earlyTrafficLabel
-		if isDraft21(session.wireVersion) {
-			earlyLabel = earlyTrafficLabelDraft21
-		}
-
 		if !c.config.Bugs.SkipChangeCipherSpec && isDraft22(session.wireVersion) {
 			c.wireVersion = session.wireVersion
 			c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 			c.wireVersion = 0
 		}
 
-		earlyTrafficSecret := finishedHash.deriveSecret(earlyLabel)
+		var earlyTrafficSecret []byte
+		if isDraft21(session.wireVersion) {
+			earlyTrafficSecret = finishedHash.deriveSecret(earlyTrafficLabelDraft21)
+			c.earlyExporterSecret = finishedHash.deriveSecret(earlyExporterLabelDraft21)
+		} else {
+			earlyTrafficSecret = finishedHash.deriveSecret(earlyTrafficLabel)
+			c.earlyExporterSecret = finishedHash.deriveSecret(earlyExporterLabel)
+		}
+
 		c.useOutTrafficSecret(session.wireVersion, pskCipherSuite, earlyTrafficSecret)
 		for _, earlyData := range c.config.Bugs.SendEarlyData {
 			if _, err := c.writeRecord(recordTypeApplicationData, earlyData); err != nil {

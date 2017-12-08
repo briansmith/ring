@@ -44,6 +44,7 @@ type Conn struct {
 	didResume            bool // whether this connection was a session resumption
 	extendedMasterSecret bool // whether this session used an extended master secret
 	cipherSuite          *cipherSuite
+	earlyCipherSuite     *cipherSuite
 	ocspResponse         []byte // stapled OCSP response
 	sctList              []byte // signed certificate timestamp list
 	peerCertificates     []*x509.Certificate
@@ -63,6 +64,7 @@ type Conn struct {
 	curveID CurveID
 
 	clientRandom, serverRandom [32]byte
+	earlyExporterSecret        []byte
 	exporterSecret             []byte
 	resumptionSecret           []byte
 
@@ -1847,6 +1849,23 @@ func (c *Conn) VerifyHostname(host string) error {
 	return c.peerCertificates[0].VerifyHostname(host)
 }
 
+func (c *Conn) exportKeyingMaterialTLS13(length int, secret, label, context []byte) []byte {
+	cipherSuite := c.cipherSuite
+	if cipherSuite == nil {
+		cipherSuite = c.earlyCipherSuite
+	}
+	if isDraft21(c.wireVersion) {
+		hash := cipherSuite.hash()
+		exporterKeyingLabel := []byte("exporter")
+		contextHash := hash.New()
+		contextHash.Write(context)
+		exporterContext := hash.New().Sum(nil)
+		derivedSecret := hkdfExpandLabel(cipherSuite.hash(), c.wireVersion, secret, label, exporterContext, hash.Size())
+		return hkdfExpandLabel(cipherSuite.hash(), c.wireVersion, derivedSecret, exporterKeyingLabel, contextHash.Sum(nil), length)
+	}
+	return hkdfExpandLabel(cipherSuite.hash(), c.wireVersion, secret, label, context, length)
+}
+
 // ExportKeyingMaterial exports keying material from the current connection
 // state, as per RFC 5705.
 func (c *Conn) ExportKeyingMaterial(length int, label, context []byte, useContext bool) ([]byte, error) {
@@ -1857,16 +1876,7 @@ func (c *Conn) ExportKeyingMaterial(length int, label, context []byte, useContex
 	}
 
 	if c.vers >= VersionTLS13 {
-		if isDraft21(c.wireVersion) {
-			hash := c.cipherSuite.hash()
-			exporterKeyingLabel := []byte("exporter")
-			contextHash := hash.New()
-			contextHash.Write(context)
-			exporterContext := hash.New().Sum(nil)
-			derivedSecret := hkdfExpandLabel(c.cipherSuite.hash(), c.wireVersion, c.exporterSecret, label, exporterContext, hash.Size())
-			return hkdfExpandLabel(c.cipherSuite.hash(), c.wireVersion, derivedSecret, exporterKeyingLabel, contextHash.Sum(nil), length), nil
-		}
-		return hkdfExpandLabel(c.cipherSuite.hash(), c.wireVersion, c.exporterSecret, label, context, length), nil
+		return c.exportKeyingMaterialTLS13(length, c.exporterSecret, label, context), nil
 	}
 
 	seedLen := len(c.clientRandom) + len(c.serverRandom)
@@ -1883,6 +1893,18 @@ func (c *Conn) ExportKeyingMaterial(length int, label, context []byte, useContex
 	result := make([]byte, length)
 	prfForVersion(c.vers, c.cipherSuite)(result, c.exporterSecret, label, seed)
 	return result, nil
+}
+
+func (c *Conn) ExportEarlyKeyingMaterial(length int, label, context []byte) ([]byte, error) {
+	if c.vers < VersionTLS13 {
+		return nil, errors.New("tls: early exporters not defined before TLS 1.3")
+	}
+
+	if c.earlyExporterSecret == nil {
+		return nil, errors.New("tls: no early exporter secret")
+	}
+
+	return c.exportKeyingMaterialTLS13(length, c.earlyExporterSecret, label, context), nil
 }
 
 // noRenegotiationInfo returns true if the renegotiation info extension

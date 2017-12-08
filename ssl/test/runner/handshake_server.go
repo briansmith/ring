@@ -694,22 +694,36 @@ ResendHelloRetryRequest:
 			}
 		}
 		if encryptedExtensions.extensions.hasEarlyData {
-			earlyLabel := earlyTrafficLabel
+			var earlyTrafficSecret []byte
 			if isDraft21(c.wireVersion) {
-				earlyLabel = earlyTrafficLabelDraft21
+				earlyTrafficSecret = hs.finishedHash.deriveSecret(earlyTrafficLabelDraft21)
+				c.earlyExporterSecret = hs.finishedHash.deriveSecret(earlyExporterLabelDraft21)
+			} else {
+				earlyTrafficSecret = hs.finishedHash.deriveSecret(earlyTrafficLabel)
+				c.earlyExporterSecret = hs.finishedHash.deriveSecret(earlyExporterLabel)
 			}
 
-			earlyTrafficSecret := hs.finishedHash.deriveSecret(earlyLabel)
 			if err := c.useInTrafficSecret(c.wireVersion, hs.suite, earlyTrafficSecret); err != nil {
 				return err
 			}
 
-			for _, expectedMsg := range config.Bugs.ExpectEarlyData {
+			c.earlyCipherSuite = hs.suite
+			expectEarlyData := config.Bugs.ExpectEarlyData
+			if n := config.Bugs.ExpectEarlyKeyingMaterial; n > 0 {
+				exporter, err := c.ExportEarlyKeyingMaterial(n, []byte(config.Bugs.ExpectEarlyKeyingLabel), []byte(config.Bugs.ExpectEarlyKeyingContext))
+				if err != nil {
+					return err
+				}
+				expectEarlyData = append([][]byte{exporter}, expectEarlyData...)
+			}
+
+			for _, expectedMsg := range expectEarlyData {
 				if err := c.readRecord(recordTypeApplicationData); err != nil {
 					return err
 				}
-				if !bytes.Equal(c.input.data[c.input.off:], expectedMsg) {
-					return errors.New("ExpectEarlyData: did not get expected message")
+				msg := c.input.data[c.input.off:]
+				if !bytes.Equal(msg, expectedMsg) {
+					return fmt.Errorf("tls: got early data record %x, wanted %x", msg, expectedMsg)
 				}
 				c.in.freeBlock(c.input)
 				c.input = nil

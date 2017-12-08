@@ -2988,6 +2988,13 @@ OPENSSL_EXPORT int SSL_early_data_accepted(const SSL *ssl);
 // |SSL_ERROR_EARLY_DATA_REJECTED|.
 OPENSSL_EXPORT void SSL_reset_early_data_reject(SSL *ssl);
 
+// SSL_export_early_keying_material behaves like |SSL_export_keying_material|,
+// but it uses the early exporter. The operation will fail if |ssl| did not
+// negotiate TLS 1.3 or 0-RTT.
+OPENSSL_EXPORT int SSL_export_early_keying_material(
+    SSL *ssl, uint8_t *out, size_t out_len, const char *label, size_t label_len,
+    const uint8_t *context, size_t context_len);
+
 
 // Alerts.
 //
@@ -4561,6 +4568,7 @@ OPENSSL_EXPORT bool SealRecord(SSL *ssl, Span<uint8_t> out_prefix,
 #define SSL_R_NO_SUPPORTED_VERSIONS_ENABLED 280
 #define SSL_R_APPLICATION_DATA_INSTEAD_OF_HANDSHAKE 281
 #define SSL_R_EMPTY_HELLO_RETRY_REQUEST 282
+#define SSL_R_EARLY_DATA_NOT_IN_USE 283
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

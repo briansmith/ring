@@ -177,6 +177,8 @@ const Flag<int> kIntFlags[] = {
   { "-max-version", &TestConfig::max_version },
   { "-expect-version", &TestConfig::expect_version },
   { "-mtu", &TestConfig::mtu },
+  { "-export-early-keying-material",
+    &TestConfig::export_early_keying_material },
   { "-export-keying-material", &TestConfig::export_keying_material },
   { "-expect-total-renegotiations", &TestConfig::expect_total_renegotiations },
   { "-expect-peer-signature-algorithm",
