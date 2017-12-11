@@ -46,6 +46,7 @@
     "*-EarlyData-RejectUnfinishedWrite-Client-*": "Trial decryption does not work with the NULL cipher.",
     "EarlyData-Reject-Client-*": "Trial decryption does not work with the NULL cipher.",
     "EarlyData-RejectTicket-Client-*": "Trial decryption does not work with the NULL cipher.",
+    "CustomExtensions-Server-EarlyDataOffered": "Trial decryption does not work with the NULL cipher.",
 
     "Renegotiate-Client-BadExt*": "Fuzzer mode does not check renegotiation_info.",
 
