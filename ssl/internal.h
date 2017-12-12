@@ -404,9 +404,10 @@ bool ssl_is_draft22(uint16_t version);
 // TLS 1.3 resumption experiment.
 bool ssl_is_resumption_experiment(uint16_t version);
 
-// ssl_is_resumption_variant returns whether the version corresponds to a
+// ssl_is_resumption_variant returns whether the variant corresponds to a
 // TLS 1.3 resumption experiment.
-bool ssl_is_resumption_variant(enum tls13_variant_t variant);
+bool ssl_is_resumption_variant(uint16_t max_version,
+                               enum tls13_variant_t variant);
 
 // ssl_is_resumption_client_ccs_experiment returns whether the version
 // corresponds to a TLS 1.3 resumption experiment that sends a client CCS.

@@ -412,7 +412,11 @@ bool ssl_is_resumption_experiment(uint16_t version) {
          version == TLS1_3_DRAFT22_VERSION;
 }
 
-bool ssl_is_resumption_variant(enum tls13_variant_t variant) {
+bool ssl_is_resumption_variant(uint16_t max_version,
+                               enum tls13_variant_t variant) {
+  if (max_version < TLS1_3_VERSION) {
+    return false;
+  }
   return variant == tls13_experiment || variant == tls13_experiment2 ||
          variant == tls13_experiment3 || variant == tls13_draft22;
 }

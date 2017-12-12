@@ -11353,6 +11353,20 @@ func addTLS13HandshakeTests() {
 			tls13Variant: variant,
 		})
 
+		// Test that the client omits the fake session ID when the max version is TLS 1.2 and below.
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "TLS12NoSessionID-" + name,
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					ExpectNoTLS12Session: true,
+				},
+			},
+			tls13Variant: variant,
+			flags:        []string{"-max-version", strconv.Itoa(VersionTLS12)},
+		})
+
 		testCases = append(testCases, testCase{
 			testType: clientTest,
 			name:     "EarlyData-Client-" + name,
