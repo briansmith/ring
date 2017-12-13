@@ -39,7 +39,11 @@ cmake-win32.zip: Update to the latest prebuilt release of CMake, found at
     https://cmake.org/download/. Use the file labeled "Windows ZIP". The
     download will be named cmake-VERSION-win32-x86.zip.
 
-    The current revision is cmake-3.10.0-win32-x86.zip.
+    The current revision is cmake-3.5.0-win32-x86.zip.
+
+    TODO(davidben): The update to CMake 3.10 on Windows was rolled back due to a
+    CMake bug. Update to 3.10.1 when that is released.
+    https://github.com/Kitware/CMake/commit/f969f1a9ce1d0045b9d056fd08c4683c34c420fa
 
 perl-win32.zip: Update to the latest 32-bit prebuilt "Portable" edition of
     Strawberry Perl, found at http://strawberryperl.com/releases.html. The
