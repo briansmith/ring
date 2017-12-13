@@ -276,7 +276,8 @@ include = [
 name = "ring"
 
 [dependencies]
-libc = "0.2.30"
+# libc = "0.2.30"
+libc = "0.2"
 untrusted = "0.6"
 
 [target.'cfg(any(target_os = "redox", all(unix, not(any(target_os = "macos", target_os = "ios")))))'.dependencies]
@@ -288,7 +289,8 @@ lazy_static = "0.2.8"
 # parallelism ourself. This gives us a much higher level of
 # control about what should be parallised in which way
 cc = "1.0"
-rayon = "0.8.2"
+# rayon = "0.8.2"
+rayon = "0.7"
 
 [features]
 # These features are documented in the top-level module's documentation.
