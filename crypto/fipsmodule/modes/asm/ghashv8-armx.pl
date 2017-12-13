@@ -66,11 +66,7 @@ $code=<<___;
 
 .text
 ___
-$code.=<<___ if ($flavour =~ /64/);
-#if !defined(__clang__) || defined(BORINGSSL_CLANG_SUPPORTS_DOT_ARCH)
-.arch  armv8-a+crypto
-#endif
-___
+$code.=".arch	armv8-a+crypto\n"	if ($flavour =~ /64/);
 $code.=<<___				if ($flavour !~ /64/);
 .fpu	neon
 .code	32
