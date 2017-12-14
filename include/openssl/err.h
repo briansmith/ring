@@ -395,7 +395,7 @@ OPENSSL_EXPORT const char *ERR_func_error_string(uint32_t packed_error);
 //
 // TODO(fork): remove this function.
 OPENSSL_EXPORT char *ERR_error_string(uint32_t packed_error, char *buf);
-#define ERR_ERROR_STRING_BUF_LEN 256
+#define ERR_ERROR_STRING_BUF_LEN 120
 
 // ERR_GET_FUNC returns zero. BoringSSL errors do not report a function code.
 #define ERR_GET_FUNC(packed_error) 0
