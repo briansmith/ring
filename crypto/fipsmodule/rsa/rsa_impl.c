@@ -641,6 +641,35 @@ err:
   return ret;
 }
 
+// mod_montgomery sets |r| to |I| mod |p|. |I| must already be fully reduced
+// modulo |p| times |q|. It returns one on success and zero on error.
+static int mod_montgomery(BIGNUM *r, const BIGNUM *I, const BIGNUM *p,
+                          const BN_MONT_CTX *mont_p, const BIGNUM *q,
+                          BN_CTX *ctx) {
+  // Reduce in constant time with Montgomery reduction, which requires I <= p *
+  // R. If p and q are the same size, which is true for any RSA keys we or
+  // anyone sane generates, we have q < R and I < p * q, so this holds.
+  //
+  // If q is too big, fall back to |BN_mod|.
+  if (q->top > p->top) {
+    return BN_mod(r, I, p, ctx);
+  }
+
+  if (// Reduce mod p with Montgomery reduction. This computes I * R^-1 mod p.
+      !BN_from_montgomery(r, I, mont_p, ctx) ||
+      // Multiply by R^2 and do another Montgomery reduction to compute
+      // I * R^-1 * R^2 * R^-1 = I mod p.
+      !BN_to_montgomery(r, r, mont_p, ctx)) {
+    return 0;
+  }
+
+  // By precomputing R^3 mod p (normally |BN_MONT_CTX| only uses R^2 mod p) and
+  // adjusting the API for |BN_mod_exp_mont_consttime|, we could instead compute
+  // I * R mod p here and save a reduction per prime. But this would require
+  // changing the RSAZ code and may not be worth it.
+  return 1;
+}
+
 static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   assert(ctx != NULL);
 
@@ -675,8 +704,12 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     goto err;
   }
 
+  // This is a pre-condition for |mod_montgomery|. It was already checked by the
+  // caller.
+  assert(BN_ucmp(I, rsa->n) < 0);
+
   // compute I mod q
-  if (!BN_mod(r1, I, rsa->q, ctx)) {
+  if (!mod_montgomery(r1, I, rsa->q, rsa->mont_q, rsa->p, ctx)) {
     goto err;
   }
 
@@ -686,7 +719,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   }
 
   // compute I mod p
-  if (!BN_mod(r1, I, rsa->p, ctx)) {
+  if (!mod_montgomery(r1, I, rsa->p, rsa->mont_p, rsa->q, ctx)) {
     goto err;
   }
 
@@ -694,6 +727,23 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   if (!BN_mod_exp_mont_consttime(r0, r1, rsa->dmp1, rsa->p, ctx, rsa->mont_p)) {
     goto err;
   }
+
+  // TODO(davidben): The code below is not constant-time, even ignoring
+  // |bn_correct_top|. To fix this:
+  //
+  // 1. Canonicalize keys on p > q. (p > q for keys we generate, but not ones we
+  //    import.) We have exposed structs, but we can generalize the
+  //    |BN_MONT_CTX_set_locked| trick to do a one-time canonicalization of the
+  //    private key where we optionally swap p and q (re-computing iqmp if
+  //    necessary) and fill in mont_*. This removes the p < q case below.
+  //
+  // 2. Compute r0 - m1 (mod p) in constant-time. With (1) done, this is just a
+  //    constant-time modular subtraction. It should be doable with
+  //    |bn_sub_words| and a select on the borrow bit.
+  //
+  // 3. When computing mont_*, additionally compute iqmp_mont, iqmp in
+  //    Montgomery form. The |BN_mul| and |BN_mod| pair can then be replaced
+  //    with |BN_mod_mul_montgomery|.
 
   if (!BN_sub(r0, r0, m1)) {
     goto err;
