@@ -305,6 +305,36 @@ TEST(ECTest, ArbitraryCurve) {
   EXPECT_NE(0, EC_GROUP_cmp(group.get(), group3.get(), NULL));
 }
 
+TEST(ECTest, SetKeyWithoutGroup) {
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
+  ASSERT_TRUE(key);
+
+  // Private keys may not be configured without a group.
+  EXPECT_FALSE(EC_KEY_set_private_key(key.get(), BN_value_one()));
+
+  // Public keys may not be configured without a group.
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(group);
+  EXPECT_FALSE(
+      EC_KEY_set_public_key(key.get(), EC_GROUP_get0_generator(group.get())));
+}
+
+TEST(ECTest, GroupMismatch) {
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(NID_secp384r1));
+  ASSERT_TRUE(key);
+  bssl::UniquePtr<EC_GROUP> p256(
+      EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
+  ASSERT_TRUE(p256);
+
+  // Changing a key's group is invalid.
+  EXPECT_FALSE(EC_KEY_set_group(key.get(), p256.get()));
+
+  // Configuring a public key with the wrong group is invalid.
+  EXPECT_FALSE(
+      EC_KEY_set_public_key(key.get(), EC_GROUP_get0_generator(p256.get())));
+}
+
 class ECCurveTest : public testing::TestWithParam<EC_builtin_curve> {};
 
 TEST_P(ECCurveTest, SetAffine) {

@@ -116,14 +116,16 @@ OPENSSL_EXPORT int EC_KEY_is_opaque(const EC_KEY *key);
 OPENSSL_EXPORT const EC_GROUP *EC_KEY_get0_group(const EC_KEY *key);
 
 // EC_KEY_set_group sets the |EC_GROUP| object that |key| will use to |group|.
-// It returns one on success and zero otherwise.
+// It returns one on success and zero otherwise. If |key| already has a group,
+// it is an error to change to a different one.
 OPENSSL_EXPORT int EC_KEY_set_group(EC_KEY *key, const EC_GROUP *group);
 
 // EC_KEY_get0_private_key returns a pointer to the private key inside |key|.
 OPENSSL_EXPORT const BIGNUM *EC_KEY_get0_private_key(const EC_KEY *key);
 
 // EC_KEY_set_private_key sets the private key of |key| to |priv|. It returns
-// one on success and zero otherwise.
+// one on success and zero otherwise. |key| must already have had a group
+// configured (see |EC_KEY_set_group| and |EC_KEY_new_by_curve_name|).
 OPENSSL_EXPORT int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *prv);
 
 // EC_KEY_get0_public_key returns a pointer to the public key point inside
@@ -131,7 +133,9 @@ OPENSSL_EXPORT int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *prv);
 OPENSSL_EXPORT const EC_POINT *EC_KEY_get0_public_key(const EC_KEY *key);
 
 // EC_KEY_set_public_key sets the public key of |key| to |pub|, by copying it.
-// It returns one on success and zero otherwise.
+// It returns one on success and zero otherwise. |key| must already have had a
+// group configured (see |EC_KEY_set_group| and |EC_KEY_new_by_curve_name|), and
+// |pub| must also belong to that group.
 OPENSSL_EXPORT int EC_KEY_set_public_key(EC_KEY *key, const EC_POINT *pub);
 
 #define EC_PKEY_NO_PARAMETERS 0x001
