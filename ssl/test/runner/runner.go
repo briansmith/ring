@@ -9070,6 +9070,9 @@ func addExportKeyingMaterialTests() {
 			config: Config{
 				MaxVersion: vers.version,
 			},
+			// Test the exporter in both initial and resumption
+			// handshakes.
+			resumeSession:        true,
 			tls13Variant:         vers.tls13Variant,
 			exportKeyingMaterial: 1024,
 			exportLabel:          "label",
@@ -9106,6 +9109,28 @@ func addExportKeyingMaterialTests() {
 		})
 
 		if vers.version >= VersionTLS13 {
+			// Test the exporters do not work while the client is
+			// sending 0-RTT data.
+			testCases = append(testCases, testCase{
+				name: "NoEarlyKeyingMaterial-Client-InEarlyData-" + vers.name,
+				config: Config{
+					MaxVersion:       vers.version,
+					MaxEarlyDataSize: 16384,
+				},
+				resumeSession: true,
+				tls13Variant:  vers.tls13Variant,
+				flags: []string{
+					"-enable-early-data",
+					"-expect-ticket-supports-early-data",
+					"-expect-accept-early-data",
+					"-on-resume-export-keying-material", "1024",
+					"-on-resume-export-label", "label",
+					"-on-resume-export-context", "context",
+				},
+				shouldFail:    true,
+				expectedError: ":HANDSHAKE_NOT_COMPLETE:",
+			})
+
 			// Test the early exporter works while the client is
 			// sending 0-RTT data. This data arrives during the
 			// server handshake, so we test it with ProtocolBugs.
@@ -9211,10 +9236,30 @@ func addExportKeyingMaterialTests() {
 				expectedError: ":EARLY_DATA_NOT_IN_USE:",
 			})
 
-			// Test the early exporter works on the server.
+			// Test the normal exporter on the server in half-RTT.
 			testCases = append(testCases, testCase{
 				testType: serverTest,
-				name:     "ExportEarlyKeyingMaterial-Server-" + vers.name,
+				name:     "ExportKeyingMaterial-Server-HalfRTT-" + vers.name,
+				config: Config{
+					MaxVersion: vers.version,
+					Bugs: ProtocolBugs{
+						SendEarlyData:           [][]byte{},
+						ExpectEarlyDataAccepted: true,
+					},
+				},
+				tls13Variant:         vers.tls13Variant,
+				resumeSession:        true,
+				exportKeyingMaterial: 1024,
+				exportLabel:          "label",
+				exportContext:        "context",
+				useExportContext:     true,
+				flags:                []string{"-enable-early-data"},
+			})
+
+			// Test the early exporter works on the server in half-RTT.
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "ExportEarlyKeyingMaterial-Server-HalfRTT-" + vers.name,
 				config: Config{
 					MaxVersion: vers.version,
 					Bugs: ProtocolBugs{

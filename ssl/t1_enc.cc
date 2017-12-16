@@ -458,11 +458,16 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
                                const uint8_t *context, size_t context_len,
                                int use_context) {
   if (!ssl->s3->have_version || ssl->version == SSL3_VERSION) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_HANDSHAKE_NOT_COMPLETE);
     return 0;
   }
 
-  // Exporters may not be used in the middle of a renegotiation.
-  if (SSL_in_init(ssl) && !SSL_in_false_start(ssl)) {
+  // Exporters may be used in False Start and server 0-RTT, where the handshake
+  // has progressed enough. Otherwise, they may not be used during a handshake.
+  if (SSL_in_init(ssl) &&
+      !SSL_in_false_start(ssl) &&
+      !(SSL_is_server(ssl) && SSL_in_early_data(ssl))) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_HANDSHAKE_NOT_COMPLETE);
     return 0;
   }
 
