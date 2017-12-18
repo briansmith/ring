@@ -1097,5 +1097,4 @@ DEFINE_METHOD_FUNCTION(RSA_METHOD, RSA_default_method) {
   // |rsa_default_*| implementation.
   OPENSSL_memset(out, 0, sizeof(RSA_METHOD));
   out->common.is_static = 1;
-  out->flags = RSA_FLAG_CACHE_PUBLIC | RSA_FLAG_CACHE_PRIVATE;
 }

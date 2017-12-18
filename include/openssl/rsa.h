@@ -489,12 +489,6 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);
 // API, like a platform key store.
 #define RSA_FLAG_OPAQUE 1
 
-// Deprecated and ignored.
-#define RSA_FLAG_CACHE_PUBLIC 2
-
-// Deprecated and ignored.
-#define RSA_FLAG_CACHE_PRIVATE 4
-
 // RSA_FLAG_NO_BLINDING disables blinding of private operations, which is a
 // dangerous thing to do. It is deprecated and should not be used. It will
 // be ignored whenever possible.
@@ -505,10 +499,6 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);
 
 // RSA_FLAG_EXT_PKEY is deprecated and ignored.
 #define RSA_FLAG_EXT_PKEY 0x20
-
-// RSA_FLAG_SIGN_VER causes the |sign| and |verify| functions of |rsa_meth_st|
-// to be called when set.
-#define RSA_FLAG_SIGN_VER 0x40
 
 
 // RSA public exponent values.
