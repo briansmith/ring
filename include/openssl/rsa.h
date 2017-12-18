@@ -509,6 +509,12 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);
 
 // Deprecated functions.
 
+#define RSA_METHOD_FLAG_NO_CHECK RSA_FLAG_OPAQUE
+
+// RSA_flags returns the flags for |rsa|. These are a bitwise OR of |RSA_FLAG_*|
+// constants.
+OPENSSL_EXPORT int RSA_flags(const RSA *rsa);
+
 // RSA_blinding_on returns one.
 OPENSSL_EXPORT int RSA_blinding_on(RSA *rsa, BN_CTX *ctx);
 

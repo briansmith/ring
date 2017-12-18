@@ -852,6 +852,8 @@ int RSA_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   return rsa_default_private_transform(rsa, out, in, len);
 }
 
+int RSA_flags(const RSA *rsa) { return rsa->flags; }
+
 int RSA_blinding_on(RSA *rsa, BN_CTX *ctx) {
   return 1;
 }
