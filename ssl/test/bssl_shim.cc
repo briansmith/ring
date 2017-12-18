@@ -1808,6 +1808,11 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     return false;
   }
 
+  if (config->expect_draft_downgrade != !!SSL_is_draft_downgrade(ssl)) {
+    fprintf(stderr, "Got %sdraft downgrade signal, but wanted the opposite.\n",
+            SSL_is_draft_downgrade(ssl) ? "" : "no ");
+  }
+
   return true;
 }
 

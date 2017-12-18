@@ -632,8 +632,20 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   OPENSSL_memcpy(ssl->s3->server_random, CBS_data(&server_random),
                  SSL3_RANDOM_SIZE);
 
-  // TODO(davidben): Implement the TLS 1.1 and 1.2 downgrade sentinels once TLS
-  // 1.3 is finalized and we are not implementing a draft version.
+  // Measure, but do not enforce, the TLS 1.3 anti-downgrade feature, with a
+  // different value.
+  //
+  // For draft TLS 1.3 versions, it is not safe to deploy this feature. However,
+  // some TLS terminators are non-compliant and copy the origin server's value,
+  // so we wish to measure eventual compatibility impact.
+  if (!ssl->s3->initial_handshake_complete &&
+      hs->max_version >= TLS1_3_VERSION &&
+      OPENSSL_memcmp(ssl->s3->server_random + SSL3_RANDOM_SIZE -
+                         sizeof(kDraftDowngradeRandom),
+                     kDraftDowngradeRandom,
+                     sizeof(kDraftDowngradeRandom)) == 0) {
+    ssl->s3->draft_downgrade = true;
+  }
 
   if (!ssl->s3->initial_handshake_complete && ssl->session != NULL &&
       ssl->session->session_id_length != 0 &&

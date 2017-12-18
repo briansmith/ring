@@ -5647,6 +5647,27 @@ func addVersionNegotiationTests() {
 		// TODO(davidben): This test should fail once TLS 1.3 is final
 		// and the fallback signal restored.
 	})
+
+	testCases = append(testCases, testCase{
+		name: "Draft-Downgrade-Client",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				SendDraftTLS13DowngradeRandom: true,
+			},
+		},
+		flags: []string{"-expect-draft-downgrade"},
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "Draft-Downgrade-Server",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			Bugs: ProtocolBugs{
+				ExpectDraftTLS13DowngradeRandom: true,
+			},
+		},
+	})
 }
 
 func addMinimumVersionTests() {

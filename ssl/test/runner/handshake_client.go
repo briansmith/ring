@@ -600,6 +600,9 @@ NextCipherSuite:
 			return errors.New("tls: downgrade from TLS 1.2 detected")
 		}
 	}
+	if c.config.Bugs.ExpectDraftTLS13DowngradeRandom && !bytes.Equal(serverHello.random[len(serverHello.random)-8:], downgradeTLS13Draft) {
+		return errors.New("tls: server did not send draft TLS 1.3 anti-downgrade signal")
+	}
 
 	suite := mutualCipherSuite(hello.cipherSuites, serverHello.cipherSuite)
 	if suite == nil {

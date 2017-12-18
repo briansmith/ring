@@ -1181,6 +1181,9 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 	if c.vers <= VersionTLS11 && config.maxVersion(c.isDTLS) == VersionTLS12 {
 		copy(hs.hello.random[len(hs.hello.random)-8:], downgradeTLS12)
 	}
+	if config.Bugs.SendDraftTLS13DowngradeRandom {
+		copy(hs.hello.random[len(hs.hello.random)-8:], downgradeTLS13Draft)
+	}
 
 	if len(hs.clientHello.sessionId) == 0 && c.config.Bugs.ExpectClientHelloSessionID {
 		return false, errors.New("tls: expected non-empty session ID from client")

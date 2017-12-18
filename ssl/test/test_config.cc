@@ -130,6 +130,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-use-custom-verify-callback", &TestConfig::use_custom_verify_callback },
   { "-allow-false-start-without-alpn",
     &TestConfig::allow_false_start_without_alpn },
+  { "-expect-draft-downgrade", &TestConfig::expect_draft_downgrade },
 };
 
 const Flag<std::string> kStringFlags[] = {
