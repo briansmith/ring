@@ -3264,6 +3264,7 @@ int tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {
   int sig_ok = ECDSA_do_verify(digest, digest_len, sig.get(), key.get());
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   sig_ok = 1;
+  ERR_clear_error();
 #endif
   if (!sig_ok) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CHANNEL_ID_SIGNATURE_INVALID);
