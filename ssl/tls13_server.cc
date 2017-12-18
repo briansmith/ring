@@ -398,7 +398,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
           // The negotiated ALPN must match the one in the ticket.
           ssl->s3->alpn_selected ==
               MakeConstSpan(session->early_alpn, session->early_alpn_len)) {
-        ssl->early_data_accepted = true;
+        ssl->s3->early_data_accepted = true;
       }
 
       if (hs->new_session == NULL) {
@@ -457,7 +457,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (ssl->early_data_accepted) {
+  if (ssl->s3->early_data_accepted) {
     if (!tls13_derive_early_secrets(hs)) {
       return ssl_hs_error;
     }
@@ -469,7 +469,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
   bool need_retry;
   if (!resolve_ecdhe_secret(hs, &need_retry, &client_hello)) {
     if (need_retry) {
-      ssl->early_data_accepted = false;
+      ssl->s3->early_data_accepted = false;
       ssl->s3->skip_early_data = true;
       ssl->method->next_message(ssl);
       if (ssl_is_draft22(ssl->version) &&
@@ -724,7 +724,7 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (ssl->early_data_accepted) {
+  if (ssl->s3->early_data_accepted) {
     // If accepting 0-RTT, we send tickets half-RTT. This gets the tickets on
     // the wire sooner and also avoids triggering a write on |SSL_read| when
     // processing the client Finished. This requires computing the client
@@ -772,7 +772,7 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
 
 static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (ssl->early_data_accepted) {
+  if (ssl->s3->early_data_accepted) {
     if (!tls13_set_traffic_key(ssl, evp_aead_open, hs->early_traffic_secret,
                                hs->hash_len)) {
       return ssl_hs_error;
@@ -782,7 +782,8 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
     hs->in_early_data = true;
   }
   hs->tls13_state = state_process_end_of_early_data;
-  return ssl->early_data_accepted ? ssl_hs_read_end_of_early_data : ssl_hs_ok;
+  return ssl->s3->early_data_accepted ? ssl_hs_read_end_of_early_data
+                                      : ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
@@ -790,7 +791,7 @@ static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
   if (hs->early_data_offered) {
     // If early data was not accepted, the EndOfEarlyData and ChangeCipherSpec
     // message will be in the discarded early data.
-    if (hs->ssl->early_data_accepted) {
+    if (hs->ssl->s3->early_data_accepted) {
       if (ssl_is_draft22(ssl->version)) {
         SSLMessage msg;
         if (!ssl->method->get_message(ssl, &msg)) {
@@ -813,8 +814,9 @@ static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
                              hs->hash_len)) {
     return ssl_hs_error;
   }
-  hs->tls13_state = ssl->early_data_accepted ? state_read_client_finished
-                                             : state_read_client_certificate;
+  hs->tls13_state = ssl->s3->early_data_accepted
+                        ? state_read_client_finished
+                        : state_read_client_certificate;
   return ssl_hs_ok;
 }
 
@@ -913,14 +915,14 @@ static enum ssl_hs_wait_t do_read_client_finished(SSL_HANDSHAKE *hs) {
   if (!ssl_check_message_type(ssl, msg, SSL3_MT_FINISHED) ||
       // If early data was accepted, we've already computed the client Finished
       // and derived the resumption secret.
-      !tls13_process_finished(hs, msg, ssl->early_data_accepted) ||
+      !tls13_process_finished(hs, msg, ssl->s3->early_data_accepted) ||
       // evp_aead_seal keys have already been switched.
       !tls13_set_traffic_key(ssl, evp_aead_open, hs->client_traffic_secret_0,
                              hs->hash_len)) {
     return ssl_hs_error;
   }
 
-  if (!ssl->early_data_accepted) {
+  if (!ssl->s3->early_data_accepted) {
     if (!ssl_hash_message(hs, msg) ||
         !tls13_derive_resumption_secret(hs)) {
       return ssl_hs_error;

@@ -2033,7 +2033,7 @@ static bool ext_early_data_parse_serverhello(SSL_HANDSHAKE *hs,
     return false;
   }
 
-  ssl->early_data_accepted = true;
+  ssl->s3->early_data_accepted = true;
   return true;
 }
 
@@ -2055,7 +2055,7 @@ static bool ext_early_data_parse_clienthello(SSL_HANDSHAKE *hs,
 }
 
 static bool ext_early_data_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
-  if (!hs->ssl->early_data_accepted) {
+  if (!hs->ssl->s3->early_data_accepted) {
     return true;
   }
 

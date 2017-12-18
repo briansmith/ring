@@ -464,7 +464,7 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
     hs->new_session->early_alpn_len = ssl->s3->alpn_selected.size();
   }
 
-  if (ssl->early_data_accepted) {
+  if (ssl->s3->early_data_accepted) {
     if (hs->early_session->cipher != hs->new_session->cipher ||
         MakeConstSpan(hs->early_session->early_alpn,
                       hs->early_session->early_alpn_len) !=
@@ -484,7 +484,7 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
 
   ssl->method->next_message(ssl);
   hs->tls13_state = state_read_certificate_request;
-  if (hs->in_early_data && !ssl->early_data_accepted) {
+  if (hs->in_early_data && !ssl->s3->early_data_accepted) {
     return ssl_hs_early_data_rejected;
   }
   return ssl_hs_ok;
@@ -663,7 +663,7 @@ static enum ssl_hs_wait_t do_read_server_finished(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
-  if (ssl->early_data_accepted) {
+  if (ssl->s3->early_data_accepted) {
     hs->can_early_write = false;
     if (ssl_is_draft22(ssl->version)) {
       ScopedCBB cbb;

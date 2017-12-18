@@ -2297,6 +2297,9 @@ struct SSL3_STATE {
   // wpend_pending is true if we have a pending write outstanding.
   bool wpend_pending:1;
 
+  // early_data_accepted is true if early data was accepted by the server.
+  bool early_data_accepted:1;
+
   uint8_t send_alert[2] = {0};
 
   // hs_buf is the buffer of handshake data to process.
@@ -2643,9 +2646,6 @@ struct SSLConnection {
   // hash of the peer's certificate and then discard it to save memory and
   // session space. Only effective on the server side.
   bool retain_only_sha256_of_client_certs:1;
-
-  // early_data_accepted is true if early data was accepted by the server.
-  bool early_data_accepted:1;
 };
 
 // From draft-ietf-tls-tls13-18, used in determining PSK modes.

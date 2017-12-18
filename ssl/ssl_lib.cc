@@ -1187,7 +1187,7 @@ int SSL_in_early_data(const SSL *ssl) {
 }
 
 int SSL_early_data_accepted(const SSL *ssl) {
-  return ssl->early_data_accepted;
+  return ssl->s3->early_data_accepted;
 }
 
 void SSL_reset_early_data_reject(SSL *ssl) {
