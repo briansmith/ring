@@ -191,8 +191,7 @@ static int aead_tls_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
   // block from encrypting the input and split the result between |out| and
   // |out_tag|. Then feed the rest.
 
-  const size_t early_mac_len =
-      (block_size - (in_len % block_size) % block_size);
+  const size_t early_mac_len = (block_size - (in_len % block_size)) % block_size;
   if (early_mac_len != 0) {
     assert(len + block_size - early_mac_len == in_len);
     uint8_t buf[EVP_MAX_BLOCK_LENGTH];
