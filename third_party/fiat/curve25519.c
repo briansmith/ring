@@ -4928,6 +4928,24 @@ static void x25519_scalar_mult_generic(uint8_t out[32],
   e[0] &= 248;
   e[31] &= 127;
   e[31] |= 64;
+
+  // The following implementation was transcribed to Coq and proven to
+  // correspond to unary scalar multiplication in affine coordinates given that
+  // x1 != 0 is the x coordinate of some point on the curve. It was also checked
+  // in Coq that doing a ladderstep with x1 = x3 = 0 gives z2' = z3' = 0, and z2
+  // = z3 = 0 gives z2' = z3' = 0. The statement was quantified over the
+  // underlying field, so it applies to Curve25519 itself and the quadratic
+  // twist of Curve25519. It was not proven in Coq that prime-field arithmetic
+  // correctly simulates extension-field arithmetic on prime-field values.
+  // The decoding of the byte array representation of e was not considered.
+  // Specification of Montgomery curves in affine coordinates:
+  // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Spec/MontgomeryCurve.v#L27>
+  // Proof that these form a group that is isomorphic to a Weierstrass curve:
+  // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/AffineProofs.v#L35>
+  // Coq transcription and correctness proof of the loop (where scalarbits=255):
+  // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZ.v#L118>
+  // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L278>
+  // preconditions: 0 <= e < 2^255 (not necessarily e < order), fe_invert(0) = 0
   fe_frombytes(&x1, point);
   fe_1(&x2);
   fe_0(&z2);
@@ -4937,11 +4955,22 @@ static void x25519_scalar_mult_generic(uint8_t out[32],
   unsigned swap = 0;
   int pos;
   for (pos = 254; pos >= 0; --pos) {
+    // loop invariant as of right before the test, for the case where x1 != 0:
+    //   pos >= -1; if z2 = 0 then x2 is nonzero; if z3 = 0 then x3 is nonzero
+    //   let r := e >> (pos+1) in the following equalities of projective points:
+    //   to_xz (r*P)     === if swap then (x3, z3) else (x2, z2)
+    //   to_xz ((r+1)*P) === if swap then (x2, z2) else (x3, z3)
+    //   x1 is the nonzero x coordinate of the nonzero point (r*P-(r+1)*P)
     unsigned b = 1 & (e[pos / 8] >> (pos & 7));
     swap ^= b;
     fe_cswap(&x2, &x3, swap);
     fe_cswap(&z2, &z3, swap);
     swap = b;
+    // Coq transcription of ladderstep formula (called from transcribed loop):
+    // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZ.v#L89>
+    // <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L131>
+    // x1 != 0 <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L217>
+    // x1  = 0 <https://github.com/mit-plv/fiat-crypto/blob/2456d821825521f7e03e65882cc3521795b0320f/src/Curves/Montgomery/XZProofs.v#L147>
     fe_sub(&tmp0l, &x3, &z3);
     fe_sub(&tmp1l, &x2, &z2);
     fe_add(&x2l, &x2, &z2);
@@ -4961,6 +4990,7 @@ static void x25519_scalar_mult_generic(uint8_t out[32],
     fe_mul_ttt(&z3, &x1, &z2);
     fe_mul_tll(&z2, &tmp1l, &tmp0l);
   }
+  // here pos=-1, so r=e, so to_xz (e*P) === if swap then (x3, z3) else (x2, z2)
   fe_cswap(&x2, &x3, swap);
   fe_cswap(&z2, &z3, swap);
 

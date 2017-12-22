@@ -983,11 +983,23 @@ static void fe_inv(fe out, const fe in) {
 // Building on top of the field operations we have the operations on the
 // elliptic curve group itself. Points on the curve are represented in Jacobian
 // coordinates.
+//
+// Both operations were transcribed to Coq and proven to correspond to naive
+// implementations using Affine coordinates, for all suitable fields.  In the
+// Coq proofs, issues of constant-time execution and memory layout (aliasing)
+// conventions were not considered. Specification of affine coordinates:
+// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Spec/WeierstrassCurve.v#L28>
+// As a sanity check, a proof that these points form a commutative group:
+// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/AffineProofs.v#L33>
 
 // point_double calculates 2*(x_in, y_in, z_in)
 //
 // The method is taken from:
 //   http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#doubling-dbl-2001-b
+//
+// Coq transcription and correctness proof:
+// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L93>
+// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L201>
 //
 // Outputs can equal corresponding inputs, i.e., x_out == x_in is allowed.
 // while x_out == y_in is not (maybe this works, but it's not tested).
@@ -1036,6 +1048,10 @@ static void point_double(fe x_out, fe y_out, fe z_out,
 // The method is taken from:
 //   http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#addition-add-2007-bl,
 // adapted for mixed addition (z2 = 1, or z2 = 0 for the point at infinity).
+//
+// Coq transcription and correctness proof:
+// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L135>
+// <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L205>
 //
 // This function includes a branch for checking whether the two input points
 // are equal, (while not equal to the point at infinity). This case never
