@@ -461,6 +461,15 @@ OPENSSL_EXPORT int CBB_add_asn1_uint64(CBB *cbb, uint64_t value);
 OPENSSL_EXPORT int CBB_add_asn1_oid_from_text(CBB *cbb, const char *text,
                                               size_t len);
 
+// CBB_flush_asn1_set_of calls |CBB_flush| on |cbb| and then reorders the
+// contents for a DER-encoded ASN.1 SET OF type. It returns one on success and
+// zero on failure. DER canonicalizes SET OF contents by sorting
+// lexicographically by encoding. Call this function when encoding a SET OF
+// type in an order that is not already known to be canonical.
+//
+// Note a SET type has a slightly different ordering than a SET OF.
+OPENSSL_EXPORT int CBB_flush_asn1_set_of(CBB *cbb);
+
 
 #if defined(__cplusplus)
 }  // extern C

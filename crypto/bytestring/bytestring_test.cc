@@ -981,3 +981,73 @@ TEST(CBBTest, AddOIDFromText) {
     EXPECT_FALSE(text);
   }
 }
+
+TEST(CBBTest, FlushASN1SetOf) {
+  const struct {
+    std::vector<uint8_t> in, out;
+  } kValidInputs[] = {
+    // No elements.
+    {{}, {}},
+    // One element.
+    {{0x30, 0x00}, {0x30, 0x00}},
+    // Two identical elements.
+    {{0x30, 0x00, 0x30, 0x00}, {0x30, 0x00, 0x30, 0x00}},
+    // clang-format off
+    {{0x30, 0x02, 0x00, 0x00,
+      0x30, 0x00,
+      0x01, 0x00,
+      0x30, 0x02, 0x00, 0x00,
+      0x30, 0x03, 0x00, 0x00, 0x00,
+      0x30, 0x00,
+      0x30, 0x03, 0x00, 0x00, 0x01,
+      0x30, 0x01, 0x00,
+      0x01, 0x01, 0x00},
+     {0x01, 0x00,
+      0x01, 0x01, 0x00,
+      0x30, 0x00,
+      0x30, 0x00,
+      0x30, 0x01, 0x00,
+      0x30, 0x02, 0x00, 0x00,
+      0x30, 0x02, 0x00, 0x00,
+      0x30, 0x03, 0x00, 0x00, 0x00,
+      0x30, 0x03, 0x00, 0x00, 0x01}},
+    // clang-format on
+  };
+
+  for (const auto &t : kValidInputs) {
+    SCOPED_TRACE(Bytes(t.in));
+
+    bssl::ScopedCBB cbb;
+    CBB child;
+    ASSERT_TRUE(CBB_init(cbb.get(), 0));
+    ASSERT_TRUE(CBB_add_asn1(cbb.get(), &child, CBS_ASN1_SET));
+    ASSERT_TRUE(CBB_add_bytes(&child, t.in.data(), t.in.size()));
+    ASSERT_TRUE(CBB_flush_asn1_set_of(&child));
+    EXPECT_EQ(Bytes(t.out), Bytes(CBB_data(&child), CBB_len(&child)));
+
+    // Running it again should be idempotent.
+    ASSERT_TRUE(CBB_flush_asn1_set_of(&child));
+    EXPECT_EQ(Bytes(t.out), Bytes(CBB_data(&child), CBB_len(&child)));
+
+    // The ASN.1 header remain intact.
+    ASSERT_TRUE(CBB_flush(cbb.get()));
+    EXPECT_EQ(0x31, CBB_data(cbb.get())[0]);
+  }
+
+  const std::vector<uint8_t> kInvalidInputs[] = {
+    {0x30},
+    {0x30, 0x01},
+    {0x30, 0x00, 0x30, 0x00, 0x30, 0x01},
+  };
+
+  for (const auto &t : kInvalidInputs) {
+    SCOPED_TRACE(Bytes(t));
+
+    bssl::ScopedCBB cbb;
+    CBB child;
+    ASSERT_TRUE(CBB_init(cbb.get(), 0));
+    ASSERT_TRUE(CBB_add_asn1(cbb.get(), &child, CBS_ASN1_SET));
+    ASSERT_TRUE(CBB_add_bytes(&child, t.data(), t.size()));
+    EXPECT_FALSE(CBB_flush_asn1_set_of(&child));
+  }
+}
