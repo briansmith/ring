@@ -29,10 +29,7 @@ static const unsigned kMaxDepth = 2048;
 // is_string_type returns one if |tag| is a string type and zero otherwise. It
 // ignores the constructed bit.
 static int is_string_type(unsigned tag) {
-  if ((tag & 0xc0) != 0) {
-    return 0;
-  }
-  switch (tag & 0x1f) {
+  switch (tag & ~CBS_ASN1_CONSTRUCTED) {
     case CBS_ASN1_BITSTRING:
     case CBS_ASN1_OCTETSTRING:
     case CBS_ASN1_UTF8STRING:

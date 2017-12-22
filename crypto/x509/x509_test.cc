@@ -835,7 +835,7 @@ TEST(X509Test, TestFromBuffer) {
 
   /* This ensures the X509 took a reference to |buf|, otherwise this will be a
    * reference to free memory and ASAN should notice. */
-  ASSERT_EQ(CBS_ASN1_SEQUENCE, enc_pointer[0]);
+  ASSERT_EQ(0x30, enc_pointer[0]);
 }
 
 TEST(X509Test, TestFromBufferWithTrailingData) {
