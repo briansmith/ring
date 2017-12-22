@@ -1369,6 +1369,11 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		}
 	}
 
+	if len(hs.clientHello.quicTransportParams) > 0 {
+		c.quicTransportParams = hs.clientHello.quicTransportParams
+		serverExtensions.quicTransportParams = c.config.QUICTransportParams
+	}
+
 	if c.vers < VersionTLS13 || config.Bugs.NegotiateEMSAtAllVersions {
 		disableEMS := config.Bugs.NoExtendedMasterSecret
 		if c.cipherSuite != nil {

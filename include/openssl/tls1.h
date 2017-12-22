@@ -205,6 +205,9 @@ extern "C" {
 // ExtensionType value from draft-ietf-tokbind-negotiation-10
 #define TLSEXT_TYPE_token_binding 24
 
+// ExtensionType value from draft-ietf-quic-tls
+#define TLSEXT_TYPE_quic_transport_parameters 26
+
 // ExtensionType value from RFC4507
 #define TLSEXT_TYPE_session_ticket 35
 

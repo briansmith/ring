@@ -62,6 +62,9 @@ type Conn struct {
 	// curveID contains the curve that was used in the handshake, or zero if
 	// not applicable.
 	curveID CurveID
+	// quicTransportParams contains the QUIC transport params received
+	// by the peer.
+	quicTransportParams []byte
 
 	clientRandom, serverRandom [32]byte
 	earlyExporterSecret        []byte
@@ -1822,6 +1825,7 @@ func (c *Conn) ConnectionState() ConnectionState {
 		state.SCTList = c.sctList
 		state.PeerSignatureAlgorithm = c.peerSignatureAlgorithm
 		state.CurveID = c.curveID
+		state.QUICTransportParams = c.quicTransportParams
 	}
 
 	return state

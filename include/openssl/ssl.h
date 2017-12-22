@@ -2953,6 +2953,38 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *ssl);
 OPENSSL_EXPORT int SSL_set_dummy_pq_padding_size(SSL *ssl, size_t num_bytes);
 
 
+// QUIC Transport Parameters.
+//
+// draft-ietf-quic-tls defines a new TLS extension quic_transport_parameters
+// used by QUIC for each endpoint to unilaterally declare its supported
+// transport parameters. draft-ietf-quic-transport (section 7.4) defines the
+// contents of that extension (a TransportParameters struct) and describes how
+// to handle it and its semantic meaning.
+//
+// BoringSSL handles this extension as an opaque byte string. The caller is
+// responsible for serializing and parsing it.
+
+// SSL_set_quic_transport_params configures |ssl| to send |params| (of length
+// |params_len|) in the quic_transport_parameters extension in either the
+// ClientHello or EncryptedExtensions handshake message. This extension will
+// only be sent if the TLS version is at least 1.3, and for a server, only if
+// the client sent the extension. The buffer pointed to by |params| only need be
+// valid for the duration of the call to this function. This function returns 1
+// on success and 0 on failure.
+OPENSSL_EXPORT int SSL_set_quic_transport_params(SSL *ssl,
+                                                 const uint8_t *params,
+                                                 size_t params_len);
+
+// SSL_get_peer_quic_transport_params provides the caller with the value of the
+// quic_transport_parameters extension sent by the peer. A pointer to the buffer
+// containing the TransportParameters will be put in |*out_params|, and its
+// length in |*params_len|. This buffer will be valid for the lifetime of the
+// |SSL|. If no params were received from the peer, |*out_params_len| will be 0.
+OPENSSL_EXPORT void SSL_get_peer_quic_transport_params(const SSL *ssl,
+                                                       const uint8_t **out_params,
+                                                       size_t *out_params_len);
+
+
 // Early data.
 //
 // WARNING: 0-RTT support in BoringSSL is currently experimental and not fully

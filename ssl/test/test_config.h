@@ -59,6 +59,8 @@ struct TestConfig {
   std::string expected_advertised_alpn;
   std::string select_alpn;
   bool decline_alpn = false;
+  std::string quic_transport_params;
+  std::string expected_quic_transport_params;
   bool expect_session_miss = false;
   bool expect_extended_master_secret = false;
   std::string psk;

@@ -1711,6 +1711,19 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     }
   }
 
+  if (!config->expected_quic_transport_params.empty()) {
+    const uint8_t *peer_params;
+    size_t peer_params_len;
+    SSL_get_peer_quic_transport_params(ssl, &peer_params, &peer_params_len);
+    if (peer_params_len != config->expected_quic_transport_params.size() ||
+        OPENSSL_memcmp(peer_params,
+                       config->expected_quic_transport_params.data(),
+                       peer_params_len) != 0) {
+      fprintf(stderr, "QUIC transport params mismatch\n");
+      return false;
+    }
+  }
+
   if (!config->expected_channel_id.empty()) {
     uint8_t channel_id[64];
     if (!SSL_get_tls_channel_id(ssl, channel_id, sizeof(channel_id))) {
@@ -2075,6 +2088,15 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   if (config->dummy_pq_padding_len > 0 &&
       !SSL_set_dummy_pq_padding_size(ssl.get(), config->dummy_pq_padding_len)) {
     return false;
+  }
+  if (!config->quic_transport_params.empty()) {
+    if (!SSL_set_quic_transport_params(
+            ssl.get(),
+            reinterpret_cast<const uint8_t *>(
+                config->quic_transport_params.data()),
+            config->quic_transport_params.size())) {
+      return false;
+    }
   }
 
   int sock = Connect(config->port);

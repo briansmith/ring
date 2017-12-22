@@ -2588,6 +2588,77 @@ static bool ext_token_binding_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   return true;
 }
 
+// QUIC Transport Parameters
+
+static bool ext_quic_transport_params_add_clienthello(SSL_HANDSHAKE *hs,
+                                                      CBB *out) {
+  SSL *const ssl = hs->ssl;
+  if (!ssl->quic_transport_params || hs->max_version <= TLS1_2_VERSION) {
+    return true;
+  }
+
+  CBB contents;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_quic_transport_parameters) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_bytes(&contents, ssl->quic_transport_params,
+                     ssl->quic_transport_params_len) ||
+      !CBB_flush(out)) {
+    return false;
+  }
+  return true;
+}
+
+static bool ext_quic_transport_params_parse_serverhello(SSL_HANDSHAKE *hs,
+                                                        uint8_t *out_alert,
+                                                        CBS *contents) {
+  SSL *const ssl = hs->ssl;
+  if (contents == nullptr) {
+    return true;
+  }
+  // QUIC requires TLS 1.3.
+  if (ssl_protocol_version(ssl) < TLS1_3_VERSION) {
+    *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
+    return false;
+  }
+
+  return ssl->s3->peer_quic_transport_params.CopyFrom(*contents);
+}
+
+static bool ext_quic_transport_params_parse_clienthello(SSL_HANDSHAKE *hs,
+                                                        uint8_t *out_alert,
+                                                        CBS *contents) {
+  SSL *const ssl = hs->ssl;
+  if (!contents || !ssl->quic_transport_params) {
+    return true;
+  }
+  // Ignore the extension before TLS 1.3.
+  if (ssl_protocol_version(ssl) < TLS1_3_VERSION) {
+    return true;
+  }
+
+  return ssl->s3->peer_quic_transport_params.CopyFrom(*contents);
+}
+
+static bool ext_quic_transport_params_add_serverhello(SSL_HANDSHAKE *hs,
+                                                      CBB *out) {
+  SSL *const ssl = hs->ssl;
+  if (!ssl->quic_transport_params) {
+    return true;
+  }
+
+  CBB contents;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_quic_transport_parameters) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_bytes(&contents, ssl->quic_transport_params,
+                     ssl->quic_transport_params_len) ||
+      !CBB_flush(out)) {
+    return false;
+  }
+
+  return true;
+}
+
+
 // kExtensions contains all the supported extensions.
 static const struct tls_extension kExtensions[] = {
   {
@@ -2744,6 +2815,14 @@ static const struct tls_extension kExtensions[] = {
     ignore_parse_serverhello,
     ignore_parse_clienthello,
     dont_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_quic_transport_parameters,
+    NULL,
+    ext_quic_transport_params_add_clienthello,
+    ext_quic_transport_params_parse_serverhello,
+    ext_quic_transport_params_parse_clienthello,
+    ext_quic_transport_params_add_serverhello,
   },
   // The final extension must be non-empty. WebSphere Application Server 7.0 is
   // intolerant to the last extension being zero-length. See
