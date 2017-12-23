@@ -37,7 +37,6 @@
 #![doc(html_root_url="https://briansmith.org/rustdoc/")]
 
 #![allow(
-    legacy_directory_ownership,
     missing_copy_implementations,
     missing_debug_implementations,
     unsafe_code,
@@ -88,7 +87,6 @@ extern crate std;
 
 extern crate untrusted;
 
-#[path = "arithmetic/arithmetic.rs"]
 mod arithmetic;
 
 #[macro_use]
@@ -97,7 +95,6 @@ mod bssl;
 #[macro_use]
 mod polyfill;
 
-#[path = "aead/aead.rs"]
 pub mod aead;
 
 pub mod agreement;
@@ -112,10 +109,8 @@ pub mod constant_time;
 #[doc(hidden)]
 pub mod der;
 
-#[path = "digest/digest.rs"]
 pub mod digest;
 
-#[path = "ec/ec.rs"]
 mod ec;
 
 pub mod error;
@@ -129,7 +124,6 @@ mod poly1305;
 pub mod rand;
 
 #[cfg(feature = "use_heap")]
-#[path = "rsa/rsa.rs"]
 mod rsa;
 
 pub mod signature;
