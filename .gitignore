@@ -34,3 +34,4 @@ target/
 # JetBrains Junk
 .idea
 *.iml
+CMakeLists.txt
