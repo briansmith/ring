@@ -20,7 +20,6 @@
 
 #![forbid(
     anonymous_parameters,
-    fat_ptr_transmutes,
     legacy_directory_ownership,
     missing_copy_implementations,
     missing_debug_implementations,
