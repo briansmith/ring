@@ -216,7 +216,6 @@ pub mod ecdsa;
 pub mod ecdh;
 
 #[macro_use]
-#[path = "ops/ops.rs"]
 mod ops;
 
 mod private_key;
