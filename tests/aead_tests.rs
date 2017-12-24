@@ -34,6 +34,8 @@
 
 extern crate ring;
 
+mod constants;
+
 use ring::{aead, error, test};
 use std::vec::Vec;
 
@@ -148,7 +150,7 @@ fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
             257, // 16 AES blocks or 8 ChaCha20 blocks, plus 1.
         ];
 
-        let mut more_comprehensive_in_prefix_lengths = [0; 4096];
+        let mut more_comprehensive_in_prefix_lengths = [constants::UNINITIALIZED_USIZE; 4096];
         let in_prefix_lengths;
         if cfg!(debug_assertions) {
             in_prefix_lengths = &MINIMAL_IN_PREFIX_LENS[..];

@@ -34,6 +34,8 @@
 
 extern crate ring;
 
+mod constants;
+
 use std::vec::Vec;
 use ring::{digest, test};
 
@@ -187,7 +189,7 @@ macro_rules! test_i_u_f {
         #[cfg(not(debug_assertions))]
         #[test]
         fn $test_name() {
-            let mut input = [0; (digest::MAX_BLOCK_LEN + 1) * 3];
+            let mut input = [constants::UNINITIALIZED_BYTE; (digest::MAX_BLOCK_LEN + 1) * 3];
             let max = $alg.block_len + 1;
             for i in 0..(max * 3) {
                 input[i] = (i & 0xff) as u8;

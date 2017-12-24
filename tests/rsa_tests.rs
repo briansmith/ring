@@ -35,11 +35,12 @@
 extern crate ring;
 extern crate untrusted;
 
+mod constants;
+
 use ring::{der, error, signature, test};
 
 #[cfg(feature = "rsa_signing")]
 use ring::rand;
-
 
 #[cfg(feature = "rsa_signing")]
 #[test]
@@ -93,7 +94,7 @@ fn test_signature_rsa_pkcs1_sign() {
         let mut signing_state =
             signature::RSASigningState::new(key_pair).unwrap();
         let mut actual =
-            vec![0u8; signing_state.key_pair().public_modulus_len()];
+            vec![constants::UNINITIALIZED_BYTE; signing_state.key_pair().public_modulus_len()];
         signing_state.sign(alg, &rng, &msg, actual.as_mut_slice()).unwrap();
         assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
         Ok(())
@@ -151,7 +152,7 @@ fn test_signature_rsa_pss_sign() {
         let mut signing_state =
             signature::RSASigningState::new(key_pair).unwrap();
         let mut actual =
-            vec![0u8; signing_state.key_pair().public_modulus_len()];
+            vec![constants::UNINITIALIZED_BYTE; signing_state.key_pair().public_modulus_len()];
         signing_state.sign(alg, &new_rng, &msg, actual.as_mut_slice())?;
         assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
         Ok(())
