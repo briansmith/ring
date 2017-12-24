@@ -118,8 +118,5 @@ pub const PUBLIC_KEY_MAX_LEN: usize = 1 + (2 * ELEM_MAX_BYTES);
 pub const PKCS8_DOCUMENT_MAX_LEN: usize =
     40 + SCALAR_MAX_BYTES + PUBLIC_KEY_MAX_LEN;
 
-#[path = "curve25519/curve25519.rs"]
 pub mod curve25519;
-
-#[path = "suite_b/suite_b.rs"]
 pub mod suite_b;
