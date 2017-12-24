@@ -53,7 +53,6 @@
 
 #![forbid(
     anonymous_parameters,
-    fat_ptr_transmutes,
     trivial_casts,
     unused_extern_crates,
     unused_import_braces,
