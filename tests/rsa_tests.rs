@@ -272,3 +272,9 @@ fn test_signature_rsa_primitive_verification() {
         Ok(())
     })
 }
+
+#[cfg(feature = "rsa_signing")]
+#[test]
+fn rsakeypair_impl_test() {
+    test::compile_time_assert_clone::<signature::RSAKeyPair>();
+}

@@ -167,3 +167,8 @@ fn signature_ecdsa_verify_fixed_test() {
         Ok(())
     });
 }
+
+#[test]
+fn ecdsakeypair_impl_test() {
+    test::compile_time_assert_clone::<signature::ECDSAKeyPair>();
+}

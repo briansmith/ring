@@ -151,6 +151,7 @@ fn check_public_modulus_and_exponent(
 
 // Type-level representation of an RSA public modulus *n*. See
 // `super::bigint`'s modulue-level documentation.
+#[derive(Clone)]
 pub enum N {}
 
 pub mod verification;

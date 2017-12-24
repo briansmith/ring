@@ -27,6 +27,7 @@ use untrusted;
 /// `RSASigningState`s that reference the `RSAKeyPair` and use
 /// `RSASigningState::sign()` to generate signatures. See `ring::signature`'s
 /// module-level documentation for an example.
+#[derive(Clone)]
 pub struct RSAKeyPair {
     n: bigint::Modulus<N>,
     e: bigint::PublicExponent,
@@ -386,6 +387,7 @@ impl RSAKeyPair {
     }
 }
 
+#[derive(Clone)]
 struct PrivatePrime<M: Prime> {
     modulus: bigint::Modulus<M>,
     exponent: bigint::OddPositive,
@@ -452,11 +454,13 @@ fn elem_exp_consttime<M, MM>(c: &bigint::Elem<MM>, p: &PrivatePrime<M>)
 
 unsafe trait Prime {}
 
+#[derive(Clone)]
 enum P {}
 unsafe impl Prime for P {}
 unsafe impl bigint::SmallerModulus<N> for P {}
 unsafe impl bigint::NotMuchSmallerModulus<N> for P {}
 
+#[derive(Clone)]
 enum QQ {}
 unsafe impl bigint::SmallerModulus<N> for QQ {}
 unsafe impl bigint::NotMuchSmallerModulus<N> for QQ {}
@@ -468,6 +472,7 @@ unsafe impl bigint::NotMuchSmallerModulus<N> for QQ {}
 //                      q**2 <  n  < 2*(q**2).
 unsafe impl bigint::SlightlySmallerModulus<N> for QQ {}
 
+#[derive(Clone)]
 enum Q {}
 unsafe impl Prime for Q {}
 unsafe impl bigint::SmallerModulus<N> for Q {}
