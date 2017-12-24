@@ -15,7 +15,6 @@
 #![forbid(
     anonymous_parameters,
     box_pointers,
-    fat_ptr_transmutes,
     legacy_directory_ownership,
     missing_copy_implementations,
     missing_debug_implementations,
