@@ -269,9 +269,14 @@ static int set_Jprojective_coordinate_GFp(const EC_GROUP *group, BIGNUM *out,
   return BN_copy(out, in) != NULL;
 }
 
-int ec_GFp_simple_set_Jprojective_coordinates_GFp(
-    const EC_GROUP *group, EC_POINT *point, const BIGNUM *x, const BIGNUM *y,
-    const BIGNUM *z, BN_CTX *ctx) {
+int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *group,
+                                               EC_POINT *point, const BIGNUM *x,
+                                               const BIGNUM *y, BN_CTX *ctx) {
+  if (x == NULL || y == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
   BN_CTX *new_ctx = NULL;
   int ret = 0;
 
@@ -284,7 +289,7 @@ int ec_GFp_simple_set_Jprojective_coordinates_GFp(
 
   if (!set_Jprojective_coordinate_GFp(group, &point->X, x, ctx) ||
       !set_Jprojective_coordinate_GFp(group, &point->Y, y, ctx) ||
-      !set_Jprojective_coordinate_GFp(group, &point->Z, z, ctx)) {
+      !BN_copy(&point->Z, &group->one)) {
     goto err;
   }
 
@@ -293,19 +298,6 @@ int ec_GFp_simple_set_Jprojective_coordinates_GFp(
 err:
   BN_CTX_free(new_ctx);
   return ret;
-}
-
-int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *group,
-                                               EC_POINT *point, const BIGNUM *x,
-                                               const BIGNUM *y, BN_CTX *ctx) {
-  if (x == NULL || y == NULL) {
-    // unlike for projective coordinates, we do not tolerate this
-    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
-    return 0;
-  }
-
-  return ec_point_set_Jprojective_coordinates_GFp(group, point, x, y,
-                                                  BN_value_one(), ctx);
 }
 
 int ec_GFp_simple_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,

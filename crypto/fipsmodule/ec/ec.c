@@ -908,18 +908,6 @@ int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,
   return group->meth->mul(group, r, g_scalar, p, p_scalar, ctx);
 }
 
-int ec_point_set_Jprojective_coordinates_GFp(const EC_GROUP *group,
-                                             EC_POINT *point, const BIGNUM *x,
-                                             const BIGNUM *y, const BIGNUM *z,
-                                             BN_CTX *ctx) {
-  if (EC_GROUP_cmp(group, point->group, NULL) != 0) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-  return ec_GFp_simple_set_Jprojective_coordinates_GFp(group, point, x, y, z,
-                                                       ctx);
-}
-
 void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag) {}
 
 const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group) {
