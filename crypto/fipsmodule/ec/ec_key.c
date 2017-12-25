@@ -390,8 +390,6 @@ int EC_KEY_check_fips(const EC_KEY *key) {
 
 int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key, BIGNUM *x,
                                              BIGNUM *y) {
-  BN_CTX *ctx = NULL;
-  BIGNUM *tx, *ty;
   EC_POINT *point = NULL;
   int ok = 0;
 
@@ -399,51 +397,18 @@ int EC_KEY_set_public_key_affine_coordinates(EC_KEY *key, BIGNUM *x,
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
-  ctx = BN_CTX_new();
 
-  if (ctx == NULL) {
-    return 0;
-  }
-
-  BN_CTX_start(ctx);
   point = EC_POINT_new(key->group);
-
-  if (point == NULL) {
-    goto err;
-  }
-
-  tx = BN_CTX_get(ctx);
-  ty = BN_CTX_get(ctx);
-  if (tx == NULL ||
-      ty == NULL) {
-    goto err;
-  }
-
-  if (!EC_POINT_set_affine_coordinates_GFp(key->group, point, x, y, ctx) ||
-      !EC_POINT_get_affine_coordinates_GFp(key->group, point, tx, ty, ctx)) {
-    goto err;
-  }
-
-  // Check if retrieved coordinates match originals: if not values
-  // are out of range.
-  if (BN_cmp(x, tx) || BN_cmp(y, ty)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
-    goto err;
-  }
-
-  if (!EC_KEY_set_public_key(key, point)) {
-    goto err;
-  }
-
-  if (EC_KEY_check_key(key) == 0) {
+  if (point == NULL ||
+      !EC_POINT_set_affine_coordinates_GFp(key->group, point, x, y, NULL) ||
+      !EC_KEY_set_public_key(key, point) ||
+      !EC_KEY_check_key(key)) {
     goto err;
   }
 
   ok = 1;
 
 err:
-  BN_CTX_end(ctx);
-  BN_CTX_free(ctx);
   EC_POINT_free(point);
   return ok;
 }

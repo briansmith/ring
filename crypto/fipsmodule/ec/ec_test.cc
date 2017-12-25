@@ -352,8 +352,12 @@ TEST_P(ECCurveTest, SetAffine) {
   ASSERT_TRUE(x);
   bssl::UniquePtr<BIGNUM> y(BN_new());
   ASSERT_TRUE(y);
+  bssl::UniquePtr<BIGNUM> p(BN_new());
+  ASSERT_TRUE(p);
   EXPECT_TRUE(EC_POINT_get_affine_coordinates_GFp(
       group, EC_KEY_get0_public_key(key.get()), x.get(), y.get(), nullptr));
+  EXPECT_TRUE(
+      EC_GROUP_get_curve_GFp(group, p.get(), nullptr, nullptr, nullptr));
 
   // Points on the curve should be accepted.
   auto point = bssl::UniquePtr<EC_POINT>(EC_POINT_new(group));
@@ -369,6 +373,15 @@ TEST_P(ECCurveTest, SetAffine) {
   ASSERT_TRUE(invalid_point);
   EXPECT_FALSE(EC_POINT_set_affine_coordinates_GFp(group, invalid_point.get(),
                                                    x.get(), y.get(), nullptr));
+
+  // Coordinates out of range should be rejected.
+  EXPECT_TRUE(BN_add(y.get(), y.get(), BN_value_one()));
+  EXPECT_TRUE(BN_add(y.get(), y.get(), p.get()));
+
+  EXPECT_FALSE(EC_POINT_set_affine_coordinates_GFp(group, invalid_point.get(),
+                                                   x.get(), y.get(), nullptr));
+  EXPECT_FALSE(
+      EC_KEY_set_public_key_affine_coordinates(key.get(), x.get(), y.get()));
 }
 
 TEST_P(ECCurveTest, GenerateFIPS) {
