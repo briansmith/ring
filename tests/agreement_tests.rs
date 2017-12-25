@@ -37,7 +37,7 @@ extern crate untrusted;
 use ring::{agreement, error, rand, test};
 
 #[test]
-fn agreement_agree_ephemeral() {
+fn agreement_agree() {
     let rng = rand::SystemRandom::new();
 
     test::from_file("tests/agreement_tests.txt", |section, test_case| {
@@ -50,39 +50,68 @@ fn agreement_agree_ephemeral() {
 
         match test_case.consume_optional_string("Error") {
             None => {
-                let my_private = test_case.consume_bytes("D");
-                let rng = test::rand::FixedSliceRandom { bytes: &my_private };
-                let my_private =
+                let private_key_bytes = test_case.consume_bytes("D");
+                let rng = test::rand::FixedSliceRandom { bytes: &private_key_bytes };
+                // generate an ephemeral private key
+                let ephemeral_private_key =
                     agreement::EphemeralPrivateKey::generate(alg, &rng)?;
+                // generate an reusable private key
+                let reusable_private_key =
+                    agreement::ReusablePrivateKey::generate(alg, &rng)?;
+
+                // FIXME: Seems that `#[cfg(test)]` not be set
+                // assert_eq!(&private_key_bytes[..], ephemeral_private_key.bytes(...));
+                assert_eq!(&private_key_bytes[..], reusable_private_key.private_key_bytes());
 
                 let my_public = test_case.consume_bytes("MyQ");
                 let output = test_case.consume_bytes("Output");
 
+                // Verify the computed public key
                 let mut computed_public = [0u8; agreement::PUBLIC_KEY_MAX_LEN];
                 let computed_public =
-                    &mut computed_public[..my_private.public_key_len()];
-                assert!(my_private.compute_public_key(computed_public).is_ok());
+                    &mut computed_public[..ephemeral_private_key.public_key_len()];
+
+                // check the computed public key for the ephemeral private key
+                assert!(ephemeral_private_key.compute_public_key(computed_public).is_ok());
                 assert_eq!(computed_public, &my_public[..]);
 
-                assert!(agreement::agree_ephemeral(my_private, alg, peer_public,
+                // check the cached public key for the reusable private key
+                assert_eq!(reusable_private_key.public_key_bytes(), &my_public[..]);
+
+                assert!(agreement::agree_ephemeral(ephemeral_private_key, alg, peer_public,
                                                    (), |key_material| {
                     assert_eq!(key_material, &output[..]);
                     Ok(())
                 }).is_ok());
+
+                assert!(agreement::agree_reusable(&reusable_private_key, alg, peer_public,
+                                                   (), |key_material| {
+                        assert_eq!(key_material, &output[..]);
+                        Ok(())
+                    }).is_ok());
             },
 
             Some(_) => {
                 // In the no-heap mode, some algorithms aren't supported so
                 // we have to skip those algorithms' test cases.
-                let dummy_private_key =
+                let dummy_ephemeral_private_key =
                     agreement::EphemeralPrivateKey::generate(alg, &rng)?;
+
+                let dummy_reusable_private_key =
+                    agreement::ReusablePrivateKey::generate(alg, &rng)?;
+
                 fn kdf_not_called(_: &[u8]) -> Result<(), ()> {
                     panic!("The KDF was called during ECDH when the peer's \
                             public key is invalid.");
                 }
-                assert!(agreement::agree_ephemeral(dummy_private_key, alg,
+
+                assert!(agreement::agree_ephemeral(dummy_ephemeral_private_key, alg,
                                                    peer_public, (),
                                                    kdf_not_called).is_err());
+
+                assert!(agreement::agree_reusable(&dummy_reusable_private_key, alg,
+                                                  peer_public, (),
+                                                  kdf_not_called).is_err());
             }
         }
 
