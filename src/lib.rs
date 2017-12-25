@@ -47,7 +47,6 @@
     dead_code,
     deprecated,
     exceeding_bitshifts,
-    fat_ptr_transmutes,
     improper_ctypes,
     missing_docs,
     mutable_transmutes,

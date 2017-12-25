@@ -213,7 +213,7 @@
 //! // a 2048-bit key, but larger keys are also supported.
 //! let key_bytes_der =
 //!    untrusted::Input::from(
-//!         include_bytes!("src/rsa/signature_rsa_example_private_key.der"));
+//!         include_bytes!("rsa/signature_rsa_example_private_key.der"));
 //! let key_pair = signature::RSAKeyPair::from_der(key_bytes_der)?;
 //!
 //! // Create a signing state.
@@ -231,7 +231,7 @@
 //! // Verify the signature.
 //! let public_key_bytes_der =
 //!     untrusted::Input::from(
-//!         include_bytes!("src/rsa/signature_rsa_example_public_key.der"));
+//!         include_bytes!("rsa/signature_rsa_example_public_key.der"));
 //! let message = untrusted::Input::from(MESSAGE);
 //! let signature = untrusted::Input::from(&signature);
 //! signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256,
