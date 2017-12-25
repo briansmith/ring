@@ -91,6 +91,78 @@ fn agreement_agree_ephemeral() {
 }
 
 #[test]
+fn agreement_agree_x25519_static_keys() {
+    let rng = rand::SystemRandom::new();
+
+    // The basic test
+    let static_keys =
+        agreement::X25519StaticKeyPair::generate(&rng).unwrap();
+
+    assert_eq!(static_keys.public_key_len(), 32usize);
+    assert_eq!(static_keys.private_key_len(), 32usize);
+
+    test::from_file("tests/agreement_tests.txt", |section, test_case| {
+        assert_eq!(section, "");
+
+        let curve_name = test_case.consume_string("Curve");
+        let alg = alg_from_curve_name(&curve_name);
+        let peer_public = test_case.consume_bytes("PeerQ");
+        let peer_public = untrusted::Input::from(&peer_public);
+
+        match test_case.consume_optional_string("Error") {
+            None => {
+                let my_private = test_case.consume_bytes("D");
+                let my_public = test_case.consume_bytes("MyQ");
+                let output = test_case.consume_bytes("Output");
+
+                // For the limitation that we must consume all attributes,
+                // We put it here.
+                if curve_name != "X25519" {
+                    // Ignore this test case
+                    return Ok(());
+                }
+
+                // let _ = test::rand::FixedSliceRandom { bytes: &my_private };
+
+                let my_private = untrusted::Input::from(&my_private);
+                let static_keys =
+                    agreement::X25519StaticKeyPair::from_bytes(my_private)?;
+                assert_eq!(static_keys.public_key_bytes(), &my_public[..]);
+                assert_eq!(static_keys.private_key_bytes(),
+                           my_private.as_slice_less_safe());
+
+                assert!(static_keys.agree(alg, peer_public, (),
+                                          |key_material| {
+                                              assert_eq!(key_material, &output[..]);
+                                              Ok(())
+                                          }).is_ok());
+
+            },
+
+            Some(_) => {
+                // For the limitation that we must consume all attributes,
+                // We put it here.
+                if curve_name != "X25519" {
+                    // Ignore this test case
+                    return Ok(());
+                }
+                let static_keys =
+                    agreement::X25519StaticKeyPair::generate(&rng)?;
+
+                fn kdf_not_called(_: &[u8]) -> Result<(), ()> {
+                    panic!("The KDF was called during ECDH when the peer's \
+                            public key is invalid.");
+                }
+
+                assert!(static_keys.agree(alg, peer_public, (),
+                                          kdf_not_called).is_err());
+            }
+        }
+        return Ok(());
+    });
+}
+
+#[test]
 fn test_agreement_ecdh_x25519_rfc_iterated() {
     let mut k =
         h("0900000000000000000000000000000000000000000000000000000000000000");
