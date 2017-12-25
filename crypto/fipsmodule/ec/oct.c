@@ -268,16 +268,20 @@ size_t EC_POINT_point2oct(const EC_GROUP *group, const EC_POINT *point,
   return ec_GFp_simple_point2oct(group, point, form, buf, len, ctx);
 }
 
-int ec_GFp_simple_set_compressed_coordinates(const EC_GROUP *group,
-                                             EC_POINT *point, const BIGNUM *x,
-                                             int y_bit, BN_CTX *ctx) {
+int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group,
+                                            EC_POINT *point, const BIGNUM *x,
+                                            int y_bit, BN_CTX *ctx) {
+  if (EC_GROUP_cmp(group, point->group, NULL) != 0) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
+    return 0;
+  }
+
   if (BN_is_negative(x) || BN_cmp(x, &group->field) >= 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_COMPRESSED_POINT);
     return 0;
   }
 
   BN_CTX *new_ctx = NULL;
-  BIGNUM *tmp1, *tmp2, *y;
   int ret = 0;
 
   ERR_clear_error();
@@ -292,10 +296,13 @@ int ec_GFp_simple_set_compressed_coordinates(const EC_GROUP *group,
   y_bit = (y_bit != 0);
 
   BN_CTX_start(ctx);
-  tmp1 = BN_CTX_get(ctx);
-  tmp2 = BN_CTX_get(ctx);
-  y = BN_CTX_get(ctx);
-  if (y == NULL) {
+  BIGNUM *tmp1 = BN_CTX_get(ctx);
+  BIGNUM *tmp2 = BN_CTX_get(ctx);
+  BIGNUM *a = BN_CTX_get(ctx);
+  BIGNUM *b = BN_CTX_get(ctx);
+  BIGNUM *y = BN_CTX_get(ctx);
+  if (y == NULL ||
+      !EC_GROUP_get_curve_GFp(group, NULL, a, b, ctx)) {
     goto err;
   }
 
@@ -304,17 +311,9 @@ int ec_GFp_simple_set_compressed_coordinates(const EC_GROUP *group,
   // so  y  is one of the square roots of  x^3 + a*x + b.
 
   // tmp1 := x^3
-  if (group->meth->field_decode == 0) {
-    // field_{sqr,mul} work on standard representation
-    if (!group->meth->field_sqr(group, tmp2, x, ctx) ||
-        !group->meth->field_mul(group, tmp1, tmp2, x, ctx)) {
-      goto err;
-    }
-  } else {
-    if (!BN_mod_sqr(tmp2, x, &group->field, ctx) ||
-        !BN_mod_mul(tmp1, tmp2, x, &group->field, ctx)) {
-      goto err;
-    }
+  if (!BN_mod_sqr(tmp2, x, &group->field, ctx) ||
+      !BN_mod_mul(tmp1, tmp2, x, &group->field, ctx)) {
+    goto err;
   }
 
   // tmp1 := tmp1 + a*x
@@ -325,33 +324,15 @@ int ec_GFp_simple_set_compressed_coordinates(const EC_GROUP *group,
       goto err;
     }
   } else {
-    if (group->meth->field_decode) {
-      if (!group->meth->field_decode(group, tmp2, &group->a, ctx) ||
-          !BN_mod_mul(tmp2, tmp2, x, &group->field, ctx)) {
-        goto err;
-      }
-    } else {
-      // field_mul works on standard representation
-      if (!group->meth->field_mul(group, tmp2, &group->a, x, ctx)) {
-        goto err;
-      }
-    }
-
-    if (!BN_mod_add_quick(tmp1, tmp1, tmp2, &group->field)) {
+    if (!BN_mod_mul(tmp2, a, x, &group->field, ctx) ||
+        !BN_mod_add_quick(tmp1, tmp1, tmp2, &group->field)) {
       goto err;
     }
   }
 
   // tmp1 := tmp1 + b
-  if (group->meth->field_decode) {
-    if (!group->meth->field_decode(group, tmp2, &group->b, ctx) ||
-        !BN_mod_add_quick(tmp1, tmp1, tmp2, &group->field)) {
-      goto err;
-    }
-  } else {
-    if (!BN_mod_add_quick(tmp1, tmp1, &group->b, &group->field)) {
-      goto err;
-    }
+  if (!BN_mod_add_quick(tmp1, tmp1, b, &group->field)) {
+    goto err;
   }
 
   if (!BN_mod_sqrt(y, tmp1, &group->field, ctx)) {
@@ -391,14 +372,4 @@ err:
   BN_CTX_end(ctx);
   BN_CTX_free(new_ctx);
   return ret;
-}
-
-int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group,
-                                            EC_POINT *point, const BIGNUM *x,
-                                            int y_bit, BN_CTX *ctx) {
-  if (EC_GROUP_cmp(group, point->group, NULL) != 0) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-  return ec_GFp_simple_set_compressed_coordinates(group, point, x, y_bit, ctx);
 }
