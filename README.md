@@ -180,7 +180,7 @@ review pull requests before they are merged and/or review commits on the master
 branch after they've landed to ensure that code quality on the master branch
 stays high.
 
-The more commoon model, where there are stable versions that have important
+The more common model, where there are stable versions that have important
 security patches backported, lowers people's incentives to actively participate
 in mainline development. Maintaining stable APIs also discourages improving
 API design and internal code quality. Thus that model doesn't seem like a good
