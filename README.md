@@ -131,6 +131,16 @@ useful for people hacking on *ring*.
 
 
 
+Bug Reporting
+-------------
+
+Please report bugs either as pull requests or as issues in [the issue
+tracker](https://github.com/briansmith/ring/issues). *ring* has a
+**full disclosure** vulnerability policy. **Please do NOT attempt to report
+any security vulnerability in this code privately to anybody.**
+
+
+
 Online Automated Testing
 ------------------------
 
@@ -165,16 +175,6 @@ the table below. The C compilers listed are used for compiling the C portions.
     <td><a href=https://ci.appveyor.com/project/briansmith/ring/branch/master>Build Status</a></td>
 </tr>
 </table>
-
-
-
-Bug Reporting
--------------
-
-Please report bugs either as pull requests or as issues in [the issue
-tracker](https://github.com/briansmith/ring/issues). *ring* has a
-**full disclosure** vulnerability policy. **Please do NOT attempt to report
-any security vulnerability in this code privately to anybody.**
 
 
 
