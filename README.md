@@ -72,6 +72,11 @@ target hardware.
 Contributing
 ------------
 
+The most important contributions are *uses* of *ring*. That is, we're very
+interested in seeing useful things built on top of *ring*, like implementations
+of TLS, SSH, the Noise Protocol, etc.
+
+Of course, contributions to *ring*'s code base are highly appreciated too.
 The *ring* project happily accepts pull requests without you needing to sign
 any formal license agreement. The portions of pull requests that modify
 existing files must be licensed under the same terms as the files being
@@ -86,11 +91,8 @@ I agree to license my contributions to each file under the terms given
 at the top of each file I changed.
 ```
 
-The most important contributions are *uses* of *ring*. That is, we're very
-interested in seeing useful things built on top of *ring*, like implementations
-of TLS, SSH, the Noise Protocol, etc.
 
-Of course, contributions to *ring*'s code base are highly appreciated too. If
+If
 you want to work directly on *ring* and you don't have an idea for something to
 contribute already, see these curated lists of open issues:
 
