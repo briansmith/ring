@@ -25,7 +25,11 @@ pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
     seal: chacha20_poly1305_seal,
     open: chacha20_poly1305_open,
     id: aead::AlgorithmID::CHACHA20_POLY1305,
+    max_input_len: max_input_len!(CHACHA20_BLOCK_LEN, CHACHA20_OVERHEAD_BLOCKS_PER_NONCE),
 };
+
+const CHACHA20_BLOCK_LEN: u64 = 64;
+const CHACHA20_OVERHEAD_BLOCKS_PER_NONCE: u64 = 1;
 
 /// Copies |key| into |ctx_buf|.
 pub fn chacha20_poly1305_init(ctx_buf: &mut [u8], key: &[u8])
@@ -90,5 +94,14 @@ fn poly1305_update_padded_16(ctx: &mut poly1305::SigningContext, data: &[u8]) {
     if data.len() % 16 != 0 {
         static PADDING: [u8; 16] = [0u8; 16];
         ctx.update(&PADDING[..PADDING.len() - (data.len() % 16)])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn max_input_len_test() {
+        // Errata 4858 at https://www.rfc-editor.org/errata_search.php?rfc=7539.
+        assert_eq!(super::CHACHA20_POLY1305.max_input_len, 274_877_906_880u64);
     }
 }

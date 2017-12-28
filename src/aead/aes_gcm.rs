@@ -25,6 +25,7 @@ pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
     seal: aes_gcm_seal,
     open: aes_gcm_open,
     id: aead::AlgorithmID::AES_128_GCM,
+    max_input_len: AES_GCM_MAX_INPUT_LEN,
 };
 
 /// AES-256 in GCM mode with 128-bit tags and 96 bit nonces.
@@ -38,6 +39,7 @@ pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
     seal: aes_gcm_seal,
     open: aes_gcm_open,
     id: aead::AlgorithmID::AES_256_GCM,
+    max_input_len: AES_GCM_MAX_INPUT_LEN,
 };
 
 fn aes_gcm_init(ctx_buf: &mut [u8], key: &[u8])
@@ -80,6 +82,10 @@ pub const AES_KEY_CTX_BUF_LEN: usize = AES_KEY_BUF_LEN + GCM128_SERIALIZED_LEN;
 
 // Keep this in sync with `AES_KEY` in aes.h.
 const AES_KEY_BUF_LEN: usize = (4 * 4 * (AES_MAX_ROUNDS + 1)) + 8;
+
+const AES_BLOCK_LEN: u64 = 16;
+const AES_GCM_OVERHEAD_BLOCKS_PER_NONCE: u64 = 2;
+const AES_GCM_MAX_INPUT_LEN: u64 = max_input_len!(AES_BLOCK_LEN, AES_GCM_OVERHEAD_BLOCKS_PER_NONCE);
 
 // Keep this in sync with `AES_MAXNR` in aes.h.
 const AES_MAX_ROUNDS: usize = 14;
@@ -169,5 +175,20 @@ mod tests {
         fn GFp_AES_set_encrypt_key(key: *const u8, bits: usize,
                                    aes_key: *mut AES_KEY) -> c::int;
         fn GFp_AES_encrypt(in_: *const u8, out: *mut u8, key: *const AES_KEY);
+    }
+
+    #[test]
+    fn max_input_len_test() {
+        // [NIST SP800-38D] Section 5.2.1.1. Note that [RFC 5116 Section 5.1] and
+        // [RFC 5116 Section 5.2] have an off-by-one error in `P_MAX`.
+        //
+        // [NIST SP800-38D]:
+        //    http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
+        // [RFC 5116 Section 5.1]: https://tools.ietf.org/html/rfc5116#section-5.1
+        // [RFC 5116 Section 5.2]: https://tools.ietf.org/html/rfc5116#section-5.2
+        const NIST_SP800_38D_MAX_BITS: u64 = (1u64 << 39) - 256;
+        assert_eq!(NIST_SP800_38D_MAX_BITS, 549_755_813_632u64);
+        assert_eq!(super::AES_128_GCM.max_input_len * 8, NIST_SP800_38D_MAX_BITS);
+        assert_eq!(super::AES_256_GCM.max_input_len * 8, NIST_SP800_38D_MAX_BITS);
     }
 }
