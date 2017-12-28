@@ -126,6 +126,24 @@ use std::string::String;
 use std::vec::Vec;
 use std::io::BufRead;
 
+
+/// `compile_time_assert_clone::<T>();` fails to compile if `T` doesn't
+/// implement `Clone`.
+pub fn compile_time_assert_clone<T: Clone>() {}
+
+/// `compile_time_assert_copy::<T>();` fails to compile if `T` doesn't
+/// implement `Copy`.
+pub fn compile_time_assert_copy<T: Copy>() {}
+
+/// `compile_time_assert_send::<T>();` fails to compile if `T` doesn't
+/// implement `Send`.
+pub fn compile_time_assert_send<T: Send>() {}
+
+/// `compile_time_assert_sync::<T>();` fails to compile if `T` doesn't
+/// implement `Sync`.
+pub fn compile_time_assert_sync<T: Sync>() {}
+
+
 /// A test case. A test case consists of a set of named attributes. Every
 /// attribute in the test case must be consumed exactly once; this helps catch
 /// typos and omissions.

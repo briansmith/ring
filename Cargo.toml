@@ -253,6 +253,7 @@ include = [
     "tests/rsa_pss_sign_tests.txt",
     "tests/rsa_pss_verify_tests.txt",
     "tests/rsa_tests.rs",
+    "tests/signature_tests.rs",
     "third-party/NIST/README.md",
     "third-party/NIST/sha256sums.txt",
     "third-party/NIST/SHAVS/SHA1LongMsg.rsp",

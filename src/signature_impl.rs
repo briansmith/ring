@@ -18,6 +18,7 @@
 use ec;
 
 /// A public key signature returned from a signing operation.
+#[derive(Clone, Copy)]
 pub struct Signature {
     value: [u8; MAX_LEN],
     len: usize,
