@@ -48,7 +48,7 @@ use core::marker::PhantomData;
 use constant_time;
 
 #[cfg(feature = "rsa_signing")]
-use {der, rand};
+use rand;
 
 impl AsRef<BIGNUM> for Positive {
     fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.0.as_ref() }
@@ -67,12 +67,6 @@ impl AsRef<BIGNUM> for Nonnegative {
 pub struct Positive(Nonnegative);
 
 impl Positive {
-    // Parses a single ASN.1 DER-encoded `Integer`, which most be positive.
-    #[cfg(feature = "rsa_signing")]
-    pub fn from_der(input: &mut untrusted::Reader)
-                    -> Result<Positive, error::Unspecified> {
-        Self::from_be_bytes(der::positive_integer(input)?)
-    }
 
     // Turns a sequence of big-endian bytes into a Positive Integer.
     pub fn from_be_bytes(input: untrusted::Input)

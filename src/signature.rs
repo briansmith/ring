@@ -352,6 +352,9 @@ pub use signature_impl::Signature;
 /// formats, as it also handles the parsing.
 #[cfg(feature = "use_heap")]
 pub mod primitive {
+    pub use ec::curve25519::ed25519::Ed25519KeyPairComponents;
+    #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
+    pub use rsa::signing::RSAKeyPairComponents;
     pub use rsa::verification::verify_rsa;
 }
 
