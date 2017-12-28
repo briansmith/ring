@@ -58,14 +58,9 @@ impl OpeningKey {
     #[inline]
     pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
                -> Result<OpeningKey, error::Unspecified> {
-        let mut key = OpeningKey {
-            key: Key {
-                algorithm: algorithm,
-                ctx_buf: [0; KEY_CTX_BUF_ELEMS],
-            },
-        };
-        key.key.init(key_bytes)?;
-        Ok(key)
+        Ok(OpeningKey {
+            key: Key::new(algorithm, key_bytes)?,
+        })
     }
 
     /// The key's AEAD algorithm.
@@ -174,14 +169,9 @@ impl SealingKey {
     #[inline]
     pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
                -> Result<SealingKey, error::Unspecified> {
-        let mut key = SealingKey {
-            key: Key {
-                algorithm: algorithm,
-                ctx_buf: [0; KEY_CTX_BUF_ELEMS],
-            },
-        };
-        key.key.init(key_bytes)?;
-        Ok(key)
+        Ok(SealingKey {
+            key: Key::new(algorithm, key_bytes)?,
+        })
     }
 
     /// The key's AEAD algorithm.
@@ -243,18 +233,23 @@ const KEY_CTX_BUF_ELEMS: usize = (KEY_CTX_BUF_LEN + 7) / 8;
 const KEY_CTX_BUF_LEN: usize = self::aes_gcm::AES_KEY_CTX_BUF_LEN;
 
 impl Key {
-    /// XXX: Assumes self.algorithm is already filled in.
-    ///
-    /// C analogs: `EVP_AEAD_CTX_init`, `EVP_AEAD_CTX_init_with_direction`
-    fn init(&mut self, key_bytes: &[u8]) -> Result<(), error::Unspecified> {
-        init::init_once();
-
-        if key_bytes.len() != self.algorithm.key_len() {
+    fn new(algorithm: &'static Algorithm, key_bytes: &[u8]) -> Result<Self, error::Unspecified> {
+        if key_bytes.len() != algorithm.key_len() {
             return Err(error::Unspecified);
         }
 
-        let ctx_buf_bytes = polyfill::slice::u64_as_u8_mut(&mut self.ctx_buf);
-        (self.algorithm.init)(ctx_buf_bytes, key_bytes)
+        let mut r = Key {
+            algorithm,
+            ctx_buf: [0; KEY_CTX_BUF_ELEMS],
+        };
+
+        init::init_once();
+        {
+            let ctx_buf_bytes = polyfill::slice::u64_as_u8_mut(&mut r.ctx_buf);
+            (r.algorithm.init)(ctx_buf_bytes, key_bytes)?;
+        }
+
+        Ok(r)
     }
 
     /// The key's AEAD algorithm.
