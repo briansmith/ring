@@ -160,19 +160,10 @@ fn test_signature_rsa_pss_sign() {
 #[cfg(feature = "rsa_signing")]
 #[test]
 fn test_rsa_key_pair_sync_and_send() {
-    const PRIVATE_KEY_DER: &'static [u8] =
-        include_bytes!("../src/rsa/signature_rsa_example_private_key.der");
-    let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
-    let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
-    let key_pair = std::sync::Arc::new(key_pair);
-
-    let _: &Send = &key_pair;
-    let _: &Sync = &key_pair;
-
-    let signing_state = signature::RSASigningState::new(key_pair).unwrap();
-    let _: &Send = &signing_state;
-    // TODO: Test that signing_state is NOT Sync; i.e.
-    // `let _: &Sync = &signing_state;` must fail
+    test::compile_time_assert_send::<signature::RSAKeyPair>();
+    test::compile_time_assert_sync::<signature::RSAKeyPair>();
+    test::compile_time_assert_send::<signature::RSASigningState>();
+    // TODO: Test that RSASigningState is NOT Sync.
 }
 
 
