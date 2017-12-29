@@ -737,6 +737,7 @@ OPENSSL_EXPORT int i2t_ASN1_OBJECT(char *buf,int buf_len,ASN1_OBJECT *a);
 OPENSSL_EXPORT ASN1_OBJECT *ASN1_OBJECT_create(int nid, unsigned char *data,int len, const char *sn, const char *ln);
 
 OPENSSL_EXPORT int ASN1_INTEGER_set(ASN1_INTEGER *a, long v);
+OPENSSL_EXPORT int ASN1_INTEGER_set_uint64(ASN1_INTEGER *out, uint64_t v);
 OPENSSL_EXPORT long ASN1_INTEGER_get(const ASN1_INTEGER *a);
 OPENSSL_EXPORT ASN1_INTEGER *BN_to_ASN1_INTEGER(const BIGNUM *bn, ASN1_INTEGER *ai);
 OPENSSL_EXPORT BIGNUM *ASN1_INTEGER_to_BN(const ASN1_INTEGER *ai,BIGNUM *bn);

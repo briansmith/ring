@@ -383,6 +383,35 @@ int ASN1_INTEGER_set(ASN1_INTEGER *a, long v)
     return (1);
 }
 
+int ASN1_INTEGER_set_uint64(ASN1_INTEGER *out, uint64_t v)
+{
+    uint8_t *const newdata = OPENSSL_malloc(sizeof(uint64_t));
+    if (newdata == NULL) {
+        OPENSSL_PUT_ERROR(ASN1, ERR_R_MALLOC_FAILURE);
+        return 0;
+    }
+
+    OPENSSL_free(out->data);
+    out->data = newdata;
+    v = CRYPTO_bswap8(v);
+    memcpy(out->data, &v, sizeof(v));
+
+    out->type = V_ASN1_INTEGER;
+
+    size_t leading_zeros;
+    for (leading_zeros = 0; leading_zeros < sizeof(uint64_t) - 1;
+         leading_zeros++) {
+        if (out->data[leading_zeros] != 0) {
+            break;
+        }
+    }
+
+    out->length = sizeof(uint64_t) - leading_zeros;
+    OPENSSL_memmove(out->data, out->data + leading_zeros, out->length);
+
+    return 1;
+}
+
 long ASN1_INTEGER_get(const ASN1_INTEGER *a)
 {
     int neg = 0, i;
