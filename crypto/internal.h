@@ -184,27 +184,31 @@ typedef __uint128_t uint128_t;
  * for false. This is useful for choosing a value based on the result of a
  * conditional in constant time. */
 
+#define CONSTTIME_TRUE_S ~((size_t)0)
+#define CONSTTIME_FALSE_S ((size_t)0)
+#define CONSTTIME_TRUE ~0u
+#define CONSTTIME_FALSE 0u
+#define CONSTTIME_TRUE_8 ((uint8_t)0xff)
+#define CONSTTIME_FALSE_8 ((uint8_t)0)
+
+
 OPENSSL_COMPILE_ASSERT(sizeof(ptrdiff_t) == sizeof(size_t),
                        ptrdiff_t_and_size_t_are_different_sizes);
 
+/* constant_time_msb_s returns the given value with the MSB copied to all the
+ * other bits. */
 static inline size_t constant_time_msb_s(size_t a) {
-  return (size_t)((ptrdiff_t)(a) >> (sizeof(ptrdiff_t) * 8 - 1));
+  return 0u - (a >> (sizeof(a) * 8 - 1));
 }
 
 /* constant_time_msb returns the given value with the MSB copied to all the
  * other bits. */
-static inline unsigned int constant_time_msb_unsigned(unsigned int a) {
-  return (unsigned int)((int)(a) >> (sizeof(int) * 8 - 1));
+static inline unsigned int constant_time_msb(unsigned int a) {
+  return 0u - (a >> (sizeof(a) * 8 - 1));
 }
 
-/* constant_time_is_zero_s is like |constant_time_is_zero_unsigned| but
- * operates on |size_t|. */
+/* constant_time_is_zero_s returns 0xff..f if a == 0 and 0 otherwise. */
 static inline size_t constant_time_is_zero_s(size_t a) {
-  return constant_time_msb_s(~a & (a - 1));
-}
-
-/* constant_time_is_zero returns 0xff..f if a == 0 and 0 otherwise. */
-static inline unsigned int constant_time_is_zero_unsigned(unsigned int a) {
   /* Here is an SMT-LIB verification of this formula:
    *
    * (define-fun is_zero ((a (_ BitVec 32))) (_ BitVec 32)
@@ -217,28 +221,33 @@ static inline unsigned int constant_time_is_zero_unsigned(unsigned int a) {
    * (check-sat)
    * (get-model)
    */
-  return constant_time_msb_unsigned(~a & (a - 1));
+  return constant_time_msb_s(~a & (a - 1));
 }
 
 static inline size_t constant_time_is_nonzero_s(size_t a) {
   return constant_time_is_zero_s(constant_time_is_zero_s(a));
 }
 
-/* constant_time_eq_s acts like |constant_time_eq_int| but operates on
- * |size_t|. */
+/* constant_time_is_zero_8 acts like |constant_time_is_zero_s| but returns an
+ * 8-bit mask. */
+static inline uint8_t constant_time_is_zero_8(size_t a) {
+  return (uint8_t)(constant_time_is_zero_s(a));
+}
+
+/* constant_time_eq_s returns 0xff..f if a == b and 0 otherwise. */
 static inline size_t constant_time_eq_s(size_t a, size_t b) {
   return constant_time_is_zero_s(a ^ b);
 }
 
-/* constant_time_eq_int returns 0xff..f if a == b and 0 otherwise. */
-static inline unsigned int constant_time_eq_int(int a, int b) {
-  return constant_time_is_zero_unsigned((unsigned)(a) ^ (unsigned)(b));
+/* constant_time_eq_int acts like |constant_time_eq_s| but works on int
+ * values. */
+static inline size_t constant_time_eq_int(int a, int b) {
+  return constant_time_eq_s((size_t)(a), (size_t)(b));
 }
 
-/* constant_time_select_s returns (mask & a) | (~mask & b). When |mask| is
- * all 1s or all 0s (as returned by the methods above), the select methods
- * return either |a| (if |mask| is nonzero) or |b| (if |mask| is zero). it is
- * derived from BoringSSL's |constant_time_select|. */
+/* constant_time_select_s returns (mask & a) | (~mask & b). When |mask| is all
+ * 1s or all 0s (as returned by the methods above), the select methods return
+ * either |a| (if |mask| is nonzero) or |b| (if |mask| is zero). */
 static inline size_t constant_time_select_s(size_t mask, size_t a, size_t b) {
   return (mask & a) | (~mask & b);
 }

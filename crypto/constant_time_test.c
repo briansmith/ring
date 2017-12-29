@@ -52,9 +52,6 @@
 
 int bssl_constant_time_test_main(void);
 
-static const unsigned int CONSTTIME_TRUE = (unsigned)(~0);
-static const unsigned int CONSTTIME_FALSE = 0;
-
 static const size_t CONSTTIME_TRUE_s = (size_t)(~0);
 static const size_t CONSTTIME_FALSE_s = 0;
 
@@ -71,24 +68,6 @@ static int test_binary_op_s(size_t (*op)(size_t a, size_t b),
     fprintf(stderr,
             "Test failed for  %s(%zu, %zu): expected %zu (FALSE), got %zu\n",
             op_name, a, b, CONSTTIME_FALSE_s, c);
-    return 1;
-  }
-  return 0;
-}
-
-static int test_is_zero(unsigned int a) {
-  unsigned int c = constant_time_is_zero_unsigned(a);
-  if (a == 0 && c != CONSTTIME_TRUE) {
-    fprintf(stderr,
-            "Test failed for constant_time_is_zero_unsigned(%du): "
-            "expected %du (TRUE), got %du\n",
-            a, CONSTTIME_TRUE, c);
-    return 1;
-  } else if (a != 0 && c != CONSTTIME_FALSE) {
-    fprintf(stderr,
-            "Test failed for constant_time_is_zero_unsigned(%du): "
-            "expected %du (FALSE), got %du\n",
-            a, CONSTTIME_FALSE, c);
     return 1;
   }
   return 0;
@@ -149,34 +128,22 @@ static int test_select_s(size_t a, size_t b) {
 }
 
 static int test_eq_int(int a, int b) {
-  unsigned int equal = constant_time_eq_int(a, b);
-  if (a == b && equal != CONSTTIME_TRUE) {
+  size_t equal = constant_time_eq_int(a, b);
+  if (a == b && equal != CONSTTIME_TRUE_s) {
     fprintf(stderr,
-            "Test failed for constant_time_eq_int(%d, %d): expected %du(TRUE), "
-            "got %du\n",
-            a, b, CONSTTIME_TRUE, equal);
+            "Test failed for constant_time_eq_int(%d, %d): expected %zu(TRUE), "
+            "got %zu\n",
+            a, b, CONSTTIME_TRUE_s, equal);
     return 1;
-  } else if (a != b && equal != CONSTTIME_FALSE) {
+  } else if (a != b && equal != CONSTTIME_FALSE_s) {
     fprintf(stderr,
             "Test failed for constant_time_eq_int(%d, %d): expected "
-            "%du(FALSE), got %du\n",
-            a, b, CONSTTIME_FALSE, equal);
+            "%zu(FALSE), got %zu\n",
+            a, b, CONSTTIME_FALSE_s, equal);
     return 1;
   }
   return 0;
 }
-
-static unsigned int test_values[] = {
-  0,
-  1,
-  1024,
-  12345,
-  32000,
-  UINT_MAX / 2 - 1,
-  UINT_MAX / 2,
-  UINT_MAX / 2 + 1,
-  UINT_MAX - 1, UINT_MAX
-};
 
 static size_t test_values_s[] = {
   0,
@@ -184,6 +151,13 @@ static size_t test_values_s[] = {
   1024,
   12345,
   32000,
+#if defined(OPENSSL_64_BIT)
+  0xffffffff / 2 - 1,
+  0xffffffff / 2,
+  0xffffffff / 2 + 1,
+  0xffffffff - 1,
+  0xffffffff,
+#endif
   SIZE_MAX / 2 - 1,
   SIZE_MAX / 2,
   SIZE_MAX / 2 + 1,
@@ -209,11 +183,6 @@ static int signed_test_values[] = {
 
 int bssl_constant_time_test_main(void) {
   int num_failed = 0;
-
-  for (size_t i = 0; i < sizeof(test_values) / sizeof(test_values[0]); ++i) {
-    unsigned a = test_values[i];
-    num_failed += test_is_zero(a);
-  }
 
   for (size_t i = 0;
        i < sizeof(test_values_s) / sizeof(test_values_s[0]); ++i) {
