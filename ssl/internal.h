@@ -1324,11 +1324,6 @@ struct SSL_HANDSHAKE {
   // |SSL_OP_NO_*| and |SSL_CTX_set_max_proto_version| APIs.
   uint16_t max_version = 0;
 
-  // session_id is the session ID in the ClientHello, used for the experimental
-  // TLS 1.3 variant.
-  uint8_t session_id[SSL_MAX_SSL_SESSION_ID_LENGTH] = {0};
-  uint8_t session_id_len = 0;
-
   size_t hash_len = 0;
   uint8_t secret[EVP_MAX_MD_SIZE] = {0};
   uint8_t early_traffic_secret[EVP_MAX_MD_SIZE] = {0};
@@ -1517,6 +1512,11 @@ struct SSL_HANDSHAKE {
   // early_data_written is the amount of early data that has been written by the
   // record layer.
   uint16_t early_data_written = 0;
+
+  // session_id is the session ID in the ClientHello, used for the experimental
+  // TLS 1.3 variant.
+  uint8_t session_id[SSL_MAX_SSL_SESSION_ID_LENGTH] = {0};
+  uint8_t session_id_len = 0;
 };
 
 UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl);
@@ -2305,8 +2305,6 @@ struct SSL3_STATE {
   // fired, were it not a draft.
   bool draft_downgrade:1;
 
-  uint8_t send_alert[2] = {0};
-
   // hs_buf is the buffer of handshake data to process.
   UniquePtr<BUF_MEM> hs_buf;
 
@@ -2318,6 +2316,11 @@ struct SSL3_STATE {
   // pending_flight_offset is the number of bytes of |pending_flight| which have
   // been successfully written.
   uint32_t pending_flight_offset = 0;
+
+  // ticket_age_skew is the difference, in seconds, between the client-sent
+  // ticket age and the server-computed value in TLS 1.3 server connections
+  // which resumed a session.
+  int32_t ticket_age_skew = 0;
 
   // aead_read_ctx is the current read cipher state.
   UniquePtr<SSLAEADContext> aead_read_ctx;
@@ -2343,6 +2346,8 @@ struct SSL3_STATE {
   uint8_t previous_client_finished_len = 0;
   uint8_t previous_server_finished_len = 0;
   uint8_t previous_server_finished[12] = {0};
+
+  uint8_t send_alert[2] = {0};
 
   // established_session is the session established by the connection. This
   // session is only filled upon the completion of the handshake and is
@@ -2373,11 +2378,6 @@ struct SSL3_STATE {
   //     verified Channel ID from the client: a P256 point, (x,y), where
   //     each are big-endian values.
   uint8_t tlsext_channel_id[64] = {0};
-
-  // ticket_age_skew is the difference, in seconds, between the client-sent
-  // ticket age and the server-computed value in TLS 1.3 server connections
-  // which resumed a session.
-  int32_t ticket_age_skew = 0;
 };
 
 // lengths of messages
@@ -2518,10 +2518,6 @@ struct SSLConnection {
   // further constrainted by |SSL_OP_NO_*|.
   uint16_t conf_min_version;
 
-  // tls13_variant is the variant of TLS 1.3 we are using for this
-  // configuration.
-  enum tls13_variant_t tls13_variant;
-
   uint16_t max_send_fragment;
 
   // There are 2 BIO's even though they are normally both the same. This is so
@@ -2557,6 +2553,10 @@ struct SSLConnection {
   // initial_timeout_duration_ms is the default DTLS timeout duration in
   // milliseconds. It's used to initialize the timer any time it's restarted.
   unsigned initial_timeout_duration_ms;
+
+  // tls13_variant is the variant of TLS 1.3 we are using for this
+  // configuration.
+  enum tls13_variant_t tls13_variant;
 
   // session is the configured session to be offered by the client. This session
   // is immutable.
