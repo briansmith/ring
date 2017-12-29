@@ -49,7 +49,7 @@
 # cost of increased data cache "footprint" by 1/2KB.
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
-push(@INC,"${dir}","${dir}../../perlasm");
+push(@INC,"${dir}","${dir}../../../perlasm");
 require "x86asm.pl";
 
 $output=pop;

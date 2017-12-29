@@ -63,7 +63,7 @@
 # (***)	SHAEXT result is 4.1, strangely enough better than 64-bit one;
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
-push(@INC,"${dir}","${dir}../../perlasm");
+push(@INC,"${dir}","${dir}../../../perlasm");
 require "x86asm.pl";
 
 $output=pop;

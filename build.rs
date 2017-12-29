@@ -85,8 +85,8 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[X86], "crypto/ec/asm/ecp_nistz256-x86.pl"),
     (&[X86], "crypto/modes/asm/ghash-x86.pl"),
     (&[X86], "crypto/poly1305/asm/poly1305-x86.pl"),
-    (&[X86], "crypto/sha/asm/sha256-586.pl"),
-    (&[X86], "crypto/sha/asm/sha512-586.pl"),
+    (&[X86], "crypto/fipsmodule/sha/asm/sha256-586.pl"),
+    (&[X86], "crypto/fipsmodule/sha/asm/sha512-586.pl"),
 
     (&[X86_64], "crypto/curve25519/x25519-x86_64.c"),
 
@@ -118,8 +118,8 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[ARM], "crypto/ec/asm/ecp_nistz256-armv4.pl"),
     (&[ARM], "crypto/modes/asm/ghash-armv4.pl"),
     (&[ARM], "crypto/poly1305/asm/poly1305-armv4.pl"),
-    (&[ARM], "crypto/sha/asm/sha256-armv4.pl"),
-    (&[ARM], "crypto/sha/asm/sha512-armv4.pl"),
+    (&[ARM], "crypto/fipsmodule/sha/asm/sha256-armv4.pl"),
+    (&[ARM], "crypto/fipsmodule/sha/asm/sha512-armv4.pl"),
 
     (&[AARCH64], "crypto/bn/asm/armv8-mont.pl"),
     (&[AARCH64], "crypto/cpu-aarch64-linux.c"),
@@ -129,11 +129,11 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[AARCH64], SHA512_ARMV8),
 ];
 
-const SHA256_X86_64: &'static str = "crypto/sha/asm/sha256-x86_64.pl";
-const SHA512_X86_64: &'static str = "crypto/sha/asm/sha512-x86_64.pl";
+const SHA256_X86_64: &'static str = "crypto/fipsmodule/sha/asm/sha256-x86_64.pl";
+const SHA512_X86_64: &'static str = "crypto/fipsmodule/sha/asm/sha512-x86_64.pl";
 
-const SHA256_ARMV8: &'static str = "crypto/sha/asm/sha256-armv8.pl";
-const SHA512_ARMV8: &'static str = "crypto/sha/asm/sha512-armv8.pl";
+const SHA256_ARMV8: &'static str = "crypto/fipsmodule/sha/asm/sha256-armv8.pl";
+const SHA512_ARMV8: &'static str = "crypto/fipsmodule/sha/asm/sha512-armv8.pl";
 
 const RING_TEST_SRCS: &'static [&'static str] = &[
     ("crypto/constant_time_test.c"),
