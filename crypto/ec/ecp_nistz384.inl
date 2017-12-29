@@ -34,7 +34,7 @@ static BN_ULONG is_zero(const BN_ULONG a[P384_LIMBS]) {
   for (size_t i = 0; i < P384_LIMBS; ++i) {
     acc |= a[i];
   }
-  return constant_time_is_zero_size_t(acc);
+  return constant_time_is_zero_s(acc);
 }
 
 /* Point double: r = 2*a */

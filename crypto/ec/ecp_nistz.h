@@ -96,7 +96,7 @@ extern "C" {
  * six bits b_(4j + 4) ... b_(4j - 1).
  *
  * This function takes those `w` bits as an integer, writing the recoded digit
- * to |*is_negative| (a mask for `constant_time_select_size_t`) and |*digit|
+ * to |*is_negative| (a mask for `constant_time_select_s`) and |*digit|
  * (absolute value, in the range 0 .. 2**(w-1).  Note that this integer
  * essentially provides the input bits "shifted to the left" by one position.
  * For example, the input to compute the least significant recoded digit, given
@@ -108,7 +108,7 @@ static inline void booth_recode(BN_ULONG *is_negative, unsigned *digit,
   assert(w >= 2);
   assert(w <= 7);
 
-  /* Set all bits of `s` to MSB(in), similar to |constant_time_msb_size_t|,
+  /* Set all bits of `s` to MSB(in), similar to |constant_time_msb_s|,
    * but 'in' seen as (`w+1`)-bit value. */
   BN_ULONG s = ~((in >> w) - 1);
   unsigned d;
@@ -116,7 +116,7 @@ static inline void booth_recode(BN_ULONG *is_negative, unsigned *digit,
   d = (d & s) | (in & ~s);
   d = (d >> 1) + (d & 1);
 
-  *is_negative = constant_time_is_nonzero_size_t(s & 1);
+  *is_negative = constant_time_is_nonzero_s(s & 1);
   *digit = d;
 }
 

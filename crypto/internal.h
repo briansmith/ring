@@ -193,7 +193,7 @@ static inline unsigned int constant_time_msb_unsigned(unsigned int a) {
 OPENSSL_COMPILE_ASSERT(sizeof(ptrdiff_t) == sizeof(size_t),
                        ptrdiff_t_and_size_t_are_different_sizes);
 
-static inline size_t constant_time_msb_size_t(size_t a) {
+static inline size_t constant_time_msb_s(size_t a) {
   return (size_t)((ptrdiff_t)(a) >> (sizeof(ptrdiff_t) * 8 - 1));
 }
 
@@ -215,14 +215,14 @@ static inline unsigned int constant_time_is_zero_unsigned(unsigned int a) {
   return constant_time_msb_unsigned(~a & (a - 1));
 }
 
-/* constant_time_is_zero_size_t is like |constant_time_is_zero_unsigned| but
+/* constant_time_is_zero_s is like |constant_time_is_zero_unsigned| but
  * operates on |size_t|. */
-static inline size_t constant_time_is_zero_size_t(size_t a) {
-  return constant_time_msb_size_t(~a & (a - 1));
+static inline size_t constant_time_is_zero_s(size_t a) {
+  return constant_time_msb_s(~a & (a - 1));
 }
 
-static inline size_t constant_time_is_nonzero_size_t(size_t a) {
-  return constant_time_is_zero_size_t(constant_time_is_zero_size_t(a));
+static inline size_t constant_time_is_nonzero_s(size_t a) {
+  return constant_time_is_zero_s(constant_time_is_zero_s(a));
 }
 
 /* constant_time_eq_int returns 0xff..f if a == b and 0 otherwise. */
@@ -230,18 +230,17 @@ static inline unsigned int constant_time_eq_int(int a, int b) {
   return constant_time_is_zero_unsigned((unsigned)(a) ^ (unsigned)(b));
 }
 
-/* constant_time_eq_size_t acts like |constant_time_eq_int| but operates on
+/* constant_time_eq_s acts like |constant_time_eq_int| but operates on
  * |size_t|. */
-static inline size_t constant_time_eq_size_t(size_t a, size_t b) {
-  return constant_time_is_zero_size_t(a ^ b);
+static inline size_t constant_time_eq_s(size_t a, size_t b) {
+  return constant_time_is_zero_s(a ^ b);
 }
 
-/* constant_time_select_size_t returns (mask & a) | (~mask & b). When |mask| is
+/* constant_time_select_s returns (mask & a) | (~mask & b). When |mask| is
  * all 1s or all 0s (as returned by the methods above), the select methods
  * return either |a| (if |mask| is nonzero) or |b| (if |mask| is zero). it is
  * derived from BoringSSL's |constant_time_select|. */
-static inline size_t constant_time_select_size_t(size_t mask, size_t a,
-                                                 size_t b) {
+static inline size_t constant_time_select_s(size_t mask, size_t a, size_t b) {
   return (mask & a) | (~mask & b);
 }
 

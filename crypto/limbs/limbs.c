@@ -42,10 +42,10 @@ OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(Limb),
 /* Returns 0xfff..f if |a| is all zero limbs, and zero otherwise. */
 Limb LIMBS_are_zero(const Limb a[], size_t num_limbs) {
   assert(num_limbs >= 1);
-  Limb is_zero = constant_time_is_zero_size_t(a[0]);
+  Limb is_zero = constant_time_is_zero_s(a[0]);
   for (size_t i = 1; i < num_limbs; ++i) {
-    is_zero = constant_time_select_size_t(
-        is_zero, constant_time_is_zero_size_t(a[i]), is_zero);
+    is_zero = constant_time_select_s(
+        is_zero, constant_time_is_zero_s(a[i]), is_zero);
   }
   return is_zero;
 }
@@ -53,9 +53,9 @@ Limb LIMBS_are_zero(const Limb a[], size_t num_limbs) {
 /* Returns 0xffff..f if |a| is less than |b|, and zero otherwise. */
 Limb LIMBS_equal(const Limb a[], const Limb b[], size_t num_limbs) {
   assert(num_limbs >= 1);
-  Limb eq = constant_time_eq_size_t(a[0], b[0]);
+  Limb eq = constant_time_eq_s(a[0], b[0]);
   for (size_t i = 1; i < num_limbs; ++i) {
-    eq = constant_time_select_size_t(eq, constant_time_eq_size_t(a[i], b[i]),
+    eq = constant_time_select_s(eq, constant_time_eq_s(a[i], b[i]),
                                      eq);
   }
   return eq;
@@ -72,7 +72,7 @@ Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs) {
   for (size_t i = 1; i < num_limbs; ++i) {
     borrow = limb_sbb(&dummy, a[i], b[i], borrow);
   }
-  return constant_time_is_nonzero_size_t(borrow);
+  return constant_time_is_nonzero_s(borrow);
 }
 
 /* if (r >= m) { r -= m; } */
@@ -85,13 +85,13 @@ void LIMBS_reduce_once(Limb r[], const Limb m[], size_t num_limbs) {
    * slightly less efficient way. */
   Limb lt = LIMBS_less_than(r, m, num_limbs);
   Carry borrow =
-      limb_sub(&r[0], r[0], constant_time_select_size_t(lt, 0, m[0]));
+      limb_sub(&r[0], r[0], constant_time_select_s(lt, 0, m[0]));
   for (size_t i = 1; i < num_limbs; ++i) {
     /* XXX: This is probably particularly inefficient because the operations in
      * constant_time_select affect the carry flag, so there will likely be
      * loads and stores of |borrow|. */
     borrow =
-        limb_sbb(&r[i], r[i], constant_time_select_size_t(lt, 0, m[i]), borrow);
+        limb_sbb(&r[i], r[i], constant_time_select_s(lt, 0, m[i]), borrow);
   }
   assert(borrow == 0);
 }
@@ -103,7 +103,7 @@ Limb LIMBS_add_assign(Limb r[], const Limb a[], size_t num_limbs) {
 void LIMBS_add_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
                    size_t num_limbs) {
   Limb overflow1 =
-      constant_time_is_nonzero_size_t(limbs_add(r, a, b, num_limbs));
+      constant_time_is_nonzero_s(limbs_add(r, a, b, num_limbs));
   Limb overflow2 = ~LIMBS_less_than(r, m, num_limbs);
   Limb overflow = overflow1 | overflow2;
   Carry borrow = limb_sub(&r[0], r[0], m[0] & overflow);
@@ -120,7 +120,7 @@ void LIMBS_sub_assign(Limb r[], const Limb a[], size_t num_limbs) {
 void LIMBS_sub_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
                    size_t num_limbs) {
   Limb underflow =
-      constant_time_is_nonzero_size_t(limbs_sub(r, a, b, num_limbs));
+      constant_time_is_nonzero_s(limbs_sub(r, a, b, num_limbs));
   Carry carry = limb_add(&r[0], r[0], m[0] & underflow);
   for (size_t i = 1; i < num_limbs; ++i) {
     carry = limb_adc(&r[i], r[i], m[i] & underflow, carry);
@@ -137,7 +137,7 @@ void LIMBS_sub_mod_ex(Limb r[], const Limb a[], const Limb m[], size_t num_limbs
   for (size_t i = a_limbs; i < num_limbs; ++i) {
     borrow = limb_sbb(&r[i], r[i], 0, borrow);
   }
-  Limb underflow = constant_time_is_nonzero_size_t(borrow);
+  Limb underflow = constant_time_is_nonzero_s(borrow);
   Carry carry = limb_add(&r[0], r[0], m[0] & underflow);
   for (size_t i = 1; i < num_limbs; ++i) {
     carry = limb_adc(&r[i], r[i], m[i] & underflow, carry);
@@ -146,7 +146,7 @@ void LIMBS_sub_mod_ex(Limb r[], const Limb a[], const Limb m[], size_t num_limbs
 
 void LIMBS_shl_mod(Limb r[], const Limb a[], const Limb m[], size_t num_limbs) {
   Limb overflow1 =
-      constant_time_is_nonzero_size_t(a[num_limbs - 1] & LIMB_HIGH_BIT);
+      constant_time_is_nonzero_s(a[num_limbs - 1] & LIMB_HIGH_BIT);
   Limb carry = 0;
   for (size_t i = 0; i < num_limbs; ++i) {
     Limb limb = a[i];

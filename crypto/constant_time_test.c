@@ -55,22 +55,22 @@ int bssl_constant_time_test_main(void);
 static const unsigned int CONSTTIME_TRUE = (unsigned)(~0);
 static const unsigned int CONSTTIME_FALSE = 0;
 
-static const size_t CONSTTIME_TRUE_SIZE_T = (size_t)(~0);
-static const size_t CONSTTIME_FALSE_SIZE_T = 0;
+static const size_t CONSTTIME_TRUE_s = (size_t)(~0);
+static const size_t CONSTTIME_FALSE_s = 0;
 
-static int test_binary_op_size_t(size_t (*op)(size_t a, size_t b),
+static int test_binary_op_s(size_t (*op)(size_t a, size_t b),
                                  const char* op_name, size_t a, size_t b,
                                  int is_true) {
   size_t c = op(a, b);
-  if (is_true && c != CONSTTIME_TRUE_SIZE_T) {
+  if (is_true && c != CONSTTIME_TRUE_s) {
     fprintf(stderr,
             "Test failed for %s(%zu, %zu): expected %zu (TRUE), got %zu\n",
-            op_name, a, b, CONSTTIME_TRUE_SIZE_T, c);
+            op_name, a, b, CONSTTIME_TRUE_s, c);
     return 1;
-  } else if (!is_true && c != CONSTTIME_FALSE_SIZE_T) {
+  } else if (!is_true && c != CONSTTIME_FALSE_s) {
     fprintf(stderr,
             "Test failed for  %s(%zu, %zu): expected %zu (FALSE), got %zu\n",
-            op_name, a, b, CONSTTIME_FALSE_SIZE_T, c);
+            op_name, a, b, CONSTTIME_FALSE_s, c);
     return 1;
   }
   return 0;
@@ -94,55 +94,55 @@ static int test_is_zero(unsigned int a) {
   return 0;
 }
 
-static int test_is_zero_size_t(size_t a) {
-  size_t c = constant_time_is_zero_size_t(a);
-  if (a == 0 && c != CONSTTIME_TRUE_SIZE_T) {
+static int test_is_zero_s(size_t a) {
+  size_t c = constant_time_is_zero_s(a);
+  if (a == 0 && c != CONSTTIME_TRUE_s) {
     fprintf(stderr,
-            "Test failed for constant_time_is_zero_size_t(%zu): "
+            "Test failed for constant_time_is_zero_s(%zu): "
             "expected %zu (TRUE), got %zu\n",
-            a, CONSTTIME_TRUE_SIZE_T, c);
+            a, CONSTTIME_TRUE_s, c);
     return 1;
-  } else if (a != 0 && c != CONSTTIME_FALSE_SIZE_T) {
+  } else if (a != 0 && c != CONSTTIME_FALSE_s) {
     fprintf(stderr,
-            "Test failed for constant_time_is_zero_size_t(%zu): "
+            "Test failed for constant_time_is_zero_s(%zu): "
             "expected %zu (FALSE), got %zu\n",
-            a, CONSTTIME_FALSE_SIZE_T, c);
+            a, CONSTTIME_FALSE_s, c);
     return 1;
   }
 
-  c = constant_time_is_nonzero_size_t(a);
-  if (a == 0 && c != CONSTTIME_FALSE_SIZE_T) {
+  c = constant_time_is_nonzero_s(a);
+  if (a == 0 && c != CONSTTIME_FALSE_s) {
     fprintf(stderr,
-            "Test failed for constant_time_is_nonzero_size_t(%zu): "
+            "Test failed for constant_time_is_nonzero_s(%zu): "
             "expected %zu (FALSE), got %zu\n",
-            a, CONSTTIME_FALSE_SIZE_T, c);
+            a, CONSTTIME_FALSE_s, c);
     return 1;
-  } else if (a != 0 && c != CONSTTIME_TRUE_SIZE_T) {
+  } else if (a != 0 && c != CONSTTIME_TRUE_s) {
     fprintf(stderr,
-            "Test failed for constant_time_is_nonzero_size_t(%zu): "
+            "Test failed for constant_time_is_nonzero_s(%zu): "
             "expected %zu (TRUE), got %zu\n",
-            a, CONSTTIME_TRUE_SIZE_T, c);
+            a, CONSTTIME_TRUE_s, c);
     return 1;
   }
 
   return 0;
 }
 
-static int test_select_size_t(size_t a, size_t b) {
-  size_t selected = constant_time_select_size_t(CONSTTIME_TRUE_SIZE_T, a, b);
+static int test_select_s(size_t a, size_t b) {
+  size_t selected = constant_time_select_s(CONSTTIME_TRUE_s, a, b);
   if (selected != a) {
     fprintf(stderr,
-            "Test failed for constant_time_select_size_t(%zu, %zu,"
+            "Test failed for constant_time_select_s(%zu, %zu,"
             "%zu): expected %zu(first value), got %zu\n",
-            CONSTTIME_TRUE_SIZE_T, a, b, a, selected);
+            CONSTTIME_TRUE_s, a, b, a, selected);
     return 1;
   }
-  selected = constant_time_select_size_t(CONSTTIME_FALSE_SIZE_T, a, b);
+  selected = constant_time_select_s(CONSTTIME_FALSE_s, a, b);
   if (selected != b) {
     fprintf(stderr,
-            "Test failed for constant_time_select_size_t(%zu, %zu,"
+            "Test failed for constant_time_select_s(%zu, %zu,"
             "%zu): expected %zu(second value), got %zu\n",
-            CONSTTIME_FALSE_SIZE_T, a, b, b, selected);
+            CONSTTIME_FALSE_s, a, b, b, selected);
     return 1;
   }
   return 0;
@@ -178,7 +178,7 @@ static unsigned int test_values[] = {
   UINT_MAX - 1, UINT_MAX
 };
 
-static size_t size_t_test_values[] = {
+static size_t test_values_s[] = {
   0,
   1,
   1024,
@@ -216,17 +216,17 @@ int bssl_constant_time_test_main(void) {
   }
 
   for (size_t i = 0;
-       i < sizeof(size_t_test_values) / sizeof(size_t_test_values[0]); ++i) {
-    size_t a = size_t_test_values[i];
-    num_failed += test_is_zero_size_t(a);
+       i < sizeof(test_values_s) / sizeof(test_values_s[0]); ++i) {
+    size_t a = test_values_s[i];
+    num_failed += test_is_zero_s(a);
     for (size_t j = 0;
-         j < sizeof(size_t_test_values) / sizeof(size_t_test_values[0]); ++j) {
-      size_t b = size_t_test_values[j];
-      num_failed += test_binary_op_size_t(
-          &constant_time_eq_size_t, "constant_time_eq_size_t", a, b, a == b);
-      num_failed += test_binary_op_size_t(
-          &constant_time_eq_size_t, "constant_time_eq_size_t", b, a, b == a);
-      num_failed += test_select_size_t(a, b);
+         j < sizeof(test_values_s) / sizeof(test_values_s[0]); ++j) {
+      size_t b = test_values_s[j];
+      num_failed += test_binary_op_s(&constant_time_eq_s,
+                                     "constant_time_eq_s", a, b, a == b);
+      num_failed += test_binary_op_s(&constant_time_eq_s,
+                                     "constant_time_eq_s", b, a, b == a);
+      num_failed += test_select_s(a, b);
     }
   }
 

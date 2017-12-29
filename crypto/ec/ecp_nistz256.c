@@ -75,7 +75,7 @@ static BN_ULONG is_infinity(const BN_ULONG x[P256_LIMBS],
   for (size_t i = 0; i < P256_LIMBS; ++i) {
     acc |= x[i] | y[i];
   }
-  return constant_time_is_zero_size_t(acc);
+  return constant_time_is_zero_s(acc);
 }
 
 static void copy_conditional(BN_ULONG dst[P256_LIMBS],

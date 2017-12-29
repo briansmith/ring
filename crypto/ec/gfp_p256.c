@@ -87,14 +87,14 @@ OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(Limb),
 void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
                             int index) {
   assert(index >= 0);
-  size_t index_as_size_t = (size_t)index; /* XXX: constant time? */
+  size_t index_s = (size_t)index; /* XXX: constant time? */
 
   alignas(32) Elem x; memset(x, 0, sizeof(x));
   alignas(32) Elem y; memset(y, 0, sizeof(y));
   alignas(32) Elem z; memset(z, 0, sizeof(z));
 
   for (size_t i = 0; i < 16; ++i) {
-    Limb mask = constant_time_eq_size_t(index_as_size_t, i + 1);
+    Limb mask = constant_time_eq_s(index_s, i + 1);
     for (size_t j = 0; j < P256_LIMBS; ++j) {
       x[j] |= table[i].X[j] & mask;
       y[j] |= table[i].Y[j] & mask;
@@ -110,13 +110,13 @@ void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
 void GFp_nistz256_select_w7(P256_POINT_AFFINE *out,
                             const P256_POINT_AFFINE table[64], int index) {
   assert(index >= 0);
-  size_t index_as_size_t = (size_t)index; /* XXX: constant time? */
+  size_t index_as_s = (size_t)index; /* XXX: constant time? */
 
   alignas(32) Elem x; memset(x, 0, sizeof(x));
   alignas(32) Elem y; memset(y, 0, sizeof(y));
 
   for (size_t i = 0; i < 64; ++i) {
-    Limb mask = constant_time_eq_size_t(index_as_size_t, i + 1);
+    Limb mask = constant_time_eq_s(index_as_s, i + 1);
     for (size_t j = 0; j < P256_LIMBS; ++j) {
       x[j] |= table[i].X[j] & mask;
       y[j] |= table[i].Y[j] & mask;
