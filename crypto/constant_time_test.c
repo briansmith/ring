@@ -190,7 +190,8 @@ int bssl_constant_time_test_main(void) {
        i < sizeof(size_t_test_values) / sizeof(size_t_test_values[0]); ++i) {
     size_t a = size_t_test_values[i];
     num_failed += test_is_zero_size_t(a);
-    for (size_t j = 0; j < sizeof(test_values) / sizeof(int); ++j) {
+    for (size_t j = 0;
+         j < sizeof(size_t_test_values) / sizeof(size_t_test_values[0]); ++j) {
       size_t b = size_t_test_values[j];
       num_failed += test_binary_op_size_t(
           &constant_time_eq_size_t, "constant_time_eq_size_t", a, b, a == b);
@@ -204,7 +205,7 @@ int bssl_constant_time_test_main(void) {
        i < sizeof(signed_test_values) / sizeof(signed_test_values[0]); ++i) {
     int a = signed_test_values[i];
     for (size_t j = 0;
-         j < sizeof(signed_test_values) / sizeof(signed_test_values); ++j) {
+         j < sizeof(signed_test_values) / sizeof(signed_test_values[0]); ++j) {
       int b = signed_test_values[j];
       num_failed += test_eq_int(a, b);
     }
