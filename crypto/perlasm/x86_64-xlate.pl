@@ -1134,7 +1134,7 @@ ___
 OPTION	DOTNAME
 ___
 }
-print STDOUT "#if defined(__x86_64__)\n" if ($gas);
+print STDOUT "#if defined(__x86_64__) && !defined(OPENSSL_NO_ASM)\n" if ($gas);
 
 while(defined(my $line=<>)) {
 
