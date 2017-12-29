@@ -184,12 +184,6 @@ typedef __uint128_t uint128_t;
  * for false. This is useful for choosing a value based on the result of a
  * conditional in constant time. */
 
-/* constant_time_msb returns the given value with the MSB copied to all the
- * other bits. */
-static inline unsigned int constant_time_msb_unsigned(unsigned int a) {
-  return (unsigned int)((int)(a) >> (sizeof(int) * 8 - 1));
-}
-
 OPENSSL_COMPILE_ASSERT(sizeof(ptrdiff_t) == sizeof(size_t),
                        ptrdiff_t_and_size_t_are_different_sizes);
 
@@ -197,6 +191,17 @@ static inline size_t constant_time_msb_s(size_t a) {
   return (size_t)((ptrdiff_t)(a) >> (sizeof(ptrdiff_t) * 8 - 1));
 }
 
+/* constant_time_msb returns the given value with the MSB copied to all the
+ * other bits. */
+static inline unsigned int constant_time_msb_unsigned(unsigned int a) {
+  return (unsigned int)((int)(a) >> (sizeof(int) * 8 - 1));
+}
+
+/* constant_time_is_zero_s is like |constant_time_is_zero_unsigned| but
+ * operates on |size_t|. */
+static inline size_t constant_time_is_zero_s(size_t a) {
+  return constant_time_msb_s(~a & (a - 1));
+}
 
 /* constant_time_is_zero returns 0xff..f if a == 0 and 0 otherwise. */
 static inline unsigned int constant_time_is_zero_unsigned(unsigned int a) {
@@ -215,25 +220,19 @@ static inline unsigned int constant_time_is_zero_unsigned(unsigned int a) {
   return constant_time_msb_unsigned(~a & (a - 1));
 }
 
-/* constant_time_is_zero_s is like |constant_time_is_zero_unsigned| but
- * operates on |size_t|. */
-static inline size_t constant_time_is_zero_s(size_t a) {
-  return constant_time_msb_s(~a & (a - 1));
-}
-
 static inline size_t constant_time_is_nonzero_s(size_t a) {
   return constant_time_is_zero_s(constant_time_is_zero_s(a));
-}
-
-/* constant_time_eq_int returns 0xff..f if a == b and 0 otherwise. */
-static inline unsigned int constant_time_eq_int(int a, int b) {
-  return constant_time_is_zero_unsigned((unsigned)(a) ^ (unsigned)(b));
 }
 
 /* constant_time_eq_s acts like |constant_time_eq_int| but operates on
  * |size_t|. */
 static inline size_t constant_time_eq_s(size_t a, size_t b) {
   return constant_time_is_zero_s(a ^ b);
+}
+
+/* constant_time_eq_int returns 0xff..f if a == b and 0 otherwise. */
+static inline unsigned int constant_time_eq_int(int a, int b) {
+  return constant_time_is_zero_unsigned((unsigned)(a) ^ (unsigned)(b));
 }
 
 /* constant_time_select_s returns (mask & a) | (~mask & b). When |mask| is
