@@ -224,7 +224,7 @@ static inline size_t constant_time_is_zero_s(size_t a) {
 }
 
 static inline size_t constant_time_is_nonzero_s(size_t a) {
-  return constant_time_is_zero_s(constant_time_is_zero_s(a));
+  return ~constant_time_is_zero_s(a);
 }
 
 /* constant_time_is_zero_8 acts like |constant_time_is_zero_s| but returns an
