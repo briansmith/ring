@@ -182,28 +182,27 @@ typedef __uint128_t uint128_t;
  *
  * The following methods return a bitmask of all ones (0xff...f) for true and 0
  * for false. This is useful for choosing a value based on the result of a
- * conditional in constant time. */
+ * conditional in constant time. For example,
+ *
+ * if (a < b) {
+ *   c = a;
+ * } else {
+ *   c = b;
+ * }
+ *
+ * can be written as
+ *
+ * size_t lt = constant_time_lt_s(a, b);
+ * c = constant_time_select_s(lt, a, b); */
 
 #define CONSTTIME_TRUE_S ~((size_t)0)
 #define CONSTTIME_FALSE_S ((size_t)0)
-#define CONSTTIME_TRUE ~0u
-#define CONSTTIME_FALSE 0u
 #define CONSTTIME_TRUE_8 ((uint8_t)0xff)
 #define CONSTTIME_FALSE_8 ((uint8_t)0)
-
-
-OPENSSL_COMPILE_ASSERT(sizeof(ptrdiff_t) == sizeof(size_t),
-                       ptrdiff_t_and_size_t_are_different_sizes);
 
 /* constant_time_msb_s returns the given value with the MSB copied to all the
  * other bits. */
 static inline size_t constant_time_msb_s(size_t a) {
-  return 0u - (a >> (sizeof(a) * 8 - 1));
-}
-
-/* constant_time_msb returns the given value with the MSB copied to all the
- * other bits. */
-static inline unsigned int constant_time_msb(unsigned int a) {
   return 0u - (a >> (sizeof(a) * 8 - 1));
 }
 
