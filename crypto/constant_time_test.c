@@ -166,17 +166,46 @@ static int test_eq_int(int a, int b) {
   return 0;
 }
 
-static unsigned int test_values[] = {0, 1, 1024, 12345, 32000, UINT_MAX / 2 - 1,
-                                     UINT_MAX / 2, UINT_MAX / 2 + 1,
-                                     UINT_MAX - 1, UINT_MAX};
+static unsigned int test_values[] = {
+  0,
+  1,
+  1024,
+  12345,
+  32000,
+  UINT_MAX / 2 - 1,
+  UINT_MAX / 2,
+  UINT_MAX / 2 + 1,
+  UINT_MAX - 1, UINT_MAX
+};
 
 static size_t size_t_test_values[] = {
-    0, 1, 1024, 12345, 32000, SIZE_MAX / 2 - 1, SIZE_MAX / 2, SIZE_MAX / 2 + 1,
-    SIZE_MAX - 1, SIZE_MAX};
+  0,
+  1,
+  1024,
+  12345,
+  32000,
+  SIZE_MAX / 2 - 1,
+  SIZE_MAX / 2,
+  SIZE_MAX / 2 + 1,
+  SIZE_MAX - 1,
+  SIZE_MAX
+};
 
 static int signed_test_values[] = {
-    0,     1,      -1,      1024,    -1024,       12345,      -12345,
-    32000, -32000, INT_MAX, INT_MIN, INT_MAX - 1, INT_MIN + 1};
+  0,
+  1,
+  -1,
+  1024,
+  -1024,
+  12345,
+  -12345,
+  32000,
+  -32000,
+  INT_MAX,
+  INT_MIN,
+  INT_MAX - 1,
+  INT_MIN + 1
+};
 
 int bssl_constant_time_test_main(void) {
   int num_failed = 0;
