@@ -1015,22 +1015,27 @@ static int ec_GFp_nistp224_point_get_affine_coordinates(const EC_GROUP *group,
   p224_felem_inv(z2, z1);
   p224_felem_square(tmp, z2);
   p224_felem_reduce(z1, tmp);
-  p224_felem_mul(tmp, x_in, z1);
-  p224_felem_reduce(x_in, tmp);
-  p224_felem_contract(x_out, x_in);
-  if (x != NULL && !p224_felem_to_BN(x, x_out)) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-    return 0;
+
+  if (x != NULL) {
+    p224_felem_mul(tmp, x_in, z1);
+    p224_felem_reduce(x_in, tmp);
+    p224_felem_contract(x_out, x_in);
+    if (!p224_felem_to_BN(x, x_out)) {
+      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
+      return 0;
+    }
   }
 
-  p224_felem_mul(tmp, z1, z2);
-  p224_felem_reduce(z1, tmp);
-  p224_felem_mul(tmp, y_in, z1);
-  p224_felem_reduce(y_in, tmp);
-  p224_felem_contract(y_out, y_in);
-  if (y != NULL && !p224_felem_to_BN(y, y_out)) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-    return 0;
+  if (y != NULL) {
+    p224_felem_mul(tmp, z1, z2);
+    p224_felem_reduce(z1, tmp);
+    p224_felem_mul(tmp, y_in, z1);
+    p224_felem_reduce(y_in, tmp);
+    p224_felem_contract(y_out, y_in);
+    if (!p224_felem_to_BN(y, y_out)) {
+      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
+      return 0;
+    }
   }
 
   return 1;

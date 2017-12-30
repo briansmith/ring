@@ -1645,9 +1645,13 @@ static int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
   fe_inv(z2, z1);
   fe_sqr(z1, z2);
 
+  // Instead of using |fe_from_montgomery| to convert the |x| coordinate and
+  // then calling |fe_from_montgomery| again to convert the |y| coordinate
+  // below, convert the common factor |z1| once now, saving one reduction.
+  fe_from_montgomery(z1);
+
   if (x_out != NULL) {
     fe_mul(x, x, z1);
-    fe_from_montgomery(x);
     if (!fe_to_BN(x_out, x)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
       return 0;
@@ -1657,7 +1661,6 @@ static int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
   if (y_out != NULL) {
     fe_mul(z1, z1, z2);
     fe_mul(y, y, z1);
-    fe_from_montgomery(y);
     if (!fe_to_BN(y_out, y)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
       return 0;
