@@ -2581,6 +2581,7 @@ struct SSLConnection {
   uint32_t options;  // protocol behaviour
   uint32_t mode;     // API behaviour
   uint32_t max_cert_list;
+  uint16_t dummy_pq_padding_len;
   char *tlsext_hostname;
   size_t supported_group_list_len;
   uint16_t *supported_group_list;  // our list

@@ -194,6 +194,7 @@ const Flag<int> kIntFlags[] = {
   { "-read-size", &TestConfig::read_size },
   { "-expect-ticket-age-skew", &TestConfig::expect_ticket_age_skew },
   { "-tls13-variant", &TestConfig::tls13_variant },
+  { "-dummy-pq-padding-len", &TestConfig::dummy_pq_padding_len },
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {

@@ -2385,6 +2385,15 @@ void SSL_CTX_set_psk_server_callback(
   ctx->psk_server_callback = cb;
 }
 
+int SSL_set_dummy_pq_padding_size(SSL *ssl, size_t num_bytes) {
+  if (num_bytes > 0xffff) {
+    return 0;
+  }
+
+  ssl->dummy_pq_padding_len = num_bytes;
+  return 1;
+}
+
 void SSL_CTX_set_msg_callback(SSL_CTX *ctx,
                               void (*cb)(int write_p, int version,
                                          int content_type, const void *buf,

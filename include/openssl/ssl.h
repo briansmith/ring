@@ -2909,6 +2909,21 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity_hint(const SSL *ssl);
 OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *ssl);
 
 
+// Dummy post-quantum padding.
+//
+// Dummy post-quantum padding invovles the client (and later server) sending
+// useless, random-looking bytes in an extension in their ClientHello or
+// ServerHello. These extensions are sized to simulate a post-quantum
+// key-exchange and so enable measurement of the latency impact of the
+// additional bandwidth.
+
+// SSL_set_dummy_pq_padding_size enables the sending of a dummy PQ padding
+// extension and configures its size. This is only effective for a client: a
+// server will echo an extension with one of equal length when we get to that
+// phase of the experiment. It returns one for success and zero otherwise.
+OPENSSL_EXPORT int SSL_set_dummy_pq_padding_size(SSL *ssl, size_t num_bytes);
+
+
 // Early data.
 //
 // WARNING: 0-RTT support in BoringSSL is currently experimental and not fully

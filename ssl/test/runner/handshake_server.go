@@ -345,6 +345,10 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
+	if expected := hs.clientHello.dummyPQPaddingLen; expected != config.Bugs.ExpectDummyPQPaddingLength {
+		return fmt.Errorf("tls: expected dummy PQ padding extension of length %d, but got one of length %d", expected, config.Bugs.ExpectDummyPQPaddingLength)
+	}
+
 	applyBugsToClientHello(hs.clientHello, config)
 
 	return nil

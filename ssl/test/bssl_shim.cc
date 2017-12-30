@@ -2054,6 +2054,10 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   if (config->max_send_fragment > 0) {
     SSL_set_max_send_fragment(ssl.get(), config->max_send_fragment);
   }
+  if (config->dummy_pq_padding_len > 0 &&
+      !SSL_set_dummy_pq_padding_size(ssl.get(), config->dummy_pq_padding_len)) {
+    return false;
+  }
 
   int sock = Connect(config->port);
   if (sock == -1) {

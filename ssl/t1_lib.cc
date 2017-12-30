@@ -116,6 +116,7 @@
 #include <utility>
 
 #include <openssl/bytestring.h>
+#include <openssl/chacha.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -556,6 +557,11 @@ static bool dont_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 static bool ignore_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                     CBS *contents) {
   // This extension from the client is handled elsewhere.
+  return true;
+}
+
+static bool ignore_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
+                                     CBS *contents) {
   return true;
 }
 
@@ -2318,6 +2324,42 @@ static bool ext_cookie_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 }
 
 
+// Dummy PQ Padding extension
+//
+// Dummy post-quantum padding invovles the client (and later server) sending
+// useless, random-looking bytes in an extension in their ClientHello or
+// ServerHello. These extensions are sized to simulate a post-quantum
+// key-exchange and so enable measurement of the latency impact of the
+// additional bandwidth.
+
+static bool ext_dummy_pq_padding_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
+  const size_t len = hs->ssl->dummy_pq_padding_len;
+  if (len == 0) {
+    return true;
+  }
+
+  CBB contents;
+  uint8_t *buffer;
+  if (!CBB_add_u16(out, TLSEXT_TYPE_dummy_pq_padding) ||
+      !CBB_add_u16_length_prefixed(out, &contents) ||
+      !CBB_add_space(&contents, &buffer, len)) {
+    return false;
+  }
+
+  // The length is used as the nonce so that different length extensions have
+  // different contents. There's no reason this has to be the case, it just
+  // makes things a little more obvious in a packet dump.
+  uint8_t nonce[12] = {0};
+  memcpy(nonce, &len, sizeof(len));
+
+  memset(buffer, 0, len);
+  static const uint8_t kZeroKey[32] = {0};
+  CRYPTO_chacha_20(buffer, buffer, len, kZeroKey, nonce, 0);
+
+  return CBB_flush(out);
+}
+
+
 // Negotiated Groups
 //
 // https://tools.ietf.org/html/rfc4492#section-5.1.2
@@ -2544,6 +2586,14 @@ static const struct tls_extension kExtensions[] = {
     NULL,
     ext_cookie_add_clienthello,
     forbid_parse_serverhello,
+    ignore_parse_clienthello,
+    dont_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_dummy_pq_padding,
+    NULL,
+    ext_dummy_pq_padding_add_clienthello,
+    ignore_parse_serverhello,
     ignore_parse_clienthello,
     dont_add_serverhello,
   },
