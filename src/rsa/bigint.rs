@@ -676,6 +676,24 @@ pub fn elem_exp_consttime<M>(
     Ok(r)
 }
 
+/// Uses Fermat's Little Theorem to calculate modular inverse in constant time.
+#[cfg(feature = "rsa_signing")]
+pub fn elem_inverse_consttime<M>(
+        a: Elem<M, R>,
+        m: &Modulus<M>,
+        oneR: &One<M, R>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
+    // Set exponent to m-2.
+    let exponent = {
+        let e:   Elem<M> = Elem::zero()?;
+        let one: Elem<M> = Elem::one()?;
+        // elem_sub() is constant-time iff the number of limbs in `b` is constant.
+        let e = elem_sub(e, &one, m)?;
+        let e = elem_sub(e, &one, m)?;
+        e.value.into_odd_positive()?
+    };
+    elem_exp_consttime(a, &exponent, oneR, m)
+}
+
 #[cfg(feature = "rsa_signing")]
 pub fn elem_randomize<E>(a: &mut Elem<super::N, E>, m: &Modulus<super::N>,
                          rng: &rand::SecureRandom)

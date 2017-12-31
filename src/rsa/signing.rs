@@ -251,13 +251,22 @@ impl RSAKeyPair {
                 let n = n.into_modulus::<N>()?;
                 let oneRR_mod_n = bigint::One::newRR(&n)?;
 
+                // Swap p and q if p < q. If swapped, qInv is recalculated below,
+                // after `p` becomes a PrivatePrime object and `p.oneR` is
+                // calculated.
+                let (p, q, dP, dQ, pq_swapped) = match q.verify_less_than(&p) {
+                    Ok(_)  => (p, q, dP, dQ, false),
+                    Err(_) => (q, p, dQ, dP, true),
+                };
+
                 let q_mod_n_decoded = q.try_clone()?.into_elem(&n)?;
 
                 // Step 5.i
                 //
-                // XXX: |p < q| is actually OK, it seems, but our implementation
-                // of CRT-based moduluar exponentiation used requires that
-                // |q > p|. (|p == q| is just wrong.)
+                // We can take |p > q| as an invariant as it would already have
+                // been swapped above if |p < q|. Our implementation of CRT-based
+                // moduluar exponentiation used requires that |p > q|.
+                // (|p == q| is just wrong.)
                 //
                 // Also, because we just check the bit length of p - q, we
                 // accept if the difference is exactly 2**(n_bits/2 - 100), even
@@ -266,7 +275,6 @@ impl RSAKeyPair {
                 // this simplification.
                 //
                 // 3.b is unneeded since `n_bits` is derived here from `n`.
-                q.verify_less_than(&p)?;
                 {
                     let p_mod_n = {
                         let p = p.try_clone()?;
@@ -333,8 +341,15 @@ impl RSAKeyPair {
 
                 // Step 7.b is done out-of-order below.
 
-                // Step 7.c.
-                let qInv = qInv.into_elem(&p.modulus)?;
+                let q_mod_p = q.try_clone()?.into_elem(&p.modulus)?;
+                let qInv = if pq_swapped {
+                    // Calculate a new qInv using Fermat's Little Theorem.
+                    let q_mod_p = bigint::elem_mul(p.oneRR.as_ref(), q_mod_p.try_clone()?, &p.modulus)?;
+                    bigint::elem_inverse_consttime(q_mod_p, &p.modulus, &p.oneR)?
+                } else {
+                    // Step 7.c.
+                    qInv.into_elem(&p.modulus)?
+                };
 
                 // Steps 7.d and 7.e are omitted per the documentation above,
                 // and because we don't (in the long term) have a good way to
@@ -343,7 +358,6 @@ impl RSAKeyPair {
                 // Step 7.f.
                 let qInv =
                     bigint::elem_mul(p.oneRR.as_ref(), qInv, &p.modulus)?;
-                let q_mod_p = q.try_clone()?.into_elem(&p.modulus)?;
                 let qInv_times_q_mod_p =
                     bigint::elem_mul(&qInv, q_mod_p, &p.modulus)?;
                 if !qInv_times_q_mod_p.is_one() {
