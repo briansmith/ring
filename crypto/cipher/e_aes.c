@@ -303,7 +303,6 @@ int GFp_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out, size_t in_out_len,
                      const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
                      const uint8_t *ad, size_t ad_len) {
   assert(in_out != NULL || in_out_len == 0);
-  assert(aead_check_in_len(in_out_len));
   assert(ad != NULL || ad_len == 0);
 
   GCM128_CONTEXT gcm;
@@ -327,7 +326,6 @@ int GFp_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t in_out_len,
                      const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
                      const uint8_t *in, const uint8_t *ad, size_t ad_len) {
   assert(out != NULL || in_out_len == 0);
-  assert(aead_check_in_len(in_out_len));
   assert(aead_check_alias(in, in_out_len, out));
   assert(in != NULL || in_out_len == 0);
   assert(ad != NULL || ad_len == 0);
