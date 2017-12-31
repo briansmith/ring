@@ -136,11 +136,11 @@
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
 //! let v_key = hmac::VerificationKey::new(&digest::SHA384, key_value.as_ref());
-//! let mut msg = Vec::<u8>::new();
+//! let mut v_ctx = hmac::VerifyingContext::with_key(&v_key);
 //! for part in &parts {
-//!     msg.extend(part.as_bytes());
+//!     v_ctx.update(part.as_bytes());
 //! }
-//! hmac::verify(&v_key, &msg.as_ref(), signature.as_ref())?;
+//! v_ctx.verify(signature.as_ref())?;
 //! #
 //! # Ok(())
 //! # }
@@ -379,6 +379,44 @@ pub fn verify_with_own_key(key: &SigningKey, data: &[u8], signature: &[u8])
                            -> Result<(), error::Unspecified> {
     constant_time::verify_slices_are_equal(sign(key, data).as_ref(), signature)
 }
+
+/// A context for multi-step (Init-Update-Finish) HMAC verifying.
+///
+/// Use `verify` for single-step HMAC verifying.
+///
+/// C analog: `HMAC_CTX`.
+#[derive(Clone)]
+pub struct VerifyingContext {
+    wrapped: SigningContext,
+}
+
+impl VerifyingContext {
+    /// Constructs a new HMAC verifying context using the given digest algorithm
+    /// and key.
+    ///
+    /// C analog: `HMAC_CTX_init`
+    pub fn with_key(key: &VerificationKey) -> VerifyingContext {
+        VerifyingContext { wrapped: SigningContext::with_key(&(key.wrapped)) }
+    }
+
+    /// Updates the HMAC with all the data in `data`. `update` may be called
+    /// zero or more times until `finish` is called.
+    ///
+    /// C analog: `HMAC_Update`
+    pub fn update(&mut self, data: &[u8]) { self.wrapped.update(data); }
+
+    /// Finalizes the HMAC calculation and verifies whether the resultant value equals `signature`,
+    /// in one stp.
+    /// The verification will be done in constant time to prevent timing attacks.
+    ///
+    /// `verfify` consumes the context so it cannot be (mis-)used after `verfify` has been called.
+    ///
+    /// C analog: `HMAC_Final` + `CRYPTO_memcmp`
+    pub fn verify(self, signature: &[u8]) -> Result<(), error::Unspecified> {
+        constant_time::verify_slices_are_equal(self.wrapped.sign().as_ref(), signature)
+    }
+}
+
 
 /// Returns the recommended key length for HMAC using the given digest
 /// algorithm.
