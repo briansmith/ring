@@ -305,8 +305,10 @@ impl Algorithm {
     pub fn nonce_len(&self) -> usize { NONCE_LEN }
 }
 
+derive_debug_from_field!(Algorithm, id);
+
 #[allow(non_camel_case_types)]
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 enum AlgorithmID {
     AES_128_GCM,
     AES_256_GCM,
@@ -337,4 +339,17 @@ fn check_per_nonce_max_bytes(in_out_len: usize)
         return Err(error::Unspecified);
     }
     Ok(())
+}
+
+#[test]
+fn fmt_algorithm() {
+    let test_cases = [
+        (&AES_128_GCM, "AES_128_GCM"),
+        (&AES_256_GCM, "AES_256_GCM"),
+        (&CHACHA20_POLY1305, "CHACHA20_POLY1305"),
+    ];
+
+    for &(algorithm, expected) in test_cases.iter() {
+        assert_eq!(expected, &format!("{:?}", algorithm));
+    }
 }
