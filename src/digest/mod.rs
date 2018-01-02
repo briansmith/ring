@@ -299,7 +299,7 @@ pub struct Algorithm {
     id: AlgorithmID,
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 #[allow(non_camel_case_types)]
 enum AlgorithmID {
     SHA1,
@@ -315,22 +315,7 @@ impl PartialEq for Algorithm {
 
 impl Eq for Algorithm {}
 
-impl core::fmt::Debug for Algorithm {
-    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
-        // This would have to change if/when we add other algorithms with the
-        // same lengths.
-        let (n, suffix) =
-            if self.output_len == SHA512_256_OUTPUT_LEN &&
-               self.block_len == SHA512_BLOCK_LEN {
-            (512, "_256")
-        } else if self.output_len == 20 {
-            (1, "")
-        } else {
-            (self.output_len * 8, "")
-        };
-        write!(fmt, "SHA{}{}", n, suffix)
-    }
-}
+derive_debug_from_field!(Algorithm, id);
 
 /// SHA-1 as specified in [FIPS 180-4]. Deprecated.
 ///

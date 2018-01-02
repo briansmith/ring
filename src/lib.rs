@@ -80,6 +80,9 @@ extern crate test as bench;
 #[macro_use]
 extern crate lazy_static;
 
+#[macro_use]
+mod debug;
+
 // `ring::test` uses the formatting & printing stuff in non-test mode.
 #[macro_use]
 extern crate std;
