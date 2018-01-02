@@ -792,6 +792,9 @@ type instructionType int
 const (
 	instrPush instructionType = iota
 	instrMove
+	// instrTransformingMove is essentially a move, but it performs some
+	// transformation of the data during the process.
+	instrTransformingMove
 	instrJump
 	instrConditionalMove
 	instrOther
@@ -817,6 +820,11 @@ func classifyInstruction(instr string, args []*node32) instructionType {
 	case "call", "callq", "jmp", "jo", "jno", "js", "jns", "je", "jz", "jne", "jnz", "jb", "jnae", "jc", "jnb", "jae", "jnc", "jbe", "jna", "ja", "jnbe", "jl", "jnge", "jge", "jnl", "jle", "jng", "jg", "jnle", "jp", "jpe", "jnp", "jpo":
 		if len(args) == 1 {
 			return instrJump
+		}
+
+	case "vpbroadcastq":
+		if len(args) == 2 {
+			return instrTransformingMove
 		}
 	}
 
@@ -867,6 +875,13 @@ func moveTo(w stringWriter, target string, isAVX bool) wrapperFunc {
 			prefix = "v"
 		}
 		w.WriteString("\t" + prefix + "movq %rax, " + target + "\n")
+	}
+}
+
+func finalTransform(w stringWriter, transformInstruction, reg string) wrapperFunc {
+	return func(k func()) {
+		k()
+		w.WriteString("\t" + transformInstruction + " " + reg + ", " + reg + "\n")
 	}
 }
 
@@ -1018,6 +1033,13 @@ Args:
 				case instrMove:
 					assertNodeType(argNodes[1], ruleRegisterOrConstant)
 					targetReg = d.contents(argNodes[1])
+				case instrTransformingMove:
+					assertNodeType(argNodes[1], ruleRegisterOrConstant)
+					targetReg = d.contents(argNodes[1])
+					wrappers = append(wrappers, finalTransform(d.output, instructionName, targetReg))
+					if isValidLEATarget(targetReg) {
+						return nil, fmt.Errorf("Currently transforming moves are assumed to target XMM registers. Otherwise we'll pop %rax before reading it to do the transform.")
+					}
 				default:
 					return nil, fmt.Errorf("Cannot rewrite GOTPCREL reference for instruction %q", instructionName)
 				}

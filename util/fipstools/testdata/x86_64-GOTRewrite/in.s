@@ -34,4 +34,8 @@ foo:
 	movq foobar_bss_get@GOTPCREL(%rip), %r11
 	movq OPENSSL_ia32cap_get@GOTPCREL(%rip), %r11
 
+	# Transforming moves run the transform in-place after the load.
+	vpbroadcastq stderr@GOTPCREL(%rip), %xmm0
+	vpbroadcastq foo@GOTPCREL(%rip), %xmm0
+
 .comm foobar,64,32
