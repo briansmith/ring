@@ -101,7 +101,7 @@ typedef struct {
   fe_loose T2d;
 } ge_cached;
 
-void x25519_ge_tobytes(uint8_t *s, const ge_p2 *h);
+void x25519_ge_tobytes(uint8_t s[32], const ge_p2 *h);
 int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s);
 void x25519_ge_p3_to_cached(ge_cached *r, const ge_p3 *p);
 void x25519_ge_p1p1_to_p2(ge_p2 *r, const ge_p1p1 *p);
@@ -112,7 +112,7 @@ void x25519_ge_scalarmult_small_precomp(
     ge_p3 *h, const uint8_t a[32], const uint8_t precomp_table[15 * 2 * 32]);
 void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]);
 void x25519_ge_scalarmult(ge_p2 *r, const uint8_t *scalar, const ge_p3 *A);
-void x25519_sc_reduce(uint8_t *s);
+void x25519_sc_reduce(uint8_t s[64]);
 
 enum spake2_state_t {
   spake2_state_init = 0,

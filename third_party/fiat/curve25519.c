@@ -122,7 +122,7 @@ static void fe_frombytes(fe *h, const uint8_t *s) {
 //
 //   Have q+2^(-255)x = 2^(-255)(h + 19 2^(-25) h9 + 2^(-1))
 //   so floor(2^(-255)(h + 19 2^(-25) h9 + 2^(-1))) = q.
-static void fe_tobytes_impl(uint8_t *s, const uint32_t h[10]) {
+static void fe_tobytes_impl(uint8_t s[32], const uint32_t h[10]) {
   assert_fe_loose(h);
   int32_t h0 = h[0];
   int32_t h1 = h[1];
@@ -203,11 +203,11 @@ static void fe_tobytes_impl(uint8_t *s, const uint32_t h[10]) {
   s[31] = h9 >> 18;
 }
 
-static void fe_tobytes(uint8_t *s, const fe *h) {
+static void fe_tobytes(uint8_t s[32], const fe *h) {
   fe_tobytes_impl(s, h->v);
 }
 
-static void fe_loose_tobytes(uint8_t *s, const fe_loose *h) {
+static void fe_loose_tobytes(uint8_t s[32], const fe_loose *h) {
   fe_tobytes_impl(s, h->v);
 }
 
@@ -995,7 +995,7 @@ static void fe_pow22523(fe *out, const fe *z) {
   fe_mul_ttt(out, &t0, z);
 }
 
-void x25519_ge_tobytes(uint8_t *s, const ge_p2 *h) {
+void x25519_ge_tobytes(uint8_t s[32], const ge_p2 *h) {
   fe recip;
   fe x;
   fe y;
@@ -1007,7 +1007,7 @@ void x25519_ge_tobytes(uint8_t *s, const ge_p2 *h) {
   s[31] ^= fe_isnegative(&x) << 7;
 }
 
-static void ge_p3_tobytes(uint8_t *s, const ge_p3 *h) {
+static void ge_p3_tobytes(uint8_t s[32], const ge_p3 *h) {
   fe recip;
   fe x;
   fe y;
@@ -3848,7 +3848,7 @@ static void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
 //   s[0]+256*s[1]+...+256^31*s[31] = s mod l
 //   where l = 2^252 + 27742317777372353535851937790883648493.
 //   Overwrites s in place.
-void x25519_sc_reduce(uint8_t *s) {
+void x25519_sc_reduce(uint8_t s[64]) {
   int64_t s0 = 2097151 & load_3(s);
   int64_t s1 = 2097151 & (load_4(s + 2) >> 5);
   int64_t s2 = 2097151 & (load_3(s + 5) >> 2);
@@ -4676,8 +4676,8 @@ void ED25519_keypair(uint8_t out_public_key[32], uint8_t out_private_key[64]) {
   ED25519_keypair_from_seed(out_public_key, out_private_key, seed);
 }
 
-int ED25519_sign(uint8_t *out_sig, const uint8_t *message, size_t message_len,
-                 const uint8_t private_key[64]) {
+int ED25519_sign(uint8_t out_sig[64], const uint8_t *message,
+                 size_t message_len, const uint8_t private_key[64]) {
   uint8_t az[SHA512_DIGEST_LENGTH];
   SHA512(private_key, 32, az);
 
