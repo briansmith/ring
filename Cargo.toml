@@ -11,9 +11,6 @@ readme = "README.md"
 repository = "https://github.com/briansmith/ring"
 version = "0.13.2"
 
-# Prevent multiple versions of *ring* from being linked into the same program.
-links = "ring-asm"
-
 exclude = [
     # The presence of .gitignore is used to differentiate non-packaged builds
     # from packaged builds in build.rs.
@@ -276,6 +273,7 @@ name = "ring"
 
 [dependencies]
 untrusted = "0.6.2"
+native_versioning = { git = "https://github.com/SergioBenitez/native_versioning" }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = { version = "0.2.34" }
@@ -289,6 +287,10 @@ lazy_static = "1.0"
 # parallelism ourself. This gives us a much higher level of
 # control about what should be parallised in which way
 cc = "1.0.9"
+
+[build-dependencies.native_versioning]
+git = "https://github.com/SergioBenitez/native_versioning"
+features = ["build"]
 
 [features]
 # These features are documented in the top-level module's documentation.

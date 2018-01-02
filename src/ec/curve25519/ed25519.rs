@@ -283,7 +283,7 @@ fn digest_scalar(digest: digest::Digest) -> Scalar {
     scalar
 }
 
-extern  {
+versioned_extern! {
     fn GFp_x25519_sc_mask(a: &mut Scalar);
     fn GFp_x25519_ge_double_scalarmult_vartime(r: &mut Point, a_coeff: &Scalar,
                                                a: &ExtPoint, b_coeff: &Scalar);

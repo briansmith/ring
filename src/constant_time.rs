@@ -32,6 +32,6 @@ pub fn verify_slices_are_equal(a: &[u8], b: &[u8])
     }
 }
 
-extern {
+versioned_extern! {
     fn GFp_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
 }

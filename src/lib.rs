@@ -91,6 +91,9 @@ extern crate std;
 
 extern crate untrusted;
 
+#[macro_use]
+extern crate native_versioning;
+
 mod arithmetic;
 
 #[macro_use]

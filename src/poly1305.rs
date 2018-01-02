@@ -233,7 +233,7 @@ pub struct SigningContext {
     func: Funcs
 }
 
-extern {
+versioned_extern! {
     fn GFp_poly1305_init_asm(state: &mut Opaque, key: &KeyBytes,
                              out_func: &mut Funcs) -> c::int;
     fn GFp_poly1305_blocks(state: &mut Opaque, input: *const u8, len: c::size_t,

@@ -39,7 +39,7 @@ macro_rules! define_metrics_tests {
       $expected_align_factor:expr ) =>
     {
         #[cfg(test)]
-        extern {
+        versioned_extern! {
             // We can't use `size_t` because we need to test that our
             // definition of `size_t` is correct using this code! We use `u16`
             // because even 8-bit and 16-bit microcontrollers have no trouble

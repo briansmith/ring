@@ -75,7 +75,7 @@ pub fn make_counter(nonce: &[u8; NONCE_LEN], counter: u32) -> Counter {
      u32_from_le_u8(slice_as_array_ref!(&nonce[8..12], 4).unwrap())]
 }
 
-extern {
+versioned_extern! {
     fn GFp_ChaCha20_ctr32(out: *mut u8, in_: *const u8, in_len: c::size_t,
                           key: &Key, counter: &Counter);
 }

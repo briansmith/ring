@@ -33,7 +33,7 @@ macro_rules! bssl_test {
         #[test]
         fn $fn_name() {
             use $crate::{c, init};
-            extern {
+            versioned_extern! {
                 fn $bssl_test_main_fn_name() -> c::int;
             }
 

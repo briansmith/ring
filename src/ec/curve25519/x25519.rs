@@ -114,7 +114,7 @@ type SharedSecret = [u8; SHARED_SECRET_LEN];
 const SHARED_SECRET_LEN: usize = ELEM_AND_SCALAR_LEN;
 
 
-extern {
+versioned_extern! {
     fn GFp_x25519_public_from_private(public_key_out: &mut PublicKey,
                                       private_key: &PrivateKey);
     fn GFp_x25519_scalar_mult(out: &mut ops::EncodedPoint, scalar: &ops::Scalar,

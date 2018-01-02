@@ -476,7 +476,7 @@ const SHA512_BLOCK_LEN: usize = 1024 / 8;
 /// The length of the length field for SHA-512-based algorithms, in bytes.
 const SHA512_LEN_LEN: usize = 128 / 8;
 
-extern {
+versioned_extern! {
     fn GFp_sha256_block_data_order(state: &mut State, data: *const u8,
                                    num: c::size_t);
     fn GFp_sha512_block_data_order(state: &mut State, data: *const u8,

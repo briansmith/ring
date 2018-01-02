@@ -97,7 +97,7 @@ const AES_MAX_ROUNDS: usize = 14;
 const GCM128_SERIALIZED_LEN: usize = 16 * 16;
 
 
-extern {
+versioned_extern! {
     fn GFp_aes_gcm_init(ctx_buf: *mut u8, ctx_buf_len: c::size_t,
                         key: *const u8, key_len: c::size_t) -> c::int;
 
@@ -171,7 +171,7 @@ mod tests {
         pub rounds: usize,
     }
 
-    extern "C" {
+    versioned_extern! {
         fn GFp_AES_set_encrypt_key(key: *const u8, bits: usize,
                                    aes_key: *mut AES_KEY) -> c::int;
         fn GFp_AES_encrypt(in_: *const u8, out: *mut u8, key: *const AES_KEY);

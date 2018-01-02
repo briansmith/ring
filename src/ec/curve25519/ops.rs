@@ -150,7 +150,7 @@ fn encode_point(x: Elem<T>, y: Elem<T>, z: Elem<T>) -> EncodedPoint {
     bytes
 }
 
-extern {
+versioned_extern! {
     fn GFp_x25519_fe_invert(out: &mut Elem<T>, z: &Elem<T>);
     fn GFp_x25519_fe_isnegative(elem: &Elem<T>) -> u8;
     fn GFp_x25519_fe_mul_ttt(h: &mut Elem<T>, f: &Elem<T>, g: &Elem<T>);

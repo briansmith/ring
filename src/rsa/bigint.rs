@@ -910,7 +910,8 @@ fn n0_from_u64(n0: u64) -> N0 {
     [n0 as limb::Limb, (n0 >> limb::LIMB_BITS) as limb::Limb]
 }
 
-extern {
+
+versioned_extern! {
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_bn_mul_mont(r: *mut limb::Limb, a: *const limb::Limb,
                        b: *const limb::Limb, n: *const limb::Limb,
@@ -924,7 +925,7 @@ extern {
 }
 
 #[cfg(feature = "rsa_signing")]
-extern {
+versioned_extern! {
     fn GFp_bn_from_montgomery_in_place(r: *mut limb::Limb, num_r: c::size_t,
                                        a: *mut limb::Limb, num_a: c::size_t,
                                        n: *const limb::Limb, num_n: c::size_t,
