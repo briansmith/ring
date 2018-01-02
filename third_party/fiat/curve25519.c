@@ -281,13 +281,6 @@ static void fe_add_impl(uint32_t out[10], const uint32_t in1[10], const uint32_t
 
 // h = f + g
 // Can overlap h with f or g.
-//
-// Preconditions:
-//    |f| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
-//    |g| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
-//
-// Postconditions:
-//    |h| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc.
 static void fe_add(fe_loose *h, const fe *f, const fe *g) {
   assert_fe(f->v);
   assert_fe(g->v);
@@ -331,13 +324,6 @@ static void fe_sub_impl(uint32_t out[10], const uint32_t in1[10], const uint32_t
 
 // h = f - g
 // Can overlap h with f or g.
-//
-// Preconditions:
-//    |f| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
-//    |g| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
-//
-// Postconditions:
-//    |h| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc.
 static void fe_sub(fe_loose *h, const fe *f, const fe *g) {
   assert_fe(f->v);
   assert_fe(g->v);
@@ -766,12 +752,6 @@ static void fe_neg_impl(uint32_t out[10], const uint32_t in2[10]) {
 }
 
 // h = -f
-//
-// Preconditions:
-//    |f| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
-//
-// Postconditions:
-//    |h| bounded by 1.1*2^25,1.1*2^24,1.1*2^25,1.1*2^24,etc.
 static void fe_neg(fe_loose *h, const fe *f) {
   assert_fe(f->v);
   fe_neg_impl(h->v, f->v);
@@ -794,9 +774,6 @@ static void fe_cmov(fe_loose *f, const fe_loose *g, unsigned b) {
 
 // return 0 if f == 0
 // return 1 if f != 0
-//
-// Preconditions:
-//    |f| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc.
 static int fe_isnonzero(const fe_loose *f) {
   uint8_t s[32];
   fe_loose_tobytes(s, f);
@@ -807,9 +784,6 @@ static int fe_isnonzero(const fe_loose *f) {
 
 // return 1 if f is in {1,3,5,...,q-2}
 // return 0 if f is in {0,2,4,...,q-1}
-//
-// Preconditions:
-//    |f| bounded by 1.1*2^26,1.1*2^25,1.1*2^26,1.1*2^25,etc.
 static int fe_isnegative(const fe *f) {
   uint8_t s[32];
   fe_tobytes(s, f);
