@@ -7,7 +7,7 @@ licensed under the MIT license. (See LICENSE file.)
 ## Curve25519
 
 To generate the field arithmetic procedures in `curve25519.c` from a fiat-crypto
-checkout (as of `c47f48268f15e202a28b556845f231b2038cb426`), run
+checkout (as of `693d62c6fd7370bf71b8eb3b9a5825dfd071fcac`), run
 `make src/Specific/solinas32_2e255m19_10limbs/femul.c` (replacing `femul` with
 the desired field operation). The "source" file specifying the finite field and
 referencing the desired implementation strategy is
