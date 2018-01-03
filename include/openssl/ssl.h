@@ -2380,6 +2380,11 @@ OPENSSL_EXPORT int SSL_CTX_load_verify_locations(SSL_CTX *ctx,
 // either |X509_V_OK| or a |X509_V_ERR_*| value.
 OPENSSL_EXPORT long SSL_get_verify_result(const SSL *ssl);
 
+// SSL_alert_from_verify_result returns the SSL alert code, such as
+// |SSL_AD_CERTIFICATE_EXPIRED|, that corresponds to an |X509_V_ERR_*| value.
+// The return value is always an alert, even when |result| is |X509_V_OK|.
+OPENSSL_EXPORT int SSL_alert_from_verify_result(long result);
+
 // SSL_get_ex_data_X509_STORE_CTX_idx returns the ex_data index used to look up
 // the |SSL| associated with an |X509_STORE_CTX| in the verify callback.
 OPENSSL_EXPORT int SSL_get_ex_data_X509_STORE_CTX_idx(void);
