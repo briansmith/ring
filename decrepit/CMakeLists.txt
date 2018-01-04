@@ -44,11 +44,11 @@ add_executable(
   ripemd/ripemd_test.cc
   cfb/cfb_test.cc
 
-  $<TARGET_OBJECTS:gtest_main>
+  $<TARGET_OBJECTS:boringssl_gtest_main>
   $<TARGET_OBJECTS:test_support>
 )
 
-target_link_libraries(decrepit_test crypto decrepit gtest)
+target_link_libraries(decrepit_test crypto decrepit boringssl_gtest)
 if (WIN32)
   target_link_libraries(decrepit_test ws2_32)
 endif()

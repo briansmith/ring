@@ -9,7 +9,7 @@ add_library(
 )
 
 add_library(
-  gtest_main
+  boringssl_gtest_main
 
   OBJECT
 

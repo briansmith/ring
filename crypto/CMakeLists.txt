@@ -267,11 +267,11 @@ add_executable(
   x509v3/v3name_test.cc
 
   $<TARGET_OBJECTS:crypto_test_data>
-  $<TARGET_OBJECTS:gtest_main>
+  $<TARGET_OBJECTS:boringssl_gtest_main>
   $<TARGET_OBJECTS:test_support>
 )
 
-target_link_libraries(crypto_test crypto gtest)
+target_link_libraries(crypto_test crypto boringssl_gtest)
 if (WIN32)
   target_link_libraries(crypto_test ws2_32)
 endif()
