@@ -269,9 +269,9 @@ const MSVC: &'static str = "msvc";
 const MSVC_OBJ_OPT: &'static str = "/Fo";
 const MSVC_OBJ_EXT: &'static str = "obj";
 
-const GENERATED_VERSIONED_HEADER: &str = "generated_versioned.h";
-const GENERATED_YASM_VERSIONED_HEADER: &str = "generated_yasm_versioned.h";
-const GENERATED_VERSIONED_MACRO: &str = "VERSIONED";
+const GENERATED_VERSIONED_HEADER: &str = "gfp_generated_versioned.h";
+const GENERATED_YASM_VERSIONED_HEADER: &str = "gfp_generated_yasm_versioned.h";
+const GENERATED_VERSIONED_MACRO: &str = "GFp_VERSIONED";
 const GENERATED_INCLUDE_DIR: &str = "generated_headers";
 
 fn generated_include_dir() -> PathBuf {
