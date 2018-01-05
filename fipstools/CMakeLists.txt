@@ -14,6 +14,7 @@ if (FIPS)
     cavp_ecdsa2_siggen_test.cc
     cavp_ecdsa2_sigver_test.cc
     cavp_hmac_test.cc
+    cavp_kas_test.cc
     cavp_keywrap_test.cc
     cavp_rsa2_keygen_test.cc
     cavp_rsa2_siggen_test.cc

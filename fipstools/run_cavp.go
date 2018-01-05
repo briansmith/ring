@@ -19,6 +19,7 @@ var (
 	oraclePath = flag.String("oracle-bin", "", "Path to the oracle binary")
 	suiteDir   = flag.String("suite-dir", "", "Base directory containing the CAVP test suite")
 	noFAX      = flag.Bool("no-fax", false, "Skip comparing against FAX files")
+	niap       = flag.Bool("niap", false, "Perform NIAP tests rather than FIPS tests")
 )
 
 // test describes a single request file.
@@ -36,6 +37,8 @@ type test struct {
 
 // nextLineState can be used by FAX next-line function to store state.
 type nextLineState struct {
+	// State used by the KAS test.
+	nextIsIUTHash bool
 }
 
 // testSuite describes a series of tests that are handled by a single oracle
@@ -278,7 +281,42 @@ var keyWrapTests = testSuite{
 	},
 }
 
-var allTestSuites = []*testSuite{
+var kasTests = testSuite{
+	"KAS",
+	"kas",
+	func(s *bufio.Scanner, state *nextLineState) (line string, isWildcard, ok bool) {
+		for {
+			// If the response file will include the IUT hash next,
+			// return a wildcard signal because this cannot be
+			// matched against the FAX file.
+			if state.nextIsIUTHash {
+				state.nextIsIUTHash = false
+				return "", true, true
+			}
+
+			if !s.Scan() {
+				return "", false, false
+			}
+
+			line := s.Text()
+			if strings.HasPrefix(line, "deCAVS = ") || strings.HasPrefix(line, "Z = ") {
+				continue
+			}
+			if strings.HasPrefix(line, "CAVSHashZZ = ") {
+				state.nextIsIUTHash = true
+			}
+			return line, false, true
+		}
+	},
+	[]test{
+		{"KASFunctionTest_ECCEphemeralUnified_NOKC_ZZOnly_init", []string{"function"}, true},
+		{"KASFunctionTest_ECCEphemeralUnified_NOKC_ZZOnly_resp", []string{"function"}, true},
+		{"KASValidityTest_ECCEphemeralUnified_NOKC_ZZOnly_init", []string{"validity"}, false},
+		{"KASValidityTest_ECCEphemeralUnified_NOKC_ZZOnly_resp", []string{"validity"}, false},
+	},
+}
+
+var fipsTestSuites = []*testSuite{
 	&aesGCMTests,
 	&aesTests,
 	&ctrDRBGTests,
@@ -294,6 +332,10 @@ var allTestSuites = []*testSuite{
 	&shaTests,
 	&shaMonteTests,
 	&tdesTests,
+}
+
+var niapTestSuites = []*testSuite{
+	&kasTests,
 }
 
 // testInstance represents a specific test in a testSuite.
@@ -338,7 +380,12 @@ func main() {
 		go worker(&wg, work)
 	}
 
-	for _, suite := range allTestSuites {
+	testSuites := fipsTestSuites
+	if *niap {
+		testSuites = niapTestSuites
+	}
+
+	for _, suite := range testSuites {
 		for i := range suite.tests {
 			work <- testInstance{suite, i}
 		}

@@ -114,10 +114,15 @@ class FileTest {
     bool silent = false;
     // comment_callback is called after each comment in the input is parsed.
     std::function<void(const std::string&)> comment_callback;
+    // is_kas_test is true if a NIST “KAS” test is being parsed. These tests
+    // are inconsistent with the other NIST files to such a degree that they
+    // need their own boolean.
+    bool is_kas_test = false;
   };
 
   explicit FileTest(std::unique_ptr<LineReader> reader,
-                    std::function<void(const std::string &)> comment_callback);
+                    std::function<void(const std::string &)> comment_callback,
+                    bool is_kas_test);
   ~FileTest();
 
   // ReadNext reads the next test from the file. It returns |kReadSuccess| if
@@ -217,6 +222,8 @@ class FileTest {
   std::string current_test_;
 
   bool is_at_new_instruction_block_ = false;
+  bool seen_non_comment_ = false;
+  bool is_kas_test_ = false;
 
   // comment_callback_, if set, is a callback function that is called with the
   // contents of each comment as they are parsed.

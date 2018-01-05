@@ -31,8 +31,10 @@
 
 
 FileTest::FileTest(std::unique_ptr<FileTest::LineReader> reader,
-                   std::function<void(const std::string &)> comment_callback)
+                   std::function<void(const std::string &)> comment_callback,
+                   bool is_kas_test)
     : reader_(std::move(reader)),
+      is_kas_test_(is_kas_test),
       comment_callback_(std::move(comment_callback)) {}
 
 FileTest::~FileTest() {}
@@ -122,9 +124,16 @@ FileTest::ReadResult FileTest::ReadNext() {
         in_instruction_block = false;
         // Delimit instruction block from test with a blank line.
         current_test_ += "\r\n";
+      } else if (is_kas_test_) {
+        // KAS tests have random blank lines scattered around.
+        current_test_ += "\r\n";
       }
     } else if (buf[0] == '#') {
-      if (comment_callback_) {
+      if (is_kas_test_ && seen_non_comment_) {
+        // KAS tests have comments after the initial comment block which need
+        // to be included in the corresponding place in the output.
+        current_test_ += std::string(buf.get());
+      } else if (comment_callback_) {
         comment_callback_(buf.get());
       }
       // Otherwise ignore comments.
@@ -134,6 +143,7 @@ FileTest::ReadResult FileTest::ReadNext() {
       // request files are hopelessly inconsistent.
     } else if (buf[0] == '[') {  // Inside an instruction block.
       is_at_new_instruction_block_ = true;
+      seen_non_comment_ = true;
       if (start_line_ != 0) {
         // Instructions should be separate blocks.
         fprintf(stderr, "Line %u is an instruction in a test case.\n", line_);
@@ -145,12 +155,25 @@ FileTest::ReadResult FileTest::ReadNext() {
       }
 
       // Parse the line as an instruction ("[key = value]" or "[key]").
-      std::string kv = StripSpace(buf.get(), len);
-      if (kv[kv.size() - 1] != ']') {
-        fprintf(stderr, "Line %u, invalid instruction: %s\n", line_,
-                kv.c_str());
-        return kReadError;
+
+      // KAS tests contain invalid syntax.
+      std::string kv = buf.get();
+      const bool is_broken_kas_instruction =
+          is_kas_test_ &&
+          (kv == "[SHA(s) supported (Used for hashing Z): SHA512 \r\n");
+
+      if (!is_broken_kas_instruction) {
+        kv = StripSpace(buf.get(), len);
+        if (kv[kv.size() - 1] != ']') {
+          fprintf(stderr, "Line %u, invalid instruction: '%s'\n", line_,
+                  kv.c_str());
+          return kReadError;
+        }
+      } else {
+        // Just remove the newline for the broken instruction.
+        kv = kv.substr(0, kv.size() - 2);
       }
+
       current_test_ += kv + "\r\n";
       kv = std::string(kv.begin() + 1, kv.end() - 1);
 
@@ -422,7 +445,7 @@ int FileTestMain(const FileTest::Options &opts) {
     return 1;
   }
 
-  FileTest t(std::move(reader), opts.comment_callback);
+  FileTest t(std::move(reader), opts.comment_callback, opts.is_kas_test);
 
   bool failed = false;
   while (true) {
