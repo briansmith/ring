@@ -48,17 +48,18 @@ endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
-  # primarily on our normal Clang one because the MSVC one is mostly
-  # suppressions for an overaggressive -Wall.
-  set(C_CXX_FLAGS "-Wall -Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
+  # primarily on our normal Clang one.
+  set(C_CXX_FLAGS "-Werror -Wformat=2 -Wsign-compare -Wmissing-field-initializers -Wwrite-strings")
   if(MSVC)
-    # clang-cl sets different default warnings than clang.
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-unused-parameter -fmsc-version=1900")
+    # clang-cl sets different default warnings than clang. It also treats -Wall
+    # as -Weverything, to match MSVC. Instead -W3 is the alias for -Wall.
+    # See http://llvm.org/viewvc/llvm-project?view=revision&revision=319116
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -W3 -Wno-unused-parameter -fmsc-version=1900")
     # googletest suppresses warning C4996 via a pragma, but clang-cl does not
     # honor it. Suppress it here to compensate. See https://crbug.com/772117.
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-deprecated-declarations")
   else()
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -ggdb -fvisibility=hidden -fno-common")
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wall -ggdb -fvisibility=hidden -fno-common")
   endif()
 
   if(CLANG)
