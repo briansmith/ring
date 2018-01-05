@@ -342,3 +342,118 @@ fn check_per_nonce_max_bytes(in_out_len: usize)
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use std::iter;
+    use std::vec::Vec;
+
+    use test;
+    use super::*;
+
+    #[test]
+    fn test_aes_128_gcm_truncated_tag_96() {
+        test::from_file("src/aead/aes_gcm_truncated_tag_96.txt", |section, test_case| {
+            match section {
+                "encrypt" => {
+                    let key = test_case.consume_bytes("Key");
+                    let iv = test_case.consume_bytes("Iv");
+                    let pt = test_case.consume_bytes("PlainText");
+                    let aad = test_case.consume_bytes("AAD");
+                    let ct = test_case.consume_bytes("CipherText");
+                    let tag = test_case.consume_bytes("Tag");
+
+                    let key = SealingKey::new(&AES_128_GCM_TRUNCATED_TAG_96, &key)?;
+                    let tag_len = key.algorithm().tag_len();
+                    let mut buf = pt.into_iter().chain(iter::repeat(0).take(tag_len)).collect::<Vec<u8>>();
+                    let size = seal_in_place(&key, &iv, &aad, &mut buf, tag_len)?;
+
+                    assert_eq!(size, ct.len() + tag_len);
+                    assert_eq!(&buf[..ct.len()], ct.as_slice());
+                    assert_eq!(&buf[ct.len()..], &tag[..tag_len]);
+
+                    Ok(())
+                }
+                "decrypt" => {
+                    let key = test_case.consume_bytes("Key");
+                    let iv = test_case.consume_bytes("Iv");
+                    let ct = test_case.consume_bytes("CipherText");
+                    let aad = test_case.consume_bytes("AAD");
+                    let tag = test_case.consume_bytes("Tag");
+                    let pt = if let Some(_) = test_case.consume_optional_string("Fail") {
+                        None
+                    } else {
+                        Some(test_case.consume_bytes("PlainText"))
+                    };
+
+                    let key = OpeningKey::new(&AES_128_GCM_TRUNCATED_TAG_96, &key).unwrap();
+                    let mut cipher_text = ct.into_iter().chain(tag.into_iter().take(key.algorithm().tag_len())).collect::<Vec<u8>>();
+                    let plain_text = open_in_place(&key, &iv, &aad, 0, &mut cipher_text);
+
+                    if let Some(ref pt) = pt {
+                        assert_eq!(plain_text.unwrap(), pt.as_slice());
+                    } else {
+                        assert!(plain_text.is_err());
+                    }
+
+                    Ok(())
+                },
+                _ => panic!("unknown section"),
+            }
+        });
+    }
+
+    #[test]
+    fn test_chacha20_poly1305_truncated_tag_96() {
+        test::from_file("src/aead/chacha_poly_truncated_tag_96.txt", |section, test_case| {
+            match section {
+                "encrypt" => {
+                    let key = test_case.consume_bytes("Key");
+                    let pt = test_case.consume_bytes("PlainText");
+                    let iv = test_case.consume_bytes("Iv");
+                    let fixed = test_case.consume_bytes("Fixed");
+                    let aad = test_case.consume_bytes("AAD");
+                    let ct = test_case.consume_bytes("CipherText");
+
+                    let key = SealingKey::new(&CHACHA_POLY1305_TRUNCATED_TAG_96, &key).unwrap();
+                    let tag_len = key.algorithm().tag_len();
+                    let nonce = fixed.into_iter().chain(iv.into_iter()).collect::<Vec<u8>>();
+                    let mut buf = pt.iter().cloned().chain(iter::repeat(0).take(tag_len)).collect::<Vec<u8>>();
+                    let size = seal_in_place(&key, &nonce, &aad, &mut buf, tag_len).unwrap();
+
+                    assert_eq!(ct.len() - pt.len(), tag_len);
+                    assert_eq!(size - pt.len(), tag_len);
+                    assert_eq!(buf, ct);
+
+                    Ok(())
+                },
+                "decrypt" => {
+                    let key = test_case.consume_bytes("Key");
+                    let iv = test_case.consume_bytes("Iv");
+                    let fixed = test_case.consume_bytes("Fixed");
+                    let aad = test_case.consume_bytes("AAD");
+                    let ct = test_case.consume_bytes("CipherText");
+                    let pt = if let Some(_) = test_case.consume_optional_string("Fail") {
+                        None
+                    } else {
+                        Some(test_case.consume_bytes("PlainText"))
+                    };
+
+                    let nonce = fixed.into_iter().chain(iv.into_iter()).collect::<Vec<u8>>();
+                    let key = OpeningKey::new(&CHACHA_POLY1305_TRUNCATED_TAG_96, &key).unwrap();
+                    let mut cipher_text = ct;
+                    let plain_text = open_in_place(&key, &nonce, &aad, 0, &mut cipher_text);
+
+                    if let Some(ref pt) = pt {
+                        assert_eq!(plain_text.unwrap(), pt.as_slice());
+                    } else {
+                        assert!(plain_text.is_err());
+                    }
+
+                    Ok(())
+                },
+                _ => panic!("unknown section"),
+            }
+        });
+    }
+}
