@@ -32,8 +32,8 @@ mod aes_gcm;
 
 use {constant_time, error, init, poly1305, polyfill};
 
-pub use self::chacha20_poly1305::CHACHA20_POLY1305;
-pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
+pub use self::chacha20_poly1305::{CHACHA20_POLY1305, CHACHA_POLY1305_TRUNCATED_TAG_96};
+pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM, AES_128_GCM_TRUNCATED_TAG_96};
 
 /// A key for authenticating and decrypting (“opening”) AEAD-protected data.
 ///
@@ -42,7 +42,6 @@ pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
 /// Go analog: [`crypto.cipher.AEAD`]
 pub struct OpeningKey {
     key: Key,
-    auth_tag_len: usize,
 }
 
 impl OpeningKey {
@@ -59,33 +58,8 @@ impl OpeningKey {
     #[inline]
     pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
                -> Result<OpeningKey, error::Unspecified> {
-        Self::with_auth_tag_len(algorithm, key_bytes, 0)
-    }
-
-    /// Create a new opening key with authentication tag length.
-    ///
-    /// `key_bytes` must be exactly `algorithm.key_len` bytes long.
-    /// `auth_tag_len` may be truncated by passing a tag length.
-    /// A tag length of zero indicates the default tag length should be used.
-    ///
-    /// C analogs: `EVP_AEAD_CTX_init_with_direction` with direction
-    ///            `evp_aead_open`, `EVP_AEAD_CTX_init`.
-    ///
-    /// Go analog:
-    ///   [`crypto.aes.NewCipher`](https://golang.org/pkg/crypto/aes/#NewCipher)
-    /// + [`crypto.cipher.NewGCM`](https://golang.org/pkg/crypto/cipher/#NewGCM)
-    #[inline]
-    pub fn with_auth_tag_len(algorithm: &'static Algorithm, key_bytes: &[u8], auth_tag_len: usize)
-               -> Result<OpeningKey, error::Unspecified> {
         Ok(OpeningKey {
             key: Key::new(algorithm, key_bytes)?,
-            auth_tag_len: match auth_tag_len {
-                0 => TAG_LEN,
-                n if n > TAG_LEN => {
-                    return Err(error::Unspecified);
-                },
-                n => n,
-            },
         })
     }
 
@@ -152,8 +126,9 @@ pub fn open_in_place<'a>(key: &OpeningKey, nonce: &[u8], ad: &[u8],
     let ciphertext_and_tag_len =
         ciphertext_and_tag_modified_in_place.len()
                 .checked_sub(in_prefix_len).ok_or(error::Unspecified)?;
+    let auth_tag_len = key.algorithm().tag_len();
     let ciphertext_len =
-        ciphertext_and_tag_len.checked_sub(key.auth_tag_len).ok_or(error::Unspecified)?;
+        ciphertext_and_tag_len.checked_sub(auth_tag_len).ok_or(error::Unspecified)?;
     check_per_nonce_max_bytes(ciphertext_len)?;
     let (in_out, received_tag) =
         ciphertext_and_tag_modified_in_place
@@ -161,7 +136,7 @@ pub fn open_in_place<'a>(key: &OpeningKey, nonce: &[u8], ad: &[u8],
     let mut calculated_tag = [0u8; TAG_LEN];
     (key.key.algorithm.open)(&key.key.ctx_buf, nonce, &ad, in_prefix_len,
                              in_out, &mut calculated_tag)?;
-    if constant_time::verify_slices_are_equal(&calculated_tag[..key.auth_tag_len], received_tag)
+    if constant_time::verify_slices_are_equal(&calculated_tag[..auth_tag_len], received_tag)
             .is_err() {
         // Zero out the plaintext so that it isn't accidentally leaked or used
         // after verification fails. It would be safest if we could check the
@@ -183,7 +158,6 @@ pub fn open_in_place<'a>(key: &OpeningKey, nonce: &[u8], ad: &[u8],
 /// Go analog: [`AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub struct SealingKey {
     key: Key,
-    auth_tag_len: usize,
 }
 
 impl SealingKey {
@@ -196,27 +170,8 @@ impl SealingKey {
     #[inline]
     pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
                -> Result<SealingKey, error::Unspecified> {
-        Self::with_auth_tag_len(algorithm, key_bytes, 0)
-    }
-
-    /// C analogs: `EVP_AEAD_CTX_init_with_direction` with direction
-    ///            `evp_aead_seal`, `EVP_AEAD_CTX_init`.
-    ///
-    /// Go analog:
-    ///   [`crypto.aes.NewCipher`](https://golang.org/pkg/crypto/aes/#NewCipher)
-    /// + [`crypto.cipher.NewGCM`](https://golang.org/pkg/crypto/cipher/#NewGCM)
-    #[inline]
-    pub fn with_auth_tag_len(algorithm: &'static Algorithm, key_bytes: &[u8], auth_tag_len: usize)
-               -> Result<SealingKey, error::Unspecified> {
         Ok(SealingKey {
             key: Key::new(algorithm, key_bytes)?,
-            auth_tag_len: match auth_tag_len {
-                0 => TAG_LEN,
-                n if n > TAG_LEN => {
-                    return Err(error::Unspecified);
-                },
-                n => n,
-            },
         })
     }
 
@@ -259,9 +214,11 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], ad: &[u8],
         in_out.len().checked_sub(out_suffix_capacity).ok_or(error::Unspecified)?;
     check_per_nonce_max_bytes(in_out_len)?;
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
-    let tag_out = slice_as_array_ref_mut!(tag_out, TAG_LEN)?;
-    (key.key.algorithm.seal)(&key.key.ctx_buf, nonce, ad, in_out, tag_out)?;
-    Ok(in_out_len + key.auth_tag_len)
+    let mut calculated_tag = [0u8; TAG_LEN];
+    (key.key.algorithm.seal)(&key.key.ctx_buf, nonce, ad, in_out, &mut calculated_tag)?;
+    let auth_tag_len = key.algorithm().tag_len();
+    tag_out.copy_from_slice(&calculated_tag[..auth_tag_len]);
+    Ok(in_out_len + auth_tag_len)
 }
 
 /// `OpeningKey` and `SealingKey` are type-safety wrappers around `Key`, which
@@ -320,6 +277,7 @@ pub struct Algorithm {
              tag_out: &mut [u8; TAG_LEN]) -> Result<(), error::Unspecified>,
 
     key_len: usize,
+    tag_len: usize,
     id: AlgorithmID,
 }
 
@@ -339,7 +297,7 @@ impl Algorithm {
     /// Go analog:
     ///   [`crypto.cipher.AEAD.Overhead`](https://golang.org/pkg/crypto/cipher/#AEAD)
     #[inline(always)]
-    pub fn tag_len(&self) -> usize { TAG_LEN }
+    pub fn tag_len(&self) -> usize { self.tag_len }
 
     /// The length of the nonces.
     ///

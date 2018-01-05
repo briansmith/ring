@@ -14,13 +14,31 @@
 
 use {aead, chacha, error, poly1305, polyfill};
 
+const CHACHA20_TAG_LEN: usize = poly1305::TAG_LEN;
+const CHACHA20_TRUNCATED_TAG_96_LEN: usize = 12;
+
 /// ChaCha20-Poly1305 as described in [RFC 7539].
 ///
-/// The keys are 256 bits long and the nonces are 96 bits long.
+/// The keys are 256 bits long, with 128-bit tags and the nonces are 96 bits long.
 ///
 /// [RFC 7539]: https://tools.ietf.org/html/rfc7539
 pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
     key_len: chacha::KEY_LEN_IN_BYTES,
+    tag_len: CHACHA20_TAG_LEN,
+    init: chacha20_poly1305_init,
+    seal: chacha20_poly1305_seal,
+    open: chacha20_poly1305_open,
+    id: aead::AlgorithmID::CHACHA20_POLY1305,
+};
+
+/// ChaCha20-Poly1305 as described in [RFC 7539].
+///
+/// The keys are 256 bits long, with 96-bit tags and the nonces are 96 bits long.
+///
+/// [RFC 7539]: https://tools.ietf.org/html/rfc7539
+pub static CHACHA_POLY1305_TRUNCATED_TAG_96: aead::Algorithm = aead::Algorithm {
+    key_len: chacha::KEY_LEN_IN_BYTES,
+    tag_len: CHACHA20_TRUNCATED_TAG_96_LEN,
     init: chacha20_poly1305_init,
     seal: chacha20_poly1305_seal,
     open: chacha20_poly1305_open,
