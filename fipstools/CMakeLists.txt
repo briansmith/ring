@@ -22,6 +22,7 @@ if (FIPS)
     cavp_sha_monte_test.cc
     cavp_sha_test.cc
     cavp_tdes_test.cc
+    cavp_tlskdf_test.cc
 
     cavp_test_util.cc
 

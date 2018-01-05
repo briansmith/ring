@@ -87,6 +87,7 @@
 #include "rsa/blinding.c"
 #include "rsa/padding.c"
 #include "rsa/rsa.c"
+#include "tls/kdf.c"
 #include "rsa/rsa_impl.c"
 #include "sha/sha1-altivec.c"
 #include "sha/sha1.c"

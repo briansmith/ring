@@ -316,6 +316,15 @@ var kasTests = testSuite{
 	},
 }
 
+var tlsKDFTests = testSuite{
+	"KDF135",
+	"tlskdf",
+	nil,
+	[]test{
+		{"tls", nil, false},
+	},
+}
+
 var fipsTestSuites = []*testSuite{
 	&aesGCMTests,
 	&aesTests,
@@ -336,6 +345,7 @@ var fipsTestSuites = []*testSuite{
 
 var niapTestSuites = []*testSuite{
 	&kasTests,
+	&tlsKDFTests,
 }
 
 // testInstance represents a specific test in a testSuite.

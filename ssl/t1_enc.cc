@@ -148,102 +148,20 @@
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 
+#include "../crypto/fipsmodule/tls/internal.h"
 #include "../crypto/internal.h"
 #include "internal.h"
 
 
 namespace bssl {
 
-// tls1_P_hash computes the TLS P_<hash> function as described in RFC 5246,
-// section 5. It XORs |out.size()| bytes to |out|, using |md| as the hash and
-// |secret| as the secret. |label|, |seed1|, and |seed2| are concatenated to
-// form the seed parameter. It returns true on success and false on failure.
-static bool tls1_P_hash(Span<uint8_t> out, const EVP_MD *md,
-                        Span<const uint8_t> secret, Span<const char> label,
-                        Span<const uint8_t> seed1, Span<const uint8_t> seed2) {
-  ScopedHMAC_CTX ctx, ctx_tmp, ctx_init;
-  uint8_t A1[EVP_MAX_MD_SIZE];
-  unsigned A1_len;
-  bool ret = false;
-
-  size_t chunk = EVP_MD_size(md);
-
-  if (!HMAC_Init_ex(ctx_init.get(), secret.data(), secret.size(), md,
-                    nullptr) ||
-      !HMAC_CTX_copy_ex(ctx.get(), ctx_init.get()) ||
-      !HMAC_Update(ctx.get(), reinterpret_cast<const uint8_t *>(label.data()),
-                   label.size()) ||
-      !HMAC_Update(ctx.get(), seed1.data(), seed1.size()) ||
-      !HMAC_Update(ctx.get(), seed2.data(), seed2.size()) ||
-      !HMAC_Final(ctx.get(), A1, &A1_len)) {
-    goto err;
-  }
-
-  for (;;) {
-    unsigned len;
-    uint8_t hmac[EVP_MAX_MD_SIZE];
-    if (!HMAC_CTX_copy_ex(ctx.get(), ctx_init.get()) ||
-        !HMAC_Update(ctx.get(), A1, A1_len) ||
-        // Save a copy of |ctx| to compute the next A1 value below.
-        (out.size() > chunk && !HMAC_CTX_copy_ex(ctx_tmp.get(), ctx.get())) ||
-        !HMAC_Update(ctx.get(), reinterpret_cast<const uint8_t *>(label.data()),
-                     label.size()) ||
-        !HMAC_Update(ctx.get(), seed1.data(), seed1.size()) ||
-        !HMAC_Update(ctx.get(), seed2.data(), seed2.size()) ||
-        !HMAC_Final(ctx.get(), hmac, &len)) {
-      goto err;
-    }
-    assert(len == chunk);
-
-    // XOR the result into |out|.
-    if (len > out.size()) {
-      len = out.size();
-    }
-    for (unsigned i = 0; i < len; i++) {
-      out[i] ^= hmac[i];
-    }
-    out = out.subspan(len);
-
-    if (out.empty()) {
-      break;
-    }
-
-    // Calculate the next A1 value.
-    if (!HMAC_Final(ctx_tmp.get(), A1, &A1_len)) {
-      goto err;
-    }
-  }
-
-  ret = true;
-
-err:
-  OPENSSL_cleanse(A1, sizeof(A1));
-  return ret;
-}
-
 bool tls1_prf(const EVP_MD *digest, Span<uint8_t> out,
               Span<const uint8_t> secret, Span<const char> label,
               Span<const uint8_t> seed1, Span<const uint8_t> seed2) {
-  if (out.empty()) {
-    return true;
-  }
-
-  OPENSSL_memset(out.data(), 0, out.size());
-
-  if (digest == EVP_md5_sha1()) {
-    // If using the MD5/SHA1 PRF, |secret| is partitioned between MD5 and SHA-1.
-    size_t secret_half = secret.size() - (secret.size() / 2);
-    if (!tls1_P_hash(out, EVP_md5(), secret.subspan(0, secret_half), label,
-                     seed1, seed2)) {
-      return false;
-    }
-
-    // Note that, if |secret.size()| is odd, the two halves share a byte.
-    secret = secret.subspan(secret.size() - secret_half);
-    digest = EVP_sha1();
-  }
-
-  return tls1_P_hash(out, digest, secret, label, seed1, seed2);
+  return 1 == CRYPTO_tls1_prf(digest, out.data(), out.size(), secret.data(),
+                              secret.size(), label.data(), label.size(),
+                              seed1.data(), seed1.size(), seed2.data(),
+                              seed2.size());
 }
 
 static bool ssl3_prf(Span<uint8_t> out, Span<const uint8_t> secret,

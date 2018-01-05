@@ -72,6 +72,7 @@ int cavp_rsa2_sigver_test_main(int argc, char **argv);
 int cavp_sha_monte_test_main(int argc, char **argv);
 int cavp_sha_test_main(int argc, char **argv);
 int cavp_tdes_test_main(int argc, char **argv);
+int cavp_tlskdf_test_main(int argc, char **argv);
 
 
 #endif  // OPENSSL_HEADER_CRYPTO_FIPSMODULE_CAVP_TEST_UTIL_H
