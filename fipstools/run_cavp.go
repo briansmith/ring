@@ -34,6 +34,10 @@ type test struct {
 	noFAX bool
 }
 
+// nextLineState can be used by FAX next-line function to store state.
+type nextLineState struct {
+}
+
 // testSuite describes a series of tests that are handled by a single oracle
 // binary.
 type testSuite struct {
@@ -41,10 +45,13 @@ type testSuite struct {
 	directory string
 	// suite names the test suite to pass as the first command-line argument.
 	suite string
-	// faxScanFunc, if not nil, is the function to use instead of
-	// (*bufio.Scanner).Scan. This can be used to skip lines.
-	faxScanFunc func(*bufio.Scanner) bool
-	tests       []test
+	// nextLineFunc, if not nil, is the function used to read the next line
+	// from the FAX file. This can be used to skip lines and/or mutate them
+	// as needed. The second argument can be used by the scanner to store
+	// state, if needed. If isWildcard is true on return then line is not
+	// meaningful and any line from the response file should be accepted.
+	nextLineFunc func(*bufio.Scanner, *nextLineState) (line string, isWildcard, ok bool)
+	tests        []test
 }
 
 func (t *testSuite) getDirectory() string {
@@ -161,10 +168,10 @@ var rsa2SigGenTests = testSuite{
 var rsa2SigVerTests = testSuite{
 	"RSA2",
 	"rsa2_sigver",
-	func(s *bufio.Scanner) bool {
+	func(s *bufio.Scanner, state *nextLineState) (string, bool, bool) {
 		for {
 			if !s.Scan() {
-				return false
+				return "", false, false
 			}
 
 			line := s.Text()
@@ -173,15 +180,13 @@ var rsa2SigVerTests = testSuite{
 			}
 			if strings.HasPrefix(line, "q = ") {
 				// Skip the "q = " line and an additional blank line.
-				if !s.Scan() {
-					return false
-				}
-				if len(strings.TrimSpace(s.Text())) > 0 {
-					return false
+				if !s.Scan() ||
+					len(strings.TrimSpace(s.Text())) > 0 {
+					return "", false, false
 				}
 				continue
 			}
-			return true
+			return line, false, true
 		}
 	},
 	[]test{
@@ -385,9 +390,14 @@ func canonicalizeLine(in string) string {
 }
 
 func compareFAX(suite *testSuite, test test) error {
-	faxScanFunc := suite.faxScanFunc
-	if faxScanFunc == nil {
-		faxScanFunc = (*bufio.Scanner).Scan
+	nextLineFunc := suite.nextLineFunc
+	if nextLineFunc == nil {
+		nextLineFunc = func(s *bufio.Scanner, state *nextLineState) (string, bool, bool) {
+			if !s.Scan() {
+				return "", false, false
+			}
+			return s.Text(), false, true
+		}
 	}
 
 	respPath := filepath.Join(suite.getDirectory(), "resp", test.inFile+".rsp")
@@ -406,6 +416,7 @@ func compareFAX(suite *testSuite, test test) error {
 
 	respScanner := bufio.NewScanner(respFile)
 	faxScanner := bufio.NewScanner(faxFile)
+	var nextLineState nextLineState
 
 	lineNo := 0
 	inHeader := true
@@ -414,6 +425,7 @@ func compareFAX(suite *testSuite, test test) error {
 		lineNo++
 		respLine := respScanner.Text()
 		var faxLine string
+		var isWildcard, ok bool
 
 		if inHeader && (len(respLine) == 0 || respLine[0] == '#') {
 			continue
@@ -423,8 +435,10 @@ func compareFAX(suite *testSuite, test test) error {
 			haveFaxLine := false
 
 			if inHeader {
-				for faxScanFunc(faxScanner) {
-					faxLine = faxScanner.Text()
+				for {
+					if faxLine, isWildcard, ok = nextLineFunc(faxScanner, &nextLineState); !ok {
+						break
+					}
 					if len(faxLine) != 0 && faxLine[0] != '#' {
 						haveFaxLine = true
 						break
@@ -433,10 +447,7 @@ func compareFAX(suite *testSuite, test test) error {
 
 				inHeader = false
 			} else {
-				if faxScanFunc(faxScanner) {
-					faxLine = faxScanner.Text()
-					haveFaxLine = true
-				}
+				faxLine, isWildcard, haveFaxLine = nextLineFunc(faxScanner, &nextLineState)
 			}
 
 			if !haveFaxLine {
@@ -454,14 +465,14 @@ func compareFAX(suite *testSuite, test test) error {
 			break
 		}
 
-		if canonicalizeLine(faxLine) == canonicalizeLine(respLine) {
+		if isWildcard || canonicalizeLine(faxLine) == canonicalizeLine(respLine) {
 			continue
 		}
 
 		return fmt.Errorf("resp and fax differ at line %d for %q %q: %q vs %q", lineNo, suite.getDirectory(), test.inFile, respLine, faxLine)
 	}
 
-	if faxScanFunc(faxScanner) {
+	if _, _, ok := nextLineFunc(faxScanner, &nextLineState); ok {
 		return fmt.Errorf("fax file is longer than resp for %q %q", suite.getDirectory(), test.inFile)
 	}
 
