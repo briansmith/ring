@@ -133,7 +133,7 @@ pub fn open_in_place<'a>(key: &OpeningKey, nonce: &[u8], ad: &[u8],
     let (in_out, received_tag) =
         ciphertext_and_tag_modified_in_place
             .split_at_mut(in_prefix_len + ciphertext_len);
-    let mut calculated_tag = [0u8; TAG_LEN];
+    let mut calculated_tag = [0u8; MAX_TAG_LEN];
     (key.key.algorithm.open)(&key.key.ctx_buf, nonce, &ad, in_prefix_len,
                              in_out, &mut calculated_tag)?;
     if constant_time::verify_slices_are_equal(&calculated_tag[..auth_tag_len], received_tag)
@@ -214,7 +214,7 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], ad: &[u8],
         in_out.len().checked_sub(out_suffix_capacity).ok_or(error::Unspecified)?;
     check_per_nonce_max_bytes(in_out_len)?;
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
-    let mut calculated_tag = [0u8; TAG_LEN];
+    let mut calculated_tag = [0u8; MAX_TAG_LEN];
     (key.key.algorithm.seal)(&key.key.ctx_buf, nonce, ad, in_out, &mut calculated_tag)?;
     let auth_tag_len = key.algorithm().tag_len();
     tag_out.copy_from_slice(&calculated_tag[..auth_tag_len]);
