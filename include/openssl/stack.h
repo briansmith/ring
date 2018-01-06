@@ -344,7 +344,7 @@ struct StackTraits {};
       sk_##name##_deep_copy(const STACK_OF(name) *sk,                          \
                             ptrtype(*copy_func)(ptrtype),                      \
                             void (*free_func)(ptrtype)) {                      \
-    return (STACK_OF(name) *)sk_deep_copy((_STACK *)sk,                        \
+    return (STACK_OF(name) *)sk_deep_copy((const _STACK *)sk,                  \
                                           (void *(*)(void *))copy_func,        \
                                           (void (*)(void *))free_func);        \
   }

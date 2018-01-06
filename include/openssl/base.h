@@ -228,9 +228,10 @@ extern "C" {
 #define OPENSSL_FALLTHROUGH [[fallthrough]]
 #elif defined(__cplusplus) && __cplusplus >= 201103L && defined(__clang__)
 #define OPENSSL_FALLTHROUGH [[clang::fallthrough]]
-#elif defined(__cplusplus) && __cplusplus >= 201103L && __GNUC__ >= 7
+#elif defined(__cplusplus) && __cplusplus >= 201103L && defined(__GNUC__) && \
+    __GNUC__ >= 7
 #define OPENSSL_FALLTHROUGH [[gnu::fallthrough]]
-#elif  __GNUC__ >= 7 // gcc 7
+#elif defined(__GNUC__) && __GNUC__ >= 7 // gcc 7
 #define OPENSSL_FALLTHROUGH __attribute__ ((fallthrough))
 #else // C++11 on gcc 6, and all other cases
 #define OPENSSL_FALLTHROUGH
