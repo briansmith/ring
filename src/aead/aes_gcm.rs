@@ -14,8 +14,8 @@
 
 use {aead, bssl, c, error, polyfill};
 
-const GHASH_128_BIT_LEN: usize = 16;
-const GHASH_96_BIT_LEN: usize = 12;
+const GHASH_128_BIT_TAG_LEN: usize = 16;
+const GHASH_96_BIT_TAG_LEN: usize = 12;
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
 ///
@@ -24,7 +24,7 @@ const GHASH_96_BIT_LEN: usize = 12;
 /// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/)
 pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
     key_len: AES_128_KEY_LEN,
-    tag_len: GHASH_128_BIT_LEN,
+    tag_len: GHASH_128_BIT_TAG_LEN,
     init: aes_gcm_init,
     seal: aes_gcm_seal,
     open: aes_gcm_open,
@@ -38,11 +38,11 @@ pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
 /// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/)
 pub static AES_128_GCM_TRUNCATED_TAG_96: aead::Algorithm = aead::Algorithm {
     key_len: AES_128_KEY_LEN,
-    tag_len: GHASH_96_BIT_LEN,
+    tag_len: GHASH_96_BIT_TAG_LEN,
     init: aes_gcm_init,
     seal: aes_gcm_seal,
     open: aes_gcm_open,
-    id: aead::AlgorithmID::AES_128_GCM,
+    id: aead::AlgorithmID::AES_128_GCM_TRUNCATED_TAG_96,
 };
 
 /// AES-256 in GCM mode with 128-bit tags and 96 bit nonces.
@@ -52,7 +52,7 @@ pub static AES_128_GCM_TRUNCATED_TAG_96: aead::Algorithm = aead::Algorithm {
 /// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/)
 pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
     key_len: AES_256_KEY_LEN,
-    tag_len: GHASH_128_BIT_LEN,
+    tag_len: GHASH_128_BIT_TAG_LEN,
     init: aes_gcm_init,
     seal: aes_gcm_seal,
     open: aes_gcm_open,

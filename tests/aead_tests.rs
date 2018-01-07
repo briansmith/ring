@@ -42,6 +42,11 @@ fn aead_aes_gcm_128() {
 }
 
 #[test]
+fn aead_aes_gcm_128_truncated_tag_96() {
+    test_aead(&aead::AES_128_GCM_TRUNCATED_TAG_96, "tests/aead_aes_128_gcm_truncated_tag_96_tests.txt");
+}
+
+#[test]
 fn aead_aes_gcm_256() {
     test_aead(&aead::AES_256_GCM, "tests/aead_aes_256_gcm_tests.txt");
 }
@@ -50,6 +55,12 @@ fn aead_aes_gcm_256() {
 fn aead_chacha20_poly1305() {
     test_aead(&aead::CHACHA20_POLY1305,
               "tests/aead_chacha20_poly1305_tests.txt");
+}
+
+#[test]
+fn aead_chacha20_poly1305_truncated_tag_96() {
+    test_aead(&aead::CHACHA_POLY1305_TRUNCATED_TAG_96,
+              "tests/aead_chacha20_poly1305_truncated_tag_96_tests.txt");
 }
 
 
@@ -64,10 +75,11 @@ fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
         let plaintext = test_case.consume_bytes("IN");
         let ad = test_case.consume_bytes("AD");
         let mut ct = test_case.consume_bytes("CT");
-        let tag = test_case.consume_bytes("TAG");
+        let mut tag = test_case.consume_bytes("TAG");
         let error = test_case.consume_optional_string("FAILS");
 
         let tag_len = aead_alg.tag_len();
+        tag.truncate(tag_len);
         let mut s_in_out = plaintext.clone();
         for _ in 0..tag_len {
             s_in_out.push(0);
@@ -176,6 +188,9 @@ fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
                 },
                 Some(ref error) if error == "WRONG_NONCE_LENGTH" => {
                     assert_eq!(Err(error::Unspecified), s_result);
+                    assert_eq!(Err(error::Unspecified), o_result);
+                },
+                Some(ref error) if error == "DECODE_ERROR" => {
                     assert_eq!(Err(error::Unspecified), o_result);
                 },
                 Some(error) => {
