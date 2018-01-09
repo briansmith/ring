@@ -56,7 +56,7 @@ const ARM: &'static str = "arm";
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
-    (&[], "crypto/aes/aes.c"),
+    (&[], "crypto/fipsmodule/aes/aes.c"),
     (&[], "crypto/bn/bn.c"),
     (&[], "crypto/bn/exponentiation.c"),
     (&[], "crypto/bn/generic.c"),
@@ -77,9 +77,9 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
 
-    (&[X86], "crypto/aes/asm/aes-586.pl"),
-    (&[X86], "crypto/aes/asm/aesni-x86.pl"),
-    (&[X86], "crypto/aes/asm/vpaes-x86.pl"),
+    (&[X86], "crypto/fipsmodule/aes/asm/aes-586.pl"),
+    (&[X86], "crypto/fipsmodule/aes/asm/aesni-x86.pl"),
+    (&[X86], "crypto/fipsmodule/aes/asm/vpaes-x86.pl"),
     (&[X86], "crypto/bn/asm/x86-mont.pl"),
     (&[X86], "crypto/chacha/asm/chacha-x86.pl"),
     (&[X86], "crypto/ec/asm/ecp_nistz256-x86.pl"),
@@ -90,10 +90,10 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
 
     (&[X86_64], "crypto/curve25519/x25519-x86_64.c"),
 
-    (&[X86_64], "crypto/aes/asm/aes-x86_64.pl"),
-    (&[X86_64], "crypto/aes/asm/aesni-x86_64.pl"),
-    (&[X86_64], "crypto/aes/asm/bsaes-x86_64.pl"),
-    (&[X86_64], "crypto/aes/asm/vpaes-x86_64.pl"),
+    (&[X86_64], "crypto/fipsmodule/aes/asm/aes-x86_64.pl"),
+    (&[X86_64], "crypto/fipsmodule/aes/asm/aesni-x86_64.pl"),
+    (&[X86_64], "crypto/fipsmodule/aes/asm/bsaes-x86_64.pl"),
+    (&[X86_64], "crypto/fipsmodule/aes/asm/vpaes-x86_64.pl"),
     (&[X86_64], "crypto/bn/asm/x86_64-mont.pl"),
     (&[X86_64], "crypto/bn/asm/x86_64-mont5.pl"),
     (&[X86_64], "crypto/chacha/asm/chacha-x86_64.pl"),
@@ -105,13 +105,13 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[X86_64], "crypto/poly1305/asm/poly1305-x86_64.pl"),
     (&[X86_64], SHA512_X86_64),
 
-    (&[AARCH64, ARM], "crypto/aes/asm/aesv8-armx.pl"),
+    (&[AARCH64, ARM], "crypto/fipsmodule/aes/asm/aesv8-armx.pl"),
     (&[AARCH64, ARM], "crypto/cpu-arm-linux.c"),
     (&[AARCH64, ARM], "crypto/cpu-arm.c"),
     (&[AARCH64, ARM], "crypto/modes/asm/ghashv8-armx.pl"),
 
-    (&[ARM], "crypto/aes/asm/aes-armv4.pl"),
-    (&[ARM], "crypto/aes/asm/bsaes-armv7.pl"),
+    (&[ARM], "crypto/fipsmodule/aes/asm/aes-armv4.pl"),
+    (&[ARM], "crypto/fipsmodule/aes/asm/bsaes-armv7.pl"),
     (&[ARM], "crypto/bn/asm/armv4-mont.pl"),
     (&[ARM], "crypto/chacha/asm/chacha-armv4.pl"),
     (&[ARM], "crypto/curve25519/asm/x25519-asm-arm.S"),
