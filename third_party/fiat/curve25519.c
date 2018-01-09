@@ -36,6 +36,7 @@
 #include <openssl/mem.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
+#include <openssl/type_check.h>
 
 #include "internal.h"
 #include "../../crypto/internal.h"
@@ -63,6 +64,45 @@ static uint64_t load_4(const uint8_t *in) {
   result |= ((uint64_t)in[3]) << 24;
   return result;
 }
+
+#if defined(BORINGSSL_CURVE25519_64BIT)
+static uint64_t load_8(const uint8_t *in) {
+  uint64_t result;
+  result = (uint64_t)in[0];
+  result |= ((uint64_t)in[1]) << 8;
+  result |= ((uint64_t)in[2]) << 16;
+  result |= ((uint64_t)in[3]) << 24;
+  result |= ((uint64_t)in[4]) << 32;
+  result |= ((uint64_t)in[5]) << 40;
+  result |= ((uint64_t)in[6]) << 48;
+  result |= ((uint64_t)in[7]) << 56;
+  return result;
+}
+
+static uint8_t /*bool*/ addcarryx_u51(uint8_t /*bool*/ c, uint64_t a,
+                                      uint64_t b, uint64_t *low) {
+  // This function extracts 51 bits of result and 1 bit of carry (52 total), so
+  // a 64-bit intermediate is sufficient.
+  uint64_t x = a + b + c;
+  *low = x & ((UINT64_C(1) << 51) - 1);
+  return (x >> 51) & 1;
+}
+
+static uint8_t /*bool*/ subborrow_u51(uint8_t /*bool*/ c, uint64_t a,
+                                      uint64_t b, uint64_t *low) {
+  // This function extracts 51 bits of result and 1 bit of borrow (52 total), so
+  // a 64-bit intermediate is sufficient.
+  uint64_t x = a - b - c;
+  *low = x & ((UINT64_C(1) << 51) - 1);
+  return x >> 63;
+}
+
+static uint64_t cmovznz64(uint64_t t, uint64_t z, uint64_t nz) {
+  t = -!!t; // all set if nonzero, 0 if 0
+  return (t&nz) | ((~t)&z);
+}
+
+#else
 
 static uint8_t /*bool*/ addcarryx_u25(uint8_t /*bool*/ c, uint32_t a,
                                       uint32_t b, uint32_t *low) {
@@ -105,8 +145,493 @@ static uint32_t cmovznz32(uint32_t t, uint32_t z, uint32_t nz) {
   return (t&nz) | ((~t)&z);
 }
 
+#endif
+
 
 // Field operations.
+
+#if defined(BORINGSSL_CURVE25519_64BIT)
+
+#define assert_fe(f) do { \
+  for (unsigned _assert_fe_i = 0; _assert_fe_i< 5; _assert_fe_i++) { \
+    assert(f[_assert_fe_i] < 1.125*(UINT64_C(1)<<51)); \
+  } \
+} while (0)
+
+#define assert_fe_loose(f) do { \
+  for (unsigned _assert_fe_i = 0; _assert_fe_i< 5; _assert_fe_i++) { \
+    assert(f[_assert_fe_i] < 3.375*(UINT64_C(1)<<51)); \
+  } \
+} while (0)
+
+#define assert_fe_frozen(f) do { \
+  for (unsigned _assert_fe_i = 0; _assert_fe_i< 5; _assert_fe_i++) { \
+    assert(f[_assert_fe_i] < (UINT64_C(1)<<51)); \
+  } \
+} while (0)
+
+static void fe_frombytes_impl(uint64_t h[5], const uint8_t *s) {
+  // Ignores top bit of s.
+  uint64_t a0 = load_8(s);
+  uint64_t a1 = load_8(s+8);
+  uint64_t a2 = load_8(s+16);
+  uint64_t a3 = load_8(s+24);
+  // Use 51 bits, 64-51 = 13 left.
+  h[0] = a0 & ((UINT64_C(1) << 51) - 1);
+  // (64-51) + 38 = 13 + 38 = 51
+  h[1] = (a0 >> 51) | ((a1 & ((UINT64_C(1) << 38) - 1)) << 13);
+  // (64-38) + 25 = 26 + 25 = 51
+  h[2] = (a1 >> 38) | ((a2 & ((UINT64_C(1) << 25) - 1)) << 26);
+  // (64-25) + 12 = 39 + 12 = 51
+  h[3] = (a2 >> 25) | ((a3 & ((UINT64_C(1) << 12) - 1)) << 39);
+  // (64-12) = 52, ignore top bit
+  h[4] = (a3 >> 12) & ((UINT64_C(1) << 51) - 1);
+  assert_fe(h);
+}
+
+static void fe_frombytes(fe *h, const uint8_t *s) {
+  fe_frombytes_impl(h->v, s);
+}
+
+static void fe_freeze(uint64_t out[5], const uint64_t in1[5]) {
+  { const uint64_t x7 = in1[4];
+  { const uint64_t x8 = in1[3];
+  { const uint64_t x6 = in1[2];
+  { const uint64_t x4 = in1[1];
+  { const uint64_t x2 = in1[0];
+  { uint64_t x10; uint8_t/*bool*/ x11 = subborrow_u51(0x0, x2, 0x7ffffffffffed, &x10);
+  { uint64_t x13; uint8_t/*bool*/ x14 = subborrow_u51(x11, x4, 0x7ffffffffffff, &x13);
+  { uint64_t x16; uint8_t/*bool*/ x17 = subborrow_u51(x14, x6, 0x7ffffffffffff, &x16);
+  { uint64_t x19; uint8_t/*bool*/ x20 = subborrow_u51(x17, x8, 0x7ffffffffffff, &x19);
+  { uint64_t x22; uint8_t/*bool*/ x23 = subborrow_u51(x20, x7, 0x7ffffffffffff, &x22);
+  { uint64_t x24 = cmovznz64(x23, 0x0, 0xffffffffffffffffL);
+  { uint64_t x25 = (x24 & 0x7ffffffffffed);
+  { uint64_t x27; uint8_t/*bool*/ x28 = addcarryx_u51(0x0, x10, x25, &x27);
+  { uint64_t x29 = (x24 & 0x7ffffffffffff);
+  { uint64_t x31; uint8_t/*bool*/ x32 = addcarryx_u51(x28, x13, x29, &x31);
+  { uint64_t x33 = (x24 & 0x7ffffffffffff);
+  { uint64_t x35; uint8_t/*bool*/ x36 = addcarryx_u51(x32, x16, x33, &x35);
+  { uint64_t x37 = (x24 & 0x7ffffffffffff);
+  { uint64_t x39; uint8_t/*bool*/ x40 = addcarryx_u51(x36, x19, x37, &x39);
+  { uint64_t x41 = (x24 & 0x7ffffffffffff);
+  { uint64_t x43; addcarryx_u51(x40, x22, x41, &x43);
+  out[0] = x27;
+  out[1] = x31;
+  out[2] = x35;
+  out[3] = x39;
+  out[4] = x43;
+  }}}}}}}}}}}}}}}}}}}}}
+}
+
+static void fe_tobytes(uint8_t s[32], const fe *f) {
+  assert_fe(f->v);
+  uint64_t h[5];
+  fe_freeze(h, f->v);
+  assert_fe_frozen(h);
+
+  s[0] = h[0] >> 0;
+  s[1] = h[0] >> 8;
+  s[2] = h[0] >> 16;
+  s[3] = h[0] >> 24;
+  s[4] = h[0] >> 32;
+  s[5] = h[0] >> 40;
+  s[6] = (h[0] >> 48) | (h[1] << 3);
+  s[7] = h[1] >> 5;
+  s[8] = h[1] >> 13;
+  s[9] = h[1] >> 21;
+  s[10] = h[1] >> 29;
+  s[11] = h[1] >> 37;
+  s[12] = (h[1] >> 45) | (h[2] << 6);
+  s[13] = h[2] >> 2;
+  s[14] = h[2] >> 10;
+  s[15] = h[2] >> 18;
+  s[16] = h[2] >> 26;
+  s[17] = h[2] >> 34;
+  s[18] = h[2] >> 42;
+  s[19] = (h[2] >> 50) | (h[3] << 1);
+  s[20] = h[3] >> 7;
+  s[21] = h[3] >> 15;
+  s[22] = h[3] >> 23;
+  s[23] = h[3] >> 31;
+  s[24] = h[3] >> 39;
+  s[25] = (h[3] >> 47) | (h[4] << 4);
+  s[26] = h[4] >> 4;
+  s[27] = h[4] >> 12;
+  s[28] = h[4] >> 20;
+  s[29] = h[4] >> 28;
+  s[30] = h[4] >> 36;
+  s[31] = h[4] >> 44;
+}
+
+// h = 0
+static void fe_0(fe *h) {
+  OPENSSL_memset(h, 0, sizeof(fe));
+}
+
+static void fe_loose_0(fe_loose *h) {
+  OPENSSL_memset(h, 0, sizeof(fe_loose));
+}
+
+// h = 1
+static void fe_1(fe *h) {
+  OPENSSL_memset(h, 0, sizeof(fe));
+  h->v[0] = 1;
+}
+
+static void fe_loose_1(fe_loose *h) {
+  OPENSSL_memset(h, 0, sizeof(fe_loose));
+  h->v[0] = 1;
+}
+
+static void fe_add_impl(uint64_t out[5], const uint64_t in1[5], const uint64_t in2[5]) {
+  { const uint64_t x10 = in1[4];
+  { const uint64_t x11 = in1[3];
+  { const uint64_t x9 = in1[2];
+  { const uint64_t x7 = in1[1];
+  { const uint64_t x5 = in1[0];
+  { const uint64_t x18 = in2[4];
+  { const uint64_t x19 = in2[3];
+  { const uint64_t x17 = in2[2];
+  { const uint64_t x15 = in2[1];
+  { const uint64_t x13 = in2[0];
+  out[0] = (x5 + x13);
+  out[1] = (x7 + x15);
+  out[2] = (x9 + x17);
+  out[3] = (x11 + x19);
+  out[4] = (x10 + x18);
+  }}}}}}}}}}
+}
+
+// h = f + g
+// Can overlap h with f or g.
+static void fe_add(fe_loose *h, const fe *f, const fe *g) {
+  assert_fe(f->v);
+  assert_fe(g->v);
+  fe_add_impl(h->v, f->v, g->v);
+  assert_fe_loose(h->v);
+}
+
+static void fe_sub_impl(uint64_t out[5], const uint64_t in1[5], const uint64_t in2[5]) {
+  { const uint64_t x10 = in1[4];
+  { const uint64_t x11 = in1[3];
+  { const uint64_t x9 = in1[2];
+  { const uint64_t x7 = in1[1];
+  { const uint64_t x5 = in1[0];
+  { const uint64_t x18 = in2[4];
+  { const uint64_t x19 = in2[3];
+  { const uint64_t x17 = in2[2];
+  { const uint64_t x15 = in2[1];
+  { const uint64_t x13 = in2[0];
+  out[0] = ((0xfffffffffffda + x5) - x13);
+  out[1] = ((0xffffffffffffe + x7) - x15);
+  out[2] = ((0xffffffffffffe + x9) - x17);
+  out[3] = ((0xffffffffffffe + x11) - x19);
+  out[4] = ((0xffffffffffffe + x10) - x18);
+  }}}}}}}}}}
+}
+
+// h = f - g
+// Can overlap h with f or g.
+static void fe_sub(fe_loose *h, const fe *f, const fe *g) {
+  assert_fe(f->v);
+  assert_fe(g->v);
+  fe_sub_impl(h->v, f->v, g->v);
+  assert_fe_loose(h->v);
+}
+
+static void fe_carry_impl(uint64_t out[5], const uint64_t in1[5]) {
+  { const uint64_t x7 = in1[4];
+  { const uint64_t x8 = in1[3];
+  { const uint64_t x6 = in1[2];
+  { const uint64_t x4 = in1[1];
+  { const uint64_t x2 = in1[0];
+  { uint64_t x9 = (x2 >> 0x33);
+  { uint64_t x10 = (x2 & 0x7ffffffffffff);
+  { uint64_t x11 = (x9 + x4);
+  { uint64_t x12 = (x11 >> 0x33);
+  { uint64_t x13 = (x11 & 0x7ffffffffffff);
+  { uint64_t x14 = (x12 + x6);
+  { uint64_t x15 = (x14 >> 0x33);
+  { uint64_t x16 = (x14 & 0x7ffffffffffff);
+  { uint64_t x17 = (x15 + x8);
+  { uint64_t x18 = (x17 >> 0x33);
+  { uint64_t x19 = (x17 & 0x7ffffffffffff);
+  { uint64_t x20 = (x18 + x7);
+  { uint64_t x21 = (x20 >> 0x33);
+  { uint64_t x22 = (x20 & 0x7ffffffffffff);
+  { uint64_t x23 = (x10 + (0x13 * x21));
+  { uint64_t x24 = (x23 >> 0x33);
+  { uint64_t x25 = (x23 & 0x7ffffffffffff);
+  { uint64_t x26 = (x24 + x13);
+  { uint64_t x27 = (x26 >> 0x33);
+  { uint64_t x28 = (x26 & 0x7ffffffffffff);
+  out[0] = x25;
+  out[1] = x28;
+  out[2] = (x27 + x16);
+  out[3] = x19;
+  out[4] = x22;
+  }}}}}}}}}}}}}}}}}}}}}}}}}
+}
+
+static void fe_carry(fe *h, const fe_loose* f) {
+  assert_fe_loose(f->v);
+  fe_carry_impl(h->v, f->v);
+  assert_fe(h->v);
+}
+
+static void fe_mul_impl(uint64_t out[5], const uint64_t in1[5], const uint64_t in2[5]) {
+  assert_fe_loose(in1);
+  assert_fe_loose(in2);
+  { const uint64_t x10 = in1[4];
+  { const uint64_t x11 = in1[3];
+  { const uint64_t x9 = in1[2];
+  { const uint64_t x7 = in1[1];
+  { const uint64_t x5 = in1[0];
+  { const uint64_t x18 = in2[4];
+  { const uint64_t x19 = in2[3];
+  { const uint64_t x17 = in2[2];
+  { const uint64_t x15 = in2[1];
+  { const uint64_t x13 = in2[0];
+  { uint128_t x20 = ((uint128_t)x5 * x13);
+  { uint128_t x21 = (((uint128_t)x5 * x15) + ((uint128_t)x7 * x13));
+  { uint128_t x22 = ((((uint128_t)x5 * x17) + ((uint128_t)x9 * x13)) + ((uint128_t)x7 * x15));
+  { uint128_t x23 = (((((uint128_t)x5 * x19) + ((uint128_t)x11 * x13)) + ((uint128_t)x7 * x17)) + ((uint128_t)x9 * x15));
+  { uint128_t x24 = ((((((uint128_t)x5 * x18) + ((uint128_t)x10 * x13)) + ((uint128_t)x11 * x15)) + ((uint128_t)x7 * x19)) + ((uint128_t)x9 * x17));
+  { uint64_t x25 = (x10 * 0x13);
+  { uint64_t x26 = (x7 * 0x13);
+  { uint64_t x27 = (x9 * 0x13);
+  { uint64_t x28 = (x11 * 0x13);
+  { uint128_t x29 = ((((x20 + ((uint128_t)x25 * x15)) + ((uint128_t)x26 * x18)) + ((uint128_t)x27 * x19)) + ((uint128_t)x28 * x17));
+  { uint128_t x30 = (((x21 + ((uint128_t)x25 * x17)) + ((uint128_t)x27 * x18)) + ((uint128_t)x28 * x19));
+  { uint128_t x31 = ((x22 + ((uint128_t)x25 * x19)) + ((uint128_t)x28 * x18));
+  { uint128_t x32 = (x23 + ((uint128_t)x25 * x18));
+  { uint64_t x33 = (uint64_t) (x29 >> 0x33);
+  { uint64_t x34 = ((uint64_t)x29 & 0x7ffffffffffff);
+  { uint128_t x35 = (x33 + x30);
+  { uint64_t x36 = (uint64_t) (x35 >> 0x33);
+  { uint64_t x37 = ((uint64_t)x35 & 0x7ffffffffffff);
+  { uint128_t x38 = (x36 + x31);
+  { uint64_t x39 = (uint64_t) (x38 >> 0x33);
+  { uint64_t x40 = ((uint64_t)x38 & 0x7ffffffffffff);
+  { uint128_t x41 = (x39 + x32);
+  { uint64_t x42 = (uint64_t) (x41 >> 0x33);
+  { uint64_t x43 = ((uint64_t)x41 & 0x7ffffffffffff);
+  { uint128_t x44 = (x42 + x24);
+  { uint64_t x45 = (uint64_t) (x44 >> 0x33);
+  { uint64_t x46 = ((uint64_t)x44 & 0x7ffffffffffff);
+  { uint64_t x47 = (x34 + (0x13 * x45));
+  { uint64_t x48 = (x47 >> 0x33);
+  { uint64_t x49 = (x47 & 0x7ffffffffffff);
+  { uint64_t x50 = (x48 + x37);
+  { uint64_t x51 = (x50 >> 0x33);
+  { uint64_t x52 = (x50 & 0x7ffffffffffff);
+  out[0] = x49;
+  out[1] = x52;
+  out[2] = (x51 + x40);
+  out[3] = x43;
+  out[4] = x46;
+  }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+  assert_fe(out);
+}
+
+static void fe_mul_ltt(fe_loose *h, const fe *f, const fe *g) {
+  fe_mul_impl(h->v, f->v, g->v);
+}
+
+static void fe_mul_llt(fe_loose *h, const fe_loose *f, const fe *g) {
+  fe_mul_impl(h->v, f->v, g->v);
+}
+
+static void fe_mul_ttt(fe *h, const fe *f, const fe *g) {
+  fe_mul_impl(h->v, f->v, g->v);
+}
+
+static void fe_mul_tlt(fe *h, const fe_loose *f, const fe *g) {
+  fe_mul_impl(h->v, f->v, g->v);
+}
+
+static void fe_mul_ttl(fe *h, const fe *f, const fe_loose *g) {
+  fe_mul_impl(h->v, f->v, g->v);
+}
+
+static void fe_mul_tll(fe *h, const fe_loose *f, const fe_loose *g) {
+  fe_mul_impl(h->v, f->v, g->v);
+}
+
+static void fe_sqr_impl(uint64_t out[5], const uint64_t in1[5]) {
+  assert_fe_loose(in1);
+  { const uint64_t x7 = in1[4];
+  { const uint64_t x8 = in1[3];
+  { const uint64_t x6 = in1[2];
+  { const uint64_t x4 = in1[1];
+  { const uint64_t x2 = in1[0];
+  { uint64_t x9 = (x2 * 0x2);
+  { uint64_t x10 = (x4 * 0x2);
+  { uint64_t x11 = ((x6 * 0x2) * 0x13);
+  { uint64_t x12 = (x7 * 0x13);
+  { uint64_t x13 = (x12 * 0x2);
+  { uint128_t x14 = ((((uint128_t)x2 * x2) + ((uint128_t)x13 * x4)) + ((uint128_t)x11 * x8));
+  { uint128_t x15 = ((((uint128_t)x9 * x4) + ((uint128_t)x13 * x6)) + ((uint128_t)x8 * (x8 * 0x13)));
+  { uint128_t x16 = ((((uint128_t)x9 * x6) + ((uint128_t)x4 * x4)) + ((uint128_t)x13 * x8));
+  { uint128_t x17 = ((((uint128_t)x9 * x8) + ((uint128_t)x10 * x6)) + ((uint128_t)x7 * x12));
+  { uint128_t x18 = ((((uint128_t)x9 * x7) + ((uint128_t)x10 * x8)) + ((uint128_t)x6 * x6));
+  { uint64_t x19 = (uint64_t) (x14 >> 0x33);
+  { uint64_t x20 = ((uint64_t)x14 & 0x7ffffffffffff);
+  { uint128_t x21 = (x19 + x15);
+  { uint64_t x22 = (uint64_t) (x21 >> 0x33);
+  { uint64_t x23 = ((uint64_t)x21 & 0x7ffffffffffff);
+  { uint128_t x24 = (x22 + x16);
+  { uint64_t x25 = (uint64_t) (x24 >> 0x33);
+  { uint64_t x26 = ((uint64_t)x24 & 0x7ffffffffffff);
+  { uint128_t x27 = (x25 + x17);
+  { uint64_t x28 = (uint64_t) (x27 >> 0x33);
+  { uint64_t x29 = ((uint64_t)x27 & 0x7ffffffffffff);
+  { uint128_t x30 = (x28 + x18);
+  { uint64_t x31 = (uint64_t) (x30 >> 0x33);
+  { uint64_t x32 = ((uint64_t)x30 & 0x7ffffffffffff);
+  { uint64_t x33 = (x20 + (0x13 * x31));
+  { uint64_t x34 = (x33 >> 0x33);
+  { uint64_t x35 = (x33 & 0x7ffffffffffff);
+  { uint64_t x36 = (x34 + x23);
+  { uint64_t x37 = (x36 >> 0x33);
+  { uint64_t x38 = (x36 & 0x7ffffffffffff);
+  out[0] = x35;
+  out[1] = x38;
+  out[2] = (x37 + x26);
+  out[3] = x29;
+  out[4] = x32;
+  }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+  assert_fe(out);
+}
+
+static void fe_sq_tl(fe *h, const fe_loose *f) {
+  fe_sqr_impl(h->v, f->v);
+}
+
+static void fe_sq_tt(fe *h, const fe *f) {
+  fe_sqr_impl(h->v, f->v);
+}
+
+#if !defined(BORINGSSL_X25519_X86_64)
+
+// Replace (f,g) with (g,f) if b == 1;
+// replace (f,g) with (f,g) if b == 0.
+//
+// Preconditions: b in {0,1}.
+static void fe_cswap(fe *f, fe *g, uint64_t b) {
+  b = 0-b;
+  for (unsigned i = 0; i < 5; i++) {
+    uint64_t x = f->v[i] ^ g->v[i];
+    x &= b;
+    f->v[i] ^= x;
+    g->v[i] ^= x;
+  }
+}
+
+// NOTE: based on fiat-crypto fe_mul, edited for in2=121666, 0, 0..
+static void fe_mul_121666_impl(uint64_t out[5], const uint64_t in1[5]) {
+  assert_fe_loose(in1);
+  { const uint64_t x10 = in1[4];
+  { const uint64_t x11 = in1[3];
+  { const uint64_t x9 = in1[2];
+  { const uint64_t x7 = in1[1];
+  { const uint64_t x5 = in1[0];
+  { const uint64_t x18 = 0;
+  { const uint64_t x19 = 0;
+  { const uint64_t x17 = 0;
+  { const uint64_t x15 = 0;
+  { const uint64_t x13 = 121666;
+  { uint128_t x20 = ((uint128_t)x5 * x13);
+  { uint128_t x21 = (((uint128_t)x5 * x15) + ((uint128_t)x7 * x13));
+  { uint128_t x22 = ((((uint128_t)x5 * x17) + ((uint128_t)x9 * x13)) + ((uint128_t)x7 * x15));
+  { uint128_t x23 = (((((uint128_t)x5 * x19) + ((uint128_t)x11 * x13)) + ((uint128_t)x7 * x17)) + ((uint128_t)x9 * x15));
+  { uint128_t x24 = ((((((uint128_t)x5 * x18) + ((uint128_t)x10 * x13)) + ((uint128_t)x11 * x15)) + ((uint128_t)x7 * x19)) + ((uint128_t)x9 * x17));
+  { uint64_t x25 = (x10 * 0x13);
+  { uint64_t x26 = (x7 * 0x13);
+  { uint64_t x27 = (x9 * 0x13);
+  { uint64_t x28 = (x11 * 0x13);
+  { uint128_t x29 = ((((x20 + ((uint128_t)x25 * x15)) + ((uint128_t)x26 * x18)) + ((uint128_t)x27 * x19)) + ((uint128_t)x28 * x17));
+  { uint128_t x30 = (((x21 + ((uint128_t)x25 * x17)) + ((uint128_t)x27 * x18)) + ((uint128_t)x28 * x19));
+  { uint128_t x31 = ((x22 + ((uint128_t)x25 * x19)) + ((uint128_t)x28 * x18));
+  { uint128_t x32 = (x23 + ((uint128_t)x25 * x18));
+  { uint64_t x33 = (uint64_t) (x29 >> 0x33);
+  { uint64_t x34 = ((uint64_t)x29 & 0x7ffffffffffff);
+  { uint128_t x35 = (x33 + x30);
+  { uint64_t x36 = (uint64_t) (x35 >> 0x33);
+  { uint64_t x37 = ((uint64_t)x35 & 0x7ffffffffffff);
+  { uint128_t x38 = (x36 + x31);
+  { uint64_t x39 = (uint64_t) (x38 >> 0x33);
+  { uint64_t x40 = ((uint64_t)x38 & 0x7ffffffffffff);
+  { uint128_t x41 = (x39 + x32);
+  { uint64_t x42 = (uint64_t) (x41 >> 0x33);
+  { uint64_t x43 = ((uint64_t)x41 & 0x7ffffffffffff);
+  { uint128_t x44 = (x42 + x24);
+  { uint64_t x45 = (uint64_t) (x44 >> 0x33);
+  { uint64_t x46 = ((uint64_t)x44 & 0x7ffffffffffff);
+  { uint64_t x47 = (x34 + (0x13 * x45));
+  { uint64_t x48 = (x47 >> 0x33);
+  { uint64_t x49 = (x47 & 0x7ffffffffffff);
+  { uint64_t x50 = (x48 + x37);
+  { uint64_t x51 = (x50 >> 0x33);
+  { uint64_t x52 = (x50 & 0x7ffffffffffff);
+  out[0] = x49;
+  out[1] = x52;
+  out[2] = (x51 + x40);
+  out[3] = x43;
+  out[4] = x46;
+  }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+  assert_fe(out);
+}
+
+static void fe_mul121666(fe *h, const fe_loose *f) {
+  assert_fe_loose(f->v);
+  fe_mul_121666_impl(h->v, f->v);
+  assert_fe(h->v);
+}
+
+#endif  // !BORINGSSL_X25519_X86_64
+
+// Adapted from Fiat-synthesized |fe_sub_impl| with |out| = 0.
+static void fe_neg_impl(uint64_t out[5], const uint64_t in2[5]) {
+  { const uint64_t x10 = 0;
+  { const uint64_t x11 = 0;
+  { const uint64_t x9 = 0;
+  { const uint64_t x7 = 0;
+  { const uint64_t x5 = 0;
+  { const uint64_t x18 = in2[4];
+  { const uint64_t x19 = in2[3];
+  { const uint64_t x17 = in2[2];
+  { const uint64_t x15 = in2[1];
+  { const uint64_t x13 = in2[0];
+  out[0] = ((0xfffffffffffda + x5) - x13);
+  out[1] = ((0xffffffffffffe + x7) - x15);
+  out[2] = ((0xffffffffffffe + x9) - x17);
+  out[3] = ((0xffffffffffffe + x11) - x19);
+  out[4] = ((0xffffffffffffe + x10) - x18);
+  }}}}}}}}}}
+}
+
+// h = -f
+static void fe_neg(fe_loose *h, const fe *f) {
+  assert_fe(f->v);
+  fe_neg_impl(h->v, f->v);
+  assert_fe_loose(h->v);
+}
+
+// Replace (f,g) with (g,g) if b == 1;
+// replace (f,g) with (f,g) if b == 0.
+//
+// Preconditions: b in {0,1}.
+static void fe_cmov(fe_loose *f, const fe_loose *g, uint64_t b) {
+  b = 0-b;
+  for (unsigned i = 0; i < 5; i++) {
+    uint64_t x = f->v[i] ^ g->v[i];
+    x &= b;
+    f->v[i] ^= x;
+  }
+}
+
+#else
 
 #define assert_fe(f) do { \
   for (unsigned _assert_fe_i = 0; _assert_fe_i< 10; _assert_fe_i++) { \
@@ -248,37 +773,23 @@ static void fe_tobytes(uint8_t s[32], const fe *f) {
   s[31] = h[9] >> 18;
 }
 
-// h = f
-static void fe_copy(fe *h, const fe *f) {
-  OPENSSL_memmove(h, f, sizeof(uint32_t) * 10);
-}
-
-static void fe_copy_lt(fe_loose *h, const fe *f) {
-  OPENSSL_memmove(h, f, sizeof(uint32_t) * 10);
-}
-#if !defined(OPENSSL_SMALL)
-static void fe_copy_ll(fe_loose *h, const fe_loose *f) {
-  OPENSSL_memmove(h, f, sizeof(uint32_t) * 10);
-}
-#endif // !defined(OPENSSL_SMALL)
-
 // h = 0
 static void fe_0(fe *h) {
-  OPENSSL_memset(h, 0, sizeof(uint32_t) * 10);
+  OPENSSL_memset(h, 0, sizeof(fe));
 }
 
 static void fe_loose_0(fe_loose *h) {
-  OPENSSL_memset(h, 0, sizeof(uint32_t) * 10);
+  OPENSSL_memset(h, 0, sizeof(fe_loose));
 }
 
 // h = 1
 static void fe_1(fe *h) {
-  OPENSSL_memset(h, 0, sizeof(uint32_t) * 10);
+  OPENSSL_memset(h, 0, sizeof(fe));
   h->v[0] = 1;
 }
 
 static void fe_loose_1(fe_loose *h) {
-  OPENSSL_memset(h, 0, sizeof(uint32_t) * 10);
+  OPENSSL_memset(h, 0, sizeof(fe_loose));
   h->v[0] = 1;
 }
 
@@ -833,6 +1344,7 @@ static void fe_mul121666(fe *h, const fe_loose *f) {
 
 #endif  // !BORINGSSL_X25519_X86_64
 
+// Adapted from Fiat-synthesized |fe_sub_impl| with |out| = 0.
 static void fe_neg_impl(uint32_t out[10], const uint32_t in2[10]) {
   { const uint32_t x20 = 0;
   { const uint32_t x21 = 0;
@@ -887,6 +1399,24 @@ static void fe_cmov(fe_loose *f, const fe_loose *g, unsigned b) {
     f->v[i] ^= x;
   }
 }
+
+#endif  // BORINGSSL_CURVE25519_64BIT
+
+// h = f
+static void fe_copy(fe *h, const fe *f) {
+  OPENSSL_memmove(h, f, sizeof(fe));
+}
+
+static void fe_copy_lt(fe_loose *h, const fe *f) {
+  OPENSSL_COMPILE_ASSERT(sizeof(fe_loose) == sizeof(fe),
+                         fe_and_fe_loose_mismatch);
+  OPENSSL_memmove(h, f, sizeof(fe));
+}
+#if !defined(OPENSSL_SMALL)
+static void fe_copy_ll(fe_loose *h, const fe_loose *f) {
+  OPENSSL_memmove(h, f, sizeof(fe_loose));
+}
+#endif // !defined(OPENSSL_SMALL)
 
 static void fe_loose_invert(fe *out, const fe_loose *z) {
   fe t0;
