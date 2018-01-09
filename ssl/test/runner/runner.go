@@ -5306,7 +5306,7 @@ func addVersionNegotiationTests() {
 				expectedClientVersion := expectedVersion
 				if expectedVersion == VersionTLS13 && runnerVers.tls13Variant != shimVers.tls13Variant {
 					expectedClientVersion = VersionTLS12
-					if shimVers.tls13Variant == TLS13Draft22 {
+					if shimVers.tls13Variant == TLS13Draft23 {
 						expectedServerVersion = VersionTLS12
 					}
 				}
@@ -5516,7 +5516,7 @@ func addVersionNegotiationTests() {
 		name:     "IgnoreClientVersionOrder",
 		config: Config{
 			Bugs: ProtocolBugs{
-				SendSupportedVersions: []uint16{VersionTLS12, tls13Draft22Version},
+				SendSupportedVersions: []uint16{VersionTLS12, tls13Draft23Version},
 			},
 		},
 		expectedVersion: VersionTLS13,

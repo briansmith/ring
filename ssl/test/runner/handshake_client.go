@@ -159,6 +159,11 @@ func (c *Conn) clientHandshake() error {
 	if maxVersion >= VersionTLS13 {
 		keyShares = make(map[CurveID]ecdhCurve)
 		hello.hasKeyShares = true
+		if c.config.TLS13Variant == TLS13Draft23 {
+			hello.keyShareExtension = extensionNewKeyShare
+		} else {
+			hello.keyShareExtension = extensionOldKeyShare
+		}
 		hello.trailingKeyShareData = c.config.Bugs.TrailingKeyShareData
 		curvesToSend := c.config.defaultCurves()
 		for _, curveID := range hello.supportedCurves {

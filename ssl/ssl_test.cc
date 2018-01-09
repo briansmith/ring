@@ -3861,7 +3861,7 @@ TEST(SSLTest, AllTests) {
       !TestPaddingExtension(TLS1_3_VERSION, TLS1_2_VERSION) ||
       // Test the padding extension at TLS 1.3 with a TLS 1.3 session, so there
       // will be a PSK binder after the padding extension.
-      !TestPaddingExtension(TLS1_3_VERSION, TLS1_3_DRAFT22_VERSION)) {
+      !TestPaddingExtension(TLS1_3_VERSION, TLS1_3_DRAFT23_VERSION)) {
     ADD_FAILURE() << "Tests failed";
   }
 }

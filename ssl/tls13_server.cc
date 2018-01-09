@@ -63,10 +63,15 @@ static int resolve_ecdhe_secret(SSL_HANDSHAKE *hs, bool *out_need_retry,
   SSL *const ssl = hs->ssl;
   *out_need_retry = false;
 
+  uint16_t key_share_ext = TLSEXT_TYPE_old_key_share;
+  if (ssl_is_draft23(ssl->version)) {
+    key_share_ext = TLSEXT_TYPE_new_key_share;
+  }
+
   // We only support connections that include an ECDHE key exchange.
   CBS key_share;
   if (!ssl_client_hello_get_extension(client_hello, &key_share,
-                                      TLSEXT_TYPE_key_share)) {
+                                      key_share_ext)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_MISSING_KEY_SHARE);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_MISSING_EXTENSION);
     return 0;
@@ -508,7 +513,9 @@ static enum ssl_hs_wait_t do_send_hello_retry_request(SSL_HANDSHAKE *hs) {
         !CBB_add_u16(&extensions, TLSEXT_TYPE_supported_versions) ||
         !CBB_add_u16(&extensions, 2 /* length */) ||
         !CBB_add_u16(&extensions, ssl->version) ||
-        !CBB_add_u16(&extensions, TLSEXT_TYPE_key_share) ||
+        !CBB_add_u16(&extensions, ssl_is_draft23(ssl->version)
+                                      ? TLSEXT_TYPE_new_key_share
+                                      : TLSEXT_TYPE_old_key_share) ||
         !CBB_add_u16(&extensions, 2 /* length */) ||
         !CBB_add_u16(&extensions, group_id) ||
         !ssl_add_message_cbb(ssl, cbb.get())) {
@@ -529,7 +536,7 @@ static enum ssl_hs_wait_t do_send_hello_retry_request(SSL_HANDSHAKE *hs) {
          !CBB_add_u16(&body, ssl_cipher_get_value(hs->new_cipher))) ||
         !tls1_get_shared_group(hs, &group_id) ||
         !CBB_add_u16_length_prefixed(&body, &extensions) ||
-        !CBB_add_u16(&extensions, TLSEXT_TYPE_key_share) ||
+        !CBB_add_u16(&extensions, TLSEXT_TYPE_old_key_share) ||
         !CBB_add_u16(&extensions, 2 /* length */) ||
         !CBB_add_u16(&extensions, group_id) ||
         !ssl_add_message_cbb(ssl, cbb.get())) {

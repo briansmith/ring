@@ -35,6 +35,7 @@ bool ssl_protocol_version_from_wire(uint16_t *out, uint16_t version) {
       return true;
 
     case TLS1_3_DRAFT22_VERSION:
+    case TLS1_3_DRAFT23_VERSION:
     case TLS1_3_EXPERIMENT2_VERSION:
       *out = TLS1_3_VERSION;
       return true;
@@ -57,6 +58,7 @@ bool ssl_protocol_version_from_wire(uint16_t *out, uint16_t version) {
 // decreasing preference.
 
 static const uint16_t kTLSVersions[] = {
+    TLS1_3_DRAFT23_VERSION,
     TLS1_3_DRAFT22_VERSION,
     TLS1_3_EXPERIMENT2_VERSION,
     TLS1_2_VERSION,
@@ -102,6 +104,7 @@ static bool method_supports_version(const SSL_PROTOCOL_METHOD *method,
 static const char *ssl_version_to_string(uint16_t version) {
   switch (version) {
     case TLS1_3_DRAFT22_VERSION:
+    case TLS1_3_DRAFT23_VERSION:
     case TLS1_3_EXPERIMENT2_VERSION:
       return "TLSv1.3";
 
@@ -132,6 +135,7 @@ static uint16_t wire_version_to_api(uint16_t version) {
   switch (version) {
     // Report TLS 1.3 draft versions as TLS 1.3 in the public API.
     case TLS1_3_DRAFT22_VERSION:
+    case TLS1_3_DRAFT23_VERSION:
     case TLS1_3_EXPERIMENT2_VERSION:
       return TLS1_3_VERSION;
     default:
@@ -144,6 +148,7 @@ static uint16_t wire_version_to_api(uint16_t version) {
 // used in context where that does not matter.
 static bool api_version_to_wire(uint16_t *out, uint16_t version) {
   if (version == TLS1_3_DRAFT22_VERSION ||
+      version == TLS1_3_DRAFT23_VERSION ||
       version == TLS1_3_EXPERIMENT2_VERSION) {
     return false;
   }
@@ -303,8 +308,10 @@ bool ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version) {
   if (protocol_version != TLS1_3_VERSION ||
       (ssl->tls13_variant == tls13_experiment2 &&
        version == TLS1_3_EXPERIMENT2_VERSION) ||
+      (ssl->tls13_variant == tls13_draft22 &&
+       version == TLS1_3_DRAFT22_VERSION) ||
       (ssl->tls13_variant == tls13_default &&
-       version == TLS1_3_DRAFT22_VERSION)) {
+       version == TLS1_3_DRAFT23_VERSION)) {
     return true;
   }
 
@@ -362,7 +369,15 @@ bool ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 }
 
 bool ssl_is_draft22(uint16_t version) {
-  return version == TLS1_3_DRAFT22_VERSION;
+  return version == TLS1_3_DRAFT22_VERSION || version == TLS1_3_DRAFT23_VERSION;
+}
+
+bool ssl_is_draft23(uint16_t version) {
+  return version == TLS1_3_DRAFT23_VERSION;
+}
+
+bool ssl_is_draft23_variant(tls13_variant_t variant) {
+  return variant == tls13_default;
 }
 
 }  // namespace bssl

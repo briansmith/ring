@@ -280,6 +280,14 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
+	// Check that we received the expected version of the key_share extension.
+	if c.vers >= VersionTLS13 {
+		if (isDraft23(c.wireVersion) && hs.clientHello.keyShareExtension != extensionNewKeyShare) ||
+			(!isDraft23(c.wireVersion) && hs.clientHello.keyShareExtension != extensionOldKeyShare) {
+			return fmt.Errorf("tls: client offered wrong key_share extension")
+		}
+	}
+
 	if config.Bugs.ExpectNoTLS12Session {
 		if len(hs.clientHello.sessionId) > 0 && c.vers >= VersionTLS13 {
 			return fmt.Errorf("tls: client offered an unexpected session ID")

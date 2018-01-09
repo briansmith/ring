@@ -392,32 +392,17 @@ bool ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 // call this function before the version is determined.
 uint16_t ssl_protocol_version(const SSL *ssl);
 
-// ssl_is_draft21 returns whether the version corresponds to a draft21 TLS 1.3
-// variant.
-bool ssl_is_draft21(uint16_t version);
-
 // ssl_is_draft22 returns whether the version corresponds to a draft22 TLS 1.3
 // variant.
 bool ssl_is_draft22(uint16_t version);
 
-// ssl_is_resumption_experiment returns whether the version corresponds to a
-// TLS 1.3 resumption experiment.
-bool ssl_is_resumption_experiment(uint16_t version);
+// ssl_is_draft23 returns whether the version corresponds to a draft23 TLS 1.3
+// variant.
+bool ssl_is_draft23(uint16_t version);
 
-// ssl_is_resumption_variant returns whether the variant corresponds to a
-// TLS 1.3 resumption experiment.
-bool ssl_is_resumption_variant(uint16_t max_version,
-                               enum tls13_variant_t variant);
-
-// ssl_is_resumption_client_ccs_experiment returns whether the version
-// corresponds to a TLS 1.3 resumption experiment that sends a client CCS.
-bool ssl_is_resumption_client_ccs_experiment(uint16_t version);
-
-// ssl_is_resumption_record_version_experiment returns whether the version
-// corresponds to a TLS 1.3 resumption experiment that modifies the record
-// version.
-bool ssl_is_resumption_record_version_experiment(uint16_t version);
-
+// ssl_is_draft23_variant returns whether the variant corresponds to a
+// draft23 TLS 1.3 variant.
+ bool ssl_is_draft23_variant(enum tls13_variant_t variant);
 
 // Cipher suites.
 

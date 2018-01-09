@@ -549,6 +549,10 @@ static bool forbid_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   return true;
 }
 
+static bool dont_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
+  return true;
+}
+
 static bool ignore_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                     CBS *contents) {
   // This extension from the client is handled elsewhere.
@@ -2080,7 +2084,9 @@ static bool ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   }
 
   CBB contents, kse_bytes;
-  if (!CBB_add_u16(out, TLSEXT_TYPE_key_share) ||
+  if (!CBB_add_u16(out, ssl_is_draft23_variant(ssl->tls13_variant)
+                            ? TLSEXT_TYPE_new_key_share
+                            : TLSEXT_TYPE_old_key_share) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_u16_length_prefixed(&contents, &kse_bytes)) {
     return false;
@@ -2237,7 +2243,9 @@ bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   uint16_t group_id;
   CBB kse_bytes, public_key;
   if (!tls1_get_shared_group(hs, &group_id) ||
-      !CBB_add_u16(out, TLSEXT_TYPE_key_share) ||
+      !CBB_add_u16(out, ssl_is_draft23(hs->ssl->version)
+                            ? TLSEXT_TYPE_new_key_share
+                            : TLSEXT_TYPE_old_key_share) ||
       !CBB_add_u16_length_prefixed(out, &kse_bytes) ||
       !CBB_add_u16(&kse_bytes, group_id) ||
       !CBB_add_u16_length_prefixed(&kse_bytes, &public_key) ||
@@ -2491,7 +2499,16 @@ static const struct tls_extension kExtensions[] = {
     ext_ec_point_add_serverhello,
   },
   {
-    TLSEXT_TYPE_key_share,
+    TLSEXT_TYPE_old_key_share,
+    // This is added by TLSEXT_TYPE_new_key_share's callback.
+    NULL,
+    dont_add_clienthello,
+    forbid_parse_serverhello,
+    ignore_parse_clienthello,
+    dont_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_new_key_share,
     NULL,
     ext_key_share_add_clienthello,
     forbid_parse_serverhello,
