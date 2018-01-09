@@ -1,0 +1,28 @@
+# This file is used to automatically generate bionic's system call stubs.
+#
+# Each non-blank, non-comment line has the following format:
+#
+# return_type func_name[|alias_list][:syscall_name[:socketcall_id]]([parameter_list]) arch_list
+#
+# where:
+#       arch_list ::= "all" | arch+
+#       arch      ::= "arm" | "arm64" | "mips" | "mips64" | "x86" | "x86_64"
+#
+# Note:
+#      - syscall_name corresponds to the name of the syscall, which may differ from
+#        the exported function name (example: the exit syscall is implemented by the _exit()
+#        function, which is not the same as the standard C exit() function which calls it)
+#
+#      - alias_list is optional comma separated list of function aliases.
+#
+#      - The call_id parameter, given that func_name and syscall_name have
+#        been provided, allows the user to specify dispatch style syscalls.
+#        For example, socket() syscall on i386 actually becomes:
+#          socketcall(__NR_socket, 1, *(rest of args on stack)).
+#
+#      - Each parameter type is assumed to be stored in 32 bits.
+#
+# This file is processed by a python script named gensyscalls.py.
+
+# <sys/random.h>
+int getrandom(void*, size_t, unsigned) all
