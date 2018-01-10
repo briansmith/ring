@@ -68,17 +68,17 @@
 
 
 #define PACK(s) ((size_t)(s) << (sizeof(size_t) * 8 - 16))
-#define REDUCE1BIT(V)                                                  \
-  do {                                                                 \
-    if (sizeof(size_t) == 8) {                                         \
-      uint64_t T = UINT64_C(0xe100000000000000) & (0 - (V.lo & 1)); \
-      V.lo = (V.hi << 63) | (V.lo >> 1);                               \
-      V.hi = (V.hi >> 1) ^ T;                                          \
-    } else {                                                           \
-      uint32_t T = 0xe1000000U & (0 - (uint32_t)(V.lo & 1));           \
-      V.lo = (V.hi << 63) | (V.lo >> 1);                               \
-      V.hi = (V.hi >> 1) ^ ((uint64_t)T << 32);                        \
-    }                                                                  \
+#define REDUCE1BIT(V)                                                 \
+  do {                                                                \
+    if (sizeof(size_t) == 8) {                                        \
+      uint64_t T = UINT64_C(0xe100000000000000) & (0 - ((V).lo & 1)); \
+      (V).lo = ((V).hi << 63) | ((V).lo >> 1);                        \
+      (V).hi = ((V).hi >> 1) ^ T;                                     \
+    } else {                                                          \
+      uint32_t T = 0xe1000000U & (0 - (uint32_t)((V).lo & 1));        \
+      (V).lo = ((V).hi << 63) | ((V).lo >> 1);                        \
+      (V).hi = ((V).hi >> 1) ^ ((uint64_t)T << 32);                   \
+    }                                                                 \
   } while (0)
 
 // kSizeTWithoutLower4Bits is a mask that can be used to zero the lower four
@@ -258,10 +258,9 @@ void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
                         const uint8_t *inp, size_t len);
 #endif
 
-#define GCM_MUL(ctx, Xi) GFp_gcm_gmult_4bit(ctx->Xi, ctx->Htable)
+#define GCM_MUL(ctx, Xi) GFp_gcm_gmult_4bit((ctx)->Xi, (ctx)->Htable)
 #if defined(GHASH_ASM)
-#define GHASH(ctx, in, len) \
-    GFp_gcm_ghash_4bit((ctx)->Xi, (ctx)->Htable, in, len)
+#define GHASH(ctx, in, len) GFp_gcm_ghash_4bit((ctx)->Xi, (ctx)->Htable, in, len)
 /* GHASH_CHUNK is "stride parameter" missioned to mitigate cache
  * trashing effect. In other words idea is to hash data while it's
  * still in L1 cache after encryption pass... */
@@ -338,10 +337,10 @@ void GFp_gcm_ghash_p8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 
 #ifdef GCM_FUNCREF_4BIT
 #undef GCM_MUL
-#define GCM_MUL(ctx, Xi) (*gcm_gmult_p)(ctx->Xi, ctx->Htable)
+#define GCM_MUL(ctx, Xi) (*gcm_gmult_p)((ctx)->Xi, (ctx)->Htable)
 #ifdef GHASH
 #undef GHASH
-#define GHASH(ctx, in, len) (*gcm_ghash_p)(ctx->Xi, ctx->Htable, in, len)
+#define GHASH(ctx, in, len) (*gcm_ghash_p)((ctx)->Xi, (ctx)->Htable, in, len)
 #endif
 #endif
 

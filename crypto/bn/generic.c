@@ -63,7 +63,7 @@
 
 
 #define mul_add(r, a, w, c)             \
-  {                                     \
+  do {                                  \
     BN_ULONG high, low, ret, tmp = (a); \
     ret = (r);                          \
     bn_umult_lohi(&low, &high, w, tmp); \
@@ -73,23 +73,23 @@
     ret += low;                         \
     (c) += (ret < low) ? 1 : 0;         \
     (r) = ret;                          \
-  }
+  } while (0)
 
 #define mul(r, a, w, c)                \
-  {                                    \
+  do {                                 \
     BN_ULONG high, low, ret, ta = (a); \
     bn_umult_lohi(&low, &high, w, ta); \
     ret = low + (c);                   \
     (c) = high;                        \
     (c) += (ret < low) ? 1 : 0;        \
     (r) = ret;                         \
-  }
+  } while (0)
 
 #define sqr(r0, r1, a)               \
-  {                                  \
+  do {                               \
     BN_ULONG tmp = (a);              \
     bn_umult_lohi(&r0, &r1, tmp, tmp); \
-  }
+  } while (0)
 
 
 BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
