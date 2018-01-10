@@ -52,7 +52,7 @@
 
 #include <GFp/cpu.h>
 
-#include "../../modes/internal.h"
+#include "../modes/internal.h"
 
 
 #if defined(OPENSSL_NO_ASM) || \

@@ -56,8 +56,7 @@
 #include <GFp/type_check.h>
 
 #include "internal.h"
-#include "../internal.h"
-
+#include "../../internal.h"
 
 #if !defined(OPENSSL_NO_ASM) &&                         \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
@@ -65,7 +64,6 @@
      defined(OPENSSL_PPC64LE))
 #define GHASH_ASM
 #endif
-
 
 #define PACK(s) ((size_t)(s) << (sizeof(size_t) * 8 - 16))
 #define REDUCE1BIT(V)                                                 \
@@ -284,11 +282,6 @@ void GFp_gcm_gmult_avx(uint8_t Xi[16], const u128 Htable[16]);
 void GFp_gcm_ghash_avx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
                        size_t len);
 #define AESNI_GCM
-static int aesni_gcm_enabled(GCM128_CONTEXT *ctx, aes_ctr_f stream) {
-  return stream == GFp_aesni_ctr32_encrypt_blocks &&
-         ctx->ghash == GFp_gcm_ghash_avx;
-}
-
 size_t GFp_aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                              const void *key, uint8_t ivec[16], uint8_t Xi[16]);
 size_t GFp_aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
@@ -415,6 +408,8 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
     if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
       ctx->gmult = GFp_gcm_gmult_avx;
       ctx->ghash = GFp_gcm_ghash_avx;
+      ctx->use_aesni_gcm_crypt = 1;
+
       return;
     }
 #endif
@@ -524,7 +519,7 @@ int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 
 #if defined(AESNI_GCM)
-  if (aesni_gcm_enabled(ctx, stream)) {
+  if (ctx->use_aesni_gcm_crypt) {
     /* |aesni_gcm_encrypt| may not process all the input given to it. It may
      * not process *any* of its input if it is deemed too small. */
     size_t bulk = GFp_aesni_gcm_encrypt(in, out, len, key, ctx->Yi, ctx->Xi);
@@ -603,7 +598,7 @@ int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 
 #if defined(AESNI_GCM)
-  if (aesni_gcm_enabled(ctx, stream)) {
+  if (ctx->use_aesni_gcm_crypt) {
     /* |aesni_gcm_decrypt| may not process all the input given to it. It may
      * not process *any* of its input if it is deemed too small. */
     size_t bulk = GFp_aesni_gcm_decrypt(in, out, len, key, ctx->Yi, ctx->Xi);
@@ -691,8 +686,8 @@ void GFp_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16]) {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 int GFp_gcm_clmul_enabled(void) {
 #ifdef GHASH_ASM
-  return GFp_ia32cap_P[0] & (1 << 24) &&  /* check FXSR bit */
-    GFp_ia32cap_P[1] & (1 << 1);  /* check PCLMULQDQ bit */
+  return GFp_ia32cap_P[0] & (1 << 24) && /* check FXSR bit */
+         GFp_ia32cap_P[1] & (1 << 1);    /* check PCLMULQDQ bit */
 #else
   return 0;
 #endif

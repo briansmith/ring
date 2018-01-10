@@ -51,7 +51,7 @@
 
 #include <GFp/aes.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
@@ -97,6 +97,10 @@ struct gcm128_context {
   gcm128_gmult_f gmult;
   gcm128_ghash_f ghash;
   aes_block_f block;
+
+  /* use_aesni_gcm_crypt is true if this context should use the assembly
+   * functions |aesni_gcm_encrypt| and |aesni_gcm_decrypt| to process data. */
+  unsigned use_aesni_gcm_crypt:1;
 };
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
