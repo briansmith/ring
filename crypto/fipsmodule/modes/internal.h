@@ -104,7 +104,7 @@ struct gcm128_context {
 };
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-/* crypto_gcm_clmul_enabled returns one if the CLMUL implementation of GCM is
+/* GFp_gcm_clmul_enabled returns one if the CLMUL implementation of GCM is
  * used. */
 int GFp_gcm_clmul_enabled(void);
 #endif
