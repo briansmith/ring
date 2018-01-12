@@ -5,6 +5,7 @@ ssl/test/runner/runner
 doc/*.html
 doc/doc.css
 
+util/bot/android_ndk
 util/bot/android_tools
 util/bot/cmake-linux64
 util/bot/cmake-linux64.tar.gz
