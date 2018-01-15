@@ -567,8 +567,8 @@ int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
   BIGNUM *t = NULL;
   int j = 0, k;
 
-  al = a->top;
-  bl = b->top;
+  al = a->width;
+  bl = b->width;
 
   if ((al == 0) || (bl == 0)) {
     BN_zero(r);
@@ -592,7 +592,7 @@ int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
       if (!bn_wexpand(rr, 16)) {
         goto err;
       }
-      rr->top = 16;
+      rr->width = 16;
       bn_mul_comba8(rr->d, a->d, b->d);
       goto end;
     }
@@ -634,7 +634,7 @@ int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
         }
         bn_mul_recursive(rr->d, a->d, b->d, j, al - j, bl - j, t->d);
       }
-      rr->top = top;
+      rr->width = top;
       goto end;
     }
   }
@@ -642,11 +642,11 @@ int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
   if (!bn_wexpand(rr, top)) {
     goto err;
   }
-  rr->top = top;
+  rr->width = top;
   bn_mul_normal(rr->d, a->d, al, b->d, bl);
 
 end:
-  bn_correct_top(rr);
+  bn_set_minimal_width(rr);
   if (r != rr && !BN_copy(r, rr)) {
     goto err;
   }
@@ -793,7 +793,7 @@ static void bn_sqr_recursive(BN_ULONG *r, const BN_ULONG *a, int n2,
 }
 
 int BN_mul_word(BIGNUM *bn, BN_ULONG w) {
-  if (!bn->top) {
+  if (!bn->width) {
     return 1;
   }
 
@@ -802,12 +802,12 @@ int BN_mul_word(BIGNUM *bn, BN_ULONG w) {
     return 1;
   }
 
-  BN_ULONG ll = bn_mul_words(bn->d, bn->d, bn->top, w);
+  BN_ULONG ll = bn_mul_words(bn->d, bn->d, bn->width, w);
   if (ll) {
-    if (!bn_wexpand(bn, bn->top + 1)) {
+    if (!bn_wexpand(bn, bn->width + 1)) {
       return 0;
     }
-    bn->d[bn->top++] = ll;
+    bn->d[bn->width++] = ll;
   }
 
   return 1;
@@ -818,9 +818,9 @@ int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
   int ret = 0;
   BIGNUM *tmp, *rr;
 
-  al = a->top;
+  al = a->width;
   if (al <= 0) {
-    r->top = 0;
+    r->width = 0;
     r->neg = 0;
     return 1;
   }
@@ -866,8 +866,8 @@ int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
   }
 
   rr->neg = 0;
-  rr->top = max;
-  bn_correct_top(rr);
+  rr->width = max;
+  bn_set_minimal_width(rr);
 
   if (rr != r && !BN_copy(r, rr)) {
     goto err;

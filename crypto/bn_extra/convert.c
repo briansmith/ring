@@ -154,7 +154,7 @@ static int decode_hex(BIGNUM *bn, const char *in, int in_len) {
     in_len -= todo;
   }
   assert(i <= bn->dmax);
-  bn->top = i;
+  bn->width = i;
   return 1;
 }
 
@@ -223,7 +223,7 @@ static int bn_x2bn(BIGNUM **outp, const char *in, decode_func decode, char_test_
     goto err;
   }
 
-  bn_correct_top(ret);
+  bn_set_minimal_width(ret);
   if (!BN_is_zero(ret)) {
     ret->neg = neg;
   }

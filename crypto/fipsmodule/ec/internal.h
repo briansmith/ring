@@ -92,8 +92,8 @@ OPENSSL_COMPILE_ASSERT(EC_MAX_SCALAR_WORDS <= BN_SMALL_MAX_WORDS,
                        bn_small_functions_applicable);
 
 // An EC_SCALAR is an integer fully reduced modulo the order. Only the first
-// |order->top| words are used. An |EC_SCALAR| is specific to an |EC_GROUP| and
-// must not be mixed between groups.
+// |order->width| words are used. An |EC_SCALAR| is specific to an |EC_GROUP|
+// and must not be mixed between groups.
 typedef union {
   // bytes is the representation of the scalar in little-endian order.
   uint8_t bytes[EC_MAX_SCALAR_BYTES];

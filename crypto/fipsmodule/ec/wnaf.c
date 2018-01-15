@@ -150,7 +150,7 @@ static int compute_wNAF(const EC_GROUP *group, int8_t *out,
 
     window_val >>= 1;
     window_val +=
-        bit * bn_is_bit_set_words(scalar->words, group->order.top, j + w);
+        bit * bn_is_bit_set_words(scalar->words, group->order.width, j + w);
 
     if (window_val > next_bit) {
       OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);

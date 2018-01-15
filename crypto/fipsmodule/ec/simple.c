@@ -136,7 +136,7 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
   }
   BN_set_negative(&group->field, 0);
   // Store the field in minimal form, so it can be used with |BN_ULONG| arrays.
-  bn_correct_top(&group->field);
+  bn_set_minimal_width(&group->field);
 
   // group->a
   if (!BN_nnmod(tmp_a, a, &group->field, ctx)) {

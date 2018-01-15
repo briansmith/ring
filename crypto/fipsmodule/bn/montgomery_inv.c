@@ -71,7 +71,7 @@ uint64_t bn_mont_n0(const BIGNUM *n) {
   // |BN_MONT_CTX_N0_LIMBS| limbs of |n|.
   uint64_t n_mod_r = n->d[0];
 #if BN_MONT_CTX_N0_LIMBS == 2
-  if (n->top > 1) {
+  if (n->width > 1) {
     n_mod_r |= (uint64_t)n->d[1] << BN_BITS2;
   }
 #endif

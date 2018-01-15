@@ -278,15 +278,15 @@ int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
 
 int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
                      const BIGNUM *max_exclusive) {
-  if (!bn_wexpand(r, max_exclusive->top) ||
+  if (!bn_wexpand(r, max_exclusive->width) ||
       !bn_rand_range_words(r->d, min_inclusive, max_exclusive->d,
-                           max_exclusive->top, kDefaultAdditionalData)) {
+                           max_exclusive->width, kDefaultAdditionalData)) {
     return 0;
   }
 
   r->neg = 0;
-  r->top = max_exclusive->top;
-  bn_correct_top(r);
+  r->width = max_exclusive->width;
+  bn_set_minimal_width(r);
   return 1;
 }
 

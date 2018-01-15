@@ -105,20 +105,20 @@ int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   BN_ULONG *ap, *bp, *rp, carry, t1, t2;
   const BIGNUM *tmp;
 
-  if (a->top < b->top) {
+  if (a->width < b->width) {
     tmp = a;
     a = b;
     b = tmp;
   }
-  max = a->top;
-  min = b->top;
+  max = a->width;
+  min = b->width;
   dif = max - min;
 
   if (!bn_wexpand(r, max + 1)) {
     return 0;
   }
 
-  r->top = max;
+  r->width = max;
 
   ap = a->d;
   bp = b->d;
@@ -143,7 +143,7 @@ int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
     if (carry) {
       // carry != 0 => dif == 0
       *rp = 1;
-      r->top++;
+      r->width++;
     }
   }
 
@@ -182,16 +182,16 @@ int BN_add_word(BIGNUM *a, BN_ULONG w) {
     return i;
   }
 
-  for (i = 0; w != 0 && i < a->top; i++) {
+  for (i = 0; w != 0 && i < a->width; i++) {
     a->d[i] = l = a->d[i] + w;
     w = (w > l) ? 1 : 0;
   }
 
-  if (w && i == a->top) {
-    if (!bn_wexpand(a, a->top + 1)) {
+  if (w && i == a->width) {
+    if (!bn_wexpand(a, a->width + 1)) {
       return 0;
     }
-    a->top++;
+    a->width++;
     a->d[i] = w;
   }
 
@@ -305,9 +305,9 @@ int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
     OPENSSL_memcpy(rp, ap, sizeof(*rp) * dif);
   }
 
-  r->top = max;
+  r->width = max;
   r->neg = 0;
-  bn_correct_top(r);
+  bn_set_minimal_width(r);
 
   return 1;
 }
@@ -355,8 +355,8 @@ int BN_sub_word(BIGNUM *a, BN_ULONG w) {
     }
   }
 
-  if ((a->d[i] == 0) && (i == (a->top - 1))) {
-    a->top--;
+  if ((a->d[i] == 0) && (i == (a->width - 1))) {
+    a->width--;
   }
 
   return 1;

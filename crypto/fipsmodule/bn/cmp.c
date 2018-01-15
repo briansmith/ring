@@ -228,7 +228,7 @@ int BN_cmp_word(const BIGNUM *a, BN_ULONG b) {
   BN_init(&b_bn);
 
   b_bn.d = &b;
-  b_bn.top = b > 0;
+  b_bn.width = b > 0;
   b_bn.dmax = 1;
   b_bn.flags = BN_FLG_STATIC_DATA;
   return BN_cmp(a, &b_bn);
@@ -247,7 +247,7 @@ int BN_is_word(const BIGNUM *bn, BN_ULONG w) {
 }
 
 int BN_is_odd(const BIGNUM *bn) {
-  return bn->top > 0 && (bn->d[0] & 1) == 1;
+  return bn->width > 0 && (bn->d[0] & 1) == 1;
 }
 
 int BN_is_pow2(const BIGNUM *bn) {
@@ -268,14 +268,14 @@ int BN_is_pow2(const BIGNUM *bn) {
 int BN_equal_consttime(const BIGNUM *a, const BIGNUM *b) {
   BN_ULONG mask = 0;
   // If |a| or |b| has more words than the other, all those words must be zero.
-  for (int i = a->top; i < b->top; i++) {
+  for (int i = a->width; i < b->width; i++) {
     mask |= b->d[i];
   }
-  for (int i = b->top; i < a->top; i++) {
+  for (int i = b->width; i < a->width; i++) {
     mask |= a->d[i];
   }
   // Common words must match.
-  int min = a->top < b->top ? a->top : b->top;
+  int min = a->width < b->width ? a->width : b->width;
   for (int i = 0; i < min; i++) {
     mask |= (a->d[i] ^ b->d[i]);
   }
@@ -298,5 +298,5 @@ int BN_less_than_consttime(const BIGNUM *a, const BIGNUM *b) {
     a = b;
     b = tmp;
   }
-  return bn_less_than_words_impl(a->d, a->top, b->d, b->top);
+  return bn_less_than_words_impl(a->d, a->width, b->d, b->width);
 }

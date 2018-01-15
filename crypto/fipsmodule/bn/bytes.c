@@ -77,7 +77,7 @@ BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
   }
 
   if (len == 0) {
-    ret->top = 0;
+    ret->width = 0;
     return ret;
   }
 
@@ -93,7 +93,7 @@ BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
   // |bn_wexpand| must check bounds on |num_words| to write it into
   // |ret->dmax|.
   assert(num_words <= INT_MAX);
-  ret->top = (int)num_words;
+  ret->width = (int)num_words;
   ret->neg = 0;
 
   while (len--) {
@@ -107,7 +107,7 @@ BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
 
   // need to call this due to clear byte at top if avoiding having the top bit
   // set (-ve number)
-  bn_correct_top(ret);
+  bn_set_minimal_width(ret);
   return ret;
 }
 
@@ -123,7 +123,7 @@ BIGNUM *BN_le2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
   }
 
   if (len == 0) {
-    ret->top = 0;
+    ret->width = 0;
     ret->neg = 0;
     return ret;
   }
@@ -134,7 +134,7 @@ BIGNUM *BN_le2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
     BN_free(bn);
     return NULL;
   }
-  ret->top = num_words;
+  ret->width = num_words;
 
   // Make sure the top bytes will be zeroed.
   ret->d[num_words - 1] = 0;
@@ -143,7 +143,7 @@ BIGNUM *BN_le2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
   // internal representation.
   OPENSSL_memcpy(ret->d, in, len);
 
-  bn_correct_top(ret);
+  bn_set_minimal_width(ret);
   return ret;
 }
 
@@ -161,7 +161,8 @@ size_t BN_bn2bin(const BIGNUM *in, uint8_t *out) {
 
 // TODO(davidben): This does not need to be quite so complex once the |BIGNUM|s
 // we care about are fixed-width. |read_word_padded| is a hack to paper over
-// parts of the |bn_correct_top| leak. Fix that, and this can be simpler.
+// the historical |bn_minimal_width| leak. This can be simplified once that's
+// fixed.
 
 // constant_time_select_ulong returns |x| if |v| is 1 and |y| if |v| is 0. Its
 // behavior is undefined if |v| takes any other value.
@@ -192,13 +193,15 @@ static BN_ULONG read_word_padded(const BIGNUM *in, size_t i) {
   BN_ULONG l = in->d[constant_time_select_ulong(
       constant_time_le_size_t(in->dmax, i), in->dmax - 1, i)];
 
-  // Clamp to zero if above |d->top|.
-  return constant_time_select_ulong(constant_time_le_size_t(in->top, i), 0, l);
+  // Clamp to zero if above |d->width|.
+  return constant_time_select_ulong(constant_time_le_size_t(in->width, i), 0,
+                                    l);
 }
 
 static int fits_in_bytes(const BIGNUM *in, size_t len) {
   BN_ULONG mask = 0;
-  for (size_t i = (len + (BN_BYTES - 1)) / BN_BYTES; i < (size_t)in->top; i++) {
+  for (size_t i = (len + (BN_BYTES - 1)) / BN_BYTES; i < (size_t)in->width;
+       i++) {
     mask |= in->d[i];
   }
   if ((len % BN_BYTES) != 0) {
@@ -214,7 +217,7 @@ int BN_bn2le_padded(uint8_t *out, size_t len, const BIGNUM *in) {
     return 0;
   }
 
-  size_t todo = in->top * BN_BYTES;
+  size_t todo = in->width * BN_BYTES;
   if (todo > len) {
     todo = len;
   }
@@ -237,7 +240,7 @@ int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
   }
 
   // Write the bytes out one by one. Serialization is done without branching on
-  // the bits of |in| or on |in->top|, but if the routine would otherwise read
+  // the bits of |in| or on |in->width|, but if the routine would otherwise read
   // out of bounds, the memory access pattern can't be fixed. However, for an
   // RSA key of size a multiple of the word size, the probability of BN_BYTES
   // leading zero octets is low.

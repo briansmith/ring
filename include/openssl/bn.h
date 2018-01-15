@@ -907,12 +907,30 @@ OPENSSL_EXPORT int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod,
 // Private functions
 
 struct bignum_st {
-  BN_ULONG *d; /* Pointer to an array of 'BN_BITS2' bit chunks in little-endian
-                  order. */
-  int top;    // Index of last used element in |d|, plus one.
-  int dmax;   // Size of |d|, in words.
-  int neg;    // one if the number is negative
-  int flags;  // bitmask of BN_FLG_* values
+  // d is a pointer to an array of |width| |BN_BITS2|-bit chunks in
+  // little-endian order. This stores the absolute value of the number.
+  BN_ULONG *d;
+  // width is the number of elements of |d| which are valid. This value is not
+  // necessarily minimal; the most-significant words of |d| may be zero.
+  // |width| determines a potentially loose upper-bound on the absolute value
+  // of the |BIGNUM|.
+  //
+  // Functions taking |BIGNUM| inputs must compute the same answer for all
+  // possible widths. |bn_minimal_width|, |bn_set_minimal_width|, and other
+  // helpers may be used to recover the minimal width, provided it is not
+  // secret. If it is secret, use a different algorithm. Functions may output
+  // minimal or non-minimal |BIGNUM|s depending on secrecy requirements, but
+  // those which cause widths to unboundedly grow beyond the minimal value
+  // should be documented such.
+  //
+  // Note this is different from historical |BIGNUM| semantics.
+  int width;
+  // dmax is number of elements of |d| which are allocated.
+  int dmax;
+  // neg is one if the number if negative and zero otherwise.
+  int neg;
+  // flags is a bitmask of |BN_FLG_*| values
+  int flags;
 };
 
 struct bn_mont_ctx_st {

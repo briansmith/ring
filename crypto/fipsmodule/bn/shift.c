@@ -75,28 +75,28 @@ int BN_lshift(BIGNUM *r, const BIGNUM *a, int n) {
 
   r->neg = a->neg;
   nw = n / BN_BITS2;
-  if (!bn_wexpand(r, a->top + nw + 1)) {
+  if (!bn_wexpand(r, a->width + nw + 1)) {
     return 0;
   }
   lb = n % BN_BITS2;
   rb = BN_BITS2 - lb;
   f = a->d;
   t = r->d;
-  t[a->top + nw] = 0;
+  t[a->width + nw] = 0;
   if (lb == 0) {
-    for (i = a->top - 1; i >= 0; i--) {
+    for (i = a->width - 1; i >= 0; i--) {
       t[nw + i] = f[i];
     }
   } else {
-    for (i = a->top - 1; i >= 0; i--) {
+    for (i = a->width - 1; i >= 0; i--) {
       l = f[i];
       t[nw + i + 1] |= l >> rb;
       t[nw + i] = l << lb;
     }
   }
   OPENSSL_memset(t, 0, nw * sizeof(t[0]));
-  r->top = a->top + nw + 1;
-  bn_correct_top(r);
+  r->width = a->width + nw + 1;
+  bn_set_minimal_width(r);
 
   return 1;
 }
@@ -107,26 +107,26 @@ int BN_lshift1(BIGNUM *r, const BIGNUM *a) {
 
   if (r != a) {
     r->neg = a->neg;
-    if (!bn_wexpand(r, a->top + 1)) {
+    if (!bn_wexpand(r, a->width + 1)) {
       return 0;
     }
-    r->top = a->top;
+    r->width = a->width;
   } else {
-    if (!bn_wexpand(r, a->top + 1)) {
+    if (!bn_wexpand(r, a->width + 1)) {
       return 0;
     }
   }
   ap = a->d;
   rp = r->d;
   c = 0;
-  for (i = 0; i < a->top; i++) {
+  for (i = 0; i < a->width; i++) {
     t = *(ap++);
     *(rp++) = (t << 1) | c;
     c = t >> (BN_BITS2 - 1);
   }
   if (c) {
     *rp = 1;
-    r->top++;
+    r->width++;
   }
 
   return 1;
@@ -165,7 +165,7 @@ int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
   f = &(a->d[nw]);
   t = r->d;
   j = a_width - nw;
-  r->top = i;
+  r->width = i;
 
   if (rb == 0) {
     for (i = j; i != 0; i--) {
@@ -184,7 +184,7 @@ int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
     }
   }
 
-  if (r->top == 0) {
+  if (r->width == 0) {
     r->neg = 0;
   }
 
@@ -219,9 +219,9 @@ int BN_rshift1(BIGNUM *r, const BIGNUM *a) {
     rp[i] = (t >> 1) | c;
     c = t << (BN_BITS2 - 1);
   }
-  r->top = j;
+  r->width = j;
 
-  if (r->top == 0) {
+  if (r->width == 0) {
     r->neg = 0;
   }
 
@@ -235,14 +235,14 @@ int BN_set_bit(BIGNUM *a, int n) {
 
   int i = n / BN_BITS2;
   int j = n % BN_BITS2;
-  if (a->top <= i) {
+  if (a->width <= i) {
     if (!bn_wexpand(a, i + 1)) {
       return 0;
     }
-    for (int k = a->top; k < i + 1; k++) {
+    for (int k = a->width; k < i + 1; k++) {
       a->d[k] = 0;
     }
-    a->top = i + 1;
+    a->width = i + 1;
   }
 
   a->d[i] |= (((BN_ULONG)1) << j);
@@ -259,12 +259,12 @@ int BN_clear_bit(BIGNUM *a, int n) {
 
   i = n / BN_BITS2;
   j = n % BN_BITS2;
-  if (a->top <= i) {
+  if (a->width <= i) {
     return 0;
   }
 
   a->d[i] &= (~(((BN_ULONG)1) << j));
-  bn_correct_top(a);
+  bn_set_minimal_width(a);
   return 1;
 }
 
@@ -281,7 +281,7 @@ int BN_is_bit_set(const BIGNUM *a, int n) {
   if (n < 0) {
     return 0;
   }
-  return bn_is_bit_set_words(a->d, a->top, n);
+  return bn_is_bit_set_words(a->d, a->width, n);
 }
 
 int BN_mask_bits(BIGNUM *a, int n) {
@@ -291,16 +291,16 @@ int BN_mask_bits(BIGNUM *a, int n) {
 
   int w = n / BN_BITS2;
   int b = n % BN_BITS2;
-  if (w >= a->top) {
+  if (w >= a->width) {
     return 0;
   }
   if (b == 0) {
-    a->top = w;
+    a->width = w;
   } else {
-    a->top = w + 1;
+    a->width = w + 1;
     a->d[w] &= ~(BN_MASK2 << b);
   }
 
-  bn_correct_top(a);
+  bn_set_minimal_width(a);
   return 1;
 }

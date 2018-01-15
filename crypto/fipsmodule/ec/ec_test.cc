@@ -506,9 +506,8 @@ TEST_P(ECCurveTest, MulOrder) {
       << "p * order did not return point at infinity.";
 }
 
-// Test that |EC_POINT_mul| works with out-of-range scalars. Even beyond the
-// usual |bn_correct_top| disclaimer, we completely disclaim all hope here as a
-// reduction is needed, but we'll compute the right answer.
+// Test that |EC_POINT_mul| works with out-of-range scalars. The operation will
+// not be constant-time, but we'll compute the right answer.
 TEST_P(ECCurveTest, MulOutOfRange) {
   bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(GetParam().nid));
   ASSERT_TRUE(group);

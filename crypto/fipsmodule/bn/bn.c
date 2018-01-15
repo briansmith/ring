@@ -148,13 +148,13 @@ BIGNUM *BN_copy(BIGNUM *dest, const BIGNUM *src) {
     return dest;
   }
 
-  if (!bn_wexpand(dest, src->top)) {
+  if (!bn_wexpand(dest, src->width)) {
     return NULL;
   }
 
-  OPENSSL_memcpy(dest->d, src->d, sizeof(src->d[0]) * src->top);
+  OPENSSL_memcpy(dest->d, src->d, sizeof(src->d[0]) * src->width);
 
-  dest->top = src->top;
+  dest->width = src->width;
   dest->neg = src->neg;
   return dest;
 }
@@ -164,14 +164,14 @@ void BN_clear(BIGNUM *bn) {
     OPENSSL_memset(bn->d, 0, bn->dmax * sizeof(bn->d[0]));
   }
 
-  bn->top = 0;
+  bn->width = 0;
   bn->neg = 0;
 }
 
 DEFINE_METHOD_FUNCTION(BIGNUM, BN_value_one) {
   static const BN_ULONG kOneLimbs[1] = { 1 };
   out->d = (BN_ULONG*) kOneLimbs;
-  out->top = 1;
+  out->width = 1;
   out->dmax = 1;
   out->neg = 0;
   out->flags = BN_FLG_STATIC_DATA;
@@ -240,7 +240,7 @@ unsigned BN_num_bytes(const BIGNUM *bn) {
 }
 
 void BN_zero(BIGNUM *bn) {
-  bn->top = bn->neg = 0;
+  bn->width = bn->neg = 0;
 }
 
 int BN_one(BIGNUM *bn) {
@@ -259,7 +259,7 @@ int BN_set_word(BIGNUM *bn, BN_ULONG value) {
 
   bn->neg = 0;
   bn->d[0] = value;
-  bn->top = 1;
+  bn->width = 1;
   return 1;
 }
 
@@ -278,7 +278,7 @@ int BN_set_u64(BIGNUM *bn, uint64_t value) {
   bn->neg = 0;
   bn->d[0] = (BN_ULONG)value;
   bn->d[1] = (BN_ULONG)(value >> 32);
-  bn->top = 2;
+  bn->width = 2;
   return 1;
 #else
 #error "BN_BITS2 must be 32 or 64."
@@ -291,8 +291,8 @@ int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
   }
   OPENSSL_memmove(bn->d, words, num * sizeof(BN_ULONG));
   // |bn_wexpand| verified that |num| isn't too large.
-  bn->top = (int)num;
-  bn_correct_top(bn);
+  bn->width = (int)num;
+  bn_set_minimal_width(bn);
   bn->neg = 0;
   return 1;
 }
@@ -300,7 +300,7 @@ int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
 int bn_fits_in_words(const BIGNUM *bn, size_t num) {
   // All words beyond |num| must be zero.
   BN_ULONG mask = 0;
-  for (size_t i = num; i < (size_t)bn->top; i++) {
+  for (size_t i = num; i < (size_t)bn->width; i++) {
     mask |= bn->d[i];
   }
   return mask == 0;
@@ -312,7 +312,7 @@ int bn_copy_words(BN_ULONG *out, size_t num, const BIGNUM *bn) {
     return 0;
   }
 
-  size_t width = (size_t)bn->top;
+  size_t width = (size_t)bn->width;
   if (width > num) {
     if (!bn_fits_in_words(bn, num)) {
       OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
@@ -361,7 +361,7 @@ int bn_wexpand(BIGNUM *bn, size_t words) {
     return 0;
   }
 
-  OPENSSL_memcpy(a, bn->d, sizeof(BN_ULONG) * bn->top);
+  OPENSSL_memcpy(a, bn->d, sizeof(BN_ULONG) * bn->width);
 
   OPENSSL_free(bn->d);
   bn->d = a;
@@ -379,12 +379,13 @@ int bn_expand(BIGNUM *bn, size_t bits) {
 }
 
 int bn_resize_words(BIGNUM *bn, size_t words) {
-  if ((size_t)bn->top <= words) {
+  if ((size_t)bn->width <= words) {
     if (!bn_wexpand(bn, words)) {
       return 0;
     }
-    OPENSSL_memset(bn->d + bn->top, 0, (words - bn->top) * sizeof(BN_ULONG));
-    bn->top = words;
+    OPENSSL_memset(bn->d + bn->width, 0,
+                   (words - bn->width) * sizeof(BN_ULONG));
+    bn->width = words;
     return 1;
   }
 
@@ -393,21 +394,21 @@ int bn_resize_words(BIGNUM *bn, size_t words) {
     OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
     return 0;
   }
-  bn->top = words;
+  bn->width = words;
   return 1;
 }
 
 int bn_minimal_width(const BIGNUM *bn) {
-  int ret = bn->top;
+  int ret = bn->width;
   while (ret > 0 && bn->d[ret - 1] == 0) {
     ret--;
   }
   return ret;
 }
 
-void bn_correct_top(BIGNUM *bn) {
-  bn->top = bn_minimal_width(bn);
-  if (bn->top == 0) {
+void bn_set_minimal_width(BIGNUM *bn) {
+  bn->width = bn_minimal_width(bn);
+  if (bn->width == 0) {
     bn->neg = 0;
   }
 }

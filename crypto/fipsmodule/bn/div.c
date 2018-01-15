@@ -240,48 +240,48 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   if (!BN_lshift(sdiv, divisor, norm_shift)) {
     goto err;
   }
-  bn_correct_top(sdiv);
+  bn_set_minimal_width(sdiv);
   sdiv->neg = 0;
   norm_shift += BN_BITS2;
   if (!BN_lshift(snum, numerator, norm_shift)) {
     goto err;
   }
-  bn_correct_top(snum);
+  bn_set_minimal_width(snum);
   snum->neg = 0;
 
   // Since we don't want to have special-case logic for the case where snum is
   // larger than sdiv, we pad snum with enough zeroes without changing its
   // value.
-  if (snum->top <= sdiv->top + 1) {
-    if (!bn_wexpand(snum, sdiv->top + 2)) {
+  if (snum->width <= sdiv->width + 1) {
+    if (!bn_wexpand(snum, sdiv->width + 2)) {
       goto err;
     }
-    for (int i = snum->top; i < sdiv->top + 2; i++) {
+    for (int i = snum->width; i < sdiv->width + 2; i++) {
       snum->d[i] = 0;
     }
-    snum->top = sdiv->top + 2;
+    snum->width = sdiv->width + 2;
   } else {
-    if (!bn_wexpand(snum, snum->top + 1)) {
+    if (!bn_wexpand(snum, snum->width + 1)) {
       goto err;
     }
-    snum->d[snum->top] = 0;
-    snum->top++;
+    snum->d[snum->width] = 0;
+    snum->width++;
   }
 
-  div_n = sdiv->top;
-  num_n = snum->top;
+  div_n = sdiv->width;
+  num_n = snum->width;
   loop = num_n - div_n;
   // Lets setup a 'window' into snum
   // This is the part that corresponds to the current
   // 'area' being divided
   wnum.neg = 0;
   wnum.d = &(snum->d[loop]);
-  wnum.top = div_n;
-  // only needed when BN_ucmp messes up the values between top and max
+  wnum.width = div_n;
+  // only needed when BN_ucmp messes up the values between width and max
   wnum.dmax = snum->dmax - loop;  // so we don't step out of bounds
 
   // Get the top 2 words of sdiv
-  // div_n=sdiv->top;
+  // div_n=sdiv->width;
   d0 = sdiv->d[div_n - 1];
   d1 = (div_n == 1) ? 0 : sdiv->d[div_n - 2];
 
@@ -293,7 +293,7 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   if (!bn_wexpand(res, loop + 1)) {
     goto err;
   }
-  res->top = loop - 1;
+  res->width = loop - 1;
   resp = &(res->d[loop - 1]);
 
   // space for temp
@@ -301,9 +301,9 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
     goto err;
   }
 
-  // if res->top == 0 then clear the neg value otherwise decrease
+  // if res->width == 0 then clear the neg value otherwise decrease
   // the resp pointer
-  if (res->top == 0) {
+  if (res->width == 0) {
     res->neg = 0;
   } else {
     resp--;
@@ -379,7 +379,7 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
     *resp = q;
   }
 
-  bn_correct_top(snum);
+  bn_set_minimal_width(snum);
 
   if (rem != NULL) {
     // Keep a copy of the neg flag in numerator because if |rem| == |numerator|
@@ -393,7 +393,7 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
     }
   }
 
-  bn_correct_top(res);
+  bn_set_minimal_width(res);
   BN_CTX_end(ctx);
   return 1;
 
@@ -592,7 +592,7 @@ BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w) {
     return (BN_ULONG) - 1;
   }
 
-  if (a->top == 0) {
+  if (a->width == 0) {
     return 0;
   }
 
@@ -603,7 +603,7 @@ BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w) {
     return (BN_ULONG) - 1;
   }
 
-  for (i = a->top - 1; i >= 0; i--) {
+  for (i = a->width - 1; i >= 0; i--) {
     BN_ULONG l = a->d[i];
     BN_ULONG d;
     BN_ULONG unused_rem;
@@ -612,7 +612,7 @@ BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w) {
     a->d[i] = d;
   }
 
-  bn_correct_top(a);
+  bn_set_minimal_width(a);
   ret >>= j;
   return ret;
 }
@@ -643,7 +643,7 @@ BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w) {
   }
 #endif
 
-  for (i = a->top - 1; i >= 0; i--) {
+  for (i = a->width - 1; i >= 0; i--) {
 #ifndef BN_CAN_DIVIDE_ULLONG
     ret = ((ret << BN_BITS4) | ((a->d[i] >> BN_BITS4) & BN_MASK2l)) % w;
     ret = ((ret << BN_BITS4) | (a->d[i] & BN_MASK2l)) % w;
@@ -655,7 +655,7 @@ BN_ULONG BN_mod_word(const BIGNUM *a, BN_ULONG w) {
 }
 
 int BN_mod_pow2(BIGNUM *r, const BIGNUM *a, size_t e) {
-  if (e == 0 || a->top == 0) {
+  if (e == 0 || a->width == 0) {
     BN_zero(r);
     return 1;
   }
@@ -663,7 +663,7 @@ int BN_mod_pow2(BIGNUM *r, const BIGNUM *a, size_t e) {
   size_t num_words = 1 + ((e - 1) / BN_BITS2);
 
   // If |a| definitely has less than |e| bits, just BN_copy.
-  if ((size_t) a->top < num_words) {
+  if ((size_t) a->width < num_words) {
     return BN_copy(r, a) != NULL;
   }
 
@@ -684,8 +684,8 @@ int BN_mod_pow2(BIGNUM *r, const BIGNUM *a, size_t e) {
 
   // Fill in the remaining fields of |r|.
   r->neg = a->neg;
-  r->top = (int) num_words;
-  bn_correct_top(r);
+  r->width = (int) num_words;
+  bn_set_minimal_width(r);
   return 1;
 }
 
@@ -707,27 +707,27 @@ int BN_nnmod_pow2(BIGNUM *r, const BIGNUM *a, size_t e) {
   }
 
   // Clear the upper words of |r|.
-  OPENSSL_memset(&r->d[r->top], 0, (num_words - r->top) * BN_BYTES);
+  OPENSSL_memset(&r->d[r->width], 0, (num_words - r->width) * BN_BYTES);
 
   // Set parameters of |r|.
   r->neg = 0;
-  r->top = (int) num_words;
+  r->width = (int) num_words;
 
   // Now, invert every word. The idea here is that we want to compute 2^e-|x|,
   // which is actually equivalent to the twos-complement representation of |x|
   // in |e| bits, which is -x = ~x + 1.
-  for (int i = 0; i < r->top; i++) {
+  for (int i = 0; i < r->width; i++) {
     r->d[i] = ~r->d[i];
   }
 
   // If our exponent doesn't span the top word, we have to mask the rest.
   size_t top_word_exponent = e % BN_BITS2;
   if (top_word_exponent != 0) {
-    r->d[r->top - 1] &= (((BN_ULONG) 1) << top_word_exponent) - 1;
+    r->d[r->width - 1] &= (((BN_ULONG) 1) << top_word_exponent) - 1;
   }
 
-  // Keep the correct_top invariant for BN_add.
-  bn_correct_top(r);
+  // Keep the minimal-width invariant for |BIGNUM|.
+  bn_set_minimal_width(r);
 
   // Finally, add one, for the reason described above.
   return BN_add(r, r, BN_value_one());

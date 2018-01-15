@@ -201,9 +201,9 @@ extern "C" {
 // value of |bn|.
 int bn_minimal_width(const BIGNUM *bn);
 
-// bn_correct_top decrements |bn->top| to |bn_minimal_width|. If |bn| is zero,
-// |bn->neg| is set to zero.
-void bn_correct_top(BIGNUM *bn);
+// bn_set_minimal_width sets |bn->width| to |bn_minimal_width(bn)|. If |bn| is
+// zero, |bn->neg| is set to zero.
+void bn_set_minimal_width(BIGNUM *bn);
 
 // bn_wexpand ensures that |bn| has at least |words| works of space without
 // altering its value. It returns one on success or zero on allocation
@@ -216,10 +216,6 @@ int bn_expand(BIGNUM *bn, size_t bits);
 
 // bn_resize_words adjusts |bn->top| to be |words|. It returns one on success
 // and zero on allocation error or if |bn|'s value is too large.
-//
-// Do not call this function outside of unit tests. Most functions currently
-// require |BIGNUM|s be minimal. This function breaks that invariant. It is
-// introduced early so the invariant may be relaxed incrementally.
 OPENSSL_EXPORT int bn_resize_words(BIGNUM *bn, size_t words);
 
 // bn_set_words sets |bn| to the value encoded in the |num| words in |words|,

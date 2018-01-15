@@ -192,7 +192,7 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   // |mont->N| is always stored minimally. Computing RR efficiently leaks the
   // size of the modulus. While the modulus may be private in RSA (one of the
   // primes), their sizes are public, so this is fine.
-  bn_correct_top(&mont->N);
+  bn_set_minimal_width(&mont->N);
 
   // Find n0 such that n0 * N == -1 (mod r).
   //
@@ -215,7 +215,7 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   // as |BN_MONT_CTX_N0_LIMBS| is either one or two.
   //
   // XXX: This is not constant time with respect to |mont->N|, but it should be.
-  unsigned lgBigR = mont->N.top * BN_BITS2;
+  unsigned lgBigR = mont->N.width * BN_BITS2;
   if (!bn_mod_exp_base_2_vartime(&mont->RR, lgBigR * 2, &mont->N)) {
     return 0;
   }
@@ -260,7 +260,7 @@ int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont,
 static int bn_from_montgomery_in_place(BN_ULONG *r, size_t num_r, BN_ULONG *a,
                                        size_t num_a, const BN_MONT_CTX *mont) {
   const BN_ULONG *n = mont->N.d;
-  size_t num_n = mont->N.top;
+  size_t num_n = mont->N.width;
   if (num_r != num_n || num_a != 2 * num_n) {
     OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
@@ -307,25 +307,25 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
   }
 
   const BIGNUM *n = &mont->N;
-  if (n->top == 0) {
-    ret->top = 0;
+  if (n->width == 0) {
+    ret->width = 0;
     return 1;
   }
 
-  int max = (2 * n->top);  // carry is stored separately
+  int max = (2 * n->width);  // carry is stored separately
   if (!bn_resize_words(r, max) ||
-      !bn_wexpand(ret, n->top)) {
+      !bn_wexpand(ret, n->width)) {
     return 0;
   }
-  ret->top = n->top;
+  ret->width = n->width;
 
-  if (!bn_from_montgomery_in_place(ret->d, ret->top, r->d, r->top, mont)) {
+  if (!bn_from_montgomery_in_place(ret->d, ret->width, r->d, r->width, mont)) {
     return 0;
   }
   ret->neg = 0;
 
-  bn_correct_top(r);
-  bn_correct_top(ret);
+  bn_set_minimal_width(r);
+  bn_set_minimal_width(ret);
   return 1;
 }
 
@@ -350,22 +350,22 @@ err:
 }
 
 int bn_one_to_montgomery(BIGNUM *r, const BN_MONT_CTX *mont, BN_CTX *ctx) {
-  // If the high bit of |n| is set, R = 2^(top*BN_BITS2) < 2 * |n|, so we
+  // If the high bit of |n| is set, R = 2^(width*BN_BITS2) < 2 * |n|, so we
   // compute R - |n| rather than perform Montgomery reduction.
   const BIGNUM *n = &mont->N;
-  if (n->top > 0 && (n->d[n->top - 1] >> (BN_BITS2 - 1)) != 0) {
-    if (!bn_wexpand(r, n->top)) {
+  if (n->width > 0 && (n->d[n->width - 1] >> (BN_BITS2 - 1)) != 0) {
+    if (!bn_wexpand(r, n->width)) {
       return 0;
     }
     r->d[0] = 0 - n->d[0];
-    for (int i = 1; i < n->top; i++) {
+    for (int i = 1; i < n->width; i++) {
       r->d[i] = ~n->d[i];
     }
-    r->top = n->top;
+    r->width = n->width;
     r->neg = 0;
     // The upper words will be zero if the corresponding words of |n| were
-    // 0xfff[...], so call |bn_correct_top|.
-    bn_correct_top(r);
+    // 0xfff[...], so call |bn_set_minimal_width|.
+    bn_set_minimal_width(r);
     return 1;
   }
 
@@ -415,10 +415,10 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 
 #if defined(OPENSSL_BN_ASM_MONT)
   // |bn_mul_mont| requires at least 128 bits of limbs, at least for x86.
-  int num = mont->N.top;
+  int num = mont->N.width;
   if (num >= (128 / BN_BITS2) &&
-      a->top == num &&
-      b->top == num) {
+      a->width == num &&
+      b->width == num) {
     if (!bn_wexpand(r, num)) {
       return 0;
     }
@@ -429,8 +429,8 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
       return 0;
     }
     r->neg = 0;
-    r->top = num;
-    bn_correct_top(r);
+    r->width = num;
+    bn_set_minimal_width(r);
 
     return 1;
   }
@@ -441,18 +441,18 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 
 int bn_less_than_montgomery_R(const BIGNUM *bn, const BN_MONT_CTX *mont) {
   return !BN_is_negative(bn) &&
-         bn_fits_in_words(bn, mont->N.top);
+         bn_fits_in_words(bn, mont->N.width);
 }
 
 int bn_to_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
                            size_t num_a, const BN_MONT_CTX *mont) {
   return bn_mod_mul_montgomery_small(r, num_r, a, num_a, mont->RR.d,
-                                     mont->RR.top, mont);
+                                     mont->RR.width, mont);
 }
 
 int bn_from_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
                              size_t num_a, const BN_MONT_CTX *mont) {
-  size_t num_n = mont->N.top;
+  size_t num_n = mont->N.width;
   if (num_a > 2 * num_n || num_r != num_n || num_n > BN_SMALL_MAX_WORDS) {
     OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
@@ -469,7 +469,7 @@ int bn_from_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
 int bn_one_to_montgomery_small(BN_ULONG *r, size_t num_r,
                                const BN_MONT_CTX *mont) {
   const BN_ULONG *n = mont->N.d;
-  size_t num_n = mont->N.top;
+  size_t num_n = mont->N.width;
   if (num_n == 0 || num_r != num_n) {
     OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
@@ -485,13 +485,13 @@ int bn_one_to_montgomery_small(BN_ULONG *r, size_t num_r,
     return 1;
   }
 
-  return bn_from_montgomery_small(r, num_r, mont->RR.d, mont->RR.top, mont);
+  return bn_from_montgomery_small(r, num_r, mont->RR.d, mont->RR.width, mont);
 }
 
 int bn_mod_mul_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
                                 size_t num_a, const BN_ULONG *b, size_t num_b,
                                 const BN_MONT_CTX *mont) {
-  size_t num_n = mont->N.top;
+  size_t num_n = mont->N.width;
   if (num_r != num_n || num_a + num_b > 2 * num_n ||
       num_n > BN_SMALL_MAX_WORDS) {
     OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);

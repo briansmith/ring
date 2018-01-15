@@ -760,8 +760,8 @@ static const BN_ULONG kSmallFactorsLimbs[] = {
 
 DEFINE_LOCAL_DATA(BIGNUM, g_small_factors) {
   out->d = (BN_ULONG *) kSmallFactorsLimbs;
-  out->top = OPENSSL_ARRAY_SIZE(kSmallFactorsLimbs);
-  out->dmax = out->top;
+  out->width = OPENSSL_ARRAY_SIZE(kSmallFactorsLimbs);
+  out->dmax = out->width;
   out->neg = 0;
   out->flags = BN_FLG_STATIC_DATA;
 }

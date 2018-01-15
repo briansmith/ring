@@ -80,11 +80,12 @@ static void scalar_add_loose(const EC_GROUP *group, EC_LOOSE_SCALAR *r,
   //   |a| + |b| < 2^BN_num_bits(order) + order
   // so this leaves |r| < 2^BN_num_bits(order).
   const BIGNUM *order = &group->order;
-  BN_ULONG carry = bn_add_words(r->words, a->words, b->words, order->top);
+  BN_ULONG carry = bn_add_words(r->words, a->words, b->words, order->width);
   EC_LOOSE_SCALAR tmp;
-  BN_ULONG v = bn_sub_words(tmp.words, r->words, order->d, order->top) - carry;
+  BN_ULONG v =
+      bn_sub_words(tmp.words, r->words, order->d, order->width) - carry;
   v = 0u - v;
-  for (int i = 0; i < order->top; i++) {
+  for (int i = 0; i < order->width; i++) {
     OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
                            crypto_word_t_too_small);
     r->words[i] = constant_time_select_w(v, r->words[i], tmp.words[i]);
@@ -94,8 +95,9 @@ static void scalar_add_loose(const EC_GROUP *group, EC_LOOSE_SCALAR *r,
 static int scalar_mod_mul_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                                      const EC_SCALAR *a, const EC_SCALAR *b) {
   const BIGNUM *order = &group->order;
-  return bn_mod_mul_montgomery_small(r->words, order->top, a->words, order->top,
-                                     b->words, order->top, group->order_mont);
+  return bn_mod_mul_montgomery_small(r->words, order->width, a->words,
+                                     order->width, b->words, order->width,
+                                     group->order_mont);
 }
 
 static int scalar_mod_mul_montgomery_loose(const EC_GROUP *group, EC_SCALAR *r,
@@ -105,8 +107,9 @@ static int scalar_mod_mul_montgomery_loose(const EC_GROUP *group, EC_SCALAR *r,
   // product not exceed R * |order|. |b| is fully reduced and |a| <
   // 2^BN_num_bits(order) <= R, so this holds.
   const BIGNUM *order = &group->order;
-  return bn_mod_mul_montgomery_small(r->words, order->top, a->words, order->top,
-                                     b->words, order->top, group->order_mont);
+  return bn_mod_mul_montgomery_small(r->words, order->width, a->words,
+                                     order->width, b->words, order->width,
+                                     group->order_mont);
 }
 
 // digest_to_scalar interprets |digest_len| bytes from |digest| as a scalar for
@@ -128,11 +131,11 @@ static void digest_to_scalar(const EC_GROUP *group, EC_LOOSE_SCALAR *out,
   // If still too long truncate remaining bits with a shift
   if (8 * digest_len > num_bits) {
     size_t shift = 8 - (num_bits & 0x7);
-    for (int i = 0; i < order->top - 1; i++) {
+    for (int i = 0; i < order->width - 1; i++) {
       out->words[i] =
           (out->words[i] >> shift) | (out->words[i + 1] << (BN_BITS2 - shift));
     }
-    out->words[order->top - 1] >>= shift;
+    out->words[order->width - 1] >>= shift;
   }
 }
 
@@ -255,8 +258,8 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
       // TODO(davidben): Add a words version of |BN_mod_inverse_odd| and write
       // into |s_inv_mont| directly.
       !ec_bignum_to_scalar_unchecked(group, &s_inv_mont, X) ||
-      !bn_to_montgomery_small(s_inv_mont.words, order->top, s_inv_mont.words,
-                              order->top, group->order_mont)) {
+      !bn_to_montgomery_small(s_inv_mont.words, order->width, s_inv_mont.words,
+                              order->width, group->order_mont)) {
     goto err;
   }
   // u1 = m * s^-1 mod order
@@ -343,7 +346,7 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx,
       SHA512_CTX sha;
       uint8_t additional_data[SHA512_DIGEST_LENGTH];
       SHA512_Init(&sha);
-      SHA512_Update(&sha, priv_key->words, order->top * sizeof(BN_ULONG));
+      SHA512_Update(&sha, priv_key->words, order->width * sizeof(BN_ULONG));
       SHA512_Update(&sha, digest, digest_len);
       SHA512_Final(additional_data, &sha);
       if (!ec_random_nonzero_scalar(group, &k, additional_data)) {
@@ -353,10 +356,10 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx,
 
     // Compute k^-1. We leave it in the Montgomery domain as an optimization for
     // later operations.
-    if (!bn_to_montgomery_small(out_kinv_mont->words, order->top, k.words,
-                                order->top, group->order_mont) ||
-        !bn_mod_inverse_prime_mont_small(out_kinv_mont->words, order->top,
-                                         out_kinv_mont->words, order->top,
+    if (!bn_to_montgomery_small(out_kinv_mont->words, order->width, k.words,
+                                order->width, group->order_mont) ||
+        !bn_mod_inverse_prime_mont_small(out_kinv_mont->words, order->width,
+                                         out_kinv_mont->words, order->width,
                                          group->order_mont)) {
       goto err;
     }
@@ -426,8 +429,8 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
     // Montgomery domain, |scalar_mod_mul_montgomery| will compute the answer in
     // the normal domain.
     if (!ec_bignum_to_scalar(group, &r_mont, ret->r) ||
-        !bn_to_montgomery_small(r_mont.words, order->top, r_mont.words,
-                                order->top, group->order_mont) ||
+        !bn_to_montgomery_small(r_mont.words, order->width, r_mont.words,
+                                order->width, group->order_mont) ||
         !scalar_mod_mul_montgomery(group, &s, &priv_key, &r_mont)) {
       goto err;
     }
@@ -438,7 +441,7 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
     // Finally, multiply s by k^-1. That was retained in Montgomery form, so the
     // same technique as the previous multiplication works.
     if (!scalar_mod_mul_montgomery_loose(group, &s, &tmp, &kinv_mont) ||
-        !bn_set_words(ret->s, s.words, order->top)) {
+        !bn_set_words(ret->s, s.words, order->width)) {
       goto err;
     }
     if (!BN_is_zero(ret->s)) {
