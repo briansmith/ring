@@ -25,11 +25,6 @@
 //! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
-pub mod chacha20_poly1305_openssh;
-
-mod chacha20_poly1305;
-mod aes_gcm;
-
 use {constant_time, error, init, poly1305, polyfill};
 
 pub use self::chacha20_poly1305::{CHACHA20_POLY1305, CHACHA_POLY1305_TRUNCATED_TAG_96};
@@ -129,7 +124,7 @@ pub fn open_in_place<'a>(key: &OpeningKey, nonce: &[u8], ad: &[u8],
     let auth_tag_len = key.algorithm().tag_len();
     let ciphertext_len =
         ciphertext_and_tag_len.checked_sub(auth_tag_len).ok_or(error::Unspecified)?;
-    check_per_nonce_max_bytes(ciphertext_len)?;
+    check_per_nonce_max_bytes(key.key.algorithm, ciphertext_len)?;
     let (in_out, received_tag) =
         ciphertext_and_tag_modified_in_place
             .split_at_mut(in_prefix_len + ciphertext_len);
@@ -212,7 +207,7 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], ad: &[u8],
     let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
     let in_out_len =
         in_out.len().checked_sub(out_suffix_capacity).ok_or(error::Unspecified)?;
-    check_per_nonce_max_bytes(in_out_len)?;
+    check_per_nonce_max_bytes(key.key.algorithm, in_out_len)?;
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
     let mut calculated_tag = [0u8; MAX_TAG_LEN];
     (key.key.algorithm.seal)(&key.key.ctx_buf, nonce, ad, in_out, &mut calculated_tag)?;
@@ -279,6 +274,19 @@ pub struct Algorithm {
     key_len: usize,
     tag_len: usize,
     id: AlgorithmID,
+
+    /// Use `max_input_len!()` to initialize this.
+    // TODO: Make this `usize`.
+    max_input_len: u64,
+}
+
+/// TODO: Make this a `const fn` when those become stable.
+macro_rules! max_input_len {
+    ($block_len:expr, $overhead_blocks_per_nonce:expr) => {
+        // Each of our AEADs use a 32-bit block counter so the maximum is the
+        // largest input that will not overflow the counter.
+        (((1u64 << 32) - $overhead_blocks_per_nonce) * $block_len)
+    }
 }
 
 impl Algorithm {
@@ -309,8 +317,10 @@ impl Algorithm {
     pub fn nonce_len(&self) -> usize { NONCE_LEN }
 }
 
+derive_debug_from_field!(Algorithm, id);
+
 #[allow(non_camel_case_types)]
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 enum AlgorithmID {
     AES_128_GCM,
     AES_128_GCM_TRUNCATED_TAG_96,
@@ -335,13 +345,14 @@ const TAG_LEN: usize = poly1305::TAG_LEN;
 const NONCE_LEN: usize = 96 / 8;
 
 
-/// |GFp_chacha_20| uses a 32-bit block counter, so we disallow individual
-/// operations that work on more than 256GB at a time, for all AEADs.
-fn check_per_nonce_max_bytes(in_out_len: usize)
+fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize)
                              -> Result<(), error::Unspecified> {
-    if polyfill::u64_from_usize(in_out_len) >= (1u64 << 32) * 64 - 64 {
+    if polyfill::u64_from_usize(in_out_len) > alg.max_input_len {
         return Err(error::Unspecified);
     }
     Ok(())
 }
 
+pub mod chacha20_poly1305_openssh;
+mod chacha20_poly1305;
+mod aes_gcm;
