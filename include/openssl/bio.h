@@ -347,7 +347,7 @@ OPENSSL_EXPORT int BIO_read_asn1(BIO *bio, uint8_t **out, size_t *out_len,
 // Memory BIOs.
 //
 // Memory BIOs can be used as a read-only source (with |BIO_new_mem_buf|) or a
-// writable sink (with |BIO_new|, |BIO_s_mem| and |BIO_get_mem_buf|). Data
+// writable sink (with |BIO_new|, |BIO_s_mem| and |BIO_mem_contents|). Data
 // written to a writable, memory BIO can be recalled by reading from it.
 //
 // Calling |BIO_reset| on a read-only BIO resets it to the original contents.
