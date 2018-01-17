@@ -116,7 +116,14 @@
 #include <assert.h>
 #include <string.h>
 
-#if !defined(__cplusplus)
+#if defined(__GNUC__) && \
+    (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) < 40800
+// |alignas| and |alignof| were added in C11. GCC added support in version 4.8.
+// Testing for __STDC_VERSION__/__cplusplus doesn't work because 4.7 already
+// reports support for C11.
+#define alignas(x) __attribute__ ((aligned (x)))
+#define alignof(x) __alignof__ (x)
+#elif !defined(__cplusplus)
 #if defined(_MSC_VER)
 #define alignas(x) __declspec(align(x))
 #define alignof __alignof
