@@ -1038,7 +1038,7 @@ Args:
 					targetReg = d.contents(argNodes[1])
 					wrappers = append(wrappers, finalTransform(d.output, instructionName, targetReg))
 					if isValidLEATarget(targetReg) {
-						return nil, fmt.Errorf("Currently transforming moves are assumed to target XMM registers. Otherwise we'll pop %rax before reading it to do the transform.")
+						return nil, errors.New("Currently transforming moves are assumed to target XMM registers. Otherwise we'll pop %rax before reading it to do the transform.")
 					}
 				default:
 					return nil, fmt.Errorf("Cannot rewrite GOTPCREL reference for instruction %q", instructionName)
