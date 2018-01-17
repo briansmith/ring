@@ -55,7 +55,7 @@ SymbolName <- [[A-Z._]][[A-Z.0-9$_]]*
 LocalSymbol <- '.L' [[A-Z.0-9$_]]+
 LocalLabel <- [0-9][0-9$]*
 LocalLabelRef <- [0-9][0-9$]*[bf]
-Instruction <- InstructionName (WS InstructionArg ((WS? ',' WS?) InstructionArg)*)?
+Instruction <- InstructionName (WS InstructionArg ((WS? ',' WS?) InstructionArg)*)? (WS? '{' InstructionArg '}')*
 InstructionName <- [[A-Z]][[A-Z0-9]]* [.+\-]?
 InstructionArg <- IndirectionIndicator? (RegisterOrConstant / LocalLabelRef / TOCRefHigh / TOCRefLow / MemoryRef)
 TOCRefHigh <- '.TOC.-' ('0b' / ('.L' [a-zA-Z_0-9]+)) "@ha"

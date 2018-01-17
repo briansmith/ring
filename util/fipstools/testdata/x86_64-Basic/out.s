@@ -38,6 +38,8 @@ foo:
 	vpclmulqdq      $0x00,%xmm6,%xmm3,%xmm3
 	vpxor   %xmm0,%xmm1,%xmm4
 	vpxor   %xmm4,%xmm3,%xmm3
+	vmovdqu8        %ymm1,%ymm6{%k1}{z}
+	vmovdqu8        %ymm2,%ymm4{%k3}
 	.byte   0xf3,0xc3
 	movq %rax, %rbx # Comments can be on the same line as an instruction.
 .L3:
