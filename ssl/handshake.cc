@@ -116,6 +116,8 @@
 
 #include <utility>
 
+#include <openssl/rand.h>
+
 #include "../crypto/internal.h"
 #include "internal.h"
 
@@ -143,7 +145,8 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       next_proto_neg_seen(false),
       ticket_expected(false),
       extended_master_secret(false),
-      pending_private_key_op(false) {
+      pending_private_key_op(false),
+      grease_seeded(false) {
 }
 
 SSL_HANDSHAKE::~SSL_HANDSHAKE() {
@@ -351,18 +354,19 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
   return ret;
 }
 
-uint16_t ssl_get_grease_value(const SSL *ssl, enum ssl_grease_index_t index) {
-  // Use the client_random or server_random for entropy. This both avoids
-  // calling |RAND_bytes| on a single byte repeatedly and ensures the values are
-  // deterministic. This allows the same ClientHello be sent twice for a
-  // HelloRetryRequest or the same group be advertised in both supported_groups
-  // and key_shares.
-  uint16_t ret = ssl->server ? ssl->s3->server_random[index]
-                             : ssl->s3->client_random[index];
-  // The first four bytes of server_random are a timestamp prior to TLS 1.3, but
-  // servers have no fields to GREASE until TLS 1.3.
-  assert(!ssl->server || ssl_protocol_version(ssl) >= TLS1_3_VERSION);
+uint16_t ssl_get_grease_value(SSL_HANDSHAKE *hs,
+                              enum ssl_grease_index_t index) {
+  // Draw entropy for all GREASE values at once. This avoids calling
+  // |RAND_bytes| repeatedly and makes the values consistent within a
+  // connection. The latter is so the second ClientHello matches after
+  // HelloRetryRequest and so supported_groups and key_shares are consistent.
+  if (!hs->grease_seeded) {
+    RAND_bytes(hs->grease_seed, sizeof(hs->grease_seed));
+    hs->grease_seeded = true;
+  }
+
   // This generates a random value of the form 0xωaωa, for all 0 ≤ ω < 16.
+  uint16_t ret = hs->grease_seed[index];
   ret = (ret & 0xf0) | 0x0a;
   ret |= ret << 8;
   return ret;

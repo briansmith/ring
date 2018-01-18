@@ -211,7 +211,7 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
 
     // Add a fake extension. See draft-davidben-tls-grease-01.
     if (!CBB_add_u16(&extensions,
-                     ssl_get_grease_value(ssl, ssl_grease_ticket_extension)) ||
+                     ssl_get_grease_value(hs, ssl_grease_ticket_extension)) ||
         !CBB_add_u16(&extensions, 0 /* empty */)) {
       return 0;
     }
