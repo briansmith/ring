@@ -300,6 +300,11 @@ static int bn_from_montgomery_in_place(BN_ULONG *r, size_t num_r, BN_ULONG *a,
 
 static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
                                    const BN_MONT_CTX *mont) {
+  if (r->neg) {
+    OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
+    return 0;
+  }
+
   const BIGNUM *n = &mont->N;
   if (n->top == 0) {
     ret->top = 0;
@@ -321,7 +326,7 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
   if (!bn_from_montgomery_in_place(ret->d, ret->top, r->d, r->top, mont)) {
     return 0;
   }
-  ret->neg = r->neg;
+  ret->neg = 0;
 
   bn_correct_top(r);
   bn_correct_top(ret);
@@ -407,6 +412,11 @@ err:
 
 int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                           const BN_MONT_CTX *mont, BN_CTX *ctx) {
+  if (a->neg || b->neg) {
+    OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
+    return 0;
+  }
+
 #if defined(OPENSSL_BN_ASM_MONT)
   // |bn_mul_mont| requires at least 128 bits of limbs, at least for x86.
   int num = mont->N.top;
@@ -422,7 +432,7 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
       OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
       return 0;
     }
-    r->neg = a->neg ^ b->neg;
+    r->neg = 0;
     r->top = num;
     bn_correct_top(r);
 
