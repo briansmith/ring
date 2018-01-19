@@ -126,10 +126,6 @@
 #define OPENSSL_BN_ASM_MONT
 #endif
 
-static int bn_mod_mul_montgomery_fallback(BIGNUM *r, const BIGNUM *a,
-                                          const BIGNUM *b,
-                                          const BN_MONT_CTX *mont, BN_CTX *ctx);
-
 
 BN_MONT_CTX *BN_MONT_CTX_new(void) {
   BN_MONT_CTX *ret = OPENSSL_malloc(sizeof(BN_MONT_CTX));
@@ -375,37 +371,6 @@ int bn_one_to_montgomery(BIGNUM *r, const BN_MONT_CTX *mont, BN_CTX *ctx) {
   return BN_from_montgomery(r, &mont->RR, mont, ctx);
 }
 
-int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
-                          const BN_MONT_CTX *mont, BN_CTX *ctx) {
-#if !defined(OPENSSL_BN_ASM_MONT)
-  return bn_mod_mul_montgomery_fallback(r, a, b, mont, ctx);
-#else
-  int num = mont->N.top;
-
-  // |bn_mul_mont| requires at least 128 bits of limbs, at least for x86.
-  if (num < (128 / BN_BITS2) ||
-      a->top != num ||
-      b->top != num) {
-    return bn_mod_mul_montgomery_fallback(r, a, b, mont, ctx);
-  }
-
-  if (!bn_wexpand(r, num)) {
-    return 0;
-  }
-  if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
-    // The check above ensures this won't happen.
-    assert(0);
-    OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-  r->neg = a->neg ^ b->neg;
-  r->top = num;
-  bn_correct_top(r);
-
-  return 1;
-#endif
-}
-
 static int bn_mod_mul_montgomery_fallback(BIGNUM *r, const BIGNUM *a,
                                           const BIGNUM *b,
                                           const BN_MONT_CTX *mont,
@@ -438,6 +403,34 @@ static int bn_mod_mul_montgomery_fallback(BIGNUM *r, const BIGNUM *a,
 err:
   BN_CTX_end(ctx);
   return ret;
+}
+
+int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                          const BN_MONT_CTX *mont, BN_CTX *ctx) {
+#if defined(OPENSSL_BN_ASM_MONT)
+  // |bn_mul_mont| requires at least 128 bits of limbs, at least for x86.
+  int num = mont->N.top;
+  if (num >= (128 / BN_BITS2) &&
+      a->top == num &&
+      b->top == num) {
+    if (!bn_wexpand(r, num)) {
+      return 0;
+    }
+    if (!bn_mul_mont(r->d, a->d, b->d, mont->N.d, mont->n0, num)) {
+      // The check above ensures this won't happen.
+      assert(0);
+      OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
+      return 0;
+    }
+    r->neg = a->neg ^ b->neg;
+    r->top = num;
+    bn_correct_top(r);
+
+    return 1;
+  }
+#endif
+
+  return bn_mod_mul_montgomery_fallback(r, a, b, mont, ctx);
 }
 
 int bn_to_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
