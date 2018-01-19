@@ -666,22 +666,7 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     }
   }
 
-  // Set |r| to one in Montgomery form. If the high bit of |m| is set, |m| is
-  // close to R and we subtract rather than perform Montgomery reduction.
-  if (m->d[m->top - 1] & (((BN_ULONG)1) << (BN_BITS2 - 1))) {
-    if (!bn_wexpand(r, m->top)) {
-      goto err;
-    }
-    // r = 2^(top*BN_BITS2) - m
-    r->d[0] = 0 - m->d[0];
-    for (int i = 1; i < m->top; i++) {
-      r->d[i] = ~m->d[i];
-    }
-    r->top = m->top;
-    // The upper words will be zero if the corresponding words of |m| were
-    // 0xfff[...], so call |bn_correct_top|.
-    bn_correct_top(r);
-  } else if (!BN_to_montgomery(r, BN_value_one(), mont, ctx)) {
+  if (!bn_one_to_montgomery(r, mont, ctx)) {
     goto err;
   }
 
@@ -746,7 +731,6 @@ err:
 int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
                           size_t num_a, const BN_ULONG *p, size_t num_p,
                           const BN_MONT_CTX *mont) {
-  const BN_ULONG *n = mont->N.d;
   size_t num_n = mont->N.top;
   if (num_n != num_a || num_n != num_r || num_n > BN_SMALL_MAX_WORDS) {
     OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
@@ -793,16 +777,7 @@ int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
     }
   }
 
-  // Set |r| to one in Montgomery form. If the high bit of |m| is set, |m| is
-  // close to R and we subtract rather than perform Montgomery reduction.
-  if (n[num_n - 1] & (((BN_ULONG)1) << (BN_BITS2 - 1))) {
-    // r = 2^(top*BN_BITS2) - m
-    r[0] = 0 - n[0];
-    for (size_t i = 1; i < num_n; i++) {
-      r[i] = ~n[i];
-    }
-  } else if (!bn_from_montgomery_small(r, num_r, mont->RR.d, mont->RR.top,
-                                       mont)) {
+  if (!bn_one_to_montgomery_small(r, num_r, mont)) {
     goto err;
   }
 
@@ -1118,16 +1093,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   tmp.neg = am.neg = 0;
   tmp.flags = am.flags = BN_FLG_STATIC_DATA;
 
-// prepare a^0 in Montgomery domain
-// by Shay Gueron's suggestion
-  if (m->d[top - 1] & (((BN_ULONG)1) << (BN_BITS2 - 1))) {
-    // 2^(top*BN_BITS2) - m
-    tmp.d[0] = 0 - m->d[0];
-    for (i = 1; i < top; i++) {
-      tmp.d[i] = ~m->d[i];
-    }
-    tmp.top = top;
-  } else if (!BN_to_montgomery(&tmp, BN_value_one(), mont, ctx)) {
+  if (!bn_one_to_montgomery(&tmp, mont, ctx)) {
     goto err;
   }
 
