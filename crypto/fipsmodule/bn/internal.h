@@ -226,6 +226,10 @@ int bn_resize_words(BIGNUM *bn, size_t words);
 // least significant word first.
 int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num);
 
+// bn_copy_words copies the value of |bn| to |out| and returns one if the value
+// is representable in |num| words. Otherwise, it returns zero.
+int bn_copy_words(BN_ULONG *out, size_t num, const BIGNUM *bn);
+
 // bn_mul_add_words multiples |ap| by |w|, adds the result to |rp|, and places
 // the result in |rp|. |ap| and |rp| must both be |num| words long. It returns
 // the carry word of the operation. |ap| and |rp| may be equal but otherwise may

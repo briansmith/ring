@@ -160,10 +160,9 @@ static bool PointToAffine(P256_POINT_AFFINE *out, const P256_POINT *in) {
     return false;
   }
 
-  OPENSSL_memset(out, 0, sizeof(P256_POINT_AFFINE));
-
   if (BN_is_zero(z.get())) {
     // The point at infinity is represented as (0, 0).
+    OPENSSL_memset(out, 0, sizeof(P256_POINT_AFFINE));
     return true;
   }
 
@@ -185,12 +184,11 @@ static bool PointToAffine(P256_POINT_AFFINE *out, const P256_POINT *in) {
       !BN_mod_mul_montgomery(y.get(), y.get(), z.get(), mont.get(),
                              ctx.get()) ||
       !BN_mod_mul_montgomery(y.get(), y.get(), z.get(), mont.get(),
-                             ctx.get())) {
+                             ctx.get()) ||
+      !bn_copy_words(out->X, P256_LIMBS, x.get()) ||
+      !bn_copy_words(out->Y, P256_LIMBS, y.get())) {
     return false;
   }
-
-  OPENSSL_memcpy(out->X, x->d, sizeof(BN_ULONG) * x->top);
-  OPENSSL_memcpy(out->Y, y->d, sizeof(BN_ULONG) * y->top);
   return true;
 }
 

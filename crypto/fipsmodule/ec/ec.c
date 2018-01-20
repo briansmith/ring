@@ -952,12 +952,10 @@ int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
 
 int ec_bignum_to_scalar_unchecked(const EC_GROUP *group, EC_SCALAR *out,
                                   const BIGNUM *in) {
-  if (BN_is_negative(in) || in->top > group->order.top) {
+  if (!bn_copy_words(out->words, group->order.top, in)) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_SCALAR);
     return 0;
   }
-  OPENSSL_memset(out->words, 0, group->order.top * sizeof(BN_ULONG));
-  OPENSSL_memcpy(out->words, in->d, in->top * sizeof(BN_ULONG));
   return 1;
 }
 

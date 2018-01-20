@@ -205,13 +205,7 @@ static void ecp_nistz256_mod_inverse_mont(BN_ULONG r[P256_LIMBS],
 // returns one if it fits. Otherwise it returns zero.
 static int ecp_nistz256_bignum_to_field_elem(BN_ULONG out[P256_LIMBS],
                                              const BIGNUM *in) {
-  if (in->top > P256_LIMBS) {
-    return 0;
-  }
-
-  OPENSSL_memset(out, 0, sizeof(BN_ULONG) * P256_LIMBS);
-  OPENSSL_memcpy(out, in->d, sizeof(BN_ULONG) * in->top);
-  return 1;
+  return bn_copy_words(out, P256_LIMBS, in);
 }
 
 // r = p * p_scalar

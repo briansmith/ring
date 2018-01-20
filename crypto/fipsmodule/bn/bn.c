@@ -297,6 +297,35 @@ int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
   return 1;
 }
 
+static int bn_fits_in_words(const BIGNUM *bn, size_t num) {
+  // All words beyond |num| must be zero.
+  BN_ULONG mask = 0;
+  for (size_t i = num; i < (size_t)bn->top; i++) {
+    mask |= bn->d[i];
+  }
+  return mask == 0;
+}
+
+int bn_copy_words(BN_ULONG *out, size_t num, const BIGNUM *bn) {
+  if (bn->neg) {
+    OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
+    return 0;
+  }
+
+  size_t width = (size_t)bn->top;
+  if (width > num) {
+    if (!bn_fits_in_words(bn, num)) {
+      OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
+      return 0;
+    }
+    width = num;
+  }
+
+  OPENSSL_memset(out, 0, sizeof(BN_ULONG) * num);
+  OPENSSL_memcpy(out, bn->d, sizeof(BN_ULONG) * width);
+  return 1;
+}
+
 int BN_is_negative(const BIGNUM *bn) {
   return bn->neg != 0;
 }
@@ -360,11 +389,7 @@ int bn_resize_words(BIGNUM *bn, size_t words) {
   }
 
   // All words beyond the new width must be zero.
-  BN_ULONG mask = 0;
-  for (size_t i = words; i < (size_t)bn->top; i++) {
-    mask |= bn->d[i];
-  }
-  if (mask != 0) {
+  if (!bn_fits_in_words(bn, words)) {
     OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
     return 0;
   }

@@ -28,6 +28,7 @@
 #include <openssl/nid.h>
 #include <openssl/obj.h>
 
+#include "../bn/internal.h"
 #include "../../test/test_util.h"
 
 
@@ -552,6 +553,32 @@ TEST_P(ECCurveTest, Mul) {
                            n.get(), nullptr));
   EXPECT_EQ(0, EC_POINT_cmp(group.get(), result.get(), generator, nullptr));
 }
+
+#if !defined(BORINGSSL_SHARED_LIBRARY)
+TEST_P(ECCurveTest, MulNonMinimal) {
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(GetParam().nid));
+  ASSERT_TRUE(group);
+
+  bssl::UniquePtr<BIGNUM> forty_two(BN_new());
+  ASSERT_TRUE(forty_two);
+  ASSERT_TRUE(BN_set_word(forty_two.get(), 42));
+
+  // Compute g × 42.
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group.get()));
+  ASSERT_TRUE(point);
+  ASSERT_TRUE(EC_POINT_mul(group.get(), point.get(), forty_two.get(), nullptr,
+                           nullptr, nullptr));
+
+  // Compute it again with a non-minimal 42, much larger than the scalar.
+  ASSERT_TRUE(bn_resize_words(forty_two.get(), 64));
+
+  bssl::UniquePtr<EC_POINT> point2(EC_POINT_new(group.get()));
+  ASSERT_TRUE(point2);
+  ASSERT_TRUE(EC_POINT_mul(group.get(), point2.get(), forty_two.get(), nullptr,
+                           nullptr, nullptr));
+  EXPECT_EQ(0, EC_POINT_cmp(group.get(), point.get(), point2.get(), nullptr));
+}
+#endif  // BORINGSSL_SHARED_LIBRARY
 
 // Test that EC_KEY_set_private_key rejects invalid values.
 TEST_P(ECCurveTest, SetInvalidPrivateKey) {
