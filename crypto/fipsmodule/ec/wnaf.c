@@ -208,14 +208,6 @@ err:
 //       sometimes smaller windows will give better performance
 //       (thus the boundaries should be increased)
 static size_t window_bits_for_scalar_size(size_t b) {
-  if (b >= 2000) {
-    return 6;
-  }
-
-  if (b >= 800) {
-    return 5;
-  }
-
   if (b >= 300) {
     return 4;
   }
@@ -369,14 +361,12 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r,
       goto err;
     }
 
-    if (wsize > 1) {
-      if (!EC_POINT_dbl(group, tmp, val_sub[i][0], ctx)) {
+    if (!EC_POINT_dbl(group, tmp, val_sub[i][0], ctx)) {
+      goto err;
+    }
+    for (j = 1; j < ((size_t)1 << (wsize - 1)); j++) {
+      if (!EC_POINT_add(group, val_sub[i][j], val_sub[i][j - 1], tmp, ctx)) {
         goto err;
-      }
-      for (j = 1; j < ((size_t)1 << (wsize - 1)); j++) {
-        if (!EC_POINT_add(group, val_sub[i][j], val_sub[i][j - 1], tmp, ctx)) {
-          goto err;
-        }
       }
     }
   }
