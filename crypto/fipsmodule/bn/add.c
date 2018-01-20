@@ -199,7 +199,6 @@ int BN_add_word(BIGNUM *a, BN_ULONG w) {
 }
 
 int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
-  int max;
   int add = 0, neg = 0;
   const BIGNUM *tmp;
 
@@ -230,13 +229,6 @@ int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
 
     r->neg = neg;
     return 1;
-  }
-
-  // We are actually doing a - b :-)
-
-  max = (a->top > b->top) ? a->top : b->top;
-  if (!bn_wexpand(r, max)) {
-    return 0;
   }
 
   if (BN_ucmp(a, b) < 0) {
