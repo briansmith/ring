@@ -242,7 +242,6 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r,
   int k;
   int r_is_inverted = 0;
   int r_is_at_infinity = 1;
-  size_t *wsize = NULL;      // individual window sizes
   int8_t **wNAF = NULL;  // individual wNAFs
   size_t *wNAF_len = NULL;
   size_t max_len = 0;
@@ -298,7 +297,6 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r,
   }
 
 
-  wsize = OPENSSL_malloc(total_num * sizeof(wsize[0]));
   wNAF_len = OPENSSL_malloc(total_num * sizeof(wNAF_len[0]));
   wNAF = OPENSSL_malloc(total_num * sizeof(wNAF[0]));
   val_sub = OPENSSL_malloc(total_num * sizeof(val_sub[0]));
@@ -308,22 +306,15 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r,
     OPENSSL_memset(wNAF, 0, total_num * sizeof(wNAF[0]));
   }
 
-  if (!wsize || !wNAF_len || !wNAF || !val_sub) {
+  if (!wNAF_len || !wNAF || !val_sub) {
     OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
-  // num_val will be the total number of temporarily precomputed points
-  num_val = 0;
-
+  size_t wsize = window_bits_for_scalar_size(BN_num_bits(&group->order));
   for (i = 0; i < total_num; i++) {
-    size_t bits;
-
-    bits = i < num ? BN_num_bits(scalars[i]) : BN_num_bits(g_scalar);
-    wsize[i] = window_bits_for_scalar_size(bits);
-    num_val += (size_t)1 << (wsize[i] - 1);
     wNAF[i] =
-        compute_wNAF((i < num ? scalars[i] : g_scalar), wsize[i], &wNAF_len[i]);
+        compute_wNAF((i < num ? scalars[i] : g_scalar), wsize, &wNAF_len[i]);
     if (wNAF[i] == NULL) {
       goto err;
     }
@@ -332,6 +323,8 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r,
     }
   }
 
+  // num_val is the total number of temporarily precomputed points
+  num_val = total_num * ((size_t)1 << (wsize - 1));
   // All points we precompute now go into a single array 'val'. 'val_sub[i]' is
   // a pointer to the subarray for the i-th point.
   val = OPENSSL_malloc(num_val * sizeof(val[0]));
@@ -345,7 +338,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r,
   v = val;
   for (i = 0; i < total_num; i++) {
     val_sub[i] = v;
-    for (j = 0; j < ((size_t)1 << (wsize[i] - 1)); j++) {
+    for (j = 0; j < ((size_t)1 << (wsize - 1)); j++) {
       *v = EC_POINT_new(group);
       if (*v == NULL) {
         goto err;
@@ -376,11 +369,11 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r,
       goto err;
     }
 
-    if (wsize[i] > 1) {
+    if (wsize > 1) {
       if (!EC_POINT_dbl(group, tmp, val_sub[i][0], ctx)) {
         goto err;
       }
-      for (j = 1; j < ((size_t)1 << (wsize[i] - 1)); j++) {
+      for (j = 1; j < ((size_t)1 << (wsize - 1)); j++) {
         if (!EC_POINT_add(group, val_sub[i][j], val_sub[i][j - 1], tmp, ctx)) {
           goto err;
         }
@@ -453,7 +446,6 @@ err:
   }
   BN_CTX_free(new_ctx);
   EC_POINT_free(tmp);
-  OPENSSL_free(wsize);
   OPENSSL_free(wNAF_len);
   if (wNAF != NULL) {
     for (i = 0; i < total_num; i++) {
