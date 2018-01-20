@@ -53,7 +53,7 @@ if(NOT OPENSSL_NO_ASM)
       set(PERLASM_STYLE win32n)
       set(PERLASM_FLAGS "-DOPENSSL_IA32_SSE2")
     endif()
-    set(CMAKE_ASM_NASM_FLAGS "-g cv8")
+    set(CMAKE_ASM_NASM_FLAGS "-gcv8")
 
     # On Windows, we use the NASM output, specifically built with Yasm.
     set(ASM_EXT asm)
