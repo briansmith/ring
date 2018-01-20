@@ -170,7 +170,6 @@ static int compute_wNAF(const EC_GROUP *group, int8_t *out,
   return 1;
 }
 
-
 // TODO: table should be optimised for the wNAF-based implementation,
 //       sometimes smaller windows will give better performance
 //       (thus the boundaries should be increased)
@@ -190,19 +189,62 @@ static size_t window_bits_for_scalar_size(size_t b) {
   return 1;
 }
 
+// EC_WNAF_MAX_WINDOW_BITS is the largest value returned by
+// |window_bits_for_scalar_size|.
+#define EC_WNAF_MAX_WINDOW_BITS 4
+
+// compute_precomp sets |out[i]| to a newly-allocated |EC_POINT| containing
+// (2*i+1)*p, for i from 0 to |len|. It returns one on success and
+// zero on error.
+static int compute_precomp(const EC_GROUP *group, EC_POINT **out,
+                           const EC_POINT *p, size_t len, BN_CTX *ctx) {
+  out[0] = EC_POINT_new(group);
+  if (out[0] == NULL ||
+      !EC_POINT_copy(out[0], p)) {
+    return 0;
+  }
+
+  int ret = 0;
+  EC_POINT *two_p = EC_POINT_new(group);
+  if (two_p == NULL ||
+      !EC_POINT_dbl(group, two_p, p, ctx)) {
+    goto err;
+  }
+
+  for (size_t i = 1; i < len; i++) {
+    out[i] = EC_POINT_new(group);
+    if (out[i] == NULL ||
+        !EC_POINT_add(group, out[i], out[i - 1], two_p, ctx)) {
+      goto err;
+    }
+  }
+
+  ret = 1;
+
+err:
+  EC_POINT_free(two_p);
+  return ret;
+}
+
+static int lookup_precomp(const EC_GROUP *group, EC_POINT *out,
+                          EC_POINT *const *precomp, int digit, BN_CTX *ctx) {
+  if (digit < 0) {
+    digit = -digit;
+    return EC_POINT_copy(out, precomp[digit >> 1]) &&
+           EC_POINT_invert(group, out, ctx);
+  }
+
+  return EC_POINT_copy(out, precomp[digit >> 1]);
+}
+
 int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
                 const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx) {
   BN_CTX *new_ctx = NULL;
-  const EC_POINT *generator = NULL;
+  EC_POINT *precomp_storage[2 * (1 << (EC_WNAF_MAX_WINDOW_BITS - 1))] = {NULL};
+  EC_POINT **g_precomp = NULL, **p_precomp = NULL;
+  int8_t g_wNAF[EC_MAX_SCALAR_BYTES * 8 + 1];
+  int8_t p_wNAF[EC_MAX_SCALAR_BYTES * 8 + 1];
   EC_POINT *tmp = NULL;
-  size_t total_num = 0;
-  size_t i, j;
-  int k;
-  int8_t **wNAF = NULL;  // individual wNAFs
-  size_t num_val = 0;
-  EC_POINT **val = NULL;  // precomputation
-  EC_POINT **v;
-  EC_POINT ***val_sub = NULL;  // pointers to sub-arrays of 'val'
   int ret = 0;
 
   if (ctx == NULL) {
@@ -212,143 +254,85 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
     }
   }
 
-  // TODO: This function used to take |points| and |scalars| as arrays of
-  // |num| elements. The code below should be simplified to work in terms of |p|
-  // and |p_scalar|.
-  size_t num = p != NULL ? 1 : 0;
-  const EC_POINT **points = p != NULL ? &p : NULL;
-  const EC_SCALAR **scalars = p != NULL ? &p_scalar : NULL;
-
-  total_num = num;
-
-  if (g_scalar != NULL) {
-    generator = EC_GROUP_get0_generator(group);
-    if (generator == NULL) {
-      OPENSSL_PUT_ERROR(EC, EC_R_UNDEFINED_GENERATOR);
-      goto err;
-    }
-
-    ++total_num;  // treat 'g_scalar' like 'num'-th element of 'scalars'
-  }
-
-  wNAF = OPENSSL_malloc(total_num * sizeof(wNAF[0]));
-  val_sub = OPENSSL_malloc(total_num * sizeof(val_sub[0]));
-
-  // Ensure wNAF is initialised in case we end up going to err.
-  if (wNAF != NULL) {
-    OPENSSL_memset(wNAF, 0, total_num * sizeof(wNAF[0]));
-  }
-
-  if (!wNAF || !val_sub) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
   size_t bits = BN_num_bits(&group->order);
   size_t wsize = window_bits_for_scalar_size(bits);
   size_t wNAF_len = bits + 1;
-  for (i = 0; i < total_num; i++) {
-    wNAF[i] = OPENSSL_malloc(wNAF_len);
-    if (wNAF[i] == NULL ||
-        !compute_wNAF(group, wNAF[i], (i < num ? scalars[i] : g_scalar), bits,
-                      wsize)) {
-      goto err;
-    }
-  }
-
-  // num_val is the total number of temporarily precomputed points
-  num_val = total_num * ((size_t)1 << (wsize - 1));
-  // All points we precompute now go into a single array 'val'. 'val_sub[i]' is
-  // a pointer to the subarray for the i-th point.
-  val = OPENSSL_malloc(num_val * sizeof(val[0]));
-  if (val == NULL) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-  OPENSSL_memset(val, 0, num_val * sizeof(val[0]));
-
-  // allocate points for precomputation
-  v = val;
-  for (i = 0; i < total_num; i++) {
-    val_sub[i] = v;
-    for (j = 0; j < ((size_t)1 << (wsize - 1)); j++) {
-      *v = EC_POINT_new(group);
-      if (*v == NULL) {
-        goto err;
-      }
-      v++;
-    }
-  }
-  if (!(v == val + num_val)) {
+  size_t precomp_len = (size_t)1 << (wsize - 1);
+  if (wNAF_len > OPENSSL_ARRAY_SIZE(g_wNAF) ||
+      wNAF_len > OPENSSL_ARRAY_SIZE(p_wNAF) ||
+      2 * precomp_len > OPENSSL_ARRAY_SIZE(precomp_storage)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
     goto err;
   }
 
-  if (!(tmp = EC_POINT_new(group))) {
-    goto err;
-  }
-
-  // prepare precomputed values:
-  //    val_sub[i][0] :=     points[i]
-  //    val_sub[i][1] := 3 * points[i]
-  //    val_sub[i][2] := 5 * points[i]
-  //    ...
-  for (i = 0; i < total_num; i++) {
-    if (i < num) {
-      if (!EC_POINT_copy(val_sub[i][0], points[i])) {
-        goto err;
-      }
-    } else if (!EC_POINT_copy(val_sub[i][0], generator)) {
+  // TODO(davidben): |mul_public| is for ECDSA verification which can assume
+  // non-NULL inputs, but this code is also used for |mul| which cannot. It's
+  // not constant-time, so replace the generic |mul| and remove the NULL checks.
+  size_t total_precomp = 0;
+  if (g_scalar != NULL) {
+    const EC_POINT *g = EC_GROUP_get0_generator(group);
+    if (g == NULL) {
+      OPENSSL_PUT_ERROR(EC, EC_R_UNDEFINED_GENERATOR);
       goto err;
     }
-
-    if (!EC_POINT_dbl(group, tmp, val_sub[i][0], ctx)) {
+    g_precomp = precomp_storage + total_precomp;
+    total_precomp += precomp_len;
+    if (!compute_wNAF(group, g_wNAF, g_scalar, bits, wsize) ||
+        !compute_precomp(group, g_precomp, g, precomp_len, ctx)) {
       goto err;
     }
-    for (j = 1; j < ((size_t)1 << (wsize - 1)); j++) {
-      if (!EC_POINT_add(group, val_sub[i][j], val_sub[i][j - 1], tmp, ctx)) {
-        goto err;
-      }
+  }
+
+  if (p_scalar != NULL) {
+    p_precomp = precomp_storage + total_precomp;
+    total_precomp += precomp_len;
+    if (!compute_wNAF(group, p_wNAF, p_scalar, bits, wsize) ||
+        !compute_precomp(group, p_precomp, p, precomp_len, ctx)) {
+      goto err;
     }
   }
 
-#if 1  // optional; window_bits_for_scalar_size assumes we do this step
-  if (!EC_POINTs_make_affine(group, num_val, val, ctx)) {
+  tmp = EC_POINT_new(group);
+  if (tmp == NULL ||
+      // |window_bits_for_scalar_size| assumes we do this step.
+      !EC_POINTs_make_affine(group, total_precomp, precomp_storage, ctx)) {
     goto err;
   }
-#endif
 
   int r_is_at_infinity = 1;
-
-  for (k = wNAF_len - 1; k >= 0; k--) {
+  for (size_t k = wNAF_len - 1; k < wNAF_len; k--) {
     if (!r_is_at_infinity && !EC_POINT_dbl(group, r, r, ctx)) {
       goto err;
     }
 
-    for (i = 0; i < total_num; i++) {
-      int digit = wNAF[i][k];
-      if (digit) {
-        const EC_POINT *tmp2;
-        if (digit < 0) {
-          digit = -digit;
-          if (!EC_POINT_copy(tmp, val_sub[i][digit >> 1]) ||
-              !EC_POINT_invert(group, tmp, ctx)) {
-            goto err;
-          }
-          tmp2 = tmp;
-        } else {
-          tmp2 = val_sub[i][digit >> 1];
+    if (g_scalar != NULL) {
+      if (g_wNAF[k] != 0) {
+        if (!lookup_precomp(group, tmp, g_precomp, g_wNAF[k], ctx)) {
+          goto err;
         }
-
         if (r_is_at_infinity) {
-          if (!EC_POINT_copy(r, tmp2)) {
+          if (!EC_POINT_copy(r, tmp)) {
             goto err;
           }
           r_is_at_infinity = 0;
-        } else {
-          if (!EC_POINT_add(group, r, r, tmp2, ctx)) {
+        } else if (!EC_POINT_add(group, r, r, tmp, ctx)) {
+          goto err;
+        }
+      }
+    }
+
+    if (p_scalar != NULL) {
+      if (p_wNAF[k] != 0) {
+        if (!lookup_precomp(group, tmp, p_precomp, p_wNAF[k], ctx)) {
+          goto err;
+        }
+        if (r_is_at_infinity) {
+          if (!EC_POINT_copy(r, tmp)) {
             goto err;
           }
+          r_is_at_infinity = 0;
+        } else if (!EC_POINT_add(group, r, r, tmp, ctx)) {
+          goto err;
         }
       }
     }
@@ -364,20 +348,10 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
 err:
   BN_CTX_free(new_ctx);
   EC_POINT_free(tmp);
-  if (wNAF != NULL) {
-    for (i = 0; i < total_num; i++) {
-      OPENSSL_free(wNAF[i]);
-    }
-
-    OPENSSL_free(wNAF);
+  OPENSSL_cleanse(&g_wNAF, sizeof(g_wNAF));
+  OPENSSL_cleanse(&p_wNAF, sizeof(p_wNAF));
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(precomp_storage); i++) {
+    EC_POINT_free(precomp_storage[i]);
   }
-  if (val != NULL) {
-    for (i = 0; i < num_val; i++) {
-      EC_POINT_free(val[i]);
-    }
-
-    OPENSSL_free(val);
-  }
-  OPENSSL_free(val_sub);
   return ret;
 }
