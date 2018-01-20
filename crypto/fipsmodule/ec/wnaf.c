@@ -232,8 +232,6 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r,
   size_t total_num = 0;
   size_t i, j;
   int k;
-  int r_is_inverted = 0;
-  int r_is_at_infinity = 1;
   int8_t **wNAF = NULL;  // individual wNAFs
   size_t *wNAF_len = NULL;
   size_t max_len = 0;
@@ -377,7 +375,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r,
   }
 #endif
 
-  r_is_at_infinity = 1;
+  int r_is_at_infinity = 1;
 
   for (k = max_len - 1; k >= 0; k--) {
     if (!r_is_at_infinity && !EC_POINT_dbl(group, r, r, ctx)) {
@@ -387,31 +385,26 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r,
     for (i = 0; i < total_num; i++) {
       if (wNAF_len[i] > (size_t)k) {
         int digit = wNAF[i][k];
-        int is_neg;
-
         if (digit) {
-          is_neg = digit < 0;
-
-          if (is_neg) {
+          const EC_POINT *tmp2;
+          if (digit < 0) {
             digit = -digit;
-          }
-
-          if (is_neg != r_is_inverted) {
-            if (!r_is_at_infinity && !EC_POINT_invert(group, r, ctx)) {
+            if (!EC_POINT_copy(tmp, val_sub[i][digit >> 1]) ||
+                !EC_POINT_invert(group, tmp, ctx)) {
               goto err;
             }
-            r_is_inverted = !r_is_inverted;
+            tmp2 = tmp;
+          } else {
+            tmp2 = val_sub[i][digit >> 1];
           }
 
-          // digit > 0
-
           if (r_is_at_infinity) {
-            if (!EC_POINT_copy(r, val_sub[i][digit >> 1])) {
+            if (!EC_POINT_copy(r, tmp2)) {
               goto err;
             }
             r_is_at_infinity = 0;
           } else {
-            if (!EC_POINT_add(group, r, r, val_sub[i][digit >> 1], ctx)) {
+            if (!EC_POINT_add(group, r, r, tmp2, ctx)) {
               goto err;
             }
           }
@@ -420,11 +413,8 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r,
     }
   }
 
-  if (r_is_at_infinity) {
-    if (!EC_POINT_set_to_infinity(group, r)) {
-      goto err;
-    }
-  } else if (r_is_inverted && !EC_POINT_invert(group, r, ctx)) {
+  if (r_is_at_infinity &&
+      !EC_POINT_set_to_infinity(group, r)) {
     goto err;
   }
 
