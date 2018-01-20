@@ -64,19 +64,18 @@
 
 
 int BN_ucmp(const BIGNUM *a, const BIGNUM *b) {
-  int i;
-  BN_ULONG t1, t2, *ap, *bp;
-
-  i = a->top - b->top;
+  int a_width = bn_minimal_width(a);
+  int b_width = bn_minimal_width(b);
+  int i = a_width - b_width;
   if (i != 0) {
     return i;
   }
 
-  ap = a->d;
-  bp = b->d;
-  for (i = a->top - 1; i >= 0; i--) {
-    t1 = ap[i];
-    t2 = bp[i];
+  const BN_ULONG *ap = a->d;
+  const BN_ULONG *bp = b->d;
+  for (i = a_width - 1; i >= 0; i--) {
+    BN_ULONG t1 = ap[i];
+    BN_ULONG t2 = bp[i];
     if (t1 != t2) {
       return (t1 > t2) ? 1 : -1;
     }
@@ -114,14 +113,16 @@ int BN_cmp(const BIGNUM *a, const BIGNUM *b) {
     lt = 1;
   }
 
-  if (a->top > b->top) {
+  int a_width = bn_minimal_width(a);
+  int b_width = bn_minimal_width(b);
+  if (a_width > b_width) {
     return gt;
   }
-  if (a->top < b->top) {
+  if (a_width < b_width) {
     return lt;
   }
 
-  for (i = a->top - 1; i >= 0; i--) {
+  for (i = a_width - 1; i >= 0; i--) {
     t1 = a->d[i];
     t2 = b->d[i];
     if (t1 > t2) {
@@ -190,7 +191,7 @@ int bn_less_than_words(const BN_ULONG *a, const BN_ULONG *b, size_t len) {
 }
 
 int BN_abs_is_word(const BIGNUM *bn, BN_ULONG w) {
-  switch (bn->top) {
+  switch (bn_minimal_width(bn)) {
     case 1:
       return bn->d[0] == w;
     case 0:
@@ -212,7 +213,7 @@ int BN_cmp_word(const BIGNUM *a, BN_ULONG b) {
 }
 
 int BN_is_zero(const BIGNUM *bn) {
-  return bn->top == 0;
+  return bn_minimal_width(bn) == 0;
 }
 
 int BN_is_one(const BIGNUM *bn) {
@@ -228,27 +229,35 @@ int BN_is_odd(const BIGNUM *bn) {
 }
 
 int BN_is_pow2(const BIGNUM *bn) {
-  if (bn->top == 0 || bn->neg) {
+  int width = bn_minimal_width(bn);
+  if (width == 0 || bn->neg) {
     return 0;
   }
 
-  for (int i = 0; i < bn->top - 1; i++) {
+  for (int i = 0; i < width - 1; i++) {
     if (bn->d[i] != 0) {
       return 0;
     }
   }
 
-  return 0 == (bn->d[bn->top-1] & (bn->d[bn->top-1] - 1));
+  return 0 == (bn->d[width-1] & (bn->d[width-1] - 1));
 }
 
 int BN_equal_consttime(const BIGNUM *a, const BIGNUM *b) {
-  if (a->top != b->top) {
-    return 0;
+  BN_ULONG mask = 0;
+  // If |a| or |b| has more words than the other, all those words must be zero.
+  for (int i = a->top; i < b->top; i++) {
+    mask |= b->d[i];
   }
-
-  int limbs_are_equal =
-    CRYPTO_memcmp(a->d, b->d, (size_t)a->top * sizeof(a->d[0])) == 0;
-
-  return constant_time_select_int(constant_time_eq_int(a->neg, b->neg),
-                                  limbs_are_equal, 0);
+  for (int i = b->top; i < a->top; i++) {
+    mask |= a->d[i];
+  }
+  // Common words must match.
+  int min = a->top < b->top ? a->top : b->top;
+  for (int i = 0; i < min; i++) {
+    mask |= (a->d[i] ^ b->d[i]);
+  }
+  // The sign bit must match.
+  mask |= (a->neg ^ b->neg);
+  return mask == 0;
 }

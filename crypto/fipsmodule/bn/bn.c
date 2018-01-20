@@ -227,13 +227,12 @@ unsigned BN_num_bits_word(BN_ULONG l) {
 }
 
 unsigned BN_num_bits(const BIGNUM *bn) {
-  const int max = bn->top - 1;
-
-  if (BN_is_zero(bn)) {
+  const int width = bn_minimal_width(bn);
+  if (width == 0) {
     return 0;
   }
 
-  return max*BN_BITS2 + BN_num_bits_word(bn->d[max]);
+  return (width - 1) * BN_BITS2 + BN_num_bits_word(bn->d[width - 1]);
 }
 
 unsigned BN_num_bytes(const BIGNUM *bn) {
@@ -350,19 +349,39 @@ int bn_expand(BIGNUM *bn, size_t bits) {
   return bn_wexpand(bn, (bits+BN_BITS2-1)/BN_BITS2);
 }
 
-void bn_correct_top(BIGNUM *bn) {
-  BN_ULONG *ftl;
-  int tmp_top = bn->top;
-
-  if (tmp_top > 0) {
-    for (ftl = &(bn->d[tmp_top - 1]); tmp_top > 0; tmp_top--) {
-      if (*(ftl--)) {
-        break;
-      }
+int bn_resize_words(BIGNUM *bn, size_t words) {
+  if ((size_t)bn->top <= words) {
+    if (!bn_wexpand(bn, words)) {
+      return 0;
     }
-    bn->top = tmp_top;
+    OPENSSL_memset(bn->d + bn->top, 0, (words - bn->top) * sizeof(BN_ULONG));
+    bn->top = words;
+    return 1;
   }
 
+  // All words beyond the new width must be zero.
+  BN_ULONG mask = 0;
+  for (size_t i = words; i < (size_t)bn->top; i++) {
+    mask |= bn->d[i];
+  }
+  if (mask != 0) {
+    OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
+    return 0;
+  }
+  bn->top = words;
+  return 1;
+}
+
+int bn_minimal_width(const BIGNUM *bn) {
+  int ret = bn->top;
+  while (ret > 0 && bn->d[ret - 1] == 0) {
+    ret--;
+  }
+  return ret;
+}
+
+void bn_correct_top(BIGNUM *bn) {
+  bn->top = bn_minimal_width(bn);
   if (bn->top == 0) {
     bn->neg = 0;
   }

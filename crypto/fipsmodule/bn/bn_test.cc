@@ -1883,4 +1883,61 @@ TEST_F(BNTest, LessThanWords) {
   EXPECT_EQ(0, bn_less_than_words(NULL, NULL, 0));
   EXPECT_EQ(0, bn_in_range_words(NULL, 0, NULL, 0));
 }
+
+TEST_F(BNTest, NonMinimal) {
+  bssl::UniquePtr<BIGNUM> ten(BN_new());
+  ASSERT_TRUE(ten);
+  ASSERT_TRUE(BN_set_word(ten.get(), 10));
+  bssl::UniquePtr<BIGNUM> ten_copy(BN_dup(ten.get()));
+  ASSERT_TRUE(ten_copy);
+  bssl::UniquePtr<BIGNUM> eight(BN_new());
+  ASSERT_TRUE(eight);
+  ASSERT_TRUE(BN_set_word(eight.get(), 8));
+
+  // Check some comparison functions on |ten|.
+  EXPECT_TRUE(BN_abs_is_word(ten.get(), 10));
+  EXPECT_TRUE(BN_is_word(ten.get(), 10));
+  EXPECT_EQ(10u, BN_get_word(ten.get()));
+  uint64_t v;
+  ASSERT_TRUE(BN_get_u64(ten.get(), &v));
+  EXPECT_EQ(10u, v);
+  EXPECT_TRUE(BN_equal_consttime(ten.get(), ten_copy.get()));
+  EXPECT_EQ(BN_cmp(ten.get(), ten_copy.get()), 0);
+  EXPECT_FALSE(BN_equal_consttime(ten.get(), eight.get()));
+  EXPECT_LT(BN_cmp(eight.get(), ten.get()), 0);
+  EXPECT_EQ(4u, BN_num_bits(ten.get()));
+  EXPECT_EQ(1u, BN_num_bytes(ten.get()));
+  EXPECT_FALSE(BN_is_pow2(ten.get()));
+
+  // Make a wider version of |ten|.
+  EXPECT_TRUE(bn_resize_words(ten.get(), 4));
+  EXPECT_EQ(4, ten->top);
+
+  // The same properties hold.
+  EXPECT_TRUE(BN_abs_is_word(ten.get(), 10));
+  EXPECT_TRUE(BN_is_word(ten.get(), 10));
+  EXPECT_EQ(10u, BN_get_word(ten.get()));
+  ASSERT_TRUE(BN_get_u64(ten.get(), &v));
+  EXPECT_EQ(10u, v);
+  EXPECT_TRUE(BN_equal_consttime(ten.get(), ten_copy.get()));
+  EXPECT_EQ(BN_cmp(ten.get(), ten_copy.get()), 0);
+  EXPECT_FALSE(BN_equal_consttime(ten.get(), eight.get()));
+  EXPECT_LT(BN_cmp(eight.get(), ten.get()), 0);
+  EXPECT_EQ(4u, BN_num_bits(ten.get()));
+  EXPECT_EQ(1u, BN_num_bytes(ten.get()));
+  EXPECT_FALSE(BN_is_pow2(ten.get()));
+
+  // |ten| may be resized back down to one word.
+  EXPECT_TRUE(bn_resize_words(ten.get(), 1));
+  EXPECT_EQ(1, ten->top);
+
+  // But not to zero words, which it does not fit.
+  EXPECT_FALSE(bn_resize_words(ten.get(), 0));
+
+  EXPECT_TRUE(BN_is_pow2(eight.get()));
+  EXPECT_TRUE(bn_resize_words(eight.get(), 4));
+  EXPECT_EQ(4, eight->top);
+  EXPECT_TRUE(BN_is_pow2(eight.get()));
+}
+
 #endif  // !BORINGSSL_SHARED_LIBRARY

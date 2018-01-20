@@ -240,7 +240,7 @@ int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
 }
 
 BN_ULONG BN_get_word(const BIGNUM *bn) {
-  switch (bn->top) {
+  switch (bn_minimal_width(bn)) {
     case 0:
       return 0;
     case 1:
@@ -251,7 +251,7 @@ BN_ULONG BN_get_word(const BIGNUM *bn) {
 }
 
 int BN_get_u64(const BIGNUM *bn, uint64_t *out) {
-  switch (bn->top) {
+  switch (bn_minimal_width(bn)) {
     case 0:
       *out = 0;
       return 1;

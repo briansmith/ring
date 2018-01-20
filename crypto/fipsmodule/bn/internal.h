@@ -197,8 +197,12 @@ extern "C" {
 #define Hw(t) ((BN_ULONG)((t) >> BN_BITS2))
 #endif
 
-// bn_correct_top decrements |bn->top| until |bn->d[top-1]| is non-zero or
-// until |top| is zero. If |bn| is zero, |bn->neg| is set to zero.
+// bn_minimal_width returns the minimal value of |bn->top| which fits the
+// value of |bn|.
+int bn_minimal_width(const BIGNUM *bn);
+
+// bn_correct_top decrements |bn->top| to |bn_minimal_width|. If |bn| is zero,
+// |bn->neg| is set to zero.
 void bn_correct_top(BIGNUM *bn);
 
 // bn_wexpand ensures that |bn| has at least |words| works of space without
@@ -209,6 +213,14 @@ int bn_wexpand(BIGNUM *bn, size_t words);
 // bn_expand acts the same as |bn_wexpand|, but takes a number of bits rather
 // than a number of words.
 int bn_expand(BIGNUM *bn, size_t bits);
+
+// bn_resize_words adjusts |bn->top| to be |words|. It returns one on success
+// and zero on allocation error or if |bn|'s value is too large.
+//
+// Do not call this function outside of unit tests. Most functions currently
+// require |BIGNUM|s be minimal. This function breaks that invariant. It is
+// introduced early so the invariant may be relaxed incrementally.
+int bn_resize_words(BIGNUM *bn, size_t words);
 
 // bn_set_words sets |bn| to the value encoded in the |num| words in |words|,
 // least significant word first.
