@@ -1890,44 +1890,61 @@ TEST_F(BNTest, NonMinimal) {
   bssl::UniquePtr<BIGNUM> ten(BN_new());
   ASSERT_TRUE(ten);
   ASSERT_TRUE(BN_set_word(ten.get(), 10));
+
   bssl::UniquePtr<BIGNUM> ten_copy(BN_dup(ten.get()));
   ASSERT_TRUE(ten_copy);
+
   bssl::UniquePtr<BIGNUM> eight(BN_new());
   ASSERT_TRUE(eight);
   ASSERT_TRUE(BN_set_word(eight.get(), 8));
 
-  // Check some comparison functions on |ten|.
-  EXPECT_TRUE(BN_abs_is_word(ten.get(), 10));
-  EXPECT_TRUE(BN_is_word(ten.get(), 10));
-  EXPECT_EQ(10u, BN_get_word(ten.get()));
-  uint64_t v;
-  ASSERT_TRUE(BN_get_u64(ten.get(), &v));
-  EXPECT_EQ(10u, v);
-  EXPECT_TRUE(BN_equal_consttime(ten.get(), ten_copy.get()));
-  EXPECT_EQ(BN_cmp(ten.get(), ten_copy.get()), 0);
-  EXPECT_FALSE(BN_equal_consttime(ten.get(), eight.get()));
-  EXPECT_LT(BN_cmp(eight.get(), ten.get()), 0);
-  EXPECT_EQ(4u, BN_num_bits(ten.get()));
-  EXPECT_EQ(1u, BN_num_bytes(ten.get()));
-  EXPECT_FALSE(BN_is_pow2(ten.get()));
+  bssl::UniquePtr<BIGNUM> forty_two(BN_new());
+  ASSERT_TRUE(forty_two);
+  ASSERT_TRUE(BN_set_word(forty_two.get(), 42));
 
-  // Make a wider version of |ten|.
-  EXPECT_TRUE(bn_resize_words(ten.get(), 4));
-  EXPECT_EQ(4, ten->top);
+  bssl::UniquePtr<BIGNUM> two_exp_256(BN_new());
+  ASSERT_TRUE(two_exp_256);
+  ASSERT_TRUE(BN_lshift(two_exp_256.get(), BN_value_one(), 256));
 
-  // The same properties hold.
-  EXPECT_TRUE(BN_abs_is_word(ten.get(), 10));
-  EXPECT_TRUE(BN_is_word(ten.get(), 10));
-  EXPECT_EQ(10u, BN_get_word(ten.get()));
-  ASSERT_TRUE(BN_get_u64(ten.get(), &v));
-  EXPECT_EQ(10u, v);
-  EXPECT_TRUE(BN_equal_consttime(ten.get(), ten_copy.get()));
-  EXPECT_EQ(BN_cmp(ten.get(), ten_copy.get()), 0);
-  EXPECT_FALSE(BN_equal_consttime(ten.get(), eight.get()));
-  EXPECT_LT(BN_cmp(eight.get(), ten.get()), 0);
-  EXPECT_EQ(4u, BN_num_bits(ten.get()));
-  EXPECT_EQ(1u, BN_num_bytes(ten.get()));
-  EXPECT_FALSE(BN_is_pow2(ten.get()));
+  // Check some comparison functions on |ten| before and after expanding.
+  for (size_t width = 1; width < 10; width++) {
+    SCOPED_TRACE(width);
+    // Make a wider version of |ten|.
+    EXPECT_TRUE(bn_resize_words(ten.get(), width));
+    EXPECT_EQ(static_cast<int>(width), ten->top);
+
+    EXPECT_TRUE(BN_abs_is_word(ten.get(), 10));
+    EXPECT_TRUE(BN_is_word(ten.get(), 10));
+    EXPECT_EQ(10u, BN_get_word(ten.get()));
+    uint64_t v;
+    ASSERT_TRUE(BN_get_u64(ten.get(), &v));
+    EXPECT_EQ(10u, v);
+
+    EXPECT_TRUE(BN_equal_consttime(ten.get(), ten_copy.get()));
+    EXPECT_TRUE(BN_equal_consttime(ten_copy.get(), ten.get()));
+    EXPECT_FALSE(BN_less_than_consttime(ten.get(), ten_copy.get()));
+    EXPECT_FALSE(BN_less_than_consttime(ten_copy.get(), ten.get()));
+    EXPECT_EQ(BN_cmp(ten.get(), ten_copy.get()), 0);
+
+    EXPECT_FALSE(BN_equal_consttime(ten.get(), eight.get()));
+    EXPECT_FALSE(BN_less_than_consttime(ten.get(), eight.get()));
+    EXPECT_TRUE(BN_less_than_consttime(eight.get(), ten.get()));
+    EXPECT_LT(BN_cmp(eight.get(), ten.get()), 0);
+
+    EXPECT_FALSE(BN_equal_consttime(ten.get(), forty_two.get()));
+    EXPECT_TRUE(BN_less_than_consttime(ten.get(), forty_two.get()));
+    EXPECT_FALSE(BN_less_than_consttime(forty_two.get(), ten.get()));
+    EXPECT_GT(BN_cmp(forty_two.get(), ten.get()), 0);
+
+    EXPECT_FALSE(BN_equal_consttime(ten.get(), two_exp_256.get()));
+    EXPECT_TRUE(BN_less_than_consttime(ten.get(), two_exp_256.get()));
+    EXPECT_FALSE(BN_less_than_consttime(two_exp_256.get(), ten.get()));
+    EXPECT_GT(BN_cmp(two_exp_256.get(), ten.get()), 0);
+
+    EXPECT_EQ(4u, BN_num_bits(ten.get()));
+    EXPECT_EQ(1u, BN_num_bytes(ten.get()));
+    EXPECT_FALSE(BN_is_pow2(ten.get()));
+  }
 
   // |ten| may be resized back down to one word.
   EXPECT_TRUE(bn_resize_words(ten.get(), 1));

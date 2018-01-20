@@ -177,17 +177,39 @@ int bn_cmp_part_words(const BN_ULONG *a, const BN_ULONG *b, int cl, int dl) {
   return bn_cmp_words(a, b, cl);
 }
 
-int bn_less_than_words(const BN_ULONG *a, const BN_ULONG *b, size_t len) {
+static int bn_less_than_words_impl(const BN_ULONG *a, size_t a_len,
+                                   const BN_ULONG *b, size_t b_len) {
   OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
                          crypto_word_t_too_small);
   int ret = 0;
-  // Process the words in little-endian order.
-  for (size_t i = 0; i < len; i++) {
+  // Process the common words in little-endian order.
+  size_t min = a_len < b_len ? a_len : b_len;
+  for (size_t i = 0; i < min; i++) {
     crypto_word_t eq = constant_time_eq_w(a[i], b[i]);
     crypto_word_t lt = constant_time_lt_w(a[i], b[i]);
     ret = constant_time_select_int(eq, ret, constant_time_select_int(lt, 1, 0));
   }
+
+  // If |a| or |b| has non-zero words beyond |min|, they take precedence.
+  if (a_len < b_len) {
+    crypto_word_t mask = 0;
+    for (size_t i = a_len; i < b_len; i++) {
+      mask |= b[i];
+    }
+    ret = constant_time_select_int(constant_time_is_zero_w(mask), ret, 1);
+  } else if (b_len < a_len) {
+    crypto_word_t mask = 0;
+    for (size_t i = b_len; i < a_len; i++) {
+      mask |= a[i];
+    }
+    ret = constant_time_select_int(constant_time_is_zero_w(mask), ret, 0);
+  }
+
   return ret;
+}
+
+int bn_less_than_words(const BN_ULONG *a, const BN_ULONG *b, size_t len) {
+  return bn_less_than_words_impl(a, len, b, len);
 }
 
 int BN_abs_is_word(const BIGNUM *bn, BN_ULONG w) {
@@ -260,4 +282,21 @@ int BN_equal_consttime(const BIGNUM *a, const BIGNUM *b) {
   // The sign bit must match.
   mask |= (a->neg ^ b->neg);
   return mask == 0;
+}
+
+int BN_less_than_consttime(const BIGNUM *a, const BIGNUM *b) {
+  // We do not attempt to process the sign bit in constant time. Negative
+  // |BIGNUM|s should never occur in crypto, only calculators.
+  if (a->neg && !b->neg) {
+    return 1;
+  }
+  if (b->neg && !a->neg) {
+    return 0;
+  }
+  if (a->neg && b->neg) {
+    const BIGNUM *tmp = a;
+    a = b;
+    b = tmp;
+  }
+  return bn_less_than_words_impl(a->d, a->top, b->d, b->top);
 }

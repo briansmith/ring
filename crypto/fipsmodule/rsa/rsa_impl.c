@@ -838,7 +838,8 @@ int rsa_greater_than_pow2(const BIGNUM *b, int n) {
 // relatively prime to |e|. If |p| is non-NULL, |out| will also not be close to
 // |p|.
 static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
-                          const BIGNUM *p, BN_CTX *ctx, BN_GENCB *cb) {
+                          const BIGNUM *p, const BIGNUM *sqrt2, BN_CTX *ctx,
+                          BN_GENCB *cb) {
   if (bits < 128 || (bits % BN_BITS2) != 0) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     return 0;
@@ -882,30 +883,14 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
       }
     }
 
-    // If out < 2^(bits-1)×√2, try again (steps 4.4 and 5.5).
-    //
-    // We check the most significant words, so we retry if ⌊out/2^k⌋ <= ⌊b/2^k⌋,
-    // where b = 2^(bits-1)×√2 and k = max(0, bits - 1536). For key sizes up to
-    // 3072 (bits = 1536), k = 0, so we are testing that ⌊out⌋ <= ⌊b⌋. out is an
-    // integer and b is not, so this is equivalent to out < b. That is, the
-    // comparison is exact for FIPS key sizes.
+    // If out < 2^(bits-1)×√2, try again (steps 4.4 and 5.5). This is equivalent
+    // to out <= ⌊2^(bits-1)×√2⌋, or out <= sqrt2 for FIPS key sizes.
     //
     // For larger keys, the comparison is approximate, leaning towards
     // retrying. That is, we reject a negligible fraction of primes that are
     // within the FIPS bound, but we will never accept a prime outside the
-    // bound, ensuring the resulting RSA key is the right size. Specifically, if
-    // the FIPS bound holds, we have ⌊out/2^k⌋ < out/2^k < b/2^k. This implies
-    // ⌊out/2^k⌋ <= ⌊b/2^k⌋. That is, the FIPS bound implies our bound and so we
-    // are slightly tighter.
-    size_t out_len = (size_t)out->top;
-    assert(out_len == (size_t)bits / BN_BITS2);
-    size_t to_check = kBoringSSLRSASqrtTwoLen;
-    if (to_check > out_len) {
-      to_check = out_len;
-    }
-    if (!bn_less_than_words(
-            kBoringSSLRSASqrtTwo + kBoringSSLRSASqrtTwoLen - to_check,
-            out->d + out_len - to_check, to_check)) {
+    // bound, ensuring the resulting RSA key is the right size.
+    if (!BN_less_than_consttime(sqrt2, out)) {
       continue;
     }
 
@@ -969,7 +954,9 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   BIGNUM *pm1 = BN_CTX_get(ctx);
   BIGNUM *qm1 = BN_CTX_get(ctx);
   BIGNUM *gcd = BN_CTX_get(ctx);
-  if (totient == NULL || pm1 == NULL || qm1 == NULL || gcd == NULL) {
+  BIGNUM *sqrt2 = BN_CTX_get(ctx);
+  if (totient == NULL || pm1 == NULL || qm1 == NULL || gcd == NULL ||
+      sqrt2 == NULL) {
     goto bn_err;
   }
 
@@ -990,12 +977,35 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   }
 
   int prime_bits = bits / 2;
+
+  // Compute sqrt2 >= ⌊2^(prime_bits-1)×√2⌋.
+  if (!bn_set_words(sqrt2, kBoringSSLRSASqrtTwo, kBoringSSLRSASqrtTwoLen)) {
+    goto bn_err;
+  }
+  int sqrt2_bits = kBoringSSLRSASqrtTwoLen * BN_BITS2;
+  assert(sqrt2_bits == (int)BN_num_bits(sqrt2));
+  if (sqrt2_bits > prime_bits) {
+    // For key sizes up to 3072 (prime_bits = 1536), this is exactly
+    // ⌊2^(prime_bits-1)×√2⌋.
+    if (!BN_rshift(sqrt2, sqrt2, sqrt2_bits - prime_bits)) {
+      goto bn_err;
+    }
+  } else if (prime_bits > sqrt2_bits) {
+    // For key sizes beyond 3072, this is approximate. We err towards retrying
+    // to ensure our key is the right size and round up.
+    if (!BN_add_word(sqrt2, 1) ||
+        !BN_lshift(sqrt2, sqrt2, prime_bits - sqrt2_bits)) {
+      goto bn_err;
+    }
+  }
+  assert(prime_bits == (int)BN_num_bits(sqrt2));
+
   do {
     // Generate p and q, each of size |prime_bits|, using the steps outlined in
     // appendix FIPS 186-4 appendix B.3.3.
-    if (!generate_prime(rsa->p, prime_bits, rsa->e, NULL, ctx, cb) ||
+    if (!generate_prime(rsa->p, prime_bits, rsa->e, NULL, sqrt2, ctx, cb) ||
         !BN_GENCB_call(cb, 3, 0) ||
-        !generate_prime(rsa->q, prime_bits, rsa->e, rsa->p, ctx, cb) ||
+        !generate_prime(rsa->q, prime_bits, rsa->e, rsa->p, sqrt2, ctx, cb) ||
         !BN_GENCB_call(cb, 3, 1)) {
       goto bn_err;
     }
