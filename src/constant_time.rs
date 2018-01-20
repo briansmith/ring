@@ -13,25 +13,20 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 //! Constant-time operations.
+extern crate subtle;
 
-use {c, error};
+use error;
 
 /// Returns `Ok(())` if `a == b` and `Err(error::Unspecified)` otherwise.
-/// The comparison of `a` and `b` is done in constant time with respect to the
-/// contents of each, but NOT in constant time with respect to the lengths of
-/// `a` and `b`.
+/// The comparison of `a` and `b` is done in constant time.
 pub fn verify_slices_are_equal(a: &[u8], b: &[u8])
                                -> Result<(), error::Unspecified> {
     if a.len() != b.len() {
         return Err(error::Unspecified);
     }
-    let result = unsafe { GFp_memcmp(a.as_ptr(), b.as_ptr(), a.len()) };
-    match result {
-        0 => Ok(()),
+
+    match subtle::slices_equal(a, b) {
+        1 => Ok(()),
         _ => Err(error::Unspecified),
     }
-}
-
-extern {
-    fn GFp_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
 }
