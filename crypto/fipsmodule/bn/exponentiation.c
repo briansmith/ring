@@ -1006,7 +1006,7 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
 int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
                               const BIGNUM *m, BN_CTX *ctx,
                               const BN_MONT_CTX *mont) {
-  int i, bits, ret = 0, window, wvalue;
+  int i, ret = 0, window, wvalue;
   int top;
   BN_MONT_CTX *new_mont = NULL;
 
@@ -1024,7 +1024,10 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   top = m->top;
 
-  bits = BN_num_bits(p);
+  // Use all bits stored in |p|, rather than |BN_num_bits|, so we do not leak
+  // whether the top bits are zero.
+  int max_bits = p->top * BN_BITS2;
+  int bits = max_bits;
   if (bits == 0) {
     // x**0 mod 1 is still zero.
     if (BN_is_one(m)) {
@@ -1217,7 +1220,6 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
       }
     } else {
       const uint8_t *p_bytes = (const uint8_t *)p->d;
-      int max_bits = p->top * BN_BITS2;
       assert(bits < max_bits);
       // |p = 0| has been handled as a special case, so |max_bits| is at least
       // one word.
