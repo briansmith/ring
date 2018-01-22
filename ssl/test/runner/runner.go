@@ -1368,6 +1368,13 @@ var tlsVersions = []tlsVersion{
 		tls13Variant: TLS13Draft22,
 	},
 	{
+		name:         "TLS13Draft23",
+		version:      VersionTLS13,
+		excludeFlag:  "-no-tls13",
+		versionWire:  tls13Draft23Version,
+		tls13Variant: TLS13Draft23,
+	},
+	{
 		name:         "TLS13Experiment2",
 		version:      VersionTLS13,
 		excludeFlag:  "-no-tls13",
