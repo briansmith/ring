@@ -304,6 +304,29 @@ TEST(ECTest, ArbitraryCurve) {
                                      order.get(), BN_value_one()));
 
   EXPECT_NE(0, EC_GROUP_cmp(group.get(), group3.get(), NULL));
+
+#if !defined(BORINGSSL_SHARED_LIBRARY)
+  // group4 has non-minimal components that do not fit in |EC_SCALAR| and the
+  // future |EC_FELEM|.
+  ASSERT_TRUE(bn_resize_words(p.get(), 32));
+  ASSERT_TRUE(bn_resize_words(a.get(), 32));
+  ASSERT_TRUE(bn_resize_words(b.get(), 32));
+  ASSERT_TRUE(bn_resize_words(gx.get(), 32));
+  ASSERT_TRUE(bn_resize_words(gy.get(), 32));
+  ASSERT_TRUE(bn_resize_words(order.get(), 32));
+
+  bssl::UniquePtr<EC_GROUP> group4(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), ctx.get()));
+  ASSERT_TRUE(group4);
+  bssl::UniquePtr<EC_POINT> generator4(EC_POINT_new(group4.get()));
+  ASSERT_TRUE(generator4);
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(
+      group4.get(), generator4.get(), gx.get(), gy.get(), ctx.get()));
+  ASSERT_TRUE(EC_GROUP_set_generator(group4.get(), generator4.get(),
+                                     order.get(), BN_value_one()));
+
+  EXPECT_EQ(0, EC_GROUP_cmp(group.get(), group4.get(), NULL));
+#endif
 }
 
 TEST(ECTest, SetKeyWithoutGroup) {

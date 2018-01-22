@@ -387,6 +387,8 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
     EC_POINT_free(copy);
     return 0;
   }
+  // Store the order in minimal form, so it can be used with |BN_ULONG| arrays.
+  bn_correct_top(&group->order);
 
   BN_MONT_CTX_free(group->order_mont);
   group->order_mont = BN_MONT_CTX_new_for_modulus(&group->order, NULL);
