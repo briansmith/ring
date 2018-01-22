@@ -180,51 +180,50 @@ DEFINE_METHOD_FUNCTION(BIGNUM, BN_value_one) {
 // BN_num_bits_word returns the minimum number of bits needed to represent the
 // value in |l|.
 unsigned BN_num_bits_word(BN_ULONG l) {
-  static const unsigned char bits[256] = {
-      0, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5,
-      5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
-      6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7,
-      7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-      7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-      7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-      8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-      8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-      8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-      8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8,
-      8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8};
+  // |BN_num_bits| is often called on RSA prime factors. These have public bit
+  // lengths, but all bits beyond the high bit are secret, so count bits in
+  // constant time.
+  BN_ULONG x, mask;
+  int bits = (l != 0);
 
-#if defined(OPENSSL_64_BIT)
-  if (l & 0xffffffff00000000L) {
-    if (l & 0xffff000000000000L) {
-      if (l & 0xff00000000000000L) {
-        return (bits[(int)(l >> 56)] + 56);
-      } else {
-        return (bits[(int)(l >> 48)] + 48);
-      }
-    } else {
-      if (l & 0x0000ff0000000000L) {
-        return (bits[(int)(l >> 40)] + 40);
-      } else {
-        return (bits[(int)(l >> 32)] + 32);
-      }
-    }
-  } else
+#if BN_BITS2 > 32
+  x = l >> 32;
+  mask = 0u - x;
+  mask = (0u - (mask >> (BN_BITS2 - 1)));
+  bits += 32 & mask;
+  l ^= (x ^ l) & mask;
 #endif
-  {
-    if (l & 0xffff0000L) {
-      if (l & 0xff000000L) {
-        return (bits[(int)(l >> 24L)] + 24);
-      } else {
-        return (bits[(int)(l >> 16L)] + 16);
-      }
-    } else {
-      if (l & 0xff00L) {
-        return (bits[(int)(l >> 8)] + 8);
-      } else {
-        return (bits[(int)(l)]);
-      }
-    }
-  }
+
+  x = l >> 16;
+  mask = 0u - x;
+  mask = (0u - (mask >> (BN_BITS2 - 1)));
+  bits += 16 & mask;
+  l ^= (x ^ l) & mask;
+
+  x = l >> 8;
+  mask = 0u - x;
+  mask = (0u - (mask >> (BN_BITS2 - 1)));
+  bits += 8 & mask;
+  l ^= (x ^ l) & mask;
+
+  x = l >> 4;
+  mask = 0u - x;
+  mask = (0u - (mask >> (BN_BITS2 - 1)));
+  bits += 4 & mask;
+  l ^= (x ^ l) & mask;
+
+  x = l >> 2;
+  mask = 0u - x;
+  mask = (0u - (mask >> (BN_BITS2 - 1)));
+  bits += 2 & mask;
+  l ^= (x ^ l) & mask;
+
+  x = l >> 1;
+  mask = 0u - x;
+  mask = (0u - (mask >> (BN_BITS2 - 1)));
+  bits += 1 & mask;
+
+  return bits;
 }
 
 unsigned BN_num_bits(const BIGNUM *bn) {

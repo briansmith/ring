@@ -92,6 +92,7 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/rand.h>
 
 #include "./internal.h"
 #include "../../internal.h"
@@ -1756,6 +1757,41 @@ TEST_F(BNTest, PrimeChecking) {
                                 ctx(), true /* do_trial_division */,
                                 nullptr /* callback */));
   EXPECT_EQ(0, is_probably_prime_2);
+}
+
+TEST_F(BNTest, NumBitsWord) {
+  constexpr BN_ULONG kOne = 1;
+
+  // 2^(N-1) takes N bits.
+  for (unsigned i = 1; i < BN_BITS2; i++) {
+    EXPECT_EQ(i, BN_num_bits_word(kOne << (i - 1))) << i;
+  }
+
+  // 2^N - 1 takes N bits.
+  for (unsigned i = 0; i < BN_BITS2; i++) {
+    EXPECT_EQ(i, BN_num_bits_word((kOne << i) - 1)) << i;
+  }
+
+  for (unsigned i = 1; i < 100; i++) {
+    // Generate a random value of a random length.
+    uint8_t buf[1 + sizeof(BN_ULONG)];
+    RAND_bytes(buf, sizeof(buf));
+
+    BN_ULONG w;
+    memcpy(&w, &buf[1], sizeof(w));
+
+    const unsigned num_bits = buf[0] % (BN_BITS2 + 1);
+    if (num_bits == BN_BITS2) {
+      w |= kOne << (BN_BITS2 - 1);
+    } else if (num_bits == 0) {
+      w = 0;
+    } else {
+      w &= (kOne << num_bits) - 1;
+      w |= kOne << (num_bits - 1);
+    }
+
+    EXPECT_EQ(num_bits, BN_num_bits_word(w)) << w;
+  }
 }
 
 #if !defined(BORINGSSL_SHARED_LIBRARY)
