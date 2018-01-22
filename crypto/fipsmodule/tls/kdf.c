@@ -50,9 +50,13 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
+#include <assert.h>
+
 #include <openssl/hmac.h>
+#include <openssl/mem.h>
 
 #include "internal.h"
+#include "../crypto/internal.h"
 
 
 // tls1_P_hash computes the TLS P_<hash> function as described in RFC 5246,
