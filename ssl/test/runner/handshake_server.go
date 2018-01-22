@@ -280,14 +280,6 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
-	// Check that we received the expected version of the key_share extension.
-	if c.vers >= VersionTLS13 {
-		if (isDraft23(c.wireVersion) && hs.clientHello.keyShareExtension != extensionNewKeyShare) ||
-			(!isDraft23(c.wireVersion) && hs.clientHello.keyShareExtension != extensionOldKeyShare) {
-			return fmt.Errorf("tls: client offered wrong key_share extension")
-		}
-	}
-
 	if config.Bugs.ExpectNoTLS12Session {
 		if len(hs.clientHello.sessionId) > 0 && c.vers >= VersionTLS13 {
 			return fmt.Errorf("tls: client offered an unexpected session ID")
@@ -370,11 +362,8 @@ func (hs *serverHandshakeState) doTLS13Handshake() error {
 	c := hs.c
 	config := c.config
 
-	// We've read the ClientHello, so the next record in draft 22 must be
-	// preceded with ChangeCipherSpec.
-	if isDraft22(c.wireVersion) {
-		c.expectTLS13ChangeCipherSpec = true
-	}
+	// We've read the ClientHello, so the next record must be preceded with ChangeCipherSpec.
+	c.expectTLS13ChangeCipherSpec = true
 
 	hs.hello = &serverHelloMsg{
 		isDTLS:                c.isDTLS,
@@ -597,10 +586,8 @@ ResendHelloRetryRequest:
 	}
 
 	if sendHelloRetryRequest {
-		if isDraft22(c.wireVersion) {
-			if err := hs.finishedHash.UpdateForHelloRetryRequest(); err != nil {
-				return err
-			}
+		if err := hs.finishedHash.UpdateForHelloRetryRequest(); err != nil {
+			return err
 		}
 
 		oldClientHelloBytes := hs.clientHello.marshal()
@@ -608,7 +595,7 @@ ResendHelloRetryRequest:
 		c.writeRecord(recordTypeHandshake, helloRetryRequest.marshal())
 		c.flushHandshake()
 
-		if !c.config.Bugs.SkipChangeCipherSpec && isDraft22(c.wireVersion) {
+		if !c.config.Bugs.SkipChangeCipherSpec {
 			c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 		}
 
@@ -666,7 +653,7 @@ ResendHelloRetryRequest:
 
 		// PSK binders and obfuscated ticket age are both updated in the
 		// second ClientHello.
-		if isDraft22(c.wireVersion) && len(oldClientHelloCopy.pskIdentities) != len(newClientHelloCopy.pskIdentities) {
+		if len(oldClientHelloCopy.pskIdentities) != len(newClientHelloCopy.pskIdentities) {
 			newClientHelloCopy.pskIdentities = oldClientHelloCopy.pskIdentities
 		} else {
 			if len(oldClientHelloCopy.pskIdentities) != len(newClientHelloCopy.pskIdentities) {
@@ -706,14 +693,8 @@ ResendHelloRetryRequest:
 			}
 		}
 		if encryptedExtensions.extensions.hasEarlyData {
-			var earlyTrafficSecret []byte
-			if isDraft22(c.wireVersion) {
-				earlyTrafficSecret = hs.finishedHash.deriveSecret(earlyTrafficLabelDraft22)
-				c.earlyExporterSecret = hs.finishedHash.deriveSecret(earlyExporterLabelDraft22)
-			} else {
-				earlyTrafficSecret = hs.finishedHash.deriveSecret(earlyTrafficLabel)
-				c.earlyExporterSecret = hs.finishedHash.deriveSecret(earlyExporterLabel)
-			}
+			earlyTrafficSecret := hs.finishedHash.deriveSecret(earlyTrafficLabel)
+			c.earlyExporterSecret = hs.finishedHash.deriveSecret(earlyExporterLabel)
 
 			if err := c.useInTrafficSecret(c.wireVersion, hs.suite, earlyTrafficSecret); err != nil {
 				return err
@@ -829,18 +810,11 @@ ResendHelloRetryRequest:
 		c.writeRecord(recordTypeChangeCipherSpec, []byte{1})
 	}
 
-	clientLabel := clientHandshakeTrafficLabel
-	serverLabel := serverHandshakeTrafficLabel
-	if isDraft22(c.wireVersion) {
-		clientLabel = clientHandshakeTrafficLabelDraft22
-		serverLabel = serverHandshakeTrafficLabelDraft22
-	}
-
 	// Switch to handshake traffic keys.
-	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverLabel)
+	serverHandshakeTrafficSecret := hs.finishedHash.deriveSecret(serverHandshakeTrafficLabel)
 	c.useOutTrafficSecret(c.wireVersion, hs.suite, serverHandshakeTrafficSecret)
 	// Derive handshake traffic read key, but don't switch yet.
-	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientLabel)
+	clientHandshakeTrafficSecret := hs.finishedHash.deriveSecret(clientHandshakeTrafficLabel)
 
 	// Send EncryptedExtensions.
 	hs.writeServerHash(encryptedExtensions.marshal())
@@ -977,18 +951,9 @@ ResendHelloRetryRequest:
 	hs.finishedHash.nextSecret()
 	hs.finishedHash.addEntropy(hs.finishedHash.zeroSecret())
 
-	clientLabel = clientApplicationTrafficLabel
-	serverLabel = serverApplicationTrafficLabel
-	exportLabel := exporterLabel
-	if isDraft22(c.wireVersion) {
-		clientLabel = clientApplicationTrafficLabelDraft22
-		serverLabel = serverApplicationTrafficLabelDraft22
-		exportLabel = exporterLabelDraft22
-	}
-
-	clientTrafficSecret := hs.finishedHash.deriveSecret(clientLabel)
-	serverTrafficSecret := hs.finishedHash.deriveSecret(serverLabel)
-	c.exporterSecret = hs.finishedHash.deriveSecret(exportLabel)
+	clientTrafficSecret := hs.finishedHash.deriveSecret(clientApplicationTrafficLabel)
+	serverTrafficSecret := hs.finishedHash.deriveSecret(serverApplicationTrafficLabel)
+	c.exporterSecret = hs.finishedHash.deriveSecret(exporterLabel)
 
 	// Switch to application data keys on write. In particular, any alerts
 	// from the client certificate are sent over these keys.
@@ -1003,31 +968,17 @@ ResendHelloRetryRequest:
 
 	// Read end_of_early_data.
 	if encryptedExtensions.extensions.hasEarlyData {
-		if isDraft22(c.wireVersion) {
-			msg, err := c.readHandshake()
-			if err != nil {
-				return err
-			}
-
-			endOfEarlyData, ok := msg.(*endOfEarlyDataMsg)
-			if !ok {
-				c.sendAlert(alertUnexpectedMessage)
-				return unexpectedMessageError(endOfEarlyData, msg)
-			}
-			hs.writeClientHash(endOfEarlyData.marshal())
-		} else {
-			if err := c.readRecord(recordTypeAlert); err != errEndOfEarlyDataAlert {
-				if err == nil {
-					panic("readRecord(recordTypeAlert) returned nil")
-				}
-				return err
-			}
+		msg, err := c.readHandshake()
+		if err != nil {
+			return err
 		}
-	}
-	if !isDraft22(c.wireVersion) && !hs.clientHello.hasEarlyData {
-		// Early versions of the middlebox hacks inserted
-		// ChangeCipherSpec differently on 0-RTT and 2-RTT handshakes.
-		c.expectTLS13ChangeCipherSpec = true
+
+		endOfEarlyData, ok := msg.(*endOfEarlyDataMsg)
+		if !ok {
+			c.sendAlert(alertUnexpectedMessage)
+			return unexpectedMessageError(endOfEarlyData, msg)
+		}
+		hs.writeClientHash(endOfEarlyData.marshal())
 	}
 
 	// Switch input stream to handshake traffic keys.
@@ -1142,13 +1093,7 @@ ResendHelloRetryRequest:
 	}
 
 	c.cipherSuite = hs.suite
-
-	resumeLabel := resumptionLabel
-	if isDraft22(c.wireVersion) {
-		resumeLabel = resumptionLabelDraft22
-	}
-
-	c.resumptionSecret = hs.finishedHash.deriveSecret(resumeLabel)
+	c.resumptionSecret = hs.finishedHash.deriveSecret(resumptionLabel)
 
 	// TODO(davidben): Allow configuring the number of tickets sent for
 	// testing.
@@ -2172,11 +2117,7 @@ func verifyPSKBinder(version uint16, clientHello *clientHelloMsg, sessionState *
 		return errors.New("tls: Unknown cipher suite for PSK in session")
 	}
 
-	binderLabel := resumptionPSKBinderLabel
-	if isDraft22(version) {
-		binderLabel = resumptionPSKBinderLabelDraft22
-	}
-	binder := computePSKBinder(sessionState.masterSecret, version, binderLabel, pskCipherSuite, firstClientHello, helloRetryRequest, truncatedHello)
+	binder := computePSKBinder(sessionState.masterSecret, version, resumptionPSKBinderLabel, pskCipherSuite, firstClientHello, helloRetryRequest, truncatedHello)
 	if !bytes.Equal(binder, binderToVerify) {
 		return errors.New("tls: PSK binder does not verify")
 	}

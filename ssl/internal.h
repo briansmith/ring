@@ -392,18 +392,6 @@ bool ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 // call this function before the version is determined.
 uint16_t ssl_protocol_version(const SSL *ssl);
 
-// ssl_is_draft22 returns whether the version corresponds to a draft22 TLS 1.3
-// variant.
-bool ssl_is_draft22(uint16_t version);
-
-// ssl_is_draft23 returns whether the version corresponds to a draft23 TLS 1.3
-// variant.
-bool ssl_is_draft23(uint16_t version);
-
-// ssl_is_draft23_variant returns whether the variant corresponds to a
-// draft23 TLS 1.3 variant.
- bool ssl_is_draft23_variant(enum tls13_variant_t variant);
-
 // Cipher suites.
 
 }  // namespace bssl

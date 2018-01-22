@@ -1566,9 +1566,7 @@ func (c *Conn) processTLS13NewSessionTicket(newSessionTicket *newSessionTicketMs
 		earlyALPN:          c.clientProtocol,
 	}
 
-	if isDraft22(c.wireVersion) {
-		session.masterSecret = deriveSessionPSK(cipherSuite, c.wireVersion, c.resumptionSecret, newSessionTicket.ticketNonce)
-	}
+	session.masterSecret = deriveSessionPSK(cipherSuite, c.wireVersion, c.resumptionSecret, newSessionTicket.ticketNonce)
 
 	cacheKey := clientSessionCacheKey(c.conn.RemoteAddr(), c.config)
 	_, ok := c.config.ClientSessionCache.Get(cacheKey)
@@ -1860,16 +1858,13 @@ func (c *Conn) exportKeyingMaterialTLS13(length int, secret, label, context []by
 	if cipherSuite == nil {
 		cipherSuite = c.earlyCipherSuite
 	}
-	if isDraft22(c.wireVersion) {
-		hash := cipherSuite.hash()
-		exporterKeyingLabel := []byte("exporter")
-		contextHash := hash.New()
-		contextHash.Write(context)
-		exporterContext := hash.New().Sum(nil)
-		derivedSecret := hkdfExpandLabel(cipherSuite.hash(), c.wireVersion, secret, label, exporterContext, hash.Size())
-		return hkdfExpandLabel(cipherSuite.hash(), c.wireVersion, derivedSecret, exporterKeyingLabel, contextHash.Sum(nil), length)
-	}
-	return hkdfExpandLabel(cipherSuite.hash(), c.wireVersion, secret, label, context, length)
+	hash := cipherSuite.hash()
+	exporterKeyingLabel := []byte("exporter")
+	contextHash := hash.New()
+	contextHash.Write(context)
+	exporterContext := hash.New().Sum(nil)
+	derivedSecret := hkdfExpandLabel(cipherSuite.hash(), secret, label, exporterContext, hash.Size())
+	return hkdfExpandLabel(cipherSuite.hash(), derivedSecret, exporterKeyingLabel, contextHash.Sum(nil), length)
 }
 
 // ExportKeyingMaterial exports keying material from the current connection
@@ -1954,11 +1949,8 @@ func (c *Conn) SendNewSessionTicket(nonce []byte) error {
 		duplicateEarlyDataExtension: c.config.Bugs.DuplicateTicketEarlyData,
 		customExtension:             c.config.Bugs.CustomTicketExtension,
 		ticketAgeAdd:                ticketAgeAdd,
+		ticketNonce:                 nonce,
 		maxEarlyDataSize:            c.config.MaxEarlyDataSize,
-	}
-
-	if isDraft22(c.wireVersion) {
-		m.ticketNonce = nonce
 	}
 
 	if c.config.Bugs.SendTicketLifetime != 0 {
@@ -1968,16 +1960,12 @@ func (c *Conn) SendNewSessionTicket(nonce []byte) error {
 	state := sessionState{
 		vers:               c.vers,
 		cipherSuite:        c.cipherSuite.id,
-		masterSecret:       c.resumptionSecret,
+		masterSecret:       deriveSessionPSK(c.cipherSuite, c.wireVersion, c.resumptionSecret, nonce),
 		certificates:       peerCertificatesRaw,
 		ticketCreationTime: c.config.time(),
 		ticketExpiration:   c.config.time().Add(time.Duration(m.ticketLifetime) * time.Second),
 		ticketAgeAdd:       uint32(addBuffer[3])<<24 | uint32(addBuffer[2])<<16 | uint32(addBuffer[1])<<8 | uint32(addBuffer[0]),
 		earlyALPN:          []byte(c.clientProtocol),
-	}
-
-	if isDraft22(c.wireVersion) {
-		state.masterSecret = deriveSessionPSK(c.cipherSuite, c.wireVersion, c.resumptionSecret, nonce)
 	}
 
 	if !c.config.Bugs.SendEmptySessionTicket {

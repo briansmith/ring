@@ -304,14 +304,6 @@ ssl_open_record_t ssl3_open_app_data(SSL *ssl, Span<uint8_t> *out,
   const bool is_early_data_read = ssl->server && SSL_in_early_data(ssl);
 
   if (type == SSL3_RT_HANDSHAKE) {
-    // If reading 0-RTT data, reject handshake data. 0-RTT data is terminated
-    // by an alert.
-    if (!ssl_is_draft22(ssl->version) && is_early_data_read) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_RECORD);
-      *out_alert = SSL_AD_UNEXPECTED_MESSAGE;
-      return ssl_open_record_error;
-    }
-
     // Post-handshake data prior to TLS 1.3 is always renegotiation, which we
     // never accept as a server. Otherwise |ssl3_get_message| will send
     // |SSL_R_EXCESSIVE_MESSAGE_SIZE|.
@@ -329,16 +321,6 @@ ssl_open_record_t ssl3_open_app_data(SSL *ssl, Span<uint8_t> *out,
       *out_alert = SSL_AD_INTERNAL_ERROR;
       return ssl_open_record_error;
     }
-    return ssl_open_record_discard;
-  }
-
-  // Handle the end_of_early_data alert.
-  static const uint8_t kEndOfEarlyData[2] = {SSL3_AL_WARNING,
-                                             TLS1_AD_END_OF_EARLY_DATA};
-  if (!ssl_is_draft22(ssl->version) && is_early_data_read &&
-      type == SSL3_RT_ALERT && body == kEndOfEarlyData) {
-    // Stop accepting early data.
-    ssl->s3->hs->can_early_read = false;
     return ssl_open_record_discard;
   }
 

@@ -493,8 +493,7 @@ static enum ssl_hs_wait_t do_enter_early_data(SSL_HANDSHAKE *hs) {
   }
 
   ssl->s3->aead_write_ctx->SetVersionIfNullCipher(ssl->session->ssl_version);
-  if (ssl_is_draft22(ssl->session->ssl_version) &&
-      !ssl->method->add_change_cipher_spec(ssl)) {
+  if (!ssl->method->add_change_cipher_spec(ssl)) {
     return ssl_hs_error;
   }
 
