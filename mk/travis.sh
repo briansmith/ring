@@ -97,8 +97,10 @@ armv7-linux-androideabi)
   emulator @arm-18 -memory 2048 -no-skin -no-boot-anim -no-window &
   adb wait-for-device
 
-  # Run the unit tests first.
-  adb push $target_dir/ring-* /data/ring-test
+  # Run the unit tests first. The file named ring-<something> in $target_dir is
+  # the test executable.
+  find $target_dir -maxdepth 1 -name ring-* ! -name "*.*" \
+    -exec adb push {} /data/ring-test \;
   for testfile in `find src crypto -name "*_test*.txt" -o -name "*test*.pk8"`; do
     adb shell mkdir -p /data/`dirname $testfile`
     adb push $testfile /data/$testfile
