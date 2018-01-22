@@ -260,6 +260,7 @@ add_executable(
   pool/pool_test.cc
   refcount_test.cc
   rsa_extra/rsa_test.cc
+  self_test.cc
   test/file_test_gtest.cc
   thread_test.cc
   x509/x509_test.cc
