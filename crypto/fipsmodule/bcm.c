@@ -87,12 +87,12 @@
 #include "rsa/blinding.c"
 #include "rsa/padding.c"
 #include "rsa/rsa.c"
-#include "tls/kdf.c"
 #include "rsa/rsa_impl.c"
 #include "sha/sha1-altivec.c"
 #include "sha/sha1.c"
 #include "sha/sha256.c"
 #include "sha/sha512.c"
+#include "tls/kdf.c"
 
 
 #if defined(BORINGSSL_FIPS)
