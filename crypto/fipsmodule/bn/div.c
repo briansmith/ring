@@ -202,10 +202,16 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   BN_ULONG d0, d1;
   int num_n, div_n;
 
-  // Invalid zero-padding would have particularly bad consequences
-  // so don't just rely on bn_check_top() here
-  if ((numerator->top > 0 && numerator->d[numerator->top - 1] == 0) ||
-      (divisor->top > 0 && divisor->d[divisor->top - 1] == 0)) {
+  // This function relies on the historical minimal-width |BIGNUM| invariant.
+  // It is already not constant-time (constant-time reductions should use
+  // Montgomery logic), so we shrink all inputs and intermediate values to
+  // retain the previous behavior.
+
+  // Invalid zero-padding would have particularly bad consequences.
+  int numerator_width = bn_minimal_width(numerator);
+  int divisor_width = bn_minimal_width(divisor);
+  if ((numerator_width > 0 && numerator->d[numerator_width - 1] == 0) ||
+      (divisor_width > 0 && divisor->d[divisor_width - 1] == 0)) {
     OPENSSL_PUT_ERROR(BN, BN_R_NOT_INITIALIZED);
     return 0;
   }
@@ -234,11 +240,13 @@ int BN_div(BIGNUM *quotient, BIGNUM *rem, const BIGNUM *numerator,
   if (!BN_lshift(sdiv, divisor, norm_shift)) {
     goto err;
   }
+  bn_correct_top(sdiv);
   sdiv->neg = 0;
   norm_shift += BN_BITS2;
   if (!BN_lshift(snum, numerator, norm_shift)) {
     goto err;
   }
+  bn_correct_top(snum);
   snum->neg = 0;
 
   // Since we don't want to have special-case logic for the case where snum is
@@ -604,14 +612,7 @@ BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w) {
     a->d[i] = d;
   }
 
-  if ((a->top > 0) && (a->d[a->top - 1] == 0)) {
-    a->top--;
-  }
-
-  if (a->top == 0) {
-    a->neg = 0;
-  }
-
+  bn_correct_top(a);
   ret >>= j;
   return ret;
 }

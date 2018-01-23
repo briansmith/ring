@@ -251,8 +251,8 @@ int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   register BN_ULONG t1, t2, *ap, *bp, *rp;
   int i, carry;
 
-  max = a->top;
-  min = b->top;
+  max = bn_minimal_width(a);
+  min = bn_minimal_width(b);
   dif = max - min;
 
   if (dif < 0)  // hmm... should not be happening
@@ -337,7 +337,7 @@ int BN_sub_word(BIGNUM *a, BN_ULONG w) {
     return i;
   }
 
-  if ((a->top == 1) && (a->d[0] < w)) {
+  if ((bn_minimal_width(a) == 1) && (a->d[0] < w)) {
     a->d[0] = w - a->d[0];
     a->neg = 1;
     return 1;

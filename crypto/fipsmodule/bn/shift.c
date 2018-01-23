@@ -142,10 +142,11 @@ int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
     return 0;
   }
 
+  int a_width = bn_minimal_width(a);
   nw = n / BN_BITS2;
   rb = n % BN_BITS2;
   lb = BN_BITS2 - rb;
-  if (nw >= a->top || a->top == 0) {
+  if (nw >= a_width || a_width == 0) {
     BN_zero(r);
     return 1;
   }
@@ -163,7 +164,7 @@ int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
 
   f = &(a->d[nw]);
   t = r->d;
-  j = a->top - nw;
+  j = a_width - nw;
   r->top = i;
 
   if (rb == 0) {
@@ -198,7 +199,7 @@ int BN_rshift1(BIGNUM *r, const BIGNUM *a) {
     BN_zero(r);
     return 1;
   }
-  i = a->top;
+  i = bn_minimal_width(a);
   ap = a->d;
   j = i - (ap[i - 1] == 1);
   if (a != r) {

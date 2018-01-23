@@ -107,34 +107,62 @@ static int HexToBIGNUM(bssl::UniquePtr<BIGNUM> *out, const char *in) {
   return ret;
 }
 
-static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *attribute) {
-  std::string hex;
-  if (!t->GetAttribute(&hex, attribute)) {
-    return nullptr;
+// A BIGNUMFileTest wraps a FileTest to give |BIGNUM| values and also allows
+// injecting oversized |BIGNUM|s.
+class BIGNUMFileTest {
+ public:
+  BIGNUMFileTest(FileTest *t, unsigned large_mask)
+      : t_(t), large_mask_(large_mask), num_bignums_(0) {}
+
+  unsigned num_bignums() const { return num_bignums_; }
+
+  bssl::UniquePtr<BIGNUM> GetBIGNUM(const char *attribute) {
+    return GetBIGNUMImpl(attribute, true /* resize */);
   }
 
-  bssl::UniquePtr<BIGNUM> ret;
-  if (HexToBIGNUM(&ret, hex.c_str()) != static_cast<int>(hex.size())) {
-    t->PrintLine("Could not decode '%s'.", hex.c_str());
-    return nullptr;
-  }
-  return ret;
-}
+  bool GetInt(int *out, const char *attribute) {
+    bssl::UniquePtr<BIGNUM> ret =
+        GetBIGNUMImpl(attribute, false /* don't resize */);
+    if (!ret) {
+      return false;
+    }
 
-static bool GetInt(FileTest *t, int *out, const char *attribute) {
-  bssl::UniquePtr<BIGNUM> ret = GetBIGNUM(t, attribute);
-  if (!ret) {
-    return false;
-  }
+    BN_ULONG word = BN_get_word(ret.get());
+    if (word > INT_MAX) {
+      return false;
+    }
 
-  BN_ULONG word = BN_get_word(ret.get());
-  if (word > INT_MAX) {
-    return false;
+    *out = static_cast<int>(word);
+    return true;
   }
 
-  *out = static_cast<int>(word);
-  return true;
-}
+ private:
+  bssl::UniquePtr<BIGNUM> GetBIGNUMImpl(const char *attribute, bool resize) {
+    std::string hex;
+    if (!t_->GetAttribute(&hex, attribute)) {
+      return nullptr;
+    }
+
+    bssl::UniquePtr<BIGNUM> ret;
+    if (HexToBIGNUM(&ret, hex.c_str()) != static_cast<int>(hex.size())) {
+      t_->PrintLine("Could not decode '%s'.", hex.c_str());
+      return nullptr;
+    }
+    if (resize) {
+      // Test with an oversized |BIGNUM| if necessary.
+      if ((large_mask_ & (1 << num_bignums_)) &&
+          !bn_resize_words(ret.get(), ret->top * 2 + 1)) {
+        return nullptr;
+      }
+      num_bignums_++;
+    }
+    return ret;
+  }
+
+  FileTest *t_;
+  unsigned large_mask_;
+  unsigned num_bignums_;
+};
 
 static testing::AssertionResult AssertBIGNUMSEqual(
     const char *operation_expr, const char *expected_expr,
@@ -160,10 +188,10 @@ static testing::AssertionResult AssertBIGNUMSEqual(
 #define EXPECT_BIGNUMS_EQUAL(op, a, b) \
   EXPECT_PRED_FORMAT3(AssertBIGNUMSEqual, op, a, b)
 
-static void TestSum(FileTest *t, BN_CTX *ctx) {
-  bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
-  bssl::UniquePtr<BIGNUM> b = GetBIGNUM(t, "B");
-  bssl::UniquePtr<BIGNUM> sum = GetBIGNUM(t, "Sum");
+static void TestSum(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
+  bssl::UniquePtr<BIGNUM> b = t->GetBIGNUM("B");
+  bssl::UniquePtr<BIGNUM> sum = t->GetBIGNUM("Sum");
   ASSERT_TRUE(a);
   ASSERT_TRUE(b);
   ASSERT_TRUE(sum);
@@ -262,9 +290,9 @@ static void TestSum(FileTest *t, BN_CTX *ctx) {
   }
 }
 
-static void TestLShift1(FileTest *t, BN_CTX *ctx) {
-  bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
-  bssl::UniquePtr<BIGNUM> lshift1 = GetBIGNUM(t, "LShift1");
+static void TestLShift1(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
+  bssl::UniquePtr<BIGNUM> lshift1 = t->GetBIGNUM("LShift1");
   bssl::UniquePtr<BIGNUM> zero(BN_new());
   ASSERT_TRUE(a);
   ASSERT_TRUE(lshift1);
@@ -308,13 +336,13 @@ static void TestLShift1(FileTest *t, BN_CTX *ctx) {
   EXPECT_BIGNUMS_EQUAL("(LShift | 1) >> 1", a.get(), ret.get());
 }
 
-static void TestLShift(FileTest *t, BN_CTX *ctx) {
-  bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
-  bssl::UniquePtr<BIGNUM> lshift = GetBIGNUM(t, "LShift");
+static void TestLShift(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
+  bssl::UniquePtr<BIGNUM> lshift = t->GetBIGNUM("LShift");
   ASSERT_TRUE(a);
   ASSERT_TRUE(lshift);
   int n = 0;
-  ASSERT_TRUE(GetInt(t, &n, "N"));
+  ASSERT_TRUE(t->GetInt(&n, "N"));
 
   bssl::UniquePtr<BIGNUM> ret(BN_new());
   ASSERT_TRUE(ret);
@@ -325,13 +353,13 @@ static void TestLShift(FileTest *t, BN_CTX *ctx) {
   EXPECT_BIGNUMS_EQUAL("A >> N", a.get(), ret.get());
 }
 
-static void TestRShift(FileTest *t, BN_CTX *ctx) {
-  bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
-  bssl::UniquePtr<BIGNUM> rshift = GetBIGNUM(t, "RShift");
+static void TestRShift(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
+  bssl::UniquePtr<BIGNUM> rshift = t->GetBIGNUM("RShift");
   ASSERT_TRUE(a);
   ASSERT_TRUE(rshift);
   int n = 0;
-  ASSERT_TRUE(GetInt(t, &n, "N"));
+  ASSERT_TRUE(t->GetInt(&n, "N"));
 
   bssl::UniquePtr<BIGNUM> ret(BN_new());
   ASSERT_TRUE(ret);
@@ -339,9 +367,9 @@ static void TestRShift(FileTest *t, BN_CTX *ctx) {
   EXPECT_BIGNUMS_EQUAL("A >> N", rshift.get(), ret.get());
 }
 
-static void TestSquare(FileTest *t, BN_CTX *ctx) {
-  bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
-  bssl::UniquePtr<BIGNUM> square = GetBIGNUM(t, "Square");
+static void TestSquare(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
+  bssl::UniquePtr<BIGNUM> square = t->GetBIGNUM("Square");
   bssl::UniquePtr<BIGNUM> zero(BN_new());
   ASSERT_TRUE(a);
   ASSERT_TRUE(square);
@@ -412,10 +440,10 @@ static void TestSquare(FileTest *t, BN_CTX *ctx) {
 #endif
 }
 
-static void TestProduct(FileTest *t, BN_CTX *ctx) {
-  bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
-  bssl::UniquePtr<BIGNUM> b = GetBIGNUM(t, "B");
-  bssl::UniquePtr<BIGNUM> product = GetBIGNUM(t, "Product");
+static void TestProduct(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
+  bssl::UniquePtr<BIGNUM> b = t->GetBIGNUM("B");
+  bssl::UniquePtr<BIGNUM> product = t->GetBIGNUM("Product");
   bssl::UniquePtr<BIGNUM> zero(BN_new());
   ASSERT_TRUE(a);
   ASSERT_TRUE(b);
@@ -475,11 +503,11 @@ static void TestProduct(FileTest *t, BN_CTX *ctx) {
 #endif
 }
 
-static void TestQuotient(FileTest *t, BN_CTX *ctx) {
-  bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
-  bssl::UniquePtr<BIGNUM> b = GetBIGNUM(t, "B");
-  bssl::UniquePtr<BIGNUM> quotient = GetBIGNUM(t, "Quotient");
-  bssl::UniquePtr<BIGNUM> remainder = GetBIGNUM(t, "Remainder");
+static void TestQuotient(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
+  bssl::UniquePtr<BIGNUM> b = t->GetBIGNUM("B");
+  bssl::UniquePtr<BIGNUM> quotient = t->GetBIGNUM("Quotient");
+  bssl::UniquePtr<BIGNUM> remainder = t->GetBIGNUM("Remainder");
   ASSERT_TRUE(a);
   ASSERT_TRUE(b);
   ASSERT_TRUE(quotient);
@@ -523,11 +551,11 @@ static void TestQuotient(FileTest *t, BN_CTX *ctx) {
   }
 }
 
-static void TestModMul(FileTest *t, BN_CTX *ctx) {
-  bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
-  bssl::UniquePtr<BIGNUM> b = GetBIGNUM(t, "B");
-  bssl::UniquePtr<BIGNUM> m = GetBIGNUM(t, "M");
-  bssl::UniquePtr<BIGNUM> mod_mul = GetBIGNUM(t, "ModMul");
+static void TestModMul(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
+  bssl::UniquePtr<BIGNUM> b = t->GetBIGNUM("B");
+  bssl::UniquePtr<BIGNUM> m = t->GetBIGNUM("M");
+  bssl::UniquePtr<BIGNUM> mod_mul = t->GetBIGNUM("ModMul");
   ASSERT_TRUE(a);
   ASSERT_TRUE(b);
   ASSERT_TRUE(m);
@@ -581,10 +609,10 @@ static void TestModMul(FileTest *t, BN_CTX *ctx) {
   }
 }
 
-static void TestModSquare(FileTest *t, BN_CTX *ctx) {
-  bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
-  bssl::UniquePtr<BIGNUM> m = GetBIGNUM(t, "M");
-  bssl::UniquePtr<BIGNUM> mod_square = GetBIGNUM(t, "ModSquare");
+static void TestModSquare(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
+  bssl::UniquePtr<BIGNUM> m = t->GetBIGNUM("M");
+  bssl::UniquePtr<BIGNUM> mod_square = t->GetBIGNUM("ModSquare");
   ASSERT_TRUE(a);
   ASSERT_TRUE(m);
   ASSERT_TRUE(mod_square);
@@ -658,11 +686,11 @@ static void TestModSquare(FileTest *t, BN_CTX *ctx) {
   }
 }
 
-static void TestModExp(FileTest *t, BN_CTX *ctx) {
-  bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
-  bssl::UniquePtr<BIGNUM> e = GetBIGNUM(t, "E");
-  bssl::UniquePtr<BIGNUM> m = GetBIGNUM(t, "M");
-  bssl::UniquePtr<BIGNUM> mod_exp = GetBIGNUM(t, "ModExp");
+static void TestModExp(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
+  bssl::UniquePtr<BIGNUM> e = t->GetBIGNUM("E");
+  bssl::UniquePtr<BIGNUM> m = t->GetBIGNUM("M");
+  bssl::UniquePtr<BIGNUM> mod_exp = t->GetBIGNUM("ModExp");
   ASSERT_TRUE(a);
   ASSERT_TRUE(e);
   ASSERT_TRUE(m);
@@ -708,10 +736,10 @@ static void TestModExp(FileTest *t, BN_CTX *ctx) {
   }
 }
 
-static void TestExp(FileTest *t, BN_CTX *ctx) {
-  bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
-  bssl::UniquePtr<BIGNUM> e = GetBIGNUM(t, "E");
-  bssl::UniquePtr<BIGNUM> exp = GetBIGNUM(t, "Exp");
+static void TestExp(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
+  bssl::UniquePtr<BIGNUM> e = t->GetBIGNUM("E");
+  bssl::UniquePtr<BIGNUM> exp = t->GetBIGNUM("Exp");
   ASSERT_TRUE(a);
   ASSERT_TRUE(e);
   ASSERT_TRUE(exp);
@@ -722,10 +750,10 @@ static void TestExp(FileTest *t, BN_CTX *ctx) {
   EXPECT_BIGNUMS_EQUAL("A ^ E", exp.get(), ret.get());
 }
 
-static void TestModSqrt(FileTest *t, BN_CTX *ctx) {
-  bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
-  bssl::UniquePtr<BIGNUM> p = GetBIGNUM(t, "P");
-  bssl::UniquePtr<BIGNUM> mod_sqrt = GetBIGNUM(t, "ModSqrt");
+static void TestModSqrt(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
+  bssl::UniquePtr<BIGNUM> p = t->GetBIGNUM("P");
+  bssl::UniquePtr<BIGNUM> mod_sqrt = t->GetBIGNUM("ModSqrt");
   bssl::UniquePtr<BIGNUM> mod_sqrt2(BN_new());
   ASSERT_TRUE(a);
   ASSERT_TRUE(p);
@@ -747,9 +775,9 @@ static void TestModSqrt(FileTest *t, BN_CTX *ctx) {
   }
 }
 
-static void TestNotModSquare(FileTest *t, BN_CTX *ctx) {
-  bssl::UniquePtr<BIGNUM> not_mod_square = GetBIGNUM(t, "NotModSquare");
-  bssl::UniquePtr<BIGNUM> p = GetBIGNUM(t, "P");
+static void TestNotModSquare(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> not_mod_square = t->GetBIGNUM("NotModSquare");
+  bssl::UniquePtr<BIGNUM> p = t->GetBIGNUM("P");
   bssl::UniquePtr<BIGNUM> ret(BN_new());
   ASSERT_TRUE(not_mod_square);
   ASSERT_TRUE(p);
@@ -764,10 +792,10 @@ static void TestNotModSquare(FileTest *t, BN_CTX *ctx) {
   ERR_clear_error();
 }
 
-static void TestModInv(FileTest *t, BN_CTX *ctx) {
-  bssl::UniquePtr<BIGNUM> a = GetBIGNUM(t, "A");
-  bssl::UniquePtr<BIGNUM> m = GetBIGNUM(t, "M");
-  bssl::UniquePtr<BIGNUM> mod_inv = GetBIGNUM(t, "ModInv");
+static void TestModInv(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
+  bssl::UniquePtr<BIGNUM> m = t->GetBIGNUM("M");
+  bssl::UniquePtr<BIGNUM> mod_inv = t->GetBIGNUM("ModInv");
   ASSERT_TRUE(a);
   ASSERT_TRUE(m);
   ASSERT_TRUE(mod_inv);
@@ -794,7 +822,7 @@ class BNTest : public testing::Test {
 TEST_F(BNTest, TestVectors) {
   static const struct {
     const char *name;
-    void (*func)(FileTest *t, BN_CTX *ctx);
+    void (*func)(BIGNUMFileTest *t, BN_CTX *ctx);
   } kTests[] = {
       {"Sum", TestSum},
       {"LShift1", TestLShift1},
@@ -813,13 +841,34 @@ TEST_F(BNTest, TestVectors) {
   };
 
   FileTestGTest("crypto/fipsmodule/bn/bn_tests.txt", [&](FileTest *t) {
+    void (*func)(BIGNUMFileTest *t, BN_CTX *ctx) = nullptr;
     for (const auto &test : kTests) {
       if (t->GetType() == test.name) {
-        test.func(t, ctx());
-        return;
+        func = test.func;
+        break;
       }
     }
-    FAIL() << "Unknown test type: " << t->GetType();
+    if (!func) {
+      FAIL() << "Unknown test type: " << t->GetType();
+      return;
+    }
+
+    // Run the test with normalize-sized |BIGNUM|s.
+    BIGNUMFileTest bn_test(t, 0);
+    BN_CTX_start(ctx());
+    func(&bn_test, ctx());
+    BN_CTX_end(ctx());
+    unsigned num_bignums = bn_test.num_bignums();
+
+    // Repeat the test with all combinations of large and small |BIGNUM|s.
+    for (unsigned large_mask = 1; large_mask < (1u << num_bignums);
+         large_mask++) {
+      SCOPED_TRACE(large_mask);
+      BIGNUMFileTest bn_test2(t, large_mask);
+      BN_CTX_start(ctx());
+      func(&bn_test2, ctx());
+      BN_CTX_end(ctx());
+    }
   });
 }
 
@@ -865,7 +914,6 @@ TEST_F(BNTest, BN2BinPadded) {
               Bytes(out, sizeof(out) - bytes));
     EXPECT_EQ(Bytes(reference, bytes), Bytes(out + sizeof(out) - bytes, bytes));
 
-#if !defined(BORINGSSL_SHARED_LIBRARY)
     // Repeat some tests with a non-minimal |BIGNUM|.
     EXPECT_TRUE(bn_resize_words(n.get(), 32));
 
@@ -874,7 +922,6 @@ TEST_F(BNTest, BN2BinPadded) {
     ASSERT_TRUE(BN_bn2bin_padded(out, bytes + 1, n.get()));
     EXPECT_EQ(0u, out[0]);
     EXPECT_EQ(Bytes(reference, bytes), Bytes(out + 1, bytes));
-#endif
   }
 }
 
@@ -1897,6 +1944,7 @@ TEST_F(BNTest, LessThanWords) {
   EXPECT_EQ(0, bn_less_than_words(NULL, NULL, 0));
   EXPECT_EQ(0, bn_in_range_words(NULL, 0, NULL, 0));
 }
+#endif  // !BORINGSSL_SHARED_LIBRARY
 
 TEST_F(BNTest, NonMinimal) {
   bssl::UniquePtr<BIGNUM> ten(BN_new());
@@ -1992,5 +2040,3 @@ TEST_F(BNTest, NonMinimal) {
   EXPECT_EQ(mont->N.top, mont2->N.top);
   EXPECT_EQ(0, BN_cmp(&mont->RR, &mont2->RR));
 }
-
-#endif  // !BORINGSSL_SHARED_LIBRARY

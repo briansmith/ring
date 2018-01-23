@@ -220,7 +220,7 @@ int bn_expand(BIGNUM *bn, size_t bits);
 // Do not call this function outside of unit tests. Most functions currently
 // require |BIGNUM|s be minimal. This function breaks that invariant. It is
 // introduced early so the invariant may be relaxed incrementally.
-int bn_resize_words(BIGNUM *bn, size_t words);
+OPENSSL_EXPORT int bn_resize_words(BIGNUM *bn, size_t words);
 
 // bn_set_words sets |bn| to the value encoded in the |num| words in |words|,
 // least significant word first.

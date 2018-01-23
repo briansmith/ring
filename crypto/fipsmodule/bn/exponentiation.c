@@ -982,7 +982,6 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
                               const BIGNUM *m, BN_CTX *ctx,
                               const BN_MONT_CTX *mont) {
   int i, ret = 0, window, wvalue;
-  int top;
   BN_MONT_CTX *new_mont = NULL;
 
   int numPowers;
@@ -996,8 +995,6 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
     return 0;
   }
-
-  top = m->top;
 
   // Use all bits stored in |p|, rather than |BN_num_bits|, so we do not leak
   // whether the top bits are zero.
@@ -1020,6 +1017,10 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     }
     mont = new_mont;
   }
+
+  // Use the width in |mont->N|, rather than the copy in |m|. The assembly
+  // implementation assumes it can use |top| to size R.
+  int top = mont->N.top;
 
   if (a->neg || BN_ucmp(a, m) >= 0) {
     new_a = BN_new();
