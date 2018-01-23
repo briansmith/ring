@@ -239,11 +239,6 @@ int DSA_generate_parameters_ex(DSA *dsa, unsigned bits, const uint8_t *seed_in,
   }
   BN_CTX_start(ctx);
 
-  mont = BN_MONT_CTX_new();
-  if (mont == NULL) {
-    goto err;
-  }
-
   r0 = BN_CTX_get(ctx);
   g = BN_CTX_get(ctx);
   W = BN_CTX_get(ctx);
@@ -401,8 +396,9 @@ end:
     goto err;
   }
 
-  if (!BN_set_word(test, h) ||
-      !BN_MONT_CTX_set(mont, p, ctx)) {
+  mont = BN_MONT_CTX_new_for_modulus(p, ctx);
+  if (mont == NULL ||
+      !BN_set_word(test, h)) {
     goto err;
   }
 

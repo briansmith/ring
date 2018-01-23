@@ -793,8 +793,10 @@ int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
 // BN_MONT_CTX contains the precomputed values needed to work in a specific
 // Montgomery domain.
 
-// BN_MONT_CTX_new returns a fresh BN_MONT_CTX or NULL on allocation failure.
-OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_new(void);
+// BN_MONT_CTX_new_for_modulus returns a fresh |BN_MONT_CTX| given the modulus,
+// |mod| or NULL on error.
+OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_new_for_modulus(const BIGNUM *mod,
+                                                        BN_CTX *ctx);
 
 // BN_MONT_CTX_free frees memory associated with |mont|.
 OPENSSL_EXPORT void BN_MONT_CTX_free(BN_MONT_CTX *mont);
@@ -803,11 +805,6 @@ OPENSSL_EXPORT void BN_MONT_CTX_free(BN_MONT_CTX *mont);
 // NULL on error.
 OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_copy(BN_MONT_CTX *to,
                                              const BN_MONT_CTX *from);
-
-// BN_MONT_CTX_set sets up a Montgomery context given the modulus, |mod|. It
-// returns one on success and zero on error.
-OPENSSL_EXPORT int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod,
-                                   BN_CTX *ctx);
 
 // BN_MONT_CTX_set_locked takes |lock| and checks whether |*pmont| is NULL. If
 // so, it creates a new |BN_MONT_CTX| and sets the modulus for it to |mod|. It
@@ -895,6 +892,16 @@ OPENSSL_EXPORT int BN_mod_exp2_mont(BIGNUM *r, const BIGNUM *a1,
                                     const BIGNUM *p1, const BIGNUM *a2,
                                     const BIGNUM *p2, const BIGNUM *m,
                                     BN_CTX *ctx, const BN_MONT_CTX *mont);
+
+// BN_MONT_CTX_new returns a fresh |BN_MONT_CTX| or NULL on allocation failure.
+// Use |BN_MONT_CTX_new_for_modulus| instead.
+OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_new(void);
+
+// BN_MONT_CTX_set sets up a Montgomery context given the modulus, |mod|. It
+// returns one on success and zero on error. Use |BN_MONT_CTX_new_for_modulus|
+// instead.
+OPENSSL_EXPORT int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod,
+                                   BN_CTX *ctx);
 
 
 // Private functions

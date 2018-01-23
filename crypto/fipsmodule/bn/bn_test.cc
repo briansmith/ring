@@ -540,12 +540,12 @@ static void TestModMul(FileTest *t, BN_CTX *ctx) {
 
   if (BN_is_odd(m.get())) {
     // Reduce |a| and |b| and test the Montgomery version.
-    bssl::UniquePtr<BN_MONT_CTX> mont(BN_MONT_CTX_new());
+    bssl::UniquePtr<BN_MONT_CTX> mont(
+        BN_MONT_CTX_new_for_modulus(m.get(), ctx));
     bssl::UniquePtr<BIGNUM> a_tmp(BN_new()), b_tmp(BN_new());
     ASSERT_TRUE(mont);
     ASSERT_TRUE(a_tmp);
     ASSERT_TRUE(b_tmp);
-    ASSERT_TRUE(BN_MONT_CTX_set(mont.get(), m.get(), ctx));
     ASSERT_TRUE(BN_nnmod(a.get(), a.get(), m.get(), ctx));
     ASSERT_TRUE(BN_nnmod(b.get(), b.get(), m.get(), ctx));
     ASSERT_TRUE(BN_to_montgomery(a_tmp.get(), a.get(), mont.get(), ctx));
@@ -603,11 +603,11 @@ static void TestModSquare(FileTest *t, BN_CTX *ctx) {
 
   if (BN_is_odd(m.get())) {
     // Reduce |a| and test the Montgomery version.
-    bssl::UniquePtr<BN_MONT_CTX> mont(BN_MONT_CTX_new());
+    bssl::UniquePtr<BN_MONT_CTX> mont(
+        BN_MONT_CTX_new_for_modulus(m.get(), ctx));
     bssl::UniquePtr<BIGNUM> a_tmp(BN_new());
     ASSERT_TRUE(mont);
     ASSERT_TRUE(a_tmp);
-    ASSERT_TRUE(BN_MONT_CTX_set(mont.get(), m.get(), ctx));
     ASSERT_TRUE(BN_nnmod(a.get(), a.get(), m.get(), ctx));
     ASSERT_TRUE(BN_to_montgomery(a_tmp.get(), a.get(), mont.get(), ctx));
     ASSERT_TRUE(BN_mod_mul_montgomery(ret.get(), a_tmp.get(), a_tmp.get(),
@@ -687,9 +687,9 @@ static void TestModExp(FileTest *t, BN_CTX *ctx) {
 #if !defined(BORINGSSL_SHARED_LIBRARY)
     size_t m_width = static_cast<size_t>(bn_minimal_width(m.get()));
     if (m_width <= BN_SMALL_MAX_WORDS) {
-      bssl::UniquePtr<BN_MONT_CTX> mont(BN_MONT_CTX_new());
+      bssl::UniquePtr<BN_MONT_CTX> mont(
+          BN_MONT_CTX_new_for_modulus(m.get(), ctx));
       ASSERT_TRUE(mont.get());
-      ASSERT_TRUE(BN_MONT_CTX_set(mont.get(), m.get(), ctx));
       ASSERT_TRUE(BN_nnmod(a.get(), a.get(), m.get(), ctx));
       std::unique_ptr<BN_ULONG[]> r_words(new BN_ULONG[m_width]),
           a_words(new BN_ULONG[m_width]);
@@ -1280,11 +1280,9 @@ TEST_F(BNTest, BadModulus) {
   bssl::UniquePtr<BIGNUM> a(BN_new());
   bssl::UniquePtr<BIGNUM> b(BN_new());
   bssl::UniquePtr<BIGNUM> zero(BN_new());
-  bssl::UniquePtr<BN_MONT_CTX> mont(BN_MONT_CTX_new());
   ASSERT_TRUE(a);
   ASSERT_TRUE(b);
   ASSERT_TRUE(zero);
-  ASSERT_TRUE(mont);
 
   BN_zero(zero.get());
 
@@ -1307,13 +1305,16 @@ TEST_F(BNTest, BadModulus) {
       a.get(), BN_value_one(), BN_value_one(), zero.get(), ctx(), nullptr));
   ERR_clear_error();
 
-  EXPECT_FALSE(BN_MONT_CTX_set(mont.get(), zero.get(), ctx()));
+  bssl::UniquePtr<BN_MONT_CTX> mont(
+      BN_MONT_CTX_new_for_modulus(zero.get(), ctx()));
+  EXPECT_FALSE(mont);
   ERR_clear_error();
 
   // Some operations also may not be used with an even modulus.
   ASSERT_TRUE(BN_set_word(b.get(), 16));
 
-  EXPECT_FALSE(BN_MONT_CTX_set(mont.get(), b.get(), ctx()));
+  mont.reset(BN_MONT_CTX_new_for_modulus(b.get(), ctx()));
+  EXPECT_FALSE(mont);
   ERR_clear_error();
 
   EXPECT_FALSE(BN_mod_exp_mont(a.get(), BN_value_one(), BN_value_one(), b.get(),
@@ -1979,14 +1980,14 @@ TEST_F(BNTest, NonMinimal) {
   bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP, sizeof(kP), nullptr));
   ASSERT_TRUE(p);
 
-  bssl::UniquePtr<BN_MONT_CTX> mont(BN_MONT_CTX_new());
+  bssl::UniquePtr<BN_MONT_CTX> mont(
+      BN_MONT_CTX_new_for_modulus(p.get(), ctx()));
   ASSERT_TRUE(mont);
-  ASSERT_TRUE(BN_MONT_CTX_set(mont.get(), p.get(), ctx()));
 
   ASSERT_TRUE(bn_resize_words(p.get(), 32));
-  bssl::UniquePtr<BN_MONT_CTX> mont2(BN_MONT_CTX_new());
+  bssl::UniquePtr<BN_MONT_CTX> mont2(
+      BN_MONT_CTX_new_for_modulus(p.get(), ctx()));
   ASSERT_TRUE(mont2);
-  ASSERT_TRUE(BN_MONT_CTX_set(mont2.get(), p.get(), ctx()));
 
   EXPECT_EQ(mont->N.top, mont2->N.top);
   EXPECT_EQ(0, BN_cmp(&mont->RR, &mont2->RR));

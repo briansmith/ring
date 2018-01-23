@@ -389,9 +389,8 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
   }
 
   BN_MONT_CTX_free(group->order_mont);
-  group->order_mont = BN_MONT_CTX_new();
-  if (group->order_mont == NULL ||
-      !BN_MONT_CTX_set(group->order_mont, &group->order, NULL)) {
+  group->order_mont = BN_MONT_CTX_new_for_modulus(&group->order, NULL);
+  if (group->order_mont == NULL) {
     return 0;
   }
 
@@ -448,9 +447,8 @@ static EC_GROUP *ec_group_new_from_data(const struct built_in_curve *curve) {
     goto err;
   }
 
-  group->order_mont = BN_MONT_CTX_new();
-  if (group->order_mont == NULL ||
-      !BN_MONT_CTX_set(group->order_mont, &group->order, ctx)) {
+  group->order_mont = BN_MONT_CTX_new_for_modulus(&group->order, ctx);
+  if (group->order_mont == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
     goto err;
   }

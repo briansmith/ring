@@ -586,9 +586,8 @@ int BN_enhanced_miller_rabin_primality_test(
   }
 
   // Montgomery setup for computations mod A
-  mont = BN_MONT_CTX_new();
-  if (mont == NULL ||
-      !BN_MONT_CTX_set(mont, w, ctx)) {
+  mont = BN_MONT_CTX_new_for_modulus(w, ctx);
+  if (mont == NULL) {
     goto err;
   }
 

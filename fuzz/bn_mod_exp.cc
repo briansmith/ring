@@ -93,11 +93,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   }
 
   bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
-  bssl::UniquePtr<BN_MONT_CTX> mont(BN_MONT_CTX_new());
   bssl::UniquePtr<BIGNUM> result(BN_new());
   bssl::UniquePtr<BIGNUM> expected(BN_new());
   CHECK(ctx);
-  CHECK(mont);
   CHECK(result);
   CHECK(expected);
 
@@ -108,7 +106,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   CHECK(BN_cmp(result.get(), expected.get()) == 0);
 
   if (BN_is_odd(modulus.get())) {
-    CHECK(BN_MONT_CTX_set(mont.get(), modulus.get(), ctx.get()));
+    bssl::UniquePtr<BN_MONT_CTX> mont(
+        BN_MONT_CTX_new_for_modulus(modulus.get(), ctx.get()));
+    CHECK(mont);
     CHECK(BN_mod_exp_mont(result.get(), base.get(), power.get(), modulus.get(),
                           ctx.get(), mont.get()));
     CHECK(BN_cmp(result.get(), expected.get()) == 0);

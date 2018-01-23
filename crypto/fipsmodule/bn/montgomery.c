@@ -223,6 +223,16 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   return 1;
 }
 
+BN_MONT_CTX *BN_MONT_CTX_new_for_modulus(const BIGNUM *mod, BN_CTX *ctx) {
+  BN_MONT_CTX *mont = BN_MONT_CTX_new();
+  if (mont == NULL ||
+      !BN_MONT_CTX_set(mont, mod, ctx)) {
+    BN_MONT_CTX_free(mont);
+    return NULL;
+  }
+  return mont;
+}
+
 int BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,
                            const BIGNUM *mod, BN_CTX *bn_ctx) {
   CRYPTO_MUTEX_lock_read(lock);
@@ -234,25 +244,12 @@ int BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,
   }
 
   CRYPTO_MUTEX_lock_write(lock);
-  ctx = *pmont;
-  if (ctx) {
-    goto out;
+  if (*pmont == NULL) {
+    *pmont = BN_MONT_CTX_new_for_modulus(mod, bn_ctx);
   }
-
-  ctx = BN_MONT_CTX_new();
-  if (ctx == NULL) {
-    goto out;
-  }
-  if (!BN_MONT_CTX_set(ctx, mod, bn_ctx)) {
-    BN_MONT_CTX_free(ctx);
-    ctx = NULL;
-    goto out;
-  }
-  *pmont = ctx;
-
-out:
+  const int ok = *pmont != NULL;
   CRYPTO_MUTEX_unlock_write(lock);
-  return ctx != NULL;
+  return ok;
 }
 
 int BN_to_montgomery(BIGNUM *ret, const BIGNUM *a, const BN_MONT_CTX *mont,
