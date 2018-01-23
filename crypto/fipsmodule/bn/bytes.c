@@ -159,22 +159,9 @@ size_t BN_bn2bin(const BIGNUM *in, uint8_t *out) {
   return n;
 }
 
-int BN_bn2le_padded(uint8_t *out, size_t len, const BIGNUM *in) {
-  // If we don't have enough space, fail out.
-  size_t num_bytes = BN_num_bytes(in);
-  if (len < num_bytes) {
-    return 0;
-  }
-
-  // We only support little-endian platforms, so we can simply memcpy into the
-  // internal representation.
-  OPENSSL_memcpy(out, in->d, num_bytes);
-
-  // Pad out the rest of the buffer with zeroes.
-  OPENSSL_memset(out + num_bytes, 0, len - num_bytes);
-
-  return 1;
-}
+// TODO(davidben): This does not need to be quite so complex once the |BIGNUM|s
+// we care about are fixed-width. |read_word_padded| is a hack to paper over
+// parts of the |bn_correct_top| leak. Fix that, and this can be simpler.
 
 // constant_time_select_ulong returns |x| if |v| is 1 and |y| if |v| is 0. Its
 // behavior is undefined if |v| takes any other value.
@@ -197,6 +184,10 @@ static int constant_time_le_size_t(size_t x, size_t y) {
 // the access would be out of bounds, it reads the last word of |in|. |in| must
 // not be zero.
 static BN_ULONG read_word_padded(const BIGNUM *in, size_t i) {
+  if (in->dmax == 0) {
+    return 0;
+  }
+
   // Read |in->d[i]| if valid. Otherwise, read the last word.
   BN_ULONG l = in->d[constant_time_select_ulong(
       constant_time_le_size_t(in->dmax, i), in->dmax - 1, i)];
@@ -205,23 +196,44 @@ static BN_ULONG read_word_padded(const BIGNUM *in, size_t i) {
   return constant_time_select_ulong(constant_time_le_size_t(in->top, i), 0, l);
 }
 
-int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
-  // Special case for |in| = 0. Just branch as the probability is negligible.
-  if (BN_is_zero(in)) {
-    OPENSSL_memset(out, 0, len);
-    return 1;
-  }
-
-  // Check if the integer is too big. This case can exit early in non-constant
-  // time.
-  if ((size_t)in->top > (len + (BN_BYTES - 1)) / BN_BYTES) {
-    return 0;
+static int fits_in_bytes(const BIGNUM *in, size_t len) {
+  BN_ULONG mask = 0;
+  for (size_t i = (len + (BN_BYTES - 1)) / BN_BYTES; i < (size_t)in->top; i++) {
+    mask |= in->d[i];
   }
   if ((len % BN_BYTES) != 0) {
     BN_ULONG l = read_word_padded(in, len / BN_BYTES);
-    if (l >> (8 * (len % BN_BYTES)) != 0) {
-      return 0;
-    }
+    mask |= l >> (8 * (len % BN_BYTES));
+  }
+  return mask == 0;
+}
+
+int BN_bn2le_padded(uint8_t *out, size_t len, const BIGNUM *in) {
+  // If we don't have enough space, fail out.
+  if (!fits_in_bytes(in, len)) {
+    return 0;
+  }
+
+  size_t todo = in->top * BN_BYTES;
+  if (todo > len) {
+    todo = len;
+  }
+
+  // We only support little-endian platforms, so we can simply memcpy into the
+  // internal representation.
+  OPENSSL_memcpy(out, in->d, todo);
+
+  // Pad out the rest of the buffer with zeroes.
+  OPENSSL_memset(out + todo, 0, len - todo);
+
+  return 1;
+}
+
+int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
+  // Check if the integer is too big. This case can exit early in non-constant
+  // time.
+  if (!fits_in_bytes(in, len)) {
+    return 0;
   }
 
   // Write the bytes out one by one. Serialization is done without branching on

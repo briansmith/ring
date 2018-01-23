@@ -864,6 +864,17 @@ TEST_F(BNTest, BN2BinPadded) {
     EXPECT_EQ(Bytes(zeros, sizeof(out) - bytes),
               Bytes(out, sizeof(out) - bytes));
     EXPECT_EQ(Bytes(reference, bytes), Bytes(out + sizeof(out) - bytes, bytes));
+
+#if !defined(BORINGSSL_SHARED_LIBRARY)
+    // Repeat some tests with a non-minimal |BIGNUM|.
+    EXPECT_TRUE(bn_resize_words(n.get(), 32));
+
+    EXPECT_FALSE(BN_bn2bin_padded(out, bytes - 1, n.get()));
+
+    ASSERT_TRUE(BN_bn2bin_padded(out, bytes + 1, n.get()));
+    EXPECT_EQ(0u, out[0]);
+    EXPECT_EQ(Bytes(reference, bytes), Bytes(out + 1, bytes));
+#endif
   }
 }
 
