@@ -334,6 +334,11 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
         hs->new_session->verify_result = X509_V_OK;
         break;
       case ssl_verify_invalid:
+        // If |SSL_VERIFY_NONE|, the error is non-fatal, but we keep the result.
+        if (ssl->verify_mode == SSL_VERIFY_NONE) {
+          ERR_clear_error();
+          ret = ssl_verify_ok;
+        }
         hs->new_session->verify_result = X509_V_ERR_APPLICATION_VERIFICATION;
         break;
       case ssl_verify_retry:

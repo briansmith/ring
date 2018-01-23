@@ -192,7 +192,9 @@ OPENSSL_EXPORT const SSL_METHOD *TLS_method(void);
 OPENSSL_EXPORT const SSL_METHOD *DTLS_method(void);
 
 // TLS_with_buffers_method is like |TLS_method|, but avoids all use of
-// crypto/x509.
+// crypto/x509. All client connections created with |TLS_with_buffers_method|
+// will fail unless a certificate verifier is installed with
+// |SSL_set_custom_verify| or |SSL_CTX_set_custom_verify|.
 OPENSSL_EXPORT const SSL_METHOD *TLS_with_buffers_method(void);
 
 // DTLS_with_buffers_method is like |DTLS_method|, but avoids all use of
