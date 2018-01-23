@@ -117,6 +117,9 @@ OPENSSL_EXPORT void RSA_get0_crt_params(const RSA *rsa, const BIGNUM **out_dmp1,
 //
 // |d| may be NULL, but |n| and |e| must either be non-NULL or already
 // configured on |rsa|.
+//
+// It is an error to call this function after |rsa| has been used for a
+// cryptographic operation. Construct a new |RSA| object instead.
 OPENSSL_EXPORT int RSA_set0_key(RSA *rsa, BIGNUM *n, BIGNUM *e, BIGNUM *d);
 
 // RSA_set0_factors sets |rsa|'s prime factors to |p| and |q|, if non-NULL, and
@@ -124,6 +127,9 @@ OPENSSL_EXPORT int RSA_set0_key(RSA *rsa, BIGNUM *n, BIGNUM *e, BIGNUM *d);
 // returns one. Otherwise, it returns zero.
 //
 // Each argument must either be non-NULL or already configured on |rsa|.
+//
+// It is an error to call this function after |rsa| has been used for a
+// cryptographic operation. Construct a new |RSA| object instead.
 OPENSSL_EXPORT int RSA_set0_factors(RSA *rsa, BIGNUM *p, BIGNUM *q);
 
 // RSA_set0_crt_params sets |rsa|'s CRT parameters to |dmp1|, |dmq1|, and
@@ -131,6 +137,9 @@ OPENSSL_EXPORT int RSA_set0_factors(RSA *rsa, BIGNUM *p, BIGNUM *q);
 // ownership of its parameters and returns one. Otherwise, it returns zero.
 //
 // Each argument must either be non-NULL or already configured on |rsa|.
+//
+// It is an error to call this function after |rsa| has been used for a
+// cryptographic operation. Construct a new |RSA| object instead.
 OPENSSL_EXPORT int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1,
                                        BIGNUM *iqmp);
 
@@ -499,6 +508,10 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);
 
 // RSA_FLAG_EXT_PKEY is deprecated and ignored.
 #define RSA_FLAG_EXT_PKEY 0x20
+
+// RSA_FLAG_PRIVATE_KEY_FROZEN specifies that the key has been used for a
+// private key operation and may no longer be mutated.
+#define RSA_FLAG_PRIVATE_KEY_FROZEN 0x40
 
 
 // RSA public exponent values.

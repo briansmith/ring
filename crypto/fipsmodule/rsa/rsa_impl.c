@@ -109,6 +109,82 @@ static int check_modulus_and_exponent_sizes(const RSA *rsa) {
   return 1;
 }
 
+// freeze_private_key finishes initializing |rsa|'s private key components.
+// After this function has returned, |rsa| may not be changed. This is needed
+// because |RSA| is a public struct and, additionally, OpenSSL 1.1.0 opaquified
+// it wrong (see https://github.com/openssl/openssl/issues/5158).
+static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
+  CRYPTO_MUTEX_lock_read(&rsa->lock);
+  int flags = rsa->flags;
+  CRYPTO_MUTEX_unlock_read(&rsa->lock);
+  if (flags & RSA_FLAG_PRIVATE_KEY_FROZEN) {
+    return 1;
+  }
+
+  int ret = 0;
+  CRYPTO_MUTEX_lock_write(&rsa->lock);
+  if (rsa->flags & RSA_FLAG_PRIVATE_KEY_FROZEN) {
+    ret = 1;
+    goto err;
+  }
+
+  // |rsa->n| is public. Normalize the width.
+  bn_set_minimal_width(rsa->n);
+  if (rsa->mont_n == NULL) {
+    rsa->mont_n = BN_MONT_CTX_new_for_modulus(rsa->n, ctx);
+    if (rsa->mont_n == NULL) {
+      goto err;
+    }
+  }
+
+  // The only public upper-bound of |rsa->d| is the bit length of |rsa->n|. The
+  // ASN.1 serialization of RSA private keys unfortunately leaks the byte length
+  // of |rsa->d|, but normalize it so we only leak it once, rather than per
+  // operation.
+  if (rsa->d != NULL &&
+      !bn_resize_words(rsa->d, rsa->n->width)) {
+    goto err;
+  }
+
+  if (rsa->p != NULL && rsa->q != NULL) {
+    // |p| and |q| have public bit lengths.
+    bn_set_minimal_width(rsa->p);
+    bn_set_minimal_width(rsa->q);
+
+    if (rsa->mont_p == NULL) {
+      rsa->mont_p = BN_MONT_CTX_new_for_modulus(rsa->p, ctx);
+      if (rsa->mont_p == NULL) {
+        goto err;
+      }
+    }
+
+    if (rsa->mont_q == NULL) {
+      rsa->mont_q = BN_MONT_CTX_new_for_modulus(rsa->q, ctx);
+      if (rsa->mont_q == NULL) {
+        goto err;
+      }
+    }
+
+    // CRT components are only publicly bounded by their corresponding moduli's
+    // bit lengths.
+    if ((rsa->dmp1 != NULL &&
+         !bn_resize_words(rsa->dmp1, rsa->p->width)) ||
+        (rsa->dmq1 != NULL &&
+         !bn_resize_words(rsa->dmq1, rsa->q->width)) ||
+        (rsa->iqmp != NULL &&
+         !bn_resize_words(rsa->iqmp, rsa->p->width))) {
+      goto err;
+    }
+  }
+
+  rsa->flags |= RSA_FLAG_PRIVATE_KEY_FROZEN;
+  ret = 1;
+
+err:
+  CRYPTO_MUTEX_unlock_write(&rsa->lock);
+  return ret;
+}
+
 size_t rsa_default_size(const RSA *rsa) {
   return BN_num_bytes(rsa->n);
 }
@@ -560,7 +636,7 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     goto err;
   }
 
-  if (!BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx)) {
+  if (!freeze_private_key(rsa, ctx)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
   }
@@ -694,12 +770,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     goto err;
   }
 
-  if (!BN_MONT_CTX_set_locked(&rsa->mont_p, &rsa->lock, rsa->p, ctx) ||
-      !BN_MONT_CTX_set_locked(&rsa->mont_q, &rsa->lock, rsa->q, ctx)) {
-    goto err;
-  }
-
-  if (!BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx)) {
+  if (!freeze_private_key(rsa, ctx)) {
     goto err;
   }
 
@@ -727,20 +798,17 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     goto err;
   }
 
-  // TODO(davidben): The code below is not constant-time, even ignoring
-  // |bn_correct_top|. To fix this:
+  // TODO(davidben): The code below is not constant-time:
   //
-  // 1. Canonicalize keys on p > q. (p > q for keys we generate, but not ones we
-  //    import.) We have exposed structs, but we can generalize the
-  //    |BN_MONT_CTX_set_locked| trick to do a one-time canonicalization of the
-  //    private key where we optionally swap p and q (re-computing iqmp if
-  //    necessary) and fill in mont_*. This removes the p < q case below.
+  // 1. Finish adding support for non-minimal |BIGNUM|s.
   //
-  // 2. Compute r0 - m1 (mod p) in constant-time. With (1) done, this is just a
-  //    constant-time modular subtraction. It should be doable with
-  //    |bn_sub_words| and a select on the borrow bit.
+  // 2. Canonicalize keys on p > q in |freeze_private_key|. (p > q for keys we
+  //    generate, but not ones we import.) This removes the p < q case below.
   //
-  // 3. When computing mont_*, additionally compute iqmp_mont, iqmp in
+  // 3. Make |BN_mod_sub_quick| constant-time (use |bn_sub_words| and select on
+  //    the borrow bit) and compute r0 - m1 (mod p) with it.
+  //
+  // 4. When computing mont_*, additionally compute iqmp_mont, iqmp in
   //    Montgomery form. The |BN_mul| and |BN_mod| pair can then be replaced
   //    with |BN_mod_mul_montgomery|.
 
@@ -1055,7 +1123,7 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   // from constant-time, |bn_mod_inverse_secret_prime| uses the same modular
   // exponentation logic as in RSA private key operations and, if the RSAZ-1024
   // code is enabled, will be optimized for common RSA prime sizes.
-  if (!BN_MONT_CTX_set_locked(&rsa->mont_p, &rsa->lock, rsa->p, ctx) ||
+  if (!freeze_private_key(rsa, ctx) ||
       !bn_mod_inverse_secret_prime(rsa->iqmp, rsa->q, rsa->p, ctx,
                                    rsa->mont_p)) {
     goto bn_err;
