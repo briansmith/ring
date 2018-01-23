@@ -464,29 +464,30 @@ static const uint16_t kSignSignatureAlgorithms[] = {
     SSL_SIGN_RSA_PKCS1_SHA1,
 };
 
-int tls12_add_verify_sigalgs(const SSL *ssl, CBB *out) {
-  const uint16_t *sigalgs = kVerifySignatureAlgorithms;
-  size_t num_sigalgs = OPENSSL_ARRAY_SIZE(kVerifySignatureAlgorithms);
-  if (ssl->ctx->num_verify_sigalgs != 0) {
-    sigalgs = ssl->ctx->verify_sigalgs;
-    num_sigalgs = ssl->ctx->num_verify_sigalgs;
+bool tls12_add_verify_sigalgs(const SSL *ssl, CBB *out) {
+  bool use_default = ssl->ctx->num_verify_sigalgs == 0;
+  Span<const uint16_t> sigalgs = kVerifySignatureAlgorithms;
+  if (!use_default) {
+    sigalgs = MakeConstSpan(ssl->ctx->verify_sigalgs,
+                            ssl->ctx->num_verify_sigalgs);
   }
 
-  for (size_t i = 0; i < num_sigalgs; i++) {
-    if (sigalgs == kVerifySignatureAlgorithms &&
-        sigalgs[i] == SSL_SIGN_ED25519 &&
+  for (uint16_t sigalg : sigalgs) {
+    if (use_default &&
+        sigalg == SSL_SIGN_ED25519 &&
         !ssl->ctx->ed25519_enabled) {
       continue;
     }
-    if (!CBB_add_u16(out, sigalgs[i])) {
-      return 0;
+    if (!CBB_add_u16(out, sigalg)) {
+      return false;
     }
   }
 
-  return 1;
+  return true;
 }
 
-int tls12_check_peer_sigalg(SSL *ssl, uint8_t *out_alert, uint16_t sigalg) {
+bool tls12_check_peer_sigalg(const SSL *ssl, uint8_t *out_alert,
+                             uint16_t sigalg) {
   const uint16_t *sigalgs = kVerifySignatureAlgorithms;
   size_t num_sigalgs = OPENSSL_ARRAY_SIZE(kVerifySignatureAlgorithms);
   if (ssl->ctx->num_verify_sigalgs != 0) {
@@ -501,13 +502,13 @@ int tls12_check_peer_sigalg(SSL *ssl, uint8_t *out_alert, uint16_t sigalg) {
       continue;
     }
     if (sigalg == sigalgs[i]) {
-      return 1;
+      return true;
     }
   }
 
   OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SIGNATURE_TYPE);
   *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-  return 0;
+  return false;
 }
 
 // tls_extension represents a TLS extension that is handled internally. The
@@ -3369,29 +3370,29 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
   return ssl_ticket_aead_success;
 }
 
-int tls1_parse_peer_sigalgs(SSL_HANDSHAKE *hs, const CBS *in_sigalgs) {
+bool tls1_parse_peer_sigalgs(SSL_HANDSHAKE *hs, const CBS *in_sigalgs) {
   // Extension ignored for inappropriate versions
   if (ssl_protocol_version(hs->ssl) < TLS1_2_VERSION) {
-    return 1;
+    return true;
   }
 
   return parse_u16_array(in_sigalgs, &hs->peer_sigalgs);
 }
 
-int tls1_get_legacy_signature_algorithm(uint16_t *out, const EVP_PKEY *pkey) {
+bool tls1_get_legacy_signature_algorithm(uint16_t *out, const EVP_PKEY *pkey) {
   switch (EVP_PKEY_id(pkey)) {
     case EVP_PKEY_RSA:
       *out = SSL_SIGN_RSA_PKCS1_MD5_SHA1;
-      return 1;
+      return true;
     case EVP_PKEY_EC:
       *out = SSL_SIGN_ECDSA_SHA1;
-      return 1;
+      return true;
     default:
-      return 0;
+      return false;
   }
 }
 
-int tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
+bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   SSL *const ssl = hs->ssl;
   CERT *cert = ssl->cert;
 
@@ -3400,9 +3401,9 @@ int tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   if (ssl_protocol_version(ssl) < TLS1_2_VERSION) {
     if (!tls1_get_legacy_signature_algorithm(out, hs->local_pubkey.get())) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
-      return 0;
+      return false;
     }
-    return 1;
+    return true;
   }
 
   Span<const uint16_t> sigalgs = kSignSignatureAlgorithms;
@@ -3431,13 +3432,13 @@ int tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
     for (uint16_t peer_sigalg : peer_sigalgs) {
       if (sigalg == peer_sigalg) {
         *out = sigalg;
-        return 1;
+        return true;
       }
     }
   }
 
   OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
-  return 0;
+  return false;
 }
 
 int tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {

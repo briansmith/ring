@@ -1677,28 +1677,29 @@ uint16_t ssl_get_grease_value(SSL_HANDSHAKE *hs, enum ssl_grease_index_t index);
 // Signature algorithms.
 
 // tls1_parse_peer_sigalgs parses |sigalgs| as the list of peer signature
-// algorithms and saves them on |hs|. It returns one on success and zero on
+// algorithms and saves them on |hs|. It returns true on success and false on
 // error.
-int tls1_parse_peer_sigalgs(SSL_HANDSHAKE *hs, const CBS *sigalgs);
+bool tls1_parse_peer_sigalgs(SSL_HANDSHAKE *hs, const CBS *sigalgs);
 
 // tls1_get_legacy_signature_algorithm sets |*out| to the signature algorithm
-// that should be used with |pkey| in TLS 1.1 and earlier. It returns one on
-// success and zero if |pkey| may not be used at those versions.
-int tls1_get_legacy_signature_algorithm(uint16_t *out, const EVP_PKEY *pkey);
+// that should be used with |pkey| in TLS 1.1 and earlier. It returns true on
+// success and false if |pkey| may not be used at those versions.
+bool tls1_get_legacy_signature_algorithm(uint16_t *out, const EVP_PKEY *pkey);
 
 // tls1_choose_signature_algorithm sets |*out| to a signature algorithm for use
 // with |hs|'s private key based on the peer's preferences and the algorithms
-// supported. It returns one on success and zero on error.
-int tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out);
+// supported. It returns true on success and false on error.
+bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out);
 
 // tls12_add_verify_sigalgs adds the signature algorithms acceptable for the
-// peer signature to |out|. It returns one on success and zero on error.
-int tls12_add_verify_sigalgs(const SSL *ssl, CBB *out);
+// peer signature to |out|. It returns true on success and false on error.
+bool tls12_add_verify_sigalgs(const SSL *ssl, CBB *out);
 
 // tls12_check_peer_sigalg checks if |sigalg| is acceptable for the peer
-// signature. It returns one on success and zero on error, setting |*out_alert|
-// to an alert to send.
-int tls12_check_peer_sigalg(SSL *ssl, uint8_t *out_alert, uint16_t sigalg);
+// signature. It returns true on success and false on error, setting
+// |*out_alert| to an alert to send.
+bool tls12_check_peer_sigalg(const SSL *ssl, uint8_t *out_alert,
+                             uint16_t sigalg);
 
 
 // Underdocumented functions.
