@@ -297,7 +297,7 @@ int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
   return 1;
 }
 
-static int bn_fits_in_words(const BIGNUM *bn, size_t num) {
+int bn_fits_in_words(const BIGNUM *bn, size_t num) {
   // All words beyond |num| must be zero.
   BN_ULONG mask = 0;
   for (size_t i = num; i < (size_t)bn->top; i++) {

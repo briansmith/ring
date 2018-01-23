@@ -189,6 +189,10 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
     OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);
     return 0;
   }
+  // |mont->N| is always stored minimally. Computing RR efficiently leaks the
+  // size of the modulus. While the modulus may be private in RSA (one of the
+  // primes), their sizes are public, so this is fine.
+  bn_correct_top(&mont->N);
 
   // Find n0 such that n0 * N == -1 (mod r).
   //
@@ -196,7 +200,7 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   // others, we could use a shorter R value and use faster |BN_ULONG|-based
   // math instead of |uint64_t|-based math, which would be double-precision.
   // However, currently only the assembler files know which is which.
-  uint64_t n0 = bn_mont_n0(mod);
+  uint64_t n0 = bn_mont_n0(&mont->N);
   mont->n0[0] = (BN_ULONG)n0;
 #if BN_MONT_CTX_N0_LIMBS == 2
   mont->n0[1] = (BN_ULONG)(n0 >> BN_BITS2);
@@ -211,7 +215,7 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   // as |BN_MONT_CTX_N0_LIMBS| is either one or two.
   //
   // XXX: This is not constant time with respect to |mont->N|, but it should be.
-  unsigned lgBigR = (BN_num_bits(mod) + (BN_BITS2 - 1)) / BN_BITS2 * BN_BITS2;
+  unsigned lgBigR = mont->N.top * BN_BITS2;
   if (!bn_mod_exp_base_2_vartime(&mont->RR, lgBigR * 2, &mont->N)) {
     return 0;
   }
@@ -441,6 +445,11 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 #endif
 
   return bn_mod_mul_montgomery_fallback(r, a, b, mont, ctx);
+}
+
+int bn_less_than_montgomery_R(const BIGNUM *bn, const BN_MONT_CTX *mont) {
+  return !BN_is_negative(bn) &&
+         bn_fits_in_words(bn, mont->N.top);
 }
 
 int bn_to_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,

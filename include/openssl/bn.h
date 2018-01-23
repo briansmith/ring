@@ -909,8 +909,11 @@ struct bignum_st {
 };
 
 struct bn_mont_ctx_st {
-  BIGNUM RR;  // used to convert to montgomery form
-  BIGNUM N;   // The modulus
+  // RR is R^2, reduced modulo |N|. It is used to convert to Montgomery form.
+  BIGNUM RR;
+  // N is the modulus. It is always stored in minimal form, so |N.top|
+  // determines R.
+  BIGNUM N;
   BN_ULONG n0[2];  // least significant words of (R*Ri-1)/N
 };
 

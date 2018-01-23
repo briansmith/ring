@@ -1957,6 +1957,28 @@ TEST_F(BNTest, NonMinimal) {
   EXPECT_TRUE(bn_resize_words(eight.get(), 4));
   EXPECT_EQ(4, eight->top);
   EXPECT_TRUE(BN_is_pow2(eight.get()));
+
+  // |BN_MONT_CTX| is always stored minimally and uses the same R independent of
+  // input width.
+  static const uint8_t kP[] = {
+      0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+  };
+  bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP, sizeof(kP), nullptr));
+  ASSERT_TRUE(p);
+
+  bssl::UniquePtr<BN_MONT_CTX> mont(BN_MONT_CTX_new());
+  ASSERT_TRUE(mont);
+  ASSERT_TRUE(BN_MONT_CTX_set(mont.get(), p.get(), ctx()));
+
+  ASSERT_TRUE(bn_resize_words(p.get(), 32));
+  bssl::UniquePtr<BN_MONT_CTX> mont2(BN_MONT_CTX_new());
+  ASSERT_TRUE(mont2);
+  ASSERT_TRUE(BN_MONT_CTX_set(mont2.get(), p.get(), ctx()));
+
+  EXPECT_EQ(mont->N.top, mont2->N.top);
+  EXPECT_EQ(0, BN_cmp(&mont->RR, &mont2->RR));
 }
 
 #endif  // !BORINGSSL_SHARED_LIBRARY

@@ -646,12 +646,11 @@ err:
 static int mod_montgomery(BIGNUM *r, const BIGNUM *I, const BIGNUM *p,
                           const BN_MONT_CTX *mont_p, const BIGNUM *q,
                           BN_CTX *ctx) {
-  // Reduce in constant time with Montgomery reduction, which requires I <= p *
-  // R. If p and q are the same size, which is true for any RSA keys we or
-  // anyone sane generates, we have q < R and I < p * q, so this holds.
-  //
-  // If q is too big, fall back to |BN_mod|.
-  if (q->top > p->top) {
+  // Reducing in constant-time with Montgomery reduction requires I <= p * R. We
+  // have I < p * q, so this follows if q < R. In particular, this always holds
+  // if p and q are the same size, which is true for any RSA keys we or anyone
+  // sane generates. For other keys, we fall back to |BN_mod|.
+  if (!bn_less_than_montgomery_R(q, mont_p)) {
     return BN_mod(r, I, p, ctx);
   }
 
