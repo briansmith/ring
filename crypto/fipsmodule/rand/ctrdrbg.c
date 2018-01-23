@@ -74,11 +74,11 @@ static void ctr32_add(CTR_DRBG_STATE *drbg, uint32_t n) {
       CRYPTO_bswap4(CRYPTO_bswap4(drbg->counter.words[3]) + n);
 }
 
-static int CTR_DRBG_update(CTR_DRBG_STATE *drbg, const uint8_t *data,
+static int ctr_drbg_update(CTR_DRBG_STATE *drbg, const uint8_t *data,
                            size_t data_len) {
-  // Section 10.2.1.2. A value of |data_len| which less than
-  // |CTR_DRBG_ENTROPY_LEN| is permitted and acts the same as right-padding
-  // with zeros. This can save a copy.
+  // Per section 10.2.1.2, |data_len| must be |CTR_DRBG_ENTROPY_LEN|. Here, we
+  // allow shorter inputs and right-pad them with zeros. This is equivalent to
+  // the specified algorithm but saves a copy in |CTR_DRBG_generate|.
   if (data_len > CTR_DRBG_ENTROPY_LEN) {
     return 0;
   }
@@ -119,7 +119,7 @@ int CTR_DRBG_reseed(CTR_DRBG_STATE *drbg,
     entropy = entropy_copy;
   }
 
-  if (!CTR_DRBG_update(drbg, entropy, CTR_DRBG_ENTROPY_LEN)) {
+  if (!ctr_drbg_update(drbg, entropy, CTR_DRBG_ENTROPY_LEN)) {
     return 0;
   }
 
@@ -142,7 +142,7 @@ int CTR_DRBG_generate(CTR_DRBG_STATE *drbg, uint8_t *out, size_t out_len,
   }
 
   if (additional_data_len != 0 &&
-      !CTR_DRBG_update(drbg, additional_data, additional_data_len)) {
+      !ctr_drbg_update(drbg, additional_data, additional_data_len)) {
     return 0;
   }
 
@@ -187,7 +187,9 @@ int CTR_DRBG_generate(CTR_DRBG_STATE *drbg, uint8_t *out, size_t out_len,
     OPENSSL_memcpy(out, block, out_len);
   }
 
-  if (!CTR_DRBG_update(drbg, additional_data, additional_data_len)) {
+  // Right-padding |additional_data| in step 2.2 is handled implicitly by
+  // |ctr_drbg_update|, to save a copy.
+  if (!ctr_drbg_update(drbg, additional_data, additional_data_len)) {
     return 0;
   }
 
