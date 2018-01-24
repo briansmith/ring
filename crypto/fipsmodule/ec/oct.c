@@ -316,20 +316,20 @@ int EC_POINT_set_compressed_coordinates_GFp(const EC_GROUP *group,
 
   // tmp1 := tmp1 + a*x
   if (group->a_is_minus3) {
-    if (!BN_mod_lshift1_quick(tmp2, x, &group->field) ||
-        !BN_mod_add_quick(tmp2, tmp2, x, &group->field) ||
-        !BN_mod_sub_quick(tmp1, tmp1, tmp2, &group->field)) {
+    if (!bn_mod_lshift1_quick_ctx(tmp2, x, &group->field, ctx) ||
+        !bn_mod_add_quick_ctx(tmp2, tmp2, x, &group->field, ctx) ||
+        !bn_mod_sub_quick_ctx(tmp1, tmp1, tmp2, &group->field, ctx)) {
       goto err;
     }
   } else {
     if (!BN_mod_mul(tmp2, a, x, &group->field, ctx) ||
-        !BN_mod_add_quick(tmp1, tmp1, tmp2, &group->field)) {
+        !bn_mod_add_quick_ctx(tmp1, tmp1, tmp2, &group->field, ctx)) {
       goto err;
     }
   }
 
   // tmp1 := tmp1 + b
-  if (!BN_mod_add_quick(tmp1, tmp1, b, &group->field)) {
+  if (!bn_mod_add_quick_ctx(tmp1, tmp1, b, &group->field, ctx)) {
     goto err;
   }
 

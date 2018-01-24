@@ -805,8 +805,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   // 2. Canonicalize keys on p > q in |freeze_private_key|. (p > q for keys we
   //    generate, but not ones we import.) This removes the p < q case below.
   //
-  // 3. Make |BN_mod_sub_quick| constant-time (use |bn_sub_words| and select on
-  //    the borrow bit) and compute r0 - m1 (mod p) with it.
+  // 3. Use |bn_mod_sub_quick_ctx| to compute r0 - m1 (mod p).
   //
   // 4. When computing mont_*, additionally compute iqmp_mont, iqmp in
   //    Montgomery form. The |BN_mul| and |BN_mod| pair can then be replaced

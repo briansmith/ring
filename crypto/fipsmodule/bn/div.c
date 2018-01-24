@@ -414,6 +414,89 @@ int BN_nnmod(BIGNUM *r, const BIGNUM *m, const BIGNUM *d, BN_CTX *ctx) {
   return (d->neg ? BN_sub : BN_add)(r, r, d);
 }
 
+// bn_select_words sets |r| to |a| if |mask| is all ones or |b| if |mask| is
+// all zeros.
+static void bn_select_words(BN_ULONG *r, BN_ULONG mask, const BN_ULONG *a,
+                            const BN_ULONG *b, size_t num) {
+  for (size_t i = 0; i < num; i++) {
+    OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
+                           crypto_word_t_too_small);
+    r[i] = constant_time_select_w(mask, a[i], b[i]);
+  }
+}
+
+// bn_mod_sub_words sets |r| to |a| - |b| (mod |m|), using |tmp| as scratch
+// space. Each array is |num| words long. |a| and |b| must be < |m|. Any pair of
+// |r|, |a|, and |b| may alias.
+static void bn_mod_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
+                             const BN_ULONG *m, BN_ULONG *tmp, size_t num) {
+  // r = a - b
+  BN_ULONG borrow = bn_sub_words(r, a, b, num);
+  // tmp = a - b + m
+  bn_add_words(tmp, r, m, num);
+  bn_select_words(r, 0 - borrow, tmp /* r < 0 */, r /* r >= 0 */, num);
+}
+
+// bn_mod_add_words sets |r| to |a| + |b| (mod |m|), using |tmp| as scratch
+// space. Each array is |num| words long. |a| and |b| must be < |m|. Any pair of
+// |r|, |a|, and |b| may alias.
+static void bn_mod_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
+                             const BN_ULONG *m, BN_ULONG *tmp, size_t num) {
+  // tmp = a + b. Note the result fits in |num|+1 words. We store the extra word
+  // in |carry|.
+  BN_ULONG carry = bn_add_words(tmp, a, b, num);
+  // r = a + b - m. We use |bn_sub_words| to perform the bulk of the
+  // subtraction, and then apply the borrow to |carry|.
+  carry -= bn_sub_words(r, tmp, m, num);
+  // |a| and |b| were both fully-reduced, so we know:
+  //
+  //   0 + 0 - m <= r < m + m - m
+  //          -m <= r < m
+  //
+  // If 0 <= |r| < |m|, |r| fits in |num| words and |carry| is zero. We then
+  // wish to select |r| as the answer. Otherwise -m <= r < 0 and we wish to
+  // return |r| + |m|, or |tmp|. |carry| must then be -1 or all ones. In both
+  // cases, |carry| is a suitable input to |bn_select_words|.
+  //
+  // Although |carry| may be one if |bn_add_words| returns one and
+  // |bn_sub_words| returns zero, this would give |r| > |m|, which violates are
+  // input assumptions.
+  assert(carry == 0 || carry == (BN_ULONG)-1);
+  bn_select_words(r, carry, tmp /* r < 0 */, r /* r >= 0 */, num);
+}
+
+static BIGNUM *bn_scratch_space_from_ctx(size_t width, BN_CTX *ctx) {
+  BIGNUM *ret = BN_CTX_get(ctx);
+  if (ret == NULL ||
+      !bn_wexpand(ret, width)) {
+    return NULL;
+  }
+  ret->neg = 0;
+  ret->width = width;
+  return ret;
+}
+
+// bn_resized_from_ctx returns |bn| with width at least |width| or NULL on
+// error. This is so it may be used with low-level "words" functions. If
+// necessary, it allocates a new |BIGNUM| with a lifetime of the current scope
+// in |ctx|, so the caller does not need to explicitly free it. |bn| must fit in
+// |width| words.
+static const BIGNUM *bn_resized_from_ctx(const BIGNUM *bn, size_t width,
+                                         BN_CTX *ctx) {
+  if ((size_t)bn->width >= width) {
+    // Any excess words must be zero.
+    assert(bn_fits_in_words(bn, width));
+    return bn;
+  }
+  BIGNUM *ret = bn_scratch_space_from_ctx(width, ctx);
+  if (ret == NULL ||
+      !BN_copy(ret, bn) ||
+      !bn_resize_words(ret, width)) {
+    return 0;
+  }
+  return ret;
+}
+
 int BN_mod_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m,
                BN_CTX *ctx) {
   if (!BN_add(r, a, b)) {
@@ -424,13 +507,27 @@ int BN_mod_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m,
 
 int BN_mod_add_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                      const BIGNUM *m) {
-  if (!BN_uadd(r, a, b)) {
-    return 0;
+  BN_CTX *ctx = BN_CTX_new();
+  int ok = ctx != NULL &&
+           bn_mod_add_quick_ctx(r, a, b, m, ctx);
+  BN_CTX_free(ctx);
+  return ok;
+}
+
+int bn_mod_add_quick_ctx(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                         const BIGNUM *m, BN_CTX *ctx) {
+  BN_CTX_start(ctx);
+  a = bn_resized_from_ctx(a, m->width, ctx);
+  b = bn_resized_from_ctx(b, m->width, ctx);
+  BIGNUM *tmp = bn_scratch_space_from_ctx(m->width, ctx);
+  int ok = a != NULL && b != NULL && tmp != NULL &&
+           bn_wexpand(r, m->width);
+  if (ok) {
+    bn_mod_add_words(r->d, a->d, b->d, m->d, tmp->d, m->width);
+    r->width = m->width;
   }
-  if (BN_ucmp(r, m) >= 0) {
-    return BN_usub(r, r, m);
-  }
-  return 1;
+  BN_CTX_end(ctx);
+  return ok;
 }
 
 int BN_mod_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m,
@@ -441,17 +538,29 @@ int BN_mod_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m,
   return BN_nnmod(r, r, m, ctx);
 }
 
-// BN_mod_sub variant that may be used if both  a  and  b  are non-negative
-// and less than  m
+int bn_mod_sub_quick_ctx(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                         const BIGNUM *m, BN_CTX *ctx) {
+  BN_CTX_start(ctx);
+  a = bn_resized_from_ctx(a, m->width, ctx);
+  b = bn_resized_from_ctx(b, m->width, ctx);
+  BIGNUM *tmp = bn_scratch_space_from_ctx(m->width, ctx);
+  int ok = a != NULL && b != NULL && tmp != NULL &&
+           bn_wexpand(r, m->width);
+  if (ok) {
+    bn_mod_sub_words(r->d, a->d, b->d, m->d, tmp->d, m->width);
+    r->width = m->width;
+  }
+  BN_CTX_end(ctx);
+  return ok;
+}
+
 int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                      const BIGNUM *m) {
-  if (!BN_sub(r, a, b)) {
-    return 0;
-  }
-  if (r->neg) {
-    return BN_add(r, r, m);
-  }
-  return 1;
+  BN_CTX *ctx = BN_CTX_new();
+  int ok = ctx != NULL &&
+           bn_mod_sub_quick_ctx(r, a, b, m, ctx);
+  BN_CTX_free(ctx);
+  return ok;
 }
 
 int BN_mod_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m,
@@ -512,56 +621,31 @@ int BN_mod_lshift(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m,
     abs_m->neg = 0;
   }
 
-  ret = BN_mod_lshift_quick(r, r, n, (abs_m ? abs_m : m));
+  ret = bn_mod_lshift_quick_ctx(r, r, n, (abs_m ? abs_m : m), ctx);
 
   BN_free(abs_m);
   return ret;
 }
 
-int BN_mod_lshift_quick(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m) {
-  if (r != a) {
-    if (BN_copy(r, a) == NULL) {
+int bn_mod_lshift_quick_ctx(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m,
+                            BN_CTX *ctx) {
+  if (!BN_copy(r, a)) {
+    return 0;
+  }
+  for (int i = 0; i < n; i++) {
+    if (!bn_mod_lshift1_quick_ctx(r, r, m, ctx)) {
       return 0;
     }
   }
-
-  while (n > 0) {
-    int max_shift;
-
-    // 0 < r < m
-    max_shift = BN_num_bits(m) - BN_num_bits(r);
-    // max_shift >= 0
-
-    if (max_shift < 0) {
-      OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
-      return 0;
-    }
-
-    if (max_shift > n) {
-      max_shift = n;
-    }
-
-    if (max_shift) {
-      if (!BN_lshift(r, r, max_shift)) {
-        return 0;
-      }
-      n -= max_shift;
-    } else {
-      if (!BN_lshift1(r, r)) {
-        return 0;
-      }
-      --n;
-    }
-
-    // BN_num_bits(r) <= BN_num_bits(m)
-    if (BN_cmp(r, m) >= 0) {
-      if (!BN_sub(r, r, m)) {
-        return 0;
-      }
-    }
-  }
-
   return 1;
+}
+
+int BN_mod_lshift_quick(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m) {
+  BN_CTX *ctx = BN_CTX_new();
+  int ok = ctx != NULL &&
+           bn_mod_lshift_quick_ctx(r, a, n, m, ctx);
+  BN_CTX_free(ctx);
+  return ok;
 }
 
 int BN_mod_lshift1(BIGNUM *r, const BIGNUM *a, const BIGNUM *m, BN_CTX *ctx) {
@@ -572,15 +656,17 @@ int BN_mod_lshift1(BIGNUM *r, const BIGNUM *a, const BIGNUM *m, BN_CTX *ctx) {
   return BN_nnmod(r, r, m, ctx);
 }
 
-int BN_mod_lshift1_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *m) {
-  if (!BN_lshift1(r, a)) {
-    return 0;
-  }
-  if (BN_cmp(r, m) >= 0) {
-    return BN_sub(r, r, m);
-  }
+int bn_mod_lshift1_quick_ctx(BIGNUM *r, const BIGNUM *a, const BIGNUM *m,
+                             BN_CTX *ctx) {
+  return bn_mod_add_quick_ctx(r, a, a, m, ctx);
+}
 
-  return 1;
+int BN_mod_lshift1_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *m) {
+  BN_CTX *ctx = BN_CTX_new();
+  int ok = ctx != NULL &&
+           bn_mod_lshift1_quick_ctx(r, a, m, ctx);
+  BN_CTX_free(ctx);
+  return ok;
 }
 
 BN_ULONG BN_div_word(BIGNUM *a, BN_ULONG w) {

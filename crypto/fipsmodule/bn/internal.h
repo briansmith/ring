@@ -371,6 +371,29 @@ int bn_mul_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
 int bn_sqr_fixed(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx);
 
 
+// Constant-time modular arithmetic.
+//
+// The following functions implement basic constant-time modular arithemtic on
+// word arrays.
+
+// bn_mod_add_quick_ctx acts like |BN_mod_add_quick| but takes a |BN_CTX|.
+int bn_mod_add_quick_ctx(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                         const BIGNUM *m, BN_CTX *ctx);
+
+// bn_mod_sub_quick_ctx acts like |BN_mod_sub_quick| but takes a |BN_CTX|.
+int bn_mod_sub_quick_ctx(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                         const BIGNUM *m, BN_CTX *ctx);
+
+// bn_mod_lshift1_quick_ctx acts like |BN_mod_lshift1_quick| but takes a
+// |BN_CTX|.
+int bn_mod_lshift1_quick_ctx(BIGNUM *r, const BIGNUM *a, const BIGNUM *m,
+                             BN_CTX *ctx);
+
+// bn_mod_lshift_quick_ctx acts like |BN_mod_lshift_quick| but takes a |BN_CTX|.
+int bn_mod_lshift_quick_ctx(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m,
+                            BN_CTX *ctx);
+
+
 // Low-level operations for small numbers.
 //
 // The following functions implement algorithms suitable for use with scalars
