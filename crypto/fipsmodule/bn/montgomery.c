@@ -316,15 +316,10 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
   }
 
   int max = (2 * n->top);  // carry is stored separately
-  if (!bn_wexpand(r, max) ||
+  if (!bn_resize_words(r, max) ||
       !bn_wexpand(ret, n->top)) {
     return 0;
   }
-  // Clear the top words of |r|.
-  if (max > r->top) {
-    OPENSSL_memset(r->d + r->top, 0, (max - r->top) * sizeof(BN_ULONG));
-  }
-  r->top = max;
   ret->top = n->top;
 
   if (!bn_from_montgomery_in_place(ret->d, ret->top, r->d, r->top, mont)) {
