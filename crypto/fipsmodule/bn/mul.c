@@ -316,6 +316,9 @@ static void bn_mul_recursive(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
     return;
   }
 
+  // TODO(davidben): This function is not constant-time, but should be. See
+  // https://crbug.com/boringssl/234.
+
   // r=(a[0]-a[1])*(b[1]-b[0])
   c1 = bn_cmp_part_words(a, &(a[n]), tna, n - tna);
   c2 = bn_cmp_part_words(&(b[n]), b, tnb, tnb - n);
@@ -435,6 +438,9 @@ static void bn_mul_part_recursive(BN_ULONG *r, const BN_ULONG *a,
     bn_mul_normal(r, a, n + tna, b, n + tnb);
     return;
   }
+
+  // TODO(davidben): This function is not constant-time, but should be. See
+  // https://crbug.com/boringssl/234.
 
   // r=(a[0]-a[1])*(b[1]-b[0])
   c1 = bn_cmp_part_words(a, &(a[n]), tna, n - tna);
@@ -559,7 +565,11 @@ static void bn_mul_part_recursive(BN_ULONG *r, const BN_ULONG *a,
   }
 }
 
-int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
+// bn_mul_impl implements |BN_mul| and |bn_mul_fixed|. Note this function breaks
+// |BIGNUM| invariants and may return a negative zero. This is handled by the
+// callers.
+static int bn_mul_impl(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                       BN_CTX *ctx) {
   int ret = 0;
   int top, al, bl;
   BIGNUM *rr;
@@ -646,7 +656,6 @@ int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
   bn_mul_normal(rr->d, a->d, al, b->d, bl);
 
 end:
-  bn_set_minimal_width(rr);
   if (r != rr && !BN_copy(r, rr)) {
     goto err;
   }
@@ -655,6 +664,26 @@ end:
 err:
   BN_CTX_end(ctx);
   return ret;
+}
+
+int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
+  if (!bn_mul_impl(r, a, b, ctx)) {
+    return 0;
+  }
+
+  // This additionally fixes any negative zeros created by |bn_mul_impl|.
+  bn_set_minimal_width(r);
+  return 1;
+}
+
+int bn_mul_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
+  // Prevent negative zeros.
+  if (a->neg || b->neg) {
+    OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
+    return 0;
+  }
+
+  return bn_mul_impl(r, a, b, ctx);
 }
 
 int bn_mul_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a,
@@ -737,6 +766,10 @@ static void bn_sqr_recursive(BN_ULONG *r, const BN_ULONG *a, int n2,
     bn_sqr_normal(r, a, n2, t);
     return;
   }
+
+  // TODO(davidben): This function is not constant-time, but should be. See
+  // https://crbug.com/boringssl/234.
+
   // r=(a[0]-a[1])*(a[1]-a[0])
   c1 = bn_cmp_words(a, &(a[n]), n);
   zero = 0;
@@ -813,7 +846,7 @@ int BN_mul_word(BIGNUM *bn, BN_ULONG w) {
   return 1;
 }
 
-int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
+int bn_sqr_fixed(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
   int max, al;
   int ret = 0;
   BIGNUM *tmp, *rr;
@@ -867,7 +900,6 @@ int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
 
   rr->neg = 0;
   rr->width = max;
-  bn_set_minimal_width(rr);
 
   if (rr != r && !BN_copy(r, rr)) {
     goto err;
@@ -877,6 +909,15 @@ int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
 err:
   BN_CTX_end(ctx);
   return ret;
+}
+
+int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
+  if (!bn_sqr_fixed(r, a, ctx)) {
+    return 0;
+  }
+
+  bn_set_minimal_width(r);
+  return 1;
 }
 
 int bn_sqr_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a) {

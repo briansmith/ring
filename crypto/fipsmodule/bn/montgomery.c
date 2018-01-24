@@ -376,11 +376,11 @@ static int bn_mod_mul_montgomery_fallback(BIGNUM *r, const BIGNUM *a,
   }
 
   if (a == b) {
-    if (!BN_sqr(tmp, a, ctx)) {
+    if (!bn_sqr_fixed(tmp, a, ctx)) {
       goto err;
     }
   } else {
-    if (!BN_mul(tmp, a, b, ctx)) {
+    if (!bn_mul_fixed(tmp, a, b, ctx)) {
       goto err;
     }
   }

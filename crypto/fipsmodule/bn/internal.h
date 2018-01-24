@@ -352,6 +352,25 @@ int bn_one_to_montgomery(BIGNUM *r, const BN_MONT_CTX *mont, BN_CTX *ctx);
 int bn_less_than_montgomery_R(const BIGNUM *bn, const BN_MONT_CTX *mont);
 
 
+// Fixed-width arithmetic.
+//
+// The following functions implement non-modular arithmetic in constant-time
+// and pessimally set |r->width| to the largest possible word size.
+//
+// Note this means that, e.g., repeatedly multiplying by one will cause widths
+// to increase without bound. The corresponding public API functions minimize
+// their outputs to avoid regressing calculator consumers.
+
+// bn_mul_fixed behaves like |BN_mul|, but it rejects negative inputs and
+// pessimally sets |r->width| to |a->width| + |b->width|, to avoid leaking
+// information about |a| and |b|.
+int bn_mul_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
+
+// bn_sqrt_fixed behaves like |BN_sqrt|, but it pessimally sets |r->width| to
+// 2*|a->width|, to avoid leaking information about |a| and |b|.
+int bn_sqr_fixed(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx);
+
+
 // Low-level operations for small numbers.
 //
 // The following functions implement algorithms suitable for use with scalars
