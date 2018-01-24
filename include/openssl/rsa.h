@@ -662,6 +662,11 @@ struct rsa_st {
   BN_MONT_CTX *mont_p;
   BN_MONT_CTX *mont_q;
 
+  // inv_small_mod_large_mont is q^-1 mod p in Montgomery form, using |mont_p|,
+  // if |p| >= |q|. Otherwise, it is p^-1 mod q in Montgomery form, using
+  // |mont_q|.
+  BIGNUM *inv_small_mod_large_mont;
+
   // num_blindings contains the size of the |blindings| and |blindings_inuse|
   // arrays. This member and the |blindings_inuse| array are protected by
   // |lock|.

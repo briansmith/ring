@@ -132,17 +132,18 @@ void RSA_free(RSA *rsa) {
 
   CRYPTO_free_ex_data(g_rsa_ex_data_class_bss_get(), rsa, &rsa->ex_data);
 
-  BN_clear_free(rsa->n);
-  BN_clear_free(rsa->e);
-  BN_clear_free(rsa->d);
-  BN_clear_free(rsa->p);
-  BN_clear_free(rsa->q);
-  BN_clear_free(rsa->dmp1);
-  BN_clear_free(rsa->dmq1);
-  BN_clear_free(rsa->iqmp);
+  BN_free(rsa->n);
+  BN_free(rsa->e);
+  BN_free(rsa->d);
+  BN_free(rsa->p);
+  BN_free(rsa->q);
+  BN_free(rsa->dmp1);
+  BN_free(rsa->dmq1);
+  BN_free(rsa->iqmp);
   BN_MONT_CTX_free(rsa->mont_n);
   BN_MONT_CTX_free(rsa->mont_p);
   BN_MONT_CTX_free(rsa->mont_q);
+  BN_free(rsa->inv_small_mod_large_mont);
   for (u = 0; u < rsa->num_blindings; u++) {
     BN_BLINDING_free(rsa->blindings[u]);
   }

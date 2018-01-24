@@ -165,15 +165,49 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
       }
     }
 
-    // CRT components are only publicly bounded by their corresponding moduli's
-    // bit lengths.
-    if ((rsa->dmp1 != NULL &&
-         !bn_resize_words(rsa->dmp1, rsa->p->width)) ||
-        (rsa->dmq1 != NULL &&
-         !bn_resize_words(rsa->dmq1, rsa->q->width)) ||
-        (rsa->iqmp != NULL &&
-         !bn_resize_words(rsa->iqmp, rsa->p->width))) {
-      goto err;
+    if (rsa->dmp1 != NULL && rsa->dmq1 != NULL) {
+      // Key generation relies on this function to compute |iqmp|.
+      if (rsa->iqmp == NULL) {
+        BIGNUM *iqmp = BN_new();
+        if (iqmp == NULL ||
+            !bn_mod_inverse_secret_prime(iqmp, rsa->q, rsa->p, ctx,
+                                         rsa->mont_p)) {
+          BN_free(iqmp);
+          goto err;
+        }
+        rsa->iqmp = iqmp;
+      }
+
+      // CRT components are only publicly bounded by their corresponding
+      // moduli's bit lengths.
+      if (!bn_resize_words(rsa->dmp1, rsa->p->width) ||
+          !bn_resize_words(rsa->dmq1, rsa->q->width) ||
+          !bn_resize_words(rsa->iqmp, rsa->p->width)) {
+        goto err;
+      }
+
+      // Compute |inv_small_mod_large_mont|. Note that it is always modulo the
+      // larger prime, independent of what is stored in |rsa->iqmp|.
+      if (rsa->inv_small_mod_large_mont == NULL) {
+        BIGNUM *inv_small_mod_large_mont = BN_new();
+        int ok;
+        if (BN_less_than_consttime(rsa->p, rsa->q)) {
+          ok = inv_small_mod_large_mont != NULL &&
+               bn_mod_inverse_secret_prime(inv_small_mod_large_mont, rsa->p,
+                                           rsa->q, ctx, rsa->mont_q) &&
+               BN_to_montgomery(inv_small_mod_large_mont,
+                                inv_small_mod_large_mont, rsa->mont_q, ctx);
+        } else {
+          ok = inv_small_mod_large_mont != NULL &&
+               BN_to_montgomery(inv_small_mod_large_mont, rsa->iqmp,
+                                rsa->mont_p, ctx);
+        }
+        if (!ok) {
+          BN_free(inv_small_mod_large_mont);
+          goto err;
+        }
+        rsa->inv_small_mod_large_mont = inv_small_mod_large_mont;
+      }
     }
   }
 
@@ -757,16 +791,14 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   assert(rsa->dmq1 != NULL);
   assert(rsa->iqmp != NULL);
 
-  BIGNUM *r1, *m1, *vrfy;
+  BIGNUM *r1, *m1;
   int ret = 0;
 
   BN_CTX_start(ctx);
   r1 = BN_CTX_get(ctx);
   m1 = BN_CTX_get(ctx);
-  vrfy = BN_CTX_get(ctx);
   if (r1 == NULL ||
-      m1 == NULL ||
-      vrfy == NULL) {
+      m1 == NULL) {
     goto err;
   }
 
@@ -774,77 +806,47 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
     goto err;
   }
 
+  // Implementing RSA with CRT in constant-time is sensitive to which prime is
+  // larger. Canonicalize fields so that |p| is the larger prime.
+  const BIGNUM *p = rsa->p, *q = rsa->q, *dmp1 = rsa->dmp1, *dmq1 = rsa->dmq1;
+  const BN_MONT_CTX *mont_p = rsa->mont_p, *mont_q = rsa->mont_q;
+  if (BN_less_than_consttime(rsa->p, rsa->q)) {
+    p = rsa->q;
+    q = rsa->p;
+    mont_p = rsa->mont_q;
+    mont_q = rsa->mont_p;
+    dmp1 = rsa->dmq1;
+    dmq1 = rsa->dmp1;
+  }
+
   // This is a pre-condition for |mod_montgomery|. It was already checked by the
   // caller.
   assert(BN_ucmp(I, rsa->n) < 0);
 
-  // compute I mod q
-  if (!mod_montgomery(r1, I, rsa->q, rsa->mont_q, rsa->p, ctx)) {
-    goto err;
-  }
-
-  // compute r1^dmq1 mod q
-  if (!BN_mod_exp_mont_consttime(m1, r1, rsa->dmq1, rsa->q, ctx, rsa->mont_q)) {
-    goto err;
-  }
-
-  // compute I mod p
-  if (!mod_montgomery(r1, I, rsa->p, rsa->mont_p, rsa->q, ctx)) {
-    goto err;
-  }
-
-  // compute r1^dmp1 mod p
-  if (!BN_mod_exp_mont_consttime(r0, r1, rsa->dmp1, rsa->p, ctx, rsa->mont_p)) {
-    goto err;
-  }
-
-  // TODO(davidben): The code below is not constant-time:
-  //
-  // 1. Finish adding support for non-minimal |BIGNUM|s.
-  //
-  // 2. Canonicalize keys on p > q in |freeze_private_key|. (p > q for keys we
-  //    generate, but not ones we import.) This removes the p < q case below.
-  //
-  // 3. Use |bn_mod_sub_quick_ctx| to compute r0 - m1 (mod p).
-  //
-  // 4. When computing mont_*, additionally compute iqmp_mont, iqmp in
-  //    Montgomery form. The |BN_mul| and |BN_mod| pair can then be replaced
-  //    with |BN_mod_mul_montgomery|.
-
-  if (!BN_sub(r0, r0, m1)) {
-    goto err;
-  }
-  // This will help stop the size of r0 increasing, which does
-  // affect the multiply if it optimised for a power of 2 size
-  if (BN_is_negative(r0)) {
-    if (!BN_add(r0, r0, rsa->p)) {
-      goto err;
-    }
-  }
-
-  if (!BN_mul(r1, r0, rsa->iqmp, ctx)) {
-    goto err;
-  }
-
-  if (!BN_mod(r0, r1, rsa->p, ctx)) {
-    goto err;
-  }
-
-  // If p < q it is occasionally possible for the correction of
-  // adding 'p' if r0 is negative above to leave the result still
-  // negative. This can break the private key operations: the following
-  // second correction should *always* correct this rare occurrence.
-  // This will *never* happen with OpenSSL generated keys because
-  // they ensure p > q [steve]
-  if (BN_is_negative(r0)) {
-    if (!BN_add(r0, r0, rsa->p)) {
-      goto err;
-    }
-  }
-  if (!BN_mul(r1, r0, rsa->q, ctx)) {
-    goto err;
-  }
-  if (!BN_add(r0, r1, m1)) {
+  if (// |m1| is the result modulo |q|.
+      !mod_montgomery(r1, I, q, mont_q, p, ctx) ||
+      !BN_mod_exp_mont_consttime(m1, r1, dmq1, q, ctx, mont_q) ||
+      // |r0| is the result modulo |p|.
+      !mod_montgomery(r1, I, p, mont_p, q, ctx) ||
+      !BN_mod_exp_mont_consttime(r0, r1, dmp1, p, ctx, mont_p) ||
+      // Compute r0 = r0 - m1 mod p. |p| is the larger prime, so |m1| is already
+      // fully reduced mod |p|.
+      !bn_mod_sub_quick_ctx(r0, r0, m1, p, ctx) ||
+      // r0 = r0 * iqmp mod p. We use Montgomery multiplication to compute this
+      // in constant time. |inv_small_mod_large_mont| is in Montgomery form and
+      // r0 is not, so the result is taken out of Montgomery form.
+      !BN_mod_mul_montgomery(r0, r0, rsa->inv_small_mod_large_mont, mont_p,
+                             ctx) ||
+      // r0 = r0 * q + m1 gives the final result. Reducing modulo q gives m1, so
+      // it is correct mod p. Reducing modulo p gives (r0-m1)*iqmp*q + m1 = r0,
+      // so it is correct mod q. Finally, the result is bounded by [m1, n + m1),
+      // and the result is at least |m1|, so this must be the unique answer in
+      // [0, n).
+      !bn_mul_fixed(r0, r0, q, ctx) ||
+      !bn_uadd_fixed(r0, r0, m1) ||
+      // The result should be bounded by |rsa->n|, but fixed-width operations
+      // bound the width slightly higher, so fix it.
+      !bn_resize_words(r0, rsa->n->width)) {
     goto err;
   }
 
@@ -1033,8 +1035,7 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
       !ensure_bignum(&rsa->p) ||
       !ensure_bignum(&rsa->q) ||
       !ensure_bignum(&rsa->dmp1) ||
-      !ensure_bignum(&rsa->dmq1) ||
-      !ensure_bignum(&rsa->iqmp)) {
+      !ensure_bignum(&rsa->dmq1)) {
     goto bn_err;
   }
 
@@ -1118,13 +1119,9 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
     goto err;
   }
 
-  // Calculate inverse of q mod p. Note that although RSA key generation is far
-  // from constant-time, |bn_mod_inverse_secret_prime| uses the same modular
-  // exponentation logic as in RSA private key operations and, if the RSAZ-1024
-  // code is enabled, will be optimized for common RSA prime sizes.
-  if (!freeze_private_key(rsa, ctx) ||
-      !bn_mod_inverse_secret_prime(rsa->iqmp, rsa->q, rsa->p, ctx,
-                                   rsa->mont_p)) {
+  // Call |freeze_private_key| to compute the inverse of q mod p, by way of
+  // |rsa->mont_p|.
+  if (!freeze_private_key(rsa, ctx)) {
     goto bn_err;
   }
 
