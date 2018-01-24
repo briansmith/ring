@@ -286,7 +286,6 @@ int BN_rand_range_ex(BIGNUM *r, BN_ULONG min_inclusive,
 
   r->neg = 0;
   r->width = max_exclusive->width;
-  bn_set_minimal_width(r);
   return 1;
 }
 

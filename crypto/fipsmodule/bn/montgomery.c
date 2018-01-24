@@ -312,21 +312,15 @@ static int BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r,
     return 1;
   }
 
-  int max = (2 * n->width);  // carry is stored separately
+  int max = 2 * n->width;  // carry is stored separately
   if (!bn_resize_words(r, max) ||
       !bn_wexpand(ret, n->width)) {
     return 0;
   }
+
   ret->width = n->width;
-
-  if (!bn_from_montgomery_in_place(ret->d, ret->width, r->d, r->width, mont)) {
-    return 0;
-  }
   ret->neg = 0;
-
-  bn_set_minimal_width(r);
-  bn_set_minimal_width(ret);
-  return 1;
+  return bn_from_montgomery_in_place(ret->d, ret->width, r->d, r->width, mont);
 }
 
 int BN_from_montgomery(BIGNUM *r, const BIGNUM *a, const BN_MONT_CTX *mont,
@@ -363,9 +357,6 @@ int bn_one_to_montgomery(BIGNUM *r, const BN_MONT_CTX *mont, BN_CTX *ctx) {
     }
     r->width = n->width;
     r->neg = 0;
-    // The upper words will be zero if the corresponding words of |n| were
-    // 0xfff[...], so call |bn_set_minimal_width|.
-    bn_set_minimal_width(r);
     return 1;
   }
 
@@ -430,8 +421,6 @@ int BN_mod_mul_montgomery(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
     }
     r->neg = 0;
     r->width = num;
-    bn_set_minimal_width(r);
-
     return 1;
   }
 #endif

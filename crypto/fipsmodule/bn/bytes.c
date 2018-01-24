@@ -105,9 +105,6 @@ BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
     }
   }
 
-  // need to call this due to clear byte at top if avoiding having the top bit
-  // set (-ve number)
-  bn_set_minimal_width(ret);
   return ret;
 }
 
@@ -142,8 +139,6 @@ BIGNUM *BN_le2bn(const uint8_t *in, size_t len, BIGNUM *ret) {
   // We only support little-endian platforms, so we can simply memcpy the
   // internal representation.
   OPENSSL_memcpy(ret->d, in, len);
-
-  bn_set_minimal_width(ret);
   return ret;
 }
 

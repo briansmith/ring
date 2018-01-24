@@ -931,7 +931,6 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
   }
 
   b->width = top;
-  bn_set_minimal_width(b);
   return 1;
 }
 
@@ -1043,7 +1042,6 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     RSAZ_1024_mod_exp_avx2(rr->d, a->d, p->d, m->d, mont->RR.d, mont->n0[0]);
     rr->width = 16;
     rr->neg = 0;
-    bn_set_minimal_width(rr);
     ret = 1;
     goto err;
   }
@@ -1218,7 +1216,6 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
     ret = bn_from_montgomery(tmp.d, tmp.d, NULL, np, n0, top);
     tmp.width = top;
-    bn_set_minimal_width(&tmp);
     if (ret) {
       if (!BN_copy(rr, &tmp)) {
         ret = 0;

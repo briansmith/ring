@@ -292,7 +292,6 @@ int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num) {
   OPENSSL_memmove(bn->d, words, num * sizeof(BN_ULONG));
   // |bn_wexpand| verified that |num| isn't too large.
   bn->width = (int)num;
-  bn_set_minimal_width(bn);
   bn->neg = 0;
   return 1;
 }
