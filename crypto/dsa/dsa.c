@@ -835,7 +835,7 @@ int DSA_size(const DSA *dsa) {
 static int dsa_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
                           BIGNUM **out_r) {
   BN_CTX *ctx;
-  BIGNUM k, kq, *kinv = NULL, *r = NULL;
+  BIGNUM k, *kinv = NULL, *r = NULL;
   int ret = 0;
 
   if (!dsa->p || !dsa->q || !dsa->g) {
@@ -844,7 +844,6 @@ static int dsa_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
   }
 
   BN_init(&k);
-  BN_init(&kq);
 
   ctx = ctx_in;
   if (ctx == NULL) {
@@ -855,54 +854,22 @@ static int dsa_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
   }
 
   r = BN_new();
-  if (r == NULL) {
-    goto err;
-  }
-
-  // Get random k
-  if (!BN_rand_range_ex(&k, 1, dsa->q)) {
-    goto err;
-  }
-
-  if (!BN_MONT_CTX_set_locked((BN_MONT_CTX **)&dsa->method_mont_p,
+  kinv = BN_new();
+  if (r == NULL || kinv == NULL ||
+      // Get random k
+      !BN_rand_range_ex(&k, 1, dsa->q) ||
+      !BN_MONT_CTX_set_locked((BN_MONT_CTX **)&dsa->method_mont_p,
                               (CRYPTO_MUTEX *)&dsa->method_mont_lock, dsa->p,
                               ctx) ||
       !BN_MONT_CTX_set_locked((BN_MONT_CTX **)&dsa->method_mont_q,
                               (CRYPTO_MUTEX *)&dsa->method_mont_lock, dsa->q,
-                              ctx)) {
-    goto err;
-  }
-
-  // Compute r = (g^k mod p) mod q
-  if (!BN_copy(&kq, &k)) {
-    goto err;
-  }
-
-  // We do not want timing information to leak the length of k,
-  // so we compute g^k using an equivalent exponent of fixed length.
-  //
-  // (This is a kludge that we need because the BN_mod_exp_mont()
-  // does not let us specify the desired timing behaviour.)
-
-  if (!BN_add(&kq, &kq, dsa->q)) {
-    goto err;
-  }
-  if (BN_num_bits(&kq) <= BN_num_bits(dsa->q) && !BN_add(&kq, &kq, dsa->q)) {
-    goto err;
-  }
-
-  if (!BN_mod_exp_mont_consttime(r, dsa->g, &kq, dsa->p, ctx,
-                                 dsa->method_mont_p)) {
-    goto err;
-  }
-  if (!BN_mod(r, r, dsa->q, ctx)) {
-    goto err;
-  }
-
-  // Compute part of 's = inv(k) (m + xr) mod q' using Fermat's Little
-  // Theorem.
-  kinv = BN_new();
-  if (kinv == NULL ||
+                              ctx) ||
+      // Compute r = (g^k mod p) mod q
+      !BN_mod_exp_mont_consttime(r, dsa->g, &k, dsa->p, ctx,
+                                 dsa->method_mont_p) ||
+      !BN_mod(r, r, dsa->q, ctx) ||
+      // Compute part of 's = inv(k) (m + xr) mod q' using Fermat's Little
+      // Theorem.
       !bn_mod_inverse_prime(kinv, &k, dsa->q, ctx, dsa->method_mont_q)) {
     goto err;
   }
@@ -926,7 +893,6 @@ err:
     BN_CTX_free(ctx);
   }
   BN_clear_free(&k);
-  BN_clear_free(&kq);
   BN_clear_free(kinv);
   return ret;
 }
