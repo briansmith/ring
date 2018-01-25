@@ -239,42 +239,26 @@ static bool get_key_block_lengths(const SSL *ssl, size_t *out_mac_secret_len,
   return true;
 }
 
-static bool setup_key_block(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
-  if (!hs->key_block.empty()) {
-    return true;
-  }
-
-  size_t mac_secret_len, key_len, fixed_iv_len;
-  Array<uint8_t> key_block;
-  if (!get_key_block_lengths(ssl, &mac_secret_len, &key_len, &fixed_iv_len,
-                             hs->new_cipher) ||
-      !key_block.Init(2 * (mac_secret_len + key_len + fixed_iv_len)) ||
-      !SSL_generate_key_block(ssl, key_block.data(), key_block.size())) {
-    return false;
-  }
-
-  hs->key_block = std::move(key_block);
-  return true;
-}
-
-int tls1_change_cipher_state(SSL_HANDSHAKE *hs,
-                             evp_aead_direction_t direction) {
-  SSL *const ssl = hs->ssl;
-  // Ensure the key block is set up.
+static int tls1_configure_aead(SSL *ssl, evp_aead_direction_t direction,
+                               Array<uint8_t> *key_block_cache,
+                               const SSL_CIPHER *cipher,
+                               Span<const uint8_t> iv_override) {
   size_t mac_secret_len, key_len, iv_len;
-  if (!setup_key_block(hs) ||
-      !get_key_block_lengths(ssl, &mac_secret_len, &key_len, &iv_len,
-                             hs->new_cipher)) {
+  if (!get_key_block_lengths(ssl, &mac_secret_len, &key_len, &iv_len, cipher)) {
     return 0;
   }
 
-  if ((mac_secret_len + key_len + iv_len) * 2 != hs->key_block.size()) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
+  // Ensure that |key_block_cache| is set up.
+  const size_t key_block_size = 2 * (mac_secret_len + key_len + iv_len);
+  if (key_block_cache->empty()) {
+    if (!key_block_cache->Init(key_block_size) ||
+        !SSL_generate_key_block(ssl, key_block_cache->data(), key_block_size)) {
+      return 0;
+    }
   }
+  assert(key_block_cache->size() == key_block_size);
 
-  Span<const uint8_t> key_block = hs->key_block;
+  Span<const uint8_t> key_block = *key_block_cache;
   Span<const uint8_t> mac_secret, key, iv;
   if (direction == (ssl->server ? evp_aead_open : evp_aead_seal)) {
     // Use the client write (server read) keys.
@@ -288,9 +272,15 @@ int tls1_change_cipher_state(SSL_HANDSHAKE *hs,
     iv = key_block.subspan(2 * mac_secret_len + 2 * key_len + iv_len, iv_len);
   }
 
-  UniquePtr<SSLAEADContext> aead_ctx =
-      SSLAEADContext::Create(direction, ssl->version, SSL_is_dtls(ssl),
-                             hs->new_cipher, key, mac_secret, iv);
+  if (!iv_override.empty()) {
+    if (iv_override.size() != iv_len) {
+      return 0;
+    }
+    iv = iv_override;
+  }
+
+  UniquePtr<SSLAEADContext> aead_ctx = SSLAEADContext::Create(
+      direction, ssl->version, SSL_is_dtls(ssl), cipher, key, mac_secret, iv);
   if (!aead_ctx) {
     return 0;
   }
@@ -300,6 +290,12 @@ int tls1_change_cipher_state(SSL_HANDSHAKE *hs,
   }
 
   return ssl->method->set_write_state(ssl, std::move(aead_ctx));
+}
+
+int tls1_change_cipher_state(SSL_HANDSHAKE *hs,
+                             evp_aead_direction_t direction) {
+  return tls1_configure_aead(hs->ssl, direction, &hs->key_block,
+                             hs->new_cipher, {});
 }
 
 int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
