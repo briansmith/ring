@@ -87,6 +87,7 @@
 
 #include <gtest/gtest.h>
 
+#include <openssl/bio.h>
 #include <openssl/bn.h>
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
@@ -1966,12 +1967,17 @@ TEST_F(BNTest, NonMinimal) {
   ASSERT_TRUE(two_exp_256);
   ASSERT_TRUE(BN_lshift(two_exp_256.get(), BN_value_one(), 256));
 
-  // Check some comparison functions on |ten| before and after expanding.
+  bssl::UniquePtr<BIGNUM> zero(BN_new());
+  ASSERT_TRUE(zero);
+  BN_zero(zero.get());
+
   for (size_t width = 1; width < 10; width++) {
     SCOPED_TRACE(width);
-    // Make a wider version of |ten|.
+    // Make |ten| and |zero| wider.
     EXPECT_TRUE(bn_resize_words(ten.get(), width));
     EXPECT_EQ(static_cast<int>(width), ten->top);
+    EXPECT_TRUE(bn_resize_words(zero.get(), width));
+    EXPECT_EQ(static_cast<int>(width), zero->top);
 
     EXPECT_TRUE(BN_abs_is_word(ten.get(), 10));
     EXPECT_TRUE(BN_is_word(ten.get(), 10));
@@ -2004,6 +2010,28 @@ TEST_F(BNTest, NonMinimal) {
     EXPECT_EQ(4u, BN_num_bits(ten.get()));
     EXPECT_EQ(1u, BN_num_bytes(ten.get()));
     EXPECT_FALSE(BN_is_pow2(ten.get()));
+
+    bssl::UniquePtr<char> hex(BN_bn2hex(ten.get()));
+    EXPECT_STREQ("0a", hex.get());
+    hex.reset(BN_bn2hex(zero.get()));
+    EXPECT_STREQ("0", hex.get());
+
+    bssl::UniquePtr<BIO> bio(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(bio);
+    ASSERT_TRUE(BN_print(bio.get(), ten.get()));
+    const uint8_t *ptr;
+    size_t len;
+    ASSERT_TRUE(BIO_mem_contents(bio.get(), &ptr, &len));
+    // TODO(davidben): |BN_print| removes leading zeros within a byte, while
+    // |BN_bn2hex| rounds up to a byte, except for zero which it prints as
+    // "0". Fix this discrepancy?
+    EXPECT_EQ(Bytes("a"), Bytes(ptr, len));
+
+    bio.reset(BIO_new(BIO_s_mem()));
+    ASSERT_TRUE(bio);
+    ASSERT_TRUE(BN_print(bio.get(), zero.get()));
+    ASSERT_TRUE(BIO_mem_contents(bio.get(), &ptr, &len));
+    EXPECT_EQ(Bytes("0"), Bytes(ptr, len));
   }
 
   // |ten| may be resized back down to one word.

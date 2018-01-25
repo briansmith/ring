@@ -77,8 +77,9 @@ int BN_bn2cbb_padded(CBB *out, size_t len, const BIGNUM *in) {
 static const char hextable[] = "0123456789abcdef";
 
 char *BN_bn2hex(const BIGNUM *bn) {
+  int width = bn_minimal_width(bn);
   char *buf = OPENSSL_malloc(1 /* leading '-' */ + 1 /* zero is non-empty */ +
-                             bn->top * BN_BYTES * 2 + 1 /* trailing NUL */);
+                             width * BN_BYTES * 2 + 1 /* trailing NUL */);
   if (buf == NULL) {
     OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
     return NULL;
@@ -94,7 +95,7 @@ char *BN_bn2hex(const BIGNUM *bn) {
   }
 
   int z = 0;
-  for (int i = bn->top - 1; i >= 0; i--) {
+  for (int i = width - 1; i >= 0; i--) {
     for (int j = BN_BITS2 - 8; j >= 0; j -= 8) {
       // strip leading zeros
       int v = ((int)(bn->d[i] >> (long)j)) & 0xff;
@@ -347,7 +348,7 @@ int BN_print(BIO *bp, const BIGNUM *a) {
     goto end;
   }
 
-  for (i = a->top - 1; i >= 0; i--) {
+  for (i = bn_minimal_width(a) - 1; i >= 0; i--) {
     for (j = BN_BITS2 - 4; j >= 0; j -= 4) {
       // strip leading zeros
       v = ((int)(a->d[i] >> (long)j)) & 0x0f;
