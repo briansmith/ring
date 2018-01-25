@@ -757,7 +757,7 @@ OPENSSL_EXPORT void EVP_MD_do_all_sorted(void (*callback)(const EVP_MD *cipher,
 // RSA keys are serialized as a DER-encoded RSAPublicKey (RFC 3447) structure.
 // EC keys are serialized as a DER-encoded ECPrivateKey (RFC 5915) structure.
 //
-// Use |RSA_marshal_private_key| or |EC_marshal_private_key| instead.
+// Use |RSA_marshal_private_key| or |EC_KEY_marshal_private_key| instead.
 OPENSSL_EXPORT int i2d_PrivateKey(const EVP_PKEY *key, uint8_t **outp);
 
 // i2d_PublicKey marshals a public key from |key| to a type-specific format.
