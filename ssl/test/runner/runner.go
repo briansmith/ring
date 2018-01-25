@@ -899,10 +899,12 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 	return nil
 }
 
+const xtermSize = "140x50"
+
 func valgrindOf(dbAttach bool, path string, args ...string) *exec.Cmd {
 	valgrindArgs := []string{"--error-exitcode=99", "--track-origins=yes", "--leak-check=full", "--quiet"}
 	if dbAttach {
-		valgrindArgs = append(valgrindArgs, "--db-attach=yes", "--db-command=xterm -e gdb -nw %f %p")
+		valgrindArgs = append(valgrindArgs, "--db-attach=yes", "--db-command=xterm -geometry "+xtermSize+" -e gdb -nw %f %p")
 	}
 	valgrindArgs = append(valgrindArgs, path)
 	valgrindArgs = append(valgrindArgs, args...)
@@ -911,7 +913,7 @@ func valgrindOf(dbAttach bool, path string, args ...string) *exec.Cmd {
 }
 
 func gdbOf(path string, args ...string) *exec.Cmd {
-	xtermArgs := []string{"-e", "gdb", "--args"}
+	xtermArgs := []string{"-geometry", xtermSize, "-e", "gdb", "--args"}
 	xtermArgs = append(xtermArgs, path)
 	xtermArgs = append(xtermArgs, args...)
 
@@ -919,7 +921,7 @@ func gdbOf(path string, args ...string) *exec.Cmd {
 }
 
 func lldbOf(path string, args ...string) *exec.Cmd {
-	xtermArgs := []string{"-e", "lldb", "--"}
+	xtermArgs := []string{"-geometry", xtermSize, "-e", "lldb", "--"}
 	xtermArgs = append(xtermArgs, path)
 	xtermArgs = append(xtermArgs, args...)
 
