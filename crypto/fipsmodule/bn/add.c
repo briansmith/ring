@@ -100,61 +100,38 @@ int BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   return ret;
 }
 
-int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
-  int max, min, dif;
-  BN_ULONG *ap, *bp, *rp, carry, t1, t2;
-  const BIGNUM *tmp;
-
+int bn_uadd_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
+  // Widths are public, so we normalize to make |a| the larger one.
   if (a->width < b->width) {
-    tmp = a;
+    const BIGNUM *tmp = a;
     a = b;
     b = tmp;
   }
-  max = a->width;
-  min = b->width;
-  dif = max - min;
 
+  int max = a->width;
+  int min = b->width;
   if (!bn_wexpand(r, max + 1)) {
     return 0;
   }
+  r->width = max + 1;
 
-  r->width = max;
-
-  ap = a->d;
-  bp = b->d;
-  rp = r->d;
-
-  carry = bn_add_words(rp, ap, bp, min);
-  rp += min;
-  ap += min;
-  bp += min;
-
-  if (carry) {
-    while (dif) {
-      dif--;
-      t1 = *(ap++);
-      t2 = t1 + 1;
-      *(rp++) = t2;
-      if (t2) {
-        carry = 0;
-        break;
-      }
-    }
-    if (carry) {
-      // carry != 0 => dif == 0
-      *rp = 1;
-      r->width++;
-    }
+  BN_ULONG carry = bn_add_words(r->d, a->d, b->d, min);
+  for (int i = min; i < max; i++) {
+    // |r| and |a| may alias, so use a temporary.
+    BN_ULONG tmp = carry + a->d[i];
+    carry = tmp < a->d[i];
+    r->d[i] = tmp;
   }
 
-  if (dif && rp != ap) {
-    while (dif--) {
-      // copy remaining words if ap != rp
-      *(rp++) = *(ap++);
-    }
-  }
+  r->d[max] = carry;
+  return 1;
+}
 
-  r->neg = 0;
+int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
+  if (!bn_uadd_fixed(r, a, b)) {
+    return 0;
+  }
+  bn_set_minimal_width(r);
   return 1;
 }
 

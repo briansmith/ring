@@ -367,6 +367,10 @@ int bn_less_than_montgomery_R(const BIGNUM *bn, const BN_MONT_CTX *mont);
 // to increase without bound. The corresponding public API functions minimize
 // their outputs to avoid regressing calculator consumers.
 
+// bn_uadd_fixed behaves like |BN_uadd|, but it pessimally sets
+// |r->width| = |a->width| + |b->width| + 1.
+int bn_uadd_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
+
 // bn_mul_fixed behaves like |BN_mul|, but it rejects negative inputs and
 // pessimally sets |r->width| to |a->width| + |b->width|, to avoid leaking
 // information about |a| and |b|.
