@@ -208,19 +208,24 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   mont->n0[1] = 0;
 #endif
 
+  BN_CTX *new_ctx = NULL;
+  if (ctx == NULL) {
+    new_ctx = BN_CTX_new();
+    if (new_ctx == NULL) {
+      return 0;
+    }
+    ctx = new_ctx;
+  }
+
   // Save RR = R**2 (mod N). R is the smallest power of 2**BN_BITS2 such that R
   // > mod. Even though the assembly on some 32-bit platforms works with 64-bit
   // values, using |BN_BITS2| here, rather than |BN_MONT_CTX_N0_LIMBS *
   // BN_BITS2|, is correct because R**2 will still be a multiple of the latter
   // as |BN_MONT_CTX_N0_LIMBS| is either one or two.
-  //
-  // XXX: This is not constant time with respect to |mont->N|, but it should be.
   unsigned lgBigR = mont->N.width * BN_BITS2;
-  if (!bn_mod_exp_base_2_vartime(&mont->RR, lgBigR * 2, &mont->N)) {
-    return 0;
-  }
-
-  return 1;
+  int ok = bn_mod_exp_base_2_consttime(&mont->RR, lgBigR * 2, &mont->N, ctx);
+  BN_CTX_free(new_ctx);
+  return ok;
 }
 
 BN_MONT_CTX *BN_MONT_CTX_new_for_modulus(const BIGNUM *mod, BN_CTX *ctx) {

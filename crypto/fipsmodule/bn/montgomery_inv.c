@@ -159,10 +159,8 @@ static uint64_t bn_neg_inv_mod_r_u64(uint64_t n) {
   return v;
 }
 
-// bn_mod_exp_base_2_vartime calculates r = 2**p (mod n). |p| must be larger
-// than log_2(n); i.e. 2**p must be larger than |n|. |n| must be positive and
-// odd.
-int bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n) {
+int bn_mod_exp_base_2_consttime(BIGNUM *r, unsigned p, const BIGNUM *n,
+                                BN_CTX *ctx) {
   assert(!BN_is_zero(n));
   assert(!BN_is_negative(n));
   assert(BN_is_odd(n));
@@ -171,36 +169,16 @@ int bn_mod_exp_base_2_vartime(BIGNUM *r, unsigned p, const BIGNUM *n) {
 
   unsigned n_bits = BN_num_bits(n);
   assert(n_bits != 0);
+  assert(p > n_bits);
   if (n_bits == 1) {
     return 1;
   }
 
-  // Set |r| to the smallest power of two larger than |n|.
-  assert(p > n_bits);
-  if (!BN_set_bit(r, n_bits)) {
+  // Set |r| to the larger power of two smaller than |n|, then shift with
+  // reductions the rest of the way.
+  if (!BN_set_bit(r, n_bits - 1) ||
+      !bn_mod_lshift_quick_ctx(r, r, p - (n_bits - 1), n, ctx)) {
     return 0;
-  }
-
-  // Unconditionally reduce |r|.
-  assert(BN_cmp(r, n) > 0);
-  if (!BN_usub(r, r, n)) {
-    return 0;
-  }
-  assert(BN_cmp(r, n) < 0);
-
-  for (unsigned i = n_bits; i < p; ++i) {
-    // This is like |BN_mod_lshift1_quick| except using |BN_usub|.
-    //
-    // TODO: Replace this with the use of a constant-time variant of
-    // |BN_mod_lshift1_quick|.
-    if (!BN_lshift1(r, r)) {
-      return 0;
-    }
-    if (BN_cmp(r, n) >= 0) {
-      if (!BN_usub(r, r, n)) {
-        return 0;
-      }
-    }
   }
 
   return 1;
