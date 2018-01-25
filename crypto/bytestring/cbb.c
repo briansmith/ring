@@ -505,6 +505,28 @@ int CBB_add_asn1_uint64(CBB *cbb, uint64_t value) {
   return CBB_flush(cbb);
 }
 
+int CBB_add_asn1_octet_string(CBB *cbb, const uint8_t *data, size_t data_len) {
+  CBB child;
+  if (!CBB_add_asn1(cbb, &child, CBS_ASN1_OCTETSTRING) ||
+      !CBB_add_bytes(&child, data, data_len) ||
+      !CBB_flush(cbb)) {
+    return 0;
+  }
+
+  return 1;
+}
+
+int CBB_add_asn1_bool(CBB *cbb, int value) {
+  CBB child;
+  if (!CBB_add_asn1(cbb, &child, CBS_ASN1_BOOLEAN) ||
+      !CBB_add_u8(&child, value != 0 ? 0xff : 0) ||
+      !CBB_flush(cbb)) {
+    return 0;
+  }
+
+  return 1;
+}
+
 // parse_dotted_decimal parses one decimal component from |cbs|, where |cbs| is
 // an OID literal, e.g., "1.2.840.113554.4.1.72585". It consumes both the
 // component and the dot, so |cbs| may be passed into the function again for the

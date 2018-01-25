@@ -425,6 +425,22 @@ int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out) {
   return 1;
 }
 
+int CBS_get_asn1_bool(CBS *cbs, int *out) {
+  CBS bytes;
+  if (!CBS_get_asn1(cbs, &bytes, CBS_ASN1_BOOLEAN) ||
+      CBS_len(&bytes) != 1) {
+    return 0;
+  }
+
+  const uint8_t value = *CBS_data(&bytes);
+  if (value != 0 && value != 0xff) {
+    return 0;
+  }
+
+  *out = !!value;
+  return 1;
+}
+
 int CBS_get_optional_asn1(CBS *cbs, CBS *out, int *out_present, unsigned tag) {
   int present = 0;
 

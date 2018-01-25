@@ -235,6 +235,10 @@ OPENSSL_EXPORT int CBS_get_any_ber_asn1_element(CBS *cbs, CBS *out,
 // in 64 bits.
 OPENSSL_EXPORT int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out);
 
+// CBS_get_asn1_bool gets an ASN.1 BOOLEAN from |cbs| and sets |*out| to zero
+// or one based on its value. It returns one on success or zero on error.
+OPENSSL_EXPORT int CBS_get_asn1_bool(CBS *cbs, int *out);
+
 // CBS_get_optional_asn1 gets an optional explicitly-tagged element from |cbs|
 // tagged with |tag| and sets |*out| to its contents. If present and if
 // |out_present| is not NULL, it sets |*out_present| to one, otherwise zero. It
@@ -449,6 +453,15 @@ OPENSSL_EXPORT void CBB_discard_child(CBB *cbb);
 // and writes |value| in its contents. It returns one on success and zero on
 // error.
 OPENSSL_EXPORT int CBB_add_asn1_uint64(CBB *cbb, uint64_t value);
+
+// CBB_add_asn1_octet_string writes an ASN.1 OCTET STRING into |cbb| with the
+// given contents. It returns one on success and zero on error.
+OPENSSL_EXPORT int CBB_add_asn1_octet_string(CBB *cbb, const uint8_t *data,
+                                             size_t data_len);
+
+// CBB_add_asn1_bool writes an ASN.1 BOOLEAN into |cbb| which is true iff
+// |value| is non-zero.  It returns one on success and zero on error.
+OPENSSL_EXPORT int CBB_add_asn1_bool(CBB *cbb, int value);
 
 // CBB_add_asn1_oid_from_text decodes |len| bytes from |text| as an ASCII OID
 // representation, e.g. "1.2.840.113554.4.1.72585", and writes the DER-encoded
