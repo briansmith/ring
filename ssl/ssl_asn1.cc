@@ -197,16 +197,14 @@ static const unsigned kAuthTimeoutTag =
 static const unsigned kEarlyALPNTag =
     CBS_ASN1_CONSTRUCTED | CBS_ASN1_CONTEXT_SPECIFIC | 26;
 
-static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
-                                     size_t *out_len, int for_ticket) {
+static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
+                                     int for_ticket) {
   if (in == NULL || in->cipher == NULL) {
     return 0;
   }
 
-  ScopedCBB cbb;
   CBB session, child, child2;
-  if (!CBB_init(cbb.get(), 0) ||
-      !CBB_add_asn1(cbb.get(), &session, CBS_ASN1_SEQUENCE) ||
+  if (!CBB_add_asn1(cbb, &session, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&session, kVersion) ||
       !CBB_add_asn1_uint64(&session, in->ssl_version) ||
       !CBB_add_asn1(&session, &child, CBS_ASN1_OCTETSTRING) ||
@@ -397,11 +395,7 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, uint8_t **out_data,
     }
   }
 
-  if (!CBB_finish(cbb.get(), out_data, out_len)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-  return 1;
+  return CBB_flush(cbb);
 }
 
 // SSL_SESSION_parse_string gets an optional ASN.1 OCTET STRING
@@ -762,6 +756,10 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
   return ret;
 }
 
+int ssl_session_serialize(const SSL_SESSION *in, CBB *cbb) {
+  return SSL_SESSION_to_bytes_full(in, cbb, 0);
+}
+
 }  // namespace bssl
 
 using namespace bssl;
@@ -784,12 +782,26 @@ int SSL_SESSION_to_bytes(const SSL_SESSION *in, uint8_t **out_data,
     return 1;
   }
 
-  return SSL_SESSION_to_bytes_full(in, out_data, out_len, 0);
+  ScopedCBB cbb;
+  if (!CBB_init(cbb.get(), 256) ||
+      !SSL_SESSION_to_bytes_full(in, cbb.get(), 0) ||
+      !CBB_finish(cbb.get(), out_data, out_len)) {
+    return 0;
+  }
+
+  return 1;
 }
 
 int SSL_SESSION_to_bytes_for_ticket(const SSL_SESSION *in, uint8_t **out_data,
                                     size_t *out_len) {
-  return SSL_SESSION_to_bytes_full(in, out_data, out_len, 1);
+  ScopedCBB cbb;
+  if (!CBB_init(cbb.get(), 256) ||
+      !SSL_SESSION_to_bytes_full(in, cbb.get(), 1) ||
+      !CBB_finish(cbb.get(), out_data, out_len)) {
+    return 0;
+  }
+
+  return 1;
 }
 
 int i2d_SSL_SESSION(SSL_SESSION *in, uint8_t **pp) {
