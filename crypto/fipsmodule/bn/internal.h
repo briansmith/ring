@@ -218,6 +218,11 @@ int bn_expand(BIGNUM *bn, size_t bits);
 // and zero on allocation error or if |bn|'s value is too large.
 OPENSSL_EXPORT int bn_resize_words(BIGNUM *bn, size_t words);
 
+// bn_select_words sets |r| to |a| if |mask| is all ones or |b| if |mask| is
+// all zeros.
+void bn_select_words(BN_ULONG *r, BN_ULONG mask, const BN_ULONG *a,
+                     const BN_ULONG *b, size_t num);
+
 // bn_set_words sets |bn| to the value encoded in the |num| words in |words|,
 // least significant word first.
 int bn_set_words(BIGNUM *bn, const BN_ULONG *words, size_t num);

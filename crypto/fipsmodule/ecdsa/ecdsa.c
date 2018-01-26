@@ -84,12 +84,8 @@ static void scalar_add_loose(const EC_GROUP *group, EC_LOOSE_SCALAR *r,
   EC_LOOSE_SCALAR tmp;
   BN_ULONG v =
       bn_sub_words(tmp.words, r->words, order->d, order->width) - carry;
-  v = 0u - v;
-  for (int i = 0; i < order->width; i++) {
-    OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
-                           crypto_word_t_too_small);
-    r->words[i] = constant_time_select_w(v, r->words[i], tmp.words[i]);
-  }
+  bn_select_words(r->words, 0u - v, r->words /* tmp < 0 */,
+                  tmp.words /* tmp >= 0 */, order->width);
 }
 
 static int scalar_mod_mul_montgomery(const EC_GROUP *group, EC_SCALAR *r,

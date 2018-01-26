@@ -414,17 +414,6 @@ int BN_nnmod(BIGNUM *r, const BIGNUM *m, const BIGNUM *d, BN_CTX *ctx) {
   return (d->neg ? BN_sub : BN_add)(r, r, d);
 }
 
-// bn_select_words sets |r| to |a| if |mask| is all ones or |b| if |mask| is
-// all zeros.
-static void bn_select_words(BN_ULONG *r, BN_ULONG mask, const BN_ULONG *a,
-                            const BN_ULONG *b, size_t num) {
-  for (size_t i = 0; i < num; i++) {
-    OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
-                           crypto_word_t_too_small);
-    r[i] = constant_time_select_w(mask, a[i], b[i]);
-  }
-}
-
 // bn_mod_sub_words sets |r| to |a| - |b| (mod |m|), using |tmp| as scratch
 // space. Each array is |num| words long. |a| and |b| must be < |m|. Any pair of
 // |r|, |a|, and |b| may alias.

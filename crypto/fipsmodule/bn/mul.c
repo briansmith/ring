@@ -70,6 +70,13 @@
 #define BN_SQR_RECURSIVE_SIZE_NORMAL BN_MUL_RECURSIVE_SIZE_NORMAL
 
 
+static void bn_abs_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
+                             size_t num, BN_ULONG *tmp) {
+  BN_ULONG borrow = bn_sub_words(tmp, a, b, num);
+  bn_sub_words(r, b, a, num);
+  bn_select_words(r, 0 - borrow, r /* tmp < 0 */, tmp /* tmp >= 0 */, num);
+}
+
 static void bn_mul_normal(BN_ULONG *r, const BN_ULONG *a, size_t na,
                           const BN_ULONG *b, size_t nb) {
   if (na < nb) {
@@ -740,25 +747,19 @@ static void bn_sqr_normal(BN_ULONG *r, const BN_ULONG *a, size_t n,
   bn_add_words(r, r, tmp, max);
 }
 
-// r is 2*n words in size,
-// a and b are both n words in size.    (There's not actually a 'b' here ...)
-// n must be a power of 2.
-// We multiply and return the result.
-// t must be 2*n words in size
-// We calculate
-// a[0]*b[0]
-// a[0]*b[0]+a[1]*b[1]+(a[0]-a[1])*(b[1]-b[0])
-// a[1]*b[1]
-static void bn_sqr_recursive(BN_ULONG *r, const BN_ULONG *a, int n2,
+// bn_sqr_recursive sets |r| to |a|^2, using |t| as scratch space. |r| has
+// length 2*|n2|, |a| has length |n2|, and |t| has length 4*|n2|. |n2| must be
+// a power of two.
+static void bn_sqr_recursive(BN_ULONG *r, const BN_ULONG *a, size_t n2,
                              BN_ULONG *t) {
-  int n = n2 / 2;
-  int zero, c1;
-  BN_ULONG ln, lo, *p;
+  // |n2| is a power of two.
+  assert(n2 != 0 && (n2 & (n2 - 1)) == 0);
 
   if (n2 == 4) {
     bn_sqr_comba4(r, a);
     return;
-  } else if (n2 == 8) {
+  }
+  if (n2 == 8) {
     bn_sqr_comba8(r, a);
     return;
   }
@@ -767,62 +768,43 @@ static void bn_sqr_recursive(BN_ULONG *r, const BN_ULONG *a, int n2,
     return;
   }
 
-  // TODO(davidben): This function is not constant-time, but should be. See
-  // https://crbug.com/boringssl/234.
+  // Split |a| into a0,a1, each of size |n|.
+  // Split |t| into t0,t1,t2,t3, each of size |n|, with the remaining 4*|n| used
+  // for recursive calls.
+  // Split |r| into r0,r1,r2,r3. We must contribute a0^2 to r0,r1, 2*a0*a1 to
+  // r1,r2, and a1^2 to r2,r3.
+  size_t n = n2 / 2;
+  BN_ULONG *t_recursive = &t[n2 * 2];
 
-  // r=(a[0]-a[1])*(a[1]-a[0])
-  c1 = bn_cmp_words(a, &(a[n]), n);
-  zero = 0;
-  if (c1 > 0) {
-    bn_sub_words(t, a, &(a[n]), n);
-  } else if (c1 < 0) {
-    bn_sub_words(t, &(a[n]), a, n);
-  } else {
-    zero = 1;
+  // t0 = |a0 - a1|.
+  bn_abs_sub_words(t, a, &a[n], n, &t[n]);
+  // t2,t3 = t0^2 = |a0 - a1|^2 = a0^2 - 2*a0*a1 + a1^2
+  bn_sqr_recursive(&t[n2], t, n, t_recursive);
+
+  // r0,r1 = a0^2
+  bn_sqr_recursive(r, a, n, t_recursive);
+
+  // r2,r3 = a1^2
+  bn_sqr_recursive(&r[n2], &a[n], n, t_recursive);
+
+  // t0,t1,c = r0,r1 + r2,r3 = a0^2 + a1^2
+  BN_ULONG c = bn_add_words(t, r, &r[n2], n2);
+  // t2,t3,c = t0,t1,c - t2,t3 = 2*a0*a1
+  c -= bn_sub_words(&t[n2], t, &t[n2], n2);
+
+  // We now have our three components. Add them together.
+  // r1,r2,c = r1,r2 + t2,t3,c
+  c += bn_add_words(&r[n], &r[n], &t[n2], n2);
+
+  // Propagate the carry bit to the end.
+  for (size_t i = n + n2; i < n2 + n2; i++) {
+    BN_ULONG old = r[i];
+    r[i] = old + c;
+    c = r[i] < old;
   }
 
-  // The result will always be negative unless it is zero
-  p = &(t[n2 * 2]);
-
-  if (!zero) {
-    bn_sqr_recursive(&(t[n2]), t, n, p);
-  } else {
-    OPENSSL_memset(&(t[n2]), 0, n2 * sizeof(BN_ULONG));
-  }
-  bn_sqr_recursive(r, a, n, p);
-  bn_sqr_recursive(&(r[n2]), &(a[n]), n, p);
-
-  // t[32] holds (a[0]-a[1])*(a[1]-a[0]), it is negative or zero
-  // r[10] holds (a[0]*b[0])
-  // r[32] holds (b[1]*b[1])
-
-  c1 = (int)(bn_add_words(t, r, &(r[n2]), n2));
-
-  // t[32] is negative
-  c1 -= (int)(bn_sub_words(&(t[n2]), t, &(t[n2]), n2));
-
-  // t[32] holds (a[0]-a[1])*(a[1]-a[0])+(a[0]*a[0])+(a[1]*a[1])
-  // r[10] holds (a[0]*a[0])
-  // r[32] holds (a[1]*a[1])
-  // c1 holds the carry bits
-  c1 += (int)(bn_add_words(&(r[n]), &(r[n]), &(t[n2]), n2));
-  if (c1) {
-    p = &(r[n + n2]);
-    lo = *p;
-    ln = lo + c1;
-    *p = ln;
-
-    // The overflow will stop before we over write
-    // words we should not overwrite
-    if (ln < (BN_ULONG)c1) {
-      do {
-        p++;
-        lo = *p;
-        ln = lo + 1;
-        *p = ln;
-      } while (ln == 0);
-    }
-  }
+  // The square should fit without carries.
+  assert(c == 0);
 }
 
 int BN_mul_word(BIGNUM *bn, BN_ULONG w) {
@@ -847,25 +829,22 @@ int BN_mul_word(BIGNUM *bn, BN_ULONG w) {
 }
 
 int bn_sqr_fixed(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
-  int max, al;
-  int ret = 0;
-  BIGNUM *tmp, *rr;
-
-  al = a->width;
+  int al = a->width;
   if (al <= 0) {
     r->width = 0;
     r->neg = 0;
     return 1;
   }
 
+  int ret = 0;
   BN_CTX_start(ctx);
-  rr = (a != r) ? r : BN_CTX_get(ctx);
-  tmp = BN_CTX_get(ctx);
+  BIGNUM *rr = (a != r) ? r : BN_CTX_get(ctx);
+  BIGNUM *tmp = BN_CTX_get(ctx);
   if (!rr || !tmp) {
     goto err;
   }
 
-  max = 2 * al;  // Non-zero (from above)
+  int max = 2 * al;  // Non-zero (from above)
   if (!bn_wexpand(rr, max)) {
     goto err;
   }
@@ -879,13 +858,9 @@ int bn_sqr_fixed(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
       BN_ULONG t[BN_SQR_RECURSIVE_SIZE_NORMAL * 2];
       bn_sqr_normal(rr->d, a->d, al, t);
     } else {
-      int j, k;
-
-      j = BN_num_bits_word((BN_ULONG)al);
-      j = 1 << (j - 1);
-      k = j + j;
-      if (al == j) {
-        if (!bn_wexpand(tmp, k * 2)) {
+      // If |al| is a power of two, we can use |bn_sqr_recursive|.
+      if (al != 0 && (al & (al - 1)) == 0) {
+        if (!bn_wexpand(tmp, al * 4)) {
           goto err;
         }
         bn_sqr_recursive(rr->d, a->d, al, tmp->d);
