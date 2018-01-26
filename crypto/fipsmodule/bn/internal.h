@@ -280,16 +280,6 @@ void bn_sqr_comba8(BN_ULONG r[16], const BN_ULONG a[4]);
 // bn_sqr_comba4 sets |r| to |a|^2.
 void bn_sqr_comba4(BN_ULONG r[8], const BN_ULONG a[4]);
 
-// bn_cmp_words returns a value less than, equal to or greater than zero if
-// the, length |n|, array |a| is less than, equal to or greater than |b|.
-int bn_cmp_words(const BN_ULONG *a, const BN_ULONG *b, int n);
-
-// bn_cmp_words returns a value less than, equal to or greater than zero if the
-// array |a| is less than, equal to or greater than |b|. The arrays can be of
-// different lengths: |cl| gives the minimum of the two lengths and |dl| gives
-// the length of |a| minus the length of |b|.
-int bn_cmp_part_words(const BN_ULONG *a, const BN_ULONG *b, int cl, int dl);
-
 // bn_less_than_words returns one if |a| < |b| and zero otherwise, where |a|
 // and |b| both are |len| words long. It runs in constant time.
 int bn_less_than_words(const BN_ULONG *a, const BN_ULONG *b, size_t len);

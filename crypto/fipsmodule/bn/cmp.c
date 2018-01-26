@@ -135,48 +135,6 @@ int BN_cmp(const BIGNUM *a, const BIGNUM *b) {
   return 0;
 }
 
-int bn_cmp_words(const BN_ULONG *a, const BN_ULONG *b, int n) {
-  int i;
-  BN_ULONG aa, bb;
-
-  aa = a[n - 1];
-  bb = b[n - 1];
-  if (aa != bb) {
-    return (aa > bb) ? 1 : -1;
-  }
-
-  for (i = n - 2; i >= 0; i--) {
-    aa = a[i];
-    bb = b[i];
-    if (aa != bb) {
-      return (aa > bb) ? 1 : -1;
-    }
-  }
-  return 0;
-}
-
-int bn_cmp_part_words(const BN_ULONG *a, const BN_ULONG *b, int cl, int dl) {
-  int n, i;
-  n = cl - 1;
-
-  if (dl < 0) {
-    for (i = dl; i < 0; i++) {
-      if (b[n - i] != 0) {
-        return -1;  // a < b
-      }
-    }
-  }
-  if (dl > 0) {
-    for (i = dl; i > 0; i--) {
-      if (a[n + i] != 0) {
-        return 1;  // a > b
-      }
-    }
-  }
-
-  return bn_cmp_words(a, b, cl);
-}
-
 static int bn_less_than_words_impl(const BN_ULONG *a, size_t a_len,
                                    const BN_ULONG *b, size_t b_len) {
   OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
