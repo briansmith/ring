@@ -154,98 +154,49 @@ size_t BN_bn2bin(const BIGNUM *in, uint8_t *out) {
   return n;
 }
 
-// TODO(davidben): This does not need to be quite so complex once the |BIGNUM|s
-// we care about are fixed-width. |read_word_padded| is a hack to paper over
-// the historical |bn_minimal_width| leak. This can be simplified once that's
-// fixed.
-
-// constant_time_select_ulong returns |x| if |v| is 1 and |y| if |v| is 0. Its
-// behavior is undefined if |v| takes any other value.
-static BN_ULONG constant_time_select_ulong(int v, BN_ULONG x, BN_ULONG y) {
-  BN_ULONG mask = v;
-  mask--;
-
-  return (~mask & x) | (mask & y);
-}
-
-// constant_time_le_size_t returns 1 if |x| <= |y| and 0 otherwise. |x| and |y|
-// must not have their MSBs set.
-static int constant_time_le_size_t(size_t x, size_t y) {
-  return ((x - y - 1) >> (sizeof(size_t) * 8 - 1)) & 1;
-}
-
-// read_word_padded returns the |i|'th word of |in|, if it is not out of
-// bounds. Otherwise, it returns 0. It does so without branches on the size of
-// |in|, however it necessarily does not have the same memory access pattern. If
-// the access would be out of bounds, it reads the last word of |in|. |in| must
-// not be zero.
-static BN_ULONG read_word_padded(const BIGNUM *in, size_t i) {
-  if (in->dmax == 0) {
-    return 0;
-  }
-
-  // Read |in->d[i]| if valid. Otherwise, read the last word.
-  BN_ULONG l = in->d[constant_time_select_ulong(
-      constant_time_le_size_t(in->dmax, i), in->dmax - 1, i)];
-
-  // Clamp to zero if above |d->width|.
-  return constant_time_select_ulong(constant_time_le_size_t(in->width, i), 0,
-                                    l);
-}
-
-static int fits_in_bytes(const BIGNUM *in, size_t len) {
-  BN_ULONG mask = 0;
-  for (size_t i = (len + (BN_BYTES - 1)) / BN_BYTES; i < (size_t)in->width;
-       i++) {
-    mask |= in->d[i];
-  }
-  if ((len % BN_BYTES) != 0) {
-    BN_ULONG l = read_word_padded(in, len / BN_BYTES);
-    mask |= l >> (8 * (len % BN_BYTES));
+static int fits_in_bytes(const uint8_t *bytes, size_t num_bytes, size_t len) {
+  uint8_t mask = 0;
+  for (size_t i = len; i < num_bytes; i++) {
+    mask |= bytes[i];
   }
   return mask == 0;
 }
 
 int BN_bn2le_padded(uint8_t *out, size_t len, const BIGNUM *in) {
-  // If we don't have enough space, fail out.
-  if (!fits_in_bytes(in, len)) {
-    return 0;
-  }
-
-  size_t todo = in->width * BN_BYTES;
-  if (todo > len) {
-    todo = len;
+  const uint8_t *bytes = (const uint8_t *)in->d;
+  size_t num_bytes = in->width * BN_BYTES;
+  if (len < num_bytes) {
+    if (!fits_in_bytes(bytes, num_bytes, len)) {
+      return 0;
+    }
+    num_bytes = len;
   }
 
   // We only support little-endian platforms, so we can simply memcpy into the
   // internal representation.
-  OPENSSL_memcpy(out, in->d, todo);
-
+  OPENSSL_memcpy(out, bytes, num_bytes);
   // Pad out the rest of the buffer with zeroes.
-  OPENSSL_memset(out + todo, 0, len - todo);
-
+  OPENSSL_memset(out + num_bytes, 0, len - num_bytes);
   return 1;
 }
 
 int BN_bn2bin_padded(uint8_t *out, size_t len, const BIGNUM *in) {
-  // Check if the integer is too big. This case can exit early in non-constant
-  // time.
-  if (!fits_in_bytes(in, len)) {
-    return 0;
+  const uint8_t *bytes = (const uint8_t *)in->d;
+  size_t num_bytes = in->width * BN_BYTES;
+  if (len < num_bytes) {
+    if (!fits_in_bytes(bytes, num_bytes, len)) {
+      return 0;
+    }
+    num_bytes = len;
   }
 
-  // Write the bytes out one by one. Serialization is done without branching on
-  // the bits of |in| or on |in->width|, but if the routine would otherwise read
-  // out of bounds, the memory access pattern can't be fixed. However, for an
-  // RSA key of size a multiple of the word size, the probability of BN_BYTES
-  // leading zero octets is low.
-  //
-  // See Falko Stenzke, "Manger's Attack revisited", ICICS 2010.
-  size_t i = len;
-  while (i--) {
-    BN_ULONG l = read_word_padded(in, i / BN_BYTES);
-    *(out++) = (uint8_t)(l >> (8 * (i % BN_BYTES))) & 0xff;
+  // We only support little-endian platforms, so we can simply write the buffer
+  // in reverse.
+  for (size_t i = 0; i < num_bytes; i++) {
+    out[len - i - 1] = bytes[i];
   }
+  // Pad out the rest of the buffer with zeroes.
+  OPENSSL_memset(out, 0, len - num_bytes);
   return 1;
 }
 
