@@ -465,6 +465,10 @@ void ssl_ctx_get_current_time(const SSL_CTX *ctx,
 #endif
 }
 
+void SSL_CTX_set_handoff_mode(SSL_CTX *ctx, bool on) {
+  ctx->handoff = on;
+}
+
 }  // namespace bssl
 
 using namespace bssl;
@@ -736,6 +740,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
   ssl->signed_cert_timestamps_enabled = ctx->signed_cert_timestamps_enabled;
   ssl->ocsp_stapling_enabled = ctx->ocsp_stapling_enabled;
+  ssl->handoff = ctx->handoff;
 
   return ssl;
 
@@ -1268,6 +1273,9 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
 
     case SSL_CERTIFICATE_SELECTION_PENDING:
       return SSL_ERROR_PENDING_CERTIFICATE;
+
+    case SSL_HANDOFF:
+      return SSL_ERROR_HANDOFF;
 
     case SSL_READING: {
       BIO *bio = SSL_get_rbio(ssl);

@@ -239,10 +239,10 @@ static bool get_key_block_lengths(const SSL *ssl, size_t *out_mac_secret_len,
   return true;
 }
 
-static int tls1_configure_aead(SSL *ssl, evp_aead_direction_t direction,
-                               Array<uint8_t> *key_block_cache,
-                               const SSL_CIPHER *cipher,
-                               Span<const uint8_t> iv_override) {
+int tls1_configure_aead(SSL *ssl, evp_aead_direction_t direction,
+                        Array<uint8_t> *key_block_cache,
+                        const SSL_CIPHER *cipher,
+                        Span<const uint8_t> iv_override) {
   size_t mac_secret_len, key_len, iv_len;
   if (!get_key_block_lengths(ssl, &mac_secret_len, &key_len, &iv_len, cipher)) {
     return 0;

@@ -534,6 +534,8 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 // See also |SSL_CTX_set_custom_verify|.
 #define SSL_ERROR_WANT_CERTIFICATE_VERIFY 16
 
+#define SSL_ERROR_HANDOFF 17
+
 // SSL_set_mtu sets the |ssl|'s MTU in DTLS to |mtu|. It returns one on success
 // and zero on failure.
 OPENSSL_EXPORT int SSL_set_mtu(SSL *ssl, unsigned mtu);
@@ -3918,6 +3920,7 @@ OPENSSL_EXPORT void SSL_CTX_set_client_cert_cb(
 #define SSL_PENDING_TICKET 10
 #define SSL_EARLY_DATA_REJECTED 11
 #define SSL_CERTIFICATE_VERIFY 12
+#define SSL_HANDOFF 13
 
 // SSL_want returns one of the above values to determine what the most recent
 // operation on |ssl| was blocked on. Use |SSL_get_error| instead.
@@ -4452,6 +4455,53 @@ OPENSSL_EXPORT size_t SealRecordSuffixLen(const SSL *ssl, size_t plaintext_len);
 OPENSSL_EXPORT bool SealRecord(SSL *ssl, Span<uint8_t> out_prefix,
                                Span<uint8_t> out, Span<uint8_t> out_suffix,
                                Span<const uint8_t> in);
+
+
+// *** EXPERIMENTAL — DO NOT USE WITHOUT CHECKING ***
+//
+// Split handshakes.
+//
+// Split handshakes allows the handshake part of a TLS connection to be
+// performed in a different process (or on a different machine) than the data
+// exchange. This only applies to servers.
+//
+// In the first part of a split handshake, an |SSL| (where the |SSL_CTX| has
+// been configured with |SSL_CTX_set_handoff_mode|) is used normally. Once the
+// ClientHello message has been received, the handshake will stop and
+// |SSL_get_error| will indicate |SSL_ERROR_HANDOFF|. At this point (and only
+// at this point), |SSL_serialize_handoff| can be called to write the “handoff”
+// state of the connection.
+//
+// Elsewhere, a fresh |SSL| can be used with |SSL_apply_handoff| to continue
+// the connection. The connection from the client is fed into this |SSL| until
+// the handshake completes normally. At this point (and only at this point),
+// |SSL_serialize_handback| can be called to serialize the result of the
+// handshake.
+//
+// Back at the first location, a fresh |SSL| can be used with
+// |SSL_apply_handback|. Then the client's connection can be processed mostly
+// as normal.
+//
+// Lastly, when a connection is in the handoff state, whether or not
+// |SSL_serialize_handoff| is called, |SSL_decline_handoff| will move it back
+// into a normal state where the connection can procede without impact.
+//
+// WARNING: Currently only works with TLS 1.0–1.2.
+// WARNING: The serialisation formats are not yet stable: version skew may be
+//     fatal.
+// WARNING: The handback data contains sensitive key material and must be
+//     protected.
+// WARNING: Some calls on the final |SSL| will not work. Just as an example,
+//     calls like |SSL_get0_session_id_context| and |SSL_get_privatekey| won't
+//     work because the certificate used for handshaking isn't available.
+// WARNING: |SSL_apply_handoff| may trigger “msg” callback calls.
+
+OPENSSL_EXPORT void SSL_CTX_set_handoff_mode(SSL_CTX *ctx, bool on);
+OPENSSL_EXPORT bool SSL_serialize_handoff(const SSL *ssl, CBB *out);
+OPENSSL_EXPORT bool SSL_decline_handoff(SSL *ssl);
+OPENSSL_EXPORT bool SSL_apply_handoff(SSL *ssl, Span<const uint8_t> handoff);
+OPENSSL_EXPORT bool SSL_serialize_handback(const SSL *ssl, CBB *out);
+OPENSSL_EXPORT bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback);
 
 }  // namespace bssl
 

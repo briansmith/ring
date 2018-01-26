@@ -560,6 +560,11 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
         hs->wait = ssl_hs_ok;
         return -1;
 
+      case ssl_hs_handoff:
+        ssl->s3->rwstate = SSL_HANDOFF;
+        hs->wait = ssl_hs_ok;
+        return -1;
+
       case ssl_hs_x509_lookup:
         ssl->s3->rwstate = SSL_X509_LOOKUP;
         hs->wait = ssl_hs_ok;
