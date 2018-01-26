@@ -597,10 +597,8 @@ static int bn_mul_impl(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
         // We know |al| and |bl| are at most one from each other, so if al > j,
         // bl >= j, and vice versa. Thus we can use |bn_mul_part_recursive|.
         assert(al >= j && bl >= j);
-        // TODO(davidben): Check that these are correctly-sized, after rewriting
-        // |bn_mul_part_recursive|.
         if (!bn_wexpand(t, j * 8) ||
-            !bn_wexpand(rr, j * 8)) {
+            !bn_wexpand(rr, j * 4)) {
           goto err;
         }
         bn_mul_part_recursive(rr->d, a->d, b->d, j, al - j, bl - j, t->d);
