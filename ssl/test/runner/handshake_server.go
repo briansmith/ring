@@ -1585,6 +1585,9 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 			return errors.New("tls: short read from Rand: " + err.Error())
 		}
 	}
+	if config.Bugs.EchoSessionIDInFullHandshake {
+		hs.hello.sessionId = hs.clientHello.sessionId
+	}
 
 	hs.finishedHash = newFinishedHash(c.wireVersion, c.isDTLS, hs.suite)
 	hs.writeClientHash(hs.clientHello.marshal())

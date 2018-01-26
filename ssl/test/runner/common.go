@@ -780,8 +780,12 @@ type ProtocolBugs struct {
 	SendClientHelloSessionID []byte
 
 	// ExpectClientHelloSessionID, if true, causes the server to fail the
-	// connection if there is not a SessionID in the ClientHello.
+	// connection if there is not a session ID in the ClientHello.
 	ExpectClientHelloSessionID bool
+
+	// EchoSessionIDInFullHandshake, if true, causes the server to echo the
+	// ClientHello session ID, even in TLS 1.2 full handshakes.
+	EchoSessionIDInFullHandshake bool
 
 	// ExpectNoTLS12Session, if true, causes the server to fail the
 	// connection if either a session ID or TLS 1.2 ticket is offered.
