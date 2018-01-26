@@ -131,6 +131,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-allow-false-start-without-alpn",
     &TestConfig::allow_false_start_without_alpn },
   { "-expect-draft-downgrade", &TestConfig::expect_draft_downgrade },
+  { "-handoff", &TestConfig::handoff },
 };
 
 const Flag<std::string> kStringFlags[] = {

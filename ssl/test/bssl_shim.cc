@@ -150,6 +150,32 @@ static TestState *GetTestState(const SSL *ssl) {
   return (TestState *)SSL_get_ex_data(ssl, g_state_index);
 }
 
+static bool MoveExData(SSL *dest, SSL *src) {
+  TestState *state = GetTestState(src);
+  const TestConfig *config = GetTestConfig(src);
+  if (!SSL_set_ex_data(src, g_state_index, nullptr) ||
+      !SSL_set_ex_data(dest, g_state_index, state) ||
+      !SSL_set_ex_data(src, g_config_index, nullptr) ||
+      !SSL_set_ex_data(dest, g_config_index, (void *) config)) {
+    return false;
+  }
+
+  return true;
+}
+
+static void MoveBIOs(SSL *dest, SSL *src) {
+  BIO *rbio = SSL_get_rbio(src);
+  BIO_up_ref(rbio);
+  SSL_set0_rbio(dest, rbio);
+
+  BIO *wbio = SSL_get_wbio(src);
+  BIO_up_ref(wbio);
+  SSL_set0_wbio(dest, wbio);
+
+  SSL_set0_rbio(src, nullptr);
+  SSL_set0_wbio(src, nullptr);
+}
+
 static bool LoadCertificate(bssl::UniquePtr<X509> *out_x509,
                             bssl::UniquePtr<STACK_OF(X509)> *out_chain,
                             const std::string &file) {
@@ -1902,7 +1928,8 @@ static bool WriteSettings(int i, const TestConfig *config,
   return fwrite(settings, settings_len, 1, file.get()) == 1;
 }
 
-static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session, SSL *ssl,
+static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
+                       bssl::UniquePtr<SSL> *ssl_uniqueptr,
                        const TestConfig *config, bool is_resume, bool is_retry);
 
 // DoConnection tests an SSL connection against the peer. On success, it returns
@@ -2155,7 +2182,7 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     SSL_set_connect_state(ssl.get());
   }
 
-  bool ret = DoExchange(out_session, ssl.get(), config, is_resume, false);
+  bool ret = DoExchange(out_session, &ssl, config, is_resume, false);
   if (!config->is_server && is_resume && config->expect_reject_early_data) {
     // We must have failed due to an early data rejection.
     if (ret) {
@@ -2189,7 +2216,8 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
       return false;
     }
 
-    ret = DoExchange(out_session, ssl.get(), retry_config, is_resume, true);
+    assert(!config->handoff);
+    ret = DoExchange(out_session, &ssl, retry_config, is_resume, true);
   }
 
   if (!ret) {
@@ -2212,19 +2240,108 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   return true;
 }
 
-static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session, SSL *ssl,
+static bool HandoffReady(SSL *ssl, int ret) {
+  return ret < 0 && SSL_get_error(ssl, ret) == SSL_ERROR_HANDOFF;
+}
+
+static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
+                       bssl::UniquePtr<SSL> *ssl_uniqueptr,
                        const TestConfig *config, bool is_resume,
                        bool is_retry) {
   int ret;
+  SSL *ssl = ssl_uniqueptr->get();
+
   if (!config->implicit_handshake) {
+    if (config->handoff) {
+      bssl::UniquePtr<SSL_CTX> ctx_handoff(SSL_CTX_new(TLSv1_method()));
+      if (!ctx_handoff) {
+        return false;
+      }
+      SSL_CTX_set_handoff_mode(ctx_handoff.get(), 1);
+
+      bssl::UniquePtr<SSL> ssl_handoff(SSL_new(ctx_handoff.get()));
+      if (!ssl_handoff) {
+        return false;
+      }
+      SSL_set_accept_state(ssl_handoff.get());
+      if (!MoveExData(ssl_handoff.get(), ssl)) {
+        return false;
+      }
+      MoveBIOs(ssl_handoff.get(), ssl);
+
+      do {
+        ret = CheckIdempotentError("SSL_do_handshake", ssl_handoff.get(),
+                                   [&]() -> int {
+          return SSL_do_handshake(ssl_handoff.get());
+        });
+      } while (!HandoffReady(ssl_handoff.get(), ret) &&
+               config->async &&
+               RetryAsync(ssl_handoff.get(), ret));
+
+      if (!HandoffReady(ssl_handoff.get(), ret)) {
+        fprintf(stderr, "Handshake failed while waiting for handoff.\n");
+        return false;
+      }
+
+      bssl::ScopedCBB cbb;
+      bssl::Array<uint8_t> handoff;
+      if (!CBB_init(cbb.get(), 512) ||
+          !SSL_serialize_handoff(ssl_handoff.get(), cbb.get()) ||
+          !CBBFinishArray(cbb.get(), &handoff)) {
+        fprintf(stderr, "Handoff serialisation failed.\n");
+        return false;
+      }
+
+      MoveBIOs(ssl, ssl_handoff.get());
+      if (!MoveExData(ssl, ssl_handoff.get())) {
+        return false;
+      }
+
+      if (!SSL_apply_handoff(ssl, handoff)) {
+        fprintf(stderr, "Handoff application failed.\n");
+        return false;
+      }
+    }
+
     do {
       ret = CheckIdempotentError("SSL_do_handshake", ssl, [&]() -> int {
         return SSL_do_handshake(ssl);
       });
     } while (config->async && RetryAsync(ssl, ret));
+
     if (ret != 1 ||
         !CheckHandshakeProperties(ssl, is_resume, config)) {
       return false;
+    }
+
+    if (config->handoff) {
+      bssl::ScopedCBB cbb;
+      bssl::Array<uint8_t> handback;
+      if (!CBB_init(cbb.get(), 512) ||
+          !SSL_serialize_handback(ssl, cbb.get()) ||
+          !CBBFinishArray(cbb.get(), &handback)) {
+        fprintf(stderr, "Handback serialisation failed.\n");
+        return false;
+      }
+
+      bssl::UniquePtr<SSL_CTX> ctx_handback(SSL_CTX_new(TLSv1_method()));
+      SSL_CTX_set_msg_callback(ctx_handback.get(), MessageCallback);
+      bssl::UniquePtr<SSL> ssl_handback(SSL_new(ctx_handback.get()));
+      if (!ssl_handback) {
+        return false;
+      }
+      if (!SSL_apply_handback(ssl_handback.get(), handback)) {
+        fprintf(stderr, "Applying handback failed.\n");
+        return false;
+      }
+
+      MoveBIOs(ssl_handback.get(), ssl);
+      if (!MoveExData(ssl_handback.get(), ssl)) {
+        return false;
+      }
+
+      *ssl_uniqueptr = std::move(ssl_handback);
+      ssl = ssl_uniqueptr->get();
     }
 
     if (is_resume && !is_retry && !config->is_server &&
