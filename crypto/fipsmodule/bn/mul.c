@@ -61,6 +61,7 @@
 
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/type_check.h>
 
 #include "internal.h"
 #include "../../internal.h"
@@ -286,25 +287,43 @@ BN_ULONG bn_sub_part_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
                            int cl, int dl);
 #endif
 
+// bn_abs_sub_part_words computes |r| = |a| - |b|, storing the absolute value
+// and returning a mask of all ones if the result was negative and all zeros if
+// the result was positive. |cl| and |dl| follow the |bn_sub_part_words| calling
+// convention.
+//
+// TODO(davidben): Make this take |size_t|. The |cl| + |dl| calling convention
+// is confusing. The trouble is 32-bit x86 implements |bn_sub_part_words| in
+// assembly, but we can probably just delete it?
+static BN_ULONG bn_abs_sub_part_words(BN_ULONG *r, const BN_ULONG *a,
+                                      const BN_ULONG *b, int cl, int dl,
+                                      BN_ULONG *tmp) {
+  BN_ULONG borrow = bn_sub_part_words(tmp, a, b, cl, dl);
+  bn_sub_part_words(r, b, a, cl, -dl);
+  int r_len = cl + (dl < 0 ? -dl : dl);
+  borrow = 0 - borrow;
+  bn_select_words(r, borrow, r /* tmp < 0 */, tmp /* tmp >= 0 */, r_len);
+  return borrow;
+}
+
 // Karatsuba recursive multiplication algorithm
 // (cf. Knuth, The Art of Computer Programming, Vol. 2)
 
-// r is 2*n2 words in size,
-// a and b are both n2 words in size.
-// n2 must be a power of 2.
-// We multiply and return the result.
-// t must be 2*n2 words in size
-// We calculate
-// a[0]*b[0]
-// a[0]*b[0]+a[1]*b[1]+(a[0]-a[1])*(b[1]-b[0])
-// a[1]*b[1]
-// dnX may not be positive, but n2/2+dnX has to be
+// bn_mul_recursive sets |r| to |a| * |b|, using |t| as scratch space. |r| has
+// length 2*|n2|, |a| has length |n2| + |dna|, |b| has length |n2| + |dnb|, and
+// |t| has length 4*|n2|. |n2| must be a power of two. Finally, we must have
+// -|BN_MUL_RECURSIVE_SIZE_NORMAL|/2 <= |dna| <= 0 and
+// -|BN_MUL_RECURSIVE_SIZE_NORMAL|/2 <= |dnb| <= 0.
+//
+// TODO(davidben): Simplify and |size_t| the calling convention around lengths
+// here.
 static void bn_mul_recursive(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
                              int n2, int dna, int dnb, BN_ULONG *t) {
-  int n = n2 / 2, c1, c2;
-  int tna = n + dna, tnb = n + dnb;
-  unsigned int neg, zero;
-  BN_ULONG ln, lo, *p;
+  // |n2| is a power of two.
+  assert(n2 != 0 && (n2 & (n2 - 1)) == 0);
+  // Check |dna| and |dnb| are in range.
+  assert(-BN_MUL_RECURSIVE_SIZE_NORMAL/2 <= dna && dna <= 0);
+  assert(-BN_MUL_RECURSIVE_SIZE_NORMAL/2 <= dnb && dnb <= 0);
 
   // Only call bn_mul_comba 8 if n2 == 8 and the
   // two arrays are complete [steve]
@@ -316,119 +335,78 @@ static void bn_mul_recursive(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   // Else do normal multiply
   if (n2 < BN_MUL_RECURSIVE_SIZE_NORMAL) {
     bn_mul_normal(r, a, n2 + dna, b, n2 + dnb);
-    if ((dna + dnb) < 0) {
+    if (dna + dnb < 0) {
       OPENSSL_memset(&r[2 * n2 + dna + dnb], 0,
                      sizeof(BN_ULONG) * -(dna + dnb));
     }
     return;
   }
 
-  // TODO(davidben): This function is not constant-time, but should be. See
-  // https://crbug.com/boringssl/234.
+  // Split |a| and |b| into a0,a1 and b0,b1, where a0 and b0 have size |n|.
+  // Split |t| into t0,t1,t2,t3, each of size |n|, with the remaining 4*|n| used
+  // for recursive calls.
+  // Split |r| into r0,r1,r2,r3. We must contribute a0*b0 to r0,r1, a0*a1+b0*b1
+  // to r1,r2, and a1*b1 to r2,r3. The middle term we will compute as:
+  //
+  //   a0*a1 + b0*b1 = (a0 - a1)*(b1 - b0) + a1*b1 + a0*b0
+  //
+  // Note that we know |n| >= |BN_MUL_RECURSIVE_SIZE_NORMAL|/2 above, so
+  // |tna| and |tnb| are non-negative.
+  int n = n2 / 2, tna = n + dna, tnb = n + dnb;
 
-  // r=(a[0]-a[1])*(b[1]-b[0])
-  c1 = bn_cmp_part_words(a, &(a[n]), tna, n - tna);
-  c2 = bn_cmp_part_words(&(b[n]), b, tnb, tnb - n);
-  zero = neg = 0;
-  switch (c1 * 3 + c2) {
-    case -4:
-      bn_sub_part_words(t, &(a[n]), a, tna, tna - n);        // -
-      bn_sub_part_words(&(t[n]), b, &(b[n]), tnb, n - tnb);  // -
-      break;
-    case -3:
-      zero = 1;
-      break;
-    case -2:
-      bn_sub_part_words(t, &(a[n]), a, tna, tna - n);        // -
-      bn_sub_part_words(&(t[n]), &(b[n]), b, tnb, tnb - n);  // +
-      neg = 1;
-      break;
-    case -1:
-    case 0:
-    case 1:
-      zero = 1;
-      break;
-    case 2:
-      bn_sub_part_words(t, a, &(a[n]), tna, n - tna);        // +
-      bn_sub_part_words(&(t[n]), b, &(b[n]), tnb, n - tnb);  // -
-      neg = 1;
-      break;
-    case 3:
-      zero = 1;
-      break;
-    case 4:
-      bn_sub_part_words(t, a, &(a[n]), tna, n - tna);
-      bn_sub_part_words(&(t[n]), &(b[n]), b, tnb, tnb - n);
-      break;
-  }
+  // t0 = a0 - a1 and t1 = b1 - b0. The result will be multiplied, so we XOR
+  // their sign masks, giving the sign of (a0 - a1)*(b1 - b0). t0 and t1
+  // themselves store the absolute value.
+  BN_ULONG neg = bn_abs_sub_part_words(t, a, &a[n], tna, n - tna, &t[n2]);
+  neg ^= bn_abs_sub_part_words(&t[n], &b[n], b, tnb, tnb - n, &t[n2]);
 
+  // Compute:
+  // t2,t3 = t0 * t1 = |(a0 - a1)*(b1 - b0)|
+  // r0,r1 = a0 * b0
+  // r2,r3 = a1 * b1
   if (n == 4 && dna == 0 && dnb == 0) {
-    // XXX: bn_mul_comba4 could take extra args to do this well
-    if (!zero) {
-      bn_mul_comba4(&(t[n2]), t, &(t[n]));
-    } else {
-      OPENSSL_memset(&(t[n2]), 0, 8 * sizeof(BN_ULONG));
-    }
+    bn_mul_comba4(&t[n2], t, &t[n]);
 
     bn_mul_comba4(r, a, b);
-    bn_mul_comba4(&(r[n2]), &(a[n]), &(b[n]));
+    bn_mul_comba4(&r[n2], &a[n], &b[n]);
   } else if (n == 8 && dna == 0 && dnb == 0) {
-    // XXX: bn_mul_comba8 could take extra args to do this well
-    if (!zero) {
-      bn_mul_comba8(&(t[n2]), t, &(t[n]));
-    } else {
-      OPENSSL_memset(&(t[n2]), 0, 16 * sizeof(BN_ULONG));
-    }
+    bn_mul_comba8(&t[n2], t, &t[n]);
 
     bn_mul_comba8(r, a, b);
-    bn_mul_comba8(&(r[n2]), &(a[n]), &(b[n]));
+    bn_mul_comba8(&r[n2], &a[n], &b[n]);
   } else {
-    p = &(t[n2 * 2]);
-    if (!zero) {
-      bn_mul_recursive(&(t[n2]), t, &(t[n]), n, 0, 0, p);
-    } else {
-      OPENSSL_memset(&(t[n2]), 0, n2 * sizeof(BN_ULONG));
-    }
+    BN_ULONG *p = &t[n2 * 2];
+    bn_mul_recursive(&t[n2], t, &t[n], n, 0, 0, p);
     bn_mul_recursive(r, a, b, n, 0, 0, p);
-    bn_mul_recursive(&(r[n2]), &(a[n]), &(b[n]), n, dna, dnb, p);
+    bn_mul_recursive(&r[n2], &a[n], &b[n], n, dna, dnb, p);
   }
 
-  // t[32] holds (a[0]-a[1])*(b[1]-b[0]), c1 is the sign
-  // r[10] holds (a[0]*b[0])
-  // r[32] holds (b[1]*b[1])
+  // t0,t1,c = r0,r1 + r2,r3 = a0*b0 + a1*b1
+  BN_ULONG c = bn_add_words(t, r, &r[n2], n2);
 
-  c1 = (int)(bn_add_words(t, r, &(r[n2]), n2));
+  // t2,t3,c = t0,t1,c + neg*t2,t3 = (a0 - a1)*(b1 - b0) + a1*b1 + a0*b0.
+  // The second term is stored as the absolute value, so we do this with a
+  // constant-time select.
+  BN_ULONG c_neg = c - bn_sub_words(&t[n2 * 2], t, &t[n2], n2);
+  BN_ULONG c_pos = c + bn_add_words(&t[n2], t, &t[n2], n2);
+  bn_select_words(&t[n2], neg, &t[n2 * 2], &t[n2], n2);
+  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
+                         crypto_word_t_too_small);
+  c = constant_time_select_w(neg, c_neg, c_pos);
 
-  if (neg) {
-    // if t[32] is negative
-    c1 -= (int)(bn_sub_words(&(t[n2]), t, &(t[n2]), n2));
-  } else {
-    // Might have a carry
-    c1 += (int)(bn_add_words(&(t[n2]), &(t[n2]), t, n2));
+  // We now have our three components. Add them together.
+  // r1,r2,c = r1,r2 + t2,t3,c
+  c += bn_add_words(&r[n], &r[n], &t[n2], n2);
+
+  // Propagate the carry bit to the end.
+  for (int i = n + n2; i < n2 + n2; i++) {
+    BN_ULONG old = r[i];
+    r[i] = old + c;
+    c = r[i] < old;
   }
 
-  // t[32] holds (a[0]-a[1])*(b[1]-b[0])+(a[0]*b[0])+(a[1]*b[1])
-  // r[10] holds (a[0]*b[0])
-  // r[32] holds (b[1]*b[1])
-  // c1 holds the carry bits
-  c1 += (int)(bn_add_words(&(r[n]), &(r[n]), &(t[n2]), n2));
-  if (c1) {
-    p = &(r[n + n2]);
-    lo = *p;
-    ln = lo + c1;
-    *p = ln;
-
-    // The overflow will stop before we over write
-    // words we should not overwrite
-    if (ln < (BN_ULONG)c1) {
-      do {
-        p++;
-        lo = *p;
-        ln = lo + 1;
-        *p = ln;
-      } while (ln == 0);
-    }
-  }
+  // The product should fit without carries.
+  assert(c == 0);
 }
 
 // n+tn is the word length
