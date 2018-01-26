@@ -465,48 +465,32 @@ static void bn_mul_part_recursive(BN_ULONG *r, const BN_ULONG *a,
     bn_mul_recursive(&t[n2], t, &t[n], n, 0, 0, p);
     bn_mul_recursive(r, a, b, n, 0, 0, p);
 
-    int i = n / 2, j;
-    if (tna > tnb) {
-      j = tna - i;
+    OPENSSL_memset(&r[n2], 0, sizeof(BN_ULONG) * n2);
+    if (tna < BN_MUL_RECURSIVE_SIZE_NORMAL &&
+        tnb < BN_MUL_RECURSIVE_SIZE_NORMAL) {
+      bn_mul_normal(&r[n2], &a[n], tna, &b[n], tnb);
     } else {
-      j = tnb - i;
-    }
-
-    if (j == 0) {
-      // If there is only a bottom half to the number, just do it. We know the
-      // larger of |tna - i| and |tnb - i| is zero. The other is zero or -1
-      // because |tna| and |tnb| differ by at most one.
-      bn_mul_recursive(&r[n2], &a[n], &b[n], i, tna - i, tnb - i, p);
-      // |bn_mul_recursive| only writes the bottom |i|*2 words.
-      OPENSSL_memset(&r[n2 + i * 2], 0, sizeof(BN_ULONG) * (n2 - i * 2));
-    } else if (j > 0) {
-      // E.g,, n == 16, i == 8 and tna == 11.
-      // |tna| and |tnb| are within one of each other, so if |tna| is larger and
-      // tna > i, then we know tnb >= i, and this call is valid.
-      bn_mul_part_recursive(&r[n2], &a[n], &b[n], i, tna - i, tnb - i, p);
-    } else {
-      // (j < 0) E.g., n == 16, i == 8 and tn == 5
-      OPENSSL_memset(&r[n2], 0, sizeof(BN_ULONG) * n2);
-      if (tna < BN_MUL_RECURSIVE_SIZE_NORMAL &&
-          tnb < BN_MUL_RECURSIVE_SIZE_NORMAL) {
-        bn_mul_normal(&r[n2], &a[n], tna, &b[n], tnb);
-      } else {
-        for (;;) {
-          i /= 2;
-          // These simplified conditions work exclusively because difference
-          // between |tna| and |tnb| is 1 or 0.
-          //
-          // TODO(davidben): This loop condition is exactly the same as the
-          // |j > 0| one but more complicated. Merge them.
-          if (i < tna || i < tnb) {
-            bn_mul_part_recursive(&r[n2], &a[n], &b[n], i, tna - i, tnb - i, p);
-            break;
-          }
-          if (i == tna || i == tnb) {
-            bn_mul_recursive(&r[n2], &a[n], &b[n], i, tna - i, tnb - i, p);
-            break;
-          }
+      int i = n;
+      for (;;) {
+        i /= 2;
+        if (i < tna || i < tnb) {
+          // E.g., n == 16, i == 8 and tna == 11. |tna| and |tnb| are within one
+          // of each other, so if |tna| is larger and tna > i, then we know
+          // tnb >= i, and this call is valid.
+          bn_mul_part_recursive(&r[n2], &a[n], &b[n], i, tna - i, tnb - i, p);
+          break;
         }
+        if (i == tna || i == tnb) {
+          // If there is only a bottom half to the number, just do it. We know
+          // the larger of |tna - i| and |tnb - i| is zero. The other is zero or
+          // -1 by because of |tna| and |tnb| differ by at most one.
+          bn_mul_recursive(&r[n2], &a[n], &b[n], i, tna - i, tnb - i, p);
+          break;
+        }
+
+        // This loop will eventually terminate when |i| falls below
+        // |BN_MUL_RECURSIVE_SIZE_NORMAL| because we know one of |tna| and |tnb|
+        // exceeds that.
       }
     }
   }
