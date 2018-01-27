@@ -706,7 +706,7 @@ enum bn_primality_result_t {
 // than the number-field sieve security level of |w| is used. It returns one on
 // success and zero on failure. If |cb| is not NULL, then it is called during
 // each iteration of the primality test.
-int BN_enhanced_miller_rabin_primality_test(
+OPENSSL_EXPORT int BN_enhanced_miller_rabin_primality_test(
     enum bn_primality_result_t *out_result, const BIGNUM *w, int iterations,
     BN_CTX *ctx, BN_GENCB *cb);
 

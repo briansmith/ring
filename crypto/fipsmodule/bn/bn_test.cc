@@ -1856,6 +1856,7 @@ TEST_F(BNTest, PrimeChecking) {
   bssl::UniquePtr<BIGNUM> p(BN_new());
   ASSERT_TRUE(p);
   int is_probably_prime_1 = 0, is_probably_prime_2 = 0;
+  enum bn_primality_result_t result_3;
 
   const int max_prime = kPrimes[OPENSSL_ARRAY_SIZE(kPrimes)-1];
   size_t next_prime_index = 0;
@@ -1878,6 +1879,11 @@ TEST_F(BNTest, PrimeChecking) {
         &is_probably_prime_2, p.get(), BN_prime_checks, ctx(),
         true /* do_trial_division */, nullptr /* callback */));
     EXPECT_EQ(is_prime ? 1 : 0, is_probably_prime_2);
+    if (i > 3 && i % 2 == 1) {
+      ASSERT_TRUE(BN_enhanced_miller_rabin_primality_test(
+          &result_3, p.get(), BN_prime_checks, ctx(), nullptr /* callback */));
+      EXPECT_EQ(is_prime, result_3 == bn_probably_prime);
+    }
   }
 
   // Negative numbers are not prime.
@@ -1920,6 +1926,10 @@ TEST_F(BNTest, PrimeChecking) {
         &is_probably_prime_2, p.get(), BN_prime_checks, ctx(),
         true /* do_trial_division */, nullptr /* callback */));
     EXPECT_EQ(0, is_probably_prime_2);
+
+    ASSERT_TRUE(BN_enhanced_miller_rabin_primality_test(
+        &result_3, p.get(), BN_prime_checks, ctx(), nullptr /* callback */));
+    EXPECT_EQ(bn_composite, result_3);
   }
 }
 
