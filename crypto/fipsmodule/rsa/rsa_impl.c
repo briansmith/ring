@@ -191,7 +191,7 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
       if (rsa->inv_small_mod_large_mont == NULL) {
         BIGNUM *inv_small_mod_large_mont = BN_new();
         int ok;
-        if (BN_less_than_consttime(rsa->p, rsa->q)) {
+        if (BN_cmp(rsa->p, rsa->q) < 0) {
           ok = inv_small_mod_large_mont != NULL &&
                bn_mod_inverse_secret_prime(inv_small_mod_large_mont, rsa->p,
                                            rsa->q, ctx, rsa->mont_q) &&
@@ -816,7 +816,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
   // larger. Canonicalize fields so that |p| is the larger prime.
   const BIGNUM *p = rsa->p, *q = rsa->q, *dmp1 = rsa->dmp1, *dmq1 = rsa->dmq1;
   const BN_MONT_CTX *mont_p = rsa->mont_p, *mont_q = rsa->mont_q;
-  if (BN_less_than_consttime(rsa->p, rsa->q)) {
+  if (BN_cmp(rsa->p, rsa->q) < 0) {
     p = rsa->q;
     q = rsa->p;
     mont_p = rsa->mont_q;
@@ -964,7 +964,7 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
     // retrying. That is, we reject a negligible fraction of primes that are
     // within the FIPS bound, but we will never accept a prime outside the
     // bound, ensuring the resulting RSA key is the right size.
-    if (!BN_less_than_consttime(sqrt2, out)) {
+    if (BN_cmp(out, sqrt2) <= 0) {
       continue;
     }
 

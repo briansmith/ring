@@ -260,7 +260,6 @@ int EC_KEY_set_private_key(EC_KEY *key, const BIGNUM *priv_key) {
     return 0;
   }
 
-  // XXX: |BN_cmp| is not constant time.
   if (BN_is_negative(priv_key) ||
       BN_cmp(priv_key, EC_GROUP_get0_order(key->group)) >= 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_WRONG_ORDER);
@@ -334,7 +333,6 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
   // in case the priv_key is present :
   // check if generator * priv_key == pub_key
   if (eckey->priv_key) {
-    // XXX: |BN_cmp| is not constant time.
     if (BN_is_negative(eckey->priv_key) ||
         BN_cmp(eckey->priv_key, EC_GROUP_get0_order(eckey->group)) >= 0) {
       OPENSSL_PUT_ERROR(EC, EC_R_WRONG_ORDER);

@@ -63,32 +63,43 @@
 #include "../../internal.h"
 
 
-int BN_ucmp(const BIGNUM *a, const BIGNUM *b) {
-  int a_width = bn_minimal_width(a);
-  int b_width = bn_minimal_width(b);
-  int i = a_width - b_width;
-  if (i != 0) {
-    return i;
+static int bn_cmp_words_consttime(const BN_ULONG *a, size_t a_len,
+                                  const BN_ULONG *b, size_t b_len) {
+  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
+                         crypto_word_t_too_small);
+  int ret = 0;
+  // Process the common words in little-endian order.
+  size_t min = a_len < b_len ? a_len : b_len;
+  for (size_t i = 0; i < min; i++) {
+    crypto_word_t eq = constant_time_eq_w(a[i], b[i]);
+    crypto_word_t lt = constant_time_lt_w(a[i], b[i]);
+    ret =
+        constant_time_select_int(eq, ret, constant_time_select_int(lt, -1, 1));
   }
 
-  const BN_ULONG *ap = a->d;
-  const BN_ULONG *bp = b->d;
-  for (i = a_width - 1; i >= 0; i--) {
-    BN_ULONG t1 = ap[i];
-    BN_ULONG t2 = bp[i];
-    if (t1 != t2) {
-      return (t1 > t2) ? 1 : -1;
+  // If |a| or |b| has non-zero words beyond |min|, they take precedence.
+  if (a_len < b_len) {
+    crypto_word_t mask = 0;
+    for (size_t i = a_len; i < b_len; i++) {
+      mask |= b[i];
     }
+    ret = constant_time_select_int(constant_time_is_zero_w(mask), ret, -1);
+  } else if (b_len < a_len) {
+    crypto_word_t mask = 0;
+    for (size_t i = b_len; i < a_len; i++) {
+      mask |= a[i];
+    }
+    ret = constant_time_select_int(constant_time_is_zero_w(mask), ret, 1);
   }
 
-  return 0;
+  return ret;
+}
+
+int BN_ucmp(const BIGNUM *a, const BIGNUM *b) {
+  return bn_cmp_words_consttime(a->d, a->width, b->d, b->width);
 }
 
 int BN_cmp(const BIGNUM *a, const BIGNUM *b) {
-  int i;
-  int gt, lt;
-  BN_ULONG t1, t2;
-
   if ((a == NULL) || (b == NULL)) {
     if (a != NULL) {
       return -1;
@@ -99,75 +110,21 @@ int BN_cmp(const BIGNUM *a, const BIGNUM *b) {
     }
   }
 
+  // We do not attempt to process the sign bit in constant time. Negative
+  // |BIGNUM|s should never occur in crypto, only calculators.
   if (a->neg != b->neg) {
     if (a->neg) {
       return -1;
     }
     return 1;
   }
-  if (a->neg == 0) {
-    gt = 1;
-    lt = -1;
-  } else {
-    gt = -1;
-    lt = 1;
-  }
 
-  int a_width = bn_minimal_width(a);
-  int b_width = bn_minimal_width(b);
-  if (a_width > b_width) {
-    return gt;
-  }
-  if (a_width < b_width) {
-    return lt;
-  }
-
-  for (i = a_width - 1; i >= 0; i--) {
-    t1 = a->d[i];
-    t2 = b->d[i];
-    if (t1 > t2) {
-      return gt;
-    } if (t1 < t2) {
-      return lt;
-    }
-  }
-
-  return 0;
-}
-
-static int bn_less_than_words_impl(const BN_ULONG *a, size_t a_len,
-                                   const BN_ULONG *b, size_t b_len) {
-  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
-                         crypto_word_t_too_small);
-  int ret = 0;
-  // Process the common words in little-endian order.
-  size_t min = a_len < b_len ? a_len : b_len;
-  for (size_t i = 0; i < min; i++) {
-    crypto_word_t eq = constant_time_eq_w(a[i], b[i]);
-    crypto_word_t lt = constant_time_lt_w(a[i], b[i]);
-    ret = constant_time_select_int(eq, ret, constant_time_select_int(lt, 1, 0));
-  }
-
-  // If |a| or |b| has non-zero words beyond |min|, they take precedence.
-  if (a_len < b_len) {
-    crypto_word_t mask = 0;
-    for (size_t i = a_len; i < b_len; i++) {
-      mask |= b[i];
-    }
-    ret = constant_time_select_int(constant_time_is_zero_w(mask), ret, 1);
-  } else if (b_len < a_len) {
-    crypto_word_t mask = 0;
-    for (size_t i = b_len; i < a_len; i++) {
-      mask |= a[i];
-    }
-    ret = constant_time_select_int(constant_time_is_zero_w(mask), ret, 0);
-  }
-
-  return ret;
+  int ret = BN_ucmp(a, b);
+  return a->neg ? -ret : ret;
 }
 
 int bn_less_than_words(const BN_ULONG *a, const BN_ULONG *b, size_t len) {
-  return bn_less_than_words_impl(a, len, b, len);
+  return bn_cmp_words_consttime(a, len, b, len) < 0;
 }
 
 int BN_abs_is_word(const BIGNUM *bn, BN_ULONG w) {
@@ -240,21 +197,4 @@ int BN_equal_consttime(const BIGNUM *a, const BIGNUM *b) {
   // The sign bit must match.
   mask |= (a->neg ^ b->neg);
   return mask == 0;
-}
-
-int BN_less_than_consttime(const BIGNUM *a, const BIGNUM *b) {
-  // We do not attempt to process the sign bit in constant time. Negative
-  // |BIGNUM|s should never occur in crypto, only calculators.
-  if (a->neg && !b->neg) {
-    return 1;
-  }
-  if (b->neg && !a->neg) {
-    return 0;
-  }
-  if (a->neg && b->neg) {
-    const BIGNUM *tmp = a;
-    a = b;
-    b = tmp;
-  }
-  return bn_less_than_words_impl(a->d, a->width, b->d, b->width);
 }

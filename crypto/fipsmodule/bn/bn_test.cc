@@ -1988,24 +1988,20 @@ TEST_F(BNTest, NonMinimal) {
 
     EXPECT_TRUE(BN_equal_consttime(ten.get(), ten_copy.get()));
     EXPECT_TRUE(BN_equal_consttime(ten_copy.get(), ten.get()));
-    EXPECT_FALSE(BN_less_than_consttime(ten.get(), ten_copy.get()));
-    EXPECT_FALSE(BN_less_than_consttime(ten_copy.get(), ten.get()));
     EXPECT_EQ(BN_cmp(ten.get(), ten_copy.get()), 0);
+    EXPECT_EQ(BN_cmp(ten_copy.get(), ten.get()), 0);
 
     EXPECT_FALSE(BN_equal_consttime(ten.get(), eight.get()));
-    EXPECT_FALSE(BN_less_than_consttime(ten.get(), eight.get()));
-    EXPECT_TRUE(BN_less_than_consttime(eight.get(), ten.get()));
     EXPECT_LT(BN_cmp(eight.get(), ten.get()), 0);
+    EXPECT_GT(BN_cmp(ten.get(), eight.get()), 0);
 
     EXPECT_FALSE(BN_equal_consttime(ten.get(), forty_two.get()));
-    EXPECT_TRUE(BN_less_than_consttime(ten.get(), forty_two.get()));
-    EXPECT_FALSE(BN_less_than_consttime(forty_two.get(), ten.get()));
     EXPECT_GT(BN_cmp(forty_two.get(), ten.get()), 0);
+    EXPECT_LT(BN_cmp(ten.get(), forty_two.get()), 0);
 
     EXPECT_FALSE(BN_equal_consttime(ten.get(), two_exp_256.get()));
-    EXPECT_TRUE(BN_less_than_consttime(ten.get(), two_exp_256.get()));
-    EXPECT_FALSE(BN_less_than_consttime(two_exp_256.get(), ten.get()));
     EXPECT_GT(BN_cmp(two_exp_256.get(), ten.get()), 0);
+    EXPECT_LT(BN_cmp(ten.get(), two_exp_256.get()), 0);
 
     EXPECT_EQ(4u, BN_num_bits(ten.get()));
     EXPECT_EQ(1u, BN_num_bytes(ten.get()));
