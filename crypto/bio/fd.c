@@ -73,6 +73,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <openssl/mem.h>
 
 #include "internal.h"
+#include "../internal.h"
 
 
 static int bio_fd_non_fatal_error(int err) {
