@@ -304,3 +304,19 @@ int BN_mask_bits(BIGNUM *a, int n) {
   bn_set_minimal_width(a);
   return 1;
 }
+
+int BN_count_low_zero_bits(const BIGNUM *bn) {
+  for (int i = 0; i < bn->width; i++) {
+    if (bn->d[i] != 0) {
+      int bits = 0;
+      for (BN_ULONG w = bn->d[i]; (w & 1) == 0; w >>= 1) {
+        bits++;
+      }
+      return i * BN_BITS2 + bits;
+    }
+  }
+
+  // We got to the end of |bn| and saw no non-zero words. |bn| is zero, so
+  // return zero.
+  return 0;
+}

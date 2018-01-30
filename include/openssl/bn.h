@@ -459,6 +459,7 @@ OPENSSL_EXPORT int BN_is_odd(const BIGNUM *bn);
 // BN_is_pow2 returns 1 if |a| is a power of two, and 0 otherwise.
 OPENSSL_EXPORT int BN_is_pow2(const BIGNUM *a);
 
+
 // Bitwise operations.
 
 // BN_lshift sets |r| equal to |a| << n. The |a| and |r| arguments may be the
@@ -494,6 +495,11 @@ OPENSSL_EXPORT int BN_is_bit_set(const BIGNUM *a, int n);
 // BN_mask_bits truncates |a| so that it is only |n| bits long. It returns one
 // on success or zero if |n| is greater than the length of |a| already.
 OPENSSL_EXPORT int BN_mask_bits(BIGNUM *a, int n);
+
+// BN_count_low_zero_bits returns the number of low-order zero bits in |bn|, or
+// the number of factors of two which divide it. It returns zero if |bn| is
+// zero.
+OPENSSL_EXPORT int BN_count_low_zero_bits(const BIGNUM *bn);
 
 
 // Modulo arithmetic.
