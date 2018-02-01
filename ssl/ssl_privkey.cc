@@ -205,6 +205,9 @@ enum ssl_private_key_result_t ssl_private_key_sign(
       ret = ssl->cert->key_method->sign(ssl, out, out_len, max_out, sigalg,
                                         in.data(), in.size());
     }
+    if (ret == ssl_private_key_failure) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_PRIVATE_KEY_OPERATION_FAILED);
+    }
     hs->pending_private_key_op = ret == ssl_private_key_retry;
     return ret;
   }
@@ -240,6 +243,9 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
     } else {
       ret = ssl->cert->key_method->decrypt(ssl, out, out_len, max_out,
                                            in.data(), in.size());
+    }
+    if (ret == ssl_private_key_failure) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_PRIVATE_KEY_OPERATION_FAILED);
     }
     hs->pending_private_key_op = ret == ssl_private_key_retry;
     return ret;
