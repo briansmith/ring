@@ -100,8 +100,11 @@ $code.=<<___;
 .type	ecp_nistz256_neg,\@function,2
 .align	32
 ecp_nistz256_neg:
+.cfi_startproc
 	push	%r12
+.cfi_push	%r12
 	push	%r13
+.cfi_push	%r13
 .Lneg_body:
 
 	xor	$a0, $a0
@@ -137,10 +140,14 @@ ecp_nistz256_neg:
 	mov	$a3, 8*3($r_ptr)
 
 	mov	0(%rsp),%r13
+.cfi_restore	%r13
 	mov	8(%rsp),%r12
+.cfi_restore	%r12
 	lea	16(%rsp),%rsp
+.cfi_adjust_cfa_offset	-16
 .Lneg_epilogue:
 	ret
+.cfi_endproc
 .size	ecp_nistz256_neg,.-ecp_nistz256_neg
 ___
 }
@@ -161,6 +168,7 @@ $code.=<<___;
 .type	ecp_nistz256_mul_mont,\@function,3
 .align	32
 ecp_nistz256_mul_mont:
+.cfi_startproc
 ___
 $code.=<<___	if ($addx);
 	leaq	OPENSSL_ia32cap_P(%rip), %rcx
@@ -170,11 +178,17 @@ ___
 $code.=<<___;
 .Lmul_mont:
 	push	%rbp
+.cfi_push	%rbp
 	push	%rbx
+.cfi_push	%rbx
 	push	%r12
+.cfi_push	%r12
 	push	%r13
+.cfi_push	%r13
 	push	%r14
+.cfi_push	%r14
 	push	%r15
+.cfi_push	%r15
 .Lmul_body:
 ___
 $code.=<<___	if ($addx);
@@ -209,14 +223,22 @@ ___
 $code.=<<___;
 .Lmul_mont_done:
 	mov	0(%rsp),%r15
+.cfi_restore	%r15
 	mov	8(%rsp),%r14
+.cfi_restore	%r14
 	mov	16(%rsp),%r13
+.cfi_restore	%r13
 	mov	24(%rsp),%r12
+.cfi_restore	%r12
 	mov	32(%rsp),%rbx
+.cfi_restore	%rbx
 	mov	40(%rsp),%rbp
+.cfi_restore	%rbp
 	lea	48(%rsp),%rsp
+.cfi_adjust_cfa_offset	-48
 .Lmul_epilogue:
 	ret
+.cfi_endproc
 .size	ecp_nistz256_mul_mont,.-ecp_nistz256_mul_mont
 
 .type	__ecp_nistz256_mul_montq,\@abi-omnipotent
@@ -446,6 +468,7 @@ __ecp_nistz256_mul_montq:
 .type	ecp_nistz256_sqr_mont,\@function,2
 .align	32
 ecp_nistz256_sqr_mont:
+.cfi_startproc
 ___
 $code.=<<___	if ($addx);
 	leaq	OPENSSL_ia32cap_P(%rip), %rcx
@@ -454,11 +477,17 @@ $code.=<<___	if ($addx);
 ___
 $code.=<<___;
 	push	%rbp
+.cfi_push	%rbp
 	push	%rbx
+.cfi_push	%rbx
 	push	%r12
+.cfi_push	%r12
 	push	%r13
+.cfi_push	%r13
 	push	%r14
+.cfi_push	%r14
 	push	%r15
+.cfi_push	%r15
 .Lsqr_body:
 ___
 $code.=<<___	if ($addx);
@@ -489,14 +518,22 @@ ___
 $code.=<<___;
 .Lsqr_mont_done:
 	mov	0(%rsp),%r15
+.cfi_restore	%r15
 	mov	8(%rsp),%r14
+.cfi_restore	%r14
 	mov	16(%rsp),%r13
+.cfi_restore	%r13
 	mov	24(%rsp),%r12
+.cfi_restore	%r12
 	mov	32(%rsp),%rbx
+.cfi_restore	%rbx
 	mov	40(%rsp),%rbp
+.cfi_restore	%rbp
 	lea	48(%rsp),%rsp
+.cfi_adjust_cfa_offset	-48
 .Lsqr_epilogue:
 	ret
+.cfi_endproc
 .size	ecp_nistz256_sqr_mont,.-ecp_nistz256_sqr_mont
 
 .type	__ecp_nistz256_sqr_montq,\@abi-omnipotent
@@ -1578,6 +1615,7 @@ $code.=<<___;
 .type	ecp_nistz256_point_double,\@function,2
 .align	32
 ecp_nistz256_point_double:
+.cfi_startproc
 ___
 $code.=<<___	if ($addx);
 	leaq	OPENSSL_ia32cap_P(%rip), %rcx
@@ -1595,17 +1633,25 @@ $code.=<<___;
 .type	ecp_nistz256_point_doublex,\@function,2
 .align	32
 ecp_nistz256_point_doublex:
+.cfi_startproc
 .Lpoint_doublex:
 ___
     }
 $code.=<<___;
 	push	%rbp
+.cfi_push	%rbp
 	push	%rbx
+.cfi_push	%rbx
 	push	%r12
+.cfi_push	%r12
 	push	%r13
+.cfi_push	%r13
 	push	%r14
+.cfi_push	%r14
 	push	%r15
+.cfi_push	%r15
 	sub	\$32*5+8, %rsp
+.cfi_adjust_cfa_offset	32*5+8
 .Lpoint_double${x}_body:
 
 .Lpoint_double_shortcut$x:
@@ -1778,15 +1824,24 @@ $code.=<<___;
 	call	__ecp_nistz256_sub_from$x	# p256_sub(res_y, S, res_y);
 
 	lea	32*5+56(%rsp), %rsi
+.cfi_def_cfa	%rsi,8
 	mov	-48(%rsi),%r15
+.cfi_restore	%r15
 	mov	-40(%rsi),%r14
+.cfi_restore	%r14
 	mov	-32(%rsi),%r13
+.cfi_restore	%r13
 	mov	-24(%rsi),%r12
+.cfi_restore	%r12
 	mov	-16(%rsi),%rbx
+.cfi_restore	%rbx
 	mov	-8(%rsi),%rbp
+.cfi_restore	%rbp
 	lea	(%rsi),%rsp
+.cfi_def_cfa_register	%rsp
 .Lpoint_double${x}_epilogue:
 	ret
+.cfi_endproc
 .size	ecp_nistz256_point_double$sfx,.-ecp_nistz256_point_double$sfx
 ___
 }
@@ -1812,6 +1867,7 @@ $code.=<<___;
 .type	ecp_nistz256_point_add,\@function,3
 .align	32
 ecp_nistz256_point_add:
+.cfi_startproc
 ___
 $code.=<<___	if ($addx);
 	leaq	OPENSSL_ia32cap_P(%rip), %rcx
@@ -1829,17 +1885,25 @@ $code.=<<___;
 .type	ecp_nistz256_point_addx,\@function,3
 .align	32
 ecp_nistz256_point_addx:
+.cfi_startproc
 .Lpoint_addx:
 ___
     }
 $code.=<<___;
 	push	%rbp
+.cfi_push	%rbp
 	push	%rbx
+.cfi_push	%rbx
 	push	%r12
+.cfi_push	%r12
 	push	%r13
+.cfi_push	%r13
 	push	%r14
+.cfi_push	%r14
 	push	%r15
+.cfi_push	%r15
 	sub	\$32*18+8, %rsp
+.cfi_adjust_cfa_offset	32*18+8
 .Lpoint_add${x}_body:
 
 	movdqu	0x00($a_ptr), %xmm0		# copy	*(P256_POINT *)$a_ptr
@@ -2150,15 +2214,24 @@ $code.=<<___;
 
 .Ladd_done$x:
 	lea	32*18+56(%rsp), %rsi
+.cfi_def_cfa	%rsi,8
 	mov	-48(%rsi),%r15
+.cfi_restore	%r15
 	mov	-40(%rsi),%r14
+.cfi_restore	%r14
 	mov	-32(%rsi),%r13
+.cfi_restore	%r13
 	mov	-24(%rsi),%r12
+.cfi_restore	%r12
 	mov	-16(%rsi),%rbx
+.cfi_restore	%rbx
 	mov	-8(%rsi),%rbp
+.cfi_restore	%rbp
 	lea	(%rsi),%rsp
+.cfi_def_cfa_register	%rsp
 .Lpoint_add${x}_epilogue:
 	ret
+.cfi_endproc
 .size	ecp_nistz256_point_add$sfx,.-ecp_nistz256_point_add$sfx
 ___
 }
@@ -2183,6 +2256,7 @@ $code.=<<___;
 .type	ecp_nistz256_point_add_affine,\@function,3
 .align	32
 ecp_nistz256_point_add_affine:
+.cfi_startproc
 ___
 $code.=<<___	if ($addx);
 	leaq	OPENSSL_ia32cap_P(%rip), %rcx
@@ -2200,17 +2274,25 @@ $code.=<<___;
 .type	ecp_nistz256_point_add_affinex,\@function,3
 .align	32
 ecp_nistz256_point_add_affinex:
+.cfi_startproc
 .Lpoint_add_affinex:
 ___
     }
 $code.=<<___;
 	push	%rbp
+.cfi_push	%rbp
 	push	%rbx
+.cfi_push	%rbx
 	push	%r12
+.cfi_push	%r12
 	push	%r13
+.cfi_push	%r13
 	push	%r14
+.cfi_push	%r14
 	push	%r15
+.cfi_push	%r15
 	sub	\$32*15+8, %rsp
+.cfi_adjust_cfa_offset	32*15+8
 .Ladd_affine${x}_body:
 
 	movdqu	0x00($a_ptr), %xmm0	# copy	*(P256_POINT *)$a_ptr
@@ -2457,15 +2539,24 @@ $code.=<<___;
 	movdqu	%xmm3, 0x30($r_ptr)
 
 	lea	32*15+56(%rsp), %rsi
+.cfi_def_cfa	%rsi,8
 	mov	-48(%rsi),%r15
+.cfi_restore	%r15
 	mov	-40(%rsi),%r14
+.cfi_restore	%r14
 	mov	-32(%rsi),%r13
+.cfi_restore	%r13
 	mov	-24(%rsi),%r12
+.cfi_restore	%r12
 	mov	-16(%rsi),%rbx
+.cfi_restore	%rbx
 	mov	-8(%rsi),%rbp
+.cfi_restore	%rbp
 	lea	(%rsi),%rsp
+.cfi_def_cfa_register	%rsp
 .Ladd_affine${x}_epilogue:
 	ret
+.cfi_endproc
 .size	ecp_nistz256_point_add_affine$sfx,.-ecp_nistz256_point_add_affine$sfx
 ___
 }
