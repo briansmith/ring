@@ -32,15 +32,6 @@ extern "C" {
 #include "../../crypto/internal.h"
 
 
-#if defined(OPENSSL_X86_64) && !defined(OPENSSL_SMALL) && \
-    !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_NO_ASM)
-#define BORINGSSL_X25519_X86_64
-
-void x25519_x86_64(uint8_t out[32], const uint8_t scalar[32],
-                   const uint8_t point[32]);
-#endif
-
-
 #if defined(OPENSSL_ARM) && !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_APPLE)
 #define BORINGSSL_X25519_NEON
 

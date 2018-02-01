@@ -44,12 +44,6 @@ NON_PERL_FILES = {
         'src/crypto/curve25519/asm/x25519-asm-arm.S',
         'src/crypto/poly1305/poly1305_arm_asm.S',
     ],
-    ('linux', 'x86_64'): [
-        'src/crypto/curve25519/asm/x25519-asm-x86_64.S',
-    ],
-    ('mac', 'x86_64'): [
-        'src/crypto/curve25519/asm/x25519-asm-x86_64.S',
-    ],
 }
 
 PREFIX = None
