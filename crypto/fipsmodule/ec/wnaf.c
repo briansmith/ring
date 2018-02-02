@@ -84,16 +84,8 @@
 //   http://link.springer.com/chapter/10.1007%2F3-540-45537-X_13
 //   http://www.bmoeller.de/pdf/TI-01-08.multiexp.pdf
 
-// compute_wNAF writes the modified width-(w+1) Non-Adjacent Form (wNAF) of
-// |scalar| to |out| and returns one on success or zero on internal error. |out|
-// must have room for |bits| + 1 elements, each of which will be either zero or
-// odd with an absolute value less than  2^w  satisfying
-//     scalar = \sum_j out[j]*2^j
-// where at most one of any  w+1  consecutive digits is non-zero
-// with the exception that the most significant digit may be only
-// w-1 zeros away from that next non-zero digit.
-static int compute_wNAF(const EC_GROUP *group, int8_t *out,
-                        const EC_SCALAR *scalar, size_t bits, int w) {
+int ec_compute_wNAF(const EC_GROUP *group, int8_t *out, const EC_SCALAR *scalar,
+                    size_t bits, int w) {
   // 'int8_t' can represent integers with absolute values less than 2^7.
   if (w <= 0 || w > 7 || bits == 0) {
     OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
@@ -277,7 +269,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
     }
     g_precomp = precomp_storage + total_precomp;
     total_precomp += precomp_len;
-    if (!compute_wNAF(group, g_wNAF, g_scalar, bits, wsize) ||
+    if (!ec_compute_wNAF(group, g_wNAF, g_scalar, bits, wsize) ||
         !compute_precomp(group, g_precomp, g, precomp_len, ctx)) {
       goto err;
     }
@@ -286,7 +278,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
   if (p_scalar != NULL) {
     p_precomp = precomp_storage + total_precomp;
     total_precomp += precomp_len;
-    if (!compute_wNAF(group, p_wNAF, p_scalar, bits, wsize) ||
+    if (!ec_compute_wNAF(group, p_wNAF, p_scalar, bits, wsize) ||
         !compute_precomp(group, p_precomp, p, precomp_len, ctx)) {
       goto err;
     }

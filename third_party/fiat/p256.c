@@ -1718,6 +1718,95 @@ static int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
   return 1;
 }
 
+static int ec_GFp_nistp256_point_mul_public(const EC_GROUP *group, EC_POINT *r,
+                                            const EC_SCALAR *g_scalar,
+                                            const EC_POINT *p,
+                                            const EC_SCALAR *p_scalar,
+                                            BN_CTX *unused_ctx) {
+#define P256_WSIZE_PUBLIC 4
+  // Precompute multiples of |p|. p_pre_comp[i] is (2*i+1) * |p|.
+  fe p_pre_comp[1 << (P256_WSIZE_PUBLIC-1)][3];
+  if (!BN_to_fe(p_pre_comp[0][0], &p->X) ||
+      !BN_to_fe(p_pre_comp[0][1], &p->Y) ||
+      !BN_to_fe(p_pre_comp[0][2], &p->Z)) {
+    return 0;
+  }
+  fe p2[3];
+  point_double(p2[0], p2[1], p2[2], p_pre_comp[0][0], p_pre_comp[0][1],
+               p_pre_comp[0][2]);
+  for (size_t i = 1; i < OPENSSL_ARRAY_SIZE(p_pre_comp); i++) {
+    point_add(p_pre_comp[i][0], p_pre_comp[i][1], p_pre_comp[i][2],
+              p_pre_comp[i - 1][0], p_pre_comp[i - 1][1], p_pre_comp[i - 1][2],
+              0 /* not mixed */, p2[0], p2[1], p2[2]);
+  }
+
+  // Set up the coefficients for |p_scalar|.
+  int8_t p_wNAF[257];
+  if (!ec_compute_wNAF(group, p_wNAF, p_scalar, 256, P256_WSIZE_PUBLIC)) {
+    return 0;
+  }
+
+  // Set |ret| to the point at infinity.
+  int skip = 1;  // Save some point operations.
+  fe ret[3] = {{0},{0},{0}};
+  for (int i = 256; i >= 0; i--) {
+    if (!skip) {
+      point_double(ret[0], ret[1], ret[2], ret[0], ret[1], ret[2]);
+    }
+
+    // For the |g_scalar|, we use the precomputed table without the
+    // constant-time lookup.
+    if (i <= 31) {
+      // First, look 32 bits upwards.
+      uint64_t bits = get_bit(g_scalar->bytes, i + 224) << 3;
+      bits |= get_bit(g_scalar->bytes, i + 160) << 2;
+      bits |= get_bit(g_scalar->bytes, i + 96) << 1;
+      bits |= get_bit(g_scalar->bytes, i + 32);
+      point_add(ret[0], ret[1], ret[2], ret[0], ret[1], ret[2], 1 /* mixed */,
+                g_pre_comp[1][bits][0], g_pre_comp[1][bits][1],
+                g_pre_comp[1][bits][2]);
+      skip = 0;
+
+      // Second, look at the current position.
+      bits = get_bit(g_scalar->bytes, i + 192) << 3;
+      bits |= get_bit(g_scalar->bytes, i + 128) << 2;
+      bits |= get_bit(g_scalar->bytes, i + 64) << 1;
+      bits |= get_bit(g_scalar->bytes, i);
+      point_add(ret[0], ret[1], ret[2], ret[0], ret[1], ret[2], 1 /* mixed */,
+                g_pre_comp[0][bits][0], g_pre_comp[0][bits][1],
+                g_pre_comp[0][bits][2]);
+    }
+
+    int digit = p_wNAF[i];
+    if (digit != 0) {
+      assert(digit & 1);
+      int idx = digit < 0 ? (-digit) >> 1 : digit >> 1;
+      fe *y = &p_pre_comp[idx][1], tmp;
+      if (digit < 0) {
+        fe_opp(tmp, p_pre_comp[idx][1]);
+        y = &tmp;
+      }
+      if (!skip) {
+        point_add(ret[0], ret[1], ret[2], ret[0], ret[1], ret[2],
+                  0 /* not mixed */, p_pre_comp[idx][0], *y, p_pre_comp[idx][2]);
+      } else {
+        fe_copy(ret[0], p_pre_comp[idx][0]);
+        fe_copy(ret[1], *y);
+        fe_copy(ret[2], p_pre_comp[idx][2]);
+        skip = 0;
+      }
+    }
+  }
+
+  if (!fe_to_BN(&r->X, ret[0]) ||
+      !fe_to_BN(&r->Y, ret[1]) ||
+      !fe_to_BN(&r->Z, ret[2])) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
+    return 0;
+  }
+  return 1;
+}
+
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp256_method) {
   out->group_init = ec_GFp_mont_group_init;
   out->group_finish = ec_GFp_mont_group_finish;
@@ -1725,16 +1814,7 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp256_method) {
   out->point_get_affine_coordinates =
     ec_GFp_nistp256_point_get_affine_coordinates;
   out->mul = ec_GFp_nistp256_points_mul;
-// The variable-time wNAF point multiplication uses fewer field operations than
-// the constant-time implementation here, but the 64-bit field arithmetic in
-// this file is much faster than the generic BIGNUM-based field arithmetic used
-// by wNAF. For 32-bit, the wNAF code is overall ~60% faster on non-precomputed
-// points, so we use it for public inputs.
-#if defined(BORINGSSL_NISTP256_64BIT)
-  out->mul_public = ec_GFp_nistp256_points_mul;
-#else
-  out->mul_public = ec_wNAF_mul;
-#endif
+  out->mul_public = ec_GFp_nistp256_point_mul_public;
   out->field_mul = ec_GFp_mont_field_mul;
   out->field_sqr = ec_GFp_mont_field_sqr;
   out->field_encode = ec_GFp_mont_field_encode;
