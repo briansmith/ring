@@ -4,10 +4,12 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -20,6 +22,13 @@ var (
 	suiteDir   = flag.String("suite-dir", "", "Base directory containing the CAVP test suite")
 	noFAX      = flag.Bool("no-fax", false, "Skip comparing against FAX files")
 	niap       = flag.Bool("niap", false, "Perform NIAP tests rather than FIPS tests")
+	android    = flag.Bool("android", false, "Run tests via ADB")
+)
+
+const (
+	androidTmpPath       = "/data/local/tmp/"
+	androidCAVPPath      = androidTmpPath + "cavp"
+	androidLibCryptoPath = androidTmpPath + "libcrypto.so"
 )
 
 // test describes a single request file.
@@ -374,10 +383,27 @@ func worker(wg *sync.WaitGroup, work <-chan testInstance) {
 	}
 }
 
+func checkAndroidPrereqs() error {
+	// The cavp binary, and a matching libcrypto.so, are required to be placed
+	// in /data/local/tmp before running this script.
+	if err := exec.Command("adb", "shell", "ls", androidCAVPPath).Run(); err != nil {
+		return errors.New("failed to list cavp binary; ensure that adb works and cavp binary is in place: " + err.Error())
+	}
+	if err := exec.Command("adb", "shell", "ls", androidLibCryptoPath).Run(); err != nil {
+		return errors.New("failed to list libcrypto.so; ensure that library is in place: " + err.Error())
+	}
+	return nil
+}
+
 func main() {
 	flag.Parse()
 
-	if len(*oraclePath) == 0 {
+	if *android {
+		if err := checkAndroidPrereqs(); err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			os.Exit(1)
+		}
+	} else if len(*oraclePath) == 0 {
 		fmt.Fprintf(os.Stderr, "Must give -oracle-bin\n")
 		os.Exit(1)
 	}
@@ -385,7 +411,12 @@ func main() {
 	work := make(chan testInstance)
 	var wg sync.WaitGroup
 
-	for i := 0; i < runtime.NumCPU(); i++ {
+	numWorkers := runtime.NumCPU()
+	if *android {
+		numWorkers = 1
+	}
+
+	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
 		go worker(&wg, work)
 	}
@@ -406,9 +437,28 @@ func main() {
 }
 
 func doTest(suite *testSuite, test test) error {
-	args := []string{suite.suite}
+	bin := *oraclePath
+	var args []string
+
+	if *android {
+		bin = "adb"
+		args = []string{"shell", "LD_LIBRARY_PATH=" + androidTmpPath, androidCAVPPath}
+	}
+
+	args = append(args, suite.suite)
 	args = append(args, test.args...)
-	args = append(args, filepath.Join(suite.getDirectory(), "req", test.inFile+".req"))
+	reqPath := filepath.Join(suite.getDirectory(), "req", test.inFile+".req")
+	var reqPathOnDevice string
+
+	if *android {
+		reqPathOnDevice = path.Join(androidTmpPath, test.inFile+".req")
+		if err := exec.Command("adb", "push", reqPath, reqPathOnDevice).Run(); err != nil {
+			return errors.New("failed to push request file: " + err.Error())
+		}
+		args = append(args, reqPathOnDevice)
+	} else {
+		args = append(args, reqPath)
+	}
 
 	respDir := filepath.Join(suite.getDirectory(), "resp")
 	if err := os.Mkdir(respDir, 0755); err != nil && !os.IsExist(err) {
@@ -421,17 +471,21 @@ func doTest(suite *testSuite, test test) error {
 	}
 	defer outFile.Close()
 
-	cmd := exec.Command(*oraclePath, args...)
+	cmd := exec.Command(bin, args...)
 	cmd.Stdout = outFile
 	cmd.Stderr = os.Stderr
 
-	cmdLine := strings.Join(append([]string{*oraclePath}, args...), " ")
+	cmdLine := strings.Join(append([]string{bin}, args...), " ")
 	startTime := time.Now()
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("cannot run command for %q %q (%s): %s", suite.getDirectory(), test.inFile, cmdLine, err)
 	}
 
 	fmt.Printf("%s (%ds)\n", cmdLine, int(time.Since(startTime).Seconds()))
+
+	if *android {
+		exec.Command("adb", "shell", "rm", reqPathOnDevice).Run()
+	}
 
 	return nil
 }
