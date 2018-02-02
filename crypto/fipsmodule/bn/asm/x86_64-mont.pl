@@ -1,4 +1,11 @@
-#!/usr/bin/env perl
+#! /usr/bin/env perl
+# Copyright 2005-2016 The OpenSSL Project Authors. All Rights Reserved.
+#
+# Licensed under the OpenSSL license (the "License").  You may not use
+# this file except in compliance with the License.  You can obtain a copy
+# in the file LICENSE in the source distribution or at
+# https://www.openssl.org/source/license.html
+
 
 # ====================================================================
 # Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
@@ -296,12 +303,11 @@ $code.=<<___;
 	mov	$num,$j			# j=num
 	jmp	.Lsub
 .align	16
-.Lsub:
-	sbb	($np,$i,8),%rax
+.Lsub:	sbb	($np,$i,8),%rax
 	mov	%rax,($rp,$i,8)		# rp[i]=tp[i]-np[i]
 	mov	8($ap,$i,8),%rax	# tp[i+1]
 	lea	1($i),$i		# i++
-	dec	$j			# doesnn't affect CF!
+	dec	$j			# doesn't affect CF!
 	jnz	.Lsub
 
 	sbb	\$0,%rax		# handle upmost overflow bit
@@ -732,7 +738,7 @@ $code.=<<___;
 	mov	56($ap,$i,8),@ri[3]
 	sbb	40($np,$i,8),@ri[1]
 	lea	4($i),$i		# i++
-	dec	$j			# doesnn't affect CF!
+	dec	$j			# doesn't affect CF!
 	jnz	.Lsub4x
 
 	mov	@ri[0],0($rp,$i,8)	# rp[i]=tp[i]-np[i]

@@ -1,4 +1,11 @@
-#!/usr/bin/env perl
+#! /usr/bin/env perl
+# Copyright 2009-2016 The OpenSSL Project Authors. All Rights Reserved.
+#
+# Licensed under the OpenSSL license (the "License").  You may not use
+# this file except in compliance with the License.  You can obtain a copy
+# in the file LICENSE in the source distribution or at
+# https://www.openssl.org/source/license.html
+
 
 # ====================================================================
 # Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
@@ -43,18 +50,22 @@
 # Add aesni_xts_[en|de]crypt. Westmere spends 1.50 cycles processing
 # one byte out of 8KB with 128-bit key, Sandy Bridge - 1.09.
 
+# November 2015
+#
+# Add aesni_ocb_[en|de]crypt. [Removed in BoringSSL]
+
 ######################################################################
 # Current large-block performance in cycles per byte processed with
 # 128-bit key (less is better).
 #
-#		CBC en-/decrypt	CTR	XTS	ECB
+#		CBC en-/decrypt	CTR	XTS	ECB	OCB
 # Westmere	3.77/1.37	1.37	1.52	1.27
-# * Bridge	5.07/0.98	0.99	1.09	0.91
-# Haswell	4.44/0.80	0.97	1.03	0.72
-# Skylake	2.68/0.65	0.65	0.66	0.64
-# Silvermont	5.77/3.56	3.67	4.03	3.46
-# Goldmont	3.84/1.39	1.39	1.63	1.31
-# Bulldozer	5.80/0.98	1.05	1.24	0.93
+# * Bridge	5.07/0.98	0.99	1.09	0.91	1.10
+# Haswell	4.44/0.80	0.97	1.03	0.72	0.76
+# Skylake	2.68/0.65	0.65	0.66	0.64	0.66
+# Silvermont	5.77/3.56	3.67	4.03	3.46	4.03
+# Goldmont	3.84/1.39	1.39	1.63	1.31	1.70
+# Bulldozer	5.80/0.98	1.05	1.24	0.93	1.23
 
 $PREFIX="aesni";	# if $PREFIX is set to "AES", the script
 			# generates drop-in replacement for
@@ -228,7 +239,7 @@ sub aesni_generate1	# fully unrolled loop
 # can schedule aes[enc|dec] every cycle optimal interleave factor
 # equals to corresponding instructions latency. 8x is optimal for
 # * Bridge, but it's unfeasible to accommodate such implementation
-# in XMM registers addreassable in 32-bit mode and therefore maximum
+# in XMM registers addressable in 32-bit mode and therefore maximum
 # of 6x is used instead...
 
 sub aesni_generate2
@@ -2425,7 +2436,7 @@ if ($PREFIX eq "aesni") {
 	&pxor		("xmm3","xmm3");
 	&aesenclast	("xmm2","xmm3");
 
-	&movdqa		("xmm3","xmm1")
+	&movdqa		("xmm3","xmm1");
 	&pslldq		("xmm1",4);
 	&pxor		("xmm3","xmm1");
 	&pslldq		("xmm1",4);
