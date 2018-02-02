@@ -231,15 +231,6 @@ const SSL_METHOD *TLSv1_method(void) {
   return &kMethod;
 }
 
-const SSL_METHOD *SSLv3_method(void) {
-  static const SSL_METHOD kMethod = {
-      SSL3_VERSION,
-      &kTLSProtocolMethod,
-      &ssl_crypto_x509_method,
-  };
-  return &kMethod;
-}
-
 // Legacy side-specific methods.
 
 const SSL_METHOD *TLSv1_2_server_method(void) {
@@ -254,10 +245,6 @@ const SSL_METHOD *TLSv1_server_method(void) {
   return TLSv1_method();
 }
 
-const SSL_METHOD *SSLv3_server_method(void) {
-  return SSLv3_method();
-}
-
 const SSL_METHOD *TLSv1_2_client_method(void) {
   return TLSv1_2_method();
 }
@@ -268,10 +255,6 @@ const SSL_METHOD *TLSv1_1_client_method(void) {
 
 const SSL_METHOD *TLSv1_client_method(void) {
   return TLSv1_method();
-}
-
-const SSL_METHOD *SSLv3_client_method(void) {
-  return SSLv3_method();
 }
 
 const SSL_METHOD *SSLv23_server_method(void) {

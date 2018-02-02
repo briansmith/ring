@@ -3535,40 +3535,6 @@ INSTANTIATE_TEST_CASE_P(
                         ssl_test_ticket_aead_open_soft_fail,
                         ssl_test_ticket_aead_open_hard_fail)));
 
-TEST(SSLTest, SSL3Method) {
-  bssl::UniquePtr<X509> cert = GetTestCertificate();
-  ASSERT_TRUE(cert);
-
-  // For compatibility, SSLv3_method should work up to SSL_CTX_new and SSL_new.
-  bssl::UniquePtr<SSL_CTX> ssl3_ctx(SSL_CTX_new(SSLv3_method()));
-  ASSERT_TRUE(ssl3_ctx);
-  ASSERT_TRUE(SSL_CTX_use_certificate(ssl3_ctx.get(), cert.get()));
-  bssl::UniquePtr<SSL> ssl(SSL_new(ssl3_ctx.get()));
-  EXPECT_TRUE(ssl);
-
-  // Create a normal TLS context to test against.
-  bssl::UniquePtr<SSL_CTX> tls_ctx(SSL_CTX_new(TLS_method()));
-  ASSERT_TRUE(tls_ctx);
-  ASSERT_TRUE(SSL_CTX_use_certificate(tls_ctx.get(), cert.get()));
-
-  // However, handshaking an SSLv3_method server should fail to resolve the
-  // version range. Explicit calls to SSL_CTX_set_min_proto_version are the only
-  // way to enable SSL 3.0.
-  bssl::UniquePtr<SSL> client, server;
-  EXPECT_FALSE(ConnectClientAndServer(&client, &server, tls_ctx.get(),
-                                      ssl3_ctx.get()));
-  uint32_t err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_NO_SUPPORTED_VERSIONS_ENABLED, ERR_GET_REASON(err));
-
-  // Likewise for SSLv3_method clients.
-  EXPECT_FALSE(ConnectClientAndServer(&client, &server, ssl3_ctx.get(),
-                                      tls_ctx.get()));
-  err = ERR_get_error();
-  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
-  EXPECT_EQ(SSL_R_NO_SUPPORTED_VERSIONS_ENABLED, ERR_GET_REASON(err));
-}
-
 TEST(SSLTest, SelectNextProto) {
   uint8_t *result;
   uint8_t result_len;

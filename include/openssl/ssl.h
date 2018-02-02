@@ -3621,17 +3621,12 @@ OPENSSL_EXPORT const SSL_METHOD *TLSv1_2_method(void);
 OPENSSL_EXPORT const SSL_METHOD *DTLSv1_method(void);
 OPENSSL_EXPORT const SSL_METHOD *DTLSv1_2_method(void);
 
-// SSLv3_method returns an |SSL_METHOD| with no versions enabled.
-OPENSSL_EXPORT const SSL_METHOD *SSLv3_method(void);
-
 // These client- and server-specific methods call their corresponding generic
 // methods.
 OPENSSL_EXPORT const SSL_METHOD *TLS_server_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLS_client_method(void);
 OPENSSL_EXPORT const SSL_METHOD *SSLv23_server_method(void);
 OPENSSL_EXPORT const SSL_METHOD *SSLv23_client_method(void);
-OPENSSL_EXPORT const SSL_METHOD *SSLv3_server_method(void);
-OPENSSL_EXPORT const SSL_METHOD *SSLv3_client_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLSv1_server_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLSv1_client_method(void);
 OPENSSL_EXPORT const SSL_METHOD *TLSv1_1_server_method(void);
