@@ -18,6 +18,8 @@
 
 #include <vector>
 
+#include <errno.h>
+
 #include <openssl/digest.h>
 
 #include "cavp_test_util.h"
