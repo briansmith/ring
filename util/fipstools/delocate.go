@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-//go:generate peg delocate.peg
-
 // delocate performs several transformations of textual assembly code. See
 // crypto/fipsmodule/FIPS.md for an overview.
 package main

@@ -13,6 +13,7 @@ foo:
 	pushq %rbp
 	.cfi_def_cfa_offset 16
 	.cfi_offset 6, -16
+	.cfi_adjust_cfa_offset 32*5+8
 	movq %rsp, %rbp
 	movq %rdi, -24(%rbp)
 	movq -24(%rbp), %rax

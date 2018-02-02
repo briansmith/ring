@@ -32,7 +32,7 @@ Directive <- '.' DirectiveName (WS Args)?
 DirectiveName <- [[A-Z0-9_]]+
 LocationDirective <- (".file" / ".loc") WS [^#\n]+
 Args <- Arg ((WS? ',' WS?) Arg)*
-Arg <- QuotedArg / [[0-9a-z%+\-_@.]]*
+Arg <- QuotedArg / [[0-9a-z%+\-*_@.]]*
 QuotedArg <- '"' QuotedText '"'
 QuotedText <- (EscapedChar / [^"])*
 LabelContainingDirective <- LabelContainingDirectiveName WS SymbolArgs
