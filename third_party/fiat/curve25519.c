@@ -3014,8 +3014,31 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   OPENSSL_memcpy(pkcopy, public_key, 32);
   uint8_t rcopy[32];
   OPENSSL_memcpy(rcopy, signature, 32);
-  uint8_t scopy[32];
-  OPENSSL_memcpy(scopy, signature + 32, 32);
+  union {
+    uint64_t u64[4];
+    uint8_t u8[32];
+  } scopy;
+  OPENSSL_memcpy(&scopy.u8[0], signature + 32, 32);
+
+  // https://tools.ietf.org/html/rfc8032#section-5.1.7 requires that s be in
+  // the range [0, order) in order to prevent signature malleability.
+
+  // kOrder is the order of Curve25519 in little-endian form.
+  static const uint64_t kOrder[4] = {
+    UINT64_C(0x5812631a5cf5d3ed),
+    UINT64_C(0x14def9dea2f79cd6),
+    0,
+    UINT64_C(0x1000000000000000),
+  };
+  for (size_t i = 3;; i--) {
+    if (scopy.u64[i] > kOrder[i]) {
+      return 0;
+    } else if (scopy.u64[i] < kOrder[i]) {
+      break;
+    } else if (i == 0) {
+      return 0;
+    }
+  }
 
   SHA512_CTX hash_ctx;
   SHA512_Init(&hash_ctx);
@@ -3028,7 +3051,7 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
   x25519_sc_reduce(h);
 
   ge_p2 R;
-  ge_double_scalarmult_vartime(&R, h, &A, scopy);
+  ge_double_scalarmult_vartime(&R, h, &A, scopy.u8);
 
   uint8_t rcheck[32];
   x25519_ge_tobytes(rcheck, &R);
