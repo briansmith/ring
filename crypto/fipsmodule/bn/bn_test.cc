@@ -537,6 +537,10 @@ static void TestQuotient(BIGNUMFileTest *t, BN_CTX *ctx) {
 
     ret_word = BN_mod_word(a.get(), b_word);
     EXPECT_EQ(remainder_word, ret_word);
+
+    if (b_word <= 0xffff) {
+      EXPECT_EQ(remainder_word, bn_mod_u16_consttime(a.get(), b_word));
+    }
   }
 
   // Test BN_nnmod.

@@ -352,6 +352,10 @@ int bn_one_to_montgomery(BIGNUM *r, const BN_MONT_CTX *mont, BN_CTX *ctx);
 // value for |mont| and zero otherwise.
 int bn_less_than_montgomery_R(const BIGNUM *bn, const BN_MONT_CTX *mont);
 
+// bn_mod_u16_consttime returns |bn| mod |d|, ignoring |bn|'s sign bit. It runs
+// in time independent of the value of |bn|, but it treats |d| as public.
+OPENSSL_EXPORT uint16_t bn_mod_u16_consttime(const BIGNUM *bn, uint16_t d);
+
 
 // Fixed-width arithmetic.
 //
