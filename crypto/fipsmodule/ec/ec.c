@@ -766,6 +766,9 @@ int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *group, EC_POINT *point,
   }
 
   if (!EC_POINT_is_on_curve(group, point, ctx)) {
+    // In the event of an error, defend against the caller not checking the
+    // return value by setting a known safe value: the base point.
+    EC_POINT_copy(point, EC_GROUP_get0_generator(group));
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_IS_NOT_ON_CURVE);
     return 0;
   }

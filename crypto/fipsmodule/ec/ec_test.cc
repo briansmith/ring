@@ -599,6 +599,41 @@ TEST_P(ECCurveTest, SetInvalidPrivateKey) {
   ERR_clear_error();
 }
 
+TEST_P(ECCurveTest, IgnoreOct2PointReturnValue) {
+  bssl::UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(GetParam().nid));
+  ASSERT_TRUE(group);
+
+  bssl::UniquePtr<BIGNUM> forty_two(BN_new());
+  ASSERT_TRUE(forty_two);
+  ASSERT_TRUE(BN_set_word(forty_two.get(), 42));
+
+  // Compute g × 42.
+  bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group.get()));
+  ASSERT_TRUE(point);
+  ASSERT_TRUE(EC_POINT_mul(group.get(), point.get(), forty_two.get(), nullptr,
+                           nullptr, nullptr));
+
+  // Serialize the point.
+  size_t serialized_len =
+      EC_POINT_point2oct(group.get(), point.get(),
+                         POINT_CONVERSION_UNCOMPRESSED, nullptr, 0, nullptr);
+  std::vector<uint8_t> serialized(serialized_len);
+  ASSERT_EQ(serialized_len,
+            EC_POINT_point2oct(group.get(), point.get(),
+                               POINT_CONVERSION_UNCOMPRESSED, serialized.data(),
+                               serialized_len, nullptr));
+
+  // Create a serialized point that is not on the curve.
+  serialized[serialized_len - 1]++;
+
+  ASSERT_FALSE(EC_POINT_oct2point(group.get(), point.get(), serialized.data(),
+                                  serialized.size(), nullptr));
+  // After a failure, |point| should have been set to the generator to defend
+  // against code that doesn't check the return value.
+  ASSERT_EQ(0, EC_POINT_cmp(group.get(), point.get(),
+                            EC_GROUP_get0_generator(group.get()), nullptr));
+}
+
 static std::vector<EC_builtin_curve> AllCurves() {
   const size_t num_curves = EC_get_builtin_curves(nullptr, 0);
   std::vector<EC_builtin_curve> curves(num_curves);
