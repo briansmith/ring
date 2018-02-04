@@ -108,10 +108,10 @@
 
 #include <openssl/bn.h>
 
+#include <limits.h>
 #include <string.h>
 
 #include <openssl/err.h>
-#include <openssl/mem.h>
 #include <openssl/rand.h>
 #include <openssl/type_check.h>
 
@@ -121,9 +121,6 @@
 
 
 int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
-  uint8_t *buf = NULL;
-  int ret = 0, bit, bytes, mask;
-
   if (rnd == NULL) {
     return 0;
   }
@@ -144,48 +141,41 @@ int BN_rand(BIGNUM *rnd, int bits, int top, int bottom) {
     return 1;
   }
 
-  bytes = (bits + 7) / 8;
-  bit = (bits - 1) % 8;
-  mask = 0xff << (bit + 1);
-
-  buf = OPENSSL_malloc(bytes);
-  if (buf == NULL) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_MALLOC_FAILURE);
-    goto err;
+  if (bits > INT_MAX - (BN_BITS2 - 1)) {
+    OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
+    return 0;
   }
 
-  // Make a random number and set the top and bottom bits.
-  RAND_bytes(buf, bytes);
+  int words = (bits + BN_BITS2 - 1) / BN_BITS2;
+  int bit = (bits - 1) % BN_BITS2;
+  const BN_ULONG kOne = 1;
+  const BN_ULONG kThree = 3;
+  BN_ULONG mask = bit < BN_BITS2 - 1 ? (kOne << (bit + 1)) - 1 : BN_MASK2;
+  if (!bn_wexpand(rnd, words)) {
+    return 0;
+  }
 
+  RAND_bytes((uint8_t *)rnd->d, words * sizeof(BN_ULONG));
+  rnd->d[words - 1] &= mask;
   if (top != BN_RAND_TOP_ANY) {
     if (top == BN_RAND_TOP_TWO && bits > 1) {
       if (bit == 0) {
-        buf[0] = 1;
-        buf[1] |= 0x80;
+        rnd->d[words - 1] |= 1;
+        rnd->d[words - 2] |= kOne << (BN_BITS2 - 1);
       } else {
-        buf[0] |= (3 << (bit - 1));
+        rnd->d[words - 1] |= kThree << (bit - 1);
       }
     } else {
-      buf[0] |= (1 << bit);
+      rnd->d[words - 1] |= kOne << bit;
     }
   }
-
-  buf[0] &= ~mask;
-
-  // Set the bottom bit if requested,
-  if (bottom == BN_RAND_BOTTOM_ODD)  {
-    buf[bytes - 1] |= 1;
+  if (bottom == BN_RAND_BOTTOM_ODD) {
+    rnd->d[0] |= 1;
   }
 
-  if (!BN_bin2bn(buf, bytes, rnd)) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  OPENSSL_free(buf);
-  return ret;
+  rnd->neg = 0;
+  rnd->width = words;
+  return 1;
 }
 
 int BN_pseudo_rand(BIGNUM *rnd, int bits, int top, int bottom) {
