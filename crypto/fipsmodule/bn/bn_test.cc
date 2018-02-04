@@ -1122,22 +1122,69 @@ TEST_F(BNTest, Rand) {
   bssl::UniquePtr<BIGNUM> bn(BN_new());
   ASSERT_TRUE(bn);
 
-  // Test BN_rand accounts for degenerate cases with |top| and |bottom|
-  // parameters.
-  ASSERT_TRUE(BN_rand(bn.get(), 0, BN_RAND_TOP_ONE, BN_RAND_BOTTOM_ANY));
-  EXPECT_TRUE(BN_is_zero(bn.get()));
-  ASSERT_TRUE(BN_rand(bn.get(), 0, BN_RAND_TOP_TWO, BN_RAND_BOTTOM_ODD));
-  EXPECT_TRUE(BN_is_zero(bn.get()));
+  static const int kTop[] = {BN_RAND_TOP_ANY, BN_RAND_TOP_ONE, BN_RAND_TOP_TWO};
+  static const int kBottom[] = {BN_RAND_BOTTOM_ANY, BN_RAND_BOTTOM_ODD};
+  for (unsigned bits = 0; bits < 256; bits++) {
+    SCOPED_TRACE(bits);
+    for (int top : kTop) {
+      SCOPED_TRACE(top);
+      for (int bottom : kBottom) {
+        SCOPED_TRACE(bottom);
 
-  ASSERT_TRUE(BN_rand(bn.get(), 1, BN_RAND_TOP_ONE, BN_RAND_BOTTOM_ANY));
-  EXPECT_TRUE(BN_is_word(bn.get(), 1));
-  ASSERT_TRUE(BN_rand(bn.get(), 1, BN_RAND_TOP_TWO, BN_RAND_BOTTOM_ANY));
-  EXPECT_TRUE(BN_is_word(bn.get(), 1));
-  ASSERT_TRUE(BN_rand(bn.get(), 1, BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ODD));
-  EXPECT_TRUE(BN_is_word(bn.get(), 1));
+        // Generate 100 numbers and ensure that they have the expected bit
+        // patterns. The probability of any one bit not covering both its values
+        // is 2^-100.
+        bool seen_n_1_clear = false, seen_n_1_set = false;
+        bool seen_n_2_clear = false, seen_n_2_set = false;
+        bool seen_0_clear = false, seen_0_set = false;
+        for (int i = 0; i < 100; i++) {
+          ASSERT_TRUE(BN_rand(bn.get(), bits, top, bottom));
+          EXPECT_LE(BN_num_bits(bn.get()), bits);
+          if (BN_is_bit_set(bn.get(), bits - 1)) {
+            seen_n_1_set = true;
+          } else {
+            seen_n_1_clear = true;
+          }
+          if (BN_is_bit_set(bn.get(), bits - 2)) {
+            seen_n_2_set = true;
+          } else {
+            seen_n_2_clear = true;
+          }
+          if (BN_is_bit_set(bn.get(), 0)) {
+            seen_0_set = true;
+          } else {
+            seen_0_clear = true;
+          }
+        }
 
-  ASSERT_TRUE(BN_rand(bn.get(), 2, BN_RAND_TOP_TWO, BN_RAND_BOTTOM_ANY));
-  EXPECT_TRUE(BN_is_word(bn.get(), 3));
+        if (bits > 0) {
+          EXPECT_TRUE(seen_0_set);
+          EXPECT_TRUE(seen_n_1_set);
+          if (bits > 1) {
+            EXPECT_TRUE(seen_n_2_set);
+          }
+        }
+
+        if (bits == 0) {
+          // Nothing additional to check. The |BN_num_bits| check ensures we
+          // always got zero.
+        } else if (bits == 1) {
+          // Bit zero is bit n-1.
+          EXPECT_EQ(bottom == BN_RAND_BOTTOM_ANY && top == BN_RAND_TOP_ANY,
+                    seen_0_clear);
+        } else if (bits == 2) {
+          // Bit zero is bit n-2.
+          EXPECT_EQ(bottom == BN_RAND_BOTTOM_ANY && top != BN_RAND_TOP_TWO,
+                    seen_0_clear);
+          EXPECT_EQ(top == BN_RAND_TOP_ANY, seen_n_1_clear);
+        } else {
+          EXPECT_EQ(bottom == BN_RAND_BOTTOM_ANY, seen_0_clear);
+          EXPECT_EQ(top != BN_RAND_TOP_TWO, seen_n_2_clear);
+          EXPECT_EQ(top == BN_RAND_TOP_ANY, seen_n_1_clear);
+        }
+      }
+    }
+  }
 }
 
 TEST_F(BNTest, RandRange) {
