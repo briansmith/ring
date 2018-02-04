@@ -187,13 +187,19 @@ unsigned BN_num_bits_word(BN_ULONG l) {
   int bits = (l != 0);
 
 #if BN_BITS2 > 32
+  // Look at the upper half of |x|. |x| is at most 64 bits long.
   x = l >> 32;
+  // Set |mask| to all ones if |x| (the top 32 bits of |l|) is non-zero and all
+  // all zeros otherwise.
   mask = 0u - x;
   mask = (0u - (mask >> (BN_BITS2 - 1)));
+  // If |x| is non-zero, the lower half is included in the bit count in full,
+  // and we count the upper half. Otherwise, we count the lower half.
   bits += 32 & mask;
-  l ^= (x ^ l) & mask;
+  l ^= (x ^ l) & mask;  // |l| is |x| if |mask| and remains |l| otherwise.
 #endif
 
+  // The remaining blocks are analogous iterations at lower powers of two.
   x = l >> 16;
   mask = 0u - x;
   mask = (0u - (mask >> (BN_BITS2 - 1)));

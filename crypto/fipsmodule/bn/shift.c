@@ -59,6 +59,7 @@
 #include <string.h>
 
 #include <openssl/err.h>
+#include <openssl/type_check.h>
 
 #include "internal.h"
 
@@ -132,63 +133,68 @@ int BN_lshift1(BIGNUM *r, const BIGNUM *a) {
   return 1;
 }
 
-int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
-  int i, j, nw, lb, rb;
-  BN_ULONG *t, *f;
-  BN_ULONG l, tmp;
+static void bn_rshift_words(BN_ULONG *r, const BN_ULONG *a, unsigned shift,
+                            size_t num) {
+  unsigned shift_bits = shift % BN_BITS2;
+  size_t shift_words = shift / BN_BITS2;
+  if (shift_words >= num) {
+    OPENSSL_memset(r, 0, num * sizeof(BN_ULONG));
+    return;
+  }
+  if (shift_bits == 0) {
+    OPENSSL_memmove(r, a + shift_words, (num - shift_words) * sizeof(BN_ULONG));
+  } else {
+    for (size_t i = shift_words; i < num - 1; i++) {
+      r[i - shift_words] =
+          (a[i] >> shift_bits) | (a[i + 1] << (BN_BITS2 - shift_bits));
+    }
+    r[num - 1 - shift_words] = a[num - 1] >> shift_bits;
+  }
+  OPENSSL_memset(r + num - shift_words, 0, shift_words * sizeof(BN_ULONG));
+}
 
+int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
   if (n < 0) {
     OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
     return 0;
   }
 
-  int a_width = bn_minimal_width(a);
-  nw = n / BN_BITS2;
-  rb = n % BN_BITS2;
-  lb = BN_BITS2 - rb;
-  if (nw >= a_width || a_width == 0) {
-    BN_zero(r);
-    return 1;
+  if (!bn_wexpand(r, a->width)) {
+    return 0;
   }
-  i = (BN_num_bits(a) - n + (BN_BITS2 - 1)) / BN_BITS2;
-  if (r != a) {
-    r->neg = a->neg;
-    if (!bn_wexpand(r, i)) {
-      return 0;
-    }
-  } else {
-    if (n == 0) {
-      return 1;  // or the copying loop will go berserk
-    }
-  }
-
-  f = &(a->d[nw]);
-  t = r->d;
-  j = a_width - nw;
-  r->width = i;
-
-  if (rb == 0) {
-    for (i = j; i != 0; i--) {
-      *(t++) = *(f++);
-    }
-  } else {
-    l = *(f++);
-    for (i = j - 1; i != 0; i--) {
-      tmp = l >> rb;
-      l = *(f++);
-      *(t++) = tmp | (l << lb);
-    }
-    l >>= rb;
-    if (l) {
-      *(t) = l;
-    }
-  }
-
-  if (r->width == 0) {
-    r->neg = 0;
-  }
-
+  bn_rshift_words(r->d, a->d, n, a->width);
+  r->neg = a->neg;
+  r->width = a->width;
+  bn_set_minimal_width(r);
   return 1;
+}
+
+int bn_rshift_secret_shift(BIGNUM *r, const BIGNUM *a, unsigned n,
+                           BN_CTX *ctx) {
+  int ret = 0;
+  BN_CTX_start(ctx);
+  BIGNUM *tmp = BN_CTX_get(ctx);
+  if (tmp == NULL ||
+      !BN_copy(r, a) ||
+      !bn_wexpand(tmp, r->width)) {
+    goto err;
+  }
+
+  // Shift conditionally by powers of two.
+  unsigned max_bits = BN_BITS2 * r->width;
+  for (unsigned i = 0; (max_bits >> i) != 0; i++) {
+    BN_ULONG mask = (n >> i) & 1;
+    mask = 0 - mask;
+    bn_rshift_words(tmp->d, r->d, 1u << i, r->width);
+    bn_select_words(r->d, mask, tmp->d /* apply shift */,
+                    r->d /* ignore shift */, r->width);
+  }
+
+  ret = 1;
+
+err:
+  BN_CTX_end(ctx);
+  return ret;
 }
 
 int BN_rshift1(BIGNUM *r, const BIGNUM *a) {
@@ -305,18 +311,70 @@ int BN_mask_bits(BIGNUM *a, int n) {
   return 1;
 }
 
+static int bn_count_low_zero_bits_word(BN_ULONG l) {
+  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
+                         crypto_word_t_too_small);
+  OPENSSL_COMPILE_ASSERT(sizeof(int) <= sizeof(crypto_word_t),
+                         crypto_word_t_too_small_2);
+  OPENSSL_COMPILE_ASSERT(BN_BITS2 == sizeof(BN_ULONG) * 8,
+                         bn_ulong_has_padding_bits);
+  // C has very bizarre rules for types smaller than an int.
+  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) >= sizeof(int),
+                         bn_ulong_is_promoted_to_int);
+
+  crypto_word_t mask;
+  int bits = 0;
+
+#if BN_BITS2 > 32
+  // Check if the lower half of |x| are all zero.
+  mask = constant_time_is_zero_w(l << (BN_BITS2 - 32));
+  // If the lower half is all zeros, it is included in the bit count and we
+  // count the upper half. Otherwise, we count the lower half.
+  bits += 32 & mask;
+  l = constant_time_select_w(mask, l >> 32, l);
+#endif
+
+  // The remaining blocks are analogous iterations at lower powers of two.
+  mask = constant_time_is_zero_w(l << (BN_BITS2 - 16));
+  bits += 16 & mask;
+  l = constant_time_select_w(mask, l >> 16, l);
+
+  mask = constant_time_is_zero_w(l << (BN_BITS2 - 8));
+  bits += 8 & mask;
+  l = constant_time_select_w(mask, l >> 8, l);
+
+  mask = constant_time_is_zero_w(l << (BN_BITS2 - 4));
+  bits += 4 & mask;
+  l = constant_time_select_w(mask, l >> 4, l);
+
+  mask = constant_time_is_zero_w(l << (BN_BITS2 - 2));
+  bits += 2 & mask;
+  l = constant_time_select_w(mask, l >> 2, l);
+
+  mask = constant_time_is_zero_w(l << (BN_BITS2 - 1));
+  bits += 1 & mask;
+
+  return bits;
+}
+
 int BN_count_low_zero_bits(const BIGNUM *bn) {
+  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
+                         crypto_word_t_too_small);
+  OPENSSL_COMPILE_ASSERT(sizeof(int) <= sizeof(crypto_word_t),
+                         crypto_word_t_too_small_2);
+
+  int ret = 0;
+  crypto_word_t saw_nonzero = 0;
   for (int i = 0; i < bn->width; i++) {
-    if (bn->d[i] != 0) {
-      int bits = 0;
-      for (BN_ULONG w = bn->d[i]; (w & 1) == 0; w >>= 1) {
-        bits++;
-      }
-      return i * BN_BITS2 + bits;
-    }
+    crypto_word_t nonzero = ~constant_time_is_zero_w(bn->d[i]);
+    crypto_word_t first_nonzero = ~saw_nonzero & nonzero;
+    saw_nonzero |= nonzero;
+
+    int bits = bn_count_low_zero_bits_word(bn->d[i]);
+    ret |= first_nonzero & (i * BN_BITS2 + bits);
   }
 
-  // We got to the end of |bn| and saw no non-zero words. |bn| is zero, so
-  // return zero.
-  return 0;
+  // If got to the end of |bn| and saw no non-zero words, |bn| is zero. |ret|
+  // will then remain zero.
+  return ret;
 }

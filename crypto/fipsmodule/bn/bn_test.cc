@@ -321,11 +321,17 @@ static void TestLShift1(BIGNUMFileTest *t, BN_CTX *ctx) {
   ASSERT_TRUE(BN_lshift1(ret.get(), a.get()));
   EXPECT_BIGNUMS_EQUAL("A << 1", lshift1.get(), ret.get());
 
-  ASSERT_TRUE(BN_rshift1(ret.get(), lshift1.get()));
-  EXPECT_BIGNUMS_EQUAL("LShift >> 1", a.get(), ret.get());
+  ASSERT_TRUE(BN_lshift(ret.get(), a.get(), 1));
+  EXPECT_BIGNUMS_EQUAL("A << 1 (variable shift)", lshift1.get(), ret.get());
 
   ASSERT_TRUE(BN_rshift1(ret.get(), lshift1.get()));
   EXPECT_BIGNUMS_EQUAL("LShift >> 1", a.get(), ret.get());
+
+  ASSERT_TRUE(BN_rshift(ret.get(), lshift1.get(), 1));
+  EXPECT_BIGNUMS_EQUAL("LShift >> 1 (variable shift)", a.get(), ret.get());
+
+  ASSERT_TRUE(bn_rshift_secret_shift(ret.get(), lshift1.get(), 1, ctx));
+  EXPECT_BIGNUMS_EQUAL("LShift >> 1 (secret shift)", a.get(), ret.get());
 
   // Set the LSB to 1 and test rshift1 again.
   ASSERT_TRUE(BN_set_bit(lshift1.get(), 0));
@@ -335,6 +341,13 @@ static void TestLShift1(BIGNUMFileTest *t, BN_CTX *ctx) {
 
   ASSERT_TRUE(BN_rshift1(ret.get(), lshift1.get()));
   EXPECT_BIGNUMS_EQUAL("(LShift | 1) >> 1", a.get(), ret.get());
+
+  ASSERT_TRUE(BN_rshift(ret.get(), lshift1.get(), 1));
+  EXPECT_BIGNUMS_EQUAL("(LShift | 1) >> 1 (variable shift)", a.get(),
+                       ret.get());
+
+  ASSERT_TRUE(bn_rshift_secret_shift(ret.get(), lshift1.get(), 1, ctx));
+  EXPECT_BIGNUMS_EQUAL("(LShift | 1) >> 1 (secret shift)", a.get(), ret.get());
 }
 
 static void TestLShift(BIGNUMFileTest *t, BN_CTX *ctx) {
@@ -352,6 +365,9 @@ static void TestLShift(BIGNUMFileTest *t, BN_CTX *ctx) {
 
   ASSERT_TRUE(BN_rshift(ret.get(), lshift.get(), n));
   EXPECT_BIGNUMS_EQUAL("A >> N", a.get(), ret.get());
+
+  ASSERT_TRUE(bn_rshift_secret_shift(ret.get(), lshift.get(), n, ctx));
+  EXPECT_BIGNUMS_EQUAL("A >> N (secret shift)", a.get(), ret.get());
 }
 
 static void TestRShift(BIGNUMFileTest *t, BN_CTX *ctx) {
@@ -366,6 +382,18 @@ static void TestRShift(BIGNUMFileTest *t, BN_CTX *ctx) {
   ASSERT_TRUE(ret);
   ASSERT_TRUE(BN_rshift(ret.get(), a.get(), n));
   EXPECT_BIGNUMS_EQUAL("A >> N", rshift.get(), ret.get());
+
+  ASSERT_TRUE(BN_copy(ret.get(), a.get()));
+  ASSERT_TRUE(BN_rshift(ret.get(), ret.get(), n));
+  EXPECT_BIGNUMS_EQUAL("A >> N (in-place)", rshift.get(), ret.get());
+
+  ASSERT_TRUE(bn_rshift_secret_shift(ret.get(), a.get(), n, ctx));
+  EXPECT_BIGNUMS_EQUAL("A >> N (secret shift)", rshift.get(), ret.get());
+
+  ASSERT_TRUE(BN_copy(ret.get(), a.get()));
+  ASSERT_TRUE(bn_rshift_secret_shift(ret.get(), ret.get(), n, ctx));
+  EXPECT_BIGNUMS_EQUAL("A >> N (in-place secret shift)", rshift.get(),
+                       ret.get());
 }
 
 static void TestSquare(BIGNUMFileTest *t, BN_CTX *ctx) {
@@ -2182,42 +2210,41 @@ TEST_F(BNTest, NonMinimal) {
 }
 
 TEST_F(BNTest, CountLowZeroBits) {
-  bssl::UniquePtr<BIGNUM> ten(BN_new());
-  ASSERT_TRUE(ten);
-  ASSERT_TRUE(BN_set_word(ten.get(), 10));
+  bssl::UniquePtr<BIGNUM> bn(BN_new());
+  ASSERT_TRUE(bn);
 
-  bssl::UniquePtr<BIGNUM> eight(BN_new());
-  ASSERT_TRUE(eight);
-  ASSERT_TRUE(BN_set_word(eight.get(), 8));
+  for (int i = 0; i < BN_BITS2; i++) {
+    SCOPED_TRACE(i);
+    for (int set_high_bits = 0; set_high_bits < 2; set_high_bits++) {
+      BN_ULONG word = ((BN_ULONG)1) << i;
+      if (set_high_bits) {
+        BN_ULONG junk;
+        RAND_bytes(reinterpret_cast<uint8_t *>(&junk), sizeof(junk));
+        word |= junk & ~(word - 1);
+      }
+      SCOPED_TRACE(word);
 
-  bssl::UniquePtr<BIGNUM> two_exp_256(BN_new());
-  ASSERT_TRUE(two_exp_256);
-  ASSERT_TRUE(BN_lshift(two_exp_256.get(), BN_value_one(), 256));
+      ASSERT_TRUE(BN_set_word(bn.get(), word));
+      EXPECT_EQ(i, BN_count_low_zero_bits(bn.get()));
+      ASSERT_TRUE(bn_resize_words(bn.get(), 16));
+      EXPECT_EQ(i, BN_count_low_zero_bits(bn.get()));
 
-  bssl::UniquePtr<BIGNUM> two_exp_256_plus_4(BN_new());
-  ASSERT_TRUE(two_exp_256_plus_4);
-  ASSERT_TRUE(BN_lshift(two_exp_256_plus_4.get(), BN_value_one(), 256));
-  ASSERT_TRUE(BN_add_word(two_exp_256_plus_4.get(), 4));
+      ASSERT_TRUE(BN_set_word(bn.get(), word));
+      ASSERT_TRUE(BN_lshift(bn.get(), bn.get(), BN_BITS2 * 5));
+      EXPECT_EQ(i + BN_BITS2 * 5, BN_count_low_zero_bits(bn.get()));
+      ASSERT_TRUE(bn_resize_words(bn.get(), 16));
+      EXPECT_EQ(i + BN_BITS2 * 5, BN_count_low_zero_bits(bn.get()));
 
-  bssl::UniquePtr<BIGNUM> zero(BN_new());
-  ASSERT_TRUE(zero);
-  BN_zero(zero.get());
+      ASSERT_TRUE(BN_set_word(bn.get(), word));
+      ASSERT_TRUE(BN_set_bit(bn.get(), BN_BITS2 * 5));
+      EXPECT_EQ(i, BN_count_low_zero_bits(bn.get()));
+      ASSERT_TRUE(bn_resize_words(bn.get(), 16));
+      EXPECT_EQ(i, BN_count_low_zero_bits(bn.get()));
+    }
+  }
 
-  EXPECT_EQ(1, BN_count_low_zero_bits(ten.get()));
-  EXPECT_EQ(3, BN_count_low_zero_bits(eight.get()));
-  EXPECT_EQ(256, BN_count_low_zero_bits(two_exp_256.get()));
-  EXPECT_EQ(2, BN_count_low_zero_bits(two_exp_256_plus_4.get()));
-  EXPECT_EQ(0, BN_count_low_zero_bits(zero.get()));
-
-  ASSERT_TRUE(bn_resize_words(ten.get(), 16));
-  ASSERT_TRUE(bn_resize_words(eight.get(), 16));
-  ASSERT_TRUE(bn_resize_words(two_exp_256.get(), 16));
-  ASSERT_TRUE(bn_resize_words(two_exp_256_plus_4.get(), 16));
-  ASSERT_TRUE(bn_resize_words(zero.get(), 16));
-
-  EXPECT_EQ(1, BN_count_low_zero_bits(ten.get()));
-  EXPECT_EQ(3, BN_count_low_zero_bits(eight.get()));
-  EXPECT_EQ(256, BN_count_low_zero_bits(two_exp_256.get()));
-  EXPECT_EQ(2, BN_count_low_zero_bits(two_exp_256_plus_4.get()));
-  EXPECT_EQ(0, BN_count_low_zero_bits(zero.get()));
+  BN_zero(bn.get());
+  EXPECT_EQ(0, BN_count_low_zero_bits(bn.get()));
+  ASSERT_TRUE(bn_resize_words(bn.get(), 16));
+  EXPECT_EQ(0, BN_count_low_zero_bits(bn.get()));
 }

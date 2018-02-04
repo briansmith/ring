@@ -112,6 +112,8 @@
 #include <openssl/mem.h>
 
 #include "internal.h"
+#include "../../internal.h"
+
 
 // The quick sieve algorithm approach to weeding out primes is Philip
 // Zimmermann's, as implemented in PGP.  I have had a read of his comments and
@@ -583,13 +585,11 @@ int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
   }
 
   // Write w1 as m * 2^a (Steps 1 and 2).
-  int a = 0;
-  while (!BN_is_bit_set(w1, a)) {
-    a++;
-  }
+  int w_len = BN_num_bits(w);
+  int a = BN_count_low_zero_bits(w1);
   BIGNUM *m = BN_CTX_get(ctx);
   if (m == NULL ||
-      !BN_rshift(m, w1, a)) {
+      !bn_rshift_secret_shift(m, w1, a, ctx)) {
     goto err;
   }
 
@@ -619,11 +619,24 @@ int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
       goto err;
     }
 
-    // Step 4.4
-    if (BN_equal_consttime(z, BN_value_one()) ||
-        BN_equal_consttime(z, w1)) {
-      goto loop;
-    }
+    // The algorithm as specified in FIPS 186-4 leaks information on |w|, the
+    // RSA private key. Instead, we run through the loop unconditionally,
+    // performing modular multiplications, masking off any effects to behave
+    // equivalently to the specified algorithm.
+
+    // loop_done is all ones if the loop has completed and all zeros otherwise.
+    crypto_word_t loop_done = 0;
+    // next_iteration is all ones if we should continue to the next iteration
+    // (|b| is not a composite witness for |w|). This is equivalent to going to
+    // step 4.7 in the original algorithm.
+    crypto_word_t next_iteration = 0;
+
+    // Step 4.4. If z = 1 or z = w-1, mask off the loop and continue to the next
+    // iteration (go to step 4.7).
+    loop_done = BN_equal_consttime(z, BN_value_one()) |
+                BN_equal_consttime(z, w1);
+    loop_done = 0 - loop_done;   // Make it all zeros or all ones.
+    next_iteration = loop_done;  // Go to step 4.7 if |loop_done|.
 
     // Step 4.5. We use Montgomery-encoding for better performance and to avoid
     // timing leaks.
@@ -631,24 +644,40 @@ int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
       goto err;
     }
 
-    for (int j = 1; j < a; j++) {
+    // To avoid leaking |a|, we run the loop to |w_len| and mask off all
+    // iterations once |j| = |a|.
+    for (int j = 1; j < w_len; j++) {
+      loop_done |= constant_time_eq_int(j, a);
+
+      // Step 4.5.1.
       if (!BN_mod_mul_montgomery(z, z, z, mont, ctx)) {
         goto err;
       }
-      if (BN_equal_consttime(z, w1_mont)) {
-        goto loop;
-      }
-      if (BN_equal_consttime(z, one_mont)) {
+
+      // Step 4.5.2. If z = w-1 and the loop is not done, run through the next
+      // iteration.
+      crypto_word_t z_is_w1_mont = BN_equal_consttime(z, w1_mont) & ~loop_done;
+      z_is_w1_mont = 0 - z_is_w1_mont;  // Make it all zeros or all ones.
+      loop_done |= z_is_w1_mont;
+      next_iteration |= z_is_w1_mont;  // Go to step 4.7 if |z_is_w1_mont|.
+
+      // Step 4.5.3. If z = 1 and the loop is not done, w is composite and we
+      // may exit in variable time.
+      if (BN_equal_consttime(z, one_mont) & ~loop_done) {
+        assert(!next_iteration);
         break;
       }
     }
 
-    // Step 4.6
-    *is_probably_prime = 0;
-    ret = 1;
-    goto err;
+    if (!next_iteration) {
+      // Step 4.6. We did not see z = w-1 before z = 1, so w must be composite.
+      // (For any prime, the value of z immediately preceding 1 must be -1.
+      // There are no non-trivial square roots of 1 modulo a prime.)
+      *is_probably_prime = 0;
+      ret = 1;
+      goto err;
+    }
 
-  loop:
     // Step 4.7
     if (!BN_GENCB_call(cb, 1, i)) {
       goto err;
