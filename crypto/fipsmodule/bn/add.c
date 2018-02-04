@@ -223,69 +223,45 @@ int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   return 1;
 }
 
-int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
-  int max, min, dif;
-  register BN_ULONG t1, t2, *ap, *bp, *rp;
-  int i, carry;
+int bn_usub_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
+  // |b| may have more words than |a| given non-minimal inputs, but all words
+  // beyond |a->width| must then be zero.
+  int b_width = b->width;
+  if (b_width > a->width) {
+    if (!bn_fits_in_words(b, a->width)) {
+      OPENSSL_PUT_ERROR(BN, BN_R_ARG2_LT_ARG3);
+      return 0;
+    }
+    b_width = a->width;
+  }
 
-  max = bn_minimal_width(a);
-  min = bn_minimal_width(b);
-  dif = max - min;
+  if (!bn_wexpand(r, a->width)) {
+    return 0;
+  }
 
-  if (dif < 0)  // hmm... should not be happening
-  {
+  BN_ULONG borrow = bn_sub_words(r->d, a->d, b->d, b_width);
+  for (int i = b_width; i < a->width; i++) {
+    // |r| and |a| may alias, so use a temporary.
+    BN_ULONG tmp = a->d[i];
+    r->d[i] = a->d[i] - borrow;
+    borrow = tmp < r->d[i];
+  }
+
+  if (borrow) {
     OPENSSL_PUT_ERROR(BN, BN_R_ARG2_LT_ARG3);
     return 0;
   }
 
-  if (!bn_wexpand(r, max)) {
+  r->width = a->width;
+  r->neg = 0;
+  return 1;
+}
+
+int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
+  if (!bn_usub_fixed(r, a, b)) {
     return 0;
   }
-
-  ap = a->d;
-  bp = b->d;
-  rp = r->d;
-
-  carry = 0;
-  for (i = min; i != 0; i--) {
-    t1 = *(ap++);
-    t2 = *(bp++);
-    if (carry) {
-      carry = (t1 <= t2);
-      t1 -= t2 + 1;
-    } else {
-      carry = (t1 < t2);
-      t1 -= t2;
-    }
-    *(rp++) = t1;
-  }
-
-  if (carry)  // subtracted
-  {
-    if (!dif) {
-      // error: a < b
-      return 0;
-    }
-
-    while (dif) {
-      dif--;
-      t1 = *(ap++);
-      t2 = t1 - 1;
-      *(rp++) = t2;
-      if (t1) {
-        break;
-      }
-    }
-  }
-
-  if (dif > 0 && rp != ap) {
-    OPENSSL_memcpy(rp, ap, sizeof(*rp) * dif);
-  }
-
-  r->width = max;
-  r->neg = 0;
   bn_set_minimal_width(r);
-
   return 1;
 }
 

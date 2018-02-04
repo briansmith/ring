@@ -366,6 +366,10 @@ int bn_less_than_montgomery_R(const BIGNUM *bn, const BN_MONT_CTX *mont);
 // |r->width| = |a->width| + |b->width| + 1.
 int bn_uadd_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
+// bn_usub_fixed behaves like |BN_usub|, but it pessimally sets
+// |r->width| = |a->width|.
+int bn_usub_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
+
 // bn_mul_fixed behaves like |BN_mul|, but it rejects negative inputs and
 // pessimally sets |r->width| to |a->width| + |b->width|, to avoid leaking
 // information about |a| and |b|.
