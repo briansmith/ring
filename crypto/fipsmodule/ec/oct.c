@@ -77,11 +77,9 @@ static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
                                       const EC_POINT *point,
                                       point_conversion_form_t form,
                                       uint8_t *buf, size_t len, BN_CTX *ctx) {
-  size_t ret;
+  size_t ret = 0;
   BN_CTX *new_ctx = NULL;
   int used_ctx = 0;
-  BIGNUM *x, *y;
-  size_t field_len, i;
 
   if ((form != POINT_CONVERSION_COMPRESSED) &&
       (form != POINT_CONVERSION_UNCOMPRESSED)) {
@@ -94,14 +92,16 @@ static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
     goto err;
   }
 
-  // ret := required output buffer length
-  field_len = BN_num_bytes(&group->field);
-  ret =
-      (form == POINT_CONVERSION_COMPRESSED) ? 1 + field_len : 1 + 2 * field_len;
+  const size_t field_len = BN_num_bytes(&group->field);
+  size_t output_len = 1 /* type byte */ + field_len;
+  if (form == POINT_CONVERSION_UNCOMPRESSED) {
+    // Uncompressed points have a second coordinate.
+    output_len += field_len;
+  }
 
   // if 'buf' is NULL, just return required length
   if (buf != NULL) {
-    if (len < ret) {
+    if (len < output_len) {
       OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
       goto err;
     }
@@ -115,8 +115,8 @@ static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
 
     BN_CTX_start(ctx);
     used_ctx = 1;
-    x = BN_CTX_get(ctx);
-    y = BN_CTX_get(ctx);
+    BIGNUM *x = BN_CTX_get(ctx);
+    BIGNUM *y = BN_CTX_get(ctx);
     if (y == NULL) {
       goto err;
     }
@@ -131,7 +131,7 @@ static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
     } else {
       buf[0] = form;
     }
-    i = 1;
+    size_t i = 1;
 
     if (!BN_bn2bin_padded(buf + i, field_len, x)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
@@ -147,70 +147,66 @@ static size_t ec_GFp_simple_point2oct(const EC_GROUP *group,
       i += field_len;
     }
 
-    if (i != ret) {
+    if (i != output_len) {
       OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
       goto err;
     }
   }
 
-  if (used_ctx) {
-    BN_CTX_end(ctx);
-  }
-  BN_CTX_free(new_ctx);
-  return ret;
+  ret = output_len;
 
 err:
   if (used_ctx) {
     BN_CTX_end(ctx);
   }
   BN_CTX_free(new_ctx);
-  return 0;
+  return ret;
 }
-
 
 static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
                                    const uint8_t *buf, size_t len,
                                    BN_CTX *ctx) {
-  point_conversion_form_t form;
-  int y_bit;
   BN_CTX *new_ctx = NULL;
-  BIGNUM *x, *y;
-  size_t field_len, enc_len;
-  int ret = 0;
+  int ret = 0, used_ctx = 0;
 
   if (len == 0) {
     OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
-    return 0;
+    goto err;
   }
-  form = buf[0];
-  y_bit = form & 1;
+
+  point_conversion_form_t form = buf[0];
+  const int y_bit = form & 1;
   form = form & ~1U;
   if ((form != POINT_CONVERSION_COMPRESSED &&
        form != POINT_CONVERSION_UNCOMPRESSED) ||
       (form == POINT_CONVERSION_UNCOMPRESSED && y_bit)) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
-    return 0;
+    goto err;
   }
 
-  field_len = BN_num_bytes(&group->field);
-  enc_len =
-      (form == POINT_CONVERSION_COMPRESSED) ? 1 + field_len : 1 + 2 * field_len;
+  const size_t field_len = BN_num_bytes(&group->field);
+  size_t enc_len = 1 /* type byte */ + field_len;
+  if (form == POINT_CONVERSION_UNCOMPRESSED) {
+    // Uncompressed points have a second coordinate.
+    enc_len += field_len;
+  }
 
   if (len != enc_len) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_ENCODING);
-    return 0;
+    goto err;
   }
 
   if (ctx == NULL) {
     ctx = new_ctx = BN_CTX_new();
     if (ctx == NULL) {
-      return 0;
+      goto err;
     }
   }
 
   BN_CTX_start(ctx);
-  x = BN_CTX_get(ctx);
-  y = BN_CTX_get(ctx);
+  used_ctx = 1;
+  BIGNUM *x = BN_CTX_get(ctx);
+  BIGNUM *y = BN_CTX_get(ctx);
   if (x == NULL || y == NULL) {
     goto err;
   }
@@ -244,7 +240,9 @@ static int ec_GFp_simple_oct2point(const EC_GROUP *group, EC_POINT *point,
   ret = 1;
 
 err:
-  BN_CTX_end(ctx);
+  if (used_ctx) {
+    BN_CTX_end(ctx);
+  }
   BN_CTX_free(new_ctx);
   return ret;
 }

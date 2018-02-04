@@ -617,6 +617,8 @@ TEST_P(ECCurveTest, IgnoreOct2PointReturnValue) {
   size_t serialized_len =
       EC_POINT_point2oct(group.get(), point.get(),
                          POINT_CONVERSION_UNCOMPRESSED, nullptr, 0, nullptr);
+  ASSERT_NE(0u, serialized_len);
+
   std::vector<uint8_t> serialized(serialized_len);
   ASSERT_EQ(serialized_len,
             EC_POINT_point2oct(group.get(), point.get(),
