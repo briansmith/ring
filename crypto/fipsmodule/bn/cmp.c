@@ -128,14 +128,14 @@ int bn_less_than_words(const BN_ULONG *a, const BN_ULONG *b, size_t len) {
 }
 
 int BN_abs_is_word(const BIGNUM *bn, BN_ULONG w) {
-  switch (bn_minimal_width(bn)) {
-    case 1:
-      return bn->d[0] == w;
-    case 0:
-      return w == 0;
-    default:
-      return 0;
+  if (bn->width == 0) {
+    return w == 0;
   }
+  BN_ULONG mask = bn->d[0] ^ w;
+  for (int i = 1; i < bn->width; i++) {
+    mask |= bn->d[i];
+  }
+  return mask == 0;
 }
 
 int BN_cmp_word(const BIGNUM *a, BN_ULONG b) {
@@ -150,7 +150,7 @@ int BN_cmp_word(const BIGNUM *a, BN_ULONG b) {
 }
 
 int BN_is_zero(const BIGNUM *bn) {
-  return bn_minimal_width(bn) == 0;
+  return bn_fits_in_words(bn, 0);
 }
 
 int BN_is_one(const BIGNUM *bn) {
