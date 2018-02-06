@@ -590,6 +590,21 @@ uint16_t bn_mod_u16_consttime(const BIGNUM *bn, uint16_t d) {
   return ret;
 }
 
+static int bn_trial_division(uint16_t *out, const BIGNUM *bn) {
+  for (int i = 1; i < NUMPRIMES; i++) {
+    if (bn_mod_u16_consttime(bn, primes[i]) == 0) {
+      *out = primes[i];
+      return 1;
+    }
+  }
+  return 0;
+}
+
+int bn_odd_number_is_obviously_composite(const BIGNUM *bn) {
+  uint16_t prime;
+  return bn_trial_division(&prime, bn) && !BN_is_word(bn, prime);
+}
+
 int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
                       int iterations, BN_CTX *ctx, int do_trial_division,
                       BN_GENCB *cb) {
@@ -617,11 +632,10 @@ int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
 
   if (do_trial_division) {
     // Perform additional trial division checks to discard small primes.
-    for (int i = 1; i < NUMPRIMES; i++) {
-      if (bn_mod_u16_consttime(w, primes[i]) == 0) {
-        *is_probably_prime = BN_is_word(w, primes[i]);
-        return 1;
-      }
+    uint16_t prime;
+    if (bn_trial_division(&prime, w)) {
+      *is_probably_prime = BN_is_word(w, prime);
+      return 1;
     }
     if (!BN_GENCB_call(cb, 1, -1)) {
       return 0;

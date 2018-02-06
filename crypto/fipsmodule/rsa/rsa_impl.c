@@ -993,21 +993,25 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
       continue;
     }
 
-    // Check gcd(out-1, e) is one (steps 4.5 and 5.6).
-    if (!BN_sub(tmp, out, BN_value_one()) ||
-        !BN_gcd(tmp, tmp, e, ctx)) {
-      goto err;
-    }
-    if (BN_is_one(tmp)) {
-      // Test |out| for primality (steps 4.5.1 and 5.6.1).
-      int is_probable_prime;
-      if (!BN_primality_test(&is_probable_prime, out, BN_prime_checks, ctx, 1,
-                             cb)) {
+    // RSA key generation's bottleneck is discarding composites. If it fails
+    // trial division, do not bother computing a GCD or performing Rabin-Miller.
+    if (!bn_odd_number_is_obviously_composite(out)) {
+      // Check gcd(out-1, e) is one (steps 4.5 and 5.6).
+      if (!BN_sub(tmp, out, BN_value_one()) ||
+          !BN_gcd(tmp, tmp, e, ctx)) {
         goto err;
       }
-      if (is_probable_prime) {
-        ret = 1;
-        goto err;
+      if (BN_is_one(tmp)) {
+        // Test |out| for primality (steps 4.5.1 and 5.6.1).
+        int is_probable_prime;
+        if (!BN_primality_test(&is_probable_prime, out, BN_prime_checks, ctx, 0,
+                               cb)) {
+          goto err;
+        }
+        if (is_probable_prime) {
+          ret = 1;
+          goto err;
+        }
       }
     }
 

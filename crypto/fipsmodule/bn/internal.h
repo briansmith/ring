@@ -375,6 +375,10 @@ int bn_less_than_montgomery_R(const BIGNUM *bn, const BN_MONT_CTX *mont);
 // in time independent of the value of |bn|, but it treats |d| as public.
 OPENSSL_EXPORT uint16_t bn_mod_u16_consttime(const BIGNUM *bn, uint16_t d);
 
+// bn_odd_number_is_obviously_composite returns one if |bn| is divisible by one
+// of the first several odd primes and zero otherwise.
+int bn_odd_number_is_obviously_composite(const BIGNUM *bn);
+
 // bn_rshift_secret_shift behaves like |BN_rshift| but runs in time independent
 // of both |a| and |n|.
 OPENSSL_EXPORT int bn_rshift_secret_shift(BIGNUM *r, const BIGNUM *a,
