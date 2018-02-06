@@ -100,7 +100,7 @@ int BN_add(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   return ret;
 }
 
-int bn_uadd_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
+int bn_uadd_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   // Widths are public, so we normalize to make |a| the larger one.
   if (a->width < b->width) {
     const BIGNUM *tmp = a;
@@ -128,7 +128,7 @@ int bn_uadd_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
 }
 
 int BN_uadd(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
-  if (!bn_uadd_fixed(r, a, b)) {
+  if (!bn_uadd_consttime(r, a, b)) {
     return 0;
   }
   bn_set_minimal_width(r);
@@ -223,7 +223,7 @@ int BN_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   return 1;
 }
 
-int bn_usub_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
+int bn_usub_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
   // |b| may have more words than |a| given non-minimal inputs, but all words
   // beyond |a->width| must then be zero.
   int b_width = b->width;
@@ -258,7 +258,7 @@ int bn_usub_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
 }
 
 int BN_usub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b) {
-  if (!bn_usub_fixed(r, a, b)) {
+  if (!bn_usub_consttime(r, a, b)) {
     return 0;
   }
   bn_set_minimal_width(r);

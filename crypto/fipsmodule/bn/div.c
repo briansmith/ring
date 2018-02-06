@@ -498,12 +498,12 @@ int BN_mod_add_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                      const BIGNUM *m) {
   BN_CTX *ctx = BN_CTX_new();
   int ok = ctx != NULL &&
-           bn_mod_add_quick_ctx(r, a, b, m, ctx);
+           bn_mod_add_consttime(r, a, b, m, ctx);
   BN_CTX_free(ctx);
   return ok;
 }
 
-int bn_mod_add_quick_ctx(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+int bn_mod_add_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                          const BIGNUM *m, BN_CTX *ctx) {
   BN_CTX_start(ctx);
   a = bn_resized_from_ctx(a, m->width, ctx);
@@ -527,7 +527,7 @@ int BN_mod_sub(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *m,
   return BN_nnmod(r, r, m, ctx);
 }
 
-int bn_mod_sub_quick_ctx(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+int bn_mod_sub_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                          const BIGNUM *m, BN_CTX *ctx) {
   BN_CTX_start(ctx);
   a = bn_resized_from_ctx(a, m->width, ctx);
@@ -547,7 +547,7 @@ int BN_mod_sub_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                      const BIGNUM *m) {
   BN_CTX *ctx = BN_CTX_new();
   int ok = ctx != NULL &&
-           bn_mod_sub_quick_ctx(r, a, b, m, ctx);
+           bn_mod_sub_consttime(r, a, b, m, ctx);
   BN_CTX_free(ctx);
   return ok;
 }
@@ -610,19 +610,19 @@ int BN_mod_lshift(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m,
     abs_m->neg = 0;
   }
 
-  ret = bn_mod_lshift_quick_ctx(r, r, n, (abs_m ? abs_m : m), ctx);
+  ret = bn_mod_lshift_consttime(r, r, n, (abs_m ? abs_m : m), ctx);
 
   BN_free(abs_m);
   return ret;
 }
 
-int bn_mod_lshift_quick_ctx(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m,
+int bn_mod_lshift_consttime(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m,
                             BN_CTX *ctx) {
   if (!BN_copy(r, a)) {
     return 0;
   }
   for (int i = 0; i < n; i++) {
-    if (!bn_mod_lshift1_quick_ctx(r, r, m, ctx)) {
+    if (!bn_mod_lshift1_consttime(r, r, m, ctx)) {
       return 0;
     }
   }
@@ -632,7 +632,7 @@ int bn_mod_lshift_quick_ctx(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m,
 int BN_mod_lshift_quick(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m) {
   BN_CTX *ctx = BN_CTX_new();
   int ok = ctx != NULL &&
-           bn_mod_lshift_quick_ctx(r, a, n, m, ctx);
+           bn_mod_lshift_consttime(r, a, n, m, ctx);
   BN_CTX_free(ctx);
   return ok;
 }
@@ -645,15 +645,15 @@ int BN_mod_lshift1(BIGNUM *r, const BIGNUM *a, const BIGNUM *m, BN_CTX *ctx) {
   return BN_nnmod(r, r, m, ctx);
 }
 
-int bn_mod_lshift1_quick_ctx(BIGNUM *r, const BIGNUM *a, const BIGNUM *m,
+int bn_mod_lshift1_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *m,
                              BN_CTX *ctx) {
-  return bn_mod_add_quick_ctx(r, a, a, m, ctx);
+  return bn_mod_add_consttime(r, a, a, m, ctx);
 }
 
 int BN_mod_lshift1_quick(BIGNUM *r, const BIGNUM *a, const BIGNUM *m) {
   BN_CTX *ctx = BN_CTX_new();
   int ok = ctx != NULL &&
-           bn_mod_lshift1_quick_ctx(r, a, m, ctx);
+           bn_mod_lshift1_consttime(r, a, m, ctx);
   BN_CTX_free(ctx);
   return ok;
 }

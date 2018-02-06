@@ -523,9 +523,9 @@ static void bn_mul_part_recursive(BN_ULONG *r, const BN_ULONG *a,
   assert(c == 0);
 }
 
-// bn_mul_impl implements |BN_mul| and |bn_mul_fixed|. Note this function breaks
-// |BIGNUM| invariants and may return a negative zero. This is handled by the
-// callers.
+// bn_mul_impl implements |BN_mul| and |bn_mul_consttime|. Note this function
+// breaks |BIGNUM| invariants and may return a negative zero. This is handled by
+// the callers.
 static int bn_mul_impl(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                        BN_CTX *ctx) {
   int al = a->width;
@@ -628,7 +628,7 @@ int BN_mul(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
   return 1;
 }
 
-int bn_mul_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
+int bn_mul_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
   // Prevent negative zeros.
   if (a->neg || b->neg) {
     OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
@@ -773,7 +773,7 @@ int BN_mul_word(BIGNUM *bn, BN_ULONG w) {
   return 1;
 }
 
-int bn_sqr_fixed(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
+int bn_sqr_consttime(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
   int al = a->width;
   if (al <= 0) {
     r->width = 0;
@@ -832,7 +832,7 @@ err:
 }
 
 int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
-  if (!bn_sqr_fixed(r, a, ctx)) {
+  if (!bn_sqr_consttime(r, a, ctx)) {
     return 0;
   }
 

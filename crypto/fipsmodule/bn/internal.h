@@ -381,7 +381,7 @@ OPENSSL_EXPORT int bn_rshift_secret_shift(BIGNUM *r, const BIGNUM *a,
                                           unsigned n, BN_CTX *ctx);
 
 
-// Fixed-width arithmetic.
+// Constant-time non-modular arithmetic.
 //
 // The following functions implement non-modular arithmetic in constant-time
 // and pessimally set |r->width| to the largest possible word size.
@@ -390,44 +390,43 @@ OPENSSL_EXPORT int bn_rshift_secret_shift(BIGNUM *r, const BIGNUM *a,
 // to increase without bound. The corresponding public API functions minimize
 // their outputs to avoid regressing calculator consumers.
 
-// bn_uadd_fixed behaves like |BN_uadd|, but it pessimally sets
+// bn_uadd_consttime behaves like |BN_uadd|, but it pessimally sets
 // |r->width| = |a->width| + |b->width| + 1.
-int bn_uadd_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
+int bn_uadd_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
-// bn_usub_fixed behaves like |BN_usub|, but it pessimally sets
+// bn_usub_consttime behaves like |BN_usub|, but it pessimally sets
 // |r->width| = |a->width|.
-int bn_usub_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
+int bn_usub_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
-// bn_mul_fixed behaves like |BN_mul|, but it rejects negative inputs and
+// bn_mul_consttime behaves like |BN_mul|, but it rejects negative inputs and
 // pessimally sets |r->width| to |a->width| + |b->width|, to avoid leaking
 // information about |a| and |b|.
-int bn_mul_fixed(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
+int bn_mul_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
 
-// bn_sqrt_fixed behaves like |BN_sqrt|, but it pessimally sets |r->width| to
-// 2*|a->width|, to avoid leaking information about |a| and |b|.
-int bn_sqr_fixed(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx);
+// bn_sqrt_consttime behaves like |BN_sqrt|, but it pessimally sets |r->width|
+// to 2*|a->width|, to avoid leaking information about |a| and |b|.
+int bn_sqr_consttime(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx);
 
 
 // Constant-time modular arithmetic.
 //
-// The following functions implement basic constant-time modular arithemtic on
-// word arrays.
+// The following functions implement basic constant-time modular arithmetic.
 
-// bn_mod_add_quick_ctx acts like |BN_mod_add_quick| but takes a |BN_CTX|.
-int bn_mod_add_quick_ctx(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+// bn_mod_add_consttime acts like |BN_mod_add_quick| but takes a |BN_CTX|.
+int bn_mod_add_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                          const BIGNUM *m, BN_CTX *ctx);
 
-// bn_mod_sub_quick_ctx acts like |BN_mod_sub_quick| but takes a |BN_CTX|.
-int bn_mod_sub_quick_ctx(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+// bn_mod_sub_consttime acts like |BN_mod_sub_quick| but takes a |BN_CTX|.
+int bn_mod_sub_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                          const BIGNUM *m, BN_CTX *ctx);
 
-// bn_mod_lshift1_quick_ctx acts like |BN_mod_lshift1_quick| but takes a
+// bn_mod_lshift1_consttime acts like |BN_mod_lshift1_quick| but takes a
 // |BN_CTX|.
-int bn_mod_lshift1_quick_ctx(BIGNUM *r, const BIGNUM *a, const BIGNUM *m,
+int bn_mod_lshift1_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *m,
                              BN_CTX *ctx);
 
-// bn_mod_lshift_quick_ctx acts like |BN_mod_lshift_quick| but takes a |BN_CTX|.
-int bn_mod_lshift_quick_ctx(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m,
+// bn_mod_lshift_consttime acts like |BN_mod_lshift_quick| but takes a |BN_CTX|.
+int bn_mod_lshift_consttime(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m,
                             BN_CTX *ctx);
 
 

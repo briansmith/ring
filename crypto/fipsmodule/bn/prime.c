@@ -638,7 +638,7 @@ int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
   BN_CTX_start(ctx);
   BIGNUM *w1 = BN_CTX_get(ctx);
   if (w1 == NULL ||
-      !bn_usub_fixed(w1, w, BN_value_one())) {
+      !bn_usub_consttime(w1, w, BN_value_one())) {
     goto err;
   }
 
@@ -663,7 +663,7 @@ int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
       !bn_one_to_montgomery(one_mont, mont, ctx) ||
       // w - 1 is -1 mod w, so we can compute it in the Montgomery domain, -R,
       // with a subtraction. (|one_mont| cannot be zero.)
-      !bn_usub_fixed(w1_mont, w, one_mont)) {
+      !bn_usub_consttime(w1_mont, w, one_mont)) {
     goto err;
   }
 

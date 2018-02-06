@@ -862,7 +862,7 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
       !BN_mod_exp_mont_consttime(r0, r1, dmp1, p, ctx, mont_p) ||
       // Compute r0 = r0 - m1 mod p. |p| is the larger prime, so |m1| is already
       // fully reduced mod |p|.
-      !bn_mod_sub_quick_ctx(r0, r0, m1, p, ctx) ||
+      !bn_mod_sub_consttime(r0, r0, m1, p, ctx) ||
       // r0 = r0 * iqmp mod p. We use Montgomery multiplication to compute this
       // in constant time. |inv_small_mod_large_mont| is in Montgomery form and
       // r0 is not, so the result is taken out of Montgomery form.
@@ -873,8 +873,8 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
       // so it is correct mod q. Finally, the result is bounded by [m1, n + m1),
       // and the result is at least |m1|, so this must be the unique answer in
       // [0, n).
-      !bn_mul_fixed(r0, r0, q, ctx) ||
-      !bn_uadd_fixed(r0, r0, m1) ||
+      !bn_mul_consttime(r0, r0, q, ctx) ||
+      !bn_uadd_consttime(r0, r0, m1) ||
       // The result should be bounded by |n|, but fixed-width operations may
       // bound the width slightly higher, so fix it.
       !bn_resize_words(r0, n->width)) {

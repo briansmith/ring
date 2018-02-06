@@ -177,7 +177,7 @@ int bn_mod_exp_base_2_consttime(BIGNUM *r, unsigned p, const BIGNUM *n,
   // Set |r| to the larger power of two smaller than |n|, then shift with
   // reductions the rest of the way.
   if (!BN_set_bit(r, n_bits - 1) ||
-      !bn_mod_lshift_quick_ctx(r, r, p - (n_bits - 1), n, ctx)) {
+      !bn_mod_lshift_consttime(r, r, p - (n_bits - 1), n, ctx)) {
     return 0;
   }
 
