@@ -109,54 +109,70 @@ static int check_modulus_and_exponent_sizes(const RSA *rsa) {
   return 1;
 }
 
+static int ensure_fixed_copy(BIGNUM **out, const BIGNUM *in, int width) {
+  if (*out != NULL) {
+    return 1;
+  }
+  BIGNUM *copy = BN_dup(in);
+  if (copy == NULL ||
+      !bn_resize_words(copy, width)) {
+    BN_free(copy);
+    return 0;
+  }
+  *out = copy;
+  return 1;
+}
+
 // freeze_private_key finishes initializing |rsa|'s private key components.
 // After this function has returned, |rsa| may not be changed. This is needed
 // because |RSA| is a public struct and, additionally, OpenSSL 1.1.0 opaquified
 // it wrong (see https://github.com/openssl/openssl/issues/5158).
 static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
   CRYPTO_MUTEX_lock_read(&rsa->lock);
-  int flags = rsa->flags;
+  int frozen = rsa->private_key_frozen;
   CRYPTO_MUTEX_unlock_read(&rsa->lock);
-  if (flags & RSA_FLAG_PRIVATE_KEY_FROZEN) {
+  if (frozen) {
     return 1;
   }
 
   int ret = 0;
   CRYPTO_MUTEX_lock_write(&rsa->lock);
-  if (rsa->flags & RSA_FLAG_PRIVATE_KEY_FROZEN) {
+  if (rsa->private_key_frozen) {
     ret = 1;
     goto err;
   }
 
-  // |rsa->n| is public. Normalize the width.
-  bn_set_minimal_width(rsa->n);
+  // Pre-compute various intermediate values, as well as copies of private
+  // exponents with correct widths. Note that other threads may concurrently
+  // read from |rsa->n|, |rsa->e|, etc., so any fixes must be in separate
+  // copies. We use |mont_n->N|, |mont_p->N|, and |mont_q->N| as copies of |n|,
+  // |p|, and |q| with the correct minimal widths.
+
   if (rsa->mont_n == NULL) {
     rsa->mont_n = BN_MONT_CTX_new_for_modulus(rsa->n, ctx);
     if (rsa->mont_n == NULL) {
       goto err;
     }
   }
+  const BIGNUM *n_fixed = &rsa->mont_n->N;
 
   // The only public upper-bound of |rsa->d| is the bit length of |rsa->n|. The
   // ASN.1 serialization of RSA private keys unfortunately leaks the byte length
   // of |rsa->d|, but normalize it so we only leak it once, rather than per
   // operation.
   if (rsa->d != NULL &&
-      !bn_resize_words(rsa->d, rsa->n->width)) {
+      !ensure_fixed_copy(&rsa->d_fixed, rsa->d, n_fixed->width)) {
     goto err;
   }
 
   if (rsa->p != NULL && rsa->q != NULL) {
-    // |p| and |q| have public bit lengths.
-    bn_set_minimal_width(rsa->p);
-    bn_set_minimal_width(rsa->q);
-
     if (rsa->mont_p == NULL) {
       rsa->mont_p = BN_MONT_CTX_new_for_modulus(rsa->p, ctx);
       if (rsa->mont_p == NULL) {
         goto err;
       }
     }
+    const BIGNUM *p_fixed = &rsa->mont_p->N;
 
     if (rsa->mont_q == NULL) {
       rsa->mont_q = BN_MONT_CTX_new_for_modulus(rsa->q, ctx);
@@ -164,6 +180,7 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
         goto err;
       }
     }
+    const BIGNUM *q_fixed = &rsa->mont_q->N;
 
     if (rsa->dmp1 != NULL && rsa->dmq1 != NULL) {
       // Key generation relies on this function to compute |iqmp|.
@@ -179,10 +196,10 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
       }
 
       // CRT components are only publicly bounded by their corresponding
-      // moduli's bit lengths.
-      if (!bn_resize_words(rsa->dmp1, rsa->p->width) ||
-          !bn_resize_words(rsa->dmq1, rsa->q->width) ||
-          !bn_resize_words(rsa->iqmp, rsa->p->width)) {
+      // moduli's bit lengths. |rsa->iqmp| is unused outside of this one-time
+      // setup, so we do not compute a fixed-width version of it.
+      if (!ensure_fixed_copy(&rsa->dmp1_fixed, rsa->dmp1, p_fixed->width) ||
+          !ensure_fixed_copy(&rsa->dmq1_fixed, rsa->dmq1, q_fixed->width)) {
         goto err;
       }
 
@@ -211,7 +228,7 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
     }
   }
 
-  rsa->flags |= RSA_FLAG_PRIVATE_KEY_FROZEN;
+  rsa->private_key_frozen = 1;
   ret = 1;
 
 err:
@@ -291,7 +308,7 @@ int RSA_encrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   }
 
   if (!BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) ||
-      !BN_mod_exp_mont(result, f, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+      !BN_mod_exp_mont(result, f, rsa->e, &rsa->mont_n->N, ctx, rsa->mont_n)) {
     goto err;
   }
 
@@ -597,7 +614,7 @@ int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   }
 
   if (!BN_MONT_CTX_set_locked(&rsa->mont_n, &rsa->lock, rsa->n, ctx) ||
-      !BN_mod_exp_mont(result, f, rsa->e, rsa->n, ctx, rsa->mont_n)) {
+      !BN_mod_exp_mont(result, f, rsa->e, &rsa->mont_n->N, ctx, rsa->mont_n)) {
     goto err;
   }
 
@@ -702,7 +719,7 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
     if (!mod_exp(result, f, rsa, ctx)) {
       goto err;
     }
-  } else if (!BN_mod_exp_mont_consttime(result, f, rsa->d, rsa->n, ctx,
+  } else if (!BN_mod_exp_mont_consttime(result, f, rsa->d_fixed, rsa->n, ctx,
                                         rsa->mont_n)) {
     goto err;
   }
@@ -737,7 +754,7 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   // the result.
   //
   // See Falko Stenzke, "Manger's Attack revisited", ICICS 2010.
-  assert(result->width == rsa->n->width);
+  assert(result->width == rsa->mont_n->N.width);
   if (!BN_bn2bin_padded(out, len, result)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     goto err;
@@ -814,20 +831,25 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
 
   // Implementing RSA with CRT in constant-time is sensitive to which prime is
   // larger. Canonicalize fields so that |p| is the larger prime.
-  const BIGNUM *p = rsa->p, *q = rsa->q, *dmp1 = rsa->dmp1, *dmq1 = rsa->dmq1;
+  const BIGNUM *dmp1 = rsa->dmp1_fixed, *dmq1 = rsa->dmq1_fixed;
   const BN_MONT_CTX *mont_p = rsa->mont_p, *mont_q = rsa->mont_q;
   if (BN_cmp(rsa->p, rsa->q) < 0) {
-    p = rsa->q;
-    q = rsa->p;
     mont_p = rsa->mont_q;
     mont_q = rsa->mont_p;
-    dmp1 = rsa->dmq1;
-    dmq1 = rsa->dmp1;
+    dmp1 = rsa->dmq1_fixed;
+    dmq1 = rsa->dmp1_fixed;
   }
+
+  // Use the minimal-width versions of |n|, |p|, and |q|. Either works, but if
+  // someone gives us non-minimal values, these will be slightly more efficient
+  // on the non-Montgomery operations.
+  const BIGNUM *n = &rsa->mont_n->N;
+  const BIGNUM *p = &mont_p->N;
+  const BIGNUM *q = &mont_q->N;
 
   // This is a pre-condition for |mod_montgomery|. It was already checked by the
   // caller.
-  assert(BN_ucmp(I, rsa->n) < 0);
+  assert(BN_ucmp(I, n) < 0);
 
   if (// |m1| is the result modulo |q|.
       !mod_montgomery(r1, I, q, mont_q, p, ctx) ||
@@ -850,9 +872,9 @@ static int mod_exp(BIGNUM *r0, const BIGNUM *I, RSA *rsa, BN_CTX *ctx) {
       // [0, n).
       !bn_mul_fixed(r0, r0, q, ctx) ||
       !bn_uadd_fixed(r0, r0, m1) ||
-      // The result should be bounded by |rsa->n|, but fixed-width operations
+      // The result should be bounded by |n|, but fixed-width operations may
       // bound the width slightly higher, so fix it.
-      !bn_resize_words(r0, rsa->n->width)) {
+      !bn_resize_words(r0, n->width)) {
     goto err;
   }
 

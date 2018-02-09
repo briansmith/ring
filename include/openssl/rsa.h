@@ -509,10 +509,6 @@ OPENSSL_EXPORT void *RSA_get_ex_data(const RSA *rsa, int idx);
 // RSA_FLAG_EXT_PKEY is deprecated and ignored.
 #define RSA_FLAG_EXT_PKEY 0x20
 
-// RSA_FLAG_PRIVATE_KEY_FROZEN specifies that the key has been used for a
-// private key operation and may no longer be mutated.
-#define RSA_FLAG_PRIVATE_KEY_FROZEN 0x40
-
 
 // RSA public exponent values.
 
@@ -640,6 +636,9 @@ typedef struct bn_blinding_st BN_BLINDING;
 struct rsa_st {
   RSA_METHOD *meth;
 
+  // Access to the following fields was historically allowed, but
+  // deprecated. Use |RSA_get0_*| and |RSA_set0_*| instead. Access to all other
+  // fields is forbidden and will cause threading errors.
   BIGNUM *n;
   BIGNUM *e;
   BIGNUM *d;
@@ -662,6 +661,13 @@ struct rsa_st {
   BN_MONT_CTX *mont_p;
   BN_MONT_CTX *mont_q;
 
+  // The following fields are copies of |d|, |dmp1|, and |dmq1|, respectively,
+  // but with the correct widths to prevent side channels. These must use
+  // separate copies due to threading concerns caused by OpenSSL's API
+  // mistakes. See https://github.com/openssl/openssl/issues/5158 and
+  // the |freeze_private_key| implementation.
+  BIGNUM *d_fixed, *dmp1_fixed, *dmq1_fixed;
+
   // inv_small_mod_large_mont is q^-1 mod p in Montgomery form, using |mont_p|,
   // if |p| >= |q|. Otherwise, it is p^-1 mod q in Montgomery form, using
   // |mont_q|.
@@ -676,6 +682,10 @@ struct rsa_st {
   // |blindings_inuse| from 0 to 1.
   BN_BLINDING **blindings;
   unsigned char *blindings_inuse;
+
+  // private_key_frozen is one if the key has been used for a private key
+  // operation and may no longer be mutated.
+  unsigned private_key_frozen:1;
 };
 
 

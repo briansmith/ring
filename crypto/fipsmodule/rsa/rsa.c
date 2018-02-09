@@ -143,6 +143,9 @@ void RSA_free(RSA *rsa) {
   BN_MONT_CTX_free(rsa->mont_n);
   BN_MONT_CTX_free(rsa->mont_p);
   BN_MONT_CTX_free(rsa->mont_q);
+  BN_free(rsa->d_fixed);
+  BN_free(rsa->dmp1_fixed);
+  BN_free(rsa->dmq1_fixed);
   BN_free(rsa->inv_small_mod_large_mont);
   for (u = 0; u < rsa->num_blindings; u++) {
     BN_BLINDING_free(rsa->blindings[u]);
