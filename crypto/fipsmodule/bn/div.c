@@ -481,7 +481,7 @@ static const BIGNUM *bn_resized_from_ctx(const BIGNUM *bn, size_t width,
   if (ret == NULL ||
       !BN_copy(ret, bn) ||
       !bn_resize_words(ret, width)) {
-    return 0;
+    return NULL;
   }
   return ret;
 }
