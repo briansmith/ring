@@ -134,6 +134,7 @@ add_library(
 
   OBJECT
 
+  cpu-aarch64-fuchsia.c
   cpu-aarch64-linux.c
   cpu-arm.c
   cpu-arm-linux.c

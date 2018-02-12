@@ -1,4 +1,4 @@
-/* Copyright (c) 2016, Google Inc.
+/* Copyright (c) 2018, Google Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -14,47 +14,40 @@
 
 #include <openssl/cpu.h>
 
-#if defined(OPENSSL_AARCH64) && defined(OPENSSL_LINUX) && \
+#if defined(OPENSSL_AARCH64) && defined(OPENSSL_FUCHSIA) && \
     !defined(OPENSSL_STATIC_ARMCAP)
 
-#include <sys/auxv.h>
+#include <zircon/features.h>
+#include <zircon/syscalls.h>
+#include <zircon/types.h>
 
 #include <openssl/arm_arch.h>
 
 #include "internal.h"
 
-
 extern uint32_t OPENSSL_armcap_P;
 
 void OPENSSL_cpuid_setup(void) {
-  unsigned long hwcap = getauxval(AT_HWCAP);
-
-  // See /usr/include/asm/hwcap.h on an aarch64 installation for the source of
-  // these values.
-  static const unsigned long kNEON = 1 << 1;
-  static const unsigned long kAES = 1 << 3;
-  static const unsigned long kPMULL = 1 << 4;
-  static const unsigned long kSHA1 = 1 << 5;
-  static const unsigned long kSHA256 = 1 << 6;
-
-  if ((hwcap & kNEON) == 0) {
-    // Matching OpenSSL, if NEON is missing, don't report other features
+  uint32_t hwcap;
+  zx_status_t rc = zx_system_get_features(ZX_FEATURE_KIND_CPU, &hwcap);
+  if (rc != ZX_OK || (hwcap & ZX_ARM64_FEATURE_ISA_ASIMD) == 0) {
+    // Matching OpenSSL, if NEON/ASIMD is missing, don't report other features
     // either.
     return;
   }
 
   OPENSSL_armcap_P |= ARMV7_NEON;
 
-  if (hwcap & kAES) {
+  if (hwcap & ZX_ARM64_FEATURE_ISA_AES) {
     OPENSSL_armcap_P |= ARMV8_AES;
   }
-  if (hwcap & kPMULL) {
+  if (hwcap & ZX_ARM64_FEATURE_ISA_PMULL) {
     OPENSSL_armcap_P |= ARMV8_PMULL;
   }
-  if (hwcap & kSHA1) {
+  if (hwcap & ZX_ARM64_FEATURE_ISA_SHA1) {
     OPENSSL_armcap_P |= ARMV8_SHA1;
   }
-  if (hwcap & kSHA256) {
+  if (hwcap & ZX_ARM64_FEATURE_ISA_SHA2) {
     OPENSSL_armcap_P |= ARMV8_SHA256;
   }
 }
