@@ -12,14 +12,22 @@
  * (2) University of Haifa, Israel
  */
 
-#ifndef RSAZ_EXP_H
-#define RSAZ_EXP_H
+#ifndef OPENSSL_HEADER_BN_RSAZ_EXP_H
+#define OPENSSL_HEADER_BN_RSAZ_EXP_H
 
 #include <openssl/bn.h>
 
-void RSAZ_1024_mod_exp_avx2(BN_ULONG result[16],
-	const BN_ULONG base_norm[16], const BN_ULONG exponent[16],
-	const BN_ULONG m_norm[16], const BN_ULONG RR[16], BN_ULONG k0);
+// RSAZ_1024_mod_exp_avx2 sets |result| to |base_norm| raised to |exponent|
+// modulo |m_norm|. |base_norm| must be fully-reduced and |exponent| must have
+// the high bit set (it is 1024 bits wide). |RR| and |k0| must be |RR| and |n0|,
+// respectively, extracted from |m_norm|'s |BN_MONT_CTX|.
+void RSAZ_1024_mod_exp_avx2(BN_ULONG result[16], const BN_ULONG base_norm[16],
+                            const BN_ULONG exponent[16],
+                            const BN_ULONG m_norm[16], const BN_ULONG RR[16],
+                            BN_ULONG k0);
+
+// rsaz_avx2_eligible returns one if |RSAZ_1024_mod_exp_avx2| should be used and
+// zero otherwise.
 int rsaz_avx2_eligible(void);
 
-#endif
+#endif  // OPENSSL_HEADER_BN_RSAZ_EXP_H
