@@ -22,6 +22,7 @@ add_library(
   e_rc4.c
   e_aesgcmsiv.c
   e_aesctrhmac.c
+  e_aesccm.c
   e_chacha20poly1305.c
 
   tls_cbc.c
