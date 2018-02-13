@@ -798,7 +798,10 @@ static int mod_montgomery(BIGNUM *r, const BIGNUM *I, const BIGNUM *p,
   // By precomputing R^3 mod p (normally |BN_MONT_CTX| only uses R^2 mod p) and
   // adjusting the API for |BN_mod_exp_mont_consttime|, we could instead compute
   // I * R mod p here and save a reduction per prime. But this would require
-  // changing the RSAZ code and may not be worth it.
+  // changing the RSAZ code and may not be worth it. Note that the RSAZ code
+  // uses a different radix, so it uses R' = 2^1044. There we'd actually want
+  // R^2 * R', and would futher benefit from a precomputed R'^2. It currently
+  // converts |mont_p->RR| to R'^2.
   return 1;
 }
 
