@@ -65,8 +65,6 @@
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
-#else
-#include <strings.h>
 #endif
 
 #include "internal.h"
