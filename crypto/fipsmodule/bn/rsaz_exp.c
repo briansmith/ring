@@ -33,9 +33,12 @@ void rsaz_1024_scatter5_avx2(void *tbl, const void *val, int i);
 void rsaz_1024_gather5_avx2(void *val, const void *tbl, int i);
 void rsaz_1024_red2norm_avx2(void *norm, const void *red);
 
+// one is 1 in RSAZ's representation.
 alignas(64) static const BN_ULONG one[40] = {
     1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+// two80 is 2^80 in RSAZ's representation. Note RSAZ uses base 2^29, so this is
+// 2^(29*2 + 22) = 2^80, not 2^(64*2 + 22).
 alignas(64) static const BN_ULONG two80[40] = {
     0, 0, 1 << 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0,       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -60,8 +63,12 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
   rsaz_1024_norm2red_avx2(a_inv, base_norm);
   rsaz_1024_norm2red_avx2(R2, RR);
 
+  // Convert |R2| from the usual radix, giving R = 2^1024, to RSAZ's radix,
+  // giving R = 2^(36*29) = 2^1044.
   rsaz_1024_mul_avx2(R2, R2, R2, m, k0);
+  // R2 = 2^2048 * 2^2048 / 2^1044 = 2^3052
   rsaz_1024_mul_avx2(R2, R2, two80, m, k0);
+  // R2 = 2^3052 * 2^80 / 2^1044 = 2^2088 = (2^1044)^2
 
   // table[0] = 1
   rsaz_1024_mul_avx2(result, R2, one, m, k0);
@@ -75,7 +82,7 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
   rsaz_1024_sqr_avx2(result, a_inv, m, k0, 1);
   rsaz_1024_scatter5_avx2(table_s, result, 2);
 #if 0
-  // this is almost 2x smaller and less than 1% slower
+  // This is almost 2x smaller and less than 1% slower.
   for (int index = 3; index < 32; index++) {
     rsaz_1024_mul_avx2(result, result, a_inv, m, k0);
     rsaz_1024_scatter5_avx2(table_s, result, index);
@@ -191,7 +198,7 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
   rsaz_1024_gather5_avx2(result, table_s, wvalue);
 
   int index = 1014;
-  while (index > -1) {  // loop for the remaining 127 windows
+  while (index > -1) {  // Loop for the remaining 127 windows.
 
     rsaz_1024_sqr_avx2(result, result, m, k0, 5);
 
@@ -201,19 +208,19 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
     wvalue = (wvalue >> (index % 8)) & 31;
     index -= 5;
 
-    rsaz_1024_gather5_avx2(a_inv, table_s, wvalue);  // borrow a_inv
+    rsaz_1024_gather5_avx2(a_inv, table_s, wvalue);  // Borrow |a_inv|.
     rsaz_1024_mul_avx2(result, result, a_inv, m, k0);
   }
 
-  // square four times
+  // Square four times.
   rsaz_1024_sqr_avx2(result, result, m, k0, 4);
 
   wvalue = p_str[0] & 15;
 
-  rsaz_1024_gather5_avx2(a_inv, table_s, wvalue);  // borrow a_inv
+  rsaz_1024_gather5_avx2(a_inv, table_s, wvalue);  // Borrow |a_inv|.
   rsaz_1024_mul_avx2(result, result, a_inv, m, k0);
 
-  // from Montgomery
+  // Convert from Montgomery.
   rsaz_1024_mul_avx2(result, result, one, m, k0);
 
   rsaz_1024_red2norm_avx2(result_norm, result);
