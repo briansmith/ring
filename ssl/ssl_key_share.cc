@@ -97,8 +97,10 @@ class ECKeyShare : public SSLKeyShare {
       return false;
     }
 
-    if (!EC_POINT_oct2point(group.get(), peer_point.get(), peer_key.data(),
+    if (peer_key.empty() || peer_key[0] != POINT_CONVERSION_UNCOMPRESSED ||
+        !EC_POINT_oct2point(group.get(), peer_point.get(), peer_key.data(),
                             peer_key.size(), bn_ctx.get())) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       *out_alert = SSL_AD_DECODE_ERROR;
       return false;
     }

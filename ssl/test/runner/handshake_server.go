@@ -735,7 +735,7 @@ ResendHelloRetryRequest:
 		// Once a curve has been selected and a key share identified,
 		// the server needs to generate a public value and send it in
 		// the ServerHello.
-		curve, ok := curveForCurveID(selectedCurve)
+		curve, ok := curveForCurveID(selectedCurve, config)
 		if !ok {
 			panic("tls: server failed to look up curve ID")
 		}
@@ -745,7 +745,7 @@ ResendHelloRetryRequest:
 		if config.Bugs.SkipHelloRetryRequest {
 			// If skipping HelloRetryRequest, use a random key to
 			// avoid crashing.
-			curve2, _ := curveForCurveID(selectedCurve)
+			curve2, _ := curveForCurveID(selectedCurve, config)
 			var err error
 			peerKey, err = curve2.offer(config.rand())
 			if err != nil {

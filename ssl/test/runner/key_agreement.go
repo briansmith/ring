@@ -252,8 +252,9 @@ type ecdhCurve interface {
 
 // ellipticECDHCurve implements ecdhCurve with an elliptic.Curve.
 type ellipticECDHCurve struct {
-	curve      elliptic.Curve
-	privateKey []byte
+	curve          elliptic.Curve
+	privateKey     []byte
+	sendCompressed bool
 }
 
 func (e *ellipticECDHCurve) offer(rand io.Reader) (publicKey []byte, err error) {
@@ -262,7 +263,15 @@ func (e *ellipticECDHCurve) offer(rand io.Reader) (publicKey []byte, err error) 
 	if err != nil {
 		return nil, err
 	}
-	return elliptic.Marshal(e.curve, x, y), nil
+	ret := elliptic.Marshal(e.curve, x, y)
+	if e.sendCompressed {
+		l := (len(ret) - 1) / 2
+		tmp := make([]byte, 1+l)
+		tmp[0] = byte(2 | y.Bit(0))
+		copy(tmp[1:], ret[1:1+l])
+		ret = tmp
+	}
+	return ret, nil
 }
 
 func (e *ellipticECDHCurve) accept(rand io.Reader, peerKey []byte) (publicKey []byte, preMasterSecret []byte, err error) {
@@ -334,16 +343,16 @@ func (e *x25519ECDHCurve) finish(peerKey []byte) (preMasterSecret []byte, err er
 	return out[:], nil
 }
 
-func curveForCurveID(id CurveID) (ecdhCurve, bool) {
+func curveForCurveID(id CurveID, config *Config) (ecdhCurve, bool) {
 	switch id {
 	case CurveP224:
-		return &ellipticECDHCurve{curve: elliptic.P224()}, true
+		return &ellipticECDHCurve{curve: elliptic.P224(), sendCompressed: config.Bugs.SendCompressedCoordinates}, true
 	case CurveP256:
-		return &ellipticECDHCurve{curve: elliptic.P256()}, true
+		return &ellipticECDHCurve{curve: elliptic.P256(), sendCompressed: config.Bugs.SendCompressedCoordinates}, true
 	case CurveP384:
-		return &ellipticECDHCurve{curve: elliptic.P384()}, true
+		return &ellipticECDHCurve{curve: elliptic.P384(), sendCompressed: config.Bugs.SendCompressedCoordinates}, true
 	case CurveP521:
-		return &ellipticECDHCurve{curve: elliptic.P521()}, true
+		return &ellipticECDHCurve{curve: elliptic.P521(), sendCompressed: config.Bugs.SendCompressedCoordinates}, true
 	case CurveX25519:
 		return &x25519ECDHCurve{}, true
 	default:
@@ -507,7 +516,7 @@ NextCandidate:
 	}
 
 	var ok bool
-	if ka.curve, ok = curveForCurveID(curveid); !ok {
+	if ka.curve, ok = curveForCurveID(curveid, config); !ok {
 		return nil, errors.New("tls: preferredCurves includes unsupported curve")
 	}
 	ka.curveID = curveid
@@ -552,7 +561,7 @@ func (ka *ecdheKeyAgreement) processServerKeyExchange(config *Config, clientHell
 	ka.curveID = curveid
 
 	var ok bool
-	if ka.curve, ok = curveForCurveID(curveid); !ok {
+	if ka.curve, ok = curveForCurveID(curveid, config); !ok {
 		return errors.New("tls: server selected unsupported curve")
 	}
 

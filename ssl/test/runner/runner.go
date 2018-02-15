@@ -10443,58 +10443,94 @@ const bogusCurve = 0x1234
 
 func addCurveTests() {
 	for _, curve := range testCurves {
-		testCases = append(testCases, testCase{
-			name: "CurveTest-Client-" + curve.name,
-			config: Config{
-				MaxVersion:       VersionTLS12,
-				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-				CurvePreferences: []CurveID{curve.id},
-			},
-			flags: []string{
-				"-enable-all-curves",
-				"-expect-curve-id", strconv.Itoa(int(curve.id)),
-			},
-			expectedCurveID: curve.id,
-		})
-		testCases = append(testCases, testCase{
-			name: "CurveTest-Client-" + curve.name + "-TLS13",
-			config: Config{
-				MaxVersion:       VersionTLS13,
-				CurvePreferences: []CurveID{curve.id},
-			},
-			flags: []string{
-				"-enable-all-curves",
-				"-expect-curve-id", strconv.Itoa(int(curve.id)),
-			},
-			expectedCurveID: curve.id,
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "CurveTest-Server-" + curve.name,
-			config: Config{
-				MaxVersion:       VersionTLS12,
-				CipherSuites:     []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
-				CurvePreferences: []CurveID{curve.id},
-			},
-			flags: []string{
-				"-enable-all-curves",
-				"-expect-curve-id", strconv.Itoa(int(curve.id)),
-			},
-			expectedCurveID: curve.id,
-		})
-		testCases = append(testCases, testCase{
-			testType: serverTest,
-			name:     "CurveTest-Server-" + curve.name + "-TLS13",
-			config: Config{
-				MaxVersion:       VersionTLS13,
-				CurvePreferences: []CurveID{curve.id},
-			},
-			flags: []string{
-				"-enable-all-curves",
-				"-expect-curve-id", strconv.Itoa(int(curve.id)),
-			},
-			expectedCurveID: curve.id,
-		})
+		for _, ver := range tlsVersions {
+			// SSL 3.0 cannot reliably negotiate curves.
+			if ver.version == VersionSSL30 {
+				continue
+			}
+
+			suffix := curve.name + "-" + ver.name
+
+			testCases = append(testCases, testCase{
+				name: "CurveTest-Client-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					CipherSuites: []uint16{
+						TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+						TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+						TLS_AES_128_GCM_SHA256,
+					},
+					CurvePreferences: []CurveID{curve.id},
+				},
+				tls13Variant: ver.tls13Variant,
+				flags: []string{
+					"-enable-all-curves",
+					"-expect-curve-id", strconv.Itoa(int(curve.id)),
+				},
+				expectedCurveID: curve.id,
+			})
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "CurveTest-Server-" + suffix,
+				config: Config{
+					MaxVersion: ver.version,
+					CipherSuites: []uint16{
+						TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+						TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+						TLS_AES_128_GCM_SHA256,
+					},
+					CurvePreferences: []CurveID{curve.id},
+				},
+				tls13Variant: ver.tls13Variant,
+				flags: []string{
+					"-enable-all-curves",
+					"-expect-curve-id", strconv.Itoa(int(curve.id)),
+				},
+				expectedCurveID: curve.id,
+			})
+
+			if curve.id != CurveX25519 {
+				testCases = append(testCases, testCase{
+					name: "CurveTest-Client-Compressed-" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
+						CipherSuites: []uint16{
+							TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+							TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+							TLS_AES_128_GCM_SHA256,
+						},
+						CurvePreferences: []CurveID{curve.id},
+						Bugs: ProtocolBugs{
+							SendCompressedCoordinates: true,
+						},
+					},
+					tls13Variant:  ver.tls13Variant,
+					flags:         []string{"-enable-all-curves"},
+					shouldFail:    true,
+					expectedError: ":BAD_ECPOINT:",
+				})
+				testCases = append(testCases, testCase{
+					testType: serverTest,
+					name:     "CurveTest-Server-Compressed-" + suffix,
+					config: Config{
+						MaxVersion: ver.version,
+						CipherSuites: []uint16{
+							TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+							TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+							TLS_AES_128_GCM_SHA256,
+						},
+						CurvePreferences: []CurveID{curve.id},
+						Bugs: ProtocolBugs{
+							SendCompressedCoordinates: true,
+						},
+					},
+					tls13Variant:  ver.tls13Variant,
+					flags:         []string{"-enable-all-curves"},
+					shouldFail:    true,
+					expectedError: ":BAD_ECPOINT:",
+				})
+			}
+		}
 	}
 
 	// The server must be tolerant to bogus curves.
@@ -10630,7 +10666,7 @@ func addCurveTests() {
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":INVALID_ENCODING:",
+		expectedError: ":BAD_ECPOINT:",
 	})
 	testCases = append(testCases, testCase{
 		name: "InvalidECDHPoint-Client-TLS13",
@@ -10642,7 +10678,7 @@ func addCurveTests() {
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":INVALID_ENCODING:",
+		expectedError: ":BAD_ECPOINT:",
 	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -10656,7 +10692,7 @@ func addCurveTests() {
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":INVALID_ENCODING:",
+		expectedError: ":BAD_ECPOINT:",
 	})
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -10669,7 +10705,7 @@ func addCurveTests() {
 			},
 		},
 		shouldFail:    true,
-		expectedError: ":INVALID_ENCODING:",
+		expectedError: ":BAD_ECPOINT:",
 	})
 
 	// The previous curve ID should be reported on TLS 1.2 resumption.
