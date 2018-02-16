@@ -115,28 +115,28 @@ static int ccm128_init_state(const CCM128_CONTEXT *ctx,
     // Cast to u64 to avoid the compiler complaining about invalid shifts.
     uint64_t aad_len_u64 = aad_len;
     if (aad_len_u64 < 0x10000 - 0x100) {
-      state->cmac.c[0] ^= (uint8_t)(aad_len >> 8);
-      state->cmac.c[1] ^= (uint8_t)aad_len;
+      state->cmac.c[0] ^= (uint8_t)(aad_len_u64 >> 8);
+      state->cmac.c[1] ^= (uint8_t)aad_len_u64;
       i = 2;
     } else if (aad_len_u64 <= 0xffffffff) {
       state->cmac.c[0] ^= 0xff;
       state->cmac.c[1] ^= 0xfe;
-      state->cmac.c[2] ^= (uint8_t)(aad_len >> 24);
-      state->cmac.c[3] ^= (uint8_t)(aad_len >> 16);
-      state->cmac.c[4] ^= (uint8_t)(aad_len >> 8);
-      state->cmac.c[5] ^= (uint8_t)aad_len;
+      state->cmac.c[2] ^= (uint8_t)(aad_len_u64 >> 24);
+      state->cmac.c[3] ^= (uint8_t)(aad_len_u64 >> 16);
+      state->cmac.c[4] ^= (uint8_t)(aad_len_u64 >> 8);
+      state->cmac.c[5] ^= (uint8_t)aad_len_u64;
       i = 6;
     } else {
       state->cmac.c[0] ^= 0xff;
       state->cmac.c[1] ^= 0xff;
-      state->cmac.c[2] ^= (uint8_t)(aad_len >> (56 % (sizeof(aad_len) * 8)));
-      state->cmac.c[3] ^= (uint8_t)(aad_len >> (48 % (sizeof(aad_len) * 8)));
-      state->cmac.c[4] ^= (uint8_t)(aad_len >> (40 % (sizeof(aad_len) * 8)));
-      state->cmac.c[5] ^= (uint8_t)(aad_len >> (32 % (sizeof(aad_len) * 8)));
-      state->cmac.c[6] ^= (uint8_t)(aad_len >> 24);
-      state->cmac.c[7] ^= (uint8_t)(aad_len >> 16);
-      state->cmac.c[8] ^= (uint8_t)(aad_len >> 8);
-      state->cmac.c[9] ^= (uint8_t)aad_len;
+      state->cmac.c[2] ^= (uint8_t)(aad_len_u64 >> 56);
+      state->cmac.c[3] ^= (uint8_t)(aad_len_u64 >> 48);
+      state->cmac.c[4] ^= (uint8_t)(aad_len_u64 >> 40);
+      state->cmac.c[5] ^= (uint8_t)(aad_len_u64 >> 32);
+      state->cmac.c[6] ^= (uint8_t)(aad_len_u64 >> 24);
+      state->cmac.c[7] ^= (uint8_t)(aad_len_u64 >> 16);
+      state->cmac.c[8] ^= (uint8_t)(aad_len_u64 >> 8);
+      state->cmac.c[9] ^= (uint8_t)aad_len_u64;
       i = 10;
     }
 
