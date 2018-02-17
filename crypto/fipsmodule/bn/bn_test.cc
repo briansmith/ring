@@ -807,6 +807,20 @@ static void TestModInv(BIGNUMFileTest *t, BN_CTX *ctx) {
   EXPECT_BIGNUMS_EQUAL("inv(A) (mod M)", mod_inv.get(), ret.get());
 }
 
+static void TestGCD(BIGNUMFileTest *t, BN_CTX *ctx) {
+  bssl::UniquePtr<BIGNUM> a = t->GetBIGNUM("A");
+  bssl::UniquePtr<BIGNUM> b = t->GetBIGNUM("B");
+  bssl::UniquePtr<BIGNUM> gcd = t->GetBIGNUM("GCD");
+  ASSERT_TRUE(a);
+  ASSERT_TRUE(b);
+  ASSERT_TRUE(gcd);
+
+  bssl::UniquePtr<BIGNUM> ret(BN_new());
+  ASSERT_TRUE(ret);
+  ASSERT_TRUE(BN_gcd(ret.get(), a.get(), b.get(), ctx));
+  EXPECT_BIGNUMS_EQUAL("GCD(A, B)", gcd.get(), ret.get());
+}
+
 class BNTest : public testing::Test {
  protected:
   void SetUp() override {
@@ -839,6 +853,7 @@ TEST_F(BNTest, TestVectors) {
       {"ModSqrt", TestModSqrt},
       {"NotModSquare", TestNotModSquare},
       {"ModInv", TestModInv},
+      {"GCD", TestGCD},
   };
 
   FileTestGTest("crypto/fipsmodule/bn/bn_tests.txt", [&](FileTest *t) {

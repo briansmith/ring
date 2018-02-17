@@ -264,6 +264,21 @@ func main() {
 					fmt.Fprintf(os.Stderr, "Line %d: value was a square.\n", test.LineNumber)
 				}
 			}
+		case "GCD":
+			if checkKeys(test, "A", "B", "GCD") {
+				a := test.Values["A"]
+				b := test.Values["B"]
+				// Go's GCD function does not accept zero, unlike OpenSSL.
+				var g *big.Int
+				if a.Sign() == 0 {
+					g = b
+				} else if b.Sign() == 0 {
+					g = a
+				} else {
+					g = new(big.Int).GCD(nil, nil, a, b)
+				}
+				checkResult(test, "GCD(A, B)", "GCD", g)
+			}
 		default:
 			fmt.Fprintf(os.Stderr, "Line %d: unknown test type %q.\n", test.LineNumber, test.Type)
 		}
