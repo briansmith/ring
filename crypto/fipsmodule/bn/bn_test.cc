@@ -805,6 +805,9 @@ static void TestModInv(BIGNUMFileTest *t, BN_CTX *ctx) {
   ASSERT_TRUE(ret);
   ASSERT_TRUE(BN_mod_inverse(ret.get(), a.get(), m.get(), ctx));
   EXPECT_BIGNUMS_EQUAL("inv(A) (mod M)", mod_inv.get(), ret.get());
+
+  ASSERT_TRUE(BN_gcd(ret.get(), a.get(), m.get(), ctx));
+  EXPECT_BIGNUMS_EQUAL("GCD(A, M)", BN_value_one(), ret.get());
 }
 
 static void TestGCD(BIGNUMFileTest *t, BN_CTX *ctx) {
@@ -819,6 +822,13 @@ static void TestGCD(BIGNUMFileTest *t, BN_CTX *ctx) {
   ASSERT_TRUE(ret);
   ASSERT_TRUE(BN_gcd(ret.get(), a.get(), b.get(), ctx));
   EXPECT_BIGNUMS_EQUAL("GCD(A, B)", gcd.get(), ret.get());
+
+  if (!BN_is_one(gcd.get())) {
+    EXPECT_FALSE(BN_mod_inverse(ret.get(), a.get(), b.get(), ctx))
+        << "A^-1 (mod B) computed, but it does not exist";
+    EXPECT_FALSE(BN_mod_inverse(ret.get(), b.get(), a.get(), ctx))
+        << "B^-1 (mod A) computed, but it does not exist";
+  }
 }
 
 class BNTest : public testing::Test {
