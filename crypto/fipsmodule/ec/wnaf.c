@@ -73,6 +73,7 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/thread.h>
+#include <openssl/type_check.h>
 
 #include "internal.h"
 #include "../bn/internal.h"
@@ -250,8 +251,12 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
   size_t wsize = window_bits_for_scalar_size(bits);
   size_t wNAF_len = bits + 1;
   size_t precomp_len = (size_t)1 << (wsize - 1);
+
+  OPENSSL_COMPILE_ASSERT(
+      OPENSSL_ARRAY_SIZE(g_wNAF) == OPENSSL_ARRAY_SIZE(p_wNAF),
+      g_wNAF_and_p_wNAF_are_different_sizes);
+
   if (wNAF_len > OPENSSL_ARRAY_SIZE(g_wNAF) ||
-      wNAF_len > OPENSSL_ARRAY_SIZE(p_wNAF) ||
       2 * precomp_len > OPENSSL_ARRAY_SIZE(precomp_storage)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
     goto err;
