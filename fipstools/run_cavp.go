@@ -21,7 +21,6 @@ var (
 	oraclePath = flag.String("oracle-bin", "", "Path to the oracle binary")
 	suiteDir   = flag.String("suite-dir", "", "Base directory containing the CAVP test suite")
 	noFAX      = flag.Bool("no-fax", false, "Skip comparing against FAX files")
-	niap       = flag.Bool("niap", false, "Perform NIAP tests rather than FIPS tests")
 	android    = flag.Bool("android", false, "Run tests via ADB")
 )
 
@@ -334,7 +333,7 @@ var tlsKDFTests = testSuite{
 	},
 }
 
-var fipsTestSuites = []*testSuite{
+var testSuites = []*testSuite{
 	&aesGCMTests,
 	&aesTests,
 	&ctrDRBGTests,
@@ -350,9 +349,6 @@ var fipsTestSuites = []*testSuite{
 	&shaTests,
 	&shaMonteTests,
 	&tdesTests,
-}
-
-var niapTestSuites = []*testSuite{
 	&kasTests,
 	&tlsKDFTests,
 }
@@ -419,11 +415,6 @@ func main() {
 	for i := 0; i < numWorkers; i++ {
 		wg.Add(1)
 		go worker(&wg, work)
-	}
-
-	testSuites := fipsTestSuites
-	if *niap {
-		testSuites = niapTestSuites
 	}
 
 	for _, suite := range testSuites {
