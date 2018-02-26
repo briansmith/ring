@@ -571,6 +571,11 @@ func (m *clientHelloMsg) marshal() []byte {
 		customExt := extensions.addU16LengthPrefixed()
 		customExt.addBytes([]byte(m.customExtension))
 	}
+	if l := m.dummyPQPaddingLen; l != 0 {
+		extensions.addU16(extensionDummyPQPadding)
+		body := extensions.addU16LengthPrefixed()
+		body.addBytes(make([]byte, l))
+	}
 	// The PSK extension must be last (draft-ietf-tls-tls13-18 section 4.2.6).
 	if len(m.pskIdentities) > 0 && !m.pskBinderFirst {
 		extensions.addU16(extensionPreSharedKey)
@@ -1144,6 +1149,7 @@ type serverExtensions struct {
 	supportedCurves         []CurveID
 	quicTransportParams     []byte
 	serverNameAck           bool
+	dummyPQPaddingLen       int
 }
 
 func (m *serverExtensions) marshal(extensions *byteBuilder) {
@@ -1278,6 +1284,11 @@ func (m *serverExtensions) marshal(extensions *byteBuilder) {
 		extensions.addU16(extensionServerName)
 		extensions.addU16(0) // zero length
 	}
+	if l := m.dummyPQPaddingLen; l != 0 {
+		extensions.addU16(extensionDummyPQPadding)
+		body := extensions.addU16LengthPrefixed()
+		body.addBytes(make([]byte, l))
+	}
 }
 
 func (m *serverExtensions) unmarshal(data byteReader, version uint16) bool {
@@ -1382,6 +1393,8 @@ func (m *serverExtensions) unmarshal(data byteReader, version uint16) bool {
 				return false
 			}
 			m.hasEarlyData = true
+		case extensionDummyPQPadding:
+			m.dummyPQPaddingLen = len(body)
 		default:
 			// Unknown extensions are illegal from the server.
 			return false

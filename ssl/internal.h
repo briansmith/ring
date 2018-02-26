@@ -1514,6 +1514,10 @@ struct SSL_HANDSHAKE {
   // grease_seed is the entropy for GREASE values. It is valid if
   // |grease_seeded| is true.
   uint8_t grease_seed[ssl_grease_last_index + 1] = {0};
+
+  // dummy_pq_padding_len is the length of the extension that should be echoed
+  // in a ServerHello, or zero if no extension should be echoed.
+  uint16_t dummy_pq_padding_len = 0;
 };
 
 UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl);

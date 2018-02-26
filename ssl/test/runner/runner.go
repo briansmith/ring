@@ -7343,23 +7343,39 @@ func addExtensionTests() {
 			continue
 		}
 
-		for _, paddingLen := range []int{1, 9700} {
-			flags := []string{
-				"-max-version", version.shimFlag(tls),
-				"-dummy-pq-padding-len", strconv.Itoa(paddingLen),
-			}
-
+		for _, paddingLen := range []int{400, 1100} {
 			testCases = append(testCases, testCase{
-				name:         fmt.Sprintf("DummyPQPadding-%d-%s", paddingLen, version.name),
-				testType:     clientTest,
-				tls13Variant: version.tls13Variant,
+				name:          fmt.Sprintf("DummyPQPadding-%d-%s", paddingLen, version.name),
+				testType:      clientTest,
+				tls13Variant:  version.tls13Variant,
+				resumeSession: true,
 				config: Config{
 					MaxVersion: version.version,
 					Bugs: ProtocolBugs{
 						ExpectDummyPQPaddingLength: paddingLen,
 					},
 				},
-				flags: flags,
+				flags: []string{
+					"-max-version", version.shimFlag(tls),
+					"-dummy-pq-padding-len", strconv.Itoa(paddingLen),
+				},
+			})
+
+			testCases = append(testCases, testCase{
+				name:          fmt.Sprintf("DummyPQPadding-Server-%d-%s", paddingLen, version.name),
+				testType:      serverTest,
+				tls13Variant:  version.tls13Variant,
+				resumeSession: true,
+				config: Config{
+					MaxVersion: version.version,
+					Bugs: ProtocolBugs{
+						SendDummyPQPaddingLength:   paddingLen,
+						ExpectDummyPQPaddingLength: paddingLen,
+					},
+				},
+				flags: []string{
+					"-max-version", version.shimFlag(tls),
+				},
 			})
 		}
 	}

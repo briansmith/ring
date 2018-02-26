@@ -1552,6 +1552,10 @@ type ProtocolBugs struct {
 	// length.
 	ExpectDummyPQPaddingLength int
 
+	// SendDummyPQPaddingLength causes a client to send a dummy PQ padding
+	// extension of the given length in the ClientHello.
+	SendDummyPQPaddingLength int
+
 	// SendCompressedCoordinates, if true, causes ECDH key shares over NIST
 	// curves to use compressed coordinates.
 	SendCompressedCoordinates bool
