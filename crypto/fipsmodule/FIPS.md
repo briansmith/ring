@@ -8,7 +8,7 @@ Please note that we cannot answer questions about FIPS, nor about using BoringSS
 
 BoringCrypto has undergone the following validations:
 
-1. 2017-06-15: certificate [#2964](http://csrc.nist.gov/groups/STM/cmvp/documents/140-1/1401val2017.htm#2964), [security policy](/crypto/fipsmodule/policydocs/BoringCrypto-Security-Policy-20170615.docx) (in docx format).
+1. 2017-06-15: certificate [#2964](https://csrc.nist.gov/Projects/Cryptographic-Module-Validation-Program/Certificate/2964), [security policy](/crypto/fipsmodule/policydocs/BoringCrypto-Security-Policy-20170615.docx) (in docx format).
 
 ## Running CAVP tests
 
