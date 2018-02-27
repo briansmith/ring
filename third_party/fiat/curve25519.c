@@ -528,7 +528,6 @@ static void fe_cswap(fe *f, fe *g, uint64_t b) {
 
 // NOTE: based on fiat-crypto fe_mul, edited for in2=121666, 0, 0..
 static void fe_mul_121666_impl(uint64_t out[5], const uint64_t in1[5]) {
-  assert_fe_loose(in1);
   { const uint64_t x10 = in1[4];
   { const uint64_t x11 = in1[3];
   { const uint64_t x9 = in1[2];
@@ -578,7 +577,6 @@ static void fe_mul_121666_impl(uint64_t out[5], const uint64_t in1[5]) {
   out[3] = x43;
   out[4] = x46;
   }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
-  assert_fe(out);
 }
 
 static void fe_mul121666(fe *h, const fe_loose *f) {
@@ -1214,7 +1212,6 @@ static void fe_cswap(fe *f, fe *g, unsigned int b) {
 
 // NOTE: based on fiat-crypto fe_mul, edited for in2=121666, 0, 0..
 static void fe_mul_121666_impl(uint32_t out[10], const uint32_t in1[10]) {
-  assert_fe_loose(in1);
   { const uint32_t x20 = in1[9];
   { const uint32_t x21 = in1[8];
   { const uint32_t x19 = in1[7];
@@ -1327,7 +1324,6 @@ static void fe_mul_121666_impl(uint32_t out[10], const uint32_t in1[10]) {
   out[8] = x111;
   out[9] = x114;
   }}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
-  assert_fe(out);
 }
 
 static void fe_mul121666(fe *h, const fe_loose *f) {
