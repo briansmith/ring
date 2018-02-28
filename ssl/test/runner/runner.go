@@ -7358,6 +7358,7 @@ func addExtensionTests() {
 				flags: []string{
 					"-max-version", version.shimFlag(tls),
 					"-dummy-pq-padding-len", strconv.Itoa(paddingLen),
+					"-expect-dummy-pq-padding",
 				},
 			})
 

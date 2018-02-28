@@ -153,6 +153,7 @@ struct TestConfig {
   bool expect_draft_downgrade = false;
   int dummy_pq_padding_len = 0;
   bool handoff = false;
+  bool expect_dummy_pq_padding = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_initial,

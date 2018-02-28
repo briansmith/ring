@@ -132,6 +132,7 @@ const Flag<bool> kBoolFlags[] = {
     &TestConfig::allow_false_start_without_alpn },
   { "-expect-draft-downgrade", &TestConfig::expect_draft_downgrade },
   { "-handoff", &TestConfig::handoff },
+  { "-expect-dummy-pq-padding", &TestConfig::expect_dummy_pq_padding },
 };
 
 const Flag<std::string> kStringFlags[] = {

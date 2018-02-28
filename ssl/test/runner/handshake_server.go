@@ -1386,6 +1386,10 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 		return errors.New("tls: no GREASE extension found")
 	}
 
+	if l := hs.clientHello.dummyPQPaddingLen; l != 0 {
+		serverExtensions.dummyPQPaddingLen = l
+	}
+
 	serverExtensions.serverNameAck = c.config.Bugs.SendServerNameAck
 
 	return nil

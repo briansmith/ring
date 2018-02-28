@@ -1862,6 +1862,15 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
   if (config->expect_draft_downgrade != !!SSL_is_draft_downgrade(ssl)) {
     fprintf(stderr, "Got %sdraft downgrade signal, but wanted the opposite.\n",
             SSL_is_draft_downgrade(ssl) ? "" : "no ");
+    return false;
+  }
+
+  const bool did_dummy_pq_padding = !!SSL_dummy_pq_padding_used(ssl);
+  if (config->expect_dummy_pq_padding != did_dummy_pq_padding) {
+    fprintf(stderr,
+            "Dummy PQ padding %s observed, but expected the opposite.\n",
+            did_dummy_pq_padding ? "was" : "was not");
+    return false;
   }
 
   return true;

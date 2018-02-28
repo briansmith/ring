@@ -557,11 +557,6 @@ static bool ignore_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   return true;
 }
 
-static bool ignore_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
-                                     CBS *contents) {
-  return true;
-}
-
 static bool dont_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   return true;
 }
@@ -2355,6 +2350,21 @@ static bool ext_dummy_pq_padding_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   return ext_dummy_pq_padding_add(out, len);
 }
 
+static bool ext_dummy_pq_padding_parse_serverhello(SSL_HANDSHAKE *hs,
+                                                   uint8_t *out_alert,
+                                                   CBS *contents) {
+  if (contents == nullptr) {
+    return true;
+  }
+
+  if (CBS_len(contents) != hs->ssl->dummy_pq_padding_len) {
+    return false;
+  }
+
+  hs->ssl->did_dummy_pq_padding = true;
+  return true;
+}
+
 static bool ext_dummy_pq_padding_parse_clienthello(SSL_HANDSHAKE *hs,
                                                    uint8_t *out_alert,
                                                    CBS *contents) {
@@ -2816,7 +2826,7 @@ static const struct tls_extension kExtensions[] = {
     TLSEXT_TYPE_dummy_pq_padding,
     NULL,
     ext_dummy_pq_padding_add_clienthello,
-    ignore_parse_serverhello,
+    ext_dummy_pq_padding_parse_serverhello,
     ext_dummy_pq_padding_parse_clienthello,
     ext_dummy_pq_padding_add_serverhello,
   },

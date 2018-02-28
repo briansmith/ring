@@ -2440,6 +2440,14 @@ int SSL_set_dummy_pq_padding_size(SSL *ssl, size_t num_bytes) {
   return 1;
 }
 
+int SSL_dummy_pq_padding_used(SSL *ssl) {
+  if (ssl->server || !ssl->s3->initial_handshake_complete) {
+    return 0;
+  }
+
+  return ssl->did_dummy_pq_padding;
+}
+
 void SSL_CTX_set_msg_callback(SSL_CTX *ctx,
                               void (*cb)(int write_p, int version,
                                          int content_type, const void *buf,
