@@ -117,9 +117,15 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_gcm_siv(void);
 // https://tools.ietf.org/html/draft-irtf-cfrg-gcmsiv-02
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm_siv(void);
 
-// EVP_aead_aes_128_ccm_bluetooth is AES-128-CCM with M=4 and L=2, as decribed
-// in the Bluetooth Core Specification v5.0, Volume 6, Part E, Section 1.
+// EVP_aead_aes_128_ccm_bluetooth is AES-128-CCM with M=4 and L=2 (4-byte tags
+// and 13-byte nonces), as decribed in the Bluetooth Core Specification v5.0,
+// Volume 6, Part E, Section 1.
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_ccm_bluetooth(void);
+
+// EVP_aead_aes_128_ccm_bluetooth_8 is AES-128-CCM with M=8 and L=2 (8-byte tags
+// and 13-byte nonces), as used in the Bluetooth Mesh Networking Specification
+// v1.0.
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_ccm_bluetooth_8(void);
 
 // EVP_has_aes_hardware returns one if we enable hardware support for fast and
 // constant-time AES-GCM.

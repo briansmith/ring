@@ -23,9 +23,6 @@
 #include "../fipsmodule/cipher/internal.h"
 
 
-#define EVP_AEAD_AES_CCM_BLUETOOTH_TAG_LEN 4
-#define EVP_AEAD_AES_CCM_BLUETOOTH_NONCE_LEN 13
-
 #define EVP_AEAD_AES_CCM_MAX_TAG_LEN 16
 
 struct aead_aes_ccm_ctx {
@@ -36,18 +33,23 @@ struct aead_aes_ccm_ctx {
   CCM128_CONTEXT ccm;
 };
 
-static int aead_aes_ccm_bluetooth_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
-                                       size_t key_len, size_t tag_len) {
-  if (key_len != 16) {
+static int aead_aes_ccm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
+                             size_t key_len, size_t tag_len, unsigned M,
+                             unsigned L) {
+  assert(M == EVP_AEAD_max_overhead(ctx->aead));
+  assert(M == EVP_AEAD_max_tag_len(ctx->aead));
+  assert(15 - L == EVP_AEAD_nonce_length(ctx->aead));
+
+  if (key_len != EVP_AEAD_key_length(ctx->aead)) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_BAD_KEY_LENGTH);
     return 0;  // EVP_AEAD_CTX_init should catch this.
   }
 
   if (tag_len == EVP_AEAD_DEFAULT_TAG_LENGTH) {
-    tag_len = EVP_AEAD_AES_CCM_BLUETOOTH_TAG_LEN;
+    tag_len = M;
   }
 
-  if (tag_len != EVP_AEAD_AES_CCM_BLUETOOTH_TAG_LEN) {
+  if (tag_len != M) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TAG_TOO_LARGE);
     return 0;
   }
@@ -62,8 +64,7 @@ static int aead_aes_ccm_bluetooth_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   block128_f block;
   ctr128_f ctr = aes_ctr_set_key(&ccm_ctx->ks.ks, NULL, &block, key, key_len);
   ctx->tag_len = tag_len;
-  if (!CRYPTO_ccm128_init(&ccm_ctx->ccm, &ccm_ctx->ks.ks, block, ctr, tag_len,
-                          15 - EVP_AEAD_AES_CCM_BLUETOOTH_NONCE_LEN)) {
+  if (!CRYPTO_ccm128_init(&ccm_ctx->ccm, &ccm_ctx->ks.ks, block, ctr, M, L)) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_INTERNAL_ERROR);
     OPENSSL_free(ccm_ctx);
     return 0;
@@ -149,12 +150,17 @@ static int aead_aes_ccm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
   return 1;
 }
 
+static int aead_aes_ccm_bluetooth_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
+                                       size_t key_len, size_t tag_len) {
+  return aead_aes_ccm_init(ctx, key, key_len, tag_len, 4, 2);
+}
+
 static const EVP_AEAD aead_aes_128_ccm_bluetooth = {
-    16,
-    EVP_AEAD_AES_CCM_BLUETOOTH_NONCE_LEN,  // nonce length
-    EVP_AEAD_AES_CCM_BLUETOOTH_TAG_LEN,    // overhead
-    EVP_AEAD_AES_CCM_BLUETOOTH_TAG_LEN,    // max tag length
-    0,                                     // seal_scatter_supports_extra_in
+    16,  // key length (AES-128)
+    13,  // nonce length
+    4,   // overhead
+    4,   // max tag length
+    0,   // seal_scatter_supports_extra_in
 
     aead_aes_ccm_bluetooth_init,
     NULL /* init_with_direction */,
@@ -168,4 +174,30 @@ static const EVP_AEAD aead_aes_128_ccm_bluetooth = {
 
 const EVP_AEAD *EVP_aead_aes_128_ccm_bluetooth(void) {
   return &aead_aes_128_ccm_bluetooth;
+}
+
+static int aead_aes_ccm_bluetooth_8_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
+                                         size_t key_len, size_t tag_len) {
+  return aead_aes_ccm_init(ctx, key, key_len, tag_len, 8, 2);
+}
+
+static const EVP_AEAD aead_aes_128_ccm_bluetooth_8 = {
+    16,  // key length (AES-128)
+    13,  // nonce length
+    8,   // overhead
+    8,   // max tag length
+    0,   // seal_scatter_supports_extra_in
+
+    aead_aes_ccm_bluetooth_8_init,
+    NULL /* init_with_direction */,
+    aead_aes_ccm_cleanup,
+    NULL /* open */,
+    aead_aes_ccm_seal_scatter,
+    aead_aes_ccm_open_gather,
+    NULL /* get_iv */,
+    NULL /* tag_len */,
+};
+
+const EVP_AEAD *EVP_aead_aes_128_ccm_bluetooth_8(void) {
+  return &aead_aes_128_ccm_bluetooth_8;
 }

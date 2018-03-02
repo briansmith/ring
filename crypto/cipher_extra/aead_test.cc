@@ -95,6 +95,8 @@ static const struct KnownAEAD kAEADs[] = {
      "aes_256_ctr_hmac_sha256.txt", false, true, 0},
     {"AES_128_CCM_BLUETOOTH", EVP_aead_aes_128_ccm_bluetooth,
      "aes_128_ccm_bluetooth_tests.txt", false, false, 0},
+    {"AES_128_CCM_BLUETOOTH_8", EVP_aead_aes_128_ccm_bluetooth_8,
+     "aes_128_ccm_bluetooth_8_tests.txt", false, false, 0},
 };
 
 class PerAEADTest : public testing::TestWithParam<KnownAEAD> {
