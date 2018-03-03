@@ -773,6 +773,10 @@ OPENSSL_EXPORT BIGNUM *BN_mod_inverse(BIGNUM *out, const BIGNUM *a,
 // value) to protect it against side-channel attacks. On failure, if the failure
 // was caused by |a| having no inverse mod |n| then |*out_no_inverse| will be
 // set to one; otherwise it will be set to zero.
+//
+// Note this function may incorrectly report |a| has no inverse if the random
+// blinding value has no inverse. It should only be used when |n| has few
+// non-invertible elements, such as an RSA modulus.
 int BN_mod_inverse_blinded(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
                            const BN_MONT_CTX *mont, BN_CTX *ctx);
 
