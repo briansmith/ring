@@ -991,11 +991,12 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
     // trial division, do not bother computing a GCD or performing Rabin-Miller.
     if (!bn_odd_number_is_obviously_composite(out)) {
       // Check gcd(out-1, e) is one (steps 4.5 and 5.6).
+      int relatively_prime;
       if (!BN_sub(tmp, out, BN_value_one()) ||
-          !BN_gcd(tmp, tmp, e, ctx)) {
+          !bn_is_relatively_prime(&relatively_prime, tmp, e, ctx)) {
         goto err;
       }
-      if (BN_is_one(tmp)) {
+      if (relatively_prime) {
         // Test |out| for primality (steps 4.5.1 and 5.6.1).
         int is_probable_prime;
         if (!BN_primality_test(&is_probable_prime, out, BN_prime_checks, ctx, 0,
@@ -1051,12 +1052,11 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   BIGNUM *totient = BN_CTX_get(ctx);
   BIGNUM *pm1 = BN_CTX_get(ctx);
   BIGNUM *qm1 = BN_CTX_get(ctx);
-  BIGNUM *gcd = BN_CTX_get(ctx);
   BIGNUM *sqrt2 = BN_CTX_get(ctx);
   BIGNUM *pow2_prime_bits_100 = BN_CTX_get(ctx);
   BIGNUM *pow2_prime_bits = BN_CTX_get(ctx);
-  if (totient == NULL || pm1 == NULL || qm1 == NULL || gcd == NULL ||
-      sqrt2 == NULL || pow2_prime_bits_100 == NULL || pow2_prime_bits == NULL ||
+  if (totient == NULL || pm1 == NULL || qm1 == NULL || sqrt2 == NULL ||
+      pow2_prime_bits_100 == NULL || pow2_prime_bits == NULL ||
       !BN_set_bit(pow2_prime_bits_100, prime_bits - 100) ||
       !BN_set_bit(pow2_prime_bits, prime_bits)) {
     goto bn_err;
@@ -1124,12 +1124,11 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
     // q-1. However, we do operations with Chinese Remainder Theorem, so we only
     // use d (mod p-1) and d (mod q-1) as exponents. Using a minimal totient
     // does not affect those two values.
-    if (!BN_sub(pm1, rsa->p, BN_value_one()) ||
-        !BN_sub(qm1, rsa->q, BN_value_one()) ||
-        !BN_mul(totient, pm1, qm1, ctx) ||
-        !BN_gcd(gcd, pm1, qm1, ctx) ||
-        !BN_div(totient, NULL, totient, gcd, ctx) ||
-        !BN_mod_inverse(rsa->d, rsa->e, totient, ctx)) {
+    int no_inverse;
+    if (!bn_usub_consttime(pm1, rsa->p, BN_value_one()) ||
+        !bn_usub_consttime(qm1, rsa->q, BN_value_one()) ||
+        !bn_lcm_consttime(totient, pm1, qm1, ctx) ||
+        !bn_mod_inverse_consttime(rsa->d, &no_inverse, rsa->e, totient, ctx)) {
       goto bn_err;
     }
 
@@ -1138,13 +1137,14 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   } while (BN_cmp(rsa->d, pow2_prime_bits) <= 0);
 
   if (// Calculate n.
-      !BN_mul(rsa->n, rsa->p, rsa->q, ctx) ||
+      !bn_mul_consttime(rsa->n, rsa->p, rsa->q, ctx) ||
       // Calculate d mod (p-1).
-      !BN_mod(rsa->dmp1, rsa->d, pm1, ctx) ||
+      !bn_div_consttime(NULL, rsa->dmp1, rsa->d, pm1, ctx) ||
       // Calculate d mod (q-1)
-      !BN_mod(rsa->dmq1, rsa->d, qm1, ctx)) {
+      !bn_div_consttime(NULL, rsa->dmq1, rsa->d, qm1, ctx)) {
     goto bn_err;
   }
+  bn_set_minimal_width(rsa->n);
 
   // Sanity-check that |rsa->n| has the specified size. This is implied by
   // |generate_prime|'s bounds.
