@@ -715,6 +715,11 @@ int RSA_check_key(const RSA *key) {
     goto out;
   }
 
+  if (BN_is_negative(key->d) || BN_cmp(key->d, key->n) >= 0) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_D_OUT_OF_RANGE);
+    goto out;
+  }
+
   has_crt_values = key->dmp1 != NULL;
   if (has_crt_values != (key->dmq1 != NULL) ||
       has_crt_values != (key->iqmp != NULL)) {

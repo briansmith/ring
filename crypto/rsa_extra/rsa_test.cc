@@ -826,6 +826,21 @@ TEST(RSATest, CheckKey) {
   ASSERT_TRUE(BN_hex2bn(&rsa->d, kDEuler));
   EXPECT_TRUE(RSA_check_key(rsa.get()));
 
+  // If d is completely out of range but otherwise valid, it is rejected.
+  static const char kDTooLarge[] =
+      "f2c885128cf04101c283553617c210d8ffd14cde98dc420c3c9892b55606cbedcda24298"
+      "7655b3f7b9433c2c316293a1cf1a2b034f197aeec1de8d81a67d94cc902b9fce1712d5a4"
+      "9c257ff705725cd77338d23535d3b87c8f4cecc15a6b72641ffd81aea106839d216b5fcd"
+      "7d415751d27255e540dd1638a8389721e9d0807d65d24d7b8c2f60e4b2c0bf250544ce68"
+      "b5ddbc1463d5a4638b2816b0f033dacdc0162f329af9e4d142352521fbd2fe14af824ef3"
+      "1601fe843c79cc3efbcb8eafd79262bdd25e2bdf21440f774e26d88ed7df938c5cf6982d"
+      "e9fa635b8ca36ce5c5fbd579a53cbb0348ceae752d4bc5621c5acc922ca2082494633337"
+      "42e770c1";
+  ASSERT_TRUE(BN_hex2bn(&rsa->d, kDTooLarge));
+  EXPECT_FALSE(RSA_check_key(rsa.get()));
+  ERR_clear_error();
+  ASSERT_TRUE(BN_hex2bn(&rsa->d, kD));
+
   // CRT value must either all be provided or all missing.
   ASSERT_TRUE(BN_hex2bn(&rsa->dmp1, kDMP1));
   EXPECT_FALSE(RSA_check_key(rsa.get()));
