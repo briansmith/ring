@@ -306,6 +306,24 @@ static BN_ULONG bn_abs_sub_part_words(BN_ULONG *r, const BN_ULONG *a,
   return borrow;
 }
 
+int bn_abs_sub_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                         BN_CTX *ctx) {
+  int cl = a->width < b->width ? a->width : b->width;
+  int dl = a->width - b->width;
+  int r_len = a->width < b->width ? b->width : a->width;
+  BN_CTX_start(ctx);
+  BIGNUM *tmp = BN_CTX_get(ctx);
+  int ok = tmp != NULL &&
+           bn_wexpand(r, r_len) &&
+           bn_wexpand(tmp, r_len);
+  if (ok) {
+    bn_abs_sub_part_words(r->d, a->d, b->d, cl, dl, tmp->d);
+    r->width = r_len;
+  }
+  BN_CTX_end(ctx);
+  return ok;
+}
+
 // Karatsuba recursive multiplication algorithm
 // (cf. Knuth, The Art of Computer Programming, Vol. 2)
 

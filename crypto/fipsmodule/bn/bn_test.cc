@@ -239,8 +239,7 @@ static void TestSum(BIGNUMFileTest *t, BN_CTX *ctx) {
   // having. Note that these functions are frequently used when the
   // prerequisites don't hold. In those cases, they are supposed to work as if
   // the prerequisite hold, but we don't test that yet. TODO: test that.
-  if (!BN_is_negative(a.get()) &&
-      !BN_is_negative(b.get()) && BN_cmp(a.get(), b.get()) >= 0) {
+  if (!BN_is_negative(a.get()) && !BN_is_negative(b.get())) {
     ASSERT_TRUE(BN_uadd(ret.get(), a.get(), b.get()));
     EXPECT_BIGNUMS_EQUAL("A +u B", sum.get(), ret.get());
 
@@ -276,6 +275,16 @@ static void TestSum(BIGNUMFileTest *t, BN_CTX *ctx) {
     ASSERT_TRUE(BN_copy(ret.get(), b.get()));
     ASSERT_TRUE(BN_usub(ret.get(), sum.get(), ret.get()));
     EXPECT_BIGNUMS_EQUAL("Sum -u B (r is b)", a.get(), ret.get());
+
+    ASSERT_TRUE(bn_abs_sub_consttime(ret.get(), sum.get(), a.get(), ctx));
+    EXPECT_BIGNUMS_EQUAL("|Sum - A|", b.get(), ret.get());
+    ASSERT_TRUE(bn_abs_sub_consttime(ret.get(), a.get(), sum.get(), ctx));
+    EXPECT_BIGNUMS_EQUAL("|A - Sum|", b.get(), ret.get());
+
+    ASSERT_TRUE(bn_abs_sub_consttime(ret.get(), sum.get(), b.get(), ctx));
+    EXPECT_BIGNUMS_EQUAL("|Sum - B|", a.get(), ret.get());
+    ASSERT_TRUE(bn_abs_sub_consttime(ret.get(), b.get(), sum.get(), ctx));
+    EXPECT_BIGNUMS_EQUAL("|B - Sum|", a.get(), ret.get());
   }
 
   // Test with |BN_add_word| and |BN_sub_word| if |b| is small enough.

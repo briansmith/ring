@@ -402,6 +402,11 @@ int bn_uadd_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 // |r->width| = |a->width|.
 int bn_usub_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
+// bn_abs_sub_consttime sets |r| to the absolute value of |a| - |b|, treating
+// both inputs as secret. It returns one on success and zero on error.
+OPENSSL_EXPORT int bn_abs_sub_consttime(BIGNUM *r, const BIGNUM *a,
+                                        const BIGNUM *b, BN_CTX *ctx);
+
 // bn_mul_consttime behaves like |BN_mul|, but it rejects negative inputs and
 // pessimally sets |r->width| to |a->width| + |b->width|, to avoid leaking
 // information about |a| and |b|.

@@ -968,10 +968,9 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
 
     if (p != NULL) {
       // If |p| and |out| are too close, try again (step 5.4).
-      if (!BN_sub(tmp, out, p)) {
+      if (!bn_abs_sub_consttime(tmp, out, p, ctx)) {
         goto err;
       }
-      BN_set_negative(tmp, 0);
       if (BN_cmp(tmp, pow2_bits_100) <= 0) {
         continue;
       }
