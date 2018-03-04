@@ -924,25 +924,20 @@ const BN_ULONG kBoringSSLRSASqrtTwo[] = {
 };
 const size_t kBoringSSLRSASqrtTwoLen = OPENSSL_ARRAY_SIZE(kBoringSSLRSASqrtTwo);
 
-int rsa_greater_than_pow2(const BIGNUM *b, int n) {
-  if (BN_is_negative(b) || n == INT_MAX) {
-    return 0;
-  }
-
-  int b_bits = BN_num_bits(b);
-  return b_bits > n + 1 || (b_bits == n + 1 && !BN_is_pow2(b));
-}
-
 // generate_prime sets |out| to a prime with length |bits| such that |out|-1 is
 // relatively prime to |e|. If |p| is non-NULL, |out| will also not be close to
-// |p|.
+// |p|. |sqrt2| must be ⌊2^(bits-1)×√2⌋ (or a slightly overestimate for large
+// sizes), and |pow2_bits_100| must be 2^(bits-100).
 static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
-                          const BIGNUM *p, const BIGNUM *sqrt2, BN_CTX *ctx,
+                          const BIGNUM *p, const BIGNUM *sqrt2,
+                          const BIGNUM *pow2_bits_100, BN_CTX *ctx,
                           BN_GENCB *cb) {
   if (bits < 128 || (bits % BN_BITS2) != 0) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
     return 0;
   }
+  assert(BN_is_pow2(pow2_bits_100));
+  assert(BN_is_bit_set(pow2_bits_100, bits - 100));
 
   // See FIPS 186-4 appendix B.3.3, steps 4 and 5. Note |bits| here is nlen/2.
 
@@ -977,7 +972,7 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
         goto err;
       }
       BN_set_negative(tmp, 0);
-      if (!rsa_greater_than_pow2(tmp, bits - 100)) {
+      if (BN_cmp(tmp, pow2_bits_100) <= 0) {
         continue;
       }
     }
@@ -1048,6 +1043,7 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   }
 
   int ret = 0;
+  int prime_bits = bits / 2;
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
     goto bn_err;
@@ -1058,8 +1054,12 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   BIGNUM *qm1 = BN_CTX_get(ctx);
   BIGNUM *gcd = BN_CTX_get(ctx);
   BIGNUM *sqrt2 = BN_CTX_get(ctx);
+  BIGNUM *pow2_prime_bits_100 = BN_CTX_get(ctx);
+  BIGNUM *pow2_prime_bits = BN_CTX_get(ctx);
   if (totient == NULL || pm1 == NULL || qm1 == NULL || gcd == NULL ||
-      sqrt2 == NULL) {
+      sqrt2 == NULL || pow2_prime_bits_100 == NULL || pow2_prime_bits == NULL ||
+      !BN_set_bit(pow2_prime_bits_100, prime_bits - 100) ||
+      !BN_set_bit(pow2_prime_bits, prime_bits)) {
     goto bn_err;
   }
 
@@ -1077,8 +1077,6 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   if (!BN_copy(rsa->e, e_value)) {
     goto bn_err;
   }
-
-  int prime_bits = bits / 2;
 
   // Compute sqrt2 >= ⌊2^(prime_bits-1)×√2⌋.
   if (!bn_set_words(sqrt2, kBoringSSLRSASqrtTwo, kBoringSSLRSASqrtTwoLen)) {
@@ -1105,9 +1103,11 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   do {
     // Generate p and q, each of size |prime_bits|, using the steps outlined in
     // appendix FIPS 186-4 appendix B.3.3.
-    if (!generate_prime(rsa->p, prime_bits, rsa->e, NULL, sqrt2, ctx, cb) ||
+    if (!generate_prime(rsa->p, prime_bits, rsa->e, NULL, sqrt2,
+                        pow2_prime_bits_100, ctx, cb) ||
         !BN_GENCB_call(cb, 3, 0) ||
-        !generate_prime(rsa->q, prime_bits, rsa->e, rsa->p, sqrt2, ctx, cb) ||
+        !generate_prime(rsa->q, prime_bits, rsa->e, rsa->p, sqrt2,
+                        pow2_prime_bits_100, ctx, cb) ||
         !BN_GENCB_call(cb, 3, 1)) {
       goto bn_err;
     }
@@ -1134,9 +1134,9 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
       goto bn_err;
     }
 
-    // Check that |rsa->d| > 2^|prime_bits| and try again if it fails. See
-    // appendix B.3.1's guidance on values for d.
-  } while (!rsa_greater_than_pow2(rsa->d, prime_bits));
+    // Retry if |rsa->d| <= 2^|prime_bits|. See appendix B.3.1's guidance on
+    // values for d.
+  } while (BN_cmp(rsa->d, pow2_prime_bits) <= 0);
 
   if (// Calculate n.
       !BN_mul(rsa->n, rsa->p, rsa->q, ctx) ||
