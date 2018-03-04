@@ -197,40 +197,24 @@ err:
   return ret;
 }
 
+void bn_rshift1_words(BN_ULONG *r, const BN_ULONG *a, size_t num) {
+  if (num == 0) {
+    return;
+  }
+  for (size_t i = 0; i < num - 1; i++) {
+    r[i] = (a[i] >> 1) | (a[i + 1] << (BN_BITS2 - 1));
+  }
+  r[num - 1] = a[num - 1] >> 1;
+}
+
 int BN_rshift1(BIGNUM *r, const BIGNUM *a) {
-  BN_ULONG *ap, *rp, t, c;
-  int i, j;
-
-  if (BN_is_zero(a)) {
-    BN_zero(r);
-    return 1;
+  if (!bn_wexpand(r, a->width)) {
+    return 0;
   }
-  i = bn_minimal_width(a);
-  ap = a->d;
-  j = i - (ap[i - 1] == 1);
-  if (a != r) {
-    if (!bn_wexpand(r, j)) {
-      return 0;
-    }
-    r->neg = a->neg;
-  }
-  rp = r->d;
-  t = ap[--i];
-  c = t << (BN_BITS2 - 1);
-  if (t >>= 1) {
-    rp[i] = t;
-  }
-  while (i > 0) {
-    t = ap[--i];
-    rp[i] = (t >> 1) | c;
-    c = t << (BN_BITS2 - 1);
-  }
-  r->width = j;
-
-  if (r->width == 0) {
-    r->neg = 0;
-  }
-
+  bn_rshift1_words(r->d, a->d, a->width);
+  r->width = a->width;
+  r->neg = a->neg;
+  bn_set_minimal_width(r);
   return 1;
 }
 

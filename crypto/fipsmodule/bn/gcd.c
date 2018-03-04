@@ -114,112 +114,131 @@
 
 #include "internal.h"
 
-static BIGNUM *euclid(BIGNUM *a, BIGNUM *b) {
-  BIGNUM *t;
-  int shifts = 0;
 
-  // 0 <= b <= a
-  while (!BN_is_zero(b)) {
-    // 0 < b <= a
+static BN_ULONG word_is_odd_mask(BN_ULONG a) { return (BN_ULONG)0 - (a & 1); }
 
-    if (BN_is_odd(a)) {
-      if (BN_is_odd(b)) {
-        if (!BN_sub(a, a, b)) {
-          goto err;
-        }
-        if (!BN_rshift1(a, a)) {
-          goto err;
-        }
-        if (BN_cmp(a, b) < 0) {
-          t = a;
-          a = b;
-          b = t;
-        }
-      } else {
-        // a odd - b even
-        if (!BN_rshift1(b, b)) {
-          goto err;
-        }
-        if (BN_cmp(a, b) < 0) {
-          t = a;
-          a = b;
-          b = t;
-        }
-      }
-    } else {
-      // a is even
-      if (BN_is_odd(b)) {
-        if (!BN_rshift1(a, a)) {
-          goto err;
-        }
-        if (BN_cmp(a, b) < 0) {
-          t = a;
-          a = b;
-          b = t;
-        }
-      } else {
-        // a even - b even
-        if (!BN_rshift1(a, a)) {
-          goto err;
-        }
-        if (!BN_rshift1(b, b)) {
-          goto err;
-        }
-        shifts++;
-      }
-    }
-    // 0 <= b <= a
-  }
-
-  if (shifts) {
-    if (!BN_lshift(a, a, shifts)) {
-      goto err;
-    }
-  }
-
-  return a;
-
-err:
-  return NULL;
+static void maybe_rshift1_words(BN_ULONG *a, BN_ULONG mask, BN_ULONG *tmp,
+                                size_t num) {
+  bn_rshift1_words(tmp, a, num);
+  bn_select_words(a, mask, tmp, a, num);
 }
 
-int BN_gcd(BIGNUM *r, const BIGNUM *in_a, const BIGNUM *in_b, BN_CTX *ctx) {
-  BIGNUM *a, *b, *t;
+static int bn_gcd_consttime(BIGNUM *r, unsigned *out_shift, const BIGNUM *x,
+                            const BIGNUM *y, BN_CTX *ctx) {
+  size_t width = x->width > y->width ? x->width : y->width;
+  if (width == 0) {
+    *out_shift = 0;
+    BN_zero(r);
+    return 1;
+  }
+
+  // This is a constant-time implementation of Stein's algorithm (binary GCD).
   int ret = 0;
-
   BN_CTX_start(ctx);
-  a = BN_CTX_get(ctx);
-  b = BN_CTX_get(ctx);
-
-  if (a == NULL || b == NULL) {
-    goto err;
-  }
-  if (BN_copy(a, in_a) == NULL) {
-    goto err;
-  }
-  if (BN_copy(b, in_b) == NULL) {
-    goto err;
-  }
-
-  a->neg = 0;
-  b->neg = 0;
-
-  if (BN_cmp(a, b) < 0) {
-    t = a;
-    a = b;
-    b = t;
-  }
-  t = euclid(a, b);
-  if (t == NULL) {
+  BIGNUM *u = BN_CTX_get(ctx);
+  BIGNUM *v = BN_CTX_get(ctx);
+  BIGNUM *tmp = BN_CTX_get(ctx);
+  if (u == NULL || v == NULL || tmp == NULL ||
+      !BN_copy(u, x) ||
+      !BN_copy(v, y) ||
+      !bn_resize_words(u, width) ||
+      !bn_resize_words(v, width) ||
+      !bn_resize_words(tmp, width)) {
     goto err;
   }
 
-  if (BN_copy(r, t) == NULL) {
+  // Each loop iteration halves at least one of |u| and |v|. Thus we need at
+  // most the combined bit width of inputs for at least one value to be zero.
+  unsigned x_bits = x->width * BN_BITS2, y_bits = y->width * BN_BITS2;
+  unsigned num_iters = x_bits + y_bits;
+  if (num_iters < x_bits) {
+    OPENSSL_PUT_ERROR(BN, BN_R_BIGNUM_TOO_LONG);
     goto err;
+  }
+
+  unsigned shift = 0;
+  for (unsigned i = 0; i < num_iters; i++) {
+    BN_ULONG both_odd = word_is_odd_mask(u->d[0]) & word_is_odd_mask(v->d[0]);
+
+    // If both |u| and |v| are odd, subtract the smaller from the larger.
+    BN_ULONG u_less_than_v =
+        (BN_ULONG)0 - bn_sub_words(tmp->d, u->d, v->d, width);
+    bn_select_words(u->d, both_odd & ~u_less_than_v, tmp->d, u->d, width);
+    bn_sub_words(tmp->d, v->d, u->d, width);
+    bn_select_words(v->d, both_odd & u_less_than_v, tmp->d, v->d, width);
+
+    // At least one of |u| and |v| is now even.
+    BN_ULONG u_is_odd = word_is_odd_mask(u->d[0]);
+    BN_ULONG v_is_odd = word_is_odd_mask(v->d[0]);
+    assert(!(u_is_odd & v_is_odd));
+
+    // If both are even, the final GCD gains a factor of two.
+    shift += 1 & (~u_is_odd & ~v_is_odd);
+
+    // Halve any which are even.
+    maybe_rshift1_words(u->d, ~u_is_odd, tmp->d, width);
+    maybe_rshift1_words(v->d, ~v_is_odd, tmp->d, width);
+  }
+
+  // One of |u| or |v| is zero at this point. The algorithm usually makes |u|
+  // zero, unless |y| was already zero on input. Fix this by combining the
+  // values.
+  assert(BN_is_zero(u) || BN_is_zero(v));
+  for (size_t i = 0; i < width; i++) {
+    v->d[i] |= u->d[i];
+  }
+
+  *out_shift = shift;
+  ret = bn_set_words(r, v->d, width);
+
+err:
+  BN_CTX_end(ctx);
+  return ret;
+}
+
+int BN_gcd(BIGNUM *r, const BIGNUM *x, const BIGNUM *y, BN_CTX *ctx) {
+  unsigned shift;
+  return bn_gcd_consttime(r, &shift, x, y, ctx) &&
+         BN_lshift(r, r, shift);
+}
+
+int bn_is_relatively_prime(int *out_relatively_prime, const BIGNUM *x,
+                           const BIGNUM *y, BN_CTX *ctx) {
+  int ret = 0;
+  BN_CTX_start(ctx);
+  unsigned shift;
+  BIGNUM *gcd = BN_CTX_get(ctx);
+  if (gcd == NULL ||
+      !bn_gcd_consttime(gcd, &shift, x, y, ctx)) {
+    goto err;
+  }
+
+  // Check that 2^|shift| * |gcd| is one.
+  if (gcd->width == 0) {
+    *out_relatively_prime = 0;
+  } else {
+    BN_ULONG mask = shift | (gcd->d[0] ^ 1);
+    for (int i = 1; i < gcd->width; i++) {
+      mask |= gcd->d[i];
+    }
+    *out_relatively_prime = mask == 0;
   }
   ret = 1;
 
 err:
+  BN_CTX_end(ctx);
+  return ret;
+}
+
+int bn_lcm_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
+  BN_CTX_start(ctx);
+  unsigned shift;
+  BIGNUM *gcd = BN_CTX_get(ctx);
+  int ret = gcd != NULL &&
+            bn_mul_consttime(r, a, b, ctx) &&
+            bn_gcd_consttime(gcd, &shift, a, b, ctx) &&
+            bn_div_consttime(r, NULL, r, gcd, ctx) &&
+            bn_rshift_secret_shift(r, r, shift, ctx);
   BN_CTX_end(ctx);
   return ret;
 }

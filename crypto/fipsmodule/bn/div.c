@@ -454,6 +454,92 @@ static void bn_mod_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   bn_select_words(r, carry, tmp /* r < 0 */, r /* r >= 0 */, num);
 }
 
+int bn_div_consttime(BIGNUM *quotient, BIGNUM *remainder,
+                     const BIGNUM *numerator, const BIGNUM *divisor,
+                     BN_CTX *ctx) {
+  if (BN_is_negative(numerator) || BN_is_negative(divisor)) {
+    OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
+    return 0;
+  }
+  if (BN_is_zero(divisor)) {
+    OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
+    return 0;
+  }
+
+  // This function implements long division in binary. It is not very efficient,
+  // but it is simple, easy to make constant-time, and performant enough for RSA
+  // key generation.
+
+  int ret = 0;
+  BN_CTX_start(ctx);
+  BIGNUM *q = quotient, *r = remainder;
+  if (quotient == NULL || quotient == numerator || quotient == divisor) {
+    q = BN_CTX_get(ctx);
+  }
+  if (remainder == NULL || remainder == numerator || remainder == divisor) {
+    r = BN_CTX_get(ctx);
+  }
+  BIGNUM *tmp = BN_CTX_get(ctx);
+  if (q == NULL || r == NULL || tmp == NULL ||
+      !bn_wexpand(q, numerator->width) ||
+      !bn_wexpand(r, divisor->width) ||
+      !bn_wexpand(tmp, divisor->width)) {
+    goto err;
+  }
+
+  OPENSSL_memset(q->d, 0, numerator->width * sizeof(BN_ULONG));
+  q->width = numerator->width;
+  q->neg = 0;
+
+  OPENSSL_memset(r->d, 0, divisor->width * sizeof(BN_ULONG));
+  r->width = divisor->width;
+  r->neg = 0;
+
+  // Incorporate |numerator| into |r|, one bit at a time, reducing after each
+  // step. At the start of each loop iteration, |r| < |divisor|
+  for (int i = numerator->width - 1; i >= 0; i--) {
+    for (int bit = BN_BITS2 - 1; bit >= 0; bit--) {
+      // Incorporate the next bit of the numerator, by computing
+      // r = 2*r or 2*r + 1. Note the result fits in one more word. We store the
+      // extra word in |carry|.
+      BN_ULONG carry = bn_add_words(r->d, r->d, r->d, divisor->width);
+      r->d[0] |= (numerator->d[i] >> bit) & 1;
+      // tmp = r - divisor. We use |bn_sub_words| to perform the bulk of the
+      // subtraction, and then apply the borrow to |carry|.
+      carry -= bn_sub_words(tmp->d, r->d, divisor->d, divisor->width);
+      // |r| was previously fully-reduced, so we know:
+      //
+      //    2*0 - divisor <= tmp <= 2*(divisor-1) + 1 - divisor
+      //         -divisor <= tmp < divisor
+      //
+      // If 0 <= |tmp| < |divisor|, |tmp| fits in |divisor->width| and |carry|
+      // is zero. We then wish to select |tmp|. Otherwise,
+      // -|divisor| <= |tmp| < 0 and we wish to select |tmp| + |divisor|, which
+      // is |r|. |carry| must then be -1 (all ones). In both cases, |carry| is a
+      // suitable input to |bn_select_words|.
+      //
+      // Although |carry| may be one if |bn_add_words| returns one and
+      // |bn_sub_words| returns zero, this would give |r| > |d|, which violates
+      // the loop invariant.
+      bn_select_words(r->d, carry, r->d /* tmp < 0 */, tmp->d /* tmp >= 0 */,
+                      divisor->width);
+      // The corresponding bit of the quotient is set iff we needed to subtract.
+      q->d[i] |= (~carry & 1) << bit;
+    }
+  }
+
+  if ((quotient != NULL && !BN_copy(quotient, q)) ||
+      (remainder != NULL && !BN_copy(remainder, r))) {
+    goto err;
+  }
+
+  ret = 1;
+
+err:
+  BN_CTX_end(ctx);
+  return ret;
+}
+
 static BIGNUM *bn_scratch_space_from_ctx(size_t width, BN_CTX *ctx) {
   BIGNUM *ret = BN_CTX_get(ctx);
   if (ret == NULL ||

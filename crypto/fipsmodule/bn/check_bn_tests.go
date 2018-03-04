@@ -265,7 +265,7 @@ func main() {
 				}
 			}
 		case "GCD":
-			if checkKeys(test, "A", "B", "GCD") {
+			if checkKeys(test, "A", "B", "GCD", "LCM") {
 				a := test.Values["A"]
 				b := test.Values["B"]
 				// Go's GCD function does not accept zero, unlike OpenSSL.
@@ -278,6 +278,11 @@ func main() {
 					g = new(big.Int).GCD(nil, nil, a, b)
 				}
 				checkResult(test, "GCD(A, B)", "GCD", g)
+				if g.Sign() != 0 {
+					lcm := new(big.Int).Mul(a, b)
+					lcm = lcm.Div(lcm, g)
+					checkResult(test, "LCM(A, B)", "LCM", lcm)
+				}
 			}
 		default:
 			fmt.Fprintf(os.Stderr, "Line %d: unknown test type %q.\n", test.LineNumber, test.Type)

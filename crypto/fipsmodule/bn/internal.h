@@ -379,6 +379,9 @@ OPENSSL_EXPORT uint16_t bn_mod_u16_consttime(const BIGNUM *bn, uint16_t d);
 // of the first several odd primes and zero otherwise.
 int bn_odd_number_is_obviously_composite(const BIGNUM *bn);
 
+// bn_rshift1_words sets |r| to |a| >> 1, where both arrays are |num| bits wide.
+void bn_rshift1_words(BN_ULONG *r, const BN_ULONG *a, size_t num);
+
 // bn_rshift_secret_shift behaves like |BN_rshift| but runs in time independent
 // of both |a| and |n|.
 OPENSSL_EXPORT int bn_rshift_secret_shift(BIGNUM *r, const BIGNUM *a,
@@ -415,6 +418,28 @@ int bn_mul_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
 // bn_sqrt_consttime behaves like |BN_sqrt|, but it pessimally sets |r->width|
 // to 2*|a->width|, to avoid leaking information about |a| and |b|.
 int bn_sqr_consttime(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx);
+
+// bn_div_consttime behaves like |BN_div|, but it rejects negative inputs and
+// treats both inputs, including their magnitudes, as secret. It is, as a
+// result, much slower than |BN_div| and should only be used for rare operations
+// where Montgomery reduction is not available.
+//
+// Note that |quotient->width| will be set pessimally to |numerator->width|.
+OPENSSL_EXPORT int bn_div_consttime(BIGNUM *quotient, BIGNUM *remainder,
+                                    const BIGNUM *numerator,
+                                    const BIGNUM *divisor, BN_CTX *ctx);
+
+// bn_is_relatively_prime checks whether GCD(|x|, |y|) is one. On success, it
+// returns one and sets |*out_relatively_prime| to one if the GCD was one and
+// zero otherwise. On error, it returns zero.
+OPENSSL_EXPORT int bn_is_relatively_prime(int *out_relatively_prime,
+                                          const BIGNUM *x, const BIGNUM *y,
+                                          BN_CTX *ctx);
+
+// bn_lcm_consttime sets |r| to LCM(|a|, |b|). It returns one and success and
+// zero on error. |a| and |b| are both treated as secret.
+OPENSSL_EXPORT int bn_lcm_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
+                                    BN_CTX *ctx);
 
 
 // Constant-time modular arithmetic.
