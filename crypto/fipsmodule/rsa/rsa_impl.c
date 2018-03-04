@@ -1042,6 +1042,17 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
     return 0;
   }
 
+  // Reject excessively large public exponents. Windows CryptoAPI and Go don't
+  // support values larger than 32 bits, so match their limits for generating
+  // keys. (|check_modulus_and_exponent_sizes| uses a slightly more conservative
+  // value, but we don't need to support generating such keys.)
+  // https://github.com/golang/go/issues/3161
+  // https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
+  if (BN_num_bits(e_value) > 32) {
+    OPENSSL_PUT_ERROR(RSA, RSA_R_BAD_E_VALUE);
+    return 0;
+  }
+
   int ret = 0;
   int prime_bits = bits / 2;
   BN_CTX *ctx = BN_CTX_new();
