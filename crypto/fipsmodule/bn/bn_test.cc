@@ -867,6 +867,13 @@ static void TestModInv(BIGNUMFileTest *t, BN_CTX *ctx) {
 
   ASSERT_TRUE(BN_gcd(ret.get(), a.get(), m.get(), ctx));
   EXPECT_BIGNUMS_EQUAL("GCD(A, M)", BN_value_one(), ret.get());
+
+  ASSERT_TRUE(BN_nnmod(a.get(), a.get(), m.get(), ctx));
+  int no_inverse;
+  ASSERT_TRUE(
+      bn_mod_inverse_consttime(ret.get(), &no_inverse, a.get(), m.get(), ctx));
+  EXPECT_BIGNUMS_EQUAL("inv(A) (mod M) (constant-time)", mod_inv.get(),
+                       ret.get());
 }
 
 static void TestGCD(BIGNUMFileTest *t, BN_CTX *ctx) {
@@ -889,6 +896,28 @@ static void TestGCD(BIGNUMFileTest *t, BN_CTX *ctx) {
         << "A^-1 (mod B) computed, but it does not exist";
     EXPECT_FALSE(BN_mod_inverse(ret.get(), b.get(), a.get(), ctx))
         << "B^-1 (mod A) computed, but it does not exist";
+
+    if (!BN_is_zero(b.get())) {
+      bssl::UniquePtr<BIGNUM> a_reduced(BN_new());
+      ASSERT_TRUE(a_reduced);
+      ASSERT_TRUE(BN_nnmod(a_reduced.get(), a.get(), b.get(), ctx));
+      int no_inverse;
+      EXPECT_FALSE(bn_mod_inverse_consttime(ret.get(), &no_inverse,
+                                            a_reduced.get(), b.get(), ctx))
+          << "A^-1 (mod B) computed, but it does not exist";
+      EXPECT_TRUE(no_inverse);
+    }
+
+    if (!BN_is_zero(a.get())) {
+      bssl::UniquePtr<BIGNUM> b_reduced(BN_new());
+      ASSERT_TRUE(b_reduced);
+      ASSERT_TRUE(BN_nnmod(b_reduced.get(), b.get(), a.get(), ctx));
+      int no_inverse;
+      EXPECT_FALSE(bn_mod_inverse_consttime(ret.get(), &no_inverse,
+                                            b_reduced.get(), a.get(), ctx))
+          << "B^-1 (mod A) computed, but it does not exist";
+      EXPECT_TRUE(no_inverse);
+    }
   }
 
   int is_relative_prime;

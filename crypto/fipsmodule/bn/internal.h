@@ -342,18 +342,6 @@ int bn_mod_exp_base_2_consttime(BIGNUM *r, unsigned p, const BIGNUM *n,
 #error "Either BN_ULLONG or BN_UMULT_LOHI must be defined on every platform."
 #endif
 
-// bn_mod_inverse_prime sets |out| to the modular inverse of |a| modulo |p|,
-// computed with Fermat's Little Theorem. It returns one on success and zero on
-// error. If |mont_p| is NULL, one will be computed temporarily.
-int bn_mod_inverse_prime(BIGNUM *out, const BIGNUM *a, const BIGNUM *p,
-                         BN_CTX *ctx, const BN_MONT_CTX *mont_p);
-
-// bn_mod_inverse_secret_prime behaves like |bn_mod_inverse_prime| but uses
-// |BN_mod_exp_mont_consttime| instead of |BN_mod_exp_mont| in hopes of
-// protecting the exponent.
-int bn_mod_inverse_secret_prime(BIGNUM *out, const BIGNUM *a, const BIGNUM *p,
-                                BN_CTX *ctx, const BN_MONT_CTX *mont_p);
-
 // bn_jacobi returns the Jacobi symbol of |a| and |b| (which is -1, 0 or 1), or
 // -2 on error.
 int bn_jacobi(const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx);
@@ -462,6 +450,30 @@ int bn_mod_lshift1_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *m,
 // bn_mod_lshift_consttime acts like |BN_mod_lshift_quick| but takes a |BN_CTX|.
 int bn_mod_lshift_consttime(BIGNUM *r, const BIGNUM *a, int n, const BIGNUM *m,
                             BN_CTX *ctx);
+
+// bn_mod_inverse_consttime sets |r| to |a|^-1, mod |n|. |a| must be non-
+// negative and less than |n|. It returns one on success and zero on error. On
+// failure, if the failure was caused by |a| having no inverse mod |n| then
+// |*out_no_inverse| will be set to one; otherwise it will be set to zero.
+//
+// This function treats both |a| and |n| as secret, provided they are both non-
+// zero and the inverse exists. It should only be used for even moduli where
+// none of the less general implementations are applicable.
+OPENSSL_EXPORT int bn_mod_inverse_consttime(BIGNUM *r, int *out_no_inverse,
+                                            const BIGNUM *a, const BIGNUM *n,
+                                            BN_CTX *ctx);
+
+// bn_mod_inverse_prime sets |out| to the modular inverse of |a| modulo |p|,
+// computed with Fermat's Little Theorem. It returns one on success and zero on
+// error. If |mont_p| is NULL, one will be computed temporarily.
+int bn_mod_inverse_prime(BIGNUM *out, const BIGNUM *a, const BIGNUM *p,
+                         BN_CTX *ctx, const BN_MONT_CTX *mont_p);
+
+// bn_mod_inverse_secret_prime behaves like |bn_mod_inverse_prime| but uses
+// |BN_mod_exp_mont_consttime| instead of |BN_mod_exp_mont| in hopes of
+// protecting the exponent.
+int bn_mod_inverse_secret_prime(BIGNUM *out, const BIGNUM *a, const BIGNUM *p,
+                                BN_CTX *ctx, const BN_MONT_CTX *mont_p);
 
 
 // Low-level operations for small numbers.
