@@ -634,8 +634,25 @@ err:
   return ret;
 }
 
+static int check_mod_inverse(int *out_ok, const BIGNUM *a, const BIGNUM *ainv,
+                             const BIGNUM *m, int check_reduced, BN_CTX *ctx) {
+  BN_CTX_start(ctx);
+  BIGNUM *tmp = BN_CTX_get(ctx);
+  int ret = tmp != NULL &&
+            bn_mul_consttime(tmp, a, ainv, ctx) &&
+            bn_div_consttime(NULL, tmp, tmp, m, ctx);
+  if (ret) {
+    *out_ok = BN_is_one(tmp);
+    if (check_reduced && (BN_is_negative(ainv) || BN_cmp(ainv, m) >= 0)) {
+      *out_ok = 0;
+    }
+  }
+  BN_CTX_end(ctx);
+  return ret;
+}
+
 int RSA_check_key(const RSA *key) {
-  BIGNUM n, pm1, qm1, lcm, gcd, de, dmp1, dmq1, iqmp_times_q;
+  BIGNUM n, pm1, qm1, lcm, dmp1, dmq1, iqmp_times_q;
   BN_CTX *ctx;
   int ok = 0, has_crt_values;
 
@@ -670,26 +687,20 @@ int RSA_check_key(const RSA *key) {
   BN_init(&pm1);
   BN_init(&qm1);
   BN_init(&lcm);
-  BN_init(&gcd);
-  BN_init(&de);
   BN_init(&dmp1);
   BN_init(&dmq1);
   BN_init(&iqmp_times_q);
 
-  if (!BN_mul(&n, key->p, key->q, ctx) ||
+  int d_ok;
+  if (!bn_mul_consttime(&n, key->p, key->q, ctx) ||
       // lcm = lcm(p, q)
-      !BN_sub(&pm1, key->p, BN_value_one()) ||
-      !BN_sub(&qm1, key->q, BN_value_one()) ||
-      !BN_mul(&lcm, &pm1, &qm1, ctx) ||
-      !BN_gcd(&gcd, &pm1, &qm1, ctx)) {
-    OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
-    goto out;
-  }
-
-  if (!BN_div(&lcm, NULL, &lcm, &gcd, ctx) ||
-      !BN_gcd(&gcd, &pm1, &qm1, ctx) ||
-      // de = d*e mod lcm(p, q).
-      !BN_mod_mul(&de, key->d, key->e, &lcm, ctx)) {
+      !bn_usub_consttime(&pm1, key->p, BN_value_one()) ||
+      !bn_usub_consttime(&qm1, key->q, BN_value_one()) ||
+      !bn_lcm_consttime(&lcm, &pm1, &qm1, ctx) ||
+      // Other implementations use the Euler totient rather than the Carmichael
+      // totient, so allow unreduced |key->d|.
+      !check_mod_inverse(&d_ok, key->e, key->d, &lcm,
+                         0 /* don't require reduced */, ctx)) {
     OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
     goto out;
   }
@@ -699,7 +710,7 @@ int RSA_check_key(const RSA *key) {
     goto out;
   }
 
-  if (!BN_is_one(&de)) {
+  if (!d_ok) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_D_E_NOT_CONGRUENT_TO_1);
     goto out;
   }
@@ -712,20 +723,18 @@ int RSA_check_key(const RSA *key) {
   }
 
   if (has_crt_values) {
-    if (// dmp1 = d mod (p-1)
-        !BN_mod(&dmp1, key->d, &pm1, ctx) ||
-        // dmq1 = d mod (q-1)
-        !BN_mod(&dmq1, key->d, &qm1, ctx) ||
-        // iqmp = q^-1 mod p
-        !BN_mod_mul(&iqmp_times_q, key->iqmp, key->q, key->p, ctx)) {
+    int dmp1_ok, dmq1_ok, iqmp_ok;
+    if (!check_mod_inverse(&dmp1_ok, key->e, key->dmp1, &pm1,
+                           1 /* check reduced */, ctx) ||
+        !check_mod_inverse(&dmq1_ok, key->e, key->dmq1, &qm1,
+                           1 /* check reduced */, ctx) ||
+        !check_mod_inverse(&iqmp_ok, key->q, key->iqmp, key->p,
+                           1 /* check reduced */, ctx)) {
       OPENSSL_PUT_ERROR(RSA, ERR_LIB_BN);
       goto out;
     }
 
-    if (BN_cmp(&dmp1, key->dmp1) != 0 ||
-        BN_cmp(&dmq1, key->dmq1) != 0 ||
-        BN_cmp(key->iqmp, key->p) >= 0 ||
-        !BN_is_one(&iqmp_times_q)) {
+    if (!dmp1_ok || !dmq1_ok || !iqmp_ok) {
       OPENSSL_PUT_ERROR(RSA, RSA_R_CRT_VALUES_INCORRECT);
       goto out;
     }
@@ -738,8 +747,6 @@ out:
   BN_free(&pm1);
   BN_free(&qm1);
   BN_free(&lcm);
-  BN_free(&gcd);
-  BN_free(&de);
   BN_free(&dmp1);
   BN_free(&dmq1);
   BN_free(&iqmp_times_q);
