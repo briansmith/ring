@@ -209,6 +209,9 @@ OPENSSL_EXPORT int EC_POINTs_make_affine(const EC_GROUP *group, size_t num,
 // EC_POINT_get_affine_coordinates_GFp sets |x| and |y| to the affine value of
 // |point| using |ctx|, if it's not NULL. It returns one on success and zero
 // otherwise.
+//
+// Either |x| or |y| may be NULL to skip computing that coordinate. This is
+// slightly faster in the common case where only the x-coordinate is needed.
 OPENSSL_EXPORT int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
                                                        const EC_POINT *point,
                                                        BIGNUM *x, BIGNUM *y,
