@@ -237,7 +237,8 @@ OPENSSL_EXPORT BIGNUM *BN_bin2bn(const uint8_t *in, size_t len, BIGNUM *ret);
 
 // BN_bn2bin serialises the absolute value of |in| to |out| as a big-endian
 // integer, which must have |BN_num_bytes| of space available. It returns the
-// number of bytes written.
+// number of bytes written. Note this function leaks the magnitude of |in|. If
+// |in| is secret, use |BN_bn2bin_padded| instead.
 OPENSSL_EXPORT size_t BN_bn2bin(const BIGNUM *in, uint8_t *out);
 
 // BN_le2bn sets |*ret| to the value of |len| bytes from |in|, interpreted as
