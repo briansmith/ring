@@ -321,3 +321,6 @@ rpath = false
 lto = true
 debug-assertions = false
 codegen-units = 1
+
+[target.'cfg(target_os = "fuchsia")'.dependencies]
+fuchsia-zircon = "0.3.2"
