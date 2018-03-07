@@ -2441,7 +2441,7 @@ int SSL_set_dummy_pq_padding_size(SSL *ssl, size_t num_bytes) {
 }
 
 int SSL_dummy_pq_padding_used(SSL *ssl) {
-  if (ssl->server || !ssl->s3->initial_handshake_complete) {
+  if (ssl->server) {
     return 0;
   }
 
