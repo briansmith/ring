@@ -159,65 +159,29 @@ void EC_KEY_free(EC_KEY *r) {
   OPENSSL_free(r);
 }
 
-EC_KEY *EC_KEY_copy(EC_KEY *dest, const EC_KEY *src) {
-  if (dest == NULL || src == NULL) {
+EC_KEY *EC_KEY_dup(const EC_KEY *src) {
+  if (src == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return NULL;
   }
-  // Copy the parameters.
-  if (src->group) {
-    // TODO(fork): duplicating the group seems wasteful.
-    EC_GROUP_free(dest->group);
-    dest->group = EC_GROUP_dup(src->group);
-    if (dest->group == NULL) {
-      return NULL;
-    }
-  }
 
-  // Copy the public key.
-  if (src->pub_key && src->group) {
-    EC_POINT_free(dest->pub_key);
-    dest->pub_key = EC_POINT_dup(src->pub_key, src->group);
-    if (dest->pub_key == NULL) {
-      return NULL;
-    }
-  }
-
-  // copy the private key
-  if (src->priv_key) {
-    if (dest->priv_key == NULL) {
-      dest->priv_key = BN_new();
-      if (dest->priv_key == NULL) {
-        return NULL;
-      }
-    }
-    if (!BN_copy(dest->priv_key, src->priv_key)) {
-      return NULL;
-    }
-  }
-  // copy method/extra data
-  if (src->ecdsa_meth) {
-      METHOD_unref(dest->ecdsa_meth);
-      dest->ecdsa_meth = src->ecdsa_meth;
-      METHOD_ref(dest->ecdsa_meth);
-  }
-
-  // copy the rest
-  dest->enc_flag = src->enc_flag;
-  dest->conv_form = src->conv_form;
-
-  return dest;
-}
-
-EC_KEY *EC_KEY_dup(const EC_KEY *ec_key) {
   EC_KEY *ret = EC_KEY_new();
   if (ret == NULL) {
     return NULL;
   }
-  if (EC_KEY_copy(ret, ec_key) == NULL) {
+
+  if ((src->group != NULL &&
+       !EC_KEY_set_group(ret, src->group)) ||
+      (src->pub_key != NULL &&
+       !EC_KEY_set_public_key(ret, src->pub_key)) ||
+      (src->priv_key != NULL &&
+       !EC_KEY_set_private_key(ret, src->priv_key))) {
     EC_KEY_free(ret);
     return NULL;
   }
+
+  ret->enc_flag = src->enc_flag;
+  ret->conv_form = src->conv_form;
   return ret;
 }
 

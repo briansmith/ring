@@ -99,9 +99,6 @@ OPENSSL_EXPORT EC_KEY *EC_KEY_new_by_curve_name(int nid);
 // EC_KEY_free frees all the data owned by |key| and |key| itself.
 OPENSSL_EXPORT void EC_KEY_free(EC_KEY *key);
 
-// EC_KEY_copy sets |dst| equal to |src| and returns |dst| or NULL on error.
-OPENSSL_EXPORT EC_KEY *EC_KEY_copy(EC_KEY *dst, const EC_KEY *src);
-
 // EC_KEY_dup returns a fresh copy of |src| or NULL on error.
 OPENSSL_EXPORT EC_KEY *EC_KEY_dup(const EC_KEY *src);
 
