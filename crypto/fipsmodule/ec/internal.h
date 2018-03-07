@@ -277,11 +277,18 @@ const EC_METHOD *EC_GFp_nistp256_method(void);
 // x86-64 optimized P256. See http://eprint.iacr.org/2013/816.
 const EC_METHOD *EC_GFp_nistz256_method(void);
 
+// An EC_WRAPPED_SCALAR is an |EC_SCALAR| with a parallel |BIGNUM|
+// representation. It exists to support the |EC_KEY_get0_private_key| API.
+typedef struct {
+  BIGNUM bignum;
+  EC_SCALAR scalar;
+} EC_WRAPPED_SCALAR;
+
 struct ec_key_st {
   EC_GROUP *group;
 
   EC_POINT *pub_key;
-  BIGNUM *priv_key;
+  EC_WRAPPED_SCALAR *priv_key;
 
   // fixed_k may contain a specific value of 'k', to be used in ECDSA signing.
   // This is only for the FIPS power-on tests.

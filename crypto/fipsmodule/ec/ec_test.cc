@@ -359,6 +359,14 @@ TEST(ECTest, GroupMismatch) {
       EC_KEY_set_public_key(key.get(), EC_GROUP_get0_generator(p256.get())));
 }
 
+TEST(ECTest, EmptyKey) {
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
+  ASSERT_TRUE(key);
+  EXPECT_FALSE(EC_KEY_get0_group(key.get()));
+  EXPECT_FALSE(EC_KEY_get0_public_key(key.get()));
+  EXPECT_FALSE(EC_KEY_get0_private_key(key.get()));
+}
+
 class ECCurveTest : public testing::TestWithParam<EC_builtin_curve> {};
 
 TEST_P(ECCurveTest, SetAffine) {
