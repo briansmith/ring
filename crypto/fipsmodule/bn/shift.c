@@ -292,7 +292,7 @@ int BN_mask_bits(BIGNUM *a, int n) {
   int w = n / BN_BITS2;
   int b = n % BN_BITS2;
   if (w >= a->width) {
-    return 0;
+    return 1;
   }
   if (b == 0) {
     a->width = w;

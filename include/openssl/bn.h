@@ -494,7 +494,12 @@ OPENSSL_EXPORT int BN_clear_bit(BIGNUM *a, int n);
 OPENSSL_EXPORT int BN_is_bit_set(const BIGNUM *a, int n);
 
 // BN_mask_bits truncates |a| so that it is only |n| bits long. It returns one
-// on success or zero if |n| is greater than the length of |a| already.
+// on success or zero if |n| is negative.
+//
+// This differs from OpenSSL which additionally returns zero if |a|'s word
+// length is less than or equal to |n|, rounded down to a number of words. Note
+// word size is platform-dependent, so this behavior is also difficult to rely
+// on in OpenSSL and not very useful.
 OPENSSL_EXPORT int BN_mask_bits(BIGNUM *a, int n);
 
 // BN_count_low_zero_bits returns the number of low-order zero bits in |bn|, or
