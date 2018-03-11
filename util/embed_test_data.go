@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"unicode"
 )
 
 func quote(in []byte) string {
@@ -46,7 +45,8 @@ func quote(in []byte) string {
 		case '"':
 			buf.WriteString(`\"`)
 		default:
-			if rune(b) > 127 || unicode.IsPrint(rune(b)) {
+			// printable ascii code [32, 126]
+			if 32 <= b && b <= 126 {
 				buf.WriteByte(b)
 			} else {
 				fmt.Fprintf(&buf, "\\x%02x", b)
