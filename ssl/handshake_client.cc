@@ -339,50 +339,21 @@ int ssl_write_client_hello(SSL_HANDSHAKE *hs) {
   return ssl->method->add_message(ssl, std::move(msg));
 }
 
-static int parse_server_version(SSL_HANDSHAKE *hs, uint16_t *out,
-                                const SSLMessage &msg) {
+static bool parse_supported_versions(SSL_HANDSHAKE *hs, uint16_t *version,
+                                     const CBS *in) {
+  // If the outer version is not TLS 1.2, or there is no extensions block, use
+  // the outer version.
+  if (*version != TLS1_2_VERSION || CBS_len(in) == 0) {
+    return true;
+  }
+
   SSL *const ssl = hs->ssl;
-  if (msg.type != SSL3_MT_SERVER_HELLO &&
-      msg.type != SSL3_MT_HELLO_RETRY_REQUEST) {
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-    return 0;
-  }
-
-  CBS server_hello = msg.body;
-  if (!CBS_get_u16(&server_hello, out)) {
+  CBS copy = *in, extensions;
+  if (!CBS_get_u16_length_prefixed(&copy, &extensions) ||
+      CBS_len(&copy) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return 0;
-  }
-
-  // The server version may also be in the supported_versions extension if
-  // applicable.
-  if (msg.type != SSL3_MT_SERVER_HELLO || *out != TLS1_2_VERSION) {
-    return 1;
-  }
-
-  uint8_t sid_length;
-  if (!CBS_skip(&server_hello, SSL3_RANDOM_SIZE) ||
-      !CBS_get_u8(&server_hello, &sid_length) ||
-      !CBS_skip(&server_hello, sid_length + 2 /* cipher_suite */ +
-                1 /* compression_method */)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return 0;
-  }
-
-  // The extensions block may not be present.
-  if (CBS_len(&server_hello) == 0) {
-    return 1;
-  }
-
-  CBS extensions;
-  if (!CBS_get_u16_length_prefixed(&server_hello, &extensions) ||
-      CBS_len(&server_hello) != 0) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return 0;
+    return false;
   }
 
   bool have_supported_versions;
@@ -397,17 +368,18 @@ static int parse_server_version(SSL_HANDSHAKE *hs, uint16_t *out,
                             OPENSSL_ARRAY_SIZE(ext_types),
                             1 /* ignore unknown */)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
-    return 0;
+    return false;
   }
 
+  // Override the outer version with the extension, if present.
   if (have_supported_versions &&
-      (!CBS_get_u16(&supported_versions, out) ||
+      (!CBS_get_u16(&supported_versions, version) ||
        CBS_len(&supported_versions) != 0)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
 static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
@@ -567,8 +539,26 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_read_server_hello;
   }
 
-  uint16_t server_version;
-  if (!parse_server_version(hs, &server_version, msg)) {
+  if (!ssl_check_message_type(ssl, msg, SSL3_MT_SERVER_HELLO)) {
+    return ssl_hs_error;
+  }
+
+  CBS server_hello = msg.body, server_random, session_id;
+  uint16_t server_version, cipher_suite;
+  uint8_t compression_method;
+  if (!CBS_get_u16(&server_hello, &server_version) ||
+      !CBS_get_bytes(&server_hello, &server_random, SSL3_RANDOM_SIZE) ||
+      !CBS_get_u8_length_prefixed(&server_hello, &session_id) ||
+      CBS_len(&session_id) > SSL3_SESSION_ID_SIZE ||
+      !CBS_get_u16(&server_hello, &cipher_suite) ||
+      !CBS_get_u8(&server_hello, &compression_method)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+    return ssl_hs_error;
+  }
+
+  // Use the supported_versions extension if applicable.
+  if (!parse_supported_versions(hs, &server_version, &server_hello)) {
     return ssl_hs_error;
   }
 
@@ -606,24 +596,6 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   if (hs->early_data_offered) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_ON_EARLY_DATA);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);
-    return ssl_hs_error;
-  }
-
-  if (!ssl_check_message_type(ssl, msg, SSL3_MT_SERVER_HELLO)) {
-    return ssl_hs_error;
-  }
-
-  CBS server_hello = msg.body, server_random, session_id;
-  uint16_t cipher_suite;
-  uint8_t compression_method;
-  if (!CBS_skip(&server_hello, 2 /* version */) ||
-      !CBS_get_bytes(&server_hello, &server_random, SSL3_RANDOM_SIZE) ||
-      !CBS_get_u8_length_prefixed(&server_hello, &session_id) ||
-      CBS_len(&session_id) > SSL3_SESSION_ID_SIZE ||
-      !CBS_get_u16(&server_hello, &cipher_suite) ||
-      !CBS_get_u8(&server_hello, &compression_method)) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
   }
 
