@@ -342,6 +342,18 @@ NextCipherSuite:
 		}
 	}
 
+	// Request compatibility mode from the client by sending a fake session
+	// ID. Although BoringSSL always enables compatibility mode, other
+	// implementations make it conditional on the ClientHello. We test
+	// BoringSSL's expected behavior with SendClientHelloSessionID.
+	if len(hello.sessionId) == 0 && maxVersion >= VersionTLS13 {
+		hello.sessionId = make([]byte, 32)
+		if _, err := io.ReadFull(c.config.rand(), hello.sessionId); err != nil {
+			c.sendAlert(alertInternalError)
+			return errors.New("tls: short read from Rand: " + err.Error())
+		}
+	}
+
 	if c.config.Bugs.SendCipherSuites != nil {
 		hello.cipherSuites = c.config.Bugs.SendCipherSuites
 	}

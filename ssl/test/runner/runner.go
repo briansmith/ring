@@ -11983,7 +11983,10 @@ func addTLS13HandshakeTests() {
 		})
 
 		// Test that the server correctly echoes back session IDs of
-		// various lengths.
+		// various lengths. The first test additionally asserts that
+		// BoringSSL always sends the ChangeCipherSpec messages for
+		// compatibility mode, rather than negotiating it based on the
+		// ClientHello.
 		testCases = append(testCases, testCase{
 			testType: serverTest,
 			name:     "EmptySessionID-" + name,
