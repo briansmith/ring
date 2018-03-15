@@ -240,10 +240,10 @@ OPENSSL_EXPORT int CBS_get_asn1_uint64(CBS *cbs, uint64_t *out);
 OPENSSL_EXPORT int CBS_get_asn1_bool(CBS *cbs, int *out);
 
 // CBS_get_optional_asn1 gets an optional explicitly-tagged element from |cbs|
-// tagged with |tag| and sets |*out| to its contents. If present and if
-// |out_present| is not NULL, it sets |*out_present| to one, otherwise zero. It
-// returns one on success, whether or not the element was present, and zero on
-// decode failure.
+// tagged with |tag| and sets |*out| to its contents, or ignores it if |out| is
+// NULL. If present and if |out_present| is not NULL, it sets |*out_present| to
+// one, otherwise zero. It returns one on success, whether or not the element
+// was present, and zero on decode failure.
 OPENSSL_EXPORT int CBS_get_optional_asn1(CBS *cbs, CBS *out, int *out_present,
                                          unsigned tag);
 

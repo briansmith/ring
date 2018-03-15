@@ -466,6 +466,7 @@ int CBS_get_optional_asn1_octet_string(CBS *cbs, CBS *out, int *out_present,
     return 0;
   }
   if (present) {
+    assert(out);
     if (!CBS_get_asn1(&child, out, CBS_ASN1_OCTETSTRING) ||
         CBS_len(&child) != 0) {
       return 0;
