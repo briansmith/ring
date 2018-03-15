@@ -3600,6 +3600,7 @@ OPENSSL_EXPORT const char *SSL_CIPHER_get_version(const SSL_CIPHER *cipher);
 OPENSSL_EXPORT char *SSL_CIPHER_get_rfc_name(const SSL_CIPHER *cipher);
 
 typedef void COMP_METHOD;
+typedef struct ssl_comp_st SSL_COMP;
 
 // SSL_COMP_get_compression_methods returns NULL.
 OPENSSL_EXPORT STACK_OF(SSL_COMP) *SSL_COMP_get_compression_methods(void);
@@ -3609,6 +3610,12 @@ OPENSSL_EXPORT int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm);
 
 // SSL_COMP_get_name returns NULL.
 OPENSSL_EXPORT const char *SSL_COMP_get_name(const COMP_METHOD *comp);
+
+// SSL_COMP_get0_name returns the |name| member of |comp|.
+OPENSSL_EXPORT const char *SSL_COMP_get0_name(const SSL_COMP *comp);
+
+// SSL_COMP_get_id returns the |id| member of |comp|.
+OPENSSL_EXPORT int SSL_COMP_get_id(const SSL_COMP *comp);
 
 // SSL_COMP_free_compression_methods does nothing.
 OPENSSL_EXPORT void SSL_COMP_free_compression_methods(void);
@@ -3835,8 +3842,6 @@ OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
 #define SSL_get_timeout(session) SSL_SESSION_get_timeout(session)
 #define SSL_set_timeout(session, timeout) \
     SSL_SESSION_set_timeout((session), (timeout))
-
-typedef struct ssl_comp_st SSL_COMP;
 
 struct ssl_comp_st {
   int id;

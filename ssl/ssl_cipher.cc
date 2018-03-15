@@ -1774,4 +1774,8 @@ int SSL_COMP_add_compression_method(int id, COMP_METHOD *cm) { return 1; }
 
 const char *SSL_COMP_get_name(const COMP_METHOD *comp) { return NULL; }
 
+const char *SSL_COMP_get0_name(const SSL_COMP *comp) { return comp->name; }
+
+int SSL_COMP_get_id(const SSL_COMP *comp) { return comp->id; }
+
 void SSL_COMP_free_compression_methods(void) {}
