@@ -191,8 +191,6 @@ fn c_flags(target: &Target) -> &'static [&'static str] {
 fn cpp_flags(target: &Target) -> &'static [&'static str] {
     if target.env != MSVC {
         static NON_MSVC_FLAGS: &'static [&'static str] = &[
-            "-fdata-sections",
-            "-ffunction-sections",
             "-pedantic",
             "-pedantic-errors",
             "-Wall",
