@@ -1891,6 +1891,36 @@ TEST_F(BNTest, PrimeChecking) {
                                 ctx(), true /* do_trial_division */,
                                 nullptr /* callback */));
   EXPECT_EQ(0, is_probably_prime_2);
+
+  // The following composite numbers come from http://oeis.org/A014233 and are
+  // such that the first several primes are not a Rabin-Miller composite
+  // witness.
+  static const char *kA014233[] = {
+      "2047",
+      "1373653",
+      "25326001",
+      "3215031751",
+      "2152302898747",
+      "3474749660383",
+      "341550071728321",
+      "3825123056546413051",
+      "318665857834031151167461",
+      "3317044064679887385961981",
+  };
+  for (const char *str : kA014233) {
+    SCOPED_TRACE(str);
+    EXPECT_NE(0, DecimalToBIGNUM(&p, str));
+
+    ASSERT_TRUE(BN_primality_test(
+        &is_probably_prime_1, p.get(), BN_prime_checks, ctx(),
+        false /* do_trial_division */, nullptr /* callback */));
+    EXPECT_EQ(0, is_probably_prime_1);
+
+    ASSERT_TRUE(BN_primality_test(
+        &is_probably_prime_2, p.get(), BN_prime_checks, ctx(),
+        true /* do_trial_division */, nullptr /* callback */));
+    EXPECT_EQ(0, is_probably_prime_2);
+  }
 }
 
 TEST_F(BNTest, NumBitsWord) {
