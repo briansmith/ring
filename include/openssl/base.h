@@ -104,6 +104,10 @@ extern "C" {
 #elif defined(__pnacl__)
 #define OPENSSL_32_BIT
 #define OPENSSL_PNACL
+#elif defined(__wasm__)
+#define OPENSSL_32_BIT
+#elif defined(__asmjs__)
+#define OPENSSL_32_BIT
 #elif defined(__myriad2__)
 #define OPENSSL_32_BIT
 #else
