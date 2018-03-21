@@ -9,7 +9,7 @@ license-file = "LICENSE"
 name = "ring"
 readme = "README.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.13.0-alpha"
+version = "0.12.1"
 
 # Prevent multiple versions of *ring* from being linked into the same program.
 links = "ring-asm"
@@ -278,7 +278,7 @@ name = "ring"
 
 [dependencies]
 libc = "0.2.34"
-untrusted = "0.6.1"
+untrusted = "0.5"
 
 [target.'cfg(any(target_os = "redox", all(unix, not(any(target_os = "macos", target_os = "ios")))))'.dependencies]
 lazy_static = "1.0"
