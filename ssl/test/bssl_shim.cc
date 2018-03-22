@@ -1937,40 +1937,34 @@ static bool WriteSettings(int i, const TestConfig *config,
   return fwrite(settings, settings_len, 1, file.get()) == 1;
 }
 
-static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
-                       bssl::UniquePtr<SSL> *ssl_uniqueptr,
-                       const TestConfig *config, bool is_resume, bool is_retry);
-
-// DoConnection tests an SSL connection against the peer. On success, it returns
-// true and sets |*out_session| to the negotiated SSL session. If the test is a
-// resumption attempt, |is_resume| is true and |session| is the session from the
-// previous exchange.
-static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
-                         SSL_CTX *ssl_ctx, const TestConfig *config,
-                         const TestConfig *retry_config, bool is_resume,
-                         SSL_SESSION *session) {
+static bssl::UniquePtr<SSL> NewSSL(SSL_CTX *ssl_ctx, const TestConfig *config,
+                                   SSL_SESSION *session, bool is_resume,
+                                   std::unique_ptr<TestState> test_state) {
   bssl::UniquePtr<SSL> ssl(SSL_new(ssl_ctx));
   if (!ssl) {
-    return false;
+    return nullptr;
   }
 
-  if (!SetTestConfig(ssl.get(), config) ||
-      !SetTestState(ssl.get(), std::unique_ptr<TestState>(new TestState))) {
-    return false;
+  if (!SetTestConfig(ssl.get(), config)) {
+    return nullptr;
   }
-
-  GetTestState(ssl.get())->is_resume = is_resume;
+  if (test_state != nullptr) {
+    if (!SetTestState(ssl.get(), std::move(test_state))) {
+      return nullptr;
+    }
+    GetTestState(ssl.get())->is_resume = is_resume;
+  }
 
   if (config->fallback_scsv &&
       !SSL_set_mode(ssl.get(), SSL_MODE_SEND_FALLBACK_SCSV)) {
-    return false;
+    return nullptr;
   }
   // Install the certificate synchronously if nothing else will handle it.
   if (!config->use_early_callback &&
       !config->use_old_client_cert_callback &&
       !config->async &&
       !InstallCertificate(ssl.get())) {
-    return false;
+    return nullptr;
   }
   if (!config->use_old_client_cert_callback) {
     SSL_set_cert_cb(ssl.get(), CertCallback, nullptr);
@@ -2027,7 +2021,7 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
       // The async case will be supplied by |ChannelIdCallback|.
       bssl::UniquePtr<EVP_PKEY> pkey = LoadPrivateKey(config->send_channel_id);
       if (!pkey || !SSL_set1_tls_channel_id(ssl.get(), pkey.get())) {
-        return false;
+        return nullptr;
       }
     }
   }
@@ -2039,13 +2033,13 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   }
   if (!config->host_name.empty() &&
       !SSL_set_tlsext_host_name(ssl.get(), config->host_name.c_str())) {
-    return false;
+    return nullptr;
   }
   if (!config->advertise_alpn.empty() &&
       SSL_set_alpn_protos(ssl.get(),
                           (const uint8_t *)config->advertise_alpn.data(),
                           config->advertise_alpn.size()) != 0) {
-    return false;
+    return nullptr;
   }
   if (!config->psk.empty()) {
     SSL_set_psk_client_callback(ssl.get(), PskClientCallback);
@@ -2053,11 +2047,11 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   }
   if (!config->psk_identity.empty() &&
       !SSL_use_psk_identity_hint(ssl.get(), config->psk_identity.c_str())) {
-    return false;
+    return nullptr;
   }
   if (!config->srtp_profiles.empty() &&
       !SSL_set_srtp_profiles(ssl.get(), config->srtp_profiles.c_str())) {
-    return false;
+    return nullptr;
   }
   if (config->enable_ocsp_stapling) {
     SSL_enable_ocsp_stapling(ssl.get());
@@ -2067,11 +2061,11 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   }
   if (config->min_version != 0 &&
       !SSL_set_min_proto_version(ssl.get(), (uint16_t)config->min_version)) {
-    return false;
+    return nullptr;
   }
   if (config->max_version != 0 &&
       !SSL_set_max_proto_version(ssl.get(), (uint16_t)config->max_version)) {
-    return false;
+    return nullptr;
   }
   if (config->mtu != 0) {
     SSL_set_options(ssl.get(), SSL_OP_NO_QUERY_MTU);
@@ -2095,7 +2089,7 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   if (config->p384_only) {
     int nid = NID_secp384r1;
     if (!SSL_set1_curves(ssl.get(), &nid, 1)) {
-      return false;
+      return nullptr;
     }
   }
   if (config->enable_all_curves) {
@@ -2105,7 +2099,7 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     };
     if (!SSL_set1_curves(ssl.get(), kAllCurves,
                          OPENSSL_ARRAY_SIZE(kAllCurves))) {
-      return false;
+      return nullptr;
     }
   }
   if (config->initial_timeout_duration_ms > 0) {
@@ -2123,7 +2117,7 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   }
   if (config->dummy_pq_padding_len > 0 &&
       !SSL_set_dummy_pq_padding_size(ssl.get(), config->dummy_pq_padding_len)) {
-    return false;
+    return nullptr;
   }
   if (!config->quic_transport_params.empty()) {
     if (!SSL_set_quic_transport_params(
@@ -2131,9 +2125,54 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
             reinterpret_cast<const uint8_t *>(
                 config->quic_transport_params.data()),
             config->quic_transport_params.size())) {
-      return false;
+      return nullptr;
     }
   }
+
+  if (session != NULL) {
+    if (!config->is_server) {
+      if (SSL_set_session(ssl.get(), session) != 1) {
+        return nullptr;
+      }
+    } else if (config->async) {
+      // The internal session cache is disabled, so install the session
+      // manually.
+      SSL_SESSION_up_ref(session);
+      GetTestState(ssl.get())->pending_session.reset(session);
+    }
+  }
+
+  if (SSL_get_current_cipher(ssl.get()) != nullptr) {
+    fprintf(stderr, "non-null cipher before handshake\n");
+    return nullptr;
+  }
+
+  return ssl;
+}
+
+static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
+                       bssl::UniquePtr<SSL> *ssl_uniqueptr,
+                       const TestConfig *config, bool is_resume, bool is_retry);
+
+// DoConnection tests an SSL connection against the peer. On success, it returns
+// true and sets |*out_session| to the negotiated SSL session. If the test is a
+// resumption attempt, |is_resume| is true and |session| is the session from the
+// previous exchange.
+static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
+                         SSL_CTX *ssl_ctx, const TestConfig *config,
+                         const TestConfig *retry_config, bool is_resume,
+                         SSL_SESSION *session) {
+  bssl::UniquePtr<SSL> ssl = NewSSL(ssl_ctx, config, session, is_resume,
+                                    std::unique_ptr<TestState>(new TestState));
+  if (!ssl) {
+    return false;
+  }
+  if (config->is_server) {
+    SSL_set_accept_state(ssl.get());
+  } else {
+    SSL_set_connect_state(ssl.get());
+  }
+
 
   int sock = Connect(config->port);
   if (sock == -1) {
@@ -2166,30 +2205,6 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
   }
   SSL_set_bio(ssl.get(), bio.get(), bio.get());
   bio.release();  // SSL_set_bio takes ownership.
-
-  if (session != NULL) {
-    if (!config->is_server) {
-      if (SSL_set_session(ssl.get(), session) != 1) {
-        return false;
-      }
-    } else if (config->async) {
-      // The internal session cache is disabled, so install the session
-      // manually.
-      SSL_SESSION_up_ref(session);
-      GetTestState(ssl.get())->pending_session.reset(session);
-    }
-  }
-
-  if (SSL_get_current_cipher(ssl.get()) != nullptr) {
-    fprintf(stderr, "non-null cipher before handshake\n");
-    return false;
-  }
-
-  if (config->is_server) {
-    SSL_set_accept_state(ssl.get());
-  } else {
-    SSL_set_connect_state(ssl.get());
-  }
 
   bool ret = DoExchange(out_session, &ssl, config, is_resume, false);
   if (!config->is_server && is_resume && config->expect_reject_early_data) {
@@ -2253,22 +2268,28 @@ static bool HandoffReady(SSL *ssl, int ret) {
   return ret < 0 && SSL_get_error(ssl, ret) == SSL_ERROR_HANDOFF;
 }
 
+static bool HandbackReady(SSL *ssl, int ret) {
+  return ret < 0 && SSL_get_error(ssl, ret) == SSL_ERROR_HANDBACK;
+}
+
 static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
                        bssl::UniquePtr<SSL> *ssl_uniqueptr,
                        const TestConfig *config, bool is_resume,
                        bool is_retry) {
   int ret;
   SSL *ssl = ssl_uniqueptr->get();
+  SSL_CTX *session_ctx = ssl->ctx;
 
   if (!config->implicit_handshake) {
     if (config->handoff) {
-      bssl::UniquePtr<SSL_CTX> ctx_handoff(SSL_CTX_new(TLSv1_method()));
+      bssl::UniquePtr<SSL_CTX> ctx_handoff = SetupCtx(ssl->ctx, config);
       if (!ctx_handoff) {
         return false;
       }
       SSL_CTX_set_handoff_mode(ctx_handoff.get(), 1);
 
-      bssl::UniquePtr<SSL> ssl_handoff(SSL_new(ctx_handoff.get()));
+      bssl::UniquePtr<SSL> ssl_handoff =
+          NewSSL(ctx_handoff.get(), config, nullptr, false, nullptr);
       if (!ssl_handoff) {
         return false;
       }
@@ -2318,12 +2339,12 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       });
     } while (config->async && RetryAsync(ssl, ret));
 
-    if (ret != 1 ||
-        !CheckHandshakeProperties(ssl, is_resume, config)) {
-      return false;
-    }
-
     if (config->handoff) {
+      if (!HandbackReady(ssl, ret)) {
+        fprintf(stderr, "Connection failed to handback.\n");
+        return false;
+      }
+
       bssl::ScopedCBB cbb;
       bssl::Array<uint8_t> handback;
       if (!CBB_init(cbb.get(), 512) ||
@@ -2333,25 +2354,41 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         return false;
       }
 
-      bssl::UniquePtr<SSL_CTX> ctx_handback(SSL_CTX_new(TLSv1_method()));
-      SSL_CTX_set_msg_callback(ctx_handback.get(), MessageCallback);
-      bssl::UniquePtr<SSL> ssl_handback(SSL_new(ctx_handback.get()));
+      bssl::UniquePtr<SSL_CTX> ctx_handback = SetupCtx(ssl->ctx, config);
+      if (!ctx_handback) {
+        return false;
+      }
+      bssl::UniquePtr<SSL> ssl_handback =
+          NewSSL(ctx_handback.get(), config, nullptr, false, nullptr);
       if (!ssl_handback) {
         return false;
       }
-      if (!SSL_apply_handback(ssl_handback.get(), handback)) {
-        fprintf(stderr, "Applying handback failed.\n");
-        return false;
-      }
-
       MoveBIOs(ssl_handback.get(), ssl);
       if (!MoveExData(ssl_handback.get(), ssl)) {
         return false;
       }
 
+      if (!SSL_apply_handback(ssl_handback.get(), handback)) {
+        fprintf(stderr, "Applying handback failed.\n");
+        return false;
+      }
+
       *ssl_uniqueptr = std::move(ssl_handback);
       ssl = ssl_uniqueptr->get();
+
+      do {
+        ret = CheckIdempotentError("SSL_do_handshake", ssl, [&]() -> int {
+          return SSL_do_handshake(ssl);
+        });
+      } while (config->async && RetryAsync(ssl, ret));
     }
+
+    if (ret != 1 || !CheckHandshakeProperties(ssl, is_resume, config)) {
+      return false;
+    }
+
+    lh_SSL_SESSION_doall_arg(ssl->ctx->sessions, ssl_ctx_add_session,
+                             session_ctx);
 
     if (is_resume && !is_retry && !config->is_server &&
         config->expect_no_offer_early_data && SSL_in_early_data(ssl)) {

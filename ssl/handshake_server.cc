@@ -172,30 +172,6 @@
 
 namespace bssl {
 
-enum ssl_server_hs_state_t {
-  state_start_accept = 0,
-  state_read_client_hello,
-  state_select_certificate,
-  state_tls13,
-  state_select_parameters,
-  state_send_server_hello,
-  state_send_server_certificate,
-  state_send_server_key_exchange,
-  state_send_server_hello_done,
-  state_read_client_certificate,
-  state_verify_client_certificate,
-  state_read_client_key_exchange,
-  state_read_client_certificate_verify,
-  state_read_change_cipher_spec,
-  state_process_change_cipher_spec,
-  state_read_next_proto,
-  state_read_channel_id,
-  state_read_client_finished,
-  state_send_server_finished,
-  state_finish_server_handshake,
-  state_done,
-};
-
 int ssl_client_cipher_list_contains_cipher(const SSL_CLIENT_HELLO *client_hello,
                                            uint16_t id) {
   CBS cipher_suites;
@@ -425,7 +401,7 @@ static const SSL_CIPHER *ssl3_choose_cipher(
 
 static enum ssl_hs_wait_t do_start_accept(SSL_HANDSHAKE *hs) {
   ssl_do_info_callback(hs->ssl, SSL_CB_HANDSHAKE_START, 1);
-  hs->state = state_read_client_hello;
+  hs->state = state12_read_client_hello;
   return ssl_hs_ok;
 }
 
@@ -505,7 +481,7 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  hs->state = state_select_certificate;
+  hs->state = state12_select_certificate;
   return ssl_hs_ok;
 }
 
@@ -536,7 +512,7 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
 
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     // Jump to the TLS 1.3 state machine.
-    hs->state = state_tls13;
+    hs->state = state12_tls13;
     return ssl_hs_ok;
   }
 
@@ -555,14 +531,14 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  hs->state = state_select_parameters;
+  hs->state = state12_select_parameters;
   return ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_tls13(SSL_HANDSHAKE *hs) {
   enum ssl_hs_wait_t wait = tls13_server_handshake(hs);
   if (wait == ssl_hs_ok) {
-    hs->state = state_finish_server_handshake;
+    hs->state = state12_finish_server_handshake;
     return ssl_hs_ok;
   }
 
@@ -672,14 +648,15 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  // Release the handshake buffer if client authentication isn't required.
-  if (!hs->cert_request) {
+  // Handback includes the whole handshake transcript, so we cannot free the
+  // transcript buffer in the handback case.
+  if (!hs->cert_request && !hs->ssl->handback) {
     hs->transcript.FreeBuffer();
   }
 
   ssl->method->next_message(ssl);
 
-  hs->state = state_send_server_hello;
+  hs->state = state12_send_server_hello;
   return ssl_hs_ok;
 }
 
@@ -744,9 +721,9 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl->session != NULL) {
-    hs->state = state_send_server_finished;
+    hs->state = state12_send_server_finished;
   } else {
-    hs->state = state_send_server_certificate;
+    hs->state = state12_send_server_certificate;
   }
   return ssl_hs_ok;
 }
@@ -835,7 +812,7 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  hs->state = state_send_server_key_exchange;
+  hs->state = state12_send_server_key_exchange;
   return ssl_hs_ok;
 }
 
@@ -843,7 +820,7 @@ static enum ssl_hs_wait_t do_send_server_key_exchange(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   if (hs->server_params.size() == 0) {
-    hs->state = state_send_server_hello_done;
+    hs->state = state12_send_server_hello_done;
     return ssl_hs_ok;
   }
 
@@ -907,7 +884,7 @@ static enum ssl_hs_wait_t do_send_server_key_exchange(SSL_HANDSHAKE *hs) {
 
   hs->server_params.Reset();
 
-  hs->state = state_send_server_hello_done;
+  hs->state = state12_send_server_hello_done;
   return ssl_hs_ok;
 }
 
@@ -942,15 +919,18 @@ static enum ssl_hs_wait_t do_send_server_hello_done(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  hs->state = state_read_client_certificate;
+  hs->state = state12_read_client_certificate;
   return ssl_hs_flush;
 }
 
 static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
+  if (ssl->handback && hs->new_cipher->algorithm_mkey == SSL_kECDHE) {
+     return ssl_hs_handback;
+  }
   if (!hs->cert_request) {
-    hs->state = state_verify_client_certificate;
+    hs->state = state12_verify_client_certificate;
     return ssl_hs_ok;
   }
 
@@ -973,7 +953,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
       // OpenSSL returns X509_V_OK when no certificates are received. This is
       // classed by them as a bug, but it's assumed by at least NGINX.
       hs->new_session->verify_result = X509_V_OK;
-      hs->state = state_verify_client_certificate;
+      hs->state = state12_verify_client_certificate;
       return ssl_hs_ok;
     }
 
@@ -1035,7 +1015,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
   }
 
   ssl->method->next_message(ssl);
-  hs->state = state_verify_client_certificate;
+  hs->state = state12_verify_client_certificate;
   return ssl_hs_ok;
 }
 
@@ -1051,7 +1031,7 @@ static enum ssl_hs_wait_t do_verify_client_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  hs->state = state_read_client_key_exchange;
+  hs->state = state12_read_client_key_exchange;
   return ssl_hs_ok;
 }
 
@@ -1262,7 +1242,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
   hs->new_session->extended_master_secret = hs->extended_master_secret;
 
   ssl->method->next_message(ssl);
-  hs->state = state_read_client_certificate_verify;
+  hs->state = state12_read_client_certificate_verify;
   return ssl_hs_ok;
 }
 
@@ -1273,7 +1253,7 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
   // CertificateVerify is required if and only if there's a client certificate.
   if (!hs->peer_pubkey) {
     hs->transcript.FreeBuffer();
-    hs->state = state_read_change_cipher_spec;
+    hs->state = state12_read_change_cipher_spec;
     return ssl_hs_ok;
   }
 
@@ -1358,12 +1338,12 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
   }
 
   ssl->method->next_message(ssl);
-  hs->state = state_read_change_cipher_spec;
+  hs->state = state12_read_change_cipher_spec;
   return ssl_hs_ok;
 }
 
 static enum ssl_hs_wait_t do_read_change_cipher_spec(SSL_HANDSHAKE *hs) {
-  hs->state = state_process_change_cipher_spec;
+  hs->state = state12_process_change_cipher_spec;
   return ssl_hs_read_change_cipher_spec;
 }
 
@@ -1372,7 +1352,7 @@ static enum ssl_hs_wait_t do_process_change_cipher_spec(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  hs->state = state_read_next_proto;
+  hs->state = state12_read_next_proto;
   return ssl_hs_ok;
 }
 
@@ -1380,7 +1360,7 @@ static enum ssl_hs_wait_t do_read_next_proto(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   if (!hs->next_proto_neg_seen) {
-    hs->state = state_read_channel_id;
+    hs->state = state12_read_channel_id;
     return ssl_hs_ok;
   }
 
@@ -1408,7 +1388,7 @@ static enum ssl_hs_wait_t do_read_next_proto(SSL_HANDSHAKE *hs) {
   }
 
   ssl->method->next_message(ssl);
-  hs->state = state_read_channel_id;
+  hs->state = state12_read_channel_id;
   return ssl_hs_ok;
 }
 
@@ -1416,7 +1396,7 @@ static enum ssl_hs_wait_t do_read_channel_id(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
   if (!ssl->s3->tlsext_channel_id_valid) {
-    hs->state = state_read_client_finished;
+    hs->state = state12_read_client_finished;
     return ssl_hs_ok;
   }
 
@@ -1432,7 +1412,7 @@ static enum ssl_hs_wait_t do_read_channel_id(SSL_HANDSHAKE *hs) {
   }
 
   ssl->method->next_message(ssl);
-  hs->state = state_read_client_finished;
+  hs->state = state12_read_client_finished;
   return ssl_hs_ok;
 }
 
@@ -1444,9 +1424,9 @@ static enum ssl_hs_wait_t do_read_client_finished(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl->session != NULL) {
-    hs->state = state_finish_server_handshake;
+    hs->state = state12_finish_server_handshake;
   } else {
-    hs->state = state_send_server_finished;
+    hs->state = state12_send_server_finished;
   }
 
   // If this is a full handshake with ChannelID then record the handshake
@@ -1501,15 +1481,19 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl->session != NULL) {
-    hs->state = state_read_change_cipher_spec;
+    hs->state = state12_read_change_cipher_spec;
   } else {
-    hs->state = state_finish_server_handshake;
+    hs->state = state12_finish_server_handshake;
   }
   return ssl_hs_flush;
 }
 
 static enum ssl_hs_wait_t do_finish_server_handshake(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
+
+  if (ssl->handback) {
+    return ssl_hs_handback;
+  }
 
   ssl->method->on_handshake_complete(ssl);
 
@@ -1532,77 +1516,77 @@ static enum ssl_hs_wait_t do_finish_server_handshake(SSL_HANDSHAKE *hs) {
   ssl->s3->initial_handshake_complete = true;
   ssl_update_cache(hs, SSL_SESS_CACHE_SERVER);
 
-  hs->state = state_done;
+  hs->state = state12_done;
   return ssl_hs_ok;
 }
 
 enum ssl_hs_wait_t ssl_server_handshake(SSL_HANDSHAKE *hs) {
-  while (hs->state != state_done) {
+  while (hs->state != state12_done) {
     enum ssl_hs_wait_t ret = ssl_hs_error;
-    enum ssl_server_hs_state_t state =
-        static_cast<enum ssl_server_hs_state_t>(hs->state);
+    enum tls12_server_hs_state_t state =
+        static_cast<enum tls12_server_hs_state_t>(hs->state);
     switch (state) {
-      case state_start_accept:
+      case state12_start_accept:
         ret = do_start_accept(hs);
         break;
-      case state_read_client_hello:
+      case state12_read_client_hello:
         ret = do_read_client_hello(hs);
         break;
-      case state_select_certificate:
+      case state12_select_certificate:
         ret = do_select_certificate(hs);
         break;
-      case state_tls13:
+      case state12_tls13:
         ret = do_tls13(hs);
         break;
-      case state_select_parameters:
+      case state12_select_parameters:
         ret = do_select_parameters(hs);
         break;
-      case state_send_server_hello:
+      case state12_send_server_hello:
         ret = do_send_server_hello(hs);
         break;
-      case state_send_server_certificate:
+      case state12_send_server_certificate:
         ret = do_send_server_certificate(hs);
         break;
-      case state_send_server_key_exchange:
+      case state12_send_server_key_exchange:
         ret = do_send_server_key_exchange(hs);
         break;
-      case state_send_server_hello_done:
+      case state12_send_server_hello_done:
         ret = do_send_server_hello_done(hs);
         break;
-      case state_read_client_certificate:
+      case state12_read_client_certificate:
         ret = do_read_client_certificate(hs);
         break;
-      case state_verify_client_certificate:
+      case state12_verify_client_certificate:
         ret = do_verify_client_certificate(hs);
         break;
-      case state_read_client_key_exchange:
+      case state12_read_client_key_exchange:
         ret = do_read_client_key_exchange(hs);
         break;
-      case state_read_client_certificate_verify:
+      case state12_read_client_certificate_verify:
         ret = do_read_client_certificate_verify(hs);
         break;
-      case state_read_change_cipher_spec:
+      case state12_read_change_cipher_spec:
         ret = do_read_change_cipher_spec(hs);
         break;
-      case state_process_change_cipher_spec:
+      case state12_process_change_cipher_spec:
         ret = do_process_change_cipher_spec(hs);
         break;
-      case state_read_next_proto:
+      case state12_read_next_proto:
         ret = do_read_next_proto(hs);
         break;
-      case state_read_channel_id:
+      case state12_read_channel_id:
         ret = do_read_channel_id(hs);
         break;
-      case state_read_client_finished:
+      case state12_read_client_finished:
         ret = do_read_client_finished(hs);
         break;
-      case state_send_server_finished:
+      case state12_send_server_finished:
         ret = do_send_server_finished(hs);
         break;
-      case state_finish_server_handshake:
+      case state12_finish_server_handshake:
         ret = do_finish_server_handshake(hs);
         break;
-      case state_done:
+      case state12_done:
         ret = ssl_hs_ok;
         break;
     }
@@ -1621,50 +1605,50 @@ enum ssl_hs_wait_t ssl_server_handshake(SSL_HANDSHAKE *hs) {
 }
 
 const char *ssl_server_handshake_state(SSL_HANDSHAKE *hs) {
-  enum ssl_server_hs_state_t state =
-      static_cast<enum ssl_server_hs_state_t>(hs->state);
+  enum tls12_server_hs_state_t state =
+      static_cast<enum tls12_server_hs_state_t>(hs->state);
   switch (state) {
-    case state_start_accept:
+    case state12_start_accept:
       return "TLS server start_accept";
-    case state_read_client_hello:
+    case state12_read_client_hello:
       return "TLS server read_client_hello";
-    case state_select_certificate:
+    case state12_select_certificate:
       return "TLS server select_certificate";
-    case state_tls13:
+    case state12_tls13:
       return tls13_server_handshake_state(hs);
-    case state_select_parameters:
+    case state12_select_parameters:
       return "TLS server select_parameters";
-    case state_send_server_hello:
+    case state12_send_server_hello:
       return "TLS server send_server_hello";
-    case state_send_server_certificate:
+    case state12_send_server_certificate:
       return "TLS server send_server_certificate";
-    case state_send_server_key_exchange:
+    case state12_send_server_key_exchange:
       return "TLS server send_server_key_exchange";
-    case state_send_server_hello_done:
+    case state12_send_server_hello_done:
       return "TLS server send_server_hello_done";
-    case state_read_client_certificate:
+    case state12_read_client_certificate:
       return "TLS server read_client_certificate";
-    case state_verify_client_certificate:
+    case state12_verify_client_certificate:
       return "TLS server verify_client_certificate";
-    case state_read_client_key_exchange:
+    case state12_read_client_key_exchange:
       return "TLS server read_client_key_exchange";
-    case state_read_client_certificate_verify:
+    case state12_read_client_certificate_verify:
       return "TLS server read_client_certificate_verify";
-    case state_read_change_cipher_spec:
+    case state12_read_change_cipher_spec:
       return "TLS server read_change_cipher_spec";
-    case state_process_change_cipher_spec:
+    case state12_process_change_cipher_spec:
       return "TLS server process_change_cipher_spec";
-    case state_read_next_proto:
+    case state12_read_next_proto:
       return "TLS server read_next_proto";
-    case state_read_channel_id:
+    case state12_read_channel_id:
       return "TLS server read_channel_id";
-    case state_read_client_finished:
+    case state12_read_client_finished:
       return "TLS server read_client_finished";
-    case state_send_server_finished:
+    case state12_send_server_finished:
       return "TLS server send_server_finished";
-    case state_finish_server_handshake:
+    case state12_finish_server_handshake:
       return "TLS server finish_server_handshake";
-    case state_done:
+    case state12_done:
       return "TLS server done";
   }
 

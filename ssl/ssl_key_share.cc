@@ -124,6 +124,32 @@ class ECKeyShare : public SSLKeyShare {
     return true;
   }
 
+  bool Serialize(CBB *out) override {
+    assert(private_key_);
+    CBB cbb;
+    UniquePtr<EC_GROUP> group(EC_GROUP_new_by_curve_name(nid_));
+    // Padding is added to avoid leaking the length.
+    size_t len = BN_num_bytes(EC_GROUP_get0_order(group.get()));
+    if (!CBB_add_asn1_uint64(out, group_id_) ||
+        !CBB_add_asn1(out, &cbb, CBS_ASN1_OCTETSTRING) ||
+        !BN_bn2cbb_padded(&cbb, len, private_key_.get()) ||
+        !CBB_flush(out)) {
+      return false;
+    }
+    return true;
+  }
+
+  bool Deserialize(CBS *in) override {
+    assert(!private_key_);
+    CBS private_key;
+    if (!CBS_get_asn1(in, &private_key, CBS_ASN1_OCTETSTRING)) {
+      return false;
+    }
+    private_key_.reset(BN_bin2bn(CBS_data(&private_key),
+                                 CBS_len(&private_key), nullptr));
+    return private_key_ != nullptr;
+  }
+
  private:
   UniquePtr<BIGNUM> private_key_;
   int nid_;
@@ -166,6 +192,21 @@ class X25519KeyShare : public SSLKeyShare {
     return true;
   }
 
+  bool Serialize(CBB *out) override {
+    return (CBB_add_asn1_uint64(out, GroupID()) &&
+            CBB_add_asn1_octet_string(out, private_key_, sizeof(private_key_)));
+  }
+
+  bool Deserialize(CBS *in) override {
+    CBS key;
+    if (!CBS_get_asn1(in, &key, CBS_ASN1_OCTETSTRING) ||
+        CBS_len(&key) != sizeof(private_key_) ||
+        !CBS_copy_bytes(&key, private_key_, sizeof(private_key_))) {
+      return false;
+    }
+    return true;
+  }
+
  private:
   uint8_t private_key_[32];
 };
@@ -204,6 +245,19 @@ UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
       return nullptr;
   }
 }
+
+UniquePtr<SSLKeyShare> SSLKeyShare::Create(CBS *in) {
+  uint64_t group;
+  if (!CBS_get_asn1_uint64(in, &group)) {
+    return nullptr;
+  }
+  UniquePtr<SSLKeyShare> key_share = Create(static_cast<uint64_t>(group));
+  if (!key_share->Deserialize(in)) {
+    return nullptr;
+  }
+  return key_share;
+}
+
 
 bool SSLKeyShare::Accept(CBB *out_public_key, Array<uint8_t> *out_secret,
                          uint8_t *out_alert, Span<const uint8_t> peer_key) {

@@ -368,10 +368,6 @@ bool SSLTranscript::GetFinishedMAC(uint8_t *out, size_t *out_len,
     return true;
   }
 
-  // At this point, the handshake should have released the handshake buffer on
-  // its own.
-  assert(!buffer_);
-
   static const char kClientLabel[] = "client finished";
   static const char kServerLabel[] = "server finished";
   auto label = from_server

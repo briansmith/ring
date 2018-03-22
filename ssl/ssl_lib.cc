@@ -1274,6 +1274,9 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     case SSL_HANDOFF:
       return SSL_ERROR_HANDOFF;
 
+    case SSL_HANDBACK:
+      return SSL_ERROR_HANDBACK;
+
     case SSL_READING: {
       BIO *bio = SSL_get_rbio(ssl);
       if (BIO_should_read(bio)) {

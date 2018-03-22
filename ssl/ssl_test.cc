@@ -3949,9 +3949,13 @@ TEST(SSLTest, Handoff) {
 
   int handshake_ret = SSL_do_handshake(handshaker.get());
   int handshake_err = SSL_get_error(handshaker.get(), handshake_ret);
-  ASSERT_EQ(handshake_err, SSL_ERROR_WANT_READ);
+  ASSERT_EQ(handshake_err, SSL_ERROR_HANDBACK);
 
-  ASSERT_TRUE(CompleteHandshakes(client.get(), handshaker.get()));
+  // Double-check that additional calls to |SSL_do_handshake| continue
+  // to get |SSL_ERRROR_HANDBACK|.
+  handshake_ret = SSL_do_handshake(handshaker.get());
+  handshake_err = SSL_get_error(handshaker.get(), handshake_ret);
+  ASSERT_EQ(handshake_err, SSL_ERROR_HANDBACK);
 
   ScopedCBB cbb_handback;
   Array<uint8_t> handback;
@@ -3963,6 +3967,7 @@ TEST(SSLTest, Handoff) {
   ASSERT_TRUE(SSL_apply_handback(server2.get(), handback));
 
   MoveBIOs(server2.get(), handshaker.get());
+  ASSERT_TRUE(CompleteHandshakes(client.get(), server2.get()));
 
   uint8_t byte = 42;
   EXPECT_EQ(SSL_write(client.get(), &byte, 1), 1);
