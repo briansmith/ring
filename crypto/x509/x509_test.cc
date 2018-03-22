@@ -487,7 +487,9 @@ static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
                    const std::vector<X509 *> &intermediates,
                    const std::vector<X509_CRL *> &crls,
                    unsigned long flags,
-                   bool use_additional_untrusted) {
+                   bool use_additional_untrusted,
+                   const char *hostname,
+                   size_t hostname_len) {
   bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
   bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
       CertsToStack(intermediates));
@@ -526,6 +528,7 @@ static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
   }
   X509_VERIFY_PARAM_set_time(param, 1474934400 /* Sep 27th, 2016 */);
   X509_VERIFY_PARAM_set_depth(param, 16);
+  X509_VERIFY_PARAM_set1_host(param, hostname, hostname_len);
   if (flags) {
     X509_VERIFY_PARAM_set_flags(param, flags);
   }
@@ -543,8 +546,10 @@ static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
                    const std::vector<X509 *> &intermediates,
                    const std::vector<X509_CRL *> &crls,
                    unsigned long flags = 0) {
-  const int r1 = Verify(leaf, roots, intermediates, crls, flags, false);
-  const int r2 = Verify(leaf, roots, intermediates, crls, flags, true);
+  const int r1 =
+      Verify(leaf, roots, intermediates, crls, flags, false, nullptr, 0);
+  const int r2 =
+      Verify(leaf, roots, intermediates, crls, flags, true, nullptr, 0);
 
   if (r1 != r2) {
     fprintf(stderr,
@@ -612,6 +617,19 @@ TEST(X509Test, TestVerify) {
             Verify(forgery.get(),
                    {intermediate_self_signed.get(), root_cross_signed.get()},
                    {leaf_no_key_usage.get(), intermediate.get()}, empty_crls));
+
+  static const char kHostname[] = "example.com";
+  static const char kWrongHostname[] = "example2.com";
+  ASSERT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, empty_crls,
+                   0, false, kHostname, strlen(kHostname)));
+  // The wrong hostname should trigger a hostname error.
+  ASSERT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, empty_crls,
+                   0, false, kWrongHostname, strlen(kWrongHostname)));
+  // Passing zero, for this API, is supported for compatibility with OpenSSL.
+  ASSERT_EQ(X509_V_OK, Verify(leaf.get(), {root.get()}, {intermediate.get()},
+                              empty_crls, 0, false, kHostname, 0));
 }
 
 TEST(X509Test, TestCRL) {

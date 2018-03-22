@@ -89,6 +89,14 @@ static int int_x509_param_set_hosts(X509_VERIFY_PARAM_ID *id, int mode,
 {
     char *copy;
 
+    // This is an OpenSSL quirk that BoringSSL typically doesn't support.
+    // However, we didn't make this a fatal error at the time, which was a
+    // mistake. Because of that, given the risk that someone could assume the
+    // OpenSSL semantics from BoringSSL, it's supported in this case.
+    if (name != NULL && namelen == 0) {
+        namelen = strlen(name);
+    }
+
     /*
      * Refuse names with embedded NUL bytes.
      * XXX: Do we need to push an error onto the error stack?
