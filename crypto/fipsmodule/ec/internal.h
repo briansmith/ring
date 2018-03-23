@@ -180,8 +180,8 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth);
 
 // ec_bignum_to_scalar converts |in| to an |EC_SCALAR| and writes it to
 // |*out|. It returns one on success and zero if |in| is out of range.
-int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
-                        const BIGNUM *in);
+OPENSSL_EXPORT int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
+                                       const BIGNUM *in);
 
 // ec_bignum_to_scalar_unchecked behaves like |ec_bignum_to_scalar| but does not
 // check |in| is fully reduced.
@@ -204,9 +204,9 @@ int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,
 // ec_point_mul_scalar_public performs the same computation as
 // ec_point_mul_scalar.  It further assumes that the inputs are public so
 // there is no concern about leaking their values through timing.
-int ec_point_mul_scalar_public(const EC_GROUP *group, EC_POINT *r,
-                               const EC_SCALAR *g_scalar, const EC_POINT *p,
-                               const EC_SCALAR *p_scalar, BN_CTX *ctx);
+OPENSSL_EXPORT int ec_point_mul_scalar_public(
+    const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
+    const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx);
 
 // ec_compute_wNAF writes the modified width-(w+1) Non-Adjacent Form (wNAF) of
 // |scalar| to |out| and returns one on success or zero on internal error. |out|

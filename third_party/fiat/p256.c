@@ -1120,7 +1120,7 @@ static void point_add(fe x3, fe y3, fe z3, const fe x1,
   limb_t yneq = fe_nz(r);
 
   if (!xneq && !yneq && z1nz && z2nz) {
-    point_double(x_out, y_out, z_out, x1, y1, z1);
+    point_double(x3, y3, z3, x1, y1, z1);
     return;
   }
 
