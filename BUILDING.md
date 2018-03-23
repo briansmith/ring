@@ -150,7 +150,14 @@ corresponding ARM feature.
 Note that if a feature is enabled in this way, but not actually supported at
 run-time, BoringSSL will likely crash.
 
-# Running tests
+## Binary Size
+
+The implementations of some algorithms require a trade-off between binary size
+and performance. For instance, BoringSSL's fastest P-256 implementation uses a
+148 KiB pre-computed table. To optimize instead for binary size, pass
+`-DOPENSSL_SMALL=1` to CMake or define the `OPENSSL_SMALL` preprocessor symbol.
+
+# Running Tests
 
 There are two sets of tests: the C/C++ tests and the blackbox tests. For former
 are built by Ninja and can be run from the top-level directory with `go run

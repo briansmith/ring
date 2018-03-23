@@ -279,6 +279,10 @@ if(FIPS)
   endif()
 endif()
 
+if(OPENSSL_SMALL)
+  add_definitions(-DOPENSSL_SMALL)
+endif()
+
 # CMake's iOS support uses Apple's multiple-architecture toolchain. It takes an
 # architecture list from CMAKE_OSX_ARCHITECTURES, leaves CMAKE_SYSTEM_PROCESSOR
 # alone, and expects all architecture-specific logic to be conditioned within
