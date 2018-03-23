@@ -674,6 +674,29 @@ TEST_P(ECCurveTest, DoubleSpecialCase) {
   EXPECT_EQ(0, EC_POINT_cmp(group(), p.get(), two_g.get(), nullptr));
 }
 
+// This a regression test for a P-224 bug, but we may as well run it for all
+// curves.
+TEST_P(ECCurveTest, P224Bug) {
+  // P = -G
+  const EC_POINT *g = EC_GROUP_get0_generator(group());
+  bssl::UniquePtr<EC_POINT> p(EC_POINT_dup(g, group()));
+  ASSERT_TRUE(p);
+  ASSERT_TRUE(EC_POINT_invert(group(), p.get(), nullptr));
+
+  // Compute 31 * P + 32 * G = G
+  bssl::UniquePtr<EC_POINT> ret(EC_POINT_new(group()));
+  ASSERT_TRUE(ret);
+  bssl::UniquePtr<BIGNUM> bn31(BN_new()), bn32(BN_new());
+  ASSERT_TRUE(bn31);
+  ASSERT_TRUE(bn32);
+  ASSERT_TRUE(BN_set_word(bn31.get(), 31));
+  ASSERT_TRUE(BN_set_word(bn32.get(), 32));
+  ASSERT_TRUE(EC_POINT_mul(group(), ret.get(), bn32.get(), p.get(), bn31.get(),
+                           nullptr));
+
+  EXPECT_EQ(0, EC_POINT_cmp(group(), ret.get(), g, nullptr));
+}
+
 static std::vector<EC_builtin_curve> AllCurves() {
   const size_t num_curves = EC_get_builtin_curves(nullptr, 0);
   std::vector<EC_builtin_curve> curves(num_curves);
