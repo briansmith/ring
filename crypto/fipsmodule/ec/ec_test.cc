@@ -13,6 +13,7 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <vector>
@@ -28,6 +29,7 @@
 #include <openssl/nid.h>
 #include <openssl/obj.h>
 
+#include "../../test/file_test.h"
 #include "../../test/test_util.h"
 #include "../bn/internal.h"
 #include "internal.h"
@@ -712,3 +714,113 @@ static std::string CurveToString(
 
 INSTANTIATE_TEST_CASE_P(, ECCurveTest, testing::ValuesIn(AllCurves()),
                         CurveToString);
+
+static bssl::UniquePtr<EC_GROUP> GetCurve(FileTest *t, const char *key) {
+  std::string curve_name;
+  if (!t->GetAttribute(&curve_name, key)) {
+    return nullptr;
+  }
+
+  if (curve_name == "P-224") {
+    return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(NID_secp224r1));
+  }
+  if (curve_name == "P-256") {
+    return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(
+        NID_X9_62_prime256v1));
+  }
+  if (curve_name == "P-384") {
+    return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(NID_secp384r1));
+  }
+  if (curve_name == "P-521") {
+    return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(NID_secp521r1));
+  }
+
+  t->PrintLine("Unknown curve '%s'", curve_name.c_str());
+  return nullptr;
+}
+
+static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *key) {
+  std::vector<uint8_t> bytes;
+  if (!t->GetBytes(&bytes, key)) {
+    return nullptr;
+  }
+
+  return bssl::UniquePtr<BIGNUM>(
+      BN_bin2bn(bytes.data(), bytes.size(), nullptr));
+}
+
+TEST(ECTest, ScalarBaseMultVectors) {
+  bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
+  ASSERT_TRUE(ctx);
+
+  FileTestGTest("crypto/fipsmodule/ec/ec_scalar_base_mult_tests.txt",
+                [&](FileTest *t) {
+    bssl::UniquePtr<EC_GROUP> group = GetCurve(t, "Curve");
+    ASSERT_TRUE(group);
+    bssl::UniquePtr<BIGNUM> n = GetBIGNUM(t, "N");
+    ASSERT_TRUE(n);
+    bssl::UniquePtr<BIGNUM> x = GetBIGNUM(t, "X");
+    ASSERT_TRUE(x);
+    bssl::UniquePtr<BIGNUM> y = GetBIGNUM(t, "Y");
+    ASSERT_TRUE(y);
+    bool is_infinity = BN_is_zero(x.get()) && BN_is_zero(y.get());
+
+    bssl::UniquePtr<BIGNUM> px(BN_new());
+    ASSERT_TRUE(px);
+    bssl::UniquePtr<BIGNUM> py(BN_new());
+    ASSERT_TRUE(py);
+    auto check_point = [&](const EC_POINT *p) {
+      if (is_infinity) {
+        EXPECT_TRUE(EC_POINT_is_at_infinity(group.get(), p));
+      } else {
+        ASSERT_TRUE(EC_POINT_get_affine_coordinates_GFp(
+            group.get(), p, px.get(), py.get(), ctx.get()));
+        EXPECT_EQ(0, BN_cmp(x.get(), px.get()));
+        EXPECT_EQ(0, BN_cmp(y.get(), py.get()));
+      }
+    };
+
+    const EC_POINT *g = EC_GROUP_get0_generator(group.get());
+    bssl::UniquePtr<EC_POINT> p(EC_POINT_new(group.get()));
+    ASSERT_TRUE(p);
+    // Test single-point multiplication.
+    ASSERT_TRUE(EC_POINT_mul(group.get(), p.get(), n.get(), nullptr, nullptr,
+                             ctx.get()));
+    check_point(p.get());
+
+    ASSERT_TRUE(
+        EC_POINT_mul(group.get(), p.get(), nullptr, g, n.get(), ctx.get()));
+    check_point(p.get());
+
+    // These tests take a very long time, but are worth running when we make
+    // non-trivial changes to the EC code.
+#if 0
+    // Test two-point multiplication.
+    bssl::UniquePtr<BIGNUM> a(BN_new()), b(BN_new());
+    for (int i = -64; i < 64; i++) {
+      SCOPED_TRACE(i);
+      ASSERT_TRUE(BN_set_word(a.get(), abs(i)));
+      if (i < 0) {
+        ASSERT_TRUE(BN_sub(a.get(), EC_GROUP_get0_order(group.get()), a.get()));
+      }
+
+      ASSERT_TRUE(BN_copy(b.get(), n.get()));
+      ASSERT_TRUE(BN_sub(b.get(), b.get(), a.get()));
+      if (BN_is_negative(b.get())) {
+        ASSERT_TRUE(BN_add(b.get(), b.get(), EC_GROUP_get0_order(group.get())));
+      }
+
+      ASSERT_TRUE(
+          EC_POINT_mul(group.get(), p.get(), a.get(), g, b.get(), ctx.get()));
+      check_point(p.get());
+
+      EC_SCALAR a_scalar, b_scalar;
+      ASSERT_TRUE(ec_bignum_to_scalar(group.get(), &a_scalar, a.get()));
+      ASSERT_TRUE(ec_bignum_to_scalar(group.get(), &b_scalar, b.get()));
+      ASSERT_TRUE(ec_point_mul_scalar_public(group.get(), p.get(), &a_scalar, g,
+                                             &b_scalar, ctx.get()));
+      check_point(p.get());
+    }
+#endif
+  });
+}
