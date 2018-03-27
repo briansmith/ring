@@ -416,7 +416,7 @@ static int do_seal_record(SSL *ssl, uint8_t *out_prefix, uint8_t *out,
   out_prefix[4] = ciphertext_len & 0xff;
 
   if (!ssl->s3->aead_write_ctx->SealScatter(
-          out_prefix + SSL3_RT_HEADER_LENGTH, out, out_suffix, type,
+          out_prefix + SSL3_RT_HEADER_LENGTH, out, out_suffix, out_prefix[0],
           record_version, ssl->s3->write_sequence, in, in_len, extra_in,
           extra_in_len) ||
       !ssl_record_sequence_update(ssl->s3->write_sequence, 8)) {

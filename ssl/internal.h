@@ -392,6 +392,10 @@ bool ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 // call this function before the version is determined.
 uint16_t ssl_protocol_version(const SSL *ssl);
 
+// ssl_is_draft28 returns whether the version corresponds to a draft28 TLS 1.3
+// variant.
+bool ssl_is_draft28(uint16_t version);
+
 // Cipher suites.
 
 }  // namespace bssl
@@ -694,7 +698,7 @@ class SSLAEADContext {
   // number of bytes written.
   size_t GetAdditionalData(uint8_t out[13], uint8_t type,
                            uint16_t record_version, const uint8_t seqnum[8],
-                           size_t plaintext_len);
+                           size_t plaintext_len, size_t ciphertext_len);
 
   const SSL_CIPHER *cipher_;
   ScopedEVP_AEAD_CTX ctx_;
@@ -721,6 +725,9 @@ class SSLAEADContext {
   bool omit_version_in_ad_ : 1;
   // omit_ad_ is true if the AEAD's ad parameter should be omitted.
   bool omit_ad_ : 1;
+  // tls13_ad_ is true if the AEAD's ad parameter should be based on the
+  // TLS 1.3 format.
+  bool tls13_ad_ : 1;
   // xor_fixed_nonce_ is true if the fixed nonce should be XOR'd into the
   // variable nonce rather than prepended.
   bool xor_fixed_nonce_ : 1;

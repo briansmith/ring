@@ -308,7 +308,7 @@ bool Server(const std::vector<std::string> &args) {
   }
 
   if (args_map.count("-tls13-variant") != 0) {
-    SSL_CTX_set_tls13_variant(ctx.get(), tls13_default);
+    SSL_CTX_set_tls13_variant(ctx.get(), tls13_draft28);
   }
 
   if (args_map.count("-debug") != 0) {

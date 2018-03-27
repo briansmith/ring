@@ -43,6 +43,7 @@ SSLAEADContext::SSLAEADContext(uint16_t version_arg, bool is_dtls_arg,
       omit_length_in_ad_(false),
       omit_version_in_ad_(false),
       omit_ad_(false),
+      tls13_ad_(false),
       xor_fixed_nonce_(false) {
   OPENSSL_memset(fixed_nonce_, 0, sizeof(fixed_nonce_));
 }
@@ -134,7 +135,11 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
       aead_ctx->xor_fixed_nonce_ = true;
       aead_ctx->variable_nonce_len_ = 8;
       aead_ctx->variable_nonce_included_in_record_ = false;
-      aead_ctx->omit_ad_ = true;
+      if (ssl_is_draft28(version)) {
+        aead_ctx->tls13_ad_ = true;
+      } else {
+        aead_ctx->omit_ad_ = true;
+      }
       assert(fixed_iv.size() >= aead_ctx->variable_nonce_len_);
     }
   } else {
@@ -203,19 +208,26 @@ size_t SSLAEADContext::MaxOverhead() const {
 size_t SSLAEADContext::GetAdditionalData(uint8_t out[13], uint8_t type,
                                          uint16_t record_version,
                                          const uint8_t seqnum[8],
-                                         size_t plaintext_len) {
+                                         size_t plaintext_len,
+                                         size_t ciphertext_len) {
   if (omit_ad_) {
     return 0;
   }
 
-  OPENSSL_memcpy(out, seqnum, 8);
-  size_t len = 8;
+  size_t len = 0;
+  if (!tls13_ad_) {
+    OPENSSL_memcpy(out, seqnum, 8);
+    len += 8;
+  }
   out[len++] = type;
   if (!omit_version_in_ad_) {
     out[len++] = static_cast<uint8_t>((record_version >> 8));
     out[len++] = static_cast<uint8_t>(record_version);
   }
-  if (!omit_length_in_ad_) {
+  if (tls13_ad_) {
+    out[len++] = static_cast<uint8_t>((ciphertext_len >> 8));
+    out[len++] = static_cast<uint8_t>(ciphertext_len);
+  } else if (!omit_length_in_ad_) {
     out[len++] = static_cast<uint8_t>((plaintext_len >> 8));
     out[len++] = static_cast<uint8_t>(plaintext_len);
   }
@@ -244,8 +256,8 @@ bool SSLAEADContext::Open(Span<uint8_t> *out, uint8_t type,
     plaintext_len = in.size() - overhead;
   }
   uint8_t ad[13];
-  size_t ad_len =
-      GetAdditionalData(ad, type, record_version, seqnum, plaintext_len);
+  size_t ad_len = GetAdditionalData(ad, type, record_version, seqnum,
+                                    plaintext_len, in.size());
 
   // Assemble the nonce.
   uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
@@ -320,7 +332,8 @@ bool SSLAEADContext::SealScatter(uint8_t *out_prefix, uint8_t *out,
   }
 
   uint8_t ad[13];
-  size_t ad_len = GetAdditionalData(ad, type, record_version, seqnum, in_len);
+  size_t ad_len = GetAdditionalData(ad, type, record_version, seqnum, in_len,
+                                    in_len + suffix_len);
 
   // Assemble the nonce.
   uint8_t nonce[EVP_AEAD_MAX_NONCE_LENGTH];
