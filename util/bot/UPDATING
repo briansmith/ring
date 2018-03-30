@@ -62,4 +62,4 @@ but upload it with the following command. (Note the bucket is different.)
 
     upload_to_google_storage.py -b chrome-boringssl-sde sde-linux64.tar.bz2
 
-The current revision is sde-external-8.16.0-2018-01-30-lin.tar.bz2.
+The current revision is sde-external-8.9.0-2017-08-06-lin.tar.bz2.
