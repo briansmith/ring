@@ -359,8 +359,9 @@ import math
 # selecting one in range is at least sqrt(2)/2.
 p = math.sqrt(2) / 2
 
-# Target a 2^-80 probability of the blinding being insufficient.
-epsilon = 2**-80
+# Target around 2^-8 probability of the blinding being insufficient given that
+# key generation is a one-time, noisy operation.
+epsilon = 2**-8
 
 def choose(a, b):
   r = 1
@@ -389,19 +390,19 @@ for min_uniform in (3, 4, 5, 6, 8, 13, 19, 28):
     iterations += 1
 
 Output:
-  3 53 4.43927387758e-25
-  4 56 5.4559565573e-25
-  5 59 5.47044804496e-25
-  6 62 4.74781795233e-25
-  8 67 8.11486028886e-25
-  13 80 5.52341867763e-25
-  19 94 5.74309668718e-25
-  28 114 4.39583733951e-25
+  3 9 0.00368894873911
+  4 11 0.00363319494662
+  5 13 0.00336215573898
+  6 15 0.00300145783158
+  8 19 0.00225214119331
+  13 27 0.00385610026955
+  19 38 0.0021410539126
+  28 52 0.00325405801769
 
-64 iterations suffices for 400-bit primes and larger (6 uniform samples needed),
+16 iterations suffices for 400-bit primes and larger (6 uniform samples needed),
 which is already well below the minimum acceptable key size for RSA.
 */
-#define BN_PRIME_CHECKS_BLINDED 64
+#define BN_PRIME_CHECKS_BLINDED 16
 
 static int probable_prime(BIGNUM *rnd, int bits);
 static int probable_prime_dh(BIGNUM *rnd, int bits, const BIGNUM *add,
