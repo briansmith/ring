@@ -119,10 +119,8 @@
 // Zimmermann's, as implemented in PGP.  I have had a read of his comments and
 // implemented my own version.
 
-#define NUMPRIMES 2048
-
-// primes contains all the primes that fit into a uint16_t.
-static const uint16_t primes[NUMPRIMES] = {
+// kPrimes contains the first 2048 primes.
+static const uint16_t kPrimes[] = {
     2,     3,     5,     7,     11,    13,    17,    19,    23,    29,    31,
     37,    41,    43,    47,    53,    59,    61,    67,    71,    73,    79,
     83,    89,    97,    101,   103,   107,   109,   113,   127,   131,   137,
@@ -341,6 +339,16 @@ static int BN_prime_checks_for_size(int bits) {
     return 19;
   }
   return 28;
+}
+
+// num_trial_division_primes returns the number of primes to try with trial
+// division before using more expensive checks. For larger numbers, the value
+// of excluding a candidate with trial division is larger.
+static size_t num_trial_division_primes(const BIGNUM *n) {
+  if (n->width * BN_BITS2 > 1024) {
+    return OPENSSL_ARRAY_SIZE(kPrimes);
+  }
+  return OPENSSL_ARRAY_SIZE(kPrimes) / 4;
 }
 
 // BN_PRIME_CHECKS_BLINDED is the iteration count for blinding the constant-time
@@ -592,9 +600,10 @@ uint16_t bn_mod_u16_consttime(const BIGNUM *bn, uint16_t d) {
 }
 
 static int bn_trial_division(uint16_t *out, const BIGNUM *bn) {
-  for (int i = 1; i < NUMPRIMES; i++) {
-    if (bn_mod_u16_consttime(bn, primes[i]) == 0) {
-      *out = primes[i];
+  const size_t num_primes = num_trial_division_primes(bn);
+  for (size_t i = 1; i < num_primes; i++) {
+    if (bn_mod_u16_consttime(bn, kPrimes[i]) == 0) {
+      *out = kPrimes[i];
       return 1;
     }
   }
@@ -805,7 +814,8 @@ err:
   return ret;
 }
 
-int BN_is_prime_ex(const BIGNUM *candidate, int checks, BN_CTX *ctx, BN_GENCB *cb) {
+int BN_is_prime_ex(const BIGNUM *candidate, int checks, BN_CTX *ctx,
+                   BN_GENCB *cb) {
   return BN_is_prime_fasttest_ex(candidate, checks, ctx, 0, cb);
 }
 
@@ -959,10 +969,10 @@ err:
 }
 
 static int probable_prime(BIGNUM *rnd, int bits) {
-  int i;
-  uint16_t mods[NUMPRIMES];
+  uint16_t mods[OPENSSL_ARRAY_SIZE(kPrimes)];
+  const size_t num_primes = num_trial_division_primes(rnd);
   BN_ULONG delta;
-  BN_ULONG maxdelta = BN_MASK2 - primes[NUMPRIMES - 1];
+  BN_ULONG maxdelta = BN_MASK2 - kPrimes[num_primes - 1];
   char is_single_word = bits <= BN_BITS2;
 
 again:
@@ -971,8 +981,8 @@ again:
   }
 
   // we now have a random number 'rnd' to test.
-  for (i = 1; i < NUMPRIMES; i++) {
-    mods[i] = bn_mod_u16_consttime(rnd, primes[i]);
+  for (size_t i = 1; i < num_primes; i++) {
+    mods[i] = bn_mod_u16_consttime(rnd, kPrimes[i]);
   }
   // If bits is so small that it fits into a single word then we
   // additionally don't want to exceed that many bits.
@@ -996,15 +1006,15 @@ loop:
 
     // In the case that the candidate prime is a single word then
     // we check that:
-    //   1) It's greater than primes[i] because we shouldn't reject
+    //   1) It's greater than kPrimes[i] because we shouldn't reject
     //      3 as being a prime number because it's a multiple of
     //      three.
     //   2) That it's not a multiple of a known prime. We don't
     //      check that rnd-1 is also coprime to all the known
     //      primes because there aren't many small primes where
     //      that's true.
-    for (i = 1; i < NUMPRIMES && primes[i] < rnd_word; i++) {
-      if ((mods[i] + delta) % primes[i] == 0) {
+    for (size_t i = 1; i < num_primes && kPrimes[i] < rnd_word; i++) {
+      if ((mods[i] + delta) % kPrimes[i] == 0) {
         delta += 2;
         if (delta > maxdelta) {
           goto again;
@@ -1013,10 +1023,10 @@ loop:
       }
     }
   } else {
-    for (i = 1; i < NUMPRIMES; i++) {
+    for (size_t i = 1; i < num_primes; i++) {
       // check that rnd is not a prime and also
       // that gcd(rnd-1,primes) == 1 (except for 2)
-      if (((mods[i] + delta) % primes[i]) <= 1) {
+      if (((mods[i] + delta) % kPrimes[i]) <= 1) {
         delta += 2;
         if (delta > maxdelta) {
           goto again;
@@ -1038,7 +1048,7 @@ loop:
 
 static int probable_prime_dh(BIGNUM *rnd, int bits, const BIGNUM *add,
                              const BIGNUM *rem, BN_CTX *ctx) {
-  int i, ret = 0;
+  int ret = 0;
   BIGNUM *t1;
 
   BN_CTX_start(ctx);
@@ -1069,10 +1079,11 @@ static int probable_prime_dh(BIGNUM *rnd, int bits, const BIGNUM *add,
   }
   // we now have a random number 'rand' to test.
 
+  const size_t num_primes = num_trial_division_primes(rnd);
 loop:
-  for (i = 1; i < NUMPRIMES; i++) {
+  for (size_t i = 1; i < num_primes; i++) {
     // check that rnd is a prime
-    if (bn_mod_u16_consttime(rnd, primes[i]) <= 1) {
+    if (bn_mod_u16_consttime(rnd, kPrimes[i]) <= 1) {
       if (!BN_add(rnd, rnd, add)) {
         goto err;
       }
@@ -1089,7 +1100,7 @@ err:
 
 static int probable_prime_dh_safe(BIGNUM *p, int bits, const BIGNUM *padd,
                                   const BIGNUM *rem, BN_CTX *ctx) {
-  int i, ret = 0;
+  int ret = 0;
   BIGNUM *t1, *qadd, *q;
 
   bits--;
@@ -1139,13 +1150,14 @@ static int probable_prime_dh_safe(BIGNUM *p, int bits, const BIGNUM *padd,
     goto err;
   }
 
+  const size_t num_primes = num_trial_division_primes(p);
 loop:
-  for (i = 1; i < NUMPRIMES; i++) {
+  for (size_t i = 1; i < num_primes; i++) {
     // check that p and q are prime
     // check that for p and q
     // gcd(p-1,primes) == 1 (except for 2)
-    if (bn_mod_u16_consttime(p, primes[i]) == 0 ||
-        bn_mod_u16_consttime(q, primes[i]) == 0) {
+    if (bn_mod_u16_consttime(p, kPrimes[i]) == 0 ||
+        bn_mod_u16_consttime(q, kPrimes[i]) == 0) {
       if (!BN_add(p, p, padd)) {
         goto err;
       }
