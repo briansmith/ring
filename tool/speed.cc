@@ -12,11 +12,13 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <algorithm>
 #include <string>
 #include <functional>
 #include <memory>
 #include <vector>
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -190,6 +192,59 @@ static bool SpeedRSA(const std::string &key_name, RSA *key,
     return false;
   }
   results.Print(key_name + " verify");
+
+  return true;
+}
+
+static bool SpeedRSAKeyGen(const std::string &selected) {
+  // Don't run this by default because it's so slow.
+  if (selected != "RSAKeyGen") {
+    return true;
+  }
+
+  bssl::UniquePtr<BIGNUM> e(BN_new());
+  if (!BN_set_word(e.get(), 65537)) {
+    return false;
+  }
+
+  const std::vector<int> kSizes = {2048, 3072, 4096};
+  for (int size : kSizes) {
+    const uint64_t start = time_now();
+    unsigned num_calls = 0;
+    unsigned us;
+    std::vector<unsigned> durations;
+
+    for (;;) {
+      bssl::UniquePtr<RSA> rsa(RSA_new());
+
+      const uint64_t iteration_start = time_now();
+      if (!RSA_generate_key_ex(rsa.get(), size, e.get(), nullptr)) {
+        fprintf(stderr, "RSA_generate_key_ex failed.\n");
+        ERR_print_errors_fp(stderr);
+        return false;
+      }
+      const uint64_t iteration_end = time_now();
+
+      num_calls++;
+      durations.push_back(iteration_end - iteration_start);
+
+      us = iteration_end - start;
+      if (us > 30 * 1000000 /* 30 secs */) {
+        break;
+      }
+    }
+
+    std::sort(durations.begin(), durations.end());
+    printf("Did %u RSA %d key-gen operations in %uus (%.1f ops/sec)\n",
+           num_calls, size, us,
+           (static_cast<double>(num_calls) / us) * 1000000);
+    const size_t n = durations.size();
+    assert(n > 0);
+    unsigned median = n & 1 ? durations[n / 2]
+                            : (durations[n / 2 - 1] + durations[n / 2]) / 2;
+    printf("  min: %uus, median: %uus, max: %uus\n", durations[0], median,
+           durations[n - 1]);
+  }
 
   return true;
 }
@@ -719,7 +774,8 @@ bool Speed(const std::vector<std::string> &args) {
       !SpeedECDSA(selected) ||
       !Speed25519(selected) ||
       !SpeedSPAKE2(selected) ||
-      !SpeedScrypt(selected)) {
+      !SpeedScrypt(selected) ||
+      !SpeedRSAKeyGen(selected)) {
     return false;
   }
 
