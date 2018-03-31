@@ -289,18 +289,7 @@ static int bn_from_montgomery_in_place(BN_ULONG *r, size_t num_r, BN_ULONG *a,
   a += num_n;
 
   // |a| thus requires at most one additional subtraction |n| to be reduced.
-  // Subtract |n| and select the answer in constant time.
-  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
-                         crypto_word_t_too_small);
-  BN_ULONG v = bn_sub_words(r, a, n, num_n) - carry;
-  // |v| is one if |a| - |n| underflowed or zero if it did not. Note |v| cannot
-  // be -1. That would imply the subtraction did not fit in |num_n| words, and
-  // we know at most one subtraction is needed.
-  v = 0u - v;
-  for (size_t i = 0; i < num_n; i++) {
-    r[i] = constant_time_select_w(v, a[i], r[i]);
-    a[i] = 0;
-  }
+  bn_reduce_once(r, a, carry, n, num_n);
   return 1;
 }
 

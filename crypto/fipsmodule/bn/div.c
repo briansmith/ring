@@ -414,6 +414,35 @@ int BN_nnmod(BIGNUM *r, const BIGNUM *m, const BIGNUM *d, BN_CTX *ctx) {
   return (d->neg ? BN_sub : BN_add)(r, r, d);
 }
 
+BN_ULONG bn_reduce_once(BN_ULONG *r, const BN_ULONG *a, BN_ULONG carry,
+                        const BN_ULONG *m, size_t num) {
+  assert(r != a);
+  // |r| = |a| - |m|. |bn_sub_words| performs the bulk of the subtraction, and
+  // then we apply the borrow to |carry|.
+  carry -= bn_sub_words(r, a, m, num);
+  // We know 0 <= |a| < 2*|m|, so -|m| <= |r| < |m|.
+  //
+  // If 0 <= |r| < |m|, |r| fits in |num| words and |carry| is zero. We then
+  // wish to select |r| as the answer. Otherwise -m <= r < 0 and we wish to
+  // return |r| + |m|, or |a|. |carry| must then be -1 or all ones. In both
+  // cases, |carry| is a suitable input to |bn_select_words|.
+  //
+  // Although |carry| may be one if it was one on input and |bn_sub_words|
+  // returns zero, this would give |r| > |m|, violating our input assumptions.
+  assert(carry == 0 || carry == (BN_ULONG)-1);
+  bn_select_words(r, carry, a /* r < 0 */, r /* r >= 0 */, num);
+  return carry;
+}
+
+BN_ULONG bn_reduce_once_in_place(BN_ULONG *r, BN_ULONG carry, const BN_ULONG *m,
+                                 BN_ULONG *tmp, size_t num) {
+  // See |bn_reduce_once| for why this logic works.
+  carry -= bn_sub_words(tmp, r, m, num);
+  assert(carry == 0 || carry == (BN_ULONG)-1);
+  bn_select_words(r, carry, r /* tmp < 0 */, tmp /* tmp >= 0 */, num);
+  return carry;
+}
+
 // bn_mod_sub_words sets |r| to |a| - |b| (mod |m|), using |tmp| as scratch
 // space. Each array is |num| words long. |a| and |b| must be < |m|. Any pair of
 // |r|, |a|, and |b| may alias.
@@ -431,27 +460,8 @@ static void bn_mod_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
 // |r|, |a|, and |b| may alias.
 static void bn_mod_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
                              const BN_ULONG *m, BN_ULONG *tmp, size_t num) {
-  // tmp = a + b. Note the result fits in |num|+1 words. We store the extra word
-  // in |carry|.
-  BN_ULONG carry = bn_add_words(tmp, a, b, num);
-  // r = a + b - m. We use |bn_sub_words| to perform the bulk of the
-  // subtraction, and then apply the borrow to |carry|.
-  carry -= bn_sub_words(r, tmp, m, num);
-  // |a| and |b| were both fully-reduced, so we know:
-  //
-  //   0 + 0 - m <= r < m + m - m
-  //          -m <= r < m
-  //
-  // If 0 <= |r| < |m|, |r| fits in |num| words and |carry| is zero. We then
-  // wish to select |r| as the answer. Otherwise -m <= r < 0 and we wish to
-  // return |r| + |m|, or |tmp|. |carry| must then be -1 or all ones. In both
-  // cases, |carry| is a suitable input to |bn_select_words|.
-  //
-  // Although |carry| may be one if |bn_add_words| returns one and
-  // |bn_sub_words| returns zero, this would give |r| > |m|, which violates are
-  // input assumptions.
-  assert(carry == 0 || carry == (BN_ULONG)-1);
-  bn_select_words(r, carry, tmp /* r < 0 */, r /* r >= 0 */, num);
+  BN_ULONG carry = bn_add_words(r, a, b, num);
+  bn_reduce_once_in_place(r, carry, m, tmp, num);
 }
 
 int bn_div_consttime(BIGNUM *quotient, BIGNUM *remainder,
@@ -504,27 +514,14 @@ int bn_div_consttime(BIGNUM *quotient, BIGNUM *remainder,
       // extra word in |carry|.
       BN_ULONG carry = bn_add_words(r->d, r->d, r->d, divisor->width);
       r->d[0] |= (numerator->d[i] >> bit) & 1;
-      // tmp = r - divisor. We use |bn_sub_words| to perform the bulk of the
-      // subtraction, and then apply the borrow to |carry|.
-      carry -= bn_sub_words(tmp->d, r->d, divisor->d, divisor->width);
       // |r| was previously fully-reduced, so we know:
-      //
-      //    2*0 - divisor <= tmp <= 2*(divisor-1) + 1 - divisor
-      //         -divisor <= tmp < divisor
-      //
-      // If 0 <= |tmp| < |divisor|, |tmp| fits in |divisor->width| and |carry|
-      // is zero. We then wish to select |tmp|. Otherwise,
-      // -|divisor| <= |tmp| < 0 and we wish to select |tmp| + |divisor|, which
-      // is |r|. |carry| must then be -1 (all ones). In both cases, |carry| is a
-      // suitable input to |bn_select_words|.
-      //
-      // Although |carry| may be one if |bn_add_words| returns one and
-      // |bn_sub_words| returns zero, this would give |r| > |d|, which violates
-      // the loop invariant.
-      bn_select_words(r->d, carry, r->d /* tmp < 0 */, tmp->d /* tmp >= 0 */,
-                      divisor->width);
+      //      2*0 <= r <= 2*(divisor-1) + 1
+      //        0 <= r <= 2*divisor - 1 < 2*divisor.
+      // Thus |r| satisfies the preconditions for |bn_reduce_once_in_place|.
+      BN_ULONG subtracted = bn_reduce_once_in_place(r->d, carry, divisor->d,
+                                                    tmp->d, divisor->width);
       // The corresponding bit of the quotient is set iff we needed to subtract.
-      q->d[i] |= (~carry & 1) << bit;
+      q->d[i] |= (~subtracted & 1) << bit;
     }
   }
 

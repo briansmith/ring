@@ -375,6 +375,21 @@ void bn_rshift1_words(BN_ULONG *r, const BN_ULONG *a, size_t num);
 OPENSSL_EXPORT int bn_rshift_secret_shift(BIGNUM *r, const BIGNUM *a,
                                           unsigned n, BN_CTX *ctx);
 
+// bn_reduce_once sets |r| to |a| mod |m| where 0 <= |a| < 2*|m|. It returns
+// zero if |a| < |m| and a mask of all ones if |a| >= |m|. Each array is |num|
+// words long, but |a| has an additional word specified by |carry|. |carry| must
+// be zero or one, as implied by the bounds on |a|.
+//
+// |r|, |a|, and |m| may not alias. Use |bn_reduce_once_in_place| if |r| and |a|
+// must alias.
+BN_ULONG bn_reduce_once(BN_ULONG *r, const BN_ULONG *a, BN_ULONG carry,
+                        const BN_ULONG *m, size_t num);
+
+// bn_reduce_once_in_place behaves like |bn_reduce_once| but acts in-place on
+// |r|, using |tmp| as scratch space. |r|, |tmp|, and |m| may not alias.
+BN_ULONG bn_reduce_once_in_place(BN_ULONG *r, BN_ULONG carry, const BN_ULONG *m,
+                                 BN_ULONG *tmp, size_t num);
+
 
 // Constant-time non-modular arithmetic.
 //
