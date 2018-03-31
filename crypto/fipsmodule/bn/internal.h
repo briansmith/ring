@@ -454,6 +454,12 @@ OPENSSL_EXPORT int bn_lcm_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
 //
 // The following functions implement basic constant-time modular arithmetic.
 
+// bn_mod_add_words sets |r| to |a| + |b| (mod |m|), using |tmp| as scratch
+// space. Each array is |num| words long. |a| and |b| must be < |m|. Any pair of
+// |r|, |a|, and |b| may alias.
+void bn_mod_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
+                      const BN_ULONG *m, BN_ULONG *tmp, size_t num);
+
 // bn_mod_add_consttime acts like |BN_mod_add_quick| but takes a |BN_CTX|.
 int bn_mod_add_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                          const BIGNUM *m, BN_CTX *ctx);
