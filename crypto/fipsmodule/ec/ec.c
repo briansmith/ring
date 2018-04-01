@@ -792,9 +792,19 @@ int EC_POINT_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
-  return ec_GFp_simple_add(group, r, a, b, ctx);
+  return ec_GFp_simple_add(group, r, a, b, 0 /* both Jacobian */, ctx);
 }
 
+int ec_point_add_mixed(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
+                       const EC_POINT *b, BN_CTX *ctx) {
+  if (EC_GROUP_cmp(group, r->group, NULL) != 0 ||
+      EC_GROUP_cmp(group, a->group, NULL) != 0 ||
+      EC_GROUP_cmp(group, b->group, NULL) != 0) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
+    return 0;
+  }
+  return ec_GFp_simple_add(group, r, a, b, 1 /* |b| is affine */, ctx);
+}
 
 int EC_POINT_dbl(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
                  BN_CTX *ctx) {

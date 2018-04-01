@@ -193,6 +193,11 @@ int ec_bignum_to_scalar_unchecked(const EC_GROUP *group, EC_SCALAR *out,
 int ec_random_nonzero_scalar(const EC_GROUP *group, EC_SCALAR *out,
                              const uint8_t additional_data[32]);
 
+// ec_point_add_mixed behaves like |EC_POINT_add|, but |&b->Z| must be zero or
+// one.
+int ec_point_add_mixed(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
+                       const EC_POINT *b, BN_CTX *ctx);
+
 // ec_point_mul_scalar sets |r| to generator * |g_scalar| + |p| *
 // |p_scalar|. Unlike other functions which take |EC_SCALAR|, |g_scalar| and
 // |p_scalar| need not be fully reduced. They need only contain as many bits as
@@ -238,7 +243,7 @@ int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *, EC_POINT *,
                                                const BIGNUM *x, const BIGNUM *y,
                                                BN_CTX *);
 int ec_GFp_simple_add(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
-                      const EC_POINT *b, BN_CTX *);
+                      const EC_POINT *b, int mixed, BN_CTX *);
 int ec_GFp_simple_dbl(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
                       BN_CTX *);
 int ec_GFp_simple_invert(const EC_GROUP *, EC_POINT *, BN_CTX *);

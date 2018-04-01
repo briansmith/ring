@@ -291,7 +291,9 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
 
   tmp = EC_POINT_new(group);
   if (tmp == NULL ||
-      // |window_bits_for_scalar_size| assumes we do this step.
+      // Convert the points to affine coordinates. This allows us to use the
+      // slightly faster |ec_point_add_mixed|. The conversion itself is not
+      // cheap, but it is worthwhile when there are two points.
       !EC_POINTs_make_affine(group, total_precomp, precomp_storage, ctx)) {
     goto err;
   }
@@ -302,35 +304,31 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
       goto err;
     }
 
-    if (g_scalar != NULL) {
-      if (g_wNAF[k] != 0) {
-        if (!lookup_precomp(group, tmp, g_precomp, g_wNAF[k], ctx)) {
+    if (g_scalar != NULL && g_wNAF[k] != 0) {
+      if (!lookup_precomp(group, tmp, g_precomp, g_wNAF[k], ctx)) {
+        goto err;
+      }
+      if (r_is_at_infinity) {
+        if (!EC_POINT_copy(r, tmp)) {
           goto err;
         }
-        if (r_is_at_infinity) {
-          if (!EC_POINT_copy(r, tmp)) {
-            goto err;
-          }
-          r_is_at_infinity = 0;
-        } else if (!EC_POINT_add(group, r, r, tmp, ctx)) {
-          goto err;
-        }
+        r_is_at_infinity = 0;
+      } else if (!ec_point_add_mixed(group, r, r, tmp, ctx)) {
+        goto err;
       }
     }
 
-    if (p_scalar != NULL) {
-      if (p_wNAF[k] != 0) {
-        if (!lookup_precomp(group, tmp, p_precomp, p_wNAF[k], ctx)) {
+    if (p_scalar != NULL && p_wNAF[k] != 0) {
+      if (!lookup_precomp(group, tmp, p_precomp, p_wNAF[k], ctx)) {
+        goto err;
+      }
+      if (r_is_at_infinity) {
+        if (!EC_POINT_copy(r, tmp)) {
           goto err;
         }
-        if (r_is_at_infinity) {
-          if (!EC_POINT_copy(r, tmp)) {
-            goto err;
-          }
-          r_is_at_infinity = 0;
-        } else if (!EC_POINT_add(group, r, r, tmp, ctx)) {
-          goto err;
-        }
+        r_is_at_infinity = 0;
+      } else if (!ec_point_add_mixed(group, r, r, tmp, ctx)) {
+        goto err;
       }
     }
   }
