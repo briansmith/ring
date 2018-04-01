@@ -1087,6 +1087,34 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
   return 1;
 }
 
+static int ec_GFp_nistp224_field_mul(const EC_GROUP *group, BIGNUM *r,
+                                     const BIGNUM *a, const BIGNUM *b,
+                                     BN_CTX *ctx) {
+  p224_felem felem1, felem2;
+  p224_widefelem wide;
+  if (!p224_BN_to_felem(felem1, a) ||
+      !p224_BN_to_felem(felem2, b)) {
+    return 0;
+  }
+  p224_felem_mul(wide, felem1, felem2);
+  p224_felem_reduce(felem1, wide);
+  p224_felem_contract(felem1, felem1);
+  return p224_felem_to_BN(r, felem1) != NULL;
+}
+
+static int ec_GFp_nistp224_field_sqr(const EC_GROUP *group, BIGNUM *r,
+                                     const BIGNUM *a, BN_CTX *ctx) {
+  p224_felem felem;
+  if (!p224_BN_to_felem(felem, a)) {
+    return 0;
+  }
+  p224_widefelem wide;
+  p224_felem_square(wide, felem);
+  p224_felem_reduce(felem, wide);
+  p224_felem_contract(felem, felem);
+  return p224_felem_to_BN(r, felem) != NULL;
+}
+
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp224_method) {
   out->group_init = ec_GFp_simple_group_init;
   out->group_finish = ec_GFp_simple_group_finish;
@@ -1095,8 +1123,8 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp224_method) {
       ec_GFp_nistp224_point_get_affine_coordinates;
   out->mul = ec_GFp_nistp224_points_mul;
   out->mul_public = ec_GFp_nistp224_points_mul;
-  out->field_mul = ec_GFp_simple_field_mul;
-  out->field_sqr = ec_GFp_simple_field_sqr;
+  out->field_mul = ec_GFp_nistp224_field_mul;
+  out->field_sqr = ec_GFp_nistp224_field_sqr;
   out->field_encode = NULL;
   out->field_decode = NULL;
 };
