@@ -370,6 +370,11 @@ int bn_odd_number_is_obviously_composite(const BIGNUM *bn);
 // bn_rshift1_words sets |r| to |a| >> 1, where both arrays are |num| bits wide.
 void bn_rshift1_words(BN_ULONG *r, const BN_ULONG *a, size_t num);
 
+// bn_rshift_words sets |r| to |a| >> |shift|, where both arrays are |num| bits
+// wide.
+void bn_rshift_words(BN_ULONG *r, const BN_ULONG *a, unsigned shift,
+                     size_t num);
+
 // bn_rshift_secret_shift behaves like |BN_rshift| but runs in time independent
 // of both |a| and |n|.
 OPENSSL_EXPORT int bn_rshift_secret_shift(BIGNUM *r, const BIGNUM *a,

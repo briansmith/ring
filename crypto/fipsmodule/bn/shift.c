@@ -133,8 +133,8 @@ int BN_lshift1(BIGNUM *r, const BIGNUM *a) {
   return 1;
 }
 
-static void bn_rshift_words(BN_ULONG *r, const BN_ULONG *a, unsigned shift,
-                            size_t num) {
+void bn_rshift_words(BN_ULONG *r, const BN_ULONG *a, unsigned shift,
+                     size_t num) {
   unsigned shift_bits = shift % BN_BITS2;
   size_t shift_words = shift / BN_BITS2;
   if (shift_words >= num) {

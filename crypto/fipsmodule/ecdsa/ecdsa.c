@@ -116,22 +116,18 @@ static void digest_to_scalar(const EC_GROUP *group, EC_LOOSE_SCALAR *out,
   const BIGNUM *order = &group->order;
   size_t num_bits = BN_num_bits(order);
   // Need to truncate digest if it is too long: first truncate whole bytes.
-  if (8 * digest_len > num_bits) {
-    digest_len = (num_bits + 7) / 8;
+  size_t num_bytes = (num_bits + 7) / 8;
+  if (digest_len > num_bytes) {
+    digest_len = num_bytes;
   }
   OPENSSL_memset(out, 0, sizeof(EC_SCALAR));
   for (size_t i = 0; i < digest_len; i++) {
     out->bytes[i] = digest[digest_len - 1 - i];
   }
 
-  // If still too long truncate remaining bits with a shift
+  // If it is still too long, truncate remaining bits with a shift.
   if (8 * digest_len > num_bits) {
-    size_t shift = 8 - (num_bits & 0x7);
-    for (int i = 0; i < order->width - 1; i++) {
-      out->words[i] =
-          (out->words[i] >> shift) | (out->words[i + 1] << (BN_BITS2 - shift));
-    }
-    out->words[order->width - 1] >>= shift;
+    bn_rshift_words(out->words, out->words, 8 - (num_bits & 0x7), order->width);
   }
 }
 
