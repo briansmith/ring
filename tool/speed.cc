@@ -442,8 +442,28 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
     return true;
   }
 
+  bssl::UniquePtr<EC_KEY> peer_key(EC_KEY_new_by_curve_name(nid));
+  if (!peer_key ||
+      !EC_KEY_generate_key(peer_key.get())) {
+    return false;
+  }
+
+  size_t peer_value_len = EC_POINT_point2oct(
+      EC_KEY_get0_group(peer_key.get()), EC_KEY_get0_public_key(peer_key.get()),
+      POINT_CONVERSION_UNCOMPRESSED, nullptr, 0, nullptr);
+  if (peer_value_len == 0) {
+    return false;
+  }
+  std::unique_ptr<uint8_t[]> peer_value(new uint8_t[peer_value_len]);
+  peer_value_len = EC_POINT_point2oct(
+      EC_KEY_get0_group(peer_key.get()), EC_KEY_get0_public_key(peer_key.get()),
+      POINT_CONVERSION_UNCOMPRESSED, peer_value.get(), peer_value_len, nullptr);
+  if (peer_value_len == 0) {
+    return false;
+  }
+
   TimeResults results;
-  if (!TimeFunction(&results, [nid]() -> bool {
+  if (!TimeFunction(&results, [nid, peer_value_len, &peer_value]() -> bool {
         bssl::UniquePtr<EC_KEY> key(EC_KEY_new_by_curve_name(nid));
         if (!key ||
             !EC_KEY_generate_key(key.get())) {
@@ -451,14 +471,16 @@ static bool SpeedECDHCurve(const std::string &name, int nid,
         }
         const EC_GROUP *const group = EC_KEY_get0_group(key.get());
         bssl::UniquePtr<EC_POINT> point(EC_POINT_new(group));
+        bssl::UniquePtr<EC_POINT> peer_point(EC_POINT_new(group));
         bssl::UniquePtr<BN_CTX> ctx(BN_CTX_new());
 
         bssl::UniquePtr<BIGNUM> x(BN_new());
         bssl::UniquePtr<BIGNUM> y(BN_new());
 
-        if (!point || !ctx || !x || !y ||
-            !EC_POINT_mul(group, point.get(), NULL,
-                          EC_KEY_get0_public_key(key.get()),
+        if (!point || !peer_point || !ctx || !x || !y ||
+            !EC_POINT_oct2point(group, peer_point.get(), peer_value.get(),
+                                peer_value_len, ctx.get()) ||
+            !EC_POINT_mul(group, point.get(), NULL, peer_point.get(),
                           EC_KEY_get0_private_key(key.get()), ctx.get()) ||
             !EC_POINT_get_affine_coordinates_GFp(group, point.get(), x.get(),
                                                  y.get(), ctx.get())) {
