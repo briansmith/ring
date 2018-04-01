@@ -370,6 +370,61 @@ TEST(ECTest, EmptyKey) {
   EXPECT_FALSE(EC_KEY_get0_private_key(key.get()));
 }
 
+static bssl::UniquePtr<BIGNUM> HexToBIGNUM(const char *hex) {
+  BIGNUM *bn = nullptr;
+  BN_hex2bn(&bn, hex);
+  return bssl::UniquePtr<BIGNUM>(bn);
+}
+
+// Test that point arithmetic works with custom curves using an arbitrary |a|,
+// rather than -3, as is common (and more efficient).
+TEST(ECTest, BrainpoolP256r1) {
+  static const char kP[] =
+      "a9fb57dba1eea9bc3e660a909d838d726e3bf623d52620282013481d1f6e5377";
+  static const char kA[] =
+      "7d5a0975fc2c3057eef67530417affe7fb8055c126dc5c6ce94a4b44f330b5d9";
+  static const char kB[] =
+      "26dc5c6ce94a4b44f330b5d9bbd77cbf958416295cf7e1ce6bccdc18ff8c07b6";
+  static const char kX[] =
+      "8bd2aeb9cb7e57cb2c4b482ffc81b7afb9de27e1e3bd23c23a4453bd9ace3262";
+  static const char kY[] =
+      "547ef835c3dac4fd97f8461a14611dc9c27745132ded8e545c1d54c72f046997";
+  static const char kN[] =
+      "a9fb57dba1eea9bc3e660a909d838d718c397aa3b561a6f7901e0e82974856a7";
+  static const char kD[] =
+      "0da21d76fed40dd82ac3314cce91abb585b5c4246e902b238a839609ea1e7ce1";
+  static const char kQX[] =
+      "3a55e0341cab50452fe27b8a87e4775dec7a9daca94b0d84ad1e9f85b53ea513";
+  static const char kQY[] =
+      "40088146b33bbbe81b092b41146774b35dd478cf056437cfb35ef0df2d269339";
+
+  bssl::UniquePtr<BIGNUM> p = HexToBIGNUM(kP), a = HexToBIGNUM(kA),
+                          b = HexToBIGNUM(kB), x = HexToBIGNUM(kX),
+                          y = HexToBIGNUM(kY), n = HexToBIGNUM(kN),
+                          d = HexToBIGNUM(kD), qx = HexToBIGNUM(kQX),
+                          qy = HexToBIGNUM(kQY);
+  ASSERT_TRUE(p && a && b && x && y && n && d && qx && qy);
+
+  bssl::UniquePtr<EC_GROUP> group(
+      EC_GROUP_new_curve_GFp(p.get(), a.get(), b.get(), nullptr));
+  ASSERT_TRUE(group);
+  bssl::UniquePtr<EC_POINT> g(EC_POINT_new(group.get()));
+  ASSERT_TRUE(g);
+  ASSERT_TRUE(EC_POINT_set_affine_coordinates_GFp(group.get(), g.get(), x.get(),
+                                                  y.get(), nullptr));
+  ASSERT_TRUE(
+      EC_GROUP_set_generator(group.get(), g.get(), n.get(), BN_value_one()));
+
+  bssl::UniquePtr<EC_POINT> q(EC_POINT_new(group.get()));
+  ASSERT_TRUE(q);
+  ASSERT_TRUE(
+      EC_POINT_mul(group.get(), q.get(), d.get(), nullptr, nullptr, nullptr));
+  ASSERT_TRUE(EC_POINT_get_affine_coordinates_GFp(group.get(), q.get(), x.get(),
+                                                  y.get(), nullptr));
+  EXPECT_EQ(0, BN_cmp(x.get(), qx.get()));
+  EXPECT_EQ(0, BN_cmp(y.get(), qy.get()));
+}
+
 class ECCurveTest : public testing::TestWithParam<EC_builtin_curve> {
  public:
   const EC_GROUP *group() const { return group_.get(); }
