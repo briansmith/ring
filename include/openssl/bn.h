@@ -701,11 +701,14 @@ enum bn_primality_result_t {
 // Miller-Rabin tests primality for odd integers greater than 3, returning
 // |bn_probably_prime| if the number is probably prime,
 // |bn_non_prime_power_composite| if the number is a composite that is not the
-// power of a single prime, and |bn_composite| otherwise.  If |iterations| is
-// |BN_prime_checks|, then a value that results in a false positive rate lower
-// than the number-field sieve security level of |w| is used. It returns one on
+// power of a single prime, and |bn_composite| otherwise. It returns one on
 // success and zero on failure. If |cb| is not NULL, then it is called during
 // each iteration of the primality test.
+//
+// If |iterations| is |BN_prime_checks|, then a value that results in a false
+// positive rate lower than the number-field sieve security level of |w| is
+// used, provided |w| was generated randomly. |BN_prime_checks| is not suitable
+// for inputs potentially crafted by an adversary.
 OPENSSL_EXPORT int BN_enhanced_miller_rabin_primality_test(
     enum bn_primality_result_t *out_result, const BIGNUM *w, int iterations,
     BN_CTX *ctx, BN_GENCB *cb);
@@ -718,13 +721,14 @@ OPENSSL_EXPORT int BN_enhanced_miller_rabin_primality_test(
 // list of small primes before Miller-Rabin tests. The probability of this
 // function returning a false positive is 2^{2*checks}. If |checks| is
 // |BN_prime_checks| then a value that results in a false positive rate lower
-// than the number-field sieve security level of |candidate| is used. If |cb| is
-// not NULL then it is called during the checking process. See the comment above
-// |BN_GENCB|.
+// than the number-field sieve security level of |candidate| is used, provided
+// |candidate| was generated randomly. |BN_prime_checks| is not suitable for
+// inputs potentially crafted by an adversary.
+//
+// If |cb| is not NULL then it is called during the checking process. See the
+// comment above |BN_GENCB|.
 //
 // The function returns one on success and zero on error.
-//
-// (If you are unsure whether you want |do_trial_division|, don't set it.)
 OPENSSL_EXPORT int BN_primality_test(int *is_probably_prime,
                                      const BIGNUM *candidate, int checks,
                                      BN_CTX *ctx, int do_trial_division,
@@ -737,7 +741,10 @@ OPENSSL_EXPORT int BN_primality_test(int *is_probably_prime,
 // list of small primes before Miller-Rabin tests. The probability of this
 // function returning one when |candidate| is composite is 2^{2*checks}. If
 // |checks| is |BN_prime_checks| then a value that results in a false positive
-// rate lower than the number-field sieve security level of |candidate| is used.
+// rate lower than the number-field sieve security level of |candidate| is used,
+// provided |candidate| was generated randomly. |BN_prime_checks| is not
+// suitable for inputs potentially crafted by an adversary.
+//
 // If |cb| is not NULL then it is called during the checking process. See the
 // comment above |BN_GENCB|.
 //
