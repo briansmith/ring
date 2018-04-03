@@ -2031,6 +2031,13 @@ TEST_F(BNTest, PrimeChecking) {
         &result_3, p.get(), BN_prime_checks, ctx(), nullptr /* callback */));
     EXPECT_EQ(bn_composite, result_3);
   }
+
+  // BN_primality_test works with null |BN_CTX|.
+  ASSERT_TRUE(BN_set_word(p.get(), 5));
+  ASSERT_TRUE(BN_primality_test(
+      &is_probably_prime_1, p.get(), BN_prime_checks, nullptr /* ctx */,
+      false /* do_trial_division */, nullptr /* callback */));
+  EXPECT_EQ(1, is_probably_prime_1);
 }
 
 TEST_F(BNTest, NumBitsWord) {

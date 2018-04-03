@@ -647,6 +647,15 @@ int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
     iterations = BN_prime_checks_for_size(BN_num_bits(w));
   }
 
+  BN_CTX *new_ctx = NULL;
+  if (ctx == NULL) {
+    new_ctx = BN_CTX_new();
+    if (new_ctx == NULL) {
+      return 0;
+    }
+    ctx = new_ctx;
+  }
+
   // See C.3.1 from FIPS 186-4.
   int ret = 0;
   BN_MONT_CTX *mont = NULL;
@@ -792,6 +801,7 @@ int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
 err:
   BN_MONT_CTX_free(mont);
   BN_CTX_end(ctx);
+  BN_CTX_free(new_ctx);
   return ret;
 }
 
