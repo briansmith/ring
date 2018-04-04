@@ -2279,11 +2279,12 @@ TEST_F(BNTest, NonMinimal) {
   EXPECT_TRUE(BN_is_pow2(eight.get()));
 
   // |BN_MONT_CTX| is always stored minimally and uses the same R independent of
-  // input width.
+  // input width. Additionally, mont->RR is always the same width as mont->N,
+  // even if it fits in a smaller value.
   static const uint8_t kP[] = {
-      0xff, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff,
-      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+      0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01,
   };
   bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP, sizeof(kP), nullptr));
   ASSERT_TRUE(p);
@@ -2311,6 +2312,10 @@ TEST_F(BNTest, NonMinimal) {
   EXPECT_EQ(0, BN_cmp(&mont->RR, &mont2->RR));
   EXPECT_EQ(0, BN_cmp(&mont->RR, &mont3->RR));
   EXPECT_EQ(0, BN_cmp(&mont->RR, &mont4->RR));
+  EXPECT_EQ(mont->N.width, mont->RR.width);
+  EXPECT_EQ(mont->N.width, mont2->RR.width);
+  EXPECT_EQ(mont->N.width, mont3->RR.width);
+  EXPECT_EQ(mont->N.width, mont4->RR.width);
 }
 
 TEST_F(BNTest, CountLowZeroBits) {

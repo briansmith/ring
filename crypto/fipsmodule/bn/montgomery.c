@@ -232,7 +232,8 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   unsigned lgBigR = mont->N.width * BN_BITS2;
   BN_zero(&mont->RR);
   int ok = BN_set_bit(&mont->RR, lgBigR * 2) &&
-           BN_mod(&mont->RR, &mont->RR, &mont->N, ctx);
+           BN_mod(&mont->RR, &mont->RR, &mont->N, ctx) &&
+           bn_resize_words(&mont->RR, mont->N.width);
   BN_CTX_free(new_ctx);
   return ok;
 }
@@ -254,7 +255,8 @@ BN_MONT_CTX *BN_MONT_CTX_new_consttime(const BIGNUM *mod, BN_CTX *ctx) {
     goto err;
   }
   unsigned lgBigR = mont->N.width * BN_BITS2;
-  if (!bn_mod_exp_base_2_consttime(&mont->RR, lgBigR * 2, &mont->N, ctx)) {
+  if (!bn_mod_exp_base_2_consttime(&mont->RR, lgBigR * 2, &mont->N, ctx) ||
+      !bn_resize_words(&mont->RR, mont->N.width)) {
     goto err;
   }
   return mont;
