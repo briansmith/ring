@@ -467,13 +467,13 @@ static void TestSquare(BIGNUMFileTest *t, BN_CTX *ctx) {
           r_words(new BN_ULONG[num_r]);
       ASSERT_TRUE(bn_copy_words(a_words.get(), num_a, a.get()));
 
-      ASSERT_TRUE(bn_mul_small(r_words.get(), num_r, a_words.get(), num_a,
-                               a_words.get(), num_a));
+      bn_mul_small(r_words.get(), num_r, a_words.get(), num_a, a_words.get(),
+                   num_a);
       ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), num_r));
       EXPECT_BIGNUMS_EQUAL("A * A (words)", square.get(), ret.get());
 
       OPENSSL_memset(r_words.get(), 'A', num_r * sizeof(BN_ULONG));
-      ASSERT_TRUE(bn_sqr_small(r_words.get(), num_r, a_words.get(), num_a));
+      bn_sqr_small(r_words.get(), num_r, a_words.get(), num_a);
 
       ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), num_r));
       EXPECT_BIGNUMS_EQUAL("A^2 (words)", square.get(), ret.get());
@@ -535,8 +535,8 @@ static void TestProduct(BIGNUMFileTest *t, BN_CTX *ctx) {
         ASSERT_TRUE(bn_copy_words(a_words.get(), num_a, a.get()));
         ASSERT_TRUE(bn_copy_words(b_words.get(), num_b, b.get()));
 
-        ASSERT_TRUE(bn_mul_small(r_words.get(), num_r, a_words.get(), num_a,
-                                 b_words.get(), num_b));
+        bn_mul_small(r_words.get(), num_r, a_words.get(), num_a, b_words.get(),
+                     num_b);
         ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), num_r));
         EXPECT_BIGNUMS_EQUAL("A * B (words)", product.get(), ret.get());
       }
@@ -660,16 +660,13 @@ static void TestModMul(BIGNUMFileTest *t, BN_CTX *ctx) {
           b_words(new BN_ULONG[m_width]), r_words(new BN_ULONG[m_width]);
       ASSERT_TRUE(bn_copy_words(a_words.get(), m_width, a.get()));
       ASSERT_TRUE(bn_copy_words(b_words.get(), m_width, b.get()));
-      ASSERT_TRUE(bn_to_montgomery_small(a_words.get(), m_width, a_words.get(),
-                                         m_width, mont.get()));
-      ASSERT_TRUE(bn_to_montgomery_small(b_words.get(), m_width, b_words.get(),
-                                         m_width, mont.get()));
-      ASSERT_TRUE(bn_mod_mul_montgomery_small(
-          r_words.get(), m_width, a_words.get(), m_width, b_words.get(), m_width,
-          mont.get()));
+      bn_to_montgomery_small(a_words.get(), a_words.get(), m_width, mont.get());
+      bn_to_montgomery_small(b_words.get(), b_words.get(), m_width, mont.get());
+      bn_mod_mul_montgomery_small(r_words.get(), a_words.get(), b_words.get(),
+                                  m_width, mont.get());
       // Use the second half of |tmp| so ASan will catch out-of-bounds writes.
-      ASSERT_TRUE(bn_from_montgomery_small(r_words.get(), m_width, r_words.get(),
-                                           m_width, mont.get()));
+      bn_from_montgomery_small(r_words.get(), r_words.get(), m_width,
+                               mont.get());
       ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), m_width));
       EXPECT_BIGNUMS_EQUAL("A * B (mod M) (Montgomery, words)", mod_mul.get(),
                            ret.get());
@@ -727,13 +724,10 @@ static void TestModSquare(BIGNUMFileTest *t, BN_CTX *ctx) {
       std::unique_ptr<BN_ULONG[]> a_words(new BN_ULONG[m_width]),
           a_copy_words(new BN_ULONG[m_width]), r_words(new BN_ULONG[m_width]);
       ASSERT_TRUE(bn_copy_words(a_words.get(), m_width, a.get()));
-      ASSERT_TRUE(bn_to_montgomery_small(a_words.get(), m_width, a_words.get(),
-                                         m_width, mont.get()));
-      ASSERT_TRUE(bn_mod_mul_montgomery_small(
-          r_words.get(), m_width, a_words.get(), m_width, a_words.get(),
-          m_width, mont.get()));
-      ASSERT_TRUE(bn_from_montgomery_small(r_words.get(), m_width,
-                                           r_words.get(), m_width, mont.get()));
+      bn_to_montgomery_small(a_words.get(), a_words.get(), m_width, mont.get());
+      bn_mod_mul_montgomery_small(r_words.get(), a_words.get(), a_words.get(),
+                                  m_width, mont.get());
+      bn_from_montgomery_small(r_words.get(), r_words.get(), m_width, mont.get());
       ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), m_width));
       EXPECT_BIGNUMS_EQUAL("A * A (mod M) (Montgomery, words)",
                            mod_square.get(), ret.get());
@@ -741,12 +735,11 @@ static void TestModSquare(BIGNUMFileTest *t, BN_CTX *ctx) {
       // Repeat the operation with |a_copy_words|.
       OPENSSL_memcpy(a_copy_words.get(), a_words.get(),
                      m_width * sizeof(BN_ULONG));
-      ASSERT_TRUE(bn_mod_mul_montgomery_small(
-          r_words.get(), m_width, a_words.get(), m_width, a_copy_words.get(),
-          m_width, mont.get()));
+      bn_mod_mul_montgomery_small(r_words.get(), a_words.get(),
+                                  a_copy_words.get(), m_width, mont.get());
       // Use the second half of |tmp| so ASan will catch out-of-bounds writes.
-      ASSERT_TRUE(bn_from_montgomery_small(r_words.get(), m_width,
-                                           r_words.get(), m_width, mont.get()));
+      bn_from_montgomery_small(r_words.get(), r_words.get(), m_width,
+                               mont.get());
       ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), m_width));
       EXPECT_BIGNUMS_EQUAL("A * A_copy (mod M) (Montgomery, words)",
                            mod_square.get(), ret.get());
@@ -791,12 +784,11 @@ static void TestModExp(BIGNUMFileTest *t, BN_CTX *ctx) {
       std::unique_ptr<BN_ULONG[]> r_words(new BN_ULONG[m_width]),
           a_words(new BN_ULONG[m_width]);
       ASSERT_TRUE(bn_copy_words(a_words.get(), m_width, a.get()));
-      ASSERT_TRUE(bn_to_montgomery_small(a_words.get(), m_width, a_words.get(),
-                                         m_width, mont.get()));
-      ASSERT_TRUE(bn_mod_exp_mont_small(r_words.get(), m_width, a_words.get(),
-                                        m_width, e->d, e->width, mont.get()));
-      ASSERT_TRUE(bn_from_montgomery_small(r_words.get(), m_width,
-                                           r_words.get(), m_width, mont.get()));
+      bn_to_montgomery_small(a_words.get(), a_words.get(), m_width, mont.get());
+      bn_mod_exp_mont_small(r_words.get(), a_words.get(), m_width, e->d,
+                            e->width, mont.get());
+      bn_from_montgomery_small(r_words.get(), r_words.get(), m_width,
+                               mont.get());
       ASSERT_TRUE(bn_set_words(ret.get(), r_words.get(), m_width));
       EXPECT_BIGNUMS_EQUAL("A ^ E (mod M) (Montgomery, words)", mod_exp.get(),
                            ret.get());

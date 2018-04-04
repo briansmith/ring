@@ -57,6 +57,7 @@
 #include <openssl/bn.h>
 
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <openssl/err.h>
@@ -656,11 +657,10 @@ int bn_mul_consttime(BIGNUM *r, const BIGNUM *a, const BIGNUM *b, BN_CTX *ctx) {
   return bn_mul_impl(r, a, b, ctx);
 }
 
-int bn_mul_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a,
-                 const BN_ULONG *b, size_t num_b) {
+void bn_mul_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a,
+                  const BN_ULONG *b, size_t num_b) {
   if (num_r != num_a + num_b) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
+    abort();
   }
   // TODO(davidben): Should this call |bn_mul_comba4| too? |BN_mul| does not
   // hit that code.
@@ -669,7 +669,6 @@ int bn_mul_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a,
   } else {
     bn_mul_normal(r, a, num_a, b, num_b);
   }
-  return 1;
 }
 
 // tmp must have 2*n words
@@ -858,10 +857,9 @@ int BN_sqr(BIGNUM *r, const BIGNUM *a, BN_CTX *ctx) {
   return 1;
 }
 
-int bn_sqr_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a) {
+void bn_sqr_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a) {
   if (num_r != 2 * num_a || num_a > BN_SMALL_MAX_WORDS) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
+    abort();
   }
   if (num_a == 4) {
     bn_sqr_comba4(r, a);
@@ -872,5 +870,4 @@ int bn_sqr_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a, size_t num_a) {
     bn_sqr_normal(r, a, num_a, tmp);
     OPENSSL_cleanse(tmp, 2 * num_a * sizeof(BN_ULONG));
   }
-  return 1;
 }

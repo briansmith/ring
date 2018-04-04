@@ -109,6 +109,7 @@
 #include <openssl/bn.h>
 
 #include <assert.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <openssl/cpu.h>
@@ -727,13 +728,11 @@ err:
   return ret;
 }
 
-int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
-                          size_t num_a, const BN_ULONG *p, size_t num_p,
-                          const BN_MONT_CTX *mont) {
-  size_t num_n = mont->N.width;
-  if (num_n != num_a || num_n != num_r || num_n > BN_SMALL_MAX_WORDS) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
+void bn_mod_exp_mont_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
+                           const BN_ULONG *p, size_t num_p,
+                           const BN_MONT_CTX *mont) {
+  if (num != (size_t)mont->N.width || num > BN_SMALL_MAX_WORDS) {
+    abort();
   }
   assert(BN_is_odd(&mont->N));
 
@@ -742,7 +741,8 @@ int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
     num_p--;
   }
   if (num_p == 0) {
-    return bn_from_montgomery_small(r, num_r, mont->RR.d, mont->RR.width, mont);
+    bn_from_montgomery_small(r, mont->RR.d, num, mont);
+    return;
   }
   unsigned bits = BN_num_bits_word(p[num_p - 1]) + (num_p - 1) * BN_BITS2;
   assert(bits != 0);
@@ -755,20 +755,13 @@ int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
   if (window > TABLE_BITS_SMALL) {
     window = TABLE_BITS_SMALL;  // Tolerate excessively large |p|.
   }
-  int ret = 0;
   BN_ULONG val[TABLE_SIZE_SMALL][BN_SMALL_MAX_WORDS];
-  OPENSSL_memcpy(val[0], a, num_n * sizeof(BN_ULONG));
+  OPENSSL_memcpy(val[0], a, num * sizeof(BN_ULONG));
   if (window > 1) {
     BN_ULONG d[BN_SMALL_MAX_WORDS];
-    if (!bn_mod_mul_montgomery_small(d, num_n, val[0], num_n, val[0], num_n,
-                                     mont)) {
-      goto err;
-    }
+    bn_mod_mul_montgomery_small(d, val[0], val[0], num, mont);
     for (unsigned i = 1; i < 1u << (window - 1); i++) {
-      if (!bn_mod_mul_montgomery_small(val[i], num_n, val[i - 1], num_n, d,
-                                       num_n, mont)) {
-        goto err;
-      }
+      bn_mod_mul_montgomery_small(val[i], val[i - 1], d, num, mont);
     }
   }
 
@@ -778,9 +771,8 @@ int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
   unsigned wstart = bits - 1;  // The top bit of the window.
   for (;;) {
     if (!bn_is_bit_set_words(p, num_p, wstart)) {
-      if (!r_is_one &&
-          !bn_mod_mul_montgomery_small(r, num_r, r, num_r, r, num_r, mont)) {
-        goto err;
+      if (!r_is_one) {
+        bn_mod_mul_montgomery_small(r, r, r, num, mont);
       }
       if (wstart == 0) {
         break;
@@ -803,21 +795,17 @@ int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
     // Shift |r| to the end of the window.
     if (!r_is_one) {
       for (unsigned i = 0; i < wsize + 1; i++) {
-        if (!bn_mod_mul_montgomery_small(r, num_r, r, num_r, r, num_r, mont)) {
-          goto err;
-        }
+        bn_mod_mul_montgomery_small(r, r, r, num, mont);
       }
     }
 
     assert(wvalue & 1);
     assert(wvalue < (1u << window));
     if (r_is_one) {
-      OPENSSL_memcpy(r, val[wvalue >> 1], num_r * sizeof(BN_ULONG));
-    } else if (!bn_mod_mul_montgomery_small(r, num_r, r, num_r,
-                                            val[wvalue >> 1], num_n, mont)) {
-      goto err;
+      OPENSSL_memcpy(r, val[wvalue >> 1], num * sizeof(BN_ULONG));
+    } else {
+      bn_mod_mul_montgomery_small(r, r, val[wvalue >> 1], num, mont);
     }
-
     r_is_one = 0;
     if (wstart == wsize) {
       break;
@@ -827,38 +815,31 @@ int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
 
   // |p| is non-zero, so |r_is_one| must be cleared at some point.
   assert(!r_is_one);
-  ret = 1;
-
-err:
   OPENSSL_cleanse(val, sizeof(val));
-  return ret;
 }
 
-int bn_mod_inverse_prime_mont_small(BN_ULONG *r, size_t num_r,
-                                    const BN_ULONG *a, size_t num_a,
-                                    const BN_MONT_CTX *mont) {
-  const BN_ULONG *p = mont->N.d;
-  size_t num_p = mont->N.width;
-  if (num_p > BN_SMALL_MAX_WORDS || num_p == 0) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
+void bn_mod_inverse_prime_mont_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
+                                     const BN_MONT_CTX *mont) {
+  if (num != (size_t)mont->N.width || num > BN_SMALL_MAX_WORDS) {
+    abort();
   }
 
   // Per Fermat's Little Theorem, a^-1 = a^(p-2) (mod p) for p prime.
   BN_ULONG p_minus_two[BN_SMALL_MAX_WORDS];
-  OPENSSL_memcpy(p_minus_two, p, num_p * sizeof(BN_ULONG));
+  const BN_ULONG *p = mont->N.d;
+  OPENSSL_memcpy(p_minus_two, p, num * sizeof(BN_ULONG));
   if (p_minus_two[0] >= 2) {
     p_minus_two[0] -= 2;
   } else {
     p_minus_two[0] -= 2;
-    for (size_t i = 1; i < num_p; i++) {
+    for (size_t i = 1; i < num; i++) {
       if (p_minus_two[i]-- != 0) {
         break;
       }
     }
   }
 
-  return bn_mod_exp_mont_small(r, num_r, a, num_a, p_minus_two, num_p, mont);
+  bn_mod_exp_mont_small(r, a, num, p_minus_two, num, mont);
 }
 
 
