@@ -88,40 +88,9 @@ fi
 case $TARGET_X in
 armv7-linux-androideabi)
   cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X
-
-  # Building the AVD is slow. Do it here, after we build the code so that any
-  # build breakage is reported sooner, instead of being delayed by this.
-  echo no | android create avd --name arm-18 --target android-18 --abi armeabi-v7a
-  android list avd
-
-  emulator @arm-18 -memory 2048 -no-skin -no-boot-anim -no-window &
-  adb wait-for-device
-
-  # Run the unit tests first. The file named ring-<something> in $target_dir is
-  # the test executable.
-  find $target_dir -maxdepth 1 -name ring-* ! -name "*.*" \
-    -exec adb push {} /data/ring-test \;
-  for testfile in `find src crypto -name "*_test*.txt" -o -name "*test*.pk8"`; do
-    adb shell mkdir -p /data/`dirname $testfile`
-    adb push $testfile /data/$testfile
-  done
-  adb shell mkdir -p /data/third-party/NIST
-  adb push third-party/NIST/SHAVS /data/third-party/NIST/SHAVS
-  adb shell "cd /data && ./ring-test" 2>&1 | tee /tmp/ring-test-log
-  grep "test result: ok" /tmp/ring-test-log
-
-  # Run the integration/functional tests.
-  for testfile in `find tests -name "*_test*.txt" -o -name "*test*.pk8"`; do
-    adb shell mkdir -p /data/`dirname $testfile`
-    adb push $testfile /data/$testfile
-  done
-  find $target_dir -maxdepth 1 -name "*test*" -type f
-  for test_exe in `find $target_dir -maxdepth 1 -name "*test*" -type f`; do
-    adb push $test_exe /data/`basename $test_exe`
-    adb shell "cd /data && ./`basename $test_exe`" 2>&1 | \
-        tee /tmp/`basename $test_exe`-log
-    grep "test result: ok" /tmp/`basename $test_exe`-log
-  done
+  # TODO: There used to be some logic for running the tests here using the
+  # Android emulator. That was removed because something broke this. See
+  # https://github.com/briansmith/ring/issues/603.
   ;;
 *)
   cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
