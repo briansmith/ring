@@ -482,21 +482,23 @@ type testCase struct {
 
 var testCases []testCase
 
-func writeTranscript(test *testCase, path string, data []byte) {
+func appendTranscript(path string, data []byte) error {
 	if len(data) == 0 {
-		return
+		return nil
 	}
 
 	settings, err := ioutil.ReadFile(path)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading %s: %s.\n", path, err)
-		return
+		if !os.IsNotExist(err) {
+			return err
+		}
+		// If the shim aborted before writing a file, use a default
+		// settings block, so the transcript is still somewhat valid.
+		settings = []byte{0, 0} // kDataTag
 	}
 
 	settings = append(settings, data...)
-	if err := ioutil.WriteFile(path, settings, 0644); err != nil {
-		fmt.Fprintf(os.Stderr, "Error writing %s: %s\n", path, err)
-	}
+	return ioutil.WriteFile(path, settings, 0644)
 }
 
 // A timeoutConn implements an idle timeout on each Read and Write operation.
@@ -523,7 +525,7 @@ func (t *timeoutConn) Write(b []byte) (int, error) {
 	return t.Conn.Write(b)
 }
 
-func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, transcriptPrefix string, num int) error {
+func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, transcripts *[][]byte, num int) error {
 	if !test.noSessionCache {
 		if config.ClientSessionCache == nil {
 			config.ClientSessionCache = NewLRUClientSessionCache(1)
@@ -575,10 +577,13 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 		if *flagDebug {
 			defer connDebug.WriteTo(os.Stdout)
 		}
-		if len(transcriptPrefix) != 0 {
+		if len(*transcriptDir) != 0 {
 			defer func() {
-				path := transcriptPrefix + strconv.Itoa(num)
-				writeTranscript(test, path, connDebug.Transcript())
+				if num == len(*transcripts) {
+					*transcripts = append(*transcripts, connDebug.Transcript())
+				} else {
+					panic("transcripts are out of sync")
+				}
 			}()
 		}
 
@@ -1118,6 +1123,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	}
 
 	var transcriptPrefix string
+	var transcripts [][]byte
 	if len(*transcriptDir) != 0 {
 		protocol := "tls"
 		if test.protocol == dtls {
@@ -1176,7 +1182,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 
 	conn, err := acceptOrWait(listener, waitChan)
 	if err == nil {
-		err = doExchange(test, &config, conn, false /* not a resumption */, transcriptPrefix, 0)
+		err = doExchange(test, &config, conn, false /* not a resumption */, &transcripts, 0)
 		conn.Close()
 	}
 
@@ -1196,7 +1202,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		var connResume net.Conn
 		connResume, err = acceptOrWait(listener, waitChan)
 		if err == nil {
-			err = doExchange(test, &resumeConfig, connResume, true /* resumption */, transcriptPrefix, i+1)
+			err = doExchange(test, &resumeConfig, connResume, true /* resumption */, &transcripts, i+1)
 			connResume.Close()
 		}
 	}
@@ -1215,6 +1221,14 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		})
 		childErr = <-waitChan
 		waitTimeout.Stop()
+	}
+
+	// Now that the shim has exitted, all the settings files have been
+	// written. Append the saved transcripts.
+	for i, transcript := range transcripts {
+		if err := appendTranscript(transcriptPrefix+strconv.Itoa(i), transcript); err != nil {
+			return err
+		}
 	}
 
 	var isValgrindError, mustFail bool

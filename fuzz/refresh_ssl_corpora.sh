@@ -70,8 +70,8 @@ fuzzer_mode_shim=$(readlink -f "$fuzzer_mode_build_dir/ssl/test/bssl_shim")
 no_fuzzer_mode_shim=$(readlink -f \
     "$no_fuzzer_mode_build_dir/ssl/test/bssl_shim")
 
-fuzzer_mode_transcripts=$(mktemp -d '/tmp/boringssl-transcript.XXXXXX')
-no_fuzzer_mode_transcripts=$(mktemp -d '/tmp/boringssl-transcript.XXXXXX')
+fuzzer_mode_transcripts=$(mktemp -d '/tmp/boringssl-transcript-fuzzer-mode.XXXXXX')
+no_fuzzer_mode_transcripts=$(mktemp -d '/tmp/boringssl-transcript-no-fuzzer-mode.XXXXXX')
 
 echo Recording fuzzer-mode transcripts
 (cd ../ssl/test/runner/ && go test \
@@ -84,7 +84,7 @@ echo Recording non-fuzzer-mode transcripts
 (cd ../ssl/test/runner/ && go test \
     -shim-path "$no_fuzzer_mode_shim" \
     -transcript-dir "$no_fuzzer_mode_transcripts" \
-    -deterministic) || true
+    -deterministic)
 
 
 # Minimize the existing corpora.
