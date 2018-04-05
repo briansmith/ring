@@ -657,19 +657,26 @@ class SSLAEADContext {
   bool SuffixLen(size_t *out_suffix_len, size_t in_len,
                  size_t extra_in_len) const;
 
+  // CiphertextLen calculates the total ciphertext length written by
+  // |SealScatter| and writes it to |*out_len|. It returns true on success and
+  // false on error. |in_len| and |extra_in_len| should equal the argument of
+  // the same names passed to |SealScatter|.
+  bool CiphertextLen(size_t *out_len, size_t in_len, size_t extra_in_len) const;
+
   // Open authenticates and decrypts |in| in-place. On success, it sets |*out|
   // to the plaintext in |in| and returns true.  Otherwise, it returns
   // false. The output will always be |ExplicitNonceLen| bytes ahead of |in|.
   bool Open(Span<uint8_t> *out, uint8_t type, uint16_t record_version,
-            const uint8_t seqnum[8], Span<uint8_t> in);
+            const uint8_t seqnum[8], Span<const uint8_t> header,
+            Span<uint8_t> in);
 
   // Seal encrypts and authenticates |in_len| bytes from |in| and writes the
   // result to |out|. It returns true on success and false on error.
   //
   // If |in| and |out| alias then |out| + |ExplicitNonceLen| must be == |in|.
   bool Seal(uint8_t *out, size_t *out_len, size_t max_out, uint8_t type,
-            uint16_t record_version, const uint8_t seqnum[8], const uint8_t *in,
-            size_t in_len);
+            uint16_t record_version, const uint8_t seqnum[8],
+            Span<const uint8_t> header, const uint8_t *in, size_t in_len);
 
   // SealScatter encrypts and authenticates |in_len| bytes from |in| and splits
   // the result between |out_prefix|, |out| and |out_suffix|. It returns one on
@@ -688,17 +695,20 @@ class SSLAEADContext {
   // alias anything.
   bool SealScatter(uint8_t *out_prefix, uint8_t *out, uint8_t *out_suffix,
                    uint8_t type, uint16_t record_version,
-                   const uint8_t seqnum[8], const uint8_t *in, size_t in_len,
-                   const uint8_t *extra_in, size_t extra_in_len);
+                   const uint8_t seqnum[8], Span<const uint8_t> header,
+                   const uint8_t *in, size_t in_len, const uint8_t *extra_in,
+                   size_t extra_in_len);
 
   bool GetIV(const uint8_t **out_iv, size_t *out_iv_len) const;
 
  private:
-  // GetAdditionalData writes the additional data into |out| and returns the
-  // number of bytes written.
-  size_t GetAdditionalData(uint8_t out[13], uint8_t type,
-                           uint16_t record_version, const uint8_t seqnum[8],
-                           size_t plaintext_len, size_t ciphertext_len);
+  // GetAdditionalData returns the additional data, writing into |storage| if
+  // necessary.
+  Span<const uint8_t> GetAdditionalData(uint8_t storage[13], uint8_t type,
+                                        uint16_t record_version,
+                                        const uint8_t seqnum[8],
+                                        size_t plaintext_len,
+                                        Span<const uint8_t> header);
 
   const SSL_CIPHER *cipher_;
   ScopedEVP_AEAD_CTX ctx_;
@@ -717,6 +727,9 @@ class SSLAEADContext {
   // randomly generated, rather than derived from the sequence
   // number.
   bool random_variable_nonce_ : 1;
+  // xor_fixed_nonce_ is true if the fixed nonce should be XOR'd into the
+  // variable nonce rather than prepended.
+  bool xor_fixed_nonce_ : 1;
   // omit_length_in_ad_ is true if the length should be omitted in the
   // AEAD's ad parameter.
   bool omit_length_in_ad_ : 1;
@@ -725,12 +738,8 @@ class SSLAEADContext {
   bool omit_version_in_ad_ : 1;
   // omit_ad_ is true if the AEAD's ad parameter should be omitted.
   bool omit_ad_ : 1;
-  // tls13_ad_ is true if the AEAD's ad parameter should be based on the
-  // TLS 1.3 format.
-  bool tls13_ad_ : 1;
-  // xor_fixed_nonce_ is true if the fixed nonce should be XOR'd into the
-  // variable nonce rather than prepended.
-  bool xor_fixed_nonce_ : 1;
+  // ad_is_header_ is true if the AEAD's ad parameter is the record header.
+  bool ad_is_header_ : 1;
 };
 
 

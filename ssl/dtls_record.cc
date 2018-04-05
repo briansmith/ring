@@ -219,8 +219,8 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
     return ssl_open_record_discard;
   }
 
-  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HEADER,
-                      in.subspan(0, DTLS1_RT_HEADER_LENGTH));
+  Span<const uint8_t> header = in.subspan(0, DTLS1_RT_HEADER_LENGTH);
+  ssl_do_msg_callback(ssl, 0 /* read */, SSL3_RT_HEADER, header);
 
   uint16_t epoch = (((uint16_t)sequence[0]) << 8) | sequence[1];
   if (epoch != ssl->d1->r_epoch ||
@@ -235,7 +235,7 @@ enum ssl_open_record_t dtls_open_record(SSL *ssl, uint8_t *out_type,
 
   // discard the body in-place.
   if (!ssl->s3->aead_read_ctx->Open(
-          out, type, version, sequence,
+          out, type, version, sequence, header,
           MakeSpan(const_cast<uint8_t *>(CBS_data(&body)), CBS_len(&body)))) {
     // Bad packets are silently dropped in DTLS. See section 4.2.1 of RFC 6347.
     // Clear the error queue of any errors decryption may have added. Drop the
@@ -328,25 +328,25 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
   OPENSSL_memcpy(&out[5], &seq[2], 6);
 
   size_t ciphertext_len;
-  if (!aead->Seal(out + DTLS1_RT_HEADER_LENGTH, &ciphertext_len,
-                  max_out - DTLS1_RT_HEADER_LENGTH, type, record_version,
-                  &out[3] /* seq */, in, in_len) ||
-      !ssl_record_sequence_update(&seq[2], 6)) {
-    return 0;
-  }
-
-  if (ciphertext_len >= 1 << 16) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+  if (!aead->CiphertextLen(&ciphertext_len, in_len, 0)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_TOO_LARGE);
     return 0;
   }
   out[11] = ciphertext_len >> 8;
   out[12] = ciphertext_len & 0xff;
+  Span<const uint8_t> header = MakeConstSpan(out, DTLS1_RT_HEADER_LENGTH);
+
+  size_t len_copy;
+  if (!aead->Seal(out + DTLS1_RT_HEADER_LENGTH, &len_copy,
+                  max_out - DTLS1_RT_HEADER_LENGTH, type, record_version,
+                  &out[3] /* seq */, header, in, in_len) ||
+      !ssl_record_sequence_update(&seq[2], 6)) {
+    return 0;
+  }
+  assert(ciphertext_len == len_copy);
 
   *out_len = DTLS1_RT_HEADER_LENGTH + ciphertext_len;
-
-  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HEADER,
-                      MakeSpan(out, DTLS1_RT_HEADER_LENGTH));
-
+  ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HEADER, header);
   return 1;
 }
 
