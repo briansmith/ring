@@ -955,30 +955,3 @@ size_t EC_get_builtin_curves(EC_builtin_curve *out_curves,
 
   return OPENSSL_NUM_BUILT_IN_CURVES;
 }
-
-int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
-                        const BIGNUM *in) {
-  if (!ec_bignum_to_scalar_unchecked(group, out, in)) {
-    return 0;
-  }
-  if (!bn_less_than_words(out->words, group->order.d, group->order.width)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_SCALAR);
-    return 0;
-  }
-  return 1;
-}
-
-int ec_bignum_to_scalar_unchecked(const EC_GROUP *group, EC_SCALAR *out,
-                                  const BIGNUM *in) {
-  if (!bn_copy_words(out->words, group->order.width, in)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_SCALAR);
-    return 0;
-  }
-  return 1;
-}
-
-int ec_random_nonzero_scalar(const EC_GROUP *group, EC_SCALAR *out,
-                             const uint8_t additional_data[32]) {
-  return bn_rand_range_words(out->words, 1, group->order.d, group->order.width,
-                             additional_data);
-}

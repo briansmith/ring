@@ -193,6 +193,28 @@ int ec_bignum_to_scalar_unchecked(const EC_GROUP *group, EC_SCALAR *out,
 int ec_random_nonzero_scalar(const EC_GROUP *group, EC_SCALAR *out,
                              const uint8_t additional_data[32]);
 
+// ec_scalar_add sets |r| to |a| + |b|.
+void ec_scalar_add(const EC_GROUP *group, EC_SCALAR *r, const EC_SCALAR *a,
+                   const EC_SCALAR *b);
+
+// ec_scalar_to_montgomery sets |r| to |a| in Montgomery form.
+void ec_scalar_to_montgomery(const EC_GROUP *group, EC_SCALAR *r,
+                             const EC_SCALAR *a);
+
+// ec_scalar_to_montgomery sets |r| to |a| converted from Montgomery form.
+void ec_scalar_from_montgomery(const EC_GROUP *group, EC_SCALAR *r,
+                               const EC_SCALAR *a);
+
+// ec_scalar_mul_montgomery sets |r| to |a| * |b| where inputs and outputs are
+// in Montgomery form.
+void ec_scalar_mul_montgomery(const EC_GROUP *group, EC_SCALAR *r,
+                              const EC_SCALAR *a, const EC_SCALAR *b);
+
+// ec_scalar_mul_montgomery sets |r| to |a|^-1 where inputs and outputs are in
+// Montgomery form.
+void ec_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
+                              const EC_SCALAR *a);
+
 // ec_point_add_mixed behaves like |EC_POINT_add|, but |&b->Z| must be zero or
 // one.
 int ec_point_add_mixed(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
