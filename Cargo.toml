@@ -288,7 +288,7 @@ lazy_static = "1.0"
 # we do not use the gcc parallel feature because we do the
 # parallelism ourself. This gives us a much higher level of
 # control about what should be parallised in which way
-cc = "1.0.3"
+cc = "1.0.9"
 rayon = "1.0.0"
 
 [features]
