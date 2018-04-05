@@ -503,6 +503,13 @@ static void ssl_maybe_shed_handshake_config(SSL *ssl) {
   ssl->config = nullptr;
 }
 
+void SSL_set_handoff_mode(SSL *ssl, bool on) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->handoff = on;
+}
+
 }  // namespace bssl
 
 using namespace bssl;
