@@ -201,7 +201,6 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
   }
 
   EC_SCALAR r, s, u1, u2, s_inv_mont, m;
-  const BIGNUM *order = EC_GROUP_get0_order(group);
   if (BN_is_zero(sig->r) ||
       !ec_bignum_to_scalar(group, &r, sig->r) ||
       BN_is_zero(sig->s) ||
@@ -209,16 +208,14 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     goto err;
   }
-  // s_inv_mont = s^-1 mod order. We convert the result to Montgomery form for
-  // the products below.
-  int no_inverse;
-  if (!BN_mod_inverse_odd(X, &no_inverse, sig->s, order, ctx) ||
-      // TODO(davidben): Add a words version of |BN_mod_inverse_odd| and write
-      // into |s_inv_mont| directly.
-      !ec_bignum_to_scalar_unchecked(group, &s_inv_mont, X)) {
-    goto err;
-  }
-  ec_scalar_to_montgomery(group, &s_inv_mont, &s_inv_mont);
+
+  // s_inv_mont = s^-1 in the Montgomery domain. This is
+  // |ec_scalar_to_montgomery| followed by |ec_scalar_inv_montgomery|, but
+  // |ec_scalar_inv_montgomery| followed by |ec_scalar_from_montgomery| is
+  // equivalent and slightly more efficient.
+  ec_scalar_inv_montgomery(group, &s_inv_mont, &s);
+  ec_scalar_from_montgomery(group, &s_inv_mont, &s_inv_mont);
+
   // u1 = m * s^-1 mod order
   // u2 = r * s^-1 mod order
   //
@@ -309,10 +306,12 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx,
       }
     }
 
-    // Compute k^-1. We leave it in the Montgomery domain as an optimization for
-    // later operations.
-    ec_scalar_to_montgomery(group, out_kinv_mont, &k);
-    ec_scalar_inv_montgomery(group, out_kinv_mont, out_kinv_mont);
+    // Compute k^-1 in the Montgomery domain. This is |ec_scalar_to_montgomery|
+    // followed by |ec_scalar_inv_montgomery|, but |ec_scalar_inv_montgomery|
+    // followed by |ec_scalar_from_montgomery| is equivalent and slightly more
+    // efficient.
+    ec_scalar_inv_montgomery(group, out_kinv_mont, &k);
+    ec_scalar_from_montgomery(group, out_kinv_mont, out_kinv_mont);
 
     // Compute r, the x-coordinate of generator * k.
     if (!ec_point_mul_scalar(group, tmp_point, &k, NULL, NULL, ctx) ||

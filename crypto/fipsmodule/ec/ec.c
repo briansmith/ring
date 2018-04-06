@@ -839,7 +839,7 @@ static int arbitrary_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
   BIGNUM *tmp = BN_CTX_get(ctx);
   int ok = tmp != NULL &&
            BN_nnmod(tmp, in, order, ctx) &&
-           ec_bignum_to_scalar_unchecked(group, out, tmp);
+           ec_bignum_to_scalar(group, out, tmp);
   BN_CTX_end(ctx);
   return ok;
 }

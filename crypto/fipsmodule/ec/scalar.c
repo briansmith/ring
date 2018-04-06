@@ -20,19 +20,8 @@
 
 int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
                         const BIGNUM *in) {
-  if (!ec_bignum_to_scalar_unchecked(group, out, in)) {
-    return 0;
-  }
-  if (!bn_less_than_words(out->words, group->order.d, group->order.width)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_SCALAR);
-    return 0;
-  }
-  return 1;
-}
-
-int ec_bignum_to_scalar_unchecked(const EC_GROUP *group, EC_SCALAR *out,
-                                  const BIGNUM *in) {
-  if (!bn_copy_words(out->words, group->order.width, in)) {
+  if (!bn_copy_words(out->words, group->order.width, in) ||
+      !bn_less_than_words(out->words, group->order.d, group->order.width)) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_SCALAR);
     return 0;
   }

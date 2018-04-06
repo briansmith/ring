@@ -183,11 +183,6 @@ EC_GROUP *ec_group_new(const EC_METHOD *meth);
 OPENSSL_EXPORT int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
                                        const BIGNUM *in);
 
-// ec_bignum_to_scalar_unchecked behaves like |ec_bignum_to_scalar| but does not
-// check |in| is fully reduced.
-int ec_bignum_to_scalar_unchecked(const EC_GROUP *group, EC_SCALAR *out,
-                                  const BIGNUM *in);
-
 // ec_random_nonzero_scalar sets |out| to a uniformly selected random value from
 // 1 to |group->order| - 1. It returns one on success and zero on error.
 int ec_random_nonzero_scalar(const EC_GROUP *group, EC_SCALAR *out,
