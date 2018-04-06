@@ -1576,6 +1576,10 @@ type ProtocolBugs struct {
 	// ExpectRSAPSSSupport specifies the level of RSA-PSS support expected
 	// from the peer.
 	ExpectRSAPSSSupport RSAPSSSupport
+
+	// SetX25519HighBit, if true, causes X25519 key shares to set their
+	// high-order bit.
+	SetX25519HighBit bool
 }
 
 func (c *Config) serverInit() {

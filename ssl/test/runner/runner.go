@@ -11017,6 +11017,22 @@ func addCurveTests() {
 		shouldFail:    true,
 		expectedError: ":ERROR_PARSING_EXTENSION:",
 	})
+
+	// Implementations should mask off the high order bit in X25519.
+	testCases = append(testCases, testCase{
+		name: "SetX25519HighBit",
+		config: Config{
+			CipherSuites: []uint16{
+				TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+				TLS_AES_128_GCM_SHA256,
+			},
+			CurvePreferences: []CurveID{CurveX25519},
+			Bugs: ProtocolBugs{
+				SetX25519HighBit: true,
+			},
+		},
+	})
 }
 
 func addTLS13RecordTests() {

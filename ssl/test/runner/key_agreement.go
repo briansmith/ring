@@ -302,6 +302,7 @@ func (e *ellipticECDHCurve) finish(peerKey []byte) (preMasterSecret []byte, err 
 // x25519ECDHCurve implements ecdhCurve with X25519.
 type x25519ECDHCurve struct {
 	privateKey [32]byte
+	setHighBit bool
 }
 
 func (e *x25519ECDHCurve) offer(rand io.Reader) (publicKey []byte, err error) {
@@ -311,6 +312,9 @@ func (e *x25519ECDHCurve) offer(rand io.Reader) (publicKey []byte, err error) {
 	}
 	var out [32]byte
 	curve25519.ScalarBaseMult(&out, &e.privateKey)
+	if e.setHighBit {
+		out[31] |= 0x80
+	}
 	return out[:], nil
 }
 
@@ -354,7 +358,7 @@ func curveForCurveID(id CurveID, config *Config) (ecdhCurve, bool) {
 	case CurveP521:
 		return &ellipticECDHCurve{curve: elliptic.P521(), sendCompressed: config.Bugs.SendCompressedCoordinates}, true
 	case CurveX25519:
-		return &x25519ECDHCurve{}, true
+		return &x25519ECDHCurve{setHighBit: config.Bugs.SetX25519HighBit}, true
 	default:
 		return nil, false
 	}
