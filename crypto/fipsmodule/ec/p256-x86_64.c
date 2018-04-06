@@ -430,6 +430,87 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
   return 1;
 }
 
+static void ecp_nistz256_inv_mod_ord(const EC_GROUP *group, EC_SCALAR *out,
+                                     const EC_SCALAR *in) {
+  // table[i] stores a power of |in| corresponding to the matching enum value.
+  enum {
+    // The following indices specify the power in binary.
+    i_1 = 0,
+    i_10,
+    i_11,
+    i_101,
+    i_111,
+    i_1010,
+    i_1111,
+    i_10101,
+    i_101010,
+    i_101111,
+    // The following indices specify 2^N-1, or N ones in a row.
+    i_x6,
+    i_x8,
+    i_x16,
+    i_x32
+  };
+  BN_ULONG table[15][P256_LIMBS];
+
+  // https://briansmith.org/ecc-inversion-addition-chains-01#p256_scalar_inversion
+  //
+  // Even though this code path spares 12 squarings, 4.5%, and 13
+  // multiplications, 25%, the overall sign operation is not that much faster,
+  // not more that 2%. Most of the performance of this function comes from the
+  // scalar operations.
+
+  // Pre-calculate powers.
+  OPENSSL_memcpy(table[i_1], in->words, P256_LIMBS * sizeof(BN_ULONG));
+
+  ecp_nistz256_ord_sqr_mont(table[i_10], table[i_1], 1);
+
+  ecp_nistz256_ord_mul_mont(table[i_11], table[i_1], table[i_10]);
+
+  ecp_nistz256_ord_mul_mont(table[i_101], table[i_11], table[i_10]);
+
+  ecp_nistz256_ord_mul_mont(table[i_111], table[i_101], table[i_10]);
+
+  ecp_nistz256_ord_sqr_mont(table[i_1010], table[i_101], 1);
+
+  ecp_nistz256_ord_mul_mont(table[i_1111], table[i_1010], table[i_101]);
+
+  ecp_nistz256_ord_sqr_mont(table[i_10101], table[i_1010], 1);
+  ecp_nistz256_ord_mul_mont(table[i_10101], table[i_10101], table[i_1]);
+
+  ecp_nistz256_ord_sqr_mont(table[i_101010], table[i_10101], 1);
+
+  ecp_nistz256_ord_mul_mont(table[i_101111], table[i_101010], table[i_101]);
+
+  ecp_nistz256_ord_mul_mont(table[i_x6], table[i_101010], table[i_10101]);
+
+  ecp_nistz256_ord_sqr_mont(table[i_x8], table[i_x6], 2);
+  ecp_nistz256_ord_mul_mont(table[i_x8], table[i_x8], table[i_11]);
+
+  ecp_nistz256_ord_sqr_mont(table[i_x16], table[i_x8], 8);
+  ecp_nistz256_ord_mul_mont(table[i_x16], table[i_x16], table[i_x8]);
+
+  ecp_nistz256_ord_sqr_mont(table[i_x32], table[i_x16], 16);
+  ecp_nistz256_ord_mul_mont(table[i_x32], table[i_x32], table[i_x16]);
+
+  // Compute |in| raised to the order-2.
+  ecp_nistz256_ord_sqr_mont(out->words, table[i_x32], 64);
+  ecp_nistz256_ord_mul_mont(out->words, out->words, table[i_x32]);
+  static const struct {
+    uint8_t p, i;
+  } kChain[27] = {{32, i_x32},    {6, i_101111}, {5, i_111},    {4, i_11},
+                  {5, i_1111},    {5, i_10101},  {4, i_101},    {3, i_101},
+                  {3, i_101},     {5, i_111},    {9, i_101111}, {6, i_1111},
+                  {2, i_1},       {5, i_1},      {6, i_1111},   {5, i_111},
+                  {4, i_111},     {5, i_111},    {5, i_101},    {3, i_11},
+                  {10, i_101111}, {2, i_11},     {5, i_11},     {5, i_11},
+                  {3, i_1},       {7, i_10101},  {6, i_1111}};
+  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(kChain); i++) {
+    ecp_nistz256_ord_sqr_mont(out->words, out->words, kChain[i].p);
+    ecp_nistz256_ord_mul_mont(out->words, out->words, table[kChain[i].i]);
+  }
+}
+
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {
   out->group_init = ec_GFp_mont_group_init;
   out->group_finish = ec_GFp_mont_group_finish;
@@ -441,7 +522,7 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {
   out->field_sqr = ec_GFp_mont_field_sqr;
   out->field_encode = ec_GFp_mont_field_encode;
   out->field_decode = ec_GFp_mont_field_decode;
-  out->scalar_inv_montgomery = ec_simple_scalar_inv_montgomery;
+  out->scalar_inv_montgomery = ecp_nistz256_inv_mod_ord;
 };
 
 #endif /* !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
