@@ -127,6 +127,11 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[AARCH64], "crypto/ec/asm/ecp_nistz256-armv8.pl"),
     (&[AARCH64], "crypto/poly1305/asm/poly1305-armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
+
+    (&[X86], "third-party/bionic/libc/arch-x86/syscalls/GFp_getrandom.S"),
+    (&[X86_64], "third-party/bionic/libc/arch-x86_64/syscalls/GFp_getrandom.S"),
+    (&[ARM], "third-party/bionic/libc/arch-arm/syscalls/GFp_getrandom.S"),
+    (&[AARCH64], "third-party/bionic/libc/arch-arm64/syscalls/GFp_getrandom.S"),
 ];
 
 const SHA256_X86_64: &'static str = "crypto/fipsmodule/sha/asm/sha256-x86_64.pl";
