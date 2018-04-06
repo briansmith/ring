@@ -1127,6 +1127,7 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp224_method) {
   out->field_sqr = ec_GFp_nistp224_field_sqr;
   out->field_encode = NULL;
   out->field_decode = NULL;
+  out->scalar_inv_montgomery = ec_simple_scalar_inv_montgomery;
 };
 
 #endif  // BORINGSSL_HAS_UINT128 && !SMALL

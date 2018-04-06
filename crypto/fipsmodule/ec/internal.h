@@ -133,6 +133,12 @@ struct ec_method_st {
                       BN_CTX *);  // e.g. to Montgomery
   int (*field_decode)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
                       BN_CTX *);  // e.g. from Montgomery
+
+  // scalar_inv_mont sets |out| to |in|^-1, where both input and output are in
+  // Montgomery form.
+  void (*scalar_inv_montgomery)(const EC_GROUP *group, EC_SCALAR *out,
+                                const EC_SCALAR *in);
+
 } /* EC_METHOD */;
 
 const EC_METHOD *EC_GFp_mont_method(void);
@@ -271,6 +277,8 @@ int ec_GFp_simple_cmp(const EC_GROUP *, const EC_POINT *a, const EC_POINT *b,
 int ec_GFp_simple_make_affine(const EC_GROUP *, EC_POINT *, BN_CTX *);
 int ec_GFp_simple_points_make_affine(const EC_GROUP *, size_t num,
                                      EC_POINT * [], BN_CTX *);
+void ec_simple_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
+                                     const EC_SCALAR *a);
 
 // method functions in montgomery.c
 int ec_GFp_mont_group_init(EC_GROUP *);

@@ -61,9 +61,14 @@ void ec_scalar_mul_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                               group->order_mont);
 }
 
-void ec_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
-                              const EC_SCALAR *a) {
+void ec_simple_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
+                                     const EC_SCALAR *a) {
   const BIGNUM *order = &group->order;
   bn_mod_inverse_prime_mont_small(r->words, a->words, order->width,
                                   group->order_mont);
+}
+
+void ec_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
+                              const EC_SCALAR *a) {
+  group->meth->scalar_inv_montgomery(group, r, a);
 }

@@ -267,4 +267,5 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_mont_method) {
   out->field_sqr = ec_GFp_mont_field_sqr;
   out->field_encode = ec_GFp_mont_field_encode;
   out->field_decode = ec_GFp_mont_field_decode;
+  out->scalar_inv_montgomery = ec_simple_scalar_inv_montgomery;
 }
