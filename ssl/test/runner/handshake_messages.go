@@ -275,6 +275,7 @@ type clientHelloMsg struct {
 	ticketSupported         bool
 	sessionTicket           []uint8
 	signatureAlgorithms     []signatureAlgorithm
+	signatureAlgorithmsCert []signatureAlgorithm
 	supportedVersions       []uint16
 	secureRenegotiation     []byte
 	alpnProtocols           []string
@@ -327,6 +328,7 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.ticketSupported == m1.ticketSupported &&
 		bytes.Equal(m.sessionTicket, m1.sessionTicket) &&
 		eqSignatureAlgorithms(m.signatureAlgorithms, m1.signatureAlgorithms) &&
+		eqSignatureAlgorithms(m.signatureAlgorithmsCert, m1.signatureAlgorithmsCert) &&
 		eqUint16s(m.supportedVersions, m1.supportedVersions) &&
 		bytes.Equal(m.secureRenegotiation, m1.secureRenegotiation) &&
 		(m.secureRenegotiation == nil) == (m1.secureRenegotiation == nil) &&
@@ -495,6 +497,14 @@ func (m *clientHelloMsg) marshal() []byte {
 			signatureAlgorithms.addU16(uint16(sigAlg))
 		}
 	}
+	if len(m.signatureAlgorithmsCert) > 0 {
+		extensions.addU16(extensionSignatureAlgorithmsCert)
+		signatureAlgorithmsCertExtension := extensions.addU16LengthPrefixed()
+		signatureAlgorithmsCert := signatureAlgorithmsCertExtension.addU16LengthPrefixed()
+		for _, sigAlg := range m.signatureAlgorithmsCert {
+			signatureAlgorithmsCert.addU16(uint16(sigAlg))
+		}
+	}
 	if len(m.supportedVersions) > 0 {
 		extensions.addU16(extensionSupportedVersions)
 		supportedVersionsExtension := extensions.addU16LengthPrefixed()
@@ -618,9 +628,12 @@ func (m *clientHelloMsg) marshal() []byte {
 	return m.raw
 }
 
-func parseSignatureAlgorithms(reader *byteReader, out *[]signatureAlgorithm) bool {
+func parseSignatureAlgorithms(reader *byteReader, out *[]signatureAlgorithm, allowEmpty bool) bool {
 	var sigAlgs byteReader
 	if !reader.readU16LengthPrefixed(&sigAlgs) {
+		return false
+	}
+	if !allowEmpty && len(sigAlgs) == 0 {
 		return false
 	}
 	*out = make([]signatureAlgorithm, 0, len(sigAlgs)/2)
@@ -676,6 +689,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	m.ticketSupported = false
 	m.sessionTicket = nil
 	m.signatureAlgorithms = nil
+	m.signatureAlgorithmsCert = nil
 	m.supportedVersions = nil
 	m.alpnProtocols = nil
 	m.extendedMasterSecret = false
@@ -806,7 +820,11 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 			}
 		case extensionSignatureAlgorithms:
 			// https://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
-			if !parseSignatureAlgorithms(&body, &m.signatureAlgorithms) || len(body) != 0 {
+			if !parseSignatureAlgorithms(&body, &m.signatureAlgorithms, false) || len(body) != 0 {
+				return false
+			}
+		case extensionSignatureAlgorithmsCert:
+			if !parseSignatureAlgorithms(&body, &m.signatureAlgorithmsCert, false) || len(body) != 0 {
 				return false
 			}
 		case extensionSupportedVersions:
@@ -1839,12 +1857,13 @@ type certificateRequestMsg struct {
 	// TLS 1.3.
 	hasRequestContext bool
 
-	certificateTypes       []byte
-	requestContext         []byte
-	signatureAlgorithms    []signatureAlgorithm
-	certificateAuthorities [][]byte
-	hasCAExtension         bool
-	customExtension        uint16
+	certificateTypes        []byte
+	requestContext          []byte
+	signatureAlgorithms     []signatureAlgorithm
+	signatureAlgorithmsCert []signatureAlgorithm
+	certificateAuthorities  [][]byte
+	hasCAExtension          bool
+	customExtension         uint16
 }
 
 func (m *certificateRequestMsg) marshal() []byte {
@@ -1867,6 +1886,13 @@ func (m *certificateRequestMsg) marshal() []byte {
 			signatureAlgorithms := extensions.addU16LengthPrefixed().addU16LengthPrefixed()
 			for _, sigAlg := range m.signatureAlgorithms {
 				signatureAlgorithms.addU16(uint16(sigAlg))
+			}
+		}
+		if len(m.signatureAlgorithmsCert) > 0 {
+			extensions.addU16(extensionSignatureAlgorithmsCert)
+			signatureAlgorithmsCert := extensions.addU16LengthPrefixed().addU16LengthPrefixed()
+			for _, sigAlg := range m.signatureAlgorithmsCert {
+				signatureAlgorithmsCert.addU16(uint16(sigAlg))
 			}
 		}
 		if len(m.certificateAuthorities) > 0 {
@@ -1939,7 +1965,11 @@ func (m *certificateRequestMsg) unmarshal(data []byte) bool {
 			}
 			switch extension {
 			case extensionSignatureAlgorithms:
-				if !parseSignatureAlgorithms(&body, &m.signatureAlgorithms) || len(body) != 0 {
+				if !parseSignatureAlgorithms(&body, &m.signatureAlgorithms, false) || len(body) != 0 {
+					return false
+				}
+			case extensionSignatureAlgorithmsCert:
+				if !parseSignatureAlgorithms(&body, &m.signatureAlgorithmsCert, false) || len(body) != 0 {
 					return false
 				}
 			case extensionCertificateAuthorities:
@@ -1953,7 +1983,9 @@ func (m *certificateRequestMsg) unmarshal(data []byte) bool {
 		if !reader.readU8LengthPrefixedBytes(&m.certificateTypes) {
 			return false
 		}
-		if m.hasSignatureAlgorithm && !parseSignatureAlgorithms(&reader, &m.signatureAlgorithms) {
+		// In TLS 1.2, the supported_signature_algorithms field in
+		// CertificateRequest may be empty.
+		if m.hasSignatureAlgorithm && !parseSignatureAlgorithms(&reader, &m.signatureAlgorithms, true) {
 			return false
 		}
 		if !parseCAs(&reader, &m.certificateAuthorities) ||

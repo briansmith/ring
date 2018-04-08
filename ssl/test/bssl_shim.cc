@@ -1288,6 +1288,9 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx,
   if (config->enable_ed25519) {
     SSL_CTX_set_ed25519_enabled(ssl_ctx.get(), 1);
   }
+  if (config->no_rsa_pss_rsae_certs) {
+    SSL_CTX_set_rsa_pss_rsae_certs_enabled(ssl_ctx.get(), 0);
+  }
 
   if (!config->verify_prefs.empty()) {
     std::vector<uint16_t> u16s(config->verify_prefs.begin(),

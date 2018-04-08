@@ -10,6 +10,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"math/big"
@@ -122,13 +123,13 @@ const (
 	extensionTokenBinding               uint16 = 24
 	extensionQUICTransportParams        uint16 = 26
 	extensionSessionTicket              uint16 = 35
-	extensionPreSharedKey               uint16 = 41    // draft-ietf-tls-tls13-16
-	extensionEarlyData                  uint16 = 42    // draft-ietf-tls-tls13-16
-	extensionSupportedVersions          uint16 = 43    // draft-ietf-tls-tls13-16
-	extensionCookie                     uint16 = 44    // draft-ietf-tls-tls13-16
-	extensionPSKKeyExchangeModes        uint16 = 45    // draft-ietf-tls-tls13-18
-	extensionTicketEarlyDataInfo        uint16 = 46    // draft-ietf-tls-tls13-18
-	extensionCertificateAuthorities     uint16 = 47    // draft-ietf-tls-tls13-21
+	extensionPreSharedKey               uint16 = 41    // draft-ietf-tls-tls13-23
+	extensionEarlyData                  uint16 = 42    // draft-ietf-tls-tls13-23
+	extensionSupportedVersions          uint16 = 43    // draft-ietf-tls-tls13-23
+	extensionCookie                     uint16 = 44    // draft-ietf-tls-tls13-23
+	extensionPSKKeyExchangeModes        uint16 = 45    // draft-ietf-tls-tls13-23
+	extensionCertificateAuthorities     uint16 = 47    // draft-ietf-tls-tls13-23
+	extensionSignatureAlgorithmsCert    uint16 = 50    // draft-ietf-tls-tls13-23
 	extensionKeyShare                   uint16 = 51    // draft-ietf-tls-tls13-23
 	extensionCustom                     uint16 = 1234  // not IANA assigned
 	extensionNextProtoNeg               uint16 = 13172 // not IANA assigned
@@ -529,6 +530,15 @@ const (
 	RSABadValueWrongLeadingByte
 	RSABadValueNoZero
 	NumRSABadValues
+)
+
+type RSAPSSSupport int
+
+const (
+	RSAPSSSupportAny RSAPSSSupport = iota
+	RSAPSSSupportNone
+	RSAPSSSupportOnlineSignatureOnly
+	RSAPSSSupportBoth
 )
 
 type ProtocolBugs struct {
@@ -1562,6 +1572,10 @@ type ProtocolBugs struct {
 	// SendCompressedCoordinates, if true, causes ECDH key shares over NIST
 	// curves to use compressed coordinates.
 	SendCompressedCoordinates bool
+
+	// ExpectRSAPSSSupport specifies the level of RSA-PSS support expected
+	// from the peer.
+	ExpectRSAPSSSupport RSAPSSSupport
 }
 
 func (c *Config) serverInit() {
@@ -1999,4 +2013,51 @@ func containsGREASE(values []uint16) bool {
 		}
 	}
 	return false
+}
+
+func checkRSAPSSSupport(support RSAPSSSupport, sigAlgs, sigAlgsCert []signatureAlgorithm) error {
+	if sigAlgsCert == nil {
+		sigAlgsCert = sigAlgs
+	} else if eqSignatureAlgorithms(sigAlgs, sigAlgsCert) {
+		// The peer should have only sent the list once.
+		return errors.New("tls: signature_algorithms and signature_algorithms_cert extensions were identical")
+	}
+
+	if support == RSAPSSSupportAny {
+		return nil
+	}
+
+	var foundPSS, foundPSSCert bool
+	for _, sigAlg := range sigAlgs {
+		if sigAlg == signatureRSAPSSWithSHA256 || sigAlg == signatureRSAPSSWithSHA384 || sigAlg == signatureRSAPSSWithSHA512 {
+			foundPSS = true
+			break
+		}
+	}
+	for _, sigAlg := range sigAlgsCert {
+		if sigAlg == signatureRSAPSSWithSHA256 || sigAlg == signatureRSAPSSWithSHA384 || sigAlg == signatureRSAPSSWithSHA512 {
+			foundPSSCert = true
+			break
+		}
+	}
+
+	expectPSS := support != RSAPSSSupportNone
+	if foundPSS != expectPSS {
+		if expectPSS {
+			return errors.New("tls: peer did not support PSS")
+		} else {
+			return errors.New("tls: peer unexpectedly supported PSS")
+		}
+	}
+
+	expectPSSCert := support == RSAPSSSupportBoth
+	if foundPSSCert != expectPSSCert {
+		if expectPSSCert {
+			return errors.New("tls: peer did not support PSS in certificates")
+		} else {
+			return errors.New("tls: peer unexpectedly supported PSS in certificates")
+		}
+	}
+
+	return nil
 }

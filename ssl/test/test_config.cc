@@ -133,6 +133,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-expect-draft-downgrade", &TestConfig::expect_draft_downgrade },
   { "-handoff", &TestConfig::handoff },
   { "-expect-dummy-pq-padding", &TestConfig::expect_dummy_pq_padding },
+  { "-no-rsa-pss-rsae-certs", &TestConfig::no_rsa_pss_rsae_certs },
 };
 
 const Flag<std::string> kStringFlags[] = {

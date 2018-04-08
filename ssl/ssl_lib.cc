@@ -580,6 +580,8 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   // problems, the feature will be removed entirely.
   ret->mode = SSL_MODE_NO_AUTO_CHAIN;
 
+  ret->rsa_pss_rsae_certs_enabled = true;
+
   // Lock the SSL_CTX to the specified version, for compatibility with legacy
   // uses of SSL_METHOD.
   if (!SSL_CTX_set_max_proto_version(ret, method->version) ||
