@@ -248,11 +248,11 @@ UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
 
 UniquePtr<SSLKeyShare> SSLKeyShare::Create(CBS *in) {
   uint64_t group;
-  if (!CBS_get_asn1_uint64(in, &group)) {
+  if (!CBS_get_asn1_uint64(in, &group) || group > 0xffff) {
     return nullptr;
   }
-  UniquePtr<SSLKeyShare> key_share = Create(static_cast<uint64_t>(group));
-  if (!key_share->Deserialize(in)) {
+  UniquePtr<SSLKeyShare> key_share = Create(static_cast<uint16_t>(group));
+  if (!key_share || !key_share->Deserialize(in)) {
     return nullptr;
   }
   return key_share;
