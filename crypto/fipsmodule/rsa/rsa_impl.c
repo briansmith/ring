@@ -934,6 +934,8 @@ const size_t kBoringSSLRSASqrtTwoLen = OPENSSL_ARRAY_SIZE(kBoringSSLRSASqrtTwo);
 // relatively prime to |e|. If |p| is non-NULL, |out| will also not be close to
 // |p|. |sqrt2| must be ⌊2^(bits-1)×√2⌋ (or a slightly overestimate for large
 // sizes), and |pow2_bits_100| must be 2^(bits-100).
+//
+// This function fails with probability around 2^-21.
 static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
                           const BIGNUM *p, const BIGNUM *sqrt2,
                           const BIGNUM *pow2_bits_100, BN_CTX *ctx,
@@ -950,11 +952,36 @@ static int generate_prime(BIGNUM *out, int bits, const BIGNUM *e,
   // Use the limit from steps 4.7 and 5.8 for most values of |e|. When |e| is 3,
   // the 186-4 limit is too low, so we use a higher one. Note this case is not
   // reachable from |RSA_generate_key_fips|.
+  //
+  // |limit| determines the failure probability. We must find a prime that is
+  // not 1 mod |e|. By the prime number theorem, we'll find one with probability
+  // p = (e-1)/e * 2/(ln(2)*bits). Note the second term is doubled because we
+  // discard even numbers.
+  //
+  // The failure probability is thus (1-p)^limit. To convert that to a power of
+  // two, we take logs. -log_2((1-p)^limit) = -limit * ln(1-p) / ln(2).
+  //
+  // >>> def f(bits, e, limit):
+  // ...   p = (e-1.0)/e * 2.0/(math.log(2)*bits)
+  // ...   return -limit * math.log(1 - p) / math.log(2)
+  // ...
+  // >>> f(1024, 65537, 5*1024)
+  // 20.842750558272634
+  // >>> f(1536, 65537, 5*1536)
+  // 20.83294549602474
+  // >>> f(2048, 65537, 5*2048)
+  // 20.828047576234948
+  // >>> f(1024, 3, 8*1024)
+  // 22.222147925962307
+  // >>> f(1536, 3, 8*1536)
+  // 22.21518251065506
+  // >>> f(2048, 3, 8*2048)
+  // 22.211701985875937
   if (bits >= INT_MAX/32) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_MODULUS_TOO_LARGE);
     return 0;
   }
-  int limit = BN_is_word(e, 3) ? bits * 32 : bits * 5;
+  int limit = BN_is_word(e, 3) ? bits * 8 : bits * 5;
 
   int ret = 0, tries = 0, rand_tries = 0;
   BN_CTX_start(ctx);
@@ -1033,7 +1060,14 @@ err:
   return ret;
 }
 
-int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
+// rsa_generate_key_impl generates an RSA key using a generalized version of
+// FIPS 186-4 appendix B.3. |RSA_generate_key_fips| performs additional checks
+// for FIPS-compliant key generation.
+//
+// This function returns one on success and zero on failure. It has a failure
+// probability of about 2^-20.
+static int rsa_generate_key_impl(RSA *rsa, int bits, BIGNUM *e_value,
+                                 BN_GENCB *cb) {
   // See FIPS 186-4 appendix B.3. This function implements a generalized version
   // of the FIPS algorithm. |RSA_generate_key_fips| performs additional checks
   // for FIPS-compliant key generation.
@@ -1119,6 +1153,9 @@ int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
   do {
     // Generate p and q, each of size |prime_bits|, using the steps outlined in
     // appendix FIPS 186-4 appendix B.3.3.
+    //
+    // Each call to |generate_prime| fails with probability p = 2^-21. The
+    // probability that either call fails is 1 - (1-p)^2, which is around 2^-20.
     if (!generate_prime(rsa->p, prime_bits, rsa->e, NULL, sqrt2,
                         pow2_prime_bits_100, ctx, cb) ||
         !BN_GENCB_call(cb, 3, 0) ||
@@ -1196,6 +1233,65 @@ err:
     BN_CTX_free(ctx);
   }
   return ret;
+}
+
+static void replace_bignum(BIGNUM **out, BIGNUM **in) {
+  BN_free(*out);
+  *out = *in;
+  *in = NULL;
+}
+
+static void replace_bn_mont_ctx(BN_MONT_CTX **out, BN_MONT_CTX **in) {
+  BN_MONT_CTX_free(*out);
+  *out = *in;
+  *in = NULL;
+}
+
+int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e_value, BN_GENCB *cb) {
+  // |rsa_generate_key_impl|'s 2^-20 failure probability is too high at scale,
+  // so we run the FIPS algorithm four times, bringing it down to 2^-80. We
+  // should just adjust the retry limit, but FIPS 186-4 prescribes that value
+  // and thus results in unnecessary complexity.
+  for (int i = 0; i < 4; i++) {
+    ERR_clear_error();
+    // Generate into scratch space, to avoid leaving partial work on failure.
+    RSA *tmp = RSA_new();
+    if (tmp == NULL) {
+      return 0;
+    }
+    if (rsa_generate_key_impl(tmp, bits, e_value, cb)) {
+      replace_bignum(&rsa->n, &tmp->n);
+      replace_bignum(&rsa->e, &tmp->e);
+      replace_bignum(&rsa->d, &tmp->d);
+      replace_bignum(&rsa->p, &tmp->p);
+      replace_bignum(&rsa->q, &tmp->q);
+      replace_bignum(&rsa->dmp1, &tmp->dmp1);
+      replace_bignum(&rsa->dmq1, &tmp->dmq1);
+      replace_bignum(&rsa->iqmp, &tmp->iqmp);
+      replace_bn_mont_ctx(&rsa->mont_n, &tmp->mont_n);
+      replace_bn_mont_ctx(&rsa->mont_p, &tmp->mont_p);
+      replace_bn_mont_ctx(&rsa->mont_q, &tmp->mont_q);
+      replace_bignum(&rsa->d_fixed, &tmp->d_fixed);
+      replace_bignum(&rsa->dmp1_fixed, &tmp->dmp1_fixed);
+      replace_bignum(&rsa->dmq1_fixed, &tmp->dmq1_fixed);
+      replace_bignum(&rsa->inv_small_mod_large_mont,
+                     &tmp->inv_small_mod_large_mont);
+      rsa->private_key_frozen = tmp->private_key_frozen;
+      RSA_free(tmp);
+      return 1;
+    }
+    uint32_t err = ERR_peek_error();
+    RSA_free(tmp);
+    tmp = NULL;
+    // Only retry on |RSA_R_TOO_MANY_ITERATIONS|. This is so a caller-induced
+    // failure in |BN_GENCB_call| is still fatal.
+    if (ERR_GET_LIB(err) != ERR_LIB_RSA ||
+        ERR_GET_REASON(err) != RSA_R_TOO_MANY_ITERATIONS) {
+      return 0;
+    }
+  }
+
+  return 0;
 }
 
 int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb) {

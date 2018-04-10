@@ -659,8 +659,7 @@ struct bn_gencb_st {
 // BN_GENCB_set configures |callback| to call |f| and sets |callout->arg| to
 // |arg|.
 OPENSSL_EXPORT void BN_GENCB_set(BN_GENCB *callback,
-                                 int (*f)(int event, int n,
-                                          struct bn_gencb_st *),
+                                 int (*f)(int event, int n, BN_GENCB *),
                                  void *arg);
 
 // BN_GENCB_call calls |callback|, if not NULL, and returns the return value of
