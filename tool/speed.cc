@@ -169,6 +169,17 @@ static bool SpeedRSA(const std::string &key_name, RSA *key,
 
   if (!TimeFunction(&results,
                     [key, &fake_sha256_hash, &sig, sig_len]() -> bool {
+        return RSA_verify(NID_sha256, fake_sha256_hash,
+                          sizeof(fake_sha256_hash), sig.get(), sig_len, key);
+      })) {
+    fprintf(stderr, "RSA_verify failed.\n");
+    ERR_print_errors_fp(stderr);
+    return false;
+  }
+  results.Print(key_name + " verify (same key)");
+
+  if (!TimeFunction(&results,
+                    [key, &fake_sha256_hash, &sig, sig_len]() -> bool {
         // Usually during RSA verification we have to parse an RSA key from a
         // certificate or similar, in which case we'd need to construct a new
         // RSA key, with a new |BN_MONT_CTX| for the public modulus. If we were
@@ -185,13 +196,14 @@ static bool SpeedRSA(const std::string &key_name, RSA *key,
           return false;
         }
         return RSA_verify(NID_sha256, fake_sha256_hash,
-                          sizeof(fake_sha256_hash), sig.get(), sig_len, key);
+                          sizeof(fake_sha256_hash), sig.get(), sig_len,
+                          verify_key.get());
       })) {
     fprintf(stderr, "RSA_verify failed.\n");
     ERR_print_errors_fp(stderr);
     return false;
   }
-  results.Print(key_name + " verify");
+  results.Print(key_name + " verify (fresh key)");
 
   return true;
 }
