@@ -812,9 +812,14 @@ int BN_mod_inverse_odd(BIGNUM *out, int *out_no_inverse, const BIGNUM *a,
 // Montgomery domain.
 
 // BN_MONT_CTX_new_for_modulus returns a fresh |BN_MONT_CTX| given the modulus,
-// |mod| or NULL on error.
+// |mod| or NULL on error. Note this function assumes |mod| is public.
 OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_new_for_modulus(const BIGNUM *mod,
                                                         BN_CTX *ctx);
+
+// BN_MONT_CTX_new_consttime behaves like |BN_MONT_CTX_new_for_modulus| but
+// treats |mod| as secret.
+OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_new_consttime(const BIGNUM *mod,
+                                                      BN_CTX *ctx);
 
 // BN_MONT_CTX_free frees memory associated with |mont|.
 OPENSSL_EXPORT void BN_MONT_CTX_free(BN_MONT_CTX *mont);
@@ -826,7 +831,8 @@ OPENSSL_EXPORT BN_MONT_CTX *BN_MONT_CTX_copy(BN_MONT_CTX *to,
 
 // BN_MONT_CTX_set_locked takes |lock| and checks whether |*pmont| is NULL. If
 // so, it creates a new |BN_MONT_CTX| and sets the modulus for it to |mod|. It
-// then stores it as |*pmont|. It returns one on success and zero on error.
+// then stores it as |*pmont|. It returns one on success and zero on error. Note
+// this function assumes |mod| is public.
 //
 // If |*pmont| is already non-NULL then it does nothing and returns one.
 int BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,

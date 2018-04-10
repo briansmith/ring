@@ -167,7 +167,7 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
 
   if (rsa->p != NULL && rsa->q != NULL) {
     if (rsa->mont_p == NULL) {
-      rsa->mont_p = BN_MONT_CTX_new_for_modulus(rsa->p, ctx);
+      rsa->mont_p = BN_MONT_CTX_new_consttime(rsa->p, ctx);
       if (rsa->mont_p == NULL) {
         goto err;
       }
@@ -175,7 +175,7 @@ static int freeze_private_key(RSA *rsa, BN_CTX *ctx) {
     const BIGNUM *p_fixed = &rsa->mont_p->N;
 
     if (rsa->mont_q == NULL) {
-      rsa->mont_q = BN_MONT_CTX_new_for_modulus(rsa->q, ctx);
+      rsa->mont_q = BN_MONT_CTX_new_consttime(rsa->q, ctx);
       if (rsa->mont_q == NULL) {
         goto err;
       }

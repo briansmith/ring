@@ -630,8 +630,17 @@ static void TestModMul(BIGNUMFileTest *t, BN_CTX *ctx) {
     // Reduce |a| and |b| and test the Montgomery version.
     bssl::UniquePtr<BN_MONT_CTX> mont(
         BN_MONT_CTX_new_for_modulus(m.get(), ctx));
-    bssl::UniquePtr<BIGNUM> a_tmp(BN_new()), b_tmp(BN_new());
     ASSERT_TRUE(mont);
+
+    // Sanity-check that the constant-time version computes the same n0 and RR.
+    bssl::UniquePtr<BN_MONT_CTX> mont2(
+        BN_MONT_CTX_new_consttime(m.get(), ctx));
+    ASSERT_TRUE(mont2);
+    EXPECT_BIGNUMS_EQUAL("RR (mod M) (constant-time)", &mont->RR, &mont2->RR);
+    EXPECT_EQ(mont->n0[0], mont2->n0[0]);
+    EXPECT_EQ(mont->n0[1], mont2->n0[1]);
+
+    bssl::UniquePtr<BIGNUM> a_tmp(BN_new()), b_tmp(BN_new());
     ASSERT_TRUE(a_tmp);
     ASSERT_TRUE(b_tmp);
     ASSERT_TRUE(BN_nnmod(a.get(), a.get(), m.get(), ctx));
@@ -1530,10 +1539,18 @@ TEST_F(BNTest, BadModulus) {
   EXPECT_FALSE(mont);
   ERR_clear_error();
 
+  mont.reset(BN_MONT_CTX_new_consttime(b.get(), ctx()));
+  EXPECT_FALSE(mont);
+  ERR_clear_error();
+
   // Some operations also may not be used with an even modulus.
   ASSERT_TRUE(BN_set_word(b.get(), 16));
 
   mont.reset(BN_MONT_CTX_new_for_modulus(b.get(), ctx()));
+  EXPECT_FALSE(mont);
+  ERR_clear_error();
+
+  mont.reset(BN_MONT_CTX_new_consttime(b.get(), ctx()));
   EXPECT_FALSE(mont);
   ERR_clear_error();
 
@@ -2271,17 +2288,29 @@ TEST_F(BNTest, NonMinimal) {
   bssl::UniquePtr<BIGNUM> p(BN_bin2bn(kP, sizeof(kP), nullptr));
   ASSERT_TRUE(p);
 
+  // Test both the constant-time and variable-time functions at both minimal and
+  // non-minimal |p|.
   bssl::UniquePtr<BN_MONT_CTX> mont(
       BN_MONT_CTX_new_for_modulus(p.get(), ctx()));
   ASSERT_TRUE(mont);
-
-  ASSERT_TRUE(bn_resize_words(p.get(), 32));
   bssl::UniquePtr<BN_MONT_CTX> mont2(
-      BN_MONT_CTX_new_for_modulus(p.get(), ctx()));
+      BN_MONT_CTX_new_consttime(p.get(), ctx()));
   ASSERT_TRUE(mont2);
 
+  ASSERT_TRUE(bn_resize_words(p.get(), 32));
+  bssl::UniquePtr<BN_MONT_CTX> mont3(
+      BN_MONT_CTX_new_for_modulus(p.get(), ctx()));
+  ASSERT_TRUE(mont3);
+  bssl::UniquePtr<BN_MONT_CTX> mont4(
+      BN_MONT_CTX_new_consttime(p.get(), ctx()));
+  ASSERT_TRUE(mont4);
+
   EXPECT_EQ(mont->N.width, mont2->N.width);
+  EXPECT_EQ(mont->N.width, mont3->N.width);
+  EXPECT_EQ(mont->N.width, mont4->N.width);
   EXPECT_EQ(0, BN_cmp(&mont->RR, &mont2->RR));
+  EXPECT_EQ(0, BN_cmp(&mont->RR, &mont3->RR));
+  EXPECT_EQ(0, BN_cmp(&mont->RR, &mont4->RR));
 }
 
 TEST_F(BNTest, CountLowZeroBits) {

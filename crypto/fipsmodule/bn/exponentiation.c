@@ -622,7 +622,7 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   // Allocate a montgomery context if it was not supplied by the caller.
   if (mont == NULL) {
-    new_mont = BN_MONT_CTX_new_for_modulus(m, ctx);
+    new_mont = BN_MONT_CTX_new_consttime(m, ctx);
     if (new_mont == NULL) {
       goto err;
     }
@@ -1007,7 +1007,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
   // Allocate a montgomery context if it was not supplied by the caller.
   if (mont == NULL) {
-    new_mont = BN_MONT_CTX_new_for_modulus(m, ctx);
+    new_mont = BN_MONT_CTX_new_consttime(m, ctx);
     if (new_mont == NULL) {
       goto err;
     }

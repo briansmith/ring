@@ -32,7 +32,8 @@ OPENSSL_COMPILE_ASSERT(sizeof(uint64_t) ==
 #define LG_LITTLE_R (BN_MONT_CTX_N0_LIMBS * BN_BITS2)
 
 uint64_t bn_mont_n0(const BIGNUM *n) {
-  // These conditions are checked by the caller, |BN_MONT_CTX_set|.
+  // These conditions are checked by the caller, |BN_MONT_CTX_set| or
+  // |BN_MONT_CTX_new_consttime|.
   assert(!BN_is_zero(n));
   assert(!BN_is_negative(n));
   assert(BN_is_odd(n));

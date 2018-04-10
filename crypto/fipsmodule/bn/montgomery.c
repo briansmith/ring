@@ -170,7 +170,7 @@ OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
 OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS ==
                        sizeof(uint64_t), BN_MONT_CTX_set_64_bit_mismatch);
 
-int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
+static int bn_mont_ctx_set_N_and_n0(BN_MONT_CTX *mont, const BIGNUM *mod) {
   if (BN_is_zero(mod)) {
     OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
     return 0;
@@ -207,6 +207,13 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
 #else
   mont->n0[1] = 0;
 #endif
+  return 1;
+}
+
+int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
+  if (!bn_mont_ctx_set_N_and_n0(mont, mod)) {
+    return 0;
+  }
 
   BN_CTX *new_ctx = NULL;
   if (ctx == NULL) {
@@ -223,7 +230,9 @@ int BN_MONT_CTX_set(BN_MONT_CTX *mont, const BIGNUM *mod, BN_CTX *ctx) {
   // BN_BITS2|, is correct because R**2 will still be a multiple of the latter
   // as |BN_MONT_CTX_N0_LIMBS| is either one or two.
   unsigned lgBigR = mont->N.width * BN_BITS2;
-  int ok = bn_mod_exp_base_2_consttime(&mont->RR, lgBigR * 2, &mont->N, ctx);
+  BN_zero(&mont->RR);
+  int ok = BN_set_bit(&mont->RR, lgBigR * 2) &&
+           BN_mod(&mont->RR, &mont->RR, &mont->N, ctx);
   BN_CTX_free(new_ctx);
   return ok;
 }
@@ -236,6 +245,23 @@ BN_MONT_CTX *BN_MONT_CTX_new_for_modulus(const BIGNUM *mod, BN_CTX *ctx) {
     return NULL;
   }
   return mont;
+}
+
+BN_MONT_CTX *BN_MONT_CTX_new_consttime(const BIGNUM *mod, BN_CTX *ctx) {
+  BN_MONT_CTX *mont = BN_MONT_CTX_new();
+  if (mont == NULL ||
+      !bn_mont_ctx_set_N_and_n0(mont, mod)) {
+    goto err;
+  }
+  unsigned lgBigR = mont->N.width * BN_BITS2;
+  if (!bn_mod_exp_base_2_consttime(&mont->RR, lgBigR * 2, &mont->N, ctx)) {
+    goto err;
+  }
+  return mont;
+
+err:
+  BN_MONT_CTX_free(mont);
+  return NULL;
 }
 
 int BN_MONT_CTX_set_locked(BN_MONT_CTX **pmont, CRYPTO_MUTEX *lock,

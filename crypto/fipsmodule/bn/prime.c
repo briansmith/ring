@@ -690,7 +690,7 @@ int BN_primality_test(int *is_probably_prime, const BIGNUM *w,
   BIGNUM *z = BN_CTX_get(ctx);
   BIGNUM *one_mont = BN_CTX_get(ctx);
   BIGNUM *w1_mont = BN_CTX_get(ctx);
-  mont = BN_MONT_CTX_new_for_modulus(w, ctx);
+  mont = BN_MONT_CTX_new_consttime(w, ctx);
   if (b == NULL || z == NULL || one_mont == NULL || w1_mont == NULL ||
       mont == NULL ||
       !bn_one_to_montgomery(one_mont, mont, ctx) ||
