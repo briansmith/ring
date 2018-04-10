@@ -660,10 +660,8 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     }
   }
 
-  if (!bn_one_to_montgomery(r, mont, ctx)) {
-    goto err;
-  }
-
+  // |p| is non-zero, so at least one window is non-zero. To save some
+  // multiplications, defer initializing |r| until then.
   int r_is_one = 1;
   int wstart = bits - 1;  // The top bit of the window.
   for (;;) {
@@ -700,7 +698,11 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
     assert(wvalue & 1);
     assert(wvalue < (1 << window));
-    if (!BN_mod_mul_montgomery(r, r, val[wvalue >> 1], mont, ctx)) {
+    if (r_is_one) {
+      if (!BN_copy(r, val[wvalue >> 1])) {
+        goto err;
+      }
+    } else if (!BN_mod_mul_montgomery(r, r, val[wvalue >> 1], mont, ctx)) {
       goto err;
     }
 
@@ -710,6 +712,9 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     }
     wstart -= wsize + 1;
   }
+
+  // |p| is non-zero, so |r_is_one| must be cleared at some point.
+  assert(!r_is_one);
 
   if (!BN_from_montgomery(rr, r, mont, ctx)) {
     goto err;
@@ -730,17 +735,17 @@ int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
     OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
     return 0;
   }
-  if (!BN_is_odd(&mont->N)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
-    return 0;
+  assert(BN_is_odd(&mont->N));
+
+  // Count the number of bits in |p|. Note this function treats |p| as public.
+  while (num_p != 0 && p[num_p - 1] == 0) {
+    num_p--;
   }
-  unsigned bits = 0;
-  if (num_p != 0) {
-    bits = BN_num_bits_word(p[num_p - 1]) + (num_p - 1) * BN_BITS2;
+  if (num_p == 0) {
+    return bn_from_montgomery_small(r, num_r, mont->RR.d, mont->RR.width, mont);
   }
-  if (bits == 0) {
-    return bn_one_to_montgomery_small(r, num_r, mont);
-  }
+  unsigned bits = BN_num_bits_word(p[num_p - 1]) + (num_p - 1) * BN_BITS2;
+  assert(bits != 0);
 
   // We exponentiate by looking at sliding windows of the exponent and
   // precomputing powers of |a|. Windows may be shifted so they always end on a
@@ -767,10 +772,8 @@ int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
     }
   }
 
-  if (!bn_one_to_montgomery_small(r, num_r, mont)) {
-    goto err;
-  }
-
+  // |p| is non-zero, so at least one window is non-zero. To save some
+  // multiplications, defer initializing |r| until then.
   int r_is_one = 1;
   unsigned wstart = bits - 1;  // The top bit of the window.
   for (;;) {
@@ -808,8 +811,10 @@ int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
 
     assert(wvalue & 1);
     assert(wvalue < (1u << window));
-    if (!bn_mod_mul_montgomery_small(r, num_r, r, num_r, val[wvalue >> 1],
-                                     num_n, mont)) {
+    if (r_is_one) {
+      OPENSSL_memcpy(r, val[wvalue >> 1], num_r * sizeof(BN_ULONG));
+    } else if (!bn_mod_mul_montgomery_small(r, num_r, r, num_r,
+                                            val[wvalue >> 1], num_n, mont)) {
       goto err;
     }
 
@@ -820,6 +825,8 @@ int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
     wstart -= wsize + 1;
   }
 
+  // |p| is non-zero, so |r_is_one| must be cleared at some point.
+  assert(!r_is_one);
   ret = 1;
 
 err:

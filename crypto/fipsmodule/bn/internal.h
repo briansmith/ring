@@ -547,13 +547,6 @@ int bn_to_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
 int bn_from_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
                              size_t num_a, const BN_MONT_CTX *mont);
 
-// bn_one_to_montgomery_small sets |r| to one in Montgomery form. It returns one
-// on success and zero on error. |num_r| must be the length of the modulus,
-// which is |mont->N.top|. This function treats the bit width of the modulus as
-// public.
-int bn_one_to_montgomery_small(BN_ULONG *r, size_t num_r,
-                               const BN_MONT_CTX *mont);
-
 // bn_mod_mul_montgomery_small sets |r| to |a| * |b| mod |mont->N|. Both inputs
 // and outputs are in the Montgomery domain. |num_r| must be the length of the
 // modulus, which is |mont->N.top|. This function returns one on success and

@@ -449,28 +449,6 @@ int bn_from_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
   return ret;
 }
 
-int bn_one_to_montgomery_small(BN_ULONG *r, size_t num_r,
-                               const BN_MONT_CTX *mont) {
-  const BN_ULONG *n = mont->N.d;
-  size_t num_n = mont->N.width;
-  if (num_n == 0 || num_r != num_n) {
-    OPENSSL_PUT_ERROR(BN, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-    return 0;
-  }
-
-  // If the high bit of |n| is set, R = 2^(num_n*BN_BITS2) < 2 * |n|, so we
-  // compute R - |n| rather than perform Montgomery reduction.
-  if (num_n > 0 && (n[num_n - 1] >> (BN_BITS2 - 1)) != 0) {
-    r[0] = 0 - n[0];
-    for (size_t i = 1; i < num_n; i++) {
-      r[i] = ~n[i];
-    }
-    return 1;
-  }
-
-  return bn_from_montgomery_small(r, num_r, mont->RR.d, mont->RR.width, mont);
-}
-
 int bn_mod_mul_montgomery_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
                                 size_t num_a, const BN_ULONG *b, size_t num_b,
                                 const BN_MONT_CTX *mont) {
