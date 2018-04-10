@@ -739,11 +739,7 @@ int bn_mod_exp_mont_small(BN_ULONG *r, size_t num_r, const BN_ULONG *a,
     bits = BN_num_bits_word(p[num_p - 1]) + (num_p - 1) * BN_BITS2;
   }
   if (bits == 0) {
-    OPENSSL_memset(r, 0, num_r * sizeof(BN_ULONG));
-    if (!BN_is_one(&mont->N)) {
-      r[0] = 1;
-    }
-    return 1;
+    return bn_one_to_montgomery_small(r, num_r, mont);
   }
 
   // We exponentiate by looking at sliding windows of the exponent and
