@@ -639,12 +639,6 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     aa = a;
   }
 
-  if (BN_is_zero(aa)) {
-    BN_zero(rr);
-    ret = 1;
-    goto err;
-  }
-
   // We exponentiate by looking at sliding windows of the exponent and
   // precomputing powers of |aa|. Windows may be shifted so they always end on a
   // set bit, so only precompute odd powers. We compute val[i] = aa^(2*i + 1)
