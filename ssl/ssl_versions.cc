@@ -81,8 +81,8 @@ static void get_method_versions(const SSL_PROTOCOL_METHOD *method,
   }
 }
 
-static bool method_supports_version(const SSL_PROTOCOL_METHOD *method,
-                                    uint16_t version) {
+bool ssl_method_supports_version(const SSL_PROTOCOL_METHOD *method,
+                                 uint16_t version) {
   const uint16_t *versions;
   size_t num_versions;
   get_method_versions(method, &versions, &num_versions);
@@ -164,7 +164,7 @@ static bool api_version_to_wire(uint16_t *out, uint16_t version) {
 static bool set_version_bound(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
                               uint16_t version) {
   if (!api_version_to_wire(&version, version) ||
-      !method_supports_version(method, version) ||
+      !ssl_method_supports_version(method, version) ||
       !ssl_protocol_version_from_wire(out, version)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_SSL_VERSION);
     return false;
@@ -292,7 +292,7 @@ uint16_t ssl_protocol_version(const SSL *ssl) {
 bool ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version) {
   SSL *const ssl = hs->ssl;
   uint16_t protocol_version;
-  if (!method_supports_version(ssl->method, version) ||
+  if (!ssl_method_supports_version(ssl->method, version) ||
       !ssl_protocol_version_from_wire(&protocol_version, version) ||
       hs->min_version > protocol_version ||
       protocol_version > hs->max_version) {

@@ -252,10 +252,16 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   }
 
   ssl->version = session->ssl_version;
+  s3->have_version = true;
+  if (!ssl_method_supports_version(ssl->method, ssl->version) ||
+      session->cipher != s3->hs->new_cipher ||
+      ssl_protocol_version(ssl) < SSL_CIPHER_get_min_version(session->cipher) ||
+      SSL_CIPHER_get_max_version(session->cipher) < ssl_protocol_version(ssl)) {
+    return false;
+  }
   ssl->do_handshake = ssl_server_handshake;
   ssl->server = true;
 
-  s3->have_version = true;
   s3->hs->state = CBS_len(&transcript) == 0 ? state12_finish_server_handshake
                                             : state12_read_client_certificate;
   s3->session_reused = session_reused;

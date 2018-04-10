@@ -378,6 +378,10 @@ bool ssl_get_version_range(const SSL_HANDSHAKE *hs, uint16_t *out_min_version,
 // ssl_supports_version returns whether |hs| supports |version|.
 bool ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version);
 
+// ssl_method_supports_version returns whether |method| supports |version|.
+bool ssl_method_supports_version(const SSL_PROTOCOL_METHOD *method,
+                                 uint16_t version);
+
 // ssl_add_supported_versions writes the supported versions of |hs| to |cbb|, in
 // decreasing preference order.
 bool ssl_add_supported_versions(SSL_HANDSHAKE *hs, CBB *cbb);
