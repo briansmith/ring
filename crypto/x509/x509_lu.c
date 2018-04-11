@@ -473,6 +473,7 @@ static int x509_object_idx_cnt(STACK_OF(X509_OBJECT) *h, int type,
     }
 
     size_t idx;
+    sk_X509_OBJECT_sort(h);
     if (!sk_X509_OBJECT_find(h, &idx, &stmp))
         return -1;
 
@@ -604,6 +605,7 @@ X509_OBJECT *X509_OBJECT_retrieve_match(STACK_OF(X509_OBJECT) *h,
     size_t idx, i;
     X509_OBJECT *obj;
 
+    sk_X509_OBJECT_sort(h);
     if (!sk_X509_OBJECT_find(h, &idx, x)) {
         return NULL;
     }

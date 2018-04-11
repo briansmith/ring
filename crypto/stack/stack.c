@@ -223,7 +223,7 @@ void *sk_delete_ptr(_STACK *sk, void *p) {
   return NULL;
 }
 
-int sk_find(_STACK *sk, size_t *out_index, void *p) {
+int sk_find(const _STACK *sk, size_t *out_index, void *p) {
   if (sk == NULL) {
     return 0;
   }
@@ -245,7 +245,17 @@ int sk_find(_STACK *sk, size_t *out_index, void *p) {
     return 0;
   }
 
-  sk_sort(sk);
+  if (!sk_is_sorted(sk)) {
+    for (size_t i = 0; i < sk->num; i++) {
+      if (sk->comp((const void **)&p, (const void **)&sk->data[i]) == 0) {
+        if (out_index) {
+          *out_index = i;
+        }
+        return 1;
+      }
+    }
+    return 0;
+  }
 
   // sk->comp is a function that takes pointers to pointers to elements, but
   // qsort and bsearch take a comparison function that just takes pointers to

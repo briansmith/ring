@@ -205,6 +205,7 @@ int X509_PURPOSE_get_by_id(int purpose)
     if (!xptable)
         return -1;
 
+    sk_X509_PURPOSE_sort(xptable);
     if (!sk_X509_PURPOSE_find(xptable, &idx, &tmp))
         return -1;
     return idx + X509_PURPOSE_COUNT;

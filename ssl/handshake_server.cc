@@ -334,7 +334,7 @@ static const SSL_CIPHER *ssl3_choose_cipher(
     SSL_HANDSHAKE *hs, const SSL_CLIENT_HELLO *client_hello,
     const struct ssl_cipher_preference_list_st *server_pref) {
   SSL *const ssl = hs->ssl;
-  STACK_OF(SSL_CIPHER) *prio, *allow;
+  const STACK_OF(SSL_CIPHER) *prio, *allow;
   // in_group_flags will either be NULL, or will point to an array of bytes
   // which indicate equal-preference groups in the |prio| stack. See the
   // comment about |in_group_flags| in the |ssl_cipher_preference_list_st|

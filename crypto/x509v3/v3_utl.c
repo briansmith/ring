@@ -650,6 +650,7 @@ static int append_ia5(STACK_OF(OPENSSL_STRING) **sk, ASN1_IA5STRING *email)
     if (!*sk)
         return 0;
     /* Don't add duplicates */
+    sk_OPENSSL_STRING_sort(*sk);
     if (sk_OPENSSL_STRING_find(*sk, NULL, (char *)email->data))
         return 1;
     emtmp = BUF_strdup((char *)email->data);
