@@ -294,11 +294,13 @@ class GN(object):
       out.write(self.header)
 
       self.PrintVariableSection(out, 'crypto_sources',
-                                files['crypto'] + files['crypto_headers'] +
+                                files['crypto'] +
                                 files['crypto_internal_headers'])
+      self.PrintVariableSection(out, 'crypto_headers',
+                                files['crypto_headers'])
       self.PrintVariableSection(out, 'ssl_sources',
-                                files['ssl'] + files['ssl_headers'] +
-                                files['ssl_internal_headers'])
+                                files['ssl'] + files['ssl_internal_headers'])
+      self.PrintVariableSection(out, 'ssl_headers', files['ssl_headers'])
 
       for ((osname, arch), asm_files) in asm_outputs:
         self.PrintVariableSection(
