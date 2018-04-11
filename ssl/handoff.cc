@@ -281,6 +281,9 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   ssl->conf_max_version = conf_max_version;
   ssl->conf_min_version = conf_min_version;
   ssl->max_send_fragment = max_send_fragment;
+  if (ssl->max_send_fragment == 0) {
+    return false;
+  }
   ssl->do_handshake = ssl_server_handshake;
   ssl->server = true;
   ssl->options = options;
