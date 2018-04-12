@@ -457,9 +457,48 @@ namespace bssl {
 #define SSL_HANDSHAKE_MAC_SHA256 0x2
 #define SSL_HANDSHAKE_MAC_SHA384 0x4
 
-// SSL_MAX_DIGEST is the number of digest types which exist. When adding a new
-// one, update the table in ssl_cipher.c.
-#define SSL_MAX_DIGEST 4
+// An SSLCipherPreferenceList contains a list of SSL_CIPHERs with equal-
+// preference groups. For TLS clients, the groups are moot because the server
+// picks the cipher and groups cannot be expressed on the wire. However, for
+// servers, the equal-preference groups allow the client's preferences to be
+// partially respected. (This only has an effect with
+// SSL_OP_CIPHER_SERVER_PREFERENCE).
+//
+// The equal-preference groups are expressed by grouping SSL_CIPHERs together.
+// All elements of a group have the same priority: no ordering is expressed
+// within a group.
+//
+// The values in |ciphers| are in one-to-one correspondence with
+// |in_group_flags|. (That is, sk_SSL_CIPHER_num(ciphers) is the number of
+// bytes in |in_group_flags|.) The bytes in |in_group_flags| are either 1, to
+// indicate that the corresponding SSL_CIPHER is not the last element of a
+// group, or 0 to indicate that it is.
+//
+// For example, if |in_group_flags| contains all zeros then that indicates a
+// traditional, fully-ordered preference. Every SSL_CIPHER is the last element
+// of the group (i.e. they are all in a one-element group).
+//
+// For a more complex example, consider:
+//   ciphers:        A  B  C  D  E  F
+//   in_group_flags: 1  1  0  0  1  0
+//
+// That would express the following, order:
+//
+//    A         E
+//    B -> D -> F
+//    C
+struct SSLCipherPreferenceList {
+  static constexpr bool kAllowUniquePtr = true;
+
+  SSLCipherPreferenceList() = default;
+  ~SSLCipherPreferenceList();
+
+  bool Init(UniquePtr<STACK_OF(SSL_CIPHER)> ciphers,
+            Span<const bool> in_group_flags);
+
+  UniquePtr<STACK_OF(SSL_CIPHER)> ciphers;
+  bool *in_group_flags = nullptr;
+};
 
 // ssl_cipher_get_evp_aead sets |*out_aead| to point to the correct EVP_AEAD
 // object for |cipher| protocol version |version|. It sets |*out_mac_secret_len|
@@ -477,13 +516,12 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
                                        const SSL_CIPHER *cipher);
 
 // ssl_create_cipher_list evaluates |rule_str|. It sets |*out_cipher_list| to a
-// newly-allocated |ssl_cipher_preference_list_st| containing the result. It
-// returns true on success and false on failure. If |strict| is true, nonsense
-// will be rejected. If false, nonsense will be silently ignored. An empty
-// result is considered an error regardless of |strict|.
-bool ssl_create_cipher_list(
-    struct ssl_cipher_preference_list_st **out_cipher_list,
-    const char *rule_str, bool strict);
+// newly-allocated |SSLCipherPreferenceList| containing the result. It returns
+// true on success and false on failure. If |strict| is true, nonsense will be
+// rejected. If false, nonsense will be silently ignored. An empty result is
+// considered an error regardless of |strict|.
+bool ssl_create_cipher_list(SSLCipherPreferenceList **out_cipher_list,
+                            const char *rule_str, bool strict);
 
 // ssl_cipher_get_value returns the cipher suite id of |cipher|.
 uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher);
@@ -1921,41 +1959,6 @@ extern const SSL_X509_METHOD ssl_crypto_x509_method;
 // crypto/x509.
 extern const SSL_X509_METHOD ssl_noop_x509_method;
 
-// ssl_cipher_preference_list_st contains a list of SSL_CIPHERs with
-// equal-preference groups. For TLS clients, the groups are moot because the
-// server picks the cipher and groups cannot be expressed on the wire. However,
-// for servers, the equal-preference groups allow the client's preferences to
-// be partially respected. (This only has an effect with
-// SSL_OP_CIPHER_SERVER_PREFERENCE).
-//
-// The equal-preference groups are expressed by grouping SSL_CIPHERs together.
-// All elements of a group have the same priority: no ordering is expressed
-// within a group.
-//
-// The values in |ciphers| are in one-to-one correspondence with
-// |in_group_flags|. (That is, sk_SSL_CIPHER_num(ciphers) is the number of
-// bytes in |in_group_flags|.) The bytes in |in_group_flags| are either 1, to
-// indicate that the corresponding SSL_CIPHER is not the last element of a
-// group, or 0 to indicate that it is.
-//
-// For example, if |in_group_flags| contains all zeros then that indicates a
-// traditional, fully-ordered preference. Every SSL_CIPHER is the last element
-// of the group (i.e. they are all in a one-element group).
-//
-// For a more complex example, consider:
-//   ciphers:        A  B  C  D  E  F
-//   in_group_flags: 1  1  0  0  1  0
-//
-// That would express the following, order:
-//
-//    A         E
-//    B -> D -> F
-//    C
-struct ssl_cipher_preference_list_st {
-  STACK_OF(SSL_CIPHER) *ciphers;
-  uint8_t *in_group_flags;
-};
-
 struct tlsext_ticket_key {
   static constexpr bool kAllowUniquePtr = true;
 
@@ -1998,7 +2001,7 @@ struct SSLContext {
   // configuration.
   enum tls13_variant_t tls13_variant;
 
-  struct ssl_cipher_preference_list_st *cipher_list;
+  SSLCipherPreferenceList *cipher_list;
 
   X509_STORE *cert_store;
   LHASH_OF(SSL_SESSION) *sessions;
@@ -2621,7 +2624,7 @@ struct SSLConnection {
   X509_VERIFY_PARAM *param;
 
   // crypto
-  struct ssl_cipher_preference_list_st *cipher_list;
+  SSLCipherPreferenceList *cipher_list;
 
   // session info
 
@@ -2853,13 +2856,9 @@ void ssl_session_rebase_time(SSL *ssl, SSL_SESSION *session);
 void ssl_session_renew_timeout(SSL *ssl, SSL_SESSION *session,
                                uint32_t timeout);
 
-void ssl_cipher_preference_list_free(
-    struct ssl_cipher_preference_list_st *cipher_list);
-
 // ssl_get_cipher_preferences returns the cipher preference list for TLS 1.2 and
 // below.
-const struct ssl_cipher_preference_list_st *ssl_get_cipher_preferences(
-    const SSL *ssl);
+const SSLCipherPreferenceList *ssl_get_cipher_preferences(const SSL *ssl);
 
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode);
 

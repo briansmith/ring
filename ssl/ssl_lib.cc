@@ -272,16 +272,6 @@ ssl_open_record_t ssl_open_app_data(SSL *ssl, Span<uint8_t> *out,
   return ret;
 }
 
-void ssl_cipher_preference_list_free(
-    struct ssl_cipher_preference_list_st *cipher_list) {
-  if (cipher_list == NULL) {
-    return;
-  }
-  sk_SSL_CIPHER_free(cipher_list->ciphers);
-  OPENSSL_free(cipher_list->in_group_flags);
-  OPENSSL_free(cipher_list);
-}
-
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
   SSL *const ssl = hs->ssl;
   SSL_CTX *ctx = ssl->session_ctx;
@@ -622,7 +612,7 @@ void SSL_CTX_free(SSL_CTX *ctx) {
 
   CRYPTO_MUTEX_cleanup(&ctx->lock);
   lh_SSL_SESSION_free(ctx->sessions);
-  ssl_cipher_preference_list_free(ctx->cipher_list);
+  Delete(ctx->cipher_list);
   Delete(ctx->cert);
   sk_SSL_CUSTOM_EXTENSION_pop_free(ctx->client_custom_extensions,
                                    SSL_CUSTOM_EXTENSION_free);
@@ -765,7 +755,7 @@ void SSL_free(SSL *ssl) {
   BIO_free_all(ssl->wbio);
 
   // add extra stuff
-  ssl_cipher_preference_list_free(ssl->cipher_list);
+  Delete(ssl->cipher_list);
 
   SSL_SESSION_free(ssl->session);
 
@@ -1820,11 +1810,11 @@ int SSL_set_tmp_dh(SSL *ssl, const DH *dh) {
 }
 
 STACK_OF(SSL_CIPHER) *SSL_CTX_get_ciphers(const SSL_CTX *ctx) {
-  return ctx->cipher_list->ciphers;
+  return ctx->cipher_list->ciphers.get();
 }
 
 int SSL_CTX_cipher_in_group(const SSL_CTX *ctx, size_t i) {
-  if (i >= sk_SSL_CIPHER_num(ctx->cipher_list->ciphers)) {
+  if (i >= sk_SSL_CIPHER_num(ctx->cipher_list->ciphers.get())) {
     return 0;
   }
   return ctx->cipher_list->in_group_flags[i];
@@ -1835,13 +1825,8 @@ STACK_OF(SSL_CIPHER) *SSL_get_ciphers(const SSL *ssl) {
     return NULL;
   }
 
-  const struct ssl_cipher_preference_list_st *prefs =
-      ssl_get_cipher_preferences(ssl);
-  if (prefs == NULL) {
-    return NULL;
-  }
-
-  return prefs->ciphers;
+  const SSLCipherPreferenceList *prefs = ssl_get_cipher_preferences(ssl);
+  return prefs == nullptr ? nullptr : prefs->ciphers.get();
 }
 
 const char *SSL_get_cipher_list(const SSL *ssl, int n) {

@@ -332,14 +332,14 @@ static void ssl_get_compatible_server_ciphers(SSL_HANDSHAKE *hs,
 
 static const SSL_CIPHER *ssl3_choose_cipher(
     SSL_HANDSHAKE *hs, const SSL_CLIENT_HELLO *client_hello,
-    const struct ssl_cipher_preference_list_st *server_pref) {
+    const SSLCipherPreferenceList *server_pref) {
   SSL *const ssl = hs->ssl;
   const STACK_OF(SSL_CIPHER) *prio, *allow;
   // in_group_flags will either be NULL, or will point to an array of bytes
   // which indicate equal-preference groups in the |prio| stack. See the
-  // comment about |in_group_flags| in the |ssl_cipher_preference_list_st|
+  // comment about |in_group_flags| in the |SSLCipherPreferenceList|
   // struct.
-  const uint8_t *in_group_flags;
+  const bool *in_group_flags;
   // group_min contains the minimal index so far found in a group, or -1 if no
   // such value exists yet.
   int group_min = -1;
@@ -351,13 +351,13 @@ static const SSL_CIPHER *ssl3_choose_cipher(
   }
 
   if (ssl->options & SSL_OP_CIPHER_SERVER_PREFERENCE) {
-    prio = server_pref->ciphers;
+    prio = server_pref->ciphers.get();
     in_group_flags = server_pref->in_group_flags;
     allow = client_pref.get();
   } else {
     prio = client_pref.get();
     in_group_flags = NULL;
-    allow = server_pref->ciphers;
+    allow = server_pref->ciphers.get();
   }
 
   uint32_t mask_k, mask_a;
@@ -375,7 +375,7 @@ static const SSL_CIPHER *ssl3_choose_cipher(
         (c->algorithm_auth & mask_a) &&
         // Check the cipher is in the |allow| list.
         sk_SSL_CIPHER_find(allow, &cipher_index, c)) {
-      if (in_group_flags != NULL && in_group_flags[i] == 1) {
+      if (in_group_flags != NULL && in_group_flags[i]) {
         // This element of |prio| is in a group. Update the minimum index found
         // so far and continue looking.
         if (group_min == -1 || (size_t)group_min > cipher_index) {
@@ -389,7 +389,7 @@ static const SSL_CIPHER *ssl3_choose_cipher(
       }
     }
 
-    if (in_group_flags != NULL && in_group_flags[i] == 0 && group_min != -1) {
+    if (in_group_flags != NULL && !in_group_flags[i] && group_min != -1) {
       // We are about to leave a group, but we found a match in it, so that's
       // our answer.
       return sk_SSL_CIPHER_value(allow, group_min);
