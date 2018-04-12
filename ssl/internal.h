@@ -2449,6 +2449,10 @@ struct SSL3_STATE {
 
   // Contains the QUIC transport params received by the peer.
   Array<uint8_t> peer_quic_transport_params;
+
+  // srtp_profile is the selected SRTP protection profile for
+  // DTLS-SRTP.
+  const SRTP_PROTECTION_PROFILE *srtp_profile = nullptr;
 };
 
 // lengths of messages
@@ -2679,10 +2683,6 @@ struct SSLConnection {
   // srtp_profiles is the list of configured SRTP protection profiles for
   // DTLS-SRTP.
   STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;
-
-  // srtp_profile is the selected SRTP protection profile for
-  // DTLS-SRTP.
-  const SRTP_PROTECTION_PROFILE *srtp_profile;
 
   // The client's Channel ID private key.
   EVP_PKEY *tlsext_channel_id_private;

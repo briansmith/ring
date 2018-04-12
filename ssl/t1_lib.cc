@@ -1646,7 +1646,7 @@ static bool ext_channel_id_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 
 static void ext_srtp_init(SSL_HANDSHAKE *hs) {
-  hs->ssl->srtp_profile = NULL;
+  hs->ssl->s3->srtp_profile = NULL;
 }
 
 static bool ext_srtp_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
@@ -1713,7 +1713,7 @@ static bool ext_srtp_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   // offered).
   for (const SRTP_PROTECTION_PROFILE *profile : profiles) {
     if (profile->id == profile_id) {
-      ssl->srtp_profile = profile;
+      ssl->s3->srtp_profile = profile;
       return true;
     }
   }
@@ -1755,7 +1755,7 @@ static bool ext_srtp_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       }
 
       if (server_profile->id == profile_id) {
-        ssl->srtp_profile = server_profile;
+        ssl->s3->srtp_profile = server_profile;
         return true;
       }
     }
@@ -1766,7 +1766,7 @@ static bool ext_srtp_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
 static bool ext_srtp_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  if (ssl->srtp_profile == NULL) {
+  if (ssl->s3->srtp_profile == NULL) {
     return true;
   }
 
@@ -1774,7 +1774,7 @@ static bool ext_srtp_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   if (!CBB_add_u16(out, TLSEXT_TYPE_srtp) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_u16_length_prefixed(&contents, &profile_ids) ||
-      !CBB_add_u16(&profile_ids, ssl->srtp_profile->id) ||
+      !CBB_add_u16(&profile_ids, ssl->s3->srtp_profile->id) ||
       !CBB_add_u8(&contents, 0 /* empty MKI */) ||
       !CBB_flush(out)) {
     return false;
