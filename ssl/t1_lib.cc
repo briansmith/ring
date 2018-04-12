@@ -2528,8 +2528,8 @@ static bool ext_token_binding_parse_serverhello(SSL_HANDSHAKE *hs,
 
   for (size_t i = 0; i < ssl->token_binding_params_len; ++i) {
     if (param == ssl->token_binding_params[i]) {
-      ssl->negotiated_token_binding_param = param;
-      ssl->token_binding_negotiated = true;
+      ssl->s3->negotiated_token_binding_param = param;
+      ssl->s3->token_binding_negotiated = true;
       return true;
     }
   }
@@ -2547,7 +2547,7 @@ static bool select_tb_param(SSL *ssl, Span<const uint8_t> peer_params) {
     uint8_t tb_param = ssl->token_binding_params[i];
     for (uint8_t peer_param : peer_params) {
       if (tb_param == peer_param) {
-        ssl->negotiated_token_binding_param = tb_param;
+        ssl->s3->negotiated_token_binding_param = tb_param;
         return true;
       }
     }
@@ -2587,14 +2587,14 @@ static bool ext_token_binding_parse_clienthello(SSL_HANDSHAKE *hs,
     return true;
   }
 
-  ssl->token_binding_negotiated = true;
+  ssl->s3->token_binding_negotiated = true;
   return true;
 }
 
 static bool ext_token_binding_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
 
-  if (!ssl->token_binding_negotiated) {
+  if (!ssl->s3->token_binding_negotiated) {
     return true;
   }
 
@@ -2603,7 +2603,7 @@ static bool ext_token_binding_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_u16(&contents, hs->negotiated_token_binding_version) ||
       !CBB_add_u8_length_prefixed(&contents, &params) ||
-      !CBB_add_u8(&params, ssl->negotiated_token_binding_param) ||
+      !CBB_add_u8(&params, ssl->s3->negotiated_token_binding_param) ||
       !CBB_flush(out)) {
     return false;
   }
@@ -3220,7 +3220,7 @@ static int ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs,
 static int ssl_check_clienthello_tlsext(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
-  if (ssl->token_binding_negotiated &&
+  if (ssl->s3->token_binding_negotiated &&
       !(SSL_get_secure_renegotiation_support(ssl) &&
         SSL_get_extms_support(ssl))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NEGOTIATED_TB_WITHOUT_EMS_OR_RI);

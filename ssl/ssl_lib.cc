@@ -2164,11 +2164,11 @@ int SSL_set_token_binding_params(SSL *ssl, const uint8_t *params, size_t len) {
 }
 
 int SSL_is_token_binding_negotiated(const SSL *ssl) {
-  return ssl->token_binding_negotiated;
+  return ssl->s3->token_binding_negotiated;
 }
 
 uint8_t SSL_get_negotiated_token_binding_param(const SSL *ssl) {
-  return ssl->negotiated_token_binding_param;
+  return ssl->s3->negotiated_token_binding_param;
 }
 
 size_t SSL_get0_certificate_types(SSL *ssl, const uint8_t **out_types) {

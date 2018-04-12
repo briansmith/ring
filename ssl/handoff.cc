@@ -155,8 +155,8 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
           hostname_len) ||
       !CBB_add_asn1_octet_string(&seq, s3->tlsext_channel_id,
                                  sizeof(s3->tlsext_channel_id)) ||
-      !CBB_add_asn1_bool(&seq, ssl->token_binding_negotiated) ||
-      !CBB_add_asn1_uint64(&seq, ssl->negotiated_token_binding_param) ||
+      !CBB_add_asn1_bool(&seq, ssl->s3->token_binding_negotiated) ||
+      !CBB_add_asn1_uint64(&seq, ssl->s3->negotiated_token_binding_param) ||
       !CBB_add_asn1_bool(&seq, s3->hs->next_proto_neg_seen) ||
       !CBB_add_asn1_bool(&seq, s3->hs->cert_request) ||
       !CBB_add_asn1_bool(&seq, s3->hs->extended_master_secret) ||
@@ -274,8 +274,8 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
     s3->hostname.reset(hostname_str);
   }
 
-  ssl->token_binding_negotiated = token_binding_negotiated;
-  ssl->negotiated_token_binding_param =
+  s3->token_binding_negotiated = token_binding_negotiated;
+  s3->negotiated_token_binding_param =
       static_cast<uint8_t>(negotiated_token_binding_param);
   s3->hs->next_proto_neg_seen = next_proto_neg_seen;
   s3->hs->wait = ssl_hs_flush;

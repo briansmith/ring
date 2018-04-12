@@ -2308,6 +2308,10 @@ struct SSL3_STATE {
   // key_update_count is the number of consecutive KeyUpdates received.
   uint8_t key_update_count = 0;
 
+  // The negotiated Token Binding key parameter. Only valid if
+  // |token_binding_negotiated| is set.
+  uint8_t negotiated_token_binding_param = 0;
+
   // skip_early_data instructs the record layer to skip unexpected early data
   // messages when 0RTT is rejected.
   bool skip_early_data:1;
@@ -2356,6 +2360,9 @@ struct SSL3_STATE {
   // draft_downgrade is whether the TLS 1.3 anti-downgrade logic would have
   // fired, were it not a draft.
   bool draft_downgrade:1;
+
+  // token_binding_negotiated is set if Token Binding was negotiated.
+  bool token_binding_negotiated:1;
 
   // hs_buf is the buffer of handshake data to process.
   UniquePtr<BUF_MEM> hs_buf;
@@ -2680,10 +2687,6 @@ struct SSLConnection {
   uint8_t *token_binding_params;
   size_t token_binding_params_len;
 
-  // The negotiated Token Binding key parameter. Only valid if
-  // |token_binding_negotiated| is set.
-  uint8_t negotiated_token_binding_param;
-
   // Contains the QUIC transport params that this endpoint will send.
   uint8_t *quic_transport_params;
   size_t quic_transport_params_len;
@@ -2714,9 +2717,6 @@ struct SSLConnection {
   // means that we'll accept Channel IDs from clients. For a client, means that
   // we'll advertise support.
   bool tlsext_channel_id_enabled:1;
-
-  // token_binding_negotiated is set if Token Binding was negotiated.
-  bool token_binding_negotiated:1;
 
   // retain_only_sha256_of_client_certs is true if we should compute the SHA256
   // hash of the peer's certificate and then discard it to save memory and
