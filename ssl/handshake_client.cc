@@ -1422,7 +1422,8 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    UniquePtr<EVP_PKEY_CTX> pctx(EVP_PKEY_CTX_new(ssl->cert->privatekey, NULL));
+    UniquePtr<EVP_PKEY_CTX> pctx(
+        EVP_PKEY_CTX_new(ssl->cert->privatekey.get(), nullptr));
     if (!pctx ||
         !EVP_PKEY_sign_init(pctx.get()) ||
         !EVP_PKEY_sign(pctx.get(), ptr, &sig_len, digest, digest_len)) {

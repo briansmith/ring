@@ -368,7 +368,7 @@ int tls13_add_certificate(SSL_HANDSHAKE *hs) {
   }
 
   CERT *cert = ssl->cert;
-  CRYPTO_BUFFER *leaf_buf = sk_CRYPTO_BUFFER_value(cert->chain, 0);
+  CRYPTO_BUFFER *leaf_buf = sk_CRYPTO_BUFFER_value(cert->chain.get(), 0);
   CBB leaf, extensions;
   if (!CBB_add_u24_length_prefixed(&certificate_list, &leaf) ||
       !CBB_add_bytes(&leaf, CRYPTO_BUFFER_data(leaf_buf),
@@ -378,14 +378,14 @@ int tls13_add_certificate(SSL_HANDSHAKE *hs) {
     return 0;
   }
 
-  if (hs->scts_requested && ssl->cert->signed_cert_timestamp_list != NULL) {
+  if (hs->scts_requested && ssl->cert->signed_cert_timestamp_list != nullptr) {
     CBB contents;
     if (!CBB_add_u16(&extensions, TLSEXT_TYPE_certificate_timestamp) ||
         !CBB_add_u16_length_prefixed(&extensions, &contents) ||
         !CBB_add_bytes(
             &contents,
-            CRYPTO_BUFFER_data(ssl->cert->signed_cert_timestamp_list),
-            CRYPTO_BUFFER_len(ssl->cert->signed_cert_timestamp_list)) ||
+            CRYPTO_BUFFER_data(ssl->cert->signed_cert_timestamp_list.get()),
+            CRYPTO_BUFFER_len(ssl->cert->signed_cert_timestamp_list.get())) ||
         !CBB_flush(&extensions)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return 0;
@@ -400,16 +400,16 @@ int tls13_add_certificate(SSL_HANDSHAKE *hs) {
         !CBB_add_u8(&contents, TLSEXT_STATUSTYPE_ocsp) ||
         !CBB_add_u24_length_prefixed(&contents, &ocsp_response) ||
         !CBB_add_bytes(&ocsp_response,
-                       CRYPTO_BUFFER_data(ssl->cert->ocsp_response),
-                       CRYPTO_BUFFER_len(ssl->cert->ocsp_response)) ||
+                       CRYPTO_BUFFER_data(ssl->cert->ocsp_response.get()),
+                       CRYPTO_BUFFER_len(ssl->cert->ocsp_response.get())) ||
         !CBB_flush(&extensions)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return 0;
     }
   }
 
-  for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(cert->chain); i++) {
-    CRYPTO_BUFFER *cert_buf = sk_CRYPTO_BUFFER_value(cert->chain, i);
+  for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(cert->chain.get()); i++) {
+    CRYPTO_BUFFER *cert_buf = sk_CRYPTO_BUFFER_value(cert->chain.get(), i);
     CBB child;
     if (!CBB_add_u24_length_prefixed(&certificate_list, &child) ||
         !CBB_add_bytes(&child, CRYPTO_BUFFER_data(cert_buf),

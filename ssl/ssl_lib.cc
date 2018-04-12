@@ -549,7 +549,7 @@ SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
 
   ret->max_cert_list = SSL_MAX_CERT_LIST_DEFAULT;
   ret->verify_mode = SSL_VERIFY_NONE;
-  ret->cert = ssl_cert_new(method->x509_method);
+  ret->cert = New<CERT>(method->x509_method);
   if (ret->cert == NULL) {
     goto err;
   }
@@ -623,7 +623,7 @@ void SSL_CTX_free(SSL_CTX *ctx) {
   CRYPTO_MUTEX_cleanup(&ctx->lock);
   lh_SSL_SESSION_free(ctx->sessions);
   ssl_cipher_preference_list_free(ctx->cipher_list);
-  ssl_cert_free(ctx->cert);
+  Delete(ctx->cert);
   sk_SSL_CUSTOM_EXTENSION_pop_free(ctx->client_custom_extensions,
                                    SSL_CUSTOM_EXTENSION_free);
   sk_SSL_CUSTOM_EXTENSION_pop_free(ctx->server_custom_extensions,
@@ -670,7 +670,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->mode = ctx->mode;
   ssl->max_cert_list = ctx->max_cert_list;
 
-  ssl->cert = ssl_cert_dup(ctx->cert);
+  ssl->cert = ssl_cert_dup(ctx->cert).release();
   if (ssl->cert == NULL) {
     goto err;
   }
@@ -769,7 +769,7 @@ void SSL_free(SSL *ssl) {
 
   SSL_SESSION_free(ssl->session);
 
-  ssl_cert_free(ssl->cert);
+  Delete(ssl->cert);
 
   OPENSSL_free(ssl->tlsext_hostname);
   SSL_CTX_free(ssl->session_ctx);
@@ -1606,12 +1606,12 @@ int SSL_pending(const SSL *ssl) {
 
 // Fix this so it checks all the valid key/cert options
 int SSL_CTX_check_private_key(const SSL_CTX *ctx) {
-  return ssl_cert_check_private_key(ctx->cert, ctx->cert->privatekey);
+  return ssl_cert_check_private_key(ctx->cert, ctx->cert->privatekey.get());
 }
 
 // Fix this function so that it takes an optional type parameter
 int SSL_check_private_key(const SSL *ssl) {
-  return ssl_cert_check_private_key(ssl->cert, ssl->cert->privatekey);
+  return ssl_cert_check_private_key(ssl->cert, ssl->cert->privatekey.get());
 }
 
 long SSL_get_default_timeout(const SSL *ssl) {
@@ -2184,7 +2184,7 @@ size_t SSL_get0_certificate_types(SSL *ssl, const uint8_t **out_types) {
 
 EVP_PKEY *SSL_get_privatekey(const SSL *ssl) {
   if (ssl->cert != NULL) {
-    return ssl->cert->privatekey;
+    return ssl->cert->privatekey.get();
   }
 
   return NULL;
@@ -2192,7 +2192,7 @@ EVP_PKEY *SSL_get_privatekey(const SSL *ssl) {
 
 EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
   if (ctx->cert != NULL) {
-    return ctx->cert->privatekey;
+    return ctx->cert->privatekey.get();
   }
 
   return NULL;
@@ -2273,8 +2273,8 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
     ctx = ssl->session_ctx;
   }
 
-  ssl_cert_free(ssl->cert);
-  ssl->cert = ssl_cert_dup(ctx->cert);
+  Delete(ssl->cert);
+  ssl->cert = ssl_cert_dup(ctx->cert).release();
 
   SSL_CTX_up_ref(ctx);
   SSL_CTX_free(ssl->ctx);

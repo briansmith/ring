@@ -749,8 +749,8 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
           !CBB_add_u8(&body, TLSEXT_STATUSTYPE_ocsp) ||
           !CBB_add_u24_length_prefixed(&body, &ocsp_response) ||
           !CBB_add_bytes(&ocsp_response,
-                         CRYPTO_BUFFER_data(ssl->cert->ocsp_response),
-                         CRYPTO_BUFFER_len(ssl->cert->ocsp_response)) ||
+                         CRYPTO_BUFFER_data(ssl->cert->ocsp_response.get()),
+                         CRYPTO_BUFFER_len(ssl->cert->ocsp_response.get())) ||
           !ssl_add_message_cbb(ssl, cbb.get())) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
         return ssl_hs_error;

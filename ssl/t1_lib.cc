@@ -1389,8 +1389,8 @@ static bool ext_sct_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
          CBB_add_u16_length_prefixed(out, &contents) &&
          CBB_add_bytes(
              &contents,
-             CRYPTO_BUFFER_data(ssl->cert->signed_cert_timestamp_list),
-             CRYPTO_BUFFER_len(ssl->cert->signed_cert_timestamp_list)) &&
+             CRYPTO_BUFFER_data(ssl->cert->signed_cert_timestamp_list.get()),
+             CRYPTO_BUFFER_len(ssl->cert->signed_cert_timestamp_list.get())) &&
          CBB_flush(out);
 }
 
@@ -3588,8 +3588,8 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   }
 
   Span<const uint16_t> sigalgs = kSignSignatureAlgorithms;
-  if (cert->sigalgs != nullptr) {
-    sigalgs = MakeConstSpan(cert->sigalgs, cert->num_sigalgs);
+  if (!cert->sigalgs.empty()) {
+    sigalgs = cert->sigalgs;
   }
 
   Span<const uint16_t> peer_sigalgs = hs->peer_sigalgs;
