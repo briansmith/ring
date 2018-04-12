@@ -92,6 +92,9 @@ OPENSSL_EXPORT unsigned long OpenSSL_version_num(void);
 // CRYPTO_malloc_init returns one.
 OPENSSL_EXPORT int CRYPTO_malloc_init(void);
 
+// OPENSSL_malloc_init returns one.
+OPENSSL_EXPORT int OPENSSL_malloc_init(void);
+
 // ENGINE_load_builtin_engines does nothing.
 OPENSSL_EXPORT void ENGINE_load_builtin_engines(void);
 

@@ -164,31 +164,21 @@ int CRYPTO_has_asm(void) {
 #endif
 }
 
-const char *SSLeay_version(int unused) {
-  return "BoringSSL";
-}
+const char *SSLeay_version(int unused) { return "BoringSSL"; }
 
-const char *OpenSSL_version(int unused) {
-  return "BoringSSL";
-}
+const char *OpenSSL_version(int unused) { return "BoringSSL"; }
 
-unsigned long SSLeay(void) {
-  return OPENSSL_VERSION_NUMBER;
-}
+unsigned long SSLeay(void) { return OPENSSL_VERSION_NUMBER; }
 
-unsigned long OpenSSL_version_num(void) {
-  return OPENSSL_VERSION_NUMBER;
-}
+unsigned long OpenSSL_version_num(void) { return OPENSSL_VERSION_NUMBER; }
 
-int CRYPTO_malloc_init(void) {
-  return 1;
-}
+int CRYPTO_malloc_init(void) { return 1; }
+
+int OPENSSL_malloc_init(void) { return 1; }
 
 void ENGINE_load_builtin_engines(void) {}
 
-int ENGINE_register_all_complete(void) {
-  return 1;
-}
+int ENGINE_register_all_complete(void) { return 1; }
 
 void OPENSSL_load_builtin_modules(void) {}
 
