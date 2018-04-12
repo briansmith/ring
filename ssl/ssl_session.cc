@@ -990,6 +990,10 @@ uint32_t SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION *session) {
   return session->tlsext_tick_lifetime_hint;
 }
 
+const SSL_CIPHER *SSL_SESSION_get0_cipher(const SSL_SESSION *session) {
+  return session->cipher;
+}
+
 SSL_SESSION *SSL_magic_pending_session_ptr(void) {
   return (SSL_SESSION *)&g_pending_session_magic;
 }

@@ -1749,6 +1749,15 @@ OPENSSL_EXPORT void SSL_SESSION_get0_ticket(const SSL_SESSION *session,
 OPENSSL_EXPORT uint32_t
 SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION *session);
 
+// SSL_SESSION_get0_cipher returns the cipher negotiated by the connection which
+// established |session|.
+//
+// Note that, in TLS 1.3, there is no guarantee that resumptions with |session|
+// will use that cipher. Prefer calling |SSL_get_current_cipher| on the |SSL|
+// instead.
+OPENSSL_EXPORT const SSL_CIPHER *SSL_SESSION_get0_cipher(
+    const SSL_SESSION *session);
+
 
 // Session caching.
 //
