@@ -207,20 +207,20 @@ const struct {
     {TLS1_3_VERSION, SSL_OP_NO_TLSv1_3},
 };
 
-bool ssl_get_version_range(const SSL *ssl, uint16_t *out_min_version,
+bool ssl_get_version_range(const SSL_HANDSHAKE *hs, uint16_t *out_min_version,
                            uint16_t *out_max_version) {
   // For historical reasons, |SSL_OP_NO_DTLSv1| aliases |SSL_OP_NO_TLSv1|, but
   // DTLS 1.0 should be mapped to TLS 1.1.
-  uint32_t options = ssl->options;
-  if (SSL_is_dtls(ssl)) {
+  uint32_t options = hs->ssl->options;
+  if (SSL_is_dtls(hs->ssl)) {
     options &= ~SSL_OP_NO_TLSv1_1;
     if (options & SSL_OP_NO_DTLSv1) {
       options |= SSL_OP_NO_TLSv1_1;
     }
   }
 
-  uint16_t min_version = ssl->conf_min_version;
-  uint16_t max_version = ssl->conf_max_version;
+  uint16_t min_version = hs->config->conf_min_version;
+  uint16_t max_version = hs->config->conf_max_version;
 
   // OpenSSL's API for controlling versions entails blacklisting individual
   // protocols. This has two problems. First, on the client, the protocol can
@@ -373,11 +373,17 @@ int SSL_CTX_set_max_proto_version(SSL_CTX *ctx, uint16_t version) {
 }
 
 int SSL_set_min_proto_version(SSL *ssl, uint16_t version) {
-  return set_min_version(ssl->method, &ssl->conf_min_version, version);
+  if (!ssl->config) {
+    return 0;
+  }
+  return set_min_version(ssl->method, &ssl->config->conf_min_version, version);
 }
 
 int SSL_set_max_proto_version(SSL *ssl, uint16_t version) {
-  return set_max_version(ssl->method, &ssl->conf_max_version, version);
+  if (!ssl->config) {
+    return 0;
+  }
+  return set_max_version(ssl->method, &ssl->config->conf_max_version, version);
 }
 
 int SSL_version(const SSL *ssl) {

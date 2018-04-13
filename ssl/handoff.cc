@@ -55,7 +55,7 @@ bool SSL_decline_handoff(SSL *ssl) {
     return false;
   }
 
-  ssl->handoff = false;
+  s3->hs->config->handoff = false;
   return true;
 }
 
@@ -94,7 +94,7 @@ bool SSL_apply_handoff(SSL *ssl, Span<const uint8_t> handoff) {
     s3->hs->transcript.Update(transcript);
     s3->is_v2_hello = true;
   }
-  ssl->handback = true;
+  s3->hs->handback = true;
 
   return true;
 }

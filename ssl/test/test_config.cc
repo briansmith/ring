@@ -98,6 +98,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-verify-peer", &TestConfig::verify_peer },
   { "-verify-peer-if-no-obc", &TestConfig::verify_peer_if_no_obc },
   { "-expect-verify-result", &TestConfig::expect_verify_result },
+  { "-shed-despite-renegotiate", &TestConfig::shed_despite_renegotiate },
   { "-renegotiate-once", &TestConfig::renegotiate_once },
   { "-renegotiate-freely", &TestConfig::renegotiate_freely },
   { "-renegotiate-ignore", &TestConfig::renegotiate_ignore },

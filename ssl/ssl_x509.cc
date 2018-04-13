@@ -349,7 +349,7 @@ static void ssl_crypto_x509_session_clear(SSL_SESSION *session) {
 }
 
 static int ssl_crypto_x509_session_verify_cert_chain(SSL_SESSION *session,
-                                                     SSL *ssl,
+                                                     SSL_HANDSHAKE *hs,
                                                      uint8_t *out_alert) {
   *out_alert = SSL_AD_INTERNAL_ERROR;
   STACK_OF(X509) *const cert_chain = session->x509_chain;
@@ -357,9 +357,10 @@ static int ssl_crypto_x509_session_verify_cert_chain(SSL_SESSION *session,
     return 0;
   }
 
-  X509_STORE *verify_store = ssl->ctx->cert_store;
-  if (ssl->cert->verify_store != NULL) {
-    verify_store = ssl->cert->verify_store;
+  SSL_CTX *ssl_ctx = hs->ssl->ctx;
+  X509_STORE *verify_store = ssl_ctx->cert_store;
+  if (hs->config->cert->verify_store != NULL) {
+    verify_store = hs->config->cert->verify_store;
   }
 
   X509 *leaf = sk_X509_value(cert_chain, 0);
@@ -368,8 +369,8 @@ static int ssl_crypto_x509_session_verify_cert_chain(SSL_SESSION *session,
     OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return 0;
   }
-  if (!X509_STORE_CTX_set_ex_data(ctx.get(),
-                                  SSL_get_ex_data_X509_STORE_CTX_idx(), ssl)) {
+  if (!X509_STORE_CTX_set_ex_data(
+          ctx.get(), SSL_get_ex_data_X509_STORE_CTX_idx(), hs->ssl)) {
     return 0;
   }
 
@@ -377,19 +378,20 @@ static int ssl_crypto_x509_session_verify_cert_chain(SSL_SESSION *session,
   // context: if its a server it will verify SSL client certificates or vice
   // versa.
   X509_STORE_CTX_set_default(ctx.get(),
-                             ssl->server ? "ssl_client" : "ssl_server");
+                             hs->ssl->server ? "ssl_client" : "ssl_server");
 
   // Anything non-default in "param" should overwrite anything in the ctx.
-  X509_VERIFY_PARAM_set1(X509_STORE_CTX_get0_param(ctx.get()), ssl->param);
+  X509_VERIFY_PARAM_set1(X509_STORE_CTX_get0_param(ctx.get()),
+                         hs->config->param);
 
-  if (ssl->verify_callback) {
-    X509_STORE_CTX_set_verify_cb(ctx.get(), ssl->verify_callback);
+  if (hs->config->verify_callback) {
+    X509_STORE_CTX_set_verify_cb(ctx.get(), hs->config->verify_callback);
   }
 
   int verify_ret;
-  if (ssl->ctx->app_verify_callback != NULL) {
+  if (ssl_ctx->app_verify_callback != NULL) {
     verify_ret =
-        ssl->ctx->app_verify_callback(ctx.get(), ssl->ctx->app_verify_arg);
+        ssl_ctx->app_verify_callback(ctx.get(), ssl_ctx->app_verify_arg);
   } else {
     verify_ret = X509_verify_cert(ctx.get());
   }
@@ -397,7 +399,7 @@ static int ssl_crypto_x509_session_verify_cert_chain(SSL_SESSION *session,
   session->verify_result = ctx->error;
 
   // If |SSL_VERIFY_NONE|, the error is non-fatal, but we keep the result.
-  if (verify_ret <= 0 && ssl->verify_mode != SSL_VERIFY_NONE) {
+  if (verify_ret <= 0 && hs->config->verify_mode != SSL_VERIFY_NONE) {
     *out_alert = SSL_alert_from_verify_result(ctx->error);
     return 0;
   }
@@ -411,44 +413,45 @@ static void ssl_crypto_x509_hs_flush_cached_ca_names(SSL_HANDSHAKE *hs) {
   hs->cached_x509_ca_names = NULL;
 }
 
-static int ssl_crypto_x509_ssl_new(SSL *ssl) {
-  ssl->param = X509_VERIFY_PARAM_new();
-  if (ssl->param == NULL) {
+static int ssl_crypto_x509_ssl_new(SSL_HANDSHAKE *hs) {
+  hs->config->param = X509_VERIFY_PARAM_new();
+  if (hs->config->param == NULL) {
     return 0;
   }
-  X509_VERIFY_PARAM_inherit(ssl->param, ssl->ctx->param);
+  X509_VERIFY_PARAM_inherit(hs->config->param, hs->ssl->ctx->param);
   return 1;
 }
 
-static void ssl_crypto_x509_ssl_flush_cached_client_CA(SSL *ssl) {
-  sk_X509_NAME_pop_free(ssl->cached_x509_client_CA, X509_NAME_free);
-  ssl->cached_x509_client_CA = NULL;
+static void ssl_crypto_x509_ssl_flush_cached_client_CA(SSL_CONFIG *cfg) {
+  sk_X509_NAME_pop_free(cfg->cached_x509_client_CA, X509_NAME_free);
+  cfg->cached_x509_client_CA = NULL;
 }
 
-static void ssl_crypto_x509_ssl_free(SSL *ssl) {
-  ssl_crypto_x509_ssl_flush_cached_client_CA(ssl);
-  X509_VERIFY_PARAM_free(ssl->param);
+static void ssl_crypto_x509_ssl_config_free(SSL_CONFIG *cfg) {
+  sk_X509_NAME_pop_free(cfg->cached_x509_client_CA, X509_NAME_free);
+  cfg->cached_x509_client_CA = NULL;
+  X509_VERIFY_PARAM_free(cfg->param);
 }
 
-static int ssl_crypto_x509_ssl_auto_chain_if_needed(SSL *ssl) {
+static int ssl_crypto_x509_ssl_auto_chain_if_needed(SSL_HANDSHAKE *hs) {
   // Only build a chain if there are no intermediates configured and the feature
   // isn't disabled.
-  if ((ssl->mode & SSL_MODE_NO_AUTO_CHAIN) ||
-      !ssl_has_certificate(ssl) ||
-      ssl->cert->chain == nullptr ||
-      sk_CRYPTO_BUFFER_num(ssl->cert->chain.get()) > 1) {
+  if ((hs->ssl->mode & SSL_MODE_NO_AUTO_CHAIN) ||
+      !ssl_has_certificate(hs->config) || hs->config->cert->chain == NULL ||
+      sk_CRYPTO_BUFFER_num(hs->config->cert->chain.get()) > 1) {
     return 1;
   }
 
   UniquePtr<X509> leaf(X509_parse_from_buffer(
-      sk_CRYPTO_BUFFER_value(ssl->cert->chain.get(), 0)));
+      sk_CRYPTO_BUFFER_value(hs->config->cert->chain.get(), 0)));
   if (!leaf) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return 0;
   }
 
   ScopedX509_STORE_CTX ctx;
-  if (!X509_STORE_CTX_init(ctx.get(), ssl->ctx->cert_store, leaf.get(), NULL)) {
+  if (!X509_STORE_CTX_init(ctx.get(), hs->ssl->ctx->cert_store, leaf.get(),
+                           NULL)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return 0;
   }
@@ -460,11 +463,11 @@ static int ssl_crypto_x509_ssl_auto_chain_if_needed(SSL *ssl) {
   // Remove the leaf from the generated chain.
   X509_free(sk_X509_shift(ctx->chain));
 
-  if (!ssl_cert_set_chain(ssl->cert, ctx->chain)) {
+  if (!ssl_cert_set_chain(hs->config->cert, ctx->chain)) {
     return 0;
   }
 
-  ssl_crypto_x509_cert_flush_cached_chain(ssl->cert);
+  ssl_crypto_x509_cert_flush_cached_chain(hs->config->cert);
 
   return 1;
 }
@@ -499,7 +502,7 @@ const SSL_X509_METHOD ssl_crypto_x509_method = {
   ssl_crypto_x509_session_verify_cert_chain,
   ssl_crypto_x509_hs_flush_cached_ca_names,
   ssl_crypto_x509_ssl_new,
-  ssl_crypto_x509_ssl_free,
+  ssl_crypto_x509_ssl_config_free,
   ssl_crypto_x509_ssl_flush_cached_client_CA,
   ssl_crypto_x509_ssl_auto_chain_if_needed,
   ssl_crypto_x509_ssl_ctx_new,
@@ -578,7 +581,10 @@ int SSL_CTX_set_purpose(SSL_CTX *ctx, int purpose) {
 
 int SSL_set_purpose(SSL *ssl, int purpose) {
   check_ssl_x509_method(ssl);
-  return X509_VERIFY_PARAM_set_purpose(ssl->param, purpose);
+  if (!ssl->config) {
+    return 0;
+  }
+  return X509_VERIFY_PARAM_set_purpose(ssl->config->param, purpose);
 }
 
 int SSL_CTX_set_trust(SSL_CTX *ctx, int trust) {
@@ -588,7 +594,10 @@ int SSL_CTX_set_trust(SSL_CTX *ctx, int trust) {
 
 int SSL_set_trust(SSL *ssl, int trust) {
   check_ssl_x509_method(ssl);
-  return X509_VERIFY_PARAM_set_trust(ssl->param, trust);
+  if (!ssl->config) {
+    return 0;
+  }
+  return X509_VERIFY_PARAM_set_trust(ssl->config->param, trust);
 }
 
 int SSL_CTX_set1_param(SSL_CTX *ctx, const X509_VERIFY_PARAM *param) {
@@ -598,7 +607,10 @@ int SSL_CTX_set1_param(SSL_CTX *ctx, const X509_VERIFY_PARAM *param) {
 
 int SSL_set1_param(SSL *ssl, const X509_VERIFY_PARAM *param) {
   check_ssl_x509_method(ssl);
-  return X509_VERIFY_PARAM_set1(ssl->param, param);
+  if (!ssl->config) {
+    return 0;
+  }
+  return X509_VERIFY_PARAM_set1(ssl->config->param, param);
 }
 
 X509_VERIFY_PARAM *SSL_CTX_get0_param(SSL_CTX *ctx) {
@@ -608,17 +620,29 @@ X509_VERIFY_PARAM *SSL_CTX_get0_param(SSL_CTX *ctx) {
 
 X509_VERIFY_PARAM *SSL_get0_param(SSL *ssl) {
   check_ssl_x509_method(ssl);
-  return ssl->param;
+  if (!ssl->config) {
+    assert(ssl->config);
+    return 0;
+  }
+  return ssl->config->param;
 }
 
 int SSL_get_verify_depth(const SSL *ssl) {
   check_ssl_x509_method(ssl);
-  return X509_VERIFY_PARAM_get_depth(ssl->param);
+  if (!ssl->config) {
+    assert(ssl->config);
+    return 0;
+  }
+  return X509_VERIFY_PARAM_get_depth(ssl->config->param);
 }
 
 int (*SSL_get_verify_callback(const SSL *ssl))(int, X509_STORE_CTX *) {
   check_ssl_x509_method(ssl);
-  return ssl->verify_callback;
+  if (!ssl->config) {
+    assert(ssl->config);
+    return 0;
+  }
+  return ssl->config->verify_callback;
 }
 
 int SSL_CTX_get_verify_mode(const SSL_CTX *ctx) {
@@ -640,15 +664,21 @@ int (*SSL_CTX_get_verify_callback(const SSL_CTX *ctx))(
 void SSL_set_verify(SSL *ssl, int mode,
                     int (*callback)(int ok, X509_STORE_CTX *store_ctx)) {
   check_ssl_x509_method(ssl);
-  ssl->verify_mode = mode;
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->verify_mode = mode;
   if (callback != NULL) {
-    ssl->verify_callback = callback;
+    ssl->config->verify_callback = callback;
   }
 }
 
 void SSL_set_verify_depth(SSL *ssl, int depth) {
   check_ssl_x509_method(ssl);
-  X509_VERIFY_PARAM_set_depth(ssl->param, depth);
+  if (!ssl->config) {
+    return;
+  }
+  X509_VERIFY_PARAM_set_depth(ssl->config->param, depth);
 }
 
 void SSL_CTX_set_cert_verify_callback(SSL_CTX *ctx,
@@ -726,7 +756,10 @@ static int ssl_use_certificate(CERT *cert, X509 *x) {
 
 int SSL_use_certificate(SSL *ssl, X509 *x) {
   check_ssl_x509_method(ssl);
-  return ssl_use_certificate(ssl->cert, x);
+  if (!ssl->config) {
+    return 0;
+  }
+  return ssl_use_certificate(ssl->config->cert, x);
 }
 
 int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x) {
@@ -764,7 +797,11 @@ static X509 *ssl_cert_get0_leaf(CERT *cert) {
 
 X509 *SSL_get_certificate(const SSL *ssl) {
   check_ssl_x509_method(ssl);
-  return ssl_cert_get0_leaf(ssl->cert);
+  if (!ssl->config) {
+    assert(ssl->config);
+    return 0;
+  }
+  return ssl_cert_get0_leaf(ssl->config->cert);
 }
 
 X509 *SSL_CTX_get0_certificate(const SSL_CTX *ctx) {
@@ -846,12 +883,18 @@ int SSL_CTX_set1_chain(SSL_CTX *ctx, STACK_OF(X509) *chain) {
 
 int SSL_set0_chain(SSL *ssl, STACK_OF(X509) *chain) {
   check_ssl_x509_method(ssl);
-  return ssl_cert_set0_chain(ssl->cert, chain);
+  if (!ssl->config) {
+    return 0;
+  }
+  return ssl_cert_set0_chain(ssl->config->cert, chain);
 }
 
 int SSL_set1_chain(SSL *ssl, STACK_OF(X509) *chain) {
   check_ssl_x509_method(ssl);
-  return ssl_cert_set1_chain(ssl->cert, chain);
+  if (!ssl->config) {
+    return 0;
+  }
+  return ssl_cert_set1_chain(ssl->config->cert, chain);
 }
 
 int SSL_CTX_add0_chain_cert(SSL_CTX *ctx, X509 *x509) {
@@ -871,12 +914,18 @@ int SSL_CTX_add_extra_chain_cert(SSL_CTX *ctx, X509 *x509) {
 
 int SSL_add0_chain_cert(SSL *ssl, X509 *x509) {
   check_ssl_x509_method(ssl);
-  return ssl_cert_add0_chain_cert(ssl->cert, x509);
+  if (!ssl->config) {
+    return 0;
+  }
+  return ssl_cert_add0_chain_cert(ssl->config->cert, x509);
 }
 
 int SSL_add1_chain_cert(SSL *ssl, X509 *x509) {
   check_ssl_x509_method(ssl);
-  return ssl_cert_add1_chain_cert(ssl->cert, x509);
+  if (!ssl->config) {
+    return 0;
+  }
+  return ssl_cert_add1_chain_cert(ssl->config->cert, x509);
 }
 
 int SSL_CTX_clear_chain_certs(SSL_CTX *ctx) {
@@ -942,12 +991,16 @@ int SSL_CTX_get_extra_chain_certs(const SSL_CTX *ctx,
 
 int SSL_get0_chain_certs(const SSL *ssl, STACK_OF(X509) **out_chain) {
   check_ssl_x509_method(ssl);
-  if (!ssl_cert_cache_chain_certs(ssl->cert)) {
+  if (!ssl->config) {
+    assert(ssl->config);
+    return 0;
+  }
+  if (!ssl_cert_cache_chain_certs(ssl->config->cert)) {
     *out_chain = NULL;
     return 0;
   }
 
-  *out_chain = ssl->cert->x509_chain;
+  *out_chain = ssl->config->cert->x509_chain;
   return 1;
 }
 
@@ -1022,8 +1075,11 @@ static void set_client_CA_list(STACK_OF(CRYPTO_BUFFER) **ca_list,
 
 void SSL_set_client_CA_list(SSL *ssl, STACK_OF(X509_NAME) *name_list) {
   check_ssl_x509_method(ssl);
-  ssl->ctx->x509_method->ssl_flush_cached_client_CA(ssl);
-  set_client_CA_list(&ssl->client_CA, name_list, ssl->ctx->pool);
+  if (!ssl->config) {
+    return;
+  }
+  ssl->ctx->x509_method->ssl_flush_cached_client_CA(ssl->config);
+  set_client_CA_list(&ssl->config->client_CA, name_list, ssl->ctx->pool);
   sk_X509_NAME_pop_free(name_list, X509_NAME_free);
 }
 
@@ -1068,6 +1124,10 @@ static STACK_OF(X509_NAME) *
 
 STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
   check_ssl_x509_method(ssl);
+  if (!ssl->config) {
+    assert(ssl->config);
+    return NULL;
+  }
   // For historical reasons, this function is used both to query configuration
   // state on a server as well as handshake state on a client. However, whether
   // |ssl| is a client or server is not known until explicitly configured with
@@ -1082,9 +1142,10 @@ STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
     return NULL;
   }
 
-  if (ssl->client_CA != NULL) {
+  if (ssl->config->client_CA != NULL) {
     return buffer_names_to_x509(
-        ssl->client_CA, (STACK_OF(X509_NAME) **)&ssl->cached_x509_client_CA);
+        ssl->config->client_CA,
+        (STACK_OF(X509_NAME) **)&ssl->config->cached_x509_client_CA);
   }
   return SSL_CTX_get_client_CA_list(ssl->ctx);
 }
@@ -1140,11 +1201,14 @@ static int add_client_CA(STACK_OF(CRYPTO_BUFFER) **names, X509 *x509,
 
 int SSL_add_client_CA(SSL *ssl, X509 *x509) {
   check_ssl_x509_method(ssl);
-  if (!add_client_CA(&ssl->client_CA, x509, ssl->ctx->pool)) {
+  if (!ssl->config) {
+    return 0;
+  }
+  if (!add_client_CA(&ssl->config->client_CA, x509, ssl->ctx->pool)) {
     return 0;
   }
 
-  ssl_crypto_x509_ssl_flush_cached_client_CA(ssl);
+  ssl_crypto_x509_ssl_flush_cached_client_CA(ssl->config);
   return 1;
 }
 
@@ -1159,7 +1223,13 @@ int SSL_CTX_add_client_CA(SSL_CTX *ctx, X509 *x509) {
 }
 
 static int do_client_cert_cb(SSL *ssl, void *arg) {
-  if (ssl_has_certificate(ssl) || ssl->ctx->client_cert_cb == NULL) {
+  // Should only be called during handshake, but check to be sure.
+  if (!ssl->config) {
+    assert(ssl->config);
+    return -1;
+  }
+  if (ssl_has_certificate(ssl->config) ||
+      ssl->ctx->client_cert_cb == NULL) {
     return 1;
   }
 
@@ -1223,12 +1293,18 @@ int SSL_CTX_set1_verify_cert_store(SSL_CTX *ctx, X509_STORE *store) {
 
 int SSL_set0_verify_cert_store(SSL *ssl, X509_STORE *store) {
   check_ssl_x509_method(ssl);
-  return set_cert_store(&ssl->cert->verify_store, store, 0);
+  if (!ssl->config) {
+    return 0;
+  }
+  return set_cert_store(&ssl->config->cert->verify_store, store, 0);
 }
 
 int SSL_set1_verify_cert_store(SSL *ssl, X509_STORE *store) {
   check_ssl_x509_method(ssl);
-  return set_cert_store(&ssl->cert->verify_store, store, 1);
+  if (!ssl->config) {
+    return 0;
+  }
+  return set_cert_store(&ssl->config->cert->verify_store, store, 1);
 }
 
 int SSL_alert_from_verify_result(long result) {

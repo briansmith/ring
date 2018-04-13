@@ -199,13 +199,13 @@ enum ssl_client_hs_state_t {
 
 // ssl_get_client_disabled sets |*out_mask_a| and |*out_mask_k| to masks of
 // disabled algorithms.
-static void ssl_get_client_disabled(SSL *ssl, uint32_t *out_mask_a,
+static void ssl_get_client_disabled(SSL_HANDSHAKE *hs, uint32_t *out_mask_a,
                                     uint32_t *out_mask_k) {
   *out_mask_a = 0;
   *out_mask_k = 0;
 
   // PSK requires a client callback.
-  if (ssl->psk_client_callback == NULL) {
+  if (hs->config->psk_client_callback == NULL) {
     *out_mask_a |= SSL_aPSK;
     *out_mask_k |= SSL_kPSK;
   }
@@ -214,7 +214,7 @@ static void ssl_get_client_disabled(SSL *ssl, uint32_t *out_mask_a,
 static int ssl_write_client_cipher_list(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   uint32_t mask_a, mask_k;
-  ssl_get_client_disabled(ssl, &mask_a, &mask_k);
+  ssl_get_client_disabled(hs, &mask_a, &mask_k);
 
   CBB child;
   if (!CBB_add_u16_length_prefixed(out, &child)) {
@@ -390,7 +390,7 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   ssl->s3->session_reused = false;
 
   // Freeze the version range.
-  if (!ssl_get_version_range(ssl, &hs->min_version, &hs->max_version)) {
+  if (!ssl_get_version_range(hs, &hs->min_version, &hs->max_version)) {
     return ssl_hs_error;
   }
 
@@ -659,7 +659,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
   // The cipher must be allowed in the selected version and enabled.
   uint32_t mask_a, mask_k;
-  ssl_get_client_disabled(ssl, &mask_a, &mask_k);
+  ssl_get_client_disabled(hs, &mask_a, &mask_k);
   if ((cipher->algorithm_mkey & mask_k) || (cipher->algorithm_auth & mask_a) ||
       SSL_CIPHER_get_min_version(cipher) > ssl_protocol_version(ssl) ||
       SSL_CIPHER_get_max_version(cipher) < ssl_protocol_version(ssl) ||
@@ -680,7 +680,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
-    if (!ssl_session_is_context_valid(ssl, ssl->session)) {
+    if (!ssl_session_is_context_valid(hs, ssl->session)) {
       // This is actually a client application bug.
       OPENSSL_PUT_ERROR(SSL,
                         SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT);
@@ -970,7 +970,7 @@ static enum ssl_hs_wait_t do_read_server_key_exchange(SSL_HANDSHAKE *hs) {
     hs->new_session->group_id = group_id;
 
     // Ensure the group is consistent with preferences.
-    if (!tls1_check_group_id(ssl, group_id)) {
+    if (!tls1_check_group_id(hs, group_id)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
@@ -1176,8 +1176,8 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   }
 
   // Call cert_cb to update the certificate.
-  if (ssl->cert->cert_cb != NULL) {
-    int rv = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
+  if (hs->config->cert->cert_cb != NULL) {
+    int rv = hs->config->cert->cert_cb(ssl, hs->config->cert->cert_cb_arg);
     if (rv == 0) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_CB_ERROR);
@@ -1189,7 +1189,7 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (!ssl_has_certificate(ssl)) {
+  if (!ssl_has_certificate(hs->config)) {
     // Without a client certificate, the handshake buffer may be released.
     hs->transcript.FreeBuffer();
 
@@ -1205,7 +1205,7 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   }
 
   if (!ssl_on_certificate_selected(hs) ||
-      !ssl_output_cert_chain(ssl)) {
+      !ssl_output_cert_chain(hs)) {
     return ssl_hs_error;
   }
 
@@ -1234,16 +1234,16 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
   unsigned psk_len = 0;
   uint8_t psk[PSK_MAX_PSK_LEN];
   if (alg_a & SSL_aPSK) {
-    if (ssl->psk_client_callback == NULL) {
+    if (hs->config->psk_client_callback == NULL) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PSK_NO_CLIENT_CB);
       return ssl_hs_error;
     }
 
     char identity[PSK_MAX_IDENTITY_LEN + 1];
     OPENSSL_memset(identity, 0, sizeof(identity));
-    psk_len =
-        ssl->psk_client_callback(ssl, hs->peer_psk_identity_hint.get(),
-                                 identity, sizeof(identity), psk, sizeof(psk));
+    psk_len = hs->config->psk_client_callback(
+        ssl, hs->peer_psk_identity_hint.get(), identity, sizeof(identity), psk,
+        sizeof(psk));
     if (psk_len == 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PSK_IDENTITY_NOT_FOUND);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
@@ -1373,12 +1373,12 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
-  if (!hs->cert_request || !ssl_has_certificate(ssl)) {
+  if (!hs->cert_request || !ssl_has_certificate(hs->config)) {
     hs->state = state_send_client_finished;
     return ssl_hs_ok;
   }
 
-  assert(ssl_has_private_key(ssl));
+  assert(ssl_has_private_key(hs->config));
   ScopedCBB cbb;
   CBB body, child;
   if (!ssl->method->init_message(ssl, cbb.get(), &body,
@@ -1410,7 +1410,7 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
   // The SSL3 construction for CertificateVerify does not decompose into a
   // single final digest and signature, and must be special-cased.
   if (ssl_protocol_version(ssl) == SSL3_VERSION) {
-    if (ssl->cert->key_method != NULL) {
+    if (hs->config->cert->key_method != NULL) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL_FOR_CUSTOM_KEY);
       return ssl_hs_error;
     }
@@ -1423,7 +1423,7 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
     }
 
     UniquePtr<EVP_PKEY_CTX> pctx(
-        EVP_PKEY_CTX_new(ssl->cert->privatekey.get(), nullptr));
+        EVP_PKEY_CTX_new(hs->config->cert->privatekey.get(), nullptr));
     if (!pctx ||
         !EVP_PKEY_sign_init(pctx.get()) ||
         !EVP_PKEY_sign(pctx.get(), ptr, &sig_len, digest, digest_len)) {
@@ -1459,11 +1459,11 @@ static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   // Resolve Channel ID first, before any non-idempotent operations.
   if (ssl->s3->tlsext_channel_id_valid) {
-    if (!ssl_do_channel_id_callback(ssl)) {
+    if (!ssl_do_channel_id_callback(hs)) {
       return ssl_hs_error;
     }
 
-    if (ssl->tlsext_channel_id_private == NULL) {
+    if (hs->config->tlsext_channel_id_private == NULL) {
       hs->state = state_send_client_finished;
       return ssl_hs_channel_id_lookup;
     }

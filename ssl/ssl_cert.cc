@@ -136,7 +136,7 @@
 namespace bssl {
 
 CERT::CERT(const SSL_X509_METHOD *x509_method_arg)
-    : x509_method(x509_method_arg), enable_early_data(false) {}
+    : x509_method(x509_method_arg) {}
 
 CERT::~CERT() {
   ssl_cert_clear_certs(this);
@@ -191,8 +191,6 @@ UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
 
   ret->sid_ctx_length = cert->sid_ctx_length;
   OPENSSL_memcpy(ret->sid_ctx, cert->sid_ctx, sizeof(ret->sid_ctx));
-
-  ret->enable_early_data = cert->enable_early_data;
 
   return ret;
 }
@@ -342,10 +340,10 @@ int ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
   return 1;
 }
 
-int ssl_has_certificate(const SSL *ssl) {
-  return ssl->cert->chain != nullptr &&
-         sk_CRYPTO_BUFFER_value(ssl->cert->chain.get(), 0) != nullptr &&
-         ssl_has_private_key(ssl);
+int ssl_has_certificate(const SSL_CONFIG *cfg) {
+  return cfg->cert->chain != nullptr &&
+         sk_CRYPTO_BUFFER_value(cfg->cert->chain.get(), 0) != nullptr &&
+         ssl_has_private_key(cfg);
 }
 
 bool ssl_parse_cert_chain(uint8_t *out_alert,
@@ -412,8 +410,8 @@ bool ssl_parse_cert_chain(uint8_t *out_alert,
   return true;
 }
 
-int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
-  if (!ssl_has_certificate(ssl)) {
+int ssl_add_cert_chain(SSL_HANDSHAKE *hs, CBB *cbb) {
+  if (!ssl_has_certificate(hs->config)) {
     return CBB_add_u24(cbb, 0);
   }
 
@@ -423,7 +421,7 @@ int ssl_add_cert_chain(SSL *ssl, CBB *cbb) {
     return 0;
   }
 
-  STACK_OF(CRYPTO_BUFFER) *chain = ssl->cert->chain.get();
+  STACK_OF(CRYPTO_BUFFER) *chain = hs->config->cert->chain.get();
   for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(chain); i++) {
     CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(chain, i);
     CBB child;
@@ -673,10 +671,10 @@ UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_client_CA_list(SSL *ssl,
   return ret;
 }
 
-bool ssl_has_client_CAs(SSL *ssl) {
-  STACK_OF(CRYPTO_BUFFER) *names = ssl->client_CA;
+bool ssl_has_client_CAs(const SSL_CONFIG *cfg) {
+  STACK_OF(CRYPTO_BUFFER) *names = cfg->client_CA;
   if (names == NULL) {
-    names = ssl->ctx->client_CA;
+    names = cfg->ssl->ctx->client_CA;
   }
   if (names == NULL) {
     return false;
@@ -684,15 +682,15 @@ bool ssl_has_client_CAs(SSL *ssl) {
   return sk_CRYPTO_BUFFER_num(names) > 0;
 }
 
-int ssl_add_client_CA_list(SSL *ssl, CBB *cbb) {
+int ssl_add_client_CA_list(SSL_HANDSHAKE *hs, CBB *cbb) {
   CBB child, name_cbb;
   if (!CBB_add_u16_length_prefixed(cbb, &child)) {
     return 0;
   }
 
-  STACK_OF(CRYPTO_BUFFER) *names = ssl->client_CA;
+  STACK_OF(CRYPTO_BUFFER) *names = hs->config->client_CA;
   if (names == NULL) {
-    names = ssl->ctx->client_CA;
+    names = hs->ssl->ctx->client_CA;
   }
   if (names == NULL) {
     return CBB_flush(cbb);
@@ -711,8 +709,7 @@ int ssl_add_client_CA_list(SSL *ssl, CBB *cbb) {
 
 int ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
                                const CRYPTO_BUFFER *leaf) {
-  SSL *const ssl = hs->ssl;
-  assert(ssl_protocol_version(ssl) < TLS1_3_VERSION);
+  assert(ssl_protocol_version(hs->ssl) < TLS1_3_VERSION);
 
   // Check the certificate's type matches the cipher.
   if (!(hs->new_cipher->algorithm_auth & ssl_cipher_auth_mask_for_key(pkey))) {
@@ -740,7 +737,7 @@ int ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
     uint16_t group_id;
     if (!ssl_nid_to_group_id(
             &group_id, EC_GROUP_get_curve_name(EC_KEY_get0_group(ec_key))) ||
-        !tls1_check_group_id(ssl, group_id) ||
+        !tls1_check_group_id(hs, group_id) ||
         EC_KEY_get_conv_form(ec_key) != POINT_CONVERSION_UNCOMPRESSED) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECC_CERT);
       return 0;
@@ -752,18 +749,18 @@ int ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
 
 int ssl_on_certificate_selected(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!ssl_has_certificate(ssl)) {
+  if (!ssl_has_certificate(hs->config)) {
     // Nothing to do.
     return 1;
   }
 
-  if (!ssl->ctx->x509_method->ssl_auto_chain_if_needed(ssl)) {
+  if (!ssl->ctx->x509_method->ssl_auto_chain_if_needed(hs)) {
     return 0;
   }
 
   CBS leaf;
-  CRYPTO_BUFFER_init_CBS(sk_CRYPTO_BUFFER_value(ssl->cert->chain.get(), 0),
-                         &leaf);
+  CRYPTO_BUFFER_init_CBS(
+      sk_CRYPTO_BUFFER_value(hs->config->cert->chain.get(), 0), &leaf);
 
   hs->local_pubkey = ssl_cert_parse_pubkey(&leaf);
   return hs->local_pubkey != NULL;
@@ -776,7 +773,10 @@ using namespace bssl;
 int SSL_set_chain_and_key(SSL *ssl, CRYPTO_BUFFER *const *certs,
                           size_t num_certs, EVP_PKEY *privkey,
                           const SSL_PRIVATE_KEY_METHOD *privkey_method) {
-  return cert_set_chain_and_key(ssl->cert, certs, num_certs, privkey,
+  if (!ssl->config) {
+    return 0;
+  }
+  return cert_set_chain_and_key(ssl->config->cert, certs, num_certs, privkey,
                                 privkey_method);
 }
 
@@ -799,11 +799,11 @@ int SSL_CTX_use_certificate_ASN1(SSL_CTX *ctx, size_t der_len,
 
 int SSL_use_certificate_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
   UniquePtr<CRYPTO_BUFFER> buffer(CRYPTO_BUFFER_new(der, der_len, NULL));
-  if (!buffer) {
+  if (!buffer || !ssl->config) {
     return 0;
   }
 
-  return ssl_set_cert(ssl->cert, std::move(buffer));
+  return ssl_set_cert(ssl->config->cert, std::move(buffer));
 }
 
 void SSL_CTX_set_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl, void *arg),
@@ -812,7 +812,10 @@ void SSL_CTX_set_cert_cb(SSL_CTX *ctx, int (*cb)(SSL *ssl, void *arg),
 }
 
 void SSL_set_cert_cb(SSL *ssl, int (*cb)(SSL *ssl, void *arg), void *arg) {
-  ssl_cert_set_cert_cb(ssl->cert, cb, arg);
+  if (!ssl->config) {
+    return;
+  }
+  ssl_cert_set_cert_cb(ssl->config->cert, cb, arg);
 }
 
 STACK_OF(CRYPTO_BUFFER) *SSL_get0_peer_certificates(const SSL *ssl) {
@@ -852,7 +855,10 @@ int SSL_CTX_set_signed_cert_timestamp_list(SSL_CTX *ctx, const uint8_t *list,
 
 int SSL_set_signed_cert_timestamp_list(SSL *ssl, const uint8_t *list,
                                        size_t list_len) {
-  return set_signed_cert_timestamp_list(ssl->cert, list, list_len);
+  if (!ssl->config) {
+    return 0;
+  }
+  return set_signed_cert_timestamp_list(ssl->config->cert, list, list_len);
 }
 
 int SSL_CTX_set_ocsp_response(SSL_CTX *ctx, const uint8_t *response,
@@ -864,9 +870,12 @@ int SSL_CTX_set_ocsp_response(SSL_CTX *ctx, const uint8_t *response,
 
 int SSL_set_ocsp_response(SSL *ssl, const uint8_t *response,
                           size_t response_len) {
-  ssl->cert->ocsp_response.reset(
+  if (!ssl->config) {
+    return 0;
+  }
+  ssl->config->cert->ocsp_response.reset(
       CRYPTO_BUFFER_new(response, response_len, nullptr));
-  return ssl->cert->ocsp_response != nullptr;
+  return ssl->config->cert->ocsp_response != nullptr;
 }
 
 void SSL_CTX_set0_client_CAs(SSL_CTX *ctx, STACK_OF(CRYPTO_BUFFER) *name_list) {
@@ -876,7 +885,10 @@ void SSL_CTX_set0_client_CAs(SSL_CTX *ctx, STACK_OF(CRYPTO_BUFFER) *name_list) {
 }
 
 void SSL_set0_client_CAs(SSL *ssl, STACK_OF(CRYPTO_BUFFER) *name_list) {
-  ssl->ctx->x509_method->ssl_flush_cached_client_CA(ssl);
-  sk_CRYPTO_BUFFER_pop_free(ssl->client_CA, CRYPTO_BUFFER_free);
-  ssl->client_CA = name_list;
+  if (!ssl->config) {
+    return;
+  }
+  ssl->ctx->x509_method->ssl_flush_cached_client_CA(ssl->config);
+  sk_CRYPTO_BUFFER_pop_free(ssl->config->client_CA, CRYPTO_BUFFER_free);
+  ssl->config->client_CA = name_list;
 }

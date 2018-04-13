@@ -134,8 +134,8 @@ static const SSL_SIGNATURE_ALGORITHM *get_signature_algorithm(uint16_t sigalg) {
   return NULL;
 }
 
-int ssl_has_private_key(const SSL *ssl) {
-  return ssl->cert->privatekey != nullptr || ssl->cert->key_method != nullptr;
+int ssl_has_private_key(const SSL_CONFIG *cfg) {
+  return cfg->cert->privatekey != nullptr || cfg->cert->key_method != nullptr;
 }
 
 static int pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
@@ -196,13 +196,13 @@ enum ssl_private_key_result_t ssl_private_key_sign(
     SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, size_t max_out,
     uint16_t sigalg, Span<const uint8_t> in) {
   SSL *const ssl = hs->ssl;
-  if (ssl->cert->key_method != NULL) {
+  if (hs->config->cert->key_method != NULL) {
     enum ssl_private_key_result_t ret;
     if (hs->pending_private_key_op) {
-      ret = ssl->cert->key_method->complete(ssl, out, out_len, max_out);
+      ret = hs->config->cert->key_method->complete(ssl, out, out_len, max_out);
     } else {
-      ret = ssl->cert->key_method->sign(ssl, out, out_len, max_out, sigalg,
-                                        in.data(), in.size());
+      ret = hs->config->cert->key_method->sign(ssl, out, out_len, max_out,
+                                               sigalg, in.data(), in.size());
     }
     if (ret == ssl_private_key_failure) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PRIVATE_KEY_OPERATION_FAILED);
@@ -213,7 +213,7 @@ enum ssl_private_key_result_t ssl_private_key_sign(
 
   *out_len = max_out;
   ScopedEVP_MD_CTX ctx;
-  if (!setup_ctx(ssl, ctx.get(), ssl->cert->privatekey.get(), sigalg,
+  if (!setup_ctx(ssl, ctx.get(), hs->config->cert->privatekey.get(), sigalg,
                  0 /* sign */) ||
       !EVP_DigestSign(ctx.get(), out, out_len, in.data(), in.size())) {
     return ssl_private_key_failure;
@@ -236,13 +236,13 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
                                                       size_t max_out,
                                                       Span<const uint8_t> in) {
   SSL *const ssl = hs->ssl;
-  if (ssl->cert->key_method != NULL) {
+  if (hs->config->cert->key_method != NULL) {
     enum ssl_private_key_result_t ret;
     if (hs->pending_private_key_op) {
-      ret = ssl->cert->key_method->complete(ssl, out, out_len, max_out);
+      ret = hs->config->cert->key_method->complete(ssl, out, out_len, max_out);
     } else {
-      ret = ssl->cert->key_method->decrypt(ssl, out, out_len, max_out,
-                                           in.data(), in.size());
+      ret = hs->config->cert->key_method->decrypt(ssl, out, out_len, max_out,
+                                                  in.data(), in.size());
     }
     if (ret == ssl_private_key_failure) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PRIVATE_KEY_OPERATION_FAILED);
@@ -251,7 +251,7 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
     return ret;
   }
 
-  RSA *rsa = EVP_PKEY_get0_RSA(ssl->cert->privatekey.get());
+  RSA *rsa = EVP_PKEY_get0_RSA(hs->config->cert->privatekey.get());
   if (rsa == NULL) {
     // Decrypt operations are only supported for RSA keys.
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -294,7 +294,7 @@ bool ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
 using namespace bssl;
 
 int SSL_use_RSAPrivateKey(SSL *ssl, RSA *rsa) {
-  if (rsa == NULL) {
+  if (rsa == NULL || ssl->config == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -306,7 +306,7 @@ int SSL_use_RSAPrivateKey(SSL *ssl, RSA *rsa) {
     return 0;
   }
 
-  return ssl_set_pkey(ssl->cert, pkey.get());
+  return ssl_set_pkey(ssl->config->cert, pkey.get());
 }
 
 int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
@@ -320,12 +320,12 @@ int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
 }
 
 int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey) {
-  if (pkey == NULL) {
+  if (pkey == NULL || ssl->config == NULL) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
-  return ssl_set_pkey(ssl->cert, pkey);
+  return ssl_set_pkey(ssl->config->cert, pkey);
 }
 
 int SSL_use_PrivateKey_ASN1(int type, SSL *ssl, const uint8_t *der,
@@ -400,7 +400,10 @@ int SSL_CTX_use_PrivateKey_ASN1(int type, SSL_CTX *ctx, const uint8_t *der,
 
 void SSL_set_private_key_method(SSL *ssl,
                                 const SSL_PRIVATE_KEY_METHOD *key_method) {
-  ssl->cert->key_method = key_method;
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->cert->key_method = key_method;
 }
 
 void SSL_CTX_set_private_key_method(SSL_CTX *ctx,
@@ -482,7 +485,10 @@ int SSL_CTX_set_signing_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
 
 int SSL_set_signing_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
                                     size_t num_prefs) {
-  return ssl->cert->sigalgs.CopyFrom(MakeConstSpan(prefs, num_prefs));
+  if (!ssl->config) {
+    return 0;
+  }
+  return ssl->config->cert->sigalgs.CopyFrom(MakeConstSpan(prefs, num_prefs));
 }
 
 int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,

@@ -146,7 +146,9 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       ticket_expected(false),
       extended_master_secret(false),
       pending_private_key_op(false),
-      grease_seeded(false) {
+      grease_seeded(false),
+      handback(false) {
+  assert(ssl);
 }
 
 SSL_HANDSHAKE::~SSL_HANDSHAKE() {
@@ -157,6 +159,11 @@ UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl) {
   UniquePtr<SSL_HANDSHAKE> hs = MakeUnique<SSL_HANDSHAKE>(ssl);
   if (!hs ||
       !hs->transcript.Init()) {
+    return nullptr;
+  }
+  hs->config = ssl->config;
+  if (!hs->config) {
+    assert(hs->config);
     return nullptr;
   }
   return hs;
@@ -189,7 +196,8 @@ size_t ssl_max_handshake_message_len(const SSL *ssl) {
   static const size_t kMaxMessageLen = 16384;
 
   if (SSL_in_init(ssl)) {
-    if ((!ssl->server || (ssl->verify_mode & SSL_VERIFY_PEER)) &&
+    SSL_CONFIG *config = ssl->config;  // SSL_in_init() implies not NULL.
+    if ((!ssl->server || (config->verify_mode & SSL_VERIFY_PEER)) &&
         kMaxMessageLen < ssl->max_cert_list) {
       return ssl->max_cert_list;
     }
@@ -327,15 +335,15 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
 
   uint8_t alert = SSL_AD_CERTIFICATE_UNKNOWN;
   enum ssl_verify_result_t ret;
-  if (ssl->custom_verify_callback != nullptr) {
-    ret = ssl->custom_verify_callback(ssl, &alert);
+  if (hs->config->custom_verify_callback != nullptr) {
+    ret = hs->config->custom_verify_callback(ssl, &alert);
     switch (ret) {
       case ssl_verify_ok:
         hs->new_session->verify_result = X509_V_OK;
         break;
       case ssl_verify_invalid:
         // If |SSL_VERIFY_NONE|, the error is non-fatal, but we keep the result.
-        if (ssl->verify_mode == SSL_VERIFY_NONE) {
+        if (hs->config->verify_mode == SSL_VERIFY_NONE) {
           ERR_clear_error();
           ret = ssl_verify_ok;
         }
@@ -346,7 +354,7 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
     }
   } else {
     ret = ssl->ctx->x509_method->session_verify_cert_chain(
-              hs->new_session.get(), ssl, &alert)
+              hs->new_session.get(), hs, &alert)
               ? ssl_verify_ok
               : ssl_verify_invalid;
   }
@@ -475,12 +483,13 @@ bool ssl_send_finished(SSL_HANDSHAKE *hs) {
   return 1;
 }
 
-bool ssl_output_cert_chain(SSL *ssl) {
+bool ssl_output_cert_chain(SSL_HANDSHAKE *hs) {
   ScopedCBB cbb;
   CBB body;
-  if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CERTIFICATE) ||
-      !ssl_add_cert_chain(ssl, &body) ||
-      !ssl_add_message_cbb(ssl, cbb.get())) {
+  if (!hs->ssl->method->init_message(hs->ssl, cbb.get(), &body,
+                                     SSL3_MT_CERTIFICATE) ||
+      !ssl_add_cert_chain(hs, &body) ||
+      !ssl_add_message_cbb(hs->ssl, cbb.get())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;
   }

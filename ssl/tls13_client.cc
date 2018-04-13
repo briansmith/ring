@@ -157,7 +157,7 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
     }
 
     // The group must be supported.
-    if (!tls1_check_group_id(ssl, group_id)) {
+    if (!tls1_check_group_id(hs, group_id)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
       return ssl_hs_error;
@@ -316,7 +316,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    if (!ssl_session_is_context_valid(ssl, ssl->session)) {
+    if (!ssl_session_is_context_valid(hs, ssl->session)) {
       // This is actually a client application bug.
       OPENSSL_PUT_ERROR(SSL,
                         SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT);
@@ -335,7 +335,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
     // Resumption incorporates fresh key material, so refresh the timeout.
     ssl_session_renew_timeout(ssl, hs->new_session.get(),
-                              ssl->session_ctx->session_psk_dhe_timeout);
+                              hs->config->session_ctx->session_psk_dhe_timeout);
   } else if (!ssl_get_new_session(hs, 0)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
@@ -629,8 +629,8 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   }
 
   // Call cert_cb to update the certificate.
-  if (ssl->cert->cert_cb != NULL) {
-    int rv = ssl->cert->cert_cb(ssl, ssl->cert->cert_cb_arg);
+  if (hs->config->cert->cert_cb != NULL) {
+    int rv = hs->config->cert->cert_cb(ssl, hs->config->cert->cert_cb_arg);
     if (rv == 0) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_CB_ERROR);
@@ -652,9 +652,8 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
 }
 
 static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
-  SSL *const ssl = hs->ssl;
   // Don't send CertificateVerify if there is no certificate.
-  if (!ssl_has_certificate(ssl)) {
+  if (!ssl_has_certificate(hs->config)) {
     hs->tls13_state = state_complete_second_flight;
     return ssl_hs_ok;
   }
@@ -681,12 +680,12 @@ static enum ssl_hs_wait_t do_complete_second_flight(SSL_HANDSHAKE *hs) {
 
   // Send a Channel ID assertion if necessary.
   if (ssl->s3->tlsext_channel_id_valid) {
-    if (!ssl_do_channel_id_callback(ssl)) {
+    if (!ssl_do_channel_id_callback(hs)) {
       hs->tls13_state = state_complete_second_flight;
       return ssl_hs_error;
     }
 
-    if (ssl->tlsext_channel_id_private == NULL) {
+    if (hs->config->tlsext_channel_id_private == NULL) {
       return ssl_hs_channel_id_lookup;
     }
 
@@ -866,7 +865,7 @@ int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
     return 0;
   }
 
-  if (have_early_data_info && ssl->cert->enable_early_data) {
+  if (have_early_data_info && ssl->enable_early_data) {
     if (!CBS_get_u32(&early_data_info, &session->ticket_max_early_data) ||
         CBS_len(&early_data_info) != 0) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);

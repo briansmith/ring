@@ -2066,11 +2066,14 @@ static bssl::UniquePtr<SSL> NewSSL(SSL_CTX *ssl_ctx, const TestConfig *config,
   if (config->install_ddos_callback) {
     SSL_CTX_set_dos_protection_cb(ssl_ctx, DDoSCallback);
   }
+  SSL_set_shed_handshake_config(ssl.get(), true);
   if (config->renegotiate_once) {
     SSL_set_renegotiate_mode(ssl.get(), ssl_renegotiate_once);
+    SSL_set_shed_handshake_config(ssl.get(), config->shed_despite_renegotiate);
   }
   if (config->renegotiate_freely) {
     SSL_set_renegotiate_mode(ssl.get(), ssl_renegotiate_freely);
+    SSL_set_shed_handshake_config(ssl.get(), config->shed_despite_renegotiate);
   }
   if (config->renegotiate_ignore) {
     SSL_set_renegotiate_mode(ssl.get(), ssl_renegotiate_ignore);

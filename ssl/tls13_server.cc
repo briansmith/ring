@@ -169,7 +169,7 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
       return 0;
     }
     session->ticket_age_add_valid = 1;
-    if (ssl->cert->enable_early_data) {
+    if (ssl->enable_early_data) {
       session->ticket_max_early_data = kMaxEarlyDataAccepted;
     }
 
@@ -186,12 +186,12 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
         !CBB_add_bytes(&nonce_cbb, nonce, sizeof(nonce)) ||
         !CBB_add_u16_length_prefixed(&body, &ticket) ||
         !tls13_derive_session_psk(session.get(), nonce) ||
-        !ssl_encrypt_ticket(ssl, &ticket, session.get()) ||
+        !ssl_encrypt_ticket(hs, &ticket, session.get()) ||
         !CBB_add_u16_length_prefixed(&body, &extensions)) {
       return 0;
     }
 
-    if (ssl->cert->enable_early_data) {
+    if (ssl->enable_early_data) {
       CBB early_data_info;
       if (!CBB_add_u16(&extensions, TLSEXT_TYPE_early_data) ||
           !CBB_add_u16_length_prefixed(&extensions, &early_data_info) ||
@@ -302,7 +302,7 @@ static enum ssl_ticket_aead_result_t select_session(
   bool unused_renew;
   UniquePtr<SSL_SESSION> session;
   enum ssl_ticket_aead_result_t ret =
-      ssl_process_ticket(ssl, &session, &unused_renew, CBS_data(&ticket),
+      ssl_process_ticket(hs, &session, &unused_renew, CBS_data(&ticket),
                          CBS_len(&ticket), NULL, 0);
   switch (ret) {
     case ssl_ticket_aead_success:
@@ -383,7 +383,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       hs->new_session =
           SSL_SESSION_dup(session.get(), SSL_SESSION_DUP_AUTH_ONLY);
 
-      if (ssl->cert->enable_early_data &&
+      if (ssl->enable_early_data &&
           // Early data must be acceptable for this ticket.
           session->ticket_max_early_data != 0 &&
           // The client must have offered early data.
@@ -408,8 +408,9 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       ssl->s3->session_reused = true;
 
       // Resumption incorporates fresh key material, so refresh the timeout.
-      ssl_session_renew_timeout(ssl, hs->new_session.get(),
-                                ssl->session_ctx->session_psk_dhe_timeout);
+      ssl_session_renew_timeout(
+          ssl, hs->new_session.get(),
+          hs->config->session_ctx->session_psk_dhe_timeout);
       break;
 
     case ssl_ticket_aead_error:
@@ -599,9 +600,9 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
 
   if (!ssl->s3->session_reused) {
     // Determine whether to request a client certificate.
-    hs->cert_request = !!(ssl->verify_mode & SSL_VERIFY_PEER);
+    hs->cert_request = !!(hs->config->verify_mode & SSL_VERIFY_PEER);
     // Only request a certificate if Channel ID isn't negotiated.
-    if ((ssl->verify_mode & SSL_VERIFY_PEER_IF_NO_OBC) &&
+    if ((hs->config->verify_mode & SSL_VERIFY_PEER_IF_NO_OBC) &&
         ssl->s3->tlsext_channel_id_valid) {
       hs->cert_request = false;
     }
@@ -635,13 +636,13 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
       }
     }
 
-    if (ssl_has_client_CAs(ssl)) {
+    if (ssl_has_client_CAs(hs->config)) {
       CBB ca_contents;
       if (!CBB_add_u16(&cert_request_extensions,
                        TLSEXT_TYPE_certificate_authorities) ||
           !CBB_add_u16_length_prefixed(&cert_request_extensions,
                                        &ca_contents) ||
-          !ssl_add_client_CA_list(ssl, &ca_contents) ||
+          !ssl_add_client_CA_list(hs, &ca_contents) ||
           !CBB_flush(&cert_request_extensions)) {
         return ssl_hs_error;
       }
@@ -654,7 +655,7 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
 
   // Send the server Certificate message, if necessary.
   if (!ssl->s3->session_reused) {
-    if (!ssl_has_certificate(ssl)) {
+    if (!ssl_has_certificate(hs->config)) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATE_SET);
       return ssl_hs_error;
     }
@@ -805,7 +806,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
   }
 
   const int allow_anonymous =
-      (ssl->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) == 0;
+      (hs->config->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) == 0;
   SSLMessage msg;
   if (!ssl->method->get_message(ssl, &msg)) {
     return ssl_hs_read_message;

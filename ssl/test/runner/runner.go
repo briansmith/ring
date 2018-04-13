@@ -8209,6 +8209,19 @@ func addRenegotiationTests() {
 		},
 	})
 
+	// Renegotiation should be rejected if the handshake config has been shed.
+	testCases = append(testCases, testCase{
+		name: "Renegotiate-HandshakeConfigShed",
+		config: Config{
+			MaxVersion: VersionTLS12,
+		},
+		renegotiate:        1,
+		flags:              []string{"-renegotiate-freely", "-shed-despite-renegotiate"},
+		shouldFail:         true,
+		expectedError:      ":NO_RENEGOTIATION:",
+		expectedLocalError: "remote error: no renegotiation",
+	})
+
 	// Renegotiation is not allowed at SSL 3.0.
 	testCases = append(testCases, testCase{
 		name: "Renegotiate-Client-SSL3",

@@ -215,12 +215,4 @@ void ssl3_free(SSL *ssl) {
   ssl->s3 = NULL;
 }
 
-const SSLCipherPreferenceList *ssl_get_cipher_preferences(const SSL *ssl) {
-  if (ssl->cipher_list != NULL) {
-    return ssl->cipher_list;
-  }
-
-  return ssl->ctx->cipher_list;
-}
-
 }  // namespace bssl
