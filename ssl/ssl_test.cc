@@ -3447,9 +3447,11 @@ static void ConnectClientAndServerWithTicketMethod(
   }
 }
 
+using TicketAEADMethodParam =
+    testing::tuple<uint16_t, unsigned, ssl_test_ticket_aead_failure_mode>;
+
 class TicketAEADMethodTest
-    : public ::testing::TestWithParam<testing::tuple<
-          uint16_t, unsigned, ssl_test_ticket_aead_failure_mode>> {};
+    : public ::testing::TestWithParam<TicketAEADMethodParam> {};
 
 TEST_P(TicketAEADMethodTest, Resume) {
   bssl::UniquePtr<X509> cert = GetTestCertificate();
@@ -3525,15 +3527,49 @@ TEST_P(TicketAEADMethodTest, Resume) {
   }
 }
 
+std::string TicketAEADMethodParamToString(
+    const testing::TestParamInfo<TicketAEADMethodParam> &params) {
+  std::string ret = GetVersionName(std::get<0>(params.param));
+  // GTest only allows alphanumeric characters and '_' in the parameter
+  // string. Additionally filter out the 'v' to get "TLS13" over "TLSv13".
+  for (auto it = ret.begin(); it != ret.end();) {
+    if (*it == '.' || *it == 'v') {
+      it = ret.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  char retry_count[256];
+  snprintf(retry_count, sizeof(retry_count), "%d", std::get<1>(params.param));
+  ret += "_";
+  ret += retry_count;
+  ret += "Retries_";
+  switch (std::get<2>(params.param)) {
+    case ssl_test_ticket_aead_ok:
+      ret += "OK";
+      break;
+    case ssl_test_ticket_aead_seal_fail:
+      ret += "SealFail";
+      break;
+    case ssl_test_ticket_aead_open_soft_fail:
+      ret += "OpenSoftFail";
+      break;
+    case ssl_test_ticket_aead_open_hard_fail:
+      ret += "OpenHardFail";
+      break;
+  }
+  return ret;
+}
+
 INSTANTIATE_TEST_CASE_P(
     TicketAEADMethodTests, TicketAEADMethodTest,
-    testing::Combine(
-        testing::Values(TLS1_2_VERSION, TLS1_3_VERSION),
-        testing::Values(0, 1, 2),
-        testing::Values(ssl_test_ticket_aead_ok,
-                        ssl_test_ticket_aead_seal_fail,
-                        ssl_test_ticket_aead_open_soft_fail,
-                        ssl_test_ticket_aead_open_hard_fail)));
+    testing::Combine(testing::Values(TLS1_2_VERSION, TLS1_3_VERSION),
+                     testing::Values(0, 1, 2),
+                     testing::Values(ssl_test_ticket_aead_ok,
+                                     ssl_test_ticket_aead_seal_fail,
+                                     ssl_test_ticket_aead_open_soft_fail,
+                                     ssl_test_ticket_aead_open_hard_fail)),
+    TicketAEADMethodParamToString);
 
 TEST(SSLTest, SelectNextProto) {
   uint8_t *result;
