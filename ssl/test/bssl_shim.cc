@@ -333,40 +333,14 @@ static ssl_private_key_result_t AsyncPrivateKeySign(
     abort();
   }
 
-  // Determine the hash.
-  const EVP_MD *md;
-  switch (signature_algorithm) {
-    case SSL_SIGN_RSA_PKCS1_SHA1:
-    case SSL_SIGN_ECDSA_SHA1:
-      md = EVP_sha1();
-      break;
-    case SSL_SIGN_RSA_PKCS1_SHA256:
-    case SSL_SIGN_ECDSA_SECP256R1_SHA256:
-    case SSL_SIGN_RSA_PSS_SHA256:
-      md = EVP_sha256();
-      break;
-    case SSL_SIGN_RSA_PKCS1_SHA384:
-    case SSL_SIGN_ECDSA_SECP384R1_SHA384:
-    case SSL_SIGN_RSA_PSS_SHA384:
-      md = EVP_sha384();
-      break;
-    case SSL_SIGN_RSA_PKCS1_SHA512:
-    case SSL_SIGN_ECDSA_SECP521R1_SHA512:
-    case SSL_SIGN_RSA_PSS_SHA512:
-      md = EVP_sha512();
-      break;
-    case SSL_SIGN_RSA_PKCS1_MD5_SHA1:
-      md = EVP_md5_sha1();
-      break;
-    case SSL_SIGN_ED25519:
-      md = nullptr;
-      break;
-    default:
-      fprintf(stderr, "Unknown signature algorithm %04x.\n",
-              signature_algorithm);
-      return ssl_private_key_failure;
+  if (EVP_PKEY_id(test_state->private_key.get()) !=
+      SSL_get_signature_algorithm_key_type(signature_algorithm)) {
+    fprintf(stderr, "Key type does not match signature algorithm.\n");
+    abort();
   }
 
+  // Determine the hash.
+  const EVP_MD *md = SSL_get_signature_algorithm_digest(signature_algorithm);
   bssl::ScopedEVP_MD_CTX ctx;
   EVP_PKEY_CTX *pctx;
   if (!EVP_DigestSignInit(ctx.get(), &pctx, md, nullptr,
@@ -375,15 +349,11 @@ static ssl_private_key_result_t AsyncPrivateKeySign(
   }
 
   // Configure additional signature parameters.
-  switch (signature_algorithm) {
-    case SSL_SIGN_RSA_PSS_SHA256:
-    case SSL_SIGN_RSA_PSS_SHA384:
-    case SSL_SIGN_RSA_PSS_SHA512:
-      if (!EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING) ||
-          !EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx,
-                                            -1 /* salt len = hash len */)) {
-        return ssl_private_key_failure;
-      }
+  if (SSL_is_signature_algorithm_rsa_pss(signature_algorithm)) {
+    if (!EVP_PKEY_CTX_set_rsa_padding(pctx, RSA_PKCS1_PSS_PADDING) ||
+        !EVP_PKEY_CTX_set_rsa_pss_saltlen(pctx, -1 /* salt len = hash len */)) {
+      return ssl_private_key_failure;
+    }
   }
 
   // Write the signature into |test_state|.

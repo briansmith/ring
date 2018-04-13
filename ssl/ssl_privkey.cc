@@ -111,9 +111,9 @@ static const SSL_SIGNATURE_ALGORITHM kSignatureAlgorithms[] = {
     {SSL_SIGN_RSA_PKCS1_SHA384, EVP_PKEY_RSA, NID_undef, &EVP_sha384, 0},
     {SSL_SIGN_RSA_PKCS1_SHA512, EVP_PKEY_RSA, NID_undef, &EVP_sha512, 0},
 
-    {SSL_SIGN_RSA_PSS_SHA256, EVP_PKEY_RSA, NID_undef, &EVP_sha256, 1},
-    {SSL_SIGN_RSA_PSS_SHA384, EVP_PKEY_RSA, NID_undef, &EVP_sha384, 1},
-    {SSL_SIGN_RSA_PSS_SHA512, EVP_PKEY_RSA, NID_undef, &EVP_sha512, 1},
+    {SSL_SIGN_RSA_PSS_RSAE_SHA256, EVP_PKEY_RSA, NID_undef, &EVP_sha256, 1},
+    {SSL_SIGN_RSA_PSS_RSAE_SHA384, EVP_PKEY_RSA, NID_undef, &EVP_sha384, 1},
+    {SSL_SIGN_RSA_PSS_RSAE_SHA512, EVP_PKEY_RSA, NID_undef, &EVP_sha512, 1},
 
     {SSL_SIGN_ECDSA_SHA1, EVP_PKEY_EC, NID_undef, &EVP_sha1, 0},
     {SSL_SIGN_ECDSA_SECP256R1_SHA256, EVP_PKEY_EC, NID_X9_62_prime256v1,
@@ -429,12 +429,12 @@ const char *SSL_get_signature_algorithm_name(uint16_t sigalg,
       return include_curve ? "ecdsa_secp384r1_sha384" : "ecdsa_sha384";
     case SSL_SIGN_ECDSA_SECP521R1_SHA512:
       return include_curve ? "ecdsa_secp521r1_sha512" : "ecdsa_sha512";
-    case SSL_SIGN_RSA_PSS_SHA256:
-      return "rsa_pss_sha256";
-    case SSL_SIGN_RSA_PSS_SHA384:
-      return "rsa_pss_sha384";
-    case SSL_SIGN_RSA_PSS_SHA512:
-      return "rsa_pss_sha512";
+    case SSL_SIGN_RSA_PSS_RSAE_SHA256:
+      return "rsa_pss_rsae_sha256";
+    case SSL_SIGN_RSA_PSS_RSAE_SHA384:
+      return "rsa_pss_rsae_sha384";
+    case SSL_SIGN_RSA_PSS_RSAE_SHA512:
+      return "rsa_pss_rsae_sha512";
     case SSL_SIGN_ED25519:
       return "ed25519";
     default:

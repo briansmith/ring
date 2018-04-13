@@ -3884,10 +3884,10 @@ TEST(SSLTest, SignatureAlgorithmProperties) {
       SSL_is_signature_algorithm_rsa_pss(SSL_SIGN_ECDSA_SECP256R1_SHA256));
 
   EXPECT_EQ(EVP_PKEY_RSA,
-            SSL_get_signature_algorithm_key_type(SSL_SIGN_RSA_PSS_SHA384));
+            SSL_get_signature_algorithm_key_type(SSL_SIGN_RSA_PSS_RSAE_SHA384));
   EXPECT_EQ(EVP_sha384(),
-            SSL_get_signature_algorithm_digest(SSL_SIGN_RSA_PSS_SHA384));
-  EXPECT_TRUE(SSL_is_signature_algorithm_rsa_pss(SSL_SIGN_RSA_PSS_SHA384));
+            SSL_get_signature_algorithm_digest(SSL_SIGN_RSA_PSS_RSAE_SHA384));
+  EXPECT_TRUE(SSL_is_signature_algorithm_rsa_pss(SSL_SIGN_RSA_PSS_RSAE_SHA384));
 }
 
 void MoveBIOs(SSL *dest, SSL *src) {
