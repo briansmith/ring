@@ -142,68 +142,89 @@ static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
   return true;
 }
 
-static bool SpeedRSA(const std::string &key_name, RSA *key,
-                     const std::string &selected) {
-  if (!selected.empty() && key_name.find(selected) == std::string::npos) {
+static bool SpeedRSA(const std::string &selected) {
+  if (!selected.empty() && selected.find("RSA") == std::string::npos) {
     return true;
   }
 
-  std::unique_ptr<uint8_t[]> sig(new uint8_t[RSA_size(key)]);
-  const uint8_t fake_sha256_hash[32] = {0};
-  unsigned sig_len;
+  static const struct {
+    const char *name;
+    const uint8_t *key;
+    const size_t key_len;
+  } kRSAKeys[] = {
+    {"RSA 2048", kDERRSAPrivate2048, kDERRSAPrivate2048Len},
+    {"RSA 4096", kDERRSAPrivate4096, kDERRSAPrivate4096Len},
+  };
 
-  TimeResults results;
-  if (!TimeFunction(&results,
-                    [key, &sig, &fake_sha256_hash, &sig_len]() -> bool {
-        // Usually during RSA signing we're using a long-lived |RSA| that has
-        // already had all of its |BN_MONT_CTX|s constructed, so it makes
-        // sense to use |key| directly here.
-        return RSA_sign(NID_sha256, fake_sha256_hash, sizeof(fake_sha256_hash),
-                        sig.get(), &sig_len, key);
-      })) {
-    fprintf(stderr, "RSA_sign failed.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-  results.Print(key_name + " signing");
+  for (unsigned i = 0; i < OPENSSL_ARRAY_SIZE(kRSAKeys); i++) {
+    const std::string name = kRSAKeys[i].name;
 
-  if (!TimeFunction(&results,
-                    [key, &fake_sha256_hash, &sig, sig_len]() -> bool {
-        return RSA_verify(NID_sha256, fake_sha256_hash,
-                          sizeof(fake_sha256_hash), sig.get(), sig_len, key);
-      })) {
-    fprintf(stderr, "RSA_verify failed.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-  results.Print(key_name + " verify (same key)");
+    bssl::UniquePtr<RSA> key(
+        RSA_private_key_from_bytes(kRSAKeys[i].key, kRSAKeys[i].key_len));
+    if (key == nullptr) {
+      fprintf(stderr, "Failed to parse %s key.\n", name.c_str());
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
 
-  if (!TimeFunction(&results,
-                    [key, &fake_sha256_hash, &sig, sig_len]() -> bool {
-        // Usually during RSA verification we have to parse an RSA key from a
-        // certificate or similar, in which case we'd need to construct a new
-        // RSA key, with a new |BN_MONT_CTX| for the public modulus. If we were
-        // to use |key| directly instead, then these costs wouldn't be
-        // accounted for.
-        bssl::UniquePtr<RSA> verify_key(RSA_new());
-        if (!verify_key) {
-          return false;
-        }
-        verify_key->n = BN_dup(key->n);
-        verify_key->e = BN_dup(key->e);
-        if (!verify_key->n ||
-            !verify_key->e) {
-          return false;
-        }
-        return RSA_verify(NID_sha256, fake_sha256_hash,
-                          sizeof(fake_sha256_hash), sig.get(), sig_len,
-                          verify_key.get());
-      })) {
-    fprintf(stderr, "RSA_verify failed.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
+    std::unique_ptr<uint8_t[]> sig(new uint8_t[RSA_size(key.get())]);
+    const uint8_t fake_sha256_hash[32] = {0};
+    unsigned sig_len;
+
+    TimeResults results;
+    if (!TimeFunction(&results,
+                      [&key, &sig, &fake_sha256_hash, &sig_len]() -> bool {
+          // Usually during RSA signing we're using a long-lived |RSA| that has
+          // already had all of its |BN_MONT_CTX|s constructed, so it makes
+          // sense to use |key| directly here.
+          return RSA_sign(NID_sha256, fake_sha256_hash, sizeof(fake_sha256_hash),
+                          sig.get(), &sig_len, key.get());
+        })) {
+      fprintf(stderr, "RSA_sign failed.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    results.Print(name + " signing");
+
+    if (!TimeFunction(&results,
+                      [&key, &fake_sha256_hash, &sig, sig_len]() -> bool {
+          return RSA_verify(
+              NID_sha256, fake_sha256_hash, sizeof(fake_sha256_hash),
+              sig.get(), sig_len, key.get());
+        })) {
+      fprintf(stderr, "RSA_verify failed.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    results.Print(name + " verify (same key)");
+
+    if (!TimeFunction(&results,
+                      [&key, &fake_sha256_hash, &sig, sig_len]() -> bool {
+          // Usually during RSA verification we have to parse an RSA key from a
+          // certificate or similar, in which case we'd need to construct a new
+          // RSA key, with a new |BN_MONT_CTX| for the public modulus. If we
+          // were to use |key| directly instead, then these costs wouldn't be
+          // accounted for.
+          bssl::UniquePtr<RSA> verify_key(RSA_new());
+          if (!verify_key) {
+            return false;
+          }
+          verify_key->n = BN_dup(key->n);
+          verify_key->e = BN_dup(key->e);
+          if (!verify_key->n ||
+              !verify_key->e) {
+            return false;
+          }
+          return RSA_verify(NID_sha256, fake_sha256_hash,
+                            sizeof(fake_sha256_hash), sig.get(), sig_len,
+                            verify_key.get());
+        })) {
+      fprintf(stderr, "RSA_verify failed.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+    results.Print(name + " verify (fresh key)");
   }
-  results.Print(key_name + " verify (fresh key)");
 
   return true;
 }
@@ -381,7 +402,7 @@ static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
 
 static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
                            size_t chunk_len) {
-  EVP_MD_CTX *ctx = EVP_MD_CTX_create();
+  bssl::ScopedEVP_MD_CTX ctx;
   uint8_t scratch[8192];
 
   if (chunk_len > sizeof(scratch)) {
@@ -389,13 +410,13 @@ static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
   }
 
   TimeResults results;
-  if (!TimeFunction(&results, [ctx, md, chunk_len, &scratch]() -> bool {
+  if (!TimeFunction(&results, [&ctx, md, chunk_len, &scratch]() -> bool {
         uint8_t digest[EVP_MAX_MD_SIZE];
         unsigned int md_len;
 
-        return EVP_DigestInit_ex(ctx, md, NULL /* ENGINE */) &&
-               EVP_DigestUpdate(ctx, scratch, chunk_len) &&
-               EVP_DigestFinal_ex(ctx, digest, &md_len);
+        return EVP_DigestInit_ex(ctx.get(), md, NULL /* ENGINE */) &&
+               EVP_DigestUpdate(ctx.get(), scratch, chunk_len) &&
+               EVP_DigestFinal_ex(ctx.get(), digest, &md_len);
       })) {
     fprintf(stderr, "EVP_DigestInit_ex failed.\n");
     ERR_print_errors_fp(stderr);
@@ -403,9 +424,6 @@ static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
   }
 
   results.PrintWithBytes(name, chunk_len);
-
-  EVP_MD_CTX_destroy(ctx);
-
   return true;
 }
 static bool SpeedHash(const EVP_MD *md, const std::string &name,
@@ -745,32 +763,6 @@ bool Speed(const std::vector<std::string> &args) {
     g_timeout_seconds = atoi(args_map["-timeout"].c_str());
   }
 
-  bssl::UniquePtr<RSA> key(
-      RSA_private_key_from_bytes(kDERRSAPrivate2048, kDERRSAPrivate2048Len));
-  if (key == nullptr) {
-    fprintf(stderr, "Failed to parse RSA key.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-
-  if (!SpeedRSA("RSA 2048", key.get(), selected)) {
-    return false;
-  }
-
-  key.reset(
-      RSA_private_key_from_bytes(kDERRSAPrivate4096, kDERRSAPrivate4096Len));
-  if (key == nullptr) {
-    fprintf(stderr, "Failed to parse 4096-bit RSA key.\n");
-    ERR_print_errors_fp(stderr);
-    return false;
-  }
-
-  if (!SpeedRSA("RSA 4096", key.get(), selected)) {
-    return false;
-  }
-
-  key.reset();
-
   // kTLSADLen is the number of bytes of additional data that TLS passes to
   // AEADs.
   static const size_t kTLSADLen = 13;
@@ -780,7 +772,8 @@ bool Speed(const std::vector<std::string> &args) {
   // knowledge in them and construct a couple of the AD bytes internally.
   static const size_t kLegacyADLen = kTLSADLen - 2;
 
-  if (!SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM", kTLSADLen, selected) ||
+  if (!SpeedRSA(selected) ||
+      !SpeedAEAD(EVP_aead_aes_128_gcm(), "AES-128-GCM", kTLSADLen, selected) ||
       !SpeedAEAD(EVP_aead_aes_256_gcm(), "AES-256-GCM", kTLSADLen, selected) ||
       !SpeedAEAD(EVP_aead_chacha20_poly1305(), "ChaCha20-Poly1305", kTLSADLen,
                  selected) ||
