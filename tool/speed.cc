@@ -762,7 +762,7 @@ bool Speed(const std::vector<std::string> &args) {
   if (key == nullptr) {
     fprintf(stderr, "Failed to parse 4096-bit RSA key.\n");
     ERR_print_errors_fp(stderr);
-    return 1;
+    return false;
   }
 
   if (!SpeedRSA("RSA 4096", key.get(), selected)) {
