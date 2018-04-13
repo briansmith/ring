@@ -2027,8 +2027,6 @@ struct SSLContext {
   void (*remove_session_cb)(SSL_CTX *ctx, SSL_SESSION *sess);
   SSL_SESSION *(*get_session_cb)(SSL *ssl, const uint8_t *data, int len,
                                  int *copy);
-  SSL_SESSION *(*get_session_cb_legacy)(SSL *ssl, uint8_t *data, int len,
-                                        int *copy);
 
   CRYPTO_refcount_t references;
 

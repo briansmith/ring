@@ -4116,16 +4116,6 @@ OPENSSL_EXPORT SSL_SESSION *SSL_get1_session(SSL *ssl);
 OPENSSL_EXPORT int OPENSSL_init_ssl(uint64_t opts,
                                     const OPENSSL_INIT_SETTINGS *settings);
 
-#if !defined(BORINGSSL_NO_CXX)
-// SSL_CTX_sess_set_get_cb is a legacy C++ overload of |SSL_CTX_sess_set_get_cb|
-// which supports the old callback signature.
-//
-// TODO(davidben): Remove this once Node is compatible with OpenSSL 1.1.0.
-extern "C++" OPENSSL_EXPORT void SSL_CTX_sess_set_get_cb(
-    SSL_CTX *ctx, SSL_SESSION *(*get_session_cb)(SSL *ssl, uint8_t *id,
-                                                 int id_len, int *out_copy));
-#endif
-
 
 // Private structures.
 //
