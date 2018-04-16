@@ -227,7 +227,7 @@ static const CipherTest kCipherTests[] = {
     {
         // To simplify things, banish all but {ECDHE_RSA,RSA} x
         // {CHACHA20,AES_256_CBC,AES_128_CBC} x SHA1.
-        "!AESGCM:!3DES:!SHA256:!SHA384:"
+        "!AESGCM:!3DES:"
         // Order some ciphers backwards by strength.
         "ALL:-CHACHA20:-AES256:-AES128:-ALL:"
         // Select ECDHE ones and sort them by strength. Ties should resolve
@@ -286,15 +286,15 @@ static const CipherTest kCipherTests[] = {
     },
     // SSLv3 matches everything that existed before TLS 1.2.
     {
-        "AES128-SHA:AES128-SHA256:!SSLv3",
+        "AES128-SHA:ECDHE-RSA-AES128-GCM-SHA256:!SSLv3",
         {
-            {TLS1_CK_RSA_WITH_AES_128_SHA256, 0},
+            {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
         false,
     },
     // TLSv1.2 matches everything added in TLS 1.2.
     {
-        "AES128-SHA:AES128-SHA256:!TLSv1.2",
+        "AES128-SHA:ECDHE-RSA-AES128-GCM-SHA256:!TLSv1.2",
         {
             {TLS1_CK_RSA_WITH_AES_128_SHA, 0},
         },
@@ -303,21 +303,21 @@ static const CipherTest kCipherTests[] = {
     // The two directives have no intersection.  But each component is valid, so
     // even in strict mode it is accepted.
     {
-        "AES128-SHA:AES128-SHA256:!TLSv1.2+SSLv3",
+        "AES128-SHA:ECDHE-RSA-AES128-GCM-SHA256:!TLSv1.2+SSLv3",
         {
             {TLS1_CK_RSA_WITH_AES_128_SHA, 0},
-            {TLS1_CK_RSA_WITH_AES_128_SHA256, 0},
+            {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
         false,
     },
     // Spaces, semi-colons and commas are separators.
     {
-        "AES128-SHA: AES128-SHA256 AES256-SHA ,AES256-SHA256 ; AES128-GCM-SHA256",
+        "AES128-SHA: ECDHE-RSA-AES128-GCM-SHA256 AES256-SHA ,ECDHE-ECDSA-AES128-GCM-SHA256 ; AES128-GCM-SHA256",
         {
             {TLS1_CK_RSA_WITH_AES_128_SHA, 0},
-            {TLS1_CK_RSA_WITH_AES_128_SHA256, 0},
+            {TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256, 0},
             {TLS1_CK_RSA_WITH_AES_256_SHA, 0},
-            {TLS1_CK_RSA_WITH_AES_256_SHA256, 0},
+            {TLS1_CK_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, 0},
             {TLS1_CK_RSA_WITH_AES_128_GCM_SHA256, 0},
         },
         // …but not in strict mode.
@@ -864,22 +864,22 @@ TEST(SSLTest, CipherProperties) {
           NID_md5_sha1,
       },
       {
-          TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256,
-          "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+          TLS1_CK_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+          "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
           NID_aes_128_cbc,
-          NID_sha256,
+          NID_sha1,
           NID_kx_ecdhe,
           NID_auth_rsa,
-          NID_sha256,
+          NID_md5_sha1,
       },
       {
-          TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384,
-          "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",
+          TLS1_CK_ECDHE_RSA_WITH_AES_256_CBC_SHA,
+          "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
           NID_aes_256_cbc,
-          NID_sha384,
+          NID_sha1,
           NID_kx_ecdhe,
           NID_auth_rsa,
-          NID_sha384,
+          NID_md5_sha1,
       },
       {
           TLS1_CK_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
@@ -1988,14 +1988,13 @@ TEST(SSLTest, ClientHello) {
       0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x0b, 0x00, 0x02, 0x01, 0x00, 0x00,
       0x0a, 0x00, 0x08, 0x00, 0x06, 0x00, 0x1d, 0x00, 0x17, 0x00, 0x18}},
     {TLS1_2_VERSION,
-     {0x16, 0x03, 0x01, 0x00, 0x8e, 0x01, 0x00, 0x00, 0x8a, 0x03, 0x03, 0x00,
+     {0x16, 0x03, 0x01, 0x00, 0x82, 0x01, 0x00, 0x00, 0x7e, 0x03, 0x03, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x2a, 0xcc, 0xa9,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x1e, 0xcc, 0xa9,
       0xcc, 0xa8, 0xc0, 0x2b, 0xc0, 0x2f, 0xc0, 0x2c, 0xc0, 0x30, 0xc0, 0x09,
-      0xc0, 0x23, 0xc0, 0x13, 0xc0, 0x27, 0xc0, 0x0a, 0xc0, 0x24, 0xc0, 0x14,
-      0xc0, 0x28, 0x00, 0x9c, 0x00, 0x9d, 0x00, 0x2f, 0x00, 0x3c, 0x00, 0x35,
-      0x00, 0x3d, 0x00, 0x0a, 0x01, 0x00, 0x00, 0x37, 0xff, 0x01, 0x00, 0x01,
+      0xc0, 0x13, 0xc0, 0x0a, 0xc0, 0x14, 0x00, 0x9c, 0x00, 0x9d, 0x00, 0x2f,
+      0x00, 0x35, 0x00, 0x0a, 0x01, 0x00, 0x00, 0x37, 0xff, 0x01, 0x00, 0x01,
       0x00, 0x00, 0x17, 0x00, 0x00, 0x00, 0x23, 0x00, 0x00, 0x00, 0x0d, 0x00,
       0x14, 0x00, 0x12, 0x04, 0x03, 0x08, 0x04, 0x04, 0x01, 0x05, 0x03, 0x08,
       0x05, 0x05, 0x01, 0x08, 0x06, 0x06, 0x01, 0x02, 0x01, 0x00, 0x0b, 0x00,

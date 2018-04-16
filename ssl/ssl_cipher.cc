@@ -210,33 +210,6 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
 
-
-    // TLS v1.2 ciphersuites
-
-    // Cipher 3C
-    {
-     TLS1_TXT_RSA_WITH_AES_128_SHA256,
-     "TLS_RSA_WITH_AES_128_CBC_SHA256",
-     TLS1_CK_RSA_WITH_AES_128_SHA256,
-     SSL_kRSA,
-     SSL_aRSA,
-     SSL_AES128,
-     SSL_SHA256,
-     SSL_HANDSHAKE_MAC_SHA256,
-    },
-
-    // Cipher 3D
-    {
-     TLS1_TXT_RSA_WITH_AES_256_SHA256,
-     "TLS_RSA_WITH_AES_256_CBC_SHA256",
-     TLS1_CK_RSA_WITH_AES_256_SHA256,
-     SSL_kRSA,
-     SSL_aRSA,
-     SSL_AES256,
-     SSL_SHA256,
-     SSL_HANDSHAKE_MAC_SHA256,
-    },
-
     // PSK cipher suites.
 
     // Cipher 8C
@@ -374,58 +347,6 @@ static const SSL_CIPHER kCiphers[] = {
      SSL_SHA1,
      SSL_HANDSHAKE_MAC_DEFAULT,
     },
-
-
-    // HMAC based TLS v1.2 ciphersuites from RFC5289
-
-    // Cipher C023
-    {
-     TLS1_TXT_ECDHE_ECDSA_WITH_AES_128_SHA256,
-     "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
-     TLS1_CK_ECDHE_ECDSA_WITH_AES_128_SHA256,
-     SSL_kECDHE,
-     SSL_aECDSA,
-     SSL_AES128,
-     SSL_SHA256,
-     SSL_HANDSHAKE_MAC_SHA256,
-    },
-
-    // Cipher C024
-    {
-     TLS1_TXT_ECDHE_ECDSA_WITH_AES_256_SHA384,
-     "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA384",
-     TLS1_CK_ECDHE_ECDSA_WITH_AES_256_SHA384,
-     SSL_kECDHE,
-     SSL_aECDSA,
-     SSL_AES256,
-     SSL_SHA384,
-     SSL_HANDSHAKE_MAC_SHA384,
-    },
-
-    // Cipher C027
-    {
-     TLS1_TXT_ECDHE_RSA_WITH_AES_128_SHA256,
-     "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
-     TLS1_CK_ECDHE_RSA_WITH_AES_128_SHA256,
-     SSL_kECDHE,
-     SSL_aRSA,
-     SSL_AES128,
-     SSL_SHA256,
-     SSL_HANDSHAKE_MAC_SHA256,
-    },
-
-    // Cipher C028
-    {
-     TLS1_TXT_ECDHE_RSA_WITH_AES_256_SHA384,
-     "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA384",
-     TLS1_CK_ECDHE_RSA_WITH_AES_256_SHA384,
-     SSL_kECDHE,
-     SSL_aRSA,
-     SSL_AES256,
-     SSL_SHA384,
-     SSL_HANDSHAKE_MAC_SHA384,
-    },
-
 
     // GCM based TLS v1.2 ciphersuites from RFC5289
 
@@ -616,8 +537,6 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     // MAC aliases
     {"SHA1", ~0u, ~0u, ~0u, SSL_SHA1, 0},
     {"SHA", ~0u, ~0u, ~0u, SSL_SHA1, 0},
-    {"SHA256", ~0u, ~0u, ~0u, SSL_SHA256, 0},
-    {"SHA384", ~0u, ~0u, ~0u, SSL_SHA384, 0},
 
     // Legacy protocol minimum version aliases. "TLSv1" is intentionally the
     // same as "SSLv3".
@@ -718,23 +637,6 @@ bool ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
     }
 
     *out_mac_secret_len = SHA_DIGEST_LENGTH;
-  } else if (cipher->algorithm_mac == SSL_SHA256) {
-    if (cipher->algorithm_enc == SSL_AES128) {
-      *out_aead = EVP_aead_aes_128_cbc_sha256_tls();
-    } else if (cipher->algorithm_enc == SSL_AES256) {
-      *out_aead = EVP_aead_aes_256_cbc_sha256_tls();
-    } else {
-      return false;
-    }
-
-    *out_mac_secret_len = SHA256_DIGEST_LENGTH;
-  } else if (cipher->algorithm_mac == SSL_SHA384) {
-      if (cipher->algorithm_enc != SSL_AES256) {
-        return false;
-      }
-
-      *out_aead = EVP_aead_aes_256_cbc_sha384_tls();
-      *out_mac_secret_len = SHA384_DIGEST_LENGTH;
   } else {
     return false;
   }
@@ -1461,10 +1363,6 @@ int SSL_CIPHER_get_digest_nid(const SSL_CIPHER *cipher) {
       return NID_undef;
     case SSL_SHA1:
       return NID_sha1;
-    case SSL_SHA256:
-      return NID_sha256;
-    case SSL_SHA384:
-      return NID_sha384;
   }
   assert(0);
   return NID_undef;
@@ -1729,14 +1627,6 @@ const char *SSL_CIPHER_description(const SSL_CIPHER *cipher, char *buf,
   switch (alg_mac) {
     case SSL_SHA1:
       mac = "SHA1";
-      break;
-
-    case SSL_SHA256:
-      mac = "SHA256";
-      break;
-
-    case SSL_SHA384:
-      mac = "SHA384";
       break;
 
     case SSL_AEAD:

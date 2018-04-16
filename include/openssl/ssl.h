@@ -1319,11 +1319,7 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
 //   whose bulk cipher use the corresponding encryption scheme. Note that
 //   |AES|, |AES128|, and |AES256| match both CBC and GCM ciphers.
 //
-//   |SHA1|, |SHA256|, and |SHA384| match legacy cipher suites using the
-//   corresponding hash function in their MAC. AEADs are matched by none of
-//   these.
-//
-//   |SHA| is an alias for |SHA1|.
+//   |SHA1|, and its alias |SHA|, match legacy cipher suites using HMAC-SHA1.
 //
 // Although implemented, authentication-only ciphers match no rules and must be
 // explicitly selected by name.
