@@ -56,6 +56,8 @@
 
 #include <openssl/bio.h>
 
+#if !defined(OPENSSL_TRUSTY)
+
 #include <errno.h>
 #include <string.h>
 
@@ -274,3 +276,5 @@ int BIO_set_fd(BIO *bio, int fd, int close_flag) {
 int BIO_get_fd(BIO *bio, int *out_fd) {
   return BIO_ctrl(bio, BIO_C_GET_FD, 0, (char *) out_fd);
 }
+
+#endif  // OPENSSL_TRUSTY

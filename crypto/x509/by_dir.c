@@ -65,6 +65,8 @@
 #include <openssl/thread.h>
 #include <openssl/x509.h>
 
+#if !defined(OPENSSL_TRUSTY)
+
 #include "../internal.h"
 
 typedef struct lookup_dir_hashes_st {
@@ -452,3 +454,5 @@ static int get_cert_by_subject(X509_LOOKUP *xl, int type, X509_NAME *name,
         BUF_MEM_free(b);
     return (ok);
 }
+
+#endif  // OPENSSL_TRUSTY
