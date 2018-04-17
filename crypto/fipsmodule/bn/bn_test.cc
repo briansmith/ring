@@ -763,6 +763,9 @@ static void TestModExp(BIGNUMFileTest *t, BN_CTX *ctx) {
   ASSERT_TRUE(BN_mod_exp(ret.get(), a.get(), e.get(), m.get(), ctx));
   EXPECT_BIGNUMS_EQUAL("A ^ E (mod M)", mod_exp.get(), ret.get());
 
+  // The other implementations require reduced inputs.
+  ASSERT_TRUE(BN_nnmod(a.get(), a.get(), m.get(), ctx));
+
   if (BN_is_odd(m.get())) {
     ASSERT_TRUE(
         BN_mod_exp_mont(ret.get(), a.get(), e.get(), m.get(), ctx, NULL));
@@ -780,7 +783,6 @@ static void TestModExp(BIGNUMFileTest *t, BN_CTX *ctx) {
       bssl::UniquePtr<BN_MONT_CTX> mont(
           BN_MONT_CTX_new_for_modulus(m.get(), ctx));
       ASSERT_TRUE(mont.get());
-      ASSERT_TRUE(BN_nnmod(a.get(), a.get(), m.get(), ctx));
       std::unique_ptr<BN_ULONG[]> r_words(new BN_ULONG[m_width]),
           a_words(new BN_ULONG[m_width]);
       ASSERT_TRUE(bn_copy_words(a_words.get(), m_width, a.get()));
@@ -1564,21 +1566,16 @@ TEST_F(BNTest, ExpModZero) {
   ASSERT_TRUE(BN_rand(a.get(), 1024, BN_RAND_TOP_ONE, BN_RAND_BOTTOM_ANY));
   BN_zero(zero.get());
 
-  ASSERT_TRUE(
-      BN_mod_exp(r.get(), a.get(), zero.get(), BN_value_one(), nullptr));
-  EXPECT_TRUE(BN_is_zero(r.get()));
-
-  ASSERT_TRUE(BN_mod_exp_mont(r.get(), a.get(), zero.get(), BN_value_one(),
-                              nullptr, nullptr));
-  EXPECT_TRUE(BN_is_zero(r.get()));
-
-  ASSERT_TRUE(BN_mod_exp_mont_consttime(r.get(), a.get(), zero.get(),
-                                        BN_value_one(), nullptr, nullptr));
+  ASSERT_TRUE(BN_mod_exp(r.get(), a.get(), zero.get(), BN_value_one(), ctx()));
   EXPECT_TRUE(BN_is_zero(r.get()));
 
   ASSERT_TRUE(BN_mod_exp_mont_word(r.get(), 42, zero.get(), BN_value_one(),
-                                   nullptr, nullptr));
+                                   ctx(), nullptr));
   EXPECT_TRUE(BN_is_zero(r.get()));
+
+  // The other modular exponentiation functions, |BN_mod_exp_mont| and
+  // |BN_mod_exp_mont_consttime|, require fully-reduced inputs, so 1**0 mod 1 is
+  // not a valid call.
 }
 
 TEST_F(BNTest, SmallPrime) {

@@ -109,6 +109,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
     bssl::UniquePtr<BN_MONT_CTX> mont(
         BN_MONT_CTX_new_for_modulus(modulus.get(), ctx.get()));
     CHECK(mont);
+    // |BN_mod_exp_mont| and |BN_mod_exp_mont_consttime| require reduced inputs.
+    CHECK(BN_nnmod(base.get(), base.get(), modulus.get(), ctx.get()));
     CHECK(BN_mod_exp_mont(result.get(), base.get(), power.get(), modulus.get(),
                           ctx.get(), mont.get()));
     CHECK(BN_cmp(result.get(), expected.get()) == 0);

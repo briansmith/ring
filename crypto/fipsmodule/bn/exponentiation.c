@@ -586,6 +586,13 @@ err:
 
 int BN_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, const BIGNUM *m,
                BN_CTX *ctx) {
+  if (a->neg || BN_ucmp(a, m) >= 0) {
+    if (!BN_nnmod(r, a, m, ctx)) {
+      return 0;
+    }
+    a = r;
+  }
+
   if (BN_is_odd(m)) {
     return BN_mod_exp_mont(r, a, p, m, ctx, NULL);
   }
@@ -599,6 +606,11 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
     return 0;
   }
+  if (a->neg || BN_ucmp(a, m) >= 0) {
+    OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
+    return 0;
+  }
+
   int bits = BN_num_bits(p);
   if (bits == 0) {
     // x**0 mod 1 is still zero.
@@ -630,22 +642,12 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     mont = new_mont;
   }
 
-  const BIGNUM *aa;
-  if (a->neg || BN_ucmp(a, m) >= 0) {
-    if (!BN_nnmod(val[0], a, m, ctx)) {
-      goto err;
-    }
-    aa = val[0];
-  } else {
-    aa = a;
-  }
-
   // We exponentiate by looking at sliding windows of the exponent and
-  // precomputing powers of |aa|. Windows may be shifted so they always end on a
-  // set bit, so only precompute odd powers. We compute val[i] = aa^(2*i + 1)
+  // precomputing powers of |a|. Windows may be shifted so they always end on a
+  // set bit, so only precompute odd powers. We compute val[i] = a^(2*i + 1)
   // for i = 0 to 2^(window-1), all in Montgomery form.
   int window = BN_window_bits_for_exponent_size(bits);
-  if (!BN_to_montgomery(val[0], aa, mont, ctx)) {
+  if (!BN_to_montgomery(val[0], a, mont, ctx)) {
     goto err;
   }
   if (window > 1) {
@@ -966,10 +968,13 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   int powerbufLen = 0;
   unsigned char *powerbuf = NULL;
   BIGNUM tmp, am;
-  BIGNUM *new_a = NULL;
 
   if (!BN_is_odd(m)) {
     OPENSSL_PUT_ERROR(BN, BN_R_CALLED_WITH_EVEN_MODULUS);
+    return 0;
+  }
+  if (a->neg || BN_ucmp(a, m) >= 0) {
+    OPENSSL_PUT_ERROR(BN, BN_R_INPUT_NOT_REDUCED);
     return 0;
   }
 
@@ -998,15 +1003,6 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   // Use the width in |mont->N|, rather than the copy in |m|. The assembly
   // implementation assumes it can use |top| to size R.
   int top = mont->N.width;
-
-  if (a->neg || BN_ucmp(a, m) >= 0) {
-    new_a = BN_new();
-    if (new_a == NULL ||
-        !BN_nnmod(new_a, a, m, ctx)) {
-      goto err;
-    }
-    a = new_a;
-  }
 
 #ifdef RSAZ_ENABLED
   // If the size of the operands allow it, perform the optimized
@@ -1268,7 +1264,6 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
 err:
   BN_MONT_CTX_free(new_mont);
-  BN_clear_free(new_a);
   OPENSSL_free(powerbufFree);
   return (ret);
 }
@@ -1280,6 +1275,11 @@ int BN_mod_exp_mont_word(BIGNUM *rr, BN_ULONG a, const BIGNUM *p,
   BN_init(&a_bignum);
 
   int ret = 0;
+
+  // BN_mod_exp_mont requires reduced inputs.
+  if (bn_minimal_width(m) == 1) {
+    a %= m->d[0];
+  }
 
   if (!BN_set_word(&a_bignum, a)) {
     OPENSSL_PUT_ERROR(BN, ERR_R_INTERNAL_ERROR);

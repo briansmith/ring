@@ -874,10 +874,14 @@ OPENSSL_EXPORT int BN_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
 OPENSSL_EXPORT int BN_mod_exp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
                               const BIGNUM *m, BN_CTX *ctx);
 
+// BN_mod_exp_mont behaves like |BN_mod_exp| but treats |a| as secret and
+// requires 0 <= |a| < |m|.
 OPENSSL_EXPORT int BN_mod_exp_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
                                    const BIGNUM *m, BN_CTX *ctx,
                                    const BN_MONT_CTX *mont);
 
+// BN_mod_exp_mont_consttime behaves like |BN_mod_exp| but treats |a|, |p|, and
+// |m| as secret and requires 0 <= |a| < |m|.
 OPENSSL_EXPORT int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a,
                                              const BIGNUM *p, const BIGNUM *m,
                                              BN_CTX *ctx,
