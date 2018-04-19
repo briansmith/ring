@@ -86,7 +86,8 @@ extern "C" {
 //     Bit 11 is used to indicate AMD XOP support, not SDBG
 //   Index 2:
 //     EBX for CPUID where EAX = 7
-//   Index 3 is set to zero.
+//   Index 3:
+//     ECX for CPUID where EAX = 7
 //
 // Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
 // bits in XCR0, so it is not necessary to check those.
