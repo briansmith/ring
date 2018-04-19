@@ -1,4 +1,6 @@
 .text
+.file 1 "inserted_by_delocate.c"
+.loc 1 1 0
 BORINGSSL_bcm_text_start:
 	.file	"foo.c"
 	.abiversion 2
@@ -415,6 +417,7 @@ exported_function:
 	.ident	"GCC: (Ubuntu 4.9.2-10ubuntu13) 4.9.2"
 	.section	.note.GNU-stack,"",@progbits
 .text
+.loc 1 2 0
 BORINGSSL_bcm_text_end:
 .section ".toc", "aw"
 .Lredirector_toc_fprintf:

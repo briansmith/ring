@@ -1158,6 +1158,11 @@ func transform(w stringWriter, inputs []inputFile) error {
 	symbols := make(map[string]struct{})
 	// localEntrySymbols contains all symbols with a .localentry directive.
 	localEntrySymbols := make(map[string]struct{})
+	// fileNumbers is the set of IDs seen in .file directives.
+	fileNumbers := make(map[int]struct{})
+	// maxObservedFileNumber contains the largest seen file number in a
+	// .file directive. Zero is not a valid number.
+	maxObservedFileNumber := 0
 
 	for _, input := range inputs {
 		forEachPath(input.ast.up, func(node *node32) {
@@ -1186,6 +1191,35 @@ func transform(w stringWriter, inputs []inputFile) error {
 			}
 			localEntrySymbols[symbol] = struct{}{}
 		}, ruleStatement, ruleLabelContainingDirective)
+
+		forEachPath(input.ast.up, func(node *node32) {
+			assertNodeType(node, ruleLocationDirective)
+			directive := input.contents[node.begin:node.end]
+			if !strings.HasPrefix(directive, ".file") {
+				return
+			}
+			parts := strings.Fields(directive)
+			if len(parts) == 2 {
+				// This is a .file directive with just a
+				// filename. Clang appears to generate just one
+				// of these at the beginning of the output for
+				// the compilation unit. Ignore it.
+				return
+			}
+			fileNo, err := strconv.Atoi(parts[1])
+			if err != nil {
+				panic(fmt.Sprintf("Failed to parse file number from .file: %q", directive))
+			}
+
+			if _, ok := fileNumbers[fileNo]; ok {
+				panic(fmt.Sprintf("Duplicate file number %d observed", fileNo))
+			}
+			fileNumbers[fileNo] = struct{}{}
+
+			if fileNo > maxObservedFileNumber {
+				maxObservedFileNumber = fileNo
+			}
+		}, ruleStatement, ruleLocationDirective)
 	}
 
 	processor := x86_64
@@ -1204,7 +1238,10 @@ func transform(w stringWriter, inputs []inputFile) error {
 		gotExternalsNeeded: make(map[string]struct{}),
 	}
 
-	w.WriteString(".text\nBORINGSSL_bcm_text_start:\n")
+	w.WriteString(".text\n")
+	w.WriteString(fmt.Sprintf(".file %d \"inserted_by_delocate.c\"\n", maxObservedFileNumber + 1))
+	w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber + 1))
+	w.WriteString("BORINGSSL_bcm_text_start:\n")
 
 	for _, input := range inputs {
 		if err := d.processInput(input); err != nil {
@@ -1212,7 +1249,9 @@ func transform(w stringWriter, inputs []inputFile) error {
 		}
 	}
 
-	w.WriteString(".text\nBORINGSSL_bcm_text_end:\n")
+	w.WriteString(".text\n")
+	w.WriteString(fmt.Sprintf(".loc %d 2 0\n", maxObservedFileNumber + 1))
+	w.WriteString("BORINGSSL_bcm_text_end:\n")
 
 	// Emit redirector functions. Each is a single jump instruction.
 	var redirectorNames []string

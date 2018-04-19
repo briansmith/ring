@@ -1,4 +1,6 @@
 .text
+.file 1 "inserted_by_delocate.c"
+.loc 1 1 0
 BORINGSSL_bcm_text_start:
 	.text
 .Lfoo_local_target:
@@ -99,6 +101,7 @@ foo:
 	ld 3, -16(1)
 	addi 1, 1, 288
 .text
+.loc 1 2 0
 BORINGSSL_bcm_text_end:
 .type bcm_loadtoc__dot_Lfoo_local_target, @function
 bcm_loadtoc__dot_Lfoo_local_target:

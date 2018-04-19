@@ -1,4 +1,6 @@
 .text
+.file 1 "inserted_by_delocate.c"
+.loc 1 1 0
 BORINGSSL_bcm_text_start:
 	.text
 .Lfoo_local_target:
@@ -19,6 +21,7 @@ foo:
 
 	bl
 .text
+.loc 1 2 0
 BORINGSSL_bcm_text_end:
 .LBORINGSSL_external_toc:
 .quad .TOC.-.LBORINGSSL_external_toc

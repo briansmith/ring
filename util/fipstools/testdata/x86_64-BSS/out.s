@@ -1,4 +1,6 @@
 .text
+.file 1 "inserted_by_delocate.c"
+.loc 1 1 0
 BORINGSSL_bcm_text_start:
 	.text
 	movq %rax, %rax
@@ -41,6 +43,7 @@ z:
 
 	.quad 0
 .text
+.loc 1 2 0
 BORINGSSL_bcm_text_end:
 .type aes_128_ctr_generic_storage_bss_get, @function
 aes_128_ctr_generic_storage_bss_get:

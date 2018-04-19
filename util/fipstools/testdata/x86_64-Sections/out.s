@@ -1,4 +1,6 @@
 .text
+.file 1 "inserted_by_delocate.c"
+.loc 1 1 0
 BORINGSSL_bcm_text_start:
 	# .text stays in .text
 	.text
@@ -43,6 +45,7 @@ foo:
 	.byte	0x1
 	.long	.L3
 .text
+.loc 1 2 0
 BORINGSSL_bcm_text_end:
 .type OPENSSL_ia32cap_get, @function
 OPENSSL_ia32cap_get:
