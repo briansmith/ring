@@ -352,7 +352,7 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
   }
 
   if (BN_num_bytes(order) > EC_MAX_SCALAR_BYTES) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_FIELD);
+    OPENSSL_PUT_ERROR(EC, EC_R_INVALID_GROUP_ORDER);
     return 0;
   }
 
