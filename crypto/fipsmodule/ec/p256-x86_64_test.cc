@@ -365,6 +365,47 @@ static void TestPointAdd(FileTest *t) {
   }
 }
 
+static void TestOrdMulMont(FileTest *t) {
+  // This test works on scalars rather than field elements, but the
+  // representation is the same.
+  BN_ULONG a[P256_LIMBS], b[P256_LIMBS], result[P256_LIMBS];
+  ASSERT_TRUE(GetFieldElement(t, a, "A"));
+  ASSERT_TRUE(GetFieldElement(t, b, "B"));
+  ASSERT_TRUE(GetFieldElement(t, result, "Result"));
+
+  BN_ULONG ret[P256_LIMBS];
+  ecp_nistz256_ord_mul_mont(ret, a, b);
+  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
+
+  ecp_nistz256_ord_mul_mont(ret, b, a);
+  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
+
+  OPENSSL_memcpy(ret, a, sizeof(ret));
+  ecp_nistz256_ord_mul_mont(ret, ret /* a */, b);
+  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
+
+  OPENSSL_memcpy(ret, a, sizeof(ret));
+  ecp_nistz256_ord_mul_mont(ret, b, ret);
+  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
+
+  OPENSSL_memcpy(ret, b, sizeof(ret));
+  ecp_nistz256_ord_mul_mont(ret, a, ret /* b */);
+  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
+
+  OPENSSL_memcpy(ret, b, sizeof(ret));
+  ecp_nistz256_ord_mul_mont(ret, ret /* b */, a);
+  EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
+
+  if (OPENSSL_memcmp(a, b, sizeof(a)) == 0) {
+    ecp_nistz256_ord_sqr_mont(ret, a, 1);
+    EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
+
+    OPENSSL_memcpy(ret, a, sizeof(ret));
+    ecp_nistz256_ord_sqr_mont(ret, ret /* a */, 1);
+    EXPECT_FIELD_ELEMENTS_EQUAL(result, ret);
+  }
+}
+
 TEST(P256_X86_64Test, TestVectors) {
   return FileTestGTest("crypto/fipsmodule/ec/p256-x86_64_tests.txt",
                        [](FileTest *t) {
@@ -376,6 +417,8 @@ TEST(P256_X86_64Test, TestVectors) {
       TestFromMont(t);
     } else if (t->GetParameter() == "PointAdd") {
       TestPointAdd(t);
+    } else if (t->GetParameter() == "OrdMulMont") {
+      TestOrdMulMont(t);
     } else {
       FAIL() << "Unknown test type:" << t->GetParameter();
     }

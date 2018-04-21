@@ -62,6 +62,24 @@ static inline void ecp_nistz256_from_mont(BN_ULONG res[P256_LIMBS],
 }
 
 
+// P-256 scalar operations.
+//
+// The following functions compute modulo N, where N is the order of P-256. They
+// take fully-reduced inputs and give fully-reduced outputs.
+
+// ecp_nistz256_ord_mul_mont sets |res| to |a| * |b| where inputs and outputs
+// are in Montgomery form. That is, |res| is |a| * |b| * 2^-256 mod N.
+void ecp_nistz256_ord_mul_mont(BN_ULONG res[P256_LIMBS],
+                               const BN_ULONG a[P256_LIMBS],
+                               const BN_ULONG b[P256_LIMBS]);
+
+// ecp_nistz256_ord_sqr_mont sets |res| to |a|^(2*|rep|) where inputs and
+// outputs are in Montgomery form. That is, |res| is
+// (|a| * 2^-256)^(2*|rep|) * 2^256 mod N.
+void ecp_nistz256_ord_sqr_mont(BN_ULONG res[P256_LIMBS],
+                               const BN_ULONG a[P256_LIMBS], int rep);
+
+
 // P-256 point operations.
 //
 // The following functions may be used in-place. All coordinates are in the
