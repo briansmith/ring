@@ -900,7 +900,7 @@ static int ssl_cert_cache_chain_certs(CERT *cert) {
   assert(cert->x509_method);
 
   if (cert->x509_chain != nullptr ||
-      cert->chain != nullptr ||
+      cert->chain == nullptr ||
       sk_CRYPTO_BUFFER_num(cert->chain.get()) < 2) {
     return 1;
   }
