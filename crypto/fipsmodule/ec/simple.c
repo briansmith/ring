@@ -303,11 +303,7 @@ err:
 }
 
 int ec_GFp_simple_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
-                      const EC_POINT *b, int mixed, BN_CTX *ctx) {
-  if (mixed) {
-    assert(BN_is_zero(&b->Z) || BN_cmp(&b->Z, &group->one) == 0);
-  }
-
+                      const EC_POINT *b, BN_CTX *ctx) {
   int (*field_mul)(const EC_GROUP *, BIGNUM *, const BIGNUM *, const BIGNUM *,
                    BN_CTX *);
   int (*field_sqr)(const EC_GROUP *, BIGNUM *, const BIGNUM *, BN_CTX *);
@@ -354,25 +350,17 @@ int ec_GFp_simple_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
   // ('r' might be one of 'a' or 'b'.)
 
   // n1, n2
-  if (mixed) {
-    if (!BN_copy(n1, &a->X) || !BN_copy(n2, &a->Y)) {
-      goto end;
-    }
-    // n1 = X_a
-    // n2 = Y_a
-  } else {
-    if (!field_sqr(group, n0, &b->Z, ctx) ||
-        !field_mul(group, n1, &a->X, n0, ctx)) {
-      goto end;
-    }
-    // n1 = X_a * Z_b^2
-
-    if (!field_mul(group, n0, n0, &b->Z, ctx) ||
-        !field_mul(group, n2, &a->Y, n0, ctx)) {
-      goto end;
-    }
-    // n2 = Y_a * Z_b^3
+  if (!field_sqr(group, n0, &b->Z, ctx) ||
+      !field_mul(group, n1, &a->X, n0, ctx)) {
+    goto end;
   }
+  // n1 = X_a * Z_b^2
+
+  if (!field_mul(group, n0, n0, &b->Z, ctx) ||
+      !field_mul(group, n2, &a->Y, n0, ctx)) {
+    goto end;
+  }
+  // n2 = Y_a * Z_b^3
 
   // n3, n4
   if (!field_sqr(group, n0, &a->Z, ctx) ||
@@ -419,14 +407,8 @@ int ec_GFp_simple_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
   // 'n8' = n2 + n4
 
   // Z_r
-  if (mixed) {
-    if (!BN_copy(n0, &a->Z)) {
-      goto end;
-    }
-  } else if (!field_mul(group, n0, &a->Z, &b->Z, ctx)) {
-    goto end;
-  }
-  if (!field_mul(group, &r->Z, n0, n5, ctx)) {
+  if (!field_mul(group, n0, &a->Z, &b->Z, ctx) ||
+      !field_mul(group, &r->Z, n0, n5, ctx)) {
     goto end;
   }
 
@@ -812,194 +794,5 @@ int ec_GFp_simple_cmp(const EC_GROUP *group, const EC_POINT *a,
 end:
   BN_CTX_end(ctx);
   BN_CTX_free(new_ctx);
-  return ret;
-}
-
-int ec_GFp_simple_make_affine(const EC_GROUP *group, EC_POINT *point,
-                              BN_CTX *ctx) {
-  BN_CTX *new_ctx = NULL;
-  BIGNUM *x, *y;
-  int ret = 0;
-
-  if (BN_cmp(&point->Z, &group->one) == 0 ||
-      EC_POINT_is_at_infinity(group, point)) {
-    return 1;
-  }
-
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      return 0;
-    }
-  }
-
-  BN_CTX_start(ctx);
-  x = BN_CTX_get(ctx);
-  y = BN_CTX_get(ctx);
-  if (y == NULL) {
-    goto err;
-  }
-
-  if (!EC_POINT_get_affine_coordinates_GFp(group, point, x, y, ctx) ||
-      !EC_POINT_set_affine_coordinates_GFp(group, point, x, y, ctx)) {
-    goto err;
-  }
-  if (BN_cmp(&point->Z, &group->one) != 0) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
-  return ret;
-}
-
-int ec_GFp_simple_points_make_affine(const EC_GROUP *group, size_t num,
-                                     EC_POINT *points[], BN_CTX *ctx) {
-  BN_CTX *new_ctx = NULL;
-  BIGNUM *tmp, *tmp_Z;
-  BIGNUM **prod_Z = NULL;
-  int ret = 0;
-
-  if (num == 0) {
-    return 1;
-  }
-
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      return 0;
-    }
-  }
-
-  BN_CTX_start(ctx);
-  tmp = BN_CTX_get(ctx);
-  tmp_Z = BN_CTX_get(ctx);
-  if (tmp == NULL || tmp_Z == NULL) {
-    goto err;
-  }
-
-  prod_Z = OPENSSL_malloc(num * sizeof(prod_Z[0]));
-  if (prod_Z == NULL) {
-    goto err;
-  }
-  OPENSSL_memset(prod_Z, 0, num * sizeof(prod_Z[0]));
-  for (size_t i = 0; i < num; i++) {
-    prod_Z[i] = BN_new();
-    if (prod_Z[i] == NULL) {
-      goto err;
-    }
-  }
-
-  // Set each prod_Z[i] to the product of points[0]->Z .. points[i]->Z,
-  // skipping any zero-valued inputs (pretend that they're 1).
-
-  if (!BN_is_zero(&points[0]->Z)) {
-    if (!BN_copy(prod_Z[0], &points[0]->Z)) {
-      goto err;
-    }
-  } else {
-    if (BN_copy(prod_Z[0], &group->one) == NULL) {
-      goto err;
-    }
-  }
-
-  for (size_t i = 1; i < num; i++) {
-    if (!BN_is_zero(&points[i]->Z)) {
-      if (!group->meth->field_mul(group, prod_Z[i], prod_Z[i - 1],
-                                  &points[i]->Z, ctx)) {
-        goto err;
-      }
-    } else {
-      if (!BN_copy(prod_Z[i], prod_Z[i - 1])) {
-        goto err;
-      }
-    }
-  }
-
-  // Now use a single explicit inversion to replace every non-zero points[i]->Z
-  // by its inverse. We use |BN_mod_inverse_odd| instead of doing a constant-
-  // time inversion using Fermat's Little Theorem because this function is
-  // usually only used for converting multiples of a public key point to
-  // affine, and a public key point isn't secret. If we were to use Fermat's
-  // Little Theorem then the cost of the inversion would usually be so high
-  // that converting the multiples to affine would be counterproductive.
-  int no_inverse;
-  if (!BN_mod_inverse_odd(tmp, &no_inverse, prod_Z[num - 1], &group->field,
-                          ctx)) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-    goto err;
-  }
-
-  if (group->meth->field_encode != NULL) {
-    // In the Montgomery case, we just turned R*H (representing H)
-    // into 1/(R*H), but we need R*(1/H) (representing 1/H);
-    // i.e. we need to multiply by the Montgomery factor twice.
-    if (!group->meth->field_encode(group, tmp, tmp, ctx) ||
-        !group->meth->field_encode(group, tmp, tmp, ctx)) {
-      goto err;
-    }
-  }
-
-  for (size_t i = num - 1; i > 0; --i) {
-    // Loop invariant: tmp is the product of the inverses of
-    // points[0]->Z .. points[i]->Z (zero-valued inputs skipped).
-    if (BN_is_zero(&points[i]->Z)) {
-      continue;
-    }
-
-    // Set tmp_Z to the inverse of points[i]->Z (as product
-    // of Z inverses 0 .. i, Z values 0 .. i - 1).
-    if (!group->meth->field_mul(group, tmp_Z, prod_Z[i - 1], tmp, ctx) ||
-        // Update tmp to satisfy the loop invariant for i - 1.
-        !group->meth->field_mul(group, tmp, tmp, &points[i]->Z, ctx) ||
-        // Replace points[i]->Z by its inverse.
-        !BN_copy(&points[i]->Z, tmp_Z)) {
-      goto err;
-    }
-  }
-
-  // Replace points[0]->Z by its inverse.
-  if (!BN_is_zero(&points[0]->Z) && !BN_copy(&points[0]->Z, tmp)) {
-    goto err;
-  }
-
-  // Finally, fix up the X and Y coordinates for all points.
-  for (size_t i = 0; i < num; i++) {
-    EC_POINT *p = points[i];
-
-    if (!BN_is_zero(&p->Z)) {
-      // turn (X, Y, 1/Z) into (X/Z^2, Y/Z^3, 1).
-      if (!group->meth->field_sqr(group, tmp, &p->Z, ctx) ||
-          !group->meth->field_mul(group, &p->X, &p->X, tmp, ctx) ||
-          !group->meth->field_mul(group, tmp, tmp, &p->Z, ctx) ||
-          !group->meth->field_mul(group, &p->Y, &p->Y, tmp, ctx)) {
-        goto err;
-      }
-
-      if (BN_copy(&p->Z, &group->one) == NULL) {
-        goto err;
-      }
-    }
-  }
-
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
-  if (prod_Z != NULL) {
-    for (size_t i = 0; i < num; i++) {
-      if (prod_Z[i] == NULL) {
-        break;
-      }
-      BN_clear_free(prod_Z[i]);
-    }
-    OPENSSL_free(prod_Z);
-  }
-
   return ret;
 }

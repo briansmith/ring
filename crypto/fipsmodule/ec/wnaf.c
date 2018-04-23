@@ -290,11 +290,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
   }
 
   tmp = EC_POINT_new(group);
-  if (tmp == NULL ||
-      // Convert the points to affine coordinates. This allows us to use the
-      // slightly faster |ec_point_add_mixed|. The conversion itself is not
-      // cheap, but it is worthwhile when there are two points.
-      !EC_POINTs_make_affine(group, total_precomp, precomp_storage, ctx)) {
+  if (tmp == NULL) {
     goto err;
   }
 
@@ -313,7 +309,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
           goto err;
         }
         r_is_at_infinity = 0;
-      } else if (!ec_point_add_mixed(group, r, r, tmp, ctx)) {
+      } else if (!EC_POINT_add(group, r, r, tmp, ctx)) {
         goto err;
       }
     }
@@ -327,7 +323,7 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
           goto err;
         }
         r_is_at_infinity = 0;
-      } else if (!ec_point_add_mixed(group, r, r, tmp, ctx)) {
+      } else if (!EC_POINT_add(group, r, r, tmp, ctx)) {
         goto err;
       }
     }

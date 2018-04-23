@@ -723,25 +723,6 @@ int EC_POINT_cmp(const EC_GROUP *group, const EC_POINT *a, const EC_POINT *b,
   return ec_GFp_simple_cmp(group, a, b, ctx);
 }
 
-int EC_POINT_make_affine(const EC_GROUP *group, EC_POINT *point, BN_CTX *ctx) {
-  if (EC_GROUP_cmp(group, point->group, NULL) != 0) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-  return ec_GFp_simple_make_affine(group, point, ctx);
-}
-
-int EC_POINTs_make_affine(const EC_GROUP *group, size_t num, EC_POINT *points[],
-                          BN_CTX *ctx) {
-  for (size_t i = 0; i < num; i++) {
-    if (EC_GROUP_cmp(group, points[i]->group, NULL) != 0) {
-      OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-      return 0;
-    }
-  }
-  return ec_GFp_simple_points_make_affine(group, num, points, ctx);
-}
-
 int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
                                         const EC_POINT *point, BIGNUM *x,
                                         BIGNUM *y, BN_CTX *ctx) {
@@ -792,18 +773,7 @@ int EC_POINT_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
-  return ec_GFp_simple_add(group, r, a, b, 0 /* both Jacobian */, ctx);
-}
-
-int ec_point_add_mixed(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
-                       const EC_POINT *b, BN_CTX *ctx) {
-  if (EC_GROUP_cmp(group, r->group, NULL) != 0 ||
-      EC_GROUP_cmp(group, a->group, NULL) != 0 ||
-      EC_GROUP_cmp(group, b->group, NULL) != 0) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-  return ec_GFp_simple_add(group, r, a, b, 1 /* |b| is affine */, ctx);
+  return ec_GFp_simple_add(group, r, a, b, ctx);
 }
 
 int EC_POINT_dbl(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,

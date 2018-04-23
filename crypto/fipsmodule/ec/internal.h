@@ -216,11 +216,6 @@ void ec_scalar_mul_montgomery(const EC_GROUP *group, EC_SCALAR *r,
 void ec_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                               const EC_SCALAR *a);
 
-// ec_point_add_mixed behaves like |EC_POINT_add|, but |&b->Z| must be zero or
-// one.
-int ec_point_add_mixed(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
-                       const EC_POINT *b, BN_CTX *ctx);
-
 // ec_point_mul_scalar sets |r| to generator * |g_scalar| + |p| *
 // |p_scalar|. Unlike other functions which take |EC_SCALAR|, |g_scalar| and
 // |p_scalar| need not be fully reduced. They need only contain as many bits as
@@ -266,7 +261,7 @@ int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *, EC_POINT *,
                                                const BIGNUM *x, const BIGNUM *y,
                                                BN_CTX *);
 int ec_GFp_simple_add(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
-                      const EC_POINT *b, int mixed, BN_CTX *);
+                      const EC_POINT *b, BN_CTX *);
 int ec_GFp_simple_dbl(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
                       BN_CTX *);
 int ec_GFp_simple_invert(const EC_GROUP *, EC_POINT *, BN_CTX *);
@@ -274,9 +269,6 @@ int ec_GFp_simple_is_at_infinity(const EC_GROUP *, const EC_POINT *);
 int ec_GFp_simple_is_on_curve(const EC_GROUP *, const EC_POINT *, BN_CTX *);
 int ec_GFp_simple_cmp(const EC_GROUP *, const EC_POINT *a, const EC_POINT *b,
                       BN_CTX *);
-int ec_GFp_simple_make_affine(const EC_GROUP *, EC_POINT *, BN_CTX *);
-int ec_GFp_simple_points_make_affine(const EC_GROUP *, size_t num,
-                                     EC_POINT * [], BN_CTX *);
 void ec_simple_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                                      const EC_SCALAR *a);
 
