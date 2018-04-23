@@ -100,13 +100,23 @@ typedef union {
   BN_ULONG words[EC_MAX_SCALAR_WORDS];
 } EC_SCALAR;
 
+// An EC_FELEM represents a field element. Only the first |field->width| words
+// are used. An |EC_FELEM| is specific to an |EC_GROUP| and must not be mixed
+// between groups. Additionally, the representation (whether or not elements are
+// represented in Montgomery-form) may vary between |EC_METHOD|s.
+typedef union {
+  // bytes is the representation of the field element in little-endian order.
+  uint8_t bytes[EC_MAX_SCALAR_BYTES];
+  BN_ULONG words[EC_MAX_SCALAR_WORDS];
+} EC_FELEM;
+
 struct ec_method_st {
   int (*group_init)(EC_GROUP *);
   void (*group_finish)(EC_GROUP *);
   int (*group_set_curve)(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                          const BIGNUM *b, BN_CTX *);
   int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_POINT *,
-                                      BIGNUM *x, BIGNUM *y, BN_CTX *);
+                                      BIGNUM *x, BIGNUM *y);
 
   // Computes |r = g_scalar*generator + p_scalar*p| if |g_scalar| and |p_scalar|
   // are both non-null. Computes |r = g_scalar*generator| if |p_scalar| is null.
@@ -122,17 +132,26 @@ struct ec_method_st {
                     const EC_SCALAR *g_scalar, const EC_POINT *p,
                     const EC_SCALAR *p_scalar, BN_CTX *ctx);
 
-  // 'field_mul' and 'field_sqr' can be used by 'add' and 'dbl' so that the
-  // same implementations of point operations can be used with different
-  // optimized implementations of expensive field operations:
-  int (*field_mul)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
-                   const BIGNUM *b, BN_CTX *);
-  int (*field_sqr)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a, BN_CTX *);
+  // felem_mul and felem_sqr implement multiplication and squaring,
+  // respectively, so that the generic |EC_POINT_add| and |EC_POINT_dbl|
+  // implementations can work both with |EC_GFp_mont_method| and the tuned
+  // operations.
+  //
+  // TODO(davidben): This constrains |EC_FELEM|'s internal representation, adds
+  // many indirect calls in the middle of the generic code, and a bunch of
+  // conversions. If p224-64.c were easily convertable to Montgomery form, we
+  // could say |EC_FELEM| is always in Montgomery form. If we exposed the
+  // internal add and double implementations in each of the curves, we could
+  // give |EC_POINT| an |EC_METHOD|-specific representation and |EC_FELEM| is
+  // purely a |EC_GFp_mont_method| type.
+  void (*felem_mul)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
+                    const EC_FELEM *b);
+  void (*felem_sqr)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a);
 
-  int (*field_encode)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
-                      BN_CTX *);  // e.g. to Montgomery
-  int (*field_decode)(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
-                      BN_CTX *);  // e.g. from Montgomery
+  int (*bignum_to_felem)(const EC_GROUP *group, EC_FELEM *out,
+                         const BIGNUM *in);
+  int (*felem_to_bignum)(const EC_GROUP *group, BIGNUM *out,
+                         const EC_FELEM *in);
 
   // scalar_inv_mont sets |out| to |in|^-1, where both input and output are in
   // Montgomery form.
@@ -160,7 +179,7 @@ struct ec_group_st {
 
   BIGNUM field;  // For curves over GF(p), this is the modulus.
 
-  BIGNUM a, b;  // Curve coefficients.
+  EC_FELEM a, b;  // Curve coefficients.
 
   int a_is_minus3;  // enable optimized point arithmetics for special case
 
@@ -168,7 +187,7 @@ struct ec_group_st {
 
   BN_MONT_CTX *mont;  // Montgomery structure.
 
-  BIGNUM one;  // The value one.
+  EC_FELEM one;  // The value one.
 } /* EC_GROUP */;
 
 struct ec_point_st {
@@ -176,13 +195,44 @@ struct ec_point_st {
   // |group->generator|.
   EC_GROUP *group;
 
-  BIGNUM X;
-  BIGNUM Y;
-  BIGNUM Z;  // Jacobian projective coordinates:
-             // (X, Y, Z)  represents  (X/Z^2, Y/Z^3)  if  Z != 0
+  // X, Y, and Z are Jacobian projective coordinates. They represent
+  // (X/Z^2, Y/Z^3) if Z != 0 and the point and infinite otherwise.
+  EC_FELEM X, Y, Z;
 } /* EC_POINT */;
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth);
+
+// ec_bignum_to_felem converts |in| to an |EC_FELEM|. It returns one on success
+// and zero if |in| is out of range.
+int ec_bignum_to_felem(const EC_GROUP *group, EC_FELEM *out, const BIGNUM *in);
+
+// ec_felem_to_bignum converts |in| to a |BIGNUM|. It returns one on success and
+// zero on allocation failure.
+int ec_felem_to_bignum(const EC_GROUP *group, BIGNUM *out, const EC_FELEM *in);
+
+// ec_felem_neg sets |out| to -|a|.
+void ec_felem_neg(const EC_GROUP *group, EC_FELEM *out, const EC_FELEM *a);
+
+// ec_felem_add sets |out| to |a| + |b|.
+void ec_felem_add(const EC_GROUP *group, EC_FELEM *out, const EC_FELEM *a,
+                  const EC_FELEM *b);
+
+// ec_felem_add sets |out| to |a| - |b|.
+void ec_felem_sub(const EC_GROUP *group, EC_FELEM *out, const EC_FELEM *a,
+                  const EC_FELEM *b);
+
+// ec_felem_non_zero_mask returns all ones if |a| is non-zero and all zeros
+// otherwise.
+BN_ULONG ec_felem_non_zero_mask(const EC_GROUP *group, const EC_FELEM *a);
+
+// ec_felem_select, in constant time, sets |out| to |a| if |mask| is all ones
+// and |b| if |mask| is all zeros.
+void ec_felem_select(const EC_GROUP *group, EC_FELEM *out, BN_ULONG mask,
+                     const EC_FELEM *a, const EC_FELEM *b);
+
+// ec_felem_equal returns one if |a| and |b| are equal and zero otherwise. It
+// treats |a| and |b| as public and does *not* run in constant time.
+int ec_felem_equal(const EC_GROUP *group, const EC_FELEM *a, const EC_FELEM *b);
 
 // ec_bignum_to_scalar converts |in| to an |EC_SCALAR| and writes it to
 // |*out|. It returns one on success and zero if |in| is out of range.
@@ -251,24 +301,20 @@ void ec_GFp_simple_group_finish(EC_GROUP *);
 int ec_GFp_simple_group_set_curve(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                                   const BIGNUM *b, BN_CTX *);
 int ec_GFp_simple_group_get_curve(const EC_GROUP *, BIGNUM *p, BIGNUM *a,
-                                  BIGNUM *b, BN_CTX *);
+                                  BIGNUM *b);
 unsigned ec_GFp_simple_group_get_degree(const EC_GROUP *);
-int ec_GFp_simple_point_init(EC_POINT *);
-void ec_GFp_simple_point_finish(EC_POINT *);
-int ec_GFp_simple_point_copy(EC_POINT *, const EC_POINT *);
-int ec_GFp_simple_point_set_to_infinity(const EC_GROUP *, EC_POINT *);
+void ec_GFp_simple_point_init(EC_POINT *);
+void ec_GFp_simple_point_copy(EC_POINT *, const EC_POINT *);
+void ec_GFp_simple_point_set_to_infinity(const EC_GROUP *, EC_POINT *);
 int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *, EC_POINT *,
-                                               const BIGNUM *x, const BIGNUM *y,
-                                               BN_CTX *);
-int ec_GFp_simple_add(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
-                      const EC_POINT *b, BN_CTX *);
-int ec_GFp_simple_dbl(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
-                      BN_CTX *);
-int ec_GFp_simple_invert(const EC_GROUP *, EC_POINT *, BN_CTX *);
+                                               const BIGNUM *x, const BIGNUM *y);
+void ec_GFp_simple_add(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
+                       const EC_POINT *b);
+void ec_GFp_simple_dbl(const EC_GROUP *, EC_POINT *r, const EC_POINT *a);
+void ec_GFp_simple_invert(const EC_GROUP *, EC_POINT *);
 int ec_GFp_simple_is_at_infinity(const EC_GROUP *, const EC_POINT *);
-int ec_GFp_simple_is_on_curve(const EC_GROUP *, const EC_POINT *, BN_CTX *);
-int ec_GFp_simple_cmp(const EC_GROUP *, const EC_POINT *a, const EC_POINT *b,
-                      BN_CTX *);
+int ec_GFp_simple_is_on_curve(const EC_GROUP *, const EC_POINT *);
+int ec_GFp_simple_cmp(const EC_GROUP *, const EC_POINT *a, const EC_POINT *b);
 void ec_simple_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                                      const EC_SCALAR *a);
 
@@ -277,14 +323,14 @@ int ec_GFp_mont_group_init(EC_GROUP *);
 int ec_GFp_mont_group_set_curve(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                                 const BIGNUM *b, BN_CTX *);
 void ec_GFp_mont_group_finish(EC_GROUP *);
-int ec_GFp_mont_field_mul(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
-                          const BIGNUM *b, BN_CTX *);
-int ec_GFp_mont_field_sqr(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
-                          BN_CTX *);
-int ec_GFp_mont_field_encode(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
-                             BN_CTX *);
-int ec_GFp_mont_field_decode(const EC_GROUP *, BIGNUM *r, const BIGNUM *a,
-                             BN_CTX *);
+void ec_GFp_mont_felem_mul(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
+                           const EC_FELEM *b);
+void ec_GFp_mont_felem_sqr(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a);
+
+int ec_GFp_mont_bignum_to_felem(const EC_GROUP *group, EC_FELEM *out,
+                                const BIGNUM *in);
+int ec_GFp_mont_felem_to_bignum(const EC_GROUP *group, BIGNUM *out,
+                                const EC_FELEM *in);
 
 void ec_GFp_nistp_recode_scalar_bits(uint8_t *sign, uint8_t *digit, uint8_t in);
 

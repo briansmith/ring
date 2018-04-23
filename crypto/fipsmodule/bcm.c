@@ -59,6 +59,7 @@
 #include "ec/ec.c"
 #include "ec/ec_key.c"
 #include "ec/ec_montgomery.c"
+#include "ec/felem.c"
 #include "ec/oct.c"
 #include "ec/p224-64.c"
 #include "../../third_party/fiat/p256.c"

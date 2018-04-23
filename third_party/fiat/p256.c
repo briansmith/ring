@@ -33,6 +33,7 @@
 #include <openssl/ec.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/type_check.h>
 
 #include <string.h>
 
@@ -896,19 +897,23 @@ static void fe_from_montgomery(fe x) {
 
 // BN_* compatability wrappers
 
-static int BN_to_fe(fe out, const BIGNUM *bn) {
-  uint8_t tmp[NBYTES];
-  if (!BN_bn2le_padded(tmp, NBYTES, bn)) {
-    return 0;
-  }
-  fe_frombytes(out, tmp);
-  return 1;
-}
-
 static BIGNUM *fe_to_BN(BIGNUM *out, const fe in) {
   uint8_t tmp[NBYTES];
   fe_tobytes(tmp, in);
   return BN_le2bn(tmp, NBYTES, out);
+}
+
+static void fe_from_generic(fe out, const EC_FELEM *in) {
+  fe_frombytes(out, in->bytes);
+}
+
+static void fe_to_generic(EC_FELEM *out, const fe in) {
+  // This works because 256 is a multiple of 64, so there are no excess bytes to
+  // zero when rounding up to |BN_ULONG|s.
+  OPENSSL_COMPILE_ASSERT(
+      256 / 8 == sizeof(BN_ULONG) * ((256 + BN_BITS2 - 1) / BN_BITS2),
+      bytes_left_over);
+  fe_tobytes(out->bytes, in);
 }
 
 // fe_inv calculates |out| = |in|^{-1}
@@ -1628,20 +1633,14 @@ static void batch_mul(fe x_out, fe y_out, fe z_out,
 static int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
                                                         const EC_POINT *point,
                                                         BIGNUM *x_out,
-                                                        BIGNUM *y_out,
-                                                        BN_CTX *ctx) {
-  fe x, y, z1, z2;
-
+                                                        BIGNUM *y_out) {
   if (EC_POINT_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }
-  if (!BN_to_fe(x, &point->X) ||
-      !BN_to_fe(y, &point->Y) ||
-      !BN_to_fe(z1, &point->Z)) {
-    return 0;
-  }
 
+  fe z1, z2;
+  fe_from_generic(z1, &point->Z);
   fe_inv(z2, z1);
   fe_sqr(z1, z2);
 
@@ -1651,6 +1650,8 @@ static int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
   fe_from_montgomery(z1);
 
   if (x_out != NULL) {
+    fe x;
+    fe_from_generic(x, &point->X);
     fe_mul(x, x, z1);
     if (!fe_to_BN(x_out, x)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
@@ -1659,6 +1660,8 @@ static int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
   }
 
   if (y_out != NULL) {
+    fe y;
+    fe_from_generic(y, &point->Y);
     fe_mul(z1, z1, z2);
     fe_mul(y, y, z1);
     if (!fe_to_BN(y_out, y)) {
@@ -1683,11 +1686,9 @@ static int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
     // they contribute nothing to the linear combination.
     OPENSSL_memset(&p_pre_comp, 0, sizeof(p_pre_comp));
     // Precompute multiples.
-    if (!BN_to_fe(p_pre_comp[1][0], &p->X) ||
-        !BN_to_fe(p_pre_comp[1][1], &p->Y) ||
-        !BN_to_fe(p_pre_comp[1][2], &p->Z)) {
-      return 0;
-    }
+    fe_from_generic(p_pre_comp[1][0], &p->X);
+    fe_from_generic(p_pre_comp[1][1], &p->Y);
+    fe_from_generic(p_pre_comp[1][2], &p->Z);
     for (size_t j = 2; j <= 16; ++j) {
       if (j & 1) {
         point_add(p_pre_comp[j][0], p_pre_comp[j][1],
@@ -1709,12 +1710,9 @@ static int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
             g_scalar != NULL ? g_scalar->bytes : NULL,
             (const fe (*) [3])p_pre_comp);
 
-  if (!fe_to_BN(&r->X, x_out) ||
-      !fe_to_BN(&r->Y, y_out) ||
-      !fe_to_BN(&r->Z, z_out)) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-    return 0;
-  }
+  fe_to_generic(&r->X, x_out);
+  fe_to_generic(&r->Y, y_out);
+  fe_to_generic(&r->Z, z_out);
   return 1;
 }
 
@@ -1726,11 +1724,9 @@ static int ec_GFp_nistp256_point_mul_public(const EC_GROUP *group, EC_POINT *r,
 #define P256_WSIZE_PUBLIC 4
   // Precompute multiples of |p|. p_pre_comp[i] is (2*i+1) * |p|.
   fe p_pre_comp[1 << (P256_WSIZE_PUBLIC-1)][3];
-  if (!BN_to_fe(p_pre_comp[0][0], &p->X) ||
-      !BN_to_fe(p_pre_comp[0][1], &p->Y) ||
-      !BN_to_fe(p_pre_comp[0][2], &p->Z)) {
-    return 0;
-  }
+  fe_from_generic(p_pre_comp[0][0], &p->X);
+  fe_from_generic(p_pre_comp[0][1], &p->Y);
+  fe_from_generic(p_pre_comp[0][2], &p->Z);
   fe p2[3];
   point_double(p2[0], p2[1], p2[2], p_pre_comp[0][0], p_pre_comp[0][1],
                p_pre_comp[0][2]);
@@ -1798,12 +1794,9 @@ static int ec_GFp_nistp256_point_mul_public(const EC_GROUP *group, EC_POINT *r,
     }
   }
 
-  if (!fe_to_BN(&r->X, ret[0]) ||
-      !fe_to_BN(&r->Y, ret[1]) ||
-      !fe_to_BN(&r->Z, ret[2])) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-    return 0;
-  }
+  fe_to_generic(&r->X, ret[0]);
+  fe_to_generic(&r->Y, ret[1]);
+  fe_to_generic(&r->Z, ret[2]);
   return 1;
 }
 
@@ -1815,10 +1808,10 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp256_method) {
     ec_GFp_nistp256_point_get_affine_coordinates;
   out->mul = ec_GFp_nistp256_points_mul;
   out->mul_public = ec_GFp_nistp256_point_mul_public;
-  out->field_mul = ec_GFp_mont_field_mul;
-  out->field_sqr = ec_GFp_mont_field_sqr;
-  out->field_encode = ec_GFp_mont_field_encode;
-  out->field_decode = ec_GFp_mont_field_decode;
+  out->felem_mul = ec_GFp_mont_felem_mul;
+  out->felem_sqr = ec_GFp_mont_felem_sqr;
+  out->bignum_to_felem = ec_GFp_mont_bignum_to_felem;
+  out->felem_to_bignum = ec_GFp_mont_felem_to_bignum;
   out->scalar_inv_montgomery = ec_simple_scalar_inv_montgomery;
 };
 

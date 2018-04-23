@@ -197,19 +197,13 @@ static void ecp_nistz256_mod_inverse_mont(BN_ULONG r[P256_LIMBS],
   ecp_nistz256_mul_mont(r, res, in);
 }
 
-// ecp_nistz256_bignum_to_field_elem copies the contents of |in| to |out| and
-// returns one if it fits. Otherwise it returns zero.
-static int ecp_nistz256_bignum_to_field_elem(BN_ULONG out[P256_LIMBS],
-                                             const BIGNUM *in) {
-  return bn_copy_words(out, P256_LIMBS, in);
-}
-
 // r = p * p_scalar
-static int ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
-                                     const EC_POINT *p,
-                                     const EC_SCALAR *p_scalar) {
+static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
+                                      const EC_POINT *p,
+                                      const EC_SCALAR *p_scalar) {
   assert(p != NULL);
   assert(p_scalar != NULL);
+  assert(group->field.width == P256_LIMBS);
 
   static const unsigned kWindowSize = 5;
   static const unsigned kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
@@ -226,13 +220,10 @@ static int ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   // not stored. All other values are actually stored with an offset of -1 in
   // table.
   P256_POINT *row = table;
-
-  if (!ecp_nistz256_bignum_to_field_elem(row[1 - 1].X, &p->X) ||
-      !ecp_nistz256_bignum_to_field_elem(row[1 - 1].Y, &p->Y) ||
-      !ecp_nistz256_bignum_to_field_elem(row[1 - 1].Z, &p->Z)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
-    return 0;
-  }
+  assert(group->field.width == P256_LIMBS);
+  OPENSSL_memcpy(row[1 - 1].X, p->X.words, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(row[1 - 1].Y, p->Y.words, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(row[1 - 1].Z, p->Z.words, P256_LIMBS * sizeof(BN_ULONG));
 
   ecp_nistz256_point_double(&row[2 - 1], &row[1 - 1]);
   ecp_nistz256_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);
@@ -296,8 +287,6 @@ static int ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   copy_conditional(h.Y, tmp, wvalue & 1);
 
   ecp_nistz256_point_add(r, r, &h);
-
-  return 1;
 }
 
 static int ecp_nistz256_points_mul(const EC_GROUP *group, EC_POINT *r,
@@ -362,44 +351,30 @@ static int ecp_nistz256_points_mul(const EC_GROUP *group, EC_POINT *r,
       out = &p.p;
     }
 
-    if (!ecp_nistz256_windowed_mul(group, out, p_, p_scalar)) {
-      return 0;
-    }
-
+    ecp_nistz256_windowed_mul(group, out, p_, p_scalar);
     if (!p_is_infinity) {
       ecp_nistz256_point_add(&p.p, &p.p, out);
     }
   }
 
-  // Not constant-time, but we're only operating on the public output.
-  if (!bn_set_words(&r->X, p.p.X, P256_LIMBS) ||
-      !bn_set_words(&r->Y, p.p.Y, P256_LIMBS) ||
-      !bn_set_words(&r->Z, p.p.Z, P256_LIMBS)) {
-    return 0;
-  }
-
+  assert(group->field.width == P256_LIMBS);
+  OPENSSL_memcpy(r->X.words, p.p.X, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->Y.words, p.p.Y, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->Z.words, p.p.Z, P256_LIMBS * sizeof(BN_ULONG));
   return 1;
 }
 
 static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
-                                   BIGNUM *x, BIGNUM *y, BN_CTX *ctx) {
-  BN_ULONG z_inv2[P256_LIMBS];
-  BN_ULONG z_inv3[P256_LIMBS];
-  BN_ULONG point_x[P256_LIMBS], point_y[P256_LIMBS], point_z[P256_LIMBS];
-
+                                   BIGNUM *x, BIGNUM *y) {
   if (EC_POINT_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }
 
-  if (!ecp_nistz256_bignum_to_field_elem(point_x, &point->X) ||
-      !ecp_nistz256_bignum_to_field_elem(point_y, &point->Y) ||
-      !ecp_nistz256_bignum_to_field_elem(point_z, &point->Z)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
-    return 0;
-  }
-
-  ecp_nistz256_mod_inverse_mont(z_inv3, point_z);
+  BN_ULONG z_inv2[P256_LIMBS];
+  BN_ULONG z_inv3[P256_LIMBS];
+  assert(group->field.width == P256_LIMBS);
+  ecp_nistz256_mod_inverse_mont(z_inv3, point->Z.words);
   ecp_nistz256_sqr_mont(z_inv2, z_inv3);
 
   // Instead of using |ecp_nistz256_from_mont| to convert the |x| coordinate
@@ -410,7 +385,7 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
 
   if (x != NULL) {
     BN_ULONG x_aff[P256_LIMBS];
-    ecp_nistz256_mul_mont(x_aff, z_inv2, point_x);
+    ecp_nistz256_mul_mont(x_aff, z_inv2, point->X.words);
     if (!bn_set_words(x, x_aff, P256_LIMBS)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       return 0;
@@ -420,7 +395,7 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
   if (y != NULL) {
     BN_ULONG y_aff[P256_LIMBS];
     ecp_nistz256_mul_mont(z_inv3, z_inv3, z_inv2);
-    ecp_nistz256_mul_mont(y_aff, z_inv3, point_y);
+    ecp_nistz256_mul_mont(y_aff, z_inv3, point->Y.words);
     if (!bn_set_words(y, y_aff, P256_LIMBS)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
       return 0;
@@ -518,10 +493,10 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {
   out->point_get_affine_coordinates = ecp_nistz256_get_affine;
   out->mul = ecp_nistz256_points_mul;
   out->mul_public = ecp_nistz256_points_mul;
-  out->field_mul = ec_GFp_mont_field_mul;
-  out->field_sqr = ec_GFp_mont_field_sqr;
-  out->field_encode = ec_GFp_mont_field_encode;
-  out->field_decode = ec_GFp_mont_field_decode;
+  out->felem_mul = ec_GFp_mont_felem_mul;
+  out->felem_sqr = ec_GFp_mont_felem_sqr;
+  out->bignum_to_felem = ec_GFp_mont_bignum_to_felem;
+  out->felem_to_bignum = ec_GFp_mont_felem_to_bignum;
   out->scalar_inv_montgomery = ecp_nistz256_inv_mod_ord;
 };
 

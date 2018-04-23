@@ -123,127 +123,101 @@ err:
   return ret;
 }
 
-int ec_GFp_mont_field_mul(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
-                          const BIGNUM *b, BN_CTX *ctx) {
-  if (group->mont == NULL) {
-    OPENSSL_PUT_ERROR(EC, EC_R_NOT_INITIALIZED);
-    return 0;
-  }
-
-  return BN_mod_mul_montgomery(r, a, b, group->mont, ctx);
+static void ec_GFp_mont_felem_to_montgomery(const EC_GROUP *group,
+                                            EC_FELEM *out, const EC_FELEM *in) {
+  bn_to_montgomery_small(out->words, in->words, group->field.width,
+                         group->mont);
 }
 
-int ec_GFp_mont_field_sqr(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
-                          BN_CTX *ctx) {
-  if (group->mont == NULL) {
-    OPENSSL_PUT_ERROR(EC, EC_R_NOT_INITIALIZED);
-    return 0;
-  }
-
-  return BN_mod_mul_montgomery(r, a, a, group->mont, ctx);
+static void ec_GFp_mont_felem_from_montgomery(const EC_GROUP *group,
+                                              EC_FELEM *out,
+                                              const EC_FELEM *in) {
+  bn_from_montgomery_small(out->words, in->words, group->field.width,
+                           group->mont);
 }
 
-int ec_GFp_mont_field_encode(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
-                             BN_CTX *ctx) {
-  if (group->mont == NULL) {
-    OPENSSL_PUT_ERROR(EC, EC_R_NOT_INITIALIZED);
-    return 0;
-  }
-
-  return BN_to_montgomery(r, a, group->mont, ctx);
+static void ec_GFp_mont_felem_inv(const EC_GROUP *group, EC_FELEM *out,
+                                  const EC_FELEM *a) {
+  bn_mod_inverse_prime_mont_small(out->words, a->words, group->field.width,
+                                  group->mont);
 }
 
-int ec_GFp_mont_field_decode(const EC_GROUP *group, BIGNUM *r, const BIGNUM *a,
-                             BN_CTX *ctx) {
+void ec_GFp_mont_felem_mul(const EC_GROUP *group, EC_FELEM *r,
+                           const EC_FELEM *a, const EC_FELEM *b) {
+  bn_mod_mul_montgomery_small(r->words, a->words, b->words, group->field.width,
+                              group->mont);
+}
+
+void ec_GFp_mont_felem_sqr(const EC_GROUP *group, EC_FELEM *r,
+                           const EC_FELEM *a) {
+  bn_mod_mul_montgomery_small(r->words, a->words, a->words, group->field.width,
+                              group->mont);
+}
+
+int ec_GFp_mont_bignum_to_felem(const EC_GROUP *group, EC_FELEM *out,
+                                const BIGNUM *in) {
   if (group->mont == NULL) {
     OPENSSL_PUT_ERROR(EC, EC_R_NOT_INITIALIZED);
     return 0;
   }
 
-  return BN_from_montgomery(r, a, group->mont, ctx);
+  if (!bn_copy_words(out->words, group->field.width, in)) {
+    return 0;
+  }
+  ec_GFp_mont_felem_to_montgomery(group, out, out);
+  return 1;
+}
+
+int ec_GFp_mont_felem_to_bignum(const EC_GROUP *group, BIGNUM *out,
+                                const EC_FELEM *in) {
+  if (group->mont == NULL) {
+    OPENSSL_PUT_ERROR(EC, EC_R_NOT_INITIALIZED);
+    return 0;
+  }
+
+  EC_FELEM tmp;
+  ec_GFp_mont_felem_from_montgomery(group, &tmp, in);
+  return bn_set_words(out, tmp.words, group->field.width);
 }
 
 static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
                                                     const EC_POINT *point,
-                                                    BIGNUM *x, BIGNUM *y,
-                                                    BN_CTX *ctx) {
+                                                    BIGNUM *x, BIGNUM *y) {
   if (EC_POINT_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }
 
-  BN_CTX *new_ctx = NULL;
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
+  // Transform  (X, Y, Z)  into  (x, y) := (X/Z^2, Y/Z^3).
+
+  EC_FELEM z1, z2;
+  ec_GFp_mont_felem_inv(group, &z2, &point->Z);
+  ec_GFp_mont_felem_sqr(group, &z1, &z2);
+
+  // Instead of using |ec_GFp_mont_felem_from_montgomery| to convert the |x|
+  // coordinate and then calling |ec_GFp_mont_felem_from_montgomery| again to
+  // convert the |y| coordinate below, convert the common factor |z1| once now,
+  // saving one reduction.
+  ec_GFp_mont_felem_from_montgomery(group, &z1, &z1);
+
+  if (x != NULL) {
+    EC_FELEM tmp;
+    ec_GFp_mont_felem_mul(group, &tmp, &point->X, &z1);
+    if (!bn_set_words(x, tmp.words, group->field.width)) {
       return 0;
     }
   }
 
-  int ret = 0;
-
-  BN_CTX_start(ctx);
-
-  // transform  (X, Y, Z)  into  (x, y) := (X/Z^2, Y/Z^3)
-
-  BIGNUM *Z_1 = BN_CTX_get(ctx);
-  BIGNUM *Z_2 = BN_CTX_get(ctx);
-  BIGNUM *Z_3 = BN_CTX_get(ctx);
-  if (Z_1 == NULL ||
-      Z_2 == NULL ||
-      Z_3 == NULL) {
-    goto err;
-  }
-
-  // The straightforward way to calculate the inverse of a Montgomery-encoded
-  // value where the result is Montgomery-encoded is:
-  //
-  //    |BN_from_montgomery| + invert + |BN_to_montgomery|.
-  //
-  // This is equivalent, but more efficient, because |BN_from_montgomery|
-  // is more efficient (at least in theory) than |BN_to_montgomery|, since it
-  // doesn't have to do the multiplication before the reduction.
-  //
-  // Use Fermat's Little Theorem instead of |BN_mod_inverse_odd| since this
-  // inversion may be done as the final step of private key operations.
-  // Unfortunately, this is suboptimal for ECDSA verification.
-  if (!BN_from_montgomery(Z_1, &point->Z, group->mont, ctx) ||
-      !BN_from_montgomery(Z_1, Z_1, group->mont, ctx) ||
-      !bn_mod_inverse_prime(Z_1, Z_1, &group->field, ctx, group->mont)) {
-    goto err;
-  }
-
-  if (!BN_mod_mul_montgomery(Z_2, Z_1, Z_1, group->mont, ctx)) {
-    goto err;
-  }
-
-  // Instead of using |BN_from_montgomery| to convert the |x| coordinate
-  // and then calling |BN_from_montgomery| again to convert the |y|
-  // coordinate below, convert the common factor |Z_2| once now, saving one
-  // reduction.
-  if (!BN_from_montgomery(Z_2, Z_2, group->mont, ctx)) {
-    goto err;
-  }
-
-  if (x != NULL) {
-    if (!BN_mod_mul_montgomery(x, &point->X, Z_2, group->mont, ctx)) {
-      goto err;
-    }
-  }
-
   if (y != NULL) {
-    if (!BN_mod_mul_montgomery(Z_3, Z_2, Z_1, group->mont, ctx) ||
-        !BN_mod_mul_montgomery(y, &point->Y, Z_3, group->mont, ctx)) {
-      goto err;
+    EC_FELEM tmp;
+    ec_GFp_mont_felem_mul(group, &z1, &z1, &z2);
+    ec_GFp_mont_felem_mul(group, &tmp, &point->Y, &z1);
+    if (!bn_set_words(y, tmp.words, group->field.width)) {
+      return 0;
     }
   }
 
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
-  return ret;
+  return 1;
 }
 
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_mont_method) {
@@ -253,9 +227,9 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_mont_method) {
   out->point_get_affine_coordinates = ec_GFp_mont_point_get_affine_coordinates;
   out->mul = ec_wNAF_mul /* XXX: Not constant time. */;
   out->mul_public = ec_wNAF_mul;
-  out->field_mul = ec_GFp_mont_field_mul;
-  out->field_sqr = ec_GFp_mont_field_sqr;
-  out->field_encode = ec_GFp_mont_field_encode;
-  out->field_decode = ec_GFp_mont_field_decode;
+  out->felem_mul = ec_GFp_mont_felem_mul;
+  out->felem_sqr = ec_GFp_mont_felem_sqr;
+  out->bignum_to_felem = ec_GFp_mont_bignum_to_felem;
+  out->felem_to_bignum = ec_GFp_mont_felem_to_bignum;
   out->scalar_inv_montgomery = ec_simple_scalar_inv_montgomery;
 }

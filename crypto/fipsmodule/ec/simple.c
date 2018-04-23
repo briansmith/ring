@@ -90,18 +90,12 @@
 
 int ec_GFp_simple_group_init(EC_GROUP *group) {
   BN_init(&group->field);
-  BN_init(&group->a);
-  BN_init(&group->b);
-  BN_init(&group->one);
   group->a_is_minus3 = 0;
   return 1;
 }
 
 void ec_GFp_simple_group_finish(EC_GROUP *group) {
   BN_free(&group->field);
-  BN_free(&group->a);
-  BN_free(&group->b);
-  BN_free(&group->one);
 }
 
 int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
@@ -109,7 +103,6 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
                                   BN_CTX *ctx) {
   int ret = 0;
   BN_CTX *new_ctx = NULL;
-  BIGNUM *tmp_a;
 
   // p must be a prime > 3
   if (BN_num_bits(p) <= 2 || !BN_is_odd(p)) {
@@ -125,8 +118,8 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
   }
 
   BN_CTX_start(ctx);
-  tmp_a = BN_CTX_get(ctx);
-  if (tmp_a == NULL) {
+  BIGNUM *tmp = BN_CTX_get(ctx);
+  if (tmp == NULL) {
     goto err;
   }
 
@@ -139,37 +132,24 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *group, const BIGNUM *p,
   bn_set_minimal_width(&group->field);
 
   // group->a
-  if (!BN_nnmod(tmp_a, a, &group->field, ctx)) {
-    goto err;
-  }
-  if (group->meth->field_encode) {
-    if (!group->meth->field_encode(group, &group->a, tmp_a, ctx)) {
-      goto err;
-    }
-  } else if (!BN_copy(&group->a, tmp_a)) {
-    goto err;
-  }
-
-  // group->b
-  if (!BN_nnmod(&group->b, b, &group->field, ctx)) {
-    goto err;
-  }
-  if (group->meth->field_encode &&
-      !group->meth->field_encode(group, &group->b, &group->b, ctx)) {
+  if (!BN_nnmod(tmp, a, &group->field, ctx) ||
+      !ec_bignum_to_felem(group, &group->a, tmp)) {
     goto err;
   }
 
   // group->a_is_minus3
-  if (!BN_add_word(tmp_a, 3)) {
+  if (!BN_add_word(tmp, 3)) {
     goto err;
   }
-  group->a_is_minus3 = (0 == BN_cmp(tmp_a, &group->field));
+  group->a_is_minus3 = (0 == BN_cmp(tmp, &group->field));
 
-  if (group->meth->field_encode != NULL) {
-    if (!group->meth->field_encode(group, &group->one, BN_value_one(), ctx)) {
-      goto err;
-    }
-  } else if (!BN_copy(&group->one, BN_value_one())) {
+  // group->b
+  if (!BN_nnmod(tmp, b, &group->field, ctx) ||
+      !ec_bignum_to_felem(group, &group->b, tmp)) {
+    goto err;
+  }
+
+  if (!ec_bignum_to_felem(group, &group->one, BN_value_one())) {
     goto err;
   }
 
@@ -182,438 +162,281 @@ err:
 }
 
 int ec_GFp_simple_group_get_curve(const EC_GROUP *group, BIGNUM *p, BIGNUM *a,
-                                  BIGNUM *b, BN_CTX *ctx) {
-  int ret = 0;
-  BN_CTX *new_ctx = NULL;
-
-  if (p != NULL && !BN_copy(p, &group->field)) {
+                                  BIGNUM *b) {
+  if ((p != NULL && !BN_copy(p, &group->field)) ||
+      (a != NULL && !ec_felem_to_bignum(group, a, &group->a)) ||
+      (b != NULL && !ec_felem_to_bignum(group, b, &group->b))) {
     return 0;
   }
-
-  if (a != NULL || b != NULL) {
-    if (group->meth->field_decode) {
-      if (ctx == NULL) {
-        ctx = new_ctx = BN_CTX_new();
-        if (ctx == NULL) {
-          return 0;
-        }
-      }
-      if (a != NULL && !group->meth->field_decode(group, a, &group->a, ctx)) {
-        goto err;
-      }
-      if (b != NULL && !group->meth->field_decode(group, b, &group->b, ctx)) {
-        goto err;
-      }
-    } else {
-      if (a != NULL && !BN_copy(a, &group->a)) {
-        goto err;
-      }
-      if (b != NULL && !BN_copy(b, &group->b)) {
-        goto err;
-      }
-    }
-  }
-
-  ret = 1;
-
-err:
-  BN_CTX_free(new_ctx);
-  return ret;
+  return 1;
 }
 
 unsigned ec_GFp_simple_group_get_degree(const EC_GROUP *group) {
   return BN_num_bits(&group->field);
 }
 
-int ec_GFp_simple_point_init(EC_POINT *point) {
-  BN_init(&point->X);
-  BN_init(&point->Y);
-  BN_init(&point->Z);
-
-  return 1;
+void ec_GFp_simple_point_init(EC_POINT *point) {
+  OPENSSL_memset(&point->X, 0, sizeof(EC_FELEM));
+  OPENSSL_memset(&point->Y, 0, sizeof(EC_FELEM));
+  OPENSSL_memset(&point->Z, 0, sizeof(EC_FELEM));
 }
 
-void ec_GFp_simple_point_finish(EC_POINT *point) {
-  BN_free(&point->X);
-  BN_free(&point->Y);
-  BN_free(&point->Z);
+void ec_GFp_simple_point_copy(EC_POINT *dest, const EC_POINT *src) {
+  OPENSSL_memcpy(&dest->X, &src->X, sizeof(EC_FELEM));
+  OPENSSL_memcpy(&dest->Y, &src->Y, sizeof(EC_FELEM));
+  OPENSSL_memcpy(&dest->Z, &src->Z, sizeof(EC_FELEM));
 }
 
-int ec_GFp_simple_point_copy(EC_POINT *dest, const EC_POINT *src) {
-  if (!BN_copy(&dest->X, &src->X) ||
-      !BN_copy(&dest->Y, &src->Y) ||
-      !BN_copy(&dest->Z, &src->Z)) {
-    return 0;
-  }
-
-  return 1;
-}
-
-int ec_GFp_simple_point_set_to_infinity(const EC_GROUP *group,
-                                        EC_POINT *point) {
-  BN_zero(&point->Z);
-  return 1;
-}
-
-static int set_Jprojective_coordinate_GFp(const EC_GROUP *group, BIGNUM *out,
-                                          const BIGNUM *in, BN_CTX *ctx) {
-  if (in == NULL) {
-    return 1;
-  }
-  if (BN_is_negative(in) ||
-      BN_cmp(in, &group->field) >= 0) {
-    OPENSSL_PUT_ERROR(EC, EC_R_COORDINATES_OUT_OF_RANGE);
-    return 0;
-  }
-  if (group->meth->field_encode) {
-    return group->meth->field_encode(group, out, in, ctx);
-  }
-  return BN_copy(out, in) != NULL;
+void ec_GFp_simple_point_set_to_infinity(const EC_GROUP *group,
+                                         EC_POINT *point) {
+  OPENSSL_memset(&point->Z, 0, sizeof(EC_FELEM));
 }
 
 int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *group,
                                                EC_POINT *point, const BIGNUM *x,
-                                               const BIGNUM *y, BN_CTX *ctx) {
+                                               const BIGNUM *y) {
   if (x == NULL || y == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
-  BN_CTX *new_ctx = NULL;
-  int ret = 0;
-
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      return 0;
-    }
+  if (!ec_bignum_to_felem(group, &point->X, x) ||
+      !ec_bignum_to_felem(group, &point->Y, y)) {
+    return 0;
   }
+  OPENSSL_memcpy(&point->Z, &group->one, sizeof(EC_FELEM));
 
-  if (!set_Jprojective_coordinate_GFp(group, &point->X, x, ctx) ||
-      !set_Jprojective_coordinate_GFp(group, &point->Y, y, ctx) ||
-      !BN_copy(&point->Z, &group->one)) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  BN_CTX_free(new_ctx);
-  return ret;
+  return 1;
 }
 
-int ec_GFp_simple_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
-                      const EC_POINT *b, BN_CTX *ctx) {
-  int (*field_mul)(const EC_GROUP *, BIGNUM *, const BIGNUM *, const BIGNUM *,
-                   BN_CTX *);
-  int (*field_sqr)(const EC_GROUP *, BIGNUM *, const BIGNUM *, BN_CTX *);
-  const BIGNUM *p;
-  BN_CTX *new_ctx = NULL;
-  BIGNUM *n0, *n1, *n2, *n3, *n4, *n5, *n6;
-  int ret = 0;
-
+void ec_GFp_simple_add(const EC_GROUP *group, EC_POINT *out, const EC_POINT *a,
+                       const EC_POINT *b) {
   if (a == b) {
-    return EC_POINT_dbl(group, r, a, ctx);
-  }
-  if (EC_POINT_is_at_infinity(group, a)) {
-    return EC_POINT_copy(r, b);
-  }
-  if (EC_POINT_is_at_infinity(group, b)) {
-    return EC_POINT_copy(r, a);
+    ec_GFp_simple_dbl(group, out, a);
+    return;
   }
 
-  field_mul = group->meth->field_mul;
-  field_sqr = group->meth->field_sqr;
-  p = &group->field;
 
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      return 0;
-    }
+  // The method is taken from:
+  //   http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#addition-add-2007-bl
+  //
+  // Coq transcription and correctness proof:
+  // <https://github.com/davidben/fiat-crypto/blob/c7b95f62b2a54b559522573310e9b487327d219a/src/Curves/Weierstrass/Jacobian.v#L467>
+  // <https://github.com/davidben/fiat-crypto/blob/c7b95f62b2a54b559522573310e9b487327d219a/src/Curves/Weierstrass/Jacobian.v#L544>
+  void (*const felem_mul)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
+                          const EC_FELEM *b) = group->meth->felem_mul;
+  void (*const felem_sqr)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a) =
+      group->meth->felem_sqr;
+
+  EC_FELEM x_out, y_out, z_out;
+  BN_ULONG z1nz = ec_felem_non_zero_mask(group, &a->Z);
+  BN_ULONG z2nz = ec_felem_non_zero_mask(group, &b->Z);
+
+  // z1z1 = z1z1 = z1**2
+  EC_FELEM z1z1;
+  felem_sqr(group, &z1z1, &a->Z);
+
+  // z2z2 = z2**2
+  EC_FELEM z2z2;
+  felem_sqr(group, &z2z2, &b->Z);
+
+  // u1 = x1*z2z2
+  EC_FELEM u1;
+  felem_mul(group, &u1, &a->X, &z2z2);
+
+  // two_z1z2 = (z1 + z2)**2 - (z1z1 + z2z2) = 2z1z2
+  EC_FELEM two_z1z2;
+  ec_felem_add(group, &two_z1z2, &a->Z, &b->Z);
+  felem_sqr(group, &two_z1z2, &two_z1z2);
+  ec_felem_sub(group, &two_z1z2, &two_z1z2, &z1z1);
+  ec_felem_sub(group, &two_z1z2, &two_z1z2, &z2z2);
+
+  // s1 = y1 * z2**3
+  EC_FELEM s1;
+  felem_mul(group, &s1, &b->Z, &z2z2);
+  felem_mul(group, &s1, &s1, &a->Y);
+
+  // u2 = x2*z1z1
+  EC_FELEM u2;
+  felem_mul(group, &u2, &b->X, &z1z1);
+
+  // h = u2 - u1
+  EC_FELEM h;
+  ec_felem_sub(group, &h, &u2, &u1);
+
+  BN_ULONG xneq = ec_felem_non_zero_mask(group, &h);
+
+  // z_out = two_z1z2 * h
+  felem_mul(group, &z_out, &h, &two_z1z2);
+
+  // z1z1z1 = z1 * z1z1
+  EC_FELEM z1z1z1;
+  felem_mul(group, &z1z1z1, &a->Z, &z1z1);
+
+  // s2 = y2 * z1**3
+  EC_FELEM s2;
+  felem_mul(group, &s2, &b->Y, &z1z1z1);
+
+  // r = (s2 - s1)*2
+  EC_FELEM r;
+  ec_felem_sub(group, &r, &s2, &s1);
+  ec_felem_add(group, &r, &r, &r);
+
+  BN_ULONG yneq = ec_felem_non_zero_mask(group, &r);
+
+  // TODO(davidben): Analyze how case relates to timing considerations for the
+  // supported curves which hit it (P-224, P-384, and P-521) and the
+  // to-be-written constant-time generic multiplication implementation.
+  if (!xneq && !yneq && z1nz && z2nz) {
+    ec_GFp_simple_dbl(group, out, a);
+    return;
   }
 
-  BN_CTX_start(ctx);
-  n0 = BN_CTX_get(ctx);
-  n1 = BN_CTX_get(ctx);
-  n2 = BN_CTX_get(ctx);
-  n3 = BN_CTX_get(ctx);
-  n4 = BN_CTX_get(ctx);
-  n5 = BN_CTX_get(ctx);
-  n6 = BN_CTX_get(ctx);
-  if (n6 == NULL) {
-    goto end;
-  }
+  // I = (2h)**2
+  EC_FELEM i;
+  ec_felem_add(group, &i, &h, &h);
+  felem_sqr(group, &i, &i);
 
-  // Note that in this function we must not read components of 'a' or 'b'
-  // once we have written the corresponding components of 'r'.
-  // ('r' might be one of 'a' or 'b'.)
+  // J = h * I
+  EC_FELEM j;
+  felem_mul(group, &j, &h, &i);
 
-  // n1, n2
-  if (!field_sqr(group, n0, &b->Z, ctx) ||
-      !field_mul(group, n1, &a->X, n0, ctx)) {
-    goto end;
-  }
-  // n1 = X_a * Z_b^2
+  // V = U1 * I
+  EC_FELEM v;
+  felem_mul(group, &v, &u1, &i);
 
-  if (!field_mul(group, n0, n0, &b->Z, ctx) ||
-      !field_mul(group, n2, &a->Y, n0, ctx)) {
-    goto end;
-  }
-  // n2 = Y_a * Z_b^3
+  // x_out = r**2 - J - 2V
+  felem_sqr(group, &x_out, &r);
+  ec_felem_sub(group, &x_out, &x_out, &j);
+  ec_felem_sub(group, &x_out, &x_out, &v);
+  ec_felem_sub(group, &x_out, &x_out, &v);
 
-  // n3, n4
-  if (!field_sqr(group, n0, &a->Z, ctx) ||
-      !field_mul(group, n3, &b->X, n0, ctx)) {
-    goto end;
-  }
-  // n3 = X_b * Z_a^2
+  // y_out = r(V-x_out) - 2 * s1 * J
+  ec_felem_sub(group, &y_out, &v, &x_out);
+  felem_mul(group, &y_out, &y_out, &r);
+  EC_FELEM s1j;
+  felem_mul(group, &s1j, &s1, &j);
+  ec_felem_sub(group, &y_out, &y_out, &s1j);
+  ec_felem_sub(group, &y_out, &y_out, &s1j);
 
-  if (!field_mul(group, n0, n0, &a->Z, ctx) ||
-      !field_mul(group, n4, &b->Y, n0, ctx)) {
-    goto end;
-  }
-  // n4 = Y_b * Z_a^3
-
-  // n5, n6
-  if (!bn_mod_sub_consttime(n5, n1, n3, p, ctx) ||
-      !bn_mod_sub_consttime(n6, n2, n4, p, ctx)) {
-    goto end;
-  }
-  // n5 = n1 - n3
-  // n6 = n2 - n4
-
-  if (BN_is_zero(n5)) {
-    if (BN_is_zero(n6)) {
-      // a is the same point as b
-      BN_CTX_end(ctx);
-      ret = EC_POINT_dbl(group, r, a, ctx);
-      ctx = NULL;
-      goto end;
-    } else {
-      // a is the inverse of b
-      BN_zero(&r->Z);
-      ret = 1;
-      goto end;
-    }
-  }
-
-  // 'n7', 'n8'
-  if (!bn_mod_add_consttime(n1, n1, n3, p, ctx) ||
-      !bn_mod_add_consttime(n2, n2, n4, p, ctx)) {
-    goto end;
-  }
-  // 'n7' = n1 + n3
-  // 'n8' = n2 + n4
-
-  // Z_r
-  if (!field_mul(group, n0, &a->Z, &b->Z, ctx) ||
-      !field_mul(group, &r->Z, n0, n5, ctx)) {
-    goto end;
-  }
-
-  // Z_r = Z_a * Z_b * n5
-
-  // X_r
-  if (!field_sqr(group, n0, n6, ctx) ||
-      !field_sqr(group, n4, n5, ctx) ||
-      !field_mul(group, n3, n1, n4, ctx) ||
-      !bn_mod_sub_consttime(&r->X, n0, n3, p, ctx)) {
-    goto end;
-  }
-  // X_r = n6^2 - n5^2 * 'n7'
-
-  // 'n9'
-  if (!bn_mod_lshift1_consttime(n0, &r->X, p, ctx) ||
-      !bn_mod_sub_consttime(n0, n3, n0, p, ctx)) {
-    goto end;
-  }
-  // n9 = n5^2 * 'n7' - 2 * X_r
-
-  // Y_r
-  if (!field_mul(group, n0, n0, n6, ctx) ||
-      !field_mul(group, n5, n4, n5, ctx)) {
-    goto end;  // now n5 is n5^3
-  }
-  if (!field_mul(group, n1, n2, n5, ctx) ||
-      !bn_mod_sub_consttime(n0, n0, n1, p, ctx)) {
-    goto end;
-  }
-  if (BN_is_odd(n0) && !BN_add(n0, n0, p)) {
-    goto end;
-  }
-  // now  0 <= n0 < 2*p,  and n0 is even
-  if (!BN_rshift1(&r->Y, n0)) {
-    goto end;
-  }
-  // Y_r = (n6 * 'n9' - 'n8' * 'n5^3') / 2
-
-  ret = 1;
-
-end:
-  if (ctx) {
-    // otherwise we already called BN_CTX_end
-    BN_CTX_end(ctx);
-  }
-  BN_CTX_free(new_ctx);
-  return ret;
+  ec_felem_select(group, &x_out, z1nz, &x_out, &b->X);
+  ec_felem_select(group, &out->X, z2nz, &x_out, &a->X);
+  ec_felem_select(group, &y_out, z1nz, &y_out, &b->Y);
+  ec_felem_select(group, &out->Y, z2nz, &y_out, &a->Y);
+  ec_felem_select(group, &z_out, z1nz, &z_out, &b->Z);
+  ec_felem_select(group, &out->Z, z2nz, &z_out, &a->Z);
 }
 
-int ec_GFp_simple_dbl(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
-                      BN_CTX *ctx) {
-  int (*field_mul)(const EC_GROUP *, BIGNUM *, const BIGNUM *, const BIGNUM *,
-                   BN_CTX *);
-  int (*field_sqr)(const EC_GROUP *, BIGNUM *, const BIGNUM *, BN_CTX *);
-  const BIGNUM *p;
-  BN_CTX *new_ctx = NULL;
-  BIGNUM *n0, *n1, *n2, *n3;
-  int ret = 0;
+void ec_GFp_simple_dbl(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a) {
+  void (*const felem_mul)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
+                          const EC_FELEM *b) = group->meth->felem_mul;
+  void (*const felem_sqr)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a) =
+      group->meth->felem_sqr;
 
-  if (EC_POINT_is_at_infinity(group, a)) {
-    BN_zero(&r->Z);
-    return 1;
-  }
-
-  field_mul = group->meth->field_mul;
-  field_sqr = group->meth->field_sqr;
-  p = &group->field;
-
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      return 0;
-    }
-  }
-
-  BN_CTX_start(ctx);
-  n0 = BN_CTX_get(ctx);
-  n1 = BN_CTX_get(ctx);
-  n2 = BN_CTX_get(ctx);
-  n3 = BN_CTX_get(ctx);
-  if (n3 == NULL) {
-    goto err;
-  }
-
-  // Note that in this function we must not read components of 'a'
-  // once we have written the corresponding components of 'r'.
-  // ('r' might the same as 'a'.)
-
-  // n1
   if (group->a_is_minus3) {
-    if (!field_sqr(group, n1, &a->Z, ctx) ||
-        !bn_mod_add_consttime(n0, &a->X, n1, p, ctx) ||
-        !bn_mod_sub_consttime(n2, &a->X, n1, p, ctx) ||
-        !field_mul(group, n1, n0, n2, ctx) ||
-        !bn_mod_lshift1_consttime(n0, n1, p, ctx) ||
-        !bn_mod_add_consttime(n1, n0, n1, p, ctx)) {
-      goto err;
-    }
-    // n1 = 3 * (X_a + Z_a^2) * (X_a - Z_a^2)
-    //    = 3 * X_a^2 - 3 * Z_a^4
+    // The method is taken from:
+    //   http://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-3.html#doubling-dbl-2001-b
+    //
+    // Coq transcription and correctness proof:
+    // <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L93>
+    // <https://github.com/mit-plv/fiat-crypto/blob/79f8b5f39ed609339f0233098dee1a3c4e6b3080/src/Curves/Weierstrass/Jacobian.v#L201>
+    EC_FELEM delta, gamma, beta, ftmp, ftmp2, tmptmp, alpha, fourbeta;
+    // delta = z^2
+    felem_sqr(group, &delta, &a->Z);
+    // gamma = y^2
+    felem_sqr(group, &gamma, &a->Y);
+    // beta = x*gamma
+    felem_mul(group, &beta, &a->X, &gamma);
+
+    // alpha = 3*(x-delta)*(x+delta)
+    ec_felem_sub(group, &ftmp, &a->X, &delta);
+    ec_felem_add(group, &ftmp2, &a->X, &delta);
+
+    ec_felem_add(group, &tmptmp, &ftmp2, &ftmp2);
+    ec_felem_add(group, &ftmp2, &ftmp2, &tmptmp);
+    felem_mul(group, &alpha, &ftmp, &ftmp2);
+
+    // x' = alpha^2 - 8*beta
+    felem_sqr(group, &r->X, &alpha);
+    ec_felem_add(group, &fourbeta, &beta, &beta);
+    ec_felem_add(group, &fourbeta, &fourbeta, &fourbeta);
+    ec_felem_add(group, &tmptmp, &fourbeta, &fourbeta);
+    ec_felem_sub(group, &r->X, &r->X, &tmptmp);
+
+    // z' = (y + z)^2 - gamma - delta
+    ec_felem_add(group, &delta, &gamma, &delta);
+    ec_felem_add(group, &ftmp, &a->Y, &a->Z);
+    felem_sqr(group, &r->Z, &ftmp);
+    ec_felem_sub(group, &r->Z, &r->Z, &delta);
+
+    // y' = alpha*(4*beta - x') - 8*gamma^2
+    ec_felem_sub(group, &r->Y, &fourbeta, &r->X);
+    ec_felem_add(group, &gamma, &gamma, &gamma);
+    felem_sqr(group, &gamma, &gamma);
+    felem_mul(group, &r->Y, &alpha, &r->Y);
+    ec_felem_add(group, &gamma, &gamma, &gamma);
+    ec_felem_sub(group, &r->Y, &r->Y, &gamma);
   } else {
-    if (!field_sqr(group, n0, &a->X, ctx) ||
-        !bn_mod_lshift1_consttime(n1, n0, p, ctx) ||
-        !bn_mod_add_consttime(n0, n0, n1, p, ctx) ||
-        !field_sqr(group, n1, &a->Z, ctx) ||
-        !field_sqr(group, n1, n1, ctx) ||
-        !field_mul(group, n1, n1, &group->a, ctx) ||
-        !bn_mod_add_consttime(n1, n1, n0, p, ctx)) {
-      goto err;
-    }
-    // n1 = 3 * X_a^2 + a_curve * Z_a^4
+    // The method is taken from:
+    //   http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian.html#doubling-dbl-2007-bl
+    //
+    // Coq transcription and correctness proof:
+    // <https://github.com/davidben/fiat-crypto/blob/c7b95f62b2a54b559522573310e9b487327d219a/src/Curves/Weierstrass/Jacobian.v#L102>
+    // <https://github.com/davidben/fiat-crypto/blob/c7b95f62b2a54b559522573310e9b487327d219a/src/Curves/Weierstrass/Jacobian.v#L534>
+    EC_FELEM xx, yy, yyyy, zz;
+    felem_sqr(group, &xx, &a->X);
+    felem_sqr(group, &yy, &a->Y);
+    felem_sqr(group, &yyyy, &yy);
+    felem_sqr(group, &zz, &a->Z);
+
+    // s = 2*((x_in + yy)^2 - xx - yyyy)
+    EC_FELEM s;
+    ec_felem_add(group, &s, &a->X, &yy);
+    felem_sqr(group, &s, &s);
+    ec_felem_sub(group, &s, &s, &xx);
+    ec_felem_sub(group, &s, &s, &yyyy);
+    ec_felem_add(group, &s, &s, &s);
+
+    // m = 3*xx + a*zz^2
+    EC_FELEM m;
+    felem_sqr(group, &m, &zz);
+    felem_mul(group, &m, &group->a, &m);
+    ec_felem_add(group, &m, &m, &xx);
+    ec_felem_add(group, &m, &m, &xx);
+    ec_felem_add(group, &m, &m, &xx);
+
+    // x_out = m^2 - 2*s
+    felem_sqr(group, &r->X, &m);
+    ec_felem_sub(group, &r->X, &r->X, &s);
+    ec_felem_sub(group, &r->X, &r->X, &s);
+
+    // z_out = (y_in + z_in)^2 - yy - zz
+    ec_felem_add(group, &r->Z, &a->Y, &a->Z);
+    felem_sqr(group, &r->Z, &r->Z);
+    ec_felem_sub(group, &r->Z, &r->Z, &yy);
+    ec_felem_sub(group, &r->Z, &r->Z, &zz);
+
+    // y_out = m*(s-x_out) - 8*yyyy
+    ec_felem_add(group, &yyyy, &yyyy, &yyyy);
+    ec_felem_add(group, &yyyy, &yyyy, &yyyy);
+    ec_felem_add(group, &yyyy, &yyyy, &yyyy);
+    ec_felem_sub(group, &r->Y, &s, &r->X);
+    felem_mul(group, &r->Y, &r->Y, &m);
+    ec_felem_sub(group, &r->Y, &r->Y, &yyyy);
   }
-
-  // Z_r
-  if (!field_mul(group, n0, &a->Y, &a->Z, ctx) ||
-      !bn_mod_lshift1_consttime(&r->Z, n0, p, ctx)) {
-    goto err;
-  }
-  // Z_r = 2 * Y_a * Z_a
-
-  // n2
-  if (!field_sqr(group, n3, &a->Y, ctx) ||
-      !field_mul(group, n2, &a->X, n3, ctx) ||
-      !bn_mod_lshift_consttime(n2, n2, 2, p, ctx)) {
-    goto err;
-  }
-  // n2 = 4 * X_a * Y_a^2
-
-  // X_r
-  if (!bn_mod_lshift1_consttime(n0, n2, p, ctx) ||
-      !field_sqr(group, &r->X, n1, ctx) ||
-      !bn_mod_sub_consttime(&r->X, &r->X, n0, p, ctx)) {
-    goto err;
-  }
-  // X_r = n1^2 - 2 * n2
-
-  // n3
-  if (!field_sqr(group, n0, n3, ctx) ||
-      !bn_mod_lshift_consttime(n3, n0, 3, p, ctx)) {
-    goto err;
-  }
-  // n3 = 8 * Y_a^4
-
-  // Y_r
-  if (!bn_mod_sub_consttime(n0, n2, &r->X, p, ctx) ||
-      !field_mul(group, n0, n1, n0, ctx) ||
-      !bn_mod_sub_consttime(&r->Y, n0, n3, p, ctx)) {
-    goto err;
-  }
-  // Y_r = n1 * (n2 - X_r) - n3
-
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
-  return ret;
 }
 
-int ec_GFp_simple_invert(const EC_GROUP *group, EC_POINT *point, BN_CTX *ctx) {
-  if (EC_POINT_is_at_infinity(group, point) || BN_is_zero(&point->Y)) {
-    // point is its own inverse
-    return 1;
-  }
-
-  return BN_usub(&point->Y, &group->field, &point->Y);
+void ec_GFp_simple_invert(const EC_GROUP *group, EC_POINT *point) {
+  ec_felem_neg(group, &point->Y, &point->Y);
 }
 
 int ec_GFp_simple_is_at_infinity(const EC_GROUP *group, const EC_POINT *point) {
-  return BN_is_zero(&point->Z);
+  return ec_felem_non_zero_mask(group, &point->Z) == 0;
 }
 
-int ec_GFp_simple_is_on_curve(const EC_GROUP *group, const EC_POINT *point,
-                              BN_CTX *ctx) {
-  int (*field_mul)(const EC_GROUP *, BIGNUM *, const BIGNUM *, const BIGNUM *,
-                   BN_CTX *);
-  int (*field_sqr)(const EC_GROUP *, BIGNUM *, const BIGNUM *, BN_CTX *);
-  const BIGNUM *p;
-  BN_CTX *new_ctx = NULL;
-  BIGNUM *rh, *tmp, *Z4, *Z6;
-  int ret = 0;
-
+int ec_GFp_simple_is_on_curve(const EC_GROUP *group, const EC_POINT *point) {
   if (EC_POINT_is_at_infinity(group, point)) {
     return 1;
-  }
-
-  field_mul = group->meth->field_mul;
-  field_sqr = group->meth->field_sqr;
-  p = &group->field;
-
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      return 0;
-    }
-  }
-
-  BN_CTX_start(ctx);
-  rh = BN_CTX_get(ctx);
-  tmp = BN_CTX_get(ctx);
-  Z4 = BN_CTX_get(ctx);
-  Z6 = BN_CTX_get(ctx);
-  if (Z6 == NULL) {
-    goto err;
   }
 
   // We have a curve defined by a Weierstrass equation
@@ -625,79 +448,53 @@ int ec_GFp_simple_is_on_curve(const EC_GROUP *group, const EC_POINT *point,
   //      Y^2 = X^3 + a*X*Z^4 + b*Z^6.
   // To test this, we add up the right-hand side in 'rh'.
 
-  // rh := X^2
-  if (!field_sqr(group, rh, &point->X, ctx)) {
-    goto err;
-  }
+  void (*const felem_mul)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
+                          const EC_FELEM *b) = group->meth->felem_mul;
+  void (*const felem_sqr)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a) =
+      group->meth->felem_sqr;
 
-  if (BN_cmp(&point->Z, &group->one) != 0) {
-    if (!field_sqr(group, tmp, &point->Z, ctx) ||
-        !field_sqr(group, Z4, tmp, ctx) ||
-        !field_mul(group, Z6, Z4, tmp, ctx)) {
-      goto err;
-    }
+  // rh := X^2
+  EC_FELEM rh;
+  felem_sqr(group, &rh, &point->X);
+
+  EC_FELEM tmp, Z4, Z6;
+  if (!ec_felem_equal(group, &point->Z, &group->one)) {
+    felem_sqr(group, &tmp, &point->Z);
+    felem_sqr(group, &Z4, &tmp);
+    felem_mul(group, &Z6, &Z4, &tmp);
 
     // rh := (rh + a*Z^4)*X
     if (group->a_is_minus3) {
-      if (!bn_mod_lshift1_consttime(tmp, Z4, p, ctx) ||
-          !bn_mod_add_consttime(tmp, tmp, Z4, p, ctx) ||
-          !bn_mod_sub_consttime(rh, rh, tmp, p, ctx) ||
-          !field_mul(group, rh, rh, &point->X, ctx)) {
-        goto err;
-      }
+      ec_felem_add(group, &tmp, &Z4, &Z4);
+      ec_felem_add(group, &tmp, &tmp, &Z4);
+      ec_felem_sub(group, &rh, &rh, &tmp);
+      felem_mul(group, &rh, &rh, &point->X);
     } else {
-      if (!field_mul(group, tmp, Z4, &group->a, ctx) ||
-          !bn_mod_add_consttime(rh, rh, tmp, p, ctx) ||
-          !field_mul(group, rh, rh, &point->X, ctx)) {
-        goto err;
-      }
+      felem_mul(group, &tmp, &Z4, &group->a);
+      ec_felem_add(group, &rh, &rh, &tmp);
+      felem_mul(group, &rh, &rh, &point->X);
     }
 
     // rh := rh + b*Z^6
-    if (!field_mul(group, tmp, &group->b, Z6, ctx) ||
-        !bn_mod_add_consttime(rh, rh, tmp, p, ctx)) {
-      goto err;
-    }
+    felem_mul(group, &tmp, &group->b, &Z6);
+    ec_felem_add(group, &rh, &rh, &tmp);
   } else {
     // rh := (rh + a)*X
-    if (!bn_mod_add_consttime(rh, rh, &group->a, p, ctx) ||
-        !field_mul(group, rh, rh, &point->X, ctx)) {
-      goto err;
-    }
+    ec_felem_add(group, &rh, &rh, &group->a);
+    felem_mul(group, &rh, &rh, &point->X);
     // rh := rh + b
-    if (!bn_mod_add_consttime(rh, rh, &group->b, p, ctx)) {
-      goto err;
-    }
+    ec_felem_add(group, &rh, &rh, &group->b);
   }
 
   // 'lh' := Y^2
-  if (!field_sqr(group, tmp, &point->Y, ctx)) {
-    goto err;
-  }
-
-  ret = (0 == BN_ucmp(tmp, rh));
-
-err:
-  BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
-  return ret;
+  felem_sqr(group, &tmp, &point->Y);
+  return ec_felem_equal(group, &tmp, &rh);
 }
 
 int ec_GFp_simple_cmp(const EC_GROUP *group, const EC_POINT *a,
-                      const EC_POINT *b, BN_CTX *ctx) {
-  // return values:
-  //  -1   error
-  //   0   equal (in affine coordinates)
-  //   1   not equal
-
-  int (*field_mul)(const EC_GROUP *, BIGNUM *, const BIGNUM *, const BIGNUM *,
-                   BN_CTX *);
-  int (*field_sqr)(const EC_GROUP *, BIGNUM *, const BIGNUM *, BN_CTX *);
-  BN_CTX *new_ctx = NULL;
-  BIGNUM *tmp1, *tmp2, *Za23, *Zb23;
-  const BIGNUM *tmp1_, *tmp2_;
-  int ret = -1;
-
+                      const EC_POINT *b) {
+  // Note this function returns zero if |a| and |b| are equal and 1 if they are
+  // not equal.
   if (ec_GFp_simple_is_at_infinity(group, a)) {
     return ec_GFp_simple_is_at_infinity(group, b) ? 0 : 1;
   }
@@ -706,93 +503,66 @@ int ec_GFp_simple_cmp(const EC_GROUP *group, const EC_POINT *a,
     return 1;
   }
 
-  int a_Z_is_one = BN_cmp(&a->Z, &group->one) == 0;
-  int b_Z_is_one = BN_cmp(&b->Z, &group->one) == 0;
+  int a_Z_is_one = ec_felem_equal(group, &a->Z, &group->one);
+  int b_Z_is_one = ec_felem_equal(group, &b->Z, &group->one);
 
   if (a_Z_is_one && b_Z_is_one) {
-    return ((BN_cmp(&a->X, &b->X) == 0) && BN_cmp(&a->Y, &b->Y) == 0) ? 0 : 1;
+    return !ec_felem_equal(group, &a->X, &b->X) ||
+           !ec_felem_equal(group, &a->Y, &b->Y);
   }
 
-  field_mul = group->meth->field_mul;
-  field_sqr = group->meth->field_sqr;
-
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      return -1;
-    }
-  }
-
-  BN_CTX_start(ctx);
-  tmp1 = BN_CTX_get(ctx);
-  tmp2 = BN_CTX_get(ctx);
-  Za23 = BN_CTX_get(ctx);
-  Zb23 = BN_CTX_get(ctx);
-  if (Zb23 == NULL) {
-    goto end;
-  }
+  void (*const felem_mul)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
+                          const EC_FELEM *b) = group->meth->felem_mul;
+  void (*const felem_sqr)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a) =
+      group->meth->felem_sqr;
 
   // We have to decide whether
   //     (X_a/Z_a^2, Y_a/Z_a^3) = (X_b/Z_b^2, Y_b/Z_b^3),
   // or equivalently, whether
   //     (X_a*Z_b^2, Y_a*Z_b^3) = (X_b*Z_a^2, Y_b*Z_a^3).
 
+  EC_FELEM tmp1, tmp2, Za23, Zb23;
+  const EC_FELEM *tmp1_, *tmp2_;
   if (!b_Z_is_one) {
-    if (!field_sqr(group, Zb23, &b->Z, ctx) ||
-        !field_mul(group, tmp1, &a->X, Zb23, ctx)) {
-      goto end;
-    }
-    tmp1_ = tmp1;
+    felem_sqr(group, &Zb23, &b->Z);
+    felem_mul(group, &tmp1, &a->X, &Zb23);
+    tmp1_ = &tmp1;
   } else {
     tmp1_ = &a->X;
   }
   if (!a_Z_is_one) {
-    if (!field_sqr(group, Za23, &a->Z, ctx) ||
-        !field_mul(group, tmp2, &b->X, Za23, ctx)) {
-      goto end;
-    }
-    tmp2_ = tmp2;
+    felem_sqr(group, &Za23, &a->Z);
+    felem_mul(group, &tmp2, &b->X, &Za23);
+    tmp2_ = &tmp2;
   } else {
     tmp2_ = &b->X;
   }
 
-  // compare  X_a*Z_b^2  with  X_b*Z_a^2
-  if (BN_cmp(tmp1_, tmp2_) != 0) {
-    ret = 1;  // points differ
-    goto end;
+  // Compare  X_a*Z_b^2  with  X_b*Z_a^2.
+  if (!ec_felem_equal(group, tmp1_, tmp2_)) {
+    return 1;  // The points differ.
   }
 
-
   if (!b_Z_is_one) {
-    if (!field_mul(group, Zb23, Zb23, &b->Z, ctx) ||
-        !field_mul(group, tmp1, &a->Y, Zb23, ctx)) {
-      goto end;
-    }
-    // tmp1_ = tmp1
+    felem_mul(group, &Zb23, &Zb23, &b->Z);
+    felem_mul(group, &tmp1, &a->Y, &Zb23);
+    // tmp1_ = &tmp1
   } else {
     tmp1_ = &a->Y;
   }
   if (!a_Z_is_one) {
-    if (!field_mul(group, Za23, Za23, &a->Z, ctx) ||
-        !field_mul(group, tmp2, &b->Y, Za23, ctx)) {
-      goto end;
-    }
-    // tmp2_ = tmp2
+    felem_mul(group, &Za23, &Za23, &a->Z);
+    felem_mul(group, &tmp2, &b->Y, &Za23);
+    // tmp2_ = &tmp2
   } else {
     tmp2_ = &b->Y;
   }
 
-  // compare  Y_a*Z_b^3  with  Y_b*Z_a^3
-  if (BN_cmp(tmp1_, tmp2_) != 0) {
-    ret = 1;  // points differ
-    goto end;
+  // Compare  Y_a*Z_b^3  with  Y_b*Z_a^3.
+  if (!ec_felem_equal(group, tmp1_, tmp2_)) {
+    return 1;  // The points differ.
   }
 
-  // points are equal
-  ret = 0;
-
-end:
-  BN_CTX_end(ctx);
-  BN_CTX_free(new_ctx);
-  return ret;
+  // The points are equal.
+  return 0;
 }
