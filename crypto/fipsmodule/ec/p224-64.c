@@ -203,38 +203,25 @@ static void p224_felem_to_bin28(uint8_t out[28], const p224_felem in) {
   }
 }
 
-// To preserve endianness when using BN_bn2bin and BN_bin2bn
-static void p224_flip_endian(uint8_t *out, const uint8_t *in, size_t len) {
-  for (size_t i = 0; i < len; ++i) {
-    out[i] = in[len - 1 - i];
-  }
-}
-
 // From OpenSSL BIGNUM to internal representation
 static int p224_BN_to_felem(p224_felem out, const BIGNUM *bn) {
   // BN_bn2bin eats leading zeroes
   p224_felem_bytearray b_out;
-  OPENSSL_memset(b_out, 0, sizeof(b_out));
-  size_t num_bytes = BN_num_bytes(bn);
-  if (num_bytes > sizeof(b_out) ||
-      BN_is_negative(bn)) {
+  if (BN_is_negative(bn) ||
+      !BN_bn2le_padded(b_out, sizeof(b_out), bn)) {
     OPENSSL_PUT_ERROR(EC, EC_R_BIGNUM_OUT_OF_RANGE);
     return 0;
   }
 
-  p224_felem_bytearray b_in;
-  num_bytes = BN_bn2bin(bn, b_in);
-  p224_flip_endian(b_out, b_in, num_bytes);
   p224_bin28_to_felem(out, b_out);
   return 1;
 }
 
 // From internal representation to OpenSSL BIGNUM
 static BIGNUM *p224_felem_to_BN(BIGNUM *out, const p224_felem in) {
-  p224_felem_bytearray b_in, b_out;
-  p224_felem_to_bin28(b_in, in);
-  p224_flip_endian(b_out, b_in, sizeof(b_out));
-  return BN_bin2bn(b_out, sizeof(b_out), out);
+  p224_felem_bytearray b_out;
+  p224_felem_to_bin28(b_out, in);
+  return BN_le2bn(b_out, sizeof(b_out), out);
 }
 
 // Field operations, using the internal representation of field elements.
