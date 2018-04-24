@@ -114,11 +114,10 @@ typedef enum {
 // more modern primitives.
 OPENSSL_EXPORT EC_GROUP *EC_GROUP_new_by_curve_name(int nid);
 
-// EC_GROUP_free frees |group| and the data that it points to.
+// EC_GROUP_free releases a reference to |group|.
 OPENSSL_EXPORT void EC_GROUP_free(EC_GROUP *group);
 
-// EC_GROUP_dup returns a fresh |EC_GROUP| which is equal to |a| or NULL on
-// error.
+// EC_GROUP_dup takes a reference to |a| and returns it.
 OPENSSL_EXPORT EC_GROUP *EC_GROUP_dup(const EC_GROUP *a);
 
 // EC_GROUP_cmp returns zero if |a| and |b| are the same group and non-zero
