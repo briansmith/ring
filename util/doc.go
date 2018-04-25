@@ -17,6 +17,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -216,6 +217,9 @@ func skipLine(s string) string {
 	return ""
 }
 
+var stackOfRegexp = regexp.MustCompile(`STACK_OF\(([^)]*)\)`)
+var lhashOfRegexp = regexp.MustCompile(`LHASH_OF\(([^)]*)\)`)
+
 func getNameFromDecl(decl string) (string, bool) {
 	for strings.HasPrefix(decl, "#if") || strings.HasPrefix(decl, "#elif") {
 		decl = skipLine(decl)
@@ -249,8 +253,9 @@ func getNameFromDecl(decl string) (string, bool) {
 		return decl[:i], true
 	}
 	decl = strings.TrimPrefix(decl, "OPENSSL_EXPORT ")
-	decl = strings.TrimPrefix(decl, "STACK_OF(")
-	decl = strings.TrimPrefix(decl, "LHASH_OF(")
+	decl = strings.TrimPrefix(decl, "const ")
+	decl = stackOfRegexp.ReplaceAllString(decl, "STACK_OF_$1")
+	decl = lhashOfRegexp.ReplaceAllString(decl, "LHASH_OF_$1")
 	i := strings.Index(decl, "(")
 	if i < 0 {
 		return "", false

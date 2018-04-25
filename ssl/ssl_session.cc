@@ -913,6 +913,11 @@ X509 *SSL_SESSION_get0_peer(const SSL_SESSION *session) {
   return session->x509_peer;
 }
 
+const STACK_OF(CRYPTO_BUFFER) *
+    SSL_SESSION_get0_peer_certificates(const SSL_SESSION *session) {
+  return session->certs;
+}
+
 size_t SSL_SESSION_get_master_key(const SSL_SESSION *session, uint8_t *out,
                                   size_t max_out) {
   // TODO(davidben): Fix master_key_length's type and remove these casts.
