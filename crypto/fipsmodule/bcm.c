@@ -66,6 +66,7 @@
 #include "ec/p256-x86_64.c"
 #include "ec/scalar.c"
 #include "ec/simple.c"
+#include "ec/simple_mul.c"
 #include "ec/util.c"
 #include "ec/wnaf.c"
 #include "hmac/hmac.c"

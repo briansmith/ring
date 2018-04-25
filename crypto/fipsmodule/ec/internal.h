@@ -287,6 +287,10 @@ OPENSSL_EXPORT int ec_point_mul_scalar_public(
     const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
     const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx);
 
+void ec_GFp_simple_mul(const EC_GROUP *group, EC_RAW_POINT *r,
+                       const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
+                       const EC_SCALAR *p_scalar);
+
 // ec_compute_wNAF writes the modified width-(w+1) Non-Adjacent Form (wNAF) of
 // |scalar| to |out|. |out| must have room for |bits| + 1 elements, each of
 // which will be either zero or odd with an absolute value less than  2^w
@@ -298,9 +302,9 @@ OPENSSL_EXPORT int ec_point_mul_scalar_public(
 void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
                      const EC_SCALAR *scalar, size_t bits, int w);
 
-void ec_wNAF_mul(const EC_GROUP *group, EC_RAW_POINT *r,
-                 const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
-                 const EC_SCALAR *p_scalar);
+void ec_GFp_simple_mul_public(const EC_GROUP *group, EC_RAW_POINT *r,
+                              const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
+                              const EC_SCALAR *p_scalar);
 
 // method functions in simple.c
 int ec_GFp_simple_group_init(EC_GROUP *);

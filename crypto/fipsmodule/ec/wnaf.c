@@ -72,7 +72,6 @@
 
 #include <openssl/bn.h>
 #include <openssl/err.h>
-#include <openssl/mem.h>
 #include <openssl/thread.h>
 
 #include "internal.h"
@@ -169,37 +168,30 @@ static void lookup_precomp(const EC_GROUP *group, EC_RAW_POINT *out,
   }
 }
 
-// EC_WNAF_WINDOW_BITS is the window size to use for |ec_wNAF_mul|.
+// EC_WNAF_WINDOW_BITS is the window size to use for |ec_GFp_simple_mul_public|.
 #define EC_WNAF_WINDOW_BITS 4
 
-// EC_WNAF_TABLE_SIZE is the table size to use for |ec_wNAF_mul|.
+// EC_WNAF_TABLE_SIZE is the table size to use for |ec_GFp_simple_mul_public|.
 #define EC_WNAF_TABLE_SIZE (1 << (EC_WNAF_WINDOW_BITS - 1))
 
-void ec_wNAF_mul(const EC_GROUP *group, EC_RAW_POINT *r,
-                 const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
-                 const EC_SCALAR *p_scalar) {
+void ec_GFp_simple_mul_public(const EC_GROUP *group, EC_RAW_POINT *r,
+                              const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
+                              const EC_SCALAR *p_scalar) {
   size_t bits = BN_num_bits(&group->order);
   size_t wNAF_len = bits + 1;
 
-  // TODO(davidben): |mul_public| is for ECDSA verification which can assume
-  // non-NULL inputs, but this code is also used for |mul| which cannot. It's
-  // not constant-time, so replace the generic |mul| and remove the NULL checks.
   int8_t g_wNAF[EC_MAX_SCALAR_BYTES * 8 + 1];
   EC_RAW_POINT g_precomp[EC_WNAF_TABLE_SIZE];
   assert(wNAF_len <= OPENSSL_ARRAY_SIZE(g_wNAF));
-  if (g_scalar != NULL) {
-    const EC_RAW_POINT *g = &group->generator->raw;
-    ec_compute_wNAF(group, g_wNAF, g_scalar, bits, EC_WNAF_WINDOW_BITS);
-    compute_precomp(group, g_precomp, g, EC_WNAF_TABLE_SIZE);
-  }
+  const EC_RAW_POINT *g = &group->generator->raw;
+  ec_compute_wNAF(group, g_wNAF, g_scalar, bits, EC_WNAF_WINDOW_BITS);
+  compute_precomp(group, g_precomp, g, EC_WNAF_TABLE_SIZE);
 
   int8_t p_wNAF[EC_MAX_SCALAR_BYTES * 8 + 1];
   EC_RAW_POINT p_precomp[EC_WNAF_TABLE_SIZE];
   assert(wNAF_len <= OPENSSL_ARRAY_SIZE(p_wNAF));
-  if (p_scalar != NULL) {
-    ec_compute_wNAF(group, p_wNAF, p_scalar, bits, EC_WNAF_WINDOW_BITS);
-    compute_precomp(group, p_precomp, p, EC_WNAF_TABLE_SIZE);
-  }
+  ec_compute_wNAF(group, p_wNAF, p_scalar, bits, EC_WNAF_WINDOW_BITS);
+  compute_precomp(group, p_precomp, p, EC_WNAF_TABLE_SIZE);
 
   EC_RAW_POINT tmp;
   int r_is_at_infinity = 1;
@@ -208,7 +200,7 @@ void ec_wNAF_mul(const EC_GROUP *group, EC_RAW_POINT *r,
       ec_GFp_simple_dbl(group, r, r);
     }
 
-    if (g_scalar != NULL && g_wNAF[k] != 0) {
+    if (g_wNAF[k] != 0) {
       lookup_precomp(group, &tmp, g_precomp, g_wNAF[k]);
       if (r_is_at_infinity) {
         ec_GFp_simple_point_copy(r, &tmp);
@@ -218,7 +210,7 @@ void ec_wNAF_mul(const EC_GROUP *group, EC_RAW_POINT *r,
       }
     }
 
-    if (p_scalar != NULL && p_wNAF[k] != 0) {
+    if (p_wNAF[k] != 0) {
       lookup_precomp(group, &tmp, p_precomp, p_wNAF[k]);
       if (r_is_at_infinity) {
         ec_GFp_simple_point_copy(r, &tmp);
@@ -232,7 +224,4 @@ void ec_wNAF_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   if (r_is_at_infinity) {
     ec_GFp_simple_point_set_to_infinity(group, r);
   }
-
-  OPENSSL_cleanse(&g_wNAF, sizeof(g_wNAF));
-  OPENSSL_cleanse(&p_wNAF, sizeof(p_wNAF));
 }

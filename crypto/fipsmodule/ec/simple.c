@@ -287,9 +287,7 @@ void ec_GFp_simple_add(const EC_GROUP *group, EC_RAW_POINT *out,
 
   BN_ULONG yneq = ec_felem_non_zero_mask(group, &r);
 
-  // TODO(davidben): Analyze how case relates to timing considerations for the
-  // supported curves which hit it (P-224, P-384, and P-521) and the
-  // to-be-written constant-time generic multiplication implementation.
+  // This case will never occur in the constant-time |ec_GFp_simple_mul|.
   if (!xneq && !yneq && z1nz && z2nz) {
     ec_GFp_simple_dbl(group, out, a);
     return;
