@@ -147,29 +147,6 @@ void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
   assert(window_val == 0);
 }
 
-// TODO: table should be optimised for the wNAF-based implementation,
-//       sometimes smaller windows will give better performance
-//       (thus the boundaries should be increased)
-static size_t window_bits_for_scalar_size(size_t b) {
-  if (b >= 300) {
-    return 4;
-  }
-
-  if (b >= 70) {
-    return 3;
-  }
-
-  if (b >= 20) {
-    return 2;
-  }
-
-  return 1;
-}
-
-// EC_WNAF_MAX_WINDOW_BITS is the largest value returned by
-// |window_bits_for_scalar_size|.
-#define EC_WNAF_MAX_WINDOW_BITS 4
-
 // compute_precomp sets |out[i]| to (2*i+1)*p, for i from 0 to |len|.
 static void compute_precomp(const EC_GROUP *group, EC_RAW_POINT *out,
                             const EC_RAW_POINT *p, size_t len) {
@@ -192,36 +169,36 @@ static void lookup_precomp(const EC_GROUP *group, EC_RAW_POINT *out,
   }
 }
 
+// EC_WNAF_WINDOW_BITS is the window size to use for |ec_wNAF_mul|.
+#define EC_WNAF_WINDOW_BITS 4
+
+// EC_WNAF_TABLE_SIZE is the table size to use for |ec_wNAF_mul|.
+#define EC_WNAF_TABLE_SIZE (1 << (EC_WNAF_WINDOW_BITS - 1))
+
 void ec_wNAF_mul(const EC_GROUP *group, EC_RAW_POINT *r,
                  const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
                  const EC_SCALAR *p_scalar) {
   size_t bits = BN_num_bits(&group->order);
-  size_t wsize = window_bits_for_scalar_size(bits);
   size_t wNAF_len = bits + 1;
-  size_t precomp_len = (size_t)1 << (wsize - 1);
-
-  assert(wsize <= EC_WNAF_MAX_WINDOW_BITS);
 
   // TODO(davidben): |mul_public| is for ECDSA verification which can assume
   // non-NULL inputs, but this code is also used for |mul| which cannot. It's
   // not constant-time, so replace the generic |mul| and remove the NULL checks.
   int8_t g_wNAF[EC_MAX_SCALAR_BYTES * 8 + 1];
-  EC_RAW_POINT g_precomp[1 << (EC_WNAF_MAX_WINDOW_BITS - 1)];
-  assert(precomp_len <= OPENSSL_ARRAY_SIZE(g_precomp));
+  EC_RAW_POINT g_precomp[EC_WNAF_TABLE_SIZE];
   assert(wNAF_len <= OPENSSL_ARRAY_SIZE(g_wNAF));
   if (g_scalar != NULL) {
     const EC_RAW_POINT *g = &group->generator->raw;
-    ec_compute_wNAF(group, g_wNAF, g_scalar, bits, wsize);
-    compute_precomp(group, g_precomp, g, precomp_len);
+    ec_compute_wNAF(group, g_wNAF, g_scalar, bits, EC_WNAF_WINDOW_BITS);
+    compute_precomp(group, g_precomp, g, EC_WNAF_TABLE_SIZE);
   }
 
   int8_t p_wNAF[EC_MAX_SCALAR_BYTES * 8 + 1];
-  EC_RAW_POINT p_precomp[1 << (EC_WNAF_MAX_WINDOW_BITS - 1)];
-  assert(precomp_len <= OPENSSL_ARRAY_SIZE(p_precomp));
+  EC_RAW_POINT p_precomp[EC_WNAF_TABLE_SIZE];
   assert(wNAF_len <= OPENSSL_ARRAY_SIZE(p_wNAF));
   if (p_scalar != NULL) {
-    ec_compute_wNAF(group, p_wNAF, p_scalar, bits, wsize);
-    compute_precomp(group, p_precomp, p, precomp_len);
+    ec_compute_wNAF(group, p_wNAF, p_scalar, bits, EC_WNAF_WINDOW_BITS);
+    compute_precomp(group, p_precomp, p, EC_WNAF_TABLE_SIZE);
   }
 
   EC_RAW_POINT tmp;
