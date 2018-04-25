@@ -67,6 +67,7 @@
 
 #include <openssl/ec.h>
 
+#include <assert.h>
 #include <string.h>
 
 #include <openssl/bn.h>
@@ -85,82 +86,66 @@
 //   http://link.springer.com/chapter/10.1007%2F3-540-45537-X_13
 //   http://www.bmoeller.de/pdf/TI-01-08.multiexp.pdf
 
-int ec_compute_wNAF(const EC_GROUP *group, int8_t *out, const EC_SCALAR *scalar,
-                    size_t bits, int w) {
+void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
+                     const EC_SCALAR *scalar, size_t bits, int w) {
   // 'int8_t' can represent integers with absolute values less than 2^7.
-  if (w <= 0 || w > 7 || bits == 0) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-  int bit = 1 << w;         // at most 128
-  int next_bit = bit << 1;  // at most 256
+  assert(0 < w && w <= 7);
+  assert(bits != 0);
+  int bit = 1 << w;         // 2^w, at most 128
+  int next_bit = bit << 1;  // 2^(w+1), at most 256
   int mask = next_bit - 1;  // at most 255
 
   int window_val = scalar->words[0] & mask;
-  size_t j = 0;
-  // If j+w+1 >= bits, window_val will not increase.
-  while (window_val != 0 || j + w + 1 < bits) {
+  for (size_t j = 0; j < bits + 1; j++) {
+    assert(0 <= window_val && window_val <= next_bit);
     int digit = 0;
-
-    // 0 <= window_val <= 2^(w+1)
-
     if (window_val & 1) {
-      // 0 < window_val < 2^(w+1)
-
+      assert(0 < window_val && window_val < next_bit);
       if (window_val & bit) {
-        digit = window_val - next_bit;  // -2^w < digit < 0
+        digit = window_val - next_bit;
+        // We know -next_bit < digit < 0 and window_val - digit = next_bit.
 
-#if 1  // modified wNAF
+        // modified wNAF
         if (j + w + 1 >= bits) {
           // special case for generating modified wNAFs:
           // no new bits will be added into window_val,
           // so using a positive digit here will decrease
           // the total length of the representation
 
-          digit = window_val & (mask >> 1);  // 0 < digit < 2^w
+          digit = window_val & (mask >> 1);
+          // We know 0 < digit < bit and window_val - digit = bit.
         }
-#endif
       } else {
-        digit = window_val;  // 0 < digit < 2^w
-      }
-
-      if (digit <= -bit || digit >= bit || !(digit & 1)) {
-        OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-        return 0;
+        digit = window_val;
+        // We know 0 < digit < bit and window_val - digit = 0.
       }
 
       window_val -= digit;
 
-      // Now window_val is 0 or 2^(w+1) in standard wNAF generation;
-      // for modified window NAFs, it may also be 2^w.
-      if (window_val != 0 && window_val != next_bit && window_val != bit) {
-        OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-        return 0;
-      }
+      // Now window_val is 0 or 2^(w+1) in standard wNAF generation.
+      // For modified window NAFs, it may also be 2^w.
+      //
+      // See the comments above for the derivation of each of these bounds.
+      assert(window_val == 0 || window_val == next_bit || window_val == bit);
+      assert(-bit < digit && digit < bit);
+
+      // window_val was odd, so digit is also odd.
+      assert(digit & 1);
     }
 
-    out[j++] = digit;
+    out[j] = digit;
 
+    // Incorporate the next bit. Previously, |window_val| <= |next_bit|, so if
+    // we shift and add at most one copy of |bit|, this will continue to hold
+    // afterwards.
     window_val >>= 1;
     window_val +=
-        bit * bn_is_bit_set_words(scalar->words, group->order.width, j + w);
-
-    if (window_val > next_bit) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-      return 0;
-    }
+        bit * bn_is_bit_set_words(scalar->words, group->order.width, j + w + 1);
+    assert(window_val <= next_bit);
   }
 
-  // Fill the rest of the wNAF with zeros.
-  if (j > bits + 1) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-  for (size_t i = j; i < bits + 1; i++) {
-    out[i] = 0;
-  }
-
-  return 1;
+  // bits + 1 entries should be sufficient to consume all bits.
+  assert(window_val == 0);
 }
 
 // TODO: table should be optimised for the wNAF-based implementation,
@@ -274,8 +259,8 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
     }
     g_precomp = precomp_storage + total_precomp;
     total_precomp += precomp_len;
-    if (!ec_compute_wNAF(group, g_wNAF, g_scalar, bits, wsize) ||
-        !compute_precomp(group, g_precomp, g, precomp_len, ctx)) {
+    ec_compute_wNAF(group, g_wNAF, g_scalar, bits, wsize);
+    if (!compute_precomp(group, g_precomp, g, precomp_len, ctx)) {
       goto err;
     }
   }
@@ -283,8 +268,8 @@ int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
   if (p_scalar != NULL) {
     p_precomp = precomp_storage + total_precomp;
     total_precomp += precomp_len;
-    if (!ec_compute_wNAF(group, p_wNAF, p_scalar, bits, wsize) ||
-        !compute_precomp(group, p_precomp, p, precomp_len, ctx)) {
+    ec_compute_wNAF(group, p_wNAF, p_scalar, bits, wsize);
+    if (!compute_precomp(group, p_precomp, p, precomp_len, ctx)) {
       goto err;
     }
   }
