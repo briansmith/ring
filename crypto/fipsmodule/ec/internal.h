@@ -110,12 +110,21 @@ typedef union {
   BN_ULONG words[EC_MAX_SCALAR_WORDS];
 } EC_FELEM;
 
+// An EC_RAW_POINT represents an elliptic curve point. Unlike |EC_POINT|, it is
+// a plain struct which can be stack-allocated and needs no cleanup. It is
+// specific to an |EC_GROUP| and must not be mixed between groups.
+typedef struct {
+  EC_FELEM X, Y, Z;
+  // X, Y, and Z are Jacobian projective coordinates. They represent
+  // (X/Z^2, Y/Z^3) if Z != 0 and the point at infinity otherwise.
+} EC_RAW_POINT;
+
 struct ec_method_st {
   int (*group_init)(EC_GROUP *);
   void (*group_finish)(EC_GROUP *);
   int (*group_set_curve)(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                          const BIGNUM *b, BN_CTX *);
-  int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_POINT *,
+  int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_RAW_POINT *,
                                       BIGNUM *x, BIGNUM *y);
 
   // Computes |r = g_scalar*generator + p_scalar*p| if |g_scalar| and |p_scalar|
@@ -123,14 +132,14 @@ struct ec_method_st {
   // Computes |r = p_scalar*p| if g_scalar is null. At least one of |g_scalar|
   // and |p_scalar| must be non-null, and |p| must be non-null if |p_scalar| is
   // non-null.
-  int (*mul)(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
-             const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx);
+  void (*mul)(const EC_GROUP *group, EC_RAW_POINT *r, const EC_SCALAR *g_scalar,
+              const EC_RAW_POINT *p, const EC_SCALAR *p_scalar);
   // mul_public performs the same computation as mul. It further assumes that
   // the inputs are public so there is no concern about leaking their values
   // through timing.
-  int (*mul_public)(const EC_GROUP *group, EC_POINT *r,
-                    const EC_SCALAR *g_scalar, const EC_POINT *p,
-                    const EC_SCALAR *p_scalar, BN_CTX *ctx);
+  void (*mul_public)(const EC_GROUP *group, EC_RAW_POINT *r,
+                     const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
+                     const EC_SCALAR *p_scalar);
 
   // felem_mul and felem_sqr implement multiplication and squaring,
   // respectively, so that the generic |EC_POINT_add| and |EC_POINT_dbl|
@@ -194,10 +203,7 @@ struct ec_point_st {
   // group is an owning reference to |group|, unless this is
   // |group->generator|.
   EC_GROUP *group;
-
-  // X, Y, and Z are Jacobian projective coordinates. They represent
-  // (X/Z^2, Y/Z^3) if Z != 0 and the point and infinite otherwise.
-  EC_FELEM X, Y, Z;
+  EC_RAW_POINT raw;
 } /* EC_POINT */;
 
 EC_GROUP *ec_group_new(const EC_METHOD *meth);
@@ -292,8 +298,9 @@ OPENSSL_EXPORT int ec_point_mul_scalar_public(
 void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
                      const EC_SCALAR *scalar, size_t bits, int w);
 
-int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
-                const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx);
+void ec_wNAF_mul(const EC_GROUP *group, EC_RAW_POINT *r,
+                 const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
+                 const EC_SCALAR *p_scalar);
 
 // method functions in simple.c
 int ec_GFp_simple_group_init(EC_GROUP *);
@@ -303,18 +310,21 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
 int ec_GFp_simple_group_get_curve(const EC_GROUP *, BIGNUM *p, BIGNUM *a,
                                   BIGNUM *b);
 unsigned ec_GFp_simple_group_get_degree(const EC_GROUP *);
-void ec_GFp_simple_point_init(EC_POINT *);
-void ec_GFp_simple_point_copy(EC_POINT *, const EC_POINT *);
-void ec_GFp_simple_point_set_to_infinity(const EC_GROUP *, EC_POINT *);
-int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *, EC_POINT *,
-                                               const BIGNUM *x, const BIGNUM *y);
-void ec_GFp_simple_add(const EC_GROUP *, EC_POINT *r, const EC_POINT *a,
-                       const EC_POINT *b);
-void ec_GFp_simple_dbl(const EC_GROUP *, EC_POINT *r, const EC_POINT *a);
-void ec_GFp_simple_invert(const EC_GROUP *, EC_POINT *);
-int ec_GFp_simple_is_at_infinity(const EC_GROUP *, const EC_POINT *);
-int ec_GFp_simple_is_on_curve(const EC_GROUP *, const EC_POINT *);
-int ec_GFp_simple_cmp(const EC_GROUP *, const EC_POINT *a, const EC_POINT *b);
+void ec_GFp_simple_point_init(EC_RAW_POINT *);
+void ec_GFp_simple_point_copy(EC_RAW_POINT *, const EC_RAW_POINT *);
+void ec_GFp_simple_point_set_to_infinity(const EC_GROUP *, EC_RAW_POINT *);
+int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *, EC_RAW_POINT *,
+                                               const BIGNUM *x,
+                                               const BIGNUM *y);
+void ec_GFp_simple_add(const EC_GROUP *, EC_RAW_POINT *r, const EC_RAW_POINT *a,
+                       const EC_RAW_POINT *b);
+void ec_GFp_simple_dbl(const EC_GROUP *, EC_RAW_POINT *r,
+                       const EC_RAW_POINT *a);
+void ec_GFp_simple_invert(const EC_GROUP *, EC_RAW_POINT *);
+int ec_GFp_simple_is_at_infinity(const EC_GROUP *, const EC_RAW_POINT *);
+int ec_GFp_simple_is_on_curve(const EC_GROUP *, const EC_RAW_POINT *);
+int ec_GFp_simple_cmp(const EC_GROUP *, const EC_RAW_POINT *a,
+                      const EC_RAW_POINT *b);
 void ec_simple_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                                      const EC_SCALAR *a);
 

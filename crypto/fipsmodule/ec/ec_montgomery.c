@@ -181,9 +181,9 @@ int ec_GFp_mont_felem_to_bignum(const EC_GROUP *group, BIGNUM *out,
 }
 
 static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
-                                                    const EC_POINT *point,
+                                                    const EC_RAW_POINT *point,
                                                     BIGNUM *x, BIGNUM *y) {
-  if (EC_POINT_is_at_infinity(group, point)) {
+  if (ec_GFp_simple_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }

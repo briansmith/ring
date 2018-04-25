@@ -970,10 +970,9 @@ static void p224_batch_mul(p224_felem x_out, p224_felem y_out, p224_felem z_out,
 
 // Takes the Jacobian coordinates (X, Y, Z) of a point and returns
 // (X', Y') = (X/Z^2, Y/Z^3)
-static int ec_GFp_nistp224_point_get_affine_coordinates(const EC_GROUP *group,
-                                                        const EC_POINT *point,
-                                                        BIGNUM *x, BIGNUM *y) {
-  if (EC_POINT_is_at_infinity(group, point)) {
+static int ec_GFp_nistp224_point_get_affine_coordinates(
+    const EC_GROUP *group, const EC_RAW_POINT *point, BIGNUM *x, BIGNUM *y) {
+  if (ec_GFp_simple_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }
@@ -1014,10 +1013,10 @@ static int ec_GFp_nistp224_point_get_affine_coordinates(const EC_GROUP *group,
   return 1;
 }
 
-static int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
-                                      const EC_SCALAR *g_scalar,
-                                      const EC_POINT *p,
-                                      const EC_SCALAR *p_scalar, BN_CTX *ctx) {
+static void ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_RAW_POINT *r,
+                                       const EC_SCALAR *g_scalar,
+                                       const EC_RAW_POINT *p,
+                                       const EC_SCALAR *p_scalar) {
   p224_felem p_pre_comp[17][3];
   p224_felem x_in, y_in, z_in, x_out, y_out, z_out;
 
@@ -1060,7 +1059,6 @@ static int ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_POINT *r,
   p224_felem_to_generic(&r->Y, y_in);
   p224_felem_contract(z_in, z_out);
   p224_felem_to_generic(&r->Z, z_in);
-  return 1;
 }
 
 static void ec_GFp_nistp224_felem_mul(const EC_GROUP *group, EC_FELEM *r,

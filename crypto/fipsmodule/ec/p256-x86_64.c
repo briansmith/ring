@@ -199,7 +199,7 @@ static void ecp_nistz256_mod_inverse_mont(BN_ULONG r[P256_LIMBS],
 
 // r = p * p_scalar
 static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
-                                      const EC_POINT *p,
+                                      const EC_RAW_POINT *p,
                                       const EC_SCALAR *p_scalar) {
   assert(p != NULL);
   assert(p_scalar != NULL);
@@ -289,10 +289,10 @@ static void ecp_nistz256_windowed_mul(const EC_GROUP *group, P256_POINT *r,
   ecp_nistz256_point_add(r, r, &h);
 }
 
-static int ecp_nistz256_points_mul(const EC_GROUP *group, EC_POINT *r,
-                                   const EC_SCALAR *g_scalar,
-                                   const EC_POINT *p_,
-                                   const EC_SCALAR *p_scalar, BN_CTX *ctx) {
+static void ecp_nistz256_points_mul(const EC_GROUP *group, EC_RAW_POINT *r,
+                                    const EC_SCALAR *g_scalar,
+                                    const EC_RAW_POINT *p_,
+                                    const EC_SCALAR *p_scalar) {
   assert((p_ != NULL) == (p_scalar != NULL));
 
   static const unsigned kWindowSize = 7;
@@ -361,12 +361,12 @@ static int ecp_nistz256_points_mul(const EC_GROUP *group, EC_POINT *r,
   OPENSSL_memcpy(r->X.words, p.p.X, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Y.words, p.p.Y, P256_LIMBS * sizeof(BN_ULONG));
   OPENSSL_memcpy(r->Z.words, p.p.Z, P256_LIMBS * sizeof(BN_ULONG));
-  return 1;
 }
 
-static int ecp_nistz256_get_affine(const EC_GROUP *group, const EC_POINT *point,
-                                   BIGNUM *x, BIGNUM *y) {
-  if (EC_POINT_is_at_infinity(group, point)) {
+static int ecp_nistz256_get_affine(const EC_GROUP *group,
+                                   const EC_RAW_POINT *point, BIGNUM *x,
+                                   BIGNUM *y) {
+  if (ec_GFp_simple_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }

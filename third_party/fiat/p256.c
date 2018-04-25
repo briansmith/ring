@@ -1630,11 +1630,10 @@ static void batch_mul(fe x_out, fe y_out, fe z_out,
 
 // Takes the Jacobian coordinates (X, Y, Z) of a point and returns (X', Y') =
 // (X/Z^2, Y/Z^3).
-static int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
-                                                        const EC_POINT *point,
-                                                        BIGNUM *x_out,
-                                                        BIGNUM *y_out) {
-  if (EC_POINT_is_at_infinity(group, point)) {
+static int ec_GFp_nistp256_point_get_affine_coordinates(
+    const EC_GROUP *group, const EC_RAW_POINT *point, BIGNUM *x_out,
+    BIGNUM *y_out) {
+  if (ec_GFp_simple_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
   }
@@ -1673,11 +1672,10 @@ static int ec_GFp_nistp256_point_get_affine_coordinates(const EC_GROUP *group,
   return 1;
 }
 
-static int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
-                                      const EC_SCALAR *g_scalar,
-                                      const EC_POINT *p,
-                                      const EC_SCALAR *p_scalar,
-                                      BN_CTX *unused_ctx) {
+static void ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_RAW_POINT *r,
+                                       const EC_SCALAR *g_scalar,
+                                       const EC_RAW_POINT *p,
+                                       const EC_SCALAR *p_scalar) {
   fe p_pre_comp[17][3];
   fe x_out, y_out, z_out;
 
@@ -1713,14 +1711,13 @@ static int ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_POINT *r,
   fe_to_generic(&r->X, x_out);
   fe_to_generic(&r->Y, y_out);
   fe_to_generic(&r->Z, z_out);
-  return 1;
 }
 
-static int ec_GFp_nistp256_point_mul_public(const EC_GROUP *group, EC_POINT *r,
-                                            const EC_SCALAR *g_scalar,
-                                            const EC_POINT *p,
-                                            const EC_SCALAR *p_scalar,
-                                            BN_CTX *unused_ctx) {
+static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
+                                             EC_RAW_POINT *r,
+                                             const EC_SCALAR *g_scalar,
+                                             const EC_RAW_POINT *p,
+                                             const EC_SCALAR *p_scalar) {
 #define P256_WSIZE_PUBLIC 4
   // Precompute multiples of |p|. p_pre_comp[i] is (2*i+1) * |p|.
   fe p_pre_comp[1 << (P256_WSIZE_PUBLIC-1)][3];
@@ -1795,7 +1792,6 @@ static int ec_GFp_nistp256_point_mul_public(const EC_GROUP *group, EC_POINT *r,
   fe_to_generic(&r->X, ret[0]);
   fe_to_generic(&r->Y, ret[1]);
   fe_to_generic(&r->Z, ret[2]);
-  return 1;
 }
 
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp256_method) {

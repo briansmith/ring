@@ -175,25 +175,28 @@ unsigned ec_GFp_simple_group_get_degree(const EC_GROUP *group) {
   return BN_num_bits(&group->field);
 }
 
-void ec_GFp_simple_point_init(EC_POINT *point) {
+void ec_GFp_simple_point_init(EC_RAW_POINT *point) {
   OPENSSL_memset(&point->X, 0, sizeof(EC_FELEM));
   OPENSSL_memset(&point->Y, 0, sizeof(EC_FELEM));
   OPENSSL_memset(&point->Z, 0, sizeof(EC_FELEM));
 }
 
-void ec_GFp_simple_point_copy(EC_POINT *dest, const EC_POINT *src) {
+void ec_GFp_simple_point_copy(EC_RAW_POINT *dest, const EC_RAW_POINT *src) {
   OPENSSL_memcpy(&dest->X, &src->X, sizeof(EC_FELEM));
   OPENSSL_memcpy(&dest->Y, &src->Y, sizeof(EC_FELEM));
   OPENSSL_memcpy(&dest->Z, &src->Z, sizeof(EC_FELEM));
 }
 
 void ec_GFp_simple_point_set_to_infinity(const EC_GROUP *group,
-                                         EC_POINT *point) {
-  OPENSSL_memset(&point->Z, 0, sizeof(EC_FELEM));
+                                         EC_RAW_POINT *point) {
+  // Although it is strictly only necessary to zero Z, we zero the entire point
+  // in case |point| was stack-allocated and yet to be initialized.
+  ec_GFp_simple_point_init(point);
 }
 
 int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *group,
-                                               EC_POINT *point, const BIGNUM *x,
+                                               EC_RAW_POINT *point,
+                                               const BIGNUM *x,
                                                const BIGNUM *y) {
   if (x == NULL || y == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
@@ -209,8 +212,8 @@ int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *group,
   return 1;
 }
 
-void ec_GFp_simple_add(const EC_GROUP *group, EC_POINT *out, const EC_POINT *a,
-                       const EC_POINT *b) {
+void ec_GFp_simple_add(const EC_GROUP *group, EC_RAW_POINT *out,
+                       const EC_RAW_POINT *a, const EC_RAW_POINT *b) {
   if (a == b) {
     ec_GFp_simple_dbl(group, out, a);
     return;
@@ -327,7 +330,8 @@ void ec_GFp_simple_add(const EC_GROUP *group, EC_POINT *out, const EC_POINT *a,
   ec_felem_select(group, &out->Z, z2nz, &z_out, &a->Z);
 }
 
-void ec_GFp_simple_dbl(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a) {
+void ec_GFp_simple_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
+                       const EC_RAW_POINT *a) {
   void (*const felem_mul)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
                           const EC_FELEM *b) = group->meth->felem_mul;
   void (*const felem_sqr)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a) =
@@ -426,16 +430,18 @@ void ec_GFp_simple_dbl(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a) {
   }
 }
 
-void ec_GFp_simple_invert(const EC_GROUP *group, EC_POINT *point) {
+void ec_GFp_simple_invert(const EC_GROUP *group, EC_RAW_POINT *point) {
   ec_felem_neg(group, &point->Y, &point->Y);
 }
 
-int ec_GFp_simple_is_at_infinity(const EC_GROUP *group, const EC_POINT *point) {
+int ec_GFp_simple_is_at_infinity(const EC_GROUP *group,
+                                 const EC_RAW_POINT *point) {
   return ec_felem_non_zero_mask(group, &point->Z) == 0;
 }
 
-int ec_GFp_simple_is_on_curve(const EC_GROUP *group, const EC_POINT *point) {
-  if (EC_POINT_is_at_infinity(group, point)) {
+int ec_GFp_simple_is_on_curve(const EC_GROUP *group,
+                              const EC_RAW_POINT *point) {
+  if (ec_GFp_simple_is_at_infinity(group, point)) {
     return 1;
   }
 
@@ -491,8 +497,8 @@ int ec_GFp_simple_is_on_curve(const EC_GROUP *group, const EC_POINT *point) {
   return ec_felem_equal(group, &tmp, &rh);
 }
 
-int ec_GFp_simple_cmp(const EC_GROUP *group, const EC_POINT *a,
-                      const EC_POINT *b) {
+int ec_GFp_simple_cmp(const EC_GROUP *group, const EC_RAW_POINT *a,
+                      const EC_RAW_POINT *b) {
   // Note this function returns zero if |a| and |b| are equal and 1 if they are
   // not equal.
   if (ec_GFp_simple_is_at_infinity(group, a)) {

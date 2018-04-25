@@ -74,7 +74,6 @@
 #include <openssl/err.h>
 #include <openssl/mem.h>
 #include <openssl/thread.h>
-#include <openssl/type_check.h>
 
 #include "internal.h"
 #include "../bn/internal.h"
@@ -171,163 +170,92 @@ static size_t window_bits_for_scalar_size(size_t b) {
 // |window_bits_for_scalar_size|.
 #define EC_WNAF_MAX_WINDOW_BITS 4
 
-// compute_precomp sets |out[i]| to a newly-allocated |EC_POINT| containing
-// (2*i+1)*p, for i from 0 to |len|. It returns one on success and
-// zero on error.
-static int compute_precomp(const EC_GROUP *group, EC_POINT **out,
-                           const EC_POINT *p, size_t len, BN_CTX *ctx) {
-  out[0] = EC_POINT_new(group);
-  if (out[0] == NULL ||
-      !EC_POINT_copy(out[0], p)) {
-    return 0;
-  }
-
-  int ret = 0;
-  EC_POINT *two_p = EC_POINT_new(group);
-  if (two_p == NULL ||
-      !EC_POINT_dbl(group, two_p, p, ctx)) {
-    goto err;
-  }
-
+// compute_precomp sets |out[i]| to (2*i+1)*p, for i from 0 to |len|.
+static void compute_precomp(const EC_GROUP *group, EC_RAW_POINT *out,
+                            const EC_RAW_POINT *p, size_t len) {
+  ec_GFp_simple_point_copy(&out[0], p);
+  EC_RAW_POINT two_p;
+  ec_GFp_simple_dbl(group, &two_p, p);
   for (size_t i = 1; i < len; i++) {
-    out[i] = EC_POINT_new(group);
-    if (out[i] == NULL ||
-        !EC_POINT_add(group, out[i], out[i - 1], two_p, ctx)) {
-      goto err;
-    }
+    ec_GFp_simple_add(group, &out[i], &out[i - 1], &two_p);
   }
-
-  ret = 1;
-
-err:
-  EC_POINT_free(two_p);
-  return ret;
 }
 
-static int lookup_precomp(const EC_GROUP *group, EC_POINT *out,
-                          EC_POINT *const *precomp, int digit, BN_CTX *ctx) {
+static void lookup_precomp(const EC_GROUP *group, EC_RAW_POINT *out,
+                           const EC_RAW_POINT *precomp, int digit) {
   if (digit < 0) {
     digit = -digit;
-    return EC_POINT_copy(out, precomp[digit >> 1]) &&
-           EC_POINT_invert(group, out, ctx);
+    ec_GFp_simple_point_copy(out, &precomp[digit >> 1]);
+    ec_GFp_simple_invert(group, out);
+  } else {
+    ec_GFp_simple_point_copy(out, &precomp[digit >> 1]);
   }
-
-  return EC_POINT_copy(out, precomp[digit >> 1]);
 }
 
-int ec_wNAF_mul(const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
-                const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx) {
-  BN_CTX *new_ctx = NULL;
-  EC_POINT *precomp_storage[2 * (1 << (EC_WNAF_MAX_WINDOW_BITS - 1))] = {NULL};
-  EC_POINT **g_precomp = NULL, **p_precomp = NULL;
-  int8_t g_wNAF[EC_MAX_SCALAR_BYTES * 8 + 1];
-  int8_t p_wNAF[EC_MAX_SCALAR_BYTES * 8 + 1];
-  EC_POINT *tmp = NULL;
-  int ret = 0;
-
-  if (ctx == NULL) {
-    ctx = new_ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      goto err;
-    }
-  }
-
+void ec_wNAF_mul(const EC_GROUP *group, EC_RAW_POINT *r,
+                 const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
+                 const EC_SCALAR *p_scalar) {
   size_t bits = BN_num_bits(&group->order);
   size_t wsize = window_bits_for_scalar_size(bits);
   size_t wNAF_len = bits + 1;
   size_t precomp_len = (size_t)1 << (wsize - 1);
 
-  OPENSSL_COMPILE_ASSERT(
-      OPENSSL_ARRAY_SIZE(g_wNAF) == OPENSSL_ARRAY_SIZE(p_wNAF),
-      g_wNAF_and_p_wNAF_are_different_sizes);
-
-  if (wNAF_len > OPENSSL_ARRAY_SIZE(g_wNAF) ||
-      2 * precomp_len > OPENSSL_ARRAY_SIZE(precomp_storage)) {
-    OPENSSL_PUT_ERROR(EC, ERR_R_INTERNAL_ERROR);
-    goto err;
-  }
+  assert(wsize <= EC_WNAF_MAX_WINDOW_BITS);
 
   // TODO(davidben): |mul_public| is for ECDSA verification which can assume
   // non-NULL inputs, but this code is also used for |mul| which cannot. It's
   // not constant-time, so replace the generic |mul| and remove the NULL checks.
-  size_t total_precomp = 0;
+  int8_t g_wNAF[EC_MAX_SCALAR_BYTES * 8 + 1];
+  EC_RAW_POINT g_precomp[1 << (EC_WNAF_MAX_WINDOW_BITS - 1)];
+  assert(precomp_len <= OPENSSL_ARRAY_SIZE(g_precomp));
+  assert(wNAF_len <= OPENSSL_ARRAY_SIZE(g_wNAF));
   if (g_scalar != NULL) {
-    const EC_POINT *g = EC_GROUP_get0_generator(group);
-    if (g == NULL) {
-      OPENSSL_PUT_ERROR(EC, EC_R_UNDEFINED_GENERATOR);
-      goto err;
-    }
-    g_precomp = precomp_storage + total_precomp;
-    total_precomp += precomp_len;
+    const EC_RAW_POINT *g = &group->generator->raw;
     ec_compute_wNAF(group, g_wNAF, g_scalar, bits, wsize);
-    if (!compute_precomp(group, g_precomp, g, precomp_len, ctx)) {
-      goto err;
-    }
+    compute_precomp(group, g_precomp, g, precomp_len);
   }
 
+  int8_t p_wNAF[EC_MAX_SCALAR_BYTES * 8 + 1];
+  EC_RAW_POINT p_precomp[1 << (EC_WNAF_MAX_WINDOW_BITS - 1)];
+  assert(precomp_len <= OPENSSL_ARRAY_SIZE(p_precomp));
+  assert(wNAF_len <= OPENSSL_ARRAY_SIZE(p_wNAF));
   if (p_scalar != NULL) {
-    p_precomp = precomp_storage + total_precomp;
-    total_precomp += precomp_len;
     ec_compute_wNAF(group, p_wNAF, p_scalar, bits, wsize);
-    if (!compute_precomp(group, p_precomp, p, precomp_len, ctx)) {
-      goto err;
-    }
+    compute_precomp(group, p_precomp, p, precomp_len);
   }
 
-  tmp = EC_POINT_new(group);
-  if (tmp == NULL) {
-    goto err;
-  }
-
+  EC_RAW_POINT tmp;
   int r_is_at_infinity = 1;
   for (size_t k = wNAF_len - 1; k < wNAF_len; k--) {
-    if (!r_is_at_infinity && !EC_POINT_dbl(group, r, r, ctx)) {
-      goto err;
+    if (!r_is_at_infinity) {
+      ec_GFp_simple_dbl(group, r, r);
     }
 
     if (g_scalar != NULL && g_wNAF[k] != 0) {
-      if (!lookup_precomp(group, tmp, g_precomp, g_wNAF[k], ctx)) {
-        goto err;
-      }
+      lookup_precomp(group, &tmp, g_precomp, g_wNAF[k]);
       if (r_is_at_infinity) {
-        if (!EC_POINT_copy(r, tmp)) {
-          goto err;
-        }
+        ec_GFp_simple_point_copy(r, &tmp);
         r_is_at_infinity = 0;
-      } else if (!EC_POINT_add(group, r, r, tmp, ctx)) {
-        goto err;
+      } else {
+        ec_GFp_simple_add(group, r, r, &tmp);
       }
     }
 
     if (p_scalar != NULL && p_wNAF[k] != 0) {
-      if (!lookup_precomp(group, tmp, p_precomp, p_wNAF[k], ctx)) {
-        goto err;
-      }
+      lookup_precomp(group, &tmp, p_precomp, p_wNAF[k]);
       if (r_is_at_infinity) {
-        if (!EC_POINT_copy(r, tmp)) {
-          goto err;
-        }
+        ec_GFp_simple_point_copy(r, &tmp);
         r_is_at_infinity = 0;
-      } else if (!EC_POINT_add(group, r, r, tmp, ctx)) {
-        goto err;
+      } else {
+        ec_GFp_simple_add(group, r, r, &tmp);
       }
     }
   }
 
-  if (r_is_at_infinity &&
-      !EC_POINT_set_to_infinity(group, r)) {
-    goto err;
+  if (r_is_at_infinity) {
+    ec_GFp_simple_point_set_to_infinity(group, r);
   }
 
-  ret = 1;
-
-err:
-  BN_CTX_free(new_ctx);
-  EC_POINT_free(tmp);
   OPENSSL_cleanse(&g_wNAF, sizeof(g_wNAF));
   OPENSSL_cleanse(&p_wNAF, sizeof(p_wNAF));
-  for (size_t i = 0; i < OPENSSL_ARRAY_SIZE(precomp_storage); i++) {
-    EC_POINT_free(precomp_storage[i]);
-  }
-  return ret;
 }
