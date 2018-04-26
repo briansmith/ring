@@ -187,8 +187,6 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     //     0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf\
     //       581a0db248b0a77aecec196accc52971.
 
-    // XXX(perf): This hasn't been optimized at all. TODO: optimize.
-
     fn mul(a: &Scalar<R>, b: &Scalar<R>) -> Scalar<R> {
         binary_op(GFp_p384_scalar_mul_mont, a, b)
     }
