@@ -79,6 +79,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 #include "../test/file_test.h"
 #include "../test/test_util.h"
+#include "../test/wycheproof_util.h"
 
 
 // evp_test dispatches between multiple test types. PrivateKey tests take a key
@@ -412,4 +413,55 @@ TEST(EVPTest, TestVectors) {
       ADD_FAILURE() << "Operation unexpectedly failed.";
     }
   });
+}
+
+static void RunWycheproofTest(const char *path) {
+  SCOPED_TRACE(path);
+  FileTestGTest(path, [](FileTest *t) {
+    t->IgnoreInstruction("key.type");
+    // Extra ECDSA fields.
+    t->IgnoreInstruction("key.curve");
+    t->IgnoreInstruction("key.keySize");
+    t->IgnoreInstruction("key.wx");
+    t->IgnoreInstruction("key.wy");
+    // Extra RSA fields.
+    t->IgnoreInstruction("e");
+    t->IgnoreInstruction("keyAsn");
+    t->IgnoreInstruction("keysize");
+    t->IgnoreInstruction("n");
+    t->IgnoreAttribute("padding");
+
+    std::vector<uint8_t> der;
+    ASSERT_TRUE(t->GetInstructionBytes(&der, "keyDer"));
+    CBS cbs;
+    CBS_init(&cbs, der.data(), der.size());
+    bssl::UniquePtr<EVP_PKEY> key(EVP_parse_public_key(&cbs));
+    ASSERT_TRUE(key);
+
+    const EVP_MD *md = GetWycheproofDigest(t, "sha", true);
+    ASSERT_TRUE(md);
+    std::vector<uint8_t> msg;
+    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+    std::vector<uint8_t> sig;
+    ASSERT_TRUE(t->GetBytes(&sig, "sig"));
+
+    bssl::ScopedEVP_MD_CTX ctx;
+    ASSERT_TRUE(
+        EVP_DigestVerifyInit(ctx.get(), nullptr, md, nullptr, key.get()));
+    WycheproofResult result;
+    ASSERT_TRUE(GetWycheproofResult(t, &result));
+    EXPECT_EQ(result == WycheproofResult::kValid ? 1 : 0,
+              EVP_DigestVerify(ctx.get(), sig.data(), sig.size(), msg.data(),
+                               msg.size()));
+  });
+}
+
+TEST(EVPTest, Wycheproof) {
+  RunWycheproofTest("third_party/wycheproof/ecdsa_secp224r1_sha224_test.txt");
+  RunWycheproofTest("third_party/wycheproof/ecdsa_secp224r1_sha256_test.txt");
+  RunWycheproofTest("third_party/wycheproof/ecdsa_secp256r1_sha256_test.txt");
+  RunWycheproofTest("third_party/wycheproof/ecdsa_secp384r1_sha384_test.txt");
+  RunWycheproofTest("third_party/wycheproof/ecdsa_secp384r1_sha512_test.txt");
+  RunWycheproofTest("third_party/wycheproof/ecdsa_secp521r1_sha512_test.txt");
+  RunWycheproofTest("third_party/wycheproof/rsa_signature_test.txt");
 }

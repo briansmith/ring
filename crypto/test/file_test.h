@@ -185,6 +185,10 @@ class FileTest {
   // otherwise.
   bool GetInstruction(std::string *out_value, const std::string &key);
 
+  // GetInstructionBytes behaves like GetBytes, but looks up the corresponding
+  // instruction.
+  bool GetInstructionBytes(std::vector<uint8_t> *out, const std::string &key);
+
   // CurrentTestToString returns the file content parsed for the current test.
   // If the current test was preceded by an instruction block, the return test
   // case is preceded by the instruction block and a single blank line. All
@@ -203,6 +207,7 @@ class FileTest {
   void ClearInstructions();
   void OnKeyUsed(const std::string &key);
   void OnInstructionUsed(const std::string &key);
+  bool ConvertToBytes(std::vector<uint8_t> *out, const std::string &value);
 
   std::unique_ptr<LineReader> reader_;
   // line_ is the number of lines read.

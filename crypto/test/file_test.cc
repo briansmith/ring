@@ -286,52 +286,19 @@ bool FileTest::GetInstruction(std::string *out_value, const std::string &key) {
   return true;
 }
 
+bool FileTest::GetInstructionBytes(std::vector<uint8_t> *out,
+                                   const std::string &key) {
+  std::string value;
+  return GetInstruction(&value, key) && ConvertToBytes(out, value);
+}
+
 const std::string &FileTest::CurrentTestToString() const {
   return current_test_;
 }
 
-static bool FromHexDigit(uint8_t *out, char c) {
-  if ('0' <= c && c <= '9') {
-    *out = c - '0';
-    return true;
-  }
-  if ('a' <= c && c <= 'f') {
-    *out = c - 'a' + 10;
-    return true;
-  }
-  if ('A' <= c && c <= 'F') {
-    *out = c - 'A' + 10;
-    return true;
-  }
-  return false;
-}
-
 bool FileTest::GetBytes(std::vector<uint8_t> *out, const std::string &key) {
   std::string value;
-  if (!GetAttribute(&value, key)) {
-    return false;
-  }
-
-  if (value.size() >= 2 && value[0] == '"' && value[value.size() - 1] == '"') {
-    out->assign(value.begin() + 1, value.end() - 1);
-    return true;
-  }
-
-  if (value.size() % 2 != 0) {
-    PrintLine("Error decoding value: %s", value.c_str());
-    return false;
-  }
-  out->clear();
-  out->reserve(value.size() / 2);
-  for (size_t i = 0; i < value.size(); i += 2) {
-    uint8_t hi, lo;
-    if (!FromHexDigit(&hi, value[i]) || !FromHexDigit(&lo, value[i + 1])) {
-      PrintLine("Error decoding value: %s", value.c_str());
-      return false;
-    }
-    out->push_back((hi << 4) | lo);
-  }
-  return true;
+  return GetAttribute(&value, key) && ConvertToBytes(out, value);
 }
 
 static std::string EncodeHex(const uint8_t *in, size_t in_len) {
@@ -379,6 +346,46 @@ void FileTest::OnKeyUsed(const std::string &key) {
 
 void FileTest::OnInstructionUsed(const std::string &key) {
   unused_instructions_.erase(key);
+}
+
+static bool FromHexDigit(uint8_t *out, char c) {
+  if ('0' <= c && c <= '9') {
+    *out = c - '0';
+    return true;
+  }
+  if ('a' <= c && c <= 'f') {
+    *out = c - 'a' + 10;
+    return true;
+  }
+  if ('A' <= c && c <= 'F') {
+    *out = c - 'A' + 10;
+    return true;
+  }
+  return false;
+}
+
+bool FileTest::ConvertToBytes(std::vector<uint8_t> *out,
+                              const std::string &value) {
+  if (value.size() >= 2 && value[0] == '"' && value[value.size() - 1] == '"') {
+    out->assign(value.begin() + 1, value.end() - 1);
+    return true;
+  }
+
+  if (value.size() % 2 != 0) {
+    PrintLine("Error decoding value: %s", value.c_str());
+    return false;
+  }
+  out->clear();
+  out->reserve(value.size() / 2);
+  for (size_t i = 0; i < value.size(); i += 2) {
+    uint8_t hi, lo;
+    if (!FromHexDigit(&hi, value[i]) || !FromHexDigit(&lo, value[i + 1])) {
+      PrintLine("Error decoding value: %s", value.c_str());
+      return false;
+    }
+    out->push_back((hi << 4) | lo);
+  }
+  return true;
 }
 
 bool FileTest::IsAtNewInstructionBlock() const {

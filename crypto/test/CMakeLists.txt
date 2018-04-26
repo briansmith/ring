@@ -6,6 +6,7 @@ add_library(
   file_test.cc
   malloc.cc
   test_util.cc
+  wycheproof_util.cc
 )
 
 add_library(

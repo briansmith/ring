@@ -224,6 +224,13 @@ func convertWycheproof(jsonPath, txtPath string) error {
 
 func main() {
 	jsonPaths := []string{
+		"ecdsa_secp224r1_sha224_test.json",
+		"ecdsa_secp224r1_sha256_test.json",
+		"ecdsa_secp256r1_sha256_test.json",
+		"ecdsa_secp384r1_sha384_test.json",
+		"ecdsa_secp384r1_sha512_test.json",
+		"ecdsa_secp521r1_sha512_test.json",
+		"rsa_signature_test.json",
 		"x25519_test.json",
 
 		// TODO(davidben): The following tests still need test drivers.
@@ -233,14 +240,7 @@ func main() {
 		// "chacha20_poly1305_test.json",
 		// "dsa_test.json",
 		// "ecdh_test.json",
-		// "ecdsa_secp224r1_sha224_test.json",
-		// "ecdsa_secp224r1_sha256_test.json",
-		// "ecdsa_secp256r1_sha256_test.json",
-		// "ecdsa_secp384r1_sha384_test.json",
-		// "ecdsa_secp384r1_sha512_test.json",
-		// "ecdsa_secp521r1_sha512_test.json",
 		// "eddsa_test.json",
-		// "rsa_signature_test.json",
 	}
 	for _, jsonPath := range jsonPaths {
 		if !strings.HasSuffix(jsonPath, ".json") {
