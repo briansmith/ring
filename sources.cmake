@@ -59,4 +59,5 @@ set(
   crypto/x509/some_names1.pem
   crypto/x509/some_names2.pem
   crypto/x509/some_names3.pem
+  third_party/wycheproof/x25519_test.txt
 )
