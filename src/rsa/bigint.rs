@@ -108,19 +108,19 @@ impl Positive {
 
     #[inline]
     pub fn bit_length(&self) -> bits::BitLength { self.0.bit_length() }
+
+    #[cfg(feature = "rsa_signing")]
+    #[inline]
+    pub fn verify_less_than(&self, other: &Self)
+                            -> Result<(), error::Unspecified> {
+        (self.0).verify_less_than(&other.0)
+    }
 }
 
 /// Odd positive integers.
 pub struct OddPositive(Positive);
 
 impl OddPositive {
-    #[cfg(feature = "rsa_signing")]
-    #[inline]
-    pub fn verify_less_than(&self, other: &Self)
-                            -> Result<(), error::Unspecified> {
-        (self.0).0.verify_less_than(&(other.0).0)
-    }
-
     #[cfg(feature = "rsa_signing")]
     pub fn try_clone(&self) -> Result<OddPositive, error::Unspecified> {
         let value = (self.0).0.try_clone()?;

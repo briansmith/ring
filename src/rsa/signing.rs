@@ -179,6 +179,15 @@ impl RSAKeyPair {
                 let dQ = bigint::Positive::from_der(input)?;
                 let qInv = bigint::Positive::from_der(input)?;
 
+                // Our implementation of CRT-based modular exponentiation used
+                // requires that `p > q` so swap them if `p < q`. If swapped,
+                // `qInv` is recalculated below. `p != q` is verified
+                // implicitly below, e.g. when `q_mod_p` is constructed.
+                let ((p, dP), (q, dQ, qInv)) = match q.verify_less_than(&p) {
+                    Ok(_)  => ((p, dP), (q, dQ, Some(qInv))),
+                    Err(_) => ((q, dQ), (p, dP, None)),
+                };
+
                 let n_bits = n.bit_length();
 
                 // XXX: Some steps are done out of order, but the NIST steps
@@ -250,30 +259,14 @@ impl RSAKeyPair {
 
                 let n = n.into_modulus::<N>()?;
                 let oneRR_mod_n = bigint::One::newRR(&n)?;
-
-                // Swap p and q if p < q. If swapped, qInv is recalculated below,
-                // after `p` becomes a PrivatePrime object and `p.oneR` is
-                // calculated. p != q is verified implicitly below, e.g. when
-                // `q_mod_p` is constructed.
-                let (p, q, dP, dQ, pq_swapped) = match q.verify_less_than(&p) {
-                    Ok(_)  => (p, q, dP, dQ, false),
-                    Err(_) => (q, p, dQ, dP, true),
-                };
-
                 let q_mod_n_decoded = q.try_clone()?.into_elem(&n)?;
 
                 // Step 5.i
                 //
-                // We can take |p > q| as an invariant as it would already have
-                // been swapped above if |p < q|. Our implementation of CRT-based
-                // moduluar exponentiation used requires that |p > q|.
-                // (|p == q| is just wrong.)
-                //
-                // Also, because we just check the bit length of p - q, we
-                // accept if the difference is exactly 2**(n_bits/2 - 100), even
-                // though the spec says that is the largest value that should be
-                // rejected. We assume there are no security implications to
-                // this simplification.
+                // Because we just check the bit length of p - q, we accept if the
+                // difference is exactly 2**(n_bits/2 - 100), even though the spec
+                // says that is the largest value that should be rejected. We assume
+                // there are no security implications to this simplification.
                 //
                 // 3.b is unneeded since `n_bits` is derived here from `n`.
                 {
@@ -343,15 +336,17 @@ impl RSAKeyPair {
                 // Step 7.b is done out-of-order below.
 
                 let q_mod_p = q.try_clone()?.into_elem(&p.modulus)?;
-                let qInv = if pq_swapped {
-                    // Calculate a new qInv using Fermat's Little Theorem.
+
+                // Step 7.c.
+                let qInv = if let Some(qInv) = qInv {
+                    qInv.into_elem(&p.modulus)?
+                } else {
+                    // We swapped `p` and `q` above, so we need to calculate
+                    // `qInv`.
                     let q_mod_p = bigint::elem_mul(p.oneRR.as_ref(),
                                                    q_mod_p.try_clone()?,
                                                    &p.modulus)?;
                     bigint::elem_inverse_consttime(q_mod_p, &p.modulus, &p.oneR)?
-                } else {
-                    // Step 7.c.
-                    qInv.into_elem(&p.modulus)?
                 };
 
                 // Steps 7.d and 7.e are omitted per the documentation above,
