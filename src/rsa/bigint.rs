@@ -58,6 +58,9 @@ impl AsRef<BIGNUM> for Nonnegative {
     fn as_ref<'a>(&'a self) -> &'a BIGNUM { &self.0 }
 }
 
+pub trait IsOne {
+    fn is_one(&self) -> bool;
+}
 
 /// Non-negative, non-zero integers.
 ///
@@ -276,6 +279,14 @@ impl Modulus<super::N> {
     pub fn value(&self) -> &OddPositive { &self.value }
 }
 
+/// Allows writing generic algorithms that require constraining the result type
+/// of the multiplication.
+pub trait ModMul<B, M> {
+    type Output;
+    fn mod_mul(&self, b: B, m: &Modulus<M>)
+        -> Result<Self::Output, error::Unspecified>;
+}
+
 /// Elements of ℤ/mℤ for some modulus *m*.
 //
 // Defaulting `E` to `Unencoded` is a convenience for callers from outside this
@@ -351,9 +362,6 @@ impl<M> Elem<M, Unencoded> {
         limb::big_endian_from_limbs_padded(self.value.limbs(), out)
     }
 
-    #[cfg(feature = "rsa_signing")]
-    pub fn is_one(&self) -> bool { self.value.is_one() }
-
     // The result is security-sensitive.
     #[cfg(feature = "rsa_signing")]
     #[inline]
@@ -363,6 +371,25 @@ impl<M> Elem<M, Unencoded> {
     pub fn into_modulus<MM>(self) -> Result<Modulus<MM>, error::Unspecified> {
         let value = self.value.into_odd_positive()?;
         value.into_modulus()
+    }
+}
+
+#[cfg(feature = "rsa_signing")]
+impl<M> IsOne for Elem<M, Unencoded> {
+    fn is_one(&self) -> bool {
+        self.value.is_one()
+    }
+}
+
+#[cfg(feature = "rsa_signing")]
+impl<AF, BF, M> ModMul<Elem<M, BF>, M> for Elem<M, AF>
+    where (AF, BF): ProductEncoding
+{
+    type Output = Elem<M, <(AF, BF) as ProductEncoding>::Output>;
+    fn mod_mul(&self, b: Elem<M, BF>, m: &Modulus<M>)
+        -> Result<<Self as ModMul<Elem<M, BF>, M>>::Output, error::Unspecified>
+    {
+        elem_mul(self, b, m)
     }
 }
 
@@ -700,6 +727,20 @@ pub fn elem_randomize<E>(a: &mut Elem<super::N, E>, m: &Modulus<super::N>,
     a.value.randomize(m, rng)
 }
 
+/// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
+#[cfg(feature = "rsa_signing")]
+pub fn verify_inverses_consttime<M, A, B>(a: &A, b: B, m: &Modulus<M>)
+    -> Result<(), error::Unspecified> where
+    A: ModMul<B, M>,
+    <A as ModMul<B, M>>::Output: IsOne
+{
+    if a.mod_mul(b, m)?.is_one() {
+        Ok(())
+    } else {
+        Err(error::Unspecified)
+    }
+}
+
 // r = 1/a (mod m), blinded with a random element.
 //
 // This relies on the invariants of `Modulus` that its value is odd and larger
@@ -732,11 +773,7 @@ fn elem_inverse<M>(a: Elem<M, Unencoded>, m: &Modulus<M>)
         m: PhantomData,
         encoding: PhantomData,
     };
-
-    // Fail safe: Verify a * r == 1 (mod m).
-    let check = elem_mul(&r, a_clone, m)?;
-    assert!(check.is_one());
-
+    verify_inverses_consttime(&r, a_clone, m)?;
     Ok(r)
 }
 
@@ -953,9 +990,6 @@ impl Nonnegative {
     fn is_zero(&self) -> bool { self.limbs().is_empty() }
 
     #[cfg(feature = "rsa_signing")]
-    fn is_one(&self) -> bool { self.limbs() == &[1] }
-
-    #[cfg(feature = "rsa_signing")]
     #[inline]
     fn is_even(&self) -> bool { !self.is_odd() }
 
@@ -1025,6 +1059,13 @@ impl Nonnegative {
             GFp_BN_copy(r.as_mut_ref(), self.as_ref())
         })?;
         Ok(r)
+    }
+}
+
+#[cfg(feature = "rsa_signing")]
+impl IsOne for Nonnegative {
+    fn is_one(&self) -> bool {
+        self.limbs() == &[1]
     }
 }
 

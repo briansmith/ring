@@ -358,11 +358,7 @@ impl RSAKeyPair {
                 // Step 7.f.
                 let qInv =
                     bigint::elem_mul(p.oneRR.as_ref(), qInv, &p.modulus)?;
-                let qInv_times_q_mod_p =
-                    bigint::elem_mul(&qInv, q_mod_p, &p.modulus)?;
-                if !qInv_times_q_mod_p.is_one() {
-                    return Err(error::Unspecified);
-                }
+                bigint::verify_inverses_consttime(&qInv, q_mod_p, &p.modulus)?;
 
                 // Step 7.b (out of order).
                 let q = PrivatePrime::new(q, dQ)?;
