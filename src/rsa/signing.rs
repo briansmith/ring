@@ -253,7 +253,8 @@ impl RSAKeyPair {
 
                 // Swap p and q if p < q. If swapped, qInv is recalculated below,
                 // after `p` becomes a PrivatePrime object and `p.oneR` is
-                // calculated.
+                // calculated. p != q is verified implicitly below, e.g. when
+                // `q_mod_p` is constructed.
                 let (p, q, dP, dQ, pq_swapped) = match q.verify_less_than(&p) {
                     Ok(_)  => (p, q, dP, dQ, false),
                     Err(_) => (q, p, dQ, dP, true),
