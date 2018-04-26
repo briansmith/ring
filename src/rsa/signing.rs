@@ -329,13 +329,6 @@ impl RSAKeyPair {
                 // 6.4.1.4.3 - Step 7.
 
                 // Step 7.a.
-                //
-                // We need to prove that `dP < p - 1`. If we verify
-                // `dP < p` then we'll know that either `dP == p - 1` or
-                // `dP < p - 1`. Since `p` is odd, `p - 1` is even. `d` is odd,
-                // and an odd number modulo an even number is odd.
-                // Therefore `dP` must be odd. But then it cannot be `p - 1`
-                // and so we know `dP < p - 1`.
                 let p = PrivatePrime::new(p, dP)?;
 
                 // Step 7.b is done out-of-order below.
@@ -357,7 +350,7 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
 
-                // Step 7.b (out of order). Same proof as for `dP < p - 1`.
+                // Step 7.b (out of order).
                 let q = PrivatePrime::new(q, dQ)?;
 
                 let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &n)?
