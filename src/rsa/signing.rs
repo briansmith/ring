@@ -344,7 +344,9 @@ impl RSAKeyPair {
                 let q_mod_p = q.try_clone()?.into_elem(&p.modulus)?;
                 let qInv = if pq_swapped {
                     // Calculate a new qInv using Fermat's Little Theorem.
-                    let q_mod_p = bigint::elem_mul(p.oneRR.as_ref(), q_mod_p.try_clone()?, &p.modulus)?;
+                    let q_mod_p = bigint::elem_mul(p.oneRR.as_ref(),
+                                                   q_mod_p.try_clone()?,
+                                                   &p.modulus)?;
                     bigint::elem_inverse_consttime(q_mod_p, &p.modulus, &p.oneR)?
                 } else {
                     // Step 7.c.
