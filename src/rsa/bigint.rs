@@ -661,7 +661,7 @@ pub fn elem_exp_consttime<M>(
         encoding: PhantomData,
     };
 
-    // XXX: On x86-64 only, `GFp_BN_mod_exp_mont_consttime` dues the conversion
+    // XXX: On x86-64 only, `GFp_BN_mod_exp_mont_consttime` does the conversion
     // from Montgomery form itself using a special assembly-language reduction
     // function. This means that at this point, whether `r` is Montgomery
     // encoded, and the exact type of `R` (in particular, its `E` type
