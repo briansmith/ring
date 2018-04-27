@@ -430,6 +430,9 @@ static void RunWycheproofTest(const char *path) {
     t->IgnoreInstruction("keysize");
     t->IgnoreInstruction("n");
     t->IgnoreAttribute("padding");
+    // Extra EdDSA fields.
+    t->IgnoreInstruction("key.pk");
+    t->IgnoreInstruction("key.sk");
 
     std::vector<uint8_t> der;
     ASSERT_TRUE(t->GetInstructionBytes(&der, "keyDer"));
@@ -438,8 +441,11 @@ static void RunWycheproofTest(const char *path) {
     bssl::UniquePtr<EVP_PKEY> key(EVP_parse_public_key(&cbs));
     ASSERT_TRUE(key);
 
-    const EVP_MD *md = GetWycheproofDigest(t, "sha", true);
-    ASSERT_TRUE(md);
+    const EVP_MD *md = nullptr;
+    if (t->HasInstruction("sha")) {
+      md = GetWycheproofDigest(t, "sha", true);
+      ASSERT_TRUE(md);
+    }
     std::vector<uint8_t> msg;
     ASSERT_TRUE(t->GetBytes(&msg, "msg"));
     std::vector<uint8_t> sig;
@@ -463,5 +469,6 @@ TEST(EVPTest, Wycheproof) {
   RunWycheproofTest("third_party/wycheproof/ecdsa_secp384r1_sha384_test.txt");
   RunWycheproofTest("third_party/wycheproof/ecdsa_secp384r1_sha512_test.txt");
   RunWycheproofTest("third_party/wycheproof/ecdsa_secp521r1_sha512_test.txt");
+  RunWycheproofTest("third_party/wycheproof/eddsa_test.txt");
   RunWycheproofTest("third_party/wycheproof/rsa_signature_test.txt");
 }

@@ -192,7 +192,7 @@ func convertWycheproof(jsonPath, txtPath string) error {
 			if curve, ok := test["curve"]; ok && !isSupportedCurve(curve.(string)) {
 				continue
 			}
-			if comment, ok := test["comment"]; ok {
+			if comment, ok := test["comment"]; ok && len(comment.(string)) != 0 {
 				if err := printComment(f, comment.(string)); err != nil {
 					return err
 				}
@@ -230,6 +230,7 @@ func main() {
 		"ecdsa_secp384r1_sha384_test.json",
 		"ecdsa_secp384r1_sha512_test.json",
 		"ecdsa_secp521r1_sha512_test.json",
+		"eddsa_test.json",
 		"rsa_signature_test.json",
 		"x25519_test.json",
 
@@ -240,7 +241,6 @@ func main() {
 		// "chacha20_poly1305_test.json",
 		// "dsa_test.json",
 		// "ecdh_test.json",
-		// "eddsa_test.json",
 	}
 	for _, jsonPath := range jsonPaths {
 		if !strings.HasSuffix(jsonPath, ".json") {
