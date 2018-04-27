@@ -101,7 +101,7 @@ extern "C" {
  * essentially provides the input bits "shifted to the left" by one position.
  * For example, the input to compute the least significant recoded digit, given
  * that there's no bit b_-1, has to be b_4 b_3 b_2 b_1 b_0 0. */
-OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(BN_ULONG),
+OPENSSL_COMPILE_ASSERT(sizeof(crypto_word_t) == sizeof(BN_ULONG),
                        size_t_and_bn_ulong_are_different_sizes);
 static inline void booth_recode(BN_ULONG *is_negative, unsigned *digit,
                                 unsigned in, unsigned w) {
@@ -116,7 +116,7 @@ static inline void booth_recode(BN_ULONG *is_negative, unsigned *digit,
   d = (d & s) | (in & ~s);
   d = (d >> 1) + (d & 1);
 
-  *is_negative = constant_time_is_nonzero_s(s & 1);
+  *is_negative = constant_time_is_nonzero_w(s & 1);
   *digit = d;
 }
 

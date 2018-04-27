@@ -90,7 +90,7 @@ static INLINE_IF_POSSIBLE Limb is_equal(const Elem a, const Elem b) {
 static INLINE_IF_POSSIBLE void copy_conditional(Elem r, const Elem a,
                                                 const Limb condition) {
   for (size_t i = 0; i < P384_LIMBS; ++i) {
-    r[i] = constant_time_select_s(condition, a[i], r[i]);
+    r[i] = constant_time_select_w(condition, a[i], r[i]);
   }
 }
 
@@ -145,7 +145,7 @@ static void elem_div_by_2(Elem r, const Elem a) {
    *
    * Thus, no reduction of the sum mod `q` is necessary. */
 
-  Limb is_odd = constant_time_is_nonzero_s(a[0] & 1);
+  Limb is_odd = constant_time_is_nonzero_w(a[0] & 1);
 
   /* r = a >> 1. */
   Limb carry = a[P384_LIMBS - 1] & 1;
@@ -221,7 +221,7 @@ void GFp_p384_elem_neg(Elem r, const Elem a) {
 #endif
   assert(borrow == 0);
   for (size_t i = 0; i < P384_LIMBS; ++i) {
-    r[i] = constant_time_select_s(is_zero, 0, r[i]);
+    r[i] = constant_time_select_w(is_zero, 0, r[i]);
   }
 }
 
@@ -245,7 +245,7 @@ static void gfp_p384_point_select_w5(P384_POINT *out,
   Elem z; memset(z, 0, sizeof(z));
 
   for (size_t i = 0; i < 16; ++i) {
-    Limb mask = constant_time_eq_s(index, i + 1);
+    Limb mask = constant_time_eq_w(index, i + 1);
     for (size_t j = 0; j < P384_LIMBS; ++j) {
       x[j] |= table[i].X[j] & mask;
       y[j] |= table[i].Y[j] & mask;

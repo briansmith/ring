@@ -52,100 +52,97 @@
 
 int bssl_constant_time_test_main(void);
 
-static const size_t CONSTTIME_TRUE_s = (size_t)(~0);
-static const size_t CONSTTIME_FALSE_s = 0;
-
-static int test_binary_op_s(size_t (*op)(size_t a, size_t b),
-                                 const char* op_name, size_t a, size_t b,
-                                 int is_true) {
-  size_t c = op(a, b);
-  if (is_true && c != CONSTTIME_TRUE_s) {
+static int test_binary_op_w(crypto_word_t (*op)(crypto_word_t a, crypto_word_t b),
+                            const char* op_name, crypto_word_t a, crypto_word_t b,
+                            int is_true) {
+  crypto_word_t c = op(a, b);
+  if (is_true && c != CONSTTIME_TRUE_W) {
     fprintf(stderr,
             "Test failed for %s(%zu, %zu): expected %zu (TRUE), got %zu\n",
-            op_name, a, b, CONSTTIME_TRUE_s, c);
+            op_name, a, b, CONSTTIME_TRUE_W, c);
     return 1;
-  } else if (!is_true && c != CONSTTIME_FALSE_s) {
+  } else if (!is_true && c != CONSTTIME_FALSE_W) {
     fprintf(stderr,
             "Test failed for  %s(%zu, %zu): expected %zu (FALSE), got %zu\n",
-            op_name, a, b, CONSTTIME_FALSE_s, c);
+            op_name, a, b, CONSTTIME_FALSE_W, c);
     return 1;
   }
   return 0;
 }
 
-static int test_is_zero_s(size_t a) {
-  size_t c = constant_time_is_zero_s(a);
-  if (a == 0 && c != CONSTTIME_TRUE_s) {
+static int test_is_zero_w(crypto_word_t a) {
+  crypto_word_t c = constant_time_is_zero_w(a);
+  if (a == 0 && c != CONSTTIME_TRUE_W) {
     fprintf(stderr,
-            "Test failed for constant_time_is_zero_s(%zu): "
+            "Test failed for constant_time_is_zero_w(%zu): "
             "expected %zu (TRUE), got %zu\n",
-            a, CONSTTIME_TRUE_s, c);
+            a, CONSTTIME_TRUE_W, c);
     return 1;
-  } else if (a != 0 && c != CONSTTIME_FALSE_s) {
+  } else if (a != 0 && c != CONSTTIME_FALSE_W) {
     fprintf(stderr,
-            "Test failed for constant_time_is_zero_s(%zu): "
+            "Test failed for constant_time_is_zero_w(%zu): "
             "expected %zu (FALSE), got %zu\n",
-            a, CONSTTIME_FALSE_s, c);
+            a, CONSTTIME_FALSE_W, c);
     return 1;
   }
 
-  c = constant_time_is_nonzero_s(a);
-  if (a == 0 && c != CONSTTIME_FALSE_s) {
+  c = constant_time_is_nonzero_w(a);
+  if (a == 0 && c != CONSTTIME_FALSE_W) {
     fprintf(stderr,
-            "Test failed for constant_time_is_nonzero_s(%zu): "
+            "Test failed for constant_time_is_nonzero_w(%zu): "
             "expected %zu (FALSE), got %zu\n",
-            a, CONSTTIME_FALSE_s, c);
+            a, CONSTTIME_FALSE_W, c);
     return 1;
-  } else if (a != 0 && c != CONSTTIME_TRUE_s) {
+  } else if (a != 0 && c != CONSTTIME_TRUE_W) {
     fprintf(stderr,
-            "Test failed for constant_time_is_nonzero_s(%zu): "
+            "Test failed for constant_time_is_nonzero_w(%zu): "
             "expected %zu (TRUE), got %zu\n",
-            a, CONSTTIME_TRUE_s, c);
+            a, CONSTTIME_TRUE_W, c);
     return 1;
   }
 
   return 0;
 }
 
-static int test_select_s(size_t a, size_t b) {
-  size_t selected = constant_time_select_s(CONSTTIME_TRUE_s, a, b);
+static int test_select_w(crypto_word_t a, crypto_word_t b) {
+  crypto_word_t selected = constant_time_select_w(CONSTTIME_TRUE_W, a, b);
   if (selected != a) {
     fprintf(stderr,
-            "Test failed for constant_time_select_s(%zu, %zu,"
+            "Test failed for constant_time_select_w(%zu, %zu,"
             "%zu): expected %zu(first value), got %zu\n",
-            CONSTTIME_TRUE_s, a, b, a, selected);
+            CONSTTIME_TRUE_W, a, b, a, selected);
     return 1;
   }
-  selected = constant_time_select_s(CONSTTIME_FALSE_s, a, b);
+  selected = constant_time_select_w(CONSTTIME_FALSE_W, a, b);
   if (selected != b) {
     fprintf(stderr,
-            "Test failed for constant_time_select_s(%zu, %zu,"
+            "Test failed for constant_time_select_w(%zu, %zu,"
             "%zu): expected %zu(second value), got %zu\n",
-            CONSTTIME_FALSE_s, a, b, b, selected);
+            CONSTTIME_FALSE_W, a, b, b, selected);
     return 1;
   }
   return 0;
 }
 
 static int test_eq_int(int a, int b) {
-  size_t equal = constant_time_eq_int(a, b);
-  if (a == b && equal != CONSTTIME_TRUE_s) {
+  crypto_word_t equal = constant_time_eq_int(a, b);
+  if (a == b && equal != CONSTTIME_TRUE_W) {
     fprintf(stderr,
             "Test failed for constant_time_eq_int(%d, %d): expected %zu(TRUE), "
             "got %zu\n",
-            a, b, CONSTTIME_TRUE_s, equal);
+            a, b, CONSTTIME_TRUE_W, equal);
     return 1;
-  } else if (a != b && equal != CONSTTIME_FALSE_s) {
+  } else if (a != b && equal != CONSTTIME_FALSE_W) {
     fprintf(stderr,
             "Test failed for constant_time_eq_int(%d, %d): expected "
             "%zu(FALSE), got %zu\n",
-            a, b, CONSTTIME_FALSE_s, equal);
+            a, b, CONSTTIME_FALSE_W, equal);
     return 1;
   }
   return 0;
 }
 
-static size_t test_values_s[] = {
+static crypto_word_t test_values_s[] = {
   0,
   1,
   1024,
@@ -186,16 +183,16 @@ int bssl_constant_time_test_main(void) {
 
   for (size_t i = 0;
        i < sizeof(test_values_s) / sizeof(test_values_s[0]); ++i) {
-    size_t a = test_values_s[i];
-    num_failed += test_is_zero_s(a);
+    crypto_word_t a = test_values_s[i];
+    num_failed += test_is_zero_w(a);
     for (size_t j = 0;
          j < sizeof(test_values_s) / sizeof(test_values_s[0]); ++j) {
-      size_t b = test_values_s[j];
-      num_failed += test_binary_op_s(&constant_time_eq_s,
-                                     "constant_time_eq_s", a, b, a == b);
-      num_failed += test_binary_op_s(&constant_time_eq_s,
-                                     "constant_time_eq_s", b, a, b == a);
-      num_failed += test_select_s(a, b);
+      crypto_word_t b = test_values_s[j];
+      num_failed += test_binary_op_w(&constant_time_eq_w,
+                                     "constant_time_eq_w", a, b, a == b);
+      num_failed += test_binary_op_w(&constant_time_eq_w,
+                                     "constant_time_eq_w", b, a, b == a);
+      num_failed += test_select_w(a, b);
     }
   }
 

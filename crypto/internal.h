@@ -192,22 +192,36 @@ typedef __uint128_t uint128_t;
  *
  * can be written as
  *
- * size_t lt = constant_time_lt_s(a, b);
- * c = constant_time_select_s(lt, a, b); */
+ * crypto_word_t lt = constant_time_lt_w(a, b);
+ * c = constant_time_select_w(lt, a, b); */
 
-#define CONSTTIME_TRUE_S ~((size_t)0)
-#define CONSTTIME_FALSE_S ((size_t)0)
+/* crypto_word_t is the type that most constant-time functions use. Ideally we
+ * would like it to be |size_t|, but NaCl builds in 64-bit mode with 32-bit
+ * pointers, which means that |size_t| can be 32 bits when |BN_ULONG| is 64
+ * bits. Since we want to be able to do constant-time operations on a
+ * |BN_ULONG|, |crypto_word_t| is defined as an unsigned value with the native
+ * word length. */
+#if defined(OPENSSL_64_BIT)
+typedef uint64_t crypto_word_t;
+#elif defined(OPENSSL_32_BIT)
+typedef uint32_t crypto_word_t;
+#else
+#error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
+#endif
+
+#define CONSTTIME_TRUE_W ~((crypto_word_t)0)
+#define CONSTTIME_FALSE_W ((crypto_word_t)0)
 #define CONSTTIME_TRUE_8 ((uint8_t)0xff)
 #define CONSTTIME_FALSE_8 ((uint8_t)0)
 
-/* constant_time_msb_s returns the given value with the MSB copied to all the
+/* constant_time_msb_w returns the given value with the MSB copied to all the
  * other bits. */
-static inline size_t constant_time_msb_s(size_t a) {
+static inline crypto_word_t constant_time_msb_w(crypto_word_t a) {
   return 0u - (a >> (sizeof(a) * 8 - 1));
 }
 
-/* constant_time_is_zero_s returns 0xff..f if a == 0 and 0 otherwise. */
-static inline size_t constant_time_is_zero_s(size_t a) {
+/* constant_time_is_zero returns 0xff..f if a == 0 and 0 otherwise. */
+static inline crypto_word_t constant_time_is_zero_w(crypto_word_t a) {
   /* Here is an SMT-LIB verification of this formula:
    *
    * (define-fun is_zero ((a (_ BitVec 32))) (_ BitVec 32)
@@ -220,34 +234,36 @@ static inline size_t constant_time_is_zero_s(size_t a) {
    * (check-sat)
    * (get-model)
    */
-  return constant_time_msb_s(~a & (a - 1));
+  return constant_time_msb_w(~a & (a - 1));
 }
 
-static inline size_t constant_time_is_nonzero_s(size_t a) {
-  return ~constant_time_is_zero_s(a);
+static inline size_t constant_time_is_nonzero_w(crypto_word_t a) {
+  return ~constant_time_is_zero_w(a);
 }
 
-/* constant_time_is_zero_8 acts like |constant_time_is_zero_s| but returns an
+/* constant_time_is_zero_8 acts like |constant_time_is_zero_w| but returns an
  * 8-bit mask. */
-static inline uint8_t constant_time_is_zero_8(size_t a) {
-  return (uint8_t)(constant_time_is_zero_s(a));
+static inline uint8_t constant_time_is_zero_8(crypto_word_t a) {
+  return (uint8_t)(constant_time_is_zero_w(a));
 }
 
 /* constant_time_eq_s returns 0xff..f if a == b and 0 otherwise. */
-static inline size_t constant_time_eq_s(size_t a, size_t b) {
-  return constant_time_is_zero_s(a ^ b);
+static inline size_t constant_time_eq_w(crypto_word_t a, crypto_word_t b) {
+  return constant_time_is_zero_w(a ^ b);
 }
 
-/* constant_time_eq_int acts like |constant_time_eq_s| but works on int
+/* constant_time_eq_int acts like |constant_time_eq_w| but works on int
  * values. */
-static inline size_t constant_time_eq_int(int a, int b) {
-  return constant_time_eq_s((size_t)(a), (size_t)(b));
+static inline crypto_word_t constant_time_eq_int(int a, int b) {
+  return constant_time_eq_w((crypto_word_t)(a), (crypto_word_t)(b));
 }
 
-/* constant_time_select_s returns (mask & a) | (~mask & b). When |mask| is all
+/* constant_time_select_w returns (mask & a) | (~mask & b). When |mask| is all
  * 1s or all 0s (as returned by the methods above), the select methods return
  * either |a| (if |mask| is nonzero) or |b| (if |mask| is zero). */
-static inline size_t constant_time_select_s(size_t mask, size_t a, size_t b) {
+static inline crypto_word_t constant_time_select_w(crypto_word_t mask,
+                                                   crypto_word_t a,
+                                                   crypto_word_t b) {
   return (mask & a) | (~mask & b);
 }
 
