@@ -74,6 +74,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <openssl/bytestring.h>
 #include <openssl/crypto.h>
 #include <openssl/digest.h>
+#include <openssl/dsa.h>
 #include <openssl/err.h>
 #include <openssl/rsa.h>
 
@@ -433,6 +434,11 @@ static void RunWycheproofTest(const char *path) {
     // Extra EdDSA fields.
     t->IgnoreInstruction("key.pk");
     t->IgnoreInstruction("key.sk");
+    // Extra DSA fields.
+    t->IgnoreInstruction("key.g");
+    t->IgnoreInstruction("key.p");
+    t->IgnoreInstruction("key.q");
+    t->IgnoreInstruction("key.y");
 
     std::vector<uint8_t> der;
     ASSERT_TRUE(t->GetInstructionBytes(&der, "keyDer"));
@@ -450,19 +456,34 @@ static void RunWycheproofTest(const char *path) {
     ASSERT_TRUE(t->GetBytes(&msg, "msg"));
     std::vector<uint8_t> sig;
     ASSERT_TRUE(t->GetBytes(&sig, "sig"));
-
-    bssl::ScopedEVP_MD_CTX ctx;
-    ASSERT_TRUE(
-        EVP_DigestVerifyInit(ctx.get(), nullptr, md, nullptr, key.get()));
     WycheproofResult result;
     ASSERT_TRUE(GetWycheproofResult(t, &result));
-    EXPECT_EQ(result == WycheproofResult::kValid ? 1 : 0,
-              EVP_DigestVerify(ctx.get(), sig.data(), sig.size(), msg.data(),
-                               msg.size()));
+
+    if (EVP_PKEY_id(key.get()) == EVP_PKEY_DSA) {
+      // DSA is deprecated and is not usable via EVP.
+      DSA *dsa = EVP_PKEY_get0_DSA(key.get());
+      uint8_t digest[EVP_MAX_MD_SIZE];
+      unsigned digest_len;
+      ASSERT_TRUE(
+          EVP_Digest(msg.data(), msg.size(), digest, &digest_len, md, nullptr));
+      int valid;
+      bool sig_ok = DSA_check_signature(&valid, digest, digest_len, sig.data(),
+                                        sig.size(), dsa) &&
+                    valid;
+      EXPECT_EQ(result == WycheproofResult::kValid, sig_ok);
+    } else {
+      bssl::ScopedEVP_MD_CTX ctx;
+      ASSERT_TRUE(
+          EVP_DigestVerifyInit(ctx.get(), nullptr, md, nullptr, key.get()));
+      EXPECT_EQ(result == WycheproofResult::kValid ? 1 : 0,
+                EVP_DigestVerify(ctx.get(), sig.data(), sig.size(), msg.data(),
+                                 msg.size()));
+    }
   });
 }
 
 TEST(EVPTest, Wycheproof) {
+  RunWycheproofTest("third_party/wycheproof/dsa_test.txt");
   RunWycheproofTest("third_party/wycheproof/ecdsa_secp224r1_sha224_test.txt");
   RunWycheproofTest("third_party/wycheproof/ecdsa_secp224r1_sha256_test.txt");
   RunWycheproofTest("third_party/wycheproof/ecdsa_secp256r1_sha256_test.txt");

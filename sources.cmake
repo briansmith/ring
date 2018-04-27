@@ -59,6 +59,7 @@ set(
   crypto/x509/some_names1.pem
   crypto/x509/some_names2.pem
   crypto/x509/some_names3.pem
+  third_party/wycheproof/dsa_test.txt
   third_party/wycheproof/ecdsa_secp224r1_sha224_test.txt
   third_party/wycheproof/ecdsa_secp224r1_sha256_test.txt
   third_party/wycheproof/ecdsa_secp256r1_sha256_test.txt
