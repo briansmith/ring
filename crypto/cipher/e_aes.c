@@ -182,11 +182,16 @@ static aes_set_key_f aes_set_key(void) {
   return GFp_AES_set_encrypt_key;
 }
 
+int GFp_aes_block_is_aesni_encrypt(aes_block_f block) {
+  return block == GFp_aesni_encrypt;
+}
+
 static aes_block_f aes_block(void) {
   /* Keep this in sync with |set_set_key| and |aes_ctr|. */
 
 #if defined(AESNI)
   if (aesni_capable()) {
+    // Keep in sync with GFp_aes_block_is_aesni_encrypt.
     return GFp_aesni_encrypt;
   }
 #endif
@@ -288,6 +293,7 @@ static int gfp_aes_gcm_init_and_aad(GCM128_CONTEXT *gcm, AES_KEY *ks,
                                     const uint8_t ad[], size_t ad_len) {
   assert(ad != NULL || ad_len == 0);
   memcpy(ks, ctx_buf, sizeof(*ks));
+
   GFp_gcm128_init(gcm, ks, aes_block(), (const uint8_t *)ctx_buf + sizeof(*ks),
                   nonce);
   if (ad_len > 0) {

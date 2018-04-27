@@ -61,7 +61,7 @@ extern "C" {
 /* aes_block_f is a pointer to |AES_Encrypt| or a variant thereof. */
 typedef void (*aes_block_f)(const uint8_t in[16], uint8_t out[16],
                             const AES_KEY *key);
-
+int GFp_aes_block_is_aesni_encrypt(aes_block_f aes_block);
 
 /* GCM definitions */
 typedef struct { uint64_t hi,lo; } u128;

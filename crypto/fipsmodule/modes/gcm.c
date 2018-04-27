@@ -399,7 +399,8 @@ static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
   gcm_init_4bit(Htable, H);
 }
 
-static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
+static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx,
+                                    int is_aesni_encrypt) {
   /* Keep in sync with |gcm128_init_htable|. */
 
 #if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86)
@@ -408,8 +409,7 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
     if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
       ctx->gmult = GFp_gcm_gmult_avx;
       ctx->ghash = GFp_gcm_ghash_avx;
-      ctx->use_aesni_gcm_crypt = 1;
-
+      ctx->use_aesni_gcm_crypt = is_aesni_encrypt ? 1 : 0;
       return;
     }
 #endif
@@ -467,7 +467,7 @@ void GFp_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
 
   memcpy(ctx->Htable, serialized_ctx, GCM128_SERIALIZED_LEN);
   ctx->block = block;
-  gcm128_init_gmult_ghash(ctx);
+  gcm128_init_gmult_ghash(ctx, GFp_aes_block_is_aesni_encrypt(block));
 }
 
 int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
