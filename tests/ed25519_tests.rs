@@ -136,3 +136,8 @@ fn test_ed25519_from_pkcs8() {
         Ok(())
     });
 }
+
+#[test]
+fn keypair_impl_test() {
+    test::compile_time_assert_clone::<Ed25519KeyPair>();
+}

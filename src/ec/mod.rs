@@ -53,11 +53,13 @@ pub enum CurveID {
     P384,
 }
 
+#[derive(Clone)]
 pub struct KeyPair {
     pub private_key: PrivateKey,
     pub public_key: [u8; PUBLIC_KEY_MAX_LEN],
 }
 
+#[derive(Clone)]
 pub struct PrivateKey {
     bytes: [u8; SCALAR_MAX_BYTES],
 }
@@ -120,3 +122,13 @@ pub const PKCS8_DOCUMENT_MAX_LEN: usize =
 
 pub mod curve25519;
 pub mod suite_b;
+
+#[cfg(test)]
+mod tests {
+    use super::super::test;
+    use super::KeyPair;
+    #[test]
+    fn signature_impl_test() {
+        test::compile_time_assert_clone::<KeyPair>();
+    }
+}

@@ -181,6 +181,7 @@ impl private::Private for ECDSAVerificationAlgorithm {}
 
 /// An ECDSA key pair, used for signing.
 #[doc(hidden)]
+#[derive(Clone)]
 pub struct ECDSAKeyPair {
     #[allow(dead_code)] // XXX: Temporary, since signing isn't implemented yet.
     key_pair: ec::KeyPair,

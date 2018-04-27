@@ -64,6 +64,7 @@ impl AsRef<BIGNUM> for Nonnegative {
 /// This set is sometimes called `Natural` or `Counting`, but texts, libraries,
 /// and standards disagree on whether to include zero in them, so we avoid
 /// those names.
+#[derive(Clone)]
 pub struct Positive(Nonnegative);
 
 impl Positive {
@@ -108,6 +109,7 @@ impl Positive {
 }
 
 /// Odd positive integers.
+#[derive(Clone)]
 pub struct OddPositive(Positive);
 
 impl OddPositive {
@@ -192,6 +194,7 @@ pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
 /// and larger than 2. The larger-than-1 requirement is imposed, at least, by
 /// the modular inversion code.
+#[derive(Clone)]
 pub struct Modulus<M> {
     value: OddPositive, // Also `value >= 3`.
 
@@ -281,6 +284,7 @@ impl Modulus<super::N> {
 // Defaulting `E` to `Unencoded` is a convenience for callers from outside this
 // submodule. However, for maximum clarity, we always explicitly use
 // `Unencoded` within the `bigint` submodule.
+#[derive(Clone)]
 pub struct Elem<M, E = Unencoded> {
     value: Nonnegative,
 
@@ -498,6 +502,7 @@ pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>)
 
 
 // The value 1, Montgomery-encoded some number of times.
+#[derive(Clone)]
 pub struct One<M, E>(Elem<M, E>);
 
 #[cfg(feature = "rsa_signing")]
@@ -898,6 +903,7 @@ pub fn elem_verify_equal_consttime<M, E>(a: &Elem<M, E>, b: &Elem<M, E>)
 }
 
 /// Nonnegative integers: `Positive` ∪ {0}.
+#[derive(Clone)]
 struct Nonnegative(BIGNUM);
 
 // `Nonnegative` uniquely owns and references its contents.
@@ -1052,6 +1058,7 @@ mod repr_c {
 
     // Keep in sync with `bignum_st` in openss/bn.h.
     #[repr(C)]
+    #[derive(Clone)]
     pub struct BIGNUM {
         d: *mut limb::Limb,
         top: c::int,
