@@ -332,6 +332,7 @@ void FileTest::ClearTest() {
   parameter_.clear();
   attributes_.clear();
   unused_attributes_.clear();
+  unused_instructions_.clear();
   current_test_ = "";
 }
 
