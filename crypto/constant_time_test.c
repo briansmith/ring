@@ -59,12 +59,12 @@ static int test_binary_op_w(crypto_word_t (*op)(crypto_word_t a, crypto_word_t b
   if (is_true && c != CONSTTIME_TRUE_W) {
     fprintf(stderr,
             "Test failed for %s(%zu, %zu): expected %zu (TRUE), got %zu\n",
-            op_name, a, b, CONSTTIME_TRUE_W, c);
+            op_name, (size_t)a, (size_t)b, (size_t)CONSTTIME_TRUE_W, (size_t)c);
     return 1;
   } else if (!is_true && c != CONSTTIME_FALSE_W) {
     fprintf(stderr,
             "Test failed for  %s(%zu, %zu): expected %zu (FALSE), got %zu\n",
-            op_name, a, b, CONSTTIME_FALSE_W, c);
+            op_name, (size_t)a, (size_t)b, (size_t)CONSTTIME_FALSE_W, (size_t)c);
     return 1;
   }
   return 0;
@@ -76,13 +76,13 @@ static int test_is_zero_w(crypto_word_t a) {
     fprintf(stderr,
             "Test failed for constant_time_is_zero_w(%zu): "
             "expected %zu (TRUE), got %zu\n",
-            a, CONSTTIME_TRUE_W, c);
+            (size_t)a, (size_t)CONSTTIME_TRUE_W, (size_t)c);
     return 1;
   } else if (a != 0 && c != CONSTTIME_FALSE_W) {
     fprintf(stderr,
             "Test failed for constant_time_is_zero_w(%zu): "
             "expected %zu (FALSE), got %zu\n",
-            a, CONSTTIME_FALSE_W, c);
+            (size_t)a, (size_t)CONSTTIME_FALSE_W, (size_t)c);
     return 1;
   }
 
@@ -91,13 +91,13 @@ static int test_is_zero_w(crypto_word_t a) {
     fprintf(stderr,
             "Test failed for constant_time_is_nonzero_w(%zu): "
             "expected %zu (FALSE), got %zu\n",
-            a, CONSTTIME_FALSE_W, c);
+            (size_t)a, (size_t)CONSTTIME_FALSE_W, (size_t)c);
     return 1;
   } else if (a != 0 && c != CONSTTIME_TRUE_W) {
     fprintf(stderr,
             "Test failed for constant_time_is_nonzero_w(%zu): "
             "expected %zu (TRUE), got %zu\n",
-            a, CONSTTIME_TRUE_W, c);
+            (size_t)a, (size_t)CONSTTIME_TRUE_W, (size_t)c);
     return 1;
   }
 
@@ -110,7 +110,8 @@ static int test_select_w(crypto_word_t a, crypto_word_t b) {
     fprintf(stderr,
             "Test failed for constant_time_select_w(%zu, %zu,"
             "%zu): expected %zu(first value), got %zu\n",
-            CONSTTIME_TRUE_W, a, b, a, selected);
+            (size_t)CONSTTIME_TRUE_W, (size_t)a, (size_t)b, (size_t)a,
+            (size_t)selected);
     return 1;
   }
   selected = constant_time_select_w(CONSTTIME_FALSE_W, a, b);
@@ -118,7 +119,8 @@ static int test_select_w(crypto_word_t a, crypto_word_t b) {
     fprintf(stderr,
             "Test failed for constant_time_select_w(%zu, %zu,"
             "%zu): expected %zu(second value), got %zu\n",
-            CONSTTIME_FALSE_W, a, b, b, selected);
+            (size_t)CONSTTIME_FALSE_W, (size_t)a, (size_t)b, (size_t)b,
+            (size_t)selected);
     return 1;
   }
   return 0;
@@ -130,13 +132,13 @@ static int test_eq_int(int a, int b) {
     fprintf(stderr,
             "Test failed for constant_time_eq_int(%d, %d): expected %zu(TRUE), "
             "got %zu\n",
-            a, b, CONSTTIME_TRUE_W, equal);
+            a, b, (size_t)CONSTTIME_TRUE_W, (size_t)equal);
     return 1;
   } else if (a != b && equal != CONSTTIME_FALSE_W) {
     fprintf(stderr,
             "Test failed for constant_time_eq_int(%d, %d): expected "
             "%zu(FALSE), got %zu\n",
-            a, b, CONSTTIME_FALSE_W, equal);
+            a, b, (size_t)CONSTTIME_FALSE_W, (size_t)equal);
     return 1;
   }
   return 0;
