@@ -237,7 +237,7 @@ static inline crypto_word_t constant_time_is_zero_w(crypto_word_t a) {
   return constant_time_msb_w(~a & (a - 1));
 }
 
-static inline size_t constant_time_is_nonzero_w(crypto_word_t a) {
+static inline crypto_word_t constant_time_is_nonzero_w(crypto_word_t a) {
   return ~constant_time_is_zero_w(a);
 }
 
@@ -248,7 +248,8 @@ static inline uint8_t constant_time_is_zero_8(crypto_word_t a) {
 }
 
 /* constant_time_eq_s returns 0xff..f if a == b and 0 otherwise. */
-static inline size_t constant_time_eq_w(crypto_word_t a, crypto_word_t b) {
+static inline crypto_word_t constant_time_eq_w(crypto_word_t a,
+                                               crypto_word_t b) {
   return constant_time_is_zero_w(a ^ b);
 }
 
