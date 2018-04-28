@@ -401,6 +401,8 @@ static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
 
 static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx,
                                     int is_aesni_encrypt) {
+  (void)is_aesni_encrypt; // Unused
+
   /* Keep in sync with |gcm128_init_htable|. */
 
 #if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86)
