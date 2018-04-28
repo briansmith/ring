@@ -12,15 +12,15 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include "../limbs/limbs.h"
+#include "../../limbs/limbs.h"
 
 #include <string.h>
 
 #include "ecp_nistz384.h"
-#include "../fipsmodule/bn/internal.h"
-#include "../internal.h"
+#include "../bn/internal.h"
+#include "../../internal.h"
 
-#include "../limbs/limbs.inl"
+#include "../../limbs/limbs.inl"
 
  /* XXX: Here we assume that the conversion from |Carry| to |Limb| is
   * constant-time, but we haven't verified that assumption. TODO: Fix it so

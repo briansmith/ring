@@ -13,12 +13,12 @@
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
 #include "ecp_nistz256.h"
-#include "../limbs/limbs.h"
+#include "../../limbs/limbs.h"
 
 #include <string.h>
 
-#include "../internal.h"
-#include "../fipsmodule/bn/internal.h"
+#include "../../internal.h"
+#include "../bn/internal.h"
 
 
 typedef Limb Elem[P256_LIMBS];

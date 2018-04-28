@@ -17,7 +17,7 @@
 
 #include <GFp/bn.h>
 
-#include "../limbs/limbs.h"
+#include "../../limbs/limbs.h"
 
 #if defined(__cplusplus)
 extern "C" {

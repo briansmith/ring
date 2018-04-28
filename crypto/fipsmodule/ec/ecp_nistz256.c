@@ -30,9 +30,9 @@
 #include <GFp/bn.h>
 
 #include "ecp_nistz.h"
-#include "../limbs/limbs.h"
-#include "../fipsmodule/bn/internal.h"
-#include "../internal.h"
+#include "../../limbs/limbs.h"
+#include "../bn/internal.h"
+#include "../../internal.h"
 
 
 typedef P256_POINT_AFFINE PRECOMP256_ROW[64];

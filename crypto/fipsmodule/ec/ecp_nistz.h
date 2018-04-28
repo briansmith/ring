@@ -22,7 +22,7 @@
 #include <GFp/bn.h>
 #include <GFp/type_check.h>
 
-#include "../internal.h"
+#include "../../internal.h"
 
 
 #if defined(__cplusplus)
