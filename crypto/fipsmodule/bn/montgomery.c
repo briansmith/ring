@@ -115,7 +115,7 @@
 #include <GFp/type_check.h>
 
 #include "internal.h"
-#include "../internal.h"
+#include "../../internal.h"
 
 
 /* Avoid -Wmissing-prototypes warnings. */

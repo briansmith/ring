@@ -59,7 +59,7 @@
 #include <assert.h>
 
 #include "internal.h"
-#include "../limbs/limbs.inl"
+#include "../../limbs/limbs.inl"
 
 
 #define mul_add(r, a, w, c)             \

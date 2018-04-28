@@ -132,7 +132,7 @@
 #pragma intrinsic(_umul128)
 #endif
 
-#include "../internal.h"
+#include "../../internal.h"
 
 #if defined(__cplusplus)
 extern "C" {

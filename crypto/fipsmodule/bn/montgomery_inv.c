@@ -17,8 +17,7 @@
 #include <assert.h>
 
 #include "internal.h"
-#include "../internal.h"
-#include "../limbs/limbs.h"
+#include "../../internal.h"
 
 
 /* Avoid -Wmissing-prototypes warnings. */

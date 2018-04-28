@@ -57,13 +57,13 @@ const ARM: &'static str = "arm";
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[], "crypto/fipsmodule/aes/aes.c"),
-    (&[], "crypto/bn/bn.c"),
-    (&[], "crypto/bn/exponentiation.c"),
-    (&[], "crypto/bn/generic.c"),
-    (&[], "crypto/bn/montgomery.c"),
-    (&[], "crypto/bn/montgomery_inv.c"),
-    (&[], "crypto/bn/mul.c"),
-    (&[], "crypto/bn/shift.c"),
+    (&[], "crypto/fipsmodule/bn/bn.c"),
+    (&[], "crypto/fipsmodule/bn/exponentiation.c"),
+    (&[], "crypto/fipsmodule/bn/generic.c"),
+    (&[], "crypto/fipsmodule/bn/montgomery.c"),
+    (&[], "crypto/fipsmodule/bn/montgomery_inv.c"),
+    (&[], "crypto/fipsmodule/bn/mul.c"),
+    (&[], "crypto/fipsmodule/bn/shift.c"),
     (&[], "crypto/cipher/e_aes.c"),
     (&[], "crypto/crypto.c"),
     (&[], "crypto/curve25519/curve25519.c"),
@@ -80,7 +80,7 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[X86], "crypto/fipsmodule/aes/asm/aes-586.pl"),
     (&[X86], "crypto/fipsmodule/aes/asm/aesni-x86.pl"),
     (&[X86], "crypto/fipsmodule/aes/asm/vpaes-x86.pl"),
-    (&[X86], "crypto/bn/asm/x86-mont.pl"),
+    (&[X86], "crypto/fipsmodule/bn/asm/x86-mont.pl"),
     (&[X86], "crypto/chacha/asm/chacha-x86.pl"),
     (&[X86], "crypto/ec/asm/ecp_nistz256-x86.pl"),
     (&[X86], "crypto/fipsmodule/modes/asm/ghash-x86.pl"),
@@ -94,8 +94,8 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[X86_64], "crypto/fipsmodule/aes/asm/aesni-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/bsaes-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/vpaes-x86_64.pl"),
-    (&[X86_64], "crypto/bn/asm/x86_64-mont.pl"),
-    (&[X86_64], "crypto/bn/asm/x86_64-mont5.pl"),
+    (&[X86_64], "crypto/fipsmodule/bn/asm/x86_64-mont.pl"),
+    (&[X86_64], "crypto/fipsmodule/bn/asm/x86_64-mont5.pl"),
     (&[X86_64], "crypto/chacha/asm/chacha-x86_64.pl"),
     (&[X86_64], "crypto/curve25519/asm/x25519-asm-x86_64.S"),
     (&[X86_64], "crypto/ec/asm/ecp_nistz256-x86_64.pl"),
@@ -112,7 +112,7 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
 
     (&[ARM], "crypto/fipsmodule/aes/asm/aes-armv4.pl"),
     (&[ARM], "crypto/fipsmodule/aes/asm/bsaes-armv7.pl"),
-    (&[ARM], "crypto/bn/asm/armv4-mont.pl"),
+    (&[ARM], "crypto/fipsmodule/bn/asm/armv4-mont.pl"),
     (&[ARM], "crypto/chacha/asm/chacha-armv4.pl"),
     (&[ARM], "crypto/curve25519/asm/x25519-asm-arm.S"),
     (&[ARM], "crypto/ec/asm/ecp_nistz256-armv4.pl"),
@@ -121,7 +121,7 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[ARM], "crypto/fipsmodule/sha/asm/sha256-armv4.pl"),
     (&[ARM], "crypto/fipsmodule/sha/asm/sha512-armv4.pl"),
 
-    (&[AARCH64], "crypto/bn/asm/armv8-mont.pl"),
+    (&[AARCH64], "crypto/fipsmodule/bn/asm/armv8-mont.pl"),
     (&[AARCH64], "crypto/cpu-aarch64-linux.c"),
     (&[AARCH64], "crypto/chacha/asm/chacha-armv8.pl"),
     (&[AARCH64], "crypto/ec/asm/ecp_nistz256-armv8.pl"),
@@ -141,7 +141,7 @@ const RING_TEST_SRCS: &'static [&'static str] = &[
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_INCLUDES: &'static [&'static str] =
-    &["crypto/bn/internal.h",
+    &["crypto/fipsmodule/bn/internal.h",
       "crypto/cipher/internal.h",
       "crypto/curve25519/internal.h",
       "crypto/ec/ecp_nistz256_table.inl",

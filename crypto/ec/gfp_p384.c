@@ -17,7 +17,7 @@
 #include <string.h>
 
 #include "ecp_nistz384.h"
-#include "../bn/internal.h"
+#include "../fipsmodule/bn/internal.h"
 #include "../internal.h"
 
 #include "../limbs/limbs.inl"

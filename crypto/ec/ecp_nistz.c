@@ -18,7 +18,7 @@
 
 #include <GFp/bn.h>
 
-#include "../bn/internal.h"
+#include "../fipsmodule/bn/internal.h"
 
 
 /* Fills |str| with the bytewise little-endian encoding of |scalar|, where

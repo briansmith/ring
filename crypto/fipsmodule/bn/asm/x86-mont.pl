@@ -27,7 +27,7 @@
 # gives ~40% on rsa512 sign benchmark...
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
-push(@INC,"${dir}","${dir}../../perlasm");
+push(@INC,"${dir}","${dir}../../../perlasm");
 require "x86asm.pl";
 
 $output = pop;

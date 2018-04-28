@@ -31,7 +31,7 @@
 
 #include "ecp_nistz.h"
 #include "../limbs/limbs.h"
-#include "../bn/internal.h"
+#include "../fipsmodule/bn/internal.h"
 #include "../internal.h"
 
 

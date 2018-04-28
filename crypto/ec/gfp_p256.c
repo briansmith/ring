@@ -18,7 +18,7 @@
 #include <string.h>
 
 #include "../internal.h"
-#include "../bn/internal.h"
+#include "../fipsmodule/bn/internal.h"
 
 
 typedef Limb Elem[P256_LIMBS];
