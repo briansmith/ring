@@ -98,14 +98,6 @@ extern uint32_t GFp_ia32cap_P[4];
 #if defined(OPENSSL_APPLE)
 /* iOS builds use the static ARM configuration. */
 #define OPENSSL_STATIC_ARMCAP
-
-#if defined(OPENSSL_AARCH64)
-#define OPENSSL_STATIC_ARMCAP_AES
-#define OPENSSL_STATIC_ARMCAP_SHA1
-#define OPENSSL_STATIC_ARMCAP_SHA256
-#define OPENSSL_STATIC_ARMCAP_PMULL
-#endif
-
 #endif
 
 #if !defined(OPENSSL_STATIC_ARMCAP)
@@ -155,7 +147,7 @@ static inline int GFp_is_NEON_capable(void) {
 }
 
 static inline int GFp_is_ARMv8_AES_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_AES)
+#if defined(OPENSSL_STATIC_ARMCAP_AES) || defined(__ARM_FEATURE_CRYPTO)
   return 1;
 #else
   return 0;
@@ -163,7 +155,7 @@ static inline int GFp_is_ARMv8_AES_capable(void) {
 }
 
 static inline int GFp_is_ARMv8_PMULL_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_PMULL)
+#if defined(OPENSSL_STATIC_ARMCAP_PMULL) || defined(__ARM_FEATURE_CRYPTO)
   return 1;
 #else
   return 0;
