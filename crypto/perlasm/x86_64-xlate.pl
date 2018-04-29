@@ -1194,13 +1194,7 @@ while(defined(my $line=<>)) {
 		}
 		@args = reverse(@args);
 		undef $sz if ($nasm && $opcode->mnemonic() eq "lea");
-
-		if ($insn eq "movq" && $#args == 1 && $args[0]->out($sz) eq "xmm0" && $args[1]->out($sz) eq "rax") {
-		    # I have no clue why MASM can't parse this instruction.
-		    printf "DB 66h, 48h, 0fh, 6eh, 0c0h";
-		} else {
-		    printf "\t%s\t%s",$insn,join(",",map($_->out($sz),@args));
-		}
+		printf "\t%s\t%s",$insn,join(",",map($_->out($sz),@args));
 	    }
 	} else {
 	    printf "\t%s",$opcode->out();
