@@ -179,6 +179,7 @@ int GFp_aes_block_is_aesni_encrypt(aes_block_f block) {
 #if defined(AESNI)
   return block == GFp_aesni_encrypt;
 #else
+  (void)block;
   return 0;
 #endif
 }
