@@ -54,7 +54,7 @@
 #define OPENSSL_HEADER_BASE_H
 
 
-/* This file should be the first included by all BoringSSL headers. */
+// This file should be the first included by all BoringSSL headers.
 
 #include <stddef.h>
 #include <stdint.h>
@@ -92,10 +92,10 @@ extern "C" {
 #elif defined(__myriad2__)
 #define OPENSSL_32_BIT
 #else
-/* Note BoringSSL only supports standard 32-bit and 64-bit two's-complement,
- * little-endian architectures. Functions will not produce the correct answer
- * on other systems. Run the crypto_test binary, notably
- * crypto/compiler_test.cc, before adding a new architecture. */
+// Note BoringSSL only supports standard 32-bit and 64-bit two's-complement,
+// little-endian architectures. Functions will not produce the correct answer
+// on other systems. Run the crypto_test binary, notably
+// crypto/compiler_test.cc, before adding a new architecture.
 #error "Unknown target CPU"
 #endif
 
@@ -111,9 +111,9 @@ extern "C" {
 #define OPENSSL_IS_RING
 #define OPENSSL_VERSION_NUMBER 0x10002000
 
-/* *ring* doesn't support the `BORINGSSL_SHARED_LIBRARY` configuration, so
- * the default (usually "hidden") visibility is always used, even for exported
- * items. */
+// *ring* doesn't support the `BORINGSSL_SHARED_LIBRARY` configuration, so
+// the default (usually "hidden") visibility is always used, even for exported
+// items.
 #define OPENSSL_EXPORT
 
 #if defined(__GNUC__) || defined(__clang__)
@@ -127,7 +127,7 @@ typedef struct bignum_st BIGNUM;
 
 
 #if defined(__cplusplus)
-}  /* extern C */
+}  // extern C
 #endif
 
-#endif  /* OPENSSL_HEADER_BASE_H */
+#endif  // OPENSSL_HEADER_BASE_H

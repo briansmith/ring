@@ -71,9 +71,9 @@
 #include "internal.h"
 
 
-/* OPENSSL_cpuid runs the cpuid instruction. |leaf| is passed in as EAX and ECX
- * is set to zero. It writes EAX, EBX, ECX, and EDX to |*out_eax| through
- * |*out_edx|. */
+// OPENSSL_cpuid runs the cpuid instruction. |leaf| is passed in as EAX and ECX
+// is set to zero. It writes EAX, EBX, ECX, and EDX to |*out_eax| through
+// |*out_edx|.
 static void OPENSSL_cpuid(uint32_t *out_eax, uint32_t *out_ebx,
                           uint32_t *out_ecx, uint32_t *out_edx, uint32_t leaf) {
 #if defined(_MSC_VER)
@@ -84,8 +84,8 @@ static void OPENSSL_cpuid(uint32_t *out_eax, uint32_t *out_ebx,
   *out_ecx = (uint32_t)tmp[2];
   *out_edx = (uint32_t)tmp[3];
 #elif defined(__pic__) && defined(OPENSSL_32_BIT)
-  /* Inline assembly may not clobber the PIC register. For 32-bit, this is EBX.
-   * See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47602. */
+  // Inline assembly may not clobber the PIC register. For 32-bit, this is EBX.
+  // See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47602.
   __asm__ volatile (
     "xor %%ecx, %%ecx\n"
     "mov %%ebx, %%edi\n"
@@ -104,11 +104,10 @@ static void OPENSSL_cpuid(uint32_t *out_eax, uint32_t *out_ebx,
 #endif
 }
 
-/* OPENSSL_xgetbv returns the value of an Intel Extended Control Register (XCR).
- * Currently only XCR0 is defined by Intel so |xcr| should always be zero.
- *
- * See https://software.intel.com/en-us/articles/how-to-detect-new-instruction-support-in-the-4th-generation-intel-core-processor-family
- */
+// OPENSSL_xgetbv returns the value of an Intel Extended Control Register (XCR).
+// Currently only XCR0 is defined by Intel so |xcr| should always be zero.
+//
+// See https://software.intel.com/en-us/articles/how-to-detect-new-instruction-support-in-the-4th-generation-intel-core-processor-family
 static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
 #if defined(_MSC_VER)
   return (uint64_t)_xgetbv(xcr);
@@ -120,7 +119,7 @@ static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
 }
 
 void GFp_cpuid_setup(void) {
-  /* Determine the vendor and maximum input value. */
+  // Determine the vendor and maximum input value.
   uint32_t eax, ebx, ecx, edx;
   OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 0);
 
@@ -140,23 +139,23 @@ void GFp_cpuid_setup(void) {
     extended_features = ebx;
   }
 
-  /* Determine the number of cores sharing an L1 data cache to adjust the
-   * hyper-threading bit. */
+  // Determine the number of cores sharing an L1 data cache to adjust the
+  // hyper-threading bit.
   uint32_t cores_per_cache = 0;
   if (is_amd) {
-    /* AMD CPUs never share an L1 data cache between threads but do set the HTT
-     * bit on multi-core CPUs. */
+    // AMD CPUs never share an L1 data cache between threads but do set the HTT
+    // bit on multi-core CPUs.
     cores_per_cache = 1;
   } else if (num_ids >= 4) {
-    /* TODO(davidben): The Intel manual says this CPUID leaf enumerates all
-     * caches using ECX and doesn't say which is first. Does this matter? */
+    // TODO(davidben): The Intel manual says this CPUID leaf enumerates all
+    // caches using ECX and doesn't say which is first. Does this matter?
     OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 4);
     cores_per_cache = 1 + ((eax >> 14) & 0xfff);
   }
 
   OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 1);
 
-  /* Adjust the hyper-threading bit. */
+  // Adjust the hyper-threading bit.
   if (edx & (1 << 28)) {
     uint32_t num_logical_cores = (ebx >> 16) & 0xff;
     if (cores_per_cache == 1 || num_logical_cores <= 1) {
@@ -164,17 +163,17 @@ void GFp_cpuid_setup(void) {
     }
   }
 
-  /* Reserved bit #20 was historically repurposed to control the in-memory
-   * representation of RC4 state. Always set it to zero. */
+  // Reserved bit #20 was historically repurposed to control the in-memory
+  // representation of RC4 state. Always set it to zero.
   edx &= ~(1 << 20);
 
-  /* Reserved bit #30 is repurposed to signal an Intel CPU. */
+  // Reserved bit #30 is repurposed to signal an Intel CPU.
   if (is_intel) {
     edx |= (1 << 30);
 
-    /* Clear the XSAVE bit on Knights Landing to mimic Silvermont. This enables
-     * some Silvermont-specific codepaths which perform better. See OpenSSL
-     * commit 64d92d74985ebb3d0be58a9718f9e080a14a8e7f. */
+    // Clear the XSAVE bit on Knights Landing to mimic Silvermont. This enables
+    // some Silvermont-specific codepaths which perform better. See OpenSSL
+    // commit 64d92d74985ebb3d0be58a9718f9e080a14a8e7f.
     if ((eax & 0x0fff0ff0) == 0x00050670 /* Knights Landing */ ||
         (eax & 0x0fff0ff0) == 0x00080650 /* Knights Mill (per SDE) */) {
       ecx &= ~(1 << 26);
@@ -183,36 +182,36 @@ void GFp_cpuid_setup(void) {
     edx &= ~(1 << 30);
   }
 
-  /* The SDBG bit is repurposed to denote AMD XOP support. */
+  // The SDBG bit is repurposed to denote AMD XOP support.
   ecx &= ~(1 << 11);
 
   uint64_t xcr0 = 0;
   if (ecx & (1 << 27)) {
-    /* XCR0 may only be queried if the OSXSAVE bit is set. */
+    // XCR0 may only be queried if the OSXSAVE bit is set.
     xcr0 = OPENSSL_xgetbv(0);
   }
-  /* See Intel manual, volume 1, section 14.3. */
+  // See Intel manual, volume 1, section 14.3.
   if ((xcr0 & 6) != 6) {
-    /* YMM registers cannot be used. */
-    ecx &= ~(1 << 28); /* AVX */
-    ecx &= ~(1 << 12); /* FMA */
-    ecx &= ~(1 << 11); /* AMD XOP */
-    /* Clear AVX2 and AVX512* bits.
-     *
-     * TODO(davidben): Should bits 17 and 26-28 also be cleared? Upstream
-     * doesn't clear those. */
+    // YMM registers cannot be used.
+    ecx &= ~(1 << 28);  // AVX
+    ecx &= ~(1 << 12);  // FMA
+    ecx &= ~(1 << 11);  // AMD XOP
+    // Clear AVX2 and AVX512* bits.
+    //
+    // TODO(davidben): Should bits 17 and 26-28 also be cleared? Upstream
+    // doesn't clear those.
     extended_features &=
         ~((1 << 5) | (1 << 16) | (1 << 21) | (1 << 30) | (1 << 31));
   }
-  /* See Intel manual, volume 1, section 15.2. */
+  // See Intel manual, volume 1, section 15.2.
   if ((xcr0 & 0xe6) != 0xe6) {
-    /* Clear AVX512F. Note we don't touch other AVX512 extensions because they
-     * can be used with YMM. */
+    // Clear AVX512F. Note we don't touch other AVX512 extensions because they
+    // can be used with YMM.
     extended_features &= ~(1 << 16);
   }
 
-  /* Disable ADX instructions on Knights Landing. See OpenSSL commit
-   * 64d92d74985ebb3d0be58a9718f9e080a14a8e7f. */
+  // Disable ADX instructions on Knights Landing. See OpenSSL commit
+  // 64d92d74985ebb3d0be58a9718f9e080a14a8e7f.
   if ((ecx & (1 << 26)) == 0) {
     extended_features &= ~(1 << 19);
   }
@@ -223,4 +222,4 @@ void GFp_cpuid_setup(void) {
   GFp_ia32cap_P[3] = 0;
 }
 
-#endif  /* !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64) */
+#endif  // !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64)

@@ -143,7 +143,7 @@ extern "C" {
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
     defined(OPENSSL_AARCH64) || defined(OPENSSL_PPC64LE)
-/* OPENSSL_cpuid_setup initializes the platform-specific feature cache. */
+// GFp_cpuid_setup initializes the platform-specific feature cache.
 void GFp_cpuid_setup(void);
 #endif
 
@@ -178,29 +178,29 @@ typedef __uint128_t uint128_t;
 #endif
 
 
-/* Constant-time utility functions.
- *
- * The following methods return a bitmask of all ones (0xff...f) for true and 0
- * for false. This is useful for choosing a value based on the result of a
- * conditional in constant time. For example,
- *
- * if (a < b) {
- *   c = a;
- * } else {
- *   c = b;
- * }
- *
- * can be written as
- *
- * crypto_word_t lt = constant_time_lt_w(a, b);
- * c = constant_time_select_w(lt, a, b); */
+// Constant-time utility functions.
+//
+// The following methods return a bitmask of all ones (0xff...f) for true and 0
+// for false. This is useful for choosing a value based on the result of a
+// conditional in constant time. For example,
+//
+// if (a < b) {
+//   c = a;
+// } else {
+//   c = b;
+// }
+//
+// can be written as
+//
+// crypto_word_t lt = constant_time_lt_w(a, b);
+// c = constant_time_select_w(lt, a, b);
 
-/* crypto_word_t is the type that most constant-time functions use. Ideally we
- * would like it to be |size_t|, but NaCl builds in 64-bit mode with 32-bit
- * pointers, which means that |size_t| can be 32 bits when |BN_ULONG| is 64
- * bits. Since we want to be able to do constant-time operations on a
- * |BN_ULONG|, |crypto_word_t| is defined as an unsigned value with the native
- * word length. */
+// crypto_word_t is the type that most constant-time functions use. Ideally we
+// would like it to be |size_t|, but NaCl builds in 64-bit mode with 32-bit
+// pointers, which means that |size_t| can be 32 bits when |BN_ULONG| is 64
+// bits. Since we want to be able to do constant-time operations on a
+// |BN_ULONG|, |crypto_word_t| is defined as an unsigned value with the native
+// word length.
 #if defined(OPENSSL_64_BIT)
 typedef uint64_t crypto_word_t;
 #elif defined(OPENSSL_32_BIT)
@@ -214,26 +214,25 @@ typedef uint32_t crypto_word_t;
 #define CONSTTIME_TRUE_8 ((uint8_t)0xff)
 #define CONSTTIME_FALSE_8 ((uint8_t)0)
 
-/* constant_time_msb_w returns the given value with the MSB copied to all the
- * other bits. */
+// constant_time_msb_w returns the given value with the MSB copied to all the
+// other bits.
 static inline crypto_word_t constant_time_msb_w(crypto_word_t a) {
   return 0u - (a >> (sizeof(a) * 8 - 1));
 }
 
-/* constant_time_is_zero returns 0xff..f if a == 0 and 0 otherwise. */
+// constant_time_is_zero_w returns 0xff..f if a == 0 and 0 otherwise.
 static inline crypto_word_t constant_time_is_zero_w(crypto_word_t a) {
-  /* Here is an SMT-LIB verification of this formula:
-   *
-   * (define-fun is_zero ((a (_ BitVec 32))) (_ BitVec 32)
-   *   (bvand (bvnot a) (bvsub a #x00000001))
-   * )
-   *
-   * (declare-fun a () (_ BitVec 32))
-   *
-   * (assert (not (= (= #x00000001 (bvlshr (is_zero a) #x0000001f)) (= a #x00000000))))
-   * (check-sat)
-   * (get-model)
-   */
+  // Here is an SMT-LIB verification of this formula:
+  //
+  // (define-fun is_zero ((a (_ BitVec 32))) (_ BitVec 32)
+  //   (bvand (bvnot a) (bvsub a #x00000001))
+  // )
+  //
+  // (declare-fun a () (_ BitVec 32))
+  //
+  // (assert (not (= (= #x00000001 (bvlshr (is_zero a) #x0000001f)) (= a #x00000000))))
+  // (check-sat)
+  // (get-model)
   return constant_time_msb_w(~a & (a - 1));
 }
 
@@ -241,42 +240,41 @@ static inline crypto_word_t constant_time_is_nonzero_w(crypto_word_t a) {
   return ~constant_time_is_zero_w(a);
 }
 
-/* constant_time_is_zero_8 acts like |constant_time_is_zero_w| but returns an
- * 8-bit mask. */
+// constant_time_is_zero_8 acts like |constant_time_is_zero_w| but returns an
+// 8-bit mask.
 static inline uint8_t constant_time_is_zero_8(crypto_word_t a) {
   return (uint8_t)(constant_time_is_zero_w(a));
 }
 
-/* constant_time_eq_s returns 0xff..f if a == b and 0 otherwise. */
+// constant_time_eq_w returns 0xff..f if a == b and 0 otherwise.
 static inline crypto_word_t constant_time_eq_w(crypto_word_t a,
                                                crypto_word_t b) {
   return constant_time_is_zero_w(a ^ b);
 }
 
-/* constant_time_eq_int acts like |constant_time_eq_w| but works on int
- * values. */
+// constant_time_eq_int acts like |constant_time_eq_w| but works on int
+// values.
 static inline crypto_word_t constant_time_eq_int(int a, int b) {
   return constant_time_eq_w((crypto_word_t)(a), (crypto_word_t)(b));
 }
 
-/* constant_time_select_w returns (mask & a) | (~mask & b). When |mask| is all
- * 1s or all 0s (as returned by the methods above), the select methods return
- * either |a| (if |mask| is nonzero) or |b| (if |mask| is zero). */
+// constant_time_select_w returns (mask & a) | (~mask & b). When |mask| is all
+// 1s or all 0s (as returned by the methods above), the select methods return
+// either |a| (if |mask| is nonzero) or |b| (if |mask| is zero).
 static inline crypto_word_t constant_time_select_w(crypto_word_t mask,
                                                    crypto_word_t a,
                                                    crypto_word_t b) {
   return (mask & a) | (~mask & b);
 }
 
-/* from_be_u32_ptr returns the 32-bit big-endian-encoded value at |data|. */
+// from_be_u32_ptr returns the 32-bit big-endian-encoded value at |data|.
 static inline uint32_t from_be_u32_ptr(const uint8_t *data) {
 #if defined(__clang__) || defined(_MSC_VER)
-  /* XXX: Unlike GCC, Clang doesn't optimize compliant access to unaligned data
-   * well. See https://llvm.org/bugs/show_bug.cgi?id=20605,
-   * https://llvm.org/bugs/show_bug.cgi?id=17603,
-   * http://blog.regehr.org/archives/702, and
-   * http://blog.regehr.org/archives/1055. MSVC seems to have similar problems.
-   */
+  // XXX: Unlike GCC, Clang doesn't optimize compliant access to unaligned data
+  // well. See https://llvm.org/bugs/show_bug.cgi?id=20605,
+  // https://llvm.org/bugs/show_bug.cgi?id=17603,
+  // http://blog.regehr.org/archives/702, and
+  // http://blog.regehr.org/archives/1055. MSVC seems to have similar problems.
   uint32_t value;
   memcpy(&value, data, sizeof(value));
 #if OPENSSL_ENDIAN != OPENSSL_BIG_ENDIAN
@@ -292,15 +290,14 @@ static inline uint32_t from_be_u32_ptr(const uint8_t *data) {
 }
 
 
-/* from_be_u64_ptr returns the 64-bit big-endian-encoded value at |data|. */
+// from_be_u64_ptr returns the 64-bit big-endian-encoded value at |data|.
 static inline uint64_t from_be_u64_ptr(const uint8_t *data) {
 #if defined(__clang__) || defined(_MSC_VER)
-  /* XXX: Unlike GCC, Clang doesn't optimize compliant access to unaligned data
-   * well. See https://llvm.org/bugs/show_bug.cgi?id=20605,
-   * https://llvm.org/bugs/show_bug.cgi?id=17603,
-   * http://blog.regehr.org/archives/702, and
-   * http://blog.regehr.org/archives/1055. MSVC seems to have similar problems.
-   */
+  // XXX: Unlike GCC, Clang doesn't optimize compliant access to unaligned data
+  // well. See https://llvm.org/bugs/show_bug.cgi?id=20605,
+  // https://llvm.org/bugs/show_bug.cgi?id=17603,
+  // http://blog.regehr.org/archives/702, and
+  // http://blog.regehr.org/archives/1055. MSVC seems to have similar problems.
   uint64_t value;
   memcpy(&value, data, sizeof(value));
 #if OPENSSL_ENDIAN != OPENSSL_BIG_ENDIAN
@@ -319,16 +316,15 @@ static inline uint64_t from_be_u64_ptr(const uint8_t *data) {
 #endif
 }
 
-/* to_be_u32_ptr writes the value |x| to the location |out| in big-endian
-   order. */
+// to_be_u32_ptr writes the value |x| to the location |out| in big-endian
+// order.
 static inline void to_be_u32_ptr(uint8_t *out, uint32_t value) {
 #if defined(__clang__) || defined(_MSC_VER)
-  /* XXX: Unlike GCC, Clang doesn't optimize compliant access to unaligned data
-   * well. See https://llvm.org/bugs/show_bug.cgi?id=20605,
-   * https://llvm.org/bugs/show_bug.cgi?id=17603,
-   * http://blog.regehr.org/archives/702, and
-   * http://blog.regehr.org/archives/1055. MSVC seems to have similar problems.
-   */
+  // XXX: Unlike GCC, Clang doesn't optimize compliant access to unaligned data
+  // well. See https://llvm.org/bugs/show_bug.cgi?id=20605,
+  // https://llvm.org/bugs/show_bug.cgi?id=17603,
+  // http://blog.regehr.org/archives/702, and
+  // http://blog.regehr.org/archives/1055. MSVC seems to have similar problems.
 #if  OPENSSL_ENDIAN != OPENSSL_BIG_ENDIAN
   value = bswap_u32(value);
 #endif
@@ -341,16 +337,15 @@ static inline void to_be_u32_ptr(uint8_t *out, uint32_t value) {
 #endif
 }
 
-/* to_be_u64_ptr writes the value |value| to the location |out| in big-endian
-   order. */
+// to_be_u64_ptr writes the value |value| to the location |out| in big-endian
+// order.
 static inline void to_be_u64_ptr(uint8_t *out, uint64_t value) {
 #if defined(__clang__) || defined(_MSC_VER)
-  /* XXX: Unlike GCC, Clang doesn't optimize compliant access to unaligned data
-   * well. See https://llvm.org/bugs/show_bug.cgi?id=20605,
-   * https://llvm.org/bugs/show_bug.cgi?id=17603,
-   * http://blog.regehr.org/archives/702, and
-   * http://blog.regehr.org/archives/1055. MSVC seems to have similar problems.
-   */
+  // XXX: Unlike GCC, Clang doesn't optimize compliant access to unaligned data
+  // well. See https://llvm.org/bugs/show_bug.cgi?id=20605,
+  // https://llvm.org/bugs/show_bug.cgi?id=17603,
+  // http://blog.regehr.org/archives/702, and
+  // http://blog.regehr.org/archives/1055. MSVC seems to have similar problems.
 #if  OPENSSL_ENDIAN != OPENSSL_BIG_ENDIAN
   value = bswap_u64(value);
 #endif
@@ -367,8 +362,8 @@ static inline void to_be_u64_ptr(uint8_t *out, uint64_t value) {
 #endif
 }
 
-/* from_be_u64 returns the native representation of the 64-bit
- * big-endian-encoded value |x|. */
+// from_be_u64 returns the native representation of the 64-bit
+// big-endian-encoded value |x|.
 static inline uint64_t from_be_u64(uint64_t x) {
 #if OPENSSL_ENDIAN != OPENSSL_BIG_ENDIAN
   x = bswap_u64(x);
@@ -378,7 +373,7 @@ static inline uint64_t from_be_u64(uint64_t x) {
 
 
 #if defined(__cplusplus)
-}  /* extern C */
+}  // extern C
 #endif
 
-#endif  /* OPENSSL_HEADER_CRYPTO_INTERNAL_H */
+#endif  // OPENSSL_HEADER_CRYPTO_INTERNAL_H

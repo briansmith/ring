@@ -68,16 +68,16 @@
 extern "C" {
 #endif
 
-/* Preconditions for AEAD implementation methods. */
+// Preconditions for AEAD implementation methods. */
 
-/* aead_check_alias returns 0 if |out| points within the buffer determined by
- * |in| and |in_len| and 1 otherwise.
- *
- * When processing, there's only an issue if |out| points within in[:in_len]
- * and isn't equal to |in|. If that's the case then writing the output will
- * stomp input that hasn't been read yet.
- *
- * This function checks for that case. */
+// aead_check_alias returns 0 if |out| points within the buffer determined by
+// |in| and |in_len| and 1 otherwise.
+//
+// When processing, there's only an issue if |out| points within in[:in_len]
+// and isn't equal to |in|. If that's the case then writing the output will
+// stomp input that hasn't been read yet.
+//
+// This function checks for that case. */
 static inline int aead_check_alias(const uint8_t *in, size_t in_len,
                                    const uint8_t *out) {
   if (out <= in) {
@@ -88,17 +88,17 @@ static inline int aead_check_alias(const uint8_t *in, size_t in_len,
   return 0;
 }
 
-/* TODO: This isn't used yet, but it will probably be used soon, once
- * AES-GCM-SIV is integrated into *ring*.
- * */
+// TODO: This isn't used yet, but it will probably be used soon, once
+// AES-GCM-SIV is integrated into *ring*.
+//
 #if 0
 
-/* aes_ctr_set_key initialises |*aes_key| using |key_bytes| bytes from |key|,
- * where |key_bytes| must either be 16, 24 or 32. If not NULL, |*out_block| is
- * set to a function that encrypts single blocks. If not NULL, |*gcm_ctx| is
- * initialised to do GHASH with the given key. It returns a function for
- * optimised CTR-mode, or NULL if CTR-mode should be built using
- * |*out_block|. */
+// aes_ctr_set_key initialises |*aes_key| using |key_bytes| bytes from |key|,
+// where |key_bytes| must either be 16, 24 or 32. If not NULL, |*out_block| is
+// set to a function that encrypts single blocks. If not NULL, |*gcm_ctx| is
+// initialised to do GHASH with the given key. It returns a function for
+// optimised CTR-mode, or NULL if CTR-mode should be built using
+// |*out_block|.
 ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
                          block128_f *out_block, const uint8_t *key,
                          size_t key_bytes);
@@ -106,7 +106,7 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
 #endif
 
 #if defined(__cplusplus)
-} /* extern C */
+}  // extern C
 #endif
 
-#endif /* OPENSSL_HEADER_CIPHER_INTERNAL_H */
+#endif  // OPENSSL_HEADER_CIPHER_INTERNAL_H

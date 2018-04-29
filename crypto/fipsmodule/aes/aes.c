@@ -58,11 +58,10 @@
 #if defined(OPENSSL_NO_ASM) || \
     (!defined(OPENSSL_X86) && !defined(OPENSSL_X86_64) && !defined(OPENSSL_ARM))
 
-/* Te0[x] = S [x].[02, 01, 01, 03];
- * Te1[x] = S [x].[03, 02, 01, 01];
- * Te2[x] = S [x].[01, 03, 02, 01];
- * Te3[x] = S [x].[01, 01, 03, 02];
- */
+// Te0[x] = S [x].[02, 01, 01, 03];
+// Te1[x] = S [x].[03, 02, 01, 01];
+// Te2[x] = S [x].[01, 03, 02, 01];
+// Te3[x] = S [x].[01, 01, 03, 02];
 
 static const uint32_t Te0[256] = {
     0xc66363a5U, 0xf87c7c84U, 0xee777799U, 0xf67b7b8dU, 0xfff2f20dU,
@@ -283,7 +282,7 @@ static const uint32_t Te3[256] = {
 static const uint32_t rcon[] = {
     0x01000000, 0x02000000, 0x04000000, 0x08000000, 0x10000000,
     0x20000000, 0x40000000, 0x80000000, 0x1B000000, 0x36000000,
-    /* for 128-bit blocks, Rijndael never uses more than 10 rcon values */
+    // for 128-bit blocks, Rijndael never uses more than 10 rcon values
 };
 
 int GFp_AES_set_encrypt_key(const uint8_t *key, unsigned bits,
@@ -366,19 +365,19 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   uint32_t s0, s1, s2, s3, t0, t1, t2, t3;
 #ifndef FULL_UNROLL
   int r;
-#endif /* ?FULL_UNROLL */
+#endif  // ?FULL_UNROLL
 
   assert(in && out && key);
   rk = key->rd_key;
 
-  /* map byte array block to cipher state
-   * and add initial round key: */
+  // map byte array block to cipher state
+  // and add initial round key:
   s0 = from_be_u32_ptr(in) ^ rk[0];
   s1 = from_be_u32_ptr(in + 4) ^ rk[1];
   s2 = from_be_u32_ptr(in + 8) ^ rk[2];
   s3 = from_be_u32_ptr(in + 12) ^ rk[3];
 #ifdef FULL_UNROLL
-  /* round 1: */
+  // round 1:
   t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >> 8) & 0xff] ^
        Te3[s3 & 0xff] ^ rk[4];
   t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >> 8) & 0xff] ^
@@ -387,7 +386,7 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
        Te3[s1 & 0xff] ^ rk[6];
   t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >> 8) & 0xff] ^
        Te3[s2 & 0xff] ^ rk[7];
-  /* round 2: */
+  // round 2:
   s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >> 8) & 0xff] ^
        Te3[t3 & 0xff] ^ rk[8];
   s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >> 8) & 0xff] ^
@@ -396,7 +395,7 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
        Te3[t1 & 0xff] ^ rk[10];
   s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >> 8) & 0xff] ^
        Te3[t2 & 0xff] ^ rk[11];
-  /* round 3: */
+  // round 3:
   t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >> 8) & 0xff] ^
        Te3[s3 & 0xff] ^ rk[12];
   t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >> 8) & 0xff] ^
@@ -405,7 +404,7 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
        Te3[s1 & 0xff] ^ rk[14];
   t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >> 8) & 0xff] ^
        Te3[s2 & 0xff] ^ rk[15];
-  /* round 4: */
+  // round 4:
   s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >> 8) & 0xff] ^
        Te3[t3 & 0xff] ^ rk[16];
   s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >> 8) & 0xff] ^
@@ -414,7 +413,7 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
        Te3[t1 & 0xff] ^ rk[18];
   s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >> 8) & 0xff] ^
        Te3[t2 & 0xff] ^ rk[19];
-  /* round 5: */
+  // round 5:
   t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >> 8) & 0xff] ^
        Te3[s3 & 0xff] ^ rk[20];
   t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >> 8) & 0xff] ^
@@ -423,7 +422,7 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
        Te3[s1 & 0xff] ^ rk[22];
   t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >> 8) & 0xff] ^
        Te3[s2 & 0xff] ^ rk[23];
-  /* round 6: */
+  // round 6:
   s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >> 8) & 0xff] ^
        Te3[t3 & 0xff] ^ rk[24];
   s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >> 8) & 0xff] ^
@@ -432,7 +431,7 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
        Te3[t1 & 0xff] ^ rk[26];
   s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >> 8) & 0xff] ^
        Te3[t2 & 0xff] ^ rk[27];
-  /* round 7: */
+  // round 7:
   t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >> 8) & 0xff] ^
        Te3[s3 & 0xff] ^ rk[28];
   t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >> 8) & 0xff] ^
@@ -441,7 +440,7 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
        Te3[s1 & 0xff] ^ rk[30];
   t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >> 8) & 0xff] ^
        Te3[s2 & 0xff] ^ rk[31];
-  /* round 8: */
+  // round 8:
   s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >> 8) & 0xff] ^
        Te3[t3 & 0xff] ^ rk[32];
   s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >> 8) & 0xff] ^
@@ -450,7 +449,7 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
        Te3[t1 & 0xff] ^ rk[34];
   s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >> 8) & 0xff] ^
        Te3[t2 & 0xff] ^ rk[35];
-  /* round 9: */
+  // round 9:
   t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >> 8) & 0xff] ^
        Te3[s3 & 0xff] ^ rk[36];
   t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >> 8) & 0xff] ^
@@ -460,7 +459,7 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >> 8) & 0xff] ^
        Te3[s2 & 0xff] ^ rk[39];
   if (key->rounds > 10) {
-    /* round 10: */
+    // round 10:
     s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >> 8) & 0xff] ^
          Te3[t3 & 0xff] ^ rk[40];
     s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >> 8) & 0xff] ^
@@ -469,7 +468,7 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
          Te3[t1 & 0xff] ^ rk[42];
     s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >> 8) & 0xff] ^
          Te3[t2 & 0xff] ^ rk[43];
-    /* round 11: */
+    // round 11:
     t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >> 8) & 0xff] ^
          Te3[s3 & 0xff] ^ rk[44];
     t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >> 8) & 0xff] ^
@@ -479,7 +478,7 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
     t3 = Te0[s3 >> 24] ^ Te1[(s0 >> 16) & 0xff] ^ Te2[(s1 >> 8) & 0xff] ^
          Te3[s2 & 0xff] ^ rk[47];
     if (key->rounds > 12) {
-      /* round 12: */
+      // round 12:
       s0 = Te0[t0 >> 24] ^ Te1[(t1 >> 16) & 0xff] ^ Te2[(t2 >> 8) & 0xff] ^
            Te3[t3 & 0xff] ^ rk[48];
       s1 = Te0[t1 >> 24] ^ Te1[(t2 >> 16) & 0xff] ^ Te2[(t3 >> 8) & 0xff] ^
@@ -488,7 +487,7 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
            Te3[t1 & 0xff] ^ rk[50];
       s3 = Te0[t3 >> 24] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >> 8) & 0xff] ^
            Te3[t2 & 0xff] ^ rk[51];
-      /* round 13: */
+      // round 13:
       t0 = Te0[s0 >> 24] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >> 8) & 0xff] ^
            Te3[s3 & 0xff] ^ rk[52];
       t1 = Te0[s1 >> 24] ^ Te1[(s2 >> 16) & 0xff] ^ Te2[(s3 >> 8) & 0xff] ^
@@ -500,10 +499,8 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
     }
   }
   rk += key->rounds << 2;
-#else  /* !FULL_UNROLL */
-  /*
-   * Nr - 1 full rounds:
-   */
+#else  // !FULL_UNROLL
+  // Nr - 1 full rounds:
   r = key->rounds >> 1;
   for (;;) {
     t0 = Te0[(s0 >> 24)] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >> 8) & 0xff] ^
@@ -529,8 +526,8 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
     s3 = Te0[(t3 >> 24)] ^ Te1[(t0 >> 16) & 0xff] ^ Te2[(t1 >> 8) & 0xff] ^
          Te3[(t2) & 0xff] ^ rk[3];
   }
-#endif /* ?FULL_UNROLL */
-  /*  apply last round and map cipher state to byte array block: */
+#endif  // ?FULL_UNROLL
+  //  apply last round and map cipher state to byte array block:
   s0 = (Te2[(t0 >> 24)] & 0xff000000) ^ (Te3[(t1 >> 16) & 0xff] & 0x00ff0000) ^
        (Te0[(t2 >> 8) & 0xff] & 0x0000ff00) ^ (Te1[(t3) & 0xff] & 0x000000ff) ^
        rk[0];
@@ -551,10 +548,10 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 
 #else
 
-/* In this case several functions are provided by asm code. However, one cannot
- * control asm symbol visibility with command line flags and such so they are
- * always hidden and wrapped by these C functions, which can be so
- * controlled. */
+// In this case several functions are provided by asm code. However, one cannot
+// control asm symbol visibility with command line flags and such so they are
+// always hidden and wrapped by these C functions, which can be so
+// controlled.
 
 void GFp_asm_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
@@ -579,4 +576,4 @@ int GFp_AES_set_encrypt_key(const uint8_t *key, unsigned bits,
   return GFp_asm_AES_set_encrypt_key(key, bits, aeskey);
 }
 
-#endif  /* OPENSSL_NO_ASM || (!OPENSSL_X86 && !OPENSSL_X86_64 && !OPENSSL_ARM) */
+#endif  // OPENSSL_NO_ASM || (!OPENSSL_X86 && !OPENSSL_X86_64 && !OPENSSL_ARM)

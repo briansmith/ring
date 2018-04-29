@@ -118,7 +118,7 @@
 #include "../../internal.h"
 
 
-/* Avoid -Wmissing-prototypes warnings. */
+// Avoid -Wmissing-prototypes warnings.
 int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
                                 const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]);
 
@@ -140,7 +140,7 @@ int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
     return 1;
   }
 
-  max = (2 * nl); /* carry is stored separately */
+  max = (2 * nl); // carry is stored separately
   if (!GFp_bn_wexpand(r, max)) {
     return 0;
   }
@@ -148,7 +148,7 @@ int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
   np = n->d;
   rp = r->d;
 
-  /* clear the top words of T */
+  // clear the top words of T
   if (max > r->top) {
     memset(&rp[r->top], 0, (max - r->top) * sizeof(BN_ULONG));
   }
@@ -177,8 +177,8 @@ int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
     uintptr_t m;
 
     v = GFp_bn_sub_words(rp, ap, np, nl) - carry;
-    /* if subtraction result is real, then trick unconditional memcpy below to
-     * perform in-place "refresh" instead of actual copy. */
+    // if subtraction result is real, then trick unconditional memcpy below to
+    // perform in-place "refresh" instead of actual copy.
     m = (0u - (uintptr_t)v);
     nrp = (BN_ULONG *)(((uintptr_t)rp & ~m) | ((uintptr_t)ap & m));
 
@@ -210,13 +210,13 @@ int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
   return 1;
 }
 
-/* Assumes a < n and b < n */
+// Assumes a < n and b < n
 int GFp_BN_mod_mul_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
                         const BIGNUM *n,
                         const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]) {
   int num = n->top;
 
-  /* GFp_bn_mul_mont requires at least four limbs, at least for x86. */
+  // GFp_bn_mul_mont requires at least four limbs, at least for x86.
   if (num < 4) {
     return 0;
   }

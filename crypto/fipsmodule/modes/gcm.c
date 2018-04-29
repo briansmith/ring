@@ -113,7 +113,7 @@ static void gcm_init_4bit(u128 Htable[16], const uint64_t H[2]) {
   Htable[15].hi = V.hi ^ Htable[7].hi, Htable[15].lo = V.lo ^ Htable[7].lo;
 
 #if defined(GHASH_ASM) && defined(OPENSSL_ARM)
-  /* ARM assembler expects specific dword order in Htable. */
+  // ARM assembler expects specific dword order in Htable.
   {
     int j;
 
@@ -190,11 +190,11 @@ static void GFp_gcm_gmult_4bit(uint8_t Xi[16], const u128 Htable[16]) {
   to_be_u64_ptr(Xi + 8, Z.lo);
 }
 
-/* Streamed gcm_mult_4bit, see GFp_gcm128_[en|de]crypt for
- * details... Compiler-generated code doesn't seem to give any
- * performance improvement, at least not on x86[_64]. It's here
- * mostly as reference and a placeholder for possible future
- * non-trivial optimization[s]... */
+// Streamed gcm_mult_4bit, see GFp_gcm128_[en|de]crypt for
+// details... Compiler-generated code doesn't seem to give any
+// performance improvement, at least not on x86[_64]. It's here
+// mostly as reference and a placeholder for possible future
+// non-trivial optimization[s]...
 static void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
                                const uint8_t *inp, size_t len) {
   u128 Z;
@@ -250,7 +250,7 @@ static void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
     Xi[1] = from_be_u64(Z.lo);
   } while (inp += 16, len -= 16);
 }
-#else /* GHASH_ASM */
+#else // GHASH_ASM
 void GFp_gcm_gmult_4bit(uint8_t Xi[16], const u128 Htable[16]);
 void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
                         const uint8_t *inp, size_t len);
@@ -259,9 +259,9 @@ void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
 #define GCM_MUL(ctx, Xi) GFp_gcm_gmult_4bit((ctx)->Xi, (ctx)->Htable)
 #if defined(GHASH_ASM)
 #define GHASH(ctx, in, len) GFp_gcm_ghash_4bit((ctx)->Xi, (ctx)->Htable, in, len)
-/* GHASH_CHUNK is "stride parameter" missioned to mitigate cache
- * trashing effect. In other words idea is to hash data while it's
- * still in L1 cache after encryption pass... */
+// GHASH_CHUNK is "stride parameter" missioned to mitigate cache
+// trashing effect. In other words idea is to hash data while it's
+// still in L1 cache after encryption pass...
 #define GHASH_CHUNK (3 * 1024)
 #endif
 
@@ -310,7 +310,7 @@ void GFp_gcm_ghash_v8(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
 
 #if defined(OPENSSL_ARM) && __ARM_MAX_ARCH__ >= 7
 #define GCM_FUNCREF_4BIT
-/* 32-bit ARM also has support for doing GCM with NEON instructions. */
+// 32-bit ARM also has support for doing GCM with NEON instructions.
 void GFp_gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]);
 void GFp_gcm_gmult_neon(uint8_t Xi[16], const u128 Htable[16]);
 void GFp_gcm_ghash_neon(uint8_t Xi[16], const u128 Htable[16],
@@ -324,9 +324,9 @@ void GFp_gcm_init_p8(u128 Htable[16], const uint64_t Xi[2]);
 void GFp_gcm_gmult_p8(uint64_t Xi[2], const u128 Htable[16]);
 void GFp_gcm_ghash_p8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
                       size_t len);
-#endif /* Platform */
+#endif // Platform
 
-#endif /* GHASH_ASM */
+#endif // GHASH_ASM
 
 #ifdef GCM_FUNCREF_4BIT
 #undef GCM_MUL
@@ -347,7 +347,7 @@ void GFp_gcm128_init_serialized(
   uint8_t H_be[16];
   (*block)(ZEROS, H_be, key);
 
-  /* H is stored in host byte order */
+  // H is stored in host byte order
   alignas(16) uint64_t H[2];
   H[0] = from_be_u64_ptr(H_be);
   H[1] = from_be_u64_ptr(H_be + 8);
@@ -363,12 +363,12 @@ void GFp_gcm128_init_serialized(
 
 static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
                                const uint64_t H[2]) {
-  /* Keep in sync with |gcm128_init_gmult_ghash|. */
+  // Keep in sync with |gcm128_init_gmult_ghash|.
 
 #if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86)
   if (GFp_gcm_clmul_enabled()) {
 #if defined(GHASH_ASM_X86_64)
-    if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
+    if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { // AVX+MOVBE
       GFp_gcm_init_avx(Htable, H);
       return;
     }
@@ -403,12 +403,12 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx,
                                     int is_aesni_encrypt) {
   (void)is_aesni_encrypt; // Unused
 
-  /* Keep in sync with |gcm128_init_htable|. */
+  // Keep in sync with |gcm128_init_htable|.
 
 #if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86)
   if (GFp_gcm_clmul_enabled()) {
 #if defined(GHASH_ASM_X86_64)
-    if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { /* AVX+MOVBE */
+    if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { // AVX+MOVBE
       ctx->gmult = GFp_gcm_gmult_avx;
       ctx->ghash = GFp_gcm_ghash_avx;
       ctx->use_aesni_gcm_crypt = is_aesni_encrypt ? 1 : 0;
@@ -522,8 +522,8 @@ int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 
 #if defined(AESNI_GCM)
   if (ctx->use_aesni_gcm_crypt) {
-    /* |aesni_gcm_encrypt| may not process all the input given to it. It may
-     * not process *any* of its input if it is deemed too small. */
+    // |aesni_gcm_encrypt| may not process all the input given to it. It may
+    // not process *any* of its input if it is deemed too small.
     size_t bulk = GFp_aesni_gcm_encrypt(in, out, len, key, ctx->Yi, ctx->Xi);
     in += bulk;
     out += bulk;
@@ -601,8 +601,8 @@ int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 
 #if defined(AESNI_GCM)
   if (ctx->use_aesni_gcm_crypt) {
-    /* |aesni_gcm_decrypt| may not process all the input given to it. It may
-     * not process *any* of its input if it is deemed too small. */
+    // |aesni_gcm_decrypt| may not process all the input given to it. It may
+    // not process *any* of its input if it is deemed too small.
     size_t bulk = GFp_aesni_gcm_decrypt(in, out, len, key, ctx->Yi, ctx->Xi);
     in += bulk;
     out += bulk;
@@ -688,8 +688,8 @@ void GFp_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16]) {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 int GFp_gcm_clmul_enabled(void) {
 #ifdef GHASH_ASM
-  return GFp_ia32cap_P[0] & (1 << 24) && /* check FXSR bit */
-         GFp_ia32cap_P[1] & (1 << 1);    /* check PCLMULQDQ bit */
+  return GFp_ia32cap_P[0] & (1 << 24) && // check FXSR bit
+         GFp_ia32cap_P[1] & (1 << 1);    // check PCLMULQDQ bit
 #else
   return 0;
 #endif

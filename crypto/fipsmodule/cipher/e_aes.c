@@ -65,8 +65,8 @@
 #define EVP_AEAD_AES_GCM_NONCE_LEN 12
 #define EVP_AEAD_AES_GCM_TAG_LEN 16
 
- /* Declarations for extern functions only called by Rust code, to avoid
- * -Wmissing-prototypes warnings. */
+// Declarations for extern functions only called by Rust code, to avoid
+// -Wmissing-prototypes warnings.
 int GFp_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
                      size_t key_len);
 int GFp_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t in_out_len,
@@ -108,8 +108,8 @@ static char bsaes_capable(void) {
 #endif
 
 #if defined(BSAES)
-/* On platforms where BSAES gets defined (just above), then these functions are
- * provided by asm. */
+// On platforms where BSAES gets defined (just above), then these functions are
+// provided by asm.
 void GFp_bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
                                     const AES_KEY *key, const uint8_t ivec[16]);
 #endif
@@ -128,8 +128,8 @@ static void aes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
                                      const uint8_t ivec[16]);
 
 #if defined(VPAES)
-/* On platforms where VPAES gets defined (just above), then these functions are
- * provided by asm. */
+// On platforms where VPAES gets defined (just above), then these functions are
+// provided by asm.
 int GFp_vpaes_set_encrypt_key(const uint8_t *userKey, unsigned bits,
                               AES_KEY *key);
 void GFp_vpaes_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
@@ -174,7 +174,7 @@ static aes_set_key_f aes_set_key(void) {
   return GFp_AES_set_encrypt_key;
 }
 
-/* TODO(perf): Consider inlining this. */
+// TODO(perf): Consider inlining this.
 int GFp_aes_block_is_aesni_encrypt(aes_block_f block) {
 #if defined(AESNI)
   return block == GFp_aesni_encrypt;
@@ -185,7 +185,7 @@ int GFp_aes_block_is_aesni_encrypt(aes_block_f block) {
 }
 
 static aes_block_f aes_block(void) {
-  /* Keep this in sync with |set_set_key| and |aes_ctr|. */
+  // Keep this in sync with |set_set_key| and |aes_ctr|.
 
 #if defined(AESNI)
   if (aesni_capable()) {
@@ -216,7 +216,7 @@ static aes_block_f aes_block(void) {
 }
 
 static aes_ctr_f aes_ctr(void) {
-  /* Keep this in sync with |set_set_key| and |aes_block|. */
+  // Keep this in sync with |set_set_key| and |aes_block|.
 
 #if defined(AESNI)
   if (aesni_capable()) {
@@ -260,7 +260,7 @@ static void aes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
     for (size_t i = 0; i < 16; ++i) {
       out[i] = in[i] ^ counter_ciphertext[i];
     }
-    /* The caller must ensure the counter won't wrap around. */
+    // The caller must ensure the counter won't wrap around.
     ++counter;
     assert(counter != 0);
     to_be_u32_ptr(&counter_plaintext[12], counter);
@@ -277,8 +277,8 @@ int GFp_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
     return 0;
   }
 
-  /* XXX: Ignores return value. TODO: These functions should return |void|
-   * anyway. */
+  // XXX: Ignores return value. TODO: These functions should return |void|
+  // anyway.
   (void)(aes_set_key())(key, (unsigned)key_len * 8, &ks);
 
   GFp_gcm128_init_serialized((uint8_t *)ctx_buf + sizeof(ks), &ks, aes_block());

@@ -133,10 +133,10 @@ int GFp_bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
                            const BN_ULONG *n0, int num);
 #else
 
-/* GFp_BN_mod_exp_mont_consttime() stores the precomputed powers in a specific
- * layout so that accessing any of these table values shows the same access
- * pattern as far as cache lines are concerned. The following functions are
- * used to transfer a BIGNUM from/to that table. */
+// GFp_BN_mod_exp_mont_consttime() stores the precomputed powers in a specific
+// layout so that accessing any of these table values shows the same access
+// pattern as far as cache lines are concerned. The following functions are
+// used to transfer a BIGNUM from/to that table.
 static int copy_to_prebuf(const BIGNUM *b, int top, unsigned char *buf, int idx,
                           int window) {
   int i, j;
@@ -144,7 +144,7 @@ static int copy_to_prebuf(const BIGNUM *b, int top, unsigned char *buf, int idx,
   BN_ULONG *table = (BN_ULONG *) buf;
 
   if (top > b->top) {
-    top = b->top; /* this works because 'buf' is explicitly zeroed */
+    top = b->top;  // this works because 'buf' is explicitly zeroed
   }
 
   for (i = 0, j = idx; i < top; i++, j += width)  {
@@ -178,8 +178,8 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
     int xstride = 1 << (window - 2);
     BN_ULONG y0, y1, y2, y3;
 
-    i = idx >> (window - 2); /* equivalent of idx / xstride */
-    idx &= xstride - 1;      /* equivalent of idx % xstride */
+    i = idx >> (window - 2);  // equivalent of idx / xstride
+    idx &= xstride - 1;       // equivalent of idx % xstride
 
     y0 = (BN_ULONG)0 - (constant_time_eq_int(i, 0) & 1);
     y1 = (BN_ULONG)0 - (constant_time_eq_int(i, 1) & 1);
@@ -205,25 +205,25 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
 }
 #endif
 
-/* GFp_BN_mod_exp_mont_consttime is based on the assumption that the L1 data cache
- * line width of the target processor is at least the following value. */
+// GFp_BN_mod_exp_mont_consttime is based on the assumption that the L1 data cache
+// line width of the target processor is at least the following value.
 #define MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH (64)
 #define MOD_EXP_CTIME_MIN_CACHE_LINE_MASK \
   (MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH - 1)
 
 #if !defined(OPENSSL_X86_64)
 
-/* Window sizes optimized for fixed window size modular exponentiation
- * algorithm (GFp_BN_mod_exp_mont_consttime).
- *
- * To achieve the security goals of GFp_BN_mod_exp_mont_consttime, the maximum
- * size of the window must not exceed
- * log_2(MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH).
- *
- * Window size thresholds are defined for cache line sizes of 32 and 64, cache
- * line sizes where log_2(32)=5 and log_2(64)=6 respectively. A window size of
- * 7 should only be used on processors that have a 128 byte or greater cache
- * line size. */
+// Window sizes optimized for fixed window size modular exponentiation
+// algorithm (GFp_BN_mod_exp_mont_consttime).
+//
+// To achieve the security goals of GFp_BN_mod_exp_mont_consttime, the maximum
+// size of the window must not exceed
+// log_2(MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH).
+//
+// Window size thresholds are defined for cache line sizes of 32 and 64, cache
+// line sizes where log_2(32)=5 and log_2(64)=6 respectively. A window size of
+// 7 should only be used on processors that have a 128 byte or greater cache
+// line size.
 #if MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH == 64
 
 #define GFp_BN_window_bits_for_ctime_exponent_size(b) \
@@ -238,25 +238,25 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
 
 #endif
 
-#endif /* defined(OPENSSL_X86_64) */
+#endif // defined(OPENSSL_X86_64)
 
-/* Given a pointer value, compute the next address that is a cache line
- * multiple. */
+// Given a pointer value, compute the next address that is a cache line
+// multiple.
 #define MOD_EXP_CTIME_ALIGN(x_)          \
   ((unsigned char *)(x_) +               \
    (MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH - \
     (((uintptr_t)(x_)) & (MOD_EXP_CTIME_MIN_CACHE_LINE_MASK))))
 
-/* This variant of GFp_BN_mod_exp_mont() uses fixed windows and the special
- * precomputation memory layout to limit data-dependency to a minimum
- * to protect secret exponents (cf. the hyper-threading timing attacks
- * pointed out by Colin Percival,
- * http://www.daemonology.net/hyperthreading-considered-harmful/).
- *
- * |p| must be positive. |a_mont| must in [0, m). |one_mont| must be
- * the value 1 Montgomery-encoded and fully reduced (mod m).
- *
- * Assumes 0 < a_mont < n, 0 < p, 0 < p_bits. */
+// This variant of GFp_BN_mod_exp_mont() uses fixed windows and the special
+// precomputation memory layout to limit data-dependency to a minimum
+// to protect secret exponents (cf. the hyper-threading timing attacks
+// pointed out by Colin Percival,
+// http://www.daemonology.net/hyperthreading-considered-harmful/).
+//
+// |p| must be positive. |a_mont| must in [0, m). |one_mont| must be
+// the value 1 Montgomery-encoded and fully reduced (mod m).
+//
+// Assumes 0 < a_mont < n, 0 < p, 0 < p_bits.
 int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
                                   const BIGNUM *p, size_t p_bits,
                                   const BIGNUM *one_mont, const BIGNUM *n,
@@ -274,24 +274,23 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   BIGNUM tmp, am;
 
   const int top = n->top;
-  /* The |OPENSSL_BN_ASM_MONT5| code requires top > 1. */
+  // The |OPENSSL_BN_ASM_MONT5| code requires top > 1.
   if (top <= 1) {
     goto err;
   }
 
 
-  /* Get the window size to use with size of p. */
+  // Get the window size to use with size of p.
 #if defined(OPENSSL_BN_ASM_MONT5)
   static const int window = 5;
-  /* reserve space for n->d[] copy */
+  // reserve space for n->d[] copy
   powerbufLen += top * sizeof(n->d[0]);
 #else
   const int window = GFp_BN_window_bits_for_ctime_exponent_size(bits);
 #endif
 
-  /* Allocate a buffer large enough to hold all of the pre-computed
-   * powers of am, am itself and tmp.
-   */
+  // Allocate a buffer large enough to hold all of the pre-computed
+  // powers of am, am itself and tmp.
   numPowers = 1 << window;
   powerbufLen +=
       sizeof(n->d[0]) *
@@ -317,27 +316,27 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   }
 #endif
 
-  /* lay down tmp and am right after powers table */
+  // Lay down tmp and am right after powers table.
   tmp.d = (BN_ULONG *)(powerbuf + sizeof(n->d[0]) * top * numPowers);
   am.d = tmp.d + top;
   tmp.top = am.top = 0;
   tmp.dmax = am.dmax = top;
   tmp.flags = am.flags = BN_FLG_STATIC_DATA;
 
-  /* Copy a^0 and a^1. */
+  // Copy a^0 and a^1.
   if (!GFp_BN_copy(&tmp, one_mont) ||
       !GFp_BN_copy(&am, a_mont)) {
     goto err;
   }
 
 #if defined(OPENSSL_BN_ASM_MONT5)
-  /* This optimization uses ideas from http://eprint.iacr.org/2011/239,
-   * specifically optimization of cache-timing attack countermeasures
-   * and pre-computation optimization. */
+  // This optimization uses ideas from http://eprint.iacr.org/2011/239,
+  // specifically optimization of cache-timing attack countermeasures
+  // and pre-computation optimization.
   {
     BN_ULONG *np;
 
-    /* copy n->d[] to improve cache locality */
+    // copy n->d[] to improve cache locality
     for (np = am.d + top, i = 0; i < top; i++) {
       np[i] = n->d[i];
     }
@@ -347,7 +346,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
     GFp_bn_mul_mont(tmp.d, am.d, am.d, np, n0, top);
     GFp_bn_scatter5(tmp.d, top, powerbuf, 2);
 
-    /* same as above, but uses squaring for 1/2 of operations */
+    // same as above, but uses squaring for 1/2 of operations
     for (i = 4; i < 32; i *= 2) {
       GFp_bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
       GFp_bn_scatter5(tmp.d, top, powerbuf, i);
@@ -378,13 +377,12 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
     }
     GFp_bn_gather5(tmp.d, top, powerbuf, wvalue);
 
-    /* At this point |bits| is 4 mod 5 and at least -1. (|bits| is the first bit
-     * that has not been read yet.) */
+    // At this point |bits| is 4 mod 5 and at least -1. (|bits| is the first bit
+    // that has not been read yet.)
     assert(bits >= -1 && (bits == -1 || bits % 5 == 4));
 
-    /* Scan the exponent one window at a time starting from the most
-     * significant bits.
-     */
+    // Scan the exponent one window at a time starting from the most
+    // significant bits.
     if (top & 7) {
       while (bits >= 0) {
         for (wvalue = 0, i = 0; i < 5; i++, bits--) {
@@ -402,16 +400,16 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
       const uint8_t *p_bytes = (const uint8_t *)p->d;
       int max_bits = p->top * BN_BITS2;
       assert(bits < max_bits);
-      /* |p = 0| has been handled as a special case, so |max_bits| is at least
-       * one word. */
+      // |p = 0| has been handled as a special case, so |max_bits| is at least
+      // one word.
       assert(max_bits >= 64);
 
-      /* If the first bit to be read lands in the last byte, unroll the first
-       * iteration to avoid reading past the bounds of |p->d|. (After the first
-       * iteration, we are guaranteed to be past the last byte.) Note |bits|
-       * here is the top bit, inclusive. */
+      // If the first bit to be read lands in the last byte, unroll the first
+      // iteration to avoid reading past the bounds of |p->d|. (After the first
+      // iteration, we are guaranteed to be past the last byte.) Note |bits|
+      // here is the top bit, inclusive.
       if (bits - 4 >= max_bits - 8) {
-        /* Read five bits from |bits-4| through |bits|, inclusive. */
+        // Read five bits from |bits-4| through |bits|, inclusive.
         wvalue = p_bytes[p->top * BN_BYTES - 1];
         wvalue >>= (bits - 4) & 7;
         wvalue &= 0x1f;
@@ -419,10 +417,10 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
         GFp_bn_power5(tmp.d, tmp.d, powerbuf, np, n0, top, wvalue);
       }
       while (bits >= 0) {
-        /* Read five bits from |bits-4| through |bits|, inclusive. */
+        // Read five bits from |bits-4| through |bits|, inclusive.
         int first_bit = bits - 4;
         uint16_t val;
-        /* Assumes little-endian. */
+        // Assumes little-endian.
         memcpy(&val, p_bytes + (first_bit >> 3), sizeof(val));
         val >>= first_bit & 7;
         val &= 0x1f;
@@ -447,18 +445,17 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
       goto err;
     }
 
-    /* If the window size is greater than 1, then calculate
-     * val[i=2..2^winsize-1]. Powers are computed as a*a^(i-1)
-     * (even powers could instead be computed as (a^(i/2))^2
-     * to use the slight performance advantage of sqr over mul).
-     */
+    // If the window size is greater than 1, then calculate
+    // val[i=2..2^winsize-1]. Powers are computed as a*a^(i-1)
+    // (even powers could instead be computed as (a^(i/2))^2
+    // to use the slight performance advantage of sqr over mul).
     if (window > 1) {
       if (!GFp_BN_mod_mul_mont(&tmp, &am, &am, n, n0) ||
           !copy_to_prebuf(&tmp, top, powerbuf, 2, window)) {
         goto err;
       }
       for (i = 3; i < numPowers; i++) {
-        /* Calculate a^i = a^(i-1) * a */
+        // Calculate a^i = a^(i-1) * a
         if (!GFp_BN_mod_mul_mont(&tmp, &am, &tmp, n, n0) ||
             !copy_to_prebuf(&tmp, top, powerbuf, i, window)) {
           goto err;
@@ -474,13 +471,13 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
       goto err;
     }
 
-    /* Scan the exponent one window at a time starting from the most
+    // Scan the exponent one window at a time starting from the most
      * significant bits.
      */
     while (bits >= 0) {
-      wvalue = 0; /* The 'value' of the window */
+      wvalue = 0; // The 'value' of the window
 
-      /* Scan the window, squaring the result as we go */
+      // Scan the window, squaring the result as we go */
       for (i = 0; i < window; i++, bits--) {
         if (!GFp_BN_mod_mul_mont(&tmp, &tmp, &tmp, n, n0)) {
           goto err;
@@ -488,12 +485,12 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
         wvalue = (wvalue << 1) + GFp_BN_is_bit_set(p, bits);
       }
 
-      /* Fetch the appropriate pre-computed value from the pre-buf */
+      // Fetch the appropriate pre-computed value from the pre-buf */
       if (!copy_from_prebuf(&am, top, powerbuf, wvalue, window)) {
         goto err;
       }
 
-      /* Multiply the result into the intermediate result */
+      // Multiply the result into the intermediate result */
       if (!GFp_BN_mod_mul_mont(&tmp, &tmp, &am, n, n0)) {
         goto err;
       }

@@ -42,13 +42,13 @@
 
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-/* This value must be explicitly initialised to zero in order to work around a
- * bug in libtool or the linker on OS X.
- *
- * If not initialised then it becomes a "common symbol". When put into an
- * archive, linking on OS X will fail to resolve common symbols. By
- * initialising it to zero, it becomes a "data symbol", which isn't so
- * affected. */
+// This value must be explicitly initialised to zero in order to work around a
+// bug in libtool or the linker on OS X.
+//
+// If not initialised then it becomes a "common symbol". When put into an
+// archive, linking on OS X will fail to resolve common symbols. By
+// initialising it to zero, it becomes a "data symbol", which isn't so
+// affected.
 uint32_t GFp_ia32cap_P[4] = {0};
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
@@ -82,9 +82,9 @@ uint32_t GFp_armcap_P = 0;
 
 #if defined(__linux__)
 
-/* The getrandom syscall was added in Linux 3.17. For some important platforms,
- * we also support building against older kernels' headers. For other
- * platforms, the newer kernel's headers are required. */
+// The getrandom syscall was added in Linux 3.17. For some important platforms,
+// we also support building against older kernels' headers. For other
+// platforms, the newer kernel's headers are required. */
 #if !defined(SYS_getrandom)
 #if defined(OPENSSL_AARCH64)
 #define SYS_getrandom 278
@@ -102,8 +102,8 @@ uint32_t GFp_armcap_P = 0;
 const long GFp_SYS_GETRANDOM = SYS_getrandom;
 #endif
 
-/* These allow tests in other languages to verify that their understanding of
- * the C types matches the C compiler's understanding. */
+// These allow tests in other languages to verify that their understanding of
+// the C types matches the C compiler's understanding.
 
 #define DEFINE_METRICS(ty) \
   OPENSSL_EXPORT uint16_t GFp_##ty##_align = alignof(ty); \

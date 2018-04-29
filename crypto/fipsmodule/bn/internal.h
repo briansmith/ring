@@ -141,7 +141,7 @@ extern "C" {
 #if defined(OPENSSL_64_BIT)
 
 #if !defined(_MSC_VER)
-/* MSVC doesn't support two-word integers on 64-bit. */
+// MSVC doesn't support two-word integers on 64-bit.
 #define BN_ULLONG	uint128_t
 #endif
 
@@ -158,11 +158,11 @@ extern "C" {
 #define BN_BITS2	32
 #define BN_BYTES	4
 #define BN_MASK2	(0xffffffffUL)
-/* On some 32-bit platforms, Montgomery multiplication is done using 64-bit
- * arithmetic with SIMD instructions. On such platforms, |BN_MONT_CTX::n0|
- * needs to be two words long. Only certain 32-bit platforms actually make use
- * of n0[1] and shorter R value would suffice for the others. However,
- * currently only the assembly files know which is which. */
+// On some 32-bit platforms, Montgomery multiplication is done using 64-bit
+// arithmetic with SIMD instructions. On such platforms, |BN_MONT_CTX::n0|
+// needs to be two words long. Only certain 32-bit platforms actually make use
+// of n0[1] and shorter R value would suffice for the others. However,
+// currently only the assembly files know which is which. */
 #define BN_MONT_CTX_N0_LIMBS 2
 #define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo)
 #define TOBN(hi, lo) (lo), (hi)
@@ -179,12 +179,12 @@ BN_ULONG GFp_bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
 BN_ULONG GFp_bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                           int num);
 
-/* |num| must be at least 4, at least on x86.
- *
- * In other forks, |bn_mul_mont| returns an |int| indicating whether it
- * actually did the multiplication. All our implementations always do the
- * multiplication, and forcing callers to deal with the possibility of it
- * failing just leads to further problems. */
+// |num| must be at least 4, at least on x86.
+//
+// In other forks, |bn_mul_mont| returns an |int| indicating whether it
+// actually did the multiplication. All our implementations always do the
+// multiplication, and forcing callers to deal with the possibility of it
+// failing just leads to further problems. */
 void GFp_bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                      const BN_ULONG *np, const BN_ULONG *n0, int num);
 
@@ -201,7 +201,7 @@ static inline void bn_umult_lohi(BN_ULONG *low_out, BN_ULONG *high_out,
 
 
 #if defined(__cplusplus)
-}  /* extern C */
+}  // extern C
 #endif
 
-#endif  /* OPENSSL_HEADER_BN_INTERNAL_H */
+#endif  // OPENSSL_HEADER_BN_INTERNAL_H
