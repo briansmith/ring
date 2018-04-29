@@ -460,7 +460,7 @@ $code.=<<___;
 .align 16
 aes128gcmsiv_aes_ks:
 .cfi_startproc
-    vmovdqa (%rdi), %xmm1           # xmm1 = user key
+    vmovdqu (%rdi), %xmm1           # xmm1 = user key
     vmovdqa %xmm1, (%rsi)           # rsi points to output
 
     vmovdqa con1(%rip), %xmm0
@@ -521,8 +521,8 @@ $code.=<<___;
 .align 16
 aes256gcmsiv_aes_ks:
 .cfi_startproc
-    vmovdqa (%rdi), %xmm1
-    vmovdqa 16(%rdi), %xmm3
+    vmovdqu (%rdi), %xmm1
+    vmovdqu 16(%rdi), %xmm3
     vmovdqa %xmm1, (%rsi)
     vmovdqa %xmm3, 16(%rsi)
     vmovdqa con1(%rip), %xmm0

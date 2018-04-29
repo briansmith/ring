@@ -21,8 +21,6 @@
 #include "../fipsmodule/cipher/internal.h"
 
 
-#if !defined(OPENSSL_SMALL)
-
 #define EVP_AEAD_AES_GCM_SIV_NONCE_LEN 12
 #define EVP_AEAD_AES_GCM_SIV_TAG_LEN 16
 
@@ -850,5 +848,3 @@ const EVP_AEAD *EVP_aead_aes_256_gcm_siv(void) {
 }
 
 #endif  /* X86_64 && !NO_ASM */
-
-#endif  /* !OPENSSL_SMALL */
