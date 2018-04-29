@@ -57,21 +57,16 @@
 #ifndef OPENSSL_HEADER_CIPHER_INTERNAL_H
 #define OPENSSL_HEADER_CIPHER_INTERNAL_H
 
-#if !defined(__STDC_CONSTANT_MACROS)
-#define __STDC_CONSTANT_MACROS
-#endif
-
 #include <GFp/base.h>
 
-#include <assert.h>
-#include <stdint.h>
+#include <GFp/aes.h>
 
-#include "../internal.h"
+#include "../../internal.h"
+#include "../modes/internal.h"
 
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
 
 /* Preconditions for AEAD implementation methods. */
 
@@ -92,6 +87,23 @@ static inline int aead_check_alias(const uint8_t *in, size_t in_len,
   }
   return 0;
 }
+
+/* TODO: This isn't used yet, but it will probably be used soon, once
+ * AES-GCM-SIV is integrated into *ring*.
+ * */
+#if 0
+
+/* aes_ctr_set_key initialises |*aes_key| using |key_bytes| bytes from |key|,
+ * where |key_bytes| must either be 16, 24 or 32. If not NULL, |*out_block| is
+ * set to a function that encrypts single blocks. If not NULL, |*gcm_ctx| is
+ * initialised to do GHASH with the given key. It returns a function for
+ * optimised CTR-mode, or NULL if CTR-mode should be built using
+ * |*out_block|. */
+ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
+                         block128_f *out_block, const uint8_t *key,
+                         size_t key_bytes);
+
+#endif
 
 #if defined(__cplusplus)
 } /* extern C */

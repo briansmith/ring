@@ -53,8 +53,9 @@
 #include <GFp/mem.h>
 
 #include "internal.h"
-#include "../internal.h"
-#include "../fipsmodule/modes/internal.h"
+#include "../../internal.h"
+#include "../aes/internal.h"
+#include "../modes/internal.h"
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 #include <GFp/arm_arch.h>
@@ -104,16 +105,7 @@ static char bsaes_capable(void) {
 }
 #endif
 
-#define HWAES
-static int hwaes_capable(void) {
-  return GFp_is_ARMv8_AES_capable();
-}
-#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_PPC64LE)
-#define HWAES
-static int hwaes_capable(void) {
-  return CRYPTO_is_PPC64LE_vcrypto_capable();
-}
-#endif  /* OPENSSL_PPC64LE */
+#endif
 
 #if defined(BSAES)
 /* On platforms where BSAES gets defined (just above), then these functions are

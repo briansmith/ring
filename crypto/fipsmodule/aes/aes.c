@@ -551,19 +551,6 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 
 #else
 
-#if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
-
-#define HWAES
-static int hwaes_capable(void) {
-  return GFp_is_ARMv8_AES_capable();
-}
-
-int GFp_aes_hw_set_encrypt_key(const uint8_t *user_key, unsigned bits,
-                               AES_KEY *key);
-void GFp_aes_hw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-
-#endif
-
 /* In this case several functions are provided by asm code. However, one cannot
  * control asm symbol visibility with command line flags and such so they are
  * always hidden and wrapped by these C functions, which can be so

@@ -18,7 +18,7 @@
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
-#include "internal.h"
+#include "../fipsmodule/cipher/internal.h"
 
 
 #if !defined(OPENSSL_SMALL)
