@@ -1,4 +1,11 @@
-#!/usr/bin/env perl
+#! /usr/bin/env perl
+# Copyright 2014-2016 The OpenSSL Project Authors. All Rights Reserved.
+#
+# Licensed under the OpenSSL license (the "License").  You may not use
+# this file except in compliance with the License.  You can obtain a copy
+# in the file LICENSE in the source distribution or at
+# https://www.openssl.org/source/license.html
+
 #
 # ====================================================================
 # Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
@@ -27,6 +34,7 @@
 # Cortex-A53	1.32		1.29		1.46
 # Cortex-A57(*)	1.95		0.85		0.93
 # Denver	1.96		0.86		0.80
+# Mongoose	1.33		1.20		1.20
 #
 # (*)	original 3.64/1.34/1.32 results were for r0p0 revision
 #	and are still same even for updated module;
@@ -55,9 +63,12 @@ $code.=<<___ if ($flavour =~ /64/);
 .arch  armv8-a+crypto
 #endif
 ___
-$code.=".arch	armv7-a\n.fpu	neon\n.code	32\n"	if ($flavour !~ /64/);
-		#^^^^^^ this is done to simplify adoption by not depending
-		#	on latest binutils.
+$code.=<<___						if ($flavour !~ /64/);
+.arch	armv7-a	// don't confuse not-so-latest binutils with argv8 :-)
+.fpu	neon
+.code	32
+#undef	__thumb2__
+___
 
 # Assembler mnemonics are an eclectic mix of 32- and 64-bit syntax,
 # NEON is mostly 32-bit mnemonics, integer - mostly 64. Goal is to
