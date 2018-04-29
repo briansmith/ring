@@ -167,9 +167,9 @@ static inline int GFp_is_ARMv8_PMULL_capable(void) {
 
 #if defined(OPENSSL_PPC64LE)
 
-/* CRYPTO_is_PPC64LE_vcrypto_capable returns true iff the current CPU supports
+/* GFp_is_PPC64LE_vcrypto_capable returns true iff the current CPU supports
  * the Vector.AES category of instructions. */
-int CRYPTO_is_PPC64LE_vcrypto_capable(void);
+int GFp_is_PPC64LE_vcrypto_capable(void);
 
 #endif  /* OPENSSL_PPC64LE */
 

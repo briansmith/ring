@@ -28,7 +28,7 @@ extern "C" {
 #define HWAES
 
 static int hwaes_capable(void) {
-  return CRYPTO_is_ARMv8_AES_capable();
+  return GFp_is_ARMv8_AES_capable();
 }
 #endif  /* !NO_ASM && (AES || AARCH64) */
 
@@ -36,7 +36,7 @@ static int hwaes_capable(void) {
 #define HWAES
 
 static int hwaes_capable(void) {
-  return CRYPTO_is_PPC64LE_vcrypto_capable();
+  return GFp_is_PPC64LE_vcrypto_capable();
 }
 #endif  /* !NO_ASM && PPC64LE */
 

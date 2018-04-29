@@ -390,7 +390,7 @@ static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
   }
 #endif
 #if defined(GHASH_ASM_PPC64LE)
-  if (CRYPTO_is_PPC64LE_vcrypto_capable()) {
+  if (GFp_is_PPC64LE_vcrypto_capable()) {
     GFp_gcm_init_p8(ctx->Htable, ctx->H.u);
     return;
   }
@@ -435,7 +435,7 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx,
   }
 #endif
 #if defined(GHASH_ASM_PPC64LE)
-  if (CRYPTO_is_PPC64LE_vcrypto_capable()) {
+  if (GFp_is_PPC64LE_vcrypto_capable()) {
     ctx->gmult = GFp_gcm_gmult_p8;
     ctx->ghash = GFp_gcm_ghash_p8;
     return;
