@@ -174,11 +174,14 @@ static aes_set_key_f aes_set_key(void) {
   return GFp_AES_set_encrypt_key;
 }
 
-#if defined(AESNI)
+/* TODO(perf): Consider inlining this. */
 int GFp_aes_block_is_aesni_encrypt(aes_block_f block) {
+#if defined(AESNI)
   return block == GFp_aesni_encrypt;
-}
+#else
+  return 0;
 #endif
+}
 
 static aes_block_f aes_block(void) {
   /* Keep this in sync with |set_set_key| and |aes_ctr|. */
