@@ -421,11 +421,13 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
       while (bits >= 0) {
         /* Read five bits from |bits-4| through |bits|, inclusive. */
         int first_bit = bits - 4;
-        wvalue = *(const uint16_t *) (p_bytes + (first_bit >> 3));
-        wvalue >>= first_bit & 7;
-        wvalue &= 0x1f;
+        uint16_t val;
+        /* Assumes little-endian. */
+        memcpy(&val, p_bytes + (first_bit >> 3), sizeof(val));
+        val >>= first_bit & 7;
+        val &= 0x1f;
         bits -= 5;
-        GFp_bn_power5(tmp.d, tmp.d, powerbuf, np, n0, top, wvalue);
+        GFp_bn_power5(tmp.d, tmp.d, powerbuf, np, n0, top, val);
       }
     }
 
