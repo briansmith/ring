@@ -6,7 +6,7 @@
  * are met:
  *
  * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer. 
+ *    notice, this list of conditions and the following disclaimer.
  *
  * 2. Redistributions in binary form must reproduce the above copyright
  *    notice, this list of conditions and the following disclaimer in
@@ -111,6 +111,13 @@ extern "C" {
  * the default (usually "hidden") visibility is always used, even for exported
  * items. */
 #define OPENSSL_EXPORT
+
+#if defined(__GNUC__) || defined(__clang__)
+#define OPENSSL_UNUSED __attribute__((unused))
+#else
+#define OPENSSL_UNUSED
+#endif
+
 
 typedef struct bignum_st BIGNUM;
 
