@@ -2885,7 +2885,7 @@ bn_powerx5:
 .cfi_endproc
 .size	bn_powerx5,.-bn_powerx5
 
-.hidden	GFp_bn_sqrx8x_internal
+.globl	GFp_bn_sqrx8x_internal
 .type	GFp_bn_sqrx8x_internal,\@abi-omnipotent
 .align	32
 GFp_bn_sqrx8x_internal:
@@ -3847,7 +3847,7 @@ $code.=<<___ if ($addx);
 
 	.rva	.LSEH_begin_bn_powerx5
 	.rva	.LSEH_end_bn_powerx5
-	.rva	.LSEH_info_bn_powerx5
+	.rva	.LSEH_info_GFp_bn_powerx5
 ___
 $code.=<<___;
 	.rva	.LSEH_begin_GFp_bn_gather5
