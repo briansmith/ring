@@ -137,8 +137,9 @@ int GFp_bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
 // layout so that accessing any of these table values shows the same access
 // pattern as far as cache lines are concerned. The following functions are
 // used to transfer a BIGNUM from/to that table.
-static int copy_to_prebuf(const BIGNUM *b, int top, unsigned char *buf, int idx,
-                          int window) {
+
+static void copy_to_prebuf(const BIGNUM *b, int top, unsigned char *buf,
+                           int idx, int window) {
   int i, j;
   const int width = 1 << window;
   BN_ULONG *table = (BN_ULONG *) buf;
@@ -150,8 +151,6 @@ static int copy_to_prebuf(const BIGNUM *b, int top, unsigned char *buf, int idx,
   for (i = 0, j = idx; i < top; i++, j += width)  {
     table[j] = b->d[i];
   }
-
-  return 1;
 }
 
 static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
@@ -440,26 +439,27 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   }
 #else
   {
-    if (!copy_to_prebuf(&tmp, top, powerbuf, 0, window) ||
-        !copy_to_prebuf(&am, top, powerbuf, 1, window)) {
-      goto err;
-    }
+    copy_to_prebuf(&tmp, top, powerbuf, 0, window);
+    copy_to_prebuf(&am, top, powerbuf, 1, window);
 
     // If the window size is greater than 1, then calculate
     // val[i=2..2^winsize-1]. Powers are computed as a*a^(i-1)
     // (even powers could instead be computed as (a^(i/2))^2
     // to use the slight performance advantage of sqr over mul).
     if (window > 1) {
-      if (!GFp_BN_mod_mul_mont(&tmp, &am, &am, n, n0) ||
-          !copy_to_prebuf(&tmp, top, powerbuf, 2, window)) {
+      if (!GFp_BN_mod_mul_mont(&tmp, &am, &am, n, n0)) {
         goto err;
       }
+
+      copy_to_prebuf(&tmp, top, powerbuf, 2, window);
+
       for (i = 3; i < numPowers; i++) {
         // Calculate a^i = a^(i-1) * a
-        if (!GFp_BN_mod_mul_mont(&tmp, &am, &tmp, n, n0) ||
-            !copy_to_prebuf(&tmp, top, powerbuf, i, window)) {
+        if (!GFp_BN_mod_mul_mont(&tmp, &am, &tmp, n, n0)) {
           goto err;
         }
+
+        copy_to_prebuf(&tmp, top, powerbuf, i, window);
       }
     }
 
@@ -474,9 +474,9 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
     // Scan the exponent one window at a time starting from the most
     // significant bits.
     while (bits >= 0) {
-      wvalue = 0; // The 'value' of the window
+      wvalue = 0;  // The 'value' of the window
 
-      // Scan the window, squaring the result as we go */
+      // Scan the window, squaring the result as we go
       for (i = 0; i < window; i++, bits--) {
         if (!GFp_BN_mod_mul_mont(&tmp, &tmp, &tmp, n, n0)) {
           goto err;
