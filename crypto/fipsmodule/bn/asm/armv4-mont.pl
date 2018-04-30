@@ -740,6 +740,7 @@ $code.=<<___;
 .align	2
 #if __ARM_MAX_ARCH__>=7
 .comm	GFp_armcap_P,4,4
+.hidden	GFp_armcap_P
 #endif
 ___
 
