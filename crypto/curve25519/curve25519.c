@@ -998,7 +998,7 @@ static const fe d = {-10913610, 13857413, -15372611, 6949391,   114729,
 static const fe sqrtm1 = {-32595792, -7943725,  9377950,  3500415, 12389472,
                           -272473,   -25146209, -2005654, 326686,  11406482};
 
-int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
+static int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   fe u;
   fe v;
   fe v3;
@@ -1028,7 +1028,7 @@ int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   if (fe_isnonzero(check)) {
     fe_add(check, vxx, u);  // vx^2+u
     if (fe_isnonzero(check)) {
-      return 0;
+      return -1;
     }
     fe_mul(h->X, h->X, sqrtm1);
   }
@@ -1038,7 +1038,13 @@ int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   }
 
   fe_mul(h->T, h->X, h->Y);
-  return 1;
+  return 0;
+}
+
+// XXX: |x25519_ge_frombytes_vartime| returns 0 on success, -1 on
+// failure.
+int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
+  return x25519_ge_frombytes_vartime(h, s) == 0;
 }
 
 static void ge_p2_0(ge_p2 *h) {
