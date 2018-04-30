@@ -68,7 +68,6 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[], "crypto/fipsmodule/cipher/e_aes.c"),
     (&[NEVER], "crypto/cipher_extra/e_aesgcmsiv.c"),
     (&[], "crypto/crypto.c"),
-    (&[], "crypto/curve25519/curve25519.c"),
     (&[], "crypto/fipsmodule/ec/ecp_nistz.c"),
     (&[], "crypto/fipsmodule/ec/ecp_nistz256.c"),
     (&[], "crypto/fipsmodule/ec/gfp_p256.c"),
@@ -77,6 +76,7 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[], "crypto/mem.c"),
     (&[], "crypto/fipsmodule/modes/gcm.c"),
     (&[NEVER], "crypto/fipsmodule/modes/polyval.c"),
+    (&[], "third_party/fiat/curve25519.c"),
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
 
@@ -148,7 +148,6 @@ const RING_INCLUDES: &'static [&'static str] =
     &["crypto/fipsmodule/aes/internal.h",
       "crypto/fipsmodule/bn/internal.h",
       "crypto/fipsmodule/cipher/internal.h",
-      "crypto/curve25519/internal.h",
       "crypto/fipsmodule/ec/ecp_nistz256_table.inl",
       "crypto/fipsmodule/ec/ecp_nistz384.inl",
       "crypto/fipsmodule/ec/ecp_nistz.h",
@@ -164,7 +163,9 @@ const RING_INCLUDES: &'static [&'static str] =
       "include/GFp/bn.h",
       "include/GFp/cpu.h",
       "include/GFp/mem.h",
-      "include/GFp/type_check.h"];
+      "include/GFp/type_check.h",
+      "third_party/fiat/internal.h",
+    ];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_PERL_INCLUDES: &'static [&'static str] =

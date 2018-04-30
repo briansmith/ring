@@ -21,7 +21,8 @@
 
 #include <string.h>
 
-#include "internal.h"
+#include "../internal.h"
+#include "../../third_party/fiat/internal.h"
 
 
 #if defined(BORINGSSL_X25519_X86_64)

@@ -24,9 +24,8 @@
 #include <GFp/cpu.h>
 #include <GFp/mem.h>
 
-#include "../internal.h"
-
 #include "internal.h"
+#include "../../crypto/internal.h"
 
 #if defined(_MSC_VER)
 // '=': conversion from 'int64_t' to 'int32_t', possible loss of data
