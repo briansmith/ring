@@ -40,6 +40,16 @@
 
 #include "internal.h"
 
+// Our assembly does not use the GOT to reference symbols, which means
+// references to visible symbols will often require a TEXTREL. This is
+// undesirable, so all assembly-referenced symbols should be hidden. CPU
+// capabilities are the only such symbols defined in C. Explicitly hide them,
+// rather than rely on being built with -fvisibility=hidden.
+#if defined(OPENSSL_WINDOWS)
+#define HIDDEN
+#else
+#define HIDDEN __attribute__((visibility("hidden")))
+#endif
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 // This value must be explicitly initialised to zero in order to work around a
@@ -49,14 +59,14 @@
 // archive, linking on OS X will fail to resolve common symbols. By
 // initialising it to zero, it becomes a "data symbol", which isn't so
 // affected.
-uint32_t GFp_ia32cap_P[4] = {0};
+HIDDEN uint32_t GFp_ia32cap_P[4] = {0};
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
 #include <GFp/arm_arch.h>
 
 #if defined(OPENSSL_STATIC_ARMCAP)
 
-uint32_t GFp_armcap_P =
+HIDDEN uint32_t GFp_armcap_P =
 #if defined(OPENSSL_STATIC_ARMCAP_NEON) || defined(__ARM_NEON__)
     ARMV7_NEON |
 #endif
@@ -75,7 +85,7 @@ uint32_t GFp_armcap_P =
     0;
 
 #else
-uint32_t GFp_armcap_P = 0;
+HIDDEN uint32_t GFp_armcap_P = 0;
 #endif
 
 #endif
