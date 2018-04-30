@@ -192,6 +192,9 @@ func convertWycheproof(jsonPath, txtPath string) error {
 			if curve, ok := test["curve"]; ok && !isSupportedCurve(curve.(string)) {
 				continue
 			}
+			if _, err := fmt.Fprintf(f, "# tcId = %d\n", int(test["tcId"].(float64))); err != nil {
+				return err
+			}
 			if comment, ok := test["comment"]; ok && len(comment.(string)) != 0 {
 				if err := printComment(f, comment.(string)); err != nil {
 					return err
