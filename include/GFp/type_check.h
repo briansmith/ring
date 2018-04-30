@@ -68,4 +68,4 @@
 #endif
 
 
-#endif  /* OPENSSL_HEADER_TYPE_CHECK_H */
+#endif  // OPENSSL_HEADER_TYPE_CHECK_H

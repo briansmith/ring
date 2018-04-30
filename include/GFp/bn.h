@@ -130,17 +130,17 @@ extern "C" {
 #endif
 
 
-/* BN provides support for working with arbitrary sized integers. For example,
- * although the largest integer supported by the compiler might be 64 bits, BN
- * will allow you to work with numbers until you run out of memory. */
+// BN provides support for working with arbitrary sized integers. For example,
+// although the largest integer supported by the compiler might be 64 bits, BN
+// will allow you to work with numbers until you run out of memory.
 
 
-/* BN_ULONG is the native word size when working with big integers.
- *
- * Note: on some platforms, inttypes.h does not define print format macros in
- * C++ unless |__STDC_FORMAT_MACROS| defined. As this is a public header, bn.h
- * does not define |__STDC_FORMAT_MACROS| itself. C++ source files which use the
- * FMT macros must define it externally. */
+// BN_ULONG is the native word size when working with big integers.
+//
+// Note: on some platforms, inttypes.h does not define print format macros in
+// C++ unless |__STDC_FORMAT_MACROS| defined. As this is a public header, bn.h
+// does not define |__STDC_FORMAT_MACROS| itself. C++ source files which use the
+// FMT macros must define it externally.
 #if defined(OPENSSL_64_BIT)
 #define BN_ULONG uint64_t
 #define BN_BITS2 64
@@ -152,81 +152,81 @@ extern "C" {
 #endif
 
 
-/* Allocation and freeing. */
+// Allocation and freeing.
 
-/* GFp_BN_init initialises a stack allocated |BIGNUM|. */
+// GFp_BN_init initialises a stack allocated |BIGNUM|.
 OPENSSL_EXPORT void GFp_BN_init(BIGNUM *bn);
 
-/* GFp_BN_free frees the data referenced by |bn| and, if |bn| was originally
- * allocated on the heap, frees |bn| also. */
+// GFp_BN_free frees the data referenced by |bn| and, if |bn| was originally
+// allocated on the heap, frees |bn| also.
 OPENSSL_EXPORT void GFp_BN_free(BIGNUM *bn);
 
-/* GFp_BN_copy sets |dest| equal to |src| and returns one on success or zero on
- * failure. */
+// GFp_BN_copy sets |dest| equal to |src| and returns one on success or zero on
+// failure.
 OPENSSL_EXPORT int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src);
 
 
-/* Basic functions. */
+// Basic functions.
 
-/* GFp_BN_zero sets |bn| to zero. */
+// GFp_BN_zero sets |bn| to zero.
 OPENSSL_EXPORT void GFp_BN_zero(BIGNUM *bn);
 
 
-/* Internal functions.
- *
- * These functions are useful for code that is doing low-level manipulations of
- * BIGNUM values. However, be sure that no other function in this file does
- * what you want before turning to these. */
+// Internal functions.
+//
+// These functions are useful for code that is doing low-level manipulations of
+// BIGNUM values. However, be sure that no other function in this file does
+// what you want before turning to these.
 
-/* bn_correct_top decrements |bn->top| until |bn->d[top-1]| is non-zero or
- * until |top| is zero. */
+// bn_correct_top decrements |bn->top| until |bn->d[top-1]| is non-zero or
+// until |top| is zero.
 OPENSSL_EXPORT void GFp_bn_correct_top(BIGNUM *bn);
 
-/* bn_wexpand ensures that |bn| has at least |words| works of space without
- * altering its value. It returns one on success and zero on allocation
- * failure. */
+// bn_wexpand ensures that |bn| has at least |words| works of space without
+// altering its value. It returns one on success and zero on allocation
+// failure.
 OPENSSL_EXPORT int GFp_bn_wexpand(BIGNUM *bn, size_t words);
 
 
-/* Simple arithmetic */
+// Simple arithmetic
 
-/* GFp_BN_mul_no_alias sets |r| = |a| * |b|, where |r| must not be the same pointer
- * as |a| or |b|. Returns one on success and zero otherwise. */
+// GFp_BN_mul_no_alias sets |r| = |a| * |b|, where |r| must not be the same pointer
+// as |a| or |b|. Returns one on success and zero otherwise.
 OPENSSL_EXPORT int GFp_BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 
-/* Comparison functions */
+// Comparison functions
 
-/* GFp_BN_is_odd returns one if |bn| is odd and zero otherwise. */
+// GFp_BN_is_odd returns one if |bn| is odd and zero otherwise.
 OPENSSL_EXPORT int GFp_BN_is_odd(const BIGNUM *bn);
 
 
-/* Bitwise operations. */
+// Bitwise operations.
 
-/* GFp_BN_is_bit_set returns the value of the |n|th, least-significant bit in
- * |a|, or zero if the bit doesn't exist. */
+// GFp_BN_is_bit_set returns the value of the |n|th, least-significant bit in
+// |a|, or zero if the bit doesn't exist.
 OPENSSL_EXPORT int GFp_BN_is_bit_set(const BIGNUM *a, int n);
 
 
-/* Modulo arithmetic. */
+// Modulo arithmetic.
 
-/* GFp_BN_mod_mul_mont set |r| equal to |a| * |b|, in the Montgomery domain.
- * Both |a| and |b| must already be in the Montgomery domain (by
- * |GFp_BN_to_mont|). In particular, |a| and |b| are assumed to be in the range
- * [0, n), where |n| is the Montgomery modulus. It returns one on success or
- * zero on error. */
+// GFp_BN_mod_mul_mont set |r| equal to |a| * |b|, in the Montgomery domain.
+// Both |a| and |b| must already be in the Montgomery domain (by
+// |GFp_BN_to_mont|). In particular, |a| and |b| are assumed to be in the range
+// [0, n), where |n| is the Montgomery modulus. It returns one on success or
+// zero on error.
 OPENSSL_EXPORT int GFp_BN_mod_mul_mont(
     BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *n,
     const BN_ULONG n0[/*BN_MONT_CTX_N0_LIMBS*/]);
 
-/* GFp_BN_reduce_montgomery returns |a % n| in constant-ish time using
- * Montgomery reduction. |a| is assumed to be in the range [0, n**2), where |n|
- * is the Montgomery modulus. It returns one on success or zero on error. */
+// GFp_BN_reduce_montgomery returns |a % n| in constant-ish time using
+// Montgomery reduction. |a| is assumed to be in the range [0, n**2), where |n|
+// is the Montgomery modulus. It returns one on success or zero on error.
 int GFp_BN_reduce_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *n,
                        const BN_ULONG n0[/*BN_MONT_CTX_N0_LIMBS*/]);
 
 
-/* Exponentiation. */
+// Exponentiation.
 
 OPENSSL_EXPORT int GFp_BN_mod_exp_mont_consttime(
     BIGNUM *rr, const BIGNUM *a_mont, const BIGNUM *p, size_t p_bits,
@@ -234,15 +234,15 @@ OPENSSL_EXPORT int GFp_BN_mod_exp_mont_consttime(
     const BN_ULONG n0[/*BN_MONT_CTX_N0_LIMBS*/]);
 
 
-/* Private functions */
+// Private functions
 
-/* Keep in sync with `BIGNUM` in `ring::rsa::bigint`. */
+// Keep in sync with `BIGNUM` in `ring::rsa::bigint`.
 struct bignum_st {
-  BN_ULONG *d; /* Pointer to an array of 'BN_BITS2' bit chunks in little-endian
-                  order. */
-  int top;   /* Index of last used element in |d|, plus one. */
-  int dmax;  /* Size of |d|, in words. */
-  int flags; /* bitmask of BN_FLG_* values */
+  BN_ULONG *d; // Pointer to an array of 'BN_BITS2' bit chunks in little-endian
+               // order.
+  int top;     // Index of last used element in |d|, plus one.
+  int dmax;    // Size of |d|, in words.
+  int flags;   // bitmask of BN_FLG_* values
 };
 
 #define BN_FLG_MALLOCED 0x01
@@ -250,7 +250,7 @@ struct bignum_st {
 
 
 #if defined(__cplusplus)
-}  /* extern C */
+}  // extern C
 #endif
 
-#endif  /* OPENSSL_HEADER_BN_H */
+#endif  // OPENSSL_HEADER_BN_H

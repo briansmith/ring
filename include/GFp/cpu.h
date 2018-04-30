@@ -68,53 +68,53 @@ extern "C" {
 #endif
 
 
-/* Runtime CPU feature support */
+// Runtime CPU feature support
 
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-/* GFp_ia32cap_P contains the Intel CPUID bits when running on an x86 or
- * x86-64 system.
- *
- *   Index 0:
- *     EDX for CPUID where EAX = 1
- *     Bit 20 is always zero
- *     Bit 28 is adjusted to reflect whether the data cache is shared between
- *       multiple logical cores
- *     Bit 30 is used to indicate an Intel CPU
- *   Index 1:
- *     ECX for CPUID where EAX = 1
- *     Bit 11 is used to indicate AMD XOP support, not SDBG
- *   Index 2:
- *     EBX for CPUID where EAX = 7
- *   Index 3 is set to zero.
- *
- * Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
- * bits in XCR0, so it is not necessary to check those. */
+// GFp_ia32cap_P contains the Intel CPUID bits when running on an x86 or
+// x86-64 system.
+//
+//   Index 0:
+//     EDX for CPUID where EAX = 1
+//     Bit 20 is always zero
+//     Bit 28 is adjusted to reflect whether the data cache is shared between
+//       multiple logical cores
+//     Bit 30 is used to indicate an Intel CPU
+//   Index 1:
+//     ECX for CPUID where EAX = 1
+//     Bit 11 is used to indicate AMD XOP support, not SDBG
+//   Index 2:
+//     EBX for CPUID where EAX = 7
+//   Index 3 is set to zero.
+//
+// Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
+// bits in XCR0, so it is not necessary to check those.
 extern uint32_t GFp_ia32cap_P[4];
 #endif
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
 #if defined(OPENSSL_APPLE)
-/* iOS builds use the static ARM configuration. */
+// iOS builds use the static ARM configuration.
 #define OPENSSL_STATIC_ARMCAP
 #endif
 
 #if !defined(OPENSSL_STATIC_ARMCAP)
 
-/* GFp_is_NEON_capable_at_runtime returns true if the current CPU has a NEON
- * unit. Note that |OPENSSL_armcap_P| also exists and contains the same
- * information in a form that's easier for assembly to use. */
+// GFp_is_NEON_capable_at_runtime returns true if the current CPU has a NEON
+// unit. Note that |OPENSSL_armcap_P| also exists and contains the same
+// information in a form that's easier for assembly to use.
 OPENSSL_EXPORT uint8_t GFp_is_NEON_capable_at_runtime(void);
 
-/* GFp_is_NEON_capable returns true if the current CPU has a NEON unit. If
- * this is known statically then it returns one immediately. */
+// GFp_is_NEON_capable returns true if the current CPU has a NEON unit. If
+// this is known statically then it returns one immediately.
 static inline int GFp_is_NEON_capable(void) {
-  /* On 32-bit ARM, one CPU is known to have a broken NEON unit which is known
-   * to fail with on some hand-written NEON assembly. Assume that non-Android
-   * applications will not use that buggy CPU but still support Android users
-   * that do, even when the compiler is instructed to freely emit NEON code.
-   * See https://crbug.com/341598 and https://crbug.com/606629. */
+  // On 32-bit ARM, one CPU is known to have a broken NEON unit which is known
+  // to fail with on some hand-written NEON assembly. Assume that non-Android
+  // applications will not use that buggy CPU but still support Android users
+  // that do, even when the compiler is instructed to freely emit NEON code.
+  // See https://crbug.com/341598 and https://crbug.com/606629.
 #if defined(__ARM_NEON__) && (!defined(OPENSSL_ARM) || !defined(__ANDROID__))
   return 1;
 #else
@@ -123,17 +123,17 @@ static inline int GFp_is_NEON_capable(void) {
 }
 
 #if defined(OPENSSL_ARM)
-/* GFp_has_broken_NEON returns one if the current CPU is known to have a
- * broken NEON unit. See https://crbug.com/341598. */
+// GFp_has_broken_NEON returns one if the current CPU is known to have a
+// broken NEON unit. See https://crbug.com/341598.
 OPENSSL_EXPORT int GFp_has_broken_NEON(void);
 #endif
 
-/* GFp_is_ARMv8_AES_capable returns true if the current CPU supports the
- * ARMv8 AES instruction. */
+// GFp_is_ARMv8_AES_capable returns true if the current CPU supports the
+// ARMv8 AES instruction.
 int GFp_is_ARMv8_AES_capable(void);
 
-/* GFp_is_ARMv8_PMULL_capable returns true if the current CPU supports the
- * ARMv8 PMULL instruction. */
+// GFp_is_ARMv8_PMULL_capable returns true if the current CPU supports the
+// ARMv8 PMULL instruction.
 int GFp_is_ARMv8_PMULL_capable(void);
 
 #else
@@ -162,20 +162,20 @@ static inline int GFp_is_ARMv8_PMULL_capable(void) {
 #endif
 }
 
-#endif  /* OPENSSL_STATIC_ARMCAP */
-#endif  /* OPENSSL_ARM || OPENSSL_AARCH64 */
+#endif  // OPENSSL_STATIC_ARMCAP
+#endif  // OPENSSL_ARM || OPENSSL_AARCH64
 
 #if defined(OPENSSL_PPC64LE)
 
-/* GFp_is_PPC64LE_vcrypto_capable returns true iff the current CPU supports
- * the Vector.AES category of instructions. */
+// GFp_is_PPC64LE_vcrypto_capable returns true iff the current CPU supports
+// the Vector.AES category of instructions.
 int GFp_is_PPC64LE_vcrypto_capable(void);
 
-#endif  /* OPENSSL_PPC64LE */
+#endif  // OPENSSL_PPC64LE
 
 
 #if defined(__cplusplus)
-}  /* extern C */
+}  // extern C
 #endif
 
-#endif  /* OPENSSL_HEADER_CPU_H */
+#endif  // OPENSSL_HEADER_CPU_H
