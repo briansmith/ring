@@ -472,8 +472,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
     }
 
     // Scan the exponent one window at a time starting from the most
-     * significant bits.
-     */
+    // significant bits.
     while (bits >= 0) {
       wvalue = 0; // The 'value' of the window
 
