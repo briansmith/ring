@@ -3472,7 +3472,7 @@ static const ge_precomp k25519Precomp[32][8] = {
 
 static uint8_t negative(signed char b) {
   uint32_t x = b;
-  x >>= 31; // 1: yes; 0: no
+  x >>= 31;  // 1: yes; 0: no
   return x;
 }
 
