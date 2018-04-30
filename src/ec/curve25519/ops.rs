@@ -18,8 +18,21 @@
 use {bssl, c, error};
 
 // Keep this in sync with `fe` in curve25519/internal.h.
-pub type Elem = [i32; ELEM_LIMBS];
+#[repr(C)]
+pub struct Elem {
+    v: [i32; ELEM_LIMBS],
+}
 const ELEM_LIMBS: usize = 10;
+
+impl Elem {
+    fn zero() -> Self {
+        Self { v: Default::default() }
+    }
+
+    fn negate(&mut self) {
+        unsafe { GFp_fe_neg(self); }
+    }
+}
 
 // An encoding of a curve point. If on Curve25519, it should be encoded as
 // described in Section 5 of [RFC 7748]. If on Edwards25519, it should be
@@ -48,10 +61,10 @@ pub struct ExtPoint {
 impl ExtPoint {
     pub fn new_at_infinity() -> Self {
         ExtPoint {
-            x: [0; ELEM_LIMBS],
-            y: [0; ELEM_LIMBS],
-            z: [0; ELEM_LIMBS],
-            t: [0; ELEM_LIMBS],
+            x: Elem::zero(),
+            y: Elem::zero(),
+            z: Elem::zero(),
+            t: Elem::zero(),
         }
     }
 
@@ -71,10 +84,8 @@ impl ExtPoint {
     }
 
     pub fn invert_vartime(&mut self) {
-        for i in 0..ELEM_LIMBS {
-            self.x[i] = -self.x[i];
-            self.t[i] = -self.t[i];
-        }
+        self.x.negate();
+        self.t.negate();
     }
 }
 
@@ -89,9 +100,9 @@ pub struct Point {
 impl Point {
     pub fn new_at_infinity() -> Self {
         Point {
-            x: [0; ELEM_LIMBS],
-            y: [0; ELEM_LIMBS],
-            z: [0; ELEM_LIMBS],
+            x: Elem::zero(),
+            y: Elem::zero(),
+            z: Elem::zero(),
         }
     }
 
@@ -101,16 +112,19 @@ impl Point {
 }
 
 fn encode_point(x: Elem, y: Elem, z: Elem) -> EncodedPoint {
-    let mut recip = [0; ELEM_LIMBS];
-    let mut x_over_z = [0; ELEM_LIMBS];
-    let mut y_over_z = [0; ELEM_LIMBS];
     let mut bytes = [0; ELEM_LEN];
 
     let sign_bit: u8 = unsafe {
+        let mut recip = Elem::zero();
         GFp_fe_invert(&mut recip, &z);
+
+        let mut x_over_z = Elem::zero();
         GFp_fe_mul(&mut x_over_z, &x, &recip);
+
+        let mut y_over_z = Elem::zero();
         GFp_fe_mul(&mut y_over_z, &y, &recip);
         GFp_fe_tobytes(&mut bytes, &y_over_z);
+
         GFp_fe_isnegative(&x_over_z)
     };
 
@@ -125,6 +139,7 @@ extern {
     fn GFp_fe_invert(out: &mut Elem, z: &Elem);
     fn GFp_fe_isnegative(elem: &Elem) -> u8;
     fn GFp_fe_mul(h: &mut Elem, f: &Elem, g: &Elem);
+    fn GFp_fe_neg(f: &mut Elem);
     fn GFp_fe_tobytes(bytes: &mut EncodedPoint, elem: &Elem);
     fn GFp_x25519_ge_frombytes_vartime(h: &mut ExtPoint, s: &EncodedPoint)
                                        -> c::int;

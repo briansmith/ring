@@ -34,6 +34,7 @@ void GFp_curve25519_scalar_mask(uint8_t a[32]);
 void GFp_fe_invert(fe out, const fe z);
 uint8_t GFp_fe_isnegative(const fe f);
 void GFp_fe_mul(fe h, const fe f, const fe g);
+void GFp_fe_neg(/*in/out*/ fe f);
 void GFp_fe_tobytes(uint8_t *s, const fe h);
 void GFp_ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
                                       const ge_p3 *A, const uint8_t *b);
@@ -716,6 +717,10 @@ static void fe_neg(fe h, const fe f) {
   for (i = 0; i < 10; i++) {
     h[i] = -f[i];
   }
+}
+
+void GFp_fe_neg(fe f) {
+  fe_neg(f, f);
 }
 
 // Replace (f,g) with (g,g) if b == 1;
