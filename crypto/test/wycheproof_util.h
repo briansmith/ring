@@ -41,5 +41,10 @@ const EVP_MD *GetWycheproofDigest(FileTest *t, const char *key,
 bssl::UniquePtr<EC_GROUP> GetWycheproofCurve(FileTest *t, const char *key,
                                              bool instruction);
 
+// GetWycheproofBIGNUM returns a BIGNUM in the Wycheproof format, or nullptr on
+// error.
+bssl::UniquePtr<BIGNUM> GetWycheproofBIGNUM(FileTest *t, const char *key,
+                                            bool instruction);
+
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_WYCHEPROOF_UTIL_H

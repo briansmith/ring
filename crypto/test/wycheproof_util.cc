@@ -14,6 +14,7 @@
 
 #include "./wycheproof_util.h"
 
+#include <openssl/bn.h>
 #include <openssl/digest.h>
 #include <openssl/ec.h>
 #include <openssl/nid.h>
@@ -88,4 +89,36 @@ bssl::UniquePtr<EC_GROUP> GetWycheproofCurve(FileTest *t, const char *key,
     return nullptr;
   }
   return bssl::UniquePtr<EC_GROUP>(EC_GROUP_new_by_curve_name(nid));
+}
+
+bssl::UniquePtr<BIGNUM> GetWycheproofBIGNUM(FileTest *t, const char *key,
+                                            bool instruction) {
+  std::string value;
+  bool ok = instruction ? t->GetInstruction(&value, key)
+                        : t->GetAttribute(&value, key);
+  if (!ok) {
+    return nullptr;
+  }
+  BIGNUM *bn = nullptr;
+  if (BN_hex2bn(&bn, value.c_str()) != static_cast<int>(value.size())) {
+    BN_free(bn);
+    t->PrintLine("Could not decode value '%s'", value.c_str());
+    return nullptr;
+  }
+  bssl::UniquePtr<BIGNUM> ret(bn);
+  if (!value.empty()) {
+    // If the high bit is one, this is a negative number in Wycheproof.
+    // Wycheproof's tests generally mimic Java APIs, including all their
+    // mistakes. See
+    // https://github.com/google/wycheproof/blob/0329f5b751ef102bd6b7b7181b6e049522a887f5/java/com/google/security/wycheproof/JsonUtil.java#L62.
+    if ('0' > value[0] || value[0] > '7') {
+      bssl::UniquePtr<BIGNUM> tmp(BN_new());
+      if (!tmp ||
+          !BN_set_bit(tmp.get(), value.size() * 4) ||
+          !BN_sub(ret.get(), ret.get(), tmp.get())) {
+        return nullptr;
+      }
+    }
+  }
+  return ret;
 }

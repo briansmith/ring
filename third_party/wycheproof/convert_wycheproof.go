@@ -231,6 +231,7 @@ func main() {
 		"aes_gcm_test.json",
 		"chacha20_poly1305_test.json",
 		"dsa_test.json",
+		"ecdh_test.json",
 		"ecdsa_secp224r1_sha224_test.json",
 		"ecdsa_secp224r1_sha256_test.json",
 		"ecdsa_secp256r1_sha256_test.json",
@@ -243,7 +244,6 @@ func main() {
 
 		// TODO(davidben): The following tests still need test drivers.
 		// "aes_cbc_pkcs5_test.json",
-		// "ecdh_test.json",
 	}
 	for _, jsonPath := range jsonPaths {
 		if !strings.HasSuffix(jsonPath, ".json") {
