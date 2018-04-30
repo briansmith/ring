@@ -20,7 +20,7 @@ use {bssl, c, error};
 // Keep this in sync with `fe` in curve25519/internal.h.
 #[repr(C)]
 pub struct Elem {
-    v: [i32; ELEM_LIMBS],
+    v: [u32; ELEM_LIMBS],
 }
 const ELEM_LIMBS: usize = 10;
 
