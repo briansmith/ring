@@ -147,7 +147,6 @@ extern "C" {
 
 #define BN_BITS2	64
 #define BN_BYTES	8
-#define BN_MASK2	(0xffffffffffffffffUL)
 #define BN_MONT_CTX_N0_LIMBS 1
 #define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo), 0
 #define TOBN(hi, lo) ((BN_ULONG)(hi) << 32 | (lo))
@@ -157,7 +156,6 @@ extern "C" {
 #define BN_ULLONG	uint64_t
 #define BN_BITS2	32
 #define BN_BYTES	4
-#define BN_MASK2	(0xffffffffUL)
 // On some 32-bit platforms, Montgomery multiplication is done using 64-bit
 // arithmetic with SIMD instructions. On such platforms, |BN_MONT_CTX::n0|
 // needs to be two words long. Only certain 32-bit platforms actually make use
