@@ -459,6 +459,50 @@ void SSL_CTX_set_handoff_mode(SSL_CTX *ctx, bool on) {
   ctx->handoff = on;
 }
 
+static bool ssl_can_renegotiate(const SSL *ssl) {
+  if (ssl->server || SSL_is_dtls(ssl)) {
+    return false;
+  }
+
+  // We do not accept at SSL 3.0. SSL 3.0 will be removed entirely in the future
+  // and requires retaining more data for renegotiation_info.
+  uint16_t version = ssl_protocol_version(ssl);
+  if (version == SSL3_VERSION || version >= TLS1_3_VERSION) {
+    return false;
+  }
+
+  // The config has already been shed.
+  if (!ssl->config) {
+    return false;
+  }
+
+  switch (ssl->renegotiate_mode) {
+    case ssl_renegotiate_ignore:
+    case ssl_renegotiate_never:
+      return false;
+
+    case ssl_renegotiate_freely:
+      return true;
+    case ssl_renegotiate_once:
+      return ssl->s3->total_renegotiations == 0;
+  }
+
+  assert(0);
+  return false;
+}
+
+static void ssl_maybe_shed_handshake_config(SSL *ssl) {
+  if (ssl->s3->hs != nullptr ||
+      ssl->config == nullptr ||
+      !ssl->config->shed_handshake_config ||
+      ssl_can_renegotiate(ssl)) {
+    return;
+  }
+
+  Delete(ssl->config);
+  ssl->config = nullptr;
+}
+
 }  // namespace bssl
 
 using namespace bssl;
@@ -881,13 +925,8 @@ int SSL_do_handshake(SSL *ssl) {
 
   // Destroy the handshake object if the handshake has completely finished.
   if (!early_return) {
-    if (hs->config->shed_handshake_config) {
-      assert(ssl->config == hs->config);
-      Delete(ssl->config);
-      ssl->config = nullptr;
-      hs->config = nullptr;
-    }
     ssl->s3->hs.reset();
+    ssl_maybe_shed_handshake_config(ssl);
   }
 
   return 1;
@@ -916,11 +955,12 @@ static int ssl_do_post_handshake(SSL *ssl, const SSLMessage &msg) {
     return tls13_post_handshake(ssl, msg);
   }
 
-  // We do not accept renegotiations as a server or SSL 3.0. SSL 3.0 will be
-  // removed entirely in the future and requires retaining more data for
-  // renegotiation_info.
-  if (ssl->server || ssl->version == SSL3_VERSION) {
-    goto no_renegotiation;
+  // Check for renegotiation on the server before parsing to use the correct
+  // error. Renegotiation is triggered by a different message for servers.
+  if (ssl->server) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_NO_RENEGOTIATION);
+    return 0;
   }
 
   if (msg.type != SSL3_MT_HELLO_REQUEST || CBS_len(&msg.body) != 0) {
@@ -929,36 +969,20 @@ static int ssl_do_post_handshake(SSL *ssl, const SSLMessage &msg) {
     return 0;
   }
 
-  switch (ssl->renegotiate_mode) {
-    case ssl_renegotiate_ignore:
-      // Ignore the HelloRequest.
-      return 1;
-
-    case ssl_renegotiate_once:
-      if (ssl->s3->total_renegotiations != 0) {
-        goto no_renegotiation;
-      }
-      break;
-
-    case ssl_renegotiate_never:
-      goto no_renegotiation;
-
-    case ssl_renegotiate_freely:
-      break;
+  if (ssl->renegotiate_mode == ssl_renegotiate_ignore) {
+    return 1;  // Ignore the HelloRequest.
   }
 
-  // Reject renegotiation when the handshake config has been shed.
-  if (!ssl->config) {
-    goto no_renegotiation;
-  }
-
-  // Renegotiation is only supported at quiescent points in the application
-  // protocol, namely in HTTPS, just before reading the HTTP response. Require
-  // the record-layer be idle and avoid complexities of sending a handshake
-  // record while an application_data record is being written.
-  if (!ssl->s3->write_buffer.empty() ||
+  if (!ssl_can_renegotiate(ssl) ||
+      // Renegotiation is only supported at quiescent points in the application
+      // protocol, namely in HTTPS, just before reading the HTTP response.
+      // Require the record-layer be idle and avoid complexities of sending a
+      // handshake record while an application_data record is being written.
+      !ssl->s3->write_buffer.empty() ||
       ssl->s3->write_shutdown != ssl_shutdown_none) {
-    goto no_renegotiation;
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_NO_RENEGOTIATION);
+    return 0;
   }
 
   // Begin a new handshake.
@@ -973,11 +997,6 @@ static int ssl_do_post_handshake(SSL *ssl, const SSLMessage &msg) {
 
   ssl->s3->total_renegotiations++;
   return 1;
-
-no_renegotiation:
-  OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
-  ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_NO_RENEGOTIATION);
-  return 0;
 }
 
 static int ssl_read_impl(SSL *ssl) {
@@ -2643,6 +2662,11 @@ void SSL_CTX_set_dos_protection_cb(SSL_CTX *ctx,
 
 void SSL_set_renegotiate_mode(SSL *ssl, enum ssl_renegotiate_mode_t mode) {
   ssl->renegotiate_mode = mode;
+
+  // Check if |ssl_can_renegotiate| has changed and the configuration may now be
+  // shed. HTTP clients may initially allow renegotiation for HTTP/1.1, and then
+  // disable after the handshake once the ALPN protocol is known to be HTTP/2.
+  ssl_maybe_shed_handshake_config(ssl);
 }
 
 int SSL_get_ivs(const SSL *ssl, const uint8_t **out_read_iv,

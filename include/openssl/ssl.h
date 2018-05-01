@@ -3304,10 +3304,17 @@ OPENSSL_EXPORT void SSL_CTX_set_current_time_cb(
     SSL_CTX *ctx, void (*cb)(const SSL *ssl, struct timeval *out_clock));
 
 // SSL_set_shed_handshake_config allows some of the configuration of |ssl| to be
-// freed after its handshake completes.  When configuration shedding is enabled,
+// freed after its handshake completes. When configuration shedding is enabled,
 // it is an error to call APIs that query the state that was shed, and it is an
-// error to call |SSL_clear|.  Additionally, if renegotiation is enabled,
-// renegotiation attempts will be rejected.
+// error to call |SSL_clear|.
+//
+// Note that configuration shedding as a client additionally depends on
+// renegotiation being disabled (see |SSL_set_renegotiate_mode|). If
+// renegotiation is possible, the configuration will be retained. If
+// configuration shedding is enabled and renegotiation later disabled after the
+// handshake, |SSL_set_renegotiate_mode| will shed configuration then. This may
+// be useful for clients which support renegotiation with some ALPN protocols,
+// such as HTTP/1.1, and not others, such as HTTP/2.
 OPENSSL_EXPORT void SSL_set_shed_handshake_config(SSL *ssl, int enable);
 
 enum ssl_renegotiate_mode_t {
@@ -3327,6 +3334,13 @@ enum ssl_renegotiate_mode_t {
 // renegotiations or |ssl_renegotiate_ignore| to ignore HelloRequest messages.
 // Note that ignoring HelloRequest messages may cause the connection to stall
 // if the server waits for the renegotiation to complete.
+//
+// If configuration shedding is enabled (see |SSL_set_shed_handshake_config|),
+// configuration is released if, at any point after the handshake, renegotiation
+// is disabled. It is not possible to switch from disabling renegotiation to
+// enabling it on a given connection. Callers that condition renegotiation on,
+// e.g., ALPN must enable renegotiation before the handshake and conditionally
+// disable it afterwards.
 //
 // There is no support in BoringSSL for initiating renegotiations as a client
 // or server.

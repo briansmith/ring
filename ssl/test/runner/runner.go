@@ -8209,14 +8209,15 @@ func addRenegotiationTests() {
 		},
 	})
 
-	// Renegotiation should be rejected if the handshake config has been shed.
+	// Renegotiation may be enabled and then disabled immediately after the
+	// handshake.
 	testCases = append(testCases, testCase{
-		name: "Renegotiate-HandshakeConfigShed",
+		name: "Renegotiate-ForbidAfterHandshake",
 		config: Config{
 			MaxVersion: VersionTLS12,
 		},
 		renegotiate:        1,
-		flags:              []string{"-renegotiate-freely", "-shed-despite-renegotiate"},
+		flags:              []string{"-forbid-renegotiation-after-handshake"},
 		shouldFail:         true,
 		expectedError:      ":NO_RENEGOTIATION:",
 		expectedLocalError: "remote error: no renegotiation",

@@ -2069,11 +2069,11 @@ static bssl::UniquePtr<SSL> NewSSL(SSL_CTX *ssl_ctx, const TestConfig *config,
   SSL_set_shed_handshake_config(ssl.get(), true);
   if (config->renegotiate_once) {
     SSL_set_renegotiate_mode(ssl.get(), ssl_renegotiate_once);
-    SSL_set_shed_handshake_config(ssl.get(), config->shed_despite_renegotiate);
   }
-  if (config->renegotiate_freely) {
+  if (config->renegotiate_freely ||
+      config->forbid_renegotiation_after_handshake) {
+    // |forbid_renegotiation_after_handshake| will disable renegotiation later.
     SSL_set_renegotiate_mode(ssl.get(), ssl_renegotiate_freely);
-    SSL_set_shed_handshake_config(ssl.get(), config->shed_despite_renegotiate);
   }
   if (config->renegotiate_ignore) {
     SSL_set_renegotiate_mode(ssl.get(), ssl_renegotiate_ignore);
@@ -2376,6 +2376,10 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
           return SSL_do_handshake(ssl);
         });
       } while (config->async && RetryAsync(ssl, ret));
+    }
+
+    if (config->forbid_renegotiation_after_handshake) {
+      SSL_set_renegotiate_mode(ssl, ssl_renegotiate_never);
     }
 
     if (ret != 1 || !CheckHandshakeProperties(ssl, is_resume, config)) {
