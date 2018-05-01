@@ -174,13 +174,13 @@ extern "C" {
 // the result in |rp|. |ap| and |rp| must both be |num| words long. It returns
 // the carry word of the operation. |ap| and |rp| may be equal but otherwise may
 // not alias.
-BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
+BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
                               BN_ULONG w);
 
 // bn_mul_words multiples |ap| by |w| and places the result in |rp|. |ap| and
 // |rp| must both be |num| words long. It returns the carry word of the
 // operation. |ap| and |rp| may be equal but otherwise may not alias.
-BN_ULONG GFp_bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
+BN_ULONG GFp_bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
                           BN_ULONG w);
 
 // bn_sub_words subtracts |bp| from |ap| and places the result in |rp|. It
@@ -188,7 +188,7 @@ BN_ULONG GFp_bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
 // otherwise. Any pair of |ap|, |bp|, and |rp| may be equal to each other but
 // otherwise may not alias.
 BN_ULONG GFp_bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-                          int num);
+                          size_t num);
 
 // |num| must be at least 4, at least on x86.
 //

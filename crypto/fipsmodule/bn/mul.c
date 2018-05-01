@@ -62,46 +62,40 @@
 #include "internal.h"
 
 
-static void GFp_bn_mul_normal(BN_ULONG *r, BN_ULONG *a, int na, BN_ULONG *b,
-                              int nb) {
+static void GFp_bn_mul_normal(BN_ULONG *r, BN_ULONG *a, size_t na, BN_ULONG *b,
+                              size_t nb) {
   assert(r != a);
   assert(r != b);
 
-  BN_ULONG *rr;
-
   if (na < nb) {
-    int itmp;
-    BN_ULONG *ltmp;
-
-    itmp = na;
+    size_t itmp = na;
     na = nb;
     nb = itmp;
-    ltmp = a;
+    BN_ULONG *ltmp = a;
     a = b;
     b = ltmp;
   }
-  rr = &(r[na]);
-  if (nb <= 0) {
-    (void)GFp_bn_mul_words(r, a, na, 0);
+  BN_ULONG *rr = &(r[na]);
+  if (nb == 0) {
+    memset(r, 0, na * sizeof(BN_ULONG));
     return;
-  } else {
-    rr[0] = GFp_bn_mul_words(r, a, na, b[0]);
   }
+  rr[0] = GFp_bn_mul_words(r, a, na, b[0]);
 
   for (;;) {
-    if (--nb <= 0) {
+    if (--nb == 0) {
       return;
     }
     rr[1] = GFp_bn_mul_add_words(&(r[1]), a, na, b[1]);
-    if (--nb <= 0) {
+    if (--nb == 0) {
       return;
     }
     rr[2] = GFp_bn_mul_add_words(&(r[2]), a, na, b[2]);
-    if (--nb <= 0) {
+    if (--nb == 0) {
       return;
     }
     rr[3] = GFp_bn_mul_add_words(&(r[3]), a, na, b[3]);
-    if (--nb <= 0) {
+    if (--nb == 0) {
       return;
     }
     rr[4] = GFp_bn_mul_add_words(&(r[4]), a, na, b[4]);
