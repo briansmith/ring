@@ -140,7 +140,7 @@ extern "C" {
 
 #if defined(OPENSSL_64_BIT)
 
-#if !defined(_MSC_VER)
+#if defined(BORINGSSL_HAS_UINT128)
 // MSVC doesn't support two-word integers on 64-bit.
 #define BN_ULLONG uint128_t
 #endif

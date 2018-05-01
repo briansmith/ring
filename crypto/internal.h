@@ -175,7 +175,8 @@ void GFp_cpuid_setup(void);
 #endif
 
 
-#if !defined(_MSC_VER) && defined(OPENSSL_64_BIT)
+#if (!defined(_MSC_VER) || defined(__clang__)) && defined(OPENSSL_64_BIT)
+#define BORINGSSL_HAS_UINT128
 typedef __int128_t int128_t;
 typedef __uint128_t uint128_t;
 #endif
