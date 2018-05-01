@@ -136,7 +136,7 @@
 #elif !defined(__cplusplus)
 #if defined(_MSC_VER)
 #define alignas(x) __declspec(align(x))
-#define alignof __alignof
+#define alignof(x) __alignof(x)
 #else
 #include <stdalign.h>
 #endif
