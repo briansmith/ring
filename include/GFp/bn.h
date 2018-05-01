@@ -203,8 +203,8 @@ OPENSSL_EXPORT int GFp_BN_is_odd(const BIGNUM *bn);
 
 // Bitwise operations.
 
-// GFp_BN_is_bit_set returns the value of the |n|th, least-significant bit in
-// |a|, or zero if the bit doesn't exist.
+// GFp_bn_is_bit_set returns one if the |n|th least-significant bit in |a|
+// exists and is set. Otherwise, it returns zero.
 OPENSSL_EXPORT int GFp_BN_is_bit_set(const BIGNUM *a, int n);
 
 
