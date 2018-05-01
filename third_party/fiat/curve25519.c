@@ -42,23 +42,6 @@
 #pragma warning(disable: 4244)
 #endif
 
-// Prevent -Wmissing-prototypes warnings.
-void GFp_curve25519_scalar_mask(uint8_t a[32]);
-void GFp_fe_invert(fe *out, const fe *z);
-uint8_t GFp_fe_isnegative(const fe *f);
-void GFp_fe_mul_ttt(fe *h, const fe *f, const fe *g);
-void GFp_fe_neg(/*in/out*/ fe *f);
-void GFp_fe_tobytes(uint8_t *s, const fe *h);
-void GFp_ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
-                                      const ge_p3 *A, const uint8_t *b);
-int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s);
-void GFp_x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]);
-void GFp_x25519_sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
-                          const uint8_t *c);
-void GFp_x25519_sc_reduce(uint8_t *s);
-void GFp_x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
-                            const uint8_t point[32]);
-
 static const int64_t kBottom25Bits = INT64_C(0x1ffffff);
 static const int64_t kBottom26Bits = INT64_C(0x3ffffff);
 
@@ -229,7 +212,7 @@ static void fe_loose_tobytes(uint8_t *s, const fe_loose *h) {
   fe_tobytes_impl(s, h->v);
 }
 
-void GFp_fe_tobytes(uint8_t *s, const fe *h) {
+void GFp_x25519_fe_tobytes(uint8_t *s, const fe *h) {
   fe_tobytes(s, h);
 }
 
@@ -563,7 +546,7 @@ static void fe_mul_ttt(fe *h, const fe *f, const fe *g) {
   fe_mul_impl(h->v, f->v, g->v);
 }
 
-void GFp_fe_mul_ttt(fe *h, const fe *f, const fe *g) {
+void GFp_x25519_fe_mul_ttt(fe *h, const fe *f, const fe *g) {
   fe_mul_ttt(h, f, g);
 }
 
@@ -758,7 +741,7 @@ static void fe_invert(fe *out, const fe *z) {
   fe_loose_invert(out, &l);
 }
 
-void GFp_fe_invert(fe *out, const fe *z) {
+void GFp_x25519_fe_invert(fe *out, const fe *z) {
   fe_invert(out, z);
 }
 
@@ -809,7 +792,7 @@ static void fe_neg(fe_loose *h, const fe *f) {
   assert_fe_loose(h->v);
 }
 
-void GFp_fe_neg(fe *f) {
+void GFp_x25519_fe_neg(fe *f) {
   fe_loose t;
   fe_neg(&t, f);
   fe_carry(f, &t);
@@ -853,7 +836,7 @@ static int fe_isnegative(const fe *f) {
   return s[0] & 1;
 }
 
-uint8_t GFp_fe_isnegative(const fe *f) {
+uint8_t GFp_x25519_fe_isnegative(const fe *f) {
   return (uint8_t)fe_isnegative(f);
 }
 
@@ -3786,8 +3769,8 @@ static void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
   }
 }
 
-void GFp_ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
-                                      const ge_p3 *A, const uint8_t *b) {
+void GFp_x25519_ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
+                                             const ge_p3 *A, const uint8_t *b) {
   ge_double_scalarmult_vartime(r, a, A, b);
 }
 
@@ -4628,7 +4611,7 @@ void GFp_x25519_sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
   sc_muladd(s, a, b, c);
 }
 
-void GFp_curve25519_scalar_mask(uint8_t a[32]) {
+void GFp_x25519_sc_mask(uint8_t a[32]) {
   a[0] &= 248;
   a[31] &= 127;
   a[31] |= 64;
@@ -4790,7 +4773,7 @@ static void x25519_scalar_mult_generic(uint8_t out[32],
 
   uint8_t e[32];
   memcpy(e, scalar, 32);
-  GFp_curve25519_scalar_mask(e);
+  GFp_x25519_sc_mask(e);
   // The following implementation was transcribed to Coq and proven to
   // correspond to unary scalar multiplication in affine coordinates given that
   // x1 != 0 is the x coordinate of some point on the curve. It was also checked
@@ -4910,7 +4893,7 @@ void GFp_x25519_public_from_private(uint8_t out_public_value[32],
 
   uint8_t e[32];
   memcpy(e, private_key, 32);
-  GFp_curve25519_scalar_mask(e);
+  GFp_x25519_sc_mask(e);
 
   ge_p3 A;
   GFp_x25519_ge_scalarmult_base(&A, e);

@@ -145,7 +145,7 @@ impl<'a> Ed25519KeyPair {
 
         let mut scalar = [0u8; SCALAR_LEN];
         scalar.copy_from_slice(&scalar_encoded);
-        unsafe { GFp_curve25519_scalar_mask(&mut scalar) };
+        unsafe { GFp_x25519_sc_mask(&mut scalar) };
 
         let mut prefix = [0u8; PREFIX_LEN];
         prefix.copy_from_slice(prefix_encoded);
@@ -253,7 +253,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
 
         let mut r = Point::new_at_infinity();
         unsafe {
-            GFp_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s)
+            GFp_x25519_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s)
         };
         let r_check = r.into_encoded_point();
         if signature_r != r_check {
@@ -284,9 +284,9 @@ fn digest_scalar(digest: digest::Digest) -> Scalar {
 }
 
 extern  {
-    fn GFp_curve25519_scalar_mask(a: &mut Scalar);
-    fn GFp_ge_double_scalarmult_vartime(r: &mut Point, a_coeff: &Scalar,
-                                        a: &ExtPoint, b_coeff: &Scalar);
+    fn GFp_x25519_sc_mask(a: &mut Scalar);
+    fn GFp_x25519_ge_double_scalarmult_vartime(r: &mut Point, a_coeff: &Scalar,
+                                               a: &ExtPoint, b_coeff: &Scalar);
     fn GFp_x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Seed);
     fn GFp_x25519_sc_muladd(s: &mut Scalar, a: &Scalar, b: &Scalar, c: &Scalar);
     fn GFp_x25519_sc_reduce(s: &mut UnreducedScalar);

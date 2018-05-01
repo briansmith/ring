@@ -30,7 +30,7 @@ impl Elem {
     }
 
     fn negate(&mut self) {
-        unsafe { GFp_fe_neg(self); }
+        unsafe { GFp_x25519_fe_neg(self); }
     }
 }
 
@@ -116,16 +116,16 @@ fn encode_point(x: Elem, y: Elem, z: Elem) -> EncodedPoint {
 
     let sign_bit: u8 = unsafe {
         let mut recip = Elem::zero();
-        GFp_fe_invert(&mut recip, &z);
+        GFp_x25519_fe_invert(&mut recip, &z);
 
         let mut x_over_z = Elem::zero();
-        GFp_fe_mul_ttt(&mut x_over_z, &x, &recip);
+        GFp_x25519_fe_mul_ttt(&mut x_over_z, &x, &recip);
 
         let mut y_over_z = Elem::zero();
-        GFp_fe_mul_ttt(&mut y_over_z, &y, &recip);
-        GFp_fe_tobytes(&mut bytes, &y_over_z);
+        GFp_x25519_fe_mul_ttt(&mut y_over_z, &y, &recip);
+        GFp_x25519_fe_tobytes(&mut bytes, &y_over_z);
 
-        GFp_fe_isnegative(&x_over_z)
+        GFp_x25519_fe_isnegative(&x_over_z)
     };
 
     // The preceding computations must execute in constant time, but this
@@ -136,11 +136,11 @@ fn encode_point(x: Elem, y: Elem, z: Elem) -> EncodedPoint {
 }
 
 extern {
-    fn GFp_fe_invert(out: &mut Elem, z: &Elem);
-    fn GFp_fe_isnegative(elem: &Elem) -> u8;
-    fn GFp_fe_mul_ttt(h: &mut Elem, f: &Elem, g: &Elem);
-    fn GFp_fe_neg(f: &mut Elem);
-    fn GFp_fe_tobytes(bytes: &mut EncodedPoint, elem: &Elem);
+    fn GFp_x25519_fe_invert(out: &mut Elem, z: &Elem);
+    fn GFp_x25519_fe_isnegative(elem: &Elem) -> u8;
+    fn GFp_x25519_fe_mul_ttt(h: &mut Elem, f: &Elem, g: &Elem);
+    fn GFp_x25519_fe_neg(f: &mut Elem);
+    fn GFp_x25519_fe_tobytes(bytes: &mut EncodedPoint, elem: &Elem);
     fn GFp_x25519_ge_frombytes_vartime(h: &mut ExtPoint, s: &EncodedPoint)
                                        -> c::int;
 }

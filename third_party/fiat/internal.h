@@ -113,6 +113,23 @@ typedef struct {
   fe_loose T2d;
 } ge_cached;
 
+// Prevent -Wmissing-prototypes warnings.
+void GFp_x25519_fe_invert(fe *out, const fe *z);
+uint8_t GFp_x25519_fe_isnegative(const fe *f);
+void GFp_x25519_fe_mul_ttt(fe *h, const fe *f, const fe *g);
+void GFp_x25519_fe_neg(/*in/out*/ fe *f);
+void GFp_x25519_fe_tobytes(uint8_t *s, const fe *h);
+void GFp_x25519_ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
+                                             const ge_p3 *A,
+                                             const uint8_t *b);
+int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s);
+void GFp_x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]);
+void GFp_x25519_sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
+                          const uint8_t *c);
+void GFp_x25519_sc_mask(uint8_t a[32]);
+void GFp_x25519_sc_reduce(uint8_t *s);
+void GFp_x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
+                            const uint8_t point[32]);
 
 #if defined(__cplusplus)
 }  // extern C
