@@ -651,7 +651,6 @@ pub fn elem_exp_consttime<M>(
     let mut r = base.value;
     bssl::map_result(unsafe {
         GFp_BN_mod_exp_mont_consttime(&mut r.0, &r.0, exponent.as_ref(),
-                                      exponent.0.bit_length().as_usize_bits(),
                                       oneR.0.value.as_ref(), &m.value.as_ref(),
                                       &m.n0)
     })?;
@@ -1172,8 +1171,7 @@ extern {
 extern {
     // `r` and `a` may alias.
     fn GFp_BN_mod_exp_mont_consttime(r: *mut BIGNUM, a_mont: *const BIGNUM,
-                                     p: &BIGNUM, p_bits: c::size_t,
-                                     one_mont: &BIGNUM, n: &BIGNUM,
+                                     p: &BIGNUM, one_mont: &BIGNUM, n: &BIGNUM,
                                      n0: &N0) -> c::int;
 
     // `r` and `a` may alias.

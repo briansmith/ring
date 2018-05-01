@@ -257,13 +257,9 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
 //
 // Assumes 0 < a_mont < n, 0 < p, 0 < p_bits.
 int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
-                                  const BIGNUM *p, size_t p_bits,
-                                  const BIGNUM *one_mont, const BIGNUM *n,
+                                  const BIGNUM *p, const BIGNUM *one_mont,
+                                  const BIGNUM *n,
                                   const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]) {
-  assert(p_bits > 0);
-  assert(p_bits <= (size_t)INT_MAX);
-  int bits = (int)p_bits;
-
   int i, ret = 0, wvalue;
 
   int numPowers;
@@ -278,6 +274,12 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
     goto err;
   }
 
+  // Use all bits stored in |p|, rather than |BN_num_bits|, so we do not leak
+  // whether the top bits are zero.
+  int max_bits = p->top * BN_BITS2;
+  int bits = max_bits;
+  assert(bits > 0);
+  assert(bits <= (size_t)INT_MAX);
 
   // Get the window size to use with size of p.
 #if defined(OPENSSL_BN_ASM_MONT5)
@@ -397,7 +399,6 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
       }
     } else {
       const uint8_t *p_bytes = (const uint8_t *)p->d;
-      int max_bits = p->top * BN_BITS2;
       assert(bits < max_bits);
       // |p = 0| has been handled as a special case, so |max_bits| is at least
       // one word.

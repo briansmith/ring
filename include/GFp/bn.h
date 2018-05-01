@@ -229,7 +229,7 @@ int GFp_BN_reduce_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *n,
 // Exponentiation.
 
 OPENSSL_EXPORT int GFp_BN_mod_exp_mont_consttime(
-    BIGNUM *rr, const BIGNUM *a_mont, const BIGNUM *p, size_t p_bits,
+    BIGNUM *rr, const BIGNUM *a_mont, const BIGNUM *p,
     const BIGNUM *one_mont, const BIGNUM *n,
     const BN_ULONG n0[/*BN_MONT_CTX_N0_LIMBS*/]);
 
