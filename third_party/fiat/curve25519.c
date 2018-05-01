@@ -240,10 +240,6 @@ static void fe_tobytes(uint8_t s[32], const fe *f) {
   s[31] = h[9] >> 18;
 }
 
-void GFp_x25519_fe_tobytes(uint8_t s[32], const fe *h) {
-  fe_tobytes(s, h);
-}
-
 // h = f
 static void fe_copy(fe *h, const fe *f) {
   memmove(h, f, sizeof(uint32_t) * 10);
@@ -560,10 +556,6 @@ static void fe_mul_ttt(fe *h, const fe *f, const fe *g) {
   fe_mul_impl(h->v, f->v, g->v);
 }
 
-void GFp_x25519_fe_mul_ttt(fe *h, const fe *f, const fe *g) {
-  fe_mul_ttt(h, f, g);
-}
-
 static void fe_mul_tlt(fe *h, const fe_loose *f, const fe *g) {
   fe_mul_impl(h->v, f->v, g->v);
 }
@@ -755,10 +747,6 @@ static void fe_invert(fe *out, const fe *z) {
   fe_loose_invert(out, &l);
 }
 
-void GFp_x25519_fe_invert(fe *out, const fe *z) {
-  fe_invert(out, z);
-}
-
 static void fe_neg_impl(uint32_t out[10], const uint32_t in2[10]) {
   { const uint32_t x20 = 0;
   { const uint32_t x21 = 0;
@@ -800,12 +788,6 @@ static void fe_neg(fe_loose *h, const fe *f) {
   assert_fe_loose(h->v);
 }
 
-void GFp_x25519_fe_neg(fe *f) {
-  fe_loose t;
-  fe_neg(&t, f);
-  fe_carry(f, &t);
-}
-
 // Replace (f,g) with (g,g) if b == 1;
 // replace (f,g) with (f,g) if b == 0.
 //
@@ -838,10 +820,6 @@ static int fe_isnegative(const fe *f) {
   uint8_t s[32];
   fe_tobytes(s, f);
   return s[0] & 1;
-}
-
-uint8_t GFp_x25519_fe_isnegative(const fe *f) {
-  return (uint8_t)fe_isnegative(f);
 }
 
 static void fe_sq2_tt(fe *h, const fe *f) {
@@ -957,12 +935,6 @@ static int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
 
   fe_mul_ttt(&h->T, &h->X, &h->Y);
   return 0;
-}
-
-// XXX: |x25519_ge_frombytes_vartime| returns 0 on success, -1 on
-// failure.
-int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
-  return x25519_ge_frombytes_vartime(h, s) == 0;
 }
 
 static void ge_p2_0(ge_p2 *h) {
@@ -1378,11 +1350,6 @@ static void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
 
     x25519_ge_p1p1_to_p2(r, &t);
   }
-}
-
-void GFp_x25519_ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
-                                             const ge_p3 *A, const uint8_t *b) {
-  ge_double_scalarmult_vartime(r, a, A, b);
 }
 
 // The set of scalars is \Z/l
@@ -2217,17 +2184,6 @@ static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
   s[31] = s11 >> 17;
 }
 
-void GFp_x25519_sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
-                          const uint8_t *c) {
-  sc_muladd(s, a, b, c);
-}
-
-void GFp_x25519_sc_mask(uint8_t a[32]) {
-  a[0] &= 248;
-  a[31] &= 127;
-  a[31] |= 64;
-}
-
 #if defined(BORINGSSL_X25519_X86_64)
 
 static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
@@ -2521,3 +2477,47 @@ void GFp_x25519_public_from_private(uint8_t out_public_value[32],
 }
 
 #endif  // BORINGSSL_X25519_X86_64
+
+void GFp_x25519_fe_invert(fe *out, const fe *z) {
+  fe_invert(out, z);
+}
+
+uint8_t GFp_x25519_fe_isnegative(const fe *f) {
+  return (uint8_t)fe_isnegative(f);
+}
+
+void GFp_x25519_fe_mul_ttt(fe *h, const fe *f, const fe *g) {
+  fe_mul_ttt(h, f, g);
+}
+
+void GFp_x25519_fe_neg(fe *f) {
+  fe_loose t;
+  fe_neg(&t, f);
+  fe_carry(f, &t);
+}
+
+void GFp_x25519_fe_tobytes(uint8_t s[32], const fe *h) {
+  fe_tobytes(s, h);
+}
+
+void GFp_x25519_ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
+                                             const ge_p3 *A, const uint8_t *b) {
+  ge_double_scalarmult_vartime(r, a, A, b);
+}
+
+// XXX: |x25519_ge_frombytes_vartime| returns 0 on success, -1 on
+// failure.
+int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
+  return x25519_ge_frombytes_vartime(h, s) == 0;
+}
+
+void GFp_x25519_sc_mask(uint8_t a[32]) {
+  a[0] &= 248;
+  a[31] &= 127;
+  a[31] |= 64;
+}
+
+void GFp_x25519_sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
+                          const uint8_t *c) {
+  sc_muladd(s, a, b, c);
+}
