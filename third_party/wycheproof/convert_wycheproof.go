@@ -240,6 +240,7 @@ func main() {
 		"ecdsa_secp384r1_sha512_test.json",
 		"ecdsa_secp521r1_sha512_test.json",
 		"eddsa_test.json",
+		"kw_test.json",
 		"rsa_signature_test.json",
 		"x25519_test.json",
 	}

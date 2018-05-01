@@ -72,6 +72,7 @@ set(
   third_party/wycheproof/ecdsa_secp384r1_sha512_test.txt
   third_party/wycheproof/ecdsa_secp521r1_sha512_test.txt
   third_party/wycheproof/eddsa_test.txt
+  third_party/wycheproof/kw_test.txt
   third_party/wycheproof/rsa_signature_test.txt
   third_party/wycheproof/x25519_test.txt
 )
