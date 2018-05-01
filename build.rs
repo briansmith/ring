@@ -91,8 +91,6 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[X86], "crypto/fipsmodule/sha/asm/sha256-586.pl"),
     (&[X86], "crypto/fipsmodule/sha/asm/sha512-586.pl"),
 
-    (&[X86_64], "crypto/curve25519/x25519-x86_64.c"),
-
     (&[X86_64], "crypto/fipsmodule/aes/asm/aes-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/aesni-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/bsaes-x86_64.pl"),
@@ -101,7 +99,6 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[X86_64], "crypto/fipsmodule/bn/asm/x86_64-mont5.pl"),
     (&[X86_64], "crypto/chacha/asm/chacha-x86_64.pl"),
     (&[NEVER], "crypto/cipher_extra/asm/aes128gcmsiv-x86_64.pl"),
-    (&[X86_64], "crypto/curve25519/asm/x25519-asm-x86_64.S"),
     (&[X86_64], "crypto/fipsmodule/ec/asm/ecp_nistz256-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/ec/asm/p256-x86_64-asm.pl"),
     (&[X86_64], "crypto/fipsmodule/modes/asm/aesni-gcm-x86_64.pl"),

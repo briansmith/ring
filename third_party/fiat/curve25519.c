@@ -513,8 +513,6 @@ static void fe_sq_tt(fe *h, const fe *f) {
   fe_sqr_impl(h->v, f->v);
 }
 
-#if !defined(BORINGSSL_X25519_X86_64)
-
 // Replace (f,g) with (g,f) if b == 1;
 // replace (f,g) with (f,g) if b == 0.
 //
@@ -589,8 +587,6 @@ static void fe_mul121666(fe *h, const fe_loose *f) {
   fe_mul_121666_impl(h->v, f->v);
   assert_fe(h->v);
 }
-
-#endif  // !BORINGSSL_X25519_X86_64
 
 // Adapted from Fiat-synthesized |fe_sub_impl| with |out| = 0.
 static void fe_neg_impl(uint64_t out[5], const uint64_t in2[5]) {
@@ -1202,8 +1198,6 @@ static void fe_sq_tt(fe *h, const fe *f) {
   fe_sqr_impl(h->v, f->v);
 }
 
-#if !defined(BORINGSSL_X25519_X86_64)
-
 // Replace (f,g) with (g,f) if b == 1;
 // replace (f,g) with (f,g) if b == 0.
 //
@@ -1342,8 +1336,6 @@ static void fe_mul121666(fe *h, const fe_loose *f) {
   fe_mul_121666_impl(h->v, f->v);
   assert_fe(h->v);
 }
-
-#endif  // !BORINGSSL_X25519_X86_64
 
 // Adapted from Fiat-synthesized |fe_sub_impl| with |out| = 0.
 static void fe_neg_impl(uint32_t out[10], const uint32_t in2[10]) {
@@ -2866,14 +2858,6 @@ static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
   s[31] = s11 >> 17;
 }
 
-#if defined(BORINGSSL_X25519_X86_64)
-
-static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
-                            const uint8_t point[32]) {
-  GFp_x25519_x86_64(out, scalar, point);
-}
-
-#else
 
 static void x25519_scalar_mult_generic(uint8_t out[32],
                                        const uint8_t scalar[32],
@@ -2966,8 +2950,6 @@ static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
   x25519_scalar_mult_generic(out, scalar, point);
 }
 
-#endif  // BORINGSSL_X25519_X86_64
-
 void GFp_x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
                             const uint8_t point[32]) {
   x25519_scalar_mult(out, scalar, point);
@@ -2976,20 +2958,6 @@ void GFp_x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
 // Prototypes to avoid -Wmissing-prototypes warnings.
 void GFp_x25519_public_from_private(uint8_t out_public_value[32],
                                     const uint8_t private_key[32]);
-
-#if defined(BORINGSSL_X25519_X86_64)
-
-// When |BORINGSSL_X25519_X86_64| is set, base point multiplication is done with
-// the Montgomery ladder because it's faster. Otherwise it's done using the
-// Ed25519 tables.
-
-void GFp_x25519_public_from_private(uint8_t out_public_value[32],
-                                    const uint8_t private_key[32]) {
-  static const uint8_t kMongomeryBasePoint[32] = {9};
-  GFp_x25519_scalar_mult(out_public_value, private_key, kMongomeryBasePoint);
-}
-
-#else
 
 void GFp_x25519_public_from_private(uint8_t out_public_value[32],
                                     const uint8_t private_key[32]) {
@@ -3018,8 +2986,6 @@ void GFp_x25519_public_from_private(uint8_t out_public_value[32],
   fe_mul_tlt(&zminusy_inv, &zplusy, &zminusy_inv);
   fe_tobytes(out_public_value, &zminusy_inv);
 }
-
-#endif  // BORINGSSL_X25519_X86_64
 
 void GFp_x25519_fe_invert(fe *out, const fe *z) {
   fe_invert(out, z);
