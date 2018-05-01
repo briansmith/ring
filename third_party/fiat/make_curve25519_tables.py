@@ -109,6 +109,22 @@ def to_base_25_5(x):
     assert x == 0
     return ret
 
+def to_base_51(x):
+    ret = []
+    for _ in range(5):
+        ret.append(x & ((1<<51) - 1))
+        x >>= 51
+    assert x == 0
+    return ret
+
+def to_literal(x):
+    ret = "{{\n#if defined(BORINGSSL_CURVE25519_64BIT)\n"
+    ret += ", ".join(map(str, to_base_51(x)))
+    ret += "\n#else\n"
+    ret += ", ".join(map(str, to_base_25_5(x)))
+    ret += "\n#endif\n}}"
+    return ret
+
 def main():
     d2 = (2 * d) % p
 
@@ -159,20 +175,17 @@ def main():
 //    ./make_curve25519_tables.py > curve25519_tables.h
 
 
-static const fe d = {{
-""")
-    buf.write(", ".join(map(str, to_base_25_5(d))))
-    buf.write("""}};
+static const fe d = """)
+    buf.write(to_literal(d))
+    buf.write(""";
 
-static const fe sqrtm1 = {{
-""")
-    buf.write(", ".join(map(str, to_base_25_5(modp_sqrt_m1))))
-    buf.write("""}};
+static const fe sqrtm1 = """)
+    buf.write(to_literal(modp_sqrt_m1))
+    buf.write(""";
 
-static const fe d2 = {{
-""")
-    buf.write(", ".join(map(str, to_base_25_5(d2))))
-    buf.write("""}};
+static const fe d2 = """)
+    buf.write(to_literal(d2))
+    buf.write(""";
 
 #if defined(OPENSSL_SMALL)
 
@@ -200,9 +213,7 @@ static const ge_precomp k25519Precomp[32][8] = {
         for val in child:
             buf.write("{\n")
             for term in val:
-                buf.write("{{")
-                buf.write(", ".join(map(str, to_base_25_5(term))))
-                buf.write("}},\n")
+                buf.write(to_literal(term) + ",\n")
             buf.write("},\n")
         buf.write("},\n")
     buf.write("""};
@@ -215,9 +226,7 @@ static const ge_precomp Bi[8] = {
     for val in bi_precomp:
         buf.write("{\n")
         for term in val:
-            buf.write("{{")
-            buf.write(", ".join(map(str, to_base_25_5(term))))
-            buf.write("}},\n")
+                buf.write(to_literal(term) + ",\n")
         buf.write("},\n")
     buf.write("""};
 """)
