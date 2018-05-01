@@ -142,25 +142,25 @@ extern "C" {
 
 #if !defined(_MSC_VER)
 // MSVC doesn't support two-word integers on 64-bit.
-#define BN_ULLONG	uint128_t
+#define BN_ULLONG uint128_t
 #endif
 
-#define BN_BITS2	64
-#define BN_BYTES	8
+#define BN_BITS2 64
+#define BN_BYTES 8
 #define BN_MONT_CTX_N0_LIMBS 1
 #define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo), 0
 #define TOBN(hi, lo) ((BN_ULONG)(hi) << 32 | (lo))
 
 #elif defined(OPENSSL_32_BIT)
 
-#define BN_ULLONG	uint64_t
-#define BN_BITS2	32
-#define BN_BYTES	4
+#define BN_ULLONG uint64_t
+#define BN_BITS2 32
+#define BN_BYTES 4
 // On some 32-bit platforms, Montgomery multiplication is done using 64-bit
 // arithmetic with SIMD instructions. On such platforms, |BN_MONT_CTX::n0|
 // needs to be two words long. Only certain 32-bit platforms actually make use
 // of n0[1] and shorter R value would suffice for the others. However,
-// currently only the assembly files know which is which. */
+// currently only the assembly files know which is which.
 #define BN_MONT_CTX_N0_LIMBS 2
 #define BN_MONT_CTX_N0(hi, lo) TOBN(hi, lo)
 #define TOBN(hi, lo) (lo), (hi)
@@ -170,10 +170,23 @@ extern "C" {
 #endif
 
 
+// bn_mul_add_words multiples |ap| by |w|, adds the result to |rp|, and places
+// the result in |rp|. |ap| and |rp| must both be |num| words long. It returns
+// the carry word of the operation. |ap| and |rp| may be equal but otherwise may
+// not alias.
 BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
                               BN_ULONG w);
+
+// bn_mul_words multiples |ap| by |w| and places the result in |rp|. |ap| and
+// |rp| must both be |num| words long. It returns the carry word of the
+// operation. |ap| and |rp| may be equal but otherwise may not alias.
 BN_ULONG GFp_bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, int num,
                           BN_ULONG w);
+
+// bn_sub_words subtracts |bp| from |ap| and places the result in |rp|. It
+// returns the borrow bit, which is one if the computation underflowed and zero
+// otherwise. Any pair of |ap|, |bp|, and |rp| may be equal to each other but
+// otherwise may not alias.
 BN_ULONG GFp_bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                           int num);
 
