@@ -59,17 +59,18 @@
 #include "internal.h"
 
 
-int GFp_BN_is_bit_set(const BIGNUM *a, int n) {
-  int i, j;
+int GFp_bn_is_bit_set_words(const BN_ULONG *a, size_t num, unsigned bit) {
+  unsigned i = bit / BN_BITS2;
+  unsigned j = bit % BN_BITS2;
+  if (i >= num) {
+    return 0;
+  }
+  return (a[i] >> j) & 1;
+}
 
+int GFp_BN_is_bit_set(const BIGNUM *a, int n) {
   if (n < 0) {
     return 0;
   }
-  i = n / BN_BITS2;
-  j = n % BN_BITS2;
-  if (a->top <= i) {
-    return 0;
-  }
-
-  return (a->d[i]>>j)&1;
+  return GFp_bn_is_bit_set_words(a->d, a->top, n);
 }
