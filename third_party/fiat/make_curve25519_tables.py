@@ -31,6 +31,9 @@ p = 2**255 - 19
 def modp_inv(x):
     return pow(x, p-2, p)
 
+# Square root of -1
+modp_sqrt_m1 = pow(2, (p-1) // 4, p)
+
 # Compute corresponding x-coordinate, with low bit corresponding to
 # sign, or return None on failure
 def recover_x(y, sign):
@@ -107,6 +110,8 @@ def to_base_25_5(x):
     return ret
 
 def main():
+    d2 = (2 * d) % p
+
     small_precomp = bytearray()
     for i in range(1, 16):
         s = (i&1) | ((i&2) << (64-1)) | ((i&4) << (128-2)) | ((i&8) << (192-3))
@@ -153,6 +158,21 @@ def main():
 // This file is generated from
 //    ./make_curve25519_tables.py > curve25519_tables.h
 
+
+static const fe d = {{
+""")
+    buf.write(", ".join(map(str, to_base_25_5(d))))
+    buf.write("""}};
+
+static const fe sqrtm1 = {{
+""")
+    buf.write(", ".join(map(str, to_base_25_5(modp_sqrt_m1))))
+    buf.write("""}};
+
+static const fe d2 = {{
+""")
+    buf.write(", ".join(map(str, to_base_25_5(d2))))
+    buf.write("""}};
 
 #if defined(OPENSSL_SMALL)
 

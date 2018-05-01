@@ -911,11 +911,7 @@ static void fe_pow22523(fe *out, const fe *z) {
   fe_mul_ttt(out, &t0, z);
 }
 
-static const fe d = {{56195235, 13857412, 51736253, 6949390,   114729,
-                     24766616,  60832955, 30306712,  48412415, 21499315}};
-
-static const fe sqrtm1 = {{34513072, 25610706,  9377949,  3500415, 12389472,
-                          33281959,   41962654, 31548777, 326685,  11406482}};
+#include "./curve25519_tables.h"
 
 static int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   fe u;
@@ -994,9 +990,6 @@ static void ge_p3_to_p2(ge_p2 *r, const ge_p3 *p) {
   fe_copy(&r->Y, &p->Y);
   fe_copy(&r->Z, &p->Z);
 }
-
-static const fe d2 = {{45281625, 27714825,  36363642, 13898781, 229458,
-                      15978800,  54557047, 27058993,  29715967, 9444199}};
 
 // r = p
 static void x25519_ge_p3_to_cached(ge_cached *r, const ge_p3 *p) {
@@ -1186,12 +1179,6 @@ static void x25519_ge_scalarmult_small_precomp(
     x25519_ge_p1p1_to_p3(h, &r);
   }
 }
-
-#endif // OPENSSL_SMALL
-
-#include "./curve25519_tables.h"
-
-#if defined(OPENSSL_SMALL)
 
 void x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t a[32]) {
   x25519_ge_scalarmult_small_precomp(h, a, k25519SmallPrecomp);
