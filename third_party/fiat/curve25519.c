@@ -204,15 +204,15 @@ static void fe_tobytes_impl(uint8_t *s, const uint32_t h[10]) {
   s[31] = h9 >> 18;
 }
 
-static void fe_tobytes(uint8_t *s, const fe *h) {
+static void fe_tobytes(uint8_t s[32], const fe *h) {
   fe_tobytes_impl(s, h->v);
 }
 
-static void fe_loose_tobytes(uint8_t *s, const fe_loose *h) {
+static void fe_loose_tobytes(uint8_t s[32], const fe_loose *h) {
   fe_tobytes_impl(s, h->v);
 }
 
-void GFp_x25519_fe_tobytes(uint8_t *s, const fe *h) {
+void GFp_x25519_fe_tobytes(uint8_t s[32], const fe *h) {
   fe_tobytes(s, h);
 }
 
@@ -3784,7 +3784,7 @@ void GFp_x25519_ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
 //   s[0]+256*s[1]+...+256^31*s[31] = s mod l
 //   where l = 2^252 + 27742317777372353535851937790883648493.
 //   Overwrites s in place.
-void GFp_x25519_sc_reduce(uint8_t *s) {
+void GFp_x25519_sc_reduce(uint8_t s[64]) {
   int64_t s0 = 2097151 & load_3(s);
   int64_t s1 = 2097151 & (load_4(s + 2) >> 5);
   int64_t s2 = 2097151 & (load_3(s + 5) >> 2);
