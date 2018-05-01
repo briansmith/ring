@@ -227,6 +227,7 @@ func convertWycheproof(jsonPath, txtPath string) error {
 
 func main() {
 	jsonPaths := []string{
+		"aes_cbc_pkcs5_test.json",
 		"aes_gcm_siv_test.json",
 		"aes_gcm_test.json",
 		"chacha20_poly1305_test.json",
@@ -241,9 +242,6 @@ func main() {
 		"eddsa_test.json",
 		"rsa_signature_test.json",
 		"x25519_test.json",
-
-		// TODO(davidben): The following tests still need test drivers.
-		// "aes_cbc_pkcs5_test.json",
 	}
 	for _, jsonPath := range jsonPaths {
 		if !strings.HasSuffix(jsonPath, ".json") {
