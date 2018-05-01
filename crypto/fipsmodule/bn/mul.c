@@ -62,8 +62,8 @@
 #include "internal.h"
 
 
-static void GFp_bn_mul_normal(BN_ULONG *r, BN_ULONG *a, size_t na, BN_ULONG *b,
-                              size_t nb) {
+static void GFp_bn_mul_normal(BN_ULONG *r, const BN_ULONG *a, size_t na,
+                              const BN_ULONG *b, size_t nb) {
   assert(r != a);
   assert(r != b);
 
@@ -71,7 +71,7 @@ static void GFp_bn_mul_normal(BN_ULONG *r, BN_ULONG *a, size_t na, BN_ULONG *b,
     size_t itmp = na;
     na = nb;
     nb = itmp;
-    BN_ULONG *ltmp = a;
+    const BN_ULONG *ltmp = a;
     a = b;
     b = ltmp;
   }
