@@ -279,7 +279,6 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   int max_bits = p->top * BN_BITS2;
   int bits = max_bits;
   assert(bits > 0);
-  assert(bits <= (size_t)INT_MAX);
 
   // Get the window size to use with size of p.
 #if defined(OPENSSL_BN_ASM_MONT5)
