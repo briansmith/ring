@@ -3317,9 +3317,9 @@ static int ssl_check_clienthello_tlsext(SSL_HANDSHAKE *hs) {
   if (ssl->ctx->tlsext_servername_callback != 0) {
     ret = ssl->ctx->tlsext_servername_callback(ssl, &al,
                                                ssl->ctx->tlsext_servername_arg);
-  } else if (hs->config->session_ctx->tlsext_servername_callback != 0) {
-    ret = hs->config->session_ctx->tlsext_servername_callback(
-        ssl, &al, hs->config->session_ctx->tlsext_servername_arg);
+  } else if (ssl->session_ctx->tlsext_servername_callback != 0) {
+    ret = ssl->session_ctx->tlsext_servername_callback(
+        ssl, &al, ssl->session_ctx->tlsext_servername_arg);
   }
 
   switch (ret) {
@@ -3408,7 +3408,7 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_cb(
   ScopedEVP_CIPHER_CTX cipher_ctx;
   ScopedHMAC_CTX hmac_ctx;
   const uint8_t *iv = ticket + SSL_TICKET_KEY_NAME_LEN;
-  int cb_ret = hs->config->session_ctx->tlsext_ticket_key_cb(
+  int cb_ret = hs->ssl->session_ctx->tlsext_ticket_key_cb(
       hs->ssl, (uint8_t *)ticket /* name */, (uint8_t *)iv, cipher_ctx.get(),
       hmac_ctx.get(), 0 /* decrypt */);
   if (cb_ret < 0) {
@@ -3428,7 +3428,7 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_ticket_keys(
     SSL_HANDSHAKE *hs, uint8_t **out, size_t *out_len, const uint8_t *ticket,
     size_t ticket_len) {
   assert(ticket_len >= SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH);
-  SSL_CTX *ctx = hs->config->session_ctx;
+  SSL_CTX *ctx = hs->ssl->session_ctx;
 
   // Rotate the ticket key if necessary.
   if (!ssl_ctx_rotate_ticket_encryption_key(ctx)) {
@@ -3475,7 +3475,7 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_method(
 
   size_t plaintext_len;
   const enum ssl_ticket_aead_result_t result =
-      hs->config->session_ctx->ticket_aead_method->open(
+      hs->ssl->session_ctx->ticket_aead_method->open(
           hs->ssl, plaintext, &plaintext_len, ticket_len, ticket, ticket_len);
 
   if (result == ssl_ticket_aead_success) {
@@ -3503,7 +3503,7 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
   uint8_t *plaintext = NULL;
   size_t plaintext_len;
   enum ssl_ticket_aead_result_t result;
-  if (hs->config->session_ctx->ticket_aead_method != NULL) {
+  if (hs->ssl->session_ctx->ticket_aead_method != NULL) {
     result = ssl_decrypt_ticket_with_method(
         hs, &plaintext, &plaintext_len, out_renew_ticket, ticket, ticket_len);
   } else {
@@ -3514,7 +3514,7 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
     if (ticket_len < SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH) {
       return ssl_ticket_aead_ignore_ticket;
     }
-    if (hs->config->session_ctx->tlsext_ticket_key_cb != NULL) {
+    if (hs->ssl->session_ctx->tlsext_ticket_key_cb != NULL) {
       result = ssl_decrypt_ticket_with_cb(hs, &plaintext, &plaintext_len,
                                           out_renew_ticket, ticket, ticket_len);
     } else {

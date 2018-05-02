@@ -381,13 +381,13 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
   if (version >= TLS1_3_VERSION) {
     // TLS 1.3 uses tickets as authenticators, so we are willing to use them for
     // longer.
-    session->timeout = hs->config->session_ctx->session_psk_dhe_timeout;
+    session->timeout = ssl->session_ctx->session_psk_dhe_timeout;
     session->auth_timeout = SSL_DEFAULT_SESSION_AUTH_TIMEOUT;
   } else {
     // TLS 1.2 resumption does not incorporate new key material, so we use a
     // much shorter timeout.
-    session->timeout = hs->config->session_ctx->session_timeout;
-    session->auth_timeout = hs->config->session_ctx->session_timeout;
+    session->timeout = ssl->session_ctx->session_timeout;
+    session->auth_timeout = ssl->session_ctx->session_timeout;
   }
 
   if (is_server) {
@@ -493,7 +493,7 @@ static int ssl_encrypt_ticket_with_cipher_ctx(SSL_HANDSHAKE *hs, CBB *out,
 
   // Initialize HMAC and cipher contexts. If callback present it does all the
   // work otherwise use generated values from parent ctx.
-  SSL_CTX *tctx = hs->config->session_ctx;
+  SSL_CTX *tctx = hs->ssl->session_ctx;
   uint8_t iv[EVP_MAX_IV_LENGTH];
   uint8_t key_name[16];
   if (tctx->tlsext_ticket_key_cb != NULL) {
@@ -557,9 +557,9 @@ static int ssl_encrypt_ticket_with_cipher_ctx(SSL_HANDSHAKE *hs, CBB *out,
 static int ssl_encrypt_ticket_with_method(SSL_HANDSHAKE *hs, CBB *out,
                                           const uint8_t *session_buf,
                                           size_t session_len) {
-  const SSL_TICKET_AEAD_METHOD *method =
-      hs->config->session_ctx->ticket_aead_method;
-  const size_t max_overhead = method->max_overhead(hs->ssl);
+  SSL *const ssl = hs->ssl;
+  const SSL_TICKET_AEAD_METHOD *method = ssl->session_ctx->ticket_aead_method;
+  const size_t max_overhead = method->max_overhead(ssl);
   const size_t max_out = session_len + max_overhead;
   if (max_out < max_overhead) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
@@ -572,7 +572,7 @@ static int ssl_encrypt_ticket_with_method(SSL_HANDSHAKE *hs, CBB *out,
   }
 
   size_t out_len;
-  if (!method->seal(hs->ssl, ptr, &out_len, max_out, session_buf,
+  if (!method->seal(ssl, ptr, &out_len, max_out, session_buf,
                     session_len)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_TICKET_ENCRYPTION_FAILED);
     return 0;
@@ -595,7 +595,7 @@ int ssl_encrypt_ticket(SSL_HANDSHAKE *hs, CBB *out,
   }
 
   int ret = 0;
-  if (hs->config->session_ctx->ticket_aead_method) {
+  if (hs->ssl->session_ctx->ticket_aead_method) {
     ret = ssl_encrypt_ticket_with_method(hs, out, session_buf, session_len);
   } else {
     ret = ssl_encrypt_ticket_with_cipher_ctx(hs, out, session_buf, session_len);
@@ -660,6 +660,7 @@ int ssl_session_is_resumable(const SSL_HANDSHAKE *hs,
 static enum ssl_hs_wait_t ssl_lookup_session(
     SSL_HANDSHAKE *hs, UniquePtr<SSL_SESSION> *out_session,
     const uint8_t *session_id, size_t session_id_len) {
+  SSL *const ssl = hs->ssl;
   out_session->reset();
 
   if (session_id_len == 0 || session_id_len > SSL_MAX_SSL_SESSION_ID_LENGTH) {
@@ -668,16 +669,15 @@ static enum ssl_hs_wait_t ssl_lookup_session(
 
   UniquePtr<SSL_SESSION> session;
   // Try the internal cache, if it exists.
-  if (!(hs->config->session_ctx->session_cache_mode &
+  if (!(ssl->session_ctx->session_cache_mode &
         SSL_SESS_CACHE_NO_INTERNAL_LOOKUP)) {
     SSL_SESSION data;
-    data.ssl_version = hs->ssl->version;
+    data.ssl_version = ssl->version;
     data.session_id_length = session_id_len;
     OPENSSL_memcpy(data.session_id, session_id, session_id_len);
 
-    MutexReadLock lock(&hs->config->session_ctx->lock);
-    session.reset(
-        lh_SSL_SESSION_retrieve(hs->config->session_ctx->sessions, &data));
+    MutexReadLock lock(&ssl->session_ctx->lock);
+    session.reset(lh_SSL_SESSION_retrieve(ssl->session_ctx->sessions, &data));
     if (session) {
       // |lh_SSL_SESSION_retrieve| returns a non-owning pointer.
       SSL_SESSION_up_ref(session.get());
@@ -686,10 +686,10 @@ static enum ssl_hs_wait_t ssl_lookup_session(
   }
 
   // Fall back to the external cache, if it exists.
-  if (!session && hs->config->session_ctx->get_session_cb != nullptr) {
+  if (!session && ssl->session_ctx->get_session_cb != nullptr) {
     int copy = 1;
-    session.reset(hs->config->session_ctx->get_session_cb(
-        hs->ssl, session_id, session_id_len, &copy));
+    session.reset(ssl->session_ctx->get_session_cb(ssl, session_id,
+                                                   session_id_len, &copy));
     if (!session) {
       return ssl_hs_ok;
     }
@@ -708,15 +708,15 @@ static enum ssl_hs_wait_t ssl_lookup_session(
     }
 
     // Add the externally cached session to the internal cache if necessary.
-    if (!(hs->config->session_ctx->session_cache_mode &
+    if (!(ssl->session_ctx->session_cache_mode &
           SSL_SESS_CACHE_NO_INTERNAL_STORE)) {
-      SSL_CTX_add_session(hs->config->session_ctx, session.get());
+      SSL_CTX_add_session(ssl->session_ctx, session.get());
     }
   }
 
-  if (session && !ssl_session_is_time_valid(hs->ssl, session.get())) {
+  if (session && !ssl_session_is_time_valid(ssl, session.get())) {
     // The session was from the cache, so remove it.
-    SSL_CTX_remove_session(hs->config->session_ctx, session.get());
+    SSL_CTX_remove_session(ssl->session_ctx, session.get());
     session.reset();
   }
 

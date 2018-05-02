@@ -274,7 +274,7 @@ ssl_open_record_t ssl_open_app_data(SSL *ssl, Span<uint8_t> *out,
 
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
   SSL *const ssl = hs->ssl;
-  SSL_CTX *ctx = hs->config->session_ctx;
+  SSL_CTX *ctx = ssl->session_ctx;
   // Never cache sessions with empty session IDs.
   if (ssl->s3->established_session->session_id_length == 0 ||
       ssl->s3->established_session->not_resumable ||
@@ -728,7 +728,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
   SSL_CTX_up_ref(ctx);
   ssl->ctx = ctx;
   SSL_CTX_up_ref(ctx);
-  ssl->config->session_ctx = ctx;
+  ssl->session_ctx = ctx;
 
   if (ctx->supported_group_list) {
     ssl->config->supported_group_list = (uint16_t *)BUF_memdup(
@@ -806,7 +806,6 @@ SSL_CONFIG::~SSL_CONFIG() {
   }
   Delete(cipher_list);
   Delete(cert);
-  SSL_CTX_free(session_ctx);
   OPENSSL_free(supported_group_list);
   OPENSSL_free(alpn_client_proto_list);
   OPENSSL_free(token_binding_params);
@@ -838,6 +837,7 @@ void SSL_free(SSL *ssl) {
     ssl->method->ssl_free(ssl);
   }
   SSL_CTX_free(ssl->ctx);
+  SSL_CTX_free(ssl->session_ctx);
 
   OPENSSL_free(ssl);
 }
@@ -2377,7 +2377,7 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
   }
 
   if (ctx == NULL) {
-    ctx = ssl->config->session_ctx;
+    ctx = ssl->session_ctx;
   }
 
   Delete(ssl->config->cert);

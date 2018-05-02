@@ -2649,10 +2649,6 @@ struct SSL_CONFIG {
   size_t supported_group_list_len = 0;
   uint16_t *supported_group_list = nullptr;  // our list
 
-  // session_ctx is the |SSL_CTX| used for the session cache and related
-  // settings.
-  SSL_CTX *session_ctx = nullptr;
-
   // The client's Channel ID private key.
   EVP_PKEY *tlsext_channel_id_private = nullptr;
 
@@ -2754,6 +2750,10 @@ struct SSLConnection {
   void (*info_callback)(const SSL *ssl, int type, int value);
 
   SSL_CTX *ctx;
+
+  // session_ctx is the |SSL_CTX| used for the session cache and related
+  // settings.
+  SSL_CTX *session_ctx;
 
   // extra application data
   CRYPTO_EX_DATA ex_data;

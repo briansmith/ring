@@ -335,7 +335,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
     // Resumption incorporates fresh key material, so refresh the timeout.
     ssl_session_renew_timeout(ssl, hs->new_session.get(),
-                              hs->config->session_ctx->session_psk_dhe_timeout);
+                              ssl->session_ctx->session_psk_dhe_timeout);
   } else if (!ssl_get_new_session(hs, 0)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
@@ -877,9 +877,9 @@ int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
   session->ticket_age_add_valid = 1;
   session->not_resumable = 0;
 
-  if ((ssl->ctx->session_cache_mode & SSL_SESS_CACHE_CLIENT) &&
-      ssl->ctx->new_session_cb != NULL &&
-      ssl->ctx->new_session_cb(ssl, session.get())) {
+  if ((ssl->session_ctx->session_cache_mode & SSL_SESS_CACHE_CLIENT) &&
+      ssl->session_ctx->new_session_cb != NULL &&
+      ssl->session_ctx->new_session_cb(ssl, session.get())) {
     // |new_session_cb|'s return value signals that it took ownership.
     session.release();
   }

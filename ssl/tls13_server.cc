@@ -408,9 +408,8 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       ssl->s3->session_reused = true;
 
       // Resumption incorporates fresh key material, so refresh the timeout.
-      ssl_session_renew_timeout(
-          ssl, hs->new_session.get(),
-          hs->config->session_ctx->session_psk_dhe_timeout);
+      ssl_session_renew_timeout(ssl, hs->new_session.get(),
+                                ssl->session_ctx->session_psk_dhe_timeout);
       break;
 
     case ssl_ticket_aead_error:
