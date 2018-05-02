@@ -198,23 +198,22 @@ int SSL_CTX_set_srtp_profiles(SSL_CTX *ctx, const char *profiles) {
 }
 
 int SSL_set_srtp_profiles(SSL *ssl, const char *profiles) {
-  return ssl_ctx_make_profiles(profiles, &ssl->srtp_profiles);
+  return ssl->config != nullptr &&
+         ssl_ctx_make_profiles(profiles, &ssl->config->srtp_profiles);
 }
 
 STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(SSL *ssl) {
-  if (ssl == NULL) {
-    return NULL;
+  if (ssl == nullptr) {
+    return nullptr;
   }
 
-  if (ssl->srtp_profiles != NULL) {
-    return ssl->srtp_profiles;
+  if (ssl->config == nullptr) {
+    assert(0);
+    return nullptr;
   }
 
-  if (ssl->ctx->srtp_profiles != NULL) {
-    return ssl->ctx->srtp_profiles;
-  }
-
-  return NULL;
+  return ssl->config->srtp_profiles != nullptr ? ssl->config->srtp_profiles
+                                               : ssl->ctx->srtp_profiles;
 }
 
 const SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *ssl) {

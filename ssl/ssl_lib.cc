@@ -806,12 +806,13 @@ SSL_CONFIG::~SSL_CONFIG() {
   }
   Delete(cipher_list);
   Delete(cert);
+  OPENSSL_free(psk_identity_hint);
   OPENSSL_free(supported_group_list);
+  EVP_PKEY_free(tlsext_channel_id_private);
   OPENSSL_free(alpn_client_proto_list);
   OPENSSL_free(token_binding_params);
   OPENSSL_free(quic_transport_params);
-  EVP_PKEY_free(tlsext_channel_id_private);
-  OPENSSL_free(psk_identity_hint);
+  sk_SRTP_PROTECTION_PROFILE_free(srtp_profiles);
   sk_CRYPTO_BUFFER_pop_free(client_CA, CRYPTO_BUFFER_free);
 }
 
@@ -831,7 +832,6 @@ void SSL_free(SSL *ssl) {
   SSL_SESSION_free(ssl->session);
 
   OPENSSL_free(ssl->tlsext_hostname);
-  sk_SRTP_PROTECTION_PROFILE_free(ssl->srtp_profiles);
 
   if (ssl->method != NULL) {
     ssl->method->ssl_free(ssl);

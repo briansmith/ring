@@ -2665,6 +2665,10 @@ struct SSL_CONFIG {
   uint8_t *quic_transport_params = nullptr;
   size_t quic_transport_params_len = 0;
 
+  // srtp_profiles is the list of configured SRTP protection profiles for
+  // DTLS-SRTP.
+  STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles = nullptr;
+
   // verify_mode is a bitmask of |SSL_VERIFY_*| values.
   uint8_t verify_mode = SSL_VERIFY_NONE;
 
@@ -2762,10 +2766,6 @@ struct SSLConnection {
   uint32_t mode;     // API behaviour
   uint32_t max_cert_list;
   char *tlsext_hostname;
-
-  // srtp_profiles is the list of configured SRTP protection profiles for
-  // DTLS-SRTP.
-  STACK_OF(SRTP_PROTECTION_PROFILE) * srtp_profiles;
 
   // renegotiate_mode controls how peer renegotiation attempts are handled.
   enum ssl_renegotiate_mode_t renegotiate_mode;
