@@ -155,6 +155,15 @@ func (c *Conn) clientHandshake() error {
 		}
 	}
 
+	if c.config.Bugs.DuplicateCompressedCertAlgs {
+		hello.compressedCertAlgs = []uint16{1, 1}
+	} else if len(c.config.CertCompressionAlgs) > 0 {
+		hello.compressedCertAlgs = make([]uint16, 0, len(c.config.CertCompressionAlgs))
+		for id, _ := range c.config.CertCompressionAlgs {
+			hello.compressedCertAlgs = append(hello.compressedCertAlgs, uint16(id))
+		}
+	}
+
 	if c.noRenegotiationInfo() {
 		hello.secureRenegotiation = nil
 	}
@@ -864,12 +873,46 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 			}
 		}
 
-		certMsg, ok := msg.(*certificateMsg)
-		if !ok {
-			c.sendAlert(alertUnexpectedMessage)
-			return unexpectedMessageError(certMsg, msg)
+		var certMsg *certificateMsg
+
+		if compressedCertMsg, ok := msg.(*compressedCertificateMsg); ok {
+			hs.writeServerHash(compressedCertMsg.marshal())
+
+			alg, ok := c.config.CertCompressionAlgs[compressedCertMsg.algID]
+			if !ok {
+				c.sendAlert(alertBadCertificate)
+				return fmt.Errorf("tls: received certificate compressed with unknown algorithm %x", compressedCertMsg.algID)
+			}
+
+			decompressed := make([]byte, 4+int(compressedCertMsg.uncompressedLength))
+			if !alg.Decompress(decompressed[4:], compressedCertMsg.compressed) {
+				c.sendAlert(alertBadCertificate)
+				return fmt.Errorf("tls: failed to decompress certificate with algorithm %x", compressedCertMsg.algID)
+			}
+
+			certMsg = &certificateMsg{
+				hasRequestContext: true,
+			}
+
+			if !certMsg.unmarshal(decompressed) {
+				c.sendAlert(alertBadCertificate)
+				return errors.New("tls: failed to parse decompressed certificate")
+			}
+
+			if expected := c.config.Bugs.ExpectedCompressedCert; expected != 0 && expected != compressedCertMsg.algID {
+				return fmt.Errorf("tls: expected certificate compressed with algorithm %x, but message used %x", expected, compressedCertMsg.algID)
+			}
+		} else {
+			if certMsg, ok = msg.(*certificateMsg); !ok {
+				c.sendAlert(alertUnexpectedMessage)
+				return unexpectedMessageError(certMsg, msg)
+			}
+			hs.writeServerHash(certMsg.marshal())
+
+			if c.config.Bugs.ExpectedCompressedCert != 0 {
+				return errors.New("tls: uncompressed certificate received")
+			}
 		}
-		hs.writeServerHash(certMsg.marshal())
 
 		// Check for unsolicited extensions.
 		for i, cert := range certMsg.certificates {

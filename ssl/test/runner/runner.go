@@ -14396,6 +14396,158 @@ func addOmitExtensionsTests() {
 	}
 }
 
+func addCertCompressionTests() {
+	// shrinkingPrefix is the first two bytes of a Certificate message.
+	shrinkingPrefix := []byte{0, 0}
+	// expandingPrefix is just some arbitrary byte string. This has to match the
+	// value in the shim.
+	expandingPrefix := []byte{1, 2, 3, 4}
+
+	shinking := CertCompressionAlg{
+		Compress: func(uncompressed []byte) []byte {
+			if !bytes.HasPrefix(uncompressed, shrinkingPrefix) {
+				panic(fmt.Sprintf("cannot compress certificate message %x", uncompressed))
+			}
+			return uncompressed[len(shrinkingPrefix):]
+		},
+		Decompress: func(out []byte, compressed []byte) bool {
+			if len(out) != len(shrinkingPrefix)+len(compressed) {
+				return false
+			}
+
+			copy(out, shrinkingPrefix)
+			copy(out[len(shrinkingPrefix):], compressed)
+			return true
+		},
+	}
+
+	expanding := CertCompressionAlg{
+		Compress: func(uncompressed []byte) []byte {
+			ret := make([]byte, 0, len(expandingPrefix)+len(uncompressed))
+			ret = append(ret, expandingPrefix...)
+			return append(ret, uncompressed...)
+		},
+		Decompress: func(out []byte, compressed []byte) bool {
+			if !bytes.HasPrefix(compressed, expandingPrefix) {
+				return false
+			}
+			copy(out, compressed[len(expandingPrefix):])
+			return true
+		},
+	}
+
+	const (
+		shrinkingAlgId = 0xff01
+		expandingAlgId = 0xff02
+	)
+
+	for _, ver := range tlsVersions {
+		if ver.version < VersionTLS12 {
+			continue
+		}
+
+		// Duplicate compression algorithms is an error, even if nothing is
+		// configured.
+		testCases = append(testCases, testCase{
+			testType:     serverTest,
+			name:         "DuplicateCertCompressionExt-" + ver.name,
+			tls13Variant: ver.tls13Variant,
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					DuplicateCompressedCertAlgs: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":ERROR_PARSING_EXTENSION:",
+		})
+
+		// With compression algorithms configured, an duplicate values should still
+		// be an error.
+		testCases = append(testCases, testCase{
+			testType:     serverTest,
+			name:         "DuplicateCertCompressionExt2-" + ver.name,
+			tls13Variant: ver.tls13Variant,
+			flags:        []string{"-install-cert-compression-algs"},
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					DuplicateCompressedCertAlgs: true,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":ERROR_PARSING_EXTENSION:",
+		})
+
+		if ver.version < VersionTLS13 {
+			testCases = append(testCases, testCase{
+				testType: serverTest,
+				name:     "CertCompressionIgnoredBefore13-" + ver.name,
+				flags:    []string{"-install-cert-compression-algs"},
+				config: Config{
+					MinVersion:          ver.version,
+					MaxVersion:          ver.version,
+					CertCompressionAlgs: map[uint16]CertCompressionAlg{expandingAlgId: expanding},
+				},
+			})
+
+			continue
+		}
+
+		testCases = append(testCases, testCase{
+			testType:     serverTest,
+			name:         "CertCompressionExpands-" + ver.name,
+			tls13Variant: ver.tls13Variant,
+			flags:        []string{"-install-cert-compression-algs"},
+			config: Config{
+				MinVersion:          ver.version,
+				MaxVersion:          ver.version,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{expandingAlgId: expanding},
+				Bugs: ProtocolBugs{
+					ExpectedCompressedCert: expandingAlgId,
+				},
+			},
+		})
+
+		testCases = append(testCases, testCase{
+			testType:     serverTest,
+			name:         "CertCompressionShrinks-" + ver.name,
+			tls13Variant: ver.tls13Variant,
+			flags:        []string{"-install-cert-compression-algs"},
+			config: Config{
+				MinVersion:          ver.version,
+				MaxVersion:          ver.version,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{shrinkingAlgId: shinking},
+				Bugs: ProtocolBugs{
+					ExpectedCompressedCert: shrinkingAlgId,
+				},
+			},
+		})
+
+		// With both algorithms configured, the server should pick its most
+		// preferable. (Which is expandingAlgId.)
+		testCases = append(testCases, testCase{
+			testType:     serverTest,
+			name:         "CertCompressionPriority-" + ver.name,
+			tls13Variant: ver.tls13Variant,
+			flags:        []string{"-install-cert-compression-algs"},
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{
+					shrinkingAlgId: shinking,
+					expandingAlgId: expanding,
+				},
+				Bugs: ProtocolBugs{
+					ExpectedCompressedCert: expandingAlgId,
+				},
+			},
+		})
+	}
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -14524,6 +14676,7 @@ func main() {
 	addECDSAKeyUsageTests()
 	addExtraHandshakeTests()
 	addOmitExtensionsTests()
+	addCertCompressionTests()
 
 	testCases = append(testCases, convertToSplitHandshakeTests(testCases)...)
 

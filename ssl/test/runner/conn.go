@@ -1368,9 +1368,11 @@ func (c *Conn) readHandshake() (interface{}, error) {
 		m = &certificateMsg{
 			hasRequestContext: c.vers >= VersionTLS13,
 		}
+	case typeCompressedCertificate:
+		m = new(compressedCertificateMsg)
 	case typeCertificateRequest:
 		m = &certificateRequestMsg{
-			vers: c.wireVersion,
+			vers:                  c.wireVersion,
 			hasSignatureAlgorithm: c.vers >= VersionTLS12,
 			hasRequestContext:     c.vers >= VersionTLS13,
 		}
@@ -1806,7 +1808,7 @@ func (c *Conn) Handshake() error {
 	if c.isDTLS && c.config.Bugs.SendSplitAlert {
 		c.conn.Write([]byte{
 			byte(recordTypeAlert), // type
-			0xfe, 0xff, // version
+			0xfe, 0xff,            // version
 			0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, // sequence
 			0x0, 0x2, // length
 		})

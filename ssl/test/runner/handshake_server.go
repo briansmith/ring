@@ -834,7 +834,7 @@ ResendHelloRetryRequest:
 		if config.ClientAuth >= RequestClientCert {
 			// Request a client certificate
 			certReq := &certificateRequestMsg{
-				vers: c.wireVersion,
+				vers:                  c.wireVersion,
 				hasSignatureAlgorithm: !config.Bugs.OmitCertificateRequestAlgorithms,
 				hasRequestContext:     true,
 				requestContext:        config.Bugs.SendRequestContext,

@@ -147,7 +147,8 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       extended_master_secret(false),
       pending_private_key_op(false),
       grease_seeded(false),
-      handback(false) {
+      handback(false),
+      cert_compression_negotiated(false) {
   assert(ssl);
 }
 

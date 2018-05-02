@@ -141,6 +141,8 @@ const Flag<bool> kBoolFlags[] = {
   { "-set-ocsp-in-callback", &TestConfig::set_ocsp_in_callback },
   { "-decline-ocsp-callback", &TestConfig::decline_ocsp_callback },
   { "-fail-ocsp-callback", &TestConfig::fail_ocsp_callback },
+  { "-install-cert-compression-algs",
+    &TestConfig::install_cert_compression_algs },
 };
 
 const Flag<std::string> kStringFlags[] = {

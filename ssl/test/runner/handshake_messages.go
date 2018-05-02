@@ -296,6 +296,7 @@ type clientHelloMsg struct {
 	emptyExtensions         bool
 	pad                     int
 	dummyPQPaddingLen       int
+	compressedCertAlgs      []uint16
 }
 
 func (m *clientHelloMsg) equal(i interface{}) bool {
@@ -349,7 +350,8 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.omitExtensions == m1.omitExtensions &&
 		m.emptyExtensions == m1.emptyExtensions &&
 		m.pad == m1.pad &&
-		m.dummyPQPaddingLen == m1.dummyPQPaddingLen
+		m.dummyPQPaddingLen == m1.dummyPQPaddingLen &&
+		eqUint16s(m.compressedCertAlgs, m1.compressedCertAlgs)
 }
 
 func (m *clientHelloMsg) marshal() []byte {
@@ -585,6 +587,14 @@ func (m *clientHelloMsg) marshal() []byte {
 		extensions.addU16(extensionDummyPQPadding)
 		body := extensions.addU16LengthPrefixed()
 		body.addBytes(make([]byte, l))
+	}
+	if len(m.compressedCertAlgs) > 0 {
+		extensions.addU16(extensionCompressedCertAlgs)
+		body := extensions.addU16LengthPrefixed()
+		algIDs := body.addU8LengthPrefixed()
+		for _, v := range m.compressedCertAlgs {
+			algIDs.addU16(v)
+		}
 	}
 	// The PSK extension must be last (draft-ietf-tls-tls13-18 section 4.2.6).
 	if len(m.pskIdentities) > 0 && !m.pskBinderFirst {
@@ -903,6 +913,24 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 			m.dummyPQPaddingLen = len(body)
+		case extensionCompressedCertAlgs:
+			var algIDs byteReader
+			if !body.readU8LengthPrefixed(&algIDs) {
+				return false
+			}
+
+			seen := make(map[uint16]struct{})
+			for len(algIDs) > 0 {
+				var algID uint16
+				if !algIDs.readU16(&algID) {
+					return false
+				}
+				if _, ok := seen[algID]; ok {
+					return false
+				}
+				seen[algID] = struct{}{}
+				m.compressedCertAlgs = append(m.compressedCertAlgs, algID)
+			}
 		}
 
 		if isGREASEValue(extension) {
@@ -1666,6 +1694,48 @@ func (m *certificateMsg) unmarshal(data []byte) bool {
 			}
 		}
 		m.certificates = append(m.certificates, cert)
+	}
+
+	return true
+}
+
+type compressedCertificateMsg struct {
+	raw                []byte
+	algID              uint16
+	uncompressedLength uint32
+	compressed         []byte
+}
+
+func (m *compressedCertificateMsg) marshal() (x []byte) {
+	if m.raw != nil {
+		return m.raw
+	}
+
+	certMsg := newByteBuilder()
+	certMsg.addU8(typeCertificate)
+	certificate := certMsg.addU24LengthPrefixed()
+	certificate.addU16(m.algID)
+	certificate.addU24(int(m.uncompressedLength))
+	compressed := certificate.addU24LengthPrefixed()
+	compressed.addBytes(m.compressed)
+
+	m.raw = certMsg.finish()
+	return m.raw
+}
+
+func (m *compressedCertificateMsg) unmarshal(data []byte) bool {
+	m.raw = data
+	reader := byteReader(data[4:])
+
+	if !reader.readU16(&m.algID) ||
+		!reader.readU24(&m.uncompressedLength) ||
+		!reader.readU24LengthPrefixedBytes(&m.compressed) ||
+		len(reader) != 0 {
+		return false
+	}
+
+	if m.uncompressedLength >= 1<<17 {
+		return false
 	}
 
 	return true

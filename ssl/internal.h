@@ -1481,6 +1481,11 @@ struct SSL_HANDSHAKE {
   // sent.
   uint16_t negotiated_token_binding_version;
 
+  // cert_compression_alg_id, for a server, contains the negotiated certificate
+  // compression algorithm for this client. It is only valid if
+  // |cert_compression_negotiated| is true.
+  uint16_t cert_compression_alg_id;
+
   // server_params, in a TLS 1.2 server, stores the ServerKeyExchange
   // parameters. It has client and server randoms prepended for signing
   // convenience.
@@ -1595,6 +1600,14 @@ struct SSL_HANDSHAKE {
   // grease_seeded is true if |grease_seed| has been initialized.
   bool grease_seeded:1;
 
+  // handback indicates that a server should pause the handshake after
+  // finishing operations that require private key material, in such a way that
+  // |SSL_get_error| returns |SSL_HANDBACK|.  It is set by |SSL_apply_handoff|.
+  bool handback:1;
+
+  // cert_compression_negotiated is true iff |cert_compression_alg_id| is valid.
+  bool cert_compression_negotiated:1;
+
   // client_version is the value sent or received in the ClientHello version.
   uint16_t client_version = 0;
 
@@ -1619,11 +1632,6 @@ struct SSL_HANDSHAKE {
   // should be echoed in a ServerHello, or zero if no extension should be
   // echoed.
   uint16_t dummy_pq_padding_len = 0;
-
-  // handback indicates that a server should pause the handshake after
-  // finishing operations that require private key material, in such a way that
-  // |SSL_get_error| returns |SSL_HANDBACK|.  It is set by |SSL_apply_handoff|.
-  bool handback : 1;
 };
 
 UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl);
@@ -1987,6 +1995,14 @@ struct tlsext_ticket_key {
 
 DECLARE_LHASH_OF(SSL_SESSION)
 
+struct CertCompressionAlg {
+  bssl::CertCompressFunc compress;
+  bssl::CertDecompressFunc decompress;
+  uint16_t alg_id;
+};
+
+DEFINE_STACK_OF(CertCompressionAlg);
+
 namespace bssl {
 
 // SSLContext backs the public |SSL_CTX| type. Due to compatibility constraints,
@@ -2191,6 +2207,9 @@ struct SSLContext {
 
   // SRTP profiles we are willing to do from RFC 5764
   STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles;
+
+  // Defined compression algorithms for certificates.
+  STACK_OF(CertCompressionAlg) *cert_compression_algs;
 
   // Supported group values inherited by SSL structure
   size_t supported_group_list_len;

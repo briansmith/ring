@@ -161,6 +161,7 @@ struct TestConfig {
   bool set_ocsp_in_callback = false;
   bool decline_ocsp_callback = false;
   bool fail_ocsp_callback = false;
+  bool install_cert_compression_algs = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_initial,

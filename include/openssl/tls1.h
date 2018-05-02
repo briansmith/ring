@@ -205,8 +205,14 @@ extern "C" {
 // ExtensionType value from draft-ietf-tokbind-negotiation-10
 #define TLSEXT_TYPE_token_binding 24
 
-// ExtensionType value from draft-ietf-quic-tls
+// ExtensionType value from draft-ietf-quic-tls. Note that this collides with
+// TLS-LTS and, based on scans, something else too. Since it's QUIC-only, that
+// shouldn't be a problem in practice.
 #define TLSEXT_TYPE_quic_transport_parameters 26
+
+// ExtensionType value assigned to
+// https://tools.ietf.org/html/draft-ietf-tls-certificate-compression-03
+#define TLSEXT_TYPE_cert_compression 27
 
 // ExtensionType value from RFC4507
 #define TLSEXT_TYPE_session_ticket 35

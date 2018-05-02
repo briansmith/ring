@@ -4565,6 +4565,50 @@ BORINGSSL_MAKE_DELETER(SSL, SSL_free)
 BORINGSSL_MAKE_DELETER(SSL_CTX, SSL_CTX_free)
 BORINGSSL_MAKE_DELETER(SSL_SESSION, SSL_SESSION_free)
 
+// Certificate compression.
+//
+// Certificates in TLS 1.3 can be compressed[1]. BoringSSL supports this as both
+// a client and a server, but does not link against any specific compression
+// libraries in order to keep dependencies to a minimum. Instead, hooks for
+// compression and decompression can be installed in an |SSL_CTX| to enable
+// support.
+//
+// [1] https://tools.ietf.org/html/draft-ietf-tls-certificate-compression-03.
+
+// CertCompressFunc is a pointer to a function that performs compression. It
+// must write the compressed representation of |in| to |out|, returning one on
+// success and zero on error. The results of compressing certificates are not
+// cached internally. Implementations may wish to implement their own cache if
+// they expect it to be useful given the certificates that they serve.
+typedef bool (*CertCompressFunc)(SSL *ssl, CBB *out, Span<const uint8_t> in);
+
+// CertDecompressFunc is a pointer to a function that performs decompression.
+// The compressed data from the peer is passed as |in| and the decompressed
+// result must be exactly |uncompressed_len| bytes long. It returns one on
+// success, in which case |*out| must be set to the results of decompressing
+// |in|, or zero on error. The results of decompression are not cached
+// internally. Implementations may wish to implement their own cache if they
+// expect it to be useful.
+typedef bool (*CertDecompressFunc)(SSL *ssl,
+                                   bssl::UniquePtr<CRYPTO_BUFFER> *out,
+                                   size_t uncompressed_len,
+                                   Span<const uint8_t> in);
+
+// SSL_CTX_add_cert_compression_alg registers a certificate compression
+// algorithm on |ctx| with ID |alg_id|. (The value of |alg_id| should be an IANA
+// assigned value and each can only be registered once.)
+//
+// One of the function pointers may be nullptr to avoid having to implement both
+// sides of a compression algorithm if you're only going to use it in one
+// direction. In this case, the unimplemented direction acts like it was never
+// configured.
+//
+// For a server, algorithms are registered in preference order with the most
+// preferable first. It returns one on success or zero on error.
+OPENSSL_EXPORT int SSL_CTX_add_cert_compression_alg(
+    SSL_CTX *ctx, uint16_t alg_id, CertCompressFunc compress,
+    CertDecompressFunc decompress);
+
 enum class OpenRecordResult {
   kOK,
   kDiscard,
