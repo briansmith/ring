@@ -1615,7 +1615,7 @@ int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   if (fe_isnonzero(&check)) {
     fe_add(&check, &vxx, &u);
     if (fe_isnonzero(&check)) {
-      return -1;
+      return 0;
     }
     fe_mul_ttt(&h->X, &h->X, &sqrtm1);
   }
@@ -1627,7 +1627,7 @@ int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   }
 
   fe_mul_ttt(&h->T, &h->X, &h->Y);
-  return 0;
+  return 1;
 }
 
 static void ge_p2_0(ge_p2 *h) {
@@ -2996,7 +2996,7 @@ int ED25519_verify(const uint8_t *message, size_t message_len,
                    const uint8_t signature[64], const uint8_t public_key[32]) {
   ge_p3 A;
   if ((signature[63] & 224) != 0 ||
-      x25519_ge_frombytes_vartime(&A, public_key) != 0) {
+      !x25519_ge_frombytes_vartime(&A, public_key)) {
     return 0;
   }
 
@@ -3062,7 +3062,7 @@ void ED25519_keypair_from_seed(uint8_t out_public_key[32],
   SHA512(seed, 32, az);
 
   az[0] &= 248;
-  az[31] &= 63;
+  az[31] &= 127;
   az[31] |= 64;
 
   ge_p3 A;
@@ -3184,9 +3184,9 @@ void X25519_keypair(uint8_t out_public_value[32], uint8_t out_private_key[32]) {
   // This does not affect security because, although we're throwing away
   // entropy, a valid implementation of scalarmult should throw away the exact
   // same bits anyway.
-  out_private_key[0] |= 7;
-  out_private_key[31] &= 63;
-  out_private_key[31] |= 128;
+  out_private_key[0] |= ~248;
+  out_private_key[31] &= ~64;
+  out_private_key[31] |= ~127;
 
   X25519_public_from_private(out_public_value, out_private_key);
 }
