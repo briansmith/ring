@@ -80,11 +80,7 @@ void GFp_BN_free(BIGNUM *bn) {
     OPENSSL_free(bn->d);
   }
 
-  if (bn->flags & BN_FLG_MALLOCED) {
-    OPENSSL_free(bn);
-  } else {
-    bn->d = NULL;
-  }
+  bn->d = NULL;
 }
 
 int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src) {
