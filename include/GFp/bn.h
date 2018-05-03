@@ -242,10 +242,7 @@ struct bignum_st {
                // order.
   int top;     // Index of last used element in |d|, plus one.
   int dmax;    // Size of |d|, in words.
-  int flags;   // bitmask of BN_FLG_* values
 };
-
-#define BN_FLG_STATIC_DATA 0x02
 
 
 #if defined(__cplusplus)

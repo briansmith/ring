@@ -1055,15 +1055,11 @@ mod repr_c {
         d: *mut limb::Limb,
         top: c::int,
         dmax: c::int,
-        flags: c::int,
     }
 
     impl Drop for BIGNUM {
         fn drop(&mut self) {
             // Keep this in sync with `GFp_BN_free()`.
-
-            // In particular, this doesn't work for `BN_FLG_STATIC_DATA`.
-            assert_eq!(self.flags, 0);
             unsafe {
                 let d: *mut limb::Limb = self.d;
                 libc::free(d as *mut libc::c_void)
@@ -1077,7 +1073,6 @@ mod repr_c {
                 d: core::ptr::null_mut(),
                 top: 0,
                 dmax: 0,
-                flags: 0,
             }
         }
 

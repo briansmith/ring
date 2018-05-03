@@ -76,9 +76,7 @@ void GFp_BN_free(BIGNUM *bn) {
     return;
   }
 
-  if ((bn->flags & BN_FLG_STATIC_DATA) == 0) {
-    OPENSSL_free(bn->d);
-  }
+  OPENSSL_free(bn->d);
 
   bn->d = NULL;
 }
@@ -112,10 +110,6 @@ int GFp_bn_wexpand(BIGNUM *bn, size_t words) {
   }
 
   if (words > (INT_MAX / (4 * BN_BITS2))) {
-    return 0;
-  }
-
-  if (bn->flags & BN_FLG_STATIC_DATA) {
     return 0;
   }
 
