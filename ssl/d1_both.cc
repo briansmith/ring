@@ -550,7 +550,7 @@ static bool add_outgoing(SSL *ssl, bool is_ccs, Array<uint8_t> data) {
                     (1 << 8 * sizeof(ssl->d1->outgoing_messages_len)),
                 "outgoing_messages_len is too small");
   if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT ||
-      data.size() > 0xffffffff) {
+      static_cast<uint64_t>(data.size()) > 0xffffffff) {
     assert(false);
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;
