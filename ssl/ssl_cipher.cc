@@ -547,6 +547,11 @@ static const CIPHER_ALIAS kCipherAliases[] = {
     // Legacy strength classes.
     {"HIGH", ~0u, ~0u, ~0u, ~0u, 0},
     {"FIPS", ~0u, ~0u, ~0u, ~0u, 0},
+
+    // Temporary no-op aliases corresponding to removed SHA-2 legacy CBC
+    // ciphers. These should be removed after 2018-05-14.
+    {"SHA256", 0, 0, 0, 0, 0},
+    {"SHA384", 0, 0, 0, 0, 0},
 };
 
 static const size_t kCipherAliasesLen = OPENSSL_ARRAY_SIZE(kCipherAliases);
