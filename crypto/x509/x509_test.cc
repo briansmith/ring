@@ -1259,3 +1259,27 @@ TEST(X509Test, PrettyPrintIntegers) {
     }
   }
 }
+
+TEST(X509Test, X509NameSet) {
+  bssl::UniquePtr<X509_NAME> name(X509_NAME_new());
+  EXPECT_TRUE(X509_NAME_add_entry_by_txt(
+      name.get(), "C", MBSTRING_ASC, reinterpret_cast<const uint8_t *>("US"),
+      -1, -1, 0));
+  EXPECT_EQ(X509_NAME_entry_count(name.get()), 1);
+  EXPECT_TRUE(X509_NAME_add_entry_by_txt(
+      name.get(), "C", MBSTRING_ASC, reinterpret_cast<const uint8_t *>("CA"),
+      -1, -1, 0));
+  EXPECT_EQ(X509_NAME_entry_count(name.get()), 2);
+  EXPECT_TRUE(X509_NAME_add_entry_by_txt(
+      name.get(), "C", MBSTRING_ASC, reinterpret_cast<const uint8_t *>("UK"),
+      -1, -1, 0));
+  EXPECT_EQ(X509_NAME_entry_count(name.get()), 3);
+  EXPECT_TRUE(X509_NAME_add_entry_by_txt(
+      name.get(), "C", MBSTRING_ASC, reinterpret_cast<const uint8_t *>("JP"),
+      -1, 1, 0));
+  EXPECT_EQ(X509_NAME_entry_count(name.get()), 4);
+
+  // Check that the correct entries get incremented when inserting new entry.
+  EXPECT_EQ(X509_NAME_ENTRY_set(X509_NAME_get_entry(name.get(), 1)), 1);
+  EXPECT_EQ(X509_NAME_ENTRY_set(X509_NAME_get_entry(name.get(), 2)), 2);
+}
