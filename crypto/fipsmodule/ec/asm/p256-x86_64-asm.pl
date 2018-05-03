@@ -54,9 +54,8 @@ die "can't locate x86_64-xlate.pl";
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
-# TODO(davidben): Set $addx to one once build problems are resolved.
 $avx = 2;
-$addx = 0;
+$addx = 1;
 
 $code.=<<___;
 .text
