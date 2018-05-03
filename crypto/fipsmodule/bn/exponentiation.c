@@ -433,9 +433,6 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
     }
     tmp.top = top;
     GFp_bn_correct_top(&tmp);
-    if (!GFp_BN_copy(rr, &tmp)) {
-      goto err;
-    }
   }
 #else
   {
@@ -494,12 +491,11 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
         goto err;
       }
     }
-
-    if (!GFp_BN_copy(rr, &tmp)) {
-      goto err;
-    }
   }
 #endif
+  if (!GFp_BN_copy(rr, &tmp)) {
+    goto err;
+  }
 
   ret = 1;
 
