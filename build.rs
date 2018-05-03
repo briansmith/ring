@@ -749,8 +749,9 @@ fn get_command(var: &str, default: &str) -> String {
 }
 
 fn check_all_files_tracked() {
-    let _ = rayon::join(|| walk_dir(&PathBuf::from("crypto"), &is_tracked),
-                        || walk_dir(&PathBuf::from("include"), &is_tracked));
+    for path in &["crypto", "include", "third_party/fiat"] {
+        walk_dir(&PathBuf::from(path), &is_tracked);
+    }
 }
 
 fn is_tracked(file: &DirEntry) {
