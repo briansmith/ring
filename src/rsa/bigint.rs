@@ -1059,7 +1059,6 @@ mod repr_c {
 
     impl Drop for BIGNUM {
         fn drop(&mut self) {
-            // Keep this in sync with `GFp_BN_free()`.
             unsafe {
                 let d: *mut limb::Limb = self.d;
                 libc::free(d as *mut libc::c_void)
