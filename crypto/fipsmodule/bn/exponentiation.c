@@ -115,7 +115,7 @@
 #include <GFp/mem.h>
 
 #include "internal.h"
-
+#include "../../limbs/limbs.h"
 
 #if defined(OPENSSL_X86_64)
 #define OPENSSL_BN_ASM_MONT5
@@ -138,30 +138,22 @@ int GFp_bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
 // pattern as far as cache lines are concerned. The following functions are
 // used to transfer a BIGNUM from/to that table.
 
-static void copy_to_prebuf(const BIGNUM *b, int top, unsigned char *buf,
+static void copy_to_prebuf(const BN_ULONG b[], int top, unsigned char *buf,
                            int idx, int window) {
   int i, j;
   const int width = 1 << window;
   BN_ULONG *table = (BN_ULONG *) buf;
 
-  if (top > b->top) {
-    top = b->top;  // this works because 'buf' is explicitly zeroed
-  }
-
   for (i = 0, j = idx; i < top; i++, j += width)  {
-    table[j] = b->d[i];
+    table[j] = b[i];
   }
 }
 
-static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
+static int copy_from_prebuf(BN_ULONG b[], int top, unsigned char *buf, int idx,
                             int window) {
   int i, j;
   const int width = 1 << window;
   volatile BN_ULONG *table = (volatile BN_ULONG *)buf;
-
-  if (!GFp_bn_wexpand(b, top)) {
-    return 0;
-  }
 
   if (window <= 3) {
     for (i = 0; i < top; i++, table += width) {
@@ -171,7 +163,7 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
         acc |= table[j] & ((BN_ULONG)0 - (constant_time_eq_int(j, idx) & 1));
       }
 
-      b->d[i] = acc;
+      b[i] = acc;
     }
   } else {
     int xstride = 1 << (window - 2);
@@ -194,12 +186,10 @@ static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
                ((BN_ULONG)0 - (constant_time_eq_int(j, idx) & 1));
       }
 
-      b->d[i] = acc;
+      b[i] = acc;
     }
   }
 
-  b->top = top;
-  GFp_bn_correct_top(b);
   return 1;
 }
 #endif
@@ -266,11 +256,9 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   unsigned char *powerbufFree = NULL;
   int powerbufLen = 0;
   unsigned char *powerbuf = NULL;
-  BIGNUM tmp, am;
 
   const int top = n->top;
-  // The |OPENSSL_BN_ASM_MONT5| code requires top > 1.
-  if (top <= 1) {
+  if (!GFp_bn_mul_mont_check_top(top)) {
     goto err;
   }
 
@@ -317,17 +305,19 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
 #endif
 
   // Lay down tmp and am right after powers table.
-  tmp.d = (BN_ULONG *)(powerbuf + sizeof(n->d[0]) * top * numPowers);
-  am.d = tmp.d + top;
-  tmp.top = am.top = 0;
-  tmp.dmax = am.dmax = top;
-  tmp.flags = am.flags = BN_FLG_STATIC_DATA;
+  BN_ULONG *tmp = (BN_ULONG *)(powerbuf + sizeof(n->d[0]) * top * numPowers);
+  BN_ULONG *am = tmp + top;
 
-  // Copy a^0 and a^1.
-  if (!GFp_BN_copy(&tmp, one_mont) ||
-      !GFp_BN_copy(&am, a_mont)) {
-    goto err;
-  }
+  // Copy a^0 and a^1. Copying less than |top| limbs is OK because |powerbuf|
+  // was zero-initialized.
+  assert(one_mont->top <= top);
+  assert(a_mont->top <= top);
+  LIMBS_copy(tmp, one_mont->d, one_mont->top);
+  LIMBS_copy(am, a_mont->d, a_mont->top);
+
+  // Use the copies that have been padded to |top| limbs.
+  a_mont = NULL;
+  one_mont = NULL;
 
 #if defined(OPENSSL_BN_ASM_MONT5)
   // This optimization uses ideas from http://eprint.iacr.org/2011/239,
@@ -337,45 +327,45 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
     BN_ULONG *np;
 
     // copy n->d[] to improve cache locality
-    for (np = am.d + top, i = 0; i < top; i++) {
+    for (np = am + top, i = 0; i < top; i++) {
       np[i] = n->d[i];
     }
 
-    GFp_bn_scatter5(tmp.d, top, powerbuf, 0);
-    GFp_bn_scatter5(am.d, am.top, powerbuf, 1);
-    GFp_bn_mul_mont(tmp.d, am.d, am.d, np, n0, top);
-    GFp_bn_scatter5(tmp.d, top, powerbuf, 2);
+    GFp_bn_scatter5(tmp, top, powerbuf, 0);
+    GFp_bn_scatter5(am, top, powerbuf, 1);
+    GFp_bn_mul_mont(tmp, am, am, np, n0, top);
+    GFp_bn_scatter5(tmp, top, powerbuf, 2);
 
     // same as above, but uses squaring for 1/2 of operations
     for (i = 4; i < 32; i *= 2) {
-      GFp_bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
-      GFp_bn_scatter5(tmp.d, top, powerbuf, i);
+      GFp_bn_mul_mont(tmp, tmp, tmp, np, n0, top);
+      GFp_bn_scatter5(tmp, top, powerbuf, i);
     }
     for (i = 3; i < 8; i += 2) {
       int j;
-      GFp_bn_mul_mont_gather5(tmp.d, am.d, powerbuf, np, n0, top, i - 1);
-      GFp_bn_scatter5(tmp.d, top, powerbuf, i);
+      GFp_bn_mul_mont_gather5(tmp, am, powerbuf, np, n0, top, i - 1);
+      GFp_bn_scatter5(tmp, top, powerbuf, i);
       for (j = 2 * i; j < 32; j *= 2) {
-        GFp_bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
-        GFp_bn_scatter5(tmp.d, top, powerbuf, j);
+        GFp_bn_mul_mont(tmp, tmp, tmp, np, n0, top);
+        GFp_bn_scatter5(tmp, top, powerbuf, j);
       }
     }
     for (; i < 16; i += 2) {
-      GFp_bn_mul_mont_gather5(tmp.d, am.d, powerbuf, np, n0, top, i - 1);
-      GFp_bn_scatter5(tmp.d, top, powerbuf, i);
-      GFp_bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
-      GFp_bn_scatter5(tmp.d, top, powerbuf, 2 * i);
+      GFp_bn_mul_mont_gather5(tmp, am, powerbuf, np, n0, top, i - 1);
+      GFp_bn_scatter5(tmp, top, powerbuf, i);
+      GFp_bn_mul_mont(tmp, tmp, tmp, np, n0, top);
+      GFp_bn_scatter5(tmp, top, powerbuf, 2 * i);
     }
     for (; i < 32; i += 2) {
-      GFp_bn_mul_mont_gather5(tmp.d, am.d, powerbuf, np, n0, top, i - 1);
-      GFp_bn_scatter5(tmp.d, top, powerbuf, i);
+      GFp_bn_mul_mont_gather5(tmp, am, powerbuf, np, n0, top, i - 1);
+      GFp_bn_scatter5(tmp, top, powerbuf, i);
     }
 
     bits--;
     for (wvalue = 0, i = bits % 5; i >= 0; i--, bits--) {
       wvalue = (wvalue << 1) + GFp_BN_is_bit_set(p, bits);
     }
-    GFp_bn_gather5(tmp.d, top, powerbuf, wvalue);
+    GFp_bn_gather5(tmp, top, powerbuf, wvalue);
 
     // At this point |bits| is 4 mod 5 and at least -1. (|bits| is the first bit
     // that has not been read yet.)
@@ -389,12 +379,12 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
           wvalue = (wvalue << 1) + GFp_BN_is_bit_set(p, bits);
         }
 
-        GFp_bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
-        GFp_bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
-        GFp_bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
-        GFp_bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
-        GFp_bn_mul_mont(tmp.d, tmp.d, tmp.d, np, n0, top);
-        GFp_bn_mul_mont_gather5(tmp.d, tmp.d, powerbuf, np, n0, top, wvalue);
+        GFp_bn_mul_mont(tmp, tmp, tmp, np, n0, top);
+        GFp_bn_mul_mont(tmp, tmp, tmp, np, n0, top);
+        GFp_bn_mul_mont(tmp, tmp, tmp, np, n0, top);
+        GFp_bn_mul_mont(tmp, tmp, tmp, np, n0, top);
+        GFp_bn_mul_mont(tmp, tmp, tmp, np, n0, top);
+        GFp_bn_mul_mont_gather5(tmp, tmp, powerbuf, np, n0, top, wvalue);
       }
     } else {
       const uint8_t *p_bytes = (const uint8_t *)p->d;
@@ -413,7 +403,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
         wvalue >>= (bits - 4) & 7;
         wvalue &= 0x1f;
         bits -= 5;
-        GFp_bn_power5(tmp.d, tmp.d, powerbuf, np, n0, top, wvalue);
+        GFp_bn_power5(tmp, tmp, powerbuf, np, n0, top, wvalue);
       }
       while (bits >= 0) {
         // Read five bits from |bits-4| through |bits|, inclusive.
@@ -424,39 +414,33 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
         val >>= first_bit & 7;
         val &= 0x1f;
         bits -= 5;
-        GFp_bn_power5(tmp.d, tmp.d, powerbuf, np, n0, top, val);
+        GFp_bn_power5(tmp, tmp, powerbuf, np, n0, top, val);
       }
     }
 
-    if (!GFp_bn_from_montgomery(tmp.d, tmp.d, NULL, np, n0, top)) {
+    if (!GFp_bn_from_montgomery(tmp, tmp, NULL, np, n0, top)) {
       goto err;
     }
-    tmp.top = top;
-    GFp_bn_correct_top(&tmp);
   }
 #else
   {
-    copy_to_prebuf(&tmp, top, powerbuf, 0, window);
-    copy_to_prebuf(&am, top, powerbuf, 1, window);
+    const BN_ULONG *np = n->d;
+
+    copy_to_prebuf(tmp, top, powerbuf, 0, window);
+    copy_to_prebuf(am, top, powerbuf, 1, window);
 
     // If the window size is greater than 1, then calculate
     // val[i=2..2^winsize-1]. Powers are computed as a*a^(i-1)
     // (even powers could instead be computed as (a^(i/2))^2
     // to use the slight performance advantage of sqr over mul).
     if (window > 1) {
-      if (!GFp_BN_mod_mul_mont(&tmp, &am, &am, n, n0)) {
-        goto err;
-      }
-
-      copy_to_prebuf(&tmp, top, powerbuf, 2, window);
+      GFp_bn_mul_mont(tmp, am, am, np, n0, top);
+      copy_to_prebuf(tmp, top, powerbuf, 2, window);
 
       for (i = 3; i < numPowers; i++) {
         // Calculate a^i = a^(i-1) * a
-        if (!GFp_BN_mod_mul_mont(&tmp, &am, &tmp, n, n0)) {
-          goto err;
-        }
-
-        copy_to_prebuf(&tmp, top, powerbuf, i, window);
+        GFp_bn_mul_mont(tmp, am, tmp, np, n0, top);
+        copy_to_prebuf(tmp, top, powerbuf, i, window);
       }
     }
 
@@ -464,7 +448,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
     for (wvalue = 0, i = bits % window; i >= 0; i--, bits--) {
       wvalue = (wvalue << 1) + GFp_BN_is_bit_set(p, bits);
     }
-    if (!copy_from_prebuf(&tmp, top, powerbuf, wvalue, window)) {
+    if (!copy_from_prebuf(tmp, top, powerbuf, wvalue, window)) {
       goto err;
     }
 
@@ -475,27 +459,26 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
 
       // Scan the window, squaring the result as we go
       for (i = 0; i < window; i++, bits--) {
-        if (!GFp_BN_mod_mul_mont(&tmp, &tmp, &tmp, n, n0)) {
-          goto err;
-        }
+        GFp_bn_mul_mont(tmp, tmp, tmp, np, n0, top);
         wvalue = (wvalue << 1) + GFp_BN_is_bit_set(p, bits);
       }
 
       // Fetch the appropriate pre-computed value from the pre-buf */
-      if (!copy_from_prebuf(&am, top, powerbuf, wvalue, window)) {
+      if (!copy_from_prebuf(am, top, powerbuf, wvalue, window)) {
         goto err;
       }
 
       // Multiply the result into the intermediate result */
-      if (!GFp_BN_mod_mul_mont(&tmp, &tmp, &am, n, n0)) {
-        goto err;
-      }
+      GFp_bn_mul_mont(tmp, tmp, am, np, n0, top);
     }
   }
 #endif
-  if (!GFp_BN_copy(rr, &tmp)) {
+  if (!GFp_bn_wexpand(rr, top)) {
     goto err;
   }
+  LIMBS_copy(rr->d, tmp, top);
+  rr->top = top;
+  GFp_bn_correct_top(rr);
 
   ret = 1;
 
