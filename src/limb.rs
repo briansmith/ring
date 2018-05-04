@@ -222,6 +222,35 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_limbs_are_zero() {
+        static ZEROES: &[&[Limb]] = &[
+            &[0],
+            &[0, 0],
+            &[0, 0, 0],
+            &[0, 0, 0, 0],
+            &[0, 0, 0, 0, 0],
+            &[0, 0, 0, 0, 0, 0, 0],
+            &[0, 0, 0, 0, 0, 0, 0, 0],
+            &[0, 0, 0, 0, 0, 0, 0, 0, 0],
+        ];
+        for zero in ZEROES {
+            assert_eq!(limbs_are_zero_constant_time(zero), LimbMask::True);
+        }
+        static NONZEROES: &[&[Limb]] = &[
+            &[1],
+            &[0, 1],
+            &[1, 1],
+            &[1, 0, 0, 0],
+            &[0, 1, 0, 0],
+            &[0, 0, 1, 0],
+            &[0, 0, 0, 1],
+        ];
+        for nonzero in NONZEROES {
+            assert_eq!(limbs_are_zero_constant_time(nonzero), LimbMask::False);
+        }
+    }
+
+    #[test]
     fn test_parse_big_endian_and_pad_consttime() {
         const LIMBS: usize = 4;
 
