@@ -17,7 +17,7 @@
 use {bits, der, digest, error, pkcs8};
 use rand;
 use std;
-use super::{blinding, bigint, N};
+use super::{blinding, bigint, bigint::Prime, N};
 use arithmetic::montgomery::{R, RR, RRR};
 use untrusted;
 
@@ -342,7 +342,7 @@ impl RSAKeyPair {
                     qInv.into_elem(&p.modulus)?
                 } else {
                     // We swapped `p` and `q` above, so we need to calculate
-                    // `qInv`.
+                    // `qInv`.  Step 7.f below will verify `qInv` is correct.
                     let q_mod_p = bigint::elem_mul(p.oneRR.as_ref(),
                                                    q_mod_p.try_clone()?,
                                                    &p.modulus)?;
@@ -450,8 +450,6 @@ fn elem_exp_consttime<M, MM>(c: &bigint::Elem<MM>, p: &PrivatePrime<M>)
 
 // Type-level representations of the different moduli used in RSA signing, in
 // addition to `super::N`. See `super::bigint`'s modulue-level documentation.
-
-unsafe trait Prime {}
 
 enum P {}
 unsafe impl Prime for P {}

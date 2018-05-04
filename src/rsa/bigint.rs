@@ -58,6 +58,8 @@ impl AsRef<BIGNUM> for Nonnegative {
     fn as_ref<'a>(&'a self) -> &'a BIGNUM { &self.0 }
 }
 
+pub unsafe trait Prime {}
+
 pub trait IsOne {
     fn is_one(&self) -> bool;
 }
@@ -704,20 +706,20 @@ pub fn elem_exp_consttime<M>(
 
 /// Uses Fermat's Little Theorem to calculate modular inverse in constant time.
 #[cfg(feature = "rsa_signing")]
-pub fn elem_inverse_consttime<M>(
+pub fn elem_inverse_consttime<M: Prime>(
         a: Elem<M, R>,
         m: &Modulus<M>,
         oneR: &One<M, R>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-    // Set exponent to m-2.
-    let exponent = {
-        let e:   Elem<M> = Elem::zero()?;
-        let one: Elem<M> = Elem::one()?;
-        // elem_sub() is constant-time iff the number of limbs in `b` is constant.
-        let e = elem_sub(e, &one, m)?;
-        let e = elem_sub(e, &one, m)?;
-        e.value.into_odd_positive()?
+    let m_minus_2 = {
+        let two = {
+            let one: Elem<M> = Elem::one()?;
+            let one_ = Elem::one()?;
+            elem_add(one, one_, m)?
+        };
+        let m_minus_2 = elem_sub(Elem::zero()?, &two, m)?;
+        m_minus_2.value.into_odd_positive()?
     };
-    elem_exp_consttime(a, &exponent, oneR, m)
+    elem_exp_consttime(a, &m_minus_2, oneR, m)
 }
 
 #[cfg(feature = "rsa_signing")]
