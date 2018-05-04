@@ -193,6 +193,7 @@ pub unsafe trait SlightlySmallerModulus<L>: SmallerModulus<L> {}
 /// ℤ/sℤ.
 pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 
+pub const MODULUS_MAX_LIMBS: usize = 8192 / limb::LIMB_BITS;
 
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
@@ -245,6 +246,9 @@ impl<M> Modulus<M> {
     fn new(n: OddPositive) -> Result<Self, error::Unspecified> {
         // A `Modulus` must be larger than 1.
         if n.bit_length() < bits::BitLength::from_usize_bits(2) {
+            return Err(error::Unspecified);
+        }
+        if (n.0).0.limbs().len() > MODULUS_MAX_LIMBS {
             return Err(error::Unspecified);
         }
 
@@ -304,6 +308,7 @@ impl<M, E> Elem<M, E> {
     // There's no need to convert `value` to the Montgomery domain since
     // 0 * R**2 (mod m) == 0, so the modulus isn't even needed to construct a
     // zero-valued element.
+    #[cfg(feature = "rsa_signing")]
     pub fn zero() -> Result<Self, error::Unspecified> {
         let value = Nonnegative::zero()?;
         Ok(Elem {
@@ -337,9 +342,30 @@ impl<M, E> Elem<M, E> {
 
 impl<M> Elem<M, R> {
     #[inline]
-    pub fn into_unencoded(self, m: &Modulus<M>)
+    pub fn into_unencoded(mut self, m: &Modulus<M>)
                           -> Result<Elem<M, Unencoded>, error::Unspecified> {
-        elem_reduced_(self, m)
+        // A multiplication isn't required since we're multiplying by the
+        // unencoded value one (1); only a Montgomery reduction is needed.
+        // However the only non-multiplication Montgomery reduction function we
+        // have requires the input to be large, so we avoid using it here.
+        let m_limbs = (m.value.0).0.limbs();
+        let num_limbs = m_limbs.len();
+        self.value.0.make_limbs(num_limbs, |limbs| {
+            // TODO: statically allocate
+            let mut one = [0; MODULUS_MAX_LIMBS];
+            one[0] = 1;
+            let one = &one[..num_limbs]; // assert!(num_limbs <= MODULUS_MAX_LIMBS);
+            unsafe {
+                GFp_bn_mul_mont(limbs.as_mut_ptr(), limbs.as_ptr(), one.as_ptr(),
+                                m_limbs.as_ptr(), &m.n0, num_limbs)
+            }
+            Ok(())
+        })?;
+        Ok(Elem {
+            value: self.value,
+            m: PhantomData,
+            encoding: PhantomData,
+        })
     }
 }
 
@@ -498,14 +524,7 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
 pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
         a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
         -> Result<Elem<Smaller, RInverse>, error::Unspecified> {
-    let tmp = a.try_clone()?;
-    elem_reduced_(tmp, m)
-}
-
-fn elem_reduced_<LargerM, E: ReductionEncoding, SmallerM>(
-        mut a: Elem<LargerM, E>, m: &Modulus<SmallerM>)
-        -> Result<Elem<SmallerM, <E as ReductionEncoding>::Output>,
-                  error::Unspecified> {
+    let mut a = a.try_clone()?;
     let mut r = Elem::zero()?;
     bssl::map_result(unsafe {
         GFp_BN_from_montgomery_word(r.value.as_mut_ref(), a.value.as_mut_ref(),
@@ -1272,8 +1291,6 @@ extern {
 
     // The use of references here implies lack of aliasing.
     fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
-    fn GFp_BN_from_montgomery_word(r: &mut BIGNUM, a: &mut BIGNUM, n: &BIGNUM,
-                                   n0: &N0) -> c::int;
 
     fn GFp_bn_neg_inv_mod_r_u64(n: u64) -> u64;
 
@@ -1283,6 +1300,8 @@ extern {
 
 #[cfg(feature = "rsa_signing")]
 extern {
+    fn GFp_BN_from_montgomery_word(r: &mut BIGNUM, a: &mut BIGNUM, n: &BIGNUM,
+                                   n0: &N0) -> c::int;
     // `r` and `a` may alias.
     fn GFp_BN_mod_exp_mont_consttime(r: *mut BIGNUM, a_mont: *const BIGNUM,
                                      p: &BIGNUM, one_mont: &BIGNUM, n: &BIGNUM,

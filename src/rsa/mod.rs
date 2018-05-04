@@ -20,11 +20,8 @@
 
 /// RSA signatures.
 
-use {bits, der, error};
+use {bits, der, limb, error};
 use untrusted;
-
-#[cfg(feature = "rsa_signing")]
-use limb;
 
 mod padding;
 
@@ -44,7 +41,8 @@ pub use self::padding::{
 
 
 // Maximum RSA modulus size supported for signature verification (in bytes).
-const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize = 8192 / 8;
+const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize =
+    bigint::MODULUS_MAX_LIMBS * limb::LIMB_BYTES;
 
 // Keep in sync with the documentation comment for `RSAKeyPair`.
 #[cfg(feature = "rsa_signing")]
