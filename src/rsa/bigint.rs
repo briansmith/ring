@@ -1065,7 +1065,8 @@ impl Nonnegative {
 #[cfg(feature = "rsa_signing")]
 impl IsOne for Nonnegative {
     fn is_one(&self) -> bool {
-        self.limbs() == &[1]
+        limb::limbs_equal_limb_constant_time(self.limbs(), 1) ==
+            limb::LimbMask::True
     }
 }
 

@@ -88,6 +88,11 @@ pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { LIMBS_are_zero(limbs.as_ptr(), limbs.len()) }
 }
 
+#[inline]
+pub fn limbs_equal_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
+    unsafe { LIMBS_equal_limb(a.as_ptr(), b, a.len()) }
+}
+
 /// Equivalent to `if (r >= m) { r -= m; }`
 #[inline]
 pub fn limbs_reduce_once_constant_time(r: &mut [Limb], m: &[Limb]) {
@@ -211,6 +216,8 @@ pub fn big_endian_from_limbs_padded(limbs: &[Limb], out: &mut [u8]) {
 
 extern {
     fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
+    fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t)
+                        -> LimbMask;
     fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t)
                        -> LimbMask;
     fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
@@ -221,32 +228,71 @@ mod tests {
     use untrusted;
     use super::*;
 
+    static ZEROES: &[&[Limb]] = &[
+        &[],
+        &[0],
+        &[0, 0],
+        &[0, 0, 0],
+        &[0, 0, 0, 0],
+        &[0, 0, 0, 0, 0],
+        &[0, 0, 0, 0, 0, 0, 0],
+        &[0, 0, 0, 0, 0, 0, 0, 0],
+        &[0, 0, 0, 0, 0, 0, 0, 0, 0],
+    ];
+
+    static NONZEROES: &[&[Limb]] = &[
+        &[1],
+        &[0, 1],
+        &[1, 1],
+        &[1, 0, 0, 0],
+        &[0, 1, 0, 0],
+        &[0, 0, 1, 0],
+        &[0, 0, 0, 1],
+    ];
+
     #[test]
     fn test_limbs_are_zero() {
-        static ZEROES: &[&[Limb]] = &[
-            &[0],
-            &[0, 0],
-            &[0, 0, 0],
-            &[0, 0, 0, 0],
-            &[0, 0, 0, 0, 0],
-            &[0, 0, 0, 0, 0, 0, 0],
-            &[0, 0, 0, 0, 0, 0, 0, 0],
-            &[0, 0, 0, 0, 0, 0, 0, 0, 0],
-        ];
         for zero in ZEROES {
             assert_eq!(limbs_are_zero_constant_time(zero), LimbMask::True);
         }
-        static NONZEROES: &[&[Limb]] = &[
-            &[1],
-            &[0, 1],
-            &[1, 1],
-            &[1, 0, 0, 0],
-            &[0, 1, 0, 0],
-            &[0, 0, 1, 0],
-            &[0, 0, 0, 1],
-        ];
         for nonzero in NONZEROES {
             assert_eq!(limbs_are_zero_constant_time(nonzero), LimbMask::False);
+        }
+    }
+
+    #[test]
+    fn test_limbs_equal_limb() {
+        for zero in ZEROES {
+            assert_eq!(limbs_equal_limb_constant_time(zero, 0), LimbMask::True);
+        }
+        for nonzero in NONZEROES {
+            assert_eq!(limbs_equal_limb_constant_time(nonzero, 0), LimbMask::False);
+        }
+        const MAX: Limb = LimbMask::True as Limb;
+        static EQUAL: &[(&[Limb], Limb)] = &[
+            (&[1], 1),
+            (&[MAX], MAX),
+            (&[1, 0], 1),
+            (&[MAX, 0, 0], MAX),
+            (&[0b100], 0b100),
+            (&[0b100, 0], 0b100),
+        ];
+        for &(a, b) in EQUAL {
+            assert_eq!(limbs_equal_limb_constant_time(a, b), LimbMask::True);
+        }
+        static UNEQUAL: &[(&[Limb], Limb)] = &[
+            (&[0], 1),
+            (&[2], 1),
+            (&[3], 1),
+            (&[1, 1], 1),
+            (&[0b100, 0b100], 0b100),
+            (&[1, 0, 0b100, 0, 0, 0, 0, 0], 1),
+            (&[1, 0, 0, 0, 0, 0, 0, 0b100], 1),
+            (&[MAX, MAX], MAX),
+            (&[MAX, 1], MAX),
+        ];
+        for &(a, b) in UNEQUAL {
+            assert_eq!(limbs_equal_limb_constant_time(a, b), LimbMask::False);
         }
     }
 

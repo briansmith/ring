@@ -39,26 +39,35 @@ OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(Limb),
                        size_t_and_limb_are_different_sizes);
 
 
-/* Returns 0xfff..f if |a| is all zero limbs, and zero otherwise. */
+/* Returns 0xfff..f if |a| is all zero limbs, and zero otherwise. |num_limbs|
+ * may be zero. */
 Limb LIMBS_are_zero(const Limb a[], size_t num_limbs) {
-  assert(num_limbs >= 1);
-  Limb is_zero = constant_time_is_zero_w(a[0]);
-  for (size_t i = 1; i < num_limbs; ++i) {
-    is_zero = constant_time_select_w(
-        is_zero, constant_time_is_zero_w(a[i]), is_zero);
+  Limb is_zero = CONSTTIME_TRUE_W;
+  for (size_t i = 0; i < num_limbs; ++i) {
+    is_zero = constant_time_select_w(is_zero, constant_time_is_zero_w(a[i]),
+                                     is_zero);
   }
   return is_zero;
 }
 
-/* Returns 0xffff..f if |a| is less than |b|, and zero otherwise. */
+/* Returns 0xffff..f if |a == b|, and zero otherwise. |num_limbs| may be zero. */
 Limb LIMBS_equal(const Limb a[], const Limb b[], size_t num_limbs) {
-  assert(num_limbs >= 1);
-  Limb eq = constant_time_eq_w(a[0], b[0]);
-  for (size_t i = 1; i < num_limbs; ++i) {
-    eq = constant_time_select_w(eq, constant_time_eq_w(a[i], b[i]),
-                                     eq);
+  Limb eq = CONSTTIME_TRUE_W;
+  for (size_t i = 0; i < num_limbs; ++i) {
+    eq = constant_time_select_w(eq, constant_time_eq_w(a[i], b[i]), eq);
   }
   return eq;
+}
+
+/* Returns 0xffff..f if |a == b|, and zero otherwise. |num_limbs| may be zero. */
+Limb LIMBS_equal_limb(const Limb a[], Limb b, size_t num_limbs) {
+  if (num_limbs == 0) {
+    return constant_time_is_zero_w(b);
+  }
+  assert(num_limbs >= 1);
+  Limb lo_equal = constant_time_eq_w(a[0], b);
+  Limb hi_zero = LIMBS_are_zero(&a[1], num_limbs - 1);
+  return constant_time_select_w(lo_equal, hi_zero, 0);
 }
 
 /* Returns 0xffff...f if |a| is less than |b|, and zero otherwise. */
