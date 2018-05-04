@@ -116,7 +116,7 @@
 
 #include "internal.h"
 #include "../../internal.h"
-
+#include "../../limbs/limbs.h"
 
 // Avoid -Wmissing-prototypes warnings.
 int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
@@ -132,6 +132,7 @@ static int bn_from_montgomery_in_place(BN_ULONG *r, size_t num_r, BN_ULONG *a,
                                        size_t num_n,
                                        const BN_ULONG n0_[BN_MONT_CTX_N0_LIMBS])
 {
+  assert(num_n != 0);
   if (num_r != num_n || num_a != 2 * num_n) {
     return 0;
   }
@@ -157,7 +158,7 @@ static int bn_from_montgomery_in_place(BN_ULONG *r, size_t num_r, BN_ULONG *a,
   // Subtract |n| and select the answer in constant time.
   OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
                          crypto_word_t_too_small);
-  BN_ULONG v = GFp_bn_sub_words(r, a, n, num_n) - carry;
+  BN_ULONG v = LIMBS_sub(r, a, n, num_n) - carry;
   // |v| is one if |a| - |n| underflowed or zero if it did not. Note |v| cannot
   // be -1. That would imply the subtraction did not fit in |num_n| words, and
   // we know at most one subtraction is needed.

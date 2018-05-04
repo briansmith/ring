@@ -127,6 +127,11 @@ void LIMBS_add_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
   }
 }
 
+Limb LIMBS_sub(Limb r[], const Limb a[], const Limb b[], size_t num_limbs) {
+  /* An unhandled borrow is expected by some callers. */
+  return limbs_sub(r, a, b, num_limbs);
+}
+
 void LIMBS_sub_assign(Limb r[], const Limb a[], size_t num_limbs) {
   /* An unhandled borrow is expected by some callers. */
   (void) limbs_sub(r, r, a, num_limbs);

@@ -56,10 +56,7 @@
 
 #include <GFp/bn.h>
 
-#include <assert.h>
-
 #include "internal.h"
-#include "../../limbs/limbs.inl"
 
 
 #define mul_add(r, a, w, c)             \
@@ -144,12 +141,4 @@ BN_ULONG GFp_bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
     num--;
   }
   return c1;
-}
-
-BN_ULONG GFp_bn_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
-                          size_t n) {
-  if (n == 0) {
-    return (BN_ULONG)0;
-  }
-  return limbs_sub(r, a, b, (size_t)n);
 }

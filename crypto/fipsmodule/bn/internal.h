@@ -183,13 +183,6 @@ BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
 BN_ULONG GFp_bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
                           BN_ULONG w);
 
-// bn_sub_words subtracts |bp| from |ap| and places the result in |rp|. It
-// returns the borrow bit, which is one if the computation underflowed and zero
-// otherwise. Any pair of |ap|, |bp|, and |rp| may be equal to each other but
-// otherwise may not alias.
-BN_ULONG GFp_bn_sub_words(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-                          size_t num);
-
 // |num| must be at least 4, at least on x86.
 //
 // In other forks, |bn_mul_mont| returns an |int| indicating whether it
