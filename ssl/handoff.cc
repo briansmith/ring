@@ -265,6 +265,9 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   s3->hs->state = CBS_len(&transcript) == 0 ? state12_finish_server_handshake
                                             : state12_read_client_certificate;
   s3->session_reused = session_reused;
+  if (s3->hs->state == state12_read_client_certificate && session_reused) {
+    return false;
+  }
   s3->tlsext_channel_id_valid = channel_id_valid;
   s3->next_proto_negotiated.CopyFrom(next_proto);
   s3->alpn_selected.CopyFrom(alpn);
