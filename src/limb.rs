@@ -88,6 +88,7 @@ pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { LIMBS_are_zero(limbs.as_ptr(), limbs.len()) }
 }
 
+#[cfg(any(test, feature = "rsa_signing"))]
 #[inline]
 pub fn limbs_equal_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
     unsafe { LIMBS_equal_limb(a.as_ptr(), b, a.len()) }
@@ -216,6 +217,7 @@ pub fn big_endian_from_limbs_padded(limbs: &[Limb], out: &mut [u8]) {
 
 extern {
     fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
+    #[cfg(any(test, feature = "rsa_signing"))]
     fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t)
                         -> LimbMask;
     fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t)
