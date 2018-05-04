@@ -363,7 +363,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
 
     bits--;
     for (wvalue = 0, i = bits % 5; i >= 0; i--, bits--) {
-      wvalue = (wvalue << 1) + GFp_BN_is_bit_set(p, bits);
+      wvalue = (wvalue << 1) + GFp_bn_is_bit_set_words(p->d, p->top, bits);
     }
     GFp_bn_gather5(tmp, top, powerbuf, wvalue);
 
@@ -376,7 +376,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
     if (top & 7) {
       while (bits >= 0) {
         for (wvalue = 0, i = 0; i < 5; i++, bits--) {
-          wvalue = (wvalue << 1) + GFp_BN_is_bit_set(p, bits);
+          wvalue = (wvalue << 1) + GFp_bn_is_bit_set_words(p->d, p->top, bits);
         }
 
         GFp_bn_mul_mont(tmp, tmp, tmp, np, n0, top);
@@ -446,7 +446,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
 
     bits--;
     for (wvalue = 0, i = bits % window; i >= 0; i--, bits--) {
-      wvalue = (wvalue << 1) + GFp_BN_is_bit_set(p, bits);
+      wvalue = (wvalue << 1) + GFp_bn_is_bit_set_words(p->d, p->top, bits);
     }
     if (!copy_from_prebuf(tmp, top, powerbuf, wvalue, window)) {
       goto err;
@@ -460,7 +460,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
       // Scan the window, squaring the result as we go
       for (i = 0; i < window; i++, bits--) {
         GFp_bn_mul_mont(tmp, tmp, tmp, np, n0, top);
-        wvalue = (wvalue << 1) + GFp_BN_is_bit_set(p, bits);
+        wvalue = (wvalue << 1) + GFp_bn_is_bit_set_words(p->d, p->top, bits);
       }
 
       // Fetch the appropriate pre-computed value from the pre-buf */

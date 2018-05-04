@@ -67,10 +67,3 @@ int GFp_bn_is_bit_set_words(const BN_ULONG *a, size_t num, unsigned bit) {
   }
   return (a[i] >> j) & 1;
 }
-
-int GFp_BN_is_bit_set(const BIGNUM *a, int n) {
-  if (n < 0) {
-    return 0;
-  }
-  return GFp_bn_is_bit_set_words(a->d, a->top, n);
-}

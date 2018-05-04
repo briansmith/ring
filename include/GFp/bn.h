@@ -195,13 +195,6 @@ OPENSSL_EXPORT int GFp_bn_wexpand(BIGNUM *bn, size_t words);
 OPENSSL_EXPORT int GFp_BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 
-// Bitwise operations.
-
-// GFp_bn_is_bit_set returns one if the |n|th least-significant bit in |a|
-// exists and is set. Otherwise, it returns zero.
-OPENSSL_EXPORT int GFp_BN_is_bit_set(const BIGNUM *a, int n);
-
-
 // Modulo arithmetic.
 
 // GFp_BN_mod_mul_mont set |r| equal to |a| * |b|, in the Montgomery domain.
