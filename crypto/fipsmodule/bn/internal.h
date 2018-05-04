@@ -124,6 +124,7 @@
 #define OPENSSL_HEADER_BN_INTERNAL_H
 
 #include <GFp/base.h>
+#include "GFp/type_check.h"
 
 #if defined(OPENSSL_X86_64) && defined(_MSC_VER)
 #pragma warning(push, 3)
@@ -188,9 +189,17 @@ BN_ULONG GFp_bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
 // In other forks, |bn_mul_mont| returns an |int| indicating whether it
 // actually did the multiplication. All our implementations always do the
 // multiplication, and forcing callers to deal with the possibility of it
-// failing just leads to further problems. */
+// failing just leads to further problems.
+//
+// In other forks, |bn_mod_mul|'s `num` argument has type |int| but it is
+// implicitly treated as a |size_t|; when |int| is smaller than |size_t|
+// then the |movq 48(%rsp),%r9| done by x86_64-xlate.pl implicitly does the
+// conversion.
+OPENSSL_COMPILE_ASSERT(sizeof(int) == sizeof(size_t) ||
+                       (sizeof(int) == 4 && sizeof(size_t) == 8),
+                       int_and_size_t_abi_mismatch);
 void GFp_bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-                     const BN_ULONG *np, const BN_ULONG *n0, int num);
+                     const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 int GFp_bn_mul_mont_check_top(int top);
 
 static inline void bn_umult_lohi(BN_ULONG *low_out, BN_ULONG *high_out,
