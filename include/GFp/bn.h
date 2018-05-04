@@ -195,12 +195,6 @@ OPENSSL_EXPORT int GFp_bn_wexpand(BIGNUM *bn, size_t words);
 OPENSSL_EXPORT int GFp_BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 
-// Comparison functions
-
-// GFp_BN_is_odd returns one if |bn| is odd and zero otherwise.
-OPENSSL_EXPORT int GFp_BN_is_odd(const BIGNUM *bn);
-
-
 // Bitwise operations.
 
 // GFp_bn_is_bit_set returns one if the |n|th least-significant bit in |a|
@@ -218,12 +212,6 @@ OPENSSL_EXPORT int GFp_BN_is_bit_set(const BIGNUM *a, int n);
 OPENSSL_EXPORT int GFp_BN_mod_mul_mont(
     BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *n,
     const BN_ULONG n0[/*BN_MONT_CTX_N0_LIMBS*/]);
-
-// GFp_BN_reduce_montgomery returns |a % n| in constant-ish time using
-// Montgomery reduction. |a| is assumed to be in the range [0, n**2), where |n|
-// is the Montgomery modulus. It returns one on success or zero on error.
-int GFp_BN_reduce_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *n,
-                       const BN_ULONG n0[/*BN_MONT_CTX_N0_LIMBS*/]);
 
 
 // Exponentiation.
