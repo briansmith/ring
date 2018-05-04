@@ -178,12 +178,6 @@ extern "C" {
 BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
                               BN_ULONG w);
 
-// bn_mul_words multiples |ap| by |w| and places the result in |rp|. |ap| and
-// |rp| must both be |num| words long. It returns the carry word of the
-// operation. |ap| and |rp| may be equal but otherwise may not alias.
-BN_ULONG GFp_bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
-                          BN_ULONG w);
-
 // |num| must be at least 4, at least on x86.
 //
 // In other forks, |bn_mul_mont| returns an |int| indicating whether it
@@ -200,7 +194,7 @@ OPENSSL_COMPILE_ASSERT(sizeof(int) == sizeof(size_t) ||
                        int_and_size_t_abi_mismatch);
 void GFp_bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                      const BN_ULONG *np, const BN_ULONG *n0, size_t num);
-int GFp_bn_mul_mont_check_top(int top);
+int GFp_bn_mul_mont_check_num_limbs(size_t top);
 
 static inline void bn_umult_lohi(BN_ULONG *low_out, BN_ULONG *high_out,
                                  BN_ULONG a, BN_ULONG b) {

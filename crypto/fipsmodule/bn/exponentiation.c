@@ -258,7 +258,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   unsigned char *powerbuf = NULL;
 
   const int top = n->top;
-  if (!GFp_bn_mul_mont_check_top(top)) {
+  if (!GFp_bn_mul_mont_check_num_limbs(top)) {
     goto err;
   }
 

@@ -63,7 +63,6 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[], "crypto/fipsmodule/bn/generic.c"),
     (&[], "crypto/fipsmodule/bn/montgomery.c"),
     (&[], "crypto/fipsmodule/bn/montgomery_inv.c"),
-    (&[], "crypto/fipsmodule/bn/mul.c"),
     (&[], "crypto/fipsmodule/bn/shift.c"),
     (&[], "crypto/fipsmodule/cipher/e_aes.c"),
     (&[NEVER], "crypto/cipher_extra/e_aesgcmsiv.c"),

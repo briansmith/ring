@@ -199,48 +199,10 @@ int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
   return 1;
 }
 
-int GFp_bn_mul_mont_check_top(int top) {
+int GFp_bn_mul_mont_check_num_limbs(size_t num_limbs) {
   // GFp_bn_mul_mont requires at least four limbs, at least for x86.
-  if (top < 4) {
+  if (num_limbs < 4) {
     return 0;
   }
   return 1;
-}
-
-// Assumes a < n and b < n
-int GFp_BN_mod_mul_mont(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
-                        const BIGNUM *n,
-                        const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]) {
-  int num = n->top;
-
-  if (!GFp_bn_mul_mont_check_top(num)) {
-    return 0;
-  }
-
-  if (a->top == num && b->top == num) {
-    if (!GFp_bn_wexpand(r, num)) {
-      return 0;
-    }
-    GFp_bn_mul_mont(r->d, a->d, b->d, n->d, n0, num);
-    r->top = num;
-    GFp_bn_correct_top(r);
-    return 1;
-  }
-
-  BIGNUM tmp;
-  GFp_BN_init(&tmp);
-
-  int ret = 0;
-
-  if (!GFp_BN_mul_no_alias(&tmp, a, b) ||
-      !GFp_BN_from_montgomery_word(r, &tmp, n, n0)) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  GFp_BN_free(&tmp);
-
-  return ret;
 }

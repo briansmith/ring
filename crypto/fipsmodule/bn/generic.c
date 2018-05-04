@@ -72,23 +72,6 @@
     (r) = ret;                          \
   } while (0)
 
-#define mul(r, a, w, c)                \
-  do {                                 \
-    BN_ULONG high, low, ret, ta = (a); \
-    bn_umult_lohi(&low, &high, w, ta); \
-    ret = low + (c);                   \
-    (c) = high;                        \
-    (c) += (ret < low) ? 1 : 0;        \
-    (r) = ret;                         \
-  } while (0)
-
-#define sqr(r0, r1, a)               \
-  do {                               \
-    BN_ULONG tmp = (a);              \
-    bn_umult_lohi(&r0, &r1, tmp, tmp); \
-  } while (0)
-
-
 BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
                               BN_ULONG w) {
   BN_ULONG c1 = 0;
@@ -114,31 +97,5 @@ BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
     num--;
   }
 
-  return c1;
-}
-
-BN_ULONG GFp_bn_mul_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
-                          BN_ULONG w) {
-  BN_ULONG c1 = 0;
-
-  if (num == 0) {
-    return c1;
-  }
-
-  while (num & ~3) {
-    mul(rp[0], ap[0], w, c1);
-    mul(rp[1], ap[1], w, c1);
-    mul(rp[2], ap[2], w, c1);
-    mul(rp[3], ap[3], w, c1);
-    ap += 4;
-    rp += 4;
-    num -= 4;
-  }
-  while (num) {
-    mul(rp[0], ap[0], w, c1);
-    ap++;
-    rp++;
-    num--;
-  }
   return c1;
 }

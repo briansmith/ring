@@ -38,6 +38,7 @@
 //! [Static checking of units in Servo]:
 //!     https://blog.mozilla.org/research/2014/06/23/static-checking-of-units-in-servo/
 
+#![allow(box_pointers)]
 
 use {bits, bssl, c, error, limb, untrusted};
 use arithmetic::montgomery::*;
@@ -389,17 +390,39 @@ impl<AF, BF, M> ModMul<Elem<M, BF>, M> for Elem<M, AF>
     }
 }
 
-pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, b: Elem<M, BF>, m: &Modulus<M>)
+pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, mut b: Elem<M, BF>, m: &Modulus<M>)
         -> Result<Elem<M, <(AF, BF) as ProductEncoding>::Output>,
                   error::Unspecified>
         where (AF, BF): ProductEncoding {
-    let mut r = b.value;
+    let m_limbs = (m.value.0).0.limbs();
+    let num_limbs = m_limbs.len();
     bssl::map_result(unsafe {
-        GFp_BN_mod_mul_mont(&mut r.0, a.value.as_ref(), &r.0, &m.value.as_ref(),
-                            &m.n0)
+        GFp_bn_mul_mont_check_num_limbs(num_limbs)
     })?;
+
+    let mut a_limbs;
+    let a_limbs = if a.value.limbs().len() == num_limbs {
+        a.value.limbs()
+    } else {
+        assert!(a.value.limbs().len() < num_limbs);
+        a_limbs = vec![0; num_limbs];
+        a_limbs[..a.value.limbs().len()].copy_from_slice(a.value.limbs());
+        &a_limbs
+    };
+
+    b.value.0.make_limbs(num_limbs, |b_limbs| {
+        assert_eq!(a_limbs.len(), num_limbs);
+        assert_eq!(b_limbs.len(), num_limbs);
+        unsafe {
+            GFp_bn_mul_mont(b_limbs.as_mut_ptr(), a_limbs.as_ptr(),
+                            b_limbs.as_ptr(), m_limbs.as_ptr(), &m.n0,
+                            num_limbs)
+        }
+        Ok(())
+    })?;
+
     Ok(Elem {
-        value: r,
+        value: b.value,
         m: PhantomData,
         encoding: PhantomData,
     })
@@ -412,9 +435,42 @@ pub fn elem_set_to_product<M, AF, BF>(
         a: &Elem<M, AF>, b: &Elem<M, BF>, m: &Modulus<M>)
         -> Result<(), error::Unspecified>
         where (AF, BF): ProductEncoding {
+    let m_limbs = (m.value.0).0.limbs();
+    let num_limbs = m_limbs.len();
     bssl::map_result(unsafe {
-        GFp_BN_mod_mul_mont(r.value.as_mut_ref(), a.value.as_ref(),
-                            b.value.as_ref(), &m.value.as_ref(), &m.n0)
+        GFp_bn_mul_mont_check_num_limbs(num_limbs)
+    })?;
+
+    let mut a_limbs;
+    let a_limbs = if a.value.limbs().len() == num_limbs {
+        a.value.limbs()
+    } else {
+        assert!(a.value.limbs().len() < num_limbs);
+        a_limbs = vec![0; num_limbs];
+        a_limbs[..a.value.limbs().len()].copy_from_slice(a.value.limbs());
+        &a_limbs
+    };
+
+    let mut b_limbs;
+    let b_limbs = if b.value.limbs().len() == num_limbs {
+        b.value.limbs()
+    } else {
+        assert!(b.value.limbs().len() < num_limbs);
+        b_limbs = vec![0; num_limbs];
+        b_limbs[..b.value.limbs().len()].copy_from_slice(b.value.limbs());
+        &b_limbs
+    };
+
+    r.value.0.make_limbs(num_limbs, |r_limbs| {
+        assert_eq!(r_limbs.len(), num_limbs);
+        assert_eq!(a_limbs.len(), num_limbs);
+        assert_eq!(b_limbs.len(), num_limbs);
+        unsafe {
+            GFp_bn_mul_mont(r_limbs.as_mut_ptr(), a_limbs.as_ptr(),
+                            b_limbs.as_ptr(), m_limbs.as_ptr(), &m.n0,
+                            num_limbs)
+        }
+        Ok(())
     })
 }
 
@@ -462,13 +518,19 @@ pub fn elem_squared<M, E>(a: Elem<M, E>, m: &Modulus<M>)
         -> Result<Elem<M, <(E, E) as ProductEncoding>::Output>,
                   error::Unspecified>
         where (E, E): ProductEncoding {
+    let m_limbs = (m.value.0).0.limbs();
+    let num_limbs = m_limbs.len();
     let mut value = a.value;
-    bssl::map_result(unsafe {
-        GFp_BN_mod_mul_mont(value.as_mut_ref(), value.as_ref(), value.as_ref(),
-                            &m.value.as_ref(), &m.n0)
+    value.0.make_limbs(num_limbs, |limbs| {
+        assert_eq!(limbs.len(), num_limbs);
+        unsafe {
+            GFp_bn_mul_mont(limbs.as_mut_ptr(), limbs.as_ptr(), limbs.as_ptr(),
+                            m_limbs.as_ptr(), &m.n0, num_limbs)
+        }
+        Ok(())
     })?;
     Ok(Elem {
-        value: value,
+        value,
         m: PhantomData,
         encoding: PhantomData,
     })
@@ -1203,8 +1265,10 @@ pub use self::repr_c::BIGNUM;
 
 extern {
     // `r` and/or 'a' and/or 'b' may alias.
-    fn GFp_BN_mod_mul_mont(r: *mut BIGNUM, a: *const BIGNUM, b: *const BIGNUM,
-                            n: &BIGNUM, n0: &N0) -> c::int;
+    fn GFp_bn_mul_mont(r: *mut limb::Limb, a: *const limb::Limb,
+                       b: *const limb::Limb, n: *const limb::Limb,
+                       n0: &N0, num_limbs: c::size_t);
+    fn GFp_bn_mul_mont_check_num_limbs(num_limbs: c::size_t) -> c::int;
 
     // The use of references here implies lack of aliasing.
     fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;

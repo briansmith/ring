@@ -64,23 +64,6 @@
 #include "internal.h"
 
 
-void GFp_BN_init(BIGNUM *bn) {
-  memset(bn, 0, sizeof(BIGNUM));
-}
-
-void GFp_BN_free(BIGNUM *bn) {
-  // Keep this in sync with the |Drop| impl for |BIGNUM| in
-  // |ring::rsa::bigint|.
-
-  if (bn == NULL) {
-    return;
-  }
-
-  OPENSSL_free(bn->d);
-
-  bn->d = NULL;
-}
-
 int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src) {
   if (src == dest) {
     return 1;
@@ -96,10 +79,6 @@ int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src) {
 
   dest->top = src->top;
   return 1;
-}
-
-void GFp_BN_zero(BIGNUM *bn) {
-  bn->top = 0;
 }
 
 int GFp_bn_wexpand(BIGNUM *bn, size_t words) {

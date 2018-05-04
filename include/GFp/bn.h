@@ -154,22 +154,9 @@ extern "C" {
 
 // Allocation and freeing.
 
-// GFp_BN_init initialises a stack allocated |BIGNUM|.
-OPENSSL_EXPORT void GFp_BN_init(BIGNUM *bn);
-
-// GFp_BN_free frees the data referenced by |bn| and, if |bn| was originally
-// allocated on the heap, frees |bn| also.
-OPENSSL_EXPORT void GFp_BN_free(BIGNUM *bn);
-
 // GFp_BN_copy sets |dest| equal to |src| and returns one on success or zero on
 // failure.
 OPENSSL_EXPORT int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src);
-
-
-// Basic functions.
-
-// GFp_BN_zero sets |bn| to zero.
-OPENSSL_EXPORT void GFp_BN_zero(BIGNUM *bn);
 
 
 // Internal functions.
@@ -186,13 +173,6 @@ OPENSSL_EXPORT void GFp_bn_correct_top(BIGNUM *bn);
 // altering its value. It returns one on success and zero on allocation
 // failure.
 OPENSSL_EXPORT int GFp_bn_wexpand(BIGNUM *bn, size_t words);
-
-
-// Simple arithmetic
-
-// GFp_BN_mul_no_alias sets |r| = |a| * |b|, where |r| must not be the same pointer
-// as |a| or |b|. Returns one on success and zero otherwise.
-OPENSSL_EXPORT int GFp_BN_mul_no_alias(BIGNUM *r, const BIGNUM *a, const BIGNUM *b);
 
 
 // Modulo arithmetic.
