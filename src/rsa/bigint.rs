@@ -240,12 +240,6 @@ pub struct Modulus<M> {
     m: PhantomData<M>,
 }
 
-// `Modulus` uniquely owns and references its contents.
-unsafe impl<M> Send for Modulus<M> {}
-
-// `Modulus` is immutable.
-unsafe impl<M> Sync for Modulus<M> {}
-
 impl<M> Modulus<M> {
     fn new(n: OddPositive) -> Result<Self, error::Unspecified> {
         // A `Modulus` must be larger than 1.
