@@ -190,13 +190,31 @@ PIMAGE_TLS_CALLBACK p_thread_callback_boringssl = thread_local_destructor;
 
 #endif  // _WIN64
 
+static void **get_thread_locals(void) {
+  // |TlsGetValue| clears the last error even on success, so that callers may
+  // distinguish it successfully returning NULL or failing. It is documented to
+  // never fail if the argument is a valid index from |TlsAlloc|, so we do not
+  // need to handle this.
+  //
+  // However, this error-mangling behavior interferes with the caller's use of
+  // |GetLastError|. In particular |SSL_get_error| queries the error queue to
+  // determine whether the caller should look at the OS's errors. To avoid
+  // destroying state, save and restore the Windows error.
+  //
+  // https://msdn.microsoft.com/en-us/library/windows/desktop/ms686812(v=vs.85).aspx
+  DWORD last_error = GetLastError();
+  void **ret = TlsGetValue(g_thread_local_key);
+  SetLastError(last_error);
+  return ret;
+}
+
 void *CRYPTO_get_thread_local(thread_local_data_t index) {
   CRYPTO_once(&g_thread_local_init_once, thread_local_init);
   if (g_thread_local_failed) {
     return NULL;
   }
 
-  void **pointers = TlsGetValue(g_thread_local_key);
+  void **pointers = get_thread_locals();
   if (pointers == NULL) {
     return NULL;
   }
@@ -211,7 +229,7 @@ int CRYPTO_set_thread_local(thread_local_data_t index, void *value,
     return 0;
   }
 
-  void **pointers = TlsGetValue(g_thread_local_key);
+  void **pointers = get_thread_locals();
   if (pointers == NULL) {
     pointers = OPENSSL_malloc(sizeof(void *) * NUM_OPENSSL_THREAD_LOCALS);
     if (pointers == NULL) {
