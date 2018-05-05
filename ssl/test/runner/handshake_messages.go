@@ -919,6 +919,7 @@ type serverHelloMsg struct {
 	vers                  uint16
 	versOverride          uint16
 	supportedVersOverride uint16
+	omitSupportedVers     bool
 	random                []byte
 	sessionId             []byte
 	cipherSuite           uint16
@@ -979,12 +980,14 @@ func (m *serverHelloMsg) marshal() []byte {
 			extensions.addU16(2) // Length
 			extensions.addU16(m.pskIdentity)
 		}
-		extensions.addU16(extensionSupportedVersions)
-		extensions.addU16(2) // Length
-		if m.supportedVersOverride != 0 {
-			extensions.addU16(m.supportedVersOverride)
-		} else {
-			extensions.addU16(m.vers)
+		if !m.omitSupportedVers {
+			extensions.addU16(extensionSupportedVersions)
+			extensions.addU16(2) // Length
+			if m.supportedVersOverride != 0 {
+				extensions.addU16(m.supportedVersOverride)
+			} else {
+				extensions.addU16(m.vers)
+			}
 		}
 		if len(m.customExtension) > 0 {
 			extensions.addU16(extensionCustom)

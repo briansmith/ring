@@ -5592,7 +5592,7 @@ func addVersionNegotiationTests() {
 		config: Config{
 			MaxVersion: VersionTLS12,
 			Bugs: ProtocolBugs{
-				SendServerSupportedExtensionVersion: VersionTLS12,
+				SendServerSupportedVersionExtension: VersionTLS12,
 			},
 		},
 		shouldFail:    true,
@@ -12756,6 +12756,39 @@ func addTLS13HandshakeTests() {
 			shouldFail:    true,
 			expectedError: ":WRONG_CURVE:",
 		})
+
+		// Test that the supported_versions extension is enforced in the
+		// second ServerHello. Note we only enforce this starting draft 28.
+		if isDraft28(version.versionWire) {
+			testCases = append(testCases, testCase{
+				name: "SecondServerHelloNoVersion-" + name,
+				config: Config{
+					MaxVersion: VersionTLS13,
+					// P-384 requires HelloRetryRequest in BoringSSL.
+					CurvePreferences: []CurveID{CurveP384},
+					Bugs: ProtocolBugs{
+						OmitServerSupportedVersionExtension: true,
+					},
+				},
+				tls13Variant:  variant,
+				shouldFail:    true,
+				expectedError: ":SECOND_SERVERHELLO_VERSION_MISMATCH:",
+			})
+			testCases = append(testCases, testCase{
+				name: "SecondServerHelloWrongVersion-" + name,
+				config: Config{
+					MaxVersion: VersionTLS13,
+					// P-384 requires HelloRetryRequest in BoringSSL.
+					CurvePreferences: []CurveID{CurveP384},
+					Bugs: ProtocolBugs{
+						SendServerSupportedVersionExtension: 0x1234,
+					},
+				},
+				tls13Variant:  variant,
+				shouldFail:    true,
+				expectedError: ":SECOND_SERVERHELLO_VERSION_MISMATCH:",
+			})
+		}
 
 		testCases = append(testCases, testCase{
 			name: "RequestContextInHandshake-" + name,

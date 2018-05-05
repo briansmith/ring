@@ -1395,9 +1395,15 @@ type ProtocolBugs struct {
 	// specified value in ServerHello version field.
 	SendServerHelloVersion uint16
 
-	// SendServerSupportedExtensionVersion, if non-zero, causes the server to send
-	// the specified value in supported_versions extension in the ServerHello.
-	SendServerSupportedExtensionVersion uint16
+	// SendServerSupportedVersionExtension, if non-zero, causes the server to send
+	// the specified value in supported_versions extension in the ServerHello (but
+	// not the HelloRetryRequest).
+	SendServerSupportedVersionExtension uint16
+
+	// OmitServerSupportedVersionExtension, if true, causes the server to
+	// omit the supported_versions extension in the ServerHello (but not the
+	// HelloRetryRequest)
+	OmitServerSupportedVersionExtension bool
 
 	// SkipHelloRetryRequest, if true, causes the TLS 1.3 server to not send
 	// HelloRetryRequest.

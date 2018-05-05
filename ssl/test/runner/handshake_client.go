@@ -590,7 +590,7 @@ NextCipherSuite:
 	}
 
 	if serverWireVersion != serverHello.vers {
-		c.sendAlert(alertProtocolVersion)
+		c.sendAlert(alertIllegalParameter)
 		return fmt.Errorf("tls: server sent non-matching version %x vs %x", serverWireVersion, serverHello.vers)
 	}
 
