@@ -418,7 +418,7 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
   }
 #else
   {
-    const BN_ULONG *np = n->d;
+    const BN_ULONG *np = n;
 
     copy_to_prebuf(tmp, top, powerbuf, 0, window);
     copy_to_prebuf(am, top, powerbuf, 1, window);
