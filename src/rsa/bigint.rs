@@ -340,10 +340,10 @@ impl<M, E> Elem<M, E> {
     }
 }
 
-impl<M> Elem<M, R> {
-    #[inline]
-    pub fn into_unencoded(mut self, m: &Modulus<M>)
-                          -> Result<Elem<M, Unencoded>, error::Unspecified> {
+impl<M, E: ReductionEncoding> Elem<M, E> {
+    fn decode_once(mut self, m: &Modulus<M>)
+        -> Result<Elem<M, <E as ReductionEncoding>::Output>, error::Unspecified>
+    {
         // A multiplication isn't required since we're multiplying by the
         // unencoded value one (1); only a Montgomery reduction is needed.
         // However the only non-multiplication Montgomery reduction function we
@@ -366,6 +366,14 @@ impl<M> Elem<M, R> {
             m: PhantomData,
             encoding: PhantomData,
         })
+    }
+}
+
+impl<M> Elem<M, R> {
+    #[inline]
+    pub fn into_unencoded(self, m: &Modulus<M>)
+                          -> Result<Elem<M, Unencoded>, error::Unspecified> {
+        self.decode_once(m)
     }
 }
 
@@ -608,9 +616,7 @@ pub struct One<M, E>(Elem<M, E>);
 impl<M> One<M, R> {
     pub fn newR(oneRR: &One<M, RR>, m: &Modulus<M>)
                 -> Result<One<M, R>, error::Unspecified> {
-        let value: Elem<M> = Elem::one()?;
-        let value: Elem<M, R> = elem_mul(oneRR.as_ref(), value, &m)?;
-        Ok(One(value))
+        Ok(One(oneRR.0.try_clone()?.decode_once(m)?))
     }
 }
 
