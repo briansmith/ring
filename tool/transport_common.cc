@@ -699,28 +699,30 @@ bool TransferData(SSL *ssl, int sock) {
     }
 
     if (socket_ready) {
-      uint8_t buffer[512];
-      int ssl_ret = SSL_read(ssl, buffer, sizeof(buffer));
+      for (;;) {
+        uint8_t buffer[512];
+        int ssl_ret = SSL_read(ssl, buffer, sizeof(buffer));
 
-      if (ssl_ret < 0) {
-        int ssl_err = SSL_get_error(ssl, ssl_ret);
-        if (ssl_err == SSL_ERROR_WANT_READ) {
-          continue;
+        if (ssl_ret < 0) {
+          int ssl_err = SSL_get_error(ssl, ssl_ret);
+          if (ssl_err == SSL_ERROR_WANT_READ) {
+            break;
+          }
+          PrintSSLError(stderr, "Error while reading", ssl_err, ssl_ret);
+          return false;
+        } else if (ssl_ret == 0) {
+          return true;
         }
-        PrintSSLError(stderr, "Error while reading", ssl_err, ssl_ret);
-        return false;
-      } else if (ssl_ret == 0) {
-        return true;
-      }
 
-      ssize_t n;
-      do {
-        n = BORINGSSL_WRITE(1, buffer, ssl_ret);
-      } while (n == -1 && errno == EINTR);
+        ssize_t n;
+        do {
+          n = BORINGSSL_WRITE(1, buffer, ssl_ret);
+        } while (n == -1 && errno == EINTR);
 
-      if (n != ssl_ret) {
-        fprintf(stderr, "Short write to stderr.\n");
-        return false;
+        if (n != ssl_ret) {
+          fprintf(stderr, "Short write to stderr.\n");
+          return false;
+        }
       }
     }
   }
