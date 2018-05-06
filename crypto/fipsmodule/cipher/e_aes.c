@@ -68,6 +68,7 @@
 #endif
 
 
+OPENSSL_MSVC_PRAGMA(warning(push))
 OPENSSL_MSVC_PRAGMA(warning(disable: 4702))  // Unreachable code.
 
 typedef struct {
@@ -1435,3 +1436,5 @@ int EVP_has_aes_hardware(void) {
   return 0;
 #endif
 }
+
+OPENSSL_MSVC_PRAGMA(warning(pop))
