@@ -385,15 +385,15 @@ impl<M> Elem<M, Unencoded> {
         limb::big_endian_from_limbs_padded(self.value.limbs(), out)
     }
 
-    // The result is security-sensitive.
-    #[cfg(feature = "rsa_signing")]
-    #[inline]
-    pub fn bit_length(&self) -> bits::BitLength { self.value.bit_length() }
-
     #[cfg(feature = "rsa_signing")]
     pub fn into_modulus<MM>(self) -> Result<Modulus<MM>, error::Unspecified> {
         let value = self.value.into_odd_positive()?;
         value.into_modulus()
+    }
+
+    #[cfg(feature = "rsa_signing")]
+    pub fn into_positive(self) -> Result<Positive, error::Unspecified> {
+        self.value.into_positive()
     }
 }
 
@@ -1121,6 +1121,14 @@ impl Nonnegative {
             m: PhantomData,
             encoding: PhantomData,
         })
+    }
+
+    #[cfg(feature = "rsa_signing")]
+    fn into_positive(self) -> Result<Positive, error::Unspecified> {
+        if self.is_zero() {
+            return Err(error::Unspecified);
+        }
+        Ok(Positive(self))
     }
 
     fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {

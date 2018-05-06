@@ -282,7 +282,7 @@ impl RSAKeyPair {
                         // q < p would be wrong.
                         let p_minus_q =
                             bigint::elem_sub(p_mod_n, &q_mod_n_decoded, &n)?;
-                        p_minus_q.bit_length()
+                        p_minus_q.into_positive()?.bit_length()
                     };
                     let min_pq_bitlen_diff = half_n_bits.try_sub(
                             bits::BitLength::from_usize_bits(100))?;
