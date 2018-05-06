@@ -28,6 +28,7 @@
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
 Limb LIMBS_add_assign(Limb r[], const Limb a[], size_t num_limbs);
 Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs);
+Limb LIMBS_less_than_limb(const Limb a[], Limb b, size_t num_limbs);
 void LIMBS_sub_assign(Limb r[], const Limb a[], size_t num_limbs);
 void LIMBS_sub_mod_ex(Limb r[], const Limb a[], const Limb m[], size_t num_limbs,
                       size_t a_limbs);
@@ -82,6 +83,15 @@ Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs) {
     borrow = limb_sbb(&dummy, a[i], b[i], borrow);
   }
   return constant_time_is_nonzero_w(borrow);
+}
+
+Limb LIMBS_less_than_limb(const Limb a[], Limb b, size_t num_limbs) {
+  assert(num_limbs >= 1);
+
+  Limb dummy;
+  Limb lo = constant_time_is_nonzero_w(limb_sub(&dummy, a[0], b));
+  Limb hi = LIMBS_are_zero(&a[1], num_limbs - 1);
+  return constant_time_select_w(lo, hi, lo);
 }
 
 void LIMBS_copy(Limb r[], const Limb a[], size_t num_limbs) {
