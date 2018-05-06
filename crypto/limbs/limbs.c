@@ -30,8 +30,6 @@ Limb LIMBS_add_assign(Limb r[], const Limb a[], size_t num_limbs);
 Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs);
 Limb LIMBS_less_than_limb(const Limb a[], Limb b, size_t num_limbs);
 void LIMBS_sub_assign(Limb r[], const Limb a[], size_t num_limbs);
-void LIMBS_sub_mod_ex(Limb r[], const Limb a[], const Limb m[], size_t num_limbs,
-                      size_t a_limbs);
 
 /* We have constant time primitives on |size_t|. Rather than duplicate them,
  * take advantage of the fact that |size_t| and |Limb| are currently
@@ -163,23 +161,6 @@ void LIMBS_sub_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
                    size_t num_limbs) {
   Limb underflow =
       constant_time_is_nonzero_w(limbs_sub(r, a, b, num_limbs));
-  Carry carry = limb_add(&r[0], r[0], m[0] & underflow);
-  for (size_t i = 1; i < num_limbs; ++i) {
-    carry = limb_adc(&r[i], r[i], m[i] & underflow, carry);
-  }
-}
-
-/* r -= a for a_limbs <= num_limbs.
- *
- * XXX: This is a temporary, transitional hack and cannot be constant-time. */
-void LIMBS_sub_mod_ex(Limb r[], const Limb a[], const Limb m[], size_t num_limbs,
-                      size_t a_limbs) {
-  assert(a_limbs <= num_limbs);
-  Carry borrow = limbs_sub(r, r, a, a_limbs);
-  for (size_t i = a_limbs; i < num_limbs; ++i) {
-    borrow = limb_sbb(&r[i], r[i], 0, borrow);
-  }
-  Limb underflow = constant_time_is_nonzero_w(borrow);
   Carry carry = limb_add(&r[0], r[0], m[0] & underflow);
   for (size_t i = 1; i < num_limbs; ++i) {
     carry = limb_adc(&r[i], r[i], m[i] & underflow, carry);

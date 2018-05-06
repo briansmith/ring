@@ -45,9 +45,9 @@ impl Blinding {
             }) => {
                 if remaining > 0 {
                     let blinding_factor =
-                        bigint::elem_squared(blinding_factor, n)?;
+                        bigint::elem_squared(blinding_factor, n);
                     let blinding_factor_inv =
-                        bigint::elem_squared(blinding_factor_inv, n)?;
+                        bigint::elem_squared(blinding_factor_inv, n);
                     Ok(Contents {
                         blinding_factor: blinding_factor,
                         blinding_factor_inv: blinding_factor_inv,
@@ -59,8 +59,8 @@ impl Blinding {
             },
 
             None => {
-                let elem1 = bigint::Elem::zero()?;
-                let elem2 = bigint::Elem::zero()?;
+                let elem1 = n.zero();
+                let elem2 = n.zero();
                 reset(elem1, elem2, e, oneRR, n, rng)
             },
         }?;

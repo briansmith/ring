@@ -190,8 +190,8 @@ OPENSSL_EXPORT int GFp_BN_mod_mul_mont(
 // Exponentiation.
 
 OPENSSL_EXPORT int GFp_BN_mod_exp_mont_consttime(
-    BIGNUM *rr, const BIGNUM *a_mont, const BIGNUM *p,
-    const BIGNUM *one_mont, const BIGNUM *n,
+    BN_ULONG rr[], const BN_ULONG a_mont[], const BIGNUM *p,
+    const BN_ULONG one_mont[], const BN_ULONG n[], size_t num_limbs,
     const BN_ULONG n0[/*BN_MONT_CTX_N0_LIMBS*/]);
 
 

@@ -246,9 +246,9 @@ static int copy_from_prebuf(BN_ULONG b[], int top, unsigned char *buf, int idx,
 // the value 1 Montgomery-encoded and fully reduced (mod m).
 //
 // Assumes 0 < a_mont < n, 0 < p, 0 < p_bits.
-int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
-                                  const BIGNUM *p, const BIGNUM *one_mont,
-                                  const BIGNUM *n,
+int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
+                                  const BIGNUM *p, const BN_ULONG one_mont[],
+                                  const BN_ULONG n[], size_t num_limbs,
                                   const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]) {
   int i, ret = 0, wvalue;
 
@@ -257,8 +257,8 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   int powerbufLen = 0;
   unsigned char *powerbuf = NULL;
 
-  const int top = n->top;
-  if (!GFp_bn_mul_mont_check_num_limbs(top)) {
+  const int top = (int)num_limbs;
+  if (!GFp_bn_mul_mont_check_num_limbs(num_limbs)) {
     goto err;
   }
 
@@ -271,8 +271,8 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   // Get the window size to use with size of p.
 #if defined(OPENSSL_BN_ASM_MONT5)
   static const int window = 5;
-  // reserve space for n->d[] copy
-  powerbufLen += top * sizeof(n->d[0]);
+  // reserve space for n copy
+  powerbufLen += top * sizeof(n[0]);
 #else
   const int window = GFp_BN_window_bits_for_ctime_exponent_size(bits);
 #endif
@@ -281,7 +281,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   // powers of am, am itself and tmp.
   numPowers = 1 << window;
   powerbufLen +=
-      sizeof(n->d[0]) *
+      sizeof(n[0]) *
       (top * numPowers + ((2 * top) > numPowers ? (2 * top) : numPowers));
 #ifdef alloca
   if (powerbufLen < 3072) {
@@ -305,19 +305,13 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
 #endif
 
   // Lay down tmp and am right after powers table.
-  BN_ULONG *tmp = (BN_ULONG *)(powerbuf + sizeof(n->d[0]) * top * numPowers);
+  BN_ULONG *tmp = (BN_ULONG *)(powerbuf + sizeof(n[0]) * top * numPowers);
   BN_ULONG *am = tmp + top;
 
   // Copy a^0 and a^1. Copying less than |top| limbs is OK because |powerbuf|
   // was zero-initialized.
-  assert(one_mont->top <= top);
-  assert(a_mont->top <= top);
-  LIMBS_copy(tmp, one_mont->d, one_mont->top);
-  LIMBS_copy(am, a_mont->d, a_mont->top);
-
-  // Use the copies that have been padded to |top| limbs.
-  a_mont = NULL;
-  one_mont = NULL;
+  LIMBS_copy(tmp, one_mont, num_limbs);
+  LIMBS_copy(am, a_mont, num_limbs);
 
 #if defined(OPENSSL_BN_ASM_MONT5)
   // This optimization uses ideas from http://eprint.iacr.org/2011/239,
@@ -326,9 +320,9 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
   {
     BN_ULONG *np;
 
-    // copy n->d[] to improve cache locality
+    // copy n[] to improve cache locality
     for (np = am + top, i = 0; i < top; i++) {
-      np[i] = n->d[i];
+      np[i] = n[i];
     }
 
     GFp_bn_scatter5(tmp, top, powerbuf, 0);
@@ -473,12 +467,7 @@ int GFp_BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a_mont,
     }
   }
 #endif
-  if (!GFp_bn_wexpand(rr, top)) {
-    goto err;
-  }
-  LIMBS_copy(rr->d, tmp, top);
-  rr->top = top;
-  GFp_bn_correct_top(rr);
+  LIMBS_copy(rr, tmp, top);
 
   ret = 1;
 

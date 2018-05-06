@@ -83,7 +83,6 @@ pub fn limbs_less_than_limbs_vartime(a: &[Limb], b: &[Limb]) -> bool {
     limbs_less_than_limbs_consttime(a, b) == LimbMask::True
 }
 
-#[cfg(test)]
 #[inline]
 pub fn limbs_less_than_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
     unsafe { LIMBS_less_than_limb(a.as_ptr(), b, a.len()) }
@@ -94,7 +93,6 @@ pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { LIMBS_are_zero(limbs.as_ptr(), limbs.len()) }
 }
 
-#[cfg(test)]
 #[inline]
 pub fn limbs_are_even_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { LIMBS_are_even(limbs.as_ptr(), limbs.len()) }
@@ -228,7 +226,6 @@ pub fn big_endian_from_limbs_padded(limbs: &[Limb], out: &mut [u8]) {
 }
 
 extern {
-    #[cfg(test)]
     fn LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     #[cfg(any(test, feature = "rsa_signing"))]
@@ -236,7 +233,6 @@ extern {
                         -> LimbMask;
     fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t)
                        -> LimbMask;
-    #[cfg(test)]
     fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t)
                             -> LimbMask;
     fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);

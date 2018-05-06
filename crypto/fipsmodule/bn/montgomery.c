@@ -119,19 +119,20 @@
 #include "../../limbs/limbs.h"
 
 // Avoid -Wmissing-prototypes warnings.
-int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
-                                const BN_ULONG n0[BN_MONT_CTX_N0_LIMBS]);
+int GFp_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
+                                    size_t num_a, const BN_ULONG n[],
+                                    size_t num_n,
+                                    const BN_ULONG n0_[BN_MONT_CTX_N0_LIMBS]);
 
 OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
                        BN_MONT_CTX_N0_LIMBS_VALUE_INVALID);
 OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS ==
                        sizeof(uint64_t), BN_MONT_CTX_set_64_bit_mismatch);
 
-static int bn_from_montgomery_in_place(BN_ULONG *r, size_t num_r, BN_ULONG *a,
-                                       size_t num_a, const BN_ULONG *n,
-                                       size_t num_n,
-                                       const BN_ULONG n0_[BN_MONT_CTX_N0_LIMBS])
-{
+int GFp_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
+                                    size_t num_a, const BN_ULONG n[],
+                                    size_t num_n,
+                                    const BN_ULONG n0_[BN_MONT_CTX_N0_LIMBS]) {
   assert(num_n != 0);
   if (num_r != num_n || num_a != 2 * num_n) {
     return 0;
@@ -167,35 +168,6 @@ static int bn_from_montgomery_in_place(BN_ULONG *r, size_t num_r, BN_ULONG *a,
     r[i] = constant_time_select_w(v, a[i], r[i]);
     a[i] = 0;
   }
-  return 1;
-}
-
-int GFp_BN_from_montgomery_word(BIGNUM *ret, BIGNUM *r, const BIGNUM *n,
-                                const BN_ULONG n0_[BN_MONT_CTX_N0_LIMBS])
-{
-  if (n->top == 0) {
-    ret->top = 0;
-    return 1;
-  }
-
-  int max = (2 * n->top);  // carry is stored separately
-  if (!GFp_bn_wexpand(r, max) ||
-      !GFp_bn_wexpand(ret, n->top)) {
-    return 0;
-  }
-  // Clear the top words of |r|.
-  if (max > r->top) {
-    memset(r->d + r->top, 0, (max - r->top) * sizeof(BN_ULONG));
-  }
-  r->top = max;
-  ret->top = n->top;
-
-  if (!bn_from_montgomery_in_place(ret->d, ret->top, r->d, r->top, n->d, n->top, n0_)) {
-    return 0;
-  }
-
-  GFp_bn_correct_top(r);
-  GFp_bn_correct_top(ret);
   return 1;
 }
 
