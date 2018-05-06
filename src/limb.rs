@@ -94,6 +94,12 @@ pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { LIMBS_are_zero(limbs.as_ptr(), limbs.len()) }
 }
 
+#[cfg(test)]
+#[inline]
+pub fn limbs_are_even_constant_time(limbs: &[Limb]) -> LimbMask {
+    unsafe { LIMBS_are_even(limbs.as_ptr(), limbs.len()) }
+}
+
 #[cfg(any(test, feature = "rsa_signing"))]
 #[inline]
 pub fn limbs_equal_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
@@ -222,6 +228,8 @@ pub fn big_endian_from_limbs_padded(limbs: &[Limb], out: &mut [u8]) {
 }
 
 extern {
+    #[cfg(test)]
+    fn LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     #[cfg(any(test, feature = "rsa_signing"))]
     fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t)
@@ -240,6 +248,37 @@ mod tests {
     use super::*;
 
     const MAX: Limb = LimbMask::True as Limb;
+
+    #[test]
+    fn test_limbs_are_even() {
+        static EVENS: &[&[Limb]] = &[
+            &[],
+            &[0],
+            &[2],
+            &[0, 0],
+            &[2, 0],
+            &[0, 1],
+            &[0, 2],
+            &[0, 3],
+            &[0, 0, 0, 0, MAX],
+        ];
+        for even in EVENS {
+            assert_eq!(limbs_are_even_constant_time(even), LimbMask::True);
+        }
+        static ODDS: &[&[Limb]] = &[
+            &[1],
+            &[3],
+            &[1, 0],
+            &[3, 0],
+            &[1, 1],
+            &[1, 2],
+            &[1, 3],
+            &[1, 0, 0, 0, MAX],
+        ];
+        for odd in ODDS {
+           assert_eq!(limbs_are_even_constant_time(odd), LimbMask::False);
+        }
+    }
 
     static ZEROES: &[&[Limb]] = &[
         &[],

@@ -71,6 +71,18 @@ Limb LIMBS_equal_limb(const Limb a[], Limb b, size_t num_limbs) {
   return constant_time_select_w(lo_equal, hi_zero, 0);
 }
 
+/* Returns 0xfff..f if |a| is all zero limbs, and zero otherwise.
+ * |num_limbs| may be zero. */
+Limb LIMBS_are_even(const Limb a[], size_t num_limbs) {
+  Limb lo;
+  if (num_limbs == 0) {
+    lo = 0;
+  } else {
+    lo = a[0];
+  }
+  return constant_time_is_zero_w(lo & 1);
+}
+
 /* Returns 0xffff...f if |a| is less than |b|, and zero otherwise. */
 Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs) {
   assert(num_limbs >= 1);

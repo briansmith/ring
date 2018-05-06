@@ -28,6 +28,7 @@ typedef BN_ULONG Limb;
 
 
 Limb LIMBS_are_zero(const Limb a[], size_t num_limbs);
+Limb LIMBS_are_even(const Limb a[], size_t num_limbs);
 void LIMBS_copy(Limb r[], const Limb a[], size_t num_limbs);
 Limb LIMBS_equal(const Limb a[], const Limb b[], size_t num_limbs);
 Limb LIMBS_equal_limb(const Limb a[], Limb b, size_t num_limbs);
