@@ -39,10 +39,6 @@ pub struct RSAKeyPair {
     n_bits: bits::BitLength,
 }
 
-// `RSAKeyPair` is immutable. TODO: Make all the elements of `RSAKeyPair`
-// implement `Sync` so that it doesn't have to do this itself.
-unsafe impl Sync for RSAKeyPair {}
-
 impl RSAKeyPair {
     /// Parses an unencrypted PKCS#8-encoded RSA private key.
     ///
