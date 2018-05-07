@@ -1421,7 +1421,7 @@ ___
 $code.=<<___;
 	ret
 .LSEH_end_GFp_nistz256_avx2_select_w7:
-.size	GFp_nistz256_avx2_select_w7,.-ecp_nistz256_avx2_select_w7
+.size	GFp_nistz256_avx2_select_w7,.-GFp_nistz256_avx2_select_w7
 ___
 } else {
 $code.=<<___;
