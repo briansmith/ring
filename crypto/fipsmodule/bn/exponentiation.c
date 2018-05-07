@@ -271,11 +271,9 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
     goto err;
   }
 
-  int p_top = (int)p_num_limbs;
-
   // Use all bits stored in |p|, rather than |BN_num_bits|, so we do not leak
   // whether the top bits are zero.
-  int max_bits = p_top * BN_BITS2;
+  int max_bits = (int)p_num_limbs * BN_BITS2;
   int bits = max_bits;
   assert(bits > 0);
 
@@ -368,7 +366,7 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
 
     bits--;
     for (wvalue = 0, i = bits % 5; i >= 0; i--, bits--) {
-      wvalue = (wvalue << 1) + GFp_bn_is_bit_set_words(p, p_top, bits);
+      wvalue = (wvalue << 1) + GFp_bn_is_bit_set_words(p, p_num_limbs, bits);
     }
     GFp_bn_gather5(tmp, top, powerbuf, wvalue);
 
@@ -381,7 +379,7 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
     if (top & 7) {
       while (bits >= 0) {
         for (wvalue = 0, i = 0; i < 5; i++, bits--) {
-          wvalue = (wvalue << 1) + GFp_bn_is_bit_set_words(p, p_top, bits);
+          wvalue = (wvalue << 1) + GFp_bn_is_bit_set_words(p, p_num_limbs, bits);
         }
 
         GFp_bn_mul_mont(tmp, tmp, tmp, np, n0, top);
@@ -404,7 +402,7 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
       // here is the top bit, inclusive.
       if (bits - 4 >= max_bits - 8) {
         // Read five bits from |bits-4| through |bits|, inclusive.
-        wvalue = p_bytes[p_top * BN_BYTES - 1];
+        wvalue = p_bytes[p_num_limbs * BN_BYTES - 1];
         wvalue >>= (bits - 4) & 7;
         wvalue &= 0x1f;
         bits -= 5;
@@ -451,7 +449,7 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
 
     bits--;
     for (wvalue = 0, i = bits % window; i >= 0; i--, bits--) {
-      wvalue = (wvalue << 1) + GFp_bn_is_bit_set_words(p, p_top, bits);
+      wvalue = (wvalue << 1) + GFp_bn_is_bit_set_words(p, p_num_limbs, bits);
     }
     if (!copy_from_prebuf(tmp, top, powerbuf, wvalue, window)) {
       goto err;
@@ -465,7 +463,7 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
       // Scan the window, squaring the result as we go
       for (i = 0; i < window; i++, bits--) {
         GFp_bn_mul_mont(tmp, tmp, tmp, np, n0, top);
-        wvalue = (wvalue << 1) + GFp_bn_is_bit_set_words(p, p_top, bits);
+        wvalue = (wvalue << 1) + GFp_bn_is_bit_set_words(p, p_num_limbs, bits);
       }
 
       // Fetch the appropriate pre-computed value from the pre-buf */
