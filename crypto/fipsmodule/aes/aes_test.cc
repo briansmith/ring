@@ -133,7 +133,8 @@ TEST(AESTest, TestVectors) {
 }
 
 TEST(AESTest, WycheproofKeyWrap) {
-  FileTestGTest("third_party/wycheproof/kw_test.txt", [](FileTest *t) {
+  FileTestGTest("third_party/wycheproof_testvectors/kw_test.txt",
+                [](FileTest *t) {
     std::string key_size;
     ASSERT_TRUE(t->GetInstruction(&key_size, "keySize"));
     std::vector<uint8_t> ct, key, msg;

@@ -127,7 +127,8 @@ TEST(X25519Test, DISABLED_IteratedLarge) {
 }
 
 TEST(X25519Test, Wycheproof) {
-  FileTestGTest("third_party/wycheproof/x25519_test.txt", [](FileTest *t) {
+  FileTestGTest("third_party/wycheproof_testvectors/x25519_test.txt",
+                [](FileTest *t) {
       t->IgnoreInstruction("curve");
       t->IgnoreAttribute("curve");
 

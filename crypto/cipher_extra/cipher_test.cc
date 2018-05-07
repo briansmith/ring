@@ -304,7 +304,7 @@ TEST(CipherTest, CAVP_TDES_ECB) {
 }
 
 TEST(CipherTest, WycheproofAESCBC) {
-  FileTestGTest("third_party/wycheproof/aes_cbc_pkcs5_test.txt",
+  FileTestGTest("third_party/wycheproof_testvectors/aes_cbc_pkcs5_test.txt",
                 [](FileTest *t) {
     t->IgnoreInstruction("type");
     t->IgnoreInstruction("ivSize");

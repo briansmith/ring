@@ -1,5 +1,6 @@
 name: "Project Wycheproof"
-description: "Project Wycheproof tests crypto libraries against known attacks."
+description: "Project Wycheproof tests crypto libraries against known attacks. "
+"This is a copy of only the test vectors, adapted for BoringSSL."
 
 third_party {
   url {

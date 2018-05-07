@@ -765,7 +765,8 @@ static void RunWycheproofTestCase(FileTest *t, const EVP_AEAD *aead) {
 }
 
 TEST(AEADTest, WycheproofAESGCMSIV) {
-  FileTestGTest("third_party/wycheproof/aes_gcm_siv_test.txt", [](FileTest *t) {
+  FileTestGTest("third_party/wycheproof_testvectors/aes_gcm_siv_test.txt",
+                [](FileTest *t) {
     std::string key_size_str;
     ASSERT_TRUE(t->GetInstruction(&key_size_str, "keySize"));
     const EVP_AEAD *aead;
@@ -785,7 +786,8 @@ TEST(AEADTest, WycheproofAESGCMSIV) {
 }
 
 TEST(AEADTest, WycheproofAESGCM) {
-  FileTestGTest("third_party/wycheproof/aes_gcm_test.txt", [](FileTest *t) {
+  FileTestGTest("third_party/wycheproof_testvectors/aes_gcm_test.txt",
+                [](FileTest *t) {
     std::string key_size_str;
     ASSERT_TRUE(t->GetInstruction(&key_size_str, "keySize"));
     const EVP_AEAD *aead;
@@ -809,7 +811,7 @@ TEST(AEADTest, WycheproofAESGCM) {
 }
 
 TEST(AEADTest, WycheproofChaCha20Poly1305) {
-  FileTestGTest("third_party/wycheproof/chacha20_poly1305_test.txt",
+  FileTestGTest("third_party/wycheproof_testvectors/chacha20_poly1305_test.txt",
                 [](FileTest *t) {
     t->IgnoreInstruction("keySize");
     RunWycheproofTestCase(t, EVP_aead_chacha20_poly1305());

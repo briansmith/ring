@@ -119,7 +119,8 @@ TEST(ECDHTest, TestVectors) {
 }
 
 TEST(ECDHTest, Wycheproof) {
-  FileTestGTest("third_party/wycheproof/ecdh_test.txt", [](FileTest *t) {
+  FileTestGTest("third_party/wycheproof_testvectors/ecdh_test.txt",
+                [](FileTest *t) {
     t->IgnoreInstruction("curve");  // This is redundant with the per-test one.
 
     bssl::UniquePtr<EC_GROUP> group = GetWycheproofCurve(t, "curve", false);
