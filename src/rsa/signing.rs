@@ -198,7 +198,7 @@ impl RSAKeyPair {
 
                 // Step 1.a is omitted, as explained above.
 
-                // Step 1.b is omitted per above. Instead, we chek that the
+                // Step 1.b is omitted per above. Instead, we check that the
                 // public modulus is 2048 to
                 // `PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS` bits. XXX: The maximum
                 // limit of 4096 bits is primarily due to lack of testing of
