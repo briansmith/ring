@@ -51,14 +51,6 @@ use constant_time;
 #[cfg(feature = "rsa_signing")]
 use {der, rand};
 
-impl AsRef<BIGNUM> for Positive {
-    fn as_ref<'a>(&'a self) -> &'a BIGNUM { self.0.as_ref() }
-}
-
-impl AsRef<BIGNUM> for Nonnegative {
-    fn as_ref<'a>(&'a self) -> &'a BIGNUM { &self.0 }
-}
-
 pub unsafe trait Prime {}
 
 pub trait IsOne {
@@ -1101,7 +1093,7 @@ impl Nonnegative {
     pub fn try_clone(&self) -> Result<Nonnegative, error::Unspecified> {
         let mut r = Nonnegative::zero()?;
         bssl::map_result(unsafe {
-            GFp_BN_copy(r.as_mut_ref(), self.as_ref())
+            GFp_BN_copy(r.as_mut_ref(), &self.0)
         })?;
         Ok(r)
     }
