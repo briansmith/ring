@@ -679,7 +679,7 @@ pub fn elem_exp_consttime<M>(
     // practical.
 
     #[cfg(not(target_arch = "x86_64"))]
-    let r = r.into_unencoded(m)?;
+    let r = r.into_unencoded(m);
 
     Ok(r)
 }
