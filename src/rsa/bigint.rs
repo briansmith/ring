@@ -654,22 +654,69 @@ pub fn elem_exp_vartime<M>(
     Ok(acc)
 }
 
+// `M` represents the prime modulus for which the exponent is in the interval
+// [1, `m` - 1).
+#[cfg(feature = "rsa_signing")]
+pub struct PrivateExponent<M> {
+    limbs: BoxedLimbs,
+    m: PhantomData<M>,
+}
+
+#[cfg(feature = "rsa_signing")]
+impl<M> PrivateExponent<M> {
+    pub fn from_be_bytes_padded(input: untrusted::Input, p: &Modulus<M>)
+                                -> Result<Self, error::Unspecified> {
+        let mut dP = vec![0; p.limbs.len()].into_boxed_slice();
+        limb::parse_big_endian_and_pad_consttime(input, &mut dP)?;
+        // Proof that `dP < p - 1`:
+        //
+        // If `dP < p` then either `dP == p - 1` or `dP < p - 1`. Since `p` is
+        // odd, `p - 1` is even. `d` is odd, and an odd number modulo an even
+        // number is odd. Therefore `dP` must be odd. But then it cannot be
+        // `p - 1` and so we know `dP < p - 1`.
+        //
+        // Further we know `dP != 0` because `dP` is not even.
+        if limb::limbs_are_even_constant_time(&dP) != limb::LimbMask::False {
+            return Err(error::Unspecified);
+        }
+        if limb::limbs_less_than_limbs_consttime(&dP, &p.limbs) !=
+            limb::LimbMask::True {
+            return Err(error::Unspecified);
+        }
+        Ok(PrivateExponent {
+            limbs: dP,
+            m: PhantomData,
+        })
+    }
+}
+
+#[cfg(feature = "rsa_signing")]
+impl<M: Prime> PrivateExponent<M> {
+    // Returns `p - 2`.
+    fn for_flt(p: &Modulus<M>) -> Self {
+        let two = elem_add(p.one(), p.one(), p);
+        let p_minus_2 = elem_sub(p.zero(), &two, p);
+        PrivateExponent {
+            limbs: p_minus_2.limbs,
+            m: p_minus_2.m,
+        }
+    }
+}
+
 #[cfg(feature = "rsa_signing")]
 pub fn elem_exp_consttime<M>(
-        base: Elem<M, R>, exponent: &OddPositive, oneR: &One<M, R>,
+        base: Elem<M, R>, exponent: &PrivateExponent<M>, oneR: &One<M, R>,
         m: &Modulus<M>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
     let mut r = Elem {
         limbs: base.limbs,
         m: PhantomData,
         encoding: PhantomData,
     };
-    let exponent_limbs = (exponent.0).0.limbs();
     bssl::map_result(unsafe {
         GFp_BN_mod_exp_mont_consttime(r.limbs.as_mut_ptr(), r.limbs.as_ptr(),
+                                      exponent.limbs.as_ptr(),
                                       oneR.0.limbs.as_ptr(), m.limbs.as_ptr(),
-                                      m.limbs.len(), &m.n0,
-                                      exponent_limbs.as_ptr(),
-                                      exponent_limbs.len())
+                                      m.limbs.len(), &m.n0)
     })?;
 
     // XXX: On x86-64 only, `GFp_BN_mod_exp_mont_consttime` does the conversion
@@ -693,12 +740,7 @@ pub fn elem_inverse_consttime<M: Prime>(
         a: Elem<M, R>,
         m: &Modulus<M>,
         oneR: &One<M, R>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-    let m_minus_2 = {
-        let two = elem_add(m.one(), m.one(), m);
-        let m_minus_2 = elem_sub(m.zero(), &two, m);
-        Nonnegative::from_limbs(&m_minus_2.limbs)?.into_odd_positive()?
-    };
-    elem_exp_consttime(a, &m_minus_2, oneR, m)
+    elem_exp_consttime(a, &PrivateExponent::for_flt(&m), oneR, m)
 }
 
 #[cfg(feature = "rsa_signing")]
@@ -1256,11 +1298,12 @@ extern {
                                        n0: &N0) -> c::int;
 
     // `r` and `a` may alias.
-    fn GFp_BN_mod_exp_mont_consttime(r: *mut limb::Limb, a_mont: *const limb::Limb,
-                                     one_mont: *const limb::Limb, n: *const limb::Limb,
-                                     num_limbs: c::size_t, n0: &N0,
-                                     p: *const limb::Limb, p_num_limbs: c::size_t)
-                                     -> c::int;
+    fn GFp_BN_mod_exp_mont_consttime(r: *mut limb::Limb,
+                                     a_mont: *const limb::Limb,
+                                     p: *const limb::Limb,
+                                     one_mont: *const limb::Limb,
+                                     n: *const limb::Limb,
+                                     num_limbs: c::size_t, n0: &N0) -> c::int;
 
     // `r` and `a` may alias.
     fn LIMBS_add_mod(r: *mut limb::Limb, a: *const limb::Limb,
@@ -1328,8 +1371,11 @@ mod tests {
             let m = consume_modulus::<M>(test_case, "M");
             let expected_result = consume_elem(test_case, "ModExp", &m);
             let base = consume_elem(test_case, "A", &m);
-            let e = consume_odd_positive(test_case, "E");
-
+            let e = {
+                let bytes = test_case.consume_bytes("E");
+                PrivateExponent::from_be_bytes_padded(
+                    untrusted::Input::from(&bytes), &m).expect("valid exponent")
+            };
             let base = into_encoded(base, &m);
             let oneRR = One::newRR(&m).unwrap();
             let one = One::newR(&oneRR, &m);

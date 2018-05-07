@@ -175,8 +175,8 @@ impl RSAKeyPair {
                 let d = bigint::Positive::from_der(input)?;
                 let p = bigint::Positive::from_der(input)?;
                 let q = bigint::Positive::from_der(input)?;
-                let dP = bigint::Positive::from_der(input)?;
-                let dQ = bigint::Positive::from_der(input)?;
+                let dP = der::positive_integer(input)?;
+                let dQ = der::positive_integer(input)?;
                 let qInv = bigint::Positive::from_der(input)?;
 
                 // Our implementation of CRT-based modular exponentiation used
@@ -387,7 +387,7 @@ impl RSAKeyPair {
 
 struct PrivatePrime<M: Prime> {
     modulus: bigint::Modulus<M>,
-    exponent: bigint::OddPositive,
+    exponent: bigint::PrivateExponent<M>,
     oneR: bigint::One<M, R>,
     oneRR: bigint::One<M, RR>,
     oneRRR: bigint::One<M, RRR>,
@@ -396,20 +396,12 @@ struct PrivatePrime<M: Prime> {
 impl<M: Prime + Clone> PrivatePrime<M> {
     /// Constructs a `PrivatePrime` from the private prime `p` and `dP` where
     /// dP == d % (p - 1).
-    fn new(p: bigint::OddPositive, dP: bigint::Positive)
+    fn new(p: bigint::OddPositive, dP: untrusted::Input)
            -> Result<Self, error::Unspecified> {
+        let p = p.into_modulus()?;
+
         // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Steps 7.a & 7.b.
-        //
-        // Proof that `dP < p - 1`:
-        //
-        // If `dP < p` then either `dP == p - 1` or `dP < p - 1`. Since `p` is
-        // odd, `p - 1` is even. `d` is odd, and an odd number modulo an even
-        // number is odd. Therefore `dP` must be odd. But then it cannot be
-        // `p - 1` and so we know `dP < p - 1`.
-        //
-        // The proof that `dQ < q - 1` is the same.
-        let dP = dP.into_odd_positive()?;
-        dP.verify_less_than(&p)?;
+        let dP = bigint::PrivateExponent::from_be_bytes_padded(dP, &p)?;
 
         // XXX: Steps 7.d and 7.e are omitted. We don't check that
         // `dP == d % (p - 1)` because we don't (in the long term) have a good
@@ -420,7 +412,6 @@ impl<M: Prime + Clone> PrivatePrime<M> {
         // and `e`. TODO: Either prove that what we do is sufficient, or make
         // it so.
 
-        let p = p.into_modulus()?;
         let oneRR = bigint::One::newRR(&p)?;
         let oneR = bigint::One::newR(&oneRR, &p);
         let oneRRR = bigint::One::newRRR(oneRR.clone(), &p);
