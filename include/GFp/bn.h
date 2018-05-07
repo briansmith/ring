@@ -177,14 +177,6 @@ OPENSSL_EXPORT int GFp_bn_wexpand(BIGNUM *bn, size_t words);
 
 // Modulo arithmetic.
 
-// Exponentiation.
-
-OPENSSL_EXPORT int GFp_BN_mod_exp_mont_consttime(
-    BN_ULONG rr[], const BN_ULONG a_mont[], const BIGNUM *p,
-    const BN_ULONG one_mont[], const BN_ULONG n[], size_t num_limbs,
-    const BN_ULONG n0[/*BN_MONT_CTX_N0_LIMBS*/]);
-
-
 // Private functions
 
 // Keep in sync with `BIGNUM` in `ring::rsa::bigint`.

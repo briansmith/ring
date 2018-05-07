@@ -663,10 +663,13 @@ pub fn elem_exp_consttime<M>(
         m: PhantomData,
         encoding: PhantomData,
     };
+    let exponent_limbs = (exponent.0).0.limbs();
     bssl::map_result(unsafe {
         GFp_BN_mod_exp_mont_consttime(r.limbs.as_mut_ptr(), r.limbs.as_ptr(),
-                                      exponent.as_ref(), oneR.0.limbs.as_ptr(),
-                                      m.limbs.as_ptr(), m.limbs.len(), &m.n0)
+                                      oneR.0.limbs.as_ptr(), m.limbs.as_ptr(),
+                                      m.limbs.len(), &m.n0,
+                                      exponent_limbs.as_ptr(),
+                                      exponent_limbs.len())
     })?;
 
     // XXX: On x86-64 only, `GFp_BN_mod_exp_mont_consttime` does the conversion
@@ -1254,9 +1257,10 @@ extern {
 
     // `r` and `a` may alias.
     fn GFp_BN_mod_exp_mont_consttime(r: *mut limb::Limb, a_mont: *const limb::Limb,
-                                     p: &BIGNUM, one_mont: *const limb::Limb,
-                                     n: *const limb::Limb, num_limbs: c::size_t,
-                                     n0: &N0) -> c::int;
+                                     one_mont: *const limb::Limb, n: *const limb::Limb,
+                                     num_limbs: c::size_t, n0: &N0,
+                                     p: *const limb::Limb, p_num_limbs: c::size_t)
+                                     -> c::int;
 
     // `r` and `a` may alias.
     fn LIMBS_add_mod(r: *mut limb::Limb, a: *const limb::Limb,
