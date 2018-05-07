@@ -315,8 +315,7 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
   BN_ULONG *tmp = (BN_ULONG *)(powerbuf + sizeof(n[0]) * top * numPowers);
   BN_ULONG *am = tmp + top;
 
-  // Copy a^0 and a^1. Copying less than |top| limbs is OK because |powerbuf|
-  // was zero-initialized.
+  // Copy a^0 and a^1.
   LIMBS_copy(tmp, one_mont, num_limbs);
   LIMBS_copy(am, a_mont, num_limbs);
 
