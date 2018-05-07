@@ -450,7 +450,10 @@ class ScopedWSAEVENT {
   ~ScopedWSAEVENT() { reset(); }
 
   ScopedWSAEVENT &operator=(const ScopedWSAEVENT &) = delete;
-  ScopedWSAEVENT &operator=(ScopedWSAEVENT &&other) { reset(other.release()); }
+  ScopedWSAEVENT &operator=(ScopedWSAEVENT &&other) {
+    reset(other.release());
+    return *this;
+  }
 
   explicit operator bool() const { return event_ != WSA_INVALID_EVENT; }
   WSAEVENT get() const { return event_; }
