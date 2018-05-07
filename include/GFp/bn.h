@@ -177,16 +177,6 @@ OPENSSL_EXPORT int GFp_bn_wexpand(BIGNUM *bn, size_t words);
 
 // Modulo arithmetic.
 
-// GFp_BN_mod_mul_mont set |r| equal to |a| * |b|, in the Montgomery domain.
-// Both |a| and |b| must already be in the Montgomery domain (by
-// |GFp_BN_to_mont|). In particular, |a| and |b| are assumed to be in the range
-// [0, n), where |n| is the Montgomery modulus. It returns one on success or
-// zero on error.
-OPENSSL_EXPORT int GFp_BN_mod_mul_mont(
-    BIGNUM *r, const BIGNUM *a, const BIGNUM *b, const BIGNUM *n,
-    const BN_ULONG n0[/*BN_MONT_CTX_N0_LIMBS*/]);
-
-
 // Exponentiation.
 
 OPENSSL_EXPORT int GFp_BN_mod_exp_mont_consttime(
