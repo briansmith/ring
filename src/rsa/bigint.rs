@@ -42,7 +42,6 @@
 
 use {bits, bssl, c, error, limb, untrusted};
 use arithmetic::montgomery::*;
-use core;
 use core::marker::PhantomData;
 use std;
 
@@ -132,6 +131,9 @@ impl Positive {
 pub struct OddPositive(Positive);
 
 impl OddPositive {
+    #[inline]
+    pub fn bit_length(&self) -> bits::BitLength { self.0.bit_length() }
+
     #[cfg(feature = "rsa_signing")]
     pub fn try_clone(&self) -> Result<OddPositive, error::Unspecified> {
         let value = (self.0).0.try_clone()?;
@@ -180,12 +182,6 @@ impl OddPositive {
         Ok(PublicExponent(value))
     }
 }
-
-impl core::ops::Deref for OddPositive {
-    type Target = Positive;
-    fn deref(&self) -> &Self::Target { &self.0 }
-}
-
 
 /// A modulus *s* that is smaller than another modulus *l* so every element of
 /// ℤ/sℤ is also an element of ℤ/lℤ.
