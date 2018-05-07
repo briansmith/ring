@@ -185,7 +185,8 @@ static bool HandleWWW(SSL *ssl) {
         SSL_read(ssl, request + request_len, sizeof(request) - request_len);
     if (ssl_ret <= 0) {
       int ssl_err = SSL_get_error(ssl, ssl_ret);
-      PrintSSLError(stderr, "Error while reading", ssl_err, ssl_ret);
+      fprintf(stderr, "Error while reading: %d\n", ssl_err);
+      ERR_print_errors_cb(PrintErrorCallback, stderr);
       return false;
     }
     request_len += static_cast<size_t>(ssl_ret);
@@ -341,7 +342,8 @@ bool Server(const std::vector<std::string> &args) {
     int ret = SSL_accept(ssl.get());
     if (ret != 1) {
       int ssl_err = SSL_get_error(ssl.get(), ret);
-      PrintSSLError(stderr, "Error while connecting", ssl_err, ret);
+      fprintf(stderr, "Error while connecting: %d\n", ssl_err);
+      ERR_print_errors_cb(PrintErrorCallback, stderr);
       result = false;
       continue;
     }

@@ -23,14 +23,6 @@
 
 #include "./internal.h"
 
-#if defined(OPENSSL_WINDOWS)
-OPENSSL_MSVC_PRAGMA(warning(push, 3))
-#include <windows.h>
-OPENSSL_MSVC_PRAGMA(warning(pop))
-#else
-#include <errno.h>
-#endif
-
 
 TEST(ErrTest, Overflow) {
   for (unsigned i = 0; i < ERR_NUM_ERRORS*2; i++) {
@@ -220,18 +212,3 @@ TEST(ErrTest, SaveAndRestore) {
     EXPECT_EQ(0u, ERR_get_error());
   }
 }
-
-// Querying the error queue should not affect the OS error.
-#if defined(OPENSSL_WINDOWS)
-TEST(ErrTest, PreservesLastError) {
-  SetLastError(ERROR_INVALID_FUNCTION);
-  ERR_get_error();
-  EXPECT_EQ(ERROR_INVALID_FUNCTION, GetLastError());
-}
-#else
-TEST(ErrTest, PreservesErrno) {
-  errno = EINVAL;
-  ERR_get_error();
-  EXPECT_EQ(EINVAL, errno);
-}
-#endif
