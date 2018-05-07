@@ -128,9 +128,6 @@ void GFp_bn_scatter5(const BN_ULONG *inp, size_t num, void *table,
 void GFp_bn_gather5(BN_ULONG *out, size_t num, void *table, size_t power);
 void GFp_bn_power5(BN_ULONG *rp, const BN_ULONG *ap, const void *table,
                    const BN_ULONG *np, const BN_ULONG *n0, int num, int power);
-int GFp_bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
-                           const BN_ULONG *not_used, const BN_ULONG *np,
-                           const BN_ULONG *n0, int num);
 #else
 
 // GFp_BN_mod_exp_mont_consttime() stores the precomputed powers in a specific
@@ -410,10 +407,6 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
         bits -= 5;
         GFp_bn_power5(tmp, tmp, powerbuf, np, n0, top, val);
       }
-    }
-
-    if (!GFp_bn_from_montgomery(tmp, tmp, NULL, np, n0, top)) {
-      goto err;
     }
   }
 #else

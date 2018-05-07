@@ -361,18 +361,35 @@ impl<M, E: ReductionEncoding> Elem<M, E> {
     fn decode_once(self, m: &Modulus<M>)
         -> Elem<M, <E as ReductionEncoding>::Output>
     {
+        let mut limbs = self.limbs;
+
+        #[cfg(target_arch = "x86_64")]
+        {
+            // `GFp_bn_from_montgomery` only works for certain lengths.
+            if let Ok(()) = bssl::map_result(unsafe {
+                GFp_bn_from_montgomery(limbs.as_mut_ptr(), limbs.as_ptr(),
+                                       core::ptr::null(), m.limbs.as_ptr(),
+                                       &m.n0, m.limbs.len())
+            }) {
+                return Elem {
+                    limbs,
+                    m: PhantomData,
+                    encoding: PhantomData,
+                };
+            }
+        }
+
         // A multiplication isn't required since we're multiplying by the
         // unencoded value one (1); only a Montgomery reduction is needed.
         // However the only non-multiplication Montgomery reduction function we
         // have requires the input to be large, so we avoid using it here.
-        let mut limbs = self.limbs;
-        let num_limbs = m.limbs.len();
         let mut one = [0; MODULUS_MAX_LIMBS];
         one[0] = 1;
-        let one = &one[..num_limbs]; // assert!(num_limbs <= MODULUS_MAX_LIMBS);
+        let one = &one[..m.limbs.len()];
         unsafe {
             GFp_bn_mul_mont(limbs.as_mut_ptr(), limbs.as_ptr(),
-                            one.as_ptr(), m.limbs.as_ptr(), &m.n0, num_limbs)
+                            one.as_ptr(), m.limbs.as_ptr(), &m.n0,
+                            m.limbs.len())
         }
         Elem {
             limbs,
@@ -669,19 +686,7 @@ pub fn elem_exp_consttime<M>(
                                       m.limbs.as_ptr(), m.limbs.len(), &m.n0)
     })?;
 
-    // XXX: On x86-64 only, `GFp_BN_mod_exp_mont_consttime` does the conversion
-    // from Montgomery form itself using a special assembly-language reduction
-    // function. This means that at this point, whether `r` is Montgomery
-    // encoded, and the exact type of `R` (in particular, its `E` type
-    // parameter) depends on the platform. Type inference masks this.
-    //
-    // TODO: Get rid of that special assembly-language reduction function if
-    // practical.
-
-    #[cfg(not(target_arch = "x86_64"))]
-    let r = r.into_unencoded(m);
-
-    Ok(r)
+    Ok(r.into_unencoded(m))
 }
 
 /// Uses Fermat's Little Theorem to calculate modular inverse in constant time.
@@ -1240,6 +1245,12 @@ extern {
 
     fn LIMBS_shl_mod(r: *mut limb::Limb, a: *const limb::Limb,
                      m: *const limb::Limb, num_limbs: c::size_t);
+
+    #[cfg(target_arch = "x86_64")]
+    fn GFp_bn_from_montgomery(r: *mut limb::Limb, a: *const limb::Limb,
+                              unused: *const limb::Limb,
+                              n: *const limb::Limb, n0: &N0,
+                              num_limbs: c::size_t) -> c::int;
 }
 
 #[cfg(feature = "rsa_signing")]
