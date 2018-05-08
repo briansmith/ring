@@ -124,6 +124,17 @@ void CMAC_CTX_free(CMAC_CTX *ctx) {
   OPENSSL_free(ctx);
 }
 
+int CMAC_CTX_copy(CMAC_CTX *out, const CMAC_CTX *in) {
+  if (!EVP_CIPHER_CTX_copy(&out->cipher_ctx, &in->cipher_ctx)) {
+    return 0;
+  }
+  OPENSSL_memcpy(out->k1, in->k1, AES_BLOCK_SIZE);
+  OPENSSL_memcpy(out->k2, in->k2, AES_BLOCK_SIZE);
+  OPENSSL_memcpy(out->block, in->block, AES_BLOCK_SIZE);
+  out->block_used = in->block_used;
+  return 1;
+}
+
 // binary_field_mul_x treats the 128 bits at |in| as an element of GF(2¹²⁸)
 // with a hard-coded reduction polynomial and sets |out| as x times the
 // input.

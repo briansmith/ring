@@ -46,6 +46,10 @@ OPENSSL_EXPORT CMAC_CTX *CMAC_CTX_new(void);
 // CMAC_CTX_free frees a |CMAC_CTX|.
 OPENSSL_EXPORT void CMAC_CTX_free(CMAC_CTX *ctx);
 
+// CMAC_CTX_copy sets |out| to be a duplicate of the current state |in|. It
+// returns one on success and zero on error.
+OPENSSL_EXPORT int CMAC_CTX_copy(CMAC_CTX *out, const CMAC_CTX *in);
+
 // CMAC_Init configures |ctx| to use the given |key| and |cipher|. The CMAC RFC
 // only specifies the use of AES-128 thus |key_len| should be 16 and |cipher|
 // should be |EVP_aes_128_cbc()|. However, this implementation also supports

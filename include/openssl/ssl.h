@@ -3471,14 +3471,20 @@ OPENSSL_EXPORT void SSL_CTX_set_select_certificate_cb(
 OPENSSL_EXPORT void SSL_CTX_set_dos_protection_cb(
     SSL_CTX *ctx, int (*cb)(const SSL_CLIENT_HELLO *));
 
-// SSL_ST_* are possible values for |SSL_state| and the bitmasks that make them
-// up.
+// SSL_ST_* are possible values for |SSL_state|, the bitmasks that make them up,
+// and some historical values for compatibility. Only |SSL_ST_INIT| and
+// |SSL_ST_OK| are ever returned.
 #define SSL_ST_CONNECT 0x1000
 #define SSL_ST_ACCEPT 0x2000
 #define SSL_ST_MASK 0x0FFF
 #define SSL_ST_INIT (SSL_ST_CONNECT | SSL_ST_ACCEPT)
 #define SSL_ST_OK 0x03
 #define SSL_ST_RENEGOTIATE (0x04 | SSL_ST_INIT)
+#define SSL_ST_BEFORE (0x05 | SSL_ST_INIT)
+
+// TLS_ST_* are aliases for |SSL_ST_*| for OpenSSL 1.1.0 compatibility.
+#define TLS_ST_OK SSL_ST_OK
+#define TLS_ST_BEFORE SSL_ST_BEFORE
 
 // SSL_CB_* are possible values for the |type| parameter in the info
 // callback and the bitmasks that make them up.

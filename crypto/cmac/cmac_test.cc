@@ -54,6 +54,18 @@ static void test(const char *name, const uint8_t *key, size_t key_len,
     ASSERT_TRUE(CMAC_Final(ctx.get(), out, &out_len));
     EXPECT_EQ(Bytes(expected, sizeof(out)), Bytes(out, out_len));
   }
+
+  // Test that |CMAC_CTX_copy| works.
+  ASSERT_TRUE(CMAC_Reset(ctx.get()));
+  size_t chunk = msg_len / 2;
+  ASSERT_TRUE(CMAC_Update(ctx.get(), msg, chunk));
+  bssl::UniquePtr<CMAC_CTX> ctx2(CMAC_CTX_new());
+  ASSERT_TRUE(ctx2);
+  ASSERT_TRUE(CMAC_CTX_copy(ctx2.get(), ctx.get()));
+  ASSERT_TRUE(CMAC_Update(ctx2.get(), msg + chunk, msg_len - chunk));
+  size_t out_len;
+  ASSERT_TRUE(CMAC_Final(ctx2.get(), out, &out_len));
+  EXPECT_EQ(Bytes(expected, sizeof(out)), Bytes(out, out_len));
 }
 
 TEST(CMACTest, RFC4493TestVectors) {

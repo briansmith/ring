@@ -552,3 +552,5 @@ int OBJ_create(const char *oid, const char *short_name, const char *long_name) {
   }
   return op->nid;
 }
+
+void OBJ_cleanup(void) {}

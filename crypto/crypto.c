@@ -164,9 +164,14 @@ int CRYPTO_has_asm(void) {
 #endif
 }
 
-const char *SSLeay_version(int unused) { return "BoringSSL"; }
+const char *SSLeay_version(int which) { return OpenSSL_version(which); }
 
-const char *OpenSSL_version(int unused) { return "BoringSSL"; }
+const char *OpenSSL_version(int which) {
+  if (which == OPENSSL_VERSION) {
+    return "BoringSSL";
+  }
+  return "";
+}
 
 unsigned long SSLeay(void) { return OPENSSL_VERSION_NUMBER; }
 
