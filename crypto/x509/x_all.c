@@ -499,3 +499,13 @@ EVP_PKEY *d2i_PUBKEY_bio(BIO *bp, EVP_PKEY **a)
 {
     return ASN1_d2i_bio_of(EVP_PKEY, EVP_PKEY_new, d2i_PUBKEY, bp, a);
 }
+
+DH *d2i_DHparams_bio(BIO *bp, DH **dh)
+{
+    return ASN1_d2i_bio_of(DH, DH_new, d2i_DHparams, bp, dh);
+}
+
+int i2d_DHparams_bio(BIO *bp, const DH *dh)
+{
+    return ASN1_i2d_bio_of_const(DH, i2d_DHparams, bp, dh);
+}
