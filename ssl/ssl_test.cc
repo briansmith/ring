@@ -3293,7 +3293,7 @@ TEST(SSLTest, ClientCABuffers) {
   SSL_CTX_set_cert_cb(
       client_ctx.get(),
       [](SSL *ssl, void *arg) -> int {
-        STACK_OF(CRYPTO_BUFFER) *peer_names =
+        const STACK_OF(CRYPTO_BUFFER) *peer_names =
             SSL_get0_server_requested_CAs(ssl);
         EXPECT_EQ(1u, sk_CRYPTO_BUFFER_num(peer_names));
         CRYPTO_BUFFER *peer_name = sk_CRYPTO_BUFFER_value(peer_names, 0);
