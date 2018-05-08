@@ -797,6 +797,16 @@ OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
 OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(EVP_PKEY *pkey);
 
 
+// Preprocessor compatibility section (hidden).
+//
+// Historically, a number of APIs were implemented in OpenSSL as macros and
+// constants to 'ctrl' functions. To avoid breaking #ifdefs in consumers, this
+// section defines a number of legacy macros.
+
+#define EVP_PKEY_CTX_set_rsa_oaep_md EVP_PKEY_CTX_set_rsa_oaep_md
+#define EVP_PKEY_CTX_set0_rsa_oaep_label EVP_PKEY_CTX_set0_rsa_oaep_label
+
+
 // Private structures.
 
 struct evp_pkey_st {

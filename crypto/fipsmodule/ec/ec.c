@@ -622,6 +622,20 @@ unsigned EC_GROUP_get_degree(const EC_GROUP *group) {
   return ec_GFp_simple_group_get_degree(group);
 }
 
+const char *EC_curve_nid2nist(int nid) {
+  switch (nid) {
+    case NID_secp224r1:
+      return "P-224";
+    case NID_X9_62_prime256v1:
+      return "P-256";
+    case NID_secp384r1:
+      return "P-384";
+    case NID_secp521r1:
+      return "P-521";
+  }
+  return NULL;
+}
+
 EC_POINT *EC_POINT_new(const EC_GROUP *group) {
   if (group == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
