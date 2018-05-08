@@ -238,8 +238,8 @@ int ssl3_flush_flight(SSL *ssl) {
     return -1;
   }
 
-  if (static_cast<uint64_t>(ssl->s3->pending_flight->length) > 0xffffffff ||
-      ssl->s3->pending_flight->length > INT_MAX) {
+  static_assert(INT_MAX <= 0xffffffff, "int is larger than 32 bits");
+  if (ssl->s3->pending_flight->length > INT_MAX) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return -1;
   }

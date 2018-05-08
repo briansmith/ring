@@ -158,9 +158,7 @@ static int ccm128_init_state(const CCM128_CONTEXT *ctx,
   size_t remaining_blocks = 2 * ((plaintext_len + 15) / 16) + 1;
   if (plaintext_len + 15 < plaintext_len ||
       remaining_blocks + blocks < blocks ||
-      // Silence Clang's unhelpful -Wtautological-constant-out-of-range-compare
-      // warning.
-      (sizeof(size_t) > 4 && remaining_blocks + blocks > UINT64_C(1) << 61)) {
+      (uint64_t) remaining_blocks + blocks > UINT64_C(1) << 61) {
     return 0;
   }
 

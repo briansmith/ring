@@ -536,6 +536,20 @@ bool dtls1_finish_message(SSL *ssl, CBB *cbb, Array<uint8_t> *out_msg) {
   return true;
 }
 
+// ssl_size_t_greater_than_32_bits returns whether |v| exceeds the bounds of a
+// 32-bit value. The obvious thing doesn't work because, in some 32-bit build
+// configurations, the compiler warns that the test is always false and breaks
+// the build.
+static bool ssl_size_t_greater_than_32_bits(size_t v) {
+#if defined(OPENSSL_64_BIT)
+  return v > 0xffffffff;
+#elif defined(OPENSSL_32_BIT)
+  return false;
+#else
+#error "Building for neither 32- nor 64-bits."
+#endif
+}
+
 // add_outgoing adds a new handshake message or ChangeCipherSpec to the current
 // outgoing flight. It returns true on success and false on error.
 static bool add_outgoing(SSL *ssl, bool is_ccs, Array<uint8_t> data) {
@@ -550,7 +564,7 @@ static bool add_outgoing(SSL *ssl, bool is_ccs, Array<uint8_t> data) {
                     (1 << 8 * sizeof(ssl->d1->outgoing_messages_len)),
                 "outgoing_messages_len is too small");
   if (ssl->d1->outgoing_messages_len >= SSL_MAX_HANDSHAKE_FLIGHT ||
-      static_cast<uint64_t>(data.size()) > 0xffffffff) {
+      ssl_size_t_greater_than_32_bits(data.size())) {
     assert(false);
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;
