@@ -27,6 +27,7 @@ use untrusted;
 /// `RSASigningState`s that reference the `RSAKeyPair` and use
 /// `RSASigningState::sign()` to generate signatures. See `ring::signature`'s
 /// module-level documentation for an example.
+#[derive(Clone)]
 pub struct RSAKeyPair {
     n: bigint::Modulus<N>,
     e: bigint::PublicExponent,
@@ -381,6 +382,7 @@ impl RSAKeyPair {
     }
 }
 
+#[derive(Clone)]
 struct PrivatePrime<M: Prime> {
     modulus: bigint::Modulus<M>,
     exponent: bigint::PrivateExponent<M>,

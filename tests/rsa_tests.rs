@@ -160,6 +160,7 @@ fn test_signature_rsa_pss_sign() {
 #[cfg(feature = "rsa_signing")]
 #[test]
 fn test_rsa_key_pair_sync_and_send() {
+    test::compile_time_assert_clone::<signature::RSAKeyPair>();
     test::compile_time_assert_send::<signature::RSAKeyPair>();
     test::compile_time_assert_sync::<signature::RSAKeyPair>();
     test::compile_time_assert_send::<signature::RSASigningState>();
