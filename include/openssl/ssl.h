@@ -1747,6 +1747,13 @@ OPENSSL_EXPORT void SSL_SESSION_get0_ticket(const SSL_SESSION *session,
                                             const uint8_t **out_ticket,
                                             size_t *out_len);
 
+// SSL_SESSION_set_ticket sets |session|'s ticket to |ticket|. It returns one on
+// success and zero on error. This function may be useful in writing tests but
+// otherwise should not be used.
+OPENSSL_EXPORT int SSL_SESSION_set_ticket(SSL_SESSION *session,
+                                          const uint8_t *ticket,
+                                          size_t ticket_len);
+
 // SSL_SESSION_get_ticket_lifetime_hint returns ticket lifetime hint of
 // |session| in seconds or zero if none was set.
 OPENSSL_EXPORT uint32_t
@@ -1760,6 +1767,19 @@ SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION *session);
 // instead.
 OPENSSL_EXPORT const SSL_CIPHER *SSL_SESSION_get0_cipher(
     const SSL_SESSION *session);
+
+// SSL_SESSION_has_peer_sha256 returns one if |session| has a SHA-256 hash of
+// the peer's certificate retained and zero if the peer did not present a
+// certificate or if this was not enabled when |session| was created. See also
+// |SSL_CTX_set_retain_only_sha256_of_client_certs|.
+OPENSSL_EXPORT int SSL_SESSION_has_peer_sha256(const SSL_SESSION *session);
+
+// SSL_SESSION_get0_peer_sha256 sets |*out_ptr| and |*out_len| to the SHA-256
+// hash of the peer certificate retained in |session|, or NULL and zero if it
+// does not have one. See also |SSL_CTX_set_retain_only_sha256_of_client_certs|.
+OPENSSL_EXPORT void SSL_SESSION_get0_peer_sha256(const SSL_SESSION *session,
+                                                 const uint8_t **out_ptr,
+                                                 size_t *out_len);
 
 
 // Session caching.
@@ -3588,7 +3608,8 @@ OPENSSL_EXPORT const SSL_CIPHER *SSL_get_pending_cipher(const SSL *ssl);
 // the SHA-256 hash of peer's certificate should be saved in memory and in the
 // session. This can save memory, ticket size and session cache space. If
 // enabled, |SSL_get_peer_certificate| will return NULL after the handshake
-// completes. See the |peer_sha256| field of |SSL_SESSION| for the hash.
+// completes. See |SSL_SESSION_has_peer_sha256| and
+// |SSL_SESSION_get0_peer_sha256| to query the hash.
 OPENSSL_EXPORT void SSL_set_retain_only_sha256_of_client_certs(SSL *ssl,
                                                                int enable);
 
@@ -3596,7 +3617,8 @@ OPENSSL_EXPORT void SSL_set_retain_only_sha256_of_client_certs(SSL *ssl,
 // only the SHA-256 hash of peer's certificate should be saved in memory and in
 // the session. This can save memory, ticket size and session cache space. If
 // enabled, |SSL_get_peer_certificate| will return NULL after the handshake
-// completes. See the |peer_sha256| field of |SSL_SESSION| for the hash.
+// completes. See |SSL_SESSION_has_peer_sha256| and
+// |SSL_SESSION_get0_peer_sha256| to query the hash.
 OPENSSL_EXPORT void SSL_CTX_set_retain_only_sha256_of_client_certs(SSL_CTX *ctx,
                                                                    int enable);
 

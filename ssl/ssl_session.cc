@@ -988,12 +988,39 @@ void SSL_SESSION_get0_ticket(const SSL_SESSION *session,
   *out_len = session->tlsext_ticklen;
 }
 
+int SSL_SESSION_set_ticket(SSL_SESSION *session, const uint8_t *ticket,
+                           size_t ticket_len) {
+  uint8_t *copy = (uint8_t *)BUF_memdup(ticket, ticket_len);
+  if (copy == nullptr) {
+    return 0;
+  }
+  OPENSSL_free(session->tlsext_tick);
+  session->tlsext_tick = copy;
+  session->tlsext_ticklen = ticket_len;
+  return 1;
+}
+
 uint32_t SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION *session) {
   return session->tlsext_tick_lifetime_hint;
 }
 
 const SSL_CIPHER *SSL_SESSION_get0_cipher(const SSL_SESSION *session) {
   return session->cipher;
+}
+
+int SSL_SESSION_has_peer_sha256(const SSL_SESSION *session) {
+  return session->peer_sha256_valid;
+}
+
+void SSL_SESSION_get0_peer_sha256(const SSL_SESSION *session,
+                                  const uint8_t **out_ptr, size_t *out_len) {
+  if (session->peer_sha256_valid) {
+    *out_ptr = session->peer_sha256;
+    *out_len = sizeof(session->peer_sha256);
+  } else {
+    *out_ptr = nullptr;
+    *out_len = 0;
+  }
 }
 
 SSL_SESSION *SSL_magic_pending_session_ptr(void) {

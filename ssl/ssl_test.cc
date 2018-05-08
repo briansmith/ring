@@ -1949,9 +1949,12 @@ TEST_P(SSLVersionTest, RetainOnlySHA256OfCerts) {
   EXPECT_FALSE(peer);
 
   SSL_SESSION *session = SSL_get_session(server_.get());
-  EXPECT_TRUE(session->peer_sha256_valid);
+  EXPECT_TRUE(SSL_SESSION_has_peer_sha256(session));
 
-  EXPECT_EQ(Bytes(cert_sha256), Bytes(session->peer_sha256));
+  const uint8_t *peer_sha256;
+  size_t peer_sha256_len;
+  SSL_SESSION_get0_peer_sha256(session, &peer_sha256, &peer_sha256_len);
+  EXPECT_EQ(Bytes(cert_sha256), Bytes(peer_sha256, peer_sha256_len));
 }
 
 // Tests that our ClientHellos do not change unexpectedly. These are purely

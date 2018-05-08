@@ -1591,7 +1591,7 @@ static bool CheckAuthProperties(SSL *ssl, bool is_resume,
     }
   }
 
-  if (SSL_get_session(ssl)->peer_sha256_valid !=
+  if (!!SSL_SESSION_has_peer_sha256(SSL_get_session(ssl)) !=
       config->expect_sha256_client_cert) {
     fprintf(stderr,
             "Unexpected SHA-256 client cert state: expected:%d is_resume:%d.\n",
@@ -1600,10 +1600,28 @@ static bool CheckAuthProperties(SSL *ssl, bool is_resume,
   }
 
   if (config->expect_sha256_client_cert &&
-      SSL_get_session(ssl)->certs != nullptr) {
+      SSL_SESSION_get0_peer_certificates(SSL_get_session(ssl)) != nullptr) {
     fprintf(stderr, "Have both client cert and SHA-256 hash: is_resume:%d.\n",
             is_resume);
     return false;
+  }
+
+  const uint8_t *peer_sha256;
+  size_t peer_sha256_len;
+  SSL_SESSION_get0_peer_sha256(SSL_get_session(ssl), &peer_sha256,
+                               &peer_sha256_len);
+  if (SSL_SESSION_has_peer_sha256(SSL_get_session(ssl))) {
+    if (peer_sha256_len != 32) {
+      fprintf(stderr, "Peer SHA-256 hash had length %zu instead of 32\n",
+              peer_sha256_len);
+      return false;
+    }
+  } else {
+    if (peer_sha256_len != 0) {
+      fprintf(stderr, "Unexpected peer SHA-256 hash of length %zu\n",
+              peer_sha256_len);
+      return false;
+    }
   }
 
   return true;
