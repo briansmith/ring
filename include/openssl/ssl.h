@@ -3320,9 +3320,15 @@ OPENSSL_EXPORT void SSL_CTX_set_current_time_cb(
     SSL_CTX *ctx, void (*cb)(const SSL *ssl, struct timeval *out_clock));
 
 // SSL_set_shed_handshake_config allows some of the configuration of |ssl| to be
-// freed after its handshake completes. When configuration shedding is enabled,
-// it is an error to call APIs that query the state that was shed, and it is an
-// error to call |SSL_clear|.
+// freed after its handshake completes.  Once configuration has been shed, APIs
+// that query it may fail.  "Configuration" in this context means anything that
+// was set by the caller, as distinct from information derived from the
+// handshake.  For example, |SSL_get_ciphers| queries how the |SSL| was
+// configured by the caller, and fails after configuration has been shed,
+// whereas |SSL_get_cipher| queries the result of the handshake, and is
+// unaffected by configuration shedding.
+//
+// If configuration shedding is enabled, it is an error to call |SSL_clear|.
 //
 // Note that configuration shedding as a client additionally depends on
 // renegotiation being disabled (see |SSL_set_renegotiate_mode|). If
