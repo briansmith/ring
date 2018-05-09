@@ -972,9 +972,6 @@ pub fn elem_verify_equal_consttime<M, E>(a: &Elem<M, E>, b: &Elem<M, E>)
 /// Nonnegative integers: `Positive` ∪ {0}.
 struct Nonnegative(BIGNUM);
 
-// `Nonnegative` uniquely owns and references its contents.
-unsafe impl Send for Nonnegative {}
-
 impl Nonnegative {
     fn zero() -> Result<Self, error::Unspecified> {
         let r = Nonnegative(BIGNUM::zero());
