@@ -663,7 +663,7 @@ UniquePtr<STACK_OF(CRYPTO_BUFFER)> ssl_parse_client_CA_list(SSL *ssl,
   }
 
   if (!ssl->ctx->x509_method->check_client_CA_list(ret.get())) {
-    *out_alert = SSL_AD_INTERNAL_ERROR;
+    *out_alert = SSL_AD_DECODE_ERROR;
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     return nullptr;
   }
