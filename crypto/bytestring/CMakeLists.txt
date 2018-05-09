@@ -9,4 +9,5 @@ add_library(
   ber.c
   cbs.c
   cbb.c
+  unicode.c
 )

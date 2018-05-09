@@ -1051,3 +1051,221 @@ TEST(CBBTest, FlushASN1SetOf) {
     EXPECT_FALSE(CBB_flush_asn1_set_of(&child));
   }
 }
+
+template <class T>
+static std::vector<uint8_t> LiteralToBytes(const T *str) {
+  std::vector<uint8_t> ret;
+  for (; *str != 0; str++) {
+    for (size_t i = 0; i < sizeof(T); i++) {
+      ret.push_back(static_cast<uint8_t>(*str >> (8 * (sizeof(T) - 1 - i))));
+    }
+  }
+  return ret;
+}
+
+static std::vector<uint32_t> LiteralToCodePoints(const char32_t *str) {
+  std::vector<uint32_t> ret;
+  for (; *str != 0; str++) {
+    ret.push_back(static_cast<uint32_t>(*str));
+  }
+  return ret;
+}
+
+TEST(CBBTest, Unicode) {
+  struct {
+    int (*decode)(CBS *, uint32_t *);
+    int (*encode)(CBB *, uint32_t);
+    std::vector<uint8_t> in;
+    std::vector<uint32_t> out;
+    bool ok;
+  } kTests[] = {
+      {cbs_get_utf8, cbb_add_utf8,
+       // This test string captures all four cases in UTF-8.
+       LiteralToBytes(u8"Hello, 世界! ¡Hola, 🌎!"),
+       LiteralToCodePoints(U"Hello, 世界! ¡Hola, 🌎!"), true},
+
+      // Some invalid inputs adapted from
+      // http://www.cl.cam.ac.uk/~mgk25/ucs/examples/UTF-8-test.txt
+      // 2.1  First possible sequence of a certain length. (5- and 6-bit
+      // sequences no longer exist.)
+      {cbs_get_utf8, cbb_add_utf8, {0xf8, 0x88, 0x80, 0x80, 0x80}, {}, false},
+      {cbs_get_utf8,
+       cbb_add_utf8,
+       {0xfc, 0x84, 0x80, 0x80, 0x80, 0x80},
+       {},
+       false},
+      // 3.1  Unexpected continuation bytes.
+      {cbs_get_utf8, cbb_add_utf8, {0x80}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xbf}, {}, false},
+      // 3.2  Lonely start characters.
+      {cbs_get_utf8, cbb_add_utf8, {0xc0, ' '}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xe0, ' '}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xf0, ' '}, {}, false},
+      // 3.3  Sequences with last continuation byte missing
+      {cbs_get_utf8, cbb_add_utf8, {0xc0}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xe0, 0x80}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xf0, 0x80, 0x80}, {}, false},
+      // Variation of the above with unexpected spaces.
+      {cbs_get_utf8, cbb_add_utf8, {0xe0, 0x80, ' '}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xf0, 0x80, 0x80, ' '}, {}, false},
+      // 4.1  Examples of an overlong ASCII character
+      {cbs_get_utf8, cbb_add_utf8, {0xc0, 0xaf}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xe0, 0x80, 0xaf}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xf0, 0x80, 0x80, 0xaf}, {}, false},
+      // 4.2  Maximum overlong sequences
+      {cbs_get_utf8, cbb_add_utf8, {0xc1, 0xbf}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xe0, 0x9f, 0xbf}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xf0, 0x8f, 0xbf, 0xbf}, {}, false},
+      // 4.3  Overlong representation of the NUL character
+      {cbs_get_utf8, cbb_add_utf8, {0xc0, 0x80}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xe0, 0x80, 0x80}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xf0, 0x80, 0x80, 0x80}, {}, false},
+      // 5.1  Single UTF-16 surrogates
+      {cbs_get_utf8, cbb_add_utf8, {0xed, 0xa0, 0x80}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xed, 0xad, 0xbf}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xed, 0xae, 0x80}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xed, 0xb0, 0x80}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xed, 0xbe, 0x80}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xed, 0xbf, 0xbf}, {}, false},
+      // 5.2  Paired UTF-16 surrogates
+      {cbs_get_utf8,
+       cbb_add_utf8,
+       {0xed, 0xa0, 0x80, 0xed, 0xb0, 0x80},
+       {},
+       false},
+      {cbs_get_utf8,
+       cbb_add_utf8,
+       {0xed, 0xa0, 0x80, 0xed, 0xbf, 0xbf},
+       {},
+       false},
+      {cbs_get_utf8,
+       cbb_add_utf8,
+       {0xed, 0xad, 0xbf, 0xed, 0xb0, 0x80},
+       {},
+       false},
+      {cbs_get_utf8,
+       cbb_add_utf8,
+       {0xed, 0xad, 0xbf, 0xed, 0xbf, 0xbf},
+       {},
+       false},
+      {cbs_get_utf8,
+       cbb_add_utf8,
+       {0xed, 0xae, 0x80, 0xed, 0xb0, 0x80},
+       {},
+       false},
+      {cbs_get_utf8,
+       cbb_add_utf8,
+       {0xed, 0xae, 0x80, 0xed, 0xbf, 0xbf},
+       {},
+       false},
+      {cbs_get_utf8,
+       cbb_add_utf8,
+       {0xed, 0xaf, 0xbf, 0xed, 0xb0, 0x80},
+       {},
+       false},
+      {cbs_get_utf8,
+       cbb_add_utf8,
+       {0xed, 0xaf, 0xbf, 0xed, 0xbf, 0xbf},
+       {},
+       false},
+      // 5.3  Noncharacter code positions
+      {cbs_get_utf8, cbb_add_utf8, {0xef, 0xbf, 0xbe}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xef, 0xbf, 0xbf}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xef, 0xb7, 0x90}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xef, 0xb7, 0xaf}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xf0, 0x9f, 0xbf, 0xbe}, {}, false},
+      {cbs_get_utf8, cbb_add_utf8, {0xf0, 0x9f, 0xbf, 0xbf}, {}, false},
+
+      {cbs_get_latin1, cbb_add_latin1, LiteralToBytes("\xa1Hola!"),
+       LiteralToCodePoints(U"¡Hola!"), true},
+
+      // UCS-2 matches UTF-16 on the BMP.
+      {cbs_get_ucs2_be, cbb_add_ucs2_be, LiteralToBytes(u"Hello, 世界!"),
+       LiteralToCodePoints(U"Hello, 世界!"), true},
+      // It does not support characters beyond the BMP.
+      {cbs_get_ucs2_be, cbb_add_ucs2_be,
+       LiteralToBytes(u"Hello, 世界! ¡Hola, 🌎!"),
+       LiteralToCodePoints(U"Hello, 世界! ¡Hola, "), false},
+      // Unpaired surrogates and non-characters are also rejected.
+      {cbs_get_ucs2_be, cbb_add_ucs2_be, {0xd8, 0x00}, {}, false},
+      {cbs_get_ucs2_be, cbb_add_ucs2_be, {0xff, 0xfe}, {}, false},
+
+      {cbs_get_utf32_be, cbb_add_utf32_be,
+       LiteralToBytes(U"Hello, 世界! ¡Hola, 🌎!"),
+       LiteralToCodePoints(U"Hello, 世界! ¡Hola, 🌎!"), true},
+      // Unpaired surrogates and non-characters are rejected.
+      {cbs_get_utf32_be, cbb_add_utf32_be, {0x00, 0x00, 0xd8, 0x00}, {}, false},
+      {cbs_get_utf32_be, cbb_add_utf32_be, {0x00, 0x00, 0xff, 0xfe}, {}, false},
+
+      // Test that the NUL character can be encoded.
+      {cbs_get_latin1, cbb_add_latin1, {0}, {0}, true},
+      {cbs_get_utf8, cbb_add_utf8, {0}, {0}, true},
+      {cbs_get_ucs2_be, cbb_add_ucs2_be, {0, 0}, {0}, true},
+      {cbs_get_utf32_be, cbb_add_utf32_be, {0, 0, 0, 0}, {0}, true},
+  };
+  for (const auto &t : kTests) {
+    SCOPED_TRACE(Bytes(t.in));
+
+    // Test decoding.
+    CBS cbs;
+    CBS_init(&cbs, t.in.data(), t.in.size());
+    std::vector<uint32_t> out;
+    bool ok = true;
+    while (CBS_len(&cbs) != 0) {
+      uint32_t u;
+      if (!t.decode(&cbs, &u)) {
+        ok = false;
+        break;
+      }
+      out.push_back(u);
+    }
+    EXPECT_EQ(t.ok, ok);
+    EXPECT_EQ(t.out, out);
+
+    // Test encoding.
+    if (t.ok) {
+      bssl::ScopedCBB cbb;
+      ASSERT_TRUE(CBB_init(cbb.get(), 0));
+      for (uint32_t u : t.out) {
+        ASSERT_TRUE(t.encode(cbb.get(), u));
+      }
+      EXPECT_EQ(Bytes(t.in), Bytes(CBB_data(cbb.get()), CBB_len(cbb.get())));
+    }
+  }
+
+  static const uint32_t kBadCodePoints[] = {
+    // Surrogate pairs.
+    0xd800,
+    0xdfff,
+    // Non-characters.
+    0xfffe,
+    0xffff,
+    0xfdd0,
+    0x1fffe,
+    0x1ffff,
+    // Too big.
+    0x110000,
+  };
+  bssl::ScopedCBB cbb;
+  ASSERT_TRUE(CBB_init(cbb.get(), 0));
+  for (uint32_t v : kBadCodePoints) {
+    SCOPED_TRACE(v);
+    EXPECT_FALSE(cbb_add_utf8(cbb.get(), v));
+    EXPECT_FALSE(cbb_add_latin1(cbb.get(), v));
+    EXPECT_FALSE(cbb_add_ucs2_be(cbb.get(), v));
+    EXPECT_FALSE(cbb_add_utf32_be(cbb.get(), v));
+  }
+
+  // Additional values that are out of range.
+  EXPECT_FALSE(cbb_add_latin1(cbb.get(), 0x100));
+  EXPECT_FALSE(cbb_add_ucs2_be(cbb.get(), 0x10000));
+
+  EXPECT_EQ(1u, cbb_get_utf8_len(0));
+  EXPECT_EQ(1u, cbb_get_utf8_len(0x7f));
+  EXPECT_EQ(2u, cbb_get_utf8_len(0x80));
+  EXPECT_EQ(2u, cbb_get_utf8_len(0x7ff));
+  EXPECT_EQ(3u, cbb_get_utf8_len(0x800));
+  EXPECT_EQ(3u, cbb_get_utf8_len(0xffff));
+  EXPECT_EQ(4u, cbb_get_utf8_len(0x10000));
+  EXPECT_EQ(4u, cbb_get_utf8_len(0x10ffff));
+}
