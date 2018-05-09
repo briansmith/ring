@@ -43,6 +43,7 @@
 use {bits, bssl, c, error, limb, untrusted};
 use arithmetic::montgomery::*;
 use core::marker::PhantomData;
+use core::ops::{Deref, DerefMut};
 use std;
 
 #[cfg(any(test, feature = "rsa_signing"))]
@@ -55,6 +56,79 @@ pub unsafe trait Prime {}
 
 pub trait IsOne {
     fn is_one(&self) -> bool;
+}
+
+pub struct Width<M> {
+    num_limbs: usize,
+
+    /// The modulus *m* that the width originated from.
+    m: PhantomData<M>,
+}
+
+/// All `BoxedLimbs<M>` are stored in the same number of limbs.
+struct BoxedLimbs<M> {
+    limbs: std::boxed::Box<[limb::Limb]>,
+
+    /// The modulus *m* that determines the size of `limbx`.
+    m: PhantomData<M>,
+}
+
+impl<M> Deref for BoxedLimbs<M> {
+    type Target = [limb::Limb];
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.limbs
+    }
+}
+
+impl<M> DerefMut for BoxedLimbs<M> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.limbs
+    }
+}
+
+// TODO: `derive(Clone)` after https://github.com/rust-lang/rust/issues/26925
+// is resolved or restrict `M: Clone`.
+impl<M> Clone for BoxedLimbs<M> {
+    fn clone(&self) -> Self {
+        Self {
+            limbs: self.limbs.clone(),
+            m: self.m.clone(),
+        }
+    }
+}
+
+impl<M> BoxedLimbs<M> {
+    fn minimal_width_from_unpadded(limbs: &[limb::Limb]) -> Self {
+        debug_assert_ne!(limbs.last(), Some(&0));
+        use std::borrow::ToOwned;
+        Self {
+            limbs: limbs.to_owned().into_boxed_slice(),
+            m: PhantomData,
+        }
+    }
+
+    #[cfg(feature = "rsa_signing")]
+    #[inline]
+    fn is_zero(&self) -> bool {
+        limb::limbs_are_zero_constant_time(&self.limbs) == limb::LimbMask::True
+    }
+
+    fn zero(width: Width<M>) -> Self {
+        use std::borrow::ToOwned;
+        Self {
+            limbs: vec![0; width.num_limbs].to_owned().into_boxed_slice(),
+            m: PhantomData,
+        }
+    }
+
+    fn width(&self) -> Width<M> {
+        Width {
+            num_limbs: self.limbs.len(),
+            m: PhantomData,
+        }
+    }
 }
 
 /// Non-negative, non-zero integers.
@@ -166,7 +240,7 @@ pub const MODULUS_MAX_LIMBS: usize = 8192 / limb::LIMB_BITS;
 /// the modular inversion code.
 #[derive(Clone)]
 pub struct Modulus<M> {
-    limbs: BoxedLimbs, // Also `value >= 3`.
+    limbs: BoxedLimbs<M>, // Also `value >= 3`.
 
     // n0 * N == -1 (mod r).
     //
@@ -204,8 +278,6 @@ pub struct Modulus<M> {
     // ones that don't, we could use a shorter `R` value and use faster `Limb`
     // calculations instead of double-precision `u64` calculations.
     n0: N0,
-
-    m: PhantomData<M>,
 }
 
 impl<M> Modulus<M> {
@@ -240,16 +312,17 @@ impl<M> Modulus<M> {
         };
 
         Ok(Modulus {
-            limbs: std::vec::Vec::from(n).into_boxed_slice(),
+            limbs: BoxedLimbs::minimal_width_from_unpadded(n),
             n0: n0_from_u64(n0),
-            m: PhantomData,
         })
     }
 
+    #[inline]
+    fn width(&self) -> Width<M> { self.limbs.width() }
+
     pub fn zero<E>(&self) -> Elem<M, E> {
         Elem {
-            limbs: vec![0; self.limbs.len()].into_boxed_slice(),
-            m: PhantomData,
+            limbs: BoxedLimbs::zero(self.width()),
             encoding: PhantomData,
         }
     }
@@ -277,10 +350,7 @@ pub trait ModMul<B, M> {
 // submodule. However, for maximum clarity, we always explicitly use
 // `Unencoded` within the `bigint` submodule.
 pub struct Elem<M, E = Unencoded> {
-    limbs: BoxedLimbs,
-
-    /// The modulus *m* for the ring ℤ/mℤ for which this element is a value.
-    m: PhantomData<M>,
+    limbs: BoxedLimbs<M>,
 
     /// The number of Montgomery factors that need to be canceled out from
     /// `value` to get the actual value.
@@ -293,7 +363,6 @@ impl<M, E> Clone for Elem<M, E> {
     fn clone(&self) -> Self {
         Elem {
             limbs: self.limbs.clone(),
-            m: self.m.clone(),
             encoding: self.encoding.clone(),
         }
     }
@@ -301,15 +370,14 @@ impl<M, E> Clone for Elem<M, E> {
 
 impl<M, E> Elem<M, E> {
     #[cfg(feature = "rsa_signing")]
-    pub fn is_zero(&self) -> bool {
-        limb::limbs_are_zero_constant_time(&self.limbs) == limb::LimbMask::True
-    }
+    #[inline]
+    pub fn is_zero(&self) -> bool { self.limbs.is_zero() }
 
+    // XXX: This is nonsense semantically, but it is a useful optimization.
     #[cfg(feature = "rsa_signing")]
     pub fn take_storage<OtherF>(e: Elem<M, OtherF>) -> Elem<M, E> {
         Elem {
             limbs: e.limbs,
-            m: PhantomData,
             encoding: PhantomData,
         }
     }
@@ -324,7 +392,7 @@ impl<M, E: ReductionEncoding> Elem<M, E> {
         // However the only non-multiplication Montgomery reduction function we
         // have requires the input to be large, so we avoid using it here.
         let mut limbs = self.limbs;
-        let num_limbs = m.limbs.len();
+        let num_limbs = m.width().num_limbs;
         let mut one = [0; MODULUS_MAX_LIMBS];
         one[0] = 1;
         let one = &one[..num_limbs]; // assert!(num_limbs <= MODULUS_MAX_LIMBS);
@@ -334,7 +402,6 @@ impl<M, E: ReductionEncoding> Elem<M, E> {
         }
         Elem {
             limbs,
-            m: PhantomData,
             encoding: PhantomData,
         }
     }
@@ -395,7 +462,6 @@ pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, mut b: Elem<M, BF>, m: &Modulus<M>)
     }
     Ok(Elem {
         limbs: b.limbs,
-        m: PhantomData,
         encoding: PhantomData,
     })
 }
@@ -421,8 +487,10 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
     assert!(r.len() <= m.limbs.len());
     limb::limbs_reduce_once_constant_time(&mut r, &m.limbs);
     Ok(Elem {
-        limbs: r,
-        m: PhantomData,
+        limbs: BoxedLimbs {
+            limbs: r.limbs,
+            m: PhantomData,
+        },
         encoding: PhantomData,
     })
 }
@@ -455,7 +523,6 @@ pub fn elem_squared<M, E>(mut a: Elem<M, E>, m: &Modulus<M>)
     };
     Elem {
         limbs: a.limbs,
-        m: PhantomData,
         encoding: PhantomData,
     }
 }
@@ -651,15 +718,14 @@ pub fn elem_exp_vartime<M>(
 #[cfg(feature = "rsa_signing")]
 #[derive(Clone)]
 pub struct PrivateExponent<M> {
-    limbs: BoxedLimbs,
-    m: PhantomData<M>,
+    limbs: BoxedLimbs<M>,
 }
 
 #[cfg(feature = "rsa_signing")]
 impl<M> PrivateExponent<M> {
     pub fn from_be_bytes_padded(input: untrusted::Input, p: &Modulus<M>)
                                 -> Result<Self, error::Unspecified> {
-        let mut dP = vec![0; p.limbs.len()].into_boxed_slice();
+        let mut dP = BoxedLimbs::zero(p.width());
         limb::parse_big_endian_and_pad_consttime(input, &mut dP)?;
         // Proof that `dP < p - 1`:
         //
@@ -678,7 +744,6 @@ impl<M> PrivateExponent<M> {
         }
         Ok(PrivateExponent {
             limbs: dP,
-            m: PhantomData,
         })
     }
 }
@@ -691,7 +756,6 @@ impl<M: Prime> PrivateExponent<M> {
         let p_minus_2 = elem_sub(p.zero(), &two, p);
         PrivateExponent {
             limbs: p_minus_2.limbs,
-            m: p_minus_2.m,
         }
     }
 }
@@ -702,7 +766,6 @@ pub fn elem_exp_consttime<M>(
         m: &Modulus<M>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
     let mut r = Elem {
         limbs: base.limbs,
-        m: PhantomData,
         encoding: PhantomData,
     };
     bssl::map_result(unsafe {
@@ -791,7 +854,6 @@ fn elem_inverse<M>(a: Elem<M, Unencoded>, m: &Modulus<M>)
     let r: Elem<M, R> = Elem {
         // TODO: The check done by into_elem() isn't necessary, right?
         limbs: inverse.into_elem(&m)?.limbs,
-        m: PhantomData,
         encoding: PhantomData,
     };
     verify_inverses_consttime(&r, a, m)?;
@@ -1262,8 +1324,6 @@ mod repr_c {
 
 pub use self::repr_c::BIGNUM;
 
-type BoxedLimbs = std::boxed::Box<[limb::Limb]>;
-
 extern {
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_bn_mul_mont(r: *mut limb::Limb, a: *const limb::Limb,
@@ -1581,11 +1641,10 @@ mod tests {
     fn consume_elem_unchecked<M>(test_case: &mut test::TestCase, name: &str,
                                  num_limbs: usize) -> Elem<M, Unencoded> {
         let value = consume_nonnegative(test_case, name);
-        let mut limbs = vec![0; num_limbs].into_boxed_slice();
+        let mut limbs = BoxedLimbs::zero(Width { num_limbs, m: PhantomData });
         limbs[0..value.limbs().len()].copy_from_slice(value.limbs());
         Elem {
             limbs,
-            m: PhantomData,
             encoding: PhantomData,
         }
     }
