@@ -189,6 +189,23 @@ OPENSSL_EXPORT int PKCS12_parse(const PKCS12 *p12, const char *password,
 OPENSSL_EXPORT int PKCS12_verify_mac(const PKCS12 *p12, const char *password,
                                      int password_len);
 
+// PKCS12_create returns a newly-allocated |PKCS12| object containing |pkey|,
+// |cert|, and |chain|, encrypted with the specified password. |name|, if not
+// NULL, specifies a user-friendly name to encode with the key and
+// certificate. The key and certificates are encrypted with |key_nid| and
+// |cert_nid|, respectively, using |iterations| iterations in the
+// KDF. |mac_iterations| is the number of iterations when deriving the MAC
+// key. |key_type| must be zero. |pkey| and |cert| may be NULL to omit them.
+//
+// Each of |key_nid|, |cert_nid|, |iterations|, and |mac_iterations| may be zero
+// to use defaults, which are |NID_pbe_WithSHA1And3_Key_TripleDES_CBC|,
+// |NID_pbe_WithSHA1And40BitRC2_CBC|, 2048, and one, respectively.
+OPENSSL_EXPORT PKCS12 *PKCS12_create(const char *password, const char *name,
+                                     const EVP_PKEY *pkey, X509 *cert,
+                                     const STACK_OF(X509) *chain, int key_nid,
+                                     int cert_nid, int iterations,
+                                     int mac_iterations, int key_type);
+
 // PKCS12_free frees |p12| and its contents.
 OPENSSL_EXPORT void PKCS12_free(PKCS12 *p12);
 
@@ -241,5 +258,6 @@ BORINGSSL_MAKE_DELETER(PKCS8_PRIV_KEY_INFO, PKCS8_PRIV_KEY_INFO_free)
 #define PKCS8_R_BAD_ITERATION_COUNT 129
 #define PKCS8_R_UNSUPPORTED_PRF 130
 #define PKCS8_R_INVALID_CHARACTERS 131
+#define PKCS8_R_UNSUPPORTED_OPTIONS 132
 
 #endif  // OPENSSL_HEADER_PKCS8_H

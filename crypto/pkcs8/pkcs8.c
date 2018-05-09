@@ -327,10 +327,10 @@ static const struct pbe_suite *get_pbe_suite(int pbe_nid) {
   return NULL;
 }
 
-static int pkcs12_pbe_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx, int alg,
-                                   unsigned iterations, const char *pass,
-                                   size_t pass_len, const uint8_t *salt,
-                                   size_t salt_len) {
+int pkcs12_pbe_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx, int alg,
+                            unsigned iterations, const char *pass,
+                            size_t pass_len, const uint8_t *salt,
+                            size_t salt_len) {
   const struct pbe_suite *suite = get_pbe_suite(alg);
   if (suite == NULL) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_UNKNOWN_ALGORITHM);

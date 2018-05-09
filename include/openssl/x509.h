@@ -894,7 +894,7 @@ OPENSSL_EXPORT X509_CRL *X509_CRL_diff(X509_CRL *base, X509_CRL *newer,
 
 OPENSSL_EXPORT int		X509_REQ_check_private_key(X509_REQ *x509,EVP_PKEY *pkey);
 
-OPENSSL_EXPORT int		X509_check_private_key(X509 *x509,EVP_PKEY *pkey);
+OPENSSL_EXPORT int		X509_check_private_key(X509 *x509, const EVP_PKEY *pkey);
 OPENSSL_EXPORT int 		X509_chain_check_suiteb(int *perror_depth,
 						X509 *x, STACK_OF(X509) *chain,
 						unsigned long flags);
