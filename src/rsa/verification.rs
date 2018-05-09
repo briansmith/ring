@@ -131,7 +131,6 @@ pub fn verify_rsa(params: &RSAParameters,
     // Partially validate the public key. See
     // `check_public_modulus_and_exponent()` for more details.
     let n = bigint::Positive::from_be_bytes(n)?;
-    let e = bigint::Positive::from_be_bytes(e)?;
     let max_bits = bits::BitLength::from_usize_bytes(
         PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)?;
 
@@ -139,11 +138,8 @@ pub fn verify_rsa(params: &RSAParameters,
     // exponent value is 2**16 + 1, but it isn't clear if this is just for
     // signing or also for verification. We support exponents of 3 and larger
     // for compatibility with other commonly-used crypto libraries.
-    let e_min_bits = bits::BitLength::from_usize_bits(2);
-
     let (n, e) =
-        super::check_public_modulus_and_exponent(n, e, params.min_bits, max_bits,
-                                                 e_min_bits)?;
+        super::check_public_modulus_and_exponent(n, e, params.min_bits, max_bits, 3)?;
     let n_bits = n.bit_length();
     let n = n.into_modulus::<N>()?;
 

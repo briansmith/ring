@@ -142,37 +142,6 @@ impl OddPositive {
     pub fn into_modulus<M>(self) -> Result<Modulus<M>, error::Unspecified> {
         Modulus::from_limbs((self.0).0.limbs())
     }
-
-    pub fn into_public_exponent(self)
-                                -> Result<PublicExponent, error::Unspecified> {
-        let bits = self.bit_length();
-        if bits < bits::BitLength::from_usize_bits(2) {
-            return Err(error::Unspecified);
-        }
-        if bits > PUBLIC_EXPONENT_MAX_BITS {
-            return Err(error::Unspecified);
-        }
-
-        let limbs = (self.0).0.limbs();
-
-        #[cfg(target_pointer_width = "64")]
-        let value = {
-            assert!(limbs.len() == 1);
-            *limbs.first().unwrap()
-        };
-
-        #[cfg(target_pointer_width = "32")]
-        let value = {
-            let mut value = u64::from(limbs[0]);
-            if limbs.len() > 1 {
-                assert!(limbs.len() == 2);
-                value |= u64::from(limbs[1]) << limb::LIMB_BITS;
-            };
-            value
-        };
-
-        Ok(PublicExponent(value))
-    }
 }
 
 /// A modulus *s* that is smaller than another modulus *l* so every element of
@@ -586,9 +555,43 @@ impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
 }
 
 /// An non-secret odd positive value in the range
-/// [3, 2**PUBLIC_EXPONENT_MAX_BITS).
+/// [3, PUBLIC_EXPONENT_MAX_VALUE].
 #[derive(Clone, Copy)]
 pub struct PublicExponent(u64);
+
+impl PublicExponent {
+    pub fn from_be_bytes(input: untrusted::Input, min_value: u64)
+                         -> Result<Self, error::Unspecified> {
+        if input.len() > 5 {
+            return Err(error::Unspecified);
+        }
+        let value = input.read_all_mut(error::Unspecified, |input| {
+            // The exponent can't be zero and it can't be prefixed with
+            // zero-valued bytes.
+            if input.peek(0) {
+                return Err(error::Unspecified);
+            }
+            let mut value = 0u64;
+            loop {
+                let byte = input.read_byte()?;
+                value = (value << 8) | u64::from(byte);
+                if input.at_end() {
+                    return Ok(value);
+                }
+            }
+        })?;
+        if value & 1 != 1 {
+            return Err(error::Unspecified);
+        }
+        if value < min_value {
+            return Err(error::Unspecified);
+        }
+        if value > PUBLIC_EXPONENT_MAX_VALUE {
+            return Err(error::Unspecified);
+        }
+        Ok(PublicExponent(value))
+    }
+}
 
 // This limit was chosen to bound the performance of the simple
 // exponentiation-by-squaring implementation in `elem_exp_vartime`. In
@@ -601,7 +604,7 @@ pub struct PublicExponent(u64);
 // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
 // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
 // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
-pub const PUBLIC_EXPONENT_MAX_BITS: bits::BitLength = bits::BitLength(33);
+pub const PUBLIC_EXPONENT_MAX_VALUE: u64 = (1u64 << 33) - 1;
 
 /// Calculates base**exponent (mod m).
 // TODO: The test coverage needs to be expanded, e.g. test with the largest
@@ -621,7 +624,7 @@ pub fn elem_exp_vartime<M>(
     // efficient algorithm the hamming weight is 2 or less. It isn't the most
     // efficient for all other, uncommon, RSA public exponent values weight,
     // but any suboptimality is tightly bounded by the
-    // `PUBLIC_EXPONENT_MAX_BITS` cap.
+    // `PUBLIC_EXPONENT_MAX_VALUE` cap.
     //
     // This implementation is slightly simplified by taking advantage of the
     // fact that we require the exponent to be an (odd) positive integer.
@@ -629,7 +632,7 @@ pub fn elem_exp_vartime<M>(
     // [Knuth]: The Art of Computer Programming, Volume 2: Seminumerical
     //          Algorithms (3rd Edition), Section 4.6.3.
     debug_assert_eq!(exponent & 1, 1);
-    assert!(exponent < (1 << PUBLIC_EXPONENT_MAX_BITS.as_usize_bits()));
+    assert!(exponent <= PUBLIC_EXPONENT_MAX_VALUE);
     let mut acc = base.clone();
     let mut bit = 1 << (64 - 1 - exponent.leading_zeros());
     debug_assert!((exponent & bit) != 0);
@@ -1595,8 +1598,9 @@ mod tests {
 
     fn consume_public_exponent(test_case: &mut test::TestCase, name: &str)
                                -> PublicExponent {
-        let value = consume_odd_positive(test_case, name);
-        value.into_public_exponent().unwrap()
+        let bytes = test_case.consume_bytes(name);
+        PublicExponent::from_be_bytes(
+            untrusted::Input::from(&bytes), 3).unwrap()
     }
 
     fn consume_odd_positive(test_case: &mut test::TestCase, name: &str)

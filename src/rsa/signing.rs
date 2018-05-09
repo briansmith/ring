@@ -168,7 +168,7 @@ impl RSAKeyPair {
                     return Err(error::Unspecified);
                 }
                 let n = bigint::Positive::from_der(input)?;
-                let e = bigint::Positive::from_der(input)?;
+                let e = der::positive_integer(input)?;
                 let d = bigint::Positive::from_der(input)?;
                 let p = bigint::Positive::from_der(input)?;
                 let q = bigint::Positive::from_der(input)?;
@@ -206,12 +206,10 @@ impl RSAKeyPair {
                 // Also, this limit might help with memory management decisions
                 // later.
 
-                // Step 1.c. We validate e >= 2**16 = 65536, which, since e is odd,
-                // implies e >= 65537.
+                // Step 1.c. We validate e >= 65537.
                 let (n, e) = super::check_public_modulus_and_exponent(
                     n, e, bits::BitLength::from_usize_bits(2048),
-                    super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
-                    bits::BitLength::from_usize_bits(17))?;
+                    super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS, 65537)?;
 
                 // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
 
