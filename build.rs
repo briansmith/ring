@@ -242,6 +242,7 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
             "/wd4710", // C4710: function not inlined
             "/wd4711", // C4711: function 'function' selected for inline expansion
             "/wd4820", // C4820: <struct>: <n> bytes padding added after <name>
+			"/wd5045", // C5045: Compiler will insert Spectre mitigation for memory load if /Qspectre switch specified
         ];
         MSVC_FLAGS
     }
