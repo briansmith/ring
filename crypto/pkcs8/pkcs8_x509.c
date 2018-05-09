@@ -714,6 +714,55 @@ PKCS12* d2i_PKCS12_fp(FILE *fp, PKCS12 **out_p12) {
   return ret;
 }
 
+int i2d_PKCS12(const PKCS12 *p12, uint8_t **out) {
+  if (p12->ber_len > INT_MAX) {
+    OPENSSL_PUT_ERROR(PKCS8, ERR_R_OVERFLOW);
+    return -1;
+  }
+
+  if (out == NULL) {
+    return (int)p12->ber_len;
+  }
+
+  if (*out == NULL) {
+    *out = OPENSSL_malloc(p12->ber_len);
+    if (*out == NULL) {
+      OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
+      return -1;
+    }
+    OPENSSL_memcpy(*out, p12->ber_bytes, p12->ber_len);
+  } else {
+    OPENSSL_memcpy(*out, p12->ber_bytes, p12->ber_len);
+    *out += p12->ber_len;
+  }
+  return (int)p12->ber_len;
+}
+
+int i2d_PKCS12_bio(BIO *bio, const PKCS12 *p12) {
+  size_t written = 0;
+  while (written < p12->ber_len) {
+    size_t todo = p12->ber_len - written;
+    int len = todo > INT_MAX ? INT_MAX : (int)todo;
+    int ret = BIO_write(bio, p12->ber_bytes + written, len);
+    if (ret <= 0) {
+      return 0;
+    }
+    written += (size_t)ret;
+  }
+  return 1;
+}
+
+int i2d_PKCS12_fp(FILE *fp, const PKCS12 *p12) {
+  BIO *bio = BIO_new_fp(fp, 0 /* don't take ownership */);
+  if (bio == NULL) {
+    return 0;
+  }
+
+  int ret = i2d_PKCS12_bio(bio, p12);
+  BIO_free(bio);
+  return ret;
+}
+
 int PKCS12_parse(const PKCS12 *p12, const char *password, EVP_PKEY **out_pkey,
                  X509 **out_cert, STACK_OF(X509) **out_ca_certs) {
   CBS ber_bytes;

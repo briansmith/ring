@@ -152,6 +152,20 @@ OPENSSL_EXPORT PKCS12* d2i_PKCS12_bio(BIO *bio, PKCS12 **out_p12);
 // d2i_PKCS12_fp acts like |d2i_PKCS12| but reads from a |FILE|.
 OPENSSL_EXPORT PKCS12* d2i_PKCS12_fp(FILE *fp, PKCS12 **out_p12);
 
+// i2d_PKCS12 is a dummy function which copies the contents of |p12|. If |out|
+// is not NULL then the result is written to |*out| and |*out| is advanced just
+// past the output. It returns the number of bytes in the result, whether
+// written or not, or a negative value on error.
+OPENSSL_EXPORT int i2d_PKCS12(const PKCS12 *p12, uint8_t **out);
+
+// i2d_PKCS12_bio writes the contents of |p12| to |bio|. It returns one on
+// success and zero on error.
+OPENSSL_EXPORT int i2d_PKCS12_bio(BIO *bio, const PKCS12 *p12);
+
+// i2d_PKCS12_fp writes the contents of |p12| to |fp|. It returns one on
+// success and zero on error.
+OPENSSL_EXPORT int i2d_PKCS12_fp(FILE *fp, const PKCS12 *p12);
+
 // PKCS12_parse calls |PKCS12_get_key_and_certs| on the ASN.1 data stored in
 // |p12|. The |out_pkey| and |out_cert| arguments must not be NULL and, on
 // successful exit, the private key and first certificate will be stored in
