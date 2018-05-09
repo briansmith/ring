@@ -68,32 +68,42 @@
 #include <openssl/rand.h>
 
 #include "internal.h"
+#include "../bytestring/internal.h"
 #include "../internal.h"
 
 
-static int ascii_to_ucs2(const char *ascii, size_t ascii_len,
-                         uint8_t **out, size_t *out_len) {
-  size_t ulen = ascii_len * 2 + 2;
-  if (ascii_len * 2 < ascii_len || ulen < ascii_len * 2) {
-    return 0;
-  }
-
-  uint8_t *unitmp = OPENSSL_malloc(ulen);
-  if (unitmp == NULL) {
+static int pkcs12_encode_password(const char *in, size_t in_len, uint8_t **out,
+                                  size_t *out_len) {
+  CBB cbb;
+  if (!CBB_init(&cbb, in_len * 2)) {
     OPENSSL_PUT_ERROR(PKCS8, ERR_R_MALLOC_FAILURE);
     return 0;
   }
-  for (size_t i = 0; i < ulen - 2; i += 2) {
-    unitmp[i] = 0;
-    unitmp[i + 1] = ascii[i >> 1];
+
+  // Convert the password to BMPString, or UCS-2. See
+  // https://tools.ietf.org/html/rfc7292#appendix-B.1.
+  CBS cbs;
+  CBS_init(&cbs, (const uint8_t *)in, in_len);
+  while (CBS_len(&cbs) != 0) {
+    uint32_t c;
+    if (!cbs_get_utf8(&cbs, &c) ||
+        !cbb_add_ucs2_be(&cbb, c)) {
+      OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_INVALID_CHARACTERS);
+      goto err;
+    }
   }
 
   // Terminate the result with a UCS-2 NUL.
-  unitmp[ulen - 2] = 0;
-  unitmp[ulen - 1] = 0;
-  *out_len = ulen;
-  *out = unitmp;
+  if (!cbb_add_ucs2_be(&cbb, 0) ||
+      !CBB_finish(&cbb, out, out_len)) {
+    goto err;
+  }
+
   return 1;
+
+err:
+  CBB_cleanup(&cbb);
+  return 0;
 }
 
 int pkcs12_key_gen(const char *pass, size_t pass_len, const uint8_t *salt,
@@ -115,7 +125,7 @@ int pkcs12_key_gen(const char *pass, size_t pass_len, const uint8_t *salt,
   // If |pass| is NULL, we use the empty string rather than {0, 0} as the raw
   // password.
   if (pass != NULL &&
-      !ascii_to_ucs2(pass, pass_len, &pass_raw, &pass_raw_len)) {
+      !pkcs12_encode_password(pass, pass_len, &pass_raw, &pass_raw_len)) {
     goto err;
   }
 
