@@ -138,9 +138,8 @@ pub fn verify_rsa(params: &RSAParameters,
     // exponent value is 2**16 + 1, but it isn't clear if this is just for
     // signing or also for verification. We support exponents of 3 and larger
     // for compatibility with other commonly-used crypto libraries.
-    let (n, e) =
+    let (n, n_bits, e) =
         super::check_public_modulus_and_exponent(n, e, params.min_bits, max_bits, 3)?;
-    let n_bits = n.bit_length();
     let n = n.into_modulus::<N>()?;
 
     // The signature must be the same length as the modulus, in bytes.

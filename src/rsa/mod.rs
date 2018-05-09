@@ -88,8 +88,8 @@ fn parse_public_key(input: untrusted::Input)
 fn check_public_modulus_and_exponent(
         n: bigint::Positive, e: untrusted::Input, n_min_bits: bits::BitLength,
         n_max_bits: bits::BitLength, e_min_value: u64)
-        -> Result<(bigint::OddPositive, bigint::PublicExponent),
-                  error::Unspecified> {
+        -> Result<(bigint::OddPositive, bits::BitLength,
+                   bigint::PublicExponent), error::Unspecified> {
     // This is an incomplete implementation of NIST SP800-56Br1 Section
     // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers to
     // NIST SP800-89 Section 5.3.3, "(Explicit) Partial Public Key Validation
@@ -98,6 +98,8 @@ fn check_public_modulus_and_exponent(
     // different sets of steps are given, one set numbered, and one set
     // lettered. TODO: Document this in the end-user documentation for RSA
     // keys.
+
+    let n_bits = n.bit_length();
 
     // Step 3 / Step c for `n` (out of order).
     let n = n.into_odd_positive()?;
@@ -111,7 +113,6 @@ fn check_public_modulus_and_exponent(
     // the public modulus to be exactly 2048 or 3072 bits, but we are more
     // flexible to be compatible with other commonly-used crypto libraries.
     assert!(n_min_bits >= N_MIN_BITS);
-    let n_bits = n.bit_length();
     let n_bits_rounded_up =
         bits::BitLength::from_usize_bytes(n_bits.as_usize_bytes_rounded_up())?;
     if n_bits_rounded_up < n_min_bits {
@@ -139,7 +140,7 @@ fn check_public_modulus_and_exponent(
     // XXX: Steps 4 & 5 / Steps d, e, & f are not implemented. This is also the
     // case in most other commonly-used crypto libraries.
 
-    Ok((n, e))
+    Ok((n, n_bits, e))
 }
 
 // Type-level representation of an RSA public modulus *n*. See

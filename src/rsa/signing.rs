@@ -185,8 +185,6 @@ impl RSAKeyPair {
                     Err(_) => ((q, dQ), (p, dP, None)),
                 };
 
-                let n_bits = n.bit_length();
-
                 // XXX: Some steps are done out of order, but the NIST steps
                 // are worded in such a way that it is clear that NIST intends
                 // for them to be done in order. TODO: Does this matter at all?
@@ -207,7 +205,7 @@ impl RSAKeyPair {
                 // later.
 
                 // Step 1.c. We validate e >= 65537.
-                let (n, e) = super::check_public_modulus_and_exponent(
+                let (n, n_bits, e) = super::check_public_modulus_and_exponent(
                     n, e, bits::BitLength::from_usize_bits(2048),
                     super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS, 65537)?;
 
@@ -231,7 +229,8 @@ impl RSAKeyPair {
                 //
                 // Second, stop if `p > 2**(nBits/2) - 1`.
                 let half_n_bits = n_bits.half_rounded_up();
-                if p.bit_length() != half_n_bits {
+                let p_bits = p.bit_length();
+                if p_bits != half_n_bits {
                     return Err(error::Unspecified);
                 }
                 let p = p.into_odd_positive()?;
@@ -245,7 +244,7 @@ impl RSAKeyPair {
                 // TODO: First, stop if `q < (√2) * 2**((nBits/2) - 1)`.
                 //
                 // Second, stop if `q > 2**(nBits/2) - 1`.
-                if p.bit_length() != q.bit_length() {
+                if p_bits != q.bit_length() {
                     return Err(error::Unspecified);
                 }
                 let q = q.into_odd_positive()?;

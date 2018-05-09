@@ -197,9 +197,6 @@ impl Positive {
 pub struct OddPositive(Positive);
 
 impl OddPositive {
-    #[inline]
-    pub fn bit_length(&self) -> bits::BitLength { self.0.bit_length() }
-
     #[cfg(feature = "rsa_signing")]
     pub fn try_clone(&self) -> Result<OddPositive, error::Unspecified> {
         let value = (self.0).0.try_clone()?;
