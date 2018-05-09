@@ -421,11 +421,6 @@ impl<M> Elem<M, Unencoded> {
     pub fn into_modulus<MM>(self) -> Result<Modulus<MM>, error::Unspecified> {
         Modulus::from_limbs(&self.limbs)
     }
-
-    #[cfg(feature = "rsa_signing")]
-    pub fn into_positive(self) -> Result<Positive, error::Unspecified> {
-        Nonnegative::from_limbs(&self.limbs)?.into_positive()
-    }
 }
 
 #[cfg(feature = "rsa_signing")]
@@ -1133,14 +1128,6 @@ impl Nonnegative {
             }
         }
         return Ok(())
-    }
-
-    #[cfg(feature = "rsa_signing")]
-    fn into_positive(self) -> Result<Positive, error::Unspecified> {
-        if self.is_zero() {
-            return Err(error::Unspecified);
-        }
-        Ok(Positive(self))
     }
 
     fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {

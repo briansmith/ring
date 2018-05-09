@@ -102,7 +102,9 @@ impl RSAKeyPair {
     ///     * *ring* has a slightly looser lower bound for the values of `p`
     ///     and `q` than what the NIST document specifies. This looser lower
     ///     bound matches what most other crypto libraries do. The check might
-    ///     be tightened to meet NIST's requirements in the future.
+    ///     be tightened to meet NIST's requirements in the future. Similarly,
+    ///     the check that `p` and `q` are not too close together is skipped
+    ///     currently, but may be added in the future.
     ///     - The validity of the mathematical relationship of `dP`, `dQ`, `e`
     ///     and `n` is verified only during signing. Some size checks of `d`,
     ///     `dP` and `dQ` are performed at construction, but some NIST checks
@@ -255,35 +257,9 @@ impl RSAKeyPair {
                 let oneRR_mod_n = bigint::One::newRR(&n)?;
                 let q_mod_n_decoded = q.try_clone()?.into_elem(&n)?;
 
-                // Step 5.i
-                //
-                // Because we just check the bit length of p - q, we accept if the
-                // difference is exactly 2**(n_bits/2 - 100), even though the spec
-                // says that is the largest value that should be rejected. We assume
-                // there are no security implications to this simplification.
+                // TODO: Step 5.i
                 //
                 // 3.b is unneeded since `n_bits` is derived here from `n`.
-                {
-                    let p_mod_n = {
-                        let p = p.try_clone()?;
-                        p.into_elem(&n)?
-                    };
-                    let p_minus_q_bits = {
-                        // Modular subtraction isn't necessary since we already
-                        // verified q < p, but we're doing modular subtraction
-                        // to avoid having to implement non-modular subtraction.
-                        // Modular subtraction without having already verified
-                        // q < p would be wrong.
-                        let p_minus_q =
-                            bigint::elem_sub(p_mod_n, &q_mod_n_decoded, &n);
-                        p_minus_q.into_positive()?.bit_length()
-                    };
-                    let min_pq_bitlen_diff = half_n_bits.try_sub(
-                            bits::BitLength::from_usize_bits(100))?;
-                    if p_minus_q_bits <= min_pq_bitlen_diff {
-                        return Err(error::Unspecified);
-                    }
-                }
 
                 // 6.4.1.4.3 - Step 3.a (out of order).
                 //
