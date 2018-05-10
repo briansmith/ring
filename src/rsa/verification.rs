@@ -128,11 +128,11 @@ pub fn verify_rsa(params: &RSAParameters,
                   (n, e): (untrusted::Input, untrusted::Input),
                   msg: untrusted::Input, signature: untrusted::Input)
                   -> Result<(), error::Unspecified> {
-    // Partially validate the public key. See
-    // `check_public_modulus_and_exponent()` for more details.
-    let n = bigint::Positive::from_be_bytes(n)?;
     let max_bits = bits::BitLength::from_usize_bytes(
         PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)?;
+
+    // Partially validate the public key. See
+    // `check_public_modulus_and_exponent()` for more details.
 
     // XXX: FIPS 186-4 seems to indicate that the minimum
     // exponent value is 2**16 + 1, but it isn't clear if this is just for

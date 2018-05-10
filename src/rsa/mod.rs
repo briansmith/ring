@@ -86,7 +86,7 @@ fn parse_public_key(input: untrusted::Input)
 }
 
 fn check_public_modulus_and_exponent(
-        n: bigint::Positive, e: untrusted::Input, n_min_bits: bits::BitLength,
+        n: untrusted::Input, e: untrusted::Input, n_min_bits: bits::BitLength,
         n_max_bits: bits::BitLength, e_min_value: u64)
         -> Result<(bigint::OddPositive, bits::BitLength,
                    bigint::PublicExponent), error::Unspecified> {
@@ -99,7 +99,7 @@ fn check_public_modulus_and_exponent(
     // lettered. TODO: Document this in the end-user documentation for RSA
     // keys.
 
-    let n_bits = n.bit_length();
+    let (n, n_bits) = bigint::Positive::from_be_bytes_with_bit_length(n)?;
 
     // Step 3 / Step c for `n` (out of order).
     let n = n.into_odd_positive()?;

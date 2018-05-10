@@ -157,6 +157,14 @@ impl Positive {
         Self::from_be_bytes_padded(input)
     }
 
+    pub fn from_be_bytes_with_bit_length(input: untrusted::Input)
+        -> Result<(Positive, bits::BitLength), error::Unspecified>
+    {
+        let r = Self::from_be_bytes(input)?;
+        let r_bits = minimal_limbs_bit_length(r.0.limbs());
+        Ok((r, r_bits))
+    }
+
     pub fn from_be_bytes_padded(input: untrusted::Input)
                                 -> Result<Self, error::Unspecified> {
         let r = Nonnegative::from_be_bytes_padded(input)?;
@@ -181,9 +189,6 @@ impl Positive {
     pub fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
         self.0.into_odd_positive()
     }
-
-    #[inline]
-    pub fn bit_length(&self) -> bits::BitLength { self.0.bit_length() }
 
     #[cfg(feature = "rsa_signing")]
     #[inline]
@@ -977,7 +982,7 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: Nonnegative,
 
     // Use the simpler repeated-subtraction reduction in 2.23.
 
-    let n = m.bit_length().as_usize_bits();
+    let n = minimal_limbs_bit_length(m.limbs()).as_usize_bits();
     assert!(k >= n);
     for _ in n..k {
         let mut carry = 0;
@@ -1080,10 +1085,6 @@ impl Nonnegative {
     #[inline]
     fn is_odd(&self) -> bool {
         limb::limbs_are_even_constant_time(self.limbs()) == limb::LimbMask::False
-    }
-
-    pub fn bit_length(&self) -> bits::BitLength {
-        minimal_limbs_bit_length(self.limbs())
     }
 
     #[inline]

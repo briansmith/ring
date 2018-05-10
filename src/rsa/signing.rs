@@ -169,22 +169,28 @@ impl RSAKeyPair {
                 if version != 0 {
                     return Err(error::Unspecified);
                 }
-                let n = bigint::Positive::from_der(input)?;
+                let n = der::positive_integer(input)?;
                 let e = der::positive_integer(input)?;
-                let d = bigint::Positive::from_der(input)?;
-                let p = bigint::Positive::from_der(input)?;
-                let q = bigint::Positive::from_der(input)?;
+                let d = der::positive_integer(input)?;
+                let p = der::positive_integer(input)?;
+                let q = der::positive_integer(input)?;
                 let dP = der::positive_integer(input)?;
                 let dQ = der::positive_integer(input)?;
                 let qInv = bigint::Positive::from_der(input)?;
+
+                let (p, p_bits) =
+                    bigint::Positive::from_be_bytes_with_bit_length(p)?;
+                let (q, q_bits) =
+                    bigint::Positive::from_be_bytes_with_bit_length(q)?;
 
                 // Our implementation of CRT-based modular exponentiation used
                 // requires that `p > q` so swap them if `p < q`. If swapped,
                 // `qInv` is recalculated below. `p != q` is verified
                 // implicitly below, e.g. when `q_mod_p` is constructed.
-                let ((p, dP), (q, dQ, qInv)) = match q.verify_less_than(&p) {
-                    Ok(_)  => ((p, dP), (q, dQ, Some(qInv))),
-                    Err(_) => ((q, dQ), (p, dP, None)),
+                let ((p, p_bits, dP), (q, q_bits, dQ, qInv)) =
+                    match q.verify_less_than(&p) {
+                    Ok(_)  => ((p, p_bits, dP), (q, q_bits, dQ, Some(qInv))),
+                    Err(_) => ((q, q_bits, dQ), (p, p_bits, dP, None)),
                 };
 
                 // XXX: Some steps are done out of order, but the NIST steps
@@ -231,7 +237,6 @@ impl RSAKeyPair {
                 //
                 // Second, stop if `p > 2**(nBits/2) - 1`.
                 let half_n_bits = n_bits.half_rounded_up();
-                let p_bits = p.bit_length();
                 if p_bits != half_n_bits {
                     return Err(error::Unspecified);
                 }
@@ -246,7 +251,7 @@ impl RSAKeyPair {
                 // TODO: First, stop if `q < (√2) * 2**((nBits/2) - 1)`.
                 //
                 // Second, stop if `q > 2**(nBits/2) - 1`.
-                if p_bits != q.bit_length() {
+                if p_bits != q_bits {
                     return Err(error::Unspecified);
                 }
                 let q = q.into_odd_positive()?;
@@ -285,7 +290,9 @@ impl RSAKeyPair {
                 // has a bit length of half_n_bits + 1, this check gives us
                 // 2**half_n_bits <= d, and knowing d is odd makes the
                 // inequality strict.
-                if !(half_n_bits < d.bit_length()) {
+                let (d, d_bits) =
+                    bigint::Positive::from_be_bytes_with_bit_length(d)?;
+                if !(half_n_bits < d_bits) {
                     return Err(error::Unspecified);
                 }
                 // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we
