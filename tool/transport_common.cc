@@ -425,6 +425,9 @@ class SocketWaiter {
     do {
       n = read(STDIN_FILENO, out, max_out);
     } while (n == -1 && errno == EINTR);
+    if (n <= 0) {
+      stdin_open_ = false;
+    }
     if (n < 0) {
       perror("read from stdin");
       return false;
