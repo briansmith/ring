@@ -55,25 +55,25 @@ fn aead_chacha20_poly1305() {
 #[test]
 fn aead_cavp_gcm_encrypt_128() {
     test_aead(&aead::AES_128_GCM,
-              "third_party/NIST/CAVPGCM/gcmEncryptExtIV128.rsp_ring.rsp");
+              "third_party/NIST/GCMVS/gcmEncryptExtIV128.rsp_ring.rsp");
 }
 
 #[test]
 fn aead_cavp_gcm_encrypt_256() {
     test_aead(&aead::AES_256_GCM,
-              "third_party/NIST/CAVPGCM/gcmEncryptExtIV256.rsp_ring.rsp");
+              "third_party/NIST/GCMVS/gcmEncryptExtIV256.rsp_ring.rsp");
 }
 
 #[test]
 fn aead_cavp_gcm_decrypt_128() {
     test_aead(&aead::AES_128_GCM,
-              "third_party/NIST/CAVPGCM/gcmDecrypt128.rsp_ring.rsp");
+              "third_party/NIST/GCMVS/gcmDecrypt128.rsp_ring.rsp");
 }
 
 #[test]
 fn aead_cavp_gcm_decrypt_256() {
     test_aead(&aead::AES_256_GCM,
-              "third_party/NIST/CAVPGCM/gcmDecrypt256.rsp_ring.rsp");
+              "third_party/NIST/GCMVS/gcmDecrypt256.rsp_ring.rsp");
 }
 
 
