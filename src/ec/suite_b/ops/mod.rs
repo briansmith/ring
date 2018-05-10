@@ -224,7 +224,7 @@ impl PrivateKeyOps {
 
     #[inline(always)]
     pub fn point_mul(&self, p_scalar: &Scalar,
-                     &(ref p_x, ref p_y): &(Elem<R>, Elem<R>)) -> Point {
+                     (p_x, p_y): &(Elem<R>, Elem<R>)) -> Point {
         let mut r = Point::new_at_infinity();
         unsafe {
             (self.point_mul_impl)(r.xyz.as_mut_ptr(), p_scalar.limbs.as_ptr(),
@@ -912,7 +912,7 @@ mod tests {
                 let zero = Elem::zero();
                 assert_elems_are_equal(cops, &actual_z, &zero);
             },
-            &TestPoint::Affine(ref expected_x, ref expected_y) => {
+            &TestPoint::Affine(expected_x, expected_y) => {
                 let zz_inv = ops.elem_inverse_squared(&actual_z);
                 let x_aff = cops.elem_product(&actual_x, &zz_inv);
                 let y_aff = {

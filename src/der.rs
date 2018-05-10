@@ -254,7 +254,7 @@ mod tests {
             assert_eq!(small_nonnegative_integer(input)?, 0x00);
             Ok(())
         });
-        for &(ref test_in, test_out) in GOOD_POSITIVE_INTEGERS.iter() {
+        for &(test_in, test_out) in GOOD_POSITIVE_INTEGERS.iter() {
             with_good_i(test_in, |input| {
                 assert_eq!(small_nonnegative_integer(input)?, test_out);
                 Ok(())
@@ -274,7 +274,7 @@ mod tests {
             let _ = positive_integer(input)?;
             Ok(())
         });
-        for &(ref test_in, test_out) in GOOD_POSITIVE_INTEGERS.iter() {
+        for &(test_in, test_out) in GOOD_POSITIVE_INTEGERS.iter() {
             with_good_i(test_in, |input| {
                 let test_out = [test_out];
                 assert_eq!(positive_integer(input)?,

@@ -520,10 +520,7 @@ impl RSASigningState {
             return Err(error::Unspecified);
         }
 
-        let &mut RSASigningState {
-            key_pair: ref key,
-            blinding: ref mut blinding,
-        } = self;
+        let RSASigningState { key_pair: key, blinding } = self;
 
         let m_hash = digest::digest(padding_alg.digest_alg(), msg);
         padding_alg.encode(&m_hash, signature, mod_bits, rng)?;

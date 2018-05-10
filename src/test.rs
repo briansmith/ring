@@ -233,7 +233,7 @@ impl TestCase {
             // The value is hex encoded.
             match from_hex(&s) {
                 Ok(s) => s,
-                Err(ref err_str) => {
+                Err(err_str) => {
                     panic!("{} in {}", err_str, s);
                 },
             }
@@ -266,7 +266,7 @@ impl TestCase {
     /// Like `consume_string()` except it returns `None` if the test case
     /// doesn't have the attribute.
     pub fn consume_optional_string(&mut self, key: &str) -> Option<String> {
-        for &mut (ref name, ref value, ref mut consumed) in
+        for (name, value, consumed) in
                 &mut self.attributes {
             if key == name {
                 if *consumed {
@@ -322,7 +322,7 @@ pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
         let result = match result {
             Ok(Ok(())) => {
                 if !test_case.attributes.iter().any(
-                        |&(_, _, ref consumed)| !consumed) {
+                        |&(_, _, consumed)| !consumed) {
                     Ok(())
                 } else {
                     failed = true;
@@ -337,8 +337,8 @@ pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
             failed = true;
 
             println!("{}: {}", test_data_relative_file_path, msg);
-            for (ref name, ref value, ref consumed) in test_case.attributes {
-                let consumed_str = if *consumed { "" } else { " (unconsumed)" };
+            for (name, value, consumed) in test_case.attributes {
+                let consumed_str = if consumed { "" } else { " (unconsumed)" };
                 println!("{}{} = {}", name, consumed_str, value);
             }
         };

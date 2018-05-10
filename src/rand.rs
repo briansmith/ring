@@ -205,7 +205,7 @@ mod urandom {
         }
 
         match *FILE {
-            Ok(ref file) => {
+            Ok(file) => {
                 use std::io::Read;
                 (&*file).read_exact(dest).map_err(|_| error::Unspecified)
             },

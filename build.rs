@@ -646,8 +646,8 @@ fn run_command(mut cmd: Command) {
 
 fn sources_for_arch(arch: &str) -> Vec<PathBuf> {
     RING_SRCS.iter()
-        .filter(|&&(ref archs, _)| archs.is_empty() || archs.contains(&arch))
-        .map(|&(_, ref p)| PathBuf::from(p))
+        .filter(|&&(archs, _)| archs.is_empty() || archs.contains(&arch))
+        .map(|&(_, p)| PathBuf::from(p))
         .collect::<Vec<_>>()
 }
 
@@ -701,7 +701,7 @@ fn asm_path(out_dir: &Path, src: &Path, os: Option<&str>, perlasm_format: &str)
 
 fn perlasm(src_dst: &[(PathBuf, PathBuf)], arch: &str,
            perlasm_format: &str, includes_modified: Option<SystemTime>) {
-    for &(ref src, ref dst) in src_dst {
+    for (src, dst) in src_dst {
         if let Some(includes_modified) = includes_modified {
             if !need_run(src, dst, includes_modified) {
                 continue;
@@ -764,11 +764,11 @@ fn is_tracked(file: &DirEntry) {
         Some("c") |
         Some("S") |
         Some("asm") => {
-            RING_SRCS.iter().any(|&(_, ref f)| cmp(f)) ||
+            RING_SRCS.iter().any(|(_, f)| cmp(f)) ||
                 RING_TEST_SRCS.iter().any(cmp)
         },
         Some("pl") => {
-            RING_SRCS.iter().any(|&(_, ref f)| cmp(f)) ||
+            RING_SRCS.iter().any(|(_, f)| cmp(f)) ||
                 RING_PERL_INCLUDES.iter().any(cmp)
         },
         _ => true,

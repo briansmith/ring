@@ -69,11 +69,7 @@ impl SigningContext {
         };
 
         { // borrow ctx
-            let &mut SigningContext {
-                opaque: ref mut opaque,
-                func: ref mut func,
-                ..
-            } = &mut ctx;
+            let SigningContext { opaque, func, .. } = &mut ctx;
             with_aligned(opaque, |opaque| {
             // On some platforms `init()` doesn't initialize `funcs`. The
             // return value of `init()` indicates whether it did or not. Since
@@ -89,13 +85,7 @@ impl SigningContext {
     }
 
     pub fn update(&mut self, mut input: &[u8]) {
-        let &mut SigningContext {
-            opaque: ref mut opaque,
-            buf: ref mut buf,
-            buf_used: ref mut buf_used,
-            func: ref func,
-            ..
-        } = self;
+        let SigningContext { opaque, buf, buf_used, func, .. } = self;
         with_aligned(opaque, |opaque: &mut Opaque| {
             if *buf_used != 0 {
                 let todo = core::cmp::min(input.len(), BLOCK_LEN - *buf_used);
