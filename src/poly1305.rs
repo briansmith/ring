@@ -116,17 +116,11 @@ impl SigningContext {
     }
 
     pub fn sign(mut self, tag_out: &mut Tag) {
-        let &mut SigningContext {
-            opaque: ref mut opaque,
-            nonce: ref nonce,
-            buf: ref mut buf,
-            buf_used: buf_used,
-            func: ref func,
-        } = &mut self;
+        let SigningContext { opaque, nonce, buf, buf_used, func } = &mut self;
         with_aligned(opaque, |opaque| {
-            if buf_used != 0 {
-                buf[buf_used] = 1;
-                for byte in &mut buf[(buf_used + 1)..] {
+            if *buf_used != 0 {
+                buf[*buf_used] = 1;
+                for byte in &mut buf[(*buf_used + 1)..] {
                     *byte = 0;
                 }
                 func.blocks(opaque, &buf[..], Pad::AlreadyPadded);

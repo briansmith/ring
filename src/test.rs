@@ -392,7 +392,7 @@ fn parse_test_case(current_section: &mut String, lines: &mut FileLines)
         };
 
         if cfg!(feature = "test_logging") {
-            if let Some(ref text) = line {
+            if let Some(text) = &line {
                 println!("Line: {}", text);
             }
         }
