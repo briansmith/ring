@@ -908,11 +908,11 @@ mod tests {
         let actual_y = &cops.point_y(&actual_point);
         let actual_z = &cops.point_z(&actual_point);
         match expected_point {
-            &TestPoint::Infinity => {
+            TestPoint::Infinity => {
                 let zero = Elem::zero();
                 assert_elems_are_equal(cops, &actual_z, &zero);
             },
-            &TestPoint::Affine(expected_x, expected_y) => {
+            TestPoint::Affine(expected_x, expected_y) => {
                 let zz_inv = ops.elem_inverse_squared(&actual_z);
                 let x_aff = cops.elem_product(&actual_x, &zz_inv);
                 let y_aff = {

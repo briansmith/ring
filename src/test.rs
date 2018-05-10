@@ -193,14 +193,14 @@ impl TestCase {
             let mut s = s.as_bytes().iter().skip(1);
             loop {
                 let b = match s.next() {
-                    Some(&b'\\') => {
+                    Some(b'\\') => {
                         match s.next() {
                             // We don't allow all octal escape sequences, only "\0" for null.
-                            Some(&b'0') => 0u8,
-                            Some(&b't') => b'\t',
-                            Some(&b'n') => b'\n',
+                            Some(b'0') => 0u8,
+                            Some(b't') => b'\t',
+                            Some(b'n') => b'\n',
                             // "\xHH"
-                            Some(&b'x') => {
+                            Some(b'x') => {
                                 let hi = s.next().expect("Invalid hex escape sequence in string.");
                                 let lo = s.next().expect("Invalid hex escape sequence in string.");
                                 if let (Ok(hi), Ok(lo)) =
@@ -215,7 +215,7 @@ impl TestCase {
                             }
                         }
                     },
-                    Some(&b'"') => {
+                    Some(b'"') => {
                         if s.next().is_some() {
                             panic!("characters after the closing quote of a quoted string.");
                         }
