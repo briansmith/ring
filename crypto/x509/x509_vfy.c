@@ -2434,6 +2434,11 @@ void X509_STORE_CTX_set_time(X509_STORE_CTX *ctx, unsigned long flags,
     X509_VERIFY_PARAM_set_time(ctx->param, t);
 }
 
+X509 *X509_STORE_CTX_get0_cert(X509_STORE_CTX *ctx)
+{
+    return ctx->cert;
+}
+
 void X509_STORE_CTX_set_verify_cb(X509_STORE_CTX *ctx,
                                   int (*verify_cb) (int, X509_STORE_CTX *))
 {
