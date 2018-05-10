@@ -466,6 +466,7 @@ static bool GetCertificate(SSL *ssl, bssl::UniquePtr<X509> *out_x509,
     return false;
   }
   if (!config->ocsp_response.empty() &&
+      !config->set_ocsp_in_callback &&
       !SSL_set_ocsp_response(ssl, (const uint8_t *)config->ocsp_response.data(),
                              config->ocsp_response.size())) {
     return false;
@@ -1071,6 +1072,27 @@ static void MessageCallback(int is_write, int version, int content_type,
   }
 }
 
+static int LegacyOCSPCallback(SSL *ssl, void *arg) {
+  const TestConfig *config = GetTestConfig(ssl);
+  if (!SSL_is_server(ssl)) {
+    return !config->fail_ocsp_callback;
+  }
+
+  if (!config->ocsp_response.empty() &&
+      config->set_ocsp_in_callback &&
+      !SSL_set_ocsp_response(ssl, (const uint8_t *)config->ocsp_response.data(),
+                             config->ocsp_response.size())) {
+    return SSL_TLSEXT_ERR_ALERT_FATAL;
+  }
+  if (config->fail_ocsp_callback) {
+    return SSL_TLSEXT_ERR_ALERT_FATAL;
+  }
+  if (config->decline_ocsp_callback) {
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+  return SSL_TLSEXT_ERR_OK;
+}
+
 // Connect returns a new socket connected to localhost on |port| or -1 on
 // error.
 static int Connect(uint16_t port) {
@@ -1306,6 +1328,10 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx,
 
   if (config->allow_false_start_without_alpn) {
     SSL_CTX_set_false_start_allowed_without_alpn(ssl_ctx.get(), 1);
+  }
+
+  if (config->use_ocsp_callback) {
+    SSL_CTX_set_tlsext_status_cb(ssl_ctx.get(), LegacyOCSPCallback);
   }
 
   if (old_ctx) {

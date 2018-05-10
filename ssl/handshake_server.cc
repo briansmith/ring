@@ -509,6 +509,22 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  if (hs->ocsp_stapling_requested &&
+      ssl->ctx->legacy_ocsp_callback != nullptr) {
+    switch (ssl->ctx->legacy_ocsp_callback(
+        ssl, ssl->ctx->legacy_ocsp_callback_arg)) {
+      case SSL_TLSEXT_ERR_OK:
+        break;
+      case SSL_TLSEXT_ERR_NOACK:
+        hs->ocsp_stapling_requested = false;
+        break;
+      default:
+        OPENSSL_PUT_ERROR(SSL, SSL_R_OCSP_CB_ERROR);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+        return ssl_hs_error;
+    }
+  }
+
   if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     // Jump to the TLS 1.3 state machine.
     hs->state = state12_tls13;

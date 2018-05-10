@@ -136,6 +136,10 @@ const Flag<bool> kBoolFlags[] = {
   { "-handoff", &TestConfig::handoff },
   { "-expect-dummy-pq-padding", &TestConfig::expect_dummy_pq_padding },
   { "-no-rsa-pss-rsae-certs", &TestConfig::no_rsa_pss_rsae_certs },
+  { "-use-ocsp-callback", &TestConfig::use_ocsp_callback },
+  { "-set-ocsp-in-callback", &TestConfig::set_ocsp_in_callback },
+  { "-decline-ocsp-callback", &TestConfig::decline_ocsp_callback },
+  { "-fail-ocsp-callback", &TestConfig::fail_ocsp_callback },
 };
 
 const Flag<std::string> kStringFlags[] = {

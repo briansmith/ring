@@ -4766,60 +4766,157 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 	})
 
 	// OCSP stapling tests.
-	tests = append(tests, testCase{
-		testType: clientTest,
-		name:     "OCSPStapling-Client",
-		config: Config{
-			MaxVersion: VersionTLS12,
-		},
-		flags: []string{
-			"-enable-ocsp-stapling",
-			"-expect-ocsp-response",
-			base64.StdEncoding.EncodeToString(testOCSPResponse),
-			"-verify-peer",
-		},
-		resumeSession: true,
-	})
-	tests = append(tests, testCase{
-		testType: serverTest,
-		name:     "OCSPStapling-Server",
-		config: Config{
-			MaxVersion: VersionTLS12,
-		},
-		expectedOCSPResponse: testOCSPResponse,
-		flags: []string{
-			"-ocsp-response",
-			base64.StdEncoding.EncodeToString(testOCSPResponse),
-		},
-		resumeSession: true,
-	})
-	tests = append(tests, testCase{
-		testType: clientTest,
-		name:     "OCSPStapling-Client-TLS13",
-		config: Config{
-			MaxVersion: VersionTLS13,
-		},
-		flags: []string{
-			"-enable-ocsp-stapling",
-			"-expect-ocsp-response",
-			base64.StdEncoding.EncodeToString(testOCSPResponse),
-			"-verify-peer",
-		},
-		resumeSession: true,
-	})
-	tests = append(tests, testCase{
-		testType: serverTest,
-		name:     "OCSPStapling-Server-TLS13",
-		config: Config{
-			MaxVersion: VersionTLS13,
-		},
-		expectedOCSPResponse: testOCSPResponse,
-		flags: []string{
-			"-ocsp-response",
-			base64.StdEncoding.EncodeToString(testOCSPResponse),
-		},
-		resumeSession: true,
-	})
+	for _, vers := range tlsVersions {
+		if config.protocol == dtls && !vers.hasDTLS {
+			continue
+		}
+		if vers.version == VersionSSL30 {
+			continue
+		}
+		tests = append(tests, testCase{
+			testType: clientTest,
+			name:     "OCSPStapling-Client-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+			},
+			tls13Variant: vers.tls13Variant,
+			flags: []string{
+				"-enable-ocsp-stapling",
+				"-expect-ocsp-response",
+				base64.StdEncoding.EncodeToString(testOCSPResponse),
+				"-verify-peer",
+			},
+			resumeSession: true,
+		})
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "OCSPStapling-Server-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+			},
+			tls13Variant:         vers.tls13Variant,
+			expectedOCSPResponse: testOCSPResponse,
+			flags: []string{
+				"-ocsp-response",
+				base64.StdEncoding.EncodeToString(testOCSPResponse),
+			},
+			resumeSession: true,
+		})
+
+		// The client OCSP callback is an alternate certificate
+		// verification callback.
+		tests = append(tests, testCase{
+			testType: clientTest,
+			name:     "ClientOCSPCallback-Pass-" + vers.name,
+			config: Config{
+				MaxVersion:   vers.version,
+				Certificates: []Certificate{rsaCertificate},
+			},
+			tls13Variant: vers.tls13Variant,
+			flags: []string{
+				"-enable-ocsp-stapling",
+				"-use-ocsp-callback",
+			},
+		})
+		var expectedLocalError string
+		if !config.async {
+			// TODO(davidben): Asynchronous fatal alerts are never
+			// sent. https://crbug.com/boringssl/130.
+			expectedLocalError = "remote error: bad certificate status response"
+		}
+		tests = append(tests, testCase{
+			testType: clientTest,
+			name:     "ClientOCSPCallback-Fail-" + vers.name,
+			config: Config{
+				MaxVersion:   vers.version,
+				Certificates: []Certificate{rsaCertificate},
+			},
+			tls13Variant: vers.tls13Variant,
+			flags: []string{
+				"-enable-ocsp-stapling",
+				"-use-ocsp-callback",
+				"-fail-ocsp-callback",
+			},
+			shouldFail:         true,
+			expectedLocalError: expectedLocalError,
+			expectedError:      ":OCSP_CB_ERROR:",
+		})
+		// The callback does not run if the server does not send an
+		// OCSP response.
+		certNoStaple := rsaCertificate
+		certNoStaple.OCSPStaple = nil
+		tests = append(tests, testCase{
+			testType: clientTest,
+			name:     "ClientOCSPCallback-FailNoStaple-" + vers.name,
+			config: Config{
+				MaxVersion:   vers.version,
+				Certificates: []Certificate{certNoStaple},
+			},
+			tls13Variant: vers.tls13Variant,
+			flags: []string{
+				"-enable-ocsp-stapling",
+				"-use-ocsp-callback",
+				"-fail-ocsp-callback",
+			},
+		})
+
+		// The server OCSP callback is a legacy mechanism for
+		// configuring OCSP, used by unreliable server software.
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "ServerOCSPCallback-SetInCallback-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+			},
+			tls13Variant:         vers.tls13Variant,
+			expectedOCSPResponse: testOCSPResponse,
+			flags: []string{
+				"-use-ocsp-callback",
+				"-set-ocsp-in-callback",
+				"-ocsp-response",
+				base64.StdEncoding.EncodeToString(testOCSPResponse),
+			},
+			resumeSession: true,
+		})
+
+		// The callback may decline OCSP, in which case  we act as if
+		// the client did not support it, even if a response was
+		// configured.
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "ServerOCSPCallback-Decline-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+			},
+			tls13Variant:         vers.tls13Variant,
+			expectedOCSPResponse: []byte{},
+			flags: []string{
+				"-use-ocsp-callback",
+				"-decline-ocsp-callback",
+				"-ocsp-response",
+				base64.StdEncoding.EncodeToString(testOCSPResponse),
+			},
+			resumeSession: true,
+		})
+
+		// The callback may also signal an internal error.
+		tests = append(tests, testCase{
+			testType: serverTest,
+			name:     "ServerOCSPCallback-Fail-" + vers.name,
+			config: Config{
+				MaxVersion: vers.version,
+			},
+			tls13Variant: vers.tls13Variant,
+			flags: []string{
+				"-use-ocsp-callback",
+				"-fail-ocsp-callback",
+				"-ocsp-response",
+				base64.StdEncoding.EncodeToString(testOCSPResponse),
+			},
+			shouldFail:    true,
+			expectedError: ":OCSP_CB_ERROR:",
+		})
+	}
 
 	// Certificate verification tests.
 	for _, vers := range tlsVersions {

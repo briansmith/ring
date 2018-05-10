@@ -2213,6 +2213,11 @@ struct SSLContext {
   // session tickets.
   const SSL_TICKET_AEAD_METHOD *ticket_aead_method;
 
+  // legacy_ocsp_callback implements an OCSP-related callback for OpenSSL
+  // compatibility.
+  int (*legacy_ocsp_callback)(SSL *ssl, void *arg);
+  void *legacy_ocsp_callback_arg;
+
   // verify_sigalgs, if not empty, is the set of signature algorithms
   // accepted from the peer in decreasing order of preference.
   uint16_t *verify_sigalgs;

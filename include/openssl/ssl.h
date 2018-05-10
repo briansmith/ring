@@ -3802,14 +3802,14 @@ OPENSSL_EXPORT int SSL_set_tmp_rsa(SSL *ssl, const RSA *rsa);
 // SSL_CTX_get_read_ahead returns zero.
 OPENSSL_EXPORT int SSL_CTX_get_read_ahead(const SSL_CTX *ctx);
 
-// SSL_CTX_set_read_ahead does nothing.
-OPENSSL_EXPORT void SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes);
+// SSL_CTX_set_read_ahead returns one.
+OPENSSL_EXPORT int SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes);
 
 // SSL_get_read_ahead returns zero.
 OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *ssl);
 
-// SSL_set_read_ahead does nothing.
-OPENSSL_EXPORT void SSL_set_read_ahead(SSL *ssl, int yes);
+// SSL_set_read_ahead returns one.
+OPENSSL_EXPORT int SSL_set_read_ahead(SSL *ssl, int yes);
 
 // SSL_renegotiate put an error on the error queue and returns zero.
 OPENSSL_EXPORT int SSL_renegotiate(SSL *ssl);
@@ -3880,7 +3880,7 @@ OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_compression(SSL *ssl);
 OPENSSL_EXPORT const COMP_METHOD *SSL_get_current_expansion(SSL *ssl);
 
 // SSL_get_server_tmp_key returns zero.
-OPENSSL_EXPORT int *SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key);
+OPENSSL_EXPORT int SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key);
 
 // SSL_CTX_set_tmp_dh returns 1.
 OPENSSL_EXPORT int SSL_CTX_set_tmp_dh(SSL_CTX *ctx, const DH *dh);
@@ -4190,6 +4190,58 @@ OPENSSL_EXPORT int OPENSSL_init_ssl(uint64_t opts,
 #define SSL_SIGN_RSA_PSS_SHA384 SSL_SIGN_RSA_PSS_RSAE_SHA384
 #define SSL_SIGN_RSA_PSS_SHA512 SSL_SIGN_RSA_PSS_RSAE_SHA512
 
+// SSL_set_tlsext_status_type configures a client to request OCSP stapling if
+// |type| is |TLSEXT_STATUSTYPE_ocsp| and disables it otherwise. It returns one
+// on success and zero if handshake configuration has already been shed.
+//
+// Use |SSL_enable_ocsp_stapling| instead.
+OPENSSL_EXPORT int SSL_set_tlsext_status_type(SSL *ssl, int type);
+
+// SSL_set_tlsext_status_ocsp_resp sets the OCSP response. It returns one on
+// success and zero on error. On success, |ssl| takes ownership of |resp|, which
+// must have been allocated by |OPENSSL_malloc|.
+//
+// Use |SSL_set_ocsp_response| instead.
+OPENSSL_EXPORT int SSL_set_tlsext_status_ocsp_resp(SSL *ssl, uint8_t *resp,
+                                                   size_t resp_len);
+
+// SSL_get_tlsext_status_ocsp_resp sets |*out| to point to the OCSP response
+// from the server. It returns the length of the response. If there was no
+// response, it sets |*out| to NULL and returns zero.
+//
+// Use |SSL_get0_ocsp_response| instead.
+//
+// WARNING: the returned data is not guaranteed to be well formed.
+OPENSSL_EXPORT size_t SSL_get_tlsext_status_ocsp_resp(const SSL *ssl,
+                                                      const uint8_t **out);
+
+// SSL_CTX_set_tlsext_status_cb configures the legacy OpenSSL OCSP callback and
+// returns one. Though the type signature is the same, this callback has
+// different behavior for client and server connections:
+//
+// For clients, the callback is called after certificate verification. It should
+// return one for success, zero for a bad OCSP response, and a negative number
+// for internal error. Instead, handle this as part of certificate verification.
+// (Historically, OpenSSL verified certificates just before parsing stapled OCSP
+// responses, but BoringSSL fixes this ordering. All server credentials are
+// available during verification.)
+//
+// Do not use this callback as a server. It is provided for compatibility
+// purposes only. For servers, it is called to configure server credentials. It
+// should return |SSL_TLSEXT_ERR_OK| on success, |SSL_TLSEXT_ERR_NOACK| to
+// ignore OCSP requests, or |SSL_TLSEXT_ERR_ALERT_FATAL| on error. It is usually
+// used to fetch OCSP responses on demand, which is not ideal. Instead, treat
+// OCSP responses like other server credentials, such as certificates or SCT
+// lists. Configure, store, and refresh them eagerly. This avoids downtime if
+// the CA's OCSP responder is briefly offline.
+OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_cb(SSL_CTX *ctx,
+                                                int (*callback)(SSL *ssl,
+                                                                void *arg));
+
+// SSL_CTX_set_tlsext_status_arg sets additional data for
+// |SSL_CTX_set_tlsext_status_cb|'s callback and returns one.
+OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
+
 
 // Private structures.
 //
@@ -4367,6 +4419,7 @@ struct ssl_session_st {
 #define SSL_CTRL_GET_NUM_RENEGOTIATIONS doesnt_exist
 #define SSL_CTRL_GET_READ_AHEAD doesnt_exist
 #define SSL_CTRL_GET_RI_SUPPORT doesnt_exist
+#define SSL_CTRL_GET_SERVER_TMP_KEY doesnt_exist
 #define SSL_CTRL_GET_SESSION_REUSED doesnt_exist
 #define SSL_CTRL_GET_SESS_CACHE_MODE doesnt_exist
 #define SSL_CTRL_GET_SESS_CACHE_SIZE doesnt_exist
@@ -4782,6 +4835,7 @@ OPENSSL_EXPORT bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback);
 #define SSL_R_SERVER_ECHOED_INVALID_SESSION_ID 286
 #define SSL_R_PRIVATE_KEY_OPERATION_FAILED 287
 #define SSL_R_SECOND_SERVERHELLO_VERSION_MISMATCH 288
+#define SSL_R_OCSP_CB_ERROR 289
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

@@ -1664,9 +1664,9 @@ int SSL_CTX_get_read_ahead(const SSL_CTX *ctx) { return 0; }
 
 int SSL_get_read_ahead(const SSL *ssl) { return 0; }
 
-void SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes) { }
+int SSL_CTX_set_read_ahead(SSL_CTX *ctx, int yes) { return 1; }
 
-void SSL_set_read_ahead(SSL *ssl, int yes) { }
+int SSL_set_read_ahead(SSL *ssl, int yes) { return 1; }
 
 int SSL_pending(const SSL *ssl) {
   return static_cast<int>(ssl->s3->pending_app_data.size());
@@ -2321,7 +2321,7 @@ const COMP_METHOD *SSL_get_current_compression(SSL *ssl) { return NULL; }
 
 const COMP_METHOD *SSL_get_current_expansion(SSL *ssl) { return NULL; }
 
-int *SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key) { return 0; }
+int SSL_get_server_tmp_key(SSL *ssl, EVP_PKEY **out_key) { return 0; }
 
 void SSL_CTX_set_quiet_shutdown(SSL_CTX *ctx, int mode) {
   ctx->quiet_shutdown = (mode != 0);
@@ -2871,4 +2871,37 @@ int SSL_set_tmp_ecdh(SSL *ssl, const EC_KEY *ec_key) {
 void SSL_CTX_set_ticket_aead_method(SSL_CTX *ctx,
                                     const SSL_TICKET_AEAD_METHOD *aead_method) {
   ctx->ticket_aead_method = aead_method;
+}
+
+int SSL_set_tlsext_status_type(SSL *ssl, int type) {
+  if (!ssl->config) {
+    return 0;
+  }
+  ssl->config->ocsp_stapling_enabled = type == TLSEXT_STATUSTYPE_ocsp;
+  return 1;
+}
+
+int SSL_set_tlsext_status_ocsp_resp(SSL *ssl, uint8_t *resp, size_t resp_len) {
+  if (SSL_set_ocsp_response(ssl, resp, resp_len)) {
+    OPENSSL_free(resp);
+    return 1;
+  }
+  return 0;
+}
+
+size_t SSL_get_tlsext_status_ocsp_resp(const SSL *ssl, const uint8_t **out) {
+  size_t ret;
+  SSL_get0_ocsp_response(ssl, out, &ret);
+  return ret;
+}
+
+int SSL_CTX_set_tlsext_status_cb(SSL_CTX *ctx,
+                                 int (*callback)(SSL *ssl, void *arg)) {
+  ctx->legacy_ocsp_callback = callback;
+  return 1;
+}
+
+int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg) {
+  ctx->legacy_ocsp_callback_arg = arg;
+  return 1;
 }

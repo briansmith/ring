@@ -156,6 +156,10 @@ struct TestConfig {
   bool handoff = false;
   bool expect_dummy_pq_padding = false;
   bool no_rsa_pss_rsae_certs = false;
+  bool use_ocsp_callback = false;
+  bool set_ocsp_in_callback = false;
+  bool decline_ocsp_callback = false;
+  bool fail_ocsp_callback = false;
 };
 
 bool ParseConfig(int argc, char **argv, TestConfig *out_initial,

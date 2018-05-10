@@ -364,6 +364,22 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
   }
 
+  // Emulate OpenSSL's client OCSP callback. OpenSSL verifies certificates
+  // before it receives the OCSP, so it needs a second callback for OCSP.
+  if (ret == ssl_verify_ok && !ssl->server &&
+      hs->new_session->ocsp_response != nullptr &&
+      ssl->ctx->legacy_ocsp_callback != nullptr) {
+    int cb_ret =
+        ssl->ctx->legacy_ocsp_callback(ssl, ssl->ctx->legacy_ocsp_callback_arg);
+    if (cb_ret <= 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_OCSP_CB_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL,
+                     cb_ret == 0 ? SSL_AD_BAD_CERTIFICATE_STATUS_RESPONSE
+                                 : SSL_AD_INTERNAL_ERROR);
+      ret = ssl_verify_invalid;
+    }
+  }
+
   return ret;
 }
 
