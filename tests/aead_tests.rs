@@ -67,7 +67,7 @@ fn aead_cavp_gcm_encrypt_256() {
 #[test]
 fn aead_cavp_gcm_decrypt_128() {
     test_aead(&aead::AES_128_GCM,
-              "third_party/NIST/CAVPGCM/gcmDecrypt.rsp_ring.rsp");
+              "third_party/NIST/CAVPGCM/gcmDecrypt128.rsp_ring.rsp");
 }
 
 #[test]
@@ -202,6 +202,9 @@ fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
                     assert_eq!(Err(error::Unspecified), s_result);
                     assert_eq!(Err(error::Unspecified), o_result);
                 },
+                Some(ref error) if error == "FAILS_TO_DECRYPT" => {
+                    assert_eq!(Err(error::Unspecified), o_result);
+                }
                 Some(error) => {
                     unreachable!("Unexpected error test case: {}", error);
                 },
