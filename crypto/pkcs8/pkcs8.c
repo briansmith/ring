@@ -317,9 +317,12 @@ static const struct pbe_suite kBuiltinPBE[] = {
     },
 };
 
-static const struct pbe_suite *get_pbe_suite(int pbe_nid) {
+static const struct pbe_suite *get_pkcs12_pbe_suite(int pbe_nid) {
   for (unsigned i = 0; i < OPENSSL_ARRAY_SIZE(kBuiltinPBE); i++) {
-    if (kBuiltinPBE[i].pbe_nid == pbe_nid) {
+    if (kBuiltinPBE[i].pbe_nid == pbe_nid &&
+        // If |cipher_func| or |md_func| are missing, this is a PBES2 scheme.
+        kBuiltinPBE[i].cipher_func != NULL &&
+        kBuiltinPBE[i].md_func != NULL) {
       return &kBuiltinPBE[i];
     }
   }
@@ -331,7 +334,7 @@ int pkcs12_pbe_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx, int alg,
                             unsigned iterations, const char *pass,
                             size_t pass_len, const uint8_t *salt,
                             size_t salt_len) {
-  const struct pbe_suite *suite = get_pbe_suite(alg);
+  const struct pbe_suite *suite = get_pkcs12_pbe_suite(alg);
   if (suite == NULL) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_UNKNOWN_ALGORITHM);
     return 0;
