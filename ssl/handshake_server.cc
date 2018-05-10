@@ -1363,6 +1363,9 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
 }
 
 static enum ssl_hs_wait_t do_read_change_cipher_spec(SSL_HANDSHAKE *hs) {
+  if (hs->handback && hs->ssl->session != NULL) {
+    return ssl_hs_handback;
+  }
   hs->state = state12_process_change_cipher_spec;
   return ssl_hs_read_change_cipher_spec;
 }

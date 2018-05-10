@@ -1377,6 +1377,14 @@ enum tls12_server_hs_state_t {
   state12_done,
 };
 
+// handback_t lists the points in the state machine where a handback can occur.
+// These are the different points at which key material is no longer needed.
+enum handback_t {
+  handback_after_session_resumption,
+  handback_after_ecdhe,
+  handback_after_handshake,
+};
+
 struct SSL_HANDSHAKE {
   explicit SSL_HANDSHAKE(SSL *ssl);
   ~SSL_HANDSHAKE();
