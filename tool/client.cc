@@ -330,7 +330,7 @@ static bool DoConnection(SSL_CTX *ctx,
 
 static bool GetTLS13Variant(tls13_variant_t *out, const std::string &in) {
   if (in == "draft23") {
-    *out = tls13_default;
+    *out = tls13_draft23;
     return true;
   }
   if (in == "draft28") {

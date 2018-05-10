@@ -1405,6 +1405,23 @@ func allVersions(protocol protocol) []tlsVersion {
 	return ret
 }
 
+func allShimVersions(protocol protocol) []tlsVersion {
+	if protocol == dtls {
+		return allVersions(protocol)
+	}
+	tls13Default := tlsVersion{
+		name:         "TLS13Default",
+		version:      VersionTLS13,
+		excludeFlag:  "-no-tls13",
+		versionWire:  0,
+		tls13Variant: TLS13Default,
+	}
+
+	var shimVersions []tlsVersion
+	shimVersions = append(shimVersions, allVersions(protocol)...)
+	return append(shimVersions, tls13Default)
+}
+
 type testCipherSuite struct {
 	name string
 	id   uint16
@@ -5371,7 +5388,7 @@ func addDDoSCallbackTests() {
 
 func addVersionNegotiationTests() {
 	for _, protocol := range []protocol{tls, dtls} {
-		for _, shimVers := range allVersions(protocol) {
+		for _, shimVers := range allShimVersions(protocol) {
 			// Assemble flags to disable all newer versions on the shim.
 			var flags []string
 			for _, vers := range allVersions(protocol) {
@@ -5393,13 +5410,12 @@ func addVersionNegotiationTests() {
 				if runnerVers.version < shimVers.version {
 					expectedVersion = runnerVers.version
 				}
-				// When running and shim have different TLS 1.3 variants enabled,
-				// shim peers are expected to fall back to TLS 1.2.
+
 				if expectedVersion == VersionTLS13 && runnerVers.tls13Variant != shimVers.tls13Variant {
-					expectedVersion = VersionTLS12
+					if shimVers.tls13Variant != TLS13Default {
+						expectedVersion = VersionTLS12
+					}
 				}
-				expectedClientVersion := expectedVersion
-				expectedServerVersion := expectedVersion
 
 				suffix := shimVers.name + "-" + runnerVers.name
 				if protocol == dtls {
@@ -5412,8 +5428,8 @@ func addVersionNegotiationTests() {
 					clientVers = VersionTLS10
 				}
 				clientVers = recordVersionToWire(clientVers, protocol)
-				serverVers := expectedServerVersion
-				if expectedServerVersion >= VersionTLS13 {
+				serverVers := expectedVersion
+				if expectedVersion >= VersionTLS13 {
 					serverVers = VersionTLS12
 				}
 				serverVers = recordVersionToWire(serverVers, protocol)
@@ -5430,7 +5446,7 @@ func addVersionNegotiationTests() {
 						},
 					},
 					flags:           flags,
-					expectedVersion: expectedClientVersion,
+					expectedVersion: expectedVersion,
 				})
 				testCases = append(testCases, testCase{
 					protocol: protocol,
@@ -5444,7 +5460,7 @@ func addVersionNegotiationTests() {
 						},
 					},
 					flags:           flags2,
-					expectedVersion: expectedClientVersion,
+					expectedVersion: expectedVersion,
 				})
 
 				testCases = append(testCases, testCase{
@@ -5459,7 +5475,7 @@ func addVersionNegotiationTests() {
 						},
 					},
 					flags:           flags,
-					expectedVersion: expectedServerVersion,
+					expectedVersion: expectedVersion,
 				})
 				testCases = append(testCases, testCase{
 					protocol: protocol,
@@ -5473,7 +5489,7 @@ func addVersionNegotiationTests() {
 						},
 					},
 					flags:           flags2,
-					expectedVersion: expectedServerVersion,
+					expectedVersion: expectedVersion,
 				})
 			}
 		}

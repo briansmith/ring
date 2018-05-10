@@ -39,8 +39,9 @@ const (
 )
 
 const (
-	TLS13Draft23 = 0
-	TLS13Draft28 = 1
+	TLS13Default = 0
+	TLS13Draft23 = 1
+	TLS13Draft28 = 2
 )
 
 var allTLSWireVersions = []uint16{
@@ -1714,8 +1715,8 @@ func isDraft28(vers uint16) bool {
 // it returns true and the corresponding protocol version. Otherwise, it returns
 // false.
 func (c *Config) isSupportedVersion(wireVers uint16, isDTLS bool) (uint16, bool) {
-	if (c.TLS13Variant != TLS13Draft23 && wireVers == tls13Draft23Version) ||
-		(c.TLS13Variant != TLS13Draft28 && wireVers == tls13Draft28Version) {
+	if (c.TLS13Variant == TLS13Draft23 && wireVers == tls13Draft28Version) ||
+		(c.TLS13Variant == TLS13Draft28 && wireVers == tls13Draft23Version) {
 		return 0, false
 	}
 

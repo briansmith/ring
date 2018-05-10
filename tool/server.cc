@@ -68,7 +68,8 @@ static const struct argument kArguments[] = {
         "-early-data", kBooleanArgument, "Allow early data",
     },
     {
-        "-tls13-variant", kBooleanArgument, "Enables all TLS 1.3 variants",
+        "-tls13-variant", kOptionalArgument,
+        "Enable the specified experimental TLS 1.3 variant",
     },
     {
         "-www", kBooleanArgument,
@@ -145,6 +146,18 @@ static bssl::UniquePtr<X509> MakeSelfSignedCert(EVP_PKEY *evp_pkey,
     return nullptr;
   }
   return x509;
+}
+
+static bool GetTLS13Variant(tls13_variant_t *out, const std::string &in) {
+  if (in == "draft23") {
+    *out = tls13_draft23;
+    return true;
+  }
+  if (in == "draft28") {
+    *out = tls13_draft28;
+    return true;
+  }
+  return false;
 }
 
 static void InfoCallback(const SSL *ssl, int type, int value) {
@@ -307,7 +320,13 @@ bool Server(const std::vector<std::string> &args) {
   }
 
   if (args_map.count("-tls13-variant") != 0) {
-    SSL_CTX_set_tls13_variant(ctx.get(), tls13_draft28);
+    tls13_variant_t variant;
+    if (!GetTLS13Variant(&variant, args_map["-tls13-variant"])) {
+      fprintf(stderr, "Unknown TLS 1.3 variant: %s\n",
+              args_map["-tls13-variant"].c_str());
+      return false;
+    }
+    SSL_CTX_set_tls13_variant(ctx.get(), variant);
   }
 
   if (args_map.count("-debug") != 0) {
