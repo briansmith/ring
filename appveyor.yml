@@ -11,7 +11,7 @@ platform:
 environment:
   matrix:
     - TOOLCHAIN_VERSION: 14.0
-      RUST: 1.22.1
+      RUST: 1.26.0
     - TOOLCHAIN_VERSION: 14.0
       RUST: beta
     - TOOLCHAIN_VERSION: 14.0

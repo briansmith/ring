@@ -78,9 +78,9 @@ impl Blinding {
 
     #[cfg(test)]
     pub fn remaining(&self) -> usize {
-        match &self.0 {
-            &Some(Contents { remaining, .. }) => remaining,
-            &None => { 0 },
+        match self.0 {
+            Some(Contents { remaining, .. }) => remaining,
+            None => { 0 },
         }
     }
 }
