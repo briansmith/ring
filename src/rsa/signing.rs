@@ -259,7 +259,7 @@ impl RSAKeyPair {
                 // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
 
                 let n = n.into_modulus::<N>()?;
-                let oneRR_mod_n = bigint::One::newRR(&n)?;
+                let oneRR_mod_n = bigint::One::newRR(&n);
                 let q_mod_n_decoded = q.try_clone()?.into_elem(&n)?;
 
                 // TODO: Step 5.i
@@ -275,9 +275,9 @@ impl RSAKeyPair {
                 // let us assume that checking p * q == 0 (mod n) is equivalent
                 // to checking p * q == n.
                 let q_mod_n = bigint::elem_mul(oneRR_mod_n.as_ref(),
-                                               q_mod_n_decoded.clone(), &n)?;
+                                               q_mod_n_decoded.clone(), &n);
                 let p_mod_n = p.try_clone()?.into_elem(&n)?;
-                let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, &n)?;
+                let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, &n);
                 if !pq_mod_n.is_zero() {
                     return Err(error::Unspecified);
                 }
@@ -320,7 +320,7 @@ impl RSAKeyPair {
                     // `qInv`.  Step 7.f below will verify `qInv` is correct.
                     let q_mod_p = bigint::elem_mul(p.oneRR.as_ref(),
                                                    q_mod_p.clone(),
-                                                   &p.modulus)?;
+                                                   &p.modulus);
                     bigint::elem_inverse_consttime(q_mod_p, &p.modulus, &p.oneR)?
                 };
 
@@ -330,13 +330,13 @@ impl RSAKeyPair {
 
                 // Step 7.f.
                 let qInv =
-                    bigint::elem_mul(p.oneRR.as_ref(), qInv, &p.modulus)?;
+                    bigint::elem_mul(p.oneRR.as_ref(), qInv, &p.modulus);
                 bigint::verify_inverses_consttime(&qInv, q_mod_p, &p.modulus)?;
 
                 // Step 7.b (out of order).
                 let q = PrivatePrime::new(q, dQ)?;
 
-                let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &n)?
+                let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &n)
                     .into_modulus::<QQ>()?;
 
                 Ok(RSAKeyPair {
@@ -390,7 +390,7 @@ impl<M: Prime + Clone> PrivatePrime<M> {
         // and `e`. TODO: Either prove that what we do is sufficient, or make
         // it so.
 
-        let oneRR = bigint::One::newRR(&p)?;
+        let oneRR = bigint::One::newRR(&p);
         let oneR = bigint::One::newR(&oneRR, &p);
         let oneRRR = bigint::One::newRRR(oneRR.clone(), &p);
 
@@ -409,7 +409,7 @@ fn elem_exp_consttime<M, MM>(c: &bigint::Elem<MM>, p: &PrivatePrime<M>)
                              where M: bigint::NotMuchSmallerModulus<MM>,
                                    M: Prime {
     let c_mod_m = bigint::elem_reduced(c, &p.modulus)?;
-    let c_mod_m = bigint::elem_mul(p.oneRRR.as_ref(), c_mod_m, &p.modulus)?;
+    let c_mod_m = bigint::elem_mul(p.oneRRR.as_ref(), c_mod_m, &p.modulus);
     bigint::elem_exp_consttime(c_mod_m, &p.exponent, &p.oneR, &p.modulus)
 }
 
@@ -544,7 +544,7 @@ impl RSASigningState {
                                     |c| {
             // Step 2.b.i.
             let m_1 = elem_exp_consttime(&c, &key.p)?;
-            let c_mod_qq = bigint::elem_reduced_once(&c, &key.qq)?;
+            let c_mod_qq = bigint::elem_reduced_once(&c, &key.qq);
             let m_2 = elem_exp_consttime(&c_mod_qq, &key.q)?;
 
             // Step 2.b.ii isn't needed since there are only two primes.
@@ -553,14 +553,14 @@ impl RSASigningState {
             let p = &key.p.modulus;
             let m_2 = bigint::elem_widen(m_2, &p);
             let m_1_minus_m_2 = bigint::elem_sub(m_1, &m_2, p);
-            let h = bigint::elem_mul(&key.qInv, m_1_minus_m_2, p)?;
+            let h = bigint::elem_mul(&key.qInv, m_1_minus_m_2, p);
 
             // Step 2.b.iv. The reduction in the modular multiplication isn't
             // necessary because `h < p` and `p * q == n` implies `h * q < n`.
             // Modular arithmetic is used simply to avoid implementing
             // non-modular arithmetic.
             let h = bigint::elem_widen(h, &key.n);
-            let q_times_h = bigint::elem_mul(&key.q_mod_n, h, &key.n)?;
+            let q_times_h = bigint::elem_mul(&key.q_mod_n, h, &key.n);
             let m_2 = bigint::elem_widen(m_2, &key.n);
             let m = bigint::elem_add(m_2, q_times_h, &key.n);
 
@@ -576,8 +576,8 @@ impl RSASigningState {
             // to `d`, `p`, and `q` is not verified during `RSAKeyPair`
             // construction.
             let computed =
-                bigint::elem_mul(&key.oneRR_mod_n.as_ref(), m.clone(), &key.n)?;
-            let verify = bigint::elem_exp_vartime(computed, key.e, &key.n)?;
+                bigint::elem_mul(&key.oneRR_mod_n.as_ref(), m.clone(), &key.n);
+            let verify = bigint::elem_exp_vartime(computed, key.e, &key.n);
             let verify = verify.into_unencoded(&key.n);
             bigint::elem_verify_equal_consttime(&verify, &c)?;
 

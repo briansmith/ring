@@ -66,10 +66,10 @@ impl Blinding {
         }?;
 
         let blinded_input =
-            bigint::elem_mul(&new_contents.blinding_factor, x, n)?;
+            bigint::elem_mul(&new_contents.blinding_factor, x, n);
         let blinded_result = f(blinded_input)?;
         let result = bigint::elem_mul(&new_contents.blinding_factor_inv,
-                                      blinded_result, n)?;
+                                      blinded_result, n);
 
         let _ = core::mem::replace(&mut self.0, Some(new_contents));
 
@@ -97,8 +97,8 @@ fn reset(elem1: bigint::Elem<N, R>, elem2: bigint::Elem<N, R>,
         match bigint::elem_set_to_inverse_blinded(&mut random_inv, &random, n,
                                                   rng) {
             Ok(()) => {
-                let random = bigint::elem_mul(oneRR.as_ref(), random, n)?;
-                let random = bigint::elem_exp_vartime(random, e, n)?;
+                let random = bigint::elem_mul(oneRR.as_ref(), random, n);
+                let random = bigint::elem_exp_vartime(random, e, n);
                 return Ok(Contents {
                     blinding_factor: random,
                     blinding_factor_inv: random_inv,

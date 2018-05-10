@@ -342,8 +342,7 @@ impl<M> Modulus<M> {
 /// of the multiplication.
 pub trait ModMul<B, M> {
     type Output;
-    fn mod_mul(&self, b: B, m: &Modulus<M>)
-        -> Result<Self::Output, error::Unspecified>;
+    fn mod_mul(&self, b: B, m: &Modulus<M>) -> Self::Output;
 }
 
 /// Elements of ℤ/mℤ for some modulus *m*.
@@ -442,25 +441,24 @@ impl<AF, BF, M> ModMul<Elem<M, BF>, M> for Elem<M, AF>
 {
     type Output = Elem<M, <(AF, BF) as ProductEncoding>::Output>;
     fn mod_mul(&self, b: Elem<M, BF>, m: &Modulus<M>)
-        -> Result<<Self as ModMul<Elem<M, BF>, M>>::Output, error::Unspecified>
+        -> <Self as ModMul<Elem<M, BF>, M>>::Output
     {
         elem_mul(self, b, m)
     }
 }
 
 pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, mut b: Elem<M, BF>, m: &Modulus<M>)
-        -> Result<Elem<M, <(AF, BF) as ProductEncoding>::Output>,
-                  error::Unspecified>
+        -> Elem<M, <(AF, BF) as ProductEncoding>::Output>
         where (AF, BF): ProductEncoding {
     unsafe {
         GFp_bn_mul_mont(b.limbs.as_mut_ptr(), a.limbs.as_ptr(),
                         b.limbs.as_ptr(), m.limbs.as_ptr(), &m.n0,
                         m.limbs.len());
     }
-    Ok(Elem {
+    Elem {
         limbs: b.limbs,
         encoding: PhantomData,
-    })
+    }
 }
 
 // `a` * `b` (mod `m`).
@@ -479,17 +477,17 @@ pub fn elem_set_to_product<M, AF, BF>(
 #[cfg(feature = "rsa_signing")]
 pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
         a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
-        -> Result<Elem<Smaller, Unencoded>, error::Unspecified> {
+        -> Elem<Smaller, Unencoded> {
     let mut r = a.limbs.clone();
     assert!(r.len() <= m.limbs.len());
     limb::limbs_reduce_once_constant_time(&mut r, &m.limbs);
-    Ok(Elem {
+    Elem {
         limbs: BoxedLimbs {
             limbs: r.limbs,
             m: PhantomData,
         },
         encoding: PhantomData,
-    })
+    }
 }
 
 #[cfg(feature = "rsa_signing")]
@@ -579,7 +577,7 @@ impl<M> One<M, RR> {
     // using `LIMB_BITS` here, rather than `N0_LIMBS_USED * LIMB_BITS`, is correct
     // because R**2 will still be a multiple of the latter as `N0_LIMBS_USED` is
     // either one or two.
-    pub fn newRR(m: &Modulus<M>) -> Result<One<M, RR>, error::Unspecified> {
+    pub fn newRR(m: &Modulus<M>) -> One<M, RR> {
         use limb::LIMB_BITS;
 
         let m_bits = minimal_limbs_bit_length(&m.limbs).as_usize_bits();
@@ -603,7 +601,7 @@ impl<M> One<M, RR> {
             }
         }
 
-        Ok(One(r))
+        One(r)
     }
 }
 
@@ -675,7 +673,7 @@ pub const PUBLIC_EXPONENT_MAX_VALUE: u64 = (1u64 << 33) - 1;
 // accepted exponent and with the most common values of 65537 and 3.
 pub fn elem_exp_vartime<M>(
         base: Elem<M, R>, PublicExponent(exponent): PublicExponent,
-        m: &Modulus<M>) -> Result<Elem<M, R>, error::Unspecified> {
+        m: &Modulus<M>) -> Elem<M, R> {
     // Use what [Knuth] calls the "S-and-X binary method", i.e. variable-time
     // square-and-multiply that scans the exponent from the most significant
     // bit to the least significant bit (left-to-right). Left-to-right requires
@@ -704,10 +702,10 @@ pub fn elem_exp_vartime<M>(
         bit >>= 1;
         acc = elem_squared(acc, m);
         if (exponent & bit) != 0 {
-            acc = elem_mul(&base, acc, m)?;
+            acc = elem_mul(&base, acc, m);
         }
     }
-    Ok(acc)
+    acc
 }
 
 // `M` represents the prime modulus for which the exponent is in the interval
@@ -810,7 +808,7 @@ pub fn verify_inverses_consttime<M, A, B>(a: &A, b: B, m: &Modulus<M>)
     A: ModMul<B, M>,
     <A as ModMul<B, M>>::Output: IsOne
 {
-    if a.mod_mul(b, m)?.is_one() {
+    if a.mod_mul(b, m).is_one() {
         Ok(())
     } else {
         Err(error::Unspecified)
@@ -832,7 +830,7 @@ pub fn elem_set_to_inverse_blinded(
         tmp
     };
     let to_blind = a.clone();
-    let blinded = elem_mul(&blinding_factor, to_blind, n)?;
+    let blinded = elem_mul(&blinding_factor, to_blind, n);
     let blinded_inverse = elem_inverse(blinded, n)?;
     elem_set_to_product(r, &blinding_factor, &blinded_inverse, n);
     Ok(())
@@ -1412,7 +1410,7 @@ mod tests {
                     untrusted::Input::from(&bytes), &m).expect("valid exponent")
             };
             let base = into_encoded(base, &m);
-            let oneRR = One::newRR(&m).unwrap();
+            let oneRR = One::newRR(&m);
             let one = One::newR(&oneRR, &m);
             let actual_result = elem_exp_consttime(base, &e, &one, &m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
@@ -1433,7 +1431,7 @@ mod tests {
             let e = consume_public_exponent(test_case, "E");
 
             let base = into_encoded(base, &m);
-            let actual_result = elem_exp_vartime(base, e, &m).unwrap();
+            let actual_result = elem_exp_vartime(base, e, &m);
             let actual_result = actual_result.into_unencoded(&m);
             assert_elem_eq(&actual_result, &expected_result);
 
@@ -1456,7 +1454,7 @@ mod tests {
                 Err(InversionError::Unspecified) => unreachable!("Unspecified"),
                 Err(InversionError::NoInverse) => unreachable!("No Inverse"),
             };
-            let actual_result = elem_mul(&m.one(), actual_result, &m)?;
+            let actual_result = elem_mul(&m.one(), actual_result, &m);
             assert_elem_eq(&actual_result, &expected_result);
             Ok(())
         })
@@ -1479,7 +1477,7 @@ mod tests {
             let mut actual_result = n.zero();
             assert!(elem_set_to_inverse_blinded(&mut actual_result, &a, &n,
                                                 &rng).is_ok());
-            let actual_result = elem_mul(&n.one(), actual_result, &n)?;
+            let actual_result = elem_mul(&n.one(), actual_result, &n);
             assert_elem_eq(&actual_result, &expected_result);
             Ok(())
         })
@@ -1539,7 +1537,7 @@ mod tests {
 
             let b = into_encoded(b, &m);
             let a = into_encoded(a, &m);
-            let actual_result = elem_mul(&a, b, &m).unwrap();
+            let actual_result = elem_mul(&a, b, &m);
             let actual_result = actual_result.into_unencoded(&m);
             assert_elem_eq(&actual_result, &expected_result);
 
@@ -1583,9 +1581,8 @@ mod tests {
                 test_case, "A", expected_result.limbs.len() * 2);
 
             let actual_result = elem_reduced(&a, &m).unwrap();
-            let oneRR = One::newRR(&m).unwrap();
-            let actual_result =
-                elem_mul(oneRR.as_ref(), actual_result, &m).unwrap();
+            let oneRR = One::newRR(&m);
+            let actual_result = elem_mul(oneRR.as_ref(), actual_result, &m);
             assert_elem_eq(&actual_result, &expected_result);
 
             Ok(())
@@ -1609,7 +1606,7 @@ mod tests {
             let n = consume_modulus::<N>(test_case, "N");
             let a = consume_elem::<N>(test_case, "A", &n);
 
-            let actual_result = elem_reduced_once(&a, &qq).unwrap();
+            let actual_result = elem_reduced_once(&a, &qq);
             assert_elem_eq(&actual_result, &expected_result);
 
             Ok(())
@@ -1667,7 +1664,7 @@ mod tests {
     }
 
     fn into_encoded<M>(a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
-        let oneRR = One::newRR(&m).unwrap();
-        elem_mul(&oneRR.as_ref(), a, m).unwrap()
+        let oneRR = One::newRR(&m);
+        elem_mul(&oneRR.as_ref(), a, m)
     }
 }
