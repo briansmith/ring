@@ -204,7 +204,7 @@ fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
                 },
                 Some(ref error) if error == "FAILS_TO_DECRYPT" => {
                     assert_eq!(Err(error::Unspecified), o_result);
-                }
+                },
                 Some(error) => {
                     unreachable!("Unexpected error test case: {}", error);
                 },
