@@ -189,13 +189,13 @@ static int do_buf(unsigned char *buf, int buflen,
     switch (charwidth) {
     case 4:
         if (buflen & 3) {
-            OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_UNIVERSALSTRING_LENGTH);
+            OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_UNIVERSALSTRING);
             return -1;
         }
         break;
     case 2:
         if (buflen & 1) {
-            OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_BMPSTRING_LENGTH);
+            OPENSSL_PUT_ERROR(ASN1, ASN1_R_INVALID_BMPSTRING);
             return -1;
         }
         break;
