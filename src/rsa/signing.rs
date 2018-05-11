@@ -190,7 +190,10 @@ impl RSAKeyPair {
                 let ((p, p_bits, dP), (q, q_bits, dQ, qInv)) =
                     match q.verify_less_than(&p) {
                     Ok(_)  => ((p, p_bits, dP), (q, q_bits, dQ, Some(qInv))),
-                    Err(_) => ((q, q_bits, dQ), (p, p_bits, dP, None)),
+                    Err(_) => {
+                        // TODO: verify `q` and `qInv` are inverses (mod p).
+                        ((q, q_bits, dQ), (p, p_bits, dP, None))
+                    },
                 };
 
                 // XXX: Some steps are done out of order, but the NIST steps
