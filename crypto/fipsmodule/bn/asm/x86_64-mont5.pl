@@ -1,4 +1,11 @@
-#!/usr/bin/env perl
+#! /usr/bin/env perl
+# Copyright 2011-2016 The OpenSSL Project Authors. All Rights Reserved.
+#
+# Licensed under the OpenSSL license (the "License").  You may not use
+# this file except in compliance with the License.  You can obtain a copy
+# in the file LICENSE in the source distribution or at
+# https://www.openssl.org/source/license.html
+
 
 # ====================================================================
 # Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
@@ -396,12 +403,11 @@ $code.=<<___;
 	mov	$num,$j			# j=num
 	jmp	.Lsub
 .align	16
-.Lsub:
-	sbb	($np,$i,8),%rax
+.Lsub:	sbb	($np,$i,8),%rax
 	mov	%rax,($rp,$i,8)		# rp[i]=tp[i]-np[i]
 	mov	8($ap,$i,8),%rax	# tp[i+1]
 	lea	1($i),$i		# i++
-	dec	$j			# doesnn't affect CF!
+	dec	$j			# doesn't affect CF!
 	jnz	.Lsub
 
 	sbb	\$0,%rax		# handle upmost overflow bit
@@ -2405,7 +2411,7 @@ my $N=$STRIDE/4;		# should match cache line size
 $code.=<<___;
 	movdqa	0(%rax),%xmm0		# 00000001000000010000000000000000
 	movdqa	16(%rax),%xmm1		# 00000002000000020000000200000002
-	lea	88-112(%rsp,%r10),%r10	# place the mask after tp[num+1] (+ICache optimizaton)
+	lea	88-112(%rsp,%r10),%r10	# place the mask after tp[num+1] (+ICache optimization)
 	lea	128($bp),$bptr		# size optimization
 
 	pshufd	\$0,%xmm5,%xmm5		# broadcast index
