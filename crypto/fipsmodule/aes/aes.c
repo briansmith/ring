@@ -810,6 +810,14 @@ void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 // control asm symbol visibility with command line flags and such so they are
 // always hidden and wrapped by these C functions, which can be so
 // controlled.
+//
+// Be aware that on x86(-64), the asm_AES_* functions are incompatible with the
+// aes_hw_* functions. The latter set |AES_KEY.rounds| to one less than the true
+// value, which breaks the former. Therefore the two functions cannot mix.
+//
+// On AArch64, we don't have asm_AES_* functions and so must use the generic
+// versions when hardware support isn't provided. However, the Aarch64 assembly
+// doesn't have the same compatibility problem.
 
 void asm_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 void AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
