@@ -64,23 +64,6 @@
 #include "internal.h"
 
 
-int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src) {
-  if (src == dest) {
-    return 1;
-  }
-
-  if (!GFp_bn_wexpand(dest, src->top)) {
-    return 0;
-  }
-
-  if (src->top > 0) {
-    memcpy(dest->d, src->d, sizeof(src->d[0]) * src->top);
-  }
-
-  dest->top = src->top;
-  return 1;
-}
-
 int GFp_bn_wexpand(BIGNUM *bn, size_t words) {
   BN_ULONG *a;
 

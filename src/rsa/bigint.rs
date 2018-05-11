@@ -816,7 +816,6 @@ pub fn elem_set_to_inverse_blinded(
 fn elem_inverse<M>(a: Elem<M, Unencoded>, m: &Modulus<M>)
                    -> Result<Elem<M, R>, InversionError> {
     let inverse = nonnegative_mod_inverse(Nonnegative::from_limbs(&a.limbs)?,
-                                          Nonnegative::from_limbs(&m.limbs)?,
                                           &m.limbs)?;
     let r: Elem<M, R> = Elem {
         // TODO: The check done by to_elem() isn't necessary, right?
@@ -828,9 +827,10 @@ fn elem_inverse<M>(a: Elem<M, Unencoded>, m: &Modulus<M>)
 }
 
 #[cfg(feature = "rsa_signing")]
-fn nonnegative_mod_inverse(a: Nonnegative, m: Nonnegative,
-                           m_limbs: &[limb::Limb])
+fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
                            -> Result<Nonnegative, InversionError> {
+    let m = Nonnegative::from_limbs(m_limbs)?;
+
     use limb::*;
 
     // Algorithm 2.23 from "Guide to Elliptic Curve Cryptography" [2004] by
@@ -904,7 +904,7 @@ fn nonnegative_mod_inverse(a: Nonnegative, m: Nonnegative,
     }
 
     let mut u = a;
-    let mut v = m.try_clone()?; // TODO: avoid clone
+    let mut v = Nonnegative::from_limbs(m_limbs)?; // TODO: avoid clone
     let mut x1 = Nonnegative::one()?;
     let mut x2 = Nonnegative::zero()?;
     let mut k = 0;
@@ -1013,7 +1013,7 @@ impl Nonnegative {
         Ok(r)
     }
 
-    pub fn from_limbs(source: &[limb::Limb])
+    fn from_limbs(source: &[limb::Limb])
         -> Result<Self, error::Unspecified>
     {
         let mut r = Self::zero()?;
@@ -1091,14 +1091,6 @@ impl Nonnegative {
             }
         }
         return Ok(())
-    }
-
-    pub fn try_clone(&self) -> Result<Nonnegative, error::Unspecified> {
-        let mut r = Nonnegative::zero()?;
-        bssl::map_result(unsafe {
-            GFp_BN_copy(&mut r.0, &self.0)
-        })?;
-        Ok(r)
     }
 }
 
@@ -1278,9 +1270,6 @@ extern {
 
 #[cfg(feature = "rsa_signing")]
 extern {
-    // The use of references here implies lack of aliasing.
-    fn GFp_BN_copy(a: &mut BIGNUM, b: &BIGNUM) -> c::int;
-
     fn GFp_bn_from_montgomery_in_place(r: *mut limb::Limb, num_r: c::size_t,
                                        a: *mut limb::Limb, num_a: c::size_t,
                                        n: *const limb::Limb, num_n: c::size_t,

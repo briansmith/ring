@@ -154,11 +154,6 @@ extern "C" {
 
 // Allocation and freeing.
 
-// GFp_BN_copy sets |dest| equal to |src| and returns one on success or zero on
-// failure.
-OPENSSL_EXPORT int GFp_BN_copy(BIGNUM *dest, const BIGNUM *src);
-
-
 // Internal functions.
 //
 // These functions are useful for code that is doing low-level manipulations of
