@@ -72,7 +72,6 @@ include = [
     "crypto/fipsmodule/ec/asm/ecp_nistz256-armv4.pl",
     "crypto/fipsmodule/ec/asm/ecp_nistz256-armv8.pl",
     "crypto/fipsmodule/ec/asm/ecp_nistz256-x86.pl",
-    "crypto/fipsmodule/ec/asm/ecp_nistz256-x86_64.pl",
     "crypto/fipsmodule/ec/asm/p256-x86_64-asm.pl",
     "crypto/fipsmodule/ec/ecp_nistz.c",
     "crypto/fipsmodule/ec/ecp_nistz.h",
