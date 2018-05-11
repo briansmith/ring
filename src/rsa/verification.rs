@@ -16,7 +16,7 @@
 
 use core;
 use {bits, digest, error, private, signature};
-use super::{bigint, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, RSAParameters,
+use super::{bigint, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, RSAParameters,
             parse_public_key};
 use untrusted;
 
@@ -140,7 +140,6 @@ pub fn verify_rsa(params: &RSAParameters,
     // for compatibility with other commonly-used crypto libraries.
     let (n, n_bits, e) =
         super::check_public_modulus_and_exponent(n, e, params.min_bits, max_bits, 3)?;
-    let n = n.into_modulus::<N>()?;
 
     // The signature must be the same length as the modulus, in bytes.
     if signature.len() != n_bits.as_usize_bytes_rounded_up() {
@@ -150,8 +149,10 @@ pub fn verify_rsa(params: &RSAParameters,
     // RFC 8017 Section 5.2.2: RSAVP1.
 
     // Step 1.
-    let s = bigint::Positive::from_be_bytes_padded(signature)?;
-    let s = s.into_elem::<N>(&n)?;
+    let s = bigint::Elem::from_be_bytes_padded(signature, &n)?;
+    if s.is_zero() {
+        return Err(error::Unspecified);
+    }
 
     // Step 2.
     // Montgomery encode `s`.

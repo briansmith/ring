@@ -258,9 +258,8 @@ impl RSAKeyPair {
 
                 // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
 
-                let n = n.into_modulus::<N>()?;
                 let oneRR_mod_n = bigint::One::newRR(&n);
-                let q_mod_n_decoded = q.try_clone()?.into_elem(&n)?;
+                let q_mod_n_decoded = q.to_elem(&n)?;
 
                 // TODO: Step 5.i
                 //
@@ -276,7 +275,7 @@ impl RSAKeyPair {
                 // to checking p * q == n.
                 let q_mod_n = bigint::elem_mul(oneRR_mod_n.as_ref(),
                                                q_mod_n_decoded.clone(), &n);
-                let p_mod_n = p.try_clone()?.into_elem(&n)?;
+                let p_mod_n = p.to_elem(&n)?;
                 let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, &n);
                 if !pq_mod_n.is_zero() {
                     return Err(error::Unspecified);
@@ -310,11 +309,12 @@ impl RSAKeyPair {
 
                 // Step 7.b is done out-of-order below.
 
-                let q_mod_p = q.try_clone()?.into_elem(&p.modulus)?;
+                let q_mod_p = q.to_elem(&p.modulus)?;
 
                 // Step 7.c.
                 let qInv = if let Some(qInv) = qInv {
-                    qInv.into_elem(&p.modulus)?
+                    // TODO: Switch to `TryInto` to avoid allocation.
+                    qInv.to_elem(&p.modulus)?
                 } else {
                     // We swapped `p` and `q` above, so we need to calculate
                     // `qInv`.  Step 7.f below will verify `qInv` is correct.
@@ -529,12 +529,8 @@ impl RSASigningState {
         // with Garner's algorithm.
 
         // Step 1. The value zero is also rejected.
-        //
-        // TODO: Avoid having `encode()` pad its output, and then remove
-        // `Positive::from_be_bytes_padded()`.
-        let base = bigint::Positive::from_be_bytes_padded(
-            untrusted::Input::from(signature))?;
-        let base = base.into_elem(&key.n)?;
+        let base = bigint::Elem::from_be_bytes_padded(
+            untrusted::Input::from(signature), &key.n)?;
 
         // Step 2.
         let result = blinding.blind(base, key.e, &key.oneRR_mod_n, &key.n, rng,

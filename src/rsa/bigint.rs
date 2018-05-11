@@ -100,6 +100,20 @@ impl<M> Clone for BoxedLimbs<M> {
 }
 
 impl<M> BoxedLimbs<M> {
+    fn positive_minimal_width_from_be_bytes(input: untrusted::Input)
+                                            -> Result<Self, error::Unspecified> {
+        // Reject leading zeros. Also reject the value zero ([0]) because zero
+        // isn't positive.
+        if untrusted::Reader::new(input).peek(0) {
+            return Err(error::Unspecified);
+        }
+        let num_limbs = (input.len() + limb::LIMB_BYTES - 1) / limb::LIMB_BYTES;
+        let mut r = Self::zero(Width { num_limbs, m: PhantomData });
+        limb::parse_big_endian_and_pad_consttime(input, &mut r)?;
+        Ok(r)
+    }
+
+    #[cfg(feature = "rsa_signing")]
     fn minimal_width_from_unpadded(limbs: &[limb::Limb]) -> Self {
         debug_assert_ne!(limbs.last(), Some(&0));
         use std::borrow::ToOwned;
@@ -109,7 +123,17 @@ impl<M> BoxedLimbs<M> {
         }
     }
 
-    #[cfg(feature = "rsa_signing")]
+    fn from_be_bytes_padded_less_than(input: untrusted::Input, m: &Modulus<M>)
+                                      -> Result<Self, error::Unspecified> {
+        let mut r = Self::zero(m.width());
+        limb::parse_big_endian_and_pad_consttime(input, &mut r)?;
+        if limb::limbs_less_than_limbs_consttime(&r, &m.limbs) !=
+            limb::LimbMask::True {
+            return Err(error::Unspecified);
+        }
+        Ok(r)
+    }
+
     #[inline]
     fn is_zero(&self) -> bool {
         limb::limbs_are_zero_constant_time(&self.limbs) == limb::LimbMask::True
@@ -136,11 +160,12 @@ impl<M> BoxedLimbs<M> {
 /// This set is sometimes called `Natural` or `Counting`, but texts, libraries,
 /// and standards disagree on whether to include zero in them, so we avoid
 /// those names.
+#[cfg(feature = "rsa_signing")]
 pub struct Positive(Nonnegative);
 
+#[cfg(feature = "rsa_signing")]
 impl Positive {
     // Parses a single ASN.1 DER-encoded `Integer`, which most be positive.
-    #[cfg(feature = "rsa_signing")]
     pub fn from_der(input: &mut untrusted::Reader)
                     -> Result<Positive, error::Unspecified> {
         Self::from_be_bytes(der::positive_integer(input)?)
@@ -174,12 +199,11 @@ impl Positive {
         Ok(Positive(r))
     }
 
-    pub fn into_elem<M>(self, m: &Modulus<M>)
-                        -> Result<Elem<M, Unencoded>, error::Unspecified> {
-        self.0.into_elem(m)
+    pub fn to_elem<M>(&self, m: &Modulus<M>)
+                      -> Result<Elem<M, Unencoded>, error::Unspecified> {
+        self.0.to_elem(m)
     }
 
-    #[cfg(feature = "rsa_signing")]
     pub fn verify_less_than_modulus<M>(&self, m: &Modulus<M>)
         -> Result<(), error::Unspecified>
     {
@@ -190,7 +214,6 @@ impl Positive {
         self.0.into_odd_positive()
     }
 
-    #[cfg(feature = "rsa_signing")]
     #[inline]
     pub fn verify_less_than(&self, other: &Self)
                             -> Result<(), error::Unspecified> {
@@ -199,19 +222,14 @@ impl Positive {
 }
 
 /// Odd positive integers.
+#[cfg(feature = "rsa_signing")]
 pub struct OddPositive(Positive);
 
+#[cfg(feature = "rsa_signing")]
 impl OddPositive {
-    #[cfg(feature = "rsa_signing")]
-    pub fn try_clone(&self) -> Result<OddPositive, error::Unspecified> {
-        let value = (self.0).0.try_clone()?;
-        Ok(OddPositive(Positive(value)))
-    }
-
-    #[cfg(feature = "rsa_signing")]
-    pub fn into_elem<M>(self, m: &Modulus<M>)
-                        -> Result<Elem<M, Unencoded>, error::Unspecified> {
-        self.0.into_elem(m)
+    pub fn to_elem<M>(&self, m: &Modulus<M>)
+                      -> Result<Elem<M, Unencoded>, error::Unspecified> {
+        self.0.to_elem(m)
     }
 
     #[inline]
@@ -283,18 +301,30 @@ pub struct Modulus<M> {
 }
 
 impl<M> Modulus<M> {
-    // TODO: Move limbs instead of copying
+    pub fn from_be_bytes_with_bit_length(input: untrusted::Input)
+        -> Result<(Self, bits::BitLength), error::Unspecified>
+    {
+        let limbs = BoxedLimbs::positive_minimal_width_from_be_bytes(input)?;
+        let bits = minimal_limbs_bit_length(&limbs);
+        Ok((Self::from_boxed_limbs(limbs)?, bits))
+    }
+
+    #[cfg(feature = "rsa_signing")]
     fn from_limbs(n: &[limb::Limb]) -> Result<Self, error::Unspecified> {
+        Self::from_boxed_limbs(BoxedLimbs::minimal_width_from_unpadded(n))
+    }
+
+    fn from_boxed_limbs(n: BoxedLimbs<M>) -> Result<Self, error::Unspecified> {
         if n.len() > MODULUS_MAX_LIMBS {
             return Err(error::Unspecified);
         }
         bssl::map_result(unsafe {
             GFp_bn_mul_mont_check_num_limbs(n.len())
         })?;
-        if limb::limbs_are_even_constant_time(n) != limb::LimbMask::False {
+        if limb::limbs_are_even_constant_time(&n) != limb::LimbMask::False {
             return Err(error::Unspecified)
         }
-        if limb::limbs_less_than_limb_constant_time(n, 3) != limb::LimbMask::False {
+        if limb::limbs_less_than_limb_constant_time(&n, 3) != limb::LimbMask::False {
             return Err(error::Unspecified);
         }
 
@@ -314,7 +344,7 @@ impl<M> Modulus<M> {
         };
 
         Ok(Modulus {
-            limbs: BoxedLimbs::minimal_width_from_unpadded(n),
+            limbs: n,
             n0: n0_from_u64(n0),
         })
     }
@@ -370,7 +400,6 @@ impl<M, E> Clone for Elem<M, E> {
 }
 
 impl<M, E> Elem<M, E> {
-    #[cfg(feature = "rsa_signing")]
     #[inline]
     pub fn is_zero(&self) -> bool { self.limbs.is_zero() }
 
@@ -416,6 +445,14 @@ impl<M> Elem<M, R> {
 }
 
 impl<M> Elem<M, Unencoded> {
+    pub fn from_be_bytes_padded(input: untrusted::Input, m: &Modulus<M>)
+                                -> Result<Self, error::Unspecified> {
+        Ok(Elem {
+            limbs: BoxedLimbs::from_be_bytes_padded_less_than(input, m)?,
+            encoding: PhantomData,
+        })
+    }
+
     #[inline]
     pub fn fill_be_bytes(&self, out: &mut [u8]) {
         limb::big_endian_from_limbs_padded(&self.limbs, out)
@@ -720,8 +757,8 @@ pub struct PrivateExponent<M> {
 impl<M> PrivateExponent<M> {
     pub fn from_be_bytes_padded(input: untrusted::Input, p: &Modulus<M>)
                                 -> Result<Self, error::Unspecified> {
-        let mut dP = BoxedLimbs::zero(p.width());
-        limb::parse_big_endian_and_pad_consttime(input, &mut dP)?;
+        let dP = BoxedLimbs::from_be_bytes_padded_less_than(input, p)?;
+
         // Proof that `dP < p - 1`:
         //
         // If `dP < p` then either `dP == p - 1` or `dP < p - 1`. Since `p` is
@@ -733,10 +770,7 @@ impl<M> PrivateExponent<M> {
         if limb::limbs_are_even_constant_time(&dP) != limb::LimbMask::False {
             return Err(error::Unspecified);
         }
-        if limb::limbs_less_than_limbs_consttime(&dP, &p.limbs) !=
-            limb::LimbMask::True {
-            return Err(error::Unspecified);
-        }
+
         Ok(PrivateExponent {
             limbs: dP,
         })
@@ -847,8 +881,8 @@ fn elem_inverse<M>(a: Elem<M, Unencoded>, m: &Modulus<M>)
                                           Nonnegative::from_limbs(&m.limbs)?,
                                           &m.limbs)?;
     let r: Elem<M, R> = Elem {
-        // TODO: The check done by into_elem() isn't necessary, right?
-        limbs: inverse.into_elem(&m)?.limbs,
+        // TODO: The check done by to_elem() isn't necessary, right?
+        limbs: inverse.to_elem(&m)?.limbs,
         encoding: PhantomData,
     };
     verify_inverses_consttime(&r, a, m)?;
@@ -1030,8 +1064,10 @@ pub fn elem_verify_equal_consttime<M, E>(a: &Elem<M, E>, b: &Elem<M, E>)
 }
 
 /// Nonnegative integers: `Positive` ∪ {0}.
+#[cfg(feature = "rsa_signing")]
 struct Nonnegative(BIGNUM);
 
+#[cfg(feature = "rsa_signing")]
 impl Nonnegative {
     fn zero() -> Result<Self, error::Unspecified> {
         let r = Nonnegative(BIGNUM::zero());
@@ -1039,7 +1075,6 @@ impl Nonnegative {
         Ok(r)
     }
 
-    #[cfg(feature = "rsa_signing")]
     pub fn from_limbs(source: &[limb::Limb])
         -> Result<Self, error::Unspecified>
     {
@@ -1051,7 +1086,6 @@ impl Nonnegative {
         Ok(r)
     }
 
-    #[cfg(feature = "rsa_signing")]
     fn one() -> Result<Self, error::Unspecified> {
         let mut r = Self::zero()?;
         r.0.make_limbs(1, |limbs| {
@@ -1075,7 +1109,6 @@ impl Nonnegative {
     #[inline]
     fn is_zero(&self) -> bool { self.limbs().is_empty() }
 
-    #[cfg(feature = "rsa_signing")]
     #[inline]
     fn is_even(&self) -> bool { !self.is_odd() }
 
@@ -1087,11 +1120,9 @@ impl Nonnegative {
     #[inline]
     fn limbs(&self) -> &[limb::Limb] { self.0.limbs() }
 
-    #[cfg(feature = "rsa_signing")]
     #[inline]
     fn limbs_mut(&mut self) -> &mut [limb::Limb] { self.0.limbs_mut() }
 
-    #[cfg(feature = "rsa_signing")]
     fn verify_less_than(&self, other: &Self)
                         -> Result<(), error::Unspecified> {
         if !greater_than(other, self) {
@@ -1102,11 +1133,10 @@ impl Nonnegative {
 
     // XXX: This makes it too easy to break invariants on things. TODO: Remove
     // this ASAP.
-    #[cfg(feature = "rsa_signing")]
     fn as_mut_ref(&mut self) -> &mut BIGNUM { &mut self.0 }
 
-    fn into_elem<M>(self, m: &Modulus<M>)
-                    -> Result<Elem<M, Unencoded>, error::Unspecified> {
+    fn to_elem<M>(&self, m: &Modulus<M>)
+                  -> Result<Elem<M, Unencoded>, error::Unspecified> {
         self.verify_less_than_modulus(&m)?;
         let mut r = m.zero();
         r.limbs[0..self.limbs().len()].copy_from_slice(self.limbs());
@@ -1135,7 +1165,6 @@ impl Nonnegative {
         Ok(OddPositive(Positive(self)))
     }
 
-    #[cfg(feature = "rsa_signing")]
     pub fn try_clone(&self) -> Result<Nonnegative, error::Unspecified> {
         let mut r = Nonnegative::zero()?;
         bssl::map_result(unsafe {
@@ -1205,6 +1234,7 @@ fn n0_from_u64(n0: u64) -> N0 {
 
 // `BIGNUM` is defined in its own submodule so that its private components are
 // not accessible.
+#[cfg(feature = "rsa_signing")]
 mod repr_c {
     use {bssl, c, error, limb};
     use core;
@@ -1250,7 +1280,6 @@ mod repr_c {
             }
         }
 
-        #[cfg(feature = "rsa_signing")]
         pub fn grow_by_one_bit(&mut self) -> Result<(), error::Unspecified> {
             let old_top = self.top;
             let new_top = old_top + 1;
@@ -1262,7 +1291,6 @@ mod repr_c {
             Ok(())
         }
 
-        #[cfg(feature = "rsa_signing")]
         pub fn shrunk_by_at_most_one_bit(&mut self) {
             if self.limbs().last().map_or(false, |last| *last == 0) {
                 self.top -= 1;
@@ -1304,6 +1332,7 @@ mod repr_c {
     }
 }
 
+#[cfg(feature = "rsa_signing")]
 pub use self::repr_c::BIGNUM;
 
 extern {
@@ -1357,6 +1386,7 @@ mod tests {
     use untrusted;
     use test;
 
+    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_positive_integer_from_be_bytes_empty() {
         // Empty values are rejected.
@@ -1364,6 +1394,7 @@ mod tests {
                     untrusted::Input::from(&[])).is_err());
     }
 
+    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_positive_integer_from_be_bytes_zero() {
         // The zero value is rejected.
@@ -1383,6 +1414,7 @@ mod tests {
                     untrusted::Input::from(&[1, 0])).is_ok());
     }
 
+    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_odd_positive_from_even() {
         let x = Positive::from_be_bytes(untrusted::Input::from(&[4])).unwrap();
@@ -1614,8 +1646,8 @@ mod tests {
 
     fn consume_elem<M>(test_case: &mut test::TestCase, name: &str, m: &Modulus<M>)
                        -> Elem<M, Unencoded> {
-        let value = consume_nonnegative(test_case, name);
-        value.into_elem::<M>(m).unwrap()
+        let value = test_case.consume_bytes(name);
+        Elem::from_be_bytes_padded(untrusted::Input::from(&value), m).unwrap()
     }
 
     #[cfg(feature = "rsa_signing")]
@@ -1632,8 +1664,10 @@ mod tests {
 
     fn consume_modulus<M>(test_case: &mut test::TestCase, name: &str)
                           -> Modulus<M> {
-        let value = consume_odd_positive(test_case, name);
-        value.into_modulus().unwrap()
+        let value = test_case.consume_bytes(name);
+        let (value, _) = Modulus::from_be_bytes_with_bit_length(
+            untrusted::Input::from(&value)).unwrap();
+        value
     }
 
     fn consume_public_exponent(test_case: &mut test::TestCase, name: &str)
@@ -1643,14 +1677,7 @@ mod tests {
             untrusted::Input::from(&bytes), 3).unwrap()
     }
 
-    fn consume_odd_positive(test_case: &mut test::TestCase, name: &str)
-                            -> OddPositive {
-        let bytes = test_case.consume_bytes(name);
-        let value =
-            Positive::from_be_bytes(untrusted::Input::from(&bytes)).unwrap();
-        value.into_odd_positive().unwrap()
-    }
-
+    #[cfg(feature = "rsa_signing")]
     fn consume_nonnegative(test_case: &mut test::TestCase, name: &str)
                            -> Nonnegative {
         let bytes = test_case.consume_bytes(name);
