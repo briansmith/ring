@@ -179,9 +179,9 @@ impl RSAKeyPair {
                 let qInv = der::positive_integer(input)?;
 
                 let (p, p_bits) =
-                    bigint::Positive::from_be_bytes_with_bit_length(p)?;
+                    bigint::Nonnegative::from_be_bytes_with_bit_length(p)?;
                 let (q, q_bits) =
-                    bigint::Positive::from_be_bytes_with_bit_length(q)?;
+                    bigint::Nonnegative::from_be_bytes_with_bit_length(q)?;
 
                 // Our implementation of CRT-based modular exponentiation used
                 // requires that `p > q` so swap them if `p < q`. If swapped,
@@ -291,7 +291,7 @@ impl RSAKeyPair {
                 // 2**half_n_bits <= d, and knowing d is odd makes the
                 // inequality strict.
                 let (d, d_bits) =
-                    bigint::Positive::from_be_bytes_with_bit_length(d)?;
+                    bigint::Nonnegative::from_be_bytes_with_bit_length(d)?;
                 if !(half_n_bits < d_bits) {
                     return Err(error::Unspecified);
                 }
@@ -299,7 +299,9 @@ impl RSAKeyPair {
                 // don't have a good way of calculating LCM, so it is omitted,
                 // as explained above.
                 d.verify_less_than_modulus(&n)?;
-                d.verify_is_odd()?;
+                if !d.is_odd() {
+                    return Err(error::Unspecified);
+                }
 
                 // Step 6.b is omitted as explained above.
 
@@ -372,9 +374,9 @@ struct PrivatePrime<M: Prime> {
 impl<M: Prime + Clone> PrivatePrime<M> {
     /// Constructs a `PrivatePrime` from the private prime `p` and `dP` where
     /// dP == d % (p - 1).
-    fn new(p: bigint::Positive, dP: untrusted::Input)
+    fn new(p: bigint::Nonnegative, dP: untrusted::Input)
            -> Result<Self, error::Unspecified> {
-        let p = p.into_modulus()?;
+        let p = bigint::Modulus::from(p)?;
 
         // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Steps 7.a & 7.b.
         let dP = bigint::PrivateExponent::from_be_bytes_padded(dP, &p)?;

@@ -155,74 +155,6 @@ impl<M> BoxedLimbs<M> {
     }
 }
 
-/// Non-negative, non-zero integers.
-///
-/// This set is sometimes called `Natural` or `Counting`, but texts, libraries,
-/// and standards disagree on whether to include zero in them, so we avoid
-/// those names.
-#[cfg(feature = "rsa_signing")]
-pub struct Positive(Nonnegative);
-
-#[cfg(feature = "rsa_signing")]
-impl Positive {
-    // Turns a sequence of big-endian bytes into a Positive Integer.
-    pub fn from_be_bytes(input: untrusted::Input)
-                         -> Result<Positive, error::Unspecified> {
-        // Reject leading zeros. Also reject the value zero ([0]) because zero
-        // isn't positive.
-        if untrusted::Reader::new(input).peek(0) {
-            return Err(error::Unspecified);
-        }
-        Self::from_be_bytes_padded(input)
-    }
-
-    pub fn from_be_bytes_with_bit_length(input: untrusted::Input)
-        -> Result<(Positive, bits::BitLength), error::Unspecified>
-    {
-        let r = Self::from_be_bytes(input)?;
-        let r_bits = minimal_limbs_bit_length(r.0.limbs());
-        Ok((r, r_bits))
-    }
-
-    pub fn from_be_bytes_padded(input: untrusted::Input)
-                                -> Result<Self, error::Unspecified> {
-        let r = Nonnegative::from_be_bytes_padded(input)?;
-        if r.is_zero() {
-            return Err(error::Unspecified);
-        }
-        Ok(Positive(r))
-    }
-
-    pub fn to_elem<M>(&self, m: &Modulus<M>)
-                      -> Result<Elem<M, Unencoded>, error::Unspecified> {
-        self.0.to_elem(m)
-    }
-
-    pub fn verify_is_odd(&self) -> Result<(), error::Unspecified> {
-        if !self.0.is_odd() {
-            return Err(error::Unspecified);
-        }
-        Ok(())
-    }
-
-    pub fn verify_less_than_modulus<M>(&self, m: &Modulus<M>)
-        -> Result<(), error::Unspecified>
-    {
-        self.0.verify_less_than_modulus(m)
-    }
-
-    #[inline]
-    pub fn verify_less_than(&self, other: &Self)
-                            -> Result<(), error::Unspecified> {
-        (self.0).verify_less_than(&other.0)
-    }
-
-    #[inline]
-    pub fn into_modulus<M>(self) -> Result<Modulus<M>, error::Unspecified> {
-        Modulus::from_limbs(self.0.limbs())
-    }
-}
-
 /// A modulus *s* that is smaller than another modulus *l* so every element of
 /// ℤ/sℤ is also an element of ℤ/lℤ.
 pub unsafe trait SmallerModulus<L> {}
@@ -292,6 +224,11 @@ impl<M> Modulus<M> {
         let limbs = BoxedLimbs::positive_minimal_width_from_be_bytes(input)?;
         let bits = minimal_limbs_bit_length(&limbs);
         Ok((Self::from_boxed_limbs(limbs)?, bits))
+    }
+
+    #[cfg(feature = "rsa_signing")]
+    pub fn from(n: Nonnegative) -> Result<Self, error::Unspecified> {
+        Self::from_limbs(n.limbs())
     }
 
     #[cfg(feature = "rsa_signing")]
@@ -1064,9 +1001,9 @@ pub fn elem_verify_equal_consttime<M, E>(a: &Elem<M, E>, b: &Elem<M, E>)
                                            limb::limbs_as_bytes(&b.limbs))
 }
 
-/// Nonnegative integers: `Positive` ∪ {0}.
+/// Nonnegative integers.
 #[cfg(feature = "rsa_signing")]
-struct Nonnegative(BIGNUM);
+pub struct Nonnegative(BIGNUM);
 
 #[cfg(feature = "rsa_signing")]
 impl Nonnegative {
@@ -1096,15 +1033,16 @@ impl Nonnegative {
         Ok(r)
     }
 
-    pub fn from_be_bytes_padded(input: untrusted::Input)
-                                -> Result<Self, error::Unspecified> {
+    pub fn from_be_bytes_with_bit_length(input: untrusted::Input)
+        -> Result<(Self, bits::BitLength), error::Unspecified> {
         let mut r = Self::zero()?;
         r.0.make_limbs(
             (input.len() + limb::LIMB_BYTES - 1) / limb::LIMB_BYTES, |limbs|  {
             // Rejects empty inputs.
             limb::parse_big_endian_and_pad_consttime(input, limbs)
         })?;
-        Ok(r)
+        let r_bits = minimal_limbs_bit_length(r.limbs());
+        Ok((r, r_bits))
     }
 
     #[inline]
@@ -1114,7 +1052,7 @@ impl Nonnegative {
     fn is_even(&self) -> bool { !self.is_odd() }
 
     #[inline]
-    fn is_odd(&self) -> bool {
+    pub fn is_odd(&self) -> bool {
         limb::limbs_are_even_constant_time(self.limbs()) == limb::LimbMask::False
     }
 
@@ -1124,7 +1062,7 @@ impl Nonnegative {
     #[inline]
     fn limbs_mut(&mut self) -> &mut [limb::Limb] { self.0.limbs_mut() }
 
-    fn verify_less_than(&self, other: &Self)
+    pub fn verify_less_than(&self, other: &Self)
                         -> Result<(), error::Unspecified> {
         if !greater_than(other, self) {
             return Err(error::Unspecified);
@@ -1136,8 +1074,8 @@ impl Nonnegative {
     // this ASAP.
     fn as_mut_ref(&mut self) -> &mut BIGNUM { &mut self.0 }
 
-    fn to_elem<M>(&self, m: &Modulus<M>)
-                  -> Result<Elem<M, Unencoded>, error::Unspecified> {
+    pub fn to_elem<M>(&self, m: &Modulus<M>)
+                      -> Result<Elem<M, Unencoded>, error::Unspecified> {
         self.verify_less_than_modulus(&m)?;
         let mut r = m.zero();
         r.limbs[0..self.limbs().len()].copy_from_slice(self.limbs());
@@ -1379,34 +1317,6 @@ mod tests {
     use super::*;
     use untrusted;
     use test;
-
-    #[cfg(feature = "rsa_signing")]
-    #[test]
-    fn test_positive_integer_from_be_bytes_empty() {
-        // Empty values are rejected.
-        assert!(Positive::from_be_bytes(
-                    untrusted::Input::from(&[])).is_err());
-    }
-
-    #[cfg(feature = "rsa_signing")]
-    #[test]
-    fn test_positive_integer_from_be_bytes_zero() {
-        // The zero value is rejected.
-        assert!(Positive::from_be_bytes(
-                    untrusted::Input::from(&[0])).is_err());
-        // A zero with a leading zero is rejected.
-        assert!(Positive::from_be_bytes(
-                    untrusted::Input::from(&[0, 0])).is_err());
-        // A non-zero value with a leading zero is rejected.
-        assert!(Positive::from_be_bytes(
-                    untrusted::Input::from(&[0, 1])).is_err());
-        // A non-zero value with no leading zeros is accepted.
-        assert!(Positive::from_be_bytes(
-                    untrusted::Input::from(&[1])).is_ok());
-        // A non-zero value with that ends in a zero byte is accepted.
-        assert!(Positive::from_be_bytes(
-                    untrusted::Input::from(&[1, 0])).is_ok());
-    }
 
     // Type-level representation of an arbitrary modulus.
     struct M {}
@@ -1667,8 +1577,9 @@ mod tests {
     fn consume_nonnegative(test_case: &mut test::TestCase, name: &str)
                            -> Nonnegative {
         let bytes = test_case.consume_bytes(name);
-        Nonnegative::from_be_bytes_padded(untrusted::Input::from(&bytes))
-            .unwrap()
+        let (r, _r_bits) = Nonnegative::from_be_bytes_with_bit_length(
+            untrusted::Input::from(&bytes)).unwrap();
+        r
     }
 
     fn assert_elem_eq<M, E>(a: &Elem<M, E>, b: &Elem<M, E>) {
