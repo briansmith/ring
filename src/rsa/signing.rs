@@ -243,7 +243,6 @@ impl RSAKeyPair {
                 if p_bits != half_n_bits {
                     return Err(error::Unspecified);
                 }
-                let p = p.into_odd_positive()?;
 
                 // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
 
@@ -257,7 +256,6 @@ impl RSAKeyPair {
                 if p_bits != q_bits {
                     return Err(error::Unspecified);
                 }
-                let q = q.into_odd_positive()?;
 
                 // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
 
@@ -301,7 +299,7 @@ impl RSAKeyPair {
                 // don't have a good way of calculating LCM, so it is omitted,
                 // as explained above.
                 d.verify_less_than_modulus(&n)?;
-                let _ = d.into_odd_positive()?; // TODO: avoid allocation
+                d.verify_is_odd()?;
 
                 // Step 6.b is omitted as explained above.
 
@@ -374,7 +372,7 @@ struct PrivatePrime<M: Prime> {
 impl<M: Prime + Clone> PrivatePrime<M> {
     /// Constructs a `PrivatePrime` from the private prime `p` and `dP` where
     /// dP == d % (p - 1).
-    fn new(p: bigint::OddPositive, dP: untrusted::Input)
+    fn new(p: bigint::Positive, dP: untrusted::Input)
            -> Result<Self, error::Unspecified> {
         let p = p.into_modulus()?;
 

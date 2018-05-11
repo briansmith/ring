@@ -198,14 +198,17 @@ impl Positive {
         self.0.to_elem(m)
     }
 
+    pub fn verify_is_odd(&self) -> Result<(), error::Unspecified> {
+        if !self.0.is_odd() {
+            return Err(error::Unspecified);
+        }
+        Ok(())
+    }
+
     pub fn verify_less_than_modulus<M>(&self, m: &Modulus<M>)
         -> Result<(), error::Unspecified>
     {
         self.0.verify_less_than_modulus(m)
-    }
-
-    pub fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
-        self.0.into_odd_positive()
     }
 
     #[inline]
@@ -213,22 +216,10 @@ impl Positive {
                             -> Result<(), error::Unspecified> {
         (self.0).verify_less_than(&other.0)
     }
-}
-
-/// Odd positive integers.
-#[cfg(feature = "rsa_signing")]
-pub struct OddPositive(Positive);
-
-#[cfg(feature = "rsa_signing")]
-impl OddPositive {
-    pub fn to_elem<M>(&self, m: &Modulus<M>)
-                      -> Result<Elem<M, Unencoded>, error::Unspecified> {
-        self.0.to_elem(m)
-    }
 
     #[inline]
     pub fn into_modulus<M>(self) -> Result<Modulus<M>, error::Unspecified> {
-        Modulus::from_limbs((self.0).0.limbs())
+        Modulus::from_limbs(self.0.limbs())
     }
 }
 
@@ -1168,13 +1159,6 @@ impl Nonnegative {
         return Ok(())
     }
 
-    fn into_odd_positive(self) -> Result<OddPositive, error::Unspecified> {
-        if !self.is_odd() {
-            return Err(error::Unspecified);
-        }
-        Ok(OddPositive(Positive(self)))
-    }
-
     pub fn try_clone(&self) -> Result<Nonnegative, error::Unspecified> {
         let mut r = Nonnegative::zero()?;
         bssl::map_result(unsafe {
@@ -1423,14 +1407,6 @@ mod tests {
         assert!(Positive::from_be_bytes(
                     untrusted::Input::from(&[1, 0])).is_ok());
     }
-
-    #[cfg(feature = "rsa_signing")]
-    #[test]
-    fn test_odd_positive_from_even() {
-        let x = Positive::from_be_bytes(untrusted::Input::from(&[4])).unwrap();
-        assert!(x.into_odd_positive().is_err());
-    }
-
 
     // Type-level representation of an arbitrary modulus.
     struct M {}
