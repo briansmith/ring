@@ -50,7 +50,7 @@ use std;
 use constant_time;
 
 #[cfg(feature = "rsa_signing")]
-use {der, rand};
+use rand;
 
 pub unsafe trait Prime {}
 
@@ -165,12 +165,6 @@ pub struct Positive(Nonnegative);
 
 #[cfg(feature = "rsa_signing")]
 impl Positive {
-    // Parses a single ASN.1 DER-encoded `Integer`, which most be positive.
-    pub fn from_der(input: &mut untrusted::Reader)
-                    -> Result<Positive, error::Unspecified> {
-        Self::from_be_bytes(der::positive_integer(input)?)
-    }
-
     // Turns a sequence of big-endian bytes into a Positive Integer.
     pub fn from_be_bytes(input: untrusted::Input)
                          -> Result<Positive, error::Unspecified> {
@@ -365,6 +359,22 @@ impl<M> Modulus<M> {
         let mut r = self.zero();
         r.limbs[0] = 1;
         r
+    }
+
+    #[cfg(feature = "rsa_signing")]
+    pub fn to_elem<L>(&self, l: &Modulus<L>) -> Elem<L, Unencoded>
+        where M: SmallerModulus<L>
+    {
+        // TODO: Encode this assertion into the `where` above.
+        assert_eq!(self.width().num_limbs, l.width().num_limbs);
+        let limbs = self.limbs.clone();
+        Elem {
+            limbs: BoxedLimbs {
+                limbs: limbs.limbs,
+                m: PhantomData,
+            },
+            encoding: PhantomData,
+        }
     }
 }
 

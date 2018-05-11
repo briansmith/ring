@@ -176,7 +176,7 @@ impl RSAKeyPair {
                 let q = der::positive_integer(input)?;
                 let dP = der::positive_integer(input)?;
                 let dQ = der::positive_integer(input)?;
-                let qInv = bigint::Positive::from_der(input)?;
+                let qInv = der::positive_integer(input)?;
 
                 let (p, p_bits) =
                     bigint::Positive::from_be_bytes_with_bit_length(p)?;
@@ -310,14 +310,14 @@ impl RSAKeyPair {
                 // Step 7.a.
                 let p = PrivatePrime::new(p, dP)?;
 
-                // Step 7.b is done out-of-order below.
+                // Step 7.b.
+                let q = PrivatePrime::new(q, dQ)?;
 
-                let q_mod_p = q.to_elem(&p.modulus)?;
+                let q_mod_p = q.modulus.to_elem(&p.modulus);
 
                 // Step 7.c.
                 let qInv = if let Some(qInv) = qInv {
-                    // TODO: Switch to `TryInto` to avoid allocation.
-                    qInv.to_elem(&p.modulus)?
+                    bigint::Elem::from_be_bytes_padded(qInv, &p.modulus)?
                 } else {
                     // We swapped `p` and `q` above, so we need to calculate
                     // `qInv`.  Step 7.f below will verify `qInv` is correct.
@@ -335,9 +335,6 @@ impl RSAKeyPair {
                 let qInv =
                     bigint::elem_mul(p.oneRR.as_ref(), qInv, &p.modulus);
                 bigint::verify_inverses_consttime(&qInv, q_mod_p, &p.modulus)?;
-
-                // Step 7.b (out of order).
-                let q = PrivatePrime::new(q, dQ)?;
 
                 let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &n)
                     .into_modulus::<QQ>()?;
