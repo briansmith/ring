@@ -1065,8 +1065,7 @@ impl Nonnegative {
                                 -> Result<Self, error::Unspecified> {
         let mut r = Self::zero()?;
         r.0.make_limbs(
-            ((input.len() * limb::LIMB_BYTES) + limb::LIMB_BYTES - 1) /
-                limb::LIMB_BYTES, |limbs|  {
+            (input.len() + limb::LIMB_BYTES - 1) / limb::LIMB_BYTES, |limbs|  {
             // Rejects empty inputs.
             limb::parse_big_endian_and_pad_consttime(input, limbs)
         })?;
