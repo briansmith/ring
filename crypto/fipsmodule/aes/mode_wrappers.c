@@ -74,24 +74,20 @@ void AES_ecb_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key,
 }
 
 #if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
-void asm_AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const AES_KEY *key, uint8_t *ivec, const int enc);
+void aes_nohw_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
+                          const AES_KEY *key, uint8_t *ivec, const int enc);
 #endif
 
 void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                      const AES_KEY *key, uint8_t *ivec, const int enc) {
-#if defined(HWAES) && !defined(OPENSSL_AARCH64)
-  // Can't use |aes_hw_cbc_encrypt| here because |AES_set_encrypt_key| isn't
-  // compatible with it.
   if (hwaes_capable()) {
     aes_hw_cbc_encrypt(in, out, len, key, ivec, enc);
     return;
   }
-#endif
 
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
-  asm_AES_cbc_encrypt(in, out, len, key, ivec, enc);
+  aes_nohw_cbc_encrypt(in, out, len, key, ivec, enc);
 #else
   if (enc) {
     CRYPTO_cbc128_encrypt(in, out, len, key, ivec, (block128_f)AES_encrypt);
