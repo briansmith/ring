@@ -208,7 +208,7 @@ GFp_asm_AES_encrypt:
 	adr	r3,.
 #endif
 	stmdb   sp!,{r1,r4-r12,lr}
-#ifdef	__APPLE__
+#if defined(__thumb2__) || defined(__APPLE__)
 	adr	$tbl,AES_Te
 #else
 	sub	$tbl,r3,#GFp_asm_AES_encrypt-AES_Te	@ Te
@@ -484,7 +484,7 @@ _armv4_AES_set_encrypt_key:
 	mov	lr,r1			@ bits
 	mov	$key,r2			@ key
 
-#ifdef	__APPLE__
+#if defined(__thumb2__) || defined(__APPLE__)
 	adr	$tbl,AES_Te+1024				@ Te4
 #else
 	sub	$tbl,r3,#_armv4_AES_set_encrypt_key-AES_Te-1024	@ Te4
