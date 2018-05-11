@@ -922,6 +922,29 @@ const STACK_OF(CRYPTO_BUFFER) *
   return session->certs;
 }
 
+void SSL_SESSION_get0_signed_cert_timestamp_list(const SSL_SESSION *session,
+                                                 const uint8_t **out,
+                                                 size_t *out_len) {
+  if (session->signed_cert_timestamp_list) {
+    *out = CRYPTO_BUFFER_data(session->signed_cert_timestamp_list);
+    *out_len = CRYPTO_BUFFER_len(session->signed_cert_timestamp_list);
+  } else {
+    *out = nullptr;
+    *out_len = 0;
+  }
+}
+
+void SSL_SESSION_get0_ocsp_response(const SSL_SESSION *session,
+                                    const uint8_t **out, size_t *out_len) {
+  if (session->ocsp_response) {
+    *out = CRYPTO_BUFFER_data(session->ocsp_response);
+    *out_len = CRYPTO_BUFFER_len(session->ocsp_response);
+  } else {
+    *out = nullptr;
+    *out_len = 0;
+  }
+}
+
 size_t SSL_SESSION_get_master_key(const SSL_SESSION *session, uint8_t *out,
                                   size_t max_out) {
   // TODO(davidben): Fix master_key_length's type and remove these casts.

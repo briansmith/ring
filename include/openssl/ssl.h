@@ -1697,6 +1697,26 @@ OPENSSL_EXPORT X509 *SSL_SESSION_get0_peer(const SSL_SESSION *session);
 OPENSSL_EXPORT const STACK_OF(CRYPTO_BUFFER) *
     SSL_SESSION_get0_peer_certificates(const SSL_SESSION *session);
 
+// SSL_SESSION_get0_signed_cert_timestamp_list sets |*out| and |*out_len| to
+// point to |*out_len| bytes of SCT information stored in |session|. This is
+// only valid for client sessions. The SCT information is a
+// SignedCertificateTimestampList (including the two leading length bytes). See
+// https://tools.ietf.org/html/rfc6962#section-3.3 If no SCT was received then
+// |*out_len| will be zero on return.
+//
+// WARNING: the returned data is not guaranteed to be well formed.
+OPENSSL_EXPORT void SSL_SESSION_get0_signed_cert_timestamp_list(
+    const SSL_SESSION *session, const uint8_t **out, size_t *out_len);
+
+// SSL_SESSION_get0_ocsp_response sets |*out| and |*out_len| to point to
+// |*out_len| bytes of an OCSP response from the server. This is the DER
+// encoding of an OCSPResponse type as defined in RFC 2560.
+//
+// WARNING: the returned data is not guaranteed to be well formed.
+OPENSSL_EXPORT void SSL_SESSION_get0_ocsp_response(const SSL_SESSION *session,
+                                                   const uint8_t **out,
+                                                   size_t *out_len);
+
 // SSL_SESSION_get_master_key writes up to |max_out| bytes of |session|'s master
 // secret to |out| and returns the number of bytes written. If |max_out| is
 // zero, it returns the size of the master secret.
@@ -1864,7 +1884,11 @@ OPENSSL_EXPORT int SSL_CTX_get_session_cache_mode(const SSL_CTX *ctx);
 
 // SSL_set_session, for a client, configures |ssl| to offer to resume |session|
 // in the initial handshake and returns one. The caller retains ownership of
-// |session|.
+// |session|. Note that configuring a session assumes the authentication in the
+// session is valid. For callers that wish to revalidate the session before
+// offering, see |SSL_SESSION_get0_peer_certificates|,
+// |SSL_SESSION_get0_signed_cert_timestamp_list|, and
+// |SSL_SESSION_get0_ocsp_response|.
 //
 // It is an error to call this function after the handshake has begun.
 OPENSSL_EXPORT int SSL_set_session(SSL *ssl, SSL_SESSION *session);
