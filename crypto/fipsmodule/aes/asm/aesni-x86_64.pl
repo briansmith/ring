@@ -60,7 +60,7 @@
 # identical to CBC, because CBC-MAC is essentially CBC encrypt without
 # saving output. CCM CTR "stays invisible," because it's neatly
 # interleaved wih CBC-MAC. This provides ~30% improvement over
-# "straghtforward" CCM implementation with CTR and CBC-MAC performed
+# "straightforward" CCM implementation with CTR and CBC-MAC performed
 # disjointly. Parallelizable modes practically achieve the theoretical
 # limit.
 #
@@ -143,14 +143,14 @@
 # asymptotic, if it can be surpassed, isn't it? What happens there?
 # Rewind to CBC paragraph for the answer. Yes, out-of-order execution
 # magic is responsible for this. Processor overlaps not only the
-# additional instructions with AES ones, but even AES instuctions
+# additional instructions with AES ones, but even AES instructions
 # processing adjacent triplets of independent blocks. In the 6x case
 # additional instructions  still claim disproportionally small amount
 # of additional cycles, but in 8x case number of instructions must be
 # a tad too high for out-of-order logic to cope with, and AES unit
 # remains underutilized... As you can see 8x interleave is hardly
 # justifiable, so there no need to feel bad that 32-bit aesni-x86.pl
-# utilizies 6x interleave because of limited register bank capacity.
+# utilizes 6x interleave because of limited register bank capacity.
 #
 # Higher interleave factors do have negative impact on Westmere
 # performance. While for ECB mode it's negligible ~1.5%, other
@@ -586,6 +586,7 @@ $code.=<<___;
 .type	GFp_aesni_ctr32_encrypt_blocks,\@function,5
 .align	16
 GFp_aesni_ctr32_encrypt_blocks:
+.cfi_startproc
 	cmp	\$1,$len
 	jne	.Lctr32_bulk
 
@@ -608,7 +609,9 @@ $code.=<<___;
 .align	16
 .Lctr32_bulk:
 	lea	(%rsp),$key_			# use $key_ as frame pointer
+.cfi_def_cfa_register	$key_
 	push	%rbp
+.cfi_push	%rbp
 	sub	\$$frame_size,%rsp
 	and	\$-16,%rsp	# Linux kernel stack can be incorrectly seeded
 ___
@@ -677,7 +680,8 @@ $code.=<<___;
 	lea	7($ctr),%r9
 	 mov	%r10d,0x60+12(%rsp)
 	bswap	%r9d
-	 mov	GFp_ia32cap_P+4(%rip),%r10d
+	leaq	GFp_ia32cap_P(%rip),%r10
+	 mov	4(%r10),%r10d
 	xor	$key0,%r9d
 	 and	\$`1<<26|1<<22`,%r10d		# isolate XSAVE+MOVBE
 	mov	%r9d,0x70+12(%rsp)
@@ -951,7 +955,7 @@ $code.=<<___;
 	sub	\$8,$len
 	jnc	.Lctr32_loop8			# loop if $len-=8 didn't borrow
 
-	add	\$8,$len			# restore real remainig $len
+	add	\$8,$len			# restore real remaining $len
 	jz	.Lctr32_done			# done if ($len==0)
 	lea	-0x80($key),$key
 
@@ -1068,7 +1072,7 @@ $code.=<<___;
 	movups	$inout2,0x20($out)		# $len was 3, stop store
 
 .Lctr32_done:
-	xorps	%xmm0,%xmm0			# clear regiser bank
+	xorps	%xmm0,%xmm0			# clear register bank
 	xor	$key0,$key0
 	pxor	%xmm1,%xmm1
 	pxor	%xmm2,%xmm2
@@ -1128,9 +1132,12 @@ $code.=<<___ if ($win64);
 ___
 $code.=<<___;
 	mov	-8($key_),%rbp
+.cfi_restore	%rbp
 	lea	($key_),%rsp
+.cfi_def_cfa_register	%rsp
 .Lctr32_epilogue:
 	ret
+.cfi_endproc
 .size	GFp_aesni_ctr32_encrypt_blocks,.-GFp_aesni_ctr32_encrypt_blocks
 ___
 } }}
@@ -1169,17 +1176,20 @@ $code.=<<___;
 .align	16
 GFp_${PREFIX}_set_encrypt_key:
 __aesni_set_encrypt_key:
+.cfi_startproc
 	.byte	0x48,0x83,0xEC,0x08	# sub rsp,8
+.cfi_adjust_cfa_offset	8
 	mov	\$-1,%rax
 	test	$inp,$inp
 	jz	.Lenc_key_ret
 	test	$key,$key
 	jz	.Lenc_key_ret
 
-	mov	\$`1<<28|1<<11`,%r10d	# AVX and XOP bits
 	movups	($inp),%xmm0		# pull first 128 bits of *userKey
 	xorps	%xmm4,%xmm4		# low dword of xmm4 is assumed 0
-	and	GFp_ia32cap_P+4(%rip),%r10d
+	leaq	GFp_ia32cap_P(%rip),%r10
+	movl	4(%r10),%r10d
+	and	\$`1<<28|1<<11`,%r10d	# AVX and XOP bits
 	lea	16($key),%rax		# %rax is used as modifiable copy of $key
 	cmp	\$256,$bits
 	je	.L14rounds
@@ -1358,7 +1368,7 @@ __aesni_set_encrypt_key:
 
 .align	16
 .L14rounds:
-	movups	16($inp),%xmm2			# remaning half of *userKey
+	movups	16($inp),%xmm2			# remaining half of *userKey
 	mov	\$13,$bits			# 14 rounds for 256
 	lea	16(%rax),%rax
 	cmp	\$`1<<28`,%r10d			# AVX, but no XOP
@@ -1462,7 +1472,9 @@ __aesni_set_encrypt_key:
 	pxor	%xmm4,%xmm4
 	pxor	%xmm5,%xmm5
 	add	\$8,%rsp
+.cfi_adjust_cfa_offset	-8
 	ret
+.cfi_endproc
 .LSEH_end_GFp_set_encrypt_key:
 
 .align	16
