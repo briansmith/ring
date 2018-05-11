@@ -1070,10 +1070,6 @@ impl Nonnegative {
         Ok(())
     }
 
-    // XXX: This makes it too easy to break invariants on things. TODO: Remove
-    // this ASAP.
-    fn as_mut_ref(&mut self) -> &mut BIGNUM { &mut self.0 }
-
     pub fn to_elem<M>(&self, m: &Modulus<M>)
                       -> Result<Elem<M, Unencoded>, error::Unspecified> {
         self.verify_less_than_modulus(&m)?;
@@ -1100,7 +1096,7 @@ impl Nonnegative {
     pub fn try_clone(&self) -> Result<Nonnegative, error::Unspecified> {
         let mut r = Nonnegative::zero()?;
         bssl::map_result(unsafe {
-            GFp_BN_copy(r.as_mut_ref(), &self.0)
+            GFp_BN_copy(&mut r.0, &self.0)
         })?;
         Ok(r)
     }
