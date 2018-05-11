@@ -914,7 +914,10 @@ int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,
 void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag) {}
 
 const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group) {
-  return NULL;
+  // This function exists purely to give callers a way to call
+  // |EC_METHOD_get_field_type|. cryptography.io crashes if |EC_GROUP_method_of|
+  // returns NULL, so return some other garbage pointer.
+  return (const EC_METHOD *)0x12340000;
 }
 
 int EC_METHOD_get_field_type(const EC_METHOD *meth) {

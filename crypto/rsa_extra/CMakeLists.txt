@@ -5,5 +5,6 @@ add_library(
 
   OBJECT
 
+  print.c
   rsa_asn1.c
 )

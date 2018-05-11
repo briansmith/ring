@@ -796,6 +796,9 @@ OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
 // EVP_PKEY_get0_DH returns NULL.
 OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(EVP_PKEY *pkey);
 
+// EVP_PKEY_get1_DH returns NULL.
+OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(EVP_PKEY *pkey);
+
 
 // Preprocessor compatibility section (hidden).
 //

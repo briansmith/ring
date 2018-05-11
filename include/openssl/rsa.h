@@ -589,6 +589,10 @@ OPENSSL_EXPORT int RSA_padding_add_PKCS1_OAEP(uint8_t *to, size_t to_len,
                                               const uint8_t *param,
                                               size_t param_len);
 
+// RSA_print prints a textual representation of |rsa| to |bio|. It returns one
+// on success or zero otherwise.
+OPENSSL_EXPORT int RSA_print(BIO *bio, const RSA *rsa, int indent);
+
 
 struct rsa_meth_st {
   struct openssl_method_common_st common;

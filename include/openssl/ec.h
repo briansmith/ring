@@ -320,7 +320,7 @@ OPENSSL_EXPORT void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag);
 
 typedef struct ec_method_st EC_METHOD;
 
-// EC_GROUP_method_of returns NULL.
+// EC_GROUP_method_of returns a dummy non-NULL pointer.
 OPENSSL_EXPORT const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group);
 
 // EC_METHOD_get_field_type returns NID_X9_62_prime_field.
