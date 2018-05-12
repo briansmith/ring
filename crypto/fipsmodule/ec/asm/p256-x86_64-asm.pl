@@ -54,9 +54,8 @@ die "can't locate x86_64-xlate.pl";
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
-# TODO(davidben): Set $addx to one once build problems are resolved.
 $avx = 2;
-$addx = 0;
+$addx = 1;
 
 $code.=<<___;
 .text
@@ -1594,7 +1593,7 @@ GFp_nistz256_sqr_mont:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	OPENSSL_ia32cap_P(%rip), %rcx
+	leaq	GFp_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 ___
