@@ -469,7 +469,7 @@ void GFp_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
 
   memcpy(ctx->Htable, serialized_ctx, GCM128_SERIALIZED_LEN);
   ctx->block = block;
-  gcm128_init_gmult_ghash(ctx, GFp_aes_block_is_aesni_encrypt(block));
+  gcm128_init_gmult_ghash(ctx, 0); // TODO
 }
 
 int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {

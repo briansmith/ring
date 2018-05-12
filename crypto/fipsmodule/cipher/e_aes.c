@@ -135,24 +135,10 @@ int GFp_vpaes_set_encrypt_key(const uint8_t *userKey, unsigned bits,
 void GFp_vpaes_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 #endif
 
-#if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
-#define AESNI
-int GFp_aesni_set_encrypt_key(const uint8_t *userKey, unsigned bits, AES_KEY *key);
-void GFp_aesni_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-static char aesni_capable(void);
-#endif
-
 typedef int (*aes_set_key_f)(const uint8_t *userKey, unsigned bits,
                              AES_KEY *key);
 
 static aes_set_key_f aes_set_key(void) {
-#if defined(AESNI)
-  if (aesni_capable()) {
-    return GFp_aesni_set_encrypt_key;
-  }
-#endif
-
 #if defined(HWAES)
   if (hwaes_capable()) {
     return GFp_aes_hw_set_encrypt_key;
@@ -174,25 +160,8 @@ static aes_set_key_f aes_set_key(void) {
   return GFp_AES_set_encrypt_key;
 }
 
-// TODO(perf): Consider inlining this.
-int GFp_aes_block_is_aesni_encrypt(aes_block_f block) {
-#if defined(AESNI)
-  return block == GFp_aesni_encrypt;
-#else
-  (void)block;
-  return 0;
-#endif
-}
-
 static aes_block_f aes_block(void) {
   // Keep this in sync with |set_set_key| and |aes_ctr|.
-
-#if defined(AESNI)
-  if (aesni_capable()) {
-    // Keep in sync with GFp_aes_block_is_aesni_encrypt.
-    return GFp_aesni_encrypt;
-  }
-#endif
 
 #if defined(HWAES)
   if (hwaes_capable()) {
@@ -218,12 +187,6 @@ static aes_block_f aes_block(void) {
 static aes_ctr_f aes_ctr(void) {
   // Keep this in sync with |set_set_key| and |aes_block|.
 
-#if defined(AESNI)
-  if (aesni_capable()) {
-    return GFp_aesni_ctr32_encrypt_blocks;
-  }
-#endif
-
 #if defined(HWAES)
   if (hwaes_capable()) {
     return GFp_aes_hw_ctr32_encrypt_blocks;
@@ -238,12 +201,6 @@ static aes_ctr_f aes_ctr(void) {
 
   return aes_ctr32_encrypt_blocks;
 }
-
-#if defined(AESNI)
-static char aesni_capable(void) {
-  return (GFp_ia32cap_P[1] & (1 << (57 - 32))) != 0;
-}
-#endif
 
 static void aes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
                                      size_t blocks, const AES_KEY *key,
@@ -351,9 +308,9 @@ int GFp_aes_gcm_open(const void *ctx_buf, uint8_t *out, size_t in_out_len,
 
 
 int GFp_has_aes_hardware(void) {
-#if defined(AESNI)
-  return aesni_capable() && GFp_gcm_clmul_enabled();
-#elif defined(HWAES)
+#if defined(HWAES) && (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
+  return hwaes_capable() && GFp_gcm_clmul_enabled();
+#elif defined(HWAES) && (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
   return hwaes_capable() && GFp_is_ARMv8_PMULL_capable();
 #else
   return 0;

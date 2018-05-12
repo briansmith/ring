@@ -183,7 +183,7 @@
 #	incurred by operations on %xmm8-15. As ECB is not considered
 #	critical, nothing was done to mitigate the problem.
 
-$PREFIX="aesni";	# if $PREFIX is set to "AES", the script
+$PREFIX="aes_hw";	# if $PREFIX is set to "AES", the script
 			# generates drop-in replacement for
 			# crypto/aes/asm/aes-x86_64.pl:-)
 
@@ -201,7 +201,7 @@ die "can't locate x86_64-xlate.pl";
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
-$movkey = $PREFIX eq "aesni" ? "movups" : "movups";
+$movkey = $PREFIX eq "aes_hw" ? "movups" : "movups";
 @_4args=$win64?	("%rcx","%rdx","%r8", "%r9") :	# Win64 order
 		("%rdi","%rsi","%rdx","%rcx");	# Unix order
 
@@ -556,18 +556,18 @@ _aesni_${dir}rypt8:
 .size	_aesni_${dir}rypt8,.-_aesni_${dir}rypt8
 ___
 }
-&aesni_generate2("enc") if ($PREFIX eq "aesni");
-&aesni_generate3("enc") if ($PREFIX eq "aesni");
-&aesni_generate4("enc") if ($PREFIX eq "aesni");
-&aesni_generate6("enc") if ($PREFIX eq "aesni");
-&aesni_generate8("enc") if ($PREFIX eq "aesni");
+&aesni_generate2("enc") if ($PREFIX eq "aes_hw");
+&aesni_generate3("enc") if ($PREFIX eq "aes_hw");
+&aesni_generate4("enc") if ($PREFIX eq "aes_hw");
+&aesni_generate6("enc") if ($PREFIX eq "aes_hw");
+&aesni_generate8("enc") if ($PREFIX eq "aes_hw");
 
-if ($PREFIX eq "aesni") {
+if ($PREFIX eq "aes_hw") {
 {
 ######################################################################
-# void GFp_aesni_ctr32_encrypt_blocks (const void *in, void *out,
-#                                      size_t blocks, const AES_KEY *key,
-#                                      const char *ivec);
+# void GFp_aes_hw_ctr32_encrypt_blocks (const void *in, void *out,
+#                                       size_t blocks, const AES_KEY *key,
+#                                       const char *ivec);
 #
 # Handles only complete blocks, operates on 32-bit counter and
 # does not update *ivec! (see crypto/modes/ctr128.c for details)
@@ -582,10 +582,10 @@ my ($key0,$ctr)=("%ebp","${ivp}d");
 my $frame_size = 0x80 + ($win64?160:0);
 
 $code.=<<___;
-.globl	GFp_aesni_ctr32_encrypt_blocks
-.type	GFp_aesni_ctr32_encrypt_blocks,\@function,5
+.globl	GFp_${PREFIX}_ctr32_encrypt_blocks
+.type	GFp_${PREFIX}_ctr32_encrypt_blocks,\@function,5
 .align	16
-GFp_aesni_ctr32_encrypt_blocks:
+GFp_${PREFIX}_ctr32_encrypt_blocks:
 .cfi_startproc
 	cmp	\$1,$len
 	jne	.Lctr32_bulk
@@ -1138,7 +1138,7 @@ $code.=<<___;
 .Lctr32_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_aesni_ctr32_encrypt_blocks,.-GFp_aesni_ctr32_encrypt_blocks
+.size	GFp_${PREFIX}_ctr32_encrypt_blocks,.-GFp_${PREFIX}_ctr32_encrypt_blocks
 ___
 } }}
 
@@ -1584,7 +1584,7 @@ $disp="%r9";
 $code.=<<___;
 .extern	__imp_RtlVirtualUnwind
 ___
-$code.=<<___ if ($PREFIX eq "aesni");
+$code.=<<___ if ($PREFIX eq "aes_hw");
 .type	ctr_xts_se_handler,\@abi-omnipotent
 .align	16
 ctr_xts_se_handler:
@@ -1671,9 +1671,9 @@ ctr_xts_se_handler:
 .section	.pdata
 .align	4
 ___
-$code.=<<___ if ($PREFIX eq "aesni");
-	.rva	.LSEH_begin_GFp_aesni_ctr32_encrypt_blocks
-	.rva	.LSEH_end_GFp_aesni_ctr32_encrypt_blocks
+$code.=<<___ if ($PREFIX eq "aes_hw");
+	.rva	.LSEH_begin_GFp_${PREFIX}_ctr32_encrypt_blocks
+	.rva	.LSEH_end_GFp_${PREFIX}_ctr32_encrypt_blocks
 	.rva	.LSEH_info_GFp_ctr32
 ___
 $code.=<<___;
@@ -1683,7 +1683,7 @@ $code.=<<___;
 .section	.xdata
 .align	8
 ___
-$code.=<<___ if ($PREFIX eq "aesni");
+$code.=<<___ if ($PREFIX eq "aes_hw");
 .LSEH_info_GFp_ctr32:
 	.byte	9,0,0,0
 	.rva	ctr_xts_se_handler

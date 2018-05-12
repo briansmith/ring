@@ -24,21 +24,28 @@ extern "C" {
 #endif
 
 
-#if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
+#if !defined(OPENSSL_NO_ASM)
+#if defined(OPENSSL_X86_64)
+#define HWAES
+
+static int hwaes_capable(void) {
+  return (GFp_ia32cap_P[1] & (1 << (57 - 32))) != 0;
+}
+#elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 #define HWAES
 
 static int hwaes_capable(void) {
   return GFp_is_ARMv8_AES_capable();
 }
-#endif  // !NO_ASM && (AES || AARCH64)
-
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_PPC64LE)
+#elif defined(OPENSSL_PPC64LE)
 #define HWAES
 
 static int hwaes_capable(void) {
   return GFp_is_PPC64LE_vcrypto_capable();
 }
-#endif  // !NO_ASM && PPC64LE
+#endif
+
+#endif  // !NO_ASM
 
 
 #if defined(HWAES)
