@@ -1563,7 +1563,7 @@ static void fe_pow22523(fe *out, const fe *z) {
 
 // Group operations.
 
-static int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
+int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   fe u;
   fe_loose v;
   fe v3;
@@ -1594,7 +1594,7 @@ static int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   if (fe_isnonzero(&check)) {
     fe_add(&check, &vxx, &u);
     if (fe_isnonzero(&check)) {
-      return -1;
+      return 0;
     }
     fe_mul_ttt(&h->X, &h->X, &sqrtm1);
   }
@@ -1606,7 +1606,7 @@ static int x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   }
 
   fe_mul_ttt(&h->T, &h->X, &h->Y);
-  return 0;
+  return 1;
 }
 
 static void ge_p2_0(ge_p2 *h) {
@@ -3010,12 +3010,6 @@ void GFp_x25519_fe_tobytes(uint8_t s[32], const fe *h) {
 void GFp_x25519_ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
                                              const ge_p3 *A, const uint8_t *b) {
   ge_double_scalarmult_vartime(r, a, A, b);
-}
-
-// XXX: |x25519_ge_frombytes_vartime| returns 0 on success, -1 on
-// failure.
-int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
-  return x25519_ge_frombytes_vartime(h, s) == 0;
 }
 
 void GFp_x25519_sc_mask(uint8_t a[32]) {
