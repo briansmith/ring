@@ -77,8 +77,17 @@ int GFp_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out, size_t in_out_len,
                      uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
                      const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
                      const uint8_t *ad, size_t ad_len);
+int GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
+                            AES_KEY *key);
+void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 int GFp_has_aes_hardware(void);
 
+
+#if !defined(GFp_C_AES)
+int GFp_asm_AES_set_encrypt_key(const uint8_t *key, unsigned bits,
+                                AES_KEY *aeskey);
+void GFp_asm_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+#endif
 
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
@@ -124,15 +133,13 @@ int GFp_vpaes_set_encrypt_key(const uint8_t *userKey, unsigned bits,
 void GFp_vpaes_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 #endif
 
-typedef int (*aes_set_key_f)(const uint8_t *userKey, unsigned bits,
-                             AES_KEY *key);
-
-static aes_set_key_f aes_set_key(void) {
-  // Keep this in sync with |aes_block| and |aes_ctr|.
+int GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
+                            AES_KEY *key) {
+  // Keep this in sync with |GFp_AES_set_encrypt_key| and |aes_ctr|.
 
 #if defined(HWAES)
   if (hwaes_capable()) {
-    return GFp_aes_hw_set_encrypt_key;
+    return GFp_aes_hw_set_encrypt_key(user_key, bits, key);
   }
 #endif
 
@@ -141,15 +148,19 @@ static aes_set_key_f aes_set_key(void) {
 #error "BSAES and VPAES are enabled at the same time, unexpectedly.'
 #endif
   if (vpaes_capable()) {
-    return GFp_vpaes_set_encrypt_key;
+    return GFp_vpaes_set_encrypt_key(user_key, bits, key);
   }
 #endif
 
-  return GFp_AES_set_encrypt_key;
+#if defined(GFp_C_AES)
+  return GFp_aes_c_set_encrypt_key(user_key, bits, key);
+#else
+  return GFp_asm_AES_set_encrypt_key(user_key, bits, key);
+#endif
 }
 
 static aes_block_f aes_block(void) {
-  // Keep this in sync with |set_set_key| and |aes_ctr|.
+  // Keep this in sync with |GFp_AES_set_encrypt_key| and |aes_ctr|.
 
 #if defined(HWAES)
   if (hwaes_capable()) {
@@ -166,7 +177,15 @@ static aes_block_f aes_block(void) {
   }
 #endif
 
-  return GFp_AES_encrypt;
+#if defined(GFp_C_AES)
+  return GFp_aes_c_encrypt;
+#else
+  return GFp_asm_AES_encrypt;
+#endif
+}
+
+void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+  (aes_block())(in, out, key);
 }
 
 static aes_ctr_f aes_ctr(void) {
@@ -221,7 +240,7 @@ int GFp_aes_gcm_init(void *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
 
   // XXX: Ignores return value. TODO: These functions should return |void|
   // anyway.
-  (void)(aes_set_key())(key, (unsigned)key_len * 8, &ks);
+  GFp_AES_set_encrypt_key(key, (unsigned)key_len * 8, &ks);
 
   GFp_gcm128_init_serialized((uint8_t *)ctx_buf + sizeof(ks), &ks, aes_block());
   memcpy(ctx_buf, &ks, sizeof(ks));

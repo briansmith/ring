@@ -55,8 +55,7 @@
 #include "../modes/internal.h"
 
 
-#if defined(OPENSSL_NO_ASM) || \
-    (!defined(OPENSSL_X86) && !defined(OPENSSL_X86_64) && !defined(OPENSSL_ARM))
+#if defined(GFp_C_AES)
 
 // Te0[x] = S [x].[02, 01, 01, 03];
 // Te1[x] = S [x].[03, 02, 01, 01];
@@ -285,8 +284,8 @@ static const uint32_t rcon[] = {
     // for 128-bit blocks, Rijndael never uses more than 10 rcon values
 };
 
-int GFp_AES_set_encrypt_key(const uint8_t *key, unsigned bits,
-                            AES_KEY *aeskey) {
+int GFp_aes_c_set_encrypt_key(const uint8_t *key, unsigned bits,
+                              AES_KEY *aeskey) {
   uint32_t *rk;
   int i = 0;
   uint32_t temp;
@@ -360,7 +359,7 @@ int GFp_AES_set_encrypt_key(const uint8_t *key, unsigned bits,
   return 0;
 }
 
-void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+void GFp_aes_c_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   const uint32_t *rk;
   uint32_t s0, s1, s2, s3, t0, t1, t2, t3;
   int r;
@@ -421,42 +420,5 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   to_be_u32_ptr(out + 12, s3);
 }
 
-#else
+#endif  // defined(GFp_C_AES)
 
-// In this case several functions are provided by asm code. However, one cannot
-// control asm symbol visibility with command line flags and such so they are
-// always hidden and wrapped by these C functions, which can be so
-// controlled.
-//
-// Be aware that on x86(-64), the asm_AES_* functions are incompatible with the
-// aes_hw_* functions. The latter set |AES_KEY.rounds| to one less than the true
-// value, which breaks the former. Therefore the two functions cannot mix.
-//
-// On AArch64, we don't have asm_AES_* functions and so must use the generic
-// versions when hardware support isn't provided. However, the Aarch64 assembly
-// doesn't have the same compatibility problem.
-
-void GFp_asm_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
-#if defined(HWAES)
-  if (hwaes_capable()) {
-    GFp_aes_hw_encrypt(in, out, key);
-    return;
-  }
-#endif
-  GFp_asm_AES_encrypt(in, out, key);
-}
-
-int GFp_asm_AES_set_encrypt_key(const uint8_t *key, unsigned bits,
-                                AES_KEY *aeskey);
-int GFp_AES_set_encrypt_key(const uint8_t *key, unsigned bits,
-                            AES_KEY *aeskey) {
-#if defined(HWAES)
-  if (hwaes_capable()) {
-    return GFp_aes_hw_set_encrypt_key(key, bits, aeskey);
-  }
-#endif
-  return GFp_asm_AES_set_encrypt_key(key, bits, aeskey);
-}
-
-#endif  // OPENSSL_NO_ASM || (!OPENSSL_X86 && !OPENSSL_X86_64 && !OPENSSL_ARM)
