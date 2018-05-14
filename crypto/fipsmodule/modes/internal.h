@@ -189,9 +189,9 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
                        const uint8_t *gcm_key);
 
 // CRYPTO_gcm128_init initialises |ctx| to use |block| (typically AES) with
-// the given key. |is_aesni_encrypt| is one if |block| is |aesni_encrypt|.
+// the given key. |block_is_hwaes| is one if |block| is |aes_hw_encrypt|.
 OPENSSL_EXPORT void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *key,
-                                       block128_f block, int is_aesni_encrypt);
+                                       block128_f block, int block_is_hwaes);
 
 // CRYPTO_gcm128_setiv sets the IV (nonce) for |ctx|. The |key| must be the
 // same key that was passed to |CRYPTO_gcm128_init|.

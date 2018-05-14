@@ -189,38 +189,6 @@ static void vpaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 }
 #endif
 
-#if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
-int aesni_set_encrypt_key(const uint8_t *userKey, int bits, AES_KEY *key);
-int aesni_set_decrypt_key(const uint8_t *userKey, int bits, AES_KEY *key);
-
-void aesni_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void aesni_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-
-void aesni_ecb_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                       const AES_KEY *key, int enc);
-void aesni_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                       const AES_KEY *key, uint8_t *ivec, int enc);
-
-#else
-
-// On other platforms, aesni_capable() will always return false and so the
-// following will never be called.
-static void aesni_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
-  abort();
-}
-static int aesni_set_encrypt_key(const uint8_t *userKey, int bits,
-                                 AES_KEY *key) {
-  abort();
-}
-static void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
-                                       size_t blocks, const void *key,
-                                       const uint8_t *ivec) {
-  abort();
-}
-
-#endif
-
 static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
                         const uint8_t *iv, int enc) {
   int ret, mode;
@@ -337,26 +305,13 @@ static int aes_ofb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   return 1;
 }
 
-static char aesni_capable(void);
-
 ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
                          block128_f *out_block, const uint8_t *key,
                          size_t key_bytes) {
-  if (aesni_capable()) {
-    aesni_set_encrypt_key(key, key_bytes * 8, aes_key);
-    if (gcm_ctx != NULL) {
-      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)aesni_encrypt, 1);
-    }
-    if (out_block) {
-      *out_block = (block128_f) aesni_encrypt;
-    }
-    return (ctr128_f)aesni_ctr32_encrypt_blocks;
-  }
-
   if (hwaes_capable()) {
     aes_hw_set_encrypt_key(key, key_bytes * 8, aes_key);
     if (gcm_ctx != NULL) {
-      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)aes_hw_encrypt, 0);
+      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)aes_hw_encrypt, 1);
     }
     if (out_block) {
       *out_block = (block128_f) aes_hw_encrypt;
@@ -811,126 +766,22 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_gcm_generic) {
   out->ctrl = aes_gcm_ctrl;
 }
 
-#if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
+#if defined(HWAES_ECB)
 
-// AES-NI section.
-
-static char aesni_capable(void) {
-  return (OPENSSL_ia32cap_P[1] & (1 << (57 - 32))) != 0;
-}
-
-static int aesni_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
-                          const uint8_t *iv, int enc) {
-  int ret, mode;
-  EVP_AES_KEY *dat = (EVP_AES_KEY *)ctx->cipher_data;
-
-  mode = ctx->cipher->flags & EVP_CIPH_MODE_MASK;
-  if ((mode == EVP_CIPH_ECB_MODE || mode == EVP_CIPH_CBC_MODE) && !enc) {
-    ret = aesni_set_decrypt_key(key, ctx->key_len * 8, ctx->cipher_data);
-    dat->block = (block128_f)aesni_decrypt;
-    dat->stream.cbc =
-        mode == EVP_CIPH_CBC_MODE ? (cbc128_f)aesni_cbc_encrypt : NULL;
-  } else {
-    ret = aesni_set_encrypt_key(key, ctx->key_len * 8, ctx->cipher_data);
-    dat->block = (block128_f)aesni_encrypt;
-    if (mode == EVP_CIPH_CBC_MODE) {
-      dat->stream.cbc = (cbc128_f)aesni_cbc_encrypt;
-    } else if (mode == EVP_CIPH_CTR_MODE) {
-      dat->stream.ctr = (ctr128_f)aesni_ctr32_encrypt_blocks;
-    } else {
-      dat->stream.cbc = NULL;
-    }
-  }
-
-  if (ret < 0) {
-    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_AES_KEY_SETUP_FAILED);
-    return 0;
-  }
-
-  return 1;
-}
-
-static int aesni_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
-                            const uint8_t *in, size_t len) {
-  aesni_cbc_encrypt(in, out, len, ctx->cipher_data, ctx->iv, ctx->encrypt);
-
-  return 1;
-}
-
-static int aesni_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
-                            const uint8_t *in, size_t len) {
+static int aes_hw_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out,
+                             const uint8_t *in, size_t len) {
   size_t bl = ctx->cipher->block_size;
 
   if (len < bl) {
     return 1;
   }
 
-  aesni_ecb_encrypt(in, out, len, ctx->cipher_data, ctx->encrypt);
+  aes_hw_ecb_encrypt(in, out, len, ctx->cipher_data, ctx->encrypt);
 
   return 1;
 }
 
-static int aesni_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
-                              const uint8_t *iv, int enc) {
-  EVP_AES_GCM_CTX *gctx = ctx->cipher_data;
-  if (!iv && !key) {
-    return 1;
-  }
-  if (key) {
-    aesni_set_encrypt_key(key, ctx->key_len * 8, &gctx->ks.ks);
-    CRYPTO_gcm128_init(&gctx->gcm, &gctx->ks, (block128_f)aesni_encrypt, 1);
-    gctx->ctr = (ctr128_f)aesni_ctr32_encrypt_blocks;
-    // If we have an iv can set it directly, otherwise use
-    // saved IV.
-    if (iv == NULL && gctx->iv_set) {
-      iv = gctx->iv;
-    }
-    if (iv) {
-      CRYPTO_gcm128_setiv(&gctx->gcm, &gctx->ks.ks, iv, gctx->ivlen);
-      gctx->iv_set = 1;
-    }
-    gctx->key_set = 1;
-  } else {
-    // If key set use IV, otherwise copy
-    if (gctx->key_set) {
-      CRYPTO_gcm128_setiv(&gctx->gcm, &gctx->ks.ks, iv, gctx->ivlen);
-    } else {
-      OPENSSL_memcpy(gctx->iv, iv, gctx->ivlen);
-    }
-    gctx->iv_set = 1;
-    gctx->iv_gen = 0;
-  }
-  return 1;
-}
-
-DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_128_cbc) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-
-  out->nid = NID_aes_128_cbc;
-  out->block_size = 16;
-  out->key_len = 16;
-  out->iv_len = 16;
-  out->ctx_size = sizeof(EVP_AES_KEY);
-  out->flags = EVP_CIPH_CBC_MODE;
-  out->init = aesni_init_key;
-  out->cipher = aesni_cbc_cipher;
-}
-
-DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_128_ctr) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-
-  out->nid = NID_aes_128_ctr;
-  out->block_size = 1;
-  out->key_len = 16;
-  out->iv_len = 16;
-  out->ctx_size = sizeof(EVP_AES_KEY);
-  out->flags = EVP_CIPH_CTR_MODE;
-  out->init = aesni_init_key;
-  out->cipher = aes_ctr_cipher;
-}
-
-DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_128_ecb) {
+DEFINE_LOCAL_DATA(EVP_CIPHER, aes_hw_128_ecb) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_128_ecb;
@@ -938,67 +789,11 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_128_ecb) {
   out->key_len = 16;
   out->ctx_size = sizeof(EVP_AES_KEY);
   out->flags = EVP_CIPH_ECB_MODE;
-  out->init = aesni_init_key;
-  out->cipher = aesni_ecb_cipher;
+  out->init = aes_init_key;
+  out->cipher = aes_hw_ecb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_128_ofb) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-
-  out->nid = NID_aes_128_ofb128;
-  out->block_size = 1;
-  out->key_len = 16;
-  out->iv_len = 16;
-  out->ctx_size = sizeof(EVP_AES_KEY);
-  out->flags = EVP_CIPH_OFB_MODE;
-  out->init = aesni_init_key;
-  out->cipher = aes_ofb_cipher;
-}
-
-DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_128_gcm) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-
-  out->nid = NID_aes_128_gcm;
-  out->block_size = 1;
-  out->key_len = 16;
-  out->iv_len = 12;
-  out->ctx_size = sizeof(EVP_AES_GCM_CTX);
-  out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV |
-               EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
-               EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
-  out->init = aesni_gcm_init_key;
-  out->cipher = aes_gcm_cipher;
-  out->cleanup = aes_gcm_cleanup;
-  out->ctrl = aes_gcm_ctrl;
-}
-
-DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_192_cbc) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-
-  out->nid = NID_aes_192_cbc;
-  out->block_size = 16;
-  out->key_len = 24;
-  out->iv_len = 16;
-  out->ctx_size = sizeof(EVP_AES_KEY);
-  out->flags = EVP_CIPH_CBC_MODE;
-  out->init = aesni_init_key;
-  out->cipher = aesni_cbc_cipher;
-}
-
-DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_192_ctr) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-
-  out->nid = NID_aes_192_ctr;
-  out->block_size = 1;
-  out->key_len = 24;
-  out->iv_len = 16;
-  out->ctx_size = sizeof(EVP_AES_KEY);
-  out->flags = EVP_CIPH_CTR_MODE;
-  out->init = aesni_init_key;
-  out->cipher = aes_ctr_cipher;
-}
-
-DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_192_ecb) {
+DEFINE_LOCAL_DATA(EVP_CIPHER, aes_hw_192_ecb) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_192_ecb;
@@ -1006,54 +801,11 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_192_ecb) {
   out->key_len = 24;
   out->ctx_size = sizeof(EVP_AES_KEY);
   out->flags = EVP_CIPH_ECB_MODE;
-  out->init = aesni_init_key;
-  out->cipher = aesni_ecb_cipher;
+  out->init = aes_init_key;
+  out->cipher = aes_hw_ecb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_192_gcm) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-
-  out->nid = NID_aes_192_gcm;
-  out->block_size = 1;
-  out->key_len = 24;
-  out->iv_len = 12;
-  out->ctx_size = sizeof(EVP_AES_GCM_CTX);
-  out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV |
-               EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
-               EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
-  out->init = aesni_gcm_init_key;
-  out->cipher = aes_gcm_cipher;
-  out->cleanup = aes_gcm_cleanup;
-  out->ctrl = aes_gcm_ctrl;
-}
-
-DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_256_cbc) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-
-  out->nid = NID_aes_256_cbc;
-  out->block_size = 16;
-  out->key_len = 32;
-  out->iv_len = 16;
-  out->ctx_size = sizeof(EVP_AES_KEY);
-  out->flags = EVP_CIPH_CBC_MODE;
-  out->init = aesni_init_key;
-  out->cipher = aesni_cbc_cipher;
-}
-
-DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_256_ctr) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-
-  out->nid = NID_aes_256_ctr;
-  out->block_size = 1;
-  out->key_len = 32;
-  out->iv_len = 16;
-  out->ctx_size = sizeof(EVP_AES_KEY);
-  out->flags = EVP_CIPH_CTR_MODE;
-  out->init = aesni_init_key;
-  out->cipher = aes_ctr_cipher;
-}
-
-DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_256_ecb) {
+DEFINE_LOCAL_DATA(EVP_CIPHER, aes_hw_256_ecb) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
   out->nid = NID_aes_256_ecb;
@@ -1061,79 +813,49 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_256_ecb) {
   out->key_len = 32;
   out->ctx_size = sizeof(EVP_AES_KEY);
   out->flags = EVP_CIPH_ECB_MODE;
-  out->init = aesni_init_key;
-  out->cipher = aesni_ecb_cipher;
+  out->init = aes_init_key;
+  out->cipher = aes_hw_ecb_cipher;
 }
 
-DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_256_ofb) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-
-  out->nid = NID_aes_256_ofb128;
-  out->block_size = 1;
-  out->key_len = 32;
-  out->iv_len = 16;
-  out->ctx_size = sizeof(EVP_AES_KEY);
-  out->flags = EVP_CIPH_OFB_MODE;
-  out->init = aesni_init_key;
-  out->cipher = aes_ofb_cipher;
-}
-
-DEFINE_LOCAL_DATA(EVP_CIPHER, aesni_256_gcm) {
-  memset(out, 0, sizeof(EVP_CIPHER));
-
-  out->nid = NID_aes_256_gcm;
-  out->block_size = 1;
-  out->key_len = 32;
-  out->iv_len = 12;
-  out->ctx_size = sizeof(EVP_AES_GCM_CTX);
-  out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV |
-               EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
-               EVP_CIPH_CTRL_INIT | EVP_CIPH_CUSTOM_COPY |
-               EVP_CIPH_FLAG_AEAD_CIPHER;
-  out->init = aesni_gcm_init_key;
-  out->cipher = aes_gcm_cipher;
-  out->cleanup = aes_gcm_cleanup;
-  out->ctrl = aes_gcm_ctrl;
-}
-
-#define EVP_CIPHER_FUNCTION(keybits, mode)             \
-  const EVP_CIPHER *EVP_aes_##keybits##_##mode(void) { \
-    if (aesni_capable()) {                             \
-      return aesni_##keybits##_##mode();               \
-    } else {                                           \
-      return aes_##keybits##_##mode##_generic();       \
-    }                                                  \
+#define EVP_ECB_CIPHER_FUNCTION(keybits)            \
+  const EVP_CIPHER *EVP_aes_##keybits##_ecb(void) { \
+    if (hwaes_capable()) {                          \
+      return aes_hw_##keybits##_ecb();              \
+    }                                               \
+    return aes_##keybits##_ecb_generic();           \
   }
 
-#else  // ^^^  OPENSSL_X86_64 || OPENSSL_X86
+#else
 
-static char aesni_capable(void) {
-  return 0;
-}
+#define EVP_ECB_CIPHER_FUNCTION(keybits)            \
+  const EVP_CIPHER *EVP_aes_##keybits##_ecb(void) { \
+    return aes_##keybits##_ecb_generic();           \
+  }
+
+#endif  // HWAES_ECB
 
 #define EVP_CIPHER_FUNCTION(keybits, mode)             \
   const EVP_CIPHER *EVP_aes_##keybits##_##mode(void) { \
     return aes_##keybits##_##mode##_generic();         \
   }
 
-#endif
-
 EVP_CIPHER_FUNCTION(128, cbc)
 EVP_CIPHER_FUNCTION(128, ctr)
-EVP_CIPHER_FUNCTION(128, ecb)
 EVP_CIPHER_FUNCTION(128, ofb)
 EVP_CIPHER_FUNCTION(128, gcm)
 
 EVP_CIPHER_FUNCTION(192, cbc)
 EVP_CIPHER_FUNCTION(192, ctr)
-EVP_CIPHER_FUNCTION(192, ecb)
 EVP_CIPHER_FUNCTION(192, gcm)
 
 EVP_CIPHER_FUNCTION(256, cbc)
 EVP_CIPHER_FUNCTION(256, ctr)
-EVP_CIPHER_FUNCTION(256, ecb)
 EVP_CIPHER_FUNCTION(256, ofb)
 EVP_CIPHER_FUNCTION(256, gcm)
+
+EVP_ECB_CIPHER_FUNCTION(128)
+EVP_ECB_CIPHER_FUNCTION(192)
+EVP_ECB_CIPHER_FUNCTION(256)
 
 
 #define EVP_AEAD_AES_GCM_TAG_LEN 16
@@ -1429,7 +1151,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm_tls12) {
 
 int EVP_has_aes_hardware(void) {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-  return aesni_capable() && crypto_gcm_clmul_enabled();
+  return hwaes_capable() && crypto_gcm_clmul_enabled();
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
   return hwaes_capable() && CRYPTO_is_ARMv8_PMULL_capable();
 #else

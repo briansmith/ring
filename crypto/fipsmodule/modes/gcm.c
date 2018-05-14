@@ -418,7 +418,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
 }
 
 void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *aes_key,
-                        block128_f block, int is_aesni_encrypt) {
+                        block128_f block, int block_is_hwaes) {
   OPENSSL_memset(ctx, 0, sizeof(*ctx));
   ctx->block = block;
 
@@ -430,7 +430,7 @@ void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *aes_key,
   CRYPTO_ghash_init(&ctx->gmult, &ctx->ghash, &ctx->H, ctx->Htable, &is_avx,
                     gcm_key);
 
-  ctx->use_aesni_gcm_crypt = (is_avx && is_aesni_encrypt) ? 1 : 0;
+  ctx->use_aesni_gcm_crypt = (is_avx && block_is_hwaes) ? 1 : 0;
 }
 
 void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const void *key,
