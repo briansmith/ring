@@ -21,23 +21,6 @@
 use {c, chacha, constant_time, error, polyfill};
 use core;
 
-// The assembly functions we call expect the state to be 8-byte aligned. We do
-// this manually, by copying the data into an aligned slice, rather than by
-// asking the compiler to align the `Opaque` struct.
-fn with_aligned<F>(opaque: &mut Opaque, f: F)
-    where F: FnOnce(&mut Opaque)
-{
-    let mut buf = [0u8; OPAQUE_LEN + 7];
-    let aligned_start = (buf.as_ptr() as usize + 7) & !7;
-    let offset = aligned_start - (buf.as_ptr() as usize);
-    let aligned_buf =
-        slice_as_array_ref_mut!(
-            &mut buf[offset..(offset + OPAQUE_LEN)], OPAQUE_LEN).unwrap();
-    aligned_buf.copy_from_slice(&opaque[..]);
-    f(aligned_buf);
-    opaque.copy_from_slice(aligned_buf);
-}
-
 impl SigningContext {
     #[inline]
     pub fn from_key(key: Key) -> SigningContext {
@@ -50,7 +33,7 @@ impl SigningContext {
         let key = slice_as_array_ref!(key, 16).unwrap();
 
         let mut ctx = SigningContext {
-            opaque: [0u8; OPAQUE_LEN],
+            opaque: Opaque([0u8; OPAQUE_LEN]),
             // TODO: When we can get explicit alignment, make `nonce` an
             // aligned `u8[16]` and get rid of this `u8[16]` -> `u32[4]`
             // conversion.
@@ -65,69 +48,60 @@ impl SigningContext {
             func: Funcs {
                 blocks_fn: GFp_poly1305_blocks,
                 emit_fn: GFp_poly1305_emit
-            }
+            },
         };
 
-        { // borrow ctx
-            let SigningContext { opaque, func, .. } = &mut ctx;
-            with_aligned(opaque, |opaque| {
-            // On some platforms `init()` doesn't initialize `funcs`. The
-            // return value of `init()` indicates whether it did or not. Since
-            // we already gave `func` a default value above, we can ignore the
-            // return value assuming `init()` doesn't change `func` if it chose
-            // not to initialize it. Note that this is different than what
-            // BoringSSL does.
-                let _ = init(opaque, key, func);
-            });
-        }
+        // On some platforms `init()` doesn't initialize `funcs`. The
+        // return value of `init()` indicates whether it did or not. Since
+        // we already gave `func` a default value above, we can ignore the
+        // return value assuming `init()` doesn't change `func` if it chose
+        // not to initialize it. Note that this is different than what
+        // BoringSSL does.
+        let _ = init(&mut ctx.opaque, key, &mut ctx.func);
 
         ctx
     }
 
     pub fn update(&mut self, mut input: &[u8]) {
         let SigningContext { opaque, buf, buf_used, func, .. } = self;
-        with_aligned(opaque, |opaque: &mut Opaque| {
-            if *buf_used != 0 {
-                let todo = core::cmp::min(input.len(), BLOCK_LEN - *buf_used);
+        if *buf_used != 0 {
+            let todo = core::cmp::min(input.len(), BLOCK_LEN - *buf_used);
 
-                buf[*buf_used..(*buf_used + todo)].copy_from_slice(
-                    &input[..todo]);
-                *buf_used += todo;
-                input = &input[todo..];
+            buf[*buf_used..(*buf_used + todo)].copy_from_slice(
+                &input[..todo]);
+            *buf_used += todo;
+            input = &input[todo..];
 
-                if *buf_used == BLOCK_LEN {
-                    func.blocks(opaque, buf, Pad::Pad);
-                    *buf_used = 0;
-                }
+            if *buf_used == BLOCK_LEN {
+                func.blocks(opaque, buf, Pad::Pad);
+                *buf_used = 0;
             }
+        }
 
-            if input.len() >= BLOCK_LEN {
-                let todo = input.len() & !(BLOCK_LEN - 1);
-                let (complete_blocks, remainder) = input.split_at(todo);
-                func.blocks(opaque, complete_blocks, Pad::Pad);
-                input = remainder;
-            }
+        if input.len() >= BLOCK_LEN {
+            let todo = input.len() & !(BLOCK_LEN - 1);
+            let (complete_blocks, remainder) = input.split_at(todo);
+            func.blocks(opaque, complete_blocks, Pad::Pad);
+            input = remainder;
+        }
 
-            if input.len() != 0 {
-                buf[..input.len()].copy_from_slice(input);
-                *buf_used = input.len();
-            }
-        });
+        if input.len() != 0 {
+            buf[..input.len()].copy_from_slice(input);
+            *buf_used = input.len();
+        }
     }
 
     pub fn sign(mut self, tag_out: &mut Tag) {
         let SigningContext { opaque, nonce, buf, buf_used, func } = &mut self;
-        with_aligned(opaque, |opaque| {
-            if *buf_used != 0 {
-                buf[*buf_used] = 1;
-                for byte in &mut buf[(*buf_used + 1)..] {
-                    *byte = 0;
-                }
-                func.blocks(opaque, &buf[..], Pad::AlreadyPadded);
+        if *buf_used != 0 {
+            buf[*buf_used] = 1;
+            for byte in &mut buf[(*buf_used + 1)..] {
+                *byte = 0;
             }
+            func.blocks(opaque, &buf[..], Pad::AlreadyPadded);
+        }
 
-            func.emit(opaque, tag_out, nonce);
-        });
+        func.emit(opaque, tag_out, nonce);
     }
 }
 
@@ -200,9 +174,21 @@ pub const TAG_LEN: usize = BLOCK_LEN;
 const BLOCK_LEN: usize = 16;
 
 /// The memory manipulated by the assembly.
-type Opaque = [u8; OPAQUE_LEN];
-
+///
+/// XXX: The `extern(C)` functions that are declared here as taking
+/// references to `Opaque` really take pointers to 8-byte-aligned
+/// arrays.
+/// TODO: Add `repr(transparent)` if/when `repr(transparent)` and
+/// `repr(align)` can be used together, to ensure this is safe.
+#[repr(C, align(8))]
+struct Opaque([u8; OPAQUE_LEN]);
 const OPAQUE_LEN: usize = 192;
+
+fn assert_opaque_alignment(state: &Opaque) {
+    assert_eq!(state.0.as_ptr() as usize % 8, 0);
+    let as_ptr: *const Opaque = state;
+    assert_eq!(as_ptr as usize, state.0.as_ptr() as usize);
+}
 
 #[repr(C)]
 struct Funcs {
@@ -213,7 +199,6 @@ struct Funcs {
 
 #[inline]
 fn init(state: &mut Opaque, key: &KeyBytes, func: &mut Funcs) -> i32 {
-    debug_assert_eq!(state.as_ptr() as usize % 8, 0);
     unsafe {
         GFp_poly1305_init_asm(state, key, func)
     }
@@ -228,7 +213,7 @@ enum Pad {
 impl Funcs {
     #[inline]
     fn blocks(&self, state: &mut Opaque, data: &[u8], should_pad: Pad) {
-        debug_assert_eq!(state.as_ptr() as usize % 8, 0);
+        assert_opaque_alignment(state);
         unsafe {
             (self.blocks_fn)(state, data.as_ptr(), data.len(), should_pad);
         }
@@ -236,7 +221,7 @@ impl Funcs {
 
     #[inline]
     fn emit(&self, state: &mut Opaque, tag_out: &mut Tag, nonce: &Nonce) {
-        debug_assert_eq!(state.as_ptr() as usize % 8, 0);
+        assert_opaque_alignment(state);
         unsafe {
              (self.emit_fn)(state, tag_out, nonce);
         }
