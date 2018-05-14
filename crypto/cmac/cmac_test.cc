@@ -183,3 +183,85 @@ TEST(CMACTest, Wycheproof) {
     }
   });
 }
+
+static void RunCAVPTest(const char *path, const EVP_CIPHER *cipher,
+                        bool is_3des) {
+  FileTestGTest(path, [&](FileTest *t) {
+    t->IgnoreAttribute("Count");
+    t->IgnoreAttribute("Klen");
+    std::string t_len, m_len, result;
+    ASSERT_TRUE(t->GetAttribute(&t_len, "Tlen"));
+    ASSERT_TRUE(t->GetAttribute(&m_len, "Mlen"));
+    ASSERT_TRUE(t->GetAttribute(&result, "Result"));
+    std::vector<uint8_t> key, msg, mac;
+    if (is_3des) {
+      std::vector<uint8_t> key2, key3;
+      ASSERT_TRUE(t->GetBytes(&key, "Key1"));
+      ASSERT_TRUE(t->GetBytes(&key2, "Key2"));
+      ASSERT_TRUE(t->GetBytes(&key3, "Key3"));
+      key.insert(key.end(), key2.begin(), key2.end());
+      key.insert(key.end(), key3.begin(), key3.end());
+    } else {
+      ASSERT_TRUE(t->GetBytes(&key, "Key"));
+    }
+    ASSERT_TRUE(t->GetBytes(&msg, "Msg"));
+    ASSERT_TRUE(t->GetBytes(&mac, "Mac"));
+
+    // CAVP's uses a non-empty Msg attribute and zero Mlen for the empty string.
+    if (atoi(m_len.c_str()) == 0) {
+      msg.clear();
+    } else {
+      EXPECT_EQ(static_cast<size_t>(atoi(m_len.c_str())), msg.size());
+    }
+
+    size_t tag_len = static_cast<size_t>(atoi(t_len.c_str()));
+
+    uint8_t out[16];
+    bssl::UniquePtr<CMAC_CTX> ctx(CMAC_CTX_new());
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(CMAC_Init(ctx.get(), key.data(), key.size(), cipher, NULL));
+    ASSERT_TRUE(CMAC_Update(ctx.get(), msg.data(), msg.size()));
+    size_t out_len;
+    ASSERT_TRUE(CMAC_Final(ctx.get(), out, &out_len));
+    // Truncate the tag, if requested.
+    out_len = std::min(out_len, tag_len);
+
+    ASSERT_FALSE(result.empty());
+    if (result[0] == 'P') {
+      EXPECT_EQ(Bytes(mac), Bytes(out, out_len));
+
+      // Test the streaming API as well.
+      ASSERT_TRUE(CMAC_Reset(ctx.get()));
+      for (uint8_t b : msg) {
+        ASSERT_TRUE(CMAC_Update(ctx.get(), &b, 1));
+      }
+      ASSERT_TRUE(CMAC_Final(ctx.get(), out, &out_len));
+      out_len = std::min(out_len, tag_len);
+      EXPECT_EQ(Bytes(mac), Bytes(out, out_len));
+    } else {
+      // CAVP's invalid tests assume the implementation internally does the
+      // comparison, whereas our API only computes the tag. Check that they're
+      // not equal, but these tests are mostly not useful for us.
+      EXPECT_NE(Bytes(mac), Bytes(out, out_len));
+    }
+  });
+}
+
+TEST(CMACTest, CAVPAES128) {
+  RunCAVPTest("crypto/cmac/cavp_aes128_cmac_tests.txt", EVP_aes_128_cbc(),
+              false);
+}
+
+TEST(CMACTest, CAVPAES192) {
+  RunCAVPTest("crypto/cmac/cavp_aes192_cmac_tests.txt", EVP_aes_192_cbc(),
+              false);
+}
+
+TEST(CMACTest, CAVPAES256) {
+  RunCAVPTest("crypto/cmac/cavp_aes256_cmac_tests.txt", EVP_aes_256_cbc(),
+              false);
+}
+
+TEST(CMACTest, CAVP3DES) {
+  RunCAVPTest("crypto/cmac/cavp_3des_cmac_tests.txt", EVP_des_ede3_cbc(), true);
+}
