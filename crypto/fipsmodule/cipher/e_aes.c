@@ -139,19 +139,20 @@ typedef int (*aes_set_key_f)(const uint8_t *userKey, unsigned bits,
                              AES_KEY *key);
 
 static aes_set_key_f aes_set_key(void) {
+  // Keep this in sync with |aes_block| and |aes_ctr|.
+
 #if defined(HWAES)
   if (hwaes_capable()) {
     return GFp_aes_hw_set_encrypt_key;
   }
 #endif
 
+#if defined(VPAES)
 #if defined(BSAES)
   if (bsaes_capable()) {
     return GFp_AES_set_encrypt_key;
   }
 #endif
-
-#if defined(VPAES)
   if (vpaes_capable()) {
     return GFp_vpaes_set_encrypt_key;
   }
