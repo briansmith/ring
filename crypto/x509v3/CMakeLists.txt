@@ -31,6 +31,7 @@ add_library(
   v3_int.c
   v3_lib.c
   v3_ncons.c
+  v3_ocsp.c
   v3_pci.c
   v3_pcia.c
   v3_pcons.c
