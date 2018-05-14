@@ -82,29 +82,18 @@ int GFp_has_aes_hardware(void);
 
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
-
 #define VPAES
 static char vpaes_capable(void) {
   return (GFp_ia32cap_P[1] & (1 << (41 - 32))) != 0;
 }
-
-#if defined(OPENSSL_X86_64)
-#define BSAES
-static char bsaes_capable(void) {
-  return vpaes_capable();
-}
 #endif
 
-#elif !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
-
-#if defined(OPENSSL_ARM) && __ARM_MAX_ARCH__ >= 7
+#if !defined(OPENSSL_NO_ASM) && \
+    defined(OPENSSL_ARM) && __ARM_MAX_ARCH__ >= 7
 #define BSAES
 static char bsaes_capable(void) {
   return GFp_is_NEON_capable();
 }
-#endif
-
 #endif
 
 #if defined(BSAES)
@@ -149,9 +138,7 @@ static aes_set_key_f aes_set_key(void) {
 
 #if defined(VPAES)
 #if defined(BSAES)
-  if (bsaes_capable()) {
-    return GFp_AES_set_encrypt_key;
-  }
+#error "BSAES and VPAES are enabled at the same time, unexpectedly.'
 #endif
   if (vpaes_capable()) {
     return GFp_vpaes_set_encrypt_key;
@@ -172,11 +159,8 @@ static aes_block_f aes_block(void) {
 
 #if defined(VPAES)
 #if defined(BSAES)
-  if (bsaes_capable()) {
-    return GFp_AES_encrypt;
-  }
+#error "BSAES and VPAES are enabled at the same time, unexpectedly.'
 #endif
-
   if (vpaes_capable()) {
     return GFp_vpaes_encrypt;
   }

@@ -92,7 +92,6 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
 
     (&[X86_64], "crypto/fipsmodule/aes/asm/aes-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/aesni-x86_64.pl"),
-    (&[X86_64], "crypto/fipsmodule/aes/asm/bsaes-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/vpaes-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/bn/asm/x86_64-mont.pl"),
     (&[X86_64], "crypto/fipsmodule/bn/asm/x86_64-mont5.pl"),
