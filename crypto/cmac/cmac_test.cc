@@ -15,6 +15,7 @@
 #include <stdio.h>
 
 #include <algorithm>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -22,7 +23,9 @@
 #include <openssl/cmac.h>
 #include <openssl/mem.h>
 
+#include "../test/file_test.h"
 #include "../test/test_util.h"
+#include "../test/wycheproof_util.h"
 
 
 static void test(const char *name, const uint8_t *key, size_t key_len,
@@ -115,4 +118,68 @@ TEST(CMACTest, RFC4493TestVectors) {
   test("RFC 4493 #2", kKey, sizeof(kKey), kMsg2, sizeof(kMsg2), kOut2);
   test("RFC 4493 #3", kKey, sizeof(kKey), kMsg3, sizeof(kMsg3), kOut3);
   test("RFC 4493 #4", kKey, sizeof(kKey), kMsg4, sizeof(kMsg4), kOut4);
+}
+
+TEST(CMACTest, Wycheproof) {
+  FileTestGTest("third_party/wycheproof_testvectors/aes_cmac_test.txt",
+                [](FileTest *t) {
+    std::string key_size, tag_size;
+    ASSERT_TRUE(t->GetInstruction(&key_size, "keySize"));
+    ASSERT_TRUE(t->GetInstruction(&tag_size, "tagSize"));
+    WycheproofResult result;
+    ASSERT_TRUE(GetWycheproofResult(t, &result));
+    std::vector<uint8_t> key, msg, tag;
+    ASSERT_TRUE(t->GetBytes(&key, "key"));
+    ASSERT_TRUE(t->GetBytes(&msg, "msg"));
+    ASSERT_TRUE(t->GetBytes(&tag, "tag"));
+
+    const EVP_CIPHER *cipher;
+    switch (atoi(key_size.c_str())) {
+      case 128:
+        cipher = EVP_aes_128_cbc();
+        break;
+      case 192:
+        cipher = EVP_aes_192_cbc();
+        break;
+      case 256:
+        cipher = EVP_aes_256_cbc();
+        break;
+      default:
+        // Some test vectors intentionally give the wrong key size. Our API
+        // requires the caller pick the sized CBC primitive, so these tests
+        // aren't useful for us.
+        EXPECT_EQ(WycheproofResult::kInvalid, result);
+        return;
+    }
+
+    size_t tag_len = static_cast<size_t>(atoi(tag_size.c_str())) / 8;
+
+    uint8_t out[16];
+    bssl::UniquePtr<CMAC_CTX> ctx(CMAC_CTX_new());
+    ASSERT_TRUE(ctx);
+    ASSERT_TRUE(CMAC_Init(ctx.get(), key.data(), key.size(), cipher, NULL));
+    ASSERT_TRUE(CMAC_Update(ctx.get(), msg.data(), msg.size()));
+    size_t out_len;
+    ASSERT_TRUE(CMAC_Final(ctx.get(), out, &out_len));
+    // Truncate the tag, if requested.
+    out_len = std::min(out_len, tag_len);
+
+    if (result == WycheproofResult::kValid) {
+      EXPECT_EQ(Bytes(tag), Bytes(out, out_len));
+
+      // Test the streaming API as well.
+      ASSERT_TRUE(CMAC_Reset(ctx.get()));
+      for (uint8_t b : msg) {
+        ASSERT_TRUE(CMAC_Update(ctx.get(), &b, 1));
+      }
+      ASSERT_TRUE(CMAC_Final(ctx.get(), out, &out_len));
+      out_len = std::min(out_len, tag_len);
+      EXPECT_EQ(Bytes(tag), Bytes(out, out_len));
+    } else {
+      // Wycheproof's invalid tests assume the implementation internally does
+      // the comparison, whereas our API only computes the tag. Check that
+      // they're not equal, but these tests are mostly not useful for us.
+      EXPECT_NE(Bytes(tag), Bytes(out, out_len));
+    }
+  });
 }

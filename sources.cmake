@@ -60,6 +60,7 @@ set(
   crypto/x509/some_names2.pem
   crypto/x509/some_names3.pem
   third_party/wycheproof_testvectors/aes_cbc_pkcs5_test.txt
+  third_party/wycheproof_testvectors/aes_cmac_test.txt
   third_party/wycheproof_testvectors/aes_gcm_siv_test.txt
   third_party/wycheproof_testvectors/aes_gcm_test.txt
   third_party/wycheproof_testvectors/chacha20_poly1305_test.txt
