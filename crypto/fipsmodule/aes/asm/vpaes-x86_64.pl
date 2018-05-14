@@ -202,7 +202,7 @@ _vpaes_schedule_core:
 .Lschedule_go:
 	cmp	\$192,	%esi
 	ja	.Lschedule_256
-	je	.Lschedule_192
+	# 192-bit key support was removed.
 	# 128: fall though
 
 ##
@@ -222,43 +222,6 @@ _vpaes_schedule_core:
 	jz 	.Lschedule_mangle_last
 	call	_vpaes_schedule_mangle	# write output
 	jmp 	.Loop_schedule_128
-
-##
-##  .aes_schedule_192
-##
-##  192-bit specific part of key schedule.
-##
-##  The main body of this schedule is the same as the 128-bit
-##  schedule, but with more smearing.  The long, high side is
-##  stored in %xmm7 as before, and the short, low side is in
-##  the high bits of %xmm6.
-##
-##  This schedule is somewhat nastier, however, because each
-##  round produces 192 bits of key material, or 1.5 round keys.
-##  Therefore, on each cycle we do 2 rounds and produce 3 round
-##  keys.
-##
-.align	16
-.Lschedule_192:
-	movdqu	8(%rdi),%xmm0		# load key part 2 (very unaligned)
-	call	_vpaes_schedule_transform	# input transform
-	movdqa	%xmm0,	%xmm6		# save short part
-	pxor	%xmm4,	%xmm4		# clear 4
-	movhlps	%xmm4,	%xmm6		# clobber low side with zeros
-	mov	\$4,	%esi
-
-.Loop_schedule_192:
-	call	_vpaes_schedule_round
-	palignr	\$8,%xmm6,%xmm0
-	call	_vpaes_schedule_mangle	# save key n
-	call	_vpaes_schedule_192_smear
-	call	_vpaes_schedule_mangle	# save key n+1
-	call	_vpaes_schedule_round
-	dec	%rsi
-	jz 	.Lschedule_mangle_last
-	call	_vpaes_schedule_mangle	# save key n+2
-	call	_vpaes_schedule_192_smear
-	jmp	.Loop_schedule_192
 
 ##
 ##  .aes_schedule_256
@@ -334,33 +297,6 @@ _vpaes_schedule_core:
 	pxor	%xmm7,  %xmm7
 	ret
 .size	_vpaes_schedule_core,.-_vpaes_schedule_core
-
-##
-##  .aes_schedule_192_smear
-##
-##  Smear the short, low side in the 192-bit key schedule.
-##
-##  Inputs:
-##    %xmm7: high side, b  a  x  y
-##    %xmm6:  low side, d  c  0  0
-##    %xmm13: 0
-##
-##  Outputs:
-##    %xmm6: b+c+d  b+c  0  0
-##    %xmm0: b+c+d  b+c  b  a
-##
-.type	_vpaes_schedule_192_smear,\@abi-omnipotent
-.align	16
-_vpaes_schedule_192_smear:
-	pshufd	\$0x80,	%xmm6,	%xmm1	# d c 0 0 -> c 0 0 0
-	pshufd	\$0xFE,	%xmm7,	%xmm0	# b a _ _ -> b b b a
-	pxor	%xmm1,	%xmm6		# -> c+d c 0 0
-	pxor	%xmm1,	%xmm1
-	pxor	%xmm0,	%xmm6		# -> b+c+d b+c b a
-	movdqa	%xmm6,	%xmm0
-	movhlps	%xmm1,	%xmm6		# clobber low side with zeros
-	ret
-.size	_vpaes_schedule_192_smear,.-_vpaes_schedule_192_smear
 
 ##
 ##  .aes_schedule_round
