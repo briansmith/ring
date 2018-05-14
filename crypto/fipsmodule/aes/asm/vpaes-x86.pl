@@ -266,7 +266,7 @@ $k_deskew=0x180;	# deskew tables: inverts the sbox's "skew"
 &set_label("schedule_go");
 	&cmp	($round,192);
 	&ja	(&label("schedule_256"));
-	&je	(&label("schedule_192"));
+	# 192-bit key support was removed. 
 	# 128: fall though
 
 ##
@@ -286,42 +286,6 @@ $k_deskew=0x180;	# deskew tables: inverts the sbox's "skew"
 	&jz	(&label("schedule_mangle_last"));
 	&call	("_vpaes_schedule_mangle");	# write output
 	&jmp	(&label("loop_schedule_128"));
-
-##
-##  .aes_schedule_192
-##
-##  192-bit specific part of key schedule.
-##
-##  The main body of this schedule is the same as the 128-bit
-##  schedule, but with more smearing.  The long, high side is
-##  stored in %xmm7 as before, and the short, low side is in
-##  the high bits of %xmm6.
-##
-##  This schedule is somewhat nastier, however, because each
-##  round produces 192 bits of key material, or 1.5 round keys.
-##  Therefore, on each cycle we do 2 rounds and produce 3 round
-##  keys.
-##
-&set_label("schedule_192",16);
-	&movdqu	("xmm0",&QWP(8,$inp));		# load key part 2 (very unaligned)
-	&call	("_vpaes_schedule_transform");	# input transform
-	&movdqa	("xmm6","xmm0");		# save short part
-	&pxor	("xmm4","xmm4");		# clear 4
-	&movhlps("xmm6","xmm4");		# clobber low side with zeros
-	&mov	($round,4);
-
-&set_label("loop_schedule_192");
-	&call	("_vpaes_schedule_round");
-	&palignr("xmm0","xmm6",8);
-	&call	("_vpaes_schedule_mangle");	# save key n
-	&call	("_vpaes_schedule_192_smear");
-	&call	("_vpaes_schedule_mangle");	# save key n+1
-	&call	("_vpaes_schedule_round");
-	&dec	($round);
-	&jz	(&label("schedule_mangle_last"));
-	&call	("_vpaes_schedule_mangle");	# save key n+2
-	&call	("_vpaes_schedule_192_smear");
-	&jmp	(&label("loop_schedule_192"));
 
 ##
 ##  .aes_schedule_256
@@ -396,31 +360,6 @@ $k_deskew=0x180;	# deskew tables: inverts the sbox's "skew"
 	&pxor	("xmm7","xmm7");
 	&ret	();
 &function_end_B("_vpaes_schedule_core");
-
-##
-##  .aes_schedule_192_smear
-##
-##  Smear the short, low side in the 192-bit key schedule.
-##
-##  Inputs:
-##    %xmm7: high side, b  a  x  y
-##    %xmm6:  low side, d  c  0  0
-##    %xmm13: 0
-##
-##  Outputs:
-##    %xmm6: b+c+d  b+c  0  0
-##    %xmm0: b+c+d  b+c  b  a
-##
-&function_begin_B("_vpaes_schedule_192_smear");
-	&pshufd	("xmm1","xmm6",0x80);		# d c 0 0 -> c 0 0 0
-	&pshufd	("xmm0","xmm7",0xFE);		# b a _ _ -> b b b a
-	&pxor	("xmm6","xmm1");		# -> c+d c 0 0
-	&pxor	("xmm1","xmm1");
-	&pxor	("xmm6","xmm0");		# -> b+c+d b+c b a
-	&movdqa	("xmm0","xmm6");
-	&movhlps("xmm6","xmm1");		# clobber low side with zeros
-	&ret	();
-&function_end_B("_vpaes_schedule_192_smear");
 
 ##
 ##  .aes_schedule_round
