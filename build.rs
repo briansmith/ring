@@ -233,7 +233,6 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
             // Warnings.
             "/sdl",
             "/Wall",
-            "/WX",
             "/wd4127", // C4127: conditional expression is constant
             "/wd4464", // C4464: relative include path contains '..'
             "/wd4514", // C4514: <name>: unreferenced inline function has be
@@ -577,9 +576,15 @@ fn cc(file: &Path, ext: &str, target: &Target, warnings_are_errors: bool,
 
     if target.env() != "msvc" {
         let _ = c.define("_XOPEN_SOURCE", Some("700"));
-        if warnings_are_errors {
-            let _ = c.flag("-Werror");
-        }
+    }
+
+    if warnings_are_errors {
+        let flag = if target.env() != "msvc" {
+            "-Werror"
+        } else {
+            "/WX"
+        };
+        let _ = c.flag(flag);
     }
     if target.env() == "musl" {
         // Some platforms enable _FORTIFY_SOURCE by default, but musl
