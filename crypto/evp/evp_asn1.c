@@ -100,10 +100,16 @@ EVP_PKEY *EVP_parse_public_key(CBS *cbs) {
   uint8_t padding;
   if (!CBS_get_asn1(cbs, &spki, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&spki, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !parse_key_type(&algorithm, &type) ||
       !CBS_get_asn1(&spki, &key, CBS_ASN1_BITSTRING) ||
-      CBS_len(&spki) != 0 ||
-      // Every key type defined encodes the key as a byte string with the same
+      CBS_len(&spki) != 0) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return NULL;
+  }
+  if (!parse_key_type(&algorithm, &type)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
+    return NULL;
+  }
+  if (// Every key type defined encodes the key as a byte string with the same
       // conversion to BIT STRING.
       !CBS_get_u8(&key, &padding) ||
       padding != 0) {
@@ -152,9 +158,12 @@ EVP_PKEY *EVP_parse_private_key(CBS *cbs) {
       !CBS_get_asn1_uint64(&pkcs8, &version) ||
       version != 0 ||
       !CBS_get_asn1(&pkcs8, &algorithm, CBS_ASN1_SEQUENCE) ||
-      !parse_key_type(&algorithm, &type) ||
       !CBS_get_asn1(&pkcs8, &key, CBS_ASN1_OCTETSTRING)) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_DECODE_ERROR);
+    return NULL;
+  }
+  if (!parse_key_type(&algorithm, &type)) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_UNSUPPORTED_ALGORITHM);
     return NULL;
   }
 
