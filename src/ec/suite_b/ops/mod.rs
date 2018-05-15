@@ -49,14 +49,6 @@ impl Point {
     pub fn new_at_infinity() -> Point { Point { xyz: [0; 3 * MAX_LIMBS] } }
 }
 
-// Cannot be derived because `xyz` is too large on 32-bit platforms to have a
-// built-in implementation of `Clone`.
-impl Clone for Point {
-    fn clone(&self) -> Self { Point { xyz: self.xyz } }
-}
-
-impl Copy for Point {}
-
 #[cfg(all(target_pointer_width = "32", target_endian = "little"))]
 macro_rules! limbs {
     ( $limb_b:expr, $limb_a:expr, $limb_9:expr, $limb_8:expr,
