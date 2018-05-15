@@ -766,6 +766,7 @@ static int AlpnSelectCallback(SSL* ssl, const uint8_t** out, uint8_t* outlen,
     exit(1);
   }
 
+  assert(config->select_alpn.empty() || !config->select_empty_alpn);
   *out = (const uint8_t*)config->select_alpn.data();
   *outlen = config->select_alpn.size();
   return SSL_TLSEXT_ERR_OK;
@@ -1228,7 +1229,8 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx,
                                      NULL);
   }
 
-  if (!config->select_alpn.empty() || config->decline_alpn) {
+  if (!config->select_alpn.empty() || config->decline_alpn ||
+      config->select_empty_alpn) {
     SSL_CTX_set_alpn_select_cb(ssl_ctx.get(), AlpnSelectCallback, NULL);
   }
 

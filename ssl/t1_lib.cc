@@ -1532,6 +1532,11 @@ bool ssl_negotiate_alpn(SSL_HANDSHAKE *hs, uint8_t *out_alert,
           ssl, &selected, &selected_len, CBS_data(&protocol_name_list),
           CBS_len(&protocol_name_list),
           ssl->ctx->alpn_select_cb_arg) == SSL_TLSEXT_ERR_OK) {
+    if (selected_len == 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_ALPN_PROTOCOL);
+      *out_alert = SSL_AD_INTERNAL_ERROR;
+      return false;
+    }
     if (!ssl->s3->alpn_selected.CopyFrom(
             MakeConstSpan(selected, selected_len))) {
       *out_alert = SSL_AD_INTERNAL_ERROR;

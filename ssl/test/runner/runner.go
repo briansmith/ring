@@ -6193,6 +6193,24 @@ func addExtensionTests() {
 			expectNoNextProto: true,
 			resumeSession:     true,
 		})
+		// Test that the server implementation catches itself if the
+		// callback tries to return an invalid empty ALPN protocol.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "ALPNServer-SelectEmpty-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				NextProtos: []string{"foo", "bar", "baz"},
+			},
+			flags: []string{
+				"-expect-advertised-alpn", "\x03foo\x03bar\x03baz",
+				"-select-empty-alpn",
+			},
+			tls13Variant:       ver.tls13Variant,
+			shouldFail:         true,
+			expectedLocalError: "remote error: internal error",
+			expectedError:      ":INVALID_ALPN_PROTOCOL:",
+		})
 
 		// Test ALPN in async mode as well to ensure that extensions callbacks are only
 		// called once.
