@@ -367,7 +367,7 @@ enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs) {
   // Emulate OpenSSL's client OCSP callback. OpenSSL verifies certificates
   // before it receives the OCSP, so it needs a second callback for OCSP.
   if (ret == ssl_verify_ok && !ssl->server &&
-      hs->new_session->ocsp_response != nullptr &&
+      hs->config->ocsp_stapling_enabled &&
       ssl->ctx->legacy_ocsp_callback != nullptr) {
     int cb_ret =
         ssl->ctx->legacy_ocsp_callback(ssl, ssl->ctx->legacy_ocsp_callback_arg);

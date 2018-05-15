@@ -4841,8 +4841,8 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			expectedLocalError: expectedLocalError,
 			expectedError:      ":OCSP_CB_ERROR:",
 		})
-		// The callback does not run if the server does not send an
-		// OCSP response.
+		// The callback still runs if the server does not send an OCSP
+		// response.
 		certNoStaple := rsaCertificate
 		certNoStaple.OCSPStaple = nil
 		tests = append(tests, testCase{
@@ -4858,6 +4858,9 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				"-use-ocsp-callback",
 				"-fail-ocsp-callback",
 			},
+			shouldFail:         true,
+			expectedLocalError: expectedLocalError,
+			expectedError:      ":OCSP_CB_ERROR:",
 		})
 
 		// The server OCSP callback is a legacy mechanism for
