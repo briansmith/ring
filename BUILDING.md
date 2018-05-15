@@ -58,9 +58,6 @@ Note in particular that if you are cross-compiling an x86 build on a 64-bit
 version of Linux, then you need to have the proper gcc-multilibs and
 g++-multilibs packages or equivalent installed.
 
-On Android, you will need to define the `__ANDROID_API__` constant to at least
-`21` on 64-bit and `18` on 32-bit.
-
 
 
 Additional Features that are Useful for Development
