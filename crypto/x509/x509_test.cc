@@ -710,7 +710,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
 
   std::vector<X509_CRL *> empty_crls;
 
-  struct Test {
+  struct X509Test {
     const char *correct_value;
     size_t correct_value_len;
     const char *incorrect_value;
@@ -718,7 +718,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
     int (*func)(X509_VERIFY_PARAM *, const char *, size_t);
     int mismatch_error;
   };
-  const std::vector<Test> kTests = {
+  const std::vector<X509Test> kTests = {
       {kHostname, strlen(kHostname), kWrongHostname, strlen(kWrongHostname),
        X509_VERIFY_PARAM_set1_host, X509_V_ERR_HOSTNAME_MISMATCH},
       {kEmail, strlen(kEmail), kWrongEmail, strlen(kWrongEmail),
@@ -727,7 +727,7 @@ TEST(X509Test, ZeroLengthsWithX509PARAM) {
 
   for (size_t i = 0; i < kTests.size(); i++) {
     SCOPED_TRACE(i);
-    const Test &test = kTests[i];
+    const X509Test &test = kTests[i];
 
     // The correct value should work.
     ASSERT_EQ(X509_V_OK,
