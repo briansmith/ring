@@ -76,7 +76,8 @@ OPENSSL_EXPORT int BORINGSSL_self_test(void);
 #define OPENSSL_DIR 4
 
 // OpenSSL_version is a compatibility function that returns the string
-// "BoringSSL" if |which| is |OPENSSL_VERSION| and "" otherwise.
+// "BoringSSL" if |which| is |OPENSSL_VERSION| and placeholder strings
+// otherwise.
 OPENSSL_EXPORT const char *OpenSSL_version(int which);
 
 #define SSLEAY_VERSION OPENSSL_VERSION

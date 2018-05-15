@@ -167,10 +167,20 @@ int CRYPTO_has_asm(void) {
 const char *SSLeay_version(int which) { return OpenSSL_version(which); }
 
 const char *OpenSSL_version(int which) {
-  if (which == OPENSSL_VERSION) {
-    return "BoringSSL";
+  switch (which) {
+    case OPENSSL_VERSION:
+      return "BoringSSL";
+    case OPENSSL_CFLAGS:
+      return "compiler: n/a";
+    case OPENSSL_BUILT_ON:
+      return "built on: n/a";
+    case OPENSSL_PLATFORM:
+      return "platform: n/a";
+    case OPENSSL_DIR:
+      return "OPENSSLDIR: n/a";
+    default:
+      return "not available";
   }
-  return "";
 }
 
 unsigned long SSLeay(void) { return OPENSSL_VERSION_NUMBER; }
