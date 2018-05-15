@@ -37,7 +37,6 @@
 )]
 
 extern crate cc;
-extern crate rayon;
 
 // In the `pregenerate_asm_main()` case we don't want to access (Cargo)
 // environment variables at all, so avoid `use std::env` here.
@@ -46,8 +45,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::fs::{self, DirEntry};
 use std::time::SystemTime;
-use rayon::iter::{ParallelIterator, IndexedParallelIterator,
-                  IntoParallelIterator, IntoParallelRefIterator};
 
 const X86: &'static str = "x86";
 const X86_64: &'static str = "x86_64";
@@ -285,15 +282,6 @@ fn main() {
 fn ring_build_rs_main() {
     use std::env;
 
-    if let Ok(amt) = std::env::var("NUM_JOBS") {
-        if let Ok(amt) = amt.parse() {
-            rayon::ThreadPoolBuilder::new()
-                .num_threads(amt)
-                .build_global()
-                .unwrap()
-        }
-    }
-
     for (key, value) in env::vars() {
         println!("{}: {}", key, value);
     }
@@ -316,8 +304,8 @@ fn ring_build_rs_main() {
         PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap())
             .join(PREGENERATED);
 
-    let _ = rayon::join(check_all_files_tracked,
-                        || build_c_code(&target, pregenerated, &out_dir));
+    build_c_code(&target, pregenerated, &out_dir);
+    check_all_files_tracked()
 }
 
 fn pregenerate_asm_main() {
@@ -370,10 +358,9 @@ impl Target {
 }
 
 fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
-    let includes_modified = RING_INCLUDES.par_iter()
-        .with_max_len(1)
-        .chain(RING_BUILD_FILE.par_iter())
-        .chain(RING_PERL_INCLUDES.par_iter())
+    let includes_modified = RING_INCLUDES.iter()
+        .chain(RING_BUILD_FILE.iter())
+        .chain(RING_PERL_INCLUDES.iter())
         .map(|f| file_modified(Path::new(*f)))
         .max()
         .unwrap();
@@ -436,8 +423,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
 
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
-    libs.into_par_iter()
-        .with_max_len(1)
+    libs.into_iter()
         .for_each(|&(lib_name, srcs, additional_srcs)|
             build_library(&target, &out_dir, lib_name, srcs, additional_srcs,
                           warnings_are_errors, includes_modified));
@@ -452,26 +438,19 @@ fn build_library(target: &Target, out_dir: &Path, lib_name: &str,
                  warnings_are_errors: bool, includes_modified: SystemTime) {
     // Compile all the (dirty) source files into object files.
     #[allow(box_pointers)] // XXX
-    let objs = additional_srcs.into_par_iter().chain(srcs.into_par_iter())
-        .with_max_len(1)
+    let objs = additional_srcs.into_iter().chain(srcs.into_iter())
         .filter(|f|
             target.env() != "msvc" ||
                 f.extension().unwrap().to_str().unwrap() != "S")
         .map(|f| compile(f, target, warnings_are_errors, out_dir,
                          includes_modified))
-        .map(|v| vec![v])
-        .reduce(Vec::new,
-                &|mut a: Vec<String>, b: Vec<String>| -> Vec<String> {
-                    a.extend(b.into_iter());
-                    a
-                });
+        .collect::<Vec<_>>();
 
     // Rebuild the library if necessary.
     let lib_path = PathBuf::from(out_dir).join(format!("lib{}.a", lib_name));
 
-    if objs.par_iter()
-        .with_max_len(1)
-        .map(|f| Path::new(f))
+    if objs.iter()
+        .map(Path::new)
         .any(|p| need_run(&p, &lib_path, includes_modified)) {
         let mut c = cc::Build::new();
 

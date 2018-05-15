@@ -13,4 +13,3 @@ path = "../build.rs"
 # parallelism ourself. This gives us a much higher level of
 # control about what should be parallised in which way
 cc = "1.0"
-rayon = "1.0.0"
