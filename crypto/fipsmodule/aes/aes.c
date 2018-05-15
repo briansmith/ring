@@ -52,6 +52,7 @@
 
 #include <GFp/cpu.h>
 
+#include "internal.h"
 #include "../modes/internal.h"
 
 
