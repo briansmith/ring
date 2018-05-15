@@ -175,7 +175,6 @@ pub const MODULUS_MAX_LIMBS: usize = 8192 / limb::LIMB_BITS;
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
 /// and larger than 2. The larger-than-1 requirement is imposed, at least, by
 /// the modular inversion code.
-#[derive(Clone)]
 pub struct Modulus<M> {
     limbs: BoxedLimbs<M>, // Also `value >= 3`.
 
@@ -686,7 +685,6 @@ pub fn elem_exp_vartime<M>(
 // `M` represents the prime modulus for which the exponent is in the interval
 // [1, `m` - 1).
 #[cfg(feature = "rsa_signing")]
-#[derive(Clone)]
 pub struct PrivateExponent<M> {
     limbs: BoxedLimbs<M>,
 }
