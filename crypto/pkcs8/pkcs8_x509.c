@@ -468,6 +468,34 @@ err:
   return ret;
 }
 
+static int pkcs12_check_mac(int *out_mac_ok, const char *password,
+                            size_t password_len, const CBS *salt,
+                            unsigned iterations, const EVP_MD *md,
+                            const CBS *authsafes, const CBS *expected_mac) {
+  int ret = 0;
+  uint8_t hmac_key[EVP_MAX_MD_SIZE];
+  if (!pkcs12_key_gen(password, password_len, CBS_data(salt), CBS_len(salt),
+                      PKCS12_MAC_ID, iterations, EVP_MD_size(md), hmac_key,
+                      md)) {
+    goto err;
+  }
+
+  uint8_t hmac[EVP_MAX_MD_SIZE];
+  unsigned hmac_len;
+  if (NULL == HMAC(md, hmac_key, EVP_MD_size(md), CBS_data(authsafes),
+                   CBS_len(authsafes), hmac, &hmac_len)) {
+    goto err;
+  }
+
+  *out_mac_ok = CBS_mem_equal(expected_mac, hmac, hmac_len);
+  ret = 1;
+
+err:
+  OPENSSL_cleanse(hmac_key, sizeof(hmac_key));
+  return ret;
+}
+
+
 int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
                              CBS *ber_in, const char *password) {
   uint8_t *der_bytes = NULL;
@@ -576,21 +604,24 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
       }
     }
 
-    uint8_t hmac_key[EVP_MAX_MD_SIZE];
-    if (!pkcs12_key_gen(ctx.password, ctx.password_len, CBS_data(&salt),
-                        CBS_len(&salt), PKCS12_MAC_ID, iterations,
-                        EVP_MD_size(md), hmac_key, md)) {
+    int mac_ok;
+    if (!pkcs12_check_mac(&mac_ok, ctx.password, ctx.password_len, &salt,
+                          iterations, md, &authsafes, &expected_mac)) {
       goto err;
     }
-
-    uint8_t hmac[EVP_MAX_MD_SIZE];
-    unsigned hmac_len;
-    if (NULL == HMAC(md, hmac_key, EVP_MD_size(md), CBS_data(&authsafes),
-                     CBS_len(&authsafes), hmac, &hmac_len)) {
-      goto err;
+    if (!mac_ok && ctx.password_len == 0) {
+      // PKCS#12 encodes passwords as NUL-terminated UCS-2, so the empty
+      // password is encoded as {0, 0}. Some implementations use the empty byte
+      // array for "no password". OpenSSL considers a non-NULL password as {0,
+      // 0} and a NULL password as {}. It then, in high-level PKCS#12 parsing
+      // code, tries both options. We match this behavior.
+      ctx.password = ctx.password != NULL ? NULL : "";
+      if (!pkcs12_check_mac(&mac_ok, ctx.password, ctx.password_len, &salt,
+                            iterations, md, &authsafes, &expected_mac)) {
+        goto err;
+      }
     }
-
-    if (!CBS_mem_equal(&expected_mac, hmac, hmac_len)) {
+    if (!mac_ok) {
       OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_INCORRECT_PASSWORD);
       goto err;
     }
