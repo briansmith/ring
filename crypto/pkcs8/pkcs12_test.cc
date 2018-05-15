@@ -1165,7 +1165,8 @@ static const uint8_t kUnicode[] = {
 static const char kUnicodePassword[] = u8"Hello, 世界";
 
 static void TestImpl(const char *name, bssl::Span<const uint8_t> der,
-                     const char *password) {
+                     const char *password,
+                     const char *friendly_name) {
   SCOPED_TRACE(name);
   bssl::UniquePtr<STACK_OF(X509)> certs(sk_X509_new_null());
   ASSERT_TRUE(certs);
@@ -1177,6 +1178,17 @@ static void TestImpl(const char *name, bssl::Span<const uint8_t> der,
 
   ASSERT_EQ(1u, sk_X509_num(certs.get()));
   ASSERT_TRUE(key);
+
+  int actual_name_len;
+  const uint8_t *actual_name =
+      X509_alias_get0(sk_X509_value(certs.get(), 0), &actual_name_len);
+  if (friendly_name == nullptr) {
+    EXPECT_EQ(nullptr, actual_name);
+  } else {
+    EXPECT_EQ(friendly_name,
+              std::string(reinterpret_cast<const char *>(actual_name),
+                          static_cast<size_t>(actual_name_len)));
+  }
 }
 
 static void TestCompat(bssl::Span<const uint8_t> der) {
@@ -1204,33 +1216,35 @@ static void TestCompat(bssl::Span<const uint8_t> der) {
 }
 
 TEST(PKCS12Test, TestOpenSSL) {
-  TestImpl("OpenSSL", kOpenSSL, kPassword);
+  TestImpl("OpenSSL", kOpenSSL, kPassword, nullptr);
 }
 
 TEST(PKCS12Test, TestNSS) {
-  TestImpl("NSS", kNSS, kPassword);
+  TestImpl("NSS", kNSS, kPassword, "Internet Widgits Pty Ltd");
 }
 
 TEST(PKCS12Test, TestWindows) {
-  TestImpl("Windows", kWindows, kPassword);
+  // kWindows has a friendlyName, but only on the key, where we ignore it, and
+  // not the certificate.
+  TestImpl("Windows", kWindows, kPassword, nullptr);
 }
 
 TEST(PKCS12Test, TestPBES2) {
-  TestImpl("PBES2", kPBES2, kPassword);
+  TestImpl("PBES2", kPBES2, kPassword, nullptr);
 }
 
 TEST(PKCS12Test, TestEmptyPassword) {
-  TestImpl("EmptyPassword (empty password)", kEmptyPassword, "");
-  TestImpl("EmptyPassword (null password)", kEmptyPassword, nullptr);
+  TestImpl("EmptyPassword (empty password)", kEmptyPassword, "", nullptr);
+  TestImpl("EmptyPassword (null password)", kEmptyPassword, nullptr, nullptr);
 }
 
 TEST(PKCS12Test, TestNullPassword) {
-  TestImpl("NullPassword (empty password)", kNullPassword, "");
-  TestImpl("NullPassword (null password)", kNullPassword, nullptr);
+  TestImpl("NullPassword (empty password)", kNullPassword, "", nullptr);
+  TestImpl("NullPassword (null password)", kNullPassword, nullptr, nullptr);
 }
 
 TEST(PKCS12Test, TestUnicode) {
-  TestImpl("Unicode", kUnicode, kUnicodePassword);
+  TestImpl("Unicode", kUnicode, kUnicodePassword, nullptr);
 }
 
 TEST(PKCS12Test, TestWindowsCompat) {
@@ -1418,6 +1432,17 @@ static void TestRoundTrip(const char *password, const char *name,
   for (size_t i = 0; i < chain_der.size(); i++) {
     EXPECT_EQ(0, X509_cmp(sk_X509_value(chain.get(), i),
                           sk_X509_value(certs2.get(), i + offset)));
+  }
+  if (sk_X509_num(certs2.get()) > 0) {
+    int actual_name_len;
+    const uint8_t *actual_name =
+        X509_alias_get0(sk_X509_value(certs2.get(), 0), &actual_name_len);
+    if (name == NULL) {
+      EXPECT_EQ(nullptr, actual_name);
+    } else {
+      EXPECT_EQ(name, std::string(reinterpret_cast<const char *>(actual_name),
+                                  static_cast<size_t>(actual_name_len)));
+    }
   }
 
   // Check that writing to a |BIO| does the same thing.
