@@ -56,6 +56,7 @@ mod sha1;
 ///
 /// assert_eq!(&one_shot.as_ref(), &multi_part.as_ref());
 /// ```
+#[derive(Clone)]
 pub struct Context {
     state: State,
 
@@ -193,20 +194,6 @@ impl Context {
     /// The algorithm that this context is using.
     #[inline(always)]
     pub fn algorithm(&self) -> &'static Algorithm { self.algorithm }
-}
-
-// XXX: This should just be `#[derive(Clone)]` but that doesn't work because
-// `[u8; 128]` doesn't implement `Clone`.
-impl Clone for Context {
-    fn clone(&self) -> Context {
-        Context {
-            state: self.state,
-            pending: self.pending,
-            completed_data_blocks: self.completed_data_blocks,
-            num_pending: self.num_pending,
-            algorithm: self.algorithm,
-        }
-    }
 }
 
 /// Returns the digest of `data` using the given digest algorithm.
