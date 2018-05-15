@@ -573,6 +573,9 @@ static int pkcs12_check_mac(int *out_mac_ok, const char *password,
   }
 
   *out_mac_ok = CBS_mem_equal(expected_mac, hmac, hmac_len);
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  *out_mac_ok = 1;
+#endif
   ret = 1;
 
 err:

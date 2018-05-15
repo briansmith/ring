@@ -1234,11 +1234,17 @@ TEST(PKCS12Test, TestPBES2) {
 }
 
 TEST(PKCS12Test, TestEmptyPassword) {
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  return;  // The MAC check always passes in fuzzer mode.
+#endif
   TestImpl("EmptyPassword (empty password)", kEmptyPassword, "", nullptr);
   TestImpl("EmptyPassword (null password)", kEmptyPassword, nullptr, nullptr);
 }
 
 TEST(PKCS12Test, TestNullPassword) {
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  return;  // The MAC check always passes in fuzzer mode.
+#endif
   TestImpl("NullPassword (empty password)", kNullPassword, "", nullptr);
   TestImpl("NullPassword (null password)", kNullPassword, nullptr, nullptr);
 }
