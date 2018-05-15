@@ -35,19 +35,19 @@ void GFp_aes_c_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 #if defined(OPENSSL_X86_64)
 #define HWAES
 
-static int hwaes_capable(void) {
+static inline int hwaes_capable(void) {
   return (GFp_ia32cap_P[1] & (1 << (57 - 32))) != 0;
 }
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 #define HWAES
 
-static int hwaes_capable(void) {
+static inline int hwaes_capable(void) {
   return GFp_is_ARMv8_AES_capable();
 }
 #elif defined(OPENSSL_PPC64LE)
 #define HWAES
 
-static int hwaes_capable(void) {
+static inline int hwaes_capable(void) {
   return GFp_is_PPC64LE_vcrypto_capable();
 }
 #endif
