@@ -135,7 +135,7 @@ void GFp_vpaes_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 
 int GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
                             AES_KEY *key) {
-  // Keep this in sync with |GFp_AES_set_encrypt_key| and |aes_ctr|.
+  // Keep this in sync with |gcm128_init_gmult_ghash| and |aes_ctr|.
 
 #if defined(HWAES)
   if (hwaes_capable()) {

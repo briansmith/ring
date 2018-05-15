@@ -57,6 +57,7 @@
 
 #include "internal.h"
 #include "../../internal.h"
+#include "../aes/internal.h"
 
 #if !defined(OPENSSL_NO_ASM) &&                         \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
@@ -399,11 +400,8 @@ static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
   gcm_init_4bit(Htable, H);
 }
 
-static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx,
-                                    int is_aesni_encrypt) {
-  (void)is_aesni_encrypt; // Unused
-
-  // Keep in sync with |gcm128_init_htable|.
+static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
+  // Keep in sync with |gcm128_init_htable| and |GFp_AES_set_encrypt_key|.
 
 #if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86)
   if (GFp_gcm_clmul_enabled()) {
@@ -411,7 +409,7 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx,
     if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { // AVX+MOVBE
       ctx->gmult = GFp_gcm_gmult_avx;
       ctx->ghash = GFp_gcm_ghash_avx;
-      ctx->use_aesni_gcm_crypt = is_aesni_encrypt ? 1 : 0;
+      ctx->use_aesni_gcm_crypt = hwaes_capable() ? 1 : 0;
       return;
     }
 #endif
@@ -469,7 +467,7 @@ void GFp_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
 
   memcpy(ctx->Htable, serialized_ctx, GCM128_SERIALIZED_LEN);
   ctx->block = block;
-  gcm128_init_gmult_ghash(ctx, 0); // TODO
+  gcm128_init_gmult_ghash(ctx);
 }
 
 int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
