@@ -145,7 +145,7 @@ int GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
 
 #if defined(VPAES)
 #if defined(BSAES)
-#error "BSAES and VPAES are enabled at the same time, unexpectedly.'
+#error "BSAES and VPAES are enabled at the same time, unexpectedly."
 #endif
   if (vpaes_capable()) {
     return GFp_vpaes_set_encrypt_key(user_key, bits, key);
@@ -170,7 +170,7 @@ static aes_block_f aes_block(void) {
 
 #if defined(VPAES)
 #if defined(BSAES)
-#error "BSAES and VPAES are enabled at the same time, unexpectedly.'
+#error "BSAES and VPAES are enabled at the same time, unexpectedly."
 #endif
   if (vpaes_capable()) {
     return GFp_vpaes_encrypt;
