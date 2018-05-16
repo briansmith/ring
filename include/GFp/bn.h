@@ -152,37 +152,6 @@ extern "C" {
 #endif
 
 
-// Allocation and freeing.
-
-// Internal functions.
-//
-// These functions are useful for code that is doing low-level manipulations of
-// BIGNUM values. However, be sure that no other function in this file does
-// what you want before turning to these.
-
-// bn_correct_top decrements |bn->top| until |bn->d[top-1]| is non-zero or
-// until |top| is zero.
-OPENSSL_EXPORT void GFp_bn_correct_top(BIGNUM *bn);
-
-// bn_wexpand ensures that |bn| has at least |words| works of space without
-// altering its value. It returns one on success and zero on allocation
-// failure.
-OPENSSL_EXPORT int GFp_bn_wexpand(BIGNUM *bn, size_t words);
-
-
-// Modulo arithmetic.
-
-// Private functions
-
-// Keep in sync with `BIGNUM` in `ring::rsa::bigint`.
-struct bignum_st {
-  BN_ULONG *d; // Pointer to an array of 'BN_BITS2' bit chunks in little-endian
-               // order.
-  int top;     // Index of last used element in |d|, plus one.
-  int dmax;    // Size of |d|, in words.
-};
-
-
 #if defined(__cplusplus)
 }  // extern C
 #endif

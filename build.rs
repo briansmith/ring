@@ -55,7 +55,6 @@ const NEVER: &'static str = "Don't ever build this file.";
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[], "crypto/fipsmodule/aes/aes.c"),
-    (&[], "crypto/fipsmodule/bn/bn.c"),
     (&[], "crypto/fipsmodule/bn/exponentiation.c"),
     (&[], "crypto/fipsmodule/bn/generic.c"),
     (&[], "crypto/fipsmodule/bn/montgomery.c"),

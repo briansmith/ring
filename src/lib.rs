@@ -66,7 +66,7 @@
 #![cfg_attr(feature = "internal_benches", allow(unstable_features))]
 #![cfg_attr(feature = "internal_benches", feature(test))]
 
-#[cfg(any(feature = "rsa_signing", target_os = "linux"))]
+#[cfg(target_os = "linux")]
 extern crate libc;
 
 #[cfg(feature = "internal_benches")]

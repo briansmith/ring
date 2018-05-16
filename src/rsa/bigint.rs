@@ -227,7 +227,7 @@ impl<M> Modulus<M> {
 
     #[cfg(feature = "rsa_signing")]
     pub fn from(n: Nonnegative) -> Result<Self, error::Unspecified> {
-        Self::from_limbs(n.limbs())
+        Self::from_limbs(&n.limbs)
     }
 
     #[cfg(feature = "rsa_signing")]
@@ -813,7 +813,7 @@ pub fn elem_set_to_inverse_blinded(
 #[cfg(feature = "rsa_signing")]
 fn elem_inverse<M>(a: Elem<M, Unencoded>, m: &Modulus<M>)
                    -> Result<Elem<M, R>, InversionError> {
-    let inverse = nonnegative_mod_inverse(Nonnegative::from_limbs(&a.limbs)?,
+    let inverse = nonnegative_mod_inverse(Nonnegative::from_limbs(&a.limbs),
                                           &m.limbs)?;
     let r: Elem<M, R> = Elem {
         // TODO: The check done by to_elem() isn't necessary, right?
@@ -827,7 +827,7 @@ fn elem_inverse<M>(a: Elem<M, Unencoded>, m: &Modulus<M>)
 #[cfg(feature = "rsa_signing")]
 fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
                            -> Result<Nonnegative, InversionError> {
-    let m = Nonnegative::from_limbs(m_limbs)?;
+    let m = Nonnegative::from_limbs(m_limbs);
 
     use limb::*;
 
@@ -844,34 +844,33 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
         debug_assert!(n.is_even());
 
         let mut carry = 0;
-        for limb in n.limbs_mut().iter_mut().rev() {
+        for limb in n.limbs.iter_mut().rev() {
             let original_value = *limb;
             *limb = (original_value >> 1) | (carry << (LIMB_BITS - 1));
             carry = original_value & 1;
         }
-        n.0.shrunk_by_at_most_one_bit();
+        shrink_by_at_most_one_bit(n);
     }
 
     // n *= 2; i.e. n <<= 1.
-    fn double(n: &mut Nonnegative) -> Result<(), InversionError> {
+    fn double(n: &mut Nonnegative) {
         let mut carry = 0;
-        for limb in n.limbs_mut() {
+        for limb in &mut n.limbs {
             let original_value = *limb;
             *limb = (original_value << 1) | carry;
             carry = original_value >> (LIMB_BITS - 1);
         }
         if carry != 0 {
-            n.0.grow_by_one_bit()?;
+            grow_by_one_bit(n);
         }
-        Ok(())
     }
 
     // r += a.
     fn add_assign(r: &mut Nonnegative, a: &mut Nonnegative, m_limb_count: usize)
                   -> Result<(), error::Unspecified> {
         let mut carry = 0;
-        r.0.make_limbs(m_limb_count, |r_limbs| {
-            a.0.make_limbs(m_limb_count, |a_limbs| {
+        make_limbs(r, m_limb_count, |r_limbs| {
+            make_limbs(a, m_limb_count, |a_limbs| {
                 carry = unsafe {
                     LIMBS_add_assign(r_limbs.as_mut_ptr(), a_limbs.as_ptr(),
                                      m_limb_count)
@@ -881,7 +880,7 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
         })?;
         // It is possible for the result to be one bit larger than `m`.
         if carry != 0 {
-            r.0.grow_by_one_bit()?
+            grow_by_one_bit(r)
         }
         Ok(())
     }
@@ -890,8 +889,8 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
     #[inline]
     fn sub_assign(r: &mut Nonnegative, a: &mut Nonnegative, m_limb_count: usize)
                   -> Result<(), error::Unspecified> {
-        r.0.make_limbs(m_limb_count, |r_limbs| {
-            a.0.make_limbs(m_limb_count, |a_limbs| {
+        make_limbs(r, m_limb_count, |r_limbs| {
+            make_limbs(a, m_limb_count, |a_limbs| {
                 unsafe {
                     LIMBS_sub_assign(r_limbs.as_mut_ptr(), a_limbs.as_ptr(),
                                      m_limb_count);
@@ -901,31 +900,61 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
         })
     }
 
-    let mut u = a;
-    let mut v = Nonnegative::from_limbs(m_limbs)?; // TODO: avoid clone
-    let mut x1 = Nonnegative::one()?;
-    let mut x2 = Nonnegative::zero()?;
-    let mut k = 0;
+    pub fn grow_by_one_bit(n: &mut Nonnegative) {
+        n.limbs.push(1);
+    }
+
+    pub fn shrink_by_at_most_one_bit(n: &mut Nonnegative) {
+        if n.limbs.last().map_or(false, |last| *last == 0) {
+            let _ = n.limbs.pop();
+        }
+    }
+
+    pub fn make_limbs<F>(n: &mut Nonnegative, num_limbs: usize, f: F)
+                         -> Result<(), error::Unspecified>
+        where F: FnOnce(&mut [Limb]) -> Result<(), error::Unspecified>
+    {
+        while num_limbs < n.limbs.len() {
+            let _ = n.limbs.pop();
+        }
+        while n.limbs.len() < num_limbs {
+            n.limbs.push(0);
+        }
+
+        let r = f(&mut n.limbs);
+
+        while n.limbs.last() == Some(&0) {
+            let _ = n.limbs.pop();
+        }
+
+        r
+    }
 
     let m_limb_count = m_limbs.len();
+
+    let mut u = a;
+    let mut v = Nonnegative::from_limbs(m_limbs); // TODO: avoid clone
+    let mut x1 = Nonnegative::one(m_limb_count);
+    let mut x2 = Nonnegative::zero(m_limb_count);
+    let mut k = 0;
 
     while !v.is_zero() {
         if v.is_even() {
             halve(&mut v);
-            double(&mut x1)?;
+            double(&mut x1);
         } else if u.is_even() {
             halve(&mut u);
-            double(&mut x2)?;
+            double(&mut x2);
         } else if !greater_than(&u, &v) {
             sub_assign(&mut v, &mut u, m_limb_count)?;
             halve(&mut v);
             add_assign(&mut x2, &mut x1, m_limb_count)?;
-            double(&mut x1)?;
+            double(&mut x1);
         } else {
             sub_assign(&mut u, &mut v, m_limb_count)?;
             halve(&mut u);
             add_assign(&mut x1, &mut x2, m_limb_count)?;
-            double(&mut x2)?;
+            double(&mut x2);
         }
         k += 1;
     }
@@ -936,9 +965,9 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
 
     // Reduce `x1` once if necessary to ensure it is less than `m`.
     if !greater_than(&m, &x1) {
-        debug_assert!(x1.limbs().len() <= m_limb_count + 1);
+        debug_assert!(x1.limbs.len() <= m_limb_count + 1);
         // If `x` is longer than `m` then chop off that top bit.
-        x1.0.make_limbs(m_limb_count, |x1_limbs| {
+        make_limbs(&mut x1, m_limb_count, |x1_limbs| {
             unsafe {
                 LIMBS_sub_assign(x1_limbs.as_mut_ptr(), m_limbs.as_ptr(),
                                  m_limb_count);
@@ -950,13 +979,13 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
 
     // Use the simpler repeated-subtraction reduction in 2.23.
 
-    let n = minimal_limbs_bit_length(m.limbs()).as_usize_bits();
+    let n = minimal_limbs_bit_length(&m.limbs).as_usize_bits();
     assert!(k >= n);
     for _ in n..k {
         let mut carry = 0;
         if x1.is_odd() {
             // x1 += m.
-            x1.0.make_limbs(m_limb_count, |x1_limbs| {
+            make_limbs(&mut x1, m_limb_count, |x1_limbs| {
                 carry = unsafe {
                     LIMBS_add_assign(x1_limbs.as_mut_ptr(), m_limbs.as_ptr(),
                                      m_limb_count)
@@ -970,7 +999,7 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
 
         // Shift in the carry bit at the top.
         if carry != 0 {
-            x1.0.make_limbs(m_limb_count, |limbs| {
+            make_limbs(&mut x1, m_limb_count, |limbs| {
                 *limbs.last_mut().unwrap() |= 1 << (LIMB_BITS - 1);
                 Ok(())
             })?;
@@ -1001,64 +1030,57 @@ pub fn elem_verify_equal_consttime<M, E>(a: &Elem<M, E>, b: &Elem<M, E>)
 
 /// Nonnegative integers.
 #[cfg(feature = "rsa_signing")]
-pub struct Nonnegative(BIGNUM);
+pub struct Nonnegative {
+    limbs: std::vec::Vec<limb::Limb>,
+}
 
 #[cfg(feature = "rsa_signing")]
 impl Nonnegative {
-    fn zero() -> Result<Self, error::Unspecified> {
-        let r = Nonnegative(BIGNUM::zero());
-        debug_assert!(r.is_zero());
-        Ok(r)
+    fn zero(capacity: usize) -> Self {
+        let r = Self { limbs: std::vec::Vec::with_capacity(capacity) };
+        assert!(r.is_zero());
+        r
     }
 
-    fn from_limbs(source: &[limb::Limb])
-        -> Result<Self, error::Unspecified>
-    {
-        let mut r = Self::zero()?;
-        r.0.make_limbs(source.len(), |limbs| {
-            limbs.copy_from_slice(source);
-            Ok(())
-        })?;
-        Ok(r)
+    fn one(capacity: usize) -> Self {
+        let mut r = Self::zero(capacity);
+        r.limbs.push(1);
+        assert!(r.is_one());
+        r
     }
 
-    fn one() -> Result<Self, error::Unspecified> {
-        let mut r = Self::zero()?;
-        r.0.make_limbs(1, |limbs| {
-            limbs[0] = 1;
-            Ok(())
-        })?;
-        Ok(r)
+    fn from_limbs(source: &[limb::Limb]) -> Self {
+        use std::borrow::ToOwned;
+        let mut limbs = source.to_owned();
+        while limbs.last() == Some(&0) {
+            let _ = limbs.pop();
+        }
+        Self { limbs }
     }
 
     pub fn from_be_bytes_with_bit_length(input: untrusted::Input)
         -> Result<(Self, bits::BitLength), error::Unspecified> {
-        let mut r = Self::zero()?;
-        r.0.make_limbs(
-            (input.len() + limb::LIMB_BYTES - 1) / limb::LIMB_BYTES, |limbs|  {
-            // Rejects empty inputs.
-            limb::parse_big_endian_and_pad_consttime(input, limbs)
-        })?;
-        let r_bits = minimal_limbs_bit_length(r.limbs());
-        Ok((r, r_bits))
+        let mut limbs =
+            vec![0; (input.len() + limb::LIMB_BYTES - 1) / limb::LIMB_BYTES];
+        // Rejects empty inputs.
+        limb::parse_big_endian_and_pad_consttime(input, &mut limbs)?;
+        while limbs.last() == Some(&0) {
+            let _ = limbs.pop();
+        }
+        let r_bits = minimal_limbs_bit_length(&limbs);
+        Ok((Self { limbs }, r_bits))
     }
 
     #[inline]
-    fn is_zero(&self) -> bool { self.limbs().is_empty() }
+    fn is_zero(&self) -> bool { self.limbs.is_empty() }
 
     #[inline]
     fn is_even(&self) -> bool { !self.is_odd() }
 
     #[inline]
     pub fn is_odd(&self) -> bool {
-        limb::limbs_are_even_constant_time(self.limbs()) == limb::LimbMask::False
+        limb::limbs_are_even_constant_time(&self.limbs) == limb::LimbMask::False
     }
-
-    #[inline]
-    fn limbs(&self) -> &[limb::Limb] { self.0.limbs() }
-
-    #[inline]
-    fn limbs_mut(&mut self) -> &mut [limb::Limb] { self.0.limbs_mut() }
 
     pub fn verify_less_than(&self, other: &Self)
                         -> Result<(), error::Unspecified> {
@@ -1072,18 +1094,18 @@ impl Nonnegative {
                       -> Result<Elem<M, Unencoded>, error::Unspecified> {
         self.verify_less_than_modulus(&m)?;
         let mut r = m.zero();
-        r.limbs[0..self.limbs().len()].copy_from_slice(self.limbs());
+        r.limbs[0..self.limbs.len()].copy_from_slice(&self.limbs);
         Ok(r)
     }
 
     pub fn verify_less_than_modulus<M>(&self, m: &Modulus<M>)
                                        -> Result<(), error::Unspecified>
     {
-        if self.limbs().len() > m.limbs.len() {
+        if self.limbs.len() > m.limbs.len() {
             return Err(error::Unspecified);
         }
-        if self.limbs().len() == m.limbs.len() {
-            if limb::limbs_less_than_limbs_consttime(self.limbs(), &m.limbs)
+        if self.limbs.len() == m.limbs.len() {
+            if limb::limbs_less_than_limbs_consttime(&self.limbs, &m.limbs)
                 != limb::LimbMask::True {
                 return Err(error::Unspecified)
             }
@@ -1095,7 +1117,7 @@ impl Nonnegative {
 #[cfg(feature = "rsa_signing")]
 impl IsOne for Nonnegative {
     fn is_one(&self) -> bool {
-        limb::limbs_equal_limb_constant_time(self.limbs(), 1) ==
+        limb::limbs_equal_limb_constant_time(&self.limbs, 1) ==
             limb::LimbMask::True
     }
 }
@@ -1120,12 +1142,10 @@ fn minimal_limbs_bit_length(a: &[limb::Limb]) -> bits::BitLength {
 // Returns a > b.
 #[cfg(feature = "rsa_signing")]
 fn greater_than(a: &Nonnegative, b: &Nonnegative) -> bool {
-    let a_limbs = a.limbs();
-    let b_limbs = b.limbs();
-    if a_limbs.len() == b_limbs.len() {
-        limb::limbs_less_than_limbs_vartime(b_limbs, a_limbs)
+    if a.limbs.len() == b.limbs.len() {
+        limb::limbs_less_than_limbs_vartime(&b.limbs, &a.limbs)
     } else {
-        a_limbs.len() > b_limbs.len()
+        a.limbs.len() > b.limbs.len()
     }
 }
 
@@ -1149,109 +1169,6 @@ const N0_LIMBS_USED: usize = 2;
 fn n0_from_u64(n0: u64) -> N0 {
     [n0 as limb::Limb, (n0 >> limb::LIMB_BITS) as limb::Limb]
 }
-
-// `BIGNUM` is defined in its own submodule so that its private components are
-// not accessible.
-#[cfg(feature = "rsa_signing")]
-mod repr_c {
-    use {bssl, c, error, limb};
-    use core;
-    use libc;
-
-    // Keep in sync with `bignum_st` in openss/bn.h.
-    #[repr(C)]
-    pub struct BIGNUM {
-        d: *mut limb::Limb,
-        top: c::int,
-        dmax: c::int,
-    }
-
-    impl Drop for BIGNUM {
-        fn drop(&mut self) {
-            unsafe {
-                let d: *mut limb::Limb = self.d;
-                libc::free(d as *mut libc::c_void)
-            }
-        }
-    }
-
-    impl BIGNUM {
-        pub fn zero() -> Self {
-            BIGNUM {
-                d: core::ptr::null_mut(),
-                top: 0,
-                dmax: 0,
-            }
-        }
-
-        #[inline]
-        pub fn limbs(&self) -> &[limb::Limb] {
-            unsafe {
-                core::slice::from_raw_parts(self.d, self.top as usize)
-            }
-        }
-
-        #[inline]
-        pub fn limbs_mut(&mut self) -> &mut [limb::Limb] {
-            unsafe {
-                core::slice::from_raw_parts_mut(self.d, self.top as usize)
-            }
-        }
-
-        pub fn grow_by_one_bit(&mut self) -> Result<(), error::Unspecified> {
-            let old_top = self.top;
-            let new_top = old_top + 1;
-            bssl::map_result(unsafe {
-                GFp_bn_wexpand(self, new_top)
-            })?;
-            self.top = new_top;
-            self.limbs_mut()[old_top as usize] = 1;
-            Ok(())
-        }
-
-        pub fn shrunk_by_at_most_one_bit(&mut self) {
-            if self.limbs().last().map_or(false, |last| *last == 0) {
-                self.top -= 1;
-            }
-        }
-
-        pub fn make_limbs<F>(&mut self, num_limbs: usize, f: F)
-                             -> Result<(), error::Unspecified>
-                where F: FnOnce(&mut [limb::Limb])
-                                -> Result<(), error::Unspecified> {
-            if num_limbs <= self.top as usize {
-                self.top = num_limbs as c::int;
-            } else {
-                let old_top = self.top as usize;
-                bssl::map_result(unsafe {
-                    GFp_bn_wexpand(self, num_limbs as c::int)
-                })?;
-                self.top = num_limbs as c::int;
-
-                // Zero the new upper limbs, leaving the old lower limbs untouched.
-                for limb in &mut self.limbs_mut()[old_top..] {
-                    *limb = 0;
-                }
-            }
-
-            f(self.limbs_mut())?;
-
-            unsafe {
-                GFp_bn_correct_top(self)
-            }
-
-            Ok(())
-        }
-    }
-
-    extern {
-        fn GFp_bn_correct_top(r: &mut BIGNUM);
-        fn GFp_bn_wexpand(r: &mut BIGNUM, words: c::int) -> c::int;
-    }
-}
-
-#[cfg(feature = "rsa_signing")]
-pub use self::repr_c::BIGNUM;
 
 extern {
     // `r` and/or 'a' and/or 'b' may alias.
@@ -1534,7 +1451,7 @@ mod tests {
                                  num_limbs: usize) -> Elem<M, Unencoded> {
         let value = consume_nonnegative(test_case, name);
         let mut limbs = BoxedLimbs::zero(Width { num_limbs, m: PhantomData });
-        limbs[0..value.limbs().len()].copy_from_slice(value.limbs());
+        limbs[0..value.limbs.len()].copy_from_slice(&value.limbs);
         Elem {
             limbs,
             encoding: PhantomData,
