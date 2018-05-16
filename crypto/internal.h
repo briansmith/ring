@@ -204,10 +204,8 @@ typedef __uint128_t uint128_t;
 
 // crypto_word_t is the type that most constant-time functions use. Ideally we
 // would like it to be |size_t|, but NaCl builds in 64-bit mode with 32-bit
-// pointers, which means that |size_t| can be 32 bits when |BN_ULONG| is 64
-// bits. Since we want to be able to do constant-time operations on a
-// |BN_ULONG|, |crypto_word_t| is defined as an unsigned value with the native
-// word length.
+// pointers, which means that |size_t| can be 32 bits when |crypto_word_t| is 64
+// bits.
 #if defined(OPENSSL_64_BIT)
 typedef uint64_t crypto_word_t;
 #define CRYPTO_WORD_T_BITS (64u)
