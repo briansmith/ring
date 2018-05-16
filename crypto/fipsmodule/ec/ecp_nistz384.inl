@@ -188,7 +188,7 @@ void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
   static const unsigned kWindowSize = 5;
   static const unsigned kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
 
-  uint8_t p_str[(P384_LIMBS * BN_BYTES) + 1];
+  uint8_t p_str[(P384_LIMBS * sizeof(Limb)) + 1];
   gfp_little_endian_bytes_from_scalar(p_str, sizeof(p_str) / sizeof(p_str[0]),
                                       p_scalar, P384_LIMBS);
 
@@ -202,9 +202,9 @@ void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
   * table. */
   P384_POINT *row = table;
 
-  memcpy(row[1 - 1].X, p_x, P384_LIMBS * BN_BYTES);
-  memcpy(row[1 - 1].Y, p_y, P384_LIMBS * BN_BYTES);
-  memcpy(row[1 - 1].Z, ONE, P384_LIMBS * BN_BYTES);
+  memcpy(row[1 - 1].X, p_x, P384_LIMBS * sizeof(Limb));
+  memcpy(row[1 - 1].Y, p_y, P384_LIMBS * sizeof(Limb));
+  memcpy(row[1 - 1].Z, ONE, P384_LIMBS * sizeof(Limb));
 
   GFp_nistz384_point_double(&row[2 - 1], &row[1 - 1]);
   GFp_nistz384_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);

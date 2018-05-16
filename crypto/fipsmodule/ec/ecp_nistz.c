@@ -18,7 +18,7 @@
 
 #include <GFp/bn.h>
 
-#include "../bn/internal.h"
+#include "../../limbs/limbs.h"
 
 
 /* Fills |str| with the bytewise little-endian encoding of |scalar|, where
@@ -31,17 +31,17 @@
 void gfp_little_endian_bytes_from_scalar(uint8_t str[], size_t str_len,
                                          const BN_ULONG scalar[],
                                          size_t num_limbs) {
-  assert(str_len == (num_limbs * BN_BYTES) + 1);
+  assert(str_len == (num_limbs * sizeof(Limb)) + 1);
 
   size_t i;
-  for (i = 0; i < num_limbs * BN_BYTES; i += BN_BYTES) {
-    BN_ULONG d = scalar[i / BN_BYTES];
+  for (i = 0; i < num_limbs * sizeof(Limb); i += sizeof(Limb)) {
+    BN_ULONG d = scalar[i / sizeof(Limb)];
 
     str[i + 0] = d & 0xff;
     str[i + 1] = (d >> 8) & 0xff;
     str[i + 2] = (d >> 16) & 0xff;
     str[i + 3] = (d >>= 24) & 0xff;
-    if (BN_BYTES == 8) {
+    if (sizeof(Limb) == 8) {
       d >>= 8;
       str[i + 4] = d & 0xff;
       str[i + 5] = (d >> 8) & 0xff;

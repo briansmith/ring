@@ -399,7 +399,7 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
       // here is the top bit, inclusive.
       if (bits - 4 >= max_bits - 8) {
         // Read five bits from |bits-4| through |bits|, inclusive.
-        wvalue = p_bytes[num_limbs * BN_BYTES - 1];
+        wvalue = p_bytes[num_limbs * sizeof(Limb) - 1];
         wvalue >>= (bits - 4) & 7;
         wvalue &= 0x1f;
         bits -= 5;
