@@ -866,8 +866,7 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
     }
 
     // r += a.
-    fn add_assign(r: &mut Nonnegative, a: &mut Nonnegative, m_limb_count: usize)
-                  -> Result<(), error::Unspecified> {
+    fn add_assign(r: &mut Nonnegative, a: &mut Nonnegative, m_limb_count: usize) {
         let mut carry = 0;
         make_limbs(r, m_limb_count, |r_limbs| {
             make_limbs(a, m_limb_count, |a_limbs| {
@@ -875,27 +874,23 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
                     LIMBS_add_assign(r_limbs.as_mut_ptr(), a_limbs.as_ptr(),
                                      m_limb_count)
                 };
-                Ok(())
-            })
-        })?;
+            });
+        });
         // It is possible for the result to be one bit larger than `m`.
         if carry != 0 {
             grow_by_one_bit(r)
         }
-        Ok(())
     }
 
     // r -= a. Requires r > a.
     #[inline]
-    fn sub_assign(r: &mut Nonnegative, a: &mut Nonnegative, m_limb_count: usize)
-                  -> Result<(), error::Unspecified> {
+    fn sub_assign(r: &mut Nonnegative, a: &mut Nonnegative, m_limb_count: usize) {
         make_limbs(r, m_limb_count, |r_limbs| {
             make_limbs(a, m_limb_count, |a_limbs| {
                 unsafe {
                     LIMBS_sub_assign(r_limbs.as_mut_ptr(), a_limbs.as_ptr(),
                                      m_limb_count);
                 }
-                Ok(())
             })
         })
     }
@@ -911,8 +906,7 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
     }
 
     pub fn make_limbs<F>(n: &mut Nonnegative, num_limbs: usize, f: F)
-                         -> Result<(), error::Unspecified>
-        where F: FnOnce(&mut [Limb]) -> Result<(), error::Unspecified>
+        where F: FnOnce(&mut [Limb])
     {
         while num_limbs < n.limbs.len() {
             let _ = n.limbs.pop();
@@ -921,13 +915,11 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
             n.limbs.push(0);
         }
 
-        let r = f(&mut n.limbs);
+        f(&mut n.limbs);
 
         while n.limbs.last() == Some(&0) {
             let _ = n.limbs.pop();
         }
-
-        r
     }
 
     let m_limb_count = m_limbs.len();
@@ -946,14 +938,14 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
             halve(&mut u);
             double(&mut x2);
         } else if !greater_than(&u, &v) {
-            sub_assign(&mut v, &mut u, m_limb_count)?;
+            sub_assign(&mut v, &mut u, m_limb_count);
             halve(&mut v);
-            add_assign(&mut x2, &mut x1, m_limb_count)?;
+            add_assign(&mut x2, &mut x1, m_limb_count);
             double(&mut x1);
         } else {
-            sub_assign(&mut u, &mut v, m_limb_count)?;
+            sub_assign(&mut u, &mut v, m_limb_count);
             halve(&mut u);
-            add_assign(&mut x1, &mut x2, m_limb_count)?;
+            add_assign(&mut x1, &mut x2, m_limb_count);
             double(&mut x2);
         }
         k += 1;
@@ -972,8 +964,7 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
                 LIMBS_sub_assign(x1_limbs.as_mut_ptr(), m_limbs.as_ptr(),
                                  m_limb_count);
             }
-            Ok(())
-        })?;
+        });
     }
     assert!(greater_than(&m, &x1));
 
@@ -990,8 +981,7 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
                     LIMBS_add_assign(x1_limbs.as_mut_ptr(), m_limbs.as_ptr(),
                                      m_limb_count)
                 };
-                Ok(())
-            })?;
+            });
         }
 
         // x1 /= 2.
@@ -1001,8 +991,7 @@ fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
         if carry != 0 {
             make_limbs(&mut x1, m_limb_count, |limbs| {
                 *limbs.last_mut().unwrap() |= 1 << (LIMB_BITS - 1);
-                Ok(())
-            })?;
+            });
         }
     }
 
