@@ -227,12 +227,11 @@ impl<M> Modulus<M> {
 
     #[cfg(feature = "rsa_signing")]
     pub fn from(n: Nonnegative) -> Result<Self, error::Unspecified> {
-        Self::from_limbs(&n.limbs)
-    }
-
-    #[cfg(feature = "rsa_signing")]
-    fn from_limbs(n: &[limb::Limb]) -> Result<Self, error::Unspecified> {
-        Self::from_boxed_limbs(BoxedLimbs::minimal_width_from_unpadded(n))
+        let limbs = BoxedLimbs {
+            limbs: n.limbs.into_boxed_slice(),
+            m: PhantomData,
+        };
+        Self::from_boxed_limbs(limbs)
     }
 
     fn from_boxed_limbs(n: BoxedLimbs<M>) -> Result<Self, error::Unspecified> {
@@ -397,7 +396,7 @@ impl<M> Elem<M, Unencoded> {
 
     #[cfg(feature = "rsa_signing")]
     pub fn into_modulus<MM>(self) -> Result<Modulus<MM>, error::Unspecified> {
-        Modulus::from_limbs(&self.limbs)
+        Modulus::from_boxed_limbs(BoxedLimbs::minimal_width_from_unpadded(&self.limbs))
     }
 }
 
