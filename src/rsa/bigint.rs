@@ -1064,11 +1064,13 @@ impl Nonnegative {
     fn is_zero(&self) -> bool { self.limbs.is_empty() }
 
     #[inline]
-    fn is_even(&self) -> bool { !self.is_odd() }
+    fn is_even(&self) -> bool {
+        limb::limbs_are_even_constant_time(&self.limbs) == limb::LimbMask::True
+    }
 
     #[inline]
     pub fn is_odd(&self) -> bool {
-        limb::limbs_are_even_constant_time(&self.limbs) == limb::LimbMask::False
+        !self.is_even()
     }
 
     pub fn verify_less_than(&self, other: &Self)
