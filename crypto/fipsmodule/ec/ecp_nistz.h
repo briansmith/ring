@@ -19,10 +19,9 @@
 
 #include <assert.h>
 
-#include <GFp/bn.h>
 #include <GFp/type_check.h>
 
-#include "../../internal.h"
+#include "../../limbs/limbs.h"
 
 
 #if defined(__cplusplus)
@@ -101,16 +100,16 @@ extern "C" {
 // essentially provides the input bits "shifted to the left" by one position.
 // For example, the input to compute the least significant recoded digit, given
 // that there's no bit b_-1, has to be b_4 b_3 b_2 b_1 b_0 0.
-OPENSSL_COMPILE_ASSERT(sizeof(crypto_word_t) == sizeof(BN_ULONG),
+OPENSSL_COMPILE_ASSERT(sizeof(crypto_word_t) == sizeof(Limb),
                        size_t_and_bn_ulong_are_different_sizes);
-static inline void booth_recode(BN_ULONG *is_negative, unsigned *digit,
+static inline void booth_recode(Limb *is_negative, unsigned *digit,
                                 unsigned in, unsigned w) {
   assert(w >= 2);
   assert(w <= 7);
 
   // Set all bits of `s` to MSB(in), similar to |constant_time_msb_s|,
   // but 'in' seen as (`w+1`)-bit value.
-  BN_ULONG s = ~((in >> w) - 1);
+  Limb s = ~((in >> w) - 1);
   unsigned d;
   d = (1 << (w + 1)) - in - 1;
   d = (d & s) | (in & ~s);
@@ -122,7 +121,7 @@ static inline void booth_recode(BN_ULONG *is_negative, unsigned *digit,
 
 
 void gfp_little_endian_bytes_from_scalar(uint8_t str[], size_t str_len,
-                                         const BN_ULONG scalar[],
+                                         const Limb scalar[],
                                          size_t num_limbs);
 
 

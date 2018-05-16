@@ -16,10 +16,6 @@
 
 #include <assert.h>
 
-#include <GFp/bn.h>
-
-#include "../../limbs/limbs.h"
-
 
 /* Fills |str| with the bytewise little-endian encoding of |scalar|, where
  * |scalar| has |num_limbs| limbs. |str| is padded with zeros at the end up
@@ -29,13 +25,13 @@
  * up into windows of a number of bits (5 or 7) that isn't divisible by 8, and
  * so it is useful for it to be able to read an extra zero byte. */
 void gfp_little_endian_bytes_from_scalar(uint8_t str[], size_t str_len,
-                                         const BN_ULONG scalar[],
+                                         const Limb scalar[],
                                          size_t num_limbs) {
   assert(str_len == (num_limbs * sizeof(Limb)) + 1);
 
   size_t i;
   for (i = 0; i < num_limbs * sizeof(Limb); i += sizeof(Limb)) {
-    BN_ULONG d = scalar[i / sizeof(Limb)];
+    Limb d = scalar[i / sizeof(Limb)];
 
     str[i + 0] = d & 0xff;
     str[i + 1] = (d >> 8) & 0xff;

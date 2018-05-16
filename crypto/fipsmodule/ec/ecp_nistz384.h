@@ -15,8 +15,6 @@
 #ifndef OPENSSL_HEADER_EC_ECP_NISTZ384_H
 #define OPENSSL_HEADER_EC_ECP_NISTZ384_H
 
-#include <GFp/bn.h>
-
 #include "../../limbs/limbs.h"
 
 #if defined(__cplusplus)
@@ -26,14 +24,14 @@ extern "C" {
 #define P384_LIMBS (384u / LIMB_BITS)
 
 typedef struct {
-  BN_ULONG X[P384_LIMBS];
-  BN_ULONG Y[P384_LIMBS];
-  BN_ULONG Z[P384_LIMBS];
+  Limb X[P384_LIMBS];
+  Limb Y[P384_LIMBS];
+  Limb Z[P384_LIMBS];
 } P384_POINT;
 
 typedef struct {
-  BN_ULONG X[P384_LIMBS];
-  BN_ULONG Y[P384_LIMBS];
+  Limb X[P384_LIMBS];
+  Limb Y[P384_LIMBS];
 } P384_POINT_AFFINE;
 
 

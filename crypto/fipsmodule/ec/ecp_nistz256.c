@@ -27,12 +27,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <GFp/bn.h>
-
 #include "ecp_nistz.h"
-#include "../../limbs/limbs.h"
 #include "../bn/internal.h"
-#include "../../internal.h"
 
 
 typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
@@ -40,24 +36,24 @@ typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
 void GFp_nistz256_point_mul_base(P256_POINT *r,
-                                 const BN_ULONG g_scalar[P256_LIMBS]);
-void GFp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
-                            const BN_ULONG p_x[P256_LIMBS],
-                            const BN_ULONG p_y[P256_LIMBS]);
+                                 const Limb g_scalar[P256_LIMBS]);
+void GFp_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
+                            const Limb p_x[P256_LIMBS],
+                            const Limb p_y[P256_LIMBS]);
 
 
 /* Functions implemented in assembly */
 /* Modular neg: res = -a mod P */
-void GFp_nistz256_neg(BN_ULONG res[P256_LIMBS], const BN_ULONG a[P256_LIMBS]);
+void GFp_nistz256_neg(Limb res[P256_LIMBS], const Limb a[P256_LIMBS]);
 
 
 /* One converted into the Montgomery domain */
-static const BN_ULONG ONE[P256_LIMBS] = {
+static const Limb ONE[P256_LIMBS] = {
     TOBN(0x00000000, 0x00000001), TOBN(0xffffffff, 0x00000000),
     TOBN(0xffffffff, 0xffffffff), TOBN(0x00000000, 0xfffffffe),
 };
 
-static const BN_ULONG Q[P256_LIMBS] = {
+static const Limb Q[P256_LIMBS] = {
   TOBN(0xffffffff, 0xffffffff),
   TOBN(0x00000000, 0xffffffff),
   TOBN(0x00000000, 0x00000000),
@@ -69,19 +65,19 @@ static const BN_ULONG Q[P256_LIMBS] = {
 
 /* This assumes that |x| and |y| have been each been reduced to their minimal
  * unique representations. */
-static BN_ULONG is_infinity(const BN_ULONG x[P256_LIMBS],
-                            const BN_ULONG y[P256_LIMBS]) {
-  BN_ULONG acc = 0;
+static Limb is_infinity(const Limb x[P256_LIMBS],
+                            const Limb y[P256_LIMBS]) {
+  Limb acc = 0;
   for (size_t i = 0; i < P256_LIMBS; ++i) {
     acc |= x[i] | y[i];
   }
   return constant_time_is_zero_w(acc);
 }
 
-static void copy_conditional(BN_ULONG dst[P256_LIMBS],
-                             const BN_ULONG src[P256_LIMBS], BN_ULONG move) {
-  BN_ULONG mask1 = move;
-  BN_ULONG mask2 = ~mask1;
+static void copy_conditional(Limb dst[P256_LIMBS],
+                             const Limb src[P256_LIMBS], Limb move) {
+  Limb mask1 = move;
+  Limb mask2 = ~mask1;
 
   dst[0] = (src[0] & mask1) ^ (dst[0] & mask2);
   dst[1] = (src[1] & mask1) ^ (dst[1] & mask2);
@@ -103,9 +99,9 @@ void GFp_nistz256_point_add_affine(P256_POINT *r, const P256_POINT *a,
 
 
 /* r = p * p_scalar */
-void GFp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
-                            const BN_ULONG p_x[P256_LIMBS],
-                            const BN_ULONG p_y[P256_LIMBS]) {
+void GFp_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
+                            const Limb p_x[P256_LIMBS],
+                            const Limb p_y[P256_LIMBS]) {
   static const unsigned kWindowSize = 5;
   static const unsigned kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
 
@@ -143,13 +139,13 @@ void GFp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
   GFp_nistz256_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
   GFp_nistz256_point_double(&row[16 - 1], &row[8 - 1]);
 
-  BN_ULONG tmp[P256_LIMBS];
+  Limb tmp[P256_LIMBS];
   alignas(32) P256_POINT h;
   static const unsigned START_INDEX = 256 - 1;
   unsigned index = START_INDEX;
 
   unsigned raw_wvalue;
-  BN_ULONG recoded_is_negative;
+  Limb recoded_is_negative;
   unsigned recoded;
 
   raw_wvalue = p_str[(index - 1) / 8];
@@ -195,7 +191,7 @@ void GFp_nistz256_point_mul(P256_POINT *r, const BN_ULONG p_scalar[P256_LIMBS],
 }
 
 void GFp_nistz256_point_mul_base(P256_POINT *r,
-                                 const BN_ULONG g_scalar[P256_LIMBS]) {
+                                 const Limb g_scalar[P256_LIMBS]) {
   static const unsigned kWindowSize = 7;
   static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
 
@@ -215,7 +211,7 @@ void GFp_nistz256_point_mul_base(P256_POINT *r,
   unsigned index = kWindowSize;
 
   unsigned raw_wvalue;
-  BN_ULONG recoded_is_negative;
+  Limb recoded_is_negative;
   unsigned recoded;
 
   raw_wvalue = (p_str[0] << 1) & kMask;

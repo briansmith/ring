@@ -15,8 +15,6 @@
 #ifndef OPENSSL_HEADER_EC_ECP_NISTZ256_H
 #define OPENSSL_HEADER_EC_ECP_NISTZ256_H
 
-#include <GFp/bn.h>
-
 #include "../../limbs/limbs.h"
 
 #if defined(__cplusplus)
@@ -26,22 +24,20 @@ extern "C" {
 #define P256_LIMBS (256u / LIMB_BITS)
 
 typedef struct {
-  BN_ULONG X[P256_LIMBS];
-  BN_ULONG Y[P256_LIMBS];
-  BN_ULONG Z[P256_LIMBS];
+  Limb X[P256_LIMBS];
+  Limb Y[P256_LIMBS];
+  Limb Z[P256_LIMBS];
 } P256_POINT;
 
 typedef struct {
-  BN_ULONG X[P256_LIMBS];
-  BN_ULONG Y[P256_LIMBS];
+  Limb X[P256_LIMBS];
+  Limb Y[P256_LIMBS];
 } P256_POINT_AFFINE;
 
 
-void GFp_nistz256_mul_mont(BN_ULONG res[P256_LIMBS],
-                           const BN_ULONG a[P256_LIMBS],
-                           const BN_ULONG b[P256_LIMBS]);
-void GFp_nistz256_sqr_mont(BN_ULONG res[P256_LIMBS],
-                           const BN_ULONG a[P256_LIMBS]);
+void GFp_nistz256_mul_mont(Limb res[P256_LIMBS], const Limb a[P256_LIMBS],
+                           const Limb b[P256_LIMBS]);
+void GFp_nistz256_sqr_mont(Limb res[P256_LIMBS], const Limb a[P256_LIMBS]);
 
 /* Functions that perform constant time access to the precomputed tables */
 void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
