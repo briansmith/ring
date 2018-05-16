@@ -106,13 +106,11 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include <GFp/bn.h>
+#include <GFp/mem.h>
+#include <GFp/type_check.h>
 
 #include <assert.h>
 #include <string.h>
-
-#include <GFp/mem.h>
-#include <GFp/type_check.h>
 
 #include "internal.h"
 #include "../../internal.h"

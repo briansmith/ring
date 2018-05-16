@@ -54,8 +54,6 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <GFp/bn.h>
-
 #include "internal.h"
 
 

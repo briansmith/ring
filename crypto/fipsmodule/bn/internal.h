@@ -124,7 +124,6 @@
 #define OPENSSL_HEADER_BN_INTERNAL_H
 
 #include <GFp/base.h>
-#include "GFp/bn.h"
 #include "GFp/type_check.h"
 
 #if defined(OPENSSL_X86_64) && defined(_MSC_VER)
@@ -139,6 +138,8 @@
 #if defined(__cplusplus)
 extern "C" {
 #endif
+
+typedef crypto_word_t BN_ULONG;
 
 #if defined(OPENSSL_64_BIT)
 

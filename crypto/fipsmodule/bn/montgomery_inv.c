@@ -12,12 +12,10 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <GFp/bn.h>
-
-#include <assert.h>
-
 #include "internal.h"
 #include "../../internal.h"
+
+#include <assert.h>
 
 
 // Avoid -Wmissing-prototypes warnings.
