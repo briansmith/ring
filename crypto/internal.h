@@ -210,8 +210,10 @@ typedef __uint128_t uint128_t;
 // word length.
 #if defined(OPENSSL_64_BIT)
 typedef uint64_t crypto_word_t;
+#define CRYPTO_WORD_T_BITS (64u)
 #elif defined(OPENSSL_32_BIT)
 typedef uint32_t crypto_word_t;
+#define CRYPTO_WORD_T_BITS (32u)
 #else
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
 #endif

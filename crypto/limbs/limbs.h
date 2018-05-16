@@ -16,14 +16,12 @@
 #define RING_LIMBS_H
 
 #include <GFp/base.h>
-#include <GFp/bn.h>
 
-#include <stddef.h>
+#include "../internal.h"
 
+typedef crypto_word_t Limb;
 
-typedef BN_ULONG Limb;
-
-#define LIMB_BITS BN_BITS2
+#define LIMB_BITS CRYPTO_WORD_T_BITS
 #define LIMB_HIGH_BIT ((Limb)(1) << (LIMB_BITS - 1))
 
 
