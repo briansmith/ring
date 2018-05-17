@@ -45,8 +45,13 @@ alignas(64) static const BN_ULONG two80[40] = {
 
 void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
 	const BN_ULONG base_norm[16], const BN_ULONG exponent[16],
-	const BN_ULONG m_norm[16], const BN_ULONG RR[16], BN_ULONG k0) {
-  alignas(64) uint8_t storage[(320 * 3) + (32 * 9 * 16)];  // 5.5KB
+	const BN_ULONG m_norm[16], const BN_ULONG RR[16], BN_ULONG k0,
+	BN_ULONG storage_words[MOD_EXP_CTIME_STORAGE_LEN]) {
+  OPENSSL_COMPILE_ASSERT(MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH % 64 == 0,
+      MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH_is_large_enough);
+  unsigned char *storage = (unsigned char *)storage_words;
+  assert((uintptr_t)storage % 64 == 0);
+
   unsigned char *a_inv, *m, *result, *table_s = storage + (320 * 3),
                                      *R2 = table_s;  // borrow
   if (((((uintptr_t)storage & 4095) + 320) >> 12) != 0) {

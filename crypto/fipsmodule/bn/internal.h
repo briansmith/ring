@@ -185,6 +185,16 @@ extern "C" {
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
 #endif
 
+// |BN_mod_exp_mont_consttime| is based on the assumption that the L1 data
+// cache line width of the target processor is at least the following value.
+#define MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH 64
+
+// The number of |BN_ULONG|s needed for the |BN_mod_exp_mont_consttime| stack-
+// allocated storage buffer. The buffer is just the right size for the RSAZ
+// and is about ~1KB larger than what's necessary (4480 bytes) for 1024-bit
+// inputs.
+#define MOD_EXP_CTIME_STORAGE_LEN \
+  (((320u * 3u) + (32u * 9u * 16u)) / sizeof(BN_ULONG))
 
 #define STATIC_BIGNUM(x)                                    \
   {                                                         \
