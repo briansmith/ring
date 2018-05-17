@@ -255,12 +255,7 @@ static int gfp_aes_gcm_init_and_aad(GCM128_CONTEXT *gcm, AES_KEY *ks,
 
   GFp_gcm128_init(gcm, ks, aes_block(), (const uint8_t *)ctx_buf + sizeof(*ks),
                   nonce);
-  if (ad_len > 0) {
-    if (!GFp_gcm128_aad(gcm, ad, ad_len)) {
-      return 0;
-    }
-  }
-  return 1;
+  return GFp_gcm128_aad(gcm, ad, ad_len);
 }
 
 int GFp_aes_gcm_seal(const void *ctx_buf, uint8_t *in_out, size_t in_out_len,
