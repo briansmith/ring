@@ -220,14 +220,10 @@ static int copy_from_prebuf(BN_ULONG b[], int top, unsigned char *buf, int idx,
 // line size.
 #if MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH == 64
 
-#define GFp_BN_window_bits_for_ctime_exponent_size(b) \
-  ((b) > 937 ? 6 : (b) > 306 ? 5 : (b) > 89 ? 4 : (b) > 22 ? 3 : 1)
 #define BN_MAX_WINDOW_BITS_FOR_CTIME_EXPONENT_SIZE (6)
 
 #elif MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH == 32
 
-#define GFp_BN_window_bits_for_ctime_exponent_size(b) \
-  ((b) > 306 ? 5 : (b) > 89 ? 4 : (b) > 22 ? 3 : 1)
 #define BN_MAX_WINDOW_BITS_FOR_CTIME_EXPONENT_SIZE (5)
 
 #endif
@@ -279,7 +275,7 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
   // reserve space for n copy
   powerbufLen += top * sizeof(n[0]);
 #else
-  const int window = GFp_BN_window_bits_for_ctime_exponent_size(bits);
+  const int window = BN_MAX_WINDOW_BITS_FOR_CTIME_EXPONENT_SIZE;
 #endif
 
   // Allocate a buffer large enough to hold all of the pre-computed
