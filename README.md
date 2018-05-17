@@ -214,7 +214,7 @@ the table below. The C compilers listed are used for compiling the C portions.
 <tr><th>OS</th><th>Arch.</th><th>Compilers</th><th>Status</th>
 <tr><td rowspan=2>Linux</td>
     <td>x86, x86_64</td>
-    <td>GCC 4.6, GCC 5, GCC 6, Clang 3.8</td>
+    <td>GCC 4.6, GCC 7, Clang 5</td>
     <td rowspan=4><a href=https://travis-ci.org/briansmith/ring/branches>Build Status</a></td>
 </tr>
 <tr><td>32&#8209;bit&nbsp;ARM, AAarch64</td>
@@ -228,7 +228,7 @@ the table below. The C compilers listed are used for compiling the C portions.
 </tr>
 <tr><td>Mac&nbsp;OS&nbsp;X</td>
     <td>x64</td>
-    <td>Apple LLVM version 9.0.0 (clang-900.0.39.2) from Xcode 9.2</td>
+    <td>Apple LLVM version 9.0.0 (clang-900.0.39.2) from Xcode 9.3</td>
 </tr>
 <tr><td>Windows</td>
     <td>x86, x86_64</td>

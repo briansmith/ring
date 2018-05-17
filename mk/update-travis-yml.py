@@ -17,8 +17,6 @@
 import re
 import shutil
 
-latest_clang = "clang-4.0"
-
 rusts = [
     "stable",
     "nightly",
@@ -32,16 +30,10 @@ linux_compilers = [
     # BoringSSL.
     "",
 
-    # Pre-release of clang.
-    # XXX: clang 4.0 doesn't work:
-    # https://github.com/travis-ci/apt-package-whitelist/issues/3296
-    # "clang-4.0",
-
     # Newest clang and GCC.
-    "clang-3.9",
+    "clang-5.0",
 
-    "gcc-5",
-    "gcc-6",
+    "gcc-7",
 ]
 
 # Clang 3.4 and GCC 4.6 are already installed by default.
@@ -177,7 +169,7 @@ def format_entry(os, target, compiler, rust, mode, features):
     cc = get_cc(sys, compiler)
 
     if os == "osx":
-        os += "\n" + entry_indent + "osx_image: xcode9.2"
+        os += "\n" + entry_indent + "osx_image: xcode9.3"
 
     compilers = []
     if cc != "":
@@ -245,13 +237,10 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
 def get_sources_for_package(package):
     ubuntu_toolchain = "ubuntu-toolchain-r-test"
     if package.startswith("clang-"):
-        if package == latest_clang:
-            llvm_toolchain = "llvm-toolchain-precise"
-        else:
-            _, version = package.split("-")
-            llvm_toolchain = "llvm-toolchain-precise-%s" % version
+        _, version = package.split("-")
+        llvm_toolchain = "llvm-toolchain-trusty-%s" % version
 
-        # Stuff in llvm-toolchain-precise depends on stuff in the toolchain
+        # Stuff in llvm-toolchain-trusty depends on stuff in the toolchain
         # packages.
         return [llvm_toolchain, ubuntu_toolchain]
     else:
