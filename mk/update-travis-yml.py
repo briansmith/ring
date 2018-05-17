@@ -177,7 +177,6 @@ def format_entry(os, target, compiler, rust, mode, features):
         sources = []
 
     cc = get_cc(sys, compiler)
-    cxx = replace_cc_with_cxx(sys, compiler)
 
     if os == "osx":
         os += "\n" + entry_indent + "osx_image: xcode9.2"
@@ -186,8 +185,6 @@ def format_entry(os, target, compiler, rust, mode, features):
     if cc != "":
         compilers += ["CC_X=" + cc]
     compilers += ""
-    if cxx != "":
-        compilers += ["CXX_X=" + cxx]
 
     return template % {
             "compilers": " ".join(compilers),
@@ -204,20 +201,16 @@ def format_entry(os, target, compiler, rust, mode, features):
 def get_linux_packages_to_install(target, compiler, arch, kcov):
     if compiler in ["", linux_default_clang]:
         packages = []
-    elif compiler.startswith("clang-"):
+    elif compiler.startswith("clang-") or compiler.startswith("gcc-"):
         packages = [compiler]
-    elif compiler.startswith("gcc-"):
-        packages = [compiler, replace_cc_with_cxx("linux", compiler)]
     else:
         packages = []
 
     if target == "aarch64-unknown-linux-gnu":
         packages += ["gcc-aarch64-linux-gnu",
-                     "g++-aarch64-linux-gnu",
                      "libc6-dev-arm64-cross"]
     if target == "arm-unknown-linux-gnueabihf":
         packages += ["gcc-arm-linux-gnueabihf",
-                     "g++-arm-linux-gnueabihf",
                      "libc6-dev-armhf-cross"]
     if target == "armv7-linux-androideabi":
         packages += ["expect",
@@ -234,11 +227,9 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
 
         if compiler.startswith("clang-") or compiler == "":
             packages += ["libc6-dev-i386",
-                         "gcc-multilib",
-                         "g++-multilib"]
+                         "gcc-multilib"]
         elif compiler.startswith("gcc-"):
             packages += [compiler + "-multilib",
-                         replace_cc_with_cxx("linux", compiler) + "-multilib",
                          "linux-libc-dev:i386"]
         else:
             raise ValueError("unexpected compiler: %s" % compiler)
@@ -273,11 +264,6 @@ def get_cc(sys, compiler):
         return "clang"
 
     return compiler
-
-def replace_cc_with_cxx(sys, compiler):
-    return get_cc(sys, compiler) \
-               .replace("gcc", "g++") \
-               .replace("clang", "clang++")
 
 def main():
     # Make a backup of the file we are about to update.

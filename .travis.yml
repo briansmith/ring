@@ -37,7 +37,7 @@ matrix:
       os: osx
       osx_image: xcode9.2
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -50,7 +50,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -63,7 +63,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -76,7 +76,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -105,7 +105,7 @@ matrix:
       rust: stable
       os: linux
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -116,7 +116,7 @@ matrix:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
@@ -127,7 +127,7 @@ matrix:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -138,7 +138,7 @@ matrix:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
@@ -149,95 +149,87 @@ matrix:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
             - gcc-5
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
             - gcc-5
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
             - gcc-5
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
             - gcc-5
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
             - gcc-6
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
             - gcc-6
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
             - gcc-6
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
             - gcc-6
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -245,13 +237,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-aarch64-linux-gnu
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -259,13 +250,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-aarch64-linux-gnu
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -273,13 +263,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-aarch64-linux-gnu
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -287,7 +276,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-aarch64-linux-gnu
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
           sources:
@@ -299,7 +287,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
@@ -311,7 +298,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
@@ -323,7 +309,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
@@ -335,181 +320,160 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
             - clang-3.9
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
             - clang-3.9
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
             - clang-3.9
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
             - clang-3.9
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
             - gcc-5
             - gcc-5-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
             - gcc-5
             - gcc-5-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
             - gcc-5
             - gcc-5-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
             - gcc-5
             - gcc-5-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
-            - g++-6-multilib
             - gcc-6
             - gcc-6-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
-            - g++-6-multilib
             - gcc-6
             - gcc-6-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
-            - g++-6-multilib
             - gcc-6
             - gcc-6-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
-            - g++-6-multilib
             - gcc-6
             - gcc-6-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc CXX_X=arm-linux-gnueabihf-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -517,13 +481,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-arm-linux-gnueabihf
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc CXX_X=arm-linux-gnueabihf-g++ FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -531,13 +494,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-arm-linux-gnueabihf
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc CXX_X=arm-linux-gnueabihf-g++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -545,13 +507,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-arm-linux-gnueabihf
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc CXX_X=arm-linux-gnueabihf-g++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -559,7 +520,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-arm-linux-gnueabihf
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
           sources:
@@ -585,7 +545,7 @@ matrix:
       os: osx
       osx_image: xcode9.2
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -598,7 +558,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -611,7 +571,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -624,7 +584,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -653,7 +613,7 @@ matrix:
       rust: nightly
       os: linux
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -664,7 +624,7 @@ matrix:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -675,7 +635,7 @@ matrix:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -686,7 +646,7 @@ matrix:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
@@ -697,14 +657,13 @@ matrix:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=1
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=1
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
             - binutils-dev
-            - g++-5
             - gcc-5
             - libcurl4-openssl-dev
             - libdw-dev
@@ -712,14 +671,13 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=DEBUG KCOV=1
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 FEATURES_X= MODE_X=DEBUG KCOV=1
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
             - binutils-dev
-            - g++-5
             - gcc-5
             - libcurl4-openssl-dev
             - libdw-dev
@@ -727,73 +685,67 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
             - gcc-5
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
             - gcc-5
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
             - gcc-6
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
             - gcc-6
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
             - gcc-6
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
             - gcc-6
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -801,13 +753,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-aarch64-linux-gnu
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -815,13 +766,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-aarch64-linux-gnu
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -829,13 +779,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-aarch64-linux-gnu
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -843,7 +792,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-aarch64-linux-gnu
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
           sources:
@@ -855,7 +803,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
@@ -867,7 +814,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
@@ -879,7 +825,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
@@ -891,76 +836,69 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
             - clang-3.9
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
             - clang-3.9
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
             - clang-3.9
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
             - clang-3.9
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=1
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=1
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
             - gcc-5
             - gcc-5-multilib
             - libcurl3:i386
@@ -973,14 +911,12 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=DEBUG KCOV=1
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 FEATURES_X= MODE_X=DEBUG KCOV=1
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
             - gcc-5
             - gcc-5-multilib
             - libcurl3:i386
@@ -993,91 +929,79 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
             - gcc-5
             - gcc-5-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
             - gcc-5
             - gcc-5-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
-            - g++-6-multilib
             - gcc-6
             - gcc-6-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
-            - g++-6-multilib
             - gcc-6
             - gcc-6-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
-            - g++-6-multilib
             - gcc-6
             - gcc-6-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
-            - g++-6-multilib
             - gcc-6
             - gcc-6-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc CXX_X=arm-linux-gnueabihf-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -1085,13 +1009,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-arm-linux-gnueabihf
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc CXX_X=arm-linux-gnueabihf-g++ FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -1099,13 +1022,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-arm-linux-gnueabihf
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc CXX_X=arm-linux-gnueabihf-g++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -1113,13 +1035,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-arm-linux-gnueabihf
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc CXX_X=arm-linux-gnueabihf-g++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -1127,7 +1048,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-arm-linux-gnueabihf
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
           sources:
@@ -1153,7 +1073,7 @@ matrix:
       os: osx
       osx_image: xcode9.2
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1166,7 +1086,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1179,7 +1099,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1192,7 +1112,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc CXX_X=arm-linux-androideabi-g++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1221,7 +1141,7 @@ matrix:
       rust: beta
       os: linux
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -1232,7 +1152,7 @@ matrix:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
@@ -1243,7 +1163,7 @@ matrix:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
@@ -1254,7 +1174,7 @@ matrix:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
@@ -1265,95 +1185,87 @@ matrix:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
             - gcc-5
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
             - gcc-5
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
             - gcc-5
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
             - gcc-5
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
             - gcc-6
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
             - gcc-6
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
             - gcc-6
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
             - gcc-6
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1361,13 +1273,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-aarch64-linux-gnu
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1375,13 +1286,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-aarch64-linux-gnu
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1389,13 +1299,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-aarch64-linux-gnu
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc CXX_X=aarch64-linux-gnu-g++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=aarch64-unknown-linux-gnu CC_X=aarch64-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1403,7 +1312,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-aarch64-linux-gnu
             - gcc-aarch64-linux-gnu
             - libc6-dev-arm64-cross
           sources:
@@ -1415,7 +1323,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
@@ -1427,7 +1334,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
@@ -1439,7 +1345,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
@@ -1451,181 +1356,160 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
             - clang-3.9
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
             - clang-3.9
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
             - clang-3.9
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 CXX_X=clang++-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=clang-3.9 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
             - clang-3.9
-            - g++-multilib
             - gcc-multilib
             - libc6-dev-i386
           sources:
             - llvm-toolchain-precise-3.9
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
             - gcc-5
             - gcc-5-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
             - gcc-5
             - gcc-5-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
             - gcc-5
             - gcc-5-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 CXX_X=g++-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-5 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-5
-            - g++-5-multilib
             - gcc-5
             - gcc-5-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
-            - g++-6-multilib
             - gcc-6
             - gcc-6-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
-            - g++-6-multilib
             - gcc-6
             - gcc-6-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
-            - g++-6-multilib
             - gcc-6
             - gcc-6-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 CXX_X=g++-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-6 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       addons:
         apt:
           packages:
-            - g++-6
-            - g++-6-multilib
             - gcc-6
             - gcc-6-multilib
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc CXX_X=arm-linux-gnueabihf-g++ FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1633,13 +1517,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-arm-linux-gnueabihf
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc CXX_X=arm-linux-gnueabihf-g++ FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1647,13 +1530,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-arm-linux-gnueabihf
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc CXX_X=arm-linux-gnueabihf-g++ FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1661,13 +1543,12 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-arm-linux-gnueabihf
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc CXX_X=arm-linux-gnueabihf-g++ FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=arm-unknown-linux-gnueabihf CC_X=arm-linux-gnueabihf-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1675,7 +1556,6 @@ matrix:
       addons:
         apt:
           packages:
-            - g++-arm-linux-gnueabihf
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
           sources:
