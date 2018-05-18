@@ -51,8 +51,8 @@ if [[ ! "$TARGET_X" =~ "x86_64-" ]]; then
   rustup target add "$TARGET_X"
 
   # By default cargo/rustc seems to use cc for linking, We installed the
-  # multilib support that corresponds to $CC_X and $CXX_X but unless cc happens
-  # to match $CC_X, that's not the right version. The symptom is a linker error
+  # multilib support that corresponds to $CC_X but unless cc happens to match
+  # $CC_X, that's not the right version. The symptom is a linker error
   # where it fails to find -lgcc_s.
   if [[ ! -z "${CC_X-}" ]]; then
     mkdir .cargo
@@ -67,12 +67,6 @@ if [[ ! -z "${CC_X-}" ]]; then
   $CC --version
 else
   cc --version
-fi
-if [[ ! -z "${CXX_X-}" ]]; then
-  export CXX=$CXX_X
-  $CXX --version
-else
-  c++ --version
 fi
 
 cargo version
