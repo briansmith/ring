@@ -29,13 +29,6 @@ Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs);
 Limb LIMBS_less_than_limb(const Limb a[], Limb b, size_t num_limbs);
 void LIMBS_sub_assign(Limb r[], const Limb a[], size_t num_limbs);
 
-/* We have constant time primitives on |size_t|. Rather than duplicate them,
- * take advantage of the fact that |size_t| and |Limb| are currently
- * compatible on all platforms we support. */
-OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(Limb),
-                       size_t_and_limb_are_different_sizes);
-
-
 /* Returns 0xfff..f if |a| is all zero limbs, and zero otherwise. |num_limbs|
  * may be zero. */
 Limb LIMBS_are_zero(const Limb a[], size_t num_limbs) {

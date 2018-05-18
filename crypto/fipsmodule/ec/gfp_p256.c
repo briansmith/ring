@@ -80,10 +80,6 @@ void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, int rep) {
 
 /* TODO(perf): Optimize these. */
 
-OPENSSL_COMPILE_ASSERT(sizeof(size_t) == sizeof(Limb),
-                       size_t_and_gfp_limb_are_different_sizes);
-
-
 void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
                             int index) {
   assert(index >= 0);
