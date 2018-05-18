@@ -214,7 +214,7 @@ the table below. The C compilers listed are used for compiling the C portions.
 <tr><th>OS</th><th>Arch.</th><th>Compilers</th><th>Status</th>
 <tr><td rowspan=2>Linux</td>
     <td>x86, x86_64</td>
-    <td>GCC 4.6, GCC 7, Clang 5</td>
+    <td>GCC 4.8, GCC 7, Clang 5</td>
     <td rowspan=4><a href=https://travis-ci.org/briansmith/ring/branches>Build Status</a></td>
 </tr>
 <tr><td>32&#8209;bit&nbsp;ARM, AAarch64</td>
