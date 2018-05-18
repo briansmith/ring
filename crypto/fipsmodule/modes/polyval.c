@@ -80,7 +80,7 @@ void CRYPTO_POLYVAL_update_blocks(struct polyval_ctx *ctx, const uint8_t *in,
       byte_reverse(&reversed[i]);
     }
 
-    ctx->ghash(ctx->S.u, ctx->Htable, (const uint8_t *) reversed, todo);
+    ctx->ghash(ctx->S.u, ctx->Htable, (const aliasing_uint8 *)reversed, todo);
   }
 }
 

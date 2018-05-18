@@ -113,6 +113,7 @@
 #include <GFp/mem.h>
 
 #include "internal.h"
+#include "../../internal.h"
 #include "../../limbs/limbs.h"
 
 
@@ -381,7 +382,7 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
         GFp_bn_mul_mont_gather5(tmp, tmp, powerbuf, np, n0, top, wvalue);
       }
     } else {
-      const uint8_t *p_bytes = (const uint8_t *)p;
+      const aliasing_uint8 *p_bytes = (const aliasing_uint8 *)p;
       assert(bits < max_bits);
       // |p = 0| has been handled as a special case, so |max_bits| is at least
       // one word.

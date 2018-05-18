@@ -185,6 +185,12 @@ typedef __uint128_t uint128_t;
 #endif
 
 
+// |aliasing_uint8| is like |uint8_t| except that it is guaranteed to be
+// |unsigned char| so it can safely be used for aliasing casts. Assume POSIX
+// compliance so that |CHAR_BIT| is guaranteed to be 8.
+typedef unsigned char aliasing_uint8;
+
+
 // Constant-time utility functions.
 //
 // The following methods return a bitmask of all ones (0xff...f) for true and 0
