@@ -124,7 +124,6 @@
 #define OPENSSL_HEADER_BN_INTERNAL_H
 
 #include <GFp/base.h>
-#include "GFp/type_check.h"
 
 #if defined(OPENSSL_X86_64) && defined(_MSC_VER)
 #pragma warning(push, 3)

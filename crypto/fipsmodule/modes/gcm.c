@@ -53,7 +53,6 @@
 
 #include <GFp/mem.h>
 #include <GFp/cpu.h>
-#include <GFp/type_check.h>
 
 #include "internal.h"
 #include "../../internal.h"

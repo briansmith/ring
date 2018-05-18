@@ -19,8 +19,6 @@
 
 #include <assert.h>
 
-#include <GFp/type_check.h>
-
 #include "../../limbs/limbs.h"
 
 

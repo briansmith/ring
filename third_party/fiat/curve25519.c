@@ -31,7 +31,6 @@
 
 #include <GFp/cpu.h>
 #include <GFp/mem.h>
-#include <GFp/type_check.h>
 
 #include "internal.h"
 #include "../../crypto/internal.h"

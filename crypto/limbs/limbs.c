@@ -14,8 +14,6 @@
 
 #include "limbs.h"
 
-#include <GFp/type_check.h>
-
 #include "../internal.h"
 
 #include "limbs.inl"

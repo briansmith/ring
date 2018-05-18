@@ -107,7 +107,6 @@
  * Hudson (tjh@cryptsoft.com). */
 
 #include <GFp/mem.h>
-#include <GFp/type_check.h>
 
 #include <assert.h>
 #include <string.h>
