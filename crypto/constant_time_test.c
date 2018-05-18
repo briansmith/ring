@@ -53,7 +53,7 @@
 int bssl_constant_time_test_main(void);
 
 static int test_binary_op_w(crypto_word (*op)(crypto_word a, crypto_word b),
-                            const char* op_name, crypto_word a, crypto_word b,
+                            const char *op_name, crypto_word a, crypto_word b,
                             int is_true) {
   crypto_word c = op(a, b);
   if (is_true && c != CONSTTIME_TRUE_W) {
