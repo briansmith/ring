@@ -37,7 +37,7 @@ matrix:
       os: osx
       osx_image: xcode9.2
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -50,7 +50,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -63,7 +63,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -76,7 +76,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       dist: trusty
@@ -545,7 +545,7 @@ matrix:
       os: osx
       osx_image: xcode9.2
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -558,7 +558,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -571,7 +571,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -584,7 +584,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       dist: trusty
@@ -1073,7 +1073,7 @@ matrix:
       os: osx
       osx_image: xcode9.2
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1086,7 +1086,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1099,7 +1099,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       dist: trusty
@@ -1112,7 +1112,7 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       dist: trusty
