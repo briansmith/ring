@@ -199,36 +199,36 @@ typedef __uint128_t uint128_t;
 //
 // can be written as
 //
-// crypto_word_t lt = constant_time_lt_w(a, b);
+// crypto_word lt = constant_time_lt_w(a, b);
 // c = constant_time_select_w(lt, a, b);
 
-// crypto_word_t is the type that most constant-time functions use. Ideally we
+// crypto_word is the type that most constant-time functions use. Ideally we
 // would like it to be |size_t|, but NaCl builds in 64-bit mode with 32-bit
-// pointers, which means that |size_t| can be 32 bits when |crypto_word_t| is 64
+// pointers, which means that |size_t| can be 32 bits when |crypto_word| is 64
 // bits.
 #if defined(OPENSSL_64_BIT)
-typedef uint64_t crypto_word_t;
-#define CRYPTO_WORD_T_BITS (64u)
+typedef uint64_t crypto_word;
+#define CRYPTO_WORD_BITS (64u)
 #elif defined(OPENSSL_32_BIT)
-typedef uint32_t crypto_word_t;
-#define CRYPTO_WORD_T_BITS (32u)
+typedef uint32_t crypto_word;
+#define CRYPTO_WORD_BITS (32u)
 #else
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
 #endif
 
-#define CONSTTIME_TRUE_W ~((crypto_word_t)0)
-#define CONSTTIME_FALSE_W ((crypto_word_t)0)
+#define CONSTTIME_TRUE_W ~((crypto_word)0)
+#define CONSTTIME_FALSE_W ((crypto_word)0)
 #define CONSTTIME_TRUE_8 ((uint8_t)0xff)
 #define CONSTTIME_FALSE_8 ((uint8_t)0)
 
 // constant_time_msb_w returns the given value with the MSB copied to all the
 // other bits.
-static inline crypto_word_t constant_time_msb_w(crypto_word_t a) {
+static inline crypto_word constant_time_msb_w(crypto_word a) {
   return 0u - (a >> (sizeof(a) * 8 - 1));
 }
 
 // constant_time_is_zero_w returns 0xff..f if a == 0 and 0 otherwise.
-static inline crypto_word_t constant_time_is_zero_w(crypto_word_t a) {
+static inline crypto_word constant_time_is_zero_w(crypto_word a) {
   // Here is an SMT-LIB verification of this formula:
   //
   // (define-fun is_zero ((a (_ BitVec 32))) (_ BitVec 32)
@@ -243,34 +243,34 @@ static inline crypto_word_t constant_time_is_zero_w(crypto_word_t a) {
   return constant_time_msb_w(~a & (a - 1));
 }
 
-static inline crypto_word_t constant_time_is_nonzero_w(crypto_word_t a) {
+static inline crypto_word constant_time_is_nonzero_w(crypto_word a) {
   return ~constant_time_is_zero_w(a);
 }
 
 // constant_time_is_zero_8 acts like |constant_time_is_zero_w| but returns an
 // 8-bit mask.
-static inline uint8_t constant_time_is_zero_8(crypto_word_t a) {
+static inline uint8_t constant_time_is_zero_8(crypto_word a) {
   return (uint8_t)(constant_time_is_zero_w(a));
 }
 
 // constant_time_eq_w returns 0xff..f if a == b and 0 otherwise.
-static inline crypto_word_t constant_time_eq_w(crypto_word_t a,
-                                               crypto_word_t b) {
+static inline crypto_word constant_time_eq_w(crypto_word a,
+                                               crypto_word b) {
   return constant_time_is_zero_w(a ^ b);
 }
 
 // constant_time_eq_int acts like |constant_time_eq_w| but works on int
 // values.
-static inline crypto_word_t constant_time_eq_int(int a, int b) {
-  return constant_time_eq_w((crypto_word_t)(a), (crypto_word_t)(b));
+static inline crypto_word constant_time_eq_int(int a, int b) {
+  return constant_time_eq_w((crypto_word)(a), (crypto_word)(b));
 }
 
 // constant_time_select_w returns (mask & a) | (~mask & b). When |mask| is all
 // 1s or all 0s (as returned by the methods above), the select methods return
 // either |a| (if |mask| is nonzero) or |b| (if |mask| is zero).
-static inline crypto_word_t constant_time_select_w(crypto_word_t mask,
-                                                   crypto_word_t a,
-                                                   crypto_word_t b) {
+static inline crypto_word constant_time_select_w(crypto_word mask,
+                                                   crypto_word a,
+                                                   crypto_word b) {
   return (mask & a) | (~mask & b);
 }
 

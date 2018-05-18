@@ -52,10 +52,10 @@
 
 int bssl_constant_time_test_main(void);
 
-static int test_binary_op_w(crypto_word_t (*op)(crypto_word_t a, crypto_word_t b),
-                            const char* op_name, crypto_word_t a, crypto_word_t b,
+static int test_binary_op_w(crypto_word (*op)(crypto_word a, crypto_word b),
+                            const char* op_name, crypto_word a, crypto_word b,
                             int is_true) {
-  crypto_word_t c = op(a, b);
+  crypto_word c = op(a, b);
   if (is_true && c != CONSTTIME_TRUE_W) {
     fprintf(stderr,
             "Test failed for %s(%zu, %zu): expected %zu (TRUE), got %zu\n",
@@ -70,8 +70,8 @@ static int test_binary_op_w(crypto_word_t (*op)(crypto_word_t a, crypto_word_t b
   return 0;
 }
 
-static int test_is_zero_w(crypto_word_t a) {
-  crypto_word_t c = constant_time_is_zero_w(a);
+static int test_is_zero_w(crypto_word a) {
+  crypto_word c = constant_time_is_zero_w(a);
   if (a == 0 && c != CONSTTIME_TRUE_W) {
     fprintf(stderr,
             "Test failed for constant_time_is_zero_w(%zu): "
@@ -104,8 +104,8 @@ static int test_is_zero_w(crypto_word_t a) {
   return 0;
 }
 
-static int test_select_w(crypto_word_t a, crypto_word_t b) {
-  crypto_word_t selected = constant_time_select_w(CONSTTIME_TRUE_W, a, b);
+static int test_select_w(crypto_word a, crypto_word b) {
+  crypto_word selected = constant_time_select_w(CONSTTIME_TRUE_W, a, b);
   if (selected != a) {
     fprintf(stderr,
             "Test failed for constant_time_select_w(%zu, %zu,"
@@ -127,7 +127,7 @@ static int test_select_w(crypto_word_t a, crypto_word_t b) {
 }
 
 static int test_eq_int(int a, int b) {
-  crypto_word_t equal = constant_time_eq_int(a, b);
+  crypto_word equal = constant_time_eq_int(a, b);
   if (a == b && equal != CONSTTIME_TRUE_W) {
     fprintf(stderr,
             "Test failed for constant_time_eq_int(%d, %d): expected %zu(TRUE), "
@@ -144,7 +144,7 @@ static int test_eq_int(int a, int b) {
   return 0;
 }
 
-static crypto_word_t test_values_s[] = {
+static crypto_word test_values_s[] = {
   0,
   1,
   1024,
@@ -185,11 +185,11 @@ int bssl_constant_time_test_main(void) {
 
   for (size_t i = 0;
        i < sizeof(test_values_s) / sizeof(test_values_s[0]); ++i) {
-    crypto_word_t a = test_values_s[i];
+    crypto_word a = test_values_s[i];
     num_failed += test_is_zero_w(a);
     for (size_t j = 0;
          j < sizeof(test_values_s) / sizeof(test_values_s[0]); ++j) {
-      crypto_word_t b = test_values_s[j];
+      crypto_word b = test_values_s[j];
       num_failed += test_binary_op_w(&constant_time_eq_w,
                                      "constant_time_eq_w", a, b, a == b);
       num_failed += test_binary_op_w(&constant_time_eq_w,

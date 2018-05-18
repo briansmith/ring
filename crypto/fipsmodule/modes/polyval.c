@@ -34,7 +34,7 @@ static void byte_reverse(polyval_block *b) {
 static void reverse_and_mulX_ghash(polyval_block *b) {
   uint64_t hi = b->u[0];
   uint64_t lo = b->u[1];
-  const crypto_word_t carry = constant_time_eq_w(hi & 1, 1);
+  const crypto_word carry = constant_time_eq_w(hi & 1, 1);
   hi >>= 1;
   hi |= lo << 63;
   lo >>= 1;
