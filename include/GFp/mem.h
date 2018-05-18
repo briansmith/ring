@@ -83,7 +83,7 @@ extern "C" {
 // of |a| and |b|. Unlike memcmp, it cannot be used to put elements into a
 // defined order as the return value when a != b is undefined, other than to be
 // non-zero.
-OPENSSL_EXPORT int GFp_memcmp(const void *a, const void *b, size_t len);
+OPENSSL_EXPORT int GFp_memcmp(const uint8_t *a, const uint8_t *b, size_t len);
 
 
 #if defined(__cplusplus)
