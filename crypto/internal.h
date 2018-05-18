@@ -218,8 +218,6 @@ typedef uint32_t crypto_word;
 
 #define CONSTTIME_TRUE_W ~((crypto_word)0)
 #define CONSTTIME_FALSE_W ((crypto_word)0)
-#define CONSTTIME_TRUE_8 ((uint8_t)0xff)
-#define CONSTTIME_FALSE_8 ((uint8_t)0)
 
 // constant_time_msb_w returns the given value with the MSB copied to all the
 // other bits.
@@ -245,12 +243,6 @@ static inline crypto_word constant_time_is_zero_w(crypto_word a) {
 
 static inline crypto_word constant_time_is_nonzero_w(crypto_word a) {
   return ~constant_time_is_zero_w(a);
-}
-
-// constant_time_is_zero_8 acts like |constant_time_is_zero_w| but returns an
-// 8-bit mask.
-static inline uint8_t constant_time_is_zero_8(crypto_word a) {
-  return (uint8_t)(constant_time_is_zero_w(a));
 }
 
 // constant_time_eq_w returns 0xff..f if a == b and 0 otherwise.
