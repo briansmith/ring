@@ -304,12 +304,10 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
   // specifically optimization of cache-timing attack countermeasures
   // and pre-computation optimization.
   {
-    BN_ULONG *np;
+    BN_ULONG *np = am + top;
 
     // copy n[] to improve cache locality
-    for (np = am + top, i = 0; i < top; i++) {
-      np[i] = n[i];
-    }
+    LIMBS_copy(np, n, num_limbs);
 
     GFp_bn_scatter5(tmp, top, powerbuf, 0);
     GFp_bn_scatter5(am, top, powerbuf, 1);
