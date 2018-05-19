@@ -171,11 +171,11 @@ pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
     let num_limbs = ops.common.num_limbs;
     if let Some(x_out) = x_out {
         let x = ops.common.elem_unencoded(&x_aff);
-        big_endian_from_limbs_padded(&x.limbs[..num_limbs], x_out);
+        big_endian_from_limbs(&x.limbs[..num_limbs], x_out);
     }
     if let Some(y_out) = y_out {
         let y = ops.common.elem_unencoded(&y_aff);
-        big_endian_from_limbs_padded(&y.limbs[..num_limbs], y_out);
+        big_endian_from_limbs(&y.limbs[..num_limbs], y_out);
     }
 
     Ok(())

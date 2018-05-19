@@ -193,24 +193,18 @@ pub fn parse_big_endian_and_pad_consttime(
     })
 }
 
-/// XXX: Panics if `out` isn't large enough, but in theory the callers ensure
-/// that never happens. TODO: When `ring::rsa::bigint::Nonnegative` stops using
-/// `BIGNUM`, it should be the case that `limbs.len() == out.len() * LIMB_BYTES`
-/// and so the padding logic can be dropped.
-pub fn big_endian_from_limbs_padded(limbs: &[Limb], out: &mut [u8]) {
+pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
     let num_limbs = limbs.len();
     let out_len = out.len();
-    let (to_zero, dest) =
-        out.split_at_mut(out_len - (num_limbs * LIMB_BYTES)); // May panic.
+    assert_eq!(out_len, num_limbs * LIMB_BYTES);
     for i in 0..num_limbs {
         let mut limb = limbs[i];
         for j in 0..LIMB_BYTES {
-            dest[((num_limbs - i - 1) * LIMB_BYTES) + (LIMB_BYTES - j - 1)] =
+            out[((num_limbs - i - 1) * LIMB_BYTES) + (LIMB_BYTES - j - 1)] =
                  (limb & 0xff) as u8;
             limb >>= 8;
         }
     }
-    polyfill::slice::fill(to_zero, 0);
 }
 
 extern {
@@ -413,7 +407,7 @@ mod tests {
     }
 
     #[test]
-    fn test_big_endian_from_limbs_padded_same_length() {
+    fn test_big_endian_from_limbs_same_length() {
         #[cfg(target_pointer_width = "32")]
         let limbs = [
             0xbccddeef, 0x89900aab, 0x45566778, 0x01122334,
@@ -434,12 +428,13 @@ mod tests {
         ];
 
         let mut out = [0xabu8; 32];
-        big_endian_from_limbs_padded(&limbs[..], &mut out);
+        big_endian_from_limbs(&limbs[..], &mut out);
         assert_eq!(&out[..], &expected[..]);
     }
 
+    #[should_panic]
     #[test]
-    fn test_big_endian_from_limbs_padded_fewer_limbs() {
+    fn test_big_endian_from_limbs_fewer_limbs() {
         #[cfg(target_pointer_width = "32")]
         // Two fewer limbs.
         let limbs = [
@@ -454,16 +449,8 @@ mod tests {
             0x99aabbcc_ddeeff00,
         ];
 
-        let expected = [
-            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-            0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00,
-            0x01, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78,
-            0x89, 0x90, 0x0a, 0xab, 0xbc, 0xcd, 0xde, 0xef,
-        ];
-
         let mut out = [0xabu8; 32];
 
-        big_endian_from_limbs_padded(&limbs[..], &mut out);
-        assert_eq!(&out[..], &expected[..]);
+        big_endian_from_limbs(&limbs[..], &mut out);
     }
 }

@@ -548,6 +548,8 @@ impl RSASigningState {
         }
 
         // Step 3.
+        //
+        // See Falko Strenzke, "Manger's Attack revisited", ICICS 2010.
         m.fill_be_bytes(signature);
 
         Ok(())
