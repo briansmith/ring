@@ -285,26 +285,12 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
   powerbufLen +=
       sizeof(n[0]) *
       (top * numPowers + ((2 * top) > numPowers ? (2 * top) : numPowers));
-#ifdef alloca
-  if (powerbufLen < 3072) {
-    powerbufFree = alloca(powerbufLen + MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH);
-  } else
-#endif
-  {
-    if ((powerbufFree = OPENSSL_malloc(
-            powerbufLen + MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH)) == NULL) {
-      goto err;
-    }
+  powerbufFree = malloc(powerbufLen + MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH);
+  if (powerbufFree == NULL) {
+    goto err;
   }
-
   powerbuf = MOD_EXP_CTIME_ALIGN(powerbufFree);
   memset(powerbuf, 0, powerbufLen);
-
-#ifdef alloca
-  if (powerbufLen < 3072) {
-    powerbufFree = NULL;
-  }
-#endif
 
   // Lay down tmp and am right after powers table.
   BN_ULONG *tmp = (BN_ULONG *)(powerbuf + sizeof(n[0]) * top * numPowers);
