@@ -515,7 +515,7 @@ impl RSASigningState {
 
         // Step 2.b.iii.
         let p = &key.p.modulus;
-        let m_2 = bigint::elem_widen(m_2, &p);
+        let m_2 = bigint::elem_widen(m_2, p);
         let m_1_minus_m_2 = bigint::elem_sub(m_1, &m_2, p);
         let h = bigint::elem_mul(&key.qInv, m_1_minus_m_2, p);
 
