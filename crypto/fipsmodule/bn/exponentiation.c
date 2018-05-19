@@ -290,7 +290,6 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
     goto err;
   }
   powerbuf = MOD_EXP_CTIME_ALIGN(powerbufFree);
-  memset(powerbuf, 0, powerbufLen);
 
   // Lay down tmp and am right after powers table.
   BN_ULONG *tmp = (BN_ULONG *)(powerbuf + sizeof(n[0]) * top * numPowers);
