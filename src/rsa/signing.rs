@@ -17,7 +17,7 @@
 use {bits, der, digest, error, pkcs8};
 use rand;
 use std;
-use super::{blinding, bigint, bigint::Prime, N};
+use super::{bigint, bigint::Prime, N};
 use arithmetic::montgomery::{R, RR, RRR};
 use untrusted;
 
@@ -447,34 +447,10 @@ unsafe impl bigint::NotMuchSmallerModulus<QQ> for Q {}
 
 
 /// State used for RSA Signing. Feature: `rsa_signing`.
-///
-/// # Performance Considerations
-///
-/// Every time `sign` is called, some internal state is updated. Usually the
-/// state update is relatively cheap, but the first time, and periodically, a
-/// relatively expensive computation (computing the modular inverse of a random
-/// number modulo the public key modulus, for blinding the RSA exponentiation)
-/// will be done. Reusing the same `RSASigningState` when generating multiple
-/// signatures improves the computational efficiency of signing by minimizing
-/// the frequency of the expensive computations.
-///
-/// `RSASigningState` is not `Sync`; i.e. concurrent use of an `sign()` on the
-/// same `RSASigningState` from multiple threads is not allowed. An
-/// `RSASigningState` can be wrapped in a `Mutex` to be shared between threads;
-/// this would maximize the computational efficiency (as explained above) and
-/// minimizes memory usage, but it also minimizes concurrency because all the
-/// calls to `sign()` would be serialized. To increases concurrency one could
-/// create multiple `RSASigningState`s that share the same `RSAKeyPair`; the
-/// number of `RSASigningState` in use at once determines the concurrency
-/// factor. This increases memory usage, but only by a small amount, as each
-/// `RSASigningState` is much smaller than the `RSAKeyPair` that they would
-/// share. Using multiple `RSASigningState` per `RSAKeyPair` may also decrease
-/// computational efficiency by increasing the frequency of the expensive
-/// modular inversions; managing a pool of `RSASigningState`s in a
-/// most-recently-used fashion would improve the computational efficiency.
+//
+// TODO: Remove this; it's not needed if we don't have RSA blinding.
 pub struct RSASigningState {
     key_pair: std::sync::Arc<RSAKeyPair>,
-    blinding: blinding::Blinding,
 }
 
 impl RSASigningState {
@@ -483,7 +459,6 @@ impl RSASigningState {
                -> Result<Self, error::Unspecified> {
         Ok(RSASigningState {
             key_pair: key_pair,
-            blinding: blinding::Blinding::new(),
         })
     }
 
@@ -495,8 +470,8 @@ impl RSASigningState {
     /// `padding_alg` and the digest is then padded using the padding algorithm
     /// from `padding_alg`. The signature it written into `signature`;
     /// `signature`'s length must be exactly the length returned by
-    /// `public_modulus_len()`. `rng` is used for blinding the message during
-    /// signing, to mitigate some side-channel (e.g. timing) attacks.
+    /// `public_modulus_len()`. `rng` may be used to randomize the padding
+    /// (e.g. for PSS).
     ///
     /// Many other crypto libraries have signing functions that takes a
     /// precomputed digest as input, instead of the message to digest. This
@@ -506,9 +481,7 @@ impl RSASigningState {
     /// Lots of effort has been made to make the signing operations close to
     /// constant time to protect the private key from side channel attacks. On
     /// x86-64, this is done pretty well, but not perfectly. On other
-    /// platforms, it is done less perfectly. To help mitigate the current
-    /// imperfections, and for defense-in-depth, base blinding is always done.
-    /// Exponent blinding is not done, but it may be done in the future.
+    /// platforms, it is done less perfectly.
     #[allow(non_shorthand_field_patterns)] // Work around compiler bug.
     pub fn sign(&mut self, padding_alg: &'static ::signature::RSAEncoding,
                 rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
@@ -518,7 +491,7 @@ impl RSASigningState {
             return Err(error::Unspecified);
         }
 
-        let RSASigningState { key_pair: key, blinding } = self;
+        let RSASigningState { key_pair: key } = self;
 
         let m_hash = digest::digest(padding_alg.digest_alg(), msg);
         padding_alg.encode(&m_hash, signature, mod_bits, rng)?;
@@ -530,53 +503,52 @@ impl RSASigningState {
         let base = bigint::Elem::from_be_bytes_padded(
             untrusted::Input::from(signature), &key.n)?;
 
-        // Step 2.
-        let result = blinding.blind(base, key.e, &key.oneRR_mod_n, &key.n, rng,
-                                    |c| {
-            // Step 2.b.i.
-            let m_1 = elem_exp_consttime(&c, &key.p)?;
-            let c_mod_qq = bigint::elem_reduced_once(&c, &key.qq);
-            let m_2 = elem_exp_consttime(&c_mod_qq, &key.q)?;
+        // Step 2
+        let c = base;
 
-            // Step 2.b.ii isn't needed since there are only two primes.
+        // Step 2.b.i.
+        let m_1 = elem_exp_consttime(&c, &key.p)?;
+        let c_mod_qq = bigint::elem_reduced_once(&c, &key.qq);
+        let m_2 = elem_exp_consttime(&c_mod_qq, &key.q)?;
 
-            // Step 2.b.iii.
-            let p = &key.p.modulus;
-            let m_2 = bigint::elem_widen(m_2, &p);
-            let m_1_minus_m_2 = bigint::elem_sub(m_1, &m_2, p);
-            let h = bigint::elem_mul(&key.qInv, m_1_minus_m_2, p);
+        // Step 2.b.ii isn't needed since there are only two primes.
 
-            // Step 2.b.iv. The reduction in the modular multiplication isn't
-            // necessary because `h < p` and `p * q == n` implies `h * q < n`.
-            // Modular arithmetic is used simply to avoid implementing
-            // non-modular arithmetic.
-            let h = bigint::elem_widen(h, &key.n);
-            let q_times_h = bigint::elem_mul(&key.q_mod_n, h, &key.n);
-            let m_2 = bigint::elem_widen(m_2, &key.n);
-            let m = bigint::elem_add(m_2, q_times_h, &key.n);
+        // Step 2.b.iii.
+        let p = &key.p.modulus;
+        let m_2 = bigint::elem_widen(m_2, &p);
+        let m_1_minus_m_2 = bigint::elem_sub(m_1, &m_2, p);
+        let h = bigint::elem_mul(&key.qInv, m_1_minus_m_2, p);
 
-            // Step 2.b.v isn't needed since there are only two primes.
+        // Step 2.b.iv. The reduction in the modular multiplication isn't
+        // necessary because `h < p` and `p * q == n` implies `h * q < n`.
+        // Modular arithmetic is used simply to avoid implementing
+        // non-modular arithmetic.
+        let h = bigint::elem_widen(h, &key.n);
+        let q_times_h = bigint::elem_mul(&key.q_mod_n, h, &key.n);
+        let m_2 = bigint::elem_widen(m_2, &key.n);
+        let m = bigint::elem_add(m_2, q_times_h, &key.n);
 
-            // Verify the result to protect against fault attacks as described
-            // in "On the Importance of Checking Cryptographic Protocols for
-            // Faults" by Dan Boneh, Richard A. DeMillo, and Richard J. Lipton.
-            // This check is cheap assuming `e` is small, which is ensured
-            // during `RSAKeyPair` construction. Note that this is the only
-            // validation of `e` that is done other than basic checks on its
-            // size, oddness, and minimum value, since the relationship of `e`
-            // to `d`, `p`, and `q` is not verified during `RSAKeyPair`
-            // construction.
+        // Step 2.b.v isn't needed since there are only two primes.
+
+        // Verify the result to protect against fault attacks as described
+        // in "On the Importance of Checking Cryptographic Protocols for
+        // Faults" by Dan Boneh, Richard A. DeMillo, and Richard J. Lipton.
+        // This check is cheap assuming `e` is small, which is ensured
+        // during `RSAKeyPair` construction. Note that this is the only
+        // validation of `e` that is done other than basic checks on its
+        // size, oddness, and minimum value, since the relationship of `e`
+        // to `d`, `p`, and `q` is not verified during `RSAKeyPair`
+        // construction.
+        {
             let computed =
                 bigint::elem_mul(&key.oneRR_mod_n.as_ref(), m.clone(), &key.n);
             let verify = bigint::elem_exp_vartime(computed, key.e, &key.n);
             let verify = verify.into_unencoded(&key.n);
             bigint::elem_verify_equal_consttime(&verify, &c)?;
+        }
 
-            // Step 3.
-            Ok(m)
-        })?;
-
-        result.fill_be_bytes(signature);
+        // Step 3.
+        m.fill_be_bytes(signature);
 
         Ok(())
     }
@@ -587,10 +559,8 @@ impl RSASigningState {
 mod tests {
     // We intentionally avoid `use super::*` so that we are sure to use only
     // the public API; this ensures that enough of the API is public.
-    use core;
-    use {rand, signature, test};
+    use {rand, signature};
     use std;
-    use super::super::blinding;
     use untrusted;
 
     // `RSAKeyPair::sign` requires that the output buffer is the same length as
@@ -627,76 +597,5 @@ mod tests {
         signature.push(0);
         assert!(signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
                                    &mut signature).is_err());
-    }
-
-    // Once the `Blinding` in an `RSAKeyPair` has been used
-    // `blinding::REMAINING_MAX` times, a new blinding should be created. we
-    // don't check that a new blinding was created; we just make sure to
-    // exercise the code path, so this is basically a coverage test.
-    #[test]
-    fn test_signature_rsa_pkcs1_sign_blinding_reuse() {
-        const MESSAGE: &'static [u8] = b"hello, world";
-        let rng = rand::SystemRandom::new();
-
-        const PRIVATE_KEY_DER: &'static [u8] =
-            include_bytes!("signature_rsa_example_private_key.der");
-        let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
-        let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
-        let key_pair = std::sync::Arc::new(key_pair);
-        let mut signature = vec![0; key_pair.public_modulus_len()];
-
-        let mut signing_state =
-            signature::RSASigningState::new(key_pair).unwrap();
-
-        for _ in 0..(blinding::REMAINING_MAX + 1) {
-            let prev_remaining = signing_state.blinding.remaining();
-            let _ = signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng,
-                                       MESSAGE, &mut signature);
-            let remaining = signing_state.blinding.remaining();
-            assert_eq!((remaining + 1) % blinding::REMAINING_MAX,
-            prev_remaining);
-        }
-    }
-
-    // When we fail to randomly generate an invertible blinding factor too many
-    // times in a loop, we fail. This checks that we fail in a reasonable way
-    // when that happens.
-    #[test]
-    fn test_signature_rsa_pkcs1_sign_blinding_creation_failure() {
-        const MESSAGE: &'static [u8] = b"hello, world";
-
-        const PRIVATE_KEY_DER: &'static [u8] =
-            include_bytes!("signature_rsa_example_private_key.der");
-        let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
-        let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
-
-        // The inversion itself is blinded. This blinding factor must be
-        // non-zero.
-        let mut inverse_blinding_factor =
-            vec![0u8; key_pair.public_modulus_len()];
-        inverse_blinding_factor[0] = 1;
-
-        let zero = vec![0u8; key_pair.public_modulus_len()];
-
-        let mut bytes = std::vec::Vec::new();
-        bytes.push(&inverse_blinding_factor[..]);
-        for _ in 0..100 {
-            bytes.push(&zero[..]);
-        }
-
-        let rng = test::rand::FixedSliceSequenceRandom {
-            bytes: &bytes[..],
-            current: core::cell::UnsafeCell::new(0),
-        };
-
-        let key_pair = std::sync::Arc::new(key_pair);
-        let mut signing_state =
-            signature::RSASigningState::new(key_pair).unwrap();
-        let mut signature =
-            vec![0; signing_state.key_pair().public_modulus_len()];
-        let result = signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng,
-                                        MESSAGE, &mut signature);
-
-        assert!(result.is_err());
     }
 }

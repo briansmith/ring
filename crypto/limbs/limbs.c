@@ -24,10 +24,8 @@
  * make that assumption. */
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-Limb LIMBS_add_assign(Limb r[], const Limb a[], size_t num_limbs);
 Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs);
 Limb LIMBS_less_than_limb(const Limb a[], Limb b, size_t num_limbs);
-void LIMBS_sub_assign(Limb r[], const Limb a[], size_t num_limbs);
 
 /* Returns 0xfff..f if |a| is all zero limbs, and zero otherwise. |num_limbs|
  * may be zero. */
@@ -122,10 +120,6 @@ void LIMBS_reduce_once(Limb r[], const Limb m[], size_t num_limbs) {
   assert(borrow == 0);
 }
 
-Limb LIMBS_add_assign(Limb r[], const Limb a[], size_t num_limbs) {
-  return (Limb) limbs_add(r, r, a, num_limbs);
-}
-
 void LIMBS_add_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
                    size_t num_limbs) {
   Limb overflow1 =
@@ -136,16 +130,6 @@ void LIMBS_add_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
   for (size_t i = 1; i < num_limbs; ++i) {
     borrow = limb_sbb(&r[i], r[i], m[i] & overflow, borrow);
   }
-}
-
-Limb LIMBS_sub(Limb r[], const Limb a[], const Limb b[], size_t num_limbs) {
-  /* An unhandled borrow is expected by some callers. */
-  return limbs_sub(r, a, b, num_limbs);
-}
-
-void LIMBS_sub_assign(Limb r[], const Limb a[], size_t num_limbs) {
-  /* An unhandled borrow is expected by some callers. */
-  (void) limbs_sub(r, r, a, num_limbs);
 }
 
 void LIMBS_sub_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],

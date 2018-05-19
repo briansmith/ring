@@ -49,11 +49,6 @@ const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize =
 const PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS: bits::BitLength =
     bits::BitLength(4096);
 
-#[cfg(feature = "rsa_signing")]
-const PRIVATE_KEY_PUBLIC_MODULUS_MAX_LIMBS: usize =
-    (4096 + limb::LIMB_BITS - 1) / limb::LIMB_BITS;
-
-
 /// Parameters for RSA verification.
 pub struct RSAParameters {
     padding_alg: &'static padding::RSAVerification,
@@ -152,9 +147,3 @@ pub mod verification;
 pub mod signing;
 
 mod bigint;
-
-#[cfg(feature = "rsa_signing")]
-mod blinding;
-
-#[cfg(feature = "rsa_signing")]
-mod random;

@@ -33,7 +33,6 @@ Limb LIMBS_equal_limb(const Limb a[], Limb b, size_t num_limbs);
 void LIMBS_reduce_once(Limb r[], const Limb m[], size_t num_limbs);
 void LIMBS_add_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
                    size_t num_limbs);
-Limb LIMBS_sub(Limb r[], const Limb a[], const Limb b[], size_t num_limbs);
 void LIMBS_sub_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
                    size_t num_limbs);
 void LIMBS_shl_mod(Limb r[], const Limb a[], const Limb m[], size_t num_limbs);

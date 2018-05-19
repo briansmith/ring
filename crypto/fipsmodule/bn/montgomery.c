@@ -113,7 +113,8 @@
 
 #include "internal.h"
 #include "../../internal.h"
-#include "../../limbs/limbs.h"
+
+#include "../../limbs/limbs.inl"
 
 // Avoid -Wmissing-prototypes warnings.
 int GFp_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
@@ -154,7 +155,7 @@ int GFp_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
 
   // |a| thus requires at most one additional subtraction |n| to be reduced.
   // Subtract |n| and select the answer in constant time.
-  BN_ULONG v = LIMBS_sub(r, a, n, num_n) - carry;
+  BN_ULONG v = limbs_sub(r, a, n, num_n) - carry;
   // |v| is one if |a| - |n| underflowed or zero if it did not. Note |v| cannot
   // be -1. That would imply the subtraction did not fit in |num_n| words, and
   // we know at most one subtraction is needed.

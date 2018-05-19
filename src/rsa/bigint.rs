@@ -49,9 +49,6 @@ use std;
 #[cfg(any(test, feature = "rsa_signing"))]
 use constant_time;
 
-#[cfg(feature = "rsa_signing")]
-use rand;
-
 pub unsafe trait Prime {}
 
 pub trait IsOne {
@@ -338,15 +335,6 @@ impl<M, E> Clone for Elem<M, E> {
 impl<M, E> Elem<M, E> {
     #[inline]
     pub fn is_zero(&self) -> bool { self.limbs.is_zero() }
-
-    // XXX: This is nonsense semantically, but it is a useful optimization.
-    #[cfg(feature = "rsa_signing")]
-    pub fn take_storage<OtherF>(e: Elem<M, OtherF>) -> Elem<M, E> {
-        Elem {
-            limbs: e.limbs,
-            encoding: PhantomData,
-        }
-    }
 }
 
 impl<M, E: ReductionEncoding> Elem<M, E> {
@@ -431,19 +419,6 @@ pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, mut b: Elem<M, BF>, m: &Modulus<M>)
     Elem {
         limbs: b.limbs,
         encoding: PhantomData,
-    }
-}
-
-// `a` * `b` (mod `m`).
-#[cfg(feature = "rsa_signing")]
-pub fn elem_set_to_product<M, AF, BF>(
-        r: &mut Elem<M, <(AF, BF) as ProductEncoding>::Output>,
-        a: &Elem<M, AF>, b: &Elem<M, BF>, m: &Modulus<M>)
-        where (AF, BF): ProductEncoding {
-    unsafe {
-        GFp_bn_mul_mont(r.limbs.as_mut_ptr(), a.limbs.as_ptr(),
-                        b.limbs.as_ptr(), m.limbs.as_ptr(), &m.n0,
-                        m.limbs.len())
     }
 }
 
@@ -763,13 +738,6 @@ pub fn elem_inverse_consttime<M: Prime>(
     elem_exp_consttime(a, &PrivateExponent::for_flt(&m), oneR, m)
 }
 
-#[cfg(feature = "rsa_signing")]
-pub fn elem_randomize<E>(a: &mut Elem<super::N, E>, m: &Modulus<super::N>,
-                         rng: &rand::SecureRandom)
-                         -> Result<(), error::Unspecified> {
-    super::random::set_to_rand_mod(&mut a.limbs, &m.limbs, rng)
-}
-
 /// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
 #[cfg(feature = "rsa_signing")]
 pub fn verify_inverses_consttime<M, A, B>(a: &A, b: B, m: &Modulus<M>)
@@ -782,230 +750,6 @@ pub fn verify_inverses_consttime<M, A, B>(a: &A, b: B, m: &Modulus<M>)
     } else {
         Err(error::Unspecified)
     }
-}
-
-// r = 1/a (mod m), blinded with a random element.
-//
-// This relies on the invariants of `Modulus` that its value is odd and larger
-// than one.
-#[cfg(feature = "rsa_signing")]
-pub fn elem_set_to_inverse_blinded(
-            r: &mut Elem<super::N, R>, a: &Elem<super::N, Unencoded>,
-            n: &Modulus<super::N>, rng: &rand::SecureRandom)
-            -> Result<(), InversionError> {
-    let blinding_factor = {
-        let mut tmp = n.zero::<R>();
-        elem_randomize(&mut tmp, n, rng)?;
-        tmp
-    };
-    let to_blind = a.clone();
-    let blinded = elem_mul(&blinding_factor, to_blind, n);
-    let blinded_inverse = elem_inverse(blinded, n)?;
-    elem_set_to_product(r, &blinding_factor, &blinded_inverse, n);
-    Ok(())
-}
-
-// r = 1/a (mod m).
-//
-// This relies on the invariants of `Modulus` that its value is odd and larger
-// than one.
-#[cfg(feature = "rsa_signing")]
-fn elem_inverse<M>(a: Elem<M, Unencoded>, m: &Modulus<M>)
-                   -> Result<Elem<M, R>, InversionError> {
-    let inverse = nonnegative_mod_inverse(Nonnegative::from_limbs(&a.limbs),
-                                          &m.limbs)?;
-    let r: Elem<M, R> = Elem {
-        // TODO: The check done by to_elem() isn't necessary, right?
-        limbs: inverse.to_elem(&m)?.limbs,
-        encoding: PhantomData,
-    };
-    verify_inverses_consttime(&r, a, m)?;
-    Ok(r)
-}
-
-#[cfg(feature = "rsa_signing")]
-fn nonnegative_mod_inverse(a: Nonnegative, m_limbs: &[limb::Limb])
-                           -> Result<Nonnegative, InversionError> {
-    let m = Nonnegative::from_limbs(m_limbs);
-
-    use limb::*;
-
-    // Algorithm 2.23 from "Guide to Elliptic Curve Cryptography" [2004] by
-    // Darrel Hankerson, Alfred Menezes, and Scott Vanstone.
-
-    debug_assert!(greater_than(&m, &a));
-    if a.is_zero() {
-        return Err(InversionError::NoInverse);
-    }
-
-    // n /= 2; i.e. n >>= 1. `n` must be even, and so no bits are lost.
-    fn halve(n: &mut Nonnegative) {
-        debug_assert!(n.is_even());
-
-        let mut carry = 0;
-        for limb in n.limbs.iter_mut().rev() {
-            let original_value = *limb;
-            *limb = (original_value >> 1) | (carry << (LIMB_BITS - 1));
-            carry = original_value & 1;
-        }
-        shrink_by_at_most_one_bit(n);
-    }
-
-    // n *= 2; i.e. n <<= 1.
-    fn double(n: &mut Nonnegative) {
-        let mut carry = 0;
-        for limb in &mut n.limbs {
-            let original_value = *limb;
-            *limb = (original_value << 1) | carry;
-            carry = original_value >> (LIMB_BITS - 1);
-        }
-        if carry != 0 {
-            grow_by_one_bit(n);
-        }
-    }
-
-    // r += a.
-    fn add_assign(r: &mut Nonnegative, a: &mut Nonnegative, m_limb_count: usize) {
-        let mut carry = 0;
-        make_limbs(r, m_limb_count, |r_limbs| {
-            make_limbs(a, m_limb_count, |a_limbs| {
-                carry = unsafe {
-                    LIMBS_add_assign(r_limbs.as_mut_ptr(), a_limbs.as_ptr(),
-                                     m_limb_count)
-                };
-            });
-        });
-        // It is possible for the result to be one bit larger than `m`.
-        if carry != 0 {
-            grow_by_one_bit(r)
-        }
-    }
-
-    // r -= a. Requires r > a.
-    #[inline]
-    fn sub_assign(r: &mut Nonnegative, a: &mut Nonnegative, m_limb_count: usize) {
-        make_limbs(r, m_limb_count, |r_limbs| {
-            make_limbs(a, m_limb_count, |a_limbs| {
-                unsafe {
-                    LIMBS_sub_assign(r_limbs.as_mut_ptr(), a_limbs.as_ptr(),
-                                     m_limb_count);
-                }
-            })
-        })
-    }
-
-    pub fn grow_by_one_bit(n: &mut Nonnegative) {
-        n.limbs.push(1);
-    }
-
-    pub fn shrink_by_at_most_one_bit(n: &mut Nonnegative) {
-        if n.limbs.last().map_or(false, |last| *last == 0) {
-            let _ = n.limbs.pop();
-        }
-    }
-
-    pub fn make_limbs<F>(n: &mut Nonnegative, num_limbs: usize, f: F)
-        where F: FnOnce(&mut [Limb])
-    {
-        while num_limbs < n.limbs.len() {
-            let _ = n.limbs.pop();
-        }
-        while n.limbs.len() < num_limbs {
-            n.limbs.push(0);
-        }
-
-        f(&mut n.limbs);
-
-        while n.limbs.last() == Some(&0) {
-            let _ = n.limbs.pop();
-        }
-    }
-
-    let m_limb_count = m_limbs.len();
-
-    let mut u = a;
-    let mut v = Nonnegative::from_limbs(m_limbs); // TODO: avoid clone
-    let mut x1 = Nonnegative::one(m_limb_count);
-    let mut x2 = Nonnegative::zero(m_limb_count);
-    let mut k = 0;
-
-    while !v.is_zero() {
-        if v.is_even() {
-            halve(&mut v);
-            double(&mut x1);
-        } else if u.is_even() {
-            halve(&mut u);
-            double(&mut x2);
-        } else if !greater_than(&u, &v) {
-            sub_assign(&mut v, &mut u, m_limb_count);
-            halve(&mut v);
-            add_assign(&mut x2, &mut x1, m_limb_count);
-            double(&mut x1);
-        } else {
-            sub_assign(&mut u, &mut v, m_limb_count);
-            halve(&mut u);
-            add_assign(&mut x1, &mut x2, m_limb_count);
-            double(&mut x2);
-        }
-        k += 1;
-    }
-
-    if !u.is_one() {
-        return Err(InversionError::NoInverse);
-    }
-
-    // Reduce `x1` once if necessary to ensure it is less than `m`.
-    if !greater_than(&m, &x1) {
-        debug_assert!(x1.limbs.len() <= m_limb_count + 1);
-        // If `x` is longer than `m` then chop off that top bit.
-        make_limbs(&mut x1, m_limb_count, |x1_limbs| {
-            unsafe {
-                LIMBS_sub_assign(x1_limbs.as_mut_ptr(), m_limbs.as_ptr(),
-                                 m_limb_count);
-            }
-        });
-    }
-    assert!(greater_than(&m, &x1));
-
-    // Use the simpler repeated-subtraction reduction in 2.23.
-
-    let n = minimal_limbs_bit_length(&m.limbs).as_usize_bits();
-    assert!(k >= n);
-    for _ in n..k {
-        let mut carry = 0;
-        if x1.is_odd() {
-            // x1 += m.
-            make_limbs(&mut x1, m_limb_count, |x1_limbs| {
-                carry = unsafe {
-                    LIMBS_add_assign(x1_limbs.as_mut_ptr(), m_limbs.as_ptr(),
-                                     m_limb_count)
-                };
-            });
-        }
-
-        // x1 /= 2.
-        halve(&mut x1);
-
-        // Shift in the carry bit at the top.
-        if carry != 0 {
-            make_limbs(&mut x1, m_limb_count, |limbs| {
-                *limbs.last_mut().unwrap() |= 1 << (LIMB_BITS - 1);
-            });
-        }
-    }
-
-    Ok(x1)
-}
-
-#[cfg(feature = "rsa_signing")]
-pub enum InversionError {
-    NoInverse,
-    Unspecified
-}
-
-#[cfg(feature = "rsa_signing")]
-impl From<error::Unspecified> for InversionError {
-    fn from(_: error::Unspecified) -> Self { InversionError::Unspecified }
 }
 
 #[cfg(any(test, feature = "rsa_signing"))]
@@ -1024,28 +768,6 @@ pub struct Nonnegative {
 
 #[cfg(feature = "rsa_signing")]
 impl Nonnegative {
-    fn zero(capacity: usize) -> Self {
-        let r = Self { limbs: std::vec::Vec::with_capacity(capacity) };
-        assert!(r.is_zero());
-        r
-    }
-
-    fn one(capacity: usize) -> Self {
-        let mut r = Self::zero(capacity);
-        r.limbs.push(1);
-        assert!(r.is_one());
-        r
-    }
-
-    fn from_limbs(source: &[limb::Limb]) -> Self {
-        use std::borrow::ToOwned;
-        let mut limbs = source.to_owned();
-        while limbs.last() == Some(&0) {
-            let _ = limbs.pop();
-        }
-        Self { limbs }
-    }
-
     pub fn from_be_bytes_with_bit_length(input: untrusted::Input)
         -> Result<(Self, bits::BitLength), error::Unspecified> {
         let mut limbs =
@@ -1060,16 +782,8 @@ impl Nonnegative {
     }
 
     #[inline]
-    fn is_zero(&self) -> bool { self.limbs.is_empty() }
-
-    #[inline]
-    fn is_even(&self) -> bool {
-        limb::limbs_are_even_constant_time(&self.limbs) == limb::LimbMask::True
-    }
-
-    #[inline]
     pub fn is_odd(&self) -> bool {
-        !self.is_even()
+        limb::limbs_are_even_constant_time(&self.limbs) != limb::LimbMask::True
     }
 
     pub fn verify_less_than(&self, other: &Self)
@@ -1195,11 +909,6 @@ extern {
     fn LIMBS_sub_mod(r: *mut limb::Limb, a: *const limb::Limb,
                      b: *const limb::Limb, m: *const limb::Limb,
                      num_limbs: c::size_t);
-
-    fn LIMBS_add_assign(r: *mut limb::Limb, a: *const limb::Limb,
-                        num_limbs: c::size_t) -> limb::Limb;
-    fn LIMBS_sub_assign(r: *mut limb::Limb, a: *const limb::Limb,
-                        num_limbs: c::size_t);
 }
 
 #[cfg(test)]
@@ -1252,91 +961,6 @@ mod tests {
             let actual_result = actual_result.into_unencoded(&m);
             assert_elem_eq(&actual_result, &expected_result);
 
-            Ok(())
-        })
-    }
-
-    #[cfg(feature = "rsa_signing")]
-    #[test]
-    fn test_elem_inverse_invertible() {
-        test::from_file("src/rsa/bigint_elem_inverse_invertible_tests.txt",
-                        |section, test_case| {
-            assert_eq!(section, "");
-
-            let m = consume_modulus::<M>(test_case, "M");
-            let a = consume_elem(test_case, "A", &m);
-            let expected_result = consume_elem(test_case, "R", &m);
-            let actual_result = match elem_inverse(a, &m) {
-                Ok(actual_result) => actual_result,
-                Err(InversionError::Unspecified) => unreachable!("Unspecified"),
-                Err(InversionError::NoInverse) => unreachable!("No Inverse"),
-            };
-            let actual_result = elem_mul(&m.one(), actual_result, &m);
-            assert_elem_eq(&actual_result, &expected_result);
-            Ok(())
-        })
-    }
-
-    #[cfg(feature = "rsa_signing")]
-    #[test]
-    fn test_elem_set_to_inverse_blinded_invertible() {
-        use super::super::N;
-
-        let rng = rand::SystemRandom::new();
-
-        test::from_file("src/rsa/bigint_elem_inverse_invertible_tests.txt",
-                        |section, test_case| {
-            assert_eq!(section, "");
-
-            let n = consume_modulus::<N>(test_case, "M");
-            let a = consume_elem(test_case, "A", &n);
-            let expected_result = consume_elem(test_case, "R", &n);
-            let mut actual_result = n.zero();
-            assert!(elem_set_to_inverse_blinded(&mut actual_result, &a, &n,
-                                                &rng).is_ok());
-            let actual_result = elem_mul(&n.one(), actual_result, &n);
-            assert_elem_eq(&actual_result, &expected_result);
-            Ok(())
-        })
-    }
-
-    #[cfg(feature = "rsa_signing")]
-    #[test]
-    fn test_elem_inverse_noninvertible() {
-        test::from_file("src/rsa/bigint_elem_inverse_noninvertible_tests.txt",
-                        |section, test_case| {
-                            assert_eq!(section, "");
-
-            let m = consume_modulus::<M>(test_case, "M");
-            let a = consume_elem(test_case, "A", &m);
-            match elem_inverse(a, &m) {
-                Err(InversionError::NoInverse) => (),
-                Err(InversionError::Unspecified) => unreachable!("Unspecified"),
-                Ok(..) => unreachable!("No error"),
-            }
-            Ok(())
-        })
-    }
-
-    #[cfg(feature = "rsa_signing")]
-    #[test]
-    fn test_elem_set_to_inverse_blinded_noninvertible() {
-        use super::super::N;
-
-        let rng = rand::SystemRandom::new();
-
-        test::from_file("src/rsa/bigint_elem_inverse_noninvertible_tests.txt",
-                        |section, test_case| {
-            assert_eq!(section, "");
-
-            let n = consume_modulus::<N>(test_case, "M");
-            let a = consume_elem(test_case, "A", &n);
-            let mut actual_result = n.zero();
-            match elem_set_to_inverse_blinded(&mut actual_result, &a, &n, &rng) {
-                Err(InversionError::NoInverse) => (),
-                Err(InversionError::Unspecified) => unreachable!("Unspecified"),
-                Ok(..) => unreachable!("No error"),
-            }
             Ok(())
         })
     }
