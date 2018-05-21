@@ -126,17 +126,19 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
 #if defined(OPENSSL_X86_64)
 #define OPENSSL_BN_ASM_MONT5
 
-void GFp_bn_mul_mont_gather5(BN_ULONG *rp, const BN_ULONG *ap,
-                             const void *table, const BN_ULONG *np,
-                             const BN_ULONG *n0, int num, int power);
-void GFp_bn_scatter5(const BN_ULONG *inp, size_t num, void *table,
+void GFp_bn_mul_mont_gather5(BN_ULONG rp[], const BN_ULONG ap[],
+                             const BN_ULONG table[], const BN_ULONG np[],
+                             const BN_ULONG n0[], int num, int power);
+void GFp_bn_scatter5(const BN_ULONG inp[], size_t num, BN_ULONG table[],
                      size_t power);
-void GFp_bn_gather5(BN_ULONG *out, size_t num, void *table, size_t power);
-void GFp_bn_power5(BN_ULONG *rp, const BN_ULONG *ap, const void *table,
-                   const BN_ULONG *np, const BN_ULONG *n0, int num, int power);
-int GFp_bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
-                           const BN_ULONG *not_used, const BN_ULONG *np,
-                           const BN_ULONG *n0, int num);
+void GFp_bn_gather5(BN_ULONG out[], size_t num, const BN_ULONG table[],
+                    size_t power);
+void GFp_bn_power5(BN_ULONG rp[], const BN_ULONG ap[], const BN_ULONG table[],
+                   const BN_ULONG np[], const BN_ULONG n0[], int num,
+                   int power);
+int GFp_bn_from_montgomery(BN_ULONG rp[], const BN_ULONG ap[],
+                           const BN_ULONG *not_used, const BN_ULONG np[],
+                           const BN_ULONG n0[], int num);
 #else
 
 // GFp_BN_mod_exp_mont_consttime() stores the precomputed powers in a specific
@@ -144,22 +146,20 @@ int GFp_bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
 // pattern as far as cache lines are concerned. The following functions are
 // used to transfer a BIGNUM from/to that table.
 
-static void copy_to_prebuf(const BN_ULONG b[], int top, unsigned char *buf,
+static void copy_to_prebuf(const BN_ULONG b[], int top, BN_ULONG table[],
                            int idx, int window) {
   int i, j;
   const int width = 1 << window;
-  BN_ULONG *table = (BN_ULONG *) buf;
-
   for (i = 0, j = idx; i < top; i++, j += width)  {
     table[j] = b[i];
   }
 }
 
-static int copy_from_prebuf(BN_ULONG b[], int top, unsigned char *buf, int idx,
+static void copy_from_prebuf(BN_ULONG b[], int top, const BN_ULONG buf[], int idx,
                             int window) {
   int i, j;
   const int width = 1 << window;
-  volatile BN_ULONG *table = (volatile BN_ULONG *)buf;
+  volatile const BN_ULONG *table = (volatile const BN_ULONG *)buf;
 
   if (window <= 3) {
     for (i = 0; i < top; i++, table += width) {
@@ -195,8 +195,6 @@ static int copy_from_prebuf(BN_ULONG b[], int top, unsigned char *buf, int idx,
       b[i] = acc;
     }
   }
-
-  return 1;
 }
 #endif
 
@@ -257,7 +255,6 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
   int numPowers;
   unsigned char *powerbufFree = NULL;
   int powerbufLen = 0;
-  unsigned char *powerbuf = NULL;
 
   const int top = (int)num_limbs;
   if (!GFp_bn_mul_mont_check_num_limbs(num_limbs)) {
@@ -289,10 +286,10 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
   if (powerbufFree == NULL) {
     goto err;
   }
-  powerbuf = MOD_EXP_CTIME_ALIGN(powerbufFree);
+  BN_ULONG *powerbuf = (BN_ULONG *)MOD_EXP_CTIME_ALIGN(powerbufFree);
 
   // Lay down tmp and am right after powers table.
-  BN_ULONG *tmp = (BN_ULONG *)(powerbuf + sizeof(n[0]) * top * numPowers);
+  BN_ULONG *tmp = powerbuf + (top * numPowers);
   BN_ULONG *am = tmp + top;
 
   // Copy a^0 and a^1.
@@ -426,9 +423,7 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
     for (wvalue = 0, i = bits % window; i >= 0; i--, bits--) {
       wvalue = (wvalue << 1) + GFp_bn_is_bit_set_words(p, num_limbs, bits);
     }
-    if (!copy_from_prebuf(tmp, top, powerbuf, wvalue, window)) {
-      goto err;
-    }
+    copy_from_prebuf(tmp, top, powerbuf, wvalue, window);
 
     // Scan the exponent one window at a time starting from the most
     // significant bits.
@@ -442,9 +437,7 @@ int GFp_BN_mod_exp_mont_consttime(BN_ULONG rr[], const BN_ULONG a_mont[],
       }
 
       // Fetch the appropriate pre-computed value from the pre-buf */
-      if (!copy_from_prebuf(am, top, powerbuf, wvalue, window)) {
-        goto err;
-      }
+      copy_from_prebuf(am, top, powerbuf, wvalue, window);
 
       // Multiply the result into the intermediate result */
       GFp_bn_mul_mont(tmp, tmp, am, np, n0, top);
