@@ -26,6 +26,11 @@
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
 Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs);
 Limb LIMBS_less_than_limb(const Limb a[], Limb b, size_t num_limbs);
+int LIMBS_select_512_32(Limb r[], const Limb table[], size_t num_limbs,
+                        crypto_word index);
+crypto_word LIMBS_window5_split_window(Limb lower_limb, Limb higher_limb, size_t index_within_word);
+crypto_word LIMBS_window5_unsplit_window(Limb limb, size_t index_within_word);
+
 crypto_word LIMB_shr(crypto_word a, size_t shift);
 
 /* Returns 0xfff..f if |a| is all zero limbs, and zero otherwise. |num_limbs|
@@ -157,6 +162,31 @@ void LIMBS_shl_mod(Limb r[], const Limb a[], const Limb m[], size_t num_limbs) {
   for (size_t i = 1; i < num_limbs; ++i) {
     borrow = limb_sbb(&r[i], r[i], m[i] & overflow, borrow);
   }
+}
+
+int LIMBS_select_512_32(Limb r[], const Limb table[], size_t num_limbs,
+                        crypto_word index) {
+  if (num_limbs % (512 / LIMB_BITS) != 0) {
+    return 0;
+  }
+  limbs_select(r, table, num_limbs, 32, index);
+  return 1;
+}
+
+static const Limb FIVE_BITS_MASK = 0x1f;
+
+crypto_word LIMBS_window5_split_window(Limb lower_limb, Limb higher_limb, size_t index_within_word) {
+  Limb high_bits = (higher_limb << (LIMB_BITS - index_within_word))
+    & FIVE_BITS_MASK;
+  // There are no bits outside the window above |index_within_word| (if there
+  // were then this wouldn't be a split window), so we don't need to mask
+  // |low_bits|.
+  Limb low_bits = lower_limb >> index_within_word;
+  return low_bits | high_bits;
+}
+
+crypto_word LIMBS_window5_unsplit_window(Limb limb, size_t index_within_word) {
+  return (limb >> index_within_word) & FIVE_BITS_MASK;
 }
 
 Limb LIMB_shr(Limb a, size_t shift) {

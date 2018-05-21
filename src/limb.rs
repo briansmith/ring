@@ -20,6 +20,9 @@
 
 use crate::{bits, c, error, untrusted};
 
+#[cfg(feature = "rsa_signing")]
+use core::num::Wrapping;
+
 // XXX: Not correct for x32 ABIs.
 #[cfg(target_pointer_width = "64")]
 pub type Limb = u64;
@@ -240,6 +243,82 @@ pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
             limb >>= 8;
         }
     }
+}
+
+#[cfg(feature = "rsa_signing")]
+pub type Window = Limb;
+
+/// Processes `limbs` as a sequence of 5-bit windows, folding the windows from
+/// most significant to least significant and returning the accumulated result.
+/// The first window will be mapped by `init` to produce the initial value for
+/// the accumulator. Then `f` will be called to fold the accumulator and the
+/// next window until all windows are processed. When the input's bit length
+/// isn't divisible by 5, the window passed to `init` will be partial; all
+/// windows passed to `fold` will be full.
+///
+/// This is designed to avoid leaking the contents of `limbs` through side
+/// channels as long as `init` and `fold` are side-channel free.
+///
+/// Panics if `limbs` is empty.
+#[cfg(feature = "rsa_signing")]
+pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
+    limbs: &[Limb], init: I, fold: F,
+) -> R {
+    #[derive(Clone, Copy)]
+    #[repr(transparent)]
+    struct BitIndex(Wrapping<c::size_t>);
+
+    const WINDOW_BITS: Wrapping<c::size_t> = Wrapping(5);
+
+    extern "C" {
+        fn LIMBS_window5_split_window(
+            lower_limb: Limb, higher_limb: Limb, index_within_word: BitIndex,
+        ) -> Window;
+        fn LIMBS_window5_unsplit_window(limb: Limb, index_within_word: BitIndex) -> Window;
+    }
+
+    let num_limbs = limbs.len();
+    let mut window_low_bit = {
+        let num_whole_windows = (num_limbs * LIMB_BITS) / 5;
+        let mut leading_bits = (num_limbs * LIMB_BITS) - (num_whole_windows * 5);
+        if leading_bits == 0 {
+            leading_bits = WINDOW_BITS.0;
+        }
+        BitIndex(Wrapping(LIMB_BITS - leading_bits))
+    };
+
+    let initial_value = {
+        let leading_partial_window =
+            unsafe { LIMBS_window5_split_window(*limbs.last().unwrap(), 0, window_low_bit) };
+        window_low_bit.0 -= WINDOW_BITS;
+        init(leading_partial_window)
+    };
+
+    let mut low_limb = 0;
+    limbs
+        .iter()
+        .rev()
+        .fold(initial_value, |mut acc, current_limb| {
+            let higher_limb = low_limb;
+            low_limb = *current_limb;
+
+            if window_low_bit.0 > Wrapping(LIMB_BITS) - WINDOW_BITS {
+                let window =
+                    unsafe { LIMBS_window5_split_window(low_limb, higher_limb, window_low_bit) };
+                window_low_bit.0 -= WINDOW_BITS;
+                acc = fold(acc, window);
+            };
+            while window_low_bit.0 < Wrapping(LIMB_BITS) {
+                let window = unsafe { LIMBS_window5_unsplit_window(low_limb, window_low_bit) };
+                // The loop exits when this subtraction underflows, causing `window_low_bit` to
+                // wrap around to a very large value.
+                window_low_bit.0 -= WINDOW_BITS;
+                acc = fold(acc, window);
+            }
+            window_low_bit.0 += Wrapping(LIMB_BITS); // "Fix" the underflow.
+
+            acc
+        })
 }
 
 extern "C" {

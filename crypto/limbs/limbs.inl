@@ -135,3 +135,18 @@ static inline void limbs_copy(Limb r[], const Limb a[], size_t num_limbs) {
     r[i] = a[i];
   }
 }
+
+static inline void limbs_select(Limb r[], const Limb table[],
+                                size_t num_limbs, size_t num_entries,
+                                crypto_word index) {
+  for (size_t i = 0; i < num_limbs; ++i) {
+    r[i] = 0;
+  }
+
+  for (size_t e = 0; e < num_entries; ++e) {
+    Limb equal = constant_time_eq_w(index, e);
+    for (size_t i = 0; i < num_limbs; ++i) {
+      r[i] = constant_time_select_w(equal, table[(e * num_limbs) + i], r[i]);
+    }
+  }
+}
