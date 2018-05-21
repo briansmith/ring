@@ -76,6 +76,8 @@ void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, int rep) {
 
 #if !defined(OPENSSL_X86_64)
 
+#include <string.h>
+
 /* TODO(perf): Optimize these. */
 
 void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
