@@ -37,6 +37,4 @@ void LIMBS_sub_mod(Limb r[], const Limb a[], const Limb b[], const Limb m[],
                    size_t num_limbs);
 void LIMBS_shl_mod(Limb r[], const Limb a[], const Limb m[], size_t num_limbs);
 
-
-
 #endif /* RING_LIMBS_H */

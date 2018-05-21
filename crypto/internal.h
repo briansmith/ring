@@ -257,12 +257,6 @@ static inline crypto_word constant_time_eq_w(crypto_word a,
   return constant_time_is_zero_w(a ^ b);
 }
 
-// constant_time_eq_int acts like |constant_time_eq_w| but works on int
-// values.
-static inline crypto_word constant_time_eq_int(int a, int b) {
-  return constant_time_eq_w((crypto_word)(a), (crypto_word)(b));
-}
-
 // constant_time_select_w returns (mask & a) | (~mask & b). When |mask| is all
 // 1s or all 0s (as returned by the methods above), the select methods return
 // either |a| (if |mask| is nonzero) or |b| (if |mask| is zero).
