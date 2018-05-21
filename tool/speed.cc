@@ -308,7 +308,8 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
   // non-scattering seal, hence we add overhead_len to the size of this buffer.
   std::unique_ptr<uint8_t[]> out_storage(
       new uint8_t[chunk_len + overhead_len + kAlignment]);
-  std::unique_ptr<uint8_t[]> in2_storage(new uint8_t[chunk_len + kAlignment]);
+  std::unique_ptr<uint8_t[]> in2_storage(
+      new uint8_t[chunk_len + overhead_len + kAlignment]);
   std::unique_ptr<uint8_t[]> ad(new uint8_t[ad_len]);
   OPENSSL_memset(ad.get(), 0, ad_len);
   std::unique_ptr<uint8_t[]> tag_storage(
@@ -351,15 +352,25 @@ static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
     EVP_AEAD_CTX_seal(ctx.get(), out, &out_len, chunk_len + overhead_len,
                       nonce.get(), nonce_len, in, chunk_len, ad.get(), ad_len);
 
+    ctx.Reset();
+    if (!EVP_AEAD_CTX_init_with_direction(ctx.get(), aead, key.get(), key_len,
+                                          EVP_AEAD_DEFAULT_TAG_LENGTH,
+                                          evp_aead_open)) {
+      fprintf(stderr, "Failed to create EVP_AEAD_CTX.\n");
+      ERR_print_errors_fp(stderr);
+      return false;
+    }
+
     if (!TimeFunction(&results,
-                      [chunk_len, nonce_len, ad_len, in2, out, out_len, &ctx,
-                       &nonce, &ad]() -> bool {
+                      [chunk_len, overhead_len, nonce_len, ad_len, in2, out,
+                       out_len, &ctx, &nonce, &ad]() -> bool {
                         size_t in2_len;
                         // N.B. EVP_AEAD_CTX_open_gather is not implemented for
                         // all AEADs.
-                        return EVP_AEAD_CTX_open(
-                            ctx.get(), in2, &in2_len, chunk_len, nonce.get(),
-                            nonce_len, out, out_len, ad.get(), ad_len);
+                        return EVP_AEAD_CTX_open(ctx.get(), in2, &in2_len,
+                                                 chunk_len + overhead_len,
+                                                 nonce.get(), nonce_len, out,
+                                                 out_len, ad.get(), ad_len);
                       })) {
       fprintf(stderr, "EVP_AEAD_CTX_open failed.\n");
       ERR_print_errors_fp(stderr);
@@ -783,6 +794,10 @@ bool Speed(const std::vector<std::string> &args) {
                  kLegacyADLen, selected) ||
       !SpeedAEAD(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1",
                  kLegacyADLen, selected) ||
+      !SpeedAEADOpen(EVP_aead_aes_128_cbc_sha1_tls(), "AES-128-CBC-SHA1",
+                     kLegacyADLen, selected) ||
+      !SpeedAEADOpen(EVP_aead_aes_256_cbc_sha1_tls(), "AES-256-CBC-SHA1",
+                     kLegacyADLen, selected) ||
       !SpeedAEAD(EVP_aead_aes_128_gcm_siv(), "AES-128-GCM-SIV", kTLSADLen,
                  selected) ||
       !SpeedAEAD(EVP_aead_aes_256_gcm_siv(), "AES-256-GCM-SIV", kTLSADLen,
