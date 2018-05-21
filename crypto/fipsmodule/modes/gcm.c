@@ -51,7 +51,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include <GFp/mem.h>
 #include <GFp/cpu.h>
 
 #include "internal.h"

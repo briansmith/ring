@@ -15,7 +15,6 @@
 #include <openssl/base.h>
 
 #include <assert.h>
-#include <string.h>
 
 #include "internal.h"
 #include "../../internal.h"

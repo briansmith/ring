@@ -15,8 +15,6 @@
 #include "ecp_nistz256.h"
 #include "../../limbs/limbs.h"
 
-#include <string.h>
-
 #include "../../internal.h"
 #include "../bn/internal.h"
 
