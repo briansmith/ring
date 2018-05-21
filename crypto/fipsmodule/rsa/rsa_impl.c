@@ -759,7 +759,7 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
   // that it and serializing does not leak information about the magnitude of
   // the result.
   //
-  // See Falko Stenzke, "Manger's Attack revisited", ICICS 2010.
+  // See Falko Strenzke, "Manger's Attack revisited", ICICS 2010.
   assert(result->width == rsa->mont_n->N.width);
   if (!BN_bn2bin_padded(out, len, result)) {
     OPENSSL_PUT_ERROR(RSA, ERR_R_INTERNAL_ERROR);
