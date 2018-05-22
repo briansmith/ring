@@ -58,9 +58,11 @@ Note in particular that if you are cross-compiling an x86 build on a 64-bit
 version of Linux, then you need to have the proper gcc-multilibs and
 g++-multilibs packages or equivalent installed.
 
-On Android, you will need to define the `__ANDROID_API__` constant to at least
-`21` on 64-bit and `18` on 32-bit.
-
+If you generate a standalone NDK toolchain in order to compile your project,
+the wrapper automatically passes flags to the actual compiler to define the
+`__ANDROID_API__` macro. Otherwise, the macro `__ANDROID_API__` must be
+defined with a value of at least 21 on 64-bit targets or 18 on 32-bit targets;
+e.g. export `CFLAGS=-D__ANDROID_API__=21`.
 
 
 Additional Features that are Useful for Development
