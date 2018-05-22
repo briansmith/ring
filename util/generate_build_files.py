@@ -47,6 +47,7 @@ NON_PERL_FILES = {
 }
 
 PREFIX = None
+EMBED_TEST_DATA = True
 
 
 def PathOf(x):
@@ -220,6 +221,8 @@ class Bazel(object):
       self.PrintVariableSection(out, 'crypto_test_sources',
                                 files['crypto_test'])
       self.PrintVariableSection(out, 'ssl_test_sources', files['ssl_test'])
+      self.PrintVariableSection(out, 'crypto_test_data',
+                                files['crypto_test_data'])
 
 
 class Eureka(object):
@@ -609,16 +612,18 @@ def main(platforms):
       FindHeaderFiles(os.path.join('src', 'crypto', 'test'), AllFiles) +
       FindHeaderFiles(os.path.join('src', 'ssl', 'test'), NoTestRunnerFiles))
 
-  # Generate crypto_test_data.cc
-  with open('crypto_test_data.cc', 'w+') as out:
-    subprocess.check_call(
-        ['go', 'run', 'util/embed_test_data.go'] + cmake['CRYPTO_TEST_DATA'],
-        cwd='src',
-        stdout=out)
+  crypto_test_files = []
+  if EMBED_TEST_DATA:
+    # Generate crypto_test_data.cc
+    with open('crypto_test_data.cc', 'w+') as out:
+      subprocess.check_call(
+          ['go', 'run', 'util/embed_test_data.go'] + cmake['CRYPTO_TEST_DATA'],
+          cwd='src',
+          stdout=out)
+    crypto_test_files += ['crypto_test_data.cc']
 
-  crypto_test_files = FindCFiles(os.path.join('src', 'crypto'), OnlyTests)
+  crypto_test_files += FindCFiles(os.path.join('src', 'crypto'), OnlyTests)
   crypto_test_files += [
-      'crypto_test_data.cc',
       'src/crypto/test/file_test_gtest.cc',
       'src/crypto/test/gtest_main.cc',
   ]
@@ -650,6 +655,7 @@ def main(platforms):
       'crypto_headers': crypto_h_files,
       'crypto_internal_headers': crypto_internal_h_files,
       'crypto_test': sorted(crypto_test_files),
+      'crypto_test_data': sorted('src/' + x for x in cmake['CRYPTO_TEST_DATA']),
       'fips_fragments': fips_fragments,
       'fuzz': fuzz_c_files,
       'ssl': ssl_source_files,
@@ -675,8 +681,13 @@ if __name__ == '__main__':
       ' [android|bazel|eureka|gn|gyp]')
   parser.add_option('--prefix', dest='prefix',
       help='For Bazel, prepend argument to all source files')
+  parser.add_option(
+      '--embed_test_data', type='choice', dest='embed_test_data',
+      action='store', default="true", choices=["true", "false"],
+      help='For Bazel, don\'t embed data files in crypto_test_data.cc')
   options, args = parser.parse_args(sys.argv[1:])
   PREFIX = options.prefix
+  EMBED_TEST_DATA = (options.embed_test_data == "true")
 
   if not args:
     parser.print_help()
