@@ -151,6 +151,8 @@ elseif(MSVC)
       "C4820" # 'bytes' bytes padding added after construct 'member_name'
       "C5026" # move constructor was implicitly defined as deleted
       "C5027" # move assignment operator was implicitly defined as deleted
+      "C5045" # Compiler will insert Spectre mitigation for memory load if
+              # /Qspectre switch specified
       )
   set(MSVC_LEVEL4_WARNINGS_LIST
       # See https://connect.microsoft.com/VisualStudio/feedback/details/1217660/warning-c4265-when-using-functional-header
