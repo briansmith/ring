@@ -111,6 +111,11 @@ type Conn struct {
 
 	expectTLS13ChangeCipherSpec bool
 
+	// seenHandshakePackEnd is whether the most recent handshake record was
+	// not full for ExpectPackedEncryptedHandshake. If true, no more
+	// handshake data may be received until the next flight or epoch change.
+	seenHandshakePackEnd bool
+
 	tmp [16]byte
 }
 
@@ -756,6 +761,7 @@ func (c *Conn) useInTrafficSecret(version uint16, suite *cipherSuite, secret []b
 		side = clientWrite
 	}
 	c.in.useTrafficSecret(version, suite, secret, side)
+	c.seenHandshakePackEnd = false
 	return nil
 }
 
@@ -975,6 +981,13 @@ Again:
 		return c.in.setErrorLocked(err)
 	}
 
+	if typ != recordTypeHandshake {
+		c.seenHandshakePackEnd = false
+	} else if c.seenHandshakePackEnd {
+		c.in.freeBlock(b)
+		return c.in.setErrorLocked(errors.New("tls: peer violated ExpectPackedEncryptedHandshake"))
+	}
+
 	switch typ {
 	default:
 		c.in.setErrorLocked(c.sendAlert(alertUnexpectedMessage))
@@ -1037,6 +1050,9 @@ Again:
 			return c.in.setErrorLocked(c.sendAlert(alertNoRenegotiation))
 		}
 		c.hand.Write(data)
+		if pack := c.config.Bugs.ExpectPackedEncryptedHandshake; pack > 0 && len(data) < pack && c.out.cipher != nil {
+			c.seenHandshakePackEnd = true
+		}
 	}
 
 	if b != nil {
@@ -1095,6 +1111,7 @@ func (c *Conn) writeV2Record(data []byte) (n int, err error) {
 // to the connection and updates the record layer state.
 // c.out.Mutex <= L.
 func (c *Conn) writeRecord(typ recordType, data []byte) (n int, err error) {
+	c.seenHandshakePackEnd = false
 	if typ == recordTypeHandshake {
 		msgType := data[0]
 		if c.config.Bugs.SendWrongMessageType != 0 && msgType == c.config.Bugs.SendWrongMessageType {
@@ -1303,6 +1320,9 @@ func (c *Conn) doReadHandshake() ([]byte, error) {
 		if err := c.readRecord(recordTypeHandshake); err != nil {
 			return nil, err
 		}
+	}
+	if c.hand.Len() > 4+n && c.config.Bugs.ForbidHandshakePacking {
+		return nil, errors.New("tls: forbidden trailing data after a handshake message")
 	}
 	return c.hand.Next(4 + n), nil
 }

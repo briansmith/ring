@@ -1506,6 +1506,15 @@ type ProtocolBugs struct {
 	// length accepted from the peer.
 	MaxReceivePlaintext int
 
+	// ExpectPackedEncryptedHandshake, if non-zero, requires that the peer maximally
+	// pack their encrypted handshake messages, fitting at most the
+	// specified number of plaintext bytes per record.
+	ExpectPackedEncryptedHandshake int
+
+	// ForbidHandshakePacking, if true, requires the peer place a record
+	// boundary after every handshake message.
+	ForbidHandshakePacking bool
+
 	// SendTicketLifetime, if non-zero, is the ticket lifetime to send in
 	// NewSessionTicket messages.
 	SendTicketLifetime time.Duration

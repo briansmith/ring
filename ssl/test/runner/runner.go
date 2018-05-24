@@ -2998,10 +2998,12 @@ read alert 1 0
 			config: Config{
 				MaxVersion: VersionTLS13,
 				Bugs: ProtocolBugs{
-					MaxReceivePlaintext: 512,
+					MaxReceivePlaintext:            512,
+					ExpectPackedEncryptedHandshake: 512,
 				},
 			},
-			messageLen: 1024,
+			tls13Variant: TLS13Draft28,
+			messageLen:   1024,
 			flags: []string{
 				"-max-send-fragment", "512",
 				"-read-size", "1024",
@@ -3027,6 +3029,32 @@ read alert 1 0
 			},
 			shouldFail:         true,
 			expectedLocalError: "local error: record overflow",
+		},
+		{
+			// Test that handshake data is not packed in TLS 1.3
+			// draft-23.
+			testType: serverTest,
+			name:     "ForbidHandshakePacking-TLS13Draft23",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					ForbidHandshakePacking: true,
+				},
+			},
+			tls13Variant: TLS13Draft23,
+		},
+		{
+			// Test that handshake data is tightly packed in TLS 1.3
+			// draft-28.
+			testType: serverTest,
+			name:     "PackedEncryptedHandshake-TLS13Draft28",
+			config: Config{
+				MaxVersion: VersionTLS13,
+				Bugs: ProtocolBugs{
+					ExpectPackedEncryptedHandshake: 16384,
+				},
+			},
+			tls13Variant: TLS13Draft28,
 		},
 		{
 			// Test that DTLS can handle multiple application data
