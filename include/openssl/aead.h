@@ -91,9 +91,21 @@ extern "C" {
 // AEAD algorithms.
 
 // EVP_aead_aes_128_gcm is AES-128 in Galois Counter Mode.
+//
+// Note: AES-GCM should only be used with 12-byte (96-bit) nonces. Although it
+// is specified to take a variable-length nonce, nonces with other lengths are
+// effectively randomized, which means one must consider collisions. Unless
+// implementing an existing protocol which has already specified incorrect
+// parameters, only use 12-byte nonces.
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_128_gcm(void);
 
 // EVP_aead_aes_256_gcm is AES-256 in Galois Counter Mode.
+//
+// Note: AES-GCM should only be used with 12-byte (96-bit) nonces. Although it
+// is specified to take a variable-length nonce, nonces with other lengths are
+// effectively randomized, which means one must consider collisions. Unless
+// implementing an existing protocol which has already specified incorrect
+// parameters, only use 12-byte nonces.
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm(void);
 
 // EVP_aead_chacha20_poly1305 is the AEAD built from ChaCha20 and
