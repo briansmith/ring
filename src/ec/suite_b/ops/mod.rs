@@ -14,7 +14,7 @@
 
 use arithmetic::montgomery::*;
 use core::marker::PhantomData;
-use error;
+use {c, error};
 use untrusted;
 
 pub use limb::*; // XXX
@@ -340,6 +340,36 @@ impl PublicScalarOps {
     }
 }
 
+#[allow(non_snake_case)]
+pub struct PrivateScalarOps {
+    pub scalar_ops: &'static ScalarOps,
+
+    pub oneRR_mod_n: Scalar<RR>, // 1 * R**2 (mod n). TOOD: Use One<RR>.
+}
+
+// This assumes n < q < 2*n.
+pub fn elem_reduced_to_scalar(ops: &CommonOps, elem: &Elem<Unencoded>)
+                              -> Scalar<Unencoded> {
+    let num_limbs = ops.num_limbs;
+    let mut r_limbs = elem.limbs;
+    limbs_reduce_once_constant_time(&mut r_limbs[..num_limbs],
+                                    &ops.n.limbs[..num_limbs]);
+    Scalar {
+        limbs: r_limbs,
+        m: PhantomData,
+        encoding: PhantomData,
+    }
+}
+
+pub fn scalar_sum(ops: &CommonOps, a: &Scalar, b: &Scalar) -> Scalar {
+    let mut r = Scalar::zero();
+    unsafe {
+        LIMBS_add_mod(r.limbs.as_mut_ptr(), a.limbs.as_ptr(), b.limbs.as_ptr(),
+                      ops.n.limbs.as_ptr(), ops.num_limbs)
+    }
+    r
+}
+
 
 // Returns (`a` squared `squarings` times) * `b`.
 fn elem_sqr_mul(ops: &CommonOps, a: &Elem<R>, squarings: usize, b: &Elem<R>)
@@ -410,6 +440,12 @@ fn parse_big_endian_fixed_consttime<M>(
     parse_big_endian_in_range_and_pad_consttime(
             bytes, allow_zero, max_exclusive, &mut r.limbs[..ops.num_limbs])?;
     Ok(r)
+}
+
+
+extern {
+    fn LIMBS_add_mod(r: *mut Limb, a: *const Limb, b: *const Limb,
+                     m: *const Limb, num_limbs: c::size_t);
 }
 
 

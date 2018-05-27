@@ -222,6 +222,8 @@ include = [
     "tests/digest_tests.txt",
     "tests/ecdsa_from_pkcs8_tests.txt",
     "tests/ecdsa_tests.rs",
+    "tests/ecdsa_sign_asn1_tests.txt",
+    "tests/ecdsa_sign_fixed_tests.txt",
     "tests/ecdsa_verify_asn1_tests.txt",
     "tests/ecdsa_verify_fixed_tests.txt",
     "tests/ed25519_from_pkcs8_tests.txt",

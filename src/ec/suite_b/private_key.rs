@@ -19,6 +19,16 @@ use {ec, error, rand};
 use super::ops::*;
 use super::verify_affine_point_is_on_the_curve;
 use untrusted;
+use arithmetic::montgomery::R;
+
+/// Generates a random scalar in the range [1, n).
+pub fn random_scalar(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
+                     -> Result<Scalar, error::Unspecified> {
+    // Generating a random private key and then converting it into a scalar is a
+    // bit circuitous.
+    let key = generate_private_key(ops, rng)?;
+    Ok(private_key_as_scalar(ops, &key))
+}
 
 pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
                             -> Result<ec::PrivateKey, error::Unspecified> {
@@ -136,10 +146,8 @@ pub fn public_from_private(ops: &PrivateKeyOps, public_out: &mut [u8],
                                     &my_public_key)
 }
 
-pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
-                                       x_out: Option<&mut [u8]>,
-                                       y_out: Option<&mut [u8]>, p: &Point)
-                                       -> Result<(), error::Unspecified> {
+pub fn affine_from_jacobian(ops: &PrivateKeyOps, p: &Point)
+                            -> Result<(Elem<R>, Elem<R>), error::Unspecified> {
     let z = ops.common.point_z(p);
 
     // Since we restrict our private key to the range [1, n), the curve has
@@ -168,6 +176,14 @@ pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
     // `verify_affine_point_is_on_the_curve_scaled` for the motivation.
     verify_affine_point_is_on_the_curve(ops.common, (&x_aff, &y_aff))?;
 
+    Ok((x_aff, y_aff))
+}
+
+pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
+                                       x_out: Option<&mut [u8]>,
+                                       y_out: Option<&mut [u8]>, p: &Point)
+                                       -> Result<(), error::Unspecified>{
+    let (x_aff, y_aff) = affine_from_jacobian(ops, p)?;
     let num_limbs = ops.common.num_limbs;
     if let Some(x_out) = x_out {
         let x = ops.common.elem_unencoded(&x_aff);

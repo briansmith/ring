@@ -47,7 +47,6 @@
 // `#[derive(...)]` uses `trivial_numeric_casts` and `unused_qualifications`
 // internally.
 #![deny(
-    box_pointers,
     missing_docs,
     trivial_numeric_casts,
     unstable_features, // Used by `internal_benches`

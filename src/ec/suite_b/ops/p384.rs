@@ -177,6 +177,16 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     },
 };
 
+pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
+    scalar_ops: &SCALAR_OPS,
+
+    oneRR_mod_n: Scalar {
+        limbs: N_RR_LIMBS,
+        m: PhantomData,
+        encoding: PhantomData, // R
+    },
+};
+
 fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     // Calculate the modular inverse of scalar |a| using Fermat's Little
     // Theorem:
@@ -221,9 +231,7 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
 
     fn to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
         static N_RR: Scalar<Unencoded> = Scalar {
-            limbs: p384_limbs![0x0c84ee01, 0x2b39bf21, 0x3fb05b7a, 0x28266895,
-                               0xd40d4917, 0x4aab1cc5, 0xbc3e483a, 0xfcb82947,
-                               0xff3d81e5, 0xdf1aa419, 0x2d319b24, 0x19b409a9],
+            limbs: N_RR_LIMBS,
             m: PhantomData,
             encoding: PhantomData
         };
@@ -323,6 +331,11 @@ unsafe extern fn GFp_p384_elem_sqr_mont(
     // XXX: Inefficient. TODO: Make a dedicated squaring routine.
     GFp_p384_elem_mul_mont(r, a, a);
 }
+
+const N_RR_LIMBS: [Limb; MAX_LIMBS] =
+    p384_limbs![0x0c84ee01, 0x2b39bf21, 0x3fb05b7a, 0x28266895,
+                0xd40d4917, 0x4aab1cc5, 0xbc3e483a, 0xfcb82947,
+                0xff3d81e5, 0xdf1aa419, 0x2d319b24, 0x19b409a9];
 
 
 extern {

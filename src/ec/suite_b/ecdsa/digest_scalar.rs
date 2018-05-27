@@ -44,10 +44,8 @@ use untrusted;
 /// right will give a value less than 2**255, which is less than `n`. The
 /// analogous argument applies for P-384. However, it does *not* apply in
 /// general; for example, it doesn't apply to P-521.
-pub fn digest_scalar(ops: &ScalarOps, digest_alg: &'static digest::Algorithm,
-                     msg: untrusted::Input) -> Scalar {
-    let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
-    digest_scalar_(ops, digest.as_ref())
+pub fn digest_scalar(ops: &ScalarOps, msg: &digest::Digest) -> Scalar {
+    digest_scalar_(ops, msg.as_ref())
 }
 
 // This is a separate function solely so that we can test specific digest

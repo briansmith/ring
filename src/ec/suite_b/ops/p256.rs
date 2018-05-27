@@ -149,6 +149,17 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     },
 };
 
+pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
+    scalar_ops: &SCALAR_OPS,
+
+    oneRR_mod_n: Scalar {
+        limbs: p256_limbs![0x66e12d94, 0xf3d95620, 0x2845b239, 0x2b6bec59,
+                           0x4699799c, 0x49bd6fa6, 0x83244c95, 0xbe79eea2],
+        m: PhantomData,
+        encoding: PhantomData, // R
+    },
+};
+
 fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     // Calculate the modular inverse of scalar |a| using Fermat's Little
     // Theorem:

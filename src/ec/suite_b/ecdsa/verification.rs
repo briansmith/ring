@@ -80,11 +80,15 @@ impl signature::VerificationAlgorithm for Algorithm {
         let s = scalar_parse_big_endian_variable(public_key_ops.common,
                                                  AllowZero::No, s)?;
 
-        // NSA Guide Step 2: "Use the selected hash function to compute H =
-        // Hash(M)."
-        // NSA Guide Step 3: "Convert the bit string H to an integer e as
-        // described in Appendix B.2."
-        let e = digest_scalar(scalar_ops, self.digest_alg, msg);
+        let e = {
+            // NSA Guide Step 2: "Use the selected hash function to compute H =
+            // Hash(M)."
+            let h = digest::digest(self.digest_alg, msg.as_slice_less_safe());
+
+            // NSA Guide Step 3: "Convert the bit string H to an integer e as
+            // described in Appendix B.2."
+            digest_scalar(scalar_ops, &h)
+        };
 
         // NSA Guide Step 4: "Compute w = s**−1 mod n, using the routine in
         // Appendix B.1."
