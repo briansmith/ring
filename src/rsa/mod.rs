@@ -14,8 +14,8 @@
 
 // *R* and *r* in Montgomery math refer to different things, so we always use
 // `R` to refer to *R* to avoid confusion, even when that's against the normal
-// naming conventions. Also the standard camelCase names are used for
-// `RSAKeyPair` components.
+// naming conventions. Also the standard camelCase names are used for `KeyPair`
+// components.
 
 /// RSA signatures.
 
@@ -43,7 +43,7 @@ pub use self::padding::{
 const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize =
     bigint::MODULUS_MAX_LIMBS * limb::LIMB_BYTES;
 
-// Keep in sync with the documentation comment for `RSAKeyPair`.
+// Keep in sync with the documentation comment for `KeyPair`.
 #[cfg(feature = "rsa_signing")]
 const PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS: bits::BitLength =
     bits::BitLength(4096);

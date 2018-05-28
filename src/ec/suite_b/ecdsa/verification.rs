@@ -21,18 +21,18 @@ use ec::suite_b::{ops::*, public_key::*, verify_jacobian_point_is_on_the_curve};
 use untrusted;
 
 /// An ECDSA verification algorithm.
-pub struct ECDSAVerificationAlgorithm {
+pub struct Algorithm {
     ops: &'static PublicScalarOps,
     digest_alg: &'static digest::Algorithm,
     split_rs:
         for<'a> fn(ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>)
                    -> Result<(untrusted::Input<'a>, untrusted::Input<'a>),
                              error::Unspecified>,
-    id: ECDSAVerificationAlgorithmID,
+    id: AlgorithmID,
 }
 
 #[derive(Debug)]
-enum ECDSAVerificationAlgorithmID {
+enum AlgorithmID {
     ECDSA_P256_SHA256_ASN1,
     ECDSA_P256_SHA256_FIXED,
     ECDSA_P256_SHA384_ASN1,
@@ -41,9 +41,9 @@ enum ECDSAVerificationAlgorithmID {
     ECDSA_P384_SHA384_FIXED,
 }
 
-derive_debug_from_field!(ECDSAVerificationAlgorithm, id);
+derive_debug_from_field!(Algorithm, id);
 
-impl signature::VerificationAlgorithm for ECDSAVerificationAlgorithm {
+impl signature::VerificationAlgorithm for Algorithm {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), error::Unspecified> {
         // NSA Suite B Implementer's Guide to ECDSA Section 3.4.2.
@@ -141,7 +141,7 @@ impl signature::VerificationAlgorithm for ECDSAVerificationAlgorithm {
     }
 }
 
-impl private::Private for ECDSAVerificationAlgorithm {}
+impl private::Private for Algorithm {}
 
 fn split_rs_fixed<'a>(
         ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>)
@@ -178,12 +178,12 @@ fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA256_FIXED: ECDSAVerificationAlgorithm =
-        ECDSAVerificationAlgorithm {
+pub static ECDSA_P256_SHA256_FIXED: Algorithm =
+        Algorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_fixed,
-    id: ECDSAVerificationAlgorithmID::ECDSA_P256_SHA256_FIXED,
+    id: AlgorithmID::ECDSA_P256_SHA256_FIXED,
 };
 
 /// Verification of fixed-length (PKCS#11 style) ECDSA signatures using the
@@ -191,12 +191,12 @@ pub static ECDSA_P256_SHA256_FIXED: ECDSAVerificationAlgorithm =
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA384_FIXED: ECDSAVerificationAlgorithm =
-        ECDSAVerificationAlgorithm {
+pub static ECDSA_P384_SHA384_FIXED: Algorithm =
+        Algorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_fixed,
-    id: ECDSAVerificationAlgorithmID::ECDSA_P384_SHA384_FIXED,
+    id: AlgorithmID::ECDSA_P384_SHA384_FIXED,
 };
 
 /// Verification of ASN.1 DER-encoded ECDSA signatures using the P-256 curve
@@ -204,12 +204,12 @@ pub static ECDSA_P384_SHA384_FIXED: ECDSAVerificationAlgorithm =
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA256_ASN1: ECDSAVerificationAlgorithm =
-        ECDSAVerificationAlgorithm {
+pub static ECDSA_P256_SHA256_ASN1: Algorithm =
+        Algorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_asn1,
-    id: ECDSAVerificationAlgorithmID::ECDSA_P256_SHA256_ASN1,
+    id: AlgorithmID::ECDSA_P256_SHA256_ASN1,
 };
 
 /// *Not recommended*. Verification of ASN.1 DER-encoded ECDSA signatures using
@@ -222,12 +222,12 @@ pub static ECDSA_P256_SHA256_ASN1: ECDSAVerificationAlgorithm =
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA384_ASN1: ECDSAVerificationAlgorithm =
-        ECDSAVerificationAlgorithm {
+pub static ECDSA_P256_SHA384_ASN1: Algorithm =
+        Algorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_asn1,
-    id: ECDSAVerificationAlgorithmID::ECDSA_P256_SHA384_ASN1,
+    id: AlgorithmID::ECDSA_P256_SHA384_ASN1,
 };
 
 /// *Not recommended*. Verification of ASN.1 DER-encoded ECDSA signatures using
@@ -240,12 +240,12 @@ pub static ECDSA_P256_SHA384_ASN1: ECDSAVerificationAlgorithm =
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA256_ASN1: ECDSAVerificationAlgorithm =
-        ECDSAVerificationAlgorithm {
+pub static ECDSA_P384_SHA256_ASN1: Algorithm =
+        Algorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_asn1,
-    id: ECDSAVerificationAlgorithmID::ECDSA_P384_SHA256_ASN1,
+    id: AlgorithmID::ECDSA_P384_SHA256_ASN1,
 };
 
 /// Verification of ASN.1 DER-encoded ECDSA signatures using the P-384 curve
@@ -253,10 +253,10 @@ pub static ECDSA_P384_SHA256_ASN1: ECDSAVerificationAlgorithm =
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA384_ASN1: ECDSAVerificationAlgorithm =
-        ECDSAVerificationAlgorithm {
+pub static ECDSA_P384_SHA384_ASN1: Algorithm =
+        Algorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_asn1,
-    id: ECDSAVerificationAlgorithmID::ECDSA_P384_SHA384_ASN1,
+    id: AlgorithmID::ECDSA_P384_SHA384_ASN1,
 };

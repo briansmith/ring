@@ -29,7 +29,7 @@ impl core::fmt::Debug for EdDSAParameters {
 }
 
 /// An Ed25519 key pair, for signing.
-pub struct Ed25519KeyPair {
+pub struct KeyPair {
     // RFC 8032 Section 5.1.6 calls this *s*.
     private_scalar: Scalar,
 
@@ -40,7 +40,7 @@ pub struct Ed25519KeyPair {
     public_key: PublicKey,
 }
 
-impl<'a> Ed25519KeyPair {
+impl<'a> KeyPair {
     /// Generates a new key pair and returns the key pair serialized as a
     /// PKCS#8 document.
     ///
@@ -53,7 +53,7 @@ impl<'a> Ed25519KeyPair {
             -> Result<[u8; ED25519_PKCS8_V2_LEN], error::Unspecified> {
         let mut seed = [0u8; SEED_LEN];
         rng.fill(&mut seed)?;
-        let key_pair = Ed25519KeyPair::from_seed_(&seed);
+        let key_pair = KeyPair::from_seed_(&seed);
         // TODO: Replace this with `wrap_key()` and return a `pkcs8::Document`.
         let mut bytes = [0; ED25519_PKCS8_V2_LEN];
         pkcs8::wrap_key_(&PKCS8_TEMPLATE, &seed[..], key_pair.public_key_bytes(),
@@ -72,7 +72,7 @@ impl<'a> Ed25519KeyPair {
     /// If you need to parse PKCS#8 v1 files (without the public key) then use
     /// `Ed25519KeyPair::from_pkcs8_maybe_unchecked()` instead.
     pub fn from_pkcs8(input: untrusted::Input)
-                      -> Result<Ed25519KeyPair, error::Unspecified> {
+                      -> Result<KeyPair, error::Unspecified> {
         let (seed, public_key) = unwrap_pkcs8(pkcs8::Version::V2Only, input)?;
         Self::from_seed_and_public_key(seed, public_key.unwrap())
     }
@@ -90,7 +90,7 @@ impl<'a> Ed25519KeyPair {
     ///
     /// PKCS#8 v2 files are parsed exactly like `Ed25519KeyPair::from_pkcs8()`.
     pub fn from_pkcs8_maybe_unchecked(input: untrusted::Input)
-            -> Result<Ed25519KeyPair, error::Unspecified> {
+            -> Result<KeyPair, error::Unspecified> {
         let (seed, public_key) = unwrap_pkcs8(pkcs8::Version::V1OrV2, input)?;
         if let Some(public_key) = public_key {
             Self::from_seed_and_public_key(seed, public_key)
@@ -111,7 +111,7 @@ impl<'a> Ed25519KeyPair {
     /// key.
     pub fn from_seed_and_public_key(seed: untrusted::Input,
                                     public_key: untrusted::Input)
-            -> Result<Ed25519KeyPair, error::Unspecified> {
+            -> Result<KeyPair, error::Unspecified> {
         let pair = Self::from_seed_unchecked(seed)?;
 
         // This implicitly verifies that `public_key` is the right length.
@@ -134,12 +134,12 @@ impl<'a> Ed25519KeyPair {
     /// the private key. It is not possible to detect misuse or corruption of
     /// the private key since the public key isn't given as input.
     pub fn from_seed_unchecked(seed: untrusted::Input)
-                               -> Result<Ed25519KeyPair, error::Unspecified> {
+                               -> Result<KeyPair, error::Unspecified> {
         let seed = slice_as_array_ref!(seed.as_slice_less_safe(), SEED_LEN)?;
         Ok(Self::from_seed_(seed))
     }
 
-    fn from_seed_(seed: &Seed) -> Ed25519KeyPair {
+    fn from_seed_(seed: &Seed) -> KeyPair {
         let h = digest::digest(&digest::SHA512, seed);
         let (scalar_encoded, prefix_encoded) = h.as_ref().split_at(SCALAR_LEN);
 
@@ -155,7 +155,7 @@ impl<'a> Ed25519KeyPair {
             GFp_x25519_ge_scalarmult_base(&mut a, &scalar);
         }
 
-        Ed25519KeyPair {
+        KeyPair {
             private_scalar: scalar,
             private_prefix: prefix,
             public_key: a.into_encoded_point(),

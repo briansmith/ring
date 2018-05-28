@@ -27,7 +27,7 @@ use untrusted;
 /// `RSASigningState`s that reference the `RSAKeyPair` and use
 /// `RSASigningState::sign()` to generate signatures. See `ring::signature`'s
 /// module-level documentation for an example.
-pub struct RSAKeyPair {
+pub struct KeyPair {
     p: PrivatePrime<P>,
     q: PrivatePrime<Q>,
     qInv: bigint::Elem<P, R>,
@@ -37,9 +37,9 @@ pub struct RSAKeyPair {
     public_key: verification::Key,
 }
 
-derive_debug_from_field!(RSAKeyPair, public_key);
+derive_debug_from_field!(KeyPair, public_key);
 
-impl RSAKeyPair {
+impl KeyPair {
     /// Parses an unencrypted PKCS#8-encoded RSA private key.
     ///
     /// Only two-prime (not multi-prime) keys are supported. The public modulus
@@ -137,7 +137,7 @@ impl RSAKeyPair {
     ///     https://tools.ietf.org/html/rfc5958
     ///
     pub fn from_pkcs8(input: untrusted::Input)
-                      -> Result<RSAKeyPair, error::Unspecified> {
+                      -> Result<Self, error::Unspecified> {
         const RSA_ENCRYPTION: &'static [u8] =
             include_bytes!("../data/alg-rsa-encryption.der");
         let (der, _) = pkcs8::unwrap_key_(&RSA_ENCRYPTION,
@@ -149,11 +149,11 @@ impl RSAKeyPair {
     ///
     /// The private key must be encoded as a binary DER-encoded ASN.1
     /// `RSAPrivateKey` as described in [RFC 3447 Appendix A.1.2]). In all other
-    /// respects, this is just like `RSAKeyPair::from_pkcs8()`. See the
-    /// documentation for `from_pkcs8()` for more details.
+    /// respects, this is just like `from_pkcs8()`. See the documentation for
+    /// `from_pkcs8()` for more details.
     ///
-    /// It is recommended to use `RSAKeyPair::from_pkcs8()` (with a
-    /// PKCS#8-encoded key) instead.
+    /// It is recommended to use `from_pkcs8()` (with a PKCS#8-encoded key)
+    /// instead.
     ///
     /// [RFC 3447 Appendix A.1.2]:
     ///     https://tools.ietf.org/html/rfc3447#appendix-A.1.2
@@ -161,7 +161,7 @@ impl RSAKeyPair {
     /// [NIST SP-800-56B rev. 1]:
     ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Br1.pdf
     pub fn from_der(input: untrusted::Input)
-                    -> Result<RSAKeyPair, error::Unspecified> {
+                    -> Result<Self, error::Unspecified> {
         input.read_all(error::Unspecified, |input| {
             der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
                 let version = der::small_nonnegative_integer(input)?;
@@ -341,7 +341,7 @@ impl RSAKeyPair {
                     bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &public_key.n)
                     .into_modulus::<QQ>()?;
 
-                Ok(RSAKeyPair {
+                Ok(Self {
                     p,
                     q,
                     qInv,
@@ -450,22 +450,22 @@ unsafe impl bigint::NotMuchSmallerModulus<QQ> for Q {}
 /// State used for RSA Signing. Feature: `rsa_signing`.
 //
 // TODO: Remove this; it's not needed if we don't have RSA blinding.
-pub struct RSASigningState {
-    key_pair: std::sync::Arc<RSAKeyPair>,
+pub struct SigningState {
+    key_pair: std::sync::Arc<KeyPair>,
 }
 
-impl RSASigningState {
-    /// Construct an `RSASigningState` for the given `RSAKeyPair`.
-    pub fn new(key_pair: std::sync::Arc<RSAKeyPair>)
+impl SigningState {
+    /// Construct a signing state appropriate for use with the given key pair.
+    pub fn new(key_pair: std::sync::Arc<KeyPair>)
                -> Result<Self, error::Unspecified> {
-        Ok(RSASigningState {
+        Ok(SigningState {
             key_pair: key_pair,
         })
     }
 
-    /// The `RSAKeyPair`. This can be used, for example, to access the key
-    /// pair's public key through the `RSASigningState`.
-    pub fn key_pair(&self) -> &RSAKeyPair { self.key_pair.as_ref() }
+    /// The key pair. This can be used, for example, to access the key pair's
+    /// public key.
+    pub fn key_pair(&self) -> &KeyPair { self.key_pair.as_ref() }
 
     /// Sign `msg`. `msg` is digested using the digest algorithm from
     /// `padding_alg` and the digest is then padded using the padding algorithm
@@ -491,7 +491,7 @@ impl RSASigningState {
             return Err(error::Unspecified);
         }
 
-        let RSASigningState { key_pair: key } = self;
+        let SigningState { key_pair: key } = self;
 
         let m_hash = digest::digest(padding_alg.digest_alg(), msg);
         padding_alg.encode(&m_hash, signature, mod_bits, rng)?;
@@ -535,12 +535,11 @@ impl RSASigningState {
         // Verify the result to protect against fault attacks as described
         // in "On the Importance of Checking Cryptographic Protocols for
         // Faults" by Dan Boneh, Richard A. DeMillo, and Richard J. Lipton.
-        // This check is cheap assuming `e` is small, which is ensured
-        // during `RSAKeyPair` construction. Note that this is the only
-        // validation of `e` that is done other than basic checks on its
-        // size, oddness, and minimum value, since the relationship of `e`
-        // to `d`, `p`, and `q` is not verified during `RSAKeyPair`
-        // construction.
+        // This check is cheap assuming `e` is small, which is ensured during
+        // `KeyPair` construction. Note that this is the only validation of `e`
+        // that is done other than basic checks on its size, oddness, and
+        // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
+        // not verified during `KeyPair` construction.
         {
             let computed =
                 bigint::elem_mul(&key.oneRR_mod_n.as_ref(), m.clone(), n);
@@ -568,7 +567,7 @@ mod tests {
     use std;
     use untrusted;
 
-    // `RSAKeyPair::sign` requires that the output buffer is the same length as
+    // `KeyPair::sign` requires that the output buffer is the same length as
     // the public key modulus. Test what happens when it isn't the same length.
     #[test]
     fn test_signature_rsa_pkcs1_sign_output_buffer_len() {

@@ -285,13 +285,13 @@ use untrusted;
 
 pub use ec::suite_b::ecdsa::{
     signing::{
-        ECDSAKeyPair,
+        Key as ECDSAKeyPair,
         ECDSA_P256_SHA256_ASN1_SIGNING, ECDSA_P256_SHA256_FIXED_SIGNING,
         ECDSA_P384_SHA384_ASN1_SIGNING, ECDSA_P384_SHA384_FIXED_SIGNING,
     },
 
     verification::{
-        ECDSAVerificationAlgorithm,
+        Algorithm as ECDSAVerification,
         ECDSA_P256_SHA256_ASN1, ECDSA_P256_SHA256_FIXED,
         ECDSA_P256_SHA384_ASN1,
         ECDSA_P384_SHA256_ASN1,
@@ -304,13 +304,13 @@ pub use ec::curve25519::ed25519::{
 
     ED25519,
 
-    Ed25519KeyPair,
+    KeyPair as Ed25519KeyPair,
     ED25519_PKCS8_V2_LEN,
     ED25519_PUBLIC_KEY_LEN,
 };
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
-pub use rsa::signing::{RSAKeyPair, RSASigningState};
+pub use rsa::signing::{KeyPair as RSAKeyPair, SigningState as RSASigningState};
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::{
