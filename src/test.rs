@@ -121,6 +121,7 @@ use bits;
 
 use {digest, error};
 
+use core;
 use std;
 use std::string::String;
 use std::vec::Vec;
@@ -143,6 +144,9 @@ pub fn compile_time_assert_send<T: Send>() {}
 /// implement `Sync`.
 pub fn compile_time_assert_sync<T: Sync>() {}
 
+/// `compile_time_assert_debug::<T>();` fails to compile if `T` doesn't
+/// implement `Debug`.
+pub fn compile_time_assert_debug<T: core::fmt::Debug>() {}
 
 /// A test case. A test case consists of a set of named attributes. Every
 /// attribute in the test case must be consumed exactly once; this helps catch

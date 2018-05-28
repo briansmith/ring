@@ -21,6 +21,7 @@ use super::{bigint, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, RSAParameters,
 use untrusted;
 
 
+#[derive(Debug)]
 pub struct Key {
     pub n: bigint::Modulus<N>,
     pub e: bigint::PublicExponent,

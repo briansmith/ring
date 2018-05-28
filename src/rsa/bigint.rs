@@ -42,6 +42,7 @@
 
 use {bits, bssl, c, error, limb, untrusted};
 use arithmetic::montgomery::*;
+use core;
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
 use std;
@@ -211,6 +212,15 @@ pub struct Modulus<M> {
     // ones that don't, we could use a shorter `R` value and use faster `Limb`
     // calculations instead of double-precision `u64` calculations.
     n0: N0,
+}
+
+impl core::fmt::Debug for Modulus<super::N> {
+    fn fmt(&self, fmt: &mut ::core::fmt::Formatter)
+           -> Result<(), ::core::fmt::Error> {
+        fmt.debug_struct("Modulus")
+            // TODO: Print modulus value.
+            .finish()
+    }
 }
 
 impl<M> Modulus<M> {
@@ -565,9 +575,9 @@ impl<M, E> AsRef<Elem<M, E>> for One<M, E> {
     fn as_ref(&self) -> &Elem<M, E> { &self.0 }
 }
 
-/// An non-secret odd positive value in the range
+/// A non-secret odd positive value in the range
 /// [3, PUBLIC_EXPONENT_MAX_VALUE].
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct PublicExponent(u64);
 
 impl PublicExponent {

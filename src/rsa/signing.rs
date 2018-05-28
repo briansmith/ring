@@ -37,6 +37,8 @@ pub struct RSAKeyPair {
     public_key: verification::Key,
 }
 
+derive_debug_from_field!(RSAKeyPair, public_key);
+
 impl RSAKeyPair {
     /// Parses an unencrypted PKCS#8-encoded RSA private key.
     ///

@@ -159,9 +159,10 @@ fn test_signature_rsa_pss_sign() {
 
 #[cfg(feature = "rsa_signing")]
 #[test]
-fn test_rsa_key_pair_sync_and_send() {
+fn test_rsa_key_pair_traits() {
     test::compile_time_assert_send::<signature::RSAKeyPair>();
     test::compile_time_assert_sync::<signature::RSAKeyPair>();
+    test::compile_time_assert_debug::<signature::RSAKeyPair>();
     test::compile_time_assert_send::<signature::RSASigningState>();
     // TODO: Test that RSASigningState is NOT Sync.
 }
