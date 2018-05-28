@@ -15,33 +15,10 @@
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
 use arithmetic::montgomery::*;
-use core;
-use {der, digest, ec, error, pkcs8, private, rand, signature};
-use super::verify_jacobian_point_is_on_the_curve;
-use super::ops::*;
-use super::public_key::*;
+use {der, digest, error, private, signature};
+use super::digest_scalar::digest_scalar;
+use ec::suite_b::{ops::*, public_key::*, verify_jacobian_point_is_on_the_curve};
 use untrusted;
-
-/// An ECDSA signing algorithm.
-pub struct ECDSASigningAlgorithm {
-    curve: &'static ec::Curve,
-    pkcs8_template: &'static pkcs8::Template,
-    id: ECDSASigningAlgorithmID
-}
-
-#[derive(PartialEq, Eq)]
-enum ECDSASigningAlgorithmID {
-    ECDSA_P256_SHA256_FIXED_SIGNING,
-    ECDSA_P384_SHA384_FIXED_SIGNING,
-    ECDSA_P256_SHA256_ASN1_SIGNING,
-    ECDSA_P384_SHA384_ASN1_SIGNING,
-}
-
-impl PartialEq for ECDSASigningAlgorithm {
-    fn eq(&self, other: &Self) -> bool { self.id == other.id }
-}
-
-impl Eq for ECDSASigningAlgorithm {}
 
 /// An ECDSA verification algorithm.
 pub struct ECDSAVerificationAlgorithm {
@@ -166,73 +143,6 @@ impl signature::VerificationAlgorithm for ECDSAVerificationAlgorithm {
 
 impl private::Private for ECDSAVerificationAlgorithm {}
 
-/// An ECDSA key pair, used for signing.
-#[doc(hidden)]
-pub struct ECDSAKeyPair {
-    #[allow(dead_code)] // XXX: Temporary, since signing isn't implemented yet.
-    key_pair: ec::KeyPair,
-
-    #[allow(dead_code)] // XXX: Temporary, since signing isn't implemented yet.
-    alg: &'static ECDSASigningAlgorithm,
-}
-
-impl<'a> ECDSAKeyPair {
-    /// Generates a new key pair and returns the key pair serialized as a
-    /// PKCS#8 document.
-    ///
-    /// The PKCS#8 document will be a v1 `OneAsymmetricKey` with the public key
-    /// included in the `ECPrivateKey` structure, as described in
-    /// [RFC 5958 Section 2] and [RFC 5915]. The `ECPrivateKey` structure will
-    /// not have a `parameters` field so the generated key is compatible with
-    /// PKCS#11.
-    ///
-    /// [RFC 5915]: https://tools.ietf.org/html/rfc5915
-    /// [RFC 5958 Section 2]: https://tools.ietf.org/html/rfc5958#section-2
-    pub fn generate_pkcs8(alg: &'static ECDSASigningAlgorithm,
-                          rng: &rand::SecureRandom)
-                          -> Result<pkcs8::Document, error::Unspecified> {
-        let private_key = ec::PrivateKey::generate(alg.curve, rng)?;
-        let mut public_key_bytes = [0; ec::PUBLIC_KEY_MAX_LEN];
-        let public_key_bytes = &mut public_key_bytes[..alg.curve.public_key_len];
-        (alg.curve.public_from_private)(public_key_bytes, &private_key)?;
-        Ok(pkcs8::wrap_key(&alg.pkcs8_template, private_key.bytes(alg.curve),
-                           public_key_bytes))
-    }
-
-    /// Constructs an ECDSA key pair by parsing an unencrypted PKCS#8 v1
-    /// id-ecPublicKey `ECPrivateKey` key.
-    ///
-    /// The input must be in PKCS#8 v1 format. It must contain the public key in
-    /// the `ECPrivateKey` structure; `from_pkcs8()` will verify that the public
-    /// key and the private key are consistent with each other. The algorithm
-    /// identifier must identify the curve by name; it must not use an
-    /// "explicit" encoding of the curve. The `parameters` field of the
-    /// `ECPrivateKey`, if present, must be the same named curve that is in the
-    /// algorithm identifier in the PKCS#8 header.
-    pub fn from_pkcs8(alg: &'static ECDSASigningAlgorithm,
-                      input: untrusted::Input)
-                      -> Result<ECDSAKeyPair, error::Unspecified> {
-        let key_pair = ec::suite_b::key_pair_from_pkcs8(alg.curve,
-            alg.pkcs8_template, input)?;
-        Ok(ECDSAKeyPair { key_pair, alg })
-    }
-
-    /// Constructs an ECDSA key pair directly from the big-endian-encoded
-    /// private key and public key bytes.
-    ///
-    /// This is intended for use by code that deserializes key pairs. It is
-    /// recommended to use `ECDSAKeyPair::from_pkcs8()` (with a PKCS#8-encoded
-    /// key) instead.
-    pub fn from_private_key_and_public_key(alg: &'static ECDSASigningAlgorithm,
-                                           private_key: untrusted::Input,
-                                           public_key: untrusted::Input)
-                      -> Result<ECDSAKeyPair, error::Unspecified> {
-        let key_pair = ec::suite_b::key_pair_from_bytes(
-            alg.curve, private_key, public_key)?;
-        Ok(ECDSAKeyPair { key_pair, alg })
-    }
-}
-
 fn split_rs_fixed<'a>(
         ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>)
         -> Result<(untrusted::Input<'a>, untrusted::Input<'a>),
@@ -254,53 +164,6 @@ fn split_rs_asn1<'a>(
     })
 }
 
-/// Calculate the digest of `msg` using the digest algorithm `digest_alg`. Then
-/// convert the digest to a scalar in the range [0, n) as described in
-/// NIST's FIPS 186-4 Section 4.2. Note that this is one of the few cases where
-/// a `Scalar` is allowed to have the value zero.
-///
-/// NIST's FIPS 186-4 4.2 says "When the length of the output of the hash
-/// function is greater than N (i.e., the bit length of q), then the leftmost N
-/// bits of the hash function output block shall be used in any calculation
-/// using the hash function output during the generation or verification of a
-/// digital signature."
-///
-/// "Leftmost N bits" means "N most significant bits" because we interpret the
-/// digest as a bit-endian encoded integer.
-///
-/// The NSA guide instead vaguely suggests that we should convert the digest
-/// value to an integer and then reduce it mod `n`. However, real-world
-/// implementations (e.g. `digest_to_bn` in OpenSSL and `hashToInt` in Go) do
-/// what FIPS 186-4 says to do, not what the NSA guide suggests.
-///
-/// Why shifting the value right by at most one bit is sufficient: P-256's `n`
-/// has its 256th bit set; i.e. 2**255 < n < 2**256. Once we've truncated the
-/// digest to 256 bits and converted it to an integer, it will have a value
-/// less than 2**256. If the value is larger than `n` then shifting it one bit
-/// right will give a value less than 2**255, which is less than `n`. The
-/// analogous argument applies for P-384. However, it does *not* apply in
-/// general; for example, it doesn't apply to P-521.
-fn digest_scalar(ops: &ScalarOps, digest_alg: &'static digest::Algorithm,
-                 msg: untrusted::Input) -> Scalar {
-    let digest = digest::digest(digest_alg, msg.as_slice_less_safe());
-    digest_scalar_(ops, digest.as_ref())
-}
-
-// This is a separate function solely so that we can test specific digest
-// values like all-zero values and values larger than `n`.
-fn digest_scalar_(ops: &ScalarOps, digest: &[u8]) -> Scalar {
-    let cops = ops.common;
-    let num_limbs = cops.num_limbs;
-    let digest = if digest.len() > num_limbs * LIMB_BYTES {
-        &digest[..(num_limbs * LIMB_BYTES)]
-    } else {
-        digest
-    };
-
-    scalar_parse_big_endian_partially_reduced_variable_consttime(
-        cops, AllowZero::Yes, untrusted::Input::from(digest)).unwrap()
-}
-
 fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
             p_xy: &(Elem<R>, Elem<R>)) -> Point {
     // XXX: Inefficient. TODO: implement interleaved wNAF multiplication.
@@ -309,19 +172,6 @@ fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
     ops.common.point_sum(&scaled_g, &scaled_p)
 }
 
-
-/// Signing of fixed-length (PKCS#11 style) ECDSA signatures using the
-/// P-256 curve and SHA-256.
-///
-/// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
-/// documentation for more details.
-#[doc(hidden)]
-pub static ECDSA_P256_SHA256_FIXED_SIGNING: ECDSASigningAlgorithm =
-        ECDSASigningAlgorithm {
-    curve: &ec::suite_b::curve::P256,
-    pkcs8_template: &EC_PUBLIC_KEY_P256_PKCS8_V1_TEMPLATE,
-    id: ECDSASigningAlgorithmID::ECDSA_P256_SHA256_FIXED_SIGNING,
-};
 
 /// Verification of fixed-length (PKCS#11 style) ECDSA signatures using the
 /// P-256 curve and SHA-256.
@@ -336,19 +186,6 @@ pub static ECDSA_P256_SHA256_FIXED: ECDSAVerificationAlgorithm =
     id: ECDSAVerificationAlgorithmID::ECDSA_P256_SHA256_FIXED,
 };
 
-/// Signing of fixed-length (PKCS#11 style) ECDSA signatures using the
-/// P-384 curve and SHA-384.
-///
-/// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
-/// documentation for more details.
-#[doc(hidden)]
-pub static ECDSA_P384_SHA384_FIXED_SIGNING: ECDSASigningAlgorithm =
-        ECDSASigningAlgorithm {
-    curve: &ec::suite_b::curve::P384,
-    pkcs8_template: &EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE,
-    id: ECDSASigningAlgorithmID::ECDSA_P384_SHA384_FIXED_SIGNING,
-};
-
 /// Verification of fixed-length (PKCS#11 style) ECDSA signatures using the
 /// P-384 curve and SHA-384.
 ///
@@ -360,19 +197,6 @@ pub static ECDSA_P384_SHA384_FIXED: ECDSAVerificationAlgorithm =
     digest_alg: &digest::SHA384,
     split_rs: split_rs_fixed,
     id: ECDSAVerificationAlgorithmID::ECDSA_P384_SHA384_FIXED,
-};
-
-/// Signing of ASN.1 DER-encoded ECDSA signatures using the P-256 curve and
-/// SHA-256.
-///
-/// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
-/// documentation for more details.
-#[doc(hidden)]
-pub static ECDSA_P256_SHA256_ASN1_SIGNING: ECDSASigningAlgorithm =
-        ECDSASigningAlgorithm {
-    curve: &ec::suite_b::curve::P256,
-    pkcs8_template: &EC_PUBLIC_KEY_P256_PKCS8_V1_TEMPLATE,
-    id: ECDSASigningAlgorithmID::ECDSA_P256_SHA256_ASN1_SIGNING,
 };
 
 /// Verification of ASN.1 DER-encoded ECDSA signatures using the P-256 curve
@@ -424,19 +248,6 @@ pub static ECDSA_P384_SHA256_ASN1: ECDSAVerificationAlgorithm =
     id: ECDSAVerificationAlgorithmID::ECDSA_P384_SHA256_ASN1,
 };
 
-/// Signing of ASN.1 DER-encoded ECDSA signatures using the P-384 curve and
-/// SHA-384.
-///
-/// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
-/// documentation for more details.
-#[doc(hidden)]
-pub static ECDSA_P384_SHA384_ASN1_SIGNING: ECDSASigningAlgorithm =
-        ECDSASigningAlgorithm {
-    curve: &ec::suite_b::curve::P384,
-    pkcs8_template: &EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE,
-    id: ECDSASigningAlgorithmID::ECDSA_P384_SHA384_ASN1_SIGNING,
-};
-
 /// Verification of ASN.1 DER-encoded ECDSA signatures using the P-384 curve
 /// and SHA-384.
 ///
@@ -449,69 +260,3 @@ pub static ECDSA_P384_SHA384_ASN1: ECDSAVerificationAlgorithm =
     split_rs: split_rs_asn1,
     id: ECDSAVerificationAlgorithmID::ECDSA_P384_SHA384_ASN1,
 };
-
-static EC_PUBLIC_KEY_P256_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {
-    bytes: include_bytes ! ("ecPublicKey_p256_pkcs8_v1_template.der"),
-    alg_id_range: core::ops::Range { start: 8, end: 27 },
-    curve_id_index: 9,
-    private_key_index: 0x24,
-};
-
-static EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {
-    bytes: include_bytes!("ecPublicKey_p384_pkcs8_v1_template.der"),
-    alg_id_range: core::ops::Range { start: 8, end: 24 },
-    curve_id_index: 9,
-    private_key_index: 0x23,
-};
-
-#[cfg(test)]
-mod tests {
-    use {digest, test};
-    use super::digest_scalar_;
-    use super::super::ops::*;
-    use untrusted;
-
-    #[test]
-    fn ecdsa_digest_scalar_test() {
-        test::from_file("src/ec/suite_b/ecdsa_digest_scalar_tests.txt",
-                        |section, test_case| {
-            assert_eq!(section, "");
-
-            let curve_name = test_case.consume_string("Curve");
-            let digest_name = test_case.consume_string("Digest");
-            let input = test_case.consume_bytes("Input");
-            let output = test_case.consume_bytes("Output");
-
-            let (ops, digest_alg) = match
-                (curve_name.as_str(), digest_name.as_str()) {
-                ("P-256", "SHA256") =>
-                    (&p256::PUBLIC_SCALAR_OPS, &digest::SHA256),
-                ("P-256", "SHA384") =>
-                    (&p256::PUBLIC_SCALAR_OPS, &digest::SHA384),
-                ("P-384", "SHA256") =>
-                    (&p384::PUBLIC_SCALAR_OPS, &digest::SHA256),
-                ("P-384", "SHA384") =>
-                    (&p384::PUBLIC_SCALAR_OPS, &digest::SHA384),
-                _ => {
-                    panic!("Unsupported curve+digest: {}+{}", curve_name,
-                           digest_name);
-                }
-            };
-
-            let num_limbs = ops.public_key_ops.common.num_limbs;
-            assert_eq!(input.len(), digest_alg.output_len);
-            assert_eq!(output.len(),
-                       ops.public_key_ops.common.num_limbs * LIMB_BYTES);
-
-            let expected = scalar_parse_big_endian_variable(
-                ops.public_key_ops.common, AllowZero::Yes,
-                untrusted::Input::from(&output)).unwrap();
-
-            let actual = digest_scalar_(ops.scalar_ops, &input);
-
-            assert_eq!(actual.limbs[..num_limbs], expected.limbs[..num_limbs]);
-
-            Ok(())
-        });
-    }
-}
