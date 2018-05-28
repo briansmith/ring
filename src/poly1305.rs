@@ -15,9 +15,6 @@
 
 // TODO: enforce maximum input length.
 
-// Work around compiler bug?
-#![allow(non_shorthand_field_patterns)]
-
 use {c, chacha, constant_time, error, polyfill};
 use core;
 

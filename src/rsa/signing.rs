@@ -482,7 +482,6 @@ impl RSASigningState {
     /// constant time to protect the private key from side channel attacks. On
     /// x86-64, this is done pretty well, but not perfectly. On other
     /// platforms, it is done less perfectly.
-    #[allow(non_shorthand_field_patterns)] // Work around compiler bug.
     pub fn sign(&mut self, padding_alg: &'static ::signature::RSAEncoding,
                 rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
                 -> Result<(), error::Unspecified> {
