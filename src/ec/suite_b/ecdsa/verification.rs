@@ -44,10 +44,10 @@ enum ECDSAVerificationAlgorithmID {
 derive_debug_from_field!(ECDSAVerificationAlgorithm, id);
 
 impl signature::VerificationAlgorithm for ECDSAVerificationAlgorithm {
-    // Verify an ECDSA signature as documented in the NSA Suite B Implementer's
-    // Guide to ECDSA Section 3.4.2: ECDSA Signature Verification.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
               signature: untrusted::Input) -> Result<(), error::Unspecified> {
+        // NSA Suite B Implementer's Guide to ECDSA Section 3.4.2.
+
         let public_key_ops = self.ops.public_key_ops;
         let scalar_ops = self.ops.scalar_ops;
 
@@ -56,13 +56,13 @@ impl signature::VerificationAlgorithm for ECDSAVerificationAlgorithm {
         //    Prior to accepting a verified digital signature as valid the
         //    verifier shall have:
         //
-        //       1. assurance of the signatory’s claimed identity,
-        //       2. an authentic copy of the domain parameters, (q, FR, a, b,
-        //          SEED, G, n, h),
-        //       3. assurance of the validity of the public key, and
-        //       4. assurance that the claimed signatory actually possessed the
-        //          private key that was used to generate the digital signature
-        //          at the time that the signature was generated.
+        //    1. assurance of the signatory’s claimed identity,
+        //    2. an authentic copy of the domain parameters, (q, FR, a, b, SEED,
+        //       G, n, h),
+        //    3. assurance of the validity of the public key, and
+        //    4. assurance that the claimed signatory actually possessed the
+        //       private key that was used to generate the digital signature at
+        //       the time that the signature was generated.
         //
         // Prerequisites #1 and #4 are outside the scope of what this function
         // can do. Prerequisite #2 is handled implicitly as the domain
