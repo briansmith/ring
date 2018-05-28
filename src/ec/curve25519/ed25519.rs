@@ -54,7 +54,7 @@ impl<'a> Ed25519KeyPair {
         let mut seed = [0u8; SEED_LEN];
         rng.fill(&mut seed)?;
         let key_pair = Ed25519KeyPair::from_seed_(&seed);
-        // TODO: Replace this with `wrap_key()` and return a `PKCS8Document`.
+        // TODO: Replace this with `wrap_key()` and return a `pkcs8::Document`.
         let mut bytes = [0; ED25519_PKCS8_V2_LEN];
         pkcs8::wrap_key_(&PKCS8_TEMPLATE, &seed[..], key_pair.public_key_bytes(),
                          &mut bytes[..]);

@@ -20,7 +20,7 @@ use core;
 use {der, ec, error};
 use untrusted;
 
-pub enum Version {
+pub(crate) enum Version {
     V1Only,
     V1OrV2,
     V2Only,
@@ -29,7 +29,7 @@ pub enum Version {
 /// A template for constructing PKCS#8 documents.
 ///
 /// Note that this only works for ECC.
-pub struct Template {
+pub(crate) struct Template {
     pub bytes: &'static [u8],
 
     // The range within `bytes` that holds the value (not including the tag and
@@ -65,7 +65,7 @@ impl Template {
 /// PKCS#8 is specified in [RFC 5958].
 ///
 /// [RFC 5958]: https://tools.ietf.org/html/rfc5958.
-pub fn unwrap_key<'a>(template: &Template, version: Version,
+pub(crate) fn unwrap_key<'a>(template: &Template, version: Version,
                       input: untrusted::Input<'a>)
         -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>),
                    error::Unspecified> {
@@ -82,10 +82,10 @@ pub fn unwrap_key<'a>(template: &Template, version: Version,
 /// PKCS#8 is specified in [RFC 5958].
 ///
 /// [RFC 5958]: https://tools.ietf.org/html/rfc5958.
-pub fn unwrap_key_<'a>(alg_id: &[u8], version: Version,
-                       input: untrusted::Input<'a>)
-        -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>),
-                  error::Unspecified> {
+pub(crate) fn unwrap_key_<'a>(
+    alg_id: &[u8], version: Version, input: untrusted::Input<'a>)
+    -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>),
+              error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
             // Currently we only support algorithms that should only be encoded
@@ -128,19 +128,19 @@ pub fn unwrap_key_<'a>(alg_id: &[u8], version: Version,
 }
 
 /// A generated PKCS#8 document.
-pub struct PKCS8Document {
+pub struct Document {
     bytes: [u8; ec::PKCS8_DOCUMENT_MAX_LEN],
     len: usize,
 }
 
-impl AsRef<[u8]> for PKCS8Document {
+impl AsRef<[u8]> for Document {
     #[inline]
     fn as_ref(&self) -> &[u8] { &self.bytes[..self.len] }
 }
 
-pub fn wrap_key(template: &Template, private_key: &[u8], public_key: &[u8])
-                -> PKCS8Document {
-    let mut result = PKCS8Document {
+pub(crate) fn wrap_key(template: &Template, private_key: &[u8],
+                       public_key: &[u8]) -> Document {
+    let mut result = Document {
         bytes: [0; ec::PKCS8_DOCUMENT_MAX_LEN],
         len: template.bytes.len() + private_key.len() + public_key.len(),
     };
@@ -150,8 +150,8 @@ pub fn wrap_key(template: &Template, private_key: &[u8], public_key: &[u8])
 
 /// Formats a private key "prefix||private_key||middle||public_key" where
 /// `template` is "prefix||middle" split at position `private_key_index`.
-pub fn wrap_key_(template: &Template, private_key: &[u8], public_key: &[u8],
-                 bytes: &mut [u8]) {
+pub(crate) fn wrap_key_(template: &Template, private_key: &[u8],
+                        public_key: &[u8], bytes: &mut [u8]) {
     let (before_private_key, after_private_key) =
         template.bytes.split_at(template.private_key_index);
     let private_key_end_index = template.private_key_index + private_key.len();

@@ -201,7 +201,7 @@ impl<'a> ECDSAKeyPair {
     /// [RFC 5958 Section 2]: https://tools.ietf.org/html/rfc5958#section-2
     pub fn generate_pkcs8(alg: &'static ECDSASigningAlgorithm,
                           rng: &rand::SecureRandom)
-                          -> Result<pkcs8::PKCS8Document, error::Unspecified> {
+                          -> Result<pkcs8::Document, error::Unspecified> {
         let private_key = ec::PrivateKey::generate(alg.curve, rng)?;
         let mut public_key_bytes = [0; ec::PUBLIC_KEY_MAX_LEN];
         let public_key_bytes = &mut public_key_bytes[..alg.curve.public_key_len];

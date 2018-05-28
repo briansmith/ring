@@ -152,9 +152,10 @@ fn verify_affine_point_is_on_the_curve_scaled(
     Ok(())
 }
 
-pub fn key_pair_from_pkcs8(curve: &ec::Curve, template: &pkcs8::Template,
-                           input: untrusted::Input)
-                           -> Result<ec::KeyPair, error::Unspecified> {
+pub(crate) fn key_pair_from_pkcs8(
+    curve: &ec::Curve, template: &pkcs8::Template, input: untrusted::Input)
+    -> Result<ec::KeyPair, error::Unspecified>
+{
     let (ec_private_key, _) =
         pkcs8::unwrap_key(template, pkcs8::Version::V1Only, input)?;
     let (private_key, public_key) = ec_private_key.read_all(
