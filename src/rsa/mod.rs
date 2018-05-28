@@ -16,7 +16,6 @@
 // `R` to refer to *R* to avoid confusion, even when that's against the normal
 // naming conventions. Also the standard camelCase names are used for
 // `RSAKeyPair` components.
-#![allow(non_snake_case)]
 
 /// RSA signatures.
 
@@ -56,7 +55,6 @@ pub struct RSAParameters {
     id: RSAParametersID,
 }
 
-#[allow(non_camel_case_types)]
 enum RSAParametersID {
     RSA_PKCS1_2048_8192_SHA1,
     RSA_PKCS1_2048_8192_SHA256,

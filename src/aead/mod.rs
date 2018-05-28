@@ -315,7 +315,6 @@ impl Algorithm {
 
 derive_debug_from_field!(Algorithm, id);
 
-#[allow(non_camel_case_types)]
 #[derive(Debug, Eq, PartialEq)]
 enum AlgorithmID {
     AES_128_GCM,

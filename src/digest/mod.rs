@@ -287,7 +287,6 @@ pub struct Algorithm {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-#[allow(non_camel_case_types)]
 enum AlgorithmID {
     SHA1,
     SHA256,
@@ -506,7 +505,6 @@ mod tests {
 
         macro_rules! max_input_tests {
             ( $algorithm_name:ident ) => {
-                #[allow(non_snake_case)]
                 mod $algorithm_name {
                     use super::super::super::super::digest;
 

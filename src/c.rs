@@ -14,8 +14,6 @@
 
 //! TODO: Module-level documentation.
 
-#![allow(non_camel_case_types)]
-
 macro_rules! define_type {
     ( $name:ident, $builtin:ty, $test_c_metrics:ident, $get_c_align_fn:ident,
       $get_c_size_fn:ident, $doc:expr ) =>
@@ -171,7 +169,6 @@ define_metrics_tests!(u64, test_u64_metrics, GFp_uint64_t_align,
                       GFp_uint64_t_size, SIXTY_FOUR_BIT_ALIGNMENT_FACTOR);
 
 #[cfg(target_os = "windows")]
-#[allow(non_snake_case)]
 pub mod win32 {
     define_type!(ULONG, u32, test_ULONG_metrics, GFp_ULONG_align,
                 GFp_ULONG_size, "The win32 `ULONG` type.");

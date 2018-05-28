@@ -316,7 +316,6 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
 }
 
 
-#[allow(non_snake_case)]
 unsafe extern fn GFp_p384_elem_sqr_mont(
         r: *mut Limb/*[COMMON_OPS.num_limbs]*/,
         a: *const Limb/*[COMMON_OPS.num_limbs]*/) {

@@ -39,6 +39,8 @@
 #![allow(
     missing_copy_implementations,
     missing_debug_implementations,
+    non_camel_case_types,
+    non_snake_case,
     unsafe_code,
 )]
 

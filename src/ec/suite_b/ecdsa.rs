@@ -29,7 +29,6 @@ pub struct ECDSASigningAlgorithm {
     id: ECDSASigningAlgorithmID
 }
 
-#[allow(non_camel_case_types)]
 #[derive(PartialEq, Eq)]
 enum ECDSASigningAlgorithmID {
     ECDSA_P256_SHA256_FIXED_SIGNING,
@@ -55,7 +54,6 @@ pub struct ECDSAVerificationAlgorithm {
     id: ECDSAVerificationAlgorithmID,
 }
 
-#[allow(non_camel_case_types)]
 enum ECDSAVerificationAlgorithmID {
     ECDSA_P256_SHA256_ASN1,
     ECDSA_P256_SHA256_FIXED,
