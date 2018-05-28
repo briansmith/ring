@@ -17,7 +17,7 @@
 use {bits, der, digest, error, pkcs8};
 use rand;
 use std;
-use super::{bigint, bigint::Prime, N};
+use super::{bigint, bigint::Prime, N, verification};
 use arithmetic::montgomery::{R, RR, RRR};
 use untrusted;
 
@@ -28,15 +28,13 @@ use untrusted;
 /// `RSASigningState::sign()` to generate signatures. See `ring::signature`'s
 /// module-level documentation for an example.
 pub struct RSAKeyPair {
-    n: bigint::Modulus<N>,
-    e: bigint::PublicExponent,
     p: PrivatePrime<P>,
     q: PrivatePrime<Q>,
     qInv: bigint::Elem<P, R>,
     oneRR_mod_n: bigint::One<N, RR>,
     qq: bigint::Modulus<QQ>,
     q_mod_n: bigint::Elem<N, R>,
-    n_bits: bits::BitLength,
+    public_key: verification::Key,
 }
 
 impl RSAKeyPair {
@@ -215,7 +213,7 @@ impl RSAKeyPair {
                 // later.
 
                 // Step 1.c. We validate e >= 65537.
-                let (n, n_bits, e) = super::check_public_modulus_and_exponent(
+                let public_key = verification::Key::from_modulus_and_exponent(
                     n, e, bits::BitLength::from_usize_bits(2048),
                     super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS, 65537)?;
 
@@ -238,7 +236,7 @@ impl RSAKeyPair {
                 // TODO: First, stop if `p < (√2) * 2**((nBits/2) - 1)`.
                 //
                 // Second, stop if `p > 2**(nBits/2) - 1`.
-                let half_n_bits = n_bits.half_rounded_up();
+                let half_n_bits = public_key.n_bits.half_rounded_up();
                 if p_bits != half_n_bits {
                     return Err(error::Unspecified);
                 }
@@ -258,8 +256,8 @@ impl RSAKeyPair {
 
                 // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
 
-                let oneRR_mod_n = bigint::One::newRR(&n);
-                let q_mod_n_decoded = q.to_elem(&n)?;
+                let oneRR_mod_n = bigint::One::newRR(&public_key.n);
+                let q_mod_n_decoded = q.to_elem(&public_key.n)?;
 
                 // TODO: Step 5.i
                 //
@@ -274,9 +272,11 @@ impl RSAKeyPair {
                 // let us assume that checking p * q == 0 (mod n) is equivalent
                 // to checking p * q == n.
                 let q_mod_n = bigint::elem_mul(oneRR_mod_n.as_ref(),
-                                               q_mod_n_decoded.clone(), &n);
-                let p_mod_n = p.to_elem(&n)?;
-                let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, &n);
+                                               q_mod_n_decoded.clone(),
+                                               &public_key.n);
+                let p_mod_n = p.to_elem(&public_key.n)?;
+                let pq_mod_n =
+                    bigint::elem_mul(&q_mod_n, p_mod_n, &public_key.n);
                 if !pq_mod_n.is_zero() {
                     return Err(error::Unspecified);
                 }
@@ -297,7 +297,7 @@ impl RSAKeyPair {
                 // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we
                 // don't have a good way of calculating LCM, so it is omitted,
                 // as explained above.
-                d.verify_less_than_modulus(&n)?;
+                d.verify_less_than_modulus(&public_key.n)?;
                 if !d.is_odd() {
                     return Err(error::Unspecified);
                 }
@@ -335,19 +335,18 @@ impl RSAKeyPair {
                     bigint::elem_mul(p.oneRR.as_ref(), qInv, &p.modulus);
                 bigint::verify_inverses_consttime(&qInv, q_mod_p, &p.modulus)?;
 
-                let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &n)
+                let qq =
+                    bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &public_key.n)
                     .into_modulus::<QQ>()?;
 
                 Ok(RSAKeyPair {
-                    n,
-                    e,
                     p,
                     q,
                     qInv,
                     oneRR_mod_n,
                     q_mod_n,
                     qq,
-                    n_bits
+                    public_key,
                 })
             })
         })
@@ -357,7 +356,7 @@ impl RSAKeyPair {
     ///
     /// A signature has the same length as the public modulus.
     pub fn public_modulus_len(&self) -> usize {
-        self.n_bits.as_usize_bytes_rounded_up()
+        self.public_key.modulus_len()
     }
 }
 
@@ -485,7 +484,7 @@ impl RSASigningState {
     pub fn sign(&mut self, padding_alg: &'static ::signature::RSAEncoding,
                 rng: &rand::SecureRandom, msg: &[u8], signature: &mut [u8])
                 -> Result<(), error::Unspecified> {
-        let mod_bits = self.key_pair.n_bits;
+        let mod_bits = self.key_pair.public_key.n_bits;
         if signature.len() != mod_bits.as_usize_bytes_rounded_up() {
             return Err(error::Unspecified);
         }
@@ -498,9 +497,11 @@ impl RSASigningState {
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.
 
+        let n = &key.public_key.n;
+
         // Step 1. The value zero is also rejected.
         let base = bigint::Elem::from_be_bytes_padded(
-            untrusted::Input::from(signature), &key.n)?;
+            untrusted::Input::from(signature), n)?;
 
         // Step 2
         let c = base;
@@ -522,10 +523,10 @@ impl RSASigningState {
         // necessary because `h < p` and `p * q == n` implies `h * q < n`.
         // Modular arithmetic is used simply to avoid implementing
         // non-modular arithmetic.
-        let h = bigint::elem_widen(h, &key.n);
-        let q_times_h = bigint::elem_mul(&key.q_mod_n, h, &key.n);
-        let m_2 = bigint::elem_widen(m_2, &key.n);
-        let m = bigint::elem_add(m_2, q_times_h, &key.n);
+        let h = bigint::elem_widen(h, n);
+        let q_times_h = bigint::elem_mul(&key.q_mod_n, h, n);
+        let m_2 = bigint::elem_widen(m_2, n);
+        let m = bigint::elem_add(m_2, q_times_h, n);
 
         // Step 2.b.v isn't needed since there are only two primes.
 
@@ -540,9 +541,10 @@ impl RSASigningState {
         // construction.
         {
             let computed =
-                bigint::elem_mul(&key.oneRR_mod_n.as_ref(), m.clone(), &key.n);
-            let verify = bigint::elem_exp_vartime(computed, key.e, &key.n);
-            let verify = verify.into_unencoded(&key.n);
+                bigint::elem_mul(&key.oneRR_mod_n.as_ref(), m.clone(), n);
+            let verify =
+                bigint::elem_exp_vartime(computed, key.public_key.e, n);
+            let verify = verify.into_unencoded(n);
             bigint::elem_verify_equal_consttime(&verify, &c)?;
         }
 

@@ -16,10 +16,82 @@
 
 use core;
 use {bits, digest, error, private, signature};
-use super::{bigint, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, RSAParameters,
+use super::{bigint, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN, RSAParameters,
             parse_public_key};
 use untrusted;
 
+
+pub struct Key {
+    pub n: bigint::Modulus<N>,
+    pub e: bigint::PublicExponent,
+    pub n_bits: bits::BitLength,
+}
+
+impl Key {
+    pub fn from_modulus_and_exponent(
+        n: untrusted::Input, e: untrusted::Input, n_min_bits: bits::BitLength,
+        n_max_bits: bits::BitLength, e_min_value: u64)
+        -> Result<Self, error::Unspecified>
+    {
+        // This is an incomplete implementation of NIST SP800-56Br1 Section
+        // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers
+        // to NIST SP800-89 Section 5.3.3, "(Explicit) Partial Public Key
+        // Validation for RSA," "with the caveat that the length of the modulus
+        // shall be a length that is specified in this Recommendation." In
+        // SP800-89, two different sets of steps are given, one set numbered,
+        // and one set lettered. TODO: Document this in the end-user
+        // documentation for RSA keys.
+
+        // Step 3 / Step c for `n` (out of order).
+        let (n, n_bits) = bigint::Modulus::from_be_bytes_with_bit_length(n)?;
+
+        // `pkcs1_encode` depends on this not being small. Otherwise,
+        // `pkcs1_encode` would generate padding that is invalid (too few 0xFF
+        // bytes) for very small keys.
+        const N_MIN_BITS: bits::BitLength = bits::BitLength(2048);
+
+        // Step 1 / Step a. XXX: SP800-56Br1 and SP800-89 require the length of
+        // the public modulus to be exactly 2048 or 3072 bits, but we are more
+        // flexible to be compatible with other commonly-used crypto libraries.
+        assert!(n_min_bits >= N_MIN_BITS);
+        let n_bits_rounded_up =
+            bits::BitLength::from_usize_bytes(n_bits.as_usize_bytes_rounded_up())?;
+        if n_bits_rounded_up < n_min_bits {
+            return Err(error::Unspecified);
+        }
+        if n_bits > n_max_bits {
+            return Err(error::Unspecified);
+        }
+
+        // Step 2 / Step b. NIST SP800-89 defers to FIPS 186-3, which requires
+        // `e >= 65537`. We enforce this when signing, but are more flexible in
+        // verification, for compatibility. Only small public exponents are
+        // supported.
+        debug_assert!(e_min_value >= 3);
+        debug_assert!(e_min_value & 1 == 1); // `e_min_value` is odd.
+        debug_assert!(e_min_value <= bigint::PUBLIC_EXPONENT_MAX_VALUE);
+
+        // Step 3 / Step c for `e`.
+        let e = bigint::PublicExponent::from_be_bytes(e, e_min_value)?;
+
+        // If `n` is less than `e` then somebody has probably accidentally swapped
+        // them. The largest acceptable `e` is smaller than the smallest acceptable
+        // `n`, so no additional checks need to be done.
+
+        // XXX: Steps 4 & 5 / Steps d, e, & f are not implemented. This is also the
+        // case in most other commonly-used crypto libraries.
+
+        Ok(Self { n, e, n_bits })
+    }
+
+    /// Returns the length in bytes of the modulus.
+    ///
+    /// A signature has the same length as the public modulus.
+    #[cfg(feature = "rsa_signing")]
+    pub fn modulus_len(&self) -> usize {
+        self.n_bits.as_usize_bytes_rounded_up()
+    }
+}
 
 impl signature::VerificationAlgorithm for RSAParameters {
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
@@ -131,15 +203,12 @@ pub fn verify_rsa(params: &RSAParameters,
     let max_bits = bits::BitLength::from_usize_bytes(
         PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)?;
 
-    // Partially validate the public key. See
-    // `check_public_modulus_and_exponent()` for more details.
-
     // XXX: FIPS 186-4 seems to indicate that the minimum
     // exponent value is 2**16 + 1, but it isn't clear if this is just for
     // signing or also for verification. We support exponents of 3 and larger
     // for compatibility with other commonly-used crypto libraries.
-    let (n, n_bits, e) =
-        super::check_public_modulus_and_exponent(n, e, params.min_bits, max_bits, 3)?;
+    let Key { n, e, n_bits } =
+        Key::from_modulus_and_exponent(n, e, params.min_bits, max_bits, 3)?;
 
     // The signature must be the same length as the modulus, in bytes.
     if signature.len() != n_bits.as_usize_bytes_rounded_up() {
