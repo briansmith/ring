@@ -97,7 +97,6 @@ pub struct CommonOps {
                                     b: *const Limb),
     elem_sqr_mont: unsafe extern fn(r: *mut Limb, a: *const Limb),
 
-    #[cfg_attr(not(test), allow(dead_code))]
     point_add_jacobian_impl: unsafe extern fn(r: *mut Limb, a: *const Limb,
                                               b: *const Limb),
 }

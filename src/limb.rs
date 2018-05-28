@@ -28,8 +28,8 @@ use {c, error, untrusted};
 #[cfg(target_pointer_width = "64")] pub const LIMB_BITS: usize = 64;
 #[cfg(target_pointer_width = "32")] pub const LIMB_BITS: usize = 32;
 
+#[allow(trivial_numeric_casts)]
 #[cfg(target_pointer_width = "64")]
-#[allow(trivial_numeric_casts)] // XXX: workaround compiler bug.
 #[derive(Debug, PartialEq)]
 #[repr(u64)]
 pub enum LimbMask {
@@ -38,7 +38,6 @@ pub enum LimbMask {
 }
 
 #[cfg(target_pointer_width = "32")]
-#[allow(trivial_numeric_casts)] // XXX: workaround compiler bug.
 #[derive(Debug, PartialEq)]
 #[repr(u32)]
 pub enum LimbMask {
