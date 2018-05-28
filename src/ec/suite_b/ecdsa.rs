@@ -54,6 +54,7 @@ pub struct ECDSAVerificationAlgorithm {
     id: ECDSAVerificationAlgorithmID,
 }
 
+#[derive(Debug)]
 enum ECDSAVerificationAlgorithmID {
     ECDSA_P256_SHA256_ASN1,
     ECDSA_P256_SHA256_FIXED,
@@ -63,19 +64,7 @@ enum ECDSAVerificationAlgorithmID {
     ECDSA_P384_SHA384_FIXED,
 }
 
-impl core::fmt::Debug for ECDSAVerificationAlgorithm {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        use self::ECDSAVerificationAlgorithmID::*;
-        write!(f, "ring::signature::{}", match self.id {
-            ECDSA_P256_SHA256_ASN1 => "ECDSA_P256_SHA256_ASN1",
-            ECDSA_P256_SHA256_FIXED => "ECDSA_P256_SHA256_FIXED",
-            ECDSA_P256_SHA384_ASN1 => "ECDSA_P256_SHA384_ASN1",
-            ECDSA_P384_SHA256_ASN1 => "ECDSA_P384_SHA256_ASN1",
-            ECDSA_P384_SHA384_ASN1 => "ECDSA_P384_SHA384_ASN1",
-            ECDSA_P384_SHA384_FIXED => "ECDSA_P384_SHA384_FIXED",
-        })
-    }
-}
+derive_debug_from_field!(ECDSAVerificationAlgorithm, id);
 
 impl signature::VerificationAlgorithm for ECDSAVerificationAlgorithm {
     // Verify an ECDSA signature as documented in the NSA Suite B Implementer's
