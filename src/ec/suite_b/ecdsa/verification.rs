@@ -178,8 +178,7 @@ fn twin_mul(ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar,
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA256_FIXED: Algorithm =
-        Algorithm {
+pub static ECDSA_P256_SHA256_FIXED: Algorithm = Algorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_fixed,
@@ -191,8 +190,7 @@ pub static ECDSA_P256_SHA256_FIXED: Algorithm =
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA384_FIXED: Algorithm =
-        Algorithm {
+pub static ECDSA_P384_SHA384_FIXED: Algorithm = Algorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_fixed,
@@ -204,8 +202,7 @@ pub static ECDSA_P384_SHA384_FIXED: Algorithm =
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA256_ASN1: Algorithm =
-        Algorithm {
+pub static ECDSA_P256_SHA256_ASN1: Algorithm = Algorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_asn1,
@@ -222,8 +219,7 @@ pub static ECDSA_P256_SHA256_ASN1: Algorithm =
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA384_ASN1: Algorithm =
-        Algorithm {
+pub static ECDSA_P256_SHA384_ASN1: Algorithm = Algorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_asn1,
@@ -240,8 +236,7 @@ pub static ECDSA_P256_SHA384_ASN1: Algorithm =
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA256_ASN1: Algorithm =
-        Algorithm {
+pub static ECDSA_P384_SHA256_ASN1: Algorithm = Algorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_asn1,
@@ -253,8 +248,7 @@ pub static ECDSA_P384_SHA256_ASN1: Algorithm =
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA384_ASN1: Algorithm =
-        Algorithm {
+pub static ECDSA_P384_SHA384_ASN1: Algorithm = Algorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_asn1,
