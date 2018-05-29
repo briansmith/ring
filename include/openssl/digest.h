@@ -122,8 +122,9 @@ OPENSSL_EXPORT void EVP_MD_CTX_free(EVP_MD_CTX *ctx);
 // copy of |in|. It returns one on success and zero on error.
 OPENSSL_EXPORT int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in);
 
-// EVP_MD_CTX_reset calls |EVP_MD_CTX_cleanup| followed by |EVP_MD_CTX_init|.
-OPENSSL_EXPORT void EVP_MD_CTX_reset(EVP_MD_CTX *ctx);
+// EVP_MD_CTX_reset calls |EVP_MD_CTX_cleanup| followed by |EVP_MD_CTX_init|. It
+// returns one.
+OPENSSL_EXPORT int EVP_MD_CTX_reset(EVP_MD_CTX *ctx);
 
 
 // Digest operations.
