@@ -65,7 +65,7 @@ OPENSSL_EXPORT void X25519_public_from_private(uint8_t out_public_value[32],
 //
 // Note that, unlike RFC 8032's formulation, our private key representation
 // includes a public key suffix to make multiple key signing operations with the
-// same key more efficient. The RFC 8032 key private key is referred to in this
+// same key more efficient. The RFC 8032 private key is referred to in this
 // implementation as the "seed" and is the first 32 bytes of our private key.
 
 #define ED25519_PRIVATE_KEY_LEN 64
