@@ -394,20 +394,23 @@ OPENSSL_EXPORT int SSL_pending(const SSL *ssl);
 // https://crbug.com/466303.
 OPENSSL_EXPORT int SSL_write(SSL *ssl, const void *buf, int num);
 
-// SSL_shutdown shuts down |ssl|. On success, it completes in two stages. First,
-// it returns 0 if |ssl| completed uni-directional shutdown; close_notify has
-// been sent, but the peer's close_notify has not been received. Most callers
-// may stop at this point. For bi-directional shutdown, call |SSL_shutdown|
-// again. It returns 1 if close_notify has been both sent and received.
+// SSL_shutdown shuts down |ssl|. It runs in two stages. First, it sends
+// close_notify and returns zero or one on success or -1 on failure. Zero
+// indicates that close_notify was sent, but not received, and one additionally
+// indicates that the peer's close_notify had already been received.
 //
-// If the peer's close_notify arrived first, the first stage is skipped.
-// |SSL_shutdown| will return 1 once close_notify is sent and skip 0. Callers
-// only interested in uni-directional shutdown must therefore allow for the
-// first stage returning either 0 or 1.
+// To then wait for the peer's close_notify, run |SSL_shutdown| to completion a
+// second time. This returns 1 on success and -1 on failure. Application data
+// is considered a fatal error at this point. To process or discard it, read
+// until close_notify with |SSL_read| instead.
 //
-// |SSL_shutdown| returns -1 on failure. The caller should pass the return value
-// into |SSL_get_error| to determine how to proceed. If the underlying |BIO| is
-// non-blocking, both stages may require retry.
+// In both cases, on failure, pass the return value into |SSL_get_error| to
+// determine how to proceed.
+//
+// Most callers should stop at the first stage. Reading for close_notify is
+// primarily used for uncommon protocols where the underlying transport is
+// reused after TLS completes. Additionally, DTLS uses an unordered transport
+// and is unordered, so the second stage is a no-op in DTLS.
 OPENSSL_EXPORT int SSL_shutdown(SSL *ssl);
 
 // SSL_CTX_set_quiet_shutdown sets quiet shutdown on |ctx| to |mode|. If
@@ -4911,6 +4914,7 @@ OPENSSL_EXPORT bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback);
 #define SSL_R_SECOND_SERVERHELLO_VERSION_MISMATCH 288
 #define SSL_R_OCSP_CB_ERROR 289
 #define SSL_R_SSL_SESSION_ID_TOO_LONG 290
+#define SSL_R_APPLICATION_DATA_ON_SHUTDOWN 291
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

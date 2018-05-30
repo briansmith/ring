@@ -414,7 +414,8 @@ type testCase struct {
 	readWithUnfinishedWrite bool
 	// shimShutsDown, if true, runs a test where the shim shuts down the
 	// connection immediately after the handshake rather than echoing
-	// messages from the runner.
+	// messages from the runner. The runner will default to not sending
+	// application data.
 	shimShutsDown bool
 	// renegotiate indicates the number of times the connection should be
 	// renegotiated during the exchange.
@@ -825,7 +826,8 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 	}
 
 	messageCount := test.messageCount
-	if messageCount == 0 {
+	// shimShutsDown sets the default message count to zero.
+	if messageCount == 0 && !test.shimShutsDown {
 		messageCount = 1
 	}
 
@@ -5318,6 +5320,25 @@ read alert 1 0
 				flags:             []string{"-check-close-notify"},
 			})
 
+			// The shim should reject unexpected application data
+			// when shutting down.
+			tests = append(tests, testCase{
+				name: "Shutdown-Shim-ApplicationData",
+				config: Config{
+					MaxVersion: VersionTLS12,
+					Bugs: ProtocolBugs{
+						ExpectCloseNotify: true,
+					},
+				},
+				shimShutsDown:     true,
+				messageCount:      1,
+				sendEmptyRecords:  1,
+				sendWarningAlerts: 1,
+				flags:             []string{"-check-close-notify"},
+				shouldFail:        true,
+				expectedError:     ":APPLICATION_DATA_ON_SHUTDOWN:",
+			})
+
 			// Test that SSL_shutdown still processes KeyUpdate.
 			tests = append(tests, testCase{
 				name: "Shutdown-Shim-KeyUpdate",
@@ -5358,11 +5379,11 @@ read alert 1 0
 					MinVersion: VersionTLS12,
 					MaxVersion: VersionTLS12,
 					Bugs: ProtocolBugs{
-						SendHelloRequestBeforeEveryAppDataRecord: true,
-						ExpectCloseNotify:                        true,
+						ExpectCloseNotify: true,
 					},
 				},
 				shimShutsDown: true,
+				renegotiate:   1,
 				shouldFail:    true,
 				expectedError: ":NO_RENEGOTIATION:",
 				flags:         []string{"-check-close-notify"},
@@ -5373,11 +5394,11 @@ read alert 1 0
 					MinVersion: VersionTLS12,
 					MaxVersion: VersionTLS12,
 					Bugs: ProtocolBugs{
-						SendHelloRequestBeforeEveryAppDataRecord: true,
-						ExpectCloseNotify:                        true,
+						ExpectCloseNotify: true,
 					},
 				},
 				shimShutsDown: true,
+				renegotiate:   1,
 				shouldFail:    true,
 				expectedError: ":NO_RENEGOTIATION:",
 				flags: []string{

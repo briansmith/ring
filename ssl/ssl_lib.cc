@@ -1229,13 +1229,11 @@ int SSL_shutdown(SSL *ssl) {
       }
       ssl->s3->read_shutdown = ssl_shutdown_close_notify;
     } else {
-      // Keep discarding data until we see a close_notify.
-      for (;;) {
-        ssl->s3->pending_app_data = Span<uint8_t>();
-        int ret = ssl_read_impl(ssl);
-        if (ret <= 0) {
-          break;
-        }
+      // Process records until an error, close_notify, or application data.
+      if (ssl_read_impl(ssl) > 0) {
+        // We received some unexpected application data.
+        OPENSSL_PUT_ERROR(SSL, SSL_R_APPLICATION_DATA_ON_SHUTDOWN);
+        return -1;
       }
       if (ssl->s3->read_shutdown != ssl_shutdown_close_notify) {
         return -1;
