@@ -9,7 +9,7 @@ license-file = "LICENSE"
 name = "ring"
 readme = "README.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.13.0-alpha3"
+version = "0.13.0-alpha4"
 
 # Prevent multiple versions of *ring* from being linked into the same program.
 links = "ring-asm"
@@ -143,6 +143,7 @@ include = [
     "src/ec/mod.rs",
     "src/ec/suite_b/curve.rs",
     "src/ec/suite_b/ecdh.rs",
+    "src/ec/suite_b/ecdsa/digest_scalar.rs",
     "src/ec/suite_b/ecdsa/mod.rs",
     "src/ec/suite_b/ecdsa/signing.rs",
     "src/ec/suite_b/ecdsa/verification.rs",
