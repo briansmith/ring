@@ -170,7 +170,8 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
 
     q_minus_n: Elem {
         limbs: p384_limbs![0, 0, 0, 0, 0, 0, 0x389cb27e, 0x0bc8d21f,
-                           0x1313e696, 0x333ad68c, 0xa7e5f24c, 0xb74f5885],
+                           0xa7e5f24c, 0xb74f5885, 0x1313e696, 0x333ad68c],
+
         m: PhantomData,
         encoding: PhantomData, // Unencoded
     },

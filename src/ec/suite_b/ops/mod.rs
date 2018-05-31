@@ -103,7 +103,7 @@ pub struct CommonOps {
 
 impl CommonOps {
     #[inline]
-    pub fn elem_add(&self, a: &mut Elem<R>, b: &Elem<R>) {
+    pub fn elem_add<E: Encoding>(&self, a: &mut Elem<E>, b: &Elem<E>) {
         binary_op_assign(self.elem_add_impl, a, b)
     }
 
@@ -425,6 +425,23 @@ mod tests {
         m: PhantomData,
         encoding: PhantomData,
     };
+
+    fn q_minus_n_plus_n_equals_0_test(ops: &PublicScalarOps) {
+        let cops = ops.scalar_ops.common;
+        let mut x = ops.q_minus_n;
+        cops.elem_add(&mut x, &cops.n);
+        assert!(cops.is_zero(&x));
+    }
+
+    #[test]
+    fn p256_q_minus_n_plus_n_equals_0_test() {
+        q_minus_n_plus_n_equals_0_test(&p256::PUBLIC_SCALAR_OPS);
+    }
+
+    #[test]
+    fn p384_q_minus_n_plus_n_equals_0_test() {
+        q_minus_n_plus_n_equals_0_test(&p384::PUBLIC_SCALAR_OPS);
+    }
 
     #[test]
     fn p256_elem_add_test() {
