@@ -93,6 +93,8 @@ pub struct Algorithm {
     pub(crate) i: ec::AgreementAlgorithmImpl,
 }
 
+derive_debug_from_field!(Algorithm, i);
+
 /// An ephemeral private key for use (only) with `agree_ephemeral`. The
 /// signature of `agree_ephemeral` ensures that an `EphemeralPrivateKey` can be
 /// used for at most one key agreement.

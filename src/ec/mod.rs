@@ -24,6 +24,8 @@ pub struct AgreementAlgorithmImpl {
                  -> Result<(), error::Unspecified>,
 }
 
+derive_debug_from_field!(AgreementAlgorithmImpl, curve);
+
 impl PartialEq for AgreementAlgorithmImpl {
     fn eq(&self, other: &Self) -> bool { self.curve.id == other.curve.id }
 }
@@ -46,7 +48,9 @@ pub struct Curve {
                             -> Result<(), error::Unspecified>,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+derive_debug_from_field!(Curve, id);
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CurveID {
     Curve25519,
     P256,
