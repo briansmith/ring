@@ -309,10 +309,10 @@ impl KeyPair {
                 // 6.4.1.4.3 - Step 7.
 
                 // Step 7.a.
-                let p = PrivatePrime::new(p, dP)?;
+                let (p, p_oneRR) = PrivatePrime::new(p, dP)?;
 
                 // Step 7.b.
-                let q = PrivatePrime::new(q, dQ)?;
+                let (q, _) = PrivatePrime::new(q, dQ)?;
 
                 let q_mod_p = q.modulus.to_elem(&p.modulus);
 
@@ -322,7 +322,7 @@ impl KeyPair {
                 } else {
                     // We swapped `p` and `q` above, so we need to calculate
                     // `qInv`.  Step 7.f below will verify `qInv` is correct.
-                    let q_mod_p = bigint::elem_mul(p.oneRR.as_ref(),
+                    let q_mod_p = bigint::elem_mul(p_oneRR.as_ref(),
                                                    q_mod_p.clone(),
                                                    &p.modulus);
                     bigint::elem_inverse_consttime(q_mod_p, &p.modulus, &p.oneR)?
@@ -334,7 +334,7 @@ impl KeyPair {
 
                 // Step 7.f.
                 let qInv =
-                    bigint::elem_mul(p.oneRR.as_ref(), qInv, &p.modulus);
+                    bigint::elem_mul(p_oneRR.as_ref(), qInv, &p.modulus);
                 bigint::verify_inverses_consttime(&qInv, q_mod_p, &p.modulus)?;
 
                 let qq =
@@ -366,7 +366,6 @@ struct PrivatePrime<M: Prime> {
     modulus: bigint::Modulus<M>,
     exponent: bigint::PrivateExponent<M>,
     oneR: bigint::One<M, R>,
-    oneRR: bigint::One<M, RR>,
     oneRRR: bigint::One<M, RRR>,
 }
 
@@ -374,7 +373,7 @@ impl<M: Prime + Clone> PrivatePrime<M> {
     /// Constructs a `PrivatePrime` from the private prime `p` and `dP` where
     /// dP == d % (p - 1).
     fn new(p: bigint::Nonnegative, dP: untrusted::Input)
-           -> Result<Self, error::Unspecified> {
+           -> Result<(Self, bigint::One<M, RR>), error::Unspecified> {
         let p = bigint::Modulus::from(p)?;
 
         // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Steps 7.a & 7.b.
@@ -393,13 +392,12 @@ impl<M: Prime + Clone> PrivatePrime<M> {
         let oneR = bigint::One::newR(&oneRR, &p);
         let oneRRR = bigint::One::newRRR(oneRR.clone(), &p);
 
-        Ok(PrivatePrime {
+        Ok((PrivatePrime {
             modulus: p,
             exponent: dP,
             oneR: oneR,
-            oneRR: oneRR,
             oneRRR: oneRRR,
-        })
+        }, oneRR))
     }
 }
 
