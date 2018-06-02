@@ -642,7 +642,7 @@ pub fn elem_exp_vartime<M>(
     // The vast majority of the time the exponent is either 65537
     // (0b10000000000000001) or 3 (0b11), both of which have a Hamming weight
     // of 2. As explained in [Knuth], exponentiation by squaring is the most
-    // efficient algorithm when the hamming weight is 2 or less. It isn't the
+    // efficient algorithm when the Hamming weight is 2 or less. It isn't the
     // most efficient for all other, uncommon, RSA public exponent values
     // weight, but any suboptimality is tightly bounded by the
     // `PUBLIC_EXPONENT_MAX_VALUE` cap.
