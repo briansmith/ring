@@ -529,13 +529,13 @@ impl<M> One<M, R> {
 }
 
 impl<M> One<M, RR> {
-    // Returns 2**(lg R) (mod m).
+    // Returns RR = = R**2 (mod n) where R = 2**r is the smallest power of
+    // 2**LIMB_BITS such that R > m.
     //
-    // RR = R**2 (mod N). R is the smallest power of 2**LIMB_BITS such that R > m.
-    // Even though the assembly on some 32-bit platforms works with 64-bit values,
-    // using `LIMB_BITS` here, rather than `N0_LIMBS_USED * LIMB_BITS`, is correct
-    // because R**2 will still be a multiple of the latter as `N0_LIMBS_USED` is
-    // either one or two.
+    // Even though the assembly on some 32-bit platforms works with 64-bit
+    // values, using `LIMB_BITS` here, rather than `N0_LIMBS_USED * LIMB_BITS`,
+    // is correct because R**2 will still be a multiple of the latter as
+    // `N0_LIMBS_USED` is either one or two.
     pub fn newRR(m: &Modulus<M>) -> One<M, RR> {
         use limb::LIMB_BITS;
 
