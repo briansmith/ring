@@ -173,6 +173,10 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 
+// TODO(davidben): This is unnamespaced because |SSL_SESSION| was historically
+// public. After 2018-06-13, move it into the namespace.
+typedef struct ssl_x509_method_st SSL_X509_METHOD;
+
 namespace bssl {
 
 struct SSL_CONFIG;
@@ -3201,6 +3205,132 @@ struct ssl_x509_method_st {
 // methods and destructor without polluting the global namespace.
 struct ssl_ctx_st : public bssl::SSLContext {};
 struct ssl_st : public bssl::SSLConnection {};
+
+// TODO(davidben): This type was recently made opaque. After 2018-06-13, move it
+// into a namespace and make it C++.
+struct ssl_session_st {
+  CRYPTO_refcount_t references;
+  uint16_t ssl_version;  // what ssl version session info is being kept in here?
+
+  // group_id is the ID of the ECDH group used to establish this session or zero
+  // if not applicable or unknown.
+  uint16_t group_id;
+
+  // peer_signature_algorithm is the signature algorithm used to authenticate
+  // the peer, or zero if not applicable or unknown.
+  uint16_t peer_signature_algorithm;
+
+  // master_key, in TLS 1.2 and below, is the master secret associated with the
+  // session. In TLS 1.3 and up, it is the resumption secret.
+  int master_key_length;
+  uint8_t master_key[SSL_MAX_MASTER_KEY_LENGTH];
+
+  // session_id - valid?
+  unsigned int session_id_length;
+  uint8_t session_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
+  // this is used to determine whether the session is being reused in
+  // the appropriate context. It is up to the application to set this,
+  // via SSL_new
+  uint8_t sid_ctx_length;
+  uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
+
+  char *psk_identity;
+
+  // certs contains the certificate chain from the peer, starting with the leaf
+  // certificate.
+  STACK_OF(CRYPTO_BUFFER) *certs;
+
+  const SSL_X509_METHOD *x509_method;
+
+  // x509_peer is the peer's certificate.
+  X509 *x509_peer;
+
+  // x509_chain is the certificate chain sent by the peer. NOTE: for historical
+  // reasons, when a client (so the peer is a server), the chain includes
+  // |peer|, but when a server it does not.
+  STACK_OF(X509) *x509_chain;
+
+  // x509_chain_without_leaf is a lazily constructed copy of |x509_chain| that
+  // omits the leaf certificate. This exists because OpenSSL, historically,
+  // didn't include the leaf certificate in the chain for a server, but did for
+  // a client. The |x509_chain| always includes it and, if an API call requires
+  // a chain without, it is stored here.
+  STACK_OF(X509) *x509_chain_without_leaf;
+
+  // verify_result is the result of certificate verification in the case of
+  // non-fatal certificate errors.
+  long verify_result;
+
+  // timeout is the lifetime of the session in seconds, measured from |time|.
+  // This is renewable up to |auth_timeout|.
+  uint32_t timeout;
+
+  // auth_timeout is the non-renewable lifetime of the session in seconds,
+  // measured from |time|.
+  uint32_t auth_timeout;
+
+  // time is the time the session was issued, measured in seconds from the UNIX
+  // epoch.
+  uint64_t time;
+
+  const SSL_CIPHER *cipher;
+
+  CRYPTO_EX_DATA ex_data;  // application specific data
+
+  // These are used to make removal of session-ids more efficient and to
+  // implement a maximum cache size.
+  SSL_SESSION *prev, *next;
+
+  // RFC4507 info
+  uint8_t *tlsext_tick;               // Session ticket
+  size_t tlsext_ticklen;              // Session ticket length
+
+  CRYPTO_BUFFER *signed_cert_timestamp_list;
+
+  // The OCSP response that came with the session.
+  CRYPTO_BUFFER *ocsp_response;
+
+  // peer_sha256 contains the SHA-256 hash of the peer's certificate if
+  // |peer_sha256_valid| is true.
+  uint8_t peer_sha256[SHA256_DIGEST_LENGTH];
+
+  // original_handshake_hash contains the handshake hash (either SHA-1+MD5 or
+  // SHA-2, depending on TLS version) for the original, full handshake that
+  // created a session. This is used by Channel IDs during resumption.
+  uint8_t original_handshake_hash[EVP_MAX_MD_SIZE];
+  uint8_t original_handshake_hash_len;
+
+  uint32_t tlsext_tick_lifetime_hint;  // Session lifetime hint in seconds
+
+  uint32_t ticket_age_add;
+
+  // ticket_max_early_data is the maximum amount of data allowed to be sent as
+  // early data. If zero, 0-RTT is disallowed.
+  uint32_t ticket_max_early_data;
+
+  // early_alpn is the ALPN protocol from the initial handshake. This is only
+  // stored for TLS 1.3 and above in order to enforce ALPN matching for 0-RTT
+  // resumptions.
+  uint8_t *early_alpn;
+  size_t early_alpn_len;
+
+  // extended_master_secret is true if the master secret in this session was
+  // generated using EMS and thus isn't vulnerable to the Triple Handshake
+  // attack.
+  unsigned extended_master_secret:1;
+
+  // peer_sha256_valid is non-zero if |peer_sha256| is valid.
+  unsigned peer_sha256_valid:1;  // Non-zero if peer_sha256 is valid
+
+  // not_resumable is used to indicate that session resumption is disallowed.
+  unsigned not_resumable:1;
+
+  // ticket_age_add_valid is non-zero if |ticket_age_add| is valid.
+  unsigned ticket_age_add_valid:1;
+
+  // is_server is true if this session was created by a server.
+  unsigned is_server:1;
+};
 
 
 #endif  // OPENSSL_HEADER_SSL_INTERNAL_H
