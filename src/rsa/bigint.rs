@@ -541,26 +541,44 @@ impl<M> One<M, RR> {
 
         let m_bits = minimal_limbs_bit_length(&m.limbs).as_usize_bits();
 
-        let lg_RR = ((m_bits + (LIMB_BITS - 1)) / LIMB_BITS * LIMB_BITS) * 2;
+        let r = (m_bits + (LIMB_BITS - 1)) / LIMB_BITS * LIMB_BITS;
 
-        let mut r = m.zero();
-
-        // Make `r` the highest power of 2 less than `m`.
+        // base = 2**(lg m - 1).
         let bit = m_bits - 1;
-        r.limbs[bit / LIMB_BITS] = 1 << (bit % LIMB_BITS);
+        let mut base = m.zero();
+        base.limbs[bit / LIMB_BITS] = 1 << (bit % LIMB_BITS);
 
-        let num_limbs = r.limbs.len();
-
-        // Double the value (mod m) until it is 2**(lg RR) (mod m),
-        // i.e. RR (mod m).
-        for _ in bit..lg_RR {
+        // Double `base` so that base == R == 2**r (mod m). For normal moduli
+        // that have the high bit of the highest limb set, this requires one
+        // doubling. Unusual moduli require more doublings but we are less
+        // concerned about the performance of those.
+        //
+        // Then double `base` again so that base == 2*R (mod n), i.e. `2` in
+        // Montgomery form (`elem_exp_vartime_()` requires the base to be in
+        // Montgomery form). Then compute
+        // RR = R**2 == base**r (mod n) == R**r == (2**r)**r (mod n).
+        //
+        // Take advantage of the fact that `LIMBS_shl_mod` is faster than
+        // `elem_squared` by replacing some of the early squarings with shifts.
+        // TODO: Benchmark shift vs. squaring performance to determine the
+        // optimal value of `lg_base`.
+        let lg_base = 2usize; // Shifts vs. squaring trade-off.
+        debug_assert_eq!(lg_base.count_ones(), 1); // Must 2**n for n >= 0.
+        let shifts = r - bit + lg_base;
+        let exponent = (r / lg_base) as u64;
+        let num_limbs = base.limbs.len();
+        for _ in 0..shifts {
             unsafe {
-                LIMBS_shl_mod(r.limbs.as_mut_ptr(), r.limbs.as_ptr(),
+                LIMBS_shl_mod(base.limbs.as_mut_ptr(), base.limbs.as_ptr(),
                               m.limbs.as_ptr(), num_limbs);
             }
         }
+        let RR = elem_exp_vartime_(base, exponent, m);
 
-        One(r)
+        One(Elem {
+            limbs: RR.limbs,
+            encoding: PhantomData, // PhantomData<RR>
+        })
     }
 }
 
@@ -633,25 +651,33 @@ pub const PUBLIC_EXPONENT_MAX_VALUE: u64 = (1u64 << 33) - 1;
 pub fn elem_exp_vartime<M>(
         base: Elem<M, R>, PublicExponent(exponent): PublicExponent,
         m: &Modulus<M>) -> Elem<M, R> {
+    elem_exp_vartime_(base, exponent, m)
+}
+
+/// Calculates base**exponent (mod m).
+fn elem_exp_vartime_<M>(
+    base: Elem<M, R>, exponent: u64, m: &Modulus<M>) -> Elem<M, R>
+{
     // Use what [Knuth] calls the "S-and-X binary method", i.e. variable-time
     // square-and-multiply that scans the exponent from the most significant
     // bit to the least significant bit (left-to-right). Left-to-right requires
     // less storage compared to right-to-left scanning, at the cost of needing
     // to compute `exponent.leading_zeros()`, which we assume to be cheap.
     //
-    // The vast majority of the time the exponent is either 65537
+    // During RSA public key operations the exponent is almost always either 65537
     // (0b10000000000000001) or 3 (0b11), both of which have a Hamming weight
-    // of 2. As explained in [Knuth], exponentiation by squaring is the most
-    // efficient algorithm when the Hamming weight is 2 or less. It isn't the
-    // most efficient for all other, uncommon, exponent values, but any
-    // suboptimality is bounded by the `PUBLIC_EXPONENT_MAX_VALUE`.
+    // of 2. During Montgomery setup the exponent is almost always a power of two,
+    // with Hamming weight 1. As explained in [Knuth], exponentiation by squaring
+    // is the most efficient algorithm when the Hamming weight is 2 or less. It
+    // isn't the most efficient for all other, uncommon, exponent values but any
+    // suboptimality is bounded by `PUBLIC_EXPONENT_MAX_VALUE`.
     //
     // This implementation is slightly simplified by taking advantage of the
-    // fact that we require the exponent to be an (odd) positive integer.
+    // fact that we require the exponent to be a positive integer.
     //
     // [Knuth]: The Art of Computer Programming, Volume 2: Seminumerical
     //          Algorithms (3rd Edition), Section 4.6.3.
-    debug_assert_eq!(exponent & 1, 1);
+    assert!(exponent >= 1);
     assert!(exponent <= PUBLIC_EXPONENT_MAX_VALUE);
     let mut acc = base.clone();
     let mut bit = 1 << (64 - 1 - exponent.leading_zeros());
