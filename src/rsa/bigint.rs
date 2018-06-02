@@ -556,7 +556,7 @@ impl<M> One<M, RR> {
         // Then double `base` again so that base == 2*R (mod n), i.e. `2` in
         // Montgomery form (`elem_exp_vartime_()` requires the base to be in
         // Montgomery form). Then compute
-        // RR = R**2 == base**r (mod n) == R**r == (2**r)**r (mod n).
+        // RR = R**2 == base**r == R**r == (2**r)**r (mod n).
         //
         // Take advantage of the fact that `LIMBS_shl_mod` is faster than
         // `elem_squared` by replacing some of the early squarings with shifts.
