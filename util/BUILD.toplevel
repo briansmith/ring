@@ -128,6 +128,7 @@ cc_library(
         # Android supports pthreads, but does not provide a libpthread
         # to link against.
         ":android": [],
+        ":windows_x86_64": ["-defaultlib:advapi32.lib"],
         "//conditions:default": ["-lpthread"],
     }),
     visibility = ["//visibility:public"],
