@@ -901,6 +901,19 @@ const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *session,
   return session->session_id;
 }
 
+int SSL_SESSION_set1_id(SSL_SESSION *session, const uint8_t *sid,
+                        size_t sid_len) {
+  if (sid_len > SSL_MAX_SSL_SESSION_ID_LENGTH) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_SESSION_ID_TOO_LONG);
+    return 0;
+  }
+
+  // Use memmove in case someone passes in the output of |SSL_SESSION_get_id|.
+  OPENSSL_memmove(session->session_id, sid, sid_len);
+  session->session_id_length = sid_len;
+  return 1;
+}
+
 uint32_t SSL_SESSION_get_timeout(const SSL_SESSION *session) {
   return session->timeout;
 }

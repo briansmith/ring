@@ -1677,6 +1677,12 @@ OPENSSL_EXPORT int SSL_SESSION_set_protocol_version(SSL_SESSION *session,
 OPENSSL_EXPORT const uint8_t *SSL_SESSION_get_id(const SSL_SESSION *session,
                                                  unsigned *out_len);
 
+// SSL_SESSION_set1_id sets |session|'s session ID to |sid|, It returns one on
+// success and zero on error. This function may be useful in writing tests but
+// otherwise should not be used.
+OPENSSL_EXPORT int SSL_SESSION_set1_id(SSL_SESSION *session, const uint8_t *sid,
+                                       size_t sid_len);
+
 // SSL_SESSION_get_time returns the time at which |session| was established in
 // seconds since the UNIX epoch.
 OPENSSL_EXPORT uint64_t SSL_SESSION_get_time(const SSL_SESSION *session);
@@ -4860,6 +4866,7 @@ OPENSSL_EXPORT bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback);
 #define SSL_R_PRIVATE_KEY_OPERATION_FAILED 287
 #define SSL_R_SECOND_SERVERHELLO_VERSION_MISMATCH 288
 #define SSL_R_OCSP_CB_ERROR 289
+#define SSL_R_SSL_SESSION_ID_TOO_LONG 290
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
