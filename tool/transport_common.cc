@@ -40,6 +40,7 @@
 #include <unistd.h>
 #else
 #include <algorithm>
+#include <condition_variable>
 #include <deque>
 #include <memory>
 #include <mutex>
