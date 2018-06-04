@@ -86,6 +86,10 @@ armv7-linux-androideabi)
   # Android emulator. That was removed because something broke this. See
   # https://github.com/briansmith/ring/issues/603.
   ;;
+*-unknown-linux-gnu)
+  cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
+  ./util/check_versioned_symbols.py "$target_dir/libring.rlib"
+  ;;
 *)
   cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
   ;;
