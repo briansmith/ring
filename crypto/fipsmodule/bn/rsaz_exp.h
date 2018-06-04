@@ -17,6 +17,8 @@
 
 #include <openssl/bn.h>
 
+#include "internal.h"
+
 // RSAZ_1024_mod_exp_avx2 sets |result| to |base_norm| raised to |exponent|
 // modulo |m_norm|. |base_norm| must be fully-reduced and |exponent| must have
 // the high bit set (it is 1024 bits wide). |RR| and |k0| must be |RR| and |n0|,
