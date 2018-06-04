@@ -465,6 +465,7 @@ fn parse_test_case(current_section: &mut String, lines: &mut FileLines)
 pub mod rand {
     use core;
     use {error, polyfill, rand};
+    use private;
 
     /// An implementation of `SecureRandom` that always fills the output slice
     /// with the given byte.
@@ -530,6 +531,11 @@ pub mod rand {
             assert_eq!(unsafe { *self.current.get() }, self.bytes.len());
         }
     }
+
+    impl private::Sealed for FixedByteRandom {}
+    impl<'a> private::Sealed for FixedSliceRandom<'a> {}
+    impl<'a> private::Sealed for FixedSliceSequenceRandom<'a> {}
+
 }
 
 
