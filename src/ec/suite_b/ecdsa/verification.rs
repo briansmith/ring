@@ -145,7 +145,7 @@ impl signature::VerificationAlgorithm for Algorithm {
     }
 }
 
-impl private::Private for Algorithm {}
+impl private::Sealed for Algorithm {}
 
 fn split_rs_fixed<'a>(
         ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>)

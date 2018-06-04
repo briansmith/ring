@@ -140,13 +140,13 @@ mod private {
     // ```
     // use private;
     //
-    // pub trait MyType : private::Private {
+    // pub trait MyType : private::Sealed {
     //     // [...]
     // }
     //
-    // impl private::Private for MyType { }
+    // impl private::Sealed for MyType { }
     // ```
-    pub trait Private {}
+    pub trait Sealed {}
 }
 
 #[cfg(test)]

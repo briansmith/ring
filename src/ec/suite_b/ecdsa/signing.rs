@@ -51,7 +51,7 @@ impl PartialEq for Algorithm {
 
 impl Eq for Algorithm {}
 
-impl private::Private for Algorithm {}
+impl private::Sealed for Algorithm {}
 
 #[cfg(feature = "use_heap")]
 impl signature::SigningAlgorithm for Algorithm {

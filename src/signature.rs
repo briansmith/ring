@@ -380,7 +380,7 @@ pub(crate) trait KeyPairImpl: core::fmt::Debug + Send + 'static {
 
 /// An algorithm for signing.
 #[cfg(feature = "use_heap")]
-pub trait SigningAlgorithm: core::fmt::Debug + Sync + 'static + private::Private {
+pub trait SigningAlgorithm: core::fmt::Debug + Sync + 'static + private::Sealed {
     /// Parses the key out of the given PKCS#8 document, verifying that it is
     /// valid for the algorithm.
     fn from_pkcs8(&'static self, input: untrusted::Input)
@@ -406,7 +406,7 @@ pub fn sign(key_pair: &KeyPair, rng: &rand::SecureRandom, msg: untrusted::Input)
 }
 
 /// A signature verification algorithm.
-pub trait VerificationAlgorithm: core::fmt::Debug + Sync + private::Private {
+pub trait VerificationAlgorithm: core::fmt::Debug + Sync + private::Sealed {
     /// Verify the signature `signature` of message `msg` with the public key
     /// `public_key`.
     fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,

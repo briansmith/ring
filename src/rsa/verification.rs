@@ -103,7 +103,7 @@ impl signature::VerificationAlgorithm for RSAParameters {
     }
 }
 
-impl private::Private for RSAParameters {}
+impl private::Sealed for RSAParameters {}
 
 impl core::fmt::Debug for RSAParameters {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {

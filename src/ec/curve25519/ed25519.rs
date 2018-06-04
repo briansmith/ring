@@ -263,7 +263,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
     }
 }
 
-impl private::Private for EdDSAParameters {}
+impl private::Sealed for EdDSAParameters {}
 
 fn eddsa_digest(signature_r: &[u8], public_key: &[u8], msg: &[u8])
                 -> digest::Digest {
