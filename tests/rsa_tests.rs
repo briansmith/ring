@@ -102,25 +102,6 @@ fn test_signature_rsa_pkcs1_sign() {
 #[cfg(feature = "rsa_signing")]
 #[test]
 fn test_signature_rsa_pss_sign() {
-    // Outputs the same value whenever a certain length is requested (the same
-    // as the length of the salt). Otherwise, the rng is used.
-    struct DeterministicSalt<'a> {
-        salt: &'a [u8],
-        rng: &'a rand::SecureRandom
-    }
-    impl<'a> rand::SecureRandom for DeterministicSalt<'a> {
-        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
-            let dest_len = dest.len();
-            if dest_len != self.salt.len() {
-                self.rng.fill(dest)?;
-            } else {
-                dest.copy_from_slice(&self.salt);
-            }
-            Ok(())
-        }
-    }
-    let rng = rand::SystemRandom::new();
-
     test::from_file("tests/rsa_pss_sign_tests.txt", |section, test_case| {
         assert_eq!(section, "");
 
@@ -145,13 +126,13 @@ fn test_signature_rsa_pss_sign() {
         let salt = test_case.consume_bytes("Salt");
         let expected = test_case.consume_bytes("Sig");
 
-        let new_rng = DeterministicSalt { salt: &salt, rng: &rng };
+        let rng = test::rand::FixedSliceRandom { bytes: &salt };
 
         let mut signing_state =
             signature::RSASigningState::new(key_pair).unwrap();
         let mut actual =
             vec![0u8; signing_state.key_pair().public_modulus_len()];
-        signing_state.sign(alg, &new_rng, &msg, actual.as_mut_slice())?;
+        signing_state.sign(alg, &rng, &msg, actual.as_mut_slice())?;
         assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
         Ok(())
     });
