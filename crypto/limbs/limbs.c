@@ -94,9 +94,7 @@ Limb LIMBS_less_than_limb(const Limb a[], Limb b, size_t num_limbs) {
 }
 
 void LIMBS_copy(Limb r[], const Limb a[], size_t num_limbs) {
-  for (size_t i = 0; i < num_limbs; ++i) {
-    r[i] = a[i];
-  }
+  limbs_copy(r, a, num_limbs);
 }
 
 /* if (r >= m) { r -= m; } */

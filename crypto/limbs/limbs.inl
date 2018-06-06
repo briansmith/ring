@@ -129,3 +129,9 @@ static inline Carry limbs_sub(Limb r[], const Limb a[], const Limb b[],
   }
   return borrow;
 }
+
+static inline void limbs_copy(Limb r[], const Limb a[], size_t num_limbs) {
+  for (size_t i = 0; i < num_limbs; ++i) {
+    r[i] = a[i];
+  }
+}

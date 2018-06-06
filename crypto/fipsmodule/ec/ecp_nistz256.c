@@ -29,7 +29,7 @@
 
 #include "ecp_nistz.h"
 #include "../bn/internal.h"
-
+#include "../../limbs/limbs.inl"
 
 typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 
@@ -112,9 +112,9 @@ void GFp_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
    * table. */
   P256_POINT *row = table;
 
-  memcpy(row[1 - 1].X, p_x, P256_LIMBS * sizeof(Limb));
-  memcpy(row[1 - 1].Y, p_y, P256_LIMBS * sizeof(Limb));
-  memcpy(row[1 - 1].Z, ONE, P256_LIMBS * sizeof(Limb));
+  limbs_copy(row[1 - 1].X, p_x, P256_LIMBS);
+  limbs_copy(row[1 - 1].Y, p_y, P256_LIMBS);
+  limbs_copy(row[1 - 1].Z, ONE, P256_LIMBS);
 
   GFp_nistz256_point_double(&row[2 - 1], &row[1 - 1]);
   GFp_nistz256_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);
@@ -216,7 +216,7 @@ void GFp_nistz256_point_mul_base(P256_POINT *r,
   GFp_nistz256_neg(p.p.Z, p.p.Y);
   copy_conditional(p.p.Y, p.p.Z, recoded_is_negative);
 
-  memcpy(p.p.Z, ONE, sizeof(ONE));
+  limbs_copy(p.p.Z, ONE, P256_LIMBS);
   /* If it is at the point at infinity then p.p.X will be zero. */
   copy_conditional(p.p.Z, p.p.X, is_infinity(p.p.X, p.p.Y));
 
@@ -233,5 +233,7 @@ void GFp_nistz256_point_mul_base(P256_POINT *r,
     GFp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
   }
 
-  memcpy(r, &p.p, sizeof(p.p));
+  limbs_copy(r->X, p.p.X, P256_LIMBS);
+  limbs_copy(r->Y, p.p.Y, P256_LIMBS);
+  limbs_copy(r->Z, p.p.Z, P256_LIMBS);
 }

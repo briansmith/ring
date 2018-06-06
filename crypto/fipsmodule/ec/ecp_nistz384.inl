@@ -160,9 +160,9 @@ void GFp_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
   copy_conditional(res_y, in1_y, in2infty);
   copy_conditional(res_z, in1_z, in2infty);
 
-  memcpy(r->X, res_x, sizeof(res_x));
-  memcpy(r->Y, res_y, sizeof(res_y));
-  memcpy(r->Z, res_z, sizeof(res_z));
+  limbs_copy(r->X, res_x, P384_LIMBS);
+  limbs_copy(r->Y, res_y, P384_LIMBS);
+  limbs_copy(r->Z, res_z, P384_LIMBS);
 }
 
 static void add_precomputed_w5(P384_POINT *r, unsigned wvalue,
@@ -202,9 +202,9 @@ void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
   * table. */
   P384_POINT *row = table;
 
-  memcpy(row[1 - 1].X, p_x, P384_LIMBS * sizeof(Limb));
-  memcpy(row[1 - 1].Y, p_y, P384_LIMBS * sizeof(Limb));
-  memcpy(row[1 - 1].Z, ONE, P384_LIMBS * sizeof(Limb));
+  limbs_copy(row[1 - 1].X, p_x, P384_LIMBS);
+  limbs_copy(row[1 - 1].Y, p_y, P384_LIMBS);
+  limbs_copy(row[1 - 1].Z, ONE, P384_LIMBS);
 
   GFp_nistz384_point_double(&row[2 - 1], &row[1 - 1]);
   GFp_nistz384_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);

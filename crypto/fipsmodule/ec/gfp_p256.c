@@ -17,7 +17,7 @@
 
 #include "../../internal.h"
 #include "../bn/internal.h"
-
+#include "../../limbs/limbs.inl"
 
 typedef Limb Elem[P256_LIMBS];
 typedef Limb ScalarMont[P256_LIMBS];
@@ -98,9 +98,9 @@ void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
     }
   }
 
-  memcpy(&out->X, x, sizeof(x));
-  memcpy(&out->Y, y, sizeof(y));
-  memcpy(&out->Z, z, sizeof(z));
+  limbs_copy(out->X, x, P256_LIMBS);
+  limbs_copy(out->Y, y, P256_LIMBS);
+  limbs_copy(out->Z, z, P256_LIMBS);
 }
 
 void GFp_nistz256_select_w7(P256_POINT_AFFINE *out,
@@ -119,8 +119,8 @@ void GFp_nistz256_select_w7(P256_POINT_AFFINE *out,
     }
   }
 
-  memcpy(out->X, x, sizeof(x));
-  memcpy(out->Y, y, sizeof(y));
+  limbs_copy(out->X, x, P256_LIMBS);
+  limbs_copy(out->Y, y, P256_LIMBS);
 }
 
 #endif

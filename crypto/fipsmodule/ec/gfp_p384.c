@@ -247,9 +247,9 @@ static void gfp_p384_point_select_w5(P384_POINT *out,
     }
   }
 
-  memcpy(out->X, x, sizeof(x));
-  memcpy(out->Y, y, sizeof(y));
-  memcpy(out->Z, z, sizeof(z));
+  limbs_copy(out->X, x, P384_LIMBS);
+  limbs_copy(out->Y, y, P384_LIMBS);
+  limbs_copy(out->Z, z, P384_LIMBS);
 }
 
 
