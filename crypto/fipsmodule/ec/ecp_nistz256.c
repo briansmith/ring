@@ -53,13 +53,6 @@ static const Limb ONE[P256_LIMBS] = {
     TOBN(0xffffffff, 0xffffffff), TOBN(0x00000000, 0xfffffffe),
 };
 
-static const Limb Q[P256_LIMBS] = {
-  TOBN(0xffffffff, 0xffffffff),
-  TOBN(0x00000000, 0xffffffff),
-  TOBN(0x00000000, 0x00000000),
-  TOBN(0xffffffff, 0x00000001),
-};
-
 /* Precomputed tables for the default generator */
 #include "ecp_nistz256_table.inl"
 
@@ -239,13 +232,6 @@ void GFp_nistz256_point_mul_base(P256_POINT *r,
     copy_conditional(t.a.Y, t.p.Z, recoded_is_negative);
     GFp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
   }
-
-  LIMBS_reduce_once(p.p.X, Q, P256_LIMBS);
-  LIMBS_reduce_once(p.p.Y, Q, P256_LIMBS);
-  LIMBS_reduce_once(p.p.Z, Q, P256_LIMBS);
-
-  /* If it is at the point at infinity then p.p.X will be zero. */
-  copy_conditional(p.p.Z, p.p.X, is_infinity(p.p.X, p.p.Y));
 
   memcpy(r, &p.p, sizeof(p.p));
 }
