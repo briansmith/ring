@@ -547,8 +547,13 @@ static enum ssl_hs_wait_t do_read_server_certificate(SSL_HANDSHAKE *hs) {
   if (!ssl->method->get_message(ssl, &msg)) {
     return ssl_hs_read_message;
   }
-  if (!ssl_check_message_type(ssl, msg, SSL3_MT_CERTIFICATE) ||
-      !tls13_process_certificate(hs, msg, 0 /* certificate required */) ||
+
+  if (msg.type != SSL3_MT_COMPRESSED_CERTIFICATE &&
+      !ssl_check_message_type(ssl, msg, SSL3_MT_CERTIFICATE)) {
+    return ssl_hs_error;
+  }
+
+  if (!tls13_process_certificate(hs, msg, 0 /* certificate required */) ||
       !ssl_hash_message(hs, msg)) {
     return ssl_hs_error;
   }

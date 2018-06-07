@@ -105,7 +105,61 @@ bool tls13_get_cert_verify_signature_input(
 int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
                               int allow_anonymous) {
   SSL *const ssl = hs->ssl;
-  CBS body = msg.body, context, certificate_list;
+  CBS body = msg.body;
+  bssl::UniquePtr<CRYPTO_BUFFER> decompressed;
+
+  if (msg.type == SSL3_MT_COMPRESSED_CERTIFICATE) {
+    CBS compressed;
+    uint16_t alg_id;
+    uint32_t uncompressed_len;
+
+    if (!CBS_get_u16(&body, &alg_id) ||
+        !CBS_get_u24(&body, &uncompressed_len) ||
+        !CBS_get_u24_length_prefixed(&body, &compressed) ||
+        CBS_len(&body) != 0) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      return 0;
+    }
+
+    if (uncompressed_len > ssl->max_cert_list) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNCOMPRESSED_CERT_TOO_LARGE);
+      ERR_add_error_dataf("requested=%u",
+                          static_cast<unsigned>(uncompressed_len));
+      return 0;
+    }
+
+    bssl::CertDecompressFunc decompress = nullptr;
+    for (const auto& alg : ssl->ctx->cert_compression_algs) {
+      if (alg->alg_id == alg_id) {
+        decompress = alg->decompress;
+        break;
+      }
+    }
+
+    if (decompress == nullptr) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERT_COMPRESSION_ALG);
+      ERR_add_error_dataf("alg=%d", static_cast<int>(alg_id));
+      return 0;
+    }
+
+    if (!decompress(ssl, &decompressed, uncompressed_len, compressed) ||
+        CRYPTO_BUFFER_len(decompressed.get()) != uncompressed_len) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_DECOMPRESSION_FAILED);
+      ERR_add_error_dataf("alg=%d", static_cast<int>(alg_id));
+      return 0;
+    }
+
+    CBS_init(&body, CRYPTO_BUFFER_data(decompressed.get()),
+             CRYPTO_BUFFER_len(decompressed.get()));
+  } else {
+    assert(msg.type == SSL3_MT_CERTIFICATE);
+  }
+
+  CBS context, certificate_list;
   if (!CBS_get_u8_length_prefixed(&body, &context) ||
       CBS_len(&context) != 0 ||
       !CBS_get_u24_length_prefixed(&body, &certificate_list) ||

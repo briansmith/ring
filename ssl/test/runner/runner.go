@@ -14424,7 +14424,7 @@ func addCertCompressionTests() {
 	// value in the shim.
 	expandingPrefix := []byte{1, 2, 3, 4}
 
-	shinking := CertCompressionAlg{
+	shrinking := CertCompressionAlg{
 		Compress: func(uncompressed []byte) []byte {
 			if !bytes.HasPrefix(uncompressed, shrinkingPrefix) {
 				panic(fmt.Sprintf("cannot compress certificate message %x", uncompressed))
@@ -14540,7 +14540,7 @@ func addCertCompressionTests() {
 			config: Config{
 				MinVersion:          ver.version,
 				MaxVersion:          ver.version,
-				CertCompressionAlgs: map[uint16]CertCompressionAlg{shrinkingAlgId: shinking},
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{shrinkingAlgId: shrinking},
 				Bugs: ProtocolBugs{
 					ExpectedCompressedCert: shrinkingAlgId,
 				},
@@ -14558,13 +14558,107 @@ func addCertCompressionTests() {
 				MinVersion: ver.version,
 				MaxVersion: ver.version,
 				CertCompressionAlgs: map[uint16]CertCompressionAlg{
-					shrinkingAlgId: shinking,
+					shrinkingAlgId: shrinking,
 					expandingAlgId: expanding,
 				},
 				Bugs: ProtocolBugs{
 					ExpectedCompressedCert: expandingAlgId,
 				},
 			},
+		})
+
+		testCases = append(testCases, testCase{
+			testType:     clientTest,
+			name:         "CertCompressionExpandsClient-" + ver.name,
+			tls13Variant: ver.tls13Variant,
+			flags:        []string{"-install-cert-compression-algs"},
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{
+					expandingAlgId: expanding,
+				},
+				Bugs: ProtocolBugs{
+					ExpectedCompressedCert: expandingAlgId,
+				},
+			},
+		})
+
+		testCases = append(testCases, testCase{
+			testType:     clientTest,
+			name:         "CertCompressionShrinksClient-" + ver.name,
+			tls13Variant: ver.tls13Variant,
+			flags:        []string{"-install-cert-compression-algs"},
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{
+					shrinkingAlgId: shrinking,
+				},
+				Bugs: ProtocolBugs{
+					ExpectedCompressedCert: shrinkingAlgId,
+				},
+			},
+		})
+
+		testCases = append(testCases, testCase{
+			testType:     clientTest,
+			name:         "CertCompressionBadAlgIdClient-" + ver.name,
+			tls13Variant: ver.tls13Variant,
+			flags:        []string{"-install-cert-compression-algs"},
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{
+					shrinkingAlgId: shrinking,
+				},
+				Bugs: ProtocolBugs{
+					ExpectedCompressedCert:   shrinkingAlgId,
+					SendCertCompressionAlgId: 1234,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNKNOWN_CERT_COMPRESSION_ALG:",
+		})
+
+		testCases = append(testCases, testCase{
+			testType:     clientTest,
+			name:         "CertCompressionTooSmallClient-" + ver.name,
+			tls13Variant: ver.tls13Variant,
+			flags:        []string{"-install-cert-compression-algs"},
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{
+					shrinkingAlgId: shrinking,
+				},
+				Bugs: ProtocolBugs{
+					ExpectedCompressedCert:     shrinkingAlgId,
+					SendCertUncompressedLength: 12,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":CERT_DECOMPRESSION_FAILED:",
+		})
+
+		testCases = append(testCases, testCase{
+			testType:     clientTest,
+			name:         "CertCompressionTooLargeClient-" + ver.name,
+			tls13Variant: ver.tls13Variant,
+			flags:        []string{"-install-cert-compression-algs"},
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				CertCompressionAlgs: map[uint16]CertCompressionAlg{
+					shrinkingAlgId: shrinking,
+				},
+				Bugs: ProtocolBugs{
+					ExpectedCompressedCert:     shrinkingAlgId,
+					SendCertUncompressedLength: 1 << 20,
+				},
+			},
+			shouldFail:    true,
+			expectedError: ":UNCOMPRESSED_CERT_TOO_LARGE:",
 		})
 	}
 }

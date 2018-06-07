@@ -1618,6 +1618,14 @@ type ProtocolBugs struct {
 	// ExpectedCompressedCert specifies the compression algorithm ID that must be
 	// used on this connection, or zero if there are no special requirements.
 	ExpectedCompressedCert uint16
+
+	// SendCertCompressionAlgId, if not zero, sets the algorithm ID that will be
+	// sent in the compressed certificate message.
+	SendCertCompressionAlgId uint16
+
+	// SendCertUncompressedLength, if not zero, sets the uncompressed length that
+	// will be sent in the compressed certificate message.
+	SendCertUncompressedLength uint32
 }
 
 func (c *Config) serverInit() {

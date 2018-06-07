@@ -1712,7 +1712,7 @@ func (m *compressedCertificateMsg) marshal() (x []byte) {
 	}
 
 	certMsg := newByteBuilder()
-	certMsg.addU8(typeCertificate)
+	certMsg.addU8(typeCompressedCertificate)
 	certificate := certMsg.addU24LengthPrefixed()
 	certificate.addU16(m.algID)
 	certificate.addU24(int(m.uncompressedLength))

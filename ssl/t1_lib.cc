@@ -2764,7 +2764,26 @@ static bool ext_quic_transport_params_add_serverhello(SSL_HANDSHAKE *hs,
 // Certificate compression
 
 static bool cert_compression_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
-  return true;
+  bool first = true;
+  CBB contents, algs;
+
+  for (const auto& alg : hs->ssl->ctx->cert_compression_algs) {
+    if (alg->decompress == nullptr) {
+      continue;
+    }
+
+    if (first && (!CBB_add_u16(out, TLSEXT_TYPE_cert_compression) ||
+                  !CBB_add_u16_length_prefixed(out, &contents) ||
+                  !CBB_add_u8_length_prefixed(&contents, &algs))) {
+      return false;
+    }
+    first = false;
+    if (!CBB_add_u16(&algs, alg->alg_id)) {
+      return false;
+    }
+  }
+
+  return first || CBB_flush(out);
 }
 
 static bool cert_compression_parse_serverhello(SSL_HANDSHAKE *hs,

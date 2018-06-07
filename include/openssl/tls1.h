@@ -266,6 +266,10 @@ extern "C" {
 #define TLSEXT_hash_sha384 5
 #define TLSEXT_hash_sha512 6
 
+// From https://tools.ietf.org/html/draft-ietf-tls-certificate-compression-03#section-3
+#define TLSEXT_cert_compression_zlib 1
+#define TLSEXT_cert_compression_brotli 2
+
 #define TLSEXT_MAXLEN_host_name 255
 
 // PSK ciphersuites from 4279

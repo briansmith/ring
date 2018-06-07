@@ -135,6 +135,25 @@ CRYPTO_BUFFER *CRYPTO_BUFFER_new(const uint8_t *data, size_t len,
   return buf;
 }
 
+CRYPTO_BUFFER *CRYPTO_BUFFER_alloc(uint8_t **out_data, size_t len) {
+  CRYPTO_BUFFER *const buf = OPENSSL_malloc(sizeof(CRYPTO_BUFFER));
+  if (buf == NULL) {
+    return NULL;
+  }
+  OPENSSL_memset(buf, 0, sizeof(CRYPTO_BUFFER));
+
+  buf->data = OPENSSL_malloc(len);
+  if (len != 0 && buf->data == NULL) {
+    OPENSSL_free(buf);
+    return NULL;
+  }
+  buf->len = len;
+  buf->references = 1;
+
+  *out_data = buf->data;
+  return buf;
+}
+
 CRYPTO_BUFFER* CRYPTO_BUFFER_new_from_CBS(CBS *cbs, CRYPTO_BUFFER_POOL *pool) {
   return CRYPTO_BUFFER_new(CBS_data(cbs), CBS_len(cbs), pool);
 }

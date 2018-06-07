@@ -3954,6 +3954,67 @@ TEST(SSLTest, SignatureAlgorithmProperties) {
   EXPECT_TRUE(SSL_is_signature_algorithm_rsa_pss(SSL_SIGN_RSA_PSS_RSAE_SHA384));
 }
 
+static bool XORCompressFunc(SSL *ssl, CBB *out, Span<const uint8_t> in) {
+  for (size_t i = 0; i < in.size(); i++) {
+    if (!CBB_add_u8(out, in[i] ^ 0x55)) {
+      return false;
+    }
+  }
+
+  SSL_set_app_data(ssl, XORCompressFunc);
+
+  return true;
+}
+
+static bool XORDecompressFunc(SSL *ssl, bssl::UniquePtr<CRYPTO_BUFFER> *out,
+                              size_t uncompressed_len, Span<const uint8_t> in) {
+  if (in.size() != uncompressed_len) {
+    return false;
+  }
+
+  uint8_t *data;
+  out->reset(CRYPTO_BUFFER_alloc(&data, uncompressed_len));
+  if (out->get() == nullptr) {
+    return false;
+  }
+
+  for (size_t i = 0; i < in.size(); i++) {
+    data[i] = in[i] ^ 0x55;
+  }
+
+  SSL_set_app_data(ssl, XORDecompressFunc);
+
+  return true;
+}
+
+TEST(SSLTest, CertCompression) {
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(client_ctx);
+  ASSERT_TRUE(server_ctx);
+
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
+  ASSERT_TRUE(SSL_CTX_add_cert_compression_alg(
+      client_ctx.get(), 0x1234, XORCompressFunc, XORDecompressFunc));
+  ASSERT_TRUE(SSL_CTX_add_cert_compression_alg(
+      server_ctx.get(), 0x1234, XORCompressFunc, XORDecompressFunc));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  EXPECT_TRUE(SSL_get_app_data(client.get()) == XORDecompressFunc);
+  EXPECT_TRUE(SSL_get_app_data(server.get()) == XORCompressFunc);
+}
+
 void MoveBIOs(SSL *dest, SSL *src) {
   BIO *rbio = SSL_get_rbio(src);
   BIO_up_ref(rbio);
