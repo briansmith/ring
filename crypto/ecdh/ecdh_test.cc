@@ -122,6 +122,7 @@ TEST(ECDHTest, Wycheproof) {
   FileTestGTest("third_party/wycheproof_testvectors/ecdh_test.txt",
                 [](FileTest *t) {
     t->IgnoreInstruction("curve");  // This is redundant with the per-test one.
+    t->IgnoreInstruction("encoding");
 
     bssl::UniquePtr<EC_GROUP> group = GetWycheproofCurve(t, "curve", false);
     ASSERT_TRUE(group);

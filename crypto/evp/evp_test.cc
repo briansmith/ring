@@ -425,6 +425,7 @@ static void RunWycheproofTest(const char *path) {
     t->IgnoreInstruction("key.keySize");
     t->IgnoreInstruction("key.wx");
     t->IgnoreInstruction("key.wy");
+    t->IgnoreInstruction("key.uncompressed");
     // Extra RSA fields.
     t->IgnoreInstruction("e");
     t->IgnoreInstruction("keyAsn");
@@ -470,14 +471,27 @@ static void RunWycheproofTest(const char *path) {
       bool sig_ok = DSA_check_signature(&valid, digest, digest_len, sig.data(),
                                         sig.size(), dsa) &&
                     valid;
-      EXPECT_EQ(result == WycheproofResult::kValid, sig_ok);
+      if (result == WycheproofResult::kValid) {
+        EXPECT_TRUE(sig_ok);
+      } else if (result == WycheproofResult::kInvalid) {
+        EXPECT_FALSE(sig_ok);
+      } else {
+        // this is a legacy signature, which may or may not be accepted.
+      }
     } else {
       bssl::ScopedEVP_MD_CTX ctx;
       ASSERT_TRUE(
           EVP_DigestVerifyInit(ctx.get(), nullptr, md, nullptr, key.get()));
-      EXPECT_EQ(result == WycheproofResult::kValid ? 1 : 0,
-                EVP_DigestVerify(ctx.get(), sig.data(), sig.size(), msg.data(),
-                                 msg.size()));
+      int ret = EVP_DigestVerify(ctx.get(), sig.data(), sig.size(), msg.data(),
+                                 msg.size());
+      if (result == WycheproofResult::kValid) {
+        EXPECT_EQ(1, ret);
+      } else if (result == WycheproofResult::kInvalid) {
+        EXPECT_EQ(0, ret);
+      } else {
+        // this is a legacy signature, which may or may not be accepted.
+        EXPECT_TRUE(ret == 1 || ret == 0);
+      }
     }
   });
 }
