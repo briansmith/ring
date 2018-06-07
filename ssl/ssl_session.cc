@@ -990,6 +990,14 @@ uint32_t SSL_SESSION_set_timeout(SSL_SESSION *session, uint32_t timeout) {
   return 1;
 }
 
+const uint8_t *SSL_SESSION_get0_id_context(const SSL_SESSION *session,
+                                           unsigned *out_len) {
+  if (out_len != NULL) {
+    *out_len = session->sid_ctx_length;
+  }
+  return session->sid_ctx;
+}
+
 int SSL_SESSION_set1_id_context(SSL_SESSION *session, const uint8_t *sid_ctx,
                                 size_t sid_ctx_len) {
   if (sid_ctx_len > sizeof(session->sid_ctx)) {

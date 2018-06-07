@@ -1750,6 +1750,12 @@ OPENSSL_EXPORT uint64_t SSL_SESSION_set_time(SSL_SESSION *session,
 OPENSSL_EXPORT uint32_t SSL_SESSION_set_timeout(SSL_SESSION *session,
                                                 uint32_t timeout);
 
+// SSL_SESSION_get0_id_context returns a pointer to a buffer containing
+// |session|'s session ID context (see |SSL_CTX_set_session_id_context|) and
+// sets |*out_len| to its length.
+OPENSSL_EXPORT const uint8_t *SSL_SESSION_get0_id_context(
+    const SSL_SESSION *session, unsigned *out_len);
+
 // SSL_SESSION_set1_id_context sets |session|'s session ID context (see
 // |SSL_CTX_set_session_id_context|) to |sid_ctx|. It returns one on success and
 // zero on error. This function may be useful in writing tests but otherwise
