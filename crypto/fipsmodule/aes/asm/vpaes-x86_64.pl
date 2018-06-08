@@ -196,6 +196,8 @@ _vpaes_schedule_core:
 	call	_vpaes_schedule_transform
 	movdqa	%xmm0,	%xmm7
 
+	lea	.Lk_sr(%rip),%r10
+
 	# encrypting, output zeroth round key after transform
 	movdqu	%xmm0,	(%rdx)
 
