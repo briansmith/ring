@@ -23,7 +23,7 @@ use std::marker::PhantomData;
 // Keep this in sync with curve25519/internal.h.
 #[repr(C)]
 pub struct Elem<E: Encoding> {
-    v: [limb::Limb; ELEM_LIMBS],
+    limbs: [limb::Limb; ELEM_LIMBS], // This is called `v` in the C code.
     encoding: PhantomData<E>,
 }
 
@@ -37,7 +37,7 @@ const ELEM_LIMBS: usize = 5 * 64 / limb::LIMB_BITS;
 impl<E: Encoding> Elem<E> {
     fn zero() -> Self {
         Self {
-            v: Default::default(),
+            limbs: Default::default(),
             encoding: PhantomData,
         }
     }
