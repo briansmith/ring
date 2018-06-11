@@ -36,6 +36,8 @@ extern crate untrusted;
 
 use ring::{rand, signature, test};
 
+// ECDSA *signing* tests are in src/ec/ecdsa/signing.rs.
+
 #[test]
 fn ecdsa_from_pkcs8_test() {
     test::from_file("tests/ecdsa_from_pkcs8_tests.txt", |section, test_case| {
@@ -163,92 +165,6 @@ fn signature_ecdsa_verify_fixed_test() {
 
         let actual_result = signature::verify(alg, public_key, msg, sig);
         assert_eq!(actual_result.is_ok(), expected_result == "P (0 )");
-
-        Ok(())
-    });
-}
-
-#[test]
-fn signature_ecdsa_sign_fixed_test() {
-    test::from_file("tests/ecdsa_sign_fixed_tests.txt", |section, test_case| {
-        assert_eq!(section, "");
-
-        let curve_name = test_case.consume_string("Curve");
-        let digest_name = test_case.consume_string("Digest");
-
-        let msg = test_case.consume_bytes("Msg");
-        let msg = untrusted::Input::from(&msg);
-
-        let d = test_case.consume_bytes("d");
-        let d = untrusted::Input::from(&d);
-
-        let q = test_case.consume_bytes("Q");
-        let q = untrusted::Input::from(&q);
-
-        let k = test_case.consume_bytes("k");
-
-        let expected_result = test_case.consume_bytes("Sig");
-
-        let alg = match (curve_name.as_str(), digest_name.as_str()) {
-            ("P-256", "SHA256") => &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
-            ("P-384", "SHA384") => &signature::ECDSA_P384_SHA384_FIXED_SIGNING,
-            _ => {
-                panic!("Unsupported curve+digest: {}+{}", curve_name,
-                       digest_name);
-            }
-        };
-
-        let private_key =
-            signature::ECDSAKeyPair::from_private_key_and_public_key(alg, d, q).unwrap();
-        let rng = test::rand::FixedSliceRandom { bytes: &k };
-
-        let actual_result = private_key.sign(msg, &rng).unwrap();
-
-        assert_eq!(actual_result.as_ref(), &expected_result[..]);
-
-        Ok(())
-    });
-}
-
-#[test]
-fn signature_ecdsa_sign_asn1_test() {
-    test::from_file("tests/ecdsa_sign_asn1_tests.txt", |section, test_case| {
-        assert_eq!(section, "");
-
-        let curve_name = test_case.consume_string("Curve");
-        let digest_name = test_case.consume_string("Digest");
-
-        let msg = test_case.consume_bytes("Msg");
-        let msg = untrusted::Input::from(&msg);
-
-        let d = test_case.consume_bytes("d");
-        let d = untrusted::Input::from(&d);
-
-        let q = test_case.consume_bytes("Q");
-        let q = untrusted::Input::from(&q);
-
-        let k = test_case.consume_bytes("k");
-
-        let expected_result = test_case.consume_bytes("Sig");
-
-        let alg = match (curve_name.as_str(), digest_name.as_str()) {
-            ("P-256", "SHA256") => &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
-            ("P-384", "SHA384") => &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
-            _ => {
-                panic!("Unsupported curve+digest: {}+{}", curve_name,
-                       digest_name);
-            }
-        };
-
-        let private_key =
-            signature::ECDSAKeyPair::from_private_key_and_public_key(alg, d, q).unwrap();
-        let rng = test::rand::FixedSliceRandom { bytes: &k };
-
-        println!("Asfd");
-        let actual_result = private_key.sign(msg, &rng).unwrap();
-
-        println!("Asfdasdfasdfasdfasdfsadf");
-        assert_eq!(actual_result.as_ref(), &expected_result[..]);
 
         Ok(())
     });
