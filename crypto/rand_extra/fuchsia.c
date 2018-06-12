@@ -29,14 +29,12 @@ void CRYPTO_sysrand(uint8_t *out, size_t requested) {
     if (requested < output_bytes_this_pass) {
       output_bytes_this_pass = requested;
     }
-    size_t bytes_drawn;
-    zx_status_t status =
-        zx_cprng_draw(out, output_bytes_this_pass, &bytes_drawn);
+    zx_status_t status = zx_cprng_draw_new(out, output_bytes_this_pass);
     if (status != ZX_OK) {
       abort();
     }
-    requested -= bytes_drawn;
-    out += bytes_drawn;
+    requested -= output_bytes_this_pass;
+    out += output_bytes_this_pass;
   }
 }
 
