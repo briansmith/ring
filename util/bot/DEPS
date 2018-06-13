@@ -35,7 +35,7 @@ deps = {
     Var('chromium_git') + '/external/gyp.git' + '@' + 'd61a9397e668fa9843c4aa7da9e79460fe590bfb',
 
   'boringssl/util/bot/libFuzzer': {
-    'url': Var('chromium_git') + '/chromium/llvm-project/compiler-rt/lib/fuzzer.git' + '@' + 'fda403cf93ecb8792cb1d061564d89a6553ca020',
+    'url': Var('chromium_git') + '/chromium/llvm-project/compiler-rt/lib/fuzzer.git' + '@' + '873dc11d9a5281034e2cb74d0e87e9149a0e1045',
     'condition': 'checkout_fuzzer',
   },
 }
