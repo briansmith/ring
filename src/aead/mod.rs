@@ -65,7 +65,7 @@ impl OpeningKey {
     pub fn algorithm(&self) -> &'static Algorithm { self.key.algorithm() }
 }
 
-/// Authenticates and decrypts (“opens”) data in place. When
+/// Authenticates and decrypts (“opens”) data in place.
 ///
 /// The input may have a prefix that is `in_prefix_len` bytes long; any such
 /// prefix is ignored on input and overwritten on output. The last
