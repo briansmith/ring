@@ -58,6 +58,7 @@ static void ec_GFp_simple_mul_single(const EC_GROUP *group, EC_RAW_POINT *r,
 
       // Select the entry in constant-time.
       EC_RAW_POINT tmp;
+      OPENSSL_memset(&tmp, 0, sizeof(EC_RAW_POINT));
       for (size_t j = 0; j < OPENSSL_ARRAY_SIZE(precomp); j++) {
         BN_ULONG mask = constant_time_eq_w(j, window);
         ec_felem_select(group, &tmp.X, mask, &precomp[j].X, &tmp.X);
