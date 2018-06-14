@@ -208,7 +208,7 @@ pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
     }
 }
 
-extern {
+versioned_extern! {
     #[cfg(feature = "use_heap")]
     fn LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;

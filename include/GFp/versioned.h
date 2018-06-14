@@ -7,6 +7,7 @@
 #define GFp_BN_from_montgomery_word GFp_VERSIONED(GFp_BN_from_montgomery_word)
 #define GFp_BN_init GFp_VERSIONED(GFp_BN_init)
 #define GFp_BN_is_bit_set GFp_VERSIONED(GFp_BN_is_bit_set)
+#define GFp_bn_is_bit_set_words GFp_VERSIONED(GFp_bn_is_bit_set_words)
 #define GFp_BN_mod_exp_mont GFp_VERSIONED(GFp_BN_mod_exp_mont)
 #define GFp_BN_mod_exp_mont_consttime GFp_VERSIONED(GFp_BN_mod_exp_mont_consttime)
 #define GFp_BN_mod_mul_mont GFp_VERSIONED(GFp_BN_mod_mul_mont)
@@ -188,10 +189,13 @@
 #define LIMBS_add_assign GFp_VERSIONED(LIMBS_add_assign)
 #define LIMBS_add_mod GFp_VERSIONED(LIMBS_add_mod)
 #define LIMBS_are_zero GFp_VERSIONED(LIMBS_are_zero)
+#define LIMBS_copy GFp_VERSIONED(LIMBS_copy)
 #define LIMBS_equal GFp_VERSIONED(LIMBS_equal)
+#define LIMBS_equal_limb GFp_VERSIONED(LIMBS_equal_limb)
 #define LIMBS_less_than GFp_VERSIONED(LIMBS_less_than)
 #define LIMBS_reduce_once GFp_VERSIONED(LIMBS_reduce_once)
 #define LIMBS_shl_mod GFp_VERSIONED(LIMBS_shl_mod)
+#define LIMBS_sub GFp_VERSIONED(LIMBS_sub)
 #define LIMBS_sub_assign GFp_VERSIONED(LIMBS_sub_assign)
 #define LIMBS_sub_mod GFp_VERSIONED(LIMBS_sub_mod)
 #define LIMBS_sub_mod_ex GFp_VERSIONED(LIMBS_sub_mod_ex)
@@ -199,6 +203,11 @@
 // ??
 #define bssl_constant_time_test_main GFp_VERSIONED(bssl_constant_time_test_main)
 #define gfp_little_endian_bytes_from_scalar GFp_VERSIONED(gfp_little_endian_bytes_from_scalar)
+
+// ARM/AArch64 specific
+#define GFp_aes_c_encrypt GFp_VERSIONED(GFp_aes_c_encrypt)
+#define GFp_aes_hw_decrypt GFp_VERSIONED(GFp_aes_hw_decrypt)
+#define GFp_aes_c_set_encrypt_key GFp_VERSIONED(GFp_aes_c_set_encrypt_key)
 
 // For MacOS symbols generated from perl scripts.
 #define _GFp_AES_encrypt GFp_VERSIONED(_GFp_AES_encrypt)
@@ -208,6 +217,7 @@
 #define _GFp_BN_from_montgomery_word GFp_VERSIONED(_GFp_BN_from_montgomery_word)
 #define _GFp_BN_init GFp_VERSIONED(_GFp_BN_init)
 #define _GFp_BN_is_bit_set GFp_VERSIONED(_GFp_BN_is_bit_set)
+#define _GFp_BN_is_bit_set_words GFp_VERSIONED(_GFp_BN_is_bit_set_words)
 #define _GFp_BN_mod_exp_mont GFp_VERSIONED(_GFp_BN_mod_exp_mont)
 #define _GFp_BN_mod_exp_mont_consttime GFp_VERSIONED(_GFp_BN_mod_exp_mont_consttime)
 #define _GFp_BN_mod_mul_mont GFp_VERSIONED(_GFp_BN_mod_mul_mont)
@@ -388,13 +398,20 @@
 #define _LIMBS_add_assign GFp_VERSIONED(_LIMBS_add_assign)
 #define _LIMBS_add_mod GFp_VERSIONED(_LIMBS_add_mod)
 #define _LIMBS_are_zero GFp_VERSIONED(_LIMBS_are_zero)
+#define _LIMBS_copy GFp_VERSIONED(_LIMBS_copy)
 #define _LIMBS_equal GFp_VERSIONED(_LIMBS_equal)
+#define _LIMBS_equal_limb GFp_VERSIONED(_LIMBS_equal_limb)
 #define _LIMBS_less_than GFp_VERSIONED(_LIMBS_less_than)
 #define _LIMBS_reduce_once GFp_VERSIONED(_LIMBS_reduce_once)
 #define _LIMBS_shl_mod GFp_VERSIONED(_LIMBS_shl_mod)
+#define _LIMBS_sub GFp_VERSIONED(_LIMBS_sub)
 #define _LIMBS_sub_assign GFp_VERSIONED(_LIMBS_sub_assign)
 #define _LIMBS_sub_mod GFp_VERSIONED(_LIMBS_sub_mod)
 #define _LIMBS_sub_mod_ex GFp_VERSIONED(_LIMBS_sub_mod_ex)
 
 #define _bssl_constant_time_test_main GFp_VERSIONED(_bssl_constant_time_test_main)
 #define _gfp_little_endian_bytes_from_scalar GFp_VERSIONED(_gfp_little_endian_bytes_from_scalar)
+
+#define _GFp_aes_c_encrypt GFp_VERSIONED(_GFp_aes_c_encrypt)
+#define _GFp_aes_hw_decrypt GFp_VERSIONED(_GFp_aes_hw_decrypt)
+#define _GFp_aes_c_set_encrypt_key GFp_VERSIONED(_GFp_aes_c_set_encrypt_key)

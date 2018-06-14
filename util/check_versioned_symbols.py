@@ -6,7 +6,7 @@ import sys
 
 INVALID_SYMBOLS = {
     '_GLOBAL_OFFSET_TABLE_', 'stderr', 'stdout', 'fprintf', 'malloc', 'free',
-    'memset', 'memcpy', 'memcmp', 'memmove', 'syscall',
+    'memset', 'memcpy', 'memcmp', 'memmove', 'syscall', 'getauxval',
     'DW.ref.rust_eh_personality', 'rust_eh_personality', '_Unwind_Resume'
 }
 
