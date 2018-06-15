@@ -428,7 +428,7 @@ my ($ap,$bp,$cp,$dp)=map(($_&~3)+(($_-1)&3),($ai,$bi,$ci,$di));	# previous
 	($xd,$xd_)=($xd_,$xd);
 }
 
-&function_begin("ChaCha20_ssse3");
+&function_begin("_ChaCha20_ssse3");
 &set_label("ssse3_shortcut");
 	&mov		($out,&wparam(0));
 	&mov		($inp,&wparam(1));
@@ -751,7 +751,7 @@ sub SSSE3ROUND {	# critical path is 20 "SIMD ticks" per round
 }
 &set_label("done");
 	&mov		("esp",&DWP(512,"esp"));
-&function_end("ChaCha20_ssse3");
+&function_end("_ChaCha20_ssse3");
 
 &align	(64);
 &set_label("ssse3_data");
