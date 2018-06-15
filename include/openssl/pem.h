@@ -63,6 +63,7 @@
 #include <openssl/digest.h>
 #include <openssl/evp.h>
 #include <openssl/stack.h>
+#include <openssl/pkcs7.h>
 #include <openssl/x509.h>
 
 /* For compatibility with open-iscsi, which assumes that it can get
@@ -329,6 +330,7 @@ DECLARE_PEM_write(X509_REQ_NEW, X509_REQ)
 
 DECLARE_PEM_rw(X509_CRL, X509_CRL)
 
+DECLARE_PEM_rw(PKCS7, PKCS7)
 DECLARE_PEM_rw(PKCS8, X509_SIG)
 
 DECLARE_PEM_rw(PKCS8_PRIV_KEY_INFO, PKCS8_PRIV_KEY_INFO)
