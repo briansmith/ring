@@ -681,6 +681,19 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_ecb_generic) {
   out->cipher = aes_ecb_cipher;
 }
 
+DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_ofb_generic) {
+  memset(out, 0, sizeof(EVP_CIPHER));
+
+  out->nid = NID_aes_192_ofb128;
+  out->block_size = 1;
+  out->key_len = 24;
+  out->iv_len = 16;
+  out->ctx_size = sizeof(EVP_AES_KEY);
+  out->flags = EVP_CIPH_OFB_MODE;
+  out->init = aes_init_key;
+  out->cipher = aes_ofb_cipher;
+}
+
 DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_gcm_generic) {
   memset(out, 0, sizeof(EVP_CIPHER));
 
@@ -846,6 +859,7 @@ EVP_CIPHER_FUNCTION(128, gcm)
 
 EVP_CIPHER_FUNCTION(192, cbc)
 EVP_CIPHER_FUNCTION(192, ctr)
+EVP_CIPHER_FUNCTION(192, ofb)
 EVP_CIPHER_FUNCTION(192, gcm)
 
 EVP_CIPHER_FUNCTION(256, cbc)
