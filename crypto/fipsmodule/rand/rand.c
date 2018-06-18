@@ -196,7 +196,7 @@ static void rand_get_seed(struct rand_thread_state *state,
   // generator test” which causes the program to randomly abort. Hopefully the
   // rate of failure is small enough not to be a problem in practice.
   if (CRYPTO_memcmp(state->last_block, entropy, CRNGT_BLOCK_SIZE) == 0) {
-    printf("CRNGT failed.\n");
+    fprintf(stderr, "CRNGT failed.\n");
     BORINGSSL_FIPS_abort();
   }
 
@@ -204,7 +204,7 @@ static void rand_get_seed(struct rand_thread_state *state,
        i += CRNGT_BLOCK_SIZE) {
     if (CRYPTO_memcmp(entropy + i - CRNGT_BLOCK_SIZE, entropy + i,
                       CRNGT_BLOCK_SIZE) == 0) {
-      printf("CRNGT failed.\n");
+      fprintf(stderr, "CRNGT failed.\n");
       BORINGSSL_FIPS_abort();
     }
   }
