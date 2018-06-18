@@ -265,6 +265,7 @@ add_executable(
   test/file_test_gtest.cc
   thread_test.cc
   x509/x509_test.cc
+  x509/x509_time_test.cc
   x509v3/tab_test.cc
   x509v3/v3name_test.cc
 
