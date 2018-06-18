@@ -578,15 +578,26 @@ bool ssl_cipher_get_evp_aead(const EVP_AEAD **out_aead,
   *out_fixed_iv_len = 0;
 
   const int is_tls12 = version == TLS1_2_VERSION && !is_dtls;
+  const int is_tls13 = version == TLS1_3_VERSION && !is_dtls;
 
   if (cipher->algorithm_mac == SSL_AEAD) {
     if (cipher->algorithm_enc == SSL_AES128GCM) {
-      *out_aead =
-          is_tls12 ? EVP_aead_aes_128_gcm_tls12() : EVP_aead_aes_128_gcm();
+      if (is_tls12) {
+        *out_aead = EVP_aead_aes_128_gcm_tls12();
+      } else if (is_tls13) {
+        *out_aead = EVP_aead_aes_128_gcm_tls13();
+      } else {
+        *out_aead = EVP_aead_aes_128_gcm();
+      }
       *out_fixed_iv_len = 4;
     } else if (cipher->algorithm_enc == SSL_AES256GCM) {
-      *out_aead =
-          is_tls12 ? EVP_aead_aes_256_gcm_tls12() : EVP_aead_aes_256_gcm();
+      if (is_tls12) {
+        *out_aead = EVP_aead_aes_256_gcm_tls12();
+      } else if (is_tls13) {
+        *out_aead = EVP_aead_aes_256_gcm_tls13();
+      } else {
+        *out_aead = EVP_aead_aes_256_gcm();
+      }
       *out_fixed_iv_len = 4;
     } else if (cipher->algorithm_enc == SSL_CHACHA20POLY1305) {
       *out_aead = EVP_aead_chacha20_poly1305();

@@ -883,11 +883,6 @@ struct aead_aes_gcm_ctx {
   ctr128_f ctr;
 };
 
-struct aead_aes_gcm_tls12_ctx {
-  struct aead_aes_gcm_ctx gcm_ctx;
-  uint64_t min_next_nonce;
-};
-
 static int aead_aes_gcm_init_impl(struct aead_aes_gcm_ctx *gcm_ctx,
                                   size_t *out_tag_len, const uint8_t *key,
                                   size_t key_len, size_t tag_len) {
@@ -1078,6 +1073,11 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm) {
   out->open_gather = aead_aes_gcm_open_gather;
 }
 
+struct aead_aes_gcm_tls12_ctx {
+  struct aead_aes_gcm_ctx gcm_ctx;
+  uint64_t min_next_nonce;
+};
+
 static int aead_aes_gcm_tls12_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                                    size_t key_len, size_t requested_tag_len) {
   struct aead_aes_gcm_tls12_ctx *gcm_ctx;
@@ -1098,10 +1098,6 @@ static int aead_aes_gcm_tls12_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   ctx->aead_state = gcm_ctx;
   ctx->tag_len = actual_tag_len;
   return 1;
-}
-
-static void aead_aes_gcm_tls12_cleanup(EVP_AEAD_CTX *ctx) {
-  OPENSSL_free(ctx->aead_state);
 }
 
 static int aead_aes_gcm_tls12_seal_scatter(
@@ -1143,7 +1139,7 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm_tls12) {
   out->seal_scatter_supports_extra_in = 1;
 
   out->init = aead_aes_gcm_tls12_init;
-  out->cleanup = aead_aes_gcm_tls12_cleanup;
+  out->cleanup = aead_aes_gcm_cleanup;
   out->seal_scatter = aead_aes_gcm_tls12_seal_scatter;
   out->open_gather = aead_aes_gcm_open_gather;
 }
@@ -1158,8 +1154,108 @@ DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm_tls12) {
   out->seal_scatter_supports_extra_in = 1;
 
   out->init = aead_aes_gcm_tls12_init;
-  out->cleanup = aead_aes_gcm_tls12_cleanup;
+  out->cleanup = aead_aes_gcm_cleanup;
   out->seal_scatter = aead_aes_gcm_tls12_seal_scatter;
+  out->open_gather = aead_aes_gcm_open_gather;
+}
+
+struct aead_aes_gcm_tls13_ctx {
+  struct aead_aes_gcm_ctx gcm_ctx;
+  uint64_t min_next_nonce;
+  uint64_t mask;
+  uint8_t first;
+};
+
+static int aead_aes_gcm_tls13_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
+                                   size_t key_len, size_t requested_tag_len) {
+  struct aead_aes_gcm_tls13_ctx *gcm_ctx;
+  gcm_ctx = OPENSSL_malloc(sizeof(struct aead_aes_gcm_tls13_ctx));
+  if (gcm_ctx == NULL) {
+    return 0;
+  }
+
+  gcm_ctx->min_next_nonce = 0;
+  gcm_ctx->first = 1;
+
+  size_t actual_tag_len;
+  if (!aead_aes_gcm_init_impl(&gcm_ctx->gcm_ctx, &actual_tag_len, key, key_len,
+                              requested_tag_len)) {
+    OPENSSL_free(gcm_ctx);
+    return 0;
+  }
+
+  ctx->aead_state = gcm_ctx;
+  ctx->tag_len = actual_tag_len;
+  return 1;
+}
+
+static int aead_aes_gcm_tls13_seal_scatter(
+    const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
+    size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
+    size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
+    size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
+  struct aead_aes_gcm_tls13_ctx *gcm_ctx = ctx->aead_state;
+  if (nonce_len != 12) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
+    return 0;
+  }
+
+  // The given nonces must be strictly monotonically increasing. See
+  // https://tools.ietf.org/html/draft-ietf-tls-tls13-28#section-5.3 for details
+  // of the TLS 1.3 nonce construction.
+  uint64_t given_counter;
+  OPENSSL_memcpy(&given_counter, nonce + nonce_len - sizeof(given_counter),
+                 sizeof(given_counter));
+  given_counter = CRYPTO_bswap8(given_counter);
+
+  if (gcm_ctx->first) {
+    // In the first call the sequence number will be zero and therefore the
+    // given nonce will be 0 ^ mask = mask.
+    gcm_ctx->mask = given_counter;
+    gcm_ctx->first = 0;
+  }
+  given_counter ^= gcm_ctx->mask;
+
+  if (given_counter == UINT64_MAX ||
+      given_counter < gcm_ctx->min_next_nonce) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE);
+    return 0;
+  }
+
+  gcm_ctx->min_next_nonce = given_counter + 1;
+
+  return aead_aes_gcm_seal_scatter(ctx, out, out_tag, out_tag_len,
+                                   max_out_tag_len, nonce, nonce_len, in,
+                                   in_len, extra_in, extra_in_len, ad, ad_len);
+}
+
+DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_128_gcm_tls13) {
+  memset(out, 0, sizeof(EVP_AEAD));
+
+  out->key_len = 16;
+  out->nonce_len = 12;
+  out->overhead = EVP_AEAD_AES_GCM_TAG_LEN;
+  out->max_tag_len = EVP_AEAD_AES_GCM_TAG_LEN;
+  out->seal_scatter_supports_extra_in = 1;
+
+  out->init = aead_aes_gcm_tls13_init;
+  out->cleanup = aead_aes_gcm_cleanup;
+  out->seal_scatter = aead_aes_gcm_tls13_seal_scatter;
+  out->open_gather = aead_aes_gcm_open_gather;
+}
+
+DEFINE_METHOD_FUNCTION(EVP_AEAD, EVP_aead_aes_256_gcm_tls13) {
+  memset(out, 0, sizeof(EVP_AEAD));
+
+  out->key_len = 32;
+  out->nonce_len = 12;
+  out->overhead = EVP_AEAD_AES_GCM_TAG_LEN;
+  out->max_tag_len = EVP_AEAD_AES_GCM_TAG_LEN;
+  out->seal_scatter_supports_extra_in = 1;
+
+  out->init = aead_aes_gcm_tls13_init;
+  out->cleanup = aead_aes_gcm_cleanup;
+  out->seal_scatter = aead_aes_gcm_tls13_seal_scatter;
   out->open_gather = aead_aes_gcm_open_gather;
 }
 
