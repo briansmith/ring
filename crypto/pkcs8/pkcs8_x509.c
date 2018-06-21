@@ -239,8 +239,7 @@ struct pkcs12_context {
 static int PKCS12_handle_sequence(
     CBS *sequence, struct pkcs12_context *ctx,
     int (*handle_element)(CBS *cbs, struct pkcs12_context *ctx)) {
-  uint8_t *der_bytes = NULL;
-  size_t der_len;
+  uint8_t *storage = NULL;
   CBS in;
   int ret = 0;
 
@@ -248,15 +247,9 @@ static int PKCS12_handle_sequence(
   // the ASN.1 data gets wrapped in OCTETSTRINGs and/or encrypted and the
   // conversion cannot see through those wrappings. So each time we step
   // through one we need to convert to DER again.
-  if (!CBS_asn1_ber_to_der(sequence, &der_bytes, &der_len)) {
+  if (!CBS_asn1_ber_to_der(sequence, &in, &storage)) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
     return 0;
-  }
-
-  if (der_bytes != NULL) {
-    CBS_init(&in, der_bytes, der_len);
-  } else {
-    CBS_init(&in, CBS_data(sequence), CBS_len(sequence));
   }
 
   CBS child;
@@ -281,7 +274,7 @@ static int PKCS12_handle_sequence(
   ret = 1;
 
 err:
-  OPENSSL_free(der_bytes);
+  OPENSSL_free(storage);
   return ret;
 }
 
@@ -586,8 +579,7 @@ err:
 
 int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
                              CBS *ber_in, const char *password) {
-  uint8_t *der_bytes = NULL;
-  size_t der_len;
+  uint8_t *storage = NULL;
   CBS in, pfx, mac_data, authsafe, content_type, wrapped_authsafes, authsafes;
   uint64_t version;
   int ret = 0;
@@ -595,14 +587,9 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
   const size_t original_out_certs_len = sk_X509_num(out_certs);
 
   // The input may be in BER format.
-  if (!CBS_asn1_ber_to_der(ber_in, &der_bytes, &der_len)) {
+  if (!CBS_asn1_ber_to_der(ber_in, &in, &storage)) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
     return 0;
-  }
-  if (der_bytes != NULL) {
-    CBS_init(&in, der_bytes, der_len);
-  } else {
-    CBS_init(&in, CBS_data(ber_in), CBS_len(ber_in));
   }
 
   *out_key = NULL;
@@ -723,7 +710,7 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
   ret = 1;
 
 err:
-  OPENSSL_free(der_bytes);
+  OPENSSL_free(storage);
   if (!ret) {
     EVP_PKEY_free(*out_key);
     *out_key = NULL;

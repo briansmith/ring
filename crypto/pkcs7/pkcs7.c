@@ -41,23 +41,14 @@ static const uint8_t kPKCS7SignedData[] = {0x2a, 0x86, 0x48, 0x86, 0xf7,
 // It returns one on success or zero on error. On error, |*der_bytes| is
 // NULL.
 int pkcs7_parse_header(uint8_t **der_bytes, CBS *out, CBS *cbs) {
-  size_t der_len;
   CBS in, content_info, content_type, wrapped_signed_data, signed_data;
   uint64_t version;
 
   // The input may be in BER format.
   *der_bytes = NULL;
-  if (!CBS_asn1_ber_to_der(cbs, der_bytes, &der_len)) {
-    return 0;
-  }
-  if (*der_bytes != NULL) {
-    CBS_init(&in, *der_bytes, der_len);
-  } else {
-    CBS_init(&in, CBS_data(cbs), CBS_len(cbs));
-  }
-
-  // See https://tools.ietf.org/html/rfc2315#section-7
-  if (!CBS_get_asn1(&in, &content_info, CBS_ASN1_SEQUENCE) ||
+  if (!CBS_asn1_ber_to_der(cbs, &in, der_bytes) ||
+      // See https://tools.ietf.org/html/rfc2315#section-7
+      !CBS_get_asn1(&in, &content_info, CBS_ASN1_SEQUENCE) ||
       !CBS_get_asn1(&content_info, &content_type, CBS_ASN1_OBJECT)) {
     goto err;
   }

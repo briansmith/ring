@@ -480,6 +480,7 @@ static void TestCertRepase(const uint8_t *der_bytes, size_t der_len) {
   CBS pkcs7;
   CBS_init(&pkcs7, der_bytes, der_len);
   ASSERT_TRUE(PKCS7_get_certificates(certs.get(), &pkcs7));
+  EXPECT_EQ(0u, CBS_len(&pkcs7));
 
   bssl::ScopedCBB cbb;
   ASSERT_TRUE(CBB_init(cbb.get(), der_len));
@@ -489,6 +490,7 @@ static void TestCertRepase(const uint8_t *der_bytes, size_t der_len) {
 
   CBS_init(&pkcs7, result_data, result_len);
   ASSERT_TRUE(PKCS7_get_certificates(certs2.get(), &pkcs7));
+  EXPECT_EQ(0u, CBS_len(&pkcs7));
 
   ASSERT_EQ(sk_X509_num(certs.get()), sk_X509_num(certs2.get()));
 
@@ -517,6 +519,7 @@ static void TestCRLReparse(const uint8_t *der_bytes, size_t der_len) {
   CBS pkcs7;
   CBS_init(&pkcs7, der_bytes, der_len);
   ASSERT_TRUE(PKCS7_get_CRLs(crls.get(), &pkcs7));
+  EXPECT_EQ(0u, CBS_len(&pkcs7));
 
   bssl::ScopedCBB cbb;
   ASSERT_TRUE(CBB_init(cbb.get(), der_len));
@@ -526,6 +529,7 @@ static void TestCRLReparse(const uint8_t *der_bytes, size_t der_len) {
 
   CBS_init(&pkcs7, result_data, result_len);
   ASSERT_TRUE(PKCS7_get_CRLs(crls2.get(), &pkcs7));
+  EXPECT_EQ(0u, CBS_len(&pkcs7));
 
   ASSERT_EQ(sk_X509_CRL_num(crls.get()), sk_X509_CRL_num(crls.get()));
 

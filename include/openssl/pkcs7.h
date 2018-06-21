@@ -35,7 +35,7 @@ DECLARE_STACK_OF(X509_CRL)
 
 // PKCS7_get_raw_certificates parses a PKCS#7, SignedData structure from |cbs|
 // and appends the included certificates to |out_certs|. It returns one on
-// success and zero on error.
+// success and zero on error. |cbs| is advanced passed the structure.
 OPENSSL_EXPORT int PKCS7_get_raw_certificates(
     STACK_OF(CRYPTO_BUFFER) *out_certs, CBS *cbs, CRYPTO_BUFFER_POOL *pool);
 
@@ -49,8 +49,8 @@ OPENSSL_EXPORT int PKCS7_bundle_certificates(
     CBB *out, const STACK_OF(X509) *certs);
 
 // PKCS7_get_CRLs parses a PKCS#7, SignedData structure from |cbs| and appends
-// the included CRLs to |out_crls|. It returns one on success and zero on
-// error.
+// the included CRLs to |out_crls|. It returns one on success and zero on error.
+// |cbs| is advanced passed the structure.
 OPENSSL_EXPORT int PKCS7_get_CRLs(STACK_OF(X509_CRL) *out_crls, CBS *cbs);
 
 // PKCS7_bundle_CRLs appends a PKCS#7, SignedData structure containing

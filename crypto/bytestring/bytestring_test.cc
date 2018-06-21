@@ -558,19 +558,18 @@ static void ExpectBerConvert(const char *name, const uint8_t *der_expected,
                              size_t der_len, const uint8_t *ber,
                              size_t ber_len) {
   SCOPED_TRACE(name);
-  CBS in;
-  uint8_t *out;
-  size_t out_len;
+  CBS in, out;
+  uint8_t *storage;
 
   CBS_init(&in, ber, ber_len);
-  ASSERT_TRUE(CBS_asn1_ber_to_der(&in, &out, &out_len));
-  bssl::UniquePtr<uint8_t> scoper(out);
+  ASSERT_TRUE(CBS_asn1_ber_to_der(&in, &out, &storage));
+  bssl::UniquePtr<uint8_t> scoper(storage);
 
-  if (out == NULL) {
-    EXPECT_EQ(Bytes(der_expected, der_len), Bytes(ber, ber_len));
-  } else {
+  EXPECT_EQ(Bytes(der_expected, der_len), Bytes(CBS_data(&out), CBS_len(&out)));
+  if (storage != nullptr) {
     EXPECT_NE(Bytes(der_expected, der_len), Bytes(ber, ber_len));
-    EXPECT_EQ(Bytes(der_expected, der_len), Bytes(out, out_len));
+  } else {
+    EXPECT_EQ(Bytes(der_expected, der_len), Bytes(ber, ber_len));
   }
 }
 
