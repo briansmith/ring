@@ -125,6 +125,8 @@ const EVP_CIPHER *EVP_get_cipherbyname(const char *name) {
     return EVP_aes_256_gcm();
   } else if (OPENSSL_strcasecmp(name, "aes-128-ofb") == 0) {
     return EVP_aes_128_ofb();
+  } else if (OPENSSL_strcasecmp(name, "aes-192-ofb") == 0) {
+    return EVP_aes_192_ofb();
   } else if (OPENSSL_strcasecmp(name, "aes-256-ofb") == 0) {
     return EVP_aes_256_ofb();
   }
