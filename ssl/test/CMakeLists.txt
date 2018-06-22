@@ -6,6 +6,7 @@ add_executable(
   async_bio.cc
   bssl_shim.cc
   packeted_bio.cc
+  settings_writer.cc
   test_config.cc
 
   $<TARGET_OBJECTS:test_support>
