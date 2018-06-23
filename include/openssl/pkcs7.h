@@ -36,6 +36,9 @@ DECLARE_STACK_OF(X509_CRL)
 // PKCS7_get_raw_certificates parses a PKCS#7, SignedData structure from |cbs|
 // and appends the included certificates to |out_certs|. It returns one on
 // success and zero on error. |cbs| is advanced passed the structure.
+//
+// Note that a SignedData structure may contain no certificates, in which case
+// this function succeeds but does not append any certificates.
 OPENSSL_EXPORT int PKCS7_get_raw_certificates(
     STACK_OF(CRYPTO_BUFFER) *out_certs, CBS *cbs, CRYPTO_BUFFER_POOL *pool);
 
@@ -51,6 +54,9 @@ OPENSSL_EXPORT int PKCS7_bundle_certificates(
 // PKCS7_get_CRLs parses a PKCS#7, SignedData structure from |cbs| and appends
 // the included CRLs to |out_crls|. It returns one on success and zero on error.
 // |cbs| is advanced passed the structure.
+//
+// Note that a SignedData structure may contain no CRLs, in which case this
+// function succeeds but does not append any CRLs.
 OPENSSL_EXPORT int PKCS7_get_CRLs(STACK_OF(X509_CRL) *out_crls, CBS *cbs);
 
 // PKCS7_bundle_CRLs appends a PKCS#7, SignedData structure containing
@@ -60,12 +66,18 @@ OPENSSL_EXPORT int PKCS7_bundle_CRLs(CBB *out, const STACK_OF(X509_CRL) *crls);
 // PKCS7_get_PEM_certificates reads a PEM-encoded, PKCS#7, SignedData structure
 // from |pem_bio| and appends the included certificates to |out_certs|. It
 // returns one on success and zero on error.
+//
+// Note that a SignedData structure may contain no certificates, in which case
+// this function succeeds but does not append any certificates.
 OPENSSL_EXPORT int PKCS7_get_PEM_certificates(STACK_OF(X509) *out_certs,
                                               BIO *pem_bio);
 
 // PKCS7_get_PEM_CRLs reads a PEM-encoded, PKCS#7, SignedData structure from
 // |pem_bio| and appends the included CRLs to |out_crls|. It returns one on
 // success and zero on error.
+//
+// Note that a SignedData structure may contain no CRLs, in which case this
+// function succeeds but does not append any CRLs.
 OPENSSL_EXPORT int PKCS7_get_PEM_CRLs(STACK_OF(X509_CRL) *out_crls,
                                       BIO *pem_bio);
 

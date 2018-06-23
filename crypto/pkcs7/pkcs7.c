@@ -87,18 +87,19 @@ int PKCS7_get_raw_certificates(STACK_OF(CRYPTO_BUFFER) *out_certs, CBS *cbs,
                                CRYPTO_BUFFER_POOL *pool) {
   CBS signed_data, certificates;
   uint8_t *der_bytes = NULL;
-  int ret = 0;
+  int ret = 0, has_certificates;
   const size_t initial_certs_len = sk_CRYPTO_BUFFER_num(out_certs);
 
-  if (!pkcs7_parse_header(&der_bytes, &signed_data, cbs)) {
-    return 0;
+  // See https://tools.ietf.org/html/rfc2315#section-9.1
+  if (!pkcs7_parse_header(&der_bytes, &signed_data, cbs) ||
+      !CBS_get_optional_asn1(
+          &signed_data, &certificates, &has_certificates,
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
+    goto err;
   }
 
-  // See https://tools.ietf.org/html/rfc2315#section-9.1
-  if (!CBS_get_asn1(&signed_data, &certificates,
-                    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
-    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_CERTIFICATES_INCLUDED);
-    goto err;
+  if (!has_certificates) {
+    CBS_init(&certificates, NULL, 0);
   }
 
   while (CBS_len(&certificates) > 0) {

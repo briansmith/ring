@@ -64,28 +64,24 @@ err:
 int PKCS7_get_CRLs(STACK_OF(X509_CRL) *out_crls, CBS *cbs) {
   CBS signed_data, crls;
   uint8_t *der_bytes = NULL;
-  int ret = 0;
+  int ret = 0, has_crls;
   const size_t initial_crls_len = sk_X509_CRL_num(out_crls);
 
-  if (!pkcs7_parse_header(&der_bytes, &signed_data, cbs)) {
-    return 0;
-  }
-
   // See https://tools.ietf.org/html/rfc2315#section-9.1
-
-  // Even if only CRLs are included, there may be an empty certificates block.
-  // OpenSSL does this, for example.
-  if (CBS_peek_asn1_tag(&signed_data,
-                        CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0) &&
-      !CBS_get_asn1(&signed_data, NULL /* certificates */,
-                    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0)) {
+  if (!pkcs7_parse_header(&der_bytes, &signed_data, cbs) ||
+      // Even if only CRLs are included, there may be an empty certificates
+      // block. OpenSSL does this, for example.
+      !CBS_get_optional_asn1(
+          &signed_data, NULL, NULL,
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 0) ||
+      !CBS_get_optional_asn1(
+          &signed_data, &crls, &has_crls,
+          CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 1)) {
     goto err;
   }
 
-  if (!CBS_get_asn1(&signed_data, &crls,
-                    CBS_ASN1_CONTEXT_SPECIFIC | CBS_ASN1_CONSTRUCTED | 1)) {
-    OPENSSL_PUT_ERROR(PKCS7, PKCS7_R_NO_CRLS_INCLUDED);
-    goto err;
+  if (!has_crls) {
+    CBS_init(&crls, NULL, 0);
   }
 
   while (CBS_len(&crls) > 0) {
