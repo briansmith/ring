@@ -166,6 +166,11 @@ struct TestConfig {
   bool decline_ocsp_callback = false;
   bool fail_ocsp_callback = false;
   bool install_cert_compression_algs = false;
+  bool handshaker_resume = false;
+  std::string handshaker_path;
+
+  int argc;
+  char **argv;
 
   bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx) const;
 

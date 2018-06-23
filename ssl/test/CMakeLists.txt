@@ -15,3 +15,21 @@ add_executable(
 )
 
 target_link_libraries(bssl_shim ssl crypto)
+
+if(UNIX AND NOT APPLE AND NOT ANDROID)
+  add_executable(
+    handshaker
+
+    async_bio.cc
+    handshake_util.cc
+    handshaker.cc
+    packeted_bio.cc
+    settings_writer.cc
+    test_config.cc
+    test_state.cc
+
+    $<TARGET_OBJECTS:test_support>
+  )
+
+  target_link_libraries(handshaker ssl crypto)
+endif()

@@ -56,6 +56,7 @@ var (
 	testToRun          = flag.String("test", "", "The pattern to filter tests to run, or empty to run all tests")
 	numWorkers         = flag.Int("num-workers", runtime.NumCPU(), "The number of workers to run in parallel.")
 	shimPath           = flag.String("shim-path", "../../../build/ssl/test/bssl_shim", "The location of the shim binary.")
+	handshakerPath     = flag.String("handshaker-path", "../../../build/ssl/test/handshaker", "The location of the handshaker binary.")
 	resourceDir        = flag.String("resource-dir", ".", "The directory in which to find certificate and key files.")
 	fuzzer             = flag.Bool("fuzzer", false, "If true, tests against a BoringSSL built in fuzzer mode.")
 	transcriptDir      = flag.String("transcript-dir", "", "The directory in which to write transcripts.")
@@ -1124,6 +1125,8 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 		flags = append(flags, "-tls13-variant", strconv.Itoa(test.tls13Variant))
 	}
 
+	flags = append(flags, "-handshaker-path", *handshakerPath)
+
 	var transcriptPrefix string
 	var transcripts [][]byte
 	if len(*transcriptDir) != 0 {
@@ -1475,6 +1478,9 @@ func bigFromHex(hex string) *big.Int {
 }
 
 func convertToSplitHandshakeTests(tests []testCase) (splitHandshakeTests []testCase) {
+	if runtime.GOOS != "linux" {
+		return
+	}
 NextTest:
 	for _, test := range tests {
 		if test.protocol != tls ||
@@ -2812,7 +2818,7 @@ read alert 1 0
 			messageCount:            5,
 			keyUpdateRequest:        keyUpdateRequested,
 			readWithUnfinishedWrite: true,
-			flags:                   []string{"-async"},
+			flags: []string{"-async"},
 		},
 		{
 			name: "SendSNIWarningAlert",

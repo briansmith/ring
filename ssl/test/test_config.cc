@@ -143,6 +143,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-fail-ocsp-callback", &TestConfig::fail_ocsp_callback },
   { "-install-cert-compression-algs",
     &TestConfig::install_cert_compression_algs },
+  { "-handshaker-resume", &TestConfig::handshaker_resume },
 };
 
 const Flag<std::string> kStringFlags[] = {
@@ -170,6 +171,7 @@ const Flag<std::string> kStringFlags[] = {
   { "-use-client-ca-list", &TestConfig::use_client_ca_list },
   { "-expect-client-ca-list", &TestConfig::expected_client_ca_list },
   { "-expect-msg-callback", &TestConfig::expect_msg_callback },
+  { "-handshaker-path", &TestConfig::handshaker_path },
 };
 
 const Flag<std::string> kBase64Flags[] = {
@@ -314,6 +316,8 @@ bool ParseConfig(int argc, char **argv,
                  TestConfig *out_initial,
                  TestConfig *out_resume,
                  TestConfig *out_retry) {
+  out_initial->argc = out_resume->argc = out_retry->argc = argc;
+  out_initial->argv = out_resume->argv = out_retry->argv = argv;
   for (int i = 0; i < argc; i++) {
     bool skip = false;
     char *flag = argv[i];

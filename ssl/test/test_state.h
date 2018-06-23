@@ -67,8 +67,6 @@ bool SetTestState(SSL *ssl, std::unique_ptr<TestState> state);
 
 TestState *GetTestState(const SSL *ssl);
 
-bool MoveTestState(SSL *dest, SSL *src);
-
 struct timeval *GetClock();
 
 void AdvanceClock(unsigned seconds);

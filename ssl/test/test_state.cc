@@ -167,24 +167,3 @@ std::unique_ptr<TestState> TestState::Deserialize(CBS *cbs, SSL_CTX *ctx) {
       reinterpret_cast<const char *>(CBS_data(&text)), CBS_len(&text));
   return out_state;
 }
-
-bool MoveTestState(SSL *dest, SSL *src) {
-  ScopedCBB out;
-  Array<uint8_t> serialized;
-  if (!CBB_init(out.get(), 512) ||
-      !SerializeContextState(src->ctx.get(), out.get()) ||
-      !GetTestState(src)->Serialize(out.get()) ||
-      !CBBFinishArray(out.get(), &serialized)) {
-    return false;
-  }
-  CBS in;
-  CBS_init(&in, serialized.data(), serialized.size());
-  if (!DeserializeContextState(&in, dest->ctx.get()) ||
-      !SetTestState(dest, TestState::Deserialize(&in, dest->ctx.get())) ||
-      !GetTestState(dest)) {
-    return false;
-  }
-  GetTestState(dest)->async_bio = GetTestState(src)->async_bio;
-  GetTestState(src)->async_bio = nullptr;
-  return true;
-}

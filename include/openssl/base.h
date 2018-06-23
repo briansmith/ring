@@ -139,6 +139,10 @@ extern "C" {
 #define OPENSSL_NO_THREADS
 #endif
 
+#if defined(__ANDROID_API__)
+#define OPENSSL_ANDROID
+#endif
+
 #if !defined(OPENSSL_NO_THREADS)
 #define OPENSSL_THREADS
 #endif

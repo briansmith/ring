@@ -758,10 +758,15 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
 
   if (!config->implicit_handshake) {
     if (config->handoff) {
+#if defined(OPENSSL_LINUX) && !defined(OPENSSL_ANDROID)
       if (!DoSplitHandshake(ssl_uniqueptr, writer, is_resume)) {
         return false;
       }
       ssl = ssl_uniqueptr->get();
+#else
+      fprintf(stderr, "The external handshaker can only be used on Linux\n");
+      return false;
+#endif
     }
 
     do {
