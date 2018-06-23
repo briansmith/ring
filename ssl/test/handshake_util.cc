@@ -25,6 +25,8 @@
 
 #include <openssl/ssl.h>
 
+using namespace bssl;
+
 bool RetryAsync(SSL *ssl, int ret) {
   // No error; don't retry.
   if (ret >= 0) {
@@ -59,7 +61,7 @@ bool RetryAsync(SSL *ssl, int ret) {
       AsyncBioAllowWrite(test_state->async_bio, 1);
       return true;
     case SSL_ERROR_WANT_CHANNEL_ID_LOOKUP: {
-      bssl::UniquePtr<EVP_PKEY> pkey =
+      UniquePtr<EVP_PKEY> pkey =
           LoadPrivateKey(GetTestConfig(ssl)->send_channel_id);
       if (!pkey) {
         return false;
@@ -109,4 +111,101 @@ int CheckIdempotentError(const char *name, SSL *ssl,
     }
   }
   return ret;
+}
+
+// MoveBIOs moves the |BIO|s of |src| to |dst|.  It is used for handoff.
+static void MoveBIOs(SSL *dest, SSL *src) {
+  BIO *rbio = SSL_get_rbio(src);
+  BIO_up_ref(rbio);
+  SSL_set0_rbio(dest, rbio);
+
+  BIO *wbio = SSL_get_wbio(src);
+  BIO_up_ref(wbio);
+  SSL_set0_wbio(dest, wbio);
+
+  SSL_set0_rbio(src, nullptr);
+  SSL_set0_wbio(src, nullptr);
+}
+
+static bool HandoffReady(SSL *ssl, int ret) {
+  return ret < 0 && SSL_get_error(ssl, ret) == SSL_ERROR_HANDOFF;
+}
+
+static bool HandbackReady(SSL *ssl, int ret) {
+  return ret < 0 && SSL_get_error(ssl, ret) == SSL_ERROR_HANDBACK;
+}
+
+bool DoSplitHandshake(UniquePtr<SSL> *ssl_uniqueptr, SettingsWriter *writer,
+                      bool is_resume) {
+  SSL *ssl = ssl_uniqueptr->get();
+  SSL_set_handoff_mode(ssl, 1);
+
+  const TestConfig *config = GetTestConfig(ssl);
+  int ret = -1;
+  do {
+    ret = CheckIdempotentError("SSL_do_handshake", ssl,
+                               [&]() -> int { return SSL_do_handshake(ssl); });
+  } while (!HandoffReady(ssl, ret) &&
+           config->async &&
+           RetryAsync(ssl, ret));
+
+  ScopedCBB cbb;
+  Array<uint8_t> handoff;
+  if (!HandoffReady(ssl, ret) ||
+      !CBB_init(cbb.get(), 512) ||
+      !SSL_serialize_handoff(ssl, cbb.get()) ||
+      !CBBFinishArray(cbb.get(), &handoff) ||
+      !writer->WriteHandoff(handoff)) {
+    fprintf(stderr, "Handoff failed.\n");
+    return false;
+  }
+
+  UniquePtr<SSL_CTX> ctx = config->SetupCtx(ssl->ctx.get());
+  if (!ctx) {
+    return false;
+  }
+  UniquePtr<SSL> ssl_handshaker =
+      config->NewSSL(ctx.get(), nullptr, false, nullptr);
+  if (!ssl_handshaker) {
+    return false;
+  }
+  MoveBIOs(ssl_handshaker.get(), ssl);
+
+  if (!MoveTestState(ssl_handshaker.get(), ssl) ||
+      !SSL_apply_handoff(ssl_handshaker.get(), handoff)) {
+    fprintf(stderr, "Handoff application failed.\n");
+    return false;
+  }
+
+  do {
+    ret = CheckIdempotentError(
+        "SSL_do_handshake", ssl_handshaker.get(),
+        [&]() -> int { return SSL_do_handshake(ssl_handshaker.get()); });
+  } while (config->async && RetryAsync(ssl_handshaker.get(), ret));
+
+  Array<uint8_t> handback;
+  if (!HandbackReady(ssl_handshaker.get(), ret) ||
+      !CBB_init(cbb.get(), 512) ||
+      !SSL_serialize_handback(ssl_handshaker.get(), cbb.get()) ||
+      !CBBFinishArray(cbb.get(), &handback) ||
+      !writer->WriteHandback(handback)) {
+    fprintf(stderr, "Handback failed.\n");
+    return false;
+  }
+
+  UniquePtr<SSL> ssl_handback =
+      config->NewSSL(ctx.get(), nullptr, false, nullptr);
+  if (!ssl_handback) {
+    return false;
+  }
+  MoveBIOs(ssl_handback.get(), ssl_handshaker.get());
+
+  if (!MoveTestState(ssl_handback.get(), ssl_handshaker.get()) ||
+      !SSL_apply_handback(ssl_handback.get(), handback)) {
+    fprintf(stderr, "Handback application failed.\n");
+    return false;
+  }
+
+  *ssl_uniqueptr = std::move(ssl_handback);
+  return true;
 }

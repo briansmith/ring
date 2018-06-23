@@ -19,6 +19,8 @@
 
 #include <openssl/base.h>
 
+#include "settings_writer.h"
+
 // RetryAsync is called after a failed operation on |ssl| with return code
 // |ret|. If the operation should be retried, it simulates one asynchronous
 // event and returns true. Otherwise it returns false.
@@ -27,5 +29,10 @@ bool RetryAsync(SSL *ssl, int ret);
 // CheckIdempotentError runs |func|, an operation on |ssl|, ensuring that
 // errors are idempotent.
 int CheckIdempotentError(const char *name, SSL *ssl, std::function<int()> func);
+
+// DoSplitHandshake performs a handoff and handback of an in-progress handshake,
+// updating |ssl_uniqueptr| in place.
+bool DoSplitHandshake(bssl::UniquePtr<SSL> *ssl_uniqueptr,
+                      SettingsWriter *writer, bool is_resume);
 
 #endif  // HEADER_TEST_HANDSHAKE
