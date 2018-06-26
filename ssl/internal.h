@@ -616,12 +616,8 @@ class SSLTranscript {
  private:
   // buffer_, if non-null, contains the handshake transcript.
   UniquePtr<BUF_MEM> buffer_;
-  // hash, if initialized with an |EVP_MD|, maintains the handshake hash. For
-  // TLS 1.1 and below, it is the SHA-1 half.
+  // hash, if initialized with an |EVP_MD|, maintains the handshake hash.
   ScopedEVP_MD_CTX hash_;
-  // md5, if initialized with an |EVP_MD|, maintains the MD5 half of the
-  // handshake hash for TLS 1.1 and below.
-  ScopedEVP_MD_CTX md5_;
 };
 
 // tls1_prf computes the PRF function for |ssl|. It fills |out|, using |secret|
