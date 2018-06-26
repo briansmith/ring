@@ -164,56 +164,6 @@ bool tls1_prf(const EVP_MD *digest, Span<uint8_t> out,
                               seed2.size());
 }
 
-static bool ssl3_prf(Span<uint8_t> out, Span<const uint8_t> secret,
-                     Span<const char> label, Span<const uint8_t> seed1,
-                     Span<const uint8_t> seed2) {
-  ScopedEVP_MD_CTX md5;
-  ScopedEVP_MD_CTX sha1;
-  uint8_t buf[16], smd[SHA_DIGEST_LENGTH];
-  uint8_t c = 'A';
-  size_t k = 0;
-  while (!out.empty()) {
-    k++;
-    if (k > sizeof(buf)) {
-      // bug: 'buf' is too small for this ciphersuite
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return false;
-    }
-
-    for (size_t j = 0; j < k; j++) {
-      buf[j] = c;
-    }
-    c++;
-    if (!EVP_DigestInit_ex(sha1.get(), EVP_sha1(), NULL)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
-      return false;
-    }
-    EVP_DigestUpdate(sha1.get(), buf, k);
-    EVP_DigestUpdate(sha1.get(), secret.data(), secret.size());
-    // |label| is ignored for SSLv3.
-    EVP_DigestUpdate(sha1.get(), seed1.data(), seed1.size());
-    EVP_DigestUpdate(sha1.get(), seed2.data(), seed2.size());
-    EVP_DigestFinal_ex(sha1.get(), smd, NULL);
-
-    if (!EVP_DigestInit_ex(md5.get(), EVP_md5(), NULL)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_LIB_EVP);
-      return false;
-    }
-    EVP_DigestUpdate(md5.get(), secret.data(), secret.size());
-    EVP_DigestUpdate(md5.get(), smd, SHA_DIGEST_LENGTH);
-    if (out.size() < MD5_DIGEST_LENGTH) {
-      EVP_DigestFinal_ex(md5.get(), smd, NULL);
-      OPENSSL_memcpy(out.data(), smd, out.size());
-      break;
-    }
-    EVP_DigestFinal_ex(md5.get(), out.data(), NULL);
-    out = out.subspan(MD5_DIGEST_LENGTH);
-  }
-
-  OPENSSL_cleanse(smd, SHA_DIGEST_LENGTH);
-  return true;
-}
-
 static bool get_key_block_lengths(const SSL *ssl, size_t *out_mac_secret_len,
                                   size_t *out_key_len, size_t *out_iv_len,
                                   const SSL_CIPHER *cipher) {
@@ -318,16 +268,9 @@ int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
   } else {
     auto label =
         MakeConstSpan(kMasterSecretLabel, sizeof(kMasterSecretLabel) - 1);
-    if (ssl_protocol_version(ssl) == SSL3_VERSION) {
-      if (!ssl3_prf(out_span, premaster, label, ssl->s3->client_random,
-                    ssl->s3->server_random)) {
-        return 0;
-      }
-    } else {
-      if (!tls1_prf(hs->transcript.Digest(), out_span, premaster, label,
-                    ssl->s3->client_random, ssl->s3->server_random)) {
-        return 0;
-      }
+    if (!tls1_prf(hs->transcript.Digest(), out_span, premaster, label,
+                  ssl->s3->client_random, ssl->s3->server_random)) {
+      return 0;
     }
   }
 
@@ -357,11 +300,6 @@ int SSL_generate_key_block(const SSL *ssl, uint8_t *out, size_t out_len) {
   static const char kLabel[] = "key expansion";
   auto label = MakeConstSpan(kLabel, sizeof(kLabel) - 1);
 
-  if (ssl_protocol_version(ssl) == SSL3_VERSION) {
-    return ssl3_prf(out_span, master_key, label, ssl->s3->server_random,
-                    ssl->s3->client_random);
-  }
-
   const EVP_MD *digest = ssl_session_get_digest(session);
   return tls1_prf(digest, out_span, master_key, label, ssl->s3->server_random,
                   ssl->s3->client_random);
@@ -371,11 +309,6 @@ int SSL_export_keying_material(SSL *ssl, uint8_t *out, size_t out_len,
                                const char *label, size_t label_len,
                                const uint8_t *context, size_t context_len,
                                int use_context) {
-  if (!ssl->s3->have_version || ssl->version == SSL3_VERSION) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_HANDSHAKE_NOT_COMPLETE);
-    return 0;
-  }
-
   // Exporters may be used in False Start and server 0-RTT, where the handshake
   // has progressed enough. Otherwise, they may not be used during a handshake.
   if (SSL_in_init(ssl) &&

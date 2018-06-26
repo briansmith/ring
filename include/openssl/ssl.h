@@ -649,7 +649,6 @@ OPENSSL_EXPORT int SSL_version(const SSL *ssl);
 // The following flags toggle individual protocol versions. This is deprecated.
 // Use |SSL_CTX_set_min_proto_version| and |SSL_CTX_set_max_proto_version|
 // instead.
-#define SSL_OP_NO_SSLv3 0x02000000L
 #define SSL_OP_NO_TLSv1 0x04000000L
 #define SSL_OP_NO_TLSv1_2 0x08000000L
 #define SSL_OP_NO_TLSv1_1 0x10000000L
@@ -4000,6 +3999,7 @@ DEFINE_STACK_OF(SSL_COMP)
 #define SSL_OP_NO_COMPRESSION 0
 #define SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION 0
 #define SSL_OP_NO_SSLv2 0
+#define SSL_OP_NO_SSLv3 0
 #define SSL_OP_PKCS1_CHECK_1 0
 #define SSL_OP_PKCS1_CHECK_2 0
 #define SSL_OP_SINGLE_DH_USE 0

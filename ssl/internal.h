@@ -609,14 +609,6 @@ class SSLTranscript {
   // the number of bytes written. Otherwise, it returns false.
   bool GetHash(uint8_t *out, size_t *out_len);
 
-  // GetSSL3CertVerifyHash writes the SSL 3.0 CertificateVerify hash into the
-  // bytes pointed to by |out| and writes the number of bytes to
-  // |*out_len|. |out| must have room for |EVP_MAX_MD_SIZE| bytes. It returns
-  // one on success and zero on failure.
-  bool GetSSL3CertVerifyHash(uint8_t *out, size_t *out_len,
-                             const SSL_SESSION *session,
-                             uint16_t signature_algorithm);
-
   // GetFinishedMAC computes the MAC for the Finished message into the bytes
   // pointed by |out| and writes the number of bytes to |*out_len|. |out| must
   // have room for |EVP_MAX_MD_SIZE| bytes. It returns true on success and false
@@ -778,9 +770,6 @@ class SSLAEADContext {
   // omit_length_in_ad_ is true if the length should be omitted in the
   // AEAD's ad parameter.
   bool omit_length_in_ad_ : 1;
-  // omit_version_in_ad_ is true if the version should be omitted
-  // in the AEAD's ad parameter.
-  bool omit_version_in_ad_ : 1;
   // omit_ad_ is true if the AEAD's ad parameter should be omitted.
   bool omit_ad_ : 1;
   // ad_is_header_ is true if the AEAD's ad parameter is the record header.

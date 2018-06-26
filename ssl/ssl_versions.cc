@@ -27,7 +27,6 @@ namespace bssl {
 
 bool ssl_protocol_version_from_wire(uint16_t *out, uint16_t version) {
   switch (version) {
-    case SSL3_VERSION:
     case TLS1_VERSION:
     case TLS1_1_VERSION:
     case TLS1_2_VERSION:
@@ -62,7 +61,6 @@ static const uint16_t kTLSVersions[] = {
     TLS1_2_VERSION,
     TLS1_1_VERSION,
     TLS1_VERSION,
-    SSL3_VERSION,
 };
 
 static const uint16_t kDTLSVersions[] = {
@@ -113,9 +111,6 @@ static const char *ssl_version_to_string(uint16_t version) {
 
     case TLS1_VERSION:
       return "TLSv1";
-
-    case SSL3_VERSION:
-      return "SSLv3";
 
     case DTLS1_VERSION:
       return "DTLSv1";
@@ -200,7 +195,6 @@ const struct {
   uint16_t version;
   uint32_t flag;
 } kProtocolVersions[] = {
-    {SSL3_VERSION, SSL_OP_NO_SSLv3},
     {TLS1_VERSION, SSL_OP_NO_TLSv1},
     {TLS1_1_VERSION, SSL_OP_NO_TLSv1_1},
     {TLS1_2_VERSION, SSL_OP_NO_TLSv1_2},

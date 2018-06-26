@@ -433,20 +433,18 @@ enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs) {
   }
 
   // Copy the Finished so we can use it for renegotiation checks.
-  if (ssl->version != SSL3_VERSION) {
-    if (finished_len > sizeof(ssl->s3->previous_client_finished) ||
-        finished_len > sizeof(ssl->s3->previous_server_finished)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return ssl_hs_error;
-    }
+  if (finished_len > sizeof(ssl->s3->previous_client_finished) ||
+      finished_len > sizeof(ssl->s3->previous_server_finished)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return ssl_hs_error;
+  }
 
-    if (ssl->server) {
-      OPENSSL_memcpy(ssl->s3->previous_client_finished, finished, finished_len);
-      ssl->s3->previous_client_finished_len = finished_len;
-    } else {
-      OPENSSL_memcpy(ssl->s3->previous_server_finished, finished, finished_len);
-      ssl->s3->previous_server_finished_len = finished_len;
-    }
+  if (ssl->server) {
+    OPENSSL_memcpy(ssl->s3->previous_client_finished, finished, finished_len);
+    ssl->s3->previous_client_finished_len = finished_len;
+  } else {
+    OPENSSL_memcpy(ssl->s3->previous_server_finished, finished, finished_len);
+    ssl->s3->previous_server_finished_len = finished_len;
   }
 
   ssl->method->next_message(ssl);
@@ -472,20 +470,18 @@ bool ssl_send_finished(SSL_HANDSHAKE *hs) {
   }
 
   // Copy the Finished so we can use it for renegotiation checks.
-  if (ssl->version != SSL3_VERSION) {
-    if (finished_len > sizeof(ssl->s3->previous_client_finished) ||
-        finished_len > sizeof(ssl->s3->previous_server_finished)) {
-      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-      return 0;
-    }
+  if (finished_len > sizeof(ssl->s3->previous_client_finished) ||
+      finished_len > sizeof(ssl->s3->previous_server_finished)) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
 
-    if (ssl->server) {
-      OPENSSL_memcpy(ssl->s3->previous_server_finished, finished, finished_len);
-      ssl->s3->previous_server_finished_len = finished_len;
-    } else {
-      OPENSSL_memcpy(ssl->s3->previous_client_finished, finished, finished_len);
-      ssl->s3->previous_client_finished_len = finished_len;
-    }
+  if (ssl->server) {
+    OPENSSL_memcpy(ssl->s3->previous_server_finished, finished, finished_len);
+    ssl->s3->previous_server_finished_len = finished_len;
+  } else {
+    OPENSSL_memcpy(ssl->s3->previous_client_finished, finished, finished_len);
+    ssl->s3->previous_client_finished_len = finished_len;
   }
 
   ScopedCBB cbb;

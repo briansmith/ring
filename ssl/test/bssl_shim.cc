@@ -1190,10 +1190,9 @@ static bssl::UniquePtr<SSL_CTX> SetupCtx(SSL_CTX *old_ctx,
 
   SSL_CTX_set0_buffer_pool(ssl_ctx.get(), g_pool);
 
-  // Enable SSL 3.0 and TLS 1.3 for tests.
+  // Enable TLS 1.3 for tests.
   if (!config->is_dtls &&
-      (!SSL_CTX_set_min_proto_version(ssl_ctx.get(), SSL3_VERSION) ||
-       !SSL_CTX_set_max_proto_version(ssl_ctx.get(), TLS1_3_VERSION))) {
+      !SSL_CTX_set_max_proto_version(ssl_ctx.get(), TLS1_3_VERSION)) {
     return nullptr;
   }
 
@@ -2124,9 +2123,6 @@ static bssl::UniquePtr<SSL> NewSSL(SSL_CTX *ssl_ctx, const TestConfig *config,
   }
   if (config->no_tls1) {
     SSL_set_options(ssl.get(), SSL_OP_NO_TLSv1);
-  }
-  if (config->no_ssl3) {
-    SSL_set_options(ssl.get(), SSL_OP_NO_SSLv3);
   }
   if (!config->expected_channel_id.empty() ||
       config->enable_channel_id) {

@@ -27,7 +27,6 @@ add_library(
 
   tls_cbc.c
   e_tls.c
-  e_ssl3.c
 
   ${CIPHER_ARCH_SOURCES}
 )

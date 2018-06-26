@@ -739,7 +739,6 @@ enum ssl_hs_wait_t ssl_get_prev_session(SSL_HANDSHAKE *hs,
   size_t ticket_len = 0;
   const bool tickets_supported =
       !(SSL_get_options(hs->ssl) & SSL_OP_NO_TICKET) &&
-      hs->ssl->version > SSL3_VERSION &&
       SSL_early_callback_ctx_extension_get(
           client_hello, TLSEXT_TYPE_session_ticket, &ticket, &ticket_len);
   if (tickets_supported && ticket_len > 0) {

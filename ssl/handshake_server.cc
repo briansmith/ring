@@ -213,7 +213,6 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
         0x03, 0x03,  // TLS 1.2
         0x03, 0x02,  // TLS 1.1
         0x03, 0x01,  // TLS 1
-        0x03, 0x00,  // SSL 3
     };
 
     static const uint8_t kDTLSVersions[] = {
@@ -232,12 +231,10 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                versions_len);
     } else {
       if (client_hello->version >= TLS1_2_VERSION) {
-        versions_len = 8;
-      } else if (client_hello->version >= TLS1_1_VERSION) {
         versions_len = 6;
-      } else if (client_hello->version >= TLS1_VERSION) {
+      } else if (client_hello->version >= TLS1_1_VERSION) {
         versions_len = 4;
-      } else if (client_hello->version >= SSL3_VERSION) {
+      } else if (client_hello->version >= TLS1_VERSION) {
         versions_len = 2;
       }
       CBS_init(&versions, kTLSVersions + sizeof(kTLSVersions) - versions_len,
@@ -917,8 +914,7 @@ static enum ssl_hs_wait_t do_send_server_hello_done(SSL_HANDSHAKE *hs) {
                                    SSL3_MT_CERTIFICATE_REQUEST) ||
         !CBB_add_u8_length_prefixed(&body, &cert_types) ||
         !CBB_add_u8(&cert_types, SSL3_CT_RSA_SIGN) ||
-        (ssl_protocol_version(ssl) >= TLS1_VERSION &&
-         !CBB_add_u8(&cert_types, TLS_CT_ECDSA_SIGN)) ||
+        !CBB_add_u8(&cert_types, TLS_CT_ECDSA_SIGN) ||
         // TLS 1.2 has no way to specify different signature algorithms for
         // certificates and the online signature, so emit the more restrictive
         // certificate list.
@@ -959,26 +955,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_read_message;
   }
 
-  if (msg.type != SSL3_MT_CERTIFICATE) {
-    if (ssl->version == SSL3_VERSION &&
-        msg.type == SSL3_MT_CLIENT_KEY_EXCHANGE) {
-      // In SSL 3.0, the Certificate message is omitted to signal no
-      // certificate.
-      if (hs->config->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
-        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-        return ssl_hs_error;
-      }
-
-      // OpenSSL returns X509_V_OK when no certificates are received. This is
-      // classed by them as a bug, but it's assumed by at least NGINX.
-      hs->new_session->verify_result = X509_V_OK;
-      hs->state = state12_verify_client_certificate;
-      return ssl_hs_ok;
-    }
-
-    OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_MESSAGE);
-    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
+  if (!ssl_check_message_type(ssl, msg, SSL3_MT_CERTIFICATE)) {
     return ssl_hs_error;
   }
 
@@ -1010,14 +987,6 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
   if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) == 0) {
     // No client certificate so the handshake buffer may be discarded.
     hs->transcript.FreeBuffer();
-
-    // In SSL 3.0, sending no certificate is signaled by omitting the
-    // Certificate message.
-    if (ssl->version == SSL3_VERSION) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_NO_CERTIFICATES_RETURNED);
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
-      return ssl_hs_error;
-    }
 
     if (hs->config->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) {
       // Fail for TLS only if we required a certificate
@@ -1101,16 +1070,12 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
   Array<uint8_t> premaster_secret;
   if (alg_k & SSL_kRSA) {
     CBS encrypted_premaster_secret;
-    if (ssl->version > SSL3_VERSION) {
-      if (!CBS_get_u16_length_prefixed(&client_key_exchange,
-                                       &encrypted_premaster_secret) ||
-          CBS_len(&client_key_exchange) != 0) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
-        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
-        return ssl_hs_error;
-      }
-    } else {
-      encrypted_premaster_secret = client_key_exchange;
+    if (!CBS_get_u16_length_prefixed(&client_key_exchange,
+                                     &encrypted_premaster_secret) ||
+        CBS_len(&client_key_exchange) != 0) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      return ssl_hs_error;
     }
 
     // Allocate a buffer large enough for an RSA decryption.
@@ -1317,29 +1282,9 @@ static enum ssl_hs_wait_t do_read_client_certificate_verify(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  bool sig_ok;
-  // The SSL3 construction for CertificateVerify does not decompose into a
-  // single final digest and signature, and must be special-cased.
-  if (ssl_protocol_version(ssl) == SSL3_VERSION) {
-    uint8_t digest[EVP_MAX_MD_SIZE];
-    size_t digest_len;
-    if (!hs->transcript.GetSSL3CertVerifyHash(
-            digest, &digest_len, hs->new_session.get(), signature_algorithm)) {
-      return ssl_hs_error;
-    }
-
-    UniquePtr<EVP_PKEY_CTX> pctx(
-        EVP_PKEY_CTX_new(hs->peer_pubkey.get(), nullptr));
-    sig_ok = pctx &&
-             EVP_PKEY_verify_init(pctx.get()) &&
-             EVP_PKEY_verify(pctx.get(), CBS_data(&signature),
-                             CBS_len(&signature), digest, digest_len);
-  } else {
-    sig_ok =
-        ssl_public_key_verify(ssl, signature, signature_algorithm,
-                              hs->peer_pubkey.get(), hs->transcript.buffer());
-  }
-
+  bool sig_ok =
+      ssl_public_key_verify(ssl, signature, signature_algorithm,
+                            hs->peer_pubkey.get(), hs->transcript.buffer());
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   sig_ok = true;
   ERR_clear_error();

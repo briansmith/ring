@@ -464,10 +464,7 @@ static bool ssl_can_renegotiate(const SSL *ssl) {
     return false;
   }
 
-  // We do not accept at SSL 3.0. SSL 3.0 will be removed entirely in the future
-  // and requires retaining more data for renegotiation_info.
-  uint16_t version = ssl_protocol_version(ssl);
-  if (version == SSL3_VERSION || version >= TLS1_3_VERSION) {
+  if (ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return false;
   }
 
@@ -1490,9 +1487,8 @@ int SSL_get_tls_unique(const SSL *ssl, uint8_t *out, size_t *out_len,
   *out_len = 0;
   OPENSSL_memset(out, 0, max_out);
 
-  // tls-unique is not defined for SSL 3.0 or TLS 1.3.
+  // tls-unique is not defined for TLS 1.3.
   if (!ssl->s3->initial_handshake_complete ||
-      ssl_protocol_version(ssl) < TLS1_VERSION ||
       ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return 0;
   }
@@ -1644,7 +1640,6 @@ static size_t copy_finished(void *out, size_t out_len, const uint8_t *in,
 
 size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
   if (!ssl->s3->initial_handshake_complete ||
-      ssl_protocol_version(ssl) < TLS1_VERSION ||
       ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return 0;
   }
@@ -1660,7 +1655,6 @@ size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count) {
 
 size_t SSL_get_peer_finished(const SSL *ssl, void *buf, size_t count) {
   if (!ssl->s3->initial_handshake_complete ||
-      ssl_protocol_version(ssl) < TLS1_VERSION ||
       ssl_protocol_version(ssl) >= TLS1_3_VERSION) {
     return 0;
   }

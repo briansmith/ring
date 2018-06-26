@@ -100,7 +100,7 @@ bool SSL_apply_handoff(SSL *ssl, Span<const uint8_t> handoff) {
 }
 
 bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
-  if (!ssl->server || ssl->method->is_dtls || ssl->version < TLS1_VERSION) {
+  if (!ssl->server || ssl->method->is_dtls) {
     return false;
   }
   handback_t type;

@@ -42,7 +42,6 @@ SSLAEADContext::SSLAEADContext(uint16_t version_arg, bool is_dtls_arg,
       random_variable_nonce_(false),
       xor_fixed_nonce_(false),
       omit_length_in_ad_(false),
-      omit_version_in_ad_(false),
       omit_ad_(false),
       ad_is_header_(false) {
   OPENSSL_memset(fixed_nonce_, 0, sizeof(fixed_nonce_));
@@ -147,7 +146,6 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
     aead_ctx->variable_nonce_included_in_record_ = true;
     aead_ctx->random_variable_nonce_ = true;
     aead_ctx->omit_length_in_ad_ = true;
-    aead_ctx->omit_version_in_ad_ = (protocol_version == SSL3_VERSION);
   }
 
   return aead_ctx;
@@ -235,10 +233,8 @@ Span<const uint8_t> SSLAEADContext::GetAdditionalData(
   OPENSSL_memcpy(storage, seqnum, 8);
   size_t len = 8;
   storage[len++] = type;
-  if (!omit_version_in_ad_) {
-    storage[len++] = static_cast<uint8_t>((record_version >> 8));
-    storage[len++] = static_cast<uint8_t>(record_version);
-  }
+  storage[len++] = static_cast<uint8_t>((record_version >> 8));
+  storage[len++] = static_cast<uint8_t>(record_version);
   if (!omit_length_in_ad_) {
     storage[len++] = static_cast<uint8_t>((plaintext_len >> 8));
     storage[len++] = static_cast<uint8_t>(plaintext_len);

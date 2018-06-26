@@ -269,15 +269,6 @@ static int ssl_write_client_cipher_list(SSL_HANDSHAKE *hs, CBB *out) {
     }
   }
 
-  // For SSLv3, the SCSV is added. Otherwise the renegotiation extension is
-  // added.
-  if (hs->max_version == SSL3_VERSION &&
-      !ssl->s3->initial_handshake_complete) {
-    if (!CBB_add_u16(&child, SSL3_CK_SCSV & 0xffff)) {
-      return 0;
-    }
-  }
-
   if (ssl->mode & SSL_MODE_SEND_FALLBACK_SCSV) {
     if (!CBB_add_u16(&child, SSL3_CK_FALLBACK_SCSV & 0xffff)) {
       return 0;
@@ -392,12 +383,6 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
   // Freeze the version range.
   if (!ssl_get_version_range(hs, &hs->min_version, &hs->max_version)) {
     return ssl_hs_error;
-  }
-
-  // SSL 3.0 ClientHellos should use SSL 3.0 not TLS 1.0, for the record-layer
-  // version.
-  if (hs->max_version == SSL3_VERSION) {
-    ssl->s3->aead_write_ctx->SetVersionIfNullCipher(SSL3_VERSION);
   }
 
   // Always advertise the ClientHello version from the original maximum version,
@@ -1192,16 +1177,6 @@ static enum ssl_hs_wait_t do_send_client_certificate(SSL_HANDSHAKE *hs) {
   if (!ssl_has_certificate(hs->config)) {
     // Without a client certificate, the handshake buffer may be released.
     hs->transcript.FreeBuffer();
-
-    // In SSL 3.0, the Certificate message is replaced with a warning alert.
-    if (ssl->version == SSL3_VERSION) {
-      if (!ssl->method->add_alert(ssl, SSL3_AL_WARNING,
-                                  SSL_AD_NO_CERTIFICATE)) {
-        return ssl_hs_error;
-      }
-      hs->state = state_send_client_key_exchange;
-      return ssl_hs_ok;
-    }
   }
 
   if (!ssl_on_certificate_selected(hs) ||
@@ -1286,21 +1261,14 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    CBB child, *enc_pms = &body;
-    size_t enc_pms_len;
-    // In TLS, there is a length prefix.
-    if (ssl->version > SSL3_VERSION) {
-      if (!CBB_add_u16_length_prefixed(&body, &child)) {
-        return ssl_hs_error;
-      }
-      enc_pms = &child;
-    }
-
+    CBB enc_pms;
     uint8_t *ptr;
-    if (!CBB_reserve(enc_pms, &ptr, RSA_size(rsa)) ||
+    size_t enc_pms_len;
+    if (!CBB_add_u16_length_prefixed(&body, &enc_pms) ||
+        !CBB_reserve(&enc_pms, &ptr, RSA_size(rsa)) ||
         !RSA_encrypt(rsa, &enc_pms_len, ptr, RSA_size(rsa), pms.data(),
                      pms.size(), RSA_PKCS1_PADDING) ||
-        !CBB_did_write(enc_pms, enc_pms_len) ||
+        !CBB_did_write(&enc_pms, enc_pms_len) ||
         !CBB_flush(&body)) {
       return ssl_hs_error;
     }
@@ -1407,40 +1375,16 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
   }
 
   size_t sig_len = max_sig_len;
-  // The SSL3 construction for CertificateVerify does not decompose into a
-  // single final digest and signature, and must be special-cased.
-  if (ssl_protocol_version(ssl) == SSL3_VERSION) {
-    if (hs->config->cert->key_method != NULL) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL_FOR_CUSTOM_KEY);
+  switch (ssl_private_key_sign(hs, ptr, &sig_len, max_sig_len,
+                               signature_algorithm,
+                               hs->transcript.buffer())) {
+    case ssl_private_key_success:
+      break;
+    case ssl_private_key_failure:
       return ssl_hs_error;
-    }
-
-    uint8_t digest[EVP_MAX_MD_SIZE];
-    size_t digest_len;
-    if (!hs->transcript.GetSSL3CertVerifyHash(
-            digest, &digest_len, hs->new_session.get(), signature_algorithm)) {
-      return ssl_hs_error;
-    }
-
-    UniquePtr<EVP_PKEY_CTX> pctx(
-        EVP_PKEY_CTX_new(hs->config->cert->privatekey.get(), nullptr));
-    if (!pctx ||
-        !EVP_PKEY_sign_init(pctx.get()) ||
-        !EVP_PKEY_sign(pctx.get(), ptr, &sig_len, digest, digest_len)) {
-      return ssl_hs_error;
-    }
-  } else {
-    switch (ssl_private_key_sign(hs, ptr, &sig_len, max_sig_len,
-                                 signature_algorithm,
-                                 hs->transcript.buffer())) {
-      case ssl_private_key_success:
-        break;
-      case ssl_private_key_failure:
-        return ssl_hs_error;
-      case ssl_private_key_retry:
-        hs->state = state_send_client_certificate_verify;
-        return ssl_hs_private_key_operation;
-    }
+    case ssl_private_key_retry:
+      hs->state = state_send_client_certificate_verify;
+      return ssl_hs_private_key_operation;
   }
 
   if (!CBB_did_write(&child, sig_len) ||

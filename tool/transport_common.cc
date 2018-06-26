@@ -256,10 +256,7 @@ bool Listener::Accept(int *out_sock) {
 }
 
 bool VersionFromString(uint16_t *out_version, const std::string &version) {
-  if (version == "ssl3") {
-    *out_version = SSL3_VERSION;
-    return true;
-  } else if (version == "tls1" || version == "tls1.0") {
+  if (version == "tls1" || version == "tls1.0") {
     *out_version = TLS1_VERSION;
     return true;
   } else if (version == "tls1.1") {

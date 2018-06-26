@@ -409,11 +409,9 @@ class TLSFuzzer {
     if (!SSL_CTX_set_strict_cipher_list(ctx_.get(), "ALL:NULL-SHA")) {
       return false;
     }
-    if (protocol_ == kTLS) {
-      if (!SSL_CTX_set_max_proto_version(ctx_.get(), TLS1_3_VERSION) ||
-          !SSL_CTX_set_min_proto_version(ctx_.get(), SSL3_VERSION)) {
-        return false;
-      }
+    if (protocol_ == kTLS &&
+        !SSL_CTX_set_max_proto_version(ctx_.get(), TLS1_3_VERSION)) {
+      return false;
     }
 
     SSL_CTX_set_early_data_enabled(ctx_.get(), 1);

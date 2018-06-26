@@ -243,7 +243,7 @@ int ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out,
   out->compression_methods_len = CBS_len(&compression_methods);
 
   // If the ClientHello ends here then it's valid, but doesn't have any
-  // extensions. (E.g. SSLv3.)
+  // extensions.
   if (CBS_len(&client_hello) == 0) {
     out->extensions = NULL;
     out->extensions_len = 0;
@@ -862,7 +862,7 @@ static bool ext_ri_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static bool ext_ems_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   // Extended master secret is not necessary in TLS 1.3.
-  if (hs->min_version >= TLS1_3_VERSION || hs->max_version <= SSL3_VERSION) {
+  if (hs->min_version >= TLS1_3_VERSION) {
     return true;
   }
 
@@ -880,7 +880,6 @@ static bool ext_ems_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
   if (contents != NULL) {
     if (ssl_protocol_version(ssl) >= TLS1_3_VERSION ||
-        ssl->version == SSL3_VERSION ||
         CBS_len(contents) != 0) {
       return false;
     }
@@ -902,9 +901,7 @@ static bool ext_ems_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
 static bool ext_ems_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                       CBS *contents) {
-  uint16_t version = ssl_protocol_version(hs->ssl);
-  if (version >= TLS1_3_VERSION ||
-      version == SSL3_VERSION) {
+  if (ssl_protocol_version(hs->ssl) >= TLS1_3_VERSION) {
     return true;
   }
 
@@ -3085,12 +3082,6 @@ static const struct tls_extension *tls_extension_find(uint32_t *out_index,
 
 int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
   SSL *const ssl = hs->ssl;
-  // Don't add extensions for SSLv3 unless doing secure renegotiation.
-  if (hs->client_version == SSL3_VERSION &&
-      !ssl->s3->send_connection_binding) {
-    return 1;
-  }
-
   CBB extensions;
   if (!CBB_add_u16_length_prefixed(out, &extensions)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -3239,7 +3230,6 @@ err:
 static int ssl_scan_clienthello_tlsext(SSL_HANDSHAKE *hs,
                                        const SSL_CLIENT_HELLO *client_hello,
                                        int *out_alert) {
-  SSL *const ssl = hs->ssl;
   for (size_t i = 0; i < kNumExtensions; i++) {
     if (kExtensions[i].init != NULL) {
       kExtensions[i].init(hs);
@@ -3261,16 +3251,9 @@ static int ssl_scan_clienthello_tlsext(SSL_HANDSHAKE *hs,
       return 0;
     }
 
-    // RFC 5746 made the existence of extensions in SSL 3.0 somewhat
-    // ambiguous. Ignore all but the renegotiation_info extension.
-    if (ssl->version == SSL3_VERSION && type != TLSEXT_TYPE_renegotiate) {
-      continue;
-    }
-
     unsigned ext_index;
     const struct tls_extension *const ext =
         tls_extension_find(&ext_index, type);
-
     if (ext == NULL) {
       if (!custom_ext_parse_clienthello(hs, out_alert, type, &extension)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_PARSING_EXTENSION);
