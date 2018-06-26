@@ -36,26 +36,26 @@ cmake-mac.tar.gz: Follow the same instructions as above on a Mac, but replace
     The current revision was built against cmake-3.10.0.tar.gz.
 
 cmake-win32.zip: Update to the latest prebuilt release of CMake, found at
-    https://cmake.org/download/. Use the file labeled "Windows ZIP". The
-    download will be named cmake-VERSION-win32-x86.zip.
+    https://cmake.org/download/. Use the file labeled "Windows win64-x64
+    ZIP". The download will be named cmake-VERSION-win64-x64.zip.
 
-    The current revision is cmake-3.10.1-win32-x86.zip.
+    The current revision is cmake-3.11.4-win64-x64.zip
 
 nasm-win32.exe: Update to the appropriate release of NASM, found at
     https://www.nasm.us/. Use the same version as Chromium, found at
     https://chromium.googlesource.com/chromium/src/+/master/third_party/nasm/README.chromium
-    Extract nasm.exe from the download named nasm-VERSION-win32.zip.
+    Extract nasm.exe from the download named nasm-VERSION-win64.zip.
 
-    The current revision is nasm-2.13.03-win32.zip.
+    The current revision is nasm-2.13.03-win64.zip.
 
     TODO(davidben): The Chromium link currently does not work. It will get
     filled in in the future. See https://crbug.com/766721.
 
-perl-win32.zip: Update to the latest 32-bit prebuilt "Portable" edition of
+perl-win32.zip: Update to the latest 64-bit prebuilt "Portable" edition of
     Strawberry Perl, found at http://strawberryperl.com/releases.html. The
-    download will be named strawberry-perl-VERSION-32bit-portable.zip.
+    download will be named strawberry-perl-VERSION-64bit-portable.zip.
 
-    The current revision is strawberry-perl-5.26.1.1-32bit-portable.zip.
+    The current revision is strawberry-perl-5.26.2.1-64bit-portable.zip.
 
 yasm-win32.exe: Update to the appropriate release of Yasm. Use the same version
     as Chromium, found at
@@ -73,3 +73,5 @@ but upload it with the following command. (Note the bucket is different.)
     upload_to_google_storage.py -b chrome-boringssl-sde sde-linux64.tar.bz2
 
 The current revision is sde-external-8.9.0-2017-08-06-lin.tar.bz2.
+
+When adding new files, remember to update .gitignore.

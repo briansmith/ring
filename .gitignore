@@ -17,6 +17,7 @@ util/bot/golang
 util/bot/gyp
 util/bot/libFuzzer
 util/bot/llvm-build
+util/bot/nasm-win32.exe
 util/bot/perl-win32
 util/bot/perl-win32.zip
 util/bot/sde-linux64
