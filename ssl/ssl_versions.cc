@@ -57,8 +57,8 @@ bool ssl_protocol_version_from_wire(uint16_t *out, uint16_t version) {
 // decreasing preference.
 
 static const uint16_t kTLSVersions[] = {
-    TLS1_3_DRAFT23_VERSION,
     TLS1_3_DRAFT28_VERSION,
+    TLS1_3_DRAFT23_VERSION,
     TLS1_2_VERSION,
     TLS1_1_VERSION,
     TLS1_VERSION,
