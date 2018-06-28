@@ -123,7 +123,6 @@ const (
 	extensionPadding                    uint16 = 21
 	extensionExtendedMasterSecret       uint16 = 23
 	extensionTokenBinding               uint16 = 24
-	extensionQUICTransportParams        uint16 = 26 // conflicts with TLS-LTS
 	extensionCompressedCertAlgs         uint16 = 27
 	extensionSessionTicket              uint16 = 35
 	extensionPreSharedKey               uint16 = 41    // draft-ietf-tls-tls13-23
@@ -137,6 +136,7 @@ const (
 	extensionCustom                     uint16 = 1234  // not IANA assigned
 	extensionNextProtoNeg               uint16 = 13172 // not IANA assigned
 	extensionRenegotiationInfo          uint16 = 0xff01
+	extensionQUICTransportParams        uint16 = 0xffa5 // draft-ietf-quic-tls-13
 	extensionChannelID                  uint16 = 30032 // not IANA assigned
 	extensionDummyPQPadding             uint16 = 54537 // not IANA assigned
 )
