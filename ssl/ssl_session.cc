@@ -670,7 +670,6 @@ static enum ssl_hs_wait_t ssl_lookup_session(
   if (!(ssl->session_ctx->session_cache_mode &
         SSL_SESS_CACHE_NO_INTERNAL_LOOKUP)) {
     SSL_SESSION data;
-    data.ssl_version = ssl->version;
     data.session_id_length = session_id_len;
     OPENSSL_memcpy(data.session_id, session_id, session_id_len);
 

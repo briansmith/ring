@@ -7609,6 +7609,27 @@ func addResumptionVersionTests() {
 						"-on-resume-tls13-variant", strconv.Itoa(resumeVers.tls13Variant),
 					},
 				})
+
+				// Repeat the test using session IDs, rather than tickets.
+				if sessionVers.version < VersionTLS13 && resumeVers.version < VersionTLS13 {
+					testCases = append(testCases, testCase{
+						protocol:      protocol,
+						testType:      serverTest,
+						name:          "Resume-Server-NoTickets" + suffix,
+						resumeSession: true,
+						config: Config{
+							MaxVersion:             sessionVers.version,
+							SessionTicketsDisabled: true,
+						},
+						expectedVersion:      sessionVers.version,
+						expectResumeRejected: sessionVers != resumeVers,
+						resumeConfig: &Config{
+							MaxVersion:             resumeVers.version,
+							SessionTicketsDisabled: true,
+						},
+						expectedResumeVersion: resumeVers.version,
+					})
+				}
 			}
 		}
 	}

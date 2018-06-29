@@ -585,16 +585,7 @@ static uint32_t ssl_session_hash(const SSL_SESSION *sess) {
   return hash;
 }
 
-// NB: If this function (or indeed the hash function which uses a sort of
-// coarser function than this one) is changed, ensure
-// SSL_CTX_has_matching_session_id() is checked accordingly. It relies on being
-// able to construct an SSL_SESSION that will collide with any existing session
-// with a matching session ID.
 static int ssl_session_cmp(const SSL_SESSION *a, const SSL_SESSION *b) {
-  if (a->ssl_version != b->ssl_version) {
-    return 1;
-  }
-
   if (a->session_id_length != b->session_id_length) {
     return 1;
   }
