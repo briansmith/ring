@@ -14,45 +14,48 @@
 
 //! HMAC is specified in [RFC 2104].
 //!
-//! After a `SigningKey` or `VerificationKey` is constructed, it can be used
-//! for multiple signing or verification operations. Separating the
-//! construction of the key from the rest of the HMAC operation allows the
-//! per-key precomputation to be done only once, instead of it being done in
+//! After a [`SigningKey`] or [`VerificationKey`] is constructed, it can be used
+//! for multiple signing or verification operations. Separating the construction
+//! of the key from the rest of the HMAC operation allows the per-key
+//! precomputation to be done only once, instead of it being done in
 //! every HMAC operation.
 //!
 //! Frequently all the data to be signed in a message is available in a single
-//! contiguous piece. In that case, the module-level `sign` function can be
-//! used. Otherwise, if the input is in multiple parts, `SigningContext` should
-//! be used.
+//! contiguous piece. In that case, the module-level [`sign`] function can be
+//! used. Otherwise, if the input is in multiple parts, [`SigningContext`]
+//! should be used. The signature can be verified with [`verify`] or a
+//! [`VerificationContext`] respectively.
 //!
 //! # Use Case: Multi-party Communication
 //!
 //! Examples: TLS, SSH, and IPSEC record/packet authentication.
 //!
 //! The key that is used to sign messages to send to other parties should be a
-//! `SigningKey`; `SigningContext` or `sign` should be used for the signing.
-//! Each key that is used to authenticate messages received from peers should
-//! be a `VerificationKey`; `verify` should be used for the authentication. All
-//! of the keys should have distinct, independent, values.
+//! [`SigningKey`]; [`SigningContext`] or [`sign`] should be used for the
+//! signing.  Each key that is used to authenticate messages received from peers
+//! should be a [`VerificationKey`]; [`VerificationContext`] or [`verify`]
+//! should be used for the authentication. All of the keys should have distinct,
+//! independent, values.
 //!
 //! # Use Case: One-party Anti-tampering Protection
 //!
 //! Examples: Signed cookies, stateless CSRF protection.
 //!
-//! The key that is used to sign the data should be a `SigningKey`;
-//! `SigningContext` or `sign` should be used for the signing. Use
-//! `verify_with_own_key` to verify the signature using the signing key; this
-//! is equivalent to, but more efficient than, constructing a `VerificationKey`
-//! with the same value as the signing key and then calling `verify`.
+//! The key that is used to sign the data should be a [`SigningKey`];
+//! [`SigningContext`] or [`sign`] should be used for the signing. Use
+//! [`verify_with_own_key`] or [`VerificationContext`] to verify the signature
+//! using the signing key; this is equivalent to, but more efficient than,
+//! constructing a [`VerificationKey`] with the same value as the signing key and
+//! then calling [`verify`].
 //!
 //! # Use Case: Key Derivation and Password Hashing
 //!
 //! Examples: HKDF, PBKDF2, the TLS PRF.
 //!
-//! All keys used during the key derivation should be `SigningKey`s;
-//! `SigningContext` should usually be used for the HMAC calculations. The
-//! [code for `ring::pbkdf2`] and the [code for `ring::hkdf`] are good
-//! examples of how to use `ring::hmac` efficiently for key derivation.
+//! All keys used during the key derivation should be [`SigningKey`]s;
+//! [`SigningContext`] should usually be used for the HMAC calculations. The
+//! [code for `ring::pbkdf2`] and the [code for `ring::hkdf`] are good examples
+//! of how to use `ring::hmac` efficiently for key derivation.
 //!
 //!
 //! # Examples:
@@ -136,11 +139,11 @@
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
 //! let v_key = hmac::VerificationKey::new(&digest::SHA384, key_value.as_ref());
-//! let mut msg = Vec::<u8>::new();
+//! let mut v_ctx = hmac::VerificationContext::with_key(&v_key);
 //! for part in &parts {
-//!     msg.extend(part.as_bytes());
+//!     v_ctx.update(part.as_bytes());
 //! }
-//! hmac::verify(&v_key, &msg.as_ref(), signature.as_ref())?;
+//! v_ctx.verify(signature.as_ref())?;
 //! #
 //! # Ok(())
 //! # }
@@ -153,6 +156,13 @@
 //!     https://github.com/briansmith/ring/blob/master/src/pbkdf2.rs
 //! [code for `ring::hkdf`]:
 //!     https://github.com/briansmith/ring/blob/master/src/hkdf.rs
+//! [`sign`]: ./fn.sign.html
+//! [`verify`]: ./fn.verify.html
+//! [`verify_with_own_key`]: ./fn.verify_with_own_key.html
+//! [`SigningKey`]: ./struct.SigningKey.html
+//! [`VerificationKey`]: ./struct.VerificationKey.html
+//! [`SigningContext`]: ./struct.SigningContext.html
+//! [`VerificationContext`]: ./struct.VerificationContext.html
 
 
 use {constant_time, digest, error, rand};
@@ -269,9 +279,12 @@ impl SigningKey {
 
 /// A context for multi-step (Init-Update-Finish) HMAC signing.
 ///
-/// Use `sign` for single-step HMAC signing.
+/// Use [`sign`] for single-step HMAC signing.
 ///
-/// The signature should be verified with a `VerificationContext`.
+/// The signature should be verified with a [`VerificationContext`].
+///
+/// [`sign`]: ./fn.sign.html
+/// [`VerificationContext`]: ./struct.VerificationContext.html
 ///
 /// C analog: `HMAC_CTX`.
 #[derive(Clone)]
@@ -303,10 +316,13 @@ impl SigningContext {
     /// called.
     ///
     /// It is generally not safe to implement HMAC verification by comparing
-    /// the return value of `sign` to a signature. Use `verify` or a 
-    /// `VerificationContext` for verification instead.
+    /// the return value of `sign` to a signature. Use a [`VerificationContext`]
+    /// or [`verify`] for verification instead.
     ///
     /// C analog: `HMAC_Final`
+    ///
+    /// [`VerificationContext`] ./struct.VerificationContext.html
+    /// [`verify`] ./fn.verify.html
     pub fn sign(mut self) -> Signature {
         self.outer.update(self.inner.finish().as_ref());
         Signature(self.outer.finish())
@@ -315,14 +331,17 @@ impl SigningContext {
 
 /// Calculates the HMAC of `data` using the key `key` in one step.
 ///
-/// Use `SigningContext` to calculate HMACs where the input is in multiple
+/// Use [`SigningContext`] to calculate HMACs where the input is in multiple
 /// parts.
 ///
 /// It is generally not safe to implement HMAC verification by comparing the
-/// return value of `sign` to a signature. Use `verify` for verification
+/// return value of [`sign`] to a signature. Use [`verify`] for verification
 /// instead.
 ///
 /// C analog: `HMAC_CTX_init` + `HMAC_Update` + `HMAC_Final`.
+///
+/// [`SigningContext`]: ./struct.SigningContext.html
+/// [`verify`]: ./fn.verify.html
 pub fn sign(key: &SigningKey, data: &[u8]) -> Signature {
     let mut ctx = SigningContext::with_key(key);
     ctx.update(data);
@@ -358,11 +377,14 @@ impl VerificationKey {
 
 /// A context for multi-step HMAC verification.
 ///
-/// Verifies signatures previously created with a `SigningContext`.
+/// Verifies signatures previously created with a [`SigningContext`].
 ///
-/// Use `verify` for single-step HMAC verification.
+/// Use [`verify`] for single-step HMAC verification.
 ///
 /// C analog `HMAC_CTX` + `CRYPTO_memcmp`.
+///
+/// [`SigningContext`]: ./struct.SigningContext.html
+/// [`verify`]: ./fn.verify.html
 #[derive(Clone)]
 pub struct VerificationContext {
     inner: SigningContext,
