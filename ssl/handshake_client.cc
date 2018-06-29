@@ -1581,7 +1581,7 @@ static enum ssl_hs_wait_t do_read_session_ticket(SSL_HANDSHAKE *hs) {
   }
 
   if (renewed_session) {
-    session->not_resumable = 0;
+    session->not_resumable = false;
     SSL_SESSION_free(ssl->session);
     ssl->session = renewed_session.release();
   }
@@ -1635,7 +1635,7 @@ static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
     }
     // Renegotiations do not participate in session resumption.
     if (!ssl->s3->initial_handshake_complete) {
-      ssl->s3->established_session->not_resumable = 0;
+      ssl->s3->established_session->not_resumable = false;
     }
 
     hs->new_session.reset();

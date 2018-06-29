@@ -168,7 +168,7 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
     if (!RAND_bytes((uint8_t *)&session->ticket_age_add, 4)) {
       return 0;
     }
-    session->ticket_age_add_valid = 1;
+    session->ticket_age_add_valid = true;
     if (ssl->enable_early_data) {
       session->ticket_max_early_data = kMaxEarlyDataAccepted;
     }

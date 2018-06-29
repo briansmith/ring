@@ -1478,7 +1478,7 @@ static enum ssl_hs_wait_t do_finish_server_handshake(SSL_HANDSHAKE *hs) {
     ssl->s3->established_session.reset(ssl->session);
   } else {
     ssl->s3->established_session = std::move(hs->new_session);
-    ssl->s3->established_session->not_resumable = 0;
+    ssl->s3->established_session->not_resumable = false;
   }
 
   hs->handshake_finalized = true;

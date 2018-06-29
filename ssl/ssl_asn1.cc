@@ -727,7 +727,7 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
       CBS_len(&age_add) != 0) {
     return nullptr;
   }
-  ret->ticket_age_add_valid = age_add_present;
+  ret->ticket_age_add_valid = age_add_present != 0;
 
   int is_server;
   if (!CBS_get_optional_asn1_bool(&session, &is_server, kIsServerTag,

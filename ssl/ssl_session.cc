@@ -291,7 +291,7 @@ UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
 
   // The new_session does not get a copy of the ex_data.
 
-  new_session->not_resumable = 1;
+  new_session->not_resumable = true;
   return new_session;
 }
 
@@ -414,7 +414,7 @@ int ssl_get_new_session(SSL_HANDSHAKE *hs, int is_server) {
   session->sid_ctx_length = hs->config->cert->sid_ctx_length;
 
   // The session is marked not resumable until it is completely filled in.
-  session->not_resumable = 1;
+  session->not_resumable = true;
   session->verify_result = X509_V_ERR_INVALID_CALL;
 
   hs->new_session = std::move(session);

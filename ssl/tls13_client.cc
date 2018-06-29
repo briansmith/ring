@@ -891,8 +891,8 @@ int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
     }
   }
 
-  session->ticket_age_add_valid = 1;
-  session->not_resumable = 0;
+  session->ticket_age_add_valid = true;
+  session->not_resumable = false;
 
   if ((ssl->session_ctx->session_cache_mode & SSL_SESS_CACHE_CLIENT) &&
       ssl->session_ctx->new_session_cb != NULL &&

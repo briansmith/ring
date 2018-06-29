@@ -3303,22 +3303,22 @@ struct ssl_session_st {
   uint8_t *early_alpn;
   size_t early_alpn_len;
 
-  // extended_master_secret is true if the master secret in this session was
+  // extended_master_secret is whether the master secret in this session was
   // generated using EMS and thus isn't vulnerable to the Triple Handshake
   // attack.
-  unsigned extended_master_secret:1;
+  bool extended_master_secret:1;
 
-  // peer_sha256_valid is non-zero if |peer_sha256| is valid.
-  unsigned peer_sha256_valid:1;  // Non-zero if peer_sha256 is valid
+  // peer_sha256_valid is whether |peer_sha256| is valid.
+  bool peer_sha256_valid:1;  // Non-zero if peer_sha256 is valid
 
   // not_resumable is used to indicate that session resumption is disallowed.
-  unsigned not_resumable:1;
+  bool not_resumable:1;
 
-  // ticket_age_add_valid is non-zero if |ticket_age_add| is valid.
-  unsigned ticket_age_add_valid:1;
+  // ticket_age_add_valid is whether |ticket_age_add| is valid.
+  bool ticket_age_add_valid:1;
 
-  // is_server is true if this session was created by a server.
-  unsigned is_server:1;
+  // is_server is whether this session was created by a server.
+  bool is_server:1;
 };
 
 

@@ -1724,7 +1724,7 @@ TEST(SSLTest, SessionDuplication) {
       bssl::SSL_SESSION_dup(session0, SSL_SESSION_DUP_ALL);
   ASSERT_TRUE(session1);
 
-  session1->not_resumable = 0;
+  session1->not_resumable = false;
 
   uint8_t *s0_bytes, *s1_bytes;
   size_t s0_len, s1_len;
