@@ -986,28 +986,20 @@ static bssl::UniquePtr<SSL_SESSION> CreateSessionWithTicket(uint16_t version,
   if (!ssl_ctx) {
     return nullptr;
   }
+  // Use a garbage ticket.
+  std::vector<uint8_t> ticket(ticket_len, 'a');
   bssl::UniquePtr<SSL_SESSION> session(
       SSL_SESSION_from_bytes(der.data(), der.size(), ssl_ctx.get()));
-  if (!session) {
+  if (!session ||
+      !SSL_SESSION_set_protocol_version(session.get(), version) ||
+      !SSL_SESSION_set_ticket(session.get(), ticket.data(), ticket.size())) {
     return nullptr;
   }
-
-  session->ssl_version = version;
-
-  // Swap out the ticket for a garbage one.
-  OPENSSL_free(session->tlsext_tick);
-  session->tlsext_tick = reinterpret_cast<uint8_t*>(OPENSSL_malloc(ticket_len));
-  if (session->tlsext_tick == nullptr) {
-    return nullptr;
-  }
-  OPENSSL_memset(session->tlsext_tick, 'a', ticket_len);
-  session->tlsext_ticklen = ticket_len;
-
   // Fix up the timeout.
 #if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
-  session->time = 1234;
+  SSL_SESSION_set_time(session.get(), 1234);
 #else
-  session->time = time(NULL);
+  SSL_SESSION_set_time(session.get(), time(nullptr));
 #endif
   return session;
 }
@@ -1423,9 +1415,11 @@ static bssl::UniquePtr<SSL_SESSION> CreateTestSession(uint32_t number) {
     return nullptr;
   }
 
-  ret->session_id_length = SSL3_SSL_SESSION_ID_LENGTH;
-  OPENSSL_memset(ret->session_id, 0, ret->session_id_length);
-  OPENSSL_memcpy(ret->session_id, &number, sizeof(number));
+  uint8_t id[SSL3_SSL_SESSION_ID_LENGTH] = {0};
+  OPENSSL_memcpy(id, &number, sizeof(number));
+  if (!SSL_SESSION_set1_id(ret.get(), id, sizeof(id))) {
+    return nullptr;
+  }
   return ret;
 }
 
@@ -2245,12 +2239,15 @@ static int RenewTicketCallback(SSL *ssl, uint8_t *key_name, uint8_t *iv,
 }
 
 static bool GetServerTicketTime(long *out, const SSL_SESSION *session) {
-  if (session->tlsext_ticklen < 16 + 16 + SHA256_DIGEST_LENGTH) {
+  const uint8_t *ticket;
+  size_t ticket_len;
+  SSL_SESSION_get0_ticket(session, &ticket, &ticket_len);
+  if (ticket_len < 16 + 16 + SHA256_DIGEST_LENGTH) {
     return false;
   }
 
-  const uint8_t *ciphertext = session->tlsext_tick + 16 + 16;
-  size_t len = session->tlsext_ticklen - 16 - 16 - SHA256_DIGEST_LENGTH;
+  const uint8_t *ciphertext = ticket + 16 + 16;
+  size_t len = ticket_len - 16 - 16 - SHA256_DIGEST_LENGTH;
   std::unique_ptr<uint8_t[]> plaintext(new uint8_t[len]);
 
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
@@ -2258,7 +2255,7 @@ static bool GetServerTicketTime(long *out, const SSL_SESSION *session) {
   OPENSSL_memcpy(plaintext.get(), ciphertext, len);
 #else
   static const uint8_t kZeros[16] = {0};
-  const uint8_t *iv = session->tlsext_tick + 16;
+  const uint8_t *iv = ticket + 16;
   bssl::ScopedEVP_CIPHER_CTX ctx;
   int len1, len2;
   if (!EVP_DecryptInit_ex(ctx.get(), EVP_aes_128_cbc(), nullptr, kZeros, iv) ||
@@ -2280,7 +2277,7 @@ static bool GetServerTicketTime(long *out, const SSL_SESSION *session) {
     return false;
   }
 
-  *out = server_session->time;
+  *out = SSL_SESSION_get_time(server_session.get());
   return true;
 }
 
@@ -2354,7 +2351,7 @@ TEST_P(SSLVersionTest, SessionTimeout) {
     if (server_test) {
       ASSERT_TRUE(GetServerTicketTime(&session_time, new_session.get()));
     } else {
-      session_time = new_session->time;
+      session_time = SSL_SESSION_get_time(new_session.get());
     }
 
     ASSERT_EQ(session_time, g_current_time.tv_sec);
@@ -4133,7 +4130,7 @@ TEST(SSLTest, AllTests) {
       !TestPaddingExtension(TLS1_3_VERSION, TLS1_2_VERSION) ||
       // Test the padding extension at TLS 1.3 with a TLS 1.3 session, so there
       // will be a PSK binder after the padding extension.
-      !TestPaddingExtension(TLS1_3_VERSION, TLS1_3_DRAFT23_VERSION)) {
+      !TestPaddingExtension(TLS1_3_VERSION, TLS1_3_VERSION)) {
     ADD_FAILURE() << "Tests failed";
   }
 }
