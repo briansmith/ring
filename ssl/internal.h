@@ -173,15 +173,12 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 
-// TODO(davidben): This is unnamespaced because |SSL_SESSION| was historically
-// public. After 2018-06-13, move it into the namespace.
-typedef struct ssl_x509_method_st SSL_X509_METHOD;
-
 namespace bssl {
 
 struct SSL_CONFIG;
 struct SSL_HANDSHAKE;
 struct SSL_PROTOCOL_METHOD;
+struct SSL_X509_METHOD;
 
 // C++ utilities.
 
@@ -1971,6 +1968,62 @@ ssl_open_record_t ssl_open_app_data(SSL *ssl, Span<uint8_t> *out,
                                     size_t *out_consumed, uint8_t *out_alert,
                                     Span<uint8_t> in);
 
+struct SSL_X509_METHOD {
+  // check_client_CA_list returns one if |names| is a good list of X.509
+  // distinguished names and zero otherwise. This is used to ensure that we can
+  // reject unparsable values at handshake time when using crypto/x509.
+  int (*check_client_CA_list)(STACK_OF(CRYPTO_BUFFER) *names);
+
+  // cert_clear frees and NULLs all X509 certificate-related state.
+  void (*cert_clear)(CERT *cert);
+  // cert_free frees all X509-related state.
+  void (*cert_free)(CERT *cert);
+  // cert_flush_cached_chain drops any cached |X509|-based certificate chain
+  // from |cert|.
+  // cert_dup duplicates any needed fields from |cert| to |new_cert|.
+  void (*cert_dup)(CERT *new_cert, const CERT *cert);
+  void (*cert_flush_cached_chain)(CERT *cert);
+  // cert_flush_cached_chain drops any cached |X509|-based leaf certificate
+  // from |cert|.
+  void (*cert_flush_cached_leaf)(CERT *cert);
+
+  // session_cache_objects fills out |sess->x509_peer| and |sess->x509_chain|
+  // from |sess->certs| and erases |sess->x509_chain_without_leaf|. It returns
+  // one on success or zero on error.
+  int (*session_cache_objects)(SSL_SESSION *session);
+  // session_dup duplicates any needed fields from |session| to |new_session|.
+  // It returns one on success or zero on error.
+  int (*session_dup)(SSL_SESSION *new_session, const SSL_SESSION *session);
+  // session_clear frees any X509-related state from |session|.
+  void (*session_clear)(SSL_SESSION *session);
+  // session_verify_cert_chain verifies the certificate chain in |session|,
+  // sets |session->verify_result| and returns one on success or zero on
+  // error.
+  int (*session_verify_cert_chain)(SSL_SESSION *session, SSL_HANDSHAKE *ssl,
+                                   uint8_t *out_alert);
+
+  // hs_flush_cached_ca_names drops any cached |X509_NAME|s from |hs|.
+  void (*hs_flush_cached_ca_names)(SSL_HANDSHAKE *hs);
+  // ssl_new does any neccessary initialisation of |hs|. It returns one on
+  // success or zero on error.
+  int (*ssl_new)(SSL_HANDSHAKE *hs);
+  // ssl_free frees anything created by |ssl_new|.
+  void (*ssl_config_free)(SSL_CONFIG *cfg);
+  // ssl_flush_cached_client_CA drops any cached |X509_NAME|s from |ssl|.
+  void (*ssl_flush_cached_client_CA)(SSL_CONFIG *cfg);
+  // ssl_auto_chain_if_needed runs the deprecated auto-chaining logic if
+  // necessary. On success, it updates |ssl|'s certificate configuration as
+  // needed and returns one. Otherwise, it returns zero.
+  int (*ssl_auto_chain_if_needed)(SSL_HANDSHAKE *hs);
+  // ssl_ctx_new does any neccessary initialisation of |ctx|. It returns one on
+  // success or zero on error.
+  int (*ssl_ctx_new)(SSL_CTX *ctx);
+  // ssl_ctx_free frees anything created by |ssl_ctx_new|.
+  void (*ssl_ctx_free)(SSL_CTX *ctx);
+  // ssl_ctx_flush_cached_client_CA drops any cached |X509_NAME|s from |ctx|.
+  void (*ssl_ctx_flush_cached_client_CA)(SSL_CTX *ssl);
+};
+
 // ssl_crypto_x509_method provides the |SSL_X509_METHOD| functions using
 // crypto/x509.
 extern const SSL_X509_METHOD ssl_crypto_x509_method;
@@ -3129,64 +3182,7 @@ struct ssl_method_st {
   const bssl::SSL_PROTOCOL_METHOD *method;
   // x509_method contains pointers to functions that might deal with |X509|
   // compatibility, or might be a no-op, depending on the application.
-  const SSL_X509_METHOD *x509_method;
-};
-
-struct ssl_x509_method_st {
-  // check_client_CA_list returns one if |names| is a good list of X.509
-  // distinguished names and zero otherwise. This is used to ensure that we can
-  // reject unparsable values at handshake time when using crypto/x509.
-  int (*check_client_CA_list)(STACK_OF(CRYPTO_BUFFER) *names);
-
-  // cert_clear frees and NULLs all X509 certificate-related state.
-  void (*cert_clear)(bssl::CERT *cert);
-  // cert_free frees all X509-related state.
-  void (*cert_free)(bssl::CERT *cert);
-  // cert_flush_cached_chain drops any cached |X509|-based certificate chain
-  // from |cert|.
-  // cert_dup duplicates any needed fields from |cert| to |new_cert|.
-  void (*cert_dup)(bssl::CERT *new_cert, const bssl::CERT *cert);
-  void (*cert_flush_cached_chain)(bssl::CERT *cert);
-  // cert_flush_cached_chain drops any cached |X509|-based leaf certificate
-  // from |cert|.
-  void (*cert_flush_cached_leaf)(bssl::CERT *cert);
-
-  // session_cache_objects fills out |sess->x509_peer| and |sess->x509_chain|
-  // from |sess->certs| and erases |sess->x509_chain_without_leaf|. It returns
-  // one on success or zero on error.
-  int (*session_cache_objects)(SSL_SESSION *session);
-  // session_dup duplicates any needed fields from |session| to |new_session|.
-  // It returns one on success or zero on error.
-  int (*session_dup)(SSL_SESSION *new_session, const SSL_SESSION *session);
-  // session_clear frees any X509-related state from |session|.
-  void (*session_clear)(SSL_SESSION *session);
-  // session_verify_cert_chain verifies the certificate chain in |session|,
-  // sets |session->verify_result| and returns one on success or zero on
-  // error.
-  int (*session_verify_cert_chain)(SSL_SESSION *session,
-                                   bssl::SSL_HANDSHAKE *ssl,
-                                   uint8_t *out_alert);
-
-  // hs_flush_cached_ca_names drops any cached |X509_NAME|s from |hs|.
-  void (*hs_flush_cached_ca_names)(bssl::SSL_HANDSHAKE *hs);
-  // ssl_new does any neccessary initialisation of |hs|. It returns one on
-  // success or zero on error.
-  int (*ssl_new)(bssl::SSL_HANDSHAKE *hs);
-  // ssl_free frees anything created by |ssl_new|.
-  void (*ssl_config_free)(bssl::SSL_CONFIG *cfg);
-  // ssl_flush_cached_client_CA drops any cached |X509_NAME|s from |ssl|.
-  void (*ssl_flush_cached_client_CA)(bssl::SSL_CONFIG *cfg);
-  // ssl_auto_chain_if_needed runs the deprecated auto-chaining logic if
-  // necessary. On success, it updates |ssl|'s certificate configuration as
-  // needed and returns one. Otherwise, it returns zero.
-  int (*ssl_auto_chain_if_needed)(bssl::SSL_HANDSHAKE *hs);
-  // ssl_ctx_new does any neccessary initialisation of |ctx|. It returns one on
-  // success or zero on error.
-  int (*ssl_ctx_new)(SSL_CTX *ctx);
-  // ssl_ctx_free frees anything created by |ssl_ctx_new|.
-  void (*ssl_ctx_free)(SSL_CTX *ctx);
-  // ssl_ctx_flush_cached_client_CA drops any cached |X509_NAME|s from |ctx|.
-  void (*ssl_ctx_flush_cached_client_CA)(SSL_CTX *ssl);
+  const bssl::SSL_X509_METHOD *x509_method;
 };
 
 // The following types back public C-exposed types which must live in the global
@@ -3229,7 +3225,7 @@ struct ssl_session_st {
   // certificate.
   STACK_OF(CRYPTO_BUFFER) *certs;
 
-  const SSL_X509_METHOD *x509_method;
+  const bssl::SSL_X509_METHOD *x509_method;
 
   // x509_peer is the peer's certificate.
   X509 *x509_peer;
