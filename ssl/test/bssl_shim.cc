@@ -203,10 +203,9 @@ static bool LoadCertificate(bssl::UniquePtr<X509> *out_x509,
       break;
     }
 
-    if (!sk_X509_push(out_chain->get(), cert.get())) {
+    if (!bssl::PushToStack(out_chain->get(), std::move(cert))) {
       return false;
     }
-    cert.release();  // sk_X509_push takes ownership.
   }
 
   uint32_t err = ERR_peek_last_error();
@@ -316,10 +315,9 @@ static bssl::UniquePtr<STACK_OF(X509_NAME)> DecodeHexX509Names(
       return nullptr;
     }
 
-    if (!sk_X509_NAME_push(ret.get(), name.get())) {
+    if (!bssl::PushToStack(ret.get(), std::move(name))) {
       return nullptr;
     }
-    name.release();
   }
 
   return ret;
@@ -1640,7 +1638,7 @@ static bool CheckAuthProperties(SSL *ssl, bool is_resume,
       if (!sk_X509_insert(expect_chain.get(), expect_leaf.get(), 0)) {
         return false;
       }
-      X509_up_ref(expect_leaf.get());  // sk_X509_push takes ownership.
+      X509_up_ref(expect_leaf.get());  // sk_X509_insert takes ownership.
     }
 
     bssl::UniquePtr<X509> leaf(SSL_get_peer_certificate(ssl));

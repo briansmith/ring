@@ -530,10 +530,9 @@ static bssl::UniquePtr<STACK_OF(X509)> CertsToStack(
     return nullptr;
   }
   for (auto cert : certs) {
-    if (!sk_X509_push(stack.get(), cert)) {
+    if (!bssl::PushToStack(stack.get(), bssl::UpRef(cert))) {
       return nullptr;
     }
-    X509_up_ref(cert);
   }
 
   return stack;
@@ -548,10 +547,9 @@ static bssl::UniquePtr<STACK_OF(X509_CRL)> CRLsToStack(
     return nullptr;
   }
   for (auto crl : crls) {
-    if (!sk_X509_CRL_push(stack.get(), crl)) {
+    if (!bssl::PushToStack(stack.get(), bssl::UpRef(crl))) {
       return nullptr;
     }
-    X509_CRL_up_ref(crl);
   }
 
   return stack;

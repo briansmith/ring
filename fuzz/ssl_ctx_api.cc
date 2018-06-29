@@ -212,10 +212,8 @@ struct GlobalState {
     cert_.reset(d2i_X509(NULL, &bufp, sizeof(kCertificateDER)));
     assert(cert_.get() != nullptr);
 
-    X509_up_ref(cert_.get());
-
     certs_.reset(sk_X509_new_null());
-    sk_X509_push(certs_.get(), cert_.get());
+    PushToStack(certs_.get(), UpRef(cert_));
   }
 
   bssl::UniquePtr<EVP_PKEY> pkey_;

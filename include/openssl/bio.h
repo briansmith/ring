@@ -874,6 +874,7 @@ extern "C++" {
 namespace bssl {
 
 BORINGSSL_MAKE_DELETER(BIO, BIO_free)
+BORINGSSL_MAKE_UP_REF(BIO, BIO_up_ref)
 
 }  // namespace bssl
 

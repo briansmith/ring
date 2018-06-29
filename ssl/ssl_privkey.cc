@@ -89,9 +89,7 @@ static int ssl_set_pkey(CERT *cert, EVP_PKEY *pkey) {
     return 0;
   }
 
-  EVP_PKEY_up_ref(pkey);
-  cert->privatekey.reset(pkey);
-
+  cert->privatekey = UpRef(pkey);
   return 1;
 }
 

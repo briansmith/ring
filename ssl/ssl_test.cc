@@ -1322,9 +1322,7 @@ TEST(SSLTest, ClientCAList) {
 
   bssl::UniquePtr<STACK_OF(X509_NAME)> stack(sk_X509_NAME_new_null());
   ASSERT_TRUE(stack);
-
-  ASSERT_TRUE(sk_X509_NAME_push(stack.get(), name_dup.get()));
-  name_dup.release();
+  ASSERT_TRUE(PushToStack(stack.get(), std::move(name_dup)));
 
   // |SSL_set_client_CA_list| takes ownership.
   SSL_set_client_CA_list(ssl.get(), stack.release());
@@ -3235,8 +3233,7 @@ TEST(SSLTest, ClientCABuffers) {
   bssl::UniquePtr<STACK_OF(CRYPTO_BUFFER)> ca_names(
       sk_CRYPTO_BUFFER_new_null());
   ASSERT_TRUE(ca_names);
-  ASSERT_TRUE(sk_CRYPTO_BUFFER_push(ca_names.get(), ca_name.get()));
-  ca_name.release();
+  ASSERT_TRUE(PushToStack(ca_names.get(), std::move(ca_name)));
   SSL_CTX_set0_client_CAs(server_ctx.get(), ca_names.release());
 
   // Configure client and server to accept all certificates.

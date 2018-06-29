@@ -465,8 +465,7 @@ static enum ssl_hs_wait_t do_enter_early_data(SSL_HANDSHAKE *hs) {
   // Stash the early data session, so connection properties may be queried out
   // of it.
   hs->in_early_data = true;
-  SSL_SESSION_up_ref(ssl->session);
-  hs->early_session.reset(ssl->session);
+  hs->early_session = UpRef(ssl->session);
   hs->can_early_write = true;
 
   hs->state = state_read_server_hello;
@@ -1622,8 +1621,7 @@ static enum ssl_hs_wait_t do_finish_client_handshake(SSL_HANDSHAKE *hs) {
   ssl->method->on_handshake_complete(ssl);
 
   if (ssl->session != NULL) {
-    SSL_SESSION_up_ref(ssl->session);
-    ssl->s3->established_session.reset(ssl->session);
+    ssl->s3->established_session = UpRef(ssl->session);
   } else {
     // We make a copy of the session in order to maintain the immutability
     // of the new established_session due to False Start. The caller may

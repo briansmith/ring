@@ -209,16 +209,14 @@ UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
     }
   }
   if (session->certs != NULL) {
-    new_session->certs = sk_CRYPTO_BUFFER_new_null();
+    auto buf_up_ref = [](CRYPTO_BUFFER *buf) {
+      CRYPTO_BUFFER_up_ref(buf);
+      return buf;
+    };
+    new_session->certs = sk_CRYPTO_BUFFER_deep_copy(session->certs, buf_up_ref,
+                                                    CRYPTO_BUFFER_free);
     if (new_session->certs == NULL) {
       return nullptr;
-    }
-    for (size_t i = 0; i < sk_CRYPTO_BUFFER_num(session->certs); i++) {
-      CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(session->certs, i);
-      if (!sk_CRYPTO_BUFFER_push(new_session->certs, buffer)) {
-        return nullptr;
-      }
-      CRYPTO_BUFFER_up_ref(buffer);
     }
   }
 
@@ -677,11 +675,8 @@ static enum ssl_hs_wait_t ssl_lookup_session(
     OPENSSL_memcpy(data.session_id, session_id, session_id_len);
 
     MutexReadLock lock(&ssl->session_ctx->lock);
-    session.reset(lh_SSL_SESSION_retrieve(ssl->session_ctx->sessions, &data));
-    if (session) {
-      // |lh_SSL_SESSION_retrieve| returns a non-owning pointer.
-      SSL_SESSION_up_ref(session.get());
-    }
+    // |lh_SSL_SESSION_retrieve| returns a non-owning pointer.
+    session = UpRef(lh_SSL_SESSION_retrieve(ssl->session_ctx->sessions, &data));
     // TODO(davidben): This should probably move it to the front of the list.
   }
 
@@ -1118,8 +1113,7 @@ void *SSL_SESSION_get_ex_data(const SSL_SESSION *session, int idx) {
 int SSL_CTX_add_session(SSL_CTX *ctx, SSL_SESSION *session) {
   // Although |session| is inserted into two structures (a doubly-linked list
   // and the hash table), |ctx| only takes one reference.
-  SSL_SESSION_up_ref(session);
-  UniquePtr<SSL_SESSION> owned_session(session);
+  UniquePtr<SSL_SESSION> owned_session = UpRef(session);
 
   SSL_SESSION *old_session;
   MutexWriteLock lock(&ctx->lock);

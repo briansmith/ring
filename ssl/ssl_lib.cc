@@ -295,10 +295,10 @@ void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
       SSL_CTX_add_session(ctx, ssl->s3->established_session.get());
     }
     if (ctx->new_session_cb != NULL) {
-      SSL_SESSION_up_ref(ssl->s3->established_session.get());
-      if (!ctx->new_session_cb(ssl, ssl->s3->established_session.get())) {
+      UniquePtr<SSL_SESSION> ref = UpRef(ssl->s3->established_session);
+      if (ctx->new_session_cb(ssl, ref.get())) {
         // |new_session_cb|'s return value signals whether it took ownership.
-        SSL_SESSION_free(ssl->s3->established_session.get());
+        ref.release();
       }
     }
   }
@@ -2836,8 +2836,7 @@ int SSL_clear(SSL *ssl) {
   // depends on this behavior, so emulate it.
   UniquePtr<SSL_SESSION> session;
   if (!ssl->server && ssl->s3->established_session != NULL) {
-    session.reset(ssl->s3->established_session.get());
-    SSL_SESSION_up_ref(session.get());
+    session = UpRef(ssl->s3->established_session);
   }
 
   // The ssl->d1->mtu is simultaneously configuration (preserved across

@@ -448,6 +448,18 @@ class StackAllocated {
 template <typename T>
 using UniquePtr = std::unique_ptr<T, internal::Deleter<T>>;
 
+#define BORINGSSL_MAKE_UP_REF(type, up_ref_func)                    \
+  static inline UniquePtr<type> UpRef(type *v) {                    \
+    if (v != nullptr) {                                             \
+      up_ref_func(v);                                               \
+    }                                                               \
+    return UniquePtr<type>(v);                                      \
+  }                                                                 \
+                                                                    \
+  static inline UniquePtr<type> UpRef(const UniquePtr<type> &ptr) { \
+    return UpRef(ptr.get());                                        \
+  }
+
 }  // namespace bssl
 
 }  // extern C++

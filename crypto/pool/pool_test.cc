@@ -29,8 +29,7 @@ TEST(PoolTest, Unpooled) {
             Bytes(CRYPTO_BUFFER_data(buf.get()), CRYPTO_BUFFER_len(buf.get())));
 
   // Test that reference-counting works properly.
-  CRYPTO_BUFFER_up_ref(buf.get());
-  bssl::UniquePtr<CRYPTO_BUFFER> buf2(buf.get());
+  bssl::UniquePtr<CRYPTO_BUFFER> buf2 = bssl::UpRef(buf);
 }
 
 TEST(PoolTest, Empty) {

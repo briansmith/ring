@@ -840,6 +840,7 @@ extern "C++" {
 namespace bssl {
 
 BORINGSSL_MAKE_DELETER(EVP_PKEY, EVP_PKEY_free)
+BORINGSSL_MAKE_UP_REF(EVP_PKEY, EVP_PKEY_up_ref)
 BORINGSSL_MAKE_DELETER(EVP_PKEY_CTX, EVP_PKEY_CTX_free)
 
 }  // namespace bssl

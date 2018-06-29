@@ -162,11 +162,7 @@ UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
     }
   }
 
-  if (cert->privatekey) {
-    EVP_PKEY_up_ref(cert->privatekey.get());
-    ret->privatekey.reset(cert->privatekey.get());
-  }
-
+  ret->privatekey = UpRef(cert->privatekey);
   ret->key_method = cert->key_method;
 
   if (!ret->sigalgs.CopyFrom(cert->sigalgs)) {
@@ -178,16 +174,8 @@ UniquePtr<CERT> ssl_cert_dup(CERT *cert) {
 
   ret->x509_method->cert_dup(ret.get(), cert);
 
-  if (cert->signed_cert_timestamp_list) {
-    CRYPTO_BUFFER_up_ref(cert->signed_cert_timestamp_list.get());
-    ret->signed_cert_timestamp_list.reset(
-        cert->signed_cert_timestamp_list.get());
-  }
-
-  if (cert->ocsp_response) {
-    CRYPTO_BUFFER_up_ref(cert->ocsp_response.get());
-    ret->ocsp_response.reset(cert->ocsp_response.get());
-  }
+  ret->signed_cert_timestamp_list = UpRef(cert->signed_cert_timestamp_list);
+  ret->ocsp_response = UpRef(cert->ocsp_response);
 
   ret->sid_ctx_length = cert->sid_ctx_length;
   OPENSSL_memcpy(ret->sid_ctx, cert->sid_ctx, sizeof(ret->sid_ctx));
@@ -289,16 +277,12 @@ static int cert_set_chain_and_key(
   }
 
   for (size_t i = 0; i < num_certs; i++) {
-    if (!sk_CRYPTO_BUFFER_push(certs_sk.get(), certs[i])) {
+    if (!PushToStack(certs_sk.get(), UpRef(certs[i]))) {
       return 0;
     }
-    CRYPTO_BUFFER_up_ref(certs[i]);
   }
 
-  if (privkey != nullptr) {
-    EVP_PKEY_up_ref(privkey);
-  }
-  cert->privatekey.reset(privkey);
+  cert->privatekey = UpRef(privkey);
   cert->key_method = privkey_method;
 
   cert->chain = std::move(certs_sk);

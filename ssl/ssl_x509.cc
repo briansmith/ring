@@ -209,13 +209,10 @@ static int ssl_cert_set_chain(CERT *cert, STACK_OF(X509) *chain) {
       return 0;
     }
 
-    CRYPTO_BUFFER *leaf = sk_CRYPTO_BUFFER_value(cert->chain.get(), 0);
-    if (!sk_CRYPTO_BUFFER_push(new_chain.get(), leaf)) {
-      return 0;
-    }
     // |leaf| might be NULL if it's a “leafless” chain.
-    if (leaf != nullptr) {
-      CRYPTO_BUFFER_up_ref(leaf);
+    CRYPTO_BUFFER *leaf = sk_CRYPTO_BUFFER_value(cert->chain.get(), 0);
+    if (!PushToStack(new_chain.get(), UpRef(leaf))) {
+      return 0;
     }
   }
 
@@ -552,12 +549,11 @@ STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl) {
 
     for (size_t i = 1; i < sk_X509_num(session->x509_chain); i++) {
       X509 *cert = sk_X509_value(session->x509_chain, i);
-      if (!sk_X509_push(session->x509_chain_without_leaf, cert)) {
+      if (!PushToStack(session->x509_chain_without_leaf, UpRef(cert))) {
         sk_X509_pop_free(session->x509_chain_without_leaf, X509_free);
         session->x509_chain_without_leaf = NULL;
         return NULL;
       }
-      X509_up_ref(cert);
     }
   }
 
