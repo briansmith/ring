@@ -271,6 +271,8 @@ impl SigningKey {
 ///
 /// Use `sign` for single-step HMAC signing.
 ///
+/// The signature should be verified with a `VerificationContext`.
+///
 /// C analog: `HMAC_CTX`.
 #[derive(Clone)]
 pub struct SigningContext {
@@ -301,8 +303,8 @@ impl SigningContext {
     /// called.
     ///
     /// It is generally not safe to implement HMAC verification by comparing
-    // the return value of `sign` to a signature. Use `verify` for verification
-    // instead.
+    /// the return value of `sign` to a signature. Use `verify` or a 
+    /// `VerificationContext` for verification instead.
     ///
     /// C analog: `HMAC_Final`
     pub fn sign(mut self) -> Signature {
@@ -351,6 +353,60 @@ impl VerificationKey {
     #[inline]
     pub fn digest_algorithm(&self) -> &'static digest::Algorithm {
         self.wrapped.digest_algorithm()
+    }
+}
+
+/// A context for multi-step HMAC verification.
+///
+/// Verifies signatures previously created with a `SigningContext`.
+///
+/// Use `verify` for single-step HMAC verification.
+///
+/// C analog `HMAC_CTX` + `CRYPTO_memcmp`.
+#[derive(Clone)]
+pub struct VerificationContext {
+    inner: SigningContext,
+}
+
+impl VerificationContext {
+    /// Constructs a new HMAC verification context using the given digest algorithm
+    /// and key.
+    ///
+    /// C analog: `HMAC_CTX_init`
+    pub fn with_key(verification_key: &VerificationKey) -> VerificationContext {
+        VerificationContext {
+            inner: SigningContext::with_key(&verification_key.wrapped),
+        }
+    }
+
+    /// Constructs a new HMAC verification context using the signing key `key`.
+    ///
+    /// This is logically equivalent to, but more efficient than, constructing a
+    /// `VerificationKey` with the same value as `key` and then using `verify`.
+    ///
+    /// C analog: `HMAC_CTX_init`
+    pub fn with_own_key(signing_key: &SigningKey) -> VerificationContext {
+        VerificationContext {
+            inner: SigningContext::with_key(signing_key),
+        }
+    }
+
+    /// Updates the HMAC with all the data in `data`. `update` may be called
+    /// zero or more times until `finish` is called.
+    ///
+    /// C analog: `HMAC_Update`
+    pub fn update(&mut self, data: &[u8]) { self.inner.update(data); }
+
+    /// Finalizes the HMAC verification by comparing against the HMAC signature.
+    /// `verify` consumes the context so it cannot be (mis-)used after `verify`
+    /// has been called.
+    ///
+    /// The verification will be done in constant time to prevent timing attacks.
+    ///
+    /// C analog: `HMAC_Final` + `CRYPTO_memcmp`
+    pub fn verify(self, signature: &[u8]) -> Result<(), error::Unspecified> {
+        let signed = self.inner.sign();
+        constant_time::verify_slices_are_equal(signed.as_ref(), signature)
     }
 }
 
@@ -424,6 +480,21 @@ mod tests {
                                                   signature.as_ref()).is_ok());
                 assert!(hmac::verify_with_own_key(&key, HELLO_WORLD_BAD,
                                                   signature.as_ref()).is_err())
+            }
+
+            {
+                let key = hmac::SigningKey::generate(d, &mut rng).unwrap();
+                let mut signature = hmac::SigningContext::with_key(&key);
+                signature.update(HELLO_WORLD_GOOD);
+                let signature = signature.sign();
+                
+                let mut good_verify = hmac::VerificationContext::with_own_key(&key);
+                good_verify.update(HELLO_WORLD_GOOD);
+                assert!(good_verify.verify(signature.as_ref()).is_ok());
+
+                let mut bad_verify = hmac::VerificationContext::with_own_key(&key);
+                bad_verify.update(HELLO_WORLD_BAD);
+                assert!(bad_verify.verify(signature.as_ref()).is_err());
             }
 
             {
