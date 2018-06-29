@@ -224,8 +224,8 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
 
   // The peer certificate is only serialized if the SHA-256 isn't
   // serialized instead.
-  if (sk_CRYPTO_BUFFER_num(in->certs) > 0 && !in->peer_sha256_valid) {
-    const CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(in->certs, 0);
+  if (sk_CRYPTO_BUFFER_num(in->certs.get()) > 0 && !in->peer_sha256_valid) {
+    const CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(in->certs.get(), 0);
     if (!CBB_add_asn1(&session, &child, kPeerTag) ||
         !CBB_add_bytes(&child, CRYPTO_BUFFER_data(buffer),
                        CRYPTO_BUFFER_len(buffer))) {
@@ -252,25 +252,26 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
 
   if (in->psk_identity) {
     if (!CBB_add_asn1(&session, &child, kPSKIdentityTag) ||
-        !CBB_add_asn1_octet_string(&child, (const uint8_t *)in->psk_identity,
-                                   strlen(in->psk_identity))) {
+        !CBB_add_asn1_octet_string(&child,
+                                   (const uint8_t *)in->psk_identity.get(),
+                                   strlen(in->psk_identity.get()))) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
 
-  if (in->tlsext_tick_lifetime_hint > 0) {
+  if (in->ticket_lifetime_hint > 0) {
     if (!CBB_add_asn1(&session, &child, kTicketLifetimeHintTag) ||
-        !CBB_add_asn1_uint64(&child, in->tlsext_tick_lifetime_hint)) {
+        !CBB_add_asn1_uint64(&child, in->ticket_lifetime_hint)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
   }
 
-  if (in->tlsext_tick && !for_ticket) {
+  if (!in->ticket.empty() && !for_ticket) {
     if (!CBB_add_asn1(&session, &child, kTicketTag) ||
-        !CBB_add_asn1_octet_string(&child, in->tlsext_tick,
-                                   in->tlsext_ticklen)) {
+        !CBB_add_asn1_octet_string(&child, in->ticket.data(),
+                                   in->ticket.size())) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -297,8 +298,8 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
   if (in->signed_cert_timestamp_list != nullptr) {
     if (!CBB_add_asn1(&session, &child, kSignedCertTimestampListTag) ||
         !CBB_add_asn1_octet_string(
-            &child, CRYPTO_BUFFER_data(in->signed_cert_timestamp_list),
-            CRYPTO_BUFFER_len(in->signed_cert_timestamp_list))) {
+            &child, CRYPTO_BUFFER_data(in->signed_cert_timestamp_list.get()),
+            CRYPTO_BUFFER_len(in->signed_cert_timestamp_list.get()))) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -306,9 +307,9 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
 
   if (in->ocsp_response != nullptr) {
     if (!CBB_add_asn1(&session, &child, kOCSPResponseTag) ||
-        !CBB_add_asn1_octet_string(&child,
-                                   CRYPTO_BUFFER_data(in->ocsp_response),
-                                   CRYPTO_BUFFER_len(in->ocsp_response))) {
+        !CBB_add_asn1_octet_string(
+            &child, CRYPTO_BUFFER_data(in->ocsp_response.get()),
+            CRYPTO_BUFFER_len(in->ocsp_response.get()))) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -333,13 +334,13 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
   // serialized instead.
   if (in->certs != NULL &&
       !in->peer_sha256_valid &&
-      sk_CRYPTO_BUFFER_num(in->certs) >= 2) {
+      sk_CRYPTO_BUFFER_num(in->certs.get()) >= 2) {
     if (!CBB_add_asn1(&session, &child, kCertChainTag)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
-    for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(in->certs); i++) {
-      const CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(in->certs, i);
+    for (size_t i = 1; i < sk_CRYPTO_BUFFER_num(in->certs.get()); i++) {
+      const CRYPTO_BUFFER *buffer = sk_CRYPTO_BUFFER_value(in->certs.get(), i);
       if (!CBB_add_bytes(&child, CRYPTO_BUFFER_data(buffer),
                          CRYPTO_BUFFER_len(buffer))) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -386,10 +387,10 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
     return 0;
   }
 
-  if (in->early_alpn) {
+  if (!in->early_alpn.empty()) {
     if (!CBB_add_asn1(&session, &child, kEarlyALPNTag) ||
-        !CBB_add_asn1_octet_string(&child, (const uint8_t *)in->early_alpn,
-                                   in->early_alpn_len)) {
+        !CBB_add_asn1_octet_string(&child, in->early_alpn.data(),
+                                   in->early_alpn.size())) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
@@ -398,13 +399,11 @@ static int SSL_SESSION_to_bytes_full(const SSL_SESSION *in, CBB *cbb,
   return CBB_flush(cbb);
 }
 
-// SSL_SESSION_parse_string gets an optional ASN.1 OCTET STRING
-// explicitly tagged with |tag| from |cbs| and saves it in |*out|. On
-// entry, if |*out| is not NULL, it frees the existing contents. If
-// the element was not found, it sets |*out| to NULL. It returns one
-// on success, whether or not the element was found, and zero on
-// decode error.
-static int SSL_SESSION_parse_string(CBS *cbs, char **out, unsigned tag) {
+// SSL_SESSION_parse_string gets an optional ASN.1 OCTET STRING explicitly
+// tagged with |tag| from |cbs| and saves it in |*out|. If the element was not
+// found, it sets |*out| to NULL. It returns one on success, whether or not the
+// element was found, and zero on decode error.
+static int SSL_SESSION_parse_string(CBS *cbs, UniquePtr<char> *out, unsigned tag) {
   CBS value;
   int present;
   if (!CBS_get_optional_asn1_octet_string(cbs, &value, &present, tag)) {
@@ -416,38 +415,33 @@ static int SSL_SESSION_parse_string(CBS *cbs, char **out, unsigned tag) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
       return 0;
     }
-    if (!CBS_strdup(&value, out)) {
+    char *raw = nullptr;
+    if (!CBS_strdup(&value, &raw)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
+    out->reset(raw);
   } else {
-    OPENSSL_free(*out);
-    *out = NULL;
+    out->reset();
   }
   return 1;
 }
 
-// SSL_SESSION_parse_string gets an optional ASN.1 OCTET STRING
-// explicitly tagged with |tag| from |cbs| and stows it in |*out_ptr|
-// and |*out_len|. If |*out_ptr| is not NULL, it frees the existing
-// contents. On entry, if the element was not found, it sets
-// |*out_ptr| to NULL. It returns one on success, whether or not the
-// element was found, and zero on decode error.
-static int SSL_SESSION_parse_octet_string(CBS *cbs, uint8_t **out_ptr,
-                                          size_t *out_len, unsigned tag) {
+// SSL_SESSION_parse_octet_string gets an optional ASN.1 OCTET STRING explicitly
+// tagged with |tag| from |cbs| and stows it in |*out|. It returns one on
+// success, whether or not the element was found, and zero on decode error.
+static bool SSL_SESSION_parse_octet_string(CBS *cbs, Array<uint8_t> *out,
+                                           unsigned tag) {
   CBS value;
   if (!CBS_get_optional_asn1_octet_string(cbs, &value, NULL, tag)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
-    return 0;
+    return false;
   }
-  if (!CBS_stow(&value, out_ptr, out_len)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-  return 1;
+  return out->CopyFrom(value);
 }
 
-static int SSL_SESSION_parse_crypto_buffer(CBS *cbs, CRYPTO_BUFFER **out,
+static int SSL_SESSION_parse_crypto_buffer(CBS *cbs,
+                                           UniquePtr<CRYPTO_BUFFER> *out,
                                            unsigned tag,
                                            CRYPTO_BUFFER_POOL *pool) {
   if (!CBS_peek_asn1_tag(cbs, tag)) {
@@ -461,8 +455,7 @@ static int SSL_SESSION_parse_crypto_buffer(CBS *cbs, CRYPTO_BUFFER **out,
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     return 0;
   }
-  CRYPTO_BUFFER_free(*out);
-  *out = CRYPTO_BUFFER_new_from_CBS(&value, pool);
+  out->reset(CRYPTO_BUFFER_new_from_CBS(&value, pool));
   if (*out == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
@@ -617,10 +610,9 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
 
   if (!SSL_SESSION_parse_string(&session, &ret->psk_identity,
                                 kPSKIdentityTag) ||
-      !SSL_SESSION_parse_u32(&session, &ret->tlsext_tick_lifetime_hint,
+      !SSL_SESSION_parse_u32(&session, &ret->ticket_lifetime_hint,
                              kTicketLifetimeHintTag, 0) ||
-      !SSL_SESSION_parse_octet_string(&session, &ret->tlsext_tick,
-                                      &ret->tlsext_ticklen, kTicketTag)) {
+      !SSL_SESSION_parse_octet_string(&session, &ret->ticket, kTicketTag)) {
     return nullptr;
   }
 
@@ -680,8 +672,8 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
     return nullptr;
   }
   if (has_peer || has_cert_chain) {
-    ret->certs = sk_CRYPTO_BUFFER_new_null();
-    if (ret->certs == NULL) {
+    ret->certs.reset(sk_CRYPTO_BUFFER_new_null());
+    if (ret->certs == nullptr) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return nullptr;
     }
@@ -689,7 +681,7 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
     if (has_peer) {
       UniquePtr<CRYPTO_BUFFER> buffer(CRYPTO_BUFFER_new_from_CBS(&peer, pool));
       if (!buffer ||
-          !PushToStack(ret->certs, std::move(buffer))) {
+          !PushToStack(ret->certs.get(), std::move(buffer))) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         return nullptr;
       }
@@ -705,7 +697,7 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
 
       UniquePtr<CRYPTO_BUFFER> buffer(CRYPTO_BUFFER_new_from_CBS(&cert, pool));
       if (buffer == nullptr ||
-          !PushToStack(ret->certs, std::move(buffer))) {
+          !PushToStack(ret->certs.get(), std::move(buffer))) {
         OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
         return nullptr;
       }
@@ -746,7 +738,7 @@ UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
       !SSL_SESSION_parse_u32(&session, &ret->auth_timeout, kAuthTimeoutTag,
                              ret->timeout) ||
       !SSL_SESSION_parse_octet_string(&session, &ret->early_alpn,
-                                      &ret->early_alpn_len, kEarlyALPNTag) ||
+                                      kEarlyALPNTag) ||
       CBS_len(&session) != 0) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_SSL_SESSION);
     return nullptr;

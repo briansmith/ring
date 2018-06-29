@@ -943,8 +943,7 @@ static bool ext_ticket_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return true;
   }
 
-  const uint8_t *ticket_data = NULL;
-  int ticket_len = 0;
+  Span<const uint8_t> ticket;
 
   // Renegotiation does not participate in session resumption. However, still
   // advertise the extension to avoid potentially breaking servers which carry
@@ -952,17 +951,16 @@ static bool ext_ticket_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   // without upstream's 3c3f0259238594d77264a78944d409f2127642c4.
   if (!ssl->s3->initial_handshake_complete &&
       ssl->session != NULL &&
-      ssl->session->tlsext_tick != NULL &&
+      !ssl->session->ticket.empty() &&
       // Don't send TLS 1.3 session tickets in the ticket extension.
       ssl_session_protocol_version(ssl->session) < TLS1_3_VERSION) {
-    ticket_data = ssl->session->tlsext_tick;
-    ticket_len = ssl->session->tlsext_ticklen;
+    ticket = ssl->session->ticket;
   }
 
-  CBB ticket;
+  CBB ticket_cbb;
   if (!CBB_add_u16(out, TLSEXT_TYPE_session_ticket) ||
-      !CBB_add_u16_length_prefixed(out, &ticket) ||
-      !CBB_add_bytes(&ticket, ticket_data, ticket_len) ||
+      !CBB_add_u16_length_prefixed(out, &ticket_cbb) ||
+      !CBB_add_bytes(&ticket_cbb, ticket.data(), ticket.size()) ||
       !CBB_flush(out)) {
     return false;
   }
@@ -1343,9 +1341,8 @@ static bool ext_sct_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   //
   // TODO(davidben): Enforce this anyway.
   if (!ssl->s3->session_reused) {
-    CRYPTO_BUFFER_free(hs->new_session->signed_cert_timestamp_list);
-    hs->new_session->signed_cert_timestamp_list =
-        CRYPTO_BUFFER_new_from_CBS(contents, ssl->ctx->pool);
+    hs->new_session->signed_cert_timestamp_list.reset(
+        CRYPTO_BUFFER_new_from_CBS(contents, ssl->ctx->pool));
     if (hs->new_session->signed_cert_timestamp_list == nullptr) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
       return false;
@@ -1875,7 +1872,7 @@ static size_t ext_pre_shared_key_clienthello_length(SSL_HANDSHAKE *hs) {
   }
 
   size_t binder_len = EVP_MD_size(ssl_session_get_digest(ssl->session));
-  return 15 + ssl->session->tlsext_ticklen + binder_len;
+  return 15 + ssl->session->ticket.size() + binder_len;
 }
 
 static bool ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
@@ -1909,8 +1906,8 @@ static bool ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_u16_length_prefixed(&contents, &identity) ||
       !CBB_add_u16_length_prefixed(&identity, &ticket) ||
-      !CBB_add_bytes(&ticket, ssl->session->tlsext_tick,
-                     ssl->session->tlsext_ticklen) ||
+      !CBB_add_bytes(&ticket, ssl->session->ticket.data(),
+                     ssl->session->ticket.size()) ||
       !CBB_add_u32(&identity, obfuscated_ticket_age) ||
       !CBB_add_u16_length_prefixed(&contents, &binders) ||
       !CBB_add_u8_length_prefixed(&binders, &binder) ||
@@ -2076,10 +2073,8 @@ static bool ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
       hs->received_hello_retry_request ||
       // In case ALPN preferences changed since this session was established,
       // avoid reporting a confusing value in |SSL_get0_alpn_selected|.
-      (ssl->session->early_alpn_len != 0 &&
-       !ssl_is_alpn_protocol_allowed(
-           hs, MakeConstSpan(ssl->session->early_alpn,
-                             ssl->session->early_alpn_len)))) {
+      (!ssl->session->early_alpn.empty() &&
+       !ssl_is_alpn_protocol_allowed(hs, ssl->session->early_alpn))) {
     return true;
   }
 

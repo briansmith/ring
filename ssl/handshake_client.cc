@@ -402,7 +402,7 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
     if (ssl->session->is_server ||
         !ssl_supports_version(hs, ssl->session->ssl_version) ||
         (ssl->session->session_id_length == 0 &&
-         ssl->session->tlsext_ticklen == 0) ||
+         ssl->session->ticket.empty()) ||
         ssl->session->not_resumable ||
         !ssl_session_is_time_valid(ssl, ssl->session)) {
       ssl_set_session(ssl, NULL);
@@ -772,16 +772,13 @@ static enum ssl_hs_wait_t do_read_server_certificate(SSL_HANDSHAKE *hs) {
 
   CBS body = msg.body;
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  UniquePtr<STACK_OF(CRYPTO_BUFFER)> chain;
-  if (!ssl_parse_cert_chain(&alert, &chain, &hs->peer_pubkey, NULL, &body,
-                            ssl->ctx->pool)) {
+  if (!ssl_parse_cert_chain(&alert, &hs->new_session->certs, &hs->peer_pubkey,
+                            NULL, &body, ssl->ctx->pool)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
-  sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
-  hs->new_session->certs = chain.release();
 
-  if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) == 0 ||
+  if (sk_CRYPTO_BUFFER_num(hs->new_session->certs.get()) == 0 ||
       CBS_len(&body) != 0 ||
       !ssl->ctx->x509_method->session_cache_objects(hs->new_session.get())) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
@@ -791,7 +788,7 @@ static enum ssl_hs_wait_t do_read_server_certificate(SSL_HANDSHAKE *hs) {
 
   if (!ssl_check_leaf_certificate(
           hs, hs->peer_pubkey.get(),
-          sk_CRYPTO_BUFFER_value(hs->new_session->certs, 0))) {
+          sk_CRYPTO_BUFFER_value(hs->new_session->certs.get(), 0))) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
     return ssl_hs_error;
   }
@@ -838,9 +835,8 @@ static enum ssl_hs_wait_t do_read_certificate_status(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  CRYPTO_BUFFER_free(hs->new_session->ocsp_response);
-  hs->new_session->ocsp_response =
-      CRYPTO_BUFFER_new_from_CBS(&ocsp_response, ssl->ctx->pool);
+  hs->new_session->ocsp_response.reset(
+      CRYPTO_BUFFER_new_from_CBS(&ocsp_response, ssl->ctx->pool));
   if (hs->new_session->ocsp_response == nullptr) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
     return ssl_hs_error;
@@ -1225,9 +1221,8 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
     }
     assert(psk_len <= PSK_MAX_PSK_LEN);
 
-    OPENSSL_free(hs->new_session->psk_identity);
-    hs->new_session->psk_identity = BUF_strdup(identity);
-    if (hs->new_session->psk_identity == NULL) {
+    hs->new_session->psk_identity.reset(BUF_strdup(identity));
+    if (hs->new_session->psk_identity == nullptr) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return ssl_hs_error;
     }
@@ -1526,8 +1521,8 @@ static enum ssl_hs_wait_t do_read_session_ticket(SSL_HANDSHAKE *hs) {
   }
 
   CBS new_session_ticket = msg.body, ticket;
-  uint32_t tlsext_tick_lifetime_hint;
-  if (!CBS_get_u32(&new_session_ticket, &tlsext_tick_lifetime_hint) ||
+  uint32_t ticket_lifetime_hint;
+  if (!CBS_get_u32(&new_session_ticket, &ticket_lifetime_hint) ||
       !CBS_get_u16_length_prefixed(&new_session_ticket, &ticket) ||
       CBS_len(&new_session_ticket) != 0) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
@@ -1561,14 +1556,13 @@ static enum ssl_hs_wait_t do_read_session_ticket(SSL_HANDSHAKE *hs) {
     session = renewed_session.get();
   }
 
-  // |tlsext_tick_lifetime_hint| is measured from when the ticket was issued.
+  // |ticket_lifetime_hint| is measured from when the ticket was issued.
   ssl_session_rebase_time(ssl, session);
 
-  if (!CBS_stow(&ticket, &session->tlsext_tick, &session->tlsext_ticklen)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+  if (!session->ticket.CopyFrom(ticket)) {
     return ssl_hs_error;
   }
-  session->tlsext_tick_lifetime_hint = tlsext_tick_lifetime_hint;
+  session->ticket_lifetime_hint = ticket_lifetime_hint;
 
   // Generate a session ID for this session based on the session ticket. We use
   // the session ID mechanism for detecting ticket resumption. This also fits in

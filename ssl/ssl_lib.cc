@@ -2048,8 +2048,8 @@ void SSL_get0_signed_cert_timestamp_list(const SSL *ssl, const uint8_t **out,
     return;
   }
 
-  *out = CRYPTO_BUFFER_data(session->signed_cert_timestamp_list);
-  *out_len = CRYPTO_BUFFER_len(session->signed_cert_timestamp_list);
+  *out = CRYPTO_BUFFER_data(session->signed_cert_timestamp_list.get());
+  *out_len = CRYPTO_BUFFER_len(session->signed_cert_timestamp_list.get());
 }
 
 void SSL_get0_ocsp_response(const SSL *ssl, const uint8_t **out,
@@ -2061,8 +2061,8 @@ void SSL_get0_ocsp_response(const SSL *ssl, const uint8_t **out,
     return;
   }
 
-  *out = CRYPTO_BUFFER_data(session->ocsp_response);
-  *out_len = CRYPTO_BUFFER_len(session->ocsp_response);
+  *out = CRYPTO_BUFFER_data(session->ocsp_response.get());
+  *out_len = CRYPTO_BUFFER_len(session->ocsp_response.get());
 }
 
 int SSL_set_tlsext_host_name(SSL *ssl, const char *name) {
@@ -2191,8 +2191,8 @@ void SSL_CTX_set_alpn_select_cb(SSL_CTX *ctx,
 void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **out_data,
                             unsigned *out_len) {
   if (SSL_in_early_data(ssl) && !ssl->server) {
-    *out_data = ssl->s3->hs->early_session->early_alpn;
-    *out_len = ssl->s3->hs->early_session->early_alpn_len;
+    *out_data = ssl->s3->hs->early_session->early_alpn.data();
+    *out_len = ssl->s3->hs->early_session->early_alpn.size();
   } else {
     *out_data = ssl->s3->alpn_selected.data();
     *out_len = ssl->s3->alpn_selected.size();
@@ -2545,7 +2545,7 @@ const char *SSL_get_psk_identity(const SSL *ssl) {
   if (session == NULL) {
     return NULL;
   }
-  return session->psk_identity;
+  return session->psk_identity.get();
 }
 
 void SSL_set_psk_client_callback(

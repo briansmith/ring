@@ -395,8 +395,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
           // Custom extensions is incompatible with 0-RTT.
           hs->custom_extensions.received == 0 &&
           // The negotiated ALPN must match the one in the ticket.
-          ssl->s3->alpn_selected ==
-              MakeConstSpan(session->early_alpn, session->early_alpn_len)) {
+          MakeConstSpan(ssl->s3->alpn_selected) == session->early_alpn) {
         ssl->s3->early_data_accepted = true;
       }
 
@@ -425,14 +424,9 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
   hs->new_session->cipher = hs->new_cipher;
 
   // Store the initial negotiated ALPN in the session.
-  if (!ssl->s3->alpn_selected.empty()) {
-    hs->new_session->early_alpn = (uint8_t *)BUF_memdup(
-        ssl->s3->alpn_selected.data(), ssl->s3->alpn_selected.size());
-    if (hs->new_session->early_alpn == NULL) {
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      return ssl_hs_error;
-    }
-    hs->new_session->early_alpn_len = ssl->s3->alpn_selected.size();
+  if (!hs->new_session->early_alpn.CopyFrom(ssl->s3->alpn_selected)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    return ssl_hs_error;
   }
 
   if (ssl->ctx->dos_protection_cb != NULL &&
@@ -824,7 +818,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_read_client_certificate_verify(
     SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) == 0) {
+  if (sk_CRYPTO_BUFFER_num(hs->new_session->certs.get()) == 0) {
     // Skip this state.
     hs->tls13_state = state_read_channel_id;
     return ssl_hs_ok;

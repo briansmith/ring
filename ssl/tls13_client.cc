@@ -429,20 +429,14 @@ static enum ssl_hs_wait_t do_read_encrypted_extensions(SSL_HANDSHAKE *hs) {
   }
 
   // Store the negotiated ALPN in the session.
-  if (!ssl->s3->alpn_selected.empty()) {
-    hs->new_session->early_alpn = (uint8_t *)BUF_memdup(
-        ssl->s3->alpn_selected.data(), ssl->s3->alpn_selected.size());
-    if (hs->new_session->early_alpn == NULL) {
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
-      return ssl_hs_error;
-    }
-    hs->new_session->early_alpn_len = ssl->s3->alpn_selected.size();
+  if (!hs->new_session->early_alpn.CopyFrom(ssl->s3->alpn_selected)) {
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
+    return ssl_hs_error;
   }
 
   if (ssl->s3->early_data_accepted) {
     if (hs->early_session->cipher != hs->new_session->cipher ||
-        MakeConstSpan(hs->early_session->early_alpn,
-                      hs->early_session->early_alpn_len) !=
+        MakeConstSpan(hs->early_session->early_alpn) !=
             ssl->s3->alpn_selected) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_ALPN_MISMATCH_ON_EARLY_DATA);
       return ssl_hs_error;
@@ -849,7 +843,7 @@ int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
       !CBS_get_u32(&body, &session->ticket_age_add) ||
       !CBS_get_u8_length_prefixed(&body, &ticket_nonce) ||
       !CBS_get_u16_length_prefixed(&body, &ticket) ||
-      !CBS_stow(&ticket, &session->tlsext_tick, &session->tlsext_ticklen) ||
+      !session->ticket.CopyFrom(ticket) ||
       !CBS_get_u16_length_prefixed(&body, &extensions) ||
       CBS_len(&body) != 0) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);

@@ -808,7 +808,7 @@ const STACK_OF(CRYPTO_BUFFER) *SSL_get0_peer_certificates(const SSL *ssl) {
     return NULL;
   }
 
-  return session->certs;
+  return session->certs.get();
 }
 
 const STACK_OF(CRYPTO_BUFFER) *SSL_get0_server_requested_CAs(const SSL *ssl) {

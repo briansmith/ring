@@ -3195,113 +3195,112 @@ struct ssl_method_st {
 struct ssl_ctx_st : public bssl::SSLContext {};
 struct ssl_st : public bssl::SSLConnection {};
 
-// TODO(davidben): This type was recently made opaque. After 2018-06-13, move it
-// into a namespace and make it C++.
 struct ssl_session_st {
-  CRYPTO_refcount_t references;
-  uint16_t ssl_version;  // what ssl version session info is being kept in here?
+  explicit ssl_session_st(const bssl::SSL_X509_METHOD *method);
+  ssl_session_st(const ssl_session_st &) = delete;
+  ssl_session_st &operator=(const ssl_session_st &) = delete;
+
+  CRYPTO_refcount_t references = 1;
+  uint16_t ssl_version = 0;  // what ssl version session info is being kept in here?
 
   // group_id is the ID of the ECDH group used to establish this session or zero
   // if not applicable or unknown.
-  uint16_t group_id;
+  uint16_t group_id = 0;
 
   // peer_signature_algorithm is the signature algorithm used to authenticate
   // the peer, or zero if not applicable or unknown.
-  uint16_t peer_signature_algorithm;
+  uint16_t peer_signature_algorithm = 0;
 
   // master_key, in TLS 1.2 and below, is the master secret associated with the
   // session. In TLS 1.3 and up, it is the resumption secret.
-  int master_key_length;
-  uint8_t master_key[SSL_MAX_MASTER_KEY_LENGTH];
+  int master_key_length = 0;
+  uint8_t master_key[SSL_MAX_MASTER_KEY_LENGTH] = {0};
 
   // session_id - valid?
-  unsigned int session_id_length;
-  uint8_t session_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
+  unsigned session_id_length = 0;
+  uint8_t session_id[SSL_MAX_SSL_SESSION_ID_LENGTH] = {0};
   // this is used to determine whether the session is being reused in
   // the appropriate context. It is up to the application to set this,
   // via SSL_new
-  uint8_t sid_ctx_length;
-  uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH];
+  uint8_t sid_ctx_length = 0;
+  uint8_t sid_ctx[SSL_MAX_SID_CTX_LENGTH] = {0};
 
-  char *psk_identity;
+  bssl::UniquePtr<char> psk_identity;
 
   // certs contains the certificate chain from the peer, starting with the leaf
   // certificate.
-  STACK_OF(CRYPTO_BUFFER) *certs;
+  bssl::UniquePtr<STACK_OF(CRYPTO_BUFFER)> certs;
 
-  const bssl::SSL_X509_METHOD *x509_method;
+  const bssl::SSL_X509_METHOD *x509_method = nullptr;
 
   // x509_peer is the peer's certificate.
-  X509 *x509_peer;
+  X509 *x509_peer = nullptr;
 
   // x509_chain is the certificate chain sent by the peer. NOTE: for historical
   // reasons, when a client (so the peer is a server), the chain includes
   // |peer|, but when a server it does not.
-  STACK_OF(X509) *x509_chain;
+  STACK_OF(X509) *x509_chain = nullptr;
 
   // x509_chain_without_leaf is a lazily constructed copy of |x509_chain| that
   // omits the leaf certificate. This exists because OpenSSL, historically,
   // didn't include the leaf certificate in the chain for a server, but did for
   // a client. The |x509_chain| always includes it and, if an API call requires
   // a chain without, it is stored here.
-  STACK_OF(X509) *x509_chain_without_leaf;
+  STACK_OF(X509) *x509_chain_without_leaf = nullptr;
 
   // verify_result is the result of certificate verification in the case of
   // non-fatal certificate errors.
-  long verify_result;
+  long verify_result = X509_V_ERR_INVALID_CALL;
 
   // timeout is the lifetime of the session in seconds, measured from |time|.
   // This is renewable up to |auth_timeout|.
-  uint32_t timeout;
+  uint32_t timeout = SSL_DEFAULT_SESSION_TIMEOUT;
 
   // auth_timeout is the non-renewable lifetime of the session in seconds,
   // measured from |time|.
-  uint32_t auth_timeout;
+  uint32_t auth_timeout = SSL_DEFAULT_SESSION_TIMEOUT;
 
   // time is the time the session was issued, measured in seconds from the UNIX
   // epoch.
-  uint64_t time;
+  uint64_t time = 0;
 
-  const SSL_CIPHER *cipher;
+  const SSL_CIPHER *cipher = nullptr;
 
   CRYPTO_EX_DATA ex_data;  // application specific data
 
   // These are used to make removal of session-ids more efficient and to
   // implement a maximum cache size.
-  SSL_SESSION *prev, *next;
+  SSL_SESSION *prev = nullptr, *next = nullptr;
 
-  // RFC4507 info
-  uint8_t *tlsext_tick;               // Session ticket
-  size_t tlsext_ticklen;              // Session ticket length
+  bssl::Array<uint8_t> ticket;
 
-  CRYPTO_BUFFER *signed_cert_timestamp_list;
+  bssl::UniquePtr<CRYPTO_BUFFER> signed_cert_timestamp_list;
 
   // The OCSP response that came with the session.
-  CRYPTO_BUFFER *ocsp_response;
+  bssl::UniquePtr<CRYPTO_BUFFER> ocsp_response;
 
   // peer_sha256 contains the SHA-256 hash of the peer's certificate if
   // |peer_sha256_valid| is true.
-  uint8_t peer_sha256[SHA256_DIGEST_LENGTH];
+  uint8_t peer_sha256[SHA256_DIGEST_LENGTH] = {0};
 
   // original_handshake_hash contains the handshake hash (either SHA-1+MD5 or
   // SHA-2, depending on TLS version) for the original, full handshake that
   // created a session. This is used by Channel IDs during resumption.
-  uint8_t original_handshake_hash[EVP_MAX_MD_SIZE];
-  uint8_t original_handshake_hash_len;
+  uint8_t original_handshake_hash[EVP_MAX_MD_SIZE] = {0};
+  uint8_t original_handshake_hash_len = 0;
 
-  uint32_t tlsext_tick_lifetime_hint;  // Session lifetime hint in seconds
+  uint32_t ticket_lifetime_hint = 0;  // Session lifetime hint in seconds
 
-  uint32_t ticket_age_add;
+  uint32_t ticket_age_add = 0;
 
   // ticket_max_early_data is the maximum amount of data allowed to be sent as
   // early data. If zero, 0-RTT is disallowed.
-  uint32_t ticket_max_early_data;
+  uint32_t ticket_max_early_data = 0;
 
   // early_alpn is the ALPN protocol from the initial handshake. This is only
   // stored for TLS 1.3 and above in order to enforce ALPN matching for 0-RTT
   // resumptions.
-  uint8_t *early_alpn;
-  size_t early_alpn_len;
+  bssl::Array<uint8_t> early_alpn;
 
   // extended_master_secret is whether the master secret in this session was
   // generated using EMS and thus isn't vulnerable to the Triple Handshake
@@ -3319,6 +3318,10 @@ struct ssl_session_st {
 
   // is_server is whether this session was created by a server.
   bool is_server:1;
+
+ private:
+  ~ssl_session_st();
+  friend void SSL_SESSION_free(SSL_SESSION *);
 };
 
 

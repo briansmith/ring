@@ -965,17 +965,14 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
 
   CBS certificate_msg = msg.body;
   uint8_t alert = SSL_AD_DECODE_ERROR;
-  UniquePtr<STACK_OF(CRYPTO_BUFFER)> chain;
-  if (!ssl_parse_cert_chain(&alert, &chain, &hs->peer_pubkey,
+  if (!ssl_parse_cert_chain(&alert, &hs->new_session->certs, &hs->peer_pubkey,
                             hs->config->retain_only_sha256_of_client_certs
                                 ? hs->new_session->peer_sha256
-                                : NULL,
+                                : nullptr,
                             &certificate_msg, ssl->ctx->pool)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     return ssl_hs_error;
   }
-  sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
-  hs->new_session->certs = chain.release();
 
   if (CBS_len(&certificate_msg) != 0 ||
       !ssl->ctx->x509_method->session_cache_objects(hs->new_session.get())) {
@@ -984,7 +981,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) == 0) {
+  if (sk_CRYPTO_BUFFER_num(hs->new_session->certs.get()) == 0) {
     // No client certificate so the handshake buffer may be discarded.
     hs->transcript.FreeBuffer();
 
@@ -1009,7 +1006,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
 }
 
 static enum ssl_hs_wait_t do_verify_client_certificate(SSL_HANDSHAKE *hs) {
-  if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) > 0) {
+  if (sk_CRYPTO_BUFFER_num(hs->new_session->certs.get()) > 0) {
     switch (ssl_verify_peer_cert(hs)) {
       case ssl_verify_ok:
         break;
@@ -1058,12 +1055,13 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
-
-    if (!CBS_strdup(&psk_identity, &hs->new_session->psk_identity)) {
+    char *raw = nullptr;
+    if (!CBS_strdup(&psk_identity, &raw)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
       return ssl_hs_error;
     }
+    hs->new_session->psk_identity.reset(raw);
   }
 
   // Depending on the key exchange method, compute |premaster_secret|.
@@ -1178,7 +1176,7 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     // Look up the key for the identity.
     uint8_t psk[PSK_MAX_PSK_LEN];
     unsigned psk_len = hs->config->psk_server_callback(
-        ssl, hs->new_session->psk_identity, psk, sizeof(psk));
+        ssl, hs->new_session->psk_identity.get(), psk, sizeof(psk));
     if (psk_len > PSK_MAX_PSK_LEN) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
@@ -1468,8 +1466,7 @@ static enum ssl_hs_wait_t do_finish_server_handshake(SSL_HANDSHAKE *hs) {
   // If we aren't retaining peer certificates then we can discard it now.
   if (hs->new_session != NULL &&
       hs->config->retain_only_sha256_of_client_certs) {
-    sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
-    hs->new_session->certs = NULL;
+    hs->new_session->certs.reset();
     ssl->ctx->x509_method->session_clear(hs->new_session.get());
   }
 

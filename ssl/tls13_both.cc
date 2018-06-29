@@ -256,9 +256,8 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
       }
 
       if (sk_CRYPTO_BUFFER_num(certs.get()) == 1) {
-        CRYPTO_BUFFER_free(hs->new_session->ocsp_response);
-        hs->new_session->ocsp_response =
-            CRYPTO_BUFFER_new_from_CBS(&ocsp_response, ssl->ctx->pool);
+        hs->new_session->ocsp_response.reset(
+            CRYPTO_BUFFER_new_from_CBS(&ocsp_response, ssl->ctx->pool));
         if (hs->new_session->ocsp_response == nullptr) {
           ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
           return 0;
@@ -280,9 +279,8 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
       }
 
       if (sk_CRYPTO_BUFFER_num(certs.get()) == 1) {
-        CRYPTO_BUFFER_free(hs->new_session->signed_cert_timestamp_list);
-        hs->new_session->signed_cert_timestamp_list =
-            CRYPTO_BUFFER_new_from_CBS(&sct, ssl->ctx->pool);
+        hs->new_session->signed_cert_timestamp_list.reset(
+            CRYPTO_BUFFER_new_from_CBS(&sct, ssl->ctx->pool));
         if (hs->new_session->signed_cert_timestamp_list == nullptr) {
           ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
           return 0;
@@ -298,9 +296,7 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
   }
 
   hs->peer_pubkey = std::move(pkey);
-
-  sk_CRYPTO_BUFFER_pop_free(hs->new_session->certs, CRYPTO_BUFFER_free);
-  hs->new_session->certs = certs.release();
+  hs->new_session->certs = std::move(certs);
 
   if (!ssl->ctx->x509_method->session_cache_objects(hs->new_session.get())) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
@@ -308,7 +304,7 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
     return 0;
   }
 
-  if (sk_CRYPTO_BUFFER_num(hs->new_session->certs) == 0) {
+  if (sk_CRYPTO_BUFFER_num(hs->new_session->certs.get()) == 0) {
     if (!allow_anonymous) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PEER_DID_NOT_RETURN_A_CERTIFICATE);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_CERTIFICATE_REQUIRED);

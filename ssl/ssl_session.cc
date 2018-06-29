@@ -166,22 +166,7 @@ static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *session);
 static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *session, int lock);
 
 UniquePtr<SSL_SESSION> ssl_session_new(const SSL_X509_METHOD *x509_method) {
-  UniquePtr<SSL_SESSION> session(
-      (SSL_SESSION *)OPENSSL_malloc(sizeof(SSL_SESSION)));
-  if (!session) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-  OPENSSL_memset(session.get(), 0, sizeof(SSL_SESSION));
-
-  session->x509_method = x509_method;
-  session->verify_result = X509_V_ERR_INVALID_CALL;
-  session->references = 1;
-  session->timeout = SSL_DEFAULT_SESSION_TIMEOUT;
-  session->auth_timeout = SSL_DEFAULT_SESSION_TIMEOUT;
-  session->time = time(NULL);
-  CRYPTO_new_ex_data(&session->ex_data);
-  return session;
+  return MakeUnique<SSL_SESSION>(x509_method);
 }
 
 uint32_t ssl_hash_session_id(Span<const uint8_t> session_id) {
@@ -222,20 +207,20 @@ UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
   new_session->cipher = session->cipher;
 
   // Copy authentication state.
-  if (session->psk_identity != NULL) {
-    new_session->psk_identity = BUF_strdup(session->psk_identity);
-    if (new_session->psk_identity == NULL) {
+  if (session->psk_identity != nullptr) {
+    new_session->psk_identity.reset(BUF_strdup(session->psk_identity.get()));
+    if (new_session->psk_identity == nullptr) {
       return nullptr;
     }
   }
-  if (session->certs != NULL) {
+  if (session->certs != nullptr) {
     auto buf_up_ref = [](CRYPTO_BUFFER *buf) {
       CRYPTO_BUFFER_up_ref(buf);
       return buf;
     };
-    new_session->certs = sk_CRYPTO_BUFFER_deep_copy(session->certs, buf_up_ref,
-                                                    CRYPTO_BUFFER_free);
-    if (new_session->certs == NULL) {
+    new_session->certs.reset(sk_CRYPTO_BUFFER_deep_copy(
+        session->certs.get(), buf_up_ref, CRYPTO_BUFFER_free));
+    if (new_session->certs == nullptr) {
       return nullptr;
     }
   }
@@ -246,16 +231,9 @@ UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
 
   new_session->verify_result = session->verify_result;
 
-  if (session->ocsp_response != NULL) {
-    new_session->ocsp_response = session->ocsp_response;
-    CRYPTO_BUFFER_up_ref(new_session->ocsp_response);
-  }
-
-  if (session->signed_cert_timestamp_list != NULL) {
-    new_session->signed_cert_timestamp_list =
-        session->signed_cert_timestamp_list;
-    CRYPTO_BUFFER_up_ref(new_session->signed_cert_timestamp_list);
-  }
+  new_session->ocsp_response = UpRef(session->ocsp_response);
+  new_session->signed_cert_timestamp_list =
+      UpRef(session->signed_cert_timestamp_list);
 
   OPENSSL_memcpy(new_session->peer_sha256, session->peer_sha256,
                  SHA256_DIGEST_LENGTH);
@@ -280,31 +258,20 @@ UniquePtr<SSL_SESSION> SSL_SESSION_dup(SSL_SESSION *session, int dup_flags) {
                    session->original_handshake_hash_len);
     new_session->original_handshake_hash_len =
         session->original_handshake_hash_len;
-    new_session->tlsext_tick_lifetime_hint = session->tlsext_tick_lifetime_hint;
+    new_session->ticket_lifetime_hint = session->ticket_lifetime_hint;
     new_session->ticket_age_add = session->ticket_age_add;
     new_session->ticket_max_early_data = session->ticket_max_early_data;
     new_session->extended_master_secret = session->extended_master_secret;
 
-    if (session->early_alpn != NULL) {
-      new_session->early_alpn =
-          (uint8_t *)BUF_memdup(session->early_alpn, session->early_alpn_len);
-      if (new_session->early_alpn == NULL) {
-        return nullptr;
-      }
+    if (!new_session->early_alpn.CopyFrom(session->early_alpn)) {
+      return nullptr;
     }
-    new_session->early_alpn_len = session->early_alpn_len;
   }
 
   // Copy the ticket.
-  if (dup_flags & SSL_SESSION_INCLUDE_TICKET) {
-    if (session->tlsext_tick != NULL) {
-      new_session->tlsext_tick =
-          (uint8_t *)BUF_memdup(session->tlsext_tick, session->tlsext_ticklen);
-      if (new_session->tlsext_tick == NULL) {
-        return nullptr;
-      }
-    }
-    new_session->tlsext_ticklen = session->tlsext_ticklen;
+  if (dup_flags & SSL_SESSION_INCLUDE_TICKET &&
+      !new_session->ticket.CopyFrom(session->ticket)) {
+    return nullptr;
   }
 
   // The new_session does not get a copy of the ex_data.
@@ -667,7 +634,7 @@ int ssl_session_is_resumable(const SSL_HANDSHAKE *hs,
          // If the session contains a client certificate (either the full
          // certificate or just the hash) then require that the form of the
          // certificate matches the current configuration.
-         ((sk_CRYPTO_BUFFER_num(session->certs) == 0 &&
+         ((sk_CRYPTO_BUFFER_num(session->certs.get()) == 0 &&
            !session->peer_sha256_valid) ||
           session->peer_sha256_valid ==
               hs->config->retain_only_sha256_of_client_certs);
@@ -883,6 +850,22 @@ static void SSL_SESSION_list_add(SSL_CTX *ctx, SSL_SESSION *session) {
 
 using namespace bssl;
 
+ssl_session_st::ssl_session_st(const SSL_X509_METHOD *method)
+    : x509_method(method),
+      extended_master_secret(false),
+      peer_sha256_valid(false),
+      not_resumable(false),
+      ticket_age_add_valid(false),
+      is_server(false) {
+  CRYPTO_new_ex_data(&ex_data);
+  time = ::time(nullptr);
+}
+
+ssl_session_st::~ssl_session_st() {
+  CRYPTO_free_ex_data(&g_ex_data_class, this, &ex_data);
+  x509_method->session_clear(this);
+}
+
 SSL_SESSION *SSL_SESSION_new(const SSL_CTX *ctx) {
   return ssl_session_new(ctx->x509_method).release();
 }
@@ -898,17 +881,7 @@ void SSL_SESSION_free(SSL_SESSION *session) {
     return;
   }
 
-  CRYPTO_free_ex_data(&g_ex_data_class, session, &session->ex_data);
-
-  OPENSSL_cleanse(session->master_key, sizeof(session->master_key));
-  OPENSSL_cleanse(session->session_id, sizeof(session->session_id));
-  sk_CRYPTO_BUFFER_pop_free(session->certs, CRYPTO_BUFFER_free);
-  session->x509_method->session_clear(session);
-  OPENSSL_free(session->tlsext_tick);
-  CRYPTO_BUFFER_free(session->signed_cert_timestamp_list);
-  CRYPTO_BUFFER_free(session->ocsp_response);
-  OPENSSL_free(session->psk_identity);
-  OPENSSL_free(session->early_alpn);
+  session->~ssl_session_st();
   OPENSSL_free(session);
 }
 
@@ -951,15 +924,15 @@ X509 *SSL_SESSION_get0_peer(const SSL_SESSION *session) {
 
 const STACK_OF(CRYPTO_BUFFER) *
     SSL_SESSION_get0_peer_certificates(const SSL_SESSION *session) {
-  return session->certs;
+  return session->certs.get();
 }
 
 void SSL_SESSION_get0_signed_cert_timestamp_list(const SSL_SESSION *session,
                                                  const uint8_t **out,
                                                  size_t *out_len) {
   if (session->signed_cert_timestamp_list) {
-    *out = CRYPTO_BUFFER_data(session->signed_cert_timestamp_list);
-    *out_len = CRYPTO_BUFFER_len(session->signed_cert_timestamp_list);
+    *out = CRYPTO_BUFFER_data(session->signed_cert_timestamp_list.get());
+    *out_len = CRYPTO_BUFFER_len(session->signed_cert_timestamp_list.get());
   } else {
     *out = nullptr;
     *out_len = 0;
@@ -969,8 +942,8 @@ void SSL_SESSION_get0_signed_cert_timestamp_list(const SSL_SESSION *session,
 void SSL_SESSION_get0_ocsp_response(const SSL_SESSION *session,
                                     const uint8_t **out, size_t *out_len) {
   if (session->ocsp_response) {
-    *out = CRYPTO_BUFFER_data(session->ocsp_response);
-    *out_len = CRYPTO_BUFFER_len(session->ocsp_response);
+    *out = CRYPTO_BUFFER_data(session->ocsp_response.get());
+    *out_len = CRYPTO_BUFFER_len(session->ocsp_response.get());
   } else {
     *out = nullptr;
     *out_len = 0;
@@ -1040,31 +1013,24 @@ int SSL_SESSION_is_resumable(const SSL_SESSION *session) {
 }
 
 int SSL_SESSION_has_ticket(const SSL_SESSION *session) {
-  return session->tlsext_ticklen > 0;
+  return !session->ticket.empty();
 }
 
 void SSL_SESSION_get0_ticket(const SSL_SESSION *session,
                              const uint8_t **out_ticket, size_t *out_len) {
   if (out_ticket != nullptr) {
-    *out_ticket = session->tlsext_tick;
+    *out_ticket = session->ticket.data();
   }
-  *out_len = session->tlsext_ticklen;
+  *out_len = session->ticket.size();
 }
 
 int SSL_SESSION_set_ticket(SSL_SESSION *session, const uint8_t *ticket,
                            size_t ticket_len) {
-  uint8_t *copy = (uint8_t *)BUF_memdup(ticket, ticket_len);
-  if (copy == nullptr) {
-    return 0;
-  }
-  OPENSSL_free(session->tlsext_tick);
-  session->tlsext_tick = copy;
-  session->tlsext_ticklen = ticket_len;
-  return 1;
+  return session->ticket.CopyFrom(MakeConstSpan(ticket, ticket_len));
 }
 
 uint32_t SSL_SESSION_get_ticket_lifetime_hint(const SSL_SESSION *session) {
-  return session->tlsext_tick_lifetime_hint;
+  return session->ticket_lifetime_hint;
 }
 
 const SSL_CIPHER *SSL_SESSION_get0_cipher(const SSL_SESSION *session) {

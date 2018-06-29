@@ -283,7 +283,7 @@ static void ssl_crypto_x509_cert_dup(CERT *new_cert, const CERT *cert) {
 
 static int ssl_crypto_x509_session_cache_objects(SSL_SESSION *sess) {
   bssl::UniquePtr<STACK_OF(X509)> chain;
-  if (sk_CRYPTO_BUFFER_num(sess->certs) > 0) {
+  if (sk_CRYPTO_BUFFER_num(sess->certs.get()) > 0) {
     chain.reset(sk_X509_new_null());
     if (!chain) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -292,7 +292,7 @@ static int ssl_crypto_x509_session_cache_objects(SSL_SESSION *sess) {
   }
 
   X509 *leaf = nullptr;
-  for (CRYPTO_BUFFER *cert : sess->certs) {
+  for (CRYPTO_BUFFER *cert : sess->certs.get()) {
     UniquePtr<X509> x509(X509_parse_from_buffer(cert));
     if (!x509) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
