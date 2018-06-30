@@ -141,14 +141,12 @@ size_t lh_num_items(const _LHASH *lh) { return lh->num_items; }
 static LHASH_ITEM **get_next_ptr_and_hash(const _LHASH *lh, uint32_t *out_hash,
                                           const void *data) {
   const uint32_t hash = lh->hash(data);
-  LHASH_ITEM *cur, **ret;
-
   if (out_hash != NULL) {
     *out_hash = hash;
   }
 
-  ret = &lh->buckets[hash % lh->num_buckets];
-  for (cur = *ret; cur != NULL; cur = *ret) {
+  LHASH_ITEM **ret = &lh->buckets[hash % lh->num_buckets];
+  for (LHASH_ITEM *cur = *ret; cur != NULL; cur = *ret) {
     if (lh->comp(cur->data, data) == 0) {
       break;
     }
@@ -158,16 +156,32 @@ static LHASH_ITEM **get_next_ptr_and_hash(const _LHASH *lh, uint32_t *out_hash,
   return ret;
 }
 
-void *lh_retrieve(const _LHASH *lh, const void *data) {
-  LHASH_ITEM **next_ptr;
-
-  next_ptr = get_next_ptr_and_hash(lh, NULL, data);
-
-  if (*next_ptr == NULL) {
-    return NULL;
+// get_next_ptr_by_key behaves like |get_next_ptr_and_hash| but takes a key
+// which may be a different type from the values stored in |lh|.
+static LHASH_ITEM **get_next_ptr_by_key(const _LHASH *lh, const void *key,
+                                        uint32_t key_hash,
+                                        int (*cmp_key)(const void *key,
+                                                       const void *value)) {
+  LHASH_ITEM **ret = &lh->buckets[key_hash % lh->num_buckets];
+  for (LHASH_ITEM *cur = *ret; cur != NULL; cur = *ret) {
+    if (cmp_key(key, cur->data) == 0) {
+      break;
+    }
+    ret = &cur->next;
   }
 
-  return (*next_ptr)->data;
+  return ret;
+}
+
+void *lh_retrieve(const _LHASH *lh, const void *data) {
+  LHASH_ITEM **next_ptr = get_next_ptr_and_hash(lh, NULL, data);
+  return *next_ptr == NULL ? NULL : (*next_ptr)->data;
+}
+
+void *lh_retrieve_key(const _LHASH *lh, const void *key, uint32_t key_hash,
+                      int (*cmp_key)(const void *key, const void *value)) {
+  LHASH_ITEM **next_ptr = get_next_ptr_by_key(lh, key, key_hash, cmp_key);
+  return *next_ptr == NULL ? NULL : (*next_ptr)->data;
 }
 
 // lh_rebucket allocates a new array of |new_num_buckets| pointers and

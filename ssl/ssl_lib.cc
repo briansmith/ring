@@ -567,22 +567,8 @@ int OPENSSL_init_ssl(uint64_t opts, const OPENSSL_INIT_SETTINGS *settings) {
 }
 
 static uint32_t ssl_session_hash(const SSL_SESSION *sess) {
-  const uint8_t *session_id = sess->session_id;
-
-  uint8_t tmp_storage[sizeof(uint32_t)];
-  if (sess->session_id_length < sizeof(tmp_storage)) {
-    OPENSSL_memset(tmp_storage, 0, sizeof(tmp_storage));
-    OPENSSL_memcpy(tmp_storage, sess->session_id, sess->session_id_length);
-    session_id = tmp_storage;
-  }
-
-  uint32_t hash =
-      ((uint32_t)session_id[0]) |
-      ((uint32_t)session_id[1] << 8) |
-      ((uint32_t)session_id[2] << 16) |
-      ((uint32_t)session_id[3] << 24);
-
-  return hash;
+  return ssl_hash_session_id(
+      MakeConstSpan(sess->session_id, sess->session_id_length));
 }
 
 static int ssl_session_cmp(const SSL_SESSION *a, const SSL_SESSION *b) {

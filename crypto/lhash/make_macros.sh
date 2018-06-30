@@ -28,7 +28,7 @@ output_lhash () {
   type=$1
 
   cat >> $out << EOF
-/* ${type} */
+// ${type}
 #define lh_${type}_new(hash, comp)\\
 ((LHASH_OF(${type})*) lh_new(CHECKED_CAST(lhash_hash_func, uint32_t (*) (const ${type} *), hash), CHECKED_CAST(lhash_cmp_func, int (*) (const ${type} *a, const ${type} *b), comp)))
 
@@ -40,6 +40,9 @@ output_lhash () {
 
 #define lh_${type}_retrieve(lh, data)\\
   ((${type}*) lh_retrieve(CHECKED_CAST(_LHASH*, LHASH_OF(${type})*, lh), CHECKED_CAST(void*, ${type}*, data)))
+
+#define lh_${type}_retrieve_key(lh, key, key_hash, cmp_key)\\
+  ((${type}*) lh_retrieve_key(CHECKED_CAST(_LHASH*, LHASH_OF(${type})*, lh), key, key_hash, CHECKED_CAST(int (*)(const void *, const void *), int (*)(const void *, const ${type} *), cmp_key)))
 
 #define lh_${type}_insert(lh, old_data, data)\\
   lh_insert(CHECKED_CAST(_LHASH*, LHASH_OF(${type})*, lh), CHECKED_CAST(void**, ${type}**, old_data), CHECKED_CAST(void*, ${type}*, data))
@@ -57,7 +60,7 @@ output_lhash () {
 EOF
 }
 
-lhash_types=$(cat ${include_dir}/lhash.h | grep '^ \* LHASH_OF:' | sed -e 's/.*LHASH_OF://' -e 's/ .*//')
+lhash_types=$(cat ${include_dir}/lhash.h | grep '^// LHASH_OF:' | sed -e 's/.*LHASH_OF://' -e 's/ .*//')
 
 for type in $lhash_types; do
   echo Hash of ${type}

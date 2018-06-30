@@ -2909,6 +2909,10 @@ int ssl_ctx_rotate_ticket_encryption_key(SSL_CTX *ctx);
 // error.
 UniquePtr<SSL_SESSION> ssl_session_new(const SSL_X509_METHOD *x509_method);
 
+// ssl_hash_session_id returns a hash of |session_id|, suitable for a hash table
+// keyed on session IDs.
+uint32_t ssl_hash_session_id(Span<const uint8_t> session_id);
+
 // SSL_SESSION_parse parses an |SSL_SESSION| from |cbs| and advances |cbs| over
 // the parsed data.
 UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,

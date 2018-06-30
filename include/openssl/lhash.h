@@ -141,6 +141,15 @@ OPENSSL_EXPORT size_t lh_num_items(const _LHASH *lh);
 // it. If no such element exists, it returns NULL.
 OPENSSL_EXPORT void *lh_retrieve(const _LHASH *lh, const void *data);
 
+// lh_retrieve_key finds an element matching |key|, given the specified hash and
+// comparison function. This differs from |lh_retrieve| in that the key may be a
+// different type than the values stored in |lh|. |key_hash| and |cmp_key| must
+// be compatible with the functions passed into |lh_new|.
+OPENSSL_EXPORT void *lh_retrieve_key(const _LHASH *lh, const void *key,
+                                     uint32_t key_hash,
+                                     int (*cmp_key)(const void *key,
+                                                    const void *value));
+
 // lh_insert inserts |data| into the hash table. If an existing element is
 // equal to |data| (with respect to the comparison function) then |*old_data|
 // will be set to that value and it will be replaced. Otherwise, or in the
