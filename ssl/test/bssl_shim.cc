@@ -781,7 +781,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       if (!ctx_handoff) {
         return false;
       }
-      SSL_CTX_set_handoff_mode(ctx_handoff.get(), 1);
+      bssl::SSL_CTX_set_handoff_mode(ctx_handoff.get(), 1);
 
       bssl::UniquePtr<SSL> ssl_handoff =
           config->NewSSL(ctx_handoff.get(), nullptr, false, nullptr);
@@ -812,7 +812,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       bssl::ScopedCBB cbb;
       bssl::Array<uint8_t> handoff;
       if (!CBB_init(cbb.get(), 512) ||
-          !SSL_serialize_handoff(ssl_handoff.get(), cbb.get()) ||
+          !bssl::SSL_serialize_handoff(ssl_handoff.get(), cbb.get()) ||
           !CBBFinishArray(cbb.get(), &handoff) ||
           !writer->WriteHandoff(handoff)) {
         fprintf(stderr, "Handoff serialisation failed.\n");
@@ -846,7 +846,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       bssl::ScopedCBB cbb;
       bssl::Array<uint8_t> handback;
       if (!CBB_init(cbb.get(), 512) ||
-          !SSL_serialize_handback(ssl, cbb.get()) ||
+          !bssl::SSL_serialize_handback(ssl, cbb.get()) ||
           !CBBFinishArray(cbb.get(), &handback) ||
           !writer->WriteHandback(handback)) {
         fprintf(stderr, "Handback serialisation failed.\n");
