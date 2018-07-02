@@ -534,84 +534,86 @@ static int ssl_session_cmp(const SSL_SESSION *a, const SSL_SESSION *b) {
   return OPENSSL_memcmp(a->session_id, b->session_id, a->session_id_length);
 }
 
-SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
-  SSL_CTX *ret = NULL;
+ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
+    : method(ssl_method->method),
+      x509_method(ssl_method->x509_method),
+      retain_only_sha256_of_client_certs(false),
+      quiet_shutdown(false),
+      ocsp_stapling_enabled(false),
+      signed_cert_timestamps_enabled(false),
+      tlsext_channel_id_enabled(false),
+      grease_enabled(false),
+      allow_unknown_alpn_protos(false),
+      ed25519_enabled(false),
+      rsa_pss_rsae_certs_enabled(true),
+      false_start_allowed_without_alpn(false),
+      handoff(false),
+      enable_early_data(false) {
+  CRYPTO_MUTEX_init(&lock);
+  CRYPTO_new_ex_data(&ex_data);
+}
 
+ssl_ctx_st::~ssl_ctx_st() {
+  // Free the internal session cache. Note that this calls the caller-supplied
+  // remove callback, so we must do it before clearing ex_data. (See ticket
+  // [openssl.org #212].)
+  SSL_CTX_flush_sessions(this, 0);
+
+  CRYPTO_free_ex_data(&g_ex_data_class_ssl_ctx, this, &ex_data);
+
+  CRYPTO_MUTEX_cleanup(&lock);
+  lh_SSL_SESSION_free(sessions);
+  Delete(cipher_list);
+  Delete(cert);
+  sk_SSL_CUSTOM_EXTENSION_pop_free(client_custom_extensions,
+                                   SSL_CUSTOM_EXTENSION_free);
+  sk_SSL_CUSTOM_EXTENSION_pop_free(server_custom_extensions,
+                                   SSL_CUSTOM_EXTENSION_free);
+  sk_CRYPTO_BUFFER_pop_free(client_CA, CRYPTO_BUFFER_free);
+  x509_method->ssl_ctx_free(this);
+  sk_SRTP_PROTECTION_PROFILE_free(srtp_profiles);
+  sk_CertCompressionAlg_pop_free(cert_compression_algs,
+                                 Delete<CertCompressionAlg>);
+  OPENSSL_free(psk_identity_hint);
+  OPENSSL_free(supported_group_list);
+  OPENSSL_free(alpn_client_proto_list);
+  EVP_PKEY_free(tlsext_channel_id_private);
+  OPENSSL_free(verify_sigalgs);
+  OPENSSL_free(tlsext_ticket_key_current);
+  OPENSSL_free(tlsext_ticket_key_prev);
+}
+
+SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
   if (method == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NULL_SSL_METHOD_PASSED);
-    return NULL;
+    return nullptr;
   }
 
-  ret = (SSL_CTX *)OPENSSL_malloc(sizeof(SSL_CTX));
-  if (ret == NULL) {
-    goto err;
+  UniquePtr<SSL_CTX> ret = MakeUnique<SSL_CTX>(method);
+  if (!ret) {
+    return nullptr;
   }
 
-  OPENSSL_memset(ret, 0, sizeof(SSL_CTX));
-
-  ret->method = method->method;
-  ret->x509_method = method->x509_method;
-
-  CRYPTO_MUTEX_init(&ret->lock);
-
-  ret->session_cache_mode = SSL_SESS_CACHE_SERVER;
-  ret->session_cache_size = SSL_SESSION_CACHE_MAX_SIZE_DEFAULT;
-
-  ret->session_timeout = SSL_DEFAULT_SESSION_TIMEOUT;
-  ret->session_psk_dhe_timeout = SSL_DEFAULT_SESSION_PSK_DHE_TIMEOUT;
-
-  ret->references = 1;
-
-  ret->max_cert_list = SSL_MAX_CERT_LIST_DEFAULT;
-  ret->verify_mode = SSL_VERIFY_NONE;
   ret->cert = New<CERT>(method->x509_method);
-  if (ret->cert == NULL) {
-    goto err;
-  }
-
   ret->sessions = lh_SSL_SESSION_new(ssl_session_hash, ssl_session_cmp);
-  if (ret->sessions == NULL) {
-    goto err;
-  }
-
-  if (!ret->x509_method->ssl_ctx_new(ret)) {
-    goto err;
-  }
-
-  if (!SSL_CTX_set_strict_cipher_list(ret, SSL_DEFAULT_CIPHER_LIST)) {
-    goto err2;
-  }
-
   ret->client_CA = sk_CRYPTO_BUFFER_new_null();
-  if (ret->client_CA == NULL) {
-    goto err;
+  if (ret->cert == nullptr ||
+      ret->sessions == nullptr ||
+      ret->client_CA == nullptr ||
+      !ret->x509_method->ssl_ctx_new(ret.get())) {
+    return nullptr;
   }
 
-  CRYPTO_new_ex_data(&ret->ex_data);
-
-  ret->max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
-
-  // Disable the auto-chaining feature by default. Once this has stuck without
-  // problems, the feature will be removed entirely.
-  ret->mode = SSL_MODE_NO_AUTO_CHAIN;
-
-  ret->rsa_pss_rsae_certs_enabled = true;
-
-  // Lock the SSL_CTX to the specified version, for compatibility with legacy
-  // uses of SSL_METHOD.
-  if (!SSL_CTX_set_max_proto_version(ret, method->version) ||
-      !SSL_CTX_set_min_proto_version(ret, method->version)) {
+  if (!SSL_CTX_set_strict_cipher_list(ret.get(), SSL_DEFAULT_CIPHER_LIST) ||
+      // Lock the SSL_CTX to the specified version, for compatibility with
+      // legacy uses of SSL_METHOD.
+      !SSL_CTX_set_max_proto_version(ret.get(), method->version) ||
+      !SSL_CTX_set_min_proto_version(ret.get(), method->version)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    goto err2;
+    return nullptr;
   }
 
-  return ret;
-
-err:
-  OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-err2:
-  SSL_CTX_free(ret);
-  return NULL;
+  return ret.release();
 }
 
 int SSL_CTX_up_ref(SSL_CTX *ctx) {
@@ -625,99 +627,82 @@ void SSL_CTX_free(SSL_CTX *ctx) {
     return;
   }
 
-  // Free internal session cache. However: the remove_cb() may reference the
-  // ex_data of SSL_CTX, thus the ex_data store can only be removed after the
-  // sessions were flushed. As the ex_data handling routines might also touch
-  // the session cache, the most secure solution seems to be: empty (flush) the
-  // cache, then free ex_data, then finally free the cache. (See ticket
-  // [openssl.org #212].)
-  SSL_CTX_flush_sessions(ctx, 0);
-
-  CRYPTO_free_ex_data(&g_ex_data_class_ssl_ctx, ctx, &ctx->ex_data);
-
-  CRYPTO_MUTEX_cleanup(&ctx->lock);
-  lh_SSL_SESSION_free(ctx->sessions);
-  Delete(ctx->cipher_list);
-  Delete(ctx->cert);
-  sk_SSL_CUSTOM_EXTENSION_pop_free(ctx->client_custom_extensions,
-                                   SSL_CUSTOM_EXTENSION_free);
-  sk_SSL_CUSTOM_EXTENSION_pop_free(ctx->server_custom_extensions,
-                                   SSL_CUSTOM_EXTENSION_free);
-  sk_CRYPTO_BUFFER_pop_free(ctx->client_CA, CRYPTO_BUFFER_free);
-  ctx->x509_method->ssl_ctx_free(ctx);
-  sk_SRTP_PROTECTION_PROFILE_free(ctx->srtp_profiles);
-  sk_CertCompressionAlg_pop_free(ctx->cert_compression_algs,
-                                 Delete<CertCompressionAlg>);
-  OPENSSL_free(ctx->psk_identity_hint);
-  OPENSSL_free(ctx->supported_group_list);
-  OPENSSL_free(ctx->alpn_client_proto_list);
-  EVP_PKEY_free(ctx->tlsext_channel_id_private);
-  OPENSSL_free(ctx->verify_sigalgs);
-  OPENSSL_free(ctx->tlsext_ticket_key_current);
-  OPENSSL_free(ctx->tlsext_ticket_key_prev);
-
+  ctx->~ssl_ctx_st();
   OPENSSL_free(ctx);
 }
 
+ssl_st::ssl_st(SSL_CTX *ctx_arg)
+    : method(ctx_arg->method),
+      max_send_fragment(ctx_arg->max_send_fragment),
+      msg_callback(ctx_arg->msg_callback),
+      msg_callback_arg(ctx_arg->msg_callback_arg),
+      tls13_variant(ctx_arg->tls13_variant),
+      ctx(UpRef(ctx_arg).release()),
+      session_ctx(UpRef(ctx_arg).release()),
+      options(ctx->options),
+      mode(ctx->mode),
+      max_cert_list(ctx->max_cert_list),
+      server(false),
+      quiet_shutdown(ctx->quiet_shutdown),
+      did_dummy_pq_padding(false),
+      enable_early_data(ctx->enable_early_data) {
+  CRYPTO_new_ex_data(&ex_data);
+}
+
+ssl_st::~ssl_st() {
+  CRYPTO_free_ex_data(&g_ex_data_class_ssl, this, &ex_data);
+
+  BIO_free_all(rbio);
+  BIO_free_all(wbio);
+
+  Delete(config);
+  config = nullptr;
+
+  SSL_SESSION_free(session);
+
+  OPENSSL_free(tlsext_hostname);
+
+  if (method != NULL) {
+    method->ssl_free(this);
+  }
+  SSL_CTX_free(ctx);
+  SSL_CTX_free(session_ctx);
+}
+
 SSL *SSL_new(SSL_CTX *ctx) {
-  if (ctx == NULL) {
+  if (ctx == nullptr) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NULL_SSL_CTX);
-    return NULL;
-  }
-  if (ctx->method == NULL) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_SSL_CTX_HAS_NO_DEFAULT_SSL_VERSION);
-    return NULL;
+    return nullptr;
   }
 
-  SSL *ssl = (SSL *)OPENSSL_malloc(sizeof(SSL));
-  if (ssl == NULL) {
-    goto err;
+  UniquePtr<SSL> ssl = MakeUnique<SSL>(ctx);
+  if (ssl == nullptr) {
+    return nullptr;
   }
-  OPENSSL_memset(ssl, 0, sizeof(SSL));
 
-  ssl->config = New<SSL_CONFIG>(ssl);
+  ssl->config = New<SSL_CONFIG>(ssl.get());
   if (ssl->config == nullptr) {
-    goto err;
+    return nullptr;
   }
   ssl->config->conf_min_version = ctx->conf_min_version;
   ssl->config->conf_max_version = ctx->conf_max_version;
-  ssl->tls13_variant = ctx->tls13_variant;
-
-  // RFC 6347 states that implementations SHOULD use an initial timer value of
-  // 1 second.
-  ssl->initial_timeout_duration_ms = 1000;
-
-  ssl->options = ctx->options;
-  ssl->mode = ctx->mode;
-  ssl->max_cert_list = ctx->max_cert_list;
 
   ssl->config->cert = ssl_cert_dup(ctx->cert).release();
   if (ssl->config->cert == NULL) {
-    goto err;
+    return nullptr;
   }
 
-  ssl->msg_callback = ctx->msg_callback;
-  ssl->msg_callback_arg = ctx->msg_callback_arg;
   ssl->config->verify_mode = ctx->verify_mode;
   ssl->config->verify_callback = ctx->default_verify_callback;
   ssl->config->custom_verify_callback = ctx->custom_verify_callback;
   ssl->config->retain_only_sha256_of_client_certs =
       ctx->retain_only_sha256_of_client_certs;
 
-  ssl->quiet_shutdown = ctx->quiet_shutdown;
-  ssl->max_send_fragment = ctx->max_send_fragment;
-  ssl->enable_early_data = ctx->enable_early_data;
-
-  SSL_CTX_up_ref(ctx);
-  ssl->ctx = ctx;
-  SSL_CTX_up_ref(ctx);
-  ssl->session_ctx = ctx;
-
   if (ctx->supported_group_list) {
     ssl->config->supported_group_list = (uint16_t *)BUF_memdup(
         ctx->supported_group_list, ctx->supported_group_list_len * 2);
     if (!ssl->config->supported_group_list) {
-      goto err;
+      return nullptr;
     }
     ssl->config->supported_group_list_len = ctx->supported_group_list_len;
   }
@@ -726,27 +711,15 @@ SSL *SSL_new(SSL_CTX *ctx) {
     ssl->config->alpn_client_proto_list = (uint8_t *)BUF_memdup(
         ctx->alpn_client_proto_list, ctx->alpn_client_proto_list_len);
     if (ssl->config->alpn_client_proto_list == NULL) {
-      goto err;
+      return nullptr;
     }
     ssl->config->alpn_client_proto_list_len = ctx->alpn_client_proto_list_len;
   }
 
-  ssl->method = ctx->method;
-
-  if (!ssl->method->ssl_new(ssl)) {
-    goto err;
-  }
-
-  if (!ssl->ctx->x509_method->ssl_new(ssl->s3->hs.get())) {
-    goto err;
-  }
-
-  CRYPTO_new_ex_data(&ssl->ex_data);
-
   if (ctx->psk_identity_hint) {
     ssl->config->psk_identity_hint = BUF_strdup(ctx->psk_identity_hint);
     if (ssl->config->psk_identity_hint == NULL) {
-      goto err;
+      return nullptr;
     }
   }
   ssl->config->psk_client_callback = ctx->psk_client_callback;
@@ -763,13 +736,12 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->config->ocsp_stapling_enabled = ctx->ocsp_stapling_enabled;
   ssl->config->handoff = ctx->handoff;
 
-  return ssl;
+  if (!ssl->method->ssl_new(ssl.get()) ||
+      !ssl->ctx->x509_method->ssl_new(ssl->s3->hs.get())) {
+    return nullptr;
+  }
 
-err:
-  SSL_free(ssl);
-  OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-
-  return NULL;
+  return ssl.release();
 }
 
 SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
@@ -800,29 +772,7 @@ SSL_CONFIG::~SSL_CONFIG() {
 }
 
 void SSL_free(SSL *ssl) {
-  if (ssl == NULL) {
-    return;
-  }
-
-  CRYPTO_free_ex_data(&g_ex_data_class_ssl, ssl, &ssl->ex_data);
-
-  BIO_free_all(ssl->rbio);
-  BIO_free_all(ssl->wbio);
-
-  Delete(ssl->config);
-  ssl->config = NULL;
-
-  SSL_SESSION_free(ssl->session);
-
-  OPENSSL_free(ssl->tlsext_hostname);
-
-  if (ssl->method != NULL) {
-    ssl->method->ssl_free(ssl);
-  }
-  SSL_CTX_free(ssl->ctx);
-  SSL_CTX_free(ssl->session_ctx);
-
-  OPENSSL_free(ssl);
+  Delete(ssl);
 }
 
 void SSL_set_connect_state(SSL *ssl) {
