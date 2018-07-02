@@ -478,7 +478,7 @@ static int ssl_encrypt_ticket_with_cipher_ctx(SSL_HANDSHAKE *hs, CBB *out,
 
   // Initialize HMAC and cipher contexts. If callback present it does all the
   // work otherwise use generated values from parent ctx.
-  SSL_CTX *tctx = hs->ssl->session_ctx;
+  SSL_CTX *tctx = hs->ssl->session_ctx.get();
   uint8_t iv[EVP_MAX_IV_LENGTH];
   uint8_t key_name[16];
   if (tctx->tlsext_ticket_key_cb != NULL) {
@@ -696,13 +696,13 @@ static enum ssl_hs_wait_t ssl_lookup_session(
     // Add the externally cached session to the internal cache if necessary.
     if (!(ssl->session_ctx->session_cache_mode &
           SSL_SESS_CACHE_NO_INTERNAL_STORE)) {
-      SSL_CTX_add_session(ssl->session_ctx, session.get());
+      SSL_CTX_add_session(ssl->session_ctx.get(), session.get());
     }
   }
 
   if (session && !ssl_session_is_time_valid(ssl, session.get())) {
     // The session was from the cache, so remove it.
-    SSL_CTX_remove_session(ssl->session_ctx, session.get());
+    SSL_CTX_remove_session(ssl->session_ctx.get(), session.get());
     session.reset();
   }
 
@@ -788,15 +788,11 @@ static int remove_session_lock(SSL_CTX *ctx, SSL_SESSION *session, int lock) {
 }
 
 void ssl_set_session(SSL *ssl, SSL_SESSION *session) {
-  if (ssl->session == session) {
+  if (ssl->session.get() == session) {
     return;
   }
 
-  SSL_SESSION_free(ssl->session);
-  ssl->session = session;
-  if (session != NULL) {
-    SSL_SESSION_up_ref(session);
-  }
+  ssl->session = UpRef(session);
 }
 
 // locked by SSL_CTX in the calling function
@@ -1070,7 +1066,7 @@ SSL_SESSION *SSL_get_session(const SSL *ssl) {
   if (hs->new_session) {
     return hs->new_session.get();
   }
-  return ssl->session;
+  return ssl->session.get();
 }
 
 SSL_SESSION *SSL_get1_session(SSL *ssl) {

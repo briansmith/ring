@@ -311,7 +311,7 @@ int ssl3_flush_flight(SSL *ssl) {
   // Write the pending flight.
   while (ssl->s3->pending_flight_offset < ssl->s3->pending_flight->length) {
     int ret = BIO_write(
-        ssl->wbio,
+        ssl->wbio.get(),
         ssl->s3->pending_flight->data + ssl->s3->pending_flight_offset,
         ssl->s3->pending_flight->length - ssl->s3->pending_flight_offset);
     if (ret <= 0) {
@@ -322,7 +322,7 @@ int ssl3_flush_flight(SSL *ssl) {
     ssl->s3->pending_flight_offset += ret;
   }
 
-  if (BIO_flush(ssl->wbio) <= 0) {
+  if (BIO_flush(ssl->wbio.get()) <= 0) {
     ssl->s3->rwstate = SSL_WRITING;
     return -1;
   }

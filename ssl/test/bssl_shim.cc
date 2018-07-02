@@ -773,11 +773,12 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
                        SettingsWriter *writer) {
   int ret;
   SSL *ssl = ssl_uniqueptr->get();
-  SSL_CTX *session_ctx = ssl->ctx;
+  SSL_CTX *session_ctx = SSL_get_SSL_CTX(ssl);
 
   if (!config->implicit_handshake) {
     if (config->handoff) {
-      bssl::UniquePtr<SSL_CTX> ctx_handoff = config->SetupCtx(ssl->ctx);
+      bssl::UniquePtr<SSL_CTX> ctx_handoff =
+          config->SetupCtx(SSL_get_SSL_CTX(ssl));
       if (!ctx_handoff) {
         return false;
       }
@@ -853,7 +854,8 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
         return false;
       }
 
-      bssl::UniquePtr<SSL_CTX> ctx_handback = config->SetupCtx(ssl->ctx);
+      bssl::UniquePtr<SSL_CTX> ctx_handback =
+          config->SetupCtx(SSL_get_SSL_CTX(ssl));
       if (!ctx_handback) {
         return false;
       }
@@ -891,7 +893,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
       return false;
     }
 
-    CopySessions(session_ctx, ssl->ctx);
+    CopySessions(session_ctx, SSL_get_SSL_CTX(ssl));
 
     if (is_resume && !is_retry && !config->is_server &&
         config->expect_no_offer_early_data && SSL_in_early_data(ssl)) {

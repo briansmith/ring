@@ -162,7 +162,7 @@ UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl) {
       !hs->transcript.Init()) {
     return nullptr;
   }
-  hs->config = ssl->config;
+  hs->config = ssl->config.get();
   if (!hs->config) {
     assert(hs->config);
     return nullptr;
@@ -197,7 +197,7 @@ size_t ssl_max_handshake_message_len(const SSL *ssl) {
   static const size_t kMaxMessageLen = 16384;
 
   if (SSL_in_init(ssl)) {
-    SSL_CONFIG *config = ssl->config;  // SSL_in_init() implies not NULL.
+    SSL_CONFIG *config = ssl->config.get();  // SSL_in_init() implies not NULL.
     if ((!ssl->server || (config->verify_mode & SSL_VERIFY_PEER)) &&
         kMaxMessageLen < ssl->max_cert_list) {
       return ssl->max_cert_list;

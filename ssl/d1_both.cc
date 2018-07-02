@@ -618,12 +618,12 @@ static void dtls1_update_mtu(SSL *ssl) {
   // |SSL_set_mtu|. Does this need to be so complex?
   if (ssl->d1->mtu < dtls1_min_mtu() &&
       !(SSL_get_options(ssl) & SSL_OP_NO_QUERY_MTU)) {
-    long mtu = BIO_ctrl(ssl->wbio, BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
+    long mtu = BIO_ctrl(ssl->wbio.get(), BIO_CTRL_DGRAM_QUERY_MTU, 0, NULL);
     if (mtu >= 0 && mtu <= (1 << 30) && (unsigned)mtu >= dtls1_min_mtu()) {
       ssl->d1->mtu = (unsigned)mtu;
     } else {
       ssl->d1->mtu = kDefaultMTU;
-      BIO_ctrl(ssl->wbio, BIO_CTRL_DGRAM_SET_MTU, ssl->d1->mtu, NULL);
+      BIO_ctrl(ssl->wbio.get(), BIO_CTRL_DGRAM_SET_MTU, ssl->d1->mtu, NULL);
     }
   }
 
@@ -803,7 +803,7 @@ static int send_flight(SSL *ssl) {
       goto err;
     }
 
-    int bio_ret = BIO_write(ssl->wbio, packet, packet_len);
+    int bio_ret = BIO_write(ssl->wbio.get(), packet, packet_len);
     if (bio_ret <= 0) {
       // Retry this packet the next time around.
       ssl->d1->outgoing_written = old_written;
@@ -814,7 +814,7 @@ static int send_flight(SSL *ssl) {
     }
   }
 
-  if (BIO_flush(ssl->wbio) <= 0) {
+  if (BIO_flush(ssl->wbio.get()) <= 0) {
     ssl->s3->rwstate = SSL_WRITING;
     goto err;
   }

@@ -606,7 +606,7 @@ static bool dont_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static bool ext_sni_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  if (ssl->tlsext_hostname == NULL) {
+  if (ssl->tlsext_hostname == nullptr) {
     return true;
   }
 
@@ -616,8 +616,8 @@ static bool ext_sni_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
       !CBB_add_u16_length_prefixed(&contents, &server_name_list) ||
       !CBB_add_u8(&server_name_list, TLSEXT_NAMETYPE_host_name) ||
       !CBB_add_u16_length_prefixed(&server_name_list, &name) ||
-      !CBB_add_bytes(&name, (const uint8_t *)ssl->tlsext_hostname,
-                     strlen(ssl->tlsext_hostname)) ||
+      !CBB_add_bytes(&name, (const uint8_t *)ssl->tlsext_hostname.get(),
+                     strlen(ssl->tlsext_hostname.get())) ||
       !CBB_flush(out)) {
     return false;
   }
@@ -950,10 +950,10 @@ static bool ext_ticket_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   // over the state from the previous handshake, such as OpenSSL servers
   // without upstream's 3c3f0259238594d77264a78944d409f2127642c4.
   if (!ssl->s3->initial_handshake_complete &&
-      ssl->session != NULL &&
+      ssl->session != nullptr &&
       !ssl->session->ticket.empty() &&
       // Don't send TLS 1.3 session tickets in the ticket extension.
-      ssl_session_protocol_version(ssl->session) < TLS1_3_VERSION) {
+      ssl_session_protocol_version(ssl->session.get()) < TLS1_3_VERSION) {
     ticket = ssl->session->ticket;
   }
 
@@ -1866,20 +1866,20 @@ static bool ext_ec_point_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static size_t ext_pre_shared_key_clienthello_length(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (hs->max_version < TLS1_3_VERSION || ssl->session == NULL ||
-      ssl_session_protocol_version(ssl->session) < TLS1_3_VERSION) {
+  if (hs->max_version < TLS1_3_VERSION || ssl->session == nullptr ||
+      ssl_session_protocol_version(ssl->session.get()) < TLS1_3_VERSION) {
     return 0;
   }
 
-  size_t binder_len = EVP_MD_size(ssl_session_get_digest(ssl->session));
+  size_t binder_len = EVP_MD_size(ssl_session_get_digest(ssl->session.get()));
   return 15 + ssl->session->ticket.size() + binder_len;
 }
 
 static bool ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   hs->needs_psk_binder = false;
-  if (hs->max_version < TLS1_3_VERSION || ssl->session == NULL ||
-      ssl_session_protocol_version(ssl->session) < TLS1_3_VERSION) {
+  if (hs->max_version < TLS1_3_VERSION || ssl->session == nullptr ||
+      ssl_session_protocol_version(ssl->session.get()) < TLS1_3_VERSION) {
     return true;
   }
 
@@ -1899,7 +1899,7 @@ static bool ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   // Fill in a placeholder zero binder of the appropriate length. It will be
   // computed and filled in later after length prefixes are computed.
   uint8_t zero_binder[EVP_MAX_MD_SIZE] = {0};
-  size_t binder_len = EVP_MD_size(ssl_session_get_digest(ssl->session));
+  size_t binder_len = EVP_MD_size(ssl_session_get_digest(ssl->session.get()));
 
   CBB contents, identity, ticket, binders, binder;
   if (!CBB_add_u16(out, TLSEXT_TYPE_pre_shared_key) ||
@@ -2066,8 +2066,8 @@ static bool ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
   if (!ssl->enable_early_data ||
       // Session must be 0-RTT capable.
-      ssl->session == NULL ||
-      ssl_session_protocol_version(ssl->session) < TLS1_3_VERSION ||
+      ssl->session == nullptr ||
+      ssl_session_protocol_version(ssl->session.get()) < TLS1_3_VERSION ||
       ssl->session->ticket_max_early_data == 0 ||
       // The second ClientHello never offers early data.
       hs->received_hello_retry_request ||
@@ -3525,7 +3525,7 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_ticket_keys(
     SSL_HANDSHAKE *hs, uint8_t **out, size_t *out_len, const uint8_t *ticket,
     size_t ticket_len) {
   assert(ticket_len >= SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH);
-  SSL_CTX *ctx = hs->ssl->session_ctx;
+  SSL_CTX *ctx = hs->ssl->session_ctx.get();
 
   // Rotate the ticket key if necessary.
   if (!ssl_ctx_rotate_ticket_encryption_key(ctx)) {
@@ -3626,7 +3626,7 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
 
   // Decode the session.
   UniquePtr<SSL_SESSION> session(
-      SSL_SESSION_from_bytes(plaintext, plaintext_len, hs->ssl->ctx));
+      SSL_SESSION_from_bytes(plaintext, plaintext_len, hs->ssl->ctx.get()));
   OPENSSL_free(plaintext);
 
   if (!session) {

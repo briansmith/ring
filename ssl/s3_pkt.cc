@@ -414,7 +414,7 @@ int ssl3_dispatch_alert(SSL *ssl) {
 
   // If the alert is fatal, flush the BIO now.
   if (ssl->s3->send_alert[0] == SSL3_AL_FATAL) {
-    BIO_flush(ssl->wbio);
+    BIO_flush(ssl->wbio.get());
   }
 
   ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_ALERT, ssl->s3->send_alert);

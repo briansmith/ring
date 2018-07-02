@@ -354,7 +354,7 @@ static int ssl_crypto_x509_session_verify_cert_chain(SSL_SESSION *session,
     return 0;
   }
 
-  SSL_CTX *ssl_ctx = hs->ssl->ctx;
+  SSL_CTX *ssl_ctx = hs->ssl->ctx.get();
   X509_STORE *verify_store = ssl_ctx->cert_store;
   if (hs->config->cert->verify_store != NULL) {
     verify_store = hs->config->cert->verify_store;
@@ -1074,7 +1074,7 @@ void SSL_set_client_CA_list(SSL *ssl, STACK_OF(X509_NAME) *name_list) {
   if (!ssl->config) {
     return;
   }
-  ssl->ctx->x509_method->ssl_flush_cached_client_CA(ssl->config);
+  ssl->ctx->x509_method->ssl_flush_cached_client_CA(ssl->config.get());
   set_client_CA_list(&ssl->config->client_CA, name_list, ssl->ctx->pool);
   sk_X509_NAME_pop_free(name_list, X509_NAME_free);
 }
@@ -1143,7 +1143,7 @@ STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
         ssl->config->client_CA,
         (STACK_OF(X509_NAME) **)&ssl->config->cached_x509_client_CA);
   }
-  return SSL_CTX_get_client_CA_list(ssl->ctx);
+  return SSL_CTX_get_client_CA_list(ssl->ctx.get());
 }
 
 STACK_OF(X509_NAME) *SSL_CTX_get_client_CA_list(const SSL_CTX *ctx) {
@@ -1204,7 +1204,7 @@ int SSL_add_client_CA(SSL *ssl, X509 *x509) {
     return 0;
   }
 
-  ssl_crypto_x509_ssl_flush_cached_client_CA(ssl->config);
+  ssl_crypto_x509_ssl_flush_cached_client_CA(ssl->config.get());
   return 1;
 }
 
@@ -1224,7 +1224,7 @@ static int do_client_cert_cb(SSL *ssl, void *arg) {
     assert(ssl->config);
     return -1;
   }
-  if (ssl_has_certificate(ssl->config) ||
+  if (ssl_has_certificate(ssl->config.get()) ||
       ssl->ctx->client_cert_cb == NULL) {
     return 1;
   }

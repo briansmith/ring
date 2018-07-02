@@ -274,7 +274,7 @@ ssl_open_record_t ssl_open_app_data(SSL *ssl, Span<uint8_t> *out,
 
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
   SSL *const ssl = hs->ssl;
-  SSL_CTX *ctx = ssl->session_ctx;
+  SSL_CTX *ctx = ssl->session_ctx.get();
   // Never cache sessions with empty session IDs.
   if (ssl->s3->established_session->session_id_length == 0 ||
       ssl->s3->established_session->not_resumable ||
@@ -289,7 +289,7 @@ void ssl_update_cache(SSL_HANDSHAKE *hs, int mode) {
   // A client may see new sessions on abbreviated handshakes if the server
   // decides to renew the ticket. Once the handshake is completed, it should be
   // inserted into the cache.
-  if (ssl->s3->established_session.get() != ssl->session ||
+  if (ssl->s3->established_session.get() != ssl->session.get() ||
       (!ssl->server && hs->ticket_expected)) {
     if (use_internal_cache) {
       SSL_CTX_add_session(ctx, ssl->s3->established_session.get());
@@ -406,7 +406,7 @@ void ssl_do_msg_callback(SSL *ssl, int is_write, int content_type,
 void ssl_get_current_time(const SSL *ssl, struct OPENSSL_timeval *out_clock) {
   // TODO(martinkr): Change callers to |ssl_ctx_get_current_time| and drop the
   // |ssl| arg from |current_time_cb| if possible.
-  ssl_ctx_get_current_time(ssl->ctx, out_clock);
+  ssl_ctx_get_current_time(ssl->ctx.get(), out_clock);
 }
 
 void ssl_ctx_get_current_time(const SSL_CTX *ctx,
@@ -496,8 +496,7 @@ static void ssl_maybe_shed_handshake_config(SSL *ssl) {
     return;
   }
 
-  Delete(ssl->config);
-  ssl->config = nullptr;
+  ssl->config.reset();
 }
 
 void SSL_set_handoff_mode(SSL *ssl, bool on) {
@@ -637,8 +636,8 @@ ssl_st::ssl_st(SSL_CTX *ctx_arg)
       msg_callback(ctx_arg->msg_callback),
       msg_callback_arg(ctx_arg->msg_callback_arg),
       tls13_variant(ctx_arg->tls13_variant),
-      ctx(UpRef(ctx_arg).release()),
-      session_ctx(UpRef(ctx_arg).release()),
+      ctx(UpRef(ctx_arg)),
+      session_ctx(UpRef(ctx_arg)),
       options(ctx->options),
       mode(ctx->mode),
       max_cert_list(ctx->max_cert_list),
@@ -651,22 +650,11 @@ ssl_st::ssl_st(SSL_CTX *ctx_arg)
 
 ssl_st::~ssl_st() {
   CRYPTO_free_ex_data(&g_ex_data_class_ssl, this, &ex_data);
-
-  BIO_free_all(rbio);
-  BIO_free_all(wbio);
-
-  Delete(config);
-  config = nullptr;
-
-  SSL_SESSION_free(session);
-
-  OPENSSL_free(tlsext_hostname);
-
+  // |config| refers to |this|, so we must release it earlier.
+  config.reset();
   if (method != NULL) {
     method->ssl_free(this);
   }
-  SSL_CTX_free(ctx);
-  SSL_CTX_free(session_ctx);
 }
 
 SSL *SSL_new(SSL_CTX *ctx) {
@@ -680,7 +668,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
     return nullptr;
   }
 
-  ssl->config = New<SSL_CONFIG>(ssl.get());
+  ssl->config = MakeUnique<SSL_CONFIG>(ssl.get());
   if (ssl->config == nullptr) {
     return nullptr;
   }
@@ -786,13 +774,11 @@ void SSL_set_accept_state(SSL *ssl) {
 }
 
 void SSL_set0_rbio(SSL *ssl, BIO *rbio) {
-  BIO_free_all(ssl->rbio);
-  ssl->rbio = rbio;
+  ssl->rbio.reset(rbio);
 }
 
 void SSL_set0_wbio(SSL *ssl, BIO *wbio) {
-  BIO_free_all(ssl->wbio);
-  ssl->wbio = wbio;
+  ssl->wbio.reset(wbio);
 }
 
 void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio) {
@@ -829,9 +815,9 @@ void SSL_set_bio(SSL *ssl, BIO *rbio, BIO *wbio) {
   SSL_set0_wbio(ssl, wbio);
 }
 
-BIO *SSL_get_rbio(const SSL *ssl) { return ssl->rbio; }
+BIO *SSL_get_rbio(const SSL *ssl) { return ssl->rbio.get(); }
 
-BIO *SSL_get_wbio(const SSL *ssl) { return ssl->wbio; }
+BIO *SSL_get_wbio(const SSL *ssl) { return ssl->wbio.get(); }
 
 int SSL_do_handshake(SSL *ssl) {
   ssl_reset_error_state(ssl);
@@ -1891,8 +1877,8 @@ const char *SSL_get_servername(const SSL *ssl, const int type) {
 
   // Historically, |SSL_get_servername| was also the configuration getter
   // corresponding to |SSL_set_tlsext_host_name|.
-  if (ssl->tlsext_hostname != NULL) {
-    return ssl->tlsext_hostname;
+  if (ssl->tlsext_hostname != nullptr) {
+    return ssl->tlsext_hostname.get();
   }
 
   return ssl->s3->hostname.get();
@@ -1971,10 +1957,8 @@ void SSL_get0_ocsp_response(const SSL *ssl, const uint8_t **out,
 }
 
 int SSL_set_tlsext_host_name(SSL *ssl, const char *name) {
-  OPENSSL_free(ssl->tlsext_hostname);
-  ssl->tlsext_hostname = NULL;
-
-  if (name == NULL) {
+  ssl->tlsext_hostname.reset();
+  if (name == nullptr) {
     return 1;
   }
 
@@ -1983,8 +1967,8 @@ int SSL_set_tlsext_host_name(SSL *ssl, const char *name) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SSL3_EXT_INVALID_SERVERNAME);
     return 0;
   }
-  ssl->tlsext_hostname = BUF_strdup(name);
-  if (ssl->tlsext_hostname == NULL) {
+  ssl->tlsext_hostname.reset(BUF_strdup(name));
+  if (ssl->tlsext_hostname == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
@@ -2333,14 +2317,14 @@ int SSL_get_shutdown(const SSL *ssl) {
   return ret;
 }
 
-SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl) { return ssl->ctx; }
+SSL_CTX *SSL_get_SSL_CTX(const SSL *ssl) { return ssl->ctx.get(); }
 
 SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
   if (!ssl->config) {
     return NULL;
   }
-  if (ssl->ctx == ctx) {
-    return ssl->ctx;
+  if (ssl->ctx.get() == ctx) {
+    return ssl->ctx.get();
   }
 
   // One cannot change the X.509 callbacks during a connection.
@@ -2350,18 +2334,16 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
   }
 
   if (ctx == NULL) {
-    ctx = ssl->session_ctx;
+    ctx = ssl->session_ctx.get();
   }
 
   Delete(ssl->config->cert);
   ssl->config->cert = ssl_cert_dup(ctx->cert).release();
 
-  SSL_CTX_up_ref(ctx);
-  SSL_CTX_free(ssl->ctx);
-  ssl->ctx = ctx;
+  ssl->ctx = UpRef(ctx);
   ssl->enable_early_data = ssl->ctx->enable_early_data;
 
-  return ssl->ctx;
+  return ssl->ctx.get();
 }
 
 void SSL_set_info_callback(SSL *ssl,

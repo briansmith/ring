@@ -60,7 +60,7 @@ int tls13_init_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *psk,
 int tls13_init_early_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *psk,
                                   size_t psk_len) {
   SSL *const ssl = hs->ssl;
-  return init_key_schedule(hs, ssl_session_protocol_version(ssl->session),
+  return init_key_schedule(hs, ssl_session_protocol_version(ssl->session.get()),
                            ssl->session->cipher) &&
          HKDF_extract(hs->secret, &hs->hash_len, hs->transcript.Digest(), psk,
                       psk_len, hs->secret, hs->hash_len);
@@ -413,7 +413,7 @@ static int tls13_psk_binder(uint8_t *out, uint16_t version,
 
 int tls13_write_psk_binder(SSL_HANDSHAKE *hs, uint8_t *msg, size_t len) {
   SSL *const ssl = hs->ssl;
-  const EVP_MD *digest = ssl_session_get_digest(ssl->session);
+  const EVP_MD *digest = ssl_session_get_digest(ssl->session.get());
   size_t hash_len = EVP_MD_size(digest);
 
   if (len < hash_len + 3) {

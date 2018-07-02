@@ -872,7 +872,7 @@ void SSL_set0_client_CAs(SSL *ssl, STACK_OF(CRYPTO_BUFFER) *name_list) {
   if (!ssl->config) {
     return;
   }
-  ssl->ctx->x509_method->ssl_flush_cached_client_CA(ssl->config);
+  ssl->ctx->x509_method->ssl_flush_cached_client_CA(ssl->config.get());
   sk_CRYPTO_BUFFER_pop_free(ssl->config->client_CA, CRYPTO_BUFFER_free);
   ssl->config->client_CA = name_list;
 }

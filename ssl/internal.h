@@ -2396,6 +2396,8 @@ struct DTLS1_STATE {
 // See SSL_shed_handshake_config() for more about the conditions under which
 // configuration can be shed.
 struct SSL_CONFIG {
+  static constexpr bool kAllowUniquePtr = true;
+
   explicit SSL_CONFIG(SSL *ssl_arg);
   ~SSL_CONFIG();
 
@@ -3125,7 +3127,7 @@ struct ssl_st {
   // should check for nullptr, since configuration may be shed after the
   // handshake completes.  (If you have the |SSL_HANDSHAKE| object at hand, use
   // that instead, and skip the null check.)
-  bssl::SSL_CONFIG *config = nullptr;
+  bssl::UniquePtr<bssl::SSL_CONFIG> config;
 
   // version is the protocol version.
   uint16_t version = 0;
@@ -3135,8 +3137,8 @@ struct ssl_st {
   // There are 2 BIO's even though they are normally both the same. This is so
   // data can be read and written to different handlers
 
-  BIO *rbio = nullptr;  // used by SSL_read
-  BIO *wbio = nullptr;  // used by SSL_write
+  bssl::UniquePtr<BIO> rbio;  // used by SSL_read
+  bssl::UniquePtr<BIO> wbio;  // used by SSL_write
 
   // do_handshake runs the handshake. On completion, it returns |ssl_hs_ok|.
   // Otherwise, it returns a value corresponding to what operation is needed to
@@ -3167,15 +3169,15 @@ struct ssl_st {
 
   // session is the configured session to be offered by the client. This session
   // is immutable.
-  SSL_SESSION *session = nullptr;
+  bssl::UniquePtr<SSL_SESSION> session;
 
   void (*info_callback)(const SSL *ssl, int type, int value) = nullptr;
 
-  SSL_CTX *ctx = nullptr;
+  bssl::UniquePtr<SSL_CTX> ctx;
 
   // session_ctx is the |SSL_CTX| used for the session cache and related
   // settings.
-  SSL_CTX *session_ctx = nullptr;
+  bssl::UniquePtr<SSL_CTX> session_ctx;
 
   // extra application data
   CRYPTO_EX_DATA ex_data;
@@ -3183,7 +3185,7 @@ struct ssl_st {
   uint32_t options = 0;  // protocol behaviour
   uint32_t mode = 0;     // API behaviour
   uint32_t max_cert_list = 0;
-  char *tlsext_hostname = nullptr;
+  bssl::UniquePtr<char> tlsext_hostname;
 
   // renegotiate_mode controls how peer renegotiation attempts are handled.
   ssl_renegotiate_mode_t renegotiate_mode = ssl_renegotiate_never;

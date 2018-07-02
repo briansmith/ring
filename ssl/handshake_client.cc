@@ -404,7 +404,7 @@ static enum ssl_hs_wait_t do_start_connect(SSL_HANDSHAKE *hs) {
         (ssl->session->session_id_length == 0 &&
          ssl->session->ticket.empty()) ||
         ssl->session->not_resumable ||
-        !ssl_session_is_time_valid(ssl, ssl->session)) {
+        !ssl_session_is_time_valid(ssl, ssl->session.get())) {
       ssl_set_session(ssl, NULL);
     }
   }
@@ -664,7 +664,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       return ssl_hs_error;
     }
-    if (!ssl_session_is_context_valid(hs, ssl->session)) {
+    if (!ssl_session_is_context_valid(hs, ssl->session.get())) {
       // This is actually a client application bug.
       OPENSSL_PUT_ERROR(SSL,
                         SSL_R_ATTEMPT_TO_REUSE_SESSION_IN_DIFFERENT_CONTEXT);
@@ -1547,7 +1547,7 @@ static enum ssl_hs_wait_t do_read_session_ticket(SSL_HANDSHAKE *hs) {
     // immutable once established, so duplicate all but the ticket of the
     // existing session.
     renewed_session =
-        SSL_SESSION_dup(ssl->session, SSL_SESSION_INCLUDE_NONAUTH);
+        SSL_SESSION_dup(ssl->session.get(), SSL_SESSION_INCLUDE_NONAUTH);
     if (!renewed_session) {
       // This should never happen.
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
@@ -1575,8 +1575,7 @@ static enum ssl_hs_wait_t do_read_session_ticket(SSL_HANDSHAKE *hs) {
 
   if (renewed_session) {
     session->not_resumable = false;
-    SSL_SESSION_free(ssl->session);
-    ssl->session = renewed_session.release();
+    ssl->session = std::move(renewed_session);
   }
 
   ssl->method->next_message(ssl);

@@ -600,7 +600,7 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   if (session) {
     // Use the old session.
     hs->ticket_expected = renew_ticket;
-    ssl->session = session.release();
+    ssl->session = std::move(session);
     ssl->s3->session_reused = true;
   } else {
     hs->ticket_expected = tickets_supported;
@@ -713,8 +713,8 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   const SSL_SESSION *session = hs->new_session.get();
-  if (ssl->session != NULL) {
-    session = ssl->session;
+  if (ssl->session != nullptr) {
+    session = ssl->session.get();
   }
 
   ScopedCBB cbb;
@@ -1419,7 +1419,8 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
     } else {
       // We are renewing an existing session. Duplicate the session to adjust
       // the timeout.
-      session_copy = SSL_SESSION_dup(ssl->session, SSL_SESSION_INCLUDE_NONAUTH);
+      session_copy =
+          SSL_SESSION_dup(ssl->session.get(), SSL_SESSION_INCLUDE_NONAUTH);
       if (!session_copy) {
         return ssl_hs_error;
       }

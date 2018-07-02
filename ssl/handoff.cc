@@ -149,8 +149,8 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
 
   // TODO(mab): make sure everything is serialized.
   CBB seq, key_share;
-  SSL_SESSION *session =
-      s3->session_reused ? ssl->session : s3->hs->new_session.get();
+  const SSL_SESSION *session =
+      s3->session_reused ? ssl->session.get() : s3->hs->new_session.get();
   if (!CBB_add_asn1(out, &seq, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&seq, kHandbackVersion) ||
       !CBB_add_asn1_uint64(&seq, type) ||
@@ -239,9 +239,8 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   s3->hs = ssl_handshake_new(ssl);
   if (session_reused) {
     ssl->session =
-        SSL_SESSION_parse(&seq, ssl->ctx->x509_method, ssl->ctx->pool)
-            .release();
-    session = ssl->session;
+        SSL_SESSION_parse(&seq, ssl->ctx->x509_method, ssl->ctx->pool);
+    session = ssl->session.get();
   } else {
     s3->hs->new_session =
         SSL_SESSION_parse(&seq, ssl->ctx->x509_method, ssl->ctx->pool);
