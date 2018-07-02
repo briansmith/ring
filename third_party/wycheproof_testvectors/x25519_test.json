@@ -1,10 +1,12 @@
 {
   "algorithm" : "X25519",
-  "generatorVersion" : "0.4",
-  "numberOfTests" : 72,
+  "generatorVersion" : "0.4.6",
   "notes" : {
+    "LowOrderPublic" : "Curve25519 or its twist contains some points of low order. This test vector contains a public key with such a point. While many libraries reject such public keys, doing so is not a strict requirement according to RFC 7748.",
+    "Small public key" : "The public key is insecure and does not belong to a valid private key. Some libraries reject such keys.",
     "Twist" : "Public keys are either points on curve25519 or points on its twist. Implementations may either reject such keys or compute X25519 using the twist. If a point multiplication is performed then it is important that the result is correct, since otherwise attacks with invalid keys are possible."
   },
+  "numberOfTests" : 87,
   "header" : [],
   "testGroups" : [
     {
@@ -22,6 +24,18 @@
         },
         {
           "tcId" : 2,
+          "comment" : "normal case",
+          "curve" : "curve25519",
+          "public" : "9c647d9ae589b9f58fdc3ca4947efbc915c4b2e08e744a0edf469dac59c8f85a",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "4b82bd8650ea9b81a42181840926a4ffa16434d1bf298de1db87efb5b0a9e34e",
+          "result" : "valid",
+          "flags" : [
+            "LowOrderPublic"
+          ]
+        },
+        {
+          "tcId" : 3,
           "comment" : "public key on twist",
           "curve" : "curve25519",
           "public" : "63aa40c6e38346c5caf23a6df0a5e6c80889a08647e551b3563449befcfc9733",
@@ -33,7 +47,7 @@
           ]
         },
         {
-          "tcId" : 3,
+          "tcId" : 4,
           "comment" : "public key on twist",
           "curve" : "curve25519",
           "public" : "0f83c36fded9d32fadf4efa3ae93a90bb5cfa66893bc412c43fa7287dbb99779",
@@ -45,7 +59,7 @@
           ]
         },
         {
-          "tcId" : 4,
+          "tcId" : 5,
           "comment" : "public key on twist",
           "curve" : "curve25519",
           "public" : "0b8211a2b6049097f6871c6c052d3c5fc1ba17da9e32ae458403b05bb283092a",
@@ -57,7 +71,7 @@
           ]
         },
         {
-          "tcId" : 5,
+          "tcId" : 6,
           "comment" : "public key on twist",
           "curve" : "curve25519",
           "public" : "343ac20a3b9c6a27b1008176509ad30735856ec1c8d8fcae13912d08d152f46c",
@@ -69,7 +83,7 @@
           ]
         },
         {
-          "tcId" : 6,
+          "tcId" : 7,
           "comment" : "public key on twist",
           "curve" : "curve25519",
           "public" : "fa695fc7be8d1be5bf704898f388c452bafdd3b8eae805f8681a8d15c2d4e142",
@@ -81,87 +95,103 @@
           ]
         },
         {
-          "tcId" : 7,
+          "tcId" : 8,
           "comment" : "public key = 0",
           "curve" : "curve25519",
           "public" : "0000000000000000000000000000000000000000000000000000000000000000",
           "private" : "207494038f2bb811d47805bcdf04a2ac585ada7f2f23389bfd4658f9ddd4debc",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Small public key"
+          ]
         },
         {
-          "tcId" : 8,
+          "tcId" : 9,
           "comment" : "public key = 1",
           "curve" : "curve25519",
           "public" : "0100000000000000000000000000000000000000000000000000000000000000",
           "private" : "202e8972b61c7e61930eb9450b5070eae1c670475685541f0476217e4818cfab",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Small public key"
+          ]
         },
         {
-          "tcId" : 9,
+          "tcId" : 10,
           "comment" : "edge case on twist",
           "curve" : "curve25519",
           "public" : "0200000000000000000000000000000000000000000000000000000000000000",
           "private" : "38dde9f3e7b799045f9ac3793d4a9277dadeadc41bec0290f81f744f73775f84",
           "shared" : "9a2cfe84ff9c4a9739625cae4a3b82a906877a441946f8d7b3d795fe8f5d1639",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Twist"
+          ]
         },
         {
-          "tcId" : 10,
+          "tcId" : 11,
           "comment" : "edge case on twist",
           "curve" : "curve25519",
           "public" : "0300000000000000000000000000000000000000000000000000000000000000",
           "private" : "9857a914e3c29036fd9a442ba526b5cdcdf28216153e636c10677acab6bd6aa5",
           "shared" : "4da4e0aa072c232ee2f0fa4e519ae50b52c1edd08a534d4ef346c2e106d21d60",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Twist"
+          ]
         },
         {
-          "tcId" : 11,
+          "tcId" : 12,
           "comment" : "edge case on twist",
           "curve" : "curve25519",
           "public" : "ffffff030000f8ffff1f0000c0ffffff000000feffff070000f0ffff3f000000",
           "private" : "48e2130d723305ed05e6e5894d398a5e33367a8c6aac8fcdf0a88e4b42820db7",
           "shared" : "9ed10c53747f647f82f45125d3de15a1e6b824496ab40410ffcc3cfe95760f3b",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Twist"
+          ]
         },
         {
-          "tcId" : 12,
+          "tcId" : 13,
           "comment" : "edge case on twist",
           "curve" : "curve25519",
           "public" : "000000fcffff070000e0ffff3f000000ffffff010000f8ffff0f0000c0ffff7f",
           "private" : "28f41011691851b3a62b641553b30d0dfddcb8fffcf53700a7be2f6a872e9fb0",
           "shared" : "cf72b4aa6aa1c9f894f4165b86109aa468517648e1f0cc70e1ab08460176506b",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Twist"
+          ]
         },
         {
-          "tcId" : 13,
+          "tcId" : 14,
           "comment" : "edge case on twist",
           "curve" : "curve25519",
           "public" : "00000000ffffffff00000000ffffffff00000000ffffffff00000000ffffff7f",
           "private" : "18a93b6499b9f6b3225ca02fef410e0adec23532321d2d8ef1a6d602a8c65b83",
           "shared" : "5d50b62836bb69579410386cf7bb811c14bf85b1c7b17e5924c7ffea91ef9e12",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Twist"
+          ]
         },
         {
-          "tcId" : 14,
+          "tcId" : 15,
           "comment" : "edge case on twist",
           "curve" : "curve25519",
           "public" : "eaffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
           "private" : "c01d1305a1338a1fcac2ba7e2e032b427e0b04903165aca957d8d0553d8717b0",
           "shared" : "19230eb148d5d67c3c22ab1daeff80a57eae4265ce2872657b2c8099fc698e50",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Twist"
+          ]
         },
         {
-          "tcId" : 15,
+          "tcId" : 16,
           "comment" : "edge case for public key",
           "curve" : "curve25519",
           "public" : "0400000000000000000000000000000000000000000000000000000000000000",
@@ -171,7 +201,7 @@
           "flags" : []
         },
         {
-          "tcId" : 16,
+          "tcId" : 17,
           "comment" : "edge case for public key",
           "curve" : "curve25519",
           "public" : "ffffffff00000000ffffffff00000000ffffffff00000000ffffffff00000000",
@@ -181,7 +211,7 @@
           "flags" : []
         },
         {
-          "tcId" : 17,
+          "tcId" : 18,
           "comment" : "edge case for public key",
           "curve" : "curve25519",
           "public" : "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff03",
@@ -191,7 +221,7 @@
           "flags" : []
         },
         {
-          "tcId" : 18,
+          "tcId" : 19,
           "comment" : "edge case for public key",
           "curve" : "curve25519",
           "public" : "fffffffbfffffbffffdfffffdffffffffefffffefffff7fffff7ffffbfffff3f",
@@ -201,7 +231,7 @@
           "flags" : []
         },
         {
-          "tcId" : 19,
+          "tcId" : 20,
           "comment" : "edge case for public key",
           "curve" : "curve25519",
           "public" : "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff3f",
@@ -211,7 +241,7 @@
           "flags" : []
         },
         {
-          "tcId" : 20,
+          "tcId" : 21,
           "comment" : "edge case for public key",
           "curve" : "curve25519",
           "public" : "fffffffffeffff7ffffffffffeffff7ffffffffffeffff7ffffffffffeffff7f",
@@ -221,7 +251,7 @@
           "flags" : []
         },
         {
-          "tcId" : 21,
+          "tcId" : 22,
           "comment" : "edge case for public key",
           "curve" : "curve25519",
           "public" : "ebffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
@@ -231,127 +261,291 @@
           "flags" : []
         },
         {
-          "tcId" : 22,
+          "tcId" : 23,
           "comment" : "public key with low order",
           "curve" : "curve25519",
           "public" : "e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800",
           "private" : "10255c9230a97a30a458ca284a629669293a31890cda9d147febc7d1e22d6bb1",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "LowOrderPublic"
+          ]
         },
         {
-          "tcId" : 23,
+          "tcId" : 24,
           "comment" : "public key with low order",
           "curve" : "curve25519",
           "public" : "5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f1157",
           "private" : "78f1e8edf14481b389448dac8f59c70b038e7cf92ef2c7eff57a72466e115296",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "LowOrderPublic"
+          ]
         },
         {
-          "tcId" : 24,
+          "tcId" : 25,
           "comment" : "public key with low order",
           "curve" : "curve25519",
           "public" : "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
           "private" : "a0a05a3e8f9f44204d5f8059a94ac7dfc39a49ac016dd743dbfa43c5d671fd88",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "LowOrderPublic"
+          ]
         },
         {
-          "tcId" : 25,
+          "tcId" : 26,
           "comment" : "public key with low order",
           "curve" : "curve25519",
           "public" : "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
           "private" : "d0dbb3ed1906663f15420af31f4eaf6509d9a9949723500605ad7c1c6e7450a9",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "LowOrderPublic"
+          ]
         },
         {
-          "tcId" : 26,
+          "tcId" : 27,
           "comment" : "public key with low order",
           "curve" : "curve25519",
           "public" : "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
           "private" : "c0b1d0eb22b244fe3291140072cdd9d989b5f0ecd96c100feb5bca241c1d9f8f",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "LowOrderPublic"
+          ]
         },
         {
-          "tcId" : 27,
+          "tcId" : 28,
           "comment" : "public key with low order",
           "curve" : "curve25519",
           "public" : "0000000000000000000000000000000000000000000000000000000000000080",
           "private" : "480bf45f594942a8bc0f3353c6e8b8853d77f351f1c2ca6c2d1abf8a00b4229c",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "LowOrderPublic"
+          ]
         },
         {
-          "tcId" : 28,
+          "tcId" : 29,
           "comment" : "public key with low order",
           "curve" : "curve25519",
           "public" : "0100000000000000000000000000000000000000000000000000000000000080",
           "private" : "30f993fcf8514fc89bd8db14cd43ba0d4b2530e73c4276a05e1b145d420cedb4",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "LowOrderPublic"
+          ]
         },
         {
-          "tcId" : 29,
+          "tcId" : 30,
           "comment" : "public key with low order",
           "curve" : "curve25519",
           "public" : "e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b880",
           "private" : "c04974b758380e2a5b5df6eb09bb2f6b3434f982722a8e676d3da251d1b3de83",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "LowOrderPublic"
+          ]
         },
         {
-          "tcId" : 30,
+          "tcId" : 31,
           "comment" : "public key with low order",
           "curve" : "curve25519",
           "public" : "5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f11d7",
           "private" : "502a31373db32446842fe5add3e024022ea54f274182afc3d9f1bb3d39534eb5",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "LowOrderPublic"
+          ]
         },
         {
-          "tcId" : 31,
+          "tcId" : 32,
           "comment" : "public key with low order",
           "curve" : "curve25519",
           "public" : "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
           "private" : "90fa6417b0e37030fd6e43eff2abaef14c6793117a039cf621318ba90f4e98be",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "LowOrderPublic"
+          ]
         },
         {
-          "tcId" : 32,
+          "tcId" : 33,
           "comment" : "public key with low order",
           "curve" : "curve25519",
           "public" : "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
           "private" : "78ad3f26027f1c9fdd975a1613b947779bad2cf2b741ade01840885a30bb979c",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "LowOrderPublic"
+          ]
         },
         {
-          "tcId" : 33,
+          "tcId" : 34,
           "comment" : "public key with low order",
           "curve" : "curve25519",
           "public" : "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
           "private" : "98e23de7b1e0926ed9c87e7b14baf55f497a1d7096f93977680e44dc1c7b7b8b",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
+          "flags" : [
+            "LowOrderPublic"
+          ]
+        },
+        {
+          "tcId" : 35,
+          "comment" : "public key with low order",
+          "curve" : "curve25519",
+          "public" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "acceptable",
           "flags" : []
         },
         {
-          "tcId" : 34,
+          "tcId" : 36,
+          "comment" : "public key with low order",
+          "curve" : "curve25519",
+          "public" : "0100000000000000000000000000000000000000000000000000000000000000",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "acceptable",
+          "flags" : []
+        },
+        {
+          "tcId" : 37,
+          "comment" : "public key with low order",
+          "curve" : "curve25519",
+          "public" : "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "acceptable",
+          "flags" : []
+        },
+        {
+          "tcId" : 38,
+          "comment" : "public key with low order",
+          "curve" : "curve25519",
+          "public" : "5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f1157",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "acceptable",
+          "flags" : []
+        },
+        {
+          "tcId" : 39,
+          "comment" : "public key with low order",
+          "curve" : "curve25519",
+          "public" : "e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "acceptable",
+          "flags" : []
+        },
+        {
+          "tcId" : 40,
+          "comment" : "public key with low order",
+          "curve" : "curve25519",
+          "public" : "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "acceptable",
+          "flags" : []
+        },
+        {
+          "tcId" : 41,
+          "comment" : "public key with low order",
+          "curve" : "curve25519",
+          "public" : "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "acceptable",
+          "flags" : []
+        },
+        {
+          "tcId" : 42,
+          "comment" : "public key with low order",
+          "curve" : "curve25519",
+          "public" : "0000000000000000000000000000000000000000000000000000000000000080",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "acceptable",
+          "flags" : []
+        },
+        {
+          "tcId" : 43,
+          "comment" : "public key with low order",
+          "curve" : "curve25519",
+          "public" : "0100000000000000000000000000000000000000000000000000000000000080",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "acceptable",
+          "flags" : []
+        },
+        {
+          "tcId" : 44,
+          "comment" : "public key with low order",
+          "curve" : "curve25519",
+          "public" : "ecffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "acceptable",
+          "flags" : []
+        },
+        {
+          "tcId" : 45,
+          "comment" : "public key with low order",
+          "curve" : "curve25519",
+          "public" : "5f9c95bca3508c24b1d0b1559c83ef5b04445cc4581c8e86d8224eddd09f11d7",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "acceptable",
+          "flags" : []
+        },
+        {
+          "tcId" : 46,
+          "comment" : "public key with low order",
+          "curve" : "curve25519",
+          "public" : "e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b880",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "acceptable",
+          "flags" : []
+        },
+        {
+          "tcId" : 47,
+          "comment" : "public key with low order",
+          "curve" : "curve25519",
+          "public" : "edffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "acceptable",
+          "flags" : []
+        },
+        {
+          "tcId" : 48,
+          "comment" : "public key with low order",
+          "curve" : "curve25519",
+          "public" : "eeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "private" : "1064a67da639a8f6df4fbea2d63358b65bca80a770712e14ea8a72df5a3313ae",
+          "shared" : "0000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "acceptable",
+          "flags" : []
+        },
+        {
+          "tcId" : 49,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "efffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
@@ -361,7 +555,7 @@
           "flags" : []
         },
         {
-          "tcId" : 35,
+          "tcId" : 50,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "f0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
@@ -371,7 +565,7 @@
           "flags" : []
         },
         {
-          "tcId" : 36,
+          "tcId" : 51,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "f1ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
@@ -381,7 +575,7 @@
           "flags" : []
         },
         {
-          "tcId" : 37,
+          "tcId" : 52,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
@@ -391,7 +585,7 @@
           "flags" : []
         },
         {
-          "tcId" : 38,
+          "tcId" : 53,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "0200000000000000000000000000000000000000000000000000000000000080",
@@ -401,7 +595,7 @@
           "flags" : []
         },
         {
-          "tcId" : 39,
+          "tcId" : 54,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "0300000000000000000000000000000000000000000000000000000000000080",
@@ -411,7 +605,7 @@
           "flags" : []
         },
         {
-          "tcId" : 40,
+          "tcId" : 55,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "0400000000000000000000000000000000000000000000000000000000000080",
@@ -421,7 +615,7 @@
           "flags" : []
         },
         {
-          "tcId" : 41,
+          "tcId" : 56,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "daffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
@@ -431,7 +625,7 @@
           "flags" : []
         },
         {
-          "tcId" : 42,
+          "tcId" : 57,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "dbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
@@ -441,7 +635,7 @@
           "flags" : []
         },
         {
-          "tcId" : 43,
+          "tcId" : 58,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "dcffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
@@ -451,7 +645,7 @@
           "flags" : []
         },
         {
-          "tcId" : 44,
+          "tcId" : 59,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "eaffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
@@ -461,7 +655,7 @@
           "flags" : []
         },
         {
-          "tcId" : 45,
+          "tcId" : 60,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "ebffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
@@ -471,7 +665,7 @@
           "flags" : []
         },
         {
-          "tcId" : 46,
+          "tcId" : 61,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "efffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
@@ -481,7 +675,7 @@
           "flags" : []
         },
         {
-          "tcId" : 47,
+          "tcId" : 62,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "f0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
@@ -491,7 +685,7 @@
           "flags" : []
         },
         {
-          "tcId" : 48,
+          "tcId" : 63,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "f1ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
@@ -501,7 +695,7 @@
           "flags" : []
         },
         {
-          "tcId" : 49,
+          "tcId" : 64,
           "comment" : "public key >= p",
           "curve" : "curve25519",
           "public" : "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
@@ -511,7 +705,7 @@
           "flags" : []
         },
         {
-          "tcId" : 50,
+          "tcId" : 65,
           "comment" : "RFC 7748",
           "curve" : "curve25519",
           "public" : "e6db6867583030db3594c1a424b15f7c726624ec26b3353b10a903a6d0ab1c4c",
@@ -521,7 +715,7 @@
           "flags" : []
         },
         {
-          "tcId" : 51,
+          "tcId" : 66,
           "comment" : "RFC 7748",
           "curve" : "curve25519",
           "public" : "e5210f12786811d3f4b7959d0538ae2c31dbe7106fc03c3efc4cd549c715a413",
@@ -531,17 +725,19 @@
           "flags" : []
         },
         {
-          "tcId" : 52,
+          "tcId" : 67,
           "comment" : "edge case for shared secret",
           "curve" : "curve25519",
           "public" : "0ab4e76380d84dde4f6833c58f2a9fb8f83bb0169b172be4b6e0592887741a36",
           "private" : "a0a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a976bf63",
           "shared" : "0200000000000000000000000000000000000000000000000000000000000000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Twist"
+          ]
         },
         {
-          "tcId" : 53,
+          "tcId" : 68,
           "comment" : "edge case for shared secret",
           "curve" : "curve25519",
           "public" : "89e10d5701b4337d2d032181538b1064bd4084401ceca1fd12663a1959388000",
@@ -551,7 +747,7 @@
           "flags" : []
         },
         {
-          "tcId" : 54,
+          "tcId" : 69,
           "comment" : "edge case for shared secret",
           "curve" : "curve25519",
           "public" : "2b55d3aa4a8f80c8c0b2ae5f933e85af49beac36c2fa7394bab76c8933f8f81d",
@@ -561,17 +757,19 @@
           "flags" : []
         },
         {
-          "tcId" : 55,
+          "tcId" : 70,
           "comment" : "edge case for shared secret",
           "curve" : "curve25519",
           "public" : "63e5b1fe9601fe84385d8866b0421262f78fbfa5aff9585e626679b18547d959",
           "private" : "a0a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a976bf63",
           "shared" : "feffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff3f",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Twist"
+          ]
         },
         {
-          "tcId" : 56,
+          "tcId" : 71,
           "comment" : "edge case for shared secret",
           "curve" : "curve25519",
           "public" : "e428f3dac17809f827a522ce32355058d07369364aa78902ee10139b9f9dd653",
@@ -581,17 +779,19 @@
           "flags" : []
         },
         {
-          "tcId" : 57,
+          "tcId" : 72,
           "comment" : "edge case for shared secret",
           "curve" : "curve25519",
           "public" : "b3b50e3ed3a407b95de942ef74575b5ab8a10c09ee103544d60bdfed8138ab2b",
           "private" : "a0a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a976bf63",
           "shared" : "f9ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff3f",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Twist"
+          ]
         },
         {
-          "tcId" : 58,
+          "tcId" : 73,
           "comment" : "edge case for shared secret",
           "curve" : "curve25519",
           "public" : "213fffe93d5ea8cd242e462844029922c43c77c9e3e42f562f485d24c501a20b",
@@ -601,7 +801,7 @@
           "flags" : []
         },
         {
-          "tcId" : 59,
+          "tcId" : 74,
           "comment" : "edge case for shared secret",
           "curve" : "curve25519",
           "public" : "91b232a178b3cd530932441e6139418f72172292f1da4c1834fc5ebfefb51e3f",
@@ -611,27 +811,31 @@
           "flags" : []
         },
         {
-          "tcId" : 60,
+          "tcId" : 75,
           "comment" : "edge case for shared secret",
           "curve" : "curve25519",
           "public" : "045c6e11c5d332556c7822fe94ebf89b56a3878dc27ca079103058849fabcb4f",
           "private" : "a0a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a976bf63",
           "shared" : "e5ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Twist"
+          ]
         },
         {
-          "tcId" : 61,
+          "tcId" : 76,
           "comment" : "edge case for shared secret",
           "curve" : "curve25519",
           "public" : "1ca2190b71163539063c35773bda0c9c928e9136f0620aeb093f099197b7f74e",
           "private" : "a0a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a976bf63",
           "shared" : "e3ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Twist"
+          ]
         },
         {
-          "tcId" : 62,
+          "tcId" : 77,
           "comment" : "edge case for shared secret",
           "curve" : "curve25519",
           "public" : "f76e9010ac33c5043b2d3b76a842171000c4916222e9e85897a0aec7f6350b3c",
@@ -641,37 +845,43 @@
           "flags" : []
         },
         {
-          "tcId" : 63,
+          "tcId" : 78,
           "comment" : "edge case for shared secret",
           "curve" : "curve25519",
           "public" : "bb72688d8f8aa7a39cd6060cd5c8093cdec6fe341937c3886a99346cd07faa55",
           "private" : "a0a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a976bf63",
           "shared" : "dbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff7f",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Twist"
+          ]
         },
         {
-          "tcId" : 64,
+          "tcId" : 79,
           "comment" : "edge case for shared secret",
           "curve" : "curve25519",
           "public" : "88fddea193391c6a5933ef9b71901549447205aae9da928a6b91a352ba10f41f",
           "private" : "a0a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a976bf63",
           "shared" : "0000000000000000000000000000000000000000000000000000000000000002",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Twist"
+          ]
         },
         {
-          "tcId" : 65,
+          "tcId" : 80,
           "comment" : "edge case for shared secret",
           "curve" : "curve25519",
           "public" : "303b392f153116cad9cc682a00ccc44c95ff0d3bbe568beb6c4e739bafdc2c68",
           "private" : "a0a4f130b98a5be4b1cedb7cb85584a3520e142d474dc9ccb909a073a976bf63",
           "shared" : "0000000000000000000000000000000000000000000000000000000000008000",
           "result" : "acceptable",
-          "flags" : []
+          "flags" : [
+            "Twist"
+          ]
         },
         {
-          "tcId" : 66,
+          "tcId" : 81,
           "comment" : "checking for overflow",
           "curve" : "curve25519",
           "public" : "fd300aeb40e1fa582518412b49b208a7842b1e1f056a040178ea4141534f652d",
@@ -681,7 +891,7 @@
           "flags" : []
         },
         {
-          "tcId" : 67,
+          "tcId" : 82,
           "comment" : "checking for overflow",
           "curve" : "curve25519",
           "public" : "c8ef79b514d7682677bc7931e06ee5c27c9b392b4ae9484473f554e6678ecc2e",
@@ -691,7 +901,7 @@
           "flags" : []
         },
         {
-          "tcId" : 68,
+          "tcId" : 83,
           "comment" : "checking for overflow",
           "curve" : "curve25519",
           "public" : "64aeac2504144861532b7bbcb6c87d67dd4c1f07ebc2e06effb95aecc6170b2c",
@@ -701,7 +911,7 @@
           "flags" : []
         },
         {
-          "tcId" : 69,
+          "tcId" : 84,
           "comment" : "checking for overflow",
           "curve" : "curve25519",
           "public" : "bf68e35e9bdb7eee1b50570221860f5dcdad8acbab031b14974cc49013c49831",
@@ -711,7 +921,7 @@
           "flags" : []
         },
         {
-          "tcId" : 70,
+          "tcId" : 85,
           "comment" : "checking for overflow",
           "curve" : "curve25519",
           "public" : "5347c491331a64b43ddc683034e677f53dc32b52a52a577c15a83bf298e99f19",
@@ -721,7 +931,7 @@
           "flags" : []
         },
         {
-          "tcId" : 71,
+          "tcId" : 86,
           "comment" : "private key == -1 (mod order)",
           "curve" : "curve25519",
           "public" : "258e04523b8d253ee65719fc6906c657192d80717edc828fa0af21686e2faa75",
@@ -731,7 +941,7 @@
           "flags" : []
         },
         {
-          "tcId" : 72,
+          "tcId" : 87,
           "comment" : "private key == 1 (mod order) on twist",
           "curve" : "curve25519",
           "public" : "2eae5ec3dd494e9f2d37d258f873a8e6e9d0dbd1e383ef64d98bb91b3e0be035",

@@ -1,20 +1,23 @@
 {
   "algorithm" : "ECDH",
-  "generatorVersion" : "0.4",
-  "numberOfTests" : 148,
+  "generatorVersion" : "0.4.6",
   "notes" : {
     "AddSubChain" : "The private key has a special value. Implementations using addition subtraction chains for the point multiplication may get the point at infinity as an intermediate result. See CVE_2017_10176",
     "CVE_2017_10176" : "This test vector leads to an EC point multiplication where an intermediate result can be the point at infinity, if addition-subtraction chains are used to speed up the point multiplication.",
+    "InvalidPublic" : "The public key has been modified and is invalid. An implementation should always check whether the public key is valid and on the same curve as the private key. The test vector includes the shared secret computed with the original public key. Generating a shared secret other than the one with the original key likely indicates that the bug is exploitable.",
     "ModifiedPrime" : "The modulus of the public key has been modified. The public point of the public key has been chosen so that it is both a point on both the curve of the modified public key and the private key.",
     "UnnamedCurve" : "The public key does not use a named curve. RFC 3279 allows to encode such curves by explicitly encoding, the parameters of the curve equation, modulus, generator, order and cofactor. However, many crypto libraries only support named curves. Modifying some of the EC parameters and encoding the corresponding public key as an unnamed curve is a potential attack vector.",
     "UnusedParam" : "A parameter that is typically not used for ECDH has been modified. Sometimes libraries ignore small differences between public and private key. For example, a library might ignore an incorrect cofactor in the public key. We consider ignoring such changes as acceptable as long as these differences do not change the outcome of the ECDH computation, i.e. as long as the computation is done on the curve from the private key.",
     "WeakPublicKey" : "The vector contains a weak public key. The curve is not a named curve, the public key point has order 3 and has been chosen to be on the same curve as the private key. This test vector is used to check ECC implementations for missing steps in the verification of the public key.",
     "WrongOrder" : "The order of the public key has been modified. If this order is used in a cryptographic primitive instead of the correct order then private keys may leak. E.g. ECDHC in BC 1.52 suffered from this."
   },
+  "numberOfTests" : 148,
   "header" : [],
   "testGroups" : [
     {
       "curve" : "P-256",
+      "encoding" : "webcrypto",
+      "type" : "ECHDComp",
       "tests" : [
         {
           "tcId" : 1,
@@ -1011,9 +1014,11 @@
             "x" : "Qd7jCiJE2SAcpk1v0t0Sa3CVNp5nOuyqpeBCMIUonV0",
             "y" : "TRc1uShB5308iyBk3tLD1l2GkvCgVFJl322i5SuUock"
           },
-          "shared" : "",
+          "shared" : "d003f5cc83852584061f7a8a28bcb5671ecbda096e16e7accfa8f8d311a3db7a",
           "result" : "invalid",
-          "flags" : []
+          "flags" : [
+            "InvalidPublic"
+          ]
         },
         {
           "tcId" : 44,
@@ -1034,13 +1039,15 @@
             "x" : "Qd7jCiJE2SAcpk1v0t0Sa3CVNp5nOuyqpeBCMIUonV0",
             "y" : "TRc1uShB5308iyBk3tLD1l2GkvCgVFJl322i5SuUock"
           },
-          "shared" : "",
+          "shared" : "d003f5cc83852584061f7a8a28bcb5671ecbda096e16e7accfa8f8d311a3db7a",
           "result" : "invalid",
-          "flags" : []
+          "flags" : [
+            "InvalidPublic"
+          ]
         },
         {
           "tcId" : 45,
-          "comment" : "Private key and public key are not on the same curve",
+          "comment" : "Public key uses wrong curve: secp384r1",
           "curve" : "P-256",
           "public" : {
             "crv" : "P-384",
@@ -1063,7 +1070,7 @@
         },
         {
           "tcId" : 46,
-          "comment" : "Private key and public key are not on the same curve",
+          "comment" : "Public key uses wrong curve: secp521r1",
           "curve" : "P-256",
           "public" : {
             "crv" : "P-521",
@@ -1088,6 +1095,8 @@
     },
     {
       "curve" : "P-384",
+      "encoding" : "webcrypto",
+      "type" : "ECHDComp",
       "tests" : [
         {
           "tcId" : 47,
@@ -2080,9 +2089,11 @@
             "x" : "Zc5rnX5x6TG2_R-skQUHtDd6wV5FMpKiNV3zmrdByjYpe_bePDSlr7utNxgGuJHy",
             "y" : "SwiLxdFGRqdPPvz-o54S4rX1brvdUD1ej-4_wwDXUJuqIrZo2_H9JBgHCrQKB9n2"
           },
-          "shared" : "",
+          "shared" : "455cf3c0b0090688599825522ef3312878201514f6330ccc7f42ec1945204adfe419b2dbbfb942dc98b16d8323150cf6",
           "result" : "invalid",
-          "flags" : []
+          "flags" : [
+            "InvalidPublic"
+          ]
         },
         {
           "tcId" : 90,
@@ -2103,9 +2114,11 @@
             "x" : "Zc5rnX5x6TG2_R-skQUHtDd6wV5FMpKiNV3zmrdByjYpe_bePDSlr7utNxgGuJHy",
             "y" : "SwiLxdFGRqdPPvz-o54S4rX1brvdUD1ej-4_wwDXUJuqIrZo2_H9JBgHCrQKB9n2"
           },
-          "shared" : "",
+          "shared" : "455cf3c0b0090688599825522ef3312878201514f6330ccc7f42ec1945204adfe419b2dbbfb942dc98b16d8323150cf6",
           "result" : "invalid",
-          "flags" : []
+          "flags" : [
+            "InvalidPublic"
+          ]
         },
         {
           "tcId" : 91,
@@ -2126,13 +2139,15 @@
             "x" : "Zc5rnX5x6TG2_R-skQUHtDd6wV5FMpKiNV3zmrdByjYpe_bePDSlr7utNxgGuJHy",
             "y" : "SwiLxdFGRqdPPvz-o54S4rX1brvdUD1ej-4_wwDXUJuqIrZo2_H9JBgHCrQKB9n2"
           },
-          "shared" : "",
+          "shared" : "455cf3c0b0090688599825522ef3312878201514f6330ccc7f42ec1945204adfe419b2dbbfb942dc98b16d8323150cf6",
           "result" : "invalid",
-          "flags" : []
+          "flags" : [
+            "InvalidPublic"
+          ]
         },
         {
           "tcId" : 92,
-          "comment" : "Private key and public key are not on the same curve",
+          "comment" : "Public key uses wrong curve: secp256r1",
           "curve" : "P-384",
           "public" : {
             "crv" : "P-256",
@@ -2155,7 +2170,7 @@
         },
         {
           "tcId" : 93,
-          "comment" : "Private key and public key are not on the same curve",
+          "comment" : "Public key uses wrong curve: secp521r1",
           "curve" : "P-384",
           "public" : {
             "crv" : "P-521",
@@ -2180,6 +2195,8 @@
     },
     {
       "curve" : "P-521",
+      "encoding" : "webcrypto",
+      "type" : "ECHDComp",
       "tests" : [
         {
           "tcId" : 94,
@@ -3364,9 +3381,11 @@
             "x" : "Aep4GB4E9ID9mJ4FlkJEYTt_emN5q_CBkyep9a3vpvRBB0UCi_GkaoAx_scAN-vLUH29j1C4EqS8wDE7p98Cx9NV",
             "y" : "AeBFX-bOHqmYxzl1aUjPonu4sangygpQJjGDb5bg9d9mnLPKP298D5JAs9h-F0Fhs7BNg5q2_kbyRb1iZQXvS0FU"
           },
-          "shared" : "",
+          "shared" : "00fb8542487cbd45e609632f681db6b48fdabed9b97a2467a34205eadadad9dedb54a2a647d23dca68e929a2041888b091f4bb4023a0517be669a6c9f9c847ef89de",
           "result" : "invalid",
-          "flags" : []
+          "flags" : [
+            "InvalidPublic"
+          ]
         },
         {
           "tcId" : 145,
@@ -3387,9 +3406,11 @@
             "x" : "Aep4GB4E9ID9mJ4FlkJEYTt_emN5q_CBkyep9a3vpvRBB0UCi_GkaoAx_scAN-vLUH29j1C4EqS8wDE7p98Cx9NV",
             "y" : "AeBFX-bOHqmYxzl1aUjPonu4sangygpQJjGDb5bg9d9mnLPKP298D5JAs9h-F0Fhs7BNg5q2_kbyRb1iZQXvS0FU"
           },
-          "shared" : "",
+          "shared" : "00fb8542487cbd45e609632f681db6b48fdabed9b97a2467a34205eadadad9dedb54a2a647d23dca68e929a2041888b091f4bb4023a0517be669a6c9f9c847ef89de",
           "result" : "invalid",
-          "flags" : []
+          "flags" : [
+            "InvalidPublic"
+          ]
         },
         {
           "tcId" : 146,
@@ -3410,13 +3431,15 @@
             "x" : "Aep4GB4E9ID9mJ4FlkJEYTt_emN5q_CBkyep9a3vpvRBB0UCi_GkaoAx_scAN-vLUH29j1C4EqS8wDE7p98Cx9NV",
             "y" : "AeBFX-bOHqmYxzl1aUjPonu4sangygpQJjGDb5bg9d9mnLPKP298D5JAs9h-F0Fhs7BNg5q2_kbyRb1iZQXvS0FU"
           },
-          "shared" : "",
+          "shared" : "00fb8542487cbd45e609632f681db6b48fdabed9b97a2467a34205eadadad9dedb54a2a647d23dca68e929a2041888b091f4bb4023a0517be669a6c9f9c847ef89de",
           "result" : "invalid",
-          "flags" : []
+          "flags" : [
+            "InvalidPublic"
+          ]
         },
         {
           "tcId" : 147,
-          "comment" : "Private key and public key are not on the same curve",
+          "comment" : "Public key uses wrong curve: secp256r1",
           "curve" : "P-521",
           "public" : {
             "crv" : "P-256",
@@ -3439,7 +3462,7 @@
         },
         {
           "tcId" : 148,
-          "comment" : "Private key and public key are not on the same curve",
+          "comment" : "Public key uses wrong curve: secp384r1",
           "curve" : "P-521",
           "public" : {
             "crv" : "P-384",

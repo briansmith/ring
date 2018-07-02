@@ -1,6 +1,6 @@
 {
   "algorithm" : "KW",
-  "generatorVersion" : "0.4.2",
+  "generatorVersion" : "0.4.6",
   "numberOfTests" : 162,
   "header" : [],
   "testGroups" : [

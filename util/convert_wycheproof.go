@@ -222,6 +222,7 @@ func convertWycheproof(f io.Writer, jsonPath string) error {
 
 var defaultInputs = []string{
 	"aes_cbc_pkcs5_test.json",
+	"aes_cmac_test.json",
 	"aes_gcm_siv_test.json",
 	"aes_gcm_test.json",
 	"chacha20_poly1305_test.json",

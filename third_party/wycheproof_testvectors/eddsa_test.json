@@ -1,16 +1,13 @@
 {
   "algorithm" : "EDDSA",
-  "generatorVersion" : "0.4",
-  "numberOfTests" : 109,
+  "generatorVersion" : "0.4.6",
   "notes" : {
     "SignatureMalleability" : "EdDSA signatures are non-malleable, if implemented accordingly. Failing to check the range of S allows to modify signatures. See RFC 8032, Section 5.2.7 and Section 8.4."
   },
+  "numberOfTests" : 109,
   "header" : [],
   "testGroups" : [
     {
-      "keyDer" : "302a300506032b65700321007d4d0e7f6153a69b6242b522abbee685fda4420f8834b108c3bdae369ef549fa",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAfU0Of2FTpptiQrUiq77mhf2kQg+INLEIw72uNp71Sfo=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -18,6 +15,9 @@
         "sk" : "add4bb8103785baf9ac534258e8aaf65f5f1adb5ef5f3df19bb80ab989c4d64b",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b65700321007d4d0e7f6153a69b6242b522abbee685fda4420f8834b108c3bdae369ef549fa",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAfU0Of2FTpptiQrUiq77mhf2kQg+INLEIw72uNp71Sfo=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 1,
@@ -582,9 +582,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b6570032100a12c2beb77265f2aac953b5009349d94155a03ada416aad451319480e983ca4c",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAoSwr63cmXyqslTtQCTSdlBVaA62kFqrUUTGUgOmDykw=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -592,6 +589,9 @@
         "sk" : "0a23a20072891237aa0864b5765139514908787878cd77135a0059881d313f00",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b6570032100a12c2beb77265f2aac953b5009349d94155a03ada416aad451319480e983ca4c",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAoSwr63cmXyqslTtQCTSdlBVaA62kFqrUUTGUgOmDykw=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 69,
@@ -668,9 +668,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b6570032100d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -678,6 +675,9 @@
         "sk" : "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b6570032100d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA11qYAYKxCrfVS/7TyWQHOg7hcvPapiMlrwIaaPcHURo=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 78,
@@ -690,9 +690,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b65700321003d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAPUAXw+hDiVqStwqnTRt+vJyYLM8uxJaMwM1V8Sr0Zgw=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -700,6 +697,9 @@
         "sk" : "4ccd089b28ff96da9db6c346ec114e0f5b8a319f35aba624da8cf6ed4fb8a6fb",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b65700321003d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAPUAXw+hDiVqStwqnTRt+vJyYLM8uxJaMwM1V8Sr0Zgw=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 79,
@@ -712,9 +712,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b6570032100fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA/FHNjmIYoaONpH7QAjDwWAgW7RO6MwOsXeuRFUiQgCU=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -722,6 +719,9 @@
         "sk" : "c5aa8df43f9f837bedb7442f31dcb7b166d38535076f094b85ce3a2e0b4458f7",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b6570032100fc51cd8e6218a1a38da47ed00230f0580816ed13ba3303ac5deb911548908025",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA/FHNjmIYoaONpH7QAjDwWAgW7RO6MwOsXeuRFUiQgCU=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 80,
@@ -734,9 +734,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b6570032100278117fc144c72340f67d0f2316e8386ceffbf2b2428c9c51fef7c597f1d426e",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAJ4EX/BRMcjQPZ9DyMW6Dhs7/vyskKMnFH+98WX8dQm4=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -744,6 +741,9 @@
         "sk" : "f5e5767cf153319517630f226876b86c8160cc583bc013744c6bf255f5cc0ee5",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b6570032100278117fc144c72340f67d0f2316e8386ceffbf2b2428c9c51fef7c597f1d426e",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAJ4EX/BRMcjQPZ9DyMW6Dhs7/vyskKMnFH+98WX8dQm4=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 81,
@@ -756,9 +756,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b65700321008fd659b77b558ed93882c1157438450ac86ec62d421d568e98ee236f3810295a",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAj9ZZt3tVjtk4gsEVdDhFCshuxi1CHVaOmO4jbzgQKVo=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -766,6 +763,9 @@
         "sk" : "d7ad3f1f6bbe0477c3c357a806a19eb41ae3f94025035bc87f281f8ee9fc0e34",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b65700321008fd659b77b558ed93882c1157438450ac86ec62d421d568e98ee236f3810295a",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAj9ZZt3tVjtk4gsEVdDhFCshuxi1CHVaOmO4jbzgQKVo=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 82,
@@ -778,9 +778,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b65700321002a606bf67ac770c607038b004101b325edb569efd3413d2d1f2c3e6b4e6e3082",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAKmBr9nrHcMYHA4sAQQGzJe21ae/TQT0tHyw+a05uMII=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -788,6 +785,9 @@
         "sk" : "ad9b22793336fcdac10e136c4deea599be187a38eef91c1cf7c7a4ec884dda08",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b65700321002a606bf67ac770c607038b004101b325edb569efd3413d2d1f2c3e6b4e6e3082",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAKmBr9nrHcMYHA4sAQQGzJe21ae/TQT0tHyw+a05uMII=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 83,
@@ -808,9 +808,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b6570032100c9c946cbc5544ac74eef491f07c5881c16faf7ec31ce4aa91bb60ae7b4539051",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyclGy8VUSsdO70kfB8WIHBb69+wxzkqpG7YK57RTkFE=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -818,6 +815,9 @@
         "sk" : "04a6553d68a9baef78a2175af375458eaa01cdb77350c61e282ef5f0c7116599",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b6570032100c9c946cbc5544ac74eef491f07c5881c16faf7ec31ce4aa91bb60ae7b4539051",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAyclGy8VUSsdO70kfB8WIHBb69+wxzkqpG7YK57RTkFE=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 85,
@@ -838,9 +838,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b657003210032ad026f693d0d2afe7f4388d91c4c964426fcb9e3665c3ebd8650009b815c8e",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAMq0Cb2k9DSr+f0OI2RxMlkQm/LnjZlw+vYZQAJuBXI4=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -848,6 +845,9 @@
         "sk" : "c367c8d2ebeeecd70c1e8985b70c3808b75657f243b21ba4f322792540e92257",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b657003210032ad026f693d0d2afe7f4388d91c4c964426fcb9e3665c3ebd8650009b815c8e",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAMq0Cb2k9DSr+f0OI2RxMlkQm/LnjZlw+vYZQAJuBXI4=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 87,
@@ -924,9 +924,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b6570032100c29ec1894e06d27b4e40486b4fa5063d66a746c7f9c323b12203c03b72b8b78a",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAwp7BiU4G0ntOQEhrT6UGPWanRsf5wyOxIgPAO3K4t4o=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -934,6 +931,9 @@
         "sk" : "56c1e22d616cbb6dea869288b4b1c02bb98696583c2f6e650013a03e17049c62",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b6570032100c29ec1894e06d27b4e40486b4fa5063d66a746c7f9c323b12203c03b72b8b78a",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAwp7BiU4G0ntOQEhrT6UGPWanRsf5wyOxIgPAO3K4t4o=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 96,
@@ -954,9 +954,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b6570032100cfda5b899e35764c5229e59295fe1222b7ddce176643697c29e46ecbba10cf10",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAz9pbiZ41dkxSKeWSlf4SIrfdzhdmQ2l8KeRuy7oQzxA=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -964,6 +961,9 @@
         "sk" : "b7d2f64276df417fed27d8e15b4e90f6fd93dace707294c338bd32bc4bbd8fdb",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b6570032100cfda5b899e35764c5229e59295fe1222b7ddce176643697c29e46ecbba10cf10",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAz9pbiZ41dkxSKeWSlf4SIrfdzhdmQ2l8KeRuy7oQzxA=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 98,
@@ -1008,9 +1008,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b6570032100529919c9c780985a841c42ba6c180ff2d67a276ccfbe281080e47ab71a758f56",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAUpkZyceAmFqEHEK6bBgP8tZ6J2zPvigQgOR6txp1j1Y=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -1018,6 +1015,9 @@
         "sk" : "7d597c3b7283929d07ed8f01f31d2596823e5e46ab226c7be4234d1a9dcaef37",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b6570032100529919c9c780985a841c42ba6c180ff2d67a276ccfbe281080e47ab71a758f56",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAUpkZyceAmFqEHEK6bBgP8tZ6J2zPvigQgOR6txp1j1Y=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 103,
@@ -1038,9 +1038,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b65700321002252b3d57c74cbf8bc460dc2e082847926bc022f09ab6ae95756362bfd1167c1",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAIlKz1Xx0y/i8Rg3C4IKEeSa8Ai8Jq2rpV1Y2K/0RZ8E=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -1048,6 +1045,9 @@
         "sk" : "f401cee4bfb1732f0e9b8d8ba79469565c3115296141dbdf7e9c311a0ac1823b",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b65700321002252b3d57c74cbf8bc460dc2e082847926bc022f09ab6ae95756362bfd1167c1",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAIlKz1Xx0y/i8Rg3C4IKEeSa8Ai8Jq2rpV1Y2K/0RZ8E=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 105,
@@ -1068,9 +1068,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b6570032100c0a773110f975de3732355bb7ec7f0c41c091c0252966070205516693b992a4a",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAwKdzEQ+XXeNzI1W7fsfwxBwJHAJSlmBwIFUWaTuZKko=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -1078,6 +1075,9 @@
         "sk" : "3d658956410377d0644676d2599542412a4f3b0e4eadfb7f3f836615f42b18bc",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b6570032100c0a773110f975de3732355bb7ec7f0c41c091c0252966070205516693b992a4a",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAwKdzEQ+XXeNzI1W7fsfwxBwJHAJSlmBwIFUWaTuZKko=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 107,
@@ -1090,9 +1090,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b657003210054cda623245759ad6d43e620a606908befc633d60792bc7798447a0ef38e7311",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAVM2mIyRXWa1tQ+YgpgaQi+/GM9YHkrx3mER6DvOOcxE=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -1100,6 +1097,9 @@
         "sk" : "bccb61323840c2a96fc36f7e54ea6c8e55f9d221f7f05791ed60025e06064439",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b657003210054cda623245759ad6d43e620a606908befc633d60792bc7798447a0ef38e7311",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAVM2mIyRXWa1tQ+YgpgaQi+/GM9YHkrx3mER6DvOOcxE=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 108,
@@ -1112,9 +1112,6 @@
       ]
     },
     {
-      "keyDer" : "302a300506032b65700321002362bac514d5fad33802642e979a1e82de6eb6f1bcbf6a5b304f2bb02b9e57fe",
-      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAI2K6xRTV+tM4AmQul5oegt5utvG8v2pbME8rsCueV/4=\n-----END PUBLIC KEY-----\n",
-      "type" : "EDDSAVer",
       "key" : {
         "curve" : "edwards25519",
         "keySize" : 255,
@@ -1122,6 +1119,9 @@
         "sk" : "f2d3023b9c19e241748bc4039a7a43c595701f23675505015213a8a2a0274c1b",
         "type" : "EDDSAKeyPair"
       },
+      "keyDer" : "302a300506032b65700321002362bac514d5fad33802642e979a1e82de6eb6f1bcbf6a5b304f2bb02b9e57fe",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAI2K6xRTV+tM4AmQul5oegt5utvG8v2pbME8rsCueV/4=\n-----END PUBLIC KEY-----\n",
+      "type" : "EDDSAVer",
       "tests" : [
         {
           "tcId" : 109,

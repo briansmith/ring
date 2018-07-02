@@ -1,10 +1,10 @@
 {
   "algorithm" : "AES-SIV-CMAC",
-  "generatorVersion" : "0.4",
-  "numberOfTests" : 442,
+  "generatorVersion" : "0.4.6",
   "notes" : {
     "EdgeCaseSiv" : "The SIV of this test vector has an edge case value. One purpose of these test vectors is to detect implementations where integer overflows of the counter is incorrectly implemented. AES-SIV itself prevents such overflow problems by clearing some msbs in the IV."
   },
+  "numberOfTests" : 442,
   "header" : [],
   "testGroups" : [
     {

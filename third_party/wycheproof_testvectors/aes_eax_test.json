@@ -1,10 +1,10 @@
 {
   "algorithm" : "AES-EAX",
-  "generatorVersion" : "0.4",
-  "numberOfTests" : 155,
+  "generatorVersion" : "0.4.6",
   "notes" : {
     "CounterWrap" : "AES-EAX reduces the counter value modulo 2**128. This test vector was constructed for testing the wrapping of the counter value."
   },
+  "numberOfTests" : 155,
   "header" : [],
   "testGroups" : [
     {

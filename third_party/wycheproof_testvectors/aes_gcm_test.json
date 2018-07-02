@@ -1,11 +1,11 @@
 {
   "algorithm" : "AES-GCM",
-  "generatorVersion" : "0.4",
-  "numberOfTests" : 104,
+  "generatorVersion" : "0.4.6",
   "notes" : {
     "ConstructedIv" : "The counter for AES-GCM is reduced modulo 2**32. This test vector was constructed to test for correct wrapping of the counter.",
     "ZeroLengthIv" : "AES-GCM does not allow an IV of length 0. Encrypting with such an IV leaks the authentication key. Hence using an IV of length 0 is insecure even if the key itself is only used for a single encryption."
   },
+  "numberOfTests" : 104,
   "header" : [],
   "testGroups" : [
     {
