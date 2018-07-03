@@ -1396,12 +1396,12 @@ static enum ssl_hs_wait_t do_send_client_certificate_verify(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   // Resolve Channel ID first, before any non-idempotent operations.
-  if (ssl->s3->tlsext_channel_id_valid) {
+  if (ssl->s3->channel_id_valid) {
     if (!ssl_do_channel_id_callback(hs)) {
       return ssl_hs_error;
     }
 
-    if (hs->config->tlsext_channel_id_private == NULL) {
+    if (hs->config->channel_id_private == NULL) {
       hs->state = state_send_client_finished;
       return ssl_hs_channel_id_lookup;
     }
@@ -1431,7 +1431,7 @@ static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
     }
   }
 
-  if (ssl->s3->tlsext_channel_id_valid) {
+  if (ssl->s3->channel_id_valid) {
     ScopedCBB cbb;
     CBB body;
     if (!ssl->method->init_message(ssl, cbb.get(), &body, SSL3_MT_CHANNEL_ID) ||

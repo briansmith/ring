@@ -165,7 +165,7 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
       !CBB_add_asn1_octet_string(&seq, read_iv, read_iv_len) ||
       !CBB_add_asn1_octet_string(&seq, write_iv, write_iv_len) ||
       !CBB_add_asn1_bool(&seq, s3->session_reused) ||
-      !CBB_add_asn1_bool(&seq, s3->tlsext_channel_id_valid) ||
+      !CBB_add_asn1_bool(&seq, s3->channel_id_valid) ||
       !ssl_session_serialize(session, &seq) ||
       !CBB_add_asn1_octet_string(&seq, s3->next_proto_negotiated.data(),
                                  s3->next_proto_negotiated.size()) ||
@@ -174,8 +174,8 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
       !CBB_add_asn1_octet_string(
           &seq, reinterpret_cast<uint8_t *>(s3->hostname.get()),
           hostname_len) ||
-      !CBB_add_asn1_octet_string(&seq, s3->tlsext_channel_id,
-                                 sizeof(s3->tlsext_channel_id)) ||
+      !CBB_add_asn1_octet_string(&seq, s3->channel_id,
+                                 sizeof(s3->channel_id)) ||
       !CBB_add_asn1_bool(&seq, ssl->s3->token_binding_negotiated) ||
       !CBB_add_asn1_uint64(&seq, ssl->s3->negotiated_token_binding_param) ||
       !CBB_add_asn1_bool(&seq, s3->hs->next_proto_neg_seen) ||
@@ -251,9 +251,9 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
       !CBS_get_asn1(&seq, &alpn, CBS_ASN1_OCTETSTRING) ||
       !CBS_get_asn1(&seq, &hostname, CBS_ASN1_OCTETSTRING) ||
       !CBS_get_asn1(&seq, &channel_id, CBS_ASN1_OCTETSTRING) ||
-      CBS_len(&channel_id) != sizeof(s3->tlsext_channel_id) ||
-      !CBS_copy_bytes(&channel_id, s3->tlsext_channel_id,
-                      sizeof(s3->tlsext_channel_id)) ||
+      CBS_len(&channel_id) != sizeof(s3->channel_id) ||
+      !CBS_copy_bytes(&channel_id, s3->channel_id,
+                      sizeof(s3->channel_id)) ||
       !CBS_get_asn1_bool(&seq, &token_binding_negotiated) ||
       !CBS_get_asn1_uint64(&seq, &negotiated_token_binding_param) ||
       !CBS_get_asn1_bool(&seq, &next_proto_neg_seen) ||
@@ -302,7 +302,7 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
       return false;
   }
   s3->session_reused = session_reused;
-  s3->tlsext_channel_id_valid = channel_id_valid;
+  s3->channel_id_valid = channel_id_valid;
   s3->next_proto_negotiated.CopyFrom(next_proto);
   s3->alpn_selected.CopyFrom(alpn);
 

@@ -540,7 +540,7 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       quiet_shutdown(false),
       ocsp_stapling_enabled(false),
       signed_cert_timestamps_enabled(false),
-      tlsext_channel_id_enabled(false),
+      channel_id_enabled(false),
       grease_enabled(false),
       allow_unknown_alpn_protos(false),
       ed25519_enabled(false),
@@ -691,9 +691,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
   ssl->config->psk_client_callback = ctx->psk_client_callback;
   ssl->config->psk_server_callback = ctx->psk_server_callback;
 
-  ssl->config->tlsext_channel_id_enabled = ctx->tlsext_channel_id_enabled;
-  ssl->config->tlsext_channel_id_private =
-      UpRef(ctx->tlsext_channel_id_private);
+  ssl->config->channel_id_enabled = ctx->channel_id_enabled;
+  ssl->config->channel_id_private = UpRef(ctx->channel_id_private);
 
   ssl->config->signed_cert_timestamps_enabled =
       ctx->signed_cert_timestamps_enabled;
@@ -712,7 +711,7 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
     : ssl(ssl_arg),
       signed_cert_timestamps_enabled(false),
       ocsp_stapling_enabled(false),
-      tlsext_channel_id_enabled(false),
+      channel_id_enabled(false),
       retain_only_sha256_of_client_certs(false),
       handoff(false),
       shed_handshake_config(false) {
@@ -1827,8 +1826,8 @@ const char *SSL_get_servername(const SSL *ssl, const int type) {
 
   // Historically, |SSL_get_servername| was also the configuration getter
   // corresponding to |SSL_set_tlsext_host_name|.
-  if (ssl->tlsext_hostname != nullptr) {
-    return ssl->tlsext_hostname.get();
+  if (ssl->hostname != nullptr) {
+    return ssl->hostname.get();
   }
 
   return ssl->s3->hostname.get();
@@ -1907,7 +1906,7 @@ void SSL_get0_ocsp_response(const SSL *ssl, const uint8_t **out,
 }
 
 int SSL_set_tlsext_host_name(SSL *ssl, const char *name) {
-  ssl->tlsext_hostname.reset();
+  ssl->hostname.reset();
   if (name == nullptr) {
     return 1;
   }
@@ -1917,8 +1916,8 @@ int SSL_set_tlsext_host_name(SSL *ssl, const char *name) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_SSL3_EXT_INVALID_SERVERNAME);
     return 0;
   }
-  ssl->tlsext_hostname.reset(BUF_strdup(name));
-  if (ssl->tlsext_hostname == nullptr) {
+  ssl->hostname.reset(BUF_strdup(name));
+  if (ssl->hostname == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return 0;
   }
@@ -1927,12 +1926,12 @@ int SSL_set_tlsext_host_name(SSL *ssl, const char *name) {
 
 int SSL_CTX_set_tlsext_servername_callback(
     SSL_CTX *ctx, int (*callback)(SSL *ssl, int *out_alert, void *arg)) {
-  ctx->tlsext_servername_callback = callback;
+  ctx->servername_callback = callback;
   return 1;
 }
 
 int SSL_CTX_set_tlsext_servername_arg(SSL_CTX *ctx, void *arg) {
-  ctx->tlsext_servername_arg = arg;
+  ctx->servername_arg = arg;
   return 1;
 }
 
@@ -2080,7 +2079,7 @@ err:
 }
 
 void SSL_CTX_set_tls_channel_id_enabled(SSL_CTX *ctx, int enabled) {
-  ctx->tlsext_channel_id_enabled = !!enabled;
+  ctx->channel_id_enabled = !!enabled;
 }
 
 int SSL_CTX_enable_tls_channel_id(SSL_CTX *ctx) {
@@ -2092,7 +2091,7 @@ void SSL_set_tls_channel_id_enabled(SSL *ssl, int enabled) {
   if (!ssl->config) {
     return;
   }
-  ssl->config->tlsext_channel_id_enabled = !!enabled;
+  ssl->config->channel_id_enabled = !!enabled;
 }
 
 int SSL_enable_tls_channel_id(SSL *ssl) {
@@ -2113,8 +2112,8 @@ int SSL_CTX_set1_tls_channel_id(SSL_CTX *ctx, EVP_PKEY *private_key) {
     return 0;
   }
 
-  ctx->tlsext_channel_id_private = UpRef(private_key);
-  ctx->tlsext_channel_id_enabled = true;
+  ctx->channel_id_private = UpRef(private_key);
+  ctx->channel_id_enabled = true;
 
   return 1;
 }
@@ -2128,18 +2127,17 @@ int SSL_set1_tls_channel_id(SSL *ssl, EVP_PKEY *private_key) {
     return 0;
   }
 
-  ssl->config->tlsext_channel_id_private = UpRef(private_key);
-  ssl->config->tlsext_channel_id_enabled = true;
+  ssl->config->channel_id_private = UpRef(private_key);
+  ssl->config->channel_id_enabled = true;
 
   return 1;
 }
 
 size_t SSL_get_tls_channel_id(SSL *ssl, uint8_t *out, size_t max_out) {
-  if (!ssl->s3->tlsext_channel_id_valid) {
+  if (!ssl->s3->channel_id_valid) {
     return 0;
   }
-  OPENSSL_memcpy(out, ssl->s3->tlsext_channel_id,
-                 (max_out < 64) ? max_out : 64);
+  OPENSSL_memcpy(out, ssl->s3->channel_id, (max_out < 64) ? max_out : 64);
   return 64;
 }
 

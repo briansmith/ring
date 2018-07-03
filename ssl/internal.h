@@ -2163,9 +2163,8 @@ struct SSL3_STATE {
 
   // In a client, this means that the server supported Channel ID and that a
   // Channel ID was sent. In a server it means that we echoed support for
-  // Channel IDs and that tlsext_channel_id will be valid after the
-  // handshake.
-  bool tlsext_channel_id_valid:1;
+  // Channel IDs and that |channel_id| will be valid after the handshake.
+  bool channel_id_valid:1;
 
   // key_update_pending is true if we have a KeyUpdate acknowledgment
   // outstanding.
@@ -2258,10 +2257,10 @@ struct SSL3_STATE {
   UniquePtr<char> hostname;
 
   // For a server:
-  //     If |tlsext_channel_id_valid| is true, then this contains the
+  //     If |channel_id_valid| is true, then this contains the
   //     verified Channel ID from the client: a P256 point, (x,y), where
   //     each are big-endian values.
-  uint8_t tlsext_channel_id[64] = {0};
+  uint8_t channel_id[64] = {0};
 
   // Contains the QUIC transport params received by the peer.
   Array<uint8_t> peer_quic_transport_params;
@@ -2450,7 +2449,7 @@ struct SSL_CONFIG {
   Array<uint16_t> supported_group_list;  // our list
 
   // The client's Channel ID private key.
-  UniquePtr<EVP_PKEY> tlsext_channel_id_private;
+  UniquePtr<EVP_PKEY> channel_id_private;
 
   // For a client, this contains the list of supported protocols in wire
   // format.
@@ -2476,10 +2475,10 @@ struct SSL_CONFIG {
   // whether OCSP stapling will be requested.
   bool ocsp_stapling_enabled:1;
 
-  // tlsext_channel_id_enabled is copied from the |SSL_CTX|. For a server,
-  // means that we'll accept Channel IDs from clients. For a client, means that
-  // we'll advertise support.
-  bool tlsext_channel_id_enabled:1;
+  // channel_id_enabled is copied from the |SSL_CTX|. For a server, means that
+  // we'll accept Channel IDs from clients. For a client, means that we'll
+  // advertise support.
+  bool channel_id_enabled:1;
 
   // retain_only_sha256_of_client_certs is true if we should compute the SHA256
   // hash of the peer's certificate and then discard it to save memory and
@@ -2749,8 +2748,8 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
 int tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg);
 
 // tls1_write_channel_id generates a Channel ID message and puts the output in
-// |cbb|. |ssl->tlsext_channel_id_private| must already be set before calling.
-// This function returns true on success and false on error.
+// |cbb|. |ssl->channel_id_private| must already be set before calling.  This
+// function returns true on success and false on error.
 bool tls1_write_channel_id(SSL_HANDSHAKE *hs, CBB *cbb);
 
 // tls1_channel_id_hash computes the hash to be signed by Channel ID and writes
@@ -2762,7 +2761,7 @@ int tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs);
 
 // ssl_do_channel_id_callback checks runs |hs->ssl->ctx->channel_id_cb| if
 // necessary. It returns one on success and zero on fatal error. Note that, on
-// success, |hs->ssl->tlsext_channel_id_private| may be unset, in which case the
+// success, |hs->ssl->channel_id_private| may be unset, in which case the
 // operation should be retried later.
 int ssl_do_channel_id_callback(SSL_HANDSHAKE *hs);
 
@@ -2949,8 +2948,8 @@ struct ssl_ctx_st {
   uint16_t max_send_fragment = SSL3_RT_MAX_PLAIN_LENGTH;
 
   // TLS extensions servername callback
-  int (*tlsext_servername_callback)(SSL *, int *, void *) = nullptr;
-  void *tlsext_servername_arg = nullptr;
+  int (*servername_callback)(SSL *, int *, void *) = nullptr;
+  void *servername_arg = nullptr;
 
   // RFC 4507 session ticket keys. |ticket_key_current| may be NULL before the
   // first handshake and |ticket_key_prev| may be NULL at any time.
@@ -3019,7 +3018,7 @@ struct ssl_ctx_st {
   bssl::Array<uint16_t> supported_group_list;
 
   // The client's Channel ID private key.
-  bssl::UniquePtr<EVP_PKEY> tlsext_channel_id_private;
+  bssl::UniquePtr<EVP_PKEY> channel_id_private;
 
   // keylog_callback, if not NULL, is the key logging callback. See
   // |SSL_CTX_set_keylog_callback|.
@@ -3063,10 +3062,10 @@ struct ssl_ctx_st {
   // If true, a client will request certificate timestamps.
   bool signed_cert_timestamps_enabled:1;
 
-  // tlsext_channel_id_enabled is whether Channel ID is enabled. For a server,
-  // means that we'll accept Channel IDs from clients.  For a client, means that
-  // we'll advertise support.
-  bool tlsext_channel_id_enabled:1;
+  // channel_id_enabled is whether Channel ID is enabled. For a server, means
+  // that we'll accept Channel IDs from clients.  For a client, means that we'll
+  // advertise support.
+  bool channel_id_enabled:1;
 
   // grease_enabled is whether draft-davidben-tls-grease-01 is enabled.
   bool grease_enabled:1;
@@ -3171,7 +3170,7 @@ struct ssl_st {
   uint32_t options = 0;  // protocol behaviour
   uint32_t mode = 0;     // API behaviour
   uint32_t max_cert_list = 0;
-  bssl::UniquePtr<char> tlsext_hostname;
+  bssl::UniquePtr<char> hostname;
 
   // renegotiate_mode controls how peer renegotiation attempts are handled.
   ssl_renegotiate_mode_t renegotiate_mode = ssl_renegotiate_never;

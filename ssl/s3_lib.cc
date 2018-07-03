@@ -173,7 +173,7 @@ SSL3_STATE::SSL3_STATE()
       initial_handshake_complete(false),
       session_reused(false),
       send_connection_binding(false),
-      tlsext_channel_id_valid(false),
+      channel_id_valid(false),
       key_update_pending(false),
       wpend_pending(false),
       early_data_accepted(false),
