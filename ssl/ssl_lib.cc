@@ -507,51 +507,6 @@ void SSL_set_handoff_mode(SSL *ssl, bool on) {
   ssl->config->handoff = on;
 }
 
-int SSL_CTX_add_cert_compression_alg(SSL_CTX *ctx, uint16_t alg_id,
-                                     bssl::CertCompressFunc compress,
-                                     bssl::CertDecompressFunc decompress) {
-  assert(compress != nullptr || decompress != nullptr);
-
-  for (CertCompressionAlg *alg : ctx->cert_compression_algs) {
-    if (alg->alg_id == alg_id) {
-      return 0;
-    }
-  }
-
-  CertCompressionAlg *alg = reinterpret_cast<CertCompressionAlg *>(
-      OPENSSL_malloc(sizeof(CertCompressionAlg)));
-  if (alg == nullptr) {
-    goto err;
-  }
-
-  OPENSSL_memset(alg, 0, sizeof(CertCompressionAlg));
-  alg->alg_id = alg_id;
-  alg->compress = compress;
-  alg->decompress = decompress;
-
-  if (ctx->cert_compression_algs == nullptr) {
-    ctx->cert_compression_algs = sk_CertCompressionAlg_new_null();
-    if (ctx->cert_compression_algs == nullptr) {
-      goto err;
-    }
-  }
-
-  if (!sk_CertCompressionAlg_push(ctx->cert_compression_algs, alg)) {
-    goto err;
-  }
-
-  return 1;
-
-err:
-  OPENSSL_free(alg);
-  if (ctx->cert_compression_algs != nullptr &&
-      sk_CertCompressionAlg_num(ctx->cert_compression_algs) == 0) {
-    sk_CertCompressionAlg_free(ctx->cert_compression_algs);
-    ctx->cert_compression_algs = nullptr;
-  }
-  return 0;
-}
-
 }  // namespace bssl
 
 using namespace bssl;
@@ -2201,6 +2156,51 @@ void SSL_get0_alpn_selected(const SSL *ssl, const uint8_t **out_data,
 
 void SSL_CTX_set_allow_unknown_alpn_protos(SSL_CTX *ctx, int enabled) {
   ctx->allow_unknown_alpn_protos = !!enabled;
+}
+
+int SSL_CTX_add_cert_compression_alg(SSL_CTX *ctx, uint16_t alg_id,
+                                     ssl_cert_compression_func_t compress,
+                                     ssl_cert_decompression_func_t decompress) {
+  assert(compress != nullptr || decompress != nullptr);
+
+  for (CertCompressionAlg *alg : ctx->cert_compression_algs) {
+    if (alg->alg_id == alg_id) {
+      return 0;
+    }
+  }
+
+  CertCompressionAlg *alg = reinterpret_cast<CertCompressionAlg *>(
+      OPENSSL_malloc(sizeof(CertCompressionAlg)));
+  if (alg == nullptr) {
+    goto err;
+  }
+
+  OPENSSL_memset(alg, 0, sizeof(CertCompressionAlg));
+  alg->alg_id = alg_id;
+  alg->compress = compress;
+  alg->decompress = decompress;
+
+  if (ctx->cert_compression_algs == nullptr) {
+    ctx->cert_compression_algs = sk_CertCompressionAlg_new_null();
+    if (ctx->cert_compression_algs == nullptr) {
+      goto err;
+    }
+  }
+
+  if (!sk_CertCompressionAlg_push(ctx->cert_compression_algs, alg)) {
+    goto err;
+  }
+
+  return 1;
+
+err:
+  OPENSSL_free(alg);
+  if (ctx->cert_compression_algs != nullptr &&
+      sk_CertCompressionAlg_num(ctx->cert_compression_algs) == 0) {
+    sk_CertCompressionAlg_free(ctx->cert_compression_algs);
+    ctx->cert_compression_algs = nullptr;
+  }
+  return 0;
 }
 
 void SSL_CTX_set_tls_channel_id_enabled(SSL_CTX *ctx, int enabled) {

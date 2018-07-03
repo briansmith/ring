@@ -3913,37 +3913,39 @@ TEST(SSLTest, SignatureAlgorithmProperties) {
   EXPECT_TRUE(SSL_is_signature_algorithm_rsa_pss(SSL_SIGN_RSA_PSS_RSAE_SHA384));
 }
 
-static bool XORCompressFunc(SSL *ssl, CBB *out, Span<const uint8_t> in) {
-  for (size_t i = 0; i < in.size(); i++) {
+static int XORCompressFunc(SSL *ssl, CBB *out, const uint8_t *in,
+                           size_t in_len) {
+  for (size_t i = 0; i < in_len; i++) {
     if (!CBB_add_u8(out, in[i] ^ 0x55)) {
-      return false;
+      return 0;
     }
   }
 
   SSL_set_app_data(ssl, XORCompressFunc);
 
-  return true;
+  return 1;
 }
 
-static bool XORDecompressFunc(SSL *ssl, bssl::UniquePtr<CRYPTO_BUFFER> *out,
-                              size_t uncompressed_len, Span<const uint8_t> in) {
-  if (in.size() != uncompressed_len) {
-    return false;
+static int XORDecompressFunc(SSL *ssl, CRYPTO_BUFFER **out,
+                             size_t uncompressed_len, const uint8_t *in,
+                             size_t in_len) {
+  if (in_len != uncompressed_len) {
+    return 0;
   }
 
   uint8_t *data;
-  out->reset(CRYPTO_BUFFER_alloc(&data, uncompressed_len));
-  if (out->get() == nullptr) {
-    return false;
+  *out = CRYPTO_BUFFER_alloc(&data, uncompressed_len);
+  if (*out == nullptr) {
+    return 0;
   }
 
-  for (size_t i = 0; i < in.size(); i++) {
+  for (size_t i = 0; i < in_len; i++) {
     data[i] = in[i] ^ 0x55;
   }
 
   SSL_set_app_data(ssl, XORDecompressFunc);
 
-  return true;
+  return 1;
 }
 
 TEST(SSLTest, CertCompression) {

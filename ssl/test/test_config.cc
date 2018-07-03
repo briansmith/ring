@@ -1346,44 +1346,44 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
   if (install_cert_compression_algs &&
       (!SSL_CTX_add_cert_compression_alg(
            ssl_ctx.get(), 0xff02,
-           [](SSL *ssl, CBB *out, bssl::Span<const uint8_t> in) -> bool {
+           [](SSL *ssl, CBB *out, const uint8_t *in, size_t in_len) -> int {
              if (!CBB_add_u8(out, 1) || !CBB_add_u8(out, 2) ||
                  !CBB_add_u8(out, 3) || !CBB_add_u8(out, 4) ||
-                 !CBB_add_bytes(out, in.data(), in.size())) {
-               return false;
+                 !CBB_add_bytes(out, in, in_len)) {
+               return 0;
              }
-             return true;
+             return 1;
            },
-           [](SSL *ssl, bssl::UniquePtr<CRYPTO_BUFFER> *out,
-              size_t uncompressed_len, bssl::Span<const uint8_t> in) -> bool {
-             if (in.size() < 4 || in[0] != 1 || in[1] != 2 || in[2] != 3 ||
-                 in[3] != 4 || uncompressed_len != in.size() - 4) {
-               return false;
+           [](SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
+              const uint8_t *in, size_t in_len) -> int {
+             if (in_len < 4 || in[0] != 1 || in[1] != 2 || in[2] != 3 ||
+                 in[3] != 4 || uncompressed_len != in_len - 4) {
+               return 0;
              }
-             const bssl::Span<const uint8_t> uncompressed(in.subspan(4));
-             out->reset(CRYPTO_BUFFER_new(uncompressed.data(),
-                                          uncompressed.size(), nullptr));
-             return true;
+             const bssl::Span<const uint8_t> uncompressed(in + 4, in_len - 4);
+             *out = CRYPTO_BUFFER_new(uncompressed.data(), uncompressed.size(),
+                                      nullptr);
+             return 1;
            }) ||
        !SSL_CTX_add_cert_compression_alg(
            ssl_ctx.get(), 0xff01,
-           [](SSL *ssl, CBB *out, bssl::Span<const uint8_t> in) -> bool {
-             if (in.size() < 2 || in[0] != 0 || in[1] != 0) {
-               return false;
+           [](SSL *ssl, CBB *out, const uint8_t *in, size_t in_len) -> int {
+             if (in_len < 2 || in[0] != 0 || in[1] != 0) {
+               return 0;
              }
-             return CBB_add_bytes(out, in.data() + 2, in.size() - 2);
+             return CBB_add_bytes(out, in + 2, in_len - 2);
            },
-           [](SSL *ssl, bssl::UniquePtr<CRYPTO_BUFFER> *out,
-              size_t uncompressed_len, bssl::Span<const uint8_t> in) -> bool {
-             if (uncompressed_len != 2 + in.size()) {
-               return false;
+           [](SSL *ssl, CRYPTO_BUFFER **out, size_t uncompressed_len,
+              const uint8_t *in, size_t in_len) -> int {
+             if (uncompressed_len != 2 + in_len) {
+               return 0;
              }
-             std::unique_ptr<uint8_t[]> buf(new uint8_t[2 + in.size()]);
+             std::unique_ptr<uint8_t[]> buf(new uint8_t[2 + in_len]);
              buf[0] = 0;
              buf[1] = 0;
-             OPENSSL_memcpy(&buf[2], in.data(), in.size());
-             out->reset(CRYPTO_BUFFER_new(buf.get(), 2 + in.size(), nullptr));
-             return true;
+             OPENSSL_memcpy(&buf[2], in, in_len);
+             *out = CRYPTO_BUFFER_new(buf.get(), 2 + in_len, nullptr);
+             return 1;
            }))) {
     fprintf(stderr, "SSL_CTX_add_cert_compression_alg failed.\n");
     abort();

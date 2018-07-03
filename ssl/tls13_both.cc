@@ -130,7 +130,7 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
       return 0;
     }
 
-    bssl::CertDecompressFunc decompress = nullptr;
+    ssl_cert_decompression_func_t decompress = nullptr;
     for (const auto& alg : ssl->ctx->cert_compression_algs) {
       if (alg->alg_id == alg_id) {
         decompress = alg->decompress;
@@ -145,16 +145,28 @@ int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
       return 0;
     }
 
-    if (!decompress(ssl, &decompressed, uncompressed_len, compressed) ||
-        CRYPTO_BUFFER_len(decompressed.get()) != uncompressed_len) {
+    CRYPTO_BUFFER *decompressed_ptr = nullptr;
+    if (!decompress(ssl, &decompressed_ptr, uncompressed_len,
+                    CBS_data(&compressed), CBS_len(&compressed))) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
       OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_DECOMPRESSION_FAILED);
       ERR_add_error_dataf("alg=%d", static_cast<int>(alg_id));
       return 0;
     }
+    decompressed.reset(decompressed_ptr);
 
-    CBS_init(&body, CRYPTO_BUFFER_data(decompressed.get()),
-             CRYPTO_BUFFER_len(decompressed.get()));
+    if (CRYPTO_BUFFER_len(decompressed_ptr) != uncompressed_len) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_CERT_DECOMPRESSION_FAILED);
+      ERR_add_error_dataf(
+          "alg=%d got=%u expected=%u", static_cast<int>(alg_id),
+          static_cast<unsigned>(CRYPTO_BUFFER_len(decompressed_ptr)),
+          static_cast<unsigned>(uncompressed_len));
+      return 0;
+    }
+
+    CBS_init(&body, CRYPTO_BUFFER_data(decompressed_ptr),
+             CRYPTO_BUFFER_len(decompressed_ptr));
   } else {
     assert(msg.type == SSL3_MT_CERTIFICATE);
   }
@@ -512,7 +524,7 @@ int tls13_add_certificate(SSL_HANDSHAKE *hs) {
       !CBB_add_u16(body, hs->cert_compression_alg_id) ||
       !CBB_add_u24(body, msg.size()) ||
       !CBB_add_u24_length_prefixed(body, &compressed) ||
-      !alg->compress(ssl, &compressed, msg) ||
+      !alg->compress(ssl, &compressed, msg.data(), msg.size()) ||
       !ssl_add_message_cbb(ssl, cbb.get())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return 0;
