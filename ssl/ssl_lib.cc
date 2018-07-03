@@ -569,8 +569,6 @@ ssl_ctx_st::~ssl_ctx_st() {
   x509_method->ssl_ctx_free(this);
   sk_CertCompressionAlg_pop_free(cert_compression_algs,
                                  Delete<CertCompressionAlg>);
-  OPENSSL_free(tlsext_ticket_key_current);
-  OPENSSL_free(tlsext_ticket_key_prev);
 }
 
 SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
@@ -1675,9 +1673,9 @@ int SSL_CTX_get_tlsext_ticket_keys(SSL_CTX *ctx, void *out, size_t len) {
 
   uint8_t *out_bytes = reinterpret_cast<uint8_t *>(out);
   MutexReadLock lock(&ctx->lock);
-  OPENSSL_memcpy(out_bytes, ctx->tlsext_ticket_key_current->name, 16);
-  OPENSSL_memcpy(out_bytes + 16, ctx->tlsext_ticket_key_current->hmac_key, 16);
-  OPENSSL_memcpy(out_bytes + 32, ctx->tlsext_ticket_key_current->aes_key, 16);
+  OPENSSL_memcpy(out_bytes, ctx->ticket_key_current->name, 16);
+  OPENSSL_memcpy(out_bytes + 16, ctx->ticket_key_current->hmac_key, 16);
+  OPENSSL_memcpy(out_bytes + 32, ctx->ticket_key_current->aes_key, 16);
   return 1;
 }
 
@@ -1689,22 +1687,19 @@ int SSL_CTX_set_tlsext_ticket_keys(SSL_CTX *ctx, const void *in, size_t len) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INVALID_TICKET_KEYS_LENGTH);
     return 0;
   }
-  if (!ctx->tlsext_ticket_key_current) {
-    ctx->tlsext_ticket_key_current =
-        (tlsext_ticket_key *)OPENSSL_malloc(sizeof(tlsext_ticket_key));
-    if (!ctx->tlsext_ticket_key_current) {
-      return 0;
-    }
+  auto key = MakeUnique<TicketKey>();
+  if (!key) {
+    return 0;
   }
-  OPENSSL_memset(ctx->tlsext_ticket_key_current, 0, sizeof(tlsext_ticket_key));
   const uint8_t *in_bytes = reinterpret_cast<const uint8_t *>(in);
-  OPENSSL_memcpy(ctx->tlsext_ticket_key_current->name, in_bytes, 16);
-  OPENSSL_memcpy(ctx->tlsext_ticket_key_current->hmac_key, in_bytes + 16, 16);
-  OPENSSL_memcpy(ctx->tlsext_ticket_key_current->aes_key, in_bytes + 32, 16);
-  OPENSSL_free(ctx->tlsext_ticket_key_prev);
-  ctx->tlsext_ticket_key_prev = nullptr;
-  // Disable automatic key rotation.
-  ctx->tlsext_ticket_key_current->next_rotation_tv_sec = 0;
+  OPENSSL_memcpy(key->name, in_bytes, 16);
+  OPENSSL_memcpy(key->hmac_key, in_bytes + 16, 16);
+  OPENSSL_memcpy(key->aes_key, in_bytes + 32, 16);
+  // Disable automatic key rotation for manually-configured keys. This is now
+  // the caller's responsibility.
+  key->next_rotation_tv_sec = 0;
+  ctx->ticket_key_current = std::move(key);
+  ctx->ticket_key_prev.reset();
   return 1;
 }
 
@@ -1712,7 +1707,7 @@ int SSL_CTX_set_tlsext_ticket_key_cb(
     SSL_CTX *ctx, int (*callback)(SSL *ssl, uint8_t *key_name, uint8_t *iv,
                                   EVP_CIPHER_CTX *ctx, HMAC_CTX *hmac_ctx,
                                   int encrypt)) {
-  ctx->tlsext_ticket_key_cb = callback;
+  ctx->ticket_key_cb = callback;
   return 1;
 }
 

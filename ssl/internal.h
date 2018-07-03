@@ -2032,17 +2032,17 @@ extern const SSL_X509_METHOD ssl_crypto_x509_method;
 // crypto/x509.
 extern const SSL_X509_METHOD ssl_noop_x509_method;
 
-struct tlsext_ticket_key {
+struct TicketKey {
   static constexpr bool kAllowUniquePtr = true;
 
-  uint8_t name[SSL_TICKET_KEY_NAME_LEN];
-  uint8_t hmac_key[16];
-  uint8_t aes_key[16];
+  uint8_t name[SSL_TICKET_KEY_NAME_LEN] = {0};
+  uint8_t hmac_key[16] = {0};
+  uint8_t aes_key[16] = {0};
   // next_rotation_tv_sec is the time (in seconds from the epoch) when the
   // current key should be superseded by a new key, or the time when a previous
   // key should be dropped. If zero, then the key should not be automatically
   // rotated.
-  uint64_t next_rotation_tv_sec;
+  uint64_t next_rotation_tv_sec = 0;
 };
 
 }  // namespace bssl
@@ -2952,17 +2952,16 @@ struct ssl_ctx_st {
   int (*tlsext_servername_callback)(SSL *, int *, void *) = nullptr;
   void *tlsext_servername_arg = nullptr;
 
-  // RFC 4507 session ticket keys. |tlsext_ticket_key_current| may be NULL
-  // before the first handshake and |tlsext_ticket_key_prev| may be NULL at any
-  // time. Automatically generated ticket keys are rotated as needed at
-  // handshake time. Hence, all access must be synchronized through |lock|.
-  bssl::tlsext_ticket_key *tlsext_ticket_key_current = nullptr;
-  bssl::tlsext_ticket_key *tlsext_ticket_key_prev = nullptr;
+  // RFC 4507 session ticket keys. |ticket_key_current| may be NULL before the
+  // first handshake and |ticket_key_prev| may be NULL at any time.
+  // Automatically generated ticket keys are rotated as needed at handshake
+  // time. Hence, all access must be synchronized through |lock|.
+  bssl::UniquePtr<bssl::TicketKey> ticket_key_current;
+  bssl::UniquePtr<bssl::TicketKey> ticket_key_prev;
 
   // Callback to support customisation of ticket key setting
-  int (*tlsext_ticket_key_cb)(SSL *ssl, uint8_t *name, uint8_t *iv,
-                              EVP_CIPHER_CTX *ectx, HMAC_CTX *hctx,
-                              int enc) = nullptr;
+  int (*ticket_key_cb)(SSL *ssl, uint8_t *name, uint8_t *iv,
+                       EVP_CIPHER_CTX *ectx, HMAC_CTX *hctx, int enc) = nullptr;
 
   // Server-only: psk_identity_hint is the default identity hint to send in
   // PSK-based key exchanges.

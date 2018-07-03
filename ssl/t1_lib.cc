@@ -3490,7 +3490,7 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_cb(
   ScopedEVP_CIPHER_CTX cipher_ctx;
   ScopedHMAC_CTX hmac_ctx;
   const uint8_t *iv = ticket + SSL_TICKET_KEY_NAME_LEN;
-  int cb_ret = hs->ssl->session_ctx->tlsext_ticket_key_cb(
+  int cb_ret = hs->ssl->session_ctx->ticket_key_cb(
       hs->ssl, (uint8_t *)ticket /* name */, (uint8_t *)iv, cipher_ctx.get(),
       hmac_ctx.get(), 0 /* decrypt */);
   if (cb_ret < 0) {
@@ -3522,15 +3522,15 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_ticket_keys(
   ScopedHMAC_CTX hmac_ctx;
   {
     MutexReadLock lock(&ctx->lock);
-    const tlsext_ticket_key *key;
-    if (ctx->tlsext_ticket_key_current &&
-        !OPENSSL_memcmp(ctx->tlsext_ticket_key_current->name, ticket,
+    const TicketKey *key;
+    if (ctx->ticket_key_current &&
+        !OPENSSL_memcmp(ctx->ticket_key_current->name, ticket,
                         SSL_TICKET_KEY_NAME_LEN)) {
-      key = ctx->tlsext_ticket_key_current;
-    } else if (ctx->tlsext_ticket_key_prev &&
-               !OPENSSL_memcmp(ctx->tlsext_ticket_key_prev->name, ticket,
+      key = ctx->ticket_key_current.get();
+    } else if (ctx->ticket_key_prev &&
+               !OPENSSL_memcmp(ctx->ticket_key_prev->name, ticket,
                                SSL_TICKET_KEY_NAME_LEN)) {
-      key = ctx->tlsext_ticket_key_prev;
+      key = ctx->ticket_key_prev.get();
     } else {
       return ssl_ticket_aead_ignore_ticket;
     }
@@ -3589,14 +3589,14 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
     result = ssl_decrypt_ticket_with_method(
         hs, &plaintext, &plaintext_len, out_renew_ticket, ticket, ticket_len);
   } else {
-    // Ensure there is room for the key name and the largest IV
-    // |tlsext_ticket_key_cb| may try to consume. The real limit may be lower,
-    // but the maximum IV length should be well under the minimum size for the
-    // session material and HMAC.
+    // Ensure there is room for the key name and the largest IV |ticket_key_cb|
+    // may try to consume. The real limit may be lower, but the maximum IV
+    // length should be well under the minimum size for the session material and
+    // HMAC.
     if (ticket_len < SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH) {
       return ssl_ticket_aead_ignore_ticket;
     }
-    if (hs->ssl->session_ctx->tlsext_ticket_key_cb != NULL) {
+    if (hs->ssl->session_ctx->ticket_key_cb != NULL) {
       result = ssl_decrypt_ticket_with_cb(hs, &plaintext, &plaintext_len,
                                           out_renew_ticket, ticket, ticket_len);
     } else {

@@ -414,47 +414,44 @@ int ssl_ctx_rotate_ticket_encryption_key(SSL_CTX *ctx) {
     // Avoid acquiring a write lock in the common case (i.e. a non-default key
     // is used or the default keys have not expired yet).
     MutexReadLock lock(&ctx->lock);
-    if (ctx->tlsext_ticket_key_current &&
-        (ctx->tlsext_ticket_key_current->next_rotation_tv_sec == 0 ||
-         ctx->tlsext_ticket_key_current->next_rotation_tv_sec > now.tv_sec) &&
-        (!ctx->tlsext_ticket_key_prev ||
-         ctx->tlsext_ticket_key_prev->next_rotation_tv_sec > now.tv_sec)) {
+    if (ctx->ticket_key_current &&
+        (ctx->ticket_key_current->next_rotation_tv_sec == 0 ||
+         ctx->ticket_key_current->next_rotation_tv_sec > now.tv_sec) &&
+        (!ctx->ticket_key_prev ||
+         ctx->ticket_key_prev->next_rotation_tv_sec > now.tv_sec)) {
       return 1;
     }
   }
 
   MutexWriteLock lock(&ctx->lock);
-  if (!ctx->tlsext_ticket_key_current ||
-      (ctx->tlsext_ticket_key_current->next_rotation_tv_sec != 0 &&
-       ctx->tlsext_ticket_key_current->next_rotation_tv_sec <= now.tv_sec)) {
+  if (!ctx->ticket_key_current ||
+      (ctx->ticket_key_current->next_rotation_tv_sec != 0 &&
+       ctx->ticket_key_current->next_rotation_tv_sec <= now.tv_sec)) {
     // The current key has not been initialized or it is expired.
-    auto new_key = bssl::MakeUnique<struct tlsext_ticket_key>();
+    auto new_key = bssl::MakeUnique<TicketKey>();
     if (!new_key) {
       return 0;
     }
-    OPENSSL_memset(new_key.get(), 0, sizeof(struct tlsext_ticket_key));
-    if (ctx->tlsext_ticket_key_current) {
+    RAND_bytes(new_key->name, 16);
+    RAND_bytes(new_key->hmac_key, 16);
+    RAND_bytes(new_key->aes_key, 16);
+    new_key->next_rotation_tv_sec =
+        now.tv_sec + SSL_DEFAULT_TICKET_KEY_ROTATION_INTERVAL;
+    if (ctx->ticket_key_current) {
       // The current key expired. Rotate it to prev and bump up its rotation
       // timestamp. Note that even with the new rotation time it may still be
-      // expired and get droppped below.
-      ctx->tlsext_ticket_key_current->next_rotation_tv_sec +=
+      // expired and get dropped below.
+      ctx->ticket_key_current->next_rotation_tv_sec +=
           SSL_DEFAULT_TICKET_KEY_ROTATION_INTERVAL;
-      OPENSSL_free(ctx->tlsext_ticket_key_prev);
-      ctx->tlsext_ticket_key_prev = ctx->tlsext_ticket_key_current;
+      ctx->ticket_key_prev = std::move(ctx->ticket_key_current);
     }
-    ctx->tlsext_ticket_key_current = new_key.release();
-    RAND_bytes(ctx->tlsext_ticket_key_current->name, 16);
-    RAND_bytes(ctx->tlsext_ticket_key_current->hmac_key, 16);
-    RAND_bytes(ctx->tlsext_ticket_key_current->aes_key, 16);
-    ctx->tlsext_ticket_key_current->next_rotation_tv_sec =
-        now.tv_sec + SSL_DEFAULT_TICKET_KEY_ROTATION_INTERVAL;
+    ctx->ticket_key_current = std::move(new_key);
   }
 
   // Drop an expired prev key.
-  if (ctx->tlsext_ticket_key_prev &&
-      ctx->tlsext_ticket_key_prev->next_rotation_tv_sec <= now.tv_sec) {
-    OPENSSL_free(ctx->tlsext_ticket_key_prev);
-    ctx->tlsext_ticket_key_prev = nullptr;
+  if (ctx->ticket_key_prev &&
+      ctx->ticket_key_prev->next_rotation_tv_sec <= now.tv_sec) {
+    ctx->ticket_key_prev.reset();
   }
 
   return 1;
@@ -481,9 +478,9 @@ static int ssl_encrypt_ticket_with_cipher_ctx(SSL_HANDSHAKE *hs, CBB *out,
   SSL_CTX *tctx = hs->ssl->session_ctx.get();
   uint8_t iv[EVP_MAX_IV_LENGTH];
   uint8_t key_name[16];
-  if (tctx->tlsext_ticket_key_cb != NULL) {
-    if (tctx->tlsext_ticket_key_cb(hs->ssl, key_name, iv, ctx.get(), hctx.get(),
-                                   1 /* encrypt */) < 0) {
+  if (tctx->ticket_key_cb != NULL) {
+    if (tctx->ticket_key_cb(hs->ssl, key_name, iv, ctx.get(), hctx.get(),
+                            1 /* encrypt */) < 0) {
       return 0;
     }
   } else {
@@ -494,12 +491,12 @@ static int ssl_encrypt_ticket_with_cipher_ctx(SSL_HANDSHAKE *hs, CBB *out,
     MutexReadLock lock(&tctx->lock);
     if (!RAND_bytes(iv, 16) ||
         !EVP_EncryptInit_ex(ctx.get(), EVP_aes_128_cbc(), NULL,
-                            tctx->tlsext_ticket_key_current->aes_key, iv) ||
-        !HMAC_Init_ex(hctx.get(), tctx->tlsext_ticket_key_current->hmac_key, 16,
+                            tctx->ticket_key_current->aes_key, iv) ||
+        !HMAC_Init_ex(hctx.get(), tctx->ticket_key_current->hmac_key, 16,
                       tlsext_tick_md(), NULL)) {
       return 0;
     }
-    OPENSSL_memcpy(key_name, tctx->tlsext_ticket_key_current->name, 16);
+    OPENSSL_memcpy(key_name, tctx->ticket_key_current->name, 16);
   }
 
   uint8_t *ptr;
