@@ -79,7 +79,6 @@ struct TestConfig {
   bool fail_early_callback = false;
   bool install_ddos_callback = false;
   bool fail_ddos_callback = false;
-  bool fail_second_ddos_callback = false;
   bool fail_cert_callback = false;
   std::string cipher;
   bool handshake_never_done = false;

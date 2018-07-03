@@ -74,7 +74,6 @@ const Flag<bool> kBoolFlags[] = {
   { "-fail-early-callback", &TestConfig::fail_early_callback },
   { "-install-ddos-callback", &TestConfig::install_ddos_callback },
   { "-fail-ddos-callback", &TestConfig::fail_ddos_callback },
-  { "-fail-second-ddos-callback", &TestConfig::fail_second_ddos_callback },
   { "-fail-cert-callback", &TestConfig::fail_cert_callback },
   { "-handshake-never-done", &TestConfig::handshake_never_done },
   { "-use-export-context", &TestConfig::use_export_context },

@@ -843,14 +843,7 @@ static SSL_SESSION *GetSessionCallback(SSL *ssl, const uint8_t *data, int len,
 
 static int DDoSCallback(const SSL_CLIENT_HELLO *client_hello) {
   const TestConfig *config = GetTestConfig(client_hello->ssl);
-  static int callback_num = 0;
-
-  callback_num++;
-  if (config->fail_ddos_callback ||
-      (config->fail_second_ddos_callback && callback_num == 2)) {
-    return 0;
-  }
-  return 1;
+  return config->fail_ddos_callback ? 0 : 1;
 }
 
 static void InfoCallback(const SSL *ssl, int type, int val) {

@@ -5456,7 +5456,7 @@ func addDDoSCallbackTests() {
 
 		failFlag := "-fail-ddos-callback"
 		if resume {
-			failFlag = "-fail-second-ddos-callback"
+			failFlag = "-on-resume-fail-ddos-callback"
 		}
 		testCases = append(testCases, testCase{
 			testType: serverTest,
