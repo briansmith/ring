@@ -1137,7 +1137,7 @@ static bool ssl_cipher_process_rulestr(const char *rule_str,
   return true;
 }
 
-bool ssl_create_cipher_list(SSLCipherPreferenceList **out_cipher_list,
+bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const char *rule_str, bool strict) {
   // Return with error if nothing to do.
   if (rule_str == NULL || out_cipher_list == NULL) {
@@ -1255,10 +1255,7 @@ bool ssl_create_cipher_list(SSLCipherPreferenceList **out_cipher_list,
     return false;
   }
 
-  if (*out_cipher_list) {
-    Delete(*out_cipher_list);
-  }
-  *out_cipher_list = pref_list.release();
+  *out_cipher_list = std::move(pref_list);
 
   // Configuring an empty cipher list is an error but still updates the
   // output.

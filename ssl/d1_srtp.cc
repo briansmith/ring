@@ -158,8 +158,9 @@ static int find_profile_by_name(const char *profile_name,
   return 0;
 }
 
-static int ssl_ctx_make_profiles(const char *profiles_string,
-                                 STACK_OF(SRTP_PROTECTION_PROFILE) **out) {
+static int ssl_ctx_make_profiles(
+    const char *profiles_string,
+    UniquePtr<STACK_OF(SRTP_PROTECTION_PROFILE)> *out) {
   UniquePtr<STACK_OF(SRTP_PROTECTION_PROFILE)> profiles(
       sk_SRTP_PROTECTION_PROFILE_new_null());
   if (profiles == nullptr) {
@@ -188,8 +189,7 @@ static int ssl_ctx_make_profiles(const char *profiles_string,
     }
   } while (col);
 
-  sk_SRTP_PROTECTION_PROFILE_free(*out);
-  *out = profiles.release();
+  *out = std::move(profiles);
   return 1;
 }
 
@@ -212,8 +212,9 @@ STACK_OF(SRTP_PROTECTION_PROFILE) *SSL_get_srtp_profiles(SSL *ssl) {
     return nullptr;
   }
 
-  return ssl->config->srtp_profiles != nullptr ? ssl->config->srtp_profiles
-                                               : ssl->ctx->srtp_profiles;
+  return ssl->config->srtp_profiles != nullptr
+             ? ssl->config->srtp_profiles.get()
+             : ssl->ctx->srtp_profiles.get();
 }
 
 const SRTP_PROTECTION_PROFILE *SSL_get_selected_srtp_profile(SSL *ssl) {

@@ -493,7 +493,7 @@ TEST(SSLTest, CurveRules) {
     ASSERT_TRUE(ctx);
 
     ASSERT_TRUE(SSL_CTX_set1_curves_list(ctx.get(), t.rule));
-    ASSERT_EQ(t.expected.size(), ctx->supported_group_list_len);
+    ASSERT_EQ(t.expected.size(), ctx->supported_group_list.size());
     for (size_t i = 0; i < t.expected.size(); i++) {
       EXPECT_EQ(t.expected[i], ctx->supported_group_list[i]);
     }

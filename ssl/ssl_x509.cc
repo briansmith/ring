@@ -460,11 +460,11 @@ static int ssl_crypto_x509_ssl_auto_chain_if_needed(SSL_HANDSHAKE *hs) {
   // Remove the leaf from the generated chain.
   X509_free(sk_X509_shift(ctx->chain));
 
-  if (!ssl_cert_set_chain(hs->config->cert, ctx->chain)) {
+  if (!ssl_cert_set_chain(hs->config->cert.get(), ctx->chain)) {
     return 0;
   }
 
-  ssl_crypto_x509_cert_flush_cached_chain(hs->config->cert);
+  ssl_crypto_x509_cert_flush_cached_chain(hs->config->cert.get());
 
   return 1;
 }
@@ -755,12 +755,12 @@ int SSL_use_certificate(SSL *ssl, X509 *x) {
   if (!ssl->config) {
     return 0;
   }
-  return ssl_use_certificate(ssl->config->cert, x);
+  return ssl_use_certificate(ssl->config->cert.get(), x);
 }
 
 int SSL_CTX_use_certificate(SSL_CTX *ctx, X509 *x) {
   check_ssl_ctx_x509_method(ctx);
-  return ssl_use_certificate(ctx->cert, x);
+  return ssl_use_certificate(ctx->cert.get(), x);
 }
 
 // ssl_cert_cache_leaf_cert sets |cert->x509_leaf|, if currently NULL, from the
@@ -797,13 +797,13 @@ X509 *SSL_get_certificate(const SSL *ssl) {
     assert(ssl->config);
     return 0;
   }
-  return ssl_cert_get0_leaf(ssl->config->cert);
+  return ssl_cert_get0_leaf(ssl->config->cert.get());
 }
 
 X509 *SSL_CTX_get0_certificate(const SSL_CTX *ctx) {
   check_ssl_ctx_x509_method(ctx);
   MutexWriteLock lock(const_cast<CRYPTO_MUTEX*>(&ctx->lock));
-  return ssl_cert_get0_leaf(ctx->cert);
+  return ssl_cert_get0_leaf(ctx->cert.get());
 }
 
 static int ssl_cert_set0_chain(CERT *cert, STACK_OF(X509) *chain) {
@@ -869,12 +869,12 @@ static int ssl_cert_add1_chain_cert(CERT *cert, X509 *x509) {
 
 int SSL_CTX_set0_chain(SSL_CTX *ctx, STACK_OF(X509) *chain) {
   check_ssl_ctx_x509_method(ctx);
-  return ssl_cert_set0_chain(ctx->cert, chain);
+  return ssl_cert_set0_chain(ctx->cert.get(), chain);
 }
 
 int SSL_CTX_set1_chain(SSL_CTX *ctx, STACK_OF(X509) *chain) {
   check_ssl_ctx_x509_method(ctx);
-  return ssl_cert_set1_chain(ctx->cert, chain);
+  return ssl_cert_set1_chain(ctx->cert.get(), chain);
 }
 
 int SSL_set0_chain(SSL *ssl, STACK_OF(X509) *chain) {
@@ -882,7 +882,7 @@ int SSL_set0_chain(SSL *ssl, STACK_OF(X509) *chain) {
   if (!ssl->config) {
     return 0;
   }
-  return ssl_cert_set0_chain(ssl->config->cert, chain);
+  return ssl_cert_set0_chain(ssl->config->cert.get(), chain);
 }
 
 int SSL_set1_chain(SSL *ssl, STACK_OF(X509) *chain) {
@@ -890,17 +890,17 @@ int SSL_set1_chain(SSL *ssl, STACK_OF(X509) *chain) {
   if (!ssl->config) {
     return 0;
   }
-  return ssl_cert_set1_chain(ssl->config->cert, chain);
+  return ssl_cert_set1_chain(ssl->config->cert.get(), chain);
 }
 
 int SSL_CTX_add0_chain_cert(SSL_CTX *ctx, X509 *x509) {
   check_ssl_ctx_x509_method(ctx);
-  return ssl_cert_add0_chain_cert(ctx->cert, x509);
+  return ssl_cert_add0_chain_cert(ctx->cert.get(), x509);
 }
 
 int SSL_CTX_add1_chain_cert(SSL_CTX *ctx, X509 *x509) {
   check_ssl_ctx_x509_method(ctx);
-  return ssl_cert_add1_chain_cert(ctx->cert, x509);
+  return ssl_cert_add1_chain_cert(ctx->cert.get(), x509);
 }
 
 int SSL_CTX_add_extra_chain_cert(SSL_CTX *ctx, X509 *x509) {
@@ -913,7 +913,7 @@ int SSL_add0_chain_cert(SSL *ssl, X509 *x509) {
   if (!ssl->config) {
     return 0;
   }
-  return ssl_cert_add0_chain_cert(ssl->config->cert, x509);
+  return ssl_cert_add0_chain_cert(ssl->config->cert.get(), x509);
 }
 
 int SSL_add1_chain_cert(SSL *ssl, X509 *x509) {
@@ -921,7 +921,7 @@ int SSL_add1_chain_cert(SSL *ssl, X509 *x509) {
   if (!ssl->config) {
     return 0;
   }
-  return ssl_cert_add1_chain_cert(ssl->config->cert, x509);
+  return ssl_cert_add1_chain_cert(ssl->config->cert.get(), x509);
 }
 
 int SSL_CTX_clear_chain_certs(SSL_CTX *ctx) {
@@ -971,7 +971,7 @@ static int ssl_cert_cache_chain_certs(CERT *cert) {
 int SSL_CTX_get0_chain_certs(const SSL_CTX *ctx, STACK_OF(X509) **out_chain) {
   check_ssl_ctx_x509_method(ctx);
   MutexWriteLock lock(const_cast<CRYPTO_MUTEX*>(&ctx->lock));
-  if (!ssl_cert_cache_chain_certs(ctx->cert)) {
+  if (!ssl_cert_cache_chain_certs(ctx->cert.get())) {
     *out_chain = NULL;
     return 0;
   }
@@ -991,7 +991,7 @@ int SSL_get0_chain_certs(const SSL *ssl, STACK_OF(X509) **out_chain) {
     assert(ssl->config);
     return 0;
   }
-  if (!ssl_cert_cache_chain_certs(ssl->config->cert)) {
+  if (!ssl_cert_cache_chain_certs(ssl->config->cert.get())) {
     *out_chain = NULL;
     return 0;
   }
@@ -1042,7 +1042,7 @@ STACK_OF(X509_NAME) *SSL_dup_CA_list(STACK_OF(X509_NAME) *list) {
   return sk_X509_NAME_deep_copy(list, X509_NAME_dup, X509_NAME_free);
 }
 
-static void set_client_CA_list(STACK_OF(CRYPTO_BUFFER) **ca_list,
+static void set_client_CA_list(UniquePtr<STACK_OF(CRYPTO_BUFFER)> *ca_list,
                                const STACK_OF(X509_NAME) *name_list,
                                CRYPTO_BUFFER_POOL *pool) {
   UniquePtr<STACK_OF(CRYPTO_BUFFER)> buffers(sk_CRYPTO_BUFFER_new_null());
@@ -1065,8 +1065,7 @@ static void set_client_CA_list(STACK_OF(CRYPTO_BUFFER) **ca_list,
     }
   }
 
-  sk_CRYPTO_BUFFER_pop_free(*ca_list, CRYPTO_BUFFER_free);
-  *ca_list = buffers.release();
+  *ca_list = std::move(buffers);
 }
 
 void SSL_set_client_CA_list(SSL *ssl, STACK_OF(X509_NAME) *name_list) {
@@ -1140,7 +1139,7 @@ STACK_OF(X509_NAME) *SSL_get_client_CA_list(const SSL *ssl) {
 
   if (ssl->config->client_CA != NULL) {
     return buffer_names_to_x509(
-        ssl->config->client_CA,
+        ssl->config->client_CA.get(),
         (STACK_OF(X509_NAME) **)&ssl->config->cached_x509_client_CA);
   }
   return SSL_CTX_get_client_CA_list(ssl->ctx.get());
@@ -1152,11 +1151,11 @@ STACK_OF(X509_NAME) *SSL_CTX_get_client_CA_list(const SSL_CTX *ctx) {
   // so it needs to lock around updating |cached_x509_client_CA|.
   MutexWriteLock lock(const_cast<CRYPTO_MUTEX *>(&ctx->lock));
   return buffer_names_to_x509(
-      ctx->client_CA,
+      ctx->client_CA.get(),
       const_cast<STACK_OF(X509_NAME) **>(&ctx->cached_x509_client_CA));
 }
 
-static int add_client_CA(STACK_OF(CRYPTO_BUFFER) **names, X509 *x509,
+static int add_client_CA(UniquePtr<STACK_OF(CRYPTO_BUFFER)> *names, X509 *x509,
                          CRYPTO_BUFFER_POOL *pool) {
   if (x509 == NULL) {
     return 0;
@@ -1175,8 +1174,8 @@ static int add_client_CA(STACK_OF(CRYPTO_BUFFER) **names, X509 *x509,
   }
 
   int alloced = 0;
-  if (*names == NULL) {
-    *names = sk_CRYPTO_BUFFER_new_null();
+  if (*names == nullptr) {
+    names->reset(sk_CRYPTO_BUFFER_new_null());
     alloced = 1;
 
     if (*names == NULL) {
@@ -1184,10 +1183,9 @@ static int add_client_CA(STACK_OF(CRYPTO_BUFFER) **names, X509 *x509,
     }
   }
 
-  if (!PushToStack(*names, std::move(buffer))) {
+  if (!PushToStack(names->get(), std::move(buffer))) {
     if (alloced) {
-      sk_CRYPTO_BUFFER_pop_free(*names, CRYPTO_BUFFER_free);
-      *names = NULL;
+      names->reset();
     }
     return 0;
   }

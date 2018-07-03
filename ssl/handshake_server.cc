@@ -535,8 +535,9 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
 
   // Negotiate the cipher suite. This must be done after |cert_cb| so the
   // certificate is finalized.
-  SSLCipherPreferenceList *prefs =
-      hs->config->cipher_list ? hs->config->cipher_list : ssl->ctx->cipher_list;
+  SSLCipherPreferenceList *prefs = hs->config->cipher_list
+                                       ? hs->config->cipher_list.get()
+                                       : ssl->ctx->cipher_list.get();
   hs->new_cipher = ssl3_choose_cipher(hs, &client_hello, prefs);
   if (hs->new_cipher == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
@@ -788,11 +789,12 @@ static enum ssl_hs_wait_t do_send_server_certificate(SSL_HANDSHAKE *hs) {
 
     // PSK ciphers begin with an identity hint.
     if (alg_a & SSL_aPSK) {
-      size_t len = (hs->config->psk_identity_hint == NULL)
+      size_t len = hs->config->psk_identity_hint == nullptr
                        ? 0
-                       : strlen(hs->config->psk_identity_hint);
+                       : strlen(hs->config->psk_identity_hint.get());
       if (!CBB_add_u16_length_prefixed(cbb.get(), &child) ||
-          !CBB_add_bytes(&child, (const uint8_t *)hs->config->psk_identity_hint,
+          !CBB_add_bytes(&child,
+                         (const uint8_t *)hs->config->psk_identity_hint.get(),
                          len)) {
         return ssl_hs_error;
       }

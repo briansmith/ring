@@ -524,7 +524,7 @@ const EVP_MD *ssl_get_handshake_digest(uint16_t version,
 // true on success and false on failure. If |strict| is true, nonsense will be
 // rejected. If false, nonsense will be silently ignored. An empty result is
 // considered an error regardless of |strict|.
-bool ssl_create_cipher_list(SSLCipherPreferenceList **out_cipher_list,
+bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
                             const char *rule_str, bool strict);
 
 // ssl_cipher_get_value returns the cipher suite id of |cipher|.
@@ -2417,11 +2417,11 @@ struct SSL_CONFIG {
   X509_VERIFY_PARAM *param = nullptr;
 
   // crypto
-  SSLCipherPreferenceList *cipher_list = nullptr;
+  UniquePtr<SSLCipherPreferenceList> cipher_list;
 
   // This is used to hold the local certificate used (i.e. the server
   // certificate for a server or the client certificate for a client).
-  CERT *cert = nullptr;
+  UniquePtr<CERT> cert;
 
   int (*verify_callback)(int ok,
                          X509_STORE_CTX *ctx) =
@@ -2431,47 +2431,40 @@ struct SSL_CONFIG {
       SSL *ssl, uint8_t *out_alert) = nullptr;
   // Server-only: psk_identity_hint is the identity hint to send in
   // PSK-based key exchanges.
-  char *psk_identity_hint = nullptr;
+  UniquePtr<char> psk_identity_hint;
 
-  unsigned int (*psk_client_callback)(SSL *ssl, const char *hint,
-                                      char *identity,
-                                      unsigned int max_identity_len,
-                                      uint8_t *psk,
-                                      unsigned int max_psk_len) = nullptr;
-  unsigned int (*psk_server_callback)(SSL *ssl, const char *identity,
-                                      uint8_t *psk,
-                                      unsigned int max_psk_len) = nullptr;
+  unsigned (*psk_client_callback)(SSL *ssl, const char *hint, char *identity,
+                                  unsigned max_identity_len, uint8_t *psk,
+                                  unsigned max_psk_len) = nullptr;
+  unsigned (*psk_server_callback)(SSL *ssl, const char *identity, uint8_t *psk,
+                                  unsigned max_psk_len) = nullptr;
 
   // for server side, keep the list of CA_dn we can use
-  STACK_OF(CRYPTO_BUFFER) *client_CA = nullptr;
+  UniquePtr<STACK_OF(CRYPTO_BUFFER)> client_CA;
 
   // cached_x509_client_CA is a cache of parsed versions of the elements of
   // |client_CA|.
   STACK_OF(X509_NAME) *cached_x509_client_CA = nullptr;
 
   uint16_t dummy_pq_padding_len = 0;
-  size_t supported_group_list_len = 0;
-  uint16_t *supported_group_list = nullptr;  // our list
+  Array<uint16_t> supported_group_list;  // our list
 
   // The client's Channel ID private key.
-  EVP_PKEY *tlsext_channel_id_private = nullptr;
+  UniquePtr<EVP_PKEY> tlsext_channel_id_private;
 
   // For a client, this contains the list of supported protocols in wire
   // format.
-  uint8_t *alpn_client_proto_list = nullptr;
-  unsigned alpn_client_proto_list_len = 0;
+  Array<uint8_t> alpn_client_proto_list;
 
   // Contains a list of supported Token Binding key parameters.
-  uint8_t *token_binding_params = nullptr;
-  size_t token_binding_params_len = 0;
+  Array<uint8_t> token_binding_params;
 
   // Contains the QUIC transport params that this endpoint will send.
-  uint8_t *quic_transport_params = nullptr;
-  size_t quic_transport_params_len = 0;
+  Array<uint8_t> quic_transport_params;
 
   // srtp_profiles is the list of configured SRTP protection profiles for
   // DTLS-SRTP.
-  STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles = nullptr;
+  UniquePtr<STACK_OF(SRTP_PROTECTION_PROFILE)> srtp_profiles;
 
   // verify_mode is a bitmask of |SSL_VERIFY_*| values.
   uint8_t verify_mode = SSL_VERIFY_NONE;
@@ -2712,19 +2705,16 @@ int tls1_check_group_id(const SSL_HANDSHAKE *ssl, uint16_t group_id);
 // found, it returns zero.
 int tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id);
 
-// tls1_set_curves converts the array of |ncurves| NIDs pointed to by |curves|
-// into a newly allocated array of TLS group IDs. On success, the function
-// returns one and writes the array to |*out_group_ids| and its size to
-// |*out_group_ids_len|. Otherwise, it returns zero.
-int tls1_set_curves(uint16_t **out_group_ids, size_t *out_group_ids_len,
-                    const int *curves, size_t ncurves);
+// tls1_set_curves converts the array of NIDs in |curves| into a newly allocated
+// array of TLS group IDs. On success, the function returns true and writes the
+// array to |*out_group_ids|. Otherwise, it returns false.
+bool tls1_set_curves(Array<uint16_t> *out_group_ids, Span<const int> curves);
 
 // tls1_set_curves_list converts the string of curves pointed to by |curves|
 // into a newly allocated array of TLS group IDs. On success, the function
-// returns one and writes the array to |*out_group_ids| and its size to
-// |*out_group_ids_len|. Otherwise, it returns zero.
-int tls1_set_curves_list(uint16_t **out_group_ids, size_t *out_group_ids_len,
-                         const char *curves);
+// returns true and writes the array to |*out_group_ids|. Otherwise, it returns
+// false.
+bool tls1_set_curves_list(Array<uint16_t> *out_group_ids, const char *curves);
 
 // ssl_add_clienthello_tlsext writes ClientHello extensions to |out|. It
 // returns one on success and zero on failure. The |header_len| argument is the
@@ -2840,7 +2830,7 @@ struct ssl_ctx_st {
   // configuration.
   tls13_variant_t tls13_variant = tls13_default;
 
-  bssl::SSLCipherPreferenceList *cipher_list = nullptr;
+  bssl::UniquePtr<bssl::SSLCipherPreferenceList> cipher_list;
 
   X509_STORE *cert_store = nullptr;
   LHASH_OF(SSL_SESSION) *sessions = nullptr;
@@ -2914,7 +2904,7 @@ struct ssl_ctx_st {
   void (*info_callback)(const SSL *ssl, int type, int value) = nullptr;
 
   // what we put in client cert requests
-  STACK_OF(CRYPTO_BUFFER) *client_CA = nullptr;
+  bssl::UniquePtr<STACK_OF(CRYPTO_BUFFER)> client_CA;
 
   // cached_x509_client_CA is a cache of parsed versions of the elements of
   // |client_CA|.
@@ -2930,7 +2920,7 @@ struct ssl_ctx_st {
   uint32_t mode = SSL_MODE_NO_AUTO_CHAIN;
   uint32_t max_cert_list = SSL_MAX_CERT_LIST_DEFAULT;
 
-  bssl::CERT *cert = nullptr;
+  bssl::UniquePtr<bssl::CERT> cert;
 
   // callback that allows applications to peek at protocol messages
   void (*msg_callback)(int write_p, int version, int content_type,
@@ -2976,7 +2966,7 @@ struct ssl_ctx_st {
 
   // Server-only: psk_identity_hint is the default identity hint to send in
   // PSK-based key exchanges.
-  char *psk_identity_hint = nullptr;
+  bssl::UniquePtr<char> psk_identity_hint;
 
   unsigned (*psk_client_callback)(SSL *ssl, const char *hint, char *identity,
                                   unsigned max_identity_len, uint8_t *psk,
@@ -3018,21 +3008,19 @@ struct ssl_ctx_st {
 
   // For a client, this contains the list of supported protocols in wire
   // format.
-  uint8_t *alpn_client_proto_list = nullptr;
-  unsigned alpn_client_proto_list_len = 0;
+  bssl::Array<uint8_t> alpn_client_proto_list;
 
   // SRTP profiles we are willing to do from RFC 5764
-  STACK_OF(SRTP_PROTECTION_PROFILE) *srtp_profiles = nullptr;
+  bssl::UniquePtr<STACK_OF(SRTP_PROTECTION_PROFILE)> srtp_profiles;
 
   // Defined compression algorithms for certificates.
   STACK_OF(CertCompressionAlg) *cert_compression_algs = nullptr;
 
   // Supported group values inherited by SSL structure
-  size_t supported_group_list_len = 0;
-  uint16_t *supported_group_list = nullptr;
+  bssl::Array<uint16_t> supported_group_list;
 
   // The client's Channel ID private key.
-  EVP_PKEY *tlsext_channel_id_private = nullptr;
+  bssl::UniquePtr<EVP_PKEY> tlsext_channel_id_private;
 
   // keylog_callback, if not NULL, is the key logging callback. See
   // |SSL_CTX_set_keylog_callback|.
@@ -3058,8 +3046,7 @@ struct ssl_ctx_st {
 
   // verify_sigalgs, if not empty, is the set of signature algorithms
   // accepted from the peer in decreasing order of preference.
-  uint16_t *verify_sigalgs = nullptr;
-  size_t num_verify_sigalgs = 0;
+  bssl::Array<uint16_t> verify_sigalgs;
 
   // retain_only_sha256_of_client_certs is true if we should compute the SHA256
   // hash of the peer's certificate and then discard it to save memory and

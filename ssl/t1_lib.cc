@@ -293,9 +293,8 @@ static const uint16_t kDefaultGroups[] = {
 };
 
 Span<const uint16_t> tls1_get_grouplist(const SSL_HANDSHAKE *hs) {
-  if (hs->config->supported_group_list != nullptr) {
-    return MakeConstSpan(hs->config->supported_group_list,
-                         hs->config->supported_group_list_len);
+  if (!hs->config->supported_group_list.empty()) {
+    return hs->config->supported_group_list;
   }
   return Span<const uint16_t>(kDefaultGroups);
 }
@@ -335,68 +334,55 @@ int tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id) {
   return 0;
 }
 
-int tls1_set_curves(uint16_t **out_group_ids, size_t *out_group_ids_len,
-                    const int *curves, size_t ncurves) {
-  uint16_t *group_ids = (uint16_t *)OPENSSL_malloc(ncurves * sizeof(uint16_t));
-  if (group_ids == NULL) {
-    return 0;
+bool tls1_set_curves(Array<uint16_t> *out_group_ids, Span<const int> curves) {
+  Array<uint16_t> group_ids;
+  if (!group_ids.Init(curves.size())) {
+    return false;
   }
 
-  for (size_t i = 0; i < ncurves; i++) {
+  for (size_t i = 0; i < curves.size(); i++) {
     if (!ssl_nid_to_group_id(&group_ids[i], curves[i])) {
-      OPENSSL_free(group_ids);
-      return 0;
+      return false;
     }
   }
 
-  OPENSSL_free(*out_group_ids);
-  *out_group_ids = group_ids;
-  *out_group_ids_len = ncurves;
-
-  return 1;
+  *out_group_ids = std::move(group_ids);
+  return true;
 }
 
-int tls1_set_curves_list(uint16_t **out_group_ids, size_t *out_group_ids_len,
-                         const char *curves) {
-  uint16_t *group_ids = NULL;
-  size_t ncurves = 0;
-
-  const char *col;
-  const char *ptr = curves;
-
+bool tls1_set_curves_list(Array<uint16_t> *out_group_ids, const char *curves) {
+  // Count the number of curves in the list.
+  size_t count = 0;
+  const char *ptr = curves, *col;
   do {
     col = strchr(ptr, ':');
-
-    uint16_t group_id;
-    if (!ssl_name_to_group_id(&group_id, ptr,
-                              col ? (size_t)(col - ptr) : strlen(ptr))) {
-      goto err;
-    }
-
-    uint16_t *new_group_ids = (uint16_t *)OPENSSL_realloc(
-        group_ids, (ncurves + 1) * sizeof(uint16_t));
-    if (new_group_ids == NULL) {
-      goto err;
-    }
-    group_ids = new_group_ids;
-
-    group_ids[ncurves] = group_id;
-    ncurves++;
-
+    count++;
     if (col) {
       ptr = col + 1;
     }
   } while (col);
 
-  OPENSSL_free(*out_group_ids);
-  *out_group_ids = group_ids;
-  *out_group_ids_len = ncurves;
+  Array<uint16_t> group_ids;
+  if (!group_ids.Init(count)) {
+    return false;
+  }
 
-  return 1;
+  size_t i = 0;
+  ptr = curves;
+  do {
+    col = strchr(ptr, ':');
+    if (!ssl_name_to_group_id(&group_ids[i++], ptr,
+                              col ? (size_t)(col - ptr) : strlen(ptr))) {
+      return false;
+    }
+    if (col) {
+      ptr = col + 1;
+    }
+  } while (col);
 
-err:
-  OPENSSL_free(group_ids);
-  return 0;
+  assert(i == count);
+  *out_group_ids = std::move(group_ids);
+  return true;
 }
 
 int tls1_check_group_id(const SSL_HANDSHAKE *hs, uint16_t group_id) {
@@ -506,9 +492,8 @@ struct SSLSignatureAlgorithmList {
 static SSLSignatureAlgorithmList tls12_get_verify_sigalgs(const SSL *ssl,
                                                           bool for_certs) {
   SSLSignatureAlgorithmList ret;
-  if (ssl->ctx->num_verify_sigalgs != 0) {
-    ret.list =
-        MakeConstSpan(ssl->ctx->verify_sigalgs, ssl->ctx->num_verify_sigalgs);
+  if (!ssl->ctx->verify_sigalgs.empty()) {
+    ret.list = ssl->ctx->verify_sigalgs;
   } else {
     ret.list = kVerifySignatureAlgorithms;
     ret.skip_ed25519 = !ssl->ctx->ed25519_enabled;
@@ -1393,7 +1378,7 @@ static bool ext_sct_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static bool ext_alpn_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  if (hs->config->alpn_client_proto_list == NULL ||
+  if (hs->config->alpn_client_proto_list.empty() ||
       ssl->s3->initial_handshake_complete) {
     return true;
   }
@@ -1402,8 +1387,8 @@ static bool ext_alpn_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   if (!CBB_add_u16(out, TLSEXT_TYPE_application_layer_protocol_negotiation) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_u16_length_prefixed(&contents, &proto_list) ||
-      !CBB_add_bytes(&proto_list, hs->config->alpn_client_proto_list,
-                     hs->config->alpn_client_proto_list_len) ||
+      !CBB_add_bytes(&proto_list, hs->config->alpn_client_proto_list.data(),
+                     hs->config->alpn_client_proto_list.size()) ||
       !CBB_flush(out)) {
     return false;
   }
@@ -1419,7 +1404,7 @@ static bool ext_alpn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
 
   assert(!ssl->s3->initial_handshake_complete);
-  assert(hs->config->alpn_client_proto_list != NULL);
+  assert(!hs->config->alpn_client_proto_list.empty());
 
   if (hs->next_proto_neg_seen) {
     // NPN and ALPN may not be negotiated in the same connection.
@@ -1456,7 +1441,7 @@ static bool ext_alpn_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
 bool ssl_is_alpn_protocol_allowed(const SSL_HANDSHAKE *hs,
                                   Span<const uint8_t> protocol) {
-  if (hs->config->alpn_client_proto_list == nullptr) {
+  if (hs->config->alpn_client_proto_list.empty()) {
     return false;
   }
 
@@ -1465,9 +1450,9 @@ bool ssl_is_alpn_protocol_allowed(const SSL_HANDSHAKE *hs,
   }
 
   // Check that the protocol name is one of the ones we advertised.
-  CBS client_protocol_name_list, client_protocol_name;
-  CBS_init(&client_protocol_name_list, hs->config->alpn_client_proto_list,
-           hs->config->alpn_client_proto_list_len);
+  CBS client_protocol_name_list =
+          MakeConstSpan(hs->config->alpn_client_proto_list),
+      client_protocol_name;
   while (CBS_len(&client_protocol_name_list) > 0) {
     if (!CBS_get_u8_length_prefixed(&client_protocol_name_list,
                                     &client_protocol_name)) {
@@ -2549,7 +2534,7 @@ static uint16_t kTokenBindingMinVersion = 13;
 
 static bool ext_token_binding_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  if (hs->config->token_binding_params == nullptr || SSL_is_dtls(ssl)) {
+  if (hs->config->token_binding_params.empty() || SSL_is_dtls(ssl)) {
     return true;
   }
 
@@ -2558,8 +2543,8 @@ static bool ext_token_binding_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
       !CBB_add_u16_length_prefixed(out, &contents) ||
       !CBB_add_u16(&contents, kTokenBindingMaxVersion) ||
       !CBB_add_u8_length_prefixed(&contents, &params) ||
-      !CBB_add_bytes(&params, hs->config->token_binding_params,
-                     hs->config->token_binding_params_len) ||
+      !CBB_add_bytes(&params, hs->config->token_binding_params.data(),
+                     hs->config->token_binding_params.size()) ||
       !CBB_flush(out)) {
     return false;
   }
@@ -2599,8 +2584,8 @@ static bool ext_token_binding_parse_serverhello(SSL_HANDSHAKE *hs,
     return true;
   }
 
-  for (size_t i = 0; i < hs->config->token_binding_params_len; ++i) {
-    if (param == hs->config->token_binding_params[i]) {
+  for (uint8_t config_param : hs->config->token_binding_params) {
+    if (param == config_param) {
       ssl->s3->negotiated_token_binding_param = param;
       ssl->s3->token_binding_negotiated = true;
       return true;
@@ -2617,8 +2602,7 @@ static bool ext_token_binding_parse_serverhello(SSL_HANDSHAKE *hs,
 // param is found, and false otherwise.
 static bool select_tb_param(SSL_HANDSHAKE *hs,
                             Span<const uint8_t> peer_params) {
-  for (size_t i = 0; i < hs->config->token_binding_params_len; ++i) {
-    uint8_t tb_param = hs->config->token_binding_params[i];
+  for (uint8_t tb_param : hs->config->token_binding_params) {
     for (uint8_t peer_param : peer_params) {
       if (tb_param == peer_param) {
         hs->ssl->s3->negotiated_token_binding_param = tb_param;
@@ -2633,7 +2617,7 @@ static bool ext_token_binding_parse_clienthello(SSL_HANDSHAKE *hs,
                                                 uint8_t *out_alert,
                                                 CBS *contents) {
   SSL *const ssl = hs->ssl;
-  if (contents == nullptr || hs->config->token_binding_params == nullptr) {
+  if (contents == nullptr || hs->config->token_binding_params.empty()) {
     return true;
   }
 
@@ -2689,15 +2673,16 @@ static bool ext_token_binding_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static bool ext_quic_transport_params_add_clienthello(SSL_HANDSHAKE *hs,
                                                       CBB *out) {
-  if (!hs->config->quic_transport_params || hs->max_version <= TLS1_2_VERSION) {
+  if (hs->config->quic_transport_params.empty() ||
+      hs->max_version <= TLS1_2_VERSION) {
     return true;
   }
 
   CBB contents;
   if (!CBB_add_u16(out, TLSEXT_TYPE_quic_transport_parameters) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
-      !CBB_add_bytes(&contents, hs->config->quic_transport_params,
-                     hs->config->quic_transport_params_len) ||
+      !CBB_add_bytes(&contents, hs->config->quic_transport_params.data(),
+                     hs->config->quic_transport_params.size()) ||
       !CBB_flush(out)) {
     return false;
   }
@@ -2724,7 +2709,7 @@ static bool ext_quic_transport_params_parse_clienthello(SSL_HANDSHAKE *hs,
                                                         uint8_t *out_alert,
                                                         CBS *contents) {
   SSL *const ssl = hs->ssl;
-  if (!contents || !hs->config->quic_transport_params) {
+  if (!contents || hs->config->quic_transport_params.empty()) {
     return true;
   }
   // Ignore the extension before TLS 1.3.
@@ -2737,15 +2722,15 @@ static bool ext_quic_transport_params_parse_clienthello(SSL_HANDSHAKE *hs,
 
 static bool ext_quic_transport_params_add_serverhello(SSL_HANDSHAKE *hs,
                                                       CBB *out) {
-  if (!hs->config->quic_transport_params) {
+  if (hs->config->quic_transport_params.empty()) {
     return true;
   }
 
   CBB contents;
   if (!CBB_add_u16(out, TLSEXT_TYPE_quic_transport_parameters) ||
       !CBB_add_u16_length_prefixed(out, &contents) ||
-      !CBB_add_bytes(&contents, hs->config->quic_transport_params,
-                     hs->config->quic_transport_params_len) ||
+      !CBB_add_bytes(&contents, hs->config->quic_transport_params.data(),
+                     hs->config->quic_transport_params.size()) ||
       !CBB_flush(out)) {
     return false;
   }
@@ -3667,7 +3652,7 @@ bool tls1_get_legacy_signature_algorithm(uint16_t *out, const EVP_PKEY *pkey) {
 
 bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   SSL *const ssl = hs->ssl;
-  CERT *cert = hs->config->cert;
+  CERT *cert = hs->config->cert.get();
 
   // Before TLS 1.2, the signature algorithm isn't negotiated as part of the
   // handshake.
@@ -3789,7 +3774,8 @@ bool tls1_write_channel_id(SSL_HANDSHAKE *hs, CBB *cbb) {
     return false;
   }
 
-  EC_KEY *ec_key = EVP_PKEY_get0_EC_KEY(hs->config->tlsext_channel_id_private);
+  EC_KEY *ec_key =
+      EVP_PKEY_get0_EC_KEY(hs->config->tlsext_channel_id_private.get());
   if (ec_key == nullptr) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
     return false;

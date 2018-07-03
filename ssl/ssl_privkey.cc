@@ -304,7 +304,7 @@ int SSL_use_RSAPrivateKey(SSL *ssl, RSA *rsa) {
     return 0;
   }
 
-  return ssl_set_pkey(ssl->config->cert, pkey.get());
+  return ssl_set_pkey(ssl->config->cert.get(), pkey.get());
 }
 
 int SSL_use_RSAPrivateKey_ASN1(SSL *ssl, const uint8_t *der, size_t der_len) {
@@ -323,7 +323,7 @@ int SSL_use_PrivateKey(SSL *ssl, EVP_PKEY *pkey) {
     return 0;
   }
 
-  return ssl_set_pkey(ssl->config->cert, pkey);
+  return ssl_set_pkey(ssl->config->cert.get(), pkey);
 }
 
 int SSL_use_PrivateKey_ASN1(int type, SSL *ssl, const uint8_t *der,
@@ -356,7 +356,7 @@ int SSL_CTX_use_RSAPrivateKey(SSL_CTX *ctx, RSA *rsa) {
     return 0;
   }
 
-  return ssl_set_pkey(ctx->cert, pkey.get());
+  return ssl_set_pkey(ctx->cert.get(), pkey.get());
 }
 
 int SSL_CTX_use_RSAPrivateKey_ASN1(SSL_CTX *ctx, const uint8_t *der,
@@ -376,7 +376,7 @@ int SSL_CTX_use_PrivateKey(SSL_CTX *ctx, EVP_PKEY *pkey) {
     return 0;
   }
 
-  return ssl_set_pkey(ctx->cert, pkey);
+  return ssl_set_pkey(ctx->cert.get(), pkey);
 }
 
 int SSL_CTX_use_PrivateKey_ASN1(int type, SSL_CTX *ctx, const uint8_t *der,
@@ -461,21 +461,6 @@ int SSL_is_signature_algorithm_rsa_pss(uint16_t sigalg) {
   return alg != nullptr && alg->is_rsa_pss;
 }
 
-static int set_algorithm_prefs(uint16_t **out_prefs, size_t *out_num_prefs,
-                               const uint16_t *prefs, size_t num_prefs) {
-  OPENSSL_free(*out_prefs);
-
-  *out_num_prefs = 0;
-  *out_prefs = (uint16_t *)BUF_memdup(prefs, num_prefs * sizeof(prefs[0]));
-  if (*out_prefs == NULL) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-  *out_num_prefs = num_prefs;
-
-  return 1;
-}
-
 int SSL_CTX_set_signing_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
                                         size_t num_prefs) {
   return ctx->cert->sigalgs.CopyFrom(MakeConstSpan(prefs, num_prefs));
@@ -491,6 +476,5 @@ int SSL_set_signing_algorithm_prefs(SSL *ssl, const uint16_t *prefs,
 
 int SSL_CTX_set_verify_algorithm_prefs(SSL_CTX *ctx, const uint16_t *prefs,
                                        size_t num_prefs) {
-  return set_algorithm_prefs(&ctx->verify_sigalgs, &ctx->num_verify_sigalgs,
-                             prefs, num_prefs);
+  return ctx->verify_sigalgs.CopyFrom(MakeConstSpan(prefs, num_prefs));
 }

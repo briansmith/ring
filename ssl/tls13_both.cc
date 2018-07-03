@@ -415,7 +415,7 @@ int tls13_process_finished(SSL_HANDSHAKE *hs, const SSLMessage &msg,
 
 int tls13_add_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  CERT *const cert = hs->config->cert;
+  CERT *const cert = hs->config->cert.get();
 
   ScopedCBB cbb;
   CBB *body, body_storage, certificate_list;
