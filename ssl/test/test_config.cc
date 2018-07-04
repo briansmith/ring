@@ -372,16 +372,6 @@ const TestConfig *GetTestConfig(const SSL *ssl) {
   return (const TestConfig *)SSL_get_ex_data(ssl, g_config_index);
 }
 
-bool MoveTestConfig(SSL *dest, SSL *src) {
-  const TestConfig *config = GetTestConfig(src);
-  if (!SSL_set_ex_data(src, g_config_index, nullptr) ||
-      !SSL_set_ex_data(dest, g_config_index, (void *)config)) {
-    return false;
-  }
-
-  return true;
-}
-
 static int LegacyOCSPCallback(SSL *ssl, void *arg) {
   const TestConfig *config = GetTestConfig(ssl);
   if (!SSL_is_server(ssl)) {

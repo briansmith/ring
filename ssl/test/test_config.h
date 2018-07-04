@@ -179,8 +179,6 @@ bool SetTestConfig(SSL *ssl, const TestConfig *config);
 
 const TestConfig *GetTestConfig(const SSL *ssl);
 
-bool MoveTestConfig(SSL *dest, SSL *src);
-
 bool LoadCertificate(bssl::UniquePtr<X509> *out_x509,
                      bssl::UniquePtr<STACK_OF(X509)> *out_chain,
                      const std::string &file);
