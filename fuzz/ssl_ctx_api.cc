@@ -213,7 +213,7 @@ struct GlobalState {
     assert(cert_.get() != nullptr);
 
     certs_.reset(sk_X509_new_null());
-    PushToStack(certs_.get(), UpRef(cert_));
+    bssl::PushToStack(certs_.get(), bssl::UpRef(cert_));
   }
 
   bssl::UniquePtr<EVP_PKEY> pkey_;
