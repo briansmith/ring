@@ -174,9 +174,8 @@ if(WIN32)
   add_definitions(-D_CRT_SECURE_NO_WARNINGS)
   # VS 2017 and higher supports STL-only warning suppressions. Manually add to
   # C++ only to work around a CMake quoting bug when using NASM with the Visual
-  # Studio generator.
-  #
-  # TODO(davidben): Send a patch to CMake and link to it here.
+  # Studio generator. This will be fixed in CMake 3.13.0. See
+  # https://gitlab.kitware.com/cmake/cmake/merge_requests/2179
   add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-D_STL_EXTRA_DISABLED_WARNINGS=4774\ 4987>)
 endif()
 
