@@ -392,8 +392,6 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
           !ssl->s3->channel_id_valid &&
           // If Token Binding is negotiated, reject 0-RTT.
           !ssl->s3->token_binding_negotiated &&
-          // Custom extensions is incompatible with 0-RTT.
-          hs->custom_extensions.received == 0 &&
           // The negotiated ALPN must match the one in the ticket.
           MakeConstSpan(ssl->s3->alpn_selected) == session->early_alpn) {
         ssl->s3->early_data_accepted = true;

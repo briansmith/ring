@@ -3068,7 +3068,6 @@ int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
   }
 
   hs->extensions.sent = 0;
-  hs->custom_extensions.sent = 0;
 
   for (size_t i = 0; i < kNumExtensions; i++) {
     if (kExtensions[i].init != NULL) {
@@ -3098,11 +3097,6 @@ int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len) {
     if (CBB_len(&extensions) != len_before) {
       hs->extensions.sent |= (1u << i);
     }
-  }
-
-  if (!custom_ext_add_clienthello(hs, &extensions)) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
   }
 
   if (ssl->ctx->grease_enabled) {
@@ -3189,10 +3183,6 @@ int ssl_add_serverhello_tlsext(SSL_HANDSHAKE *hs, CBB *out) {
     }
   }
 
-  if (!custom_ext_add_serverhello(hs, &extensions)) {
-    goto err;
-  }
-
   // Discard empty extensions blocks before TLS 1.3.
   if (ssl_protocol_version(ssl) < TLS1_3_VERSION &&
       CBB_len(&extensions) == 0) {
@@ -3216,7 +3206,6 @@ static int ssl_scan_clienthello_tlsext(SSL_HANDSHAKE *hs,
   }
 
   hs->extensions.received = 0;
-  hs->custom_extensions.received = 0;
   CBS extensions;
   CBS_init(&extensions, client_hello->extensions, client_hello->extensions_len);
   while (CBS_len(&extensions) != 0) {
@@ -3234,10 +3223,6 @@ static int ssl_scan_clienthello_tlsext(SSL_HANDSHAKE *hs,
     const struct tls_extension *const ext =
         tls_extension_find(&ext_index, type);
     if (ext == NULL) {
-      if (!custom_ext_parse_clienthello(hs, out_alert, type, &extension)) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_ERROR_PARSING_EXTENSION);
-        return 0;
-      }
       continue;
     }
 
@@ -3333,11 +3318,10 @@ static int ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs,
         tls_extension_find(&ext_index, type);
 
     if (ext == NULL) {
-      hs->received_custom_extension = true;
-      if (!custom_ext_parse_serverhello(hs, out_alert, type, &extension)) {
-        return 0;
-      }
-      continue;
+      OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
+      ERR_add_error_dataf("extension %u", (unsigned)type);
+      *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;
+      return 0;
     }
 
     static_assert(kNumExtensions <= sizeof(hs->extensions.sent) * 8,
@@ -3940,10 +3924,4 @@ void SSL_CTX_set_ed25519_enabled(SSL_CTX *ctx, int enabled) {
 
 void SSL_CTX_set_rsa_pss_rsae_certs_enabled(SSL_CTX *ctx, int enabled) {
   ctx->rsa_pss_rsae_certs_enabled = !!enabled;
-}
-
-int SSL_extension_supported(unsigned extension_value) {
-  uint32_t index;
-  return extension_value == TLSEXT_TYPE_padding ||
-         tls_extension_find(&index, extension_value) != NULL;
 }

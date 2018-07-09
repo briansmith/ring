@@ -130,7 +130,6 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       needs_psk_binder(false),
       received_hello_retry_request(false),
       sent_hello_retry_request(false),
-      received_custom_extension(false),
       handshake_finalized(false),
       accept_psk_mode(false),
       cert_request(false),

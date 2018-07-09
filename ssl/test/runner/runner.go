@@ -10259,278 +10259,6 @@ func addTLSUniqueTests() {
 }
 
 func addCustomExtensionTests() {
-	expectedContents := "custom extension"
-	emptyString := ""
-
-	for _, isClient := range []bool{false, true} {
-		suffix := "Server"
-		flag := "-enable-server-custom-extension"
-		testType := serverTest
-		if isClient {
-			suffix = "Client"
-			flag = "-enable-client-custom-extension"
-			testType = clientTest
-		}
-
-		testCases = append(testCases, testCase{
-			testType: testType,
-			name:     "CustomExtensions-" + suffix,
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					CustomExtension:         expectedContents,
-					ExpectedCustomExtension: &expectedContents,
-				},
-			},
-			flags: []string{flag},
-		})
-		testCases = append(testCases, testCase{
-			testType: testType,
-			name:     "CustomExtensions-" + suffix + "-TLS13",
-			config: Config{
-				MaxVersion: VersionTLS13,
-				Bugs: ProtocolBugs{
-					CustomExtension:         expectedContents,
-					ExpectedCustomExtension: &expectedContents,
-				},
-			},
-			flags: []string{flag},
-		})
-
-		// If the parse callback fails, the handshake should also fail.
-		testCases = append(testCases, testCase{
-			testType: testType,
-			name:     "CustomExtensions-ParseError-" + suffix,
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					CustomExtension:         expectedContents + "foo",
-					ExpectedCustomExtension: &expectedContents,
-				},
-			},
-			flags:         []string{flag},
-			shouldFail:    true,
-			expectedError: ":CUSTOM_EXTENSION_ERROR:",
-		})
-		testCases = append(testCases, testCase{
-			testType: testType,
-			name:     "CustomExtensions-ParseError-" + suffix + "-TLS13",
-			config: Config{
-				MaxVersion: VersionTLS13,
-				Bugs: ProtocolBugs{
-					CustomExtension:         expectedContents + "foo",
-					ExpectedCustomExtension: &expectedContents,
-				},
-			},
-			flags:         []string{flag},
-			shouldFail:    true,
-			expectedError: ":CUSTOM_EXTENSION_ERROR:",
-		})
-
-		// If the add callback fails, the handshake should also fail.
-		testCases = append(testCases, testCase{
-			testType: testType,
-			name:     "CustomExtensions-FailAdd-" + suffix,
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					CustomExtension:         expectedContents,
-					ExpectedCustomExtension: &expectedContents,
-				},
-			},
-			flags:         []string{flag, "-custom-extension-fail-add"},
-			shouldFail:    true,
-			expectedError: ":CUSTOM_EXTENSION_ERROR:",
-		})
-		testCases = append(testCases, testCase{
-			testType: testType,
-			name:     "CustomExtensions-FailAdd-" + suffix + "-TLS13",
-			config: Config{
-				MaxVersion: VersionTLS13,
-				Bugs: ProtocolBugs{
-					CustomExtension:         expectedContents,
-					ExpectedCustomExtension: &expectedContents,
-				},
-			},
-			flags:         []string{flag, "-custom-extension-fail-add"},
-			shouldFail:    true,
-			expectedError: ":CUSTOM_EXTENSION_ERROR:",
-		})
-
-		// If the add callback returns zero, no extension should be
-		// added.
-		skipCustomExtension := expectedContents
-		if isClient {
-			// For the case where the client skips sending the
-			// custom extension, the server must not “echo” it.
-			skipCustomExtension = ""
-		}
-		testCases = append(testCases, testCase{
-			testType: testType,
-			name:     "CustomExtensions-Skip-" + suffix,
-			config: Config{
-				MaxVersion: VersionTLS12,
-				Bugs: ProtocolBugs{
-					CustomExtension:         skipCustomExtension,
-					ExpectedCustomExtension: &emptyString,
-				},
-			},
-			flags: []string{flag, "-custom-extension-skip"},
-		})
-		testCases = append(testCases, testCase{
-			testType: testType,
-			name:     "CustomExtensions-Skip-" + suffix + "-TLS13",
-			config: Config{
-				MaxVersion: VersionTLS13,
-				Bugs: ProtocolBugs{
-					CustomExtension:         skipCustomExtension,
-					ExpectedCustomExtension: &emptyString,
-				},
-			},
-			flags: []string{flag, "-custom-extension-skip"},
-		})
-	}
-
-	// If the client sends both early data and custom extension, the handshake
-	// should succeed as long as both the extensions aren't returned by the
-	// server.
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "CustomExtensions-Client-EarlyData-None",
-		config: Config{
-			MaxVersion:       VersionTLS13,
-			MaxEarlyDataSize: 16384,
-			Bugs: ProtocolBugs{
-				ExpectedCustomExtension: &expectedContents,
-				AlwaysRejectEarlyData:   true,
-			},
-		},
-		resumeSession: true,
-		flags: []string{
-			"-enable-client-custom-extension",
-			"-enable-early-data",
-			"-expect-ticket-supports-early-data",
-			"-expect-reject-early-data",
-		},
-	})
-
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "CustomExtensions-Client-EarlyData-EarlyDataAccepted",
-		config: Config{
-			MaxVersion:       VersionTLS13,
-			MaxEarlyDataSize: 16384,
-			Bugs: ProtocolBugs{
-				ExpectedCustomExtension: &expectedContents,
-			},
-		},
-		resumeSession: true,
-		flags: []string{
-			"-enable-client-custom-extension",
-			"-enable-early-data",
-			"-expect-ticket-supports-early-data",
-			"-expect-accept-early-data",
-		},
-	})
-
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "CustomExtensions-Client-EarlyData-CustomExtensionAccepted",
-		config: Config{
-			MaxVersion:       VersionTLS13,
-			MaxEarlyDataSize: 16384,
-			Bugs: ProtocolBugs{
-				AlwaysRejectEarlyData:   true,
-				CustomExtension:         expectedContents,
-				ExpectedCustomExtension: &expectedContents,
-			},
-		},
-		resumeSession: true,
-		flags: []string{
-			"-enable-client-custom-extension",
-			"-enable-early-data",
-			"-expect-ticket-supports-early-data",
-			"-expect-reject-early-data",
-		},
-	})
-
-	testCases = append(testCases, testCase{
-		testType: clientTest,
-		name:     "CustomExtensions-Client-EarlyDataAndCustomExtensions",
-		config: Config{
-			MaxVersion:       VersionTLS13,
-			MaxEarlyDataSize: 16384,
-			Bugs: ProtocolBugs{
-				CustomExtension:         expectedContents,
-				ExpectedCustomExtension: &expectedContents,
-			},
-		},
-		resumeConfig: &Config{
-			MaxVersion:       VersionTLS13,
-			MaxEarlyDataSize: 16384,
-			Bugs: ProtocolBugs{
-				CustomExtension:         expectedContents,
-				ExpectedCustomExtension: &expectedContents,
-				SendEarlyDataExtension:  true,
-			},
-		},
-		resumeSession: true,
-		shouldFail:    true,
-		expectedError: ":UNEXPECTED_EXTENSION_ON_EARLY_DATA:",
-		flags: []string{
-			"-enable-client-custom-extension",
-			"-enable-early-data",
-			"-expect-ticket-supports-early-data",
-		},
-	})
-
-	// If the server receives both early data and custom extension, only the
-	// custom extension should be accepted.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "CustomExtensions-Server-EarlyDataOffered",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				SendEarlyData:           [][]byte{{1, 2, 3, 4}},
-				CustomExtension:         expectedContents,
-				ExpectedCustomExtension: &expectedContents,
-				ExpectEarlyDataAccepted: false,
-			},
-		},
-		resumeSession: true,
-		flags: []string{
-			"-enable-server-custom-extension",
-			"-enable-early-data",
-		},
-	})
-
-	// The custom extension add callback should not be called if the client
-	// doesn't send the extension.
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "CustomExtensions-NotCalled-Server",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			Bugs: ProtocolBugs{
-				ExpectedCustomExtension: &emptyString,
-			},
-		},
-		flags: []string{"-enable-server-custom-extension", "-custom-extension-fail-add"},
-	})
-
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "CustomExtensions-NotCalled-Server-TLS13",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				ExpectedCustomExtension: &emptyString,
-			},
-		},
-		flags: []string{"-enable-server-custom-extension", "-custom-extension-fail-add"},
-	})
-
 	// Test an unknown extension from the server.
 	testCases = append(testCases, testCase{
 		testType: clientTest,
@@ -10538,7 +10266,7 @@ func addCustomExtensionTests() {
 		config: Config{
 			MaxVersion: VersionTLS12,
 			Bugs: ProtocolBugs{
-				CustomExtension: expectedContents,
+				CustomExtension: "custom extension",
 			},
 		},
 		shouldFail:         true,
@@ -10551,7 +10279,7 @@ func addCustomExtensionTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				CustomExtension: expectedContents,
+				CustomExtension: "custom extension",
 			},
 		},
 		shouldFail:         true,
@@ -10564,7 +10292,7 @@ func addCustomExtensionTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
-				CustomUnencryptedExtension: expectedContents,
+				CustomUnencryptedExtension: "custom extension",
 			},
 		},
 		shouldFail:    true,

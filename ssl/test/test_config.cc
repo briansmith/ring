@@ -92,12 +92,6 @@ const Flag<bool> kBoolFlags[] = {
   { "-use-ticket-callback", &TestConfig::use_ticket_callback },
   { "-renew-ticket", &TestConfig::renew_ticket },
   { "-enable-early-data", &TestConfig::enable_early_data },
-  { "-enable-client-custom-extension",
-    &TestConfig::enable_client_custom_extension },
-  { "-enable-server-custom-extension",
-    &TestConfig::enable_server_custom_extension },
-  { "-custom-extension-skip", &TestConfig::custom_extension_skip },
-  { "-custom-extension-fail-add", &TestConfig::custom_extension_fail_add },
   { "-check-close-notify", &TestConfig::check_close_notify },
   { "-shim-shuts-down", &TestConfig::shim_shuts_down },
   { "-verify-fail", &TestConfig::verify_fail },
@@ -390,63 +384,6 @@ static int LegacyOCSPCallback(SSL *ssl, void *arg) {
     return SSL_TLSEXT_ERR_NOACK;
   }
   return SSL_TLSEXT_ERR_OK;
-}
-
-// kCustomExtensionValue is the extension value that the custom extension
-// callbacks will add.
-static const uint16_t kCustomExtensionValue = 1234;
-static void *const kCustomExtensionAddArg =
-    reinterpret_cast<void *>(kCustomExtensionValue);
-static void *const kCustomExtensionParseArg =
-    reinterpret_cast<void *>(kCustomExtensionValue + 1);
-static const char kCustomExtensionContents[] = "custom extension";
-
-static int CustomExtensionAddCallback(SSL *ssl, unsigned extension_value,
-                                      const uint8_t **out, size_t *out_len,
-                                      int *out_alert_value, void *add_arg) {
-  if (extension_value != kCustomExtensionValue ||
-      add_arg != kCustomExtensionAddArg) {
-    abort();
-  }
-
-  if (GetTestConfig(ssl)->custom_extension_skip) {
-    return 0;
-  }
-  if (GetTestConfig(ssl)->custom_extension_fail_add) {
-    return -1;
-  }
-
-  *out = reinterpret_cast<const uint8_t *>(kCustomExtensionContents);
-  *out_len = sizeof(kCustomExtensionContents) - 1;
-
-  return 1;
-}
-
-static void CustomExtensionFreeCallback(SSL *ssl, unsigned extension_value,
-                                        const uint8_t *out, void *add_arg) {
-  if (extension_value != kCustomExtensionValue ||
-      add_arg != kCustomExtensionAddArg ||
-      out != reinterpret_cast<const uint8_t *>(kCustomExtensionContents)) {
-    abort();
-  }
-}
-
-static int CustomExtensionParseCallback(SSL *ssl, unsigned extension_value,
-                                        const uint8_t *contents,
-                                        size_t contents_len,
-                                        int *out_alert_value, void *parse_arg) {
-  if (extension_value != kCustomExtensionValue ||
-      parse_arg != kCustomExtensionParseArg) {
-    abort();
-  }
-
-  if (contents_len != sizeof(kCustomExtensionContents) - 1 ||
-      OPENSSL_memcmp(contents, kCustomExtensionContents, contents_len) != 0) {
-    *out_alert_value = SSL_AD_DECODE_ERROR;
-    return 0;
-  }
-
-  return 1;
 }
 
 static int ServerNameCallback(SSL *ssl, int *out_alert, void *arg) {
@@ -1232,22 +1169,6 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
 
   if (use_ticket_callback) {
     SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx.get(), TicketKeyCallback);
-  }
-
-  if (enable_client_custom_extension &&
-      !SSL_CTX_add_client_custom_ext(
-          ssl_ctx.get(), kCustomExtensionValue, CustomExtensionAddCallback,
-          CustomExtensionFreeCallback, kCustomExtensionAddArg,
-          CustomExtensionParseCallback, kCustomExtensionParseArg)) {
-    return nullptr;
-  }
-
-  if (enable_server_custom_extension &&
-      !SSL_CTX_add_server_custom_ext(
-          ssl_ctx.get(), kCustomExtensionValue, CustomExtensionAddCallback,
-          CustomExtensionFreeCallback, kCustomExtensionAddArg,
-          CustomExtensionParseCallback, kCustomExtensionParseArg)) {
-    return nullptr;
   }
 
   if (!use_custom_verify_callback) {

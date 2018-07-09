@@ -929,36 +929,6 @@ bool ssl_public_key_verify(SSL *ssl, Span<const uint8_t> signature,
                            Span<const uint8_t> in);
 
 
-// Custom extensions
-
-}  // namespace bssl
-
-// |SSL_CUSTOM_EXTENSION| is a structure that contains information about
-// custom-extension callbacks. It is defined unnamespaced for compatibility with
-// |STACK_OF(SSL_CUSTOM_EXTENSION)|.
-typedef struct ssl_custom_extension {
-  SSL_custom_ext_add_cb add_callback;
-  void *add_arg;
-  SSL_custom_ext_free_cb free_callback;
-  SSL_custom_ext_parse_cb parse_callback;
-  void *parse_arg;
-  uint16_t value;
-} SSL_CUSTOM_EXTENSION;
-
-DEFINE_STACK_OF(SSL_CUSTOM_EXTENSION)
-
-namespace bssl {
-
-void SSL_CUSTOM_EXTENSION_free(SSL_CUSTOM_EXTENSION *custom_extension);
-
-int custom_ext_add_clienthello(SSL_HANDSHAKE *hs, CBB *extensions);
-int custom_ext_parse_serverhello(SSL_HANDSHAKE *hs, int *out_alert,
-                                 uint16_t value, const CBS *extension);
-int custom_ext_parse_clienthello(SSL_HANDSHAKE *hs, int *out_alert,
-                                 uint16_t value, const CBS *extension);
-int custom_ext_add_serverhello(SSL_HANDSHAKE *hs, CBB *extensions);
-
-
 // Key shares.
 
 // SSLKeyShare abstracts over Diffie-Hellman-like key exchanges.
@@ -1421,17 +1391,6 @@ struct SSL_HANDSHAKE {
     uint32_t received;
   } extensions;
 
-  union {
-    // sent is a bitset where the bits correspond to elements of
-    // |client_custom_extensions| in the |SSL_CTX|. Each bit is set if that
-    // extension was sent in a ClientHello. It's not used by servers.
-    uint16_t sent = 0;
-    // received is a bitset, like |sent|, but is used by servers to record
-    // which custom extensions were received from a client. The bits here
-    // correspond to |server_custom_extensions|.
-    uint16_t received;
-  } custom_extensions;
-
   // retry_group is the group ID selected by the server in HelloRetryRequest in
   // TLS 1.3.
   uint16_t retry_group = 0;
@@ -1531,8 +1490,6 @@ struct SSL_HANDSHAKE {
 
   bool received_hello_retry_request:1;
   bool sent_hello_retry_request:1;
-
-  bool received_custom_extension:1;
 
   // handshake_finalized is true once the handshake has completed, at which
   // point accessors should use the established state.
@@ -2888,11 +2845,6 @@ struct ssl_ctx_st {
   void (*channel_id_cb)(SSL *ssl, EVP_PKEY **out_pkey) = nullptr;
 
   CRYPTO_EX_DATA ex_data;
-
-  // custom_*_extensions stores any callback sets for custom extensions. Note
-  // that these pointers will be NULL if the stack would otherwise be empty.
-  STACK_OF(SSL_CUSTOM_EXTENSION) *client_custom_extensions = nullptr;
-  STACK_OF(SSL_CUSTOM_EXTENSION) *server_custom_extensions = nullptr;
 
   // Default values used when no per-SSL value is defined follow
 

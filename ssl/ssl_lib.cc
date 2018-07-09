@@ -562,10 +562,6 @@ ssl_ctx_st::~ssl_ctx_st() {
 
   CRYPTO_MUTEX_cleanup(&lock);
   lh_SSL_SESSION_free(sessions);
-  sk_SSL_CUSTOM_EXTENSION_pop_free(client_custom_extensions,
-                                   SSL_CUSTOM_EXTENSION_free);
-  sk_SSL_CUSTOM_EXTENSION_pop_free(server_custom_extensions,
-                                   SSL_CUSTOM_EXTENSION_free);
   x509_method->ssl_ctx_free(this);
   sk_CertCompressionAlg_pop_free(cert_compression_algs,
                                  Delete<CertCompressionAlg>);
