@@ -2812,7 +2812,7 @@ read alert 1 0
 			messageCount:            5,
 			keyUpdateRequest:        keyUpdateRequested,
 			readWithUnfinishedWrite: true,
-			flags: []string{"-async"},
+			flags:                   []string{"-async"},
 		},
 		{
 			name: "SendSNIWarningAlert",
@@ -8644,12 +8644,14 @@ func addSignatureAlgorithmTests() {
 				shouldVerifyFail = true
 			}
 
-			var signError, verifyError string
+			var signError, signLocalError, verifyError, verifyLocalError string
 			if shouldSignFail {
 				signError = ":NO_COMMON_SIGNATURE_ALGORITHMS:"
+				signLocalError = "remote error: handshake failure"
 			}
 			if shouldVerifyFail {
 				verifyError = ":WRONG_SIGNATURE_TYPE:"
+				verifyLocalError = "remote error"
 			}
 
 			suffix := "-" + alg.name + "-" + ver.name
@@ -8674,6 +8676,7 @@ func addSignatureAlgorithmTests() {
 				tls13Variant:                   ver.tls13Variant,
 				shouldFail:                     shouldSignFail,
 				expectedError:                  signError,
+				expectedLocalError:             signLocalError,
 				expectedPeerSignatureAlgorithm: alg.id,
 			})
 
@@ -8702,9 +8705,10 @@ func addSignatureAlgorithmTests() {
 				},
 				// Resume the session to assert the peer signature
 				// algorithm is reported on both handshakes.
-				resumeSession: !shouldVerifyFail,
-				shouldFail:    shouldVerifyFail,
-				expectedError: verifyError,
+				resumeSession:      !shouldVerifyFail,
+				shouldFail:         shouldVerifyFail,
+				expectedError:      verifyError,
+				expectedLocalError: verifyLocalError,
 			})
 
 			testCases = append(testCases, testCase{
@@ -8728,6 +8732,7 @@ func addSignatureAlgorithmTests() {
 				},
 				shouldFail:                     shouldSignFail,
 				expectedError:                  signError,
+				expectedLocalError:             signLocalError,
 				expectedPeerSignatureAlgorithm: alg.id,
 			})
 
@@ -8755,9 +8760,10 @@ func addSignatureAlgorithmTests() {
 				},
 				// Resume the session to assert the peer signature
 				// algorithm is reported on both handshakes.
-				resumeSession: !shouldVerifyFail,
-				shouldFail:    shouldVerifyFail,
-				expectedError: verifyError,
+				resumeSession:      !shouldVerifyFail,
+				shouldFail:         shouldVerifyFail,
+				expectedError:      verifyError,
+				expectedLocalError: verifyLocalError,
 			})
 
 			if !shouldVerifyFail {
