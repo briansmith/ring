@@ -466,6 +466,31 @@ pub mod rand {
     use core;
     use {error, polyfill, rand};
     use private;
+    use std::cell::Cell;
+    use std::mem;
+
+    /// An implementation of `SecureRandom` that always holds the same results
+    /// provided the same seed.
+    #[derive(Debug)]
+    pub struct SeededFixedRandom {
+        pub start: Cell<u16>,
+    }
+
+    impl rand::SecureRandom for SeededFixedRandom {
+        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+            let start = self.start.get();
+            for i in 0..dest.len() {
+                let bit  = ((start >> 0) ^ (start >> 2) ^ (start >> 3) ^
+                            (start >> 5)) & 1;
+
+                self.start.set((start >> 1) | (bit << 15));
+                // Bit wasteful but makes the loop writting easier.
+                let [head, _]: [u8; 2] = unsafe { mem::transmute(bit) };
+                dest[i] = head;
+            }
+            Ok(())
+        }
+    }
 
     /// An implementation of `SecureRandom` that always fills the output slice
     /// with the given byte.
@@ -535,6 +560,7 @@ pub mod rand {
     impl private::Sealed for FixedByteRandom {}
     impl<'a> private::Sealed for FixedSliceRandom<'a> {}
     impl<'a> private::Sealed for FixedSliceSequenceRandom<'a> {}
+    impl private::Sealed for SeededFixedRandom {}
 
 }
 
