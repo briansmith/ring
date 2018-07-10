@@ -24,6 +24,22 @@ BSSL_NAMESPACE_BEGIN
 constexpr int kHandoffVersion = 0;
 constexpr int kHandbackVersion = 0;
 
+// serialize_features adds a description of features supported by this binary to
+// |out|.  Returns true on success and false on error.
+static bool serialize_features(CBB *out) {
+  CBB ciphers;
+  if (!CBB_add_asn1(out, &ciphers, CBS_ASN1_OCTETSTRING)) {
+    return false;
+  }
+  Span<const SSL_CIPHER> all_ciphers = AllCiphers();
+  for (const SSL_CIPHER& cipher : all_ciphers) {
+    if (!CBB_add_u16(&ciphers, static_cast<uint16_t>(cipher.id))) {
+      return false;
+    }
+  }
+  return CBB_flush(out);
+}
+
 bool SSL_serialize_handoff(const SSL *ssl, CBB *out) {
   const SSL3_STATE *const s3 = ssl->s3;
   if (!ssl->server ||
@@ -40,6 +56,7 @@ bool SSL_serialize_handoff(const SSL *ssl, CBB *out) {
       !CBB_add_asn1_octet_string(&seq,
                                  reinterpret_cast<uint8_t *>(s3->hs_buf->data),
                                  s3->hs_buf->length) ||
+      !serialize_features(&seq) ||
       !CBB_flush(out)) {
     return false;
   }
@@ -59,6 +76,53 @@ bool SSL_decline_handoff(SSL *ssl) {
   return true;
 }
 
+// apply_remote_features reads a list of supported features from |in| and
+// (possibly) reconfigures |ssl| to disallow the negotation of features whose
+// support has not been indicated.  (This prevents the the handshake from
+// committing to features that are not supported on the handoff/handback side.)
+static bool apply_remote_features(SSL *ssl, CBS *in) {
+  CBS ciphers;
+  if (!CBS_get_asn1(in, &ciphers, CBS_ASN1_OCTETSTRING)) {
+    return false;
+  }
+  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> supported(sk_SSL_CIPHER_new_null());
+  while (CBS_len(&ciphers)) {
+    uint16_t id;
+    if (!CBS_get_u16(&ciphers, &id)) {
+      return false;
+    }
+    const SSL_CIPHER *cipher = SSL_get_cipher_by_value(id);
+    if (!cipher) {
+      continue;
+    }
+    if (!sk_SSL_CIPHER_push(supported.get(), cipher)) {
+      return false;
+    }
+  }
+  STACK_OF(SSL_CIPHER) *configured =
+      ssl->config->cipher_list ? ssl->config->cipher_list->ciphers.get()
+                               : ssl->ctx->cipher_list->ciphers.get();
+  bssl::UniquePtr<STACK_OF(SSL_CIPHER)> unsupported(sk_SSL_CIPHER_new_null());
+  for (const SSL_CIPHER *configured_cipher : configured) {
+    if (sk_SSL_CIPHER_find(supported.get(), nullptr, configured_cipher)) {
+      continue;
+    }
+    if (!sk_SSL_CIPHER_push(unsupported.get(), configured_cipher)) {
+      return false;
+    }
+  }
+  if (sk_SSL_CIPHER_num(unsupported.get()) && !ssl->config->cipher_list) {
+    ssl->config->cipher_list = bssl::MakeUnique<SSLCipherPreferenceList>();
+    if (!ssl->config->cipher_list->Init(*ssl->ctx->cipher_list)) {
+      return false;
+    }
+  }
+  for (const SSL_CIPHER *unsupported_cipher : unsupported.get()) {
+    ssl->config->cipher_list->Remove(unsupported_cipher);
+  }
+  return sk_SSL_CIPHER_num(SSL_get_ciphers(ssl)) > 0;
+}
+
 bool SSL_apply_handoff(SSL *ssl, Span<const uint8_t> handoff) {
   if (ssl->method->is_dtls) {
     return false;
@@ -74,7 +138,8 @@ bool SSL_apply_handoff(SSL *ssl, Span<const uint8_t> handoff) {
 
   CBS transcript, hs_buf;
   if (!CBS_get_asn1(&seq, &transcript, CBS_ASN1_OCTETSTRING) ||
-      !CBS_get_asn1(&seq, &hs_buf, CBS_ASN1_OCTETSTRING)) {
+      !CBS_get_asn1(&seq, &hs_buf, CBS_ASN1_OCTETSTRING) ||
+      !apply_remote_features(ssl, &seq)) {
     return false;
   }
 

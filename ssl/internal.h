@@ -509,10 +509,16 @@ struct SSLCipherPreferenceList {
 
   bool Init(UniquePtr<STACK_OF(SSL_CIPHER)> ciphers,
             Span<const bool> in_group_flags);
+  bool Init(const SSLCipherPreferenceList &);
+
+  void Remove(const SSL_CIPHER *cipher);
 
   UniquePtr<STACK_OF(SSL_CIPHER)> ciphers;
   bool *in_group_flags = nullptr;
 };
+
+// AllCiphers returns an array of all supported ciphers, sorted by id.
+Span<const SSL_CIPHER> AllCiphers();
 
 // ssl_cipher_get_evp_aead sets |*out_aead| to point to the correct EVP_AEAD
 // object for |cipher| protocol version |version|. It sets |*out_mac_secret_len|
