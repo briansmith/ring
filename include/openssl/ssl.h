@@ -883,13 +883,27 @@ OPENSSL_EXPORT void SSL_set_cert_cb(SSL *ssl, int (*cb)(SSL *ssl, void *arg),
 
 // SSL_get0_certificate_types, for a client, sets |*out_types| to an array
 // containing the client certificate types requested by a server. It returns the
-// length of the array.
+// length of the array. Note this list is always empty in TLS 1.3. The server
+// will instead send signature algorithms. See
+// |SSL_get0_peer_verify_algorithms|.
 //
 // The behavior of this function is undefined except during the callbacks set by
 // by |SSL_CTX_set_cert_cb| and |SSL_CTX_set_client_cert_cb| or when the
 // handshake is paused because of them.
-OPENSSL_EXPORT size_t SSL_get0_certificate_types(SSL *ssl,
+OPENSSL_EXPORT size_t SSL_get0_certificate_types(const SSL *ssl,
                                                  const uint8_t **out_types);
+
+// SSL_get0_peer_verify_algorithms sets |*out_sigalgs| to an array containing
+// the signature algorithms the peer is able to verify. It returns the length of
+// the array. Note these values are only sent starting TLS 1.2 and only
+// mandatory starting TLS 1.3. If not sent, the empty array is returned. For the
+// historical client certificate types list, see |SSL_get0_certificate_types|.
+//
+// The behavior of this function is undefined except during the callbacks set by
+// by |SSL_CTX_set_cert_cb| and |SSL_CTX_set_client_cert_cb| or when the
+// handshake is paused because of them.
+OPENSSL_EXPORT size_t
+SSL_get0_peer_verify_algorithms(const SSL *ssl, const uint16_t **out_sigalgs);
 
 // SSL_certs_clear resets the private key, leaf certificate, and certificate
 // chain of |ssl|.

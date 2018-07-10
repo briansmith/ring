@@ -2156,13 +2156,23 @@ uint8_t SSL_get_negotiated_token_binding_param(const SSL *ssl) {
   return ssl->s3->negotiated_token_binding_param;
 }
 
-size_t SSL_get0_certificate_types(SSL *ssl, const uint8_t **out_types) {
-  if (ssl->server || ssl->s3->hs == NULL) {
-    *out_types = NULL;
-    return 0;
+size_t SSL_get0_certificate_types(const SSL *ssl, const uint8_t **out_types) {
+  Span<const uint8_t> types;
+  if (!ssl->server && ssl->s3->hs != nullptr) {
+    types = ssl->s3->hs->certificate_types;
   }
-  *out_types = ssl->s3->hs->certificate_types.data();
-  return ssl->s3->hs->certificate_types.size();
+  *out_types = types.data();
+  return types.size();
+}
+
+size_t SSL_get0_peer_verify_algorithms(const SSL *ssl,
+                                       const uint16_t **out_sigalgs) {
+  Span<const uint16_t> sigalgs;
+  if (ssl->s3->hs != nullptr) {
+    sigalgs = ssl->s3->hs->peer_sigalgs;
+  }
+  *out_sigalgs = sigalgs.data();
+  return sigalgs.size();
 }
 
 EVP_PKEY *SSL_get_privatekey(const SSL *ssl) {

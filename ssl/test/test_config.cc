@@ -217,6 +217,8 @@ const Flag<int> kIntFlags[] = {
 const Flag<std::vector<int>> kIntVectorFlags[] = {
   { "-signing-prefs", &TestConfig::signing_prefs },
   { "-verify-prefs", &TestConfig::verify_prefs },
+  { "-expect-peer-verify-pref",
+    &TestConfig::expected_peer_verify_prefs },
 };
 
 bool ParseFlag(char *flag, int argc, char **argv, int *i,
@@ -833,8 +835,37 @@ static bssl::UniquePtr<STACK_OF(X509_NAME)> DecodeHexX509Names(
   return ret;
 }
 
+static bool CheckPeerVerifyPrefs(SSL *ssl) {
+  const TestConfig *config = GetTestConfig(ssl);
+  if (!config->expected_peer_verify_prefs.empty()) {
+    const uint16_t *peer_sigalgs;
+    size_t num_peer_sigalgs =
+        SSL_get0_peer_verify_algorithms(ssl, &peer_sigalgs);
+    if (config->expected_peer_verify_prefs.size() != num_peer_sigalgs) {
+      fprintf(stderr,
+              "peer verify preferences length mismatch (got %zu, wanted %zu)\n",
+              num_peer_sigalgs, config->expected_peer_verify_prefs.size());
+      return false;
+    }
+    for (size_t i = 0; i < num_peer_sigalgs; i++) {
+      if (static_cast<int>(peer_sigalgs[i]) !=
+          config->expected_peer_verify_prefs[i]) {
+        fprintf(stderr,
+                "peer verify preference %zu mismatch (got %04x, wanted %04x\n",
+                i, peer_sigalgs[i], config->expected_peer_verify_prefs[i]);
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 static bool CheckCertificateRequest(SSL *ssl) {
   const TestConfig *config = GetTestConfig(ssl);
+
+  if (!CheckPeerVerifyPrefs(ssl)) {
+    return false;
+  }
 
   if (!config->expected_certificate_types.empty()) {
     const uint8_t *certificate_types;
@@ -1375,8 +1406,9 @@ static ssl_verify_result_t CustomVerifyCallback(SSL *ssl, uint8_t *out_alert) {
 static int CertCallback(SSL *ssl, void *arg) {
   const TestConfig *config = GetTestConfig(ssl);
 
-  // Check the CertificateRequest metadata is as expected.
-  if (!SSL_is_server(ssl) && !CheckCertificateRequest(ssl)) {
+  // Check the peer certificate metadata is as expected.
+  if ((!SSL_is_server(ssl) && !CheckCertificateRequest(ssl)) ||
+      !CheckPeerVerifyPrefs(ssl)) {
     return -1;
   }
 

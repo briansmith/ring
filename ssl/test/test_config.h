@@ -32,6 +32,7 @@ struct TestConfig {
   bool fallback_scsv = false;
   std::vector<int> signing_prefs;
   std::vector<int> verify_prefs;
+  std::vector<int> expected_peer_verify_prefs;
   std::string key_file;
   std::string cert_file;
   std::string expected_server_name;

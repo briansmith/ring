@@ -8854,6 +8854,55 @@ func addSignatureAlgorithmTests() {
 		}
 	}
 
+	// Test the peer's verify preferences are available.
+	for _, ver := range tlsVersions {
+		if ver.version < VersionTLS12 {
+			continue
+		}
+		testCases = append(testCases, testCase{
+			name: "ClientAuth-PeerVerifyPrefs-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				ClientAuth: RequireAnyClientCert,
+				VerifySignatureAlgorithms: []signatureAlgorithm{
+					signatureRSAPSSWithSHA256,
+					signatureEd25519,
+					signatureECDSAWithP256AndSHA256,
+				},
+			},
+			tls13Variant: ver.tls13Variant,
+			flags: []string{
+				"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+				"-key-file", path.Join(*resourceDir, rsaKeyFile),
+				"-expect-peer-verify-pref", strconv.Itoa(int(signatureRSAPSSWithSHA256)),
+				"-expect-peer-verify-pref", strconv.Itoa(int(signatureEd25519)),
+				"-expect-peer-verify-pref", strconv.Itoa(int(signatureECDSAWithP256AndSHA256)),
+			},
+		})
+
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "ServerAuth-PeerVerifyPrefs-" + ver.name,
+			config: Config{
+				MaxVersion: ver.version,
+				VerifySignatureAlgorithms: []signatureAlgorithm{
+					signatureRSAPSSWithSHA256,
+					signatureEd25519,
+					signatureECDSAWithP256AndSHA256,
+				},
+			},
+			tls13Variant: ver.tls13Variant,
+			flags: []string{
+				"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+				"-key-file", path.Join(*resourceDir, rsaKeyFile),
+				"-expect-peer-verify-pref", strconv.Itoa(int(signatureRSAPSSWithSHA256)),
+				"-expect-peer-verify-pref", strconv.Itoa(int(signatureEd25519)),
+				"-expect-peer-verify-pref", strconv.Itoa(int(signatureECDSAWithP256AndSHA256)),
+			},
+		})
+
+	}
+
 	// Test that algorithm selection takes the key type into account.
 	testCases = append(testCases, testCase{
 		name: "ClientAuth-SignatureType",
