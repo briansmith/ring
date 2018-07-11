@@ -2488,14 +2488,13 @@ uint32_t ssl_hash_session_id(Span<const uint8_t> session_id);
 
 // SSL_SESSION_parse parses an |SSL_SESSION| from |cbs| and advances |cbs| over
 // the parsed data.
-UniquePtr<SSL_SESSION> SSL_SESSION_parse(CBS *cbs,
-                                         const SSL_X509_METHOD *x509_method,
-                                         CRYPTO_BUFFER_POOL *pool);
+OPENSSL_EXPORT UniquePtr<SSL_SESSION> SSL_SESSION_parse(
+    CBS *cbs, const SSL_X509_METHOD *x509_method, CRYPTO_BUFFER_POOL *pool);
 
 // ssl_session_serialize writes |in| to |cbb| as if it were serialising a
 // session for Session-ID resumption. It returns one on success and zero on
 // error.
-int ssl_session_serialize(const SSL_SESSION *in, CBB *cbb);
+OPENSSL_EXPORT int ssl_session_serialize(const SSL_SESSION *in, CBB *cbb);
 
 // ssl_session_is_context_valid returns one if |session|'s session ID context
 // matches the one set on |hs| and zero otherwise.

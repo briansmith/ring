@@ -451,7 +451,10 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     }
   }
 
-  if (config->is_server && !GetTestState(ssl)->early_callback_called) {
+  // early_callback_called is updated in the handshaker, so we don't see it
+  // here.
+  if (!config->handoff && config->is_server &&
+      !GetTestState(ssl)->early_callback_called) {
     fprintf(stderr, "early callback not called\n");
     return false;
   }
