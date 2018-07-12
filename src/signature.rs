@@ -288,6 +288,7 @@ use std;
 
 pub use ec::suite_b::ecdsa::{
     signing::{
+        Algorithm as ECDSASigning,
         Key as ECDSAKeyPair,
         ECDSA_P256_SHA256_ASN1_SIGNING, ECDSA_P256_SHA256_FIXED_SIGNING,
         ECDSA_P384_SHA384_ASN1_SIGNING, ECDSA_P384_SHA384_FIXED_SIGNING,
