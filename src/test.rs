@@ -532,9 +532,12 @@ pub mod rand {
         }
     }
 
-    pub struct NotRandom(Fn(&mut [u8]) -> Result<(), error::Unspecified>);
+    pub struct NotRandom<F>(pub F);
 
-    impl rand::SecureRandom for NotRandom {
+    impl<F> rand::SecureRandom for NotRandom<F>
+    where
+        F: Fn(&mut [u8]) -> Result<(), error::Unspecified>,
+    {
         fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             self.0(dest)
         }
@@ -543,7 +546,7 @@ pub mod rand {
     impl private::Sealed for FixedByteRandom {}
     impl<'a> private::Sealed for FixedSliceRandom<'a> {}
     impl<'a> private::Sealed for FixedSliceSequenceRandom<'a> {}
-    impl private::Sealed for NotRandom {}
+    impl<F> private::Sealed for NotRandom<F> {}
 
 }
 
