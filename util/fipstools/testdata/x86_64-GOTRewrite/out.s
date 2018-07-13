@@ -7,21 +7,45 @@ BORINGSSL_bcm_text_start:
 foo:
 	# leaq of OPENSSL_ia32cap_P is supported.
 # WAS leaq OPENSSL_ia32cap_P(%rip), %r11
-	leaq	-128(%rsp), %rsp
+	leaq -128(%rsp), %rsp
 	pushfq
 	leaq	OPENSSL_ia32cap_addr_delta(%rip), %r11
 	addq	(%r11), %r11
 	popfq
-	leaq	128(%rsp), %rsp
+	leaq 128(%rsp), %rsp
 
 	# As is the equivalent GOTPCREL movq.
 # WAS movq OPENSSL_ia32cap_P@GOTPCREL(%rip), %r12
-	leaq	-128(%rsp), %rsp
+	leaq -128(%rsp), %rsp
 	pushfq
 	leaq	OPENSSL_ia32cap_addr_delta(%rip), %r12
 	addq	(%r12), %r12
 	popfq
-	leaq	128(%rsp), %rsp
+	leaq 128(%rsp), %rsp
+
+	# And a non-movq instruction via the GOT.
+# WAS orq OPENSSL_ia32cap_P@GOTPCREL(%rip), %r12
+	leaq -128(%rsp), %rsp
+	pushq %rax
+	pushfq
+	leaq	OPENSSL_ia32cap_addr_delta(%rip), %rax
+	addq	(%rax), %rax
+	popfq
+	orq %rax, %r12
+	popq %rax
+	leaq 128(%rsp), %rsp
+
+	# ... which targets the default temp register
+# WAS orq OPENSSL_ia32cap_P@GOTPCREL(%rip), %rax
+	leaq -128(%rsp), %rsp
+	pushq %rbx
+	pushfq
+	leaq	OPENSSL_ia32cap_addr_delta(%rip), %rbx
+	addq	(%rbx), %rbx
+	popfq
+	orq %rbx, %rax
+	popq %rbx
+	leaq 128(%rsp), %rsp
 
 	# Test that GOTPCREL accesses get translated. They are handled
 	# differently for local and external symbols.

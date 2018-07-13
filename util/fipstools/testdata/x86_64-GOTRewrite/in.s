@@ -6,6 +6,12 @@ foo:
 	# As is the equivalent GOTPCREL movq.
 	movq OPENSSL_ia32cap_P@GOTPCREL(%rip), %r12
 
+	# And a non-movq instruction via the GOT.
+	orq OPENSSL_ia32cap_P@GOTPCREL(%rip), %r12
+
+	# ... which targets the default temp register
+	orq OPENSSL_ia32cap_P@GOTPCREL(%rip), %rax
+
 	# Test that GOTPCREL accesses get translated. They are handled
 	# differently for local and external symbols.
 

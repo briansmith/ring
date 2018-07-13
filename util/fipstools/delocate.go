@@ -795,6 +795,9 @@ const (
 	instrTransformingMove
 	instrJump
 	instrConditionalMove
+	// instrCombine merges the source and destination in some fashion, for example
+	// a 2-operand bitwise operation.
+	instrCombine
 	instrOther
 )
 
@@ -818,6 +821,11 @@ func classifyInstruction(instr string, args []*node32) instructionType {
 	case "call", "callq", "jmp", "jo", "jno", "js", "jns", "je", "jz", "jne", "jnz", "jb", "jnae", "jc", "jnb", "jae", "jnc", "jbe", "jna", "ja", "jnbe", "jl", "jnge", "jge", "jnl", "jle", "jng", "jg", "jnle", "jp", "jpe", "jnp", "jpo":
 		if len(args) == 1 {
 			return instrJump
+		}
+
+	case "orq", "andq", "xorq":
+		if len(args) == 2 {
+			return instrCombine
 		}
 
 	case "vpbroadcastq":
@@ -855,24 +863,41 @@ func (d *delocation) loadFromGOT(w stringWriter, destination, symbol, section st
 	}
 }
 
-func saveRegister(w stringWriter) wrapperFunc {
+func saveFlags(w stringWriter, redzoneCleared bool) wrapperFunc {
 	return func(k func()) {
-		w.WriteString("\tleaq -128(%rsp), %rsp\n") // Clear the red zone.
-		w.WriteString("\tpushq %rax\n")
+		if !redzoneCleared {
+			w.WriteString("\tleaq -128(%rsp), %rsp\n") // Clear the red zone.
+			defer w.WriteString("\tleaq 128(%rsp), %rsp\n")
+		}
+		w.WriteString("\tpushfq\n")
 		k()
-		w.WriteString("\tpopq %rax\n")
-		w.WriteString("\tleaq 128(%rsp), %rsp\n")
+		w.WriteString("\tpopfq\n")
 	}
 }
 
-func moveTo(w stringWriter, target string, isAVX bool) wrapperFunc {
+func saveRegister(w stringWriter, avoidReg string) (wrapperFunc, string) {
+	reg := "%rax"
+	if reg == avoidReg {
+		reg = "%rbx"
+	}
+
+	return func(k func()) {
+		w.WriteString("\tleaq -128(%rsp), %rsp\n") // Clear the red zone.
+		w.WriteString("\tpushq " + reg + "\n")
+		k()
+		w.WriteString("\tpopq " + reg + "\n")
+		w.WriteString("\tleaq 128(%rsp), %rsp\n")
+	}, reg
+}
+
+func moveTo(w stringWriter, target string, isAVX bool, source string) wrapperFunc {
 	return func(k func()) {
 		k()
 		prefix := ""
 		if isAVX {
 			prefix = "v"
 		}
-		w.WriteString("\t" + prefix + "movq %rax, " + target + "\n")
+		w.WriteString("\t" + prefix + "movq " + source + ", " + target + "\n")
 	}
 }
 
@@ -880,6 +905,13 @@ func finalTransform(w stringWriter, transformInstruction, reg string) wrapperFun
 	return func(k func()) {
 		k()
 		w.WriteString("\t" + transformInstruction + " " + reg + ", " + reg + "\n")
+	}
+}
+
+func combineOp(w stringWriter, instructionName, source, dest string) wrapperFunc {
+	return func(k func()) {
+		k()
+		w.WriteString("\t" + instructionName + " " + source + ", " + dest + "\n")
 	}
 }
 
@@ -938,16 +970,9 @@ Args:
 			symbol, offset, section, didChange, symbolIsLocal, memRef := d.parseMemRef(arg.up)
 			changed = didChange
 
-			if symbol == "OPENSSL_ia32cap_P" {
-				var ok bool
-				if section == "GOTPCREL" {
-					ok = instructionName == "movq"
-				} else if section == "" {
-					ok = instructionName == "leaq"
-				}
-
-				if !ok {
-					return nil, fmt.Errorf("instruction %q referenced OPENSSL_ia32cap_P in section %q, should be a movq from GOTPCREL or a direct leaq", instructionName, section)
+			if symbol == "OPENSSL_ia32cap_P" && section == "" {
+				if instructionName != "leaq" {
+					return nil, fmt.Errorf("non-leaq instruction %q referenced OPENSSL_ia32cap_P directly", instructionName)
 				}
 
 				if i != 0 || len(argNodes) != 2 || !d.isRIPRelative(memRef) || len(offset) > 0 {
@@ -963,13 +988,14 @@ Args:
 				}
 
 				changed = true
+
+				// Flag-altering instructions (i.e. addq) are going to be used so the
+				// flags need to be preserved.
+				wrappers = append(wrappers, saveFlags(d.output, false /* Red Zone not yet cleared */))
+
 				wrappers = append(wrappers, func(k func()) {
-					d.output.WriteString("\tleaq\t-128(%rsp), %rsp\n") // Clear the red zone.
-					d.output.WriteString("\tpushfq\n")
 					d.output.WriteString("\tleaq\tOPENSSL_ia32cap_addr_delta(%rip), " + reg + "\n")
 					d.output.WriteString("\taddq\t(" + reg + "), " + reg + "\n")
-					d.output.WriteString("\tpopfq\n")
-					d.output.WriteString("\tleaq\t128(%rsp), %rsp\n")
 				})
 
 				break Args
@@ -1021,6 +1047,7 @@ Args:
 
 				// Reduce the instruction to movq symbol@GOTPCREL, targetReg.
 				var targetReg string
+				var redzoneCleared bool
 				switch classifyInstruction(instructionName, argNodes) {
 				case instrPush:
 					wrappers = append(wrappers, push(d.output))
@@ -1038,23 +1065,45 @@ Args:
 					if isValidLEATarget(targetReg) {
 						return nil, errors.New("Currently transforming moves are assumed to target XMM registers. Otherwise we'll pop %rax before reading it to do the transform.")
 					}
+				case instrCombine:
+					targetReg = d.contents(argNodes[1])
+					if !isValidLEATarget(targetReg) {
+						return nil, fmt.Errorf("cannot handle combining instructions targeting non-general registers")
+					}
+					saveRegWrapper, tempReg := saveRegister(d.output, targetReg)
+					redzoneCleared = true
+					wrappers = append(wrappers, saveRegWrapper)
+
+					wrappers = append(wrappers, combineOp(d.output, instructionName, tempReg, targetReg))
+					targetReg = tempReg
 				default:
 					return nil, fmt.Errorf("Cannot rewrite GOTPCREL reference for instruction %q", instructionName)
 				}
 
-				var redzoneCleared bool
 				if !isValidLEATarget(targetReg) {
 					// Sometimes the compiler will load from the GOT to an
 					// XMM register, which is not a valid target of an LEA
 					// instruction.
-					wrappers = append(wrappers, saveRegister(d.output))
+					saveRegWrapper, tempReg := saveRegister(d.output, "")
+					wrappers = append(wrappers, saveRegWrapper)
 					isAVX := strings.HasPrefix(instructionName, "v")
-					wrappers = append(wrappers, moveTo(d.output, targetReg, isAVX))
-					targetReg = "%rax"
+					wrappers = append(wrappers, moveTo(d.output, targetReg, isAVX, tempReg))
+					targetReg = tempReg
+					if redzoneCleared {
+						return nil, fmt.Errorf("internal error: Red Zone was already cleared")
+					}
 					redzoneCleared = true
 				}
 
-				if useGOT {
+				if symbol == "OPENSSL_ia32cap_P" {
+					// Flag-altering instructions (i.e. addq) are going to be used so the
+					// flags need to be preserved.
+					wrappers = append(wrappers, saveFlags(d.output, redzoneCleared))
+					wrappers = append(wrappers, func(k func()) {
+						d.output.WriteString("\tleaq\tOPENSSL_ia32cap_addr_delta(%rip), " + targetReg + "\n")
+						d.output.WriteString("\taddq\t(" + targetReg + "), " + targetReg + "\n")
+					})
+				} else if useGOT {
 					wrappers = append(wrappers, d.loadFromGOT(d.output, targetReg, symbol, section, redzoneCleared))
 				} else {
 					wrappers = append(wrappers, func(k func()) {
@@ -1239,8 +1288,8 @@ func transform(w stringWriter, inputs []inputFile) error {
 	}
 
 	w.WriteString(".text\n")
-	w.WriteString(fmt.Sprintf(".file %d \"inserted_by_delocate.c\"\n", maxObservedFileNumber + 1))
-	w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber + 1))
+	w.WriteString(fmt.Sprintf(".file %d \"inserted_by_delocate.c\"\n", maxObservedFileNumber+1))
+	w.WriteString(fmt.Sprintf(".loc %d 1 0\n", maxObservedFileNumber+1))
 	w.WriteString("BORINGSSL_bcm_text_start:\n")
 
 	for _, input := range inputs {
@@ -1250,7 +1299,7 @@ func transform(w stringWriter, inputs []inputFile) error {
 	}
 
 	w.WriteString(".text\n")
-	w.WriteString(fmt.Sprintf(".loc %d 2 0\n", maxObservedFileNumber + 1))
+	w.WriteString(fmt.Sprintf(".loc %d 2 0\n", maxObservedFileNumber+1))
 	w.WriteString("BORINGSSL_bcm_text_end:\n")
 
 	// Emit redirector functions. Each is a single jump instruction.
