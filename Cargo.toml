@@ -9,7 +9,7 @@ license-file = "LICENSE"
 name = "ring"
 readme = "README.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.13.0"
+version = "0.13.1"
 
 # Prevent multiple versions of *ring* from being linked into the same program.
 links = "ring-asm"
@@ -273,7 +273,7 @@ include = [
 name = "ring"
 
 [dependencies]
-untrusted = "0.6.1"
+untrusted = "0.6.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = { version = "0.2.34" }
