@@ -532,6 +532,8 @@ pub mod rand {
         }
     }
 
+    /// An implementation of `SecureRandom` that fills the output slice
+    /// by calling the inner function.
     pub struct NotRandom<F>(pub F);
 
     impl<F> rand::SecureRandom for NotRandom<F>
