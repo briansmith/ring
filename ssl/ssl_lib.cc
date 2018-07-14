@@ -219,11 +219,11 @@ static bool check_read_error(const SSL *ssl) {
   return true;
 }
 
-int ssl_can_write(const SSL *ssl) {
+bool ssl_can_write(const SSL *ssl) {
   return !SSL_in_init(ssl) || ssl->s3->hs->can_early_write;
 }
 
-int ssl_can_read(const SSL *ssl) {
+bool ssl_can_read(const SSL *ssl) {
   return !SSL_in_init(ssl) || ssl->s3->hs->can_early_read;
 }
 

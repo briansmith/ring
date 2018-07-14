@@ -1651,8 +1651,8 @@ bool ssl_ext_pre_shared_key_parse_clienthello(
 bool ssl_ext_pre_shared_key_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
 
 // ssl_is_sct_list_valid does a shallow parse of the SCT list in |contents| and
-// returns one iff it's valid.
-int ssl_is_sct_list_valid(const CBS *contents);
+// returns whether it's valid.
+bool ssl_is_sct_list_valid(const CBS *contents);
 
 int ssl_write_client_hello(SSL_HANDSHAKE *hs);
 
@@ -1713,14 +1713,14 @@ int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
 
 // ClientHello functions.
 
-int ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out,
-                          const SSLMessage &msg);
+bool ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out,
+                           const SSLMessage &msg);
 
-int ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
-                                   CBS *out, uint16_t extension_type);
+bool ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
+                                    CBS *out, uint16_t extension_type);
 
-int ssl_client_cipher_list_contains_cipher(const SSL_CLIENT_HELLO *client_hello,
-                                           uint16_t id);
+bool ssl_client_cipher_list_contains_cipher(
+    const SSL_CLIENT_HELLO *client_hello, uint16_t id);
 
 
 // GREASE.
@@ -2650,14 +2650,14 @@ int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
 // tls1_get_grouplist returns the locally-configured group preference list.
 Span<const uint16_t> tls1_get_grouplist(const SSL_HANDSHAKE *ssl);
 
-// tls1_check_group_id returns one if |group_id| is consistent with
-// locally-configured group preferences.
-int tls1_check_group_id(const SSL_HANDSHAKE *ssl, uint16_t group_id);
+// tls1_check_group_id returns whether |group_id| is consistent with locally-
+// configured group preferences.
+bool tls1_check_group_id(const SSL_HANDSHAKE *ssl, uint16_t group_id);
 
 // tls1_get_shared_group sets |*out_group_id| to the first preferred shared
-// group between client and server preferences and returns one. If none may be
-// found, it returns zero.
-int tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id);
+// group between client and server preferences and returns true. If none may be
+// found, it returns false.
+bool tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id);
 
 // tls1_set_curves converts the array of NIDs in |curves| into a newly allocated
 // array of TLS group IDs. On success, the function returns true and writes the
@@ -2670,16 +2670,16 @@ bool tls1_set_curves(Array<uint16_t> *out_group_ids, Span<const int> curves);
 // false.
 bool tls1_set_curves_list(Array<uint16_t> *out_group_ids, const char *curves);
 
-// ssl_add_clienthello_tlsext writes ClientHello extensions to |out|. It
-// returns one on success and zero on failure. The |header_len| argument is the
-// length of the ClientHello written so far and is used to compute the padding
-// length. (It does not include the record header.)
-int ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len);
+// ssl_add_clienthello_tlsext writes ClientHello extensions to |out|. It returns
+// true on success and false on failure. The |header_len| argument is the length
+// of the ClientHello written so far and is used to compute the padding length.
+// (It does not include the record header.)
+bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out, size_t header_len);
 
-int ssl_add_serverhello_tlsext(SSL_HANDSHAKE *hs, CBB *out);
-int ssl_parse_clienthello_tlsext(SSL_HANDSHAKE *hs,
-                                 const SSL_CLIENT_HELLO *client_hello);
-int ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs);
+bool ssl_add_serverhello_tlsext(SSL_HANDSHAKE *hs, CBB *out);
+bool ssl_parse_clienthello_tlsext(SSL_HANDSHAKE *hs,
+                                  const SSL_CLIENT_HELLO *client_hello);
+bool ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs);
 
 #define tlsext_tick_md EVP_sha256
 
@@ -2698,9 +2698,9 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
     const uint8_t *session_id, size_t session_id_len);
 
 // tls1_verify_channel_id processes |msg| as a Channel ID message, and verifies
-// the signature. If the key is valid, it saves the Channel ID and returns
-// one. Otherwise, it returns zero.
-int tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg);
+// the signature. If the key is valid, it saves the Channel ID and returns true.
+// Otherwise, it returns false.
+bool tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg);
 
 // tls1_write_channel_id generates a Channel ID message and puts the output in
 // |cbb|. |ssl->channel_id_private| must already be set before calling.  This
@@ -2709,22 +2709,25 @@ bool tls1_write_channel_id(SSL_HANDSHAKE *hs, CBB *cbb);
 
 // tls1_channel_id_hash computes the hash to be signed by Channel ID and writes
 // it to |out|, which must contain at least |EVP_MAX_MD_SIZE| bytes. It returns
-// one on success and zero on failure.
-int tls1_channel_id_hash(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len);
+// true on success and false on failure.
+bool tls1_channel_id_hash(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len);
 
-int tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs);
+// tls1_record_handshake_hashes_for_channel_id records the current handshake
+// hashes in |hs->new_session| so that Channel ID resumptions can sign that
+// data.
+bool tls1_record_handshake_hashes_for_channel_id(SSL_HANDSHAKE *hs);
 
 // ssl_do_channel_id_callback checks runs |hs->ssl->ctx->channel_id_cb| if
-// necessary. It returns one on success and zero on fatal error. Note that, on
+// necessary. It returns true on success and false on fatal error. Note that, on
 // success, |hs->ssl->channel_id_private| may be unset, in which case the
 // operation should be retried later.
-int ssl_do_channel_id_callback(SSL_HANDSHAKE *hs);
+bool ssl_do_channel_id_callback(SSL_HANDSHAKE *hs);
 
-// ssl_can_write returns one if |ssl| is allowed to write and zero otherwise.
-int ssl_can_write(const SSL *ssl);
+// ssl_can_write returns whether |ssl| is allowed to write.
+bool ssl_can_write(const SSL *ssl);
 
-// ssl_can_read returns one if |ssl| is allowed to read and zero otherwise.
-int ssl_can_read(const SSL *ssl);
+// ssl_can_read returns wheter |ssl| is allowed to read.
+bool ssl_can_read(const SSL *ssl);
 
 void ssl_get_current_time(const SSL *ssl, struct OPENSSL_timeval *out_clock);
 void ssl_ctx_get_current_time(const SSL_CTX *ctx,

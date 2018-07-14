@@ -172,8 +172,8 @@
 
 namespace bssl {
 
-int ssl_client_cipher_list_contains_cipher(const SSL_CLIENT_HELLO *client_hello,
-                                           uint16_t id) {
+bool ssl_client_cipher_list_contains_cipher(
+    const SSL_CLIENT_HELLO *client_hello, uint16_t id) {
   CBS cipher_suites;
   CBS_init(&cipher_suites, client_hello->cipher_suites,
            client_hello->cipher_suites_len);
@@ -181,19 +181,19 @@ int ssl_client_cipher_list_contains_cipher(const SSL_CLIENT_HELLO *client_hello,
   while (CBS_len(&cipher_suites) > 0) {
     uint16_t got_id;
     if (!CBS_get_u16(&cipher_suites, &got_id)) {
-      return 0;
+      return false;
     }
 
     if (got_id == id) {
-      return 1;
+      return true;
     }
   }
 
-  return 0;
+  return false;
 }
 
-static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
-                             const SSL_CLIENT_HELLO *client_hello) {
+static bool negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
+                              const SSL_CLIENT_HELLO *client_hello) {
   SSL *const ssl = hs->ssl;
   assert(!ssl->s3->have_version);
   CBS supported_versions, versions;
@@ -204,7 +204,7 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
         CBS_len(&versions) == 0) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       *out_alert = SSL_AD_DECODE_ERROR;
-      return 0;
+      return false;
     }
   } else {
     // Convert the ClientHello version to an equivalent supported_versions
@@ -243,7 +243,7 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   }
 
   if (!ssl_negotiate_version(hs, out_alert, &ssl->version, &versions)) {
-    return 0;
+    return false;
   }
 
   // At this point, the connection's version is known and |ssl->version| is
@@ -257,10 +257,10 @@ static int negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       ssl_protocol_version(ssl) < hs->max_version) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_INAPPROPRIATE_FALLBACK);
     *out_alert = SSL3_AD_INAPPROPRIATE_FALLBACK;
-    return 0;
+    return false;
   }
 
-  return 1;
+  return true;
 }
 
 static UniquePtr<STACK_OF(SSL_CIPHER)> ssl_parse_client_cipher_list(
