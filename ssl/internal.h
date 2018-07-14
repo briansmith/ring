@@ -1998,17 +1998,19 @@ struct TicketKey {
   uint64_t next_rotation_tv_sec = 0;
 };
 
+struct CertCompressionAlg {
+  static constexpr bool kAllowUniquePtr = true;
+
+  ssl_cert_compression_func_t compress = nullptr;
+  ssl_cert_decompression_func_t decompress = nullptr;
+  uint16_t alg_id = 0;
+};
+
 }  // namespace bssl
 
 DECLARE_LHASH_OF(SSL_SESSION)
 
-struct CertCompressionAlg {
-  ssl_cert_compression_func_t compress;
-  ssl_cert_decompression_func_t decompress;
-  uint16_t alg_id;
-};
-
-DEFINE_STACK_OF(CertCompressionAlg);
+DEFINE_NAMED_STACK_OF(CertCompressionAlg, bssl::CertCompressionAlg);
 
 namespace bssl {
 
@@ -2960,7 +2962,7 @@ struct ssl_ctx_st {
   bssl::UniquePtr<STACK_OF(SRTP_PROTECTION_PROFILE)> srtp_profiles;
 
   // Defined compression algorithms for certificates.
-  STACK_OF(CertCompressionAlg) *cert_compression_algs = nullptr;
+  bssl::UniquePtr<STACK_OF(CertCompressionAlg)> cert_compression_algs;
 
   // Supported group values inherited by SSL structure
   bssl::Array<uint16_t> supported_group_list;

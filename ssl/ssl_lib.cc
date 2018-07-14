@@ -563,8 +563,6 @@ ssl_ctx_st::~ssl_ctx_st() {
   CRYPTO_MUTEX_cleanup(&lock);
   lh_SSL_SESSION_free(sessions);
   x509_method->ssl_ctx_free(this);
-  sk_CertCompressionAlg_pop_free(cert_compression_algs,
-                                 Delete<CertCompressionAlg>);
 }
 
 SSL_CTX *SSL_CTX_new(const SSL_METHOD *method) {
@@ -2034,44 +2032,36 @@ int SSL_CTX_add_cert_compression_alg(SSL_CTX *ctx, uint16_t alg_id,
                                      ssl_cert_decompression_func_t decompress) {
   assert(compress != nullptr || decompress != nullptr);
 
-  for (CertCompressionAlg *alg : ctx->cert_compression_algs) {
+  for (const auto *alg : ctx->cert_compression_algs.get()) {
     if (alg->alg_id == alg_id) {
       return 0;
     }
   }
 
-  CertCompressionAlg *alg = reinterpret_cast<CertCompressionAlg *>(
-      OPENSSL_malloc(sizeof(CertCompressionAlg)));
+  UniquePtr<CertCompressionAlg> alg = MakeUnique<CertCompressionAlg>();
   if (alg == nullptr) {
-    goto err;
+    return 0;
   }
 
-  OPENSSL_memset(alg, 0, sizeof(CertCompressionAlg));
   alg->alg_id = alg_id;
   alg->compress = compress;
   alg->decompress = decompress;
 
   if (ctx->cert_compression_algs == nullptr) {
-    ctx->cert_compression_algs = sk_CertCompressionAlg_new_null();
+    ctx->cert_compression_algs.reset(sk_CertCompressionAlg_new_null());
     if (ctx->cert_compression_algs == nullptr) {
-      goto err;
+      return 0;
     }
   }
 
-  if (!sk_CertCompressionAlg_push(ctx->cert_compression_algs, alg)) {
-    goto err;
+  if (!PushToStack(ctx->cert_compression_algs.get(), std::move(alg))) {
+    if (sk_CertCompressionAlg_num(ctx->cert_compression_algs.get()) == 0) {
+      ctx->cert_compression_algs.reset();
+      return 0;
+    }
   }
 
   return 1;
-
-err:
-  OPENSSL_free(alg);
-  if (ctx->cert_compression_algs != nullptr &&
-      sk_CertCompressionAlg_num(ctx->cert_compression_algs) == 0) {
-    sk_CertCompressionAlg_free(ctx->cert_compression_algs);
-    ctx->cert_compression_algs = nullptr;
-  }
-  return 0;
 }
 
 void SSL_CTX_set_tls_channel_id_enabled(SSL_CTX *ctx, int enabled) {
