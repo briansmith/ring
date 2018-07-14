@@ -217,6 +217,11 @@ bool ssl_get_version_range(const SSL_HANDSHAKE *hs, uint16_t *out_min_version,
   uint16_t min_version = hs->config->conf_min_version;
   uint16_t max_version = hs->config->conf_max_version;
 
+  // QUIC requires TLS 1.3.
+  if (hs->ssl->ctx->quic_method && min_version < TLS1_3_VERSION) {
+    min_version = TLS1_3_VERSION;
+  }
+
   // OpenSSL's API for controlling versions entails blacklisting individual
   // protocols. This has two problems. First, on the client, the protocol can
   // only express a contiguous range of versions. Second, a library consumer

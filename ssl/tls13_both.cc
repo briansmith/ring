@@ -645,7 +645,8 @@ static bool tls13_receive_key_update(SSL *ssl, const SSLMessage &msg) {
 bool tls13_post_handshake(SSL *ssl, const SSLMessage &msg) {
   if (msg.type == SSL3_MT_KEY_UPDATE) {
     ssl->s3->key_update_count++;
-    if (ssl->s3->key_update_count > kMaxKeyUpdates) {
+    if (ssl->ctx->quic_method != nullptr ||
+        ssl->s3->key_update_count > kMaxKeyUpdates) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_TOO_MANY_KEY_UPDATES);
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_UNEXPECTED_MESSAGE);
       return false;

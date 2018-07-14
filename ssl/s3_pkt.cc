@@ -163,9 +163,11 @@ int ssl3_write_app_data(SSL *ssl, bool *out_needs_handshake, const uint8_t *in,
   for (;;) {
     // max contains the maximum number of bytes that we can put into a record.
     unsigned max = ssl->max_send_fragment;
-    if (is_early_data_write && max > ssl->session->ticket_max_early_data -
-                                         ssl->s3->hs->early_data_written) {
-      max = ssl->session->ticket_max_early_data - ssl->s3->hs->early_data_written;
+    if (is_early_data_write &&
+        max > ssl->session->ticket_max_early_data -
+                  ssl->s3->hs->early_data_written) {
+      max =
+          ssl->session->ticket_max_early_data - ssl->s3->hs->early_data_written;
       if (max == 0) {
         ssl->s3->wnum = tot;
         ssl->s3->hs->can_early_write = false;
@@ -406,10 +408,19 @@ int ssl_send_alert(SSL *ssl, int level, int desc) {
 }
 
 int ssl3_dispatch_alert(SSL *ssl) {
-  int ret = do_ssl3_write(ssl, SSL3_RT_ALERT, &ssl->s3->send_alert[0], 2);
-  if (ret <= 0) {
-    return ret;
+  if (ssl->ctx->quic_method) {
+    if (!ssl->ctx->quic_method->send_alert(ssl, ssl->s3->write_level,
+                                           ssl->s3->send_alert[1])) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);
+      return 0;
+    }
+  } else {
+    int ret = do_ssl3_write(ssl, SSL3_RT_ALERT, &ssl->s3->send_alert[0], 2);
+    if (ret <= 0) {
+      return ret;
+    }
   }
+
   ssl->s3->alert_dispatch = 0;
 
   // If the alert is fatal, flush the BIO now.

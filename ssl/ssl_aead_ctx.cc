@@ -151,6 +151,11 @@ UniquePtr<SSLAEADContext> SSLAEADContext::Create(
   return aead_ctx;
 }
 
+UniquePtr<SSLAEADContext> SSLAEADContext::CreatePlaceholderForQUIC(
+    uint16_t version, const SSL_CIPHER *cipher) {
+  return MakeUnique<SSLAEADContext>(version, false, cipher);
+}
+
 void SSLAEADContext::SetVersionIfNullCipher(uint16_t version) {
   if (is_null_cipher()) {
     version_ = version;

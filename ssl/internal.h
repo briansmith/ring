@@ -665,6 +665,12 @@ class SSLAEADContext {
                                           Span<const uint8_t> mac_key,
                                           Span<const uint8_t> fixed_iv);
 
+  // CreatePlaceholderForQUIC creates a placeholder |SSLAEADContext| for the
+  // given cipher and version. The resulting object can be queried for various
+  // properties but cannot encrypt or decrypt data.
+  static UniquePtr<SSLAEADContext> CreatePlaceholderForQUIC(
+      uint16_t version, const SSL_CIPHER *cipher);
+
   // SetVersionIfNullCipher sets the version the SSLAEADContext for the null
   // cipher, to make version-specific determinations in the record layer prior
   // to a cipher being selected.
@@ -1231,7 +1237,8 @@ bool tls13_advance_key_schedule(SSL_HANDSHAKE *hs, const uint8_t *in,
 
 // tls13_set_traffic_key sets the read or write traffic keys to
 // |traffic_secret|. It returns true on success and false on error.
-bool tls13_set_traffic_key(SSL *ssl, enum evp_aead_direction_t direction,
+bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
+                           enum evp_aead_direction_t direction,
                            const uint8_t *traffic_secret,
                            size_t traffic_secret_len);
 
@@ -1272,7 +1279,8 @@ bool tls13_finished_mac(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len,
 // tls13_derive_session_psk calculates the PSK for this session based on the
 // resumption master secret and |nonce|. It returns true on success, and false
 // on failure.
-bool tls13_derive_session_psk(SSL_SESSION *session, Span<const uint8_t> nonce);
+bool tls13_derive_session_psk(SSL_SESSION *session, Span<const uint8_t> nonce,
+                              bool use_quic);
 
 // tls13_write_psk_binder calculates the PSK binder value and replaces the last
 // bytes of |msg| with the resulting value. It returns true on success, and
@@ -2074,6 +2082,9 @@ struct SSL3_STATE {
   // needs re-doing when in SSL_accept or SSL_connect
   int rwstate = SSL_NOTHING;
 
+  enum ssl_encryption_level_t read_level = ssl_encryption_initial;
+  enum ssl_encryption_level_t write_level = ssl_encryption_initial;
+
   // early_data_skipped is the amount of early data that has been skipped by the
   // record layer.
   uint16_t early_data_skipped = 0;
@@ -2789,6 +2800,9 @@ struct ssl_ctx_st {
   // |SSL_CTX_set_min_proto_version|. Note this version is normalized in DTLS
   // and is further constrainted by |SSL_OP_NO_*|.
   uint16_t conf_min_version = 0;
+
+  // quic_method is the method table corresponding to the QUIC hooks.
+  const SSL_QUIC_METHOD *quic_method = nullptr;
 
   // tls13_variant is the variant of TLS 1.3 we are using for this
   // configuration.

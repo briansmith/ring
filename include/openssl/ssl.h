@@ -3036,6 +3036,113 @@ OPENSSL_EXPORT void SSL_get_peer_quic_transport_params(const SSL *ssl,
                                                        size_t *out_params_len);
 
 
+// QUIC integration.
+//
+// QUIC acts as an underlying transport for the TLS 1.3 handshake. The following
+// functions allow a QUIC implementation to serve as the underlying transport as
+// described in draft-ietf-quic-tls.
+//
+// When configured for QUIC, |SSL_do_handshake| will drive the handshake as
+// before, but it will not use the configured |BIO|. It will call functions on
+// |SSL_QUIC_METHOD| to configure secrets and send data. If data is needed from
+// the peer, it will return |SSL_ERROR_WANT_READ|. When received, the caller
+// should call |SSL_provide_quic_data| and then |SSL_do_handshake| to continue
+// the handshake. It is an error to call |SSL_read| and |SSL_write| in QUIC.
+//
+// Note that secrets for an encryption level may be available to QUIC before the
+// level is active in TLS. Callers should use |SSL_quic_read_level| to determine
+// the active read level for |SSL_provide_quic_data|. |SSL_do_handshake| will
+// pass the active write level to |SSL_QUIC_METHOD| when writing data. Callers
+// can use |SSL_quic_write_level| to query the active write level when
+// generating their own errors.
+//
+// See https://tools.ietf.org/html/draft-ietf-quic-tls-15#section-4.1 for more
+// details.
+//
+// To avoid DoS attacks, the QUIC implementation must limit the amount of data
+// being queued up. The implementation can call
+// |SSL_quic_max_handshake_flight_len| to get the maximum buffer length at each
+// encryption level.
+//
+// Note: 0-RTT and post-handshake tickets are not currently supported via this
+// API.
+
+// ssl_encryption_level_t represents a specific QUIC encryption level used to
+// transmit handshake messages.
+enum ssl_encryption_level_t {
+  ssl_encryption_initial = 0,
+  ssl_encryption_early_data,
+  ssl_encryption_handshake,
+  ssl_encryption_application,
+};
+
+// ssl_quic_method_st (aka |SSL_QUIC_METHOD|) describes custom QUIC hooks.
+struct ssl_quic_method_st {
+  // set_encryption_secrets configures the read and write secrets for the given
+  // encryption level. This function will always be called before an encryption
+  // level other than |ssl_encryption_initial| is used. Note, however, that
+  // secrets for a level may be configured before TLS is ready to send or accept
+  // data at that level.
+  //
+  // When reading packets at a given level, the QUIC implementation must send
+  // ACKs at the same level, so this function provides read and write secrets
+  // together. The exception is |ssl_encryption_early_data|, where secrets are
+  // only available in the client to server direction. The other secret will be
+  // NULL. The server acknowledges such data at |ssl_encryption_application|,
+  // which will be configured in the same |SSL_do_handshake| call.
+  //
+  // This function should use |SSL_get_current_cipher| to determine the TLS
+  // cipher suite.
+  //
+  // It returns one on success and zero on error.
+  int (*set_encryption_secrets)(SSL *ssl, enum ssl_encryption_level_t level,
+                                const uint8_t *read_secret,
+                                const uint8_t *write_secret, size_t secret_len);
+  // add_message adds a message to the current flight at the given encryption
+  // level. A single handshake flight may include multiple encryption levels.
+  // Callers can defer writing data to the network until |flush_flight| for
+  // optimal packing. It returns one on success and zero on error.
+  int (*add_message)(SSL *ssl, enum ssl_encryption_level_t level,
+                     const uint8_t *data, size_t len);
+  // flush_flight is called when the current flight is complete and should be
+  // written to the transport. Note a flight may contain data at several
+  // encryption levels. It returns one on success and zero on error.
+  int (*flush_flight)(SSL *ssl);
+  // send_alert sends a fatal alert at the specified encryption level. It
+  // returns one on success and zero on error.
+  int (*send_alert)(SSL *ssl, enum ssl_encryption_level_t level, uint8_t alert);
+};
+
+// SSL_quic_max_handshake_flight_len returns returns the maximum number of bytes
+// that may be received at the given encryption level. This function should be
+// used to limit buffering in the QUIC implementation.
+//
+// See https://tools.ietf.org/html/draft-ietf-quic-transport-16#section-4.4.
+OPENSSL_EXPORT size_t SSL_quic_max_handshake_flight_len(
+    const SSL *ssl, enum ssl_encryption_level_t level);
+
+// SSL_quic_read_level returns the current read encryption level.
+OPENSSL_EXPORT enum ssl_encryption_level_t SSL_quic_read_level(const SSL *ssl);
+
+// SSL_quic_write_level returns the current write encryption level.
+OPENSSL_EXPORT enum ssl_encryption_level_t SSL_quic_write_level(const SSL *ssl);
+
+// SSL_provide_quic_data provides data from QUIC at a particular encryption
+// level |level|. It is an error to call this function outside of the handshake
+// or with an encryption level other than the current read level. It returns one
+// on success and zero on error.
+OPENSSL_EXPORT int SSL_provide_quic_data(SSL *ssl,
+                                         enum ssl_encryption_level_t level,
+                                         const uint8_t *data, size_t len);
+
+
+// SSL_CTX_set_quic_method configures the QUIC hooks. This should only be
+// configured with a minimum version of TLS 1.3. |quic_method| must remain valid
+// for the lifetime of |ctx|. It returns one on success and zero on error.
+OPENSSL_EXPORT int SSL_CTX_set_quic_method(SSL_CTX *ctx,
+                                           const SSL_QUIC_METHOD *quic_method);
+
+
 // Early data.
 //
 // WARNING: 0-RTT support in BoringSSL is currently experimental and not fully
@@ -4795,6 +4902,8 @@ BSSL_NAMESPACE_END
 #define SSL_R_INVALID_SIGNATURE_ALGORITHM 295
 #define SSL_R_DUPLICATE_SIGNATURE_ALGORITHM 296
 #define SSL_R_TLS13_DOWNGRADE 297
+#define SSL_R_QUIC_INTERNAL_ERROR 298
+#define SSL_R_WRONG_ENCRYPTION_LEVEL_RECEIVED 299
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

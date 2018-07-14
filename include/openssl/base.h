@@ -394,6 +394,7 @@ typedef struct ssl_cipher_st SSL_CIPHER;
 typedef struct ssl_ctx_st SSL_CTX;
 typedef struct ssl_method_st SSL_METHOD;
 typedef struct ssl_private_key_method_st SSL_PRIVATE_KEY_METHOD;
+typedef struct ssl_quic_method_st SSL_QUIC_METHOD;
 typedef struct ssl_session_st SSL_SESSION;
 typedef struct ssl_st SSL;
 typedef struct ssl_ticket_aead_method_st SSL_TICKET_AEAD_METHOD;

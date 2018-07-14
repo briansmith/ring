@@ -389,18 +389,17 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   }
 
   if (!tls13_advance_key_schedule(hs, dhe_secret.data(), dhe_secret.size()) ||
-      !ssl_hash_message(hs, msg) ||
-      !tls13_derive_handshake_secrets(hs) ||
-      !tls13_set_traffic_key(ssl, evp_aead_open, hs->server_handshake_secret,
-                             hs->hash_len)) {
+      !ssl_hash_message(hs, msg) || !tls13_derive_handshake_secrets(hs) ||
+      !tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
+                             hs->server_handshake_secret, hs->hash_len)) {
     return ssl_hs_error;
   }
 
   if (!hs->early_data_offered) {
     // If not sending early data, set client traffic keys now so that alerts are
     // encrypted.
-    if (!tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
-                               hs->hash_len)) {
+    if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
+                               hs->client_handshake_secret, hs->hash_len)) {
       return ssl_hs_error;
     }
   }
@@ -641,8 +640,8 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
   }
 
   if (hs->early_data_offered) {
-    if (!tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_handshake_secret,
-                               hs->hash_len)) {
+    if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
+                               hs->client_handshake_secret, hs->hash_len)) {
       return ssl_hs_error;
     }
   }
@@ -736,10 +735,10 @@ static enum ssl_hs_wait_t do_complete_second_flight(SSL_HANDSHAKE *hs) {
   }
 
   // Derive the final keys and enable them.
-  if (!tls13_set_traffic_key(ssl, evp_aead_open, hs->server_traffic_secret_0,
-                             hs->hash_len) ||
-      !tls13_set_traffic_key(ssl, evp_aead_seal, hs->client_traffic_secret_0,
-                             hs->hash_len) ||
+  if (!tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_open,
+                             hs->server_traffic_secret_0, hs->hash_len) ||
+      !tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_seal,
+                             hs->client_traffic_secret_0, hs->hash_len) ||
       !tls13_derive_resumption_secret(hs)) {
     return ssl_hs_error;
   }
@@ -883,7 +882,8 @@ bool tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
     session->timeout = server_timeout;
   }
 
-  if (!tls13_derive_session_psk(session.get(), ticket_nonce)) {
+  if (!tls13_derive_session_psk(session.get(), ticket_nonce,
+                                ssl->ctx->quic_method != nullptr)) {
     return false;
   }
 
