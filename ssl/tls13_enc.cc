@@ -74,8 +74,7 @@ static int hkdf_expand_label(uint8_t *out, const EVP_MD *digest,
 
   ScopedCBB cbb;
   CBB child;
-  uint8_t *hkdf_label;
-  size_t hkdf_label_len;
+  Array<uint8_t> hkdf_label;
   if (!CBB_init(cbb.get(), 2 + 1 + strlen(kTLS13LabelVersion) + label_len + 1 +
                                hash_len) ||
       !CBB_add_u16(cbb.get(), len) ||
@@ -85,14 +84,12 @@ static int hkdf_expand_label(uint8_t *out, const EVP_MD *digest,
       !CBB_add_bytes(&child, (const uint8_t *)label, label_len) ||
       !CBB_add_u8_length_prefixed(cbb.get(), &child) ||
       !CBB_add_bytes(&child, hash, hash_len) ||
-      !CBB_finish(cbb.get(), &hkdf_label, &hkdf_label_len)) {
+      !CBBFinishArray(cbb.get(), &hkdf_label)) {
     return 0;
   }
 
-  int ret = HKDF_expand(out, len, digest, secret, secret_len, hkdf_label,
-                        hkdf_label_len);
-  OPENSSL_free(hkdf_label);
-  return ret;
+  return HKDF_expand(out, len, digest, secret, secret_len, hkdf_label.data(),
+                     hkdf_label.size());
 }
 
 static const char kTLS13LabelDerived[] = "derived";

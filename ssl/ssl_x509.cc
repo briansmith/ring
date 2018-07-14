@@ -249,11 +249,10 @@ static int ssl_crypto_x509_check_client_CA_list(
     STACK_OF(CRYPTO_BUFFER) *names) {
   for (const CRYPTO_BUFFER *buffer : names) {
     const uint8_t *inp = CRYPTO_BUFFER_data(buffer);
-    X509_NAME *name = d2i_X509_NAME(NULL, &inp, CRYPTO_BUFFER_len(buffer));
-    const int ok = name != NULL && inp == CRYPTO_BUFFER_data(buffer) +
-                                              CRYPTO_BUFFER_len(buffer);
-    X509_NAME_free(name);
-    if (!ok) {
+    UniquePtr<X509_NAME> name(
+        d2i_X509_NAME(nullptr, &inp, CRYPTO_BUFFER_len(buffer)));
+    if (name == nullptr ||
+        inp != CRYPTO_BUFFER_data(buffer) + CRYPTO_BUFFER_len(buffer)) {
       return 0;
     }
   }
