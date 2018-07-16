@@ -9,7 +9,7 @@ license-file = "LICENSE"
 name = "ring"
 readme = "README.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.13.1"
+version = "0.13.2"
 
 # Prevent multiple versions of *ring* from being linked into the same program.
 links = "ring-asm"
@@ -150,6 +150,8 @@ include = [
     "src/ec/suite_b/ecdsa/ecdsa_digest_scalar_tests.txt",
     "src/ec/suite_b/ecdsa/ecPublicKey_p256_pkcs8_v1_template.der",
     "src/ec/suite_b/ecdsa/ecPublicKey_p384_pkcs8_v1_template.der",
+    "src/ec/suite_b/ecdsa/ecdsa_sign_asn1_tests.txt",
+    "src/ec/suite_b/ecdsa/ecdsa_sign_fixed_tests.txt",
     "src/ec/suite_b/mod.rs",
     "src/ec/suite_b/ops/elem.rs",
     "src/ec/suite_b/ops/mod.rs",
