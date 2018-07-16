@@ -302,14 +302,16 @@ pub use ec::suite_b::ecdsa::{
     },
 };
 
-pub use ec::curve25519::ed25519::{
+pub use ec::curve25519::ed25519::PUBLIC_KEY_LEN as ED25519_PUBLIC_KEY_LEN;
+
+pub use ec::curve25519::ed25519::verification::{
     EdDSAParameters,
-
     ED25519,
+};
 
+pub use ec::curve25519::ed25519::signing::{
     KeyPair as Ed25519KeyPair,
-    ED25519_PKCS8_V2_LEN,
-    ED25519_PUBLIC_KEY_LEN,
+    PKCS8_V2_LEN as ED25519_PKCS8_V2_LEN,
 };
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
