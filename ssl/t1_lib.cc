@@ -3329,10 +3329,8 @@ static bool ssl_scan_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs,
     static_assert(kNumExtensions <= sizeof(hs->extensions.sent) * 8,
                   "too many bits");
 
-    if (!(hs->extensions.sent & (1u << ext_index)) &&
-        type != TLSEXT_TYPE_renegotiate) {
-      // If the extension was never sent then it is illegal, except for the
-      // renegotiation extension which, in SSL 3.0, is signaled via SCSV.
+    if (!(hs->extensions.sent & (1u << ext_index))) {
+      // If the extension was never sent then it is illegal.
       OPENSSL_PUT_ERROR(SSL, SSL_R_UNEXPECTED_EXTENSION);
       ERR_add_error_dataf("extension :%u", (unsigned)type);
       *out_alert = SSL_AD_UNSUPPORTED_EXTENSION;

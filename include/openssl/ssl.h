@@ -185,7 +185,7 @@ extern "C" {
 // multiple threads. Once shared, functions which change the |SSL_CTX|'s
 // configuration may not be used.
 
-// TLS_method is the |SSL_METHOD| used for TLS (and SSLv3) connections.
+// TLS_method is the |SSL_METHOD| used for TLS connections.
 OPENSSL_EXPORT const SSL_METHOD *TLS_method(void);
 
 // DTLS_method is the |SSL_METHOD| used for DTLS connections.
@@ -719,10 +719,10 @@ OPENSSL_EXPORT uint32_t SSL_get_options(const SSL *ssl);
 // and |SSL_CB_HANDSHAKE_DONE| from |SSL_CTX_set_info_callback|.
 #define SSL_MODE_ENABLE_FALSE_START 0x00000080L
 
-// SSL_MODE_CBC_RECORD_SPLITTING causes multi-byte CBC records in SSL 3.0 and
-// TLS 1.0 to be split in two: the first record will contain a single byte and
-// the second will contain the remainder. This effectively randomises the IV and
-// prevents BEAST attacks.
+// SSL_MODE_CBC_RECORD_SPLITTING causes multi-byte CBC records in TLS 1.0 to be
+// split in two: the first record will contain a single byte and the second will
+// contain the remainder. This effectively randomises the IV and prevents BEAST
+// attacks.
 #define SSL_MODE_CBC_RECORD_SPLITTING 0x00000100L
 
 // SSL_MODE_NO_SESSION_CREATION will cause any attempts to create a session to
@@ -1588,7 +1588,7 @@ OPENSSL_EXPORT SSL_SESSION *SSL_SESSION_from_bytes(
     const uint8_t *in, size_t in_len, const SSL_CTX *ctx);
 
 // SSL_SESSION_get_version returns a string describing the TLS or DTLS version
-// |session| was established at. For example, "TLSv1.2" or "SSLv3".
+// |session| was established at. For example, "TLSv1.2" or "DTLSv1".
 OPENSSL_EXPORT const char *SSL_SESSION_get_version(const SSL_SESSION *session);
 
 // SSL_SESSION_get_protocol_version returns the TLS or DTLS version |session|
@@ -3147,11 +3147,11 @@ OPENSSL_EXPORT int SSL_export_early_keying_material(
 
 // Alerts.
 //
-// TLS and SSL 3.0 use alerts to signal error conditions. Alerts have a type
-// (warning or fatal) and description. OpenSSL internally handles fatal alerts
-// with dedicated error codes (see |SSL_AD_REASON_OFFSET|). Except for
-// close_notify, warning alerts are silently ignored and may only be surfaced
-// with |SSL_CTX_set_info_callback|.
+// TLS uses alerts to signal error conditions. Alerts have a type (warning or
+// fatal) and description. OpenSSL internally handles fatal alerts with
+// dedicated error codes (see |SSL_AD_REASON_OFFSET|). Except for close_notify,
+// warning alerts are silently ignored and may only be surfaced with
+// |SSL_CTX_set_info_callback|.
 
 // SSL_AD_REASON_OFFSET is the offset between error reasons and |SSL_AD_*|
 // values. Any error code under |ERR_LIB_SSL| with an error reason above this
@@ -3162,7 +3162,7 @@ OPENSSL_EXPORT int SSL_export_early_keying_material(
 // This value must be kept in sync with reservedReasonCode in make_errors.h
 #define SSL_AD_REASON_OFFSET 1000
 
-// SSL_AD_* are alert descriptions for SSL 3.0 and TLS.
+// SSL_AD_* are alert descriptions.
 #define SSL_AD_CLOSE_NOTIFY SSL3_AD_CLOSE_NOTIFY
 #define SSL_AD_UNEXPECTED_MESSAGE SSL3_AD_UNEXPECTED_MESSAGE
 #define SSL_AD_BAD_RECORD_MAC SSL3_AD_BAD_RECORD_MAC
@@ -3170,7 +3170,7 @@ OPENSSL_EXPORT int SSL_export_early_keying_material(
 #define SSL_AD_RECORD_OVERFLOW TLS1_AD_RECORD_OVERFLOW
 #define SSL_AD_DECOMPRESSION_FAILURE SSL3_AD_DECOMPRESSION_FAILURE
 #define SSL_AD_HANDSHAKE_FAILURE SSL3_AD_HANDSHAKE_FAILURE
-#define SSL_AD_NO_CERTIFICATE SSL3_AD_NO_CERTIFICATE  // Not used in TLS
+#define SSL_AD_NO_CERTIFICATE SSL3_AD_NO_CERTIFICATE  // Legacy SSL 3.0 value
 #define SSL_AD_BAD_CERTIFICATE SSL3_AD_BAD_CERTIFICATE
 #define SSL_AD_UNSUPPORTED_CERTIFICATE SSL3_AD_UNSUPPORTED_CERTIFICATE
 #define SSL_AD_CERTIFICATE_REVOKED SSL3_AD_CERTIFICATE_REVOKED
@@ -3250,7 +3250,7 @@ OPENSSL_EXPORT int SSL_CTX_get_ex_new_index(long argl, void *argp,
 // SSL_get_ivs sets |*out_iv_len| to the length of the IVs for the ciphers
 // underlying |ssl| and sets |*out_read_iv| and |*out_write_iv| to point to the
 // current IVs for the read and write directions. This is only meaningful for
-// connections with implicit IVs (i.e. CBC mode with SSLv3 or TLS 1.0).
+// connections with implicit IVs (i.e. CBC mode with TLS 1.0).
 //
 // It returns one on success or zero on error.
 OPENSSL_EXPORT int SSL_get_ivs(const SSL *ssl, const uint8_t **out_read_iv,
@@ -3994,7 +3994,7 @@ OPENSSL_EXPORT int SSL_cache_hit(SSL *ssl);
 OPENSSL_EXPORT long SSL_get_default_timeout(const SSL *ssl);
 
 // SSL_get_version returns a string describing the TLS version used by |ssl|.
-// For example, "TLSv1.2" or "SSLv3".
+// For example, "TLSv1.2" or "DTLSv1".
 OPENSSL_EXPORT const char *SSL_get_version(const SSL *ssl);
 
 // SSL_get_cipher_list returns the name of the |n|th cipher in the output of
@@ -4041,15 +4041,15 @@ OPENSSL_EXPORT int SSL_want(const SSL *ssl);
 
  // SSL_get_finished writes up to |count| bytes of the Finished message sent by
  // |ssl| to |buf|. It returns the total untruncated length or zero if none has
- // been sent yet. At SSL 3.0 or TLS 1.3 and later, it returns zero.
+ // been sent yet. At TLS 1.3 and later, it returns zero.
  //
  // Use |SSL_get_tls_unique| instead.
 OPENSSL_EXPORT size_t SSL_get_finished(const SSL *ssl, void *buf, size_t count);
 
  // SSL_get_peer_finished writes up to |count| bytes of the Finished message
  // received from |ssl|'s peer to |buf|. It returns the total untruncated length
- // or zero if none has been received yet. At SSL 3.0 or TLS 1.3 and later, it
- // returns zero.
+ // or zero if none has been received yet. At TLS 1.3 and later, it returns
+ // zero.
  //
  // Use |SSL_get_tls_unique| instead.
 OPENSSL_EXPORT size_t SSL_get_peer_finished(const SSL *ssl, void *buf,

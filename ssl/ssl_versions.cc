@@ -172,7 +172,7 @@ static bool set_min_version(const SSL_PROTOCOL_METHOD *method, uint16_t *out,
                             uint16_t version) {
   // Zero is interpreted as the default minimum version.
   if (version == 0) {
-    // SSL 3.0 is disabled by default and TLS 1.0 does not exist in DTLS.
+    // TLS 1.0 does not exist in DTLS.
     *out = method->is_dtls ? TLS1_1_VERSION : TLS1_VERSION;
     return true;
   }

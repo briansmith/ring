@@ -1269,7 +1269,8 @@ bool ssl_create_cipher_list(UniquePtr<SSLCipherPreferenceList> *out_cipher_list,
 
 uint16_t ssl_cipher_get_value(const SSL_CIPHER *cipher) {
   uint32_t id = cipher->id;
-  // All ciphers are SSLv3.
+  // All OpenSSL cipher IDs are prefaced with 0x03. Historically this referred
+  // to SSLv2 vs SSLv3.
   assert((id & 0xff000000) == 0x03000000);
   return id & 0xffff;
 }

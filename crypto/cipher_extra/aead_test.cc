@@ -36,8 +36,8 @@ struct KnownAEAD {
   const char *test_vectors;
   // limited_implementation indicates that tests that assume a generic AEAD
   // interface should not be performed. For example, the key-wrap AEADs only
-  // handle inputs that are a multiple of eight bytes in length and the
-  // SSLv3/TLS AEADs have the concept of “direction”.
+  // handle inputs that are a multiple of eight bytes in length and the TLS CBC
+  // AEADs have the concept of “direction”.
   bool limited_implementation;
   // truncated_tags is true if the AEAD supports truncating tags to arbitrary
   // lengths.

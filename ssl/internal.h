@@ -3083,8 +3083,8 @@ struct ssl_st {
   // progress.
   bssl::ssl_hs_wait_t (*do_handshake)(bssl::SSL_HANDSHAKE *hs) = nullptr;
 
-  bssl::SSL3_STATE *s3 = nullptr;   // SSLv3 variables
-  bssl::DTLS1_STATE *d1 = nullptr;  // DTLSv1 variables
+  bssl::SSL3_STATE *s3 = nullptr;   // TLS variables
+  bssl::DTLS1_STATE *d1 = nullptr;  // DTLS variables
 
   // callback that allows applications to peek at protocol messages
   void (*msg_callback)(int write_p, int version, int content_type,
