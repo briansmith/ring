@@ -2057,8 +2057,8 @@ int SSL_CTX_add_cert_compression_alg(SSL_CTX *ctx, uint16_t alg_id,
   if (!PushToStack(ctx->cert_compression_algs.get(), std::move(alg))) {
     if (sk_CertCompressionAlg_num(ctx->cert_compression_algs.get()) == 0) {
       ctx->cert_compression_algs.reset();
-      return 0;
     }
+    return 0;
   }
 
   return 1;
