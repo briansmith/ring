@@ -4114,6 +4114,30 @@ TEST(SSLTest, HandoffDeclined) {
   EXPECT_EQ(43, byte);
 }
 
+TEST_P(SSLVersionTest, VerifyBeforeCertRequest) {
+  // Configure the server to request client certificates.
+  SSL_CTX_set_custom_verify(
+      server_ctx_.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) { return ssl_verify_ok; });
+
+  // Configure the client to reject the server certificate.
+  SSL_CTX_set_custom_verify(
+      client_ctx_.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) { return ssl_verify_invalid; });
+
+  // cert_cb should not be called. Verification should fail first.
+  SSL_CTX_set_cert_cb(client_ctx_.get(),
+                      [](SSL *ssl, void *arg) {
+                        ADD_FAILURE() << "cert_cb unexpectedly called";
+                        return 0;
+                      },
+                      nullptr);
+
+  bssl::UniquePtr<SSL> client, server;
+  EXPECT_FALSE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                      server_ctx_.get()));
+}
+
 // TODO(davidben): Convert this file to GTest properly.
 TEST(SSLTest, AllTests) {
   if (!TestSSL_SESSIONEncoding(kOpenSSLSession) ||
