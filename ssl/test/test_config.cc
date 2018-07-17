@@ -177,6 +177,7 @@ const Flag<std::string> kStringFlags[] = {
   { "-expect-client-ca-list", &TestConfig::expected_client_ca_list },
   { "-expect-msg-callback", &TestConfig::expect_msg_callback },
   { "-handshaker-path", &TestConfig::handshaker_path },
+  { "-delegated-credential", &TestConfig::delegated_credential },
 };
 
 const Flag<std::string> kBase64Flags[] = {
@@ -1667,6 +1668,41 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
       // manually.
       SSL_SESSION_up_ref(session);
       GetTestState(ssl.get())->pending_session.reset(session);
+    }
+  }
+
+  if (!delegated_credential.empty()) {
+    std::string::size_type comma = delegated_credential.find(',');
+    if (comma == std::string::npos) {
+      fprintf(stderr, "failed to find comma in delegated credential argument");
+      return nullptr;
+    }
+
+    const std::string dc_hex = delegated_credential.substr(0, comma);
+    const std::string pkcs8_hex = delegated_credential.substr(comma + 1);
+    std::string dc, pkcs8;
+    if (!HexDecode(&dc, dc_hex) || !HexDecode(&pkcs8, pkcs8_hex)) {
+      fprintf(stderr, "failed to hex decode delegated credential argument");
+      return nullptr;
+    }
+
+    CBS dc_cbs(bssl::Span<const uint8_t>(
+        reinterpret_cast<const uint8_t *>(dc.data()), dc.size()));
+    CBS pkcs8_cbs(bssl::Span<const uint8_t>(
+        reinterpret_cast<const uint8_t *>(pkcs8.data()), pkcs8.size()));
+
+    bssl::UniquePtr<EVP_PKEY> priv(EVP_parse_private_key(&pkcs8_cbs));
+    if (!priv) {
+      fprintf(stderr, "failed to parse delegated credential private key");
+      return nullptr;
+    }
+
+    bssl::UniquePtr<CRYPTO_BUFFER> dc_buf(
+        CRYPTO_BUFFER_new_from_CBS(&dc_cbs, nullptr));
+    if (!SSL_set1_delegated_credential(ssl.get(), dc_buf.get(),
+                                      priv.get(), nullptr)) {
+      fprintf(stderr, "SSL_set1_delegated_credential failed.\n");
+      return nullptr;
     }
   }
 

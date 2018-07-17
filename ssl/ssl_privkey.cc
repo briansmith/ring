@@ -134,8 +134,13 @@ static const SSL_SIGNATURE_ALGORITHM *get_signature_algorithm(uint16_t sigalg) {
 }
 
 bool ssl_has_private_key(const SSL_HANDSHAKE *hs) {
-  return (hs->config->cert->privatekey != nullptr ||
-          hs->config->cert->key_method != nullptr);
+  if (hs->config->cert->privatekey != nullptr ||
+      hs->config->cert->key_method != nullptr ||
+      ssl_signing_with_dc(hs)) {
+    return true;
+  }
+
+  return false;
 }
 
 static bool pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,
@@ -196,13 +201,20 @@ enum ssl_private_key_result_t ssl_private_key_sign(
     SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, size_t max_out,
     uint16_t sigalg, Span<const uint8_t> in) {
   SSL *const ssl = hs->ssl;
-  if (hs->config->cert->key_method != NULL) {
+  const SSL_PRIVATE_KEY_METHOD *key_method = hs->config->cert->key_method;
+  EVP_PKEY *privatekey = hs->config->cert->privatekey.get();
+  if (ssl_signing_with_dc(hs)) {
+    key_method = hs->config->cert->dc_key_method;
+    privatekey = hs->config->cert->dc_privatekey.get();
+  }
+
+  if (key_method != NULL) {
     enum ssl_private_key_result_t ret;
     if (hs->pending_private_key_op) {
-      ret = hs->config->cert->key_method->complete(ssl, out, out_len, max_out);
+      ret = key_method->complete(ssl, out, out_len, max_out);
     } else {
-      ret = hs->config->cert->key_method->sign(ssl, out, out_len, max_out,
-                                               sigalg, in.data(), in.size());
+      ret = key_method->sign(ssl, out, out_len, max_out,
+                             sigalg, in.data(), in.size());
     }
     if (ret == ssl_private_key_failure) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_PRIVATE_KEY_OPERATION_FAILED);
@@ -213,8 +225,7 @@ enum ssl_private_key_result_t ssl_private_key_sign(
 
   *out_len = max_out;
   ScopedEVP_MD_CTX ctx;
-  if (!setup_ctx(ssl, ctx.get(), hs->config->cert->privatekey.get(), sigalg,
-                 false /* sign */) ||
+  if (!setup_ctx(ssl, ctx.get(), privatekey, sigalg, false /* sign */) ||
       !EVP_DigestSign(ctx.get(), out, out_len, in.data(), in.size())) {
     return ssl_private_key_failure;
   }

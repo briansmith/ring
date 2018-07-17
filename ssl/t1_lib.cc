@@ -2715,6 +2715,36 @@ static bool ext_quic_transport_params_add_serverhello(SSL_HANDSHAKE *hs,
   return true;
 }
 
+// Delegated credentials.
+//
+// https://tools.ietf.org/html/draft-ietf-tls-subcerts
+
+static bool ext_delegated_credential_add_clienthello(SSL_HANDSHAKE *hs,
+                                                     CBB *out) {
+  return true;
+}
+
+static bool ext_delegated_credential_parse_clienthello(SSL_HANDSHAKE *hs,
+                                                       uint8_t *out_alert,
+                                                       CBS *contents) {
+  assert(TLSEXT_TYPE_delegated_credential == 0xff02);
+  // TODO: Check that the extension is empty.
+  //
+  // As of draft-02, the client sends an empty extension in order indicate
+  // support for delegated credentials. This could change, however, since the
+  // spec is not yet finalized. This assertion is here to remind us to enforce
+  // this check once the extension ID is assigned.
+
+  if (contents == nullptr || ssl_protocol_version(hs->ssl) < TLS1_3_VERSION) {
+    // Don't use delegated credentials unless we're negotiating TLS 1.3 or
+    // higher.
+    return true;
+  }
+
+  hs->delegated_credential_requested = true;
+  return true;
+}
+
 // Certificate compression
 
 static bool cert_compression_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
@@ -3002,6 +3032,14 @@ static const struct tls_extension kExtensions[] = {
     cert_compression_parse_serverhello,
     cert_compression_parse_clienthello,
     cert_compression_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_delegated_credential,
+    NULL,
+    ext_delegated_credential_add_clienthello,
+    forbid_parse_serverhello,
+    ext_delegated_credential_parse_clienthello,
+    dont_add_serverhello,
   },
 };
 
@@ -3629,6 +3667,7 @@ bool tls1_get_legacy_signature_algorithm(uint16_t *out, const EVP_PKEY *pkey) {
 bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   SSL *const ssl = hs->ssl;
   CERT *cert = hs->config->cert.get();
+  DC *dc = cert->dc.get();
 
   // Before TLS 1.2, the signature algorithm isn't negotiated as part of the
   // handshake.
@@ -3641,19 +3680,13 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
   }
 
   Span<const uint16_t> sigalgs = kSignSignatureAlgorithms;
-  if (!cert->sigalgs.empty()) {
+  if (ssl_signing_with_dc(hs)) {
+    sigalgs = MakeConstSpan(&dc->expected_cert_verify_algorithm, 1);
+  } else if (!cert->sigalgs.empty()) {
     sigalgs = cert->sigalgs;
   }
 
-  Span<const uint16_t> peer_sigalgs = hs->peer_sigalgs;
-  if (peer_sigalgs.empty() && ssl_protocol_version(ssl) < TLS1_3_VERSION) {
-    // If the client didn't specify any signature_algorithms extension then
-    // we can assume that it supports SHA1. See
-    // http://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
-    static const uint16_t kDefaultPeerAlgorithms[] = {SSL_SIGN_RSA_PKCS1_SHA1,
-                                                      SSL_SIGN_ECDSA_SHA1};
-    peer_sigalgs = kDefaultPeerAlgorithms;
-  }
+  Span<const uint16_t> peer_sigalgs = tls1_get_peer_verify_algorithms(hs);
 
   for (uint16_t sigalg : sigalgs) {
     // SSL_SIGN_RSA_PKCS1_MD5_SHA1 is an internal value and should never be
@@ -3673,6 +3706,19 @@ bool tls1_choose_signature_algorithm(SSL_HANDSHAKE *hs, uint16_t *out) {
 
   OPENSSL_PUT_ERROR(SSL, SSL_R_NO_COMMON_SIGNATURE_ALGORITHMS);
   return false;
+}
+
+Span<const uint16_t> tls1_get_peer_verify_algorithms(const SSL_HANDSHAKE *hs) {
+  Span<const uint16_t> peer_sigalgs = hs->peer_sigalgs;
+  if (peer_sigalgs.empty() && ssl_protocol_version(hs->ssl) < TLS1_3_VERSION) {
+    // If the client didn't specify any signature_algorithms extension then
+    // we can assume that it supports SHA1. See
+    // http://tools.ietf.org/html/rfc5246#section-7.4.1.4.1
+    static const uint16_t kDefaultPeerAlgorithms[] = {SSL_SIGN_RSA_PKCS1_SHA1,
+                                                      SSL_SIGN_ECDSA_SHA1};
+    peer_sigalgs = kDefaultPeerAlgorithms;
+  }
+  return peer_sigalgs;
 }
 
 bool tls1_verify_channel_id(SSL_HANDSHAKE *hs, const SSLMessage &msg) {

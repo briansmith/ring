@@ -125,6 +125,7 @@ const (
 	extensionRenegotiationInfo          uint16 = 0xff01
 	extensionQUICTransportParams        uint16 = 0xffa5 // draft-ietf-quic-tls-13
 	extensionChannelID                  uint16 = 30032  // not IANA assigned
+	extensionDelegatedCredentials       uint16 = 0xff02 // not IANA assigned
 )
 
 // TLS signaling cipher suite values
@@ -1636,6 +1637,18 @@ type ProtocolBugs struct {
 	// ExpectKeyShares, if not nil, lists (in order) the curves that a ClientHello
 	// should have key shares for.
 	ExpectedKeyShares []CurveID
+
+	// ExpectDelegatedCredentials, if true, requires that the handshake present
+	// delegated credentials.
+	ExpectDelegatedCredentials bool
+
+	// FailIfDelegatedCredentials, if true, causes a handshake failure if the
+	// server returns delegated credentials.
+	FailIfDelegatedCredentials bool
+
+	// DisableDelegatedCredentials, if true, disables client support for delegated
+	// credentials.
+	DisableDelegatedCredentials bool
 }
 
 func (c *Config) serverInit() {

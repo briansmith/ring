@@ -5,6 +5,7 @@
 package runner
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rsa"
@@ -133,7 +134,7 @@ func (ka *rsaKeyAgreement) processClientKeyExchange(config *Config, cert *Certif
 	return preMasterSecret, nil
 }
 
-func (ka *rsaKeyAgreement) processServerKeyExchange(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, cert *x509.Certificate, skx *serverKeyExchangeMsg) error {
+func (ka *rsaKeyAgreement) processServerKeyExchange(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, key crypto.PublicKey, skx *serverKeyExchangeMsg) error {
 	return errors.New("tls: unexpected ServerKeyExchange")
 }
 
@@ -456,7 +457,7 @@ func curveForCurveID(id CurveID, config *Config) (ecdhCurve, bool) {
 // to authenticate the ServerKeyExchange parameters.
 type keyAgreementAuthentication interface {
 	signParameters(config *Config, cert *Certificate, clientHello *clientHelloMsg, hello *serverHelloMsg, params []byte) (*serverKeyExchangeMsg, error)
-	verifyParameters(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, cert *x509.Certificate, params []byte, sig []byte) error
+	verifyParameters(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, key crypto.PublicKey, params []byte, sig []byte) error
 }
 
 // nilKeyAgreementAuthentication does not authenticate the key
@@ -469,7 +470,7 @@ func (ka *nilKeyAgreementAuthentication) signParameters(config *Config, cert *Ce
 	return skx, nil
 }
 
-func (ka *nilKeyAgreementAuthentication) verifyParameters(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, cert *x509.Certificate, params []byte, sig []byte) error {
+func (ka *nilKeyAgreementAuthentication) verifyParameters(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, key crypto.PublicKey, params []byte, sig []byte) error {
 	return nil
 }
 
@@ -529,9 +530,8 @@ func (ka *signedKeyAgreement) signParameters(config *Config, cert *Certificate, 
 	return skx, nil
 }
 
-func (ka *signedKeyAgreement) verifyParameters(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, cert *x509.Certificate, params []byte, sig []byte) error {
+func (ka *signedKeyAgreement) verifyParameters(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, publicKey crypto.PublicKey, params []byte, sig []byte) error {
 	// The peer's key must match the cipher type.
-	publicKey := getCertificatePublicKey(cert)
 	switch ka.keyType {
 	case keyTypeECDSA:
 		_, edsaOk := publicKey.(*ecdsa.PublicKey)
@@ -646,7 +646,7 @@ func (ka *ecdheKeyAgreement) processClientKeyExchange(config *Config, cert *Cert
 	return ka.curve.finish(ckx.ciphertext[1:])
 }
 
-func (ka *ecdheKeyAgreement) processServerKeyExchange(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, cert *x509.Certificate, skx *serverKeyExchangeMsg) error {
+func (ka *ecdheKeyAgreement) processServerKeyExchange(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, key crypto.PublicKey, skx *serverKeyExchangeMsg) error {
 	if len(skx.key) < 4 {
 		return errServerKeyExchange
 	}
@@ -671,7 +671,7 @@ func (ka *ecdheKeyAgreement) processServerKeyExchange(config *Config, clientHell
 	// Check the signature.
 	serverECDHParams := skx.key[:4+publicLen]
 	sig := skx.key[4+publicLen:]
-	return ka.auth.verifyParameters(config, clientHello, serverHello, cert, serverECDHParams, sig)
+	return ka.auth.verifyParameters(config, clientHello, serverHello, key, serverECDHParams, sig)
 }
 
 func (ka *ecdheKeyAgreement) generateClientKeyExchange(config *Config, clientHello *clientHelloMsg, cert *x509.Certificate) ([]byte, *clientKeyExchangeMsg, error) {
@@ -722,7 +722,7 @@ func (ka *nilKeyAgreement) processClientKeyExchange(config *Config, cert *Certif
 	return nil, nil
 }
 
-func (ka *nilKeyAgreement) processServerKeyExchange(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, cert *x509.Certificate, skx *serverKeyExchangeMsg) error {
+func (ka *nilKeyAgreement) processServerKeyExchange(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, key crypto.PublicKey, skx *serverKeyExchangeMsg) error {
 	if len(skx.key) != 0 {
 		return errServerKeyExchange
 	}
@@ -820,7 +820,7 @@ func (ka *pskKeyAgreement) processClientKeyExchange(config *Config, cert *Certif
 	return makePSKPremaster(otherSecret, config.PreSharedKey), nil
 }
 
-func (ka *pskKeyAgreement) processServerKeyExchange(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, cert *x509.Certificate, skx *serverKeyExchangeMsg) error {
+func (ka *pskKeyAgreement) processServerKeyExchange(config *Config, clientHello *clientHelloMsg, serverHello *serverHelloMsg, key crypto.PublicKey, skx *serverKeyExchangeMsg) error {
 	if len(skx.key) < 2 {
 		return errServerKeyExchange
 	}
@@ -833,7 +833,7 @@ func (ka *pskKeyAgreement) processServerKeyExchange(config *Config, clientHello 
 	// Process the remainder of the ServerKeyExchange.
 	newSkx := new(serverKeyExchangeMsg)
 	newSkx.key = skx.key[2+identityLen:]
-	return ka.base.processServerKeyExchange(config, clientHello, serverHello, cert, newSkx)
+	return ka.base.processServerKeyExchange(config, clientHello, serverHello, key, newSkx)
 }
 
 func (ka *pskKeyAgreement) generateClientKeyExchange(config *Config, clientHello *clientHelloMsg, cert *x509.Certificate) ([]byte, *clientKeyExchangeMsg, error) {

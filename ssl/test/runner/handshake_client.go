@@ -32,6 +32,8 @@ type clientHandshakeState struct {
 	masterSecret  []byte
 	session       *ClientSessionState
 	finishedBytes []byte
+	peerPublicKey crypto.PublicKey
+	skxAlgo       signatureAlgorithm
 }
 
 func mapClientHelloVersion(vers uint16, isDTLS bool) uint16 {
@@ -126,6 +128,7 @@ func (c *Conn) clientHandshake() error {
 		pskBinderFirst:          c.config.Bugs.PSKBinderFirst,
 		omitExtensions:          c.config.Bugs.OmitExtensions,
 		emptyExtensions:         c.config.Bugs.EmptyExtensions,
+		delegatedCredentials:    !c.config.Bugs.DisableDelegatedCredentials,
 	}
 
 	if maxVersion >= VersionTLS13 {
@@ -978,7 +981,6 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 		if err := hs.verifyCertificates(certMsg); err != nil {
 			return err
 		}
-		leaf := c.peerCertificates[0]
 		c.ocspResponse = certMsg.certificates[0].ocspResponse
 		c.sctList = certMsg.certificates[0].sctList
 
@@ -994,7 +996,7 @@ func (hs *clientHandshakeState) doTLS13Handshake() error {
 
 		c.peerSignatureAlgorithm = certVerifyMsg.signatureAlgorithm
 		input := hs.finishedHash.certificateVerifyInput(serverCertificateVerifyContextTLS13)
-		err = verifyMessage(c.vers, getCertificatePublicKey(leaf), c.config, certVerifyMsg.signatureAlgorithm, input, certVerifyMsg.signature)
+		err = verifyMessage(c.vers, hs.peerPublicKey, c.config, certVerifyMsg.signatureAlgorithm, input, certVerifyMsg.signature)
 		if err != nil {
 			return err
 		}
@@ -1233,7 +1235,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	skx, ok := msg.(*serverKeyExchangeMsg)
 	if ok {
 		hs.writeServerHash(skx.marshal())
-		err = keyAgreement.processServerKeyExchange(c.config, hs.hello, hs.serverHello, leaf, skx)
+		err = keyAgreement.processServerKeyExchange(c.config, hs.hello, hs.serverHello, hs.peerPublicKey, skx)
 		if err != nil {
 			c.sendAlert(alertUnexpectedMessage)
 			return err
@@ -1377,6 +1379,23 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 	return nil
 }
 
+// delegatedCredentialSignedMessage returns the bytes that are signed in order
+// to authenticate a delegated credential.
+func delegatedCredentialSignedMessage(credBytes []byte, algorithm signatureAlgorithm, leafDER []byte) []byte {
+	// https://tools.ietf.org/html/draft-ietf-tls-subcerts-02#section-3
+	ret := make([]byte, 64, 128)
+	for i := range ret {
+		ret[i] = 0x20
+	}
+
+	ret = append(ret, []byte("TLS, server delegated credentials\x00")...)
+	ret = append(ret, leafDER...)
+	ret = append(ret, byte(algorithm>>8), byte(algorithm))
+	ret = append(ret, credBytes...)
+
+	return ret
+}
+
 func (hs *clientHandshakeState) verifyCertificates(certMsg *certificateMsg) error {
 	c := hs.c
 
@@ -1385,6 +1404,7 @@ func (hs *clientHandshakeState) verifyCertificates(certMsg *certificateMsg) erro
 		return errors.New("tls: no certificates sent")
 	}
 
+	var dc *delegatedCredential
 	certs := make([]*x509.Certificate, len(certMsg.certificates))
 	for i, certEntry := range certMsg.certificates {
 		cert, err := x509.ParseCertificate(certEntry.data)
@@ -1393,6 +1413,22 @@ func (hs *clientHandshakeState) verifyCertificates(certMsg *certificateMsg) erro
 			return errors.New("tls: failed to parse certificate from server: " + err.Error())
 		}
 		certs[i] = cert
+
+		if certEntry.delegatedCredential != nil {
+			if c.config.Bugs.FailIfDelegatedCredentials {
+				c.sendAlert(alertIllegalParameter)
+				return errors.New("tls: unexpected delegated credential")
+			}
+			if i != 0 {
+				c.sendAlert(alertIllegalParameter)
+				return errors.New("tls: non-leaf certificate has a delegated credential")
+			}
+			if c.config.Bugs.DisableDelegatedCredentials {
+				c.sendAlert(alertIllegalParameter)
+				return errors.New("tls: server sent delegated credential without it being requested")
+			}
+			dc = certEntry.delegatedCredential
+		}
 	}
 
 	if !c.config.InsecureSkipVerify {
@@ -1417,16 +1453,50 @@ func (hs *clientHandshakeState) verifyCertificates(certMsg *certificateMsg) erro
 		}
 	}
 
-	publicKey := getCertificatePublicKey(certs[0])
-	switch publicKey.(type) {
+	leafPublicKey := getCertificatePublicKey(certs[0])
+	switch leafPublicKey.(type) {
 	case *rsa.PublicKey, *ecdsa.PublicKey, ed25519.PublicKey:
 		break
 	default:
 		c.sendAlert(alertUnsupportedCertificate)
-		return fmt.Errorf("tls: server's certificate contains an unsupported type of public key: %T", publicKey)
+		return fmt.Errorf("tls: server's certificate contains an unsupported type of public key: %T", leafPublicKey)
 	}
 
 	c.peerCertificates = certs
+
+	if dc != nil {
+		// Note that this doesn't check a) the delegated credential temporal
+		// validity nor b) that the certificate has the special OID asserted.
+		if dc.expectedTLSVersion != c.wireVersion {
+			c.sendAlert(alertBadCertificate)
+			return errors.New("tls: delegated credential is for wrong TLS version")
+		}
+
+		hs.skxAlgo = dc.expectedCertVerifyAlgo
+
+		var err error
+		if hs.peerPublicKey, err = x509.ParsePKIXPublicKey(dc.pkixPublicKey); err != nil {
+			c.sendAlert(alertBadCertificate)
+			return errors.New("tls: failed to parse public key from delegated credential: " + err.Error())
+		}
+
+		verifier, err := getSigner(c.vers, hs.peerPublicKey, c.config, dc.algorithm, true)
+		if err != nil {
+			c.sendAlert(alertBadCertificate)
+			return errors.New("tls: failed to get verifier for delegated credential: " + err.Error())
+		}
+
+		if err := verifier.verifyMessage(leafPublicKey, delegatedCredentialSignedMessage(dc.signedBytes, dc.algorithm, certs[0].Raw), dc.signature); err != nil {
+			c.sendAlert(alertBadCertificate)
+			return errors.New("tls: failed to verify delegated credential: " + err.Error())
+		}
+	} else if c.config.Bugs.ExpectDelegatedCredentials {
+		c.sendAlert(alertInternalError)
+		return errors.New("tls: delegated credentials missing")
+	} else {
+		hs.peerPublicKey = leafPublicKey
+	}
+
 	return nil
 }
 

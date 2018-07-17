@@ -172,6 +172,7 @@ struct TestConfig {
   bool server_preference = false;
   bool export_traffic_secrets = false;
   bool key_update = false;
+  std::string delegated_credential;
 
   int argc;
   char **argv;

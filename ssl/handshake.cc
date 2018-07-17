@@ -135,6 +135,7 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       cert_request(false),
       certificate_status_expected(false),
       ocsp_stapling_requested(false),
+      delegated_credential_requested(false),
       should_ack_sni(false),
       in_false_start(false),
       in_early_data(false),

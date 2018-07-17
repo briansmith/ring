@@ -297,6 +297,7 @@ type clientHelloMsg struct {
 	emptyExtensions         bool
 	pad                     int
 	compressedCertAlgs      []uint16
+	delegatedCredentials    bool
 }
 
 func (m *clientHelloMsg) equal(i interface{}) bool {
@@ -350,7 +351,8 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.omitExtensions == m1.omitExtensions &&
 		m.emptyExtensions == m1.emptyExtensions &&
 		m.pad == m1.pad &&
-		eqUint16s(m.compressedCertAlgs, m1.compressedCertAlgs)
+		eqUint16s(m.compressedCertAlgs, m1.compressedCertAlgs) &&
+		m.delegatedCredentials == m1.delegatedCredentials
 }
 
 func (m *clientHelloMsg) marshalKeyShares(bb *byteBuilder) {
@@ -592,6 +594,10 @@ func (m *clientHelloMsg) marshal() []byte {
 			algIDs.addU16(v)
 		}
 	}
+	if m.delegatedCredentials {
+		extensions.addU16(extensionDelegatedCredentials)
+		extensions.addU16(0) // Length is always 0
+	}
 	// The PSK extension must be last. See https://tools.ietf.org/html/rfc8446#section-4.2.11
 	if len(m.pskIdentities) > 0 && !m.pskBinderFirst {
 		extensions.addU16(extensionPreSharedKey)
@@ -717,6 +723,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	m.alpnProtocols = nil
 	m.extendedMasterSecret = false
 	m.customExtension = ""
+	m.delegatedCredentials = false
 
 	if len(reader) == 0 {
 		// ClientHello is optionally followed by extension data
@@ -947,6 +954,11 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 					return false
 				}
 			}
+		case extensionDelegatedCredentials:
+			if len(body) != 0 {
+				return false
+			}
+			m.delegatedCredentials = true
 		}
 
 		if isGREASEValue(extension) {
@@ -1602,6 +1614,18 @@ type certificateEntry struct {
 	sctList             []byte
 	duplicateExtensions bool
 	extraExtension      []byte
+	delegatedCredential *delegatedCredential
+}
+
+type delegatedCredential struct {
+	// https://tools.ietf.org/html/draft-ietf-tls-subcerts-02#section-3
+	signedBytes            []byte
+	lifetimeSecs           uint32
+	expectedCertVerifyAlgo signatureAlgorithm
+	expectedTLSVersion     uint16
+	pkixPublicKey          []byte
+	algorithm              signatureAlgorithm
+	signature              []byte
 }
 
 type certificateMsg struct {
@@ -1700,6 +1724,30 @@ func (m *certificateMsg) unmarshal(data []byte) bool {
 					}
 				case extensionSignedCertificateTimestamp:
 					cert.sctList = []byte(body)
+				case extensionDelegatedCredentials:
+					// https://tools.ietf.org/html/draft-ietf-tls-subcerts-02#section-3
+					if cert.delegatedCredential != nil {
+						return false
+					}
+
+					dc := new(delegatedCredential)
+					origBody := body
+					var expectedCertVerifyAlgo, algorithm uint16
+
+					if !body.readU32(&dc.lifetimeSecs) ||
+						!body.readU16(&expectedCertVerifyAlgo) ||
+						!body.readU16(&dc.expectedTLSVersion) ||
+						!body.readU24LengthPrefixedBytes(&dc.pkixPublicKey) ||
+						!body.readU16(&algorithm) ||
+						!body.readU16LengthPrefixedBytes(&dc.signature) ||
+						len(body) != 0 {
+						return false
+					}
+
+					dc.expectedCertVerifyAlgo = signatureAlgorithm(expectedCertVerifyAlgo)
+					dc.algorithm = signatureAlgorithm(algorithm)
+					dc.signedBytes = []byte(origBody)[:4+2+2+3+len(dc.pkixPublicKey)]
+					cert.delegatedCredential = dc
 				default:
 					return false
 				}

@@ -418,6 +418,7 @@ bool tls13_process_finished(SSL_HANDSHAKE *hs, const SSLMessage &msg,
 bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   CERT *const cert = hs->config->cert.get();
+  DC *const dc = cert->dc.get();
 
   ScopedCBB cbb;
   CBB *body, body_storage, certificate_list;
@@ -481,6 +482,19 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
         !CBB_flush(&extensions)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
+    }
+  }
+
+  if (ssl_signing_with_dc(hs)) {
+    const CRYPTO_BUFFER *raw = dc->raw.get();
+    if (!CBB_add_u16(&extensions, TLSEXT_TYPE_delegated_credential) ||
+        !CBB_add_u16(&extensions, CRYPTO_BUFFER_len(raw)) ||
+        !CBB_add_bytes(&extensions,
+                       CRYPTO_BUFFER_data(raw),
+                       CRYPTO_BUFFER_len(raw)) ||
+        !CBB_flush(&extensions)) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+      return 0;
     }
   }
 

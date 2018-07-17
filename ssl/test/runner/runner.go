@@ -16,9 +16,11 @@ package runner
 
 import (
 	"bytes"
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
@@ -244,6 +246,145 @@ func initCertificates() {
 
 	garbageCertificate.Certificate = [][]byte{[]byte("GARBAGE")}
 	garbageCertificate.PrivateKey = rsaCertificate.PrivateKey
+}
+
+// delegatedCredentialConfig specifies the shape of a delegated credential, not
+// including the keys themselves.
+type delegatedCredentialConfig struct {
+	// lifetime is the amount of time, from the notBefore of the parent
+	// certificate, that the delegated credential is valid for. If zero, then 24
+	// hours is assumed.
+	lifetime time.Duration
+	// expectedAlgo is the signature scheme that should be used with this
+	// delegated credential. If zero, ECDSA with P-256 is assumed.
+	expectedAlgo signatureAlgorithm
+	// tlsVersion is the version of TLS that should be used with this delegated
+	// credential. If zero, TLS 1.3 is assumed.
+	tlsVersion uint16
+	// algo is the signature algorithm that the delegated credential itself is
+	// signed with. Cannot be zero.
+	algo signatureAlgorithm
+}
+
+func loadRSAPrivateKey(filename string) (priv *rsa.PrivateKey, privPKCS8 []byte, err error) {
+	pemPath := path.Join(*resourceDir, filename)
+	pemBytes, err := ioutil.ReadFile(pemPath)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		return nil, nil, fmt.Errorf("no PEM block found in %q", pemPath)
+	}
+	privPKCS8 = block.Bytes
+
+	parsed, err := x509.ParsePKCS8PrivateKey(privPKCS8)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse PKCS#8 key from %q", pemPath)
+	}
+
+	priv, ok := parsed.(*rsa.PrivateKey)
+	if !ok {
+		return nil, nil, fmt.Errorf("found %T in %q rather than an RSA private key", parsed, pemPath)
+	}
+
+	return priv, privPKCS8, nil
+}
+
+func createDelegatedCredential(config delegatedCredentialConfig, parentDER []byte, parentPriv crypto.PrivateKey) (dc, privPKCS8 []uint8, err error) {
+	expectedAlgo := config.expectedAlgo
+	if expectedAlgo == signatureAlgorithm(0) {
+		expectedAlgo = signatureECDSAWithP256AndSHA256
+	}
+
+	var pub crypto.PublicKey
+
+	switch expectedAlgo {
+	case signatureRSAPKCS1WithMD5, signatureRSAPKCS1WithSHA1, signatureRSAPKCS1WithSHA256, signatureRSAPKCS1WithSHA384, signatureRSAPKCS1WithSHA512, signatureRSAPSSWithSHA256, signatureRSAPSSWithSHA384, signatureRSAPSSWithSHA512:
+		// RSA keys are expensive to generate so load from disk instead.
+		var priv *rsa.PrivateKey
+		if priv, privPKCS8, err = loadRSAPrivateKey(rsaKeyFile); err != nil {
+			return nil, nil, err
+		}
+
+		pub = &priv.PublicKey
+
+	case signatureECDSAWithSHA1, signatureECDSAWithP256AndSHA256, signatureECDSAWithP384AndSHA384, signatureECDSAWithP521AndSHA512:
+		var curve elliptic.Curve
+		switch expectedAlgo {
+		case signatureECDSAWithSHA1, signatureECDSAWithP256AndSHA256:
+			curve = elliptic.P256()
+		case signatureECDSAWithP384AndSHA384:
+			curve = elliptic.P384()
+		case signatureECDSAWithP521AndSHA512:
+			curve = elliptic.P521()
+		default:
+			panic("internal error")
+		}
+
+		priv, err := ecdsa.GenerateKey(curve, rand.Reader)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if privPKCS8, err = x509.MarshalPKCS8PrivateKey(priv); err != nil {
+			return nil, nil, err
+		}
+
+		pub = &priv.PublicKey
+
+	default:
+		return nil, nil, fmt.Errorf("unsupported expected signature algorithm: %x", expectedAlgo)
+	}
+
+	lifetime := config.lifetime
+	if lifetime == 0 {
+		lifetime = 24 * time.Hour
+	}
+	lifetimeSecs := int64(lifetime.Seconds())
+	if lifetimeSecs > 1<<32 {
+		return nil, nil, fmt.Errorf("lifetime %s is too long to be expressed", lifetime)
+	}
+
+	tlsVersion := config.tlsVersion
+	if tlsVersion == 0 {
+		tlsVersion = VersionTLS13
+	}
+
+	if tlsVersion < VersionTLS13 {
+		return nil, nil, fmt.Errorf("delegated credentials require TLS 1.3")
+	}
+
+	// https://tools.ietf.org/html/draft-ietf-tls-subcerts-02#section-3
+	dc = append(dc, byte(lifetimeSecs>>24), byte(lifetimeSecs>>16), byte(lifetimeSecs>>8), byte(lifetimeSecs))
+	dc = append(dc, byte(expectedAlgo>>8), byte(expectedAlgo))
+	dc = append(dc, byte(tlsVersion>>8), byte(tlsVersion))
+
+	pubBytes, err := x509.MarshalPKIXPublicKey(pub)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	dc = append(dc, byte(len(pubBytes)>>16), byte(len(pubBytes)>>8), byte(len(pubBytes)))
+	dc = append(dc, pubBytes...)
+
+	var dummyConfig Config
+	parentSigner, err := getSigner(tlsVersion, parentPriv, &dummyConfig, config.algo, false /* not for verification */)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	parentSignature, err := parentSigner.signMessage(parentPriv, &dummyConfig, delegatedCredentialSignedMessage(dc, config.algo, parentDER))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	dc = append(dc, byte(config.algo>>8), byte(config.algo))
+	dc = append(dc, byte(len(parentSignature)>>8), byte(len(parentSignature)))
+	dc = append(dc, parentSignature...)
+
+	return dc, privPKCS8, nil
 }
 
 func getRunnerCertificate(t testCert) Certificate {
@@ -12418,7 +12559,7 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MaxVersion: VersionTLS13,
 			// Require a HelloRetryRequest for every curve.
-			DefaultCurves: []CurveID{},
+			DefaultCurves:    []CurveID{},
 			CurvePreferences: []CurveID{CurveX25519},
 		},
 		expectedCurveID: CurveX25519,
@@ -12428,8 +12569,8 @@ func addTLS13HandshakeTests() {
 		testType: serverTest,
 		name:     "SendHelloRetryRequest-2-TLS13",
 		config: Config{
-			MaxVersion:    VersionTLS13,
-			DefaultCurves: []CurveID{CurveP384},
+			MaxVersion:       VersionTLS13,
+			DefaultCurves:    []CurveID{CurveP384},
 			CurvePreferences: []CurveID{CurveX25519, CurveP384},
 		},
 		// Although the ClientHello did not predict our preferred curve,
@@ -14597,6 +14738,128 @@ func addJDK11WorkaroundTests() {
 	}
 }
 
+func addDelegatedCredentialTests() {
+	certPath := path.Join(*resourceDir, rsaCertificateFile)
+	pemBytes, err := ioutil.ReadFile(certPath)
+	if err != nil {
+		panic(err)
+	}
+
+	block, _ := pem.Decode(pemBytes)
+	if block == nil {
+		panic(fmt.Sprintf("no PEM block found in %q", certPath))
+	}
+	parentDER := block.Bytes
+
+	rsaPriv, _, err := loadRSAPrivateKey(rsaKeyFile)
+	if err != nil {
+		panic(err)
+	}
+
+	ecdsaDC, ecdsaPKCS8, err := createDelegatedCredential(delegatedCredentialConfig{
+		algo: signatureRSAPSSWithSHA256,
+	}, parentDER, rsaPriv)
+	if err != nil {
+		panic(err)
+	}
+	ecdsaFlagValue := fmt.Sprintf("%x,%x", ecdsaDC, ecdsaPKCS8)
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "DelegatedCredentials-NoClientSupport",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				DisableDelegatedCredentials: true,
+			},
+		},
+		flags: []string{
+			"-delegated-credential", ecdsaFlagValue,
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "DelegatedCredentials-Basic",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				ExpectDelegatedCredentials: true,
+			},
+		},
+		flags: []string{
+			"-delegated-credential", ecdsaFlagValue,
+		},
+	})
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "DelegatedCredentials-SigAlgoMissing",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				FailIfDelegatedCredentials: true,
+			},
+			// If the client doesn't support the delegated credential signature
+			// algorithm then the handshake should complete without using delegated
+			// credentials.
+			VerifySignatureAlgorithms: []signatureAlgorithm{signatureRSAPSSWithSHA256},
+		},
+		flags: []string{
+			"-delegated-credential", ecdsaFlagValue,
+		},
+	})
+
+	badTLSVersionDC, badTLSVersionPKCS8, err := createDelegatedCredential(delegatedCredentialConfig{
+		algo:       signatureRSAPSSWithSHA256,
+		tlsVersion: 0x1234,
+	}, parentDER, rsaPriv)
+	if err != nil {
+		panic(err)
+	}
+	badTLSVersionFlagValue := fmt.Sprintf("%x,%x", badTLSVersionDC, badTLSVersionPKCS8)
+
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "DelegatedCredentials-BadTLSVersion",
+		config: Config{
+			// The delegated credential specifies a crazy TLS version, which should
+			// prevent its use.
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				FailIfDelegatedCredentials: true,
+			},
+		},
+		flags: []string{
+			"-delegated-credential", badTLSVersionFlagValue,
+		},
+	})
+
+	// This flag value has mismatched public and private keys which should cause a
+	// configuration error in the shim.
+	mismatchFlagValue := fmt.Sprintf("%x,%x", ecdsaDC, badTLSVersionPKCS8)
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "DelegatedCredentials-KeyMismatch",
+		config: Config{
+			MinVersion: VersionTLS13,
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				FailIfDelegatedCredentials: true,
+			},
+		},
+		flags: []string{
+			"-delegated-credential", mismatchFlagValue,
+		},
+		shouldFail:    true,
+		expectedError: ":KEY_VALUES_MISMATCH:",
+	})
+}
+
 func worker(statusChan chan statusMsg, c chan *testCase, shimPath string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -14732,6 +14995,7 @@ func main() {
 	addOmitExtensionsTests()
 	addCertCompressionTests()
 	addJDK11WorkaroundTests()
+	addDelegatedCredentialTests()
 
 	testCases = append(testCases, convertToSplitHandshakeTests(testCases)...)
 
