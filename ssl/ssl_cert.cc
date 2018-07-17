@@ -324,10 +324,10 @@ bool ssl_set_cert(CERT *cert, UniquePtr<CRYPTO_BUFFER> buffer) {
   return true;
 }
 
-bool ssl_has_certificate(const SSL_CONFIG *cfg) {
-  return cfg->cert->chain != nullptr &&
-         sk_CRYPTO_BUFFER_value(cfg->cert->chain.get(), 0) != nullptr &&
-         ssl_has_private_key(cfg);
+bool ssl_has_certificate(const SSL_HANDSHAKE *hs) {
+  return hs->config->cert->chain != nullptr &&
+         sk_CRYPTO_BUFFER_value(hs->config->cert->chain.get(), 0) != nullptr &&
+         ssl_has_private_key(hs);
 }
 
 bool ssl_parse_cert_chain(uint8_t *out_alert,
@@ -395,7 +395,7 @@ bool ssl_parse_cert_chain(uint8_t *out_alert,
 }
 
 bool ssl_add_cert_chain(SSL_HANDSHAKE *hs, CBB *cbb) {
-  if (!ssl_has_certificate(hs->config)) {
+  if (!ssl_has_certificate(hs)) {
     return CBB_add_u24(cbb, 0);
   }
 
@@ -728,7 +728,7 @@ bool ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
 
 bool ssl_on_certificate_selected(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
-  if (!ssl_has_certificate(hs->config)) {
+  if (!ssl_has_certificate(hs)) {
     // Nothing to do.
     return true;
   }

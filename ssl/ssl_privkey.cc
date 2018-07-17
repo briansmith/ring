@@ -133,8 +133,9 @@ static const SSL_SIGNATURE_ALGORITHM *get_signature_algorithm(uint16_t sigalg) {
   return NULL;
 }
 
-bool ssl_has_private_key(const SSL_CONFIG *cfg) {
-  return cfg->cert->privatekey != nullptr || cfg->cert->key_method != nullptr;
+bool ssl_has_private_key(const SSL_HANDSHAKE *hs) {
+  return (hs->config->cert->privatekey != nullptr ||
+          hs->config->cert->key_method != nullptr);
 }
 
 static bool pkey_supports_algorithm(const SSL *ssl, EVP_PKEY *pkey,

@@ -441,7 +441,7 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
     return false;
   }
 
-  if (!ssl_has_certificate(hs->config)) {
+  if (!ssl_has_certificate(hs)) {
     return ssl_add_message_cbb(ssl, cbb.get());
   }
 

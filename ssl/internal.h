@@ -919,8 +919,8 @@ enum ssl_open_record_t ssl_process_alert(SSL *ssl, uint8_t *out_alert,
 
 // Private key operations.
 
-// ssl_has_private_key returns whether |cfg| has a private key configured.
-bool ssl_has_private_key(const SSL_CONFIG *cfg);
+// ssl_has_private_key returns whether |hs| has a private key configured.
+bool ssl_has_private_key(const SSL_HANDSHAKE *hs);
 
 // ssl_private_key_* perform the corresponding operation on
 // |SSL_PRIVATE_KEY_METHOD|. If there is a custom private key configured, they
@@ -1173,7 +1173,7 @@ int ssl_write_buffer_flush(SSL *ssl);
 
 // ssl_has_certificate returns whether a certificate and private key are
 // configured.
-bool ssl_has_certificate(const SSL_CONFIG *cfg);
+bool ssl_has_certificate(const SSL_HANDSHAKE *hs);
 
 // ssl_parse_cert_chain parses a certificate list from |cbs| in the format used
 // by a TLS Certificate message. On success, it advances |cbs| and returns

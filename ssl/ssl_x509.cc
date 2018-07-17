@@ -448,7 +448,7 @@ static int ssl_crypto_x509_ssl_auto_chain_if_needed(SSL_HANDSHAKE *hs) {
   // Only build a chain if there are no intermediates configured and the feature
   // isn't disabled.
   if ((hs->ssl->mode & SSL_MODE_NO_AUTO_CHAIN) ||
-      !ssl_has_certificate(hs->config) || hs->config->cert->chain == NULL ||
+      !ssl_has_certificate(hs) || hs->config->cert->chain == NULL ||
       sk_CRYPTO_BUFFER_num(hs->config->cert->chain.get()) > 1) {
     return 1;
   }
@@ -1223,7 +1223,8 @@ static int do_client_cert_cb(SSL *ssl, void *arg) {
     assert(ssl->config);
     return -1;
   }
-  if (ssl_has_certificate(ssl->config.get()) ||
+
+  if (ssl_has_certificate(ssl->s3->hs.get()) ||
       ssl->ctx->client_cert_cb == NULL) {
     return 1;
   }
