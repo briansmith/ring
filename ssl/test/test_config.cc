@@ -1235,12 +1235,6 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
     SSL_CTX_set_tlsext_servername_callback(ssl_ctx.get(), ServerNameCallback);
   }
 
-  if (!ticket_key.empty() &&
-      !SSL_CTX_set_tlsext_ticket_keys(ssl_ctx.get(), ticket_key.data(),
-                                      ticket_key.size())) {
-    return nullptr;
-  }
-
   if (enable_early_data) {
     SSL_CTX_set_early_data_enabled(ssl_ctx.get(), 1);
   }
@@ -1284,7 +1278,12 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
       return nullptr;
     }
     CopySessions(ssl_ctx.get(), old_ctx);
+  } else if (!ticket_key.empty() &&
+             !SSL_CTX_set_tlsext_ticket_keys(ssl_ctx.get(), ticket_key.data(),
+                                             ticket_key.size())) {
+    return nullptr;
   }
+
 
   if (install_cert_compression_algs &&
       (!SSL_CTX_add_cert_compression_alg(
