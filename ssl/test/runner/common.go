@@ -137,8 +137,8 @@ const (
 	extensionNextProtoNeg               uint16 = 13172 // not IANA assigned
 	extensionRenegotiationInfo          uint16 = 0xff01
 	extensionQUICTransportParams        uint16 = 0xffa5 // draft-ietf-quic-tls-13
-	extensionChannelID                  uint16 = 30032 // not IANA assigned
-	extensionDummyPQPadding             uint16 = 54537 // not IANA assigned
+	extensionChannelID                  uint16 = 30032  // not IANA assigned
+	extensionDummyPQPadding             uint16 = 54537  // not IANA assigned
 )
 
 // TLS signaling cipher suite values
@@ -1167,6 +1167,10 @@ type ProtocolBugs struct {
 	// RequireSessionTickets, if true, causes the client to require new
 	// sessions use session tickets instead of session IDs.
 	RequireSessionTickets bool
+
+	// RequireSessionIDs, if true, causes the client to require new sessions use
+	// session IDs instead of session tickets.
+	RequireSessionIDs bool
 
 	// NullAllCiphers, if true, causes every cipher to behave like the null
 	// cipher.

@@ -66,6 +66,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-no-tls12", &TestConfig::no_tls12 },
   { "-no-tls11", &TestConfig::no_tls11 },
   { "-no-tls1", &TestConfig::no_tls1 },
+  { "-no-ticket", &TestConfig::no_ticket },
   { "-enable-channel-id", &TestConfig::enable_channel_id },
   { "-shim-writes-first", &TestConfig::shim_writes_first },
   { "-expect-session-miss", &TestConfig::expect_session_miss },
@@ -1497,6 +1498,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (no_tls1) {
     SSL_set_options(ssl.get(), SSL_OP_NO_TLSv1);
+  }
+  if (no_ticket) {
+    SSL_set_options(ssl.get(), SSL_OP_NO_TICKET);
   }
   if (!expected_channel_id.empty() || enable_channel_id) {
     SSL_set_tls_channel_id_enabled(ssl.get(), 1);

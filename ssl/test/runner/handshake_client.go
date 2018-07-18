@@ -729,6 +729,9 @@ NextCipherSuite:
 			if c.config.Bugs.RequireSessionTickets && len(hs.session.sessionTicket) == 0 {
 				return errors.New("tls: new session used session IDs instead of tickets")
 			}
+			if c.config.Bugs.RequireSessionIDs && len(hs.session.sessionId) == 0 {
+				return errors.New("tls: new session used session tickets instead of IDs")
+			}
 			sessionCache.Put(cacheKey, hs.session)
 		}
 
@@ -1671,6 +1674,9 @@ func (hs *clientHandshakeState) readSessionTicket() error {
 
 	if c.vers == VersionSSL30 {
 		return errors.New("tls: negotiated session tickets in SSL 3.0")
+	}
+	if c.config.Bugs.ExpectNoNewSessionTicket {
+		return errors.New("tls: received unexpected NewSessionTicket")
 	}
 
 	msg, err := c.readHandshake()

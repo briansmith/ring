@@ -148,8 +148,18 @@ static const SSL_CIPHER *choose_tls13_cipher(
   return best;
 }
 
-static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
+static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
   SSL *const ssl = hs->ssl;
+  if (// If the client doesn't accept resumption with PSK_DHE_KE, don't send a
+      // session ticket.
+      !hs->accept_psk_mode ||
+      // We only implement stateless resumption in TLS 1.3, so skip sending
+      // tickets if disabled.
+      (SSL_get_options(ssl) & SSL_OP_NO_TICKET)) {
+    *out_sent_tickets = false;
+    return true;
+  }
+
   // TLS 1.3 recommends single-use tickets, so issue multiple tickets in case
   // the client makes several connections before getting a renewal.
   static const int kNumTickets = 2;
@@ -162,11 +172,11 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
     UniquePtr<SSL_SESSION> session(
         SSL_SESSION_dup(hs->new_session.get(), SSL_SESSION_INCLUDE_NONAUTH));
     if (!session) {
-      return 0;
+      return false;
     }
 
     if (!RAND_bytes((uint8_t *)&session->ticket_age_add, 4)) {
-      return 0;
+      return false;
     }
     session->ticket_age_add_valid = true;
     if (ssl->enable_early_data) {
@@ -188,7 +198,7 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
         !tls13_derive_session_psk(session.get(), nonce) ||
         !ssl_encrypt_ticket(hs, &ticket, session.get()) ||
         !CBB_add_u16_length_prefixed(&body, &extensions)) {
-      return 0;
+      return false;
     }
 
     if (ssl->enable_early_data) {
@@ -197,7 +207,7 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
           !CBB_add_u16_length_prefixed(&extensions, &early_data_info) ||
           !CBB_add_u32(&early_data_info, session->ticket_max_early_data) ||
           !CBB_flush(&extensions)) {
-        return 0;
+        return false;
       }
     }
 
@@ -205,15 +215,16 @@ static int add_new_session_tickets(SSL_HANDSHAKE *hs) {
     if (!CBB_add_u16(&extensions,
                      ssl_get_grease_value(hs, ssl_grease_ticket_extension)) ||
         !CBB_add_u16(&extensions, 0 /* empty */)) {
-      return 0;
+      return false;
     }
 
     if (!ssl_add_message_cbb(ssl, cbb.get())) {
-      return 0;
+      return false;
     }
   }
 
-  return 1;
+  *out_sent_tickets = true;
+  return true;
 }
 
 static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
@@ -723,11 +734,12 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
     assert(hs->hash_len <= 0xff);
     uint8_t header[4] = {SSL3_MT_FINISHED, 0, 0,
                          static_cast<uint8_t>(hs->hash_len)};
+    bool unused_sent_tickets;
     if (!hs->transcript.Update(header) ||
         !hs->transcript.Update(
             MakeConstSpan(hs->expected_client_finished, hs->hash_len)) ||
         !tls13_derive_resumption_secret(hs) ||
-        !add_new_session_tickets(hs)) {
+        !add_new_session_tickets(hs, &unused_sent_tickets)) {
       return ssl_hs_error;
     }
   }
@@ -904,19 +916,13 @@ static enum ssl_hs_wait_t do_read_client_finished(SSL_HANDSHAKE *hs) {
 }
 
 static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
-  // If the client doesn't accept resumption with PSK_DHE_KE, don't send a
-  // session ticket.
-  if (!hs->accept_psk_mode) {
-    hs->tls13_state = state_done;
-    return ssl_hs_ok;
-  }
-
-  if (!add_new_session_tickets(hs)) {
+  bool sent_tickets;
+  if (!add_new_session_tickets(hs, &sent_tickets)) {
     return ssl_hs_error;
   }
 
   hs->tls13_state = state_done;
-  return ssl_hs_flush;
+  return sent_tickets ? ssl_hs_flush : ssl_hs_ok;
 }
 
 enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs) {

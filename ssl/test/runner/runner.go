@@ -11163,6 +11163,44 @@ func addSessionTicketTests() {
 		resumeSession:        true,
 		expectResumeRejected: true,
 	})
+
+	for _, ver := range tlsVersions {
+		// Prior to TLS 1.3, disabling session tickets enables session IDs.
+		useStatefulResumption := ver.version < VersionTLS13
+
+		// SSL_OP_NO_TICKET implies the server must not mint any tickets.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     ver.name + "-NoTicket-NoMint",
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+				Bugs: ProtocolBugs{
+					ExpectNoNewSessionTicket: true,
+					RequireSessionIDs:        useStatefulResumption,
+				},
+			},
+			resumeSession: useStatefulResumption,
+			tls13Variant:  ver.tls13Variant,
+			flags:         []string{"-no-ticket"},
+		})
+
+		// SSL_OP_NO_TICKET implies the server must not accept any tickets.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     ver.name + "-NoTicket-NoAccept",
+			config: Config{
+				MinVersion: ver.version,
+				MaxVersion: ver.version,
+			},
+			tls13Variant:         ver.tls13Variant,
+			resumeSession:        true,
+			expectResumeRejected: true,
+			// Set SSL_OP_NO_TICKET on the second connection, after the first
+			// has established tickets.
+			flags: []string{"-on-resume-no-ticket"},
+		})
+	}
 }
 
 func addChangeCipherSpecTests() {
