@@ -121,6 +121,13 @@ perlasm(x86_64-mont.${ASM_EXT} bn/asm/x86_64-mont.pl)
 perlasm(x86-mont.${ASM_EXT} bn/asm/x86-mont.pl)
 
 if(FIPS_DELOCATE)
+  if(OPENSSL_NO_ASM)
+    # If OPENSSL_NO_ASM was defined then ASM will not have been enabled, but in
+    # FIPS mode we have to have it because the module build requires going via
+    # textual assembly.
+    enable_language(ASM)
+  endif()
+
   add_library(
     bcm_c_generated_asm
 
