@@ -48,6 +48,10 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <sys/time.h>
 #endif
 
+#if !defined(OPENSSL_NO_THREADS)
+#include <thread>
+#endif
+
 
 namespace bssl {
 
@@ -4137,6 +4141,132 @@ TEST_P(SSLVersionTest, VerifyBeforeCertRequest) {
   EXPECT_FALSE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
                                       server_ctx_.get()));
 }
+
+// These tests test multi-threaded behavior. They are intended to run with
+// ThreadSanitizer.
+#if !defined(OPENSSL_NO_THREADS)
+TEST_P(SSLVersionTest, SessionCacheThreads) {
+  SSL_CTX_set_options(server_ctx_.get(), SSL_OP_NO_TICKET);
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
+
+  if (version() == TLS1_3_VERSION) {
+    // Our TLS 1.3 implementation does not support stateful resumption.
+    ASSERT_FALSE(CreateClientSession(client_ctx_.get(), server_ctx_.get()));
+    return;
+  }
+
+  // Establish two client sessions to test with.
+  bssl::UniquePtr<SSL_SESSION> session1 =
+      CreateClientSession(client_ctx_.get(), server_ctx_.get());
+  ASSERT_TRUE(session1);
+  bssl::UniquePtr<SSL_SESSION> session2 =
+      CreateClientSession(client_ctx_.get(), server_ctx_.get());
+  ASSERT_TRUE(session2);
+
+  auto connect_with_session = [&](SSL_SESSION *session) {
+    ClientConfig config;
+    config.session = session;
+    UniquePtr<SSL> client, server;
+    EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                       server_ctx_.get(), config));
+  };
+
+  // Resume sessions in parallel with establishing new ones.
+  {
+    std::vector<std::thread> threads;
+    threads.emplace_back([&] { connect_with_session(nullptr); });
+    threads.emplace_back([&] { connect_with_session(nullptr); });
+    threads.emplace_back([&] { connect_with_session(session1.get()); });
+    threads.emplace_back([&] { connect_with_session(session1.get()); });
+    threads.emplace_back([&] { connect_with_session(session2.get()); });
+    threads.emplace_back([&] { connect_with_session(session2.get()); });
+    for (auto &thread : threads) {
+      thread.join();
+    }
+  }
+
+  // Hit the maximum session cache size across multiple threads
+  size_t limit = SSL_CTX_sess_number(server_ctx_.get()) + 2;
+  SSL_CTX_sess_set_cache_size(server_ctx_.get(), limit);
+  {
+    std::vector<std::thread> threads;
+    for (int i = 0; i < 4; i++) {
+      threads.emplace_back([&]() {
+        connect_with_session(nullptr);
+        EXPECT_LE(SSL_CTX_sess_number(server_ctx_.get()), limit);
+      });
+    }
+    for (auto &thread : threads) {
+      thread.join();
+    }
+    EXPECT_EQ(SSL_CTX_sess_number(server_ctx_.get()), limit);
+  }
+}
+
+TEST_P(SSLVersionTest, SessionTicketThreads) {
+  for (bool renew_ticket : {false, true}) {
+    SCOPED_TRACE(renew_ticket);
+    ResetContexts();
+    SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+    SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
+    if (renew_ticket) {
+      SSL_CTX_set_tlsext_ticket_key_cb(server_ctx_.get(), RenewTicketCallback);
+    }
+
+    // Establish two client sessions to test with.
+    bssl::UniquePtr<SSL_SESSION> session1 =
+        CreateClientSession(client_ctx_.get(), server_ctx_.get());
+    ASSERT_TRUE(session1);
+    bssl::UniquePtr<SSL_SESSION> session2 =
+        CreateClientSession(client_ctx_.get(), server_ctx_.get());
+    ASSERT_TRUE(session2);
+
+    auto connect_with_session = [&](SSL_SESSION *session) {
+      ClientConfig config;
+      config.session = session;
+      UniquePtr<SSL> client, server;
+      EXPECT_TRUE(ConnectClientAndServer(&client, &server, client_ctx_.get(),
+                                         server_ctx_.get(), config));
+    };
+
+    // Resume sessions in parallel with establishing new ones.
+    {
+      std::vector<std::thread> threads;
+      threads.emplace_back([&] { connect_with_session(nullptr); });
+      threads.emplace_back([&] { connect_with_session(nullptr); });
+      threads.emplace_back([&] { connect_with_session(session1.get()); });
+      threads.emplace_back([&] { connect_with_session(session1.get()); });
+      threads.emplace_back([&] { connect_with_session(session2.get()); });
+      threads.emplace_back([&] { connect_with_session(session2.get()); });
+      for (auto &thread : threads) {
+        thread.join();
+      }
+    }
+  }
+}
+
+// SSL_CTX_get0_certificate needs to lock internally. Test this works.
+TEST(SSLTest, GetCertificateThreads) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
+
+  // Existing code expects |SSL_CTX_get0_certificate| to be callable from two
+  // threads concurrently. It originally was an immutable operation. Now we
+  // implement it with a thread-safe cache, so it is worth testing.
+  X509 *cert2_thread;
+  std::thread thread(
+      [&] { cert2_thread = SSL_CTX_get0_certificate(ctx.get()); });
+  X509 *cert2 = SSL_CTX_get0_certificate(ctx.get());
+  thread.join();
+
+  EXPECT_EQ(cert2, cert2_thread);
+  EXPECT_EQ(0, X509_cmp(cert.get(), cert2));
+}
+#endif
 
 // TODO(davidben): Convert this file to GTest properly.
 TEST(SSLTest, AllTests) {
