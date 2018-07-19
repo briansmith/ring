@@ -3412,21 +3412,24 @@ bool ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs) {
 }
 
 static enum ssl_ticket_aead_result_t decrypt_ticket_with_cipher_ctx(
-    uint8_t **out, size_t *out_len, EVP_CIPHER_CTX *cipher_ctx,
-    HMAC_CTX *hmac_ctx, const uint8_t *ticket, size_t ticket_len) {
+    Array<uint8_t> *out, EVP_CIPHER_CTX *cipher_ctx, HMAC_CTX *hmac_ctx,
+    Span<const uint8_t> ticket) {
   size_t iv_len = EVP_CIPHER_CTX_iv_length(cipher_ctx);
 
   // Check the MAC at the end of the ticket.
   uint8_t mac[EVP_MAX_MD_SIZE];
   size_t mac_len = HMAC_size(hmac_ctx);
-  if (ticket_len < SSL_TICKET_KEY_NAME_LEN + iv_len + 1 + mac_len) {
+  if (ticket.size() < SSL_TICKET_KEY_NAME_LEN + iv_len + 1 + mac_len) {
     // The ticket must be large enough for key name, IV, data, and MAC.
     return ssl_ticket_aead_ignore_ticket;
   }
-  HMAC_Update(hmac_ctx, ticket, ticket_len - mac_len);
+  // Split the ticket into the ticket and the MAC.
+  auto ticket_mac = ticket.subspan(ticket.size() - mac_len);
+  ticket = ticket.subspan(0, ticket.size() - mac_len);
+  HMAC_Update(hmac_ctx, ticket.data(), ticket.size());
   HMAC_Final(hmac_ctx, mac, NULL);
-  bool mac_ok =
-      CRYPTO_memcmp(mac, ticket + (ticket_len - mac_len), mac_len) == 0;
+  assert(mac_len == ticket_mac.size());
+  bool mac_ok = CRYPTO_memcmp(mac, ticket_mac.data(), mac_len) == 0;
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
   mac_ok = true;
 #endif
@@ -3435,46 +3438,48 @@ static enum ssl_ticket_aead_result_t decrypt_ticket_with_cipher_ctx(
   }
 
   // Decrypt the session data.
-  const uint8_t *ciphertext = ticket + SSL_TICKET_KEY_NAME_LEN + iv_len;
-  size_t ciphertext_len = ticket_len - SSL_TICKET_KEY_NAME_LEN - iv_len -
-                          mac_len;
-  UniquePtr<uint8_t> plaintext((uint8_t *)OPENSSL_malloc(ciphertext_len));
-  if (!plaintext) {
+  auto ciphertext = ticket.subspan(SSL_TICKET_KEY_NAME_LEN + iv_len);
+  Array<uint8_t> plaintext;
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  if (!plaintext.CopyFrom(ciphertext)) {
     return ssl_ticket_aead_error;
   }
-  size_t plaintext_len;
-#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
-  OPENSSL_memcpy(plaintext.get(), ciphertext, ciphertext_len);
-  plaintext_len = ciphertext_len;
 #else
-  if (ciphertext_len >= INT_MAX) {
+  if (ciphertext.size() >= INT_MAX) {
     return ssl_ticket_aead_ignore_ticket;
   }
+  if (!plaintext.Init(ciphertext.size())) {
+    return ssl_ticket_aead_error;
+  }
   int len1, len2;
-  if (!EVP_DecryptUpdate(cipher_ctx, plaintext.get(), &len1, ciphertext,
-                         (int)ciphertext_len) ||
-      !EVP_DecryptFinal_ex(cipher_ctx, plaintext.get() + len1, &len2)) {
+  if (!EVP_DecryptUpdate(cipher_ctx, plaintext.data(), &len1, ciphertext.data(),
+                         (int)ciphertext.size()) ||
+      !EVP_DecryptFinal_ex(cipher_ctx, plaintext.data() + len1, &len2)) {
     ERR_clear_error();
     return ssl_ticket_aead_ignore_ticket;
   }
-  plaintext_len = (size_t)(len1) + len2;
+  plaintext.Shrink(static_cast<size_t>(len1) + len2);
 #endif
 
-  *out = plaintext.release();
-  *out_len = plaintext_len;
+  *out = std::move(plaintext);
   return ssl_ticket_aead_success;
 }
 
 static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_cb(
-    SSL_HANDSHAKE *hs, uint8_t **out, size_t *out_len, bool *out_renew_ticket,
-    const uint8_t *ticket, size_t ticket_len) {
-  assert(ticket_len >= SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH);
+    SSL_HANDSHAKE *hs, Array<uint8_t> *out, bool *out_renew_ticket,
+    Span<const uint8_t> ticket) {
+  assert(ticket.size() >= SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH);
   ScopedEVP_CIPHER_CTX cipher_ctx;
   ScopedHMAC_CTX hmac_ctx;
-  const uint8_t *iv = ticket + SSL_TICKET_KEY_NAME_LEN;
+  auto name = ticket.subspan(0, SSL_TICKET_KEY_NAME_LEN);
+  // The actual IV is shorter, but the length is determined by the callback's
+  // chosen cipher. Instead we pass in |EVP_MAX_IV_LENGTH| worth of IV to ensure
+  // the callback has enough.
+  auto iv = ticket.subspan(SSL_TICKET_KEY_NAME_LEN, EVP_MAX_IV_LENGTH);
   int cb_ret = hs->ssl->session_ctx->ticket_key_cb(
-      hs->ssl, (uint8_t *)ticket /* name */, (uint8_t *)iv, cipher_ctx.get(),
-      hmac_ctx.get(), 0 /* decrypt */);
+      hs->ssl, const_cast<uint8_t *>(name.data()),
+      const_cast<uint8_t *>(iv.data()), cipher_ctx.get(), hmac_ctx.get(),
+      0 /* decrypt */);
   if (cb_ret < 0) {
     return ssl_ticket_aead_error;
   } else if (cb_ret == 0) {
@@ -3484,14 +3489,13 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_cb(
   } else {
     assert(cb_ret == 1);
   }
-  return decrypt_ticket_with_cipher_ctx(out, out_len, cipher_ctx.get(),
-                                        hmac_ctx.get(), ticket, ticket_len);
+  return decrypt_ticket_with_cipher_ctx(out, cipher_ctx.get(), hmac_ctx.get(),
+                                        ticket);
 }
 
 static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_ticket_keys(
-    SSL_HANDSHAKE *hs, uint8_t **out, size_t *out_len, const uint8_t *ticket,
-    size_t ticket_len) {
-  assert(ticket_len >= SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH);
+    SSL_HANDSHAKE *hs, Array<uint8_t> *out, Span<const uint8_t> ticket) {
+  assert(ticket.size() >= SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH);
   SSL_CTX *ctx = hs->ssl->session_ctx.get();
 
   // Rotate the ticket key if necessary.
@@ -3499,40 +3503,40 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_ticket_keys(
     return ssl_ticket_aead_error;
   }
 
+  const EVP_CIPHER *cipher = EVP_aes_128_cbc();
+  auto name = ticket.subspan(0, SSL_TICKET_KEY_NAME_LEN);
+  auto iv =
+      ticket.subspan(SSL_TICKET_KEY_NAME_LEN, EVP_CIPHER_iv_length(cipher));
+
   // Pick the matching ticket key and decrypt.
   ScopedEVP_CIPHER_CTX cipher_ctx;
   ScopedHMAC_CTX hmac_ctx;
   {
     MutexReadLock lock(&ctx->lock);
     const TicketKey *key;
-    if (ctx->ticket_key_current &&
-        !OPENSSL_memcmp(ctx->ticket_key_current->name, ticket,
-                        SSL_TICKET_KEY_NAME_LEN)) {
+    if (ctx->ticket_key_current && name == ctx->ticket_key_current->name) {
       key = ctx->ticket_key_current.get();
-    } else if (ctx->ticket_key_prev &&
-               !OPENSSL_memcmp(ctx->ticket_key_prev->name, ticket,
-                               SSL_TICKET_KEY_NAME_LEN)) {
+    } else if (ctx->ticket_key_prev && name == ctx->ticket_key_prev->name) {
       key = ctx->ticket_key_prev.get();
     } else {
       return ssl_ticket_aead_ignore_ticket;
     }
-    const uint8_t *iv = ticket + SSL_TICKET_KEY_NAME_LEN;
     if (!HMAC_Init_ex(hmac_ctx.get(), key->hmac_key, sizeof(key->hmac_key),
                       tlsext_tick_md(), NULL) ||
-        !EVP_DecryptInit_ex(cipher_ctx.get(), EVP_aes_128_cbc(), NULL,
-                            key->aes_key, iv)) {
+        !EVP_DecryptInit_ex(cipher_ctx.get(), cipher, NULL,
+                            key->aes_key, iv.data())) {
       return ssl_ticket_aead_error;
     }
   }
-  return decrypt_ticket_with_cipher_ctx(out, out_len, cipher_ctx.get(),
-                                        hmac_ctx.get(), ticket, ticket_len);
+  return decrypt_ticket_with_cipher_ctx(out, cipher_ctx.get(), hmac_ctx.get(),
+                                        ticket);
 }
 
 static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_method(
-    SSL_HANDSHAKE *hs, uint8_t **out, size_t *out_len, bool *out_renew_ticket,
-    const uint8_t *ticket, size_t ticket_len) {
-  uint8_t *plaintext = (uint8_t *)OPENSSL_malloc(ticket_len);
-  if (plaintext == NULL) {
+    SSL_HANDSHAKE *hs, Array<uint8_t> *out, bool *out_renew_ticket,
+    Span<const uint8_t> ticket) {
+  Array<uint8_t> plaintext;
+  if (!plaintext.Init(ticket.size())) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
     return ssl_ticket_aead_error;
   }
@@ -3540,50 +3544,47 @@ static enum ssl_ticket_aead_result_t ssl_decrypt_ticket_with_method(
   size_t plaintext_len;
   const enum ssl_ticket_aead_result_t result =
       hs->ssl->session_ctx->ticket_aead_method->open(
-          hs->ssl, plaintext, &plaintext_len, ticket_len, ticket, ticket_len);
-
-  if (result == ssl_ticket_aead_success) {
-    *out = plaintext;
-    plaintext = NULL;
-    *out_len = plaintext_len;
+          hs->ssl, plaintext.data(), &plaintext_len, ticket.size(),
+          ticket.data(), ticket.size());
+  if (result != ssl_ticket_aead_success) {
+    return result;
   }
 
-  OPENSSL_free(plaintext);
-  return result;
+  plaintext.Shrink(plaintext_len);
+  *out = std::move(plaintext);
+  return ssl_ticket_aead_success;
 }
 
 enum ssl_ticket_aead_result_t ssl_process_ticket(
     SSL_HANDSHAKE *hs, UniquePtr<SSL_SESSION> *out_session,
-    bool *out_renew_ticket, const uint8_t *ticket, size_t ticket_len,
-    const uint8_t *session_id, size_t session_id_len) {
+    bool *out_renew_ticket, Span<const uint8_t> ticket,
+    Span<const uint8_t> session_id) {
   *out_renew_ticket = false;
   out_session->reset();
 
   if ((SSL_get_options(hs->ssl) & SSL_OP_NO_TICKET) ||
-      session_id_len > SSL_MAX_SSL_SESSION_ID_LENGTH) {
+      session_id.size() > SSL_MAX_SSL_SESSION_ID_LENGTH) {
     return ssl_ticket_aead_ignore_ticket;
   }
 
-  uint8_t *plaintext = NULL;
-  size_t plaintext_len;
+  Array<uint8_t> plaintext;
   enum ssl_ticket_aead_result_t result;
   if (hs->ssl->session_ctx->ticket_aead_method != NULL) {
-    result = ssl_decrypt_ticket_with_method(
-        hs, &plaintext, &plaintext_len, out_renew_ticket, ticket, ticket_len);
+    result = ssl_decrypt_ticket_with_method(hs, &plaintext, out_renew_ticket,
+                                            ticket);
   } else {
     // Ensure there is room for the key name and the largest IV |ticket_key_cb|
     // may try to consume. The real limit may be lower, but the maximum IV
     // length should be well under the minimum size for the session material and
     // HMAC.
-    if (ticket_len < SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH) {
+    if (ticket.size() < SSL_TICKET_KEY_NAME_LEN + EVP_MAX_IV_LENGTH) {
       return ssl_ticket_aead_ignore_ticket;
     }
     if (hs->ssl->session_ctx->ticket_key_cb != NULL) {
-      result = ssl_decrypt_ticket_with_cb(hs, &plaintext, &plaintext_len,
-                                          out_renew_ticket, ticket, ticket_len);
+      result =
+          ssl_decrypt_ticket_with_cb(hs, &plaintext, out_renew_ticket, ticket);
     } else {
-      result = ssl_decrypt_ticket_with_ticket_keys(
-          hs, &plaintext, &plaintext_len, ticket, ticket_len);
+      result = ssl_decrypt_ticket_with_ticket_keys(hs, &plaintext, ticket);
     }
   }
 
@@ -3592,10 +3593,8 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
   }
 
   // Decode the session.
-  UniquePtr<SSL_SESSION> session(
-      SSL_SESSION_from_bytes(plaintext, plaintext_len, hs->ssl->ctx.get()));
-  OPENSSL_free(plaintext);
-
+  UniquePtr<SSL_SESSION> session(SSL_SESSION_from_bytes(
+      plaintext.data(), plaintext.size(), hs->ssl->ctx.get()));
   if (!session) {
     ERR_clear_error();  // Don't leave an error on the queue.
     return ssl_ticket_aead_ignore_ticket;
@@ -3603,8 +3602,8 @@ enum ssl_ticket_aead_result_t ssl_process_ticket(
 
   // Copy the client's session ID into the new session, to denote the ticket has
   // been accepted.
-  OPENSSL_memcpy(session->session_id, session_id, session_id_len);
-  session->session_id_length = session_id_len;
+  OPENSSL_memcpy(session->session_id, session_id.data(), session_id.size());
+  session->session_id_length = session_id.size();
 
   *out_session = std::move(session);
   return ssl_ticket_aead_success;

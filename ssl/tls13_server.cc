@@ -313,8 +313,7 @@ static enum ssl_ticket_aead_result_t select_session(
   bool unused_renew;
   UniquePtr<SSL_SESSION> session;
   enum ssl_ticket_aead_result_t ret =
-      ssl_process_ticket(hs, &session, &unused_renew, CBS_data(&ticket),
-                         CBS_len(&ticket), NULL, 0);
+      ssl_process_ticket(hs, &session, &unused_renew, ticket, {});
   switch (ret) {
     case ssl_ticket_aead_success:
       break;

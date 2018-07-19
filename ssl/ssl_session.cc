@@ -718,16 +718,15 @@ enum ssl_hs_wait_t ssl_get_prev_session(SSL_HANDSHAKE *hs,
   bool renew_ticket = false;
 
   // If tickets are disabled, always behave as if no tickets are present.
-  const uint8_t *ticket = NULL;
-  size_t ticket_len = 0;
+  CBS ticket;
   const bool tickets_supported =
       !(SSL_get_options(hs->ssl) & SSL_OP_NO_TICKET) &&
-      SSL_early_callback_ctx_extension_get(
-          client_hello, TLSEXT_TYPE_session_ticket, &ticket, &ticket_len);
-  if (tickets_supported && ticket_len > 0) {
-    switch (ssl_process_ticket(hs, &session, &renew_ticket, ticket, ticket_len,
-                               client_hello->session_id,
-                               client_hello->session_id_len)) {
+      ssl_client_hello_get_extension(client_hello, &ticket,
+                                     TLSEXT_TYPE_session_ticket);
+  if (tickets_supported && CBS_len(&ticket) != 0) {
+    switch (ssl_process_ticket(hs, &session, &renew_ticket, ticket,
+                               MakeConstSpan(client_hello->session_id,
+                                             client_hello->session_id_len))) {
       case ssl_ticket_aead_success:
         break;
       case ssl_ticket_aead_ignore_ticket:

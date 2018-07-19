@@ -339,6 +339,15 @@ class Array {
     return true;
   }
 
+  // Shrink shrinks the stored size of the array to |new_size|. It crashes if
+  // the new size is larger. Note this does not shrink the allocation itself.
+  void Shrink(size_t new_size) {
+    if (new_size > size_) {
+      abort();
+    }
+    size_ = new_size;
+  }
+
  private:
   T *data_ = nullptr;
   size_t size_ = 0;
@@ -2701,8 +2710,8 @@ bool ssl_parse_serverhello_tlsext(SSL_HANDSHAKE *hs, CBS *cbs);
 //   |ssl_ticket_aead_error|: an error occured that is fatal to the connection.
 enum ssl_ticket_aead_result_t ssl_process_ticket(
     SSL_HANDSHAKE *hs, UniquePtr<SSL_SESSION> *out_session,
-    bool *out_renew_ticket, const uint8_t *ticket, size_t ticket_len,
-    const uint8_t *session_id, size_t session_id_len);
+    bool *out_renew_ticket, Span<const uint8_t> ticket,
+    Span<const uint8_t> session_id);
 
 // tls1_verify_channel_id processes |msg| as a Channel ID message, and verifies
 // the signature. If the key is valid, it saves the Channel ID and returns true.
