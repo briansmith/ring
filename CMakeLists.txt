@@ -268,6 +268,16 @@ if(CFI)
   set(OPENSSL_NO_ASM "1")
 endif()
 
+if(TSAN)
+  if(NOT CLANG)
+    message(FATAL_ERROR "Cannot enable TSAN unless using Clang")
+  endif()
+
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=thread")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=thread")
+endif()
+
 if (GCOV)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fprofile-arcs -ftest-coverage")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
