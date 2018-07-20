@@ -2346,3 +2346,28 @@ TEST_F(BNTest, CountLowZeroBits) {
   ASSERT_TRUE(bn_resize_words(bn.get(), 16));
   EXPECT_EQ(0, BN_count_low_zero_bits(bn.get()));
 }
+
+TEST_F(BNTest, WriteIntoNegative) {
+  bssl::UniquePtr<BIGNUM> r(BN_new());
+  ASSERT_TRUE(r);
+  bssl::UniquePtr<BIGNUM> two(BN_new());
+  ASSERT_TRUE(two);
+  ASSERT_TRUE(BN_set_word(two.get(), 2));
+  bssl::UniquePtr<BIGNUM> three(BN_new());
+  ASSERT_TRUE(three);
+  ASSERT_TRUE(BN_set_word(three.get(), 3));
+  bssl::UniquePtr<BIGNUM> seven(BN_new());
+  ASSERT_TRUE(seven);
+  ASSERT_TRUE(BN_set_word(seven.get(), 7));
+
+  ASSERT_TRUE(BN_set_word(r.get(), 1));
+  BN_set_negative(r.get(), 1);
+  ASSERT_TRUE(BN_mod_add_quick(r.get(), two.get(), three.get(), seven.get()));
+  EXPECT_TRUE(BN_is_word(r.get(), 5));
+  EXPECT_FALSE(BN_is_negative(r.get()));
+
+  BN_set_negative(r.get(), 1);
+  ASSERT_TRUE(BN_mod_sub_quick(r.get(), two.get(), three.get(), seven.get()));
+  EXPECT_TRUE(BN_is_word(r.get(), 6));
+  EXPECT_FALSE(BN_is_negative(r.get()));
+}
