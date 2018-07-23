@@ -99,6 +99,7 @@ impl private::Sealed for SystemRandom {}
 #[cfg(not(any(target_os = "linux",
               target_os = "macos",
               target_os = "ios",
+              target_os = "fuchsia",
               windows)))]
 use self::urandom::fill as fill_impl;
 
@@ -112,6 +113,9 @@ use self::sysrand_or_urandom::fill as fill_impl;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use self::darwin::fill as fill_impl;
 use private;
+
+#[cfg(any(target_os = "fuchsia"))]
+use self::fuchsia::fill as fill_impl;
 
 #[cfg(target_os = "linux")]
 mod sysrand_chunk {
@@ -189,6 +193,7 @@ mod sysrand {
 
 // Keep the `cfg` conditions in sync with the conditions in lib.rs.
 #[cfg(all(any(target_os = "redox", unix),
+          not(any(target_os = "fuchsia")),
           not(any(target_os = "macos", target_os = "ios")),
           not(all(target_os = "linux",
                   not(feature = "dev_urandom_fallback")))))]
@@ -276,6 +281,26 @@ mod darwin {
         // For now `rnd` must be `kSecRandomDefault`.
         fn SecRandomCopyBytes(rnd: &'static SecRandomRef, count: c::size_t,
                               bytes: *mut u8) -> c::int;
+    }
+}
+
+#[cfg(target_os = "fuchsia")]
+mod fuchsia {
+    extern crate fuchsia_zircon;
+
+    use error;
+
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        for s in dest.chunks_mut(fuchsia_zircon::sys::ZX_CPRNG_DRAW_MAX_LEN) {
+            let mut filled = 0;
+            while filled < s.len() {
+                match fuchsia_zircon::cprng_draw(&mut s[filled..]) {
+                    Ok(actual) => filled += actual,
+                    Err(e) => panic!("cprng_draw failed: {:?}", e),
+                };
+            }
+        }
+        Ok(())
     }
 }
 
