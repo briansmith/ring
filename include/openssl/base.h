@@ -222,6 +222,9 @@ extern "C" {
 #if __has_feature(address_sanitizer)
 #define OPENSSL_ASAN
 #endif
+#if __has_feature(thread_sanitizer)
+#define OPENSSL_TSAN
+#endif
 #if __has_feature(memory_sanitizer)
 #define OPENSSL_MSAN
 #endif
