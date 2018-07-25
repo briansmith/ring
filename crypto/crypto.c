@@ -19,6 +19,19 @@
 #include "internal.h"
 
 
+#if defined(OPENSSL_MSAN) && !defined(OPENSSL_NO_ASM)
+// MSan works by instrumenting memory accesses in the compiler. Accesses from
+// uninstrumented code, such as assembly, are invisible to it. MSan will
+// incorrectly report reads from assembly-initialized memory as uninitialized.
+// If building BoringSSL with MSan, exclude assembly files from the build and
+// define OPENSSL_NO_ASM.
+//
+// This is checked here rather than in a header because the consumer might not
+// define OPENSSL_NO_ASM. It is only necessary for BoringSSL source files to be
+// built with it.
+#error "BoringSSL must be built with assembly disabled to use MSan."
+#endif
+
 #if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_STATIC_ARMCAP) && \
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
      defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64) || \
