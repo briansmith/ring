@@ -157,7 +157,8 @@ func convertWycheproof(f io.Writer, jsonPath string) error {
 		// Skip tests with unsupported curves. We filter these out at
 		// conversion time to avoid unnecessarily inflating
 		// crypto_test_data.cc.
-		if curve, ok := group["curve"]; ok && !isSupportedCurve(curve.(string)) {
+		groupCurve := group["curve"]
+		if groupCurve != nil && !isSupportedCurve(groupCurve.(string)) {
 			continue
 		}
 		if keyI, ok := group["key"]; ok {
@@ -183,8 +184,10 @@ func convertWycheproof(f io.Writer, jsonPath string) error {
 		tests := group["tests"].([]interface{})
 		for _, testI := range tests {
 			test := testI.(map[string]interface{})
+
+			curve := test["curve"]
 			// Skip tests with unsupported curves.
-			if curve, ok := test["curve"]; ok && !isSupportedCurve(curve.(string)) {
+			if curve != nil && !isSupportedCurve(curve.(string)) {
 				continue
 			}
 			if _, err := fmt.Fprintf(f, "# tcId = %d\n", int(test["tcId"].(float64))); err != nil {
@@ -200,6 +203,13 @@ func convertWycheproof(f io.Writer, jsonPath string) error {
 					continue
 				}
 				if err := printAttribute(f, k, test[k], false); err != nil {
+					return err
+				}
+			}
+			// If the curve was only specified at the group level then copy it into
+			// each test.
+			if curve == nil && groupCurve != nil {
+				if err := printAttribute(f, "curve", groupCurve, false); err != nil {
 					return err
 				}
 			}
