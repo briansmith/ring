@@ -57,6 +57,7 @@
 #include "des/des.c"
 #include "digest/digest.c"
 #include "digest/digests.c"
+#include "ecdh/ecdh.c"
 #include "ecdsa/ecdsa.c"
 #include "ec/ec.c"
 #include "ec/ec_key.c"

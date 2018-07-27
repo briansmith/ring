@@ -25,6 +25,7 @@
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
 #include <openssl/nid.h>
+#include <openssl/sha.h>
 
 #include "../crypto/internal.h"
 #include "../crypto/test/file_test.h"
@@ -35,20 +36,20 @@ static bool TestKAS(FileTest *t, void *arg) {
   const bool validate = *reinterpret_cast<bool *>(arg);
 
   int nid = NID_undef;
-  const EVP_MD *md = nullptr;
+  size_t digest_len = 0;
 
   if (t->HasInstruction("EB - SHA224")) {
     nid = NID_secp224r1;
-    md = EVP_sha224();
+    digest_len = SHA224_DIGEST_LENGTH;
   } else if (t->HasInstruction("EC - SHA256")) {
     nid = NID_X9_62_prime256v1;
-    md = EVP_sha256();
+    digest_len = SHA256_DIGEST_LENGTH;
   } else if (t->HasInstruction("ED - SHA384")) {
     nid = NID_secp384r1;
-    md = EVP_sha384();
+    digest_len = SHA384_DIGEST_LENGTH;
   } else if (t->HasInstruction("EE - SHA512")) {
     nid = NID_secp521r1;
-    md = EVP_sha512();
+    digest_len = SHA512_DIGEST_LENGTH;
   } else {
     return false;
   }
@@ -86,17 +87,9 @@ static bool TestKAS(FileTest *t, void *arg) {
     return false;
   }
 
-  constexpr size_t kMaxCurveFieldBits = 521;
-  uint8_t shared_bytes[(kMaxCurveFieldBits + 7)/8];
-  const int shared_bytes_len =
-      ECDH_compute_key(shared_bytes, sizeof(shared_bytes), their_point.get(),
-                       ec_key.get(), nullptr);
-
   uint8_t digest[EVP_MAX_MD_SIZE];
-  unsigned digest_len;
-  if (shared_bytes_len < 0 ||
-      !EVP_Digest(shared_bytes, shared_bytes_len, digest, &digest_len, md,
-                  nullptr)) {
+  if (!ECDH_compute_key_fips(digest, digest_len, their_point.get(),
+                             ec_key.get())) {
     return false;
   }
 

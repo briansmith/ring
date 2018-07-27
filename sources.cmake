@@ -40,7 +40,7 @@ set(
   crypto/cmac/cavp_aes128_cmac_tests.txt
   crypto/cmac/cavp_aes192_cmac_tests.txt
   crypto/cmac/cavp_aes256_cmac_tests.txt
-  crypto/ecdh/ecdh_tests.txt
+  crypto/ecdh_extra/ecdh_tests.txt
   crypto/evp/evp_tests.txt
   crypto/evp/scrypt_tests.txt
   crypto/fipsmodule/aes/aes_tests.txt

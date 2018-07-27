@@ -28,6 +28,7 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/nid.h>
+#include <openssl/sha.h>
 
 #include "../test/file_test.h"
 #include "../test/test_util.h"
@@ -68,7 +69,7 @@ static bssl::UniquePtr<BIGNUM> GetBIGNUM(FileTest *t, const char *key) {
 }
 
 TEST(ECDHTest, TestVectors) {
-  FileTestGTest("crypto/ecdh/ecdh_tests.txt", [](FileTest *t) {
+  FileTestGTest("crypto/ecdh_extra/ecdh_tests.txt", [](FileTest *t) {
     bssl::UniquePtr<EC_GROUP> group = GetCurve(t, "Curve");
     ASSERT_TRUE(group);
     bssl::UniquePtr<BIGNUM> priv_key = GetBIGNUM(t, "Private");
@@ -115,6 +116,13 @@ TEST(ECDHTest, TestVectors) {
     ASSERT_GE(ret, 0);
     EXPECT_EQ(Bytes(z.data(), z.size() - 1),
               Bytes(actual_z.data(), static_cast<size_t>(ret)));
+
+    // Test that |ECDH_compute_key_fips| hashes as expected.
+    uint8_t digest[SHA256_DIGEST_LENGTH], expected_digest[SHA256_DIGEST_LENGTH];
+    ASSERT_TRUE(ECDH_compute_key_fips(digest, sizeof(digest),
+                                      peer_pub_key.get(), key.get()));
+    SHA256(z.data(), z.size(), expected_digest);
+    EXPECT_EQ(Bytes(digest), Bytes(expected_digest));
   });
 }
 
