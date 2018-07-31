@@ -410,6 +410,8 @@ OPENSSL_EXPORT void X509_STORE_CTX_set_depth(X509_STORE_CTX *ctx, int depth);
 #define X509_V_FLAG_SUITEB_192_LOS		0x20000
 /* Suite B 128 bit mode allowing 192 bit algorithms */
 #define X509_V_FLAG_SUITEB_128_LOS		0x30000
+/* Disable workarounds for broken certificates */
+#define X509_V_FLAG_REQUIRE_CA_BASIC_CONSTRAINTS	0x40000
 
 /* Allow partial chains if at least one certificate is in trusted store */
 #define X509_V_FLAG_PARTIAL_CHAIN		0x80000

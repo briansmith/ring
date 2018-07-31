@@ -648,7 +648,11 @@ static int check_chain_extensions(X509_STORE_CTX *ctx)
         default:
             if ((ret == 0)
                 || ((ctx->param->flags & X509_V_FLAG_X509_STRICT)
-                    && (ret != 1))) {
+                    && (ret != 1))
+                || ((ctx->param->flags &
+                     X509_V_FLAG_REQUIRE_CA_BASIC_CONSTRAINTS)
+                    && (ret != 1))
+                ) {
                 ret = 0;
                 ctx->error = X509_V_ERR_INVALID_CA;
             } else

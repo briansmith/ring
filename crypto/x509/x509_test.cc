@@ -495,6 +495,137 @@ static const char kSANTypesRoot[] =
 // /JKuuFGmzkG+rUbXFmo/Zg2ozVplw71NnQJ4znPsf7A=
 // -----END RSA PRIVATE KEY-----
 
+// The following four certificates were generated with this Go program, varying
+// |includeNetscapeExtension| and defining rootKeyPEM and rootCertPEM to be
+// strings containing the kSANTypesRoot, above.
+
+// package main
+
+// import (
+//     "crypto/ecdsa"
+//     "crypto/elliptic"
+//     "crypto/rand"
+//     "crypto/x509"
+//     "crypto/x509/pkix"
+//     "encoding/asn1"
+//     "encoding/pem"
+//     "math/big"
+//     "os"
+//     "time"
+// )
+
+// const includeNetscapeExtension = true
+
+// func main() {
+//     block, _ := pem.Decode([]byte(rootKeyPEM))
+//     rootPriv, _ := x509.ParsePKCS1PrivateKey(block.Bytes)
+//     block, _ = pem.Decode([]byte(rootCertPEM))
+//     root, _ := x509.ParseCertificate(block.Bytes)
+
+//     interTemplate := &x509.Certificate{
+//         SerialNumber: big.NewInt(2),
+//         Subject: pkix.Name{
+//             CommonName: "No Basic Constraints (Netscape)",
+//         },
+//         NotBefore: time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC),
+//         NotAfter:  time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC),
+//     }
+
+//     if includeNetscapeExtension {
+//         interTemplate.ExtraExtensions = []pkix.Extension{
+//             pkix.Extension{
+//                 Id:    asn1.ObjectIdentifier([]int{2, 16, 840, 1, 113730, 1, 1}),
+//                 Value: []byte{0x03, 0x02, 2, 0x04},
+//             },
+//         }
+//     } else {
+//         interTemplate.KeyUsage = x509.KeyUsageCertSign
+//     }
+
+//     interKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+
+//     interDER, err := x509.CreateCertificate(rand.Reader, interTemplate, root, &interKey.PublicKey, rootPriv)
+//     if err != nil {
+//         panic(err)
+//     }
+
+//     pem.Encode(os.Stdout, &pem.Block{Type: "CERTIFICATE", Bytes: interDER})
+
+//     inter, _ := x509.ParseCertificate(interDER)
+
+//     leafTemplate := &x509.Certificate{
+//         SerialNumber: big.NewInt(3),
+//         Subject: pkix.Name{
+//             CommonName: "Leaf from CA with no Basic Constraints",
+//         },
+//         NotBefore:             time.Date(2000, time.January, 1, 0, 0, 0, 0, time.UTC),
+//         NotAfter:              time.Date(2099, time.January, 1, 0, 0, 0, 0, time.UTC),
+//         BasicConstraintsValid: true,
+//     }
+//     leafKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+
+//     leafDER, err := x509.CreateCertificate(rand.Reader, leafTemplate, inter, &leafKey.PublicKey, interKey)
+//     if err != nil {
+//         panic(err)
+//     }
+
+//     pem.Encode(os.Stdout, &pem.Block{Type: "CERTIFICATE", Bytes: leafDER})
+// }
+
+// kNoBasicConstraintsCertSignIntermediate doesn't have isCA set, but contains
+// certSign in the keyUsage.
+static const char kNoBasicConstraintsCertSignIntermediate[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBqjCCAROgAwIBAgIBAjANBgkqhkiG9w0BAQsFADArMRcwFQYDVQQKEw5Cb3Jp\n"
+    "bmdTU0wgVGVzdDEQMA4GA1UEAxMHUm9vdCBDQTAgFw0wMDAxMDEwMDAwMDBaGA8y\n"
+    "MDk5MDEwMTAwMDAwMFowHzEdMBsGA1UEAxMUTm8gQmFzaWMgQ29uc3RyYWludHMw\n"
+    "WTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASEFMblfxIEDO8My7wHtHWTuDzNyID1\n"
+    "OsPkMGkn32O/pSyXxXuAqDeFoMVffUMTyfm8JcYugSEbrv2qEXXM4bZRoy8wLTAO\n"
+    "BgNVHQ8BAf8EBAMCAgQwGwYDVR0jBBQwEoAQQDfXAftAL7gcflQEJ4xZATANBgkq\n"
+    "hkiG9w0BAQsFAAOBgQC1Lh6hIAm3K5kRh5iIydU0YAEm7eV6ZSskERDUq3DLJyl9\n"
+    "ZUZCHUzvb464dkwZjeNzaUVS1pdElJslwX3DtGgeJLJGCnk8zUjBjaNrrDm0kzPW\n"
+    "xKt/6oif1ci/KCKqKNXJAIFbc4e+IiBpenwpxHk3If4NM+Ek0nKoO8Uj0NkgTQ==\n"
+    "-----END CERTIFICATE-----\n";
+
+static const char kNoBasicConstraintsCertSignLeaf[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBUDCB96ADAgECAgEDMAoGCCqGSM49BAMCMB8xHTAbBgNVBAMTFE5vIEJhc2lj\n"
+    "IENvbnN0cmFpbnRzMCAXDTAwMDEwMTAwMDAwMFoYDzIwOTkwMTAxMDAwMDAwWjAx\n"
+    "MS8wLQYDVQQDEyZMZWFmIGZyb20gQ0Egd2l0aCBubyBCYXNpYyBDb25zdHJhaW50\n"
+    "czBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABEsYPMwzdJKjB+2gpC90ib2ilHoB\n"
+    "w/arQ6ikUX0CNUDDaKaOu/jF39ogzVlg4lDFrjCKShSfCCcrwgONv70IZGijEDAO\n"
+    "MAwGA1UdEwEB/wQCMAAwCgYIKoZIzj0EAwIDSAAwRQIgbV7R99yM+okXSIs6Fp3o\n"
+    "eCOXiDL60IBxaTOcLS44ywcCIQDbn87Gj5cFgHBYAkzdHqDsyGXkxQTHDq9jmX24\n"
+    "Djy3Zw==\n"
+    "-----END CERTIFICATE-----\n";
+
+// kNoBasicConstraintsNetscapeCAIntermediate doesn't have isCA set, but contains
+// a Netscape certificate-type extension that asserts a type of "SSL CA".
+static const char kNoBasicConstraintsNetscapeCAIntermediate[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBuDCCASGgAwIBAgIBAjANBgkqhkiG9w0BAQsFADArMRcwFQYDVQQKEw5Cb3Jp\n"
+    "bmdTU0wgVGVzdDEQMA4GA1UEAxMHUm9vdCBDQTAgFw0wMDAxMDEwMDAwMDBaGA8y\n"
+    "MDk5MDEwMTAwMDAwMFowKjEoMCYGA1UEAxMfTm8gQmFzaWMgQ29uc3RyYWludHMg\n"
+    "KE5ldHNjYXBlKTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABCeMbmCaOtMzXBqi\n"
+    "PrCdNOH23CkaawUA+pAezitAN4RXS1O2CGK5sJjGPVVeogROU8G7/b+mU+ciZIzH\n"
+    "1PP8FJKjMjAwMBsGA1UdIwQUMBKAEEA31wH7QC+4HH5UBCeMWQEwEQYJYIZIAYb4\n"
+    "QgEBBAQDAgIEMA0GCSqGSIb3DQEBCwUAA4GBAAgNWjh7cfBTClTAk+Ml//5xb9Ju\n"
+    "tkBhG6Rm+kkMD+qiSMO6t7xS7CsA0+jIBjkdEYaLZ3oxtQCBdZsVNxUvRxZ0AUfF\n"
+    "G3DtRFTsrI1f7IQhpMuqEMF4shPW+5x54hrq0Fo6xMs6XoinJZcTUaaB8EeXRF6M\n"
+    "P9p6HuyLrmn0c/F0\n"
+    "-----END CERTIFICATE-----\n";
+
+static const char kNoBasicConstraintsNetscapeCALeaf[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBXDCCAQKgAwIBAgIBAzAKBggqhkjOPQQDAjAqMSgwJgYDVQQDEx9ObyBCYXNp\n"
+    "YyBDb25zdHJhaW50cyAoTmV0c2NhcGUpMCAXDTAwMDEwMTAwMDAwMFoYDzIwOTkw\n"
+    "MTAxMDAwMDAwWjAxMS8wLQYDVQQDEyZMZWFmIGZyb20gQ0Egd2l0aCBubyBCYXNp\n"
+    "YyBDb25zdHJhaW50czBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABDlJKolDu3R2\n"
+    "tPqSDycr0QJcWhxdBv76V0EEVflcHRxED6vAioTEcnQszt1OfKtBZvjlo0yp6i6Q\n"
+    "DaYit0ZInmWjEDAOMAwGA1UdEwEB/wQCMAAwCgYIKoZIzj0EAwIDSAAwRQIhAJsh\n"
+    "aZL6BHeEfoUBj1oZ2Ln91qzj3UCVMJ+vrmwAFdYyAiA3wp2JphgchvmoUFuzPXwj\n"
+    "XyPwWPbymSTpzKhB4xB7qQ==\n"
+    "-----END CERTIFICATE-----\n";
 
 // CertFromPEM parses the given, NUL-terminated pem block and returns an
 // |X509*|.
@@ -1340,4 +1471,56 @@ TEST(X509Test, StringDecoding) {
       ERR_clear_error();
     }
   }
+}
+
+TEST(X509Test, NoBasicConstraintsCertSign) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kSANTypesRoot));
+  bssl::UniquePtr<X509> intermediate(
+      CertFromPEM(kNoBasicConstraintsCertSignIntermediate));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kNoBasicConstraintsCertSignLeaf));
+
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(leaf);
+
+  // The intermediate has keyUsage certSign, but is not marked as a CA in the
+  // basicConstraints. Sadly, since BoringSSL is based on OpenSSL 1.0.2, this is
+  // considered acceptable by default.
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  // Setting either STRICT or REQUIRE_CA_BASIC_CONSTRAINTS should trigger an
+  // error.
+  EXPECT_EQ(X509_V_ERR_INVALID_CA,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {},
+                   X509_V_FLAG_X509_STRICT));
+  EXPECT_EQ(X509_V_ERR_INVALID_CA,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {},
+                   X509_V_FLAG_REQUIRE_CA_BASIC_CONSTRAINTS));
+}
+
+TEST(X509Test, NoBasicConstraintsNetscapeCA) {
+  bssl::UniquePtr<X509> root(CertFromPEM(kSANTypesRoot));
+  bssl::UniquePtr<X509> intermediate(
+      CertFromPEM(kNoBasicConstraintsNetscapeCAIntermediate));
+  bssl::UniquePtr<X509> leaf(CertFromPEM(kNoBasicConstraintsNetscapeCALeaf));
+
+  ASSERT_TRUE(root);
+  ASSERT_TRUE(intermediate);
+  ASSERT_TRUE(leaf);
+
+  // The intermediate has a Netscape certificate type of "SSL CA", but is not
+  // marked as a CA in the basicConstraints. Sadly, since BoringSSL is based on
+  // OpenSSL 1.0.2, this is considered acceptable by default.
+  EXPECT_EQ(X509_V_OK,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0));
+
+  // Setting either STRICT or REQUIRE_CA_BASIC_CONSTRAINTS should trigger an
+  // error.
+  EXPECT_EQ(X509_V_ERR_INVALID_CA,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {},
+                   X509_V_FLAG_X509_STRICT));
+  EXPECT_EQ(X509_V_ERR_INVALID_CA,
+            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {},
+                   X509_V_FLAG_REQUIRE_CA_BASIC_CONSTRAINTS));
 }
