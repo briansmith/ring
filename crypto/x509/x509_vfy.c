@@ -579,7 +579,7 @@ static int get_issuer_sk(X509 **issuer, X509_STORE_CTX *ctx, X509 *x)
 
 static int check_chain_extensions(X509_STORE_CTX *ctx)
 {
-    int i, ok = 0, must_be_ca, plen = 0;
+    int i, ok = 0, plen = 0;
     X509 *x;
     int (*cb) (int xok, X509_STORE_CTX *xctx);
     int proxy_path_length = 0;
@@ -587,15 +587,13 @@ static int check_chain_extensions(X509_STORE_CTX *ctx)
     int allow_proxy_certs;
     cb = ctx->verify_cb;
 
-    /*
-     * must_be_ca can have 1 of 3 values: -1: we accept both CA and non-CA
-     * certificates, to allow direct use of self-signed certificates (which
-     * are marked as CA). 0: we only accept non-CA certificates.  This is
-     * currently not used, but the possibility is present for future
-     * extensions. 1: we only accept CA certificates.  This is currently used
-     * for all certificates in the chain except the leaf certificate.
-     */
-    must_be_ca = -1;
+    enum {
+        // ca_or_leaf allows either type of certificate so that direct use of
+        // self-signed certificates works.
+        ca_or_leaf,
+        must_be_ca,
+        must_not_be_ca,
+    } ca_requirement;
 
     /* CRL path validation */
     if (ctx->parent) {
@@ -606,6 +604,8 @@ static int check_chain_extensions(X509_STORE_CTX *ctx)
             ! !(ctx->param->flags & X509_V_FLAG_ALLOW_PROXY_CERTS);
         purpose = ctx->param->purpose;
     }
+
+    ca_requirement = ca_or_leaf;
 
     /* Check all untrusted certificates */
     for (i = 0; i < ctx->last_untrusted; i++) {
@@ -628,37 +628,30 @@ static int check_chain_extensions(X509_STORE_CTX *ctx)
             if (!ok)
                 goto end;
         }
-        ret = X509_check_ca(x);
-        switch (must_be_ca) {
-        case -1:
-            if ((ctx->param->flags & X509_V_FLAG_X509_STRICT)
-                && (ret != 1) && (ret != 0)) {
-                ret = 0;
-                ctx->error = X509_V_ERR_INVALID_CA;
-            } else
-                ret = 1;
+
+        switch (ca_requirement) {
+        case ca_or_leaf:
+            ret = 1;
             break;
-        case 0:
-            if (ret != 0) {
+        case must_not_be_ca:
+            if (X509_check_ca(x)) {
                 ret = 0;
                 ctx->error = X509_V_ERR_INVALID_NON_CA;
             } else
                 ret = 1;
             break;
-        default:
-            if ((ret == 0)
-                || ((ctx->param->flags & X509_V_FLAG_X509_STRICT)
-                    && (ret != 1))
-                || ((ctx->param->flags &
-                     X509_V_FLAG_REQUIRE_CA_BASIC_CONSTRAINTS)
-                    && (ret != 1))
-                ) {
+        case must_be_ca:
+            if (!X509_check_ca(x)) {
                 ret = 0;
                 ctx->error = X509_V_ERR_INVALID_CA;
             } else
                 ret = 1;
             break;
+        default:
+            // impossible.
+            ret = 0;
         }
+
         if (ret == 0) {
             ctx->error_depth = i;
             ctx->current_cert = x;
@@ -667,7 +660,7 @@ static int check_chain_extensions(X509_STORE_CTX *ctx)
                 goto end;
         }
         if (ctx->param->purpose > 0) {
-            ret = X509_check_purpose(x, purpose, must_be_ca > 0);
+            ret = X509_check_purpose(x, purpose, ca_requirement == must_be_ca);
             if ((ret == 0)
                 || ((ctx->param->flags & X509_V_FLAG_X509_STRICT)
                     && (ret != 1))) {
@@ -708,9 +701,10 @@ static int check_chain_extensions(X509_STORE_CTX *ctx)
                     goto end;
             }
             proxy_path_length++;
-            must_be_ca = 0;
-        } else
-            must_be_ca = 1;
+            ca_requirement = must_not_be_ca;
+        } else {
+            ca_requirement = must_be_ca;
+        }
     }
     ok = 1;
  end:

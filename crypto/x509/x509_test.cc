@@ -1484,19 +1484,9 @@ TEST(X509Test, NoBasicConstraintsCertSign) {
   ASSERT_TRUE(leaf);
 
   // The intermediate has keyUsage certSign, but is not marked as a CA in the
-  // basicConstraints. Sadly, since BoringSSL is based on OpenSSL 1.0.2, this is
-  // considered acceptable by default.
-  EXPECT_EQ(X509_V_OK,
+  // basicConstraints.
+  EXPECT_EQ(X509_V_ERR_INVALID_CA,
             Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0));
-
-  // Setting either STRICT or REQUIRE_CA_BASIC_CONSTRAINTS should trigger an
-  // error.
-  EXPECT_EQ(X509_V_ERR_INVALID_CA,
-            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {},
-                   X509_V_FLAG_X509_STRICT));
-  EXPECT_EQ(X509_V_ERR_INVALID_CA,
-            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {},
-                   X509_V_FLAG_REQUIRE_CA_BASIC_CONSTRAINTS));
 }
 
 TEST(X509Test, NoBasicConstraintsNetscapeCA) {
@@ -1510,17 +1500,7 @@ TEST(X509Test, NoBasicConstraintsNetscapeCA) {
   ASSERT_TRUE(leaf);
 
   // The intermediate has a Netscape certificate type of "SSL CA", but is not
-  // marked as a CA in the basicConstraints. Sadly, since BoringSSL is based on
-  // OpenSSL 1.0.2, this is considered acceptable by default.
-  EXPECT_EQ(X509_V_OK,
+  // marked as a CA in the basicConstraints.
+  EXPECT_EQ(X509_V_ERR_INVALID_CA,
             Verify(leaf.get(), {root.get()}, {intermediate.get()}, {}, 0));
-
-  // Setting either STRICT or REQUIRE_CA_BASIC_CONSTRAINTS should trigger an
-  // error.
-  EXPECT_EQ(X509_V_ERR_INVALID_CA,
-            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {},
-                   X509_V_FLAG_X509_STRICT));
-  EXPECT_EQ(X509_V_ERR_INVALID_CA,
-            Verify(leaf.get(), {root.get()}, {intermediate.get()}, {},
-                   X509_V_FLAG_REQUIRE_CA_BASIC_CONSTRAINTS));
 }
