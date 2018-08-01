@@ -414,5 +414,5 @@ add_custom_target(
             ${GO_EXECUTABLE} test -shim-path $<TARGET_FILE:bssl_shim>
               ${RUNNER_ARGS}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    DEPENDS all_tests bssl_shim
+    DEPENDS all_tests bssl_shim handshaker
     ${MAYBE_USES_TERMINAL})

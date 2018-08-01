@@ -32,4 +32,7 @@ if(UNIX AND NOT APPLE AND NOT ANDROID)
   )
 
   target_link_libraries(handshaker ssl crypto)
+else()
+  # Declare a dummy target for run_tests to depend on.
+  add_custom_target(handshaker)
 endif()
