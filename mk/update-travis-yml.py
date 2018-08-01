@@ -47,6 +47,10 @@ compilers = {
     "aarch64-unknown-linux-gnu" : [ "aarch64-linux-gnu-gcc" ],
     "armv7-linux-androideabi" : [ "arm-linux-androideabi-clang" ],
     "arm-unknown-linux-gnueabihf" : [ "arm-linux-gnueabihf-gcc" ],
+    "mips64-unknown-linux-gnuabi64" : [ "mips64-linux-gnuabi64-gcc" ],
+    "mips64el-unknown-linux-gnuabi64" : [ "mips64el-linux-gnuabi64-gcc "],
+    "mipsel-unknown-linux-gnu" : [ "mipsel-linux-gnu-gcc" ],
+    "mips-unknown-linux-gnu" : [ "mips-linux-gnu-gcc" ],
     "i686-unknown-linux-gnu" : linux_compilers,
     "x86_64-unknown-linux-gnu" : linux_compilers,
     "x86_64-apple-darwin" : osx_compilers,
@@ -79,6 +83,10 @@ targets = {
         "aarch64-unknown-linux-gnu",
         "i686-unknown-linux-gnu",
         "arm-unknown-linux-gnueabihf",
+        "mips64-unknown-linux-gnuabi64",
+        "mips64el-unknown-linux-gnuabi64",
+        "mipsel-unknown-linux-gnu",
+        "mips-unknown-linux-gnu"
     ],
 }
 
@@ -102,6 +110,10 @@ entry_template = """
       os: %(os)s"""
 
 entry_indent = "      "
+
+entry_services_template = """
+      services:
+        %(services)s"""
 
 entry_packages_template = """
       addons:
@@ -150,6 +162,9 @@ def format_entry(os, target, compiler, rust, mode, features):
         packages = sorted(get_linux_packages_to_install(target, compiler, arch, kcov))
         sources_with_dups = sum([get_sources_for_package(p) for p in packages],[])
         sources = sorted(list(set(sources_with_dups)))
+        services = sorted(list(set(get_services_for_arch(arch))))
+    else:
+        services = []
 
     # TODO: Use trusty for everything?
     if arch in ["aarch64", "arm", "armv7"]:
@@ -158,6 +173,8 @@ def format_entry(os, target, compiler, rust, mode, features):
       sudo: required"""
 
     if sys == "linux":
+        if services:
+            template += entry_services_template
         if packages:
             template += entry_packages_template
         if sources:
@@ -186,6 +203,7 @@ def format_entry(os, target, compiler, rust, mode, features):
             "sources" : "\n            ".join(prefix_all("- ", sources)),
             "target" : target,
             "os" : os,
+            "services" : "\n            ".join(prefix_all("- ", services)),
             }
 
 def get_linux_packages_to_install(target, compiler, arch, kcov):
@@ -229,10 +247,17 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
                          "libelf-dev",
                          "libdw-dev",
                          "binutils-dev"]
-    elif arch not in ["aarch64", "arm", "armv7"]:
+    elif arch not in ["aarch64", "arm", "armv7",
+                      "mips64", "mips64el",
+                      "mips", "mipsel"]:
         raise ValueError("unexpected arch: %s" % arch)
 
     return packages
+
+def get_services_for_arch(arch):
+    if arch in ('mips64', 'mips64el', 'mips', 'mipsel'):
+        return ['docker']
+    return []
 
 def get_sources_for_package(package):
     ubuntu_toolchain = "ubuntu-toolchain-r-test"

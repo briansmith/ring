@@ -9,6 +9,54 @@ matrix:
   fast_finish: true
   allow_failures:
     - rust: nightly
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
   include:
     # The lines from "# BEGIN GENERATED" through "# END GENERATED" are
     # generated by running |python mk/update-travis-yml.py|. Any changes
@@ -437,6 +485,102 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      services:
+        - docker
+
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: nightly
       os: osx
@@ -857,6 +1001,102 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      services:
+        - docker
+
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
       rust: beta
       os: osx
@@ -1276,6 +1516,102 @@ matrix:
             - libc6-dev-armhf-cross
           sources:
             - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64-unknown-linux-gnuabi64 CC_X=mips64-linux-gnuabi64-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips64el-unknown-linux-gnuabi64 CC_X=mips64el-linux-gnuabi64-gcc  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mipsel-unknown-linux-gnu CC_X=mipsel-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=DEBUG KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X=--features=rsa_signing MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
+
+    - env: TARGET_X=mips-unknown-linux-gnu CC_X=mips-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      services:
+        - docker
 
     # END GENERATED
 
