@@ -70,6 +70,10 @@ OPENSSL_MSVC_PRAGMA(comment(lib, "Ws2_32.lib"))
 #include "test_config.h"
 #include "test_state.h"
 
+#if defined(OPENSSL_LINUX) && !defined(OPENSSL_ANDROID)
+#define HANDSHAKER_SUPPORTED
+#endif
+
 
 #if !defined(OPENSSL_WINDOWS)
 static int closesocket(int sock) {
@@ -758,7 +762,7 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
 
   if (!config->implicit_handshake) {
     if (config->handoff) {
-#if defined(OPENSSL_LINUX) && !defined(OPENSSL_ANDROID)
+#if defined(HANDSHAKER_SUPPORTED)
       if (!DoSplitHandshake(ssl_uniqueptr, writer, is_resume)) {
         return false;
       }
@@ -1098,6 +1102,15 @@ int main(int argc, char **argv) {
   if (!ParseConfig(argc - 1, argv + 1, &initial_config, &resume_config,
                    &retry_config)) {
     return Usage(argv[0]);
+  }
+
+  if (initial_config.is_handshaker_supported) {
+#if defined(HANDSHAKER_SUPPORTED)
+    printf("Yes\n");
+#else
+    printf("No\n");
+#endif
+    return 0;
   }
 
   bssl::UniquePtr<SSL_CTX> ssl_ctx;

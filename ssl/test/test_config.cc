@@ -143,6 +143,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-fail-ocsp-callback", &TestConfig::fail_ocsp_callback },
   { "-install-cert-compression-algs",
     &TestConfig::install_cert_compression_algs },
+  { "-is-handshaker-supported", &TestConfig::is_handshaker_supported },
   { "-handshaker-resume", &TestConfig::handshaker_resume },
 };
 
