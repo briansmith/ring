@@ -18,6 +18,7 @@
 #include <unistd.h>
 
 #include <openssl/bytestring.h>
+#include <openssl/rand.h>
 #include <openssl/ssl.h>
 
 #include "../internal.h"
@@ -136,6 +137,16 @@ int main(int argc, char **argv) {
   }
   const TestConfig *config = initial_config.handshaker_resume
       ? &resume_config : &initial_config;
+#if defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+  if (initial_config.handshaker_resume) {
+    // If the PRNG returns exactly the same values when trying to resume then a
+    // "random" session ID will happen to exactly match the session ID
+    // "randomly" generated on the initial connection. The client will thus
+    // incorrectly believe that the server is resuming.
+    uint8_t byte;
+    RAND_bytes(&byte, 1);
+  }
+#endif  // BORINGSSL_UNSAFE_DETERMINISTIC_MODE
 
   // read() will return the entire message in one go, because it's a datagram
   // socket.
