@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #if defined(OPENSSL_LINUX) && !defined(OPENSSL_ANDROID)
+#include <errno.h>
 #include <fcntl.h>
 #include <spawn.h>
 #include <sys/socket.h>
