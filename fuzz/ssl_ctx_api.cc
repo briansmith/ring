@@ -475,6 +475,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
         }
         SSL_CTX_set_grease_enabled(ctx, b);
       },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        SSL_CTX_set1_sigalgs(ctx, (const int *)CBS_data(cbs), CBS_len(cbs) / 2);
+      },
+      [](SSL_CTX *ctx, CBS *cbs) {
+        SSL_CTX_set1_sigalgs_list(ctx, (const char *) CBS_data(cbs));
+      },
   };
 
   bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));

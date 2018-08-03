@@ -4118,6 +4118,144 @@ TEST(SSLTest, HandoffDeclined) {
   EXPECT_EQ(43, byte);
 }
 
+static std::string SigAlgsToString(Span<const uint16_t> sigalgs) {
+  std::string ret = "{";
+
+  for (uint16_t v : sigalgs) {
+    if (ret.size() > 1) {
+      ret += ", ";
+    }
+
+    char buf[8];
+    snprintf(buf, sizeof(buf) - 1, "0x%02x", v);
+    buf[sizeof(buf)-1] = 0;
+    ret += std::string(buf);
+  }
+
+  ret += "}";
+  return ret;
+}
+
+void ExpectSigAlgsEqual(Span<const uint16_t> expected,
+                        Span<const uint16_t> actual) {
+  bool matches = false;
+  if (expected.size() == actual.size()) {
+    matches = true;
+
+    for (size_t i = 0; i < expected.size(); i++) {
+      if (expected[i] != actual[i]) {
+        matches = false;
+        break;
+      }
+    }
+  }
+
+  if (!matches) {
+    ADD_FAILURE() << "expected: " << SigAlgsToString(expected)
+                  << " got: " << SigAlgsToString(actual);
+  }
+}
+
+TEST(SSLTest, SigAlgs) {
+  static const struct {
+    std::vector<int> input;
+    bool ok;
+    std::vector<uint16_t> expected;
+  } kTests[] = {
+      {{}, true, {}},
+      {{1}, false, {}},
+      {{1, 2, 3}, false, {}},
+      {{NID_sha256, EVP_PKEY_ED25519}, false, {}},
+      {{NID_sha256, EVP_PKEY_RSA, NID_sha256, EVP_PKEY_RSA}, false, {}},
+
+      {{NID_sha256, EVP_PKEY_RSA}, true, {SSL_SIGN_RSA_PKCS1_SHA256}},
+      {{NID_sha512, EVP_PKEY_RSA}, true, {SSL_SIGN_RSA_PKCS1_SHA512}},
+      {{NID_sha256, EVP_PKEY_RSA_PSS}, true, {SSL_SIGN_RSA_PSS_RSAE_SHA256}},
+      {{NID_undef, EVP_PKEY_ED25519}, true, {SSL_SIGN_ED25519}},
+      {{NID_undef, EVP_PKEY_ED25519, NID_sha384, EVP_PKEY_EC},
+       true,
+       {SSL_SIGN_ED25519, SSL_SIGN_ECDSA_SECP384R1_SHA384}},
+  };
+
+  UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+
+  unsigned n = 1;
+  for (const auto &test : kTests) {
+    SCOPED_TRACE(n++);
+
+    const bool ok =
+        SSL_CTX_set1_sigalgs(ctx.get(), test.input.data(), test.input.size());
+    EXPECT_EQ(ok, test.ok);
+
+    if (!ok) {
+      ERR_clear_error();
+    }
+
+    if (!test.ok) {
+      continue;
+    }
+
+    ExpectSigAlgsEqual(test.expected, ctx->cert->sigalgs);
+  }
+}
+
+TEST(SSLTest, SigAlgsList) {
+  static const struct {
+    const char *input;
+    bool ok;
+    std::vector<uint16_t> expected;
+  } kTests[] = {
+      {"", false, {}},
+      {":", false, {}},
+      {"+", false, {}},
+      {"RSA", false, {}},
+      {"RSA+", false, {}},
+      {"RSA+SHA256:", false, {}},
+      {":RSA+SHA256:", false, {}},
+      {":RSA+SHA256+:", false, {}},
+      {"!", false, {}},
+      {"\x01", false, {}},
+      {"RSA+SHA256:RSA+SHA384:RSA+SHA256", false, {}},
+      {"RSA-PSS+SHA256:rsa_pss_rsae_sha256", false, {}},
+
+      {"RSA+SHA256", true, {SSL_SIGN_RSA_PKCS1_SHA256}},
+      {"RSA+SHA256:ed25519",
+       true,
+       {SSL_SIGN_RSA_PKCS1_SHA256, SSL_SIGN_ED25519}},
+      {"ECDSA+SHA256:RSA+SHA512",
+       true,
+       {SSL_SIGN_ECDSA_SECP256R1_SHA256, SSL_SIGN_RSA_PKCS1_SHA512}},
+      {"ecdsa_secp256r1_sha256:rsa_pss_rsae_sha256",
+       true,
+       {SSL_SIGN_ECDSA_SECP256R1_SHA256, SSL_SIGN_RSA_PSS_RSAE_SHA256}},
+      {"RSA-PSS+SHA256", true, {SSL_SIGN_RSA_PSS_RSAE_SHA256}},
+      {"PSS+SHA256", true, {SSL_SIGN_RSA_PSS_RSAE_SHA256}},
+  };
+
+  UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+
+  unsigned n = 1;
+  for (const auto &test : kTests) {
+    SCOPED_TRACE(n++);
+
+    const bool ok = SSL_CTX_set1_sigalgs_list(ctx.get(), test.input);
+    EXPECT_EQ(ok, test.ok);
+
+    if (!ok) {
+      if (test.ok) {
+        ERR_print_errors_fp(stderr);
+      }
+      ERR_clear_error();
+    }
+
+    if (!test.ok) {
+      continue;
+    }
+
+    ExpectSigAlgsEqual(test.expected, ctx->cert->sigalgs);
+  }
+}
+
 TEST_P(SSLVersionTest, VerifyBeforeCertRequest) {
   // Configure the server to request client certificates.
   SSL_CTX_set_custom_verify(

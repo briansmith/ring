@@ -169,6 +169,7 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_ed25519_private(
 
 #define EVP_PKEY_NONE NID_undef
 #define EVP_PKEY_RSA NID_rsaEncryption
+#define EVP_PKEY_RSA_PSS NID_rsassaPss
 #define EVP_PKEY_DSA NID_dsa
 #define EVP_PKEY_EC NID_X9_62_id_ecPublicKey
 #define EVP_PKEY_ED25519 NID_ED25519

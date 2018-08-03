@@ -2416,6 +2416,10 @@ struct SSL_CONFIG {
   // Contains the QUIC transport params that this endpoint will send.
   Array<uint8_t> quic_transport_params;
 
+  // verify_sigalgs, if not empty, is the set of signature algorithms
+  // accepted from the peer in decreasing order of preference.
+  Array<uint16_t> verify_sigalgs;
+
   // srtp_profiles is the list of configured SRTP protection profiles for
   // DTLS-SRTP.
   UniquePtr<STACK_OF(SRTP_PROTECTION_PROFILE)> srtp_profiles;

@@ -671,7 +671,8 @@ SSL *SSL_new(SSL_CTX *ctx) {
 
   if (!ssl->config->supported_group_list.CopyFrom(ctx->supported_group_list) ||
       !ssl->config->alpn_client_proto_list.CopyFrom(
-          ctx->alpn_client_proto_list)) {
+          ctx->alpn_client_proto_list) ||
+      !ssl->config->verify_sigalgs.CopyFrom(ctx->verify_sigalgs)) {
     return nullptr;
   }
 

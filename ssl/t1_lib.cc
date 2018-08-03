@@ -492,8 +492,8 @@ struct SSLSignatureAlgorithmList {
 static SSLSignatureAlgorithmList tls12_get_verify_sigalgs(const SSL *ssl,
                                                           bool for_certs) {
   SSLSignatureAlgorithmList ret;
-  if (!ssl->ctx->verify_sigalgs.empty()) {
-    ret.list = ssl->ctx->verify_sigalgs;
+  if (!ssl->config->verify_sigalgs.empty()) {
+    ret.list = ssl->config->verify_sigalgs;
   } else {
     ret.list = kVerifySignatureAlgorithms;
     ret.skip_ed25519 = !ssl->ctx->ed25519_enabled;

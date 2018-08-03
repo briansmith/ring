@@ -3920,6 +3920,54 @@ OPENSSL_EXPORT void SSL_set_tmp_dh_callback(SSL *ssl,
                                             DH *(*cb)(SSL *ssl, int is_export,
                                                       int keylength));
 
+// SSL_CTX_set1_sigalgs takes |num_values| ints and interprets them as pairs
+// where the first is the nid of a hash function and the second is an
+// |EVP_PKEY_*| value. It configures the signature algorithm preferences for
+// |ctx| based on them and returns one on success or zero on error.
+//
+// This API is compatible with OpenSSL. However, BoringSSL-specific code should
+// prefer |SSL_CTX_set_signing_algorithm_prefs| because it's clearer and it's
+// more convenient to codesearch for specific algorithm values.
+OPENSSL_EXPORT int SSL_CTX_set1_sigalgs(SSL_CTX *ctx, const int *values,
+                                        size_t num_values);
+
+// SSL_set1_sigalgs takes |num_values| ints and interprets them as pairs where
+// the first is the nid of a hash function and the second is an |EVP_PKEY_*|
+// value. It configures the signature algorithm preferences for |ssl| based on
+// them and returns one on success or zero on error.
+//
+// This API is compatible with OpenSSL. However, BoringSSL-specific code should
+// prefer |SSL_CTX_set_signing_algorithm_prefs| because it's clearer and it's
+// more convenient to codesearch for specific algorithm values.
+OPENSSL_EXPORT int SSL_set1_sigalgs(SSL *ssl, const int *values,
+                                    size_t num_values);
+
+// SSL_CTX_set1_sigalgs_list takes a textual specification of a set of signature
+// algorithms and configures them on |ctx|. It returns one on success and zero
+// on error. See
+// https://www.openssl.org/docs/man1.1.0/ssl/SSL_CTX_set1_sigalgs_list.html for
+// a description of the text format. Also note that TLS 1.3 names (e.g.
+// "rsa_pkcs1_md5_sha1") can also be used (as in OpenSSL, although OpenSSL
+// doesn't document that).
+//
+// This API is compatible with OpenSSL. However, BoringSSL-specific code should
+// prefer |SSL_CTX_set_signing_algorithm_prefs| because it's clearer and it's
+// more convenient to codesearch for specific algorithm values.
+OPENSSL_EXPORT int SSL_CTX_set1_sigalgs_list(SSL_CTX *ctx, const char *str);
+
+// SSL_set1_sigalgs_list takes a textual specification of a set of signature
+// algorithms and configures them on |ssl|. It returns one on success and zero
+// on error. See
+// https://www.openssl.org/docs/man1.1.0/ssl/SSL_CTX_set1_sigalgs_list.html for
+// a description of the text format. Also note that TLS 1.3 names (e.g.
+// "rsa_pkcs1_md5_sha1") can also be used (as in OpenSSL, although OpenSSL
+// doesn't document that).
+//
+// This API is compatible with OpenSSL. However, BoringSSL-specific code should
+// prefer |SSL_CTX_set_signing_algorithm_prefs| because it's clearer and it's
+// more convenient to codesearch for specific algorithm values.
+OPENSSL_EXPORT int SSL_set1_sigalgs_list(SSL *ssl, const char *str);
+
 
 #define SSL_set_app_data(s, arg) (SSL_set_ex_data(s, 0, (char *)(arg)))
 #define SSL_get_app_data(s) (SSL_get_ex_data(s, 0))
@@ -4730,6 +4778,8 @@ OPENSSL_EXPORT bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback);
 #define SSL_R_CERT_DECOMPRESSION_FAILED 292
 #define SSL_R_UNCOMPRESSED_CERT_TOO_LARGE 293
 #define SSL_R_UNKNOWN_CERT_COMPRESSION_ALG 294
+#define SSL_R_INVALID_SIGNATURE_ALGORITHM 295
+#define SSL_R_DUPLICATE_SIGNATURE_ALGORITHM 296
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020
