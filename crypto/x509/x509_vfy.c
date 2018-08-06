@@ -661,9 +661,8 @@ static int check_chain_extensions(X509_STORE_CTX *ctx)
         }
         if (ctx->param->purpose > 0) {
             ret = X509_check_purpose(x, purpose, ca_requirement == must_be_ca);
-            if ((ret == 0)
-                || ((ctx->param->flags & X509_V_FLAG_X509_STRICT)
-                    && (ret != 1))) {
+            if (ret != 1) {
+                ret = 0;
                 ctx->error = X509_V_ERR_INVALID_PURPOSE;
                 ctx->error_depth = i;
                 ctx->current_cert = x;

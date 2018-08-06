@@ -638,7 +638,8 @@ static int check_purpose_ns_ssl_server(const X509_PURPOSE *xp, const X509 *x,
     return ret;
 }
 
-/* common S/MIME checks */
+/* purpose_smime returns one if |x| is a valid S/MIME leaf (|ca| is zero) or CA
+ * (|ca| is one) certificate, and zero otherwise. */
 static int purpose_smime(const X509 *x, int ca)
 {
     if (xku_reject(x, XKU_SMIME))
@@ -653,12 +654,7 @@ static int purpose_smime(const X509 *x, int ca)
         return check_ca(x);
     }
     if (x->ex_flags & EXFLAG_NSCERT) {
-        if (x->ex_nscert & NS_SMIME)
-            return 1;
-        /* Workaround for some buggy certificates */
-        if (x->ex_nscert & NS_SSL_CLIENT)
-            return 2;
-        return 0;
+        return (x->ex_nscert & NS_SMIME) == NS_SMIME;
     }
     return 1;
 }
