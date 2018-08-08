@@ -44,6 +44,8 @@ func quote(in []byte) string {
 			buf.WriteString(`\v`)
 		case '"':
 			buf.WriteString(`\"`)
+		case '\\':
+			buf.WriteString(`\\`)
 		default:
 			// printable ascii code [32, 126]
 			if 32 <= b && b <= 126 {
@@ -100,19 +102,21 @@ func main() {
 	for i, arg := range os.Args[1:] {
 		data, err := ioutil.ReadFile(arg)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error reading %s: %s.\n", data, err)
+			fmt.Fprintf(os.Stderr, "Error reading %s: %s.\n", arg, err)
 			os.Exit(1)
 		}
+		fmt.Printf("static const size_t kLen%d = %d;\n\n", i, len(data))
+
 		fmt.Printf("static const char *kData%d[] = {\n", i)
-		for i := 0; i < len(data); i += chunkSize {
+		for len(data) > 0 {
 			chunk := chunkSize
-			if chunk > len(data)-i {
-				chunk = len(data) - i
+			if chunk > len(data) {
+				chunk = len(data)
 			}
-			fmt.Printf("    %s,\n", quote(data[i:i+chunk]))
+			fmt.Printf("    %s,\n", quote(data[:chunk]))
+			data = data[chunk:]
 		}
 		fmt.Printf("};\n")
-		fmt.Printf("static const size_t kLen%d = %d;\n\n", i, len(data))
 	}
 
 	fmt.Printf(`static std::string AssembleString(const char **data, size_t len) {
