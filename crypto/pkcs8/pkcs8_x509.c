@@ -669,11 +669,17 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
       goto err;
     }
 
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+    static const uint64_t kIterationsLimit = 1024;
+#else
+    static const uint64_t kIterationsLimit = UINT_MAX;
+#endif
+
     // The iteration count is optional and the default is one.
     uint64_t iterations = 1;
     if (CBS_len(&mac_data) > 0) {
       if (!CBS_get_asn1_uint64(&mac_data, &iterations) ||
-          iterations > UINT_MAX) {
+          iterations > kIterationsLimit) {
         OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_PKCS12_DATA);
         goto err;
       }
