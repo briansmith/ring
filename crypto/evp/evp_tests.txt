@@ -140,12 +140,12 @@ PublicKey = Ed25519-SPKI-NULL
 Input = 302c300706032b65700500032100d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a
 Error = DECODE_ERROR
 
-# Sample public key from draft-ietf-curdle-pkix-04.
+# Sample public key from RFC 8410.
 PublicKey = Ed25519-SPKI-Spec
 Type = Ed25519
 Input = 302a300506032b657003210019bf44096984cdfe8541bac167dc3b96c85086aa30b6b6cb0c5c38ad703166e1
 
-# Sample private key from draft-ietf-curdle-pkix-04.
+# Sample private key from RFC 8410.
 PrivateKey = Ed25519-Spec
 Type = Ed25519
 Input = 302e020100300506032b657004220420d4ee72dbf913584ad5b6d8f1f769f8ad3afe7c28cbf1d4fbe097a88f44755842
