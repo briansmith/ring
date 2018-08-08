@@ -112,6 +112,10 @@ OPENSSL_EXPORT const EVP_AEAD *EVP_aead_aes_256_gcm(void);
 // Poly1305 as described in RFC 7539.
 OPENSSL_EXPORT const EVP_AEAD *EVP_aead_chacha20_poly1305(void);
 
+// EVP_aead_xchacha20_poly1305 is ChaCha20-Poly1305 with an extended nonce that
+// makes random generation of nonces safe.
+OPENSSL_EXPORT const EVP_AEAD *EVP_aead_xchacha20_poly1305(void);
+
 // EVP_aead_aes_128_ctr_hmac_sha256 is AES-128 in CTR mode with HMAC-SHA256 for
 // authentication. The nonce is 12 bytes; the bottom 32-bits are used as the
 // block counter, thus the maximum plaintext size is 64GB.
@@ -184,7 +188,7 @@ typedef struct evp_aead_ctx_st {
 
 // EVP_AEAD_MAX_NONCE_LENGTH contains the maximum nonce length used by
 // any AEAD defined in this header.
-#define EVP_AEAD_MAX_NONCE_LENGTH 16
+#define EVP_AEAD_MAX_NONCE_LENGTH 24
 
 // EVP_AEAD_MAX_OVERHEAD contains the maximum overhead used by any AEAD
 // defined in this header.
