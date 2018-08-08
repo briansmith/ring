@@ -672,7 +672,12 @@ int PKCS12_get_key_and_certs(EVP_PKEY **out_key, STACK_OF(X509) *out_certs,
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
     static const uint64_t kIterationsLimit = 1024;
 #else
-    static const uint64_t kIterationsLimit = UINT_MAX;
+    // Windows imposes a limit of 600K. Mozilla say: “so them increasing
+    // maximum to something like 100M or 1G (to have few decades of breathing
+    // room) would be very welcome”[1]. So here we set the limit to 100M.
+    //
+    // [1] https://bugzilla.mozilla.org/show_bug.cgi?id=1436873#c14
+    static const uint64_t kIterationsLimit = 100 * 1000000;
 #endif
 
     // The iteration count is optional and the default is one.
