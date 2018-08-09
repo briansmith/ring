@@ -1,5 +1,12 @@
 This directory consumes tools from other repositories for use on the
-bots. To update to newer revisions, follow these instructions:
+bots. For a similarly-configured local checkout for testing, run:
+
+   mkdir boringssl-gclient
+   cd boringssl-gclient
+   gclient config --unmanaged --deps-file=util/bot/DEPS https://boringssl.googlesource.com/boringssl/
+   gclient sync
+
+To update to newer revisions, follow these instructions:
 
 DEPS: Set all revisions to those used in Chromium, found at
    https://chromium.googlesource.com/chromium/src/+/master/DEPS (Search for the
