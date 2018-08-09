@@ -2422,7 +2422,6 @@ TEST_P(SSLVersionTest, DefaultTicketKeyInitialization) {
 TEST_P(SSLVersionTest, DefaultTicketKeyRotation) {
   static const time_t kStartTime = 1001;
   g_current_time.tv_sec = kStartTime;
-  uint8_t ticket_key[kTicketKeyLen];
 
   // We use session reuse as a proxy for ticket decryption success, hence
   // disable session timeouts.
@@ -2436,7 +2435,9 @@ TEST_P(SSLVersionTest, DefaultTicketKeyRotation) {
   SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
   SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_OFF);
 
-  // Initialize ticket_key with the current key.
+  // Initialize ticket_key with the current key and check that it was
+  // initialized to something, not all zeros.
+  uint8_t ticket_key[kTicketKeyLen] = {0};
   TRACED_CALL(ExpectTicketKeyChanged(server_ctx_.get(), ticket_key,
                                      true /* changed */));
 
