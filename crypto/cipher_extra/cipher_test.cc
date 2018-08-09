@@ -172,14 +172,15 @@ static void TestOperation(FileTest *t, const EVP_CIPHER *cipher, bool encrypt,
                          encrypt ? 1 : 0));
   if (t->HasAttribute("IV")) {
     if (is_aead) {
-      ASSERT_TRUE(
-          EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_IVLEN, iv.size(), 0));
+      ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_IVLEN,
+                                      iv.size(), 0));
     } else {
       ASSERT_EQ(iv.size(), EVP_CIPHER_CTX_iv_length(ctx.get()));
     }
   }
   if (is_aead && !encrypt) {
-    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, tag.size(),
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_SET_TAG,
+                                    tag.size(),
                                     const_cast<uint8_t *>(tag.data())));
   }
   // The ciphers are run with no padding. For each of the ciphers we test, the
@@ -188,7 +189,7 @@ static void TestOperation(FileTest *t, const EVP_CIPHER *cipher, bool encrypt,
   ASSERT_TRUE(EVP_CIPHER_CTX_set_key_length(ctx.get(), key.size()));
   ASSERT_TRUE(EVP_CipherInit_ex(ctx.get(), nullptr, nullptr, key.data(),
                                 iv.data(), -1));
-  // Note: the deprecated |EVP_CIPHER|-based AES-GCM API is sensitive to whether
+  // Note: the deprecated |EVP_CIPHER|-based AEAD API is sensitive to whether
   // parameters are NULL, so it is important to skip the |in| and |aad|
   // |EVP_CipherUpdate| calls when empty.
   if (!aad.empty()) {
@@ -203,8 +204,8 @@ static void TestOperation(FileTest *t, const EVP_CIPHER *cipher, bool encrypt,
   if (encrypt && is_aead) {
     uint8_t rtag[16];
     ASSERT_LE(tag.size(), sizeof(rtag));
-    ASSERT_TRUE(
-        EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG, tag.size(), rtag));
+    ASSERT_TRUE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_AEAD_GET_TAG,
+                                    tag.size(), rtag));
     EXPECT_EQ(Bytes(tag), Bytes(rtag, tag.size()));
   }
 }

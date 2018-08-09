@@ -418,7 +418,7 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       gctx->iv_gen = 0;
       return 1;
 
-    case EVP_CTRL_GCM_SET_IVLEN:
+    case EVP_CTRL_AEAD_SET_IVLEN:
       if (arg <= 0) {
         return 0;
       }
@@ -436,7 +436,7 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       gctx->ivlen = arg;
       return 1;
 
-    case EVP_CTRL_GCM_SET_TAG:
+    case EVP_CTRL_AEAD_SET_TAG:
       if (arg <= 0 || arg > 16 || c->encrypt) {
         return 0;
       }
@@ -444,14 +444,14 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
       gctx->taglen = arg;
       return 1;
 
-    case EVP_CTRL_GCM_GET_TAG:
+    case EVP_CTRL_AEAD_GET_TAG:
       if (arg <= 0 || arg > 16 || !c->encrypt || gctx->taglen < 0) {
         return 0;
       }
       OPENSSL_memcpy(ptr, c->buf, arg);
       return 1;
 
-    case EVP_CTRL_GCM_SET_IV_FIXED:
+    case EVP_CTRL_AEAD_SET_IV_FIXED:
       // Special case: -1 length restores whole IV
       if (arg == -1) {
         OPENSSL_memcpy(gctx->iv, ptr, gctx->ivlen);
