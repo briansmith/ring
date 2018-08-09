@@ -19,6 +19,7 @@ vars = {
   'checkout_fuzzer': False,
   'checkout_sde': False,
   'checkout_nasm': False,
+  'checkout_libcxx': False,
 }
 
 deps = {
@@ -38,6 +39,17 @@ deps = {
   'boringssl/util/bot/libFuzzer': {
     'url': Var('chromium_git') + '/chromium/llvm-project/compiler-rt/lib/fuzzer.git' + '@' + '658ff786a213703ff0df6ba4a288e9a1e218c074',
     'condition': 'checkout_fuzzer',
+  },
+
+  # Update the following revisions from
+  # https://chromium.googlesource.com/chromium/buildtools/+/master/DEPS
+  'boringssl/util/bot/libcxx': {
+    'url': Var('chromium_git') + '/chromium/llvm-project/libcxx.git' + '@' + '85a7702b4cc5d69402791fe685f151cf3076be71',
+    'condition': 'checkout_libcxx',
+  },
+  'boringssl/util/bot/libcxxabi': {
+    'url': Var('chromium_git') + '/chromium/llvm-project/libcxxabi.git' + '@' + '05a73941f3fb177c4a891d4ff2a4ed5785e3b80c',
+    'condition': 'checkout_libcxx',
   },
 }
 
