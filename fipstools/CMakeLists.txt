@@ -1,6 +1,6 @@
 include_directories(../include)
 
-if (FIPS)
+if(FIPS)
   add_executable(
     cavp
 

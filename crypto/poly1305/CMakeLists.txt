@@ -1,6 +1,6 @@
 include_directories(../../include)
 
-if (${ARCH} STREQUAL "arm")
+if(${ARCH} STREQUAL "arm")
   set(
     POLY1305_ARCH_SOURCES
 

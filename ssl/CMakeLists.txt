@@ -54,7 +54,7 @@ add_executable(
 )
 
 target_link_libraries(ssl_test ssl crypto boringssl_gtest)
-if (WIN32)
+if(WIN32)
   target_link_libraries(ssl_test ws2_32)
 endif()
 add_dependencies(all_tests ssl_test)

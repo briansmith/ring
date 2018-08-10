@@ -1,6 +1,6 @@
 include_directories(../../include)
 
-if (${ARCH} STREQUAL "arm")
+if(${ARCH} STREQUAL "arm")
   set(
     CHACHA_ARCH_SOURCES
 
@@ -8,7 +8,7 @@ if (${ARCH} STREQUAL "arm")
   )
 endif()
 
-if (${ARCH} STREQUAL "aarch64")
+if(${ARCH} STREQUAL "aarch64")
   set(
     CHACHA_ARCH_SOURCES
 
@@ -16,7 +16,7 @@ if (${ARCH} STREQUAL "aarch64")
   )
 endif()
 
-if (${ARCH} STREQUAL "x86")
+if(${ARCH} STREQUAL "x86")
   set(
     CHACHA_ARCH_SOURCES
 
@@ -24,7 +24,7 @@ if (${ARCH} STREQUAL "x86")
   )
 endif()
 
-if (${ARCH} STREQUAL "x86_64")
+if(${ARCH} STREQUAL "x86_64")
   set(
     CHACHA_ARCH_SOURCES
 

@@ -1,6 +1,6 @@
 include_directories(../../include)
 
-if (${ARCH} STREQUAL "x86_64")
+if(${ARCH} STREQUAL "x86_64")
   set(
     BCM_ASM_SOURCES
 
@@ -22,7 +22,7 @@ if (${ARCH} STREQUAL "x86_64")
   )
 endif()
 
-if (${ARCH} STREQUAL "x86")
+if(${ARCH} STREQUAL "x86")
   set(
     BCM_ASM_SOURCES
 
@@ -40,7 +40,7 @@ if (${ARCH} STREQUAL "x86")
   )
 endif()
 
-if (${ARCH} STREQUAL "arm")
+if(${ARCH} STREQUAL "arm")
   set(
     BCM_ASM_SOURCES
 
@@ -56,7 +56,7 @@ if (${ARCH} STREQUAL "arm")
   )
 endif()
 
-if (${ARCH} STREQUAL "aarch64")
+if(${ARCH} STREQUAL "aarch64")
   set(
     BCM_ASM_SOURCES
 
@@ -69,7 +69,7 @@ if (${ARCH} STREQUAL "aarch64")
   )
 endif()
 
-if (${ARCH} STREQUAL "ppc64le")
+if(${ARCH} STREQUAL "ppc64le")
   set(
     BCM_ASM_SOURCES
 

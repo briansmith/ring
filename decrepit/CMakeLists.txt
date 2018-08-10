@@ -49,7 +49,7 @@ add_executable(
 )
 
 target_link_libraries(decrepit_test crypto decrepit boringssl_gtest)
-if (WIN32)
+if(WIN32)
   target_link_libraries(decrepit_test ws2_32)
 endif()
 add_dependencies(all_tests decrepit_test)
