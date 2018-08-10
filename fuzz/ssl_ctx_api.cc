@@ -14,6 +14,7 @@
 
 #include <functional>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include <assert.h>
@@ -233,6 +234,23 @@ static bool GetString(std::string *out, CBS *cbs) {
   return true;
 }
 
+template <typename T>
+static bool GetVector(std::vector<T> *out, CBS *cbs) {
+  static_assert(std::is_pod<T>::value,
+                "GetVector may only be called on POD types");
+
+  CBS child;
+  if (!CBS_get_u8_length_prefixed(cbs, &child)) {
+    return false;
+  }
+
+  size_t num = CBS_len(&child) / sizeof(T);
+  out->resize(num);
+  out->shrink_to_fit();  // Ensure ASan notices out-of-bounds reads.
+  OPENSSL_memcpy(out->data(), CBS_data(&child), num * sizeof(T));
+  return true;
+}
+
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
   constexpr size_t kMaxExpensiveAPIs = 100;
   unsigned expensive_api_count = 0;
@@ -317,34 +335,26 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
         SSL_CTX_get0_chain_certs(ctx, &chains);
       },
       [](SSL_CTX *ctx, CBS *cbs) {
-        std::string sct_data;
-        if (!GetString(&sct_data, cbs)) {
+        std::vector<uint8_t> sct_data;
+        if (!GetVector(&sct_data, cbs)) {
           return;
         }
-
-        SSL_CTX_set_signed_cert_timestamp_list(
-            ctx, reinterpret_cast<const uint8_t *>(sct_data.data()),
-            sct_data.size());
+        SSL_CTX_set_signed_cert_timestamp_list(ctx, sct_data.data(),
+                                               sct_data.size());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
-        std::string ocsp_data;
-        if (!GetString(&ocsp_data, cbs)) {
+        std::vector<uint8_t> ocsp_data;
+        if (!GetVector(&ocsp_data, cbs)) {
           return;
         }
-
-        SSL_CTX_set_ocsp_response(
-            ctx, reinterpret_cast<const uint8_t *>(ocsp_data.data()),
-            ocsp_data.size());
+        SSL_CTX_set_ocsp_response(ctx, ocsp_data.data(), ocsp_data.size());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
-        std::string signing_algos;
-        if (!GetString(&signing_algos, cbs)) {
+        std::vector<uint16_t> algs;
+        if (!GetVector(&algs, cbs)) {
           return;
         }
-
-        SSL_CTX_set_signing_algorithm_prefs(
-            ctx, reinterpret_cast<const uint16_t *>(signing_algos.data()),
-            signing_algos.size() / sizeof(uint16_t));
+        SSL_CTX_set_signing_algorithm_prefs(ctx, algs.data(), algs.size());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
         std::string ciphers;
@@ -361,23 +371,18 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
         SSL_CTX_set_cipher_list(ctx, ciphers.c_str());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
-        std::string verify_algos;
-        if (!GetString(&verify_algos, cbs)) {
+        std::vector<uint16_t> algs;
+        if (!GetVector(&algs, cbs)) {
           return;
         }
-
-        SSL_CTX_set_verify_algorithm_prefs(
-            ctx, reinterpret_cast<const uint16_t *>(verify_algos.data()),
-            verify_algos.size() / sizeof(uint16_t));
+        SSL_CTX_set_verify_algorithm_prefs(ctx, algs.data(), algs.size());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
-        std::string ciphers;
-        if (!GetString(&ciphers, cbs)) {
+        std::vector<uint8_t> id_ctx;
+        if (!GetVector(&id_ctx, cbs)) {
           return;
         }
-        SSL_CTX_set_session_id_context(
-            ctx, reinterpret_cast<const uint8_t *>(ciphers.data()),
-            ciphers.size());
+        SSL_CTX_set_session_id_context(ctx, id_ctx.data(), id_ctx.size());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
         uint32_t size;
@@ -396,20 +401,18 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
         SSL_CTX_flush_sessions(ctx, time);
       },
       [](SSL_CTX *ctx, CBS *cbs) {
-        std::string keys;
-        if (!GetString(&keys, cbs)) {
+        std::vector<uint8_t> keys;
+        if (!GetVector(&keys, cbs)) {
           return;
         }
-        SSL_CTX_set_tlsext_ticket_keys(
-            ctx, reinterpret_cast<const uint8_t *>(keys.data()), keys.size());
+        SSL_CTX_set_tlsext_ticket_keys(ctx, keys.data(), keys.size());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
-        std::string curves;
-        if (!GetString(&curves, cbs)) {
+        std::vector<int> curves;
+        if (!GetVector(&curves, cbs)) {
           return;
         }
-        SSL_CTX_set1_curves(ctx, reinterpret_cast<const int *>(curves.data()),
-                            curves.size() / sizeof(int));
+        SSL_CTX_set1_curves(ctx, curves.data(), curves.size());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
         std::string curves;
@@ -431,13 +434,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
         SSL_CTX_add_client_CA(ctx, g_state.cert_.get());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
-        std::string protos;
-        if (!GetString(&protos, cbs)) {
+        std::vector<uint8_t> protos;
+        if (!GetVector(&protos, cbs)) {
           return;
         }
-        SSL_CTX_set_alpn_protos(
-            ctx, reinterpret_cast<const uint8_t *>(protos.data()),
-            protos.size());
+        SSL_CTX_set_alpn_protos(ctx, protos.data(), protos.size());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
         std::string profiles;
@@ -476,7 +477,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
         SSL_CTX_set_grease_enabled(ctx, b);
       },
       [](SSL_CTX *ctx, CBS *cbs) {
-        SSL_CTX_set1_sigalgs(ctx, (const int *)CBS_data(cbs), CBS_len(cbs) / 2);
+        std::vector<int> sigalgs;
+        if (!GetVector(&sigalgs, cbs)) {
+          return;
+        }
+        SSL_CTX_set1_sigalgs(ctx, sigalgs.data(), sigalgs.size());
       },
       [](SSL_CTX *ctx, CBS *cbs) {
         std::string sigalgs;
