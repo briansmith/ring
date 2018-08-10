@@ -182,6 +182,7 @@ enum ssl_client_hs_state_t {
   state_read_server_certificate,
   state_read_certificate_status,
   state_verify_server_certificate,
+  state_reverify_server_certificate,
   state_read_server_key_exchange,
   state_read_certificate_request,
   state_read_server_hello_done,
@@ -734,7 +735,12 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   ssl->method->next_message(ssl);
 
   if (ssl->session != NULL) {
-    hs->state = state_read_session_ticket;
+    if (ssl->ctx->reverify_on_resume &&
+        ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
+      hs->state = state_reverify_server_certificate;
+    } else {
+      hs->state = state_read_session_ticket;
+    }
     return ssl_hs_ok;
   }
 
@@ -865,6 +871,23 @@ static enum ssl_hs_wait_t do_verify_server_certificate(SSL_HANDSHAKE *hs) {
   }
 
   hs->state = state_read_server_key_exchange;
+  return ssl_hs_ok;
+}
+
+static enum ssl_hs_wait_t do_reverify_server_certificate(SSL_HANDSHAKE *hs) {
+  assert(hs->ssl->ctx->reverify_on_resume);
+
+  switch (ssl_reverify_peer_cert(hs)) {
+    case ssl_verify_ok:
+      break;
+    case ssl_verify_invalid:
+      return ssl_hs_error;
+    case ssl_verify_retry:
+      hs->state = state_reverify_server_certificate;
+      return ssl_hs_certificate_verify;
+  }
+
+  hs->state = state_read_session_ticket;
   return ssl_hs_ok;
 }
 
@@ -1671,6 +1694,9 @@ enum ssl_hs_wait_t ssl_client_handshake(SSL_HANDSHAKE *hs) {
       case state_verify_server_certificate:
         ret = do_verify_server_certificate(hs);
         break;
+      case state_reverify_server_certificate:
+        ret = do_reverify_server_certificate(hs);
+        break;
       case state_read_server_key_exchange:
         ret = do_read_server_key_exchange(hs);
         break;
@@ -1745,6 +1771,8 @@ const char *ssl_client_handshake_state(SSL_HANDSHAKE *hs) {
       return "TLS client read_certificate_status";
     case state_verify_server_certificate:
       return "TLS client verify_server_certificate";
+    case state_reverify_server_certificate:
+      return "TLS client reverify_server_certificate";
     case state_read_server_key_exchange:
       return "TLS client read_server_key_exchange";
     case state_read_certificate_request:

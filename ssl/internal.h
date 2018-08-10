@@ -1698,6 +1698,9 @@ int ssl_parse_extensions(const CBS *cbs, uint8_t *out_alert,
 
 // ssl_verify_peer_cert verifies the peer certificate for |hs|.
 enum ssl_verify_result_t ssl_verify_peer_cert(SSL_HANDSHAKE *hs);
+// ssl_reverify_peer_cert verifies the peer certificate for |hs| when resuming a
+// session.
+enum ssl_verify_result_t ssl_reverify_peer_cert(SSL_HANDSHAKE *hs);
 
 enum ssl_hs_wait_t ssl_get_finished(SSL_HANDSHAKE *hs);
 bool ssl_send_finished(SSL_HANDSHAKE *hs);
@@ -2898,6 +2901,11 @@ struct ssl_ctx_st {
   // has been made. It returns one to continue the handshake or zero to
   // abort.
   int (*dos_protection_cb) (const SSL_CLIENT_HELLO *) = nullptr;
+
+  // Controls whether to verify certificates when resuming connections. They
+  // were already verified when the connection was first made, so the default is
+  // false. For now, this is only respected on clients, not servers.
+  bool reverify_on_resume = false;
 
   // Maximum amount of data to send in one fragment. actual record size can be
   // more than this due to padding and MAC overheads.

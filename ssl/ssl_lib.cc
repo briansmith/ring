@@ -2545,6 +2545,10 @@ void SSL_CTX_set_dos_protection_cb(SSL_CTX *ctx,
   ctx->dos_protection_cb = cb;
 }
 
+void SSL_CTX_set_reverify_on_resume(SSL_CTX *ctx, int enabled) {
+  ctx->reverify_on_resume = !!enabled;
+}
+
 void SSL_set_renegotiate_mode(SSL *ssl, enum ssl_renegotiate_mode_t mode) {
   ssl->renegotiate_mode = mode;
 

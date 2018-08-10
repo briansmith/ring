@@ -4967,6 +4967,49 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 					shouldFail:    true,
 					expectedError: ":CERTIFICATE_VERIFY_FAILED:",
 				})
+				// Tests that although the verify callback fails on resumption, by default we don't call it.
+				tests = append(tests, testCase{
+					testType: testType,
+					name:     "CertificateVerificationDoesNotFailOnResume" + suffix,
+					config: Config{
+						MaxVersion:   vers.version,
+						Certificates: []Certificate{rsaCertificate},
+					},
+					tls13Variant:  vers.tls13Variant,
+					flags:         append([]string{"-on-resume-verify-fail"}, flags...),
+					resumeSession: true,
+				})
+				if testType == clientTest && useCustomCallback {
+					tests = append(tests, testCase{
+						testType: testType,
+						name:     "CertificateVerificationFailsOnResume" + suffix,
+						config: Config{
+							MaxVersion:   vers.version,
+							Certificates: []Certificate{rsaCertificate},
+						},
+						tls13Variant: vers.tls13Variant,
+						flags: append([]string{
+							"-on-resume-verify-fail",
+							"-reverify-on-resume",
+						}, flags...),
+						resumeSession: true,
+						shouldFail:    true,
+						expectedError: ":CERTIFICATE_VERIFY_FAILED:",
+					})
+					tests = append(tests, testCase{
+						testType: testType,
+						name:     "CertificateVerificationPassesOnResume" + suffix,
+						config: Config{
+							MaxVersion:   vers.version,
+							Certificates: []Certificate{rsaCertificate},
+						},
+						tls13Variant: vers.tls13Variant,
+						flags: append([]string{
+							"-reverify-on-resume",
+						}, flags...),
+						resumeSession: true,
+					})
+				}
 			}
 		}
 
