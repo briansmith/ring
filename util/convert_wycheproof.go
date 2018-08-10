@@ -210,6 +210,13 @@ var defaultInputs = []string{
 	"ecdsa_secp521r1_sha512_test.json",
 	"eddsa_test.json",
 	"kw_test.json",
+	"rsa_pss_2048_sha1_mgf1_20_test.json",
+	"rsa_pss_2048_sha256_mgf1_0_test.json",
+	"rsa_pss_2048_sha256_mgf1_32_test.json",
+	"rsa_pss_3072_sha256_mgf1_32_test.json",
+	"rsa_pss_4096_sha256_mgf1_32_test.json",
+	"rsa_pss_4096_sha512_mgf1_32_test.json",
+	"rsa_pss_misc_test.json",
 	"rsa_signature_test.json",
 	"x25519_test.json",
 }

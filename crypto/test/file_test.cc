@@ -286,6 +286,13 @@ bool FileTest::GetInstruction(std::string *out_value, const std::string &key) {
   return true;
 }
 
+const std::string &FileTest::GetInstructionOrDie(const std::string &key) {
+  if (!HasInstruction(key)) {
+    abort();
+  }
+  return instructions_[key];
+}
+
 bool FileTest::GetInstructionBytes(std::vector<uint8_t> *out,
                                    const std::string &key) {
   std::string value;

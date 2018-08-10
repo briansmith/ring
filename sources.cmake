@@ -79,6 +79,13 @@ set(
   third_party/wycheproof_testvectors/ecdsa_secp521r1_sha512_test.txt
   third_party/wycheproof_testvectors/eddsa_test.txt
   third_party/wycheproof_testvectors/kw_test.txt
+  third_party/wycheproof_testvectors/rsa_pss_2048_sha1_mgf1_20_test.txt
+  third_party/wycheproof_testvectors/rsa_pss_2048_sha256_mgf1_0_test.txt
+  third_party/wycheproof_testvectors/rsa_pss_2048_sha256_mgf1_32_test.txt
+  third_party/wycheproof_testvectors/rsa_pss_3072_sha256_mgf1_32_test.txt
+  third_party/wycheproof_testvectors/rsa_pss_4096_sha256_mgf1_32_test.txt
+  third_party/wycheproof_testvectors/rsa_pss_4096_sha512_mgf1_32_test.txt
+  third_party/wycheproof_testvectors/rsa_pss_misc_test.txt
   third_party/wycheproof_testvectors/rsa_signature_test.txt
   third_party/wycheproof_testvectors/x25519_test.txt
 )

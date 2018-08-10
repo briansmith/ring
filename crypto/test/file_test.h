@@ -185,6 +185,10 @@ class FileTest {
   // otherwise.
   bool GetInstruction(std::string *out_value, const std::string &key);
 
+  // GetInstructionOrDie looks up the instruction with key |key| and aborts if
+  // it is missing. It should only be used after a |HasInstruction| call.
+  const std::string &GetInstructionOrDie(const std::string &key);
+
   // GetInstructionBytes behaves like GetBytes, but looks up the corresponding
   // instruction.
   bool GetInstructionBytes(std::vector<uint8_t> *out, const std::string &key);
