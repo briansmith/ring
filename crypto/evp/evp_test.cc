@@ -524,11 +524,15 @@ TEST(EVPTest, WycheproofECDSAP224) {
       "third_party/wycheproof_testvectors/ecdsa_secp224r1_sha224_test.txt");
   RunWycheproofTest(
       "third_party/wycheproof_testvectors/ecdsa_secp224r1_sha256_test.txt");
+  RunWycheproofTest(
+      "third_party/wycheproof_testvectors/ecdsa_secp224r1_sha512_test.txt");
 }
 
 TEST(EVPTest, WycheproofECDSAP256) {
   RunWycheproofTest(
       "third_party/wycheproof_testvectors/ecdsa_secp256r1_sha256_test.txt");
+  RunWycheproofTest(
+      "third_party/wycheproof_testvectors/ecdsa_secp256r1_sha512_test.txt");
 }
 
 TEST(EVPTest, WycheproofECDSAP384) {
