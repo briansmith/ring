@@ -479,7 +479,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *buf, size_t len) {
         SSL_CTX_set1_sigalgs(ctx, (const int *)CBS_data(cbs), CBS_len(cbs) / 2);
       },
       [](SSL_CTX *ctx, CBS *cbs) {
-        SSL_CTX_set1_sigalgs_list(ctx, (const char *) CBS_data(cbs));
+        std::string sigalgs;
+        if (!GetString(&sigalgs, cbs)) {
+          return;
+        }
+        SSL_CTX_set1_sigalgs_list(ctx, sigalgs.c_str());
       },
   };
 
