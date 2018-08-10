@@ -121,17 +121,6 @@ func printComment(w io.Writer, in string) error {
 	return nil
 }
 
-func isSupportedCurve(curve string) bool {
-	switch curve {
-	case "brainpoolP224r1", "brainpoolP224t1", "brainpoolP256r1", "brainpoolP256t1", "brainpoolP320r1", "brainpoolP320t1", "brainpoolP384r1", "brainpoolP384t1", "brainpoolP512r1", "brainpoolP512t1", "secp256k1":
-		return false
-	case "edwards25519", "curve25519", "secp224r1", "secp256r1", "secp384r1", "secp521r1":
-		return true
-	default:
-		panic("Unknown curve: " + curve)
-	}
-}
-
 func convertWycheproof(f io.Writer, jsonPath string) error {
 	jsonData, err := ioutil.ReadFile(jsonPath)
 	if err != nil {
@@ -154,21 +143,6 @@ func convertWycheproof(f io.Writer, jsonPath string) error {
 	}
 
 	for _, group := range w.TestGroups {
-		// Skip tests with unsupported curves. We filter these out at
-		// conversion time to avoid unnecessarily inflating
-		// crypto_test_data.cc.
-		groupCurve := group["curve"]
-		if groupCurve != nil && !isSupportedCurve(groupCurve.(string)) {
-			continue
-		}
-		if keyI, ok := group["key"]; ok {
-			if key, ok := keyI.(map[string]interface{}); ok {
-				if curve, ok := key["curve"]; ok && !isSupportedCurve(curve.(string)) {
-					continue
-				}
-			}
-		}
-
 		for _, k := range sortedKeys(group) {
 			// Wycheproof files always include both keyPem and
 			// keyDer. Skip keyPem as they contain newlines. We
@@ -184,12 +158,6 @@ func convertWycheproof(f io.Writer, jsonPath string) error {
 		tests := group["tests"].([]interface{})
 		for _, testI := range tests {
 			test := testI.(map[string]interface{})
-
-			curve := test["curve"]
-			// Skip tests with unsupported curves.
-			if curve != nil && !isSupportedCurve(curve.(string)) {
-				continue
-			}
 			if _, err := fmt.Fprintf(f, "# tcId = %d\n", int(test["tcId"].(float64))); err != nil {
 				return err
 			}
@@ -203,13 +171,6 @@ func convertWycheproof(f io.Writer, jsonPath string) error {
 					continue
 				}
 				if err := printAttribute(f, k, test[k], false); err != nil {
-					return err
-				}
-			}
-			// If the curve was only specified at the group level then copy it into
-			// each test.
-			if curve == nil && groupCurve != nil {
-				if err := printAttribute(f, "curve", groupCurve, false); err != nil {
 					return err
 				}
 			}
@@ -237,7 +198,10 @@ var defaultInputs = []string{
 	"aes_gcm_test.json",
 	"chacha20_poly1305_test.json",
 	"dsa_test.json",
-	"ecdh_test.json",
+	"ecdh_secp224r1_test.json",
+	"ecdh_secp256r1_test.json",
+	"ecdh_secp384r1_test.json",
+	"ecdh_secp521r1_test.json",
 	"ecdsa_secp224r1_sha224_test.json",
 	"ecdsa_secp224r1_sha256_test.json",
 	"ecdsa_secp256r1_sha256_test.json",

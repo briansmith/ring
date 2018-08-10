@@ -126,60 +126,76 @@ TEST(ECDHTest, TestVectors) {
   });
 }
 
-TEST(ECDHTest, Wycheproof) {
-  FileTestGTest("third_party/wycheproof_testvectors/ecdh_test.txt",
-                [](FileTest *t) {
-    t->IgnoreInstruction("curve");  // This is redundant with the per-test one.
-    t->IgnoreInstruction("encoding");
 
-    bssl::UniquePtr<EC_GROUP> group = GetWycheproofCurve(t, "curve", false);
-    ASSERT_TRUE(group);
-    bssl::UniquePtr<BIGNUM> priv_key = GetWycheproofBIGNUM(t, "private", false);
-    ASSERT_TRUE(priv_key);
-    std::vector<uint8_t> peer_spki;
-    ASSERT_TRUE(t->GetBytes(&peer_spki, "public"));
-    WycheproofResult result;
-    ASSERT_TRUE(GetWycheproofResult(t, &result));
-    std::vector<uint8_t> shared;
-    ASSERT_TRUE(t->GetBytes(&shared, "shared"));
+static void RunWycheproofTest(FileTest *t) {
+  t->IgnoreInstruction("encoding");
 
-    // Wycheproof stores the peer key in an SPKI to mimic a Java API mistake.
-    // This is non-standard and error-prone.
-    CBS cbs;
-    CBS_init(&cbs, peer_spki.data(), peer_spki.size());
-    bssl::UniquePtr<EVP_PKEY> peer_evp(EVP_parse_public_key(&cbs));
-    if (!peer_evp) {
-      // Note some of Wycheproof's "acceptable" entries are unsupported by
-      // BoringSSL because they test named curves (explicitly forbidden by RFC
-      // 5480), while others are supported because they used compressed
-      // coordinates. If the peer key fails to parse, we consider it to match
-      // "acceptable", but if the resulting shared secret matches below, it too
-      // matches "acceptable".
-      //
-      // TODO(davidben): Use the flags field to disambiguate these. Possibly
-      // first get the Wycheproof folks to use flags more consistently.
-      EXPECT_NE(WycheproofResult::kValid, result);
-      return;
-    }
-    EC_KEY *peer_ec = EVP_PKEY_get0_EC_KEY(peer_evp.get());
-    ASSERT_TRUE(peer_ec);
+  bssl::UniquePtr<EC_GROUP> group = GetWycheproofCurve(t, "curve", true);
+  ASSERT_TRUE(group);
+  bssl::UniquePtr<BIGNUM> priv_key = GetWycheproofBIGNUM(t, "private", false);
+  ASSERT_TRUE(priv_key);
+  std::vector<uint8_t> peer_spki;
+  ASSERT_TRUE(t->GetBytes(&peer_spki, "public"));
+  WycheproofResult result;
+  ASSERT_TRUE(GetWycheproofResult(t, &result));
+  std::vector<uint8_t> shared;
+  ASSERT_TRUE(t->GetBytes(&shared, "shared"));
 
-    bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
-    ASSERT_TRUE(key);
-    ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
-    ASSERT_TRUE(EC_KEY_set_private_key(key.get(), priv_key.get()));
+  // Wycheproof stores the peer key in an SPKI to mimic a Java API mistake.
+  // This is non-standard and error-prone.
+  CBS cbs;
+  CBS_init(&cbs, peer_spki.data(), peer_spki.size());
+  bssl::UniquePtr<EVP_PKEY> peer_evp(EVP_parse_public_key(&cbs));
+  if (!peer_evp) {
+    // Note some of Wycheproof's "acceptable" entries are unsupported by
+    // BoringSSL because they test explicit curves (forbidden by RFC 5480),
+    // while others are supported because they used compressed coordinates. If
+    // the peer key fails to parse, we consider it to match "acceptable", but if
+    // the resulting shared secret matches below, it too matches "acceptable".
+    //
+    // TODO(davidben): Use the flags field to disambiguate these. Possibly
+    // first get the Wycheproof folks to use flags more consistently.
+    EXPECT_NE(WycheproofResult::kValid, result);
+    return;
+  }
+  EC_KEY *peer_ec = EVP_PKEY_get0_EC_KEY(peer_evp.get());
+  ASSERT_TRUE(peer_ec);
 
-    std::vector<uint8_t> actual((EC_GROUP_get_degree(group.get()) + 7) / 8);
-    int ret =
-        ECDH_compute_key(actual.data(), actual.size(),
-                         EC_KEY_get0_public_key(peer_ec), key.get(), nullptr);
-    if (result == WycheproofResult::kInvalid) {
-      EXPECT_EQ(-1, ret);
-    } else {
-      EXPECT_EQ(static_cast<int>(actual.size()), ret);
-      EXPECT_EQ(Bytes(shared), Bytes(actual.data(), static_cast<size_t>(ret)));
-    }
-  });
+  bssl::UniquePtr<EC_KEY> key(EC_KEY_new());
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(EC_KEY_set_group(key.get(), group.get()));
+  ASSERT_TRUE(EC_KEY_set_private_key(key.get(), priv_key.get()));
+
+  std::vector<uint8_t> actual((EC_GROUP_get_degree(group.get()) + 7) / 8);
+  int ret =
+      ECDH_compute_key(actual.data(), actual.size(),
+                       EC_KEY_get0_public_key(peer_ec), key.get(), nullptr);
+  if (result == WycheproofResult::kInvalid) {
+    EXPECT_EQ(-1, ret);
+  } else {
+    EXPECT_EQ(static_cast<int>(actual.size()), ret);
+    EXPECT_EQ(Bytes(shared), Bytes(actual.data(), static_cast<size_t>(ret)));
+  }
+}
+
+TEST(ECDHTest, WycheproofP224) {
+  FileTestGTest("third_party/wycheproof_testvectors/ecdh_secp224r1_test.txt",
+                RunWycheproofTest);
+}
+
+TEST(ECDHTest, WycheproofP256) {
+  FileTestGTest("third_party/wycheproof_testvectors/ecdh_secp256r1_test.txt",
+                RunWycheproofTest);
+}
+
+TEST(ECDHTest, WycheproofP384) {
+  FileTestGTest("third_party/wycheproof_testvectors/ecdh_secp384r1_test.txt",
+                RunWycheproofTest);
+}
+
+TEST(ECDHTest, WycheproofP512) {
+  FileTestGTest("third_party/wycheproof_testvectors/ecdh_secp521r1_test.txt",
+                RunWycheproofTest);
 }
 
 // MakeCustomGroup returns an |EC_GROUP| containing a non-standard group. (P-256
