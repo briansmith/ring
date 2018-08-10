@@ -1,6 +1,6 @@
 {
   "algorithm" : "AES-CMAC",
-  "generatorVersion" : "0.4.6",
+  "generatorVersion" : "0.4.12",
   "numberOfTests" : 290,
   "header" : [],
   "testGroups" : [

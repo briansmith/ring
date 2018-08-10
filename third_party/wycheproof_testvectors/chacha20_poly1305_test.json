@@ -1,6 +1,6 @@
 {
   "algorithm" : "CHACHA20-POLY1305",
-  "generatorVersion" : "0.4.6",
+  "generatorVersion" : "0.4.12",
   "numberOfTests" : 151,
   "header" : [],
   "testGroups" : [

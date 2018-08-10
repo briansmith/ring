@@ -1,10 +1,10 @@
 {
   "algorithm" : "AES-EAX",
-  "generatorVersion" : "0.4.6",
+  "generatorVersion" : "0.4.12",
   "notes" : {
     "CounterWrap" : "AES-EAX reduces the counter value modulo 2**128. This test vector was constructed for testing the wrapping of the counter value."
   },
-  "numberOfTests" : 155,
+  "numberOfTests" : 162,
   "header" : [],
   "testGroups" : [
     {
@@ -999,6 +999,54 @@
         },
         {
           "tcId" : 79,
+          "comment" : "",
+          "key" : "2ac418c329bce760b9928bb3d9e3171e4b95a9490bff0563",
+          "iv" : "e9b33cbe2cf00e3df7a9757c26887236",
+          "aad" : "6293808cc471bfac",
+          "msg" : "230e0d77a23c35be592aa6c612ebfe8c",
+          "ct" : "3998fa4f34537f4f1af95cea04832254",
+          "tag" : "bef5f02f0272e26effeefca831d33d0b",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 80,
+          "comment" : "",
+          "key" : "bfe0945395ca57a1c2368f56bb6054755f1f16e6d6dce5dc",
+          "iv" : "ea8bc8bde29e057ebaa67e3516295d22",
+          "aad" : "922dc6f1ed0da9d25500a0b7157a10",
+          "msg" : "212b0b1f685300651eb43b2ec0779126",
+          "ct" : "7342838539ec975f2b4e3cf9a08c860e",
+          "tag" : "1ab9c92a3a2b2c0c7996c8a25738959c",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 81,
+          "comment" : "",
+          "key" : "b08b98d7b077662a1f6224ba91c22b95b13d0a75e54d609c",
+          "iv" : "6900b2667811f60b1170542b6d44b913",
+          "aad" : "0f1a3473ff20352972b395a2dec89d1a",
+          "msg" : "28ccf9f4f3cb429f75144275b907d19d",
+          "ct" : "b9143fec99d73850ca15adc7313dc00c",
+          "tag" : "28dee7cedb311961f868697c91ef0729",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 82,
+          "comment" : "",
+          "key" : "a90bd7b87c03803fe77291483954578c07849fb273a52243",
+          "iv" : "0c300db1fbf94c6ae9a36e5ae4bbb906",
+          "aad" : "8cdec329f05a3e2964ea9426430dfe40ce7f40a6fc429b33",
+          "msg" : "644b8ee3162e81b0d59792d3386cc30c",
+          "ct" : "e286ad3f23d2d5742b043ba2c18a73d1",
+          "tag" : "9252f1b2ea6946fa42b2e86cc7bd5114",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 83,
           "comment" : "Flipped bit 0 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1010,7 +1058,7 @@
           "flags" : []
         },
         {
-          "tcId" : 80,
+          "tcId" : 84,
           "comment" : "Flipped bit 1 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1022,7 +1070,7 @@
           "flags" : []
         },
         {
-          "tcId" : 81,
+          "tcId" : 85,
           "comment" : "Flipped bit 7 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1034,7 +1082,7 @@
           "flags" : []
         },
         {
-          "tcId" : 82,
+          "tcId" : 86,
           "comment" : "Flipped bit 8 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1046,7 +1094,7 @@
           "flags" : []
         },
         {
-          "tcId" : 83,
+          "tcId" : 87,
           "comment" : "Flipped bit 31 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1058,7 +1106,7 @@
           "flags" : []
         },
         {
-          "tcId" : 84,
+          "tcId" : 88,
           "comment" : "Flipped bit 32 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1070,7 +1118,7 @@
           "flags" : []
         },
         {
-          "tcId" : 85,
+          "tcId" : 89,
           "comment" : "Flipped bit 33 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1082,7 +1130,7 @@
           "flags" : []
         },
         {
-          "tcId" : 86,
+          "tcId" : 90,
           "comment" : "Flipped bit 63 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1094,7 +1142,7 @@
           "flags" : []
         },
         {
-          "tcId" : 87,
+          "tcId" : 91,
           "comment" : "Flipped bit 64 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1106,7 +1154,7 @@
           "flags" : []
         },
         {
-          "tcId" : 88,
+          "tcId" : 92,
           "comment" : "Flipped bit 71 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1118,7 +1166,7 @@
           "flags" : []
         },
         {
-          "tcId" : 89,
+          "tcId" : 93,
           "comment" : "Flipped bit 77 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1130,7 +1178,7 @@
           "flags" : []
         },
         {
-          "tcId" : 90,
+          "tcId" : 94,
           "comment" : "Flipped bit 80 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1142,7 +1190,7 @@
           "flags" : []
         },
         {
-          "tcId" : 91,
+          "tcId" : 95,
           "comment" : "Flipped bit 96 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1154,7 +1202,7 @@
           "flags" : []
         },
         {
-          "tcId" : 92,
+          "tcId" : 96,
           "comment" : "Flipped bit 97 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1166,7 +1214,7 @@
           "flags" : []
         },
         {
-          "tcId" : 93,
+          "tcId" : 97,
           "comment" : "Flipped bit 103 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1178,7 +1226,7 @@
           "flags" : []
         },
         {
-          "tcId" : 94,
+          "tcId" : 98,
           "comment" : "Flipped bit 120 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1190,7 +1238,7 @@
           "flags" : []
         },
         {
-          "tcId" : 95,
+          "tcId" : 99,
           "comment" : "Flipped bit 121 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1202,7 +1250,7 @@
           "flags" : []
         },
         {
-          "tcId" : 96,
+          "tcId" : 100,
           "comment" : "Flipped bit 126 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1214,7 +1262,7 @@
           "flags" : []
         },
         {
-          "tcId" : 97,
+          "tcId" : 101,
           "comment" : "Flipped bit 127 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1226,7 +1274,7 @@
           "flags" : []
         },
         {
-          "tcId" : 98,
+          "tcId" : 102,
           "comment" : "Flipped bits 0 and 64 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1238,7 +1286,7 @@
           "flags" : []
         },
         {
-          "tcId" : 99,
+          "tcId" : 103,
           "comment" : "Flipped bits 31 and 63 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1250,7 +1298,7 @@
           "flags" : []
         },
         {
-          "tcId" : 100,
+          "tcId" : 104,
           "comment" : "Flipped bits 63 and 127 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1262,7 +1310,7 @@
           "flags" : []
         },
         {
-          "tcId" : 101,
+          "tcId" : 105,
           "comment" : "all bits of tag flipped",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1274,7 +1322,7 @@
           "flags" : []
         },
         {
-          "tcId" : 102,
+          "tcId" : 106,
           "comment" : "Tag changed to all zero",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1286,7 +1334,7 @@
           "flags" : []
         },
         {
-          "tcId" : 103,
+          "tcId" : 107,
           "comment" : "tag changed to all 1",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1298,7 +1346,7 @@
           "flags" : []
         },
         {
-          "tcId" : 104,
+          "tcId" : 108,
           "comment" : "msbs changed in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1310,7 +1358,7 @@
           "flags" : []
         },
         {
-          "tcId" : 105,
+          "tcId" : 109,
           "comment" : "lsbs changed in tag",
           "key" : "000102030405060708090a0b0c0d0e0f1011121314151617",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1330,7 +1378,7 @@
       "type" : "AeadTest",
       "tests" : [
         {
-          "tcId" : 106,
+          "tcId" : 110,
           "comment" : "",
           "key" : "b4cd11db0b3e0b9b34eafd9fe027746976379155e76116afde1b96d21298e34f",
           "iv" : "00c49f4ebb07393f07ebc3825f7b0830",
@@ -1342,7 +1390,7 @@
           "flags" : []
         },
         {
-          "tcId" : 107,
+          "tcId" : 111,
           "comment" : "",
           "key" : "b7797eb0c1a6089ad5452d81fdb14828c040ddc4589c32b565aad8cb4de3e4a0",
           "iv" : "0ad570d8863918fe89124e09d125a271",
@@ -1354,7 +1402,7 @@
           "flags" : []
         },
         {
-          "tcId" : 108,
+          "tcId" : 112,
           "comment" : "",
           "key" : "4c010d9561c7234c308c01cea3040c925a9f324dc958ff904ae39b37e60e1e03",
           "iv" : "2a55caa137c5b0b66cf3809eb8f730c4",
@@ -1366,7 +1414,7 @@
           "flags" : []
         },
         {
-          "tcId" : 109,
+          "tcId" : 113,
           "comment" : "",
           "key" : "2f6cfb7a215a7bafb607c273f7e66f9a6d51d57f9c29422ec64699bad0c6f33b",
           "iv" : "21cbeff0b123799da74f4daff2e279c5",
@@ -1378,7 +1426,7 @@
           "flags" : []
         },
         {
-          "tcId" : 110,
+          "tcId" : 114,
           "comment" : "",
           "key" : "7517c973a9de3614431e3198f4ddc0f8dc33862654649e9ff7838635bb278231",
           "iv" : "42f82085c08afd5b19a9491a79cd8119",
@@ -1390,7 +1438,7 @@
           "flags" : []
         },
         {
-          "tcId" : 111,
+          "tcId" : 115,
           "comment" : "",
           "key" : "9f5c60fb5df5cf2b1b39254c3fa80e51d30d64e344b3aba59574305b4d2212ad",
           "iv" : "d4df79c69f73b26a13598af07eed6a77",
@@ -1402,7 +1450,7 @@
           "flags" : []
         },
         {
-          "tcId" : 112,
+          "tcId" : 116,
           "comment" : "",
           "key" : "38f3d880ed6cd605f2eab88027c9a1c21d13e3de1af50ac884723bcf2b70f495",
           "iv" : "7078c9239650b8a1a8cf031d460e51c1",
@@ -1414,7 +1462,7 @@
           "flags" : []
         },
         {
-          "tcId" : 113,
+          "tcId" : 117,
           "comment" : "",
           "key" : "ec88cec13d8ebae7d62f60197e5486d61c33ee5a50b19f197c1348fbc9e27e8e",
           "iv" : "1ec1d18c96ca6cad66690e60b91cf222",
@@ -1426,7 +1474,7 @@
           "flags" : []
         },
         {
-          "tcId" : 114,
+          "tcId" : 118,
           "comment" : "Flipped bit 0 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1438,7 +1486,7 @@
           "flags" : []
         },
         {
-          "tcId" : 115,
+          "tcId" : 119,
           "comment" : "Flipped bit 1 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1450,7 +1498,7 @@
           "flags" : []
         },
         {
-          "tcId" : 116,
+          "tcId" : 120,
           "comment" : "Flipped bit 7 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1462,7 +1510,7 @@
           "flags" : []
         },
         {
-          "tcId" : 117,
+          "tcId" : 121,
           "comment" : "Flipped bit 8 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1474,7 +1522,7 @@
           "flags" : []
         },
         {
-          "tcId" : 118,
+          "tcId" : 122,
           "comment" : "Flipped bit 31 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1486,7 +1534,7 @@
           "flags" : []
         },
         {
-          "tcId" : 119,
+          "tcId" : 123,
           "comment" : "Flipped bit 32 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1498,7 +1546,7 @@
           "flags" : []
         },
         {
-          "tcId" : 120,
+          "tcId" : 124,
           "comment" : "Flipped bit 33 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1510,7 +1558,7 @@
           "flags" : []
         },
         {
-          "tcId" : 121,
+          "tcId" : 125,
           "comment" : "Flipped bit 63 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1522,7 +1570,7 @@
           "flags" : []
         },
         {
-          "tcId" : 122,
+          "tcId" : 126,
           "comment" : "Flipped bit 64 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1534,7 +1582,7 @@
           "flags" : []
         },
         {
-          "tcId" : 123,
+          "tcId" : 127,
           "comment" : "Flipped bit 71 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1546,7 +1594,7 @@
           "flags" : []
         },
         {
-          "tcId" : 124,
+          "tcId" : 128,
           "comment" : "Flipped bit 77 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1558,7 +1606,7 @@
           "flags" : []
         },
         {
-          "tcId" : 125,
+          "tcId" : 129,
           "comment" : "Flipped bit 80 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1570,7 +1618,7 @@
           "flags" : []
         },
         {
-          "tcId" : 126,
+          "tcId" : 130,
           "comment" : "Flipped bit 96 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1582,7 +1630,7 @@
           "flags" : []
         },
         {
-          "tcId" : 127,
+          "tcId" : 131,
           "comment" : "Flipped bit 97 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1594,7 +1642,7 @@
           "flags" : []
         },
         {
-          "tcId" : 128,
+          "tcId" : 132,
           "comment" : "Flipped bit 103 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1606,7 +1654,7 @@
           "flags" : []
         },
         {
-          "tcId" : 129,
+          "tcId" : 133,
           "comment" : "Flipped bit 120 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1618,7 +1666,7 @@
           "flags" : []
         },
         {
-          "tcId" : 130,
+          "tcId" : 134,
           "comment" : "Flipped bit 121 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1630,7 +1678,7 @@
           "flags" : []
         },
         {
-          "tcId" : 131,
+          "tcId" : 135,
           "comment" : "Flipped bit 126 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1642,7 +1690,7 @@
           "flags" : []
         },
         {
-          "tcId" : 132,
+          "tcId" : 136,
           "comment" : "Flipped bit 127 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1654,7 +1702,7 @@
           "flags" : []
         },
         {
-          "tcId" : 133,
+          "tcId" : 137,
           "comment" : "Flipped bits 0 and 64 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1666,7 +1714,7 @@
           "flags" : []
         },
         {
-          "tcId" : 134,
+          "tcId" : 138,
           "comment" : "Flipped bits 31 and 63 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1678,7 +1726,7 @@
           "flags" : []
         },
         {
-          "tcId" : 135,
+          "tcId" : 139,
           "comment" : "Flipped bits 63 and 127 in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1690,7 +1738,7 @@
           "flags" : []
         },
         {
-          "tcId" : 136,
+          "tcId" : 140,
           "comment" : "all bits of tag flipped",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1702,7 +1750,7 @@
           "flags" : []
         },
         {
-          "tcId" : 137,
+          "tcId" : 141,
           "comment" : "Tag changed to all zero",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1714,7 +1762,7 @@
           "flags" : []
         },
         {
-          "tcId" : 138,
+          "tcId" : 142,
           "comment" : "tag changed to all 1",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1726,7 +1774,7 @@
           "flags" : []
         },
         {
-          "tcId" : 139,
+          "tcId" : 143,
           "comment" : "msbs changed in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1738,7 +1786,7 @@
           "flags" : []
         },
         {
-          "tcId" : 140,
+          "tcId" : 144,
           "comment" : "lsbs changed in tag",
           "key" : "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
           "iv" : "505152535455565758595a5b5c5d5e5f",
@@ -1758,7 +1806,7 @@
       "type" : "AeadTest",
       "tests" : [
         {
-          "tcId" : 141,
+          "tcId" : 145,
           "comment" : "large IV size",
           "key" : "7edabee31897bf9b29394aeca84c4dcc",
           "iv" : "ef4886c4fe8b26f045e09ac925ccbbad42d70347",
@@ -1772,13 +1820,33 @@
       ]
     },
     {
+      "ivSize" : 256,
+      "keySize" : 128,
+      "tagSize" : 128,
+      "type" : "AeadTest",
+      "tests" : [
+        {
+          "tcId" : 146,
+          "comment" : "large IV size",
+          "key" : "e071a62bcde9ee648118ed3b1c629c20",
+          "iv" : "f23a924d75c57fee8e75defd97be48e8cf3202cd658add0a4f50b24b5af9f013",
+          "aad" : "",
+          "msg" : "a0650c4299cf63ec5e28104e9064247f",
+          "ct" : "487e94228d338acee8e9f5c07e22fb06",
+          "tag" : "72c99b644664378c88fd1f4ecfd80f76",
+          "result" : "valid",
+          "flags" : []
+        }
+      ]
+    },
+    {
       "ivSize" : 160,
       "keySize" : 192,
       "tagSize" : 128,
       "type" : "AeadTest",
       "tests" : [
         {
-          "tcId" : 142,
+          "tcId" : 147,
           "comment" : "large IV size",
           "key" : "f9aced074bde719edba80bc8ad475f7ebd3ba6e98a4c0f96",
           "iv" : "d6b33e2be9eeb8bcb33f1291c728699276781f29",
@@ -1792,13 +1860,33 @@
       ]
     },
     {
+      "ivSize" : 256,
+      "keySize" : 192,
+      "tagSize" : 128,
+      "type" : "AeadTest",
+      "tests" : [
+        {
+          "tcId" : 148,
+          "comment" : "large IV size",
+          "key" : "94ffb2d57189012cbbe314e4e36dec0dd9e2b9c88b53bbae",
+          "iv" : "4683f07aafca7f952acedc57c45315307593f52a7b405bf2ebcd19d18098ac04",
+          "aad" : "",
+          "msg" : "10e1e492691ebb658324f1982168073e",
+          "ct" : "199f609949240ce2a65bf1b492f17afe",
+          "tag" : "7cd958a59d5706b396d219a2936be571",
+          "result" : "valid",
+          "flags" : []
+        }
+      ]
+    },
+    {
       "ivSize" : 160,
       "keySize" : 256,
       "tagSize" : 128,
       "type" : "AeadTest",
       "tests" : [
         {
-          "tcId" : 143,
+          "tcId" : 149,
           "comment" : "large IV size",
           "key" : "1739fd2876258457e3e4c323dbabd85edda8ecad83a7496d8feb0b88aeab2e74",
           "iv" : "989f015e6ab79d5e43eca8364a38c9f6b381dda1",
@@ -1812,13 +1900,33 @@
       ]
     },
     {
+      "ivSize" : 256,
+      "keySize" : 256,
+      "tagSize" : 128,
+      "type" : "AeadTest",
+      "tests" : [
+        {
+          "tcId" : 150,
+          "comment" : "large IV size",
+          "key" : "aa5429fd3f178b3885f2c696975e88890102455b5d9e42766429e80d4889672a",
+          "iv" : "e1ed38af5753851b79175e4ae11fd6cf80033f81aec484ecd0448c5e7cc0a27e",
+          "aad" : "",
+          "msg" : "7aa8919ebb950f34690acb98651854cb",
+          "ct" : "1a288496f909036b35f3604b3ecd3493",
+          "tag" : "62eb49550cbee8c3cf88302c826690a2",
+          "result" : "valid",
+          "flags" : []
+        }
+      ]
+    },
+    {
       "ivSize" : 32,
       "keySize" : 128,
       "tagSize" : 128,
       "type" : "AeadTest",
       "tests" : [
         {
-          "tcId" : 144,
+          "tcId" : 151,
           "comment" : "small IV size",
           "key" : "d83c1d7a97c43f182409a4aa5609c1b1",
           "iv" : "7b5faeb2",
@@ -1838,7 +1946,7 @@
       "type" : "AeadTest",
       "tests" : [
         {
-          "tcId" : 145,
+          "tcId" : 152,
           "comment" : "small IV size",
           "key" : "deb62233559b57476602b5adac57c77f",
           "iv" : "d084547de55bbc15",
@@ -1858,7 +1966,7 @@
       "type" : "AeadTest",
       "tests" : [
         {
-          "tcId" : 146,
+          "tcId" : 153,
           "comment" : "small IV size",
           "key" : "834d0bb601170865a78139428a1503695a6a291ebd747cd1",
           "iv" : "bb9d2aa3",
@@ -1878,7 +1986,7 @@
       "type" : "AeadTest",
       "tests" : [
         {
-          "tcId" : 147,
+          "tcId" : 154,
           "comment" : "small IV size",
           "key" : "0b177198c8b419bf74acc3bc65b5fb3d09a915ff71add754",
           "iv" : "8f075cbcda9831c3",
@@ -1898,7 +2006,7 @@
       "type" : "AeadTest",
       "tests" : [
         {
-          "tcId" : 148,
+          "tcId" : 155,
           "comment" : "small IV size",
           "key" : "093eb12343537ee8e91c1f715b862603f8daf9d4e1d7d67212a9d68e5aac9358",
           "iv" : "5110604c",
@@ -1918,7 +2026,7 @@
       "type" : "AeadTest",
       "tests" : [
         {
-          "tcId" : 149,
+          "tcId" : 156,
           "comment" : "small IV size",
           "key" : "115884f693b155563e9bfb3b07cacb2f7f7caa9bfe51f89e23feb5a9468bfdd0",
           "iv" : "04102199ef21e1df",
@@ -1938,7 +2046,7 @@
       "type" : "AeadTest",
       "tests" : [
         {
-          "tcId" : 150,
+          "tcId" : 157,
           "comment" : "IV size = 0",
           "key" : "8f3f52e3c75c58f5cb261f518f4ad30a",
           "iv" : "",
@@ -1950,7 +2058,7 @@
           "flags" : []
         },
         {
-          "tcId" : 151,
+          "tcId" : 158,
           "comment" : "IV size = 0",
           "key" : "2a4bf90e56b70fdd8649d775c089de3b",
           "iv" : "",
@@ -1970,7 +2078,7 @@
       "type" : "AeadTest",
       "tests" : [
         {
-          "tcId" : 152,
+          "tcId" : 159,
           "comment" : "IV size = 0",
           "key" : "0b18d21337035c7baa08211b702fa780ac7c09be8f9ed11f",
           "iv" : "",
@@ -1982,7 +2090,7 @@
           "flags" : []
         },
         {
-          "tcId" : 153,
+          "tcId" : 160,
           "comment" : "IV size = 0",
           "key" : "ba76d594a6df915bb7ab7e6d1a8d024b2796336c1b8328a9",
           "iv" : "",
@@ -2002,7 +2110,7 @@
       "type" : "AeadTest",
       "tests" : [
         {
-          "tcId" : 154,
+          "tcId" : 161,
           "comment" : "IV size = 0",
           "key" : "3f8ca47b9a940582644e8ecf9c2d44e8138377a8379c5c11aafe7fec19856cf1",
           "iv" : "",
@@ -2014,7 +2122,7 @@
           "flags" : []
         },
         {
-          "tcId" : 155,
+          "tcId" : 162,
           "comment" : "IV size = 0",
           "key" : "7660d10966c6503903a552dde2a809ede9da490e5e5cc3e349da999671809883",
           "iv" : "",

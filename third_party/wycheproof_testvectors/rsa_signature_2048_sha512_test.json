@@ -1,10 +1,11 @@
 {
   "algorithm" : "RSASig",
-  "generatorVersion" : "0.4.6",
+  "generatorVersion" : "0.4.12",
   "notes" : {
-    "MissingNull" : "Some legacy implementation of RSA PKCS#1 signatures did omit the parameter field instead of using an ASN NULL. Some libraries still accept these legacy signatures. This test vector contains such a legacy signature"
+    "MissingNull" : "Some legacy implementation of RSA PKCS#1 signatures did omit the parameter field instead of using an ASN NULL. Some libraries still accept these legacy signatures. This test vector contains such a legacy signature",
+    "SmallPublicKey" : "The key for this test vector uses a small public key."
   },
-  "numberOfTests" : 230,
+  "numberOfTests" : 231,
   "header" : [],
   "testGroups" : [
     {
@@ -1191,7 +1192,7 @@
         },
         {
           "tcId" : 131,
-          "comment" : "using composition forsequence",
+          "comment" : "using composition for sequence",
           "msg" : "313233343030",
           "sig" : "b46f1ad5f9c3ee1d131cbf92373916b4c45201c02d631be04444bb6892d25371e6c78ff82286e340d1844c0db3ac2bf32f1cddba51096fb6e515eb466fdcfe47ae84b6d5a080e992f1b3149c23bf875b694e9ab0bab8e3c855825c55f8986e58f8d856a0b153145a1b378482b008af81b30ebd73d20cef495f97e548b5367e25d4ae335233b98c051a4531a65dbb2d18241e702643053113810a1a56b9c7e4c7b8e10fde8aa95c0f1bd5088b39b5c45e3393c2cac01365b78a8b455b436805290f1e43ed94873b5e1aed3e6a38dc7459e82a9de9e0095b67af779b5473fdb12dd95491ea7912b5d7271c88ff6fd5a887efb8fff685900d8dcddc031fad7c15ac",
           "padding" : "305530013030500d06096086480165030402030500044043f800fbeaf9238c58af795bcdad04bc49cd850c394d3382953356b023210281757b30e19218a37cbd612086fbc158caa8b4e1acb2ec00837e5d941f342fb3cc",
@@ -1200,7 +1201,7 @@
         },
         {
           "tcId" : 132,
-          "comment" : "using composition forsequence",
+          "comment" : "using composition for sequence",
           "msg" : "313233343030",
           "sig" : "10791ebd2e8a04cf4d99da2cc43d296e7d2276787d8c0b1cd2628abc74e54c2b88543dc9f1885f2c232be41d8182867a2011e8f28a2d2ebcfb053a31b94eda6974eabb6e8bcb8c273394978a3771bddc8cd21fefe814d32459848ba06672f46c83bba26ce69101c865989d85e5b04d8ca180e1a67ea816594eb71d6536bc57eee88b9ba17b7c3f7b85f905ee1f1dccdd57b1ee6424da71b7e466181befc1e3763d1a367d99a7f2c59939d30a552110f7395750a591b1237e1bfa1845a685aaff44ea7bee45bfbfdfdee6d2e6277a77793e3ef9c5874b5e13ffa9e1725560d5538211fa7bd658f359f085466cd6720093bfa3faecdd137ea0cd0155bf73741044",
           "padding" : "30553011300106300c096086480165030402030500044043f800fbeaf9238c58af795bcdad04bc49cd850c394d3382953356b023210281757b30e19218a37cbd612086fbc158caa8b4e1acb2ec00837e5d941f342fb3cc",
@@ -1551,7 +1552,7 @@
         },
         {
           "tcId" : 171,
-          "comment" : "using composition foroid",
+          "comment" : "using composition for oid",
           "msg" : "313233343030",
           "sig" : "0230849ceb04f40b8a6e42546816fbf497fdef532670ca9828fa9f12b127d7a97c5c2c56f95048c11b0c4c0ffdb1bc5af25dabbb09379b707c7b9902f0a730013437e8c5b20690c58a131f77a57320a8258b3df073c63ba75576a552f65f3834bdb7dcc802b4a92dcc81b1e6091cf0f1403fd376cd53ddf62737af6ea847978cd8edf36650ac25cd741c02cc0d1bd503af90ce0b8da6708e8e83ba5cefb28a033b04602999d38acbf03ba0ce675e3ea4833e67ddbed6eea332b6bad6e92973a359e2228cd3020ab4fbfe9056d18470e15a52de034f7b441cbaa5484a6a5882d706ca49a4621a9c159cad90d2b3adabd71df4bc9c63ebc631ad5cf6e5e2e1729a",
           "padding" : "30553011260d060160060886480165030402030500044043f800fbeaf9238c58af795bcdad04bc49cd850c394d3382953356b023210281757b30e19218a37cbd612086fbc158caa8b4e1acb2ec00837e5d941f342fb3cc",
@@ -1857,7 +1858,7 @@
         },
         {
           "tcId" : 205,
-          "comment" : "using composition fordigest",
+          "comment" : "using composition for digest",
           "msg" : "313233343030",
           "sig" : "185d46fd6c9c3728852a39c11a39b1e8117da5d2be36ee12d7f87c262983690189775eba623251e1d28304bdd7e94d7e9bac6114e4969ad2ccc3fc45b94cdc5904bf3f1aa62cfd8685b2a7b49aeeab673ca2de7b73dce357fa38e1d6c7bfe79329ba7f579d205b4f3c29559baac344adb2db1d5f90ceb542943740901193997c31dc1c5101fdc354b47d8ad37540bc1058ce57a8afb76cac731e03903ebe880ebff1c299d61ca2d3d48204e4c37cce0d80b7458fcf552ceb225e2bdc55c58b3497339ce1662e7064fc59c342d0ca6e6798cfc7b6457e7284ecb5684ef9b68ebc257532a8da54cc830aca53d091fa60d9e1af166aac5da8bc56b79eb9f8433020",
           "padding" : "3055300d060960864801650304020305002444040143043ff800fbeaf9238c58af795bcdad04bc49cd850c394d3382953356b023210281757b30e19218a37cbd612086fbc158caa8b4e1acb2ec00837e5d941f342fb3cc",
@@ -2088,6 +2089,29 @@
           "padding" : "",
           "result" : "invalid",
           "flags" : []
+        }
+      ]
+    },
+    {
+      "e" : "3",
+      "keyAsn" : "308201080282010100f2ed0e93228f37c2ce1c215e00cce4ef00e2c08a004a39c4170dc73e5fbd9b91e7c55e596579ec9c60b9bd341e83029b1934e6493eb60099b6cfbb9804d4179c983099e19102bba49eaa28fa505efacc5a9d5374499c0c5775778317ed370de1919f38aff22d5aee8c8af36a86d036029e761f243dff3c205a11e9bce9ac1d6baf81e79ad4146b119abb13903f8562e8f3e6a918f48223465bc93d5e7d5abe3d08503ec42998fe087a1f935d1b8673c495f005dfa7453daf977e1608a8c276da2a4cd0567e4af4d18cba05fdbedcde74493ccabd9060c27d35a02f35c760b12a4deae1359f649f273fa408626fb789c916434a642d528f41db868ff93b7f889f020103",
+      "keyDer" : "30820120300d06092a864886f70d01010105000382010d00308201080282010100f2ed0e93228f37c2ce1c215e00cce4ef00e2c08a004a39c4170dc73e5fbd9b91e7c55e596579ec9c60b9bd341e83029b1934e6493eb60099b6cfbb9804d4179c983099e19102bba49eaa28fa505efacc5a9d5374499c0c5775778317ed370de1919f38aff22d5aee8c8af36a86d036029e761f243dff3c205a11e9bce9ac1d6baf81e79ad4146b119abb13903f8562e8f3e6a918f48223465bc93d5e7d5abe3d08503ec42998fe087a1f935d1b8673c495f005dfa7453daf977e1608a8c276da2a4cd0567e4af4d18cba05fdbedcde74493ccabd9060c27d35a02f35c760b12a4deae1359f649f273fa408626fb789c916434a642d528f41db868ff93b7f889f020103",
+      "keyPem" : "-----BEGIN PUBLIC KEY-----\nMIIBIDANBgkqhkiG9w0BAQEFAAOCAQ0AMIIBCAKCAQEA8u0OkyKPN8LOHCFeAMzk\n7wDiwIoASjnEFw3HPl+9m5HnxV5ZZXnsnGC5vTQegwKbGTTmST62AJm2z7uYBNQX\nnJgwmeGRAruknqoo+lBe+sxanVN0SZwMV3V3gxftNw3hkZ84r/ItWu6MivNqhtA2\nAp52HyQ9/zwgWhHpvOmsHWuvgeea1BRrEZq7E5A/hWLo8+apGPSCI0ZbyT1efVq+\nPQhQPsQpmP4Ieh+TXRuGc8SV8AXfp0U9r5d+FgiownbaKkzQVn5K9NGMugX9vtze\ndEk8yr2QYMJ9NaAvNcdgsSpN6uE1n2SfJz+kCGJvt4nJFkNKZC1Sj0Hbho/5O3+I\nnwIBAw==\n-----END PUBLIC KEY-----",
+      "keysize" : 2048,
+      "n" : "0f2ed0e93228f37c2ce1c215e00cce4ef00e2c08a004a39c4170dc73e5fbd9b91e7c55e596579ec9c60b9bd341e83029b1934e6493eb60099b6cfbb9804d4179c983099e19102bba49eaa28fa505efacc5a9d5374499c0c5775778317ed370de1919f38aff22d5aee8c8af36a86d036029e761f243dff3c205a11e9bce9ac1d6baf81e79ad4146b119abb13903f8562e8f3e6a918f48223465bc93d5e7d5abe3d08503ec42998fe087a1f935d1b8673c495f005dfa7453daf977e1608a8c276da2a4cd0567e4af4d18cba05fdbedcde74493ccabd9060c27d35a02f35c760b12a4deae1359f649f273fa408626fb789c916434a642d528f41db868ff93b7f889f",
+      "sha" : "SHA-512",
+      "type" : "RSASigVer",
+      "tests" : [
+        {
+          "tcId" : 231,
+          "comment" : "short signature",
+          "msg" : "38343432",
+          "sig" : "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000009e7a1269086f0bbc0778ded8d7108ff4edcc2313425088117b2d5c53e9d9971950a5fe8b2b67d2bcd1be74f6b557a3f90650a96d7e4dbd63c05b94f73337eea682417c058d66ce523e4461065ac8ba990c4ecd04932",
+          "padding" : "3051300d0609608648016503040203050004406114f0b81fa48090bf41e600bbf301f49262bac5794aae087d8921eb23bf4de867fa9403b85e21cf6f59a14127ef0babdbc425d415f15c0ea18d2962839471cc",
+          "result" : "acceptable",
+          "flags" : [
+            "SmallPublicKey"
+          ]
         }
       ]
     }

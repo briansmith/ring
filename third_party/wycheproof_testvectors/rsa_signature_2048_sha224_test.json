@@ -1,6 +1,6 @@
 {
   "algorithm" : "RSASig",
-  "generatorVersion" : "0.4.6",
+  "generatorVersion" : "0.4.12",
   "notes" : {
     "MissingNull" : "Some legacy implementation of RSA PKCS#1 signatures did omit the parameter field instead of using an ASN NULL. Some libraries still accept these legacy signatures. This test vector contains such a legacy signature"
   },
@@ -1191,7 +1191,7 @@
         },
         {
           "tcId" : 131,
-          "comment" : "using composition forsequence",
+          "comment" : "using composition for sequence",
           "msg" : "313233343030",
           "sig" : "af7d984e678893167aab922ba9f1dea3e67a98bf1ee442c56388ce6455a8cbd69f0cf0a30e21ec67d4bee411577b0700887ca5ce5f2a2b63a026956a6e56676d385b720ad708c9d87fd72a12d2921628f4ea931f3b594ebeb6c26030d7945ff347e7f1b30a0fa9177fe7382dc6247d271015f61f1fb2d15b7477abd4642f64eb5f5bd7adf92ebaa5dabc6714e873a8f93ad13b6ddc61fd92e7167b801410e338ac7ec85838e2f8571be2562d1b56377bf13a8852e15df0ef5f5626d1891988a0210ff2f5436ee9ff526f0dc7cce525d9ca8dbf35e37e17248567b792b1d8d233a2ce4efe589132e58f87e7db6cf86a7614559d90bbb9b10cc4e22b9905ac191f",
           "padding" : "3031300130302c0d06096086480165030402040500041c753bb40078934081d7bd113ec49b19ef09d1ba33498690516d4d122c",
@@ -1200,7 +1200,7 @@
         },
         {
           "tcId" : 132,
-          "comment" : "using composition forsequence",
+          "comment" : "using composition for sequence",
           "msg" : "313233343030",
           "sig" : "2deaf754332fee96a5c4954df9cf4df736deded05cb333d4654563c73d3de5629ad8e4ef290ee992874f2757a1e0520cb233201552c4eaa3b81968c3a315235d70e013cf3c2dfa1fad31336d4adb1b4bfb027fe5bfeb6d4a40274920180caf5d4676ca1bf16e0fe3ec48d72f61b7b37f3c5ee04c2dc095ba650e98eeffa7aa78023351087d4ed55d286ef8506ca09a1ac472d44a7b540dc63818298379a0c86a44751ad3f51e511627cadd54cc9a1a5ac8ff4deb552378d94ec22878239109f769eee07cfc70c96f2a601f722e5634356bcb24fdff5db7a1318213491bf2cc37dbaf36afd1436f976612dacac6e15b72f980099b53b89f220474041a16b9a0fe",
           "padding" : "30313011300106300c096086480165030402040500041c753bb40078934081d7bd113ec49b19ef09d1ba33498690516d4d122c",
@@ -1551,7 +1551,7 @@
         },
         {
           "tcId" : 171,
-          "comment" : "using composition foroid",
+          "comment" : "using composition for oid",
           "msg" : "313233343030",
           "sig" : "010cab7807bcaf7a5e9e0d82184c24af79c838663a8a6c5547e5ee77e9b433c2b4b4124a863ec745fc46612b54a30653063142ee1bd5849a558d518389a0bc0e920e16482a15d2c2eb2f531f8b3708ede3f4a582674d45050c1b2f65ace1692f346cf38d3ad1a2db602509d0127fe52a2a9fd2fba7af62ec69d57dca87da17f70cb4af4671d8b4605acfddd95bb49b23e379f3581d848280d1b4c363842d1875e80a9aded043b66e636e0d45e58a7a3c4d3d046c13d2db0158d52fec634c5483f3e864988f80200818f80916d787983851ad3de9f0d2fcd063263e3ff2970e6fac058ed5e91fa99bb81edf1dd1e9dd704cf8f394989337b748c5adc304614904",
           "padding" : "30313011260d060160060886480165030402040500041c753bb40078934081d7bd113ec49b19ef09d1ba33498690516d4d122c",
@@ -1857,7 +1857,7 @@
         },
         {
           "tcId" : 205,
-          "comment" : "using composition fordigest",
+          "comment" : "using composition for digest",
           "msg" : "313233343030",
           "sig" : "bffc9f6d012a4e94763983a47e9f37698e6810c3de75df01f408fcafb3d3099896d07017670867794d5820ec163b1fd2bce080aac8a6cb90f8856d5443d2abbaff0e18d6d3201b5d24745ce001ef8e07f8258a60067c83f42aad79f922ddfbf6199ca7935fba59eb2e639c8aed66845beef5bf01f2ce1b06106ac87a2c27f447d6038ead7cb1fbacf7bdfb7811097fe0b4b1f14012c3cc0025750f9cf67e838ff715f59b5bb75676c93f71ae5cfa96f0375e3e704583d41f499017a5e62a5ee321209041921f5a64e212d3eefa8b42a4a7c240f4da15d903682780ed8c005d4b5fc13e7a95e106644eed0ae9a93133df9dc7ae8555f18579f020651e53ea9340",
           "padding" : "3031300d060960864801650304020405002420040175041b3bb40078934081d7bd113ec49b19ef09d1ba33498690516d4d122c",

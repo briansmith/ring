@@ -1,6 +1,6 @@
 {
   "algorithm" : "AES-GCM",
-  "generatorVersion" : "0.4.6",
+  "generatorVersion" : "0.4.12",
   "notes" : {
     "ConstructedIv" : "The counter for AES-GCM-SIV is reduced modulo 2**32. This test vector was constructed to test for correct wrapping of the counter."
   },

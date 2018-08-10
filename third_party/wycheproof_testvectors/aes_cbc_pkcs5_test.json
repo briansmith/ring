@@ -1,6 +1,6 @@
 {
   "algorithm" : "AES-CBC-PKCS5",
-  "generatorVersion" : "0.4.6",
+  "generatorVersion" : "0.4.12",
   "notes" : {
     "BadPadding" : "The ciphertext in this test vector is the message encrypted with an invalid or unexpected padding. This allows to find implementations that are not properly checking the padding during decryption."
   },

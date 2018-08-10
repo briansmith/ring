@@ -1,6 +1,6 @@
 {
   "algorithm" : "X25519",
-  "generatorVersion" : "0.4.6",
+  "generatorVersion" : "0.4.12",
   "notes" : {
     "LowOrderPublic" : "Curve25519 or its twist contains some points of low order. This test vector contains a public key with such a point. While many libraries reject such public keys, doing so is not a strict requirement according to RFC 7748.",
     "Small public key" : "The public key is insecure and does not belong to a valid private key. Some libraries reject such keys.",

@@ -1,17 +1,17 @@
 {
   "algorithm" : "ECDH",
-  "generatorVersion" : "0.4.6",
+  "generatorVersion" : "0.4.12",
   "notes" : {
     "AddSubChain" : "The private key has a special value. Implementations using addition subtraction chains for the point multiplication may get the point at infinity as an intermediate result. See CVE_2017_10176",
     "CVE_2017_10176" : "This test vector leads to an EC point multiplication where an intermediate result can be the point at infinity, if addition-subtraction chains are used to speed up the point multiplication.",
-    "InvalidPublic" : "The public key has been modified and is invalid. An implementation should always check whether the public key is valid and on the same curve as the private key. The test vector includes the shared secret computed with the original public key. Generating a shared secret other than the one with the original key likely indicates that the bug is exploitable.",
+    "InvalidPublic" : "The public key has been modified and is invalid. An implementation should always check whether the public key is valid and on the same curve as the private key. The test vector includes the shared secret computed with the original public key if the public point is on the curve of the private key. Generating a shared secret other than the one with the original key likely indicates that the bug is exploitable.",
     "ModifiedPrime" : "The modulus of the public key has been modified. The public point of the public key has been chosen so that it is both a point on both the curve of the modified public key and the private key.",
     "UnnamedCurve" : "The public key does not use a named curve. RFC 3279 allows to encode such curves by explicitly encoding, the parameters of the curve equation, modulus, generator, order and cofactor. However, many crypto libraries only support named curves. Modifying some of the EC parameters and encoding the corresponding public key as an unnamed curve is a potential attack vector.",
     "UnusedParam" : "A parameter that is typically not used for ECDH has been modified. Sometimes libraries ignore small differences between public and private key. For example, a library might ignore an incorrect cofactor in the public key. We consider ignoring such changes as acceptable as long as these differences do not change the outcome of the ECDH computation, i.e. as long as the computation is done on the curve from the private key.",
     "WeakPublicKey" : "The vector contains a weak public key. The curve is not a named curve, the public key point has order 3 and has been chosen to be on the same curve as the private key. This test vector is used to check ECC implementations for missing steps in the verification of the public key.",
     "WrongOrder" : "The order of the public key has been modified. If this order is used in a cryptographic primitive instead of the correct order then private keys may leak. E.g. ECDHC in BC 1.52 suffered from this."
   },
-  "numberOfTests" : 148,
+  "numberOfTests" : 249,
   "header" : [],
   "testGroups" : [
     {
@@ -22,7 +22,6 @@
         {
           "tcId" : 1,
           "comment" : "normal case",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -44,8 +43,7 @@
         },
         {
           "tcId" : 2,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-256",
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -67,8 +65,7 @@
         },
         {
           "tcId" : 3,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-256",
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -90,8 +87,7 @@
         },
         {
           "tcId" : 4,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-256",
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -113,8 +109,7 @@
         },
         {
           "tcId" : 5,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-256",
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -136,8 +131,7 @@
         },
         {
           "tcId" : 6,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-256",
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -159,8 +153,7 @@
         },
         {
           "tcId" : 7,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-256",
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -182,8 +175,95 @@
         },
         {
           "tcId" : 8,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-256",
+          "comment" : "edge case for shared secret",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "x01Uby_MbdOS-F5b4WfjWN6Qh1awwLsBy2nYZMoIPhw",
+            "y" : "k_lZ7s5uEO4RvTk0IH1lriivaLCSWFoVCSYOzrObku8"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "085ec5a4af40176b63189069aeffcb229c96d3e046e0283ed2f9dac21b15ad3c",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 9,
+          "comment" : "edge case for shared secret",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "NPyfHnoJTNKVmNGEH6lhPb6CMT1jOlHWP7bv8HTMm5o",
+            "y" : "Ts_Z8ljFxNQhC0l1EhOiTFlpgr0dVOBEVEPyHvFUkqU"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "190c25f88ad9ae3a098e6cffe6fd0b1bea42114eb0cedd5868a45c5fe277dff3",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 10,
+          "comment" : "edge case for shared secret",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "1clu_RkH_UjeKtcVrPgurlxmkP4-_hanjWHGjTv9EN8",
+            "y" : "A-rIFrnnt3YZKj9QdYh8DiJWF1BYM8qZfNoy_Q9nPF4"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "507442007322aa895340cba4abc2d730bfd0b16c2c79a46815f8780d2c55a2dd",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 11,
+          "comment" : "edge case for shared secret",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "9HX1A6dw33LEWu3-QsAI9ZqlfnKyMvJmAL3QNTlXyyA",
+            "y" : "vbj2QFtJGAUKNUn0TAeo66ggzc5OzmmYiMY432b1T3w"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "5f177bfe19baaaee597e68b6a87a519e805e9d28a70cb72fd40f0fe5a754ba45",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 12,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -204,9 +284,8 @@
           "flags" : []
         },
         {
-          "tcId" : 9,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-256",
+          "tcId" : 13,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -227,9 +306,8 @@
           "flags" : []
         },
         {
-          "tcId" : 10,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-256",
+          "tcId" : 14,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -250,9 +328,8 @@
           "flags" : []
         },
         {
-          "tcId" : 11,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-256",
+          "tcId" : 15,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -273,9 +350,8 @@
           "flags" : []
         },
         {
-          "tcId" : 12,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-256",
+          "tcId" : 16,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -296,9 +372,8 @@
           "flags" : []
         },
         {
-          "tcId" : 13,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-256",
+          "tcId" : 17,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -319,9 +394,272 @@
           "flags" : []
         },
         {
-          "tcId" : 14,
+          "tcId" : 18,
+          "comment" : "y-coordinate of the public key is small",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "PLwbMbQ_F9wgDdcMKUTATGyxsIKCDCNKMAsFt3Y4RMc",
+            "y" : "T94KTvk4h0aXkycOsv8UgofakmWwM0-eJgmqwW6K1QM"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "7fffffffffffffffffffffffeecf2230ffffffffffffffffffffffffffffffff",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 19,
+          "comment" : "y-coordinate of the public key is small",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "KDDZZImuJLecrUJQVugnRvnj9BmrmqIcofuxHHMl59M",
+            "y" : "GKvmb1de6KLxxKgONSYK6CrX1vZh0V8GlnkwpYUJfvc"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "000000000000000000000000111124f400000000000000000000000000000000",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 20,
+          "comment" : "y-coordinate of the public key is small",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "RQtrbiCXF46dKFAQlRjSjrO23tKSKlRSADvC5KTsd1w",
+            "y" : "iU6Q8N8bDmytsDud4k9qItG9CkpYzWRcJzyuHGGb_WE"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "000000000000000000000001ea77d449ffffffffffffffffffffffffffffffff",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 21,
+          "comment" : "y-coordinate of the public key is large",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "PLwbMbQ_F9wgDdcMKUTATGyxsIKCDCNKMAsFt3Y4RMc",
+            "y" : "sCH1sAbHeLpobNjxTQDrfXglbZtPzLBh2fZVPpF1Kvw"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "7fffffffffffffffffffffffeecf2230ffffffffffffffffffffffffffffffff",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 22,
+          "comment" : "y-coordinate of the public key is large",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "KDDZZImuJLecrUJQVugnRvnj9BmrmqIcofuxHHMl59M",
+            "y" : "51QZj6ihF14OO1fxytn1F9UoKQqeLqD5aYbPWnr2gQg"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "000000000000000000000000111124f400000000000000000000000000000000",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 23,
+          "comment" : "y-coordinate of the public key is large",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "RQtrbiCXF46dKFAQlRjSjrO23tKSKlRSADvC5KTsd1w",
+            "y" : "drFvDiDk8ZRST8RiHbCV3S5C9banMpuj2MNR455kAp4"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "000000000000000000000001ea77d449ffffffffffffffffffffffffffffffff",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 24,
+          "comment" : "y-coordinate of the public key has many trailing 1's",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "mg8OPdMUF7vZ4pi8Boq21cNnM68m7Wdnb0EMgEuLLKE",
+            "y" : "sCyC86YaN223lWJulABVcRInOjbN2wjKqkOVOWVFRzA"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "7fffffffffffffffffffffffca089011ffffffffffffffffffffffffffffffff",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 25,
+          "comment" : "y-coordinate of the public key has many trailing 1's",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "jl0i1eU-x5fFXs1ooIp8M2HNmcp_rRpo6oAqaky1ipE",
+            "y" : "jqegcCPvZ2dwJL04QeGHxkswowo3UOsu6HP75Y-hNXs"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "0000000000000000000000001f6bd1e500000000000000000000000000000000",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 26,
+          "comment" : "y-coordinate of the public key has many trailing 1's",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "KTqjSbk0qyyDnPVLinN98jBO-bIPpJTjGtYrMV3WpTw",
+            "y" : "EYGCuF70Zuuajof5Zh99AXmEwV6oIEP1NtHuam2VtQk"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "000000000000000000000002099f55d5ffffffffffffffffffffffffffffffff",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 27,
+          "comment" : "y-coordinate of the public key has many trailing 0's",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "mg8OPdMUF7vZ4pi8Boq21cNnM68m7Wdnb0EMgEuLLKE",
+            "y" : "T9N9C1nlyJNIap2Ra_-qju3YxcoyJPc1Vbxqxpq6uM8"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "7fffffffffffffffffffffffca089011ffffffffffffffffffffffffffffffff",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 28,
+          "comment" : "y-coordinate of the public key has many trailing 0's",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "jl0i1eU-x5fFXs1ooIp8M2HNmcp_rRpo6oAqaky1ipE",
+            "y" : "cVhfjtwQmJmP20LHvh54ObTPXPbIrxTRF4wEGnBeyoQ"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "0000000000000000000000001f6bd1e500000000000000000000000000000000",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 29,
+          "comment" : "y-coordinate of the public key has many trailing 0's",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "KTqjSbk0qyyDnPVLinN98jBO-bIPpJTjGtYrMV3WpTw",
+            "y" : "7n59RqELmRVlcXgGmeCC_oZ7PqJX37wKyS4RlZJqSvY"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "Cg1iKkfkj2vBA4rOQ4xvUoqgCtK9HaXxPuRr9fYz1xo",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "dGGMuq9p_1kPX7WFUc5KlItcclHUDllaGLG6a77mraU",
+            "y" : "v_QDqOmdU6cNPORhC_0F1Lo6iFW2oNNjyB99B4zezZI"
+          },
+          "shared" : "000000000000000000000002099f55d5ffffffffffffffffffffffffffffffff",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 30,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -342,9 +680,8 @@
           "flags" : []
         },
         {
-          "tcId" : 15,
+          "tcId" : 31,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -365,9 +702,8 @@
           "flags" : []
         },
         {
-          "tcId" : 16,
+          "tcId" : 32,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -388,9 +724,8 @@
           "flags" : []
         },
         {
-          "tcId" : 17,
+          "tcId" : 33,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -411,9 +746,8 @@
           "flags" : []
         },
         {
-          "tcId" : 18,
+          "tcId" : 34,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -434,9 +768,8 @@
           "flags" : []
         },
         {
-          "tcId" : 19,
+          "tcId" : 35,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -457,9 +790,96 @@
           "flags" : []
         },
         {
-          "tcId" : 20,
+          "tcId" : 36,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-256",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "CF7FpK9AF2tjGJBprv_LIpyW0-BG4Cg-0vnawhsVrTw",
+            "y" : "eFn5fLbiA_Rr80OPYSgjJelOaBtgtWaXiK6wZVvxnTg"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "d874b55678d0a04d216c31b02f3ad1f30c92caaf168f34e3a743356d9276e993",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 37,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "GQwl-IrZrjoJjmz_5v0LG-pCEU6wzt1YaKRcX-J33_M",
+            "y" : "Ibg0LvB3vGckESQD6u5aFbTDGnFYnwLe0JzZnMXbnIM"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "11a8582057463fc76fda3ab8087eb0a420b0d601bb3134165a369646931e52a6",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 38,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "UHRCAHMiqolTQMukq8LXML_QsWwseaRoFfh4DSxVot0",
+            "y" : "RhnWn5lA9RZjqhI4G8fPZ4vRpypJ-8EbC2nLItGvny0"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "4e173a80907f361fe5a5d335ba7685d5eba93e9dfc8d8fcdb1dcd2d2bde27507",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 39,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "Xxd7_hm6qu5Zfmi2qHpRnoBenSinDLcv1A8P5adUukU",
+            "y" : "YsoRA_cKIAbNH2f19qNYCyncRGq8kODpEMHgWpqniM0"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "73220471ec8bad99a297db488a34a259f9bc891ffaf09922e6b5001f5df67018",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 40,
+          "comment" : "edge cases for ephemeral key",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -480,9 +900,8 @@
           "flags" : []
         },
         {
-          "tcId" : 21,
+          "tcId" : 41,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -503,9 +922,8 @@
           "flags" : []
         },
         {
-          "tcId" : 22,
+          "tcId" : 42,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -526,9 +944,8 @@
           "flags" : []
         },
         {
-          "tcId" : 23,
+          "tcId" : 43,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -549,9 +966,8 @@
           "flags" : []
         },
         {
-          "tcId" : 24,
+          "tcId" : 44,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -572,9 +988,8 @@
           "flags" : []
         },
         {
-          "tcId" : 25,
+          "tcId" : 45,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -595,9 +1010,272 @@
           "flags" : []
         },
         {
-          "tcId" : 26,
+          "tcId" : 46,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "f_______________7s8iMP____________________8",
+            "y" : "AAAAAcfDBkOr7QrwpJ_jUstIP_m5fczfQnxljoeTJA0"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "6fd26661851a8de3c6d06f834ef3acb8f2a5f9c136a985ffe10d5eeb51edcfa3",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 47,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "f_______________7s8iMP____________________8",
+            "y" : "_____Tg8-b1UEvUPW2AcrTS3wAdGgjMgvYOacXhs2_I"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "6fd26661851a8de3c6d06f834ef3acb8f2a5f9c136a985ffe10d5eeb51edcfa3",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 48,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "f_______________ygiQEf____________________8",
+            "y" : "Jnv9-KYRSN7NgCg3Mt1MEJXku0C5ZYQIII3BFH____8"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "44236c8b9505a19d48774a3903c0292759b0f826e6ac092ff898d87e53d353fc",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 49,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "f_______________ygiQEf____________________8",
+            "y" : "2YQCBlnutyIyf9fIzSKz72obRMBGmnv333I-64AAAAA"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "44236c8b9505a19d48774a3903c0292759b0f826e6ac092ff898d87e53d353fc",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 50,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAEREk9AAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "AAAADRLTgbB2CxxQvorPhZOFBSx_U83mfOE3Wd4xI6A"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "f1f0e43b374feb7e7f96d4ffe7519fa8bb6c3cfd25f6f87dab2623d2a2d33851",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 51,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAEREk9AAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "____8e0sflCJ9OOvQXUwemx6-tSArDIZgx7IpiHO3F8"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "f1f0e43b374feb7e7f96d4ffe7519fa8bb6c3cfd25f6f87dab2623d2a2d33851",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 52,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAH2vR5QAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "QJbt1occMgy4qfRTF1EQXJe0wleBG7wylj6vOf____8"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "3ebbace1098a81949d5605dd94a7aa88dc396c2c23e01a9c8cca5bb07bfbb6a1",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 53,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAH2vR5QAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "v2kSKHjjzfRHVgus6K7vo2hLPal-5EPNacFQxgAAAAA"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "3ebbace1098a81949d5605dd94a7aa88dc396c2c23e01a9c8cca5bb07bfbb6a1",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 54,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAB6nfUSf____________________8",
+            "y" : "AAAAAHr7wLMl6CBkbexiL7VYpRw0KqJX9Lao7F3fFE8"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "1b085213a9c89d353e1111af078c38c502b7b4771efba51f589b5be243417bdc",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 55,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAB6nfUSf____________________8",
+            "y" : "_____oUEP03aF9-bkhOd0EqnWuTL1V2oC0lXE6Ig67A"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "1b085213a9c89d353e1111af078c38c502b7b4771efba51f589b5be243417bdc",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 56,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAACCZ9V1f____________________8",
+            "y" : "FSwaItgjonhV7QP44qtQOLsd9Nh-Q4ZfLa9pSP____8"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "67cb63566c7ceb12fdd85ce9d2f77c359242bbaa0ea1bf3cf510a4a26591d1f1",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 57,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAACCZ9V1f____________________8",
+            "y" : "6tPl3CfcXYiqEvwHHVSvx0TiCyiBvHmg0lCWtwAAAAA"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "VdVfEbuNoeoxi8pyZvA3ZmJEHqhycKogd_G3cMSFSkg",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "SxZj7h2TMLcrIL6yg5hQme_3tAel6XekWoJd4p3uluk",
+            "y" : "6dB0rkqADlx2fpnriM0dV7BXimIO0r61V6hPP3YgGnU"
+          },
+          "shared" : "67cb63566c7ceb12fdd85ce9d2f77c359242bbaa0ea1bf3cf510a4a26591d1f1",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 58,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -618,9 +1296,8 @@
           "flags" : []
         },
         {
-          "tcId" : 27,
+          "tcId" : 59,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -641,9 +1318,8 @@
           "flags" : []
         },
         {
-          "tcId" : 28,
+          "tcId" : 60,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -664,9 +1340,8 @@
           "flags" : []
         },
         {
-          "tcId" : 29,
+          "tcId" : 61,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -687,9 +1362,8 @@
           "flags" : []
         },
         {
-          "tcId" : 30,
+          "tcId" : 62,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -710,9 +1384,8 @@
           "flags" : []
         },
         {
-          "tcId" : 31,
+          "tcId" : 63,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -733,9 +1406,8 @@
           "flags" : []
         },
         {
-          "tcId" : 32,
+          "tcId" : 64,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -756,9 +1428,8 @@
           "flags" : []
         },
         {
-          "tcId" : 33,
+          "tcId" : 65,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -779,9 +1450,8 @@
           "flags" : []
         },
         {
-          "tcId" : 34,
+          "tcId" : 66,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -802,9 +1472,8 @@
           "flags" : []
         },
         {
-          "tcId" : 35,
+          "tcId" : 67,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -827,9 +1496,8 @@
           ]
         },
         {
-          "tcId" : 36,
+          "tcId" : 68,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -852,9 +1520,8 @@
           ]
         },
         {
-          "tcId" : 37,
+          "tcId" : 69,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -877,9 +1544,8 @@
           ]
         },
         {
-          "tcId" : 38,
+          "tcId" : 70,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -902,9 +1568,8 @@
           ]
         },
         {
-          "tcId" : 39,
+          "tcId" : 71,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -925,9 +1590,8 @@
           "flags" : []
         },
         {
-          "tcId" : 40,
+          "tcId" : 72,
           "comment" : "edge case private key",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -950,9 +1614,8 @@
           ]
         },
         {
-          "tcId" : 41,
+          "tcId" : 73,
           "comment" : "CVE-2017-8932",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -973,9 +1636,8 @@
           "flags" : []
         },
         {
-          "tcId" : 42,
+          "tcId" : 74,
           "comment" : "CVE-2017-8932",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -996,9 +1658,360 @@
           "flags" : []
         },
         {
-          "tcId" : 43,
+          "tcId" : 75,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 76,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 77,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________4"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 78,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________8"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 79,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 80,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 81,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE",
+            "y" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________4"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 82,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE",
+            "y" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________8"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 83,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________4",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 84,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________4",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 85,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________4",
+            "y" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________4"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 86,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________4",
+            "y" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________8"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 87,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________8",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 88,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________8",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 89,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________8",
+            "y" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________4"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 90,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-256",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________8",
+            "y" : "_____wAAAAEAAAAAAAAAAAAAAAD_______________8"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "fkqlT3FL8B34XFAmm-o6hnIfhK_nT3tB6lirzzR06I0",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "R_Z9415ctDKwV-ig0P9iLraYs0vJ_-UjURk2Y8xucnQ",
+            "y" : "FA-BXvYf9u0G3woVA2bqvPsY7aHO49SzDy0V1KT65Rc"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 91,
           "comment" : "public point not on curve",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -1014,16 +2027,15 @@
             "x" : "Qd7jCiJE2SAcpk1v0t0Sa3CVNp5nOuyqpeBCMIUonV0",
             "y" : "TRc1uShB5308iyBk3tLD1l2GkvCgVFJl322i5SuUock"
           },
-          "shared" : "d003f5cc83852584061f7a8a28bcb5671ecbda096e16e7accfa8f8d311a3db7a",
+          "shared" : "",
           "result" : "invalid",
           "flags" : [
             "InvalidPublic"
           ]
         },
         {
-          "tcId" : 44,
+          "tcId" : 92,
           "comment" : "public point = (0,0)",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -1039,16 +2051,39 @@
             "x" : "Qd7jCiJE2SAcpk1v0t0Sa3CVNp5nOuyqpeBCMIUonV0",
             "y" : "TRc1uShB5308iyBk3tLD1l2GkvCgVFJl322i5SuUock"
           },
-          "shared" : "d003f5cc83852584061f7a8a28bcb5671ecbda096e16e7accfa8f8d311a3db7a",
+          "shared" : "",
           "result" : "invalid",
           "flags" : [
             "InvalidPublic"
           ]
         },
         {
-          "tcId" : 45,
+          "tcId" : 93,
+          "comment" : "using secp256k1",
+          "public" : {
+            "crv" : "P-256K",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "oSY-dbh64JNwYP8UcvMw7lXN-PQynWKEqev7zIVsEWg",
+            "y" : "QiXnLL6_9B5U-28A4Rr-U6F5N77b8t94f475WE93WDg"
+          },
+          "private" : {
+            "crv" : "P-256",
+            "d" : "TzQU0VibSfcXLUOcu-eOW1NQ3IXepAzS1idHQMbgI5w",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "Qd7jCiJE2SAcpk1v0t0Sa3CVNp5nOuyqpeBCMIUonV0",
+            "y" : "TRc1uShB5308iyBk3tLD1l2GkvCgVFJl322i5SuUock"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : [
+            "InvalidPublic"
+          ]
+        },
+        {
+          "tcId" : 94,
           "comment" : "Public key uses wrong curve: secp384r1",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1069,9 +2104,8 @@
           "flags" : []
         },
         {
-          "tcId" : 46,
+          "tcId" : 95,
           "comment" : "Public key uses wrong curve: secp521r1",
-          "curve" : "P-256",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -1099,9 +2133,8 @@
       "type" : "ECHDComp",
       "tests" : [
         {
-          "tcId" : 47,
+          "tcId" : 96,
           "comment" : "normal case",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1122,9 +2155,8 @@
           "flags" : []
         },
         {
-          "tcId" : 48,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-384",
+          "tcId" : 97,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1145,9 +2177,8 @@
           "flags" : []
         },
         {
-          "tcId" : 49,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-384",
+          "tcId" : 98,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1168,9 +2199,30 @@
           "flags" : []
         },
         {
-          "tcId" : 50,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-384",
+          "tcId" : 99,
+          "comment" : "edge case for shared secret",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "r0rpZOO8vZI6zNpdoxddQR_WLRfdPDocQQvvFzCYWmJl2Q6VCsD8UHQ7HtdxkG_z",
+            "y" : "O2jPTT2DqIWocJf90ynOg7GJ-YzsW-RMMdGjoruhD0cZYyMri6dhD6jHIXkFDrht"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "orZEKjf4o3WdLLkd9eynWxT1pnZtqANcwZQ7Fajk67YCXzc74zQIDyKrgho1Naan",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "X7b8XxfVh97l6VAsTEiO89awbAmBAvYjCiZNC00ZJ8RhYB5HyrbZP68O6YIp1cXd",
+            "y" : "tBbIpSH978yrXL0Uo5sFxriMtl_7SHkIYlI1xpFkw55eJ-w0fH9Y-DEa3kIDSozh"
+          },
+          "shared" : "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 100,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1191,9 +2243,8 @@
           "flags" : []
         },
         {
-          "tcId" : 51,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-384",
+          "tcId" : 101,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1214,9 +2265,8 @@
           "flags" : []
         },
         {
-          "tcId" : 52,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-384",
+          "tcId" : 102,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1237,9 +2287,8 @@
           "flags" : []
         },
         {
-          "tcId" : 53,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-384",
+          "tcId" : 103,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1260,9 +2309,74 @@
           "flags" : []
         },
         {
-          "tcId" : 54,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-384",
+          "tcId" : 104,
+          "comment" : "edge case for shared secret",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "N_kASYMVa72cR4kedSN7sTAWvX_m9OD3HO8OY_FqZy8NOw4gFlwzQH4Ua2pK5pYt",
+            "y" : "07V8y5nnqvEwMkBRbQ6-COWFUT42ldQsRn3KtTQO92GZDK3I2IQKrMlESBQVwH_r"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "orZEKjf4o3WdLLkd9eynWxT1pnZtqANcwZQ7Fajk67YCXzc74zQIDyKrgho1Naan",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "X7b8XxfVh97l6VAsTEiO89awbAmBAvYjCiZNC00ZJ8RhYB5HyrbZP68O6YIp1cXd",
+            "y" : "tBbIpSH978yrXL0Uo5sFxriMtl_7SHkIYlI1xpFkw55eJ-w0fH9Y-DEa3kIDSozh"
+          },
+          "shared" : "3b5eed80727bcbc5113b8a9e4db1c81b1dddc2d99ff56d9c3c1054348913bde296311c4bd2fa899b4d0e66aaa1b6a0dd",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 105,
+          "comment" : "edge case for shared secret",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "llXY5WInGLMXz7wJiUNX91prE_pRa81mMHIbhppiAZbPDD3siGCzLSftm6ws8mOv",
+            "y" : "FzIWmBFtfYEa6NqbnLv5OCweNuK2fWxq-bzqfZ3gDKcrOYYGwJigoPDEuJQZQ-1l"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "orZEKjf4o3WdLLkd9eynWxT1pnZtqANcwZQ7Fajk67YCXzc74zQIDyKrgho1Naan",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "X7b8XxfVh97l6VAsTEiO89awbAmBAvYjCiZNC00ZJ8RhYB5HyrbZP68O6YIp1cXd",
+            "y" : "tBbIpSH978yrXL0Uo5sFxriMtl_7SHkIYlI1xpFkw55eJ-w0fH9Y-DEa3kIDSozh"
+          },
+          "shared" : "6a99a5acd4a7edb1c707d7f8be12e81140338e3e14ba563c703c681a319a3f9ce1f90f032bf840f3758e89cb852ceca6",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 106,
+          "comment" : "edge case for shared secret",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "zLE9Qns8S7M91PIM3avGhgDq-X7rLIHowhiukHQ-dP84ylbwwCJDedtGTc9KQPBD",
+            "y" : "UM16ZZssSFGl3PjJkPySDAfU1apQohhXUOa4TELoPP9jUFBILey0eA-BLkxJ_HQE"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "orZEKjf4o3WdLLkd9eynWxT1pnZtqANcwZQ7Fajk67YCXzc74zQIDyKrgho1Naan",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "X7b8XxfVh97l6VAsTEiO89awbAmBAvYjCiZNC00ZJ8RhYB5HyrbZP68O6YIp1cXd",
+            "y" : "tBbIpSH978yrXL0Uo5sFxriMtl_7SHkIYlI1xpFkw55eJ-w0fH9Y-DEa3kIDSozh"
+          },
+          "shared" : "7c25a4f57f76ab13b25cab3c265db9d9bd925fecbf7bf93bef1308778646628decab067ed988a9755cd88e88de367104",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 107,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1283,9 +2397,8 @@
           "flags" : []
         },
         {
-          "tcId" : 55,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-384",
+          "tcId" : 108,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1306,9 +2419,8 @@
           "flags" : []
         },
         {
-          "tcId" : 56,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-384",
+          "tcId" : 109,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1329,9 +2441,8 @@
           "flags" : []
         },
         {
-          "tcId" : 57,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-384",
+          "tcId" : 110,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1352,9 +2463,8 @@
           "flags" : []
         },
         {
-          "tcId" : 58,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-384",
+          "tcId" : 111,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1375,9 +2485,8 @@
           "flags" : []
         },
         {
-          "tcId" : 59,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-384",
+          "tcId" : 112,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1398,9 +2507,8 @@
           "flags" : []
         },
         {
-          "tcId" : 60,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-384",
+          "tcId" : 113,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1421,9 +2529,8 @@
           "flags" : []
         },
         {
-          "tcId" : 61,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-384",
+          "tcId" : 114,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1444,9 +2551,96 @@
           "flags" : []
         },
         {
-          "tcId" : 62,
+          "tcId" : 115,
+          "comment" : "y-coordinate of the public key has many trailing 0's",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "b8r4LZgtIi1glrqD5VscfctxpB6I8yMzP0QoTZXEvTYW2nob75KPMcJviFunrbSH",
+            "y" : "gm_eLtn1ZJwRz4Rl-L-K1Q9okUk2_Dlmb2ghnQZlBr6kAB_cgWyakOfir7Gb6ghf"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "orZEKjf4o3WdLLkd9eynWxT1pnZtqANcwZQ7Fajk67YCXzc74zQIDyKrgho1Naan",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "X7b8XxfVh97l6VAsTEiO89awbAmBAvYjCiZNC00ZJ8RhYB5HyrbZP68O6YIp1cXd",
+            "y" : "tBbIpSH978yrXL0Uo5sFxriMtl_7SHkIYlI1xpFkw55eJ-w0fH9Y-DEa3kIDSozh"
+          },
+          "shared" : "000000000000000000000000000000000000000000000000000000001f03123b00000000000000000000000000000000",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 116,
+          "comment" : "y-coordinate of the public key has many trailing 1's",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "b8r4LZgtIi1glrqD5VscfctxpB6I8yMzP0QoTZXEvTYW2nob75KPMcJviFunrbSH",
+            "y" : "fZAh0SYKm2PuMHuaB0B1KvCXbrbJA8aZkJfeYvma-UBb_-AifpNlbxgdUE9kFfeg"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "orZEKjf4o3WdLLkd9eynWxT1pnZtqANcwZQ7Fajk67YCXzc74zQIDyKrgho1Naan",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "X7b8XxfVh97l6VAsTEiO89awbAmBAvYjCiZNC00ZJ8RhYB5HyrbZP68O6YIp1cXd",
+            "y" : "tBbIpSH978yrXL0Uo5sFxriMtl_7SHkIYlI1xpFkw55eJ-w0fH9Y-DEa3kIDSozh"
+          },
+          "shared" : "000000000000000000000000000000000000000000000000000000001f03123b00000000000000000000000000000000",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 117,
+          "comment" : "y-coordinate of the public key is small",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "v-tH-0CmWHjmtkL0C44VAirens-oy2GAQwY0lOK8XS3xDTbzeGm1jvEtzDXjmCg1",
+            "y" : "_S5V7EH9_oyru7e82BY2RaGenaxZYw8_6TsggJT_h81GG1PO9TSC5w4ujqhyAMw_"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "orZEKjf4o3WdLLkd9eynWxT1pnZtqANcwZQ7Fajk67YCXzc74zQIDyKrgho1Naan",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "X7b8XxfVh97l6VAsTEiO89awbAmBAvYjCiZNC00ZJ8RhYB5HyrbZP68O6YIp1cXd",
+            "y" : "tBbIpSH978yrXL0Uo5sFxriMtl_7SHkIYlI1xpFkw55eJ-w0fH9Y-DEa3kIDSozh"
+          },
+          "shared" : "0000000000000000000000000000000000000000000000000000000036a2907c00000000000000000000000000000000",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 118,
+          "comment" : "y-coordinate of the public key is large",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "v-tH-0CmWHjmtkL0C44VAirens-oy2GAQwY0lOK8XS3xDTbzeGm1jvEtzDXjmCg1",
+            "y" : "AtGqE74CAXNUREhDJ-nJul5hYlOmnPDAFsTff2sAeDG55KwwCst9GPHRcViN_zPA"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "orZEKjf4o3WdLLkd9eynWxT1pnZtqANcwZQ7Fajk67YCXzc74zQIDyKrgho1Naan",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "X7b8XxfVh97l6VAsTEiO89awbAmBAvYjCiZNC00ZJ8RhYB5HyrbZP68O6YIp1cXd",
+            "y" : "tBbIpSH978yrXL0Uo5sFxriMtl_7SHkIYlI1xpFkw55eJ-w0fH9Y-DEa3kIDSozh"
+          },
+          "shared" : "0000000000000000000000000000000000000000000000000000000036a2907c00000000000000000000000000000000",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 119,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1467,9 +2661,8 @@
           "flags" : []
         },
         {
-          "tcId" : 63,
+          "tcId" : 120,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1490,9 +2683,30 @@
           "flags" : []
         },
         {
-          "tcId" : 64,
+          "tcId" : 121,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-384",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD",
+            "y" : "ZmAEGxx5hGIOjX_XzNtQzDuoFtoU1BpNiv-rqEiIZ_DKWiT41C3X5EtTCifcW1ja"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "K8Fc85geq2ECw5-aklqhMJ21nCwCpUQRko1zw5RdFXhI3DaVnv73SVyFKOooTByX",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "y1Kls3Y2tCEAc0JSdEIrCtba2jk3yUYSpIyyiS37wGwyrdu-neoULwnDul5Y8VTu",
+            "y" : "IIqE4Mc6BiCHtJwtE2syzqtJrZ3c-ukkQCnEEgy7n_YIfy6-VojCB5emR8hx0NEE"
+          },
+          "shared" : "35513157e804bd918d04de202778b81a6fc7ad8aa541ee94116a0f18466725d75e71c6942bf044b1b0ecba19db33e0de",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 122,
+          "comment" : "edge cases for ephemeral key",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1513,9 +2727,8 @@
           "flags" : []
         },
         {
-          "tcId" : 65,
+          "tcId" : 123,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1536,9 +2749,8 @@
           "flags" : []
         },
         {
-          "tcId" : 66,
+          "tcId" : 124,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1559,9 +2771,8 @@
           "flags" : []
         },
         {
-          "tcId" : 67,
+          "tcId" : 125,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1582,9 +2793,74 @@
           "flags" : []
         },
         {
-          "tcId" : 68,
+          "tcId" : 126,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-384",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "O17tgHJ7y8URO4qeTbHIGx3dwtmf9W2cPBBUNIkTveKWMRxL0vqJm00OZqqhtqDd",
+            "y" : "e38PKNVeLzpQ8fG-85doNKBbQ0GOl5MDvANj7RbS0LQBHMN7PAatcxVPrqt5Fc2H"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "K8Fc85geq2ECw5-aklqhMJ21nCwCpUQRko1zw5RdFXhI3DaVnv73SVyFKOooTByX",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "y1Kls3Y2tCEAc0JSdEIrCtba2jk3yUYSpIyyiS37wGwyrdu-neoULwnDul5Y8VTu",
+            "y" : "IIqE4Mc6BiCHtJwtE2syzqtJrZ3c-ukkQCnEEgy7n_YIfy6-VojCB5emR8hx0NEE"
+          },
+          "shared" : "1fe6fea5f00d3005abaae2267ff18e430915838d87909ab503885edf38be7618ecb321f0a4df71b0913fbf12c76fc1f0",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 127,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "apmlrNSn7bHHB9f4vhLoEUAzjj4UulY8cDxoGjGaP5zh-Q8DK_hA83WOicuFLOym",
+            "y" : "PPme8E9RpepjC6P5-WDdWToUyb45_SvSFdO0sIqq-Gu_kn8sRuUqsG-3QriFDlIe"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "K8Fc85geq2ECw5-aklqhMJ21nCwCpUQRko1zw5RdFXhI3DaVnv73SVyFKOooTByX",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "y1Kls3Y2tCEAc0JSdEIrCtba2jk3yUYSpIyyiS37wGwyrdu-neoULwnDul5Y8VTu",
+            "y" : "IIqE4Mc6BiCHtJwtE2syzqtJrZ3c-ukkQCnEEgy7n_YIfy6-VojCB5emR8hx0NEE"
+          },
+          "shared" : "f58adc13ff997d38383910db7befb17670393a33d95b049c2aa19d760c8e728ecedd32168476b90b26a3742dcc121b07",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 128,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "fCWk9X92qxOyXKs8Jl252b2SX-y_e_k77xMId4ZGYo3sqwZ-2YipdVzYjojeNnEE",
+            "y" : "Vi7gxX5x2Wzv4xtMQEW9QIajjoq5rfLVVnvjGAUdcPOqaLdT8nGrAytqvM6Rnili"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "K8Fc85geq2ECw5-aklqhMJ21nCwCpUQRko1zw5RdFXhI3DaVnv73SVyFKOooTByX",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "y1Kls3Y2tCEAc0JSdEIrCtba2jk3yUYSpIyyiS37wGwyrdu-neoULwnDul5Y8VTu",
+            "y" : "IIqE4Mc6BiCHtJwtE2syzqtJrZ3c-ukkQCnEEgy7n_YIfy6-VojCB5emR8hx0NEE"
+          },
+          "shared" : "56299684ec5ceb09ba4d94d1231005a826c9c08a5219c757e0136cbe8b6430badd4925172f2939891da7c7893850512f",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 129,
+          "comment" : "edge cases for ephemeral key",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1605,9 +2881,8 @@
           "flags" : []
         },
         {
-          "tcId" : 69,
+          "tcId" : 130,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1628,9 +2903,8 @@
           "flags" : []
         },
         {
-          "tcId" : 70,
+          "tcId" : 131,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1651,9 +2925,8 @@
           "flags" : []
         },
         {
-          "tcId" : 71,
+          "tcId" : 132,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1674,9 +2947,8 @@
           "flags" : []
         },
         {
-          "tcId" : 72,
+          "tcId" : 133,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1697,9 +2969,8 @@
           "flags" : []
         },
         {
-          "tcId" : 73,
+          "tcId" : 134,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1720,9 +2991,8 @@
           "flags" : []
         },
         {
-          "tcId" : 74,
+          "tcId" : 135,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1743,9 +3013,8 @@
           "flags" : []
         },
         {
-          "tcId" : 75,
+          "tcId" : 136,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1766,9 +3035,96 @@
           "flags" : []
         },
         {
-          "tcId" : 76,
+          "tcId" : 137,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB8DEjsAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "cb0ecAw0B1w8rejOKdM3JK9op2crJlpOFXBVNgRAq3xGG46ayAJOY6i5wXwAAAAA"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "K8Fc85geq2ECw5-aklqhMJ21nCwCpUQRko1zw5RdFXhI3DaVnv73SVyFKOooTByX",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "y1Kls3Y2tCEAc0JSdEIrCtba2jk3yUYSpIyyiS37wGwyrdu-neoULwnDul5Y8VTu",
+            "y" : "IIqE4Mc6BiCHtJwtE2syzqtJrZ3c-ukkQCnEEgy7n_YIfy6-VojCB5emR8hx0NEE"
+          },
+          "shared" : "ea817dff44f1944a38444498f1b6c1a70a8b913aa326bc2acc5068805d8ddd7a5e41b8ee5b8371a1cf3f7a094258e3a6",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 138,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB8DEjsAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "jkLhj_PL-KPDUhcx1izI21CXWJjU2aWx6o-qyfu_VIK55HFkN_2xnFdGPoT_____"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "K8Fc85geq2ECw5-aklqhMJ21nCwCpUQRko1zw5RdFXhI3DaVnv73SVyFKOooTByX",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "y1Kls3Y2tCEAc0JSdEIrCtba2jk3yUYSpIyyiS37wGwyrdu-neoULwnDul5Y8VTu",
+            "y" : "IIqE4Mc6BiCHtJwtE2syzqtJrZ3c-ukkQCnEEgy7n_YIfy6-VojCB5emR8hx0NEE"
+          },
+          "shared" : "ea817dff44f1944a38444498f1b6c1a70a8b913aa326bc2acc5068805d8ddd7a5e41b8ee5b8371a1cf3f7a094258e3a6",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 139,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADaikHwAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "AAAAAH9XtpoBR4Pb-klnsvnPpnim8Lbpz9QWSM7Fs8SY5yFS2j-C09oujp-O83sR"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "K8Fc85geq2ECw5-aklqhMJ21nCwCpUQRko1zw5RdFXhI3DaVnv73SVyFKOooTByX",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "y1Kls3Y2tCEAc0JSdEIrCtba2jk3yUYSpIyyiS37wGwyrdu-neoULwnDul5Y8VTu",
+            "y" : "IIqE4Mc6BiCHtJwtE2syzqtJrZ3c-ukkQCnEEgy7n_YIfy6-VojCB5emR8hx0NEE"
+          },
+          "shared" : "bfa93e184f76279fd707d53ddcb3628855cfafb111bcbd0b4df6ef77aee624924d681626a153fa4e59c923b71fc090b3",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 140,
+          "comment" : "edge cases for ephemeral key",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADaikHwAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "_____4CoSWX-uHwkBbaYTQYwWYdZD0kWMCvptzE6TDpnGN6sJcB9LCXRcWFxDITu"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "K8Fc85geq2ECw5-aklqhMJ21nCwCpUQRko1zw5RdFXhI3DaVnv73SVyFKOooTByX",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "y1Kls3Y2tCEAc0JSdEIrCtba2jk3yUYSpIyyiS37wGwyrdu-neoULwnDul5Y8VTu",
+            "y" : "IIqE4Mc6BiCHtJwtE2syzqtJrZ3c-ukkQCnEEgy7n_YIfy6-VojCB5emR8hx0NEE"
+          },
+          "shared" : "bfa93e184f76279fd707d53ddcb3628855cfafb111bcbd0b4df6ef77aee624924d681626a153fa4e59c923b71fc090b3",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 141,
           "comment" : "edge case private key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1789,9 +3145,8 @@
           "flags" : []
         },
         {
-          "tcId" : 77,
+          "tcId" : 142,
           "comment" : "edge case private key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1812,9 +3167,8 @@
           "flags" : []
         },
         {
-          "tcId" : 78,
+          "tcId" : 143,
           "comment" : "edge case private key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1835,9 +3189,8 @@
           "flags" : []
         },
         {
-          "tcId" : 79,
+          "tcId" : 144,
           "comment" : "edge case private key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1858,9 +3211,8 @@
           "flags" : []
         },
         {
-          "tcId" : 80,
+          "tcId" : 145,
           "comment" : "edge case private key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1881,9 +3233,8 @@
           "flags" : []
         },
         {
-          "tcId" : 81,
+          "tcId" : 146,
           "comment" : "edge case private key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1904,9 +3255,8 @@
           "flags" : []
         },
         {
-          "tcId" : 82,
+          "tcId" : 147,
           "comment" : "edge case private key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1927,9 +3277,8 @@
           "flags" : []
         },
         {
-          "tcId" : 83,
+          "tcId" : 148,
           "comment" : "edge case private key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1950,9 +3299,8 @@
           "flags" : []
         },
         {
-          "tcId" : 84,
+          "tcId" : 149,
           "comment" : "edge case private key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1973,9 +3321,8 @@
           "flags" : []
         },
         {
-          "tcId" : 85,
+          "tcId" : 150,
           "comment" : "edge case private key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -1998,9 +3345,8 @@
           ]
         },
         {
-          "tcId" : 86,
+          "tcId" : 151,
           "comment" : "edge case private key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -2023,9 +3369,8 @@
           ]
         },
         {
-          "tcId" : 87,
+          "tcId" : 152,
           "comment" : "edge case private key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -2046,9 +3391,8 @@
           "flags" : []
         },
         {
-          "tcId" : 88,
+          "tcId" : 153,
           "comment" : "edge case private key",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -2071,9 +3415,360 @@
           ]
         },
         {
-          "tcId" : 89,
+          "tcId" : 154,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 155,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 156,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "__________________________________________7_____AAAAAAAAAAD____-"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 157,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "__________________________________________7_____AAAAAAAAAAD_____"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 158,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 159,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 160,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+            "y" : "__________________________________________7_____AAAAAAAAAAD____-"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 161,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+            "y" : "__________________________________________7_____AAAAAAAAAAD_____"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 162,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "__________________________________________7_____AAAAAAAAAAD____-",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 163,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "__________________________________________7_____AAAAAAAAAAD____-",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 164,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "__________________________________________7_____AAAAAAAAAAD____-",
+            "y" : "__________________________________________7_____AAAAAAAAAAD____-"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 165,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "__________________________________________7_____AAAAAAAAAAD____-",
+            "y" : "__________________________________________7_____AAAAAAAAAAD_____"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 166,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "__________________________________________7_____AAAAAAAAAAD_____",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 167,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "__________________________________________7_____AAAAAAAAAAD_____",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 168,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "__________________________________________7_____AAAAAAAAAAD_____",
+            "y" : "__________________________________________7_____AAAAAAAAAAD____-"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 169,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-384",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "__________________________________________7_____AAAAAAAAAAD_____",
+            "y" : "__________________________________________7_____AAAAAAAAAAD_____"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "xsr7dOKlDILHpj0TKUv-oT0LxQS6KwijkskIG_OBXZ5E2WntfwX_0dhZQ1UFPGFH",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "XlPoNhRrUZZ-dcYjR7QUbnnAVhCsYYuV2aYULAsj-80-OvhlSto7v-gegKdXrBYj",
+            "y" : "2tXCeTqL3j6KR6vboyV-QccHR8iWe7WU4K9dO5f6EegvcfIpz0z_O1zIW12oCQ5w"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 170,
           "comment" : "public point not on curve",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -2089,16 +3784,15 @@
             "x" : "Zc5rnX5x6TG2_R-skQUHtDd6wV5FMpKiNV3zmrdByjYpe_bePDSlr7utNxgGuJHy",
             "y" : "SwiLxdFGRqdPPvz-o54S4rX1brvdUD1ej-4_wwDXUJuqIrZo2_H9JBgHCrQKB9n2"
           },
-          "shared" : "455cf3c0b0090688599825522ef3312878201514f6330ccc7f42ec1945204adfe419b2dbbfb942dc98b16d8323150cf6",
+          "shared" : "",
           "result" : "invalid",
           "flags" : [
             "InvalidPublic"
           ]
         },
         {
-          "tcId" : 90,
+          "tcId" : 171,
           "comment" : "public point = (0,0)",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",
@@ -2114,16 +3808,15 @@
             "x" : "Zc5rnX5x6TG2_R-skQUHtDd6wV5FMpKiNV3zmrdByjYpe_bePDSlr7utNxgGuJHy",
             "y" : "SwiLxdFGRqdPPvz-o54S4rX1brvdUD1ej-4_wwDXUJuqIrZo2_H9JBgHCrQKB9n2"
           },
-          "shared" : "455cf3c0b0090688599825522ef3312878201514f6330ccc7f42ec1945204adfe419b2dbbfb942dc98b16d8323150cf6",
+          "shared" : "",
           "result" : "invalid",
           "flags" : [
             "InvalidPublic"
           ]
         },
         {
-          "tcId" : 91,
+          "tcId" : 172,
           "comment" : "using secp256r1",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -2139,16 +3832,39 @@
             "x" : "Zc5rnX5x6TG2_R-skQUHtDd6wV5FMpKiNV3zmrdByjYpe_bePDSlr7utNxgGuJHy",
             "y" : "SwiLxdFGRqdPPvz-o54S4rX1brvdUD1ej-4_wwDXUJuqIrZo2_H9JBgHCrQKB9n2"
           },
-          "shared" : "455cf3c0b0090688599825522ef3312878201514f6330ccc7f42ec1945204adfe419b2dbbfb942dc98b16d8323150cf6",
+          "shared" : "",
           "result" : "invalid",
           "flags" : [
             "InvalidPublic"
           ]
         },
         {
-          "tcId" : 92,
+          "tcId" : 173,
+          "comment" : "using secp256k1",
+          "public" : {
+            "crv" : "P-256K",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "oSY-dbh64JNwYP8UcvMw7lXN-PQynWKEqev7zIVsEWg",
+            "y" : "QiXnLL6_9B5U-28A4Rr-U6F5N77b8t94f475WE93WDg"
+          },
+          "private" : {
+            "crv" : "P-384",
+            "d" : "3kTmP9kk8Xc0DXgK9qquonH1LSy5pcUZtgIOBsPPC6r7wLgBxlCMLhSDsVz-96_C",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "Zc5rnX5x6TG2_R-skQUHtDd6wV5FMpKiNV3zmrdByjYpe_bePDSlr7utNxgGuJHy",
+            "y" : "SwiLxdFGRqdPPvz-o54S4rX1brvdUD1ej-4_wwDXUJuqIrZo2_H9JBgHCrQKB9n2"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : [
+            "InvalidPublic"
+          ]
+        },
+        {
+          "tcId" : 174,
           "comment" : "Public key uses wrong curve: secp256r1",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -2169,9 +3885,8 @@
           "flags" : []
         },
         {
-          "tcId" : 93,
+          "tcId" : 175,
           "comment" : "Public key uses wrong curve: secp521r1",
-          "curve" : "P-384",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2199,9 +3914,8 @@
       "type" : "ECHDComp",
       "tests" : [
         {
-          "tcId" : 94,
+          "tcId" : 176,
           "comment" : "normal case",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2222,9 +3936,8 @@
           "flags" : []
         },
         {
-          "tcId" : 95,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 177,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2245,9 +3958,8 @@
           "flags" : []
         },
         {
-          "tcId" : 96,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 178,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2268,9 +3980,8 @@
           "flags" : []
         },
         {
-          "tcId" : 97,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 179,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2291,9 +4002,30 @@
           "flags" : []
         },
         {
-          "tcId" : 98,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 180,
+          "comment" : "edge case for shared secret",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AffrluZLGmLa-eCAG_2WoLFbaOX1yz6QtDRJWkc5BzOOUwmOHC5JMzXQnGqub92gNFuYqu1Yjyq-gpEHE_tsICUp",
+            "y" : "ATlrF88lC8AY9M6tCX5-CYY_FM8SObBl5X2ISUnu4UGSb358n380zwU2NodnvA4atRQodyk6THImk6c_4UpTkK-T"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AKK2RCo3-KN1nSy5HfXsp1r2uJ4nuvL2y_lx3uUFj_qdjayAXHvHLzcYSJ1qnLJ4evjJOhfd6xoZIRqyNgTUe3ZG",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AD3ewT4NSLOUrihSr1ajt9tSpa__sU7UrYewKGBNDKMvORitbObL_UlQSGXKZHR-p9HVHRZ25XWSBJyF_oXHlOkn",
+            "y" : "AFitu6d2cyRAt8T6o7IcKkSLQBdppZYdPpVJvSd9LaywzrQRfUJVNprQ8ydOsciIX2KuREMq19F5SVUizFdPXp88"
+          },
+          "shared" : "000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 181,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2314,9 +4046,8 @@
           "flags" : []
         },
         {
-          "tcId" : 99,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 182,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2337,9 +4068,8 @@
           "flags" : []
         },
         {
-          "tcId" : 100,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 183,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2360,9 +4090,8 @@
           "flags" : []
         },
         {
-          "tcId" : 101,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 184,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2383,9 +4112,8 @@
           "flags" : []
         },
         {
-          "tcId" : 102,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 185,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2406,9 +4134,8 @@
           "flags" : []
         },
         {
-          "tcId" : 103,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 186,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2429,9 +4156,8 @@
           "flags" : []
         },
         {
-          "tcId" : 104,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 187,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2452,9 +4178,8 @@
           "flags" : []
         },
         {
-          "tcId" : 105,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 188,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2475,9 +4200,8 @@
           "flags" : []
         },
         {
-          "tcId" : 106,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 189,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2498,9 +4222,8 @@
           "flags" : []
         },
         {
-          "tcId" : 107,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 190,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2521,9 +4244,8 @@
           "flags" : []
         },
         {
-          "tcId" : 108,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 191,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2544,9 +4266,8 @@
           "flags" : []
         },
         {
-          "tcId" : 109,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 192,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2567,9 +4288,8 @@
           "flags" : []
         },
         {
-          "tcId" : 110,
-          "comment" : "edge cases for shared secret",
-          "curve" : "P-521",
+          "tcId" : 193,
+          "comment" : "edge case for shared secret",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2590,9 +4310,8 @@
           "flags" : []
         },
         {
-          "tcId" : 111,
+          "tcId" : 194,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2613,9 +4332,8 @@
           "flags" : []
         },
         {
-          "tcId" : 112,
+          "tcId" : 195,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2636,9 +4354,8 @@
           "flags" : []
         },
         {
-          "tcId" : 113,
+          "tcId" : 196,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2659,9 +4376,30 @@
           "flags" : []
         },
         {
-          "tcId" : 114,
+          "tcId" : 197,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "AF-ID1DslL-sZlj6L84FlFxqNrJmQHtvvVQ3qD4vL5ucUKc0hy5I5w32VFfxPkfQbGuLKfRzWs8QXqY-BRkE0Yrq"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "ASvBXPOYHqthAsOfmpJaoTB2PQHtbtrxQwbrChTddd_1BAcN73uI2LFlCC9pmS3g_6XukiyzqzmRfahSTKxz8KCc",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AX_Hz2ZtrFo4FsY3DNaSxOKGZdWpqnDOUYke5cdvkhRJ6WIFJecYzVJ5zWEu-7-4LxeuEqABQH9V05tpu3xvWbLq",
+            "y" : "AfYaLq3O-KwbkoMK9io0PLsTJSoszxq3UssVHgvTm1gBdSNL9kHUToZgdz2EIGhBHa838C5Z5UWpRsqcPvB-XAu9"
+          },
+          "shared" : "013aefe3245728a08c904fe7d61cd9c2fdac63f29cf664d8f161bebacb93f8a710e9692f9689480ad498de00f00061e40e46e76e4754c1130ef4217a58933e0b1dc6",
+          "result" : "valid",
+          "flags" : []
+        },
+        {
+          "tcId" : 198,
+          "comment" : "edge cases for ephemeral key",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2682,9 +4420,8 @@
           "flags" : []
         },
         {
-          "tcId" : 115,
+          "tcId" : 199,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2705,9 +4442,8 @@
           "flags" : []
         },
         {
-          "tcId" : 116,
+          "tcId" : 200,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2728,9 +4464,8 @@
           "flags" : []
         },
         {
-          "tcId" : 117,
+          "tcId" : 201,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2751,9 +4486,8 @@
           "flags" : []
         },
         {
-          "tcId" : 118,
+          "tcId" : 202,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2774,9 +4508,8 @@
           "flags" : []
         },
         {
-          "tcId" : 119,
+          "tcId" : 203,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2797,9 +4530,8 @@
           "flags" : []
         },
         {
-          "tcId" : 120,
+          "tcId" : 204,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2820,9 +4552,8 @@
           "flags" : []
         },
         {
-          "tcId" : 121,
+          "tcId" : 205,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2843,9 +4574,8 @@
           "flags" : []
         },
         {
-          "tcId" : 122,
+          "tcId" : 206,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2866,9 +4596,8 @@
           "flags" : []
         },
         {
-          "tcId" : 123,
+          "tcId" : 207,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2889,9 +4618,8 @@
           "flags" : []
         },
         {
-          "tcId" : 124,
+          "tcId" : 208,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2912,9 +4640,8 @@
           "flags" : []
         },
         {
-          "tcId" : 125,
+          "tcId" : 209,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2935,9 +4662,8 @@
           "flags" : []
         },
         {
-          "tcId" : 126,
+          "tcId" : 210,
           "comment" : "edge cases for ephemeral key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2958,9 +4684,8 @@
           "flags" : []
         },
         {
-          "tcId" : 127,
+          "tcId" : 211,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -2981,9 +4706,8 @@
           "flags" : []
         },
         {
-          "tcId" : 128,
+          "tcId" : 212,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3004,9 +4728,8 @@
           "flags" : []
         },
         {
-          "tcId" : 129,
+          "tcId" : 213,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3027,9 +4750,8 @@
           "flags" : []
         },
         {
-          "tcId" : 130,
+          "tcId" : 214,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3050,9 +4772,8 @@
           "flags" : []
         },
         {
-          "tcId" : 131,
+          "tcId" : 215,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3073,9 +4794,8 @@
           "flags" : []
         },
         {
-          "tcId" : 132,
+          "tcId" : 216,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3096,9 +4816,8 @@
           "flags" : []
         },
         {
-          "tcId" : 133,
+          "tcId" : 217,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3119,9 +4838,8 @@
           "flags" : []
         },
         {
-          "tcId" : 134,
+          "tcId" : 218,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3142,9 +4860,8 @@
           "flags" : []
         },
         {
-          "tcId" : 135,
+          "tcId" : 219,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3165,9 +4882,8 @@
           "flags" : []
         },
         {
-          "tcId" : 136,
+          "tcId" : 220,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3190,9 +4906,8 @@
           ]
         },
         {
-          "tcId" : 137,
+          "tcId" : 221,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3215,9 +4930,8 @@
           ]
         },
         {
-          "tcId" : 138,
+          "tcId" : 222,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3240,9 +4954,8 @@
           ]
         },
         {
-          "tcId" : 139,
+          "tcId" : 223,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3265,9 +4978,8 @@
           ]
         },
         {
-          "tcId" : 140,
+          "tcId" : 224,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3290,9 +5002,8 @@
           ]
         },
         {
-          "tcId" : 141,
+          "tcId" : 225,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3313,9 +5024,8 @@
           "flags" : []
         },
         {
-          "tcId" : 142,
+          "tcId" : 226,
           "comment" : "edge case private key",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3338,9 +5048,8 @@
           ]
         },
         {
-          "tcId" : 143,
+          "tcId" : 227,
           "comment" : "CVE-2017-10176: Issue with elliptic curve addition",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3363,9 +5072,360 @@
           ]
         },
         {
-          "tcId" : 144,
+          "tcId" : 228,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 229,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 230,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "Af_____________________________________________________________________________________-"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 231,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+            "y" : "Af______________________________________________________________________________________"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 232,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 233,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 234,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+            "y" : "Af_____________________________________________________________________________________-"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 235,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+            "y" : "Af______________________________________________________________________________________"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 236,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "Af_____________________________________________________________________________________-",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 237,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "Af_____________________________________________________________________________________-",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 238,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "Af_____________________________________________________________________________________-",
+            "y" : "Af_____________________________________________________________________________________-"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 239,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "Af_____________________________________________________________________________________-",
+            "y" : "Af______________________________________________________________________________________"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 240,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "Af______________________________________________________________________________________",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 241,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "Af______________________________________________________________________________________",
+            "y" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 242,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "Af______________________________________________________________________________________",
+            "y" : "Af_____________________________________________________________________________________-"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 243,
+          "comment" : "point is not on curve",
+          "public" : {
+            "crv" : "P-521",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "Af______________________________________________________________________________________",
+            "y" : "Af______________________________________________________________________________________"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "AcbK-3TipQyCx6Y9EylL_qET8nHgGuMF95r0MgPNMhFezfL-5f7boq0xJng9sMPE0wKaFDaej4Db0V1RLxPlHFA8",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "AJsV2VQvRXnYbPaNO2CsdCT7kCvhO6ZASWpAt6SsTQV7mQrWfDQlQQg_N3r2MiSOa4dt8d5cmFRzFQ0DBIsrzb35",
+            "y" : "AF7A0BtEJCH1SD4BbPQvispAEfAbn1RaiyDgBWh4UFBKqCgf3QCqMoc50Fome3qa_T9La5sViNTvEOH4ZzZSThtX"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : []
+        },
+        {
+          "tcId" : 244,
           "comment" : "public point not on curve",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3381,16 +5441,15 @@
             "x" : "Aep4GB4E9ID9mJ4FlkJEYTt_emN5q_CBkyep9a3vpvRBB0UCi_GkaoAx_scAN-vLUH29j1C4EqS8wDE7p98Cx9NV",
             "y" : "AeBFX-bOHqmYxzl1aUjPonu4sangygpQJjGDb5bg9d9mnLPKP298D5JAs9h-F0Fhs7BNg5q2_kbyRb1iZQXvS0FU"
           },
-          "shared" : "00fb8542487cbd45e609632f681db6b48fdabed9b97a2467a34205eadadad9dedb54a2a647d23dca68e929a2041888b091f4bb4023a0517be669a6c9f9c847ef89de",
+          "shared" : "",
           "result" : "invalid",
           "flags" : [
             "InvalidPublic"
           ]
         },
         {
-          "tcId" : 145,
+          "tcId" : 245,
           "comment" : "public point = (0,0)",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-521",
             "kid" : "none",
@@ -3406,16 +5465,15 @@
             "x" : "Aep4GB4E9ID9mJ4FlkJEYTt_emN5q_CBkyep9a3vpvRBB0UCi_GkaoAx_scAN-vLUH29j1C4EqS8wDE7p98Cx9NV",
             "y" : "AeBFX-bOHqmYxzl1aUjPonu4sangygpQJjGDb5bg9d9mnLPKP298D5JAs9h-F0Fhs7BNg5q2_kbyRb1iZQXvS0FU"
           },
-          "shared" : "00fb8542487cbd45e609632f681db6b48fdabed9b97a2467a34205eadadad9dedb54a2a647d23dca68e929a2041888b091f4bb4023a0517be669a6c9f9c847ef89de",
+          "shared" : "",
           "result" : "invalid",
           "flags" : [
             "InvalidPublic"
           ]
         },
         {
-          "tcId" : 146,
+          "tcId" : 246,
           "comment" : "using secp256r1",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -3431,16 +5489,39 @@
             "x" : "Aep4GB4E9ID9mJ4FlkJEYTt_emN5q_CBkyep9a3vpvRBB0UCi_GkaoAx_scAN-vLUH29j1C4EqS8wDE7p98Cx9NV",
             "y" : "AeBFX-bOHqmYxzl1aUjPonu4sangygpQJjGDb5bg9d9mnLPKP298D5JAs9h-F0Fhs7BNg5q2_kbyRb1iZQXvS0FU"
           },
-          "shared" : "00fb8542487cbd45e609632f681db6b48fdabed9b97a2467a34205eadadad9dedb54a2a647d23dca68e929a2041888b091f4bb4023a0517be669a6c9f9c847ef89de",
+          "shared" : "",
           "result" : "invalid",
           "flags" : [
             "InvalidPublic"
           ]
         },
         {
-          "tcId" : 147,
+          "tcId" : 247,
+          "comment" : "using secp256k1",
+          "public" : {
+            "crv" : "P-256K",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "oSY-dbh64JNwYP8UcvMw7lXN-PQynWKEqev7zIVsEWg",
+            "y" : "QiXnLL6_9B5U-28A4Rr-U6F5N77b8t94f475WE93WDg"
+          },
+          "private" : {
+            "crv" : "P-521",
+            "d" : "ATlqmaM3gh2MktdfVieTxwr6QHSuXm2tK9LMauqPNvbEXd3nOTFEDSKfNACTq4xvs_INIJmaNzcf6SEEaSE20Bm3",
+            "kid" : "none",
+            "kty" : "EC",
+            "x" : "Aep4GB4E9ID9mJ4FlkJEYTt_emN5q_CBkyep9a3vpvRBB0UCi_GkaoAx_scAN-vLUH29j1C4EqS8wDE7p98Cx9NV",
+            "y" : "AeBFX-bOHqmYxzl1aUjPonu4sangygpQJjGDb5bg9d9mnLPKP298D5JAs9h-F0Fhs7BNg5q2_kbyRb1iZQXvS0FU"
+          },
+          "shared" : "",
+          "result" : "invalid",
+          "flags" : [
+            "InvalidPublic"
+          ]
+        },
+        {
+          "tcId" : 248,
           "comment" : "Public key uses wrong curve: secp256r1",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-256",
             "kid" : "none",
@@ -3461,9 +5542,8 @@
           "flags" : []
         },
         {
-          "tcId" : 148,
+          "tcId" : 249,
           "comment" : "Public key uses wrong curve: secp384r1",
-          "curve" : "P-521",
           "public" : {
             "crv" : "P-384",
             "kid" : "none",

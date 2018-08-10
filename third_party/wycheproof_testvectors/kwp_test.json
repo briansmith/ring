@@ -1,6 +1,6 @@
 {
   "algorithm" : "KWP",
-  "generatorVersion" : "0.4.6",
+  "generatorVersion" : "0.4.12",
   "numberOfTests" : 224,
   "header" : [],
   "testGroups" : [
