@@ -340,7 +340,7 @@ OPENSSL_EXPORT void CBB_zero(CBB *cbb);
 
 // CBB_init initialises |cbb| with |initial_capacity|. Since a |CBB| grows as
 // needed, the |initial_capacity| is just a hint. It returns one on success or
-// zero on error.
+// zero on allocation failure.
 OPENSSL_EXPORT int CBB_init(CBB *cbb, size_t initial_capacity);
 
 // CBB_init_fixed initialises |cbb| to write to |len| bytes at |buf|. Since

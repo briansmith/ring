@@ -105,7 +105,7 @@ OPENSSL_EXPORT void HMAC_CTX_free(HMAC_CTX *ctx);
 // function and |key| as the key. For a non-initial call, |md| may be NULL, in
 // which case the previous hash function will be used. If the hash function has
 // not changed and |key| is NULL, |ctx| reuses the previous key. It returns one
-// on success or zero otherwise.
+// on success or zero on allocation failure.
 //
 // WARNING: NULL and empty keys are ambiguous on non-initial calls. Passing NULL
 // |key| but repeating the previous |md| reuses the previous key rather than the

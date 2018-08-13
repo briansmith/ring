@@ -119,7 +119,7 @@ OPENSSL_EXPORT int EVP_MD_CTX_cleanup(EVP_MD_CTX *ctx);
 OPENSSL_EXPORT void EVP_MD_CTX_free(EVP_MD_CTX *ctx);
 
 // EVP_MD_CTX_copy_ex sets |out|, which must already be initialised, to be a
-// copy of |in|. It returns one on success and zero on error.
+// copy of |in|. It returns one on success and zero on allocation failure.
 OPENSSL_EXPORT int EVP_MD_CTX_copy_ex(EVP_MD_CTX *out, const EVP_MD_CTX *in);
 
 // EVP_MD_CTX_reset calls |EVP_MD_CTX_cleanup| followed by |EVP_MD_CTX_init|. It
@@ -131,7 +131,7 @@ OPENSSL_EXPORT int EVP_MD_CTX_reset(EVP_MD_CTX *ctx);
 
 // EVP_DigestInit_ex configures |ctx|, which must already have been
 // initialised, for a fresh hashing operation using |type|. It returns one on
-// success and zero otherwise.
+// success and zero on allocation failure.
 OPENSSL_EXPORT int EVP_DigestInit_ex(EVP_MD_CTX *ctx, const EVP_MD *type,
                                      ENGINE *engine);
 
