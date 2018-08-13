@@ -177,7 +177,7 @@ SSL3_STATE::SSL3_STATE()
       key_update_pending(false),
       wpend_pending(false),
       early_data_accepted(false),
-      draft_downgrade(false),
+      tls13_downgrade(false),
       token_binding_negotiated(false) {}
 
 SSL3_STATE::~SSL3_STATE() {}

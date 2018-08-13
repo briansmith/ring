@@ -588,19 +588,23 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   OPENSSL_memcpy(ssl->s3->server_random, CBS_data(&server_random),
                  SSL3_RANDOM_SIZE);
 
-  // Measure, but do not enforce, the TLS 1.3 anti-downgrade feature, with a
-  // different value.
-  //
-  // For draft TLS 1.3 versions, it is not safe to deploy this feature. However,
-  // some TLS terminators are non-compliant and copy the origin server's value,
-  // so we wish to measure eventual compatibility impact.
+  // Enforce the TLS 1.3 anti-downgrade feature.
   if (!ssl->s3->initial_handshake_complete &&
-      hs->max_version >= TLS1_3_VERSION &&
-      OPENSSL_memcmp(ssl->s3->server_random + SSL3_RANDOM_SIZE -
-                         sizeof(kDraftDowngradeRandom),
-                     kDraftDowngradeRandom,
-                     sizeof(kDraftDowngradeRandom)) == 0) {
-    ssl->s3->draft_downgrade = true;
+      ssl_supports_version(hs, TLS1_3_VERSION)) {
+    static_assert(
+        sizeof(kTLS12DowngradeRandom) == sizeof(kTLS13DowngradeRandom),
+        "downgrade signals have different size");
+    auto suffix =
+        MakeConstSpan(ssl->s3->server_random, sizeof(ssl->s3->server_random))
+            .subspan(SSL3_RANDOM_SIZE - sizeof(kTLS13DowngradeRandom));
+    if (suffix == kTLS12DowngradeRandom || suffix == kTLS13DowngradeRandom) {
+      ssl->s3->tls13_downgrade = true;
+      if (!ssl->ctx->ignore_tls13_downgrade) {
+        OPENSSL_PUT_ERROR(SSL, SSL_R_TLS13_DOWNGRADE);
+        ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+        return ssl_hs_error;
+      }
+    }
   }
 
   if (!ssl->s3->initial_handshake_complete && ssl->session != NULL &&
@@ -1477,18 +1481,32 @@ static enum ssl_hs_wait_t do_send_client_finished(SSL_HANDSHAKE *hs) {
 static bool can_false_start(const SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
-  // False Start only for TLS 1.2 with an ECDHE+AEAD cipher.
+  // False Start bypasses the Finished check's downgrade protection. This can
+  // enable attacks where we send data under weaker settings than supported
+  // (e.g. the Logjam attack). Thus we require TLS 1.2 with an ECDHE+AEAD
+  // cipher, our strongest settings before TLS 1.3.
+  //
+  // Now that TLS 1.3 exists, we would like to avoid similar attacks between
+  // TLS 1.2 and TLS 1.3, but there are too many TLS 1.2 deployments to
+  // sacrifice False Start on them. TLS 1.3's downgrade signal fixes this, but
+  // |SSL_CTX_set_ignore_tls13_downgrade| can disable it due to compatibility
+  // issues.
+  //
+  // |SSL_CTX_set_ignore_tls13_downgrade| normally still retains Finished-based
+  // downgrade protection, but False Start bypasses that. Thus, we disable False
+  // Start based on the TLS 1.3 downgrade signal, even if otherwise unenforced.
   if (SSL_is_dtls(ssl) ||
       SSL_version(ssl) != TLS1_2_VERSION ||
       hs->new_cipher->algorithm_mkey != SSL_kECDHE ||
-      hs->new_cipher->algorithm_mac != SSL_AEAD) {
+      hs->new_cipher->algorithm_mac != SSL_AEAD ||
+      ssl->s3->tls13_downgrade) {
     return false;
   }
 
   // Additionally require ALPN or NPN by default.
   //
   // TODO(davidben): Can this constraint be relaxed globally now that cipher
-  // suite requirements have been relaxed?
+  // suite requirements have been tightened?
   if (!ssl->ctx->false_start_allowed_without_alpn &&
       ssl->s3->alpn_selected.empty() &&
       ssl->s3->next_proto_negotiated.empty()) {

@@ -602,22 +602,22 @@ NextCipherSuite:
 		return fmt.Errorf("tls: server sent non-matching version %x vs %x", serverWireVersion, serverHello.vers)
 	}
 
+	_, supportsTLS13 := c.config.isSupportedVersion(VersionTLS13, false)
 	// Check for downgrade signals in the server random, per
 	// draft-ietf-tls-tls13-16, section 4.1.3.
-	if c.vers <= VersionTLS12 && c.config.maxVersion(c.isDTLS) >= VersionTLS13 {
-		if bytes.Equal(serverHello.random[len(serverHello.random)-8:], downgradeTLS13) {
-			c.sendAlert(alertProtocolVersion)
-			return errors.New("tls: downgrade from TLS 1.3 detected")
+	if (supportsTLS13 || c.config.Bugs.CheckTLS13DowngradeRandom) && !c.config.Bugs.IgnoreTLS13DowngradeRandom {
+		if c.vers <= VersionTLS12 && c.config.maxVersion(c.isDTLS) >= VersionTLS13 {
+			if bytes.Equal(serverHello.random[len(serverHello.random)-8:], downgradeTLS13) {
+				c.sendAlert(alertProtocolVersion)
+				return errors.New("tls: downgrade from TLS 1.3 detected")
+			}
 		}
-	}
-	if c.vers <= VersionTLS11 && c.config.maxVersion(c.isDTLS) >= VersionTLS12 {
-		if bytes.Equal(serverHello.random[len(serverHello.random)-8:], downgradeTLS12) {
-			c.sendAlert(alertProtocolVersion)
-			return errors.New("tls: downgrade from TLS 1.2 detected")
+		if c.vers <= VersionTLS11 && c.config.maxVersion(c.isDTLS) >= VersionTLS12 {
+			if bytes.Equal(serverHello.random[len(serverHello.random)-8:], downgradeTLS12) {
+				c.sendAlert(alertProtocolVersion)
+				return errors.New("tls: downgrade from TLS 1.2 detected")
+			}
 		}
-	}
-	if c.config.Bugs.ExpectDraftTLS13DowngradeRandom && !bytes.Equal(serverHello.random[len(serverHello.random)-8:], downgradeTLS13Draft) {
-		return errors.New("tls: server did not send draft TLS 1.3 anti-downgrade signal")
 	}
 
 	suite := mutualCipherSuite(hello.cipherSuites, serverHello.cipherSuite)

@@ -156,7 +156,8 @@ struct TestConfig {
   bool use_custom_verify_callback = false;
   std::string expect_msg_callback;
   bool allow_false_start_without_alpn = false;
-  bool expect_draft_downgrade = false;
+  bool ignore_tls13_downgrade = false;
+  bool expect_tls13_downgrade = false;
   bool handoff = false;
   bool no_rsa_pss_rsae_certs = false;
   bool use_ocsp_callback = false;

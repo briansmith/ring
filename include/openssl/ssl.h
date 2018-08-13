@@ -3664,10 +3664,14 @@ OPENSSL_EXPORT int32_t SSL_get_ticket_age_skew(const SSL *ssl);
 OPENSSL_EXPORT void SSL_CTX_set_false_start_allowed_without_alpn(SSL_CTX *ctx,
                                                                  int allowed);
 
-// SSL_is_draft_downgrade returns one if the TLS 1.3 anti-downgrade mechanism
-// would have aborted |ssl|'s handshake and zero otherwise.
-OPENSSL_EXPORT int SSL_is_draft_downgrade(const SSL *ssl);
+// SSL_CTX_set_ignore_tls13_downgrade configures whether connections on |ctx|
+// ignore the downgrade signal in the server's random value.
+OPENSSL_EXPORT void SSL_CTX_set_ignore_tls13_downgrade(SSL_CTX *ctx,
+                                                       int ignore);
 
+// SSL_is_tls13_downgrade returns one if the TLS 1.3 anti-downgrade
+// mechanism would have aborted |ssl|'s handshake and zero otherwise.
+OPENSSL_EXPORT int SSL_is_tls13_downgrade(const SSL *ssl);
 
 // Deprecated functions.
 
@@ -4773,6 +4777,7 @@ OPENSSL_EXPORT bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback);
 #define SSL_R_UNKNOWN_CERT_COMPRESSION_ALG 294
 #define SSL_R_INVALID_SIGNATURE_ALGORITHM 295
 #define SSL_R_DUPLICATE_SIGNATURE_ALGORITHM 296
+#define SSL_R_TLS13_DOWNGRADE 297
 #define SSL_R_SSLV3_ALERT_CLOSE_NOTIFY 1000
 #define SSL_R_SSLV3_ALERT_UNEXPECTED_MESSAGE 1010
 #define SSL_R_SSLV3_ALERT_BAD_RECORD_MAC 1020

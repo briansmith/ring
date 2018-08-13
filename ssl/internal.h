@@ -1018,7 +1018,8 @@ struct SSLMessage {
 #define SSL_MAX_HANDSHAKE_FLIGHT 7
 
 extern const uint8_t kHelloRetryRequest[SSL3_RANDOM_SIZE];
-extern const uint8_t kDraftDowngradeRandom[8];
+extern const uint8_t kTLS12DowngradeRandom[8];
+extern const uint8_t kTLS13DowngradeRandom[8];
 
 // ssl_max_handshake_message_len returns the maximum number of bytes permitted
 // in a handshake message for |ssl|.
@@ -2139,9 +2140,8 @@ struct SSL3_STATE {
   // early_data_accepted is true if early data was accepted by the server.
   bool early_data_accepted : 1;
 
-  // draft_downgrade is whether the TLS 1.3 anti-downgrade logic would have
-  // fired, were it not a draft.
-  bool draft_downgrade : 1;
+  // tls13_downgrade is whether the TLS 1.3 anti-downgrade logic fired.
+  bool tls13_downgrade : 1;
 
   // token_binding_negotiated is set if Token Binding was negotiated.
   bool token_binding_negotiated : 1;
@@ -3054,6 +3054,10 @@ struct ssl_ctx_st {
   // false_start_allowed_without_alpn is whether False Start (if
   // |SSL_MODE_ENABLE_FALSE_START| is enabled) is allowed without ALPN.
   bool false_start_allowed_without_alpn : 1;
+
+  // ignore_tls13_downgrade is whether a connection should continue when the
+  // server random signals a downgrade.
+  bool ignore_tls13_downgrade:1;
 
   // handoff indicates that a server should stop after receiving the
   // ClientHello and pause the handshake in such a way that |SSL_get_error|

@@ -546,6 +546,7 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       ed25519_enabled(false),
       rsa_pss_rsae_certs_enabled(true),
       false_start_allowed_without_alpn(false),
+      ignore_tls13_downgrade(false),
       handoff(false),
       enable_early_data(false) {
   CRYPTO_MUTEX_init(&lock);
@@ -2639,7 +2640,11 @@ void SSL_CTX_set_false_start_allowed_without_alpn(SSL_CTX *ctx, int allowed) {
   ctx->false_start_allowed_without_alpn = !!allowed;
 }
 
-int SSL_is_draft_downgrade(const SSL *ssl) { return ssl->s3->draft_downgrade; }
+int SSL_is_tls13_downgrade(const SSL *ssl) { return ssl->s3->tls13_downgrade; }
+
+void SSL_CTX_set_ignore_tls13_downgrade(SSL_CTX *ctx, int ignore) {
+  ctx->ignore_tls13_downgrade = !!ignore;
+}
 
 void SSL_set_shed_handshake_config(SSL *ssl, int enable) {
   if (!ssl->config) {

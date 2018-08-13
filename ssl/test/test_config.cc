@@ -133,7 +133,8 @@ const Flag<bool> kBoolFlags[] = {
   { "-use-custom-verify-callback", &TestConfig::use_custom_verify_callback },
   { "-allow-false-start-without-alpn",
     &TestConfig::allow_false_start_without_alpn },
-  { "-expect-draft-downgrade", &TestConfig::expect_draft_downgrade },
+  { "-ignore-tls13-downgrade", &TestConfig::ignore_tls13_downgrade },
+  { "-expect-tls13-downgrade", &TestConfig::expect_tls13_downgrade },
   { "-handoff", &TestConfig::handoff },
   { "-no-rsa-pss-rsae-certs", &TestConfig::no_rsa_pss_rsae_certs },
   { "-use-ocsp-callback", &TestConfig::use_ocsp_callback },
@@ -1269,6 +1270,10 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
 
   if (allow_false_start_without_alpn) {
     SSL_CTX_set_false_start_allowed_without_alpn(ssl_ctx.get(), 1);
+  }
+
+  if (ignore_tls13_downgrade) {
+    SSL_CTX_set_ignore_tls13_downgrade(ssl_ctx.get(), 1);
   }
 
   if (use_ocsp_callback) {

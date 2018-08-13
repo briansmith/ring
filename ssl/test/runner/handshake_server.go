@@ -1170,16 +1170,18 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 		c.sendAlert(alertInternalError)
 		return false, err
 	}
+
+	_, supportsTLS13 := c.config.isSupportedVersion(VersionTLS13, false)
+
 	// Signal downgrades in the server random, per draft-ietf-tls-tls13-16,
 	// section 4.1.3.
-	if c.vers <= VersionTLS12 && config.maxVersion(c.isDTLS) >= VersionTLS13 {
-		copy(hs.hello.random[len(hs.hello.random)-8:], downgradeTLS13)
-	}
-	if c.vers <= VersionTLS11 && config.maxVersion(c.isDTLS) == VersionTLS12 {
-		copy(hs.hello.random[len(hs.hello.random)-8:], downgradeTLS12)
-	}
-	if config.Bugs.SendDraftTLS13DowngradeRandom {
-		copy(hs.hello.random[len(hs.hello.random)-8:], downgradeTLS13Draft)
+	if supportsTLS13 || config.Bugs.SendTLS13DowngradeRandom {
+		if c.vers <= VersionTLS12 && config.maxVersion(c.isDTLS) >= VersionTLS13 {
+			copy(hs.hello.random[len(hs.hello.random)-8:], downgradeTLS13)
+		}
+		if c.vers <= VersionTLS11 && config.maxVersion(c.isDTLS) == VersionTLS12 {
+			copy(hs.hello.random[len(hs.hello.random)-8:], downgradeTLS12)
+		}
 	}
 
 	if len(hs.clientHello.sessionId) == 0 && c.config.Bugs.ExpectClientHelloSessionID {
