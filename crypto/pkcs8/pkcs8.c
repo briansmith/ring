@@ -268,7 +268,7 @@ static int pkcs12_pbe_decrypt_init(const struct pbe_suite *suite,
     return 0;
   }
 
-  if (iterations == 0 || iterations > UINT_MAX) {
+  if (!pkcs12_iterations_acceptable(iterations)) {
     OPENSSL_PUT_ERROR(PKCS8, PKCS8_R_BAD_ITERATION_COUNT);
     return 0;
   }

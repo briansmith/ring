@@ -119,6 +119,10 @@ int PKCS5_pbe2_encrypt_init(CBB *out, EVP_CIPHER_CTX *ctx,
                             const char *pass, size_t pass_len,
                             const uint8_t *salt, size_t salt_len);
 
+// pkcs12_iterations_acceptable returns one if |iterations| is a reasonable
+// number of PBKDF2 iterations and zero otherwise.
+int pkcs12_iterations_acceptable(uint64_t iterations);
+
 
 #if defined(__cplusplus)
 }  // extern C
