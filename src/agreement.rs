@@ -98,6 +98,7 @@ derive_debug_from_field!(Algorithm, i);
 /// An ephemeral private key for use (only) with `agree_ephemeral`. The
 /// signature of `agree_ephemeral` ensures that an `EphemeralPrivateKey` can be
 /// used for at most one key agreement.
+#[derive(Clone, Copy)]
 pub struct EphemeralPrivateKey {
     private_key: ec::PrivateKey,
     alg: &'static Algorithm,
