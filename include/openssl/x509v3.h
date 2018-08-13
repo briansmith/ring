@@ -682,6 +682,11 @@ OPENSSL_EXPORT int X509_supported_extension(X509_EXTENSION *ex);
 OPENSSL_EXPORT int X509_PURPOSE_set(int *p, int purpose);
 OPENSSL_EXPORT int X509_check_issued(X509 *issuer, X509 *subject);
 OPENSSL_EXPORT int X509_check_akid(X509 *issuer, AUTHORITY_KEYID *akid);
+
+OPENSSL_EXPORT uint32_t X509_get_extension_flags(X509 *x);
+OPENSSL_EXPORT uint32_t X509_get_key_usage(X509 *x);
+OPENSSL_EXPORT uint32_t X509_get_extended_key_usage(X509 *x);
+
 OPENSSL_EXPORT int X509_PURPOSE_get_count(void);
 OPENSSL_EXPORT X509_PURPOSE * X509_PURPOSE_get0(int idx);
 OPENSSL_EXPORT int X509_PURPOSE_get_by_sname(char *sname);

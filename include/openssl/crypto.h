@@ -125,6 +125,9 @@ OPENSSL_EXPORT void OPENSSL_load_builtin_modules(void);
 OPENSSL_EXPORT int OPENSSL_init_crypto(uint64_t opts,
                                        const OPENSSL_INIT_SETTINGS *settings);
 
+// OPENSSL_cleanup does nothing.
+OPENSSL_EXPORT void OPENSSL_cleanup(void);
+
 // FIPS_mode_set returns one if |on| matches whether BoringSSL was built with
 // |BORINGSSL_FIPS| and zero otherwise.
 OPENSSL_EXPORT int FIPS_mode_set(int on);

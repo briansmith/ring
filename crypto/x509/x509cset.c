@@ -135,6 +135,16 @@ int X509_CRL_up_ref(X509_CRL *crl)
     return 1;
 }
 
+const ASN1_TIME *X509_CRL_get0_lastUpdate(const X509_CRL *crl)
+{
+    return crl->crl->lastUpdate;
+}
+
+const ASN1_TIME *X509_CRL_get0_nextUpdate(const X509_CRL *crl)
+{
+    return crl->crl->nextUpdate;
+}
+
 void X509_CRL_get0_signature(const X509_CRL *crl, const ASN1_BIT_STRING **psig,
                              const X509_ALGOR **palg)
 {
