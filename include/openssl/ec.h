@@ -102,7 +102,7 @@ typedef enum {
 // Elliptic curve groups.
 
 // EC_GROUP_new_by_curve_name returns a fresh EC_GROUP object for the elliptic
-// curve specified by |nid|, or NULL on error.
+// curve specified by |nid|, or NULL on unsupported NID or allocation failure.
 //
 // The supported NIDs are:
 //   NID_secp224r1 (P-224),

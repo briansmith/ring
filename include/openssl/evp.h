@@ -136,11 +136,11 @@ OPENSSL_EXPORT int EVP_PKEY_type(int nid);
 //
 // The following functions get and set the underlying public key in an
 // |EVP_PKEY| object. The |set1| functions take an additional reference to the
-// underlying key and return one on success or zero on error. The |assign|
-// functions adopt the caller's reference. The |get1| functions return a fresh
-// reference to the underlying object or NULL if |pkey| is not of the correct
-// type. The |get0| functions behave the same but return a non-owning
-// pointer.
+// underlying key and return one on success or zero if |key| is NULL. The
+// |assign| functions adopt the caller's reference and return one on success or
+// zero if |key| is NULL. The |get1| functions return a fresh reference to the
+// underlying object or NULL if |pkey| is not of the correct type. The |get0|
+// functions behave the same but return a non-owning pointer.
 
 OPENSSL_EXPORT int EVP_PKEY_set1_RSA(EVP_PKEY *pkey, RSA *key);
 OPENSSL_EXPORT int EVP_PKEY_assign_RSA(EVP_PKEY *pkey, RSA *key);
@@ -175,13 +175,13 @@ OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_ed25519_private(
 #define EVP_PKEY_ED25519 NID_ED25519
 
 // EVP_PKEY_assign sets the underlying key of |pkey| to |key|, which must be of
-// the given type. The |type| argument should be one of the |EVP_PKEY_*|
-// values.
+// the given type. It returns one if successful or zero if the |type| argument
+// is not one of the |EVP_PKEY_*| values or if |key| is NULL.
 OPENSSL_EXPORT int EVP_PKEY_assign(EVP_PKEY *pkey, int type, void *key);
 
-// EVP_PKEY_set_type sets the type of |pkey| to |type|, which should be one of
-// the |EVP_PKEY_*| values. It returns one if successful or zero otherwise. If
-// |pkey| is NULL, it simply reports whether the type is known.
+// EVP_PKEY_set_type sets the type of |pkey| to |type|. It returns one if
+// successful or zero if the |type| argument is not one of the |EVP_PKEY_*|
+// values. If |pkey| is NULL, it simply reports whether the type is known.
 OPENSSL_EXPORT int EVP_PKEY_set_type(EVP_PKEY *pkey, int type);
 
 // EVP_PKEY_cmp_parameters compares the parameters of |a| and |b|. It returns
@@ -196,7 +196,8 @@ OPENSSL_EXPORT int EVP_PKEY_cmp_parameters(const EVP_PKEY *a,
 
 // EVP_parse_public_key decodes a DER-encoded SubjectPublicKeyInfo structure
 // (RFC 5280) from |cbs| and advances |cbs|. It returns a newly-allocated
-// |EVP_PKEY| or NULL on error.
+// |EVP_PKEY| or NULL on error. If the key is an EC key, the curve is guaranteed
+// to be set.
 //
 // The caller must check the type of the parsed public key to ensure it is
 // suitable and validate other desired key properties such as RSA modulus size

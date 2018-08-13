@@ -122,7 +122,7 @@ OPENSSL_EXPORT int HMAC_Update(HMAC_CTX *ctx, const uint8_t *data,
 // |out| and the sets |*out_len| to the length of the result. On entry, |out|
 // must contain at least |HMAC_size| bytes of space. An output size of
 // |EVP_MAX_MD_SIZE| will always be large enough. It returns one on success or
-// zero on error.
+// zero on allocation failure.
 OPENSSL_EXPORT int HMAC_Final(HMAC_CTX *ctx, uint8_t *out,
                               unsigned int *out_len);
 

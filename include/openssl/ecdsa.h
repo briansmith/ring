@@ -86,7 +86,7 @@ OPENSSL_EXPORT int ECDSA_verify(int type, const uint8_t *digest,
                                 size_t sig_len, const EC_KEY *key);
 
 // ECDSA_size returns the maximum size of an ECDSA signature using |key|. It
-// returns zero on error.
+// returns zero if |key| is NULL or if it doesn't have a group set.
 OPENSSL_EXPORT size_t ECDSA_size(const EC_KEY *key);
 
 
