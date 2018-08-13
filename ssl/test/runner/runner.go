@@ -1024,7 +1024,8 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 			panic(fmt.Sprintf("The name of test %q suggests that it's version specific, but min/max version in the Config is %x/%x. One of them should probably be %x", test.name, test.config.MinVersion, test.config.MaxVersion, ver.version))
 		}
 
-		if ver.tls13Variant != 0 {
+		// Ignore this check against "TLS13", since TLS13 is used in many test names.
+		if ver.tls13Variant != 0 && ver.tls13Variant != TLS13RFC {
 			var foundFlag bool
 			for _, flag := range test.flags {
 				if flag == "-tls13-variant" {
@@ -1376,6 +1377,13 @@ var tlsVersions = []tlsVersion{
 		versionDTLS: VersionDTLS12,
 	},
 	{
+		name:         "TLS13",
+		version:      VersionTLS13,
+		excludeFlag:  "-no-tls13",
+		versionWire:  VersionTLS13,
+		tls13Variant: TLS13RFC,
+	},
+	{
 		name:         "TLS13Draft23",
 		version:      VersionTLS13,
 		excludeFlag:  "-no-tls13",
@@ -1480,7 +1488,7 @@ func bigFromHex(hex string) *big.Int {
 func convertToSplitHandshakeTests(tests []testCase) (splitHandshakeTests []testCase) {
 	var stdout bytes.Buffer
 	shim := exec.Command(*shimPath, "-is-handshaker-supported")
-	shim.Stdout = &stdout;
+	shim.Stdout = &stdout
 	if err := shim.Run(); err != nil {
 		panic(err)
 	}
@@ -2831,7 +2839,7 @@ read alert 1 0
 			messageCount:            5,
 			keyUpdateRequest:        keyUpdateRequested,
 			readWithUnfinishedWrite: true,
-			flags: []string{"-async"},
+			flags:                   []string{"-async"},
 		},
 		{
 			name: "SendSNIWarningAlert",
@@ -5745,19 +5753,6 @@ func addVersionNegotiationTests() {
 			},
 		},
 		// The extension takes precedence over the ClientHello version.
-		expectedVersion: VersionTLS12,
-	})
-
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "RejectFinalTLS13",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendSupportedVersions: []uint16{VersionTLS13, VersionTLS12},
-			},
-		},
-		// We currently implement a draft TLS 1.3 version. Ensure that
-		// the true TLS 1.3 value is ignored for now.
 		expectedVersion: VersionTLS12,
 	})
 

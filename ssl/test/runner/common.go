@@ -42,9 +42,11 @@ const (
 	TLS13Default = 0
 	TLS13Draft23 = 1
 	TLS13Draft28 = 2
+	TLS13RFC     = 3
 )
 
 var allTLSWireVersions = []uint16{
+	VersionTLS13,
 	tls13Draft28Version,
 	tls13Draft23Version,
 	VersionTLS12,
@@ -1740,7 +1742,7 @@ func wireToVersion(vers uint16, isDTLS bool) (uint16, bool) {
 		}
 	} else {
 		switch vers {
-		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12:
+		case VersionSSL30, VersionTLS10, VersionTLS11, VersionTLS12, VersionTLS13:
 			return vers, true
 		case tls13Draft23Version, tls13Draft28Version:
 			return VersionTLS13, true
@@ -1751,21 +1753,36 @@ func wireToVersion(vers uint16, isDTLS bool) (uint16, bool) {
 }
 
 func isDraft28(vers uint16) bool {
-	return vers == tls13Draft28Version
+	return vers == tls13Draft28Version || vers == VersionTLS13
 }
 
 // isSupportedVersion checks if the specified wire version is acceptable. If so,
 // it returns true and the corresponding protocol version. Otherwise, it returns
 // false.
 func (c *Config) isSupportedVersion(wireVers uint16, isDTLS bool) (uint16, bool) {
-	if (c.TLS13Variant == TLS13Draft23 && wireVers == tls13Draft28Version) ||
-		(c.TLS13Variant == TLS13Draft28 && wireVers == tls13Draft23Version) {
-		return 0, false
-	}
-
 	vers, ok := wireToVersion(wireVers, isDTLS)
 	if !ok || c.minVersion(isDTLS) > vers || vers > c.maxVersion(isDTLS) {
 		return 0, false
+	}
+	if vers == VersionTLS13 {
+		switch c.TLS13Variant {
+		case TLS13Draft23:
+			if wireVers != tls13Draft23Version {
+				return 0, false
+			}
+		case TLS13Draft28:
+			if wireVers != tls13Draft28Version {
+				return 0, false
+			}
+		case TLS13RFC:
+			if wireVers != VersionTLS13 {
+				return 0, false
+			}
+		case TLS13Default:
+			// Allow all of them.
+		default:
+			panic(c.TLS13Variant)
+		}
 	}
 	return vers, true
 }
