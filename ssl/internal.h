@@ -155,8 +155,8 @@
 #include <openssl/err.h>
 #include <openssl/lhash.h>
 #include <openssl/mem.h>
-#include <openssl/ssl.h>
 #include <openssl/span.h>
+#include <openssl/ssl.h>
 #include <openssl/stack.h>
 
 #include "../crypto/err/internal.h"
@@ -215,7 +215,7 @@ template <typename T>
 struct DeleterImpl<T, typename std::enable_if<T::kAllowUniquePtr>::type> {
   static void Free(T *t) { Delete(t); }
 };
-}
+}  // namespace internal
 
 // MakeUnique behaves like |std::make_unique| but returns nullptr on allocation
 // error.
@@ -237,7 +237,8 @@ UniquePtr<T> MakeUnique(Args &&... args) {
 // PURE_VIRTUAL should be used instead of = 0 when defining pure-virtual
 // functions. This avoids a dependency on |__cxa_pure_virtual| but loses
 // compile-time checking.
-#define PURE_VIRTUAL { abort(); }
+#define PURE_VIRTUAL \
+  { abort(); }
 #endif
 
 // CONSTEXPR_ARRAY works around a VS 2015 bug where ranged for loops don't work
@@ -316,7 +317,7 @@ class Array {
       OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
       return false;
     }
-    data_ = reinterpret_cast<T*>(OPENSSL_malloc(new_size * sizeof(T)));
+    data_ = reinterpret_cast<T *>(OPENSSL_malloc(new_size * sizeof(T)));
     if (data_ == nullptr) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
@@ -441,13 +442,13 @@ namespace bssl {
 #define SSL_aCERT (SSL_aRSA | SSL_aECDSA)
 
 // Bits for |algorithm_enc| (symmetric encryption).
-#define SSL_3DES                 0x00000001u
-#define SSL_AES128               0x00000002u
-#define SSL_AES256               0x00000004u
-#define SSL_AES128GCM            0x00000008u
-#define SSL_AES256GCM            0x00000010u
-#define SSL_eNULL                0x00000020u
-#define SSL_CHACHA20POLY1305     0x00000040u
+#define SSL_3DES 0x00000001u
+#define SSL_AES128 0x00000002u
+#define SSL_AES256 0x00000004u
+#define SSL_AES128GCM 0x00000008u
+#define SSL_AES256GCM 0x00000010u
+#define SSL_eNULL 0x00000020u
+#define SSL_CHACHA20POLY1305 0x00000040u
 
 #define SSL_AES (SSL_AES128 | SSL_AES256 | SSL_AES128GCM | SSL_AES256GCM)
 
@@ -920,7 +921,7 @@ enum ssl_private_key_result_t ssl_private_key_decrypt(SSL_HANDSHAKE *hs,
 // ssl_private_key_supports_signature_algorithm returns whether |hs|'s private
 // key supports |sigalg|.
 bool ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
-                                                 uint16_t sigalg);
+                                                  uint16_t sigalg);
 
 // ssl_public_key_verify verifies that the |signature| is valid for the public
 // key |pkey| and input |in|, using the signature algorithm |sigalg|.
@@ -1256,8 +1257,8 @@ int tls13_export_keying_material(SSL *ssl, Span<uint8_t> out,
 // the integrity of the Finished message, and stores the result in |out| and
 // length in |out_len|. |is_server| is 1 if this is for the Server Finished and
 // 0 for the Client Finished.
-int tls13_finished_mac(SSL_HANDSHAKE *hs, uint8_t *out,
-                       size_t *out_len, int is_server);
+int tls13_finished_mac(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len,
+                       int is_server);
 
 // tls13_derive_session_psk calculates the PSK for this session based on the
 // resumption master secret and |nonce|. It returns true on success, and false
@@ -1482,82 +1483,82 @@ struct SSL_HANDSHAKE {
   Array<uint8_t> key_block;
 
   // scts_requested is true if the SCT extension is in the ClientHello.
-  bool scts_requested:1;
+  bool scts_requested : 1;
 
   // needs_psk_binder is true if the ClientHello has a placeholder PSK binder to
   // be filled in.
-  bool needs_psk_binder:1;
+  bool needs_psk_binder : 1;
 
-  bool received_hello_retry_request:1;
-  bool sent_hello_retry_request:1;
+  bool received_hello_retry_request : 1;
+  bool sent_hello_retry_request : 1;
 
   // handshake_finalized is true once the handshake has completed, at which
   // point accessors should use the established state.
-  bool handshake_finalized:1;
+  bool handshake_finalized : 1;
 
   // accept_psk_mode stores whether the client's PSK mode is compatible with our
   // preferences.
-  bool accept_psk_mode:1;
+  bool accept_psk_mode : 1;
 
   // cert_request is true if a client certificate was requested.
-  bool cert_request:1;
+  bool cert_request : 1;
 
   // certificate_status_expected is true if OCSP stapling was negotiated and the
   // server is expected to send a CertificateStatus message. (This is used on
   // both the client and server sides.)
-  bool certificate_status_expected:1;
+  bool certificate_status_expected : 1;
 
   // ocsp_stapling_requested is true if a client requested OCSP stapling.
-  bool ocsp_stapling_requested:1;
+  bool ocsp_stapling_requested : 1;
 
   // should_ack_sni is used by a server and indicates that the SNI extension
   // should be echoed in the ServerHello.
-  bool should_ack_sni:1;
+  bool should_ack_sni : 1;
 
   // in_false_start is true if there is a pending client handshake in False
   // Start. The client may write data at this point.
-  bool in_false_start:1;
+  bool in_false_start : 1;
 
   // in_early_data is true if there is a pending handshake that has progressed
   // enough to send and receive early data.
-  bool in_early_data:1;
+  bool in_early_data : 1;
 
   // early_data_offered is true if the client sent the early_data extension.
-  bool early_data_offered:1;
+  bool early_data_offered : 1;
 
   // can_early_read is true if application data may be read at this point in the
   // handshake.
-  bool can_early_read:1;
+  bool can_early_read : 1;
 
   // can_early_write is true if application data may be written at this point in
   // the handshake.
-  bool can_early_write:1;
+  bool can_early_write : 1;
 
   // next_proto_neg_seen is one of NPN was negotiated.
-  bool next_proto_neg_seen:1;
+  bool next_proto_neg_seen : 1;
 
   // ticket_expected is true if a TLS 1.2 NewSessionTicket message is to be sent
   // or received.
-  bool ticket_expected:1;
+  bool ticket_expected : 1;
 
   // extended_master_secret is true if the extended master secret extension is
   // negotiated in this handshake.
-  bool extended_master_secret:1;
+  bool extended_master_secret : 1;
 
   // pending_private_key_op is true if there is a pending private key operation
   // in progress.
-  bool pending_private_key_op:1;
+  bool pending_private_key_op : 1;
 
   // grease_seeded is true if |grease_seed| has been initialized.
-  bool grease_seeded:1;
+  bool grease_seeded : 1;
 
   // handback indicates that a server should pause the handshake after
   // finishing operations that require private key material, in such a way that
   // |SSL_get_error| returns |SSL_HANDBACK|.  It is set by |SSL_apply_handoff|.
-  bool handback:1;
+  bool handback : 1;
 
   // cert_compression_negotiated is true iff |cert_compression_alg_id| is valid.
-  bool cert_compression_negotiated:1;
+  bool cert_compression_negotiated : 1;
 
   // client_version is the value sent or received in the ClientHello version.
   uint16_t client_version = 0;
@@ -2092,54 +2093,54 @@ struct SSL3_STATE {
 
   // skip_early_data instructs the record layer to skip unexpected early data
   // messages when 0RTT is rejected.
-  bool skip_early_data:1;
+  bool skip_early_data : 1;
 
   // have_version is true if the connection's final version is known. Otherwise
   // the version has not been negotiated yet.
-  bool have_version:1;
+  bool have_version : 1;
 
   // v2_hello_done is true if the peer's V2ClientHello, if any, has been handled
   // and future messages should use the record layer.
-  bool v2_hello_done:1;
+  bool v2_hello_done : 1;
 
   // is_v2_hello is true if the current handshake message was derived from a
   // V2ClientHello rather than received from the peer directly.
-  bool is_v2_hello:1;
+  bool is_v2_hello : 1;
 
   // has_message is true if the current handshake message has been returned
   // at least once by |get_message| and false otherwise.
-  bool has_message:1;
+  bool has_message : 1;
 
   // initial_handshake_complete is true if the initial handshake has
   // completed.
-  bool initial_handshake_complete:1;
+  bool initial_handshake_complete : 1;
 
   // session_reused indicates whether a session was resumed.
-  bool session_reused:1;
+  bool session_reused : 1;
 
-  bool send_connection_binding:1;
+  bool send_connection_binding : 1;
 
   // In a client, this means that the server supported Channel ID and that a
   // Channel ID was sent. In a server it means that we echoed support for
   // Channel IDs and that |channel_id| will be valid after the handshake.
-  bool channel_id_valid:1;
+  bool channel_id_valid : 1;
 
   // key_update_pending is true if we have a KeyUpdate acknowledgment
   // outstanding.
-  bool key_update_pending:1;
+  bool key_update_pending : 1;
 
   // wpend_pending is true if we have a pending write outstanding.
-  bool wpend_pending:1;
+  bool wpend_pending : 1;
 
   // early_data_accepted is true if early data was accepted by the server.
-  bool early_data_accepted:1;
+  bool early_data_accepted : 1;
 
   // draft_downgrade is whether the TLS 1.3 anti-downgrade logic would have
   // fired, were it not a draft.
-  bool draft_downgrade:1;
+  bool draft_downgrade : 1;
 
   // token_binding_negotiated is set if Token Binding was negotiated.
-  bool token_binding_negotiated:1;
+  bool token_binding_negotiated : 1;
 
   // hs_buf is the buffer of handshake data to process.
   UniquePtr<BUF_MEM> hs_buf;
@@ -2284,17 +2285,17 @@ struct DTLS1_STATE {
 
   // has_change_cipher_spec is true if we have received a ChangeCipherSpec from
   // the peer in this epoch.
-  bool has_change_cipher_spec:1;
+  bool has_change_cipher_spec : 1;
 
   // outgoing_messages_complete is true if |outgoing_messages| has been
   // completed by an attempt to flush it. Future calls to |add_message| and
   // |add_change_cipher_spec| will start a new flight.
-  bool outgoing_messages_complete:1;
+  bool outgoing_messages_complete : 1;
 
   // flight_has_reply is true if the current outgoing flight is complete and has
   // processed at least one message. This is used to detect whether we or the
   // peer sent the final flight.
-  bool flight_has_reply:1;
+  bool flight_has_reply : 1;
 
   uint8_t cookie[DTLS1_COOKIE_LENGTH] = {0};
   size_t cookie_len = 0;
@@ -2431,27 +2432,27 @@ struct SSL_CONFIG {
   uint8_t verify_mode = SSL_VERIFY_NONE;
 
   // Enable signed certificate time stamps. Currently client only.
-  bool signed_cert_timestamps_enabled:1;
+  bool signed_cert_timestamps_enabled : 1;
 
   // ocsp_stapling_enabled is only used by client connections and indicates
   // whether OCSP stapling will be requested.
-  bool ocsp_stapling_enabled:1;
+  bool ocsp_stapling_enabled : 1;
 
   // channel_id_enabled is copied from the |SSL_CTX|. For a server, means that
   // we'll accept Channel IDs from clients. For a client, means that we'll
   // advertise support.
-  bool channel_id_enabled:1;
+  bool channel_id_enabled : 1;
 
   // retain_only_sha256_of_client_certs is true if we should compute the SHA256
   // hash of the peer's certificate and then discard it to save memory and
   // session space. Only effective on the server side.
-  bool retain_only_sha256_of_client_certs:1;
+  bool retain_only_sha256_of_client_certs : 1;
 
   // handoff indicates that a server should stop after receiving the
   // ClientHello and pause the handshake in such a way that |SSL_get_error|
   // returns |SSL_HANDOFF|. This is copied in |SSL_new| from the |SSL_CTX|
   // element of the same name and may be cleared if the handoff is declined.
-  bool handoff:1;
+  bool handoff : 1;
 
   // shed_handshake_config indicates that the handshake config (this object!)
   // should be freed after the handshake completes.
@@ -2622,7 +2623,7 @@ int dtls1_write_record(SSL *ssl, int type, const uint8_t *buf, size_t len,
 
 int dtls1_retransmit_outgoing_messages(SSL *ssl);
 bool dtls1_parse_fragment(CBS *cbs, struct hm_header_st *out_hdr,
-                         CBS *out_body);
+                          CBS *out_body);
 bool dtls1_check_timeout_num(SSL *ssl);
 
 void dtls1_start_timer(SSL *ssl);
@@ -2744,7 +2745,7 @@ void ssl_reset_error_state(SSL *ssl);
 
 // ssl_set_read_error sets |ssl|'s read half into an error state, saving the
 // current state of the error queue.
-void ssl_set_read_error(SSL* ssl);
+void ssl_set_read_error(SSL *ssl);
 
 }  // namespace bssl
 
@@ -2850,7 +2851,8 @@ struct ssl_ctx_st {
   void *default_passwd_callback_userdata = nullptr;
 
   // get client cert callback
-  int (*client_cert_cb)(SSL *ssl, X509 **out_x509, EVP_PKEY **out_pkey) = nullptr;
+  int (*client_cert_cb)(SSL *ssl, X509 **out_x509,
+                        EVP_PKEY **out_pkey) = nullptr;
 
   // get channel id callback
   void (*channel_id_cb)(SSL *ssl, EVP_PKEY **out_pkey) = nullptr;
@@ -2882,7 +2884,8 @@ struct ssl_ctx_st {
 
   // callback that allows applications to peek at protocol messages
   void (*msg_callback)(int write_p, int version, int content_type,
-                       const void *buf, size_t len, SSL *ssl, void *arg) = nullptr;
+                       const void *buf, size_t len, SSL *ssl,
+                       void *arg) = nullptr;
   void *msg_callback_arg = nullptr;
 
   int verify_mode = SSL_VERIFY_NONE;
@@ -2900,7 +2903,7 @@ struct ssl_ctx_st {
   // dos_protection_cb is called once the resumption decision for a ClientHello
   // has been made. It returns one to continue the handshake or zero to
   // abort.
-  int (*dos_protection_cb) (const SSL_CLIENT_HELLO *) = nullptr;
+  int (*dos_protection_cb)(const SSL_CLIENT_HELLO *) = nullptr;
 
   // Controls whether to verify certificates when resuming connections. They
   // were already verified when the connection was first made, so the default is
@@ -3013,46 +3016,46 @@ struct ssl_ctx_st {
   // retain_only_sha256_of_client_certs is true if we should compute the SHA256
   // hash of the peer's certificate and then discard it to save memory and
   // session space. Only effective on the server side.
-  bool retain_only_sha256_of_client_certs:1;
+  bool retain_only_sha256_of_client_certs : 1;
 
   // quiet_shutdown is true if the connection should not send a close_notify on
   // shutdown.
-  bool quiet_shutdown:1;
+  bool quiet_shutdown : 1;
 
   // ocsp_stapling_enabled is only used by client connections and indicates
   // whether OCSP stapling will be requested.
-  bool ocsp_stapling_enabled:1;
+  bool ocsp_stapling_enabled : 1;
 
   // If true, a client will request certificate timestamps.
-  bool signed_cert_timestamps_enabled:1;
+  bool signed_cert_timestamps_enabled : 1;
 
   // channel_id_enabled is whether Channel ID is enabled. For a server, means
   // that we'll accept Channel IDs from clients.  For a client, means that we'll
   // advertise support.
-  bool channel_id_enabled:1;
+  bool channel_id_enabled : 1;
 
   // grease_enabled is whether draft-davidben-tls-grease-01 is enabled.
-  bool grease_enabled:1;
+  bool grease_enabled : 1;
 
   // allow_unknown_alpn_protos is whether the client allows unsolicited ALPN
   // protocols from the peer.
-  bool allow_unknown_alpn_protos:1;
+  bool allow_unknown_alpn_protos : 1;
 
   // ed25519_enabled is whether Ed25519 is advertised in the handshake.
-  bool ed25519_enabled:1;
+  bool ed25519_enabled : 1;
 
   // rsa_pss_rsae_certs_enabled is whether rsa_pss_rsae_* are supported by the
   // certificate verifier.
-  bool rsa_pss_rsae_certs_enabled:1;
+  bool rsa_pss_rsae_certs_enabled : 1;
 
   // false_start_allowed_without_alpn is whether False Start (if
   // |SSL_MODE_ENABLE_FALSE_START| is enabled) is allowed without ALPN.
-  bool false_start_allowed_without_alpn:1;
+  bool false_start_allowed_without_alpn : 1;
 
   // handoff indicates that a server should stop after receiving the
   // ClientHello and pause the handshake in such a way that |SSL_get_error|
   // returns |SSL_HANDOFF|.
-  bool handoff:1;
+  bool handoff : 1;
 
   // If enable_early_data is true, early data can be sent and accepted.
   bool enable_early_data : 1;
@@ -3151,7 +3154,7 @@ struct ssl_st {
   // did_dummy_pq_padding is only valid for a client. In that context, it is
   // true iff the client observed the server echoing a dummy PQ padding
   // extension.
-  bool did_dummy_pq_padding:1;
+  bool did_dummy_pq_padding : 1;
 
   // If enable_early_data is true, early data can be sent and accepted.
   bool enable_early_data : 1;
@@ -3163,7 +3166,9 @@ struct ssl_session_st {
   ssl_session_st &operator=(const ssl_session_st &) = delete;
 
   CRYPTO_refcount_t references = 1;
-  uint16_t ssl_version = 0;  // what ssl version session info is being kept in here?
+
+  // ssl_version is the (D)TLS version that established the session.
+  uint16_t ssl_version = 0;
 
   // group_id is the ID of the ECDH group used to establish this session or zero
   // if not applicable or unknown.
@@ -3267,19 +3272,19 @@ struct ssl_session_st {
   // extended_master_secret is whether the master secret in this session was
   // generated using EMS and thus isn't vulnerable to the Triple Handshake
   // attack.
-  bool extended_master_secret:1;
+  bool extended_master_secret : 1;
 
   // peer_sha256_valid is whether |peer_sha256| is valid.
-  bool peer_sha256_valid:1;  // Non-zero if peer_sha256 is valid
+  bool peer_sha256_valid : 1;  // Non-zero if peer_sha256 is valid
 
   // not_resumable is used to indicate that session resumption is disallowed.
-  bool not_resumable:1;
+  bool not_resumable : 1;
 
   // ticket_age_add_valid is whether |ticket_age_add| is valid.
-  bool ticket_age_add_valid:1;
+  bool ticket_age_add_valid : 1;
 
   // is_server is whether this session was created by a server.
-  bool is_server:1;
+  bool is_server : 1;
 
  private:
   ~ssl_session_st();
