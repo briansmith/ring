@@ -311,11 +311,57 @@ static const uint16_t kPrimes[] = {
 };
 
 // BN_prime_checks_for_size returns the number of Miller-Rabin iterations
-// necessary for a 'bits'-bit prime, in order to maintain an error rate greater
-// than the security level for an RSA prime of that many bits (calculated using
-// the FIPS SP 800-57 security level and 186-4 Section F.1; original paper:
-// Damgaard, Landrock, Pomerance: Average case error estimates for the strong
-// probable prime test. -- Math. Comp. 61 (1993) 177-194)
+// necessary for a 'bits'-bit prime.
+//
+//
+// This table is generated using the algorithm of FIPS PUB 186-4
+// Digital Signature Standard (DSS), section F.1, page 117.
+// (https://dx.doi.org/10.6028/NIST.FIPS.186-4)
+// The following magma script was used to generate the output:
+// securitybits:=125;
+// k:=1024;
+// for t:=1 to 65 do
+//   for M:=3 to Floor(2*Sqrt(k-1)-1) do
+//     S:=0;
+//     // Sum over m
+//     for m:=3 to M do
+//       s:=0;
+//       // Sum over j
+//       for j:=2 to m do
+//         s+:=(RealField(32)!2)^-(j+(k-1)/j);
+//       end for;
+//       S+:=2^(m-(m-1)*t)*s;
+//     end for;
+//     A:=2^(k-2-M*t);
+//     B:=8*(Pi(RealField(32))^2-6)/3*2^(k-2)*S;
+//     pkt:=2.00743*Log(2)*k*2^-k*(A+B);
+//     seclevel:=Floor(-Log(2,pkt));
+//     if seclevel ge securitybits then
+//       printf "k: %5o, security: %o bits  (t: %o, M: %o)\n",k,seclevel,t,M;
+//       break;
+//     end if;
+//   end for;
+//   if seclevel ge securitybits then break; end if;
+// end for;
+//
+// It can be run online at: http://magma.maths.usyd.edu.au/calc
+// And will output:
+// k:  1024, security: 129 bits  (t: 6, M: 23)
+// k is the number of bits of the prime, securitybits is the level we want to
+// reach.
+// prime length | RSA key size | # MR tests | security level
+// -------------+--------------|------------+---------------
+//  (b) >= 6394 |     >= 12788 |          3 |        256 bit
+//  (b) >= 3747 |     >=  7494 |          3 |        192 bit
+//  (b) >= 1345 |     >=  2690 |          4 |        128 bit
+//  (b) >= 1080 |     >=  2160 |          5 |        128 bit
+//  (b) >=  852 |     >=  1704 |          5 |        112 bit
+//  (b) >=  476 |     >=   952 |          5 |         80 bit
+//  (b) >=  400 |     >=   800 |          6 |         80 bit
+//  (b) >=  347 |     >=   694 |          7 |         80 bit
+//  (b) >=  308 |     >=   616 |          8 |         80 bit
+//  (b) >=   55 |     >=   110 |         27 |         64 bit
+//  (b) >=    6 |     >=    12 |         34 |         64 bit
 static int BN_prime_checks_for_size(int bits) {
   if (bits >= 3747) {
     return 3;
@@ -329,16 +375,16 @@ static int BN_prime_checks_for_size(int bits) {
   if (bits >= 400) {
     return 6;
   }
+  if (bits >= 347) {
+    return 7;
+  }
   if (bits >= 308) {
     return 8;
   }
-  if (bits >= 205) {
-    return 13;
+  if (bits >= 55) {
+    return 27;
   }
-  if (bits >= 155) {
-    return 19;
-  }
-  return 28;
+  return 34;
 }
 
 // num_trial_division_primes returns the number of primes to try with trial
