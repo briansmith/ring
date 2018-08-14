@@ -417,7 +417,7 @@ OPENSSL_EXPORT int EVP_PKEY_print_params(BIO *out, const EVP_PKEY *pkey,
 
 // PKCS5_PBKDF2_HMAC computes |iterations| iterations of PBKDF2 of |password|
 // and |salt|, using |digest|, and outputs |key_len| bytes to |out_key|. It
-// returns one on success and zero on error.
+// returns one on success and zero on allocation failure or if iterations is 0.
 OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC(const char *password, size_t password_len,
                                      const uint8_t *salt, size_t salt_len,
                                      unsigned iterations, const EVP_MD *digest,
@@ -433,12 +433,20 @@ OPENSSL_EXPORT int PKCS5_PBKDF2_HMAC_SHA1(const char *password,
 
 // EVP_PBE_scrypt expands |password| into a secret key of length |key_len| using
 // scrypt, as described in RFC 7914, and writes the result to |out_key|. It
-// returns one on success and zero on error.
+// returns one on success and zero on allocation failure, if the memory required
+// for the operation exceeds |max_mem|, or if any of the parameters are invalid
+// as described below.
 //
 // |N|, |r|, and |p| are as described in RFC 7914 section 6. They determine the
-// cost of the operation. If the memory required exceeds |max_mem|, the
-// operation will fail instead. If |max_mem| is zero, a defult limit of 32MiB
-// will be used.
+// cost of the operation. If |max_mem| is zero, a defult limit of 32MiB will be
+// used.
+//
+// The parameters are considered invalid under any of the following conditions:
+// - |r| or |p| are zero
+// - |p| > (2^30 - 1) / |r|
+// - |N| is not a power of two
+// - |N| > 2^32
+// - |N| > 2^(128 * |r| / 8)
 OPENSSL_EXPORT int EVP_PBE_scrypt(const char *password, size_t password_len,
                                   const uint8_t *salt, size_t salt_len,
                                   uint64_t N, uint64_t r, uint64_t p,

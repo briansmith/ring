@@ -187,6 +187,10 @@ int EVP_PBE_scrypt(const char *password, size_t password_len,
   int ret = 0;
   block_t *T = B + B_blocks;
   block_t *V = T + T_blocks;
+
+  // NOTE: PKCS5_PBKDF2_HMAC can only fail due to allocation failure
+  // or |iterations| of 0 (we pass 1 here). This is consistent with
+  // the documented failure conditions of EVP_PBE_scrypt.
   if (!PKCS5_PBKDF2_HMAC(password, password_len, salt, salt_len, 1,
                          EVP_sha256(), B_bytes, (uint8_t *)B)) {
     goto err;
