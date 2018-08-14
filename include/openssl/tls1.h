@@ -240,9 +240,6 @@ extern "C" {
 // This is not an IANA defined extension number
 #define TLSEXT_TYPE_channel_id 30032
 
-// This is not an IANA defined extension number
-#define TLSEXT_TYPE_dummy_pq_padding 54537
-
 // status request value from RFC 3546
 #define TLSEXT_STATUSTYPE_nothing (-1)
 #define TLSEXT_STATUSTYPE_ocsp 1

@@ -135,7 +135,6 @@ const Flag<bool> kBoolFlags[] = {
     &TestConfig::allow_false_start_without_alpn },
   { "-expect-draft-downgrade", &TestConfig::expect_draft_downgrade },
   { "-handoff", &TestConfig::handoff },
-  { "-expect-dummy-pq-padding", &TestConfig::expect_dummy_pq_padding },
   { "-no-rsa-pss-rsae-certs", &TestConfig::no_rsa_pss_rsae_certs },
   { "-use-ocsp-callback", &TestConfig::use_ocsp_callback },
   { "-set-ocsp-in-callback", &TestConfig::set_ocsp_in_callback },
@@ -216,7 +215,6 @@ const Flag<int> kIntFlags[] = {
   { "-read-size", &TestConfig::read_size },
   { "-expect-ticket-age-skew", &TestConfig::expect_ticket_age_skew },
   { "-tls13-variant", &TestConfig::tls13_variant },
-  { "-dummy-pq-padding-len", &TestConfig::dummy_pq_padding_len },
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {
@@ -1612,10 +1610,6 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (max_send_fragment > 0) {
     SSL_set_max_send_fragment(ssl.get(), max_send_fragment);
-  }
-  if (dummy_pq_padding_len > 0 &&
-      !SSL_set_dummy_pq_padding_size(ssl.get(), dummy_pq_padding_len)) {
-    return nullptr;
   }
   if (!quic_transport_params.empty()) {
     if (!SSL_set_quic_transport_params(

@@ -337,10 +337,6 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
-	if expected := hs.clientHello.dummyPQPaddingLen; expected != config.Bugs.ExpectDummyPQPaddingLength {
-		return fmt.Errorf("tls: expected dummy PQ padding extension of length %d, but got one of length %d", expected, config.Bugs.ExpectDummyPQPaddingLength)
-	}
-
 	if err := checkRSAPSSSupport(config.Bugs.ExpectRSAPSSSupport, hs.clientHello.signatureAlgorithms, hs.clientHello.signatureAlgorithmsCert); err != nil {
 		return err
 	}
@@ -1428,10 +1424,6 @@ func (hs *serverHandshakeState) processClientExtensions(serverExtensions *server
 
 	if !hs.clientHello.hasGREASEExtension && config.Bugs.ExpectGREASE {
 		return errors.New("tls: no GREASE extension found")
-	}
-
-	if l := hs.clientHello.dummyPQPaddingLen; l != 0 {
-		serverExtensions.dummyPQPaddingLen = l
 	}
 
 	serverExtensions.serverNameAck = c.config.Bugs.SendServerNameAck

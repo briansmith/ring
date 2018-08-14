@@ -626,14 +626,6 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     return false;
   }
 
-  const bool did_dummy_pq_padding = !!SSL_dummy_pq_padding_used(ssl);
-  if (config->expect_dummy_pq_padding != did_dummy_pq_padding) {
-    fprintf(stderr,
-            "Dummy PQ padding %s observed, but expected the opposite.\n",
-            did_dummy_pq_padding ? "was" : "was not");
-    return false;
-  }
-
   return true;
 }
 

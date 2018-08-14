@@ -626,7 +626,6 @@ ssl_st::ssl_st(SSL_CTX *ctx_arg)
       max_cert_list(ctx->max_cert_list),
       server(false),
       quiet_shutdown(ctx->quiet_shutdown),
-      did_dummy_pq_padding(false),
       enable_early_data(ctx->enable_early_data) {
   CRYPTO_new_ex_data(&ex_data);
 }
@@ -2440,26 +2439,6 @@ void SSL_CTX_set_psk_server_callback(
     SSL_CTX *ctx, unsigned (*cb)(SSL *ssl, const char *identity,
                                  uint8_t *psk, unsigned max_psk_len)) {
   ctx->psk_server_callback = cb;
-}
-
-int SSL_set_dummy_pq_padding_size(SSL *ssl, size_t num_bytes) {
-  if (!ssl->config) {
-    return 0;
-  }
-  if (num_bytes > 0xffff) {
-    return 0;
-  }
-
-  ssl->config->dummy_pq_padding_len = num_bytes;
-  return 1;
-}
-
-int SSL_dummy_pq_padding_used(SSL *ssl) {
-  if (ssl->server) {
-    return 0;
-  }
-
-  return ssl->did_dummy_pq_padding;
 }
 
 void SSL_CTX_set_msg_callback(SSL_CTX *ctx,

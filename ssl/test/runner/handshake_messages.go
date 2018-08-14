@@ -295,7 +295,6 @@ type clientHelloMsg struct {
 	omitExtensions          bool
 	emptyExtensions         bool
 	pad                     int
-	dummyPQPaddingLen       int
 	compressedCertAlgs      []uint16
 }
 
@@ -350,7 +349,6 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.omitExtensions == m1.omitExtensions &&
 		m.emptyExtensions == m1.emptyExtensions &&
 		m.pad == m1.pad &&
-		m.dummyPQPaddingLen == m1.dummyPQPaddingLen &&
 		eqUint16s(m.compressedCertAlgs, m1.compressedCertAlgs)
 }
 
@@ -582,11 +580,6 @@ func (m *clientHelloMsg) marshal() []byte {
 		extensions.addU16(extensionCustom)
 		customExt := extensions.addU16LengthPrefixed()
 		customExt.addBytes([]byte(m.customExtension))
-	}
-	if l := m.dummyPQPaddingLen; l != 0 {
-		extensions.addU16(extensionDummyPQPadding)
-		body := extensions.addU16LengthPrefixed()
-		body.addBytes(make([]byte, l))
 	}
 	if len(m.compressedCertAlgs) > 0 {
 		extensions.addU16(extensionCompressedCertAlgs)
@@ -908,11 +901,6 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 			m.sctListSupported = true
 		case extensionCustom:
 			m.customExtension = string(body)
-		case extensionDummyPQPadding:
-			if len(body) == 0 {
-				return false
-			}
-			m.dummyPQPaddingLen = len(body)
 		case extensionCompressedCertAlgs:
 			var algIDs byteReader
 			if !body.readU8LengthPrefixed(&algIDs) {
@@ -1198,7 +1186,6 @@ type serverExtensions struct {
 	supportedCurves         []CurveID
 	quicTransportParams     []byte
 	serverNameAck           bool
-	dummyPQPaddingLen       int
 }
 
 func (m *serverExtensions) marshal(extensions *byteBuilder) {
@@ -1333,11 +1320,6 @@ func (m *serverExtensions) marshal(extensions *byteBuilder) {
 		extensions.addU16(extensionServerName)
 		extensions.addU16(0) // zero length
 	}
-	if l := m.dummyPQPaddingLen; l != 0 {
-		extensions.addU16(extensionDummyPQPadding)
-		body := extensions.addU16LengthPrefixed()
-		body.addBytes(make([]byte, l))
-	}
 }
 
 func (m *serverExtensions) unmarshal(data byteReader, version uint16) bool {
@@ -1442,8 +1424,6 @@ func (m *serverExtensions) unmarshal(data byteReader, version uint16) bool {
 				return false
 			}
 			m.hasEarlyData = true
-		case extensionDummyPQPadding:
-			m.dummyPQPaddingLen = len(body)
 		default:
 			// Unknown extensions are illegal from the server.
 			return false

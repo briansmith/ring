@@ -1588,11 +1588,6 @@ struct SSL_HANDSHAKE {
   // grease_seed is the entropy for GREASE values. It is valid if
   // |grease_seeded| is true.
   uint8_t grease_seed[ssl_grease_last_index + 1] = {0};
-
-  // dummy_pq_padding_len, in a server, is the length of the extension that
-  // should be echoed in a ServerHello, or zero if no extension should be
-  // echoed.
-  uint16_t dummy_pq_padding_len = 0;
 };
 
 UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl);
@@ -2413,7 +2408,6 @@ struct SSL_CONFIG {
   // |client_CA|.
   STACK_OF(X509_NAME) *cached_x509_client_CA = nullptr;
 
-  uint16_t dummy_pq_padding_len = 0;
   Array<uint16_t> supported_group_list;  // our list
 
   // The client's Channel ID private key.
@@ -3159,11 +3153,6 @@ struct ssl_st {
   // quiet_shutdown is true if the connection should not send a close_notify on
   // shutdown.
   bool quiet_shutdown : 1;
-
-  // did_dummy_pq_padding is only valid for a client. In that context, it is
-  // true iff the client observed the server echoing a dummy PQ padding
-  // extension.
-  bool did_dummy_pq_padding : 1;
 
   // If enable_early_data is true, early data can be sent and accepted.
   bool enable_early_data : 1;

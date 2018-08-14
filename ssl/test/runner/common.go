@@ -140,7 +140,6 @@ const (
 	extensionRenegotiationInfo          uint16 = 0xff01
 	extensionQUICTransportParams        uint16 = 0xffa5 // draft-ietf-quic-tls-13
 	extensionChannelID                  uint16 = 30032  // not IANA assigned
-	extensionDummyPQPadding             uint16 = 54537  // not IANA assigned
 )
 
 // TLS signaling cipher suite values
@@ -1595,15 +1594,6 @@ type ProtocolBugs struct {
 	// ExpectDraftTLS13DowngradeRandom, if true, causes the client to
 	// require the server send the draft TLS 1.3 anti-downgrade signal.
 	ExpectDraftTLS13DowngradeRandom bool
-
-	// ExpectDummyPQPaddingLength, if not zero, causes the server to
-	// require that the client sent a dummy PQ padding extension of this
-	// length.
-	ExpectDummyPQPaddingLength int
-
-	// SendDummyPQPaddingLength causes a client to send a dummy PQ padding
-	// extension of the given length in the ClientHello.
-	SendDummyPQPaddingLength int
 
 	// SendCompressedCoordinates, if true, causes ECDH key shares over NIST
 	// curves to use compressed coordinates.
