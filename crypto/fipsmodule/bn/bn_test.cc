@@ -1557,25 +1557,56 @@ TEST_F(BNTest, BadModulus) {
   ERR_clear_error();
 }
 
-// Test that 1**0 mod 1 == 0.
-TEST_F(BNTest, ExpModZero) {
-  bssl::UniquePtr<BIGNUM> zero(BN_new()), a(BN_new()), r(BN_new());
+// Test that a**0 mod 1 == 0.
+TEST_F(BNTest, ExpZeroModOne) {
+  bssl::UniquePtr<BIGNUM> zero(BN_new()), a(BN_new()), r(BN_new()),
+      minus_one(BN_new());
   ASSERT_TRUE(zero);
   ASSERT_TRUE(a);
   ASSERT_TRUE(r);
+  ASSERT_TRUE(minus_one);
+  ASSERT_TRUE(BN_set_word(minus_one.get(), 1));
+  BN_set_negative(minus_one.get(), 1);
   ASSERT_TRUE(BN_rand(a.get(), 1024, BN_RAND_TOP_ONE, BN_RAND_BOTTOM_ANY));
   BN_zero(zero.get());
 
   ASSERT_TRUE(BN_mod_exp(r.get(), a.get(), zero.get(), BN_value_one(), ctx()));
   EXPECT_TRUE(BN_is_zero(r.get()));
+  ASSERT_TRUE(
+      BN_mod_exp(r.get(), zero.get(), zero.get(), BN_value_one(), ctx()));
+  EXPECT_TRUE(BN_is_zero(r.get()));
 
   ASSERT_TRUE(BN_mod_exp_mont_word(r.get(), 42, zero.get(), BN_value_one(),
                                    ctx(), nullptr));
   EXPECT_TRUE(BN_is_zero(r.get()));
+  ASSERT_TRUE(BN_mod_exp_mont_word(r.get(), 0, zero.get(), BN_value_one(),
+                                   ctx(), nullptr));
+  EXPECT_TRUE(BN_is_zero(r.get()));
 
-  // The other modular exponentiation functions, |BN_mod_exp_mont| and
-  // |BN_mod_exp_mont_consttime|, require fully-reduced inputs, so 1**0 mod 1 is
-  // not a valid call.
+  // |BN_mod_exp_mont| and |BN_mod_exp_mont_consttime| require fully-reduced
+  // inputs, so a**0 mod 1 is not a valid call. 0**0 mod 1 is valid, however.
+  ASSERT_TRUE(BN_mod_exp_mont(r.get(), zero.get(), zero.get(), BN_value_one(),
+                              ctx(), nullptr));
+  EXPECT_TRUE(BN_is_zero(r.get()));
+
+  ASSERT_TRUE(BN_mod_exp_mont_consttime(r.get(), zero.get(), zero.get(),
+                                        BN_value_one(), ctx(), nullptr));
+  EXPECT_TRUE(BN_is_zero(r.get()));
+
+  // Historically, OpenSSL's modular exponentiation functions tolerated negative
+  // moduli by ignoring the sign bit. This logic should do the same.
+  ASSERT_TRUE(BN_mod_exp(r.get(), a.get(), zero.get(), minus_one.get(), ctx()));
+  EXPECT_TRUE(BN_is_zero(r.get()));
+  ASSERT_TRUE(BN_mod_exp_mont_word(r.get(), 0, zero.get(), minus_one.get(),
+                                   ctx(), nullptr));
+  EXPECT_TRUE(BN_is_zero(r.get()));
+  ASSERT_TRUE(BN_mod_exp_mont(r.get(), zero.get(), zero.get(), minus_one.get(),
+                              ctx(), nullptr));
+  EXPECT_TRUE(BN_is_zero(r.get()));
+
+  ASSERT_TRUE(BN_mod_exp_mont_consttime(r.get(), zero.get(), zero.get(),
+                                        minus_one.get(), ctx(), nullptr));
+  EXPECT_TRUE(BN_is_zero(r.get()));
 }
 
 TEST_F(BNTest, SmallPrime) {

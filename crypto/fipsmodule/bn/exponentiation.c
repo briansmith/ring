@@ -457,7 +457,7 @@ static int mod_exp_recp(BIGNUM *r, const BIGNUM *a, const BIGNUM *p,
 
   if (bits == 0) {
     // x**0 mod 1 is still zero.
-    if (BN_is_one(m)) {
+    if (BN_abs_is_word(m, 1)) {
       BN_zero(r);
       return 1;
     }
@@ -614,7 +614,7 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   int bits = BN_num_bits(p);
   if (bits == 0) {
     // x**0 mod 1 is still zero.
-    if (BN_is_one(m)) {
+    if (BN_abs_is_word(m, 1)) {
       BN_zero(rr);
       return 1;
     }
@@ -981,7 +981,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   int bits = max_bits;
   if (bits == 0) {
     // x**0 mod 1 is still zero.
-    if (BN_is_one(m)) {
+    if (BN_abs_is_word(m, 1)) {
       BN_zero(rr);
       return 1;
     }
