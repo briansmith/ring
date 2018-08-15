@@ -1201,8 +1201,8 @@ static int aead_aes_gcm_tls13_seal_scatter(
   }
 
   // The given nonces must be strictly monotonically increasing. See
-  // https://tools.ietf.org/html/draft-ietf-tls-tls13-28#section-5.3 for details
-  // of the TLS 1.3 nonce construction.
+  // https://tools.ietf.org/html/rfc8446#section-5.3 for details of the TLS 1.3
+  // nonce construction.
   uint64_t given_counter;
   OPENSSL_memcpy(&given_counter, nonce + nonce_len - sizeof(given_counter),
                  sizeof(given_counter));

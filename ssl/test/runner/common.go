@@ -89,9 +89,9 @@ const (
 	typeServerHello           uint8 = 2
 	typeHelloVerifyRequest    uint8 = 3
 	typeNewSessionTicket      uint8 = 4
-	typeEndOfEarlyData        uint8 = 5 // draft-ietf-tls-tls13-21
-	typeHelloRetryRequest     uint8 = 6 // draft-ietf-tls-tls13-16
-	typeEncryptedExtensions   uint8 = 8 // draft-ietf-tls-tls13-16
+	typeEndOfEarlyData        uint8 = 5
+	typeHelloRetryRequest     uint8 = 6
+	typeEncryptedExtensions   uint8 = 8
 	typeCertificate           uint8 = 11
 	typeServerKeyExchange     uint8 = 12
 	typeCertificateRequest    uint8 = 13
@@ -100,11 +100,11 @@ const (
 	typeClientKeyExchange     uint8 = 16
 	typeFinished              uint8 = 20
 	typeCertificateStatus     uint8 = 22
-	typeKeyUpdate             uint8 = 24  // draft-ietf-tls-tls13-16
+	typeKeyUpdate             uint8 = 24
 	typeCompressedCertificate uint8 = 25  // Not IANA assigned
 	typeNextProtocol          uint8 = 67  // Not IANA assigned
 	typeChannelID             uint8 = 203 // Not IANA assigned
-	typeMessageHash           uint8 = 254 // draft-ietf-tls-tls13-21
+	typeMessageHash           uint8 = 254
 )
 
 // TLS compression types.
@@ -127,14 +127,14 @@ const (
 	extensionTokenBinding               uint16 = 24
 	extensionCompressedCertAlgs         uint16 = 27
 	extensionSessionTicket              uint16 = 35
-	extensionPreSharedKey               uint16 = 41    // draft-ietf-tls-tls13-23
-	extensionEarlyData                  uint16 = 42    // draft-ietf-tls-tls13-23
-	extensionSupportedVersions          uint16 = 43    // draft-ietf-tls-tls13-23
-	extensionCookie                     uint16 = 44    // draft-ietf-tls-tls13-23
-	extensionPSKKeyExchangeModes        uint16 = 45    // draft-ietf-tls-tls13-23
-	extensionCertificateAuthorities     uint16 = 47    // draft-ietf-tls-tls13-23
-	extensionSignatureAlgorithmsCert    uint16 = 50    // draft-ietf-tls-tls13-23
-	extensionKeyShare                   uint16 = 51    // draft-ietf-tls-tls13-23
+	extensionPreSharedKey               uint16 = 41
+	extensionEarlyData                  uint16 = 42
+	extensionSupportedVersions          uint16 = 43
+	extensionCookie                     uint16 = 44
+	extensionPSKKeyExchangeModes        uint16 = 45
+	extensionCertificateAuthorities     uint16 = 47
+	extensionSignatureAlgorithmsCert    uint16 = 50
+	extensionKeyShare                   uint16 = 51
 	extensionCustom                     uint16 = 1234  // not IANA assigned
 	extensionNextProtoNeg               uint16 = 13172 // not IANA assigned
 	extensionRenegotiationInfo          uint16 = 0xff01
@@ -239,13 +239,13 @@ const (
 	SRTP_AES128_CM_HMAC_SHA1_32        = 0x0002
 )
 
-// PskKeyExchangeMode values (see draft-ietf-tls-tls13-16)
+// PskKeyExchangeMode values (see RFC 8446, section 4.2.9)
 const (
 	pskKEMode    = 0
 	pskDHEKEMode = 1
 )
 
-// KeyUpdateRequest values (see draft-ietf-tls-tls13-16, section 4.5.3)
+// KeyUpdateRequest values (see RFC 8446, section 4.6.3)
 const (
 	keyUpdateNotRequested = 0
 	keyUpdateRequested    = 1
@@ -2064,7 +2064,7 @@ func isSupportedSignatureAlgorithm(sigAlg signatureAlgorithm, sigAlgs []signatur
 }
 
 var (
-	// See draft-ietf-tls-tls13-16, section 6.3.1.2.
+	// See RFC 8446, section 4.1.3.
 	downgradeTLS13 = []byte{0x44, 0x4f, 0x57, 0x4e, 0x47, 0x52, 0x44, 0x01}
 	downgradeTLS12 = []byte{0x44, 0x4f, 0x57, 0x4e, 0x47, 0x52, 0x44, 0x00}
 )

@@ -384,8 +384,7 @@ func (h *finishedHash) discardHandshakeBuffer() {
 }
 
 // zeroSecretTLS13 returns the default all zeros secret for TLS 1.3, used when a
-// given secret is not available in the handshake. See draft-ietf-tls-tls13-16,
-// section 7.1.
+// given secret is not available in the handshake. See RFC 8446, section 7.1.
 func (h *finishedHash) zeroSecret() []byte {
 	return make([]byte, h.hash.Size())
 }
@@ -400,7 +399,7 @@ func (h *finishedHash) nextSecret() {
 }
 
 // hkdfExpandLabel implements TLS 1.3's HKDF-Expand-Label function, as defined
-// in section 7.1 of draft-ietf-tls-tls13-16.
+// in section 7.1 of RFC 8446.
 func hkdfExpandLabel(hash crypto.Hash, secret, label, hashValue []byte, length int) []byte {
 	if len(label) > 255 || len(hashValue) > 255 {
 		panic("hkdfExpandLabel: label or hashValue too long")

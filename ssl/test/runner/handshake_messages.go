@@ -589,7 +589,7 @@ func (m *clientHelloMsg) marshal() []byte {
 			algIDs.addU16(v)
 		}
 	}
-	// The PSK extension must be last (draft-ietf-tls-tls13-18 section 4.2.6).
+	// The PSK extension must be last. See https://tools.ietf.org/html/rfc8446#section-4.2.11
 	if len(m.pskIdentities) > 0 && !m.pskBinderFirst {
 		extensions.addU16(extensionPreSharedKey)
 		pskExtension := extensions.addU16LengthPrefixed()
@@ -762,7 +762,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 			m.ticketSupported = true
 			m.sessionTicket = []byte(body)
 		case extensionKeyShare:
-			// draft-ietf-tls-tls13 section 6.3.2.3
+			// https://tools.ietf.org/html/rfc8446#section-4.2.8
 			var keyShares byteReader
 			if !body.readU16LengthPrefixed(&keyShares) || len(body) != 0 {
 				return false
@@ -779,7 +779,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 				m.keyShares = append(m.keyShares, entry)
 			}
 		case extensionPreSharedKey:
-			// draft-ietf-tls-tls13-18 section 4.2.6
+			// https://tools.ietf.org/html/rfc8446#section-4.2.11
 			var psks, binders byteReader
 			if !body.readU16LengthPrefixed(&psks) ||
 				!body.readU16LengthPrefixed(&binders) ||
@@ -807,12 +807,12 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 				return false
 			}
 		case extensionPSKKeyExchangeModes:
-			// draft-ietf-tls-tls13-18 section 4.2.7
+			// https://tools.ietf.org/html/rfc8446#section-4.2.9
 			if !body.readU8LengthPrefixedBytes(&m.pskKEModes) || len(body) != 0 {
 				return false
 			}
 		case extensionEarlyData:
-			// draft-ietf-tls-tls13 section 6.3.2.5
+			// https://tools.ietf.org/html/rfc8446#section-4.2.10
 			if len(body) != 0 {
 				return false
 			}
@@ -1299,7 +1299,7 @@ func (m *serverExtensions) marshal(extensions *byteBuilder) {
 		supportedPoints.addBytes(m.supportedPoints)
 	}
 	if len(m.supportedCurves) > 0 {
-		// https://tools.ietf.org/html/draft-ietf-tls-tls13-18#section-4.2.4
+		// https://tools.ietf.org/html/rfc8446#section-4.2.7
 		extensions.addU16(extensionSupportedCurves)
 		supportedCurvesList := extensions.addU16LengthPrefixed()
 		supportedCurves := supportedCurvesList.addU16LengthPrefixed()

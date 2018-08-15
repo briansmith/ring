@@ -1696,8 +1696,8 @@ OPENSSL_EXPORT int SSL_SESSION_set1_id_context(SSL_SESSION *session,
 //
 // If this function returns one, clients retain multiple sessions and use each
 // only once. This prevents passive observers from correlating connections with
-// tickets. See draft-ietf-tls-tls13-18, appendix B.5. If it returns zero,
-// |session| cannot be used without leaking a correlator.
+// tickets. See RFC 8446, appendix C.4. If it returns zero, |session| cannot be
+// used without leaking a correlator.
 OPENSSL_EXPORT int SSL_SESSION_should_be_single_use(const SSL_SESSION *session);
 
 // SSL_SESSION_is_resumable returns one if |session| is resumable and zero
@@ -3048,8 +3048,8 @@ OPENSSL_EXPORT void SSL_get_peer_quic_transport_params(const SSL *ssl,
 // WARNING: A 0-RTT handshake has different security properties from normal
 // handshake, so it is off by default unless opted in. In particular, early data
 // is replayable by a network attacker. Callers must account for this when
-// sending or processing data before the handshake is confirmed. See
-// draft-ietf-tls-tls13-18 for more information.
+// sending or processing data before the handshake is confirmed. See RFC 8446
+// for more information.
 //
 // As a server, if early data is accepted, |SSL_do_handshake| will complete as
 // soon as the ClientHello is processed and server flight sent. |SSL_write| may
@@ -3084,9 +3084,9 @@ OPENSSL_EXPORT void SSL_get_peer_quic_transport_params(const SSL *ssl,
 // properties. The caller must disregard any values from before the reset and
 // query again.
 //
-// Finally, to implement the fallback described in draft-ietf-tls-tls13-18
-// appendix C.3, retry on a fresh connection without 0-RTT if the handshake
-// fails with |SSL_R_WRONG_VERSION_ON_EARLY_DATA|.
+// Finally, to implement the fallback described in RFC 8446 appendix D.3, retry
+// on a fresh connection without 0-RTT if the handshake fails with
+// |SSL_R_WRONG_VERSION_ON_EARLY_DATA|.
 
 // SSL_CTX_set_early_data_enabled sets whether early data is allowed to be used
 // with resumptions using |ctx|.

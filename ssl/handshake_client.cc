@@ -577,7 +577,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
 
   // A TLS 1.2 server would not know to skip the early data we offered. Report
   // an error code sooner. The caller may use this error code to implement the
-  // fallback described in draft-ietf-tls-tls13-18 appendix C.3.
+  // fallback described in RFC 8446 appendix D.3.
   if (hs->early_data_offered) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_VERSION_ON_EARLY_DATA);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_PROTOCOL_VERSION);

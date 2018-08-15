@@ -603,8 +603,7 @@ NextCipherSuite:
 	}
 
 	_, supportsTLS13 := c.config.isSupportedVersion(VersionTLS13, false)
-	// Check for downgrade signals in the server random, per
-	// draft-ietf-tls-tls13-16, section 4.1.3.
+	// Check for downgrade signals in the server random, per RFC 8446, section 4.1.3.
 	if (supportsTLS13 || c.config.Bugs.CheckTLS13DowngradeRandom) && !c.config.Bugs.IgnoreTLS13DowngradeRandom {
 		if c.vers <= VersionTLS12 && c.config.maxVersion(c.isDTLS) >= VersionTLS13 {
 			if bytes.Equal(serverHello.random[len(serverHello.random)-8:], downgradeTLS13) {

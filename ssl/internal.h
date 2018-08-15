@@ -2462,11 +2462,10 @@ struct SSL_CONFIG {
   bool shed_handshake_config : 1;
 };
 
-// From draft-ietf-tls-tls13-18, used in determining PSK modes.
+// From RFC 8446, used in determining PSK modes.
 #define SSL_PSK_DHE_KE 0x1
 
-// From draft-ietf-tls-tls13-16, used in determining whether to respond with a
-// KeyUpdate.
+// From RFC 8446, used in determining whether to respond with a KeyUpdate.
 #define SSL_KEY_UPDATE_NOT_REQUESTED 0
 #define SSL_KEY_UPDATE_REQUESTED 1
 

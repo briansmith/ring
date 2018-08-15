@@ -1049,7 +1049,7 @@ static bool ext_sigalgs_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
 // Signature Algorithms for Certificates.
 //
-// https://tools.ietf.org/html/draft-ietf-tls-tls13-23#section-4.2.3
+// https://tools.ietf.org/html/rfc8446#section-4.2.3
 
 static bool ext_sigalgs_cert_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
@@ -1846,7 +1846,7 @@ static bool ext_ec_point_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 // Pre Shared Key
 //
-// https://tools.ietf.org/html/draft-ietf-tls-tls13-18#section-4.2.6
+// https://tools.ietf.org/html/rfc8446#section-4.2.11
 
 static size_t ext_pre_shared_key_clienthello_length(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
@@ -1867,9 +1867,9 @@ static bool ext_pre_shared_key_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
     return true;
   }
 
-  // Per draft-ietf-tls-tls13-21 section 4.1.4, skip offering the session if the
-  // selected cipher in HelloRetryRequest does not match. This avoids performing
-  // the transcript hash transformation for multiple hashes.
+  // Per RFC 8446 section 4.1.4, skip offering the session if the selected
+  // cipher in HelloRetryRequest does not match. This avoids performing the
+  // transcript hash transformation for multiple hashes.
   if (hs->received_hello_retry_request &&
       ssl->session->cipher->algorithm_prf != hs->new_cipher->algorithm_prf) {
     return true;
@@ -2000,7 +2000,7 @@ bool ssl_ext_pre_shared_key_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 // Pre-Shared Key Exchange Modes
 //
-// https://tools.ietf.org/html/draft-ietf-tls-tls13-18#section-4.2.7
+// https://tools.ietf.org/html/rfc8446#section-4.2.9
 
 static bool ext_psk_key_exchange_modes_add_clienthello(SSL_HANDSHAKE *hs,
                                                        CBB *out) {
@@ -2044,7 +2044,7 @@ static bool ext_psk_key_exchange_modes_parse_clienthello(SSL_HANDSHAKE *hs,
 
 // Early Data Indication
 //
-// https://tools.ietf.org/html/draft-ietf-tls-tls13-18#section-4.2.8
+// https://tools.ietf.org/html/rfc8446#section-4.2.10
 
 static bool ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
@@ -2129,7 +2129,7 @@ static bool ext_early_data_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 // Key Share
 //
-// https://tools.ietf.org/html/draft-ietf-tls-tls13-16#section-4.2.5
+// https://tools.ietf.org/html/rfc8446#section-4.2.8
 
 static bool ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
@@ -2314,7 +2314,7 @@ bool ssl_ext_key_share_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 // Supported Versions
 //
-// https://tools.ietf.org/html/draft-ietf-tls-tls13-16#section-4.2.1
+// https://tools.ietf.org/html/rfc8446#section-4.2.1
 
 static bool ext_supported_versions_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
@@ -2346,7 +2346,7 @@ static bool ext_supported_versions_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) 
 
 // Cookie
 //
-// https://tools.ietf.org/html/draft-ietf-tls-tls13-16#section-4.2.2
+// https://tools.ietf.org/html/rfc8446#section-4.2.2
 
 static bool ext_cookie_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   if (hs->cookie.empty()) {
@@ -2368,10 +2368,10 @@ static bool ext_cookie_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 }
 
 
-// Negotiated Groups
+// Supported Groups
 //
-// https://tools.ietf.org/html/rfc4492#section-5.1.2
-// https://tools.ietf.org/html/draft-ietf-tls-tls13-16#section-4.2.4
+// https://tools.ietf.org/html/rfc4492#section-5.1.1
+// https://tools.ietf.org/html/rfc8446#section-4.2.7
 
 static bool ext_supported_groups_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
