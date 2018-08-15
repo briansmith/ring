@@ -188,6 +188,26 @@ static int check_pem(const char *nm, const char *name)
     return 0;
 }
 
+static const EVP_CIPHER *cipher_by_name(const char *name)
+{
+    /* This is similar to the (deprecated) function |EVP_get_cipherbyname|. Note
+     * the PEM code assumes that ciphers have at least 8 bytes of IV, at most 20
+     * bytes of overhead and generally behave like CBC mode. */
+    if (0 == strcmp(name, SN_des_cbc)) {
+        return EVP_des_cbc();
+    } else if (0 == strcmp(name, SN_des_ede3_cbc)) {
+        return EVP_des_ede3_cbc();
+    } else if (0 == strcmp(name, SN_aes_128_cbc)) {
+        return EVP_aes_128_cbc();
+    } else if (0 == strcmp(name, SN_aes_192_cbc)) {
+        return EVP_aes_192_cbc();
+    } else if (0 == strcmp(name, SN_aes_256_cbc)) {
+        return EVP_aes_256_cbc();
+    } else {
+        return NULL;
+    }
+}
+
 int PEM_bytes_read_bio(unsigned char **pdata, long *plen, char **pnm,
                        const char *name, BIO *bp, pem_password_cb *cb,
                        void *u)
@@ -265,7 +285,9 @@ int PEM_ASN1_write_bio(i2d_of_void *i2d, const char *name, BIO *bp,
 
     if (enc != NULL) {
         objstr = OBJ_nid2sn(EVP_CIPHER_nid(enc));
-        if (objstr == NULL || EVP_CIPHER_iv_length(enc) == 0) {
+        if (objstr == NULL ||
+            cipher_by_name(objstr) == NULL ||
+            EVP_CIPHER_iv_length(enc) < 8) {
             OPENSSL_PUT_ERROR(PEM, PEM_R_UNSUPPORTED_CIPHER);
             goto err;
         }
@@ -393,26 +415,6 @@ int PEM_do_header(EVP_CIPHER_INFO *cipher, unsigned char *data, long *plen,
     return (1);
 }
 
-static const EVP_CIPHER *cipher_by_name(const char *name)
-{
-    /* This is similar to the (deprecated) function |EVP_get_cipherbyname|. */
-    if (0 == strcmp(name, SN_rc4)) {
-        return EVP_rc4();
-    } else if (0 == strcmp(name, SN_des_cbc)) {
-        return EVP_des_cbc();
-    } else if (0 == strcmp(name, SN_des_ede3_cbc)) {
-        return EVP_des_ede3_cbc();
-    } else if (0 == strcmp(name, SN_aes_128_cbc)) {
-        return EVP_aes_128_cbc();
-    } else if (0 == strcmp(name, SN_aes_192_cbc)) {
-        return EVP_aes_192_cbc();
-    } else if (0 == strcmp(name, SN_aes_256_cbc)) {
-        return EVP_aes_256_cbc();
-    } else {
-        return NULL;
-    }
-}
-
 int PEM_get_EVP_CIPHER_INFO(char *header, EVP_CIPHER_INFO *cipher)
 {
     const EVP_CIPHER *enc = NULL;
@@ -420,6 +422,7 @@ int PEM_get_EVP_CIPHER_INFO(char *header, EVP_CIPHER_INFO *cipher)
     char **header_pp = &header;
 
     cipher->cipher = NULL;
+    OPENSSL_memset(cipher->iv, 0, sizeof(cipher->iv));
     if ((header == NULL) || (*header == '\0') || (*header == '\n'))
         return (1);
     if (strncmp(header, "Proc-Type: ", 11) != 0) {
@@ -465,6 +468,13 @@ int PEM_get_EVP_CIPHER_INFO(char *header, EVP_CIPHER_INFO *cipher)
     if (enc == NULL) {
         OPENSSL_PUT_ERROR(PEM, PEM_R_UNSUPPORTED_ENCRYPTION);
         return (0);
+    }
+    // The IV parameter must be at least 8 bytes long to be used as the salt in
+    // the KDF. (This should not happen given |cipher_by_name|.)
+    if (EVP_CIPHER_iv_length(enc) < 8) {
+        assert(0);
+        OPENSSL_PUT_ERROR(PEM, PEM_R_UNSUPPORTED_ENCRYPTION);
+        return 0;
     }
     if (!load_iv(header_pp, &(cipher->iv[0]), EVP_CIPHER_iv_length(enc)))
         return (0);
