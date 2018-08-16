@@ -2260,10 +2260,6 @@ SSL_CTX *SSL_set_SSL_CTX(SSL *ssl, SSL_CTX *ctx) {
     return NULL;
   }
 
-  if (ctx == NULL) {
-    ctx = ssl->session_ctx.get();
-  }
-
   UniquePtr<CERT> new_cert = ssl_cert_dup(ctx->cert.get());
   if (!new_cert) {
     return nullptr;
