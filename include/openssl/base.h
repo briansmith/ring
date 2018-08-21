@@ -71,10 +71,6 @@
 #include <openssl/is_boringssl.h>
 #include <openssl/opensslconf.h>
 
-#if defined(BORINGSSL_PREFIX)
-#include <boringssl_prefix_symbols.h>
-#endif
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
