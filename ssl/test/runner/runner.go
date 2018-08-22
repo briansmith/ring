@@ -5902,6 +5902,7 @@ func addVersionNegotiationTests() {
 		tls13Variant:       TLS13RFC,
 		expectedVersion:    VersionTLS12,
 		shouldFail:         true,
+		expectedError:      ":TLS13_DOWNGRADE:",
 		expectedLocalError: "remote error: illegal parameter",
 	})
 	testCases = append(testCases, testCase{
@@ -5928,6 +5929,7 @@ func addVersionNegotiationTests() {
 		tls13Variant:       TLS13RFC,
 		expectedVersion:    VersionTLS11,
 		shouldFail:         true,
+		expectedError:      ":TLS13_DOWNGRADE:",
 		expectedLocalError: "remote error: illegal parameter",
 	})
 	testCases = append(testCases, testCase{
@@ -5992,23 +5994,27 @@ func addVersionNegotiationTests() {
 		expectedLocalError: "tls: peer did not false start: EOF",
 	})
 
+	// Test that draft TLS 1.3 versions do not trigger disabling False Start.
 	testCases = append(testCases, testCase{
 		name: "Downgrade-FalseStart-Draft",
 		config: Config{
 			MaxVersion:   VersionTLS13,
-			CipherSuites: []uint16{TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			TLS13Variant: TLS13RFC,
 			NextProtos:   []string{"foo"},
 			Bugs: ProtocolBugs{
 				ExpectFalseStart: true,
 			},
 		},
+		expectedVersion: VersionTLS12,
 		flags: []string{
 			"-false-start",
-			"-select-next-proto", "foo",
-			"-max-version", strconv.Itoa(VersionTLS12),
+			"-advertise-alpn", "\x03foo",
+			"-expect-alpn", "foo",
+			"-ignore-tls13-downgrade",
+			"-tls13-variant", strconv.Itoa(TLS13Draft28),
+			"-max-version", strconv.Itoa(VersionTLS13),
 		},
 		shimWritesFirst: true,
-		resumeSession:   true,
 	})
 
 	// SSL 3.0 support has been removed. Test that the shim does not
