@@ -2775,14 +2775,6 @@ static bool cert_compression_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 // kExtensions contains all the supported extensions.
 static const struct tls_extension kExtensions[] = {
   {
-    TLSEXT_TYPE_renegotiate,
-    NULL,
-    ext_ri_add_clienthello,
-    ext_ri_parse_serverhello,
-    ext_ri_parse_clienthello,
-    ext_ri_add_serverhello,
-  },
-  {
     TLSEXT_TYPE_server_name,
     NULL,
     ext_sni_add_clienthello,
@@ -2799,6 +2791,30 @@ static const struct tls_extension kExtensions[] = {
     ext_ems_add_serverhello,
   },
   {
+    TLSEXT_TYPE_renegotiate,
+    NULL,
+    ext_ri_add_clienthello,
+    ext_ri_parse_serverhello,
+    ext_ri_parse_clienthello,
+    ext_ri_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_supported_groups,
+    NULL,
+    ext_supported_groups_add_clienthello,
+    ext_supported_groups_parse_serverhello,
+    ext_supported_groups_parse_clienthello,
+    dont_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_ec_point_formats,
+    NULL,
+    ext_ec_point_add_clienthello,
+    ext_ec_point_parse_serverhello,
+    ext_ec_point_parse_clienthello,
+    ext_ec_point_add_serverhello,
+  },
+  {
     TLSEXT_TYPE_session_ticket,
     NULL,
     ext_ticket_add_clienthello,
@@ -2806,6 +2822,23 @@ static const struct tls_extension kExtensions[] = {
     // Ticket extension client parsing is handled in ssl_session.c
     ignore_parse_clienthello,
     ext_ticket_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_application_layer_protocol_negotiation,
+    NULL,
+    ext_alpn_add_clienthello,
+    ext_alpn_parse_serverhello,
+    // ALPN is negotiated late in |ssl_negotiate_alpn|.
+    ignore_parse_clienthello,
+    ext_alpn_add_serverhello,
+  },
+  {
+    TLSEXT_TYPE_status_request,
+    NULL,
+    ext_ocsp_add_clienthello,
+    ext_ocsp_parse_serverhello,
+    ext_ocsp_parse_clienthello,
+    ext_ocsp_add_serverhello,
   },
   {
     TLSEXT_TYPE_signature_algorithms,
@@ -2824,14 +2857,6 @@ static const struct tls_extension kExtensions[] = {
     dont_add_serverhello,
   },
   {
-    TLSEXT_TYPE_status_request,
-    NULL,
-    ext_ocsp_add_clienthello,
-    ext_ocsp_parse_serverhello,
-    ext_ocsp_parse_clienthello,
-    ext_ocsp_add_serverhello,
-  },
-  {
     TLSEXT_TYPE_next_proto_neg,
     NULL,
     ext_npn_add_clienthello,
@@ -2848,15 +2873,6 @@ static const struct tls_extension kExtensions[] = {
     ext_sct_add_serverhello,
   },
   {
-    TLSEXT_TYPE_application_layer_protocol_negotiation,
-    NULL,
-    ext_alpn_add_clienthello,
-    ext_alpn_parse_serverhello,
-    // ALPN is negotiated late in |ssl_negotiate_alpn|.
-    ignore_parse_clienthello,
-    ext_alpn_add_serverhello,
-  },
-  {
     TLSEXT_TYPE_channel_id,
     ext_channel_id_init,
     ext_channel_id_add_clienthello,
@@ -2871,14 +2887,6 @@ static const struct tls_extension kExtensions[] = {
     ext_srtp_parse_serverhello,
     ext_srtp_parse_clienthello,
     ext_srtp_add_serverhello,
-  },
-  {
-    TLSEXT_TYPE_ec_point_formats,
-    NULL,
-    ext_ec_point_add_clienthello,
-    ext_ec_point_parse_serverhello,
-    ext_ec_point_parse_clienthello,
-    ext_ec_point_add_serverhello,
   },
   {
     TLSEXT_TYPE_key_share,
@@ -2927,14 +2935,6 @@ static const struct tls_extension kExtensions[] = {
     ext_quic_transport_params_parse_serverhello,
     ext_quic_transport_params_parse_clienthello,
     ext_quic_transport_params_add_serverhello,
-  },
-  {
-    TLSEXT_TYPE_supported_groups,
-    NULL,
-    ext_supported_groups_add_clienthello,
-    ext_supported_groups_parse_serverhello,
-    ext_supported_groups_parse_clienthello,
-    dont_add_serverhello,
   },
   {
     TLSEXT_TYPE_token_binding,
