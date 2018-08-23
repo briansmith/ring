@@ -2928,9 +2928,6 @@ static const struct tls_extension kExtensions[] = {
     ext_quic_transport_params_parse_clienthello,
     ext_quic_transport_params_add_serverhello,
   },
-  // The final extension must be non-empty. WebSphere Application Server 7.0 is
-  // intolerant to the last extension being zero-length. See
-  // https://crbug.com/363583.
   {
     TLSEXT_TYPE_supported_groups,
     NULL,
@@ -3007,6 +3004,7 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
     }
   }
 
+  bool last_was_empty = false;
   for (size_t i = 0; i < kNumExtensions; i++) {
     const size_t len_before = CBB_len(&extensions);
     if (!kExtensions[i].add_clienthello(hs, &extensions)) {
@@ -3015,9 +3013,13 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
       return false;
     }
 
-    if (CBB_len(&extensions) != len_before) {
+    const size_t bytes_written = CBB_len(&extensions) - len_before;
+    if (bytes_written != 0) {
       hs->extensions.sent |= (1u << i);
     }
+    // If the difference in lengths is only four bytes then the extension had
+    // an empty body.
+    last_was_empty = (bytes_written == 4);
   }
 
   if (ssl->ctx->grease_enabled) {
@@ -3037,17 +3039,35 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return false;
     }
+
+    last_was_empty = false;
   }
 
   if (!SSL_is_dtls(ssl)) {
     size_t psk_extension_len = ext_pre_shared_key_clienthello_length(hs);
     header_len += 2 + CBB_len(&extensions) + psk_extension_len;
+    size_t padding_len = 0;
+
+    // The final extension must be non-empty. WebSphere Application
+    // Server 7.0 is intolerant to the last extension being zero-length. See
+    // https://crbug.com/363583.
+    if (last_was_empty && psk_extension_len == 0) {
+      padding_len = 1;
+      // The addition of the padding extension may push us into the F5 bug.
+      header_len += 4 + padding_len;
+    }
+
+    // Add padding to workaround bugs in F5 terminators. See RFC 7685.
+    //
+    // NB: because this code works out the length of all existing extensions
+    // it MUST always appear last (save for any PSK extension).
     if (header_len > 0xff && header_len < 0x200) {
-      // Add padding to workaround bugs in F5 terminators. See RFC 7685.
-      //
-      // NB: because this code works out the length of all existing extensions
-      // it MUST always appear last.
-      size_t padding_len = 0x200 - header_len;
+      // If our calculations already included a padding extension, remove that
+      // factor because we're about to change its length.
+      if (padding_len != 0) {
+        header_len -= 4 + padding_len;
+      }
+      padding_len = 0x200 - header_len;
       // Extensions take at least four bytes to encode. Always include at least
       // one byte of data if including the extension. WebSphere Application
       // Server 7.0 is intolerant to the last extension being zero-length. See
@@ -3057,7 +3077,9 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
       } else {
         padding_len = 1;
       }
+    }
 
+    if (padding_len != 0) {
       uint8_t *padding_bytes;
       if (!CBB_add_u16(&extensions, TLSEXT_TYPE_padding) ||
           !CBB_add_u16(&extensions, padding_len) ||
