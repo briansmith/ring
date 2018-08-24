@@ -443,7 +443,7 @@ fn parse_big_endian_fixed_consttime<M>(
 }
 
 
-extern {
+versioned_extern! {
     fn LIMBS_add_mod(r: *mut Limb, a: *const Limb, b: *const Limb,
                      m: *const Limb, num_limbs: c::size_t);
 }
