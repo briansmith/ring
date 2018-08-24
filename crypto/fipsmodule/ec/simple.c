@@ -570,3 +570,55 @@ int ec_GFp_simple_cmp(const EC_GROUP *group, const EC_RAW_POINT *a,
   // The points are equal.
   return 0;
 }
+
+int ec_GFp_simple_mont_inv_mod_ord_vartime(const EC_GROUP *group,
+                                           EC_SCALAR *out,
+                                           const EC_SCALAR *in) {
+  // This implementation (in fact) runs in constant time,
+  // even though for this interface it is not mandatory.
+
+  // out = in^-1 in the Montgomery domain. This is
+  // |ec_scalar_to_montgomery| followed by |ec_scalar_inv_montgomery|, but
+  // |ec_scalar_inv_montgomery| followed by |ec_scalar_from_montgomery| is
+  // equivalent and slightly more efficient.
+  ec_scalar_inv_montgomery(group, out, in);
+  ec_scalar_from_montgomery(group, out, out);
+  return 1;
+}
+
+// Compares the x (affine) coordinate of the point p with x.
+// Return 1 on success 0 otherwise
+// Assumption: the caller starts the BN_CTX.
+int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_POINT *p,
+                                   const BIGNUM *r, BN_CTX *ctx) {
+  int ret = 0;
+  BN_CTX_start(ctx);
+
+  BIGNUM *X = BN_CTX_get(ctx);
+  if (X == NULL) {
+    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
+    goto out;
+  }
+
+  if (!EC_POINT_get_affine_coordinates_GFp(group, p, X, NULL, ctx)) {
+    OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
+    goto out;
+  }
+
+  if (!ec_field_element_to_scalar(group, X)) {
+    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
+    goto out;
+  }
+
+  // The signature is correct iff |X| is equal to |r|.
+  if (BN_ucmp(X, r) != 0) {
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
+    goto out;
+  }
+
+  ret = 1;
+
+out:
+  BN_CTX_end(ctx);
+  return ret;
+}

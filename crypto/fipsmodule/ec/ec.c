@@ -911,6 +911,43 @@ int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,
   return 1;
 }
 
+int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_POINT *p,
+                        const BIGNUM *r, BN_CTX *ctx) {
+  return group->meth->cmp_x_coordinate(group, p, r, ctx);
+}
+
+int ec_field_element_to_scalar(const EC_GROUP *group, BIGNUM *r) {
+  // We must have p < 2×order, assuming p is not tiny (p >= 17). Thus rather we
+  // can reduce by performing at most one subtraction.
+  //
+  // Proof: We only work with prime order curves, so the number of points on
+  // the curve is the order. Thus Hasse's theorem gives:
+  //
+  //     |order - (p + 1)| <= 2×sqrt(p)
+  //         p + 1 - order <= 2×sqrt(p)
+  //     p + 1 - 2×sqrt(p) <= order
+  //       p + 1 - 2×(p/4)  < order       (p/4 > sqrt(p) for p >= 17)
+  //         p/2 < p/2 + 1  < order
+  //                     p  < 2×order
+  //
+  // Additionally, one can manually check this property for built-in curves. It
+  // is enforced for legacy custom curves in |EC_GROUP_set_generator|.
+  //
+  // TODO(davidben): Introduce |EC_FIELD_ELEMENT|, make this a function from
+  // |EC_FIELD_ELEMENT| to |EC_SCALAR|, and cut out the |BIGNUM|. Does this need
+  // to be constant-time for signing? |r| is the x-coordinate for kG, which is
+  // public unless k was rerolled because |s| was zero.
+  assert(!BN_is_negative(r));
+  assert(BN_cmp(r, &group->field) < 0);
+  if (BN_cmp(r, &group->order) >= 0 &&
+      !BN_sub(r, r, &group->order)) {
+    return 0;
+  }
+  assert(!BN_is_negative(r));
+  assert(BN_cmp(r, &group->order) < 0);
+  return 1;
+}
+
 void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag) {}
 
 const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group) {

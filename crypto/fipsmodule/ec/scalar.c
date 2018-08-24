@@ -74,3 +74,8 @@ void ec_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                               const EC_SCALAR *a) {
   group->meth->scalar_inv_montgomery(group, r, a);
 }
+
+int ec_scalar_inv_montgomery_vartime(const EC_GROUP *group, EC_SCALAR *r,
+                                     const EC_SCALAR *a) {
+  return group->meth->scalar_inv_montgomery_vartime(group, r, a);
+}
