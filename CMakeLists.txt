@@ -206,6 +206,10 @@ if(FUZZ)
     message(FATAL_ERROR "You need to build with Clang for fuzzing to work")
   endif()
 
+  if(CMAKE_C_COMPILER_VERSION VERSION_LESS "6.0.0")
+    message(FATAL_ERROR "You need Clang ≥ 6.0.0")
+  endif()
+
   add_definitions(-DBORINGSSL_UNSAFE_DETERMINISTIC_MODE)
   set(RUNNER_ARGS "-deterministic")
 
@@ -214,10 +218,8 @@ if(FUZZ)
     set(RUNNER_ARGS ${RUNNER_ARGS} "-fuzzer" "-shim-config" "fuzzer_mode.json")
   endif()
 
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fsanitize-coverage=edge,indirect-calls,trace-pc-guard")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize-coverage=edge,indirect-calls,trace-pc-guard")
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
-  link_directories(.)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,fuzzer-no-link -fsanitize-coverage=edge,indirect-calls")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,fuzzer-no-link -fsanitize-coverage=edge,indirect-calls")
 endif()
 
 add_definitions(-DBORINGSSL_IMPLEMENTATION)
@@ -448,14 +450,6 @@ add_subdirectory(tool)
 add_subdirectory(decrepit)
 
 if(FUZZ)
-  if(LIBFUZZER_FROM_DEPS)
-    file(GLOB LIBFUZZER_SOURCES "util/bot/libFuzzer/*.cpp")
-    add_library(Fuzzer STATIC ${LIBFUZZER_SOURCES})
-    # libFuzzer does not pass our aggressive warnings. It also must be built
-    # without -fsanitize-coverage options or clang crashes.
-    set_target_properties(Fuzzer PROPERTIES COMPILE_FLAGS "-Wno-shadow -Wno-format-nonliteral -Wno-missing-prototypes -fsanitize-coverage=0")
-  endif()
-
   add_subdirectory(fuzz)
 endif()
 
