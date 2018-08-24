@@ -480,7 +480,7 @@ decoding_err:
 
 static const uint8_t kPSSZeroes[] = {0, 0, 0, 0, 0, 0, 0, 0};
 
-int RSA_verify_PKCS1_PSS_mgf1(RSA *rsa, const uint8_t *mHash,
+int RSA_verify_PKCS1_PSS_mgf1(const RSA *rsa, const uint8_t *mHash,
                               const EVP_MD *Hash, const EVP_MD *mgf1Hash,
                               const uint8_t *EM, int sLen) {
   int i;
@@ -579,7 +579,7 @@ err:
   return ret;
 }
 
-int RSA_padding_add_PKCS1_PSS_mgf1(RSA *rsa, unsigned char *EM,
+int RSA_padding_add_PKCS1_PSS_mgf1(const RSA *rsa, unsigned char *EM,
                                    const unsigned char *mHash,
                                    const EVP_MD *Hash, const EVP_MD *mgf1Hash,
                                    int sLenRequested) {
