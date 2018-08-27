@@ -53,7 +53,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -4443,4 +4443,4 @@ TEST(SSLTest, AllTests) {
 }
 
 }  // namespace
-}  // namespace bssl
+BSSL_NAMESPACE_END

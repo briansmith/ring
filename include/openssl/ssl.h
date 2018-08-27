@@ -4383,6 +4383,10 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 #define SSL_CTRL_SET_TMP_RSA doesnt_exist
 #define SSL_CTRL_SET_TMP_RSA_CB doesnt_exist
 
+// |BORINGSSL_PREFIX| already makes each of these symbols into macros, so there
+// is no need to define conflicting macros.
+#if !defined(BORINGSSL_PREFIX)
+
 #define DTLSv1_get_timeout DTLSv1_get_timeout
 #define DTLSv1_handle_timeout DTLSv1_handle_timeout
 #define SSL_CTX_add0_chain_cert SSL_CTX_add0_chain_cert
@@ -4452,6 +4456,8 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 #define SSL_set_tmp_rsa SSL_set_tmp_rsa
 #define SSL_total_renegotiations SSL_total_renegotiations
 
+#endif // !defined(BORINGSSL_PREFIX)
+
 
 #if defined(__cplusplus)
 }  // extern C
@@ -4460,7 +4466,7 @@ OPENSSL_EXPORT int SSL_CTX_set_tlsext_status_arg(SSL_CTX *ctx, void *arg);
 
 extern "C++" {
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(SSL, SSL_free)
 BORINGSSL_MAKE_DELETER(SSL_CTX, SSL_CTX_free)
@@ -4572,7 +4578,7 @@ OPENSSL_EXPORT bool SSL_apply_handoff(SSL *ssl, Span<const uint8_t> handoff);
 OPENSSL_EXPORT bool SSL_serialize_handback(const SSL *ssl, CBB *out);
 OPENSSL_EXPORT bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 }  // extern C++
 

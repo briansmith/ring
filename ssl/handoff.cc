@@ -19,7 +19,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 constexpr int kHandoffVersion = 0;
 constexpr int kHandbackVersion = 0;
@@ -359,4 +359,4 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   return CBS_len(&seq) == 0;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

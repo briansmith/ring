@@ -69,7 +69,7 @@
 #include "../crypto/internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 int ssl_is_key_type_supported(int key_type) {
   return key_type == EVP_PKEY_RSA || key_type == EVP_PKEY_EC ||
@@ -287,7 +287,7 @@ bool ssl_private_key_supports_signature_algorithm(SSL_HANDSHAKE *hs,
   return true;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 using namespace bssl;
 

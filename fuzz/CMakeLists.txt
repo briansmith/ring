@@ -4,6 +4,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-prototypes")
 
 macro(fuzzer name)
   add_executable(${name} ${name}.cc)
+  add_dependencies(${name} global_target)
   target_link_libraries(${name} crypto ${ARGN})
   set_target_properties(${name} PROPERTIES LINK_FLAGS "-fsanitize=fuzzer")
 endmacro()

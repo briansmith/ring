@@ -155,7 +155,7 @@
 #include "../crypto/internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // check_ssl_x509_method asserts that |ssl| has the X509-based method
 // installed. Calling an X509-based method on an |ssl| with a different method
@@ -506,7 +506,7 @@ const SSL_X509_METHOD ssl_crypto_x509_method = {
   ssl_crypto_x509_ssl_ctx_flush_cached_client_CA,
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 using namespace bssl;
 

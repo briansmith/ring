@@ -162,7 +162,7 @@
 #endif
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // |SSL_R_UNKNOWN_PROTOCOL| is no longer emitted, but continue to define it
 // to avoid downstream churn.
@@ -506,7 +506,7 @@ void SSL_set_handoff_mode(SSL *ssl, bool on) {
   ssl->config->handoff = on;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 using namespace bssl;
 

@@ -25,7 +25,7 @@ extern "C++" {
 #include <cstdlib>
 #include <type_traits>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 template <typename T>
 class Span;
@@ -190,7 +190,7 @@ auto MakeConstSpan(const C &c) -> decltype(MakeConstSpan(c.data(), c.size())) {
   return MakeConstSpan(c.data(), c.size());
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 }  // extern C++
 

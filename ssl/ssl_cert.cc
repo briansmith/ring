@@ -133,7 +133,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 CERT::CERT(const SSL_X509_METHOD *x509_method_arg)
     : x509_method(x509_method_arg) {}
@@ -750,7 +750,7 @@ int ssl_on_certificate_selected(SSL_HANDSHAKE *hs) {
   return hs->local_pubkey != NULL;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 using namespace bssl;
 

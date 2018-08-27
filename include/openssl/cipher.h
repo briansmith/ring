@@ -571,7 +571,7 @@ struct evp_cipher_st {
 #if !defined(BORINGSSL_NO_CXX)
 extern "C++" {
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(EVP_CIPHER_CTX, EVP_CIPHER_CTX_free)
 
@@ -579,7 +579,7 @@ using ScopedEVP_CIPHER_CTX =
     internal::StackAllocated<EVP_CIPHER_CTX, int, EVP_CIPHER_CTX_init,
                              EVP_CIPHER_CTX_cleanup>;
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 }  // extern C++
 #endif

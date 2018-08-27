@@ -169,14 +169,14 @@ struct hmac_ctx_st {
 #if !defined(BORINGSSL_NO_CXX)
 extern "C++" {
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(HMAC_CTX, HMAC_CTX_free)
 
 using ScopedHMAC_CTX =
     internal::StackAllocated<HMAC_CTX, void, HMAC_CTX_init, HMAC_CTX_cleanup>;
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 }  // extern C++
 #endif

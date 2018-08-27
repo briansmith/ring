@@ -122,7 +122,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
     : ssl(ssl_arg),
@@ -667,4 +667,4 @@ int ssl_run_handshake(SSL_HANDSHAKE *hs, bool *out_early_return) {
   }
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

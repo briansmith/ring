@@ -136,6 +136,8 @@ if(FIPS_DELOCATE)
     bcm.c
   )
 
+  add_dependencies(bcm_c_generated_asm global_target)
+
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
@@ -164,6 +166,8 @@ if(FIPS_DELOCATE)
     bcm-delocated.S
   )
 
+  add_dependencies(bcm_hashunset global_target)
+
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
@@ -187,6 +191,8 @@ if(FIPS_DELOCATE)
     is_fips.c
   )
 
+  add_dependencies(fipsmodule global_target)
+
   set_target_properties(fipsmodule PROPERTIES LINKER_LANGUAGE C)
 else()
   add_library(
@@ -199,4 +205,6 @@ else()
 
     ${BCM_ASM_SOURCES}
   )
+
+  add_dependencies(fipsmodule global_target)
 endif()

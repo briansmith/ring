@@ -119,7 +119,7 @@
 #include "../crypto/internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // kMaxEmptyRecords is the number of consecutive, empty records that will be
 // processed. Without this limit an attacker could send empty records at a
@@ -674,7 +674,7 @@ bool SealRecord(SSL *ssl, const Span<uint8_t> out_prefix,
                                  in.data(), in.size());
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 using namespace bssl;
 

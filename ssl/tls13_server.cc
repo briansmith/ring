@@ -36,7 +36,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 enum server_hs_state_t {
   state_select_parameters = 0,
@@ -1028,4 +1028,4 @@ const char *tls13_server_handshake_state(SSL_HANDSHAKE *hs) {
   return "TLS 1.3 server unknown";
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

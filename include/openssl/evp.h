@@ -870,13 +870,13 @@ struct evp_pkey_st {
 }  // extern C
 
 extern "C++" {
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(EVP_PKEY, EVP_PKEY_free)
 BORINGSSL_MAKE_UP_REF(EVP_PKEY, EVP_PKEY_up_ref)
 BORINGSSL_MAKE_DELETER(EVP_PKEY_CTX, EVP_PKEY_CTX_free)
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 }  // extern C++
 

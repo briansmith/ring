@@ -31,7 +31,7 @@
 #define FUZZER_MODE false
 #endif
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 SSLAEADContext::SSLAEADContext(uint16_t version_arg, bool is_dtls_arg,
                                const SSL_CIPHER *cipher_arg)
@@ -433,4 +433,4 @@ bool SSLAEADContext::GetIV(const uint8_t **out_iv, size_t *out_iv_len) const {
          EVP_AEAD_CTX_get_iv(ctx_.get(), out_iv, out_iv_len);
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

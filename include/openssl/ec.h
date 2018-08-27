@@ -357,12 +357,12 @@ OPENSSL_EXPORT void EC_POINT_clear_free(EC_POINT *point);
 
 extern "C++" {
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(EC_POINT, EC_POINT_free)
 BORINGSSL_MAKE_DELETER(EC_GROUP, EC_GROUP_free)
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 }  // extern C++
 

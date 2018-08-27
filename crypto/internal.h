@@ -488,7 +488,7 @@ OPENSSL_EXPORT void CRYPTO_STATIC_MUTEX_unlock_write(
 #if defined(__cplusplus)
 extern "C++" {
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace internal {
 
@@ -516,7 +516,7 @@ using MutexWriteLock =
 using MutexReadLock =
     internal::MutexLockBase<CRYPTO_MUTEX_lock_read, CRYPTO_MUTEX_unlock_read>;
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 }  // extern "C++"
 #endif  // defined(__cplusplus)

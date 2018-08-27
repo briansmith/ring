@@ -104,7 +104,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // An SSL_SESSION is serialized as the following ASN.1 structure:
 //
@@ -751,7 +751,7 @@ int ssl_session_serialize(const SSL_SESSION *in, CBB *cbb) {
   return SSL_SESSION_to_bytes_full(in, cbb, 0);
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 using namespace bssl;
 

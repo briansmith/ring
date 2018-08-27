@@ -41,6 +41,8 @@ add_library(
   tls13_server.cc
 )
 
+add_dependencies(ssl global_target)
+
 target_link_libraries(ssl crypto)
 
 add_executable(
@@ -52,6 +54,8 @@ add_executable(
   $<TARGET_OBJECTS:boringssl_gtest_main>
   $<TARGET_OBJECTS:test_support>
 )
+
+add_dependencies(ssl_test global_target)
 
 target_link_libraries(ssl_test ssl crypto boringssl_gtest)
 if(WIN32)

@@ -30,7 +30,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // kMaxKeyUpdates is the number of consecutive KeyUpdates that will be
 // processed. Without this limit an attacker could force unbounded processing
@@ -665,4 +665,4 @@ bool tls13_post_handshake(SSL *ssl, const SSLMessage &msg) {
   return false;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

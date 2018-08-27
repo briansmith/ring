@@ -170,7 +170,7 @@
 #include "../crypto/internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 bool ssl_client_cipher_list_contains_cipher(
     const SSL_CLIENT_HELLO *client_hello, uint16_t id) {
@@ -1626,4 +1626,4 @@ const char *ssl_server_handshake_state(SSL_HANDSHAKE *hs) {
   return "TLS server unknown";
 }
 
-}
+BSSL_NAMESPACE_END

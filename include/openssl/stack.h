@@ -219,17 +219,17 @@ OPENSSL_EXPORT _STACK *sk_deep_copy(const _STACK *sk,
 
 #if !defined(BORINGSSL_NO_CXX)
 extern "C++" {
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 namespace internal {
 template <typename T>
 struct StackTraits {};
 }
-}
+BSSL_NAMESPACE_END
 }
 
 #define BORINGSSL_DEFINE_STACK_TRAITS(name, type, is_const) \
   extern "C++" {                                            \
-  namespace bssl {                                          \
+  BSSL_NAMESPACE_BEGIN                                      \
   namespace internal {                                      \
   template <>                                               \
   struct StackTraits<STACK_OF(name)> {                      \
@@ -238,7 +238,7 @@ struct StackTraits {};
     static constexpr bool kIsConst = is_const;              \
   };                                                        \
   }                                                         \
-  }                                                         \
+  BSSL_NAMESPACE_END                                        \
   }
 
 #else
@@ -393,7 +393,7 @@ extern "C++" {
 
 #include <type_traits>
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace internal {
 
@@ -474,7 +474,7 @@ static inline
   return true;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 // Define begin() and end() for stack types so C++ range for loops work.
 template <typename Stack>

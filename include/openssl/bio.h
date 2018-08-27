@@ -894,12 +894,12 @@ struct bio_st {
 
 extern "C++" {
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(BIO, BIO_free)
 BORINGSSL_MAKE_UP_REF(BIO, BIO_up_ref)
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 }  // extern C++
 

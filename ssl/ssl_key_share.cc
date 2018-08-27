@@ -31,7 +31,7 @@
 #include "../crypto/internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 namespace {
 
@@ -292,7 +292,7 @@ int ssl_name_to_group_id(uint16_t *out_group_id, const char *name, size_t len) {
   return 0;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 using namespace bssl;
 

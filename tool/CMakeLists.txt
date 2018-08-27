@@ -20,6 +20,8 @@ add_executable(
   transport_common.cc
 )
 
+add_dependencies(bssl global_target)
+
 if(APPLE OR WIN32 OR ANDROID)
   target_link_libraries(bssl ssl crypto)
 else()

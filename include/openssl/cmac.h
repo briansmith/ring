@@ -78,11 +78,11 @@ OPENSSL_EXPORT int CMAC_Final(CMAC_CTX *ctx, uint8_t *out, size_t *out_len);
 
 extern "C++" {
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(CMAC_CTX, CMAC_CTX_free)
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 }  // extern C++
 

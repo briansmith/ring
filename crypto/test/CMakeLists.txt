@@ -9,6 +9,8 @@ add_library(
   wycheproof_util.cc
 )
 
+add_dependencies(test_support global_target)
+
 add_library(
   boringssl_gtest_main
 
@@ -16,3 +18,5 @@ add_library(
 
   gtest_main.cc
 )
+
+add_dependencies(boringssl_gtest_main global_target)

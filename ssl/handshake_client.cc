@@ -172,7 +172,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 enum ssl_client_hs_state_t {
   state_start_connect = 0,
@@ -1820,4 +1820,4 @@ const char *ssl_client_handshake_state(SSL_HANDSHAKE *hs) {
   return "TLS client unknown";
 }
 
-}
+BSSL_NAMESPACE_END

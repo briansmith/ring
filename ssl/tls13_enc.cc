@@ -30,7 +30,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 static int init_key_schedule(SSL_HANDSHAKE *hs, uint16_t version,
                              const SSL_CIPHER *cipher) {
@@ -487,4 +487,4 @@ int tls13_verify_psk_binder(SSL_HANDSHAKE *hs, SSL_SESSION *session,
   return 1;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

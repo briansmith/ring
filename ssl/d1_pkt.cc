@@ -126,7 +126,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 ssl_open_record_t dtls1_open_app_data(SSL *ssl, Span<uint8_t> *out,
                                       size_t *out_consumed, uint8_t *out_alert,
@@ -271,4 +271,4 @@ int dtls1_dispatch_alert(SSL *ssl) {
   return 1;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

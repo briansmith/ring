@@ -30,7 +30,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 class ErrorTestEventListener : public testing::EmptyTestEventListener {
  public:
@@ -73,7 +73,7 @@ inline void SetupGoogleTest() {
       new ErrorTestEventListener);
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 
 #endif  // OPENSSL_HEADER_CRYPTO_TEST_GTEST_MAIN_H

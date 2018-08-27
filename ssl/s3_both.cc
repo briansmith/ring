@@ -130,7 +130,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 static bool add_record_to_flight(SSL *ssl, uint8_t type,
                                  Span<const uint8_t> in) {
@@ -636,4 +636,4 @@ void ssl3_next_message(SSL *ssl) {
   }
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

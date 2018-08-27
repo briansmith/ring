@@ -491,11 +491,11 @@ OPENSSL_EXPORT int CBB_flush_asn1_set_of(CBB *cbb);
 #if !defined(BORINGSSL_NO_CXX)
 extern "C++" {
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 using ScopedCBB = internal::StackAllocated<CBB, void, CBB_zero, CBB_cleanup>;
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 }  // extern C++
 #endif

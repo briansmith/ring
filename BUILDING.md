@@ -110,6 +110,28 @@ architecture, matching values used in the `-arch` flag in Apple's toolchain.
 Passing multiple architectures for a multiple-architecture build is not
 supported.
 
+### Building with Prefixed Symbols
+
+BoringSSL's build system has experimental support for adding a custom prefix to
+all symbols. This can be useful when linking multiple versions of BoringSSL in
+the same project to avoid symbol conflicts.
+
+In order to build with prefixed symbols, the `BORINGSSL_PREFIX` CMake variable
+should specify the prefix to add to all symbols, and the
+`BORINGSSL_PREFIX_SYMBOLS` CMake variable should specify the path to a file
+which contains a list of symbols which should be prefixed (one per line;
+comments are supported with `#`). In other words, `cmake ..
+-DBORINGSSL_PREFIX=MY_CUSTOM_PREFIX
+-DBORINGSSL_PREFIX_SYMBOLS=/path/to/symbols.txt` will configure the build to add
+the prefix `MY_CUSTOM_PREFIX` to all of the symbols listed in
+`/path/to/symbols.txt`.
+
+It is currently the caller's responsibility to create and maintain the list of
+symbols to be prefixed.
+
+This mechanism is under development and may change over time. Please contact the
+BoringSSL maintainers if making use of it.
+
 ## Known Limitations on Windows
 
   * Versions of CMake since 3.0.2 have a bug in its Ninja generator that causes

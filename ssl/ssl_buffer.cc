@@ -27,7 +27,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // BIO uses int instead of size_t. No lengths will exceed uint16_t, so this will
 // not overflow.
@@ -284,4 +284,4 @@ int ssl_write_buffer_flush(SSL *ssl) {
   }
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

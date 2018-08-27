@@ -65,7 +65,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 static void ssl3_on_handshake_complete(SSL *ssl) {
   // The handshake should have released its final message.
@@ -182,7 +182,7 @@ const SSL_X509_METHOD ssl_noop_x509_method = {
   ssl_noop_x509_ssl_ctx_flush_cached_client_CA,
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 using namespace bssl;
 

@@ -29,12 +29,16 @@ if(FIPS)
     $<TARGET_OBJECTS:test_support>
   )
 
+  add_dependencies(cavp global_target)
+
   add_executable(
     test_fips
 
     test_fips.c
     $<TARGET_OBJECTS:test_support>
   )
+
+  add_dependencies(test_fips global_target)
 
   target_link_libraries(cavp crypto)
   target_link_libraries(test_fips crypto)

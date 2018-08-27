@@ -987,7 +987,7 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 #if !defined(BORINGSSL_NO_CXX)
 extern "C++" {
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(BIGNUM, BN_free)
 BORINGSSL_MAKE_DELETER(BN_CTX, BN_CTX_free)
@@ -1005,7 +1005,7 @@ class BN_CTXScope {
   BN_CTXScope &operator=(BN_CTXScope &) = delete;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 }  // extern C++
 #endif

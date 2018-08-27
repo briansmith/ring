@@ -154,7 +154,7 @@
 #include "../crypto/internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // kCiphers is an array of all supported ciphers, sorted by id.
 static constexpr SSL_CIPHER kCiphers[] = {
@@ -1306,7 +1306,7 @@ size_t ssl_cipher_get_record_split_len(const SSL_CIPHER *cipher) {
   return ret;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 using namespace bssl;
 

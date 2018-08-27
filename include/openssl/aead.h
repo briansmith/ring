@@ -425,7 +425,7 @@ OPENSSL_EXPORT int EVP_AEAD_CTX_tag_len(const EVP_AEAD_CTX *ctx,
 #if !defined(BORINGSSL_NO_CXX)
 extern "C++" {
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 using ScopedEVP_AEAD_CTX =
     internal::StackAllocated<EVP_AEAD_CTX, void, EVP_AEAD_CTX_zero,
@@ -433,7 +433,7 @@ using ScopedEVP_AEAD_CTX =
 
 BORINGSSL_MAKE_DELETER(EVP_AEAD_CTX, EVP_AEAD_CTX_free)
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 }  // extern C++
 #endif

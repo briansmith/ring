@@ -127,7 +127,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // TODO(davidben): 28 comes from the size of IP + UDP header. Is this reasonable
 // for these values? Notably, why is kMinMTU a function of the transport
@@ -848,4 +848,4 @@ unsigned int dtls1_min_mtu(void) {
   return kMinMTU;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

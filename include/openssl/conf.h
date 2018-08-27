@@ -162,11 +162,11 @@ OPENSSL_EXPORT void OPENSSL_no_config(void);
 
 extern "C++" {
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(CONF, NCONF_free)
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 }  // extern C++
 

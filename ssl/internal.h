@@ -173,7 +173,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 struct SSL_CONFIG;
 struct SSL_HANDSHAKE;
@@ -414,7 +414,7 @@ bool ssl_is_draft28(uint16_t version);
 
 // Cipher suites.
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 struct ssl_cipher_st {
   // name is the OpenSSL name for the cipher.
@@ -432,7 +432,7 @@ struct ssl_cipher_st {
   uint32_t algorithm_prf;
 };
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // Bits for |algorithm_mkey| (key exchange algorithm).
 #define SSL_kRSA 0x00000001u
@@ -2015,13 +2015,13 @@ struct CertCompressionAlg {
   uint16_t alg_id = 0;
 };
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 DECLARE_LHASH_OF(SSL_SESSION)
 
 DEFINE_NAMED_STACK_OF(CertCompressionAlg, bssl::CertCompressionAlg);
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 // An ssl_shutdown_t describes the shutdown state of one end of the connection,
 // whether it is alive or has been shutdown via close_notify or fatal alert.
@@ -2749,7 +2749,7 @@ void ssl_reset_error_state(SSL *ssl);
 // current state of the error queue.
 void ssl_set_read_error(SSL *ssl);
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 
 // Opaque C types.

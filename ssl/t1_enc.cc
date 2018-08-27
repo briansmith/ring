@@ -153,7 +153,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 bool tls1_prf(const EVP_MD *digest, Span<uint8_t> out,
               Span<const uint8_t> secret, Span<const char> label,
@@ -277,7 +277,7 @@ int tls1_generate_master_secret(SSL_HANDSHAKE *hs, uint8_t *out,
   return SSL3_MASTER_SECRET_SIZE;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 using namespace bssl;
 

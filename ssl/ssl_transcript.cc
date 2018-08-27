@@ -141,7 +141,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 SSLTranscript::SSLTranscript() {}
 
@@ -261,4 +261,4 @@ bool SSLTranscript::GetFinishedMAC(uint8_t *out, size_t *out_len,
   return true;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END

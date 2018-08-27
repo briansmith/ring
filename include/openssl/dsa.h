@@ -417,12 +417,12 @@ struct dsa_st {
 
 extern "C++" {
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 BORINGSSL_MAKE_DELETER(DSA, DSA_free)
 BORINGSSL_MAKE_DELETER(DSA_SIG, DSA_SIG_free)
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 }  // extern C++
 

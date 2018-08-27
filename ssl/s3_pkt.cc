@@ -122,7 +122,7 @@
 #include "internal.h"
 
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 
 static int do_ssl3_write(SSL *ssl, int type, const uint8_t *in, unsigned len);
 
@@ -425,4 +425,4 @@ int ssl3_dispatch_alert(SSL *ssl) {
   return 1;
 }
 
-}  // namespace bssl
+BSSL_NAMESPACE_END
