@@ -341,6 +341,10 @@ static bool GetTLS13Variant(tls13_variant_t *out, const std::string &in) {
     *out = tls13_rfc;
     return true;
   }
+  if (in == "all") {
+    *out = tls13_all;
+    return true;
+  }
   return false;
 }
 

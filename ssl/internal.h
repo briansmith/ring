@@ -2794,7 +2794,7 @@ struct ssl_ctx_st {
 
   // tls13_variant is the variant of TLS 1.3 we are using for this
   // configuration.
-  tls13_variant_t tls13_variant = tls13_default;
+  tls13_variant_t tls13_variant = tls13_rfc;
 
   bssl::UniquePtr<bssl::SSLCipherPreferenceList> cipher_list;
 
@@ -3123,7 +3123,7 @@ struct ssl_st {
 
   // tls13_variant is the variant of TLS 1.3 we are using for this
   // configuration.
-  tls13_variant_t tls13_variant = tls13_default;
+  tls13_variant_t tls13_variant = tls13_rfc;
 
   // session is the configured session to be offered by the client. This session
   // is immutable.

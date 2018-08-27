@@ -39,10 +39,10 @@ const (
 )
 
 const (
-	TLS13Default = 0
+	TLS13RFC     = 0
 	TLS13Draft23 = 1
 	TLS13Draft28 = 2
-	TLS13RFC     = 3
+	TLS13All     = 3
 )
 
 var allTLSWireVersions = []uint16{
@@ -1772,7 +1772,7 @@ func (c *Config) isSupportedVersion(wireVers uint16, isDTLS bool) (uint16, bool)
 			if wireVers != VersionTLS13 {
 				return 0, false
 			}
-		case TLS13Default:
+		case TLS13All:
 			// Allow all of them.
 		default:
 			panic(c.TLS13Variant)

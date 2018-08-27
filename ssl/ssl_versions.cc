@@ -304,7 +304,7 @@ bool ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version) {
         return version == TLS1_3_DRAFT28_VERSION;
       case tls13_rfc:
         return version == TLS1_3_VERSION;
-      case tls13_default:
+      case tls13_all:
         return true;
     }
   }

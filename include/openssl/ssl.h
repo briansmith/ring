@@ -3381,15 +3381,13 @@ OPENSSL_EXPORT int SSL_renegotiate_pending(SSL *ssl);
 OPENSSL_EXPORT int SSL_total_renegotiations(const SSL *ssl);
 
 // tls13_variant_t determines what TLS 1.3 variant to negotiate.
-//
-// TODO(svaldez): Make |tls13_rfc| the default after callers are switched to
-// explicitly enable |tls13_all|.
 enum tls13_variant_t {
-  tls13_default = 0,
+  tls13_rfc = 0,
   tls13_draft23,
   tls13_draft28,
-  tls13_rfc,
-  tls13_all = tls13_default,
+  // tls13_all enables all variants of TLS 1.3, to keep the transition smooth as
+  // early adopters move to the final version.
+  tls13_all,
 };
 
 // SSL_CTX_set_tls13_variant sets which variant of TLS 1.3 we negotiate. On the
