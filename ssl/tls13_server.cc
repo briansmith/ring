@@ -807,7 +807,7 @@ static enum ssl_hs_wait_t do_read_client_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_ok;
   }
 
-  const int allow_anonymous =
+  const bool allow_anonymous =
       (hs->config->verify_mode & SSL_VERIFY_FAIL_IF_NO_PEER_CERT) == 0;
   SSLMessage msg;
   if (!ssl->method->get_message(ssl, &msg)) {

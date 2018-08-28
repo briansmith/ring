@@ -1616,29 +1616,29 @@ const char *ssl_server_handshake_state(SSL_HANDSHAKE *hs);
 const char *tls13_client_handshake_state(SSL_HANDSHAKE *hs);
 const char *tls13_server_handshake_state(SSL_HANDSHAKE *hs);
 
-// tls13_post_handshake processes a post-handshake message. It returns one on
-// success and zero on failure.
-int tls13_post_handshake(SSL *ssl, const SSLMessage &msg);
+// tls13_post_handshake processes a post-handshake message. It returns true on
+// success and false on failure.
+bool tls13_post_handshake(SSL *ssl, const SSLMessage &msg);
 
-int tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
-                              int allow_anonymous);
-int tls13_process_certificate_verify(SSL_HANDSHAKE *hs, const SSLMessage &msg);
+bool tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
+                               bool allow_anonymous);
+bool tls13_process_certificate_verify(SSL_HANDSHAKE *hs, const SSLMessage &msg);
 
 // tls13_process_finished processes |msg| as a Finished message from the
-// peer. If |use_saved_value| is one, the verify_data is compared against
+// peer. If |use_saved_value| is true, the verify_data is compared against
 // |hs->expected_client_finished| rather than computed fresh.
-int tls13_process_finished(SSL_HANDSHAKE *hs, const SSLMessage &msg,
-                           int use_saved_value);
+bool tls13_process_finished(SSL_HANDSHAKE *hs, const SSLMessage &msg,
+                            bool use_saved_value);
 
-int tls13_add_certificate(SSL_HANDSHAKE *hs);
+bool tls13_add_certificate(SSL_HANDSHAKE *hs);
 
 // tls13_add_certificate_verify adds a TLS 1.3 CertificateVerify message to the
 // handshake. If it returns |ssl_private_key_retry|, it should be called again
 // to retry when the signing operation is completed.
 enum ssl_private_key_result_t tls13_add_certificate_verify(SSL_HANDSHAKE *hs);
 
-int tls13_add_finished(SSL_HANDSHAKE *hs);
-int tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg);
+bool tls13_add_finished(SSL_HANDSHAKE *hs);
+bool tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg);
 
 bool ssl_ext_key_share_parse_serverhello(SSL_HANDSHAKE *hs,
                                          Array<uint8_t> *out_secret,
@@ -1660,7 +1660,7 @@ bool ssl_ext_pre_shared_key_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
 // returns whether it's valid.
 bool ssl_is_sct_list_valid(const CBS *contents);
 
-int ssl_write_client_hello(SSL_HANDSHAKE *hs);
+bool ssl_write_client_hello(SSL_HANDSHAKE *hs);
 
 enum ssl_cert_verify_context_t {
   ssl_cert_verify_server,
