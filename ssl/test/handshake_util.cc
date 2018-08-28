@@ -349,7 +349,7 @@ static bool RunHandshaker(BIO *bio, const TestConfig *config, bool is_resume,
   // it to -1.
   pid_t handshaker_pid = -1;
   int ret = posix_spawn(&handshaker_pid, args[0], &actions, nullptr,
-                        args.data(), nullptr);
+                        args.data(), environ);
   if (posix_spawn_file_actions_destroy(&actions) != 0 ||
       ret != 0) {
     return false;
