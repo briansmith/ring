@@ -454,7 +454,7 @@ func (hc *halfConn) decrypt(b *block) (ok bool, prefixLen int, contentType recor
 				n := len(payload) - c.Overhead()
 				additionalData[11] = byte(n >> 8)
 				additionalData[12] = byte(n)
-			} else if isDraft28(hc.wireVersion) {
+			} else {
 				additionalData = b.data[:recordHeaderLen]
 			}
 			var err error
@@ -620,7 +620,7 @@ func (hc *halfConn) encrypt(b *block, explicitIVLen int, typ recordType) (bool, 
 				copy(additionalData[8:], b.data[:3])
 				additionalData[11] = byte(payloadLen >> 8)
 				additionalData[12] = byte(payloadLen)
-			} else if isDraft28(hc.wireVersion) {
+			} else {
 				additionalData = make([]byte, 5)
 				copy(additionalData, b.data[:3])
 				n := len(b.data) - recordHeaderLen
@@ -1321,9 +1321,6 @@ func (c *Conn) doReadHandshake() ([]byte, error) {
 		if err := c.readRecord(recordTypeHandshake); err != nil {
 			return nil, err
 		}
-	}
-	if c.hand.Len() > 4+n && c.config.Bugs.ForbidHandshakePacking {
-		return nil, errors.New("tls: forbidden trailing data after a handshake message")
 	}
 	return c.hand.Next(4 + n), nil
 }

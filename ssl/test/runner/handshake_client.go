@@ -424,10 +424,9 @@ NextCipherSuite:
 		if len(hello.pskIdentities) > 0 {
 			version := session.wireVersion
 			// We may have a pre-1.3 session if SendBothTickets is
-			// set. Fill in an arbitrary TLS 1.3 version to compute
-			// the binder.
+			// set.
 			if session.vers < VersionTLS13 {
-				version = tls13Draft23Version
+				version = VersionTLS13
 			}
 			generatePSKBinders(version, hello, pskCipherSuite, session.masterSecret, []byte{}, []byte{}, c.config)
 		}

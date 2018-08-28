@@ -34,11 +34,6 @@ bool ssl_protocol_version_from_wire(uint16_t *out, uint16_t version) {
       *out = version;
       return true;
 
-    case TLS1_3_DRAFT23_VERSION:
-    case TLS1_3_DRAFT28_VERSION:
-      *out = TLS1_3_VERSION;
-      return true;
-
     case DTLS1_VERSION:
       // DTLS 1.0 is analogous to TLS 1.1, not TLS 1.0.
       *out = TLS1_1_VERSION;
@@ -58,8 +53,6 @@ bool ssl_protocol_version_from_wire(uint16_t *out, uint16_t version) {
 
 static const uint16_t kTLSVersions[] = {
     TLS1_3_VERSION,
-    TLS1_3_DRAFT28_VERSION,
-    TLS1_3_DRAFT23_VERSION,
     TLS1_2_VERSION,
     TLS1_1_VERSION,
     TLS1_VERSION,
@@ -95,14 +88,10 @@ bool ssl_method_supports_version(const SSL_PROTOCOL_METHOD *method,
 }
 
 // The following functions map between API versions and wire versions. The
-// public API works on wire versions, except that TLS 1.3 draft versions all
-// appear as TLS 1.3. This will get collapsed back down when TLS 1.3 is
-// finalized.
+// public API works on wire versions.
 
 static const char *ssl_version_to_string(uint16_t version) {
   switch (version) {
-    case TLS1_3_DRAFT23_VERSION:
-    case TLS1_3_DRAFT28_VERSION:
     case TLS1_3_VERSION:
       return "TLSv1.3";
 
@@ -127,26 +116,11 @@ static const char *ssl_version_to_string(uint16_t version) {
 }
 
 static uint16_t wire_version_to_api(uint16_t version) {
-  switch (version) {
-    // Report TLS 1.3 draft versions as TLS 1.3 in the public API.
-    case TLS1_3_DRAFT23_VERSION:
-    case TLS1_3_DRAFT28_VERSION:
-    case TLS1_3_VERSION:
-      return TLS1_3_VERSION;
-    default:
-      return version;
-  }
+  return version;
 }
 
-// api_version_to_wire maps |version| to some representative wire version. In
-// particular, it picks an arbitrary TLS 1.3 representative. This should only be
-// used in context where that does not matter.
+// api_version_to_wire maps |version| to some representative wire version.
 static bool api_version_to_wire(uint16_t *out, uint16_t version) {
-  if (version == TLS1_3_DRAFT23_VERSION ||
-      version == TLS1_3_DRAFT28_VERSION) {
-    return false;
-  }
-
   // Check it is a real protocol version.
   uint16_t unused;
   if (!ssl_protocol_version_from_wire(&unused, version)) {
@@ -299,21 +273,6 @@ bool ssl_supports_version(SSL_HANDSHAKE *hs, uint16_t version) {
     return false;
   }
 
-  // If the TLS 1.3 variant is set to |tls13_default|, all variants are enabled,
-  // otherwise only the matching version is enabled.
-  if (protocol_version == TLS1_3_VERSION) {
-    switch (ssl->tls13_variant) {
-      case tls13_draft23:
-        return version == TLS1_3_DRAFT23_VERSION;
-      case tls13_draft28:
-        return version == TLS1_3_DRAFT28_VERSION;
-      case tls13_rfc:
-        return version == TLS1_3_VERSION;
-      case tls13_all:
-        return true;
-    }
-  }
-
   return true;
 }
 
@@ -371,10 +330,6 @@ bool ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   OPENSSL_PUT_ERROR(SSL, SSL_R_UNSUPPORTED_PROTOCOL);
   *out_alert = SSL_AD_PROTOCOL_VERSION;
   return false;
-}
-
-bool ssl_is_draft28(uint16_t version) {
-  return version == TLS1_3_DRAFT28_VERSION || version == TLS1_3_VERSION;
 }
 
 BSSL_NAMESPACE_END

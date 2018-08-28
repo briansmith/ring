@@ -294,16 +294,14 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (ssl_is_draft28(ssl->version)) {
-    // Recheck supported_versions, in case this is the second ServerHello.
-    uint16_t version;
-    if (!have_supported_versions ||
-        !CBS_get_u16(&supported_versions, &version) ||
-        version != ssl->version) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_SECOND_SERVERHELLO_VERSION_MISMATCH);
-      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
-      return ssl_hs_error;
-    }
+  // Recheck supported_versions, in case this is the second ServerHello.
+  uint16_t version;
+  if (!have_supported_versions ||
+      !CBS_get_u16(&supported_versions, &version) ||
+      version != ssl->version) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_SECOND_SERVERHELLO_VERSION_MISMATCH);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+    return ssl_hs_error;
   }
 
   alert = SSL_AD_DECODE_ERROR;

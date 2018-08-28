@@ -2628,11 +2628,6 @@ TEST(SSLTest, SetVersion) {
   // SSL 3.0 is not available.
   EXPECT_FALSE(SSL_CTX_set_min_proto_version(ctx.get(), SSL3_VERSION));
 
-  // TLS1_3_DRAFT_VERSION is not an API-level version.
-  EXPECT_FALSE(
-      SSL_CTX_set_max_proto_version(ctx.get(), TLS1_3_DRAFT23_VERSION));
-  ERR_clear_error();
-
   ctx.reset(SSL_CTX_new(DTLS_method()));
   ASSERT_TRUE(ctx);
 

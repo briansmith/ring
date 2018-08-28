@@ -489,16 +489,6 @@ class TLSFuzzer {
           SSL_set_verify(ssl.get(), SSL_VERIFY_PEER, nullptr);
           break;
 
-        case kTLS13Variant: {
-          uint8_t variant;
-          if (!CBS_get_u8(cbs, &variant)) {
-            return nullptr;
-          }
-          SSL_set_tls13_variant(ssl.get(),
-                                static_cast<tls13_variant_t>(variant));
-          break;
-        }
-
         case kHandoffTag: {
           CBS handoff;
           if (!CBS_get_u24_length_prefixed(cbs, &handoff)) {

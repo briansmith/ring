@@ -188,14 +188,12 @@ bool ssl3_add_message(SSL *ssl, Array<uint8_t> msg) {
   // unnecessary encryption overhead, notably in TLS 1.3 where we send several
   // encrypted messages in a row. For now, we do not do this for the null
   // cipher. The benefit is smaller and there is a risk of breaking buggy
-  // implementations. Additionally, we tie this to draft-28 as a sanity check,
-  // on the off chance middleboxes have fixated on sizes.
+  // implementations.
   //
   // TODO(davidben): See if we can do this uniformly.
   Span<const uint8_t> rest = msg;
   if (ssl->ctx->quic_method == nullptr &&
-      (ssl->s3->aead_write_ctx->is_null_cipher() ||
-       ssl->version == TLS1_3_DRAFT23_VERSION)) {
+      ssl->s3->aead_write_ctx->is_null_cipher()) {
     while (!rest.empty()) {
       Span<const uint8_t> chunk = rest.subspan(0, ssl->max_send_fragment);
       rest = rest.subspan(chunk.size());

@@ -218,7 +218,6 @@ const Flag<int> kIntFlags[] = {
   { "-max-send-fragment", &TestConfig::max_send_fragment },
   { "-read-size", &TestConfig::read_size },
   { "-expect-ticket-age-skew", &TestConfig::expect_ticket_age_skew },
-  { "-tls13-variant", &TestConfig::tls13_variant },
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {
@@ -1246,9 +1245,6 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
   if (enable_early_data) {
     SSL_CTX_set_early_data_enabled(ssl_ctx.get(), 1);
   }
-
-  SSL_CTX_set_tls13_variant(ssl_ctx.get(),
-                            static_cast<enum tls13_variant_t>(tls13_variant));
 
   if (allow_unknown_alpn_protos) {
     SSL_CTX_set_allow_unknown_alpn_protos(ssl_ctx.get(), 1);

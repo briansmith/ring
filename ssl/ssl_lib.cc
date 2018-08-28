@@ -640,7 +640,6 @@ ssl_st::ssl_st(SSL_CTX *ctx_arg)
       max_send_fragment(ctx_arg->max_send_fragment),
       msg_callback(ctx_arg->msg_callback),
       msg_callback_arg(ctx_arg->msg_callback_arg),
-      tls13_variant(ctx_arg->tls13_variant),
       ctx(UpRef(ctx_arg)),
       session_ctx(UpRef(ctx_arg)),
       options(ctx->options),
@@ -1259,14 +1258,6 @@ void SSL_get_peer_quic_transport_params(const SSL *ssl,
 
 void SSL_CTX_set_early_data_enabled(SSL_CTX *ctx, int enabled) {
   ctx->enable_early_data = !!enabled;
-}
-
-void SSL_CTX_set_tls13_variant(SSL_CTX *ctx, enum tls13_variant_t variant) {
-  ctx->tls13_variant = variant;
-}
-
-void SSL_set_tls13_variant(SSL *ssl, enum tls13_variant_t variant) {
-  ssl->tls13_variant = variant;
 }
 
 void SSL_set_early_data_enabled(SSL *ssl, int enabled) {
