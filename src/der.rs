@@ -31,9 +31,17 @@ pub enum Tag {
     OctetString = 0x04,
     Null = 0x05,
     OID = 0x06,
+    UTF8String = 0x0c,
     Sequence = CONSTRUCTED | 0x10, // 0x30
+    Set = CONSTRUCTED | 0x11, // 0x31
+    NumericString = 0x12,
+    PrintableString = 0x13,
+    T61String = 0x14,
+    IA5String = 0x16,
     UTCTime = 0x17,
     GeneralizedTime = 0x18,
+    UniversalString = 0x1c,
+    BMPString = 0x1e,
 
     ContextSpecificConstructed0 = CONTEXT_SPECIFIC | CONSTRUCTED | 0,
     ContextSpecificConstructed1 = CONTEXT_SPECIFIC | CONSTRUCTED | 1,
