@@ -24,6 +24,7 @@
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
+#include <openssl/sha.h>
 #include <openssl/stack.h>
 
 #include "../crypto/internal.h"
@@ -909,6 +910,11 @@ bool tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
       return false;
     }
   }
+
+  // Generate a session ID for this session. Some callers expect all sessions to
+  // have a session ID.
+  SHA256(CBS_data(&ticket), CBS_len(&ticket), session->session_id);
+  session->session_id_length = SHA256_DIGEST_LENGTH;
 
   session->ticket_age_add_valid = true;
   session->not_resumable = false;

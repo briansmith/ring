@@ -4281,6 +4281,21 @@ TEST_P(SSLVersionTest, VerifyBeforeCertRequest) {
                                       server_ctx_.get()));
 }
 
+// Test that ticket-based sessions on the client get fake session IDs.
+TEST_P(SSLVersionTest, FakeIDsForTickets) {
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_set_session_cache_mode(server_ctx_.get(), SSL_SESS_CACHE_BOTH);
+
+  bssl::UniquePtr<SSL_SESSION> session =
+      CreateClientSession(client_ctx_.get(), server_ctx_.get());
+  ASSERT_TRUE(session);
+
+  EXPECT_TRUE(SSL_SESSION_has_ticket(session.get()));
+  unsigned session_id_length;
+  SSL_SESSION_get_id(session.get(), &session_id_length);
+  EXPECT_NE(session_id_length, 0u);
+}
+
 // These tests test multi-threaded behavior. They are intended to run with
 // ThreadSanitizer.
 #if !defined(OPENSSL_NO_THREADS)

@@ -7625,17 +7625,6 @@ func addResumptionVersionTests() {
 						},
 					})
 				} else {
-					error := ":OLD_SESSION_VERSION_NOT_RETURNED:"
-					// Clients offering TLS 1.3 will send a fake session ID
-					// unrelated to the session being offer. This session ID is
-					// invalid for the server to echo, so the handshake fails at
-					// a different point. It's not syntactically possible for a
-					// server to convince our client that it's accepted a TLS
-					// 1.3 session at an older version.
-					if resumeVers.version < VersionTLS13 && sessionVers.version >= VersionTLS13 {
-						error = ":SERVER_ECHOED_INVALID_SESSION_ID:"
-					}
-
 					testCases = append(testCases, testCase{
 						protocol:      protocol,
 						name:          "Resume-Client-Mismatch" + suffix,
@@ -7654,7 +7643,7 @@ func addResumptionVersionTests() {
 						},
 						expectedResumeVersion: resumeVers.version,
 						shouldFail:            true,
-						expectedError:         error,
+						expectedError:         ":OLD_SESSION_VERSION_NOT_RETURNED:",
 						flags: []string{
 							"-on-initial-tls13-variant", strconv.Itoa(sessionVers.tls13Variant),
 							"-on-resume-tls13-variant", strconv.Itoa(resumeVers.tls13Variant),
