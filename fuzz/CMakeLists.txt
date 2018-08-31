@@ -8,6 +8,7 @@ macro(fuzzer name)
   set_target_properties(${name} PROPERTIES LINK_FLAGS "-fsanitize=fuzzer")
 endmacro()
 
+fuzzer(arm_cpuinfo)
 fuzzer(bn_mod_exp)
 fuzzer(privkey)
 fuzzer(cert)
