@@ -175,11 +175,19 @@ OPENSSL_EXPORT int RSA_generate_key_fips(RSA *rsa, int bits, BN_GENCB *cb);
 // These functions are considered non-mutating for thread-safety purposes and
 // may be used concurrently.
 
-// Padding types for encryption.
+// RSA_PKCS1_PADDING denotes PKCS#1 v1.5 padding. When used with encryption,
+// this is RSAES-PKCS1-v1_5. When used with signing, this is RSASSA-PKCS1-v1_5.
 #define RSA_PKCS1_PADDING 1
+
+// RSA_NO_PADDING denotes a raw RSA operation.
 #define RSA_NO_PADDING 3
+
+// RSA_PKCS1_OAEP_PADDING denotes the RSAES-OAEP encryption scheme.
 #define RSA_PKCS1_OAEP_PADDING 4
-// RSA_PKCS1_PSS_PADDING can only be used via the EVP interface.
+
+// RSA_PKCS1_PSS_PADDING denotes the RSASSA-PSS signature scheme. This value may
+// not be passed into |RSA_sign_raw|, only |EVP_PKEY_CTX_set_rsa_padding|. See
+// also |RSA_sign_pss_mgf1| and |RSA_verify_pss_mgf1|.
 #define RSA_PKCS1_PSS_PADDING 6
 
 // RSA_encrypt encrypts |in_len| bytes from |in| to the public key from |rsa|
@@ -285,7 +293,8 @@ OPENSSL_EXPORT int RSA_sign_pss_mgf1(RSA *rsa, size_t *out_len, uint8_t *out,
 //
 // The |padding| argument must be one of the |RSA_*_PADDING| values. If in
 // doubt, |RSA_PKCS1_PADDING| is the most common but |RSA_PKCS1_PSS_PADDING|
-// (via the |EVP_PKEY| interface) is preferred for new protocols.
+// (via |RSA_sign_pss_mgf1| or the |EVP_PKEY| interface) is preferred for new
+// protocols.
 OPENSSL_EXPORT int RSA_sign_raw(RSA *rsa, size_t *out_len, uint8_t *out,
                                 size_t max_out, const uint8_t *in,
                                 size_t in_len, int padding);
@@ -330,7 +339,8 @@ OPENSSL_EXPORT int RSA_verify_pss_mgf1(RSA *rsa, const uint8_t *msg,
 //
 // The |padding| argument must be one of the |RSA_*_PADDING| values. If in
 // doubt, |RSA_PKCS1_PADDING| is the most common but |RSA_PKCS1_PSS_PADDING|
-// (via the |EVP_PKEY| interface) is preferred for new protocols.
+// (via |RSA_verify_pss_mgf1| or the |EVP_PKEY| interface) is preferred for new
+// protocols.
 OPENSSL_EXPORT int RSA_verify_raw(RSA *rsa, size_t *out_len, uint8_t *out,
                                   size_t max_out, const uint8_t *in,
                                   size_t in_len, int padding);

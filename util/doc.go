@@ -82,6 +82,19 @@ func isComment(line string) bool {
 	return strings.HasPrefix(line, commentStart) || strings.HasPrefix(line, lineComment)
 }
 
+func commentSubject(line string) string {
+	if strings.HasPrefix(line, "A ") {
+		line = line[len("A "):]
+	} else if strings.HasPrefix(line, "An ") {
+		line = line[len("An "):]
+	}
+	idx := strings.IndexAny(line, " ,")
+	if idx < 0 {
+		return line
+	}
+	return line[:idx]
+}
+
 func extractComment(lines []string, lineNo int) (comment []string, rest []string, restLineNo int, err error) {
 	if len(lines) == 0 {
 		return nil, lines, lineNo, nil
@@ -426,17 +439,22 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 				// As a matter of style, comments should start
 				// with the name of the thing that they are
 				// commenting on. We make an exception here for
-				// #defines (because we often have blocks of
-				// them) and collective comments, which are
-				// detected by starting with “The” or “These”.
+				// collective comments, which are detected by
+				// starting with “The” or “These”.
 				if len(comment) > 0 &&
-					!strings.HasPrefix(comment[0], name) &&
-					!strings.HasPrefix(comment[0], "A "+name) &&
-					!strings.HasPrefix(comment[0], "An "+name) &&
-					!strings.HasPrefix(decl, "#define ") &&
+					len(name) > 0 &&
 					!strings.HasPrefix(comment[0], "The ") &&
 					!strings.HasPrefix(comment[0], "These ") {
-					return nil, fmt.Errorf("Comment for %q doesn't seem to match line %s:%d\n", name, path, declLineNo)
+					subject := commentSubject(comment[0])
+					ok := subject == name
+					if l := len(subject); l > 0 && subject[l-1] == '*' {
+						// Groups of names, notably #defines, are often
+						// denoted with a wildcard.
+						ok = strings.HasPrefix(name, subject[:l-1])
+					}
+					if !ok {
+						return nil, fmt.Errorf("Comment for %q doesn't seem to match line %s:%d\n", name, path, declLineNo)
+					}
 				}
 				anchor := sanitizeAnchor(name)
 				// TODO(davidben): Enforce uniqueness. This is
