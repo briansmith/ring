@@ -182,9 +182,14 @@ used freely without special cleanup conventions.
 
 When working with allocated objects, it is important to think about *ownership*
 of each object, or what code is responsible for releasing it. This matches the
-corresponding notion in higher-level languages like C++ and Rust. Ownership
-applies to both uniquely-owned types and reference-counted types. For the
-latter, ownership means the code is responsible for releasing one reference.
+corresponding notion in higher-level languages like C++ and Rust.
+
+Ownership applies to both uniquely-owned types and reference-counted types. For
+the latter, ownership means the code is responsible for releasing one
+reference. Note a *reference* in BoringSSL refers to an increment (and eventual
+decrement) of an object's reference count, not `T&` in C++. Thus, to "take a
+reference" means to increment the reference count and take ownership of
+decrementing it.
 
 As BoringSSL's APIs are primarily in C, ownership and lifetime obligations are
 not rigorously annotated in the type signatures or checked at compile-time.
@@ -217,12 +222,12 @@ sooner on state change in the parent object.
 If documented to output a *newly-allocated* object or a *reference* or *copy* of
 one, the caller is responsible for releasing the object when it is done.
 
-By convention, functions named `get0` return non-owning pointers. Functions name
-`new` or `get1` return owning pointers. Functions named `set0` take ownership of
-arguments. Functions named `set1` do not. They typically take a reference or
-make a copy internally. These names originally referred to the effect on a
-reference count, but the convention applies equally to non-reference-counted
-types.
+By convention, functions named `get0` return non-owning pointers. Functions
+named `new` or `get1` return owning pointers. Functions named `set0` take
+ownership of arguments. Functions named `set1` do not. They typically take a
+reference or make a copy internally. These names originally referred to the
+effect on a reference count, but the convention applies equally to
+non-reference-counted types.
 
 API documentation may also describe more complex obligations. For instance, an
 object may borrow a pointer for longer than the duration of a single function
