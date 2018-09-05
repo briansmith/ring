@@ -137,13 +137,13 @@ static uint64_t to_u64_be(const uint8_t in[8]) {
 
 // dtls1_bitmap_should_discard returns one if |seq_num| has been seen in
 // |bitmap| or is stale. Otherwise it returns zero.
-static int dtls1_bitmap_should_discard(DTLS1_BITMAP *bitmap,
-                                       const uint8_t seq_num[8]) {
+static bool dtls1_bitmap_should_discard(DTLS1_BITMAP *bitmap,
+                                        const uint8_t seq_num[8]) {
   const unsigned kWindowSize = sizeof(bitmap->map) * 8;
 
   uint64_t seq_num_u = to_u64_be(seq_num);
   if (seq_num_u > bitmap->max_seq_num) {
-    return 0;
+    return false;
   }
   uint64_t idx = bitmap->max_seq_num - seq_num_u;
   return idx >= kWindowSize || (bitmap->map & (((uint64_t)1) << idx));
@@ -291,14 +291,14 @@ size_t dtls_seal_prefix_len(const SSL *ssl, enum dtls1_use_epoch_t use_epoch) {
          get_write_aead(ssl, use_epoch)->ExplicitNonceLen();
 }
 
-int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
-                     uint8_t type, const uint8_t *in, size_t in_len,
-                     enum dtls1_use_epoch_t use_epoch) {
+bool dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
+                      uint8_t type, const uint8_t *in, size_t in_len,
+                      enum dtls1_use_epoch_t use_epoch) {
   const size_t prefix = dtls_seal_prefix_len(ssl, use_epoch);
   if (buffers_alias(in, in_len, out, max_out) &&
       (max_out < prefix || out + prefix != in)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_OUTPUT_ALIASES_INPUT);
-    return 0;
+    return false;
   }
 
   // Determine the parameters for the current epoch.
@@ -314,7 +314,7 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
 
   if (max_out < DTLS1_RT_HEADER_LENGTH) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_BUFFER_TOO_SMALL);
-    return 0;
+    return false;
   }
 
   out[0] = type;
@@ -330,7 +330,7 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
   size_t ciphertext_len;
   if (!aead->CiphertextLen(&ciphertext_len, in_len, 0)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_RECORD_TOO_LARGE);
-    return 0;
+    return false;
   }
   out[11] = ciphertext_len >> 8;
   out[12] = ciphertext_len & 0xff;
@@ -341,13 +341,13 @@ int dtls_seal_record(SSL *ssl, uint8_t *out, size_t *out_len, size_t max_out,
                   max_out - DTLS1_RT_HEADER_LENGTH, type, record_version,
                   &out[3] /* seq */, header, in, in_len) ||
       !ssl_record_sequence_update(&seq[2], 6)) {
-    return 0;
+    return false;
   }
   assert(ciphertext_len == len_copy);
 
   *out_len = DTLS1_RT_HEADER_LENGTH + ciphertext_len;
   ssl_do_msg_callback(ssl, 1 /* write */, SSL3_RT_HEADER, header);
-  return 1;
+  return true;
 }
 
 BSSL_NAMESPACE_END

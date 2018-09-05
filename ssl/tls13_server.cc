@@ -716,7 +716,7 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
 
     size_t finished_len;
     if (!tls13_finished_mac(hs, hs->expected_client_finished, &finished_len,
-                            0 /* client */)) {
+                            false /* client */)) {
       return ssl_hs_error;
     }
 
