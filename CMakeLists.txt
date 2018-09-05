@@ -442,7 +442,6 @@ add_custom_command(
 add_library(crypto_test_data OBJECT crypto_test_data.cc)
 
 add_subdirectory(crypto)
-add_subdirectory(third_party/fiat)
 add_subdirectory(ssl)
 add_subdirectory(ssl/test)
 add_subdirectory(fipstools)

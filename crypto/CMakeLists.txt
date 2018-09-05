@@ -78,78 +78,8 @@ function(perlasm dest src)
   )
 endfunction()
 
-# Level 0.1 - depends on nothing outside this set.
-add_subdirectory(stack)
-add_subdirectory(lhash)
-add_subdirectory(err)
-add_subdirectory(buf)
-add_subdirectory(base64)
-add_subdirectory(bytestring)
-add_subdirectory(pool)
-
-# Level 0.2 - depends on nothing but itself
-add_subdirectory(rc4)
-add_subdirectory(conf)
-add_subdirectory(chacha)
-add_subdirectory(poly1305)
-add_subdirectory(curve25519)
-
-# Level 1, depends only on 0.*
-add_subdirectory(digest_extra)
-add_subdirectory(cipher_extra)
-add_subdirectory(rand_extra)
-add_subdirectory(bio)
-add_subdirectory(bn_extra)
-add_subdirectory(obj)
-add_subdirectory(asn1)
-
-# Level 2
-add_subdirectory(engine)
-add_subdirectory(dh)
-add_subdirectory(dsa)
-add_subdirectory(rsa_extra)
-add_subdirectory(ec_extra)
-add_subdirectory(ecdh_extra)
-add_subdirectory(ecdsa_extra)
-
-# Level 3
-add_subdirectory(cmac)
-add_subdirectory(evp)
-add_subdirectory(hkdf)
-add_subdirectory(pem)
-add_subdirectory(x509)
-add_subdirectory(x509v3)
-
-# Level 4
-add_subdirectory(pkcs7)
-add_subdirectory(pkcs8)
-
-# Test support code
-add_subdirectory(test)
-
 add_subdirectory(fipsmodule)
-
-add_library(
-  crypto_base
-
-  OBJECT
-
-  cpu-aarch64-fuchsia.c
-  cpu-aarch64-linux.c
-  cpu-arm.c
-  cpu-arm-linux.c
-  cpu-intel.c
-  cpu-ppc64le.c
-  crypto.c
-  ex_data.c
-  mem.c
-  refcount_c11.c
-  refcount_lock.c
-  thread.c
-  thread_none.c
-  thread_pthread.c
-  thread_win.c
-)
+add_subdirectory(test)
 
 if(FIPS_DELOCATE)
   SET_SOURCE_FILES_PROPERTIES(fipsmodule/bcm.o PROPERTIES EXTERNAL_OBJECT true)
@@ -205,46 +135,261 @@ perlasm(chacha/chacha-x86_64.${ASM_EXT} chacha/asm/chacha-x86_64.pl)
 perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsiv-x86_64.pl)
 perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
 
+add_custom_command(
+  OUTPUT err_data.c
+  COMMAND ${GO_EXECUTABLE} run err_data_generate.go > ${CMAKE_CURRENT_BINARY_DIR}/err_data.c
+  DEPENDS
+  err/err_data_generate.go
+  err/asn1.errordata
+  err/bio.errordata
+  err/bn.errordata
+  err/cipher.errordata
+  err/conf.errordata
+  err/dh.errordata
+  err/digest.errordata
+  err/dsa.errordata
+  err/ecdh.errordata
+  err/ecdsa.errordata
+  err/ec.errordata
+  err/engine.errordata
+  err/evp.errordata
+  err/hkdf.errordata
+  err/obj.errordata
+  err/pem.errordata
+  err/pkcs7.errordata
+  err/pkcs8.errordata
+  err/rsa.errordata
+  err/ssl.errordata
+  err/x509.errordata
+  err/x509v3.errordata
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/err
+)
+
 add_library(
   crypto
 
-  $<TARGET_OBJECTS:crypto_base>
-  $<TARGET_OBJECTS:stack>
-  $<TARGET_OBJECTS:lhash>
-  $<TARGET_OBJECTS:err>
-  $<TARGET_OBJECTS:base64>
-  $<TARGET_OBJECTS:bytestring>
-  $<TARGET_OBJECTS:pool>
+  asn1/a_bitstr.c
+  asn1/a_bool.c
+  asn1/a_d2i_fp.c
+  asn1/a_dup.c
+  asn1/a_enum.c
+  asn1/a_gentm.c
+  asn1/a_i2d_fp.c
+  asn1/a_int.c
+  asn1/a_mbstr.c
+  asn1/a_object.c
+  asn1/a_octet.c
+  asn1/a_print.c
+  asn1/a_strnid.c
+  asn1/a_time.c
+  asn1/a_type.c
+  asn1/a_utctm.c
+  asn1/a_utf8.c
+  asn1/asn1_lib.c
+  asn1/asn1_par.c
+  asn1/asn_pack.c
+  asn1/f_enum.c
+  asn1/f_int.c
+  asn1/f_string.c
+  asn1/tasn_dec.c
+  asn1/tasn_enc.c
+  asn1/tasn_fre.c
+  asn1/tasn_new.c
+  asn1/tasn_typ.c
+  asn1/tasn_utl.c
+  asn1/time_support.c
+  base64/base64.c
+  bio/bio.c
+  bio/bio_mem.c
+  bio/connect.c
+  bio/fd.c
+  bio/file.c
+  bio/hexdump.c
+  bio/pair.c
+  bio/printf.c
+  bio/socket.c
+  bio/socket_helper.c
+  bn_extra/bn_asn1.c
+  bn_extra/convert.c
+  buf/buf.c
+  bytestring/asn1_compat.c
+  bytestring/ber.c
+  bytestring/cbb.c
+  bytestring/cbs.c
+  bytestring/unicode.c
+  chacha/chacha.c
+  cipher_extra/cipher_extra.c
+  cipher_extra/derive_key.c
+  cipher_extra/e_aesccm.c
+  cipher_extra/e_aesctrhmac.c
+  cipher_extra/e_aesgcmsiv.c
+  cipher_extra/e_chacha20poly1305.c
+  cipher_extra/e_null.c
+  cipher_extra/e_rc2.c
+  cipher_extra/e_rc4.c
+  cipher_extra/e_tls.c
+  cipher_extra/tls_cbc.c
+  cmac/cmac.c
+  conf/conf.c
+  cpu-aarch64-fuchsia.c
+  cpu-aarch64-linux.c
+  cpu-arm-linux.c
+  cpu-arm.c
+  cpu-intel.c
+  cpu-ppc64le.c
+  crypto.c
+  curve25519/spake25519.c
+  dh/dh.c
+  dh/params.c
+  dh/check.c
+  dh/dh_asn1.c
+  digest_extra/digest_extra.c
+  dsa/dsa.c
+  dsa/dsa_asn1.c
+  ecdh_extra/ecdh_extra.c
+  ecdsa_extra/ecdsa_asn1.c
+  ec_extra/ec_asn1.c
+  err/err.c
+  err_data.c
+  engine/engine.c
+  evp/digestsign.c
+  evp/evp.c
+  evp/evp_asn1.c
+  evp/evp_ctx.c
+  evp/p_dsa_asn1.c
+  evp/p_ec.c
+  evp/p_ec_asn1.c
+  evp/p_ed25519.c
+  evp/p_ed25519_asn1.c
+  evp/p_rsa.c
+  evp/p_rsa_asn1.c
+  evp/pbkdf.c
+  evp/print.c
+  evp/scrypt.c
+  evp/sign.c
+  ex_data.c
+  hkdf/hkdf.c
+  lhash/lhash.c
+  mem.c
+  obj/obj.c
+  obj/obj_xref.c
+  pem/pem_all.c
+  pem/pem_info.c
+  pem/pem_lib.c
+  pem/pem_oth.c
+  pem/pem_pk8.c
+  pem/pem_pkey.c
+  pem/pem_x509.c
+  pem/pem_xaux.c
+  pkcs7/pkcs7.c
+  pkcs7/pkcs7_x509.c
+  pkcs8/pkcs8.c
+  pkcs8/pkcs8_x509.c
+  pkcs8/p5_pbev2.c
+  poly1305/poly1305.c
+  poly1305/poly1305_arm.c
+  poly1305/poly1305_vec.c
+  pool/pool.c
+  rand_extra/deterministic.c
+  rand_extra/forkunsafe.c
+  rand_extra/fuchsia.c
+  rand_extra/rand_extra.c
+  rand_extra/windows.c
+  rc4/rc4.c
+  refcount_c11.c
+  refcount_lock.c
+  rsa_extra/rsa_asn1.c
+  rsa_extra/rsa_print.c
+  stack/stack.c
+  thread.c
+  thread_none.c
+  thread_pthread.c
+  thread_win.c
+  x509/a_digest.c
+  x509/a_sign.c
+  x509/a_strex.c
+  x509/a_verify.c
+  x509/algorithm.c
+  x509/asn1_gen.c
+  x509/by_dir.c
+  x509/by_file.c
+  x509/i2d_pr.c
+  x509/rsa_pss.c
+  x509/t_crl.c
+  x509/t_req.c
+  x509/t_x509.c
+  x509/t_x509a.c
+  x509/x509.c
+  x509/x509_att.c
+  x509/x509_cmp.c
+  x509/x509_d2.c
+  x509/x509_def.c
+  x509/x509_ext.c
+  x509/x509_lu.c
+  x509/x509_obj.c
+  x509/x509_r2x.c
+  x509/x509_req.c
+  x509/x509_set.c
+  x509/x509_trs.c
+  x509/x509_txt.c
+  x509/x509_v3.c
+  x509/x509_vfy.c
+  x509/x509_vpm.c
+  x509/x509cset.c
+  x509/x509name.c
+  x509/x509rset.c
+  x509/x509spki.c
+  x509/x_algor.c
+  x509/x_all.c
+  x509/x_attrib.c
+  x509/x_crl.c
+  x509/x_exten.c
+  x509/x_info.c
+  x509/x_name.c
+  x509/x_pkey.c
+  x509/x_pubkey.c
+  x509/x_req.c
+  x509/x_sig.c
+  x509/x_spki.c
+  x509/x_val.c
+  x509/x_x509.c
+  x509/x_x509a.c
+  x509v3/pcy_cache.c
+  x509v3/pcy_data.c
+  x509v3/pcy_lib.c
+  x509v3/pcy_map.c
+  x509v3/pcy_node.c
+  x509v3/pcy_tree.c
+  x509v3/v3_akey.c
+  x509v3/v3_akeya.c
+  x509v3/v3_alt.c
+  x509v3/v3_bcons.c
+  x509v3/v3_bitst.c
+  x509v3/v3_conf.c
+  x509v3/v3_cpols.c
+  x509v3/v3_crld.c
+  x509v3/v3_enum.c
+  x509v3/v3_extku.c
+  x509v3/v3_genn.c
+  x509v3/v3_ia5.c
+  x509v3/v3_info.c
+  x509v3/v3_int.c
+  x509v3/v3_lib.c
+  x509v3/v3_ncons.c
+  x509v3/v3_ocsp.c
+  x509v3/v3_pci.c
+  x509v3/v3_pcia.c
+  x509v3/v3_pcons.c
+  x509v3/v3_pku.c
+  x509v3/v3_pmaps.c
+  x509v3/v3_prn.c
+  x509v3/v3_purp.c
+  x509v3/v3_skey.c
+  x509v3/v3_sxnet.c
+  x509v3/v3_utl.c
+  ../../third_party/fiat/curve25519.c
+
   $<TARGET_OBJECTS:fipsmodule>
-  $<TARGET_OBJECTS:digest_extra>
-  $<TARGET_OBJECTS:cipher_extra>
-  $<TARGET_OBJECTS:rc4>
-  $<TARGET_OBJECTS:conf>
-  $<TARGET_OBJECTS:chacha>
-  $<TARGET_OBJECTS:poly1305>
-  $<TARGET_OBJECTS:curve25519>
-  $<TARGET_OBJECTS:fiat>
-  $<TARGET_OBJECTS:buf>
-  $<TARGET_OBJECTS:bn_extra>
-  $<TARGET_OBJECTS:bio>
-  $<TARGET_OBJECTS:rand_extra>
-  $<TARGET_OBJECTS:obj>
-  $<TARGET_OBJECTS:asn1>
-  $<TARGET_OBJECTS:engine>
-  $<TARGET_OBJECTS:dh>
-  $<TARGET_OBJECTS:dsa>
-  $<TARGET_OBJECTS:rsa_extra>
-  $<TARGET_OBJECTS:ec_extra>
-  $<TARGET_OBJECTS:ecdh_extra>
-  $<TARGET_OBJECTS:ecdsa_extra>
-  $<TARGET_OBJECTS:cmac>
-  $<TARGET_OBJECTS:evp>
-  $<TARGET_OBJECTS:hkdf>
-  $<TARGET_OBJECTS:pem>
-  $<TARGET_OBJECTS:x509>
-  $<TARGET_OBJECTS:x509v3>
-  $<TARGET_OBJECTS:pkcs7>
-  $<TARGET_OBJECTS:pkcs8_lib>
 
   ${CRYPTO_ARCH_SOURCES}
   ${CRYPTO_FIPS_OBJECTS}
@@ -266,7 +411,6 @@ if(USE_CUSTOM_LIBCXX)
   target_link_libraries(crypto libcxx)
 endif()
 
-# TODO(davidben): Convert the remaining tests to GTest.
 add_executable(
   crypto_test
 
