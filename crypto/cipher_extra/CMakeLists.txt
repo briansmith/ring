@@ -1,14 +1,5 @@
 include_directories(../../include)
 
-if(${ARCH} STREQUAL "x86_64")
-  set(
-    CIPHER_ARCH_SOURCES
-
-    aes128gcmsiv-x86_64.${ASM_EXT}
-    chacha20_poly1305_x86_64.${ASM_EXT}
-  )
-endif()
-
 add_library(
   cipher_extra
 
@@ -27,9 +18,4 @@ add_library(
 
   tls_cbc.c
   e_tls.c
-
-  ${CIPHER_ARCH_SOURCES}
 )
-
-perlasm(aes128gcmsiv-x86_64.${ASM_EXT} asm/aes128gcmsiv-x86_64.pl)
-perlasm(chacha20_poly1305_x86_64.${ASM_EXT} asm/chacha20_poly1305_x86_64.pl)

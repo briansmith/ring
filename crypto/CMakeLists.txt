@@ -162,6 +162,49 @@ if(FIPS_DELOCATE)
   )
 endif()
 
+if(${ARCH} STREQUAL "arm")
+  set(
+    CRYPTO_ARCH_SOURCES
+
+    chacha/chacha-armv4.${ASM_EXT}
+    curve25519/asm/x25519-asm-arm.S
+    poly1305/poly1305_arm_asm.S
+  )
+endif()
+
+if(${ARCH} STREQUAL "aarch64")
+  set(
+    CRYPTO_ARCH_SOURCES
+
+    chacha/chacha-armv8.${ASM_EXT}
+  )
+endif()
+
+if(${ARCH} STREQUAL "x86")
+  set(
+    CRYPTO_ARCH_SOURCES
+
+    chacha/chacha-x86.${ASM_EXT}
+  )
+endif()
+
+if(${ARCH} STREQUAL "x86_64")
+  set(
+    CRYPTO_ARCH_SOURCES
+
+    chacha/chacha-x86_64.${ASM_EXT}
+    cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT}
+    cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT}
+  )
+endif()
+
+perlasm(chacha/chacha-armv4.${ASM_EXT} chacha/asm/chacha-armv4.pl)
+perlasm(chacha/chacha-armv8.${ASM_EXT} chacha/asm/chacha-armv8.pl)
+perlasm(chacha/chacha-x86.${ASM_EXT} chacha/asm/chacha-x86.pl)
+perlasm(chacha/chacha-x86_64.${ASM_EXT} chacha/asm/chacha-x86_64.pl)
+perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsiv-x86_64.pl)
+perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
+
 add_library(
   crypto
 
@@ -203,6 +246,7 @@ add_library(
   $<TARGET_OBJECTS:pkcs7>
   $<TARGET_OBJECTS:pkcs8_lib>
 
+  ${CRYPTO_ARCH_SOURCES}
   ${CRYPTO_FIPS_OBJECTS}
 )
 
