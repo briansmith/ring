@@ -22,7 +22,7 @@
 #if !defined(BORINGSSL_SHARED_LIBRARY)
 
 TEST(ARMLinuxTest, CPUInfo) {
-  struct Test {
+  struct CPUInfoTest {
     const char *cpuinfo;
     unsigned long hwcap;
     unsigned long hwcap2;
