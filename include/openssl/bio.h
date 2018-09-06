@@ -729,6 +729,8 @@ OPENSSL_EXPORT int BIO_get_init(BIO *bio);
 // |BIO_flush| when done writing, to signal that no more data are to be
 // encoded. The flag |BIO_FLAGS_BASE64_NO_NL| may be set to encode all the data
 // on one line.
+//
+// Use |EVP_EncodeBlock| and |EVP_DecodeBase64| instead.
 OPENSSL_EXPORT const BIO_METHOD *BIO_f_base64(void);
 
 OPENSSL_EXPORT void BIO_set_retry_special(BIO *bio);
