@@ -12,7 +12,11 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <string.h>
+
 #include <gtest/gtest.h>
+
+#include <openssl/rand.h>
 
 #include "gtest_main.h"
 
@@ -20,5 +24,14 @@
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   bssl::SetupGoogleTest();
+
+#if !defined(OPENSSL_WINDOWS)
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--fork_unsafe_buffering") == 0) {
+      RAND_enable_fork_unsafe_buffering(-1);
+    }
+  }
+#endif
+
   return RUN_ALL_TESTS();
 }
