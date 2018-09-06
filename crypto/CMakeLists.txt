@@ -62,8 +62,14 @@ if(NOT OPENSSL_NO_ASM)
 endif()
 
 function(perlasm dest src)
+  get_filename_component(dir ${dest} DIRECTORY)
+  if ("${dir}" STREQUAL "")
+    set(dir ".")
+  endif()
+
   add_custom_command(
     OUTPUT ${dest}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${dir}
     COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/${src} ${PERLASM_STYLE} ${PERLASM_FLAGS} ${ARGN} ${dest}
     DEPENDS
     ${src}
