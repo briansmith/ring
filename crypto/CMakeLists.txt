@@ -387,7 +387,7 @@ add_library(
   x509v3/v3_skey.c
   x509v3/v3_sxnet.c
   x509v3/v3_utl.c
-  ../../third_party/fiat/curve25519.c
+  ../third_party/fiat/curve25519.c
 
   $<TARGET_OBJECTS:fipsmodule>
 
