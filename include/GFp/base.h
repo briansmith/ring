@@ -122,6 +122,26 @@ extern "C" {
 #define OPENSSL_UNUSED
 #endif
 
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define OPENSSL_ASAN
+#endif
+#if __has_feature(thread_sanitizer)
+#define OPENSSL_TSAN
+#endif
+#if __has_feature(memory_sanitizer)
+#define OPENSSL_MSAN
+#define OPENSSL_ASM_INCOMPATIBLE
+#endif
+#endif
+
+#if defined(OPENSSL_ASM_INCOMPATIBLE)
+#undef OPENSSL_ASM_INCOMPATIBLE
+#if !defined(OPENSSL_NO_ASM)
+#define OPENSSL_NO_ASM
+#endif
+#endif  // OPENSSL_ASM_INCOMPATIBLE
+
 
 typedef struct bignum_st BIGNUM;
 
