@@ -231,8 +231,16 @@ extern "C" {
 #endif
 #if __has_feature(memory_sanitizer)
 #define OPENSSL_MSAN
+#define OPENSSL_ASM_INCOMPATIBLE
 #endif
 #endif
+
+#if defined(OPENSSL_ASM_INCOMPATIBLE)
+#undef OPENSSL_ASM_INCOMPATIBLE
+#if !defined(OPENSSL_NO_ASM)
+#define OPENSSL_NO_ASM
+#endif
+#endif  // OPENSSL_ASM_INCOMPATIBLE
 
 // CRYPTO_THREADID is a dummy value.
 typedef int CRYPTO_THREADID;

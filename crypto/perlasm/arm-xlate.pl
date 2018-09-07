@@ -130,6 +130,16 @@ sub expand_line {
     return $line;
 }
 
+print <<___;
+#if defined(__has_feature)
+#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
+#define OPENSSL_NO_ASM
+#endif
+#endif
+
+#if !defined(OPENSSL_NO_ASM)
+___
+
 print "#if defined(__arm__)\n" if ($flavour eq "linux32");
 print "#if defined(__aarch64__)\n" if ($flavour eq "linux64");
 
@@ -184,5 +194,6 @@ while(my $line=<>) {
 }
 
 print "#endif\n" if ($flavour eq "linux32" || $flavour eq "linux64");
+print "#endif  // !OPENSSL_NO_ASM";
 
 close STDOUT;
