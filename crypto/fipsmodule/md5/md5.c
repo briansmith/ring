@@ -151,7 +151,7 @@ void md5_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
     (a) += (b);                            \
   } while (0)
 
-#ifndef md5_block_data_order
+#ifndef MD5_ASM
 #ifdef X
 #undef X
 #endif
