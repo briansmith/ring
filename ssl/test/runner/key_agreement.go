@@ -15,8 +15,8 @@ import (
 	"io"
 	"math/big"
 
-	"./curve25519"
-	"./ed25519"
+	"boringssl.googlesource.com/boringssl/ssl/test/runner/curve25519"
+	"boringssl.googlesource.com/boringssl/ssl/test/runner/ed25519"
 )
 
 type keyType int

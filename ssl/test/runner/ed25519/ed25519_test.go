@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"./internal/edwards25519"
+	"boringssl.googlesource.com/boringssl/ssl/test/runner/ed25519/internal/edwards25519"
 )
 
 type zeroReader struct{}

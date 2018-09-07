@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"./ed25519"
+	"boringssl.googlesource.com/boringssl/ssl/test/runner/ed25519"
 )
 
 // Server returns a new TLS server side connection

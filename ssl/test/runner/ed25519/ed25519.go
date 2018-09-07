@@ -21,7 +21,7 @@ import (
 	"io"
 	"strconv"
 
-	"./internal/edwards25519"
+	"boringssl.googlesource.com/boringssl/ssl/test/runner/ed25519/internal/edwards25519"
 )
 
 const (
