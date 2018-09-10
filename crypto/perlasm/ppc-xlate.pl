@@ -306,6 +306,6 @@ while($line=<>) {
     print "\n";
 }
 
-print "#endif  // !OPENSSL_NO_ASM && __powerpc64__";
+print "#endif  // !OPENSSL_NO_ASM && __powerpc64__\n";
 
 close STDOUT;
