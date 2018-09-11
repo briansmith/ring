@@ -370,15 +370,6 @@ typedef void *OPENSSL_BLOCK;
 #define BORINGSSL_NO_CXX
 #endif
 
-// MSVC doesn't set __cplusplus to 201103 to indicate C++11 support (see
-// https://connect.microsoft.com/VisualStudio/feedback/details/763051/a-value-of-predefined-macro-cplusplus-is-still-199711l)
-// so MSVC is just assumed to support C++11.
-#if !defined(BORINGSSL_NO_CXX) && __cplusplus < 201103L && !defined(_MSC_VER)
-#define BORINGSSL_NO_CXX
-#endif
-
-#if !defined(BORINGSSL_NO_CXX)
-
 #if defined(BORINGSSL_PREFIX)
 #define BSSL_NAMESPACE_BEGIN \
   namespace bssl {           \
@@ -390,6 +381,15 @@ typedef void *OPENSSL_BLOCK;
 #define BSSL_NAMESPACE_BEGIN namespace bssl {
 #define BSSL_NAMESPACE_END }
 #endif
+
+// MSVC doesn't set __cplusplus to 201103 to indicate C++11 support (see
+// https://connect.microsoft.com/VisualStudio/feedback/details/763051/a-value-of-predefined-macro-cplusplus-is-still-199711l)
+// so MSVC is just assumed to support C++11.
+#if !defined(BORINGSSL_NO_CXX) && __cplusplus < 201103L && !defined(_MSC_VER)
+#define BORINGSSL_NO_CXX
+#endif
+
+#if !defined(BORINGSSL_NO_CXX)
 
 extern "C++" {
 
