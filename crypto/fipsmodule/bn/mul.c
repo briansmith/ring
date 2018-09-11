@@ -559,7 +559,7 @@ static int bn_mul_impl(BIGNUM *r, const BIGNUM *a, const BIGNUM *b,
   BN_CTX_start(ctx);
   if (r == a || r == b) {
     rr = BN_CTX_get(ctx);
-    if (r == NULL) {
+    if (rr == NULL) {
       goto err;
     }
   } else {
