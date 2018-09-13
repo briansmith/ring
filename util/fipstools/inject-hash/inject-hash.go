@@ -28,6 +28,8 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+
+	"boringssl.googlesource.com/boringssl/util/fipstools/fipscommon"
 )
 
 func do(outPath, oInput string, arInput string) error {
@@ -43,7 +45,7 @@ func do(outPath, oInput string, arInput string) error {
 		}
 		defer arFile.Close()
 
-		ar, err := ParseAR(arFile)
+		ar, err := fipscommon.ParseAR(arFile)
 		if err != nil {
 			return err
 		}
@@ -145,12 +147,12 @@ func do(outPath, oInput string, arInput string) error {
 	// Replace the default hash value in the object with the calculated
 	// value and write it out.
 
-	offset := bytes.Index(objectBytes, uninitHashValue[:])
+	offset := bytes.Index(objectBytes, fipscommon.UninitHashValue[:])
 	if offset < 0 {
 		return errors.New("did not find uninitialised hash value in object file")
 	}
 
-	if bytes.Index(objectBytes[offset+1:], uninitHashValue[:]) >= 0 {
+	if bytes.Index(objectBytes[offset+1:], fipscommon.UninitHashValue[:]) >= 0 {
 		return errors.New("found two occurrences of uninitialised hash value in object file")
 	}
 

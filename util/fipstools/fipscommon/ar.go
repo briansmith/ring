@@ -14,7 +14,7 @@
 
 // ar.go contains functions for parsing .a archive files.
 
-package main
+package fipscommon
 
 import (
 	"bytes"

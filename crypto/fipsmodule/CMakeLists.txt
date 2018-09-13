@@ -141,21 +141,12 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_c_generated_asm PROPERTIES COMPILE_OPTIONS "-S")
   set_target_properties(bcm_c_generated_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-  function(prepend_path values prefix output)
-    set(result)
-    foreach(value ${values})
-      list(APPEND result "${prefix}/${value}")
-    endforeach(value)
-    set(${output} ${result} PARENT_SCOPE)
-  endfunction()
-
-  prepend_path("${BCM_ASM_SOURCES}" "${CMAKE_CURRENT_BINARY_DIR}" DELOCATE_ASM_ARGS)
-
+  go_executable(delocate boringssl.googlesource.com/boringssl/util/fipstools/delocate)
   add_custom_command(
     OUTPUT bcm-delocated.S
-    COMMAND ${GO_EXECUTABLE} run util/fipstools/delocate.go util/fipstools/delocate.peg.go util/fipstools/ar.go util/fipstools/const.go -a $<TARGET_FILE:bcm_c_generated_asm> -o ${CMAKE_CURRENT_BINARY_DIR}/bcm-delocated.S ${DELOCATE_ASM_ARGS}
-    DEPENDS bcm_c_generated_asm ${BCM_ASM_SOURCES} ${CMAKE_SOURCE_DIR}/util/fipstools/delocate.go ${CMAKE_SOURCE_DIR}/util/fipstools/delocate.peg.go ${CMAKE_SOURCE_DIR}/util/fipstools/ar.go ${CMAKE_SOURCE_DIR}/util/fipstools/const.go
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ./delocate -a $<TARGET_FILE:bcm_c_generated_asm> -o bcm-delocated.S ${BCM_ASM_SOURCES}
+    DEPENDS bcm_c_generated_asm delocate ${BCM_ASM_SOURCES}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 
   add_library(
@@ -171,11 +162,13 @@ if(FIPS_DELOCATE)
   set_target_properties(bcm_hashunset PROPERTIES POSITION_INDEPENDENT_CODE ON)
   set_target_properties(bcm_hashunset PROPERTIES LINKER_LANGUAGE C)
 
+  go_executable(inject-hash
+	        boringssl.googlesource.com/boringssl/util/fipstools/inject-hash)
   add_custom_command(
     OUTPUT bcm.o
-    COMMAND ${GO_EXECUTABLE} run util/fipstools/inject-hash.go util/fipstools/ar.go util/fipstools/const.go -o ${CMAKE_CURRENT_BINARY_DIR}/bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
-    DEPENDS bcm_hashunset ${CMAKE_SOURCE_DIR}/util/fipstools/inject-hash.go ${CMAKE_SOURCE_DIR}/util/fipstools/ar.go ${CMAKE_SOURCE_DIR}/util/fipstools/const.go
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ./inject-hash -o bcm.o -in-archive $<TARGET_FILE:bcm_hashunset>
+    DEPENDS bcm_hashunset inject-hash
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
   )
 
   # The outputs of add_custom_command cannot be referenced outside of the

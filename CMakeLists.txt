@@ -334,6 +334,43 @@ if(OPENSSL_SMALL)
   add_definitions(-DOPENSSL_SMALL)
 endif()
 
+function(go_executable dest package)
+  set(godeps "${CMAKE_SOURCE_DIR}/util/godeps.go")
+  if(${CMAKE_VERSION} VERSION_LESS "3.7" OR
+     NOT ${CMAKE_GENERATOR} STREQUAL "Ninja")
+    # The DEPFILE parameter to add_custom_command is new as of CMake 3.7 and
+    # only works with Ninja. Query the sources at configure time. Additionally,
+    # everything depends on go.mod. That affects what external packages to use.
+    execute_process(COMMAND ${GO_EXECUTABLE} run ${godeps} -format cmake
+                            -pkg ${package}
+                    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                    OUTPUT_VARIABLE sources
+                    RESULT_VARIABLE godeps_result)
+    add_custom_command(OUTPUT ${dest}
+                       COMMAND ${GO_EXECUTABLE} build
+                               -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
+                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                       DEPENDS ${sources} ${CMAKE_SOURCE_DIR}/go.mod)
+  else()
+    # Ninja expects the target in the depfile to match the output. This is a
+    # relative path from the build directory.
+    string(LENGTH "${CMAKE_BINARY_DIR}" root_dir_length)
+    math(EXPR root_dir_length "${root_dir_length} + 1")
+    string(SUBSTRING "${CMAKE_CURRENT_BINARY_DIR}" ${root_dir_length} -1 target)
+    set(target "${target}/${dest}")
+
+    set(depfile "${CMAKE_CURRENT_BINARY_DIR}/${dest}.d")
+    add_custom_command(OUTPUT ${dest}
+                       COMMAND ${GO_EXECUTABLE} build
+                               -o ${CMAKE_CURRENT_BINARY_DIR}/${dest} ${package}
+                       COMMAND ${GO_EXECUTABLE} run ${godeps} -format depfile
+                               -target ${target} -pkg ${package} -out ${depfile}
+                       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+                       DEPENDS ${godeps} ${CMAKE_SOURCE_DIR}/go.mod
+                       DEPFILE ${depfile})
+  endif()
+endfunction()
+
 # CMake's iOS support uses Apple's multiple-architecture toolchain. It takes an
 # architecture list from CMAKE_OSX_ARCHITECTURES, leaves CMAKE_SYSTEM_PROCESSOR
 # alone, and expects all architecture-specific logic to be conditioned within

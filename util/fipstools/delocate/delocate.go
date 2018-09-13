@@ -25,6 +25,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"boringssl.googlesource.com/boringssl/util/fipstools/fipscommon"
 )
 
 // inputFile represents a textual assembly file.
@@ -1405,7 +1407,7 @@ func transform(w stringWriter, inputs []inputFile) error {
 	w.WriteString(".type BORINGSSL_bcm_text_hash, @object\n")
 	w.WriteString(".size BORINGSSL_bcm_text_hash, 64\n")
 	w.WriteString("BORINGSSL_bcm_text_hash:\n")
-	for _, b := range uninitHashValue {
+	for _, b := range fipscommon.UninitHashValue {
 		w.WriteString(".byte 0x" + strconv.FormatUint(uint64(b), 16) + "\n")
 	}
 
@@ -1423,7 +1425,7 @@ func parseInputs(inputs []inputFile) error {
 			}
 			defer arFile.Close()
 
-			ar, err := ParseAR(arFile)
+			ar, err := fipscommon.ParseAR(arFile)
 			if err != nil {
 				return err
 			}
