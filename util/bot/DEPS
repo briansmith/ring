@@ -16,7 +16,6 @@ vars = {
   'chromium_git': 'https://chromium.googlesource.com',
 
   'checkout_clang': False,
-  'checkout_fuzzer': False,
   'checkout_sde': False,
   'checkout_nasm': False,
   'checkout_libcxx': False,
@@ -24,7 +23,7 @@ vars = {
 
 deps = {
   'boringssl/util/bot/android_ndk': {
-    'url': Var('chromium_git') + '/android_ndk.git' + '@' + '5cd86312e794bdf542a3685c6f10cbb96072990b',
+    'url': Var('chromium_git') + '/android_ndk.git' + '@' + '4e2cea441bfd43f0863d14f57b1e1844260b9884',
     'condition': 'checkout_android',
   },
 
@@ -35,11 +34,6 @@ deps = {
 
   'boringssl/util/bot/gyp':
     Var('chromium_git') + '/external/gyp.git' + '@' + 'd61a9397e668fa9843c4aa7da9e79460fe590bfb',
-
-  'boringssl/util/bot/libFuzzer': {
-    'url': Var('chromium_git') + '/chromium/llvm-project/compiler-rt/lib/fuzzer.git' + '@' + '658ff786a213703ff0df6ba4a288e9a1e218c074',
-    'condition': 'checkout_fuzzer',
-  },
 
   # Update the following revisions from
   # https://chromium.googlesource.com/chromium/buildtools/+/master/DEPS

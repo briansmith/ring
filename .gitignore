@@ -17,7 +17,6 @@ util/bot/golang
 util/bot/gyp
 util/bot/libcxx
 util/bot/libcxxabi
-util/bot/libFuzzer
 util/bot/llvm-build
 util/bot/nasm-win32.exe
 util/bot/perl-win32
