@@ -257,8 +257,8 @@ my $darn = sub {
 
 print <<___;
 #if defined(__has_feature)
-#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)"
-#define OPENSSL_NO_ASM"
+#if __has_feature(memory_sanitizer) && !defined(OPENSSL_NO_ASM)
+#define OPENSSL_NO_ASM
 #endif
 #endif
 
