@@ -453,7 +453,7 @@ func (config *Config) parseHeader(path string) (*HeaderFile, error) {
 						ok = strings.HasPrefix(name, subject[:l-1])
 					}
 					if !ok {
-						return nil, fmt.Errorf("Comment for %q doesn't seem to match line %s:%d\n", name, path, declLineNo)
+						return nil, fmt.Errorf("comment for %q doesn't seem to match line %s:%d\n", name, path, declLineNo)
 					}
 				}
 				anchor := sanitizeAnchor(name)
