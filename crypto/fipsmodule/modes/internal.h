@@ -104,11 +104,30 @@ typedef void (*gmult_func)(uint64_t Xi[2], const u128 Htable[16]);
 typedef void (*ghash_func)(uint64_t Xi[2], const u128 Htable[16],
                            const uint8_t *inp, size_t len);
 
+typedef struct {
+  // Note the MOVBE-based, x86-64, GHASH assembly requires |H| and |Htable| to
+  // be the first two elements of this struct.
+  u128 H;
+  u128 Htable[16];
+  gmult_func gmult;
+  ghash_func ghash;
+
+  block128_f block;
+
+  // use_aesni_gcm_crypt is true if this context should use the assembly
+  // functions |aesni_gcm_encrypt| and |aesni_gcm_decrypt| to process data.
+  unsigned use_aesni_gcm_crypt:1;
+} GCM128_KEY;
+
+// gcm128_context, or |GCM128_CONTEXT| contains state for a single GCM
+// operation. The structure should be zero-initialized before use.
+//
 // This differs from upstream's |gcm128_context| in that it does not have the
 // |key| pointer, in order to make it |memcpy|-friendly. Rather the key is
-// passed into each call that needs it.
+// passed into each call that needs it. Additionally, |gcm_key| is split into a
+// separate struct.
 struct gcm128_context {
-  // Following 6 names follow names in GCM specification
+  // The following 5 names follow names in GCM specification
   union {
     uint64_t u[2];
     uint32_t d[4];
@@ -116,19 +135,11 @@ struct gcm128_context {
     size_t t[16 / sizeof(size_t)];
   } Yi, EKi, EK0, len, Xi;
 
-  // Note that the order of |Xi|, |H| and |Htable| is fixed by the MOVBE-based,
+  // Note that the order of |Xi| and |gcm_key| is fixed by the MOVBE-based,
   // x86-64, GHASH assembly.
-  u128 H;
-  u128 Htable[16];
-  gmult_func gmult;
-  ghash_func ghash;
+  GCM128_KEY gcm_key;
 
-  unsigned int mres, ares;
-  block128_f block;
-
-  // use_aesni_gcm_crypt is true if this context should use the assembly
-  // functions |aesni_gcm_encrypt| and |aesni_gcm_decrypt| to process data.
-  unsigned use_aesni_gcm_crypt:1;
+  unsigned mres, ares;
 };
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
@@ -188,10 +199,11 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
                        u128 *out_key, u128 out_table[16], int *out_is_avx,
                        const uint8_t *gcm_key);
 
-// CRYPTO_gcm128_init initialises |ctx| to use |block| (typically AES) with
-// the given key. |block_is_hwaes| is one if |block| is |aes_hw_encrypt|.
-OPENSSL_EXPORT void CRYPTO_gcm128_init(GCM128_CONTEXT *ctx, const void *key,
-                                       block128_f block, int block_is_hwaes);
+// CRYPTO_gcm128_init_key initialises |gcm_key| to use |block| (typically AES)
+// with the given key. |block_is_hwaes| is one if |block| is |aes_hw_encrypt|.
+OPENSSL_EXPORT void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const void *key,
+                                           block128_f block,
+                                           int block_is_hwaes);
 
 // CRYPTO_gcm128_setiv sets the IV (nonce) for |ctx|. The |key| must be the
 // same key that was passed to |CRYPTO_gcm128_init|.

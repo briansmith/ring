@@ -305,13 +305,13 @@ static int aes_ofb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
   return 1;
 }
 
-ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
+ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
                          block128_f *out_block, const uint8_t *key,
                          size_t key_bytes) {
   if (hwaes_capable()) {
     aes_hw_set_encrypt_key(key, key_bytes * 8, aes_key);
-    if (gcm_ctx != NULL) {
-      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)aes_hw_encrypt, 1);
+    if (gcm_key != NULL) {
+      CRYPTO_gcm128_init_key(gcm_key, aes_key, (block128_f)aes_hw_encrypt, 1);
     }
     if (out_block) {
       *out_block = (block128_f) aes_hw_encrypt;
@@ -321,8 +321,8 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
 
   if (bsaes_capable()) {
     AES_set_encrypt_key(key, key_bytes * 8, aes_key);
-    if (gcm_ctx != NULL) {
-      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)AES_encrypt, 0);
+    if (gcm_key != NULL) {
+      CRYPTO_gcm128_init_key(gcm_key, aes_key, (block128_f)AES_encrypt, 0);
     }
     if (out_block) {
       *out_block = (block128_f) AES_encrypt;
@@ -335,15 +335,15 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_CONTEXT *gcm_ctx,
     if (out_block) {
       *out_block = (block128_f) vpaes_encrypt;
     }
-    if (gcm_ctx != NULL) {
-      CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)vpaes_encrypt, 0);
+    if (gcm_key != NULL) {
+      CRYPTO_gcm128_init_key(gcm_key, aes_key, (block128_f)vpaes_encrypt, 0);
     }
     return NULL;
   }
 
   AES_set_encrypt_key(key, key_bytes * 8, aes_key);
-  if (gcm_ctx != NULL) {
-    CRYPTO_gcm128_init(gcm_ctx, aes_key, (block128_f)AES_encrypt, 0);
+  if (gcm_key != NULL) {
+    CRYPTO_gcm128_init_key(gcm_key, aes_key, (block128_f)AES_encrypt, 0);
   }
   if (out_block) {
     *out_block = (block128_f) AES_encrypt;
@@ -358,8 +358,9 @@ static int aes_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
     return 1;
   }
   if (key) {
-    gctx->ctr =
-        aes_ctr_set_key(&gctx->ks.ks, &gctx->gcm, NULL, key, ctx->key_len);
+    OPENSSL_memset(&gctx->gcm, 0, sizeof(gctx->gcm));
+    gctx->ctr = aes_ctr_set_key(&gctx->ks.ks, &gctx->gcm.gcm_key, NULL, key,
+                                ctx->key_len);
     // If we have an iv can set it directly, otherwise use saved IV.
     if (iv == NULL && gctx->iv_set) {
       iv = gctx->iv;
@@ -879,7 +880,7 @@ struct aead_aes_gcm_ctx {
     double align;
     AES_KEY ks;
   } ks;
-  GCM128_CONTEXT gcm;
+  GCM128_KEY gcm_key;
   ctr128_f ctr;
 };
 
@@ -903,7 +904,7 @@ static int aead_aes_gcm_init_impl(struct aead_aes_gcm_ctx *gcm_ctx,
   }
 
   gcm_ctx->ctr =
-      aes_ctr_set_key(&gcm_ctx->ks.ks, &gcm_ctx->gcm, NULL, key, key_len);
+      aes_ctr_set_key(&gcm_ctx->ks.ks, &gcm_ctx->gcm_key, NULL, key, key_len);
   *out_tag_len = tag_len;
   return 1;
 }
@@ -941,7 +942,6 @@ static int aead_aes_gcm_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                      size_t extra_in_len,
                                      const uint8_t *ad, size_t ad_len) {
   const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
-  GCM128_CONTEXT gcm;
 
   if (extra_in_len + ctx->tag_len < ctx->tag_len) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
@@ -958,7 +958,9 @@ static int aead_aes_gcm_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   const AES_KEY *key = &gcm_ctx->ks.ks;
 
-  OPENSSL_memcpy(&gcm, &gcm_ctx->gcm, sizeof(gcm));
+  GCM128_CONTEXT gcm;
+  OPENSSL_memset(&gcm, 0, sizeof(gcm));
+  OPENSSL_memcpy(&gcm.gcm_key, &gcm_ctx->gcm_key, sizeof(gcm.gcm_key));
   CRYPTO_gcm128_setiv(&gcm, key, nonce, nonce_len);
 
   if (ad_len > 0 && !CRYPTO_gcm128_aad(&gcm, ad, ad_len)) {
@@ -1002,7 +1004,6 @@ static int aead_aes_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                     const uint8_t *ad, size_t ad_len) {
   const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
   uint8_t tag[EVP_AEAD_AES_GCM_TAG_LEN];
-  GCM128_CONTEXT gcm;
 
   if (nonce_len == 0) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_INVALID_NONCE_SIZE);
@@ -1016,7 +1017,9 @@ static int aead_aes_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
 
   const AES_KEY *key = &gcm_ctx->ks.ks;
 
-  OPENSSL_memcpy(&gcm, &gcm_ctx->gcm, sizeof(gcm));
+  GCM128_CONTEXT gcm;
+  OPENSSL_memset(&gcm, 0, sizeof(gcm));
+  OPENSSL_memcpy(&gcm.gcm_key, &gcm_ctx->gcm_key, sizeof(gcm.gcm_key));
   CRYPTO_gcm128_setiv(&gcm, key, nonce, nonce_len);
 
   if (!CRYPTO_gcm128_aad(&gcm, ad, ad_len)) {
