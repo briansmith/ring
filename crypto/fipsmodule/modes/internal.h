@@ -91,63 +91,6 @@ static inline void store_word_le(void *out, size_t v) {
 typedef void (*block128_f)(const uint8_t in[16], uint8_t out[16],
                            const void *key);
 
-// GCM definitions
-typedef struct { uint64_t hi,lo; } u128;
-
-// gmult_func multiplies |Xi| by the GCM key and writes the result back to
-// |Xi|.
-typedef void (*gmult_func)(uint64_t Xi[2], const u128 Htable[16]);
-
-// ghash_func repeatedly multiplies |Xi| by the GCM key and adds in blocks from
-// |inp|. The result is written back to |Xi| and the |len| argument must be a
-// multiple of 16.
-typedef void (*ghash_func)(uint64_t Xi[2], const u128 Htable[16],
-                           const uint8_t *inp, size_t len);
-
-typedef struct {
-  // Note the MOVBE-based, x86-64, GHASH assembly requires |H| and |Htable| to
-  // be the first two elements of this struct.
-  u128 H;
-  u128 Htable[16];
-  gmult_func gmult;
-  ghash_func ghash;
-
-  block128_f block;
-
-  // use_aesni_gcm_crypt is true if this context should use the assembly
-  // functions |aesni_gcm_encrypt| and |aesni_gcm_decrypt| to process data.
-  unsigned use_aesni_gcm_crypt:1;
-} GCM128_KEY;
-
-// gcm128_context, or |GCM128_CONTEXT| contains state for a single GCM
-// operation. The structure should be zero-initialized before use.
-//
-// This differs from upstream's |gcm128_context| in that it does not have the
-// |key| pointer, in order to make it |memcpy|-friendly. Rather the key is
-// passed into each call that needs it. Additionally, |gcm_key| is split into a
-// separate struct.
-struct gcm128_context {
-  // The following 5 names follow names in GCM specification
-  union {
-    uint64_t u[2];
-    uint32_t d[4];
-    uint8_t c[16];
-    size_t t[16 / sizeof(size_t)];
-  } Yi, EKi, EK0, len, Xi;
-
-  // Note that the order of |Xi| and |gcm_key| is fixed by the MOVBE-based,
-  // x86-64, GHASH assembly.
-  GCM128_KEY gcm_key;
-
-  unsigned mres, ares;
-};
-
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-// crypto_gcm_clmul_enabled returns one if the CLMUL implementation of GCM is
-// used.
-int crypto_gcm_clmul_enabled(void);
-#endif
-
 
 // CTR.
 
@@ -187,9 +130,59 @@ void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t blocks,
 // This API differs from the upstream API slightly. The |GCM128_CONTEXT| does
 // not have a |key| pointer that points to the key as upstream's version does.
 // Instead, every function takes a |key| parameter. This way |GCM128_CONTEXT|
-// can be safely copied.
+// can be safely copied. Additionally, |gcm_key| is split into a separate
+// struct.
 
-typedef struct gcm128_context GCM128_CONTEXT;
+typedef struct { uint64_t hi,lo; } u128;
+
+// gmult_func multiplies |Xi| by the GCM key and writes the result back to
+// |Xi|.
+typedef void (*gmult_func)(uint64_t Xi[2], const u128 Htable[16]);
+
+// ghash_func repeatedly multiplies |Xi| by the GCM key and adds in blocks from
+// |inp|. The result is written back to |Xi| and the |len| argument must be a
+// multiple of 16.
+typedef void (*ghash_func)(uint64_t Xi[2], const u128 Htable[16],
+                           const uint8_t *inp, size_t len);
+
+typedef struct gcm128_key_st {
+  // Note the MOVBE-based, x86-64, GHASH assembly requires |H| and |Htable| to
+  // be the first two elements of this struct.
+  u128 H;
+  u128 Htable[16];
+  gmult_func gmult;
+  ghash_func ghash;
+
+  block128_f block;
+
+  // use_aesni_gcm_crypt is true if this context should use the assembly
+  // functions |aesni_gcm_encrypt| and |aesni_gcm_decrypt| to process data.
+  unsigned use_aesni_gcm_crypt:1;
+} GCM128_KEY;
+
+// GCM128_CONTEXT contains state for a single GCM operation. The structure
+// should be zero-initialized before use.
+typedef struct {
+  // The following 5 names follow names in GCM specification
+  union {
+    uint64_t u[2];
+    uint32_t d[4];
+    uint8_t c[16];
+    size_t t[16 / sizeof(size_t)];
+  } Yi, EKi, EK0, len, Xi;
+
+  // Note that the order of |Xi| and |gcm_key| is fixed by the MOVBE-based,
+  // x86-64, GHASH assembly.
+  GCM128_KEY gcm_key;
+
+  unsigned mres, ares;
+} GCM128_CONTEXT;
+
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+// crypto_gcm_clmul_enabled returns one if the CLMUL implementation of GCM is
+// used.
+int crypto_gcm_clmul_enabled(void);
+#endif
 
 // CRYPTO_ghash_init writes a precomputed table of powers of |gcm_key| to
 // |out_table| and sets |*out_mult| and |*out_hash| to (potentially hardware
