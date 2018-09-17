@@ -128,7 +128,11 @@ the prefix `MY_CUSTOM_PREFIX` to all of the symbols listed in
 `/path/to/symbols.txt`.
 
 It is currently the caller's responsibility to create and maintain the list of
-symbols to be prefixed.
+symbols to be prefixed. Alternatively, `util/read_symbols.go` reads the list of
+exported symbols from a `.a` file, and can be used in a build script to generate
+the symbol list on the fly (by building without prefixing, using
+`read_symbols.go` to construct a symbol list, and then building again with
+prefixing).
 
 This mechanism is under development and may change over time. Please contact the
 BoringSSL maintainers if making use of it.

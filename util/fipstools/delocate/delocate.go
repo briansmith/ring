@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 
+	"boringssl.googlesource.com/boringssl/util/ar"
 	"boringssl.googlesource.com/boringssl/util/fipstools/fipscommon"
 )
 
@@ -1425,7 +1426,7 @@ func parseInputs(inputs []inputFile) error {
 			}
 			defer arFile.Close()
 
-			ar, err := fipscommon.ParseAR(arFile)
+			ar, err := ar.ParseAR(arFile)
 			if err != nil {
 				return err
 			}

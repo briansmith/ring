@@ -29,6 +29,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"boringssl.googlesource.com/boringssl/util/ar"
 	"boringssl.googlesource.com/boringssl/util/fipstools/fipscommon"
 )
 
@@ -45,7 +46,7 @@ func do(outPath, oInput string, arInput string) error {
 		}
 		defer arFile.Close()
 
-		ar, err := fipscommon.ParseAR(arFile)
+		ar, err := ar.ParseAR(arFile)
 		if err != nil {
 			return err
 		}

@@ -14,11 +14,12 @@
 
 // ar.go contains functions for parsing .a archive files.
 
-package fipscommon
+package ar
 
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"strconv"
 	"strings"
@@ -111,6 +112,33 @@ func ParseAR(r io.Reader) (map[string][]byte, error) {
 
 		default:
 			name = strings.TrimRight(name, "/")
+		}
+
+		// Post-processing for BSD:
+		// https://en.wikipedia.org/wiki/Ar_(Unix)#BSD_variant
+		//
+		// If the name is of the form #1/XXX, XXX identifies the length of the
+		// name, and the name itself is stored as a prefix of the data, possibly
+		// null-padded.
+
+		var namelen uint
+		n, err := fmt.Sscanf(name, "#1/%d", &namelen)
+		if err == nil && n == 1 && len(contents) >= int(namelen) {
+			name = string(contents[:namelen])
+			contents = contents[namelen:]
+
+			// Names can be null padded; find the first null (if any). Note that
+			// this also handles the case of a null followed by non-null
+			// characters. It's not clear whether those can ever show up in
+			// practice, but we might as well handle them in case they can show
+			// up.
+			var null int
+			for ; null < len(name); null++ {
+				if name[null] == 0 {
+					break
+				}
+			}
+			name = name[:null]
 		}
 
 		ret[name] = contents
