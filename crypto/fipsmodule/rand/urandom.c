@@ -73,6 +73,27 @@
 
 #endif  // __NR_getrandom
 
+#if defined(OPENSSL_MSAN)
+void __msan_unpoison(void *, size_t);
+#endif
+
+static ssize_t boringssl_getrandom(void *buf, size_t buf_len, unsigned flags) {
+  ssize_t ret;
+  do {
+    ret = syscall(__NR_getrandom, buf, buf_len, flags);
+  } while (ret == -1 && errno == EINTR);
+
+#if defined(OPENSSL_MSAN)
+  if (ret > 0) {
+    // MSAN doesn't recognise |syscall| and thus doesn't notice that we have
+    // initialised the output buffer.
+    __msan_unpoison(buf, ret);
+  }
+#endif  // OPENSSL_MSAN
+
+  return ret;
+}
+
 #endif  // EXPECTED_NR_getrandom
 
 #if !defined(GRND_NONBLOCK)
@@ -108,28 +129,30 @@ static void init_once(void) {
 
 #if defined(USE_NR_getrandom)
   uint8_t dummy;
-  long getrandom_ret =
-      syscall(__NR_getrandom, &dummy, sizeof(dummy), GRND_NONBLOCK);
+  ssize_t getrandom_ret =
+      boringssl_getrandom(&dummy, sizeof(dummy), GRND_NONBLOCK);
 
-  if (getrandom_ret == 1) {
-    *urandom_fd_bss_get() = kHaveGetrandom;
-    return;
-  } else if (getrandom_ret == -1 && errno == EAGAIN) {
+  if (getrandom_ret == -1 && errno == EAGAIN) {
     fprintf(
         stderr,
         "getrandom indicates that the entropy pool has not been initialized. "
         "Rather than continue with poor entropy, this process will block until "
         "entropy is available.\n");
 
-    do {
-      getrandom_ret =
-          syscall(__NR_getrandom, &dummy, sizeof(dummy), 0 /* no flags */);
-    } while (getrandom_ret == -1 && errno == EINTR);
+    getrandom_ret =
+        boringssl_getrandom(&dummy, sizeof(dummy), 0 /* no flags */);
+  }
 
-    if (getrandom_ret == 1) {
-      *urandom_fd_bss_get() = kHaveGetrandom;
-      return;
-    }
+  if (getrandom_ret == 1) {
+    *urandom_fd_bss_get() = kHaveGetrandom;
+    return;
+  }
+
+  // Ignore ENOSYS and fallthrough to using /dev/urandom, below. Otherwise it's
+  // a fatal error.
+  if (getrandom_ret != -1 || errno != ENOSYS) {
+    perror("getrandom");
+    abort();
   }
 #endif  // USE_NR_getrandom
 
@@ -232,10 +255,6 @@ void RAND_set_urandom_fd(int fd) {
   }
 }
 
-#if defined(USE_NR_getrandom) && defined(OPENSSL_MSAN)
-void __msan_unpoison(void *, size_t);
-#endif
-
 // fill_with_entropy writes |len| bytes of entropy into |out|. It returns one
 // on success and zero on error.
 static char fill_with_entropy(uint8_t *out, size_t len) {
@@ -244,18 +263,7 @@ static char fill_with_entropy(uint8_t *out, size_t len) {
 
     if (*urandom_fd_bss_get() == kHaveGetrandom) {
 #if defined(USE_NR_getrandom)
-      do {
-        r = syscall(__NR_getrandom, out, len, 0 /* no flags */);
-      } while (r == -1 && errno == EINTR);
-
-#if defined(OPENSSL_MSAN)
-      if (r > 0) {
-        // MSAN doesn't recognise |syscall| and thus doesn't notice that we
-        // have initialised the output buffer.
-        __msan_unpoison(out, r);
-      }
-#endif  // OPENSSL_MSAN
-
+      r = boringssl_getrandom(out, len, 0 /* no flags */);
 #else  // USE_NR_getrandom
       fprintf(stderr, "urandom fd corrupt.\n");
       abort();
