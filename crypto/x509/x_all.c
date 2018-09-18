@@ -65,8 +65,10 @@
 
 int X509_verify(X509 *a, EVP_PKEY *r)
 {
-    if (X509_ALGOR_cmp(a->sig_alg, a->cert_info->signature))
+    if (X509_ALGOR_cmp(a->sig_alg, a->cert_info->signature)) {
+        OPENSSL_PUT_ERROR(X509, X509_R_SIGNATURE_ALGORITHM_MISMATCH);
         return 0;
+    }
     return (ASN1_item_verify(ASN1_ITEM_rptr(X509_CINF), a->sig_alg,
                              a->signature, a->cert_info, r));
 }
