@@ -211,11 +211,6 @@ OPENSSL_EXPORT int SHA384_Final(uint8_t *md, SHA512_CTX *sha);
 // |out|.
 OPENSSL_EXPORT uint8_t *SHA384(const uint8_t *data, size_t len, uint8_t *out);
 
-// SHA384_Transform is a low-level function that performs a single, SHA-384
-// block transformation using the state from |sha| and |SHA384_CBLOCK| bytes
-// from |block|.
-OPENSSL_EXPORT void SHA384_Transform(SHA512_CTX *sha, const uint8_t *block);
-
 
 // SHA-512.
 
