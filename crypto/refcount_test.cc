@@ -16,7 +16,7 @@
 
 #include <gtest/gtest.h>
 
-#if !defined(OPENSSL_NO_THREADS)
+#if defined(OPENSSL_THREADS)
 #include <thread>
 #endif
 
@@ -43,7 +43,7 @@ TEST(RefCountTest, Basic) {
   EXPECT_EQ(1u, count);
 }
 
-#if !defined(OPENSSL_NO_THREADS)
+#if defined(OPENSSL_THREADS)
 // This test is primarily intended to run under ThreadSanitizer.
 TEST(RefCountTest, Threads) {
   CRYPTO_refcount_t count = 0;

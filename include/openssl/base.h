@@ -136,14 +136,36 @@ extern "C" {
 
 #if defined(TRUSTY)
 #define OPENSSL_TRUSTY
-#define OPENSSL_NO_THREADS
+#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
 #endif
 
 #if defined(__ANDROID_API__)
 #define OPENSSL_ANDROID
 #endif
 
-#if !defined(OPENSSL_NO_THREADS)
+// OPENSSL_NO_THREADS has been deprecated in favor of this much longer and
+// louder name, to better reflect exactly what that option did.
+//
+// TODO(davidben): Remove this block when callers have migrated.
+#if defined(OPENSSL_NO_THREADS) && \
+    !defined(OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED)
+#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
+#endif
+
+// BoringSSL requires platform's locking APIs to make internal global state
+// thread-safe, including the PRNG. On some single-threaded embedded platforms,
+// locking APIs may not exist, so this dependency may be disabled with the
+// following build flag.
+//
+// IMPORTANT: Doing so means the consumer promises the library will never be
+// used in any multi-threaded context. It causes BoringSSL to be globally
+// thread-unsafe. Setting it inappropriately will subtly and unpredictably
+// corrupt memory and leak secret keys.
+//
+// Do not set this flag on any platform where threads are possible. BoringSSL
+// maintainers will not provide support for any consumers that do so. Changes
+// which break such unsupported configurations will not be reverted.
+#if !defined(OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED)
 #define OPENSSL_THREADS
 #endif
 

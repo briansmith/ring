@@ -25,7 +25,7 @@
 #include "test/test_util.h"
 
 
-#if !defined(OPENSSL_NO_THREADS)
+#if defined(OPENSSL_THREADS)
 
 static unsigned g_once_init_called = 0;
 
@@ -130,4 +130,4 @@ TEST(ThreadTest, RandState) {
   thread.join();
 }
 
-#endif  // !OPENSSL_NO_THREADS
+#endif  // OPENSSL_THREADS

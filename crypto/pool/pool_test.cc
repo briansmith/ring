@@ -18,7 +18,7 @@
 
 #include "../test/test_util.h"
 
-#if !defined(OPENSSL_NO_THREADS)
+#if defined(OPENSSL_THREADS)
 #include <chrono>
 #include <thread>
 #endif
@@ -61,7 +61,7 @@ TEST(PoolTest, Pooled) {
   EXPECT_EQ(buf.get(), buf2.get()) << "CRYPTO_BUFFER_POOL did not dedup data.";
 }
 
-#if !defined(OPENSSL_NO_THREADS)
+#if defined(OPENSSL_THREADS)
 TEST(PoolTest, Threads) {
   bssl::UniquePtr<CRYPTO_BUFFER_POOL> pool(CRYPTO_BUFFER_POOL_new());
   ASSERT_TRUE(pool);

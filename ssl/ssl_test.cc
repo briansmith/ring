@@ -48,7 +48,7 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <sys/time.h>
 #endif
 
-#if !defined(OPENSSL_NO_THREADS)
+#if defined(OPENSSL_THREADS)
 #include <thread>
 #endif
 
@@ -4298,7 +4298,7 @@ TEST_P(SSLVersionTest, FakeIDsForTickets) {
 
 // These tests test multi-threaded behavior. They are intended to run with
 // ThreadSanitizer.
-#if !defined(OPENSSL_NO_THREADS)
+#if defined(OPENSSL_THREADS)
 TEST_P(SSLVersionTest, SessionCacheThreads) {
   SSL_CTX_set_options(server_ctx_.get(), SSL_OP_NO_TICKET);
   SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);

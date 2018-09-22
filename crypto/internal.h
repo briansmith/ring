@@ -132,13 +132,13 @@
 #endif
 #endif
 
-#if !defined(OPENSSL_NO_THREADS) && \
+#if defined(OPENSSL_THREADS) && \
     (!defined(OPENSSL_WINDOWS) || defined(__MINGW32__))
 #include <pthread.h>
 #define OPENSSL_PTHREADS
 #endif
 
-#if !defined(OPENSSL_NO_THREADS) && !defined(OPENSSL_PTHREADS) && \
+#if defined(OPENSSL_THREADS) && !defined(OPENSSL_PTHREADS) && \
     defined(OPENSSL_WINDOWS)
 #define OPENSSL_WINDOWS_THREADS
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
@@ -367,7 +367,7 @@ static inline int constant_time_select_int(crypto_word_t mask, int a, int b) {
 
 // Thread-safe initialisation.
 
-#if defined(OPENSSL_NO_THREADS)
+#if !defined(OPENSSL_THREADS)
 typedef uint32_t CRYPTO_once_t;
 #define CRYPTO_ONCE_INIT 0
 #elif defined(OPENSSL_WINDOWS_THREADS)
@@ -423,7 +423,7 @@ OPENSSL_EXPORT int CRYPTO_refcount_dec_and_test_zero(CRYPTO_refcount_t *count);
 // thread.h as a structure large enough to fit the real type. The global lock is
 // a different type so it may be initialized with platform initializer macros.
 
-#if defined(OPENSSL_NO_THREADS)
+#if !defined(OPENSSL_THREADS)
 struct CRYPTO_STATIC_MUTEX {
   char padding;  // Empty structs have different sizes in C and C++.
 };

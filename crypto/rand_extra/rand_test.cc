@@ -20,7 +20,7 @@
 
 #include "../test/test_util.h"
 
-#if !defined(OPENSSL_NO_THREADS)
+#if defined(OPENSSL_THREADS)
 #include <array>
 #include <thread>
 #include <vector>
@@ -146,7 +146,7 @@ TEST(RandTest, Fork) {
 }
 #endif  // !OPENSSL_WINDOWS && !BORINGSSL_UNSAFE_DETERMINISTIC_MODE
 
-#if !defined(OPENSSL_NO_THREADS)
+#if defined(OPENSSL_THREADS)
 static void RunConcurrentRands(size_t num_threads) {
   static const uint8_t kZeros[256] = {0};
 
