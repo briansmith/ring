@@ -121,17 +121,14 @@ void PEM_dek_info(char *buf, const char *type, int len, char *str)
 void *PEM_ASN1_read(d2i_of_void *d2i, const char *name, FILE *fp, void **x,
                     pem_password_cb *cb, void *u)
 {
-    BIO *b;
-    void *ret;
-
-    if ((b = BIO_new(BIO_s_file())) == NULL) {
+    BIO *b = BIO_new_fp(fp, BIO_NOCLOSE);
+    if (b == NULL) {
         OPENSSL_PUT_ERROR(PEM, ERR_R_BUF_LIB);
-        return (0);
+        return NULL;
     }
-    BIO_set_fp(b, fp, BIO_NOCLOSE);
-    ret = PEM_ASN1_read_bio(d2i, name, b, x, cb, u);
+    void *ret = PEM_ASN1_read_bio(d2i, name, b, x, cb, u);
     BIO_free(b);
-    return (ret);
+    return ret;
 }
 #endif
 
@@ -257,17 +254,14 @@ int PEM_ASN1_write(i2d_of_void *i2d, const char *name, FILE *fp,
                    void *x, const EVP_CIPHER *enc, unsigned char *kstr,
                    int klen, pem_password_cb *callback, void *u)
 {
-    BIO *b;
-    int ret;
-
-    if ((b = BIO_new(BIO_s_file())) == NULL) {
+    BIO *b = BIO_new_fp(fp, BIO_NOCLOSE);
+    if (b == NULL) {
         OPENSSL_PUT_ERROR(PEM, ERR_R_BUF_LIB);
-        return (0);
+        return 0;
     }
-    BIO_set_fp(b, fp, BIO_NOCLOSE);
-    ret = PEM_ASN1_write_bio(i2d, name, b, x, enc, kstr, klen, callback, u);
+    int ret = PEM_ASN1_write_bio(i2d, name, b, x, enc, kstr, klen, callback, u);
     BIO_free(b);
-    return (ret);
+    return ret;
 }
 #endif
 
@@ -514,15 +508,12 @@ static int load_iv(char **fromp, unsigned char *to, int num)
 int PEM_write(FILE *fp, const char *name, const char *header,
               const unsigned char *data, long len)
 {
-    BIO *b;
-    int ret;
-
-    if ((b = BIO_new(BIO_s_file())) == NULL) {
+    BIO *b = BIO_new_fp(fp, BIO_NOCLOSE);
+    if (b == NULL) {
         OPENSSL_PUT_ERROR(PEM, ERR_R_BUF_LIB);
-        return (0);
+        return 0;
     }
-    BIO_set_fp(b, fp, BIO_NOCLOSE);
-    ret = PEM_write_bio(b, name, header, data, len);
+    int ret = PEM_write_bio(b, name, header, data, len);
     BIO_free(b);
     return (ret);
 }
@@ -588,15 +579,12 @@ int PEM_write_bio(BIO *bp, const char *name, const char *header,
 int PEM_read(FILE *fp, char **name, char **header, unsigned char **data,
              long *len)
 {
-    BIO *b;
-    int ret;
-
-    if ((b = BIO_new(BIO_s_file())) == NULL) {
+    BIO *b = BIO_new_fp(fp, BIO_NOCLOSE);
+    if (b == NULL) {
         OPENSSL_PUT_ERROR(PEM, ERR_R_BUF_LIB);
-        return (0);
+        return 0;
     }
-    BIO_set_fp(b, fp, BIO_NOCLOSE);
-    ret = PEM_read_bio(b, name, header, data, len);
+    int ret = PEM_read_bio(b, name, header, data, len);
     BIO_free(b);
     return (ret);
 }

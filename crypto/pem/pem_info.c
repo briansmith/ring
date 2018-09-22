@@ -75,17 +75,14 @@
 STACK_OF(X509_INFO) *PEM_X509_INFO_read(FILE *fp, STACK_OF(X509_INFO) *sk,
                                         pem_password_cb *cb, void *u)
 {
-    BIO *b;
-    STACK_OF(X509_INFO) *ret;
-
-    if ((b = BIO_new(BIO_s_file())) == NULL) {
+    BIO *b = BIO_new_fp(fp, BIO_NOCLOSE);
+    if (b == NULL) {
         OPENSSL_PUT_ERROR(PEM, ERR_R_BUF_LIB);
-        return (0);
+        return 0;
     }
-    BIO_set_fp(b, fp, BIO_NOCLOSE);
-    ret = PEM_X509_INFO_read_bio(b, sk, cb, u);
+    STACK_OF(X509_INFO) *ret = PEM_X509_INFO_read_bio(b, sk, cb, u);
     BIO_free(b);
-    return (ret);
+    return ret;
 }
 #endif
 

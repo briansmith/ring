@@ -69,15 +69,12 @@ static int asn1_d2i_read_bio(BIO *in, BUF_MEM **pb);
 
 void *ASN1_d2i_fp(void *(*xnew) (void), d2i_of_void *d2i, FILE *in, void **x)
 {
-    BIO *b;
-    void *ret;
-
-    if ((b = BIO_new(BIO_s_file())) == NULL) {
+    BIO *b = BIO_new_fp(in, BIO_NOCLOSE);
+    if (b == NULL) {
         OPENSSL_PUT_ERROR(ASN1, ERR_R_BUF_LIB);
-        return (NULL);
+        return NULL;
     }
-    BIO_set_fp(b, in, BIO_NOCLOSE);
-    ret = ASN1_d2i_bio(xnew, d2i, b, x);
+    void *ret = ASN1_d2i_bio(xnew, d2i, b, x);
     BIO_free(b);
     return (ret);
 }
@@ -126,17 +123,14 @@ void *ASN1_item_d2i_bio(const ASN1_ITEM *it, BIO *in, void *x)
 #ifndef OPENSSL_NO_FP_API
 void *ASN1_item_d2i_fp(const ASN1_ITEM *it, FILE *in, void *x)
 {
-    BIO *b;
-    char *ret;
-
-    if ((b = BIO_new(BIO_s_file())) == NULL) {
+    BIO *b = BIO_new_fp(in, BIO_NOCLOSE);
+    if (b == NULL) {
         OPENSSL_PUT_ERROR(ASN1, ERR_R_BUF_LIB);
-        return (NULL);
+        return NULL;
     }
-    BIO_set_fp(b, in, BIO_NOCLOSE);
-    ret = ASN1_item_d2i_bio(it, b, x);
+    void *ret = ASN1_item_d2i_bio(it, b, x);
     BIO_free(b);
-    return (ret);
+    return ret;
 }
 #endif
 
