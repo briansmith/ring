@@ -94,7 +94,7 @@ STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(BIO *bp, STACK_OF(X509_INFO) *sk,
     void *pp;
     unsigned char *data = NULL;
     const unsigned char *p;
-    long len, error = 0;
+    long len;
     int ok = 0;
     STACK_OF(X509_INFO) *ret = NULL;
     unsigned int i, raw, ptype;
@@ -115,8 +115,9 @@ STACK_OF(X509_INFO) *PEM_X509_INFO_read_bio(BIO *bp, STACK_OF(X509_INFO) *sk,
         ptype = 0;
         i = PEM_read_bio(bp, &name, &header, &data, &len);
         if (i == 0) {
-            error = ERR_GET_REASON(ERR_peek_last_error());
-            if (error == PEM_R_NO_START_LINE) {
+            uint32_t error = ERR_peek_last_error();
+            if (ERR_GET_LIB(error) == ERR_LIB_PEM &&
+                ERR_GET_REASON(error) == PEM_R_NO_START_LINE) {
                 ERR_clear_error();
                 break;
             }

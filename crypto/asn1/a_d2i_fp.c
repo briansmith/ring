@@ -197,13 +197,12 @@ static int asn1_d2i_read_bio(BIO *in, BUF_MEM **pb)
         c.inf = ASN1_get_object(&(c.p), &(c.slen), &(c.tag), &(c.xclass),
                                 len - off);
         if (c.inf & 0x80) {
-            uint32_t e;
-
-            e = ERR_GET_REASON(ERR_peek_error());
-            if (e != ASN1_R_TOO_LONG)
+            uint32_t error = ERR_peek_error();
+            if (ERR_GET_LIB(error) != ERR_LIB_ASN1 ||
+                ERR_GET_REASON(error) != ASN1_R_TOO_LONG) {
                 goto err;
-            else
-                ERR_clear_error(); /* clear error */
+            }
+            ERR_clear_error();
         }
         i = c.p - p;            /* header length */
         off += i;               /* end of data */
