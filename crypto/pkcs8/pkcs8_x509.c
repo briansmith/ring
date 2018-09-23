@@ -861,17 +861,7 @@ int i2d_PKCS12(const PKCS12 *p12, uint8_t **out) {
 }
 
 int i2d_PKCS12_bio(BIO *bio, const PKCS12 *p12) {
-  size_t written = 0;
-  while (written < p12->ber_len) {
-    size_t todo = p12->ber_len - written;
-    int len = todo > INT_MAX ? INT_MAX : (int)todo;
-    int ret = BIO_write(bio, p12->ber_bytes + written, len);
-    if (ret <= 0) {
-      return 0;
-    }
-    written += (size_t)ret;
-  }
-  return 1;
+  return BIO_write_all(bio, p12->ber_bytes, p12->ber_len);
 }
 
 int i2d_PKCS12_fp(FILE *fp, const PKCS12 *p12) {

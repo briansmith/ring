@@ -177,6 +177,19 @@ int BIO_write(BIO *bio, const void *in, int inl) {
   return ret;
 }
 
+int BIO_write_all(BIO *bio, const void *data, size_t len) {
+  const uint8_t *data_u8 = data;
+  while (len > 0) {
+    int ret = BIO_write(bio, data_u8, len > INT_MAX ? INT_MAX : (int)len);
+    if (ret <= 0) {
+      return 0;
+    }
+    data_u8 += ret;
+    len -= ret;
+  }
+  return 1;
+}
+
 int BIO_puts(BIO *bio, const char *in) {
   return BIO_write(bio, in, strlen(in));
 }

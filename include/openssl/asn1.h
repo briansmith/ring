@@ -302,15 +302,6 @@ typedef struct ASN1_VALUE_st ASN1_VALUE;
 #define I2D_OF(type) int (*)(type *,unsigned char **)
 #define I2D_OF_const(type) int (*)(const type *,unsigned char **)
 
-#define CHECKED_D2I_OF(type, d2i) \
-    ((d2i_of_void*) (1 ? d2i : ((D2I_OF(type))0)))
-#define CHECKED_I2D_OF(type, i2d) \
-    ((i2d_of_void*) (1 ? i2d : ((I2D_OF(type))0)))
-#define CHECKED_NEW_OF(type, xnew) \
-    ((void *(*)(void)) (1 ? xnew : ((type *(*)(void))0)))
-#define CHECKED_PPTR_OF(type, p) \
-    ((void**) (1 ? p : (type**)0))
-
 typedef void *d2i_of_void(void **, const unsigned char **, long);
 typedef int i2d_of_void(const void *, unsigned char **);
 
@@ -762,76 +753,17 @@ OPENSSL_EXPORT void ASN1_put_object(unsigned char **pp, int constructed, int len
 OPENSSL_EXPORT int ASN1_put_eoc(unsigned char **pp);
 OPENSSL_EXPORT int ASN1_object_size(int constructed, int length, int tag);
 
-/* Used to implement other functions */
-OPENSSL_EXPORT void *ASN1_dup(i2d_of_void *i2d, d2i_of_void *d2i, void *x);
-
-#define ASN1_dup_of(type,i2d,d2i,x) \
-    ((type*)ASN1_dup(CHECKED_I2D_OF(type, i2d), \
-		     CHECKED_D2I_OF(type, d2i), \
-		     CHECKED_PTR_OF(type, x)))
-
-#define ASN1_dup_of_const(type,i2d,d2i,x) \
-    ((type*)ASN1_dup(CHECKED_I2D_OF(const type, i2d), \
-		     CHECKED_D2I_OF(type, d2i), \
-		     CHECKED_PTR_OF(const type, x)))
-
 OPENSSL_EXPORT void *ASN1_item_dup(const ASN1_ITEM *it, void *x);
 
-/* ASN1 alloc/free macros for when a type is only used internally */
-
-#define M_ASN1_new_of(type) (type *)ASN1_item_new(ASN1_ITEM_rptr(type))
-#define M_ASN1_free_of(x, type) \
-		ASN1_item_free(CHECKED_PTR_OF(type, x), ASN1_ITEM_rptr(type))
-
 #ifndef OPENSSL_NO_FP_API
-OPENSSL_EXPORT void *ASN1_d2i_fp(void *(*xnew)(void), d2i_of_void *d2i, FILE *in, void **x);
-
-#define ASN1_d2i_fp_of(type,xnew,d2i,in,x) \
-    ((type*)ASN1_d2i_fp(CHECKED_NEW_OF(type, xnew), \
-			CHECKED_D2I_OF(type, d2i), \
-			in, \
-			CHECKED_PPTR_OF(type, x)))
-
 OPENSSL_EXPORT void *ASN1_item_d2i_fp(const ASN1_ITEM *it, FILE *in, void *x);
-OPENSSL_EXPORT int ASN1_i2d_fp(i2d_of_void *i2d,FILE *out,void *x);
-
-#define ASN1_i2d_fp_of(type,i2d,out,x) \
-    (ASN1_i2d_fp(CHECKED_I2D_OF(type, i2d), \
-		 out, \
-		 CHECKED_PTR_OF(type, x)))
-
-#define ASN1_i2d_fp_of_const(type,i2d,out,x) \
-    (ASN1_i2d_fp(CHECKED_I2D_OF(const type, i2d), \
-		 out, \
-		 CHECKED_PTR_OF(const type, x)))
-
 OPENSSL_EXPORT int ASN1_item_i2d_fp(const ASN1_ITEM *it, FILE *out, void *x);
 OPENSSL_EXPORT int ASN1_STRING_print_ex_fp(FILE *fp, ASN1_STRING *str, unsigned long flags);
 #endif
 
 OPENSSL_EXPORT int ASN1_STRING_to_UTF8(unsigned char **out, ASN1_STRING *in);
 
-OPENSSL_EXPORT void *ASN1_d2i_bio(void *(*xnew)(void), d2i_of_void *d2i, BIO *in, void **x);
-
-#define ASN1_d2i_bio_of(type,xnew,d2i,in,x) \
-    ((type*)ASN1_d2i_bio( CHECKED_NEW_OF(type, xnew), \
-			  CHECKED_D2I_OF(type, d2i), \
-			  in, \
-			  CHECKED_PPTR_OF(type, x)))
-
 OPENSSL_EXPORT void *ASN1_item_d2i_bio(const ASN1_ITEM *it, BIO *in, void *x);
-OPENSSL_EXPORT int ASN1_i2d_bio(i2d_of_void *i2d,BIO *out, void *x);
-
-#define ASN1_i2d_bio_of(type,i2d,out,x) \
-    (ASN1_i2d_bio(CHECKED_I2D_OF(type, i2d), \
-		  out, \
-		  CHECKED_PTR_OF(type, x)))
-
-#define ASN1_i2d_bio_of_const(type,i2d,out,x) \
-    (ASN1_i2d_bio(CHECKED_I2D_OF(const type, i2d), \
-		  out, \
-		  CHECKED_PTR_OF(const type, x)))
-
 OPENSSL_EXPORT int ASN1_item_i2d_bio(const ASN1_ITEM *it, BIO *out, void *x);
 OPENSSL_EXPORT int ASN1_UTCTIME_print(BIO *fp, const ASN1_UTCTIME *a);
 OPENSSL_EXPORT int ASN1_GENERALIZEDTIME_print(BIO *fp, const ASN1_GENERALIZEDTIME *a);

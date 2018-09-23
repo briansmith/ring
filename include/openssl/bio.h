@@ -117,9 +117,13 @@ OPENSSL_EXPORT int BIO_read(BIO *bio, void *data, int len);
 // return a line for this call, remove the warning above.
 OPENSSL_EXPORT int BIO_gets(BIO *bio, char *buf, int size);
 
-// BIO_write writes |len| bytes from |data| to BIO. It returns the number of
+// BIO_write writes |len| bytes from |data| to |bio|. It returns the number of
 // bytes written or a negative number on error.
 OPENSSL_EXPORT int BIO_write(BIO *bio, const void *data, int len);
+
+// BIO_write_all writes |len| bytes from |data| to |bio|, looping as necessary.
+// It returns one if all bytes were successfully written and zero on error.
+OPENSSL_EXPORT int BIO_write_all(BIO *bio, const void *data, size_t len);
 
 // BIO_puts writes a NUL terminated string from |buf| to |bio|. It returns the
 // number of bytes written or a negative number on error.

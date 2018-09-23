@@ -999,17 +999,25 @@ int SSL_get0_chain_certs(const SSL *ssl, STACK_OF(X509) **out_chain) {
   return 1;
 }
 
-static SSL_SESSION *ssl_session_new_with_crypto_x509(void) {
-  return ssl_session_new(&ssl_crypto_x509_method).release();
-}
-
 SSL_SESSION *d2i_SSL_SESSION_bio(BIO *bio, SSL_SESSION **out) {
-  return ASN1_d2i_bio_of(SSL_SESSION, ssl_session_new_with_crypto_x509,
-                         d2i_SSL_SESSION, bio, out);
+  uint8_t *data;
+  size_t len;
+  if (!BIO_read_asn1(bio, &data, &len, 1024 * 1024)) {
+    return 0;
+  }
+  bssl::UniquePtr<uint8_t> free_data(data);
+  const uint8_t *ptr = data;
+  return d2i_SSL_SESSION(out, &ptr, static_cast<long>(len));
 }
 
 int i2d_SSL_SESSION_bio(BIO *bio, const SSL_SESSION *session) {
-  return ASN1_i2d_bio_of(SSL_SESSION, i2d_SSL_SESSION, bio, session);
+  uint8_t *data;
+  size_t len;
+  if (!SSL_SESSION_to_bytes(session, &data, &len)) {
+    return 0;
+  }
+  bssl::UniquePtr<uint8_t> free_data(data);
+  return BIO_write_all(bio, data, len);
 }
 
 IMPLEMENT_PEM_rw(SSL_SESSION, SSL_SESSION, PEM_STRING_SSL_SESSION, SSL_SESSION)
