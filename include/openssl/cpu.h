@@ -96,7 +96,7 @@ extern uint32_t OPENSSL_ia32cap_P[4];
 #if defined(BORINGSSL_FIPS)
 const uint32_t *OPENSSL_ia32cap_get(void);
 #else
-static inline const uint32_t *OPENSSL_ia32cap_get(void) {
+OPENSSL_INLINE const uint32_t *OPENSSL_ia32cap_get(void) {
   return OPENSSL_ia32cap_P;
 }
 #endif
@@ -119,7 +119,7 @@ OPENSSL_EXPORT char CRYPTO_is_NEON_capable_at_runtime(void);
 
 // CRYPTO_is_NEON_capable returns true if the current CPU has a NEON unit. If
 // this is known statically then it returns one immediately.
-static inline int CRYPTO_is_NEON_capable(void) {
+OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
   // Only statically skip the runtime lookup on aarch64. On arm, one CPU is
   // known to have a broken NEON unit which is known to fail with on some
   // hand-written NEON assembly. For now, continue to apply the workaround even
@@ -152,7 +152,7 @@ int CRYPTO_is_ARMv8_PMULL_capable(void);
 
 #else
 
-static inline int CRYPTO_is_NEON_capable(void) {
+OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
 #if defined(OPENSSL_STATIC_ARMCAP_NEON) || defined(__ARM_NEON__)
   return 1;
 #else
@@ -160,7 +160,7 @@ static inline int CRYPTO_is_NEON_capable(void) {
 #endif
 }
 
-static inline int CRYPTO_is_ARMv8_AES_capable(void) {
+OPENSSL_INLINE int CRYPTO_is_ARMv8_AES_capable(void) {
 #if defined(OPENSSL_STATIC_ARMCAP_AES) || defined(__ARM_FEATURE_CRYPTO)
   return 1;
 #else
@@ -168,7 +168,7 @@ static inline int CRYPTO_is_ARMv8_AES_capable(void) {
 #endif
 }
 
-static inline int CRYPTO_is_ARMv8_PMULL_capable(void) {
+OPENSSL_INLINE int CRYPTO_is_ARMv8_PMULL_capable(void) {
 #if defined(OPENSSL_STATIC_ARMCAP_PMULL) || defined(__ARM_FEATURE_CRYPTO)
   return 1;
 #else

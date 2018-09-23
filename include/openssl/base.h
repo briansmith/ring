@@ -246,6 +246,35 @@ extern "C" {
 #define OPENSSL_UNUSED
 #endif
 
+// C and C++ handle inline functions differently. In C++, an inline function is
+// defined in just the header file, potentially emitted in multiple compilation
+// units (in cases the compiler did not inline), but each copy must be identical
+// to satsify ODR. In C, a non-static inline must be manually emitted in exactly
+// one compilation unit with a separate extern inline declaration.
+//
+// In both languages, exported inline functions referencing file-local symbols
+// are problematic. C forbids this altogether (though GCC and Clang seem not to
+// enforce it). It works in C++, but ODR requires the definitions be identical,
+// including all names in the definitions resolving to the "same entity". In
+// practice, this is unlikely to be a problem, but an inline function that
+// returns a pointer to a file-local symbol
+// could compile oddly.
+//
+// Historically, we used static inline in headers. However, to satisfy ODR, use
+// plain inline in C++, to allow inline consumer functions to call our header
+// functions. Plain inline would also work better with C99 inline, but that is
+// not used much in practice, extern inline is tedious, and there are conflicts
+// with the old gnu89 model:
+// https://stackoverflow.com/questions/216510/extern-inline
+#if defined(__cplusplus)
+#define OPENSSL_INLINE inline
+#else
+// Add OPENSSL_UNUSED so that, should an inline function be emitted via macro
+// (e.g. a |STACK_OF(T)| implementation) in a source file without tripping
+// clang's -Wunused-function.
+#define OPENSSL_INLINE static inline OPENSSL_UNUSED
+#endif
+
 #if defined(BORINGSSL_UNSAFE_FUZZER_MODE) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 #define BORINGSSL_UNSAFE_DETERMINISTIC_MODE
@@ -506,16 +535,16 @@ class StackAllocated {
 template <typename T>
 using UniquePtr = std::unique_ptr<T, internal::Deleter<T>>;
 
-#define BORINGSSL_MAKE_UP_REF(type, up_ref_func)                    \
-  static inline UniquePtr<type> UpRef(type *v) {                    \
-    if (v != nullptr) {                                             \
-      up_ref_func(v);                                               \
-    }                                                               \
-    return UniquePtr<type>(v);                                      \
-  }                                                                 \
-                                                                    \
-  static inline UniquePtr<type> UpRef(const UniquePtr<type> &ptr) { \
-    return UpRef(ptr.get());                                        \
+#define BORINGSSL_MAKE_UP_REF(type, up_ref_func)             \
+  inline UniquePtr<type> UpRef(type *v) {                    \
+    if (v != nullptr) {                                      \
+      up_ref_func(v);                                        \
+    }                                                        \
+    return UniquePtr<type>(v);                               \
+  }                                                          \
+                                                             \
+  inline UniquePtr<type> UpRef(const UniquePtr<type> &ptr) { \
+    return UpRef(ptr.get());                                 \
   }
 
 BSSL_NAMESPACE_END
