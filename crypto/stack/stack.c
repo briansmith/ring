@@ -133,17 +133,29 @@ void sk_free(_STACK *sk) {
   OPENSSL_free(sk);
 }
 
-void sk_pop_free(_STACK *sk, void (*func)(void *)) {
+void sk_pop_free_ex(_STACK *sk, void (*call_free_func)(stack_free_func, void *),
+                    stack_free_func free_func) {
   if (sk == NULL) {
     return;
   }
 
   for (size_t i = 0; i < sk->num; i++) {
     if (sk->data[i] != NULL) {
-      func(sk->data[i]);
+      call_free_func(free_func, sk->data[i]);
     }
   }
   sk_free(sk);
+}
+
+// Historically, |sk_pop_free| called the function as |stack_free_func|
+// directly. This is undefined in C. Some callers called |sk_pop_free| directly,
+// so we must maintain a compatibility version for now.
+static void call_free_func_legacy(stack_free_func func, void *ptr) {
+  func(ptr);
+}
+
+void sk_pop_free(_STACK *sk, stack_free_func free_func) {
+  sk_pop_free_ex(sk, call_free_func_legacy, free_func);
 }
 
 size_t sk_insert(_STACK *sk, void *p, size_t where) {
@@ -363,8 +375,11 @@ stack_cmp_func sk_set_cmp_func(_STACK *sk, stack_cmp_func comp) {
   return old;
 }
 
-_STACK *sk_deep_copy(const _STACK *sk, void *(*copy_func)(void *),
-                     void (*free_func)(void *)) {
+_STACK *sk_deep_copy(const _STACK *sk,
+                     void *(*call_copy_func)(stack_copy_func, void *),
+                     stack_copy_func copy_func,
+                     void (*call_free_func)(stack_free_func, void *),
+                     stack_free_func free_func) {
   _STACK *ret = sk_dup(sk);
   if (ret == NULL) {
     return NULL;
@@ -374,11 +389,11 @@ _STACK *sk_deep_copy(const _STACK *sk, void *(*copy_func)(void *),
     if (ret->data[i] == NULL) {
       continue;
     }
-    ret->data[i] = copy_func(ret->data[i]);
+    ret->data[i] = call_copy_func(copy_func, ret->data[i]);
     if (ret->data[i] == NULL) {
       for (size_t j = 0; j < i; j++) {
         if (ret->data[j] != NULL) {
-          free_func(ret->data[j]);
+          call_free_func(free_func, ret->data[j]);
         }
       }
       sk_free(ret);

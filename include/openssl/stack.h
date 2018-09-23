@@ -86,6 +86,16 @@ extern "C" {
 // STACK_OF(FOO), the macros would be sk_FOO_new, sk_FOO_pop etc.
 
 
+// stack_free_func is a function that frees an element in a stack. Note its
+// actual type is void (*)(T *) for some T. Low-level |sk_*| functions will be
+// passed a type-specific wrapper to call it correctly.
+typedef void (*stack_free_func)(void *ptr);
+
+// stack_copy_func is a function that copies an element in a stack. Note its
+// actual type is T *(*)(T *) for some T. Low-level |sk_*| functions will be
+// passed a type-specific wrapper to call it correctly.
+typedef void *(*stack_copy_func)(void *ptr);
+
 // stack_cmp_func is a comparison function that returns a value < 0, 0 or > 0
 // if |*a| is less than, equal to or greater than |*b|, respectively.  Note the
 // extra indirection - the function is given a pointer to a pointer to the
@@ -140,12 +150,17 @@ OPENSSL_EXPORT void *sk_value(const _STACK *sk, size_t i);
 OPENSSL_EXPORT void *sk_set(_STACK *sk, size_t i, void *p);
 
 // sk_free frees the given stack and array of pointers, but does nothing to
-// free the individual elements. Also see |sk_pop_free|.
+// free the individual elements. Also see |sk_pop_free_ex|.
 OPENSSL_EXPORT void sk_free(_STACK *sk);
 
-// sk_pop_free calls |free_func| on each element in the stack and then frees
-// the stack itself.
-OPENSSL_EXPORT void sk_pop_free(_STACK *sk, void (*free_func)(void *));
+// sk_pop_free_ex calls |free_func| on each element in the stack and then frees
+// the stack itself. Note this corresponds to |sk_FOO_pop_free|. It is named
+// |sk_pop_free_ex| as a workaround for existing code calling an older version
+// of |sk_pop_free|.
+OPENSSL_EXPORT void sk_pop_free_ex(_STACK *sk,
+                                   void (*call_free_func)(stack_free_func,
+                                                          void *),
+                                   stack_free_func free_func);
 
 // sk_insert inserts |p| into the stack at index |where|, moving existing
 // elements if needed. It returns the length of the new stack, or zero on
@@ -207,9 +222,20 @@ OPENSSL_EXPORT stack_cmp_func sk_set_cmp_func(_STACK *sk, stack_cmp_func comp);
 // sk_deep_copy performs a copy of |sk| and of each of the non-NULL elements in
 // |sk| by using |copy_func|. If an error occurs, |free_func| is used to free
 // any copies already made and NULL is returned.
-OPENSSL_EXPORT _STACK *sk_deep_copy(const _STACK *sk,
-                                    void *(*copy_func)(void *),
-                                    void (*free_func)(void *));
+OPENSSL_EXPORT _STACK *sk_deep_copy(
+    const _STACK *sk, void *(*call_copy_func)(stack_copy_func, void *),
+    stack_copy_func copy_func, void (*call_free_func)(stack_free_func, void *),
+    stack_free_func free_func);
+
+
+// Deprecated functions.
+
+// sk_pop_free behaves like |sk_pop_free_ex| but performs an invalid function
+// pointer cast. It exists because some existing callers called |sk_pop_free|
+// directly.
+//
+// TODO(davidben): Migrate callers to bssl::UniquePtr and remove this.
+OPENSSL_EXPORT void sk_pop_free(_STACK *sk, stack_free_func free_func);
 
 
 // Defining stack types.
@@ -252,7 +278,19 @@ BSSL_NAMESPACE_END
 #define BORINGSSL_DEFINE_STACK_OF_IMPL(name, ptrtype, constptrtype)            \
   DECLARE_STACK_OF(name)                                                       \
                                                                                \
+  typedef void (*stack_##name##_free_func)(ptrtype);                           \
+  typedef ptrtype (*stack_##name##_copy_func)(ptrtype);                        \
   typedef int (*stack_##name##_cmp_func)(constptrtype *a, constptrtype *b);    \
+                                                                               \
+  static inline OPENSSL_UNUSED void sk_##name##_call_free_func(                \
+      stack_free_func free_func, void *ptr) {                                  \
+    ((stack_##name##_free_func)free_func)((ptrtype)ptr);                       \
+  }                                                                            \
+                                                                               \
+  static inline OPENSSL_UNUSED void *sk_##name##_call_copy_func(               \
+      stack_copy_func copy_func, void *ptr) {                                  \
+    return (void *)((stack_##name##_copy_func)copy_func)((ptrtype)ptr);        \
+  }                                                                            \
                                                                                \
   static inline OPENSSL_UNUSED STACK_OF(name) *                                \
       sk_##name##_new(stack_##name##_cmp_func comp) {                          \
@@ -287,8 +325,9 @@ BSSL_NAMESPACE_END
   }                                                                            \
                                                                                \
   static inline OPENSSL_UNUSED void sk_##name##_pop_free(                      \
-      STACK_OF(name) *sk, void (*free_func)(ptrtype p)) {                      \
-    sk_pop_free((_STACK *)sk, (void (*)(void *))free_func);                    \
+      STACK_OF(name) *sk, stack_##name##_free_func free_func) {                \
+    sk_pop_free_ex((_STACK *)sk, sk_##name##_call_free_func,                   \
+                   (stack_free_func)free_func);                                \
   }                                                                            \
                                                                                \
   static inline OPENSSL_UNUSED size_t sk_##name##_insert(                      \
@@ -349,9 +388,10 @@ BSSL_NAMESPACE_END
       sk_##name##_deep_copy(const STACK_OF(name) *sk,                          \
                             ptrtype(*copy_func)(ptrtype),                      \
                             void (*free_func)(ptrtype)) {                      \
-    return (STACK_OF(name) *)sk_deep_copy((const _STACK *)sk,                  \
-                                          (void *(*)(void *))copy_func,        \
-                                          (void (*)(void *))free_func);        \
+    return (STACK_OF(name) *)sk_deep_copy(                                     \
+        (const _STACK *)sk, sk_##name##_call_copy_func,                        \
+        (stack_copy_func)copy_func, sk_##name##_call_free_func,                \
+        (stack_free_func)free_func);                                           \
   }
 
 // DEFINE_NAMED_STACK_OF defines |STACK_OF(name)| to be a stack whose elements
@@ -410,10 +450,14 @@ template <typename Stack>
 struct DeleterImpl<
     Stack, typename std::enable_if<!StackTraits<Stack>::kIsConst>::type> {
   static void Free(Stack *sk) {
-    sk_pop_free(
-        reinterpret_cast<_STACK *>(sk),
-        reinterpret_cast<void (*)(void *)>(
-            DeleterImpl<typename StackTraits<Stack>::Type>::Free));
+    // sk_FOO_pop_free is defined by macros and bound by name, so we cannot
+    // access it from C++ here.
+    using Type = typename StackTraits<Stack>::Type;
+    sk_pop_free_ex(reinterpret_cast<_STACK *>(sk),
+                   [](stack_free_func unused, void *ptr) {
+                     DeleterImpl<Type>::Free(reinterpret_cast<Type *>(ptr));
+                   },
+                   nullptr);
   }
 };
 
