@@ -271,9 +271,9 @@ void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
                    size_t len);
 #define AESNI_GCM
 size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const void *key, uint8_t ivec[16], uint64_t *Xi);
+                         const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
 size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const void *key, uint8_t ivec[16], uint64_t *Xi);
+                         const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
 #endif
 
 #if defined(OPENSSL_X86)
@@ -419,7 +419,7 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
 #endif
 }
 
-void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const void *aes_key,
+void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const AES_KEY *aes_key,
                             block128_f block, int block_is_hwaes) {
   OPENSSL_memset(gcm_key, 0, sizeof(*gcm_key));
   gcm_key->block = block;
@@ -435,7 +435,7 @@ void CRYPTO_gcm128_init_key(GCM128_KEY *gcm_key, const void *aes_key,
   gcm_key->use_aesni_gcm_crypt = (is_avx && block_is_hwaes) ? 1 : 0;
 }
 
-void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const void *key,
+void CRYPTO_gcm128_setiv(GCM128_CONTEXT *ctx, const AES_KEY *key,
                          const uint8_t *iv, size_t len) {
   unsigned int ctr;
 #ifdef GCM_FUNCREF_4BIT
@@ -553,7 +553,7 @@ int CRYPTO_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   return 1;
 }
 
-int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
+int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
                           const uint8_t *in, uint8_t *out, size_t len) {
   unsigned int n, ctr;
   uint64_t mlen = ctx->len.u[1];
@@ -679,7 +679,7 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const void *key,
   return 1;
 }
 
-int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
+int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
                           const unsigned char *in, unsigned char *out,
                           size_t len) {
   unsigned int n, ctr;
@@ -813,7 +813,7 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const void *key,
   return 1;
 }
 
-int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
+int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
                                 const uint8_t *in, uint8_t *out, size_t len,
                                 ctr128_f stream) {
   unsigned int n, ctr;
@@ -915,7 +915,7 @@ int CRYPTO_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
   return 1;
 }
 
-int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
+int CRYPTO_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
                                 const uint8_t *in, uint8_t *out, size_t len,
                                 ctr128_f stream) {
   unsigned int n, ctr;

@@ -64,8 +64,8 @@ struct ccm128_state {
   } nonce, cmac;
 };
 
-int CRYPTO_ccm128_init(CCM128_CONTEXT *ctx, const void *key, block128_f block,
-                       ctr128_f ctr, unsigned M, unsigned L) {
+int CRYPTO_ccm128_init(CCM128_CONTEXT *ctx, const AES_KEY *key,
+                       block128_f block, ctr128_f ctr, unsigned M, unsigned L) {
   if (M < 4 || M > 16 || (M & 1) != 0 || L < 2 || L > 8) {
     return 0;
   }
@@ -82,7 +82,7 @@ size_t CRYPTO_ccm128_max_input(const CCM128_CONTEXT *ctx) {
 }
 
 static int ccm128_init_state(const CCM128_CONTEXT *ctx,
-                             struct ccm128_state *state, const void *key,
+                             struct ccm128_state *state, const AES_KEY *key,
                              const uint8_t *nonce, size_t nonce_len,
                              const uint8_t *aad, size_t aad_len,
                              size_t plaintext_len) {
@@ -170,7 +170,7 @@ static int ccm128_init_state(const CCM128_CONTEXT *ctx,
 }
 
 static int ccm128_encrypt(const CCM128_CONTEXT *ctx, struct ccm128_state *state,
-                          const void *key, uint8_t *out, const uint8_t *in,
+                          const AES_KEY *key, uint8_t *out, const uint8_t *in,
                           size_t len) {
   // The counter for encryption begins at one.
   for (unsigned i = 0; i < ctx->L; i++) {
@@ -191,7 +191,7 @@ static int ccm128_encrypt(const CCM128_CONTEXT *ctx, struct ccm128_state *state,
 }
 
 static int ccm128_compute_mac(const CCM128_CONTEXT *ctx,
-                              struct ccm128_state *state, const void *key,
+                              struct ccm128_state *state, const AES_KEY *key,
                               uint8_t *out_tag, size_t tag_len,
                               const uint8_t *in, size_t len) {
   block128_f block = ctx->block;
@@ -231,7 +231,7 @@ static int ccm128_compute_mac(const CCM128_CONTEXT *ctx,
   return 1;
 }
 
-int CRYPTO_ccm128_encrypt(const CCM128_CONTEXT *ctx, const void *key,
+int CRYPTO_ccm128_encrypt(const CCM128_CONTEXT *ctx, const AES_KEY *key,
                           uint8_t *out, uint8_t *out_tag, size_t tag_len,
                           const uint8_t *nonce, size_t nonce_len,
                           const uint8_t *in, size_t len, const uint8_t *aad,
@@ -243,7 +243,7 @@ int CRYPTO_ccm128_encrypt(const CCM128_CONTEXT *ctx, const void *key,
          ccm128_encrypt(ctx, &state, key, out, in, len);
 }
 
-int CRYPTO_ccm128_decrypt(const CCM128_CONTEXT *ctx, const void *key,
+int CRYPTO_ccm128_decrypt(const CCM128_CONTEXT *ctx, const AES_KEY *key,
                           uint8_t *out, uint8_t *out_tag, size_t tag_len,
                           const uint8_t *nonce, size_t nonce_len,
                           const uint8_t *in, size_t len, const uint8_t *aad,

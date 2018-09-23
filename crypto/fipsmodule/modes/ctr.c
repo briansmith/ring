@@ -82,7 +82,7 @@ OPENSSL_COMPILE_ASSERT((16 % sizeof(size_t)) == 0, bad_size_t_size_ctr);
 // of the IV.  This implementation takes NO responsibility for checking that
 // the counter doesn't overflow into the rest of the IV when incremented.
 void CRYPTO_ctr128_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                           const void *key, uint8_t ivec[16],
+                           const AES_KEY *key, uint8_t ivec[16],
                            uint8_t ecount_buf[16], unsigned int *num,
                            block128_f block) {
   unsigned int n;
@@ -153,11 +153,10 @@ static void ctr96_inc(uint8_t *counter) {
   } while (n);
 }
 
-void CRYPTO_ctr128_encrypt_ctr32(const uint8_t *in, uint8_t *out,
-                                 size_t len, const void *key,
-                                 uint8_t ivec[16],
-                                 uint8_t ecount_buf[16],
-                                 unsigned int *num, ctr128_f func) {
+void CRYPTO_ctr128_encrypt_ctr32(const uint8_t *in, uint8_t *out, size_t len,
+                                 const AES_KEY *key, uint8_t ivec[16],
+                                 uint8_t ecount_buf[16], unsigned int *num,
+                                 ctr128_f func) {
   unsigned int n, ctr32;
 
   assert(key && ecount_buf && num);

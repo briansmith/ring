@@ -88,7 +88,7 @@ TEST(GCMTest, TestVectors) {
 
     GCM128_CONTEXT ctx;
     OPENSSL_memset(&ctx, 0, sizeof(ctx));
-    CRYPTO_gcm128_init_key(&ctx.gcm_key, &aes_key, (block128_f)AES_encrypt, 0);
+    CRYPTO_gcm128_init_key(&ctx.gcm_key, &aes_key, AES_encrypt, 0);
     CRYPTO_gcm128_setiv(&ctx, &aes_key, nonce.data(), nonce.size());
     if (!additional_data.empty()) {
       CRYPTO_gcm128_aad(&ctx, additional_data.data(), additional_data.size());
