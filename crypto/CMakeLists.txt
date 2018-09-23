@@ -467,6 +467,7 @@ add_executable(
   refcount_test.cc
   rsa_extra/rsa_test.cc
   self_test.cc
+  stack/stack_test.cc
   test/file_test_gtest.cc
   thread_test.cc
   x509/x509_test.cc
