@@ -235,7 +235,9 @@ void *sk_delete_ptr(_STACK *sk, const void *p) {
   return NULL;
 }
 
-int sk_find(const _STACK *sk, size_t *out_index, const void *p) {
+int sk_find(const _STACK *sk, size_t *out_index, const void *p,
+            int (*call_cmp_func)(stack_cmp_func, const void **,
+                                 const void **)) {
   if (sk == NULL) {
     return 0;
   }
@@ -259,7 +261,8 @@ int sk_find(const _STACK *sk, size_t *out_index, const void *p) {
 
   if (!sk_is_sorted(sk)) {
     for (size_t i = 0; i < sk->num; i++) {
-      if (sk->comp(&p, (const void **)&sk->data[i]) == 0) {
+      const void *elem = sk->data[i];
+      if (call_cmp_func(sk->comp, &p, &elem) == 0) {
         if (out_index) {
           *out_index = i;
         }
@@ -274,6 +277,10 @@ int sk_find(const _STACK *sk, size_t *out_index, const void *p) {
   // elements. However, since we're passing an array of pointers to
   // qsort/bsearch, we can just cast the comparison function and everything
   // works.
+  //
+  // TODO(davidben): This is undefined behavior, but the call is in libc so,
+  // e.g., CFI does not notice. Unfortunately, |bsearch| is missing a void*
+  // parameter in its callback and |bsearch_s| is a mess of incompatibility.
   const void *const *r = bsearch(&p, sk->data, sk->num, sizeof(void *),
                                  (int (*)(const void *, const void *))sk->comp);
   if (r == NULL) {
@@ -281,8 +288,11 @@ int sk_find(const _STACK *sk, size_t *out_index, const void *p) {
   }
   size_t idx = ((void **)r) - sk->data;
   // This function always returns the first result.
-  while (idx > 0 &&
-         sk->comp(&p, (const void **)&sk->data[idx - 1]) == 0) {
+  while (idx > 0) {
+    const void *elem = sk->data[idx - 1];
+    if (call_cmp_func(sk->comp, &p, &elem) != 0) {
+      break;
+    }
     idx--;
   }
   if (out_index) {
@@ -352,6 +362,11 @@ void sk_sort(_STACK *sk) {
   }
 
   // See the comment in sk_find about this cast.
+  //
+  // TODO(davidben): This is undefined behavior, but the call is in libc so,
+  // e.g., CFI does not notice. Unfortunately, |qsort| is missing a void*
+  // parameter in its callback and |qsort_s| / |qsort_r| are a mess of
+  // incompatibility.
   comp_func = (int (*)(const void *, const void *))(sk->comp);
   qsort(sk->data, sk->num, sizeof(void *), comp_func);
   sk->sorted = 1;

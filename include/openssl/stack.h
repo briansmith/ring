@@ -100,6 +100,9 @@ typedef void *(*stack_copy_func)(void *ptr);
 // if |*a| is less than, equal to or greater than |*b|, respectively.  Note the
 // extra indirection - the function is given a pointer to a pointer to the
 // element. This differs from the usual qsort/bsearch comparison function.
+//
+// Note its actual type is int (*)(const T **, const T **). Low-level |sk_*|
+// functions will be passed a type-specific wrapper to call it correctly.
 typedef int (*stack_cmp_func)(const void **a, const void **b);
 
 // stack_st contains an array of pointers. It is not designed to be used
@@ -188,7 +191,9 @@ OPENSSL_EXPORT void *sk_delete_ptr(_STACK *sk, const void *p);
 // Note this differs from OpenSSL. The type signature is slightly different, and
 // OpenSSL's sk_find will implicitly sort |sk| if it has a comparison function
 // defined.
-OPENSSL_EXPORT int sk_find(const _STACK *sk, size_t *out_index, const void *p);
+OPENSSL_EXPORT int sk_find(const _STACK *sk, size_t *out_index, const void *p,
+                           int (*call_cmp_func)(stack_cmp_func, const void **,
+                                                const void **));
 
 // sk_shift removes and returns the first element in the stack, or returns NULL
 // if the stack is empty.
@@ -292,6 +297,13 @@ BSSL_NAMESPACE_END
     return (void *)((stack_##name##_copy_func)copy_func)((ptrtype)ptr);        \
   }                                                                            \
                                                                                \
+  static inline OPENSSL_UNUSED int sk_##name##_call_cmp_func(                  \
+      stack_cmp_func cmp_func, const void **a, const void **b) {               \
+    constptrtype a_ptr = (constptrtype)*a;                                     \
+    constptrtype b_ptr = (constptrtype)*b;                                     \
+    return ((stack_##name##_cmp_func)cmp_func)(&a_ptr, &b_ptr);                \
+  }                                                                            \
+                                                                               \
   static inline OPENSSL_UNUSED STACK_OF(name) *                                \
       sk_##name##_new(stack_##name##_cmp_func comp) {                          \
     return (STACK_OF(name) *)sk_new((stack_cmp_func)comp);                     \
@@ -347,7 +359,8 @@ BSSL_NAMESPACE_END
                                                                                \
   static inline OPENSSL_UNUSED int sk_##name##_find(                           \
       const STACK_OF(name) *sk, size_t *out_index, constptrtype p) {           \
-    return sk_find((const _STACK *)sk, out_index, (const void *)p);            \
+    return sk_find((const _STACK *)sk, out_index, (const void *)p,             \
+                   sk_##name##_call_cmp_func);                                 \
   }                                                                            \
                                                                                \
   static inline OPENSSL_UNUSED ptrtype sk_##name##_shift(STACK_OF(name) *sk) { \
