@@ -298,10 +298,6 @@ typedef struct ASN1_VALUE_st ASN1_VALUE;
 	OPENSSL_EXPORT int fname##_print_ctx(BIO *out, stname *x, int indent, \
 					 const ASN1_PCTX *pctx);
 
-#define D2I_OF(type) type *(*)(type **,const unsigned char **,long)
-#define I2D_OF(type) int (*)(type *,unsigned char **)
-#define I2D_OF_const(type) int (*)(const type *,unsigned char **)
-
 typedef void *d2i_of_void(void **, const unsigned char **, long);
 typedef int i2d_of_void(const void *, unsigned char **);
 

@@ -1568,6 +1568,11 @@ TEST(X509Test, PEMX509Info) {
       "AAAA\n"
       "-----END UNKNOWN-----\n";
 
+  std::string invalid =
+      "-----BEGIN CERTIFICATE-----\n"
+      "AAAA\n"
+      "-----END CERTIFICATE-----\n";
+
   // Each X509_INFO contains at most one certificate, CRL, etc. The format
   // creates a new X509_INFO when a repeated type is seen.
   std::string pem =
@@ -1650,4 +1655,19 @@ TEST(X509Test, PEMX509Info) {
         &kExpected[i],
         sk_X509_INFO_value(infos.get(), i + OPENSSL_ARRAY_SIZE(kExpected)));
   }
+
+  // Gracefully handle errors in both the append and fresh cases.
+  std::string bad_pem = cert + cert + invalid;
+
+  bio.reset(BIO_new_mem_buf(bad_pem.data(), bad_pem.size()));
+  ASSERT_TRUE(bio);
+  bssl::UniquePtr<STACK_OF(X509_INFO)> infos2(
+      PEM_X509_INFO_read_bio(bio.get(), nullptr, nullptr, nullptr));
+  EXPECT_FALSE(infos2);
+
+  bio.reset(BIO_new_mem_buf(bad_pem.data(), bad_pem.size()));
+  ASSERT_TRUE(bio);
+  EXPECT_FALSE(
+      PEM_X509_INFO_read_bio(bio.get(), infos.get(), nullptr, nullptr));
+  EXPECT_EQ(2 * OPENSSL_ARRAY_SIZE(kExpected), sk_X509_INFO_num(infos.get()));
 }
