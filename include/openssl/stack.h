@@ -160,7 +160,7 @@ OPENSSL_EXPORT void *sk_delete(_STACK *sk, size_t where);
 // sk_delete_ptr removes, at most, one instance of |p| from the stack based on
 // pointer equality. If an instance of |p| is found then |p| is returned,
 // otherwise it returns NULL.
-OPENSSL_EXPORT void *sk_delete_ptr(_STACK *sk, void *p);
+OPENSSL_EXPORT void *sk_delete_ptr(_STACK *sk, const void *p);
 
 // sk_find returns the first value in the stack equal to |p|. If a comparison
 // function has been set on the stack, equality is defined by it, otherwise
@@ -173,7 +173,7 @@ OPENSSL_EXPORT void *sk_delete_ptr(_STACK *sk, void *p);
 // Note this differs from OpenSSL. The type signature is slightly different, and
 // OpenSSL's sk_find will implicitly sort |sk| if it has a comparison function
 // defined.
-OPENSSL_EXPORT int sk_find(const _STACK *sk, size_t *out_index, void *p);
+OPENSSL_EXPORT int sk_find(const _STACK *sk, size_t *out_index, const void *p);
 
 // sk_shift removes and returns the first element in the stack, or returns NULL
 // if the stack is empty.
@@ -302,13 +302,13 @@ BSSL_NAMESPACE_END
   }                                                                            \
                                                                                \
   static inline OPENSSL_UNUSED ptrtype sk_##name##_delete_ptr(                 \
-      STACK_OF(name) *sk, ptrtype p) {                                         \
-    return (ptrtype)sk_delete_ptr((_STACK *)sk, (void *)p);                    \
+      STACK_OF(name) *sk, constptrtype p) {                                    \
+    return (ptrtype)sk_delete_ptr((_STACK *)sk, (const void *)p);              \
   }                                                                            \
                                                                                \
   static inline OPENSSL_UNUSED int sk_##name##_find(                           \
-      const STACK_OF(name) *sk, size_t *out_index, ptrtype p) {                \
-    return sk_find((const _STACK *)sk, out_index, (void *)p);                  \
+      const STACK_OF(name) *sk, size_t *out_index, constptrtype p) {           \
+    return sk_find((const _STACK *)sk, out_index, (const void *)p);            \
   }                                                                            \
                                                                                \
   static inline OPENSSL_UNUSED ptrtype sk_##name##_shift(STACK_OF(name) *sk) { \

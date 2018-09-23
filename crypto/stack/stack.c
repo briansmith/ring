@@ -209,7 +209,7 @@ void *sk_delete(_STACK *sk, size_t where) {
   return ret;
 }
 
-void *sk_delete_ptr(_STACK *sk, void *p) {
+void *sk_delete_ptr(_STACK *sk, const void *p) {
   if (sk == NULL) {
     return NULL;
   }
@@ -223,7 +223,7 @@ void *sk_delete_ptr(_STACK *sk, void *p) {
   return NULL;
 }
 
-int sk_find(const _STACK *sk, size_t *out_index, void *p) {
+int sk_find(const _STACK *sk, size_t *out_index, const void *p) {
   if (sk == NULL) {
     return 0;
   }
@@ -247,7 +247,7 @@ int sk_find(const _STACK *sk, size_t *out_index, void *p) {
 
   if (!sk_is_sorted(sk)) {
     for (size_t i = 0; i < sk->num; i++) {
-      if (sk->comp((const void **)&p, (const void **)&sk->data[i]) == 0) {
+      if (sk->comp(&p, (const void **)&sk->data[i]) == 0) {
         if (out_index) {
           *out_index = i;
         }
@@ -270,7 +270,7 @@ int sk_find(const _STACK *sk, size_t *out_index, void *p) {
   size_t idx = ((void **)r) - sk->data;
   // This function always returns the first result.
   while (idx > 0 &&
-         sk->comp((const void **)&p, (const void **)&sk->data[idx - 1]) == 0) {
+         sk->comp(&p, (const void **)&sk->data[idx - 1]) == 0) {
     idx--;
   }
   if (out_index) {

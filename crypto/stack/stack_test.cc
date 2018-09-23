@@ -324,7 +324,7 @@ TEST(StackTest, FindFirst) {
     ASSERT_TRUE(bssl::PushToStack(sk.get(), std::move(value)));
   }
 
-  TEST_INT *two = sk_TEST_INT_value(sk.get(), 1);
+  const TEST_INT *two = sk_TEST_INT_value(sk.get(), 1);
   // Pointer-based equality.
   size_t index;
   ASSERT_TRUE(sk_TEST_INT_find(sk.get(), &index, two));
