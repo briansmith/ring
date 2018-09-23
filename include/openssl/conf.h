@@ -60,7 +60,6 @@
 #include <openssl/base.h>
 
 #include <openssl/stack.h>
-#include <openssl/lhash.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -83,10 +82,6 @@ struct conf_value_st {
   char *section;
   char *name;
   char *value;
-};
-
-struct conf_st {
-  LHASH_OF(CONF_VALUE) *data;
 };
 
 DEFINE_STACK_OF(CONF_VALUE)
