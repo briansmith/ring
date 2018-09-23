@@ -349,3 +349,46 @@ TEST(StackTest, FindFirst) {
   ASSERT_TRUE(sk_TEST_INT_find(sk.get(), &index, two));
   EXPECT_EQ(0u, index);
 }
+
+// Exhaustively test the binary search.
+TEST(StackTest, BinarySearch) {
+  static const size_t kCount = 100;
+  for (size_t i = 0; i < kCount; i++) {
+    SCOPED_TRACE(i);
+    for (size_t j = i; j <= kCount; j++) {
+      SCOPED_TRACE(j);
+      // Make a stack where [0, i) are below, [i, j) match, and [j, kCount) are
+      // above.
+      bssl::UniquePtr<STACK_OF(TEST_INT)> sk(sk_TEST_INT_new(compare));
+      ASSERT_TRUE(sk);
+      for (size_t k = 0; k < i; k++) {
+        auto value = TEST_INT_new(-1);
+        ASSERT_TRUE(value);
+        ASSERT_TRUE(bssl::PushToStack(sk.get(), std::move(value)));
+      }
+      for (size_t k = i; k < j; k++) {
+        auto value = TEST_INT_new(0);
+        ASSERT_TRUE(value);
+        ASSERT_TRUE(bssl::PushToStack(sk.get(), std::move(value)));
+      }
+      for (size_t k = j; k < kCount; k++) {
+        auto value = TEST_INT_new(1);
+        ASSERT_TRUE(value);
+        ASSERT_TRUE(bssl::PushToStack(sk.get(), std::move(value)));
+      }
+      sk_TEST_INT_sort(sk.get());
+
+      auto key = TEST_INT_new(0);
+      ASSERT_TRUE(key);
+
+      size_t idx;
+      int found = sk_TEST_INT_find(sk.get(), &idx, key.get());
+      if (i == j) {
+        EXPECT_FALSE(found);
+      } else {
+        ASSERT_TRUE(found);
+        EXPECT_EQ(i, idx);
+      }
+    }
+  }
+}

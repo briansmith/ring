@@ -287,7 +287,10 @@ int sk_find(const _STACK *sk, size_t *out_index, const void *p,
     return 0;
   }
   size_t idx = ((void **)r) - sk->data;
-  // This function always returns the first result.
+  // This function always returns the first result. Note this logic is, in the
+  // worst case, O(N) rather than O(log(N)). If this ever becomes a problem,
+  // restore https://boringssl-review.googlesource.com/c/boringssl/+/32115/
+  // which integrates the preference into the binary search.
   while (idx > 0) {
     const void *elem = sk->data[idx - 1];
     if (call_cmp_func(sk->comp, &p, &elem) != 0) {
