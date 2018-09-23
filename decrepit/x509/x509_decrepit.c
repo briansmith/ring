@@ -16,27 +16,7 @@
 #include <openssl/x509v3.h>
 
 
-X509_EXTENSION *X509V3_EXT_conf_nid(LHASH_OF(CONF_VALUE) *conf,
-                                    X509V3_CTX *ctx, int ext_nid, char *value) {
-  CONF *nconf = NULL;
-  LHASH_OF(CONF_VALUE) *orig_data = NULL;
-
-  if (conf != NULL) {
-    nconf = NCONF_new(NULL /* no method */);
-    if (nconf == NULL) {
-      return NULL;
-    }
-
-    orig_data = nconf->data;
-    nconf->data = conf;
-  }
-
-  X509_EXTENSION *ret = X509V3_EXT_nconf_nid(nconf, ctx, ext_nid, value);
-
-  if (nconf != NULL) {
-    nconf->data = orig_data;
-    NCONF_free(nconf);
-  }
-
-  return ret;
+X509_EXTENSION *X509V3_EXT_conf_nid(X509_MUST_BE_NULL *conf, X509V3_CTX *ctx,
+                                    int ext_nid, char *value) {
+  return X509V3_EXT_nconf_nid(NULL, ctx, ext_nid, value);
 }
