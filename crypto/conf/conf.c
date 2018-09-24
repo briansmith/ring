@@ -70,6 +70,8 @@
 #include "../internal.h"
 
 
+DEFINE_LHASH_OF(CONF_VALUE)
+
 struct conf_st {
   LHASH_OF(CONF_VALUE) *data;
 };

@@ -76,6 +76,8 @@
 #include "../internal.h"
 
 
+DEFINE_LHASH_OF(ASN1_OBJECT)
+
 static struct CRYPTO_STATIC_MUTEX global_added_lock = CRYPTO_STATIC_MUTEX_INIT;
 // These globals are protected by |global_added_lock|.
 static LHASH_OF(ASN1_OBJECT) *global_added_by_data = NULL;

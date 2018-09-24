@@ -26,6 +26,8 @@
 #include "internal.h"
 
 
+DEFINE_LHASH_OF(CRYPTO_BUFFER)
+
 static uint32_t CRYPTO_BUFFER_hash(const CRYPTO_BUFFER *buf) {
   return OPENSSL_hash32(buf->data, buf->len);
 }

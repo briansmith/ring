@@ -64,14 +64,6 @@ extern "C" {
 #endif
 
 
-// This header file contains some common macros for enforcing type checking.
-// Several, common OpenSSL structures (i.e. stack and lhash) operate on void
-// pointers, but we wish to have type checking when they are used with a
-// specific type.
-
-// CHECKED_CAST casts |p| from type |from| to type |to|.
-#define CHECKED_CAST(to, from, p) ((to) (1 ? (p) : (from)0))
-
 #if defined(__STDC_VERSION__) && __STDC_VERSION__ >= 201112L
 #define OPENSSL_COMPILE_ASSERT(cond, msg) _Static_assert(cond, #msg)
 #else
