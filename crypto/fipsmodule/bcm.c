@@ -124,6 +124,7 @@ BORINGSSL_bcm_power_on_self_test(void) {
   if (!HMAC(EVP_sha512(), kHMACKey, sizeof(kHMACKey), start, end - start,
             result, &result_len) ||
       result_len != sizeof(result)) {
+    fprintf(stderr, "HMAC failed.\n");
     goto err;
   }
 
