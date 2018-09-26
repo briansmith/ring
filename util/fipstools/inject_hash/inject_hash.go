@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-// inject-hash parses an archive containing a file object file. It finds a FIPS
+// inject_hash parses an archive containing a file object file. It finds a FIPS
 // module inside that object, calculates its hash and replaces the default hash
 // value in the object with the calculated value.
 package main
