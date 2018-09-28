@@ -120,6 +120,9 @@ extern "C" {
 
 #if defined(__APPLE__)
 #define OPENSSL_APPLE
+#if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
+#define OPENSSL_IOS
+#endif
 #endif
 
 #if defined(_WIN32)
