@@ -458,7 +458,7 @@ struct DeleterImpl<
     // access it from C++ here.
     using Type = typename StackTraits<Stack>::Type;
     sk_pop_free_ex(reinterpret_cast<_STACK *>(sk),
-                   [](stack_free_func unused, void *ptr) {
+                   [](stack_free_func /* unused */, void *ptr) {
                      DeleterImpl<Type>::Free(reinterpret_cast<Type *>(ptr));
                    },
                    nullptr);
