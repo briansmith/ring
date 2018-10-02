@@ -3004,7 +3004,7 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity_hint(const SSL *ssl);
 OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *ssl);
 
 
-// QUIC Transport Parameters.
+// QUIC transport parameters.
 //
 // draft-ietf-quic-tls defines a new TLS extension quic_transport_parameters
 // used by QUIC for each endpoint to unilaterally declare its supported
