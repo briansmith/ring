@@ -339,8 +339,8 @@ static void gcm128_init_htable(u128 Htable[GCM128_HTABLE_LEN],
                                const uint64_t H[2]);
 
 void GFp_gcm128_init_serialized(
-    uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const AES_KEY *key,
-    aes_block_f block) {
+    uint8_t serialized_ctx[GCM128_SERIALIZED_LEN], const void *key,
+    block128_f block) {
   static const alignas(16) uint8_t ZEROS[16] = { 0 };
   uint8_t H_be[16];
   (*block)(ZEROS, H_be, key);
@@ -446,8 +446,8 @@ static void gcm128_init_gmult_ghash(GCM128_CONTEXT *ctx) {
 #endif
 }
 
-void GFp_gcm128_init(GCM128_CONTEXT *ctx, const AES_KEY *key,
-                        aes_block_f block,
+void GFp_gcm128_init(GCM128_CONTEXT *ctx, const void *key,
+                        block128_f block,
                         const uint8_t serialized_ctx[GCM128_SERIALIZED_LEN],
                         const uint8_t *iv) {
   uint32_t ctr = 1;
@@ -497,9 +497,9 @@ int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   return 1;
 }
 
-int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
+int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
                                 const uint8_t *in, uint8_t *out, size_t len,
-                                aes_ctr_f stream) {
+                                ctr128_f stream) {
   assert(ctx->len.u[1] == 0);
 
   unsigned int ctr;
@@ -576,9 +576,9 @@ int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
   return 1;
 }
 
-int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
+int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const void *key,
                                 const uint8_t *in, uint8_t *out, size_t len,
-                                aes_ctr_f stream) {
+                                ctr128_f stream) {
   assert(ctx->len.u[1] == 0);
 
   unsigned int ctr;
