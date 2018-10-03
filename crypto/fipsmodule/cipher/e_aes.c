@@ -158,12 +158,12 @@ int GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
 #endif
 }
 
-static aes_block_f aes_block(void) {
+static block128_f aes_block(void) {
   // Keep this in sync with |GFp_AES_set_encrypt_key| and |aes_ctr|.
 
 #if defined(HWAES)
   if (hwaes_capable()) {
-    return GFp_aes_hw_encrypt;
+    return (block128_f)GFp_aes_hw_encrypt;
   }
 #endif
 
@@ -172,14 +172,14 @@ static aes_block_f aes_block(void) {
 #error "BSAES and VPAES are enabled at the same time, unexpectedly."
 #endif
   if (vpaes_capable()) {
-    return GFp_vpaes_encrypt;
+    return (block128_f)GFp_vpaes_encrypt;
   }
 #endif
 
 #if defined(GFp_C_AES)
-  return GFp_aes_c_encrypt;
+  return (block128_f)GFp_aes_c_encrypt;
 #else
-  return GFp_asm_AES_encrypt;
+  return (block128_f)GFp_asm_AES_encrypt;
 #endif
 }
 
@@ -187,22 +187,22 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   (aes_block())(in, out, key);
 }
 
-static aes_ctr_f aes_ctr(void) {
+static ctr128_f aes_ctr(void) {
   // Keep this in sync with |set_set_key| and |aes_block|.
 
 #if defined(HWAES)
   if (hwaes_capable()) {
-    return GFp_aes_hw_ctr32_encrypt_blocks;
+    return (ctr128_f)GFp_aes_hw_ctr32_encrypt_blocks;
   }
 #endif
 
 #if defined(BSAES)
   if (bsaes_capable()) {
-    return GFp_bsaes_ctr32_encrypt_blocks;
+    return (ctr128_f)GFp_bsaes_ctr32_encrypt_blocks;
   }
 #endif
 
-  return aes_ctr32_encrypt_blocks;
+  return (ctr128_f)aes_ctr32_encrypt_blocks;
 }
 
 static void aes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
@@ -212,7 +212,7 @@ static void aes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
   memcpy(counter_plaintext, ivec, 16);
   uint32_t counter = from_be_u32_ptr(&counter_plaintext[12]);
 
-  aes_block_f block = aes_block();
+  block128_f block = aes_block();
 
   for (size_t current_block = 0; current_block < blocks; ++current_block) {
     alignas(16) uint8_t counter_ciphertext[16];
@@ -270,7 +270,7 @@ int GFp_aes_gcm_seal(const uint8_t *ctx_buf, uint8_t *in_out, size_t in_out_len,
     return 0;
   }
   if (in_out_len > 0) {
-    aes_ctr_f ctr = aes_ctr();
+    ctr128_f ctr = aes_ctr();
     if (!GFp_gcm128_encrypt_ctr32(&gcm, &ks, in_out, in_out, in_out_len,
                                   ctr)) {
       return 0;
@@ -295,7 +295,7 @@ int GFp_aes_gcm_open(const uint8_t *ctx_buf, uint8_t *out, size_t in_out_len,
     return 0;
   }
   if (in_out_len > 0) {
-    aes_ctr_f ctr = aes_ctr();
+    ctr128_f ctr = aes_ctr();
     if (!GFp_gcm128_decrypt_ctr32(&gcm, &ks, in, out, in_out_len, ctr)) {
       return 0;
     }
