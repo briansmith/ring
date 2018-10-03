@@ -50,6 +50,7 @@
 #define OPENSSL_HEADER_MODES_INTERNAL_H
 
 #include <openssl/base.h>
+#include <openssl/aes.h>
 
 #include <string.h>
 
