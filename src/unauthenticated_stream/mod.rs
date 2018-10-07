@@ -28,17 +28,17 @@ use crate::{chacha, error, init, polyfill};
 
 pub use self::chacha20::CHACHA20;
 
-/// A key for an unauthenticated stream cipher.
+/// A key for decrypting data encrypted using an unauthenticated stream cipher.
 ///
 /// C analog: `EVP_CIPHER_CTX`
 ///
 /// Go analog: [`crypto.cipher.Stream`]
-pub struct StreamingKey {
+pub struct DecryptingKey {
     key: Key,
 }
 
-impl StreamingKey {
-    /// Create a new streaming key.
+impl DecryptingKey {
+    /// Create a new decrypting key.
     ///
     /// `key_bytes` must be exactly `algorithm.key_len` bytes long.
     ///
@@ -48,8 +48,8 @@ impl StreamingKey {
     ///   [`crypto.aes.NewCipher`](https://golang.org/pkg/crypto/aes/#NewCipher)
     #[inline]
     pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
-               -> Result<StreamingKey, error::Unspecified> {
-        Ok(StreamingKey {
+               -> Result<DecryptingKey, error::Unspecified> {
+        Ok(DecryptingKey {
             key: Key::new(algorithm, key_bytes)?,
         })
     }
@@ -61,18 +61,60 @@ impl StreamingKey {
     pub fn algorithm(&self) -> &'static Algorithm { self.key.algorithm() }
 }
 
-/// Applies the keystream to the input data in place.
-pub fn xor_keystream_in_place<'a>(key: &StreamingKey, nonce: &[u8],
-                                  in_out: &'a mut [u8])
-                                  -> Result<&'a mut [u8], error::Unspecified> {
+/// Decrypts the input data in place.
+pub fn decrypt_in_place<'a>(key: &DecryptingKey, nonce: &[u8],
+                            in_out: &'a mut [u8])
+                            -> Result<&'a mut [u8], error::Unspecified> {
     let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
     check_per_nonce_max_bytes(key.key.algorithm, in_out.len())?;
     (key.key.algorithm.xor_keystream)(&key.key.ctx_buf, nonce, in_out)?;
     Ok(&mut in_out[..])
 }
 
-/// `StreamingKey` is a type-safety wrapper around `Key`, which does all the
-/// actual work via the C stream interface.
+/// A key for encrypting data using an unauthenticated stream cipher.
+///
+/// C analog: `EVP_CIPHER_CTX`
+///
+/// Go analog: [`crypto.cipher.Stream`]
+pub struct EncryptingKey {
+    key: Key,
+}
+
+impl EncryptingKey {
+    /// Create a new encrypting key.
+    ///
+    /// `key_bytes` must be exactly `algorithm.key_len` bytes long.
+    ///
+    /// C analogs: `EVP_CIPHER_CTX_init`.
+    ///
+    /// Go analog:
+    ///   [`crypto.aes.NewCipher`](https://golang.org/pkg/crypto/aes/#NewCipher)
+    #[inline]
+    pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
+               -> Result<EncryptingKey, error::Unspecified> {
+        Ok(EncryptingKey {
+            key: Key::new(algorithm, key_bytes)?,
+        })
+    }
+
+    /// The key's unauthenticated stream cipher algorithm.
+    ///
+    /// C analog: `EVP_CIPHER_CTX.cipher`
+    #[inline(always)]
+    pub fn algorithm(&self) -> &'static Algorithm { self.key.algorithm() }
+}
+
+/// Encrypts the input data in place.
+pub fn encrypt_in_place(key: &EncryptingKey, nonce: &[u8], in_out: &mut [u8])
+                        -> Result<usize, error::Unspecified> {
+    let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
+    check_per_nonce_max_bytes(key.key.algorithm, in_out.len())?;
+    (key.key.algorithm.xor_keystream)(&key.key.ctx_buf, nonce, in_out)?;
+    Ok(in_out.len())
+}
+
+/// `DecryptingKey` and `EncryptingKey` are type-safety wrappers around `Key`,
+/// which does all the actual work via the C stream cipher interface.
 ///
 /// C analog: `EVP_CIPHER_CTX`
 struct Key {

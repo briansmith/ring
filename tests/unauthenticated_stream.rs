@@ -57,24 +57,27 @@ fn test_stream(stream_alg: &'static unauthenticated_stream::Algorithm,
         let error = test_case.consume_optional_string("FAILS");
 
         let mut s_in_out = plaintext.clone();
-        let s_key = unauthenticated_stream::StreamingKey::new(stream_alg,
-                                                              &key_bytes[..])?;
+        let s_key = unauthenticated_stream::EncryptingKey::new(stream_alg,
+                                                               &key_bytes[..])?;
 
         let s_result =
-            unauthenticated_stream::xor_keystream_in_place(&s_key, &nonce[..],
-                                                           &mut s_in_out[..]);
+            unauthenticated_stream::encrypt_in_place(&s_key, &nonce[..],
+                                                     &mut s_in_out[..]);
 
         let mut o_in_out = vec![123u8; 4096];
         o_in_out.truncate(0);
         o_in_out.extend_from_slice(&ct[..]);
+        let o_key = unauthenticated_stream::DecryptingKey::new(stream_alg,
+                                                              &key_bytes[..])?;
 
         let o_result =
-            unauthenticated_stream::xor_keystream_in_place(&s_key, &nonce[..],
-                                                           &mut o_in_out);
+            unauthenticated_stream::decrypt_in_place(&o_key, &nonce[..],
+                                                      &mut o_in_out);
 
         match error {
             None => {
-                assert_eq!(&ct[..plaintext.len()], s_result.unwrap());
+                assert_eq!(Ok(ct.len()), s_result);
+                assert_eq!(&ct[..], &s_in_out[..ct.len()]);
                 assert_eq!(&plaintext[..], o_result.unwrap());
             },
             Some(ref error) if error == "WRONG_NONCE_LENGTH" => {
@@ -95,31 +98,45 @@ fn test_stream_key_sizes(stream_alg: &'static unauthenticated_stream::Algorithm)
     let key_data = vec![0u8; key_len * 2];
 
     // Key is the right size.
-    assert!(unauthenticated_stream::StreamingKey::new(stream_alg,
+    assert!(unauthenticated_stream::DecryptingKey::new(stream_alg,
+        &key_data[..key_len]).is_ok());
+    assert!(unauthenticated_stream::EncryptingKey::new(stream_alg,
         &key_data[..key_len]).is_ok());
 
     // Key is one byte too small.
-    assert!(unauthenticated_stream::StreamingKey::new(stream_alg,
+    assert!(unauthenticated_stream::DecryptingKey::new(stream_alg,
+        &key_data[..(key_len - 1)]).is_err());
+    assert!(unauthenticated_stream::EncryptingKey::new(stream_alg,
         &key_data[..(key_len - 1)]).is_err());
 
     // Key is one byte too large.
-    assert!(unauthenticated_stream::StreamingKey::new(stream_alg,
+    assert!(unauthenticated_stream::DecryptingKey::new(stream_alg,
+        &key_data[..(key_len + 1)]).is_err());
+    assert!(unauthenticated_stream::EncryptingKey::new(stream_alg,
         &key_data[..(key_len + 1)]).is_err());
 
     // Key is half the required size.
-    assert!(unauthenticated_stream::StreamingKey::new(stream_alg,
+    assert!(unauthenticated_stream::DecryptingKey::new(stream_alg,
+        &key_data[..(key_len / 2)]).is_err());
+    assert!(unauthenticated_stream::EncryptingKey::new(stream_alg,
         &key_data[..(key_len / 2)]).is_err());
 
     // Key is twice the required size.
-    assert!(unauthenticated_stream::StreamingKey::new(stream_alg,
+    assert!(unauthenticated_stream::DecryptingKey::new(stream_alg,
+        &key_data[..(key_len * 2)]).is_err());
+    assert!(unauthenticated_stream::EncryptingKey::new(stream_alg,
         &key_data[..(key_len * 2)]).is_err());
 
     // Key is empty.
-    assert!(unauthenticated_stream::StreamingKey::new(stream_alg,
+    assert!(unauthenticated_stream::DecryptingKey::new(stream_alg,
+        &[]).is_err());
+    assert!(unauthenticated_stream::EncryptingKey::new(stream_alg,
         &[]).is_err());
 
     // Key is one byte.
-    assert!(unauthenticated_stream::StreamingKey::new(stream_alg,
+    assert!(unauthenticated_stream::DecryptingKey::new(stream_alg,
+        &[0]).is_err());
+    assert!(unauthenticated_stream::EncryptingKey::new(stream_alg,
         &[0]).is_err());
 }
 
@@ -139,63 +156,107 @@ fn test_stream_nonce_sizes(stream_alg: &'static unauthenticated_stream::Algorith
                          -> Result<(), error::Unspecified> {
     let key_len = stream_alg.key_len();
     let key_data = vec![0u8; key_len];
-    let s_key = unauthenticated_stream::StreamingKey::new(stream_alg,
-                                                          &key_data[..key_len])?;
+    let s_key = unauthenticated_stream::EncryptingKey::new(stream_alg,
+                                                           &key_data[..key_len])?;
+    let o_key = unauthenticated_stream::DecryptingKey::new(stream_alg,
+                                                           &key_data[..key_len])?;
 
     let nonce_len = stream_alg.nonce_len();
 
     let nonce = vec![0u8; nonce_len * 2];
 
-    // Construct a template input for `xor_keystream_in_place`.
-    let to_xor = b"hello, world".to_vec();
-    let to_xor = &to_xor[..];
+    // Construct a template input for `encrypt_in_place`.
+    let to_encrypt = b"hello, world".to_vec();
+    let to_encrypt = &to_encrypt[..];
+
+    // Construct a template input for `decrypt_in_place`.
+    let mut to_decrypt = Vec::from(to_encrypt);
+    let ciphertext_len =
+        unauthenticated_stream::encrypt_in_place(&s_key, &nonce[..nonce_len],
+                                                 &mut to_decrypt)?;
+    let to_decrypt = &to_decrypt[..ciphertext_len];
 
     // Nonce is the correct length.
     {
-        let mut in_out = Vec::from(to_xor);
-        assert!(unauthenticated_stream::xor_keystream_in_place(&s_key,
+        let mut in_out = Vec::from(to_encrypt);
+        assert!(unauthenticated_stream::encrypt_in_place(&s_key,
+                &nonce[..nonce_len], &mut in_out).is_ok());
+    }
+    {
+        let mut in_out = Vec::from(to_decrypt);
+        assert!(unauthenticated_stream::decrypt_in_place(&o_key,
                 &nonce[..nonce_len], &mut in_out).is_ok());
     }
 
     // Nonce is one byte too small.
     {
-        let mut in_out = Vec::from(to_xor);
-        assert!(unauthenticated_stream::xor_keystream_in_place(&s_key,
+        let mut in_out = Vec::from(to_encrypt);
+        assert!(unauthenticated_stream::encrypt_in_place(&s_key,
+                &nonce[..(nonce_len - 1)], &mut in_out).is_err());
+    }
+    {
+        let mut in_out = Vec::from(to_decrypt);
+        assert!(unauthenticated_stream::decrypt_in_place(&o_key,
                 &nonce[..(nonce_len - 1)], &mut in_out).is_err());
     }
 
     // Nonce is one byte too large.
     {
-        let mut in_out = Vec::from(to_xor);
-        assert!(unauthenticated_stream::xor_keystream_in_place(&s_key,
+        let mut in_out = Vec::from(to_encrypt);
+        assert!(unauthenticated_stream::encrypt_in_place(&s_key,
+            &nonce[..(nonce_len + 1)], &mut in_out).is_err());
+    }
+    {
+        let mut in_out = Vec::from(to_decrypt);
+        assert!(unauthenticated_stream::decrypt_in_place(&o_key,
             &nonce[..(nonce_len + 1)], &mut in_out).is_err());
     }
 
     // Nonce is half the required size.
     {
-        let mut in_out = Vec::from(to_xor);
-        assert!(unauthenticated_stream::xor_keystream_in_place(&s_key,
+        let mut in_out = Vec::from(to_encrypt);
+        assert!(unauthenticated_stream::encrypt_in_place(&s_key,
+            &nonce[..(nonce_len / 2)], &mut in_out).is_err());
+    }
+    {
+        let mut in_out = Vec::from(to_decrypt);
+        assert!(unauthenticated_stream::decrypt_in_place(&o_key,
             &nonce[..(nonce_len / 2)], &mut in_out).is_err());
     }
 
     // Nonce is twice the required size.
     {
-        let mut in_out = Vec::from(to_xor);
-        assert!(unauthenticated_stream::xor_keystream_in_place(&s_key,
+        let mut in_out = Vec::from(to_encrypt);
+        assert!(unauthenticated_stream::encrypt_in_place(&s_key,
+            &nonce[..(nonce_len * 2)], &mut in_out).is_err());
+    }
+    {
+        let mut in_out = Vec::from(to_decrypt);
+        assert!(unauthenticated_stream::decrypt_in_place(&o_key,
             &nonce[..(nonce_len * 2)], &mut in_out).is_err());
     }
 
     // Nonce is empty.
     {
-        let mut in_out = Vec::from(to_xor);
-        assert!(unauthenticated_stream::xor_keystream_in_place(&s_key, &[],
+        let mut in_out = Vec::from(to_encrypt);
+        assert!(unauthenticated_stream::encrypt_in_place(&s_key, &[],
+            &mut in_out) .is_err());
+    }
+    {
+        let mut in_out = Vec::from(to_decrypt);
+        assert!(unauthenticated_stream::decrypt_in_place(&o_key, &[],
             &mut in_out) .is_err());
     }
 
     // Nonce is one byte.
     {
-        let mut in_out = Vec::from(to_xor);
-        assert!(unauthenticated_stream::xor_keystream_in_place(&s_key,
+        let mut in_out = Vec::from(to_encrypt);
+        assert!(unauthenticated_stream::encrypt_in_place(&s_key,
+            &nonce[..1], &mut in_out).is_err());
+    }
+    {
+        let mut in_out = Vec::from(to_decrypt);
+        assert!(unauthenticated_stream::decrypt_in_place(&o_key,
             &nonce[..1], &mut in_out).is_err());
     }
 
