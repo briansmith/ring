@@ -56,7 +56,7 @@ mod sha1;
 ///
 /// assert_eq!(&one_shot.as_ref(), &multi_part.as_ref());
 /// ```
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Context {
     state: State,
 
