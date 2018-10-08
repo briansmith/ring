@@ -15,7 +15,7 @@
 //! Elliptic curve operations on the birationally equivalent curves Curve25519
 //! and Edwards25519.
 
-use {bssl, c, error, limb};
+use {bssl, error, limb};
 use std::marker::PhantomData;
 
 // Elem<T>` is `fe` in curve25519/internal.h.
@@ -87,11 +87,9 @@ impl ExtPoint {
                           -> Result<Self, error::Unspecified> {
         let mut point = Self::new_at_infinity();
 
-        bssl::map_result(unsafe {
+        Result::from(unsafe {
             GFp_x25519_ge_frombytes_vartime(&mut point, encoded)
-        })?;
-
-        Ok(point)
+        }).map(|()| point)
     }
 
     pub fn into_encoded_point(self) -> EncodedPoint {
@@ -157,5 +155,5 @@ extern {
     fn GFp_x25519_fe_neg(f: &mut Elem<T>);
     fn GFp_x25519_fe_tobytes(bytes: &mut EncodedPoint, elem: &Elem<T>);
     fn GFp_x25519_ge_frombytes_vartime(h: &mut ExtPoint, s: &EncodedPoint)
-                                       -> c::int;
+                                       -> bssl::Result;
 }

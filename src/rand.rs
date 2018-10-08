@@ -150,6 +150,7 @@ mod sysrand_chunk {
     #[link(name = "advapi32")]
     extern "system" {
         #[link_name = "SystemFunction036"]
+        #[must_use]
         fn RtlGenRandom(random_buffer: *mut u8,
                         random_buffer_length: c::win32::ULONG)
                         -> c::win32::BOOLEAN;
@@ -274,6 +275,7 @@ mod darwin {
         static kSecRandomDefault: &'static SecRandomRef;
 
         // For now `rnd` must be `kSecRandomDefault`.
+        #[must_use]
         fn SecRandomCopyBytes(rnd: &'static SecRandomRef, count: c::size_t,
                               bytes: *mut u8) -> c::int;
     }

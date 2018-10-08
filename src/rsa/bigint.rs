@@ -245,7 +245,7 @@ impl<M> Modulus<M> {
         if n.len() > MODULUS_MAX_LIMBS {
             return Err(error::Unspecified);
         }
-        bssl::map_result(unsafe {
+        Result::from(unsafe {
             GFp_bn_mul_mont_check_num_limbs(n.len())
         })?;
         if limb::limbs_are_even_constant_time(&n) != limb::LimbMask::False {
@@ -459,7 +459,7 @@ pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
     tmp.copy_from_slice(&a.limbs);
 
     let mut r = m.zero();
-    bssl::map_result(unsafe {
+    Result::from(unsafe {
         GFp_bn_from_montgomery_in_place(r.limbs.as_mut_ptr(), r.limbs.len(),
                                         tmp.as_mut_ptr(), tmp.len(),
                                         m.limbs.as_ptr(), m.limbs.len(), &m.n0)
@@ -743,7 +743,7 @@ pub fn elem_exp_consttime<M>(
         limbs: base.limbs,
         encoding: PhantomData,
     };
-    bssl::map_result(unsafe {
+    Result::from(unsafe {
         GFp_BN_mod_exp_mont_consttime(r.limbs.as_mut_ptr(), r.limbs.as_ptr(),
                                       exponent.limbs.as_ptr(),
                                       oneR.0.limbs.as_ptr(), m.limbs.as_ptr(),
@@ -915,7 +915,7 @@ extern {
     fn GFp_bn_mul_mont(r: *mut limb::Limb, a: *const limb::Limb,
                        b: *const limb::Limb, n: *const limb::Limb,
                        n0: &N0, num_limbs: c::size_t);
-    fn GFp_bn_mul_mont_check_num_limbs(num_limbs: c::size_t) -> c::int;
+    fn GFp_bn_mul_mont_check_num_limbs(num_limbs: c::size_t) -> bssl::Result;
 
     fn GFp_bn_neg_inv_mod_r_u64(n: u64) -> u64;
 
@@ -928,7 +928,7 @@ extern {
     fn GFp_bn_from_montgomery_in_place(r: *mut limb::Limb, num_r: c::size_t,
                                        a: *mut limb::Limb, num_a: c::size_t,
                                        n: *const limb::Limb, num_n: c::size_t,
-                                       n0: &N0) -> c::int;
+                                       n0: &N0) -> bssl::Result;
 
     // `r` and `a` may alias.
     fn GFp_BN_mod_exp_mont_consttime(r: *mut limb::Limb,
@@ -936,7 +936,7 @@ extern {
                                      p: *const limb::Limb,
                                      one_mont: *const limb::Limb,
                                      n: *const limb::Limb,
-                                     num_limbs: c::size_t, n0: &N0) -> c::int;
+                                     num_limbs: c::size_t, n0: &N0) -> bssl::Result;
 
     // `r` and `a` may alias.
     fn LIMBS_add_mod(r: *mut limb::Limb, a: *const limb::Limb,

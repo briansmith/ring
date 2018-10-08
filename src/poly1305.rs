@@ -15,7 +15,7 @@
 
 // TODO: enforce maximum input length.
 
-use {c, chacha, constant_time, error, polyfill};
+use {bssl, c, chacha, constant_time, error, polyfill};
 use core;
 
 impl SigningContext {
@@ -195,10 +195,10 @@ struct Funcs {
 }
 
 #[inline]
-fn init(state: &mut Opaque, key: &KeyBytes, func: &mut Funcs) -> i32 {
-    unsafe {
+fn init(state: &mut Opaque, key: &KeyBytes, func: &mut Funcs) -> Result<(), error::Unspecified> {
+    Result::from(unsafe {
         GFp_poly1305_init_asm(state, key, func)
-    }
+    })
 }
 
 #[repr(u32)]
@@ -235,7 +235,7 @@ pub struct SigningContext {
 
 extern {
     fn GFp_poly1305_init_asm(state: &mut Opaque, key: &KeyBytes,
-                             out_func: &mut Funcs) -> c::int;
+                             out_func: &mut Funcs) -> bssl::Result;
     fn GFp_poly1305_blocks(state: &mut Opaque, input: *const u8, len: c::size_t,
                            should_pad: Pad);
     fn GFp_poly1305_emit(state: &mut Opaque, mac: &mut Tag, nonce: &Nonce);

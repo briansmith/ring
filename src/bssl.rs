@@ -14,10 +14,22 @@
 
 use {c, error};
 
-pub fn map_result(bssl_result: c::int) -> Result<(), error::Unspecified> {
-    match bssl_result {
-        1 => Ok(()),
-        _ => Err(error::Unspecified),
+/// A `c::int` returned from a foreign function containing **1** if the function was successful
+/// or **0** if an error occurred. This is the convention used by C code in `ring`.
+#[derive(Clone, Copy, Debug)]
+#[must_use]
+#[repr(transparent)]
+pub struct Result(c::int);
+
+impl From<Result> for ::std::result::Result<(), error::Unspecified> {
+    fn from(ret: Result) -> Self {
+        match ret.0 {
+            1 => Ok(()),
+            c => {
+                debug_assert_eq!(c, 0, "`bssl::Result` value must be 0 or 1");
+                Err(error::Unspecified)
+            },
+        }
     }
 }
 
@@ -34,6 +46,7 @@ macro_rules! bssl_test {
         fn $fn_name() {
             use $crate::{c, init};
             extern {
+                #[must_use]
                 fn $bssl_test_main_fn_name() -> c::int;
             }
 
@@ -44,6 +57,27 @@ macro_rules! bssl_test {
                 $bssl_test_main_fn_name()
             };
             assert_eq!(result, 0);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    mod result {
+        use {bssl, c};
+        use core::mem;
+
+        #[test]
+        fn size_and_alignment() {
+            type Underlying = c::int;
+            assert_eq!(mem::size_of::<bssl::Result>(), mem::size_of::<Underlying>());
+            assert_eq!(mem::align_of::<bssl::Result>(), mem::align_of::<Underlying>());
+        }
+
+        #[test]
+        fn semantics() {
+            assert!(Result::from(bssl::Result(0)).is_err());
+            assert!(Result::from(bssl::Result(1)).is_ok());
         }
     }
 }
