@@ -43,7 +43,7 @@ enum AlgorithmID {
     ECDSA_P384_SHA384_ASN1_SIGNING,
 }
 
-derive_debug_from_field!(Algorithm, id);
+derive_debug_via_self!(Algorithm, self.id);
 
 impl PartialEq for Algorithm {
     fn eq(&self, other: &Self) -> bool { self.id == other.id }
@@ -67,7 +67,7 @@ pub struct Key {
     alg: &'static Algorithm,
 }
 
-derive_debug_from_field!(Key, alg);
+derive_debug_via_self!(Key, self.alg);
 
 impl<'a> Key {
     /// Generates a new key pair and returns the key pair serialized as a

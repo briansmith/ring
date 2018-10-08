@@ -169,6 +169,8 @@ pub struct SigningKey {
     ctx_prototype: SigningContext,
 }
 
+derive_debug_via_self!(SigningKey, self.ctx_prototype.inner.algorithm());
+
 impl AsRef<[u8]> for Signature {
     #[inline] fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
@@ -277,6 +279,8 @@ pub struct SigningContext {
     inner: digest::Context,
     outer: digest::Context,
 }
+
+derive_debug_via_self!(SigningContext, self.inner.algorithm());
 
 impl SigningContext {
     /// Constructs a new HMAC signing context using the given digest algorithm
