@@ -5891,59 +5891,65 @@ func addVersionNegotiationTests() {
 	})
 
 	// Test TLS 1.3's downgrade signal.
-	testCases = append(testCases, testCase{
-		name: "Downgrade-TLS12-Client",
-		config: Config{
-			Bugs: ProtocolBugs{
-				NegotiateVersion: VersionTLS12,
-			},
-		},
-		tls13Variant:       TLS13RFC,
-		expectedVersion:    VersionTLS12,
-		shouldFail:         true,
-		expectedError:      ":TLS13_DOWNGRADE:",
-		expectedLocalError: "remote error: illegal parameter",
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "Downgrade-TLS12-Server",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendSupportedVersions: []uint16{VersionTLS12},
-			},
-		},
-		tls13Variant:       TLS13RFC,
-		expectedVersion:    VersionTLS12,
-		shouldFail:         true,
-		expectedLocalError: "tls: downgrade from TLS 1.3 detected",
-	})
+	var downgradeTests = []struct {
+		name            string
+		version         uint16
+		clientShimError string
+	}{
+		{"TLS12", VersionTLS12, "tls: downgrade from TLS 1.3 detected"},
+		{"TLS11", VersionTLS11, "tls: downgrade from TLS 1.2 detected"},
+		// TLS 1.0 does not have a dedicated value.
+		{"TLS10", VersionTLS10, "tls: downgrade from TLS 1.2 detected"},
+	}
 
-	testCases = append(testCases, testCase{
-		name: "Downgrade-TLS11-Client",
-		config: Config{
-			Bugs: ProtocolBugs{
-				NegotiateVersion: VersionTLS11,
+	for _, test := range downgradeTests {
+		// The client should enforce the downgrade sentinel.
+		testCases = append(testCases, testCase{
+			name: "Downgrade-" + test.name + "-Client",
+			config: Config{
+				Bugs: ProtocolBugs{
+					NegotiateVersion: test.version,
+				},
 			},
-		},
-		tls13Variant:       TLS13RFC,
-		expectedVersion:    VersionTLS11,
-		shouldFail:         true,
-		expectedError:      ":TLS13_DOWNGRADE:",
-		expectedLocalError: "remote error: illegal parameter",
-	})
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "Downgrade-TLS11-Server",
-		config: Config{
-			Bugs: ProtocolBugs{
-				SendSupportedVersions: []uint16{VersionTLS11},
+			tls13Variant:       TLS13RFC,
+			expectedVersion:    test.version,
+			shouldFail:         true,
+			expectedError:      ":TLS13_DOWNGRADE:",
+			expectedLocalError: "remote error: illegal parameter",
+		})
+
+		// The client should ignore the downgrade sentinel if
+		// configured.
+		testCases = append(testCases, testCase{
+			name: "Downgrade-" + test.name + "-Client-Ignore",
+			config: Config{
+				Bugs: ProtocolBugs{
+					NegotiateVersion: test.version,
+				},
 			},
-		},
-		tls13Variant:       TLS13RFC,
-		expectedVersion:    VersionTLS11,
-		shouldFail:         true,
-		expectedLocalError: "tls: downgrade from TLS 1.2 detected",
-	})
+			tls13Variant:    TLS13RFC,
+			expectedVersion: test.version,
+			flags: []string{
+				"-ignore-tls13-downgrade",
+				"-expect-tls13-downgrade",
+			},
+		})
+
+		// The server should emit the downgrade signal.
+		testCases = append(testCases, testCase{
+			testType: serverTest,
+			name:     "Downgrade-" + test.name + "-Server",
+			config: Config{
+				Bugs: ProtocolBugs{
+					SendSupportedVersions: []uint16{test.version},
+				},
+			},
+			tls13Variant:       TLS13RFC,
+			expectedVersion:    test.version,
+			shouldFail:         true,
+			expectedLocalError: test.clientShimError,
+		})
+	}
 
 	// Test that the draft TLS 1.3 variants don't trigger the downgrade logic.
 	testCases = append(testCases, testCase{

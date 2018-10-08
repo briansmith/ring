@@ -2456,6 +2456,10 @@ struct SSL_CONFIG {
   // shed_handshake_config indicates that the handshake config (this object!)
   // should be freed after the handshake completes.
   bool shed_handshake_config : 1;
+
+  // ignore_tls13_downgrade is whether the connection should continue when the
+  // server random signals a downgrade.
+  bool ignore_tls13_downgrade:1;
 };
 
 // From RFC 8446, used in determining PSK modes.

@@ -693,6 +693,7 @@ SSL *SSL_new(SSL_CTX *ctx) {
       ctx->signed_cert_timestamps_enabled;
   ssl->config->ocsp_stapling_enabled = ctx->ocsp_stapling_enabled;
   ssl->config->handoff = ctx->handoff;
+  ssl->config->ignore_tls13_downgrade = ctx->ignore_tls13_downgrade;
 
   if (!ssl->method->ssl_new(ssl.get()) ||
       !ssl->ctx->x509_method->ssl_new(ssl->s3->hs.get())) {
@@ -709,7 +710,8 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       channel_id_enabled(false),
       retain_only_sha256_of_client_certs(false),
       handoff(false),
-      shed_handshake_config(false) {
+      shed_handshake_config(false),
+      ignore_tls13_downgrade(false) {
   assert(ssl);
 }
 
@@ -2640,6 +2642,13 @@ int SSL_is_tls13_downgrade(const SSL *ssl) { return ssl->s3->tls13_downgrade; }
 
 void SSL_CTX_set_ignore_tls13_downgrade(SSL_CTX *ctx, int ignore) {
   ctx->ignore_tls13_downgrade = !!ignore;
+}
+
+void SSL_set_ignore_tls13_downgrade(SSL *ssl, int ignore) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->ignore_tls13_downgrade = !!ignore;
 }
 
 void SSL_set_shed_handshake_config(SSL *ssl, int enable) {

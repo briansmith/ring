@@ -600,7 +600,7 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
             .subspan(SSL3_RANDOM_SIZE - sizeof(kTLS13DowngradeRandom));
     if (suffix == kTLS12DowngradeRandom || suffix == kTLS13DowngradeRandom) {
       ssl->s3->tls13_downgrade = true;
-      if (!ssl->ctx->ignore_tls13_downgrade) {
+      if (!hs->config->ignore_tls13_downgrade) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_TLS13_DOWNGRADE);
         ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
         return ssl_hs_error;
