@@ -132,6 +132,8 @@ int GFp_vpaes_set_encrypt_key(const uint8_t *userKey, unsigned bits,
 void GFp_vpaes_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 #endif
 
+// XXX: Returns zero on success, violating the return value convention.
+// TODO: should return void anyway, as it can only fail if passed a null pointer.
 int GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
                             AES_KEY *key) {
   // Keep this in sync with |gcm128_init_gmult_ghash| and |aes_ctr|.

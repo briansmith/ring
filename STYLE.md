@@ -91,29 +91,33 @@ already a safer function for doing the conversion in
 [ring::polyfill](src/polyfill.rs). If not, add one to `ring::polyfill`.
 
 The C code generally uses the C `int` type as a return value, where 1 indicates
-success and 0 indicates failure. Sometimes the C code has functions that return
-pointers, and a NULL pointer indicates failure. The module
-[ring::bssl](src/bssl.rs) contains some utilities for mapping these return
-values to `Result<(), ()>` and `Result<*mut T, ()>`, respectively. They should
-be used as in the following example (note the placement of `unsafe`):
+success and 0 indicates failure. The module [ring::bssl](src/bssl.rs) contains
+a [transparent] `Result` type which should be used as the return type when
+declaring foreign functions which follow this convention. A
+`ring::bssl::Result` should be converted to a `std::result::Result` using the
+pattern in the following example (note the placement of `unsafe`):
+
+[transparent]: https://doc.rust-lang.org/nightly/reference/type-layout.html#the-transparent-representation
+
 ```rust
+extern {
+    unsafe_fn1() -> bssl::Result;
+    /* ... */
+}
+
 fn foo() -> Result<(), ()> {
-    try!(bssl::map_result(unsafe {
+    Result::from(unsafe {
         unsafe_fn2(when, the, entire, thing, does, not, fit, on, a, single,
                    line)
-    }));
+    })?;
 
-    try!(bssl::map_result(unsafe {
+    Result::from(unsafe {
         unsafe_fn1() // Use the same style even when the call fits on one line.
-    }));
-
-    let ptr = try!(bssl::map_ptr_result(unsafe {
-        unsafe_fn_returning_pointer()
-    }));
+    })?;
 
     // The return value of `foo` will be the mapped result of calling
     // `unsafe_fn3`.
-    bssl::map_result(unsafe {
+    Result::from(unsafe {
         unsafe_fn3()
     })
 }
