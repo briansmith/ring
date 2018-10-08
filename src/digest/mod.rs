@@ -301,7 +301,7 @@ impl PartialEq for Algorithm {
 
 impl Eq for Algorithm {}
 
-derive_debug_from_field!(Algorithm, id);
+derive_debug_via_self!(Algorithm, self.id);
 
 /// SHA-1 as specified in [FIPS 180-4]. Deprecated.
 ///
