@@ -76,8 +76,8 @@ int GFp_aes_gcm_seal(const uint8_t *ctx_buf, uint8_t *in_out, size_t in_out_len,
                      uint8_t tag_out[EVP_AEAD_AES_GCM_TAG_LEN],
                      const uint8_t nonce[EVP_AEAD_AES_GCM_NONCE_LEN],
                      const uint8_t *ad, size_t ad_len);
-int GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
-                            AES_KEY *key);
+void GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
+                             AES_KEY *key);
 void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 int GFp_has_aes_hardware(void);
 
@@ -132,15 +132,19 @@ int GFp_vpaes_set_encrypt_key(const uint8_t *userKey, unsigned bits,
 void GFp_vpaes_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 #endif
 
-// XXX: Returns zero on success, violating the return value convention.
-// TODO: should return void anyway, as it can only fail if passed a null pointer.
-int GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
-                            AES_KEY *key) {
+// |bits| must be 128 or 256. 192-bit keys are not supported.
+void GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
+                             AES_KEY *key) {
   // Keep this in sync with |gcm128_init_gmult_ghash| and |aes_ctr|.
+
+  assert(user_key != NULL);
+  assert(key != NULL);
+  assert(bits == 128 || bits == 256);
 
 #if defined(HWAES)
   if (hwaes_capable()) {
-    return GFp_aes_hw_set_encrypt_key(user_key, bits, key);
+    (void) GFp_aes_hw_set_encrypt_key(user_key, bits, key);
+    return;
   }
 #endif
 
@@ -149,14 +153,15 @@ int GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
 #error "BSAES and VPAES are enabled at the same time, unexpectedly."
 #endif
   if (vpaes_capable()) {
-    return GFp_vpaes_set_encrypt_key(user_key, bits, key);
+    (void) GFp_vpaes_set_encrypt_key(user_key, bits, key);
+    return;
   }
 #endif
 
 #if defined(GFp_C_AES)
-  return GFp_aes_c_set_encrypt_key(user_key, bits, key);
+  GFp_aes_c_set_encrypt_key(user_key, bits, key);
 #else
-  return GFp_asm_AES_set_encrypt_key(user_key, bits, key);
+  GFp_asm_AES_set_encrypt_key(user_key, bits, key);
 #endif
 }
 
@@ -239,8 +244,10 @@ int GFp_aes_gcm_init(uint8_t *ctx_buf, size_t ctx_buf_len, const uint8_t *key,
     return 0;
   }
 
-  // XXX: Ignores return value. TODO: These functions should return |void|
-  // anyway.
+  if (key_len != (128 / 8) && key_len != (256 / 8)) {
+    return 0; // Invalid key length
+  }
+
   GFp_AES_set_encrypt_key(key, (unsigned)key_len * 8, &ks);
 
   GFp_gcm128_init_serialized(ctx_buf + sizeof(ks), &ks, aes_block());
