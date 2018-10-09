@@ -285,26 +285,16 @@ static const uint32_t rcon[] = {
     // for 128-bit blocks, Rijndael never uses more than 10 rcon values
 };
 
-int GFp_aes_c_set_encrypt_key(const uint8_t *key, unsigned bits,
-                              AES_KEY *aeskey) {
+// |bits| must be 128 or 256. 192-bit keys are not supported.
+void GFp_aes_c_set_encrypt_key(const uint8_t *key, unsigned bits,
+                               AES_KEY *aeskey) {
+  assert(key != NULL);
+  assert(aeskey != NULL);
+  assert(bits == 128 || bits == 256);
+
   uint32_t *rk;
   int i = 0;
   uint32_t temp;
-
-  if (!key || !aeskey) {
-    return -1;
-  }
-
-  switch (bits) {
-    case 128:
-      aeskey->rounds = 10;
-      break;
-    case 256:
-      aeskey->rounds = 14;
-      break;
-    default:
-      return -2;
-  }
 
   rk = aeskey->rd_key;
 
@@ -313,6 +303,8 @@ int GFp_aes_c_set_encrypt_key(const uint8_t *key, unsigned bits,
   rk[2] = from_be_u32_ptr(key + 8);
   rk[3] = from_be_u32_ptr(key + 12);
   if (bits == 128) {
+    aeskey->rounds = 10;
+
     while (1) {
       temp = rk[3];
       rk[4] = rk[0] ^ (Te2[(temp >> 16) & 0xff] & 0xff000000) ^
@@ -323,41 +315,41 @@ int GFp_aes_c_set_encrypt_key(const uint8_t *key, unsigned bits,
       rk[6] = rk[2] ^ rk[5];
       rk[7] = rk[3] ^ rk[6];
       if (++i == 10) {
-        return 0;
+        return;
       }
       rk += 4;
     }
   }
+
+  assert(bits == 256);
   rk[4] = from_be_u32_ptr(key + 16);
   rk[5] = from_be_u32_ptr(key + 20);
   rk[6] = from_be_u32_ptr(key + 24);
   rk[7] = from_be_u32_ptr(key + 28);
-  if (bits == 256) {
-    while (1) {
-      temp = rk[7];
-      rk[8] = rk[0] ^ (Te2[(temp >> 16) & 0xff] & 0xff000000) ^
-              (Te3[(temp >> 8) & 0xff] & 0x00ff0000) ^
-              (Te0[(temp) & 0xff] & 0x0000ff00) ^
-              (Te1[(temp >> 24)] & 0x000000ff) ^ rcon[i];
-      rk[9] = rk[1] ^ rk[8];
-      rk[10] = rk[2] ^ rk[9];
-      rk[11] = rk[3] ^ rk[10];
-      if (++i == 7) {
-        return 0;
-      }
-      temp = rk[11];
-      rk[12] = rk[4] ^ (Te2[(temp >> 24)] & 0xff000000) ^
-               (Te3[(temp >> 16) & 0xff] & 0x00ff0000) ^
-               (Te0[(temp >> 8) & 0xff] & 0x0000ff00) ^
-               (Te1[(temp) & 0xff] & 0x000000ff);
-      rk[13] = rk[5] ^ rk[12];
-      rk[14] = rk[6] ^ rk[13];
-      rk[15] = rk[7] ^ rk[14];
-
-      rk += 8;
+  aeskey->rounds = 14;
+  while (1) {
+    temp = rk[7];
+    rk[8] = rk[0] ^ (Te2[(temp >> 16) & 0xff] & 0xff000000) ^
+            (Te3[(temp >> 8) & 0xff] & 0x00ff0000) ^
+            (Te0[(temp) & 0xff] & 0x0000ff00) ^
+            (Te1[(temp >> 24)] & 0x000000ff) ^ rcon[i];
+    rk[9] = rk[1] ^ rk[8];
+    rk[10] = rk[2] ^ rk[9];
+    rk[11] = rk[3] ^ rk[10];
+    if (++i == 7) {
+      return;
     }
+    temp = rk[11];
+    rk[12] = rk[4] ^ (Te2[(temp >> 24)] & 0xff000000) ^
+             (Te3[(temp >> 16) & 0xff] & 0x00ff0000) ^
+             (Te0[(temp >> 8) & 0xff] & 0x0000ff00) ^
+             (Te1[(temp) & 0xff] & 0x000000ff);
+    rk[13] = rk[5] ^ rk[12];
+    rk[14] = rk[6] ^ rk[13];
+    rk[15] = rk[7] ^ rk[14];
+
+    rk += 8;
   }
-  return 0;
 }
 
 void GFp_aes_c_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {

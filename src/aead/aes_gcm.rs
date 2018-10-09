@@ -118,6 +118,7 @@ extern {
 #[cfg(test)]
 mod tests {
     use {c, test};
+    use bits::BitLength;
     use super::AES_MAX_ROUNDS;
 
     #[test]
@@ -132,15 +133,16 @@ mod tests {
                 slice_as_array_ref!(&expected_output, AES_BLOCK_SIZE).unwrap();
 
             // Key setup.
+            let key_bits = BitLength::from_usize_bytes(key.len()).unwrap();
+            assert!(key_bits == BitLength(128) || key_bits == BitLength(256));
+            let key_bits = key_bits.as_usize_bits() as c::uint;
             let mut aes_key = AES_KEY {
                 rd_key: [0u32; 4 * (AES_MAX_ROUNDS + 1)],
                 rounds: 0,
             };
-            let res = unsafe {
-                GFp_AES_set_encrypt_key(key.as_ptr(), key.len() * 8,
-                                        &mut aes_key)
-            };
-            assert_eq!(res, 0, "GFp_AES_set_encrypt_key failed.");
+            unsafe {
+                GFp_AES_set_encrypt_key(key.as_ptr(), key_bits, &mut aes_key);
+            }
 
             // Test encryption into a separate buffer.
             let mut output_buf = [0u8; AES_BLOCK_SIZE];
@@ -172,10 +174,8 @@ mod tests {
     }
 
     extern "C" {
-        // XXX: This function does not adhere to the return value conventions.
-        #[must_use]
-        fn GFp_AES_set_encrypt_key(key: *const u8, bits: usize,
-                                   aes_key: *mut AES_KEY) -> c::int;
+        fn GFp_AES_set_encrypt_key(key: *const u8, bits: c::uint,
+                                   aes_key: *mut AES_KEY);
         fn GFp_AES_encrypt(in_: *const u8, out: *mut u8, key: *const AES_KEY);
     }
 
