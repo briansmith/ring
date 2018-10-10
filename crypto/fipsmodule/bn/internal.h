@@ -185,6 +185,10 @@ extern "C" {
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
 #endif
 
+#if !defined(OPENSSL_NO_ASM) && (defined(__GNUC__) || defined(__clang__))
+#define BN_CAN_USE_INLINE_ASM
+#endif
+
 // |BN_mod_exp_mont_consttime| is based on the assumption that the L1 data
 // cache line width of the target processor is at least the following value.
 #define MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH 64

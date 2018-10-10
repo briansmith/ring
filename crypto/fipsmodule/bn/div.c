@@ -64,7 +64,7 @@
 #include "internal.h"
 
 
-#if !defined(BN_ULLONG)
+#if !defined(BN_CAN_DIVIDE_ULLONG) && !defined(BN_CAN_USE_INLINE_ASM)
 // bn_div_words divides a double-width |h|,|l| by |d| and returns the result,
 // which must fit in a |BN_ULONG|.
 static BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d) {
@@ -135,7 +135,7 @@ static BN_ULONG bn_div_words(BN_ULONG h, BN_ULONG l, BN_ULONG d) {
   ret |= q;
   return ret;
 }
-#endif  // !defined(BN_ULLONG)
+#endif  // !defined(BN_CAN_DIVIDE_ULLONG) && !defined(BN_CAN_USE_INLINE_ASM)
 
 static inline void bn_div_rem_words(BN_ULONG *quotient_out, BN_ULONG *rem_out,
                                     BN_ULONG n0, BN_ULONG n1, BN_ULONG d0) {
@@ -155,20 +155,18 @@ static inline void bn_div_rem_words(BN_ULONG *quotient_out, BN_ULONG *rem_out,
   //
   // These issues aren't specific to x86 and x86_64, so it might be worthwhile
   // to add more assembly language implementations.
-#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86) && \
-    (defined(__GNUC__) || defined(__clang__))
+#if defined(BN_CAN_USE_INLINE_ASM) && defined(OPENSSL_X86)
   __asm__ volatile("divl %4"
                    : "=a"(*quotient_out), "=d"(*rem_out)
                    : "a"(n1), "d"(n0), "rm"(d0)
                    : "cc");
-#elif !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
-    (defined(__GNUC__) || defined(__clang__))
+#elif defined(BN_CAN_USE_INLINE_ASM) && defined(OPENSSL_X86_64)
   __asm__ volatile("divq %4"
                    : "=a"(*quotient_out), "=d"(*rem_out)
                    : "a"(n1), "d"(n0), "rm"(d0)
                    : "cc");
 #else
-#if defined(BN_ULLONG)
+#if defined(BN_CAN_DIVIDE_ULLONG)
   BN_ULLONG n = (((BN_ULLONG)n0) << BN_BITS2) | n1;
   *quotient_out = (BN_ULONG)(n / d0);
 #else
