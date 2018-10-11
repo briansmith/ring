@@ -50,7 +50,7 @@ set TARGET=%TARGET_ARCH%-pc-windows-msvc
 %RUSTUP_EXE% -y --default-host %TARGET% --default-toolchain %RUST%
 if %ERRORLEVEL% NEQ 0 exit 1
 
-set PATH="C:\Users\appveyor\.cargo\bin";%cd%\windows_build_tools;%PATH%
+set PATH=%USERPROFILE%\.cargo\bin;%cd%\windows_build_tools;%PATH%
 
 if [%Configuration%] == [Release] set CARGO_MODE=--release
 
