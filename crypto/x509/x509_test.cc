@@ -1671,3 +1671,16 @@ TEST(X509Test, PEMX509Info) {
       PEM_X509_INFO_read_bio(bio.get(), infos.get(), nullptr, nullptr));
   EXPECT_EQ(2 * OPENSSL_ARRAY_SIZE(kExpected), sk_X509_INFO_num(infos.get()));
 }
+
+TEST(X509Test, ReadBIOEmpty) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(nullptr, 0));
+  ASSERT_TRUE(bio);
+
+  // CPython expects |ASN1_R_HEADER_TOO_LONG| on EOF, to terminate a series of
+  // certificates.
+  bssl::UniquePtr<X509> x509(d2i_X509_bio(bio.get(), nullptr));
+  EXPECT_FALSE(x509);
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_ASN1, ERR_GET_LIB(err));
+  EXPECT_EQ(ASN1_R_HEADER_TOO_LONG, ERR_GET_REASON(err));
+}
