@@ -36,19 +36,21 @@ if %ERRORLEVEL% NEQ 0 (
   exit 1
 )
 
-set RUST_URL=https://static.rust-lang.org/dist/rust-%RUST%-%TARGET_ARCH%-pc-windows-msvc.msi
-echo Downloading %RUST_URL%...
 mkdir build
-powershell -Command "(New-Object Net.WebClient).DownloadFile('%RUST_URL%', 'build\rust-%RUST%-%TARGET_ARCH%-pc-windows-msvc.msi')"
+set RUSTUP_URL=https://win.rustup.rs/%TARGET_ARCH%
+set RUSTUP_EXE=build\rustup-init-%TARGET_ARCH%.exe
+echo Downloading %RUSTUP_URL%...
+powershell -Command "(New-Object Net.WebClient).DownloadFile('%RUSTUP_URL%', '%RUSTUP_EXE%')"
 if %ERRORLEVEL% NEQ 0 (
-  echo ...downloading Rust failed.
+  echo ...downloading rustup failed.
   exit 1
 )
 
-start /wait msiexec /i build\rust-%RUST%-%TARGET_ARCH%-pc-windows-msvc.msi INSTALLDIR="%TARGET_PROGRAM_FILES%\Rust %RUST%" /quiet /qn /norestart
+set TARGET=%TARGET_ARCH%-pc-windows-msvc
+%RUSTUP_EXE% -y --default-host %TARGET% --default-toolchain %RUST%
 if %ERRORLEVEL% NEQ 0 exit 1
 
-set PATH="%TARGET_PROGRAM_FILES%\Rust %RUST%\bin";%cd%\windows_build_tools;%PATH%
+set PATH="C:\Users\appveyor\.cargo\bin";%cd%\windows_build_tools;%PATH%
 
 if [%Configuration%] == [Release] set CARGO_MODE=--release
 
