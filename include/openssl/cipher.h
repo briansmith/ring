@@ -424,8 +424,9 @@ OPENSSL_EXPORT const EVP_CIPHER *EVP_aes_128_cfb128(void);
 
 // The following flags do nothing and are included only to make it easier to
 // compile code with BoringSSL.
-#define EVP_CIPH_CCM_MODE 0
-#define EVP_CIPH_WRAP_MODE 0
+#define EVP_CIPH_CCM_MODE (-1)
+#define EVP_CIPH_OCB_MODE (-2)
+#define EVP_CIPH_WRAP_MODE (-3)
 #define EVP_CIPHER_CTX_FLAG_WRAP_ALLOW 0
 
 // EVP_CIPHER_CTX_set_flags does nothing.
