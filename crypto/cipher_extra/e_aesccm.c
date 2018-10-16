@@ -33,6 +33,15 @@ struct aead_aes_ccm_ctx {
   CCM128_CONTEXT ccm;
 };
 
+OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
+                           sizeof(struct aead_aes_ccm_ctx),
+                       AEAD_state_too_small);
+#if defined(__GNUC__) || defined(__clang__)
+OPENSSL_COMPILE_ASSERT(alignof(union evp_aead_ctx_st_state) >=
+                           alignof(struct aead_aes_ccm_ctx),
+                       AEAD_state_insufficient_alignment);
+#endif
+
 static int aead_aes_ccm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                              size_t key_len, size_t tag_len, unsigned M,
                              unsigned L) {
@@ -54,36 +63,28 @@ static int aead_aes_ccm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
     return 0;
   }
 
-  struct aead_aes_ccm_ctx *ccm_ctx =
-      OPENSSL_malloc(sizeof(struct aead_aes_ccm_ctx));
-  if (ccm_ctx == NULL) {
-    OPENSSL_PUT_ERROR(CIPHER, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
+  struct aead_aes_ccm_ctx *ccm_ctx = (struct aead_aes_ccm_ctx *)&ctx->state;
 
   block128_f block;
   ctr128_f ctr = aes_ctr_set_key(&ccm_ctx->ks.ks, NULL, &block, key, key_len);
   ctx->tag_len = tag_len;
   if (!CRYPTO_ccm128_init(&ccm_ctx->ccm, &ccm_ctx->ks.ks, block, ctr, M, L)) {
     OPENSSL_PUT_ERROR(CIPHER, ERR_R_INTERNAL_ERROR);
-    OPENSSL_free(ccm_ctx);
     return 0;
   }
 
-  ctx->aead_state = ccm_ctx;
   return 1;
 }
 
-static void aead_aes_ccm_cleanup(EVP_AEAD_CTX *ctx) {
-  OPENSSL_free(ctx->aead_state);
-}
+static void aead_aes_ccm_cleanup(EVP_AEAD_CTX *ctx) {}
 
 static int aead_aes_ccm_seal_scatter(
     const EVP_AEAD_CTX *ctx, uint8_t *out, uint8_t *out_tag,
     size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
     size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
     size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
-  const struct aead_aes_ccm_ctx *ccm_ctx = ctx->aead_state;
+  const struct aead_aes_ccm_ctx *ccm_ctx =
+      (struct aead_aes_ccm_ctx *)&ctx->state;
 
   if (in_len > CRYPTO_ccm128_max_input(&ccm_ctx->ccm)) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
@@ -116,7 +117,8 @@ static int aead_aes_ccm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                     const uint8_t *in, size_t in_len,
                                     const uint8_t *in_tag, size_t in_tag_len,
                                     const uint8_t *ad, size_t ad_len) {
-  const struct aead_aes_ccm_ctx *ccm_ctx = ctx->aead_state;
+  const struct aead_aes_ccm_ctx *ccm_ctx =
+      (struct aead_aes_ccm_ctx *)&ctx->state;
 
   if (in_len > CRYPTO_ccm128_max_input(&ccm_ctx->ccm)) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);

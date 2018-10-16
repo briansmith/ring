@@ -170,13 +170,16 @@ OPENSSL_EXPORT size_t EVP_AEAD_max_tag_len(const EVP_AEAD *aead);
 
 // AEAD operations.
 
+union evp_aead_ctx_st_state {
+  uint8_t opaque[580];
+  uint64_t alignment;
+};
+
 // An EVP_AEAD_CTX represents an AEAD algorithm configured with a specific key
 // and message-independent IV.
 typedef struct evp_aead_ctx_st {
   const EVP_AEAD *aead;
-  // aead_state is an opaque pointer to whatever state the AEAD needs to
-  // maintain.
-  void *aead_state;
+  union evp_aead_ctx_st_state state;
   // tag_len may contain the actual length of the authentication tag if it is
   // known at initialization time.
   uint8_t tag_len;

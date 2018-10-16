@@ -35,6 +35,15 @@ struct aead_chacha20_poly1305_ctx {
   uint8_t key[32];
 };
 
+OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
+                       sizeof(struct aead_chacha20_poly1305_ctx),
+                       AEAD_state_too_small);
+#if defined(__GNUC__) || defined(__clang__)
+OPENSSL_COMPILE_ASSERT(alignof(union evp_aead_ctx_st_state) >=
+                           alignof(struct aead_chacha20_poly1305_ctx),
+                       AEAD_state_insufficient_alignment);
+#endif
+
 // For convenience (the x86_64 calling convention allows only six parameters in
 // registers), the final parameter for the assembly functions is both an input
 // and output parameter.
@@ -109,7 +118,8 @@ static void chacha20_poly1305_seal(uint8_t *out_ciphertext,
 
 static int aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                                        size_t key_len, size_t tag_len) {
-  struct aead_chacha20_poly1305_ctx *c20_ctx;
+  struct aead_chacha20_poly1305_ctx *c20_ctx =
+      (struct aead_chacha20_poly1305_ctx *)&ctx->state;
 
   if (tag_len == 0) {
     tag_len = POLY1305_TAG_LEN;
@@ -124,21 +134,13 @@ static int aead_chacha20_poly1305_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
     return 0;  // internal error - EVP_AEAD_CTX_init should catch this.
   }
 
-  c20_ctx = OPENSSL_malloc(sizeof(struct aead_chacha20_poly1305_ctx));
-  if (c20_ctx == NULL) {
-    return 0;
-  }
-
   OPENSSL_memcpy(c20_ctx->key, key, key_len);
-  ctx->aead_state = c20_ctx;
   ctx->tag_len = tag_len;
 
   return 1;
 }
 
-static void aead_chacha20_poly1305_cleanup(EVP_AEAD_CTX *ctx) {
-  OPENSSL_free(ctx->aead_state);
-}
+static void aead_chacha20_poly1305_cleanup(EVP_AEAD_CTX *ctx) {}
 
 static void poly1305_update_length(poly1305_state *poly1305, size_t data_len) {
   uint8_t length_bytes[8];
@@ -260,7 +262,8 @@ static int aead_chacha20_poly1305_seal_scatter(
     size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
     size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
     size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
-  const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
+  const struct aead_chacha20_poly1305_ctx *c20_ctx =
+      (struct aead_chacha20_poly1305_ctx *)&ctx->state;
 
   return chacha20_poly1305_seal_scatter(
       c20_ctx->key, out, out_tag, out_tag_len, max_out_tag_len, nonce,
@@ -272,7 +275,8 @@ static int aead_xchacha20_poly1305_seal_scatter(
     size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
     size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
     size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
-  const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
+  const struct aead_chacha20_poly1305_ctx *c20_ctx =
+      (struct aead_chacha20_poly1305_ctx *)&ctx->state;
 
   if (nonce_len != 24) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
@@ -340,7 +344,8 @@ static int aead_chacha20_poly1305_open_gather(
     const EVP_AEAD_CTX *ctx, uint8_t *out, const uint8_t *nonce,
     size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *in_tag,
     size_t in_tag_len, const uint8_t *ad, size_t ad_len) {
-  const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
+  const struct aead_chacha20_poly1305_ctx *c20_ctx =
+      (struct aead_chacha20_poly1305_ctx *)&ctx->state;
 
   return chacha20_poly1305_open_gather(c20_ctx->key, out, nonce, nonce_len, in,
                                        in_len, in_tag, in_tag_len, ad, ad_len,
@@ -351,7 +356,8 @@ static int aead_xchacha20_poly1305_open_gather(
     const EVP_AEAD_CTX *ctx, uint8_t *out, const uint8_t *nonce,
     size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *in_tag,
     size_t in_tag_len, const uint8_t *ad, size_t ad_len) {
-  const struct aead_chacha20_poly1305_ctx *c20_ctx = ctx->aead_state;
+  const struct aead_chacha20_poly1305_ctx *c20_ctx =
+      (struct aead_chacha20_poly1305_ctx *)&ctx->state;
 
   if (nonce_len != 24) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);

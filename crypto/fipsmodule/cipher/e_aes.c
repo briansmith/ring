@@ -906,29 +906,30 @@ static int aead_aes_gcm_init_impl(struct aead_aes_gcm_ctx *gcm_ctx,
   return 1;
 }
 
+OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
+                           sizeof(struct aead_aes_gcm_ctx),
+                       AEAD_state_too_small);
+#if defined(__GNUC__) || defined(__clang__)
+  OPENSSL_COMPILE_ASSERT(
+      alignof(union evp_aead_ctx_st_state) >= alignof(struct aead_aes_gcm_ctx),
+      AEAD_state_insufficient_alignment);
+#endif
+
 static int aead_aes_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                              size_t key_len, size_t requested_tag_len) {
-  struct aead_aes_gcm_ctx *gcm_ctx;
-  gcm_ctx = OPENSSL_malloc(sizeof(struct aead_aes_gcm_ctx));
-  if (gcm_ctx == NULL) {
-    return 0;
-  }
+  struct aead_aes_gcm_ctx *gcm_ctx = (struct aead_aes_gcm_ctx *) &ctx->state;
 
   size_t actual_tag_len;
   if (!aead_aes_gcm_init_impl(gcm_ctx, &actual_tag_len, key, key_len,
                               requested_tag_len)) {
-    OPENSSL_free(gcm_ctx);
     return 0;
   }
 
-  ctx->aead_state = gcm_ctx;
   ctx->tag_len = actual_tag_len;
   return 1;
 }
 
-static void aead_aes_gcm_cleanup(EVP_AEAD_CTX *ctx) {
-  OPENSSL_free(ctx->aead_state);
-}
+static void aead_aes_gcm_cleanup(EVP_AEAD_CTX *ctx) {}
 
 static int aead_aes_gcm_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                      uint8_t *out_tag, size_t *out_tag_len,
@@ -938,7 +939,7 @@ static int aead_aes_gcm_seal_scatter(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                      const uint8_t *extra_in,
                                      size_t extra_in_len,
                                      const uint8_t *ad, size_t ad_len) {
-  const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
+  struct aead_aes_gcm_ctx *gcm_ctx = (struct aead_aes_gcm_ctx *) &ctx->state;
 
   if (extra_in_len + ctx->tag_len < ctx->tag_len) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_TOO_LARGE);
@@ -999,7 +1000,7 @@ static int aead_aes_gcm_open_gather(const EVP_AEAD_CTX *ctx, uint8_t *out,
                                     const uint8_t *in, size_t in_len,
                                     const uint8_t *in_tag, size_t in_tag_len,
                                     const uint8_t *ad, size_t ad_len) {
-  const struct aead_aes_gcm_ctx *gcm_ctx = ctx->aead_state;
+  struct aead_aes_gcm_ctx *gcm_ctx = (struct aead_aes_gcm_ctx *) &ctx->state;
   uint8_t tag[EVP_AEAD_AES_GCM_TAG_LEN];
 
   if (nonce_len == 0) {
@@ -1078,24 +1079,28 @@ struct aead_aes_gcm_tls12_ctx {
   uint64_t min_next_nonce;
 };
 
+OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
+                           sizeof(struct aead_aes_gcm_tls12_ctx),
+                       AEAD_state_too_small);
+#if defined(__GNUC__) || defined(__clang__)
+OPENSSL_COMPILE_ASSERT(alignof(union evp_aead_ctx_st_state) >=
+                           alignof(struct aead_aes_gcm_tls12_ctx),
+                       AEAD_state_insufficient_alignment);
+#endif
+
 static int aead_aes_gcm_tls12_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                                    size_t key_len, size_t requested_tag_len) {
-  struct aead_aes_gcm_tls12_ctx *gcm_ctx;
-  gcm_ctx = OPENSSL_malloc(sizeof(struct aead_aes_gcm_tls12_ctx));
-  if (gcm_ctx == NULL) {
-    return 0;
-  }
+  struct aead_aes_gcm_tls12_ctx *gcm_ctx =
+      (struct aead_aes_gcm_tls12_ctx *) &ctx->state;
 
   gcm_ctx->min_next_nonce = 0;
 
   size_t actual_tag_len;
   if (!aead_aes_gcm_init_impl(&gcm_ctx->gcm_ctx, &actual_tag_len, key, key_len,
                               requested_tag_len)) {
-    OPENSSL_free(gcm_ctx);
     return 0;
   }
 
-  ctx->aead_state = gcm_ctx;
   ctx->tag_len = actual_tag_len;
   return 1;
 }
@@ -1105,7 +1110,9 @@ static int aead_aes_gcm_tls12_seal_scatter(
     size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
     size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
     size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
-  struct aead_aes_gcm_tls12_ctx *gcm_ctx = ctx->aead_state;
+  struct aead_aes_gcm_tls12_ctx *gcm_ctx =
+      (struct aead_aes_gcm_tls12_ctx *) &ctx->state;
+
   if (nonce_len != 12) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
@@ -1166,13 +1173,19 @@ struct aead_aes_gcm_tls13_ctx {
   uint8_t first;
 };
 
+OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
+                           sizeof(struct aead_aes_gcm_tls13_ctx),
+                       AEAD_state_too_small);
+#if defined(__GNUC__) || defined(__clang__)
+OPENSSL_COMPILE_ASSERT(alignof(union evp_aead_ctx_st_state) >=
+                           alignof(struct aead_aes_gcm_tls13_ctx),
+                       AEAD_state_insufficient_alignment);
+#endif
+
 static int aead_aes_gcm_tls13_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                                    size_t key_len, size_t requested_tag_len) {
-  struct aead_aes_gcm_tls13_ctx *gcm_ctx;
-  gcm_ctx = OPENSSL_malloc(sizeof(struct aead_aes_gcm_tls13_ctx));
-  if (gcm_ctx == NULL) {
-    return 0;
-  }
+  struct aead_aes_gcm_tls13_ctx *gcm_ctx =
+      (struct aead_aes_gcm_tls13_ctx *) &ctx->state;
 
   gcm_ctx->min_next_nonce = 0;
   gcm_ctx->first = 1;
@@ -1180,11 +1193,9 @@ static int aead_aes_gcm_tls13_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
   size_t actual_tag_len;
   if (!aead_aes_gcm_init_impl(&gcm_ctx->gcm_ctx, &actual_tag_len, key, key_len,
                               requested_tag_len)) {
-    OPENSSL_free(gcm_ctx);
     return 0;
   }
 
-  ctx->aead_state = gcm_ctx;
   ctx->tag_len = actual_tag_len;
   return 1;
 }
@@ -1194,7 +1205,9 @@ static int aead_aes_gcm_tls13_seal_scatter(
     size_t *out_tag_len, size_t max_out_tag_len, const uint8_t *nonce,
     size_t nonce_len, const uint8_t *in, size_t in_len, const uint8_t *extra_in,
     size_t extra_in_len, const uint8_t *ad, size_t ad_len) {
-  struct aead_aes_gcm_tls13_ctx *gcm_ctx = ctx->aead_state;
+  struct aead_aes_gcm_tls13_ctx *gcm_ctx =
+      (struct aead_aes_gcm_tls13_ctx *) &ctx->state;
+
   if (nonce_len != 12) {
     OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
     return 0;
