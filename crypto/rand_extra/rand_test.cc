@@ -51,7 +51,7 @@ TEST(RandTest, NotObviouslyBroken) {
 }
 
 #if !defined(OPENSSL_WINDOWS) && !defined(OPENSSL_IOS) && \
-    !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
+    !defined(OPENSSL_FUCHSIA) && !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 static bool ForkAndRand(bssl::Span<uint8_t> out) {
   int pipefds[2];
   if (pipe(pipefds) < 0) {
@@ -146,7 +146,7 @@ TEST(RandTest, Fork) {
   EXPECT_NE(Bytes(buf3), Bytes(kZeros));
 }
 #endif  // !OPENSSL_WINDOWS && !OPENSSL_IOS &&
-        // !BORINGSSL_UNSAFE_DETERMINISTIC_MODE
+        // !OPENSSL_FUCHSIA && !BORINGSSL_UNSAFE_DETERMINISTIC_MODE
 
 #if defined(OPENSSL_THREADS)
 static void RunConcurrentRands(size_t num_threads) {
