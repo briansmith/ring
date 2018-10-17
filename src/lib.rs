@@ -130,7 +130,7 @@ mod rsa;
 pub mod signature;
 mod signature_impl;
 
-pub mod unauthenticated_stream;
+pub mod unauthenticated_encryption;
 
 #[cfg(any(feature = "use_heap", test))]
 pub mod test;
