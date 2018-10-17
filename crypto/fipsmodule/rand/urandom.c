@@ -33,6 +33,7 @@
 #include <linux/random.h>
 #include <sys/ioctl.h>
 #endif
+#include <sys/auxv.h>
 #include <sys/syscall.h>
 #endif
 
@@ -133,11 +134,21 @@ static void init_once(void) {
       boringssl_getrandom(&dummy, sizeof(dummy), GRND_NONBLOCK);
 
   if (getrandom_ret == -1 && errno == EAGAIN) {
-    fprintf(
-        stderr,
-        "getrandom indicates that the entropy pool has not been initialized. "
-        "Rather than continue with poor entropy, this process will block until "
-        "entropy is available.\n");
+    // Attempt to get the path of the current process to aid in debugging when
+    // something blocks.
+    const char *current_process = "<unknown>";
+#if !defined(OPENSSL_ANDROID)
+    const unsigned long getauxval_ret = getauxval(AT_EXECFN);
+    if (getauxval_ret != 0) {
+      current_process = (const char *)getauxval_ret;
+    }
+#endif
+
+    fprintf(stderr,
+            "%s: getrandom indicates that the entropy pool has not been "
+            "initialized. Rather than continue with poor entropy, this process "
+            "will block until entropy is available.\n",
+            current_process);
 
     getrandom_ret =
         boringssl_getrandom(&dummy, sizeof(dummy), 0 /* no flags */);
