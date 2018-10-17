@@ -21,22 +21,13 @@ use crate::{aead, chacha, error, poly1305, polyfill};
 /// [RFC 7539]: https://tools.ietf.org/html/rfc7539
 pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
     key_len: chacha::KEY_LEN_IN_BYTES,
-    init: chacha20_poly1305_init,
+    init: chacha::chacha20_init,
     seal: chacha20_poly1305_seal,
     open: chacha20_poly1305_open,
     id: aead::AlgorithmID::CHACHA20_POLY1305,
-    max_input_len: max_input_len!(CHACHA20_BLOCK_LEN, CHACHA20_OVERHEAD_BLOCKS_PER_NONCE),
+    max_input_len: max_input_len!(chacha::CHACHA20_BLOCK_LEN,
+                                  chacha::CHACHA20_OVERHEAD_BLOCKS_PER_NONCE),
 };
-
-const CHACHA20_BLOCK_LEN: u64 = 64;
-const CHACHA20_OVERHEAD_BLOCKS_PER_NONCE: u64 = 1;
-
-/// Copies |key| into |ctx_buf|.
-pub fn chacha20_poly1305_init(ctx_buf: &mut [u8], key: &[u8])
-                              -> Result<(), error::Unspecified> {
-    ctx_buf[..key.len()].copy_from_slice(key);
-    Ok(())
-}
 
 fn chacha20_poly1305_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                           nonce: &[u8; aead::NONCE_LEN], ad: &[u8],

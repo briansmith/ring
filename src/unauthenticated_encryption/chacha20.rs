@@ -23,21 +23,12 @@ use polyfill::slice::u32_from_le_u8;
 pub static CHACHA20: unauthenticated_encryption::Algorithm =
                                         unauthenticated_encryption::Algorithm {
     key_len: chacha::KEY_LEN_IN_BYTES,
-    init: chacha20_init,
+    init: chacha::chacha20_init,
     xor_keystream: chacha20_xor_keystream,
     id: unauthenticated_encryption::AlgorithmID::CHACHA20,
-    max_input_len: max_input_len!(CHACHA20_BLOCK_LEN, CHACHA20_OVERHEAD_BLOCKS_PER_NONCE),
+    max_input_len: max_input_len!(chacha::CHACHA20_BLOCK_LEN,
+                                  chacha::CHACHA20_OVERHEAD_BLOCKS_PER_NONCE),
 };
-
-const CHACHA20_BLOCK_LEN: u64 = 64;
-const CHACHA20_OVERHEAD_BLOCKS_PER_NONCE: u64 = 1;
-
-/// Copies |key| into |ctx_buf|.
-pub fn chacha20_init(ctx_buf: &mut [u8], key: &[u8])
-                              -> Result<(), error::Unspecified> {
-    ctx_buf[..key.len()].copy_from_slice(key);
-    Ok(())
-}
 
 fn chacha20_xor_keystream(ctx: &[u64; unauthenticated_encryption::KEY_CTX_BUF_ELEMS],
                           nonce: &[u8; unauthenticated_encryption::NONCE_LEN],

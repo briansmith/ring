@@ -15,9 +15,13 @@
 
 use crate::c;
 use core;
+use error;
 use polyfill::slice::u32_from_le_u8;
 
 pub type Key = [u32; KEY_LEN_IN_BYTES / 4];
+
+pub const CHACHA20_BLOCK_LEN: u64 = 64;
+pub const CHACHA20_OVERHEAD_BLOCKS_PER_NONCE: u64 = 1;
 
 pub fn key_from_bytes(key_bytes: &[u8; KEY_LEN_IN_BYTES]) -> Key {
     let mut key = [0u32; KEY_LEN_IN_BYTES / 4];
@@ -25,6 +29,13 @@ pub fn key_from_bytes(key_bytes: &[u8; KEY_LEN_IN_BYTES]) -> Key {
         *key_u32 = u32_from_le_u8(slice_as_array_ref!(key_u8_4, 4).unwrap());
     }
     key
+}
+
+/// Copies |key| into |ctx_buf|.
+pub fn chacha20_init(ctx_buf: &mut [u8], key: &[u8])
+                              -> Result<(), error::Unspecified> {
+    ctx_buf[..key.len()].copy_from_slice(key);
+    Ok(())
 }
 
 #[inline]
