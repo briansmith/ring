@@ -60,6 +60,7 @@
 #include <openssl/base.h>
 
 #include <openssl/stack.h>
+#include <openssl/lhash.h>
 
 #if defined(__cplusplus)
 extern "C" {
@@ -85,6 +86,7 @@ struct conf_value_st {
 };
 
 DEFINE_STACK_OF(CONF_VALUE)
+DECLARE_LHASH_OF(CONF_VALUE)
 
 
 // NCONF_new returns a fresh, empty |CONF|, or NULL on error. The |method|
