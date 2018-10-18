@@ -2751,6 +2751,19 @@ int SSL_set_tlsext_status_type(SSL *ssl, int type) {
   return 1;
 }
 
+int SSL_get_tlsext_status_type(const SSL *ssl) {
+  if (ssl->server) {
+    SSL_HANDSHAKE *hs = ssl->s3->hs.get();
+    return hs != nullptr && hs->ocsp_stapling_requested
+        ? TLSEXT_STATUSTYPE_ocsp
+        : TLSEXT_STATUSTYPE_nothing;
+  }
+
+  return ssl->config != nullptr && ssl->config->ocsp_stapling_enabled
+             ? TLSEXT_STATUSTYPE_ocsp
+             : TLSEXT_STATUSTYPE_nothing;
+}
+
 int SSL_set_tlsext_status_ocsp_resp(SSL *ssl, uint8_t *resp, size_t resp_len) {
   if (SSL_set_ocsp_response(ssl, resp, resp_len)) {
     OPENSSL_free(resp);
