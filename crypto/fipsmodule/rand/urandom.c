@@ -33,7 +33,9 @@
 #include <linux/random.h>
 #include <sys/ioctl.h>
 #endif
+#if !defined(OPENSSL_ANDROID)
 #include <sys/auxv.h>
+#endif
 #include <sys/syscall.h>
 #endif
 
