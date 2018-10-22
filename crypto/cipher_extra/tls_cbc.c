@@ -329,9 +329,18 @@ int EVP_tls_cbc_digest_record(const EVP_MD *md, uint8_t *md_out,
   // padding value.
   //
   // TLSv1 has MACs up to 48 bytes long (SHA-384) and the padding is not
-  // required to be minimal. Therefore we say that the final six blocks
-  // can vary based on the padding.
-  static const size_t kVarianceBlocks = 6;
+  // required to be minimal. Therefore we say that the final |kVarianceBlocks|
+  // blocks can vary based on the padding and on the hash used. This value
+  // must be derived from public information.
+  const size_t kVarianceBlocks =
+     ( 255 + 1 + // maximum padding bytes + padding length
+       md_size + // length of hash's output
+       md_block_size - 1 // ceiling
+     ) / md_block_size
+     + 1; // the 0x80 marker and the encoded message length could or not
+          // require an extra block; since the exact value depends on the
+          // message length; thus, one extra block is always added to run
+          // in constant time.
 
   // From now on we're dealing with the MAC, which conceptually has 13
   // bytes of `header' before the start of the data.
