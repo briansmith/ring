@@ -309,7 +309,7 @@ _aesni_ctr32_ghash_6x:
 	  vmovups	0xb0-0x80($key),$rndkey
 	  vaesenc	$T1,$inout5,$inout5
 	  vmovups	0xc0-0x80($key),$T1
-	  je		.Lenc_tail		# 192-bit key
+	  # 192-bit key support was removed.
 
 	  vaesenc	$rndkey,$inout0,$inout0
 	  vaesenc	$rndkey,$inout1,$inout1
