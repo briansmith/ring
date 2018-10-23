@@ -152,14 +152,15 @@ sub aesni_generate1	# fully unrolled loop
 	&lea		($key,&DWP(0x30,$key));
 	&cmp		($rounds,11);
 	&jb		(&label("${p}128"));
-	&lea		($key,&DWP(0x20,$key));
-	&je		(&label("${p}192"));
-	&lea		($key,&DWP(0x20,$key));
+	&lea		($key,&DWP(0x40,$key));
+	# 192-bit key support was removed.
+
 	eval"&aes${p}	($inout,$rndkey1)";
 	&$movekey	($rndkey1,&QWP(-0x40,$key));
 	eval"&aes${p}	($inout,$rndkey0)";
 	&$movekey	($rndkey0,&QWP(-0x30,$key));
-    &set_label("${p}192");
+
+	# 192-bit key support was removed.
 	eval"&aes${p}	($inout,$rndkey1)";
 	&$movekey	($rndkey1,&QWP(-0x20,$key));
 	eval"&aes${p}	($inout,$rndkey0)";
@@ -694,8 +695,7 @@ if ($PREFIX eq "aesni") {
 	&and	("ebp",1<<28|1<<11);	# AVX and XOP bits
 	&cmp	($rounds,256);
 	&je	(&label("14rounds"));
-	&cmp	($rounds,192);
-	&je	(&label("12rounds"));
+	# 192-bit key support was removed.
 	&cmp	($rounds,128);
 	&jne	(&label("bad_keybits"));
 
@@ -807,100 +807,7 @@ if ($PREFIX eq "aesni") {
 
 	&jmp	(&label("good_key"));
 
-&set_label("12rounds",16);
-	&movq		("xmm2",&QWP(16,"eax"));	# remaining 1/3 of *userKey
-	&cmp		("ebp",1<<28);
-	&je		(&label("12rounds_alt"));
-
-	&mov		($rounds,11);
-	&$movekey	(&QWP(-16,$key),"xmm0");	# round 0
-	&aeskeygenassist("xmm1","xmm2",0x01);		# round 1,2
-	&call		(&label("key_192a_cold"));
-	&aeskeygenassist("xmm1","xmm2",0x02);		# round 2,3
-	&call		(&label("key_192b"));
-	&aeskeygenassist("xmm1","xmm2",0x04);		# round 4,5
-	&call		(&label("key_192a"));
-	&aeskeygenassist("xmm1","xmm2",0x08);		# round 5,6
-	&call		(&label("key_192b"));
-	&aeskeygenassist("xmm1","xmm2",0x10);		# round 7,8
-	&call		(&label("key_192a"));
-	&aeskeygenassist("xmm1","xmm2",0x20);		# round 8,9
-	&call		(&label("key_192b"));
-	&aeskeygenassist("xmm1","xmm2",0x40);		# round 10,11
-	&call		(&label("key_192a"));
-	&aeskeygenassist("xmm1","xmm2",0x80);		# round 11,12
-	&call		(&label("key_192b"));
-	&$movekey	(&QWP(0,$key),"xmm0");
-	&mov		(&DWP(48,$key),$rounds);
-
-	&jmp	(&label("good_key"));
-
-&set_label("key_192a",16);
-	&$movekey	(&QWP(0,$key),"xmm0");
-	&lea		($key,&DWP(16,$key));
-&set_label("key_192a_cold",16);
-	&movaps		("xmm5","xmm2");
-&set_label("key_192b_warm");
-	&shufps		("xmm4","xmm0",0b00010000);
-	&movdqa		("xmm3","xmm2");
-	&xorps		("xmm0","xmm4");
-	&shufps		("xmm4","xmm0",0b10001100);
-	&pslldq		("xmm3",4);
-	&xorps		("xmm0","xmm4");
-	&pshufd		("xmm1","xmm1",0b01010101);	# critical path
-	&pxor		("xmm2","xmm3");
-	&pxor		("xmm0","xmm1");
-	&pshufd		("xmm3","xmm0",0b11111111);
-	&pxor		("xmm2","xmm3");
-	&ret();
-
-&set_label("key_192b",16);
-	&movaps		("xmm3","xmm0");
-	&shufps		("xmm5","xmm0",0b01000100);
-	&$movekey	(&QWP(0,$key),"xmm5");
-	&shufps		("xmm3","xmm2",0b01001110);
-	&$movekey	(&QWP(16,$key),"xmm3");
-	&lea		($key,&DWP(32,$key));
-	&jmp		(&label("key_192b_warm"));
-
-&set_label("12rounds_alt",16);
-	&movdqa		("xmm5",&QWP(0x10,"ebx"));
-	&movdqa		("xmm4",&QWP(0x20,"ebx"));
-	&mov		($rounds,8);
-	&movdqu		(&QWP(-16,$key),"xmm0");
-
-&set_label("loop_key192");
-	&movq		(&QWP(0,$key),"xmm2");
-	&movdqa		("xmm1","xmm2");
-	&pshufb		("xmm2","xmm5");
-	&aesenclast	("xmm2","xmm4");
-	&pslld		("xmm4",1);
-	&lea		($key,&DWP(24,$key));
-
-	&movdqa		("xmm3","xmm0");
-	&pslldq		("xmm0",4);
-	&pxor		("xmm3","xmm0");
-	&pslldq		("xmm0",4);
-	&pxor		("xmm3","xmm0");
-	&pslldq		("xmm0",4);
-	&pxor		("xmm0","xmm3");
-
-	&pshufd		("xmm3","xmm0",0xff);
-	&pxor		("xmm3","xmm1");
-	&pslldq		("xmm1",4);
-	&pxor		("xmm3","xmm1");
-
-	&pxor		("xmm0","xmm2");
-	&pxor		("xmm2","xmm3");
-	&movdqu		(&QWP(-16,$key),"xmm0");
-
-	&dec		($rounds);
-	&jnz		(&label("loop_key192"));
-
-	&mov	($rounds,11);
-	&mov	(&DWP(32,$key),$rounds);
-
-	&jmp	(&label("good_key"));
+# 192-bit key support was removed.
 
 &set_label("14rounds",16);
 	&movups		("xmm2",&QWP(16,"eax"));	# remaining half of *userKey

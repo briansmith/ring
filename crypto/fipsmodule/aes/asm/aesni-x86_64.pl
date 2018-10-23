@@ -870,7 +870,8 @@ $code.=<<___;
 	aesenc		$rndkey0,$inout6
 	aesenc		$rndkey0,$inout7
 	$movkey		0xc0-0x80($key),$rndkey0
-	je		.Lctr32_enc_done
+
+	# 192-bit key support was removed.
 
 	aesenc		$rndkey1,$inout0
 	aesenc		$rndkey1,$inout1
@@ -1193,8 +1194,7 @@ __aesni_set_encrypt_key:
 	lea	16($key),%rax		# %rax is used as modifiable copy of $key
 	cmp	\$256,$bits
 	je	.L14rounds
-	cmp	\$192,$bits
-	je	.L12rounds
+	# 192-bit key support was removed.
 	cmp	\$128,$bits
 	jne	.Lbad_keybits
 
@@ -1296,75 +1296,7 @@ __aesni_set_encrypt_key:
 	xor	%eax,%eax
 	jmp	.Lenc_key_ret
 
-.align	16
-.L12rounds:
-	movq	16($inp),%xmm2			# remaining 1/3 of *userKey
-	mov	\$11,$bits			# 12 rounds for 192
-	cmp	\$`1<<28`,%r10d			# AVX, but no XOP
-	je	.L12rounds_alt
-
-	$movkey	%xmm0,($key)			# round 0
-	aeskeygenassist	\$0x1,%xmm2,%xmm1	# round 1,2
-	call		.Lkey_expansion_192a_cold
-	aeskeygenassist	\$0x2,%xmm2,%xmm1	# round 2,3
-	call		.Lkey_expansion_192b
-	aeskeygenassist	\$0x4,%xmm2,%xmm1	# round 4,5
-	call		.Lkey_expansion_192a
-	aeskeygenassist	\$0x8,%xmm2,%xmm1	# round 5,6
-	call		.Lkey_expansion_192b
-	aeskeygenassist	\$0x10,%xmm2,%xmm1	# round 7,8
-	call		.Lkey_expansion_192a
-	aeskeygenassist	\$0x20,%xmm2,%xmm1	# round 8,9
-	call		.Lkey_expansion_192b
-	aeskeygenassist	\$0x40,%xmm2,%xmm1	# round 10,11
-	call		.Lkey_expansion_192a
-	aeskeygenassist	\$0x80,%xmm2,%xmm1	# round 11,12
-	call		.Lkey_expansion_192b
-	$movkey	%xmm0,(%rax)
-	mov	$bits,48(%rax)	# 240(%rdx)
-	xor	%rax, %rax
-	jmp	.Lenc_key_ret
-
-.align	16
-.L12rounds_alt:
-	movdqa	.Lkey_rotate192(%rip),%xmm5
-	movdqa	.Lkey_rcon1(%rip),%xmm4
-	mov	\$8,%r10d
-	movdqu	%xmm0,($key)
-	jmp	.Loop_key192
-
-.align	16
-.Loop_key192:
-	movq		%xmm2,0(%rax)
-	movdqa		%xmm2,%xmm1
-	pshufb		%xmm5,%xmm2
-	aesenclast	%xmm4,%xmm2
-	pslld		\$1, %xmm4
-	lea		24(%rax),%rax
-
-	movdqa		%xmm0,%xmm3
-	pslldq		\$4,%xmm0
-	pxor		%xmm0,%xmm3
-	pslldq		\$4,%xmm0
-	pxor		%xmm0,%xmm3
-	pslldq		\$4,%xmm0
-	pxor		%xmm3,%xmm0
-
-	pshufd		\$0xff,%xmm0,%xmm3
-	pxor		%xmm1,%xmm3
-	pslldq		\$4,%xmm1
-	pxor		%xmm1,%xmm3
-
-	pxor		%xmm2,%xmm0
-	pxor		%xmm3,%xmm2
-	movdqu		%xmm0,-16(%rax)
-
-	dec	%r10d
-	jnz	.Loop_key192
-
-	mov	$bits,32(%rax)	# 240($key)
-	xor	%eax,%eax
-	jmp	.Lenc_key_ret
+# 192-bit key support was removed.
 
 .align	16
 .L14rounds:
