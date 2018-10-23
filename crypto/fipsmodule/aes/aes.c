@@ -285,70 +285,90 @@ static const uint32_t rcon[] = {
     // for 128-bit blocks, Rijndael never uses more than 10 rcon values
 };
 
-// |bits| must be 128 or 256. 192-bit keys are not supported.
-void GFp_aes_c_set_encrypt_key(const uint8_t *key, unsigned bits,
-                               AES_KEY *aeskey) {
-  assert(key != NULL);
-  assert(aeskey != NULL);
-  assert(bits == 128 || bits == 256);
+// Applies the S-box to each byte in a 32-bit word. This is SubWord(x) in the
+// spec.
+//
+// [b0, b1, b2, b3] => [S(b0), S(b1), S(b2), S(b3)]
+static uint32_t rijndael_sbox(uint32_t x) {
+  return (Te2[(x >> 24)] & 0xff000000)
+    ^ (Te3[(x >> 16) & 0xff] & 0x00ff0000)
+    ^ (Te0[(x >> 8) & 0xff] & 0x0000ff00)
+    ^ (Te1[(x) & 0xff] & 0x000000ff);
+}
 
-  uint32_t *rk;
-  int i = 0;
-  uint32_t temp;
+// Applies the S-box to each byte in a 32-bit word, then rotates the output one
+// byte to the left. This is RotWord(SubWord(x)) in the spec.
+//
+// [b0, b1, b2, b3] => [S(b1), S(b2), S(b3), S(b0)]
+static uint32_t rijndael_sbox_then_rotate(uint32_t x) {
+  return (Te2[(x >> 16) & 0xff] & 0xff000000)
+    ^ (Te3[(x >> 8) & 0xff] & 0x00ff0000)
+    ^ (Te0[(x) & 0xff] & 0x0000ff00)
+    ^ (Te1[(x >> 24)] & 0x000000ff);
+}
 
-  rk = aeskey->rd_key;
-
-  rk[0] = from_be_u32_ptr(key);
-  rk[1] = from_be_u32_ptr(key + 4);
-  rk[2] = from_be_u32_ptr(key + 8);
-  rk[3] = from_be_u32_ptr(key + 12);
-  if (bits == 128) {
-    aeskey->rounds = 10;
-
-    while (1) {
-      temp = rk[3];
-      rk[4] = rk[0] ^ (Te2[(temp >> 16) & 0xff] & 0xff000000) ^
-              (Te3[(temp >> 8) & 0xff] & 0x00ff0000) ^
-              (Te0[(temp) & 0xff] & 0x0000ff00) ^
-              (Te1[(temp >> 24)] & 0x000000ff) ^ rcon[i];
-      rk[5] = rk[1] ^ rk[4];
-      rk[6] = rk[2] ^ rk[5];
-      rk[7] = rk[3] ^ rk[6];
-      if (++i == 10) {
-        return;
-      }
-      rk += 4;
-    }
+// Computes 10 additional 128-bit round keys from a 128-bit initial key
+// (11 round keys in total).
+static void expand_key_128(uint32_t rk[11 * 4]) {
+  for (int i = 0; i < 10; ++i, rk += 4) {
+    rk[4] = rk[0] ^ rijndael_sbox_then_rotate(rk[3]) ^ rcon[i];
+    rk[5] = rk[1] ^ rk[4];
+    rk[6] = rk[2] ^ rk[5];
+    rk[7] = rk[3] ^ rk[6];
   }
+}
 
-  assert(bits == 256);
-  rk[4] = from_be_u32_ptr(key + 16);
-  rk[5] = from_be_u32_ptr(key + 20);
-  rk[6] = from_be_u32_ptr(key + 24);
-  rk[7] = from_be_u32_ptr(key + 28);
-  aeskey->rounds = 14;
+// Computes 13 additional 128-bit round keys from a 256-bit initial key
+// (15 round keys in total).
+static void expand_key_256(uint32_t rk[15 * 4]) {
+  int i = 0;
+
   while (1) {
-    temp = rk[7];
-    rk[8] = rk[0] ^ (Te2[(temp >> 16) & 0xff] & 0xff000000) ^
-            (Te3[(temp >> 8) & 0xff] & 0x00ff0000) ^
-            (Te0[(temp) & 0xff] & 0x0000ff00) ^
-            (Te1[(temp >> 24)] & 0x000000ff) ^ rcon[i];
+    rk[8] = rk[0] ^ rijndael_sbox_then_rotate(rk[7]) ^ rcon[i];
     rk[9] = rk[1] ^ rk[8];
     rk[10] = rk[2] ^ rk[9];
     rk[11] = rk[3] ^ rk[10];
+
     if (++i == 7) {
       return;
     }
-    temp = rk[11];
-    rk[12] = rk[4] ^ (Te2[(temp >> 24)] & 0xff000000) ^
-             (Te3[(temp >> 16) & 0xff] & 0x00ff0000) ^
-             (Te0[(temp >> 8) & 0xff] & 0x0000ff00) ^
-             (Te1[(temp) & 0xff] & 0x000000ff);
+
+    rk[12] = rk[4] ^ rijndael_sbox(rk[11]);
     rk[13] = rk[5] ^ rk[12];
     rk[14] = rk[6] ^ rk[13];
     rk[15] = rk[7] ^ rk[14];
 
     rk += 8;
+  }
+}
+
+// |bits| must be 128 or 256. 192-bit keys are not supported.
+void GFp_aes_c_set_encrypt_key(const uint8_t *key, unsigned bits,
+                               AES_KEY *aeskey) {
+  assert(key != NULL);
+  assert(aeskey != NULL);
+
+  int key_words = bits / (8 * sizeof(uint32_t));
+
+  // The initial key forms the first words of the round key sequence.
+  for (int i = 0; i < key_words; ++i) {
+    aeskey->rd_key[i] = from_be_u32_ptr(key + (i * sizeof(uint32_t)));
+  }
+
+  switch (bits) {
+    case 128:
+      aeskey->rounds = 10;
+      expand_key_128(aeskey->rd_key);
+      break;
+
+    case 256:
+      aeskey->rounds = 14;
+      expand_key_256(aeskey->rd_key);
+      break;
+
+    default:
+      assert(bits == 128 || bits == 256);
+      return;
   }
 }
 
