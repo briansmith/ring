@@ -1081,11 +1081,11 @@ struct aead_aes_gcm_tls12_ctx {
 
 OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
                            sizeof(struct aead_aes_gcm_tls12_ctx),
-                       AEAD_state_too_small);
+                       AEAD_state_too_small_tls12);
 #if defined(__GNUC__) || defined(__clang__)
 OPENSSL_COMPILE_ASSERT(alignof(union evp_aead_ctx_st_state) >=
                            alignof(struct aead_aes_gcm_tls12_ctx),
-                       AEAD_state_insufficient_alignment);
+                       AEAD_state_insufficient_alignment_tls12);
 #endif
 
 static int aead_aes_gcm_tls12_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
@@ -1175,11 +1175,11 @@ struct aead_aes_gcm_tls13_ctx {
 
 OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
                            sizeof(struct aead_aes_gcm_tls13_ctx),
-                       AEAD_state_too_small);
+                       AEAD_state_too_small_tls13);
 #if defined(__GNUC__) || defined(__clang__)
 OPENSSL_COMPILE_ASSERT(alignof(union evp_aead_ctx_st_state) >=
                            alignof(struct aead_aes_gcm_tls13_ctx),
-                       AEAD_state_insufficient_alignment);
+                       AEAD_state_insufficient_alignment_tls13);
 #endif
 
 static int aead_aes_gcm_tls13_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
