@@ -33,11 +33,25 @@
 #include <linux/random.h>
 #include <sys/ioctl.h>
 #endif
+#include <sys/syscall.h>
+
 #if !defined(OPENSSL_ANDROID)
+#define OPENSSL_HAS_GETAUXVAL
+#endif
+// glibc prior to 2.16 does not have getauxval and sys/auxv.h. Android has some
+// host builds (i.e. not building for Android itself, so |OPENSSL_ANDROID| is
+// unset) which are still using a 2.15 sysroot.
+//
+// TODO(davidben): Remove this once Android updates their sysroot.
+#if defined(__GLIBC_PREREQ)
+#if !__GLIBC_PREREQ(2, 16)
+#undef OPENSSL_HAS_GETAUXVAL
+#endif
+#endif
+#if defined(OPENSSL_HAS_GETAUXVAL)
 #include <sys/auxv.h>
 #endif
-#include <sys/syscall.h>
-#endif
+#endif  // OPENSSL_LINUX
 
 #include <openssl/thread.h>
 #include <openssl/mem.h>
@@ -139,7 +153,7 @@ static void init_once(void) {
     // Attempt to get the path of the current process to aid in debugging when
     // something blocks.
     const char *current_process = "<unknown>";
-#if !defined(OPENSSL_ANDROID)
+#if defined(OPENSSL_HAS_GETAUXVAL)
     const unsigned long getauxval_ret = getauxval(AT_EXECFN);
     if (getauxval_ret != 0) {
       current_process = (const char *)getauxval_ret;
