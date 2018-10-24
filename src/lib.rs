@@ -109,7 +109,6 @@ pub mod agreement;
 mod bits;
 
 mod c;
-mod chacha;
 pub mod constant_time;
 
 #[doc(hidden)]

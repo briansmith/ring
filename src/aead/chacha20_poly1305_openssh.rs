@@ -29,7 +29,8 @@
 //!    http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.chacha20poly1305?annotate=HEAD
 //! [RFC 4253]: https://tools.ietf.org/html/rfc4253
 
-use crate::{chacha, error, poly1305};
+use crate::{error, poly1305};
+use unauthenticated_encryption::chacha20;
 
 /// A key for sealing packets.
 pub struct SealingKey {
@@ -58,10 +59,10 @@ impl SealingKey {
             let (len_in_out, data_and_padding_in_out) =
                 plaintext_in_ciphertext_out.split_at_mut(PACKET_LENGTH_LEN);
 
-            chacha::chacha20_xor_in_place(&self.key.k_1, &counter, len_in_out);
+            chacha20::chacha20_xor_in_place(&self.key.k_1, &counter, len_in_out);
 
             counter[0] = 1;
-            chacha::chacha20_xor_in_place(&self.key.k_2, &counter,
+            chacha20::chacha20_xor_in_place(&self.key.k_2, &counter,
                                           data_and_padding_in_out);
         }
 
@@ -93,7 +94,7 @@ impl OpeningKey {
             -> [u8; PACKET_LENGTH_LEN] {
         let mut packet_length = encrypted_packet_length;
         let counter = make_counter(sequence_number);
-        chacha::chacha20_xor_in_place(&self.key.k_1, &counter,
+        chacha20::chacha20_xor_in_place(&self.key.k_1, &counter,
                                       &mut packet_length);
         packet_length
     }
@@ -123,7 +124,7 @@ impl OpeningKey {
         let plaintext_in_ciphertext_out =
             &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];
         counter[0] = 1;
-        chacha::chacha20_xor_in_place(&self.key.k_2, &counter,
+        chacha20::chacha20_xor_in_place(&self.key.k_2, &counter,
                                       plaintext_in_ciphertext_out);
 
         Ok(plaintext_in_ciphertext_out)
@@ -131,38 +132,38 @@ impl OpeningKey {
 }
 
 struct Key {
-    k_1: chacha::Key,
-    k_2: chacha::Key,
+    k_1: chacha20::Key,
+    k_2: chacha20::Key,
 }
 
 impl Key {
     pub fn new(key_material: &[u8; KEY_LEN]) -> Key {
         // The first half becomes K_2 and the second half becomes K_1.
         Key {
-            k_1: chacha::key_from_bytes(
+            k_1: chacha20::key_from_bytes(
                     slice_as_array_ref!(
-                        &key_material[chacha::KEY_LEN_IN_BYTES..],
-                        chacha::KEY_LEN_IN_BYTES).unwrap()),
-            k_2: chacha::key_from_bytes(
+                        &key_material[chacha20::KEY_LEN_IN_BYTES..],
+                        chacha20::KEY_LEN_IN_BYTES).unwrap()),
+            k_2: chacha20::key_from_bytes(
                     slice_as_array_ref!(
-                        &key_material[..chacha::KEY_LEN_IN_BYTES],
-                        chacha::KEY_LEN_IN_BYTES).unwrap()),
+                        &key_material[..chacha20::KEY_LEN_IN_BYTES],
+                        chacha20::KEY_LEN_IN_BYTES).unwrap()),
         }
     }
 }
 
-fn make_counter(sequence_number: u32) -> chacha::Counter {
+fn make_counter(sequence_number: u32) -> chacha20::Counter {
     let mut sequence_number = sequence_number;
-    let mut nonce = [0; chacha::NONCE_LEN];
+    let mut nonce = [0; chacha20::NONCE_LEN];
     for i in 0..4 {
-        nonce[chacha::NONCE_LEN - 1 - i] = (sequence_number % 0x100) as u8;
+        nonce[chacha20::NONCE_LEN - 1 - i] = (sequence_number % 0x100) as u8;
         sequence_number /= 0x100;
     }
-    chacha::make_counter(&nonce, 0)
+    chacha20::make_counter(&nonce, 0)
 }
 
 /// The length of key.
-pub const KEY_LEN: usize = chacha::KEY_LEN_IN_BYTES * 2;
+pub const KEY_LEN: usize = chacha20::KEY_LEN_IN_BYTES * 2;
 
 /// The length of a tag.
 pub const TAG_LEN: usize = poly1305::TAG_LEN;

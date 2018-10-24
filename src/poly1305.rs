@@ -15,7 +15,8 @@
 
 // TODO: enforce maximum input length.
 
-use crate::{bssl, c, chacha, constant_time, error, polyfill};
+use crate::{bssl, c, constant_time, error, polyfill};
+use unauthenticated_encryption::chacha20;
 use core;
 
 impl SigningContext {
@@ -141,10 +142,10 @@ pub struct Key {
 }
 
 impl Key {
-    pub fn derive_using_chacha(chacha20_key: &chacha::Key,
-                               counter: &chacha::Counter) -> Key {
+    pub fn derive_using_chacha(chacha20_key: &chacha20::Key,
+                               counter: &chacha20::Counter) -> Key {
         let mut bytes = [0u8; KEY_LEN];
-        chacha::chacha20_xor_in_place(chacha20_key, counter, &mut bytes);
+        chacha20::chacha20_xor_in_place(chacha20_key, counter, &mut bytes);
         Key { bytes }
     }
 
