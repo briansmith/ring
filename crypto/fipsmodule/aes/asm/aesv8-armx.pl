@@ -130,7 +130,7 @@ $code.=<<___;
 	vld1.32	{$rcon,$mask},[$ptr],#32
 
 	b.lt	.Loop128
-	b.eq	.L192
+	// 192-bit key support was removed.
 	b	.L256
 
 .align	4
@@ -185,40 +185,7 @@ $code.=<<___;
 	mov	$rounds,#10
 	b	.Ldone
 
-.align	4
-.L192:
-	vld1.8	{$in1},[$inp],#8
-	vmov.i8	$key,#8			// borrow $key
-	vst1.32	{$in0},[$out],#16
-	vsub.i8	$mask,$mask,$key	// adjust the mask
-
-.Loop192:
-	vtbl.8	$key,{$in1},$mask
-	vext.8	$tmp,$zero,$in0,#12
-	vst1.32	{$in1},[$out],#8
-	aese	$key,$zero
-	subs	$bits,$bits,#1
-
-	veor	$in0,$in0,$tmp
-	vext.8	$tmp,$zero,$tmp,#12
-	veor	$in0,$in0,$tmp
-	vext.8	$tmp,$zero,$tmp,#12
-	veor	$in0,$in0,$tmp
-
-	vdup.32	$tmp,${in0}[3]
-	veor	$tmp,$tmp,$in1
-	 veor	$key,$key,$rcon
-	vext.8	$in1,$zero,$in1,#12
-	vshl.u8	$rcon,$rcon,#1
-	veor	$in1,$in1,$tmp
-	veor	$in0,$in0,$key
-	veor	$in1,$in1,$key
-	vst1.32	{$in0},[$out],#16
-	b.ne	.Loop192
-
-	mov	$rounds,#12
-	add	$out,$out,#0x20
-	b	.Ldone
+// 192-bit key support was removed.
 
 .align	4
 .L256:
