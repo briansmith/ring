@@ -24,13 +24,13 @@ pub static CHACHA20: unauthenticated_encryption::Algorithm =
                                         unauthenticated_encryption::Algorithm {
     key_len: KEY_LEN_IN_BYTES,
     init: chacha20_init,
-    xor_keystream: chacha20_xor_keystream,
+    xor_in_place: chacha20_do_xor_in_place,
     id: unauthenticated_encryption::AlgorithmID::CHACHA20,
     max_input_len: max_input_len!(CHACHA20_BLOCK_LEN,
                                   CHACHA20_OVERHEAD_BLOCKS_PER_NONCE),
 };
 
-fn chacha20_xor_keystream(ctx: &[u64; unauthenticated_encryption::KEY_CTX_BUF_ELEMS],
+fn chacha20_do_xor_in_place(ctx: &[u64; unauthenticated_encryption::KEY_CTX_BUF_ELEMS],
                           nonce: &[u8; unauthenticated_encryption::NONCE_LEN],
                           in_out: &mut [u8]) -> Result<(), error::Unspecified> {
     let chacha20_key = ctx_as_key(ctx)?;

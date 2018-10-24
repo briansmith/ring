@@ -67,7 +67,7 @@ pub fn decrypt_in_place<'a>(key: &DecryptingKey, nonce: &[u8],
                             -> Result<&'a mut [u8], error::Unspecified> {
     let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
     check_per_nonce_max_bytes(key.key.algorithm, in_out.len())?;
-    (key.key.algorithm.xor_keystream)(&key.key.ctx_buf, nonce, in_out)?;
+    (key.key.algorithm.xor_in_place)(&key.key.ctx_buf, nonce, in_out)?;
     Ok(&mut in_out[..])
 }
 
@@ -109,7 +109,7 @@ pub fn encrypt_in_place(key: &EncryptingKey, nonce: &[u8], in_out: &mut [u8])
                         -> Result<usize, error::Unspecified> {
     let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
     check_per_nonce_max_bytes(key.key.algorithm, in_out.len())?;
-    (key.key.algorithm.xor_keystream)(&key.key.ctx_buf, nonce, in_out)?;
+    (key.key.algorithm.xor_in_place)(&key.key.ctx_buf, nonce, in_out)?;
     Ok(in_out.len())
 }
 
@@ -160,7 +160,7 @@ impl Key {
 pub struct Algorithm {
     init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), error::Unspecified>,
 
-    xor_keystream: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
+    xor_in_place: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
                       in_out: &mut [u8]) -> Result<(), error::Unspecified>,
 
     key_len: usize,
