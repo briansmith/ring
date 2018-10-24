@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::{aead, chacha, error, poly1305, polyfill};
+use unauthenticated_encryption::chacha20;
 
 /// ChaCha20-Poly1305 as described in [RFC 7539].
 ///
@@ -33,7 +34,7 @@ fn chacha20_poly1305_seal(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                           nonce: &[u8; aead::NONCE_LEN], ad: &[u8],
                           in_out: &mut [u8], tag_out: &mut [u8; aead::TAG_LEN])
                           -> Result<(), error::Unspecified> {
-    let chacha20_key = ctx_as_key(ctx)?;
+    let chacha20_key = chacha20::ctx_as_key(ctx)?;
     let mut counter = chacha::make_counter(nonce, 1);
     chacha::chacha20_xor_in_place(&chacha20_key, &counter, in_out);
     counter[0] = 0;
@@ -46,7 +47,7 @@ fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
                           in_prefix_len: usize, in_out: &mut [u8],
                           tag_out: &mut [u8; aead::TAG_LEN])
                           -> Result<(), error::Unspecified> {
-    let chacha20_key = ctx_as_key(ctx)?;
+    let chacha20_key = chacha20::ctx_as_key(ctx)?;
     let mut counter = chacha::make_counter(nonce, 0);
     {
         let ciphertext = &in_out[in_prefix_len..];
@@ -56,13 +57,6 @@ fn chacha20_poly1305_open(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS],
     chacha::chacha20_xor_overlapping(&chacha20_key, &counter, in_out,
                                      in_prefix_len);
     Ok(())
-}
-
-fn ctx_as_key(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS])
-              -> Result<&chacha::Key, error::Unspecified> {
-    slice_as_array_ref!(
-        &polyfill::slice::u64_as_u32(ctx)[..(chacha::KEY_LEN_IN_BYTES / 4)],
-        chacha::KEY_LEN_IN_BYTES / 4)
 }
 
 fn aead_poly1305(tag_out: &mut [u8; aead::TAG_LEN], chacha20_key: &chacha::Key,

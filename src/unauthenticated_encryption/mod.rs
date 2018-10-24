@@ -24,7 +24,7 @@
 //!
 //! [`crypto.cipher.Stream`]: https://golang.org/pkg/crypto/cipher/#Stream
 
-use crate::{chacha, error, init, polyfill};
+use crate::{aead, error, init, polyfill};
 
 pub use self::chacha20::CHACHA20;
 
@@ -122,9 +122,9 @@ struct Key {
     algorithm: &'static Algorithm,
 }
 
-const KEY_CTX_BUF_ELEMS: usize = (KEY_CTX_BUF_LEN + 7) / 8;
-
-const KEY_CTX_BUF_LEN: usize = chacha::KEY_LEN_IN_BYTES;
+/// TODO: once unauthenticated_encryption supports AES, we should move the
+/// definition of KEY_CTX_BUF_ELEMS here.
+const KEY_CTX_BUF_ELEMS: usize = aead::KEY_CTX_BUF_ELEMS;
 
 impl Key {
     fn new(algorithm: &'static Algorithm, key_bytes: &[u8]) -> Result<Self, error::Unspecified> {
@@ -221,4 +221,4 @@ fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize)
     Ok(())
 }
 
-mod chacha20;
+pub(crate) mod chacha20;

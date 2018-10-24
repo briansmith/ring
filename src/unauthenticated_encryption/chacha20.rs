@@ -40,7 +40,7 @@ fn chacha20_xor_keystream(ctx: &[u64; unauthenticated_encryption::KEY_CTX_BUF_EL
     Ok(())
 }
 
-fn ctx_as_key(ctx: &[u64; unauthenticated_encryption::KEY_CTX_BUF_ELEMS])
+pub fn ctx_as_key(ctx: &[u64; unauthenticated_encryption::KEY_CTX_BUF_ELEMS])
               -> Result<&chacha::Key, error::Unspecified> {
     slice_as_array_ref!(
         &polyfill::slice::u64_as_u32(ctx)[..(chacha::KEY_LEN_IN_BYTES / 4)],
