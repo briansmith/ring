@@ -31,10 +31,10 @@
     warnings,
 )]
 
+#[macro_use]
 extern crate ring;
 
 use ring::{error, test, unauthenticated_encryption};
-// use std::vec::Vec;
 
 #[test]
 fn unauthenticated_encryption_chacha20() {
@@ -93,51 +93,9 @@ fn test_encryption(stream_alg: &'static unauthenticated_encryption::Algorithm,
     });
 }
 
-fn test_encryption_key_sizes(stream_alg: &'static unauthenticated_encryption::Algorithm) {
-    let key_len = stream_alg.key_len();
-    let key_data = vec![0u8; key_len * 2];
-
-    // Key is the right size.
-    assert!(unauthenticated_encryption::DecryptingKey::new(stream_alg,
-        &key_data[..key_len]).is_ok());
-    assert!(unauthenticated_encryption::EncryptingKey::new(stream_alg,
-        &key_data[..key_len]).is_ok());
-
-    // Key is one byte too small.
-    assert!(unauthenticated_encryption::DecryptingKey::new(stream_alg,
-        &key_data[..(key_len - 1)]).is_err());
-    assert!(unauthenticated_encryption::EncryptingKey::new(stream_alg,
-        &key_data[..(key_len - 1)]).is_err());
-
-    // Key is one byte too large.
-    assert!(unauthenticated_encryption::DecryptingKey::new(stream_alg,
-        &key_data[..(key_len + 1)]).is_err());
-    assert!(unauthenticated_encryption::EncryptingKey::new(stream_alg,
-        &key_data[..(key_len + 1)]).is_err());
-
-    // Key is half the required size.
-    assert!(unauthenticated_encryption::DecryptingKey::new(stream_alg,
-        &key_data[..(key_len / 2)]).is_err());
-    assert!(unauthenticated_encryption::EncryptingKey::new(stream_alg,
-        &key_data[..(key_len / 2)]).is_err());
-
-    // Key is twice the required size.
-    assert!(unauthenticated_encryption::DecryptingKey::new(stream_alg,
-        &key_data[..(key_len * 2)]).is_err());
-    assert!(unauthenticated_encryption::EncryptingKey::new(stream_alg,
-        &key_data[..(key_len * 2)]).is_err());
-
-    // Key is empty.
-    assert!(unauthenticated_encryption::DecryptingKey::new(stream_alg,
-        &[]).is_err());
-    assert!(unauthenticated_encryption::EncryptingKey::new(stream_alg,
-        &[]).is_err());
-
-    // Key is one byte.
-    assert!(unauthenticated_encryption::DecryptingKey::new(stream_alg,
-        &[0]).is_err());
-    assert!(unauthenticated_encryption::EncryptingKey::new(stream_alg,
-        &[0]).is_err());
+fn test_encryption_key_sizes(alg: &'static unauthenticated_encryption::Algorithm) {
+    encryption_key_sizes_tests!(alg, unauthenticated_encryption::DecryptingKey,
+                                     unauthenticated_encryption::EncryptingKey);
 }
 
 // Test that we reject non-standard nonce sizes.

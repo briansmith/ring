@@ -134,6 +134,7 @@ pub mod signature;
 mod signature_impl;
 
 #[cfg(any(feature = "use_heap", test))]
+#[macro_use]
 pub mod test;
 
 mod private {

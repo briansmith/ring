@@ -537,6 +537,42 @@ pub mod rand {
 
 }
 
+#[macro_export]
+macro_rules! encryption_key_sizes_tests {
+    ($alg:expr, $dec_key:ty, $enc_key:ty) => {
+        let key_len = $alg.key_len();
+        let key_data = vec![0u8; key_len * 2];
+
+        // Key is the right size.
+        assert!(<$dec_key>::new($alg, &key_data[..key_len]).is_ok());
+        assert!(<$enc_key>::new($alg, &key_data[..key_len]).is_ok());
+
+        // Key is one byte too small.
+        assert!(<$dec_key>::new($alg, &key_data[..(key_len - 1)]).is_err());
+        assert!(<$enc_key>::new($alg, &key_data[..(key_len - 1)]).is_err());
+
+        // Key is one byte too large.
+        assert!(<$dec_key>::new($alg, &key_data[..(key_len + 1)]).is_err());
+        assert!(<$enc_key>::new($alg, &key_data[..(key_len + 1)]).is_err());
+
+        // Key is half the required size.
+        assert!(<$dec_key>::new($alg, &key_data[..(key_len / 2)]).is_err());
+        assert!(<$enc_key>::new($alg, &key_data[..(key_len / 2)]).is_err());
+
+        // Key is twice the required size.
+        assert!(<$dec_key>::new($alg, &key_data[..(key_len * 2)]).is_err());
+        assert!(<$enc_key>::new($alg, &key_data[..(key_len * 2)]).is_err());
+
+        // Key is empty.
+        assert!(<$dec_key>::new($alg, &[]).is_err());
+        assert!(<$enc_key>::new($alg, &[]).is_err());
+
+        // Key is one byte.
+        assert!(<$dec_key>::new($alg, &[0]).is_err());
+        assert!(<$enc_key>::new($alg, &[0]).is_err());
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
