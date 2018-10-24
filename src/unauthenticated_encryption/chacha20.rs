@@ -36,9 +36,8 @@ fn chacha20_xor_keystream(ctx: &[u64; unauthenticated_encryption::KEY_CTX_BUF_EL
     let chacha20_key = ctx_as_key(ctx)?;
     let counter = u32_from_le_u8(slice_as_array_ref!(&nonce[0..4], 4)?);
     let nonce = slice_as_array_ref!(&nonce[4..16], NONCE_LEN)?;
-    let mut counter = make_counter(nonce, counter);
+    let counter = make_counter(nonce, counter);
     chacha20_xor_in_place(&chacha20_key, &counter, in_out);
-    counter[0] = 0;
     Ok(())
 }
 
