@@ -66,7 +66,7 @@ pub fn decrypt_in_place<'a>(key: &DecryptingKey, nonce: &[u8],
                             in_out: &'a mut [u8])
                             -> Result<&'a mut [u8], error::Unspecified> {
     let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
-    check_per_nonce_max_bytes(key.key.algorithm, in_out.len())?;
+    check_per_nonce_max_bytes(key.key.algorithm.max_input_len, in_out.len())?;
     (key.key.algorithm.xor_in_place)(&key.key.ctx_buf, nonce, in_out)?;
     Ok(&mut in_out[..])
 }
@@ -108,7 +108,7 @@ impl EncryptingKey {
 pub fn encrypt_in_place(key: &EncryptingKey, nonce: &[u8], in_out: &mut [u8])
                         -> Result<usize, error::Unspecified> {
     let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
-    check_per_nonce_max_bytes(key.key.algorithm, in_out.len())?;
+    check_per_nonce_max_bytes(key.key.algorithm.max_input_len, in_out.len())?;
     (key.key.algorithm.xor_in_place)(&key.key.ctx_buf, nonce, in_out)?;
     Ok(in_out.len())
 }
@@ -214,9 +214,9 @@ impl Eq for Algorithm {}
 // All the stream ciphers we support use 128-bit nonces.
 const NONCE_LEN: usize = 128 / 8;
 
-fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize)
+pub(crate) fn check_per_nonce_max_bytes(max_input_len: u64, in_out_len: usize)
                              -> Result<(), error::Unspecified> {
-    if polyfill::u64_from_usize(in_out_len) > alg.max_input_len {
+    if polyfill::u64_from_usize(in_out_len) > max_input_len {
         return Err(error::Unspecified);
     }
     Ok(())

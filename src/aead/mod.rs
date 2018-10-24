@@ -26,6 +26,7 @@
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
 use crate::{constant_time, error, init, poly1305, polyfill};
+use unauthenticated_encryption;
 
 pub use self::chacha20_poly1305::CHACHA20_POLY1305;
 pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
@@ -123,7 +124,8 @@ pub fn open_in_place<'a>(key: &OpeningKey, nonce: &[u8], ad: &[u8],
                 .checked_sub(in_prefix_len).ok_or(error::Unspecified)?;
     let ciphertext_len =
         ciphertext_and_tag_len.checked_sub(TAG_LEN).ok_or(error::Unspecified)?;
-    check_per_nonce_max_bytes(key.key.algorithm, ciphertext_len)?;
+    unauthenticated_encryption::check_per_nonce_max_bytes(
+        key.key.algorithm.max_input_len, ciphertext_len)?;
     let (in_out, received_tag) =
         ciphertext_and_tag_modified_in_place
             .split_at_mut(in_prefix_len + ciphertext_len);
@@ -206,7 +208,8 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], ad: &[u8],
     let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
     let in_out_len =
         in_out.len().checked_sub(out_suffix_capacity).ok_or(error::Unspecified)?;
-    check_per_nonce_max_bytes(key.key.algorithm, in_out_len)?;
+    unauthenticated_encryption::check_per_nonce_max_bytes(
+        key.key.algorithm.max_input_len, in_out_len)?;
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
     let tag_out = slice_as_array_ref_mut!(tag_out, TAG_LEN)?;
     (key.key.algorithm.seal)(&key.key.ctx_buf, nonce, ad, in_out, tag_out)?;
@@ -328,14 +331,6 @@ const TAG_LEN: usize = poly1305::TAG_LEN;
 // All the AEADs we support use 96-bit nonces.
 const NONCE_LEN: usize = 96 / 8;
 
-
-fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize)
-                             -> Result<(), error::Unspecified> {
-    if polyfill::u64_from_usize(in_out_len) > alg.max_input_len {
-        return Err(error::Unspecified);
-    }
-    Ok(())
-}
 
 pub mod chacha20_poly1305_openssh;
 mod chacha20_poly1305;
