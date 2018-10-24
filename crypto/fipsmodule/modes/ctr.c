@@ -69,7 +69,8 @@ static void ctr128_inc(uint8_t *counter) {
   } while (n);
 }
 
-OPENSSL_COMPILE_ASSERT((16 % sizeof(size_t)) == 0, bad_size_t_size_ctr);
+OPENSSL_STATIC_ASSERT(16 % sizeof(size_t) == 0,
+                      "block cannot be divided into size_t");
 
 // The input encrypted as though 128bit counter mode is being used.  The extra
 // state information to record how much of the 128bit block we have used is

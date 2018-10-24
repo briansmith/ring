@@ -906,13 +906,13 @@ static int aead_aes_gcm_init_impl(struct aead_aes_gcm_ctx *gcm_ctx,
   return 1;
 }
 
-OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
-                           sizeof(struct aead_aes_gcm_ctx),
-                       AEAD_state_too_small);
+OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
+                          sizeof(struct aead_aes_gcm_ctx),
+                      "AEAD state is too small");
 #if defined(__GNUC__) || defined(__clang__)
-  OPENSSL_COMPILE_ASSERT(
-      alignof(union evp_aead_ctx_st_state) >= alignof(struct aead_aes_gcm_ctx),
-      AEAD_state_insufficient_alignment);
+OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
+                          alignof(struct aead_aes_gcm_ctx),
+                      "AEAD state has insufficient alignment");
 #endif
 
 static int aead_aes_gcm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
@@ -1079,13 +1079,13 @@ struct aead_aes_gcm_tls12_ctx {
   uint64_t min_next_nonce;
 };
 
-OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
-                           sizeof(struct aead_aes_gcm_tls12_ctx),
-                       AEAD_state_too_small_tls12);
+OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
+                          sizeof(struct aead_aes_gcm_tls12_ctx),
+                      "AEAD state is too small");
 #if defined(__GNUC__) || defined(__clang__)
-OPENSSL_COMPILE_ASSERT(alignof(union evp_aead_ctx_st_state) >=
-                           alignof(struct aead_aes_gcm_tls12_ctx),
-                       AEAD_state_insufficient_alignment_tls12);
+OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
+                          alignof(struct aead_aes_gcm_tls12_ctx),
+                      "AEAD state has insufficient alignment");
 #endif
 
 static int aead_aes_gcm_tls12_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
@@ -1173,13 +1173,13 @@ struct aead_aes_gcm_tls13_ctx {
   uint8_t first;
 };
 
-OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
-                           sizeof(struct aead_aes_gcm_tls13_ctx),
-                       AEAD_state_too_small_tls13);
+OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
+                          sizeof(struct aead_aes_gcm_tls13_ctx),
+                      "AEAD state is too small");
 #if defined(__GNUC__) || defined(__clang__)
-OPENSSL_COMPILE_ASSERT(alignof(union evp_aead_ctx_st_state) >=
-                           alignof(struct aead_aes_gcm_tls13_ctx),
-                       AEAD_state_insufficient_alignment_tls13);
+OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
+                          alignof(struct aead_aes_gcm_tls13_ctx),
+                      "AEAD state has insufficient alignment");
 #endif
 
 static int aead_aes_gcm_tls13_init(EVP_AEAD_CTX *ctx, const uint8_t *key,

@@ -30,7 +30,7 @@
 // A block_t is a Salsa20 block.
 typedef struct { uint32_t words[16]; } block_t;
 
-OPENSSL_COMPILE_ASSERT(sizeof(block_t) == 64, block_t_has_padding);
+OPENSSL_STATIC_ASSERT(sizeof(block_t) == 64, "block_t has padding");
 
 #define R(a, b) (((a) << (b)) | ((a) >> (32 - (b))))
 
@@ -173,7 +173,7 @@ int EVP_PBE_scrypt(const char *password, size_t password_len,
 
   // Allocate and divide up the scratch space. |max_mem| fits in a size_t, which
   // is no bigger than uint64_t, so none of these operations may overflow.
-  OPENSSL_COMPILE_ASSERT(UINT64_MAX >= ((size_t)-1), size_t_exceeds_u64);
+  OPENSSL_STATIC_ASSERT(UINT64_MAX >= ((size_t)-1), "size_t exceeds uint64_t");
   size_t B_blocks = p * 2 * r;
   size_t B_bytes = B_blocks * sizeof(block_t);
   size_t T_blocks = 2 * r;

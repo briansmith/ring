@@ -38,12 +38,12 @@ struct aead_aes_gcm_siv_asm_ctx {
 
 // The assembly code assumes 8-byte alignment of the EVP_AEAD_CTX's state, and
 // aligns to 16 bytes itself.
-OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) + 8 >=
-                           sizeof(struct aead_aes_gcm_siv_asm_ctx),
-                       AEAD_state_too_small_opt);
+OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) + 8 >=
+                          sizeof(struct aead_aes_gcm_siv_asm_ctx),
+                      "AEAD state is too small");
 #if defined(__GNUC__) || defined(__clang__)
-OPENSSL_COMPILE_ASSERT(alignof(union evp_aead_ctx_st_state) >= 8,
-                       AEAD_state_insufficient_alignment_opt);
+OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >= 8,
+                      "AEAD state has insufficient alignment");
 #endif
 
 // asm_ctx_from_ctx returns a 16-byte aligned context pointer from |ctx|.
@@ -560,13 +560,13 @@ struct aead_aes_gcm_siv_ctx {
   unsigned is_256:1;
 };
 
-OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
-                       sizeof(struct aead_aes_gcm_siv_ctx),
-                       AEAD_state_too_small);
+OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
+                          sizeof(struct aead_aes_gcm_siv_ctx),
+                      "AEAD state is too small");
 #if defined(__GNUC__) || defined(__clang__)
-OPENSSL_COMPILE_ASSERT(alignof(union evp_aead_ctx_st_state) >=
-                       alignof(struct aead_aes_gcm_siv_ctx),
-                       AEAD_state_insufficient_alignment);
+OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
+                          alignof(struct aead_aes_gcm_siv_ctx),
+                      "AEAD state has insufficient alignment");
 #endif
 
 static int aead_aes_gcm_siv_init(EVP_AEAD_CTX *ctx, const uint8_t *key,

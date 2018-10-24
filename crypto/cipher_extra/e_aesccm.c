@@ -33,13 +33,13 @@ struct aead_aes_ccm_ctx {
   CCM128_CONTEXT ccm;
 };
 
-OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
-                           sizeof(struct aead_aes_ccm_ctx),
-                       AEAD_state_too_small);
+OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
+                          sizeof(struct aead_aes_ccm_ctx),
+                      "AEAD state is too small");
 #if defined(__GNUC__) || defined(__clang__)
-OPENSSL_COMPILE_ASSERT(alignof(union evp_aead_ctx_st_state) >=
-                           alignof(struct aead_aes_ccm_ctx),
-                       AEAD_state_insufficient_alignment);
+OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
+                          alignof(struct aead_aes_ccm_ctx),
+                      "AEAD state has insufficient alignment");
 #endif
 
 static int aead_aes_ccm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,

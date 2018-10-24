@@ -903,9 +903,9 @@ static void fe_from_generic(fe out, const EC_FELEM *in) {
 static void fe_to_generic(EC_FELEM *out, const fe in) {
   // This works because 256 is a multiple of 64, so there are no excess bytes to
   // zero when rounding up to |BN_ULONG|s.
-  OPENSSL_COMPILE_ASSERT(
+  OPENSSL_STATIC_ASSERT(
       256 / 8 == sizeof(BN_ULONG) * ((256 + BN_BITS2 - 1) / BN_BITS2),
-      bytes_left_over);
+      "fe_tobytes leaves bytes uninitialized");
   fe_tobytes(out->bytes, in);
 }
 

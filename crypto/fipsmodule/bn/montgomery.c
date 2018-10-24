@@ -167,11 +167,6 @@ BN_MONT_CTX *BN_MONT_CTX_copy(BN_MONT_CTX *to, const BN_MONT_CTX *from) {
   return to;
 }
 
-OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
-                       BN_MONT_CTX_N0_LIMBS_VALUE_INVALID);
-OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS ==
-                       sizeof(uint64_t), BN_MONT_CTX_set_64_bit_mismatch);
-
 static int bn_mont_ctx_set_N_and_n0(BN_MONT_CTX *mont, const BIGNUM *mod) {
   if (BN_is_zero(mod)) {
     OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
@@ -202,6 +197,11 @@ static int bn_mont_ctx_set_N_and_n0(BN_MONT_CTX *mont, const BIGNUM *mod) {
   // others, we could use a shorter R value and use faster |BN_ULONG|-based
   // math instead of |uint64_t|-based math, which would be double-precision.
   // However, currently only the assembler files know which is which.
+  OPENSSL_STATIC_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
+                        "BN_MONT_CTX_N0_LIMBS value is invalid");
+  OPENSSL_STATIC_ASSERT(
+      sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS == sizeof(uint64_t),
+      "uint64_t is insufficient precision for n0");
   uint64_t n0 = bn_mont_n0(&mont->N);
   mont->n0[0] = (BN_ULONG)n0;
 #if BN_MONT_CTX_N0_LIMBS == 2

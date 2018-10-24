@@ -88,8 +88,8 @@ extern "C" {
 #define EC_MAX_BYTES 66
 #define EC_MAX_WORDS ((EC_MAX_BYTES + BN_BYTES - 1) / BN_BYTES)
 
-OPENSSL_COMPILE_ASSERT(EC_MAX_WORDS <= BN_SMALL_MAX_WORDS,
-                       bn_small_functions_applicable);
+OPENSSL_STATIC_ASSERT(EC_MAX_WORDS <= BN_SMALL_MAX_WORDS,
+                      "bn_*_small functions not usable");
 
 // An EC_SCALAR is an integer fully reduced modulo the order. Only the first
 // |order->width| words are used. An |EC_SCALAR| is specific to an |EC_GROUP|

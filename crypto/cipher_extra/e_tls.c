@@ -42,15 +42,16 @@ typedef struct {
   char implicit_iv;
 } AEAD_TLS_CTX;
 
-OPENSSL_COMPILE_ASSERT(EVP_MAX_MD_SIZE < 256, mac_key_len_fits_in_uint8_t);
+OPENSSL_STATIC_ASSERT(EVP_MAX_MD_SIZE < 256,
+                      "mac_key_len does not fit in uint8_t");
 
-OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
-                           sizeof(AEAD_TLS_CTX),
-                       AEAD_state_too_small);
+OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
+                          sizeof(AEAD_TLS_CTX),
+                      "AEAD state is too small");
 #if defined(__GNUC__) || defined(__clang__)
-OPENSSL_COMPILE_ASSERT(alignof(union evp_aead_ctx_st_state) >=
-                           alignof(AEAD_TLS_CTX),
-                       AEAD_state_insufficient_alignment);
+OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
+                          alignof(AEAD_TLS_CTX),
+                      "AEAD state has insufficient alignment");
 #endif
 
 static void aead_tls_cleanup(EVP_AEAD_CTX *ctx) {

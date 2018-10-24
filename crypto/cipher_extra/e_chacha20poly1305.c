@@ -35,13 +35,13 @@ struct aead_chacha20_poly1305_ctx {
   uint8_t key[32];
 };
 
-OPENSSL_COMPILE_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
-                       sizeof(struct aead_chacha20_poly1305_ctx),
-                       AEAD_state_too_small);
+OPENSSL_STATIC_ASSERT(sizeof(((EVP_AEAD_CTX *)NULL)->state) >=
+                          sizeof(struct aead_chacha20_poly1305_ctx),
+                      "AEAD state is too small");
 #if defined(__GNUC__) || defined(__clang__)
-OPENSSL_COMPILE_ASSERT(alignof(union evp_aead_ctx_st_state) >=
-                           alignof(struct aead_chacha20_poly1305_ctx),
-                       AEAD_state_insufficient_alignment);
+OPENSSL_STATIC_ASSERT(alignof(union evp_aead_ctx_st_state) >=
+                          alignof(struct aead_chacha20_poly1305_ctx),
+                      "AEAD state has insufficient alignment");
 #endif
 
 // For convenience (the x86_64 calling convention allows only six parameters in
@@ -78,9 +78,9 @@ static int asm_capable(void) {
   return sse41_capable;
 }
 
-OPENSSL_COMPILE_ASSERT(sizeof(union open_data) == 48, wrong_open_data_size);
-OPENSSL_COMPILE_ASSERT(sizeof(union seal_data) == 48 + 8 + 8,
-                       wrong_seal_data_size);
+OPENSSL_STATIC_ASSERT(sizeof(union open_data) == 48, "wrong open_data size");
+OPENSSL_STATIC_ASSERT(sizeof(union seal_data) == 48 + 8 + 8,
+                      "wrong seal_data size");
 
 // chacha20_poly1305_open is defined in chacha20_poly1305_x86_64.pl. It decrypts
 // |plaintext_len| bytes from |ciphertext| and writes them to |out_plaintext|.

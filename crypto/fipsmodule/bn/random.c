@@ -195,8 +195,8 @@ static crypto_word_t bn_less_than_word_mask(const BN_ULONG *a, size_t len,
   }
 
   // |a| < |b| iff a[1..len-1] are all zero and a[0] < b.
-  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
-                         crypto_word_t_too_small);
+  OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
+                        "crypto_word_t is too small");
   crypto_word_t mask = 0;
   for (size_t i = 1; i < len; i++) {
     mask |= a[i];

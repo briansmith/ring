@@ -27,8 +27,8 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 #include <openssl/type_check.h>
 
 
-OPENSSL_COMPILE_ASSERT(sizeof(CRYPTO_MUTEX) >= sizeof(SRWLOCK),
-                       CRYPTO_MUTEX_too_small);
+OPENSSL_STATIC_ASSERT(sizeof(CRYPTO_MUTEX) >= sizeof(SRWLOCK),
+                      "CRYPTO_MUTEX is too small");
 
 static BOOL CALLBACK call_once_init(INIT_ONCE *once, void *arg, void **out) {
   void (**init)(void) = (void (**)(void))arg;

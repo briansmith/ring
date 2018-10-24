@@ -64,8 +64,8 @@ int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
   return 1;
 }
 
-OPENSSL_COMPILE_ASSERT(CTR_DRBG_ENTROPY_LEN % AES_BLOCK_SIZE == 0,
-                       not_a_multiple_of_block_size);
+OPENSSL_STATIC_ASSERT(CTR_DRBG_ENTROPY_LEN % AES_BLOCK_SIZE == 0,
+                      "not a multiple of AES block size");
 
 // ctr_inc adds |n| to the last four bytes of |drbg->counter|, treated as a
 // big-endian number.
