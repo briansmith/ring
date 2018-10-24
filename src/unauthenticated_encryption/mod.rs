@@ -65,9 +65,7 @@ impl DecryptingKey {
 pub fn decrypt_in_place<'a>(key: &DecryptingKey, nonce: &[u8],
                             in_out: &'a mut [u8])
                             -> Result<&'a mut [u8], error::Unspecified> {
-    let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
-    check_per_nonce_max_bytes(key.key.algorithm.max_input_len, in_out.len())?;
-    (key.key.algorithm.xor_in_place)(&key.key.ctx_buf, nonce, in_out)?;
+    do_encryption_in_place(&key.key, nonce, in_out)?;
     Ok(&mut in_out[..])
 }
 
@@ -107,10 +105,15 @@ impl EncryptingKey {
 /// Encrypts the input data in place.
 pub fn encrypt_in_place(key: &EncryptingKey, nonce: &[u8], in_out: &mut [u8])
                         -> Result<usize, error::Unspecified> {
-    let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
-    check_per_nonce_max_bytes(key.key.algorithm.max_input_len, in_out.len())?;
-    (key.key.algorithm.xor_in_place)(&key.key.ctx_buf, nonce, in_out)?;
+    do_encryption_in_place(&key.key, nonce, in_out)?;
     Ok(in_out.len())
+}
+
+fn do_encryption_in_place(key: &Key, nonce: &[u8], in_out: &mut [u8])
+                        -> Result<(), error::Unspecified> {
+    let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
+    check_per_nonce_max_bytes(key.algorithm.max_input_len, in_out.len())?;
+    (key.algorithm.xor_in_place)(&key.ctx_buf, nonce, in_out)
 }
 
 /// `DecryptingKey` and `EncryptingKey` are type-safety wrappers around `Key`,
