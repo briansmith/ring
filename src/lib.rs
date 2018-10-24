@@ -99,6 +99,9 @@ mod bssl;
 #[macro_use]
 mod polyfill;
 
+#[macro_use]
+pub mod unauthenticated_encryption;
+
 pub mod aead;
 pub mod agreement;
 
@@ -129,8 +132,6 @@ mod rsa;
 
 pub mod signature;
 mod signature_impl;
-
-pub mod unauthenticated_encryption;
 
 #[cfg(any(feature = "use_heap", test))]
 pub mod test;

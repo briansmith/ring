@@ -172,6 +172,7 @@ pub struct Algorithm {
 }
 
 /// TODO: Make this a `const fn` when those become stable.
+#[macro_export]
 macro_rules! max_input_len {
     ($block_len:expr, $overhead_blocks_per_nonce:expr) => {
         // Each of our AEADs use a 32-bit block counter so the maximum is the
