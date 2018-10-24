@@ -34,7 +34,9 @@ fn chacha20_xor_keystream(ctx: &[u64; unauthenticated_encryption::KEY_CTX_BUF_EL
                           nonce: &[u8; unauthenticated_encryption::NONCE_LEN],
                           in_out: &mut [u8]) -> Result<(), error::Unspecified> {
     let chacha20_key = ctx_as_key(ctx)?;
-    let mut counter = make_counter(nonce);
+    let counter = u32_from_le_u8(slice_as_array_ref!(&nonce[0..4], 4)?);
+    let nonce = slice_as_array_ref!(&nonce[4..16], chacha::NONCE_LEN)?;
+    let mut counter = chacha::make_counter(nonce, counter);
     chacha::chacha20_xor_in_place(&chacha20_key, &counter, in_out);
     counter[0] = 0;
     Ok(())
@@ -45,12 +47,4 @@ pub fn ctx_as_key(ctx: &[u64; unauthenticated_encryption::KEY_CTX_BUF_ELEMS])
     slice_as_array_ref!(
         &polyfill::slice::u64_as_u32(ctx)[..(chacha::KEY_LEN_IN_BYTES / 4)],
         chacha::KEY_LEN_IN_BYTES / 4)
-}
-
-#[inline]
-fn make_counter(nonce: &[u8; unauthenticated_encryption::NONCE_LEN]) -> chacha::Counter {
-    [u32_from_le_u8(slice_as_array_ref!(&nonce[0..4], 4).unwrap()),
-     u32_from_le_u8(slice_as_array_ref!(&nonce[4..8], 4).unwrap()),
-     u32_from_le_u8(slice_as_array_ref!(&nonce[8..12], 4).unwrap()),
-     u32_from_le_u8(slice_as_array_ref!(&nonce[12..16], 4).unwrap())]
 }
