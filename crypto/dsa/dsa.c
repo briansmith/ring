@@ -860,29 +860,18 @@ int DSA_size(const DSA *dsa) {
   return ret;
 }
 
-static int dsa_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
+static int dsa_sign_setup(const DSA *dsa, BN_CTX *ctx, BIGNUM **out_kinv,
                           BIGNUM **out_r) {
-  BN_CTX *ctx;
-  BIGNUM k, *kinv = NULL, *r = NULL;
-  int ret = 0;
-
   if (!dsa->p || !dsa->q || !dsa->g) {
     OPENSSL_PUT_ERROR(DSA, DSA_R_MISSING_PARAMETERS);
     return 0;
   }
 
+  int ret = 0;
+  BIGNUM k;
   BN_init(&k);
-
-  ctx = ctx_in;
-  if (ctx == NULL) {
-    ctx = BN_CTX_new();
-    if (ctx == NULL) {
-      goto err;
-    }
-  }
-
-  r = BN_new();
-  kinv = BN_new();
+  BIGNUM *r = BN_new();
+  BIGNUM *kinv = BN_new();
   if (r == NULL || kinv == NULL ||
       // Get random k
       !BN_rand_range_ex(&k, 1, dsa->q) ||
@@ -906,28 +895,23 @@ static int dsa_sign_setup(const DSA *dsa, BN_CTX *ctx_in, BIGNUM **out_kinv,
       // Compute part of 's = inv(k) (m + xr) mod q' using Fermat's Little
       // Theorem.
       !bn_mod_inverse_prime(kinv, &k, dsa->q, ctx, dsa->method_mont_q)) {
+    OPENSSL_PUT_ERROR(DSA, ERR_R_BN_LIB);
     goto err;
   }
 
   BN_clear_free(*out_kinv);
   *out_kinv = kinv;
   kinv = NULL;
+
   BN_clear_free(*out_r);
   *out_r = r;
+  r = NULL;
+
   ret = 1;
 
 err:
-  if (!ret) {
-    OPENSSL_PUT_ERROR(DSA, ERR_R_BN_LIB);
-    if (r != NULL) {
-      BN_clear_free(r);
-    }
-  }
-
-  if (ctx_in == NULL) {
-    BN_CTX_free(ctx);
-  }
   BN_clear_free(&k);
+  BN_clear_free(r);
   BN_clear_free(kinv);
   return ret;
 }
