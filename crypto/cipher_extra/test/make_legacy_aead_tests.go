@@ -100,7 +100,7 @@ type testCase struct {
 type options struct {
 	// extraPadding causes an extra block of padding to be added.
 	extraPadding bool
-	// maximalPadding causes 256 bytes of padding to be added.
+	// maximalPadding causes the maximum allowed amount of padding to be added.
 	maximalPadding bool
 	// wrongPadding causes one of the padding bytes to be wrong.
 	wrongPadding bool
@@ -176,7 +176,7 @@ func makeTestCase(length int, options options) (*testCase, error) {
 	} else {
 		sealed = append(sealed, digest...)
 	}
-	paddingLen := cbc.BlockSize() - (len(sealed) % cbc.BlockSize())
+	paddingLen := cbc.BlockSize() - len(sealed)%cbc.BlockSize()
 	if options.noPadding {
 		if paddingLen != cbc.BlockSize() {
 			return nil, fmt.Errorf("invalid length for noPadding")
@@ -188,10 +188,10 @@ func makeTestCase(length int, options options) (*testCase, error) {
 			if options.extraPadding {
 				paddingLen += cbc.BlockSize()
 			} else {
-				if paddingLen != cbc.BlockSize() {
-					return nil, fmt.Errorf("invalid length for maximalPadding")
+				if 256%cbc.BlockSize() != 0 {
+					panic("256 is not a whole number of blocks")
 				}
-				paddingLen = 256
+				paddingLen = 256 - len(sealed)%cbc.BlockSize()
 			}
 			noSeal = true
 		}
@@ -290,8 +290,16 @@ func main() {
 	fmt.Printf("# Test with no padding.\n")
 	addTestCase(64-hash.Size(), options{noPadding: true})
 
-	fmt.Printf("# Test with maximal padding.\n")
-	addTestCase(64-hash.Size(), options{maximalPadding: true})
+	// Test with maximal padding at all rotations modulo the hash's block
+	// size. Our smallest hash (SHA-1 at 64-byte blocks) exceeds our largest
+	// block cipher (AES at 16-byte blocks), so this is also covers all
+	// block cipher rotations. This is to ensure full coverage of the
+	// kVarianceBlocks value in the constant-time logic.
+	hashBlockSize := hash.New().BlockSize()
+	for i := 0; i < hashBlockSize; i++ {
+		fmt.Printf("# Test with maximal padding (%d mod %d).\n", i, hashBlockSize)
+		addTestCase(hashBlockSize+i, options{maximalPadding: true})
+	}
 
 	fmt.Printf("# Test if the unpadded input is too short for a MAC, but not publicly so.\n")
 	addTestCase(0, options{omitMAC: true, maximalPadding: true})
