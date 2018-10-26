@@ -139,8 +139,48 @@ OPENSSL_EXPORT int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out);
 
 
 // Parsing ASN.1
+//
+// |CBS| may be used to parse DER structures. Rather than using a schema
+// compiler, the following functions act on tag-length-value elements in the
+// serialization itself. Thus the caller is responsible for looping over a
+// SEQUENCE, branching on CHOICEs or OPTIONAL fields, checking for trailing
+// data, and handling explict vs. implicit tagging.
+//
+// Tags are represented as |unsigned| values in memory. The upper few bits store
+// the class and constructed bit, and the remaining bits store the tag
+// number. Note this differs from the DER serialization, to support tag numbers
+// beyond 31. Consumers must use the constants defined below to decompose or
+// assemble tags.
+//
+// This library treats an element's constructed bit as part of its tag. In DER,
+// the constructed bit is computable from the type. The constants for universal
+// types have the bit set. Callers must set it correctly for tagged types.
+// Explicitly-tagged types are always constructed, and implicitly-tagged types
+// inherit the underlying type's bit.
 
-// The following values are tag numbers for UNIVERSAL elements.
+// CBS_ASN1_TAG_SHIFT is how much the in-memory representation shifts the class
+// and constructed bits from the DER serialization.
+#define CBS_ASN1_TAG_SHIFT 24
+
+// CBS_ASN1_CONSTRUCTED may be ORed into a tag to set the constructed bit.
+#define CBS_ASN1_CONSTRUCTED (0x20u << CBS_ASN1_TAG_SHIFT)
+
+// The following values specify the tag class and may be ORed into a tag number
+// to produce the final tag. If none is used, the tag will be UNIVERSAL.
+#define CBS_ASN1_UNIVERSAL (0u << CBS_ASN1_TAG_SHIFT)
+#define CBS_ASN1_APPLICATION (0x40u << CBS_ASN1_TAG_SHIFT)
+#define CBS_ASN1_CONTEXT_SPECIFIC (0x80u << CBS_ASN1_TAG_SHIFT)
+#define CBS_ASN1_PRIVATE (0xc0u << CBS_ASN1_TAG_SHIFT)
+
+// CBS_ASN1_CLASS_MASK may be ANDed with a tag to query its class. This will
+// give one of the four values above.
+#define CBS_ASN1_CLASS_MASK (0xc0u << CBS_ASN1_TAG_SHIFT)
+
+// CBS_ASN1_TAG_NUMBER_MASK may be ANDed with a tag to query its number.
+#define CBS_ASN1_TAG_NUMBER_MASK ((1u << (5 + CBS_ASN1_TAG_SHIFT)) - 1)
+
+// The following values are constants for UNIVERSAL tags. Note these constants
+// include the constructed bit.
 #define CBS_ASN1_BOOLEAN 0x1u
 #define CBS_ASN1_INTEGER 0x2u
 #define CBS_ASN1_BITSTRING 0x3u
@@ -163,32 +203,6 @@ OPENSSL_EXPORT int CBS_get_u24_length_prefixed(CBS *cbs, CBS *out);
 #define CBS_ASN1_GENERALSTRING 0x1bu
 #define CBS_ASN1_UNIVERSALSTRING 0x1cu
 #define CBS_ASN1_BMPSTRING 0x1eu
-
-// CBS_ASN1_TAG_SHIFT is how much the in-memory representation shifts the class
-// and constructed bits from the DER serialization. This allows representing tag
-// numbers beyond 31.
-//
-// Consumers must use the following constants to decompose or assemble tags.
-#define CBS_ASN1_TAG_SHIFT 24
-
-// CBS_ASN1_CONSTRUCTED may be ORed into a tag to toggle the constructed
-// bit. |CBS| and |CBB| APIs consider the constructed bit to be part of the
-// tag.
-#define CBS_ASN1_CONSTRUCTED (0x20u << CBS_ASN1_TAG_SHIFT)
-
-// The following values specify the tag class and may be ORed into a tag number
-// to produce the final tag. If none is used, the tag will be UNIVERSAL.
-#define CBS_ASN1_UNIVERSAL (0u << CBS_ASN1_TAG_SHIFT)
-#define CBS_ASN1_APPLICATION (0x40u << CBS_ASN1_TAG_SHIFT)
-#define CBS_ASN1_CONTEXT_SPECIFIC (0x80u << CBS_ASN1_TAG_SHIFT)
-#define CBS_ASN1_PRIVATE (0xc0u << CBS_ASN1_TAG_SHIFT)
-
-// CBS_ASN1_CLASS_MASK may be ANDed with a tag to query its class. This will
-// give one of the four values above.
-#define CBS_ASN1_CLASS_MASK (0xc0u << CBS_ASN1_TAG_SHIFT)
-
-// CBS_ASN1_TAG_NUMBER_MASK may be ANDed with a tag to query its number.
-#define CBS_ASN1_TAG_NUMBER_MASK ((1u << (5 + CBS_ASN1_TAG_SHIFT)) - 1)
 
 // CBS_get_asn1 sets |*out| to the contents of DER-encoded, ASN.1 element (not
 // including tag and length bytes) and advances |cbs| over it. The ASN.1
