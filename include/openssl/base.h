@@ -150,15 +150,6 @@ extern "C" {
 #define OPENSSL_ANDROID
 #endif
 
-// OPENSSL_NO_THREADS has been deprecated in favor of this much longer and
-// louder name, to better reflect exactly what that option did.
-//
-// TODO(davidben): Remove this block when callers have migrated.
-#if defined(OPENSSL_NO_THREADS) && \
-    !defined(OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED)
-#define OPENSSL_NO_THREADS_CORRUPT_MEMORY_AND_LEAK_SECRETS_IF_THREADED
-#endif
-
 // BoringSSL requires platform's locking APIs to make internal global state
 // thread-safe, including the PRNG. On some single-threaded embedded platforms,
 // locking APIs may not exist, so this dependency may be disabled with the
