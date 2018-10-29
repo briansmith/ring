@@ -280,9 +280,6 @@ untrusted = "0.6.2"
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = { version = "0.2.34" }
 
-[target.'cfg(any(target_os = "redox", all(unix, not(any(target_os = "macos", target_os = "ios")))))'.dependencies]
-lazy_static = "1.0"
-
 # Keep this in sync with `[dependencies]` in pregenerate_asm/Cargo.toml.
 [build-dependencies]
 # we do not use the gcc parallel feature because we do the

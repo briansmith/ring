@@ -197,23 +197,32 @@ mod urandom {
     use std;
     use error;
 
-    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+    fn get_random_file() -> &'static Option<std::fs::File> {
         #[cfg(target_os = "redox")]
         static RANDOM_PATH: &'static str = "rand:";
         #[cfg(unix)]
         static RANDOM_PATH: &'static str = "/dev/urandom";
 
-        lazy_static! {
-            static ref FILE: Result<std::fs::File, std::io::Error> =
-                std::fs::File::open(RANDOM_PATH);
-        }
+        use std::sync::Once;
 
-        match *FILE {
-            Ok(ref file) => {
+        static mut FILE: Option<std::fs::File> = None;
+        static FILE_INIT: Once = Once::new();
+
+        unsafe {
+            FILE_INIT.call_once(|| {
+                FILE = std::fs::File::open(RANDOM_PATH).ok();
+            });
+            &FILE
+        }
+    }
+
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        match get_random_file() {
+            Some(ref file) => {
                 use std::io::Read;
                 (&*file).read_exact(dest).map_err(|_| error::Unspecified)
             },
-            Err(_) => Err(error::Unspecified),
+            None => Err(error::Unspecified),
         }
     }
 }
@@ -228,19 +237,25 @@ mod sysrand_or_urandom {
         DevURandom,
     }
 
-    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        lazy_static! {
-            static ref MECHANISM: Mechanism = {
+    fn get_random_mechanism() -> &'static Mechanism {
+        use std::sync::Once;
+
+        static mut MECHANISM: Mechanism = Mechanism::Sysrand;
+        static MECHANISM_INIT: Once = Once::new();
+
+        unsafe {
+            MECHANISM_INIT.call_once(|| {
                 let mut dummy = [0u8; 1];
                 if super::sysrand_chunk::chunk(&mut dummy[..]).is_err() {
-                    Mechanism::DevURandom
-                } else {
-                    Mechanism::Sysrand
+                    MECHANISM = Mechanism::DevURandom;
                 }
-            };
+            });
+            &MECHANISM
         }
+    }
 
-        match *MECHANISM {
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        match get_random_mechanism() {
             Mechanism::Sysrand => super::sysrand::fill(dest),
             Mechanism::DevURandom => super::urandom::fill(dest),
         }
