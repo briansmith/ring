@@ -26,6 +26,7 @@ use untrusted;
 /// Components are in big-endian, considered unsigned, and must not contain
 /// leading zeros. To construct a `KeyPair` provide this struct to
 /// `RSAKeyPair::from_key_input()`.
+#[derive(Clone, Debug)]
 pub struct KeyPairInput<'a> {
     /// Public modulus.
     pub n: untrusted::Input<'a>,
