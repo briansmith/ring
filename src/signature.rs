@@ -313,7 +313,11 @@ pub use ec::curve25519::ed25519::{
 };
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
-pub use rsa::signing::{KeyPair as RSAKeyPair, SigningState as RSASigningState};
+pub use rsa::signing::{
+    KeyPair as RSAKeyPair,
+    KeyPairInput as RSAKeyPairInput,
+    SigningState as RSASigningState
+};
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
 pub use rsa::{

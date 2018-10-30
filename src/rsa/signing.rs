@@ -21,6 +21,30 @@ use super::{bigint, bigint::Prime, N, verification};
 use arithmetic::montgomery::{R, RR, RRR};
 use untrusted;
 
+/// Used to construct an RSA key pair from components. Feature: `rsa_signing`.
+///
+/// Components are in big-endian, considered unsigned, and must not contain
+/// leading zeros. To construct a `KeyPair` provide this struct to
+/// `RSAKeyPair::from_key_input()`.
+pub struct KeyPairInput<'a> {
+    /// Public modulus.
+    pub n: untrusted::Input<'a>,
+    /// Public exponent.
+    pub e: untrusted::Input<'a>,
+    /// Private exponent.
+    pub d: untrusted::Input<'a>,
+    /// Prime 1.
+    pub p: untrusted::Input<'a>,
+    /// Prime 2.
+    pub q: untrusted::Input<'a>,
+    /// Exponent 1.
+    pub dP: untrusted::Input<'a>,
+    /// Exponent 2.
+    pub dQ: untrusted::Input<'a>,
+    /// Coefficient.
+    pub qInv: untrusted::Input<'a>,
+}
+
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
 ///
 /// After constructing an `RSAKeyPair`, construct one or more
@@ -352,6 +376,19 @@ impl KeyPair {
                 })
             })
         })
+    }
+
+    /// Constructs an RSA private key from components.
+    ///
+    /// Components are in big-endian, considered unsigned, and must not contain
+    /// leading zeros. Input aside this is just like `from_pkcs8()`. See the
+    /// documentation for `from_pkcs8()` for more details.
+    ///
+    /// This exists to support esoteric private key formats. `from_pkcs8()` or
+    /// `from_der()` should be preferred where possible.
+    pub fn from_key_input(key_input: KeyPairInput) -> Result<Self, error::Unspecified> {
+        let _ = key_input;
+        unimplemented!();
     }
 
     /// Returns the length in bytes of the key pair's public modulus.
