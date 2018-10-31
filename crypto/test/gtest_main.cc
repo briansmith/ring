@@ -12,13 +12,22 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <stdio.h>
 #include <string.h>
 
 #include <gtest/gtest.h>
 
+#include <openssl/cpu.h>
 #include <openssl/rand.h>
 
 #include "gtest_main.h"
+#include "../internal.h"
+
+#if (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) &&       \
+    !defined(OPENSSL_STATIC_ARMCAP)
+#include <openssl/arm_arch.h>
+#define TEST_ARM_CPUS
+#endif
 
 
 int main(int argc, char **argv) {
@@ -32,6 +41,34 @@ int main(int argc, char **argv) {
     }
   }
 #endif
+
+#if defined(TEST_ARM_CPUS)
+  for (int i = 1; i < argc; i++) {
+    if (strncmp(argv[i], "--cpu=", 6) == 0) {
+      const char *cpu = argv[i] + 6;
+      uint32_t armcap;
+      if (strcmp(cpu, "none") == 0) {
+        armcap = 0;
+      } else if (strcmp(cpu, "neon") == 0) {
+        armcap = ARMV7_NEON;
+      } else if (strcmp(cpu, "crypto") == 0) {
+        armcap = ARMV7_NEON | ARMV8_AES | ARMV8_SHA1 | ARMV8_SHA256 | ARMV8_PMULL;
+      } else {
+        fprintf(stderr, "Unknown CPU: %s\n", cpu);
+        exit(1);
+      }
+
+      uint32_t *armcap_ptr = OPENSSL_get_armcap_pointer_for_test();
+      if ((armcap & *armcap_ptr) != armcap) {
+        fprintf(stderr,
+                "Host CPU does not support features for testing CPU '%s'.\n",
+                cpu);
+        exit(89);
+      }
+      *armcap_ptr = armcap;
+    }
+  }
+#endif  // TEST_ARM_CPUS
 
   return RUN_ALL_TESTS();
 }

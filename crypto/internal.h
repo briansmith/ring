@@ -150,6 +150,14 @@ extern "C" {
 void OPENSSL_cpuid_setup(void);
 #endif
 
+#if (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) && \
+    !defined(OPENSSL_STATIC_ARMCAP)
+// OPENSSL_get_armcap_pointer_for_test returns a pointer to |OPENSSL_armcap_P|
+// for unit tests. Any modifications to the value must be made after
+// |CRYPTO_library_init| but before any other function call in BoringSSL.
+OPENSSL_EXPORT uint32_t *OPENSSL_get_armcap_pointer_for_test(void);
+#endif
+
 
 #if (!defined(_MSC_VER) || defined(__clang__)) && defined(OPENSSL_64_BIT)
 #define BORINGSSL_HAS_UINT128
