@@ -4650,8 +4650,9 @@ class QUICMethodTest : public testing::Test {
                                                        write_key, key_len);
   }
 
-  static int AddMessageCallback(SSL *ssl, enum ssl_encryption_level_t level,
-                                const uint8_t *data, size_t len) {
+  static int AddHandshakeDataCallback(SSL *ssl,
+                                      enum ssl_encryption_level_t level,
+                                      const uint8_t *data, size_t len) {
     EXPECT_EQ(level, SSL_quic_write_level(ssl));
     return TransportFromSSL(ssl)->WriteHandshakeData(level,
                                                      MakeConstSpan(data, len));
@@ -4681,7 +4682,7 @@ UnownedSSLExData<MockQUICTransport> QUICMethodTest::ex_data_;
 TEST_F(QUICMethodTest, Basic) {
   const SSL_QUIC_METHOD quic_method = {
       SetEncryptionSecretsCallback,
-      AddMessageCallback,
+      AddHandshakeDataCallback,
       FlushFlightCallback,
       SendAlertCallback,
   };
@@ -4732,7 +4733,7 @@ TEST_F(QUICMethodTest, Basic) {
 TEST_F(QUICMethodTest, Async) {
   const SSL_QUIC_METHOD quic_method = {
       SetEncryptionSecretsCallback,
-      AddMessageCallback,
+      AddHandshakeDataCallback,
       FlushFlightCallback,
       SendAlertCallback,
   };
@@ -4793,8 +4794,8 @@ TEST_F(QUICMethodTest, Buffered) {
   };
   static UnownedSSLExData<BufferedFlight> buffered_flights;
 
-  auto add_message = [](SSL *ssl, enum ssl_encryption_level_t level,
-                        const uint8_t *data, size_t len) -> int {
+  auto add_handshake_data = [](SSL *ssl, enum ssl_encryption_level_t level,
+                               const uint8_t *data, size_t len) -> int {
     BufferedFlight *flight = buffered_flights.Get(ssl);
     flight->data[level].insert(flight->data[level].end(), data, data + len);
     return 1;
@@ -4817,7 +4818,7 @@ TEST_F(QUICMethodTest, Buffered) {
 
   const SSL_QUIC_METHOD quic_method = {
     SetEncryptionSecretsCallback,
-    add_message,
+    add_handshake_data,
     flush_flight,
     SendAlertCallback,
   };
@@ -4862,8 +4863,8 @@ TEST_F(QUICMethodTest, Buffered) {
 // EncryptedExtensions in a single chunk, BoringSSL notices and rejects this on
 // key change.
 TEST_F(QUICMethodTest, ExcessProvidedData) {
-  auto add_message = [](SSL *ssl, enum ssl_encryption_level_t level,
-                        const uint8_t *data, size_t len) -> int {
+  auto add_handshake_data = [](SSL *ssl, enum ssl_encryption_level_t level,
+                               const uint8_t *data, size_t len) -> int {
     // Switch everything to the initial level.
     return TransportFromSSL(ssl)->WriteHandshakeData(ssl_encryption_initial,
                                                      MakeConstSpan(data, len));
@@ -4871,7 +4872,7 @@ TEST_F(QUICMethodTest, ExcessProvidedData) {
 
   const SSL_QUIC_METHOD quic_method = {
       SetEncryptionSecretsCallback,
-      add_message,
+      add_handshake_data,
       FlushFlightCallback,
       SendAlertCallback,
   };
@@ -4891,8 +4892,8 @@ TEST_F(QUICMethodTest, ExcessProvidedData) {
   // encryption.
   ASSERT_EQ(ssl_encryption_initial, SSL_quic_read_level(client_.get()));
 
-  // |add_message| incorrectly wrote everything at the initial level, so this
-  // queues up ServerHello through Finished in one chunk.
+  // |add_handshake_data| incorrectly wrote everything at the initial level, so
+  // this queues up ServerHello through Finished in one chunk.
   ASSERT_TRUE(ProvideHandshakeData(client_.get()));
 
   // The client reads ServerHello successfully, but then rejects the buffered
@@ -4917,7 +4918,7 @@ TEST_F(QUICMethodTest, ExcessProvidedData) {
 TEST_F(QUICMethodTest, ProvideWrongLevel) {
   const SSL_QUIC_METHOD quic_method = {
       SetEncryptionSecretsCallback,
-      AddMessageCallback,
+      AddHandshakeDataCallback,
       FlushFlightCallback,
       SendAlertCallback,
   };
@@ -4962,7 +4963,7 @@ TEST_F(QUICMethodTest, ProvideWrongLevel) {
 TEST_F(QUICMethodTest, TooMuchData) {
   const SSL_QUIC_METHOD quic_method = {
       SetEncryptionSecretsCallback,
-      AddMessageCallback,
+      AddHandshakeDataCallback,
       FlushFlightCallback,
       SendAlertCallback,
   };

@@ -3098,12 +3098,15 @@ struct ssl_quic_method_st {
   int (*set_encryption_secrets)(SSL *ssl, enum ssl_encryption_level_t level,
                                 const uint8_t *read_secret,
                                 const uint8_t *write_secret, size_t secret_len);
-  // add_message adds a message to the current flight at the given encryption
-  // level. A single handshake flight may include multiple encryption levels.
-  // Callers can defer writing data to the network until |flush_flight| for
-  // optimal packing. It returns one on success and zero on error.
-  int (*add_message)(SSL *ssl, enum ssl_encryption_level_t level,
-                     const uint8_t *data, size_t len);
+  // add_handshake_data adds handshake data to the current flight at the given
+  // encryption level. It returns one on success and zero on error.
+  //
+  // BoringSSL will pack data from a single encryption level together, but a
+  // single handshake flight may include multiple encryption levels. Callers
+  // should defer writing data to the network until |flush_flight| to better
+  // pack QUIC packets into transport datagrams.
+  int (*add_handshake_data)(SSL *ssl, enum ssl_encryption_level_t level,
+                            const uint8_t *data, size_t len);
   // flush_flight is called when the current flight is complete and should be
   // written to the transport. Note a flight may contain data at several
   // encryption levels. It returns one on success and zero on error.
