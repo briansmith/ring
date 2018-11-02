@@ -318,11 +318,7 @@ ssl_open_record_t ssl3_open_app_data(SSL *ssl, Span<uint8_t> *out,
       return ssl_open_record_error;
     }
 
-    if (!ssl->s3->hs_buf) {
-      ssl->s3->hs_buf.reset(BUF_MEM_new());
-    }
-    if (!ssl->s3->hs_buf ||
-        !BUF_MEM_append(ssl->s3->hs_buf.get(), body.data(), body.size())) {
+    if (!tls_append_handshake_data(ssl, body)) {
       *out_alert = SSL_AD_INTERNAL_ERROR;
       return ssl_open_record_error;
     }

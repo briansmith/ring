@@ -411,7 +411,7 @@ static ssl_open_record_t read_v2_client_hello(SSL *ssl, size_t *out_consumed,
   OPENSSL_memcpy(random + (SSL3_RANDOM_SIZE - rand_len), CBS_data(&challenge),
                  rand_len);
 
-  // Write out an equivalent TLS ClientHello.
+  // Write out an equivalent TLS ClientHello directly to the handshake buffer.
   size_t max_v3_client_hello = SSL3_HM_HEADER_LENGTH + 2 /* version */ +
                                SSL3_RANDOM_SIZE + 1 /* session ID length */ +
                                2 /* cipher list length */ +
@@ -419,7 +419,11 @@ static ssl_open_record_t read_v2_client_hello(SSL *ssl, size_t *out_consumed,
                                1 /* compression length */ + 1 /* compression */;
   ScopedCBB client_hello;
   CBB hello_body, cipher_suites;
-  if (!BUF_MEM_reserve(ssl->s3->hs_buf.get(), max_v3_client_hello) ||
+  if (!ssl->s3->hs_buf) {
+    ssl->s3->hs_buf.reset(BUF_MEM_new());
+  }
+  if (!ssl->s3->hs_buf ||
+      !BUF_MEM_reserve(ssl->s3->hs_buf.get(), max_v3_client_hello) ||
       !CBB_init_fixed(client_hello.get(), (uint8_t *)ssl->s3->hs_buf->data,
                       ssl->s3->hs_buf->max) ||
       !CBB_add_u8(client_hello.get(), SSL3_MT_CLIENT_HELLO) ||
@@ -539,18 +543,18 @@ bool tls_has_unprocessed_handshake_data(const SSL *ssl) {
   return ssl->s3->hs_buf && ssl->s3->hs_buf->length > msg_len;
 }
 
-ssl_open_record_t ssl3_open_handshake(SSL *ssl, size_t *out_consumed,
-                                      uint8_t *out_alert, Span<uint8_t> in) {
-  *out_consumed = 0;
+bool tls_append_handshake_data(SSL *ssl, Span<const uint8_t> data) {
   // Re-create the handshake buffer if needed.
   if (!ssl->s3->hs_buf) {
     ssl->s3->hs_buf.reset(BUF_MEM_new());
-    if (!ssl->s3->hs_buf) {
-      *out_alert = SSL_AD_INTERNAL_ERROR;
-      return ssl_open_record_error;
-    }
   }
+  return ssl->s3->hs_buf &&
+         BUF_MEM_append(ssl->s3->hs_buf.get(), data.data(), data.size());
+}
 
+ssl_open_record_t ssl3_open_handshake(SSL *ssl, size_t *out_consumed,
+                                      uint8_t *out_alert, Span<uint8_t> in) {
+  *out_consumed = 0;
   // Bypass the record layer for the first message to handle V2ClientHello.
   if (ssl->server && !ssl->s3->v2_hello_done) {
     // Ask for the first 5 bytes, the size of the TLS record header. This is
@@ -619,7 +623,7 @@ ssl_open_record_t ssl3_open_handshake(SSL *ssl, size_t *out_consumed,
   }
 
   // Append the entire handshake record to the buffer.
-  if (!BUF_MEM_append(ssl->s3->hs_buf.get(), body.data(), body.size())) {
+  if (!tls_append_handshake_data(ssl, body)) {
     *out_alert = SSL_AD_INTERNAL_ERROR;
     return ssl_open_record_error;
   }

@@ -846,15 +846,7 @@ int SSL_provide_quic_data(SSL *ssl, enum ssl_encryption_level_t level,
     return 0;
   }
 
-  // Re-create the handshake buffer if needed.
-  if (!ssl->s3->hs_buf) {
-    ssl->s3->hs_buf.reset(BUF_MEM_new());
-    if (!ssl->s3->hs_buf) {
-      return 0;
-    }
-  }
-
-  return BUF_MEM_append(ssl->s3->hs_buf.get(), data, len);
+  return tls_append_handshake_data(ssl, MakeConstSpan(data, len));
 }
 
 int SSL_do_handshake(SSL *ssl) {
