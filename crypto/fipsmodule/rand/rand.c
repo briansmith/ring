@@ -109,8 +109,9 @@ struct rand_state {
   // next forms a NULL-terminated linked-list of all free |rand_state| objects.
   struct rand_state *next;
   // calls is the number of generate calls made on |drbg| since it was last
-  // (re)seeded. This is bound by |kReseedInterval|.
-  unsigned calls;
+  // (re)seeded. This is bound by
+  // |kReseedInterval - 1 + SIZE_MAX / CTR_DRBG_MAX_GENERATE_LENGTH|.
+  size_t calls;
 
 #if defined(BORINGSSL_FIPS)
   // next_all forms another NULL-terminated linked-list, this time of all
@@ -351,6 +352,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 
     out += todo;
     out_len -= todo;
+    // Though we only check before entering the loop, this cannot add enough to
+    // overflow a |size_t|.
     state->calls++;
     first_call = 0;
   }
