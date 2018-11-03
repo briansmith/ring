@@ -47,14 +47,14 @@ pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 
 #[cfg(all(any(test, feature = "rsa_signing"), target_pointer_width = "64"))]
 #[inline]
-pub fn limbs_as_bytes<'a>(src: &'a [Limb]) -> &'a [u8] {
+pub fn limbs_as_bytes(src: &[Limb]) -> &[u8] {
     use polyfill;
     polyfill::slice::u64_as_u8(src)
 }
 
 #[cfg(all(any(test, feature = "rsa_signing"), target_pointer_width = "32"))]
 #[inline]
-pub fn limbs_as_bytes<'a>(src: &'a [Limb]) -> &'a [u8] {
+pub fn limbs_as_bytes(src: &[Limb]) -> &[u8] {
     use polyfill;
     polyfill::slice::u32_as_u8(src)
 }

@@ -66,7 +66,7 @@ pub struct PrivateKey {
     bytes: [u8; SCALAR_MAX_BYTES],
 }
 
-impl<'a> PrivateKey {
+impl PrivateKey {
     pub fn generate(curve: &Curve, rng: &rand::SecureRandom)
                     -> Result<PrivateKey, error::Unspecified> {
         init::init_once();
@@ -88,7 +88,7 @@ impl<'a> PrivateKey {
         Ok(r)
     }
 
-    pub fn bytes(&'a self, curve: &Curve) -> &'a [u8] {
+    pub fn bytes(&self, curve: &Curve) -> &[u8] {
         &self.bytes[..curve.elem_and_scalar_len]
     }
 

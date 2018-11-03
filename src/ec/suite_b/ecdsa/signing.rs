@@ -69,7 +69,7 @@ pub struct Key {
 
 derive_debug_via_self!(Key, self.alg);
 
-impl<'a> Key {
+impl Key {
     /// Generates a new key pair and returns the key pair serialized as a
     /// PKCS#8 document.
     ///
