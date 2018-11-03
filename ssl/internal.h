@@ -1000,6 +1000,15 @@ class SSLKeyShare {
   virtual bool Deserialize(CBS *in) { return false; }
 };
 
+struct NamedGroup {
+  int nid;
+  uint16_t group_id;
+  const char name[8], alias[11];
+};
+
+// NamedGroups returns all supported groups.
+Span<const NamedGroup> NamedGroups();
+
 // ssl_nid_to_group_id looks up the group corresponding to |nid|. On success, it
 // sets |*out_group_id| to the group ID and returns true. Otherwise, it returns
 // false.

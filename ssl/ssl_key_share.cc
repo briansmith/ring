@@ -211,11 +211,7 @@ class X25519KeyShare : public SSLKeyShare {
   uint8_t private_key_[32];
 };
 
-CONSTEXPR_ARRAY struct {
-  int nid;
-  uint16_t group_id;
-  const char name[8], alias[11];
-} kNamedGroups[] = {
+CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {
     {NID_secp224r1, SSL_CURVE_SECP224R1, "P-224", "secp224r1"},
     {NID_X9_62_prime256v1, SSL_CURVE_SECP256R1, "P-256", "prime256v1"},
     {NID_secp384r1, SSL_CURVE_SECP384R1, "P-384", "secp384r1"},
@@ -224,6 +220,10 @@ CONSTEXPR_ARRAY struct {
 };
 
 }  // namespace
+
+Span<const NamedGroup> NamedGroups() {
+  return MakeConstSpan(kNamedGroups, OPENSSL_ARRAY_SIZE(kNamedGroups));
+}
 
 UniquePtr<SSLKeyShare> SSLKeyShare::Create(uint16_t group_id) {
   switch (group_id) {

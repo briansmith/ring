@@ -37,6 +37,15 @@ static bool serialize_features(CBB *out) {
       return false;
     }
   }
+  CBB curves;
+  if (!CBB_add_asn1(out, &curves, CBS_ASN1_OCTETSTRING)) {
+    return false;
+  }
+  for (const NamedGroup& g : NamedGroups()) {
+    if (!CBB_add_u16(&curves, g.group_id)) {
+      return false;
+    }
+  }
   return CBB_flush(out);
 }
 
@@ -120,7 +129,52 @@ static bool apply_remote_features(SSL *ssl, CBS *in) {
   for (const SSL_CIPHER *unsupported_cipher : unsupported.get()) {
     ssl->config->cipher_list->Remove(unsupported_cipher);
   }
-  return sk_SSL_CIPHER_num(SSL_get_ciphers(ssl)) > 0;
+  if (sk_SSL_CIPHER_num(SSL_get_ciphers(ssl)) == 0) {
+    return false;
+  }
+
+  CBS curves;
+  if (!CBS_get_asn1(in, &curves, CBS_ASN1_OCTETSTRING)) {
+    return false;
+  }
+  Array<uint16_t> supported_curves;
+  if (!supported_curves.Init(CBS_len(&curves) / 2)) {
+    return false;
+  }
+  size_t idx = 0;
+  while (CBS_len(&curves)) {
+    uint16_t curve;
+    if (!CBS_get_u16(&curves, &curve)) {
+      return false;
+    }
+    supported_curves[idx++] = curve;
+  }
+  Span<const uint16_t> configured_curves =
+      tls1_get_grouplist(ssl->s3->hs.get());
+  Array<uint16_t> new_configured_curves;
+  if (!new_configured_curves.Init(configured_curves.size())) {
+    return false;
+  }
+  idx = 0;
+  for (uint16_t configured_curve : configured_curves) {
+    bool ok = false;
+    for (uint16_t supported_curve : supported_curves) {
+      if (supported_curve == configured_curve) {
+        ok = true;
+        break;
+      }
+    }
+    if (ok) {
+      new_configured_curves[idx++] = configured_curve;
+    }
+  }
+  if (idx == 0) {
+    return false;
+  }
+  new_configured_curves.Shrink(idx);
+  ssl->config->supported_group_list = std::move(new_configured_curves);
+
+  return true;
 }
 
 bool SSL_apply_handoff(SSL *ssl, Span<const uint8_t> handoff) {
