@@ -50,27 +50,21 @@ the return type.
 
 If an external function (e.g. part of the Rust standard library) returns
 `Option<T>` to indicate failure, use `ok_or(())` to map it to `Result<T, ()>`.
-When the last statement `x` in a function is already the same `Result<T, ()>`
-type that the function returns, just make that statement the return expression;
-that is, write `x`, not `let result = try!(x); Ok(result)`.
 
-Use the early-return-on-failure pattern by wrapping calls to functions that may
-fail with `try!()`. Do not use `Result::or_else`, `Result::and`, etc. to chain
-together strings of potentially-failing operations.
+Use the early-return-on-failure pattern using the `?` operator. Do not use
+`Result::or_else`, `Result::and`, etc. to chain together strings of
+potentially-failing operations.
 
 ```rust
 // The return type is of the form `Result<_, ()>`, not `Option<_>` or something
 // else.
 fn good_example(x: u32, y: u32) -> Result<u32, ()> {
     // * `ok_or` is used to map `Option<u32>` to `Result<u32, ()>` here.
-    // * `try!` is used to return early on failure.
-    let sum = try!(x.checked_add(y).ok_or(()));
+    let sum = x.checked_add(y).ok_or(())?;
 
     // Early return is used.
-    try!(foo(sum));
+    foo(sum)?;
 
-    // `try!()` isn't used when the last statement is already of the form
-    // `Result<_, ()>`.
     bar(sum)
 }
 ```
