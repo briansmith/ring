@@ -199,9 +199,9 @@ mod urandom {
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         #[cfg(target_os = "redox")]
-        static RANDOM_PATH: &'static str = "rand:";
+        static RANDOM_PATH: &str = "rand:";
         #[cfg(unix)]
-        static RANDOM_PATH: &'static str = "/dev/urandom";
+        static RANDOM_PATH: &str = "/dev/urandom";
 
         lazy_static! {
             static ref FILE: Result<std::fs::File, std::io::Error> =
@@ -272,7 +272,7 @@ mod darwin {
 
     #[link(name = "Security", kind = "framework")]
     extern {
-        static kSecRandomDefault: &'static SecRandomRef;
+        static kSecRandomDefault: &SecRandomRef;
 
         // For now `rnd` must be `kSecRandomDefault`.
         #[must_use]

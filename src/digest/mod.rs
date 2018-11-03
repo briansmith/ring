@@ -488,7 +488,7 @@ extern {
 pub mod test_util {
     use super::super::digest;
 
-    pub static ALL_ALGORITHMS: [&'static digest::Algorithm; 5] = [
+    pub static ALL_ALGORITHMS: [&digest::Algorithm; 5] = [
         &digest::SHA1,
         &digest::SHA256,
         &digest::SHA384,

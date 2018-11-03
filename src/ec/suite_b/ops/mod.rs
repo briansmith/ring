@@ -1182,7 +1182,7 @@ macro_rules! bench_curve {
 
         #[bench]
         fn scalar_inv_to_mont_bench(bench: &mut bench::Bencher) {
-            const VECTORS: &'static [Scalar] = $vectors;
+            const VECTORS: &[Scalar] = $vectors;
             let vectors_len = VECTORS.len();
             let mut i = 0;
             bench.iter(|| {

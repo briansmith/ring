@@ -46,14 +46,14 @@ use std::process::Command;
 use std::fs::{self, DirEntry};
 use std::time::SystemTime;
 
-const X86: &'static str = "x86";
-const X86_64: &'static str = "x86_64";
-const AARCH64: &'static str = "aarch64";
-const ARM: &'static str = "arm";
-const NEVER: &'static str = "Don't ever build this file.";
+const X86: &str = "x86";
+const X86_64: &str = "x86_64";
+const AARCH64: &str = "aarch64";
+const ARM: &str = "arm";
+const NEVER: &str = "Don't ever build this file.";
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
+const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/fipsmodule/aes/aes.c"),
     (&[], "crypto/fipsmodule/bn/exponentiation.c"),
     (&[], "crypto/fipsmodule/bn/generic.c"),
@@ -123,18 +123,18 @@ const RING_SRCS: &'static [(&'static [&'static str], &'static str)] = &[
     (&[AARCH64], SHA512_ARMV8),
 ];
 
-const SHA256_X86_64: &'static str = "crypto/fipsmodule/sha/asm/sha256-x86_64.pl";
-const SHA512_X86_64: &'static str = "crypto/fipsmodule/sha/asm/sha512-x86_64.pl";
+const SHA256_X86_64: &str = "crypto/fipsmodule/sha/asm/sha256-x86_64.pl";
+const SHA512_X86_64: &str = "crypto/fipsmodule/sha/asm/sha512-x86_64.pl";
 
-const SHA256_ARMV8: &'static str = "crypto/fipsmodule/sha/asm/sha256-armv8.pl";
-const SHA512_ARMV8: &'static str = "crypto/fipsmodule/sha/asm/sha512-armv8.pl";
+const SHA256_ARMV8: &str = "crypto/fipsmodule/sha/asm/sha256-armv8.pl";
+const SHA512_ARMV8: &str = "crypto/fipsmodule/sha/asm/sha512-armv8.pl";
 
-const RING_TEST_SRCS: &'static [&'static str] = &[
+const RING_TEST_SRCS: &[&str] = &[
     ("crypto/constant_time_test.c"),
 ];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-const RING_INCLUDES: &'static [&'static str] =
+const RING_INCLUDES: &[&str] =
     &["crypto/fipsmodule/aes/internal.h",
       "crypto/fipsmodule/bn/internal.h",
       "crypto/fipsmodule/cipher/internal.h",
@@ -158,20 +158,20 @@ const RING_INCLUDES: &'static [&'static str] =
     ];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
-const RING_PERL_INCLUDES: &'static [&'static str] =
+const RING_PERL_INCLUDES: &[&str] =
     &["crypto/perlasm/arm-xlate.pl",
       "crypto/perlasm/x86gas.pl",
       "crypto/perlasm/x86nasm.pl",
       "crypto/perlasm/x86asm.pl",
       "crypto/perlasm/x86_64-xlate.pl"];
 
-const RING_BUILD_FILE: &'static [&'static str] = &["build.rs"];
+const RING_BUILD_FILE: &[&str] = &["build.rs"];
 
 const PREGENERATED: &'static str = "pregenerated";
 
 fn c_flags(target: &Target) -> &'static [&'static str] {
     if target.env != MSVC {
-        static NON_MSVC_FLAGS: &'static [&'static str] = &[
+        static NON_MSVC_FLAGS: &[&str] = &[
             "-std=c1x", // GCC 4.6 requires "c1x" instead of "c11"
             "-Wbad-function-cast",
             "-Wmissing-prototypes",
@@ -186,7 +186,7 @@ fn c_flags(target: &Target) -> &'static [&'static str] {
 
 fn cpp_flags(target: &Target) -> &'static [&'static str] {
     if target.env != MSVC {
-        static NON_MSVC_FLAGS: &'static [&'static str] = &[
+        static NON_MSVC_FLAGS: &[&str] = &[
             "-pedantic",
             "-pedantic-errors",
             "-Wall",
@@ -213,7 +213,7 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
         ];
         NON_MSVC_FLAGS
     } else {
-        static MSVC_FLAGS: &'static [&'static str] = &[
+        static MSVC_FLAGS: &[&str] = &[
             "/GS", // Buffer security checks.
             "/Gy", // Enable function-level linking.
 
@@ -240,13 +240,11 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
     }
 }
 
-const LD_FLAGS: &'static [&'static str] = &[];
+const LD_FLAGS: &[&str] = &[];
 
 // None means "any OS" or "any target". The first match in sequence order is
 // taken.
-const ASM_TARGETS:
-    &'static [(&'static str, Option<&'static str>, &'static str)] =
-&[
+const ASM_TARGETS: &[(&str, Option<&str>, &str)] = &[
     ("x86_64", Some("ios"), "macosx"),
     ("x86_64", Some("macos"), "macosx"),
     ("x86_64", Some(WINDOWS), "nasm"),

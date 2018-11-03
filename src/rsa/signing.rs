@@ -571,7 +571,7 @@ mod tests {
     fn test_signature_rsa_pkcs1_sign_output_buffer_len() {
         // Sign the message "hello, world", using PKCS#1 v1.5 padding and the
         // SHA256 digest algorithm.
-        const MESSAGE: &'static [u8] = b"hello, world";
+        const MESSAGE: &[u8] = b"hello, world";
         let rng = rand::SystemRandom::new();
 
         const PRIVATE_KEY_DER: &'static [u8] =
