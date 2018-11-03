@@ -145,7 +145,7 @@
 //!             untrusted::Input::from(&pkcs8_bytes))?;
 //!
 //! // Sign the message "hello, world".
-//! const MESSAGE: &'static [u8] = b"hello, world";
+//! const MESSAGE: &[u8] = b"hello, world";
 //! let sig = key_pair.sign(MESSAGE);
 //!
 //! // Normally an application would extract the bytes of the signature and

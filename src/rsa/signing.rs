@@ -138,7 +138,7 @@ impl KeyPair {
     ///
     pub fn from_pkcs8(input: untrusted::Input)
                       -> Result<Self, error::Unspecified> {
-        const RSA_ENCRYPTION: &'static [u8] =
+        const RSA_ENCRYPTION: &[u8] =
             include_bytes!("../data/alg-rsa-encryption.der");
         let (der, _) = pkcs8::unwrap_key_(&RSA_ENCRYPTION,
                                           pkcs8::Version::V1Only, input)?;
