@@ -225,6 +225,8 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_mont_method) {
   out->group_finish = ec_GFp_mont_group_finish;
   out->group_set_curve = ec_GFp_mont_group_set_curve;
   out->point_get_affine_coordinates = ec_GFp_mont_point_get_affine_coordinates;
+  out->add = ec_GFp_simple_add;
+  out->dbl = ec_GFp_simple_dbl;
   out->mul = ec_GFp_simple_mul;
   out->mul_public = ec_GFp_simple_mul_public;
   out->felem_mul = ec_GFp_mont_felem_mul;

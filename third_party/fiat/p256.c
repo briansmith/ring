@@ -1672,6 +1672,33 @@ static int ec_GFp_nistp256_point_get_affine_coordinates(
   return 1;
 }
 
+static void ec_GFp_nistp256_add(const EC_GROUP *group, EC_RAW_POINT *r,
+                                const EC_RAW_POINT *a, const EC_RAW_POINT *b) {
+  fe x1, y1, z1, x2, y2, z2;
+  fe_from_generic(x1, &a->X);
+  fe_from_generic(y1, &a->Y);
+  fe_from_generic(z1, &a->Z);
+  fe_from_generic(x2, &b->X);
+  fe_from_generic(y2, &b->Y);
+  fe_from_generic(z2, &b->Z);
+  point_add(x1, y1, z1, x1, y1, z1, 0 /* both Jacobian */, x2, y2, z2);
+  fe_to_generic(&r->X, x1);
+  fe_to_generic(&r->Y, y1);
+  fe_to_generic(&r->Z, z1);
+}
+
+static void ec_GFp_nistp256_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
+                                const EC_RAW_POINT *a) {
+  fe x, y, z;
+  fe_from_generic(x, &a->X);
+  fe_from_generic(y, &a->Y);
+  fe_from_generic(z, &a->Z);
+  point_double(x, y, z, x, y, z);
+  fe_to_generic(&r->X, x);
+  fe_to_generic(&r->Y, y);
+  fe_to_generic(&r->Z, z);
+}
+
 static void ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_RAW_POINT *r,
                                        const EC_SCALAR *g_scalar,
                                        const EC_RAW_POINT *p,
@@ -1800,6 +1827,8 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp256_method) {
   out->group_set_curve = ec_GFp_mont_group_set_curve;
   out->point_get_affine_coordinates =
     ec_GFp_nistp256_point_get_affine_coordinates;
+  out->add = ec_GFp_nistp256_add;
+  out->dbl = ec_GFp_nistp256_dbl;
   out->mul = ec_GFp_nistp256_points_mul;
   out->mul_public = ec_GFp_nistp256_point_mul_public;
   out->felem_mul = ec_GFp_mont_felem_mul;

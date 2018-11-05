@@ -782,7 +782,7 @@ int EC_POINT_add(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
-  ec_GFp_simple_add(group, &r->raw, &a->raw, &b->raw);
+  group->meth->add(group, &r->raw, &a->raw, &b->raw);
   return 1;
 }
 
@@ -793,7 +793,7 @@ int EC_POINT_dbl(const EC_GROUP *group, EC_POINT *r, const EC_POINT *a,
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
-  ec_GFp_simple_dbl(group, &r->raw, &a->raw);
+  group->meth->dbl(group, &r->raw, &a->raw);
   return 1;
 }
 

@@ -127,6 +127,12 @@ struct ec_method_st {
   int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_RAW_POINT *,
                                       BIGNUM *x, BIGNUM *y);
 
+  // add sets |r| to |a| + |b|.
+  void (*add)(const EC_GROUP *group, EC_RAW_POINT *r, const EC_RAW_POINT *a,
+              const EC_RAW_POINT *b);
+  // dbl sets |r| to |a| + |a|.
+  void (*dbl)(const EC_GROUP *group, EC_RAW_POINT *r, const EC_RAW_POINT *a);
+
   // Computes |r = g_scalar*generator + p_scalar*p| if |g_scalar| and |p_scalar|
   // are both non-null. Computes |r = g_scalar*generator| if |p_scalar| is null.
   // Computes |r = p_scalar*p| if g_scalar is null. At least one of |g_scalar|
@@ -149,10 +155,9 @@ struct ec_method_st {
   // TODO(davidben): This constrains |EC_FELEM|'s internal representation, adds
   // many indirect calls in the middle of the generic code, and a bunch of
   // conversions. If p224-64.c were easily convertable to Montgomery form, we
-  // could say |EC_FELEM| is always in Montgomery form. If we exposed the
-  // internal add and double implementations in each of the curves, we could
-  // give |EC_POINT| an |EC_METHOD|-specific representation and |EC_FELEM| is
-  // purely a |EC_GFp_mont_method| type.
+  // could say |EC_FELEM| is always in Montgomery form. If we routed the rest of
+  // simple.c to |EC_METHOD|, we could give |EC_POINT| an |EC_METHOD|-specific
+  // representation and say |EC_FELEM| is purely a |EC_GFp_mont_method| type.
   void (*felem_mul)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a,
                     const EC_FELEM *b);
   void (*felem_sqr)(const EC_GROUP *, EC_FELEM *r, const EC_FELEM *a);

@@ -485,6 +485,33 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group,
   return 1;
 }
 
+static void ecp_nistz256_add(const EC_GROUP *group, EC_RAW_POINT *r,
+                             const EC_RAW_POINT *a_, const EC_RAW_POINT *b_) {
+  P256_POINT a, b;
+  OPENSSL_memcpy(a.X, a_->X.words, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(a.Y, a_->Y.words, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(a.Z, a_->Z.words, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(b.X, b_->X.words, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(b.Y, b_->Y.words, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(b.Z, b_->Z.words, P256_LIMBS * sizeof(BN_ULONG));
+  ecp_nistz256_point_add(&a, &a, &b);
+  OPENSSL_memcpy(r->X.words, a.X, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->Y.words, a.Y, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->Z.words, a.Z, P256_LIMBS * sizeof(BN_ULONG));
+}
+
+static void ecp_nistz256_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
+                             const EC_RAW_POINT *a_) {
+  P256_POINT a;
+  OPENSSL_memcpy(a.X, a_->X.words, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(a.Y, a_->Y.words, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(a.Z, a_->Z.words, P256_LIMBS * sizeof(BN_ULONG));
+  ecp_nistz256_point_double(&a, &a);
+  OPENSSL_memcpy(r->X.words, a.X, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->Y.words, a.Y, P256_LIMBS * sizeof(BN_ULONG));
+  OPENSSL_memcpy(r->Z.words, a.Z, P256_LIMBS * sizeof(BN_ULONG));
+}
+
 static void ecp_nistz256_inv_mod_ord(const EC_GROUP *group, EC_SCALAR *out,
                                      const EC_SCALAR *in) {
   // table[i] stores a power of |in| corresponding to the matching enum value.
@@ -633,6 +660,8 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {
   out->group_finish = ec_GFp_mont_group_finish;
   out->group_set_curve = ec_GFp_mont_group_set_curve;
   out->point_get_affine_coordinates = ecp_nistz256_get_affine;
+  out->add = ecp_nistz256_add;
+  out->dbl = ecp_nistz256_dbl;
   out->mul = ecp_nistz256_points_mul;
   out->mul_public = ecp_nistz256_points_mul_public;
   out->felem_mul = ec_GFp_mont_felem_mul;
