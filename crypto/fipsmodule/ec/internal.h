@@ -292,9 +292,9 @@ OPENSSL_EXPORT int ec_point_mul_scalar_public(
     const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
     const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx);
 
-void ec_GFp_simple_mul(const EC_GROUP *group, EC_RAW_POINT *r,
-                       const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
-                       const EC_SCALAR *p_scalar);
+void ec_GFp_mont_mul(const EC_GROUP *group, EC_RAW_POINT *r,
+                     const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
+                     const EC_SCALAR *p_scalar);
 
 // ec_compute_wNAF writes the modified width-(w+1) Non-Adjacent Form (wNAF) of
 // |scalar| to |out|. |out| must have room for |bits| + 1 elements, each of
@@ -307,9 +307,9 @@ void ec_GFp_simple_mul(const EC_GROUP *group, EC_RAW_POINT *r,
 void ec_compute_wNAF(const EC_GROUP *group, int8_t *out,
                      const EC_SCALAR *scalar, size_t bits, int w);
 
-void ec_GFp_simple_mul_public(const EC_GROUP *group, EC_RAW_POINT *r,
-                              const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
-                              const EC_SCALAR *p_scalar);
+void ec_GFp_mont_mul_public(const EC_GROUP *group, EC_RAW_POINT *r,
+                            const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
+                            const EC_SCALAR *p_scalar);
 
 // method functions in simple.c
 int ec_GFp_simple_group_init(EC_GROUP *);
@@ -325,10 +325,9 @@ void ec_GFp_simple_point_set_to_infinity(const EC_GROUP *, EC_RAW_POINT *);
 int ec_GFp_simple_point_set_affine_coordinates(const EC_GROUP *, EC_RAW_POINT *,
                                                const BIGNUM *x,
                                                const BIGNUM *y);
-void ec_GFp_simple_add(const EC_GROUP *, EC_RAW_POINT *r, const EC_RAW_POINT *a,
-                       const EC_RAW_POINT *b);
-void ec_GFp_simple_dbl(const EC_GROUP *, EC_RAW_POINT *r,
-                       const EC_RAW_POINT *a);
+void ec_GFp_mont_add(const EC_GROUP *, EC_RAW_POINT *r, const EC_RAW_POINT *a,
+                     const EC_RAW_POINT *b);
+void ec_GFp_mont_dbl(const EC_GROUP *, EC_RAW_POINT *r, const EC_RAW_POINT *a);
 void ec_GFp_simple_invert(const EC_GROUP *, EC_RAW_POINT *);
 int ec_GFp_simple_is_at_infinity(const EC_GROUP *, const EC_RAW_POINT *);
 int ec_GFp_simple_is_on_curve(const EC_GROUP *, const EC_RAW_POINT *);
