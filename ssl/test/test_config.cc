@@ -1638,10 +1638,5 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     }
   }
 
-  if (SSL_get_current_cipher(ssl.get()) != nullptr) {
-    fprintf(stderr, "non-null cipher before handshake\n");
-    return nullptr;
-  }
-
   return ssl;
 }

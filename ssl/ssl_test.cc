@@ -4544,7 +4544,8 @@ class MockQUICTransport {
 
   bool PeerSecretsMatch(ssl_encryption_level_t level) const {
     return levels_[level].write_secret == peer_->levels_[level].read_secret &&
-           levels_[level].read_secret == peer_->levels_[level].write_secret;
+           levels_[level].read_secret == peer_->levels_[level].write_secret &&
+           levels_[level].cipher == peer_->levels_[level].cipher;
   }
 
   bool HasSecrets(ssl_encryption_level_t level) const {
@@ -4554,11 +4555,18 @@ class MockQUICTransport {
 
   bool SetEncryptionSecrets(ssl_encryption_level_t level,
                             const uint8_t *read_secret,
-                            const uint8_t *write_secret, size_t secret_len) {
+                            const uint8_t *write_secret, size_t secret_len,
+                            const SSL_CIPHER *cipher) {
     if (HasSecrets(level)) {
       ADD_FAILURE() << "duplicate keys configured";
       return false;
     }
+
+    if (cipher == nullptr) {
+      ADD_FAILURE() << "current cipher unavailable";
+      return false;
+    }
+
     if (level != ssl_encryption_early_data &&
         (read_secret == nullptr || write_secret == nullptr)) {
       ADD_FAILURE() << "key was unexpectedly null";
@@ -4571,6 +4579,7 @@ class MockQUICTransport {
       levels_[level].write_secret.assign(write_secret,
                                          write_secret + secret_len);
     }
+    levels_[level].cipher = SSL_CIPHER_get_id(cipher);
     return true;
   }
 
@@ -4618,6 +4627,10 @@ class MockQUICTransport {
       ADD_FAILURE() << "peer write key does not match read key";
       return false;
     }
+    if (peer_->levels_[level].cipher != levels_[level].cipher) {
+      ADD_FAILURE() << "peer cipher does not match";
+      return false;
+    }
     std::vector<uint8_t> *peer_data = &peer_->levels_[level].write_data;
     num = std::min(num, peer_data->size());
     out->assign(peer_data->begin(), peer_data->begin() + num);
@@ -4636,6 +4649,7 @@ class MockQUICTransport {
     std::vector<uint8_t> write_data;
     std::vector<uint8_t> write_secret;
     std::vector<uint8_t> read_secret;
+    uint32_t cipher = 0;
   };
   Level levels_[kNumQUICLevels];
 };
@@ -4721,8 +4735,8 @@ class QUICMethodTest : public testing::Test {
                                           const uint8_t *read_key,
                                           const uint8_t *write_key,
                                           size_t key_len) {
-    return TransportFromSSL(ssl)->SetEncryptionSecrets(level, read_key,
-                                                       write_key, key_len);
+    return TransportFromSSL(ssl)->SetEncryptionSecrets(
+        level, read_key, write_key, key_len, SSL_get_current_cipher(ssl));
   }
 
   static int AddHandshakeDataCallback(SSL *ssl,

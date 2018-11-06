@@ -2278,7 +2278,8 @@ EVP_PKEY *SSL_CTX_get0_privatekey(const SSL_CTX *ctx) {
 }
 
 const SSL_CIPHER *SSL_get_current_cipher(const SSL *ssl) {
-  return ssl->s3->aead_write_ctx->cipher();
+  const SSL_SESSION *session = SSL_get_session(ssl);
+  return session == nullptr ? nullptr : session->cipher;
 }
 
 int SSL_session_reused(const SSL *ssl) {
