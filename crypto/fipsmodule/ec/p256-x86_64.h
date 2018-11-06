@@ -61,6 +61,16 @@ static inline void ecp_nistz256_from_mont(BN_ULONG res[P256_LIMBS],
   ecp_nistz256_mul_mont(res, in, ONE);
 }
 
+// ecp_nistz256_to_mont sets |res| to |in|, converted to Montgomery domain
+// by multiplying with RR = 2^512 mod P precomputed for NIST P256 curve.
+static inline void ecp_nistz256_to_mont(BN_ULONG res[P256_LIMBS],
+                                        const BN_ULONG in[P256_LIMBS]) {
+  static const BN_ULONG RR[P256_LIMBS] = {
+      TOBN(0x00000000, 0x00000003), TOBN(0xfffffffb, 0xffffffff),
+      TOBN(0xffffffff, 0xfffffffe), TOBN(0x00000004, 0xfffffffd)};
+  ecp_nistz256_mul_mont(res, in, RR);
+}
+
 
 // P-256 scalar operations.
 //
@@ -78,6 +88,12 @@ void ecp_nistz256_ord_mul_mont(BN_ULONG res[P256_LIMBS],
 // (|a| * 2^-256)^(2*|rep|) * 2^256 mod N.
 void ecp_nistz256_ord_sqr_mont(BN_ULONG res[P256_LIMBS],
                                const BN_ULONG a[P256_LIMBS], int rep);
+
+// beeu_mod_inverse_vartime sets out = a^-1 mod p using a Euclidean algorithm.
+// Assumption: 0 < a < p < 2^(256) and p is odd.
+int beeu_mod_inverse_vartime(BN_ULONG out[P256_LIMBS],
+                             const BN_ULONG a[P256_LIMBS],
+                             const BN_ULONG p[P256_LIMBS]);
 
 
 // P-256 point operations.

@@ -167,11 +167,21 @@ struct ec_method_st {
   int (*felem_to_bignum)(const EC_GROUP *group, BIGNUM *out,
                          const EC_FELEM *in);
 
-  // scalar_inv_mont sets |out| to |in|^-1, where both input and output are in
-  // Montgomery form.
+  // scalar_inv_montgomery sets |out| to |in|^-1, where both input and output
+  // are in Montgomery form.
   void (*scalar_inv_montgomery)(const EC_GROUP *group, EC_SCALAR *out,
                                 const EC_SCALAR *in);
 
+  // scalar_inv_montgomery_vartime performs the same computation as
+  // |scalar_inv_montgomery|. It further assumes that the inputs are public so
+  // there is no concern about leaking their values through timing.
+  int (*scalar_inv_montgomery_vartime)(const EC_GROUP *group, EC_SCALAR *out,
+                                       const EC_SCALAR *in);
+
+  // cmp_x_coordinate compares the x (affine) coordinate of |p|, mod the group
+  // order, with |r|. It returns one if they are equal and zero otherwise.
+  int (*cmp_x_coordinate)(const EC_GROUP *group, const EC_POINT *p,
+                          const BIGNUM *r, BN_CTX *ctx);
 } /* EC_METHOD */;
 
 const EC_METHOD *EC_GFp_mont_method(void);
@@ -277,6 +287,11 @@ void ec_scalar_mul_montgomery(const EC_GROUP *group, EC_SCALAR *r,
 void ec_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                               const EC_SCALAR *a);
 
+// ec_scalar_inv_montgomery_vartime performs the same actions as
+// |ec_scalar_inv_montgomery|, but in variable time.
+int ec_scalar_inv_montgomery_vartime(const EC_GROUP *group, EC_SCALAR *r,
+                                     const EC_SCALAR *a);
+
 // ec_point_mul_scalar sets |r| to generator * |g_scalar| + |p| *
 // |p_scalar|. Unlike other functions which take |EC_SCALAR|, |g_scalar| and
 // |p_scalar| need not be fully reduced. They need only contain as many bits as
@@ -291,6 +306,16 @@ int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,
 OPENSSL_EXPORT int ec_point_mul_scalar_public(
     const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
     const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx);
+
+// ec_cmp_x_coordinate compares the x (affine) coordinate of |p| with |r|. It
+// returns one if they are equal and zero otherwise. The |ctx| must have been
+// started by the caller.
+int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_POINT *p,
+                        const BIGNUM *r, BN_CTX *ctx);
+
+// ec_field_element_to_scalar reduces |r| modulo |group->order|. |r| must
+// previously have been reduced modulo |group->field|.
+int ec_field_element_to_scalar(const EC_GROUP *group, BIGNUM *r);
 
 void ec_GFp_mont_mul(const EC_GROUP *group, EC_RAW_POINT *r,
                      const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
@@ -335,6 +360,14 @@ int ec_GFp_simple_cmp(const EC_GROUP *, const EC_RAW_POINT *a,
                       const EC_RAW_POINT *b);
 void ec_simple_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
                                      const EC_SCALAR *a);
+
+int ec_GFp_simple_mont_inv_mod_ord_vartime(const EC_GROUP *group, EC_SCALAR *r,
+                                           const EC_SCALAR *a);
+
+// ec_GFp_simple_cmp_x_coordinate compares the x (affine) coordinate of |p|, mod
+// the group order, with |r|. It returns one on success or zero otherwise.
+int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_POINT *p,
+                                   const BIGNUM *r, BN_CTX *ctx);
 
 // method functions in montgomery.c
 int ec_GFp_mont_group_init(EC_GROUP *);

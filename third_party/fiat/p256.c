@@ -1836,6 +1836,8 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp256_method) {
   out->bignum_to_felem = ec_GFp_mont_bignum_to_felem;
   out->felem_to_bignum = ec_GFp_mont_felem_to_bignum;
   out->scalar_inv_montgomery = ec_simple_scalar_inv_montgomery;
+  out->scalar_inv_montgomery_vartime = ec_GFp_simple_mont_inv_mod_ord_vartime;
+  out->cmp_x_coordinate = ec_GFp_simple_cmp_x_coordinate;
 };
 
 #undef BORINGSSL_NISTP256_64BIT
