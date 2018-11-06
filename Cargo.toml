@@ -7,7 +7,7 @@ documentation = "https://briansmith.org/rustdoc/ring/"
 keywords = ["crypto", "cryptography", "rand", "ECC", "RSA"]
 license-file = "LICENSE"
 name = "ring"
-readme = "README.md"
+readme = "doc/link-to-readme.md"
 repository = "https://github.com/briansmith/ring"
 version = "0.13.2"
 
