@@ -24,11 +24,8 @@
 #include <gtest/gtest.h>
 
 #include <openssl/bn.h>
-#include <openssl/ec.h>
 #include <openssl/mem.h>
-#include <openssl/nid.h>
 
-#include "internal.h"
 #include "../bn/internal.h"
 #include "../../internal.h"
 #include "../../test/file_test.h"
@@ -87,59 +84,6 @@ TEST(P256_X86_64Test, SelectW7) {
 
     EXPECT_EQ(Bytes(reinterpret_cast<const char *>(&expected), sizeof(expected)),
               Bytes(reinterpret_cast<const char *>(&val), sizeof(val)));
-  }
-}
-
-TEST(P256_X86_64Test, BEEU) {
-  bssl::UniquePtr<EC_GROUP> group(
-      EC_GROUP_new_by_curve_name(NID_X9_62_prime256v1));
-  ASSERT_TRUE(group);
-
-  BN_ULONG order_words[P256_LIMBS];
-  ASSERT_TRUE(
-      bn_copy_words(order_words, P256_LIMBS, EC_GROUP_get0_order(group.get())));
-
-  BN_ULONG in[P256_LIMBS], out[P256_LIMBS];
-  EC_SCALAR in_scalar, out_scalar, result;
-  OPENSSL_memset(in, 0, sizeof(in));
-
-  // Trying to find the inverse of zero should fail.
-  ASSERT_FALSE(beeu_mod_inverse_vartime(out, in, order_words));
-
-  // kOneMont is 1, in Montgomery form.
-  static const BN_ULONG kOneMont[P256_LIMBS] = {
-      TOBN(0xc46353d, 0x039cdaaf), TOBN(0x43190552, 0x58e8617b),
-      0, 0xffffffff,
-  };
-
-  for (BN_ULONG i = 1; i < 2000; i++) {
-    SCOPED_TRACE(i);
-
-    in[0] = i;
-    if (i >= 1000) {
-      in[1] = i << 8;
-      in[2] = i << 32;
-      in[3] = i << 48;
-    } else {
-      in[1] = in[2] = in[3] = 0;
-    }
-
-    EXPECT_TRUE(bn_less_than_words(in, order_words, P256_LIMBS));
-    ASSERT_TRUE(beeu_mod_inverse_vartime(out, in, order_words));
-    EXPECT_TRUE(bn_less_than_words(out, order_words, P256_LIMBS));
-
-    // Calculate out*in and confirm that it equals one, modulo the order.
-    OPENSSL_memcpy(in_scalar.bytes, in, sizeof(in));
-    OPENSSL_memcpy(out_scalar.bytes, out, sizeof(out));
-    ec_scalar_to_montgomery(group.get(), &in_scalar, &in_scalar);
-    ec_scalar_to_montgomery(group.get(), &out_scalar, &out_scalar);
-    ec_scalar_mul_montgomery(group.get(), &result, &in_scalar, &out_scalar);
-
-    EXPECT_EQ(0, OPENSSL_memcmp(kOneMont, &result, sizeof(kOneMont)));
-
-    // Invert the result and expect to get back to the original value.
-    ASSERT_TRUE(beeu_mod_inverse_vartime(out, out, order_words));
-    EXPECT_EQ(0, OPENSSL_memcmp(in, out, sizeof(in)));
   }
 }
 
