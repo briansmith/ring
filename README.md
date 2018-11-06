@@ -100,14 +100,6 @@ contribute already, see these curated lists of open issues:
   Bugs that we think newcomers might find best to start with. Note that what
   makes a bug a good fit depends a lot on the developer's background and not
   just the hardness of the work.
-* [oxidation](https://github.com/briansmith/ring/projects/1): Replacing
-  C code with Rust code.
-* [rsa](https://github.com/briansmith/ring/labels/rsa): The primary *ring*
-  developer is less interested in RSA than ECC and other things, and it would
-  be great to have somebody jump in and "own" the RSA work. *ring* has
-  inherited the fastest open source RSA implementation (as far as we know)
-  from BoringSSL/OpenSSL, and we've already done a lot of cleanup. But, there's
-  a lot more work to do.
 
 In addition, we're always interested in these kinds of contributions:
 
