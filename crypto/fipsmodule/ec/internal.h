@@ -344,7 +344,6 @@ int ec_GFp_simple_group_set_curve(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                                   const BIGNUM *b, BN_CTX *);
 int ec_GFp_simple_group_get_curve(const EC_GROUP *, BIGNUM *p, BIGNUM *a,
                                   BIGNUM *b);
-unsigned ec_GFp_simple_group_get_degree(const EC_GROUP *);
 void ec_GFp_simple_point_init(EC_RAW_POINT *);
 void ec_GFp_simple_point_copy(EC_RAW_POINT *, const EC_RAW_POINT *);
 void ec_GFp_simple_point_set_to_infinity(const EC_GROUP *, EC_RAW_POINT *);

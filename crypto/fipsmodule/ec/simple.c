@@ -171,10 +171,6 @@ int ec_GFp_simple_group_get_curve(const EC_GROUP *group, BIGNUM *p, BIGNUM *a,
   return 1;
 }
 
-unsigned ec_GFp_simple_group_get_degree(const EC_GROUP *group) {
-  return BN_num_bits(&group->field);
-}
-
 void ec_GFp_simple_point_init(EC_RAW_POINT *point) {
   OPENSSL_memset(&point->X, 0, sizeof(EC_FELEM));
   OPENSSL_memset(&point->Y, 0, sizeof(EC_FELEM));
