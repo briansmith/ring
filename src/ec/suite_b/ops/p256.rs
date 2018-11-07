@@ -15,7 +15,7 @@
 use c;
 use core::marker::PhantomData;
 use super::*;
-use super::{Mont, elem_sqr_mul, elem_sqr_mul_acc};
+use super::{Modulus, elem_sqr_mul, elem_sqr_mul_acc};
 use super::elem::{binary_op, binary_op_assign};
 
 macro_rules! p256_limbs {
@@ -31,7 +31,7 @@ macro_rules! p256_limbs {
 pub static COMMON_OPS: CommonOps = CommonOps {
     num_limbs: 256 / LIMB_BITS,
 
-    q: Mont {
+    q: Modulus {
         p: p256_limbs![0xffffffff, 0x00000001, 0x00000000, 0x00000000,
                        0x00000000, 0xffffffff, 0xffffffff, 0xffffffff],
         rr: p256_limbs![0x00000004, 0xfffffffd, 0xffffffff, 0xfffffffe,

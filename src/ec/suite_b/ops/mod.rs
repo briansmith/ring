@@ -84,7 +84,7 @@ static ONE: Elem<Unencoded> = Elem {
 /// Operations and values needed by all curve operations.
 pub struct CommonOps {
     pub num_limbs: usize,
-    q: Mont,
+    q: Modulus,
     pub n: Elem<Unencoded>,
 
     pub a: Elem<R>, // Must be -3 mod q
@@ -190,7 +190,7 @@ impl CommonOps {
     }
 }
 
-struct Mont {
+struct Modulus {
     p: [Limb; MAX_LIMBS],
     rr: [Limb; MAX_LIMBS],
 }
