@@ -911,9 +911,9 @@ int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,
   return 1;
 }
 
-int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_POINT *p,
-                        const BIGNUM *r, BN_CTX *ctx) {
-  return group->meth->cmp_x_coordinate(group, p, r, ctx);
+int ec_cmp_x_coordinate(int *out_result, const EC_GROUP *group,
+                        const EC_POINT *p, const BIGNUM *r, BN_CTX *ctx) {
+  return group->meth->cmp_x_coordinate(out_result, group, p, r, ctx);
 }
 
 int ec_field_element_to_scalar(const EC_GROUP *group, BIGNUM *r) {

@@ -179,9 +179,10 @@ struct ec_method_st {
                                        const EC_SCALAR *in);
 
   // cmp_x_coordinate compares the x (affine) coordinate of |p|, mod the group
-  // order, with |r|. It returns one if they are equal and zero otherwise.
-  int (*cmp_x_coordinate)(const EC_GROUP *group, const EC_POINT *p,
-                          const BIGNUM *r, BN_CTX *ctx);
+  // order, with |r|. On error it returns zero. Otherwise it sets |*out_result|
+  // to one iff the values match.
+  int (*cmp_x_coordinate)(int *out_result, const EC_GROUP *group,
+                          const EC_POINT *p, const BIGNUM *r, BN_CTX *ctx);
 } /* EC_METHOD */;
 
 const EC_METHOD *EC_GFp_mont_method(void);
@@ -308,10 +309,10 @@ OPENSSL_EXPORT int ec_point_mul_scalar_public(
     const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx);
 
 // ec_cmp_x_coordinate compares the x (affine) coordinate of |p| with |r|. It
-// returns one if they are equal and zero otherwise. The |ctx| must have been
-// started by the caller.
-int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_POINT *p,
-                        const BIGNUM *r, BN_CTX *ctx);
+// returns zero on error. Otherwise it sets |*out_result| to one iff the values
+// match.
+int ec_cmp_x_coordinate(int *out_result, const EC_GROUP *group,
+                        const EC_POINT *p, const BIGNUM *r, BN_CTX *ctx);
 
 // ec_field_element_to_scalar reduces |r| modulo |group->order|. |r| must
 // previously have been reduced modulo |group->field|.
@@ -365,9 +366,11 @@ int ec_GFp_simple_mont_inv_mod_ord_vartime(const EC_GROUP *group, EC_SCALAR *r,
                                            const EC_SCALAR *a);
 
 // ec_GFp_simple_cmp_x_coordinate compares the x (affine) coordinate of |p|, mod
-// the group order, with |r|. It returns one on success or zero otherwise.
-int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_POINT *p,
-                                   const BIGNUM *r, BN_CTX *ctx);
+// the group order, with |r|. It returns zero on error. Otherwise it sets
+// |*out_result| to one iff the values match.
+int ec_GFp_simple_cmp_x_coordinate(int *out_result, const EC_GROUP *group,
+                                   const EC_POINT *p, const BIGNUM *r,
+                                   BN_CTX *ctx);
 
 // method functions in montgomery.c
 int ec_GFp_mont_group_init(EC_GROUP *);

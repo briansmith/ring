@@ -610,9 +610,11 @@ static int ecp_nistz256_mont_inv_mod_ord_vartime(const EC_GROUP *group,
   return 1;
 }
 
-static int ecp_nistz256_cmp_x_coordinate(const EC_GROUP *group,
+static int ecp_nistz256_cmp_x_coordinate(int *out_result, const EC_GROUP *group,
                                          const EC_POINT *p, const BIGNUM *r,
                                          BN_CTX *ctx) {
+  *out_result = 0;
+
   if (ec_GFp_simple_is_at_infinity(group, &p->raw)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
@@ -632,6 +634,7 @@ static int ecp_nistz256_cmp_x_coordinate(const EC_GROUP *group,
   ecp_nistz256_from_mont(X, p->raw.X.words);
 
   if (OPENSSL_memcmp(r_Z2, X, sizeof(r_Z2)) == 0) {
+    *out_result = 1;
     return 1;
   }
 
@@ -652,12 +655,12 @@ static int ecp_nistz256_cmp_x_coordinate(const EC_GROUP *group,
     bn_add_words(r_words, r_words, P256_ORDER, P256_LIMBS);
     ecp_nistz256_mul_mont(r_Z2, r_words, Z2_mont);
     if (OPENSSL_memcmp(r_Z2, X, sizeof(r_Z2)) == 0) {
+      *out_result = 1;
       return 1;
     }
   }
 
-  OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
-  return 0;
+  return 1;
 }
 
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {

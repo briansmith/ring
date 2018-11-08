@@ -191,7 +191,18 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
     goto err;
   }
 
-  ret = ec_cmp_x_coordinate(group, point, sig->r, ctx);
+  int match;
+  if (!ec_cmp_x_coordinate(&match, group, point, sig->r, ctx)) {
+    OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
+    goto err;
+  }
+
+  if (!match) {
+    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
+    goto err;
+  }
+
+  ret = 1;
 
 err:
   BN_CTX_free(ctx);

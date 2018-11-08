@@ -372,9 +372,10 @@ int ec_GFp_simple_mont_inv_mod_ord_vartime(const EC_GROUP *group,
 
 // Compares the x (affine) coordinate of the point p with x.
 // Return 1 on success 0 otherwise
-// Assumption: the caller starts the BN_CTX.
-int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_POINT *p,
-                                   const BIGNUM *r, BN_CTX *ctx) {
+int ec_GFp_simple_cmp_x_coordinate(int *out_result, const EC_GROUP *group,
+                                   const EC_POINT *p, const BIGNUM *r,
+                                   BN_CTX *ctx) {
+  *out_result = 0;
   int ret = 0;
   BN_CTX_start(ctx);
 
@@ -395,11 +396,7 @@ int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_POINT *p,
   }
 
   // The signature is correct iff |X| is equal to |r|.
-  if (BN_ucmp(X, r) != 0) {
-    OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
-    goto out;
-  }
-
+  *out_result = (BN_ucmp(X, r) == 0);
   ret = 1;
 
 out:
