@@ -314,14 +314,14 @@ int ec_scalar_inv_montgomery_vartime(const EC_GROUP *group, EC_SCALAR *r,
 // the order.
 int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,
                         const EC_SCALAR *g_scalar, const EC_POINT *p,
-                        const EC_SCALAR *p_scalar, BN_CTX *ctx);
+                        const EC_SCALAR *p_scalar);
 
 // ec_point_mul_scalar_public performs the same computation as
 // ec_point_mul_scalar.  It further assumes that the inputs are public so
 // there is no concern about leaking their values through timing.
 OPENSSL_EXPORT int ec_point_mul_scalar_public(
     const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
-    const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx);
+    const EC_POINT *p, const EC_SCALAR *p_scalar);
 
 // ec_cmp_x_coordinate compares the x (affine) coordinate of |p|, mod the group
 // order, with |r|. It returns one if the values match and zero if |p| is the

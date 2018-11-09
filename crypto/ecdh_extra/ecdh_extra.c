@@ -105,7 +105,7 @@ int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
     goto err;
   }
 
-  if (!ec_point_mul_scalar(group, tmp, NULL, pub_key, priv, ctx)) {
+  if (!ec_point_mul_scalar(group, tmp, NULL, pub_key, priv)) {
     OPENSSL_PUT_ERROR(ECDH, ECDH_R_POINT_ARITHMETIC_FAILURE);
     goto err;
   }

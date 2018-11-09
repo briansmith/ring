@@ -173,18 +173,13 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
   ec_scalar_mul_montgomery(group, &u1, &m, &s_inv_mont);
   ec_scalar_mul_montgomery(group, &u2, &r, &s_inv_mont);
 
-  BN_CTX *ctx = BN_CTX_new();
-  if (!ctx) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
   int ret = 0;
   EC_POINT *point = EC_POINT_new(group);
   if (point == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
     goto err;
   }
-  if (!ec_point_mul_scalar_public(group, point, &u1, pub_key, &u2, ctx)) {
+  if (!ec_point_mul_scalar_public(group, point, &u1, pub_key, &u2)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
     goto err;
   }
@@ -197,15 +192,13 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
   ret = 1;
 
 err:
-  BN_CTX_free(ctx);
   EC_POINT_free(point);
   return ret;
 }
 
-static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx,
-                            EC_SCALAR *out_kinv_mont, EC_SCALAR *out_r,
-                            const uint8_t *digest, size_t digest_len,
-                            const EC_SCALAR *priv_key) {
+static int ecdsa_sign_setup(const EC_KEY *eckey, EC_SCALAR *out_kinv_mont,
+                            EC_SCALAR *out_r, const uint8_t *digest,
+                            size_t digest_len, const EC_SCALAR *priv_key) {
   // Check that the size of the group order is FIPS compliant (FIPS 186-4
   // B.5.2).
   const EC_GROUP *group = EC_KEY_get0_group(eckey);
@@ -253,7 +246,7 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx,
     ec_scalar_from_montgomery(group, out_kinv_mont, out_kinv_mont);
 
     // Compute r, the x-coordinate of generator * k.
-    if (!ec_point_mul_scalar(group, tmp_point, &k, NULL, NULL, ctx) ||
+    if (!ec_point_mul_scalar(group, tmp_point, &k, NULL, NULL) ||
         !ec_get_x_coordinate_as_scalar(group, out_r, &tmp_point->raw)) {
       goto err;
     }
@@ -284,16 +277,15 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
 
   int ok = 0;
   ECDSA_SIG *ret = ECDSA_SIG_new();
-  BN_CTX *ctx = BN_CTX_new();
   EC_SCALAR kinv_mont, r_mont, s, m, tmp;
-  if (ret == NULL || ctx == NULL) {
+  if (ret == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
     return NULL;
   }
 
   digest_to_scalar(group, &m, digest, digest_len);
   for (;;) {
-    if (!ecdsa_sign_setup(eckey, ctx, &kinv_mont, &r_mont, digest, digest_len,
+    if (!ecdsa_sign_setup(eckey, &kinv_mont, &r_mont, digest, digest_len,
                           priv_key) ||
         !bn_set_words(ret->r, r_mont.words, order->width)) {
       goto err;
@@ -327,7 +319,6 @@ err:
     ECDSA_SIG_free(ret);
     ret = NULL;
   }
-  BN_CTX_free(ctx);
   OPENSSL_cleanse(&kinv_mont, sizeof(kinv_mont));
   OPENSSL_cleanse(&r_mont, sizeof(r_mont));
   OPENSSL_cleanse(&s, sizeof(s));

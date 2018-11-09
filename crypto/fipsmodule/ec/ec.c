@@ -871,7 +871,7 @@ int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
     p_scalar_arg = &p_scalar_storage;
   }
 
-  ret = ec_point_mul_scalar(group, r, g_scalar_arg, p, p_scalar_arg, ctx);
+  ret = ec_point_mul_scalar(group, r, g_scalar_arg, p, p_scalar_arg);
 
 err:
   BN_CTX_free(new_ctx);
@@ -882,7 +882,7 @@ err:
 
 int ec_point_mul_scalar_public(const EC_GROUP *group, EC_POINT *r,
                                const EC_SCALAR *g_scalar, const EC_POINT *p,
-                               const EC_SCALAR *p_scalar, BN_CTX *ctx) {
+                               const EC_SCALAR *p_scalar) {
   if ((g_scalar == NULL && p_scalar == NULL) ||
       (p == NULL) != (p_scalar == NULL))  {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
@@ -901,7 +901,7 @@ int ec_point_mul_scalar_public(const EC_GROUP *group, EC_POINT *r,
 
 int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,
                         const EC_SCALAR *g_scalar, const EC_POINT *p,
-                        const EC_SCALAR *p_scalar, BN_CTX *ctx) {
+                        const EC_SCALAR *p_scalar) {
   if ((g_scalar == NULL && p_scalar == NULL) ||
       (p == NULL) != (p_scalar == NULL))  {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);

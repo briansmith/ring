@@ -323,7 +323,7 @@ int EC_KEY_check_key(const EC_KEY *eckey) {
     point = EC_POINT_new(eckey->group);
     if (point == NULL ||
         !ec_point_mul_scalar(eckey->group, point, &eckey->priv_key->scalar,
-                             NULL, NULL, ctx)) {
+                             NULL, NULL)) {
       OPENSSL_PUT_ERROR(EC, ERR_R_EC_LIB);
       goto err;
     }
@@ -413,7 +413,7 @@ int EC_KEY_generate_key(EC_KEY *key) {
       // Generate the private key by testing candidates (FIPS 186-4 B.4.2).
       !ec_random_nonzero_scalar(key->group, &priv_key->scalar,
                                 kDefaultAdditionalData) ||
-      !ec_point_mul_scalar(key->group, pub_key, &priv_key->scalar, NULL, NULL,
+      !ec_point_mul_scalar(key->group, pub_key, &priv_key->scalar, NULL,
                            NULL)) {
     EC_POINT_free(pub_key);
     ec_wrapped_scalar_free(priv_key);
