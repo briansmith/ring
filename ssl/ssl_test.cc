@@ -4727,6 +4727,21 @@ class QUICMethodTest : public testing::Test {
     return true;
   }
 
+  bool CreateSecondClientAndServer() {
+    client_.reset(SSL_new(client_ctx_.get()));
+    server_.reset(SSL_new(server_ctx_.get()));
+    if (!client_ || !server_) {
+      return false;
+    }
+
+    SSL_set_connect_state(client_.get());
+    SSL_set_accept_state(server_.get());
+
+    ex_data_.Set(client_.get(), second_transport_.client());
+    ex_data_.Set(server_.get(), second_transport_.server());
+    return true;
+  }
+
   // The following functions may be configured on an |SSL_QUIC_METHOD| as
   // default implementations.
 
@@ -4760,6 +4775,7 @@ class QUICMethodTest : public testing::Test {
 
   static UnownedSSLExData<MockQUICTransport> ex_data_;
   MockQUICTransportPair transport_;
+  MockQUICTransportPair second_transport_;
 
   bssl::UniquePtr<SSL> client_;
   bssl::UniquePtr<SSL> server_;
@@ -4776,6 +4792,10 @@ TEST_F(QUICMethodTest, Basic) {
       SendAlertCallback,
   };
 
+  g_last_session = nullptr;
+
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_sess_set_new_cb(client_ctx_.get(), SaveLastSession);
   ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
   ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
   ASSERT_TRUE(CreateClientAndServer());
@@ -4807,13 +4827,43 @@ TEST_F(QUICMethodTest, Basic) {
   EXPECT_FALSE(transport_.server()->has_alert());
 
   // The server sent NewSessionTicket messages in the handshake.
-  //
-  // TODO(davidben,svaldez): Add an API for the client to consume post-handshake
-  // messages and update these tests.
-  std::vector<uint8_t> new_session_ticket;
-  ASSERT_TRUE(transport_.client()->ReadHandshakeData(
-      &new_session_ticket, ssl_encryption_application));
-  EXPECT_FALSE(new_session_ticket.empty());
+  EXPECT_FALSE(g_last_session);
+  ASSERT_TRUE(ProvideHandshakeData(client_.get()));
+  EXPECT_EQ(SSL_process_quic_post_handshake(client_.get()), 1);
+  EXPECT_TRUE(g_last_session);
+
+  // Create a second connection to verify resumption works.
+  ASSERT_TRUE(CreateSecondClientAndServer());
+  bssl::UniquePtr<SSL_SESSION> session = std::move(g_last_session);
+  SSL_set_session(client_.get(), session.get());
+
+  for (;;) {
+    ASSERT_TRUE(ProvideHandshakeData(client_.get()));
+    int client_ret = SSL_do_handshake(client_.get());
+    if (client_ret != 1) {
+      ASSERT_EQ(client_ret, -1);
+      ASSERT_EQ(SSL_get_error(client_.get(), client_ret), SSL_ERROR_WANT_READ);
+    }
+
+    ASSERT_TRUE(ProvideHandshakeData(server_.get()));
+    int server_ret = SSL_do_handshake(server_.get());
+    if (server_ret != 1) {
+      ASSERT_EQ(server_ret, -1);
+      ASSERT_EQ(SSL_get_error(server_.get(), server_ret), SSL_ERROR_WANT_READ);
+    }
+
+    if (client_ret == 1 && server_ret == 1) {
+      break;
+    }
+  }
+
+  EXPECT_EQ(SSL_do_handshake(client_.get()), 1);
+  EXPECT_EQ(SSL_do_handshake(server_.get()), 1);
+  EXPECT_TRUE(transport_.SecretsMatch(ssl_encryption_application));
+  EXPECT_FALSE(transport_.client()->has_alert());
+  EXPECT_FALSE(transport_.server()->has_alert());
+  EXPECT_TRUE(SSL_session_reused(client_.get()));
+  EXPECT_TRUE(SSL_session_reused(server_.get()));
 }
 
 // Test only releasing data to QUIC one byte at a time on request, to maximize
@@ -5071,6 +5121,56 @@ TEST_F(QUICMethodTest, TooMuchData) {
 
   EXPECT_FALSE(
       SSL_provide_quic_data(client_.get(), ssl_encryption_initial, &b, 1));
+}
+
+// Provide invalid post-handshake data.
+TEST_F(QUICMethodTest, BadPostHandshake) {
+  const SSL_QUIC_METHOD quic_method = {
+      SetEncryptionSecretsCallback,
+      AddHandshakeDataCallback,
+      FlushFlightCallback,
+      SendAlertCallback,
+  };
+
+  g_last_session = nullptr;
+
+  SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+  SSL_CTX_sess_set_new_cb(client_ctx_.get(), SaveLastSession);
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+  ASSERT_TRUE(CreateClientAndServer());
+
+  for (;;) {
+    ASSERT_TRUE(ProvideHandshakeData(client_.get()));
+    int client_ret = SSL_do_handshake(client_.get());
+    if (client_ret != 1) {
+      ASSERT_EQ(client_ret, -1);
+      ASSERT_EQ(SSL_get_error(client_.get(), client_ret), SSL_ERROR_WANT_READ);
+    }
+
+    ASSERT_TRUE(ProvideHandshakeData(server_.get()));
+    int server_ret = SSL_do_handshake(server_.get());
+    if (server_ret != 1) {
+      ASSERT_EQ(server_ret, -1);
+      ASSERT_EQ(SSL_get_error(server_.get(), server_ret), SSL_ERROR_WANT_READ);
+    }
+
+    if (client_ret == 1 && server_ret == 1) {
+      break;
+    }
+  }
+
+  EXPECT_EQ(SSL_do_handshake(client_.get()), 1);
+  EXPECT_EQ(SSL_do_handshake(server_.get()), 1);
+  EXPECT_TRUE(transport_.SecretsMatch(ssl_encryption_application));
+  EXPECT_FALSE(transport_.client()->has_alert());
+  EXPECT_FALSE(transport_.server()->has_alert());
+
+  // Junk sent as part of post-handshake data should cause an error.
+  uint8_t kJunk[] = {0x17, 0x0, 0x0, 0x4, 0xB, 0xE, 0xE, 0xF};
+  ASSERT_TRUE(SSL_provide_quic_data(client_.get(), ssl_encryption_application,
+                                    kJunk, sizeof(kJunk)));
+  EXPECT_EQ(SSL_process_quic_post_handshake(client_.get()), 0);
 }
 
 // TODO(davidben): Convert this file to GTest properly.

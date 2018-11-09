@@ -3047,7 +3047,10 @@ OPENSSL_EXPORT void SSL_get_peer_quic_transport_params(const SSL *ssl,
 // |SSL_QUIC_METHOD| to configure secrets and send data. If data is needed from
 // the peer, it will return |SSL_ERROR_WANT_READ|. When received, the caller
 // should call |SSL_provide_quic_data| and then |SSL_do_handshake| to continue
-// the handshake. It is an error to call |SSL_read| and |SSL_write| in QUIC.
+// the handshake. After the handshake is complete, the caller should call
+// |SSL_provide_quic_data| for any post-handshake data, followed by
+// |SSL_process_quic_post_handshake| to process it. It is an error to call
+// |SSL_read| and |SSL_write| in QUIC.
 //
 // Note that secrets for an encryption level may be available to QUIC before the
 // level is active in TLS. Callers should use |SSL_quic_read_level| to determine
@@ -3064,8 +3067,7 @@ OPENSSL_EXPORT void SSL_get_peer_quic_transport_params(const SSL *ssl,
 // |SSL_quic_max_handshake_flight_len| to get the maximum buffer length at each
 // encryption level.
 //
-// Note: 0-RTT and post-handshake tickets are not currently supported via this
-// API.
+// Note: 0-RTT is not currently supported via this API.
 
 // ssl_encryption_level_t represents a specific QUIC encryption level used to
 // transmit handshake messages.
@@ -3138,6 +3140,11 @@ OPENSSL_EXPORT int SSL_provide_quic_data(SSL *ssl,
                                          enum ssl_encryption_level_t level,
                                          const uint8_t *data, size_t len);
 
+
+// SSL_process_quic_post_handshake processes any data that QUIC has provided
+// after the handshake has completed. This includes NewSessionTicket messages
+// sent by the server. It returns one on success and zero on error.
+OPENSSL_EXPORT int SSL_process_quic_post_handshake(SSL *ssl);
 
 // SSL_CTX_set_quic_method configures the QUIC hooks. This should only be
 // configured with a minimum version of TLS 1.3. |quic_method| must remain valid
