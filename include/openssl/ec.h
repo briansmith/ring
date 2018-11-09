@@ -348,13 +348,15 @@ OPENSSL_EXPORT size_t EC_get_builtin_curves(EC_builtin_curve *out_curves,
 // EC_POINT_clear_free calls |EC_POINT_free|.
 OPENSSL_EXPORT void EC_POINT_clear_free(EC_POINT *point);
 
-// Old code expects to get EC_KEY from ec.h.
-#include <openssl/ec_key.h>
-
 
 #if defined(__cplusplus)
 }  // extern C
+#endif
 
+// Old code expects to get EC_KEY from ec.h.
+#include <openssl/ec_key.h>
+
+#if defined(__cplusplus)
 extern "C++" {
 
 BSSL_NAMESPACE_BEGIN
