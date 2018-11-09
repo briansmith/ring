@@ -25,7 +25,7 @@
 //! (seccomp filters on Linux in particular). See `SystemRandom`'s
 //! documentation for more details.
 
-use error;
+use crate::error;
 
 
 /// A secure random number generator.
@@ -111,11 +111,11 @@ use self::sysrand_or_urandom::fill as fill_impl;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use self::darwin::fill as fill_impl;
-use private;
+use crate::private;
 
 #[cfg(target_os = "linux")]
 mod sysrand_chunk {
-    use {c, error};
+    use crate::{c, error};
     use libc;
 
     extern {
@@ -145,7 +145,7 @@ mod sysrand_chunk {
 #[cfg(windows)]
 mod sysrand_chunk {
     use core;
-    use {c, error};
+    use crate::{c, error};
 
     #[link(name = "advapi32")]
     extern "system" {
@@ -175,7 +175,7 @@ mod sysrand_chunk {
 
 #[cfg(any(target_os = "linux", windows))]
 mod sysrand {
-    use error;
+    use crate::error;
     use super::sysrand_chunk::chunk;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
@@ -195,7 +195,7 @@ mod sysrand {
                   not(feature = "dev_urandom_fallback")))))]
 mod urandom {
     use std;
-    use error;
+    use crate::error;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         #[cfg(target_os = "redox")]
@@ -221,7 +221,7 @@ mod urandom {
 // Keep the `cfg` conditions in sync with the conditions in lib.rs.
 #[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
 mod sysrand_or_urandom {
-    use error;
+    use crate::error;
 
     enum Mechanism {
         Sysrand,
@@ -249,8 +249,8 @@ mod sysrand_or_urandom {
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 mod darwin {
-    use c;
-    use error;
+    use crate::c;
+    use crate::error;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         let r = unsafe {
@@ -283,8 +283,7 @@ mod darwin {
 
 #[cfg(test)]
 mod tests {
-    use rand;
-    use rand::SecureRandom;
+    use crate::rand::{self, SecureRandom};
 
     #[test]
     fn test_system_random_lengths() {

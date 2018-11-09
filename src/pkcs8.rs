@@ -17,7 +17,7 @@
 //! [RFC 5958]: https://tools.ietf.org/html/rfc5958.
 
 use core;
-use {der, ec, error};
+use crate::{der, ec, error};
 use untrusted;
 
 pub(crate) enum Version {

@@ -76,7 +76,7 @@
 
 
 
-use {ec, error, rand};
+use crate::{ec, error, rand};
 use untrusted;
 
 

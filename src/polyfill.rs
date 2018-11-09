@@ -141,7 +141,7 @@ pub mod slice {
 macro_rules! slice_as_array_ref {
     ($slice:expr, $len:expr) => {
         {
-            use error;
+            use crate::error;
 
             fn slice_as_array_ref<T>(slice: &[T])
                                      -> Result<&[T; $len], error::Unspecified> {
@@ -162,7 +162,7 @@ macro_rules! slice_as_array_ref {
 macro_rules! slice_as_array_ref_mut {
     ($slice:expr, $len:expr) => {
         {
-            use error;
+            use crate::error;
 
             fn slice_as_array_ref<T>(slice: &mut [T])
                                      -> Result<&mut [T; $len],

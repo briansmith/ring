@@ -15,7 +15,7 @@
 //! Functionality shared by operations on private keys (ECC keygen and
 //! ECDSA signing).
 
-use {ec, error, rand};
+use crate::{ec, error, rand};
 use super::ops::*;
 use super::verify_affine_point_is_on_the_curve;
 use untrusted;

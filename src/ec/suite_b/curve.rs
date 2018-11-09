@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {ec, error, rand};
+use crate::{ec, error, rand};
 
 /// A key agreement algorithm.
 macro_rules! suite_b_curve {

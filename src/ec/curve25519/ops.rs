@@ -15,7 +15,7 @@
 //! Elliptic curve operations on the birationally equivalent curves Curve25519
 //! and Edwards25519.
 
-use {bssl, error, limb};
+use crate::{bssl, error, limb};
 use std::marker::PhantomData;
 
 // Elem<T>` is `fe` in curve25519/internal.h.

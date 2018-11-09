@@ -14,7 +14,7 @@
 
 //! X25519 Key agreement.
 
-use {agreement, constant_time, ec, error, rand};
+use crate::{agreement, constant_time, ec, error, rand};
 use super::ops;
 use untrusted;
 

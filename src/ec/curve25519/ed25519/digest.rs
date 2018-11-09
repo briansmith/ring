@@ -1,4 +1,4 @@
-use digest;
+use crate::digest;
 
 use super::super::ops::{Scalar, SCALAR_LEN, UnreducedScalar};
 

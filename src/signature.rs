@@ -280,7 +280,7 @@
 
 
 use core;
-use {error, init, private, rand};
+use crate::{error, init, private, rand};
 use untrusted;
 
 #[cfg(feature = "use_heap")]

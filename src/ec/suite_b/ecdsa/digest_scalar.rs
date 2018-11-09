@@ -14,7 +14,7 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
-use digest;
+use crate::digest;
 use ec::suite_b::ops::*;
 use untrusted;
 
@@ -65,7 +65,7 @@ fn digest_scalar_(ops: &ScalarOps, digest: &[u8]) -> Scalar {
 
 #[cfg(test)]
 mod tests {
-    use {digest, test};
+    use crate::{digest, test};
     use super::digest_scalar_;
     use ec::suite_b::ops::*;
     use untrusted;

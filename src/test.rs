@@ -119,7 +119,7 @@
 #[cfg(feature = "use_heap")]
 use bits;
 
-use {digest, error};
+use crate::{digest, error};
 
 use core;
 use std;
@@ -464,8 +464,7 @@ fn parse_test_case(current_section: &mut String, lines: &mut FileLines)
 #[allow(missing_docs)]
 pub mod rand {
     use core;
-    use {error, polyfill, rand};
-    use private;
+    use crate::{error, polyfill, private, rand};
 
     /// An implementation of `SecureRandom` that always fills the output slice
     /// with the given byte.
@@ -541,7 +540,7 @@ pub mod rand {
 
 #[cfg(test)]
 mod tests {
-    use {error, test};
+    use crate::{error, test};
 
     #[test]
     fn one_ok() {
