@@ -726,7 +726,8 @@ TEST_P(ECCurveTest, DoubleSpecialCase) {
 
   EC_SCALAR one;
   ASSERT_TRUE(ec_bignum_to_scalar(group(), &one, BN_value_one()));
-  ASSERT_TRUE(ec_point_mul_scalar_public(group(), p.get(), &one, g, &one));
+  ASSERT_TRUE(
+      ec_point_mul_scalar_public(group(), &p->raw, &one, &g->raw, &one));
   EXPECT_EQ(0, EC_POINT_cmp(group(), p.get(), two_g.get(), nullptr));
 }
 
@@ -871,7 +872,7 @@ TEST(ECTest, ScalarBaseMultVectors) {
       EC_SCALAR a_scalar, b_scalar;
       ASSERT_TRUE(ec_bignum_to_scalar(group.get(), &a_scalar, a.get()));
       ASSERT_TRUE(ec_bignum_to_scalar(group.get(), &b_scalar, b.get()));
-      ASSERT_TRUE(ec_point_mul_scalar_public(group.get(), p.get(), &a_scalar, g,
+      ASSERT_TRUE(ec_point_mul_scalar_public(group.get(), &p->raw, &a_scalar, &g->raw,
                                              &b_scalar));
       check_point(p.get());
     }

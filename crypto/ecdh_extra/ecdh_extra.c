@@ -87,6 +87,11 @@ int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
     return -1;
   }
   const EC_SCALAR *const priv = &priv_key->priv_key->scalar;
+  const EC_GROUP *const group = EC_KEY_get0_group(priv_key);
+  if (EC_GROUP_cmp(group, pub_key->group, NULL) != 0) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
+    return -1;
+  }
 
   BN_CTX *ctx = BN_CTX_new();
   if (ctx == NULL) {
@@ -98,14 +103,13 @@ int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
   size_t buflen = 0;
   uint8_t *buf = NULL;
 
-  const EC_GROUP *const group = EC_KEY_get0_group(priv_key);
   EC_POINT *tmp = EC_POINT_new(group);
   if (tmp == NULL) {
     OPENSSL_PUT_ERROR(ECDH, ERR_R_MALLOC_FAILURE);
     goto err;
   }
 
-  if (!ec_point_mul_scalar(group, tmp, NULL, pub_key, priv)) {
+  if (!ec_point_mul_scalar(group, &tmp->raw, NULL, &pub_key->raw, priv)) {
     OPENSSL_PUT_ERROR(ECDH, ECDH_R_POINT_ARITHMETIC_FAILURE);
     goto err;
   }

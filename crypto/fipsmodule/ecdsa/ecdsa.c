@@ -173,27 +173,18 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
   ec_scalar_mul_montgomery(group, &u1, &m, &s_inv_mont);
   ec_scalar_mul_montgomery(group, &u2, &r, &s_inv_mont);
 
-  int ret = 0;
-  EC_POINT *point = EC_POINT_new(group);
-  if (point == NULL) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-  if (!ec_point_mul_scalar_public(group, point, &u1, pub_key, &u2)) {
+  EC_RAW_POINT point;
+  if (!ec_point_mul_scalar_public(group, &point, &u1, &pub_key->raw, &u2)) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
-    goto err;
+    return 0;
   }
 
-  if (!ec_cmp_x_coordinate(group, &point->raw, &r)) {
+  if (!ec_cmp_x_coordinate(group, &point, &r)) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
-    goto err;
+    return 0;
   }
 
-  ret = 1;
-
-err:
-  EC_POINT_free(point);
-  return ret;
+  return 1;
 }
 
 static int ecdsa_sign_setup(const EC_KEY *eckey, EC_SCALAR *out_kinv_mont,
@@ -210,12 +201,7 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, EC_SCALAR *out_kinv_mont,
 
   int ret = 0;
   EC_SCALAR k;
-  EC_POINT *tmp_point = EC_POINT_new(group);
-  if (tmp_point == NULL) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
-    goto err;
-  }
-
+  EC_RAW_POINT tmp_point;
   do {
     // Include the private key and message digest in the k generation.
     if (eckey->fixed_k != NULL) {
@@ -246,8 +232,8 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, EC_SCALAR *out_kinv_mont,
     ec_scalar_from_montgomery(group, out_kinv_mont, out_kinv_mont);
 
     // Compute r, the x-coordinate of generator * k.
-    if (!ec_point_mul_scalar(group, tmp_point, &k, NULL, NULL) ||
-        !ec_get_x_coordinate_as_scalar(group, out_r, &tmp_point->raw)) {
+    if (!ec_point_mul_scalar(group, &tmp_point, &k, NULL, NULL) ||
+        !ec_get_x_coordinate_as_scalar(group, out_r, &tmp_point)) {
       goto err;
     }
   } while (ec_scalar_is_zero(group, out_r));
@@ -256,7 +242,6 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, EC_SCALAR *out_kinv_mont,
 
 err:
   OPENSSL_cleanse(&k, sizeof(k));
-  EC_POINT_free(tmp_point);
   return ret;
 }
 

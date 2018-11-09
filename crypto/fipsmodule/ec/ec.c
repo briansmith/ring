@@ -865,6 +865,12 @@ int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
     return 0;
   }
 
+  if (EC_GROUP_cmp(group, r->group, NULL) != 0 ||
+      (p != NULL && EC_GROUP_cmp(group, p->group, NULL) != 0)) {
+    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
+    return 0;
+  }
+
   int ret = 0;
   EC_SCALAR g_scalar_storage, p_scalar_storage;
   EC_SCALAR *g_scalar_arg = NULL, *p_scalar_arg = NULL;
@@ -891,7 +897,8 @@ int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
     p_scalar_arg = &p_scalar_storage;
   }
 
-  ret = ec_point_mul_scalar(group, r, g_scalar_arg, p, p_scalar_arg);
+  ret = ec_point_mul_scalar(group, &r->raw, g_scalar_arg,
+                            p == NULL ? NULL : &p->raw, p_scalar_arg);
 
 err:
   BN_CTX_free(new_ctx);
@@ -900,42 +907,29 @@ err:
   return ret;
 }
 
-int ec_point_mul_scalar_public(const EC_GROUP *group, EC_POINT *r,
-                               const EC_SCALAR *g_scalar, const EC_POINT *p,
+int ec_point_mul_scalar_public(const EC_GROUP *group, EC_RAW_POINT *r,
+                               const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
                                const EC_SCALAR *p_scalar) {
   if ((g_scalar == NULL && p_scalar == NULL) ||
-      (p == NULL) != (p_scalar == NULL))  {
+      (p == NULL) != (p_scalar == NULL)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
-  if (EC_GROUP_cmp(group, r->group, NULL) != 0 ||
-      (p != NULL && EC_GROUP_cmp(group, p->group, NULL) != 0)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-
-  group->meth->mul_public(group, &r->raw, g_scalar, &p->raw, p_scalar);
+  group->meth->mul_public(group, r, g_scalar, p, p_scalar);
   return 1;
 }
 
-int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,
-                        const EC_SCALAR *g_scalar, const EC_POINT *p,
+int ec_point_mul_scalar(const EC_GROUP *group, EC_RAW_POINT *r,
+                        const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
                         const EC_SCALAR *p_scalar) {
   if ((g_scalar == NULL && p_scalar == NULL) ||
-      (p == NULL) != (p_scalar == NULL))  {
+      (p == NULL) != (p_scalar == NULL)) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
-  if (EC_GROUP_cmp(group, r->group, NULL) != 0 ||
-      (p != NULL && EC_GROUP_cmp(group, p->group, NULL) != 0)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
-    return 0;
-  }
-
-  group->meth->mul(group, &r->raw, g_scalar, (p == NULL) ? NULL : &p->raw,
-                   p_scalar);
+  group->meth->mul(group, r, g_scalar, p, p_scalar);
   return 1;
 }
 

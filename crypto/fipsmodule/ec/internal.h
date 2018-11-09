@@ -239,6 +239,10 @@ struct ec_point_st {
   // group is an owning reference to |group|, unless this is
   // |group->generator|.
   EC_GROUP *group;
+  // raw is the group-specific point data. Functions that take |EC_POINT|
+  // typically check consistency with |EC_GROUP| while functions that take
+  // |EC_RAW_POINT| do not. Thus accesses to this field should be externally
+  // checked for consistency.
   EC_RAW_POINT raw;
 } /* EC_POINT */;
 
@@ -325,16 +329,18 @@ int ec_scalar_inv_montgomery_vartime(const EC_GROUP *group, EC_SCALAR *r,
 // |p_scalar|. Unlike other functions which take |EC_SCALAR|, |g_scalar| and
 // |p_scalar| need not be fully reduced. They need only contain as many bits as
 // the order.
-int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,
-                        const EC_SCALAR *g_scalar, const EC_POINT *p,
+int ec_point_mul_scalar(const EC_GROUP *group, EC_RAW_POINT *r,
+                        const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
                         const EC_SCALAR *p_scalar);
 
 // ec_point_mul_scalar_public performs the same computation as
 // ec_point_mul_scalar.  It further assumes that the inputs are public so
 // there is no concern about leaking their values through timing.
-OPENSSL_EXPORT int ec_point_mul_scalar_public(
-    const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
-    const EC_POINT *p, const EC_SCALAR *p_scalar);
+OPENSSL_EXPORT int ec_point_mul_scalar_public(const EC_GROUP *group,
+                                              EC_RAW_POINT *r,
+                                              const EC_SCALAR *g_scalar,
+                                              const EC_RAW_POINT *p,
+                                              const EC_SCALAR *p_scalar);
 
 // ec_cmp_x_coordinate compares the x (affine) coordinate of |p|, mod the group
 // order, with |r|. It returns one if the values match and zero if |p| is the
