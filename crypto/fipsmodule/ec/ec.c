@@ -973,6 +973,37 @@ int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
   return 1;
 }
 
+int ec_point_get_affine_coordinate_bytes(const EC_GROUP *group, uint8_t *out_x,
+                                         uint8_t *out_y, size_t *out_len,
+                                         size_t max_out,
+                                         const EC_RAW_POINT *p) {
+  size_t len = BN_num_bytes(&group->field);
+  assert(len <= EC_MAX_BYTES);
+  if (max_out < len) {
+    OPENSSL_PUT_ERROR(EC, EC_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  EC_FELEM x, y;
+  if (!group->meth->point_get_affine_coordinates(
+          group, p, out_x == NULL ? NULL : &x, out_y == NULL ? NULL : &y)) {
+    return 0;
+  }
+
+  if (out_x != NULL) {
+    for (size_t i = 0; i < len; i++) {
+      out_x[i] = x.bytes[len - i - 1];
+    }
+  }
+  if (out_y != NULL) {
+    for (size_t i = 0; i < len; i++) {
+      out_y[i] = y.bytes[len - i - 1];
+    }
+  }
+  *out_len = len;
+  return 1;
+}
+
 void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag) {}
 
 const EC_METHOD *EC_GROUP_method_of(const EC_GROUP *group) {

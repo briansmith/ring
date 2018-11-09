@@ -354,6 +354,17 @@ int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
 int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
                                   const EC_RAW_POINT *p);
 
+// ec_point_get_affine_coordinate_bytes writes |p|'s affine coordinates to
+// |out_x| and |out_y|, each of which must have at must |max_out| bytes. It sets
+// |*out_len| to the number of bytes written in each buffer. Coordinates are
+// written big-endian and zero-padded to the size of the field.
+//
+// Either of |out_x| or |out_y| may be NULL to omit that coordinate. This
+// function returns one on success and zero on failure.
+int ec_point_get_affine_coordinate_bytes(const EC_GROUP *group, uint8_t *out_x,
+                                         uint8_t *out_y, size_t *out_len,
+                                         size_t max_out, const EC_RAW_POINT *p);
+
 // ec_field_element_to_scalar reduces |r| modulo |group->order|. |r| must
 // previously have been reduced modulo |group->field|.
 int ec_field_element_to_scalar(const EC_GROUP *group, BIGNUM *r);

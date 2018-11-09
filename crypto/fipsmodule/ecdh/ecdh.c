@@ -66,10 +66,8 @@
 
 #include <openssl/ecdh.h>
 
-#include <limits.h>
 #include <string.h>
 
-#include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/ec_key.h>
 #include <openssl/err.h>
@@ -92,49 +90,14 @@ int ECDH_compute_key_fips(uint8_t *out, size_t out_len, const EC_POINT *pub_key,
     return 0;
   }
 
-  BN_CTX *ctx = BN_CTX_new();
-  if (ctx == NULL) {
+  EC_RAW_POINT shared_point;
+  uint8_t buf[EC_MAX_BYTES];
+  size_t buflen;
+  if (!ec_point_mul_scalar(group, &shared_point, NULL, &pub_key->raw, priv) ||
+      !ec_point_get_affine_coordinate_bytes(group, buf, NULL, &buflen,
+                                            sizeof(buf), &shared_point)) {
+    OPENSSL_PUT_ERROR(ECDH, ECDH_R_POINT_ARITHMETIC_FAILURE);
     return 0;
-  }
-  BN_CTX_start(ctx);
-
-  int ret = 0;
-  size_t buflen = 0;
-  uint8_t *buf = NULL;
-
-  EC_POINT *shared_point = EC_POINT_new(group);
-  if (shared_point == NULL) {
-    OPENSSL_PUT_ERROR(ECDH, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (!ec_point_mul_scalar(group, &shared_point->raw, NULL, &pub_key->raw,
-                           priv)) {
-    OPENSSL_PUT_ERROR(ECDH, ECDH_R_POINT_ARITHMETIC_FAILURE);
-    goto err;
-  }
-
-  BIGNUM *x = BN_CTX_get(ctx);
-  if (!x) {
-    OPENSSL_PUT_ERROR(ECDH, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (!EC_POINT_get_affine_coordinates_GFp(group, shared_point, x, NULL, ctx)) {
-    OPENSSL_PUT_ERROR(ECDH, ECDH_R_POINT_ARITHMETIC_FAILURE);
-    goto err;
-  }
-
-  buflen = (EC_GROUP_get_degree(group) + 7) / 8;
-  buf = OPENSSL_malloc(buflen);
-  if (buf == NULL) {
-    OPENSSL_PUT_ERROR(ECDH, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (!BN_bn2bin_padded(buf, buflen, x)) {
-    OPENSSL_PUT_ERROR(ECDH, ERR_R_INTERNAL_ERROR);
-    goto err;
   }
 
   switch (out_len) {
@@ -152,15 +115,8 @@ int ECDH_compute_key_fips(uint8_t *out, size_t out_len, const EC_POINT *pub_key,
       break;
     default:
       OPENSSL_PUT_ERROR(ECDH, ECDH_R_UNKNOWN_DIGEST_LENGTH);
-      goto err;
+      return 0;
   }
 
-  ret = 1;
-
-err:
-  OPENSSL_free(buf);
-  EC_POINT_free(shared_point);
-  BN_CTX_end(ctx);
-  BN_CTX_free(ctx);
-  return ret;
+  return 1;
 }

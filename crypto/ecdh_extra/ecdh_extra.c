@@ -69,7 +69,6 @@
 #include <limits.h>
 #include <string.h>
 
-#include <openssl/bn.h>
 #include <openssl/digest.h>
 #include <openssl/err.h>
 #include <openssl/mem.h>
@@ -78,10 +77,10 @@
 #include "../internal.h"
 
 
-int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
+int ECDH_compute_key(void *out, size_t out_len, const EC_POINT *pub_key,
                      const EC_KEY *priv_key,
                      void *(*kdf)(const void *in, size_t inlen, void *out,
-                                  size_t *outlen)) {
+                                  size_t *out_len)) {
   if (priv_key->priv_key == NULL) {
     OPENSSL_PUT_ERROR(ECDH, ECDH_R_NO_PRIVATE_VALUE);
     return -1;
@@ -93,74 +92,33 @@ int ECDH_compute_key(void *out, size_t outlen, const EC_POINT *pub_key,
     return -1;
   }
 
-  BN_CTX *ctx = BN_CTX_new();
-  if (ctx == NULL) {
+  EC_RAW_POINT shared_point;
+  uint8_t buf[EC_MAX_BYTES];
+  size_t buf_len;
+  if (!ec_point_mul_scalar(group, &shared_point, NULL, &pub_key->raw, priv) ||
+      !ec_point_get_affine_coordinate_bytes(group, buf, NULL, &buf_len,
+                                            sizeof(buf), &shared_point)) {
+    OPENSSL_PUT_ERROR(ECDH, ECDH_R_POINT_ARITHMETIC_FAILURE);
     return -1;
-  }
-  BN_CTX_start(ctx);
-
-  int ret = -1;
-  size_t buflen = 0;
-  uint8_t *buf = NULL;
-
-  EC_POINT *tmp = EC_POINT_new(group);
-  if (tmp == NULL) {
-    OPENSSL_PUT_ERROR(ECDH, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (!ec_point_mul_scalar(group, &tmp->raw, NULL, &pub_key->raw, priv)) {
-    OPENSSL_PUT_ERROR(ECDH, ECDH_R_POINT_ARITHMETIC_FAILURE);
-    goto err;
-  }
-
-  BIGNUM *x = BN_CTX_get(ctx);
-  if (!x) {
-    OPENSSL_PUT_ERROR(ECDH, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (!EC_POINT_get_affine_coordinates_GFp(group, tmp, x, NULL, ctx)) {
-    OPENSSL_PUT_ERROR(ECDH, ECDH_R_POINT_ARITHMETIC_FAILURE);
-    goto err;
-  }
-
-  buflen = (EC_GROUP_get_degree(group) + 7) / 8;
-  buf = OPENSSL_malloc(buflen);
-  if (buf == NULL) {
-    OPENSSL_PUT_ERROR(ECDH, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-
-  if (!BN_bn2bin_padded(buf, buflen, x)) {
-    OPENSSL_PUT_ERROR(ECDH, ERR_R_INTERNAL_ERROR);
-    goto err;
   }
 
   if (kdf != NULL) {
-    if (kdf(buf, buflen, out, &outlen) == NULL) {
+    if (kdf(buf, buf_len, out, &out_len) == NULL) {
       OPENSSL_PUT_ERROR(ECDH, ECDH_R_KDF_FAILED);
-      goto err;
+      return -1;
     }
   } else {
     // no KDF, just copy as much as we can
-    if (buflen < outlen) {
-      outlen = buflen;
+    if (buf_len < out_len) {
+      out_len = buf_len;
     }
-    OPENSSL_memcpy(out, buf, outlen);
+    OPENSSL_memcpy(out, buf, out_len);
   }
 
-  if (outlen > INT_MAX) {
+  if (out_len > INT_MAX) {
     OPENSSL_PUT_ERROR(ECDH, ERR_R_OVERFLOW);
-    goto err;
+    return -1;
   }
 
-  ret = (int)outlen;
-
-err:
-  OPENSSL_free(buf);
-  EC_POINT_free(tmp);
-  BN_CTX_end(ctx);
-  BN_CTX_free(ctx);
-  return ret;
+  return (int)out_len;
 }
