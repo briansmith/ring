@@ -85,10 +85,10 @@ extern "C" {
 // Cap the size of all field elements and scalars, including custom curves, to
 // 66 bytes, large enough to fit secp521r1 and brainpoolP512r1, which appear to
 // be the largest fields anyone plausibly uses.
-#define EC_MAX_SCALAR_BYTES 66
-#define EC_MAX_SCALAR_WORDS ((66 + BN_BYTES - 1) / BN_BYTES)
+#define EC_MAX_BYTES 66
+#define EC_MAX_WORDS ((EC_MAX_BYTES + BN_BYTES - 1) / BN_BYTES)
 
-OPENSSL_COMPILE_ASSERT(EC_MAX_SCALAR_WORDS <= BN_SMALL_MAX_WORDS,
+OPENSSL_COMPILE_ASSERT(EC_MAX_WORDS <= BN_SMALL_MAX_WORDS,
                        bn_small_functions_applicable);
 
 // An EC_SCALAR is an integer fully reduced modulo the order. Only the first
@@ -96,8 +96,8 @@ OPENSSL_COMPILE_ASSERT(EC_MAX_SCALAR_WORDS <= BN_SMALL_MAX_WORDS,
 // and must not be mixed between groups.
 typedef union {
   // bytes is the representation of the scalar in little-endian order.
-  uint8_t bytes[EC_MAX_SCALAR_BYTES];
-  BN_ULONG words[EC_MAX_SCALAR_WORDS];
+  uint8_t bytes[EC_MAX_BYTES];
+  BN_ULONG words[EC_MAX_WORDS];
 } EC_SCALAR;
 
 // An EC_FELEM represents a field element. Only the first |field->width| words
@@ -106,8 +106,8 @@ typedef union {
 // represented in Montgomery-form) may vary between |EC_METHOD|s.
 typedef union {
   // bytes is the representation of the field element in little-endian order.
-  uint8_t bytes[EC_MAX_SCALAR_BYTES];
-  BN_ULONG words[EC_MAX_SCALAR_WORDS];
+  uint8_t bytes[EC_MAX_BYTES];
+  BN_ULONG words[EC_MAX_WORDS];
 } EC_FELEM;
 
 // An EC_RAW_POINT represents an elliptic curve point. Unlike |EC_POINT|, it is

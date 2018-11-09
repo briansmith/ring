@@ -180,14 +180,14 @@ void ec_GFp_mont_mul_public(const EC_GROUP *group, EC_RAW_POINT *r,
   size_t bits = BN_num_bits(&group->order);
   size_t wNAF_len = bits + 1;
 
-  int8_t g_wNAF[EC_MAX_SCALAR_BYTES * 8 + 1];
+  int8_t g_wNAF[EC_MAX_BYTES * 8 + 1];
   EC_RAW_POINT g_precomp[EC_WNAF_TABLE_SIZE];
   assert(wNAF_len <= OPENSSL_ARRAY_SIZE(g_wNAF));
   const EC_RAW_POINT *g = &group->generator->raw;
   ec_compute_wNAF(group, g_wNAF, g_scalar, bits, EC_WNAF_WINDOW_BITS);
   compute_precomp(group, g_precomp, g, EC_WNAF_TABLE_SIZE);
 
-  int8_t p_wNAF[EC_MAX_SCALAR_BYTES * 8 + 1];
+  int8_t p_wNAF[EC_MAX_BYTES * 8 + 1];
   EC_RAW_POINT p_precomp[EC_WNAF_TABLE_SIZE];
   assert(wNAF_len <= OPENSSL_ARRAY_SIZE(p_wNAF));
   ec_compute_wNAF(group, p_wNAF, p_scalar, bits, EC_WNAF_WINDOW_BITS);

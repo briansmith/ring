@@ -93,7 +93,7 @@ static void digest_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
   //
   // Montgomery multiplication accepts the looser bounds, so this isn't strictly
   // necessary, but it is a cleaner abstraction and has no performance impact.
-  BN_ULONG tmp[EC_MAX_SCALAR_WORDS];
+  BN_ULONG tmp[EC_MAX_WORDS];
   bn_reduce_once_in_place(out->words, 0 /* no carry */, order->d, tmp,
                           order->width);
 }

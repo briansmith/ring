@@ -316,7 +316,7 @@ static void ec_group_set0_generator(EC_GROUP *group, EC_POINT *generator) {
 
 EC_GROUP *EC_GROUP_new_curve_GFp(const BIGNUM *p, const BIGNUM *a,
                                  const BIGNUM *b, BN_CTX *ctx) {
-  if (BN_num_bytes(p) > EC_MAX_SCALAR_BYTES) {
+  if (BN_num_bytes(p) > EC_MAX_BYTES) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_FIELD);
     return NULL;
   }
@@ -350,7 +350,7 @@ int EC_GROUP_set_generator(EC_GROUP *group, const EC_POINT *generator,
     return 0;
   }
 
-  if (BN_num_bytes(order) > EC_MAX_SCALAR_BYTES) {
+  if (BN_num_bytes(order) > EC_MAX_BYTES) {
     OPENSSL_PUT_ERROR(EC, EC_R_INVALID_GROUP_ORDER);
     return 0;
   }
@@ -966,9 +966,8 @@ int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
 
   // The above does not guarantee |group->field| is not one word larger than
   // |group->order|, so read one extra carry word.
-  BN_ULONG carry = group->order.width < EC_MAX_SCALAR_WORDS
-                       ? x.words[group->order.width]
-                       : 0;
+  BN_ULONG carry =
+      group->order.width < EC_MAX_WORDS ? x.words[group->order.width] : 0;
   bn_reduce_once(out->words, x.words, carry, group->order.d,
                  group->order.width);
   return 1;

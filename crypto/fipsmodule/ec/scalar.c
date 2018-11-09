@@ -54,7 +54,7 @@ int ec_random_nonzero_scalar(const EC_GROUP *group, EC_SCALAR *out,
 void ec_scalar_add(const EC_GROUP *group, EC_SCALAR *r, const EC_SCALAR *a,
                    const EC_SCALAR *b) {
   const BIGNUM *order = &group->order;
-  BN_ULONG tmp[EC_MAX_SCALAR_WORDS];
+  BN_ULONG tmp[EC_MAX_WORDS];
   bn_mod_add_words(r->words, a->words, b->words, order->d, tmp, order->width);
   OPENSSL_cleanse(tmp, sizeof(tmp));
 }
