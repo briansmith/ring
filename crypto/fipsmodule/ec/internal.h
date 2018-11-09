@@ -213,7 +213,20 @@ struct ec_group_st {
 
   EC_FELEM a, b;  // Curve coefficients.
 
-  int a_is_minus3;  // enable optimized point arithmetics for special case
+  // a_is_minus3 is one if |a| is -3 mod |field| and zero otherwise. Point
+  // arithmetic is optimized for -3.
+  int a_is_minus3;
+
+  // field_greater_than_order is one if |field| is greate than |order| and zero
+  // otherwise.
+  int field_greater_than_order;
+
+  // field_minus_order, if |field_greater_than_order| is true, is |field| minus
+  // |order| represented as an |EC_FELEM|. Otherwise, it is zero.
+  //
+  // Note: unlike |EC_FELEM|s used as intermediate values internal to the
+  // |EC_METHOD|, this value is not encoded in Montgomery form.
+  EC_FELEM field_minus_order;
 
   CRYPTO_refcount_t references;
 

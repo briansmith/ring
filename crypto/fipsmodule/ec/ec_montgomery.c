@@ -417,6 +417,51 @@ void ec_GFp_mont_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
   }
 }
 
+static int ec_GFp_mont_cmp_x_coordinate(const EC_GROUP *group,
+                                        const EC_RAW_POINT *p,
+                                        const EC_SCALAR *r) {
+  if (!group->field_greater_than_order ||
+      group->field.width != group->order.width) {
+    // Do not bother optimizing this case. p > order in all commonly-used
+    // curves.
+    return ec_GFp_simple_cmp_x_coordinate(group, p, r);
+  }
+
+  if (ec_GFp_simple_is_at_infinity(group, p)) {
+    return 0;
+  }
+
+  // We wish to compare X/Z^2 with r. This is equivalent to comparing X with
+  // r*Z^2. Note that X and Z are represented in Montgomery form, while r is
+  // not.
+  EC_FELEM r_Z2, Z2_mont, X;
+  ec_GFp_mont_felem_mul(group, &Z2_mont, &p->Z, &p->Z);
+  // r < order < p, so this is valid.
+  OPENSSL_memcpy(r_Z2.words, r->words, group->field.width * sizeof(BN_ULONG));
+  ec_GFp_mont_felem_mul(group, &r_Z2, &r_Z2, &Z2_mont);
+  ec_GFp_mont_felem_from_montgomery(group, &X, &p->X);
+
+  if (ec_felem_equal(group, &r_Z2, &X)) {
+    return 1;
+  }
+
+  // During signing the x coefficient is reduced modulo the group order.
+  // Therefore there is a small possibility, less than 1/2^128, that group_order
+  // < p.x < P. in that case we need not only to compare against |r| but also to
+  // compare against r+group_order.
+  if (bn_less_than_words(r->words, group->field_minus_order.words,
+                         group->field.width)) {
+    // We can ignore the carry because: r + group_order < p < 2^256.
+    bn_add_words(r_Z2.words, r->words, group->order.d, group->field.width);
+    ec_GFp_mont_felem_mul(group, &r_Z2, &r_Z2, &Z2_mont);
+    if (ec_felem_equal(group, &r_Z2, &X)) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_mont_method) {
   out->group_init = ec_GFp_mont_group_init;
   out->group_finish = ec_GFp_mont_group_finish;
@@ -432,5 +477,5 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_mont_method) {
   out->felem_to_bignum = ec_GFp_mont_felem_to_bignum;
   out->scalar_inv_montgomery = ec_simple_scalar_inv_montgomery;
   out->scalar_inv_montgomery_vartime = ec_GFp_simple_mont_inv_mod_ord_vartime;
-  out->cmp_x_coordinate = ec_GFp_simple_cmp_x_coordinate;
+  out->cmp_x_coordinate = ec_GFp_mont_cmp_x_coordinate;
 }

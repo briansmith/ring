@@ -1838,15 +1838,9 @@ static int ec_GFp_nistp256_cmp_x_coordinate(const EC_GROUP *group,
   // Therefore there is a small possibility, less than 1/2^128, that group_order
   // < p.x < P. in that case we need not only to compare against |r| but also to
   // compare against r+group_order.
-
-  // P_MINUS_ORDER is the difference between the field order (p) and the group
-  // order (N). This value is not in the Montgomery domain.
-  static const BN_ULONG P_MINUS_ORDER[] = {
-      TOBN(0x0c46353d, 0x039cdaae), TOBN(0x43190553, 0x58e8617b),
-      TOBN(0x00000000, 0x00000000), TOBN(0x00000000, 0x00000000)};
-  assert(OPENSSL_ARRAY_SIZE(P_MINUS_ORDER) == group->order.width);
-  if (bn_less_than_words(r->words, P_MINUS_ORDER,
-                         OPENSSL_ARRAY_SIZE(P_MINUS_ORDER))) {
+  assert(group->field.width == group->order.width);
+  if (bn_less_than_words(r->words, group->field_minus_order.words,
+                         group->field.width)) {
     // We can ignore the carry because: r + group_order < p < 2^256.
     EC_FELEM tmp;
     bn_add_words(tmp.words, r->words, group->order.d, group->order.width);
