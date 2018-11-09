@@ -14,7 +14,7 @@
 
 //! Constant-time operations.
 
-use {c, error};
+use crate::{c, error};
 
 /// Returns `Ok(())` if `a == b` and `Err(error::Unspecified)` otherwise.
 /// The comparison of `a` and `b` is done in constant time with respect to the

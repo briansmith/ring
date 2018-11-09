@@ -138,7 +138,7 @@ mod private {
     //
     // Usage:
     // ```
-    // use private;
+    // use crate::private;
     //
     // pub trait MyType : private::Sealed {
     //     // [...]

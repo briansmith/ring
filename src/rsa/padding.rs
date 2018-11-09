@@ -12,12 +12,12 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {bits, der, digest, error, polyfill};
+use crate::{bits, der, digest, error, polyfill};
 use super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN;
 use untrusted;
 
 #[cfg(feature = "rsa_signing")]
-use rand;
+use crate::rand;
 
 /// Common features of both RSA padding encoding and RSA padding verification.
 pub trait RSAPadding: 'static + Sync + ::private::Sealed {
@@ -455,7 +455,7 @@ rsa_pss_padding!(RSA_PSS_SHA512, &digest::SHA512,
 
 #[cfg(test)]
 mod test {
-    use {digest, error, test};
+    use crate::{digest, error, test};
     use super::*;
     use untrusted;
 

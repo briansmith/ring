@@ -14,7 +14,7 @@
 
 use arithmetic::montgomery::*;
 use core::marker::PhantomData;
-use {c, error};
+use crate::{c, error};
 use untrusted;
 
 pub use limb::*; // XXX
@@ -451,7 +451,7 @@ extern {
 
 #[cfg(test)]
 mod tests {
-    use {c, test};
+    use crate::{c, test};
     use std;
     use super::*;
     use untrusted;

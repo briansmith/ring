@@ -17,7 +17,7 @@
 //! This module contains the foundational parts of an ASN.1 DER parser.
 
 use untrusted;
-use error;
+use crate::error;
 
 pub const CONSTRUCTED: u8 = 1 << 5;
 pub const CONTEXT_SPECIFIC: u8 = 2 << 6;
@@ -191,7 +191,7 @@ pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
 
 #[cfg(test)]
 mod tests {
-    use error;
+    use crate::error;
     use super::*;
     use untrusted;
 

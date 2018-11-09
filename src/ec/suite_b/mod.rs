@@ -15,7 +15,7 @@
 //! Elliptic curve operations on P-256 & P-384.
 
 use arithmetic::montgomery::*;
-use {der, ec, error, pkcs8};
+use crate::{der, ec, error, pkcs8};
 use self::ops::*;
 use untrusted;
 

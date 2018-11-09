@@ -14,7 +14,7 @@
 
 //! ECDH key agreement using the P-256 and P-384 curves.
 
-use {agreement, ec, error};
+use crate::{agreement, ec, error};
 use super::ops::*;
 use super::private_key::*;
 use super::public_key::*;
@@ -126,7 +126,7 @@ fn ecdh(private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps,
 #[cfg(test)]
 mod tests {
     use core;
-    use {agreement, ec, limb, test};
+    use crate::{agreement, ec, limb, test};
     use super::super::ops;
 
     static SUPPORTED_SUITE_B_ALGS:

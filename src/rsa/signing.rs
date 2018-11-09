@@ -14,8 +14,7 @@
 
 /// RSA PKCS#1 1.5 signatures.
 
-use {bits, der, digest, error, pkcs8};
-use rand;
+use crate::{bits, der, digest, error, pkcs8, rand};
 use std;
 use super::{bigint, bigint::Prime, N, verification};
 use arithmetic::montgomery::{R, RR, RRR};
@@ -561,7 +560,7 @@ impl SigningState {
 mod tests {
     // We intentionally avoid `use super::*` so that we are sure to use only
     // the public API; this ensures that enough of the API is public.
-    use {rand, signature};
+    use crate::{rand, signature};
     use std;
     use untrusted;
 

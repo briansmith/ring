@@ -155,7 +155,7 @@
 //!     https://github.com/briansmith/ring/blob/master/src/hkdf.rs
 
 
-use {constant_time, digest, error, rand};
+use crate::{constant_time, digest, error, rand};
 
 /// An HMAC signature.
 ///
@@ -409,7 +409,7 @@ pub fn recommended_key_len(digest_alg: &digest::Algorithm) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use {digest, hmac, rand, test};
+    use crate::{digest, hmac, rand, test};
 
     // Make sure that `SigningKey::generate` and `verify_with_own_key` aren't
     // completely wacky.

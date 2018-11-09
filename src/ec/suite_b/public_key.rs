@@ -16,7 +16,7 @@
 //! ECDH agreement).
 
 use arithmetic::montgomery::*;
-use error;
+use crate::error;
 use super::ops::*;
 use super::verify_affine_point_is_on_the_curve;
 use untrusted;
@@ -68,7 +68,7 @@ pub fn parse_uncompressed_point(ops: &PublicKeyOps, input: untrusted::Input)
 
 #[cfg(test)]
 mod tests {
-    use test;
+    use crate::test;
     use super::*;
     use super::super::ops;
     use untrusted;

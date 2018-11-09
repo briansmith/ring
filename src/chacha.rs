@@ -13,7 +13,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use c;
+use crate::c;
 use core;
 use polyfill::slice::u32_from_le_u8;
 
@@ -86,7 +86,7 @@ pub const NONCE_LEN: usize = 12; /* 96 bits */
 
 #[cfg(test)]
 mod tests {
-    use test;
+    use crate::test;
     use super::*;
     use super::GFp_ChaCha20_ctr32;
 

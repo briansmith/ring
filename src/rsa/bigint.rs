@@ -40,7 +40,7 @@
 
 #![allow(box_pointers)]
 
-use {bits, bssl, c, error, limb, untrusted};
+use crate::{bits, bssl, c, error, limb, untrusted};
 use arithmetic::montgomery::*;
 use core;
 use core::marker::PhantomData;
@@ -951,7 +951,7 @@ extern {
 mod tests {
     use super::*;
     use untrusted;
-    use test;
+    use crate::test;
 
     // Type-level representation of an arbitrary modulus.
     struct M {}

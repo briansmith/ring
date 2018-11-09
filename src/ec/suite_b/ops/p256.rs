@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use c;
+use crate::c;
 use core::marker::PhantomData;
 use super::*;
 use super::{Modulus, elem_sqr_mul, elem_sqr_mul_acc};

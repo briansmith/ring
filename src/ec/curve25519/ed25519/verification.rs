@@ -15,7 +15,7 @@
 //! EdDSA Signatures.
 
 use core;
-use {error, private, signature};
+use crate::{error, private, signature};
 use super::super::ops::*;
 use untrusted;
 

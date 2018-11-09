@@ -18,7 +18,7 @@
 //! Limbs ordered least-significant-limb to most-significant-limb. The bits
 //! limbs use the native endianness.
 
-use {c, error, untrusted};
+use crate::{c, error, untrusted};
 
 // XXX: Not correct for x32 ABIs.
 #[cfg(target_pointer_width = "64")] pub type Limb = u64;
@@ -48,14 +48,14 @@ pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 #[cfg(all(any(test, feature = "rsa_signing"), target_pointer_width = "64"))]
 #[inline]
 pub fn limbs_as_bytes(src: &[Limb]) -> &[u8] {
-    use polyfill;
+    use crate::polyfill;
     polyfill::slice::u64_as_u8(src)
 }
 
 #[cfg(all(any(test, feature = "rsa_signing"), target_pointer_width = "32"))]
 #[inline]
 pub fn limbs_as_bytes(src: &[Limb]) -> &[u8] {
-    use polyfill;
+    use crate::polyfill;
     polyfill::slice::u32_as_u8(src)
 }
 

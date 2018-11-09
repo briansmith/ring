@@ -24,7 +24,7 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use {c, init, polyfill};
+use crate::{c, init, polyfill};
 use core;
 
 // XXX: Replace with `const fn` when `const fn` is stable:

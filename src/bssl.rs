@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use {c, error};
+use crate::{c, error};
 
 /// A `c::int` returned from a foreign function containing **1** if the function was successful
 /// or **0** if an error occurred. This is the convention used by C code in `ring`.
@@ -64,7 +64,7 @@ macro_rules! bssl_test {
 #[cfg(test)]
 mod tests {
     mod result {
-        use {bssl, c};
+        use crate::{bssl, c};
         use core::mem;
 
         #[test]

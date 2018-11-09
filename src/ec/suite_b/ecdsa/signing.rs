@@ -16,11 +16,11 @@
 
 use arithmetic::montgomery::*;
 use core;
-use {der, digest, ec, error, pkcs8, rand, signature, signature_impl};
+use crate::{der, digest, ec, error, pkcs8, rand, signature, signature_impl};
 use super::digest_scalar::digest_scalar;
 use ec::suite_b::{ops::*, private_key};
 use untrusted;
-use private;
+use crate::private;
 
 /// An ECDSA signing algorithm.
 pub struct Algorithm {
@@ -362,7 +362,7 @@ static EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {
 
 #[cfg(test)]
 mod tests {
-    use {signature, test};
+    use crate::{signature, test};
     use untrusted;
 
     #[test]

@@ -19,7 +19,7 @@
 
 /// RSA signatures.
 
-use {bits, der, limb, error};
+use crate::{bits, der, limb, error};
 use untrusted;
 
 mod padding;
