@@ -203,13 +203,6 @@ static void p224_felem_to_bin28(uint8_t out[28], const p224_felem in) {
   }
 }
 
-// From internal representation to OpenSSL BIGNUM
-static BIGNUM *p224_felem_to_BN(BIGNUM *out, const p224_felem in) {
-  p224_felem_bytearray b_out;
-  p224_felem_to_bin28(b_out, in);
-  return BN_le2bn(b_out, sizeof(b_out), out);
-}
-
 static void p224_generic_to_felem(p224_felem out, const EC_FELEM *in) {
   p224_bin28_to_felem(out, in->bytes);
 }
@@ -971,7 +964,8 @@ static void p224_batch_mul(p224_felem x_out, p224_felem y_out, p224_felem z_out,
 // Takes the Jacobian coordinates (X, Y, Z) of a point and returns
 // (X', Y') = (X/Z^2, Y/Z^3)
 static int ec_GFp_nistp224_point_get_affine_coordinates(
-    const EC_GROUP *group, const EC_RAW_POINT *point, BIGNUM *x, BIGNUM *y) {
+    const EC_GROUP *group, const EC_RAW_POINT *point, EC_FELEM *x,
+    EC_FELEM *y) {
   if (ec_GFp_simple_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
@@ -990,10 +984,7 @@ static int ec_GFp_nistp224_point_get_affine_coordinates(
     p224_felem_mul(tmp, x_in, z1);
     p224_felem_reduce(x_in, tmp);
     p224_felem_contract(x_out, x_in);
-    if (!p224_felem_to_BN(x, x_out)) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-      return 0;
-    }
+    p224_felem_to_generic(x, x_out);
   }
 
   if (y != NULL) {
@@ -1004,10 +995,7 @@ static int ec_GFp_nistp224_point_get_affine_coordinates(
     p224_felem_mul(tmp, y_in, z1);
     p224_felem_reduce(y_in, tmp);
     p224_felem_contract(y_out, y_in);
-    if (!p224_felem_to_BN(y, y_out)) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-      return 0;
-    }
+    p224_felem_to_generic(y, y_out);
   }
 
   return 1;

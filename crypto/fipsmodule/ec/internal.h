@@ -124,8 +124,15 @@ struct ec_method_st {
   void (*group_finish)(EC_GROUP *);
   int (*group_set_curve)(EC_GROUP *, const BIGNUM *p, const BIGNUM *a,
                          const BIGNUM *b, BN_CTX *);
-  int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_RAW_POINT *,
-                                      BIGNUM *x, BIGNUM *y);
+
+  // point_get_affine_coordinates sets |*x| and |*y| to the affine coordinates
+  // of |p|. Either |x| or |y| may be NULL to omit it. It returns one on success
+  // and zero if |p| is the point at infinity.
+  //
+  // Note: unlike |EC_FELEM|s used as intermediate values internal to the
+  // |EC_METHOD|, |*x| and |*y| are not encoded in Montgomery form.
+  int (*point_get_affine_coordinates)(const EC_GROUP *, const EC_RAW_POINT *p,
+                                      EC_FELEM *x, EC_FELEM *y);
 
   // add sets |r| to |a| + |b|.
   void (*add)(const EC_GROUP *group, EC_RAW_POINT *r, const EC_RAW_POINT *a,

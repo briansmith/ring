@@ -743,7 +743,15 @@ int EC_POINT_get_affine_coordinates_GFp(const EC_GROUP *group,
     OPENSSL_PUT_ERROR(EC, EC_R_INCOMPATIBLE_OBJECTS);
     return 0;
   }
-  return group->meth->point_get_affine_coordinates(group, &point->raw, x, y);
+  EC_FELEM x_felem, y_felem;
+  if (!group->meth->point_get_affine_coordinates(group, &point->raw,
+                                                 x == NULL ? NULL : &x_felem,
+                                                 y == NULL ? NULL : &y_felem) ||
+      (x != NULL && !bn_set_words(x, x_felem.words, group->field.width)) ||
+      (y != NULL && !bn_set_words(y, y_felem.words, group->field.width))) {
+    return 0;
+  }
+  return 1;
 }
 
 int EC_POINT_set_affine_coordinates_GFp(const EC_GROUP *group, EC_POINT *point,

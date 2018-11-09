@@ -444,8 +444,8 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
 }
 
 static int ecp_nistz256_get_affine(const EC_GROUP *group,
-                                   const EC_RAW_POINT *point, BIGNUM *x,
-                                   BIGNUM *y) {
+                                   const EC_RAW_POINT *point, EC_FELEM *x,
+                                   EC_FELEM *y) {
   if (ec_GFp_simple_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
@@ -464,22 +464,12 @@ static int ecp_nistz256_get_affine(const EC_GROUP *group,
   ecp_nistz256_from_mont(z_inv2, z_inv2);
 
   if (x != NULL) {
-    BN_ULONG x_aff[P256_LIMBS];
-    ecp_nistz256_mul_mont(x_aff, z_inv2, point->X.words);
-    if (!bn_set_words(x, x_aff, P256_LIMBS)) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
+    ecp_nistz256_mul_mont(x->words, z_inv2, point->X.words);
   }
 
   if (y != NULL) {
-    BN_ULONG y_aff[P256_LIMBS];
     ecp_nistz256_mul_mont(z_inv3, z_inv3, z_inv2);
-    ecp_nistz256_mul_mont(y_aff, z_inv3, point->Y.words);
-    if (!bn_set_words(y, y_aff, P256_LIMBS)) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_MALLOC_FAILURE);
-      return 0;
-    }
+    ecp_nistz256_mul_mont(y->words, z_inv3, point->Y.words);
   }
 
   return 1;

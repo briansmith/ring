@@ -895,14 +895,6 @@ static void fe_from_montgomery(fe x) {
   fe_mul(x, x, kOne);
 }
 
-// BN_* compatability wrappers
-
-static BIGNUM *fe_to_BN(BIGNUM *out, const fe in) {
-  uint8_t tmp[NBYTES];
-  fe_tobytes(tmp, in);
-  return BN_le2bn(tmp, NBYTES, out);
-}
-
 static void fe_from_generic(fe out, const EC_FELEM *in) {
   fe_frombytes(out, in->bytes);
 }
@@ -1631,8 +1623,8 @@ static void batch_mul(fe x_out, fe y_out, fe z_out,
 // Takes the Jacobian coordinates (X, Y, Z) of a point and returns (X', Y') =
 // (X/Z^2, Y/Z^3).
 static int ec_GFp_nistp256_point_get_affine_coordinates(
-    const EC_GROUP *group, const EC_RAW_POINT *point, BIGNUM *x_out,
-    BIGNUM *y_out) {
+    const EC_GROUP *group, const EC_RAW_POINT *point, EC_FELEM *x_out,
+    EC_FELEM *y_out) {
   if (ec_GFp_simple_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
@@ -1652,10 +1644,7 @@ static int ec_GFp_nistp256_point_get_affine_coordinates(
     fe x;
     fe_from_generic(x, &point->X);
     fe_mul(x, x, z1);
-    if (!fe_to_BN(x_out, x)) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-      return 0;
-    }
+    fe_to_generic(x_out, x);
   }
 
   if (y_out != NULL) {
@@ -1663,10 +1652,7 @@ static int ec_GFp_nistp256_point_get_affine_coordinates(
     fe_from_generic(y, &point->Y);
     fe_mul(z1, z1, z2);
     fe_mul(y, y, z1);
-    if (!fe_to_BN(y_out, y)) {
-      OPENSSL_PUT_ERROR(EC, ERR_R_BN_LIB);
-      return 0;
-    }
+    fe_to_generic(y_out, y);
   }
 
   return 1;

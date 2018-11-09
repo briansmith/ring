@@ -182,7 +182,7 @@ int ec_GFp_mont_felem_to_bignum(const EC_GROUP *group, BIGNUM *out,
 
 static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
                                                     const EC_RAW_POINT *point,
-                                                    BIGNUM *x, BIGNUM *y) {
+                                                    EC_FELEM *x, EC_FELEM *y) {
   if (ec_GFp_simple_is_at_infinity(group, point)) {
     OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
     return 0;
@@ -201,20 +201,12 @@ static int ec_GFp_mont_point_get_affine_coordinates(const EC_GROUP *group,
   ec_GFp_mont_felem_from_montgomery(group, &z1, &z1);
 
   if (x != NULL) {
-    EC_FELEM tmp;
-    ec_GFp_mont_felem_mul(group, &tmp, &point->X, &z1);
-    if (!bn_set_words(x, tmp.words, group->field.width)) {
-      return 0;
-    }
+    ec_GFp_mont_felem_mul(group, x, &point->X, &z1);
   }
 
   if (y != NULL) {
-    EC_FELEM tmp;
     ec_GFp_mont_felem_mul(group, &z1, &z1, &z2);
-    ec_GFp_mont_felem_mul(group, &tmp, &point->Y, &z1);
-    if (!bn_set_words(y, tmp.words, group->field.width)) {
-      return 0;
-    }
+    ec_GFp_mont_felem_mul(group, y, &point->Y, &z1);
   }
 
   return 1;
