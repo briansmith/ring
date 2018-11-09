@@ -35,6 +35,7 @@
 #include <openssl/mem.h>
 #include <openssl/type_check.h>
 
+#include <assert.h>
 #include <string.h>
 
 #include "../../crypto/fipsmodule/delocate.h"
@@ -1807,6 +1808,58 @@ static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
   fe_to_generic(&r->Z, ret[2]);
 }
 
+static int ec_GFp_nistp256_cmp_x_coordinate(const EC_GROUP *group,
+                                            const EC_RAW_POINT *p,
+                                            const EC_SCALAR *r) {
+  if (ec_GFp_simple_is_at_infinity(group, p)) {
+    return 0;
+  }
+
+  // We wish to compare X/Z^2 with r. This is equivalent to comparing X with
+  // r*Z^2. Note that X and Z are represented in Montgomery form, while r is
+  // not.
+  fe Z2_mont;
+  fe_from_generic(Z2_mont, &p->Z);
+  fe_mul(Z2_mont, Z2_mont, Z2_mont);
+
+  fe r_Z2;
+  fe_frombytes(r_Z2, r->bytes);  // r < order < p, so this is valid.
+  fe_mul(r_Z2, r_Z2, Z2_mont);
+
+  fe X;
+  fe_from_generic(X, &p->X);
+  fe_from_montgomery(X);
+
+  if (OPENSSL_memcmp(&r_Z2, &X, sizeof(r_Z2)) == 0) {
+    return 1;
+  }
+
+  // During signing the x coefficient is reduced modulo the group order.
+  // Therefore there is a small possibility, less than 1/2^128, that group_order
+  // < p.x < P. in that case we need not only to compare against |r| but also to
+  // compare against r+group_order.
+
+  // P_MINUS_ORDER is the difference between the field order (p) and the group
+  // order (N). This value is not in the Montgomery domain.
+  static const BN_ULONG P_MINUS_ORDER[] = {
+      TOBN(0x0c46353d, 0x039cdaae), TOBN(0x43190553, 0x58e8617b),
+      TOBN(0x00000000, 0x00000000), TOBN(0x00000000, 0x00000000)};
+  assert(OPENSSL_ARRAY_SIZE(P_MINUS_ORDER) == group->order.width);
+  if (bn_less_than_words(r->words, P_MINUS_ORDER,
+                         OPENSSL_ARRAY_SIZE(P_MINUS_ORDER))) {
+    // We can ignore the carry because: r + group_order < p < 2^256.
+    EC_FELEM tmp;
+    bn_add_words(tmp.words, r->words, group->order.d, group->order.width);
+    fe_from_generic(r_Z2, &tmp);
+    fe_mul(r_Z2, r_Z2, Z2_mont);
+    if (OPENSSL_memcmp(&r_Z2, &X, sizeof(r_Z2)) == 0) {
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp256_method) {
   out->group_init = ec_GFp_mont_group_init;
   out->group_finish = ec_GFp_mont_group_finish;
@@ -1823,7 +1876,7 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp256_method) {
   out->felem_to_bignum = ec_GFp_mont_felem_to_bignum;
   out->scalar_inv_montgomery = ec_simple_scalar_inv_montgomery;
   out->scalar_inv_montgomery_vartime = ec_GFp_simple_mont_inv_mod_ord_vartime;
-  out->cmp_x_coordinate = ec_GFp_simple_cmp_x_coordinate;
+  out->cmp_x_coordinate = ec_GFp_nistp256_cmp_x_coordinate;
 };
 
 #undef BORINGSSL_NISTP256_64BIT
