@@ -366,36 +366,15 @@ int ec_GFp_simple_mont_inv_mod_ord_vartime(const EC_GROUP *group,
   return 1;
 }
 
-// Compares the x (affine) coordinate of the point p with x.
-// Return 1 on success 0 otherwise
-int ec_GFp_simple_cmp_x_coordinate(int *out_result, const EC_GROUP *group,
-                                   const EC_POINT *p, const BIGNUM *r,
-                                   BN_CTX *ctx) {
-  *out_result = 0;
-  int ret = 0;
-  BN_CTX_start(ctx);
-
-  BIGNUM *X = BN_CTX_get(ctx);
-  if (X == NULL) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
-    goto out;
+int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
+                                   const EC_SCALAR *r) {
+  if (ec_GFp_simple_is_at_infinity(group, p)) {
+    // |ec_get_x_coordinate_as_scalar| will check this internally, but this way
+    // we do not push to the error queue.
+    return 0;
   }
 
-  if (!EC_POINT_get_affine_coordinates_GFp(group, p, X, NULL, ctx)) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
-    goto out;
-  }
-
-  if (!ec_field_element_to_scalar(group, X)) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_BN_LIB);
-    goto out;
-  }
-
-  // The signature is correct iff |X| is equal to |r|.
-  *out_result = (BN_ucmp(X, r) == 0);
-  ret = 1;
-
-out:
-  BN_CTX_end(ctx);
-  return ret;
+  EC_SCALAR x;
+  return ec_get_x_coordinate_as_scalar(group, &x, p) &&
+         ec_scalar_equal_vartime(group, &x, r);
 }

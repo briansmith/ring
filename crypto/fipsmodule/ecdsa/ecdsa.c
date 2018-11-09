@@ -152,21 +152,13 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
     return 0;
   }
 
-  BN_CTX *ctx = BN_CTX_new();
-  if (!ctx) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
-    return 0;
-  }
-  int ret = 0;
-  EC_POINT *point = NULL;
-
   EC_SCALAR r, s, u1, u2, s_inv_mont, m;
   if (BN_is_zero(sig->r) ||
       !ec_bignum_to_scalar(group, &r, sig->r) ||
       BN_is_zero(sig->s) ||
       !ec_bignum_to_scalar(group, &s, sig->s)) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
-    goto err;
+    return 0;
   }
 
   // s_inv_mont = s^-1 in the Montgomery domain. This is
@@ -181,7 +173,13 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
   ec_scalar_mul_montgomery(group, &u1, &m, &s_inv_mont);
   ec_scalar_mul_montgomery(group, &u2, &r, &s_inv_mont);
 
-  point = EC_POINT_new(group);
+  BN_CTX *ctx = BN_CTX_new();
+  if (!ctx) {
+    OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+  int ret = 0;
+  EC_POINT *point = EC_POINT_new(group);
   if (point == NULL) {
     OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
     goto err;
@@ -191,13 +189,7 @@ int ECDSA_do_verify(const uint8_t *digest, size_t digest_len,
     goto err;
   }
 
-  int match;
-  if (!ec_cmp_x_coordinate(&match, group, point, sig->r, ctx)) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
-    goto err;
-  }
-
-  if (!match) {
+  if (!ec_cmp_x_coordinate(group, &point->raw, &r)) {
     OPENSSL_PUT_ERROR(ECDSA, ECDSA_R_BAD_SIGNATURE);
     goto err;
   }
@@ -211,29 +203,23 @@ err:
 }
 
 static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx,
-                            EC_SCALAR *out_kinv_mont, BIGNUM **rp,
+                            EC_SCALAR *out_kinv_mont, EC_SCALAR *out_r,
                             const uint8_t *digest, size_t digest_len,
                             const EC_SCALAR *priv_key) {
-  EC_POINT *tmp_point = NULL;
-  int ret = 0;
-  EC_SCALAR k;
-  BIGNUM *r = BN_new();  // this value is later returned in *rp
-  if (r == NULL) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_MALLOC_FAILURE);
-    goto err;
-  }
-  const EC_GROUP *group = EC_KEY_get0_group(eckey);
-  const BIGNUM *order = EC_GROUP_get0_order(group);
-  tmp_point = EC_POINT_new(group);
-  if (tmp_point == NULL) {
-    OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
-    goto err;
-  }
-
   // Check that the size of the group order is FIPS compliant (FIPS 186-4
   // B.5.2).
+  const EC_GROUP *group = EC_KEY_get0_group(eckey);
+  const BIGNUM *order = EC_GROUP_get0_order(group);
   if (BN_num_bits(order) < 160) {
     OPENSSL_PUT_ERROR(ECDSA, EC_R_INVALID_GROUP_ORDER);
+    return 0;
+  }
+
+  int ret = 0;
+  EC_SCALAR k;
+  EC_POINT *tmp_point = EC_POINT_new(group);
+  if (tmp_point == NULL) {
+    OPENSSL_PUT_ERROR(ECDSA, ERR_R_EC_LIB);
     goto err;
   }
 
@@ -268,24 +254,15 @@ static int ecdsa_sign_setup(const EC_KEY *eckey, BN_CTX *ctx,
 
     // Compute r, the x-coordinate of generator * k.
     if (!ec_point_mul_scalar(group, tmp_point, &k, NULL, NULL, ctx) ||
-        !EC_POINT_get_affine_coordinates_GFp(group, tmp_point, r, NULL,
-                                             ctx)) {
+        !ec_get_x_coordinate_as_scalar(group, out_r, &tmp_point->raw)) {
       goto err;
     }
+  } while (ec_scalar_is_zero(group, out_r));
 
-    if (!ec_field_element_to_scalar(group, r)) {
-      goto err;
-    }
-  } while (BN_is_zero(r));
-
-  BN_clear_free(*rp);
-  *rp = r;
-  r = NULL;
   ret = 1;
 
 err:
   OPENSSL_cleanse(&k, sizeof(k));
-  BN_clear_free(r);
   EC_POINT_free(tmp_point);
   return ret;
 }
@@ -316,17 +293,15 @@ ECDSA_SIG *ECDSA_do_sign(const uint8_t *digest, size_t digest_len,
 
   digest_to_scalar(group, &m, digest, digest_len);
   for (;;) {
-    if (!ecdsa_sign_setup(eckey, ctx, &kinv_mont, &ret->r, digest, digest_len,
-                          priv_key)) {
+    if (!ecdsa_sign_setup(eckey, ctx, &kinv_mont, &r_mont, digest, digest_len,
+                          priv_key) ||
+        !bn_set_words(ret->r, r_mont.words, order->width)) {
       goto err;
     }
 
     // Compute priv_key * r (mod order). Note if only one parameter is in the
-    // Montgomery domain, |scalar_mod_mul_montgomery| will compute the answer in
-    // the normal domain.
-    if (!ec_bignum_to_scalar(group, &r_mont, ret->r)) {
-      goto err;
-    }
+    // Montgomery domain, |ec_scalar_mod_mul_montgomery| will compute the answer
+    // in the normal domain.
     ec_scalar_to_montgomery(group, &r_mont, &r_mont);
     ec_scalar_mul_montgomery(group, &s, priv_key, &r_mont);
 

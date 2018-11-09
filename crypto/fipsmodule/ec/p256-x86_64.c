@@ -600,18 +600,10 @@ static int ecp_nistz256_mont_inv_mod_ord_vartime(const EC_GROUP *group,
   return 1;
 }
 
-static int ecp_nistz256_cmp_x_coordinate(int *out_result, const EC_GROUP *group,
-                                         const EC_POINT *p, const BIGNUM *r,
-                                         BN_CTX *ctx) {
-  *out_result = 0;
-
-  if (ec_GFp_simple_is_at_infinity(group, &p->raw)) {
-    OPENSSL_PUT_ERROR(EC, EC_R_POINT_AT_INFINITY);
-    return 0;
-  }
-
-  BN_ULONG r_words[P256_LIMBS];
-  if (!bn_copy_words(r_words, P256_LIMBS, r)) {
+static int ecp_nistz256_cmp_x_coordinate(const EC_GROUP *group,
+                                         const EC_RAW_POINT *p,
+                                         const EC_SCALAR *r) {
+  if (ec_GFp_simple_is_at_infinity(group, p)) {
     return 0;
   }
 
@@ -619,12 +611,11 @@ static int ecp_nistz256_cmp_x_coordinate(int *out_result, const EC_GROUP *group,
   // r*Z^2. Note that X and Z are represented in Montgomery form, while r is
   // not.
   BN_ULONG r_Z2[P256_LIMBS], Z2_mont[P256_LIMBS], X[P256_LIMBS];
-  ecp_nistz256_mul_mont(Z2_mont, p->raw.Z.words, p->raw.Z.words);
-  ecp_nistz256_mul_mont(r_Z2, r_words, Z2_mont);
-  ecp_nistz256_from_mont(X, p->raw.X.words);
+  ecp_nistz256_mul_mont(Z2_mont, p->Z.words, p->Z.words);
+  ecp_nistz256_mul_mont(r_Z2, r->words, Z2_mont);
+  ecp_nistz256_from_mont(X, p->X.words);
 
   if (OPENSSL_memcmp(r_Z2, X, sizeof(r_Z2)) == 0) {
-    *out_result = 1;
     return 1;
   }
 
@@ -639,18 +630,16 @@ static int ecp_nistz256_cmp_x_coordinate(int *out_result, const EC_GROUP *group,
       TOBN(0x0c46353d, 0x039cdaae), TOBN(0x43190553, 0x58e8617b),
       TOBN(0x00000000, 0x00000000), TOBN(0x00000000, 0x00000000)};
 
-  if (bn_less_than_words(r_words, P_MINUS_ORDER, P256_LIMBS)) {
-    // We can add in-place, ignoring the carry, because: r + group_order < p <
-    // 2^256
-    bn_add_words(r_words, r_words, P256_ORDER, P256_LIMBS);
-    ecp_nistz256_mul_mont(r_Z2, r_words, Z2_mont);
+  if (bn_less_than_words(r->words, P_MINUS_ORDER, P256_LIMBS)) {
+    // We can ignore the carry because: r + group_order < p < 2^256.
+    bn_add_words(r_Z2, r->words, P256_ORDER, P256_LIMBS);
+    ecp_nistz256_mul_mont(r_Z2, r_Z2, Z2_mont);
     if (OPENSSL_memcmp(r_Z2, X, sizeof(r_Z2)) == 0) {
-      *out_result = 1;
       return 1;
     }
   }
 
-  return 1;
+  return 0;
 }
 
 DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {

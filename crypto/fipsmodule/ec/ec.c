@@ -919,12 +919,21 @@ int ec_point_mul_scalar(const EC_GROUP *group, EC_POINT *r,
   return 1;
 }
 
-int ec_cmp_x_coordinate(int *out_result, const EC_GROUP *group,
-                        const EC_POINT *p, const BIGNUM *r, BN_CTX *ctx) {
-  return group->meth->cmp_x_coordinate(out_result, group, p, r, ctx);
+int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
+                        const EC_SCALAR *r) {
+  return group->meth->cmp_x_coordinate(group, p, r);
 }
 
-int ec_field_element_to_scalar(const EC_GROUP *group, BIGNUM *r) {
+int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
+                                  const EC_RAW_POINT *p) {
+  EC_FELEM x;
+  // For simplicity, in case of width mismatches between |group->field| and
+  // |group->order|, zero any untouched words in |x|.
+  OPENSSL_memset(&x, 0, sizeof(x));
+  if (!group->meth->point_get_affine_coordinates(group, p, &x, NULL)) {
+    return 0;
+  }
+
   // We must have p < 2×order, assuming p is not tiny (p >= 17). Thus rather we
   // can reduce by performing at most one subtraction.
   //
@@ -940,19 +949,14 @@ int ec_field_element_to_scalar(const EC_GROUP *group, BIGNUM *r) {
   //
   // Additionally, one can manually check this property for built-in curves. It
   // is enforced for legacy custom curves in |EC_GROUP_set_generator|.
-  //
-  // TODO(davidben): Introduce |EC_FIELD_ELEMENT|, make this a function from
-  // |EC_FIELD_ELEMENT| to |EC_SCALAR|, and cut out the |BIGNUM|. Does this need
-  // to be constant-time for signing? |r| is the x-coordinate for kG, which is
-  // public unless k was rerolled because |s| was zero.
-  assert(!BN_is_negative(r));
-  assert(BN_cmp(r, &group->field) < 0);
-  if (BN_cmp(r, &group->order) >= 0 &&
-      !BN_sub(r, r, &group->order)) {
-    return 0;
-  }
-  assert(!BN_is_negative(r));
-  assert(BN_cmp(r, &group->order) < 0);
+
+  // The above does not guarantee |group->field| is not one word larger than
+  // |group->order|, so read one extra carry word.
+  BN_ULONG carry = group->order.width < EC_MAX_SCALAR_WORDS
+                       ? x.words[group->order.width]
+                       : 0;
+  bn_reduce_once(out->words, x.words, carry, group->order.d,
+                 group->order.width);
   return 1;
 }
 

@@ -18,6 +18,7 @@
 
 #include "internal.h"
 #include "../bn/internal.h"
+#include "../../internal.h"
 
 
 int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
@@ -28,6 +29,20 @@ int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
     return 0;
   }
   return 1;
+}
+
+int ec_scalar_equal_vartime(const EC_GROUP *group, const EC_SCALAR *a,
+                            const EC_SCALAR *b) {
+  return OPENSSL_memcmp(a->words, b->words,
+                        group->order.width * sizeof(BN_ULONG)) == 0;
+}
+
+int ec_scalar_is_zero(const EC_GROUP *group, const EC_SCALAR *a) {
+  BN_ULONG mask = 0;
+  for (int i = 0; i < group->order.width; i++) {
+    mask |= a->words[i];
+  }
+  return mask == 0;
 }
 
 int ec_random_nonzero_scalar(const EC_GROUP *group, EC_SCALAR *out,

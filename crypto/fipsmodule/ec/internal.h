@@ -186,10 +186,10 @@ struct ec_method_st {
                                        const EC_SCALAR *in);
 
   // cmp_x_coordinate compares the x (affine) coordinate of |p|, mod the group
-  // order, with |r|. On error it returns zero. Otherwise it sets |*out_result|
-  // to one iff the values match.
-  int (*cmp_x_coordinate)(int *out_result, const EC_GROUP *group,
-                          const EC_POINT *p, const BIGNUM *r, BN_CTX *ctx);
+  // order, with |r|. It returns one if the values match and zero if |p| is the
+  // point at infinity of the values do not match.
+  int (*cmp_x_coordinate)(const EC_GROUP *group, const EC_RAW_POINT *p,
+                          const EC_SCALAR *r);
 } /* EC_METHOD */;
 
 const EC_METHOD *EC_GFp_mont_method(void);
@@ -273,6 +273,14 @@ OPENSSL_EXPORT int ec_bignum_to_scalar(const EC_GROUP *group, EC_SCALAR *out,
 int ec_random_nonzero_scalar(const EC_GROUP *group, EC_SCALAR *out,
                              const uint8_t additional_data[32]);
 
+// ec_scalar_equal_vartime returns one if |a| and |b| are equal and zero
+// otherwise. Both values are treated as public.
+int ec_scalar_equal_vartime(const EC_GROUP *group, const EC_SCALAR *a,
+                            const EC_SCALAR *b);
+
+// ec_scalar_is_zero returns one if |a| is zero and zero otherwise.
+int ec_scalar_is_zero(const EC_GROUP *group, const EC_SCALAR *a);
+
 // ec_scalar_add sets |r| to |a| + |b|.
 void ec_scalar_add(const EC_GROUP *group, EC_SCALAR *r, const EC_SCALAR *a,
                    const EC_SCALAR *b);
@@ -315,11 +323,17 @@ OPENSSL_EXPORT int ec_point_mul_scalar_public(
     const EC_GROUP *group, EC_POINT *r, const EC_SCALAR *g_scalar,
     const EC_POINT *p, const EC_SCALAR *p_scalar, BN_CTX *ctx);
 
-// ec_cmp_x_coordinate compares the x (affine) coordinate of |p| with |r|. It
-// returns zero on error. Otherwise it sets |*out_result| to one iff the values
-// match.
-int ec_cmp_x_coordinate(int *out_result, const EC_GROUP *group,
-                        const EC_POINT *p, const BIGNUM *r, BN_CTX *ctx);
+// ec_cmp_x_coordinate compares the x (affine) coordinate of |p|, mod the group
+// order, with |r|. It returns one if the values match and zero if |p| is the
+// point at infinity of the values do not match.
+int ec_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
+                        const EC_SCALAR *r);
+
+// ec_get_x_coordinate_as_scalar sets |*out| to |p|'s x-coordinate, modulo
+// |group->order|. It returns one on success and zero if |p| is the point at
+// infinity.
+int ec_get_x_coordinate_as_scalar(const EC_GROUP *group, EC_SCALAR *out,
+                                  const EC_RAW_POINT *p);
 
 // ec_field_element_to_scalar reduces |r| modulo |group->order|. |r| must
 // previously have been reduced modulo |group->field|.
@@ -371,12 +385,8 @@ void ec_simple_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
 int ec_GFp_simple_mont_inv_mod_ord_vartime(const EC_GROUP *group, EC_SCALAR *r,
                                            const EC_SCALAR *a);
 
-// ec_GFp_simple_cmp_x_coordinate compares the x (affine) coordinate of |p|, mod
-// the group order, with |r|. It returns zero on error. Otherwise it sets
-// |*out_result| to one iff the values match.
-int ec_GFp_simple_cmp_x_coordinate(int *out_result, const EC_GROUP *group,
-                                   const EC_POINT *p, const BIGNUM *r,
-                                   BN_CTX *ctx);
+int ec_GFp_simple_cmp_x_coordinate(const EC_GROUP *group, const EC_RAW_POINT *p,
+                                   const EC_SCALAR *r);
 
 // method functions in montgomery.c
 int ec_GFp_mont_group_init(EC_GROUP *);
