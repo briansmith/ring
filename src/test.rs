@@ -422,7 +422,7 @@ fn parse_test_case(current_section: &mut String, lines: &mut FileLines)
             },
 
             // Comments start with '#'; ignore them.
-            Some(ref line) if line.starts_with('#') => {},
+            Some(ref line) if line.starts_with('#') => (),
 
             Some(ref line) if line.starts_with('[') => {
                 assert!(is_first_line);

@@ -517,7 +517,7 @@ fn cc(file: &Path, ext: &str, target: &Target, warnings_are_errors: bool,
                 let _ = c.flag(f);
             }
         },
-        "S" => {},
+        "S" => (),
         e => panic!("Unsupported file extension: {:?}", e),
     };
     for f in cpp_flags(target) {
@@ -532,7 +532,7 @@ fn cc(file: &Path, ext: &str, target: &Target, warnings_are_errors: bool,
     match (target.os(), target.env()) {
         // ``-gfull`` is required for Darwin's |-dead_strip|.
         ("macos", _) => { let _ = c.flag("-gfull"); },
-        (_, "msvc") => {},
+        (_, "msvc") => (),
         _ => { let _ = c.flag("-g3"); },
     };
     if !target.is_debug() {
