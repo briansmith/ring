@@ -82,7 +82,8 @@ HIDDEN unsigned long OPENSSL_ppc64le_hwcap2 = 0;
 #if defined(OPENSSL_STATIC_ARMCAP)
 
 HIDDEN uint32_t OPENSSL_armcap_P =
-#if defined(OPENSSL_STATIC_ARMCAP_NEON) || defined(__ARM_NEON__)
+#if defined(OPENSSL_STATIC_ARMCAP_NEON) || \
+    (defined(__ARM_NEON__) || defined(__ARM_NEON))
     ARMV7_NEON |
 #endif
 #if defined(OPENSSL_STATIC_ARMCAP_AES) || defined(__ARM_FEATURE_CRYPTO)

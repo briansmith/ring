@@ -125,7 +125,7 @@ OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
   // hand-written NEON assembly. For now, continue to apply the workaround even
   // when the compiler is instructed to freely emit NEON code. See
   // https://crbug.com/341598 and https://crbug.com/606629.
-#if defined(__ARM_NEON__) && !defined(OPENSSL_ARM)
+#if (defined(__ARM_NEON__) || defined(__ARM_NEON)) && !defined(OPENSSL_ARM)
   return 1;
 #else
   return CRYPTO_is_NEON_capable_at_runtime();
@@ -153,7 +153,8 @@ int CRYPTO_is_ARMv8_PMULL_capable(void);
 #else
 
 OPENSSL_INLINE int CRYPTO_is_NEON_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_NEON) || defined(__ARM_NEON__)
+#if defined(OPENSSL_STATIC_ARMCAP_NEON) || \
+    (defined(__ARM_NEON__) || defined(__ARM_NEON))
   return 1;
 #else
   return 0;
