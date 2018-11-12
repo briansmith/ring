@@ -104,7 +104,6 @@ const Flag<bool> kBoolFlags[] = {
   { "-renegotiate-ignore", &TestConfig::renegotiate_ignore },
   { "-forbid-renegotiation-after-handshake",
     &TestConfig::forbid_renegotiation_after_handshake },
-  { "-p384-only", &TestConfig::p384_only },
   { "-enable-all-curves", &TestConfig::enable_all_curves },
   { "-use-old-client-cert-callback",
     &TestConfig::use_old_client_cert_callback },
@@ -147,6 +146,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-handshaker-resume", &TestConfig::handshaker_resume },
   { "-reverify-on-resume", &TestConfig::reverify_on_resume },
   { "-jdk11-workaround", &TestConfig::jdk11_workaround },
+  { "-server-preference", &TestConfig::server_preference },
 };
 
 const Flag<std::string> kStringFlags[] = {
@@ -220,10 +220,10 @@ const Flag<int> kIntFlags[] = {
 };
 
 const Flag<std::vector<int>> kIntVectorFlags[] = {
-  { "-signing-prefs", &TestConfig::signing_prefs },
-  { "-verify-prefs", &TestConfig::verify_prefs },
-  { "-expect-peer-verify-pref",
-    &TestConfig::expected_peer_verify_prefs },
+    {"-signing-prefs", &TestConfig::signing_prefs},
+    {"-verify-prefs", &TestConfig::verify_prefs},
+    {"-expect-peer-verify-pref", &TestConfig::expected_peer_verify_prefs},
+    {"-curves", &TestConfig::curves},
 };
 
 bool ParseFlag(char *flag, int argc, char **argv, int *i,
@@ -1294,7 +1294,6 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
     return nullptr;
   }
 
-
   if (install_cert_compression_algs &&
       (!SSL_CTX_add_cert_compression_alg(
            ssl_ctx.get(), 0xff02,
@@ -1339,6 +1338,10 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
            }))) {
     fprintf(stderr, "SSL_CTX_add_cert_compression_alg failed.\n");
     abort();
+  }
+
+  if (server_preference) {
+    SSL_CTX_set_options(ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
   }
 
   return ssl_ctx;
@@ -1589,16 +1592,43 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   if (!check_close_notify) {
     SSL_set_quiet_shutdown(ssl.get(), 1);
   }
-  if (p384_only) {
-    int nid = NID_secp384r1;
-    if (!SSL_set1_curves(ssl.get(), &nid, 1)) {
-      return nullptr;
+  if (!curves.empty()) {
+    std::vector<int> nids;
+    for (auto curve : curves) {
+      switch (curve) {
+        case SSL_CURVE_SECP224R1:
+          nids.push_back(NID_secp224r1);
+          break;
+
+        case SSL_CURVE_SECP256R1:
+          nids.push_back(NID_X9_62_prime256v1);
+          break;
+
+        case SSL_CURVE_SECP384R1:
+          nids.push_back(NID_secp384r1);
+          break;
+
+        case SSL_CURVE_SECP521R1:
+          nids.push_back(NID_secp521r1);
+          break;
+
+        case SSL_CURVE_X25519:
+          nids.push_back(NID_X25519);
+          break;
+
+        case SSL_CURVE_CECPQ2:
+          nids.push_back(NID_CECPQ2);
+          break;
+      }
+      if (!SSL_set1_curves(ssl.get(), &nids[0], nids.size())) {
+        return nullptr;
+      }
     }
   }
   if (enable_all_curves) {
     static const int kAllCurves[] = {
         NID_secp224r1, NID_X9_62_prime256v1, NID_secp384r1,
-        NID_secp521r1, NID_X25519,
+        NID_secp521r1, NID_X25519,           NID_CECPQ2,
     };
     if (!SSL_set1_curves(ssl.get(), kAllCurves,
                          OPENSSL_ARRAY_SIZE(kAllCurves))) {

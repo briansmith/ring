@@ -307,7 +307,7 @@ bool SSL_serialize_handback(const SSL *ssl, CBB *out) {
     return false;
   }
   if (type == handback_after_ecdhe &&
-      !s3->hs->key_share->Serialize(&key_share)) {
+      !s3->hs->key_shares[0]->Serialize(&key_share)) {
     return false;
   }
   return CBB_flush(out);
@@ -471,7 +471,7 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
     return false;
   }
   if (type == handback_after_ecdhe &&
-      (s3->hs->key_share = SSLKeyShare::Create(&key_share)) == nullptr) {
+      (s3->hs->key_shares[0] = SSLKeyShare::Create(&key_share)) == nullptr) {
     return false;
   }
 

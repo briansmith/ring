@@ -649,7 +649,6 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     SSL_set_connect_state(ssl.get());
   }
 
-
   int sock = Connect(config->port);
   if (sock == -1) {
     return false;

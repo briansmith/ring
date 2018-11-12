@@ -549,6 +549,9 @@ NextCipherSuite:
 	helloRetryRequest, haveHelloRetryRequest := msg.(*helloRetryRequestMsg)
 	var secondHelloBytes []byte
 	if haveHelloRetryRequest {
+		if c.config.Bugs.FailIfHelloRetryRequested {
+			return errors.New("tls: unexpected HelloRetryRequest")
+		}
 		// Explicitly read the ChangeCipherSpec now; it should
 		// be attached to the first flight, not the second flight.
 		if err := c.readTLS13ChangeCipherSpec(); err != nil {

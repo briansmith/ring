@@ -208,6 +208,26 @@ func (hs *serverHandshakeState) readClientHello() error {
 		}
 	}
 
+	if config.Bugs.FailIfCECPQ2Offered {
+		for _, offeredCurve := range hs.clientHello.supportedCurves {
+			if offeredCurve == CurveCECPQ2 {
+				return errors.New("tls: CECPQ2 was offered")
+			}
+		}
+	}
+
+	if expected := config.Bugs.ExpectedKeyShares; expected != nil {
+		if len(expected) != len(hs.clientHello.keyShares) {
+			return fmt.Errorf("tls: expected %d key shares, but found %d", len(expected), len(hs.clientHello.keyShares))
+		}
+
+		for i, group := range expected {
+			if found := hs.clientHello.keyShares[i].group; found != group {
+				return fmt.Errorf("tls: key share #%d is for group %d, not %d", i, found, group)
+			}
+		}
+	}
+
 	c.clientVersion = hs.clientHello.vers
 
 	// Use the versions extension if supplied, otherwise use the legacy ClientHello version.
@@ -1212,6 +1232,11 @@ func (hs *serverHandshakeState) processClientHello() (isResume bool, err error) 
 	preferredCurves := config.curvePreferences()
 Curves:
 	for _, curve := range hs.clientHello.supportedCurves {
+		if curve == CurveCECPQ2 && c.vers < VersionTLS13 {
+			// CECPQ2 is TLS 1.3-only.
+			continue
+		}
+
 		for _, supported := range preferredCurves {
 			if supported == curve {
 				supportedCurve = true
@@ -1621,7 +1646,7 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	}
 
 	keyAgreement := hs.suite.ka(c.vers)
-	skx, err := keyAgreement.generateServerKeyExchange(config, hs.cert, hs.clientHello, hs.hello)
+	skx, err := keyAgreement.generateServerKeyExchange(config, hs.cert, hs.clientHello, hs.hello, c.vers)
 	if err != nil {
 		c.sendAlert(alertHandshakeFailure)
 		return err

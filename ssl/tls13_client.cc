@@ -165,15 +165,17 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
-    // Check that the HelloRetryRequest does not request the key share that
-    // was provided in the initial ClientHello.
-    if (hs->key_share->GroupID() == group_id) {
+    // Check that the HelloRetryRequest does not request a key share that was
+    // provided in the initial ClientHello.
+    if (hs->key_shares[0]->GroupID() == group_id ||
+        (hs->key_shares[1] && hs->key_shares[1]->GroupID() == group_id)) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CURVE);
       return ssl_hs_error;
     }
 
-    hs->key_share.reset();
+    hs->key_shares[0].reset();
+    hs->key_shares[1].reset();
     hs->retry_group = group_id;
   }
 

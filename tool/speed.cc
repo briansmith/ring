@@ -32,6 +32,7 @@
 #include <openssl/ecdsa.h>
 #include <openssl/ec_key.h>
 #include <openssl/evp.h>
+#include <openssl/hrss.h>
 #include <openssl/nid.h>
 #include <openssl/rand.h>
 #include <openssl/rsa.h>
@@ -744,6 +745,61 @@ static bool SpeedScrypt(const std::string &selected) {
   return true;
 }
 
+static bool SpeedHRSS(const std::string &selected) {
+  if (!selected.empty() && selected != "HRSS") {
+    return true;
+  }
+
+  TimeResults results;
+
+  if (!TimeFunction(&results, []() -> bool {
+    struct HRSS_public_key pub;
+    struct HRSS_private_key priv;
+    uint8_t entropy[HRSS_GENERATE_KEY_BYTES];
+    RAND_bytes(entropy, sizeof(entropy));
+    HRSS_generate_key(&pub, &priv, entropy);
+    return true;
+  })) {
+    fprintf(stderr, "Failed to time HRSS_generate_key.\n");
+    return false;
+  }
+
+  results.Print("HRSS generate");
+
+  struct HRSS_public_key pub;
+  struct HRSS_private_key priv;
+  uint8_t key_entropy[HRSS_GENERATE_KEY_BYTES];
+  RAND_bytes(key_entropy, sizeof(key_entropy));
+  HRSS_generate_key(&pub, &priv, key_entropy);
+
+  uint8_t ciphertext[HRSS_CIPHERTEXT_BYTES];
+  if (!TimeFunction(&results, [&pub, &ciphertext]() -> bool {
+    uint8_t entropy[HRSS_ENCAP_BYTES];
+    uint8_t shared_key[HRSS_KEY_BYTES];
+    RAND_bytes(entropy, sizeof(entropy));
+    HRSS_encap(ciphertext, shared_key, &pub, entropy);
+    return true;
+  })) {
+    fprintf(stderr, "Failed to time HRSS_encap.\n");
+    return false;
+  }
+
+  results.Print("HRSS encap");
+
+  if (!TimeFunction(&results, [&pub, &priv, &ciphertext]() -> bool {
+    uint8_t shared_key[HRSS_KEY_BYTES];
+    HRSS_decap(shared_key, &pub, &priv, ciphertext, sizeof(ciphertext));
+    return true;
+  })) {
+    fprintf(stderr, "Failed to time HRSS_encap.\n");
+    return false;
+  }
+
+  results.Print("HRSS decap");
+
+  return true;
+}
+
 static const struct argument kArguments[] = {
     {
      "-filter", kOptionalArgument,
@@ -817,7 +873,8 @@ bool Speed(const std::vector<std::string> &args) {
       !Speed25519(selected) ||
       !SpeedSPAKE2(selected) ||
       !SpeedScrypt(selected) ||
-      !SpeedRSAKeyGen(selected)) {
+      !SpeedRSAKeyGen(selected) ||
+      !SpeedHRSS(selected)) {
     return false;
   }
 

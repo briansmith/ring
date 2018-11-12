@@ -33,6 +33,7 @@ struct TestConfig {
   std::vector<int> signing_prefs;
   std::vector<int> verify_prefs;
   std::vector<int> expected_peer_verify_prefs;
+  std::vector<int> curves;
   std::string key_file;
   std::string cert_file;
   std::string expected_server_name;
@@ -122,7 +123,6 @@ struct TestConfig {
   bool renegotiate_ignore = false;
   bool forbid_renegotiation_after_handshake = false;
   int expect_peer_signature_algorithm = 0;
-  bool p384_only = false;
   bool enable_all_curves = false;
   int expect_curve_id = 0;
   bool use_old_client_cert_callback = false;
@@ -170,6 +170,7 @@ struct TestConfig {
   bool handshaker_resume = false;
   std::string handshaker_path;
   bool jdk11_workaround = false;
+  bool server_preference = false;
 
   int argc;
   char **argv;
