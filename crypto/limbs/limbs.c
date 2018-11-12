@@ -26,6 +26,7 @@
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
 Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs);
 Limb LIMBS_less_than_limb(const Limb a[], Limb b, size_t num_limbs);
+crypto_word LIMB_shl(crypto_word a, size_t shift);
 
 /* Returns 0xfff..f if |a| is all zero limbs, and zero otherwise. |num_limbs|
  * may be zero. */
@@ -156,4 +157,8 @@ void LIMBS_shl_mod(Limb r[], const Limb a[], const Limb m[], size_t num_limbs) {
   for (size_t i = 1; i < num_limbs; ++i) {
     borrow = limb_sbb(&r[i], r[i], m[i] & overflow, borrow);
   }
+}
+
+Limb LIMB_shl(Limb a, size_t shift) {
+  return a >> shift;
 }

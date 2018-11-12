@@ -227,7 +227,7 @@ impl<M> Modulus<M> {
         input: untrusted::Input,
     ) -> Result<(Self, bits::BitLength), error::Unspecified> {
         let limbs = BoxedLimbs::positive_minimal_width_from_be_bytes(input)?;
-        let bits = minimal_limbs_bit_length(&limbs);
+        let bits = limb::limbs_minimal_bits(&limbs);
         Ok((Self::from_boxed_limbs(limbs)?, bits))
     }
 
@@ -597,7 +597,7 @@ impl<M> One<M, RR> {
     fn newRR(m: &PartialModulus<M>) -> One<M, RR> {
         use limb::LIMB_BITS;
 
-        let m_bits = minimal_limbs_bit_length(m.limbs).as_usize_bits();
+        let m_bits = limb::limbs_minimal_bits(&m.limbs).as_usize_bits();
 
         let r = (m_bits + (LIMB_BITS - 1)) / LIMB_BITS * LIMB_BITS;
 
@@ -878,7 +878,7 @@ impl Nonnegative {
         while limbs.last() == Some(&0) {
             let _ = limbs.pop();
         }
-        let r_bits = minimal_limbs_bit_length(&limbs);
+        let r_bits = limb::limbs_minimal_bits(&limbs);
         Ok((Self { limbs }, r_bits))
     }
 
@@ -913,23 +913,6 @@ impl Nonnegative {
         }
         return Ok(());
     }
-}
-
-// Returns the number of bits in `a` assuming that the top word of `a` is not
-// zero.
-fn minimal_limbs_bit_length(a: &[limb::Limb]) -> bits::BitLength {
-    let bits = match a.last() {
-        Some(limb) => {
-            assert_ne!(*limb, 0);
-            // XXX: This assumes `Limb::leading_zeros()` is constant-time.
-            let high_bits = a.last().map_or(0, |high_limb| {
-                limb::LIMB_BITS - (high_limb.leading_zeros() as usize)
-            });
-            ((a.len() - 1) * limb::LIMB_BITS) + high_bits
-        },
-        None => 0,
-    };
-    bits::BitLength::from_usize_bits(bits)
 }
 
 // Returns a > b.
