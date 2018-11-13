@@ -280,7 +280,8 @@
 
 
 use core;
-use crate::{error, init, private, rand};
+use crate::{error, init, private};
+#[cfg(feature = "use_heap")] use crate::rand;
 use untrusted;
 
 #[cfg(feature = "use_heap")]
@@ -363,10 +364,12 @@ pub mod primitive {
 
 /// A key pair for signing.
 #[derive(Debug)]
+#[cfg(feature = "use_heap")]
 pub struct KeyPair {
     inner: std::boxed::Box<KeyPairImpl + Send + Sync>,
 }
 
+#[cfg(feature = "use_heap")]
 impl KeyPair {
     pub(crate) fn new<I: KeyPairImpl + Sync>(inner: I) -> Self {
         Self {
@@ -375,6 +378,7 @@ impl KeyPair {
     }
 }
 
+#[cfg(feature = "use_heap")]
 pub(crate) trait KeyPairImpl: core::fmt::Debug + Send + 'static {
     fn sign(&self, rng: &rand::SecureRandom, msg: untrusted::Input)
             -> Result<Signature, error::Unspecified>;
@@ -392,6 +396,7 @@ pub trait SigningAlgorithm: core::fmt::Debug + Sync + 'static + private::Sealed 
 /// Returns a key for signing that is parsed from a PKCS#8 document.
 ///
 /// The key is checked to ensure it is valid for the given algorithm.
+#[cfg(feature = "use_heap")]
 #[inline]
 pub fn key_pair_from_pkcs8(alg: &'static SigningAlgorithm, input: untrusted::Input)
     -> Result<KeyPair, error::Unspecified>
@@ -401,6 +406,7 @@ pub fn key_pair_from_pkcs8(alg: &'static SigningAlgorithm, input: untrusted::Inp
 
 /// Returns a signature of the given data using the given key. The signing may or may
 /// not use `rng`, depending on the `key_pair's algorithm.
+#[cfg(feature = "use_heap")]
 #[inline]
 pub fn sign(key_pair: &KeyPair, rng: &rand::SecureRandom, msg: untrusted::Input)
             -> Result<Signature, error::Unspecified> {
