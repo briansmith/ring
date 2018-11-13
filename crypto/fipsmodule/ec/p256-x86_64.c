@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include <openssl/bn.h>
+#include <openssl/cpu.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
 
