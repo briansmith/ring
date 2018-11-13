@@ -20,7 +20,7 @@
   * If you need to build Ninja from source, then a recent version of
     [Python](https://www.python.org/downloads/) is required (Python 2.7.5 works).
 
-  * On Windows only, [Yasm](http://yasm.tortall.net/) is required. If not found
+  * On Windows only, [NASM](https://www.nasm.us/) is required. If not found
     by CMake, it may be configured explicitly by setting
     `CMAKE_ASM_NASM_COMPILER`.
 
