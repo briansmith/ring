@@ -207,8 +207,56 @@ static void p224_generic_to_felem(p224_felem out, const EC_FELEM *in) {
   p224_bin28_to_felem(out, in->bytes);
 }
 
+// Requires 0 <= in < 2*p (always call p224_felem_reduce first)
 static void p224_felem_to_generic(EC_FELEM *out, const p224_felem in) {
-  p224_felem_to_bin28(out->bytes, in);
+  // Reduce to unique minimal representation.
+  static const int64_t two56 = ((p224_limb)1) << 56;
+  // 0 <= in < 2*p, p = 2^224 - 2^96 + 1
+  // if in > p , reduce in = in - 2^224 + 2^96 - 1
+  int64_t tmp[4], a;
+  tmp[0] = in[0];
+  tmp[1] = in[1];
+  tmp[2] = in[2];
+  tmp[3] = in[3];
+  // Case 1: a = 1 iff in >= 2^224
+  a = (in[3] >> 56);
+  tmp[0] -= a;
+  tmp[1] += a << 40;
+  tmp[3] &= 0x00ffffffffffffff;
+  // Case 2: a = 0 iff p <= in < 2^224, i.e., the high 128 bits are all 1 and
+  // the lower part is non-zero
+  a = ((in[3] & in[2] & (in[1] | 0x000000ffffffffff)) + 1) |
+      (((int64_t)(in[0] + (in[1] & 0x000000ffffffffff)) - 1) >> 63);
+  a &= 0x00ffffffffffffff;
+  // turn a into an all-one mask (if a = 0) or an all-zero mask
+  a = (a - 1) >> 63;
+  // subtract 2^224 - 2^96 + 1 if a is all-one
+  tmp[3] &= a ^ 0xffffffffffffffff;
+  tmp[2] &= a ^ 0xffffffffffffffff;
+  tmp[1] &= (a ^ 0xffffffffffffffff) | 0x000000ffffffffff;
+  tmp[0] -= 1 & a;
+
+  // eliminate negative coefficients: if tmp[0] is negative, tmp[1] must
+  // be non-zero, so we only need one step
+  a = tmp[0] >> 63;
+  tmp[0] += two56 & a;
+  tmp[1] -= 1 & a;
+
+  // carry 1 -> 2 -> 3
+  tmp[2] += tmp[1] >> 56;
+  tmp[1] &= 0x00ffffffffffffff;
+
+  tmp[3] += tmp[2] >> 56;
+  tmp[2] &= 0x00ffffffffffffff;
+
+  // Now 0 <= tmp < p
+  p224_felem tmp2;
+  tmp2[0] = tmp[0];
+  tmp2[1] = tmp[1];
+  tmp2[2] = tmp[2];
+  tmp2[3] = tmp[3];
+
+  p224_felem_to_bin28(out->bytes, tmp2);
   // 224 is not a multiple of 64, so zero the remaining bytes.
   OPENSSL_memset(out->bytes + 28, 0, 32 - 28);
 }
@@ -422,55 +470,6 @@ static void p224_felem_reduce(p224_felem out, const p224_widefelem in) {
   // out[3] <= 2^56 + 2^16 (due to final carry),
   // so out < 2*p
   out[3] = output[3];
-}
-
-// Reduce to unique minimal representation.
-// Requires 0 <= in < 2*p (always call p224_felem_reduce first)
-static void p224_felem_contract(p224_felem out, const p224_felem in) {
-  static const int64_t two56 = ((p224_limb)1) << 56;
-  // 0 <= in < 2*p, p = 2^224 - 2^96 + 1
-  // if in > p , reduce in = in - 2^224 + 2^96 - 1
-  int64_t tmp[4], a;
-  tmp[0] = in[0];
-  tmp[1] = in[1];
-  tmp[2] = in[2];
-  tmp[3] = in[3];
-  // Case 1: a = 1 iff in >= 2^224
-  a = (in[3] >> 56);
-  tmp[0] -= a;
-  tmp[1] += a << 40;
-  tmp[3] &= 0x00ffffffffffffff;
-  // Case 2: a = 0 iff p <= in < 2^224, i.e., the high 128 bits are all 1 and
-  // the lower part is non-zero
-  a = ((in[3] & in[2] & (in[1] | 0x000000ffffffffff)) + 1) |
-      (((int64_t)(in[0] + (in[1] & 0x000000ffffffffff)) - 1) >> 63);
-  a &= 0x00ffffffffffffff;
-  // turn a into an all-one mask (if a = 0) or an all-zero mask
-  a = (a - 1) >> 63;
-  // subtract 2^224 - 2^96 + 1 if a is all-one
-  tmp[3] &= a ^ 0xffffffffffffffff;
-  tmp[2] &= a ^ 0xffffffffffffffff;
-  tmp[1] &= (a ^ 0xffffffffffffffff) | 0x000000ffffffffff;
-  tmp[0] -= 1 & a;
-
-  // eliminate negative coefficients: if tmp[0] is negative, tmp[1] must
-  // be non-zero, so we only need one step
-  a = tmp[0] >> 63;
-  tmp[0] += two56 & a;
-  tmp[1] -= 1 & a;
-
-  // carry 1 -> 2 -> 3
-  tmp[2] += tmp[1] >> 56;
-  tmp[1] &= 0x00ffffffffffffff;
-
-  tmp[3] += tmp[2] >> 56;
-  tmp[2] &= 0x00ffffffffffffff;
-
-  // Now 0 <= out < p
-  out[0] = tmp[0];
-  out[1] = tmp[1];
-  out[2] = tmp[2];
-  out[3] = tmp[3];
 }
 
 // Get negative value: out = -in
@@ -982,8 +981,7 @@ static int ec_GFp_nistp224_point_get_affine_coordinates(
     p224_felem x_in, x_out;
     p224_generic_to_felem(x_in, &point->X);
     p224_felem_mul(tmp, x_in, z1);
-    p224_felem_reduce(x_in, tmp);
-    p224_felem_contract(x_out, x_in);
+    p224_felem_reduce(x_out, tmp);
     p224_felem_to_generic(x, x_out);
   }
 
@@ -993,8 +991,7 @@ static int ec_GFp_nistp224_point_get_affine_coordinates(
     p224_felem_mul(tmp, z1, z2);
     p224_felem_reduce(z1, tmp);
     p224_felem_mul(tmp, y_in, z1);
-    p224_felem_reduce(y_in, tmp);
-    p224_felem_contract(y_out, y_in);
+    p224_felem_reduce(y_out, tmp);
     p224_felem_to_generic(y, y_out);
   }
 
@@ -1012,11 +1009,8 @@ static void ec_GFp_nistp224_add(const EC_GROUP *group, EC_RAW_POINT *r,
   p224_generic_to_felem(z2, &b->Z);
   p224_point_add(x1, y1, z1, x1, y1, z1, 0 /* both Jacobian */, x2, y2, z2);
   // The outputs are already reduced, but still need to be contracted.
-  p224_felem_contract(x1, x1);
   p224_felem_to_generic(&r->X, x1);
-  p224_felem_contract(y1, y1);
   p224_felem_to_generic(&r->Y, y1);
-  p224_felem_contract(z1, z1);
   p224_felem_to_generic(&r->Z, z1);
 }
 
@@ -1028,11 +1022,8 @@ static void ec_GFp_nistp224_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
   p224_generic_to_felem(z, &a->Z);
   p224_point_double(x, y, z, x, y, z);
   // The outputs are already reduced, but still need to be contracted.
-  p224_felem_contract(x, x);
   p224_felem_to_generic(&r->X, x);
-  p224_felem_contract(y, y);
   p224_felem_to_generic(&r->Y, y);
-  p224_felem_contract(z, z);
   p224_felem_to_generic(&r->Z, z);
 }
 
@@ -1041,7 +1032,7 @@ static void ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_RAW_POINT *r,
                                        const EC_RAW_POINT *p,
                                        const EC_SCALAR *p_scalar) {
   p224_felem p_pre_comp[17][3];
-  p224_felem x_in, y_in, z_in, x_out, y_out, z_out;
+  p224_felem x_out, y_out, z_out;
 
   if (p != NULL && p_scalar != NULL) {
     // We treat NULL scalars as 0, and NULL points as points at infinity, i.e.,
@@ -1076,12 +1067,9 @@ static void ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_RAW_POINT *r,
                  (const p224_felem(*)[3])p_pre_comp);
 
   // reduce the output to its unique minimal representation
-  p224_felem_contract(x_in, x_out);
-  p224_felem_to_generic(&r->X, x_in);
-  p224_felem_contract(y_in, y_out);
-  p224_felem_to_generic(&r->Y, y_in);
-  p224_felem_contract(z_in, z_out);
-  p224_felem_to_generic(&r->Z, z_in);
+  p224_felem_to_generic(&r->X, x_out);
+  p224_felem_to_generic(&r->Y, y_out);
+  p224_felem_to_generic(&r->Z, z_out);
 }
 
 static void ec_GFp_nistp224_felem_mul(const EC_GROUP *group, EC_FELEM *r,
@@ -1092,7 +1080,6 @@ static void ec_GFp_nistp224_felem_mul(const EC_GROUP *group, EC_FELEM *r,
   p224_generic_to_felem(felem2, b);
   p224_felem_mul(wide, felem1, felem2);
   p224_felem_reduce(felem1, wide);
-  p224_felem_contract(felem1, felem1);
   p224_felem_to_generic(r, felem1);
 }
 
@@ -1103,7 +1090,6 @@ static void ec_GFp_nistp224_felem_sqr(const EC_GROUP *group, EC_FELEM *r,
   p224_widefelem wide;
   p224_felem_square(wide, felem);
   p224_felem_reduce(felem, wide);
-  p224_felem_contract(felem, felem);
   p224_felem_to_generic(r, felem);
 }
 
