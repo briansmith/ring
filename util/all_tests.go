@@ -30,7 +30,8 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
+
+	"boringssl.googlesource.com/boringssl/util/testresult"
 )
 
 // TODO(davidben): Link tests with the malloc shim and port -malloc-test to this runner.
@@ -68,23 +69,6 @@ type result struct {
 	Error  error
 }
 
-// testOutput is a representation of Chromium's JSON test result format. See
-// https://www.chromium.org/developers/the-json-test-results-format
-type testOutput struct {
-	Version           int                   `json:"version"`
-	Interrupted       bool                  `json:"interrupted"`
-	PathDelimiter     string                `json:"path_delimiter"`
-	SecondsSinceEpoch float64               `json:"seconds_since_epoch"`
-	NumFailuresByType map[string]int        `json:"num_failures_by_type"`
-	Tests             map[string]testResult `json:"tests"`
-}
-
-type testResult struct {
-	Actual       string `json:"actual"`
-	Expected     string `json:"expected"`
-	IsUnexpected bool   `json:"is_unexpected"`
-}
-
 // sdeCPUs contains a list of CPU code that we run all tests under when *useSDE
 // is true.
 var sdeCPUs = []string{
@@ -111,46 +95,6 @@ var armCPUs = []string{
 	"none",   // No support for any ARM extensions.
 	"neon",   // Support for NEON.
 	"crypto", // Support for NEON and crypto extensions.
-}
-
-func newTestOutput() *testOutput {
-	return &testOutput{
-		Version:           3,
-		PathDelimiter:     ".",
-		SecondsSinceEpoch: float64(time.Now().UnixNano()) / float64(time.Second/time.Nanosecond),
-		NumFailuresByType: make(map[string]int),
-		Tests:             make(map[string]testResult),
-	}
-}
-
-func (t *testOutput) addResult(name, result string) {
-	if _, found := t.Tests[name]; found {
-		panic(name)
-	}
-	expected := "PASS"
-	if result == "SKIP" {
-		expected = "SKIP"
-	}
-	t.Tests[name] = testResult{
-		Actual:       result,
-		Expected:     expected,
-		IsUnexpected: result != expected,
-	}
-	t.NumFailuresByType[result]++
-}
-
-func (t *testOutput) writeTo(name string) error {
-	file, err := os.Create(name)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	out, err := json.MarshalIndent(t, "", "  ")
-	if err != nil {
-		return err
-	}
-	_, err = file.Write(out)
-	return err
 }
 
 func valgrindOf(dbAttach bool, path string, args ...string) *exec.Cmd {
@@ -480,7 +424,7 @@ func main() {
 		close(results)
 	}()
 
-	testOutput := newTestOutput()
+	testOutput := testresult.NewResults()
 	var failed, skipped []test
 	for testResult := range results {
 		test := testResult.Test
@@ -490,25 +434,25 @@ func main() {
 			fmt.Printf("%s\n", test.longName())
 			fmt.Printf("%s was skipped\n", args[0])
 			skipped = append(skipped, test)
-			testOutput.addResult(test.longName(), "SKIP")
+			testOutput.AddSkip(test.longName())
 		} else if testResult.Error != nil {
 			fmt.Printf("%s\n", test.longName())
 			fmt.Printf("%s failed to complete: %s\n", args[0], testResult.Error)
 			failed = append(failed, test)
-			testOutput.addResult(test.longName(), "CRASH")
+			testOutput.AddResult(test.longName(), "CRASH")
 		} else if !testResult.Passed {
 			fmt.Printf("%s\n", test.longName())
 			fmt.Printf("%s failed to print PASS on the last line.\n", args[0])
 			failed = append(failed, test)
-			testOutput.addResult(test.longName(), "FAIL")
+			testOutput.AddResult(test.longName(), "FAIL")
 		} else {
 			fmt.Printf("%s\n", test.shortName())
-			testOutput.addResult(test.longName(), "PASS")
+			testOutput.AddResult(test.longName(), "PASS")
 		}
 	}
 
 	if *jsonOutput != "" {
-		if err := testOutput.writeTo(*jsonOutput); err != nil {
+		if err := testOutput.WriteToFile(*jsonOutput); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
 		}
 	}
