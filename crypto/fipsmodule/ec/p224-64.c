@@ -1011,8 +1011,12 @@ static void ec_GFp_nistp224_add(const EC_GROUP *group, EC_RAW_POINT *r,
   p224_generic_to_felem(y2, &b->Y);
   p224_generic_to_felem(z2, &b->Z);
   p224_point_add(x1, y1, z1, x1, y1, z1, 0 /* both Jacobian */, x2, y2, z2);
+  // The outputs are already reduced, but still need to be contracted.
+  p224_felem_contract(x1, x1);
   p224_felem_to_generic(&r->X, x1);
+  p224_felem_contract(y1, y1);
   p224_felem_to_generic(&r->Y, y1);
+  p224_felem_contract(z1, z1);
   p224_felem_to_generic(&r->Z, z1);
 }
 
@@ -1023,8 +1027,12 @@ static void ec_GFp_nistp224_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
   p224_generic_to_felem(y, &a->Y);
   p224_generic_to_felem(z, &a->Z);
   p224_point_double(x, y, z, x, y, z);
+  // The outputs are already reduced, but still need to be contracted.
+  p224_felem_contract(x, x);
   p224_felem_to_generic(&r->X, x);
+  p224_felem_contract(y, y);
   p224_felem_to_generic(&r->Y, y);
+  p224_felem_contract(z, z);
   p224_felem_to_generic(&r->Z, z);
 }
 

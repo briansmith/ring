@@ -754,6 +754,17 @@ TEST_P(ECCurveTest, P224Bug) {
   EXPECT_EQ(0, EC_POINT_cmp(group(), ret.get(), g, nullptr));
 }
 
+TEST_P(ECCurveTest, GPlusMinusG) {
+  const EC_POINT *g = EC_GROUP_get0_generator(group());
+  bssl::UniquePtr<EC_POINT> p(EC_POINT_dup(g, group()));
+  ASSERT_TRUE(p);
+  ASSERT_TRUE(EC_POINT_invert(group(), p.get(), nullptr));
+  bssl::UniquePtr<EC_POINT> sum(EC_POINT_new(group()));
+
+  ASSERT_TRUE(EC_POINT_add(group(), sum.get(), g, p.get(), nullptr));
+  EXPECT_TRUE(EC_POINT_is_at_infinity(group(), sum.get()));
+}
+
 static std::vector<EC_builtin_curve> AllCurves() {
   const size_t num_curves = EC_get_builtin_curves(nullptr, 0);
   std::vector<EC_builtin_curve> curves(num_curves);
