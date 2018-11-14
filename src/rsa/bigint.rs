@@ -493,7 +493,6 @@ pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>)
 
 
 // The value 1, Montgomery-encoded some number of times.
-#[derive(Clone)]
 pub struct One<M, E>(Elem<M, E>);
 
 #[cfg(feature = "rsa_signing")]
@@ -554,13 +553,6 @@ impl<M> One<M, RR> {
             limbs: RR.limbs,
             encoding: PhantomData, // PhantomData<RR>
         })
-    }
-}
-
-#[cfg(feature = "rsa_signing")]
-impl<M> One<M, RRR> {
-    pub fn newRRR(oneRR: One<M, RR>, m: &Modulus<M>) -> One<M, RRR> {
-        One(elem_squared(oneRR.0, &m))
     }
 }
 

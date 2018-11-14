@@ -17,7 +17,7 @@
 use crate::{bits, der, digest, error, pkcs8, rand};
 use std;
 use super::{bigint, bigint::Prime, N, verification};
-use arithmetic::montgomery::{R, RR, RRR};
+use arithmetic::montgomery::{R, RR};
 use untrusted;
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
@@ -308,10 +308,10 @@ impl KeyPair {
                 // 6.4.1.4.3 - Step 7.
 
                 // Step 7.a.
-                let (p, p_oneRR) = PrivatePrime::new(p, dP)?;
+                let p = PrivatePrime::new(p, dP)?;
 
                 // Step 7.b.
-                let (q, _) = PrivatePrime::new(q, dQ)?;
+                let q = PrivatePrime::new(q, dQ)?;
 
                 let q_mod_p = q.modulus.to_elem(&p.modulus);
 
@@ -321,7 +321,7 @@ impl KeyPair {
                 } else {
                     // We swapped `p` and `q` above, so we need to calculate
                     // `qInv`.  Step 7.f below will verify `qInv` is correct.
-                    let q_mod_p = bigint::elem_mul(p_oneRR.as_ref(),
+                    let q_mod_p = bigint::elem_mul(p.oneRR.as_ref(),
                                                    q_mod_p.clone(),
                                                    &p.modulus);
                     bigint::elem_inverse_consttime(q_mod_p, &p.modulus, &p.oneR)?
@@ -333,7 +333,7 @@ impl KeyPair {
 
                 // Step 7.f.
                 let qInv =
-                    bigint::elem_mul(p_oneRR.as_ref(), qInv, &p.modulus);
+                    bigint::elem_mul(p.oneRR.as_ref(), qInv, &p.modulus);
                 bigint::verify_inverses_consttime(&qInv, q_mod_p, &p.modulus)?;
 
                 let qq =
@@ -365,14 +365,14 @@ struct PrivatePrime<M: Prime> {
     modulus: bigint::Modulus<M>,
     exponent: bigint::PrivateExponent<M>,
     oneR: bigint::One<M, R>,
-    oneRRR: bigint::One<M, RRR>,
+    oneRR: bigint::One<M, RR>,
 }
 
 impl<M: Prime + Clone> PrivatePrime<M> {
     /// Constructs a `PrivatePrime` from the private prime `p` and `dP` where
     /// dP == d % (p - 1).
     fn new(p: bigint::Nonnegative, dP: untrusted::Input)
-           -> Result<(Self, bigint::One<M, RR>), error::Unspecified> {
+           -> Result<Self, error::Unspecified> {
         let p = bigint::Modulus::from(p)?;
 
         // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Steps 7.a & 7.b.
@@ -389,14 +389,13 @@ impl<M: Prime + Clone> PrivatePrime<M> {
 
         let oneRR = bigint::One::newRR(&p);
         let oneR = bigint::One::newR(&oneRR, &p);
-        let oneRRR = bigint::One::newRRR(oneRR.clone(), &p);
 
-        Ok((PrivatePrime {
+        Ok(PrivatePrime {
             modulus: p,
             exponent: dP,
-            oneR: oneR,
-            oneRRR: oneRRR,
-        }, oneRR))
+            oneR,
+            oneRR,
+        })
     }
 }
 
@@ -405,7 +404,10 @@ fn elem_exp_consttime<M, MM>(c: &bigint::Elem<MM>, p: &PrivatePrime<M>)
                              where M: bigint::NotMuchSmallerModulus<MM>,
                                    M: Prime {
     let c_mod_m = bigint::elem_reduced(c, &p.modulus)?;
-    let c_mod_m = bigint::elem_mul(p.oneRRR.as_ref(), c_mod_m, &p.modulus);
+    // We could precompute `oneRRR = elem_squared(&p.oneRR`) as mentioned
+    // in the Smooth CRT-RSA paper.
+    let c_mod_m = bigint::elem_mul(p.oneRR.as_ref(), c_mod_m, &p.modulus);
+    let c_mod_m = bigint::elem_mul(p.oneRR.as_ref(), c_mod_m, &p.modulus);
     bigint::elem_exp_consttime(c_mod_m, &p.exponent, &p.oneR, &p.modulus)
 }
 
