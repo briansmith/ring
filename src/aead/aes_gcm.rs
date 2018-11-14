@@ -170,7 +170,7 @@ mod tests {
     #[repr(C)]
     pub struct AES_KEY {
         pub rd_key: [u32; 4 * (AES_MAX_ROUNDS + 1)],
-        pub rounds: usize,
+        pub rounds: c::uint,
     }
 
     extern "C" {
