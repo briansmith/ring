@@ -54,10 +54,6 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#if !defined(__STDC_FORMAT_MACROS)
-#define __STDC_FORMAT_MACROS
-#endif
-
 #include <openssl/cpu.h>
 
 

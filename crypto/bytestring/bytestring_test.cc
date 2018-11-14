@@ -12,10 +12,6 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#if !defined(__STDC_CONSTANT_MACROS)
-#define __STDC_CONSTANT_MACROS
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

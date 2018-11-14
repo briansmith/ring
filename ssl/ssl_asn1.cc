@@ -80,13 +80,6 @@
  * OTHER ENTITY BASED ON INFRINGEMENT OF INTELLECTUAL PROPERTY RIGHTS OR
  * OTHERWISE. */
 
-// Per C99, various stdint.h macros are unavailable in C++ unless some macros
-// are defined. C++11 overruled this decision, but older Android NDKs still
-// require it.
-#if !defined(__STDC_LIMIT_MACROS)
-#define __STDC_LIMIT_MACROS
-#endif
-
 #include <openssl/ssl.h>
 
 #include <limits.h>
