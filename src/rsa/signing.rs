@@ -324,7 +324,7 @@ impl KeyPair {
                     let q_mod_p = bigint::elem_mul(p.oneRR.as_ref(),
                                                    q_mod_p.clone(),
                                                    &p.modulus);
-                    bigint::elem_inverse_consttime(q_mod_p, &p.modulus, &p.oneR)?
+                    bigint::elem_inverse_consttime(q_mod_p, &p.modulus, &p.oneRR)?
                 };
 
                 // Steps 7.d and 7.e are omitted per the documentation above,
@@ -364,7 +364,6 @@ impl KeyPair {
 struct PrivatePrime<M: Prime> {
     modulus: bigint::Modulus<M>,
     exponent: bigint::PrivateExponent<M>,
-    oneR: bigint::One<M, R>,
     oneRR: bigint::One<M, RR>,
 }
 
@@ -388,12 +387,10 @@ impl<M: Prime + Clone> PrivatePrime<M> {
         // it so.
 
         let oneRR = bigint::One::newRR(&p);
-        let oneR = bigint::One::newR(&oneRR, &p);
 
         Ok(PrivatePrime {
             modulus: p,
             exponent: dP,
-            oneR,
             oneRR,
         })
     }
@@ -408,7 +405,7 @@ fn elem_exp_consttime<M, MM>(c: &bigint::Elem<MM>, p: &PrivatePrime<M>)
     // in the Smooth CRT-RSA paper.
     let c_mod_m = bigint::elem_mul(p.oneRR.as_ref(), c_mod_m, &p.modulus);
     let c_mod_m = bigint::elem_mul(p.oneRR.as_ref(), c_mod_m, &p.modulus);
-    bigint::elem_exp_consttime(c_mod_m, &p.exponent, &p.oneR, &p.modulus)
+    bigint::elem_exp_consttime(c_mod_m, &p.exponent, &p.oneRR, &p.modulus)
 }
 
 

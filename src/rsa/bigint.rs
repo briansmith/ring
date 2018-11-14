@@ -495,13 +495,6 @@ pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>)
 // The value 1, Montgomery-encoded some number of times.
 pub struct One<M, E>(Elem<M, E>);
 
-#[cfg(feature = "rsa_signing")]
-impl<M> One<M, R> {
-    pub fn newR(oneRR: &One<M, RR>, m: &Modulus<M>) -> One<M, R> {
-        One(oneRR.0.clone().decode_once(m))
-    }
-}
-
 impl<M> One<M, RR> {
     // Returns RR = = R**2 (mod n) where R = 2**r is the smallest power of
     // 2**LIMB_BITS such that R > m.
@@ -704,16 +697,20 @@ impl<M: Prime> PrivateExponent<M> {
 
 #[cfg(feature = "rsa_signing")]
 pub fn elem_exp_consttime<M>(
-        base: Elem<M, R>, exponent: &PrivateExponent<M>, oneR: &One<M, R>,
+        base: Elem<M, R>, exponent: &PrivateExponent<M>, oneRR: &One<M, RR>,
         m: &Modulus<M>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
     let mut r = Elem {
         limbs: base.limbs,
         encoding: PhantomData,
     };
+    let oneR = {
+        let one = m.one();
+        elem_mul(oneRR.as_ref(), one, m)
+    };
     Result::from(unsafe {
         GFp_BN_mod_exp_mont_consttime(r.limbs.as_mut_ptr(), r.limbs.as_ptr(),
                                       exponent.limbs.as_ptr(),
-                                      oneR.0.limbs.as_ptr(), m.limbs.as_ptr(),
+                                      oneR.limbs.as_ptr(), m.limbs.as_ptr(),
                                       m.limbs.len(), &m.n0)
     })?;
 
@@ -737,8 +734,8 @@ pub fn elem_exp_consttime<M>(
 pub fn elem_inverse_consttime<M: Prime>(
         a: Elem<M, R>,
         m: &Modulus<M>,
-        oneR: &One<M, R>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-    elem_exp_consttime(a, &PrivateExponent::for_flt(&m), oneR, m)
+        oneRR: &One<M, RR>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
+    elem_exp_consttime(a, &PrivateExponent::for_flt(&m), oneRR, m)
 }
 
 /// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
@@ -931,8 +928,7 @@ mod tests {
             };
             let base = into_encoded(base, &m);
             let oneRR = One::newRR(&m);
-            let one = One::newR(&oneRR, &m);
-            let actual_result = elem_exp_consttime(base, &e, &one, &m).unwrap();
+            let actual_result = elem_exp_consttime(base, &e, &oneRR, &m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
 
             Ok(())
