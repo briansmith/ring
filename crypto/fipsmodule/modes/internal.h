@@ -66,13 +66,19 @@ int GFp_aes_block_is_aesni_encrypt(aes_block_f aes_block);
 // GCM definitions
 typedef struct { uint64_t hi,lo; } u128;
 
-typedef void (*gcm128_gmult_f)(uint8_t Xi[16], const u128 Htable[16]);
-typedef void (*gcm128_ghash_f)(uint8_t Xi[16], const u128 Htable[16],
-                               const uint8_t *inp, size_t len);
-
 #define GCM128_HTABLE_LEN 16
 
 #define GCM128_SERIALIZED_LEN (GCM128_HTABLE_LEN * 16)
+
+/* gmult_func multiplies |Xi| by the GCM key and writes the result back to
+ * |Xi|. */
+typedef void (*gmult_func)(uint8_t  Xi[16], const u128 Htable[GCM128_HTABLE_LEN]);
+
+/* ghash_func repeatedly multiplies |Xi| by the GCM key and adds in blocks from
+ * |inp|. The result is written back to |Xi| and the |len| argument must be a
+ * multiple of 16. */
+typedef void (*ghash_func)(uint8_t Xi[16], const u128 Htable[GCM128_HTABLE_LEN],
+                           const uint8_t *inp, size_t len);
 
 // This differs from OpenSSL's |gcm128_context| in that it does not have the
 // |key| pointer, in order to make it |memcpy|-friendly. See GFp/modes.h
@@ -94,8 +100,8 @@ struct gcm128_context {
   // assembler modules, i.e. don't change the order!
   u128 Htable[GCM128_HTABLE_LEN];
 
-  gcm128_gmult_f gmult;
-  gcm128_ghash_f ghash;
+  gmult_func gmult;
+  ghash_func ghash;
   aes_block_f block;
 
   // use_aesni_gcm_crypt is true if this context should use the assembly

@@ -472,7 +472,7 @@ int GFp_gcm128_aad(GCM128_CONTEXT *ctx, const uint8_t *aad, size_t len) {
   assert(ctx->len.u[1] == 0);
 
 #ifdef GCM_FUNCREF_4BIT
-  gcm128_gmult_f gcm_gmult_p = ctx->gmult;
+  gmult_func gcm_gmult_p = ctx->gmult;
 #endif
 
   ctx->len.u[0] = len;
@@ -504,9 +504,9 @@ int GFp_gcm128_encrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 
   unsigned int ctr;
 #ifdef GCM_FUNCREF_4BIT
-  gcm128_gmult_f gcm_gmult_p = ctx->gmult;
+  gmult_func gcm_gmult_p = ctx->gmult;
 #ifdef GHASH
-  gcm128_ghash_f gcm_ghash_p = ctx->ghash;
+  ghash_func gcm_ghash_p = ctx->ghash;
 #endif
 #endif
 
@@ -583,9 +583,9 @@ int GFp_gcm128_decrypt_ctr32(GCM128_CONTEXT *ctx, const AES_KEY *key,
 
   unsigned int ctr;
 #ifdef GCM_FUNCREF_4BIT
-  gcm128_gmult_f gcm_gmult_p = ctx->gmult;
+  gmult_func gcm_gmult_p = ctx->gmult;
 #ifdef GHASH
-  gcm128_ghash_f gcm_ghash_p = ctx->ghash;
+  ghash_func gcm_ghash_p = ctx->ghash;
 #endif
 #endif
 
@@ -664,7 +664,7 @@ void GFp_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16]) {
   uint64_t alen = ctx->len.u[0] << 3;
   uint64_t clen = ctx->len.u[1] << 3;
 #ifdef GCM_FUNCREF_4BIT
-  gcm128_gmult_f gcm_gmult_p = ctx->gmult;
+  gmult_func gcm_gmult_p = ctx->gmult;
 #endif
 
   uint8_t a_c_len[16];
