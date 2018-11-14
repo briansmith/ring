@@ -17,7 +17,7 @@
 use crate::{bits, der, digest, error, pkcs8, rand};
 use std;
 use super::{bigint, bigint::Prime, N, verification};
-use arithmetic::montgomery::{R, RR};
+use arithmetic::montgomery::R;
 use untrusted;
 
 /// An RSA key pair, used for signing. Feature: `rsa_signing`.
@@ -30,7 +30,6 @@ pub struct KeyPair {
     p: PrivatePrime<P>,
     q: PrivatePrime<Q>,
     qInv: bigint::Elem<P, R>,
-    oneRR_mod_n: bigint::One<N, RR>,
     qq: bigint::Modulus<QQ>,
     q_mod_n: bigint::Elem<N, R>,
     public_key: verification::Key,
@@ -257,7 +256,6 @@ impl KeyPair {
 
                 // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
 
-                let oneRR_mod_n = bigint::One::newRR(&public_key.n);
                 let q_mod_n_decoded = q.to_elem(&public_key.n)?;
 
                 // TODO: Step 5.i
@@ -272,7 +270,7 @@ impl KeyPair {
                 // and then assume that these preconditions are enough to
                 // let us assume that checking p * q == 0 (mod n) is equivalent
                 // to checking p * q == n.
-                let q_mod_n = bigint::elem_mul(oneRR_mod_n.as_ref(),
+                let q_mod_n = bigint::elem_mul(public_key.n.oneRR().as_ref(),
                                                q_mod_n_decoded.clone(),
                                                &public_key.n);
                 let p_mod_n = p.to_elem(&public_key.n)?;
@@ -321,10 +319,10 @@ impl KeyPair {
                 } else {
                     // We swapped `p` and `q` above, so we need to calculate
                     // `qInv`.  Step 7.f below will verify `qInv` is correct.
-                    let q_mod_p = bigint::elem_mul(p.oneRR.as_ref(),
+                    let q_mod_p = bigint::elem_mul(p.modulus.oneRR().as_ref(),
                                                    q_mod_p.clone(),
                                                    &p.modulus);
-                    bigint::elem_inverse_consttime(q_mod_p, &p.modulus, &p.oneRR)?
+                    bigint::elem_inverse_consttime(q_mod_p, &p.modulus)?
                 };
 
                 // Steps 7.d and 7.e are omitted per the documentation above,
@@ -333,7 +331,7 @@ impl KeyPair {
 
                 // Step 7.f.
                 let qInv =
-                    bigint::elem_mul(p.oneRR.as_ref(), qInv, &p.modulus);
+                    bigint::elem_mul(p.modulus.oneRR().as_ref(), qInv, &p.modulus);
                 bigint::verify_inverses_consttime(&qInv, q_mod_p, &p.modulus)?;
 
                 let qq =
@@ -344,7 +342,6 @@ impl KeyPair {
                     p,
                     q,
                     qInv,
-                    oneRR_mod_n,
                     q_mod_n,
                     qq,
                     public_key,
@@ -364,7 +361,6 @@ impl KeyPair {
 struct PrivatePrime<M: Prime> {
     modulus: bigint::Modulus<M>,
     exponent: bigint::PrivateExponent<M>,
-    oneRR: bigint::One<M, RR>,
 }
 
 impl<M: Prime + Clone> PrivatePrime<M> {
@@ -386,12 +382,9 @@ impl<M: Prime + Clone> PrivatePrime<M> {
         // and `e`. TODO: Either prove that what we do is sufficient, or make
         // it so.
 
-        let oneRR = bigint::One::newRR(&p);
-
         Ok(PrivatePrime {
             modulus: p,
             exponent: dP,
-            oneRR,
         })
     }
 }
@@ -403,9 +396,9 @@ fn elem_exp_consttime<M, MM>(c: &bigint::Elem<MM>, p: &PrivatePrime<M>)
     let c_mod_m = bigint::elem_reduced(c, &p.modulus)?;
     // We could precompute `oneRRR = elem_squared(&p.oneRR`) as mentioned
     // in the Smooth CRT-RSA paper.
-    let c_mod_m = bigint::elem_mul(p.oneRR.as_ref(), c_mod_m, &p.modulus);
-    let c_mod_m = bigint::elem_mul(p.oneRR.as_ref(), c_mod_m, &p.modulus);
-    bigint::elem_exp_consttime(c_mod_m, &p.exponent, &p.oneRR, &p.modulus)
+    let c_mod_m = bigint::elem_mul(p.modulus.oneRR().as_ref(), c_mod_m, &p.modulus);
+    let c_mod_m = bigint::elem_mul(p.modulus.oneRR().as_ref(), c_mod_m, &p.modulus);
+    bigint::elem_exp_consttime(c_mod_m, &p.exponent, &p.modulus)
 }
 
 
@@ -538,7 +531,7 @@ impl SigningState {
         // not verified during `KeyPair` construction.
         {
             let computed =
-                bigint::elem_mul(&key.oneRR_mod_n.as_ref(), m.clone(), n);
+                bigint::elem_mul(&key.public_key.n.oneRR().as_ref(), m.clone(), n);
             let verify =
                 bigint::elem_exp_vartime(computed, key.public_key.e, n);
             let verify = verify.into_unencoded(n);
