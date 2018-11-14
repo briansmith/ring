@@ -208,6 +208,8 @@ pub struct Modulus<M> {
     // ones that don't, we could use a shorter `R` value and use faster `Limb`
     // calculations instead of double-precision `u64` calculations.
     n0: N0,
+
+    oneRR: One<M, RR>,
 }
 
 impl core::fmt::Debug for Modulus<super::N> {
@@ -266,15 +268,29 @@ impl<M> Modulus<M> {
             unsafe { GFp_bn_neg_inv_mod_r_u64(n_mod_r) }
         };
 
+        let n0 = n0_from_u64(n0);
+
+        let oneRR = {
+            let partial = PartialModulus {
+                limbs: &n.limbs,
+                n0: n0.clone(),
+                m: PhantomData,
+            };
+
+            One::newRR(&partial)
+        };
+
         Ok(Modulus {
             limbs: n,
-            n0: n0_from_u64(n0),
+            n0,
+            oneRR,
         })
     }
 
     #[inline]
     fn width(&self) -> Width<M> { self.limbs.width() }
 
+    #[cfg(feature = "rsa_signing")]
     fn zero<E>(&self) -> Elem<M, E> {
         Elem {
             limbs: BoxedLimbs::zero(self.width()),
@@ -290,6 +306,8 @@ impl<M> Modulus<M> {
         r
     }
 
+    pub fn oneRR(&self) -> &One<M, RR> { &self.oneRR }
+
     #[cfg(feature = "rsa_signing")]
     pub fn to_elem<L>(&self, l: &Modulus<L>) -> Elem<L, Unencoded>
         where M: SmallerModulus<L>
@@ -302,6 +320,34 @@ impl<M> Modulus<M> {
                 limbs: limbs.limbs,
                 m: PhantomData,
             },
+            encoding: PhantomData,
+        }
+    }
+
+    fn as_partial(&self) -> PartialModulus<M> {
+        PartialModulus {
+            limbs: &self.limbs,
+            n0: self.n0,
+            m: PhantomData,
+        }
+    }
+}
+
+struct PartialModulus<'a, M> {
+    limbs: &'a [limb::Limb],
+    n0: N0,
+    m: PhantomData<M>,
+}
+
+impl<'a, M> PartialModulus<'a, M> {
+    // TODO: XXX Avoid duplication with `Modulus`.
+    fn zero(&self) -> Elem<M, R> {
+        let width = Width {
+            num_limbs: self.limbs.len(),
+            m: PhantomData,
+        };
+        Elem {
+            limbs: BoxedLimbs::zero(width),
             encoding: PhantomData,
         }
     }
@@ -394,7 +440,14 @@ impl<M> Elem<M, Unencoded> {
     }
 }
 
-pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, mut b: Elem<M, BF>, m: &Modulus<M>)
+pub fn elem_mul<M, AF, BF>(a: &Elem<M, AF>, b: Elem<M, BF>, m: &Modulus<M>)
+                           -> Elem<M, <(AF, BF) as ProductEncoding>::Output>
+    where (AF, BF): ProductEncoding
+{
+    elem_mul_(a, b, &m.as_partial())
+}
+
+fn elem_mul_<M, AF, BF>(a: &Elem<M, AF>, mut b: Elem<M, BF>, m: &PartialModulus<M>)
         -> Elem<M, <(AF, BF) as ProductEncoding>::Output>
         where (AF, BF): ProductEncoding {
     unsafe {
@@ -442,7 +495,7 @@ pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
     Ok(r)
 }
 
-fn elem_squared<M, E>(mut a: Elem<M, E>, m: &Modulus<M>)
+fn elem_squared<M, E>(mut a: Elem<M, E>, m: &PartialModulus<M>)
         -> Elem<M, <(E, E) as ProductEncoding>::Output>
         where (E, E): ProductEncoding {
     unsafe {
@@ -503,10 +556,10 @@ impl<M> One<M, RR> {
     // values, using `LIMB_BITS` here, rather than `N0_LIMBS_USED * LIMB_BITS`,
     // is correct because R**2 will still be a multiple of the latter as
     // `N0_LIMBS_USED` is either one or two.
-    pub fn newRR(m: &Modulus<M>) -> One<M, RR> {
+    fn newRR(m: &PartialModulus<M>) -> One<M, RR> {
         use limb::LIMB_BITS;
 
-        let m_bits = minimal_limbs_bit_length(&m.limbs).as_usize_bits();
+        let m_bits = minimal_limbs_bit_length(m.limbs).as_usize_bits();
 
         let r = (m_bits + (LIMB_BITS - 1)) / LIMB_BITS * LIMB_BITS;
 
@@ -611,12 +664,12 @@ pub const PUBLIC_EXPONENT_MAX_VALUE: u64 = (1u64 << 33) - 1;
 pub fn elem_exp_vartime<M>(
         base: Elem<M, R>, PublicExponent(exponent): PublicExponent,
         m: &Modulus<M>) -> Elem<M, R> {
-    elem_exp_vartime_(base, exponent, m)
+    elem_exp_vartime_(base, exponent, &m.as_partial())
 }
 
 /// Calculates base**exponent (mod m).
 fn elem_exp_vartime_<M>(
-    base: Elem<M, R>, exponent: u64, m: &Modulus<M>) -> Elem<M, R>
+    base: Elem<M, R>, exponent: u64, m: &PartialModulus<M>) -> Elem<M, R>
 {
     // Use what [Knuth] calls the "S-and-X binary method", i.e. variable-time
     // square-and-multiply that scans the exponent from the most significant
@@ -646,7 +699,7 @@ fn elem_exp_vartime_<M>(
         bit >>= 1;
         acc = elem_squared(acc, m);
         if (exponent & bit) != 0 {
-            acc = elem_mul(&base, acc, m);
+            acc = elem_mul_(&base, acc, m);
         }
     }
     acc
@@ -697,15 +750,15 @@ impl<M: Prime> PrivateExponent<M> {
 
 #[cfg(feature = "rsa_signing")]
 pub fn elem_exp_consttime<M>(
-        base: Elem<M, R>, exponent: &PrivateExponent<M>, oneRR: &One<M, RR>,
-        m: &Modulus<M>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
+        base: Elem<M, R>, exponent: &PrivateExponent<M>, m: &Modulus<M>)
+        -> Result<Elem<M, Unencoded>, error::Unspecified> {
     let mut r = Elem {
         limbs: base.limbs,
         encoding: PhantomData,
     };
     let oneR = {
         let one = m.one();
-        elem_mul(oneRR.as_ref(), one, m)
+        elem_mul(m.oneRR().as_ref(), one, m)
     };
     Result::from(unsafe {
         GFp_BN_mod_exp_mont_consttime(r.limbs.as_mut_ptr(), r.limbs.as_ptr(),
@@ -733,9 +786,8 @@ pub fn elem_exp_consttime<M>(
 #[cfg(feature = "rsa_signing")]
 pub fn elem_inverse_consttime<M: Prime>(
         a: Elem<M, R>,
-        m: &Modulus<M>,
-        oneRR: &One<M, RR>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-    elem_exp_consttime(a, &PrivateExponent::for_flt(&m), oneRR, m)
+        m: &Modulus<M>) -> Result<Elem<M, Unencoded>, error::Unspecified> {
+    elem_exp_consttime(a, &PrivateExponent::for_flt(&m), m)
 }
 
 /// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
@@ -927,8 +979,7 @@ mod tests {
                     untrusted::Input::from(&bytes), &m).expect("valid exponent")
             };
             let base = into_encoded(base, &m);
-            let oneRR = One::newRR(&m);
-            let actual_result = elem_exp_consttime(base, &e, &oneRR, &m).unwrap();
+            let actual_result = elem_exp_consttime(base, &e, &m).unwrap();
             assert_elem_eq(&actual_result, &expected_result);
 
             Ok(())
@@ -987,7 +1038,7 @@ mod tests {
             let a = consume_elem(test_case, "A", &m);
 
             let a = into_encoded(a, &m);
-            let actual_result = elem_squared(a, &m);
+            let actual_result = elem_squared(a, &m.as_partial());
             let actual_result = actual_result.into_unencoded(&m);
             assert_elem_eq(&actual_result, &expected_result);
 
@@ -1012,7 +1063,7 @@ mod tests {
                 test_case, "A", expected_result.limbs.len() * 2);
 
             let actual_result = elem_reduced(&a, &m).unwrap();
-            let oneRR = One::newRR(&m);
+            let oneRR = m.oneRR();
             let actual_result = elem_mul(oneRR.as_ref(), actual_result, &m);
             assert_elem_eq(&actual_result, &expected_result);
 
@@ -1091,7 +1142,6 @@ mod tests {
     }
 
     fn into_encoded<M>(a: Elem<M, Unencoded>, m: &Modulus<M>) -> Elem<M, R> {
-        let oneRR = One::newRR(&m);
-        elem_mul(&oneRR.as_ref(), a, m)
+        elem_mul(m.oneRR().as_ref(), a, m)
     }
 }
