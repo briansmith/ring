@@ -224,7 +224,6 @@ struct Key {
 
 const KEY_CTX_BUF_ELEMS: usize = (KEY_CTX_BUF_LEN + 7) / 8;
 
-// Keep this in sync with `aead_aes_gcm_ctx` in e_aes.c.
 const KEY_CTX_BUF_LEN: usize = self::aes_gcm::AES_KEY_CTX_BUF_LEN;
 
 impl Key {
