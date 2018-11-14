@@ -27,11 +27,6 @@ pub enum R {}
 #[derive(Copy, Clone)]
 pub enum RR {}
 
-// Indicates the element is encoded three times; the value has three
-// *R* factors that need to be canceled out.
-#[derive(Copy, Clone)]
-pub enum RRR {}
-
 // Indicates the element is inversely encoded; the value has one
 // 1/*R* factor that needs to be canceled out.
 #[derive(Copy, Clone)]
@@ -39,7 +34,6 @@ pub enum RInverse {}
 
 pub trait Encoding {}
 
-impl Encoding for RRR {}
 impl Encoding for RR {}
 impl Encoding for R {}
 impl Encoding for Unencoded {}
@@ -50,7 +44,6 @@ pub trait ReductionEncoding {
     type Output: Encoding;
 }
 
-impl ReductionEncoding for RRR { type Output = RR; }
 impl ReductionEncoding for RR { type Output = R; }
 impl ReductionEncoding for R { type Output = Unencoded; }
 impl ReductionEncoding for Unencoded { type Output = RInverse; }
@@ -73,10 +66,6 @@ for (RInverse, E) where E::Output: ReductionEncoding {
     as ReductionEncoding>::Output;
 }
 
-impl ProductEncoding for (RR, RR) {
-    type Output = RRR;
-}
-
 // XXX: Rust doesn't allow overlapping impls,
 // TODO (if/when Rust allows it):
 // impl<E1, E2: ReductionEncoding> ProductEncoding for
@@ -88,7 +77,4 @@ impl ProductEncoding for (RR, Unencoded) {
 }
 impl ProductEncoding for (RR, RInverse) {
     type Output = <(RInverse, RR) as ProductEncoding>::Output;
-}
-impl ProductEncoding for (RRR, RInverse) {
-    type Output = <(RInverse, RRR) as ProductEncoding>::Output;
 }
