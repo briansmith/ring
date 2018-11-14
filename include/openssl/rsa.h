@@ -161,7 +161,7 @@ OPENSSL_EXPORT int RSA_set0_crt_params(RSA *rsa, BIGNUM *dmp1, BIGNUM *dmq1,
 // with event=3 when a suitable value for |p| is found.
 //
 // It returns one on success or zero on error.
-OPENSSL_EXPORT int RSA_generate_key_ex(RSA *rsa, int bits, BIGNUM *e,
+OPENSSL_EXPORT int RSA_generate_key_ex(RSA *rsa, int bits, const BIGNUM *e,
                                        BN_GENCB *cb);
 
 // RSA_generate_key_fips behaves like |RSA_generate_key_ex| but performs
