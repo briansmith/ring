@@ -52,10 +52,6 @@ use constant_time;
 
 pub unsafe trait Prime {}
 
-pub trait IsOne {
-    fn is_one(&self) -> bool;
-}
-
 pub struct Width<M> {
     num_limbs: usize,
 
@@ -311,13 +307,6 @@ impl<M> Modulus<M> {
     }
 }
 
-/// Allows writing generic algorithms that require constraining the result type
-/// of the multiplication.
-pub trait ModMul<B, M> {
-    type Output;
-    fn mod_mul(&self, b: B, m: &Modulus<M>) -> Self::Output;
-}
-
 /// Elements of ℤ/mℤ for some modulus *m*.
 //
 // Defaulting `E` to `Unencoded` is a convenience for callers from outside this
@@ -397,25 +386,11 @@ impl<M> Elem<M, Unencoded> {
     pub fn into_modulus<MM>(self) -> Result<Modulus<MM>, error::Unspecified> {
         Modulus::from_boxed_limbs(BoxedLimbs::minimal_width_from_unpadded(&self.limbs))
     }
-}
 
-#[cfg(feature = "rsa_signing")]
-impl<M> IsOne for Elem<M, Unencoded> {
+    #[cfg(feature = "rsa_signing")]
     fn is_one(&self) -> bool {
         limb::limbs_equal_limb_constant_time(&self.limbs, 1) ==
             limb::LimbMask::True
-    }
-}
-
-#[cfg(feature = "rsa_signing")]
-impl<AF, BF, M> ModMul<Elem<M, BF>, M> for Elem<M, AF>
-    where (AF, BF): ProductEncoding
-{
-    type Output = Elem<M, <(AF, BF) as ProductEncoding>::Output>;
-    fn mod_mul(&self, b: Elem<M, BF>, m: &Modulus<M>)
-        -> <Self as ModMul<Elem<M, BF>, M>>::Output
-    {
-        elem_mul(self, b, m)
     }
 }
 
@@ -776,12 +751,11 @@ pub fn elem_inverse_consttime<M: Prime>(
 
 /// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
 #[cfg(feature = "rsa_signing")]
-pub fn verify_inverses_consttime<M, A, B>(a: &A, b: B, m: &Modulus<M>)
-    -> Result<(), error::Unspecified> where
-    A: ModMul<B, M>,
-    <A as ModMul<B, M>>::Output: IsOne
+pub fn verify_inverses_consttime<M>(a: &Elem<M, R>, b: Elem<M, Unencoded>,
+                                    m: &Modulus<M>)
+    -> Result<(), error::Unspecified>
 {
-    if a.mod_mul(b, m).is_one() {
+    if elem_mul(a, b, m).is_one() {
         Ok(())
     } else {
         Err(error::Unspecified)
@@ -851,14 +825,6 @@ impl Nonnegative {
             }
         }
         return Ok(())
-    }
-}
-
-#[cfg(feature = "rsa_signing")]
-impl IsOne for Nonnegative {
-    fn is_one(&self) -> bool {
-        limb::limbs_equal_limb_constant_time(&self.limbs, 1) ==
-            limb::LimbMask::True
     }
 }
 
