@@ -17,10 +17,6 @@
 
 #include "../../limbs/limbs.h"
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 #define P384_LIMBS (384u / LIMB_BITS)
 
 typedef struct {
@@ -39,10 +35,5 @@ typedef struct {
 void GFp_nistz384_point_double(P384_POINT *r, const P384_POINT *a);
 void GFp_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
                             const P384_POINT *b);
-
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif // OPENSSL_HEADER_EC_ECP_NISTZ384_H

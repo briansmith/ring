@@ -53,11 +53,6 @@
 
 #include "../../internal.h"
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
-
 // aes_block_f is a pointer to |AES_Encrypt| or a variant thereof.
 typedef void (*aes_block_f)(const uint8_t in[16], uint8_t out[16],
                             const AES_KEY *key);
@@ -173,10 +168,6 @@ OPENSSL_EXPORT void GFp_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t tag[16]);
 void GFp_aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
                                     size_t blocks, const AES_KEY *key,
                                     const uint8_t *ivec);
-#endif
-
-#if defined(__cplusplus)
-}  // extern C
 #endif
 
 #endif  // OPENSSL_HEADER_MODES_INTERNAL_H

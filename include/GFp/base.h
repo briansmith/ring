@@ -60,11 +60,6 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
-
 #if defined(__x86_64) || defined(_M_AMD64) || defined(_M_X64)
 #define OPENSSL_64_BIT
 #define OPENSSL_X86_64
@@ -144,10 +139,5 @@ extern "C" {
 
 
 typedef struct bignum_st BIGNUM;
-
-
-#if defined(__cplusplus)
-}  // extern C
-#endif
 
 #endif  // OPENSSL_HEADER_BASE_H
