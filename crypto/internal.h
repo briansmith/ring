@@ -117,8 +117,6 @@
 #include <string.h>
 #endif
 
-#include <stddef.h>
-
 #include <GFp/type_check.h>
 
 #if defined(_MSC_VER)
