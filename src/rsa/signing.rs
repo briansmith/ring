@@ -530,10 +530,8 @@ impl SigningState {
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
         {
-            let computed =
-                bigint::elem_mul(&key.public_key.n.oneRR().as_ref(), m.clone(), n);
             let verify =
-                bigint::elem_exp_vartime(computed, key.public_key.e, n);
+                bigint::elem_exp_vartime(m.clone(), key.public_key.e, n);
             let verify = verify.into_unencoded(n);
             bigint::elem_verify_equal_consttime(&verify, &c)?;
         }
