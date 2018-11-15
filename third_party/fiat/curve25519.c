@@ -27,7 +27,15 @@
 //
 // The field functions are shared by Ed25519 and X25519 where possible.
 
+#if defined(_MSC_VER)
+#pragma warning(push, 3)
+#endif
+
 #include <string.h>
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 #include <GFp/cpu.h>
 #include <GFp/mem.h>

@@ -56,9 +56,17 @@
 
 // This file should be the first included by all BoringSSL headers.
 
+#if defined(_MSC_VER)
+#pragma warning(push, 3)
+#endif
+
 #include <stddef.h>
 #include <stdint.h>
 #include <sys/types.h>
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 #if defined(__x86_64) || defined(_M_AMD64) || defined(_M_X64)
 #define OPENSSL_64_BIT

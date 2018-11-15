@@ -109,12 +109,20 @@
 #ifndef OPENSSL_HEADER_CRYPTO_INTERNAL_H
 #define OPENSSL_HEADER_CRYPTO_INTERNAL_H
 
-#include <GFp/base.h> // Must be first
+#include <GFp/base.h> // Must be first.
+
+#if defined(_MSC_VER)
+#pragma warning(push, 3)
+#endif
 
 #include <assert.h>
 
 #if defined(__clang__) || defined(_MSC_VER)
 #include <string.h>
+#endif
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
 #endif
 
 #include <GFp/type_check.h>
