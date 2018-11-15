@@ -28,10 +28,6 @@
 #include <stdint.h>
 
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 #include <GFp/base.h>
 
 #include "../../crypto/internal.h"
@@ -140,9 +136,5 @@ void GFp_x25519_sc_mask(uint8_t a[32]);
 void GFp_x25519_sc_reduce(uint8_t s[64]);
 void GFp_x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
                             const uint8_t point[32]);
-
-#if defined(__cplusplus)
-}  // extern C
-#endif
 
 #endif  // OPENSSL_HEADER_CURVE25519_INTERNAL_H

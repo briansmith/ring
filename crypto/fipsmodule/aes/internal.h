@@ -19,10 +19,6 @@
 
 #include <GFp/cpu.h>
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 #if defined(OPENSSL_NO_ASM) || \
     (!defined(OPENSSL_X86) && !defined(OPENSSL_X86_64) && !defined(OPENSSL_ARM))
 #define GFp_C_AES
@@ -69,9 +65,5 @@ void aes_hw_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
                                  const AES_KEY *key, const uint8_t ivec[16]);
 
 #endif /* HWAES */
-
-#if defined(__cplusplus)
-}  // extern C
-#endif
 
 #endif  // OPENSSL_HEADER_AES_INTERNAL_H

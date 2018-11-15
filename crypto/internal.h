@@ -109,6 +109,8 @@
 #ifndef OPENSSL_HEADER_CRYPTO_INTERNAL_H
 #define OPENSSL_HEADER_CRYPTO_INTERNAL_H
 
+#include <GFp/base.h> // Must be first
+
 #include <assert.h>
 
 #if defined(__clang__) || defined(_MSC_VER)
@@ -117,7 +119,6 @@
 
 #include <stddef.h>
 
-#include <GFp/base.h>
 #include <GFp/type_check.h>
 
 #if defined(_MSC_VER)
@@ -126,7 +127,6 @@
 #pragma warning(pop)
 #endif
 
-#if !defined(__cplusplus)
 #if defined(__GNUC__) && \
     (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) < 40800
 // |alignas| and |alignof| were added in C11. GCC added support in version 4.8.
@@ -140,12 +140,6 @@
 #else
 #include <stdalign.h>
 #endif
-#endif
-
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
     defined(OPENSSL_AARCH64) || defined(OPENSSL_PPC64LE)
@@ -375,10 +369,5 @@ static inline uint64_t from_be_u64(uint64_t x) {
 #endif
   return x;
 }
-
-
-#if defined(__cplusplus)
-}  // extern C
-#endif
 
 #endif  // OPENSSL_HEADER_CRYPTO_INTERNAL_H

@@ -22,11 +22,6 @@
 #include "../../limbs/limbs.h"
 
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
-
 // This function looks at `w + 1` scalar bits (`w` current, 1 adjacent less
 // significant bit), and recodes them into a signed digit for use in fast point
 // multiplication: the use of signed rather than unsigned digits means that
@@ -119,10 +114,5 @@ static inline void booth_recode(Limb *is_negative, unsigned *digit,
 void gfp_little_endian_bytes_from_scalar(uint8_t str[], size_t str_len,
                                          const Limb scalar[],
                                          size_t num_limbs);
-
-
-#if defined(__cplusplus)
-}
-#endif
 
 #endif // OPENSSL_HEADER_EC_ECP_NISTZ_H

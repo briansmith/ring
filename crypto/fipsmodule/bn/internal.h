@@ -134,10 +134,6 @@
 
 #include "../../internal.h"
 
-#if defined(__cplusplus)
-extern "C" {
-#endif
-
 typedef crypto_word BN_ULONG;
 
 #if defined(OPENSSL_64_BIT)
@@ -209,10 +205,5 @@ static inline void bn_umult_lohi(BN_ULONG *low_out, BN_ULONG *high_out,
 // bn_is_bit_set_words returns one if bit |bit| is set in |a| and zero
 // otherwise.
 int GFp_bn_is_bit_set_words(const BN_ULONG *a, size_t num, unsigned bit);
-
-
-#if defined(__cplusplus)
-}  // extern C
-#endif
 
 #endif  // OPENSSL_HEADER_BN_INTERNAL_H
