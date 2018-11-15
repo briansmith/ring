@@ -265,10 +265,8 @@ impl<M> Modulus<M> {
                 debug_assert_eq!(limb::LIMB_BITS, 32);
                 n_mod_r |= u64::from(n[1]) << 32;
             }
-            unsafe { GFp_bn_neg_inv_mod_r_u64(n_mod_r) }
+            N0::from(unsafe { GFp_bn_neg_inv_mod_r_u64(n_mod_r) })
         };
-
-        let n0 = n0_from_u64(n0);
 
         let oneRR = {
             let partial = PartialModulus {
@@ -327,7 +325,7 @@ impl<M> Modulus<M> {
     fn as_partial(&self) -> PartialModulus<M> {
         PartialModulus {
             limbs: &self.limbs,
-            n0: self.n0,
+            n0: self.n0.clone(),
             m: PhantomData,
         }
     }
@@ -906,25 +904,25 @@ fn greater_than(a: &Nonnegative, b: &Nonnegative) -> bool {
     }
 }
 
-type N0 = [limb::Limb; N0_LIMBS];
-const N0_LIMBS: usize = 2;
+#[derive(Clone)]
+#[repr(transparent)]
+struct N0([limb::Limb; 2]);
 
-#[cfg(target_pointer_width = "64")]
-const N0_LIMBS_USED: usize = 1;
+const N0_LIMBS_USED: usize = 64 / limb::LIMB_BITS;
 
-#[cfg(target_pointer_width = "64")]
-#[inline]
-fn n0_from_u64(n0: u64) -> N0 {
-    [n0, 0]
-}
+impl From<u64> for N0 {
+    #[inline]
+    fn from(n0: u64) -> Self {
+        #[cfg(target_pointer_width = "64")]
+        {
+            N0([n0, 0])
+        }
 
-#[cfg(target_pointer_width = "32")]
-const N0_LIMBS_USED: usize = 2;
-
-#[cfg(target_pointer_width = "32")]
-#[inline]
-fn n0_from_u64(n0: u64) -> N0 {
-    [n0 as limb::Limb, (n0 >> limb::LIMB_BITS) as limb::Limb]
+        #[cfg(target_pointer_width = "32")]
+        {
+            N0([n0 as limb::Limb, (n0 >> limb::LIMB_BITS) as limb::Limb])
+        }
+    }
 }
 
 extern {
