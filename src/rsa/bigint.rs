@@ -459,6 +459,13 @@ fn elem_mul_<M, AF, BF>(a: &Elem<M, AF>, mut b: Elem<M, BF>, m: &PartialModulus<
     }
 }
 
+fn elem_mul_by_2<M, AF>(a: &mut Elem<M, AF>, m: &PartialModulus<M>) {
+    unsafe {
+        LIMBS_shl_mod(a.limbs.as_mut_ptr(), a.limbs.as_ptr(),
+                      m.limbs.as_ptr(), m.limbs.len());
+    }
+}
+
 #[cfg(feature = "rsa_signing")]
 pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
         a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>)
@@ -576,7 +583,7 @@ impl<M> One<M, RR> {
         // Montgomery form). Then compute
         // RR = R**2 == base**r == R**r == (2**r)**r (mod n).
         //
-        // Take advantage of the fact that `LIMBS_shl_mod` is faster than
+        // Take advantage of the fact that `elem_mul_by_2` is faster than
         // `elem_squared` by replacing some of the early squarings with shifts.
         // TODO: Benchmark shift vs. squaring performance to determine the
         // optimal value of `lg_base`.
@@ -584,12 +591,8 @@ impl<M> One<M, RR> {
         debug_assert_eq!(lg_base.count_ones(), 1); // Must 2**n for n >= 0.
         let shifts = r - bit + lg_base;
         let exponent = (r / lg_base) as u64;
-        let num_limbs = base.limbs.len();
         for _ in 0..shifts {
-            unsafe {
-                LIMBS_shl_mod(base.limbs.as_mut_ptr(), base.limbs.as_ptr(),
-                              m.limbs.as_ptr(), num_limbs);
-            }
+            elem_mul_by_2(&mut base, m)
         }
         let RR = elem_exp_vartime_(base, exponent, m);
 
