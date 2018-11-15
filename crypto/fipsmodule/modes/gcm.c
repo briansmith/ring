@@ -48,7 +48,6 @@
 
 #include <GFp/base.h>
 
-#include <assert.h>
 #include <string.h>
 
 #include <GFp/cpu.h>

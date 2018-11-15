@@ -17,8 +17,6 @@
 
 #include <GFp/base.h>
 
-#include <assert.h>
-
 #include "../../limbs/limbs.h"
 
 

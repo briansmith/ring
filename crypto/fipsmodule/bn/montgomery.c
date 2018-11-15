@@ -106,8 +106,6 @@
  * (eay@cryptsoft.com).  This product includes software written by Tim
  * Hudson (tjh@cryptsoft.com). */
 
-#include <assert.h>
-
 #include "internal.h"
 #include "../../internal.h"
 
