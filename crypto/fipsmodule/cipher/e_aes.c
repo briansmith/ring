@@ -46,7 +46,15 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  * ==================================================================== */
 
+#if defined(_MSC_VER)
+#pragma warning(push, 3)
+#endif
+
 #include <string.h>
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 #include <GFp/aes.h>
 #include <GFp/cpu.h>
