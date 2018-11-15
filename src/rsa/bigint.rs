@@ -817,7 +817,6 @@ pub fn verify_inverses_consttime<M>(a: &Elem<M, R>, b: Elem<M, Unencoded>,
 #[cfg(any(test, feature = "rsa_signing"))]
 pub fn elem_verify_equal_consttime<M, E>(a: &Elem<M, E>, b: &Elem<M, E>)
                                          -> Result<(), error::Unspecified> {
-    // XXX: Not constant-time if the number of limbs in `a` and `b` differ.
     constant_time::verify_slices_are_equal(limb::limbs_as_bytes(&a.limbs),
                                            limb::limbs_as_bytes(&b.limbs))
 }
