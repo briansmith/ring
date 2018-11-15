@@ -52,7 +52,7 @@ use constant_time;
 
 pub unsafe trait Prime {}
 
-pub struct Width<M> {
+struct Width<M> {
     num_limbs: usize,
 
     /// The modulus *m* that the width originated from.
@@ -275,7 +275,7 @@ impl<M> Modulus<M> {
     #[inline]
     fn width(&self) -> Width<M> { self.limbs.width() }
 
-    pub fn zero<E>(&self) -> Elem<M, E> {
+    fn zero<E>(&self) -> Elem<M, E> {
         Elem {
             limbs: BoxedLimbs::zero(self.width()),
             encoding: PhantomData,
@@ -442,7 +442,7 @@ pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
     Ok(r)
 }
 
-pub fn elem_squared<M, E>(mut a: Elem<M, E>, m: &Modulus<M>)
+fn elem_squared<M, E>(mut a: Elem<M, E>, m: &Modulus<M>)
         -> Elem<M, <(E, E) as ProductEncoding>::Output>
         where (E, E): ProductEncoding {
     unsafe {
