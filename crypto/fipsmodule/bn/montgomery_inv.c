@@ -15,8 +15,6 @@
 #include "internal.h"
 #include "../../internal.h"
 
-#include <assert.h>
-
 
 // Avoid -Wmissing-prototypes warnings.
 uint64_t GFp_bn_neg_inv_mod_r_u64(uint64_t n);
