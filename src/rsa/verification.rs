@@ -218,8 +218,6 @@ pub fn verify_rsa(params: &RSAParameters,
     }
 
     // Step 2.
-    // Montgomery encode `s`.
-    let s = bigint::elem_mul(n.oneRR().as_ref(), s, &n);
     let m = bigint::elem_exp_vartime(s, e, &n);
     let m = m.into_unencoded(&n);
 

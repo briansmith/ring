@@ -674,8 +674,9 @@ const PUBLIC_EXPONENT_MAX_VALUE: u64 = (1u64 << 33) - 1;
 // TODO: The test coverage needs to be expanded, e.g. test with the largest
 // accepted exponent and with the most common values of 65537 and 3.
 pub fn elem_exp_vartime<M>(
-        base: Elem<M, R>, PublicExponent(exponent): PublicExponent,
+        base: Elem<M, Unencoded>, PublicExponent(exponent): PublicExponent,
         m: &Modulus<M>) -> Elem<M, R> {
+    let base = elem_mul(m.oneRR().as_ref(), base, &m);
     elem_exp_vartime_(base, exponent, &m.as_partial())
 }
 
@@ -1008,7 +1009,6 @@ mod tests {
             let base = consume_elem(test_case, "A", &m);
             let e = consume_public_exponent(test_case, "E");
 
-            let base = into_encoded(base, &m);
             let actual_result = elem_exp_vartime(base, e, &m);
             let actual_result = actual_result.into_unencoded(&m);
             assert_elem_eq(&actual_result, &expected_result);
