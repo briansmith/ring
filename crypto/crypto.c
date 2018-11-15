@@ -16,8 +16,6 @@
 #define _GNU_SOURCE
 #endif
 
-#include <stdint.h>
-
 #include <GFp/cpu.h>
 
 #if defined(__linux__)
