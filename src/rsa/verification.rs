@@ -64,14 +64,7 @@ impl Key {
             return Err(error::Unspecified);
         }
 
-        // Step 2 / Step b. NIST SP800-89 defers to FIPS 186-3, which requires
-        // `e >= 65537`. We enforce this when signing, but are more flexible in
-        // verification, for compatibility. Only small public exponents are
-        // supported.
-        debug_assert!(e_min_value >= 3);
-        debug_assert!(e_min_value & 1 == 1); // `e_min_value` is odd.
-        debug_assert!(e_min_value <= bigint::PUBLIC_EXPONENT_MAX_VALUE);
-
+        // Step 2 / Step b.
         // Step 3 / Step c for `e`.
         let e = bigint::PublicExponent::from_be_bytes(e, e_min_value)?;
 
