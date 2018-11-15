@@ -632,7 +632,17 @@ impl PublicExponent {
                 }
             }
         })?;
+
+        // Step 2 / Step b. NIST SP800-89 defers to FIPS 186-3, which requires
+        // `e >= 65537`. We enforce this when signing, but are more flexible in
+        // verification, for compatibility. Only small public exponents are
+        // supported.
         if value & 1 != 1 {
+            return Err(error::Unspecified);
+        }
+        debug_assert!(min_value & 1 == 1);
+        debug_assert!(min_value <= PUBLIC_EXPONENT_MAX_VALUE);
+        if min_value < 3 {
             return Err(error::Unspecified);
         }
         if value < min_value {
@@ -641,6 +651,7 @@ impl PublicExponent {
         if value > PUBLIC_EXPONENT_MAX_VALUE {
             return Err(error::Unspecified);
         }
+
         Ok(PublicExponent(value))
     }
 }
@@ -656,7 +667,7 @@ impl PublicExponent {
 // [1] https://www.imperialviolet.org/2012/03/16/rsae.html
 // [2] https://www.imperialviolet.org/2012/03/17/rsados.html
 // [3] https://msdn.microsoft.com/en-us/library/aa387685(VS.85).aspx
-pub const PUBLIC_EXPONENT_MAX_VALUE: u64 = (1u64 << 33) - 1;
+const PUBLIC_EXPONENT_MAX_VALUE: u64 = (1u64 << 33) - 1;
 
 /// Calculates base**exponent (mod m).
 // TODO: The test coverage needs to be expanded, e.g. test with the largest
