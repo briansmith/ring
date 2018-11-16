@@ -195,10 +195,10 @@ pub struct PrivateKeyOps {
     elem_inv_squared: fn(a: &Elem<R>) -> Elem<R>,
     point_mul_base_impl: fn(a: &Scalar) -> Point,
     point_mul_impl: unsafe extern "C" fn(
-        r: *mut Limb,          /* [3][num_limbs] */
-        p_scalar: *const Limb, /* [num_limbs] */
-        p_x: *const Limb,      /* [num_limbs] */
-        p_y: *const Limb,      /* [num_limbs] */
+        r: *mut Limb,          // [3][num_limbs]
+        p_scalar: *const Limb, // [num_limbs]
+        p_x: *const Limb,      // [num_limbs]
+        p_y: *const Limb,      // [num_limbs]
     ),
 }
 
@@ -804,9 +804,9 @@ mod tests {
     fn p256_point_sum_mixed_test() {
         extern "C" {
             fn GFp_nistz256_point_add_affine(
-                r: *mut Limb,   /* [p256::COMMON_OPS.num_limbs*3] */
-                a: *const Limb, /* [p256::COMMON_OPS.num_limbs*3] */
-                b: *const Limb, /* [p256::COMMON_OPS.num_limbs*2] */
+                r: *mut Limb,   // [p256::COMMON_OPS.num_limbs*3]
+                a: *const Limb, // [p256::COMMON_OPS.num_limbs*3]
+                b: *const Limb, // [p256::COMMON_OPS.num_limbs*2]
             );
         }
         point_sum_mixed_test(
@@ -821,9 +821,9 @@ mod tests {
     fn point_sum_mixed_test(
         ops: &PrivateKeyOps,
         point_add_affine: unsafe extern "C" fn(
-            r: *mut Limb,   /* [ops.num_limbs*3] */
-            a: *const Limb, /* [ops.num_limbs*3] */
-            b: *const Limb, /* [ops.num_limbs*2] */
+            r: *mut Limb,   // [ops.num_limbs*3]
+            a: *const Limb, // [ops.num_limbs*3]
+            b: *const Limb, // [ops.num_limbs*2]
         ),
         file_path: &str,
     ) {
@@ -849,8 +849,8 @@ mod tests {
     fn p256_point_double_test() {
         extern "C" {
             fn GFp_nistz256_point_double(
-                r: *mut Limb,   /* [p256::COMMON_OPS.num_limbs*3] */
-                a: *const Limb, /* [p256::COMMON_OPS.num_limbs*3] */
+                r: *mut Limb,   // [p256::COMMON_OPS.num_limbs*3]
+                a: *const Limb, // [p256::COMMON_OPS.num_limbs*3]
             );
         }
         point_double_test(
@@ -864,8 +864,8 @@ mod tests {
     fn p384_point_double_test() {
         extern "C" {
             fn GFp_nistz384_point_double(
-                r: *mut Limb,   /* [p384::COMMON_OPS.num_limbs*3] */
-                a: *const Limb, /* [p384::COMMON_OPS.num_limbs*3] */
+                r: *mut Limb,   // [p384::COMMON_OPS.num_limbs*3]
+                a: *const Limb, // [p384::COMMON_OPS.num_limbs*3]
             );
         }
         point_double_test(
@@ -878,8 +878,8 @@ mod tests {
     fn point_double_test(
         ops: &PrivateKeyOps,
         point_double: unsafe extern "C" fn(
-            r: *mut Limb,   /* [ops.num_limbs*3] */
-            a: *const Limb, /* [ops.num_limbs*3] */
+            r: *mut Limb,   // [ops.num_limbs*3]
+            a: *const Limb, // [ops.num_limbs*3]
         ),
         file_path: &str,
     ) {

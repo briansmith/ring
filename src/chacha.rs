@@ -82,7 +82,7 @@ extern {
 
 pub const KEY_LEN_IN_BYTES: usize = 256 / 8;
 
-pub const NONCE_LEN: usize = 12; /* 96 bits */
+pub const NONCE_LEN: usize = 12; // 96 bits
 
 #[cfg(test)]
 mod tests {

@@ -325,8 +325,8 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
 }
 
 unsafe extern "C" fn GFp_p384_elem_sqr_mont(
-    r: *mut Limb,   /* [COMMON_OPS.num_limbs] */
-    a: *const Limb, /* [COMMON_OPS.num_limbs] */
+    r: *mut Limb,   // [COMMON_OPS.num_limbs]
+    a: *const Limb, // [COMMON_OPS.num_limbs]
 ) {
     // XXX: Inefficient. TODO: Make a dedicated squaring routine.
     GFp_p384_elem_mul_mont(r, a, a);
@@ -339,32 +339,32 @@ const N_RR_LIMBS: [Limb; MAX_LIMBS] = p384_limbs![
 
 extern "C" {
     fn GFp_p384_elem_add(
-        r: *mut Limb,   /* [COMMON_OPS.num_limbs] */
-        a: *const Limb, /* [COMMON_OPS.num_limbs] */
-        b: *const Limb, /* [COMMON_OPS.num_limbs] */
+        r: *mut Limb,   // [COMMON_OPS.num_limbs]
+        a: *const Limb, // [COMMON_OPS.num_limbs]
+        b: *const Limb, // [COMMON_OPS.num_limbs]
     );
     fn GFp_p384_elem_mul_mont(
-        r: *mut Limb,   /* [COMMON_OPS.num_limbs] */
-        a: *const Limb, /* [COMMON_OPS.num_limbs] */
-        b: *const Limb, /* [COMMON_OPS.num_limbs] */
+        r: *mut Limb,   // [COMMON_OPS.num_limbs]
+        a: *const Limb, // [COMMON_OPS.num_limbs]
+        b: *const Limb, // [COMMON_OPS.num_limbs]
     );
 
     fn GFp_nistz384_point_add(
-        r: *mut Limb,   /* [3][COMMON_OPS.num_limbs] */
-        a: *const Limb, /* [3][COMMON_OPS.num_limbs] */
-        b: *const Limb, /* [3][COMMON_OPS.num_limbs] */
+        r: *mut Limb,   // [3][COMMON_OPS.num_limbs]
+        a: *const Limb, // [3][COMMON_OPS.num_limbs]
+        b: *const Limb, // [3][COMMON_OPS.num_limbs]
     );
     fn GFp_nistz384_point_mul(
-        r: *mut Limb,          /* [3][COMMON_OPS.num_limbs] */
-        p_scalar: *const Limb, /* [COMMON_OPS.num_limbs] */
-        p_x: *const Limb,      /* [COMMON_OPS.num_limbs] */
-        p_y: *const Limb,      /* [COMMON_OPS.num_limbs] */
+        r: *mut Limb,          // [3][COMMON_OPS.num_limbs]
+        p_scalar: *const Limb, // [COMMON_OPS.num_limbs]
+        p_x: *const Limb,      // [COMMON_OPS.num_limbs]
+        p_y: *const Limb,      // [COMMON_OPS.num_limbs]
     );
 
     fn GFp_p384_scalar_mul_mont(
-        r: *mut Limb,   /* [COMMON_OPS.num_limbs] */
-        a: *const Limb, /* [COMMON_OPS.num_limbs] */
-        b: *const Limb, /* [COMMON_OPS.num_limbs] */
+        r: *mut Limb,   // [COMMON_OPS.num_limbs]
+        a: *const Limb, // [COMMON_OPS.num_limbs]
+        b: *const Limb, // [COMMON_OPS.num_limbs]
     );
 }
 
