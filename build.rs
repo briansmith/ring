@@ -210,10 +210,10 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
         NON_MSVC_FLAGS
     } else {
         static MSVC_FLAGS: &[&str] = &[
-            "/GS", // Buffer security checks.
-            "/Gy", // Enable function-level linking.
+            "/GS",   // Buffer security checks.
+            "/Gy",   // Enable function-level linking.
             "/EHsc", // C++ exceptions only, only in C++.
-            "/GR-", // Disable RTTI.
+            "/GR-",  // Disable RTTI.
             "/Zc:wchar_t",
             "/Zc:forScope",
             "/Zc:inline",
