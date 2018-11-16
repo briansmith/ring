@@ -28,13 +28,13 @@
     unused_qualifications,
     unused_results,
     variant_size_differences,
-    warnings,
+    warnings
 )]
 
 extern crate ring;
 
-use std::vec::Vec;
 use ring::{digest, test};
+use std::vec::Vec;
 
 /// Test vectors from BoringSSL, Go, and other sources.
 #[test]
@@ -63,8 +63,8 @@ fn digest_misc() {
 }
 
 mod digest_shavs {
-    use std::vec::Vec;
     use ring::{digest, test};
+    use std::vec::Vec;
 
     macro_rules! shavs_tests {
         ( $algorithm_name:ident ) => {
@@ -77,31 +77,39 @@ mod digest_shavs {
                 fn short_msg_known_answer_test() {
                     run_known_answer_test(
                         &digest::$algorithm_name,
-                        &format!("third_party/NIST/SHAVS/{}ShortMsg.rsp",
-                                 stringify!($algorithm_name)));
+                        &format!(
+                            "third_party/NIST/SHAVS/{}ShortMsg.rsp",
+                            stringify!($algorithm_name)
+                        ),
+                    );
                 }
 
                 #[test]
                 fn long_msg_known_answer_test() {
                     run_known_answer_test(
                         &digest::$algorithm_name,
-                        &format!("third_party/NIST/SHAVS/{}LongMsg.rsp",
-                                 stringify!($algorithm_name)));
+                        &format!(
+                            "third_party/NIST/SHAVS/{}LongMsg.rsp",
+                            stringify!($algorithm_name)
+                        ),
+                    );
                 }
 
                 #[test]
                 fn monte_carlo_test() {
                     run_monte_carlo_test(
                         &digest::$algorithm_name,
-                        &format!("third_party/NIST/SHAVS/{}Monte.rsp",
-                                 stringify!($algorithm_name)));
+                        &format!(
+                            "third_party/NIST/SHAVS/{}Monte.rsp",
+                            stringify!($algorithm_name)
+                        ),
+                    );
                 }
             }
-        }
+        };
     }
 
-    fn run_known_answer_test(digest_alg: &'static digest::Algorithm,
-                             file_name: &str) {
+    fn run_known_answer_test(digest_alg: &'static digest::Algorithm, file_name: &str) {
         let section_name = &format!("L = {}", digest_alg.output_len);
         test::from_file(file_name, |section, test_case| {
             assert_eq!(section_name, section);
@@ -124,8 +132,7 @@ mod digest_shavs {
         });
     }
 
-    fn run_monte_carlo_test(digest_alg: &'static digest::Algorithm,
-                            file_name: &str) {
+    fn run_monte_carlo_test(digest_alg: &'static digest::Algorithm, file_name: &str) {
         let section_name = &format!("L = {}", digest_alg.output_len);
 
         let mut expected_count: isize = -1;
@@ -196,8 +203,8 @@ macro_rules! test_i_u_f {
                 for j in 0..max {
                     for k in 0..max {
                         let part1 = &input[..i];
-                        let part2 = &input[i..(i+j)];
-                        let part3 = &input[(i+j)..(i+j+k)];
+                        let part2 = &input[i..(i + j)];
+                        let part3 = &input[(i + j)..(i + j + k)];
 
                         let mut ctx = digest::Context::new(&$alg);
                         ctx.update(part1);
@@ -205,15 +212,14 @@ macro_rules! test_i_u_f {
                         ctx.update(part3);
                         let i_u_f = ctx.finish();
 
-                        let one_shot =
-                            digest::digest(&$alg, &input[..(i + j + k)]);
+                        let one_shot = digest::digest(&$alg, &input[..(i + j + k)]);
 
                         assert_eq!(i_u_f.as_ref(), one_shot.as_ref());
                     }
                 }
             }
         }
-    }
+    };
 }
 test_i_u_f!(digest_test_i_u_f_sha1, digest::SHA1);
 test_i_u_f!(digest_test_i_u_f_sha256, digest::SHA256);
@@ -262,41 +268,54 @@ macro_rules! test_large_digest {
             let expected: [u8; $len] = $expected;
             assert_eq!(&expected[..], calculated.as_ref());
         }
-    }
+    };
 }
 
 /// XXX: This test is too slow on Android ARM.
 #[cfg(any(not(target_os = "android"), not(target_arch = "arm")))]
-test_large_digest!(digest_test_large_digest_sha1, digest::SHA1, 160 / 8, [
-    0xCA, 0xC3, 0x4C, 0x31, 0x90, 0x5B, 0xDE, 0x3B,
-    0xE4, 0x0D, 0x46, 0x6D, 0x70, 0x76, 0xAD, 0x65,
-    0x3C, 0x20, 0xE4, 0xBD
-]);
+test_large_digest!(
+    digest_test_large_digest_sha1,
+    digest::SHA1,
+    160 / 8,
+    [
+        0xCA, 0xC3, 0x4C, 0x31, 0x90, 0x5B, 0xDE, 0x3B, 0xE4, 0x0D, 0x46, 0x6D, 0x70, 0x76, 0xAD,
+        0x65, 0x3C, 0x20, 0xE4, 0xBD
+    ]
+);
 
-test_large_digest!(digest_test_large_digest_sha256, digest::SHA256, 256 / 8, [
-    0x8D, 0xD1, 0x6D, 0xD8, 0xB2, 0x5A, 0x29, 0xCB,
-    0x7F, 0xB9, 0xAE, 0x86, 0x72, 0xE9, 0xCE, 0xD6,
-    0x65, 0x4C, 0xB6, 0xC3, 0x5C, 0x58, 0x21, 0xA7,
-    0x07, 0x97, 0xC5, 0xDD, 0xAE, 0x5C, 0x68, 0xBD
-]);
-test_large_digest!(digest_test_large_digest_sha384, digest::SHA384, 384 / 8, [
-    0x3D, 0xFE, 0xC1, 0xA9, 0xD0, 0x9F, 0x08, 0xD5,
-    0xBB, 0xE8, 0x7C, 0x9E, 0xE0, 0x0A, 0x87, 0x0E,
-    0xB0, 0xEA, 0x8E, 0xEA, 0xDB, 0x82, 0x36, 0xAE,
-    0x74, 0xCF, 0x9F, 0xDC, 0x86, 0x1C, 0xE3, 0xE9,
-    0xB0, 0x68, 0xCD, 0x19, 0x3E, 0x39, 0x90, 0x02,
-    0xE1, 0x58, 0x5D, 0x66, 0xC4, 0x55, 0x11, 0x9B
-]);
-test_large_digest!(digest_test_large_digest_sha512, digest::SHA512, 512 / 8, [
-    0xFC, 0x8A, 0x98, 0x20, 0xFC, 0x82, 0xD8, 0x55,
-    0xF8, 0xFF, 0x2F, 0x6E, 0xAE, 0x41, 0x60, 0x04,
-    0x08, 0xE9, 0x49, 0xD7, 0xCD, 0x1A, 0xED, 0x22,
-    0xEB, 0x55, 0xE1, 0xFD, 0x80, 0x50, 0x3B, 0x01,
-    0x2F, 0xC6, 0xF4, 0x33, 0x86, 0xFB, 0x60, 0x75,
-    0x2D, 0xA5, 0xA9, 0x93, 0xE7, 0x00, 0x45, 0xA8,
-    0x49, 0x1A, 0x6B, 0xEC, 0x9C, 0x98, 0xC8, 0x19,
-    0xA6, 0xA9, 0x88, 0x3E, 0x2F, 0x09, 0xB9, 0x9A
-]);
+test_large_digest!(
+    digest_test_large_digest_sha256,
+    digest::SHA256,
+    256 / 8,
+    [
+        0x8D, 0xD1, 0x6D, 0xD8, 0xB2, 0x5A, 0x29, 0xCB, 0x7F, 0xB9, 0xAE, 0x86, 0x72, 0xE9, 0xCE,
+        0xD6, 0x65, 0x4C, 0xB6, 0xC3, 0x5C, 0x58, 0x21, 0xA7, 0x07, 0x97, 0xC5, 0xDD, 0xAE, 0x5C,
+        0x68, 0xBD
+    ]
+);
+test_large_digest!(
+    digest_test_large_digest_sha384,
+    digest::SHA384,
+    384 / 8,
+    [
+        0x3D, 0xFE, 0xC1, 0xA9, 0xD0, 0x9F, 0x08, 0xD5, 0xBB, 0xE8, 0x7C, 0x9E, 0xE0, 0x0A, 0x87,
+        0x0E, 0xB0, 0xEA, 0x8E, 0xEA, 0xDB, 0x82, 0x36, 0xAE, 0x74, 0xCF, 0x9F, 0xDC, 0x86, 0x1C,
+        0xE3, 0xE9, 0xB0, 0x68, 0xCD, 0x19, 0x3E, 0x39, 0x90, 0x02, 0xE1, 0x58, 0x5D, 0x66, 0xC4,
+        0x55, 0x11, 0x9B
+    ]
+);
+test_large_digest!(
+    digest_test_large_digest_sha512,
+    digest::SHA512,
+    512 / 8,
+    [
+        0xFC, 0x8A, 0x98, 0x20, 0xFC, 0x82, 0xD8, 0x55, 0xF8, 0xFF, 0x2F, 0x6E, 0xAE, 0x41, 0x60,
+        0x04, 0x08, 0xE9, 0x49, 0xD7, 0xCD, 0x1A, 0xED, 0x22, 0xEB, 0x55, 0xE1, 0xFD, 0x80, 0x50,
+        0x3B, 0x01, 0x2F, 0xC6, 0xF4, 0x33, 0x86, 0xFB, 0x60, 0x75, 0x2D, 0xA5, 0xA9, 0x93, 0xE7,
+        0x00, 0x45, 0xA8, 0x49, 0x1A, 0x6B, 0xEC, 0x9C, 0x98, 0xC8, 0x19, 0xA6, 0xA9, 0x88, 0x3E,
+        0x2F, 0x09, 0xB9, 0x9A
+    ]
+);
 
 // TODO: test_large_digest!(digest_test_large_digest_sha512_256,
 //                            digest::SHA512_256, 256 / 8, [ ... ]);
@@ -312,26 +331,31 @@ fn test_fmt_algorithm() {
 
 #[test]
 fn digest_test_fmt() {
-    assert_eq!("SHA1:b7e23ec29af22b0b4e41da31e868d57226121c84",
-               &format!("{:?}",
-                        digest::digest(&digest::SHA1, b"hello, world")));
-    assert_eq!("SHA256:09ca7e4eaa6e8ae9c7d261167129184883644d\
-                07dfba7cbfbc4c8a2e08360d5b",
-               &format!("{:?}",
-                        digest::digest(&digest::SHA256, b"hello, world")));
-    assert_eq!("SHA384:1fcdb6059ce05172a26bbe2a3ccc88ed5a8cd5\
-                fc53edfd9053304d429296a6da23b1cd9e5c9ed3bb34f0\
-                0418a70cdb7e",
-               &format!("{:?}",
-                        digest::digest(&digest::SHA384, b"hello, world")));
-    assert_eq!("SHA512:8710339dcb6814d0d9d2290ef422285c9322b7\
-                163951f9a0ca8f883d3305286f44139aa374848e4174f5\
-                aada663027e4548637b6d19894aec4fb6c46a139fbf9",
-               &format!("{:?}",
-                        digest::digest(&digest::SHA512, b"hello, world")));
+    assert_eq!(
+        "SHA1:b7e23ec29af22b0b4e41da31e868d57226121c84",
+        &format!("{:?}", digest::digest(&digest::SHA1, b"hello, world"))
+    );
+    assert_eq!(
+        "SHA256:09ca7e4eaa6e8ae9c7d261167129184883644d\
+         07dfba7cbfbc4c8a2e08360d5b",
+        &format!("{:?}", digest::digest(&digest::SHA256, b"hello, world"))
+    );
+    assert_eq!(
+        "SHA384:1fcdb6059ce05172a26bbe2a3ccc88ed5a8cd5\
+         fc53edfd9053304d429296a6da23b1cd9e5c9ed3bb34f0\
+         0418a70cdb7e",
+        &format!("{:?}", digest::digest(&digest::SHA384, b"hello, world"))
+    );
+    assert_eq!(
+        "SHA512:8710339dcb6814d0d9d2290ef422285c9322b7\
+         163951f9a0ca8f883d3305286f44139aa374848e4174f5\
+         aada663027e4548637b6d19894aec4fb6c46a139fbf9",
+        &format!("{:?}", digest::digest(&digest::SHA512, b"hello, world"))
+    );
 
-    assert_eq!("SHA512_256:11f2c88c04f0a9c3d0970894ad2472505e\
-                0bc6e8c7ec46b5211cd1fa3e253e62",
-               &format!("{:?}",
-                        digest::digest(&digest::SHA512_256, b"hello, world")));
+    assert_eq!(
+        "SHA512_256:11f2c88c04f0a9c3d0970894ad2472505e\
+         0bc6e8c7ec46b5211cd1fa3e253e62",
+        &format!("{:?}", digest::digest(&digest::SHA512_256, b"hello, world"))
+    );
 }

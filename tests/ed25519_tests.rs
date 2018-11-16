@@ -28,7 +28,7 @@
     unused_qualifications,
     unused_results,
     variant_size_differences,
-    warnings,
+    warnings
 )]
 
 extern crate ring;
@@ -55,19 +55,17 @@ fn test_signature_ed25519() {
         let expected_sig = test_case.consume_bytes("SIG");
 
         {
-            let key_pair = Ed25519KeyPair::from_seed_and_public_key(
-                seed, public_key).unwrap();
+            let key_pair = Ed25519KeyPair::from_seed_and_public_key(seed, public_key).unwrap();
             let actual_sig = key_pair.sign(&msg);
             assert_eq!(&expected_sig[..], actual_sig.as_ref());
         }
 
         // Test PKCS#8 generation, parsing, and private-to-public calculations.
         let rng = test::rand::FixedSliceRandom {
-            bytes: seed.as_slice_less_safe()
+            bytes: seed.as_slice_less_safe(),
         };
         let pkcs8 = Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
-        let key_pair = Ed25519KeyPair::from_pkcs8(
-            untrusted::Input::from(&pkcs8)).unwrap();
+        let key_pair = Ed25519KeyPair::from_pkcs8(untrusted::Input::from(&pkcs8)).unwrap();
         assert_eq!(public_key, key_pair.public_key_bytes());
 
         // Test Signature generation.
@@ -76,8 +74,12 @@ fn test_signature_ed25519() {
 
         // Test Signature verification.
         assert!(signature::verify(
-            &signature::ED25519, public_key, untrusted::Input::from(&msg),
-            untrusted::Input::from(&expected_sig)).is_ok());
+            &signature::ED25519,
+            public_key,
+            untrusted::Input::from(&msg),
+            untrusted::Input::from(&expected_sig)
+        )
+        .is_ok());
         Ok(())
     });
 }
@@ -89,50 +91,64 @@ fn test_ed25519_from_seed_and_public_key_misuse() {
 
     assert!(Ed25519KeyPair::from_seed_and_public_key(
         untrusted::Input::from(PRIVATE_KEY),
-        untrusted::Input::from(PUBLIC_KEY)).is_ok());
+        untrusted::Input::from(PUBLIC_KEY)
+    )
+    .is_ok());
 
     // Truncated private key.
     assert!(Ed25519KeyPair::from_seed_and_public_key(
         untrusted::Input::from(&PRIVATE_KEY[..31]),
-        untrusted::Input::from(PUBLIC_KEY)).is_err());
+        untrusted::Input::from(PUBLIC_KEY)
+    )
+    .is_err());
 
     // Truncated public key.
     assert!(Ed25519KeyPair::from_seed_and_public_key(
         untrusted::Input::from(PRIVATE_KEY),
-        untrusted::Input::from(&PUBLIC_KEY[..31])).is_err());
+        untrusted::Input::from(&PUBLIC_KEY[..31])
+    )
+    .is_err());
 
     // Swapped public and private key.
     assert!(Ed25519KeyPair::from_seed_and_public_key(
         untrusted::Input::from(PUBLIC_KEY),
-        untrusted::Input::from(PRIVATE_KEY)).is_err());
+        untrusted::Input::from(PRIVATE_KEY)
+    )
+    .is_err());
 }
 
 #[test]
 fn test_ed25519_from_pkcs8_unchecked() {
     // Just test that we can parse the input.
-    test::from_file("tests/ed25519_from_pkcs8_unchecked_tests.txt",
-                    |section, test_case| {
-        assert_eq!(section, "");
-        let input = test_case.consume_bytes("Input");
-        let error = test_case.consume_optional_string("Error");
-        assert_eq!(
-            Ed25519KeyPair::from_pkcs8_maybe_unchecked(
-                untrusted::Input::from(&input)).is_ok(),
-            error.is_none());
-        Ok(())
-    });
+    test::from_file(
+        "tests/ed25519_from_pkcs8_unchecked_tests.txt",
+        |section, test_case| {
+            assert_eq!(section, "");
+            let input = test_case.consume_bytes("Input");
+            let error = test_case.consume_optional_string("Error");
+            assert_eq!(
+                Ed25519KeyPair::from_pkcs8_maybe_unchecked(untrusted::Input::from(&input)).is_ok(),
+                error.is_none()
+            );
+            Ok(())
+        },
+    );
 }
 
 #[test]
 fn test_ed25519_from_pkcs8() {
     // Just test that we can parse the input.
-    test::from_file("tests/ed25519_from_pkcs8_tests.txt", |section, test_case| {
-        assert_eq!(section, "");
-        let input = test_case.consume_bytes("Input");
-        let error = test_case.consume_optional_string("Error");
-        assert_eq!(
-            Ed25519KeyPair::from_pkcs8(untrusted::Input::from(&input)).is_ok(),
-            error.is_none());
-        Ok(())
-    });
+    test::from_file(
+        "tests/ed25519_from_pkcs8_tests.txt",
+        |section, test_case| {
+            assert_eq!(section, "");
+            let input = test_case.consume_bytes("Input");
+            let error = test_case.consume_optional_string("Error");
+            assert_eq!(
+                Ed25519KeyPair::from_pkcs8(untrusted::Input::from(&input)).is_ok(),
+                error.is_none()
+            );
+            Ok(())
+        },
+    );
 }

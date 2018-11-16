@@ -28,7 +28,7 @@
     unused_qualifications,
     unused_results,
     variant_size_differences,
-    warnings,
+    warnings
 )]
 
 extern crate ring;
@@ -39,8 +39,9 @@ use ring::{error, hkdf, hmac, test};
 fn hkdf_tests() {
     test::from_file("tests/hkdf_tests.txt", |section, test_case| {
         assert_eq!(section, "");
-        let digest_alg =
-            test_case.consume_digest_alg("Hash").ok_or(error::Unspecified)?;
+        let digest_alg = test_case
+            .consume_digest_alg("Hash")
+            .ok_or(error::Unspecified)?;
         let secret = test_case.consume_bytes("IKM");
         let salt = test_case.consume_bytes("salt");
         let info = test_case.consume_bytes("info");

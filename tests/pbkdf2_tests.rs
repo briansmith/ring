@@ -28,7 +28,7 @@
     unused_qualifications,
     unused_results,
     variant_size_differences,
-    warnings,
+    warnings
 )]
 
 extern crate ring;
@@ -45,24 +45,22 @@ pub fn pbkdf2_tests() {
         let salt = test_case.consume_bytes("S");
         let dk = test_case.consume_bytes("DK");
         let verify_expected_result = test_case.consume_string("Verify");
-        let verify_expected_result =
-            match verify_expected_result.as_str() {
-                "OK" => Ok(()),
-                "Err" => Err(error::Unspecified),
-                _ => panic!("Unsupported value of \"Verify\""),
-            };
+        let verify_expected_result = match verify_expected_result.as_str() {
+            "OK" => Ok(()),
+            "Err" => Err(error::Unspecified),
+            _ => panic!("Unsupported value of \"Verify\""),
+        };
 
         {
             let mut out = vec![0u8; dk.len()];
-            pbkdf2::derive(digest_alg, iterations as u32, &salt, &secret,
-                           &mut out);
-            assert_eq!(dk == out,
-                       verify_expected_result.is_ok() || dk.is_empty());
+            pbkdf2::derive(digest_alg, iterations as u32, &salt, &secret, &mut out);
+            assert_eq!(dk == out, verify_expected_result.is_ok() || dk.is_empty());
         }
 
-        assert_eq!(pbkdf2::verify(digest_alg, iterations as u32, &salt, &secret,
-                                  &dk),
-                   verify_expected_result);
+        assert_eq!(
+            pbkdf2::verify(digest_alg, iterations as u32, &salt, &secret, &dk),
+            verify_expected_result
+        );
 
         Ok(())
     });

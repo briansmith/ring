@@ -1,7 +1,6 @@
 extern crate ring;
 
-use ring::signature;
-use ring::test;
+use ring::{signature, test};
 
 #[test]
 fn signature_impl_test() {
