@@ -16,9 +16,9 @@
 
 use super::ops::ELEM_LEN;
 
+mod digest;
 pub mod signing;
 pub mod verification;
-mod digest;
 
 /// The length of an Ed25519 public key.
 pub const PUBLIC_KEY_LEN: usize = ELEM_LEN;

@@ -17,8 +17,8 @@ use core::marker::PhantomData;
 use crate::{c, error};
 use untrusted;
 
-pub use limb::*; // XXX
-pub use self::elem::*; // XXX
+pub use self::elem::*;
+pub use limb::*; // XXX // XXX
 
 /// A field element, i.e. an element of ℤ/qℤ for the curve's field modulus
 /// *q*.
@@ -46,7 +46,11 @@ pub struct Point {
 }
 
 impl Point {
-    pub fn new_at_infinity() -> Point { Point { xyz: [0; 3 * MAX_LIMBS] } }
+    pub fn new_at_infinity() -> Point {
+        Point {
+            xyz: [0; 3 * MAX_LIMBS],
+        }
+    }
 }
 
 #[cfg(all(target_pointer_width = "32", target_endian = "little"))]
@@ -54,10 +58,11 @@ macro_rules! limbs {
     ( $limb_b:expr, $limb_a:expr, $limb_9:expr, $limb_8:expr,
       $limb_7:expr, $limb_6:expr, $limb_5:expr, $limb_4:expr,
       $limb_3:expr, $limb_2:expr, $limb_1:expr, $limb_0:expr ) => {
-        [$limb_0, $limb_1, $limb_2, $limb_3,
-         $limb_4, $limb_5, $limb_6, $limb_7,
-         $limb_8, $limb_9, $limb_a, $limb_b]
-    }
+        [
+            $limb_0, $limb_1, $limb_2, $limb_3, $limb_4, $limb_5, $limb_6, $limb_7, $limb_8,
+            $limb_9, $limb_a, $limb_b,
+        ]
+    };
 }
 
 #[cfg(all(target_pointer_width = "64", target_endian = "little"))]
@@ -65,13 +70,15 @@ macro_rules! limbs {
     ( $limb_b:expr, $limb_a:expr, $limb_9:expr, $limb_8:expr,
       $limb_7:expr, $limb_6:expr, $limb_5:expr, $limb_4:expr,
       $limb_3:expr, $limb_2:expr, $limb_1:expr, $limb_0:expr ) => {
-        [(($limb_1 | 0u64) << 32) | $limb_0,
-         (($limb_3 | 0u64) << 32) | $limb_2,
-         (($limb_5 | 0u64) << 32) | $limb_4,
-         (($limb_7 | 0u64) << 32) | $limb_6,
-         (($limb_9 | 0u64) << 32) | $limb_8,
-         (($limb_b | 0u64) << 32) | $limb_a]
-    }
+        [
+            (($limb_1 | 0u64) << 32) | $limb_0,
+            (($limb_3 | 0u64) << 32) | $limb_2,
+            (($limb_5 | 0u64) << 32) | $limb_4,
+            (($limb_7 | 0u64) << 32) | $limb_6,
+            (($limb_9 | 0u64) << 32) | $limb_8,
+            (($limb_b | 0u64) << 32) | $limb_a,
+        ]
+    };
 }
 
 static ONE: Elem<Unencoded> = Elem {
@@ -79,7 +86,6 @@ static ONE: Elem<Unencoded> = Elem {
     m: PhantomData,
     encoding: PhantomData,
 };
-
 
 /// Operations and values needed by all curve operations.
 pub struct CommonOps {
@@ -91,14 +97,11 @@ pub struct CommonOps {
     pub b: Elem<R>,
 
     // In all cases, `r`, `a`, and `b` may all alias each other.
-    elem_add_impl: unsafe extern fn(r: *mut Limb, a: *const Limb,
-                                    b: *const Limb),
-    elem_mul_mont: unsafe extern fn(r: *mut Limb, a: *const Limb,
-                                    b: *const Limb),
-    elem_sqr_mont: unsafe extern fn(r: *mut Limb, a: *const Limb),
+    elem_add_impl: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
+    elem_mul_mont: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
+    elem_sqr_mont: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
 
-    point_add_jacobian_impl: unsafe extern fn(r: *mut Limb, a: *const Limb,
-                                              b: *const Limb),
+    point_add_jacobian_impl: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
 }
 
 impl CommonOps {
@@ -117,9 +120,7 @@ impl CommonOps {
     }
 
     #[inline]
-    pub fn elem_unencoded(&self, a: &Elem<R>) -> Elem<Unencoded> {
-        self.elem_product(a, &ONE)
-    }
+    pub fn elem_unencoded(&self, a: &Elem<R>) -> Elem<Unencoded> { self.elem_product(a, &ONE) }
 
     #[inline]
     pub fn elem_mul(&self, a: &mut Elem<R>, b: &Elem<R>) {
@@ -128,31 +129,26 @@ impl CommonOps {
 
     #[inline]
     pub fn elem_product<EA: Encoding, EB: Encoding>(
-        &self, a: &Elem<EA>, b: &Elem<EB>)
-        -> Elem<<(EA, EB) as ProductEncoding>::Output>
-        where (EA, EB): ProductEncoding
+        &self, a: &Elem<EA>, b: &Elem<EB>,
+    ) -> Elem<<(EA, EB) as ProductEncoding>::Output>
+    where
+        (EA, EB): ProductEncoding,
     {
         mul_mont(self.elem_mul_mont, a, b)
     }
 
     #[inline]
-    pub fn elem_square(&self, a: &mut Elem<R>) {
-        unary_op_assign(self.elem_sqr_mont, a);
-    }
+    pub fn elem_square(&self, a: &mut Elem<R>) { unary_op_assign(self.elem_sqr_mont, a); }
 
     #[inline]
-    pub fn elem_squared(&self, a: &Elem<R>) -> Elem<R> {
-        unary_op(self.elem_sqr_mont, a)
-    }
+    pub fn elem_squared(&self, a: &Elem<R>) -> Elem<R> { unary_op(self.elem_sqr_mont, a) }
 
     #[inline]
     pub fn is_zero<M, E: Encoding>(&self, a: &elem::Elem<M, E>) -> bool {
-        limbs_are_zero_constant_time(&a.limbs[..self.num_limbs]) ==
-            LimbMask::True
+        limbs_are_zero_constant_time(&a.limbs[..self.num_limbs]) == LimbMask::True
     }
 
-    pub fn elem_verify_is_not_zero(&self, a: &Elem<R>)
-                                   -> Result<(), error::Unspecified> {
+    pub fn elem_verify_is_not_zero(&self, a: &Elem<R>) -> Result<(), error::Unspecified> {
         if self.is_zero(a) {
             Err(error::Unspecified)
         } else {
@@ -163,8 +159,7 @@ impl CommonOps {
     pub fn point_sum(&self, a: &Point, b: &Point) -> Point {
         let mut r = Point::new_at_infinity();
         unsafe {
-            (self.point_add_jacobian_impl)(r.xyz.as_mut_ptr(), a.xyz.as_ptr(),
-                                           b.xyz.as_ptr())
+            (self.point_add_jacobian_impl)(r.xyz.as_mut_ptr(), a.xyz.as_ptr(), b.xyz.as_ptr())
         }
         r
     }
@@ -177,15 +172,14 @@ impl CommonOps {
 
     pub fn point_y(&self, p: &Point) -> Elem<R> {
         let mut r = Elem::zero();
-        r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[self.num_limbs..
-                                                         (2 * self.num_limbs)]);
+        r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[self.num_limbs..(2 * self.num_limbs)]);
         r
     }
 
     pub fn point_z(&self, p: &Point) -> Elem<R> {
         let mut r = Elem::zero();
-        r.limbs[..self.num_limbs].copy_from_slice(&p.xyz[(2 * self.num_limbs)..
-                                                         (3 * self.num_limbs)]);
+        r.limbs[..self.num_limbs]
+            .copy_from_slice(&p.xyz[(2 * self.num_limbs)..(3 * self.num_limbs)]);
         r
     }
 }
@@ -195,41 +189,40 @@ struct Modulus {
     rr: [Limb; MAX_LIMBS],
 }
 
-
 /// Operations on private keys, for ECDH and ECDSA signing.
 pub struct PrivateKeyOps {
     pub common: &'static CommonOps,
     elem_inv_squared: fn(a: &Elem<R>) -> Elem<R>,
     point_mul_base_impl: fn(a: &Scalar) -> Point,
-    point_mul_impl: unsafe extern fn(r: *mut Limb/*[3][num_limbs]*/,
-                                     p_scalar: *const Limb/*[num_limbs]*/,
-                                     p_x: *const Limb/*[num_limbs]*/,
-                                     p_y: *const Limb/*[num_limbs]*/),
+    point_mul_impl: unsafe extern "C" fn(
+        r: *mut Limb,          /* [3][num_limbs] */
+        p_scalar: *const Limb, /* [num_limbs] */
+        p_x: *const Limb,      /* [num_limbs] */
+        p_y: *const Limb,      /* [num_limbs] */
+    ),
 }
 
 impl PrivateKeyOps {
     #[inline(always)]
-    pub fn point_mul_base(&self, a: &Scalar) -> Point {
-        (self.point_mul_base_impl)(a)
-    }
+    pub fn point_mul_base(&self, a: &Scalar) -> Point { (self.point_mul_base_impl)(a) }
 
     #[inline(always)]
-    pub fn point_mul(&self, p_scalar: &Scalar,
-                     (p_x, p_y): &(Elem<R>, Elem<R>)) -> Point {
+    pub fn point_mul(&self, p_scalar: &Scalar, (p_x, p_y): &(Elem<R>, Elem<R>)) -> Point {
         let mut r = Point::new_at_infinity();
         unsafe {
-            (self.point_mul_impl)(r.xyz.as_mut_ptr(), p_scalar.limbs.as_ptr(),
-                                  p_x.limbs.as_ptr(), p_y.limbs.as_ptr());
+            (self.point_mul_impl)(
+                r.xyz.as_mut_ptr(),
+                p_scalar.limbs.as_ptr(),
+                p_x.limbs.as_ptr(),
+                p_y.limbs.as_ptr(),
+            );
         }
         r
     }
 
     #[inline]
-    pub fn elem_inverse_squared(&self, a: &Elem<R>) -> Elem<R> {
-        (self.elem_inv_squared)(a)
-    }
+    pub fn elem_inverse_squared(&self, a: &Elem<R>) -> Elem<R> { (self.elem_inv_squared)(a) }
 }
-
 
 /// Operations and values needed by all operations on public keys (ECDH
 /// agreement and ECDSA verification).
@@ -243,20 +236,18 @@ impl PublicKeyOps {
     // most significant limb. Besides the parsing, conversion, this also
     // implements NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers
     // in the interval [0, p-1] in the case that q is an odd prime p[.]"
-    pub fn elem_parse(&self, input: &mut untrusted::Reader)
-                      -> Result<Elem<R>, error::Unspecified> {
-        let encoded_value =
-            input.skip_and_get_input(self.common.num_limbs * LIMB_BYTES)?;
-        let parsed =
-            elem_parse_big_endian_fixed_consttime(self.common, encoded_value)?;
+    pub fn elem_parse(&self, input: &mut untrusted::Reader) -> Result<Elem<R>, error::Unspecified> {
+        let encoded_value = input.skip_and_get_input(self.common.num_limbs * LIMB_BYTES)?;
+        let parsed = elem_parse_big_endian_fixed_consttime(self.common, encoded_value)?;
         let mut r = Elem::zero();
         // Montgomery encode (elem_to_mont).
         // TODO: do something about this.
         unsafe {
-            (self.common.elem_mul_mont)(r.limbs.as_mut_ptr(),
-                                        parsed.limbs.as_ptr(),
-                                        self.common.q.rr.as_ptr())
-
+            (self.common.elem_mul_mont)(
+                r.limbs.as_mut_ptr(),
+                parsed.limbs.as_ptr(),
+                self.common.q.rr.as_ptr(),
+            )
         }
         Ok(r)
     }
@@ -268,15 +259,12 @@ pub struct ScalarOps {
     pub common: &'static CommonOps,
 
     scalar_inv_to_mont_impl: fn(a: &Scalar) -> Scalar<R>,
-    scalar_mul_mont: unsafe extern fn(r: *mut Limb, a: *const Limb,
-                                      b: *const Limb),
+    scalar_mul_mont: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
 }
 
 impl ScalarOps {
     // The (maximum) length of a scalar, not including any padding.
-    pub fn scalar_bytes_len(&self) -> usize {
-        self.common.num_limbs * LIMB_BYTES
-    }
+    pub fn scalar_bytes_len(&self) -> usize { self.common.num_limbs * LIMB_BYTES }
 
     /// Returns the modular inverse of `a` (mod `n`). Panics of `a` is zero,
     /// because zero isn't invertible.
@@ -287,9 +275,11 @@ impl ScalarOps {
 
     #[inline]
     pub fn scalar_product<EA: Encoding, EB: Encoding>(
-            &self, a: &Scalar<EA>, b: &Scalar<EB>)
-            -> Scalar<<(EA, EB) as ProductEncoding>::Output>
-            where (EA, EB): ProductEncoding {
+        &self, a: &Scalar<EA>, b: &Scalar<EB>,
+    ) -> Scalar<<(EA, EB) as ProductEncoding>::Output>
+    where
+        (EA, EB): ProductEncoding,
+    {
         mul_mont(self.scalar_mul_mont, a, b)
     }
 }
@@ -316,8 +306,7 @@ impl PublicScalarOps {
         }
     }
 
-    pub fn elem_equals(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>)
-                       -> bool {
+    pub fn elem_equals(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>) -> bool {
         for i in 0..self.public_key_ops.common.num_limbs {
             if a.limbs[i] != b.limbs[i] {
                 return false;
@@ -326,16 +315,13 @@ impl PublicScalarOps {
         true
     }
 
-    pub fn elem_less_than(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>)
-                          -> bool {
+    pub fn elem_less_than(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>) -> bool {
         let num_limbs = self.public_key_ops.common.num_limbs;
-        limbs_less_than_limbs_vartime(&a.limbs[..num_limbs],
-                                      &b.limbs[..num_limbs])
+        limbs_less_than_limbs_vartime(&a.limbs[..num_limbs], &b.limbs[..num_limbs])
     }
 
     #[inline]
-    pub fn elem_sum(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>)
-                    -> Elem<Unencoded> {
+    pub fn elem_sum(&self, a: &Elem<Unencoded>, b: &Elem<Unencoded>) -> Elem<Unencoded> {
         binary_op(self.public_key_ops.common.elem_add_impl, a, b)
     }
 }
@@ -348,12 +334,10 @@ pub struct PrivateScalarOps {
 }
 
 // This assumes n < q < 2*n.
-pub fn elem_reduced_to_scalar(ops: &CommonOps, elem: &Elem<Unencoded>)
-                              -> Scalar<Unencoded> {
+pub fn elem_reduced_to_scalar(ops: &CommonOps, elem: &Elem<Unencoded>) -> Scalar<Unencoded> {
     let num_limbs = ops.num_limbs;
     let mut r_limbs = elem.limbs;
-    limbs_reduce_once_constant_time(&mut r_limbs[..num_limbs],
-                                    &ops.n.limbs[..num_limbs]);
+    limbs_reduce_once_constant_time(&mut r_limbs[..num_limbs], &ops.n.limbs[..num_limbs]);
     Scalar {
         limbs: r_limbs,
         m: PhantomData,
@@ -364,16 +348,19 @@ pub fn elem_reduced_to_scalar(ops: &CommonOps, elem: &Elem<Unencoded>)
 pub fn scalar_sum(ops: &CommonOps, a: &Scalar, b: &Scalar) -> Scalar {
     let mut r = Scalar::zero();
     unsafe {
-        LIMBS_add_mod(r.limbs.as_mut_ptr(), a.limbs.as_ptr(), b.limbs.as_ptr(),
-                      ops.n.limbs.as_ptr(), ops.num_limbs)
+        LIMBS_add_mod(
+            r.limbs.as_mut_ptr(),
+            a.limbs.as_ptr(),
+            b.limbs.as_ptr(),
+            ops.n.limbs.as_ptr(),
+            ops.num_limbs,
+        )
     }
     r
 }
 
-
 // Returns (`a` squared `squarings` times) * `b`.
-fn elem_sqr_mul(ops: &CommonOps, a: &Elem<R>, squarings: usize, b: &Elem<R>)
-                -> Elem<R> {
+fn elem_sqr_mul(ops: &CommonOps, a: &Elem<R>, squarings: usize, b: &Elem<R>) -> Elem<R> {
     debug_assert!(squarings >= 1);
     let mut tmp = ops.elem_squared(a);
     for _ in 1..squarings {
@@ -383,8 +370,7 @@ fn elem_sqr_mul(ops: &CommonOps, a: &Elem<R>, squarings: usize, b: &Elem<R>)
 }
 
 // Sets `acc` = (`acc` squared `squarings` times) * `b`.
-fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut Elem<R>, squarings: usize,
-                    b: &Elem<R>) {
+fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut Elem<R>, squarings: usize, b: &Elem<R>) {
     debug_assert!(squarings >= 1);
     for _ in 0..squarings {
         ops.elem_square(acc);
@@ -394,66 +380,72 @@ fn elem_sqr_mul_acc(ops: &CommonOps, acc: &mut Elem<R>, squarings: usize,
 
 #[inline]
 pub fn elem_parse_big_endian_fixed_consttime(
-        ops: &CommonOps, bytes: untrusted::Input)
-        -> Result<Elem<Unencoded>, error::Unspecified> {
-    parse_big_endian_fixed_consttime(ops, bytes, AllowZero::Yes,
-                                     &ops.q.p[..ops.num_limbs])
+    ops: &CommonOps, bytes: untrusted::Input,
+) -> Result<Elem<Unencoded>, error::Unspecified> {
+    parse_big_endian_fixed_consttime(ops, bytes, AllowZero::Yes, &ops.q.p[..ops.num_limbs])
 }
 
 #[inline]
 pub fn scalar_parse_big_endian_fixed_consttime(
-        ops: &CommonOps, bytes: untrusted::Input)
-        -> Result<Scalar, error::Unspecified> {
-    parse_big_endian_fixed_consttime(ops, bytes, AllowZero::No,
-                                     &ops.n.limbs[..ops.num_limbs])
+    ops: &CommonOps, bytes: untrusted::Input,
+) -> Result<Scalar, error::Unspecified> {
+    parse_big_endian_fixed_consttime(ops, bytes, AllowZero::No, &ops.n.limbs[..ops.num_limbs])
 }
 
 #[inline]
-pub fn scalar_parse_big_endian_variable(ops: &CommonOps, allow_zero: AllowZero,
-                                        bytes: untrusted::Input)
-                                        -> Result<Scalar, error::Unspecified> {
+pub fn scalar_parse_big_endian_variable(
+    ops: &CommonOps, allow_zero: AllowZero, bytes: untrusted::Input,
+) -> Result<Scalar, error::Unspecified> {
     let mut r = Scalar::zero();
     parse_big_endian_in_range_and_pad_consttime(
-            bytes, allow_zero, &ops.n.limbs[..ops.num_limbs],
-            &mut r.limbs[..ops.num_limbs])?;
+        bytes,
+        allow_zero,
+        &ops.n.limbs[..ops.num_limbs],
+        &mut r.limbs[..ops.num_limbs],
+    )?;
     Ok(r)
 }
 
 pub fn scalar_parse_big_endian_partially_reduced_variable_consttime(
-        ops: &CommonOps, allow_zero: AllowZero, bytes: untrusted::Input)
-        -> Result<Scalar, error::Unspecified> {
+    ops: &CommonOps, allow_zero: AllowZero, bytes: untrusted::Input,
+) -> Result<Scalar, error::Unspecified> {
     let mut r = Scalar::zero();
     parse_big_endian_in_range_partially_reduced_and_pad_consttime(
-            bytes, allow_zero, &ops.n.limbs[..ops.num_limbs],
-            &mut r.limbs[..ops.num_limbs])?;
+        bytes,
+        allow_zero,
+        &ops.n.limbs[..ops.num_limbs],
+        &mut r.limbs[..ops.num_limbs],
+    )?;
     Ok(r)
 }
 
 fn parse_big_endian_fixed_consttime<M>(
-        ops: &CommonOps, bytes: untrusted::Input, allow_zero: AllowZero,
-        max_exclusive: &[Limb])
-        -> Result<elem::Elem<M, Unencoded>, error::Unspecified> {
+    ops: &CommonOps, bytes: untrusted::Input, allow_zero: AllowZero, max_exclusive: &[Limb],
+) -> Result<elem::Elem<M, Unencoded>, error::Unspecified> {
     if bytes.len() != ops.num_limbs * LIMB_BYTES {
         return Err(error::Unspecified);
     }
     let mut r = elem::Elem::zero();
     parse_big_endian_in_range_and_pad_consttime(
-            bytes, allow_zero, max_exclusive, &mut r.limbs[..ops.num_limbs])?;
+        bytes,
+        allow_zero,
+        max_exclusive,
+        &mut r.limbs[..ops.num_limbs],
+    )?;
     Ok(r)
 }
 
-
-extern {
-    fn LIMBS_add_mod(r: *mut Limb, a: *const Limb, b: *const Limb,
-                     m: *const Limb, num_limbs: c::size_t);
+extern "C" {
+    fn LIMBS_add_mod(
+        r: *mut Limb, a: *const Limb, b: *const Limb, m: *const Limb, num_limbs: c::size_t,
+    );
 }
-
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{c, test};
     use std;
-    use super::*;
     use untrusted;
 
     const ZERO_SCALAR: Scalar = Scalar {
@@ -481,14 +473,18 @@ mod tests {
 
     #[test]
     fn p256_elem_add_test() {
-        elem_add_test(&p256::PUBLIC_SCALAR_OPS,
-                      "src/ec/suite_b/ops/p256_elem_sum_tests.txt");
+        elem_add_test(
+            &p256::PUBLIC_SCALAR_OPS,
+            "src/ec/suite_b/ops/p256_elem_sum_tests.txt",
+        );
     }
 
     #[test]
     fn p384_elem_add_test() {
-        elem_add_test(&p384::PUBLIC_SCALAR_OPS,
-                      "src/ec/suite_b/ops/p384_elem_sum_tests.txt");
+        elem_add_test(
+            &p384::PUBLIC_SCALAR_OPS,
+            "src/ec/suite_b/ops/p384_elem_sum_tests.txt",
+        );
     }
 
     fn elem_add_test(ops: &PublicScalarOps, file_path: &str) {
@@ -517,17 +513,21 @@ mod tests {
 
     #[test]
     fn p384_elem_sub_test() {
-        extern {
+        extern "C" {
             fn GFp_p384_elem_sub(r: *mut Limb, a: *const Limb, b: *const Limb);
         }
-        elem_sub_test(&p384::COMMON_OPS, GFp_p384_elem_sub,
-                      "src/ec/suite_b/ops/p384_elem_sum_tests.txt");
+        elem_sub_test(
+            &p384::COMMON_OPS,
+            GFp_p384_elem_sub,
+            "src/ec/suite_b/ops/p384_elem_sum_tests.txt",
+        );
     }
 
-    fn elem_sub_test(ops: &CommonOps,
-                     elem_sub: unsafe extern fn(r: *mut Limb, a: *const Limb,
-                                                b: *const Limb),
-                       file_path: &str) {
+    fn elem_sub_test(
+        ops: &CommonOps,
+        elem_sub: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
+        file_path: &str,
+    ) {
         test::from_file(file_path, |section, test_case| {
             assert_eq!(section, "");
 
@@ -537,15 +537,21 @@ mod tests {
 
             let mut actual_difference = Elem::<R>::zero();
             unsafe {
-                elem_sub(actual_difference.limbs.as_mut_ptr(),
-                         r.limbs.as_ptr(), b.limbs.as_ptr());
+                elem_sub(
+                    actual_difference.limbs.as_mut_ptr(),
+                    r.limbs.as_ptr(),
+                    b.limbs.as_ptr(),
+                );
             }
             assert_limbs_are_equal(ops, &actual_difference.limbs, &a.limbs);
 
             let mut actual_difference = Elem::<R>::zero();
             unsafe {
-                elem_sub(actual_difference.limbs.as_mut_ptr(),
-                         r.limbs.as_ptr(), a.limbs.as_ptr());
+                elem_sub(
+                    actual_difference.limbs.as_mut_ptr(),
+                    r.limbs.as_ptr(),
+                    a.limbs.as_ptr(),
+                );
             }
             assert_limbs_are_equal(ops, &actual_difference.limbs, &b.limbs);
 
@@ -558,17 +564,20 @@ mod tests {
 
     #[test]
     fn p384_elem_div_by_2_test() {
-        extern {
+        extern "C" {
             fn GFp_p384_elem_div_by_2(r: *mut Limb, a: *const Limb);
         }
-        elem_div_by_2_test(&p384::COMMON_OPS, GFp_p384_elem_div_by_2,
-                           "src/ec/suite_b/ops/p384_elem_div_by_2_tests.txt");
+        elem_div_by_2_test(
+            &p384::COMMON_OPS,
+            GFp_p384_elem_div_by_2,
+            "src/ec/suite_b/ops/p384_elem_div_by_2_tests.txt",
+        );
     }
 
-    fn elem_div_by_2_test(ops: &CommonOps,
-                          elem_div_by_2: unsafe extern fn(r: *mut Limb,
-                                                          a: *const Limb),
-                     file_path: &str) {
+    fn elem_div_by_2_test(
+        ops: &CommonOps, elem_div_by_2: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
+        file_path: &str,
+    ) {
         test::from_file(file_path, |section, test_case| {
             assert_eq!(section, "");
 
@@ -577,8 +586,7 @@ mod tests {
 
             let mut actual_result = Elem::<R>::zero();
             unsafe {
-                elem_div_by_2(actual_result.limbs.as_mut_ptr(),
-                              a.limbs.as_ptr());
+                elem_div_by_2(actual_result.limbs.as_mut_ptr(), a.limbs.as_ptr());
             }
             assert_limbs_are_equal(ops, &actual_result.limbs, &r.limbs);
 
@@ -589,25 +597,32 @@ mod tests {
     // TODO: Add test vectors that test the range of values above `q`.
     #[test]
     fn p256_elem_neg_test() {
-        extern {
+        extern "C" {
             fn GFp_nistz256_neg(r: *mut Limb, a: *const Limb);
         }
-        elem_neg_test(&p256::COMMON_OPS, GFp_nistz256_neg,
-                      "src/ec/suite_b/ops/p256_elem_neg_tests.txt");
+        elem_neg_test(
+            &p256::COMMON_OPS,
+            GFp_nistz256_neg,
+            "src/ec/suite_b/ops/p256_elem_neg_tests.txt",
+        );
     }
 
     #[test]
     fn p384_elem_neg_test() {
-        extern {
+        extern "C" {
             fn GFp_p384_elem_neg(r: *mut Limb, a: *const Limb);
         }
-        elem_neg_test(&p384::COMMON_OPS, GFp_p384_elem_neg,
-                      "src/ec/suite_b/ops/p384_elem_neg_tests.txt");
+        elem_neg_test(
+            &p384::COMMON_OPS,
+            GFp_p384_elem_neg,
+            "src/ec/suite_b/ops/p384_elem_neg_tests.txt",
+        );
     }
 
-    fn elem_neg_test(ops: &CommonOps,
-                     elem_neg: unsafe extern fn(r: *mut Limb, a: *const Limb),
-                     file_path: &str) {
+    fn elem_neg_test(
+        ops: &CommonOps, elem_neg: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
+        file_path: &str,
+    ) {
         test::from_file(file_path, |section, test_case| {
             assert_eq!(section, "");
 
@@ -638,17 +653,21 @@ mod tests {
 
     #[test]
     fn p256_elem_mul_test() {
-        elem_mul_test(&p256::COMMON_OPS,
-                      "src/ec/suite_b/ops/p256_elem_mul_tests.txt");
+        elem_mul_test(
+            &p256::COMMON_OPS,
+            "src/ec/suite_b/ops/p256_elem_mul_tests.txt",
+        );
     }
 
     #[test]
     fn p384_elem_mul_test() {
-        elem_mul_test(&p384::COMMON_OPS,
-                      "src/ec/suite_b/ops/p384_elem_mul_tests.txt");
+        elem_mul_test(
+            &p384::COMMON_OPS,
+            "src/ec/suite_b/ops/p384_elem_mul_tests.txt",
+        );
     }
 
-    fn elem_mul_test(ops: &CommonOps,  file_path: &str) {
+    fn elem_mul_test(ops: &CommonOps, file_path: &str) {
         test::from_file(file_path, |section, test_case| {
             assert_eq!(section, "");
 
@@ -664,17 +683,21 @@ mod tests {
 
     #[test]
     fn p256_scalar_mul_test() {
-        scalar_mul_test(&p256::SCALAR_OPS,
-                      "src/ec/suite_b/ops/p256_scalar_mul_tests.txt");
+        scalar_mul_test(
+            &p256::SCALAR_OPS,
+            "src/ec/suite_b/ops/p256_scalar_mul_tests.txt",
+        );
     }
 
     #[test]
     fn p384_scalar_mul_test() {
-        scalar_mul_test(&p384::SCALAR_OPS,
-                      "src/ec/suite_b/ops/p384_scalar_mul_tests.txt");
+        scalar_mul_test(
+            &p384::SCALAR_OPS,
+            "src/ec/suite_b/ops/p384_scalar_mul_tests.txt",
+        );
     }
 
-    fn scalar_mul_test(ops: &ScalarOps,  file_path: &str) {
+    fn scalar_mul_test(ops: &ScalarOps, file_path: &str) {
         test::from_file(file_path, |section, test_case| {
             assert_eq!(section, "");
             let cops = ops.common;
@@ -682,8 +705,7 @@ mod tests {
             let b = consume_scalar_mont(cops, test_case, "b");
             let expected_result = consume_scalar(cops, test_case, "r");
             let actual_result = ops.scalar_product(&mut a, &b);
-            assert_limbs_are_equal(cops, &actual_result.limbs,
-                                   &expected_result.limbs);
+            assert_limbs_are_equal(cops, &actual_result.limbs, &expected_result.limbs);
 
             Ok(())
         })
@@ -691,21 +713,23 @@ mod tests {
 
     #[test]
     fn p256_scalar_square_test() {
-        extern {
-            fn GFp_p256_scalar_sqr_rep_mont(r: *mut Limb, a: *const Limb,
-                                            rep: c::int);
+        extern "C" {
+            fn GFp_p256_scalar_sqr_rep_mont(r: *mut Limb, a: *const Limb, rep: c::int);
         }
-        scalar_square_test(&p256::SCALAR_OPS, GFp_p256_scalar_sqr_rep_mont,
-                           "src/ec/suite_b/ops/p256_scalar_square_tests.txt");
+        scalar_square_test(
+            &p256::SCALAR_OPS,
+            GFp_p256_scalar_sqr_rep_mont,
+            "src/ec/suite_b/ops/p256_scalar_square_tests.txt",
+        );
     }
 
     // XXX: There's no `p384_scalar_square_test()` because there's no dedicated
     // `GFp_p384_scalar_sqr_rep_mont()`.
 
-    fn scalar_square_test(ops: &ScalarOps,
-                          sqr_rep: unsafe extern fn(r: *mut Limb, a: *const Limb,
-                                                    rep: c::int),
-                          file_path: &str) {
+    fn scalar_square_test(
+        ops: &ScalarOps, sqr_rep: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, rep: c::int),
+        file_path: &str,
+    ) {
         test::from_file(file_path, |section, test_case| {
             assert_eq!(section, "");
             let cops = &ops.common;
@@ -721,14 +745,12 @@ mod tests {
                 unsafe {
                     sqr_rep(actual_result.limbs.as_mut_ptr(), a.limbs.as_ptr(), 1);
                 }
-                assert_limbs_are_equal(cops, &actual_result.limbs,
-                                       &expected_result.limbs);
+                assert_limbs_are_equal(cops, &actual_result.limbs, &expected_result.limbs);
             }
 
             {
                 let actual_result = ops.scalar_product(&a, &a);
-                assert_limbs_are_equal(cops, &actual_result.limbs,
-                                       &expected_result.limbs);
+                assert_limbs_are_equal(cops, &actual_result.limbs, &expected_result.limbs);
             }
 
             Ok(())
@@ -749,14 +771,18 @@ mod tests {
 
     #[test]
     fn p256_point_sum_test() {
-        point_sum_test(&p256::PRIVATE_KEY_OPS,
-                       "src/ec/suite_b/ops/p256_point_sum_tests.txt");
+        point_sum_test(
+            &p256::PRIVATE_KEY_OPS,
+            "src/ec/suite_b/ops/p256_point_sum_tests.txt",
+        );
     }
 
     #[test]
     fn p384_point_sum_test() {
-        point_sum_test(&p384::PRIVATE_KEY_OPS,
-                       "src/ec/suite_b/ops/p384_point_sum_tests.txt");
+        point_sum_test(
+            &p384::PRIVATE_KEY_OPS,
+            "src/ec/suite_b/ops/p384_point_sum_tests.txt",
+        );
     }
 
     fn point_sum_test(ops: &PrivateKeyOps, file_path: &str) {
@@ -776,26 +802,31 @@ mod tests {
 
     #[test]
     fn p256_point_sum_mixed_test() {
-        extern {
+        extern "C" {
             fn GFp_nistz256_point_add_affine(
-                r: *mut Limb/*[p256::COMMON_OPS.num_limbs*3]*/,
-                a: *const Limb/*[p256::COMMON_OPS.num_limbs*3]*/,
-                b: *const Limb/*[p256::COMMON_OPS.num_limbs*2]*/);
+                r: *mut Limb,   /* [p256::COMMON_OPS.num_limbs*3] */
+                a: *const Limb, /* [p256::COMMON_OPS.num_limbs*3] */
+                b: *const Limb, /* [p256::COMMON_OPS.num_limbs*2] */
+            );
         }
         point_sum_mixed_test(
-            &p256::PRIVATE_KEY_OPS, GFp_nistz256_point_add_affine,
-            "src/ec/suite_b/ops/p256_point_sum_mixed_tests.txt");
+            &p256::PRIVATE_KEY_OPS,
+            GFp_nistz256_point_add_affine,
+            "src/ec/suite_b/ops/p256_point_sum_mixed_tests.txt",
+        );
     }
 
     // XXX: There is no `GFp_nistz384_point_add_affine()`.
 
     fn point_sum_mixed_test(
-            ops: &PrivateKeyOps,
-            point_add_affine: unsafe extern fn(
-                r: *mut Limb/*[ops.num_limbs*3]*/,
-                a: *const Limb/*[ops.num_limbs*3]*/,
-                b: *const Limb/*[ops.num_limbs*2]*/),
-            file_path: &str) {
+        ops: &PrivateKeyOps,
+        point_add_affine: unsafe extern "C" fn(
+            r: *mut Limb,   /* [ops.num_limbs*3] */
+            a: *const Limb, /* [ops.num_limbs*3] */
+            b: *const Limb, /* [ops.num_limbs*2] */
+        ),
+        file_path: &str,
+    ) {
         test::from_file(file_path, |section, test_case| {
             assert_eq!(section, "");
 
@@ -805,8 +836,7 @@ mod tests {
 
             let mut r_actual = Point::new_at_infinity();
             unsafe {
-                point_add_affine(r_actual.xyz.as_mut_ptr(), a.xyz.as_ptr(),
-                                 b.xy.as_ptr());
+                point_add_affine(r_actual.xyz.as_mut_ptr(), a.xyz.as_ptr(), b.xy.as_ptr());
             }
 
             assert_point_actual_equals_expected(ops, &r_actual, &r_expected);
@@ -817,32 +847,42 @@ mod tests {
 
     #[test]
     fn p256_point_double_test() {
-        extern {
+        extern "C" {
             fn GFp_nistz256_point_double(
-                r: *mut Limb/*[p256::COMMON_OPS.num_limbs*3]*/,
-                a: *const Limb/*[p256::COMMON_OPS.num_limbs*3]*/);
+                r: *mut Limb,   /* [p256::COMMON_OPS.num_limbs*3] */
+                a: *const Limb, /* [p256::COMMON_OPS.num_limbs*3] */
+            );
         }
-        point_double_test(&p256::PRIVATE_KEY_OPS, GFp_nistz256_point_double,
-                         "src/ec/suite_b/ops/p256_point_double_tests.txt");
+        point_double_test(
+            &p256::PRIVATE_KEY_OPS,
+            GFp_nistz256_point_double,
+            "src/ec/suite_b/ops/p256_point_double_tests.txt",
+        );
     }
 
     #[test]
     fn p384_point_double_test() {
-        extern {
+        extern "C" {
             fn GFp_nistz384_point_double(
-                r: *mut Limb/*[p384::COMMON_OPS.num_limbs*3]*/,
-                a: *const Limb/*[p384::COMMON_OPS.num_limbs*3]*/);
+                r: *mut Limb,   /* [p384::COMMON_OPS.num_limbs*3] */
+                a: *const Limb, /* [p384::COMMON_OPS.num_limbs*3] */
+            );
         }
-        point_double_test(&p384::PRIVATE_KEY_OPS, GFp_nistz384_point_double,
-                          "src/ec/suite_b/ops/p384_point_double_tests.txt");
+        point_double_test(
+            &p384::PRIVATE_KEY_OPS,
+            GFp_nistz384_point_double,
+            "src/ec/suite_b/ops/p384_point_double_tests.txt",
+        );
     }
 
     fn point_double_test(
-            ops: &PrivateKeyOps,
-            point_double: unsafe extern fn(
-                r: *mut Limb/*[ops.num_limbs*3]*/,
-                a: *const Limb/*[ops.num_limbs*3]*/),
-            file_path: &str) {
+        ops: &PrivateKeyOps,
+        point_double: unsafe extern "C" fn(
+            r: *mut Limb,   /* [ops.num_limbs*3] */
+            a: *const Limb, /* [ops.num_limbs*3] */
+        ),
+        file_path: &str,
+    ) {
         test::from_file(file_path, |section, test_case| {
             assert_eq!(section, "");
 
@@ -862,14 +902,18 @@ mod tests {
 
     #[test]
     fn p256_point_mul_test() {
-        point_mul_tests(&p256::PRIVATE_KEY_OPS,
-                        "src/ec/suite_b/ops/p256_point_mul_tests.txt");
+        point_mul_tests(
+            &p256::PRIVATE_KEY_OPS,
+            "src/ec/suite_b/ops/p256_point_mul_tests.txt",
+        );
     }
 
     #[test]
     fn p384_point_mul_test() {
-        point_mul_tests(&p384::PRIVATE_KEY_OPS,
-                        "src/ec/suite_b/ops/p384_point_mul_tests.txt");
+        point_mul_tests(
+            &p384::PRIVATE_KEY_OPS,
+            "src/ec/suite_b/ops/p384_point_mul_tests.txt",
+        );
     }
 
     fn point_mul_tests(ops: &PrivateKeyOps, file_path: &str) {
@@ -884,8 +928,7 @@ mod tests {
             };
             let expected_result = consume_point(ops, test_case, "r");
             let actual_result = ops.point_mul(&p_scalar, &(x, y));
-            assert_point_actual_equals_expected(ops, &actual_result,
-                                                &expected_result);
+            assert_point_actual_equals_expected(ops, &actual_result, &expected_result);
             Ok(())
         })
     }
@@ -893,12 +936,15 @@ mod tests {
     #[test]
     fn p256_point_mul_serialized_test() {
         point_mul_serialized_test(
-            &p256::PRIVATE_KEY_OPS, &p256::PUBLIC_KEY_OPS,
-            "src/ec/suite_b/ops/p256_point_mul_serialized_tests.txt");
+            &p256::PRIVATE_KEY_OPS,
+            &p256::PUBLIC_KEY_OPS,
+            "src/ec/suite_b/ops/p256_point_mul_serialized_tests.txt",
+        );
     }
 
-    fn point_mul_serialized_test(priv_ops: &PrivateKeyOps,
-                                 pub_ops: &PublicKeyOps, file_path: &str) {
+    fn point_mul_serialized_test(
+        priv_ops: &PrivateKeyOps, pub_ops: &PublicKeyOps, file_path: &str,
+    ) {
         let cops = pub_ops.common;
 
         test::from_file(file_path, |section, test_case| {
@@ -907,21 +953,25 @@ mod tests {
 
             let p = test_case.consume_bytes("p");
             let p = super::super::public_key::parse_uncompressed_point(
-                pub_ops, untrusted::Input::from(&p)).expect("valid point");
+                pub_ops,
+                untrusted::Input::from(&p),
+            )
+            .expect("valid point");
 
             let expected_result = test_case.consume_bytes("r");
 
             let product = priv_ops.point_mul(&p_scalar, &p);
 
-            let mut actual_result =
-                vec![4u8; 1 + (2 * (cops.num_limbs * LIMB_BYTES))];
+            let mut actual_result = vec![4u8; 1 + (2 * (cops.num_limbs * LIMB_BYTES))];
             {
-                let (x, y) =
-                    actual_result[1..].split_at_mut(cops.num_limbs * LIMB_BYTES);
+                let (x, y) = actual_result[1..].split_at_mut(cops.num_limbs * LIMB_BYTES);
                 super::super::private_key::big_endian_affine_from_jacobian(
-                        priv_ops, Some(x), Some(y), &product)
-                    .expect("successful encoding");
-
+                    priv_ops,
+                    Some(x),
+                    Some(y),
+                    &product,
+                )
+                .expect("successful encoding");
             }
 
             assert_eq!(expected_result, actual_result);
@@ -932,14 +982,18 @@ mod tests {
 
     #[test]
     fn p256_point_mul_base_test() {
-        point_mul_base_tests(&p256::PRIVATE_KEY_OPS,
-                             "src/ec/suite_b/ops/p256_point_mul_base_tests.txt");
+        point_mul_base_tests(
+            &p256::PRIVATE_KEY_OPS,
+            "src/ec/suite_b/ops/p256_point_mul_base_tests.txt",
+        );
     }
 
     #[test]
     fn p384_point_mul_base_test() {
-        point_mul_base_tests(&p384::PRIVATE_KEY_OPS,
-                             "src/ec/suite_b/ops/p384_point_mul_base_tests.txt");
+        point_mul_base_tests(
+            &p384::PRIVATE_KEY_OPS,
+            "src/ec/suite_b/ops/p384_point_mul_base_tests.txt",
+        );
     }
 
     fn point_mul_base_tests(ops: &PrivateKeyOps, file_path: &str) {
@@ -948,15 +1002,14 @@ mod tests {
             let g_scalar = consume_scalar(ops.common, test_case, "g_scalar");
             let expected_result = consume_point(ops, test_case, "r");
             let actual_result = ops.point_mul_base(&g_scalar);
-            assert_point_actual_equals_expected(ops, &actual_result,
-                                                &expected_result);
+            assert_point_actual_equals_expected(ops, &actual_result, &expected_result);
             Ok(())
         })
     }
 
-    fn assert_point_actual_equals_expected(ops: &PrivateKeyOps,
-                                           actual_point: &Point,
-                                           expected_point: &TestPoint) {
+    fn assert_point_actual_equals_expected(
+        ops: &PrivateKeyOps, actual_point: &Point, expected_point: &TestPoint,
+    ) {
         let cops = ops.common;
         let actual_x = &cops.point_x(&actual_point);
         let actual_y = &cops.point_y(&actual_point);
@@ -981,9 +1034,9 @@ mod tests {
         }
     }
 
-    fn consume_jacobian_point(ops: &PrivateKeyOps,
-                              test_case: &mut test::TestCase, name: &str)
-                              -> Point {
+    fn consume_jacobian_point(
+        ops: &PrivateKeyOps, test_case: &mut test::TestCase, name: &str,
+    ) -> Point {
         let input = test_case.consume_string(name);
         let elems = input.split(", ").collect::<std::vec::Vec<&str>>();
         assert_eq!(elems.len(), 3);
@@ -998,24 +1051,26 @@ mod tests {
         xy: [Limb; 2 * MAX_LIMBS],
     }
 
-    fn consume_affine_point(ops: &PrivateKeyOps,
-                            test_case: &mut test::TestCase, name: &str)
-                            -> AffinePoint {
+    fn consume_affine_point(
+        ops: &PrivateKeyOps, test_case: &mut test::TestCase, name: &str,
+    ) -> AffinePoint {
         let input = test_case.consume_string(name);
         let elems = input.split(", ").collect::<std::vec::Vec<&str>>();
         assert_eq!(elems.len(), 2);
-        let mut p = AffinePoint { xy: [0; 2 * MAX_LIMBS] };
+        let mut p = AffinePoint {
+            xy: [0; 2 * MAX_LIMBS],
+        };
         consume_point_elem(ops.common, &mut p.xy, &elems, 0);
         consume_point_elem(ops.common, &mut p.xy, &elems, 1);
         p
     }
 
-    fn consume_point_elem(ops: &CommonOps, limbs_out: &mut [Limb],
-                          elems: &std::vec::Vec<&str>, i: usize) {
+    fn consume_point_elem(
+        ops: &CommonOps, limbs_out: &mut [Limb], elems: &std::vec::Vec<&str>, i: usize,
+    ) {
         let bytes = test::from_hex(elems[i]).unwrap();
         let bytes = untrusted::Input::from(&bytes);
-        let r: Elem<Unencoded> =
-            elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
+        let r: Elem<Unencoded> = elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
         // XXX: “Transmute” this to `Elem<R>` limbs.
         limbs_out[(i * ops.num_limbs)..((i + 1) * ops.num_limbs)]
             .copy_from_slice(&r.limbs[..ops.num_limbs]);
@@ -1026,10 +1081,8 @@ mod tests {
         Affine(Elem<R>, Elem<R>),
     }
 
-    fn consume_point(ops: &PrivateKeyOps, test_case: &mut test::TestCase,
-                     name: &str) -> TestPoint {
-        fn consume_point_elem(ops: &CommonOps, elems: &std::vec::Vec<&str>,
-                              i: usize) -> Elem<R> {
+    fn consume_point(ops: &PrivateKeyOps, test_case: &mut test::TestCase, name: &str) -> TestPoint {
+        fn consume_point_elem(ops: &CommonOps, elems: &std::vec::Vec<&str>, i: usize) -> Elem<R> {
             let bytes = test::from_hex(elems[i]).unwrap();
             let bytes = untrusted::Input::from(&bytes);
             let unencoded: Elem<Unencoded> =
@@ -1057,14 +1110,14 @@ mod tests {
         assert_limbs_are_equal(ops, &a.limbs, &b.limbs)
     }
 
-    fn assert_limbs_are_equal(ops: &CommonOps, actual: &[Limb; MAX_LIMBS],
-                              expected: &[Limb; MAX_LIMBS]) {
+    fn assert_limbs_are_equal(
+        ops: &CommonOps, actual: &[Limb; MAX_LIMBS], expected: &[Limb; MAX_LIMBS],
+    ) {
         for i in 0..ops.num_limbs {
             if actual[i] != expected[i] {
                 let mut s = std::string::String::new();
                 for j in 0..ops.num_limbs {
-                    let formatted = format!("{:016x}",
-                                            actual[ops.num_limbs - j - 1]);
+                    let formatted = format!("{:016x}", actual[ops.num_limbs - j - 1]);
                     s.push_str(&formatted);
                 }
                 print!("\n");
@@ -1073,12 +1126,10 @@ mod tests {
         }
     }
 
-    fn consume_elem(ops: &CommonOps, test_case: &mut test::TestCase,
-                    name: &str) -> Elem<R> {
+    fn consume_elem(ops: &CommonOps, test_case: &mut test::TestCase, name: &str) -> Elem<R> {
         let bytes = consume_padded_bytes(ops, test_case, name);
         let bytes = untrusted::Input::from(&bytes);
-        let r: Elem<Unencoded> =
-            elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
+        let r: Elem<Unencoded> = elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
         // XXX: “Transmute” this to an `Elem<R>`.
         Elem {
             limbs: r.limbs,
@@ -1087,19 +1138,18 @@ mod tests {
         }
     }
 
-    fn consume_scalar(ops: &CommonOps, test_case: &mut test::TestCase,
-                      name: &str) -> Scalar {
+    fn consume_scalar(ops: &CommonOps, test_case: &mut test::TestCase, name: &str) -> Scalar {
         let bytes = test_case.consume_bytes(name);
         let bytes = untrusted::Input::from(&bytes);
         scalar_parse_big_endian_variable(ops, AllowZero::Yes, bytes).unwrap()
     }
 
-    fn consume_scalar_mont(ops: &CommonOps, test_case: &mut test::TestCase,
-                           name: &str) -> Scalar<R> {
+    fn consume_scalar_mont(
+        ops: &CommonOps, test_case: &mut test::TestCase, name: &str,
+    ) -> Scalar<R> {
         let bytes = test_case.consume_bytes(name);
         let bytes = untrusted::Input::from(&bytes);
-        let s = scalar_parse_big_endian_variable(ops, AllowZero::Yes, bytes)
-            .unwrap();
+        let s = scalar_parse_big_endian_variable(ops, AllowZero::Yes, bytes).unwrap();
         // “Transmute” it to a `Scalar<R>`.
         Scalar {
             limbs: s.limbs,
@@ -1108,37 +1158,36 @@ mod tests {
         }
     }
 
-    fn consume_padded_bytes(ops: &CommonOps, test_case: &mut test::TestCase,
-                            name: &str) -> std::vec::Vec<u8> {
+    fn consume_padded_bytes(
+        ops: &CommonOps, test_case: &mut test::TestCase, name: &str,
+    ) -> std::vec::Vec<u8> {
         let unpadded_bytes = test_case.consume_bytes(name);
-        let mut bytes =
-            vec![0; (ops.num_limbs * LIMB_BYTES) - unpadded_bytes.len()];
+        let mut bytes = vec![0; (ops.num_limbs * LIMB_BYTES) - unpadded_bytes.len()];
         bytes.extend(&unpadded_bytes);
         bytes
     }
 }
 
-
 #[cfg(feature = "internal_benches")]
 mod internal_benches {
     use super::{Limb, MAX_LIMBS};
 
-    pub const LIMBS_1: [Limb; MAX_LIMBS] =
-        limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+    pub const LIMBS_1: [Limb; MAX_LIMBS] = limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
 
-    pub const LIMBS_ALTERNATING_10: [Limb; MAX_LIMBS] =
-        limbs![0b10101010_10101010_10101010_10101010,
-               0b10101010_10101010_10101010_10101010,
-               0b10101010_10101010_10101010_10101010,
-               0b10101010_10101010_10101010_10101010,
-               0b10101010_10101010_10101010_10101010,
-               0b10101010_10101010_10101010_10101010,
-               0b10101010_10101010_10101010_10101010,
-               0b10101010_10101010_10101010_10101010,
-               0b10101010_10101010_10101010_10101010,
-               0b10101010_10101010_10101010_10101010,
-               0b10101010_10101010_10101010_10101010,
-               0b10101010_10101010_10101010_10101010];
+    pub const LIMBS_ALTERNATING_10: [Limb; MAX_LIMBS] = limbs![
+        0b10101010_10101010_10101010_10101010,
+        0b10101010_10101010_10101010_10101010,
+        0b10101010_10101010_10101010_10101010,
+        0b10101010_10101010_10101010_10101010,
+        0b10101010_10101010_10101010_10101010,
+        0b10101010_10101010_10101010_10101010,
+        0b10101010_10101010_10101010_10101010,
+        0b10101010_10101010_10101010_10101010,
+        0b10101010_10101010_10101010_10101010,
+        0b10101010_10101010_10101010_10101010,
+        0b10101010_10101010_10101010_10101010,
+        0b10101010_10101010_10101010_10101010
+    ];
 }
 
 #[cfg(feature = "internal_benches")]
@@ -1194,10 +1243,9 @@ macro_rules! bench_curve {
                 }
             });
         }
-    }
+    };
 }
 
-
+mod elem;
 pub mod p256;
 pub mod p384;
-mod elem;

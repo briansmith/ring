@@ -14,10 +14,9 @@
 
 //! EdDSA Signatures.
 
+use super::{super::ops::*, PUBLIC_KEY_LEN};
 use core;
 use crate::{der, digest, error, pkcs8, rand, signature, signature_impl};
-use super::super::ops::*;
-use super::PUBLIC_KEY_LEN;
 use untrusted;
 
 use super::digest::*;
@@ -43,15 +42,20 @@ impl<'a> KeyPair {
     /// https://tools.ietf.org/html/draft-ietf-curdle-pkix-04.
     ///
     /// [RFC 5958 Section 2]: https://tools.ietf.org/html/rfc5958#section-2
-    pub fn generate_pkcs8(rng: &rand::SecureRandom)
-            -> Result<[u8; PKCS8_V2_LEN], error::Unspecified> {
+    pub fn generate_pkcs8(
+        rng: &rand::SecureRandom,
+    ) -> Result<[u8; PKCS8_V2_LEN], error::Unspecified> {
         let mut seed = [0u8; SEED_LEN];
         rng.fill(&mut seed)?;
         let key_pair = Self::from_seed_(&seed);
         // TODO: Replace this with `wrap_key()` and return a `pkcs8::Document`.
         let mut bytes = [0; PKCS8_V2_LEN];
-        pkcs8::wrap_key_(&PKCS8_TEMPLATE, &seed[..], key_pair.public_key_bytes(),
-                         &mut bytes[..]);
+        pkcs8::wrap_key_(
+            &PKCS8_TEMPLATE,
+            &seed[..],
+            key_pair.public_key_bytes(),
+            &mut bytes[..],
+        );
         Ok(bytes)
     }
 
@@ -65,8 +69,7 @@ impl<'a> KeyPair {
     ///
     /// If you need to parse PKCS#8 v1 files (without the public key) then use
     /// `Ed25519KeyPair::from_pkcs8_maybe_unchecked()` instead.
-    pub fn from_pkcs8(input: untrusted::Input)
-                      -> Result<Self, error::Unspecified> {
+    pub fn from_pkcs8(input: untrusted::Input) -> Result<Self, error::Unspecified> {
         let (seed, public_key) = unwrap_pkcs8(pkcs8::Version::V2Only, input)?;
         Self::from_seed_and_public_key(seed, public_key.unwrap())
     }
@@ -83,8 +86,7 @@ impl<'a> KeyPair {
     /// between the public key and the private key.
     ///
     /// PKCS#8 v2 files are parsed exactly like `Ed25519KeyPair::from_pkcs8()`.
-    pub fn from_pkcs8_maybe_unchecked(input: untrusted::Input)
-            -> Result<Self, error::Unspecified> {
+    pub fn from_pkcs8_maybe_unchecked(input: untrusted::Input) -> Result<Self, error::Unspecified> {
         let (seed, public_key) = unwrap_pkcs8(pkcs8::Version::V1OrV2, input)?;
         if let Some(public_key) = public_key {
             Self::from_seed_and_public_key(seed, public_key)
@@ -103,9 +105,9 @@ impl<'a> KeyPair {
     /// the private key and public key, or using the wrong private key for the
     /// public key). This also detects any corruption of the public or private
     /// key.
-    pub fn from_seed_and_public_key(seed: untrusted::Input,
-                                    public_key: untrusted::Input)
-            -> Result<Self, error::Unspecified> {
+    pub fn from_seed_and_public_key(
+        seed: untrusted::Input, public_key: untrusted::Input,
+    ) -> Result<Self, error::Unspecified> {
         let pair = Self::from_seed_unchecked(seed)?;
 
         // This implicitly verifies that `public_key` is the right length.
@@ -127,8 +129,7 @@ impl<'a> KeyPair {
     /// Since the public key is not given, the public key will be computed from
     /// the private key. It is not possible to detect misuse or corruption of
     /// the private key since the public key isn't given as input.
-    pub fn from_seed_unchecked(seed: untrusted::Input)
-                               -> Result<Self, error::Unspecified> {
+    pub fn from_seed_unchecked(seed: untrusted::Input) -> Result<Self, error::Unspecified> {
         let seed = slice_as_array_ref!(seed.as_slice_less_safe(), SEED_LEN)?;
         Ok(Self::from_seed_(seed))
     }
@@ -157,20 +158,16 @@ impl<'a> KeyPair {
     }
 
     /// Returns a reference to the little-endian-encoded public key bytes.
-    pub fn public_key_bytes(&'a self) -> &'a [u8] {
-        &self.public_key
-    }
+    pub fn public_key_bytes(&'a self) -> &'a [u8] { &self.public_key }
 
     /// Returns the signature of the message `msg`.
     pub fn sign(&self, msg: &[u8]) -> signature::Signature {
         let mut signature_bytes = [0u8; SIGNATURE_LEN];
-        { // Borrow `signature_bytes`.
-            let (signature_r, signature_s) =
-                signature_bytes.split_at_mut(ELEM_LEN);
-            let signature_r =
-                slice_as_array_ref_mut!(signature_r, ELEM_LEN).unwrap();
-            let signature_s =
-                slice_as_array_ref_mut!(signature_s, SCALAR_LEN).unwrap();
+        {
+            // Borrow `signature_bytes`.
+            let (signature_r, signature_s) = signature_bytes.split_at_mut(ELEM_LEN);
+            let signature_r = slice_as_array_ref_mut!(signature_r, ELEM_LEN).unwrap();
+            let signature_s = slice_as_array_ref_mut!(signature_s, SCALAR_LEN).unwrap();
 
             let nonce = {
                 let mut ctx = digest::Context::new(&digest::SHA512);
@@ -188,27 +185,24 @@ impl<'a> KeyPair {
             let hram_digest = eddsa_digest(signature_r, &self.public_key, msg);
             let hram = digest_scalar(hram_digest);
             unsafe {
-                GFp_x25519_sc_muladd(signature_s, &hram, &self.private_scalar,
-                                     &nonce);
+                GFp_x25519_sc_muladd(signature_s, &hram, &self.private_scalar, &nonce);
             }
         }
         signature_impl::signature_from_bytes(&signature_bytes)
     }
 }
 
-fn unwrap_pkcs8(version: pkcs8::Version, input: untrusted::Input)
-        -> Result<(untrusted::Input, Option<untrusted::Input>),
-                  error::Unspecified> {
-    let (private_key, public_key) =
-        pkcs8::unwrap_key(&PKCS8_TEMPLATE, version, input)?;
+fn unwrap_pkcs8(
+    version: pkcs8::Version, input: untrusted::Input,
+) -> Result<(untrusted::Input, Option<untrusted::Input>), error::Unspecified> {
+    let (private_key, public_key) = pkcs8::unwrap_key(&PKCS8_TEMPLATE, version, input)?;
     let private_key = private_key.read_all(error::Unspecified, |input| {
         der::expect_tag_and_get_value(input, der::Tag::OctetString)
     })?;
     Ok((private_key, public_key))
 }
 
-
-extern {
+extern "C" {
     fn GFp_x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Seed);
     fn GFp_x25519_sc_mask(a: &mut Scalar);
     fn GFp_x25519_sc_muladd(s: &mut Scalar, a: &Scalar, b: &Scalar, c: &Scalar);

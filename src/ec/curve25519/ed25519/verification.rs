@@ -14,9 +14,9 @@
 
 //! EdDSA Signatures.
 
+use super::super::ops::*;
 use core;
 use crate::{error, private, signature};
-use super::super::ops::*;
 use untrusted;
 
 use super::digest::*;
@@ -38,13 +38,13 @@ impl core::fmt::Debug for EdDSAParameters {
 pub static ED25519: EdDSAParameters = EdDSAParameters {};
 
 impl signature::VerificationAlgorithm for EdDSAParameters {
-    fn verify(&self, public_key: untrusted::Input, msg: untrusted::Input,
-              signature: untrusted::Input) -> Result<(), error::Unspecified> {
+    fn verify(
+        &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
+    ) -> Result<(), error::Unspecified> {
         let public_key = public_key.as_slice_less_safe();
         let public_key = slice_as_array_ref!(public_key, ELEM_LEN)?;
 
-        let (signature_r, signature_s) =
-                signature.read_all(error::Unspecified, |input| {
+        let (signature_r, signature_s) = signature.read_all(error::Unspecified, |input| {
             let r = input.skip_and_get_input(ELEM_LEN)?;
             let r = r.as_slice_less_safe();
             // `r` is only used as a slice, so don't convert it to an array ref.
@@ -64,14 +64,11 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         let mut a = ExtPoint::from_encoded_point_vartime(public_key)?;
         a.invert_vartime();
 
-        let h_digest =
-            eddsa_digest(signature_r, public_key, msg.as_slice_less_safe());
+        let h_digest = eddsa_digest(signature_r, public_key, msg.as_slice_less_safe());
         let h = digest_scalar(h_digest);
 
         let mut r = Point::new_at_infinity();
-        unsafe {
-            GFp_x25519_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s)
-        };
+        unsafe { GFp_x25519_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s) };
         let r_check = r.into_encoded_point();
         if signature_r != r_check {
             return Err(error::Unspecified);
@@ -82,7 +79,8 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
 
 impl private::Sealed for EdDSAParameters {}
 
-extern  {
-    fn GFp_x25519_ge_double_scalarmult_vartime(r: &mut Point, a_coeff: &Scalar,
-                                               a: &ExtPoint, b_coeff: &Scalar);
+extern "C" {
+    fn GFp_x25519_ge_double_scalarmult_vartime(
+        r: &mut Point, a_coeff: &Scalar, a: &ExtPoint, b_coeff: &Scalar,
+    );
 }

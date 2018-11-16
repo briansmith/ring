@@ -15,10 +15,9 @@
 //! Functionality shared by operations on public keys (ECDSA verification and
 //! ECDH agreement).
 
+use super::{ops::*, verify_affine_point_is_on_the_curve};
 use arithmetic::montgomery::*;
 use crate::error;
-use super::ops::*;
-use super::verify_affine_point_is_on_the_curve;
 use untrusted;
 
 /// Parses a public key encoded in uncompressed form. The key is validated
@@ -29,8 +28,9 @@ use untrusted;
 ///
 /// [NIST SP 800-56A, revision 2]:
 ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
-pub fn parse_uncompressed_point(ops: &PublicKeyOps, input: untrusted::Input)
-        -> Result<(Elem<R>, Elem<R>), error::Unspecified> {
+pub fn parse_uncompressed_point(
+    ops: &PublicKeyOps, input: untrusted::Input,
+) -> Result<(Elem<R>, Elem<R>), error::Unspecified> {
     // NIST SP 800-56A Step 1: "Verify that Q is not the point at infinity.
     // This can be done by inspection if the point is entered in the standard
     // affine representation." (We do it by inspection since we only accept
@@ -65,40 +65,39 @@ pub fn parse_uncompressed_point(ops: &PublicKeyOps, input: untrusted::Input)
     Ok((x, y))
 }
 
-
 #[cfg(test)]
 mod tests {
+    use super::{super::ops, *};
     use crate::test;
-    use super::*;
-    use super::super::ops;
     use untrusted;
 
     #[test]
     fn parse_uncompressed_point_test() {
-        test::from_file("src/ec/suite_b/suite_b_public_key_tests.txt",
-                        |section, test_case| {
-            assert_eq!(section, "");
+        test::from_file(
+            "src/ec/suite_b/suite_b_public_key_tests.txt",
+            |section, test_case| {
+                assert_eq!(section, "");
 
-            let curve_name = test_case.consume_string("Curve");
+                let curve_name = test_case.consume_string("Curve");
 
-            let public_key = test_case.consume_bytes("Q");
-            let public_key = untrusted::Input::from(&public_key);
-            let valid = test_case.consume_string("Result") == "P";
+                let public_key = test_case.consume_bytes("Q");
+                let public_key = untrusted::Input::from(&public_key);
+                let valid = test_case.consume_string("Result") == "P";
 
-            let curve_ops = public_key_ops_from_curve_name(&curve_name);
+                let curve_ops = public_key_ops_from_curve_name(&curve_name);
 
-            let result = parse_uncompressed_point(curve_ops, public_key);
-            assert_eq!(valid, result.is_ok());
+                let result = parse_uncompressed_point(curve_ops, public_key);
+                assert_eq!(valid, result.is_ok());
 
-            // TODO: Verify that we when we re-serialize the parsed (x, y), the
-            // output is equal to the input.
+                // TODO: Verify that we when we re-serialize the parsed (x, y), the
+                // output is equal to the input.
 
-            Ok(())
-        });
+                Ok(())
+            },
+        );
     }
 
-    fn public_key_ops_from_curve_name(curve_name: &str)
-                                      -> &'static PublicKeyOps {
+    fn public_key_ops_from_curve_name(curve_name: &str) -> &'static PublicKeyOps {
         if curve_name == "P-256" {
             &ops::p256::PUBLIC_KEY_OPS
         } else if curve_name == "P-384" {

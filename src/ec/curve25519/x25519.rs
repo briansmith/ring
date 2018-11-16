@@ -14,10 +14,9 @@
 
 //! X25519 Key agreement.
 
-use crate::{agreement, constant_time, ec, error, rand};
 use super::ops;
+use crate::{agreement, constant_time, ec, error, rand};
 use untrusted;
-
 
 static CURVE25519: ec::Curve = ec::Curve {
     public_key_len: PUBLIC_KEY_LEN,
@@ -43,48 +42,46 @@ pub static X25519: agreement::Algorithm = agreement::Algorithm {
     },
 };
 
-fn x25519_check_private_key_bytes(bytes: &[u8])
-                                  -> Result<(), error::Unspecified> {
+fn x25519_check_private_key_bytes(bytes: &[u8]) -> Result<(), error::Unspecified> {
     debug_assert_eq!(bytes.len(), PRIVATE_KEY_LEN);
     Ok(())
 }
 
-fn x25519_generate_private_key(rng: &rand::SecureRandom)
-                               -> Result<ec::PrivateKey, error::Unspecified> {
-    let mut result = ec::PrivateKey { bytes: [0; ec::SCALAR_MAX_BYTES] };
+fn x25519_generate_private_key(
+    rng: &rand::SecureRandom,
+) -> Result<ec::PrivateKey, error::Unspecified> {
+    let mut result = ec::PrivateKey {
+        bytes: [0; ec::SCALAR_MAX_BYTES],
+    };
     rng.fill(&mut result.bytes[..PRIVATE_KEY_LEN])?;
     Ok(result)
 }
 
-fn x25519_public_from_private(public_out: &mut [u8],
-                              private_key: &ec::PrivateKey)
-                              -> Result<(), error::Unspecified> {
+fn x25519_public_from_private(
+    public_out: &mut [u8], private_key: &ec::PrivateKey,
+) -> Result<(), error::Unspecified> {
     let public_out = slice_as_array_ref_mut!(public_out, PUBLIC_KEY_LEN)?;
 
     // XXX: This shouldn't require dynamic checks, but rustc can't slice an
     // array reference to a shorter array reference. TODO(perf): Fix this.
-    let private_key =
-        slice_as_array_ref!(&private_key.bytes[..PRIVATE_KEY_LEN],
-                            PRIVATE_KEY_LEN)?;
+    let private_key = slice_as_array_ref!(&private_key.bytes[..PRIVATE_KEY_LEN], PRIVATE_KEY_LEN)?;
     unsafe {
         GFp_x25519_public_from_private(public_out, private_key);
     }
     Ok(())
 }
 
-fn x25519_ecdh(out: &mut [u8], my_private_key: &ec::PrivateKey,
-               peer_public_key: untrusted::Input)
-               -> Result<(), error::Unspecified> {
+fn x25519_ecdh(
+    out: &mut [u8], my_private_key: &ec::PrivateKey, peer_public_key: untrusted::Input,
+) -> Result<(), error::Unspecified> {
     let out = slice_as_array_ref_mut!(out, SHARED_SECRET_LEN)?;
 
     // XXX: This shouldn't require dynamic checks, but rustc can't slice an
     // array reference to a shorter array reference. TODO(perf): Fix this.
     let my_private_key =
-        slice_as_array_ref!(&my_private_key.bytes[..PRIVATE_KEY_LEN],
-                            PRIVATE_KEY_LEN)?;
+        slice_as_array_ref!(&my_private_key.bytes[..PRIVATE_KEY_LEN], PRIVATE_KEY_LEN)?;
     let peer_public_key =
-        slice_as_array_ref!(peer_public_key.as_slice_less_safe(),
-                            PUBLIC_KEY_LEN)?;
+        slice_as_array_ref!(peer_public_key.as_slice_less_safe(), PUBLIC_KEY_LEN)?;
 
     unsafe {
         GFp_x25519_scalar_mult(out, my_private_key, peer_public_key);
@@ -113,10 +110,9 @@ const PUBLIC_KEY_LEN: usize = ELEM_AND_SCALAR_LEN;
 type SharedSecret = [u8; SHARED_SECRET_LEN];
 const SHARED_SECRET_LEN: usize = ELEM_AND_SCALAR_LEN;
 
-
-extern {
-    fn GFp_x25519_public_from_private(public_key_out: &mut PublicKey,
-                                      private_key: &PrivateKey);
-    fn GFp_x25519_scalar_mult(out: &mut ops::EncodedPoint, scalar: &ops::Scalar,
-                              point: &ops::EncodedPoint);
+extern "C" {
+    fn GFp_x25519_public_from_private(public_key_out: &mut PublicKey, private_key: &PrivateKey);
+    fn GFp_x25519_scalar_mult(
+        out: &mut ops::EncodedPoint, scalar: &ops::Scalar, point: &ops::EncodedPoint,
+    );
 }

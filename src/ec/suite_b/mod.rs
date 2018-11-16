@@ -14,11 +14,10 @@
 
 //! Elliptic curve operations on P-256 & P-384.
 
+use self::ops::*;
 use arithmetic::montgomery::*;
 use crate::{der, ec, error, pkcs8};
-use self::ops::*;
 use untrusted;
-
 
 // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that
 // yQ**2 = xQ**3 + axQ + b in GF(p), where the arithmetic is performed modulo
@@ -33,11 +32,10 @@ use untrusted;
 //     y**2 == (x**2 + a)*x + b  (mod q)
 //
 fn verify_affine_point_is_on_the_curve(
-        ops: &CommonOps, (x, y): (&Elem<R>, &Elem<R>))
-        -> Result<(), error::Unspecified> {
+    ops: &CommonOps, (x, y): (&Elem<R>, &Elem<R>),
+) -> Result<(), error::Unspecified> {
     verify_affine_point_is_on_the_curve_scaled(ops, (x, y), &ops.a, &ops.b)
 }
-
 
 // Use `verify_affine_point_is_on_the_curve` instead of this function whenever
 // the affine coordinates are available or will become available. This function
@@ -48,8 +46,9 @@ fn verify_affine_point_is_on_the_curve(
 // verification.
 //
 // This function also verifies that the point is not at infinity.
-fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
-                                         -> Result<Elem<R>, error::Unspecified> {
+fn verify_jacobian_point_is_on_the_curve(
+    ops: &CommonOps, p: &Point,
+) -> Result<Elem<R>, error::Unspecified> {
     let z = ops.point_z(p);
 
     // Verify that the point is not at infinity.
@@ -109,7 +108,6 @@ fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
     Ok(z2)
 }
 
-
 // Handles the common logic of point-is-on-the-curve checks for both affine and
 // Jacobian cases.
 //
@@ -136,8 +134,8 @@ fn verify_jacobian_point_is_on_the_curve(ops: &CommonOps, p: &Point)
 // Elliptic Curve Cryptosystems" by Johannes Blömer, Martin Otto, and
 // Jean-Pierre Seifert.
 fn verify_affine_point_is_on_the_curve_scaled(
-        ops: &CommonOps, (x, y): (&Elem<R>, &Elem<R>), a_scaled: &Elem<R>,
-        b_scaled: &Elem<R>) -> Result<(), error::Unspecified> {
+    ops: &CommonOps, (x, y): (&Elem<R>, &Elem<R>), a_scaled: &Elem<R>, b_scaled: &Elem<R>,
+) -> Result<(), error::Unspecified> {
     let lhs = ops.elem_squared(y);
 
     let mut rhs = ops.elem_squared(x);
@@ -153,52 +151,51 @@ fn verify_affine_point_is_on_the_curve_scaled(
 }
 
 pub(crate) fn key_pair_from_pkcs8(
-    curve: &ec::Curve, template: &pkcs8::Template, input: untrusted::Input)
-    -> Result<ec::KeyPair, error::Unspecified>
-{
-    let (ec_private_key, _) =
-        pkcs8::unwrap_key(template, pkcs8::Version::V1Only, input)?;
-    let (private_key, public_key) = ec_private_key.read_all(
-        error::Unspecified, |input| {
-            // https://tools.ietf.org/html/rfc5915#section-3
-            der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-                let version = der::small_nonnegative_integer(input)?;
-                if version != 1 {
+    curve: &ec::Curve, template: &pkcs8::Template, input: untrusted::Input,
+) -> Result<ec::KeyPair, error::Unspecified> {
+    let (ec_private_key, _) = pkcs8::unwrap_key(template, pkcs8::Version::V1Only, input)?;
+    let (private_key, public_key) = ec_private_key.read_all(error::Unspecified, |input| {
+        // https://tools.ietf.org/html/rfc5915#section-3
+        der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
+            let version = der::small_nonnegative_integer(input)?;
+            if version != 1 {
+                return Err(error::Unspecified);
+            }
+
+            let private_key = der::expect_tag_and_get_value(input, der::Tag::OctetString)?;
+
+            // [0] parameters (optional).
+            if input.peek(der::Tag::ContextSpecificConstructed0 as u8) {
+                let actual_alg_id =
+                    der::expect_tag_and_get_value(input, der::Tag::ContextSpecificConstructed0)?;
+                if actual_alg_id != template.curve_oid() {
                     return Err(error::Unspecified);
                 }
+            }
 
-                let private_key =
-                    der::expect_tag_and_get_value(input, der::Tag::OctetString)?;
+            // [1] publicKey. The RFC says it is optional, but we require it
+            // to be present.
+            let public_key = der::nested(
+                input,
+                der::Tag::ContextSpecificConstructed1,
+                error::Unspecified,
+                der::bit_string_with_no_unused_bits,
+            )?;
 
-                // [0] parameters (optional).
-                if input.peek(der::Tag::ContextSpecificConstructed0 as u8) {
-                    let actual_alg_id = der::expect_tag_and_get_value(
-                        input, der::Tag::ContextSpecificConstructed0)?;
-                    if actual_alg_id != template.curve_oid() {
-                        return Err(error::Unspecified);
-                    }
-                }
-
-                // [1] publicKey. The RFC says it is optional, but we require it
-                // to be present.
-                let public_key = der::nested(
-                    input, der::Tag::ContextSpecificConstructed1,
-                    error::Unspecified, der::bit_string_with_no_unused_bits)?;
-
-                Ok((private_key, public_key))
-            })
-        })?;
+            Ok((private_key, public_key))
+        })
+    })?;
     key_pair_from_bytes(curve, private_key, public_key)
 }
 
-pub fn key_pair_from_bytes(curve: &ec::Curve,
-                           private_key_bytes: untrusted::Input,
-                           public_key_bytes: untrusted::Input)
-                           -> Result<ec::KeyPair, error::Unspecified> {
+pub fn key_pair_from_bytes(
+    curve: &ec::Curve, private_key_bytes: untrusted::Input, public_key_bytes: untrusted::Input,
+) -> Result<ec::KeyPair, error::Unspecified> {
     let private_key = ec::PrivateKey::from_bytes(curve, private_key_bytes)?;
 
     let mut public_key_check = [0; ec::PUBLIC_KEY_MAX_LEN];
-    { // Borrow `public_key_check`.
+    {
+        // Borrow `public_key_check`.
         let public_key_check = &mut public_key_check[..curve.public_key_len];
         (curve.public_from_private)(public_key_check, &private_key)?;
         if public_key_bytes != &*public_key_check {
@@ -207,14 +204,14 @@ pub fn key_pair_from_bytes(curve: &ec::Curve,
     }
 
     Ok(ec::KeyPair {
-        private_key: private_key,
+        private_key,
         public_key: public_key_check,
     })
 }
 
 pub mod curve;
-pub mod ecdsa;
 pub mod ecdh;
+pub mod ecdsa;
 
 #[macro_use]
 mod ops;

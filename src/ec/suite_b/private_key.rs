@@ -15,23 +15,24 @@
 //! Functionality shared by operations on private keys (ECC keygen and
 //! ECDSA signing).
 
-use crate::{ec, error, rand};
-use super::ops::*;
-use super::verify_affine_point_is_on_the_curve;
-use untrusted;
+use super::{ops::*, verify_affine_point_is_on_the_curve};
 use arithmetic::montgomery::R;
+use crate::{ec, error, rand};
+use untrusted;
 
 /// Generates a random scalar in the range [1, n).
-pub fn random_scalar(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
-                     -> Result<Scalar, error::Unspecified> {
+pub fn random_scalar(
+    ops: &PrivateKeyOps, rng: &rand::SecureRandom,
+) -> Result<Scalar, error::Unspecified> {
     // Generating a random private key and then converting it into a scalar is a
     // bit circuitous.
     let key = generate_private_key(ops, rng)?;
     Ok(private_key_as_scalar(ops, &key))
 }
 
-pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
-                            -> Result<ec::PrivateKey, error::Unspecified> {
+pub fn generate_private_key(
+    ops: &PrivateKeyOps, rng: &rand::SecureRandom,
+) -> Result<ec::PrivateKey, error::Unspecified> {
     // [NSA Suite B Implementer's Guide to ECDSA] Appendix A.1.2, and
     // [NSA Suite B Implementer's Guide to NIST SP 800-56A] Appendix B.2,
     // "Key Pair Generation by Testing Candidates".
@@ -76,29 +77,29 @@ pub fn generate_private_key(ops: &PrivateKeyOps, rng: &rand::SecureRandom)
         // NSA Guide Step 8 is done in `public_from_private()`.
 
         // NSA Guide Step 9.
-        return Ok(ec::PrivateKey {
-            bytes: candidate,
-        });
+        return Ok(ec::PrivateKey { bytes: candidate });
     }
 
     Err(error::Unspecified)
 }
-
 
 // The underlying X25519 and Ed25519 code uses an [u8; 32] to store the private
 // key. To make the ECDH and ECDSA code similar to that, we also store the
 // private key that way, which means we have to convert it to a Scalar whenever
 // we need to use it.
 #[inline]
-pub fn private_key_as_scalar(ops: &PrivateKeyOps,
-                             private_key: &ec::PrivateKey) -> Scalar {
+pub fn private_key_as_scalar(ops: &PrivateKeyOps, private_key: &ec::PrivateKey) -> Scalar {
     // This cannot fail because we know the private key is valid.
     scalar_from_big_endian_bytes(
-        ops, &private_key.bytes[..(ops.common.num_limbs * LIMB_BYTES)]).unwrap()
+        ops,
+        &private_key.bytes[..(ops.common.num_limbs * LIMB_BYTES)],
+    )
+    .unwrap()
 }
 
-pub fn check_scalar_big_endian_bytes(ops: &PrivateKeyOps, bytes: &[u8])
-                                     -> Result<(), error::Unspecified> {
+pub fn check_scalar_big_endian_bytes(
+    ops: &PrivateKeyOps, bytes: &[u8],
+) -> Result<(), error::Unspecified> {
     debug_assert_eq!(bytes.len(), ops.common.num_limbs * LIMB_BYTES);
     scalar_from_big_endian_bytes(ops, bytes).map(|_| ())
 }
@@ -108,8 +109,9 @@ pub fn check_scalar_big_endian_bytes(ops: &PrivateKeyOps, bytes: &[u8])
 // value is actually in range. In other words, this won't leak anything about a
 // valid value, but it might leak small amounts of information about an invalid
 // value (which constraint it failed).
-pub fn scalar_from_big_endian_bytes(ops: &PrivateKeyOps, bytes: &[u8])
-                                    -> Result<Scalar, error::Unspecified> {
+pub fn scalar_from_big_endian_bytes(
+    ops: &PrivateKeyOps, bytes: &[u8],
+) -> Result<Scalar, error::Unspecified> {
     // [NSA Suite B Implementer's Guide to ECDSA] Appendix A.1.2, and
     // [NSA Suite B Implementer's Guide to NIST SP 800-56A] Appendix B.2,
     // "Key Pair Generation by Testing Candidates".
@@ -125,29 +127,27 @@ pub fn scalar_from_big_endian_bytes(ops: &PrivateKeyOps, bytes: &[u8])
     // way, we avoid needing to compute or store the value (n - 1), we avoid the
     // need to implement a function to add one to a scalar, and we avoid needing
     // to convert the scalar back into an array of bytes.
-    scalar_parse_big_endian_fixed_consttime(
-        ops.common, untrusted::Input::from(bytes))
+    scalar_parse_big_endian_fixed_consttime(ops.common, untrusted::Input::from(bytes))
 }
 
-pub fn public_from_private(ops: &PrivateKeyOps, public_out: &mut [u8],
-                           my_private_key: &ec::PrivateKey)
-                           -> Result<(), error::Unspecified> {
+pub fn public_from_private(
+    ops: &PrivateKeyOps, public_out: &mut [u8], my_private_key: &ec::PrivateKey,
+) -> Result<(), error::Unspecified> {
     let elem_and_scalar_bytes = ops.common.num_limbs * LIMB_BYTES;
     debug_assert_eq!(public_out.len(), 1 + (2 * elem_and_scalar_bytes));
     let my_private_key = private_key_as_scalar(ops, my_private_key);
     let my_public_key = ops.point_mul_base(&my_private_key);
     public_out[0] = 4; // Uncompressed encoding.
-    let (x_out, y_out) =
-        (&mut public_out[1..]).split_at_mut(elem_and_scalar_bytes);
+    let (x_out, y_out) = (&mut public_out[1..]).split_at_mut(elem_and_scalar_bytes);
 
     // `big_endian_affine_from_jacobian` verifies that the point is not at
     // infinity and is on the curve.
-    big_endian_affine_from_jacobian(ops, Some(x_out), Some(y_out),
-                                    &my_public_key)
+    big_endian_affine_from_jacobian(ops, Some(x_out), Some(y_out), &my_public_key)
 }
 
-pub fn affine_from_jacobian(ops: &PrivateKeyOps, p: &Point)
-                            -> Result<(Elem<R>, Elem<R>), error::Unspecified> {
+pub fn affine_from_jacobian(
+    ops: &PrivateKeyOps, p: &Point,
+) -> Result<(Elem<R>, Elem<R>), error::Unspecified> {
     let z = ops.common.point_z(p);
 
     // Since we restrict our private key to the range [1, n), the curve has
@@ -179,10 +179,9 @@ pub fn affine_from_jacobian(ops: &PrivateKeyOps, p: &Point)
     Ok((x_aff, y_aff))
 }
 
-pub fn big_endian_affine_from_jacobian(ops: &PrivateKeyOps,
-                                       x_out: Option<&mut [u8]>,
-                                       y_out: Option<&mut [u8]>, p: &Point)
-                                       -> Result<(), error::Unspecified>{
+pub fn big_endian_affine_from_jacobian(
+    ops: &PrivateKeyOps, x_out: Option<&mut [u8]>, y_out: Option<&mut [u8]>, p: &Point,
+) -> Result<(), error::Unspecified> {
     let (x_aff, y_aff) = affine_from_jacobian(ops, p)?;
     let num_limbs = ops.common.num_limbs;
     if let Some(x_out) = x_out {

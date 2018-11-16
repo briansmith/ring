@@ -19,9 +19,8 @@ use untrusted;
 // XXX: This doesn't seem like the best place for this.
 pub struct AgreementAlgorithmImpl {
     pub curve: &'static Curve,
-    pub ecdh: fn(out: &mut [u8], private_key: &PrivateKey,
-                 peer_public_key: untrusted::Input)
-                 -> Result<(), error::Unspecified>,
+    pub ecdh: fn(out: &mut [u8], private_key: &PrivateKey, peer_public_key: untrusted::Input)
+        -> Result<(), error::Unspecified>,
 }
 
 derive_debug_via_self!(AgreementAlgorithmImpl, self.curve);
@@ -41,11 +40,10 @@ pub struct Curve {
     // Precondition: `bytes` is the correct length.
     check_private_key_bytes: fn(bytes: &[u8]) -> Result<(), error::Unspecified>,
 
-    generate_private_key: fn(rng: &rand::SecureRandom)
-                             -> Result<PrivateKey, error::Unspecified>,
+    generate_private_key: fn(rng: &rand::SecureRandom) -> Result<PrivateKey, error::Unspecified>,
 
-    public_from_private: fn(public_out: &mut [u8], private_key: &PrivateKey)
-                            -> Result<(), error::Unspecified>,
+    public_from_private:
+        fn(public_out: &mut [u8], private_key: &PrivateKey) -> Result<(), error::Unspecified>,
 }
 
 derive_debug_via_self!(Curve, self.id);
@@ -67,14 +65,16 @@ pub struct PrivateKey {
 }
 
 impl PrivateKey {
-    pub fn generate(curve: &Curve, rng: &rand::SecureRandom)
-                    -> Result<PrivateKey, error::Unspecified> {
+    pub fn generate(
+        curve: &Curve, rng: &rand::SecureRandom,
+    ) -> Result<PrivateKey, error::Unspecified> {
         init::init_once();
         (curve.generate_private_key)(rng)
     }
 
-    pub fn from_bytes(curve: &Curve, bytes: untrusted::Input)
-                      -> Result<PrivateKey, error::Unspecified> {
+    pub fn from_bytes(
+        curve: &Curve, bytes: untrusted::Input,
+    ) -> Result<PrivateKey, error::Unspecified> {
         init::init_once();
         let bytes = bytes.as_slice_less_safe();
         if curve.elem_and_scalar_len != bytes.len() {
@@ -88,20 +88,18 @@ impl PrivateKey {
         Ok(r)
     }
 
-    pub fn bytes(&self, curve: &Curve) -> &[u8] {
-        &self.bytes[..curve.elem_and_scalar_len]
-    }
+    pub fn bytes(&self, curve: &Curve) -> &[u8] { &self.bytes[..curve.elem_and_scalar_len] }
 
     #[inline(always)]
-    pub fn compute_public_key(&self, curve: &Curve, out: &mut [u8])
-                              -> Result<(), error::Unspecified> {
+    pub fn compute_public_key(
+        &self, curve: &Curve, out: &mut [u8],
+    ) -> Result<(), error::Unspecified> {
         if out.len() != curve.public_key_len {
             return Err(error::Unspecified);
         }
         (curve.public_from_private)(out, self)
     }
 }
-
 
 const ELEM_MAX_BITS: usize = 384;
 pub const ELEM_MAX_BYTES: usize = (ELEM_MAX_BITS + 7) / 8;
@@ -119,8 +117,7 @@ pub const PUBLIC_KEY_MAX_LEN: usize = 1 + (2 * ELEM_MAX_BYTES);
 /// `40` is the length of the P-384 template. It is actually one byte shorter
 /// than the P-256 template, but the private key and the public key are much
 /// longer.
-pub const PKCS8_DOCUMENT_MAX_LEN: usize =
-    40 + SCALAR_MAX_BYTES + PUBLIC_KEY_MAX_LEN;
+pub const PKCS8_DOCUMENT_MAX_LEN: usize = 40 + SCALAR_MAX_BYTES + PUBLIC_KEY_MAX_LEN;
 
 pub mod curve25519;
 pub mod suite_b;

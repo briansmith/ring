@@ -60,57 +60,62 @@ fn digest_scalar_(ops: &ScalarOps, digest: &[u8]) -> Scalar {
     };
 
     scalar_parse_big_endian_partially_reduced_variable_consttime(
-        cops, AllowZero::Yes, untrusted::Input::from(digest)).unwrap()
+        cops,
+        AllowZero::Yes,
+        untrusted::Input::from(digest),
+    )
+    .unwrap()
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::{digest, test};
     use super::digest_scalar_;
+    use crate::{digest, test};
     use ec::suite_b::ops::*;
     use untrusted;
 
     #[test]
     fn test() {
-        test::from_file("src/ec/suite_b/ecdsa/ecdsa_digest_scalar_tests.txt",
-                        |section, test_case| {
-            assert_eq!(section, "");
+        test::from_file(
+            "src/ec/suite_b/ecdsa/ecdsa_digest_scalar_tests.txt",
+            |section, test_case| {
+                assert_eq!(section, "");
 
-            let curve_name = test_case.consume_string("Curve");
-            let digest_name = test_case.consume_string("Digest");
-            let input = test_case.consume_bytes("Input");
-            let output = test_case.consume_bytes("Output");
+                let curve_name = test_case.consume_string("Curve");
+                let digest_name = test_case.consume_string("Digest");
+                let input = test_case.consume_bytes("Input");
+                let output = test_case.consume_bytes("Output");
 
-            let (ops, digest_alg) = match
-                (curve_name.as_str(), digest_name.as_str()) {
-                ("P-256", "SHA256") =>
-                    (&p256::PUBLIC_SCALAR_OPS, &digest::SHA256),
-                ("P-256", "SHA384") =>
-                    (&p256::PUBLIC_SCALAR_OPS, &digest::SHA384),
-                ("P-384", "SHA256") =>
-                    (&p384::PUBLIC_SCALAR_OPS, &digest::SHA256),
-                ("P-384", "SHA384") =>
-                    (&p384::PUBLIC_SCALAR_OPS, &digest::SHA384),
-                _ => {
-                    panic!("Unsupported curve+digest: {}+{}", curve_name,
-                           digest_name);
-                }
-            };
+                let (ops, digest_alg) = match (curve_name.as_str(), digest_name.as_str()) {
+                    ("P-256", "SHA256") => (&p256::PUBLIC_SCALAR_OPS, &digest::SHA256),
+                    ("P-256", "SHA384") => (&p256::PUBLIC_SCALAR_OPS, &digest::SHA384),
+                    ("P-384", "SHA256") => (&p384::PUBLIC_SCALAR_OPS, &digest::SHA256),
+                    ("P-384", "SHA384") => (&p384::PUBLIC_SCALAR_OPS, &digest::SHA384),
+                    _ => {
+                        panic!("Unsupported curve+digest: {}+{}", curve_name, digest_name);
+                    },
+                };
 
-            let num_limbs = ops.public_key_ops.common.num_limbs;
-            assert_eq!(input.len(), digest_alg.output_len);
-            assert_eq!(output.len(),
-                       ops.public_key_ops.common.num_limbs * LIMB_BYTES);
+                let num_limbs = ops.public_key_ops.common.num_limbs;
+                assert_eq!(input.len(), digest_alg.output_len);
+                assert_eq!(
+                    output.len(),
+                    ops.public_key_ops.common.num_limbs * LIMB_BYTES
+                );
 
-            let expected = scalar_parse_big_endian_variable(
-                ops.public_key_ops.common, AllowZero::Yes,
-                untrusted::Input::from(&output)).unwrap();
+                let expected = scalar_parse_big_endian_variable(
+                    ops.public_key_ops.common,
+                    AllowZero::Yes,
+                    untrusted::Input::from(&output),
+                )
+                .unwrap();
 
-            let actual = digest_scalar_(ops.scalar_ops, &input);
+                let actual = digest_scalar_(ops.scalar_ops, &input);
 
-            assert_eq!(actual.limbs[..num_limbs], expected.limbs[..num_limbs]);
+                assert_eq!(actual.limbs[..num_limbs], expected.limbs[..num_limbs]);
 
-            Ok(())
-        });
+                Ok(())
+            },
+        );
     }
 }

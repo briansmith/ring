@@ -46,10 +46,11 @@ impl<M, E: Encoding> Elem<M, E> {
 
 #[inline]
 pub fn mul_mont<M, EA: Encoding, EB: Encoding>(
-    f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
-    a: &Elem<M, EA>, b: &Elem<M, EB>)
-    -> Elem<M, <(EA, EB) as ProductEncoding>::Output>
-    where (EA, EB): ProductEncoding
+    f: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb), a: &Elem<M, EA>,
+    b: &Elem<M, EB>,
+) -> Elem<M, <(EA, EB) as ProductEncoding>::Output>
+where
+    (EA, EB): ProductEncoding,
 {
     binary_op(f, a, b)
 }
@@ -57,12 +58,13 @@ pub fn mul_mont<M, EA: Encoding, EB: Encoding>(
 // let r = f(a, b); return r;
 #[inline]
 pub fn binary_op<M, EA: Encoding, EB: Encoding, ER: Encoding>(
-        f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
-        a: &Elem<M, EA>, b: &Elem<M, EB>) -> Elem<M, ER> {
+    f: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb), a: &Elem<M, EA>,
+    b: &Elem<M, EB>,
+) -> Elem<M, ER> {
     let mut r = Elem {
         limbs: [0; MAX_LIMBS],
         m: PhantomData,
-        encoding: PhantomData
+        encoding: PhantomData,
     };
     unsafe { f(r.limbs.as_mut_ptr(), a.limbs.as_ptr(), b.limbs.as_ptr()) }
     r
@@ -71,16 +73,17 @@ pub fn binary_op<M, EA: Encoding, EB: Encoding, ER: Encoding>(
 // a := f(a, b);
 #[inline]
 pub fn binary_op_assign<M, EA: Encoding, EB: Encoding>(
-        f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
-        a: &mut Elem<M, EA>, b: &Elem<M, EB>) {
+    f: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb), a: &mut Elem<M, EA>,
+    b: &Elem<M, EB>,
+) {
     unsafe { f(a.limbs.as_mut_ptr(), a.limbs.as_ptr(), b.limbs.as_ptr()) }
 }
 
 // let r = f(a); return r;
 #[inline]
 pub fn unary_op<M, E: Encoding>(
-        f: unsafe extern fn(r: *mut Limb, a: *const Limb), a: &Elem<M, E>)
-        -> Elem<M, E> {
+    f: unsafe extern "C" fn(r: *mut Limb, a: *const Limb), a: &Elem<M, E>,
+) -> Elem<M, E> {
     let mut r = Elem {
         limbs: [0; MAX_LIMBS],
         m: PhantomData,
@@ -93,15 +96,16 @@ pub fn unary_op<M, E: Encoding>(
 // a := f(a);
 #[inline]
 pub fn unary_op_assign<M, E: Encoding>(
-        f: unsafe extern fn(r: *mut Limb, a: *const Limb), a: &mut Elem<M, E>) {
+    f: unsafe extern "C" fn(r: *mut Limb, a: *const Limb), a: &mut Elem<M, E>,
+) {
     unsafe { f(a.limbs.as_mut_ptr(), a.limbs.as_ptr()) }
 }
 
 // a := f(a, a);
 #[inline]
 pub fn unary_op_from_binary_op_assign<M, E: Encoding>(
-        f: unsafe extern fn(r: *mut Limb, a: *const Limb, b: *const Limb),
-        a: &mut Elem<M, E>) {
+    f: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb), a: &mut Elem<M, E>,
+) {
     unsafe { f(a.limbs.as_mut_ptr(), a.limbs.as_ptr(), a.limbs.as_ptr()) }
 }
 
