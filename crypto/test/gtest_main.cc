@@ -65,6 +65,7 @@ int main(int argc, char **argv) {
                 cpu);
         exit(89);
       }
+      printf("Simulating CPU '%s'\n", cpu);
       *armcap_ptr = armcap;
     }
   }
