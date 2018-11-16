@@ -28,8 +28,7 @@ pub struct Elem<E: Encoding> {
 }
 
 pub trait Encoding {}
-pub struct T; impl Encoding for T {} // Tight
-// pub struct L; impl Encoding for L {} // Loose
+pub struct T; impl Encoding for T {}
 
 const ELEM_LIMBS: usize = 5 * 64 / limb::LIMB_BITS;
 
