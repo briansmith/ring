@@ -704,6 +704,7 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
 
     // Reset the connection and try again at 1-RTT.
     SSL_reset_early_data_reject(ssl.get());
+    GetTestState(ssl.get())->cert_verified = false;
 
     // After reseting, the socket should report it is no longer in an early data
     // state.

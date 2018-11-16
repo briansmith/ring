@@ -465,7 +465,7 @@ static enum ssl_hs_wait_t do_read_certificate_request(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   // CertificateRequest may only be sent in non-resumption handshakes.
   if (ssl->s3->session_reused) {
-    if (ssl->ctx->reverify_on_resume) {
+    if (ssl->ctx->reverify_on_resume && !ssl->s3->early_data_accepted) {
       hs->tls13_state = state_server_certificate_reverify;
       return ssl_hs_ok;
     }

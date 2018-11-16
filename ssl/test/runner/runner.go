@@ -908,7 +908,7 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 
 		for i, v := range buf {
 			if v != testMessage[i]^0xff {
-				return fmt.Errorf("bad reply contents at byte %d", i)
+				return fmt.Errorf("bad reply contents at byte %d; got %q and wanted %q", i, buf, testMessage)
 			}
 		}
 	}
@@ -5016,6 +5016,165 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 						}, flags...),
 						resumeSession: true,
 					})
+					if vers.version >= VersionTLS13 {
+						tests = append(tests, testCase{
+							testType: testType,
+							name:     "EarlyData-RejectTicket-Client-Reverify" + suffix,
+							config: Config{
+								MaxVersion:       vers.version,
+								MaxEarlyDataSize: 16384,
+							},
+							resumeConfig: &Config{
+								MaxVersion:             vers.version,
+								MaxEarlyDataSize:       16384,
+								SessionTicketsDisabled: true,
+							},
+							tls13Variant:         vers.tls13Variant,
+							resumeSession:        true,
+							expectResumeRejected: true,
+							flags: append([]string{
+								"-enable-early-data",
+								"-expect-ticket-supports-early-data",
+								"-reverify-on-resume",
+								"-on-resume-shim-writes-first",
+								// Session tickets are disabled, so the runner will not send a ticket.
+								"-on-retry-expect-no-session",
+								"-expect-reject-early-data",
+							}, flags...),
+						})
+						tests = append(tests, testCase{
+							testType: testType,
+							name:     "EarlyData-Reject0RTT-Client-Reverify" + suffix,
+							config: Config{
+								MaxVersion:       vers.version,
+								MaxEarlyDataSize: 16384,
+							},
+							resumeConfig: &Config{
+								MaxVersion:             vers.version,
+								MaxEarlyDataSize:       16384,
+								Bugs: ProtocolBugs{
+									AlwaysRejectEarlyData: true,
+								},
+							},
+							tls13Variant:         vers.tls13Variant,
+							resumeSession:        true,
+							expectResumeRejected: false,
+							flags: append([]string{
+								"-enable-early-data",
+								"-expect-reject-early-data",
+								"-expect-ticket-supports-early-data",
+								"-reverify-on-resume",
+								"-on-resume-shim-writes-first",
+							}, flags...),
+						})
+						tests = append(tests, testCase{
+							testType: testType,
+							name:     "EarlyData-RejectTicket-Client-ReverifyFails" + suffix,
+							config: Config{
+								MaxVersion:       vers.version,
+								MaxEarlyDataSize: 16384,
+							},
+							resumeConfig: &Config{
+								MaxVersion:             vers.version,
+								MaxEarlyDataSize:       16384,
+								SessionTicketsDisabled: true,
+							},
+							tls13Variant:         vers.tls13Variant,
+							resumeSession:        true,
+							expectResumeRejected: true,
+							shouldFail: true,
+							expectedError: ":CERTIFICATE_VERIFY_FAILED:",
+							flags: append([]string{
+								"-enable-early-data",
+								"-expect-ticket-supports-early-data",
+								"-reverify-on-resume",
+								"-on-resume-shim-writes-first",
+								// Session tickets are disabled, so the runner will not send a ticket.
+								"-on-retry-expect-no-session",
+								"-on-retry-verify-fail",
+								"-expect-reject-early-data",
+							}, flags...),
+						})
+						tests = append(tests, testCase{
+							testType: testType,
+							name:     "EarlyData-Reject0RTT-Client-ReverifyFails" + suffix,
+							config: Config{
+								MaxVersion:       vers.version,
+								MaxEarlyDataSize: 16384,
+							},
+							resumeConfig: &Config{
+								MaxVersion:             vers.version,
+								MaxEarlyDataSize:       16384,
+								Bugs: ProtocolBugs{
+									AlwaysRejectEarlyData: true,
+								},
+							},
+							tls13Variant:         vers.tls13Variant,
+							resumeSession:        true,
+							expectResumeRejected: false,
+							shouldFail: true,
+							expectedError: ":CERTIFICATE_VERIFY_FAILED:",
+							flags: append([]string{
+								"-enable-early-data",
+								"-expect-reject-early-data",
+								"-expect-ticket-supports-early-data",
+								"-reverify-on-resume",
+								"-on-resume-shim-writes-first",
+								"-on-retry-verify-fail",
+							}, flags...),
+						})
+						// This tests that we only call the verify callback once.
+						tests = append(tests, testCase{
+							testType: testType,
+							name:     "EarlyData-Accept0RTT-Client-Reverify" + suffix,
+							config: Config{
+								MaxVersion:       vers.version,
+								MaxEarlyDataSize: 16384,
+							},
+							resumeConfig: &Config{
+								MaxVersion:             vers.version,
+								MaxEarlyDataSize:       16384,
+								Bugs: ProtocolBugs{
+									ExpectEarlyData: [][]byte{[]byte("hello")},
+								},
+							},
+							tls13Variant:         vers.tls13Variant,
+							resumeSession:        true,
+							expectResumeRejected: false,
+							flags: append([]string{
+								"-enable-early-data",
+								"-expect-ticket-supports-early-data",
+								"-reverify-on-resume",
+								"-on-resume-shim-writes-first",
+							}, flags...),
+						})
+						tests = append(tests, testCase{
+							testType: testType,
+							name:     "EarlyData-Accept0RTT-Client-ReverifyFails" + suffix,
+							config: Config{
+								MaxVersion:       vers.version,
+								MaxEarlyDataSize: 16384,
+							},
+							resumeConfig: &Config{
+								MaxVersion:             vers.version,
+								MaxEarlyDataSize:       16384,
+								Bugs: ProtocolBugs{
+									ExpectEarlyData: [][]byte{[]byte("hello")},
+								},
+							},
+							tls13Variant:         vers.tls13Variant,
+							resumeSession:        true,
+							shouldFail: true,
+							expectedError: ":CERTIFICATE_VERIFY_FAILED:",
+							flags: append([]string{
+								"-enable-early-data",
+								"-expect-ticket-supports-early-data",
+								"-reverify-on-resume",
+								"-on-resume-verify-fail",
+								"-on-resume-shim-writes-first",
+							}, flags...),
+						})
+					}
 				}
 			}
 		}
