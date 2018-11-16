@@ -97,6 +97,16 @@ my $asciz = sub {
     else
     {	"";	}
 };
+my $section = sub {
+    if ($flavour =~ /ios/) {
+        if ($_[0] eq ".rodata") {
+            return ".section\t__TEXT,__const";
+        }
+        die "Unknown section name $_[0]";
+    } else {
+        return ".section\t" . join(",", @_);
+    }
+};
 
 sub range {
   my ($r,$sfx,$start,$end) = @_;
@@ -177,6 +187,18 @@ while(my $line=<>) {
 	    $opcode = eval("\$$1_$2");
 	} else {
 	    $opcode = eval("\$$mnemonic");
+	}
+
+	if ($flavour =~ /ios/) {
+	    # Mach-O and ELF use different syntax for these relocations. Note
+	    # that we require :pg_hi21: to be explicitly listed. It is normally
+	    # optional with adrp instructions.
+	    $line =~ s|:pg_hi21:(\w+)|\1\@PAGE|;
+	    $line =~ s|:lo12:(\w+)|\1\@PAGEOFF|;
+	} else {
+	    # Clang's integrated assembly does not support the optional
+	    # :pg_hi21: markers, so erase them.
+	    $line =~ s|:pg_hi21:||;
 	}
 
 	my $arg=expand_line($line);
