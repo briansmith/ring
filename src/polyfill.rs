@@ -30,37 +30,37 @@ pub fn u64_from_usize(x: usize) -> u64 { x as u64 }
 /// There is no usable trait for `rotate_left`, so this polyfill just
 /// hard-codes u32. https://github.com/rust-lang/rust/issues/32463
 #[inline(always)]
-pub fn wrapping_rotate_left_u32(x: core::num::Wrapping<u32>, n: u32)
-                                -> core::num::Wrapping<u32> {
+pub fn wrapping_rotate_left_u32(x: core::num::Wrapping<u32>, n: u32) -> core::num::Wrapping<u32> {
     core::num::Wrapping(x.0.rotate_left(n))
 }
-
 
 pub mod slice {
     use core;
 
     #[inline(always)]
     pub fn u32_from_be_u8(buffer: &[u8; 4]) -> u32 {
-        u32::from(buffer[0]) << 24 |
-        u32::from(buffer[1]) << 16 |
-        u32::from(buffer[2]) << 8 |
-        u32::from(buffer[3])
+        u32::from(buffer[0]) << 24
+            | u32::from(buffer[1]) << 16
+            | u32::from(buffer[2]) << 8
+            | u32::from(buffer[3])
     }
 
     #[inline(always)]
     pub fn u32_from_le_u8(buffer: &[u8; 4]) -> u32 {
-        u32::from(buffer[0]) |
-        u32::from(buffer[1]) << 8 |
-        u32::from(buffer[2]) << 16 |
-        u32::from(buffer[3]) << 24
+        u32::from(buffer[0])
+            | u32::from(buffer[1]) << 8
+            | u32::from(buffer[2]) << 16
+            | u32::from(buffer[3]) << 24
     }
 
     #[inline(always)]
     pub fn be_u8_from_u32(value: u32) -> [u8; 4] {
-        [((value >> 24) & 0xff) as u8,
-         ((value >> 16) & 0xff) as u8,
-         ((value >> 8) & 0xff) as u8,
-         (value & 0xff) as u8]
+        [
+            ((value >> 24) & 0xff) as u8,
+            ((value >> 16) & 0xff) as u8,
+            ((value >> 8) & 0xff) as u8,
+            (value & 0xff) as u8,
+        ]
     }
 
     // https://github.com/rust-lang/rust/issues/27750
@@ -75,63 +75,48 @@ pub mod slice {
     // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     pub fn u64_as_u8(src: &[u64]) -> &[u8] {
-        unsafe {
-            core::slice::from_raw_parts(src.as_ptr() as *const u8,
-                                        src.len() * 8)
-        }
+        unsafe { core::slice::from_raw_parts(src.as_ptr() as *const u8, src.len() * 8) }
     }
 
     // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     pub fn u64_as_u8_mut(src: &mut [u64]) -> &mut [u8] {
-        unsafe {
-            core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u8,
-                                            src.len() * 8)
-        }
+        unsafe { core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u8, src.len() * 8) }
     }
 
     // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     #[allow(dead_code)] // Only used on 32-bit builds currently
     pub fn u32_as_u8<'a>(src: &'a [u32]) -> &'a [u8] {
-        unsafe {
-            core::slice::from_raw_parts(src.as_ptr() as *mut u8, src.len() * 4)
-        }
+        unsafe { core::slice::from_raw_parts(src.as_ptr() as *mut u8, src.len() * 4) }
     }
 
     // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     #[allow(dead_code)] // Only used on 32-bit builds currently
     pub fn u32_as_u8_mut<'a>(src: &'a mut [u32]) -> &'a mut [u8] {
-        unsafe {
-            core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u8,
-                                            src.len() * 4)
-        }
+        unsafe { core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u8, src.len() * 4) }
     }
 
     // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     pub fn u64_as_u32(src: &[u64]) -> &[u32] {
-        unsafe {
-            core::slice::from_raw_parts(src.as_ptr() as *const u32,
-                                        src.len() * 2)
-        }
+        unsafe { core::slice::from_raw_parts(src.as_ptr() as *const u32, src.len() * 2) }
     }
 
     // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
     #[inline(always)]
     pub fn u64_as_u32_mut(src: &mut [u64]) -> &mut [u32] {
-        unsafe {
-            core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u32,
-                                            src.len() * 2)
-        }
+        unsafe { core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u32, src.len() * 2) }
     }
 
     #[inline(always)]
     pub fn as_wrapping_mut<T>(src: &mut [T]) -> &mut [core::num::Wrapping<T>] {
         unsafe {
             core::slice::from_raw_parts_mut(
-                src.as_mut_ptr() as *mut core::num::Wrapping<T>, src.len())
+                src.as_mut_ptr() as *mut core::num::Wrapping<T>,
+                src.len(),
+            )
         }
     }
 }
@@ -139,42 +124,31 @@ pub mod slice {
 /// Returns a reference to the elements of `$slice` as an array, verifying that
 /// the slice is of length `$len`.
 macro_rules! slice_as_array_ref {
-    ($slice:expr, $len:expr) => {
-        {
-            use crate::error;
+    ($slice:expr, $len:expr) => {{
+        use crate::error;
 
-            fn slice_as_array_ref<T>(slice: &[T])
-                                     -> Result<&[T; $len], error::Unspecified> {
-                if slice.len() != $len {
-                    return Err(error::Unspecified);
-                }
-                Ok(unsafe {
-                    &*(slice.as_ptr() as *const [T; $len])
-                })
+        fn slice_as_array_ref<T>(slice: &[T]) -> Result<&[T; $len], error::Unspecified> {
+            if slice.len() != $len {
+                return Err(error::Unspecified);
             }
-            slice_as_array_ref($slice)
+            Ok(unsafe { &*(slice.as_ptr() as *const [T; $len]) })
         }
-    }
+        slice_as_array_ref($slice)
+    }};
 }
 
 /// Returns a reference to elements of `$slice` as a mutable array, verifying
 /// that the slice is of length `$len`.
 macro_rules! slice_as_array_ref_mut {
-    ($slice:expr, $len:expr) => {
-        {
-            use crate::error;
+    ($slice:expr, $len:expr) => {{
+        use crate::error;
 
-            fn slice_as_array_ref<T>(slice: &mut [T])
-                                     -> Result<&mut [T; $len],
-                                               error::Unspecified> {
-                if slice.len() != $len {
-                    return Err(error::Unspecified);
-                }
-                Ok(unsafe {
-                    &mut *(slice.as_mut_ptr() as *mut [T; $len])
-                })
+        fn slice_as_array_ref<T>(slice: &mut [T]) -> Result<&mut [T; $len], error::Unspecified> {
+            if slice.len() != $len {
+                return Err(error::Unspecified);
             }
-            slice_as_array_ref($slice)
+            Ok(unsafe { &mut *(slice.as_mut_ptr() as *mut [T; $len]) })
         }
-    }
+        slice_as_array_ref($slice)
+    }};
 }

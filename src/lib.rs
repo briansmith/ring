@@ -34,16 +34,14 @@
 //!     <td>Enable RSA signing (<code>RSAKeyPair</code> and related things).
 //! </table>
 
-#![doc(html_root_url="https://briansmith.org/rustdoc/")]
-
+#![doc(html_root_url = "https://briansmith.org/rustdoc/")]
 #![allow(
     missing_copy_implementations,
     missing_debug_implementations,
     non_camel_case_types,
     non_snake_case,
-    unsafe_code,
+    unsafe_code
 )]
-
 // `#[derive(...)]` uses `trivial_numeric_casts` and `unused_qualifications`
 // internally.
 #![deny(
@@ -52,7 +50,6 @@
     unstable_features, // Used by `internal_benches`
     unused_qualifications,
 )]
-
 #![forbid(
     anonymous_parameters,
     trivial_casts,
@@ -60,11 +57,9 @@
     unused_import_braces,
     unused_results,
     variant_size_differences,
-    warnings,
+    warnings
 )]
-
 #![no_std]
-
 #![cfg_attr(feature = "internal_benches", allow(unstable_features))]
 #![cfg_attr(feature = "internal_benches", feature(test))]
 
@@ -74,11 +69,14 @@ extern crate libc;
 #[cfg(feature = "internal_benches")]
 extern crate test as bench;
 
-#[cfg(any(target_os = "redox",
-          all(unix,
-              not(any(target_os = "macos", target_os = "ios")),
-              any(not(target_os = "linux"),
-                  feature = "dev_urandom_fallback"))))]
+#[cfg(any(
+    target_os = "redox",
+    all(
+        unix,
+        not(any(target_os = "macos", target_os = "ios")),
+        any(not(target_os = "linux"), feature = "dev_urandom_fallback")
+    )
+))]
 #[macro_use]
 extern crate lazy_static;
 
@@ -140,11 +138,11 @@ mod private {
     // ```
     // use crate::private;
     //
-    // pub trait MyType : private::Sealed {
+    // pub trait MyType: private::Sealed {
     //     // [...]
     // }
     //
-    // impl private::Sealed for MyType { }
+    // impl private::Sealed for MyType {}
     // ```
     pub trait Sealed {}
 }

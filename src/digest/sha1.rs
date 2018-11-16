@@ -13,9 +13,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use core::{self, num::Wrapping};
 use crate::{c, polyfill};
-use core;
-use core::num::Wrapping;
 
 // XXX: This duplicates super::State and shouldn't need to be public.
 // TODO: Remove the duplication, but be wary of
@@ -43,8 +42,7 @@ fn maj(x: W32, y: W32, z: W32) -> W32 { (x & y) | (x & z) | (y & z) }
 /// This implementation therefore favors size and simplicity over speed.
 /// Unlike SHA-256, SHA-384, and SHA-512,
 /// there is no assembly language implementation.
-pub unsafe extern fn block_data_order(state: &mut State,
-                                      data: *const u8, num: c::size_t) {
+pub unsafe extern "C" fn block_data_order(state: &mut State, data: *const u8, num: c::size_t) {
     let data = data as *const [u8; BLOCK_LEN];
     let blocks = core::slice::from_raw_parts(data, num);
     block_data_order_safe(state, blocks)
@@ -81,8 +79,7 @@ fn block_data_order_safe(state: &mut State, blocks: &[[u8; BLOCK_LEN]]) {
                 60...79 => (0xca62c1d6, parity(b, c, d)),
                 _ => unreachable!(),
             };
-            let tt = polyfill::wrapping_rotate_left_u32(a, 5) + f + e +
-                     Wrapping(k) + w[t];
+            let tt = polyfill::wrapping_rotate_left_u32(a, 5) + f + e + Wrapping(k) + w[t];
             e = d;
             d = c;
             c = polyfill::wrapping_rotate_left_u32(b, 30);

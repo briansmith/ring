@@ -16,8 +16,8 @@
 //!
 //! This module contains the foundational parts of an ASN.1 DER parser.
 
-use untrusted;
 use crate::error;
+use untrusted;
 
 pub const CONSTRUCTED: u8 = 1 << 5;
 pub const CONTEXT_SPECIFIC: u8 = 2 << 6;
@@ -40,10 +40,9 @@ pub enum Tag {
     ContextSpecificConstructed3 = CONTEXT_SPECIFIC | CONSTRUCTED | 3,
 }
 
-pub fn expect_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>,
-                                    tag: Tag)
-                                    -> Result<untrusted::Input<'a>,
-                                              error::Unspecified> {
+pub fn expect_tag_and_get_value<'a>(
+    input: &mut untrusted::Reader<'a>, tag: Tag,
+) -> Result<untrusted::Input<'a>, error::Unspecified> {
     let (actual_tag, inner) = read_tag_and_get_value(input)?;
     if (tag as usize) != (actual_tag as usize) {
         return Err(error::Unspecified);
@@ -51,9 +50,9 @@ pub fn expect_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>,
     Ok(inner)
 }
 
-pub fn read_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>)
-                                  -> Result<(u8, untrusted::Input<'a>),
-                                            error::Unspecified> {
+pub fn read_tag_and_get_value<'a>(
+    input: &mut untrusted::Reader<'a>,
+) -> Result<(u8, untrusted::Input<'a>), error::Unspecified> {
     let tag = input.read_byte()?;
     if (tag & 0x1F) == 0x1F {
         return Err(error::Unspecified); // High tag number form is not allowed.
@@ -89,11 +88,11 @@ pub fn read_tag_and_get_value<'a>(input: &mut untrusted::Reader<'a>)
     Ok((tag, inner))
 }
 
-pub fn bit_string_with_no_unused_bits<'a>(input: &mut untrusted::Reader<'a>)
-        -> Result<untrusted::Input<'a>, error::Unspecified> {
+pub fn bit_string_with_no_unused_bits<'a>(
+    input: &mut untrusted::Reader<'a>,
+) -> Result<untrusted::Input<'a>, error::Unspecified> {
     nested(input, Tag::BitString, error::Unspecified, |value| {
-        let unused_bits_at_end =
-            value.read_byte().map_err(|_| error::Unspecified)?;
+        let unused_bits_at_end = value.read_byte().map_err(|_| error::Unspecified)?;
         if unused_bits_at_end != 0 {
             return Err(error::Unspecified);
         }
@@ -103,20 +102,22 @@ pub fn bit_string_with_no_unused_bits<'a>(input: &mut untrusted::Reader<'a>)
 
 // TODO: investigate taking decoder as a reference to reduce generated code
 // size.
-pub fn nested<'a, F, R, E: Copy>(input: &mut untrusted::Reader<'a>, tag: Tag,
-                                 error: E, decoder: F) -> Result<R, E>
-                                 where F : FnOnce(&mut untrusted::Reader<'a>)
-                                                  -> Result<R, E> {
+pub fn nested<'a, F, R, E: Copy>(
+    input: &mut untrusted::Reader<'a>, tag: Tag, error: E, decoder: F,
+) -> Result<R, E>
+where
+    F: FnOnce(&mut untrusted::Reader<'a>) -> Result<R, E>,
+{
     let inner = expect_tag_and_get_value(input, tag).map_err(|_| error)?;
     inner.read_all(error, decoder)
 }
 
-fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>, min_value: u8)
-                           -> Result<untrusted::Input<'a>, error::Unspecified> {
+fn nonnegative_integer<'a>(
+    input: &mut untrusted::Reader<'a>, min_value: u8,
+) -> Result<untrusted::Input<'a>, error::Unspecified> {
     // Verify that |input|, which has had any leading zero stripped off, is the
     // encoding of a value of at least |min_value|.
-    fn check_minimum(input: untrusted::Input, min_value: u8)
-                     -> Result<(), error::Unspecified> {
+    fn check_minimum(input: untrusted::Input, min_value: u8) -> Result<(), error::Unspecified> {
         input.read_all(error::Unspecified, |input| {
             let first_byte = input.read_byte()?;
             if input.at_end() && first_byte < min_value {
@@ -171,8 +172,7 @@ fn nonnegative_integer<'a>(input: &mut untrusted::Reader<'a>, min_value: u8)
 /// Parse as integer with a value in the in the range [0, 255], returning its
 /// numeric value. This is typically used for parsing version numbers.
 #[inline]
-pub fn small_nonnegative_integer(input: &mut untrusted::Reader)
-                                 -> Result<u8, error::Unspecified> {
+pub fn small_nonnegative_integer(input: &mut untrusted::Reader) -> Result<u8, error::Unspecified> {
     let value = nonnegative_integer(input, 0)?;
     value.read_all(error::Unspecified, |input| {
         let r = input.read_byte()?;
@@ -183,70 +183,70 @@ pub fn small_nonnegative_integer(input: &mut untrusted::Reader)
 /// Parses a positive DER integer, returning the big-endian-encoded value, sans
 /// any leading zero byte.
 #[inline]
-pub fn positive_integer<'a>(input: &mut untrusted::Reader<'a>)
-                            -> Result<untrusted::Input<'a>, error::Unspecified> {
+pub fn positive_integer<'a>(
+    input: &mut untrusted::Reader<'a>,
+) -> Result<untrusted::Input<'a>, error::Unspecified> {
     nonnegative_integer(input, 1)
 }
 
-
 #[cfg(test)]
 mod tests {
-    use crate::error;
     use super::*;
+    use crate::error;
     use untrusted;
 
     fn with_good_i<F, R>(value: &[u8], f: F)
-                         where F: FnOnce(&mut untrusted::Reader)
-                                         -> Result<R, error::Unspecified> {
+    where
+        F: FnOnce(&mut untrusted::Reader) -> Result<R, error::Unspecified>,
+    {
         let r = untrusted::Input::from(value).read_all(error::Unspecified, f);
         assert!(r.is_ok());
     }
 
     fn with_bad_i<F, R>(value: &[u8], f: F)
-                        where F: FnOnce(&mut untrusted::Reader)
-                                        -> Result<R, error::Unspecified> {
+    where
+        F: FnOnce(&mut untrusted::Reader) -> Result<R, error::Unspecified>,
+    {
         let r = untrusted::Input::from(value).read_all(error::Unspecified, f);
         assert!(r.is_err());
     }
 
     static ZERO_INTEGER: &'static [u8] = &[0x02, 0x01, 0x00];
 
-    static GOOD_POSITIVE_INTEGERS: &'static [(&'static [u8], u8)] =
-        &[(&[0x02, 0x01, 0x01], 0x01),
-          (&[0x02, 0x01, 0x02], 0x02),
-          (&[0x02, 0x01, 0x7e], 0x7e),
-          (&[0x02, 0x01, 0x7f], 0x7f),
+    static GOOD_POSITIVE_INTEGERS: &'static [(&'static [u8], u8)] = &[
+        (&[0x02, 0x01, 0x01], 0x01),
+        (&[0x02, 0x01, 0x02], 0x02),
+        (&[0x02, 0x01, 0x7e], 0x7e),
+        (&[0x02, 0x01, 0x7f], 0x7f),
+        // Values that need to have an 0x00 prefix to disambiguate them from
+        // them from negative values.
+        (&[0x02, 0x02, 0x00, 0x80], 0x80),
+        (&[0x02, 0x02, 0x00, 0x81], 0x81),
+        (&[0x02, 0x02, 0x00, 0xfe], 0xfe),
+        (&[0x02, 0x02, 0x00, 0xff], 0xff),
+    ];
 
-          // Values that need to have an 0x00 prefix to disambiguate them from
-          // them from negative values.
-          (&[0x02, 0x02, 0x00, 0x80], 0x80),
-          (&[0x02, 0x02, 0x00, 0x81], 0x81),
-          (&[0x02, 0x02, 0x00, 0xfe], 0xfe),
-          (&[0x02, 0x02, 0x00, 0xff], 0xff)];
-
-    static BAD_NONNEGATIVE_INTEGERS: &'static [&'static [u8]] =
-        &[&[], // At end of input
-          &[0x02], // Tag only
-          &[0x02, 0x00], // Empty value
-
-          // Length mismatch
-          &[0x02, 0x00, 0x01],
-          &[0x02, 0x01],
-          &[0x02, 0x01, 0x00, 0x01],
-          &[0x02, 0x01, 0x01, 0x00], // Would be valid if last byte is ignored.
-          &[0x02, 0x02, 0x01],
-
-          // Negative values
-          &[0x02, 0x01, 0x80],
-          &[0x02, 0x01, 0xfe],
-          &[0x02, 0x01, 0xff],
-
-          // Values that have an unnecessary leading 0x00
-          &[0x02, 0x02, 0x00, 0x00],
-          &[0x02, 0x02, 0x00, 0x01],
-          &[0x02, 0x02, 0x00, 0x02],
-          &[0x02, 0x02, 0x00, 0x7e],
-          &[0x02, 0x02, 0x00, 0x7f]];
+    static BAD_NONNEGATIVE_INTEGERS: &'static [&'static [u8]] = &[
+        &[],           // At end of input
+        &[0x02],       // Tag only
+        &[0x02, 0x00], // Empty value
+        // Length mismatch
+        &[0x02, 0x00, 0x01],
+        &[0x02, 0x01],
+        &[0x02, 0x01, 0x00, 0x01],
+        &[0x02, 0x01, 0x01, 0x00], // Would be valid if last byte is ignored.
+        &[0x02, 0x02, 0x01],
+        // Negative values
+        &[0x02, 0x01, 0x80],
+        &[0x02, 0x01, 0xfe],
+        &[0x02, 0x01, 0xff],
+        // Values that have an unnecessary leading 0x00
+        &[0x02, 0x02, 0x00, 0x00],
+        &[0x02, 0x02, 0x00, 0x01],
+        &[0x02, 0x02, 0x00, 0x02],
+        &[0x02, 0x02, 0x00, 0x7e],
+        &[0x02, 0x02, 0x00, 0x7f],
+    ];
 
     #[test]
     fn test_small_nonnegative_integer() {
@@ -277,8 +277,10 @@ mod tests {
         for &(test_in, test_out) in GOOD_POSITIVE_INTEGERS.iter() {
             with_good_i(test_in, |input| {
                 let test_out = [test_out];
-                assert_eq!(positive_integer(input)?,
-                           untrusted::Input::from(&test_out[..]));
+                assert_eq!(
+                    positive_integer(input)?,
+                    untrusted::Input::from(&test_out[..])
+                );
                 Ok(())
             });
         }

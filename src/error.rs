@@ -36,15 +36,14 @@ use std;
 ///
 /// ```
 /// extern crate ring;
-/// use ring::rand;
-/// use ring::rand::SecureRandom;
+/// use ring::rand::{self, SecureRandom};
 ///
 /// enum Error {
-///    CryptoError,
+///     CryptoError,
 ///
 /// #  #[cfg(feature = "use_heap")]
-///    IOError(std::io::Error),
-///    // [...]
+///     IOError(std::io::Error),
+///     // [...]
 /// }
 ///
 /// impl From<ring::error::Unspecified> for Error {
@@ -52,13 +51,13 @@ use std;
 /// }
 ///
 /// fn eight_random_bytes() -> Result<[u8; 8], Error> {
-///    let rng = rand::SystemRandom::new();
-///    let mut bytes = [0; 8];
+///     let rng = rand::SystemRandom::new();
+///     let mut bytes = [0; 8];
 ///
-///    // The `From<ring::error::Unspecified>` implementation above makes this
-///    // equivalent to
-///    // `rng.fill(&mut bytes).map_err(|_| Error::CryptoError)?`.
-///    rng.fill(&mut bytes)?;
+///     // The `From<ring::error::Unspecified>` implementation above makes this
+///     // equivalent to
+///     // `rng.fill(&mut bytes).map_err(|_| Error::CryptoError)?`.
+///     rng.fill(&mut bytes)?;
 ///
 ///     Ok(bytes)
 /// }

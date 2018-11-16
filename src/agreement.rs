@@ -74,18 +74,14 @@
 // The "NSA Guide" steps here are from from section 3.1, "Ephemeral Unified
 // Model."
 
-
-
 use crate::{ec, error, rand};
 use untrusted;
-
 
 pub use ec::PUBLIC_KEY_MAX_LEN;
 
 pub use ec::suite_b::ecdh::{ECDH_P256, ECDH_P384};
 
 pub use ec::curve25519::x25519::X25519;
-
 
 /// A key agreement algorithm.
 #[derive(Eq, PartialEq)]
@@ -107,8 +103,9 @@ impl<'a> EphemeralPrivateKey {
     /// Generate a new ephemeral private key for the given algorithm.
     ///
     /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
-    pub fn generate(alg: &'static Algorithm, rng: &rand::SecureRandom)
-                    -> Result<EphemeralPrivateKey, error::Unspecified> {
+    pub fn generate(
+        alg: &'static Algorithm, rng: &rand::SecureRandom,
+    ) -> Result<EphemeralPrivateKey, error::Unspecified> {
         // NSA Guide Step 1.
         //
         // This only handles the key generation part of step 1. The rest of
@@ -130,8 +127,7 @@ impl<'a> EphemeralPrivateKey {
     ///
     /// `out.len()` must be equal to the value returned by `public_key_len`.
     #[inline(always)]
-    pub fn compute_public_key(&self, out: &mut [u8])
-                              -> Result<(), error::Unspecified> {
+    pub fn compute_public_key(&self, out: &mut [u8]) -> Result<(), error::Unspecified> {
         // NSA Guide Step 1.
         //
         // Obviously, this only handles the part of Step 1 between the private
@@ -141,9 +137,7 @@ impl<'a> EphemeralPrivateKey {
     }
 
     #[cfg(test)]
-    pub fn bytes(&'a self, curve: &ec::Curve) -> &'a [u8] {
-        self.private_key.bytes(curve)
-    }
+    pub fn bytes(&'a self, curve: &ec::Curve) -> &'a [u8] { self.private_key.bytes(curve) }
 }
 
 /// Performs a key agreement with an ephemeral private key and the given public
@@ -171,11 +165,13 @@ impl<'a> EphemeralPrivateKey {
 /// returns.
 ///
 /// C analogs: `EC_POINT_oct2point` + `ECDH_compute_key`, `X25519`.
-pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
-                                peer_public_key_alg: &Algorithm,
-                                peer_public_key: untrusted::Input,
-                                error_value: E, kdf: F) -> Result<R, E>
-                                where F: FnOnce(&[u8]) -> Result<R, E> {
+pub fn agree_ephemeral<F, R, E>(
+    my_private_key: EphemeralPrivateKey, peer_public_key_alg: &Algorithm,
+    peer_public_key: untrusted::Input, error_value: E, kdf: F,
+) -> Result<R, E>
+where
+    F: FnOnce(&[u8]) -> Result<R, E>,
+{
     // NSA Guide Prerequisite 1.
     //
     // The domain parameters are hard-coded. This check verifies that the
@@ -198,8 +194,7 @@ pub fn agree_ephemeral<F, R, E>(my_private_key: EphemeralPrivateKey,
     // `EphemeralPrivateKey::compute_public_key()`.
 
     let mut shared_key = [0u8; ec::ELEM_MAX_BYTES];
-    let shared_key =
-        &mut shared_key[..alg.curve.elem_and_scalar_len];
+    let shared_key = &mut shared_key[..alg.curve.elem_and_scalar_len];
 
     // NSA Guide Steps 2, 3, and 4.
     //

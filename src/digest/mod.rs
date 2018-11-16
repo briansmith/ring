@@ -24,15 +24,16 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use crate::{c, init, polyfill};
 use core;
+use crate::{c, init, polyfill};
 
 // XXX: Replace with `const fn` when `const fn` is stable:
 // https://github.com/rust-lang/rust/issues/24111
 #[cfg(target_endian = "little")]
 macro_rules! u32x2 {
-    ( $first:expr, $second:expr ) =>
-    ( ((($second as u64) << 32) | ($first as u64)) )
+    ( $first:expr, $second:expr ) => {
+        ((($second as u64) << 32) | ($first as u64))
+    };
 }
 
 mod sha1;
@@ -81,7 +82,7 @@ impl Context {
         init::init_once();
 
         Context {
-            algorithm: algorithm,
+            algorithm,
             state: algorithm.initial_state,
             completed_data_blocks: 0,
             pending: [0u8; MAX_BLOCK_LEN],
@@ -96,8 +97,7 @@ impl Context {
     /// C analog: `EVP_DigestUpdate`
     pub fn update(&mut self, data: &[u8]) {
         if data.len() < self.algorithm.block_len - self.num_pending {
-            self.pending[self.num_pending..(self.num_pending + data.len())]
-                .copy_from_slice(data);
+            self.pending[self.num_pending..(self.num_pending + data.len())].copy_from_slice(data);
             self.num_pending += data.len();
             return;
         }
@@ -109,11 +109,9 @@ impl Context {
                 .copy_from_slice(&data[..to_copy]);
 
             unsafe {
-                (self.algorithm.block_data_order)(&mut self.state,
-                                                  self.pending.as_ptr(), 1);
+                (self.algorithm.block_data_order)(&mut self.state, self.pending.as_ptr(), 1);
             }
-            self.completed_data_blocks =
-                self.completed_data_blocks.checked_add(1).unwrap();
+            self.completed_data_blocks = self.completed_data_blocks.checked_add(1).unwrap();
 
             remaining = &remaining[to_copy..];
             self.num_pending = 0;
@@ -123,19 +121,16 @@ impl Context {
         let num_to_save_for_later = remaining.len() % self.algorithm.block_len;
         if num_blocks > 0 {
             unsafe {
-                (self.algorithm.block_data_order)(&mut self.state,
-                                                  remaining.as_ptr(),
-                                                  num_blocks);
+                (self.algorithm.block_data_order)(&mut self.state, remaining.as_ptr(), num_blocks);
             }
-            self.completed_data_blocks =
-                self.completed_data_blocks
-                    .checked_add(polyfill::u64_from_usize(num_blocks))
-                    .unwrap();
+            self.completed_data_blocks = self
+                .completed_data_blocks
+                .checked_add(polyfill::u64_from_usize(num_blocks))
+                .unwrap();
         }
         if num_to_save_for_later > 0 {
             self.pending[..num_to_save_for_later]
-                .copy_from_slice(&remaining[(remaining.len() -
-                                             num_to_save_for_later)..]);
+                .copy_from_slice(&remaining[(remaining.len() - num_to_save_for_later)..]);
             self.num_pending = num_to_save_for_later;
         }
     }
@@ -154,11 +149,9 @@ impl Context {
         padding_pos += 1;
 
         if padding_pos > self.algorithm.block_len - self.algorithm.len_len {
-            polyfill::slice::fill(
-                &mut self.pending[padding_pos..self.algorithm.block_len], 0);
+            polyfill::slice::fill(&mut self.pending[padding_pos..self.algorithm.block_len], 0);
             unsafe {
-                (self.algorithm.block_data_order)(&mut self.state,
-                                                  self.pending.as_ptr(), 1);
+                (self.algorithm.block_data_order)(&mut self.state, self.pending.as_ptr(), 1);
             }
             // We don't increase |self.completed_data_blocks| because the
             // padding isn't data, and so it isn't included in the data length.
@@ -166,23 +159,29 @@ impl Context {
         }
 
         polyfill::slice::fill(
-            &mut self.pending[padding_pos..(self.algorithm.block_len - 8)], 0);
+            &mut self.pending[padding_pos..(self.algorithm.block_len - 8)],
+            0,
+        );
 
         // Output the length, in bits, in big endian order.
-        let mut completed_data_bits: u64 = self.completed_data_blocks
+        let mut completed_data_bits: u64 = self
+            .completed_data_blocks
             .checked_mul(polyfill::u64_from_usize(self.algorithm.block_len))
             .unwrap()
-            .checked_add(polyfill::u64_from_usize(self.num_pending)).unwrap()
-            .checked_mul(8).unwrap();
+            .checked_add(polyfill::u64_from_usize(self.num_pending))
+            .unwrap()
+            .checked_mul(8)
+            .unwrap();
 
-        for b in (&mut self.pending[(self.algorithm.block_len - 8)..
-                                    self.algorithm.block_len]).into_iter().rev() {
+        for b in (&mut self.pending[(self.algorithm.block_len - 8)..self.algorithm.block_len])
+            .into_iter()
+            .rev()
+        {
             *b = completed_data_bits as u8;
             completed_data_bits /= 0x100;
         }
         unsafe {
-            (self.algorithm.block_data_order)(&mut self.state,
-                                              self.pending.as_ptr(), 1);
+            (self.algorithm.block_data_order)(&mut self.state, self.pending.as_ptr(), 1);
         }
 
         Digest {
@@ -207,8 +206,7 @@ impl Context {
 /// # fn main() {
 /// use ring::{digest, test};
 ///
-/// let expected_hex =
-///     "09ca7e4eaa6e8ae9c7d261167129184883644d07dfba7cbfbc4c8a2e08360d5b";
+/// let expected_hex = "09ca7e4eaa6e8ae9c7d261167129184883644d07dfba7cbfbc4c8a2e08360d5b";
 /// let expected: Vec<u8> = test::from_hex(expected_hex).unwrap();
 /// let actual = digest::digest(&digest::SHA256, b"hello, world");
 ///
@@ -277,8 +275,7 @@ pub struct Algorithm {
     /// The length of the length in the padding.
     len_len: usize,
 
-    block_data_order: unsafe extern fn(state: &mut State, data: *const u8,
-                                       num: c::size_t),
+    block_data_order: unsafe extern "C" fn(state: &mut State, data: *const u8, num: c::size_t),
     format_output: fn(input: &State) -> Output,
 
     initial_state: State,
@@ -317,7 +314,11 @@ pub static SHA1: Algorithm = Algorithm {
         u32x2!(0x67452301u32, 0xefcdab89u32),
         u32x2!(0x98badcfeu32, 0x10325476u32),
         u32x2!(0xc3d2e1f0u32, 0u32),
-        0, 0, 0, 0, 0,
+        0,
+        0,
+        0,
+        0,
+        0,
     ],
     id: AlgorithmID::SHA1,
 };
@@ -337,7 +338,10 @@ pub static SHA256: Algorithm = Algorithm {
         u32x2!(0x3c6ef372u32, 0xa54ff53au32),
         u32x2!(0x510e527fu32, 0x9b05688cu32),
         u32x2!(0x1f83d9abu32, 0x5be0cd19u32),
-        0, 0, 0, 0,
+        0,
+        0,
+        0,
+        0,
     ],
     id: AlgorithmID::SHA256,
 };
@@ -434,25 +438,29 @@ pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 
 fn sha256_format_output(input: &State) -> Output {
     let input = &polyfill::slice::u64_as_u32(input)[..8];
-    [u32x2!(input[0].to_be(), input[1].to_be()),
-     u32x2!(input[2].to_be(), input[3].to_be()),
-     u32x2!(input[4].to_be(), input[5].to_be()),
-     u32x2!(input[6].to_be(), input[7].to_be()),
-     0,
-     0,
-     0,
-     0]
+    [
+        u32x2!(input[0].to_be(), input[1].to_be()),
+        u32x2!(input[2].to_be(), input[3].to_be()),
+        u32x2!(input[4].to_be(), input[5].to_be()),
+        u32x2!(input[6].to_be(), input[7].to_be()),
+        0,
+        0,
+        0,
+        0,
+    ]
 }
 
 fn sha512_format_output(input: &State) -> Output {
-    [input[0].to_be(),
-     input[1].to_be(),
-     input[2].to_be(),
-     input[3].to_be(),
-     input[4].to_be(),
-     input[5].to_be(),
-     input[6].to_be(),
-     input[7].to_be()]
+    [
+        input[0].to_be(),
+        input[1].to_be(),
+        input[2].to_be(),
+        input[3].to_be(),
+        input[4].to_be(),
+        input[5].to_be(),
+        input[6].to_be(),
+        input[7].to_be(),
+    ]
 }
 
 /// The length of the output of SHA-1, in bytes.
@@ -476,13 +484,10 @@ const SHA512_BLOCK_LEN: usize = 1024 / 8;
 /// The length of the length field for SHA-512-based algorithms, in bytes.
 const SHA512_LEN_LEN: usize = 128 / 8;
 
-extern {
-    fn GFp_sha256_block_data_order(state: &mut State, data: *const u8,
-                                   num: c::size_t);
-    fn GFp_sha512_block_data_order(state: &mut State, data: *const u8,
-                                   num: c::size_t);
+extern "C" {
+    fn GFp_sha256_block_data_order(state: &mut State, data: *const u8, num: c::size_t);
+    fn GFp_sha512_block_data_order(state: &mut State, data: *const u8, num: c::size_t);
 }
-
 
 #[cfg(test)]
 pub mod test_util {
@@ -509,25 +514,21 @@ mod tests {
                     use super::super::super::super::digest;
 
                     #[test]
-                    fn max_input_test() {
-                        super::max_input_test(&digest::$algorithm_name);
-                    }
+                    fn max_input_test() { super::max_input_test(&digest::$algorithm_name); }
 
                     #[test]
                     #[should_panic]
                     fn too_long_input_test_block() {
-                        super::too_long_input_test_block(
-                            &digest::$algorithm_name);
+                        super::too_long_input_test_block(&digest::$algorithm_name);
                     }
 
                     #[test]
                     #[should_panic]
                     fn too_long_input_test_byte() {
-                        super::too_long_input_test_byte(
-                            &digest::$algorithm_name);
+                        super::too_long_input_test_byte(&digest::$algorithm_name);
                     }
                 }
-            }
+            };
         }
 
         fn max_input_test(alg: &'static digest::Algorithm) {
@@ -552,8 +553,7 @@ mod tests {
             let _ = context.finish(); // should panic
         }
 
-        fn nearly_full_context(alg: &'static digest::Algorithm)
-                               -> digest::Context {
+        fn nearly_full_context(alg: &'static digest::Algorithm) -> digest::Context {
             // All implementations currently support up to 2^64-1 bits
             // of input; according to the spec, SHA-384 and SHA-512
             // support up to 2^128-1, but that's not implemented yet.

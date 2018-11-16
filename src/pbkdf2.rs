@@ -139,8 +139,10 @@ use crate::{constant_time, digest, error, hmac, polyfill};
 ///
 /// `derive` panics if `out.len()` is larger than (2**32 - 1) * the digest
 /// algorithm's output length, per the PBKDF2 specification.
-pub fn derive(digest_alg: &'static digest::Algorithm, iterations: u32,
-              salt: &[u8], secret: &[u8], out: &mut [u8]) {
+pub fn derive(
+    digest_alg: &'static digest::Algorithm, iterations: u32, salt: &[u8], secret: &[u8],
+    out: &mut [u8],
+) {
     assert!(iterations >= 1);
 
     let output_len = digest_alg.output_len;
@@ -163,8 +165,7 @@ pub fn derive(digest_alg: &'static digest::Algorithm, iterations: u32,
     }
 }
 
-fn derive_block(secret: &hmac::SigningKey, iterations: u32, salt: &[u8],
-                idx: u32, out: &mut [u8]) {
+fn derive_block(secret: &hmac::SigningKey, iterations: u32, salt: &[u8], idx: u32, out: &mut [u8]) {
     let mut ctx = hmac::SigningContext::with_key(secret);
     ctx.update(salt);
     ctx.update(&polyfill::slice::be_u8_from_u32(idx));
@@ -210,9 +211,10 @@ fn derive_block(secret: &hmac::SigningKey, iterations: u32, salt: &[u8],
 ///
 /// `verify` panics if `out.len()` is larger than (2**32 - 1) * the digest
 /// algorithm's output length, per the PBKDF2 specification.
-pub fn verify(digest_alg: &'static digest::Algorithm, iterations: u32,
-              salt: &[u8], secret: &[u8], previously_derived: &[u8])
-              -> Result<(), error::Unspecified> {
+pub fn verify(
+    digest_alg: &'static digest::Algorithm, iterations: u32, salt: &[u8], secret: &[u8],
+    previously_derived: &[u8],
+) -> Result<(), error::Unspecified> {
     if previously_derived.is_empty() {
         return Err(error::Unspecified);
     }
@@ -235,8 +237,9 @@ pub fn verify(digest_alg: &'static digest::Algorithm, iterations: u32,
 
         // XXX: This isn't fully constant-time-safe. TODO: Fix that.
         let current_block_matches =
-            if constant_time::verify_slices_are_equal(
-                    derived_chunk, previously_derived_chunk).is_ok() {
+            if constant_time::verify_slices_are_equal(derived_chunk, previously_derived_chunk)
+                .is_ok()
+            {
                 1
             } else {
                 0

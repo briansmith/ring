@@ -44,9 +44,15 @@ pub trait ReductionEncoding {
     type Output: Encoding;
 }
 
-impl ReductionEncoding for RR { type Output = R; }
-impl ReductionEncoding for R { type Output = Unencoded; }
-impl ReductionEncoding for Unencoded { type Output = RInverse; }
+impl ReductionEncoding for RR {
+    type Output = R;
+}
+impl ReductionEncoding for R {
+    type Output = Unencoded;
+}
+impl ReductionEncoding for Unencoded {
+    type Output = RInverse;
+}
 
 /// The encoding of the result of a multiplication.
 pub trait ProductEncoding {
@@ -57,13 +63,15 @@ impl<E: ReductionEncoding> ProductEncoding for (Unencoded, E) {
     type Output = E::Output;
 }
 
-impl<E: Encoding> ProductEncoding for (R, E) { type Output = E; }
+impl<E: Encoding> ProductEncoding for (R, E) {
+    type Output = E;
+}
 
-impl<E: ReductionEncoding> ProductEncoding
-for (RInverse, E) where E::Output: ReductionEncoding {
-    type Output =
-    <<E as ReductionEncoding>::Output
-    as ReductionEncoding>::Output;
+impl<E: ReductionEncoding> ProductEncoding for (RInverse, E)
+where
+    E::Output: ReductionEncoding,
+{
+    type Output = <<E as ReductionEncoding>::Output as ReductionEncoding>::Output;
 }
 
 // XXX: Rust doesn't allow overlapping impls,

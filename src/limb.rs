@@ -21,10 +21,14 @@
 use crate::{c, error, untrusted};
 
 // XXX: Not correct for x32 ABIs.
-#[cfg(target_pointer_width = "64")] pub type Limb = u64;
-#[cfg(target_pointer_width = "32")] pub type Limb = u32;
-#[cfg(target_pointer_width = "64")] pub const LIMB_BITS: usize = 64;
-#[cfg(target_pointer_width = "32")] pub const LIMB_BITS: usize = 32;
+#[cfg(target_pointer_width = "64")]
+pub type Limb = u64;
+#[cfg(target_pointer_width = "32")]
+pub type Limb = u32;
+#[cfg(target_pointer_width = "64")]
+pub const LIMB_BITS: usize = 64;
+#[cfg(target_pointer_width = "32")]
+pub const LIMB_BITS: usize = 32;
 
 #[allow(trivial_numeric_casts)]
 #[cfg(target_pointer_width = "64")]
@@ -103,7 +107,7 @@ pub fn limbs_reduce_once_constant_time(r: &mut [Limb], m: &[Limb]) {
 #[derive(Clone, Copy, PartialEq)]
 pub enum AllowZero {
     No,
-    Yes
+    Yes,
 }
 
 /// Parses `input` into `result`, reducing it via conditional subtraction
@@ -113,8 +117,8 @@ pub enum AllowZero {
 /// `AllowZero::Yes`, or [1, m) if `allow_zero` is `AllowZero::No`. `result` is
 /// padded with zeros to its length.
 pub fn parse_big_endian_in_range_partially_reduced_and_pad_consttime(
-        input: untrusted::Input, allow_zero: AllowZero, m: &[Limb],
-        result: &mut [Limb]) -> Result<(), error::Unspecified> {
+    input: untrusted::Input, allow_zero: AllowZero, m: &[Limb], result: &mut [Limb],
+) -> Result<(), error::Unspecified> {
     parse_big_endian_and_pad_consttime(input, result)?;
     limbs_reduce_once_constant_time(result, m);
     if allow_zero != AllowZero::Yes {
@@ -134,11 +138,10 @@ pub fn parse_big_endian_in_range_partially_reduced_and_pad_consttime(
 /// about a valid value, but it might leak small amounts of information about an
 /// invalid value (which constraint it failed).
 pub fn parse_big_endian_in_range_and_pad_consttime(
-        input: untrusted::Input, allow_zero: AllowZero, max_exclusive: &[Limb],
-        result: &mut [Limb]) -> Result<(), error::Unspecified> {
+    input: untrusted::Input, allow_zero: AllowZero, max_exclusive: &[Limb], result: &mut [Limb],
+) -> Result<(), error::Unspecified> {
     parse_big_endian_and_pad_consttime(input, result)?;
-    if limbs_less_than_limbs_consttime(&result, max_exclusive) !=
-            LimbMask::True {
+    if limbs_less_than_limbs_consttime(&result, max_exclusive) != LimbMask::True {
         return Err(error::Unspecified);
     }
     if allow_zero != AllowZero::Yes {
@@ -153,8 +156,8 @@ pub fn parse_big_endian_in_range_and_pad_consttime(
 /// This attempts to be constant-time with respect to the value but not with
 /// respect to the length; it is assumed that the length is public knowledge.
 pub fn parse_big_endian_and_pad_consttime(
-        input: untrusted::Input, result: &mut [Limb])
-        -> Result<(), error::Unspecified> {
+    input: untrusted::Input, result: &mut [Limb],
+) -> Result<(), error::Unspecified> {
     if input.is_empty() {
         return Err(error::Unspecified);
     }
@@ -167,9 +170,12 @@ pub fn parse_big_endian_and_pad_consttime(
         bytes_in_current_limb = LIMB_BYTES;
     }
 
-    let num_encoded_limbs =
-        (input.len() / LIMB_BYTES) +
-        (if bytes_in_current_limb == LIMB_BYTES { 0 } else { 1 });
+    let num_encoded_limbs = (input.len() / LIMB_BYTES)
+        + (if bytes_in_current_limb == LIMB_BYTES {
+            0
+        } else {
+            1
+        });
     if num_encoded_limbs > result.len() {
         return Err(error::Unspecified);
     }
@@ -201,32 +207,28 @@ pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
     for i in 0..num_limbs {
         let mut limb = limbs[i];
         for j in 0..LIMB_BYTES {
-            out[((num_limbs - i - 1) * LIMB_BYTES) + (LIMB_BYTES - j - 1)] =
-                 (limb & 0xff) as u8;
+            out[((num_limbs - i - 1) * LIMB_BYTES) + (LIMB_BYTES - j - 1)] = (limb & 0xff) as u8;
             limb >>= 8;
         }
     }
 }
 
-extern {
+extern "C" {
     #[cfg(feature = "use_heap")]
     fn LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     #[cfg(any(test, feature = "rsa_signing"))]
-    fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t)
-                        -> LimbMask;
-    fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t)
-                       -> LimbMask;
+    fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
+    fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
     #[cfg(feature = "use_heap")]
-    fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t)
-                            -> LimbMask;
+    fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
 }
 
 #[cfg(test)]
 mod tests {
-    use untrusted;
     use super::*;
+    use untrusted;
 
     const MAX: Limb = LimbMask::True as Limb;
 
@@ -257,7 +259,7 @@ mod tests {
             &[1, 0, 0, 0, MAX],
         ];
         for odd in ODDS {
-           assert_eq!(limbs_are_even_constant_time(odd), LimbMask::False);
+            assert_eq!(limbs_are_even_constant_time(odd), LimbMask::False);
         }
     }
 
@@ -341,8 +343,7 @@ mod tests {
             (&[MAX - 1, 0], MAX),
         ];
         for &(a, b) in LESSER {
-            assert_eq!(limbs_less_than_limb_constant_time(a, b),
-                       LimbMask::True);
+            assert_eq!(limbs_less_than_limb_constant_time(a, b), LimbMask::True);
         }
         static EQUAL: &[(&[Limb], Limb)] = &[
             (&[0], 0),
@@ -361,8 +362,7 @@ mod tests {
             (&[MAX], MAX - 1),
         ];
         for &(a, b) in EQUAL.iter().chain(GREATER.iter()) {
-            assert_eq!(limbs_less_than_limb_constant_time(a, b),
-                       LimbMask::False);
+            assert_eq!(limbs_less_than_limb_constant_time(a, b), LimbMask::False);
         }
     }
 
@@ -374,8 +374,7 @@ mod tests {
             // Empty input.
             let inp = untrusted::Input::from(&[]);
             let mut result = [0; LIMBS];
-            assert!(parse_big_endian_and_pad_consttime(inp, &mut result)
-                        .is_err());
+            assert!(parse_big_endian_and_pad_consttime(inp, &mut result).is_err());
         }
 
         // The input is longer than will fit in the given number of limbs.
@@ -383,8 +382,7 @@ mod tests {
             let inp = [1, 2, 3, 4, 5, 6, 7, 8, 9];
             let inp = untrusted::Input::from(&inp);
             let mut result = [0; 8 / LIMB_BYTES];
-            assert!(parse_big_endian_and_pad_consttime(inp, &mut result[..])
-                        .is_err());
+            assert!(parse_big_endian_and_pad_consttime(inp, &mut result[..]).is_err());
         }
 
         // Less than a full limb.
@@ -392,8 +390,10 @@ mod tests {
             let inp = [0xfe];
             let inp = untrusted::Input::from(&inp);
             let mut result = [0; LIMBS];
-            assert_eq!(Ok(()),
-                       parse_big_endian_and_pad_consttime(inp, &mut result[..]));
+            assert_eq!(
+                Ok(()),
+                parse_big_endian_and_pad_consttime(inp, &mut result[..])
+            );
             assert_eq!(&[0xfe, 0, 0, 0], &result);
         }
 
@@ -402,8 +402,7 @@ mod tests {
             let inp = [0xbe, 0xef, 0xf0, 0x0d];
             let inp = untrusted::Input::from(&inp);
             let mut result = [0; LIMBS];
-            assert_eq!(Ok(()),
-                       parse_big_endian_and_pad_consttime(inp, &mut result));
+            assert_eq!(Ok(()), parse_big_endian_and_pad_consttime(inp, &mut result));
             assert_eq!(&[0xbeeff00d, 0, 0, 0], &result);
         }
 
@@ -414,21 +413,22 @@ mod tests {
     fn test_big_endian_from_limbs_same_length() {
         #[cfg(target_pointer_width = "32")]
         let limbs = [
-            0xbccddeef, 0x89900aab, 0x45566778, 0x01122334,
-            0xddeeff00, 0x99aabbcc, 0x55667788, 0x11223344
+            0xbccddeef, 0x89900aab, 0x45566778, 0x01122334, 0xddeeff00, 0x99aabbcc, 0x55667788,
+            0x11223344,
         ];
 
         #[cfg(target_pointer_width = "64")]
         let limbs = [
-            0x89900aab_bccddeef, 0x01122334_45566778,
-            0x99aabbcc_ddeeff00, 0x11223344_55667788,
+            0x89900aab_bccddeef,
+            0x01122334_45566778,
+            0x99aabbcc_ddeeff00,
+            0x11223344_55667788,
         ];
 
         let expected = [
-            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88,
-            0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff, 0x00,
-            0x01, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78,
-            0x89, 0x90, 0x0a, 0xab, 0xbc, 0xcd, 0xde, 0xef,
+            0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee,
+            0xff, 0x00, 0x01, 0x12, 0x23, 0x34, 0x45, 0x56, 0x67, 0x78, 0x89, 0x90, 0x0a, 0xab,
+            0xbc, 0xcd, 0xde, 0xef,
         ];
 
         let mut out = [0xabu8; 32];
@@ -442,14 +442,14 @@ mod tests {
         #[cfg(target_pointer_width = "32")]
         // Two fewer limbs.
         let limbs = [
-            0xbccddeef, 0x89900aab, 0x45566778, 0x01122334,
-            0xddeeff00, 0x99aabbcc,
+            0xbccddeef, 0x89900aab, 0x45566778, 0x01122334, 0xddeeff00, 0x99aabbcc,
         ];
 
         // One fewer limb.
         #[cfg(target_pointer_width = "64")]
         let limbs = [
-            0x89900aab_bccddeef, 0x01122334_45566778,
+            0x89900aab_bccddeef,
+            0x01122334_45566778,
             0x99aabbcc_ddeeff00,
         ];
 

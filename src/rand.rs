@@ -27,7 +27,6 @@
 
 use crate::error;
 
-
 /// A secure random number generator.
 pub trait SecureRandom: private::Sealed {
     /// Fills `dest` with random bytes.
@@ -89,21 +88,18 @@ impl SystemRandom {
 
 impl SecureRandom for SystemRandom {
     #[inline(always)]
-    fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        fill_impl(dest)
-    }
+    fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> { fill_impl(dest) }
 }
 
 impl private::Sealed for SystemRandom {}
 
-#[cfg(not(any(target_os = "linux",
-              target_os = "macos",
-              target_os = "ios",
-              windows)))]
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "ios", windows)))]
 use self::urandom::fill as fill_impl;
 
-#[cfg(any(all(target_os = "linux", not(feature = "dev_urandom_fallback")),
-          windows))]
+#[cfg(any(
+    all(target_os = "linux", not(feature = "dev_urandom_fallback")),
+    windows
+))]
 use self::sysrand::fill as fill_impl;
 
 #[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
@@ -118,7 +114,7 @@ mod sysrand_chunk {
     use crate::{c, error};
     use libc;
 
-    extern {
+    extern "C" {
         static GFp_SYS_GETRANDOM: c::long;
     }
 
@@ -126,9 +122,7 @@ mod sysrand_chunk {
     pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
         let chunk_len: c::size_t = dest.len();
         let flags: c::uint = 0;
-        let r = unsafe {
-            libc::syscall(GFp_SYS_GETRANDOM, dest.as_mut_ptr(), chunk_len, flags)
-        };
+        let r = unsafe { libc::syscall(GFp_SYS_GETRANDOM, dest.as_mut_ptr(), chunk_len, flags) };
         if r < 0 {
             if unsafe { *libc::__errno_location() } == libc::EINTR {
                 // If an interrupt occurs while getrandom() is blocking to wait
@@ -151,21 +145,19 @@ mod sysrand_chunk {
     extern "system" {
         #[link_name = "SystemFunction036"]
         #[must_use]
-        fn RtlGenRandom(random_buffer: *mut u8,
-                        random_buffer_length: c::win32::ULONG)
-                        -> c::win32::BOOLEAN;
+        fn RtlGenRandom(
+            random_buffer: *mut u8, random_buffer_length: c::win32::ULONG,
+        ) -> c::win32::BOOLEAN;
     }
 
     #[inline]
     pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
-        assert!(core::mem::size_of::<usize>() >=
-                    core::mem::size_of::<c::win32::ULONG>());
+        assert!(core::mem::size_of::<usize>() >= core::mem::size_of::<c::win32::ULONG>());
         let max_chunk_len = c::win32::ULONG::from(0u32).wrapping_sub(1) as usize;
         assert_eq!(max_chunk_len, 0xffff_ffff);
         let len = core::cmp::min(dest.len(), max_chunk_len);
 
-        if unsafe { RtlGenRandom(dest.as_mut_ptr(), len as c::win32::ULONG) }
-                == 0 {
+        if unsafe { RtlGenRandom(dest.as_mut_ptr(), len as c::win32::ULONG) } == 0 {
             return Err(error::Unspecified);
         }
 
@@ -175,8 +167,8 @@ mod sysrand_chunk {
 
 #[cfg(any(target_os = "linux", windows))]
 mod sysrand {
-    use crate::error;
     use super::sysrand_chunk::chunk;
+    use crate::error;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         let mut read_len = 0;
@@ -189,13 +181,14 @@ mod sysrand {
 }
 
 // Keep the `cfg` conditions in sync with the conditions in lib.rs.
-#[cfg(all(any(target_os = "redox", unix),
-          not(any(target_os = "macos", target_os = "ios")),
-          not(all(target_os = "linux",
-                  not(feature = "dev_urandom_fallback")))))]
+#[cfg(all(
+    any(target_os = "redox", unix),
+    not(any(target_os = "macos", target_os = "ios")),
+    not(all(target_os = "linux", not(feature = "dev_urandom_fallback")))
+))]
 mod urandom {
-    use std;
     use crate::error;
+    use std;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         #[cfg(target_os = "redox")]
@@ -249,14 +242,10 @@ mod sysrand_or_urandom {
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 mod darwin {
-    use crate::c;
-    use crate::error;
+    use crate::{c, error};
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        let r = unsafe {
-            SecRandomCopyBytes(kSecRandomDefault, dest.len(),
-                               dest.as_mut_ptr())
-        };
+        let r = unsafe { SecRandomCopyBytes(kSecRandomDefault, dest.len(), dest.as_mut_ptr()) };
         match r {
             0 => Ok(()),
             _ => Err(error::Unspecified),
@@ -271,13 +260,14 @@ mod darwin {
     struct SecRandomRef([u8; 0]);
 
     #[link(name = "Security", kind = "framework")]
-    extern {
+    extern "C" {
         static kSecRandomDefault: &'static SecRandomRef;
 
         // For now `rnd` must be `kSecRandomDefault`.
         #[must_use]
-        fn SecRandomCopyBytes(rnd: &'static SecRandomRef, count: c::size_t,
-                              bytes: *mut u8) -> c::int;
+        fn SecRandomCopyBytes(
+            rnd: &'static SecRandomRef, count: c::size_t, bytes: *mut u8,
+        ) -> c::int;
     }
 }
 

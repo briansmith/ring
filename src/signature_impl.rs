@@ -30,7 +30,7 @@ impl AsRef<[u8]> for Signature {
 
 pub fn signature_from_bytes(bytes: &[u8]) -> Signature {
     let mut r = Signature {
-       value: [0; MAX_LEN],
+        value: [0; MAX_LEN],
         len: bytes.len(),
     };
     r.value[..bytes.len()].copy_from_slice(bytes);

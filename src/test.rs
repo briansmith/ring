@@ -122,11 +122,7 @@ use bits;
 use crate::{digest, error};
 
 use core;
-use std;
-use std::string::String;
-use std::vec::Vec;
-use std::io::BufRead;
-
+use std::{self, io::BufRead, string::String, vec::Vec};
 
 /// `compile_time_assert_clone::<T>();` fails to compile if `T` doesn't
 /// implement `Clone`.
@@ -171,8 +167,7 @@ impl TestCase {
     /// inputs. "SHA224" is mapped to None because *ring* intentionally does
     /// not support SHA224, but we need to consume test vectors from NIST that
     /// have SHA224 vectors in them.
-    pub fn consume_digest_alg(&mut self, key: &str)
-                              -> Option<&'static digest::Algorithm> {
+    pub fn consume_digest_alg(&mut self, key: &str) -> Option<&'static digest::Algorithm> {
         let name = self.consume_string(key);
         match name.as_ref() {
             "SHA1" => Some(&digest::SHA1),
@@ -207,8 +202,8 @@ impl TestCase {
                             Some(b'x') => {
                                 let hi = s.next().expect("Invalid hex escape sequence in string.");
                                 let lo = s.next().expect("Invalid hex escape sequence in string.");
-                                if let (Ok(hi), Ok(lo)) =
-                                        (from_hex_digit(*hi), from_hex_digit(*lo)) {
+                                if let (Ok(hi), Ok(lo)) = (from_hex_digit(*hi), from_hex_digit(*lo))
+                                {
                                     (hi << 4) | lo
                                 } else {
                                     panic!("Invalid hex escape sequence in string.");
@@ -216,7 +211,7 @@ impl TestCase {
                             },
                             _ => {
                                 panic!("Invalid hex escape sequence in string.");
-                            }
+                            },
                         }
                     },
                     Some(b'"') => {
@@ -226,9 +221,7 @@ impl TestCase {
                         break;
                     },
                     Some(b) => *b,
-                    None => {
-                        panic!("Missing terminating '\"' in string literal.")
-                    }
+                    None => panic!("Missing terminating '\"' in string literal."),
                 };
                 bytes.push(b);
             }
@@ -270,8 +263,7 @@ impl TestCase {
     /// Like `consume_string()` except it returns `None` if the test case
     /// doesn't have the attribute.
     pub fn consume_optional_string(&mut self, key: &str) -> Option<String> {
-        for (name, value, consumed) in
-                &mut self.attributes {
+        for (name, value, consumed) in &mut self.attributes {
             if key == name {
                 if *consumed {
                     panic!("Attribute {} was already consumed", key);
@@ -290,7 +282,11 @@ impl TestCase {
 /// a "src" directory along the test runner.
 #[cfg(target_os = "ios")]
 pub fn ring_src_path() -> std::path::PathBuf {
-    std::env::current_exe().unwrap().parent().unwrap().join("src")
+    std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("src")
 }
 
 /// Returns the path for *ring* source code root.
@@ -298,17 +294,16 @@ pub fn ring_src_path() -> std::path::PathBuf {
 /// On most platforms, the tests are run by cargo, so it's just the current
 /// working directory.
 #[cfg(not(target_os = "ios"))]
-pub fn ring_src_path() -> std::path::PathBuf {
-    std::path::PathBuf::from(".")
-}
+pub fn ring_src_path() -> std::path::PathBuf { std::path::PathBuf::from(".") }
 
 /// Reads test cases out of the file with the path given by
 /// `test_data_relative_file_path`, calling `f` on each vector until `f` fails
 /// or until all the test vectors have been read. `f` can indicate failure
 /// either by returning `Err()` or by panicking.
 pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
-                    where F: FnMut(&str, &mut TestCase)
-                                   -> Result<(), error::Unspecified> {
+where
+    F: FnMut(&str, &mut TestCase) -> Result<(), error::Unspecified>,
+{
     let path = ring_src_path().join(test_data_relative_file_path);
     let file = std::fs::File::open(path).unwrap();
     let mut lines = std::io::BufReader::new(&file).lines();
@@ -317,16 +312,17 @@ pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
     let mut failed = false;
 
     #[allow(box_pointers)]
-    while let Some(mut test_case) = parse_test_case(&mut current_section,
-                                                    &mut lines) {
-        let result =
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                f(&current_section, &mut test_case)
-            }));
+    while let Some(mut test_case) = parse_test_case(&mut current_section, &mut lines) {
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            f(&current_section, &mut test_case)
+        }));
         let result = match result {
             Ok(Ok(())) => {
-                if !test_case.attributes.iter().any(
-                        |&(_, _, consumed)| !consumed) {
+                if !test_case
+                    .attributes
+                    .iter()
+                    .any(|&(_, _, consumed)| !consumed)
+                {
                     Ok(())
                 } else {
                     failed = true;
@@ -357,8 +353,9 @@ pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
 /// have an even number of digits.
 pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
     if hex_str.len() % 2 != 0 {
-        return Err(
-            String::from("Hex string does not have an even number of digits"));
+        return Err(String::from(
+            "Hex string does not have an even number of digits",
+        ));
     }
 
     let mut result = Vec::with_capacity(hex_str.len() / 2);
@@ -384,8 +381,7 @@ fn from_hex_digit(d: u8) -> Result<u8, String> {
 
 type FileLines<'a> = std::io::Lines<std::io::BufReader<&'a std::fs::File>>;
 
-fn parse_test_case(current_section: &mut String, lines: &mut FileLines)
-                   -> Option<TestCase> {
+fn parse_test_case(current_section: &mut String, lines: &mut FileLines) -> Option<TestCase> {
     let mut attributes = Vec::new();
 
     let mut is_first_line = true;
@@ -537,7 +533,6 @@ pub mod rand {
 
 }
 
-
 #[cfg(test)]
 mod tests {
     use crate::{error, test};
@@ -620,13 +615,9 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Syntax error: Expected Key = Value.")]
-    fn syntax_error() {
-        test::from_file("src/test_1_syntax_error_tests.txt", |_, _| Ok(()));
-    }
+    fn syntax_error() { test::from_file("src/test_1_syntax_error_tests.txt", |_, _| Ok(())); }
 
     #[test]
     #[should_panic]
-    fn file_not_found() {
-        test::from_file("src/test_file_not_found_tests.txt", |_, _| Ok(()));
-    }
+    fn file_not_found() { test::from_file("src/test_file_not_found_tests.txt", |_, _| Ok(())); }
 }
