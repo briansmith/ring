@@ -5052,8 +5052,8 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 								MaxEarlyDataSize: 16384,
 							},
 							resumeConfig: &Config{
-								MaxVersion:             vers.version,
-								MaxEarlyDataSize:       16384,
+								MaxVersion:       vers.version,
+								MaxEarlyDataSize: 16384,
 								Bugs: ProtocolBugs{
 									AlwaysRejectEarlyData: true,
 								},
@@ -5084,8 +5084,8 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 							tls13Variant:         vers.tls13Variant,
 							resumeSession:        true,
 							expectResumeRejected: true,
-							shouldFail: true,
-							expectedError: ":CERTIFICATE_VERIFY_FAILED:",
+							shouldFail:           true,
+							expectedError:        ":CERTIFICATE_VERIFY_FAILED:",
 							flags: append([]string{
 								"-enable-early-data",
 								"-expect-ticket-supports-early-data",
@@ -5105,8 +5105,8 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 								MaxEarlyDataSize: 16384,
 							},
 							resumeConfig: &Config{
-								MaxVersion:             vers.version,
-								MaxEarlyDataSize:       16384,
+								MaxVersion:       vers.version,
+								MaxEarlyDataSize: 16384,
 								Bugs: ProtocolBugs{
 									AlwaysRejectEarlyData: true,
 								},
@@ -5114,8 +5114,8 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 							tls13Variant:         vers.tls13Variant,
 							resumeSession:        true,
 							expectResumeRejected: false,
-							shouldFail: true,
-							expectedError: ":CERTIFICATE_VERIFY_FAILED:",
+							shouldFail:           true,
+							expectedError:        ":CERTIFICATE_VERIFY_FAILED:",
 							flags: append([]string{
 								"-enable-early-data",
 								"-expect-reject-early-data",
@@ -5134,8 +5134,8 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 								MaxEarlyDataSize: 16384,
 							},
 							resumeConfig: &Config{
-								MaxVersion:             vers.version,
-								MaxEarlyDataSize:       16384,
+								MaxVersion:       vers.version,
+								MaxEarlyDataSize: 16384,
 								Bugs: ProtocolBugs{
 									ExpectEarlyData: [][]byte{[]byte("hello")},
 								},
@@ -5158,15 +5158,15 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 								MaxEarlyDataSize: 16384,
 							},
 							resumeConfig: &Config{
-								MaxVersion:             vers.version,
-								MaxEarlyDataSize:       16384,
+								MaxVersion:       vers.version,
+								MaxEarlyDataSize: 16384,
 								Bugs: ProtocolBugs{
 									ExpectEarlyData: [][]byte{[]byte("hello")},
 								},
 							},
-							tls13Variant:         vers.tls13Variant,
-							resumeSession:        true,
-							shouldFail: true,
+							tls13Variant:  vers.tls13Variant,
+							resumeSession: true,
+							shouldFail:    true,
 							expectedError: ":CERTIFICATE_VERIFY_FAILED:",
 							flags: append([]string{
 								"-enable-early-data",
