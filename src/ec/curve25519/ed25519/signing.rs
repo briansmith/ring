@@ -22,6 +22,7 @@ use untrusted;
 use super::digest::*;
 
 /// An Ed25519 key pair, for signing.
+#[derive(Clone)]
 pub struct KeyPair {
     // RFC 8032 Section 5.1.6 calls this *s*.
     private_scalar: Scalar,

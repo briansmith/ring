@@ -346,17 +346,17 @@ pub mod primitive {
 }
 
 /// A key pair for signing.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 #[cfg(feature = "use_heap")]
 pub struct KeyPair {
-    inner: std::boxed::Box<KeyPairImpl + Send + Sync>,
+    inner: std::sync::Arc<KeyPairImpl + Send + Sync>,
 }
 
 #[cfg(feature = "use_heap")]
 impl KeyPair {
     pub(crate) fn new<I: KeyPairImpl + Sync>(inner: I) -> Self {
         Self {
-            inner: std::boxed::Box::new(inner),
+            inner: std::sync::Arc::new(inner),
         }
     }
 }

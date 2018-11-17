@@ -164,6 +164,7 @@ use crate::{constant_time, digest, error, rand};
 pub struct Signature(digest::Digest);
 
 /// A key to use for HMAC signing.
+#[derive(Clone)]
 pub struct SigningKey {
     ctx_prototype: SigningContext,
 }
@@ -331,6 +332,7 @@ pub fn sign(key: &SigningKey, data: &[u8]) -> Signature {
 }
 
 /// A key to use for HMAC authentication.
+#[derive(Clone)]
 pub struct VerificationKey {
     wrapped: SigningKey,
 }

@@ -61,6 +61,7 @@ impl signature::SigningAlgorithm for Algorithm {
 }
 
 /// An ECDSA key pair, used for signing.
+#[derive(Clone)]
 pub struct Key {
     d: Scalar<R>,
     alg: &'static Algorithm,

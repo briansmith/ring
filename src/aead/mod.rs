@@ -35,6 +35,7 @@ pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
 /// C analog: `EVP_AEAD_CTX` with direction `evp_aead_open`
 ///
 /// Go analog: [`crypto.cipher.AEAD`]
+#[derive(Clone)]
 pub struct OpeningKey {
     key: Key,
 }
@@ -150,6 +151,7 @@ pub fn open_in_place<'a>(key: &OpeningKey, nonce: &[u8], ad: &[u8],
 /// C analog: `EVP_AEAD_CTX` with direction `evp_aead_seal`.
 ///
 /// Go analog: [`AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
+#[derive(Clone)]
 pub struct SealingKey {
     key: Key,
 }
@@ -217,6 +219,7 @@ pub fn seal_in_place(key: &SealingKey, nonce: &[u8], ad: &[u8],
 /// does all the actual work via the C AEAD interface.
 ///
 /// C analog: `EVP_AEAD_CTX`
+#[derive(Clone)]
 struct Key {
     ctx_buf: [u64; KEY_CTX_BUF_ELEMS],
     algorithm: &'static Algorithm,

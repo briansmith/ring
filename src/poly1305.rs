@@ -136,6 +136,7 @@ pub fn check_state_layout() {
 }
 
 /// A Poly1305 key.
+#[derive(Clone)]
 pub struct Key {
     bytes: KeyAndNonceBytes,
 }

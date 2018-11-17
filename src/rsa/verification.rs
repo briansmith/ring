@@ -18,7 +18,7 @@ use core;
 use crate::{bits, digest, error, private, signature};
 use untrusted;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Key {
     pub n: bigint::Modulus<N>,
     pub e: bigint::PublicExponent,
