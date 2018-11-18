@@ -125,12 +125,13 @@
 
 #include "rsaz_exp.h"
 
-void bn_mul_mont_gather5(BN_ULONG *rp, const BN_ULONG *ap, const void *table,
-                         const BN_ULONG *np, const BN_ULONG *n0, int num,
-                         int power);
-void bn_scatter5(const BN_ULONG *inp, size_t num, void *table, size_t power);
-void bn_gather5(BN_ULONG *out, size_t num, void *table, size_t power);
-void bn_power5(BN_ULONG *rp, const BN_ULONG *ap, const void *table,
+void bn_mul_mont_gather5(BN_ULONG *rp, const BN_ULONG *ap,
+                         const BN_ULONG *table, const BN_ULONG *np,
+                         const BN_ULONG *n0, int num, int power);
+void bn_scatter5(const BN_ULONG *inp, size_t num, BN_ULONG *table,
+                 size_t power);
+void bn_gather5(BN_ULONG *out, size_t num, BN_ULONG *table, size_t power);
+void bn_power5(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table,
                const BN_ULONG *np, const BN_ULONG *n0, int num, int power);
 int bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
                        const BN_ULONG *not_used, const BN_ULONG *np,
@@ -855,14 +856,12 @@ void bn_mod_inverse_prime_mont_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
 // pattern as far as cache lines are concerned. The following functions are
 // used to transfer a BIGNUM from/to that table.
 
-static void copy_to_prebuf(const BIGNUM *b, int top, unsigned char *buf,
-                           int idx, int window) {
+static void copy_to_prebuf(const BIGNUM *b, int top, BN_ULONG *table, int idx,
+                           int window) {
   int i, j;
   const int width = 1 << window;
-  BN_ULONG *table = (BN_ULONG *) buf;
-
   if (top > b->width) {
-    top = b->width;  // this works because 'buf' is explicitly zeroed
+    top = b->width;  // This works because |table| is explicitly zeroed.
   }
 
   for (i = 0, j = idx; i < top; i++, j += width)  {
@@ -870,11 +869,11 @@ static void copy_to_prebuf(const BIGNUM *b, int top, unsigned char *buf,
   }
 }
 
-static int copy_from_prebuf(BIGNUM *b, int top, unsigned char *buf, int idx,
+static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *buf, int idx,
                             int window) {
   int i, j;
   const int width = 1 << window;
-  volatile BN_ULONG *table = (volatile BN_ULONG *)buf;
+  volatile const BN_ULONG *table = (volatile const BN_ULONG *)buf;
 
   if (!bn_wexpand(b, top)) {
     return 0;
@@ -968,7 +967,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   int numPowers;
   unsigned char *powerbufFree = NULL;
   int powerbufLen = 0;
-  unsigned char *powerbuf = NULL;
+  BN_ULONG *powerbuf = NULL;
   BIGNUM tmp, am;
 
   if (!BN_is_odd(m)) {
@@ -1055,7 +1054,7 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
 
 #if defined(OPENSSL_BN_ASM_MONT5)
   if ((size_t)powerbufLen <= sizeof(storage)) {
-    powerbuf = (unsigned char *)storage;
+    powerbuf = storage;
   }
   // |storage| is more than large enough to handle 1024-bit inputs.
   assert(powerbuf != NULL || top * BN_BITS2 > 1024);
@@ -1066,12 +1065,12 @@ int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     if (powerbufFree == NULL) {
       goto err;
     }
-    powerbuf = MOD_EXP_CTIME_ALIGN(powerbufFree);
+    powerbuf = (BN_ULONG *)MOD_EXP_CTIME_ALIGN(powerbufFree);
   }
   OPENSSL_memset(powerbuf, 0, powerbufLen);
 
   // lay down tmp and am right after powers table
-  tmp.d = (BN_ULONG *)(powerbuf + sizeof(m->d[0]) * top * numPowers);
+  tmp.d = powerbuf + top * numPowers;
   am.d = tmp.d + top;
   tmp.width = am.width = 0;
   tmp.dmax = am.dmax = top;

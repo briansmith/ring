@@ -1068,7 +1068,7 @@ ___
 # void bn_power5(
 my $rptr="%rdi";	# BN_ULONG *rptr,
 my $aptr="%rsi";	# const BN_ULONG *aptr,
-my $bptr="%rdx";	# const void *table,
+my $bptr="%rdx";	# const BN_ULONG *table,
 my $nptr="%rcx";	# const BN_ULONG *nptr,
 my $n0  ="%r8";		# const BN_ULONG *n0);
 my $num ="%r9";		# int num, has to be divisible by 8
@@ -2745,7 +2745,7 @@ ___
 # void bn_power5(
 my $rptr="%rdi";	# BN_ULONG *rptr,
 my $aptr="%rsi";	# const BN_ULONG *aptr,
-my $bptr="%rdx";	# const void *table,
+my $bptr="%rdx";	# const BN_ULONG *table,
 my $nptr="%rcx";	# const BN_ULONG *nptr,
 my $n0  ="%r8";		# const BN_ULONG *n0);
 my $num ="%r9";		# int num, has to be divisible by 8
