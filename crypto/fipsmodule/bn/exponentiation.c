@@ -850,67 +850,25 @@ void bn_mod_inverse_prime_mont_small(BN_ULONG *r, const BN_ULONG *a, size_t num,
   bn_mod_exp_mont_small(r, a, num, p_minus_two, num, mont);
 }
 
-
-// |BN_mod_exp_mont_consttime| stores the precomputed powers in a specific
-// layout so that accessing any of these table values shows the same access
-// pattern as far as cache lines are concerned. The following functions are
-// used to transfer a BIGNUM from/to that table.
-
 static void copy_to_prebuf(const BIGNUM *b, int top, BN_ULONG *table, int idx,
                            int window) {
-  int i, j;
-  const int width = 1 << window;
-  if (top > b->width) {
-    top = b->width;  // This works because |table| is explicitly zeroed.
-  }
-
-  for (i = 0, j = idx; i < top; i++, j += width)  {
-    table[j] = b->d[i];
-  }
+  int ret = bn_copy_words(table + idx * top, top, b);
+  assert(ret);  // |b| is guaranteed to fit.
+  (void)ret;
 }
 
-static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *buf, int idx,
+static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *table, int idx,
                             int window) {
-  int i, j;
-  const int width = 1 << window;
-  volatile const BN_ULONG *table = (volatile const BN_ULONG *)buf;
-
   if (!bn_wexpand(b, top)) {
     return 0;
   }
 
-  if (window <= 3) {
-    for (i = 0; i < top; i++, table += width) {
-      BN_ULONG acc = 0;
-
-      for (j = 0; j < width; j++) {
-        acc |= table[j] & ((BN_ULONG)0 - (constant_time_eq_int(j, idx) & 1));
-      }
-
-      b->d[i] = acc;
-    }
-  } else {
-    int xstride = 1 << (window - 2);
-    BN_ULONG y0, y1, y2, y3;
-
-    i = idx >> (window - 2);  // equivalent of idx / xstride
-    idx &= xstride - 1;       // equivalent of idx % xstride
-
-    y0 = (BN_ULONG)0 - (constant_time_eq_int(i, 0) & 1);
-    y1 = (BN_ULONG)0 - (constant_time_eq_int(i, 1) & 1);
-    y2 = (BN_ULONG)0 - (constant_time_eq_int(i, 2) & 1);
-    y3 = (BN_ULONG)0 - (constant_time_eq_int(i, 3) & 1);
-
-    for (i = 0; i < top; i++, table += width) {
-      BN_ULONG acc = 0;
-
-      for (j = 0; j < xstride; j++) {
-        acc |= ((table[j + 0 * xstride] & y0) | (table[j + 1 * xstride] & y1) |
-                (table[j + 2 * xstride] & y2) | (table[j + 3 * xstride] & y3)) &
-               ((BN_ULONG)0 - (constant_time_eq_int(j, idx) & 1));
-      }
-
-      b->d[i] = acc;
+  OPENSSL_memset(b->d, 0, sizeof(BN_ULONG) * top);
+  const int width = 1 << window;
+  for (int i = 0; i < width; i++, table += top) {
+    BN_ULONG mask = constant_time_eq_int(i, idx);
+    for (int j = 0; j < top; j++) {
+      b->d[j] |= table[j] & mask;
     }
   }
 
@@ -953,9 +911,8 @@ static int copy_from_prebuf(BIGNUM *b, int top, const BN_ULONG *buf, int idx,
    (MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH - \
     (((size_t)(x_)) & (MOD_EXP_CTIME_MIN_CACHE_LINE_MASK))))
 
-// This variant of BN_mod_exp_mont() uses fixed windows and the special
-// precomputation memory layout to limit data-dependency to a minimum
-// to protect secret exponents (cf. the hyper-threading timing attacks
+// This variant of |BN_mod_exp_mont| uses fixed windows and fixed memory access
+// patterns to protect secret exponents (cf. the hyper-threading timing attacks
 // pointed out by Colin Percival,
 // http://www.daemonology.net/hyperthreading-considered-harmful/)
 int BN_mod_exp_mont_consttime(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
