@@ -1040,6 +1040,7 @@ struct SSLMessage {
 extern const uint8_t kHelloRetryRequest[SSL3_RANDOM_SIZE];
 extern const uint8_t kTLS12DowngradeRandom[8];
 extern const uint8_t kTLS13DowngradeRandom[8];
+extern const uint8_t kJDK11DowngradeRandom[8];
 
 // ssl_max_handshake_message_len returns the maximum number of bytes permitted
 // in a handshake message for |ssl|.
@@ -1595,6 +1596,10 @@ struct SSL_HANDSHAKE {
 
   // cert_compression_negotiated is true iff |cert_compression_alg_id| is valid.
   bool cert_compression_negotiated : 1;
+
+  // apply_jdk11_workaround is true if the peer is probably a JDK 11 client
+  // which implemented TLS 1.3 incorrectly.
+  bool apply_jdk11_workaround : 1;
 
   // client_version is the value sent or received in the ClientHello version.
   uint16_t client_version = 0;
@@ -2489,7 +2494,11 @@ struct SSL_CONFIG {
 
   // ignore_tls13_downgrade is whether the connection should continue when the
   // server random signals a downgrade.
-  bool ignore_tls13_downgrade:1;
+  bool ignore_tls13_downgrade : 1;
+
+  // jdk11_workaround is whether to disable TLS 1.3 for JDK 11 clients, as a
+  // workaround for https://bugs.openjdk.java.net/browse/JDK-8211806.
+  bool jdk11_workaround : 1;
 };
 
 // From RFC 8446, used in determining PSK modes.

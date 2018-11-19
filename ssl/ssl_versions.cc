@@ -340,6 +340,18 @@ bool ssl_negotiate_version(SSL_HANDSHAKE *hs, uint8_t *out_alert,
       continue;
     }
 
+    // JDK 11, prior to 11.0.2, has a buggy TLS 1.3 implementation which fails
+    // to send SNI when offering 1.3 sessions. Disable TLS 1.3 for such
+    // clients. We apply this logic here rather than |ssl_supports_version| so
+    // the downgrade signal continues to query the true capabilities. (The
+    // workaround is a limitation of the peer's capabilities rather than our
+    // own.)
+    //
+    // See https://bugs.openjdk.java.net/browse/JDK-8211806.
+    if (versions[i] == TLS1_3_VERSION && hs->apply_jdk11_workaround) {
+      continue;
+    }
+
     CBS copy = *peer_versions;
     while (CBS_len(&copy) != 0) {
       uint16_t version;

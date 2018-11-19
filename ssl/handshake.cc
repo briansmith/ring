@@ -147,7 +147,8 @@ SSL_HANDSHAKE::SSL_HANDSHAKE(SSL *ssl_arg)
       pending_private_key_op(false),
       grease_seeded(false),
       handback(false),
-      cert_compression_negotiated(false) {
+      cert_compression_negotiated(false),
+      apply_jdk11_workaround(false) {
   assert(ssl);
 }
 

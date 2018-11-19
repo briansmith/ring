@@ -85,6 +85,10 @@ static const struct argument kArguments[] = {
         "The server will require a client certificate.",
     },
     {
+        "-jdk11-workaround", kBooleanArgument,
+        "Enable the JDK 11 workaround",
+    },
+    {
         "", kOptionalArgument, "",
     },
 };
@@ -364,6 +368,10 @@ bool Server(const std::vector<std::string> &args) {
     BIO *bio = BIO_new_socket(sock, BIO_CLOSE);
     bssl::UniquePtr<SSL> ssl(SSL_new(ctx.get()));
     SSL_set_bio(ssl.get(), bio, bio);
+
+    if (args_map.count("-jdk11-workaround") != 0) {
+      SSL_set_jdk11_workaround(ssl.get(), 1);
+    }
 
     int ret = SSL_accept(ssl.get());
     if (ret != 1) {

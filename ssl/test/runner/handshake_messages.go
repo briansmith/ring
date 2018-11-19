@@ -266,6 +266,7 @@ type clientHelloMsg struct {
 	supportedPoints         []uint8
 	hasKeyShares            bool
 	keyShares               []keyShareEntry
+	keySharesRaw            []byte
 	trailingKeyShareData    bool
 	pskIdentities           []pskIdentity
 	pskKEModes              []byte
@@ -350,6 +351,18 @@ func (m *clientHelloMsg) equal(i interface{}) bool {
 		m.emptyExtensions == m1.emptyExtensions &&
 		m.pad == m1.pad &&
 		eqUint16s(m.compressedCertAlgs, m1.compressedCertAlgs)
+}
+
+func (m *clientHelloMsg) marshalKeyShares(bb *byteBuilder) {
+	keyShares := bb.addU16LengthPrefixed()
+	for _, keyShare := range m.keyShares {
+		keyShares.addU16(uint16(keyShare.group))
+		keyExchange := keyShares.addU16LengthPrefixed()
+		keyExchange.addBytes(keyShare.keyExchange)
+	}
+	if m.trailingKeyShareData {
+		keyShares.addU8(0)
+	}
 }
 
 func (m *clientHelloMsg) marshal() []byte {
@@ -456,17 +469,7 @@ func (m *clientHelloMsg) marshal() []byte {
 	if m.hasKeyShares {
 		extensions.addU16(extensionKeyShare)
 		keyShareList := extensions.addU16LengthPrefixed()
-
-		keyShares := keyShareList.addU16LengthPrefixed()
-		for _, keyShare := range m.keyShares {
-			keyShares.addU16(uint16(keyShare.group))
-			keyExchange := keyShares.addU16LengthPrefixed()
-			keyExchange.addBytes(keyShare.keyExchange)
-		}
-
-		if m.trailingKeyShareData {
-			keyShares.addU8(0)
-		}
+		m.marshalKeyShares(keyShareList)
 	}
 	if len(m.pskKEModes) > 0 {
 		extensions.addU16(extensionPSKKeyExchangeModes)
@@ -763,11 +766,12 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 			m.sessionTicket = []byte(body)
 		case extensionKeyShare:
 			// https://tools.ietf.org/html/rfc8446#section-4.2.8
+			m.hasKeyShares = true
+			m.keySharesRaw = body
 			var keyShares byteReader
 			if !body.readU16LengthPrefixed(&keyShares) || len(body) != 0 {
 				return false
 			}
-			m.hasKeyShares = true
 			for len(keyShares) > 0 {
 				var entry keyShareEntry
 				var group uint16

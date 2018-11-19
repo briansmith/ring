@@ -711,7 +711,8 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       retain_only_sha256_of_client_certs(false),
       handoff(false),
       shed_handshake_config(false),
-      ignore_tls13_downgrade(false) {
+      ignore_tls13_downgrade(false),
+      jdk11_workaround(false) {
   assert(ssl);
 }
 
@@ -2773,6 +2774,13 @@ void SSL_set_shed_handshake_config(SSL *ssl, int enable) {
     return;
   }
   ssl->config->shed_handshake_config = !!enable;
+}
+
+void SSL_set_jdk11_workaround(SSL *ssl, int enable) {
+  if (!ssl->config) {
+    return;
+  }
+  ssl->config->jdk11_workaround = !!enable;
 }
 
 int SSL_clear(SSL *ssl) {

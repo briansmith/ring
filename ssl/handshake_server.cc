@@ -401,6 +401,109 @@ static enum ssl_hs_wait_t do_start_accept(SSL_HANDSHAKE *hs) {
   return ssl_hs_ok;
 }
 
+// is_probably_jdk11_with_tls13 returns whether |client_hello| was probably sent
+// from a JDK 11 client (11.0.1 or earlier) with both TLS 1.3 and a prior
+// version enabled.
+static bool is_probably_jdk11_with_tls13(const SSL_CLIENT_HELLO *client_hello) {
+  // JDK 11 ClientHellos contain a number of unusual properties which should
+  // limit false positives.
+
+  // JDK 11 does not support ChaCha20-Poly1305. This is unusual: many modern
+  // clients implement ChaCha20-Poly1305.
+  if (ssl_client_cipher_list_contains_cipher(
+          client_hello, TLS1_CK_CHACHA20_POLY1305_SHA256 & 0xffff)) {
+    return false;
+  }
+
+  // JDK 11 always sends extensions in a particular order.
+  constexpr uint16_t kMaxFragmentLength = 0x0001;
+  constexpr uint16_t kStatusRequestV2 = 0x0011;
+  static CONSTEXPR_ARRAY struct {
+    uint16_t id;
+    bool required;
+  } kJavaExtensions[] = {
+      {TLSEXT_TYPE_server_name, false},
+      {kMaxFragmentLength, false},
+      {TLSEXT_TYPE_status_request, false},
+      {TLSEXT_TYPE_supported_groups, true},
+      {TLSEXT_TYPE_ec_point_formats, false},
+      {TLSEXT_TYPE_signature_algorithms, true},
+      // Java always sends signature_algorithms_cert.
+      {TLSEXT_TYPE_signature_algorithms_cert, true},
+      {TLSEXT_TYPE_application_layer_protocol_negotiation, false},
+      {kStatusRequestV2, false},
+      {TLSEXT_TYPE_extended_master_secret, false},
+      {TLSEXT_TYPE_supported_versions, true},
+      {TLSEXT_TYPE_cookie, false},
+      {TLSEXT_TYPE_psk_key_exchange_modes, true},
+      {TLSEXT_TYPE_key_share, true},
+      {TLSEXT_TYPE_renegotiate, false},
+      {TLSEXT_TYPE_pre_shared_key, false},
+  };
+  Span<const uint8_t> sigalgs, sigalgs_cert;
+  bool has_status_request = false, has_status_request_v2 = false;
+  CBS extensions, supported_groups;
+  CBS_init(&extensions, client_hello->extensions, client_hello->extensions_len);
+  for (const auto &java_extension : kJavaExtensions) {
+    CBS copy = extensions;
+    uint16_t id;
+    if (CBS_get_u16(&copy, &id) && id == java_extension.id) {
+      // The next extension is the one we expected.
+      extensions = copy;
+      CBS body;
+      if (!CBS_get_u16_length_prefixed(&extensions, &body)) {
+        return false;
+      }
+      switch (id) {
+        case TLSEXT_TYPE_status_request:
+          has_status_request = true;
+          break;
+        case kStatusRequestV2:
+          has_status_request_v2 = true;
+          break;
+        case TLSEXT_TYPE_signature_algorithms:
+          sigalgs = body;
+          break;
+        case TLSEXT_TYPE_signature_algorithms_cert:
+          sigalgs_cert = body;
+          break;
+        case TLSEXT_TYPE_supported_groups:
+          supported_groups = body;
+          break;
+      }
+    } else if (java_extension.required) {
+      return false;
+    }
+  }
+  if (CBS_len(&extensions) != 0) {
+    return false;
+  }
+
+  // JDK 11 never advertises X25519. It is not offered by default, and
+  // -Djdk.tls.namedGroups=x25519 does not work. This is unusual: many modern
+  // clients implement X25519.
+  while (CBS_len(&supported_groups) > 0) {
+    uint16_t group;
+    if (!CBS_get_u16(&supported_groups, &group) ||
+        group == SSL_CURVE_X25519) {
+      return false;
+    }
+  }
+
+  if (// JDK 11 always sends the same contents in signature_algorithms and
+      // signature_algorithms_cert. This is unusual: signature_algorithms_cert,
+      // if omitted, is treated as if it were signature_algorithms.
+      sigalgs != sigalgs_cert ||
+      // When TLS 1.2 or below is enabled, JDK 11 sends status_request_v2 iff it
+      // sends status_request. This is unusual: status_request_v2 is not widely
+      // implemented.
+      has_status_request != has_status_request_v2) {
+    return false;
+  }
+
+  return true;
+}
+
 static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
@@ -444,6 +547,11 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
   // Freeze the version range after the early callback.
   if (!ssl_get_version_range(hs, &hs->min_version, &hs->max_version)) {
     return ssl_hs_error;
+  }
+
+  if (hs->config->jdk11_workaround &&
+      is_probably_jdk11_with_tls13(&client_hello)) {
+    hs->apply_jdk11_workaround = true;
   }
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
@@ -674,6 +782,12 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
   return ssl_hs_ok;
 }
 
+static void copy_suffix(Span<uint8_t> out, Span<const uint8_t> in) {
+  out = out.subspan(out.size() - in.size());
+  assert(out.size() == in.size());
+  OPENSSL_memcpy(out.data(), in.data(), in.size());
+}
+
 static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
 
@@ -705,13 +819,18 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
   // Implement the TLS 1.3 anti-downgrade feature.
   if (ssl_supports_version(hs, TLS1_3_VERSION)) {
     if (ssl_protocol_version(ssl) == TLS1_2_VERSION) {
-      OPENSSL_memcpy(ssl->s3->server_random + SSL3_RANDOM_SIZE -
-                         sizeof(kTLS13DowngradeRandom),
-                     kTLS13DowngradeRandom, sizeof(kTLS13DowngradeRandom));
+      if (hs->apply_jdk11_workaround) {
+        // JDK 11 implements the TLS 1.3 downgrade signal, so we cannot send it
+        // here. However, the signal is only effective if all TLS 1.2
+        // ServerHellos produced by the server are marked. Thus we send a
+        // different non-standard signal for the time being, until JDK 11.0.2 is
+        // released and clients have updated.
+        copy_suffix(ssl->s3->server_random, kJDK11DowngradeRandom);
+      } else {
+        copy_suffix(ssl->s3->server_random, kTLS13DowngradeRandom);
+      }
     } else {
-      OPENSSL_memcpy(ssl->s3->server_random + SSL3_RANDOM_SIZE -
-                         sizeof(kTLS12DowngradeRandom),
-                     kTLS12DowngradeRandom, sizeof(kTLS12DowngradeRandom));
+      copy_suffix(ssl->s3->server_random, kTLS12DowngradeRandom);
     }
   }
 

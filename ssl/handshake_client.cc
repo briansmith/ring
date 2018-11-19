@@ -612,10 +612,14 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
     static_assert(
         sizeof(kTLS12DowngradeRandom) == sizeof(kTLS13DowngradeRandom),
         "downgrade signals have different size");
+    static_assert(
+        sizeof(kJDK11DowngradeRandom) == sizeof(kTLS13DowngradeRandom),
+        "downgrade signals have different size");
     auto suffix =
         MakeConstSpan(ssl->s3->server_random, sizeof(ssl->s3->server_random))
             .subspan(SSL3_RANDOM_SIZE - sizeof(kTLS13DowngradeRandom));
-    if (suffix == kTLS12DowngradeRandom || suffix == kTLS13DowngradeRandom) {
+    if (suffix == kTLS12DowngradeRandom || suffix == kTLS13DowngradeRandom ||
+        suffix == kJDK11DowngradeRandom) {
       ssl->s3->tls13_downgrade = true;
       if (!hs->config->ignore_tls13_downgrade) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_TLS13_DOWNGRADE);

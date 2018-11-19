@@ -146,6 +146,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-is-handshaker-supported", &TestConfig::is_handshaker_supported },
   { "-handshaker-resume", &TestConfig::handshaker_resume },
   { "-reverify-on-resume", &TestConfig::reverify_on_resume },
+  { "-jdk11-workaround", &TestConfig::jdk11_workaround },
 };
 
 const Flag<std::string> kStringFlags[] = {
@@ -1623,6 +1624,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
             quic_transport_params.size())) {
       return nullptr;
     }
+  }
+  if (jdk11_workaround) {
+    SSL_set_jdk11_workaround(ssl.get(), 1);
   }
 
   if (session != NULL) {

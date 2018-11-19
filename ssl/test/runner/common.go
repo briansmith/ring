@@ -1626,6 +1626,25 @@ type ProtocolBugs struct {
 	// SendCertUncompressedLength, if not zero, sets the uncompressed length that
 	// will be sent in the compressed certificate message.
 	SendCertUncompressedLength uint32
+
+	// SendClientHelloWithFixes, if not nil, sends the specified byte string
+	// instead of the ClientHello. This string is incorporated into the
+	// transcript as if it were the real ClientHello, but the handshake will
+	// otherwise behave as if this was not sent in terms of what ciphers it
+	// will accept, etc.
+	//
+	// The input is modified to match key share entries. DefaultCurves must
+	// be configured to match. The random and session ID fields are
+	// extracted from the ClientHello.
+	SendClientHelloWithFixes []byte
+
+	// SendJDK11DowngradeRandom, if true, causes the server to send the JDK
+	// 11 downgrade signal.
+	SendJDK11DowngradeRandom bool
+
+	// ExpectJDK11DowngradeRandom is whether the client should expect the
+	// server to send the JDK 11 downgrade signal.
+	ExpectJDK11DowngradeRandom bool
 }
 
 func (c *Config) serverInit() {
@@ -2067,6 +2086,9 @@ var (
 	// See RFC 8446, section 4.1.3.
 	downgradeTLS13 = []byte{0x44, 0x4f, 0x57, 0x4e, 0x47, 0x52, 0x44, 0x01}
 	downgradeTLS12 = []byte{0x44, 0x4f, 0x57, 0x4e, 0x47, 0x52, 0x44, 0x00}
+
+	// This is a non-standard randomly-generated value.
+	downgradeJDK11 = []byte{0xed, 0xbf, 0xb4, 0xa8, 0xc2, 0x47, 0x10, 0xff}
 )
 
 func containsGREASE(values []uint16) bool {
