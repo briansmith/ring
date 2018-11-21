@@ -19,8 +19,6 @@
 #include <gtest/gtest.h>
 
 
-#if !defined(BORINGSSL_SHARED_LIBRARY)
-
 TEST(ARMLinuxTest, CPUInfo) {
   struct CPUInfoTest {
     const char *cpuinfo;
@@ -232,5 +230,3 @@ TEST(ARMLinuxTest, CPUInfo) {
     EXPECT_EQ(t.broken_neon ? 1 : 0, crypto_cpuinfo_has_broken_neon(&sp));
   }
 }
-
-#endif  // !BORINGSSL_SHARED_LIBRARY
