@@ -59,12 +59,15 @@ func fixClientHellos(hello *clientHelloMsg, in []byte) ([]byte, error) {
 	hello.random = newHello.random
 	hello.sessionId = newHello.sessionId
 
-	// Replace |ret|'s key shares with those of |hello|.
+	// Replace |ret|'s key shares with those of |hello|. For simplicity, we
+	// require their lengths match, which is satisfied by matching the
+	// DefaultCurves setting to the selection in the replacement
+	// ClientHello.
 	bb := newByteBuilder()
 	hello.marshalKeyShares(bb)
 	keyShares := bb.finish()
 	if len(keyShares) != len(newHello.keySharesRaw) {
-		return nil, errors.New("tls: ClientHello key share lengths did not match. Reconfigure DefaultCurves.")
+		return nil, errors.New("tls: ClientHello key share length is inconsistent with DefaultCurves setting")
 	}
 	// |newHello.keySharesRaw| aliases |ret|.
 	copy(newHello.keySharesRaw, keyShares)
