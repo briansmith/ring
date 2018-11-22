@@ -653,6 +653,23 @@ func parseSignatureAlgorithms(reader *byteReader, out *[]signatureAlgorithm, all
 	return true
 }
 
+func checkDuplicateExtensions(extensions byteReader) bool {
+	seen := make(map[uint16]struct{})
+	for len(extensions) > 0 {
+		var extension uint16
+		var body byteReader
+		if !extensions.readU16(&extension) ||
+			!extensions.readU16LengthPrefixed(&body) {
+			return false
+		}
+		if _, ok := seen[extension]; ok {
+			return false
+		}
+		seen[extension] = struct{}{}
+	}
+	return true
+}
+
 func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	m.raw = data
 	reader := byteReader(data[4:])
@@ -707,7 +724,7 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 	}
 
 	var extensions byteReader
-	if !reader.readU16LengthPrefixed(&extensions) || len(reader) != 0 {
+	if !reader.readU16LengthPrefixed(&extensions) || len(reader) != 0 || !checkDuplicateExtensions(extensions) {
 		return false
 	}
 	for len(extensions) > 0 {
@@ -923,6 +940,13 @@ func (m *clientHelloMsg) unmarshal(data []byte) bool {
 				seen[algID] = struct{}{}
 				m.compressedCertAlgs = append(m.compressedCertAlgs, algID)
 			}
+		case extensionPadding:
+			// Padding bytes must be all zero.
+			for _, b := range body {
+				if b != 0 {
+					return false
+				}
+			}
 		}
 
 		if isGREASEValue(extension) {
@@ -1067,7 +1091,7 @@ func (m *serverHelloMsg) unmarshal(data []byte) bool {
 	}
 
 	var extensions byteReader
-	if !reader.readU16LengthPrefixed(&extensions) || len(reader) != 0 {
+	if !reader.readU16LengthPrefixed(&extensions) || len(reader) != 0 || !checkDuplicateExtensions(extensions) {
 		return false
 	}
 
@@ -1329,6 +1353,10 @@ func (m *serverExtensions) marshal(extensions *byteBuilder) {
 func (m *serverExtensions) unmarshal(data byteReader, version uint16) bool {
 	// Reset all fields.
 	*m = serverExtensions{}
+
+	if !checkDuplicateExtensions(data) {
+		return false
+	}
 
 	for len(data) > 0 {
 		var extension uint16
@@ -1651,7 +1679,7 @@ func (m *certificateMsg) unmarshal(data []byte) bool {
 		}
 		if m.hasRequestContext {
 			var extensions byteReader
-			if !certs.readU16LengthPrefixed(&extensions) {
+			if !certs.readU16LengthPrefixed(&extensions) || !checkDuplicateExtensions(extensions) {
 				return false
 			}
 			for len(extensions) > 0 {
@@ -2010,7 +2038,8 @@ func (m *certificateRequestMsg) unmarshal(data []byte) bool {
 		var extensions byteReader
 		if !reader.readU8LengthPrefixedBytes(&m.requestContext) ||
 			!reader.readU16LengthPrefixed(&extensions) ||
-			len(reader) != 0 {
+			len(reader) != 0 ||
+			!checkDuplicateExtensions(extensions) {
 			return false
 		}
 		for len(extensions) > 0 {
