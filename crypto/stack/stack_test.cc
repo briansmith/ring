@@ -31,9 +31,9 @@ using TEST_INT = int;
 
 static void TEST_INT_free(TEST_INT *x) { OPENSSL_free(x); }
 
-namespace bssl {
+BSSL_NAMESPACE_BEGIN
 BORINGSSL_MAKE_DELETER(TEST_INT, TEST_INT_free)
-}  // namespace bssl
+BSSL_NAMESPACE_END
 
 static bssl::UniquePtr<TEST_INT> TEST_INT_new(int x) {
   bssl::UniquePtr<TEST_INT> ret(
