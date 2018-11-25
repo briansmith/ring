@@ -28,7 +28,7 @@ var testDataDir = flag.String("testdata", "testdata", "The path to the test data
 type arTest struct {
 	name string
 	in   string
-	out  []string
+	out  map[string]string
 	// allowPadding is true if the contents may have trailing newlines at end.
 	// On macOS, ar calls ranlib which pads all inputs up to eight bytes with
 	// newlines. Unlike ar's native padding up to two bytes, this padding is
@@ -48,8 +48,33 @@ func removeTrailingNewlines(in []byte) []byte {
 }
 
 var arTests = []arTest{
-	{"linux", "libsample.a", []string{"foo.c.o", "bar.cc.o"}, false},
-	{"mac", "libsample.a", []string{"foo.c.o", "bar.cc.o"}, true},
+	{
+		"linux",
+		"libsample.a",
+		map[string]string{
+			"foo.c.o": "foo.c.o",
+			"bar.cc.o": "bar.cc.o",
+		},
+		false,
+	},
+	{
+		"mac",
+		"libsample.a",
+		map[string]string{
+			"foo.c.o": "foo.c.o",
+			"bar.cc.o": "bar.cc.o",
+		},
+		true,
+	},
+	{
+		"windows",
+		"sample.lib",
+		map[string]string{
+			"CMakeFiles\\sample.dir\\foo.c.obj": "foo.c.obj",
+			"CMakeFiles\\sample.dir\\bar.cc.obj": "bar.cc.obj",
+		},
+		false,
+	},
 }
 
 func TestAR(t *testing.T) {
@@ -66,12 +91,10 @@ func TestAR(t *testing.T) {
 				t.Fatalf("reading input failed: %s", err)
 			}
 
-			expectedFiles := make(map[string]struct{})
-			for _, file := range test.out {
-				expectedFiles[file] = struct{}{}
-				expected, err := ioutil.ReadFile(test.Path(file))
+			for file, contentsPath := range test.out {
+				expected, err := ioutil.ReadFile(test.Path(contentsPath))
 				if err != nil {
-					t.Fatalf("error reading %s: %s", file, err)
+					t.Fatalf("error reading %s: %s", contentsPath, err)
 				}
 				got, ok := ret[file]
 				if test.allowPadding {
@@ -86,7 +109,7 @@ func TestAR(t *testing.T) {
 			}
 
 			for file, _ := range ret {
-				if _, ok := expectedFiles[file]; !ok {
+				if _, ok := test.out[file]; !ok {
 					t.Errorf("output contained unexpected file %q", file)
 				}
 			}
