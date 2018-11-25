@@ -111,11 +111,7 @@ func main() {
 	sort.Strings(symbols)
 	for _, s := range symbols {
 		// Filter out C++ mangled names.
-		prefix := "_Z"
-		if runtime.GOOS == "darwin" {
-			prefix = "__Z"
-		}
-		if !strings.HasPrefix(s, prefix) {
+		if !strings.HasPrefix(s, "_Z") {
 			if _, err := fmt.Fprintln(out, s); err != nil {
 				printAndExit("Error writing to %s: %s", *outFlag, err)
 			}
