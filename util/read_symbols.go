@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-// read_symbols.go scans one or more .a files and, for each object contained in
+// read_symbols scans one or more .a files and, for each object contained in
 // the .a files, reads the list of symbols in that object file.
 package main
 
@@ -35,8 +35,10 @@ const (
 	ObjFileFormatMachO = "macho"
 )
 
-var outFlag = flag.String("out", "-", "File to write output symbols")
-var objFileFormat = flag.String("obj-file-format", defaultObjFileFormat(runtime.GOOS), "Object file format to expect (options are elf, macho)")
+var (
+	outFlag       = flag.String("out", "-", "File to write output symbols")
+	objFileFormat = flag.String("obj-file-format", defaultObjFileFormat(runtime.GOOS), "Object file format to expect (options are elf, macho)")
+)
 
 func defaultObjFileFormat(goos string) string {
 	switch goos {
@@ -53,11 +55,16 @@ func defaultObjFileFormat(goos string) string {
 	}
 }
 
+func printAndExit(format string, args ...interface{}) {
+	s := fmt.Sprintf(format, args...)
+	fmt.Fprintln(os.Stderr, s)
+	os.Exit(1)
+}
+
 func main() {
 	flag.Parse()
 	if flag.NArg() < 1 {
-		fmt.Fprintf(os.Stderr, "Usage: %s [-out OUT] [-obj-file-format FORMAT] ARCHIVE_FILE [ARCHIVE_FILE [...]]\n", os.Args[0])
-		os.Exit(1)
+		printAndExit("Usage: %s [-out OUT] [-obj-file-format FORMAT] ARCHIVE_FILE [ARCHIVE_FILE [...]]", os.Args[0])
 	}
 	archiveFiles := flag.Args()
 
@@ -65,26 +72,37 @@ func main() {
 	if *outFlag != "-" {
 		var err error
 		out, err = os.Create(*outFlag)
-		nilOrPanic(err, "failed to open output file")
+		if err != nil {
+			printAndExit("Error opening %q: %s", *outFlag, err)
+		}
 		defer out.Close()
 	}
 
 	var symbols []string
 	// Only add first instance of any symbol; keep track of them in this map.
-	added := make(map[string]bool)
+	added := make(map[string]struct{})
 	for _, archive := range archiveFiles {
 		f, err := os.Open(archive)
-		nilOrPanic(err, "failed to open archive file %s", archive)
+		if err != nil {
+			printAndExit("Error opening %s: %s", archive, err)
+		}
 		objectFiles, err := ar.ParseAR(f)
-		nilOrPanic(err, "failed to read archive file %s", archive)
+		f.Close()
+		if err != nil {
+			printAndExit("Error parsing %s: %s", archive, err)
+		}
 
 		for name, contents := range objectFiles {
 			if !strings.HasSuffix(name, ".o") {
 				continue
 			}
-			for _, s := range listSymbols(name, contents) {
-				if !added[s] {
-					added[s] = true
+			syms, err := listSymbols(contents)
+			if err != nil {
+				printAndExit("Error listing symbols from %q in %q: %s", name, archive, err)
+			}
+			for _, s := range syms {
+				if _, ok := added[s]; !ok {
+					added[s] = struct{}{}
 					symbols = append(symbols, s)
 				}
 			}
@@ -98,28 +116,34 @@ func main() {
 			prefix = "__Z"
 		}
 		if !strings.HasPrefix(s, prefix) {
-			fmt.Fprintln(out, s)
+			if _, err := fmt.Fprintln(out, s); err != nil {
+				printAndExit("Error writing to %s: %s", *outFlag, err)
+			}
 		}
 	}
 }
 
 // listSymbols lists the exported symbols from an object file.
-func listSymbols(name string, contents []byte) []string {
+func listSymbols(contents []byte) ([]string, error) {
 	switch *objFileFormat {
 	case ObjFileFormatELF:
-		return listSymbolsELF(name, contents)
+		return listSymbolsELF(contents)
 	case ObjFileFormatMachO:
-		return listSymbolsMachO(name, contents)
+		return listSymbolsMachO(contents)
 	default:
-		panic(fmt.Errorf("unsupported object file format %v", *objFileFormat))
+		return nil, fmt.Errorf("unsupported object file format %q", *objFileFormat)
 	}
 }
 
-func listSymbolsELF(name string, contents []byte) []string {
+func listSymbolsELF(contents []byte) ([]string, error) {
 	f, err := elf.NewFile(bytes.NewReader(contents))
-	nilOrPanic(err, "failed to parse ELF file %s", name)
+	if err != nil {
+		return nil, err
+	}
 	syms, err := f.Symbols()
-	nilOrPanic(err, "failed to read symbol names from ELF file %s", name)
+	if err != nil {
+		return nil, err
+	}
 
 	var names []string
 	for _, sym := range syms {
@@ -128,14 +152,16 @@ func listSymbolsELF(name string, contents []byte) []string {
 			names = append(names, sym.Name)
 		}
 	}
-	return names
+	return names, nil
 }
 
-func listSymbolsMachO(name string, contents []byte) []string {
+func listSymbolsMachO(contents []byte) ([]string, error) {
 	f, err := macho.NewFile(bytes.NewReader(contents))
-	nilOrPanic(err, "failed to parse Mach-O file %s", name)
+	if err != nil {
+		return nil, err
+	}
 	if f.Symtab == nil {
-		return nil
+		return nil, nil
 	}
 	var names []string
 	for _, sym := range f.Symtab.Syms {
@@ -155,16 +181,10 @@ func listSymbolsMachO(name string, contents []byte) []string {
 		// Only include exported, defined symbols.
 		if sym.Type&N_EXT != 0 && sym.Type&N_TYPE != N_UNDF {
 			if len(sym.Name) == 0 || sym.Name[0] != '_' {
-				panic(fmt.Errorf("unexpected symbol without underscore prefix: %v", sym.Name))
+				return nil, fmt.Errorf("unexpected symbol without underscore prefix: %q", sym.Name)
 			}
 			names = append(names, sym.Name[1:])
 		}
 	}
-	return names
-}
-
-func nilOrPanic(err error, f string, args ...interface{}) {
-	if err != nil {
-		panic(fmt.Errorf(f+": %v", append(args, err)...))
-	}
+	return names, nil
 }
