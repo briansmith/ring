@@ -172,14 +172,30 @@ func writeNASMHeader(symbols []string, path string) error {
 ; OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 ; CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+; 32-bit Windows adds underscores to C functions, while 64-bit Windows does not.
+%ifidn __OUTPUT_FORMAT__, win32
 `); err != nil {
 		return err
 	}
 
 	for _, symbol := range symbols {
-		if _, err := fmt.Fprintf(f, "%%define %s BORINGSSL_PREFIX %%+ %s\n", symbol, symbol); err != nil {
+		if _, err := fmt.Fprintf(f, "%%xdefine _%s _ %%+ BORINGSSL_PREFIX %%+ _%s\n", symbol, symbol); err != nil {
 			return err
 		}
+	}
+
+	if _, err := fmt.Fprintf(f, "%%else\n"); err != nil {
+		return err
+	}
+
+	for _, symbol := range symbols {
+		if _, err := fmt.Fprintf(f, "%%xdefine %s BORINGSSL_PREFIX %%+ _%s\n", symbol, symbol); err != nil {
+			return err
+		}
+	}
+
+	if _, err := fmt.Fprintf(f, "%%endif\n"); err != nil {
+		return err
 	}
 
 	return nil

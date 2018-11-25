@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"debug/elf"
 	"debug/macho"
+	"debug/pe"
 	"flag"
 	"fmt"
 	"os"
@@ -33,11 +34,12 @@ import (
 const (
 	ObjFileFormatELF   = "elf"
 	ObjFileFormatMachO = "macho"
+	ObjFileFormatPE    = "pe"
 )
 
 var (
 	outFlag       = flag.String("out", "-", "File to write output symbols")
-	objFileFormat = flag.String("obj-file-format", defaultObjFileFormat(runtime.GOOS), "Object file format to expect (options are elf, macho)")
+	objFileFormat = flag.String("obj-file-format", defaultObjFileFormat(runtime.GOOS), "Object file format to expect (options are elf, macho, pe)")
 )
 
 func defaultObjFileFormat(goos string) string {
@@ -46,6 +48,8 @@ func defaultObjFileFormat(goos string) string {
 		return ObjFileFormatELF
 	case "darwin":
 		return ObjFileFormatMachO
+	case "windows":
+		return ObjFileFormatPE
 	default:
 		// By returning a value here rather than panicking, the user can still
 		// cross-compile from an unsupported platform to a supported platform by
@@ -105,15 +109,51 @@ func main() {
 			}
 		}
 	}
+
 	sort.Strings(symbols)
 	for _, s := range symbols {
-		// Filter out C++ mangled names.
-		if !strings.HasPrefix(s, "_Z") {
-			if _, err := fmt.Fprintln(out, s); err != nil {
-				printAndExit("Error writing to %s: %s", *outFlag, err)
+		var skipSymbols = []string{
+			// Inline functions, etc., from the compiler or language
+			// runtime will naturally end up in the library, to be
+			// deduplicated against other object files. Such symbols
+			// should not be prefixed. It is a limitation of this
+			// symbol-prefixing strategy that we cannot distinguish
+			// our own inline symbols (which should be prefixed)
+			// from the system's (which should not), so we blacklist
+			// known system symbols.
+			"__local_stdio_printf_options",
+			"__local_stdio_scanf_options",
+			"_vscprintf",
+			"_vscprintf_l",
+			"_vsscanf_l",
+			"_xmm",
+			"sscanf",
+			"vsnprintf",
+			// sdallocx is a weak symbol and intended to merge with
+			// the real one, if present.
+			"sdallocx",
+		}
+		var skip bool
+		for _, sym := range skipSymbols {
+			if sym == s {
+				skip = true
+				break
 			}
 		}
+		if skip || isCXXSymbol(s) || strings.HasPrefix(s, "__real@") {
+			continue
+		}
+		if _, err := fmt.Fprintln(out, s); err != nil {
+			printAndExit("Error writing to %s: %s", *outFlag, err)
+		}
 	}
+}
+
+func isCXXSymbol(s string) bool {
+	if *objFileFormat == ObjFileFormatPE {
+		return strings.HasPrefix(s, "?")
+	}
+	return strings.HasPrefix(s, "_Z")
 }
 
 // listSymbols lists the exported symbols from an object file.
@@ -123,6 +163,8 @@ func listSymbols(contents []byte) ([]string, error) {
 		return listSymbolsELF(contents)
 	case ObjFileFormatMachO:
 		return listSymbolsMachO(contents)
+	case ObjFileFormatPE:
+		return listSymbolsPE(contents)
 	default:
 		return nil, fmt.Errorf("unsupported object file format %q", *objFileFormat)
 	}
@@ -180,4 +222,41 @@ func listSymbolsMachO(contents []byte) ([]string, error) {
 		}
 	}
 	return names, nil
+}
+
+func listSymbolsPE(contents []byte) ([]string, error) {
+	f, err := pe.NewFile(bytes.NewReader(contents))
+	if err != nil {
+		return nil, err
+	}
+	var ret []string
+	for _, sym := range f.Symbols {
+		const (
+			// https://docs.microsoft.com/en-us/windows/desktop/debug/pe-format#section-number-values
+			IMAGE_SYM_UNDEFINED = 0
+			// https://docs.microsoft.com/en-us/windows/desktop/debug/pe-format#storage-class
+			IMAGE_SYM_CLASS_EXTERNAL = 2
+		)
+		if sym.SectionNumber != IMAGE_SYM_UNDEFINED && sym.StorageClass == IMAGE_SYM_CLASS_EXTERNAL {
+			name := sym.Name
+			if f.Machine == pe.IMAGE_FILE_MACHINE_I386 {
+				// On 32-bit Windows, C symbols are decorated by calling
+				// convention.
+				// https://msdn.microsoft.com/en-us/library/56h2zst2.aspx#FormatC
+				if strings.HasPrefix(name, "_") || strings.HasPrefix(name, "@") {
+					// __cdecl, __stdcall, or __fastcall. Remove the prefix and
+					// suffix, if present.
+					name = name[1:]
+					if idx := strings.LastIndex(name, "@"); idx >= 0 {
+						name = name[:idx]
+					}
+				} else if idx := strings.LastIndex(name, "@@"); idx >= 0 {
+					// __vectorcall. Remove the suffix.
+					name = name[:idx]
+				}
+			}
+			ret = append(ret, name)
+		}
+	}
+	return ret, nil
 }
