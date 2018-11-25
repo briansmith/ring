@@ -141,6 +141,10 @@ func ParseAR(r io.Reader) (map[string][]byte, error) {
 			name = name[:null]
 		}
 
+		if name == "__.SYMDEF" || name == "__.SYMDEF SORTED" {
+			continue
+		}
+
 		ret[name] = contents
 	}
 
