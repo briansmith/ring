@@ -33,7 +33,6 @@ include = [
     "crypto/chacha/asm/chacha-x86.pl",
     "crypto/chacha/asm/chacha-x86_64.pl",
     "crypto/cipher_extra/asm/aes128gcmsiv-x86_64.pl",
-    "crypto/cipher_extra/e_aesgcmsiv.c",
     "crypto/cipher_extra/test/aes_128_gcm_siv_tests.txt",
     "crypto/cipher_extra/test/aes_256_gcm_siv_tests.txt",
     "crypto/constant_time_test.c",

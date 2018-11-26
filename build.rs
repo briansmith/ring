@@ -60,7 +60,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/fipsmodule/bn/montgomery_inv.c"),
     (&[], "crypto/fipsmodule/bn/shift.c"),
     (&[], "crypto/fipsmodule/cipher/e_aes.c"),
-    (&[NEVER], "crypto/cipher_extra/e_aesgcmsiv.c"),
     (&[], "crypto/crypto.c"),
     (&[], "crypto/fipsmodule/ec/ecp_nistz.c"),
     (&[], "crypto/fipsmodule/ec/ecp_nistz256.c"),
