@@ -46,7 +46,11 @@ use core::{
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
-use crate::{bits, bssl, c, error, limb, untrusted};
+use crate::{
+    bits, bssl, c, error,
+    limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
+    untrusted,
+};
 use std;
 
 #[cfg(any(test, feature = "rsa_signing"))]
@@ -63,14 +67,14 @@ struct Width<M> {
 
 /// All `BoxedLimbs<M>` are stored in the same number of limbs.
 struct BoxedLimbs<M> {
-    limbs: std::boxed::Box<[limb::Limb]>,
+    limbs: std::boxed::Box<[Limb]>,
 
     /// The modulus *m* that determines the size of `limbx`.
     m: PhantomData<M>,
 }
 
 impl<M> Deref for BoxedLimbs<M> {
-    type Target = [limb::Limb];
+    type Target = [Limb];
     #[inline]
     fn deref(&self) -> &Self::Target { &self.limbs }
 }
@@ -100,7 +104,7 @@ impl<M> BoxedLimbs<M> {
         if untrusted::Reader::new(input).peek(0) {
             return Err(error::Unspecified);
         }
-        let num_limbs = (input.len() + limb::LIMB_BYTES - 1) / limb::LIMB_BYTES;
+        let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
         let mut r = Self::zero(Width {
             num_limbs,
             m: PhantomData,
@@ -110,7 +114,7 @@ impl<M> BoxedLimbs<M> {
     }
 
     #[cfg(feature = "rsa_signing")]
-    fn minimal_width_from_unpadded(limbs: &[limb::Limb]) -> Self {
+    fn minimal_width_from_unpadded(limbs: &[Limb]) -> Self {
         debug_assert_ne!(limbs.last(), Some(&0));
         use std::borrow::ToOwned;
         Self {
@@ -124,16 +128,14 @@ impl<M> BoxedLimbs<M> {
     ) -> Result<Self, error::Unspecified> {
         let mut r = Self::zero(m.width());
         limb::parse_big_endian_and_pad_consttime(input, &mut r)?;
-        if limb::limbs_less_than_limbs_consttime(&r, &m.limbs) != limb::LimbMask::True {
+        if limb::limbs_less_than_limbs_consttime(&r, &m.limbs) != LimbMask::True {
             return Err(error::Unspecified);
         }
         Ok(r)
     }
 
     #[inline]
-    fn is_zero(&self) -> bool {
-        limb::limbs_are_zero_constant_time(&self.limbs) == limb::LimbMask::True
-    }
+    fn is_zero(&self) -> bool { limb::limbs_are_zero_constant_time(&self.limbs) == LimbMask::True }
 
     fn zero(width: Width<M>) -> Self {
         use std::borrow::ToOwned;
@@ -165,7 +167,7 @@ pub unsafe trait SlightlySmallerModulus<L>: SmallerModulus<L> {}
 /// ℤ/sℤ.
 pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 
-pub const MODULUS_MAX_LIMBS: usize = 8192 / limb::LIMB_BITS;
+pub const MODULUS_MAX_LIMBS: usize = 8192 / LIMB_BITS;
 
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
 /// for efficient Montgomery multiplication modulo *m*. The value must be odd
@@ -245,10 +247,10 @@ impl<M> Modulus<M> {
             return Err(error::Unspecified);
         }
         Result::from(unsafe { GFp_bn_mul_mont_check_num_limbs(n.len()) })?;
-        if limb::limbs_are_even_constant_time(&n) != limb::LimbMask::False {
+        if limb::limbs_are_even_constant_time(&n) != LimbMask::False {
             return Err(error::Unspecified);
         }
-        if limb::limbs_less_than_limb_constant_time(&n, 3) != limb::LimbMask::False {
+        if limb::limbs_less_than_limb_constant_time(&n, 3) != LimbMask::False {
             return Err(error::Unspecified);
         }
 
@@ -259,9 +261,9 @@ impl<M> Modulus<M> {
             let mut n_mod_r: u64 = u64::from(n[0]);
 
             if N0_LIMBS_USED == 2 {
-                // XXX: If we use `<< limb::LIMB_BITS` here then 64-bit builds
+                // XXX: If we use `<< LIMB_BITS` here then 64-bit builds
                 // fail to compile because of `deny(exceeding_bitshifts)`.
-                debug_assert_eq!(limb::LIMB_BITS, 32);
+                debug_assert_eq!(LIMB_BITS, 32);
                 n_mod_r |= u64::from(n[1]) << 32;
             }
             N0::from(unsafe { GFp_bn_neg_inv_mod_r_u64(n_mod_r) })
@@ -332,7 +334,7 @@ impl<M> Modulus<M> {
 }
 
 struct PartialModulus<'a, M> {
-    limbs: &'a [limb::Limb],
+    limbs: &'a [Limb],
     n0: N0,
     m: PhantomData<M>,
 }
@@ -436,7 +438,7 @@ impl<M> Elem<M, Unencoded> {
 
     #[cfg(feature = "rsa_signing")]
     fn is_one(&self) -> bool {
-        limb::limbs_equal_limb_constant_time(&self.limbs, 1) == limb::LimbMask::True
+        limb::limbs_equal_limb_constant_time(&self.limbs, 1) == LimbMask::True
     }
 }
 
@@ -595,8 +597,6 @@ impl<M> One<M, RR> {
     // is correct because R**2 will still be a multiple of the latter as
     // `N0_LIMBS_USED` is either one or two.
     fn newRR(m: &PartialModulus<M>) -> One<M, RR> {
-        use limb::LIMB_BITS;
-
         let m_bits = limb::limbs_minimal_bits(&m.limbs).as_usize_bits();
 
         let r = (m_bits + (LIMB_BITS - 1)) / LIMB_BITS * LIMB_BITS;
@@ -772,7 +772,7 @@ impl<M> PrivateExponent<M> {
         // `p - 1` and so we know `dP < p - 1`.
         //
         // Further we know `dP != 0` because `dP` is not even.
-        if limb::limbs_are_even_constant_time(&dP) != limb::LimbMask::False {
+        if limb::limbs_are_even_constant_time(&dP) != LimbMask::False {
             return Err(error::Unspecified);
         }
 
@@ -864,7 +864,7 @@ pub fn elem_verify_equal_consttime<M, E>(
 /// Nonnegative integers.
 #[cfg(feature = "rsa_signing")]
 pub struct Nonnegative {
-    limbs: std::vec::Vec<limb::Limb>,
+    limbs: std::vec::Vec<Limb>,
 }
 
 #[cfg(feature = "rsa_signing")]
@@ -872,7 +872,7 @@ impl Nonnegative {
     pub fn from_be_bytes_with_bit_length(
         input: untrusted::Input,
     ) -> Result<(Self, bits::BitLength), error::Unspecified> {
-        let mut limbs = vec![0; (input.len() + limb::LIMB_BYTES - 1) / limb::LIMB_BYTES];
+        let mut limbs = vec![0; (input.len() + LIMB_BYTES - 1) / LIMB_BYTES];
         // Rejects empty inputs.
         limb::parse_big_endian_and_pad_consttime(input, &mut limbs)?;
         while limbs.last() == Some(&0) {
@@ -884,7 +884,7 @@ impl Nonnegative {
 
     #[inline]
     pub fn is_odd(&self) -> bool {
-        limb::limbs_are_even_constant_time(&self.limbs) != limb::LimbMask::True
+        limb::limbs_are_even_constant_time(&self.limbs) != LimbMask::True
     }
 
     pub fn verify_less_than(&self, other: &Self) -> Result<(), error::Unspecified> {
@@ -906,8 +906,7 @@ impl Nonnegative {
             return Err(error::Unspecified);
         }
         if self.limbs.len() == m.limbs.len() {
-            if limb::limbs_less_than_limbs_consttime(&self.limbs, &m.limbs) != limb::LimbMask::True
-            {
+            if limb::limbs_less_than_limbs_consttime(&self.limbs, &m.limbs) != LimbMask::True {
                 return Err(error::Unspecified);
             }
         }
@@ -927,9 +926,9 @@ fn greater_than(a: &Nonnegative, b: &Nonnegative) -> bool {
 
 #[derive(Clone)]
 #[repr(transparent)]
-struct N0([limb::Limb; 2]);
+struct N0([Limb; 2]);
 
-const N0_LIMBS_USED: usize = 64 / limb::LIMB_BITS;
+const N0_LIMBS_USED: usize = 64 / LIMB_BITS;
 
 impl From<u64> for N0 {
     #[inline]
@@ -941,7 +940,7 @@ impl From<u64> for N0 {
 
         #[cfg(target_pointer_width = "32")]
         {
-            N0([n0 as limb::Limb, (n0 >> limb::LIMB_BITS) as limb::Limb])
+            N0([n0 as Limb, (n0 >> LIMB_BITS) as Limb])
         }
     }
 }
@@ -949,39 +948,34 @@ impl From<u64> for N0 {
 extern "C" {
     // `r` and/or 'a' and/or 'b' may alias.
     fn GFp_bn_mul_mont(
-        r: *mut limb::Limb, a: *const limb::Limb, b: *const limb::Limb, n: *const limb::Limb,
-        n0: &N0, num_limbs: c::size_t,
+        r: *mut Limb, a: *const Limb, b: *const Limb, n: *const Limb, n0: &N0, num_limbs: c::size_t,
     );
     fn GFp_bn_mul_mont_check_num_limbs(num_limbs: c::size_t) -> bssl::Result;
 
     fn GFp_bn_neg_inv_mod_r_u64(n: u64) -> u64;
 
-    fn LIMBS_shl_mod(
-        r: *mut limb::Limb, a: *const limb::Limb, m: *const limb::Limb, num_limbs: c::size_t,
-    );
+    fn LIMBS_shl_mod(r: *mut Limb, a: *const Limb, m: *const Limb, num_limbs: c::size_t);
 }
 
 #[cfg(feature = "rsa_signing")]
 extern "C" {
     fn GFp_bn_from_montgomery_in_place(
-        r: *mut limb::Limb, num_r: c::size_t, a: *mut limb::Limb, num_a: c::size_t,
-        n: *const limb::Limb, num_n: c::size_t, n0: &N0,
+        r: *mut Limb, num_r: c::size_t, a: *mut Limb, num_a: c::size_t, n: *const Limb,
+        num_n: c::size_t, n0: &N0,
     ) -> bssl::Result;
 
     // `r` and `a` may alias.
     fn GFp_BN_mod_exp_mont_consttime(
-        r: *mut limb::Limb, a_mont: *const limb::Limb, p: *const limb::Limb,
-        one_mont: *const limb::Limb, n: *const limb::Limb, num_limbs: c::size_t, n0: &N0,
+        r: *mut Limb, a_mont: *const Limb, p: *const Limb, one_mont: *const Limb, n: *const Limb,
+        num_limbs: c::size_t, n0: &N0,
     ) -> bssl::Result;
 
     // `r` and `a` may alias.
     fn LIMBS_add_mod(
-        r: *mut limb::Limb, a: *const limb::Limb, b: *const limb::Limb, m: *const limb::Limb,
-        num_limbs: c::size_t,
+        r: *mut Limb, a: *const Limb, b: *const Limb, m: *const Limb, num_limbs: c::size_t,
     );
     fn LIMBS_sub_mod(
-        r: *mut limb::Limb, a: *const limb::Limb, b: *const limb::Limb, m: *const limb::Limb,
-        num_limbs: c::size_t,
+        r: *mut Limb, a: *const Limb, b: *const Limb, m: *const Limb, num_limbs: c::size_t,
     );
 }
 
