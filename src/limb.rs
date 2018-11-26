@@ -113,7 +113,7 @@ pub fn limbs_minimal_bits(a: &[Limb]) -> bits::BitLength {
         // for the most common inputs because usually the most significant bit
         // it set.
         for high_limb_num_bits in (1..=LIMB_BITS).rev() {
-            let shifted = unsafe { LIMB_shl(high_limb, high_limb_num_bits - 1) };
+            let shifted = unsafe { LIMB_shr(high_limb, high_limb_num_bits - 1) };
             if shifted != 0 {
                 return bits::BitLength::from_usize_bits(
                     ((num_limbs - 1) * LIMB_BITS) + high_limb_num_bits,
@@ -252,7 +252,7 @@ extern "C" {
     #[cfg(feature = "use_heap")]
     fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
-    fn LIMB_shl(a: Limb, shift: c::size_t) -> Limb;
+    fn LIMB_shr(a: Limb, shift: c::size_t) -> Limb;
 }
 
 #[cfg(test)]
