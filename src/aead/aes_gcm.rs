@@ -12,7 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{aead, bssl, c, error, polyfill};
+use crate::{aead, bssl, c, error};
+
+#[repr(align(16))]
+pub struct Key([u8; AES_KEY_CTX_BUF_LEN]);
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
 ///
@@ -42,17 +45,22 @@ pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
     max_input_len: AES_GCM_MAX_INPUT_LEN,
 };
 
-fn aes_gcm_init(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), error::Unspecified> {
+fn aes_gcm_init(key: &[u8]) -> Result<super::KeyInner, error::Unspecified> {
+    let mut r = Key([0u8; AES_KEY_CTX_BUF_LEN]);
     Result::from(unsafe {
-        GFp_aes_gcm_init(ctx_buf.as_mut_ptr(), ctx_buf.len(), key.as_ptr(), key.len())
-    })
+        GFp_aes_gcm_init(r.0.as_mut_ptr(), r.0.len(), key.as_ptr(), key.len())
+    })?;
+    Ok(super::KeyInner::AesGcm(r))
 }
 
 fn aes_gcm_seal(
-    ctx: &[u64; aead::KEY_CTX_BUF_ELEMS], nonce: &[u8; aead::NONCE_LEN], ad: &[u8],
-    in_out: &mut [u8], tag: &mut [u8; aead::TAG_LEN],
+    key: &super::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_out: &mut [u8],
+    tag: &mut [u8; aead::TAG_LEN],
 ) -> Result<(), error::Unspecified> {
-    let ctx = polyfill::slice::u64_as_u8(ctx);
+    let ctx = match key {
+        super::KeyInner::AesGcm(Key(ctx)) => ctx,
+        _ => unreachable!(),
+    };
     Result::from(unsafe {
         GFp_aes_gcm_seal(
             ctx.as_ptr(),
@@ -67,10 +75,13 @@ fn aes_gcm_seal(
 }
 
 fn aes_gcm_open(
-    ctx: &[u64; aead::KEY_CTX_BUF_ELEMS], nonce: &[u8; aead::NONCE_LEN], ad: &[u8],
-    in_prefix_len: usize, in_out: &mut [u8], tag_out: &mut [u8; aead::TAG_LEN],
+    key: &super::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_prefix_len: usize,
+    in_out: &mut [u8], tag_out: &mut [u8; aead::TAG_LEN],
 ) -> Result<(), error::Unspecified> {
-    let ctx = polyfill::slice::u64_as_u8(ctx);
+    let ctx = match key {
+        super::KeyInner::AesGcm(Key(ctx)) => ctx,
+        _ => unreachable!(),
+    };
     Result::from(unsafe {
         GFp_aes_gcm_open(
             ctx.as_ptr(),
@@ -88,7 +99,7 @@ fn aes_gcm_open(
 const AES_128_KEY_LEN: usize = 128 / 8;
 const AES_256_KEY_LEN: usize = 32; // 256 / 8
 
-pub const AES_KEY_CTX_BUF_LEN: usize = AES_KEY_BUF_LEN + GCM128_SERIALIZED_LEN;
+const AES_KEY_CTX_BUF_LEN: usize = AES_KEY_BUF_LEN + GCM128_SERIALIZED_LEN;
 
 // Keep this in sync with `AES_KEY` in aes.h.
 const AES_KEY_BUF_LEN: usize = (4 * 4 * (AES_MAX_ROUNDS + 1)) + 8;

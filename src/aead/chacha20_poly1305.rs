@@ -21,7 +21,7 @@ use crate::{aead, chacha, error, polyfill};
 ///
 /// [RFC 7539]: https://tools.ietf.org/html/rfc7539
 pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
-    key_len: chacha::KEY_LEN_IN_BYTES,
+    key_len: chacha::KEY_LEN,
     init: chacha20_poly1305_init,
     seal: chacha20_poly1305_seal,
     open: chacha20_poly1305_open,
@@ -33,44 +33,46 @@ const CHACHA20_BLOCK_LEN: u64 = 64;
 const CHACHA20_OVERHEAD_BLOCKS_PER_NONCE: u64 = 1;
 
 /// Copies |key| into |ctx_buf|.
-pub fn chacha20_poly1305_init(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), error::Unspecified> {
-    ctx_buf[..key.len()].copy_from_slice(key);
-    Ok(())
+fn chacha20_poly1305_init(key: &[u8]) -> Result<aead::KeyInner, error::Unspecified> {
+    Ok(aead::KeyInner::ChaCha20Poly1305(chacha::Key::from(
+        slice_as_array_ref!(key, chacha::KEY_LEN)?,
+    )))
 }
 
 fn chacha20_poly1305_seal(
-    ctx: &[u64; aead::KEY_CTX_BUF_ELEMS], nonce: &[u8; aead::NONCE_LEN], ad: &[u8],
-    in_out: &mut [u8], tag_out: &mut [u8; aead::TAG_LEN],
+    key: &aead::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_out: &mut [u8],
+    tag_out: &mut [u8; aead::TAG_LEN],
 ) -> Result<(), error::Unspecified> {
-    let chacha20_key = ctx_as_key(ctx)?;
+    let chacha20_key = match key {
+        aead::KeyInner::ChaCha20Poly1305(key) => key,
+        _ => unreachable!(),
+    };
     let mut counter = chacha::make_counter(nonce, 1);
-    chacha::chacha20_xor_in_place(&chacha20_key, &counter, in_out);
+    chacha::chacha20_xor_in_place(chacha20_key, &counter, in_out);
     counter[0] = 0;
     aead_poly1305(tag_out, chacha20_key, &counter, ad, in_out);
     Ok(())
 }
 
 fn chacha20_poly1305_open(
-    ctx: &[u64; aead::KEY_CTX_BUF_ELEMS], nonce: &[u8; aead::NONCE_LEN], ad: &[u8],
-    in_prefix_len: usize, in_out: &mut [u8], tag_out: &mut [u8; aead::TAG_LEN],
+    key: &aead::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_prefix_len: usize,
+    in_out: &mut [u8], tag_out: &mut [u8; aead::TAG_LEN],
 ) -> Result<(), error::Unspecified> {
-    let chacha20_key = ctx_as_key(ctx)?;
+    let chacha20_key = match key {
+        aead::KeyInner::ChaCha20Poly1305(key) => key,
+        _ => unreachable!(),
+    };
     let mut counter = chacha::make_counter(nonce, 0);
     {
         let ciphertext = &in_out[in_prefix_len..];
         aead_poly1305(tag_out, chacha20_key, &counter, ad, ciphertext);
     }
     counter[0] = 1;
-    chacha::chacha20_xor_overlapping(&chacha20_key, &counter, in_out, in_prefix_len);
+    chacha::chacha20_xor_overlapping(chacha20_key, &counter, in_out, in_prefix_len);
     Ok(())
 }
 
-fn ctx_as_key(ctx: &[u64; aead::KEY_CTX_BUF_ELEMS]) -> Result<&chacha::Key, error::Unspecified> {
-    slice_as_array_ref!(
-        &polyfill::slice::u64_as_u32(ctx)[..(chacha::KEY_LEN_IN_BYTES / 4)],
-        chacha::KEY_LEN_IN_BYTES / 4
-    )
-}
+pub type Key = chacha::Key;
 
 fn aead_poly1305(
     tag_out: &mut [u8; aead::TAG_LEN], chacha20_key: &chacha::Key, counter: &chacha::Counter,

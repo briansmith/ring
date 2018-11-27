@@ -49,6 +49,7 @@
     trivial_numeric_casts,
     unstable_features, // Used by `internal_benches`
     unused_qualifications,
+    variant_size_differences,
 )]
 #![forbid(
     anonymous_parameters,
@@ -56,7 +57,6 @@
     unused_extern_crates,
     unused_import_braces,
     unused_results,
-    variant_size_differences,
     warnings
 )]
 #![no_std]

@@ -133,7 +133,7 @@ pub fn open_in_place<'a>(
         ciphertext_and_tag_modified_in_place.split_at_mut(in_prefix_len + ciphertext_len);
     let mut calculated_tag = [0u8; TAG_LEN];
     (key.key.algorithm.open)(
-        &key.key.ctx_buf,
+        &key.key.inner,
         nonce,
         &ad,
         in_prefix_len,
@@ -221,7 +221,7 @@ pub fn seal_in_place(
     check_per_nonce_max_bytes(key.key.algorithm, in_out_len)?;
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
     let tag_out = slice_as_array_ref_mut!(tag_out, TAG_LEN)?;
-    (key.key.algorithm.seal)(&key.key.ctx_buf, nonce, ad, in_out, tag_out)?;
+    (key.key.algorithm.seal)(&key.key.inner, nonce, ad, in_out, tag_out)?;
     Ok(in_out_len + TAG_LEN)
 }
 
@@ -230,32 +230,28 @@ pub fn seal_in_place(
 ///
 /// C analog: `EVP_AEAD_CTX`
 struct Key {
-    ctx_buf: [u64; KEY_CTX_BUF_ELEMS],
+    inner: KeyInner,
     algorithm: &'static Algorithm,
 }
 
-const KEY_CTX_BUF_ELEMS: usize = (KEY_CTX_BUF_LEN + 7) / 8;
-
-const KEY_CTX_BUF_LEN: usize = self::aes_gcm::AES_KEY_CTX_BUF_LEN;
+#[allow(variant_size_differences)]
+enum KeyInner {
+    AesGcm(aes_gcm::Key),
+    ChaCha20Poly1305(chacha20_poly1305::Key),
+}
 
 impl Key {
     fn new(algorithm: &'static Algorithm, key_bytes: &[u8]) -> Result<Self, error::Unspecified> {
+        cpu::cache_detected_features();
+
         if key_bytes.len() != algorithm.key_len() {
             return Err(error::Unspecified);
         }
 
-        let mut r = Key {
+        Ok(Key {
+            inner: (algorithm.init)(key_bytes)?,
             algorithm,
-            ctx_buf: [0; KEY_CTX_BUF_ELEMS],
-        };
-
-        cpu::cache_detected_features();
-        {
-            let ctx_buf_bytes = polyfill::slice::u64_as_u8_mut(&mut r.ctx_buf);
-            (r.algorithm.init)(ctx_buf_bytes, key_bytes)?;
-        }
-
-        Ok(r)
+        })
     }
 
     /// The key's AEAD algorithm.
@@ -270,17 +266,17 @@ impl Key {
 /// Go analog:
 ///     [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub struct Algorithm {
-    init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), error::Unspecified>,
+    init: fn(key: &[u8]) -> Result<KeyInner, error::Unspecified>,
 
     seal: fn(
-        ctx: &[u64; KEY_CTX_BUF_ELEMS],
+        key: &KeyInner,
         nonce: &[u8; NONCE_LEN],
         ad: &[u8],
         in_out: &mut [u8],
         tag_out: &mut [u8; TAG_LEN],
     ) -> Result<(), error::Unspecified>,
     open: fn(
-        ctx: &[u64; KEY_CTX_BUF_ELEMS],
+        ctx: &KeyInner,
         nonce: &[u8; NONCE_LEN],
         ad: &[u8],
         in_prefix_len: usize,

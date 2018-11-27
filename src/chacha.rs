@@ -17,14 +17,11 @@ use core;
 use crate::c;
 use polyfill::slice::u32_from_le_u8;
 
-pub type Key = [u32; KEY_LEN_IN_BYTES / 4];
+#[repr(C, align(4))] // The asm code requires 32-bit alignment.
+pub struct Key([u8; KEY_LEN]);
 
-pub fn key_from_bytes(key_bytes: &[u8; KEY_LEN_IN_BYTES]) -> Key {
-    let mut key = [0u32; KEY_LEN_IN_BYTES / 4];
-    for (key_u32, key_u8_4) in key.iter_mut().zip(key_bytes.chunks(4)) {
-        *key_u32 = u32_from_le_u8(slice_as_array_ref!(key_u8_4, 4).unwrap());
-    }
-    key
+impl<'a> From<&'a [u8; KEY_LEN]> for Key {
+    fn from(key_bytes: &[u8; 32]) -> Self { Key(key_bytes.clone()) }
 }
 
 #[inline]
@@ -93,7 +90,7 @@ extern "C" {
     );
 }
 
-pub const KEY_LEN_IN_BYTES: usize = 256 / 8;
+pub const KEY_LEN: usize = 256 / 8;
 
 pub const NONCE_LEN: usize = 12; // 96 bits
 
@@ -118,8 +115,7 @@ mod tests {
             assert_eq!(section, "");
 
             let key = test_case.consume_bytes("Key");
-            let key = slice_as_array_ref!(&key, KEY_LEN_IN_BYTES)?;
-            let key = key_from_bytes(key);
+            let key = Key::from(slice_as_array_ref!(&key, KEY_LEN)?);
 
             let ctr = test_case.consume_usize("Ctr");
             let nonce_bytes = test_case.consume_bytes("Nonce");

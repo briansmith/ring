@@ -137,19 +137,11 @@ impl Key {
     pub fn new(key_material: &[u8; KEY_LEN]) -> Key {
         // The first half becomes K_2 and the second half becomes K_1.
         Key {
-            k_1: chacha::key_from_bytes(
-                slice_as_array_ref!(
-                    &key_material[chacha::KEY_LEN_IN_BYTES..],
-                    chacha::KEY_LEN_IN_BYTES
-                )
-                .unwrap(),
+            k_1: chacha::Key::from(
+                slice_as_array_ref!(&key_material[chacha::KEY_LEN..], chacha::KEY_LEN).unwrap(),
             ),
-            k_2: chacha::key_from_bytes(
-                slice_as_array_ref!(
-                    &key_material[..chacha::KEY_LEN_IN_BYTES],
-                    chacha::KEY_LEN_IN_BYTES
-                )
-                .unwrap(),
+            k_2: chacha::Key::from(
+                slice_as_array_ref!(&key_material[..chacha::KEY_LEN], chacha::KEY_LEN).unwrap(),
             ),
         }
     }
@@ -166,7 +158,7 @@ fn make_counter(sequence_number: u32) -> chacha::Counter {
 }
 
 /// The length of key.
-pub const KEY_LEN: usize = chacha::KEY_LEN_IN_BYTES * 2;
+pub const KEY_LEN: usize = chacha::KEY_LEN * 2;
 
 /// The length in bytes of the `packet_length` field in a SSH packet.
 pub const PACKET_LENGTH_LEN: usize = 4; // 32 bits
