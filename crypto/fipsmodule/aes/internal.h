@@ -26,7 +26,7 @@ extern "C" {
 
 #if !defined(OPENSSL_NO_ASM)
 
-#if defined(OPENSSL_X86_64)
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 #define HWAES
 #define HWAES_ECB
 
