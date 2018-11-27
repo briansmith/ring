@@ -393,16 +393,7 @@ impl<M, E: ReductionEncoding> Elem<M, E> {
         let mut one = [0; MODULUS_MAX_LIMBS];
         one[0] = 1;
         let one = &one[..num_limbs]; // assert!(num_limbs <= MODULUS_MAX_LIMBS);
-        unsafe {
-            GFp_bn_mul_mont(
-                limbs.as_mut_ptr(),
-                limbs.as_ptr(),
-                one.as_ptr(),
-                m.limbs.as_ptr(),
-                &m.n0,
-                num_limbs,
-            )
-        }
+        limbs_mont_mul(&mut limbs, &one, &m.limbs, &m.n0);
         Elem {
             limbs,
             encoding: PhantomData,
@@ -457,16 +448,7 @@ fn elem_mul_<M, AF, BF>(
 where
     (AF, BF): ProductEncoding,
 {
-    unsafe {
-        GFp_bn_mul_mont(
-            b.limbs.as_mut_ptr(),
-            a.limbs.as_ptr(),
-            b.limbs.as_ptr(),
-            m.limbs.as_ptr(),
-            &m.n0,
-            m.limbs.len(),
-        );
-    }
+    limbs_mont_mul(&mut b.limbs, &a.limbs, &m.limbs, &m.n0);
     Elem {
         limbs: b.limbs,
         encoding: PhantomData,
@@ -530,16 +512,7 @@ fn elem_squared<M, E>(
 where
     (E, E): ProductEncoding,
 {
-    unsafe {
-        GFp_bn_mul_mont(
-            a.limbs.as_mut_ptr(),
-            a.limbs.as_ptr(),
-            a.limbs.as_ptr(),
-            m.limbs.as_ptr(),
-            &m.n0,
-            m.limbs.len(),
-        );
-    };
+    limbs_mont_square(&mut a.limbs, &m.limbs, &m.n0);
     Elem {
         limbs: a.limbs,
         encoding: PhantomData,
@@ -942,6 +915,35 @@ impl From<u64> for N0 {
         {
             N0([n0 as Limb, (n0 >> LIMB_BITS) as Limb])
         }
+    }
+}
+
+fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0) {
+    debug_assert_eq!(r.len(), m.len());
+    debug_assert_eq!(a.len(), m.len());
+    unsafe {
+        GFp_bn_mul_mont(
+            r.as_mut_ptr(),
+            r.as_ptr(),
+            a.as_ptr(),
+            m.as_ptr(),
+            n0,
+            r.len(),
+        )
+    }
+}
+
+fn limbs_mont_square(r: &mut [Limb], m: &[Limb], n0: &N0) {
+    debug_assert_eq!(r.len(), m.len());
+    unsafe {
+        GFp_bn_mul_mont(
+            r.as_mut_ptr(),
+            r.as_ptr(),
+            r.as_ptr(),
+            m.as_ptr(),
+            n0,
+            r.len(),
+        )
     }
 }
 
