@@ -140,12 +140,10 @@ void GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
   assert(key != NULL);
   assert(bits == 128 || bits == 256);
 
-#if defined(HWAES)
   if (hwaes_capable()) {
     (void) GFp_aes_hw_set_encrypt_key(user_key, bits, key);
     return;
   }
-#endif
 
 #if defined(VPAES)
 #if defined(BSAES)
@@ -166,12 +164,9 @@ void GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
 
 static aes_block_f aes_block(void) {
   // Keep this in sync with |GFp_AES_set_encrypt_key| and |aes_ctr|.
-
-#if defined(HWAES)
   if (hwaes_capable()) {
     return GFp_aes_hw_encrypt;
   }
-#endif
 
 #if defined(VPAES)
 #if defined(BSAES)
@@ -196,11 +191,9 @@ void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 static aes_ctr_f aes_ctr(void) {
   // Keep this in sync with |set_set_key| and |aes_block|.
 
-#if defined(HWAES)
   if (hwaes_capable()) {
     return GFp_aes_hw_ctr32_encrypt_blocks;
   }
-#endif
 
 #if defined(BSAES)
   if (bsaes_capable()) {
@@ -314,11 +307,15 @@ int GFp_aes_gcm_open(const uint8_t *ctx_buf, uint8_t *out, size_t in_out_len,
 
 
 int GFp_has_aes_hardware(void) {
-#if defined(HWAES) && (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
-  return hwaes_capable() && GFp_gcm_clmul_enabled();
-#elif defined(HWAES) && (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
-  return hwaes_capable() && GFp_is_ARMv8_PMULL_capable();
+  if (!hwaes_capable()) {
+    return 0;
+  }
+
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+  return GFp_gcm_clmul_enabled();
+#elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+  return GFp_is_ARMv8_PMULL_capable();
 #else
-  return 0;
+#error "GFp_has_aes_hardware not fully implemented for this target."
 #endif
 }
