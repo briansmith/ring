@@ -463,6 +463,7 @@ add_executable(
   hkdf/hkdf_test.cc
   hmac_extra/hmac_test.cc
   hrss/hrss_test.cc
+  impl_dispatch_test.cc
   lhash/lhash_test.cc
   obj/obj_test.cc
   pem/pem_test.cc

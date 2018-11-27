@@ -190,6 +190,21 @@ extern unsigned long OPENSSL_ppc64le_hwcap2;
 
 #endif  // OPENSSL_PPC64LE
 
+#if !defined(NDEBUG) && !defined(BORINGSSL_FIPS)
+// Runtime CPU dispatch testing support
+
+// BORINGSSL_function_hit is an array of flags. The following functions will
+// set these flags in non-FIPS builds if NDEBUG is not defined.
+//   0: aes_hw_ctr32_encrypt_blocks
+//   1: aes_hw_encrypt
+//   2: aesni_gcm_encrypt
+//   3: aes_hw_set_encrypt_key
+//   4: vpaes_encrypt
+//   5: vpaes_set_encrypt_key
+//   6: bsaes_ctr32_encrypt_blocks
+extern uint8_t BORINGSSL_function_hit[7];
+#endif  // !NDEBUG && !FIPS
+
 
 #if defined(__cplusplus)
 }  // extern C
