@@ -86,7 +86,7 @@ fn aead_poly1305(
         polyfill::u64_from_usize(ciphertext.len()).to_le(),
     ];
     ctx.update(polyfill::slice::u64_as_u8(&lengths));
-    ctx.sign(tag_out);
+    tag_out.copy_from_slice(&ctx.finish()[..]);
 }
 
 #[inline]

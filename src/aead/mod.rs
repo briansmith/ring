@@ -351,8 +351,10 @@ impl Eq for Algorithm {}
 /// The maximum length of a tag for the algorithms in this module.
 pub const MAX_TAG_LEN: usize = TAG_LEN;
 
+type Tag = [u8; TAG_LEN];
+
 // All the AEADs we support use 128-bit tags.
-const TAG_LEN: usize = poly1305::TAG_LEN;
+const TAG_LEN: usize = 16;
 
 // All the AEADs we support use 96-bit nonces.
 const NONCE_LEN: usize = 96 / 8;

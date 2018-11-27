@@ -29,7 +29,7 @@
 //!    http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.chacha20poly1305?annotate=HEAD
 //! [RFC 4253]: https://tools.ietf.org/html/rfc4253
 
-use super::poly1305;
+use super::{poly1305, TAG_LEN};
 use crate::{chacha, error};
 
 /// A key for sealing packets.
@@ -70,7 +70,7 @@ impl SealingKey {
 
         counter[0] = 0;
         let poly_key = poly1305::Key::derive_using_chacha(&self.key.k_2, &counter);
-        poly1305::sign(poly_key, plaintext_in_ciphertext_out, tag_out);
+        tag_out.copy_from_slice(&poly1305::sign(poly_key, plaintext_in_ciphertext_out)[..]);
     }
 }
 
@@ -167,9 +167,6 @@ fn make_counter(sequence_number: u32) -> chacha::Counter {
 
 /// The length of key.
 pub const KEY_LEN: usize = chacha::KEY_LEN_IN_BYTES * 2;
-
-/// The length of a tag.
-pub const TAG_LEN: usize = poly1305::TAG_LEN;
 
 /// The length in bytes of the `packet_length` field in a SSH packet.
 pub const PACKET_LENGTH_LEN: usize = 4; // 32 bits

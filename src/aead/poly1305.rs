@@ -15,31 +15,65 @@
 
 // TODO: enforce maximum input length.
 
+use super::Tag;
 use core;
 use crate::{bssl, c, chacha, constant_time, error, polyfill};
 
+/// A Poly1305 key.
+pub struct Key([u8; KEY_LEN]);
+
+impl Key {
+    pub fn derive_using_chacha(chacha20_key: &chacha::Key, counter: &chacha::Counter) -> Self {
+        let mut bytes = [0u8; KEY_LEN];
+        chacha::chacha20_xor_in_place(chacha20_key, counter, &mut bytes);
+        Key(bytes)
+    }
+
+    #[cfg(test)]
+    pub fn from_test_vector(bytes: &[u8; KEY_LEN]) -> Self { Key(*bytes) }
+}
+
+pub struct SigningContext {
+    opaque: Opaque,
+    nonce: Nonce,
+    buf: [u8; BLOCK_LEN],
+    buf_used: usize,
+    func: Funcs,
+}
+
+/// The memory manipulated by the assembly.
+///
+/// XXX: The `extern(C)` functions that are declared here as taking
+/// references to `Opaque` really take pointers to 8-byte-aligned
+/// arrays.
+/// TODO: Add `repr(transparent)` if/when `repr(transparent)` and
+/// `repr(align)` can be used together, to ensure this is safe.
+#[repr(C, align(8))]
+struct Opaque([u8; OPAQUE_LEN]);
+const OPAQUE_LEN: usize = 192;
+
 impl SigningContext {
     #[inline]
-    pub fn from_key(key: Key) -> SigningContext {
+    pub fn from_key(Key(key): Key) -> SigningContext {
         #[inline]
         fn read_u32(buf: &[u8]) -> u32 {
             polyfill::slice::u32_from_le_u8(slice_as_array_ref!(buf, 4).unwrap())
         }
 
-        let (key, nonce) = key.bytes.split_at(16);
-        let key = slice_as_array_ref!(key, 16).unwrap();
+        let (key, nonce) = key.split_at(16);
+        let key = DerivedKey(slice_as_array_ref!(key, 16).unwrap());
 
         let mut ctx = SigningContext {
             opaque: Opaque([0u8; OPAQUE_LEN]),
             // TODO: When we can get explicit alignment, make `nonce` an
             // aligned `u8[16]` and get rid of this `u8[16]` -> `u32[4]`
             // conversion.
-            nonce: [
+            nonce: Nonce([
                 read_u32(&nonce[0..4]),
                 read_u32(&nonce[4..8]),
                 read_u32(&nonce[8..12]),
                 read_u32(&nonce[12..16]),
-            ],
+            ]),
             buf: [0; BLOCK_LEN],
             buf_used: 0,
             func: Funcs {
@@ -93,7 +127,7 @@ impl SigningContext {
         }
     }
 
-    pub fn sign(mut self, tag_out: &mut Tag) {
+    pub fn finish(mut self) -> Tag {
         let SigningContext {
             opaque,
             nonce,
@@ -109,20 +143,21 @@ impl SigningContext {
             func.blocks(opaque, &buf[..], Pad::AlreadyPadded);
         }
 
-        func.emit(opaque, tag_out, nonce);
+        let mut tag = Default::default();
+        func.emit(opaque, &mut tag, nonce);
+        tag
     }
 }
 
 pub fn verify(key: Key, msg: &[u8], tag: &Tag) -> Result<(), error::Unspecified> {
-    let mut calculated_tag = [0u8; TAG_LEN];
-    sign(key, msg, &mut calculated_tag);
+    let calculated_tag = sign(key, msg);
     constant_time::verify_slices_are_equal(&calculated_tag[..], tag)
 }
 
-pub fn sign(key: Key, msg: &[u8], tag: &mut Tag) {
+pub fn sign(key: Key, msg: &[u8]) -> Tag {
     let mut ctx = SigningContext::from_key(key);
     ctx.update(msg);
-    ctx.sign(tag)
+    ctx.finish()
 }
 
 #[cfg(test)]
@@ -144,48 +179,15 @@ pub fn check_state_layout() {
     }
 }
 
-/// A Poly1305 key.
-pub struct Key {
-    bytes: KeyAndNonceBytes,
-}
-
-impl Key {
-    pub fn derive_using_chacha(chacha20_key: &chacha::Key, counter: &chacha::Counter) -> Key {
-        let mut bytes = [0u8; KEY_LEN];
-        chacha::chacha20_xor_in_place(chacha20_key, counter, &mut bytes);
-        Key { bytes }
-    }
-
-    #[cfg(test)]
-    pub fn from_test_vector(bytes: &[u8; KEY_LEN]) -> Key { Key { bytes: *bytes } }
-}
-
-type KeyAndNonceBytes = [u8; 2 * BLOCK_LEN];
-
-type KeyBytes = [u8; BLOCK_LEN];
-type Nonce = [u32; BLOCK_LEN / 4];
-
 /// The length of a `key`.
-pub const KEY_LEN: usize = 32;
+pub const KEY_LEN: usize = 2 * BLOCK_LEN;
 
-/// A Poly1305 tag.
-pub type Tag = [u8; TAG_LEN];
+struct DerivedKey<'a>(&'a [u8; BLOCK_LEN]);
 
-/// The length of a `Tag`.
-pub const TAG_LEN: usize = BLOCK_LEN;
+#[repr(transparent)]
+struct Nonce([u32; BLOCK_LEN / 4]);
 
 const BLOCK_LEN: usize = 16;
-
-/// The memory manipulated by the assembly.
-///
-/// XXX: The `extern(C)` functions that are declared here as taking
-/// references to `Opaque` really take pointers to 8-byte-aligned
-/// arrays.
-/// TODO: Add `repr(transparent)` if/when `repr(transparent)` and
-/// `repr(align)` can be used together, to ensure this is safe.
-#[repr(C, align(8))]
-struct Opaque([u8; OPAQUE_LEN]);
-const OPAQUE_LEN: usize = 192;
 
 fn assert_opaque_alignment(state: &Opaque) {
     assert_eq!(state.0.as_ptr() as usize % 8, 0);
@@ -201,8 +203,8 @@ struct Funcs {
 }
 
 #[inline]
-fn init(state: &mut Opaque, key: &KeyBytes, func: &mut Funcs) -> Result<(), error::Unspecified> {
-    Result::from(unsafe { GFp_poly1305_init_asm(state, key, func) })
+fn init(state: &mut Opaque, key: DerivedKey, func: &mut Funcs) -> Result<(), error::Unspecified> {
+    Result::from(unsafe { GFp_poly1305_init_asm(state, &key.0, func) })
 }
 
 #[repr(u32)]
@@ -229,17 +231,9 @@ impl Funcs {
     }
 }
 
-pub struct SigningContext {
-    opaque: Opaque,
-    nonce: [u32; 4],
-    buf: [u8; BLOCK_LEN],
-    buf_used: usize,
-    func: Funcs,
-}
-
 extern "C" {
     fn GFp_poly1305_init_asm(
-        state: &mut Opaque, key: &KeyBytes, out_func: &mut Funcs,
+        state: &mut Opaque, key: &[u8; BLOCK_LEN], out_func: &mut Funcs,
     ) -> bssl::Result;
     fn GFp_poly1305_blocks(state: &mut Opaque, input: *const u8, len: c::size_t, should_pad: Pad);
     fn GFp_poly1305_emit(state: &mut Opaque, mac: &mut Tag, nonce: &Nonce);
@@ -247,7 +241,7 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{super::TAG_LEN, *};
     use core;
     use crate::{error, test};
 
@@ -270,14 +264,12 @@ mod tests {
                 let key = Key::from_test_vector(&key);
                 let mut ctx = SigningContext::from_key(key);
                 ctx.update(&input);
-                let mut actual_mac = [0; TAG_LEN];
-                ctx.sign(&mut actual_mac);
+                let actual_mac = ctx.finish();
                 assert_eq!(&expected_mac[..], &actual_mac[..]);
             }
             {
                 let key = Key::from_test_vector(&key);
-                let mut actual_mac = [0; TAG_LEN];
-                sign(key, &input, &mut actual_mac);
+                let actual_mac = sign(key, &input);
                 assert_eq!(&expected_mac[..], &actual_mac[..]);
             }
             {
@@ -292,8 +284,7 @@ mod tests {
                 for chunk in input.chunks(1) {
                     ctx.update(chunk);
                 }
-                let mut actual_mac = [0u8; TAG_LEN];
-                ctx.sign(&mut actual_mac);
+                let actual_mac = ctx.finish();
                 assert_eq!(&expected_mac[..], &actual_mac[..]);
             }
 
@@ -334,8 +325,7 @@ mod tests {
             }
         }
 
-        let mut actual_mac = [0u8; TAG_LEN];
-        ctx.sign(&mut actual_mac);
+        let actual_mac = ctx.finish();
         assert_eq!(&expected_mac[..], &actual_mac);
 
         Ok(())
