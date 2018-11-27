@@ -257,6 +257,10 @@ impl<M> Modulus<M> {
         // n_mod_r = n % r. As explained in the documentation for `n0`, this is
         // done by taking the lowest `N0_LIMBS_USED` limbs of `n`.
         let n0 = {
+            extern "C" {
+                fn GFp_bn_neg_inv_mod_r_u64(n: u64) -> u64;
+            }
+
             // XXX: u64::from isn't guaranteed to be constant time.
             let mut n_mod_r: u64 = u64::from(n[0]);
 
@@ -456,6 +460,9 @@ where
 }
 
 fn elem_mul_by_2<M, AF>(a: &mut Elem<M, AF>, m: &PartialModulus<M>) {
+    extern "C" {
+        fn LIMBS_shl_mod(r: *mut Limb, a: *const Limb, m: *const Limb, num_limbs: c::size_t);
+    }
     unsafe {
         LIMBS_shl_mod(
             a.limbs.as_mut_ptr(),
@@ -487,6 +494,13 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
 pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
     a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>,
 ) -> Result<Elem<Smaller, RInverse>, error::Unspecified> {
+    extern "C" {
+        fn GFp_bn_from_montgomery_in_place(
+            r: *mut Limb, num_r: c::size_t, a: *mut Limb, num_a: c::size_t, n: *const Limb,
+            num_n: c::size_t, n0: &N0,
+        ) -> bssl::Result;
+    }
+
     let mut tmp = [0; MODULUS_MAX_LIMBS];
     let tmp = &mut tmp[..a.limbs.len()];
     tmp.copy_from_slice(&a.limbs);
@@ -531,6 +545,12 @@ pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
 // TODO: Document why this works for all Montgomery factors.
 #[cfg(feature = "rsa_signing")]
 pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
+    extern "C" {
+        // `r` and `a` may alias.
+        fn LIMBS_add_mod(
+            r: *mut Limb, a: *const Limb, b: *const Limb, m: *const Limb, num_limbs: c::size_t,
+        );
+    }
     unsafe {
         LIMBS_add_mod(
             a.limbs.as_mut_ptr(),
@@ -546,6 +566,12 @@ pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>) -> Elem<
 // TODO: Document why this works for all Montgomery factors.
 #[cfg(feature = "rsa_signing")]
 pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
+    extern "C" {
+        // `r` and `a` may alias.
+        fn LIMBS_sub_mod(
+            r: *mut Limb, a: *const Limb, b: *const Limb, m: *const Limb, num_limbs: c::size_t,
+        );
+    }
     unsafe {
         LIMBS_sub_mod(
             a.limbs.as_mut_ptr(),
@@ -769,6 +795,14 @@ impl<M: Prime> PrivateExponent<M> {
 pub fn elem_exp_consttime<M>(
     base: Elem<M, R>, exponent: &PrivateExponent<M>, m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
+    extern "C" {
+        // `r` and `a` may alias.
+        fn GFp_BN_mod_exp_mont_consttime(
+            r: *mut Limb, a_mont: *const Limb, p: *const Limb, one_mont: *const Limb,
+            n: *const Limb, num_limbs: c::size_t, n0: &N0,
+        ) -> bssl::Result;
+    }
+
     let mut r = Elem {
         limbs: base.limbs,
         encoding: PhantomData,
@@ -953,32 +987,6 @@ extern "C" {
         r: *mut Limb, a: *const Limb, b: *const Limb, n: *const Limb, n0: &N0, num_limbs: c::size_t,
     );
     fn GFp_bn_mul_mont_check_num_limbs(num_limbs: c::size_t) -> bssl::Result;
-
-    fn GFp_bn_neg_inv_mod_r_u64(n: u64) -> u64;
-
-    fn LIMBS_shl_mod(r: *mut Limb, a: *const Limb, m: *const Limb, num_limbs: c::size_t);
-}
-
-#[cfg(feature = "rsa_signing")]
-extern "C" {
-    fn GFp_bn_from_montgomery_in_place(
-        r: *mut Limb, num_r: c::size_t, a: *mut Limb, num_a: c::size_t, n: *const Limb,
-        num_n: c::size_t, n0: &N0,
-    ) -> bssl::Result;
-
-    // `r` and `a` may alias.
-    fn GFp_BN_mod_exp_mont_consttime(
-        r: *mut Limb, a_mont: *const Limb, p: *const Limb, one_mont: *const Limb, n: *const Limb,
-        num_limbs: c::size_t, n0: &N0,
-    ) -> bssl::Result;
-
-    // `r` and `a` may alias.
-    fn LIMBS_add_mod(
-        r: *mut Limb, a: *const Limb, b: *const Limb, m: *const Limb, num_limbs: c::size_t,
-    );
-    fn LIMBS_sub_mod(
-        r: *mut Limb, a: *const Limb, b: *const Limb, m: *const Limb, num_limbs: c::size_t,
-    );
 }
 
 #[cfg(test)]
