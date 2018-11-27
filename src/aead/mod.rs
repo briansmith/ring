@@ -27,8 +27,10 @@
 
 use crate::{constant_time, error, init, poly1305, polyfill};
 
-pub use self::chacha20_poly1305::CHACHA20_POLY1305;
-pub use self::aes_gcm::{AES_128_GCM, AES_256_GCM};
+pub use self::{
+    aes_gcm::{AES_128_GCM, AES_256_GCM},
+    chacha20_poly1305::CHACHA20_POLY1305,
+};
 
 /// A key for authenticating and decrypting (“opening”) AEAD-protected data.
 ///
@@ -51,8 +53,9 @@ impl OpeningKey {
     ///   [`crypto.aes.NewCipher`](https://golang.org/pkg/crypto/aes/#NewCipher)
     /// + [`crypto.cipher.NewGCM`](https://golang.org/pkg/crypto/cipher/#NewGCM)
     #[inline]
-    pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
-               -> Result<OpeningKey, error::Unspecified> {
+    pub fn new(
+        algorithm: &'static Algorithm, key_bytes: &[u8],
+    ) -> Result<OpeningKey, error::Unspecified> {
         Ok(OpeningKey {
             key: Key::new(algorithm, key_bytes)?,
         })
@@ -113,25 +116,31 @@ impl OpeningKey {
 /// C analog: `EVP_AEAD_CTX_open`
 ///
 /// Go analog: [`AEAD.Open`](https://golang.org/pkg/crypto/cipher/#AEAD)
-pub fn open_in_place<'a>(key: &OpeningKey, nonce: &[u8], ad: &[u8],
-                         in_prefix_len: usize,
-                         ciphertext_and_tag_modified_in_place: &'a mut [u8])
-                         -> Result<&'a mut [u8], error::Unspecified> {
+pub fn open_in_place<'a>(
+    key: &OpeningKey, nonce: &[u8], ad: &[u8], in_prefix_len: usize,
+    ciphertext_and_tag_modified_in_place: &'a mut [u8],
+) -> Result<&'a mut [u8], error::Unspecified> {
     let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
-    let ciphertext_and_tag_len =
-        ciphertext_and_tag_modified_in_place.len()
-                .checked_sub(in_prefix_len).ok_or(error::Unspecified)?;
-    let ciphertext_len =
-        ciphertext_and_tag_len.checked_sub(TAG_LEN).ok_or(error::Unspecified)?;
+    let ciphertext_and_tag_len = ciphertext_and_tag_modified_in_place
+        .len()
+        .checked_sub(in_prefix_len)
+        .ok_or(error::Unspecified)?;
+    let ciphertext_len = ciphertext_and_tag_len
+        .checked_sub(TAG_LEN)
+        .ok_or(error::Unspecified)?;
     check_per_nonce_max_bytes(key.key.algorithm, ciphertext_len)?;
     let (in_out, received_tag) =
-        ciphertext_and_tag_modified_in_place
-            .split_at_mut(in_prefix_len + ciphertext_len);
+        ciphertext_and_tag_modified_in_place.split_at_mut(in_prefix_len + ciphertext_len);
     let mut calculated_tag = [0u8; TAG_LEN];
-    (key.key.algorithm.open)(&key.key.ctx_buf, nonce, &ad, in_prefix_len,
-                             in_out, &mut calculated_tag)?;
-    if constant_time::verify_slices_are_equal(&calculated_tag, received_tag)
-            .is_err() {
+    (key.key.algorithm.open)(
+        &key.key.ctx_buf,
+        nonce,
+        &ad,
+        in_prefix_len,
+        in_out,
+        &mut calculated_tag,
+    )?;
+    if constant_time::verify_slices_are_equal(&calculated_tag, received_tag).is_err() {
         // Zero out the plaintext so that it isn't accidentally leaked or used
         // after verification fails. It would be safest if we could check the
         // tag before decrypting, but some `open` implementations interleave
@@ -162,8 +171,9 @@ impl SealingKey {
     ///   [`crypto.aes.NewCipher`](https://golang.org/pkg/crypto/aes/#NewCipher)
     /// + [`crypto.cipher.NewGCM`](https://golang.org/pkg/crypto/cipher/#NewGCM)
     #[inline]
-    pub fn new(algorithm: &'static Algorithm, key_bytes: &[u8])
-               -> Result<SealingKey, error::Unspecified> {
+    pub fn new(
+        algorithm: &'static Algorithm, key_bytes: &[u8],
+    ) -> Result<SealingKey, error::Unspecified> {
         Ok(SealingKey {
             key: Key::new(algorithm, key_bytes)?,
         })
@@ -197,15 +207,17 @@ impl SealingKey {
 /// C analog: `EVP_AEAD_CTX_seal`.
 ///
 /// Go analog: [`AEAD.Seal`](https://golang.org/pkg/crypto/cipher/#AEAD)
-pub fn seal_in_place(key: &SealingKey, nonce: &[u8], ad: &[u8],
-                     in_out: &mut [u8], out_suffix_capacity: usize)
-                     -> Result<usize, error::Unspecified> {
+pub fn seal_in_place(
+    key: &SealingKey, nonce: &[u8], ad: &[u8], in_out: &mut [u8], out_suffix_capacity: usize,
+) -> Result<usize, error::Unspecified> {
     if out_suffix_capacity < key.key.algorithm.tag_len() {
         return Err(error::Unspecified);
     }
     let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
-    let in_out_len =
-        in_out.len().checked_sub(out_suffix_capacity).ok_or(error::Unspecified)?;
+    let in_out_len = in_out
+        .len()
+        .checked_sub(out_suffix_capacity)
+        .ok_or(error::Unspecified)?;
     check_per_nonce_max_bytes(key.key.algorithm, in_out_len)?;
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
     let tag_out = slice_as_array_ref_mut!(tag_out, TAG_LEN)?;
@@ -260,12 +272,21 @@ impl Key {
 pub struct Algorithm {
     init: fn(ctx_buf: &mut [u8], key: &[u8]) -> Result<(), error::Unspecified>,
 
-    seal: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN], ad: &[u8],
-             in_out: &mut [u8], tag_out: &mut [u8; TAG_LEN])
-             -> Result<(), error::Unspecified>,
-    open: fn(ctx: &[u64; KEY_CTX_BUF_ELEMS], nonce: &[u8; NONCE_LEN],
-             ad: &[u8], in_prefix_len: usize, in_out: &mut [u8],
-             tag_out: &mut [u8; TAG_LEN]) -> Result<(), error::Unspecified>,
+    seal: fn(
+        ctx: &[u64; KEY_CTX_BUF_ELEMS],
+        nonce: &[u8; NONCE_LEN],
+        ad: &[u8],
+        in_out: &mut [u8],
+        tag_out: &mut [u8; TAG_LEN],
+    ) -> Result<(), error::Unspecified>,
+    open: fn(
+        ctx: &[u64; KEY_CTX_BUF_ELEMS],
+        nonce: &[u8; NONCE_LEN],
+        ad: &[u8],
+        in_prefix_len: usize,
+        in_out: &mut [u8],
+        tag_out: &mut [u8; TAG_LEN],
+    ) -> Result<(), error::Unspecified>,
 
     key_len: usize,
     id: AlgorithmID,
@@ -281,7 +302,7 @@ macro_rules! max_input_len {
         // Each of our AEADs use a 32-bit block counter so the maximum is the
         // largest input that will not overflow the counter.
         (((1u64 << 32) - $overhead_blocks_per_nonce) * $block_len)
-    }
+    };
 }
 
 impl Algorithm {
@@ -336,15 +357,13 @@ const TAG_LEN: usize = poly1305::TAG_LEN;
 // All the AEADs we support use 96-bit nonces.
 const NONCE_LEN: usize = 96 / 8;
 
-
-fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize)
-                             -> Result<(), error::Unspecified> {
+fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize) -> Result<(), error::Unspecified> {
     if polyfill::u64_from_usize(in_out_len) > alg.max_input_len {
         return Err(error::Unspecified);
     }
     Ok(())
 }
 
-pub mod chacha20_poly1305_openssh;
-mod chacha20_poly1305;
 mod aes_gcm;
+mod chacha20_poly1305;
+pub mod chacha20_poly1305_openssh;
