@@ -28,7 +28,7 @@ void GFp_aes_c_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 #endif
 
 #if !defined(OPENSSL_NO_ASM)
-#if defined(OPENSSL_X86_64)
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 #define HWAES
 
 static inline int hwaes_capable(void) {

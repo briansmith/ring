@@ -67,9 +67,10 @@
 # Goldmont	3.84/1.39	1.39	1.63	1.31	1.70
 # Bulldozer	5.80/0.98	1.05	1.24	0.93	1.23
 
-$PREFIX="aesni";	# if $PREFIX is set to "AES", the script
+$PREFIX="GFp_aes_hw";	# if $PREFIX is set to "AES", the script
 			# generates drop-in replacement for
 			# crypto/aes/asm/aes-586.pl:-)
+$AESNI_PREFIX="GFp_aes_hw";
 $inline=1;		# inline _aesni_[en|de]crypt
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
@@ -85,7 +86,7 @@ open OUT,">$output";
 &external_label("GFp_ia32cap_P");
 &static_label("key_const");
 
-if ($PREFIX eq "aesni")	{ $movekey=\&movups; }
+if ($PREFIX eq $AESNI_PREFIX)	{ $movekey=\&movups; }
 else			{ $movekey=\&movups; }
 
 $len="eax";
@@ -190,7 +191,7 @@ sub aesni_generate1	# fully unrolled loop
 
 # void $PREFIX_encrypt (const void *inp,void *out,const AES_KEY *key);
 &aesni_generate1("enc") if (!$inline);
-&function_begin_B("GFp_${PREFIX}_encrypt");
+&function_begin_B("${PREFIX}_encrypt");
 	&mov	("eax",&wparam(0));
 	&mov	($key,&wparam(2));
 	&movups	($inout0,&QWP(0,"eax"));
@@ -205,7 +206,7 @@ sub aesni_generate1	# fully unrolled loop
 	&movups	(&QWP(0,"eax"),$inout0);
 	&pxor	($inout0,$inout0);
 	&ret	();
-&function_end_B("GFp_${PREFIX}_encrypt");
+&function_end_B("${PREFIX}_encrypt");
 
 # _aesni_[en|de]cryptN are private interfaces, N denotes interleave
 # factor. Why 3x subroutine were originally used in loops? Even though
@@ -394,15 +395,15 @@ sub aesni_generate6
     &ret();
     &function_end_B("_aesni_${p}rypt6");
 }
-&aesni_generate2("enc") if ($PREFIX eq "aesni");
-&aesni_generate3("enc") if ($PREFIX eq "aesni");
-&aesni_generate4("enc") if ($PREFIX eq "aesni");
-&aesni_generate6("enc") if ($PREFIX eq "aesni");
+&aesni_generate2("enc") if ($PREFIX eq $AESNI_PREFIX);
+&aesni_generate3("enc") if ($PREFIX eq $AESNI_PREFIX);
+&aesni_generate4("enc") if ($PREFIX eq $AESNI_PREFIX);
+&aesni_generate6("enc") if ($PREFIX eq $AESNI_PREFIX);
 
-if ($PREFIX eq "aesni") {
+if ($PREFIX eq $AESNI_PREFIX) {
 
 ######################################################################
-# void GFp_aesni_ctr32_encrypt_blocks (const void *in, void *out,
+# void aes_hw_ctr32_encrypt_blocks (const void *in, void *out,
 #                                      size_t blocks, const AES_KEY *key,
 #                                      const char *ivec);
 #
@@ -417,7 +418,7 @@ if ($PREFIX eq "aesni") {
 #	64	2nd triplet of counter vector
 #	80	saved %esp
 
-&function_begin("GFp_aesni_ctr32_encrypt_blocks");
+&function_begin("${PREFIX}_ctr32_encrypt_blocks");
 	&mov	($inp,&wparam(0));
 	&mov	($out,&wparam(1));
 	&mov	($len,&wparam(2));
@@ -659,7 +660,7 @@ if ($PREFIX eq "aesni") {
 	&movdqa	(&QWP(64,"esp"),"xmm0");
 	&pxor	("xmm7","xmm7");
 	&mov	("esp",&DWP(80,"esp"));
-&function_end("GFp_aesni_ctr32_encrypt_blocks");
+&function_end("${PREFIX}_ctr32_encrypt_blocks");
 }
 
 ######################################################################
@@ -950,13 +951,13 @@ if ($PREFIX eq "aesni") {
 
 # int $PREFIX_set_encrypt_key (const unsigned char *userKey, int bits,
 #                              AES_KEY *key)
-&function_begin_B("GFp_${PREFIX}_set_encrypt_key");
+&function_begin_B("${PREFIX}_set_encrypt_key");
 	&mov	("eax",&wparam(0));
 	&mov	($rounds,&wparam(1));
 	&mov	($key,&wparam(2));
 	&call	("_aesni_set_encrypt_key");
 	&ret	();
-&function_end_B("GFp_${PREFIX}_set_encrypt_key");
+&function_end_B("${PREFIX}_set_encrypt_key");
 
 &set_label("key_const",64);
 &data_word(0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d);
