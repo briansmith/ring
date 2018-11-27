@@ -257,7 +257,7 @@ mod tests {
     // Adapted from BoringSSL's crypto/poly1305/poly1305_test.cc.
     #[test]
     pub fn test_poly1305() {
-        test::from_file("src/poly1305_test.txt", |section, test_case| {
+        test::from_file("src/aead/poly1305_test.txt", |section, test_case| {
             assert_eq!(section, "");
             let key = test_case.consume_bytes("Key");
             let key = slice_as_array_ref!(&key, KEY_LEN).unwrap();

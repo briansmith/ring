@@ -12,7 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{aead, chacha, error, poly1305, polyfill};
+use super::poly1305;
+use crate::{aead, chacha, error, polyfill};
 
 /// ChaCha20-Poly1305 as described in [RFC 7539].
 ///

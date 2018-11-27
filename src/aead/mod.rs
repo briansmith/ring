@@ -25,7 +25,7 @@
 //! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
-use crate::{constant_time, error, init, poly1305, polyfill};
+use crate::{constant_time, error, init, polyfill};
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
@@ -367,3 +367,4 @@ fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize) -> Result<(), e
 mod aes_gcm;
 mod chacha20_poly1305;
 pub mod chacha20_poly1305_openssh;
+mod poly1305;

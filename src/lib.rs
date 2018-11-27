@@ -119,7 +119,6 @@ mod init;
 mod limb;
 pub mod pbkdf2;
 mod pkcs8;
-mod poly1305;
 pub mod rand;
 
 #[cfg(feature = "use_heap")]
