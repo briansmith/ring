@@ -1113,24 +1113,6 @@ gcm_se_handler:
 	.rva	.Lgcm_enc_body,.Lgcm_enc_abort
 ___
 }
-}}} else {{{
-$code=<<___;	# assembler is too old
-.text
-
-.globl	GFp_aesni_gcm_encrypt
-.type	GFp_aesni_gcm_encrypt,\@abi-omnipotent
-GFp_aesni_gcm_encrypt:
-	xor	%eax,%eax
-	ret
-.size	GFp_aesni_gcm_encrypt,.-GFp_aesni_gcm_encrypt
-
-.globl	GFp_aesni_gcm_decrypt
-.type	GFp_aesni_gcm_decrypt,\@abi-omnipotent
-GFp_aesni_gcm_decrypt:
-	xor	%eax,%eax
-	ret
-.size	GFp_aesni_gcm_decrypt,.-GFp_aesni_gcm_decrypt
-___
 }}}
 
 $code =~ s/\`([^\`]*)\`/eval($1)/gem;
