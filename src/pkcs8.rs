@@ -82,44 +82,49 @@ pub(crate) fn unwrap_key_<'a>(
 ) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-            // Currently we only support algorithms that should only be encoded
-            // in v1 form, so reject v2 and any later form.
-            let require_public_key = match (der::small_nonnegative_integer(input)?, version) {
-                (0, Version::V1Only) => false,
-                (0, Version::V1OrV2) => false,
-                (1, Version::V1OrV2) | (1, Version::V2Only) => true,
-                _ => {
-                    return Err(error::Unspecified);
-                },
-            };
-
-            let actual_alg_id = der::expect_tag_and_get_value(input, der::Tag::Sequence)?;
-            if actual_alg_id != alg_id {
-                return Err(error::Unspecified);
-            }
-
-            let private_key = der::expect_tag_and_get_value(input, der::Tag::OctetString)?;
-
-            // Ignore any attributes that are present.
-            if input.peek(der::Tag::ContextSpecificConstructed0 as u8) {
-                let _ =
-                    der::expect_tag_and_get_value(input, der::Tag::ContextSpecificConstructed0)?;
-            }
-
-            let public_key = if require_public_key {
-                Some(der::nested(
-                    input,
-                    der::Tag::ContextSpecificConstructed1,
-                    error::Unspecified,
-                    der::bit_string_with_no_unused_bits,
-                )?)
-            } else {
-                None
-            };
-
-            Ok((private_key, public_key))
+            unwrap_key__(alg_id, version, input)
         })
     })
+}
+
+fn unwrap_key__<'a>(
+    alg_id: &[u8], version: Version, input: &mut untrusted::Reader<'a>,
+) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::Unspecified> {
+    // Currently we only support algorithms that should only be encoded
+    // in v1 form, so reject v2 and any later form.
+    let require_public_key = match (der::small_nonnegative_integer(input)?, version) {
+        (0, Version::V1Only) => false,
+        (0, Version::V1OrV2) => false,
+        (1, Version::V1OrV2) | (1, Version::V2Only) => true,
+        _ => {
+            return Err(error::Unspecified);
+        },
+    };
+
+    let actual_alg_id = der::expect_tag_and_get_value(input, der::Tag::Sequence)?;
+    if actual_alg_id != alg_id {
+        return Err(error::Unspecified);
+    }
+
+    let private_key = der::expect_tag_and_get_value(input, der::Tag::OctetString)?;
+
+    // Ignore any attributes that are present.
+    if input.peek(der::Tag::ContextSpecificConstructed0 as u8) {
+        let _ = der::expect_tag_and_get_value(input, der::Tag::ContextSpecificConstructed0)?;
+    }
+
+    let public_key = if require_public_key {
+        Some(der::nested(
+            input,
+            der::Tag::ContextSpecificConstructed1,
+            error::Unspecified,
+            der::bit_string_with_no_unused_bits,
+        )?)
+    } else {
+        None
+    };
+
+    Ok((private_key, public_key))
 }
 
 /// A generated PKCS#8 document.

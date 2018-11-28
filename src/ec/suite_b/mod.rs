@@ -157,35 +157,41 @@ pub(crate) fn key_pair_from_pkcs8(
     let (private_key, public_key) = ec_private_key.read_all(error::Unspecified, |input| {
         // https://tools.ietf.org/html/rfc5915#section-3
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-            let version = der::small_nonnegative_integer(input)?;
-            if version != 1 {
-                return Err(error::Unspecified);
-            }
-
-            let private_key = der::expect_tag_and_get_value(input, der::Tag::OctetString)?;
-
-            // [0] parameters (optional).
-            if input.peek(der::Tag::ContextSpecificConstructed0 as u8) {
-                let actual_alg_id =
-                    der::expect_tag_and_get_value(input, der::Tag::ContextSpecificConstructed0)?;
-                if actual_alg_id != template.curve_oid() {
-                    return Err(error::Unspecified);
-                }
-            }
-
-            // [1] publicKey. The RFC says it is optional, but we require it
-            // to be present.
-            let public_key = der::nested(
-                input,
-                der::Tag::ContextSpecificConstructed1,
-                error::Unspecified,
-                der::bit_string_with_no_unused_bits,
-            )?;
-
-            Ok((private_key, public_key))
+            key_pair_from_pkcs8_(template, input)
         })
     })?;
     key_pair_from_bytes(curve, private_key, public_key)
+}
+
+fn key_pair_from_pkcs8_<'a>(
+    template: &pkcs8::Template, input: &mut untrusted::Reader<'a>,
+) -> Result<(untrusted::Input<'a>, untrusted::Input<'a>), error::Unspecified> {
+    let version = der::small_nonnegative_integer(input)?;
+    if version != 1 {
+        return Err(error::Unspecified);
+    }
+
+    let private_key = der::expect_tag_and_get_value(input, der::Tag::OctetString)?;
+
+    // [0] parameters (optional).
+    if input.peek(der::Tag::ContextSpecificConstructed0 as u8) {
+        let actual_alg_id =
+            der::expect_tag_and_get_value(input, der::Tag::ContextSpecificConstructed0)?;
+        if actual_alg_id != template.curve_oid() {
+            return Err(error::Unspecified);
+        }
+    }
+
+    // [1] publicKey. The RFC says it is optional, but we require it
+    // to be present.
+    let public_key = der::nested(
+        input,
+        der::Tag::ContextSpecificConstructed1,
+        error::Unspecified,
+        der::bit_string_with_no_unused_bits,
+    )?;
+
+    Ok((private_key, public_key))
 }
 
 pub fn key_pair_from_bytes(

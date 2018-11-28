@@ -159,190 +159,195 @@ impl KeyPair {
     ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Br1.pdf
     pub fn from_der(input: untrusted::Input) -> Result<Self, error::Unspecified> {
         input.read_all(error::Unspecified, |input| {
-            der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-                let version = der::small_nonnegative_integer(input)?;
-                if version != 0 {
-                    return Err(error::Unspecified);
-                }
-                let n = der::positive_integer(input)?;
-                let e = der::positive_integer(input)?;
-                let d = der::positive_integer(input)?;
-                let p = der::positive_integer(input)?;
-                let q = der::positive_integer(input)?;
-                let dP = der::positive_integer(input)?;
-                let dQ = der::positive_integer(input)?;
-                let qInv = der::positive_integer(input)?;
+            der::nested(
+                input,
+                der::Tag::Sequence,
+                error::Unspecified,
+                Self::from_der_reader,
+            )
+        })
+    }
 
-                let (p, p_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(p)?;
-                let (q, q_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(q)?;
+    fn from_der_reader(input: &mut untrusted::Reader) -> Result<Self, error::Unspecified> {
+        let version = der::small_nonnegative_integer(input)?;
+        if version != 0 {
+            return Err(error::Unspecified);
+        }
+        let n = der::positive_integer(input)?;
+        let e = der::positive_integer(input)?;
+        let d = der::positive_integer(input)?;
+        let p = der::positive_integer(input)?;
+        let q = der::positive_integer(input)?;
+        let dP = der::positive_integer(input)?;
+        let dQ = der::positive_integer(input)?;
+        let qInv = der::positive_integer(input)?;
 
-                // Our implementation of CRT-based modular exponentiation used
-                // requires that `p > q` so swap them if `p < q`. If swapped,
-                // `qInv` is recalculated below. `p != q` is verified
-                // implicitly below, e.g. when `q_mod_p` is constructed.
-                let ((p, p_bits, dP), (q, q_bits, dQ, qInv)) = match q.verify_less_than(&p) {
-                    Ok(_) => ((p, p_bits, dP), (q, q_bits, dQ, Some(qInv))),
-                    Err(_) => {
-                        // TODO: verify `q` and `qInv` are inverses (mod p).
-                        ((q, q_bits, dQ), (p, p_bits, dP, None))
-                    },
-                };
+        let (p, p_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(p)?;
+        let (q, q_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(q)?;
 
-                // XXX: Some steps are done out of order, but the NIST steps
-                // are worded in such a way that it is clear that NIST intends
-                // for them to be done in order. TODO: Does this matter at all?
+        // Our implementation of CRT-based modular exponentiation used
+        // requires that `p > q` so swap them if `p < q`. If swapped,
+        // `qInv` is recalculated below. `p != q` is verified
+        // implicitly below, e.g. when `q_mod_p` is constructed.
+        let ((p, p_bits, dP), (q, q_bits, dQ, qInv)) = match q.verify_less_than(&p) {
+            Ok(_) => ((p, p_bits, dP), (q, q_bits, dQ, Some(qInv))),
+            Err(_) => {
+                // TODO: verify `q` and `qInv` are inverses (mod p).
+                ((q, q_bits, dQ), (p, p_bits, dP, None))
+            },
+        };
 
-                // 6.4.1.4.3/6.4.1.2.1 - Step 1.
+        // XXX: Some steps are done out of order, but the NIST steps
+        // are worded in such a way that it is clear that NIST intends
+        // for them to be done in order. TODO: Does this matter at all?
 
-                // Step 1.a is omitted, as explained above.
+        // 6.4.1.4.3/6.4.1.2.1 - Step 1.
 
-                // Step 1.b is omitted per above. Instead, we check that the
-                // public modulus is 2048 to
-                // `PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS` bits. XXX: The maximum
-                // limit of 4096 bits is primarily due to lack of testing of
-                // larger key sizes; see, in particular,
-                // https://www.mail-archive.com/openssl-dev@openssl.org/msg44586.html
-                // and
-                // https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html.
-                // Also, this limit might help with memory management decisions
-                // later.
+        // Step 1.a is omitted, as explained above.
 
-                // Step 1.c. We validate e >= 65537.
-                let public_key = verification::Key::from_modulus_and_exponent(
-                    n,
-                    e,
-                    bits::BitLength::from_usize_bits(2048),
-                    super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
-                    65537,
-                )?;
+        // Step 1.b is omitted per above. Instead, we check that the
+        // public modulus is 2048 to
+        // `PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS` bits. XXX: The maximum
+        // limit of 4096 bits is primarily due to lack of testing of
+        // larger key sizes; see, in particular,
+        // https://www.mail-archive.com/openssl-dev@openssl.org/msg44586.html
+        // and
+        // https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html.
+        // Also, this limit might help with memory management decisions
+        // later.
 
-                // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
+        // Step 1.c. We validate e >= 65537.
+        let public_key = verification::Key::from_modulus_and_exponent(
+            n,
+            e,
+            bits::BitLength::from_usize_bits(2048),
+            super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
+            65537,
+        )?;
 
-                // 6.4.1.4.3 Step 3.
+        // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 2.
 
-                // Step 3.a is done below, out of order.
-                // Step 3.b is unneeded since `n_bits` is derived here from `n`.
+        // 6.4.1.4.3 Step 3.
 
-                // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 4. (We don't need to
-                // recover the prime factors since they are already given.)
+        // Step 3.a is done below, out of order.
+        // Step 3.b is unneeded since `n_bits` is derived here from `n`.
 
-                // 6.4.1.4.3 - Step 5.
+        // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 4. (We don't need to
+        // recover the prime factors since they are already given.)
 
-                // Steps 5.a and 5.b are omitted, as explained above.
+        // 6.4.1.4.3 - Step 5.
 
-                // Step 5.c.
-                //
-                // TODO: First, stop if `p < (√2) * 2**((nBits/2) - 1)`.
-                //
-                // Second, stop if `p > 2**(nBits/2) - 1`.
-                let half_n_bits = public_key.n_bits.half_rounded_up();
-                if p_bits != half_n_bits {
-                    return Err(error::Unspecified);
-                }
+        // Steps 5.a and 5.b are omitted, as explained above.
 
-                // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
+        // Step 5.c.
+        //
+        // TODO: First, stop if `p < (√2) * 2**((nBits/2) - 1)`.
+        //
+        // Second, stop if `p > 2**(nBits/2) - 1`.
+        let half_n_bits = public_key.n_bits.half_rounded_up();
+        if p_bits != half_n_bits {
+            return Err(error::Unspecified);
+        }
 
-                // Steps 5.e and 5.f are omitted as explained above.
+        // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
 
-                // Step 5.g.
-                //
-                // TODO: First, stop if `q < (√2) * 2**((nBits/2) - 1)`.
-                //
-                // Second, stop if `q > 2**(nBits/2) - 1`.
-                if p_bits != q_bits {
-                    return Err(error::Unspecified);
-                }
+        // Steps 5.e and 5.f are omitted as explained above.
 
-                // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
+        // Step 5.g.
+        //
+        // TODO: First, stop if `q < (√2) * 2**((nBits/2) - 1)`.
+        //
+        // Second, stop if `q > 2**(nBits/2) - 1`.
+        if p_bits != q_bits {
+            return Err(error::Unspecified);
+        }
 
-                let q_mod_n_decoded = q.to_elem(&public_key.n)?;
+        // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
 
-                // TODO: Step 5.i
-                //
-                // 3.b is unneeded since `n_bits` is derived here from `n`.
+        let q_mod_n_decoded = q.to_elem(&public_key.n)?;
 
-                // 6.4.1.4.3 - Step 3.a (out of order).
-                //
-                // Verify that p * q == n. We restrict ourselves to modular
-                // multiplication. We rely on the fact that we've verified
-                // 0 < q < p < n. We check that q and p are close to sqrt(n)
-                // and then assume that these preconditions are enough to
-                // let us assume that checking p * q == 0 (mod n) is equivalent
-                // to checking p * q == n.
-                let q_mod_n = bigint::elem_mul(
-                    public_key.n.oneRR().as_ref(),
-                    q_mod_n_decoded.clone(),
-                    &public_key.n,
-                );
-                let p_mod_n = p.to_elem(&public_key.n)?;
-                let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, &public_key.n);
-                if !pq_mod_n.is_zero() {
-                    return Err(error::Unspecified);
-                }
+        // TODO: Step 5.i
+        //
+        // 3.b is unneeded since `n_bits` is derived here from `n`.
 
-                // 6.4.1.4.3/6.4.1.2.1 - Step 6.
+        // 6.4.1.4.3 - Step 3.a (out of order).
+        //
+        // Verify that p * q == n. We restrict ourselves to modular
+        // multiplication. We rely on the fact that we've verified
+        // 0 < q < p < n. We check that q and p are close to sqrt(n)
+        // and then assume that these preconditions are enough to
+        // let us assume that checking p * q == 0 (mod n) is equivalent
+        // to checking p * q == n.
+        let q_mod_n = bigint::elem_mul(
+            public_key.n.oneRR().as_ref(),
+            q_mod_n_decoded.clone(),
+            &public_key.n,
+        );
+        let p_mod_n = p.to_elem(&public_key.n)?;
+        let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, &public_key.n);
+        if !pq_mod_n.is_zero() {
+            return Err(error::Unspecified);
+        }
 
-                // Step 6.a, partial.
-                //
-                // First, validate `2**half_n_bits < d`. Since 2**half_n_bits
-                // has a bit length of half_n_bits + 1, this check gives us
-                // 2**half_n_bits <= d, and knowing d is odd makes the
-                // inequality strict.
-                let (d, d_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(d)?;
-                if !(half_n_bits < d_bits) {
-                    return Err(error::Unspecified);
-                }
-                // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we
-                // don't have a good way of calculating LCM, so it is omitted,
-                // as explained above.
-                d.verify_less_than_modulus(&public_key.n)?;
-                if !d.is_odd() {
-                    return Err(error::Unspecified);
-                }
+        // 6.4.1.4.3/6.4.1.2.1 - Step 6.
 
-                // Step 6.b is omitted as explained above.
+        // Step 6.a, partial.
+        //
+        // First, validate `2**half_n_bits < d`. Since 2**half_n_bits
+        // has a bit length of half_n_bits + 1, this check gives us
+        // 2**half_n_bits <= d, and knowing d is odd makes the
+        // inequality strict.
+        let (d, d_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(d)?;
+        if !(half_n_bits < d_bits) {
+            return Err(error::Unspecified);
+        }
+        // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we
+        // don't have a good way of calculating LCM, so it is omitted,
+        // as explained above.
+        d.verify_less_than_modulus(&public_key.n)?;
+        if !d.is_odd() {
+            return Err(error::Unspecified);
+        }
 
-                // 6.4.1.4.3 - Step 7.
+        // Step 6.b is omitted as explained above.
 
-                // Step 7.a.
-                let p = PrivatePrime::new(p, dP)?;
+        // 6.4.1.4.3 - Step 7.
 
-                // Step 7.b.
-                let q = PrivatePrime::new(q, dQ)?;
+        // Step 7.a.
+        let p = PrivatePrime::new(p, dP)?;
 
-                let q_mod_p = q.modulus.to_elem(&p.modulus);
+        // Step 7.b.
+        let q = PrivatePrime::new(q, dQ)?;
 
-                // Step 7.c.
-                let qInv = if let Some(qInv) = qInv {
-                    bigint::Elem::from_be_bytes_padded(qInv, &p.modulus)?
-                } else {
-                    // We swapped `p` and `q` above, so we need to calculate
-                    // `qInv`.  Step 7.f below will verify `qInv` is correct.
-                    let q_mod_p =
-                        bigint::elem_mul(p.modulus.oneRR().as_ref(), q_mod_p.clone(), &p.modulus);
-                    bigint::elem_inverse_consttime(q_mod_p, &p.modulus)?
-                };
+        let q_mod_p = q.modulus.to_elem(&p.modulus);
 
-                // Steps 7.d and 7.e are omitted per the documentation above,
-                // and because we don't (in the long term) have a good way to
-                // do modulo with an even modulus.
+        // Step 7.c.
+        let qInv = if let Some(qInv) = qInv {
+            bigint::Elem::from_be_bytes_padded(qInv, &p.modulus)?
+        } else {
+            // We swapped `p` and `q` above, so we need to calculate
+            // `qInv`.  Step 7.f below will verify `qInv` is correct.
+            let q_mod_p = bigint::elem_mul(p.modulus.oneRR().as_ref(), q_mod_p.clone(), &p.modulus);
+            bigint::elem_inverse_consttime(q_mod_p, &p.modulus)?
+        };
 
-                // Step 7.f.
-                let qInv = bigint::elem_mul(p.modulus.oneRR().as_ref(), qInv, &p.modulus);
-                bigint::verify_inverses_consttime(&qInv, q_mod_p, &p.modulus)?;
+        // Steps 7.d and 7.e are omitted per the documentation above,
+        // and because we don't (in the long term) have a good way to
+        // do modulo with an even modulus.
 
-                let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &public_key.n)
-                    .into_modulus::<QQ>()?;
+        // Step 7.f.
+        let qInv = bigint::elem_mul(p.modulus.oneRR().as_ref(), qInv, &p.modulus);
+        bigint::verify_inverses_consttime(&qInv, q_mod_p, &p.modulus)?;
 
-                Ok(Self {
-                    p,
-                    q,
-                    qInv,
-                    q_mod_n,
-                    qq,
-                    public_key,
-                })
-            })
+        let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &public_key.n).into_modulus::<QQ>()?;
+
+        Ok(Self {
+            p,
+            q,
+            qInv,
+            q_mod_n,
+            qq,
+            public_key,
         })
     }
 
