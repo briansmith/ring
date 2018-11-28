@@ -111,7 +111,8 @@ static inline int GFp_is_NEON_capable(void) {
   // applications will not use that buggy CPU but still support Android users
   // that do, even when the compiler is instructed to freely emit NEON code.
   // See https://crbug.com/341598 and https://crbug.com/606629.
-#if defined(__ARM_NEON__) && (!defined(OPENSSL_ARM) || !defined(__ANDROID__))
+#if (defined(__ARM_NEON__) || defined(__ARM_NEON)) \
+    && (!defined(OPENSSL_ARM) || !defined(__ANDROID__))
   return 1;
 #else
   return GFp_is_NEON_capable_at_runtime();
@@ -135,7 +136,8 @@ int GFp_is_ARMv8_PMULL_capable(void);
 #else
 
 static inline int GFp_is_NEON_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_NEON) || defined(__ARM_NEON__)
+#if defined(OPENSSL_STATIC_ARMCAP_NEON) || \
+    (defined(__ARM_NEON__) || defined(__ARM_NEON))
   return 1;
 #else
   return 0;
