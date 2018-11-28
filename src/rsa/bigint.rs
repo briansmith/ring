@@ -258,7 +258,7 @@ impl<M> Modulus<M> {
         // `n.len() < 256 / LIMB_BITS` so that 32-bit and 64-bit platforms
         // behave the same.
         if n.len() < 4 {
-            return Err(error::Unspecified);
+            return Err(error::KeyRejected::unexpected_error());
         }
         if limb::limbs_are_even_constant_time(&n) != LimbMask::False {
             return Err(error::KeyRejected::invalid_component());
@@ -286,6 +286,7 @@ impl<M> Modulus<M> {
             N0::from(unsafe { GFp_bn_neg_inv_mod_r_u64(n_mod_r) })
         };
 
+        let bits = limb::limbs_minimal_bits(&n.limbs);
         let oneRR = {
             let partial = PartialModulus {
                 limbs: &n.limbs,
@@ -293,10 +294,8 @@ impl<M> Modulus<M> {
                 m: PhantomData,
             };
 
-            One::newRR(&partial)
+            One::newRR(&partial, bits)
         };
-
-        let bits = limb::limbs_minimal_bits(&n);
 
         Ok((
             Modulus {
@@ -615,9 +614,8 @@ impl<M> One<M, RR> {
     // values, using `LIMB_BITS` here, rather than `N0_LIMBS_USED * LIMB_BITS`,
     // is correct because R**2 will still be a multiple of the latter as
     // `N0_LIMBS_USED` is either one or two.
-    fn newRR(m: &PartialModulus<M>) -> One<M, RR> {
-        let m_bits = limb::limbs_minimal_bits(&m.limbs).as_usize_bits();
-
+    fn newRR(m: &PartialModulus<M>, m_bits: bits::BitLength) -> One<M, RR> {
+        let m_bits = m_bits.as_usize_bits();
         let r = (m_bits + (LIMB_BITS - 1)) / LIMB_BITS * LIMB_BITS;
 
         // base = 2**(lg m - 1).
