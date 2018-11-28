@@ -96,24 +96,24 @@ fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
             5 /* record header */ + 8, /* explicit nonce */
             // The stitched AES-GCM x86-64 code works on 6-block (96 byte)
             // units. Some of the ChaCha20 code is even weirder.
-            15, // The maximum partial AES block.
-            16, // One AES block.
-            17, // One byte more than a full AES block.
-            31, // 2 AES blocks or 1 ChaCha20 block, minus 1.
-            32, // Two AES blocks, one ChaCha20 block.
-            33, // 2 AES blocks or 1 ChaCha20 block, plus 1.
-            47, // Three AES blocks - 1.
-            48, // Three AES blocks.
-            49, // Three AES blocks + 1.
-            63, // Four AES blocks or two ChaCha20 blocks, minus 1.
-            64, // Four AES blocks or two ChaCha20 blocks.
-            65, // Four AES blocks or two ChaCha20 blocks, plus 1.
-            79, // Five AES blocks, minus 1.
-            80, // Five AES blocks.
-            81, // Five AES blocks, plus 1.
-            95, // Six AES blocks or three ChaCha20 blocks, minus 1.
-            96, // Six AES blocks or three ChaCha20 blocks.
-            97, // Six AES blocks or three ChaCha20 blocks, plus 1.
+            15,  // The maximum partial AES block.
+            16,  // One AES block.
+            17,  // One byte more than a full AES block.
+            31,  // 2 AES blocks or 1 ChaCha20 block, minus 1.
+            32,  // Two AES blocks, one ChaCha20 block.
+            33,  // 2 AES blocks or 1 ChaCha20 block, plus 1.
+            47,  // Three AES blocks - 1.
+            48,  // Three AES blocks.
+            49,  // Three AES blocks + 1.
+            63,  // Four AES blocks or two ChaCha20 blocks, minus 1.
+            64,  // Four AES blocks or two ChaCha20 blocks.
+            65,  // Four AES blocks or two ChaCha20 blocks, plus 1.
+            79,  // Five AES blocks, minus 1.
+            80,  // Five AES blocks.
+            81,  // Five AES blocks, plus 1.
+            95,  // Six AES blocks or three ChaCha20 blocks, minus 1.
+            96,  // Six AES blocks or three ChaCha20 blocks.
+            97,  // Six AES blocks or three ChaCha20 blocks, plus 1.
             111, // Seven AES blocks, minus 1.
             112, // Seven AES blocks.
             113, // Seven AES blocks, plus 1.
