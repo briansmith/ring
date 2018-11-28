@@ -53,16 +53,11 @@ static inline int hwaes_capable(void) {
 
 #if defined(HWAES)
 
-int aes_hw_set_encrypt_key(const uint8_t *user_key, const int bits,
-                           AES_KEY *key);
-int aes_hw_set_decrypt_key(const uint8_t *user_key, const int bits,
-                           AES_KEY *key);
-void aes_hw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void aes_hw_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void aes_hw_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
-                        const AES_KEY *key, uint8_t *ivec, const int enc);
-void aes_hw_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
-                                 const AES_KEY *key, const uint8_t ivec[16]);
+int GFp_aes_hw_set_encrypt_key(const uint8_t *user_key, const int bits,
+                               AES_KEY *key);
+void GFp_aes_hw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+void GFp_aes_hw_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
+                                     const AES_KEY *key, const uint8_t ivec[16]);
 
 #endif /* HWAES */
 
