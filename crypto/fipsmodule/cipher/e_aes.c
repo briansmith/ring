@@ -87,7 +87,6 @@ int GFp_aes_gcm_seal(const uint8_t *ctx_buf, uint8_t *in_out, size_t in_out_len,
 void GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
                              AES_KEY *key);
 void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-int GFp_has_aes_hardware(void);
 
 
 #if !defined(GFp_C_AES)
@@ -303,19 +302,4 @@ int GFp_aes_gcm_open(const uint8_t *ctx_buf, uint8_t *out, size_t in_out_len,
   }
   GFp_gcm128_tag(&gcm, tag_out);
   return 1;
-}
-
-
-int GFp_has_aes_hardware(void) {
-  if (!hwaes_capable()) {
-    return 0;
-  }
-
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-  return GFp_gcm_clmul_enabled();
-#elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
-  return GFp_is_ARMv8_PMULL_capable();
-#else
-#error "GFp_has_aes_hardware not fully implemented for this target."
-#endif
 }
