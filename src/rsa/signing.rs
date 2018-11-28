@@ -185,10 +185,10 @@ impl KeyPair {
         let (p, p_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(p)?;
         let (q, q_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(q)?;
 
-        // Our implementation of CRT-based modular exponentiation used
-        // requires that `p > q` so swap them if `p < q`. If swapped,
-        // `qInv` is recalculated below. `p != q` is verified
-        // implicitly below, e.g. when `q_mod_p` is constructed.
+        // Our implementation of CRT-based modular exponentiation used requires
+        // that `p > q` so swap them if `p < q`. If swapped, `qInv` is
+        // recalculated below. `p != q` is verified implicitly below, e.g. when
+        // `q_mod_p` is constructed.
         let ((p, p_bits, dP), (q, q_bits, dQ, qInv)) = match q.verify_less_than(&p) {
             Ok(_) => ((p, p_bits, dP), (q, q_bits, dQ, Some(qInv))),
             Err(_) => {
@@ -197,24 +197,22 @@ impl KeyPair {
             },
         };
 
-        // XXX: Some steps are done out of order, but the NIST steps
-        // are worded in such a way that it is clear that NIST intends
-        // for them to be done in order. TODO: Does this matter at all?
+        // XXX: Some steps are done out of order, but the NIST steps are worded
+        // in such a way that it is clear that NIST intends for them to be done
+        // in order. TODO: Does this matter at all?
 
         // 6.4.1.4.3/6.4.1.2.1 - Step 1.
 
         // Step 1.a is omitted, as explained above.
 
-        // Step 1.b is omitted per above. Instead, we check that the
-        // public modulus is 2048 to
-        // `PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS` bits. XXX: The maximum
-        // limit of 4096 bits is primarily due to lack of testing of
-        // larger key sizes; see, in particular,
+        // Step 1.b is omitted per above. Instead, we check that the public
+        // modulus is 2048 to `PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS` bits.
+        // XXX: The maximum limit of 4096 bits is primarily due to lack of
+        // testing of larger key sizes; see, in particular,
         // https://www.mail-archive.com/openssl-dev@openssl.org/msg44586.html
         // and
         // https://www.mail-archive.com/openssl-dev@openssl.org/msg44759.html.
-        // Also, this limit might help with memory management decisions
-        // later.
+        // Also, this limit might help with memory management decisions later.
 
         // Step 1.c. We validate e >= 65537.
         let public_key = verification::Key::from_modulus_and_exponent(
@@ -232,8 +230,8 @@ impl KeyPair {
         // Step 3.a is done below, out of order.
         // Step 3.b is unneeded since `n_bits` is derived here from `n`.
 
-        // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 4. (We don't need to
-        // recover the prime factors since they are already given.)
+        // 6.4.1.4.3 says to skip 6.4.1.2.1 Step 4. (We don't need to recover
+        // the prime factors since they are already given.)
 
         // 6.4.1.4.3 - Step 5.
 
@@ -274,10 +272,9 @@ impl KeyPair {
         //
         // Verify that p * q == n. We restrict ourselves to modular
         // multiplication. We rely on the fact that we've verified
-        // 0 < q < p < n. We check that q and p are close to sqrt(n)
-        // and then assume that these preconditions are enough to
-        // let us assume that checking p * q == 0 (mod n) is equivalent
-        // to checking p * q == n.
+        // 0 < q < p < n. We check that q and p are close to sqrt(n) and then
+        // assume that these preconditions are enough to let us assume that
+        // checking p * q == 0 (mod n) is equivalent to checking p * q == n.
         let q_mod_n = bigint::elem_mul(
             public_key.n.oneRR().as_ref(),
             q_mod_n_decoded.clone(),
@@ -293,17 +290,15 @@ impl KeyPair {
 
         // Step 6.a, partial.
         //
-        // First, validate `2**half_n_bits < d`. Since 2**half_n_bits
-        // has a bit length of half_n_bits + 1, this check gives us
-        // 2**half_n_bits <= d, and knowing d is odd makes the
-        // inequality strict.
+        // First, validate `2**half_n_bits < d`. Since 2**half_n_bits has a bit
+        // length of half_n_bits + 1, this check gives us 2**half_n_bits <= d,
+        // and knowing d is odd makes the inequality strict.
         let (d, d_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(d)?;
         if !(half_n_bits < d_bits) {
             return Err(error::Unspecified);
         }
-        // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we
-        // don't have a good way of calculating LCM, so it is omitted,
-        // as explained above.
+        // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we don't have
+        // a good way of calculating LCM, so it is omitted, as explained above.
         d.verify_less_than_modulus(&public_key.n)?;
         if !d.is_odd() {
             return Err(error::Unspecified);
@@ -325,15 +320,15 @@ impl KeyPair {
         let qInv = if let Some(qInv) = qInv {
             bigint::Elem::from_be_bytes_padded(qInv, &p.modulus)?
         } else {
-            // We swapped `p` and `q` above, so we need to calculate
-            // `qInv`.  Step 7.f below will verify `qInv` is correct.
+            // We swapped `p` and `q` above, so we need to calculate `qInv`.
+            // Step 7.f below will verify `qInv` is correct.
             let q_mod_p = bigint::elem_mul(p.modulus.oneRR().as_ref(), q_mod_p.clone(), &p.modulus);
             bigint::elem_inverse_consttime(q_mod_p, &p.modulus)?
         };
 
-        // Steps 7.d and 7.e are omitted per the documentation above,
-        // and because we don't (in the long term) have a good way to
-        // do modulo with an even modulus.
+        // Steps 7.d and 7.e are omitted per the documentation above, and
+        // because we don't (in the long term) have a good way to do modulo
+        // with an even modulus.
 
         // Step 7.f.
         let qInv = bigint::elem_mul(p.modulus.oneRR().as_ref(), qInv, &p.modulus);
