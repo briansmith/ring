@@ -47,14 +47,18 @@ use core::{
     ops::{Deref, DerefMut},
 };
 use crate::{
-    bits, bssl, c, error,
+    bits, c, error,
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
     untrusted,
 };
+
 use std;
 
 #[cfg(any(test, feature = "rsa_signing"))]
 use constant_time;
+
+#[cfg(feature = "rsa_signing")]
+use bssl;
 
 pub unsafe trait Prime {}
 
@@ -248,8 +252,14 @@ impl<M> Modulus<M> {
         if n.len() > MODULUS_MAX_LIMBS {
             return Err(error::KeyRejected::too_large());
         }
-        Result::from(unsafe { GFp_bn_mul_mont_check_num_limbs(n.len()) })
-            .map_err(|error::Unspecified| error::KeyRejected::too_small())?;
+        // The x86 implementation of `GFp_bn_mul_mont`, at least, requires at
+        // least 4 limbs. For a long time we have required 4 limbs for all
+        // targets, though this may be unnecessary. TODO: Replace this with
+        // `n.len() < 256 / LIMB_BITS` so that 32-bit and 64-bit platforms
+        // behave the same.
+        if n.len() < 4 {
+            return Err(error::Unspecified);
+        }
         if limb::limbs_are_even_constant_time(&n) != LimbMask::False {
             return Err(error::KeyRejected::invalid_component());
         }
@@ -1228,7 +1238,6 @@ extern "C" {
     fn GFp_bn_mul_mont(
         r: *mut Limb, a: *const Limb, b: *const Limb, n: *const Limb, n0: &N0, num_limbs: c::size_t,
     );
-    fn GFp_bn_mul_mont_check_num_limbs(num_limbs: c::size_t) -> bssl::Result;
 }
 
 #[cfg(test)]

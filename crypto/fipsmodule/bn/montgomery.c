@@ -161,11 +161,3 @@ int GFp_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
   }
   return 1;
 }
-
-int GFp_bn_mul_mont_check_num_limbs(size_t num_limbs) {
-  // GFp_bn_mul_mont requires at least four limbs, at least for x86.
-  if (num_limbs < 4) {
-    return 0;
-  }
-  return 1;
-}

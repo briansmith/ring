@@ -189,7 +189,6 @@ OPENSSL_COMPILE_ASSERT(sizeof(int) == sizeof(size_t) ||
                        int_and_size_t_abi_mismatch);
 void GFp_bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                      const BN_ULONG *np, const BN_ULONG *n0, size_t num);
-int GFp_bn_mul_mont_check_num_limbs(size_t top);
 
 static inline void bn_umult_lohi(BN_ULONG *low_out, BN_ULONG *high_out,
                                  BN_ULONG a, BN_ULONG b) {
