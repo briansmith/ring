@@ -48,6 +48,11 @@ pub fn digest_scalar(ops: &ScalarOps, msg: &digest::Digest) -> Scalar {
     digest_scalar_(ops, msg.as_ref())
 }
 
+#[cfg(test)]
+pub(crate) fn digest_bytes_scalar(ops: &ScalarOps, digest: &[u8]) -> Scalar {
+    digest_scalar_(ops, digest)
+}
+
 // This is a separate function solely so that we can test specific digest
 // values like all-zero values and values larger than `n`.
 fn digest_scalar_(ops: &ScalarOps, digest: &[u8]) -> Scalar {
@@ -69,7 +74,7 @@ fn digest_scalar_(ops: &ScalarOps, digest: &[u8]) -> Scalar {
 
 #[cfg(test)]
 mod tests {
-    use super::digest_scalar_;
+    use super::digest_bytes_scalar;
     use crate::{digest, test};
     use ec::suite_b::ops::*;
     use untrusted;
@@ -110,7 +115,7 @@ mod tests {
                 )
                 .unwrap();
 
-                let actual = digest_scalar_(ops.scalar_ops, &input);
+                let actual = digest_bytes_scalar(ops.scalar_ops, &input);
 
                 assert_eq!(actual.limbs[..num_limbs], expected.limbs[..num_limbs]);
 

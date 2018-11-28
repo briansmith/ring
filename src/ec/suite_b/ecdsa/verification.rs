@@ -46,6 +46,25 @@ impl signature::VerificationAlgorithm for Algorithm {
     fn verify(
         &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
+        let e = {
+            // NSA Guide Step 2: "Use the selected hash function to compute H =
+            // Hash(M)."
+            let h = digest::digest(self.digest_alg, msg.as_slice_less_safe());
+
+            // NSA Guide Step 3: "Convert the bit string H to an integer e as
+            // described in Appendix B.2."
+            digest_scalar(self.ops.scalar_ops, &h)
+        };
+
+        self.verify_digest(public_key, e, signature)
+    }
+}
+
+impl Algorithm {
+    /// This is intentionally not public.
+    fn verify_digest(
+        &self, public_key: untrusted::Input, e: Scalar, signature: untrusted::Input,
+    ) -> Result<(), error::Unspecified> {
         // NSA Suite B Implementer's Guide to ECDSA Section 3.4.2.
 
         let public_key_ops = self.ops.public_key_ops;
@@ -78,16 +97,6 @@ impl signature::VerificationAlgorithm for Algorithm {
         // [1, n − 1], output INVALID."
         let r = scalar_parse_big_endian_variable(public_key_ops.common, AllowZero::No, r)?;
         let s = scalar_parse_big_endian_variable(public_key_ops.common, AllowZero::No, s)?;
-
-        let e = {
-            // NSA Guide Step 2: "Use the selected hash function to compute H =
-            // Hash(M)."
-            let h = digest::digest(self.digest_alg, msg.as_slice_less_safe());
-
-            // NSA Guide Step 3: "Convert the bit string H to an integer e as
-            // described in Appendix B.2."
-            digest_scalar(scalar_ops, &h)
-        };
 
         // NSA Guide Step 4: "Compute w = s**−1 mod n, using the routine in
         // Appendix B.1."
@@ -253,3 +262,53 @@ pub static ECDSA_P384_SHA384_ASN1: Algorithm = Algorithm {
     split_rs: split_rs_asn1,
     id: AlgorithmID::ECDSA_P384_SHA384_ASN1,
 };
+
+#[cfg(test)]
+mod tests {
+    use crate::test;
+    use super::*;
+    use std;
+
+    #[test]
+    fn test_digest_based_test_vectors() {
+        test::from_file("crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt", |section, test_case| {
+            assert_eq!(section, "");
+
+            let curve_name = test_case.consume_string("Curve");
+
+            let public_key = {
+                let mut public_key = std::vec::Vec::new();
+                public_key.push(0x04);
+                public_key.extend(&test_case.consume_bytes("X"));
+                public_key.extend(&test_case.consume_bytes("Y"));
+                public_key
+            };
+
+            let digest = test_case.consume_bytes("Digest");
+
+            let sig = {
+                let mut sig = std::vec::Vec::new();
+                sig.extend(&test_case.consume_bytes("R"));
+                sig.extend(&test_case.consume_bytes("S"));
+                sig
+            };
+
+            let invalid = test_case.consume_optional_string("Invalid");
+
+            let alg = match curve_name.as_str() {
+                "P-256" => &ECDSA_P256_SHA256_FIXED,
+                "P-384" => &ECDSA_P384_SHA384_FIXED,
+                _ => {
+                    panic!("Unsupported curve: {}", curve_name);
+                },
+            };
+
+            let digest = super::super::digest_scalar::digest_bytes_scalar(&alg.ops.scalar_ops, &digest[..]);
+            let actual_result = alg.verify_digest(
+                untrusted::Input::from(&public_key[..]), digest, untrusted::Input::from(&sig[..]));
+            assert_eq!(actual_result.is_ok(), invalid.is_none());
+
+            Ok(())
+        });
+    }
+}
