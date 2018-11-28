@@ -428,6 +428,7 @@ ___
 $code.=<<___;
 #ifndef	__KERNEL__
 .comm	GFp_armcap_P,4,4
+.hidden	GFp_armcap_P
 #endif
 ___
 
