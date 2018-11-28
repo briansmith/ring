@@ -385,11 +385,14 @@ impl<M: Prime + Clone> PrivatePrime<M> {
     /// Constructs a `PrivatePrime` from the private prime `p` and `dP` where
     /// dP == d % (p - 1).
     fn new(p: bigint::Nonnegative, dP: untrusted::Input) -> Result<Self, KeyRejected> {
-        let p = bigint::Modulus::from(p)?;
+        let (p, p_bits) = bigint::Modulus::from_nonnegative_with_bit_length(p)?;
+        if p_bits.as_usize_bits() % 512 != 0 {
+            return Err(error::KeyRejected::private_modulus_len_not_multiple_of_512_bits());
+        }
 
         // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Steps 7.a & 7.b.
         let dP = bigint::PrivateExponent::from_be_bytes_padded(dP, &p)
-            .map_err(|error::Unspecified| KeyRejected::invalid_component())?;
+            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
         // XXX: Steps 7.d and 7.e are omitted. We don't check that
         // `dP == d % (p - 1)` because we don't (in the long term) have a good

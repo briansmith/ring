@@ -230,12 +230,13 @@ impl<M> Modulus<M> {
         input: untrusted::Input,
     ) -> Result<(Self, bits::BitLength), error::KeyRejected> {
         let limbs = BoxedLimbs::positive_minimal_width_from_be_bytes(input)?;
-        let bits = limb::limbs_minimal_bits(&limbs);
-        Ok((Self::from_boxed_limbs(limbs)?, bits))
+        Self::from_boxed_limbs(limbs)
     }
 
     #[cfg(feature = "rsa_signing")]
-    pub fn from(n: Nonnegative) -> Result<Self, error::KeyRejected> {
+    pub fn from_nonnegative_with_bit_length(
+        n: Nonnegative,
+    ) -> Result<(Self, bits::BitLength), error::KeyRejected> {
         let limbs = BoxedLimbs {
             limbs: n.limbs.into_boxed_slice(),
             m: PhantomData,
@@ -243,7 +244,7 @@ impl<M> Modulus<M> {
         Self::from_boxed_limbs(limbs)
     }
 
-    fn from_boxed_limbs(n: BoxedLimbs<M>) -> Result<Self, error::KeyRejected> {
+    fn from_boxed_limbs(n: BoxedLimbs<M>) -> Result<(Self, bits::BitLength), error::KeyRejected> {
         if n.len() > MODULUS_MAX_LIMBS {
             return Err(error::KeyRejected::too_large());
         }
@@ -285,11 +286,16 @@ impl<M> Modulus<M> {
             One::newRR(&partial)
         };
 
-        Ok(Modulus {
-            limbs: n,
-            n0,
-            oneRR,
-        })
+        let bits = limb::limbs_minimal_bits(&n);
+
+        Ok((
+            Modulus {
+                limbs: n,
+                n0,
+                oneRR,
+            },
+            bits,
+        ))
     }
 
     #[inline]
@@ -430,7 +436,9 @@ impl<M> Elem<M, Unencoded> {
 
     #[cfg(feature = "rsa_signing")]
     pub fn into_modulus<MM>(self) -> Result<Modulus<MM>, error::KeyRejected> {
-        Modulus::from_boxed_limbs(BoxedLimbs::minimal_width_from_unpadded(&self.limbs))
+        let (m, _bits) =
+            Modulus::from_boxed_limbs(BoxedLimbs::minimal_width_from_unpadded(&self.limbs))?;
+        Ok(m)
     }
 
     #[cfg(feature = "rsa_signing")]

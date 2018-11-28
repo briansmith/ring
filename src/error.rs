@@ -158,6 +158,11 @@ impl KeyRejected {
 
     pub(crate) fn wrong_algorithm() -> Self { KeyRejected("WrongAlgorithm") }
 
+    #[cfg(feature = "rsa_signing")]
+    pub(crate) fn private_modulus_len_not_multiple_of_512_bits() -> Self {
+        KeyRejected("PrivateModulusLenNotMultipleOf512Bits")
+    }
+
     pub(crate) fn unexpected_error() -> Self { KeyRejected("UnexpectedError") }
 }
 
