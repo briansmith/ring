@@ -33,7 +33,7 @@ impl Key {
     pub fn from_test_vector(bytes: &[u8; KEY_LEN]) -> Self { Key(*bytes) }
 }
 
-pub struct SigningContext {
+pub struct Context {
     opaque: Opaque,
     nonce: Nonce,
     buf: [u8; BLOCK_LEN],
@@ -52,9 +52,9 @@ pub struct SigningContext {
 struct Opaque([u8; OPAQUE_LEN]);
 const OPAQUE_LEN: usize = 192;
 
-impl SigningContext {
+impl Context {
     #[inline]
-    pub fn from_key(Key(key): Key) -> SigningContext {
+    pub fn from_key(Key(key): Key) -> Context {
         extern "C" {
             fn GFp_poly1305_blocks(
                 state: &mut Opaque, input: *const u8, len: c::size_t, should_pad: Pad,
@@ -70,7 +70,7 @@ impl SigningContext {
         let (key, nonce) = key.split_at(16);
         let key = DerivedKey(slice_as_array_ref!(key, 16).unwrap());
 
-        let mut ctx = SigningContext {
+        let mut ctx = Context {
             opaque: Opaque([0u8; OPAQUE_LEN]),
             // TODO: When we can get explicit alignment, make `nonce` an
             // aligned `u8[16]` and get rid of this `u8[16]` -> `u32[4]`
@@ -101,7 +101,7 @@ impl SigningContext {
     }
 
     pub fn update(&mut self, mut input: &[u8]) {
-        let SigningContext {
+        let Context {
             opaque,
             buf,
             buf_used,
@@ -135,7 +135,7 @@ impl SigningContext {
     }
 
     pub fn finish(mut self) -> Tag {
-        let SigningContext {
+        let Context {
             opaque,
             nonce,
             buf,
@@ -162,7 +162,7 @@ pub fn verify(key: Key, msg: &[u8], tag: &Tag) -> Result<(), error::Unspecified>
 }
 
 pub fn sign(key: Key, msg: &[u8]) -> Tag {
-    let mut ctx = SigningContext::from_key(key);
+    let mut ctx = Context::from_key(key);
     ctx.update(msg);
     ctx.finish()
 }
@@ -266,7 +266,7 @@ mod tests {
             // Test single-shot operation.
             {
                 let key = Key::from_test_vector(&key);
-                let mut ctx = SigningContext::from_key(key);
+                let mut ctx = Context::from_key(key);
                 ctx.update(&input);
                 let actual_mac = ctx.finish();
                 assert_eq!(&expected_mac[..], &actual_mac[..]);
@@ -284,7 +284,7 @@ mod tests {
             // Test streaming byte-by-byte.
             {
                 let key = Key::from_test_vector(&key);
-                let mut ctx = SigningContext::from_key(key);
+                let mut ctx = Context::from_key(key);
                 for chunk in input.chunks(1) {
                     ctx.update(chunk);
                 }
@@ -305,7 +305,7 @@ mod tests {
         excess: usize, key: &[u8; KEY_LEN], input: &[u8], expected_mac: &[u8; TAG_LEN],
     ) -> Result<(), error::Unspecified> {
         let key = Key::from_test_vector(&key);
-        let mut ctx = SigningContext::from_key(key);
+        let mut ctx = Context::from_key(key);
 
         // Some implementations begin in non-SIMD mode and upgrade on demand.
         // Stress the upgrade path.

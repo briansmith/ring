@@ -80,7 +80,7 @@ fn aead_poly1305(
 ) {
     debug_assert_eq!(counter[0], 0);
     let key = poly1305::Key::derive_using_chacha(chacha20_key, counter);
-    let mut ctx = poly1305::SigningContext::from_key(key);
+    let mut ctx = poly1305::Context::from_key(key);
     poly1305_update_padded_16(&mut ctx, ad);
     poly1305_update_padded_16(&mut ctx, ciphertext);
     let lengths = [
@@ -92,7 +92,7 @@ fn aead_poly1305(
 }
 
 #[inline]
-fn poly1305_update_padded_16(ctx: &mut poly1305::SigningContext, data: &[u8]) {
+fn poly1305_update_padded_16(ctx: &mut poly1305::Context, data: &[u8]) {
     ctx.update(data);
     if data.len() % 16 != 0 {
         static PADDING: [u8; 16] = [0u8; 16];
