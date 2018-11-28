@@ -41,6 +41,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 #
 # Assumption 1: n is odd for the BEEU
 # Assumption 2: 1 < a < n < 2^256
+# Assumption 3: AVX2 is available (BoringSSL tests OPENSSL_ia32cap_P[1] & (1 << 28))
 
 $out = "%rdi";
 $a = "%rsi";
