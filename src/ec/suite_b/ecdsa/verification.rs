@@ -265,50 +265,59 @@ pub static ECDSA_P384_SHA384_ASN1: Algorithm = Algorithm {
 
 #[cfg(test)]
 mod tests {
-    use crate::test;
     use super::*;
+    use crate::test;
     use std;
 
     #[test]
     fn test_digest_based_test_vectors() {
-        test::from_file("crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt", |section, test_case| {
-            assert_eq!(section, "");
+        test::from_file(
+            "crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt",
+            |section, test_case| {
+                assert_eq!(section, "");
 
-            let curve_name = test_case.consume_string("Curve");
+                let curve_name = test_case.consume_string("Curve");
 
-            let public_key = {
-                let mut public_key = std::vec::Vec::new();
-                public_key.push(0x04);
-                public_key.extend(&test_case.consume_bytes("X"));
-                public_key.extend(&test_case.consume_bytes("Y"));
-                public_key
-            };
+                let public_key = {
+                    let mut public_key = std::vec::Vec::new();
+                    public_key.push(0x04);
+                    public_key.extend(&test_case.consume_bytes("X"));
+                    public_key.extend(&test_case.consume_bytes("Y"));
+                    public_key
+                };
 
-            let digest = test_case.consume_bytes("Digest");
+                let digest = test_case.consume_bytes("Digest");
 
-            let sig = {
-                let mut sig = std::vec::Vec::new();
-                sig.extend(&test_case.consume_bytes("R"));
-                sig.extend(&test_case.consume_bytes("S"));
-                sig
-            };
+                let sig = {
+                    let mut sig = std::vec::Vec::new();
+                    sig.extend(&test_case.consume_bytes("R"));
+                    sig.extend(&test_case.consume_bytes("S"));
+                    sig
+                };
 
-            let invalid = test_case.consume_optional_string("Invalid");
+                let invalid = test_case.consume_optional_string("Invalid");
 
-            let alg = match curve_name.as_str() {
-                "P-256" => &ECDSA_P256_SHA256_FIXED,
-                "P-384" => &ECDSA_P384_SHA384_FIXED,
-                _ => {
-                    panic!("Unsupported curve: {}", curve_name);
-                },
-            };
+                let alg = match curve_name.as_str() {
+                    "P-256" => &ECDSA_P256_SHA256_FIXED,
+                    "P-384" => &ECDSA_P384_SHA384_FIXED,
+                    _ => {
+                        panic!("Unsupported curve: {}", curve_name);
+                    },
+                };
 
-            let digest = super::super::digest_scalar::digest_bytes_scalar(&alg.ops.scalar_ops, &digest[..]);
-            let actual_result = alg.verify_digest(
-                untrusted::Input::from(&public_key[..]), digest, untrusted::Input::from(&sig[..]));
-            assert_eq!(actual_result.is_ok(), invalid.is_none());
+                let digest = super::super::digest_scalar::digest_bytes_scalar(
+                    &alg.ops.scalar_ops,
+                    &digest[..],
+                );
+                let actual_result = alg.verify_digest(
+                    untrusted::Input::from(&public_key[..]),
+                    digest,
+                    untrusted::Input::from(&sig[..]),
+                );
+                assert_eq!(actual_result.is_ok(), invalid.is_none());
 
-            Ok(())
-        });
+                Ok(())
+            },
+        );
     }
 }
