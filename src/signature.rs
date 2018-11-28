@@ -213,12 +213,12 @@
 //! let private_key_der = read_file(private_key_path)?;
 //! let private_key_der = untrusted::Input::from(&private_key_der);
 //! let key_pair = signature::RSAKeyPair::from_der(private_key_der)
-//!     .map_err(|ring::error::Unspecified| MyError::BadPrivateKey)?;
+//!     .map_err(|_| MyError::BadPrivateKey)?;
 //!
 //! // Create a signing state.
 //! let key_pair = std::sync::Arc::new(key_pair);
 //! let mut signing_state = signature::RSASigningState::new(key_pair)
-//!     .map_err(|ring::error::Unspecified| MyError::OOM)?;
+//!     .map_err(|_| MyError::OOM)?;
 //!
 //! // Sign the message "hello, world", using PKCS#1 v1.5 padding and the
 //! // SHA256 digest algorithm.
@@ -227,7 +227,7 @@
 //! let mut signature = vec![0; signing_state.key_pair().public_modulus_len()];
 //! signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
 //!                    &mut signature)
-//!     .map_err(|ring::error::Unspecified| MyError::OOM)?;
+//!     .map_err(|_| MyError::OOM)?;
 //!
 //! // Verify the signature.
 //! let public_key_der = read_file(public_key_path)?;
@@ -236,7 +236,7 @@
 //! let signature = untrusted::Input::from(&signature);
 //! signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256,
 //!                   public_key_der, message, signature)
-//!     .map_err(|ring::error::Unspecified| MyError::BadSignature)?;
+//!     .map_err(|_| MyError::BadSignature)?;
 //!
 //! Ok(())
 //! }
@@ -373,7 +373,7 @@ pub(crate) trait KeyPairImpl: core::fmt::Debug + Send + 'static {
 pub trait SigningAlgorithm: core::fmt::Debug + Sync + 'static + private::Sealed {
     /// Parses the key out of the given PKCS#8 document, verifying that it is
     /// valid for the algorithm.
-    fn from_pkcs8(&'static self, input: untrusted::Input) -> Result<KeyPair, error::Unspecified>;
+    fn from_pkcs8(&'static self, input: untrusted::Input) -> Result<KeyPair, error::KeyRejected>;
 }
 
 /// Returns a key for signing that is parsed from a PKCS#8 document.
@@ -383,7 +383,7 @@ pub trait SigningAlgorithm: core::fmt::Debug + Sync + 'static + private::Sealed 
 #[inline]
 pub fn key_pair_from_pkcs8(
     alg: &'static SigningAlgorithm, input: untrusted::Input,
-) -> Result<KeyPair, error::Unspecified> {
+) -> Result<KeyPair, error::KeyRejected> {
     alg.from_pkcs8(input)
 }
 

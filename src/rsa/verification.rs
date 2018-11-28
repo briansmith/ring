@@ -29,7 +29,7 @@ impl Key {
     pub fn from_modulus_and_exponent(
         n: untrusted::Input, e: untrusted::Input, n_min_bits: bits::BitLength,
         n_max_bits: bits::BitLength, e_min_value: u64,
-    ) -> Result<Self, error::Unspecified> {
+    ) -> Result<Self, error::KeyRejected> {
         // This is an incomplete implementation of NIST SP800-56Br1 Section
         // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers
         // to NIST SP800-89 Section 5.3.3, "(Explicit) Partial Public Key
@@ -52,12 +52,13 @@ impl Key {
         // flexible to be compatible with other commonly-used crypto libraries.
         assert!(n_min_bits >= N_MIN_BITS);
         let n_bits_rounded_up =
-            bits::BitLength::from_usize_bytes(n_bits.as_usize_bytes_rounded_up())?;
+            bits::BitLength::from_usize_bytes(n_bits.as_usize_bytes_rounded_up())
+                .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
         if n_bits_rounded_up < n_min_bits {
-            return Err(error::Unspecified);
+            return Err(error::KeyRejected::too_small());
         }
         if n_bits > n_max_bits {
-            return Err(error::Unspecified);
+            return Err(error::KeyRejected::too_large());
         }
 
         // Step 2 / Step b.

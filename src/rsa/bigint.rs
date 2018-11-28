@@ -98,18 +98,19 @@ impl<M> Clone for BoxedLimbs<M> {
 impl<M> BoxedLimbs<M> {
     fn positive_minimal_width_from_be_bytes(
         input: untrusted::Input,
-    ) -> Result<Self, error::Unspecified> {
+    ) -> Result<Self, error::KeyRejected> {
         // Reject leading zeros. Also reject the value zero ([0]) because zero
         // isn't positive.
         if untrusted::Reader::new(input).peek(0) {
-            return Err(error::Unspecified);
+            return Err(error::KeyRejected::invalid_encoding());
         }
         let num_limbs = (input.len() + LIMB_BYTES - 1) / LIMB_BYTES;
         let mut r = Self::zero(Width {
             num_limbs,
             m: PhantomData,
         });
-        limb::parse_big_endian_and_pad_consttime(input, &mut r)?;
+        limb::parse_big_endian_and_pad_consttime(input, &mut r)
+            .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
         Ok(r)
     }
 
@@ -227,14 +228,14 @@ impl core::fmt::Debug for Modulus<super::N> {
 impl<M> Modulus<M> {
     pub fn from_be_bytes_with_bit_length(
         input: untrusted::Input,
-    ) -> Result<(Self, bits::BitLength), error::Unspecified> {
+    ) -> Result<(Self, bits::BitLength), error::KeyRejected> {
         let limbs = BoxedLimbs::positive_minimal_width_from_be_bytes(input)?;
         let bits = limb::limbs_minimal_bits(&limbs);
         Ok((Self::from_boxed_limbs(limbs)?, bits))
     }
 
     #[cfg(feature = "rsa_signing")]
-    pub fn from(n: Nonnegative) -> Result<Self, error::Unspecified> {
+    pub fn from(n: Nonnegative) -> Result<Self, error::KeyRejected> {
         let limbs = BoxedLimbs {
             limbs: n.limbs.into_boxed_slice(),
             m: PhantomData,
@@ -242,16 +243,17 @@ impl<M> Modulus<M> {
         Self::from_boxed_limbs(limbs)
     }
 
-    fn from_boxed_limbs(n: BoxedLimbs<M>) -> Result<Self, error::Unspecified> {
+    fn from_boxed_limbs(n: BoxedLimbs<M>) -> Result<Self, error::KeyRejected> {
         if n.len() > MODULUS_MAX_LIMBS {
-            return Err(error::Unspecified);
+            return Err(error::KeyRejected::too_large());
         }
-        Result::from(unsafe { GFp_bn_mul_mont_check_num_limbs(n.len()) })?;
+        Result::from(unsafe { GFp_bn_mul_mont_check_num_limbs(n.len()) })
+            .map_err(|error::Unspecified| error::KeyRejected::too_small())?;
         if limb::limbs_are_even_constant_time(&n) != LimbMask::False {
-            return Err(error::Unspecified);
+            return Err(error::KeyRejected::invalid_component());
         }
         if limb::limbs_less_than_limb_constant_time(&n, 3) != LimbMask::False {
-            return Err(error::Unspecified);
+            return Err(error::KeyRejected::unexpected_error());
         }
 
         // n_mod_r = n % r. As explained in the documentation for `n0`, this is
@@ -427,7 +429,7 @@ impl<M> Elem<M, Unencoded> {
     }
 
     #[cfg(feature = "rsa_signing")]
-    pub fn into_modulus<MM>(self) -> Result<Modulus<MM>, error::Unspecified> {
+    pub fn into_modulus<MM>(self) -> Result<Modulus<MM>, error::KeyRejected> {
         Modulus::from_boxed_limbs(BoxedLimbs::minimal_width_from_unpadded(&self.limbs))
     }
 
@@ -647,19 +649,21 @@ pub struct PublicExponent(u64);
 impl PublicExponent {
     pub fn from_be_bytes(
         input: untrusted::Input, min_value: u64,
-    ) -> Result<Self, error::Unspecified> {
+    ) -> Result<Self, error::KeyRejected> {
         if input.len() > 5 {
-            return Err(error::Unspecified);
+            return Err(error::KeyRejected::too_large());
         }
-        let value = input.read_all_mut(error::Unspecified, |input| {
+        let value = input.read_all_mut(error::KeyRejected::invalid_encoding(), |input| {
             // The exponent can't be zero and it can't be prefixed with
             // zero-valued bytes.
             if input.peek(0) {
-                return Err(error::Unspecified);
+                return Err(error::KeyRejected::invalid_encoding());
             }
             let mut value = 0u64;
             loop {
-                let byte = input.read_byte()?;
+                let byte = input
+                    .read_byte()
+                    .map_err(|untrusted::EndOfInput| error::KeyRejected::invalid_encoding())?;
                 value = (value << 8) | u64::from(byte);
                 if input.at_end() {
                     return Ok(value);
@@ -672,18 +676,18 @@ impl PublicExponent {
         // verification, for compatibility. Only small public exponents are
         // supported.
         if value & 1 != 1 {
-            return Err(error::Unspecified);
+            return Err(error::KeyRejected::invalid_component());
         }
         debug_assert!(min_value & 1 == 1);
         debug_assert!(min_value <= PUBLIC_EXPONENT_MAX_VALUE);
         if min_value < 3 {
-            return Err(error::Unspecified);
+            return Err(error::KeyRejected::invalid_component());
         }
         if value < min_value {
-            return Err(error::Unspecified);
+            return Err(error::KeyRejected::too_small());
         }
         if value > PUBLIC_EXPONENT_MAX_VALUE {
-            return Err(error::Unspecified);
+            return Err(error::KeyRejected::too_large());
         }
 
         Ok(PublicExponent(value))

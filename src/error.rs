@@ -82,10 +82,14 @@ use std;
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Unspecified;
 
+impl Unspecified {
+    fn description_() -> &'static str { "ring::error::Unspecified" }
+}
+
 // This is required for the implementation of `std::error::Error`.
 impl core::fmt::Display for Unspecified {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.write_str("ring::error::Unspecified")
+        f.write_str(Self::description_())
     }
 }
 
@@ -94,10 +98,82 @@ impl std::error::Error for Unspecified {
     #[inline]
     fn cause(&self) -> Option<&std::error::Error> { None }
 
-    #[inline]
-    fn description(&self) -> &str { "ring::error::Unspecified" }
+    fn description(&self) -> &str { Self::description_() }
 }
 
 impl From<untrusted::EndOfInput> for Unspecified {
     fn from(_: untrusted::EndOfInput) -> Self { Unspecified }
+}
+
+/// An error parsing or validating a key.
+///
+/// The `Display` implementation and `<KeyRejected as Error>::description()`
+/// will return a string that will help you better understand why a key was
+/// rejected change which errors are reported in which situations while
+/// minimizing the likelihood that any applications will be broken.
+///
+/// Here is an incomplete list of reasons a key may be unsupported:
+///
+/// * Invalid or Inconsistent Components: A component of the key has an
+///   invalid value, or the mathematical relationship between two (or more)
+///   components required for a valid key does not hold.
+///
+/// * The encoding of the key is invalid. Perhaps the key isn't in the correct
+///   format; e.g. it may be Base64 ("PEM") encoded, in which case   the Base64
+///   encoding needs to be undone first.
+///
+/// * The encoding includes a versioning mechanism and that mechanism indicates
+///   that the key is encoded in a version of the encoding that isn't supported.
+///   This might happen for multi-prime RSA keys (keys with more than two
+///   private   prime factors), which aren't supported, for example.
+///
+/// * Too small or too Large: One of the primary components of the key is too
+///   small or two large. Too-small keys are rejected for security reasons.
+///   Some unnecessarily large keys are rejected for performance reasons.
+///
+///  * Wrong algorithm: The key is not valid for the algorithm in which it
+///    was being used.
+///
+///  * Unexpected errors: Report this as a bug.
+#[derive(Copy, Clone, Debug)]
+pub struct KeyRejected(&'static str);
+
+impl KeyRejected {
+    fn description_(&self) -> &'static str { self.0 }
+
+    pub(crate) fn inconsistent_components() -> Self { KeyRejected("InconsistentComponents") }
+
+    pub(crate) fn invalid_component() -> Self { KeyRejected("InvalidComponent") }
+
+    #[inline]
+    pub(crate) fn invalid_encoding() -> Self { KeyRejected("InvalidEncoding") }
+
+    pub(crate) fn public_key_is_missing() -> Self { KeyRejected("PublicKeyIsMissing") }
+
+    pub(crate) fn too_small() -> Self { KeyRejected("TooSmall") }
+
+    pub(crate) fn too_large() -> Self { KeyRejected("TooLarge") }
+
+    pub(crate) fn version_not_supported() -> Self { KeyRejected("VersionNotSupported") }
+
+    pub(crate) fn wrong_algorithm() -> Self { KeyRejected("WrongAlgorithm") }
+
+    pub(crate) fn unexpected_error() -> Self { KeyRejected("UnexpectedError") }
+}
+
+#[cfg(feature = "use_heap")]
+impl std::error::Error for KeyRejected {
+    fn cause(&self) -> Option<&std::error::Error> { None }
+
+    fn description(&self) -> &str { self.description_() }
+}
+
+impl std::fmt::Display for KeyRejected {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.write_str(self.description_())
+    }
+}
+
+impl From<KeyRejected> for Unspecified {
+    fn from(_: KeyRejected) -> Self { Unspecified }
 }

@@ -18,7 +18,11 @@ use super::{
 };
 use arithmetic::montgomery::R;
 /// RSA PKCS#1 1.5 signatures.
-use crate::{bits, der, digest, error, pkcs8, rand};
+use crate::{
+    bits, der, digest,
+    error::{self, KeyRejected},
+    pkcs8, rand,
+};
 use std;
 use untrusted;
 
@@ -136,7 +140,7 @@ impl KeyPair {
     ///
     /// [RFC 5958]:
     ///     https://tools.ietf.org/html/rfc5958
-    pub fn from_pkcs8(input: untrusted::Input) -> Result<Self, error::Unspecified> {
+    pub fn from_pkcs8(input: untrusted::Input) -> Result<Self, KeyRejected> {
         const RSA_ENCRYPTION: &[u8] = include_bytes!("../data/alg-rsa-encryption.der");
         let (der, _) = pkcs8::unwrap_key_(&RSA_ENCRYPTION, pkcs8::Version::V1Only, input)?;
         Self::from_der(der)
@@ -157,33 +161,44 @@ impl KeyPair {
     ///
     /// [NIST SP-800-56B rev. 1]:
     ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Br1.pdf
-    pub fn from_der(input: untrusted::Input) -> Result<Self, error::Unspecified> {
-        input.read_all(error::Unspecified, |input| {
+    pub fn from_der(input: untrusted::Input) -> Result<Self, KeyRejected> {
+        input.read_all(KeyRejected::invalid_encoding(), |input| {
             der::nested(
                 input,
                 der::Tag::Sequence,
-                error::Unspecified,
+                error::KeyRejected::invalid_encoding(),
                 Self::from_der_reader,
             )
         })
     }
 
-    fn from_der_reader(input: &mut untrusted::Reader) -> Result<Self, error::Unspecified> {
-        let version = der::small_nonnegative_integer(input)?;
+    fn from_der_reader(input: &mut untrusted::Reader) -> Result<Self, KeyRejected> {
+        let version = der::small_nonnegative_integer(input)
+            .map_err(|error::Unspecified| KeyRejected::invalid_encoding())?;
         if version != 0 {
-            return Err(error::Unspecified);
+            return Err(KeyRejected::version_not_supported());
         }
-        let n = der::positive_integer(input)?;
-        let e = der::positive_integer(input)?;
-        let d = der::positive_integer(input)?;
-        let p = der::positive_integer(input)?;
-        let q = der::positive_integer(input)?;
-        let dP = der::positive_integer(input)?;
-        let dQ = der::positive_integer(input)?;
-        let qInv = der::positive_integer(input)?;
 
-        let (p, p_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(p)?;
-        let (q, q_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(q)?;
+        fn positive_integer<'a>(
+            input: &mut untrusted::Reader<'a>,
+        ) -> Result<untrusted::Input<'a>, KeyRejected> {
+            der::positive_integer(input)
+                .map_err(|error::Unspecified| KeyRejected::invalid_encoding())
+        }
+
+        let n = positive_integer(input)?;
+        let e = positive_integer(input)?;
+        let d = positive_integer(input)?;
+        let p = positive_integer(input)?;
+        let q = positive_integer(input)?;
+        let dP = positive_integer(input)?;
+        let dQ = positive_integer(input)?;
+        let qInv = positive_integer(input)?;
+
+        let (p, p_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(p)
+            .map_err(|error::Unspecified| KeyRejected::invalid_encoding())?;
+        let (q, q_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(q)
+            .map_err(|error::Unspecified| KeyRejected::invalid_encoding())?;
 
         // Our implementation of CRT-based modular exponentiation used requires
         // that `p > q` so swap them if `p < q`. If swapped, `qInv` is
@@ -191,7 +206,7 @@ impl KeyPair {
         // `q_mod_p` is constructed.
         let ((p, p_bits, dP), (q, q_bits, dQ, qInv)) = match q.verify_less_than(&p) {
             Ok(_) => ((p, p_bits, dP), (q, q_bits, dQ, Some(qInv))),
-            Err(_) => {
+            Err(error::Unspecified) => {
                 // TODO: verify `q` and `qInv` are inverses (mod p).
                 ((q, q_bits, dQ), (p, p_bits, dP, None))
             },
@@ -244,7 +259,7 @@ impl KeyPair {
         // Second, stop if `p > 2**(nBits/2) - 1`.
         let half_n_bits = public_key.n_bits.half_rounded_up();
         if p_bits != half_n_bits {
-            return Err(error::Unspecified);
+            return Err(KeyRejected::inconsistent_components());
         }
 
         // TODO: Step 5.d: Verify GCD(p - 1, e) == 1.
@@ -257,12 +272,14 @@ impl KeyPair {
         //
         // Second, stop if `q > 2**(nBits/2) - 1`.
         if p_bits != q_bits {
-            return Err(error::Unspecified);
+            return Err(KeyRejected::inconsistent_components());
         }
 
         // TODO: Step 5.h: Verify GCD(p - 1, e) == 1.
 
-        let q_mod_n_decoded = q.to_elem(&public_key.n)?;
+        let q_mod_n_decoded = q
+            .to_elem(&public_key.n)
+            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
         // TODO: Step 5.i
         //
@@ -280,10 +297,12 @@ impl KeyPair {
             q_mod_n_decoded.clone(),
             &public_key.n,
         );
-        let p_mod_n = p.to_elem(&public_key.n)?;
+        let p_mod_n = p
+            .to_elem(&public_key.n)
+            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
         let pq_mod_n = bigint::elem_mul(&q_mod_n, p_mod_n, &public_key.n);
         if !pq_mod_n.is_zero() {
-            return Err(error::Unspecified);
+            return Err(KeyRejected::inconsistent_components());
         }
 
         // 6.4.1.4.3/6.4.1.2.1 - Step 6.
@@ -293,15 +312,17 @@ impl KeyPair {
         // First, validate `2**half_n_bits < d`. Since 2**half_n_bits has a bit
         // length of half_n_bits + 1, this check gives us 2**half_n_bits <= d,
         // and knowing d is odd makes the inequality strict.
-        let (d, d_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(d)?;
+        let (d, d_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(d)
+            .map_err(|_| error::KeyRejected::invalid_encoding())?;
         if !(half_n_bits < d_bits) {
-            return Err(error::Unspecified);
+            return Err(KeyRejected::inconsistent_components());
         }
         // XXX: This check should be `d < LCM(p - 1, q - 1)`, but we don't have
         // a good way of calculating LCM, so it is omitted, as explained above.
-        d.verify_less_than_modulus(&public_key.n)?;
+        d.verify_less_than_modulus(&public_key.n)
+            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
         if !d.is_odd() {
-            return Err(error::Unspecified);
+            return Err(KeyRejected::invalid_component());
         }
 
         // Step 6.b is omitted as explained above.
@@ -318,12 +339,14 @@ impl KeyPair {
 
         // Step 7.c.
         let qInv = if let Some(qInv) = qInv {
-            bigint::Elem::from_be_bytes_padded(qInv, &p.modulus)?
+            bigint::Elem::from_be_bytes_padded(qInv, &p.modulus)
+                .map_err(|error::Unspecified| KeyRejected::invalid_component())?
         } else {
             // We swapped `p` and `q` above, so we need to calculate `qInv`.
             // Step 7.f below will verify `qInv` is correct.
             let q_mod_p = bigint::elem_mul(p.modulus.oneRR().as_ref(), q_mod_p.clone(), &p.modulus);
-            bigint::elem_inverse_consttime(q_mod_p, &p.modulus)?
+            bigint::elem_inverse_consttime(q_mod_p, &p.modulus)
+                .map_err(|error::Unspecified| KeyRejected::unexpected_error())?
         };
 
         // Steps 7.d and 7.e are omitted per the documentation above, and
@@ -332,7 +355,8 @@ impl KeyPair {
 
         // Step 7.f.
         let qInv = bigint::elem_mul(p.modulus.oneRR().as_ref(), qInv, &p.modulus);
-        bigint::verify_inverses_consttime(&qInv, q_mod_p, &p.modulus)?;
+        bigint::verify_inverses_consttime(&qInv, q_mod_p, &p.modulus)
+            .map_err(|error::Unspecified| KeyRejected::inconsistent_components())?;
 
         let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &public_key.n).into_modulus::<QQ>()?;
 
@@ -360,11 +384,12 @@ struct PrivatePrime<M: Prime> {
 impl<M: Prime + Clone> PrivatePrime<M> {
     /// Constructs a `PrivatePrime` from the private prime `p` and `dP` where
     /// dP == d % (p - 1).
-    fn new(p: bigint::Nonnegative, dP: untrusted::Input) -> Result<Self, error::Unspecified> {
+    fn new(p: bigint::Nonnegative, dP: untrusted::Input) -> Result<Self, KeyRejected> {
         let p = bigint::Modulus::from(p)?;
 
         // [NIST SP-800-56B rev. 1] 6.4.1.4.3 - Steps 7.a & 7.b.
-        let dP = bigint::PrivateExponent::from_be_bytes_padded(dP, &p)?;
+        let dP = bigint::PrivateExponent::from_be_bytes_padded(dP, &p)
+            .map_err(|error::Unspecified| KeyRejected::invalid_component())?;
 
         // XXX: Steps 7.d and 7.e are omitted. We don't check that
         // `dP == d % (p - 1)` because we don't (in the long term) have a good

@@ -63,7 +63,7 @@ impl Template {
 /// [RFC 5958]: https://tools.ietf.org/html/rfc5958.
 pub(crate) fn unwrap_key<'a>(
     template: &Template, version: Version, input: untrusted::Input<'a>,
-) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::Unspecified> {
+) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::KeyRejected> {
     unwrap_key_(template.alg_id_value(), version, input)
 }
 
@@ -79,47 +79,68 @@ pub(crate) fn unwrap_key<'a>(
 /// [RFC 5958]: https://tools.ietf.org/html/rfc5958.
 pub(crate) fn unwrap_key_<'a>(
     alg_id: &[u8], version: Version, input: untrusted::Input<'a>,
-) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::Unspecified> {
-    input.read_all(error::Unspecified, |input| {
-        der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-            unwrap_key__(alg_id, version, input)
-        })
+) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::KeyRejected> {
+    input.read_all(error::KeyRejected::invalid_encoding(), |input| {
+        der::nested(
+            input,
+            der::Tag::Sequence,
+            error::KeyRejected::invalid_encoding(),
+            |input| unwrap_key__(alg_id, version, input),
+        )
     })
 }
 
 fn unwrap_key__<'a>(
     alg_id: &[u8], version: Version, input: &mut untrusted::Reader<'a>,
-) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::Unspecified> {
-    // Currently we only support algorithms that should only be encoded
-    // in v1 form, so reject v2 and any later form.
-    let require_public_key = match (der::small_nonnegative_integer(input)?, version) {
+) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::KeyRejected> {
+    let actual_version = der::small_nonnegative_integer(input)
+        .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
+
+    // Do things in a specific order to return more useful errors:
+    // 1. Check for completely unsupported version.
+    // 2. Check for algorithm mismatch.
+    // 3. Check for algorithm-specific version mismatch.
+
+    if actual_version > 1 {
+        return Err(error::KeyRejected::version_not_supported());
+    };
+
+    let actual_alg_id = der::expect_tag_and_get_value(input, der::Tag::Sequence)
+        .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
+    if actual_alg_id != alg_id {
+        return Err(error::KeyRejected::wrong_algorithm());
+    }
+
+    let require_public_key = match (actual_version, version) {
         (0, Version::V1Only) => false,
         (0, Version::V1OrV2) => false,
         (1, Version::V1OrV2) | (1, Version::V2Only) => true,
         _ => {
-            return Err(error::Unspecified);
+            return Err(error::KeyRejected::version_not_supported());
         },
     };
 
-    let actual_alg_id = der::expect_tag_and_get_value(input, der::Tag::Sequence)?;
-    if actual_alg_id != alg_id {
-        return Err(error::Unspecified);
-    }
-
-    let private_key = der::expect_tag_and_get_value(input, der::Tag::OctetString)?;
+    let private_key = der::expect_tag_and_get_value(input, der::Tag::OctetString)
+        .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
 
     // Ignore any attributes that are present.
     if input.peek(der::Tag::ContextSpecificConstructed0 as u8) {
-        let _ = der::expect_tag_and_get_value(input, der::Tag::ContextSpecificConstructed0)?;
+        let _ = der::expect_tag_and_get_value(input, der::Tag::ContextSpecificConstructed0)
+            .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
     }
 
     let public_key = if require_public_key {
-        Some(der::nested(
+        if input.at_end() {
+            return Err(error::KeyRejected::public_key_is_missing());
+        }
+        let public_key = der::nested(
             input,
             der::Tag::ContextSpecificConstructed1,
             error::Unspecified,
             der::bit_string_with_no_unused_bits,
-        )?)
+        )
+        .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
+        Some(public_key)
     } else {
         None
     };

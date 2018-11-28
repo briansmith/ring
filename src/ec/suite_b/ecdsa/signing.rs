@@ -55,7 +55,7 @@ impl private::Sealed for Algorithm {}
 impl signature::SigningAlgorithm for Algorithm {
     fn from_pkcs8(
         &'static self, input: untrusted::Input,
-    ) -> Result<signature::KeyPair, error::Unspecified> {
+    ) -> Result<signature::KeyPair, error::KeyRejected> {
         Key::from_pkcs8(self, input).map(signature::KeyPair::new)
     }
 }
@@ -106,7 +106,7 @@ impl Key {
     /// algorithm identifier in the PKCS#8 header.
     pub fn from_pkcs8(
         alg: &'static Algorithm, input: untrusted::Input,
-    ) -> Result<Self, error::Unspecified> {
+    ) -> Result<Self, error::KeyRejected> {
         let key_pair = ec::suite_b::key_pair_from_pkcs8(alg.curve, alg.pkcs8_template, input)?;
         Ok(Self::new(alg, key_pair))
     }
@@ -119,7 +119,7 @@ impl Key {
     /// key) instead.
     pub fn from_private_key_and_public_key(
         alg: &'static Algorithm, private_key: untrusted::Input, public_key: untrusted::Input,
-    ) -> Result<Self, error::Unspecified> {
+    ) -> Result<Self, error::KeyRejected> {
         let key_pair = ec::suite_b::key_pair_from_bytes(alg.curve, private_key, public_key)?;
         Ok(Self::new(alg, key_pair))
     }

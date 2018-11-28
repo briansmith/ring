@@ -43,6 +43,8 @@ use ring::rand;
 #[test]
 fn rsa_from_pkcs8_test() {
     test::from_file("tests/rsa_from_pkcs8_tests.txt", |section, test_case| {
+        use std::error::Error;
+
         assert_eq!(section, "");
 
         let input = test_case.consume_bytes("Input");
@@ -50,10 +52,12 @@ fn rsa_from_pkcs8_test() {
 
         let error = test_case.consume_optional_string("Error");
 
-        assert_eq!(
-            signature::RSAKeyPair::from_pkcs8(input).is_ok(),
-            error.is_none()
-        );
+        match (signature::RSAKeyPair::from_pkcs8(input), error) {
+            (Ok(_), None) => (),
+            (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
+            (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
+            (Err(actual), Some(expected)) => assert_eq!(actual.description(), expected),
+        };
 
         Ok(())
     });

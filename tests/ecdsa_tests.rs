@@ -41,6 +41,8 @@ use ring::{rand, signature, test};
 #[test]
 fn ecdsa_from_pkcs8_test() {
     test::from_file("tests/ecdsa_from_pkcs8_tests.txt", |section, test_case| {
+        use std::error::Error;
+
         assert_eq!(section, "");
 
         let curve_name = test_case.consume_string("Curve");
@@ -73,14 +75,26 @@ fn ecdsa_from_pkcs8_test() {
 
         let error = test_case.consume_optional_string("Error");
 
-        assert_eq!(
-            signature::key_pair_from_pkcs8(this_fixed, input).is_ok(),
-            error.is_none()
-        );
-        assert_eq!(
-            signature::key_pair_from_pkcs8(this_asn1, input).is_ok(),
-            error.is_none()
-        );
+        match (
+            signature::key_pair_from_pkcs8(this_fixed, input),
+            error.clone(),
+        ) {
+            (Ok(_), None) => (),
+            (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
+            (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
+            (Err(actual), Some(expected)) => assert_eq!(actual.description(), expected),
+        };
+
+        match (
+            signature::key_pair_from_pkcs8(this_asn1, input),
+            error.clone(),
+        ) {
+            (Ok(_), None) => (),
+            (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
+            (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
+            (Err(actual), Some(expected)) => assert_eq!(actual.description(), expected),
+        };
+
         assert!(signature::key_pair_from_pkcs8(other_fixed, input).is_err());
         assert!(signature::key_pair_from_pkcs8(other_asn1, input).is_err());
 
