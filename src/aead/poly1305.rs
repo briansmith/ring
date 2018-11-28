@@ -55,6 +55,13 @@ const OPAQUE_LEN: usize = 192;
 impl SigningContext {
     #[inline]
     pub fn from_key(Key(key): Key) -> SigningContext {
+        extern "C" {
+            fn GFp_poly1305_blocks(
+                state: &mut Opaque, input: *const u8, len: c::size_t, should_pad: Pad,
+            );
+            fn GFp_poly1305_emit(state: &mut Opaque, mac: &mut Tag, nonce: &Nonce);
+        }
+
         #[inline]
         fn read_u32(buf: &[u8]) -> u32 {
             polyfill::slice::u32_from_le_u8(slice_as_array_ref!(buf, 4).unwrap())
@@ -204,6 +211,11 @@ struct Funcs {
 
 #[inline]
 fn init(state: &mut Opaque, key: DerivedKey, func: &mut Funcs) -> Result<(), error::Unspecified> {
+    extern "C" {
+        fn GFp_poly1305_init_asm(
+            state: &mut Opaque, key: &[u8; BLOCK_LEN], out_func: &mut Funcs,
+        ) -> bssl::Result;
+    }
     Result::from(unsafe { GFp_poly1305_init_asm(state, &key.0, func) })
 }
 
@@ -229,14 +241,6 @@ impl Funcs {
             (self.emit_fn)(state, tag_out, nonce);
         }
     }
-}
-
-extern "C" {
-    fn GFp_poly1305_init_asm(
-        state: &mut Opaque, key: &[u8; BLOCK_LEN], out_func: &mut Funcs,
-    ) -> bssl::Result;
-    fn GFp_poly1305_blocks(state: &mut Opaque, input: *const u8, len: c::size_t, should_pad: Pad);
-    fn GFp_poly1305_emit(state: &mut Opaque, mac: &mut Tag, nonce: &Nonce);
 }
 
 #[cfg(test)]
