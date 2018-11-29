@@ -81,7 +81,7 @@ impl RSAVerification for PKCS1 {
         &self, m_hash: &digest::Digest, m: &mut untrusted::Reader, mod_bits: bits::BitLength,
     ) -> Result<(), error::Unspecified> {
         // `mod_bits.as_usize_bytes_rounded_up() <=
-        //      PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN` is ensured by `verify_rsa()`.
+        //      PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN` is ensured by `verify_rsa_()`.
         let mut calculated = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
         let calculated = &mut calculated[..mod_bits.as_usize_bytes_rounded_up()];
         pkcs1_encode(&self, m_hash, calculated);

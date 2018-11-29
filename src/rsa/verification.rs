@@ -15,7 +15,7 @@
 use super::{bigint, parse_public_key, RSAParameters, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
 /// RSA PKCS#1 1.5 signatures.
 use core;
-use crate::{bits, digest, error, private, signature};
+use crate::{bits, cpu, digest, error, private, signature};
 use untrusted;
 
 #[derive(Debug)]
@@ -87,7 +87,7 @@ impl signature::VerificationAlgorithm for RSAParameters {
         &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
         let public_key = parse_public_key(public_key)?;
-        verify_rsa(self, public_key, msg, signature)
+        verify_rsa_(self, public_key, msg, signature)
     }
 }
 
@@ -220,6 +220,14 @@ rsa_params!(
 // verification was done during the implementation of
 // `signature::VerificationAlgorithm`, before `verify_rsa` was factored out).
 pub fn verify_rsa(
+    params: &RSAParameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
+    signature: untrusted::Input,
+) -> Result<(), error::Unspecified> {
+    cpu::cache_detected_features();
+    verify_rsa_(params, (n, e), msg, signature)
+}
+
+pub(crate) fn verify_rsa_(
     params: &RSAParameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
     signature: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
