@@ -173,29 +173,11 @@ void OPENSSL_cpuid_setup(void) {
     extended_features[1] = ecx;
   }
 
-  // Determine the number of cores sharing an L1 data cache to adjust the
-  // hyper-threading bit.
-  uint32_t cores_per_cache = 0;
-  if (is_amd) {
-    // AMD CPUs never share an L1 data cache between threads but do set the HTT
-    // bit on multi-core CPUs.
-    cores_per_cache = 1;
-  } else if (num_ids >= 4) {
-    // TODO(davidben): The Intel manual says this CPUID leaf enumerates all
-    // caches using ECX and doesn't say which is first. Does this matter?
-    OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 4);
-    cores_per_cache = 1 + ((eax >> 14) & 0xfff);
-  }
-
   OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 1);
 
-  // Adjust the hyper-threading bit.
-  if (edx & (1u << 28)) {
-    uint32_t num_logical_cores = (ebx >> 16) & 0xff;
-    if (cores_per_cache == 1 || num_logical_cores <= 1) {
-      edx &= ~(1u << 28);
-    }
-  }
+  // Force the hyper-threading bit so that the more conservative path is always
+  // chosen.
+  edx |= 1u << 28;
 
   // Reserved bit #20 was historically repurposed to control the in-memory
   // representation of RC4 state. Always set it to zero.
