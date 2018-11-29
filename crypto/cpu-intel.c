@@ -148,23 +148,6 @@ void OPENSSL_cpuid_setup(void) {
   int is_intel = ebx == 0x756e6547 /* Genu */ &&
                  edx == 0x49656e69 /* ineI */ &&
                  ecx == 0x6c65746e /* ntel */;
-  int is_amd = ebx == 0x68747541 /* Auth */ &&
-               edx == 0x69746e65 /* enti */ &&
-               ecx == 0x444d4163 /* cAMD */;
-
-  int has_amd_xop = 0;
-  if (is_amd) {
-    // AMD-specific logic.
-    // See http://developer.amd.com/wordpress/media/2012/10/254811.pdf
-    OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 0x80000000);
-    uint32_t num_extended_ids = eax;
-    if (num_extended_ids >= 0x80000001) {
-      OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 0x80000001);
-      if (ecx & (1u << 11)) {
-        has_amd_xop = 1;
-      }
-    }
-  }
 
   uint32_t extended_features[2] = {0};
   if (num_ids >= 7) {
@@ -198,12 +181,9 @@ void OPENSSL_cpuid_setup(void) {
     edx &= ~(1u << 30);
   }
 
-  // The SDBG bit is repurposed to denote AMD XOP support.
-  if (has_amd_xop) {
-    ecx |= (1u << 11);
-  } else {
-    ecx &= ~(1u << 11);
-  }
+  // The SDBG bit is repurposed to denote AMD XOP support. Don't ever use AMD
+  // XOP code paths.
+  ecx &= ~(1u << 11);
 
   uint64_t xcr0 = 0;
   if (ecx & (1u << 27)) {
