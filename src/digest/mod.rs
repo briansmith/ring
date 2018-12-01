@@ -25,7 +25,7 @@
 // as possible.
 
 use core;
-use crate::{c, init, polyfill};
+use crate::{c, cpu, polyfill};
 
 // XXX: Replace with `const fn` when `const fn` is stable:
 // https://github.com/rust-lang/rust/issues/24111
@@ -79,7 +79,7 @@ impl Context {
     ///
     /// C analogs: `EVP_DigestInit`, `EVP_DigestInit_ex`
     pub fn new(algorithm: &'static Algorithm) -> Context {
-        init::init_once();
+        cpu::cache_detected_features();
 
         Context {
             algorithm,

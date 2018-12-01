@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{error, init, rand};
+use crate::{cpu, error, rand};
 use untrusted;
 
 /// A key agreement algorithm.
@@ -68,14 +68,14 @@ impl PrivateKey {
     pub fn generate(
         curve: &Curve, rng: &rand::SecureRandom,
     ) -> Result<PrivateKey, error::Unspecified> {
-        init::init_once();
+        cpu::cache_detected_features();
         (curve.generate_private_key)(rng)
     }
 
     pub fn from_bytes(
         curve: &Curve, bytes: untrusted::Input,
     ) -> Result<PrivateKey, error::Unspecified> {
-        init::init_once();
+        cpu::cache_detected_features();
         let bytes = bytes.as_slice_less_safe();
         if curve.elem_and_scalar_len != bytes.len() {
             return Err(error::Unspecified);

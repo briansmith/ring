@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #[inline(always)]
-pub fn init_once() {
+pub fn cache_detected_features() {
     #[cfg(not(target_os = "ios"))]
     {
         use std;

@@ -279,7 +279,7 @@
 use core;
 #[cfg(feature = "use_heap")]
 use crate::rand;
-use crate::{error, init, private};
+use crate::{cpu, error, private};
 use untrusted;
 
 #[cfg(feature = "use_heap")]
@@ -436,6 +436,6 @@ pub fn verify(
     alg: &VerificationAlgorithm, public_key: untrusted::Input, msg: untrusted::Input,
     signature: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
-    init::init_once();
+    cpu::cache_detected_features();
     alg.verify(public_key, msg, signature)
 }

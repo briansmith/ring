@@ -45,13 +45,13 @@ macro_rules! bssl_test {
     ( $fn_name:ident, $bssl_test_main_fn_name:ident ) => {
         #[test]
         fn $fn_name() {
-            use $crate::{c, init};
+            use $crate::{c, cpu};
             extern "C" {
                 #[must_use]
                 fn $bssl_test_main_fn_name() -> c::int;
             }
 
-            init::init_once();
+            cpu::cache_detected_features();
             ::std::env::set_current_dir(::test::ring_src_path()).unwrap();
 
             let result = unsafe { $bssl_test_main_fn_name() };

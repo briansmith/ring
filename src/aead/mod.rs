@@ -25,7 +25,7 @@
 //! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
-use crate::{constant_time, error, init, polyfill};
+use crate::{constant_time, cpu, error, polyfill};
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
@@ -249,7 +249,7 @@ impl Key {
             ctx_buf: [0; KEY_CTX_BUF_ELEMS],
         };
 
-        init::init_once();
+        cpu::cache_detected_features();
         {
             let ctx_buf_bytes = polyfill::slice::u64_as_u8_mut(&mut r.ctx_buf);
             (r.algorithm.init)(ctx_buf_bytes, key_bytes)?;

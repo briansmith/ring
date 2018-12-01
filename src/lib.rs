@@ -110,12 +110,12 @@ pub mod constant_time;
 #[doc(hidden)]
 pub mod der;
 
+mod cpu;
 pub mod digest;
 mod ec;
 pub mod error;
 pub mod hkdf;
 pub mod hmac;
-mod init;
 mod limb;
 pub mod pbkdf2;
 mod pkcs8;
