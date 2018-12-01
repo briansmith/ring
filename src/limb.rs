@@ -52,18 +52,15 @@ pub enum LimbMask {
 
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 
-#[cfg(all(any(test, feature = "rsa_signing"), target_pointer_width = "64"))]
+#[cfg(any(test, feature = "rsa_signing"))]
 #[inline]
-pub fn limbs_as_bytes(src: &[Limb]) -> &[u8] {
-    use crate::polyfill;
-    polyfill::slice::u64_as_u8(src)
-}
+pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
+    extern "C" {
+        fn LIMBS_equal(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
+    }
 
-#[cfg(all(any(test, feature = "rsa_signing"), target_pointer_width = "32"))]
-#[inline]
-pub fn limbs_as_bytes(src: &[Limb]) -> &[u8] {
-    use crate::polyfill;
-    polyfill::slice::u32_as_u8(src)
+    assert_eq!(a.len(), b.len());
+    unsafe { LIMBS_equal(a.as_ptr(), b.as_ptr(), a.len()) }
 }
 
 #[inline]

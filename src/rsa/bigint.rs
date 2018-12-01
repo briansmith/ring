@@ -54,9 +54,6 @@ use crate::{
 
 use std;
 
-#[cfg(any(test, feature = "rsa_signing"))]
-use constant_time;
-
 #[cfg(feature = "rsa_signing")]
 use bssl;
 
@@ -1089,13 +1086,15 @@ pub fn verify_inverses_consttime<M>(
 }
 
 #[cfg(any(test, feature = "rsa_signing"))]
+#[inline]
 pub fn elem_verify_equal_consttime<M, E>(
     a: &Elem<M, E>, b: &Elem<M, E>,
 ) -> Result<(), error::Unspecified> {
-    constant_time::verify_slices_are_equal(
-        limb::limbs_as_bytes(&a.limbs),
-        limb::limbs_as_bytes(&b.limbs),
-    )
+    if limb::limbs_equal_limbs_consttime(&a.limbs, &b.limbs) == LimbMask::True {
+        Ok(())
+    } else {
+        Err(error::Unspecified)
+    }
 }
 
 /// Nonnegative integers.
