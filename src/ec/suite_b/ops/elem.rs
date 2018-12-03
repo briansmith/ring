@@ -12,9 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use arithmetic::montgomery::{Encoding, ProductEncoding};
 use core::marker::PhantomData;
-use limb::*;
+use crate::{
+    arithmetic::montgomery::{Encoding, ProductEncoding},
+    limb::{Limb, LIMB_BITS},
+};
 
 /// Elements of ℤ/mℤ for some modulus *m*. Elements are always fully reduced
 /// with respect to *m*; i.e. the 0 <= x < m for every value x.

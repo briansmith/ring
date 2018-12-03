@@ -15,10 +15,16 @@
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
 use super::digest_scalar::digest_scalar;
-use arithmetic::montgomery::*;
 use core;
-use crate::{der, digest, ec, error, pkcs8, private, rand, signature, signature_impl};
-use ec::suite_b::{ops::*, private_key};
+use crate::{
+    arithmetic::montgomery::*,
+    der, digest,
+    ec::{
+        self,
+        suite_b::{ops::*, private_key},
+    },
+    error, limb, pkcs8, private, rand, signature, signature_impl,
+};
 use untrusted;
 
 /// An ECDSA signing algorithm.
@@ -237,9 +243,9 @@ fn format_rs_fixed<'a>(
     let scalar_len = ops.scalar_bytes_len();
     {
         let (r_out, rest) = out.split_at_mut(scalar_len);
-        big_endian_from_limbs(&r.limbs[..ops.common.num_limbs], r_out);
+        limb::big_endian_from_limbs(&r.limbs[..ops.common.num_limbs], r_out);
         let (s_out, _) = rest.split_at_mut(scalar_len);
-        big_endian_from_limbs(&s.limbs[..ops.common.num_limbs], s_out);
+        limb::big_endian_from_limbs(&s.limbs[..ops.common.num_limbs], s_out);
     }
     &out[..(2 * scalar_len)]
 }
@@ -252,7 +258,7 @@ fn format_rs_asn1<'a>(
     fn format_integer_tlv(ops: &ScalarOps, a: &Scalar, out: &mut [u8]) -> usize {
         let mut fixed = [0u8; ec::SCALAR_MAX_BYTES + 1];
         let fixed = &mut fixed[..(ops.scalar_bytes_len() + 1)];
-        big_endian_from_limbs(&a.limbs[..ops.common.num_limbs], &mut fixed[1..]);
+        limb::big_endian_from_limbs(&a.limbs[..ops.common.num_limbs], &mut fixed[1..]);
 
         // Since `a_fixed_out` is an extra byte long, it is guaranteed to start
         // with a zero.

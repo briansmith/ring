@@ -15,7 +15,10 @@
 //! Elliptic curve operations on the birationally equivalent curves Curve25519
 //! and Edwards25519.
 
-use crate::{bssl, error, limb};
+use crate::{
+    bssl, error,
+    limb::{Limb, LIMB_BITS},
+};
 use std::marker::PhantomData;
 
 // Elem<T>` is `fe` in curve25519/internal.h.
@@ -23,7 +26,7 @@ use std::marker::PhantomData;
 // Keep this in sync with curve25519/internal.h.
 #[repr(C)]
 pub struct Elem<E: Encoding> {
-    limbs: [limb::Limb; ELEM_LIMBS], // This is called `v` in the C code.
+    limbs: [Limb; ELEM_LIMBS], // This is called `v` in the C code.
     encoding: PhantomData<E>,
 }
 
@@ -31,7 +34,7 @@ pub trait Encoding {}
 pub struct T;
 impl Encoding for T {}
 
-const ELEM_LIMBS: usize = 5 * 64 / limb::LIMB_BITS;
+const ELEM_LIMBS: usize = 5 * 64 / LIMB_BITS;
 
 impl<E: Encoding> Elem<E> {
     fn zero() -> Self {

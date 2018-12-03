@@ -14,11 +14,10 @@
 
 use arithmetic::montgomery::*;
 use core::marker::PhantomData;
-use crate::{c, error};
+use crate::{c, error, limb::*};
 use untrusted;
 
 pub use self::elem::*;
-pub use limb::*; // XXX // XXX
 
 /// A field element, i.e. an element of ℤ/qℤ for the curve's field modulus
 /// *q*.

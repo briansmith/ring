@@ -14,8 +14,11 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
-use crate::digest;
-use ec::suite_b::ops::*;
+use crate::{
+    digest,
+    ec::suite_b::ops::*,
+    limb::{self, LIMB_BYTES},
+};
 use untrusted;
 
 /// Calculate the digest of `msg` using the digest algorithm `digest_alg`. Then
@@ -66,7 +69,7 @@ fn digest_scalar_(ops: &ScalarOps, digest: &[u8]) -> Scalar {
 
     scalar_parse_big_endian_partially_reduced_variable_consttime(
         cops,
-        AllowZero::Yes,
+        limb::AllowZero::Yes,
         untrusted::Input::from(digest),
     )
     .unwrap()
@@ -75,8 +78,12 @@ fn digest_scalar_(ops: &ScalarOps, digest: &[u8]) -> Scalar {
 #[cfg(test)]
 mod tests {
     use super::digest_bytes_scalar;
-    use crate::{digest, test};
-    use ec::suite_b::ops::*;
+    use crate::{
+        digest,
+        ec::suite_b::ops::*,
+        limb::{self, LIMB_BYTES},
+        test,
+    };
     use untrusted;
 
     #[test]
@@ -110,7 +117,7 @@ mod tests {
 
                 let expected = scalar_parse_big_endian_variable(
                     ops.public_key_ops.common,
-                    AllowZero::Yes,
+                    limb::AllowZero::Yes,
                     untrusted::Input::from(&output),
                 )
                 .unwrap();

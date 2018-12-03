@@ -15,9 +15,12 @@
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
 use super::digest_scalar::digest_scalar;
-use arithmetic::montgomery::*;
-use crate::{der, digest, error, private, signature};
-use ec::suite_b::{ops::*, public_key::*, verify_jacobian_point_is_on_the_curve};
+use crate::{
+    arithmetic::montgomery::*,
+    der, digest,
+    ec::suite_b::{ops::*, public_key::*, verify_jacobian_point_is_on_the_curve},
+    error, limb, private, signature,
+};
 use untrusted;
 
 /// An ECDSA verification algorithm.
@@ -95,8 +98,8 @@ impl Algorithm {
 
         // NSA Guide Step 1: "If r and s are not both integers in the interval
         // [1, n − 1], output INVALID."
-        let r = scalar_parse_big_endian_variable(public_key_ops.common, AllowZero::No, r)?;
-        let s = scalar_parse_big_endian_variable(public_key_ops.common, AllowZero::No, s)?;
+        let r = scalar_parse_big_endian_variable(public_key_ops.common, limb::AllowZero::No, r)?;
+        let s = scalar_parse_big_endian_variable(public_key_ops.common, limb::AllowZero::No, s)?;
 
         // NSA Guide Step 4: "Compute w = s**−1 mod n, using the routine in
         // Appendix B.1."
