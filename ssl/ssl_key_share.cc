@@ -38,7 +38,6 @@ namespace {
 class ECKeyShare : public SSLKeyShare {
  public:
   ECKeyShare(int nid, uint16_t group_id) : nid_(nid), group_id_(group_id) {}
-  ~ECKeyShare() override {}
 
   uint16_t GroupID() const override { return group_id_; }
 
@@ -159,9 +158,6 @@ class ECKeyShare : public SSLKeyShare {
 class X25519KeyShare : public SSLKeyShare {
  public:
   X25519KeyShare() {}
-  ~X25519KeyShare() override {
-    OPENSSL_cleanse(private_key_, sizeof(private_key_));
-  }
 
   uint16_t GroupID() const override { return SSL_CURVE_X25519; }
 
