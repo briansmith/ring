@@ -19,13 +19,9 @@
 
 #include <GFp/cpu.h>
 
-#if defined(OPENSSL_NO_ASM) || \
-    (!defined(OPENSSL_X86) && !defined(OPENSSL_X86_64) && !defined(OPENSSL_ARM))
-#define GFp_C_AES
-void GFp_aes_c_set_encrypt_key(const uint8_t *key, unsigned bits,
-                               AES_KEY *aeskey);
-void GFp_aes_c_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-#endif
+int GFp_aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
+                                 AES_KEY *aeskey);
+void GFp_aes_nohw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 
 static inline int hwaes_capable(void) {
 #if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)

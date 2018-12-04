@@ -89,11 +89,6 @@ void GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
 void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 
 
-#if !defined(GFp_C_AES)
-int GFp_asm_AES_set_encrypt_key(const uint8_t *key, unsigned bits,
-                                AES_KEY *aeskey);
-void GFp_asm_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-#endif
 
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
@@ -154,11 +149,7 @@ void GFp_AES_set_encrypt_key(const uint8_t *user_key, unsigned bits,
   }
 #endif
 
-#if defined(GFp_C_AES)
-  GFp_aes_c_set_encrypt_key(user_key, bits, key);
-#else
-  GFp_asm_AES_set_encrypt_key(user_key, bits, key);
-#endif
+  (void) GFp_aes_nohw_set_encrypt_key(user_key, bits, key);
 }
 
 static aes_block_f aes_block(void) {
@@ -176,11 +167,7 @@ static aes_block_f aes_block(void) {
   }
 #endif
 
-#if defined(GFp_C_AES)
-  return GFp_aes_c_encrypt;
-#else
-  return GFp_asm_AES_encrypt;
-#endif
+  return GFp_aes_nohw_encrypt;
 }
 
 void GFp_AES_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {

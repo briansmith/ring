@@ -196,14 +196,14 @@ AES_Te:
 .word	0x1B000000, 0x36000000, 0, 0, 0, 0, 0, 0
 .size	AES_Te,.-AES_Te
 
-@ void GFp_asm_AES_encrypt(const unsigned char *in, unsigned char *out,
+@ void GFp_aes_nohw_encrypt(const unsigned char *in, unsigned char *out,
 @ 		                   const AES_KEY *key) {
-.global GFp_asm_AES_encrypt
-.type   GFp_asm_AES_encrypt,%function
+.global GFp_aes_nohw_encrypt
+.type   GFp_aes_nohw_encrypt,%function
 .align	5
-GFp_asm_AES_encrypt:
+GFp_aes_nohw_encrypt:
 #ifndef	__thumb2__
-	sub	r3,pc,#8		@ GFp_asm_AES_encrypt
+	sub	r3,pc,#8		@ GFp_aes_nohw_encrypt
 #else
 	adr	r3,.
 #endif
@@ -211,7 +211,7 @@ GFp_asm_AES_encrypt:
 #if defined(__thumb2__) || defined(__APPLE__)
 	adr	$tbl,AES_Te
 #else
-	sub	$tbl,r3,#GFp_asm_AES_encrypt-AES_Te	@ Te
+	sub	$tbl,r3,#GFp_aes_nohw_encrypt-AES_Te	@ Te
 #endif
 	mov	$rounds,r0		@ inp
 	mov	$key,r2
@@ -308,7 +308,7 @@ GFp_asm_AES_encrypt:
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	GFp_asm_AES_encrypt,.-GFp_asm_AES_encrypt
+.size	GFp_aes_nohw_encrypt,.-GFp_aes_nohw_encrypt
 
 .type   _armv4_AES_encrypt,%function
 .align	2
@@ -447,13 +447,13 @@ _armv4_AES_encrypt:
 	ldr	pc,[sp],#4		@ pop and return
 .size	_armv4_AES_encrypt,.-_armv4_AES_encrypt
 
-.global GFp_asm_AES_set_encrypt_key
-.type   GFp_asm_AES_set_encrypt_key,%function
+.global GFp_aes_nohw_set_encrypt_key
+.type   GFp_aes_nohw_set_encrypt_key,%function
 .align	5
-GFp_asm_AES_set_encrypt_key:
+GFp_aes_nohw_set_encrypt_key:
 _armv4_AES_set_encrypt_key:
 #ifndef	__thumb2__
-	sub	r3,pc,#8		@ GFp_asm_AES_set_encrypt_key
+	sub	r3,pc,#8		@ GFp_aes_nohw_set_encrypt_key
 #else
 	adr	r3,.
 #endif
@@ -703,7 +703,7 @@ _armv4_AES_set_encrypt_key:
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	GFp_asm_AES_set_encrypt_key,.-GFp_asm_AES_set_encrypt_key
+.size	GFp_aes_nohw_set_encrypt_key,.-GFp_aes_nohw_set_encrypt_key
 
 .asciz	"AES for ARMv4, CRYPTOGAMS by <appro\@openssl.org>"
 .align	2
