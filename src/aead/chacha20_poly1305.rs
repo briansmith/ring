@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::poly1305;
+use super::{poly1305, Tag};
 use crate::{aead, chacha, error, polyfill};
 
 /// ChaCha20-Poly1305 as described in [RFC 7539].
@@ -41,8 +41,7 @@ fn chacha20_poly1305_init(key: &[u8]) -> Result<aead::KeyInner, error::Unspecifi
 
 fn chacha20_poly1305_seal(
     key: &aead::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_out: &mut [u8],
-    tag_out: &mut [u8; aead::TAG_LEN],
-) -> Result<(), error::Unspecified> {
+) -> Result<Tag, error::Unspecified> {
     let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
@@ -50,34 +49,32 @@ fn chacha20_poly1305_seal(
     let mut counter = chacha::make_counter(nonce, 1);
     chacha::chacha20_xor_in_place(chacha20_key, &counter, in_out);
     counter[0] = 0;
-    aead_poly1305(tag_out, chacha20_key, &counter, ad, in_out);
-    Ok(())
+    Ok(aead_poly1305(chacha20_key, &counter, ad, in_out))
 }
 
 fn chacha20_poly1305_open(
     key: &aead::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_prefix_len: usize,
-    in_out: &mut [u8], tag_out: &mut [u8; aead::TAG_LEN],
-) -> Result<(), error::Unspecified> {
+    in_out: &mut [u8],
+) -> Result<Tag, error::Unspecified> {
     let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
     };
     let mut counter = chacha::make_counter(nonce, 0);
-    {
+    let tag = {
         let ciphertext = &in_out[in_prefix_len..];
-        aead_poly1305(tag_out, chacha20_key, &counter, ad, ciphertext);
-    }
+        aead_poly1305(chacha20_key, &counter, ad, ciphertext)
+    };
     counter[0] = 1;
     chacha::chacha20_xor_overlapping(chacha20_key, &counter, in_out, in_prefix_len);
-    Ok(())
+    Ok(tag)
 }
 
 pub type Key = chacha::Key;
 
 fn aead_poly1305(
-    tag_out: &mut [u8; aead::TAG_LEN], chacha20_key: &chacha::Key, counter: &chacha::Counter,
-    ad: &[u8], ciphertext: &[u8],
-) {
+    chacha20_key: &chacha::Key, counter: &chacha::Counter, ad: &[u8], ciphertext: &[u8],
+) -> Tag {
     debug_assert_eq!(counter[0], 0);
     let key = poly1305::Key::derive_using_chacha(chacha20_key, counter);
     let mut ctx = poly1305::Context::from_key(key);
@@ -88,7 +85,7 @@ fn aead_poly1305(
         polyfill::u64_from_usize(ciphertext.len()).to_le(),
     ];
     ctx.update(polyfill::slice::u64_as_u8(&lengths));
-    tag_out.copy_from_slice(&ctx.finish()[..]);
+    ctx.finish()
 }
 
 #[inline]

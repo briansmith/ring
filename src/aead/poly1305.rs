@@ -15,7 +15,7 @@
 
 // TODO: enforce maximum input length.
 
-use super::Tag;
+use super::{Tag, TAG_LEN};
 use crate::{bssl, c, chacha, constant_time, error, polyfill};
 use core;
 
@@ -59,7 +59,7 @@ impl Context {
             fn GFp_poly1305_blocks(
                 state: &mut Opaque, input: *const u8, len: c::size_t, should_pad: Pad,
             );
-            fn GFp_poly1305_emit(state: &mut Opaque, mac: &mut Tag, nonce: &Nonce);
+            fn GFp_poly1305_emit(state: &mut Opaque, mac: &mut [u8; TAG_LEN], nonce: &Nonce);
         }
 
         #[inline]
@@ -134,7 +134,7 @@ impl Context {
         }
     }
 
-    pub fn finish(mut self) -> Tag {
+    pub(super) fn finish(mut self) -> Tag {
         let Context {
             opaque,
             nonce,
@@ -150,18 +150,16 @@ impl Context {
             func.blocks(opaque, &buf[..], Pad::AlreadyPadded);
         }
 
-        let mut tag = Default::default();
-        func.emit(opaque, &mut tag, nonce);
-        tag
+        func.emit(opaque, nonce)
     }
 }
 
-pub fn verify(key: Key, msg: &[u8], tag: &Tag) -> Result<(), error::Unspecified> {
-    let calculated_tag = sign(key, msg);
-    constant_time::verify_slices_are_equal(&calculated_tag[..], tag)
+pub fn verify(key: Key, msg: &[u8], tag: &[u8; 16]) -> Result<(), error::Unspecified> {
+    let Tag(calculated_tag) = sign(key, msg);
+    constant_time::verify_slices_are_equal(&calculated_tag, tag)
 }
 
-pub fn sign(key: Key, msg: &[u8]) -> Tag {
+pub(super) fn sign(key: Key, msg: &[u8]) -> Tag {
     let mut ctx = Context::from_key(key);
     ctx.update(msg);
     ctx.finish()
@@ -206,7 +204,7 @@ fn assert_opaque_alignment(state: &Opaque) {
 struct Funcs {
     blocks_fn:
         unsafe extern "C" fn(&mut Opaque, input: *const u8, input_len: c::size_t, should_pad: Pad),
-    emit_fn: unsafe extern "C" fn(&mut Opaque, &mut Tag, nonce: &Nonce),
+    emit_fn: unsafe extern "C" fn(&mut Opaque, &mut [u8; TAG_LEN], nonce: &Nonce),
 }
 
 #[inline]
@@ -235,17 +233,19 @@ impl Funcs {
     }
 
     #[inline]
-    fn emit(&self, state: &mut Opaque, tag_out: &mut Tag, nonce: &Nonce) {
+    fn emit(&self, state: &mut Opaque, nonce: &Nonce) -> Tag {
         assert_opaque_alignment(state);
+        let mut tag = Tag([0; TAG_LEN]);
         unsafe {
-            (self.emit_fn)(state, tag_out, nonce);
+            (self.emit_fn)(state, &mut tag.0, nonce);
         }
+        tag
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{super::TAG_LEN, *};
+    use super::{TAG_LEN, *};
     use crate::{error, test};
     use core;
 
@@ -268,13 +268,13 @@ mod tests {
                 let key = Key::from_test_vector(&key);
                 let mut ctx = Context::from_key(key);
                 ctx.update(&input);
-                let actual_mac = ctx.finish();
-                assert_eq!(&expected_mac[..], &actual_mac[..]);
+                let Tag(actual_mac) = ctx.finish();
+                assert_eq!(expected_mac, &actual_mac);
             }
             {
                 let key = Key::from_test_vector(&key);
-                let actual_mac = sign(key, &input);
-                assert_eq!(&expected_mac[..], &actual_mac[..]);
+                let Tag(actual_mac) = sign(key, &input);
+                assert_eq!(expected_mac, &actual_mac);
             }
             {
                 let key = Key::from_test_vector(&key);
@@ -288,8 +288,8 @@ mod tests {
                 for chunk in input.chunks(1) {
                     ctx.update(chunk);
                 }
-                let actual_mac = ctx.finish();
-                assert_eq!(&expected_mac[..], &actual_mac[..]);
+                let Tag(actual_mac) = ctx.finish();
+                assert_eq!(expected_mac, &actual_mac);
             }
 
             test_poly1305_simd(0, key, &input, expected_mac)?;
@@ -329,8 +329,8 @@ mod tests {
             }
         }
 
-        let actual_mac = ctx.finish();
-        assert_eq!(&expected_mac[..], &actual_mac);
+        let Tag(actual_mac) = ctx.finish();
+        assert_eq!(expected_mac, &actual_mac);
 
         Ok(())
     }
