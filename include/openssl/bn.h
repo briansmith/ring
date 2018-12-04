@@ -160,7 +160,7 @@ extern "C" {
 #define BN_DEC_FMT1 "%" PRIu32
 #define BN_DEC_FMT2 "%09" PRIu32
 #define BN_HEX_FMT1 "%" PRIx32
-#define BN_HEX_FMT2 "%08" PRIx64
+#define BN_HEX_FMT2 "%08" PRIx32
 #else
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
 #endif
