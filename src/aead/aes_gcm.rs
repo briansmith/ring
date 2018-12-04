@@ -12,6 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use super::Tag;
 use crate::{aead, bssl, c, error};
 
 #[repr(align(16))]
@@ -55,45 +56,48 @@ fn aes_gcm_init(key: &[u8]) -> Result<super::KeyInner, error::Unspecified> {
 
 fn aes_gcm_seal(
     key: &super::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_out: &mut [u8],
-    tag: &mut [u8; aead::TAG_LEN],
-) -> Result<(), error::Unspecified> {
+) -> Result<Tag, error::Unspecified> {
     let ctx = match key {
         super::KeyInner::AesGcm(Key(ctx)) => ctx,
         _ => unreachable!(),
     };
+    let mut tag = Tag([0; aead::TAG_LEN]);
     Result::from(unsafe {
         GFp_aes_gcm_seal(
             ctx.as_ptr(),
             in_out.as_mut_ptr(),
             in_out.len(),
-            tag,
+            &mut tag.0,
             nonce,
             ad.as_ptr(),
             ad.len(),
         )
-    })
+    })?;
+    Ok(tag)
 }
 
 fn aes_gcm_open(
     key: &super::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_prefix_len: usize,
-    in_out: &mut [u8], tag_out: &mut [u8; aead::TAG_LEN],
-) -> Result<(), error::Unspecified> {
+    in_out: &mut [u8],
+) -> Result<Tag, error::Unspecified> {
     let ctx = match key {
         super::KeyInner::AesGcm(Key(ctx)) => ctx,
         _ => unreachable!(),
     };
+    let mut tag = Tag([0; aead::TAG_LEN]);
     Result::from(unsafe {
         GFp_aes_gcm_open(
             ctx.as_ptr(),
             in_out.as_mut_ptr(),
             in_out.len() - in_prefix_len,
-            tag_out,
+            &mut tag.0,
             nonce,
             in_out[in_prefix_len..].as_ptr(),
             ad.as_ptr(),
             ad.len(),
         )
-    })
+    })?;
+    Ok(tag)
 }
 
 const AES_128_KEY_LEN: usize = 128 / 8;

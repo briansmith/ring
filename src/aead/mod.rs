@@ -131,15 +131,8 @@ pub fn open_in_place<'a>(
     check_per_nonce_max_bytes(key.key.algorithm, ciphertext_len)?;
     let (in_out, received_tag) =
         ciphertext_and_tag_modified_in_place.split_at_mut(in_prefix_len + ciphertext_len);
-    let mut calculated_tag = [0u8; TAG_LEN];
-    (key.key.algorithm.open)(
-        &key.key.inner,
-        nonce,
-        &ad,
-        in_prefix_len,
-        in_out,
-        &mut calculated_tag,
-    )?;
+    let Tag(calculated_tag) =
+        (key.key.algorithm.open)(&key.key.inner, nonce, &ad, in_prefix_len, in_out)?;
     if constant_time::verify_slices_are_equal(&calculated_tag, received_tag).is_err() {
         // Zero out the plaintext so that it isn't accidentally leaked or used
         // after verification fails. It would be safest if we could check the
@@ -221,7 +214,9 @@ pub fn seal_in_place(
     check_per_nonce_max_bytes(key.key.algorithm, in_out_len)?;
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
     let tag_out = slice_as_array_ref_mut!(tag_out, TAG_LEN)?;
-    (key.key.algorithm.seal)(&key.key.inner, nonce, ad, in_out, tag_out)?;
+
+    let Tag(tag) = (key.key.algorithm.seal)(&key.key.inner, nonce, ad, in_out)?;
+    tag_out.copy_from_slice(&tag);
     Ok(in_out_len + TAG_LEN)
 }
 
@@ -273,16 +268,14 @@ pub struct Algorithm {
         nonce: &[u8; NONCE_LEN],
         ad: &[u8],
         in_out: &mut [u8],
-        tag_out: &mut [u8; TAG_LEN],
-    ) -> Result<(), error::Unspecified>,
+    ) -> Result<Tag, error::Unspecified>,
     open: fn(
         ctx: &KeyInner,
         nonce: &[u8; NONCE_LEN],
         ad: &[u8],
         in_prefix_len: usize,
         in_out: &mut [u8],
-        tag_out: &mut [u8; TAG_LEN],
-    ) -> Result<(), error::Unspecified>,
+    ) -> Result<Tag, error::Unspecified>,
 
     key_len: usize,
     id: AlgorithmID,
@@ -344,13 +337,15 @@ impl PartialEq for Algorithm {
 
 impl Eq for Algorithm {}
 
-/// The maximum length of a tag for the algorithms in this module.
-pub const MAX_TAG_LEN: usize = TAG_LEN;
-
-type Tag = [u8; TAG_LEN];
+/// An authentication tag.
+#[must_use]
+struct Tag([u8; TAG_LEN]);
 
 // All the AEADs we support use 128-bit tags.
 const TAG_LEN: usize = 16;
+
+/// The maximum length of a tag for the algorithms in this module.
+pub const MAX_TAG_LEN: usize = TAG_LEN;
 
 // All the AEADs we support use 96-bit nonces.
 const NONCE_LEN: usize = 96 / 8;
