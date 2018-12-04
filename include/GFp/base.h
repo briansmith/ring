@@ -146,6 +146,4 @@
 #endif  // OPENSSL_ASM_INCOMPATIBLE
 
 
-typedef struct bignum_st BIGNUM;
-
 #endif  // OPENSSL_HEADER_BASE_H
