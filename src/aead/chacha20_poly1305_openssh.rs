@@ -30,7 +30,7 @@
 //! [RFC 4253]: https://tools.ietf.org/html/rfc4253
 
 use super::{chacha20_poly1305::derive_poly1305_key, poly1305, Tag, TAG_LEN};
-use crate::{chacha, error};
+use crate::{chacha, constant_time, error};
 
 /// A key for sealing packets.
 pub struct SealingKey {
@@ -119,7 +119,7 @@ impl OpeningKey {
         // `ciphertext_in_plaintext_out` is unmodified if verification fails.
         // This is beyond what we guarantee.
         let poly_key = derive_poly1305_key(&self.key.k_2, &counter);
-        poly1305::verify(poly_key, ciphertext_in_plaintext_out, tag)?;
+        verify(poly_key, ciphertext_in_plaintext_out, tag)?;
 
         let plaintext_in_ciphertext_out = &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];
         counter[0] = 1;
@@ -163,3 +163,8 @@ pub const KEY_LEN: usize = chacha::KEY_LEN * 2;
 
 /// The length in bytes of the `packet_length` field in a SSH packet.
 pub const PACKET_LENGTH_LEN: usize = 4; // 32 bits
+
+fn verify(key: poly1305::Key, msg: &[u8], tag: &[u8; TAG_LEN]) -> Result<(), error::Unspecified> {
+    let Tag(calculated_tag) = poly1305::sign(key, msg);
+    constant_time::verify_slices_are_equal(&calculated_tag, tag)
+}

@@ -19,8 +19,7 @@ use super::{
     block::{Block, BLOCK_LEN},
     Tag, TAG_LEN,
 };
-use crate::{bssl, c, constant_time, error};
-use core;
+use crate::{bssl, c, error};
 
 /// A Poly1305 key.
 pub struct Key([Block; 2]);
@@ -37,8 +36,6 @@ impl From<[u8; KEY_LEN]> for Key {
 pub struct Context {
     opaque: Opaque,
     nonce: Nonce,
-    buf: [u8; BLOCK_LEN],
-    buf_used: usize,
     func: Funcs,
 }
 
@@ -63,8 +60,6 @@ impl Context {
         let mut ctx = Context {
             opaque: Opaque([0u8; OPAQUE_LEN]),
             nonce,
-            buf: [0; BLOCK_LEN],
-            buf_used: 0,
             func: Funcs {
                 blocks_fn: GFp_poly1305_blocks,
                 emit_fn: GFp_poly1305_emit,
@@ -82,69 +77,24 @@ impl Context {
         ctx
     }
 
-    pub fn update(&mut self, mut input: &[u8]) {
-        let Context {
-            opaque,
-            buf,
-            buf_used,
-            func,
-            ..
-        } = self;
-        if *buf_used != 0 {
-            let todo = core::cmp::min(input.len(), BLOCK_LEN - *buf_used);
+    pub fn update_block(&mut self, block: Block, pad: Pad) {
+        self.func.blocks(&mut self.opaque, block.as_ref(), pad);
+    }
 
-            buf[*buf_used..(*buf_used + todo)].copy_from_slice(&input[..todo]);
-            *buf_used += todo;
-            input = &input[todo..];
-
-            if *buf_used == BLOCK_LEN {
-                func.blocks(opaque, buf, Pad::Pad);
-                *buf_used = 0;
-            }
-        }
-
-        if input.len() >= BLOCK_LEN {
-            let todo = input.len() & !(BLOCK_LEN - 1);
-            let (complete_blocks, remainder) = input.split_at(todo);
-            func.blocks(opaque, complete_blocks, Pad::Pad);
-            input = remainder;
-        }
-
-        if input.len() != 0 {
-            buf[..input.len()].copy_from_slice(input);
-            *buf_used = input.len();
-        }
+    pub fn update_blocks(&mut self, input: &[u8]) {
+        debug_assert_eq!(input.len() % BLOCK_LEN, 0);
+        self.func.blocks(&mut self.opaque, input, Pad::Pad);
     }
 
     pub(super) fn finish(mut self) -> Tag {
         let Context {
             opaque,
             nonce,
-            buf,
-            buf_used,
             func,
         } = &mut self;
-        if *buf_used != 0 {
-            buf[*buf_used] = 1;
-            for byte in &mut buf[(*buf_used + 1)..] {
-                *byte = 0;
-            }
-            func.blocks(opaque, &buf[..], Pad::AlreadyPadded);
-        }
 
         func.emit(opaque, nonce)
     }
-}
-
-pub fn verify(key: Key, msg: &[u8], tag: &[u8; 16]) -> Result<(), error::Unspecified> {
-    let Tag(calculated_tag) = sign(key, msg);
-    constant_time::verify_slices_are_equal(&calculated_tag, tag)
-}
-
-pub(super) fn sign(key: Key, msg: &[u8]) -> Tag {
-    let mut ctx = Context::from_key(key);
-    ctx.update(msg);
-    ctx.finish()
 }
 
 #[cfg(test)]
@@ -194,7 +144,7 @@ fn init(state: &mut Opaque, key: DerivedKey, func: &mut Funcs) -> Result<(), err
 }
 
 #[repr(u32)]
-enum Pad {
+pub enum Pad {
     AlreadyPadded = 0,
     Pad = 1,
 }
@@ -217,11 +167,29 @@ impl Funcs {
     }
 }
 
+/// Implements the original, non-IETF padding semantics.
+///
+/// This is used by chacha20_poly1305_openssh and the standalone
+/// poly1305 test vectors.
+pub(super) fn sign(key: Key, input: &[u8]) -> Tag {
+    let mut ctx = Context::from_key(key);
+    let remainder_len = input.len() % BLOCK_LEN;
+    let full_blocks_len = input.len() - remainder_len;
+    let (full_blocks, remainder) = input.split_at(full_blocks_len);
+    ctx.update_blocks(full_blocks);
+    if remainder_len > 0 {
+        let mut bytes = [0; BLOCK_LEN];
+        bytes[..remainder_len].copy_from_slice(remainder);
+        bytes[remainder_len] = 1;
+        ctx.update_block(Block::from(&bytes), Pad::AlreadyPadded);
+    }
+    ctx.finish()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{TAG_LEN, *};
-    use crate::{error, test};
-    use core;
+    use super::*;
+    use crate::test;
 
     #[test]
     pub fn test_state_layout() { check_state_layout(); }
@@ -237,75 +205,11 @@ mod tests {
             let expected_mac = test_case.consume_bytes("MAC");
             let expected_mac = slice_as_array_ref!(&expected_mac, TAG_LEN).unwrap();
 
-            // Test single-shot operation.
-            {
-                let key = Key::from(key.clone());
-                let mut ctx = Context::from_key(key);
-                ctx.update(&input);
-                let Tag(actual_mac) = ctx.finish();
-                assert_eq!(expected_mac, &actual_mac);
-            }
-            {
-                let key = Key::from(key.clone());
-                let Tag(actual_mac) = sign(key, &input);
-                assert_eq!(expected_mac, &actual_mac);
-            }
-            {
-                let key = Key::from(key.clone());
-                assert_eq!(Ok(()), verify(key, &input, &expected_mac));
-            }
-
-            // Test streaming byte-by-byte.
-            {
-                let key = Key::from(key.clone());
-                let mut ctx = Context::from_key(key);
-                for chunk in input.chunks(1) {
-                    ctx.update(chunk);
-                }
-                let Tag(actual_mac) = ctx.finish();
-                assert_eq!(expected_mac, &actual_mac);
-            }
-
-            test_poly1305_simd(0, key, &input, expected_mac)?;
-            test_poly1305_simd(16, key, &input, expected_mac)?;
-            test_poly1305_simd(32, key, &input, expected_mac)?;
-            test_poly1305_simd(48, key, &input, expected_mac)?;
+            let key = Key::from(key.clone());
+            let Tag(actual_mac) = sign(key, &input);
+            assert_eq!(expected_mac, &actual_mac);
 
             Ok(())
         })
-    }
-
-    fn test_poly1305_simd(
-        excess: usize, key: &[u8; KEY_LEN], input: &[u8], expected_mac: &[u8; TAG_LEN],
-    ) -> Result<(), error::Unspecified> {
-        let key = Key::from(key.clone());
-        let mut ctx = Context::from_key(key);
-
-        // Some implementations begin in non-SIMD mode and upgrade on demand.
-        // Stress the upgrade path.
-        let init = core::cmp::min(input.len(), 16);
-        ctx.update(&input[..init]);
-
-        let long_chunk_len = 128 + excess;
-        for chunk in input[init..].chunks(long_chunk_len + excess) {
-            if chunk.len() > long_chunk_len {
-                let (long, short) = chunk.split_at(long_chunk_len);
-
-                // Feed 128 + |excess| bytes to test SIMD mode.
-                ctx.update(long);
-
-                // Feed |excess| bytes to ensure SIMD mode can handle short
-                // inputs.
-                ctx.update(short);
-            } else {
-                // Handle the last chunk.
-                ctx.update(chunk);
-            }
-        }
-
-        let Tag(actual_mac) = ctx.finish();
-        assert_eq!(expected_mac, &actual_mac);
-
-        Ok(())
     }
 }
