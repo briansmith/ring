@@ -358,6 +358,7 @@ fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize) -> Result<(), e
 }
 
 mod aes_gcm;
+mod block;
 mod chacha20_poly1305;
 pub mod chacha20_poly1305_openssh;
 mod poly1305;
