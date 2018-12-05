@@ -1,11 +1,17 @@
 use crate::private;
 use core::num::Wrapping;
 
-pub trait Encoding<T>: From<T> + Sized + private::Sealed {
+pub trait Encoding<T>: Copy + From<T> + Sized + private::Sealed
+where
+    T: From<Self>,
+{
     const ZERO: Self;
 }
 
-pub fn as_bytes<E: Encoding<T>, T>(x: &[E]) -> &[u8] {
+pub fn as_bytes<E: Encoding<T>, T>(x: &[E]) -> &[u8]
+where
+    T: From<E>,
+{
     unsafe {
         core::slice::from_raw_parts(x.as_ptr() as *const u8, x.len() * core::mem::size_of::<E>())
     }
@@ -58,3 +64,14 @@ impl_endian!(BigEndian, u32, to_be, from_be);
 impl_endian!(BigEndian, u64, to_be, from_be);
 impl_endian!(LittleEndian, u32, to_le, from_le);
 impl_endian!(LittleEndian, u64, to_le, from_le);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_big_endian() {
+        let x = BigEndian::from(1u32);
+        assert_eq!(u32::from(x), 1);
+    }
+}

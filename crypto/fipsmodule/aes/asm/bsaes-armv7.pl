@@ -935,7 +935,7 @@ my $const = "r6";	# shared with _bsaes_encrypt8_alt
 my $keysched = "sp";
 
 $code.=<<___;
-.extern	GFp_AES_encrypt
+.extern	GFp_aes_nohw_encrypt
 .global	GFp_bsaes_ctr32_encrypt_blocks
 .type	GFp_bsaes_ctr32_encrypt_blocks,%function
 .align	5
@@ -1141,7 +1141,7 @@ GFp_bsaes_ctr32_encrypt_blocks:
 	mov	r1, sp			@ output on the stack
 	mov	r2, r7			@ key
 
-	bl	GFp_AES_encrypt
+	bl	GFp_aes_nohw_encrypt
 
 	vld1.8	{@XMM[0]}, [r4]!	@ load input
 	vld1.8	{@XMM[1]}, [sp]		@ load encrypted counter

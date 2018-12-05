@@ -12,11 +12,13 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Block, NonceRef, Tag, BLOCK_LEN};
-use crate::{aead, bssl, c, error};
-
-#[repr(align(16))]
-pub struct Key([u8; AES_KEY_CTX_BUF_LEN]);
+use super::{
+    aes::{self, Counter},
+    gcm,
+    nonce::NonceRef,
+    shift, Block, Direction, Tag, BLOCK_LEN,
+};
+use crate::{aead, endian::*, error, polyfill};
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
 ///
@@ -24,8 +26,8 @@ pub struct Key([u8; AES_KEY_CTX_BUF_LEN]);
 ///
 /// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/)
 pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
-    key_len: AES_128_KEY_LEN,
-    init: aes_gcm_init,
+    key_len: 16,
+    init: init_128,
     seal: aes_gcm_seal,
     open: aes_gcm_open,
     id: aead::AlgorithmID::AES_128_GCM,
@@ -38,163 +40,202 @@ pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
 ///
 /// Go analog: [`crypto.aes`](https://golang.org/pkg/crypto/aes/)
 pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
-    key_len: AES_256_KEY_LEN,
-    init: aes_gcm_init,
+    key_len: 32,
+    init: init_256,
     seal: aes_gcm_seal,
     open: aes_gcm_open,
     id: aead::AlgorithmID::AES_256_GCM,
     max_input_len: AES_GCM_MAX_INPUT_LEN,
 };
 
-fn aes_gcm_init(key: &[u8]) -> Result<super::KeyInner, error::Unspecified> {
-    let mut r = Key([0u8; AES_KEY_CTX_BUF_LEN]);
-    Result::from(unsafe {
-        GFp_aes_gcm_init(r.0.as_mut_ptr(), r.0.len(), key.as_ptr(), key.len())
-    })?;
-    Ok(super::KeyInner::AesGcm(r))
+pub struct Key {
+    gcm_key: gcm::Key, // First because it has a large alignment requirement.
+    aes_key: aes::Key,
 }
 
-fn aes_gcm_seal(
-    key: &super::KeyInner, nonce: NonceRef, ad: &[u8], in_out: &mut [u8],
-) -> Result<Tag, error::Unspecified> {
-    let ctx = match key {
-        super::KeyInner::AesGcm(Key(ctx)) => ctx,
-        _ => unreachable!(),
-    };
-    let mut tag = Tag(Block::zero());
-    Result::from(unsafe {
-        GFp_aes_gcm_seal(
-            ctx.as_ptr(),
-            in_out.as_mut_ptr(),
-            in_out.len(),
-            &mut tag,
-            nonce,
-            ad.as_ptr(),
-            ad.len(),
-        )
-    })?;
-    Ok(tag)
+fn init_128(key: &[u8]) -> Result<aead::KeyInner, error::Unspecified> {
+    init(key, aes::Variant::AES_128)
+}
+
+fn init_256(key: &[u8]) -> Result<aead::KeyInner, error::Unspecified> {
+    init(key, aes::Variant::AES_256)
+}
+
+fn init(key: &[u8], variant: aes::Variant) -> Result<aead::KeyInner, error::Unspecified> {
+    let aes_key = aes::Key::new(key, variant)?;
+    let gcm_key = gcm::Key::new(aes_key.encrypt_block(Block::zero()));
+    Ok(aead::KeyInner::AesGcm(Key { aes_key, gcm_key }))
+}
+
+const CHUNK_BLOCKS: usize = 3 * 1024 / 16;
+
+fn aes_gcm_seal(key: &aead::KeyInner, nonce: NonceRef, ad: &[u8], in_out: &mut [u8]) -> Tag {
+    aead(key, nonce, ad, in_out, Direction::Sealing)
 }
 
 fn aes_gcm_open(
-    key: &super::KeyInner, nonce: NonceRef, ad: &[u8], in_prefix_len: usize, in_out: &mut [u8],
-) -> Result<Tag, error::Unspecified> {
-    let ctx = match key {
-        super::KeyInner::AesGcm(Key(ctx)) => ctx,
-        _ => unreachable!(),
-    };
-    let mut tag = Tag(Block::zero());
-    Result::from(unsafe {
-        GFp_aes_gcm_open(
-            ctx.as_ptr(),
-            in_out.as_mut_ptr(),
-            in_out.len() - in_prefix_len,
-            &mut tag,
-            nonce,
-            in_out[in_prefix_len..].as_ptr(),
-            ad.as_ptr(),
-            ad.len(),
-        )
-    })?;
-    Ok(tag)
+    key: &aead::KeyInner, nonce: NonceRef, ad: &[u8], in_prefix_len: usize, in_out: &mut [u8],
+) -> Tag {
+    aead(key, nonce, ad, in_out, Direction::Opening { in_prefix_len })
 }
 
-const AES_128_KEY_LEN: usize = 128 / 8;
-const AES_256_KEY_LEN: usize = 32; // 256 / 8
+#[inline(always)] // Avoid branching on `direction`.
+fn aead(
+    key: &aead::KeyInner, nonce: NonceRef, aad: &[u8], in_out: &mut [u8], direction: Direction,
+) -> Tag {
+    let Key { aes_key, gcm_key } = match key {
+        aead::KeyInner::AesGcm(key) => key,
+        _ => unimplemented!(),
+    };
 
-const AES_KEY_CTX_BUF_LEN: usize = AES_KEY_BUF_LEN + GCM128_SERIALIZED_LEN;
+    let mut ctr = Counter::one(nonce);
+    let tag_iv = ctr.increment();
 
-// Keep this in sync with `AES_KEY` in aes.h.
-const AES_KEY_BUF_LEN: usize = (4 * 4 * (AES_MAX_ROUNDS + 1)) + 8;
+    let mut gcm_ctx = gcm::Context::new(gcm_key, aad);
+
+    let in_prefix_len = match direction {
+        Direction::Opening { in_prefix_len } => in_prefix_len,
+        Direction::Sealing => 0,
+    };
+
+    let total_in_out_len = in_out.len() - in_prefix_len;
+
+    let in_out = integrated_aes_gcm(aes_key, &mut gcm_ctx, in_out, &mut ctr, direction);
+    let in_out_len = in_out.len() - in_prefix_len;
+
+    // Process any (remaining) whole blocks.
+    let whole_len = in_out_len - (in_out_len % BLOCK_LEN);
+    {
+        let mut chunk_len = CHUNK_BLOCKS * BLOCK_LEN;
+        let mut output = 0;
+        let mut input = in_prefix_len;
+        loop {
+            if whole_len - output < chunk_len {
+                chunk_len = whole_len - output;
+            }
+            if chunk_len == 0 {
+                break;
+            }
+
+            if let Direction::Opening { .. } = direction {
+                gcm_ctx.update_blocks(&in_out[input..][..chunk_len]);
+            }
+
+            aes_key.ctr32_encrypt_blocks(
+                &mut in_out[output..][..(chunk_len + in_prefix_len)],
+                direction,
+                &mut ctr,
+            );
+
+            if let Direction::Sealing = direction {
+                gcm_ctx.update_blocks(&in_out[output..][..chunk_len]);
+            }
+
+            output += chunk_len;
+            input += chunk_len;
+        }
+    }
+
+    // Process any remaining partial block.
+    let remainder = &mut in_out[whole_len..];
+    shift::shift_partial((in_prefix_len, remainder), |remainder| {
+        let mut input = Block::zero();
+        input.partial_copy_from(remainder);
+        if let Direction::Opening { .. } = direction {
+            gcm_ctx.update_block(input);
+        }
+        let mut output = aes_key.encrypt_iv_xor_block(ctr.into(), input);
+        if let Direction::Sealing = direction {
+            polyfill::slice::fill(&mut output.as_mut()[remainder.len()..], 0);
+            gcm_ctx.update_block(output);
+        }
+        output
+    });
+
+    // Authenticate the final block containing the input lengths.
+    let aad_bits = polyfill::u64_from_usize(aad.len()) << 3;
+    let ciphertext_bits = polyfill::u64_from_usize(total_in_out_len) << 3;
+    gcm_ctx.update_block(Block::from_u64_be(
+        BigEndian::from(aad_bits),
+        BigEndian::from(ciphertext_bits),
+    ));
+
+    // Finalize the tag and return it.
+    gcm_ctx.pre_finish(|pre_tag| {
+        let block = tag_iv.into_block_less_safe();
+        let mut tag = aes_key.encrypt_block(block);
+        tag.bitxor_assign(pre_tag);
+        Tag(tag)
+    })
+}
+
+// Returns the data that wasn't processed.
+#[cfg(target_arch = "x86_64")]
+#[inline] // Optimize out the match on `direction`.
+fn integrated_aes_gcm<'a>(
+    aes_key: &aes::Key, gcm_ctx: &mut gcm::Context, in_out: &'a mut [u8], ctr: &mut Counter,
+    direction: Direction,
+) -> &'a mut [u8] {
+    use crate::c;
+
+    if !aes_key.is_aes_hw() || !gcm_ctx.is_avx2() {
+        return in_out;
+    }
+
+    let processed = match direction {
+        Direction::Opening { in_prefix_len } => {
+            extern "C" {
+                fn GFp_aesni_gcm_decrypt(
+                    input: *const u8, output: *mut u8, len: c::size_t, key: &aes::AES_KEY,
+                    ivec: &mut Counter, gcm: &mut gcm::Context,
+                ) -> c::size_t;
+            }
+            unsafe {
+                GFp_aesni_gcm_decrypt(
+                    in_out[in_prefix_len..].as_ptr(),
+                    in_out.as_mut_ptr(),
+                    in_out.len() - in_prefix_len,
+                    aes_key.inner_less_safe(),
+                    ctr,
+                    gcm_ctx,
+                )
+            }
+        },
+        Direction::Sealing => {
+            extern "C" {
+                fn GFp_aesni_gcm_encrypt(
+                    input: *const u8, output: *mut u8, len: c::size_t, key: &aes::AES_KEY,
+                    ivec: &mut Counter, gcm: &mut gcm::Context,
+                ) -> c::size_t;
+            }
+            unsafe {
+                GFp_aesni_gcm_encrypt(
+                    in_out.as_ptr(),
+                    in_out.as_mut_ptr(),
+                    in_out.len(),
+                    aes_key.inner_less_safe(),
+                    ctr,
+                    gcm_ctx,
+                )
+            }
+        },
+    };
+
+    &mut in_out[processed..]
+}
+
+#[cfg(not(target_arch = "x86_64"))]
+#[inline]
+fn integrated_aes_gcm<'a>(
+    _: &aes::Key, _: &mut gcm::Context, in_out: &'a mut [u8], _: &mut Counter, _: Direction,
+) -> &'a mut [u8] {
+    in_out // This doesn't process any of the input so it all remains.
+}
 
 const AES_GCM_MAX_INPUT_LEN: u64 = super::max_input_len(BLOCK_LEN, 2);
 
-// Keep this in sync with `AES_MAXNR` in aes.h.
-const AES_MAX_ROUNDS: usize = 14;
-
-// Keep this in sync with `GCM128_SERIALIZED_LEN` in gcm.h.
-// TODO: test.
-// TODO: some implementations of GCM don't require the buffer to be this big.
-// We should shrink it down on those platforms since this is still huge.
-const GCM128_SERIALIZED_LEN: usize = 16 * 16;
-
-extern "C" {
-    fn GFp_aes_gcm_init(
-        ctx_buf: *mut u8, ctx_buf_len: c::size_t, key: *const u8, key_len: c::size_t,
-    ) -> bssl::Result;
-
-    fn GFp_aes_gcm_seal(
-        ctx_buf: *const u8, in_out: *mut u8, in_out_len: c::size_t, tag_out: &mut Tag,
-        nonce: NonceRef, ad: *const u8, ad_len: c::size_t,
-    ) -> bssl::Result;
-
-    fn GFp_aes_gcm_open(
-        ctx_buf: *const u8, out: *mut u8, in_out_len: c::size_t, tag_out: &mut Tag,
-        nonce: NonceRef, in_: *const u8, ad: *const u8, ad_len: c::size_t,
-    ) -> bssl::Result;
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{bits::BitLength, c, polyfill::convert::*, test};
-
-    #[test]
-    pub fn test_aes() {
-        test::from_file("src/aead/aes_tests.txt", |section, test_case| {
-            assert_eq!(section, "");
-            let key = test_case.consume_bytes("Key");
-            let input = test_case.consume_bytes("Input");
-            let input: &[u8; AES_BLOCK_SIZE] = input.as_slice().try_into_().unwrap();
-            let expected_output = test_case.consume_bytes("Output");
-
-            // Key setup.
-            let key_bits = BitLength::from_usize_bytes(key.len()).unwrap();
-            assert!(
-                key_bits == BitLength::from_usize_bits(128)
-                    || key_bits == BitLength::from_usize_bits(256)
-            );
-            let key_bits = key_bits.as_usize_bits() as c::uint;
-            let mut aes_key = AES_KEY {
-                rd_key: [0u32; 4 * (AES_MAX_ROUNDS + 1)],
-                rounds: 0,
-            };
-            unsafe {
-                GFp_AES_set_encrypt_key(key.as_ptr(), key_bits, &mut aes_key);
-            }
-
-            // Test encryption into a separate buffer.
-            let mut output_buf = [0u8; AES_BLOCK_SIZE];
-            unsafe {
-                GFp_AES_encrypt(input.as_ptr(), output_buf.as_mut_ptr(), &aes_key);
-            }
-            assert_eq!(&output_buf[..], &expected_output[..]);
-
-            // Test in-place encryption.
-            output_buf.copy_from_slice(&input[..]);
-            unsafe {
-                GFp_AES_encrypt(output_buf.as_ptr(), output_buf.as_mut_ptr(), &aes_key);
-            }
-            assert_eq!(&output_buf[..], &expected_output[..]);
-
-            Ok(())
-        })
-    }
-
-    const AES_BLOCK_SIZE: usize = 16;
-
-    // Keep this in sync with AES_KEY in aes.h.
-    #[repr(C)]
-    pub struct AES_KEY {
-        pub rd_key: [u32; 4 * (AES_MAX_ROUNDS + 1)],
-        pub rounds: c::uint,
-    }
-
-    extern "C" {
-        fn GFp_AES_set_encrypt_key(key: *const u8, bits: c::uint, aes_key: *mut AES_KEY);
-        fn GFp_AES_encrypt(in_: *const u8, out: *mut u8, key: *const AES_KEY);
-    }
-
     #[test]
     fn max_input_len_test() {
         // [NIST SP800-38D] Section 5.2.1.1. Note that [RFC 5116 Section 5.1] and
@@ -206,7 +247,13 @@ mod tests {
         // [RFC 5116 Section 5.2]: https://tools.ietf.org/html/rfc5116#section-5.2
         const NIST_SP800_38D_MAX_BITS: u64 = (1u64 << 39) - 256;
         assert_eq!(NIST_SP800_38D_MAX_BITS, 549_755_813_632u64);
-        assert_eq!(AES_128_GCM.max_input_len * 8, NIST_SP800_38D_MAX_BITS);
-        assert_eq!(AES_256_GCM.max_input_len * 8, NIST_SP800_38D_MAX_BITS);
+        assert_eq!(
+            super::AES_128_GCM.max_input_len * 8,
+            NIST_SP800_38D_MAX_BITS
+        );
+        assert_eq!(
+            super::AES_256_GCM.max_input_len * 8,
+            NIST_SP800_38D_MAX_BITS
+        );
     }
 }

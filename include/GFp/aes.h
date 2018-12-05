@@ -54,13 +54,8 @@
 // Raw AES functions.
 
 
-#define AES_ENCRYPT 1
-#define AES_DECRYPT 0
-
 // AES_MAXNR is the maximum number of AES rounds.
 #define AES_MAXNR 14
-
-#define AES_BLOCK_SIZE 16
 
 // aes_key_st should be an opaque type, but EVP requires that the size be
 // known.
