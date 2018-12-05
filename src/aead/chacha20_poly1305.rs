@@ -14,9 +14,9 @@
 
 use super::{
     block::{Block, BLOCK_LEN},
-    poly1305, Tag,
+    chacha, poly1305, Tag,
 };
-use crate::{aead, chacha, endian::*, error, polyfill};
+use crate::{aead, endian::*, error, polyfill};
 
 /// ChaCha20-Poly1305 as described in [RFC 7539].
 ///
