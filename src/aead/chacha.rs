@@ -13,15 +13,20 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::c;
+use super::block::{Block, BLOCK_LEN};
+use crate::{c, polyfill::slice::u32_from_le_u8};
 use core;
-use polyfill::slice::u32_from_le_u8;
 
-#[repr(C, align(4))] // The asm code requires 32-bit alignment.
-pub struct Key([u8; KEY_LEN]);
+#[repr(C)]
+pub struct Key([Block; KEY_BLOCKS]);
 
 impl<'a> From<&'a [u8; KEY_LEN]> for Key {
-    fn from(key_bytes: &[u8; 32]) -> Self { Key(key_bytes.clone()) }
+    fn from(value: &[u8; KEY_LEN]) -> Self {
+        Key([
+            Block::from(slice_as_array_ref!(&value[..BLOCK_LEN], BLOCK_LEN).unwrap()),
+            Block::from(slice_as_array_ref!(&value[BLOCK_LEN..], BLOCK_LEN).unwrap()),
+        ])
+    }
 }
 
 #[inline]
@@ -89,7 +94,8 @@ pub fn make_counter(nonce: &[u8; NONCE_LEN], counter: u32) -> Counter {
     ]
 }
 
-pub const KEY_LEN: usize = 256 / 8;
+const KEY_BLOCKS: usize = 2;
+pub const KEY_LEN: usize = KEY_BLOCKS * BLOCK_LEN;
 
 pub const NONCE_LEN: usize = 12; // 96 bits
 
