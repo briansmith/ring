@@ -12,6 +12,7 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
+#include <algorithm>
 #include <functional>
 #include <string>
 #include <vector>
@@ -1683,4 +1684,63 @@ TEST(X509Test, ReadBIOEmpty) {
   uint32_t err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_ASN1, ERR_GET_LIB(err));
   EXPECT_EQ(ASN1_R_HEADER_TOO_LONG, ERR_GET_REASON(err));
+}
+
+TEST(X509Test, ReadBIOOneByte) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf("\x30", 1));
+  ASSERT_TRUE(bio);
+
+  // CPython expects |ASN1_R_HEADER_TOO_LONG| on EOF, to terminate a series of
+  // certificates. This EOF appeared after some data, however, so we do not wish
+  // to signal EOF.
+  bssl::UniquePtr<X509> x509(d2i_X509_bio(bio.get(), nullptr));
+  EXPECT_FALSE(x509);
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_ASN1, ERR_GET_LIB(err));
+  EXPECT_EQ(ASN1_R_NOT_ENOUGH_DATA, ERR_GET_REASON(err));
+}
+
+TEST(X509Test, PartialBIOReturn) {
+  // Create a filter BIO that only reads and writes one byte at a time.
+  bssl::UniquePtr<BIO_METHOD> method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(method);
+  ASSERT_TRUE(BIO_meth_set_create(method.get(), [](BIO *b) -> int {
+    BIO_set_init(b, 1);
+    return 1;
+  }));
+  ASSERT_TRUE(
+      BIO_meth_set_read(method.get(), [](BIO *b, char *out, int len) -> int {
+        return BIO_read(BIO_next(b), out, std::min(len, 1));
+      }));
+  ASSERT_TRUE(BIO_meth_set_write(
+      method.get(), [](BIO *b, const char *in, int len) -> int {
+        return BIO_write(BIO_next(b), in, std::min(len, 1));
+      }));
+
+  bssl::UniquePtr<BIO> bio(BIO_new(method.get()));
+  ASSERT_TRUE(bio);
+  BIO *mem_bio = BIO_new(BIO_s_mem());
+  ASSERT_TRUE(mem_bio);
+  BIO_push(bio.get(), mem_bio);  // BIO_push takes ownership.
+
+  bssl::UniquePtr<X509> cert(CertFromPEM(kLeafPEM));
+  ASSERT_TRUE(cert);
+  uint8_t *der = nullptr;
+  int der_len = i2d_X509(cert.get(), &der);
+  ASSERT_GT(der_len, 0);
+  bssl::UniquePtr<uint8_t> free_der(der);
+
+  // Write the certificate into the BIO. Though we only write one byte at a
+  // time, the write should succeed.
+  ASSERT_EQ(1, i2d_X509_bio(bio.get(), cert.get()));
+  const uint8_t *der2;
+  size_t der2_len;
+  ASSERT_TRUE(BIO_mem_contents(mem_bio, &der2, &der2_len));
+  EXPECT_EQ(Bytes(der, static_cast<size_t>(der_len)), Bytes(der2, der2_len));
+
+  // Read the certificate back out of the BIO. Though we only read one byte at a
+  // time, the read should succeed.
+  bssl::UniquePtr<X509> cert2(d2i_X509_bio(bio.get(), nullptr));
+  ASSERT_TRUE(cert2);
+  EXPECT_EQ(0, X509_cmp(cert.get(), cert2.get()));
 }
