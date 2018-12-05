@@ -16,21 +16,14 @@
 // TODO: enforce maximum input length.
 
 use super::{Tag, TAG_LEN};
-use crate::{bssl, c, chacha, constant_time, error, polyfill};
+use crate::{bssl, c, constant_time, error, polyfill};
 use core;
 
 /// A Poly1305 key.
 pub struct Key([u8; KEY_LEN]);
 
-impl Key {
-    pub fn derive_using_chacha(chacha20_key: &chacha::Key, counter: &chacha::Counter) -> Self {
-        let mut bytes = [0u8; KEY_LEN];
-        chacha::chacha20_xor_in_place(chacha20_key, counter, &mut bytes);
-        Key(bytes)
-    }
-
-    #[cfg(test)]
-    pub fn from_test_vector(bytes: &[u8; KEY_LEN]) -> Self { Key(*bytes) }
+impl From<[u8; KEY_LEN]> for Key {
+    fn from(value: [u8; 32]) -> Self { Key(value) }
 }
 
 pub struct Context {
@@ -251,25 +244,25 @@ mod tests {
 
             // Test single-shot operation.
             {
-                let key = Key::from_test_vector(&key);
+                let key = Key::from(key.clone());
                 let mut ctx = Context::from_key(key);
                 ctx.update(&input);
                 let Tag(actual_mac) = ctx.finish();
                 assert_eq!(expected_mac, &actual_mac);
             }
             {
-                let key = Key::from_test_vector(&key);
+                let key = Key::from(key.clone());
                 let Tag(actual_mac) = sign(key, &input);
                 assert_eq!(expected_mac, &actual_mac);
             }
             {
-                let key = Key::from_test_vector(&key);
+                let key = Key::from(key.clone());
                 assert_eq!(Ok(()), verify(key, &input, &expected_mac));
             }
 
             // Test streaming byte-by-byte.
             {
-                let key = Key::from_test_vector(&key);
+                let key = Key::from(key.clone());
                 let mut ctx = Context::from_key(key);
                 for chunk in input.chunks(1) {
                     ctx.update(chunk);
@@ -290,7 +283,7 @@ mod tests {
     fn test_poly1305_simd(
         excess: usize, key: &[u8; KEY_LEN], input: &[u8], expected_mac: &[u8; TAG_LEN],
     ) -> Result<(), error::Unspecified> {
-        let key = Key::from_test_vector(&key);
+        let key = Key::from(key.clone());
         let mut ctx = Context::from_key(key);
 
         // Some implementations begin in non-SIMD mode and upgrade on demand.
