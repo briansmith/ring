@@ -25,6 +25,7 @@
 
 use super::Block;
 use crate::{endian::*, error, polyfill::convert::*};
+use core::marker::PhantomData;
 
 /// A nonce.
 ///
@@ -48,13 +49,21 @@ pub const NONCE_LEN: usize = 96 / 8;
 ///
 /// Intentionally not `Clone` to ensure counters aren't forked.
 #[repr(C)]
-pub union Counter {
+pub union Counter<U32: Layout<u32>>
+where
+    u32: From<U32>,
+{
     block: Block,
-    u32s: [LittleEndian<u32>; 4],
+    u32s: [U32; 4],
+    encoding: PhantomData<U32>,
 }
 
-impl Counter {
+impl<U32: Layout<u32>> Counter<U32>
+where
+    u32: From<U32>,
+{
     pub fn zero(nonce: NonceRef) -> Self { Self::new(nonce, 0) }
+    pub fn one(nonce: NonceRef) -> Self { Self::new(nonce, 1) }
 
     // Used by `zero()` and by the tests.
     #[cfg(test)]
@@ -67,28 +76,28 @@ impl Counter {
             block: Block::zero(),
         };
         let block = unsafe { &mut r.block };
-        block.as_mut()[4..].copy_from_slice(nonce);
-        let u32s = unsafe { &mut r.u32s };
-        u32s[0] = initial_counter.into();
+        block.as_mut()[U32::NONCE_BYTE_INDEX..][..NONCE_LEN].copy_from_slice(nonce);
+        r.increment_by_less_safe(initial_counter);
+
         r
     }
 
-    /// XXX: The caller is responsible for ensuring that the counter doesn't
-    /// wrap around to zero.
+    #[inline]
     pub fn increment(&mut self) -> Iv {
         let block = unsafe { &self.block };
         let r = Iv(block.clone());
 
-        let ctr = unsafe { &mut self.u32s[0] };
-        let new_value = u32::from(*ctr) + 1;
-        *ctr = new_value.into();
+        self.increment_by_less_safe(1);
 
         r
     }
-}
 
-impl Into<Iv> for Counter {
-    fn into(self) -> Iv { Iv(unsafe { self.block }) }
+    #[inline]
+    pub fn increment_by_less_safe(&mut self, increment_by: u32) {
+        let u32s = unsafe { &mut self.u32s };
+        let value = &mut u32s[U32::COUNTER_U32_INDEX];
+        *value = (u32::from(*value) + increment_by).into();
+    }
 }
 
 /// The IV for a single block encryption.
@@ -96,3 +105,41 @@ impl Into<Iv> for Counter {
 /// Intentionally not `Clone` to ensure each is used only once.
 #[repr(C)]
 pub struct Iv(Block);
+
+impl<U32: Layout<u32>> From<Counter<U32>> for Iv
+where
+    u32: From<U32>,
+{
+    fn from(counter: Counter<U32>) -> Self { Iv(unsafe { counter.block }) }
+}
+
+impl Iv {
+    #[inline]
+    pub fn into_block_less_safe(self) -> Block { self.0 }
+}
+
+pub trait Layout<T>: Encoding<T>
+where
+    T: From<Self>,
+{
+    const COUNTER_U32_INDEX: usize;
+    const NONCE_BYTE_INDEX: usize;
+}
+
+impl<T> Layout<T> for BigEndian<T>
+where
+    BigEndian<T>: Encoding<T>,
+    T: Copy + From<Self>,
+{
+    const COUNTER_U32_INDEX: usize = 3;
+    const NONCE_BYTE_INDEX: usize = 0;
+}
+
+impl<T> Layout<T> for LittleEndian<T>
+where
+    LittleEndian<T>: Encoding<T>,
+    T: Copy + From<Self>,
+{
+    const COUNTER_U32_INDEX: usize = 0;
+    const NONCE_BYTE_INDEX: usize = 4;
+}

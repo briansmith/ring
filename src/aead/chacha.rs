@@ -13,8 +13,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Block, Counter, Iv, BLOCK_LEN};
-use crate::{c, polyfill::convert::*};
+use super::{
+    nonce::{self, Iv},
+    Block, BLOCK_LEN,
+};
+use crate::{c, endian::*, polyfill::convert::*};
 use core;
 
 #[repr(C)]
@@ -23,6 +26,8 @@ pub struct Key([Block; KEY_BLOCKS]);
 impl<'a> From<&'a [u8; KEY_LEN]> for Key {
     fn from(value: &[u8; KEY_LEN]) -> Self { Key(<[Block; KEY_BLOCKS]>::from_(value)) }
 }
+
+pub type Counter = nonce::Counter<LittleEndian<u32>>;
 
 #[inline] // Optimize away match on `iv`.
 pub fn chacha20_xor_in_place(key: &Key, iv: CounterOrIv, in_out: &mut [u8]) {

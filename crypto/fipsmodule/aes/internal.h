@@ -15,13 +15,7 @@
 #ifndef OPENSSL_HEADER_AES_INTERNAL_H
 #define OPENSSL_HEADER_AES_INTERNAL_H
 
-#include <stdlib.h>
-
-#include <GFp/cpu.h>
-
-int GFp_aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
-                                 AES_KEY *aeskey);
-void GFp_aes_nohw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+#include "../../internal.h"
 
 static inline int hwaes_capable(void) {
 #if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)
@@ -32,11 +26,5 @@ static inline int hwaes_capable(void) {
   return GFp_is_PPC64LE_vcrypto_capable();
 #endif
 }
-
-int GFp_aes_hw_set_encrypt_key(const uint8_t *user_key, unsigned bits,
-                               AES_KEY *key);
-void GFp_aes_hw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void GFp_aes_hw_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
-                                     const AES_KEY *key, const uint8_t ivec[16]);
 
 #endif  // OPENSSL_HEADER_AES_INTERNAL_H

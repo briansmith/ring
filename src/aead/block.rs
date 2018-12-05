@@ -39,11 +39,30 @@ impl Block {
         }
     }
 
+    #[inline]
+    pub fn from_u64_be(first: BigEndian<u64>, second: BigEndian<u64>) -> Self {
+        Self {
+            subblocks: [unsafe { core::mem::transmute(first) }, unsafe {
+                core::mem::transmute(second)
+            }],
+        }
+    }
+
     /// Replaces the first `a.len()` bytes of the block's value with `a`,
     /// leaving the rest of the block unchanged. Panics if `a` is larger
     /// than a block.
     #[inline]
     pub fn partial_copy_from(&mut self, a: &[u8]) { self.as_mut()[..a.len()].copy_from_slice(a); }
+
+    #[inline]
+    pub fn bitxor_assign(&mut self, a: Block) {
+        extern "C" {
+            fn GFp_block128_xor_assign(r: &mut Block, a: Block);
+        }
+        unsafe {
+            GFp_block128_xor_assign(self, a);
+        }
+    }
 }
 
 impl<'a> From<&'a [u8; BLOCK_LEN]> for Block {
@@ -70,4 +89,31 @@ impl AsMut<[u8; BLOCK_LEN]> for Block {
 impl From_<&mut [Block; 2]> for &mut [u8; 2 * BLOCK_LEN] {
     #[inline]
     fn from_(bytes: &mut [Block; 2]) -> Self { unsafe { core::mem::transmute(bytes) } }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_bitxor_assign() {
+        const ONES: u64 = -1i64 as u64;
+        const TEST_CASES: &[([u64; 2], [u64; 2], [u64; 2])] = &[
+            ([0, 0], [0, 0], [0, 0]),
+            ([0, 0], [ONES, ONES], [ONES, ONES]),
+            ([0, ONES], [ONES, 0], [ONES, ONES]),
+            ([ONES, 0], [0, ONES], [ONES, ONES]),
+            ([ONES, ONES], [ONES, ONES], [0, 0]),
+        ];
+        for (expected_result, a, b) in TEST_CASES {
+            let mut r = Block::from_u64_le(a[0].into(), a[1].into());
+            r.bitxor_assign(Block::from_u64_le(b[0].into(), b[1].into()));
+            assert_eq!(*expected_result, r.subblocks);
+
+            // XOR is symmetric.
+            let mut r = Block::from_u64_le(b[0].into(), b[1].into());
+            r.bitxor_assign(Block::from_u64_le(a[0].into(), a[1].into()));
+            assert_eq!(*expected_result, r.subblocks);
+        }
+    }
 }

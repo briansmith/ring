@@ -12,7 +12,11 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{chacha, poly1305, Block, Counter, Direction, Iv, NonceRef, Tag, BLOCK_LEN};
+use super::{
+    chacha::{self, Counter},
+    nonce::{Iv, NonceRef},
+    poly1305, Block, Direction, Tag, BLOCK_LEN,
+};
 use crate::{
     aead,
     endian::*,
@@ -42,20 +46,14 @@ fn chacha20_poly1305_init(key: &[u8]) -> Result<aead::KeyInner, error::Unspecifi
 
 fn chacha20_poly1305_seal(
     key: &aead::KeyInner, nonce: NonceRef, ad: &[u8], in_out: &mut [u8],
-) -> Result<Tag, error::Unspecified> {
-    Ok(aead(key, nonce, ad, in_out, Direction::Sealing))
+) -> Tag {
+    aead(key, nonce, ad, in_out, Direction::Sealing)
 }
 
 fn chacha20_poly1305_open(
     key: &aead::KeyInner, nonce: NonceRef, ad: &[u8], in_prefix_len: usize, in_out: &mut [u8],
-) -> Result<Tag, error::Unspecified> {
-    Ok(aead(
-        key,
-        nonce,
-        ad,
-        in_out,
-        Direction::Opening { in_prefix_len },
-    ))
+) -> Tag {
+    aead(key, nonce, ad, in_out, Direction::Opening { in_prefix_len })
 }
 
 pub type Key = chacha::Key;

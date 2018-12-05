@@ -32,7 +32,7 @@
 use super::{
     chacha::{self, *},
     chacha20_poly1305::derive_poly1305_key,
-    poly1305, Counter, NonceRef, Tag,
+    poly1305, NonceRef, Tag,
 };
 use crate::{constant_time, endian::*, error, polyfill::convert::*};
 
