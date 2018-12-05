@@ -86,15 +86,7 @@ impl Context {
         self.func.blocks(&mut self.opaque, input, Pad::Pad);
     }
 
-    pub(super) fn finish(mut self) -> Tag {
-        let Context {
-            opaque,
-            nonce,
-            func,
-        } = &mut self;
-
-        func.emit(opaque, nonce)
-    }
+    pub(super) fn finish(mut self) -> Tag { self.func.emit(&mut self.opaque, &self.nonce) }
 }
 
 #[cfg(test)]
