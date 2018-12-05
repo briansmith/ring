@@ -15,15 +15,23 @@
 
 // TODO: enforce maximum input length.
 
-use super::{Tag, TAG_LEN};
+use super::{
+    block::{Block, BLOCK_LEN},
+    Tag, TAG_LEN,
+};
 use crate::{bssl, c, constant_time, error};
 use core;
 
 /// A Poly1305 key.
-pub struct Key([u8; KEY_LEN]);
+pub struct Key([Block; 2]);
 
 impl From<[u8; KEY_LEN]> for Key {
-    fn from(value: [u8; 32]) -> Self { Key(value) }
+    fn from(value: [u8; KEY_LEN]) -> Self {
+        Key([
+            Block::from(slice_as_array_ref!(&value[..BLOCK_LEN], BLOCK_LEN).unwrap()),
+            Block::from(slice_as_array_ref!(&value[BLOCK_LEN..], BLOCK_LEN).unwrap()),
+        ])
+    }
 }
 
 pub struct Context {
@@ -41,7 +49,7 @@ const OPAQUE_LEN: usize = 192;
 
 impl Context {
     #[inline]
-    pub fn from_key(Key(key): Key) -> Context {
+    pub fn from_key(Key(key_and_nonce): Key) -> Context {
         extern "C" {
             fn GFp_poly1305_blocks(
                 state: &mut Opaque, input: *const u8, len: c::size_t, should_pad: Pad,
@@ -49,9 +57,8 @@ impl Context {
             fn GFp_poly1305_emit(state: &mut Opaque, mac: &mut [u8; TAG_LEN], nonce: &Nonce);
         }
 
-        let (key, nonce) = key.split_at(16);
-        let key = DerivedKey(slice_as_array_ref!(key, BLOCK_LEN).unwrap());
-        let nonce = Nonce(*slice_as_array_ref!(nonce, BLOCK_LEN).unwrap());
+        let key = DerivedKey(key_and_nonce[0].clone());
+        let nonce = Nonce(key_and_nonce[1].clone());
 
         let mut ctx = Context {
             opaque: Opaque([0u8; OPAQUE_LEN]),
@@ -162,13 +169,12 @@ pub fn check_state_layout() {
 /// The length of a `key`.
 pub const KEY_LEN: usize = 2 * BLOCK_LEN;
 
-struct DerivedKey<'a>(&'a [u8; BLOCK_LEN]);
+#[repr(C)]
+struct DerivedKey(Block);
 
 /// This is *not* an "AEAD nonce"; it's a Poly1305-specific nonce.
-#[repr(C, align(4))]
-struct Nonce([u8; BLOCK_LEN]);
-
-const BLOCK_LEN: usize = 16;
+#[repr(C)]
+struct Nonce(Block);
 
 #[repr(C)]
 struct Funcs {
@@ -181,10 +187,10 @@ struct Funcs {
 fn init(state: &mut Opaque, key: DerivedKey, func: &mut Funcs) -> Result<(), error::Unspecified> {
     extern "C" {
         fn GFp_poly1305_init_asm(
-            state: &mut Opaque, key: &[u8; BLOCK_LEN], out_func: &mut Funcs,
+            state: &mut Opaque, key: &DerivedKey, out_func: &mut Funcs,
         ) -> bssl::Result;
     }
-    Result::from(unsafe { GFp_poly1305_init_asm(state, &key.0, func) })
+    Result::from(unsafe { GFp_poly1305_init_asm(state, &key, func) })
 }
 
 #[repr(u32)]
