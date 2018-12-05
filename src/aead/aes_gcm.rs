@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::Tag;
+use super::{Block, Tag};
 use crate::{aead, bssl, c, error};
 
 #[repr(align(16))]
@@ -61,13 +61,13 @@ fn aes_gcm_seal(
         super::KeyInner::AesGcm(Key(ctx)) => ctx,
         _ => unreachable!(),
     };
-    let mut tag = Tag([0; aead::TAG_LEN]);
+    let mut tag = Tag(Block::zero());
     Result::from(unsafe {
         GFp_aes_gcm_seal(
             ctx.as_ptr(),
             in_out.as_mut_ptr(),
             in_out.len(),
-            &mut tag.0,
+            &mut tag,
             nonce,
             ad.as_ptr(),
             ad.len(),
@@ -84,13 +84,13 @@ fn aes_gcm_open(
         super::KeyInner::AesGcm(Key(ctx)) => ctx,
         _ => unreachable!(),
     };
-    let mut tag = Tag([0; aead::TAG_LEN]);
+    let mut tag = Tag(Block::zero());
     Result::from(unsafe {
         GFp_aes_gcm_open(
             ctx.as_ptr(),
             in_out.as_mut_ptr(),
             in_out.len() - in_prefix_len,
-            &mut tag.0,
+            &mut tag,
             nonce,
             in_out[in_prefix_len..].as_ptr(),
             ad.as_ptr(),
@@ -127,13 +127,12 @@ extern "C" {
     ) -> bssl::Result;
 
     fn GFp_aes_gcm_seal(
-        ctx_buf: *const u8, in_out: *mut u8, in_out_len: c::size_t,
-        tag_out: &mut [u8; aead::TAG_LEN], nonce: &[u8; aead::NONCE_LEN], ad: *const u8,
-        ad_len: c::size_t,
+        ctx_buf: *const u8, in_out: *mut u8, in_out_len: c::size_t, tag_out: &mut Tag,
+        nonce: &[u8; aead::NONCE_LEN], ad: *const u8, ad_len: c::size_t,
     ) -> bssl::Result;
 
     fn GFp_aes_gcm_open(
-        ctx_buf: *const u8, out: *mut u8, in_out_len: c::size_t, tag_out: &mut [u8; aead::TAG_LEN],
+        ctx_buf: *const u8, out: *mut u8, in_out_len: c::size_t, tag_out: &mut Tag,
         nonce: &[u8; aead::NONCE_LEN], in_: *const u8, ad: *const u8, ad_len: c::size_t,
     ) -> bssl::Result;
 }

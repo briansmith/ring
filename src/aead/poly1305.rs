@@ -17,7 +17,7 @@
 
 use super::{
     block::{Block, BLOCK_LEN},
-    Tag, TAG_LEN,
+    Tag,
 };
 use crate::{bssl, c, error};
 
@@ -51,7 +51,7 @@ impl Context {
             fn GFp_poly1305_blocks(
                 state: &mut Opaque, input: *const u8, len: c::size_t, should_pad: Pad,
             );
-            fn GFp_poly1305_emit(state: &mut Opaque, mac: &mut [u8; TAG_LEN], nonce: &Nonce);
+            fn GFp_poly1305_emit(state: &mut Opaque, tag: &mut Tag, nonce: &Nonce);
         }
 
         let key = DerivedKey(key_and_nonce[0].clone());
@@ -122,7 +122,7 @@ struct Nonce(Block);
 struct Funcs {
     blocks_fn:
         unsafe extern "C" fn(&mut Opaque, input: *const u8, input_len: c::size_t, should_pad: Pad),
-    emit_fn: unsafe extern "C" fn(&mut Opaque, &mut [u8; TAG_LEN], nonce: &Nonce),
+    emit_fn: unsafe extern "C" fn(&mut Opaque, &mut Tag, nonce: &Nonce),
 }
 
 #[inline]
@@ -151,9 +151,9 @@ impl Funcs {
 
     #[inline]
     fn emit(&self, state: &mut Opaque, nonce: &Nonce) -> Tag {
-        let mut tag = Tag([0; TAG_LEN]);
+        let mut tag = Tag(Block::zero());
         unsafe {
-            (self.emit_fn)(state, &mut tag.0, nonce);
+            (self.emit_fn)(state, &mut tag, nonce);
         }
         tag
     }
@@ -195,11 +195,10 @@ mod tests {
             let key = slice_as_array_ref!(&key, KEY_LEN).unwrap();
             let input = test_case.consume_bytes("Input");
             let expected_mac = test_case.consume_bytes("MAC");
-            let expected_mac = slice_as_array_ref!(&expected_mac, TAG_LEN).unwrap();
 
             let key = Key::from(key.clone());
             let Tag(actual_mac) = sign(key, &input);
-            assert_eq!(expected_mac, &actual_mac);
+            assert_eq!(expected_mac, actual_mac.as_ref());
 
             Ok(())
         })

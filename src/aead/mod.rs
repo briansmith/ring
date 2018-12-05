@@ -25,6 +25,7 @@
 //! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
+use self::block::{Block, BLOCK_LEN};
 use crate::{constant_time, cpu, error, polyfill};
 
 pub use self::{
@@ -133,7 +134,7 @@ pub fn open_in_place<'a>(
         ciphertext_and_tag_modified_in_place.split_at_mut(in_prefix_len + ciphertext_len);
     let Tag(calculated_tag) =
         (key.key.algorithm.open)(&key.key.inner, nonce, &ad, in_prefix_len, in_out)?;
-    if constant_time::verify_slices_are_equal(&calculated_tag, received_tag).is_err() {
+    if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag).is_err() {
         // Zero out the plaintext so that it isn't accidentally leaked or used
         // after verification fails. It would be safest if we could check the
         // tag before decrypting, but some `open` implementations interleave
@@ -216,7 +217,7 @@ pub fn seal_in_place(
     let tag_out = slice_as_array_ref_mut!(tag_out, TAG_LEN)?;
 
     let Tag(tag) = (key.key.algorithm.seal)(&key.key.inner, nonce, ad, in_out)?;
-    tag_out.copy_from_slice(&tag);
+    tag_out.copy_from_slice(tag.as_ref());
     Ok(in_out_len + TAG_LEN)
 }
 
@@ -339,10 +340,11 @@ impl Eq for Algorithm {}
 
 /// An authentication tag.
 #[must_use]
-struct Tag([u8; TAG_LEN]);
+#[repr(C)]
+struct Tag(Block);
 
 // All the AEADs we support use 128-bit tags.
-const TAG_LEN: usize = 16;
+const TAG_LEN: usize = BLOCK_LEN;
 
 /// The maximum length of a tag for the algorithms in this module.
 pub const MAX_TAG_LEN: usize = TAG_LEN;
