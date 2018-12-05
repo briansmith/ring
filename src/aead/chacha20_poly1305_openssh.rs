@@ -29,8 +29,8 @@
 //!    http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.chacha20poly1305?annotate=HEAD
 //! [RFC 4253]: https://tools.ietf.org/html/rfc4253
 
-use super::{chacha20_poly1305::derive_poly1305_key, poly1305, Tag};
-use crate::{chacha, constant_time, error};
+use super::{chacha, chacha20_poly1305::derive_poly1305_key, poly1305, Tag};
+use crate::{constant_time, error};
 
 /// A key for sealing packets.
 pub struct SealingKey {
