@@ -16,7 +16,7 @@
 // TODO: enforce maximum input length.
 
 use super::{Tag, TAG_LEN};
-use crate::{bssl, c, constant_time, error, polyfill};
+use crate::{bssl, c, constant_time, error};
 use core;
 
 /// A Poly1305 key.
@@ -49,25 +49,13 @@ impl Context {
             fn GFp_poly1305_emit(state: &mut Opaque, mac: &mut [u8; TAG_LEN], nonce: &Nonce);
         }
 
-        #[inline]
-        fn read_u32(buf: &[u8]) -> u32 {
-            polyfill::slice::u32_from_le_u8(slice_as_array_ref!(buf, 4).unwrap())
-        }
-
         let (key, nonce) = key.split_at(16);
-        let key = DerivedKey(slice_as_array_ref!(key, 16).unwrap());
+        let key = DerivedKey(slice_as_array_ref!(key, BLOCK_LEN).unwrap());
+        let nonce = Nonce(*slice_as_array_ref!(nonce, BLOCK_LEN).unwrap());
 
         let mut ctx = Context {
             opaque: Opaque([0u8; OPAQUE_LEN]),
-            // TODO: When we can get explicit alignment, make `nonce` an
-            // aligned `u8[16]` and get rid of this `u8[16]` -> `u32[4]`
-            // conversion.
-            nonce: Nonce([
-                read_u32(&nonce[0..4]),
-                read_u32(&nonce[4..8]),
-                read_u32(&nonce[8..12]),
-                read_u32(&nonce[12..16]),
-            ]),
+            nonce,
             buf: [0; BLOCK_LEN],
             buf_used: 0,
             func: Funcs {
@@ -176,8 +164,9 @@ pub const KEY_LEN: usize = 2 * BLOCK_LEN;
 
 struct DerivedKey<'a>(&'a [u8; BLOCK_LEN]);
 
-#[repr(transparent)]
-struct Nonce([u32; BLOCK_LEN / 4]);
+/// This is *not* an "AEAD nonce"; it's a Poly1305-specific nonce.
+#[repr(C, align(4))]
+struct Nonce([u8; BLOCK_LEN]);
 
 const BLOCK_LEN: usize = 16;
 
