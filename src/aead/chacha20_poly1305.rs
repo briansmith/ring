@@ -76,8 +76,12 @@ fn aead_poly1305(
     chacha20_key: &chacha::Key, counter: &chacha::Counter, ad: &[u8], ciphertext: &[u8],
 ) -> Tag {
     debug_assert_eq!(counter[0], 0);
-    let key = poly1305::Key::derive_using_chacha(chacha20_key, counter);
-    let mut ctx = poly1305::Context::from_key(key);
+
+    let mut ctx = {
+        let key = derive_poly1305_key(chacha20_key, counter);
+        poly1305::Context::from_key(key)
+    };
+
     poly1305_update_padded_16(&mut ctx, ad);
     poly1305_update_padded_16(&mut ctx, ciphertext);
     let lengths = [
@@ -95,6 +99,15 @@ fn poly1305_update_padded_16(ctx: &mut poly1305::Context, data: &[u8]) {
         static PADDING: [u8; 16] = [0u8; 16];
         ctx.update(&PADDING[..PADDING.len() - (data.len() % 16)])
     }
+}
+
+// Also used by chacha20_poly1305_openssh.
+pub(super) fn derive_poly1305_key(
+    chacha_key: &chacha::Key, counter: &chacha::Counter,
+) -> poly1305::Key {
+    let mut bytes = [0u8; poly1305::KEY_LEN];
+    chacha::chacha20_xor_in_place(chacha_key, counter, &mut bytes);
+    poly1305::Key::from(bytes)
 }
 
 #[cfg(test)]
