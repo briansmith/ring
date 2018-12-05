@@ -45,6 +45,11 @@ impl<'a> From<&'a [u8; BLOCK_LEN]> for Block {
     }
 }
 
+impl From<[u64; 2]> for Block {
+    #[inline]
+    fn from(subblocks: [u64; 2]) -> Self { Self { subblocks } }
+}
+
 impl AsRef<[u8]> for Block {
     #[inline]
     fn as_ref(&self) -> &[u8] { polyfill::slice::u64_as_u8(&self.subblocks[..]) }

@@ -12,7 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{poly1305, Tag};
+use super::{
+    block::{Block, BLOCK_LEN},
+    poly1305, Tag,
+};
 use crate::{aead, chacha, error, polyfill};
 
 /// ChaCha20-Poly1305 as described in [RFC 7539].
@@ -88,16 +91,21 @@ fn aead_poly1305(
         polyfill::u64_from_usize(ad.len()).to_le(),
         polyfill::u64_from_usize(ciphertext.len()).to_le(),
     ];
-    ctx.update(polyfill::slice::u64_as_u8(&lengths));
+    ctx.update_block(Block::from(lengths), poly1305::Pad::Pad);
     ctx.finish()
 }
 
 #[inline]
-fn poly1305_update_padded_16(ctx: &mut poly1305::Context, data: &[u8]) {
-    ctx.update(data);
-    if data.len() % 16 != 0 {
-        static PADDING: [u8; 16] = [0u8; 16];
-        ctx.update(&PADDING[..PADDING.len() - (data.len() % 16)])
+fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
+    let remainder_len = input.len() % BLOCK_LEN;
+    let whole_len = input.len() - remainder_len;
+    if whole_len > 0 {
+        ctx.update_blocks(&input[..whole_len]);
+    }
+    if remainder_len > 0 {
+        let mut block = Block::zero();
+        block.partial_copy_from(&input[whole_len..]);
+        ctx.update_block(block, poly1305::Pad::Pad)
     }
 }
 
