@@ -29,7 +29,7 @@
 //!    http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.chacha20poly1305?annotate=HEAD
 //! [RFC 4253]: https://tools.ietf.org/html/rfc4253
 
-use super::{chacha20_poly1305::derive_poly1305_key, poly1305, Tag, TAG_LEN};
+use super::{chacha20_poly1305::derive_poly1305_key, poly1305, Tag};
 use crate::{chacha, constant_time, error};
 
 /// A key for sealing packets.
@@ -71,7 +71,7 @@ impl SealingKey {
         counter[0] = 0;
         let poly_key = derive_poly1305_key(&self.key.k_2, &counter);
         let Tag(tag) = poly1305::sign(poly_key, plaintext_in_ciphertext_out);
-        tag_out.copy_from_slice(&tag);
+        tag_out.copy_from_slice(tag.as_ref());
     }
 }
 
@@ -164,7 +164,10 @@ pub const KEY_LEN: usize = chacha::KEY_LEN * 2;
 /// The length in bytes of the `packet_length` field in a SSH packet.
 pub const PACKET_LENGTH_LEN: usize = 4; // 32 bits
 
+/// The length in bytes of an authentication tag.
+pub const TAG_LEN: usize = super::BLOCK_LEN;
+
 fn verify(key: poly1305::Key, msg: &[u8], tag: &[u8; TAG_LEN]) -> Result<(), error::Unspecified> {
     let Tag(calculated_tag) = poly1305::sign(key, msg);
-    constant_time::verify_slices_are_equal(&calculated_tag, tag)
+    constant_time::verify_slices_are_equal(calculated_tag.as_ref(), tag)
 }
