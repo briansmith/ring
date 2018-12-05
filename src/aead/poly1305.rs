@@ -42,12 +42,6 @@ pub struct Context {
 }
 
 /// The memory manipulated by the assembly.
-///
-/// XXX: The `extern(C)` functions that are declared here as taking
-/// references to `Opaque` really take pointers to 8-byte-aligned
-/// arrays.
-/// TODO: Add `repr(transparent)` if/when `repr(transparent)` and
-/// `repr(align)` can be used together, to ensure this is safe.
 #[repr(C, align(8))]
 struct Opaque([u8; OPAQUE_LEN]);
 const OPAQUE_LEN: usize = 192;
@@ -194,12 +188,6 @@ struct Nonce([u32; BLOCK_LEN / 4]);
 
 const BLOCK_LEN: usize = 16;
 
-fn assert_opaque_alignment(state: &Opaque) {
-    assert_eq!(state.0.as_ptr() as usize % 8, 0);
-    let as_ptr: *const Opaque = state;
-    assert_eq!(as_ptr as usize, state.0.as_ptr() as usize);
-}
-
 #[repr(C)]
 struct Funcs {
     blocks_fn:
@@ -226,7 +214,6 @@ enum Pad {
 impl Funcs {
     #[inline]
     fn blocks(&self, state: &mut Opaque, data: &[u8], should_pad: Pad) {
-        assert_opaque_alignment(state);
         unsafe {
             (self.blocks_fn)(state, data.as_ptr(), data.len(), should_pad);
         }
@@ -234,7 +221,6 @@ impl Funcs {
 
     #[inline]
     fn emit(&self, state: &mut Opaque, nonce: &Nonce) -> Tag {
-        assert_opaque_alignment(state);
         let mut tag = Tag([0; TAG_LEN]);
         unsafe {
             (self.emit_fn)(state, &mut tag.0, nonce);
