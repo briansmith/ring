@@ -63,6 +63,7 @@ include = [
     "crypto/fipsmodule/bn/internal.h",
     "crypto/fipsmodule/bn/montgomery.c",
     "crypto/fipsmodule/bn/montgomery_inv.c",
+    "crypto/fipsmodule/bn/div_extra.c",
     "crypto/fipsmodule/cipher/e_aes.c",
     "crypto/fipsmodule/cipher/internal.h",
     "crypto/fipsmodule/ec/asm/ecp_nistz256-armv4.pl",
@@ -295,12 +296,13 @@ default = ["use_heap", "dev_urandom_fallback"]
 dev_urandom_fallback = []
 internal_benches = []
 rsa_signing = ["use_heap"]
+rsa_keygen = ["use_heap"]
 slow_tests = []
 test_logging = []
 use_heap = []
 
 [package.metadata.docs.rs]
-features = [ "rsa_signing" ]
+features = [ "rsa_signing", "rsa_keygen" ]
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 

@@ -173,6 +173,10 @@ typedef crypto_word BN_ULONG;
 BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
                               BN_ULONG w);
 
+// bn_mod_u16_consttime returns |bn| mod |d|, ignoring |bn|'s sign bit. It runs
+// in time independent of the value of |bn|, but it treats |d| as public.
+OPENSSL_EXPORT uint16_t bn_mod_u16_consttime(const BN_ULONG bn[], size_t num_limbs, uint16_t d);
+
 // |num| must be at least 4, at least on x86.
 //
 // In other forks, |bn_mul_mont| returns an |int| indicating whether it

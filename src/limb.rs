@@ -329,7 +329,16 @@ extern "C" {
     fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
     fn LIMB_shr(a: Limb, shift: c::size_t) -> Limb;
+    fn bn_mod_u16_consttime(bn: *const Limb, num_limbs: c::size_t, d: u16) -> u16;
 }
+
+pub fn mod_u16_consttime(limbs: &[Limb], d: u16) -> u16 {
+    unsafe {
+        bn_mod_u16_consttime(limbs.as_ptr(), limbs.len(), d)
+    }
+}
+
+
 
 #[cfg(test)]
 mod tests {

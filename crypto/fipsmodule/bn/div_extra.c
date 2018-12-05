@@ -12,8 +12,6 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <openssl/bn.h>
-
 #include <assert.h>
 
 #include "internal.h"
@@ -59,7 +57,64 @@ static uint16_t shift_and_add_mod_u16(uint16_t r, uint32_t a, uint16_t d,
   return t;
 }
 
-uint16_t bn_mod_u16_consttime(const BIGNUM *bn, uint16_t d) {
+
+// Function taken from boringssl's bn.c file.
+// BN_num_bits_word returns the minimum number of bits needed to represent the
+// value in |l|.
+static unsigned BN_num_bits_word(BN_ULONG l) {
+  // |BN_num_bits| is often called on RSA prime factors. These have public bit
+  // lengths, but all bits beyond the high bit are secret, so count bits in
+  // constant time.
+  BN_ULONG x, mask;
+  int bits = (l != 0);
+
+#if BN_BITS2 > 32
+  // Look at the upper half of |x|. |x| is at most 64 bits long.
+  x = l >> 32;
+  // Set |mask| to all ones if |x| (the top 32 bits of |l|) is non-zero and all
+  // all zeros otherwise.
+  mask = 0u - x;
+  mask = (0u - (mask >> (BN_BITS2 - 1)));
+  // If |x| is non-zero, the lower half is included in the bit count in full,
+  // and we count the upper half. Otherwise, we count the lower half.
+  bits += 32 & mask;
+  l ^= (x ^ l) & mask;  // |l| is |x| if |mask| and remains |l| otherwise.
+#endif
+
+  // The remaining blocks are analogous iterations at lower powers of two.
+  x = l >> 16;
+  mask = 0u - x;
+  mask = (0u - (mask >> (BN_BITS2 - 1)));
+  bits += 16 & mask;
+  l ^= (x ^ l) & mask;
+
+  x = l >> 8;
+  mask = 0u - x;
+  mask = (0u - (mask >> (BN_BITS2 - 1)));
+  bits += 8 & mask;
+  l ^= (x ^ l) & mask;
+
+  x = l >> 4;
+  mask = 0u - x;
+  mask = (0u - (mask >> (BN_BITS2 - 1)));
+  bits += 4 & mask;
+  l ^= (x ^ l) & mask;
+
+  x = l >> 2;
+  mask = 0u - x;
+  mask = (0u - (mask >> (BN_BITS2 - 1)));
+  bits += 2 & mask;
+  l ^= (x ^ l) & mask;
+
+  x = l >> 1;
+  mask = 0u - x;
+  mask = (0u - (mask >> (BN_BITS2 - 1)));
+  bits += 1 & mask;
+
+  return bits;
+}
+
+uint16_t bn_mod_u16_consttime(const BN_ULONG bn[], size_t num_limbs, uint16_t d) {
   if (d <= 1) {
     return 0;
   }
@@ -73,12 +128,12 @@ uint16_t bn_mod_u16_consttime(const BIGNUM *bn, uint16_t d) {
   uint32_t m = ((UINT64_C(1) << (32 + p)) + d - 1) / d;
 
   uint16_t ret = 0;
-  for (int i = bn->width - 1; i >= 0; i--) {
+  for (int i = num_limbs - 1; i >= 0; i--) {
 #if BN_BITS2 == 32
-    ret = shift_and_add_mod_u16(ret, bn->d[i], d, p, m);
+    ret = shift_and_add_mod_u16(ret, bn[i], d, p, m);
 #elif BN_BITS2 == 64
-    ret = shift_and_add_mod_u16(ret, bn->d[i] >> 32, d, p, m);
-    ret = shift_and_add_mod_u16(ret, bn->d[i] & 0xffffffff, d, p, m);
+    ret = shift_and_add_mod_u16(ret, bn[i] >> 32, d, p, m);
+    ret = shift_and_add_mod_u16(ret, bn[i] & 0xffffffff, d, p, m);
 #else
 #error "Unknown BN_ULONG size"
 #endif
