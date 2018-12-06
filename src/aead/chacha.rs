@@ -89,20 +89,13 @@ pub fn make_counter(nonce: &[u8; NONCE_LEN], counter: u32) -> Counter {
     ]
 }
 
-#[cfg(test)]
-extern "C" {
-    fn GFp_ChaCha20_ctr32(
-        out: *mut u8, in_: *const u8, in_len: c::size_t, key: &Key, counter: &Counter,
-    );
-}
-
 pub const KEY_LEN: usize = 256 / 8;
 
 pub const NONCE_LEN: usize = 12; // 96 bits
 
 #[cfg(test)]
 mod tests {
-    use super::{GFp_ChaCha20_ctr32, *};
+    use super::*;
     use crate::test;
 
     // This verifies the encryption functionality provided by ChaCha20_ctr32
@@ -157,13 +150,13 @@ mod tests {
         // Straightforward encryption into disjoint buffers is computed
         // correctly.
         unsafe {
-            GFp_ChaCha20_ctr32(
-                in_out_buf.as_mut_ptr(),
-                input[..len].as_ptr(),
-                len,
+            chacha20_xor_inner(
                 key,
                 &ctr,
-            );
+                input[..len].as_ptr(),
+                len,
+                in_out_buf.as_mut_ptr(),
+            )
         }
         assert_eq!(&in_out_buf[..len], expected);
 
@@ -180,16 +173,8 @@ mod tests {
         for alignment in 0..16 {
             for offset in 0..(max_offset + 1) {
                 in_out_buf[alignment + offset..][..len].copy_from_slice(input);
-                unsafe {
-                    GFp_ChaCha20_ctr32(
-                        in_out_buf[alignment..].as_mut_ptr(),
-                        in_out_buf[alignment + offset..].as_ptr(),
-                        len,
-                        key,
-                        ctr,
-                    );
-                    assert_eq!(&in_out_buf[alignment..][..len], expected);
-                }
+                chacha20_xor_overlapping(key, ctr, &mut in_out_buf[alignment..], offset);
+                assert_eq!(&in_out_buf[alignment..][..len], expected);
             }
         }
     }
