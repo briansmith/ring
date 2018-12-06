@@ -286,13 +286,10 @@ pub struct Algorithm {
     max_input_len: u64,
 }
 
-/// TODO: Make this a `const fn` when those become stable.
-macro_rules! max_input_len {
-    ($block_len:expr, $overhead_blocks_per_nonce:expr) => {
-        // Each of our AEADs use a 32-bit block counter so the maximum is the
-        // largest input that will not overflow the counter.
-        (((1u64 << 32) - $overhead_blocks_per_nonce) * $block_len)
-    };
+const fn max_input_len(block_len: usize, overhead_blocks_per_nonce: usize) -> u64 {
+    // Each of our AEADs use a 32-bit block counter so the maximum is the
+    // largest input that will not overflow the counter.
+    ((1u64 << 32) - polyfill::u64_from_usize(overhead_blocks_per_nonce)) * polyfill::u64_from_usize(block_len)
 }
 
 impl Algorithm {

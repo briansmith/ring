@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Block, Tag};
+use super::{Block, BLOCK_LEN, Tag};
 use crate::{aead, bssl, c, error};
 
 #[repr(align(16))]
@@ -108,9 +108,7 @@ const AES_KEY_CTX_BUF_LEN: usize = AES_KEY_BUF_LEN + GCM128_SERIALIZED_LEN;
 // Keep this in sync with `AES_KEY` in aes.h.
 const AES_KEY_BUF_LEN: usize = (4 * 4 * (AES_MAX_ROUNDS + 1)) + 8;
 
-const AES_BLOCK_LEN: u64 = 16;
-const AES_GCM_OVERHEAD_BLOCKS_PER_NONCE: u64 = 2;
-const AES_GCM_MAX_INPUT_LEN: u64 = max_input_len!(AES_BLOCK_LEN, AES_GCM_OVERHEAD_BLOCKS_PER_NONCE);
+const AES_GCM_MAX_INPUT_LEN: u64 = super::max_input_len(BLOCK_LEN, 2);
 
 // Keep this in sync with `AES_MAXNR` in aes.h.
 const AES_MAX_ROUNDS: usize = 14;

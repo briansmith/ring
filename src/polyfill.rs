@@ -18,7 +18,7 @@
 use core;
 
 #[inline(always)]
-pub fn u64_from_usize(x: usize) -> u64 { x as u64 }
+pub const fn u64_from_usize(x: usize) -> u64 { x as u64 }
 
 /// `core::num::Wrapping` doesn't support `rotate_left`.
 /// There is no usable trait for `rotate_left`, so this polyfill just

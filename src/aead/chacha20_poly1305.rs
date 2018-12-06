@@ -29,11 +29,8 @@ pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
     seal: chacha20_poly1305_seal,
     open: chacha20_poly1305_open,
     id: aead::AlgorithmID::CHACHA20_POLY1305,
-    max_input_len: max_input_len!(CHACHA20_BLOCK_LEN, CHACHA20_OVERHEAD_BLOCKS_PER_NONCE),
+    max_input_len: super::max_input_len(64, 1),
 };
-
-const CHACHA20_BLOCK_LEN: u64 = 64;
-const CHACHA20_OVERHEAD_BLOCKS_PER_NONCE: u64 = 1;
 
 /// Copies |key| into |ctx_buf|.
 fn chacha20_poly1305_init(key: &[u8]) -> Result<aead::KeyInner, error::Unspecified> {
