@@ -208,7 +208,7 @@ pub struct Modulus<M> {
     //                            n0 == -1/n (mod r)
     //
     // Thus, in each iteration of the loop, we multiply by the constant factor
-    // n0, the negative inverse of n (mod r). */
+    // n0, the negative inverse of n (mod r).
     //
     // TODO(perf): Not all 32-bit platforms actually make use of n0[1]. For the
     // ones that don't, we could use a shorter `R` value and use faster `Limb`
