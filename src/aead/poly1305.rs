@@ -16,8 +16,8 @@
 // TODO: enforce maximum input length.
 
 use super::Tag;
-use core;
 use crate::{bssl, c, chacha, constant_time, error, polyfill};
+use core;
 
 /// A Poly1305 key.
 pub struct Key([u8; KEY_LEN]);
@@ -246,8 +246,8 @@ impl Funcs {
 #[cfg(test)]
 mod tests {
     use super::{super::TAG_LEN, *};
-    use core;
     use crate::{error, test};
+    use core;
 
     #[test]
     pub fn test_state_layout() { check_state_layout(); }

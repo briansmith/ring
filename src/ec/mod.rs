@@ -19,8 +19,11 @@ use untrusted;
 // XXX: This doesn't seem like the best place for this.
 pub struct AgreementAlgorithmImpl {
     pub curve: &'static Curve,
-    pub ecdh: fn(out: &mut [u8], private_key: &PrivateKey, peer_public_key: untrusted::Input)
-        -> Result<(), error::Unspecified>,
+    pub ecdh: fn(
+        out: &mut [u8],
+        private_key: &PrivateKey,
+        peer_public_key: untrusted::Input,
+    ) -> Result<(), error::Unspecified>,
 }
 
 derive_debug_via_self!(AgreementAlgorithmImpl, self.curve);

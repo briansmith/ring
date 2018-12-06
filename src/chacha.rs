@@ -13,8 +13,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use core;
 use crate::c;
+use core;
 use polyfill::slice::u32_from_le_u8;
 
 #[repr(C, align(4))] // The asm code requires 32-bit alignment.

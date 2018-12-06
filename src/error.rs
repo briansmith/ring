@@ -114,9 +114,9 @@ impl From<untrusted::EndOfInput> for Unspecified {
 ///
 /// Here is an incomplete list of reasons a key may be unsupported:
 ///
-/// * Invalid or Inconsistent Components: A component of the key has an
-///   invalid value, or the mathematical relationship between two (or more)
-///   components required for a valid key does not hold.
+/// * Invalid or Inconsistent Components: A component of the key has an invalid
+///   value, or the mathematical relationship between two (or more) components
+///   required for a valid key does not hold.
 ///
 /// * The encoding of the key is invalid. Perhaps the key isn't in the correct
 ///   format; e.g. it may be Base64 ("PEM") encoded, in which case   the Base64
@@ -128,11 +128,11 @@ impl From<untrusted::EndOfInput> for Unspecified {
 ///   private   prime factors), which aren't supported, for example.
 ///
 /// * Too small or too Large: One of the primary components of the key is too
-///   small or two large. Too-small keys are rejected for security reasons.
-///   Some unnecessarily large keys are rejected for performance reasons.
+///   small or two large. Too-small keys are rejected for security reasons. Some
+///   unnecessarily large keys are rejected for performance reasons.
 ///
-///  * Wrong algorithm: The key is not valid for the algorithm in which it
-///    was being used.
+///  * Wrong algorithm: The key is not valid for the algorithm in which it was
+///    being used.
 ///
 ///  * Unexpected errors: Report this as a bug.
 #[derive(Copy, Clone, Debug)]

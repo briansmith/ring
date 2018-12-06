@@ -138,8 +138,8 @@ mod sysrand_chunk {
 
 #[cfg(windows)]
 mod sysrand_chunk {
-    use core;
     use crate::{c, error};
+    use core;
 
     #[link(name = "advapi32")]
     extern "system" {

@@ -12,8 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use core::marker::PhantomData;
 use crate::{arithmetic::montgomery::*, c, error, limb::*};
+use core::marker::PhantomData;
 use untrusted;
 
 pub use self::elem::*;

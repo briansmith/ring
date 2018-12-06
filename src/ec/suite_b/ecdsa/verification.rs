@@ -28,7 +28,10 @@ pub struct Algorithm {
     ops: &'static PublicScalarOps,
     digest_alg: &'static digest::Algorithm,
     split_rs:
-        for<'a> fn(ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>)
+        for<'a> fn(
+            ops: &'static ScalarOps,
+            input: &mut untrusted::Reader<'a>,
+        )
             -> Result<(untrusted::Input<'a>, untrusted::Input<'a>), error::Unspecified>,
     id: AlgorithmID,
 }

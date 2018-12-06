@@ -276,10 +276,10 @@
 //! # }
 //! ```
 
-use core;
 #[cfg(feature = "use_heap")]
 use crate::rand;
 use crate::{cpu, error, private};
+use core;
 use untrusted;
 
 #[cfg(feature = "use_heap")]

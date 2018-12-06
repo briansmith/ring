@@ -24,8 +24,8 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use core;
 use crate::{c, cpu, polyfill};
+use core;
 
 // XXX: Replace with `const fn` when `const fn` is stable:
 // https://github.com/rust-lang/rust/issues/24111

@@ -40,16 +40,16 @@
 
 #![allow(box_pointers)]
 
-use core::{
-    self,
-    marker::PhantomData,
-    ops::{Deref, DerefMut},
-};
 use crate::{
     arithmetic::montgomery::*,
     bits, c, error,
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
     untrusted,
+};
+use core::{
+    self,
+    marker::PhantomData,
+    ops::{Deref, DerefMut},
 };
 
 use std;

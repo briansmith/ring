@@ -204,13 +204,7 @@ mod tests {
         // [RFC 5116 Section 5.2]: https://tools.ietf.org/html/rfc5116#section-5.2
         const NIST_SP800_38D_MAX_BITS: u64 = (1u64 << 39) - 256;
         assert_eq!(NIST_SP800_38D_MAX_BITS, 549_755_813_632u64);
-        assert_eq!(
-            AES_128_GCM.max_input_len * 8,
-            NIST_SP800_38D_MAX_BITS
-        );
-        assert_eq!(
-            AES_256_GCM.max_input_len * 8,
-            NIST_SP800_38D_MAX_BITS
-        );
+        assert_eq!(AES_128_GCM.max_input_len * 8, NIST_SP800_38D_MAX_BITS);
+        assert_eq!(AES_256_GCM.max_input_len * 8, NIST_SP800_38D_MAX_BITS);
     }
 }

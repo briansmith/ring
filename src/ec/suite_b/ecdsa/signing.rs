@@ -15,7 +15,6 @@
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
 use super::digest_scalar::digest_scalar;
-use core;
 use crate::{
     arithmetic::montgomery::*,
     der, digest,
@@ -25,6 +24,7 @@ use crate::{
     },
     error, limb, pkcs8, private, rand, signature, signature_impl,
 };
+use core;
 use untrusted;
 
 /// An ECDSA signing algorithm.

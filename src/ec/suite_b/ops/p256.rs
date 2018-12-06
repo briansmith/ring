@@ -16,8 +16,8 @@ use super::{
     elem::{binary_op, binary_op_assign},
     elem_sqr_mul, elem_sqr_mul_acc, Modulus, *,
 };
-use core::marker::PhantomData;
 use crate::c;
+use core::marker::PhantomData;
 
 macro_rules! p256_limbs {
     [$limb_7:expr, $limb_6:expr, $limb_5:expr, $limb_4:expr,

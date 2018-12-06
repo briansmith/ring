@@ -63,8 +63,8 @@ macro_rules! bssl_test {
 #[cfg(test)]
 mod tests {
     mod result {
-        use core::mem;
         use crate::{bssl, c};
+        use core::mem;
 
         #[test]
         fn size_and_alignment() {

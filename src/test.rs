@@ -459,8 +459,8 @@ fn parse_test_case(current_section: &mut String, lines: &mut FileLines) -> Optio
 /// useful for some types of fuzzing.
 #[allow(missing_docs)]
 pub mod rand {
-    use core;
     use crate::{error, polyfill, private, rand};
+    use core;
 
     /// An implementation of `SecureRandom` that always fills the output slice
     /// with the given byte.

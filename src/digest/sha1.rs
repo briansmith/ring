@@ -13,8 +13,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use core::{self, num::Wrapping};
 use crate::{c, polyfill};
+use core::{self, num::Wrapping};
 
 // XXX: This duplicates super::State and shouldn't need to be public.
 // TODO: Remove the duplication, but be wary of

@@ -138,8 +138,8 @@ fn ecdh(
 #[cfg(test)]
 mod tests {
     use super::super::ops;
-    use core;
     use crate::{agreement, ec, limb, test};
+    use core;
 
     static SUPPORTED_SUITE_B_ALGS: [(
         &'static str,
