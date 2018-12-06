@@ -15,8 +15,7 @@
 //! Elliptic curve operations on P-256 & P-384.
 
 use self::ops::*;
-use arithmetic::montgomery::*;
-use crate::{der, ec, error, pkcs8};
+use crate::{arithmetic::montgomery::*, der, ec, error, pkcs8};
 use untrusted;
 
 // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that

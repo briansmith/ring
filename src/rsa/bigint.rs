@@ -40,13 +40,13 @@
 
 #![allow(box_pointers)]
 
-use arithmetic::montgomery::*;
 use core::{
     self,
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
 use crate::{
+    arithmetic::montgomery::*,
     bits, c, error,
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
     untrusted,

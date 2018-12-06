@@ -16,9 +16,9 @@ use super::{
     bigint::{self, Prime},
     verification, N,
 };
-use arithmetic::montgomery::R;
 /// RSA PKCS#1 1.5 signatures.
 use crate::{
+    arithmetic::montgomery::R,
     bits, der, digest,
     error::{self, KeyRejected},
     pkcs8, rand,

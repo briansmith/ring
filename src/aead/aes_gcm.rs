@@ -136,9 +136,8 @@ extern "C" {
 
 #[cfg(test)]
 mod tests {
-    use super::AES_MAX_ROUNDS;
-    use bits::BitLength;
-    use crate::{c, test};
+    use super::*;
+    use crate::{bits::BitLength, c, test};
 
     #[test]
     pub fn test_aes() {
@@ -206,11 +205,11 @@ mod tests {
         const NIST_SP800_38D_MAX_BITS: u64 = (1u64 << 39) - 256;
         assert_eq!(NIST_SP800_38D_MAX_BITS, 549_755_813_632u64);
         assert_eq!(
-            super::AES_128_GCM.max_input_len * 8,
+            AES_128_GCM.max_input_len * 8,
             NIST_SP800_38D_MAX_BITS
         );
         assert_eq!(
-            super::AES_256_GCM.max_input_len * 8,
+            AES_256_GCM.max_input_len * 8,
             NIST_SP800_38D_MAX_BITS
         );
     }

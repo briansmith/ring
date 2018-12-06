@@ -16,8 +16,7 @@
 //! ECDH agreement).
 
 use super::{ops::*, verify_affine_point_is_on_the_curve};
-use arithmetic::montgomery::*;
-use crate::error;
+use crate::{arithmetic::montgomery::*, error};
 use untrusted;
 
 /// Parses a public key encoded in uncompressed form. The key is validated
