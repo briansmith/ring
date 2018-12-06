@@ -357,6 +357,11 @@ fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize) -> Result<(), e
     Ok(())
 }
 
+enum Direction {
+    Opening { in_prefix_len: usize },
+    Sealing,
+}
+
 mod aes_gcm;
 mod block;
 mod chacha;

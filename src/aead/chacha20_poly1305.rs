@@ -14,7 +14,7 @@
 
 use super::{
     block::{Block, BLOCK_LEN},
-    chacha, poly1305, Tag,
+    chacha, poly1305, Direction, Tag,
 };
 use crate::{aead, endian::*, error, polyfill};
 
@@ -42,51 +42,60 @@ fn chacha20_poly1305_init(key: &[u8]) -> Result<aead::KeyInner, error::Unspecifi
 fn chacha20_poly1305_seal(
     key: &aead::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_out: &mut [u8],
 ) -> Result<Tag, error::Unspecified> {
-    let chacha20_key = match key {
-        aead::KeyInner::ChaCha20Poly1305(key) => key,
-        _ => unreachable!(),
-    };
-    let mut counter = chacha::make_counter(nonce, 1);
-    chacha::chacha20_xor_in_place(chacha20_key, &counter, in_out);
-    counter[0] = 0;
-    Ok(aead_poly1305(chacha20_key, &counter, ad, in_out))
+    Ok(aead(key, nonce, ad, in_out, Direction::Sealing))
 }
 
 fn chacha20_poly1305_open(
     key: &aead::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_prefix_len: usize,
     in_out: &mut [u8],
 ) -> Result<Tag, error::Unspecified> {
+    Ok(aead(
+        key,
+        nonce,
+        ad,
+        in_out,
+        Direction::Opening { in_prefix_len },
+    ))
+}
+
+pub type Key = chacha::Key;
+
+#[inline(always)] // Statically eliminate branches on `direction`.
+fn aead(
+    key: &aead::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_out: &mut [u8],
+    direction: Direction,
+) -> Tag {
     let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
     };
     let mut counter = chacha::make_counter(nonce, 0);
-    let tag = {
-        let ciphertext = &in_out[in_prefix_len..];
-        aead_poly1305(chacha20_key, &counter, ad, ciphertext)
-    };
-    counter[0] = 1;
-    chacha::chacha20_xor_overlapping(chacha20_key, &counter, in_out, in_prefix_len);
-    Ok(tag)
-}
-
-pub type Key = chacha::Key;
-
-fn aead_poly1305(
-    chacha20_key: &chacha::Key, counter: &chacha::Counter, ad: &[u8], ciphertext: &[u8],
-) -> Tag {
-    debug_assert_eq!(counter[0], 0);
 
     let mut ctx = {
-        let key = derive_poly1305_key(chacha20_key, counter);
+        let key = derive_poly1305_key(chacha20_key, &counter);
         poly1305::Context::from_key(key)
     };
 
+    counter[0] = 1;
+
     poly1305_update_padded_16(&mut ctx, ad);
-    poly1305_update_padded_16(&mut ctx, ciphertext);
+
+    let in_out_len = match direction {
+        Direction::Opening { in_prefix_len } => {
+            poly1305_update_padded_16(&mut ctx, &in_out[in_prefix_len..]);
+            chacha::chacha20_xor_overlapping(chacha20_key, &counter, in_out, in_prefix_len);
+            in_out.len() - in_prefix_len
+        },
+        Direction::Sealing => {
+            chacha::chacha20_xor_in_place(chacha20_key, &counter, in_out);
+            poly1305_update_padded_16(&mut ctx, in_out);
+            in_out.len()
+        },
+    };
+
     let lengths = [
         LittleEndian::from(polyfill::u64_from_usize(ad.len())),
-        LittleEndian::from(polyfill::u64_from_usize(ciphertext.len())),
+        LittleEndian::from(polyfill::u64_from_usize(in_out_len)),
     ];
     ctx.update_block(Block::from(lengths), poly1305::Pad::Pad);
     ctx.finish()
