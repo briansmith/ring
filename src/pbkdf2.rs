@@ -162,7 +162,9 @@ pub fn derive(
     }
 }
 
-fn derive_block(secret: &hmac::SigningKey, iterations: NonZeroU32, salt: &[u8], idx: u32, out: &mut [u8]) {
+fn derive_block(
+    secret: &hmac::SigningKey, iterations: NonZeroU32, salt: &[u8], idx: u32, out: &mut [u8],
+) {
     let mut ctx = hmac::SigningContext::with_key(secret);
     ctx.update(salt);
     ctx.update(&polyfill::slice::be_u8_from_u32(idx));

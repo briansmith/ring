@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Block, BLOCK_LEN, Tag};
+use super::{Block, Tag, BLOCK_LEN};
 use crate::{aead, bssl, c, error};
 
 #[repr(align(16))]
@@ -152,7 +152,10 @@ mod tests {
 
             // Key setup.
             let key_bits = BitLength::from_usize_bytes(key.len()).unwrap();
-            assert!(key_bits == BitLength::from_usize_bits(128) || key_bits == BitLength::from_usize_bits(256));
+            assert!(
+                key_bits == BitLength::from_usize_bits(128)
+                    || key_bits == BitLength::from_usize_bits(256)
+            );
             let key_bits = key_bits.as_usize_bits() as c::uint;
             let mut aes_key = AES_KEY {
                 rd_key: [0u32; 4 * (AES_MAX_ROUNDS + 1)],

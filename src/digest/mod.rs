@@ -28,9 +28,7 @@ use crate::{c, cpu, polyfill};
 use core;
 
 #[cfg(target_endian = "little")]
-const fn u32x2(first: u32, second: u32) -> u64 {
-    ((second as u64) << 32) | (first as u64)
-}
+const fn u32x2(first: u32, second: u32) -> u64 { ((second as u64) << 32) | (first as u64) }
 
 mod sha1;
 
