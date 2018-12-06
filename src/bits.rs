@@ -14,16 +14,14 @@
 
 use crate::error;
 
-/// XXX: When `const_fn` is implemented then make the value private to force
-/// the constructors to be used.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd)]
-pub struct BitLength(pub usize);
+pub struct BitLength(usize);
 
 // Lengths measured in bits, where all arithmetic is guaranteed not to
 // overflow.
 impl BitLength {
     #[inline]
-    pub fn from_usize_bits(bits: usize) -> BitLength { BitLength(bits) }
+    pub const fn from_usize_bits(bits: usize) -> BitLength { BitLength(bits) }
 
     #[inline]
     pub fn from_usize_bytes(bytes: usize) -> Result<BitLength, error::Unspecified> {
