@@ -177,6 +177,21 @@ BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
 // in time independent of the value of |bn|, but it treats |d| as public.
 OPENSSL_EXPORT uint16_t bn_mod_u16_consttime(const BN_ULONG bn[], size_t num_limbs, uint16_t d);
 
+// bn_select_words sets |r| to |a| if |mask| is all ones or |b| if |mask| is
+// all zeros.
+void bn_select_words(BN_ULONG *r, BN_ULONG mask, const BN_ULONG *a,
+                     const BN_ULONG *b, size_t num);
+
+// bn_rshift_words sets |r| to |a| >> |shift|, where both arrays are |num| bits
+// wide.
+void bn_rshift_words(BN_ULONG *r, const BN_ULONG *a, unsigned shift,
+                     size_t num);
+
+// bn_rshift_secret_shift computes r >> n and runs in time independent
+// of both |a| and |n|.
+OPENSSL_EXPORT int bn_rshift_secret_shift(BN_ULONG r[], unsigned n,
+                                          BN_ULONG tmp[], size_t num_limbs);
+
 // |num| must be at least 4, at least on x86.
 //
 // In other forks, |bn_mul_mont| returns an |int| indicating whether it

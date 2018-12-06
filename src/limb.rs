@@ -74,6 +74,37 @@ pub fn limbs_less_than_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
     unsafe { LIMBS_less_than(a.as_ptr(), b.as_ptr(), b.len()) }
 }
 
+pub fn limbs_sub_limb(r: &mut [Limb], a: &[Limb], b: Limb) {
+    extern "C" {
+        fn LIMBS_sub_limb(r: *mut Limb, a: *const Limb, b: Limb, num_limbs: c::size_t);
+    }
+    assert_eq!(r.len(), a.len());
+    unsafe { LIMBS_sub_limb(r.as_mut_ptr(), a.as_ptr(), b, a.len()) }
+}
+
+pub fn limbs_count_low_zero_bits(v: &[Limb]) -> u16 {
+    extern "C" {
+        fn BN_count_low_zero_bits(bn: *const Limb, num_limbs: c::size_t) -> c::int;
+    }
+    let r = unsafe { BN_count_low_zero_bits(v.as_ptr(), v.len()) };
+    r as u16
+}
+
+pub fn limbs_copy(r: &mut [Limb], a: &[Limb]) {
+    extern "C" {
+        fn LIMBS_copy(r: *mut Limb, a: *const Limb, num_limbs: c::size_t);
+    }
+    unsafe { LIMBS_copy(r.as_mut_ptr(), a.as_ptr(), a.len()) }
+}
+
+pub fn limbs_rshift(r: &mut [Limb], n: u16) {
+    extern "C" {
+        fn bn_rshift_secret_shift(r: *mut Limb, n: c::uint, tmp: *mut Limb, num_limbs: c::size_t);
+    }
+    let mut tmp = vec![0; r.len()];
+    unsafe { bn_rshift_secret_shift(r.as_mut_ptr(), n as c::uint, tmp.as_mut_ptr(), r.len()) }
+}
+
 #[inline]
 pub fn limbs_less_than_limbs_vartime(a: &[Limb], b: &[Limb]) -> bool {
     limbs_less_than_limbs_consttime(a, b) == LimbMask::True

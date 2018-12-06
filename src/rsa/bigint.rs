@@ -110,7 +110,7 @@ impl<M> BoxedLimbs<M> {
         Ok(r)
     }
 
-    fn minimal_width_from_unpadded(limbs: &[Limb]) -> Self {
+    pub fn minimal_width_from_unpadded(limbs: &[Limb]) -> Self {
         debug_assert_ne!(limbs.last(), Some(&0));
         use std::borrow::ToOwned;
         Self {
@@ -238,7 +238,7 @@ impl<M> Modulus<M> {
         Self::from_boxed_limbs(limbs)
     }
 
-    fn from_boxed_limbs(n: BoxedLimbs<M>) -> Result<(Self, bits::BitLength), error::KeyRejected> {
+    pub fn from_boxed_limbs(n: BoxedLimbs<M>) -> Result<(Self, bits::BitLength), error::KeyRejected> {
         if n.len() > MODULUS_MAX_LIMBS {
             return Err(error::KeyRejected::too_large());
         }
@@ -332,7 +332,7 @@ impl<M> Modulus<M> {
         }
     }
 
-    fn as_partial(&self) -> PartialModulus<M> {
+    pub fn as_partial(&self) -> PartialModulus<M> {
         PartialModulus {
             limbs: &self.limbs,
             n0: self.n0.clone(),
@@ -341,7 +341,7 @@ impl<M> Modulus<M> {
     }
 }
 
-struct PartialModulus<'a, M> {
+pub struct PartialModulus<'a, M> {
     limbs: &'a [Limb],
     n0: N0,
     m: PhantomData<M>,
@@ -367,11 +367,11 @@ impl<'a, M> PartialModulus<'a, M> {
 // submodule. However, for maximum clarity, we always explicitly use
 // `Unencoded` within the `bigint` submodule.
 pub struct Elem<M, E = Unencoded> {
-    limbs: BoxedLimbs<M>,
+    pub limbs: BoxedLimbs<M>,
 
     /// The number of Montgomery factors that need to be canceled out from
     /// `value` to get the actual value.
-    encoding: PhantomData<E>,
+    pub encoding: PhantomData<E>,
 }
 
 // TODO: `derive(Clone)` after https://github.com/rust-lang/rust/issues/26925
@@ -436,7 +436,7 @@ impl<M> Elem<M, Unencoded> {
         Ok(m)
     }
 
-    fn is_one(&self) -> bool {
+    pub fn is_one(&self) -> bool {
         limb::limbs_equal_limb_constant_time(&self.limbs, 1) == LimbMask::True
     }
 }
@@ -522,7 +522,7 @@ pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
     Ok(r)
 }
 
-fn elem_squared<M, E>(
+pub fn elem_squared<M, E>(
     mut a: Elem<M, E>, m: &PartialModulus<M>,
 ) -> Elem<M, <(E, E) as ProductEncoding>::Output>
 where
@@ -752,7 +752,7 @@ fn elem_exp_vartime_<M>(base: Elem<M, R>, exponent: u64, m: &PartialModulus<M>) 
 // `M` represents the prime modulus for which the exponent is in the interval
 // [1, `m` - 1).
 pub struct PrivateExponent<M> {
-    limbs: BoxedLimbs<M>,
+    pub limbs: BoxedLimbs<M>,
 }
 
 impl<M> PrivateExponent<M> {

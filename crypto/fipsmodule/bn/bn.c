@@ -405,14 +405,16 @@ int bn_resize_words(BIGNUM *bn, size_t words) {
   return 1;
 }
 
+#endif
 void bn_select_words(BN_ULONG *r, BN_ULONG mask, const BN_ULONG *a,
                      const BN_ULONG *b, size_t num) {
   for (size_t i = 0; i < num; i++) {
-    OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
+    OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word),
                           "crypto_word_t is too small");
     r[i] = constant_time_select_w(mask, a[i], b[i]);
   }
 }
+#if 0
 
 int bn_minimal_width(const BIGNUM *bn) {
   int ret = bn->width;

@@ -505,11 +505,14 @@ OPENSSL_EXPORT int BN_is_bit_set(const BIGNUM *a, int n);
 // on in OpenSSL and not very useful.
 OPENSSL_EXPORT int BN_mask_bits(BIGNUM *a, int n);
 
+#endif
+
 // BN_count_low_zero_bits returns the number of low-order zero bits in |bn|, or
 // the number of factors of two which divide it. It returns zero if |bn| is
 // zero.
-OPENSSL_EXPORT int BN_count_low_zero_bits(const BIGNUM *bn);
+OPENSSL_EXPORT int BN_count_low_zero_bits(const BN_ULONG bn[], size_t num_limbs);
 
+#if 0
 
 // Modulo arithmetic.
 

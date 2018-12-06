@@ -117,9 +117,7 @@
 
 #include <assert.h>
 
-#if defined(__clang__) || defined(_MSC_VER)
 #include <string.h>
-#endif
 
 #if defined(_MSC_VER)
 #pragma warning(pop)
@@ -342,6 +340,22 @@ static inline uint64_t from_be_u64(uint64_t x) {
   x = bswap_u64(x);
 #endif
   return x;
+}
+
+static inline void *OPENSSL_memmove(void *dst, const void *src, size_t n) {
+  if (n == 0) {
+    return dst;
+  }
+
+  return memmove(dst, src, n);
+}
+
+static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
+  if (n == 0) {
+    return dst;
+  }
+
+  return memset(dst, c, n);
 }
 
 #endif  // OPENSSL_HEADER_CRYPTO_INTERNAL_H

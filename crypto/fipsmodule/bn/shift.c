@@ -54,16 +54,16 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/bn.h>
+#include <GFp/bn.h>
 
 #include <string.h>
 
-#include <openssl/err.h>
-#include <openssl/type_check.h>
+//#include <openssl/err.h>
+#include <GFp/type_check.h>
 
 #include "internal.h"
 
-
+#if 0
 int BN_lshift(BIGNUM *r, const BIGNUM *a, int n) {
   int i, nw, lb, rb;
   BN_ULONG *t, *f;
@@ -133,6 +133,7 @@ int BN_lshift1(BIGNUM *r, const BIGNUM *a) {
   return 1;
 }
 
+#endif
 void bn_rshift_words(BN_ULONG *r, const BN_ULONG *a, unsigned shift,
                      size_t num) {
   unsigned shift_bits = shift % BN_BITS2;
@@ -153,6 +154,7 @@ void bn_rshift_words(BN_ULONG *r, const BN_ULONG *a, unsigned shift,
   OPENSSL_memset(r + num - shift_words, 0, shift_words * sizeof(BN_ULONG));
 }
 
+#if 0
 int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
   if (n < 0) {
     OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
@@ -168,35 +170,28 @@ int BN_rshift(BIGNUM *r, const BIGNUM *a, int n) {
   bn_set_minimal_width(r);
   return 1;
 }
+#endif
 
-int bn_rshift_secret_shift(BIGNUM *r, const BIGNUM *a, unsigned n,
-                           BN_CTX *ctx) {
+int bn_rshift_secret_shift(BN_ULONG r[], unsigned n,
+                           BN_ULONG tmp[], size_t num_limbs) {
   int ret = 0;
-  BN_CTX_start(ctx);
-  BIGNUM *tmp = BN_CTX_get(ctx);
-  if (tmp == NULL ||
-      !BN_copy(r, a) ||
-      !bn_wexpand(tmp, r->width)) {
-    goto err;
-  }
 
   // Shift conditionally by powers of two.
-  unsigned max_bits = BN_BITS2 * r->width;
+  unsigned max_bits = BN_BITS2 * num_limbs;
   for (unsigned i = 0; (max_bits >> i) != 0; i++) {
     BN_ULONG mask = (n >> i) & 1;
     mask = 0 - mask;
-    bn_rshift_words(tmp->d, r->d, 1u << i, r->width);
-    bn_select_words(r->d, mask, tmp->d /* apply shift */,
-                    r->d /* ignore shift */, r->width);
+    bn_rshift_words(tmp, r, 1u << i, num_limbs);
+    bn_select_words(r, mask, tmp /* apply shift */,
+                    r /* ignore shift */, num_limbs);
   }
 
   ret = 1;
 
-err:
-  BN_CTX_end(ctx);
   return ret;
 }
 
+#if 0
 void bn_rshift1_words(BN_ULONG *r, const BN_ULONG *a, size_t num) {
   if (num == 0) {
     return;
@@ -294,19 +289,20 @@ int BN_mask_bits(BIGNUM *a, int n) {
   bn_set_minimal_width(a);
   return 1;
 }
+#endif
 
 static int bn_count_low_zero_bits_word(BN_ULONG l) {
-  OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
+  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word),
                         "crypto_word_t is too small");
-  OPENSSL_STATIC_ASSERT(sizeof(int) <= sizeof(crypto_word_t),
+  OPENSSL_COMPILE_ASSERT(sizeof(int) <= sizeof(crypto_word),
                         "crypto_word_t is too small");
-  OPENSSL_STATIC_ASSERT(BN_BITS2 == sizeof(BN_ULONG) * 8,
+  OPENSSL_COMPILE_ASSERT(BN_BITS2 == sizeof(BN_ULONG) * 8,
                         "BN_ULONG has padding bits");
   // C has very bizarre rules for types smaller than an int.
-  OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) >= sizeof(int),
+  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) >= sizeof(int),
                         "BN_ULONG gets promoted to int");
 
-  crypto_word_t mask;
+  crypto_word mask;
   int bits = 0;
 
 #if BN_BITS2 > 32
@@ -341,20 +337,20 @@ static int bn_count_low_zero_bits_word(BN_ULONG l) {
   return bits;
 }
 
-int BN_count_low_zero_bits(const BIGNUM *bn) {
-  OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word_t),
+int BN_count_low_zero_bits(const BN_ULONG bn[], size_t num_limbs) {
+  OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) <= sizeof(crypto_word),
                         "crypto_word_t is too small");
-  OPENSSL_STATIC_ASSERT(sizeof(int) <= sizeof(crypto_word_t),
+  OPENSSL_COMPILE_ASSERT(sizeof(int) <= sizeof(crypto_word),
                         "crypto_word_t is too small");
 
   int ret = 0;
-  crypto_word_t saw_nonzero = 0;
-  for (int i = 0; i < bn->width; i++) {
-    crypto_word_t nonzero = ~constant_time_is_zero_w(bn->d[i]);
-    crypto_word_t first_nonzero = ~saw_nonzero & nonzero;
+  crypto_word saw_nonzero = 0;
+  for (size_t i = 0; i < num_limbs; i++) {
+    crypto_word nonzero = ~constant_time_is_zero_w(bn[i]);
+    crypto_word first_nonzero = ~saw_nonzero & nonzero;
     saw_nonzero |= nonzero;
 
-    int bits = bn_count_low_zero_bits_word(bn->d[i]);
+    int bits = bn_count_low_zero_bits_word(bn[i]);
     ret |= first_nonzero & (i * BN_BITS2 + bits);
   }
 
