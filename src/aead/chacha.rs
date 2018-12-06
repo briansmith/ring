@@ -26,13 +26,15 @@ impl<'a> From<&'a [u8; KEY_LEN]> for Key {
 
 #[inline]
 pub fn chacha20_xor_in_place(key: &Key, counter: &Counter, in_out: &mut [u8]) {
-    chacha20_xor_inner(
-        key,
-        counter,
-        in_out.as_ptr(),
-        in_out.len(),
-        in_out.as_mut_ptr(),
-    );
+    unsafe {
+        chacha20_xor_inner(
+            key,
+            counter,
+            in_out.as_ptr(),
+            in_out.len(),
+            in_out.as_mut_ptr(),
+        );
+    }
 }
 
 pub fn chacha20_xor_overlapping(
@@ -51,25 +53,28 @@ pub fn chacha20_xor_overlapping(
         }
         chacha20_xor_in_place(key, &counter, &mut in_out[..len]);
     } else {
-        chacha20_xor_inner(
-            key,
-            counter,
-            in_out[in_prefix_len..].as_ptr(),
-            len,
-            in_out.as_mut_ptr(),
-        );
+        unsafe {
+            chacha20_xor_inner(
+                key,
+                counter,
+                in_out[in_prefix_len..].as_ptr(),
+                len,
+                in_out.as_mut_ptr(),
+            );
+        }
     }
 }
 
 #[inline]
-pub fn chacha20_xor_inner(
+unsafe fn chacha20_xor_inner(
     key: &Key, counter: &Counter, input: *const u8, in_out_len: usize, output: *mut u8,
 ) {
-    debug_assert!(core::mem::align_of_val(key) >= 4);
-    debug_assert!(core::mem::align_of_val(counter) >= 4);
-    unsafe {
-        GFp_ChaCha20_ctr32(output, input, in_out_len, key, counter);
+    extern "C" {
+        fn GFp_ChaCha20_ctr32(
+            out: *mut u8, in_: *const u8, in_len: c::size_t, key: &Key, counter: &Counter,
+        );
     }
+    GFp_ChaCha20_ctr32(output, input, in_out_len, key, counter);
 }
 
 pub type Counter = [u32; 4];
@@ -84,6 +89,7 @@ pub fn make_counter(nonce: &[u8; NONCE_LEN], counter: u32) -> Counter {
     ]
 }
 
+#[cfg(test)]
 extern "C" {
     fn GFp_ChaCha20_ctr32(
         out: *mut u8, in_: *const u8, in_len: c::size_t, key: &Key, counter: &Counter,
