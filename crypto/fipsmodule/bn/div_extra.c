@@ -12,10 +12,9 @@
  * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
  * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE. */
 
-#include <openssl/bn.h>
-
 #include <assert.h>
 
+#include "GFp/bn.h"
 #include "internal.h"
 
 
@@ -59,7 +58,7 @@ static uint16_t shift_and_add_mod_u16(uint16_t r, uint32_t a, uint16_t d,
   return t;
 }
 
-uint16_t bn_mod_u16_consttime(const BIGNUM *bn, uint16_t d) {
+uint16_t bn_mod_u16_consttime(const BN_ULONG bn[], size_t num_limbs, uint16_t d) {
   if (d <= 1) {
     return 0;
   }
@@ -73,12 +72,12 @@ uint16_t bn_mod_u16_consttime(const BIGNUM *bn, uint16_t d) {
   uint32_t m = ((UINT64_C(1) << (32 + p)) + d - 1) / d;
 
   uint16_t ret = 0;
-  for (int i = bn->width - 1; i >= 0; i--) {
+  for (int i = num_limbs - 1; i >= 0; i--) {
 #if BN_BITS2 == 32
-    ret = shift_and_add_mod_u16(ret, bn->d[i], d, p, m);
+    ret = shift_and_add_mod_u16(ret, bn[i], d, p, m);
 #elif BN_BITS2 == 64
-    ret = shift_and_add_mod_u16(ret, bn->d[i] >> 32, d, p, m);
-    ret = shift_and_add_mod_u16(ret, bn->d[i] & 0xffffffff, d, p, m);
+    ret = shift_and_add_mod_u16(ret, bn[i] >> 32, d, p, m);
+    ret = shift_and_add_mod_u16(ret, bn[i] & 0xffffffff, d, p, m);
 #else
 #error "Unknown BN_ULONG size"
 #endif

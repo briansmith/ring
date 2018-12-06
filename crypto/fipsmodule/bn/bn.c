@@ -54,18 +54,18 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/bn.h>
+#include <GFp/bn.h>
 
 #include <limits.h>
 #include <string.h>
 
-#include <openssl/err.h>
-#include <openssl/mem.h>
+// #include <openssl/err.h>
+// #include <openssl/mem.h>
 
 #include "internal.h"
-#include "../delocate.h"
+// #include "../delocate.h"
 
-
+#if 0
 BIGNUM *BN_new(void) {
   BIGNUM *bn = OPENSSL_malloc(sizeof(BIGNUM));
 
@@ -176,6 +176,7 @@ DEFINE_METHOD_FUNCTION(BIGNUM, BN_value_one) {
   out->neg = 0;
   out->flags = BN_FLG_STATIC_DATA;
 }
+#endif
 
 // BN_num_bits_word returns the minimum number of bits needed to represent the
 // value in |l|.
@@ -232,6 +233,7 @@ unsigned BN_num_bits_word(BN_ULONG l) {
   return bits;
 }
 
+#if 0
 unsigned BN_num_bits(const BIGNUM *bn) {
   const int width = bn_minimal_width(bn);
   if (width == 0) {
@@ -426,3 +428,4 @@ void bn_set_minimal_width(BIGNUM *bn) {
     bn->neg = 0;
   }
 }
+#endif

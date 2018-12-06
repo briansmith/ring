@@ -135,3 +135,6 @@ mod sealed {
 mod tests {
     bssl_test!(test_constant_time, bssl_constant_time_test_main);
 }
+
+// Only here for development
+pub use rsa::key_generation::probable_primality_test;

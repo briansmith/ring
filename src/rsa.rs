@@ -27,6 +27,9 @@ use untrusted;
 
 mod padding;
 
+pub mod key_generation;
+mod small_primes;
+
 // `RSA_PKCS1_SHA1` is intentionally not exposed.
 pub use self::padding::{
     Encoding, RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512, RSA_PSS_SHA256, RSA_PSS_SHA384,

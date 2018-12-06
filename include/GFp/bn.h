@@ -123,16 +123,17 @@
 #ifndef OPENSSL_HEADER_BN_H
 #define OPENSSL_HEADER_BN_H
 
-#include <openssl/base.h>
-#include <openssl/thread.h>
+#include <GFp/base.h>
+//#include <GFp/thread.h>
 
 #include <inttypes.h>  // for PRIu64 and friends
 #include <stdio.h>  // for FILE*
 
+#if 0
 #if defined(__cplusplus)
 extern "C" {
 #endif
-
+#endif
 
 // BN provides support for working with arbitrary sized integers. For example,
 // although the largest integer supported by the compiler might be 64 bits, BN
@@ -165,7 +166,7 @@ extern "C" {
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
 #endif
 
-
+#if 0
 // Allocation and freeing.
 
 // BN_new creates a new, allocated BIGNUM and initialises it.
@@ -971,9 +972,11 @@ struct bn_mont_ctx_st {
   BIGNUM N;
   BN_ULONG n0[2];  // least significant words of (R*Ri-1)/N
 };
+#endif
 
 OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 
+#if 0
 #define BN_FLG_MALLOCED 0x01
 #define BN_FLG_STATIC_DATA 0x02
 // |BN_FLG_CONSTTIME| has been removed and intentionally omitted so code relying
@@ -981,7 +984,6 @@ OPENSSL_EXPORT unsigned BN_num_bits_word(BN_ULONG l);
 // higher-level cryptographic algorithms exposed by other modules. Consumers
 // within the library should call the appropriate timing-sensitive algorithm
 // directly.
-
 
 #if defined(__cplusplus)
 }  // extern C
@@ -1034,5 +1036,6 @@ BSSL_NAMESPACE_END
 #define BN_R_BAD_ENCODING 117
 #define BN_R_ENCODE_ERROR 118
 #define BN_R_INVALID_INPUT 119
+#endif
 
 #endif  // OPENSSL_HEADER_BN_H
