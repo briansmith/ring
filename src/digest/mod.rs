@@ -27,13 +27,9 @@
 use crate::{c, cpu, polyfill};
 use core;
 
-// XXX: Replace with `const fn` when `const fn` is stable:
-// https://github.com/rust-lang/rust/issues/24111
 #[cfg(target_endian = "little")]
-macro_rules! u32x2 {
-    ( $first:expr, $second:expr ) => {
-        ((($second as u64) << 32) | ($first as u64))
-    };
+const fn u32x2(first: u32, second: u32) -> u64 {
+    ((second as u64) << 32) | (first as u64)
 }
 
 mod sha1;
@@ -311,9 +307,9 @@ pub static SHA1: Algorithm = Algorithm {
     block_data_order: sha1::block_data_order,
     format_output: sha256_format_output,
     initial_state: [
-        u32x2!(0x67452301u32, 0xefcdab89u32),
-        u32x2!(0x98badcfeu32, 0x10325476u32),
-        u32x2!(0xc3d2e1f0u32, 0u32),
+        u32x2(0x67452301u32, 0xefcdab89u32),
+        u32x2(0x98badcfeu32, 0x10325476u32),
+        u32x2(0xc3d2e1f0u32, 0u32),
         0,
         0,
         0,
@@ -334,10 +330,10 @@ pub static SHA256: Algorithm = Algorithm {
     block_data_order: GFp_sha256_block_data_order,
     format_output: sha256_format_output,
     initial_state: [
-        u32x2!(0x6a09e667u32, 0xbb67ae85u32),
-        u32x2!(0x3c6ef372u32, 0xa54ff53au32),
-        u32x2!(0x510e527fu32, 0x9b05688cu32),
-        u32x2!(0x1f83d9abu32, 0x5be0cd19u32),
+        u32x2(0x6a09e667u32, 0xbb67ae85u32),
+        u32x2(0x3c6ef372u32, 0xa54ff53au32),
+        u32x2(0x510e527fu32, 0x9b05688cu32),
+        u32x2(0x1f83d9abu32, 0x5be0cd19u32),
         0,
         0,
         0,
@@ -439,10 +435,10 @@ pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 fn sha256_format_output(input: &State) -> Output {
     let input = &polyfill::slice::u64_as_u32(input)[..8];
     [
-        u32x2!(input[0].to_be(), input[1].to_be()),
-        u32x2!(input[2].to_be(), input[3].to_be()),
-        u32x2!(input[4].to_be(), input[5].to_be()),
-        u32x2!(input[6].to_be(), input[7].to_be()),
+        u32x2(input[0].to_be(), input[1].to_be()),
+        u32x2(input[2].to_be(), input[3].to_be()),
+        u32x2(input[4].to_be(), input[5].to_be()),
+        u32x2(input[6].to_be(), input[7].to_be()),
         0,
         0,
         0,
