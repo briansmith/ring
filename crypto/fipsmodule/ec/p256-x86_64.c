@@ -581,7 +581,7 @@ static void ecp_nistz256_inv_mod_ord(const EC_GROUP *group, EC_SCALAR *out,
 static int ecp_nistz256_mont_inv_mod_ord_vartime(const EC_GROUP *group,
                                                  EC_SCALAR *out,
                                                  const EC_SCALAR *in) {
-  if ((OPENSSL_ia32cap_P[1] & (1 << 28)) == 0) {
+  if ((OPENSSL_ia32cap_get()[1] & (1 << 28)) == 0) {
     // No AVX support; fallback to generic code.
     return ec_GFp_simple_mont_inv_mod_ord_vartime(group, out, in);
   }

@@ -31,7 +31,7 @@ extern "C" {
 #define HWAES_ECB
 
 static int hwaes_capable(void) {
-  return (OPENSSL_ia32cap_P[1] & (1 << (57 - 32))) != 0;
+  return (OPENSSL_ia32cap_get()[1] & (1 << (57 - 32))) != 0;
 }
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 #define HWAES
