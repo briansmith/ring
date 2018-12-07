@@ -218,6 +218,7 @@ include = [
     "tests/aead_aes_128_gcm_tests.txt",
     "tests/aead_aes_256_gcm_tests.txt",
     "tests/aead_chacha20_poly1305_tests.txt",
+    "tests/aead_chacha20_poly1305_openssh_tests.txt",
     "tests/aead_tests.rs",
     "tests/agreement_tests.rs",
     "tests/agreement_tests.txt",
