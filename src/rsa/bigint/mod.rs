@@ -1445,7 +1445,7 @@ mod tests {
         PublicExponent::from_be_bytes(untrusted::Input::from(&bytes), 3).unwrap()
     }
 
-    fn consume_nonnegative(test_case: &mut test::TestCase, name: &str) -> Nonnegative {
+    pub(super) fn consume_nonnegative(test_case: &mut test::TestCase, name: &str) -> Nonnegative {
         let bytes = test_case.consume_bytes(name);
         let (r, _r_bits) =
             Nonnegative::from_be_bytes_with_bit_length(untrusted::Input::from(&bytes)).unwrap();

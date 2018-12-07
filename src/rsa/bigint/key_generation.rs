@@ -124,22 +124,49 @@ pub fn probable_primality_test(
 }
 
 #[cfg(test)]
-#[test]
-fn check_probable_primes() {
-    fn ptest(v: u32) -> Result<bool, error::Unspecified> {
-        let rng = rand::SystemRandom::new();
-        probable_primality_test(&bigint::Nonnegative::from_u32(v), 10, &rng)
+mod tests {
+    use super::*;
+    use super::super::tests::*;
+    use crate::test;
+
+    #[test]
+    fn check_probable_primes_small() {
+        fn ptest(v: u32) -> Result<bool, error::Unspecified> {
+            let rng = rand::SystemRandom::new();
+            probable_primality_test(&bigint::Nonnegative::from_u32(v), 10, &rng)
+        }
+        assert_eq!(ptest(0), Ok(false));
+        assert_eq!(ptest(1), Ok(false));
+        assert_eq!(ptest(2), Ok(true));
+        assert_eq!(ptest(3), Ok(true));
+        assert_eq!(ptest(4), Ok(false));
+        assert_eq!(ptest(5), Ok(true));
+        assert_eq!(ptest(6), Ok(false));
+        assert_eq!(ptest(7), Ok(true));
+        assert_eq!(ptest(8), Ok(false));
+        assert_eq!(ptest(9), Ok(false));
+        assert_eq!(ptest(10), Ok(false));
+        assert_eq!(ptest(11), Ok(true));
+        assert_eq!(ptest(12), Ok(false));
+        assert_eq!(ptest(13), Ok(true));
+        assert_eq!(ptest(14), Ok(false));
+        assert_eq!(ptest(15), Ok(false));
     }
-    assert_eq!(ptest(0), Ok(false));
-    assert_eq!(ptest(1), Ok(false));
-    assert_eq!(ptest(2), Ok(true));
-    assert_eq!(ptest(3), Ok(true));
-    assert_eq!(ptest(4), Ok(false));
-    assert_eq!(ptest(5), Ok(true));
-    assert_eq!(ptest(6), Ok(false));
-    assert_eq!(ptest(7), Ok(true));
-    assert_eq!(ptest(8), Ok(false));
-    assert_eq!(ptest(9), Ok(false));
-    assert_eq!(ptest(10), Ok(false));
-    assert_eq!(ptest(11), Ok(true));
+
+    #[test]
+    fn check_probable_primes_big() {
+        test::from_file(
+            "src/rsa/bigint/primes_tests.txt",
+            |section, test_case| {
+                assert_eq!(section, "");
+
+                let is_prime = test_case.consume_bool("Prime");
+                let n = consume_nonnegative(test_case, "N");
+                let rng = rand::SystemRandom::new();
+                assert_eq!(probable_primality_test(&n, 10, &rng).unwrap(), is_prime);
+
+                Ok(())
+            },
+        )
+    }
 }
