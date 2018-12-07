@@ -37,7 +37,7 @@ const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize = bigint::MODULUS_MAX_LIMBS * lim
 
 // Keep in sync with the documentation comment for `KeyPair`.
 #[cfg(feature = "rsa_signing")]
-const PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS: bits::BitLength = bits::BitLength(4096);
+const PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS: bits::BitLength = bits::BitLength::from_usize_bits(4096);
 
 /// Parameters for RSA verification.
 pub struct RSAParameters {
