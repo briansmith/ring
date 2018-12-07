@@ -27,7 +27,7 @@ use untrusted;
 
 mod padding;
 
-pub mod key_generation;
+pub use self::bigint::key_generation;
 mod small_primes;
 
 // `RSA_PKCS1_SHA1` is intentionally not exposed.

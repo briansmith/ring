@@ -139,11 +139,11 @@ void bn_rshift_words(BN_ULONG *r, const BN_ULONG *a, unsigned shift,
   unsigned shift_bits = shift % BN_BITS2;
   size_t shift_words = shift / BN_BITS2;
   if (shift_words >= num) {
-    OPENSSL_memset(r, 0, num * sizeof(BN_ULONG));
+    memset(r, 0, num * sizeof(BN_ULONG));
     return;
   }
   if (shift_bits == 0) {
-    OPENSSL_memmove(r, a + shift_words, (num - shift_words) * sizeof(BN_ULONG));
+    memmove(r, a + shift_words, (num - shift_words) * sizeof(BN_ULONG));
   } else {
     for (size_t i = shift_words; i < num - 1; i++) {
       r[i - shift_words] =
@@ -151,7 +151,7 @@ void bn_rshift_words(BN_ULONG *r, const BN_ULONG *a, unsigned shift,
     }
     r[num - 1 - shift_words] = a[num - 1] >> shift_bits;
   }
-  OPENSSL_memset(r + num - shift_words, 0, shift_words * sizeof(BN_ULONG));
+  memset(r + num - shift_words, 0, shift_words * sizeof(BN_ULONG));
 }
 
 #if 0

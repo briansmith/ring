@@ -342,20 +342,4 @@ static inline uint64_t from_be_u64(uint64_t x) {
   return x;
 }
 
-static inline void *OPENSSL_memmove(void *dst, const void *src, size_t n) {
-  if (n == 0) {
-    return dst;
-  }
-
-  return memmove(dst, src, n);
-}
-
-static inline void *OPENSSL_memset(void *dst, int c, size_t n) {
-  if (n == 0) {
-    return dst;
-  }
-
-  return memset(dst, c, n);
-}
-
 #endif  // OPENSSL_HEADER_CRYPTO_INTERNAL_H

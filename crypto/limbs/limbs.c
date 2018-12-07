@@ -99,13 +99,10 @@ Limb LIMBS_less_than_limb(const Limb a[], Limb b, size_t num_limbs) {
   return constant_time_select_w(lo, hi, lo);
 }
 
-void LIMBS_sub_limb(Limb r[], const Limb a[], const Limb b,
-               size_t num_limbs) {
-  limbs_sub_limb(r, a, b, num_limbs);
-}
-
-void LIMBS_copy(Limb r[], const Limb a[], size_t num_limbs) {
-  limbs_copy(r, a, num_limbs);
+void LIMBS_odd_sub_one(Limb r[], size_t num_limbs) {
+  assert(num_limbs > 0);
+  assert(!LIMBS_are_even(r, num_limbs));
+  r[0] &= ~1;
 }
 
 /* if (r >= m) { r -= m; } */

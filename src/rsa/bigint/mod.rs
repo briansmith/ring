@@ -40,10 +40,13 @@
 
 #![allow(box_pointers)]
 
+pub mod key_generation;
+
 use crate::{
     arithmetic::montgomery::*,
     bits, bssl, c, error,
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
+    rand::SecureRandom,
 };
 use core::{
     self,
@@ -109,8 +112,8 @@ impl<M> BoxedLimbs<M> {
             .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
         Ok(r)
     }
-
-    pub fn minimal_width_from_unpadded(limbs: &[Limb]) -> Self {
+//
+    fn minimal_width_from_unpadded(limbs: &[Limb]) -> Self {
         debug_assert_ne!(limbs.last(), Some(&0));
         use std::borrow::ToOwned;
         Self {
@@ -238,7 +241,7 @@ impl<M> Modulus<M> {
         Self::from_boxed_limbs(limbs)
     }
 
-    pub fn from_boxed_limbs(n: BoxedLimbs<M>) -> Result<(Self, bits::BitLength), error::KeyRejected> {
+    fn from_boxed_limbs(n: BoxedLimbs<M>) -> Result<(Self, bits::BitLength), error::KeyRejected> {
         if n.len() > MODULUS_MAX_LIMBS {
             return Err(error::KeyRejected::too_large());
         }
@@ -332,7 +335,7 @@ impl<M> Modulus<M> {
         }
     }
 
-    pub fn as_partial(&self) -> PartialModulus<M> {
+    fn as_partial(&self) -> PartialModulus<M> {
         PartialModulus {
             limbs: &self.limbs,
             n0: self.n0.clone(),
@@ -341,7 +344,7 @@ impl<M> Modulus<M> {
     }
 }
 
-pub struct PartialModulus<'a, M> {
+struct PartialModulus<'a, M> {
     limbs: &'a [Limb],
     n0: N0,
     m: PhantomData<M>,
@@ -367,11 +370,11 @@ impl<'a, M> PartialModulus<'a, M> {
 // submodule. However, for maximum clarity, we always explicitly use
 // `Unencoded` within the `bigint` submodule.
 pub struct Elem<M, E = Unencoded> {
-    pub limbs: BoxedLimbs<M>,
+    limbs: BoxedLimbs<M>,
 
     /// The number of Montgomery factors that need to be canceled out from
     /// `value` to get the actual value.
-    pub encoding: PhantomData<E>,
+    encoding: PhantomData<E>,
 }
 
 // TODO: `derive(Clone)` after https://github.com/rust-lang/rust/issues/26925
@@ -436,7 +439,7 @@ impl<M> Elem<M, Unencoded> {
         Ok(m)
     }
 
-    pub fn is_one(&self) -> bool {
+    fn is_one(&self) -> bool {
         limb::limbs_equal_limb_constant_time(&self.limbs, 1) == LimbMask::True
     }
 }
@@ -522,7 +525,7 @@ pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
     Ok(r)
 }
 
-pub fn elem_squared<M, E>(
+fn elem_squared<M, E>(
     mut a: Elem<M, E>, m: &PartialModulus<M>,
 ) -> Elem<M, <(E, E) as ProductEncoding>::Output>
 where
@@ -752,7 +755,7 @@ fn elem_exp_vartime_<M>(base: Elem<M, R>, exponent: u64, m: &PartialModulus<M>) 
 // `M` represents the prime modulus for which the exponent is in the interval
 // [1, `m` - 1).
 pub struct PrivateExponent<M> {
-    pub limbs: BoxedLimbs<M>,
+    limbs: BoxedLimbs<M>,
 }
 
 impl<M> PrivateExponent<M> {
@@ -1075,11 +1078,17 @@ pub fn elem_verify_equal_consttime<M, E>(
 }
 
 /// Nonnegative integers.
+#[derive(Clone)]
 pub struct Nonnegative {
     limbs: Vec<Limb>,
 }
 
 impl Nonnegative {
+    pub fn from_u32(v: u32) -> Self {
+        Nonnegative {
+            limbs: vec![v.into()],
+        }
+    }
     pub fn from_be_bytes_with_bit_length(
         input: untrusted::Input,
     ) -> Result<(Self, bits::BitLength), error::Unspecified> {
@@ -1093,9 +1102,34 @@ impl Nonnegative {
         Ok((Self { limbs }, r_bits))
     }
 
+    fn random(
+        rng: &SecureRandom,
+        limb_count: usize
+    ) -> Result<Self, error::Unspecified> {
+        let mut limbs = vec![0; limb_count];
+        unsafe {
+            let mut_ptr = (&mut limbs[..]).as_mut_ptr() as * mut u8;
+            let mut_slice = core::slice::from_raw_parts_mut(mut_ptr, limbs.len() * 8);
+            rng.fill(mut_slice)?;
+        }
+        Ok(Nonnegative {
+            limbs,
+        })
+    }
+
     #[inline]
     pub fn is_odd(&self) -> bool {
         limb::limbs_are_even_constant_time(&self.limbs) != LimbMask::True
+    }
+
+    #[inline]
+    pub fn is_zero(&self) -> bool {
+        limb::limbs_are_zero_constant_time(&self.limbs) == LimbMask::True
+    }
+
+    #[inline]
+    pub fn equal_to_u32(&self, v: u32) -> bool {
+        limb::limbs_equal_limb_constant_time(&self.limbs, v.into()) == LimbMask::True
     }
 
     pub fn verify_less_than(&self, other: &Self) -> Result<(), error::Unspecified> {
@@ -1122,6 +1156,26 @@ impl Nonnegative {
             }
         }
         return Ok(());
+    }
+
+    pub fn odd_sub_one(&self) -> Self {
+        let mut ret = self.clone();
+        limb::limbs_odd_sub_one(&mut ret.limbs);
+        ret
+    }
+
+    pub fn mod_u16_consttime(&self, v: u16) -> u16 {
+        limb::mod_u16_consttime(&self.limbs, v)
+    }
+
+    pub fn trailing_zeros(&self) -> u16 {
+        limb::limbs_count_low_zero_bits(&self.limbs)
+    }
+
+    pub fn shift_right(&self, v: u16) -> Self {
+        let mut ret = self.clone();
+        limb::limbs_secret_rshift(&mut ret.limbs, v);
+        ret
     }
 }
 
