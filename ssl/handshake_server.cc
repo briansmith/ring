@@ -1226,6 +1226,8 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
       return ssl_hs_error;
     }
 
+    CONSTTIME_SECRET(decrypt_buf.data(), decrypt_len);
+
     // Prepare a random premaster, to be used on invalid padding. See RFC 5246,
     // section 7.4.7.1.
     if (!premaster_secret.Init(SSL_MAX_MASTER_KEY_LENGTH) ||
@@ -1348,6 +1350,8 @@ static enum ssl_hs_wait_t do_read_client_key_exchange(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
   hs->new_session->extended_master_secret = hs->extended_master_secret;
+  CONSTTIME_DECLASSIFY(hs->new_session->master_key,
+                       hs->new_session->master_key_length);
 
   ssl->method->next_message(ssl);
   hs->state = state12_read_client_certificate_verify;

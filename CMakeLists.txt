@@ -336,6 +336,12 @@ if(OPENSSL_SMALL)
   add_definitions(-DOPENSSL_SMALL)
 endif()
 
+if(CONSTANT_TIME_VALIDATION)
+  add_definitions(-DBORINGSSL_CONSTANT_TIME_VALIDATION)
+  # Asserts will often test secret data.
+  add_definitions(-DNDEBUG)
+endif()
+
 function(go_executable dest package)
   set(godeps "${CMAKE_SOURCE_DIR}/util/godeps.go")
   if(${CMAKE_VERSION} VERSION_LESS "3.7" OR
