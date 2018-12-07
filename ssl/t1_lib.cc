@@ -1038,7 +1038,6 @@ static bool ext_sigalgs_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
   CBS supported_signature_algorithms;
   if (!CBS_get_u16_length_prefixed(contents, &supported_signature_algorithms) ||
       CBS_len(contents) != 0 ||
-      CBS_len(&supported_signature_algorithms) == 0 ||
       !tls1_parse_peer_sigalgs(hs, &supported_signature_algorithms)) {
     return false;
   }
@@ -3556,7 +3555,10 @@ bool tls1_parse_peer_sigalgs(SSL_HANDSHAKE *hs, const CBS *in_sigalgs) {
     return true;
   }
 
-  return parse_u16_array(in_sigalgs, &hs->peer_sigalgs);
+  // In all contexts, the signature algorithms list may not be empty. (It may be
+  // omitted by clients in TLS 1.2, but then the entire extension is omitted.)
+  return CBS_len(in_sigalgs) != 0 &&
+         parse_u16_array(in_sigalgs, &hs->peer_sigalgs);
 }
 
 bool tls1_get_legacy_signature_algorithm(uint16_t *out, const EVP_PKEY *pkey) {

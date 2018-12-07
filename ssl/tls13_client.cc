@@ -506,7 +506,6 @@ static enum ssl_hs_wait_t do_read_certificate_request(SSL_HANDSHAKE *hs) {
       !have_sigalgs ||
       !CBS_get_u16_length_prefixed(&sigalgs,
                                    &supported_signature_algorithms) ||
-      CBS_len(&supported_signature_algorithms) == 0 ||
       !tls1_parse_peer_sigalgs(hs, &supported_signature_algorithms)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);

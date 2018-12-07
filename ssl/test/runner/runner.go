@@ -9306,26 +9306,8 @@ func addSignatureAlgorithmTests() {
 		expectedError: ":WRONG_SIGNATURE_TYPE:",
 	})
 
-	// Test that, if the list is missing, the peer falls back to SHA-1 in
-	// TLS 1.2, but not TLS 1.3.
-	testCases = append(testCases, testCase{
-		name: "ClientAuth-SHA1-Fallback-RSA",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			ClientAuth: RequireAnyClientCert,
-			VerifySignatureAlgorithms: []signatureAlgorithm{
-				signatureRSAPKCS1WithSHA1,
-			},
-			Bugs: ProtocolBugs{
-				NoSignatureAlgorithms: true,
-			},
-		},
-		flags: []string{
-			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
-			"-key-file", path.Join(*resourceDir, rsaKeyFile),
-		},
-	})
-
+	// Test that, if the ClientHello list is missing, the server falls back
+	// to SHA-1 in TLS 1.2, but not TLS 1.3.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
 		name:     "ServerAuth-SHA1-Fallback-RSA",
@@ -9341,24 +9323,6 @@ func addSignatureAlgorithmTests() {
 		flags: []string{
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
-		},
-	})
-
-	testCases = append(testCases, testCase{
-		name: "ClientAuth-SHA1-Fallback-ECDSA",
-		config: Config{
-			MaxVersion: VersionTLS12,
-			ClientAuth: RequireAnyClientCert,
-			VerifySignatureAlgorithms: []signatureAlgorithm{
-				signatureECDSAWithSHA1,
-			},
-			Bugs: ProtocolBugs{
-				NoSignatureAlgorithms: true,
-			},
-		},
-		flags: []string{
-			"-cert-file", path.Join(*resourceDir, ecdsaP256CertificateFile),
-			"-key-file", path.Join(*resourceDir, ecdsaP256KeyFile),
 		},
 	})
 
@@ -9381,6 +9345,66 @@ func addSignatureAlgorithmTests() {
 	})
 
 	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "ServerAuth-NoFallback-TLS13",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			VerifySignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithSHA1,
+			},
+			Bugs: ProtocolBugs{
+				NoSignatureAlgorithms: true,
+			},
+		},
+		shouldFail:    true,
+		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
+	})
+
+	// The CertificateRequest list, however, may never be omitted. It is a
+	// syntax error for it to be empty.
+	testCases = append(testCases, testCase{
+		name: "ClientAuth-NoFallback-RSA",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			ClientAuth: RequireAnyClientCert,
+			VerifySignatureAlgorithms: []signatureAlgorithm{
+				signatureRSAPKCS1WithSHA1,
+			},
+			Bugs: ProtocolBugs{
+				NoSignatureAlgorithms: true,
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
+			"-key-file", path.Join(*resourceDir, rsaKeyFile),
+		},
+		shouldFail:         true,
+		expectedError:      ":DECODE_ERROR:",
+		expectedLocalError: "remote error: error decoding message",
+	})
+
+	testCases = append(testCases, testCase{
+		name: "ClientAuth-NoFallback-ECDSA",
+		config: Config{
+			MaxVersion: VersionTLS12,
+			ClientAuth: RequireAnyClientCert,
+			VerifySignatureAlgorithms: []signatureAlgorithm{
+				signatureECDSAWithSHA1,
+			},
+			Bugs: ProtocolBugs{
+				NoSignatureAlgorithms: true,
+			},
+		},
+		flags: []string{
+			"-cert-file", path.Join(*resourceDir, ecdsaP256CertificateFile),
+			"-key-file", path.Join(*resourceDir, ecdsaP256KeyFile),
+		},
+		shouldFail:         true,
+		expectedError:      ":DECODE_ERROR:",
+		expectedLocalError: "remote error: error decoding message",
+	})
+
+	testCases = append(testCases, testCase{
 		name: "ClientAuth-NoFallback-TLS13",
 		config: Config{
 			MaxVersion: VersionTLS13,
@@ -9396,27 +9420,9 @@ func addSignatureAlgorithmTests() {
 			"-cert-file", path.Join(*resourceDir, rsaCertificateFile),
 			"-key-file", path.Join(*resourceDir, rsaKeyFile),
 		},
-		shouldFail: true,
-		// An empty CertificateRequest signature algorithm list is a
-		// syntax error in TLS 1.3.
+		shouldFail:         true,
 		expectedError:      ":DECODE_ERROR:",
 		expectedLocalError: "remote error: error decoding message",
-	})
-
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "ServerAuth-NoFallback-TLS13",
-		config: Config{
-			MaxVersion: VersionTLS13,
-			VerifySignatureAlgorithms: []signatureAlgorithm{
-				signatureRSAPKCS1WithSHA1,
-			},
-			Bugs: ProtocolBugs{
-				NoSignatureAlgorithms: true,
-			},
-		},
-		shouldFail:    true,
-		expectedError: ":NO_COMMON_SIGNATURE_ALGORITHMS:",
 	})
 
 	// Test that signature preferences are enforced. BoringSSL does not
