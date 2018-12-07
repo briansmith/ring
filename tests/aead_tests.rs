@@ -367,3 +367,51 @@ fn test_aead_nonce_sizes(aead_alg: &'static aead::Algorithm) -> Result<(), error
 
     Ok(())
 }
+
+#[test]
+fn aead_chacha20_poly1305_openssh() {
+    // TODO: test_aead_key_sizes(...);
+    // TODO: test_aead_nonce_sizes(...).unwrap();
+
+    test::from_file(
+        "tests/aead_chacha20_poly1305_openssh_tests.txt",
+        |section, test_case| {
+            assert_eq!(section, "");
+
+            // XXX: `slice_as_array_ref!` is not available here.
+            let key_bytes = {
+                let as_vec = test_case.consume_bytes("KEY");
+                let mut as_array = [0u8; aead::chacha20_poly1305_openssh::KEY_LEN];
+                as_array.copy_from_slice(&as_vec);
+                as_array
+            };
+
+            let sequence_number = test_case.consume_usize("SEQUENCE_NUMBER");
+            assert_eq!(sequence_number as u32 as usize, sequence_number);
+            let sequence_num = sequence_number as u32;
+            let plaintext = test_case.consume_bytes("IN");
+            let ct = test_case.consume_bytes("CT");
+            let expected_tag = test_case.consume_bytes("TAG");
+
+            // TODO: Add some tests for when things fail.
+            //let error = test_case.consume_optional_string("FAILS");
+
+            let mut tag = [0u8; aead::chacha20_poly1305_openssh::TAG_LEN];
+            let mut s_in_out = plaintext.clone();
+            let s_key = aead::chacha20_poly1305_openssh::SealingKey::new(&key_bytes);
+            let () = s_key.seal_in_place(sequence_num, &mut s_in_out[..], &mut tag);
+            assert_eq!(&ct, &s_in_out);
+            assert_eq!(&expected_tag, &tag);
+            let o_key = aead::chacha20_poly1305_openssh::OpeningKey::new(&key_bytes);
+
+            {
+                let o_result = o_key.open_in_place(sequence_num, &mut s_in_out[..], &tag);
+                assert_eq!(o_result, Ok(&plaintext[4..]));
+            }
+            assert_eq!(&s_in_out[..4], &ct[..4]);
+            assert_eq!(&s_in_out[4..], &plaintext[4..]);
+
+            Ok(())
+        },
+    );
+}
