@@ -375,7 +375,7 @@ fn aead_chacha20_poly1305_openssh() {
         |section, test_case| {
             assert_eq!(section, "");
 
-            // XXX: `slice_as_array_ref!` is not available here.
+            // XXX: `polyfill::convert` isn't available here.
             let key_bytes = {
                 let as_vec = test_case.consume_bytes("KEY");
                 let mut as_array = [0u8; aead::chacha20_poly1305_openssh::KEY_LEN];

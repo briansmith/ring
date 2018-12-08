@@ -125,6 +125,7 @@ include = [
     "src/agreement.rs",
     "src/arithmetic/mod.rs",
     "src/arithmetic/montgomery.rs",
+    "src/array.rs",
     "src/bits.rs",
     "src/bssl.rs",
     "src/c.rs",

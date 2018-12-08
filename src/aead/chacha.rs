@@ -14,7 +14,10 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::block::{Block, BLOCK_LEN};
-use crate::{c, polyfill::slice::u32_from_le_u8};
+use crate::{
+    c,
+    polyfill::{convert::*, slice::u32_from_le_u8},
+};
 use core;
 
 #[repr(C)]
@@ -88,9 +91,9 @@ pub type Counter = [u32; 4];
 pub fn make_counter(nonce: &[u8; NONCE_LEN], counter: u32) -> Counter {
     [
         counter.to_le(),
-        u32_from_le_u8(slice_as_array_ref!(&nonce[0..4], 4).unwrap()),
-        u32_from_le_u8(slice_as_array_ref!(&nonce[4..8], 4).unwrap()),
-        u32_from_le_u8(slice_as_array_ref!(&nonce[8..12], 4).unwrap()),
+        u32_from_le_u8(nonce[0..4].try_into_().unwrap()),
+        u32_from_le_u8(nonce[4..8].try_into_().unwrap()),
+        u32_from_le_u8(nonce[8..12].try_into_().unwrap()),
     ]
 }
 
@@ -120,7 +123,8 @@ mod tests {
             assert_eq!(section, "");
 
             let key = test_case.consume_bytes("Key");
-            let key = Key::from(slice_as_array_ref!(&key, KEY_LEN)?);
+            let key: &[u8; KEY_LEN] = key.as_slice().try_into_()?;
+            let key = Key::from(key);
 
             let ctr = test_case.consume_usize("Ctr");
             let nonce_bytes = test_case.consume_bytes("Nonce");

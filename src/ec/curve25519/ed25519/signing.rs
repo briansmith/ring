@@ -15,7 +15,7 @@
 //! EdDSA Signatures.
 
 use super::{super::ops::*, PUBLIC_KEY_LEN};
-use crate::{der, digest, error, pkcs8, rand, signature, signature_impl};
+use crate::{der, digest, error, pkcs8, polyfill::convert::*, rand, signature, signature_impl};
 use core;
 use untrusted;
 
@@ -135,8 +135,10 @@ impl<'a> KeyPair {
     /// the private key. It is not possible to detect misuse or corruption of
     /// the private key since the public key isn't given as input.
     pub fn from_seed_unchecked(seed: untrusted::Input) -> Result<Self, error::KeyRejected> {
-        let seed = slice_as_array_ref!(seed.as_slice_less_safe(), SEED_LEN)
-            .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
+        let seed = seed
+            .as_slice_less_safe()
+            .try_into_()
+            .map_err(|_| error::KeyRejected::invalid_encoding())?;
         Ok(Self::from_seed_(seed))
     }
 

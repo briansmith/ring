@@ -17,6 +17,8 @@
 
 use core;
 
+pub mod convert;
+
 #[inline(always)]
 pub const fn u64_from_usize(x: usize) -> u64 { x as u64 }
 

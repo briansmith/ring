@@ -138,7 +138,7 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{bits::BitLength, c, test};
+    use crate::{bits::BitLength, c, polyfill::convert::*, test};
 
     #[test]
     pub fn test_aes() {
@@ -146,9 +146,8 @@ mod tests {
             assert_eq!(section, "");
             let key = test_case.consume_bytes("Key");
             let input = test_case.consume_bytes("Input");
-            let input = slice_as_array_ref!(&input, AES_BLOCK_SIZE).unwrap();
+            let input: &[u8; AES_BLOCK_SIZE] = input.as_slice().try_into_().unwrap();
             let expected_output = test_case.consume_bytes("Output");
-            let expected_output = slice_as_array_ref!(&expected_output, AES_BLOCK_SIZE).unwrap();
 
             // Key setup.
             let key_bits = BitLength::from_usize_bytes(key.len()).unwrap();
