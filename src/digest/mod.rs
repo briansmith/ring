@@ -180,7 +180,7 @@ impl Context {
 
         Digest {
             algorithm: self.algorithm,
-            value: (self.algorithm.format_output)(&self.state),
+            value: (self.algorithm.format_output)(self.state),
         }
     }
 
@@ -270,7 +270,7 @@ pub struct Algorithm {
     len_len: usize,
 
     block_data_order: unsafe extern "C" fn(state: &mut State, data: *const u8, num: c::size_t),
-    format_output: fn(input: &State) -> Output,
+    format_output: fn(input: State) -> Output,
 
     initial_state: State,
 
@@ -430,8 +430,8 @@ pub const MAX_OUTPUT_LEN: usize = 512 / 8;
 /// algorithms in this module.
 pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 
-fn sha256_format_output(input: &State) -> Output {
-    let input = &polyfill::slice::u64_as_u32(input)[..8];
+fn sha256_format_output(input: State) -> Output {
+    let input = &polyfill::slice::u64_as_u32(&input)[..8];
     [
         u32x2(input[0].to_be(), input[1].to_be()),
         u32x2(input[2].to_be(), input[3].to_be()),
@@ -444,7 +444,7 @@ fn sha256_format_output(input: &State) -> Output {
     ]
 }
 
-fn sha512_format_output(input: &State) -> Output {
+fn sha512_format_output(input: State) -> Output {
     [
         input[0].to_be(),
         input[1].to_be(),
