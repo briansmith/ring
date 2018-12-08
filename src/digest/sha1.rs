@@ -40,20 +40,19 @@ fn maj(x: W32, y: W32, z: W32) -> W32 { (x & y) | (x & z) | (y & z) }
 pub(super) unsafe extern "C" fn block_data_order(
     state: &mut super::State, data: *const u8, num: c::size_t,
 ) {
-    let data = data as *const [u8; BLOCK_LEN];
+    let data = data as *const [[u8; 4]; 16];
     let blocks = core::slice::from_raw_parts(data, num);
     block_data_order_safe(&mut state.as32, blocks)
 }
 
 #[inline(always)]
-fn block_data_order_safe(state: &mut [Wrapping<u32>; 256 / 32], blocks: &[[u8; BLOCK_LEN]]) {
+fn block_data_order_safe(state: &mut [Wrapping<u32>; 256 / 32], blocks: &[[[u8; 4]; 16]]) {
     let state = &mut state[..CHAINING_WORDS];
 
     let mut w: [W32; 80] = [Wrapping(0); 80];
     for block in blocks {
         for t in 0..16 {
-            let word = slice_as_array_ref!(&block[t * 4..][..4], 4).unwrap();
-            w[t] = Wrapping(polyfill::slice::u32_from_be_u8(word))
+            w[t] = Wrapping(polyfill::slice::u32_from_be_u8(block[t]))
         }
         for t in 16..80 {
             let wt = w[t - 3] ^ w[t - 8] ^ w[t - 14] ^ w[t - 16];

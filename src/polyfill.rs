@@ -32,7 +32,7 @@ pub mod slice {
     use core;
 
     #[inline(always)]
-    pub fn u32_from_be_u8(buffer: &[u8; 4]) -> u32 {
+    pub fn u32_from_be_u8(buffer: [u8; 4]) -> u32 {
         u32::from(buffer[0]) << 24
             | u32::from(buffer[1]) << 16
             | u32::from(buffer[2]) << 8
