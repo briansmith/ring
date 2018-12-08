@@ -24,11 +24,8 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use crate::{c, cpu, polyfill};
-use core;
-
-#[cfg(target_endian = "little")]
-const fn u32x2(first: u32, second: u32) -> u64 { ((second as u64) << 32) | (first as u64) }
+use crate::{c, cpu, endian::*, polyfill};
+use core::{self, num::Wrapping};
 
 mod sha1;
 
@@ -158,7 +155,7 @@ impl Context {
         );
 
         // Output the length, in bits, in big endian order.
-        let mut completed_data_bits: u64 = self
+        let completed_data_bits = self
             .completed_data_blocks
             .checked_mul(polyfill::u64_from_usize(self.algorithm.block_len))
             .unwrap()
@@ -166,14 +163,9 @@ impl Context {
             .unwrap()
             .checked_mul(8)
             .unwrap();
+        self.pending[(self.algorithm.block_len - 8)..self.algorithm.block_len]
+            .copy_from_slice(BigEndian::from(completed_data_bits).as_ref());
 
-        for b in (&mut self.pending[(self.algorithm.block_len - 8)..self.algorithm.block_len])
-            .into_iter()
-            .rev()
-        {
-            *b = completed_data_bits as u8;
-            completed_data_bits /= 0x100;
-        }
         unsafe {
             (self.algorithm.block_data_order)(&mut self.state, self.pending.as_ptr(), 1);
         }
@@ -234,7 +226,7 @@ impl Digest {
 impl AsRef<[u8]> for Digest {
     #[inline(always)]
     fn as_ref(&self) -> &[u8] {
-        &(polyfill::slice::u64_as_u8(&self.value))[..self.algorithm.output_len]
+        &as_bytes(unsafe { &self.value.as64 })[..self.algorithm.output_len]
     }
 }
 
@@ -304,16 +296,18 @@ pub static SHA1: Algorithm = Algorithm {
     len_len: 64 / 8,
     block_data_order: sha1::block_data_order,
     format_output: sha256_format_output,
-    initial_state: [
-        u32x2(0x67452301u32, 0xefcdab89u32),
-        u32x2(0x98badcfeu32, 0x10325476u32),
-        u32x2(0xc3d2e1f0u32, 0u32),
-        0,
-        0,
-        0,
-        0,
-        0,
-    ],
+    initial_state: State {
+        as32: [
+            Wrapping(0x67452301u32),
+            Wrapping(0xefcdab89u32),
+            Wrapping(0x98badcfeu32),
+            Wrapping(0x10325476u32),
+            Wrapping(0xc3d2e1f0u32),
+            Wrapping(0),
+            Wrapping(0),
+            Wrapping(0),
+        ],
+    },
     id: AlgorithmID::SHA1,
 };
 
@@ -327,16 +321,18 @@ pub static SHA256: Algorithm = Algorithm {
     len_len: 64 / 8,
     block_data_order: GFp_sha256_block_data_order,
     format_output: sha256_format_output,
-    initial_state: [
-        u32x2(0x6a09e667u32, 0xbb67ae85u32),
-        u32x2(0x3c6ef372u32, 0xa54ff53au32),
-        u32x2(0x510e527fu32, 0x9b05688cu32),
-        u32x2(0x1f83d9abu32, 0x5be0cd19u32),
-        0,
-        0,
-        0,
-        0,
-    ],
+    initial_state: State {
+        as32: [
+            Wrapping(0x6a09e667u32),
+            Wrapping(0xbb67ae85u32),
+            Wrapping(0x3c6ef372u32),
+            Wrapping(0xa54ff53au32),
+            Wrapping(0x510e527fu32),
+            Wrapping(0x9b05688cu32),
+            Wrapping(0x1f83d9abu32),
+            Wrapping(0x5be0cd19u32),
+        ],
+    },
     id: AlgorithmID::SHA256,
 };
 
@@ -350,16 +346,18 @@ pub static SHA384: Algorithm = Algorithm {
     len_len: SHA512_LEN_LEN,
     block_data_order: GFp_sha512_block_data_order,
     format_output: sha512_format_output,
-    initial_state: [
-        0xcbbb9d5dc1059ed8,
-        0x629a292a367cd507,
-        0x9159015a3070dd17,
-        0x152fecd8f70e5939,
-        0x67332667ffc00b31,
-        0x8eb44a8768581511,
-        0xdb0c2e0d64f98fa7,
-        0x47b5481dbefa4fa4,
-    ],
+    initial_state: State {
+        as64: [
+            Wrapping(0xcbbb9d5dc1059ed8),
+            Wrapping(0x629a292a367cd507),
+            Wrapping(0x9159015a3070dd17),
+            Wrapping(0x152fecd8f70e5939),
+            Wrapping(0x67332667ffc00b31),
+            Wrapping(0x8eb44a8768581511),
+            Wrapping(0xdb0c2e0d64f98fa7),
+            Wrapping(0x47b5481dbefa4fa4),
+        ],
+    },
     id: AlgorithmID::SHA384,
 };
 
@@ -373,16 +371,18 @@ pub static SHA512: Algorithm = Algorithm {
     len_len: SHA512_LEN_LEN,
     block_data_order: GFp_sha512_block_data_order,
     format_output: sha512_format_output,
-    initial_state: [
-        0x6a09e667f3bcc908,
-        0xbb67ae8584caa73b,
-        0x3c6ef372fe94f82b,
-        0xa54ff53a5f1d36f1,
-        0x510e527fade682d1,
-        0x9b05688c2b3e6c1f,
-        0x1f83d9abfb41bd6b,
-        0x5be0cd19137e2179,
-    ],
+    initial_state: State {
+        as64: [
+            Wrapping(0x6a09e667f3bcc908),
+            Wrapping(0xbb67ae8584caa73b),
+            Wrapping(0x3c6ef372fe94f82b),
+            Wrapping(0xa54ff53a5f1d36f1),
+            Wrapping(0x510e527fade682d1),
+            Wrapping(0x9b05688c2b3e6c1f),
+            Wrapping(0x1f83d9abfb41bd6b),
+            Wrapping(0x5be0cd19137e2179),
+        ],
+    },
     id: AlgorithmID::SHA512,
 };
 
@@ -400,23 +400,34 @@ pub static SHA512_256: Algorithm = Algorithm {
     len_len: SHA512_LEN_LEN,
     block_data_order: GFp_sha512_block_data_order,
     format_output: sha512_format_output,
-    initial_state: [
-        0x22312194fc2bf72c,
-        0x9f555fa3c84c64c2,
-        0x2393b86b6f53b151,
-        0x963877195940eabd,
-        0x96283ee2a88effe3,
-        0xbe5e1e2553863992,
-        0x2b0199fc2c85b8aa,
-        0x0eb72ddc81c52ca2,
-    ],
+    initial_state: State {
+        as64: [
+            Wrapping(0x22312194fc2bf72c),
+            Wrapping(0x9f555fa3c84c64c2),
+            Wrapping(0x2393b86b6f53b151),
+            Wrapping(0x963877195940eabd),
+            Wrapping(0x96283ee2a88effe3),
+            Wrapping(0xbe5e1e2553863992),
+            Wrapping(0x2b0199fc2c85b8aa),
+            Wrapping(0x0eb72ddc81c52ca2),
+        ],
+    },
     id: AlgorithmID::SHA512_256,
 };
 
-// We use u64 to try to ensure 64-bit alignment/padding.
-type State = [u64; MAX_CHAINING_LEN / 8];
+#[derive(Clone, Copy)] // XXX: Why do we need to be `Copy`?
+#[repr(C)]
+union State {
+    as64: [Wrapping<u64>; 512 / 8 / core::mem::size_of::<Wrapping<u64>>()],
+    as32: [Wrapping<u32>; 256 / 8 / core::mem::size_of::<Wrapping<u32>>()],
+}
 
-type Output = [u64; MAX_OUTPUT_LEN / 8];
+#[derive(Clone, Copy)]
+#[repr(C)]
+union Output {
+    as64: [BigEndian<u64>; 512 / 8 / core::mem::size_of::<BigEndian<u64>>()],
+    as32: [BigEndian<u32>; 256 / 8 / core::mem::size_of::<BigEndian<u32>>()],
+}
 
 /// The maximum block length (`Algorithm::block_len`) of all the algorithms in
 /// this module.
@@ -431,30 +442,35 @@ pub const MAX_OUTPUT_LEN: usize = 512 / 8;
 pub const MAX_CHAINING_LEN: usize = MAX_OUTPUT_LEN;
 
 fn sha256_format_output(input: State) -> Output {
-    let input = &polyfill::slice::u64_as_u32(&input)[..8];
-    [
-        u32x2(input[0].to_be(), input[1].to_be()),
-        u32x2(input[2].to_be(), input[3].to_be()),
-        u32x2(input[4].to_be(), input[5].to_be()),
-        u32x2(input[6].to_be(), input[7].to_be()),
-        0,
-        0,
-        0,
-        0,
-    ]
+    let input = unsafe { &input.as32 };
+    Output {
+        as32: [
+            BigEndian::from(input[0]),
+            BigEndian::from(input[1]),
+            BigEndian::from(input[2]),
+            BigEndian::from(input[3]),
+            BigEndian::from(input[4]),
+            BigEndian::from(input[5]),
+            BigEndian::from(input[6]),
+            BigEndian::from(input[7]),
+        ],
+    }
 }
 
 fn sha512_format_output(input: State) -> Output {
-    [
-        input[0].to_be(),
-        input[1].to_be(),
-        input[2].to_be(),
-        input[3].to_be(),
-        input[4].to_be(),
-        input[5].to_be(),
-        input[6].to_be(),
-        input[7].to_be(),
-    ]
+    let input = unsafe { &input.as64 };
+    Output {
+        as64: [
+            BigEndian::from(input[0]),
+            BigEndian::from(input[1]),
+            BigEndian::from(input[2]),
+            BigEndian::from(input[3]),
+            BigEndian::from(input[4]),
+            BigEndian::from(input[5]),
+            BigEndian::from(input[6]),
+            BigEndian::from(input[7]),
+        ],
+    }
 }
 
 /// The length of the output of SHA-1, in bytes.

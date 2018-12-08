@@ -16,11 +16,6 @@
 use crate::{c, polyfill};
 use core::{self, num::Wrapping};
 
-// XXX: This duplicates super::State and shouldn't need to be public.
-// TODO: Remove the duplication, but be wary of
-// https://github.com/rust-lang/rust/issues/30905.
-pub type State = [u64; super::MAX_CHAINING_LEN / 8];
-
 pub const BLOCK_LEN: usize = 512 / 8;
 pub const CHAINING_LEN: usize = 160 / 8;
 pub const OUTPUT_LEN: usize = 160 / 8;
@@ -42,17 +37,17 @@ fn maj(x: W32, y: W32, z: W32) -> W32 { (x & y) | (x & z) | (y & z) }
 /// This implementation therefore favors size and simplicity over speed.
 /// Unlike SHA-256, SHA-384, and SHA-512,
 /// there is no assembly language implementation.
-pub unsafe extern "C" fn block_data_order(state: &mut State, data: *const u8, num: c::size_t) {
+pub(super) unsafe extern "C" fn block_data_order(
+    state: &mut super::State, data: *const u8, num: c::size_t,
+) {
     let data = data as *const [u8; BLOCK_LEN];
     let blocks = core::slice::from_raw_parts(data, num);
-    block_data_order_safe(state, blocks)
+    block_data_order_safe(&mut state.as32, blocks)
 }
 
-fn block_data_order_safe(state: &mut State, blocks: &[[u8; BLOCK_LEN]]) {
-    let state = polyfill::slice::u64_as_u32_mut(state);
-    let state = polyfill::slice::as_wrapping_mut(state);
+#[inline(always)]
+fn block_data_order_safe(state: &mut [Wrapping<u32>; 256 / 32], blocks: &[[u8; BLOCK_LEN]]) {
     let state = &mut state[..CHAINING_WORDS];
-    let state = slice_as_array_ref_mut!(state, CHAINING_WORDS).unwrap();
 
     let mut w: [W32; 80] = [Wrapping(0); 80];
     for block in blocks {

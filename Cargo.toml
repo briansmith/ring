@@ -182,6 +182,7 @@ include = [
     "src/ec/suite_b/private_key.rs",
     "src/ec/suite_b/public_key.rs",
     "src/ec/suite_b/suite_b_public_key_tests.txt",
+    "src/endian.rs",
     "src/error.rs",
     "src/hkdf.rs",
     "src/hmac.rs",
