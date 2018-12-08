@@ -77,11 +77,11 @@
 use crate::{ec, error, rand};
 use untrusted;
 
-pub use ec::PUBLIC_KEY_MAX_LEN;
-
-pub use ec::suite_b::ecdh::{ECDH_P256, ECDH_P384};
-
-pub use ec::curve25519::x25519::X25519;
+pub use crate::ec::{
+    curve25519::x25519::X25519,
+    suite_b::ecdh::{ECDH_P256, ECDH_P384},
+    PUBLIC_KEY_MAX_LEN,
+};
 
 /// A key agreement algorithm.
 #[derive(Eq, PartialEq)]
