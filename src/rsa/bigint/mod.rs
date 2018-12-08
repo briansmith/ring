@@ -1106,15 +1106,11 @@ impl Nonnegative {
         rng: &SecureRandom,
         limb_count: usize
     ) -> Result<Self, error::Unspecified> {
-        let mut limbs = vec![0; limb_count];
-        unsafe {
-            let mut_ptr = (&mut limbs[..]).as_mut_ptr() as * mut u8;
-            let mut_slice = core::slice::from_raw_parts_mut(mut_ptr, limbs.len() * 8);
-            rng.fill(mut_slice)?;
-        }
-        Ok(Nonnegative {
-            limbs,
-        })
+        let mut bytes = vec![0; limb_count * LIMB_BYTES];
+        rng.fill(&mut bytes)?;
+        let input = untrusted::Input::from(&bytes);
+        let ret = Self::from_be_bytes_with_bit_length(input)?.0;
+        Ok(ret)
     }
 
     #[inline]
