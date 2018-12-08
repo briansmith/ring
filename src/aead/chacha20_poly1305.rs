@@ -16,7 +16,12 @@ use super::{
     block::{Block, BLOCK_LEN},
     chacha, poly1305, Direction, Tag,
 };
-use crate::{aead, endian::*, error, polyfill};
+use crate::{
+    aead,
+    endian::*,
+    error,
+    polyfill::{self, convert::*},
+};
 
 /// ChaCha20-Poly1305 as described in [RFC 7539].
 ///
@@ -34,9 +39,8 @@ pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
 
 /// Copies |key| into |ctx_buf|.
 fn chacha20_poly1305_init(key: &[u8]) -> Result<aead::KeyInner, error::Unspecified> {
-    Ok(aead::KeyInner::ChaCha20Poly1305(chacha::Key::from(
-        slice_as_array_ref!(key, chacha::KEY_LEN)?,
-    )))
+    let key: &[u8; chacha::KEY_LEN] = key.try_into_()?;
+    Ok(aead::KeyInner::ChaCha20Poly1305(chacha::Key::from(key)))
 }
 
 fn chacha20_poly1305_seal(

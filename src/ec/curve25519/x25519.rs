@@ -15,7 +15,7 @@
 //! X25519 Key agreement.
 
 use super::ops;
-use crate::{agreement, constant_time, ec, error, rand};
+use crate::{agreement, constant_time, ec, error, polyfill::convert::*, rand};
 use untrusted;
 
 static CURVE25519: ec::Curve = ec::Curve {
@@ -60,11 +60,11 @@ fn x25519_generate_private_key(
 fn x25519_public_from_private(
     public_out: &mut [u8], private_key: &ec::PrivateKey,
 ) -> Result<(), error::Unspecified> {
-    let public_out = slice_as_array_ref_mut!(public_out, PUBLIC_KEY_LEN)?;
+    let public_out = public_out.try_into_()?;
 
     // XXX: This shouldn't require dynamic checks, but rustc can't slice an
     // array reference to a shorter array reference. TODO(perf): Fix this.
-    let private_key = slice_as_array_ref!(&private_key.bytes[..PRIVATE_KEY_LEN], PRIVATE_KEY_LEN)?;
+    let private_key = (&private_key.bytes[..PRIVATE_KEY_LEN]).try_into_()?;
     unsafe {
         GFp_x25519_public_from_private(public_out, private_key);
     }
@@ -74,17 +74,14 @@ fn x25519_public_from_private(
 fn x25519_ecdh(
     out: &mut [u8], my_private_key: &ec::PrivateKey, peer_public_key: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
-    let out = slice_as_array_ref_mut!(out, SHARED_SECRET_LEN)?;
-
     // XXX: This shouldn't require dynamic checks, but rustc can't slice an
     // array reference to a shorter array reference. TODO(perf): Fix this.
-    let my_private_key =
-        slice_as_array_ref!(&my_private_key.bytes[..PRIVATE_KEY_LEN], PRIVATE_KEY_LEN)?;
-    let peer_public_key =
-        slice_as_array_ref!(peer_public_key.as_slice_less_safe(), PUBLIC_KEY_LEN)?;
+    let my_private_key = (&my_private_key.bytes[..PRIVATE_KEY_LEN]).try_into_()?;
+    let peer_public_key: &[u8; PUBLIC_KEY_LEN] =
+        peer_public_key.as_slice_less_safe().try_into_()?;
 
     unsafe {
-        GFp_x25519_scalar_mult(out, my_private_key, peer_public_key);
+        GFp_x25519_scalar_mult(out.try_into_()?, my_private_key, peer_public_key);
     }
 
     let zeros: SharedSecret = [0; SHARED_SECRET_LEN];

@@ -15,7 +15,7 @@
 //! EdDSA Signatures.
 
 use super::super::ops::*;
-use crate::{error, private, signature};
+use crate::{error, polyfill::convert::*, private, signature};
 use core;
 use untrusted;
 
@@ -42,7 +42,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
         let public_key = public_key.as_slice_less_safe();
-        let public_key = slice_as_array_ref!(public_key, ELEM_LEN)?;
+        let public_key: &[u8; ELEM_LEN] = public_key.try_into_()?;;
 
         let (signature_r, signature_s) = signature.read_all(error::Unspecified, |input| {
             let r = input.skip_and_get_input(ELEM_LEN)?;

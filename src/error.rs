@@ -14,6 +14,7 @@
 
 //! Error reporting.
 
+use crate::polyfill::convert::*;
 use core;
 use untrusted;
 
@@ -102,6 +103,10 @@ impl std::error::Error for Unspecified {
 
 impl From<untrusted::EndOfInput> for Unspecified {
     fn from(_: untrusted::EndOfInput) -> Self { Unspecified }
+}
+
+impl From<TryFromSliceError> for Unspecified {
+    fn from(_: TryFromSliceError) -> Self { Unspecified }
 }
 
 /// An error parsing or validating a key.

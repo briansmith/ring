@@ -26,7 +26,10 @@
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
 use self::block::{Block, BLOCK_LEN};
-use crate::{constant_time, cpu, error, polyfill};
+use crate::{
+    constant_time, cpu, error,
+    polyfill::{self, convert::*},
+};
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
@@ -121,7 +124,7 @@ pub fn open_in_place<'a>(
     key: &OpeningKey, nonce: &[u8], ad: &[u8], in_prefix_len: usize,
     ciphertext_and_tag_modified_in_place: &'a mut [u8],
 ) -> Result<&'a mut [u8], error::Unspecified> {
-    let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
+    let nonce: &[u8; NONCE_LEN] = nonce.try_into_()?;
     let ciphertext_and_tag_len = ciphertext_and_tag_modified_in_place
         .len()
         .checked_sub(in_prefix_len)
@@ -207,17 +210,18 @@ pub fn seal_in_place(
     if out_suffix_capacity < key.key.algorithm.tag_len() {
         return Err(error::Unspecified);
     }
-    let nonce = slice_as_array_ref!(nonce, NONCE_LEN)?;
+    let nonce: &[u8; NONCE_LEN] = nonce.try_into_()?;
     let in_out_len = in_out
         .len()
         .checked_sub(out_suffix_capacity)
         .ok_or(error::Unspecified)?;
     check_per_nonce_max_bytes(key.key.algorithm, in_out_len)?;
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
-    let tag_out = slice_as_array_ref_mut!(tag_out, TAG_LEN)?;
 
+    let tag_out: &mut [u8; TAG_LEN] = tag_out.try_into_()?;
     let Tag(tag) = (key.key.algorithm.seal)(&key.key.inner, nonce, ad, in_out)?;
     tag_out.copy_from_slice(tag.as_ref());
+
     Ok(in_out_len + TAG_LEN)
 }
 
