@@ -30,7 +30,7 @@
 //! [RFC 4253]: https://tools.ietf.org/html/rfc4253
 
 use super::{chacha, chacha20_poly1305::derive_poly1305_key, poly1305, Tag};
-use crate::{constant_time, error};
+use crate::{constant_time, endian::*, error};
 
 /// A key for sealing packets.
 pub struct SealingKey {
@@ -149,12 +149,12 @@ impl Key {
 }
 
 fn make_counter(sequence_number: u32) -> chacha::Counter {
-    let mut sequence_number = sequence_number;
-    let mut nonce = [0; chacha::NONCE_LEN];
-    for i in 0..4 {
-        nonce[chacha::NONCE_LEN - 1 - i] = (sequence_number % 0x100) as u8;
-        sequence_number /= 0x100;
-    }
+    let nonce = [
+        BigEndian::ZERO,
+        BigEndian::ZERO,
+        BigEndian::from(sequence_number),
+    ];
+    let nonce = slice_as_array_ref!(as_bytes(&nonce), chacha::NONCE_LEN).unwrap();
     chacha::make_counter(&nonce, 0)
 }
 
