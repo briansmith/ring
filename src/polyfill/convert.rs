@@ -87,7 +87,6 @@ macro_rules! impl_array_try_from {
     };
 }
 
-impl_array_try_from!(u8, 4);
 impl_array_try_from!(u8, 12);
 impl_array_try_from!(u8, 16);
 impl_array_try_from!(u8, 32);

@@ -25,7 +25,10 @@
 //! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
-use self::block::{Block, BLOCK_LEN};
+use self::{
+    block::{Block, BLOCK_LEN},
+    nonce::{Counter, Iv, NonceRef},
+};
 use crate::{
     constant_time, cpu, error,
     polyfill::{self, convert::*},
@@ -124,7 +127,7 @@ pub fn open_in_place<'a>(
     key: &OpeningKey, nonce: &[u8], ad: &[u8], in_prefix_len: usize,
     ciphertext_and_tag_modified_in_place: &'a mut [u8],
 ) -> Result<&'a mut [u8], error::Unspecified> {
-    let nonce: &[u8; NONCE_LEN] = nonce.try_into_()?;
+    let nonce = NonceRef::try_from(nonce)?;
     let ciphertext_and_tag_len = ciphertext_and_tag_modified_in_place
         .len()
         .checked_sub(in_prefix_len)
@@ -210,7 +213,7 @@ pub fn seal_in_place(
     if out_suffix_capacity < key.key.algorithm.tag_len() {
         return Err(error::Unspecified);
     }
-    let nonce: &[u8; NONCE_LEN] = nonce.try_into_()?;
+    let nonce = NonceRef::try_from(nonce)?;
     let in_out_len = in_out
         .len()
         .checked_sub(out_suffix_capacity)
@@ -270,13 +273,13 @@ pub struct Algorithm {
 
     seal: fn(
         key: &KeyInner,
-        nonce: &[u8; NONCE_LEN],
+        nonce: NonceRef,
         ad: &[u8],
         in_out: &mut [u8],
     ) -> Result<Tag, error::Unspecified>,
     open: fn(
         ctx: &KeyInner,
-        nonce: &[u8; NONCE_LEN],
+        nonce: NonceRef,
         ad: &[u8],
         in_prefix_len: usize,
         in_out: &mut [u8],
@@ -322,7 +325,7 @@ impl Algorithm {
     /// Go analog:
     ///   [`crypto.cipher.AEAD.NonceSize`](https://golang.org/pkg/crypto/cipher/#AEAD)
     #[inline(always)]
-    pub fn nonce_len(&self) -> usize { NONCE_LEN }
+    pub fn nonce_len(&self) -> usize { self::nonce::NONCE_LEN }
 }
 
 derive_debug_via_self!(Algorithm, self.id);
@@ -351,9 +354,6 @@ const TAG_LEN: usize = BLOCK_LEN;
 /// The maximum length of a tag for the algorithms in this module.
 pub const MAX_TAG_LEN: usize = TAG_LEN;
 
-// All the AEADs we support use 96-bit nonces.
-const NONCE_LEN: usize = 96 / 8;
-
 fn check_per_nonce_max_bytes(alg: &Algorithm, in_out_len: usize) -> Result<(), error::Unspecified> {
     if polyfill::u64_from_usize(in_out_len) > alg.max_input_len {
         return Err(error::Unspecified);
@@ -371,4 +371,5 @@ mod block;
 mod chacha;
 mod chacha20_poly1305;
 pub mod chacha20_poly1305_openssh;
+mod nonce;
 mod poly1305;

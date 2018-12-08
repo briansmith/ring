@@ -29,7 +29,11 @@
 //!    http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.chacha20poly1305?annotate=HEAD
 //! [RFC 4253]: https://tools.ietf.org/html/rfc4253
 
-use super::{chacha, chacha20_poly1305::derive_poly1305_key, poly1305, Tag, NONCE_LEN};
+use super::{
+    chacha::{self, *},
+    chacha20_poly1305::derive_poly1305_key,
+    poly1305, Counter, NonceRef, Tag,
+};
 use crate::{constant_time, endian::*, error, polyfill::convert::*};
 
 /// A key for sealing packets.
@@ -57,19 +61,24 @@ impl SealingKey {
         tag_out: &mut [u8; TAG_LEN],
     ) {
         let mut counter = make_counter(sequence_number);
+        let poly_key = derive_poly1305_key(&self.key.k_2, counter.increment());
 
         {
             let (len_in_out, data_and_padding_in_out) =
                 plaintext_in_ciphertext_out.split_at_mut(PACKET_LENGTH_LEN);
 
-            chacha::chacha20_xor_in_place(&self.key.k_1, &counter, len_in_out);
-
-            counter[0] = 1;
-            chacha::chacha20_xor_in_place(&self.key.k_2, &counter, data_and_padding_in_out);
+            chacha20_xor_in_place(
+                &self.key.k_1,
+                CounterOrIv::Counter(make_counter(sequence_number)),
+                len_in_out,
+            );
+            chacha20_xor_in_place(
+                &self.key.k_2,
+                CounterOrIv::Counter(counter),
+                data_and_padding_in_out,
+            );
         }
 
-        counter[0] = 0;
-        let poly_key = derive_poly1305_key(&self.key.k_2, &counter);
         let Tag(tag) = poly1305::sign(poly_key, plaintext_in_ciphertext_out);
         tag_out.copy_from_slice(tag.as_ref());
     }
@@ -97,7 +106,11 @@ impl OpeningKey {
     ) -> [u8; PACKET_LENGTH_LEN] {
         let mut packet_length = encrypted_packet_length;
         let counter = make_counter(sequence_number);
-        chacha::chacha20_xor_in_place(&self.key.k_1, &counter, &mut packet_length);
+        chacha20_xor_in_place(
+            &self.key.k_1,
+            CounterOrIv::Counter(counter),
+            &mut packet_length,
+        );
         packet_length
     }
 
@@ -118,12 +131,15 @@ impl OpeningKey {
         // We must verify the tag before decrypting so that
         // `ciphertext_in_plaintext_out` is unmodified if verification fails.
         // This is beyond what we guarantee.
-        let poly_key = derive_poly1305_key(&self.key.k_2, &counter);
+        let poly_key = derive_poly1305_key(&self.key.k_2, counter.increment());
         verify(poly_key, ciphertext_in_plaintext_out, tag)?;
 
         let plaintext_in_ciphertext_out = &mut ciphertext_in_plaintext_out[PACKET_LENGTH_LEN..];
-        counter[0] = 1;
-        chacha::chacha20_xor_in_place(&self.key.k_2, &counter, plaintext_in_ciphertext_out);
+        chacha20_xor_in_place(
+            &self.key.k_2,
+            CounterOrIv::Counter(counter),
+            plaintext_in_ciphertext_out,
+        );
 
         Ok(plaintext_in_ciphertext_out)
     }
@@ -145,14 +161,13 @@ impl Key {
     }
 }
 
-fn make_counter(sequence_number: u32) -> chacha::Counter {
+fn make_counter(sequence_number: u32) -> Counter {
     let nonce = [
         BigEndian::ZERO,
         BigEndian::ZERO,
         BigEndian::from(sequence_number),
     ];
-    let nonce: &[u8; NONCE_LEN] = as_bytes(&nonce).try_into_().unwrap();
-    chacha::make_counter(nonce, 0)
+    Counter::zero(NonceRef::try_from(as_bytes(&nonce)).unwrap())
 }
 
 /// The length of key.

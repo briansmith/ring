@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Block, Tag, BLOCK_LEN};
+use super::{Block, NonceRef, Tag, BLOCK_LEN};
 use crate::{aead, bssl, c, error};
 
 #[repr(align(16))]
@@ -55,7 +55,7 @@ fn aes_gcm_init(key: &[u8]) -> Result<super::KeyInner, error::Unspecified> {
 }
 
 fn aes_gcm_seal(
-    key: &super::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_out: &mut [u8],
+    key: &super::KeyInner, nonce: NonceRef, ad: &[u8], in_out: &mut [u8],
 ) -> Result<Tag, error::Unspecified> {
     let ctx = match key {
         super::KeyInner::AesGcm(Key(ctx)) => ctx,
@@ -77,8 +77,7 @@ fn aes_gcm_seal(
 }
 
 fn aes_gcm_open(
-    key: &super::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_prefix_len: usize,
-    in_out: &mut [u8],
+    key: &super::KeyInner, nonce: NonceRef, ad: &[u8], in_prefix_len: usize, in_out: &mut [u8],
 ) -> Result<Tag, error::Unspecified> {
     let ctx = match key {
         super::KeyInner::AesGcm(Key(ctx)) => ctx,
@@ -126,12 +125,12 @@ extern "C" {
 
     fn GFp_aes_gcm_seal(
         ctx_buf: *const u8, in_out: *mut u8, in_out_len: c::size_t, tag_out: &mut Tag,
-        nonce: &[u8; aead::NONCE_LEN], ad: *const u8, ad_len: c::size_t,
+        nonce: NonceRef, ad: *const u8, ad_len: c::size_t,
     ) -> bssl::Result;
 
     fn GFp_aes_gcm_open(
         ctx_buf: *const u8, out: *mut u8, in_out_len: c::size_t, tag_out: &mut Tag,
-        nonce: &[u8; aead::NONCE_LEN], in_: *const u8, ad: *const u8, ad_len: c::size_t,
+        nonce: NonceRef, in_: *const u8, ad: *const u8, ad_len: c::size_t,
     ) -> bssl::Result;
 }
 

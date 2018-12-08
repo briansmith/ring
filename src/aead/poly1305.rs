@@ -174,7 +174,7 @@ pub(super) fn sign(key: Key, input: &[u8]) -> Tag {
 
 #[cfg(test)]
 mod tests {
-    use super::{super::block::*, *};
+    use super::*;
     use crate::{polyfill::convert::*, test};
 
     #[test]
