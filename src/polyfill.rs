@@ -29,8 +29,6 @@ pub fn wrapping_rotate_left_u32(x: core::num::Wrapping<u32>, n: u32) -> core::nu
 }
 
 pub mod slice {
-    use core;
-
     #[inline(always)]
     pub fn u32_from_be_u8(buffer: [u8; 4]) -> u32 {
         u32::from(buffer[0]) << 24
@@ -64,18 +62,6 @@ pub mod slice {
         for d in dest {
             *d = value;
         }
-    }
-
-    // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
-    #[inline(always)]
-    pub fn u64_as_u8(src: &[u64]) -> &[u8] {
-        unsafe { core::slice::from_raw_parts(src.as_ptr() as *const u8, src.len() * 8) }
-    }
-
-    // https://internals.rust-lang.org/t/safe-trasnsmute-for-slices-e-g-u64-u32-particularly-simd-types/2871
-    #[inline(always)]
-    pub fn u64_as_u8_mut(src: &mut [u64]) -> &mut [u8] {
-        unsafe { core::slice::from_raw_parts_mut(src.as_mut_ptr() as *mut u8, src.len() * 8) }
     }
 }
 

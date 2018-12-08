@@ -16,7 +16,7 @@ use super::{
     block::{Block, BLOCK_LEN},
     poly1305, Tag,
 };
-use crate::{aead, chacha, error, polyfill};
+use crate::{aead, chacha, endian::*, error, polyfill};
 
 /// ChaCha20-Poly1305 as described in [RFC 7539].
 ///
@@ -85,8 +85,8 @@ fn aead_poly1305(
     poly1305_update_padded_16(&mut ctx, ad);
     poly1305_update_padded_16(&mut ctx, ciphertext);
     let lengths = [
-        polyfill::u64_from_usize(ad.len()).to_le(),
-        polyfill::u64_from_usize(ciphertext.len()).to_le(),
+        LittleEndian::from(polyfill::u64_from_usize(ad.len())),
+        LittleEndian::from(polyfill::u64_from_usize(ciphertext.len())),
     ];
     ctx.update_block(Block::from(lengths), poly1305::Pad::Pad);
     ctx.finish()

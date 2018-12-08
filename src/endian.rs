@@ -57,3 +57,4 @@ define_endian!(LittleEndian);
 impl_endian!(BigEndian, u32, to_be, from_be);
 impl_endian!(BigEndian, u64, to_be, from_be);
 impl_endian!(LittleEndian, u32, to_le, from_le);
+impl_endian!(LittleEndian, u64, to_le, from_le);
