@@ -13,11 +13,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::block::{Block, BLOCK_LEN};
-use crate::{
-    c,
-    polyfill::{convert::*, slice::u32_from_le_u8},
-};
+use super::{Block, Counter, Iv, BLOCK_LEN};
+use crate::{c, polyfill::convert::*};
 use core;
 
 #[repr(C)]
@@ -27,21 +24,15 @@ impl<'a> From<&'a [u8; KEY_LEN]> for Key {
     fn from(value: &[u8; KEY_LEN]) -> Self { Key(<[Block; KEY_BLOCKS]>::from_(value)) }
 }
 
-#[inline]
-pub fn chacha20_xor_in_place(key: &Key, counter: &Counter, in_out: &mut [u8]) {
+#[inline] // Optimize away match on `iv`.
+pub fn chacha20_xor_in_place(key: &Key, iv: CounterOrIv, in_out: &mut [u8]) {
     unsafe {
-        chacha20_xor_inner(
-            key,
-            counter,
-            in_out.as_ptr(),
-            in_out.len(),
-            in_out.as_mut_ptr(),
-        );
+        chacha20_xor_inner(key, iv, in_out.as_ptr(), in_out.len(), in_out.as_mut_ptr());
     }
 }
 
 pub fn chacha20_xor_overlapping(
-    key: &Key, counter: &Counter, in_out: &mut [u8], in_prefix_len: usize,
+    key: &Key, counter: Counter, in_out: &mut [u8], in_prefix_len: usize,
 ) {
     // XXX: The x86 and at least one branch of the ARM assembly language
     // code doesn't allow overlapping input and output unless they are
@@ -54,12 +45,12 @@ pub fn chacha20_xor_overlapping(
         unsafe {
             core::ptr::copy(in_out[in_prefix_len..].as_ptr(), in_out.as_mut_ptr(), len);
         }
-        chacha20_xor_in_place(key, &counter, &mut in_out[..len]);
+        chacha20_xor_in_place(key, CounterOrIv::Counter(counter), &mut in_out[..len]);
     } else {
         unsafe {
             chacha20_xor_inner(
                 key,
-                counter,
+                CounterOrIv::Counter(counter),
                 in_out[in_prefix_len..].as_ptr(),
                 len,
                 in_out.as_mut_ptr(),
@@ -68,34 +59,34 @@ pub fn chacha20_xor_overlapping(
     }
 }
 
-#[inline]
+#[inline] // Optimize away match on `counter.`
 unsafe fn chacha20_xor_inner(
-    key: &Key, counter: &Counter, input: *const u8, in_out_len: usize, output: *mut u8,
+    key: &Key, counter: CounterOrIv, input: *const u8, in_out_len: usize, output: *mut u8,
 ) {
-    extern "C" {
-        fn GFp_ChaCha20_ctr32(
-            out: *mut u8, in_: *const u8, in_len: c::size_t, key: &Key, counter: &Counter,
-        );
-    }
-    GFp_ChaCha20_ctr32(output, input, in_out_len, key, counter);
+    let iv = match counter {
+        CounterOrIv::Counter(counter) => counter.into(),
+        CounterOrIv::Iv(iv) => {
+            assert!(in_out_len <= 32);
+            iv
+        },
+    };
+    GFp_ChaCha20_ctr32(output, input, in_out_len, key, &iv);
 }
 
-pub type Counter = [u32; 4];
+pub enum CounterOrIv {
+    Counter(Counter),
+    Iv(Iv),
+}
 
-#[inline]
-pub fn make_counter(nonce: &[u8; NONCE_LEN], counter: u32) -> Counter {
-    [
-        counter.to_le(),
-        u32_from_le_u8(nonce[0..4].try_into_().unwrap()),
-        u32_from_le_u8(nonce[4..8].try_into_().unwrap()),
-        u32_from_le_u8(nonce[8..12].try_into_().unwrap()),
-    ]
+/// XXX: Although this takes an `Iv`, this actually uses it like a `Counter`.
+extern "C" {
+    fn GFp_ChaCha20_ctr32(
+        out: *mut u8, in_: *const u8, in_len: c::size_t, key: &Key, first_iv: &Iv,
+    );
 }
 
 const KEY_BLOCKS: usize = 2;
 pub const KEY_LEN: usize = KEY_BLOCKS * BLOCK_LEN;
-
-pub const NONCE_LEN: usize = 12; // 96 bits
 
 #[cfg(test)]
 mod tests {
@@ -122,9 +113,7 @@ mod tests {
             let key = Key::from(key);
 
             let ctr = test_case.consume_usize("Ctr");
-            let nonce_bytes = test_case.consume_bytes("Nonce");
-            let nonce: &[u8; NONCE_LEN] = nonce_bytes.as_slice().try_into_().unwrap();
-            let ctr = make_counter(&nonce, ctr as u32);
+            let nonce = test_case.consume_bytes("Nonce");
             let input = test_case.consume_bytes("Input");
             let output = test_case.consume_bytes("Output");
 
@@ -137,7 +126,8 @@ mod tests {
             for len in 0..(input.len() + 1) {
                 chacha20_test_case_inner(
                     &key,
-                    &ctr,
+                    &nonce,
+                    ctr as u32,
                     &input[..len],
                     &output[..len],
                     len,
@@ -150,18 +140,19 @@ mod tests {
     }
 
     fn chacha20_test_case_inner(
-        key: &Key, ctr: &Counter, input: &[u8], expected: &[u8], len: usize, in_out_buf: &mut [u8],
+        key: &Key, nonce: &[u8], ctr: u32, input: &[u8], expected: &[u8], len: usize,
+        in_out_buf: &mut [u8],
     ) {
         // Straightforward encryption into disjoint buffers is computed
         // correctly.
         unsafe {
             chacha20_xor_inner(
                 key,
-                &ctr,
+                CounterOrIv::Counter(Counter::from_test_vector(nonce, ctr)),
                 input[..len].as_ptr(),
                 len,
                 in_out_buf.as_mut_ptr(),
-            )
+            );
         }
         assert_eq!(&in_out_buf[..len], expected);
 
@@ -178,6 +169,7 @@ mod tests {
         for alignment in 0..16 {
             for offset in 0..(max_offset + 1) {
                 in_out_buf[alignment + offset..][..len].copy_from_slice(input);
+                let ctr = Counter::from_test_vector(nonce, ctr);
                 chacha20_xor_overlapping(key, ctr, &mut in_out_buf[alignment..], offset);
                 assert_eq!(&in_out_buf[alignment..][..len], expected);
             }

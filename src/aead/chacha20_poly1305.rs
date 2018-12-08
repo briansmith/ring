@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{chacha, poly1305, Block, Direction, Tag, BLOCK_LEN};
+use super::{chacha, poly1305, Block, Counter, Direction, Iv, NonceRef, Tag, BLOCK_LEN};
 use crate::{
     aead,
     endian::*,
@@ -41,14 +41,13 @@ fn chacha20_poly1305_init(key: &[u8]) -> Result<aead::KeyInner, error::Unspecifi
 }
 
 fn chacha20_poly1305_seal(
-    key: &aead::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_out: &mut [u8],
+    key: &aead::KeyInner, nonce: NonceRef, ad: &[u8], in_out: &mut [u8],
 ) -> Result<Tag, error::Unspecified> {
     Ok(aead(key, nonce, ad, in_out, Direction::Sealing))
 }
 
 fn chacha20_poly1305_open(
-    key: &aead::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_prefix_len: usize,
-    in_out: &mut [u8],
+    key: &aead::KeyInner, nonce: NonceRef, ad: &[u8], in_prefix_len: usize, in_out: &mut [u8],
 ) -> Result<Tag, error::Unspecified> {
     Ok(aead(
         key,
@@ -63,32 +62,33 @@ pub type Key = chacha::Key;
 
 #[inline(always)] // Statically eliminate branches on `direction`.
 fn aead(
-    key: &aead::KeyInner, nonce: &[u8; aead::NONCE_LEN], ad: &[u8], in_out: &mut [u8],
-    direction: Direction,
+    key: &aead::KeyInner, nonce: NonceRef, ad: &[u8], in_out: &mut [u8], direction: Direction,
 ) -> Tag {
     let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
         _ => unreachable!(),
     };
-    let mut counter = chacha::make_counter(nonce, 0);
 
+    let mut counter = Counter::zero(nonce);
     let mut ctx = {
-        let key = derive_poly1305_key(chacha20_key, &counter);
+        let key = derive_poly1305_key(chacha20_key, counter.increment());
         poly1305::Context::from_key(key)
     };
-
-    counter[0] = 1;
 
     poly1305_update_padded_16(&mut ctx, ad);
 
     let in_out_len = match direction {
         Direction::Opening { in_prefix_len } => {
             poly1305_update_padded_16(&mut ctx, &in_out[in_prefix_len..]);
-            chacha::chacha20_xor_overlapping(chacha20_key, &counter, in_out, in_prefix_len);
+            chacha::chacha20_xor_overlapping(chacha20_key, counter, in_out, in_prefix_len);
             in_out.len() - in_prefix_len
         },
         Direction::Sealing => {
-            chacha::chacha20_xor_in_place(chacha20_key, &counter, in_out);
+            chacha::chacha20_xor_in_place(
+                chacha20_key,
+                chacha::CounterOrIv::Counter(counter),
+                in_out,
+            );
             poly1305_update_padded_16(&mut ctx, in_out);
             in_out.len()
         },
@@ -119,13 +119,11 @@ fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
 }
 
 // Also used by chacha20_poly1305_openssh.
-pub(super) fn derive_poly1305_key(
-    chacha_key: &chacha::Key, counter: &chacha::Counter,
-) -> poly1305::Key {
+pub(super) fn derive_poly1305_key(chacha_key: &chacha::Key, iv: Iv) -> poly1305::Key {
     let mut blocks = [Block::zero(); poly1305::KEY_BLOCKS];
     chacha::chacha20_xor_in_place(
         chacha_key,
-        counter,
+        chacha::CounterOrIv::Iv(iv),
         <&mut [u8; poly1305::KEY_BLOCKS * BLOCK_LEN]>::from_(&mut blocks),
     );
     poly1305::Key::from(blocks)
