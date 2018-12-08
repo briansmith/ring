@@ -34,8 +34,10 @@
 extern crate ring;
 extern crate untrusted;
 
-use crate::signature::Ed25519KeyPair;
-use ring::{signature, test};
+use ring::{
+    signature::{self, Ed25519KeyPair},
+    test,
+};
 
 /// Test vectors from BoringSSL.
 #[test]
