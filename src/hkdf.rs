@@ -29,7 +29,7 @@
 //!
 //! [RFC 5869]: https://tools.ietf.org/html/rfc5869
 
-use hmac;
+use crate::hmac;
 
 /// Fills `out` with the output of the HKDF Extract-and-Expand operation for
 /// the given inputs.

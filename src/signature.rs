@@ -285,7 +285,7 @@ use untrusted;
 #[cfg(feature = "use_heap")]
 use std;
 
-pub use ec::suite_b::ecdsa::{
+pub use crate::ec::suite_b::ecdsa::{
     signing::{
         Key as ECDSAKeyPair, ECDSA_P256_SHA256_ASN1_SIGNING, ECDSA_P256_SHA256_FIXED_SIGNING,
         ECDSA_P384_SHA384_ASN1_SIGNING, ECDSA_P384_SHA384_FIXED_SIGNING,
@@ -297,11 +297,11 @@ pub use ec::suite_b::ecdsa::{
     },
 };
 
-pub use ec::curve25519::ed25519::PUBLIC_KEY_LEN as ED25519_PUBLIC_KEY_LEN;
+pub use crate::ec::curve25519::ed25519::PUBLIC_KEY_LEN as ED25519_PUBLIC_KEY_LEN;
 
-pub use ec::curve25519::ed25519::verification::{EdDSAParameters, ED25519};
+pub use crate::ec::curve25519::ed25519::verification::{EdDSAParameters, ED25519};
 
-pub use ec::curve25519::ed25519::signing::{
+pub use crate::ec::curve25519::ed25519::signing::{
     KeyPair as Ed25519KeyPair, PKCS8_V2_LEN as ED25519_PKCS8_V2_LEN,
 };
 
@@ -326,23 +326,23 @@ pub use rsa::{
 };
 
 #[cfg(feature = "use_heap")]
-pub use rsa::RSAParameters;
+pub use crate::rsa::RSAParameters;
 
 #[cfg(feature = "use_heap")]
-pub use rsa::verification::{
+pub use crate::rsa::verification::{
     RSA_PKCS1_2048_8192_SHA1, RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA384,
     RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_3072_8192_SHA384, RSA_PSS_2048_8192_SHA256,
     RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
 };
 
-pub use signature_impl::Signature;
+pub use crate::signature_impl::Signature;
 
 /// Lower-level verification primitives. Usage of `ring::signature::verify()`
 /// is preferred when the public key and signature are encoded in standard
 /// formats, as it also handles the parsing.
 #[cfg(feature = "use_heap")]
 pub mod primitive {
-    pub use rsa::verification::verify_rsa;
+    pub use crate::rsa::verification::verify_rsa;
 }
 
 /// A key pair for signing.

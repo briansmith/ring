@@ -15,7 +15,7 @@
 //! This module exists to make `signature_from_bytes()` public within the crate
 //! but private outside of the crate.
 
-use ec;
+use crate::ec;
 
 /// A public key signature returned from a signing operation.
 #[derive(Clone, Copy)]
