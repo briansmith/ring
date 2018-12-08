@@ -68,9 +68,15 @@ fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
         }
         let s_key = aead::SealingKey::new(aead_alg, &key_bytes[..])?;
         let s_result = aead::seal_in_place(&s_key, &nonce[..], &ad, &mut s_in_out[..], tag_len);
-        let o_key = aead::OpeningKey::new(aead_alg, &key_bytes[..])?;
 
         ct.extend(tag);
+
+        if s_result.is_ok() {
+            assert_eq!(Ok(ct.len()), s_result);
+            assert_eq!(&ct[..], &s_in_out[..ct.len()]);
+        }
+
+        let o_key = aead::OpeningKey::new(aead_alg, &key_bytes[..])?;
 
         // In release builds, test all prefix lengths from 0 to 4096 bytes.
         // Debug builds are too slow for this, so for those builds, only
@@ -147,8 +153,7 @@ fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
                 aead::open_in_place(&o_key, &nonce[..], &ad, *in_prefix_len, &mut o_in_out[..]);
             match error {
                 None => {
-                    assert_eq!(Ok(ct.len()), s_result);
-                    assert_eq!(&ct[..], &s_in_out[..ct.len()]);
+                    assert!(s_result.is_ok());
                     assert_eq!(&plaintext[..], o_result.unwrap());
                 },
                 Some(ref error) if error == "WRONG_NONCE_LENGTH" => {
