@@ -52,7 +52,7 @@ macro_rules! bssl_test {
             }
 
             cpu::cache_detected_features();
-            ::std::env::set_current_dir(::test::ring_src_path()).unwrap();
+            ::std::env::set_current_dir(crate::test::ring_src_path()).unwrap();
 
             let result = unsafe { $bssl_test_main_fn_name() };
             assert_eq!(result, 0);

@@ -20,7 +20,7 @@ use untrusted;
 use crate::rand;
 
 /// Common features of both RSA padding encoding and RSA padding verification.
-pub trait RSAPadding: 'static + Sync + ::private::Sealed {
+pub trait RSAPadding: 'static + Sync + crate::private::Sealed {
     // The digest algorithm used for digesting the message (and maybe for
     // other things).
     fn digest_alg(&self) -> &'static digest::Algorithm;
@@ -59,7 +59,7 @@ pub struct PKCS1 {
     digestinfo_prefix: &'static [u8],
 }
 
-impl ::private::Sealed for PKCS1 {}
+impl crate::private::Sealed for PKCS1 {}
 
 impl RSAPadding for PKCS1 {
     fn digest_alg(&self) -> &'static digest::Algorithm { self.digest_alg }
@@ -205,7 +205,7 @@ pub struct PSS {
     digest_alg: &'static digest::Algorithm,
 }
 
-impl ::private::Sealed for PSS {}
+impl crate::private::Sealed for PSS {}
 
 #[cfg(feature = "rsa_signing")]
 // Maximum supported length of the salt in bytes.

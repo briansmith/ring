@@ -117,7 +117,7 @@
 //! stack trace pointing to line 652 of the file `example.rs`.
 
 #[cfg(feature = "use_heap")]
-use bits;
+use crate::bits;
 
 use crate::{digest, error};
 
