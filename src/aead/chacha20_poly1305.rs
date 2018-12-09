@@ -122,9 +122,12 @@ fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
 pub(super) fn derive_poly1305_key(
     chacha_key: &chacha::Key, counter: &chacha::Counter,
 ) -> poly1305::Key {
-    let mut bytes = [0u8; poly1305::KEY_LEN];
-    chacha::chacha20_xor_in_place(chacha_key, counter, &mut bytes);
-    let blocks: [Block; poly1305::KEY_BLOCKS] = (&bytes).into();
+    let mut blocks = [Block::zero(); poly1305::KEY_BLOCKS];
+    chacha::chacha20_xor_in_place(
+        chacha_key,
+        counter,
+        <&mut [u8; poly1305::KEY_BLOCKS * BLOCK_LEN]>::from_(&mut blocks),
+    );
     poly1305::Key::from(blocks)
 }
 
