@@ -43,18 +43,8 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
     ) -> Result<(), error::Unspecified> {
         let public_key = public_key.as_slice_less_safe();
         let public_key: &[u8; ELEM_LEN] = public_key.try_into_()?;;
-
-        let (signature_r, signature_s) = signature.read_all(error::Unspecified, |input| {
-            let r = input.skip_and_get_input(ELEM_LEN)?;
-            let r = r.as_slice_less_safe();
-            // `r` is only used as a slice, so don't convert it to an array ref.
-
-            let s = input.skip_and_get_input(SCALAR_LEN)?;
-            let s = s.as_slice_less_safe();
-            let s = slice_as_array_ref!(s, SCALAR_LEN).unwrap();
-
-            Ok((r, s))
-        })?;
+        let signature: &[u8; ELEM_LEN + SCALAR_LEN] = signature.as_slice_less_safe().try_into_()?;
+        let (signature_r, signature_s): (&[u8; ELEM_LEN], &[u8; SCALAR_LEN]) = signature.into_();
 
         // Ensure `s` is not too large.
         if (signature_s[SCALAR_LEN - 1] & 0b11100000) != 0 {
@@ -70,7 +60,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         let mut r = Point::new_at_infinity();
         unsafe { GFp_x25519_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s) };
         let r_check = r.into_encoded_point();
-        if signature_r != r_check {
+        if *signature_r != r_check {
             return Err(error::Unspecified);
         }
         Ok(())

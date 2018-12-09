@@ -12,6 +12,29 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+/// An approximation of `core::convert::From` that lets us define our own
+/// conversions between types defined outside this crate.
+///
+/// Do not use this this in situations where `From` could be used.
+pub trait From_<F>: Sized {
+    fn from_(value: F) -> Self;
+}
+
+pub trait Into_<T>
+where
+    T: Sized,
+{
+    fn into_(self) -> T;
+}
+
+impl<T, F> Into_<T> for F
+where
+    T: From_<F>,
+{
+    #[inline]
+    fn into_(self) -> T { T::from_(self) }
+}
+
 /// An approximation of the unstable `core::convert::TryFrom`.
 pub trait TryFrom_<T>: Sized {
     type Error;
@@ -68,6 +91,7 @@ impl_array_try_from!(u8, 4);
 impl_array_try_from!(u8, 12);
 impl_array_try_from!(u8, 16);
 impl_array_try_from!(u8, 32);
+impl_array_try_from!(u8, 64);
 
 #[inline]
 unsafe fn transmute_slice<A, T>(slice: &[T], expected_len: usize) -> Result<&A, TryFromSliceError> {
@@ -85,3 +109,29 @@ unsafe fn transmute_slice_mut<A, T>(
     }
     Ok(core::mem::transmute(slice.as_ptr()))
 }
+
+/// This currently just splits the source array in equal halves since that is
+/// all we currently need.
+macro_rules! impl_array_split {
+    ($ty:ty, $len:expr) => {
+        impl From_<&[$ty; $len * 2]> for (&[$ty; $len], &[$ty; $len]) {
+            #[inline]
+            fn from_(to_split: &[$ty; $len * 2]) -> Self {
+                let first: *const u8 = &to_split[0];
+                let split_at: *const u8 = &to_split[$len];
+                unsafe { (core::mem::transmute(first), core::mem::transmute(split_at)) }
+            }
+        }
+
+        impl From_<&mut [$ty; $len * 2]> for (&mut [$ty; $len], &mut [$ty; $len]) {
+            #[inline]
+            fn from_(to_split: &mut [$ty; $len * 2]) -> Self {
+                let first: *mut u8 = &mut to_split[0];
+                let split_at: *mut u8 = &mut to_split[$len];
+                unsafe { (core::mem::transmute(first), core::mem::transmute(split_at)) }
+            }
+        }
+    };
+}
+
+impl_array_split!(u8, 32);

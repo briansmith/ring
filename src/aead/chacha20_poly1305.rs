@@ -12,10 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{
-    block::{Block, BLOCK_LEN},
-    chacha, poly1305, Direction, Tag,
-};
+use super::{chacha, poly1305, Block, Direction, Tag, BLOCK_LEN};
 use crate::{
     aead,
     endian::*,
@@ -127,7 +124,8 @@ pub(super) fn derive_poly1305_key(
 ) -> poly1305::Key {
     let mut bytes = [0u8; poly1305::KEY_LEN];
     chacha::chacha20_xor_in_place(chacha_key, counter, &mut bytes);
-    poly1305::Key::from(bytes)
+    let blocks: [Block; poly1305::KEY_BLOCKS] = (&bytes).into();
+    poly1305::Key::from(blocks)
 }
 
 #[cfg(test)]

@@ -66,35 +66,3 @@ pub mod slice {
         }
     }
 }
-
-/// Returns a reference to the elements of `$slice` as an array, verifying that
-/// the slice is of length `$len`.
-macro_rules! slice_as_array_ref {
-    ($slice:expr, $len:expr) => {{
-        use crate::error;
-
-        fn slice_as_array_ref<T>(slice: &[T]) -> Result<&[T; $len], error::Unspecified> {
-            if slice.len() != $len {
-                return Err(error::Unspecified);
-            }
-            Ok(unsafe { &*(slice.as_ptr() as *const [T; $len]) })
-        }
-        slice_as_array_ref($slice)
-    }};
-}
-
-/// Returns a reference to elements of `$slice` as a mutable array, verifying
-/// that the slice is of length `$len`.
-macro_rules! slice_as_array_ref_mut {
-    ($slice:expr, $len:expr) => {{
-        use crate::error;
-
-        fn slice_as_array_ref<T>(slice: &mut [T]) -> Result<&mut [T; $len], error::Unspecified> {
-            if slice.len() != $len {
-                return Err(error::Unspecified);
-            }
-            Ok(unsafe { &mut *(slice.as_mut_ptr() as *mut [T; $len]) })
-        }
-        slice_as_array_ref($slice)
-    }};
-}
