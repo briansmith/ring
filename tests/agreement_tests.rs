@@ -31,9 +31,6 @@
     warnings
 )]
 
-extern crate ring;
-extern crate untrusted;
-
 use ring::{agreement, error, rand, test};
 
 #[test]

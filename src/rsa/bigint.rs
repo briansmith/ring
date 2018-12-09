@@ -44,18 +44,16 @@ use crate::{
     arithmetic::montgomery::*,
     bits, c, error,
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
-    untrusted,
 };
 use core::{
     self,
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
-
-use std;
+use untrusted;
 
 #[cfg(feature = "rsa_signing")]
-use bssl;
+use crate::bssl;
 
 pub unsafe trait Prime {}
 
@@ -68,7 +66,7 @@ struct Width<M> {
 
 /// All `BoxedLimbs<M>` are stored in the same number of limbs.
 struct BoxedLimbs<M> {
-    limbs: std::boxed::Box<[Limb]>,
+    limbs: Box<[Limb]>,
 
     /// The modulus *m* that determines the size of `limbx`.
     m: PhantomData<M>,
@@ -812,7 +810,7 @@ impl<M: Prime> PrivateExponent<M> {
 pub fn elem_exp_consttime<M>(
     base: Elem<M, R>, exponent: &PrivateExponent<M>, m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
-    use limb::Window;
+    use crate::limb::Window;
 
     const WINDOW_BITS: usize = 5;
     const TABLE_ENTRIES: usize = 1 << WINDOW_BITS;
@@ -908,7 +906,7 @@ pub fn elem_exp_consttime<M>(
     // the awkwardness here stems from trying to use the assembly code like
     // OpenSSL does.
 
-    use limb::Window;
+    use crate::limb::Window;
 
     const WINDOW_BITS: usize = 5;
     const TABLE_ENTRIES: usize = 1 << WINDOW_BITS;
@@ -1085,7 +1083,8 @@ pub fn verify_inverses_consttime<M>(
     }
 }
 
-#[cfg(any(test, feature = "rsa_signing"))]
+#[allow(dead_code)]
+#[cfg(feature = "use_heap")]
 #[inline]
 pub fn elem_verify_equal_consttime<M, E>(
     a: &Elem<M, E>, b: &Elem<M, E>,
@@ -1100,7 +1099,7 @@ pub fn elem_verify_equal_consttime<M, E>(
 /// Nonnegative integers.
 #[cfg(feature = "rsa_signing")]
 pub struct Nonnegative {
-    limbs: std::vec::Vec<Limb>,
+    limbs: Vec<Limb>,
 }
 
 #[cfg(feature = "rsa_signing")]

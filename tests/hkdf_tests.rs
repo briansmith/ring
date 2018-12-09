@@ -31,8 +31,6 @@
     warnings
 )]
 
-extern crate ring;
-
 use ring::{error, hkdf, hmac, test};
 
 #[test]
@@ -47,7 +45,7 @@ fn hkdf_tests() {
         let info = test_case.consume_bytes("info");
 
         // The PRK is an intermediate value that we can't test, but we
-        // have to consume it to make test::from_file happy.
+        // have to consume it to make test_util::from_file happy.
         let _ = test_case.consume_bytes("PRK");
 
         let expected_out = test_case.consume_bytes("OKM");

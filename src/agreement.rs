@@ -21,24 +21,19 @@
 //! `agreement::ECDH_P256`/`agreement::ECDH_P384` for `agreement::X25519`.
 //!
 //! ```
-//! # extern crate untrusted;
-//! # extern crate ring;
-//! #
 //! # fn x25519_agreement_example() -> Result<(), ring::error::Unspecified> {
 //! use ring::{agreement, rand};
 //! use untrusted;
 //!
 //! let rng = rand::SystemRandom::new();
 //!
-//! let my_private_key =
-//!     agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng)?;
+//! let my_private_key = agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng)?;
 //!
 //! // Make `my_public_key` a byte slice containing my public key. In a real
 //! // application, this would be sent to the peer in an encoded protocol
 //! // message.
 //! let mut my_public_key = [0u8; agreement::PUBLIC_KEY_MAX_LEN];
-//! let my_public_key =
-//!     &mut my_public_key[..my_private_key.public_key_len()];
+//! let my_public_key = &mut my_public_key[..my_private_key.public_key_len()];
 //! my_private_key.compute_public_key(my_public_key)?;
 //!
 //! // In a real application, the peer public key would be parsed out of a
@@ -46,10 +41,8 @@
 //! let mut peer_public_key_buf = [0u8; agreement::PUBLIC_KEY_MAX_LEN];
 //! let peer_public_key;
 //! {
-//!     let peer_private_key =
-//!        agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng)?;
-//!     peer_public_key =
-//!         &mut peer_public_key_buf[..peer_private_key.public_key_len()];
+//!     let peer_private_key = agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng)?;
+//!     peer_public_key = &mut peer_public_key_buf[..peer_private_key.public_key_len()];
 //!     peer_private_key.compute_public_key(peer_public_key)?;
 //! }
 //! let peer_public_key = untrusted::Input::from(peer_public_key);
@@ -59,14 +52,18 @@
 //! // is X25519 since we just generated it.
 //! let peer_public_key_alg = &agreement::X25519;
 //!
-//! agreement::agree_ephemeral(my_private_key, peer_public_key_alg,
-//!                            peer_public_key, ring::error::Unspecified,
-//!                            |_key_material| {
-//!     // In a real application, we'd apply a KDF to the key material and the
-//!     // public keys (as recommended in RFC 7748) and then derive session
-//!     // keys from the result. We omit all that here.
-//!     Ok(())
-//! })
+//! agreement::agree_ephemeral(
+//!     my_private_key,
+//!     peer_public_key_alg,
+//!     peer_public_key,
+//!     ring::error::Unspecified,
+//!     |_key_material| {
+//!         // In a real application, we'd apply a KDF to the key material and the
+//!         // public keys (as recommended in RFC 7748) and then derive session
+//!         // keys from the result. We omit all that here.
+//!         Ok(())
+//!     },
+//! )
 //! # }
 //! # fn main() { x25519_agreement_example().unwrap() }
 //! ```

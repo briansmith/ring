@@ -1036,7 +1036,7 @@ mod tests {
         ops: &PrivateKeyOps, test_case: &mut test::TestCase, name: &str,
     ) -> Point {
         let input = test_case.consume_string(name);
-        let elems = input.split(", ").collect::<std::vec::Vec<&str>>();
+        let elems = input.split(", ").collect::<Vec<&str>>();
         assert_eq!(elems.len(), 3);
         let mut p = Point::new_at_infinity();
         consume_point_elem(ops.common, &mut p.xyz, &elems, 0);
@@ -1053,7 +1053,7 @@ mod tests {
         ops: &PrivateKeyOps, test_case: &mut test::TestCase, name: &str,
     ) -> AffinePoint {
         let input = test_case.consume_string(name);
-        let elems = input.split(", ").collect::<std::vec::Vec<&str>>();
+        let elems = input.split(", ").collect::<Vec<&str>>();
         assert_eq!(elems.len(), 2);
         let mut p = AffinePoint {
             xy: [0; 2 * MAX_LIMBS],
@@ -1063,9 +1063,7 @@ mod tests {
         p
     }
 
-    fn consume_point_elem(
-        ops: &CommonOps, limbs_out: &mut [Limb], elems: &std::vec::Vec<&str>, i: usize,
-    ) {
+    fn consume_point_elem(ops: &CommonOps, limbs_out: &mut [Limb], elems: &Vec<&str>, i: usize) {
         let bytes = test::from_hex(elems[i]).unwrap();
         let bytes = untrusted::Input::from(&bytes);
         let r: Elem<Unencoded> = elem_parse_big_endian_fixed_consttime(ops, bytes).unwrap();
@@ -1080,7 +1078,7 @@ mod tests {
     }
 
     fn consume_point(ops: &PrivateKeyOps, test_case: &mut test::TestCase, name: &str) -> TestPoint {
-        fn consume_point_elem(ops: &CommonOps, elems: &std::vec::Vec<&str>, i: usize) -> Elem<R> {
+        fn consume_point_elem(ops: &CommonOps, elems: &Vec<&str>, i: usize) -> Elem<R> {
             let bytes = test::from_hex(elems[i]).unwrap();
             let bytes = untrusted::Input::from(&bytes);
             let unencoded: Elem<Unencoded> =
@@ -1097,7 +1095,7 @@ mod tests {
         if input == "inf" {
             return TestPoint::Infinity;
         }
-        let elems = input.split(", ").collect::<std::vec::Vec<&str>>();
+        let elems = input.split(", ").collect::<Vec<&str>>();
         assert_eq!(elems.len(), 2);
         let x = consume_point_elem(ops.common, &elems, 0);
         let y = consume_point_elem(ops.common, &elems, 1);
@@ -1158,7 +1156,7 @@ mod tests {
 
     fn consume_padded_bytes(
         ops: &CommonOps, test_case: &mut test::TestCase, name: &str,
-    ) -> std::vec::Vec<u8> {
+    ) -> Vec<u8> {
         let unpadded_bytes = test_case.consume_bytes(name);
         let mut bytes = vec![0; (ops.num_limbs * LIMB_BYTES) - unpadded_bytes.len()];
         bytes.extend(&unpadded_bytes);

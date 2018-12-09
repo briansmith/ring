@@ -492,7 +492,7 @@ impl SigningState {
     /// x86-64, this is done pretty well, but not perfectly. On other
     /// platforms, it is done less perfectly.
     pub fn sign(
-        &mut self, padding_alg: &'static ::signature::RSAEncoding, rng: &rand::SecureRandom,
+        &mut self, padding_alg: &'static crate::signature::RSAEncoding, rng: &rand::SecureRandom,
         msg: &[u8], signature: &mut [u8],
     ) -> Result<(), error::Unspecified> {
         let mod_bits = self.key_pair.public_key.n_bits;

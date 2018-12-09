@@ -31,9 +31,6 @@
     warnings
 )]
 
-extern crate ring;
-extern crate untrusted;
-
 use ring::{
     signature::{self, Ed25519KeyPair},
     test,
@@ -125,8 +122,6 @@ fn test_ed25519_from_pkcs8_unchecked() {
     test::from_file(
         "tests/ed25519_from_pkcs8_unchecked_tests.txt",
         |section, test_case| {
-            use std::error::Error;
-
             assert_eq!(section, "");
             let input = test_case.consume_bytes("Input");
             let error = test_case.consume_optional_string("Error");
@@ -138,7 +133,7 @@ fn test_ed25519_from_pkcs8_unchecked() {
                 (Ok(_), None) => (),
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
                 (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
-                (Err(actual), Some(expected)) => assert_eq!(actual.description(), expected),
+                (Err(actual), Some(expected)) => assert_eq!(actual.description_(), expected),
             };
 
             Ok(())
@@ -152,8 +147,6 @@ fn test_ed25519_from_pkcs8() {
     test::from_file(
         "tests/ed25519_from_pkcs8_tests.txt",
         |section, test_case| {
-            use std::error::Error;
-
             assert_eq!(section, "");
             let input = test_case.consume_bytes("Input");
             let error = test_case.consume_optional_string("Error");
@@ -165,7 +158,7 @@ fn test_ed25519_from_pkcs8() {
                 (Ok(_), None) => (),
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
                 (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
-                (Err(actual), Some(expected)) => assert_eq!(actual.description(), expected),
+                (Err(actual), Some(expected)) => assert_eq!(actual.description_(), expected),
             };
 
             Ok(())

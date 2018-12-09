@@ -31,13 +31,11 @@
     warnings
 )]
 
-extern crate ring;
-extern crate untrusted;
-
 use ring::{rand, signature, test};
 
 // ECDSA *signing* tests are in src/ec/ecdsa/signing.rs.
 
+#[cfg(feature = "use_heap")]
 #[test]
 fn ecdsa_from_pkcs8_test() {
     test::from_file("tests/ecdsa_from_pkcs8_tests.txt", |section, test_case| {
@@ -120,6 +118,8 @@ fn ecdsa_generate_pkcs8_test() {
         }
         println!();
         println!();
+
+        #[cfg(feature = "use_heap")]
         let _ =
             signature::key_pair_from_pkcs8(*alg, untrusted::Input::from(pkcs8.as_ref())).unwrap();
     }

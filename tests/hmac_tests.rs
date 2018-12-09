@@ -31,8 +31,6 @@
     warnings
 )]
 
-extern crate ring;
-
 use ring::{digest, error, hmac, test};
 
 #[test]

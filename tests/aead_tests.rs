@@ -31,10 +31,7 @@
     warnings
 )]
 
-extern crate ring;
-
 use ring::{aead, error, test};
-use std::vec::Vec;
 
 #[test]
 fn aead_aes_gcm_128() { test_aead(&aead::AES_128_GCM, "tests/aead_aes_128_gcm_tests.txt"); }
