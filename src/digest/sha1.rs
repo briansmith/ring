@@ -67,10 +67,10 @@ fn block_data_order_safe(state: &mut [Wrapping<u32>; 256 / 32], blocks: &[[[u8; 
 
         for t in 0..80 {
             let (k, f) = match t {
-                0...19 => (0x5a827999, ch(b, c, d)),
-                20...39 => (0x6ed9eba1, parity(b, c, d)),
-                40...59 => (0x8f1bbcdc, maj(b, c, d)),
-                60...79 => (0xca62c1d6, parity(b, c, d)),
+                0..=19 => (0x5a827999, ch(b, c, d)),
+                20..=39 => (0x6ed9eba1, parity(b, c, d)),
+                40..=59 => (0x8f1bbcdc, maj(b, c, d)),
+                60..=79 => (0xca62c1d6, parity(b, c, d)),
                 _ => unreachable!(),
             };
             let tt = polyfill::wrapping_rotate_left_u32(a, 5) + f + e + Wrapping(k) + w[t];
