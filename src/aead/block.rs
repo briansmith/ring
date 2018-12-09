@@ -14,45 +14,49 @@
 
 use crate::endian::*;
 
-#[repr(C, align(4))]
+/// An array of 16 bytes that can (in the x86_64 and AAarch64 ABIs, at least)
+/// be efficiently passed by value and returned by value (i.e. in registers),
+/// and which meets the alignment requirements of `u32` and `u64` (at least)
+/// for the target.
+#[repr(C)]
 #[derive(Copy, Clone)]
-pub union Block {
-    subblocks_le: [LittleEndian<u64>; 2],
-    bytes: [u8; BLOCK_LEN],
+pub struct Block {
+    subblocks: [u64; 2],
 }
 
 pub const BLOCK_LEN: usize = 16;
 
 impl Block {
     #[inline]
-    pub fn zero() -> Self {
+    pub fn zero() -> Self { Self { subblocks: [0, 0] } }
+
+    #[inline]
+    pub fn from_u64_le(first: LittleEndian<u64>, second: LittleEndian<u64>) -> Self {
         Self {
-            subblocks_le: [Encoding::ZERO; 2],
+            subblocks: [unsafe { core::mem::transmute(first) }, unsafe {
+                core::mem::transmute(second)
+            }],
         }
     }
 
+    /// Replaces the first `a.len()` bytes of the block's value with `a`,
+    /// leaving the rest of the block unchanged. Panics if `a` is larger
+    /// than a block.
     #[inline]
-    pub fn partial_copy_from(&mut self, a: &[u8]) {
-        let self_bytes = unsafe { &mut self.bytes };
-        self_bytes[..a.len()].copy_from_slice(a);
-    }
+    pub fn partial_copy_from(&mut self, a: &[u8]) { self.as_mut()[..a.len()].copy_from_slice(a); }
 }
 
 impl<'a> From<&'a [u8; BLOCK_LEN]> for Block {
     #[inline]
-    fn from(bytes: &[u8; BLOCK_LEN]) -> Self {
-        Self {
-            bytes: bytes.clone(),
-        }
-    }
-}
-
-impl From<[LittleEndian<u64>; 2]> for Block {
-    #[inline]
-    fn from(subblocks_le: [LittleEndian<u64>; 2]) -> Self { Self { subblocks_le } }
+    fn from(bytes: &[u8; BLOCK_LEN]) -> Self { unsafe { core::mem::transmute_copy(bytes) } }
 }
 
 impl AsRef<[u8; BLOCK_LEN]> for Block {
     #[inline]
-    fn as_ref(&self) -> &[u8; BLOCK_LEN] { unsafe { &self.bytes } }
+    fn as_ref(&self) -> &[u8; BLOCK_LEN] { unsafe { core::mem::transmute(self) } }
+}
+
+impl AsMut<[u8; BLOCK_LEN]> for Block {
+    #[inline]
+    fn as_mut(&mut self) -> &mut [u8; BLOCK_LEN] { unsafe { core::mem::transmute(self) } }
 }
