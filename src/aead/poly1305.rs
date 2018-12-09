@@ -22,11 +22,13 @@ use super::{
 use crate::{bssl, c, error};
 
 /// A Poly1305 key.
-pub struct Key([Block; 2]);
+pub struct Key([Block; KEY_BLOCKS]);
 
-impl From<[u8; KEY_LEN]> for Key {
-    fn from(value: [u8; KEY_LEN]) -> Self { unsafe { core::mem::transmute_copy(&value) } }
+impl From<[Block; KEY_BLOCKS]> for Key {
+    fn from(value: [Block; KEY_BLOCKS]) -> Self { Key(value) }
 }
+
+pub const KEY_BLOCKS: usize = 2;
 
 pub struct Context {
     opaque: Opaque,
@@ -102,9 +104,6 @@ pub fn check_state_layout() {
         assert!(core::mem::size_of::<Opaque>() >= required_state_size);
     }
 }
-
-/// The length of a `key`.
-pub const KEY_LEN: usize = 2 * BLOCK_LEN;
 
 #[repr(C)]
 struct DerivedKey(Block);

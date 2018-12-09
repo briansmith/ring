@@ -51,6 +51,11 @@ impl<'a> From<&'a [u8; BLOCK_LEN]> for Block {
     fn from(bytes: &[u8; BLOCK_LEN]) -> Self { unsafe { core::mem::transmute_copy(bytes) } }
 }
 
+impl<'a> From_<&'a [u8; 2 * BLOCK_LEN]> for [Block; 2] {
+    #[inline]
+    fn from_(bytes: &[u8; 2 * BLOCK_LEN]) -> Self { unsafe { core::mem::transmute_copy(bytes) } }
+}
+
 impl AsRef<[u8; BLOCK_LEN]> for Block {
     #[inline]
     fn as_ref(&self) -> &[u8; BLOCK_LEN] { unsafe { core::mem::transmute(self) } }
@@ -59,4 +64,10 @@ impl AsRef<[u8; BLOCK_LEN]> for Block {
 impl AsMut<[u8; BLOCK_LEN]> for Block {
     #[inline]
     fn as_mut(&mut self) -> &mut [u8; BLOCK_LEN] { unsafe { core::mem::transmute(self) } }
+}
+
+/// Like `AsMut`.
+impl From_<&mut [Block; 2]> for &mut [u8; 2 * BLOCK_LEN] {
+    #[inline]
+    fn from_(bytes: &mut [Block; 2]) -> Self { unsafe { core::mem::transmute(bytes) } }
 }
