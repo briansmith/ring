@@ -173,10 +173,7 @@ impl<'a> KeyPair {
         let mut signature_bytes = [0u8; SIGNATURE_LEN];
         {
             // Borrow `signature_bytes`.
-            let (signature_r, signature_s) = signature_bytes.split_at_mut(ELEM_LEN);
-            let signature_r = slice_as_array_ref_mut!(signature_r, ELEM_LEN).unwrap();
-            let signature_s = slice_as_array_ref_mut!(signature_s, SCALAR_LEN).unwrap();
-
+            let (signature_r, signature_s) = (&mut signature_bytes).into_();
             let nonce = {
                 let mut ctx = digest::Context::new(&digest::SHA512);
                 ctx.update(&self.private_prefix);

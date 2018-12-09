@@ -25,12 +25,7 @@ use crate::{bssl, c, error};
 pub struct Key([Block; 2]);
 
 impl From<[u8; KEY_LEN]> for Key {
-    fn from(value: [u8; KEY_LEN]) -> Self {
-        Key([
-            Block::from(slice_as_array_ref!(&value[..BLOCK_LEN], BLOCK_LEN).unwrap()),
-            Block::from(slice_as_array_ref!(&value[BLOCK_LEN..], BLOCK_LEN).unwrap()),
-        ])
-    }
+    fn from(value: [u8; KEY_LEN]) -> Self { unsafe { core::mem::transmute_copy(&value) } }
 }
 
 pub struct Context {
@@ -180,8 +175,8 @@ pub(super) fn sign(key: Key, input: &[u8]) -> Tag {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::test;
+    use super::{super::block::*, *};
+    use crate::{polyfill::convert::*, test};
 
     #[test]
     pub fn test_state_layout() { check_state_layout(); }
@@ -192,11 +187,11 @@ mod tests {
         test::from_file("src/aead/poly1305_test.txt", |section, test_case| {
             assert_eq!(section, "");
             let key = test_case.consume_bytes("Key");
-            let key = slice_as_array_ref!(&key, KEY_LEN).unwrap();
+            let key: &[u8; BLOCK_LEN * 2] = key.as_slice().try_into_().unwrap();
+            let key: [Block; 2] = key.into_();
             let input = test_case.consume_bytes("Input");
             let expected_mac = test_case.consume_bytes("MAC");
-
-            let key = Key::from(key.clone());
+            let key = Key::from(key);
             let Tag(actual_mac) = sign(key, &input);
             assert_eq!(expected_mac, actual_mac.as_ref());
 

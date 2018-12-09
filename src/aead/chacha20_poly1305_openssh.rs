@@ -29,8 +29,8 @@
 //!    http://cvsweb.openbsd.org/cgi-bin/cvsweb/src/usr.bin/ssh/PROTOCOL.chacha20poly1305?annotate=HEAD
 //! [RFC 4253]: https://tools.ietf.org/html/rfc4253
 
-use super::{chacha, chacha20_poly1305::derive_poly1305_key, poly1305, Tag};
-use crate::{constant_time, endian::*, error};
+use super::{chacha, chacha20_poly1305::derive_poly1305_key, poly1305, Tag, NONCE_LEN};
+use crate::{constant_time, endian::*, error, polyfill::convert::*};
 
 /// A key for sealing packets.
 pub struct SealingKey {
@@ -137,13 +137,10 @@ struct Key {
 impl Key {
     pub fn new(key_material: &[u8; KEY_LEN]) -> Key {
         // The first half becomes K_2 and the second half becomes K_1.
+        let (k_2, k_1) = key_material.into_();
         Key {
-            k_1: chacha::Key::from(
-                slice_as_array_ref!(&key_material[chacha::KEY_LEN..], chacha::KEY_LEN).unwrap(),
-            ),
-            k_2: chacha::Key::from(
-                slice_as_array_ref!(&key_material[..chacha::KEY_LEN], chacha::KEY_LEN).unwrap(),
-            ),
+            k_1: chacha::Key::from(k_1),
+            k_2: chacha::Key::from(k_2),
         }
     }
 }
@@ -154,8 +151,8 @@ fn make_counter(sequence_number: u32) -> chacha::Counter {
         BigEndian::ZERO,
         BigEndian::from(sequence_number),
     ];
-    let nonce = slice_as_array_ref!(as_bytes(&nonce), chacha::NONCE_LEN).unwrap();
-    chacha::make_counter(&nonce, 0)
+    let nonce: &[u8; NONCE_LEN] = as_bytes(&nonce).try_into_().unwrap();
+    chacha::make_counter(nonce, 0)
 }
 
 /// The length of key.

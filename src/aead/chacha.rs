@@ -24,12 +24,7 @@ use core;
 pub struct Key([Block; KEY_BLOCKS]);
 
 impl<'a> From<&'a [u8; KEY_LEN]> for Key {
-    fn from(value: &[u8; KEY_LEN]) -> Self {
-        Key([
-            Block::from(slice_as_array_ref!(&value[..BLOCK_LEN], BLOCK_LEN).unwrap()),
-            Block::from(slice_as_array_ref!(&value[BLOCK_LEN..], BLOCK_LEN).unwrap()),
-        ])
-    }
+    fn from(value: &[u8; KEY_LEN]) -> Self { Key(<[Block; KEY_BLOCKS]>::from_(value)) }
 }
 
 #[inline]
@@ -128,7 +123,7 @@ mod tests {
 
             let ctr = test_case.consume_usize("Ctr");
             let nonce_bytes = test_case.consume_bytes("Nonce");
-            let nonce = slice_as_array_ref!(&nonce_bytes, NONCE_LEN).unwrap();
+            let nonce: &[u8; NONCE_LEN] = nonce_bytes.as_slice().try_into_().unwrap();
             let ctr = make_counter(&nonce, ctr as u32);
             let input = test_case.consume_bytes("Input");
             let output = test_case.consume_bytes("Output");
