@@ -114,6 +114,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 my ($inp,$out,$len,$key,$ivp)=("%rdi","%rsi","%rdx","%rcx");
 my @XMM=map("%xmm$_",(15,0..14));	# best on Atom, +10% over (0..15)
 my $ecb=0;	# suppress unreferenced ECB subroutines, spare some space...
+my $xts=0;	# Also patch out the XTS subroutines.
 
 {
 my ($key,$rounds,$const)=("%rax","%r10d","%r11");
@@ -2163,6 +2164,8 @@ ___
 #	const AES_KEY *key1, const AES_KEY *key2,
 #	const unsigned char iv[16]);
 #
+# We patch out the XTS implementation in BoringSSL.
+if ($xts) {
 my ($twmask,$twres,$twtmp)=@XMM[13..15];
 $arg6=~s/d$//;
 
@@ -2991,6 +2994,7 @@ $code.=<<___;
 .size	bsaes_xts_decrypt,.-bsaes_xts_decrypt
 ___
 }
+}  # $xts
 $code.=<<___;
 .type	_bsaes_const,\@object
 .align	64
@@ -3172,7 +3176,8 @@ $code.=<<___;
 	.rva	.Lctr_enc_prologue
 	.rva	.Lctr_enc_epilogue
 	.rva	.Lctr_enc_info
-
+___
+$code.=<<___ if ($xts);
 	.rva	.Lxts_enc_prologue
 	.rva	.Lxts_enc_epilogue
 	.rva	.Lxts_enc_info
@@ -3180,6 +3185,8 @@ $code.=<<___;
 	.rva	.Lxts_dec_prologue
 	.rva	.Lxts_dec_epilogue
 	.rva	.Lxts_dec_info
+___
+$code.=<<___;
 
 .section	.xdata
 .align	8
@@ -3211,6 +3218,8 @@ $code.=<<___;
 	.rva	.Lctr_enc_body,.Lctr_enc_epilogue	# HandlerData[]
 	.rva	.Lctr_enc_tail
 	.long	0
+___
+$code.=<<___ if ($xts);
 .Lxts_enc_info:
 	.byte	9,0,0,0
 	.rva	se_handler
