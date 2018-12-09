@@ -93,11 +93,13 @@ fn aead(
         },
     };
 
-    let lengths = [
-        LittleEndian::from(polyfill::u64_from_usize(ad.len())),
-        LittleEndian::from(polyfill::u64_from_usize(in_out_len)),
-    ];
-    ctx.update_block(Block::from(lengths), poly1305::Pad::Pad);
+    ctx.update_block(
+        Block::from_u64_le(
+            LittleEndian::from(polyfill::u64_from_usize(ad.len())),
+            LittleEndian::from(polyfill::u64_from_usize(in_out_len)),
+        ),
+        poly1305::Pad::Pad,
+    );
     ctx.finish()
 }
 
