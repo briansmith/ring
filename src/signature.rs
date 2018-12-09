@@ -127,9 +127,6 @@
 //! ## Signing and verifying with Ed25519
 //!
 //! ```
-//! extern crate ring;
-//! extern crate untrusted;
-//!
 //! use ring::{rand, signature};
 //!
 //! # fn sign_and_verify_ed25519() -> Result<(), ring::error::Unspecified> {
@@ -199,9 +196,6 @@
 //! ```
 //!
 //! ```
-//! extern crate ring;
-//! extern crate untrusted;
-//!
 //! use ring::{rand, signature};
 //!
 //! # #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
@@ -306,10 +300,10 @@ pub use crate::ec::curve25519::ed25519::signing::{
 };
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
-pub use rsa::signing::{KeyPair as RSAKeyPair, SigningState as RSASigningState};
+pub use crate::rsa::signing::{KeyPair as RSAKeyPair, SigningState as RSASigningState};
 
 #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
-pub use rsa::{
+pub use crate::rsa::{
     RSAEncoding,
 
     // `RSA_PKCS1_SHA1` is intentionally not exposed. At a minimum, we'd need
@@ -349,7 +343,7 @@ pub mod primitive {
 #[derive(Debug)]
 #[cfg(feature = "use_heap")]
 pub struct KeyPair {
-    inner: std::boxed::Box<KeyPairImpl + Send + Sync>,
+    inner: Box<KeyPairImpl + Send + Sync>,
 }
 
 #[cfg(feature = "use_heap")]
@@ -414,9 +408,6 @@ pub trait VerificationAlgorithm: core::fmt::Debug + Sync + private::Sealed {
 /// ## Verify a RSA PKCS#1 signature that uses the SHA-256 digest
 ///
 /// ```
-/// extern crate ring;
-/// extern crate untrusted;
-///
 /// use ring::signature;
 ///
 /// enum Error {

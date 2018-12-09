@@ -191,6 +191,8 @@ mod urandom {
     use std;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        use lazy_static::lazy_static;
+
         #[cfg(target_os = "redox")]
         static RANDOM_PATH: &str = "rand:";
         #[cfg(unix)]
@@ -222,6 +224,8 @@ mod sysrand_or_urandom {
     }
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        use lazy_static::lazy_static;
+
         lazy_static! {
             static ref MECHANISM: Mechanism = {
                 let mut dummy = [0u8; 1];

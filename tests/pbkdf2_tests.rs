@@ -31,8 +31,6 @@
     warnings
 )]
 
-extern crate ring;
-
 use ring::{digest, error, pbkdf2, test};
 use std::num::NonZeroU32;
 

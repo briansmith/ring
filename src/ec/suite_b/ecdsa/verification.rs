@@ -273,7 +273,6 @@ pub static ECDSA_P384_SHA384_ASN1: Algorithm = Algorithm {
 mod tests {
     use super::*;
     use crate::test;
-    use std;
 
     #[test]
     fn test_digest_based_test_vectors() {
@@ -285,7 +284,7 @@ mod tests {
                 let curve_name = test_case.consume_string("Curve");
 
                 let public_key = {
-                    let mut public_key = std::vec::Vec::new();
+                    let mut public_key = Vec::new();
                     public_key.push(0x04);
                     public_key.extend(&test_case.consume_bytes("X"));
                     public_key.extend(&test_case.consume_bytes("Y"));
@@ -295,7 +294,7 @@ mod tests {
                 let digest = test_case.consume_bytes("Digest");
 
                 let sig = {
-                    let mut sig = std::vec::Vec::new();
+                    let mut sig = Vec::new();
                     sig.extend(&test_case.consume_bytes("R"));
                     sig.extend(&test_case.consume_bytes("S"));
                     sig

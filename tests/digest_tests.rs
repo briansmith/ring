@@ -31,10 +31,7 @@
     warnings
 )]
 
-extern crate ring;
-
 use ring::{digest, test};
-use std::vec::Vec;
 
 /// Test vectors from BoringSSL, Go, and other sources.
 #[test]
@@ -64,7 +61,6 @@ fn digest_misc() {
 
 mod digest_shavs {
     use ring::{digest, test};
-    use std::vec::Vec;
 
     macro_rules! shavs_tests {
         ( $algorithm_name:ident ) => {

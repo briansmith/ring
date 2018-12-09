@@ -59,37 +59,24 @@
     unused_results,
     warnings
 )]
-#![no_std]
+#![cfg_attr(
+    any(
+        target_os = "redox",
+        all(
+            not(test),
+            not(feature = "use_heap"),
+            unix,
+            not(any(target_os = "macos", target_os = "ios")),
+            any(not(target_os = "linux"), feature = "dev_urandom_fallback")
+        )
+    ),
+    no_std
+)]
 #![cfg_attr(feature = "internal_benches", allow(unstable_features))]
 #![cfg_attr(feature = "internal_benches", feature(test))]
 
-#[cfg(target_os = "linux")]
-extern crate libc;
-
-#[cfg(feature = "internal_benches")]
-extern crate test as bench;
-
-#[cfg(any(
-    target_os = "redox",
-    all(
-        unix,
-        not(any(target_os = "macos", target_os = "ios")),
-        any(not(target_os = "linux"), feature = "dev_urandom_fallback")
-    )
-))]
-#[macro_use]
-extern crate lazy_static;
-
 #[macro_use]
 mod debug;
-
-// `ring::test` uses the formatting & printing stuff in non-test mode.
-#[macro_use]
-extern crate std;
-
-extern crate untrusted;
-
-mod arithmetic;
 
 #[macro_use]
 mod bssl;
@@ -97,10 +84,12 @@ mod bssl;
 #[macro_use]
 mod polyfill;
 
+mod arithmetic;
+
 pub mod aead;
 pub mod agreement;
 
-#[cfg(feature = "use_heap")]
+#[cfg(any(test, feature = "use_heap"))]
 mod bits;
 
 mod c;
@@ -127,7 +116,6 @@ mod rsa;
 pub mod signature;
 mod signature_impl;
 
-#[cfg(any(feature = "use_heap", test))]
 pub mod test;
 
 mod private {

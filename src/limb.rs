@@ -18,7 +18,11 @@
 //! Limbs ordered least-significant-limb to most-significant-limb. The bits
 //! limbs use the native endianness.
 
-use crate::{bits, c, error, untrusted};
+use crate::{c, error};
+use untrusted;
+
+#[cfg(any(test, feature = "use_heap"))]
+use crate::bits;
 
 #[cfg(feature = "rsa_signing")]
 use core::num::Wrapping;
@@ -52,7 +56,8 @@ pub enum LimbMask {
 
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 
-#[cfg(any(test, feature = "rsa_signing"))]
+#[allow(dead_code)]
+#[cfg(feature = "use_heap")]
 #[inline]
 pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
     extern "C" {
@@ -85,7 +90,7 @@ pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { LIMBS_are_zero(limbs.as_ptr(), limbs.len()) }
 }
 
-#[cfg(feature = "use_heap")]
+#[cfg(any(test, feature = "use_heap"))]
 #[inline]
 pub fn limbs_are_even_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { LIMBS_are_even(limbs.as_ptr(), limbs.len()) }
@@ -104,6 +109,7 @@ pub fn limbs_equal_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
 // with respect to `a.len()` or the value of the result or the value of the
 // most significant bit (It's 1, unless the input is zero, in which case it's
 // zero.)
+#[cfg(any(test, feature = "use_heap"))]
 pub fn limbs_minimal_bits(a: &[Limb]) -> bits::BitLength {
     for num_limbs in (1..=a.len()).rev() {
         let high_limb = a[num_limbs - 1];
@@ -319,7 +325,10 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
 }
 
 extern "C" {
-    #[cfg(feature = "use_heap")]
+    #[cfg(any(test, feature = "use_heap"))]
+    fn LIMB_shr(a: Limb, shift: c::size_t) -> Limb;
+
+    #[cfg(any(test, feature = "use_heap"))]
     fn LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     #[cfg(any(test, feature = "rsa_signing"))]
@@ -328,7 +337,6 @@ extern "C" {
     #[cfg(feature = "use_heap")]
     fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
-    fn LIMB_shr(a: Limb, shift: c::size_t) -> Limb;
 }
 
 #[cfg(test)]

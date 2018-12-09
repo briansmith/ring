@@ -35,7 +35,6 @@ use std;
 /// described in [“Error Handling” in the Rust Book]:
 ///
 /// ```
-/// extern crate ring;
 /// use ring::rand::{self, SecureRandom};
 ///
 /// enum Error {
@@ -139,7 +138,8 @@ impl From<untrusted::EndOfInput> for Unspecified {
 pub struct KeyRejected(&'static str);
 
 impl KeyRejected {
-    fn description_(&self) -> &'static str { self.0 }
+    /// The value returned from <Self as std::error::Error>::description()
+    pub fn description_(&self) -> &'static str { self.0 }
 
     pub(crate) fn inconsistent_components() -> Self { KeyRejected("InconsistentComponents") }
 
@@ -150,8 +150,10 @@ impl KeyRejected {
 
     pub(crate) fn public_key_is_missing() -> Self { KeyRejected("PublicKeyIsMissing") }
 
+    #[cfg(feature = "use_heap")]
     pub(crate) fn too_small() -> Self { KeyRejected("TooSmall") }
 
+    #[cfg(feature = "use_heap")]
     pub(crate) fn too_large() -> Self { KeyRejected("TooLarge") }
 
     pub(crate) fn version_not_supported() -> Self { KeyRejected("VersionNotSupported") }

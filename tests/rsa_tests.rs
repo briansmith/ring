@@ -31,9 +31,7 @@
     warnings
 )]
 
-extern crate ring;
-extern crate untrusted;
-
+#[cfg(feature = "use_heap")]
 use ring::{der, error, signature, test};
 
 #[cfg(feature = "rsa_signing")]
@@ -151,6 +149,7 @@ fn test_rsa_key_pair_traits() {
     // TODO: Test that RSASigningState is NOT Sync.
 }
 
+#[cfg(feature = "use_heap")]
 #[test]
 fn test_signature_rsa_pkcs1_verify() {
     test::from_file("tests/rsa_pkcs1_verify_tests.txt", |section, test_case| {
@@ -199,6 +198,7 @@ fn test_signature_rsa_pkcs1_verify() {
     });
 }
 
+#[cfg(feature = "use_heap")]
 #[test]
 fn test_signature_rsa_pss_verify() {
     test::from_file("tests/rsa_pss_verify_tests.txt", |section, test_case| {
@@ -248,6 +248,7 @@ fn test_signature_rsa_pss_verify() {
 
 // Test for `primitive::verify()`. Read public key parts from a file
 // and use them to verify a signature.
+#[cfg(feature = "use_heap")]
 #[test]
 fn test_signature_rsa_primitive_verification() {
     test::from_file(

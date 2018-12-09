@@ -1,10 +1,10 @@
-extern crate ring;
-
 use ring::{signature, test};
 
 #[test]
 fn signature_impl_test() {
+    #[cfg(feature = "use_heap")]
     test::compile_time_assert_debug::<signature::KeyPair>();
+    #[cfg(feature = "use_heap")]
     test::compile_time_assert_send::<signature::KeyPair>();
 
     test::compile_time_assert_clone::<signature::Signature>();
