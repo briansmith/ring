@@ -137,4 +137,4 @@ mod tests {
 }
 
 // Only here for development
-pub use rsa::key_generation::probable_primality_test;
+pub use crate::rsa::key_generation::probable_primality_test;

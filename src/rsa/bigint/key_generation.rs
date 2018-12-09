@@ -14,7 +14,7 @@
 
 //! RSA key generation
 
-use rsa::small_primes::SMALL_PRIMES;
+use crate::rsa::small_primes::SMALL_PRIMES;
 use core::marker::PhantomData;
 
 use crate::{
