@@ -81,6 +81,13 @@ pub fn limbs_odd_sub_one(r: &mut [Limb]) {
     unsafe { LIMBS_odd_sub_one(r.as_mut_ptr(), r.len()) }
 }
 
+pub fn limbs_even_add_one(r: &mut [Limb]) {
+    extern "C" {
+        fn LIMBS_even_add_one(r: *mut Limb, num_limbs: c::size_t);
+    }
+    unsafe { LIMBS_even_add_one(r.as_mut_ptr(), r.len()) }
+}
+
 pub fn limbs_count_low_zero_bits(v: &[Limb]) -> u16 {
     extern "C" {
         fn BN_count_low_zero_bits(bn: *const Limb, num_limbs: c::size_t) -> c::int;

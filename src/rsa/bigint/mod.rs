@@ -1160,6 +1160,12 @@ impl Nonnegative {
         ret
     }
 
+    pub fn even_add_one(&self) -> Self {
+        let mut ret = self.clone();
+        limb::limbs_even_add_one(&mut ret.limbs);
+        ret
+    }
+
     pub fn mod_u16_consttime(&self, v: u16) -> u16 {
         limb::mod_u16_consttime(&self.limbs, v)
     }

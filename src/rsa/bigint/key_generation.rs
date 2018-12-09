@@ -20,6 +20,7 @@ use core::marker::PhantomData;
 use crate::{
     error, rand,
     rsa::bigint,
+    limb::LIMB_BITS,
 };
 
 /// Performs the Miller-Rabin primality test
@@ -121,6 +122,104 @@ pub fn probable_primality_test(
     }
 
     return miller_rabin_test(w, iterations, rng);
+}
+
+/// Returns the number of M-R iterations for a given bit count
+///
+/// Uses values inside FIPS 186-4 Table C.3 plus 1.
+#[inline]
+fn mr_iterations_for_bit_count(bit_count: u32) -> Result<u32, error::Unspecified> {
+    match bit_count {
+        1024 => Ok(6),
+        1536 => Ok(5),
+        // Unsupported bit count
+        _ => Err(error::Unspecified),
+    }
+}
+
+/// Generate (p,q) prime pair
+///
+/// Implementation of FIPS 186-4 section B.3.3
+///
+/// We imply e = 65537.
+pub fn generate_pq(
+    nlen: u32,
+    rng: &rand::SecureRandom,
+) -> Result<(bigint::Nonnegative, bigint::Nonnegative), error::Unspecified> {
+    // Step 1.
+    if nlen != 2048 && nlen != 3072 {
+        return Err(error::Unspecified);
+    }
+    // Step 2 not needed.
+    //let e = 65537;
+    let iterations = mr_iterations_for_bit_count(nlen / 2)?;
+    let limb_count = (nlen / 2) as usize / LIMB_BITS;
+    // Step 3 not needed.
+    // Step 4.
+    // Step 4.1
+    let mut i = 0;
+    let mut p;
+    loop {
+        // Step 4.2
+        p = bigint::Nonnegative::random(rng, limb_count)?;
+        // Step 4.3
+        if !p.is_odd() {
+            p = p.even_add_one();
+        }
+        // Step 4.4
+        // TODO
+        // Step 4.5
+        // TODO this doesn't work, as e == u16_max + 2
+        // We could use bn_is_relatively_prime here though.
+        //if p.odd_sub_one().mod_u16_consttime(e) != 0 {
+        if true {
+            // Step 4.5.1
+            if probable_primality_test(&p, iterations, rng)? {
+                // Step 4.5.2
+                break;
+            }
+        }
+        // Step 4.6
+        i += 1;
+        // Step 4.7
+        if i >= 5 * (nlen / 2) {
+            return Err(error::Unspecified);
+        }
+    }
+    // Step 5.
+    // Step 5.1
+    let mut i = 0;
+    loop {
+        // Step 5.2
+        let mut q = bigint::Nonnegative::random(rng, limb_count)?;
+        // Step 5.3
+        if !q.is_odd() {
+            q = q.even_add_one();
+        }
+        // Step 5.4
+        // TODO
+        // Step 5.5
+        // TODO
+        // Step 5.6
+        // TODO this doesn't work, as e == u16_max + 2
+        // We could use bn_is_relatively_prime here though.
+        //if q.odd_sub_one().mod_u16_consttime(e) != 0 {
+        if true {
+            // Step 5.6.1
+            if probable_primality_test(&q, iterations, rng)? {
+                // Step 5.6.2
+                return Ok((p, q));
+            }
+        }
+        // Step 5.7
+        i += 1;
+        // Step 5.8
+        if i >= 5 * (nlen / 2) {
+            return Err(error::Unspecified);
+        }
+    }
+
+    // Unreachable location.
 }
 
 #[cfg(test)]

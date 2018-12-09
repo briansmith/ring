@@ -105,6 +105,12 @@ void LIMBS_odd_sub_one(Limb r[], size_t num_limbs) {
   r[0] &= ~1;
 }
 
+void LIMBS_even_add_one(Limb r[], size_t num_limbs) {
+  assert(num_limbs > 0);
+  assert(LIMBS_are_even(r, num_limbs));
+  r[0] |= 1;
+}
+
 /* if (r >= m) { r -= m; } */
 void LIMBS_reduce_once(Limb r[], const Limb m[], size_t num_limbs) {
   assert(num_limbs >= 1);
