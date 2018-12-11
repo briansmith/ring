@@ -1299,8 +1299,7 @@ bool tls13_finished_mac(SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len,
 // tls13_derive_session_psk calculates the PSK for this session based on the
 // resumption master secret and |nonce|. It returns true on success, and false
 // on failure.
-bool tls13_derive_session_psk(SSL_SESSION *session, Span<const uint8_t> nonce,
-                              bool use_quic);
+bool tls13_derive_session_psk(SSL_SESSION *session, Span<const uint8_t> nonce);
 
 // tls13_write_psk_binder calculates the PSK binder value and replaces the last
 // bytes of |msg| with the resulting value. It returns true on success, and
