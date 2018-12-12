@@ -27,7 +27,8 @@
 //!
 //! let rng = rand::SystemRandom::new();
 //!
-//! let my_private_key = agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng)?;
+//! let my_private_key =
+//!     agreement::PrivateKey::<agreement::Ephemeral>::generate(&agreement::X25519, &rng)?;
 //!
 //! // Make `my_public_key` a byte slice containing my public key. In a real
 //! // application, this would be sent to the peer in an encoded protocol
@@ -41,7 +42,8 @@
 //! let mut peer_public_key_buf = [0u8; agreement::PUBLIC_KEY_MAX_LEN];
 //! let peer_public_key;
 //! {
-//!     let peer_private_key = agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng)?;
+//!     let peer_private_key =
+//!         agreement::PrivateKey::<agreement::Ephemeral>::generate(&agreement::X25519, &rng)?;
 //!     peer_public_key = &mut peer_public_key_buf[..peer_private_key.public_key_len()];
 //!     peer_private_key.compute_public_key(peer_public_key)?;
 //! }
@@ -52,8 +54,7 @@
 //! // is X25519 since we just generated it.
 //! let peer_public_key_alg = &agreement::X25519;
 //!
-//! let input_keying_material =
-//!     agreement::agree_ephemeral(my_private_key, peer_public_key_alg, peer_public_key)?;
+//! let input_keying_material = my_private_key.agree(peer_public_key_alg, peer_public_key)?;
 //! input_keying_material.derive(|_key_material| {
 //!     // In a real application, we'd apply a KDF to the key material and the
 //!     // public keys (as recommended in RFC 7748) and then derive session
@@ -75,6 +76,7 @@ pub use crate::ec::{
     suite_b::ecdh::{ECDH_P256, ECDH_P384},
     PUBLIC_KEY_MAX_LEN,
 };
+use core::marker::PhantomData;
 
 /// A key agreement algorithm.
 pub struct Algorithm {
@@ -93,27 +95,43 @@ impl PartialEq for Algorithm {
     fn eq(&self, other: &Algorithm) -> bool { self.curve.id == other.curve.id }
 }
 
-/// An ephemeral private key for use (only) with `agree_ephemeral`. The
-/// signature of `agree_ephemeral` ensures that an `EphemeralPrivateKey` can be
-/// used for at most one key agreement.
-pub struct EphemeralPrivateKey {
+/// How many times the key may be used.
+pub trait Usage: self::sealed::Sealed {}
+
+/// The key may be used at most once.
+pub struct Ephemeral {}
+impl Usage for Ephemeral {}
+impl self::sealed::Sealed for Ephemeral {}
+
+/// The key may be used more than once.
+pub struct Static {}
+impl Usage for Static {}
+impl self::sealed::Sealed for Static {}
+
+/// A private key for key agreement.
+pub struct PrivateKey<U: Usage> {
     private_key: ec::PrivateKey,
     alg: &'static Algorithm,
+    usage: PhantomData<U>,
 }
 
-impl EphemeralPrivateKey {
-    /// Generate a new ephemeral private key for the given algorithm.
+impl<U: Usage> PrivateKey<U> {
+    /// Generate a new private key for the given algorithm.
     ///
     /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
     pub fn generate(
         alg: &'static Algorithm, rng: &rand::SecureRandom,
-    ) -> Result<EphemeralPrivateKey, error::Unspecified> {
+    ) -> Result<Self, error::Unspecified> {
         // NSA Guide Step 1.
         //
         // This only handles the key generation part of step 1. The rest of
         // step one is done by `compute_public_key()`.
         let private_key = ec::PrivateKey::generate(&alg.curve, rng)?;
-        Ok(EphemeralPrivateKey { private_key, alg })
+        Ok(Self {
+            private_key,
+            alg,
+            usage: PhantomData,
+        })
     }
 
     /// The key exchange algorithm.
@@ -138,41 +156,76 @@ impl EphemeralPrivateKey {
         self.private_key.compute_public_key(&self.alg.curve, out)
     }
 
+    /// Performs a key agreement with an private key and the given public key.
+    ///
+    /// Since `self` is consumed, it will not be usable after calling `agree`.
+    ///
+    /// `peer_public_key_alg` is the algorithm/curve for the peer's public key
+    /// point; `agree` will return `Err(error_value)` if it does not match this
+    /// private key's algorithm/curve.
+    ///
+    /// `peer_public_key` is the peer's public key. `agree` verifies that it is
+    /// encoded in the standard form for the algorithm and that the key is
+    /// *valid*; see the algorithm's documentation for details on how keys are
+    /// to be encoded and what constitutes a valid key for that algorithm.
+    ///
+    /// C analogs: `EC_POINT_oct2point` + `ECDH_compute_key`, `X25519`.
+    pub fn agree(
+        self, peer_public_key_alg: &Algorithm, peer_public_key: untrusted::Input,
+    ) -> Result<InputKeyMaterial, error::Unspecified> {
+        agree_(
+            &self.private_key,
+            self.alg,
+            peer_public_key_alg,
+            peer_public_key,
+        )
+    }
+
     #[cfg(test)]
     pub(crate) fn bytes(&self, curve: &ec::Curve) -> &[u8] { self.private_key.bytes(curve) }
 }
 
-/// Performs a key agreement with an ephemeral private key and the given public
-/// key.
-///
-/// `my_private_key` is the ephemeral private key to use. Since it is moved, it
-/// will not be usable after calling `agree_ephemeral`, thus guaranteeing that
-/// the key is used for only one key agreement.
-///
-/// `peer_public_key_alg` is the algorithm/curve for the peer's public key
-/// point; `agree_ephemeral` will return `Err(error_value)` if it does not
-/// match `my_private_key's` algorithm/curve.
-///
-/// `peer_public_key` is the peer's public key. `agree_ephemeral` verifies that
-/// it is encoded in the standard form for the algorithm and that the key is
-/// *valid*; see the algorithm's documentation for details on how keys are to
-/// be encoded and what constitutes a valid key for that algorithm.
-///
-/// C analogs: `EC_POINT_oct2point` + `ECDH_compute_key`, `X25519`.
-pub fn agree_ephemeral(
-    my_private_key: EphemeralPrivateKey, peer_public_key_alg: &Algorithm,
+impl PrivateKey<Static> {
+    /// Performs a key agreement with a static private key and the given
+    /// public key.
+    ///
+    /// `peer_public_key_alg` is the algorithm/curve for the peer's public key
+    /// point; `agree_static` will return `Err(error_value)` if it does not
+    /// match `my_private_key's` algorithm/curve.
+    ///
+    /// `peer_public_key` is the peer's public key. `agree_static` verifies
+    /// that it is encoded in the standard form for the algorithm and that
+    /// the key is *valid*; see the algorithm's documentation for details on
+    /// how keys are to be encoded and what constitutes a valid key for that
+    /// algorithm.
+    ///
+    /// C analogs: `EC_POINT_oct2point` + `ECDH_compute_key`, `X25519`.
+    pub fn agree_static(
+        &self, peer_public_key_alg: &Algorithm, peer_public_key: untrusted::Input,
+    ) -> Result<InputKeyMaterial, error::Unspecified> {
+        agree_(
+            &self.private_key,
+            self.alg,
+            peer_public_key_alg,
+            peer_public_key,
+        )
+    }
+}
+
+fn agree_(
+    my_private_key: &ec::PrivateKey, my_alg: &Algorithm, peer_public_key_alg: &Algorithm,
     peer_public_key: untrusted::Input,
 ) -> Result<InputKeyMaterial, error::Unspecified> {
+    let alg = &my_alg;
+
     // NSA Guide Prerequisite 1.
     //
     // The domain parameters are hard-coded. This check verifies that the
     // peer's public key's domain parameters match the domain parameters of
     // this private key.
-    if peer_public_key_alg != my_private_key.alg {
+    if peer_public_key_alg != *alg {
         return Err(error::Unspecified);
     }
-
-    let alg = &my_private_key.alg;
 
     // NSA Guide Prerequisite 2, regarding which KDFs are allowed, is delegated
     // to the caller.
@@ -181,8 +234,8 @@ pub fn agree_ephemeral(
     // each party shall obtain the identifier associated with the other party
     // during the key-agreement scheme," is delegated to the caller.
 
-    // NSA Guide Step 1 is handled by `EphemeralPrivateKey::generate()` and
-    // `EphemeralPrivateKey::compute_public_key()`.
+    // NSA Guide Step 1 is handled by `Self::generate()` and
+    // `Self::compute_public_key()`.
 
     // NSA Guide Steps 2, 3, and 4.
     //
@@ -192,11 +245,7 @@ pub fn agree_ephemeral(
         bytes: [0; ec::ELEM_MAX_BYTES],
         len: alg.curve.elem_and_scalar_len,
     };
-    (alg.ecdh)(
-        &mut ikm.bytes[..ikm.len],
-        &my_private_key.private_key,
-        peer_public_key,
-    )?;
+    (alg.ecdh)(&mut ikm.bytes[..ikm.len], my_private_key, peer_public_key)?;
 
     // NSA Guide Steps 5 and 6 are deferred to `InputKeyMaterial::derive`.
     Ok(ikm)
@@ -210,6 +259,10 @@ pub fn agree_ephemeral(
 pub struct InputKeyMaterial {
     bytes: [u8; ec::ELEM_MAX_BYTES],
     len: usize,
+}
+
+mod sealed {
+    pub trait Sealed {}
 }
 
 impl InputKeyMaterial {
