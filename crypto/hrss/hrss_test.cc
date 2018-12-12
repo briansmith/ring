@@ -76,7 +76,7 @@ TEST(HRSS, Poly2RotateRight) {
 
 // poly3_rand sets |r| to a random value (albeit with bias).
 static void poly3_rand(poly3 *p) {
-  RAND_bytes(reinterpret_cast<uint8_t *>(p), sizeof(p));
+  RAND_bytes(reinterpret_cast<uint8_t *>(p), sizeof(poly3));
   p->s.v[WORDS_PER_POLY - 1] &= (UINT64_C(1) << BITS_IN_LAST_WORD) - 1;
   p->a.v[WORDS_PER_POLY - 1] &= (UINT64_C(1) << BITS_IN_LAST_WORD) - 1;
   // (s, a) = (1, 1) is invalid. Map those to one.
