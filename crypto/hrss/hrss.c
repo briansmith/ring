@@ -1022,7 +1022,9 @@ struct poly {
     vec_t vectors[VECS_PER_POLY];
   };
 #else
-  uint16_t v[N + 3];
+  // Even if !HRSS_HAVE_VECTOR_UNIT, external assembly may be called that
+  // requires alignment.
+  alignas(16) uint16_t v[N + 3];
 #endif
 };
 
