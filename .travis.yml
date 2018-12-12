@@ -83,13 +83,17 @@ matrix:
             - llvm-toolchain-trusty-5.0
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=1
       rust: stable
       os: linux
       addons:
         apt:
           packages:
+            - binutils-dev
             - gcc-7
+            - libcurl4-openssl-dev
+            - libdw-dev
+            - libelf-dev
           sources:
             - ubuntu-toolchain-r-test
 

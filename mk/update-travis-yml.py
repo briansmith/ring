@@ -23,6 +23,9 @@ rusts = [
     "beta",
 ]
 
+gcc = "gcc-7"
+clang = "clang-5.0"
+
 linux_compilers = [
     # Assume the default compiler is GCC. This is run first because it is the
     # one most likely to break, especially since GCC 4.6 is the default
@@ -30,10 +33,9 @@ linux_compilers = [
     # BoringSSL.
     "",
 
-    # Newest clang and GCC.
-    "clang-5.0",
+    clang,
 
-    "gcc-7",
+    gcc,
 ]
 
 osx_compilers = [
@@ -110,23 +112,20 @@ entry_sources_template = """
             %(sources)s"""
 
 def format_entry(os, target, compiler, rust, mode, features):
+    target_words = target.split("-")
+    arch = target_words[0]
+    vendor = target_words[1]
+    sys = target_words[2]
+
     # Currently kcov only runs on Linux.
     #
     # GCC 5 was picked arbitrarily to restrict coverage report to one build for
     # efficiency reasons.
     #
-    # Cargo passes RUSTFLAGS to rustc only in Rust 1.9 and later. When Rust 1.9
-    # is released then we can change this to run (also) on the stable channel.
-    #
     # DEBUG mode is needed because debug symbols are needed for coverage
     # tracking.
-    kcov = (os == "linux" and compiler == "gcc-5" and rust == "nightly" and
-            mode == "DEBUG")
-
-    target_words = target.split("-")
-    arch = target_words[0]
-    vendor = target_words[1]
-    sys = target_words[2]
+    kcov = (os == "linux" and arch == "x86_64" and compiler == gcc and
+            rust == "stable" and mode == "DEBUG")
 
     if sys == "darwin":
         abi = sys
@@ -207,7 +206,8 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
                          "libdw-dev:i386",
                          "libelf-dev:i386",
                          "libkrb5-dev:i386",
-                         "libssl-dev:i386"]
+                         "libssl-dev:i386",
+                         "libstdc++-7-dev:i386"]
 
         if compiler.startswith("clang-") or compiler == "":
             packages += ["libc6-dev-i386",
