@@ -137,7 +137,8 @@
 //! // Normally the application would store the PKCS#8 file persistently. Later
 //! // it would read the PKCS#8 file from persistent storage to use it.
 //!
-//! let key_pair = signature::Ed25519KeyPair::from_pkcs8(untrusted::Input::from(pkcs8_bytes.as_ref()))?;
+//! let key_pair =
+//!     signature::Ed25519KeyPair::from_pkcs8(untrusted::Input::from(pkcs8_bytes.as_ref()))?;
 //!
 //! // Sign the message "hello, world".
 //! const MESSAGE: &[u8] = b"hello, world";
