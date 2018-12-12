@@ -27,11 +27,6 @@ use std;
 use untrusted;
 
 /// An RSA key pair, used for signing.
-///
-/// After constructing an `RSAKeyPair`, construct one or more
-/// `RSASigningState`s that reference the `RSAKeyPair` and use
-/// `RSASigningState::sign()` to generate signatures. See `ring::signature`'s
-/// module-level documentation for an example.
 pub struct KeyPair {
     p: PrivatePrime<P>,
     q: PrivatePrime<Q>,
@@ -458,23 +453,7 @@ unsafe impl bigint::SlightlySmallerModulus<P> for Q {}
 unsafe impl bigint::SmallerModulus<QQ> for Q {}
 unsafe impl bigint::NotMuchSmallerModulus<QQ> for Q {}
 
-/// State used for RSA Signing.
-//
-// TODO: Remove this; it's not needed if we don't have RSA blinding.
-pub struct SigningState {
-    key_pair: std::sync::Arc<KeyPair>,
-}
-
-impl SigningState {
-    /// Construct a signing state appropriate for use with the given key pair.
-    pub fn new(key_pair: std::sync::Arc<KeyPair>) -> Result<Self, error::Unspecified> {
-        Ok(SigningState { key_pair })
-    }
-
-    /// The key pair. This can be used, for example, to access the key pair's
-    /// public key.
-    pub fn key_pair(&self) -> &KeyPair { self.key_pair.as_ref() }
-
+impl KeyPair {
     /// Sign `msg`. `msg` is digested using the digest algorithm from
     /// `padding_alg` and the digest is then padded using the padding algorithm
     /// from `padding_alg`. The signature it written into `signature`;
@@ -492,15 +471,13 @@ impl SigningState {
     /// x86-64, this is done pretty well, but not perfectly. On other
     /// platforms, it is done less perfectly.
     pub fn sign(
-        &mut self, padding_alg: &'static crate::signature::RSAEncoding, rng: &rand::SecureRandom,
+        &self, padding_alg: &'static crate::signature::RSAEncoding, rng: &rand::SecureRandom,
         msg: &[u8], signature: &mut [u8],
     ) -> Result<(), error::Unspecified> {
-        let mod_bits = self.key_pair.public_key.n_bits;
+        let mod_bits = self.public_key.n_bits;
         if signature.len() != mod_bits.as_usize_bytes_rounded_up() {
             return Err(error::Unspecified);
         }
-
-        let SigningState { key_pair: key } = self;
 
         let m_hash = digest::digest(padding_alg.digest_alg(), msg);
         padding_alg.encode(&m_hash, signature, mod_bits, rng)?;
@@ -508,7 +485,7 @@ impl SigningState {
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.
 
-        let n = &key.public_key.n;
+        let n = &self.public_key.n;
 
         // Step 1. The value zero is also rejected.
         let base = bigint::Elem::from_be_bytes_padded(untrusted::Input::from(signature), n)?;
@@ -517,24 +494,24 @@ impl SigningState {
         let c = base;
 
         // Step 2.b.i.
-        let m_1 = elem_exp_consttime(&c, &key.p)?;
-        let c_mod_qq = bigint::elem_reduced_once(&c, &key.qq);
-        let m_2 = elem_exp_consttime(&c_mod_qq, &key.q)?;
+        let m_1 = elem_exp_consttime(&c, &self.p)?;
+        let c_mod_qq = bigint::elem_reduced_once(&c, &self.qq);
+        let m_2 = elem_exp_consttime(&c_mod_qq, &self.q)?;
 
         // Step 2.b.ii isn't needed since there are only two primes.
 
         // Step 2.b.iii.
-        let p = &key.p.modulus;
+        let p = &self.p.modulus;
         let m_2 = bigint::elem_widen(m_2, p);
         let m_1_minus_m_2 = bigint::elem_sub(m_1, &m_2, p);
-        let h = bigint::elem_mul(&key.qInv, m_1_minus_m_2, p);
+        let h = bigint::elem_mul(&self.qInv, m_1_minus_m_2, p);
 
         // Step 2.b.iv. The reduction in the modular multiplication isn't
         // necessary because `h < p` and `p * q == n` implies `h * q < n`.
         // Modular arithmetic is used simply to avoid implementing
         // non-modular arithmetic.
         let h = bigint::elem_widen(h, n);
-        let q_times_h = bigint::elem_mul(&key.q_mod_n, h, n);
+        let q_times_h = bigint::elem_mul(&self.q_mod_n, h, n);
         let m_2 = bigint::elem_widen(m_2, n);
         let m = bigint::elem_add(m_2, q_times_h, n);
 
@@ -549,7 +526,7 @@ impl SigningState {
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
         {
-            let verify = bigint::elem_exp_vartime(m.clone(), key.public_key.e, n);
+            let verify = bigint::elem_exp_vartime(m.clone(), self.public_key.e, n);
             let verify = verify.into_unencoded(n);
             bigint::elem_verify_equal_consttime(&verify, &c)?;
         }
@@ -584,25 +561,23 @@ mod tests {
             include_bytes!("signature_rsa_example_private_key.der");
         let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
         let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
-        let key_pair = std::sync::Arc::new(key_pair);
-        let mut signing_state = signature::RSASigningState::new(key_pair).unwrap();
 
         // The output buffer is one byte too short.
-        let mut signature = vec![0; signing_state.key_pair().public_modulus_len() - 1];
+        let mut signature = vec![0; key_pair.public_modulus_len() - 1];
 
-        assert!(signing_state
+        assert!(key_pair
             .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
             .is_err());
 
         // The output buffer is the right length.
         signature.push(0);
-        assert!(signing_state
+        assert!(key_pair
             .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
             .is_ok());
 
         // The output buffer is one byte too long.
         signature.push(0);
-        assert!(signing_state
+        assert!(key_pair
             .sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
             .is_err());
     }

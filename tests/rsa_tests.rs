@@ -89,9 +89,8 @@ fn test_signature_rsa_pkcs1_sign() {
 
         // XXX: This test is too slow on Android ARM Travis CI builds.
         // TODO: re-enable these tests on Android ARM.
-        let mut signing_state = signature::RSASigningState::new(key_pair).unwrap();
-        let mut actual = vec![0u8; signing_state.key_pair().public_modulus_len()];
-        signing_state
+        let mut actual = vec![0u8; key_pair.public_modulus_len()];
+        key_pair
             .sign(alg, &rng, &msg, actual.as_mut_slice())
             .unwrap();
         assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
@@ -121,16 +120,14 @@ fn test_signature_rsa_pss_sign() {
             return Ok(());
         }
         let key_pair = key_pair.unwrap();
-        let key_pair = std::sync::Arc::new(key_pair);
         let msg = test_case.consume_bytes("Msg");
         let salt = test_case.consume_bytes("Salt");
         let expected = test_case.consume_bytes("Sig");
 
         let rng = test::rand::FixedSliceRandom { bytes: &salt };
 
-        let mut signing_state = signature::RSASigningState::new(key_pair).unwrap();
-        let mut actual = vec![0u8; signing_state.key_pair().public_modulus_len()];
-        signing_state.sign(alg, &rng, &msg, actual.as_mut_slice())?;
+        let mut actual = vec![0u8; key_pair.public_modulus_len()];
+        key_pair.sign(alg, &rng, &msg, actual.as_mut_slice())?;
         assert_eq!(actual.as_slice() == &expected[..], result == "Pass");
         Ok(())
     });
@@ -142,8 +139,6 @@ fn test_rsa_key_pair_traits() {
     test::compile_time_assert_send::<signature::RSAKeyPair>();
     test::compile_time_assert_sync::<signature::RSAKeyPair>();
     test::compile_time_assert_debug::<signature::RSAKeyPair>();
-    test::compile_time_assert_send::<signature::RSASigningState>();
-    // TODO: Test that RSASigningState is NOT Sync.
 }
 
 #[cfg(feature = "use_heap")]

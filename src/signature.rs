@@ -206,18 +206,12 @@
 //! let key_pair = signature::RSAKeyPair::from_der(private_key_der)
 //!     .map_err(|_| MyError::BadPrivateKey)?;
 //!
-//! // Create a signing state.
-//! let key_pair = std::sync::Arc::new(key_pair);
-//! let mut signing_state = signature::RSASigningState::new(key_pair)
-//!     .map_err(|_| MyError::OOM)?;
-//!
 //! // Sign the message "hello, world", using PKCS#1 v1.5 padding and the
 //! // SHA256 digest algorithm.
 //! const MESSAGE: &'static [u8] = b"hello, world";
 //! let rng = rand::SystemRandom::new();
-//! let mut signature = vec![0; signing_state.key_pair().public_modulus_len()];
-//! signing_state.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE,
-//!                    &mut signature)
+//! let mut signature = vec![0; key_pair.public_modulus_len()];
+//! key_pair.sign(&signature::RSA_PKCS1_SHA256, &rng, MESSAGE, &mut signature)
 //!     .map_err(|_| MyError::OOM)?;
 //!
 //! // Verify the signature.
@@ -297,7 +291,7 @@ pub use crate::ec::curve25519::ed25519::signing::{
 };
 
 #[cfg(feature = "use_heap")]
-pub use crate::rsa::signing::{KeyPair as RSAKeyPair, SigningState as RSASigningState};
+pub use crate::rsa::signing::KeyPair as RSAKeyPair;
 
 #[cfg(feature = "use_heap")]
 pub use crate::rsa::{
