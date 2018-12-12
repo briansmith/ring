@@ -96,30 +96,36 @@ static int ssl_ext_supported_versions_add_serverhello(SSL_HANDSHAKE *hs,
 }
 
 static const SSL_CIPHER *choose_tls13_cipher(
-    const SSL *ssl, const SSL_CLIENT_HELLO *client_hello) {
+    const SSL *ssl, const SSL_CLIENT_HELLO *client_hello, uint16_t group_id) {
   if (client_hello->cipher_suites_len % 2 != 0) {
-    return NULL;
+    return nullptr;
   }
 
   CBS cipher_suites;
   CBS_init(&cipher_suites, client_hello->cipher_suites,
            client_hello->cipher_suites_len);
 
-  const int aes_is_fine = EVP_has_aes_hardware();
+  const bool aes_is_fine = EVP_has_aes_hardware();
+  const bool require_256_bit = group_id == SSL_CURVE_CECPQ2;
   const uint16_t version = ssl_protocol_version(ssl);
 
-  const SSL_CIPHER *best = NULL;
+  const SSL_CIPHER *best = nullptr;
   while (CBS_len(&cipher_suites) > 0) {
     uint16_t cipher_suite;
     if (!CBS_get_u16(&cipher_suites, &cipher_suite)) {
-      return NULL;
+      return nullptr;
     }
 
     // Limit to TLS 1.3 ciphers we know about.
     const SSL_CIPHER *candidate = SSL_get_cipher_by_value(cipher_suite);
-    if (candidate == NULL ||
+    if (candidate == nullptr ||
         SSL_CIPHER_get_min_version(candidate) > version ||
         SSL_CIPHER_get_max_version(candidate) < version) {
+      continue;
+    }
+
+    // Post-quantum key exchanges should be paired with 256-bit ciphers.
+    if (require_256_bit && candidate->algorithm_enc == SSL_AES128GCM) {
       continue;
     }
 
@@ -133,7 +139,7 @@ static const SSL_CIPHER *choose_tls13_cipher(
       return candidate;
     }
 
-    if (best == NULL) {
+    if (best == nullptr) {
       best = candidate;
     }
   }
@@ -240,8 +246,15 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
                  client_hello.session_id_len);
   hs->session_id_len = client_hello.session_id_len;
 
+  uint16_t group_id;
+  if (!tls1_get_shared_group(hs, &group_id)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_GROUP);
+    ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);
+    return ssl_hs_error;
+  }
+
   // Negotiate the cipher suite.
-  hs->new_cipher = choose_tls13_cipher(ssl, &client_hello);
+  hs->new_cipher = choose_tls13_cipher(ssl, &client_hello, group_id);
   if (hs->new_cipher == NULL) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_NO_SHARED_CIPHER);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_HANDSHAKE_FAILURE);

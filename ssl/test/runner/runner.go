@@ -8862,7 +8862,7 @@ func addSignatureAlgorithmTests() {
 	// Not all ciphers involve a signature. Advertise a list which gives all
 	// versions a signing cipher.
 	signingCiphers := []uint16{
-		TLS_AES_128_GCM_SHA256,
+		TLS_AES_256_GCM_SHA384,
 		TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 		TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 		TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA,
@@ -10732,7 +10732,7 @@ func addCurveTests() {
 					CipherSuites: []uint16{
 						TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 						TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-						TLS_AES_128_GCM_SHA256,
+						TLS_AES_256_GCM_SHA384,
 					},
 					CurvePreferences: []CurveID{curve.id},
 				},
@@ -10751,7 +10751,7 @@ func addCurveTests() {
 					CipherSuites: []uint16{
 						TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 						TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-						TLS_AES_128_GCM_SHA256,
+						TLS_AES_256_GCM_SHA384,
 					},
 					CurvePreferences: []CurveID{curve.id},
 				},
@@ -10771,7 +10771,7 @@ func addCurveTests() {
 						CipherSuites: []uint16{
 							TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 							TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-							TLS_AES_128_GCM_SHA256,
+							TLS_AES_256_GCM_SHA384,
 						},
 						CurvePreferences: []CurveID{curve.id},
 						Bugs: ProtocolBugs{
@@ -10791,7 +10791,7 @@ func addCurveTests() {
 						CipherSuites: []uint16{
 							TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
 							TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-							TLS_AES_128_GCM_SHA256,
+							TLS_AES_256_GCM_SHA384,
 						},
 						CurvePreferences: []CurveID{curve.id},
 						Bugs: ProtocolBugs{
@@ -13973,6 +13973,60 @@ func addTLS13CipherPreferenceTests() {
 		},
 		flags: []string{
 			"-expect-cipher-aes", strconv.Itoa(int(TLS_AES_128_GCM_SHA256)),
+			"-expect-cipher-no-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
+		},
+	})
+
+	// Test that CECPQ2 cannot be used with TLS_AES_128_GCM_SHA256.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-CipherPreference-CECPQ2-AES128Only",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveCECPQ2)),
+		},
+		shouldFail:         true,
+		expectedError:      ":NO_SHARED_CIPHER:",
+		expectedLocalError: "remote error: handshake failure",
+	})
+
+	// Test that CECPQ2 continues to honor AES vs ChaCha20 logic.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-CipherPreference-CECPQ2-AES128-ChaCha20-AES256",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+				TLS_CHACHA20_POLY1305_SHA256,
+				TLS_AES_256_GCM_SHA384,
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveCECPQ2)),
+			"-expect-cipher-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
+			"-expect-cipher-no-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
+		},
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-CipherPreference-CECPQ2-AES128-AES256-ChaCha20",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+				TLS_AES_256_GCM_SHA384,
+				TLS_CHACHA20_POLY1305_SHA256,
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveCECPQ2)),
+			"-expect-cipher-aes", strconv.Itoa(int(TLS_AES_256_GCM_SHA384)),
 			"-expect-cipher-no-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
 		},
 	})
