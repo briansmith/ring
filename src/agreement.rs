@@ -101,7 +101,7 @@ pub struct EphemeralPrivateKey {
     alg: &'static Algorithm,
 }
 
-impl<'a> EphemeralPrivateKey {
+impl EphemeralPrivateKey {
     /// Generate a new ephemeral private key for the given algorithm.
     ///
     /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
@@ -139,7 +139,7 @@ impl<'a> EphemeralPrivateKey {
     }
 
     #[cfg(test)]
-    pub fn bytes(&'a self, curve: &ec::Curve) -> &'a [u8] { self.private_key.bytes(curve) }
+    pub(crate) fn bytes(&self, curve: &ec::Curve) -> &[u8] { self.private_key.bytes(curve) }
 }
 
 /// Performs a key agreement with an ephemeral private key and the given public
