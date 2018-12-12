@@ -836,6 +836,23 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     }
   }
 
+  if (config->export_traffic_secrets) {
+    bssl::Span<const uint8_t> read_secret, write_secret;
+    if (!SSL_get_traffic_secrets(ssl, &read_secret, &write_secret)) {
+      fprintf(stderr, "failed to export traffic secrets\n");
+      return false;
+    }
+
+    assert(read_secret.size() <= 0xffff);
+    assert(write_secret.size() == read_secret.size());
+    const uint16_t secret_len = read_secret.size();
+    if (WriteAll(ssl, &secret_len, sizeof(secret_len)) < 0 ||
+        WriteAll(ssl, read_secret.data(), read_secret.size()) < 0 ||
+        WriteAll(ssl, write_secret.data(), write_secret.size()) < 0) {
+      return false;
+    }
+  }
+
   if (config->tls_unique) {
     uint8_t tls_unique[16];
     size_t tls_unique_len;

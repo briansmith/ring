@@ -171,6 +171,7 @@ struct TestConfig {
   std::string handshaker_path;
   bool jdk11_workaround = false;
   bool server_preference = false;
+  bool export_traffic_secrets = false;
 
   int argc;
   char **argv;

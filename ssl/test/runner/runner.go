@@ -22,6 +22,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -490,6 +491,9 @@ type testCase struct {
 	// expectedQUICTransportParams contains the QUIC transport
 	// parameters that are expected to be sent by the peer.
 	expectedQUICTransportParams []byte
+	// exportTrafficSecrets, if true, configures the test to export the TLS 1.3
+	// traffic secrets and confirms that they match.
+	exportTrafficSecrets bool
 }
 
 var testCases []testCase
@@ -765,6 +769,32 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 		}
 		if !bytes.Equal(actual, expected) {
 			return fmt.Errorf("keying material mismatch; got %x, wanted %x", actual, expected)
+		}
+	}
+
+	if test.exportTrafficSecrets {
+		secretLenBytes := make([]byte, 2)
+		if _, err := io.ReadFull(tlsConn, secretLenBytes); err != nil {
+			return err
+		}
+		secretLen := binary.LittleEndian.Uint16(secretLenBytes)
+
+		theirReadSecret := make([]byte, secretLen)
+		theirWriteSecret := make([]byte, secretLen)
+		if _, err := io.ReadFull(tlsConn, theirReadSecret); err != nil {
+			return err
+		}
+		if _, err := io.ReadFull(tlsConn, theirWriteSecret); err != nil {
+			return err
+		}
+
+		myReadSecret := tlsConn.in.trafficSecret
+		myWriteSecret := tlsConn.out.trafficSecret
+		if !bytes.Equal(myWriteSecret, theirReadSecret) {
+			return fmt.Errorf("read traffic-secret mismatch; got %x, wanted %x", theirReadSecret, myWriteSecret)
+		}
+		if !bytes.Equal(myReadSecret, theirWriteSecret) {
+			return fmt.Errorf("write traffic-secret mismatch; got %x, wanted %x", theirWriteSecret, myReadSecret)
 		}
 	}
 
@@ -1121,6 +1151,10 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 	if test.exportKeyingMaterial > 0 || test.exportEarlyKeyingMaterial > 0 {
 		flags = append(flags, "-export-label", test.exportLabel)
 		flags = append(flags, "-export-context", test.exportContext)
+	}
+
+	if test.exportTrafficSecrets {
+		flags = append(flags, "-export-traffic-secrets")
 	}
 
 	if test.expectResumeRejected {
@@ -10521,6 +10555,24 @@ func addExportKeyingMaterialTests() {
 	})
 }
 
+func addExportTrafficSecretsTests() {
+	for _, cipherSuite := range []testCipherSuite{
+		// Test a SHA-256 and SHA-384 based cipher suite.
+		{"AEAD-AES128-GCM-SHA256", TLS_AES_128_GCM_SHA256},
+		{"AEAD-AES256-GCM-SHA384", TLS_AES_256_GCM_SHA384},
+	} {
+
+		testCases = append(testCases, testCase{
+			name: "ExportTrafficSecrets-" + cipherSuite.name,
+			config: Config{
+				MinVersion:   VersionTLS13,
+				CipherSuites: []uint16{cipherSuite.id},
+			},
+			exportTrafficSecrets: true,
+		})
+	}
+}
+
 func addTLSUniqueTests() {
 	for _, isClient := range []bool{false, true} {
 		for _, isResumption := range []bool{false, true} {
@@ -15076,6 +15128,7 @@ func main() {
 	addSignatureAlgorithmTests()
 	addDTLSRetransmitTests()
 	addExportKeyingMaterialTests()
+	addExportTrafficSecretsTests()
 	addTLSUniqueTests()
 	addCustomExtensionTests()
 	addRSAClientKeyExchangeTests()

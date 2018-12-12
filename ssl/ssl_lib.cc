@@ -506,6 +506,27 @@ void SSL_set_handoff_mode(SSL *ssl, bool on) {
   ssl->config->handoff = on;
 }
 
+bool SSL_get_traffic_secrets(const SSL *ssl,
+                             Span<const uint8_t> *out_read_traffic_secret,
+                             Span<const uint8_t> *out_write_traffic_secret) {
+  if (SSL_version(ssl) < TLS1_3_VERSION) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
+    return false;
+  }
+
+  if (!ssl->s3->initial_handshake_complete) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_HANDSHAKE_NOT_COMPLETE);
+    return false;
+  }
+
+  *out_read_traffic_secret = Span<const uint8_t>(
+      ssl->s3->read_traffic_secret, ssl->s3->read_traffic_secret_len);
+  *out_write_traffic_secret = Span<const uint8_t>(
+      ssl->s3->write_traffic_secret, ssl->s3->write_traffic_secret_len);
+
+  return true;
+}
+
 BSSL_NAMESPACE_END
 
 using namespace bssl;

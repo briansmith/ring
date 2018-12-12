@@ -147,6 +147,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-reverify-on-resume", &TestConfig::reverify_on_resume },
   { "-jdk11-workaround", &TestConfig::jdk11_workaround },
   { "-server-preference", &TestConfig::server_preference },
+  { "-export-traffic-secrets", &TestConfig::export_traffic_secrets },
 };
 
 const Flag<std::string> kStringFlags[] = {
