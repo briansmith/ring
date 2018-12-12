@@ -30,8 +30,8 @@
 //!         <code>dev_urandom_fallback</code> feature is disabled, such
 //!         fallbacks will not occur. See the documentation for
 //!         <code>rand::SystemRandom</code> for more details.
-//! <tr><td><code>rsa_signing</code>
-//!     <td>Enable RSA signing (<code>RSAKeyPair</code> and related things).
+//! <tr><td><code>use_heap (default)</code>
+//!     <td>Enable features that require use of the heap, RSA in particular.
 //! </table>
 
 #![doc(html_root_url = "https://briansmith.org/rustdoc/")]

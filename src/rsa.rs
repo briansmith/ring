@@ -24,7 +24,6 @@ use untrusted;
 mod padding;
 
 // `RSA_PKCS1_SHA1` is intentionally not exposed.
-#[cfg(feature = "rsa_signing")]
 pub use self::padding::RSAEncoding;
 
 pub use self::padding::{
@@ -36,7 +35,6 @@ pub use self::padding::{
 const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize = bigint::MODULUS_MAX_LIMBS * limb::LIMB_BYTES;
 
 // Keep in sync with the documentation comment for `KeyPair`.
-#[cfg(feature = "rsa_signing")]
 const PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS: bits::BitLength = bits::BitLength::from_usize_bits(4096);
 
 /// Parameters for RSA verification.
@@ -76,7 +74,6 @@ pub enum N {}
 
 pub mod verification;
 
-#[cfg(feature = "rsa_signing")]
 pub mod signing;
 
 mod bigint;

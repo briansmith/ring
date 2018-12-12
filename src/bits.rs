@@ -29,7 +29,7 @@ impl BitLength {
         Ok(BitLength::from_usize_bits(bits))
     }
 
-    #[cfg(feature = "rsa_signing")]
+    #[cfg(feature = "use_heap")]
     #[inline]
     pub fn half_rounded_up(&self) -> BitLength {
         let round_up = self.0 & 1;

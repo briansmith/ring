@@ -16,7 +16,7 @@ use super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN;
 use crate::{bits, der, digest, error, polyfill};
 use untrusted;
 
-#[cfg(feature = "rsa_signing")]
+#[cfg(feature = "use_heap")]
 use crate::rand;
 
 /// Common features of both RSA padding encoding and RSA padding verification.
@@ -29,7 +29,7 @@ pub trait RSAPadding: 'static + Sync + crate::private::Sealed {
 /// An RSA signature encoding as described in [RFC 3447 Section 8].
 ///
 /// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
-#[cfg(feature = "rsa_signing")]
+#[cfg(feature = "use_heap")]
 pub trait RSAEncoding: RSAPadding {
     #[doc(hidden)]
     fn encode(
@@ -65,7 +65,7 @@ impl RSAPadding for PKCS1 {
     fn digest_alg(&self) -> &'static digest::Algorithm { self.digest_alg }
 }
 
-#[cfg(feature = "rsa_signing")]
+#[cfg(feature = "use_heap")]
 impl RSAEncoding for PKCS1 {
     fn encode(
         &self, m_hash: &digest::Digest, m_out: &mut [u8], _mod_bits: bits::BitLength,
@@ -121,7 +121,6 @@ macro_rules! rsa_pkcs1_padding {
     ( $PADDING_ALGORITHM:ident, $digest_alg:expr, $digestinfo_prefix:expr,
       $doc_str:expr ) => {
         #[doc=$doc_str]
-        /// Feature: `rsa_signing`.
         pub static $PADDING_ALGORITHM: PKCS1 = PKCS1 {
             digest_alg: $digest_alg,
             digestinfo_prefix: $digestinfo_prefix,
@@ -207,7 +206,6 @@ pub struct PSS {
 
 impl crate::private::Sealed for PSS {}
 
-#[cfg(feature = "rsa_signing")]
 // Maximum supported length of the salt in bytes.
 // In practice, this is constrained by the maximum digest length.
 const MAX_SALT_LEN: usize = digest::MAX_OUTPUT_LEN;
@@ -216,7 +214,6 @@ impl RSAPadding for PSS {
     fn digest_alg(&self) -> &'static digest::Algorithm { self.digest_alg }
 }
 
-#[cfg(feature = "rsa_signing")]
 impl RSAEncoding for PSS {
     // Implement padding procedure per EMSA-PSS,
     // https://tools.ietf.org/html/rfc3447#section-9.1.
@@ -377,7 +374,7 @@ impl RSAVerification for PSS {
 }
 
 struct PSSMetrics {
-    #[cfg_attr(not(feature = "rsa_signing"), allow(dead_code))]
+    #[cfg_attr(not(feature = "use_heap"), allow(dead_code))]
     em_len: usize,
     db_len: usize,
     ps_len: usize,
@@ -463,7 +460,6 @@ fn pss_digest(
 macro_rules! rsa_pss_padding {
     ( $PADDING_ALGORITHM:ident, $digest_alg:expr, $doc_str:expr ) => {
         #[doc=$doc_str]
-        /// Feature: `rsa_signing`.
         pub static $PADDING_ALGORITHM: PSS = PSS {
             digest_alg: $digest_alg,
         };
@@ -533,7 +529,7 @@ mod test {
     }
 
     // Tests PSS encoding for various public modulus lengths.
-    #[cfg(feature = "rsa_signing")]
+    #[cfg(feature = "use_heap")]
     #[test]
     fn test_pss_padding_encode() {
         test::from_file("src/rsa/rsa_pss_padding_tests.txt", |section, test_case| {

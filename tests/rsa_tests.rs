@@ -32,12 +32,9 @@
 )]
 
 #[cfg(feature = "use_heap")]
-use ring::{der, error, signature, test};
+use ring::{der, error, rand, signature, test};
 
-#[cfg(feature = "rsa_signing")]
-use ring::rand;
-
-#[cfg(feature = "rsa_signing")]
+#[cfg(feature = "use_heap")]
 #[test]
 fn rsa_from_pkcs8_test() {
     test::from_file("tests/rsa_from_pkcs8_tests.txt", |section, test_case| {
@@ -61,7 +58,7 @@ fn rsa_from_pkcs8_test() {
     });
 }
 
-#[cfg(feature = "rsa_signing")]
+#[cfg(feature = "use_heap")]
 #[test]
 fn test_signature_rsa_pkcs1_sign() {
     let rng = rand::SystemRandom::new();
@@ -102,7 +99,7 @@ fn test_signature_rsa_pkcs1_sign() {
     });
 }
 
-#[cfg(feature = "rsa_signing")]
+#[cfg(feature = "use_heap")]
 #[test]
 fn test_signature_rsa_pss_sign() {
     test::from_file("tests/rsa_pss_sign_tests.txt", |section, test_case| {
@@ -139,7 +136,7 @@ fn test_signature_rsa_pss_sign() {
     });
 }
 
-#[cfg(feature = "rsa_signing")]
+#[cfg(feature = "use_heap")]
 #[test]
 fn test_rsa_key_pair_traits() {
     test::compile_time_assert_send::<signature::RSAKeyPair>();

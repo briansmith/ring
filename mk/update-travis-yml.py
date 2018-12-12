@@ -53,7 +53,6 @@ compilers = {
 }
 
 feature_sets = [
-    "--features=rsa_signing",
     "",
 ]
 

@@ -26,7 +26,7 @@ use crate::{
 use std;
 use untrusted;
 
-/// An RSA key pair, used for signing. Feature: `rsa_signing`.
+/// An RSA key pair, used for signing.
 ///
 /// After constructing an `RSAKeyPair`, construct one or more
 /// `RSASigningState`s that reference the `RSAKeyPair` and use
@@ -458,7 +458,7 @@ unsafe impl bigint::SlightlySmallerModulus<P> for Q {}
 unsafe impl bigint::SmallerModulus<QQ> for Q {}
 unsafe impl bigint::NotMuchSmallerModulus<QQ> for Q {}
 
-/// State used for RSA Signing. Feature: `rsa_signing`.
+/// State used for RSA Signing.
 //
 // TODO: Remove this; it's not needed if we don't have RSA blinding.
 pub struct SigningState {

@@ -166,9 +166,6 @@
 //!
 //! ## Signing and verifying with RSA (PKCS#1 1.5 padding)
 //!
-//! RSA signing (but not verification) requires the `rsa_signing` feature to
-//! be enabled.
-//!
 //! By default OpenSSL writes RSA public keys in SubjectPublicKeyInfo format,
 //! not RSAPublicKey format, and Base64-encodes them (“PEM” format).
 //!
@@ -198,7 +195,7 @@
 //! ```
 //! use ring::{rand, signature};
 //!
-//! # #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
+//! # #[cfg(feature = "use_heap")]
 //! fn sign_and_verify_rsa(private_key_path: &std::path::Path,
 //!                        public_key_path: &std::path::Path)
 //!                        -> Result<(), MyError> {
@@ -237,14 +234,14 @@
 //!
 //! #[derive(Debug)]
 //! enum MyError {
-//! #  #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
+//! #  #[cfg(feature = "use_heap")]
 //!    IO(std::io::Error),
 //!    BadPrivateKey,
 //!    OOM,
 //!    BadSignature,
 //! }
 //!
-//! # #[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
+//! # #[cfg(feature = "use_heap")]
 //! fn read_file(path: &std::path::Path) -> Result<Vec<u8>, MyError> {
 //!     use std::io::Read;
 //!
@@ -254,7 +251,7 @@
 //!     Ok(contents)
 //! }
 //! #
-//! # #[cfg(not(all(feature = "rsa_signing", feature = "use_heap")))]
+//! # #[cfg(not(feature = "use_heap"))]
 //! # fn sign_and_verify_rsa(_private_key_path: &std::path::Path,
 //! #                        _public_key_path: &std::path::Path)
 //! #                        -> Result<(), ()> {
@@ -299,10 +296,10 @@ pub use crate::ec::curve25519::ed25519::signing::{
     KeyPair as Ed25519KeyPair, PKCS8_V2_LEN as ED25519_PKCS8_V2_LEN,
 };
 
-#[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
+#[cfg(feature = "use_heap")]
 pub use crate::rsa::signing::{KeyPair as RSAKeyPair, SigningState as RSASigningState};
 
-#[cfg(all(feature = "rsa_signing", feature = "use_heap"))]
+#[cfg(feature = "use_heap")]
 pub use crate::rsa::{
     RSAEncoding,
 

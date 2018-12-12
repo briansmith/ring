@@ -42,6 +42,7 @@
 
 use crate::{
     arithmetic::montgomery::*,
+    bssl,
     bits, c, error,
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
 };
@@ -51,9 +52,6 @@ use core::{
     ops::{Deref, DerefMut},
 };
 use untrusted;
-
-#[cfg(feature = "rsa_signing")]
-use crate::bssl;
 
 pub unsafe trait Prime {}
 
@@ -113,7 +111,6 @@ impl<M> BoxedLimbs<M> {
         Ok(r)
     }
 
-    #[cfg(feature = "rsa_signing")]
     fn minimal_width_from_unpadded(limbs: &[Limb]) -> Self {
         debug_assert_ne!(limbs.last(), Some(&0));
         use std::borrow::ToOwned;
@@ -232,7 +229,6 @@ impl<M> Modulus<M> {
         Self::from_boxed_limbs(limbs)
     }
 
-    #[cfg(feature = "rsa_signing")]
     pub fn from_nonnegative_with_bit_length(
         n: Nonnegative,
     ) -> Result<(Self, bits::BitLength), error::KeyRejected> {
@@ -305,7 +301,6 @@ impl<M> Modulus<M> {
     #[inline]
     fn width(&self) -> Width<M> { self.limbs.width() }
 
-    #[cfg(feature = "rsa_signing")]
     fn zero<E>(&self) -> Elem<M, E> {
         Elem {
             limbs: BoxedLimbs::zero(self.width()),
@@ -314,7 +309,6 @@ impl<M> Modulus<M> {
     }
 
     // TODO: Get rid of this
-    #[cfg(feature = "rsa_signing")]
     fn one(&self) -> Elem<M, Unencoded> {
         let mut r = self.zero();
         r.limbs[0] = 1;
@@ -323,7 +317,6 @@ impl<M> Modulus<M> {
 
     pub fn oneRR(&self) -> &One<M, RR> { &self.oneRR }
 
-    #[cfg(feature = "rsa_signing")]
     pub fn to_elem<L>(&self, l: &Modulus<L>) -> Elem<L, Unencoded>
     where
         M: SmallerModulus<L>,
@@ -438,14 +431,12 @@ impl<M> Elem<M, Unencoded> {
         limb::big_endian_from_limbs(&self.limbs, out)
     }
 
-    #[cfg(feature = "rsa_signing")]
     pub fn into_modulus<MM>(self) -> Result<Modulus<MM>, error::KeyRejected> {
         let (m, _bits) =
             Modulus::from_boxed_limbs(BoxedLimbs::minimal_width_from_unpadded(&self.limbs))?;
         Ok(m)
     }
 
-    #[cfg(feature = "rsa_signing")]
     fn is_one(&self) -> bool {
         limb::limbs_equal_limb_constant_time(&self.limbs, 1) == LimbMask::True
     }
@@ -487,7 +478,6 @@ fn elem_mul_by_2<M, AF>(a: &mut Elem<M, AF>, m: &PartialModulus<M>) {
     }
 }
 
-#[cfg(feature = "rsa_signing")]
 pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
     a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>,
 ) -> Elem<Smaller, Unencoded> {
@@ -503,7 +493,6 @@ pub fn elem_reduced_once<Larger, Smaller: SlightlySmallerModulus<Larger>>(
     }
 }
 
-#[cfg(feature = "rsa_signing")]
 #[inline]
 pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
     a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>,
@@ -547,7 +536,6 @@ where
     }
 }
 
-#[cfg(feature = "rsa_signing")]
 pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
     a: Elem<Smaller, Unencoded>, m: &Modulus<Larger>,
 ) -> Elem<Larger, Unencoded> {
@@ -557,7 +545,6 @@ pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
 }
 
 // TODO: Document why this works for all Montgomery factors.
-#[cfg(feature = "rsa_signing")]
 pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
     extern "C" {
         // `r` and `a` may alias.
@@ -578,7 +565,6 @@ pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>) -> Elem<
 }
 
 // TODO: Document why this works for all Montgomery factors.
-#[cfg(feature = "rsa_signing")]
 pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
     extern "C" {
         // `r` and `a` may alias.
@@ -766,12 +752,10 @@ fn elem_exp_vartime_<M>(base: Elem<M, R>, exponent: u64, m: &PartialModulus<M>) 
 
 // `M` represents the prime modulus for which the exponent is in the interval
 // [1, `m` - 1).
-#[cfg(feature = "rsa_signing")]
 pub struct PrivateExponent<M> {
     limbs: BoxedLimbs<M>,
 }
 
-#[cfg(feature = "rsa_signing")]
 impl<M> PrivateExponent<M> {
     pub fn from_be_bytes_padded(
         input: untrusted::Input, p: &Modulus<M>,
@@ -794,7 +778,6 @@ impl<M> PrivateExponent<M> {
     }
 }
 
-#[cfg(feature = "rsa_signing")]
 impl<M: Prime> PrivateExponent<M> {
     // Returns `p - 2`.
     fn for_flt(p: &Modulus<M>) -> Self {
@@ -806,7 +789,7 @@ impl<M: Prime> PrivateExponent<M> {
     }
 }
 
-#[cfg(all(feature = "rsa_signing", not(target_arch = "x86_64")))]
+#[cfg(not(target_arch = "x86_64"))]
 pub fn elem_exp_consttime<M>(
     base: Elem<M, R>, exponent: &PrivateExponent<M>, m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
@@ -886,14 +869,13 @@ pub fn elem_exp_consttime<M>(
 }
 
 /// Uses Fermat's Little Theorem to calculate modular inverse in constant time.
-#[cfg(feature = "rsa_signing")]
 pub fn elem_inverse_consttime<M: Prime>(
     a: Elem<M, R>, m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
     elem_exp_consttime(a, &PrivateExponent::for_flt(&m), m)
 }
 
-#[cfg(all(feature = "rsa_signing", target_arch = "x86_64"))]
+#[cfg(target_arch = "x86_64")]
 pub fn elem_exp_consttime<M>(
     base: Elem<M, R>, exponent: &PrivateExponent<M>, m: &Modulus<M>,
 ) -> Result<Elem<M, Unencoded>, error::Unspecified> {
@@ -1072,7 +1054,6 @@ pub fn elem_exp_consttime<M>(
 }
 
 /// Verified a == b**-1 (mod m), i.e. a**-1 == b (mod m).
-#[cfg(feature = "rsa_signing")]
 pub fn verify_inverses_consttime<M>(
     a: &Elem<M, R>, b: Elem<M, Unencoded>, m: &Modulus<M>,
 ) -> Result<(), error::Unspecified> {
@@ -1083,8 +1064,6 @@ pub fn verify_inverses_consttime<M>(
     }
 }
 
-#[allow(dead_code)]
-#[cfg(feature = "use_heap")]
 #[inline]
 pub fn elem_verify_equal_consttime<M, E>(
     a: &Elem<M, E>, b: &Elem<M, E>,
@@ -1097,12 +1076,10 @@ pub fn elem_verify_equal_consttime<M, E>(
 }
 
 /// Nonnegative integers.
-#[cfg(feature = "rsa_signing")]
 pub struct Nonnegative {
     limbs: Vec<Limb>,
 }
 
-#[cfg(feature = "rsa_signing")]
 impl Nonnegative {
     pub fn from_be_bytes_with_bit_length(
         input: untrusted::Input,
@@ -1150,7 +1127,6 @@ impl Nonnegative {
 }
 
 // Returns a > b.
-#[cfg(feature = "rsa_signing")]
 fn greater_than(a: &Nonnegative, b: &Nonnegative) -> bool {
     if a.limbs.len() == b.limbs.len() {
         limb::limbs_less_than_limbs_vartime(&b.limbs, &a.limbs)
@@ -1197,7 +1173,7 @@ fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0) {
 }
 
 /// r = a * b
-#[cfg(all(feature = "rsa_signing", not(target_arch = "x86_64")))]
+#[cfg(not(target_arch = "x86_64"))]
 fn limbs_mont_product(r: &mut [Limb], a: &[Limb], b: &[Limb], m: &[Limb], n0: &N0) {
     debug_assert_eq!(r.len(), m.len());
     debug_assert_eq!(a.len(), m.len());
@@ -1245,7 +1221,6 @@ mod tests {
     // Type-level representation of an arbitrary modulus.
     struct M {}
 
-    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_elem_exp_consttime() {
         test::from_file(
@@ -1332,7 +1307,6 @@ mod tests {
         )
     }
 
-    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_elem_reduced() {
         test::from_file(
@@ -1359,7 +1333,6 @@ mod tests {
         )
     }
 
-    #[cfg(feature = "rsa_signing")]
     #[test]
     fn test_elem_reduced_once() {
         test::from_file(
@@ -1392,7 +1365,6 @@ mod tests {
         Elem::from_be_bytes_padded(untrusted::Input::from(&value), m).unwrap()
     }
 
-    #[cfg(feature = "rsa_signing")]
     fn consume_elem_unchecked<M>(
         test_case: &mut test::TestCase, name: &str, num_limbs: usize,
     ) -> Elem<M, Unencoded> {
@@ -1420,7 +1392,6 @@ mod tests {
         PublicExponent::from_be_bytes(untrusted::Input::from(&bytes), 3).unwrap()
     }
 
-    #[cfg(feature = "rsa_signing")]
     fn consume_nonnegative(test_case: &mut test::TestCase, name: &str) -> Nonnegative {
         let bytes = test_case.consume_bytes(name);
         let (r, _r_bits) =

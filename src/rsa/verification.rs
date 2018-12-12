@@ -78,7 +78,7 @@ impl Key {
     /// Returns the length in bytes of the modulus.
     ///
     /// A signature has the same length as the public modulus.
-    #[cfg(feature = "rsa_signing")]
+    #[cfg(feature = "use_heap")]
     pub fn modulus_len(&self) -> usize { self.n_bits.as_usize_bytes_rounded_up() }
 }
 

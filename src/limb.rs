@@ -24,7 +24,7 @@ use untrusted;
 #[cfg(any(test, feature = "use_heap"))]
 use crate::bits;
 
-#[cfg(feature = "rsa_signing")]
+#[cfg(feature = "use_heap")]
 use core::num::Wrapping;
 
 // XXX: Not correct for x32 ABIs.
@@ -96,7 +96,7 @@ pub fn limbs_are_even_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { LIMBS_are_even(limbs.as_ptr(), limbs.len()) }
 }
 
-#[cfg(any(test, feature = "rsa_signing"))]
+#[cfg(any(test, feature = "use_heap"))]
 #[inline]
 pub fn limbs_equal_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
     unsafe { LIMBS_equal_limb(a.as_ptr(), b, a.len()) }
@@ -248,7 +248,7 @@ pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
     }
 }
 
-#[cfg(feature = "rsa_signing")]
+#[cfg(feature = "use_heap")]
 pub type Window = Limb;
 
 /// Processes `limbs` as a sequence of 5-bit windows, folding the windows from
@@ -263,7 +263,7 @@ pub type Window = Limb;
 /// channels as long as `init` and `fold` are side-channel free.
 ///
 /// Panics if `limbs` is empty.
-#[cfg(feature = "rsa_signing")]
+#[cfg(feature = "use_heap")]
 pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
     limbs: &[Limb], init: I, fold: F,
 ) -> R {
@@ -331,7 +331,7 @@ extern "C" {
     #[cfg(any(test, feature = "use_heap"))]
     fn LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
-    #[cfg(any(test, feature = "rsa_signing"))]
+    #[cfg(any(test, feature = "use_heap"))]
     fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
     #[cfg(feature = "use_heap")]
@@ -445,7 +445,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "rsa_signing")]
+    #[cfg(feature = "use_heap")]
     fn test_limbs_less_than_limb_constant_time() {
         static LESSER: &[(&[Limb], Limb)] = &[
             (&[0], 1),
