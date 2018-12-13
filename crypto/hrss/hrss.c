@@ -2088,10 +2088,9 @@ static void owf(uint8_t out[POLY_BYTES], const struct public_key *pub,
   poly_marshal(out, &prh_plus_m);
 }
 
-static const char kConfirmationHash[] = "confirmation hash";
 static const char kSharedKey[] = "shared key";
 
-void HRSS_encap(uint8_t out_ciphertext[POLY_BYTES + 32],
+void HRSS_encap(uint8_t out_ciphertext[POLY_BYTES],
                 uint8_t out_shared_key[32],
                 const struct HRSS_public_key *in_pub,
                 const uint8_t in[HRSS_SAMPLE_BYTES + HRSS_SAMPLE_BYTES]) {
@@ -2109,16 +2108,10 @@ void HRSS_encap(uint8_t out_ciphertext[POLY_BYTES + 32],
 
   SHA256_CTX hash_ctx;
   SHA256_Init(&hash_ctx);
-  SHA256_Update(&hash_ctx, kConfirmationHash, sizeof(kConfirmationHash));
-  SHA256_Update(&hash_ctx, m_bytes, sizeof(m_bytes));
-  SHA256_Update(&hash_ctx, r_bytes, sizeof(r_bytes));
-  SHA256_Final(out_ciphertext + POLY_BYTES, &hash_ctx);
-
-  SHA256_Init(&hash_ctx);
   SHA256_Update(&hash_ctx, kSharedKey, sizeof(kSharedKey));
   SHA256_Update(&hash_ctx, m_bytes, sizeof(m_bytes));
   SHA256_Update(&hash_ctx, r_bytes, sizeof(r_bytes));
-  SHA256_Update(&hash_ctx, out_ciphertext, POLY_BYTES + 32);
+  SHA256_Update(&hash_ctx, out_ciphertext, POLY_BYTES);
   SHA256_Final(out_shared_key, &hash_ctx);
 }
 
@@ -2166,7 +2159,7 @@ void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
   // If the ciphertext is publicly invalid then a random shared key is still
   // returned to simply the logic of the caller, but this path is not constant
   // time.
-  if (ciphertext_len != POLY_BYTES + 32) {
+  if (ciphertext_len != HRSS_CIPHERTEXT_BYTES) {
     return;
   }
 
@@ -2200,7 +2193,9 @@ void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
   struct poly3 r3;
   crypto_word_t ok = poly3_from_poly_checked(&r3, &c);
 
-  uint8_t expected_ciphertext[POLY_BYTES + 32];
+  uint8_t expected_ciphertext[HRSS_CIPHERTEXT_BYTES];
+  OPENSSL_STATIC_ASSERT(HRSS_CIPHERTEXT_BYTES == POLY_BYTES,
+                        "ciphertext is the wrong size");
   assert(ciphertext_len == sizeof(expected_ciphertext));
   owf(expected_ciphertext, pub, &m_lifted, &c);
 
@@ -2208,12 +2203,6 @@ void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
   uint8_t r_bytes[HRSS_POLY3_BYTES];
   poly_marshal_mod3(m_bytes, &m);
   poly_marshal_mod3(r_bytes, &c);
-
-  SHA256_Init(&hash_ctx);
-  SHA256_Update(&hash_ctx, kConfirmationHash, sizeof(kConfirmationHash));
-  SHA256_Update(&hash_ctx, m_bytes, sizeof(m_bytes));
-  SHA256_Update(&hash_ctx, r_bytes, sizeof(r_bytes));
-  SHA256_Final(expected_ciphertext + POLY_BYTES, &hash_ctx);
 
   ok &= constant_time_is_zero_w(CRYPTO_memcmp(ciphertext, expected_ciphertext,
                                               sizeof(expected_ciphertext)));

@@ -11,7 +11,7 @@ import (
 
 const (
 	PublicKeySize  = modQBytes
-	CiphertextSize = modQBytes + 32
+	CiphertextSize = modQBytes
 )
 
 const (
@@ -1058,18 +1058,9 @@ func (pub *PublicKey) Encap(rand io.Reader) (ciphertext []byte, sharedKey []byte
 	m.marshalS3(mBytes[:])
 	r.marshalS3(rBytes[:])
 
+	ciphertext = pub.owf(&m, &r)
+
 	h := sha256.New()
-	h.Write([]byte("confirmation hash\x00"))
-	h.Write(mBytes[:])
-	h.Write(rBytes[:])
-	confirmationDigest := h.Sum(nil)
-
-	encrypted := pub.owf(&m, &r)
-	ciphertext = make([]byte, 0, len(encrypted)+len(confirmationDigest))
-	ciphertext = append(ciphertext, encrypted...)
-	ciphertext = append(ciphertext, confirmationDigest...)
-
-	h.Reset()
 	h.Write([]byte("shared key\x00"))
 	h.Write(mBytes[:])
 	h.Write(rBytes[:])
@@ -1114,12 +1105,12 @@ func (priv *PrivateKey) Marshal() []byte {
 }
 
 func (priv *PrivateKey) Decap(ciphertext []byte) (sharedKey []byte, ok bool) {
-	if len(ciphertext) != modQBytes+32 {
+	if len(ciphertext) != modQBytes {
 		return nil, false
 	}
 
 	var e poly
-	if !e.unmarshal(ciphertext[:modQBytes]) {
+	if !e.unmarshal(ciphertext) {
 		return nil, false
 	}
 
@@ -1153,18 +1144,9 @@ func (priv *PrivateKey) Decap(ciphertext []byte) (sharedKey []byte, ok bool) {
 	m.marshalS3(mBytes[:])
 	r.marshal(rBytes[:])
 
-	h := sha256.New()
-	h.Write([]byte("confirmation hash\x00"))
-	h.Write(mBytes[:])
-	h.Write(rBytes[:])
-	confirmationDigest := h.Sum(nil)
-
 	var rPoly poly
 	rPoly.fromMod3(&r)
-	encrypted := priv.PublicKey.owf(&m, &rPoly)
-	expectedCiphertext := make([]byte, 0, len(encrypted)+len(confirmationDigest))
-	expectedCiphertext = append(expectedCiphertext, encrypted...)
-	expectedCiphertext = append(expectedCiphertext, confirmationDigest...)
+	expectedCiphertext := priv.PublicKey.owf(&m, &rPoly)
 
 	allOk &= subtle.ConstantTimeCompare(ciphertext, expectedCiphertext)
 
@@ -1172,7 +1154,7 @@ func (priv *PrivateKey) Decap(ciphertext []byte) (sharedKey []byte, ok bool) {
 	hmacHash.Write(ciphertext)
 	hmacDigest := hmacHash.Sum(nil)
 
-	h.Reset()
+	h := sha256.New()
 	h.Write([]byte("shared key\x00"))
 	h.Write(mBytes[:])
 	h.Write(rBytes[:])

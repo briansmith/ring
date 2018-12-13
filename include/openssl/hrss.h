@@ -50,7 +50,7 @@ struct HRSS_public_key {
 // HRSS_PUBLIC_KEY_BYTES is the number of bytes in a public key.
 #define HRSS_PUBLIC_KEY_BYTES 1138
 // HRSS_CIPHERTEXT_BYTES is the number of bytes in a ciphertext.
-#define HRSS_CIPHERTEXT_BYTES (1138 + 32)
+#define HRSS_CIPHERTEXT_BYTES 1138
 // HRSS_KEY_BYTES is the number of bytes in a shared key.
 #define HRSS_KEY_BYTES 32
 // HRSS_POLY3_BYTES is the number of bytes needed to serialise a mod 3
