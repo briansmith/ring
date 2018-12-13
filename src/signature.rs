@@ -137,7 +137,7 @@
 //! // Normally the application would store the PKCS#8 file persistently. Later
 //! // it would read the PKCS#8 file from persistent storage to use it.
 //!
-//! let key_pair = signature::Ed25519KeyPair::from_pkcs8(untrusted::Input::from(&pkcs8_bytes))?;
+//! let key_pair = signature::Ed25519KeyPair::from_pkcs8(untrusted::Input::from(pkcs8_bytes.as_ref()))?;
 //!
 //! // Sign the message "hello, world".
 //! const MESSAGE: &[u8] = b"hello, world";
@@ -286,9 +286,7 @@ pub use crate::ec::curve25519::ed25519::PUBLIC_KEY_LEN as ED25519_PUBLIC_KEY_LEN
 
 pub use crate::ec::curve25519::ed25519::verification::{EdDSAParameters, ED25519};
 
-pub use crate::ec::curve25519::ed25519::signing::{
-    KeyPair as Ed25519KeyPair, PKCS8_V2_LEN as ED25519_PKCS8_V2_LEN,
-};
+pub use crate::ec::curve25519::ed25519::signing::KeyPair as Ed25519KeyPair;
 
 #[cfg(feature = "use_heap")]
 pub use crate::rsa::signing::KeyPair as RSAKeyPair;

@@ -175,7 +175,7 @@ pub(crate) fn wrap_key(template: &Template, private_key: &[u8], public_key: &[u8
 
 /// Formats a private key "prefix||private_key||middle||public_key" where
 /// `template` is "prefix||middle" split at position `private_key_index`.
-pub(crate) fn wrap_key_(
+fn wrap_key_(
     template: &Template, private_key: &[u8], public_key: &[u8], bytes: &mut [u8],
 ) {
     let (before_private_key, after_private_key) =

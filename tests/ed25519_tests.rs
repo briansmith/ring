@@ -64,7 +64,7 @@ fn test_signature_ed25519() {
             bytes: seed.as_slice_less_safe(),
         };
         let pkcs8 = Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
-        let key_pair = Ed25519KeyPair::from_pkcs8(untrusted::Input::from(&pkcs8)).unwrap();
+        let key_pair = Ed25519KeyPair::from_pkcs8(untrusted::Input::from(pkcs8.as_ref())).unwrap();
         assert_eq!(public_key, key_pair.public_key_bytes());
 
         // Test Signature generation.
