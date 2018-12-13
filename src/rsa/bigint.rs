@@ -42,8 +42,7 @@
 
 use crate::{
     arithmetic::montgomery::*,
-    bssl,
-    bits, c, error,
+    bits, bssl, c, error,
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
 };
 use core::{
