@@ -114,7 +114,6 @@ pub mod rand;
 mod rsa;
 
 pub mod signature;
-mod signature_impl;
 
 pub mod test;
 

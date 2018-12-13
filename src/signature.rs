@@ -329,7 +329,7 @@ pub use crate::rsa::verification::{
     RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
 };
 
-pub use crate::signature_impl::Signature;
+use crate::ec;
 
 /// Lower-level verification primitives. Usage of `ring::signature::verify()`
 /// is preferred when the public key and signature are encoded in standard
@@ -361,6 +361,39 @@ pub(crate) trait KeyPairImpl: core::fmt::Debug + Send + 'static {
         &self, rng: &rand::SecureRandom, msg: untrusted::Input,
     ) -> Result<Signature, error::Unspecified>;
 }
+
+/// A public key signature returned from a signing operation.
+#[derive(Clone, Copy)]
+pub struct Signature {
+    value: [u8; MAX_LEN],
+    len: usize,
+}
+
+impl Signature {
+    // Panics if `value` is too long.
+    pub(crate) fn new<F>(fill: F) -> Self
+    where
+        F: FnOnce(&mut [u8; MAX_LEN]) -> usize,
+    {
+        let mut r = Signature {
+            value: [0; MAX_LEN],
+            len: 0,
+        };
+        r.len = fill(&mut r.value);
+        r
+    }
+}
+
+impl AsRef<[u8]> for Signature {
+    fn as_ref(&self) -> &[u8] { &self.value[..self.len] }
+}
+
+/// The longest signature is an ASN.1 P-384 signature where *r* and *s* are of
+/// maximum length with the leading high bit set on each. Then each component
+/// will have a tag, a one-byte length, and a one-byte “I'm not negative”
+/// prefix, and the outer sequence will have a two-byte length.
+pub(crate) const MAX_LEN: usize = 1/*tag:SEQUENCE*/ + 2/*len*/ +
+    (2 * (1/*tag:INTEGER*/ + 1/*len*/ + 1/*zero*/ + ec::SCALAR_MAX_BYTES));
 
 /// An algorithm for signing.
 #[cfg(feature = "use_heap")]

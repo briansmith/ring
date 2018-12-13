@@ -110,28 +110,26 @@ unsafe fn transmute_slice_mut<A, T>(
     Ok(core::mem::transmute(slice.as_ptr()))
 }
 
-/// This currently just splits the source array in equal halves since that is
-/// all we currently need.
 macro_rules! impl_array_split {
-    ($ty:ty, $len:expr) => {
-        impl From_<&[$ty; $len * 2]> for (&[$ty; $len], &[$ty; $len]) {
+    ($ty:ty, $first:expr, $second:expr) => {
+        impl From_<&[$ty; $first + $second]> for (&[$ty; $first], &[$ty; $second]) {
             #[inline]
-            fn from_(to_split: &[$ty; $len * 2]) -> Self {
+            fn from_(to_split: &[$ty; $first + $second]) -> Self {
                 let first: *const u8 = &to_split[0];
-                let split_at: *const u8 = &to_split[$len];
+                let split_at: *const u8 = &to_split[$first];
                 unsafe { (core::mem::transmute(first), core::mem::transmute(split_at)) }
             }
         }
 
-        impl From_<&mut [$ty; $len * 2]> for (&mut [$ty; $len], &mut [$ty; $len]) {
+        impl From_<&mut [$ty; $first + $second]> for (&mut [$ty; $first], &mut [$ty; $second]) {
             #[inline]
-            fn from_(to_split: &mut [$ty; $len * 2]) -> Self {
+            fn from_(to_split: &mut [$ty; $first + $second]) -> Self {
                 let first: *mut u8 = &mut to_split[0];
-                let split_at: *mut u8 = &mut to_split[$len];
+                let split_at: *mut u8 = &mut to_split[$first];
                 unsafe { (core::mem::transmute(first), core::mem::transmute(split_at)) }
             }
         }
     };
 }
 
-impl_array_split!(u8, 32);
+impl_array_split!(u8, 32, 32);

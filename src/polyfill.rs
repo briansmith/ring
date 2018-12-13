@@ -17,6 +17,7 @@
 
 use core;
 
+#[macro_use]
 pub mod convert;
 
 #[inline(always)]

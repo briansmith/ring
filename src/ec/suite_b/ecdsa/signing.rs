@@ -22,7 +22,7 @@ use crate::{
         self,
         suite_b::{ops::*, private_key},
     },
-    error, limb, pkcs8, private, rand, signature, signature_impl,
+    error, limb, pkcs8, private, rand, signature,
 };
 use core;
 use untrusted;
@@ -35,7 +35,7 @@ pub struct Algorithm {
     digest_alg: &'static digest::Algorithm,
     pkcs8_template: &'static pkcs8::Template,
     format_rs:
-        for<'a> fn(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &'a mut [u8]) -> &'a [u8],
+        for<'a> fn(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &'a mut [u8]) -> usize,
     id: AlgorithmID,
 }
 
@@ -218,9 +218,9 @@ impl Key {
             }
 
             // Step 7 with encoding.
-            let mut sig_bytes = [0; signature_impl::MAX_LEN];
-            let sig = (self.alg.format_rs)(scalar_ops, &r, &s, &mut sig_bytes[..]);
-            return Ok(signature_impl::signature_from_bytes(sig));
+            return Ok(signature::Signature::new(|sig_bytes| {
+                (self.alg.format_rs)(scalar_ops, &r, &s, sig_bytes)
+            }));
         }
 
         Err(error::Unspecified)
@@ -239,20 +239,19 @@ impl signature::KeyPairImpl for Key {
 
 fn format_rs_fixed<'a>(
     ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &'a mut [u8],
-) -> &'a [u8] {
+) -> usize {
     let scalar_len = ops.scalar_bytes_len();
-    {
-        let (r_out, rest) = out.split_at_mut(scalar_len);
-        limb::big_endian_from_limbs(&r.limbs[..ops.common.num_limbs], r_out);
-        let (s_out, _) = rest.split_at_mut(scalar_len);
-        limb::big_endian_from_limbs(&s.limbs[..ops.common.num_limbs], s_out);
-    }
-    &out[..(2 * scalar_len)]
+
+    let (r_out, rest) = out.split_at_mut(scalar_len);
+    limb::big_endian_from_limbs(&r.limbs[..ops.common.num_limbs], r_out);
+
+    let (s_out, _) = rest.split_at_mut(scalar_len);
+    limb::big_endian_from_limbs(&s.limbs[..ops.common.num_limbs], s_out);
+
+    2 * scalar_len
 }
 
-fn format_rs_asn1<'a>(
-    ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &'a mut [u8],
-) -> &'a [u8] {
+fn format_rs_asn1<'a>(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &'a mut [u8]) -> usize {
     // This assumes `a` is not zero since neither `r` or `s` is allowed to be
     // zero.
     fn format_integer_tlv(ops: &ScalarOps, a: &Scalar, out: &mut [u8]) -> usize {
@@ -295,7 +294,7 @@ fn format_rs_asn1<'a>(
     assert!(value_len < 128);
     out[1] = value_len as u8;
 
-    &out[..(2 + value_len)]
+    2 + value_len
 }
 
 /// Signing of fixed-length (PKCS#11 style) ECDSA signatures using the
