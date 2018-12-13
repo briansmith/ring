@@ -1395,17 +1395,6 @@ extern void poly_Rq_mul(struct poly *r, const struct poly *a,
                         const struct poly *b);
 #endif
 
-// The file cannot always be built with -mfpu=neon on ARMv7 because that would
-// enable NEON instructions everywhere, not just in functions guarded by a
-// runtime check for NEON capability. Therefore on ARMv7, if -mfpu=neon isn't
-// used, a version of the vector code that has been precompiled and checked-in
-// as assembly sources is used. (For AArch64, NEON is assumed to be provided.)
-#if defined(OPENSSL_ARM) && !defined(HRSS_HAVE_VECTOR_UNIT)
-// poly_mul_vec is defined in assembly.
-extern void poly_mul_vec(struct poly *out, const struct poly *x,
-                         const struct poly *y);
-#endif
-
 static void poly_mul(struct poly *r, const struct poly *a,
                      const struct poly *b) {
 #if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL) && \
@@ -1419,14 +1408,6 @@ static void poly_mul(struct poly *r, const struct poly *a,
 
 #if defined(HRSS_HAVE_VECTOR_UNIT)
   if (vec_capable()) {
-    poly_mul_vec(r, a, b);
-    return;
-  }
-#endif
-
-#if defined(OPENSSL_ARM) && !defined(HRSS_HAVE_VECTOR_UNIT)
-  // See above about this call.
-  if (CRYPTO_is_NEON_capable()) {
     poly_mul_vec(r, a, b);
     return;
   }

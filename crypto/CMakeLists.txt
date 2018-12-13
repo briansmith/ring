@@ -105,7 +105,6 @@ if(${ARCH} STREQUAL "arm")
     chacha/chacha-armv4.${ASM_EXT}
     curve25519/asm/x25519-asm-arm.S
     poly1305/poly1305_arm_asm.S
-    hrss/asm/poly_mul_vec_armv7_neon.S
   )
 endif()
 

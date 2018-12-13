@@ -43,7 +43,6 @@ NON_PERL_FILES = {
     ('linux', 'arm'): [
         'src/crypto/curve25519/asm/x25519-asm-arm.S',
         'src/crypto/poly1305/poly1305_arm_asm.S',
-        'src/crypto/hrss/asm/poly_mul_vec_armv7_neon.S',
     ],
     ('linux', 'x86_64'): [
         'src/crypto/hrss/asm/poly_rq_mul.S',
