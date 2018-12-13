@@ -3170,6 +3170,9 @@ struct ssl_st {
   uint32_t max_cert_list = 0;
   bssl::UniquePtr<char> hostname;
 
+  // quic_method is the method table corresponding to the QUIC hooks.
+  const SSL_QUIC_METHOD *quic_method = nullptr;
+
   // renegotiate_mode controls how peer renegotiation attempts are handled.
   ssl_renegotiate_mode_t renegotiate_mode = ssl_renegotiate_never;
 

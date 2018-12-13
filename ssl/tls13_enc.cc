@@ -144,7 +144,7 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
   }
 
   UniquePtr<SSLAEADContext> traffic_aead;
-  if (ssl->ctx->quic_method == nullptr) {
+  if (ssl->quic_method == nullptr) {
     // Look up cipher suite properties.
     const EVP_AEAD *aead;
     size_t discard;
@@ -237,16 +237,16 @@ bool tls13_derive_early_secrets(SSL_HANDSHAKE *hs) {
   }
   ssl->s3->early_exporter_secret_len = hs->hash_len;
 
-  if (ssl->ctx->quic_method != nullptr) {
+  if (ssl->quic_method != nullptr) {
     if (ssl->server) {
-      if (!ssl->ctx->quic_method->set_encryption_secrets(
+      if (!ssl->quic_method->set_encryption_secrets(
               ssl, ssl_encryption_early_data, nullptr, hs->early_traffic_secret,
               hs->hash_len)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);
         return false;
       }
     } else {
-      if (!ssl->ctx->quic_method->set_encryption_secrets(
+      if (!ssl->quic_method->set_encryption_secrets(
               ssl, ssl_encryption_early_data, hs->early_traffic_secret, nullptr,
               hs->hash_len)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);
@@ -273,16 +273,16 @@ bool tls13_derive_handshake_secrets(SSL_HANDSHAKE *hs) {
     return false;
   }
 
-  if (ssl->ctx->quic_method != nullptr) {
+  if (ssl->quic_method != nullptr) {
     if (ssl->server) {
-      if (!ssl->ctx->quic_method->set_encryption_secrets(
+      if (!ssl->quic_method->set_encryption_secrets(
               ssl, ssl_encryption_handshake, hs->client_handshake_secret,
               hs->server_handshake_secret, hs->hash_len)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);
         return false;
       }
     } else {
-      if (!ssl->ctx->quic_method->set_encryption_secrets(
+      if (!ssl->quic_method->set_encryption_secrets(
               ssl, ssl_encryption_handshake, hs->server_handshake_secret,
               hs->client_handshake_secret, hs->hash_len)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);
@@ -314,16 +314,16 @@ bool tls13_derive_application_secrets(SSL_HANDSHAKE *hs) {
     return false;
   }
 
-  if (ssl->ctx->quic_method != nullptr) {
+  if (ssl->quic_method != nullptr) {
     if (ssl->server) {
-      if (!ssl->ctx->quic_method->set_encryption_secrets(
+      if (!ssl->quic_method->set_encryption_secrets(
               ssl, ssl_encryption_application, hs->client_traffic_secret_0,
               hs->server_traffic_secret_0, hs->hash_len)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);
         return false;
       }
     } else {
-      if (!ssl->ctx->quic_method->set_encryption_secrets(
+      if (!ssl->quic_method->set_encryption_secrets(
               ssl, ssl_encryption_application, hs->server_traffic_secret_0,
               hs->client_traffic_secret_0, hs->hash_len)) {
         OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);

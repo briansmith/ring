@@ -410,9 +410,9 @@ int ssl_send_alert(SSL *ssl, int level, int desc) {
 }
 
 int ssl3_dispatch_alert(SSL *ssl) {
-  if (ssl->ctx->quic_method) {
-    if (!ssl->ctx->quic_method->send_alert(ssl, ssl->s3->write_level,
-                                           ssl->s3->send_alert[1])) {
+  if (ssl->quic_method) {
+    if (!ssl->quic_method->send_alert(ssl, ssl->s3->write_level,
+                                      ssl->s3->send_alert[1])) {
       OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);
       return 0;
     }

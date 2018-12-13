@@ -3170,6 +3170,12 @@ OPENSSL_EXPORT int SSL_process_quic_post_handshake(SSL *ssl);
 OPENSSL_EXPORT int SSL_CTX_set_quic_method(SSL_CTX *ctx,
                                            const SSL_QUIC_METHOD *quic_method);
 
+// SSL_set_quic_method configures the QUIC hooks. This should only be
+// configured with a minimum version of TLS 1.3. |quic_method| must remain valid
+// for the lifetime of |ssl|. It returns one on success and zero on error.
+OPENSSL_EXPORT int SSL_set_quic_method(SSL *ssl,
+                                       const SSL_QUIC_METHOD *quic_method);
+
 
 // Early data.
 //
