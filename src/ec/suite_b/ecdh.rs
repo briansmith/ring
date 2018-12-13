@@ -177,12 +177,12 @@ mod tests {
         for &(_, alg, curve, ops) in SUPPORTED_SUITE_B_ALGS.iter() {
             // Test that the private key value zero is rejected and that
             // `generate` gives up after a while of only getting zeros.
-            assert!(agreement::PrivateKey::<U>::generate(alg, &random_00).is_err());
+            assert!(agreement::KeyPair::<U>::generate(alg, &random_00).is_err());
 
             // Test that the private key value larger than the group order is
             // rejected and that `generate` gives up after a while of only
             // getting values larger than the group order.
-            assert!(agreement::PrivateKey::<U>::generate(alg, &random_ff).is_err());
+            assert!(agreement::KeyPair::<U>::generate(alg, &random_ff).is_err());
 
             // Test that a private key value exactly equal to the group order
             // is rejected and that `generate` gives up after a while of only
@@ -193,7 +193,7 @@ mod tests {
             {
                 let n_bytes = &mut n_bytes[..num_bytes];
                 let rng = test::rand::FixedSliceRandom { bytes: n_bytes };
-                assert!(agreement::PrivateKey::<U>::generate(alg, &rng).is_err());
+                assert!(agreement::KeyPair::<U>::generate(alg, &rng).is_err());
             }
 
             // Test that a private key value exactly equal to the group order
@@ -205,8 +205,8 @@ mod tests {
                 let rng = test::rand::FixedSliceRandom {
                     bytes: n_minus_1_bytes,
                 };
-                let key = agreement::PrivateKey::<U>::generate(alg, &rng).unwrap();
-                assert_eq!(&n_minus_1_bytes[..], key.bytes(curve));
+                let key_pair = agreement::KeyPair::<U>::generate(alg, &rng).unwrap();
+                assert_eq!(&n_minus_1_bytes[..], key_pair.private_key().bytes(curve));
             }
 
             // Test that n + 1 also fails.
@@ -217,7 +217,7 @@ mod tests {
                 let rng = test::rand::FixedSliceRandom {
                     bytes: n_plus_1_bytes,
                 };
-                assert!(agreement::PrivateKey::<U>::generate(alg, &rng).is_err());
+                assert!(agreement::KeyPair::<U>::generate(alg, &rng).is_err());
             }
 
             // Test recovery from initial RNG failure. The first value will be
@@ -234,8 +234,11 @@ mod tests {
                     bytes: &bytes,
                     current: core::cell::UnsafeCell::new(0),
                 };
-                let key = agreement::PrivateKey::<U>::generate(alg, &rng).unwrap();
-                assert_eq!(&n_minus_1_bytes[..num_bytes], key.bytes(curve));
+                let key_pair = agreement::KeyPair::<U>::generate(alg, &rng).unwrap();
+                assert_eq!(
+                    &n_minus_1_bytes[..num_bytes],
+                    key_pair.private_key().bytes(curve)
+                );
             }
         }
     }

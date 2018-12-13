@@ -53,7 +53,7 @@ macro_rules! suite_b_curve {
         }
 
         fn $public_from_private(
-            public_out: &mut [u8], private_key: &ec::PrivateKey,
+            public_out: &mut [u8; ec::PUBLIC_KEY_MAX_LEN], private_key: &ec::PrivateKey,
         ) -> Result<(), error::Unspecified> {
             ec::suite_b::private_key::public_from_private($private_key_ops, public_out, private_key)
         }

@@ -33,21 +33,18 @@
 //! // Make `my_public_key` a byte slice containing my public key. In a real
 //! // application, this would be sent to the peer in an encoded protocol
 //! // message.
-//! let mut my_public_key = [0u8; agreement::PUBLIC_KEY_MAX_LEN];
-//! let my_public_key = &mut my_public_key[..my_private_key.public_key_len()];
-//! my_private_key.compute_public_key(my_public_key)?;
+//! let my_public_key = my_private_key.compute_public_key()?;
+//! let my_public_key = my_public_key.as_ref();
 //!
 //! // In a real application, the peer public key would be parsed out of a
 //! // protocol message. Here we just generate one.
 //! let mut peer_public_key_buf = [0u8; agreement::PUBLIC_KEY_MAX_LEN];
-//! let peer_public_key;
-//! {
+//! let peer_public_key = {
 //!     let peer_private_key =
 //!         agreement::PrivateKey::<agreement::Ephemeral>::generate(&agreement::X25519, &rng)?;
-//!     peer_public_key = &mut peer_public_key_buf[..peer_private_key.public_key_len()];
-//!     peer_private_key.compute_public_key(peer_public_key)?;
-//! }
-//! let peer_public_key = untrusted::Input::from(peer_public_key);
+//!     peer_private_key.compute_public_key()?
+//! };
+//! let peer_public_key = untrusted::Input::from(peer_public_key.as_ref());
 //!
 //! // In a real application, the protocol specifies how to determine what
 //! // algorithm was used to generate the peer's private key. Here, we know it
@@ -108,6 +105,60 @@ pub struct Static {}
 impl Usage for Static {}
 impl self::sealed::Sealed for Static {}
 
+/// A key pair for key agreement.
+pub struct KeyPair<U: Usage> {
+    private_key: PrivateKey<U>,
+    public_key: PublicKey,
+}
+
+impl<U: Usage> KeyPair<U> {
+    /// Generate a new key pair for the given algorithm.
+    ///
+    /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
+    pub fn generate(
+        alg: &'static Algorithm, rng: &rand::SecureRandom,
+    ) -> Result<Self, error::Unspecified> {
+        // NSA Guide Step 1.
+
+        let private_key = ec::PrivateKey::generate(&alg.curve, rng)?;
+
+        let mut public_key = PublicKey {
+            bytes: [0; PUBLIC_KEY_MAX_LEN],
+            alg,
+        };
+        private_key.compute_public_key(&alg.curve, &mut public_key.bytes)?;
+
+        Ok(Self {
+            private_key: PrivateKey {
+                private_key,
+                alg,
+                usage: PhantomData,
+            },
+            public_key,
+        })
+    }
+
+    /// The private key.
+    pub fn private_key(&self) -> &PrivateKey<U> { &self.private_key }
+
+    /// The public key.
+    pub fn public_key(&self) -> &PublicKey { &self.public_key }
+
+    /// Split the key pair apart.
+    pub fn split(self) -> (PrivateKey<U>, PublicKey) { (self.private_key, self.public_key) }
+}
+
+/// A public key for key agreement.
+pub struct PublicKey {
+    bytes: [u8; PUBLIC_KEY_MAX_LEN],
+    alg: &'static Algorithm,
+}
+
+impl AsRef<[u8]> for PublicKey {
+    #[inline]
+    fn as_ref(&self) -> &[u8] { &self.bytes[..self.alg.curve.public_key_len] }
+}
+
 /// A private key for key agreement.
 pub struct PrivateKey<U: Usage> {
     private_key: ec::PrivateKey,
@@ -138,22 +189,24 @@ impl<U: Usage> PrivateKey<U> {
     #[inline]
     pub fn algorithm(&self) -> &'static Algorithm { self.alg }
 
-    /// The size in bytes of the encoded public key.
-    #[inline(always)]
-    pub fn public_key_len(&self) -> usize { self.alg.curve.public_key_len }
-
     /// Computes the public key from the private key's value and fills `out`
     /// with the public point encoded in the standard form for the algorithm.
     ///
     /// `out.len()` must be equal to the value returned by `public_key_len`.
     #[inline(always)]
-    pub fn compute_public_key(&self, out: &mut [u8]) -> Result<(), error::Unspecified> {
+    pub fn compute_public_key(&self) -> Result<PublicKey, error::Unspecified> {
         // NSA Guide Step 1.
         //
         // Obviously, this only handles the part of Step 1 between the private
         // key generation and the sending of the public key to the peer. `out`
         // is what should be sent to the peer.
-        self.private_key.compute_public_key(&self.alg.curve, out)
+        let mut public_key = PublicKey {
+            bytes: [0; PUBLIC_KEY_MAX_LEN],
+            alg: self.alg,
+        };
+        self.private_key
+            .compute_public_key(&self.alg.curve, &mut public_key.bytes)?;
+        Ok(public_key)
     }
 
     /// Performs a key agreement with an private key and the given public key.

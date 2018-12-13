@@ -135,14 +135,15 @@ pub fn scalar_from_big_endian_bytes(
 }
 
 pub fn public_from_private(
-    ops: &PrivateKeyOps, public_out: &mut [u8], my_private_key: &ec::PrivateKey,
+    ops: &PrivateKeyOps, public_out: &mut [u8; ec::PUBLIC_KEY_MAX_LEN],
+    my_private_key: &ec::PrivateKey,
 ) -> Result<(), error::Unspecified> {
     let elem_and_scalar_bytes = ops.common.num_limbs * LIMB_BYTES;
-    debug_assert_eq!(public_out.len(), 1 + (2 * elem_and_scalar_bytes));
     let my_private_key = private_key_as_scalar(ops, my_private_key);
     let my_public_key = ops.point_mul_base(&my_private_key);
     public_out[0] = 4; // Uncompressed encoding.
-    let (x_out, y_out) = (&mut public_out[1..]).split_at_mut(elem_and_scalar_bytes);
+    let (x_out, rest) = (&mut public_out[1..]).split_at_mut(elem_and_scalar_bytes);
+    let (y_out, _) = rest.split_at_mut(elem_and_scalar_bytes);
 
     // `big_endian_affine_from_jacobian` verifies that the point is not at
     // infinity and is on the curve.

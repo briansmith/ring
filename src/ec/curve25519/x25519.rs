@@ -56,13 +56,10 @@ fn x25519_generate_private_key(
 }
 
 fn x25519_public_from_private(
-    public_out: &mut [u8], private_key: &ec::PrivateKey,
+    public_out: &mut [u8; ec::PUBLIC_KEY_MAX_LEN], private_key: &ec::PrivateKey,
 ) -> Result<(), error::Unspecified> {
-    let public_out = public_out.try_into_()?;
-
-    // XXX: This shouldn't require dynamic checks, but rustc can't slice an
-    // array reference to a shorter array reference. TODO(perf): Fix this.
-    let private_key = (&private_key.bytes[..PRIVATE_KEY_LEN]).try_into_()?;
+    let (public_out, _) = public_out.into_();
+    let (private_key, _) = (&private_key.bytes).into_();
     unsafe {
         GFp_x25519_public_from_private(public_out, private_key);
     }
@@ -111,3 +108,5 @@ extern "C" {
         out: &mut ops::EncodedPoint, scalar: &ops::Scalar, point: &ops::EncodedPoint,
     );
 }
+
+impl_array_split!(u8, PUBLIC_KEY_LEN, ec::PUBLIC_KEY_MAX_LEN - PUBLIC_KEY_LEN);

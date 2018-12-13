@@ -132,3 +132,4 @@ macro_rules! impl_array_split {
 }
 
 impl_array_split!(u8, 32, 32);
+impl_array_split!(u8, 32, 16);

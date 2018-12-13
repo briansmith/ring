@@ -91,12 +91,11 @@ impl Key {
     ) -> Result<pkcs8::Document, error::Unspecified> {
         let private_key = ec::PrivateKey::generate(alg.curve, rng)?;
         let mut public_key_bytes = [0; ec::PUBLIC_KEY_MAX_LEN];
-        let public_key_bytes = &mut public_key_bytes[..alg.curve.public_key_len];
-        (alg.curve.public_from_private)(public_key_bytes, &private_key)?;
+        (alg.curve.public_from_private)(&mut public_key_bytes, &private_key)?;
         Ok(pkcs8::wrap_key(
             &alg.pkcs8_template,
             private_key.bytes(alg.curve),
-            public_key_bytes,
+            &public_key_bytes[..alg.curve.public_key_len],
         ))
     }
 

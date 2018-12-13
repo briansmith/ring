@@ -210,10 +210,9 @@ pub fn key_pair_from_bytes(
     let mut public_key_check = [0; ec::PUBLIC_KEY_MAX_LEN];
     {
         // Borrow `public_key_check`.
-        let public_key_check = &mut public_key_check[..curve.public_key_len];
-        (curve.public_from_private)(public_key_check, &private_key)
+        (curve.public_from_private)(&mut public_key_check, &private_key)
             .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
-        if public_key_bytes != &*public_key_check {
+        if public_key_bytes != public_key_check[..curve.public_key_len].as_ref() {
             return Err(error::KeyRejected::inconsistent_components());
         }
     }

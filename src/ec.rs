@@ -26,8 +26,10 @@ pub struct Curve {
 
     generate_private_key: fn(rng: &rand::SecureRandom) -> Result<PrivateKey, error::Unspecified>,
 
-    public_from_private:
-        fn(public_out: &mut [u8], private_key: &PrivateKey) -> Result<(), error::Unspecified>,
+    public_from_private: fn(
+        public_out: &mut [u8; PUBLIC_KEY_MAX_LEN],
+        private_key: &PrivateKey,
+    ) -> Result<(), error::Unspecified>,
 }
 
 derive_debug_via_self!(Curve, self.id);
@@ -76,11 +78,8 @@ impl PrivateKey {
 
     #[inline(always)]
     pub fn compute_public_key(
-        &self, curve: &Curve, out: &mut [u8],
+        &self, curve: &Curve, out: &mut [u8; PUBLIC_KEY_MAX_LEN],
     ) -> Result<(), error::Unspecified> {
-        if out.len() != curve.public_key_len {
-            return Err(error::Unspecified);
-        }
         (curve.public_from_private)(out, self)
     }
 }
