@@ -81,12 +81,21 @@ pub use crate::ec::{
 };
 
 /// A key agreement algorithm.
-#[derive(Eq, PartialEq)]
 pub struct Algorithm {
-    pub(crate) i: ec::AgreementAlgorithmImpl,
+    pub(crate) curve: &'static ec::Curve,
+    pub(crate) ecdh: fn(
+        out: &mut [u8],
+        private_key: &ec::PrivateKey,
+        peer_public_key: untrusted::Input,
+    ) -> Result<(), error::Unspecified>,
 }
 
-derive_debug_via_self!(Algorithm, self.i);
+derive_debug_via_self!(Algorithm, self.curve);
+
+impl Eq for Algorithm {}
+impl PartialEq for Algorithm {
+    fn eq(&self, other: &Algorithm) -> bool { self.curve.id == other.curve.id }
+}
 
 /// An ephemeral private key for use (only) with `agree_ephemeral`. The
 /// signature of `agree_ephemeral` ensures that an `EphemeralPrivateKey` can be
@@ -107,7 +116,7 @@ impl<'a> EphemeralPrivateKey {
         //
         // This only handles the key generation part of step 1. The rest of
         // step one is done by `compute_public_key()`.
-        let private_key = ec::PrivateKey::generate(&alg.i.curve, rng)?;
+        let private_key = ec::PrivateKey::generate(&alg.curve, rng)?;
         Ok(EphemeralPrivateKey { private_key, alg })
     }
 
@@ -117,7 +126,7 @@ impl<'a> EphemeralPrivateKey {
 
     /// The size in bytes of the encoded public key.
     #[inline(always)]
-    pub fn public_key_len(&self) -> usize { self.alg.i.curve.public_key_len }
+    pub fn public_key_len(&self) -> usize { self.alg.curve.public_key_len }
 
     /// Computes the public key from the private key's value and fills `out`
     /// with the public point encoded in the standard form for the algorithm.
@@ -130,7 +139,7 @@ impl<'a> EphemeralPrivateKey {
         // Obviously, this only handles the part of Step 1 between the private
         // key generation and the sending of the public key to the peer. `out`
         // is what should be sent to the peer.
-        self.private_key.compute_public_key(&self.alg.i.curve, out)
+        self.private_key.compute_public_key(&self.alg.curve, out)
     }
 
     #[cfg(test)]
@@ -174,11 +183,11 @@ where
     // The domain parameters are hard-coded. This check verifies that the
     // peer's public key's domain parameters match the domain parameters of
     // this private key.
-    if peer_public_key_alg.i.curve.id != my_private_key.alg.i.curve.id {
+    if peer_public_key_alg.curve.id != my_private_key.alg.curve.id {
         return Err(error_value);
     }
 
-    let alg = &my_private_key.alg.i;
+    let alg = &my_private_key.alg;
 
     // NSA Guide Prerequisite 2, regarding which KDFs are allowed, is delegated
     // to the caller.

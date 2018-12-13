@@ -15,25 +15,6 @@
 use crate::{cpu, error, rand};
 use untrusted;
 
-/// A key agreement algorithm.
-// XXX: This doesn't seem like the best place for this.
-pub struct AgreementAlgorithmImpl {
-    pub curve: &'static Curve,
-    pub ecdh: fn(
-        out: &mut [u8],
-        private_key: &PrivateKey,
-        peer_public_key: untrusted::Input,
-    ) -> Result<(), error::Unspecified>,
-}
-
-derive_debug_via_self!(AgreementAlgorithmImpl, self.curve);
-
-impl PartialEq for AgreementAlgorithmImpl {
-    fn eq(&self, other: &Self) -> bool { self.curve.id == other.curve.id }
-}
-
-impl Eq for AgreementAlgorithmImpl {}
-
 pub struct Curve {
     pub public_key_len: usize,
     pub elem_and_scalar_len: usize,

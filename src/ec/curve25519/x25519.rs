@@ -36,10 +36,8 @@ static CURVE25519: ec::Curve = ec::Curve {
 /// [RFC 7748]: https://tools.ietf.org/html/rfc7748
 /// [RFC 7748 section 6.1]: https://tools.ietf.org/html/rfc7748#section-6.1
 pub static X25519: agreement::Algorithm = agreement::Algorithm {
-    i: ec::AgreementAlgorithmImpl {
-        curve: &CURVE25519,
-        ecdh: x25519_ecdh,
-    },
+    curve: &CURVE25519,
+    ecdh: x25519_ecdh,
 };
 
 fn x25519_check_private_key_bytes(bytes: &[u8]) -> Result<(), error::Unspecified> {
