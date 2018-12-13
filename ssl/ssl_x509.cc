@@ -281,16 +281,25 @@ static void ssl_crypto_x509_cert_dup(CERT *new_cert, const CERT *cert) {
 }
 
 static int ssl_crypto_x509_session_cache_objects(SSL_SESSION *sess) {
-  bssl::UniquePtr<STACK_OF(X509)> chain;
+  bssl::UniquePtr<STACK_OF(X509)> chain, chain_without_leaf;
   if (sk_CRYPTO_BUFFER_num(sess->certs.get()) > 0) {
     chain.reset(sk_X509_new_null());
     if (!chain) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return 0;
     }
+    if (sess->is_server) {
+      // chain_without_leaf is only needed for server sessions. See
+      // |SSL_get_peer_cert_chain|.
+      chain_without_leaf.reset(sk_X509_new_null());
+      if (!chain_without_leaf) {
+        OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+        return 0;
+      }
+    }
   }
 
-  X509 *leaf = nullptr;
+  bssl::UniquePtr<X509> leaf;
   for (CRYPTO_BUFFER *cert : sess->certs.get()) {
     UniquePtr<X509> x509(X509_parse_from_buffer(cert));
     if (!x509) {
@@ -298,7 +307,11 @@ static int ssl_crypto_x509_session_cache_objects(SSL_SESSION *sess) {
       return 0;
     }
     if (leaf == nullptr) {
-      leaf = x509.get();
+      leaf = UpRef(x509);
+    } else if (chain_without_leaf &&
+               !PushToStack(chain_without_leaf.get(), UpRef(x509))) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
+      return 0;
     }
     if (!PushToStack(chain.get(), std::move(x509))) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
@@ -308,26 +321,28 @@ static int ssl_crypto_x509_session_cache_objects(SSL_SESSION *sess) {
 
   sk_X509_pop_free(sess->x509_chain, X509_free);
   sess->x509_chain = chain.release();
+
   sk_X509_pop_free(sess->x509_chain_without_leaf, X509_free);
-  sess->x509_chain_without_leaf = NULL;
+  sess->x509_chain_without_leaf = chain_without_leaf.release();
 
   X509_free(sess->x509_peer);
-  if (leaf != NULL) {
-    X509_up_ref(leaf);
-  }
-  sess->x509_peer = leaf;
+  sess->x509_peer = leaf.release();
   return 1;
 }
 
 static int ssl_crypto_x509_session_dup(SSL_SESSION *new_session,
                                        const SSL_SESSION *session) {
-  if (session->x509_peer != NULL) {
-    X509_up_ref(session->x509_peer);
-    new_session->x509_peer = session->x509_peer;
-  }
-  if (session->x509_chain != NULL) {
+  new_session->x509_peer = UpRef(session->x509_peer).release();
+  if (session->x509_chain != nullptr) {
     new_session->x509_chain = X509_chain_up_ref(session->x509_chain);
-    if (new_session->x509_chain == NULL) {
+    if (new_session->x509_chain == nullptr) {
+      return 0;
+    }
+  }
+  if (session->x509_chain_without_leaf != nullptr) {
+    new_session->x509_chain_without_leaf =
+        X509_chain_up_ref(session->x509_chain_without_leaf);
+    if (new_session->x509_chain_without_leaf == nullptr) {
       return 0;
     }
   }
@@ -525,38 +540,17 @@ X509 *SSL_get_peer_certificate(const SSL *ssl) {
 
 STACK_OF(X509) *SSL_get_peer_cert_chain(const SSL *ssl) {
   check_ssl_x509_method(ssl);
-  if (ssl == NULL) {
-    return NULL;
+  if (ssl == nullptr) {
+    return nullptr;
   }
   SSL_SESSION *session = SSL_get_session(ssl);
-  if (session == NULL ||
-      session->x509_chain == NULL) {
-    return NULL;
-  }
-
-  if (!ssl->server) {
-    return session->x509_chain;
+  if (session == nullptr) {
+    return nullptr;
   }
 
   // OpenSSL historically didn't include the leaf certificate in the returned
   // certificate chain, but only for servers.
-  if (session->x509_chain_without_leaf == NULL) {
-    session->x509_chain_without_leaf = sk_X509_new_null();
-    if (session->x509_chain_without_leaf == NULL) {
-      return NULL;
-    }
-
-    for (size_t i = 1; i < sk_X509_num(session->x509_chain); i++) {
-      X509 *cert = sk_X509_value(session->x509_chain, i);
-      if (!PushToStack(session->x509_chain_without_leaf, UpRef(cert))) {
-        sk_X509_pop_free(session->x509_chain_without_leaf, X509_free);
-        session->x509_chain_without_leaf = NULL;
-        return NULL;
-      }
-    }
-  }
-
-  return session->x509_chain_without_leaf;
+  return ssl->server ? session->x509_chain_without_leaf : session->x509_chain;
 }
 
 STACK_OF(X509) *SSL_get_peer_full_cert_chain(const SSL *ssl) {
