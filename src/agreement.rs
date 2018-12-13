@@ -93,25 +93,25 @@ impl PartialEq for Algorithm {
 }
 
 /// How many times the key may be used.
-pub trait Usage: self::sealed::Sealed {}
+pub trait Lifetime: self::sealed::Sealed {}
 
 /// The key may be used at most once.
 pub struct Ephemeral {}
-impl Usage for Ephemeral {}
+impl Lifetime for Ephemeral {}
 impl self::sealed::Sealed for Ephemeral {}
 
 /// The key may be used more than once.
 pub struct Static {}
-impl Usage for Static {}
+impl Lifetime for Static {}
 impl self::sealed::Sealed for Static {}
 
 /// A key pair for key agreement.
-pub struct KeyPair<U: Usage> {
+pub struct KeyPair<U: Lifetime> {
     private_key: PrivateKey<U>,
     public_key: PublicKey,
 }
 
-impl<U: Usage> KeyPair<U> {
+impl<U: Lifetime> KeyPair<U> {
     /// Generate a new key pair for the given algorithm.
     ///
     /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
@@ -160,13 +160,13 @@ impl AsRef<[u8]> for PublicKey {
 }
 
 /// A private key for key agreement.
-pub struct PrivateKey<U: Usage> {
+pub struct PrivateKey<U: Lifetime> {
     private_key: ec::PrivateKey,
     alg: &'static Algorithm,
     usage: PhantomData<U>,
 }
 
-impl<U: Usage> PrivateKey<U> {
+impl<U: Lifetime> PrivateKey<U> {
     /// Generate a new private key for the given algorithm.
     ///
     /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.

@@ -48,7 +48,7 @@ fn agreement_agree() {
     });
 }
 
-fn agreement_agree_<U: Usage, F>(agree: F)
+fn agreement_agree_<U: Lifetime, F>(agree: F)
 where
     F: Fn(
         PrivateKey<U>,
