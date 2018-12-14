@@ -25,10 +25,7 @@
 //! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
-use self::{
-    block::{Block, BLOCK_LEN},
-    nonce::NonceRef,
-};
+use self::block::{Block, BLOCK_LEN};
 use crate::{
     constant_time, cpu, error,
     polyfill::{self, convert::*},
@@ -37,6 +34,7 @@ use crate::{
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
     chacha20_poly1305::CHACHA20_POLY1305,
+    nonce::{Nonce, NONCE_LEN},
 };
 
 /// A key for authenticating and decrypting (“opening”) AEAD-protected data.
@@ -124,10 +122,9 @@ impl OpeningKey {
 ///
 /// Go analog: [`AEAD.Open`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub fn open_in_place<'a>(
-    key: &OpeningKey, nonce: &[u8], ad: &[u8], in_prefix_len: usize,
+    key: &OpeningKey, nonce: Nonce, ad: &[u8], in_prefix_len: usize,
     ciphertext_and_tag_modified_in_place: &'a mut [u8],
 ) -> Result<&'a mut [u8], error::Unspecified> {
-    let nonce = NonceRef::try_from(nonce)?;
     let ciphertext_and_tag_len = ciphertext_and_tag_modified_in_place
         .len()
         .checked_sub(in_prefix_len)
@@ -208,12 +205,11 @@ impl SealingKey {
 ///
 /// Go analog: [`AEAD.Seal`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub fn seal_in_place(
-    key: &SealingKey, nonce: &[u8], ad: &[u8], in_out: &mut [u8], out_suffix_capacity: usize,
+    key: &SealingKey, nonce: Nonce, ad: &[u8], in_out: &mut [u8], out_suffix_capacity: usize,
 ) -> Result<usize, error::Unspecified> {
     if out_suffix_capacity < key.key.algorithm.tag_len() {
         return Err(error::Unspecified);
     }
-    let nonce = NonceRef::try_from(nonce)?;
     let in_out_len = in_out
         .len()
         .checked_sub(out_suffix_capacity)
@@ -266,14 +262,9 @@ impl Key {
 pub struct Algorithm {
     init: fn(key: &[u8]) -> Result<KeyInner, error::Unspecified>,
 
-    seal: fn(key: &KeyInner, nonce: NonceRef, ad: &[u8], in_out: &mut [u8]) -> Tag,
-    open: fn(
-        ctx: &KeyInner,
-        nonce: NonceRef,
-        ad: &[u8],
-        in_prefix_len: usize,
-        in_out: &mut [u8],
-    ) -> Tag,
+    seal: fn(key: &KeyInner, nonce: Nonce, ad: &[u8], in_out: &mut [u8]) -> Tag,
+    open:
+        fn(ctx: &KeyInner, nonce: Nonce, ad: &[u8], in_prefix_len: usize, in_out: &mut [u8]) -> Tag,
 
     key_len: usize,
     id: AlgorithmID,
@@ -315,7 +306,7 @@ impl Algorithm {
     /// Go analog:
     ///   [`crypto.cipher.AEAD.NonceSize`](https://golang.org/pkg/crypto/cipher/#AEAD)
     #[inline(always)]
-    pub fn nonce_len(&self) -> usize { self::nonce::NONCE_LEN }
+    pub fn nonce_len(&self) -> usize { NONCE_LEN }
 }
 
 derive_debug_via_self!(Algorithm, self.id);

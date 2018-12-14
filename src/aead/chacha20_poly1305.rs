@@ -14,8 +14,8 @@
 
 use super::{
     chacha::{self, Counter},
-    nonce::{Iv, NonceRef},
-    poly1305, Block, Direction, Tag, BLOCK_LEN,
+    nonce::Iv,
+    poly1305, Block, Direction, Nonce, Tag, BLOCK_LEN,
 };
 use crate::{
     aead,
@@ -44,14 +44,12 @@ fn chacha20_poly1305_init(key: &[u8]) -> Result<aead::KeyInner, error::Unspecifi
     Ok(aead::KeyInner::ChaCha20Poly1305(chacha::Key::from(key)))
 }
 
-fn chacha20_poly1305_seal(
-    key: &aead::KeyInner, nonce: NonceRef, ad: &[u8], in_out: &mut [u8],
-) -> Tag {
+fn chacha20_poly1305_seal(key: &aead::KeyInner, nonce: Nonce, ad: &[u8], in_out: &mut [u8]) -> Tag {
     aead(key, nonce, ad, in_out, Direction::Sealing)
 }
 
 fn chacha20_poly1305_open(
-    key: &aead::KeyInner, nonce: NonceRef, ad: &[u8], in_prefix_len: usize, in_out: &mut [u8],
+    key: &aead::KeyInner, nonce: Nonce, ad: &[u8], in_prefix_len: usize, in_out: &mut [u8],
 ) -> Tag {
     aead(key, nonce, ad, in_out, Direction::Opening { in_prefix_len })
 }
@@ -60,7 +58,7 @@ pub type Key = chacha::Key;
 
 #[inline(always)] // Statically eliminate branches on `direction`.
 fn aead(
-    key: &aead::KeyInner, nonce: NonceRef, ad: &[u8], in_out: &mut [u8], direction: Direction,
+    key: &aead::KeyInner, nonce: Nonce, ad: &[u8], in_out: &mut [u8], direction: Direction,
 ) -> Tag {
     let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
