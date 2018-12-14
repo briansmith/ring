@@ -18,8 +18,8 @@
 //!
 //! To use:
 //!
-//! 1. Construct a `NonceRef`.
-//! 2. Construct a `Counter` from the `NonceRef`.
+//! 1. Construct a `Nonce`.
+//! 2. Construct a `Counter` from the `Nonce`.
 //! 3. For each block encrypted, increment the counter. Each time the counter
 //!    is incremented, the current value is returned.
 
@@ -27,22 +27,32 @@ use super::Block;
 use crate::{endian::*, error, polyfill::convert::*};
 use core::marker::PhantomData;
 
-/// A nonce.
+/// A nonce for a single AEAD opening or sealing operation.
 ///
 /// The user must ensure, for a particular key, that each nonce is unique.
 ///
-/// Intentionally doesn't implement `Clone` to ensure that each one is consumed
-/// at most once.
-#[repr(transparent)]
-pub struct NonceRef<'a>(&'a [u8; NONCE_LEN]);
+/// `Nonce` intentionally doesn't implement `Clone` to ensure that each one is
+/// consumed at most once.
+pub struct Nonce([u8; NONCE_LEN]);
 
-impl<'a> NonceRef<'a> {
-    pub fn try_from(value: &'a [u8]) -> Result<Self, error::Unspecified> {
-        Ok(NonceRef(value.try_into_()?))
+impl Nonce {
+    /// Constructs a `Nonce` with the given value, assuming that the value is
+    /// unique for the lifetime of the key it is being used with.
+    ///
+    /// Fails if `value` isn't `NONCE_LEN` bytes long.
+    #[inline]
+    pub fn try_assume_unique_for_key(value: &[u8]) -> Result<Self, error::Unspecified> {
+        let value: &[u8; NONCE_LEN] = value.try_into_()?;
+        Ok(Self::assume_unique_for_key(*value))
     }
+
+    /// Constructs a `Nonce` with the given value, assuming that the value is
+    /// unique for the lifetime of the key it is being used with.
+    #[inline]
+    pub fn assume_unique_for_key(value: [u8; NONCE_LEN]) -> Self { Nonce(value) }
 }
 
-// All the AEADs we support use 96-bit nonces.
+/// All the AEADs we support use 96-bit nonces.
 pub const NONCE_LEN: usize = 96 / 8;
 
 /// A generator of a monotonically increasing series of `Iv`s.
@@ -62,21 +72,24 @@ impl<U32: Layout<u32>> Counter<U32>
 where
     u32: From<U32>,
 {
-    pub fn zero(nonce: NonceRef) -> Self { Self::new(nonce, 0) }
-    pub fn one(nonce: NonceRef) -> Self { Self::new(nonce, 1) }
+    pub fn zero(nonce: Nonce) -> Self { Self::new(nonce, 0) }
+    pub fn one(nonce: Nonce) -> Self { Self::new(nonce, 1) }
 
     // Used by `zero()` and by the tests.
     #[cfg(test)]
     pub fn from_test_vector(nonce: &[u8], initial_counter: u32) -> Self {
-        Self::new(NonceRef::try_from(nonce).unwrap(), initial_counter)
+        Self::new(
+            Nonce::try_assume_unique_for_key(nonce).unwrap(),
+            initial_counter,
+        )
     }
 
-    fn new(NonceRef(nonce): NonceRef, initial_counter: u32) -> Self {
+    fn new(Nonce(nonce): Nonce, initial_counter: u32) -> Self {
         let mut r = Self {
             block: Block::zero(),
         };
         let block = unsafe { &mut r.block };
-        block.as_mut()[U32::NONCE_BYTE_INDEX..][..NONCE_LEN].copy_from_slice(nonce);
+        block.as_mut()[U32::NONCE_BYTE_INDEX..][..NONCE_LEN].copy_from_slice(nonce.as_ref());
         r.increment_by_less_safe(initial_counter);
 
         r

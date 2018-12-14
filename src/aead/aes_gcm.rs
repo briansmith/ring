@@ -14,9 +14,7 @@
 
 use super::{
     aes::{self, Counter},
-    gcm,
-    nonce::NonceRef,
-    shift, Block, Direction, Tag, BLOCK_LEN,
+    gcm, shift, Block, Direction, Nonce, Tag, BLOCK_LEN,
 };
 use crate::{aead, endian::*, error, polyfill};
 
@@ -69,19 +67,19 @@ fn init(key: &[u8], variant: aes::Variant) -> Result<aead::KeyInner, error::Unsp
 
 const CHUNK_BLOCKS: usize = 3 * 1024 / 16;
 
-fn aes_gcm_seal(key: &aead::KeyInner, nonce: NonceRef, ad: &[u8], in_out: &mut [u8]) -> Tag {
+fn aes_gcm_seal(key: &aead::KeyInner, nonce: Nonce, ad: &[u8], in_out: &mut [u8]) -> Tag {
     aead(key, nonce, ad, in_out, Direction::Sealing)
 }
 
 fn aes_gcm_open(
-    key: &aead::KeyInner, nonce: NonceRef, ad: &[u8], in_prefix_len: usize, in_out: &mut [u8],
+    key: &aead::KeyInner, nonce: Nonce, ad: &[u8], in_prefix_len: usize, in_out: &mut [u8],
 ) -> Tag {
     aead(key, nonce, ad, in_out, Direction::Opening { in_prefix_len })
 }
 
 #[inline(always)] // Avoid branching on `direction`.
 fn aead(
-    key: &aead::KeyInner, nonce: NonceRef, aad: &[u8], in_out: &mut [u8], direction: Direction,
+    key: &aead::KeyInner, nonce: Nonce, aad: &[u8], in_out: &mut [u8], direction: Direction,
 ) -> Tag {
     let Key { aes_key, gcm_key } = match key {
         aead::KeyInner::AesGcm(key) => key,

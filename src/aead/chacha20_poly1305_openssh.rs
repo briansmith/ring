@@ -32,7 +32,7 @@
 use super::{
     chacha::{self, *},
     chacha20_poly1305::derive_poly1305_key,
-    poly1305, NonceRef, Tag,
+    poly1305, Nonce, Tag,
 };
 use crate::{constant_time, endian::*, error, polyfill::convert::*};
 
@@ -167,7 +167,7 @@ fn make_counter(sequence_number: u32) -> Counter {
         BigEndian::ZERO,
         BigEndian::from(sequence_number),
     ];
-    Counter::zero(NonceRef::try_from(as_bytes(&nonce)).unwrap())
+    Counter::zero(Nonce::try_assume_unique_for_key(as_bytes(&nonce)).unwrap())
 }
 
 /// The length of key.

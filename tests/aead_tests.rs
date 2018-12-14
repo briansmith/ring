@@ -49,7 +49,6 @@ fn aead_chacha20_poly1305() {
 
 fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
     test_aead_key_sizes(aead_alg);
-    test_aead_nonce_sizes(aead_alg).unwrap();
 
     test::from_file(file_path, |section, test_case| {
         assert_eq!(section, "");
@@ -61,13 +60,24 @@ fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
         let tag = test_case.consume_bytes("TAG");
         let error = test_case.consume_optional_string("FAILS");
 
+        match &error {
+            Some(err) if err == "WRONG_NONCE_LENGTH" => {
+                assert!(aead::Nonce::try_assume_unique_for_key(&nonce).is_err());
+                return Ok(());
+            },
+            _ => (),
+        };
+
         let tag_len = aead_alg.tag_len();
         let mut s_in_out = plaintext.clone();
         for _ in 0..tag_len {
             s_in_out.push(0);
         }
         let s_key = aead::SealingKey::new(aead_alg, &key_bytes[..])?;
-        let s_result = aead::seal_in_place(&s_key, &nonce[..], &ad, &mut s_in_out[..], tag_len);
+        let s_result = {
+            let nonce = aead::Nonce::try_assume_unique_for_key(&nonce).unwrap();
+            aead::seal_in_place(&s_key, nonce, &ad, &mut s_in_out[..], tag_len)
+        };
 
         ct.extend(tag);
 
@@ -149,8 +159,9 @@ fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
                 o_in_out.push(123);
             }
             o_in_out.extend_from_slice(&ct[..]);
+            let nonce = aead::Nonce::try_assume_unique_for_key(&nonce).unwrap();
             let o_result =
-                aead::open_in_place(&o_key, &nonce[..], &ad, *in_prefix_len, &mut o_in_out[..]);
+                aead::open_in_place(&o_key, nonce, &ad, *in_prefix_len, &mut o_in_out[..]);
             match error {
                 None => {
                     assert!(s_result.is_ok());
@@ -215,157 +226,19 @@ fn test_aead_key_sizes(aead_alg: &'static aead::Algorithm) {
 // won't crash or access out-of-bounds memory (when run under valgrind or
 // similar). The AES-128-GCM tests have some WRONG_NONCE_LENGTH test cases
 // that tests this more correctly.
-fn test_aead_nonce_sizes(aead_alg: &'static aead::Algorithm) -> Result<(), error::Unspecified> {
-    let key_len = aead_alg.key_len();
-    let key_data = vec![0u8; key_len];
-    let s_key = aead::SealingKey::new(aead_alg, &key_data[..key_len])?;
-    let o_key = aead::OpeningKey::new(aead_alg, &key_data[..key_len])?;
-
-    let nonce_len = aead_alg.nonce_len();
-
+#[test]
+fn test_aead_nonce_sizes() -> Result<(), error::Unspecified> {
+    let nonce_len = aead::NONCE_LEN;
     let nonce = vec![0u8; nonce_len * 2];
 
-    let prefix_len = 0;
-    let tag_len = aead_alg.tag_len();
-    let ad: [u8; 0] = [];
-
-    // Construct a template input for `seal_in_place`.
-    let mut to_seal = b"hello, world".to_vec();
-    // Reserve space for tag.
-    for _ in 0..tag_len {
-        to_seal.push(0);
-    }
-    let to_seal = &to_seal[..]; // to_seal is no longer mutable.
-
-    // Construct a template input for `open_in_place`.
-    let mut to_open = Vec::from(to_seal);
-    let ciphertext_len =
-        aead::seal_in_place(&s_key, &nonce[..nonce_len], &ad, &mut to_open, tag_len)?;
-    let to_open = &to_open[..ciphertext_len];
-
-    // Nonce is the correct length.
-    {
-        let mut in_out = Vec::from(to_seal);
-        assert!(
-            aead::seal_in_place(&s_key, &nonce[..nonce_len], &ad, &mut in_out, tag_len).is_ok()
-        );
-    }
-    {
-        let mut in_out = Vec::from(to_open);
-        assert!(
-            aead::open_in_place(&o_key, &nonce[..nonce_len], &ad, prefix_len, &mut in_out).is_ok()
-        );
-    }
-
-    // Nonce is one byte too small.
-    {
-        let mut in_out = Vec::from(to_seal);
-        assert!(
-            aead::seal_in_place(&s_key, &nonce[..(nonce_len - 1)], &ad, &mut in_out, tag_len)
-                .is_err()
-        );
-    }
-    {
-        let mut in_out = Vec::from(to_open);
-        assert!(aead::open_in_place(
-            &o_key,
-            &nonce[..(nonce_len - 1)],
-            &ad,
-            prefix_len,
-            &mut in_out
-        )
-        .is_err());
-    }
-
-    // Nonce is one byte too large.
-    {
-        let mut in_out = Vec::from(to_seal);
-        assert!(
-            aead::seal_in_place(&s_key, &nonce[..(nonce_len + 1)], &ad, &mut in_out, tag_len)
-                .is_err()
-        );
-    }
-    {
-        let mut in_out = Vec::from(to_open);
-        assert!(aead::open_in_place(
-            &o_key,
-            &nonce[..(nonce_len + 1)],
-            &ad,
-            prefix_len,
-            &mut in_out
-        )
-        .is_err());
-    }
-
-    // Nonce is half the required size.
-    {
-        let mut in_out = Vec::from(to_seal);
-        assert!(
-            aead::seal_in_place(&s_key, &nonce[..(nonce_len / 2)], &ad, &mut in_out, tag_len)
-                .is_err()
-        );
-    }
-    {
-        let mut in_out = Vec::from(to_open);
-        assert!(aead::open_in_place(
-            &o_key,
-            &nonce[..(nonce_len / 2)],
-            &ad,
-            prefix_len,
-            &mut in_out
-        )
-        .is_err());
-    }
-
-    // Nonce is twice the required size.
-    {
-        let mut in_out = Vec::from(to_seal);
-        assert!(
-            aead::seal_in_place(&s_key, &nonce[..(nonce_len * 2)], &ad, &mut in_out, tag_len)
-                .is_err()
-        );
-    }
-    {
-        let mut in_out = Vec::from(to_open);
-        assert!(aead::open_in_place(
-            &o_key,
-            &nonce[..(nonce_len * 2)],
-            &ad,
-            prefix_len,
-            &mut in_out
-        )
-        .is_err());
-    }
-
-    // Nonce is empty.
-    {
-        let mut in_out = Vec::from(to_seal);
-        assert!(aead::seal_in_place(&s_key, &[], &ad, &mut in_out, tag_len).is_err());
-    }
-    {
-        let mut in_out = Vec::from(to_open);
-        assert!(aead::open_in_place(&o_key, &[], &ad, prefix_len, &mut in_out).is_err());
-    }
-
-    // Nonce is one byte.
-    {
-        let mut in_out = Vec::from(to_seal);
-        assert!(aead::seal_in_place(&s_key, &nonce[..1], &ad, &mut in_out, tag_len).is_err());
-    }
-    {
-        let mut in_out = Vec::from(to_open);
-        assert!(aead::open_in_place(&o_key, &nonce[..1], &ad, prefix_len, &mut in_out).is_err());
-    }
-
-    // Nonce is 128 bits (16 bytes).
-    {
-        let mut in_out = Vec::from(to_seal);
-        assert!(aead::seal_in_place(&s_key, &nonce[..16], &ad, &mut in_out, tag_len).is_err());
-    }
-    {
-        let mut in_out = Vec::from(to_open);
-        assert!(aead::open_in_place(&o_key, &nonce[..16], &ad, prefix_len, &mut in_out).is_err());
-    }
+    assert!(aead::Nonce::try_assume_unique_for_key(&nonce[..nonce_len]).is_ok());
+    assert!(aead::Nonce::try_assume_unique_for_key(&nonce[..(nonce_len - 1)]).is_err());
+    assert!(aead::Nonce::try_assume_unique_for_key(&nonce[..(nonce_len + 1)]).is_err());
+    assert!(aead::Nonce::try_assume_unique_for_key(&nonce[..(nonce_len / 2)]).is_err());
+    assert!(aead::Nonce::try_assume_unique_for_key(&nonce[..(nonce_len * 2)]).is_err());
+    assert!(aead::Nonce::try_assume_unique_for_key(&[]).is_err());
+    assert!(aead::Nonce::try_assume_unique_for_key(&nonce[..1]).is_err());
+    assert!(aead::Nonce::try_assume_unique_for_key(&nonce[..16]).is_err()); // 128 bits.
 
     Ok(())
 }
@@ -373,7 +246,6 @@ fn test_aead_nonce_sizes(aead_alg: &'static aead::Algorithm) -> Result<(), error
 #[test]
 fn aead_chacha20_poly1305_openssh() {
     // TODO: test_aead_key_sizes(...);
-    // TODO: test_aead_nonce_sizes(...).unwrap();
 
     test::from_file(
         "tests/aead_chacha20_poly1305_openssh_tests.txt",
