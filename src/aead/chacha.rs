@@ -61,6 +61,8 @@ impl Key {
         // https://rt.openssl.org/Ticket/Display.html?id=4362
         let len = in_out.len() - in_prefix_len;
         if cfg!(any(target_arch = "arm", target_arch = "x86")) && in_prefix_len != 0 {
+            // TODO: replace with `in_out.copy_within(in_prefix_len.., 0)`
+            // See https://github.com/rust-lang/rust/issues/54236.
             unsafe {
                 core::ptr::copy(in_out[in_prefix_len..].as_ptr(), in_out.as_mut_ptr(), len);
             }
