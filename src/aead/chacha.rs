@@ -27,8 +27,6 @@ impl<'a> From<&'a [u8; KEY_LEN]> for Key {
     fn from(value: &[u8; KEY_LEN]) -> Self { Key(<[Block; KEY_BLOCKS]>::from_(value)) }
 }
 
-pub type Counter = nonce::Counter<LittleEndian<u32>>;
-
 #[inline] // Optimize away match on `iv`.
 pub fn chacha20_xor_in_place(key: &Key, iv: CounterOrIv, in_out: &mut [u8]) {
     unsafe {
@@ -77,6 +75,8 @@ unsafe fn chacha20_xor_inner(
     };
     GFp_ChaCha20_ctr32(output, input, in_out_len, key, &iv);
 }
+
+pub type Counter = nonce::Counter<LittleEndian<u32>>;
 
 pub enum CounterOrIv {
     Counter(Counter),
