@@ -209,7 +209,7 @@ typedef uint16x8_t vec_t;
 // These functions perform the same actions as the SSE2 function of the same
 // name, above.
 
-static int vec_capable() { return CRYPTO_is_NEON_capable(); }
+static int vec_capable(void) { return CRYPTO_is_NEON_capable(); }
 
 static inline vec_t vec_add(vec_t a, vec_t b) { return a + b; }
 
