@@ -76,15 +76,11 @@ fn aead(
     let in_out_len = match direction {
         Direction::Opening { in_prefix_len } => {
             poly1305_update_padded_16(&mut ctx, &in_out[in_prefix_len..]);
-            chacha::chacha20_xor_overlapping(chacha20_key, counter, in_out, in_prefix_len);
+            chacha20_key.encrypt_overlapping(counter, in_out, in_prefix_len);
             in_out.len() - in_prefix_len
         },
         Direction::Sealing => {
-            chacha::chacha20_xor_in_place(
-                chacha20_key,
-                chacha::CounterOrIv::Counter(counter),
-                in_out,
-            );
+            chacha20_key.encrypt_in_place(counter, in_out);
             poly1305_update_padded_16(&mut ctx, in_out);
             in_out.len()
         },
@@ -117,9 +113,8 @@ fn poly1305_update_padded_16(ctx: &mut poly1305::Context, input: &[u8]) {
 // Also used by chacha20_poly1305_openssh.
 pub(super) fn derive_poly1305_key(chacha_key: &chacha::Key, iv: Iv) -> poly1305::Key {
     let mut blocks = [Block::zero(); poly1305::KEY_BLOCKS];
-    chacha::chacha20_xor_in_place(
-        chacha_key,
-        chacha::CounterOrIv::Iv(iv),
+    chacha_key.encrypt_iv_xor_blocks_in_place(
+        iv,
         <&mut [u8; poly1305::KEY_BLOCKS * BLOCK_LEN]>::from_(&mut blocks),
     );
     poly1305::Key::from(blocks)

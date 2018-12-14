@@ -27,67 +27,83 @@ impl<'a> From<&'a [u8; KEY_LEN]> for Key {
     fn from(value: &[u8; KEY_LEN]) -> Self { Key(<[Block; KEY_BLOCKS]>::from_(value)) }
 }
 
-#[inline] // Optimize away match on `iv`.
-pub fn chacha20_xor_in_place(key: &Key, iv: CounterOrIv, in_out: &mut [u8]) {
-    unsafe {
-        chacha20_xor_inner(key, iv, in_out.as_ptr(), in_out.len(), in_out.as_mut_ptr());
-    }
-}
-
-pub fn chacha20_xor_overlapping(
-    key: &Key, counter: Counter, in_out: &mut [u8], in_prefix_len: usize,
-) {
-    // XXX: The x86 and at least one branch of the ARM assembly language
-    // code doesn't allow overlapping input and output unless they are
-    // exactly overlapping. TODO: Figure out which branch of the ARM code
-    // has this limitation and come up with a better solution.
-    //
-    // https://rt.openssl.org/Ticket/Display.html?id=4362
-    let len = in_out.len() - in_prefix_len;
-    if cfg!(any(target_arch = "arm", target_arch = "x86")) && in_prefix_len != 0 {
+impl Key {
+    #[inline] // Optimize away match on `counter`.
+    pub fn encrypt_in_place(&self, counter: Counter, in_out: &mut [u8]) {
         unsafe {
-            core::ptr::copy(in_out[in_prefix_len..].as_ptr(), in_out.as_mut_ptr(), len);
-        }
-        chacha20_xor_in_place(key, CounterOrIv::Counter(counter), &mut in_out[..len]);
-    } else {
-        unsafe {
-            chacha20_xor_inner(
-                key,
+            self.encrypt(
                 CounterOrIv::Counter(counter),
-                in_out[in_prefix_len..].as_ptr(),
-                len,
+                in_out.as_ptr(),
+                in_out.len(),
                 in_out.as_mut_ptr(),
             );
         }
     }
-}
 
-#[inline] // Optimize away match on `counter.`
-unsafe fn chacha20_xor_inner(
-    key: &Key, counter: CounterOrIv, input: *const u8, in_out_len: usize, output: *mut u8,
-) {
-    let iv = match counter {
-        CounterOrIv::Counter(counter) => counter.into(),
-        CounterOrIv::Iv(iv) => {
-            assert!(in_out_len <= 32);
-            iv
-        },
-    };
-
-    /// XXX: Although this takes an `Iv`, this actually uses it like a
-    /// `Counter`.
-    extern "C" {
-        fn GFp_ChaCha20_ctr32(
-            out: *mut u8, in_: *const u8, in_len: c::size_t, key: &Key, first_iv: &Iv,
-        );
+    #[inline] // Optimize away match on `iv` and length check.
+    pub fn encrypt_iv_xor_blocks_in_place(&self, iv: Iv, in_out: &mut [u8; 2 * BLOCK_LEN]) {
+        unsafe {
+            self.encrypt(
+                CounterOrIv::Iv(iv),
+                in_out.as_ptr(),
+                in_out.len(),
+                in_out.as_mut_ptr(),
+            );
+        }
     }
 
-    GFp_ChaCha20_ctr32(output, input, in_out_len, key, &iv);
+    pub fn encrypt_overlapping(&self, counter: Counter, in_out: &mut [u8], in_prefix_len: usize) {
+        // XXX: The x86 and at least one branch of the ARM assembly language
+        // code doesn't allow overlapping input and output unless they are
+        // exactly overlapping. TODO: Figure out which branch of the ARM code
+        // has this limitation and come up with a better solution.
+        //
+        // https://rt.openssl.org/Ticket/Display.html?id=4362
+        let len = in_out.len() - in_prefix_len;
+        if cfg!(any(target_arch = "arm", target_arch = "x86")) && in_prefix_len != 0 {
+            unsafe {
+                core::ptr::copy(in_out[in_prefix_len..].as_ptr(), in_out.as_mut_ptr(), len);
+            }
+            self.encrypt_in_place(counter, &mut in_out[..len]);
+        } else {
+            unsafe {
+                self.encrypt(
+                    CounterOrIv::Counter(counter),
+                    in_out[in_prefix_len..].as_ptr(),
+                    len,
+                    in_out.as_mut_ptr(),
+                );
+            }
+        }
+    }
+
+    #[inline] // Optimize away match on `counter.`
+    unsafe fn encrypt(
+        &self, counter: CounterOrIv, input: *const u8, in_out_len: usize, output: *mut u8,
+    ) {
+        let iv = match counter {
+            CounterOrIv::Counter(counter) => counter.into(),
+            CounterOrIv::Iv(iv) => {
+                assert!(in_out_len <= 32);
+                iv
+            },
+        };
+
+        /// XXX: Although this takes an `Iv`, this actually uses it like a
+        /// `Counter`.
+        extern "C" {
+            fn GFp_ChaCha20_ctr32(
+                out: *mut u8, in_: *const u8, in_len: c::size_t, key: &Key, first_iv: &Iv,
+            );
+        }
+
+        GFp_ChaCha20_ctr32(output, input, in_out_len, self, &iv);
+    }
 }
 
 pub type Counter = nonce::Counter<LittleEndian<u32>>;
 
-pub enum CounterOrIv {
+enum CounterOrIv {
     Counter(Counter),
     Iv(Iv),
 }
@@ -153,8 +169,7 @@ mod tests {
         // Straightforward encryption into disjoint buffers is computed
         // correctly.
         unsafe {
-            chacha20_xor_inner(
-                key,
+            key.encrypt(
                 CounterOrIv::Counter(Counter::from_test_vector(nonce, ctr)),
                 input[..len].as_ptr(),
                 len,
@@ -177,7 +192,7 @@ mod tests {
             for offset in 0..(max_offset + 1) {
                 in_out_buf[alignment + offset..][..len].copy_from_slice(input);
                 let ctr = Counter::from_test_vector(nonce, ctr);
-                chacha20_xor_overlapping(key, ctr, &mut in_out_buf[alignment..], offset);
+                key.encrypt_overlapping(ctr, &mut in_out_buf[alignment..], offset);
                 assert_eq!(&in_out_buf[alignment..][..len], expected);
             }
         }
