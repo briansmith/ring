@@ -73,6 +73,15 @@ unsafe fn chacha20_xor_inner(
             iv
         },
     };
+
+    /// XXX: Although this takes an `Iv`, this actually uses it like a
+    /// `Counter`.
+    extern "C" {
+        fn GFp_ChaCha20_ctr32(
+            out: *mut u8, in_: *const u8, in_len: c::size_t, key: &Key, first_iv: &Iv,
+        );
+    }
+
     GFp_ChaCha20_ctr32(output, input, in_out_len, key, &iv);
 }
 
@@ -81,13 +90,6 @@ pub type Counter = nonce::Counter<LittleEndian<u32>>;
 pub enum CounterOrIv {
     Counter(Counter),
     Iv(Iv),
-}
-
-/// XXX: Although this takes an `Iv`, this actually uses it like a `Counter`.
-extern "C" {
-    fn GFp_ChaCha20_ctr32(
-        out: *mut u8, in_: *const u8, in_len: c::size_t, key: &Key, first_iv: &Iv,
-    );
 }
 
 const KEY_BLOCKS: usize = 2;
