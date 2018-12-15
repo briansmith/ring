@@ -284,17 +284,14 @@ name = "ring"
 untrusted = "0.6.2"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-libc = { version = "0.2.34" }
+libc = { version = "0.2.45" }
 
 [target.'cfg(any(target_os = "redox", all(unix, not(any(target_os = "macos", target_os = "ios")))))'.dependencies]
 lazy_static = "1.2"
 
 # Keep this in sync with `[dependencies]` in pregenerate_asm/Cargo.toml.
 [build-dependencies]
-# we do not use the gcc parallel feature because we do the
-# parallelism ourself. This gives us a much higher level of
-# control about what should be parallised in which way
-cc = "1.0.9"
+cc = "1.0.26"
 
 [features]
 # These features are documented in the top-level module's documentation.
