@@ -23,6 +23,8 @@
 
 #include <openssl/bn.h>
 
+#include "../bn/internal.h"
+
 #if defined(__cplusplus)
 extern "C" {
 #endif
