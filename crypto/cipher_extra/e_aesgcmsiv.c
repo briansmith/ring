@@ -60,10 +60,10 @@ static struct aead_aes_gcm_siv_asm_ctx *asm_ctx_from_ctx(
 extern void aes128gcmsiv_aes_ks(
     const uint8_t key[16], uint8_t out_expanded_key[16*15]);
 
-// aes128gcmsiv_aes_ks writes an AES-128 key schedule for |key| to
+// aes256gcmsiv_aes_ks writes an AES-256 key schedule for |key| to
 // |out_expanded_key|.
 extern void aes256gcmsiv_aes_ks(
-    const uint8_t key[16], uint8_t out_expanded_key[16*15]);
+    const uint8_t key[32], uint8_t out_expanded_key[16*15]);
 
 static int aead_aes_gcm_siv_asm_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
                                      size_t key_len, size_t tag_len) {
