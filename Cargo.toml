@@ -215,7 +215,6 @@ include = [
     "src/rsa/signing.rs",
     "src/rsa/verification.rs",
     "src/signature.rs",
-    "src/signature_impl.rs",
     "src/test.rs",
     "src/test_1_syntax_error_tests.txt",
     "src/test_1_tests.txt",
