@@ -786,9 +786,9 @@ static bool SpeedHRSS(const std::string &selected) {
 
   results.Print("HRSS encap");
 
-  if (!TimeFunction(&results, [&pub, &priv, &ciphertext]() -> bool {
+  if (!TimeFunction(&results, [&priv, &ciphertext]() -> bool {
     uint8_t shared_key[HRSS_KEY_BYTES];
-    HRSS_decap(shared_key, &pub, &priv, ciphertext, sizeof(ciphertext));
+    HRSS_decap(shared_key, &priv, ciphertext, sizeof(ciphertext));
     return true;
   })) {
     fprintf(stderr, "Failed to time HRSS_encap.\n");

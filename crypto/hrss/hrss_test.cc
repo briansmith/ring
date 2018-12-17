@@ -180,17 +180,17 @@ TEST(HRSS, Basic) {
     encap_entropy[i] = i;
   }
 
-  uint8_t ciphertext[HRSS_CIPHERTEXT_BYTES];
-  uint8_t shared_key[HRSS_KEY_BYTES];
-  HRSS_encap(ciphertext, shared_key, &pub, encap_entropy);
-
   HRSS_public_key pub2;
   uint8_t pub_bytes[HRSS_PUBLIC_KEY_BYTES];
   HRSS_marshal_public_key(pub_bytes, &pub);
   ASSERT_TRUE(HRSS_parse_public_key(&pub2, pub_bytes));
 
+  uint8_t ciphertext[HRSS_CIPHERTEXT_BYTES];
+  uint8_t shared_key[HRSS_KEY_BYTES];
+  HRSS_encap(ciphertext, shared_key, &pub2, encap_entropy);
+
   uint8_t shared_key2[HRSS_KEY_BYTES];
-  HRSS_decap(shared_key2, &pub2, &priv, ciphertext, sizeof(ciphertext));
+  HRSS_decap(shared_key2, &priv, ciphertext, sizeof(ciphertext));
 
   EXPECT_EQ(Bytes(shared_key), Bytes(shared_key2));
 }
@@ -215,7 +215,7 @@ TEST(HRSS, Random) {
       HRSS_encap(ciphertext, shared_key, &pub, encap_entropy);
 
       uint8_t shared_key2[HRSS_KEY_BYTES];
-      HRSS_decap(shared_key2, &pub, &priv, ciphertext, sizeof(ciphertext));
+      HRSS_decap(shared_key2, &priv, ciphertext, sizeof(ciphertext));
       EXPECT_EQ(Bytes(shared_key), Bytes(shared_key2));
 
       uint32_t offset;
@@ -223,7 +223,7 @@ TEST(HRSS, Random) {
       uint8_t bit;
       RAND_bytes(&bit, sizeof(bit));
       ciphertext[offset % sizeof(ciphertext)] ^= (1 << (bit & 7));
-      HRSS_decap(shared_key2, &pub, &priv, ciphertext, sizeof(ciphertext));
+      HRSS_decap(shared_key2, &priv, ciphertext, sizeof(ciphertext));
       EXPECT_NE(Bytes(shared_key), Bytes(shared_key2));
     }
   }
@@ -462,13 +462,13 @@ TEST(HRSS, Golden) {
   };
   EXPECT_EQ(Bytes(shared_key), Bytes(kExpectedSharedKey));
 
-  HRSS_decap(shared_key, &pub, &priv, ciphertext, sizeof(ciphertext));
+  HRSS_decap(shared_key, &priv, ciphertext, sizeof(ciphertext));
   EXPECT_EQ(Bytes(shared_key, sizeof(shared_key)),
             Bytes(kExpectedSharedKey, sizeof(kExpectedSharedKey)));
 
   // Corrupt the ciphertext and ensure that the failure key is constant.
   ciphertext[50] ^= 4;
-  HRSS_decap(shared_key, &pub, &priv, ciphertext, sizeof(ciphertext));
+  HRSS_decap(shared_key, &priv, ciphertext, sizeof(ciphertext));
 
   static const uint8_t kExpectedFailureKey[HRSS_KEY_BYTES] = {
       0x8e, 0x19, 0xfe, 0x2b, 0x12, 0x67, 0xef, 0x9a, 0x63, 0x4d, 0x79,

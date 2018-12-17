@@ -51,6 +51,8 @@
 // SXY: https://eprint.iacr.org/2017/1005.pdf
 // NTRUTN14:
 // https://assets.onboardsecurity.com/static/downloads/NTRU/resources/NTRUTech014.pdf
+// NTRUCOMP:
+// https://eprint.iacr.org/2018/1174
 
 
 // Vector operations.
@@ -1686,6 +1688,7 @@ static void poly_invert(struct poly *out, const struct poly *in) {
 
 #define POLY_BYTES 1138
 
+// poly_marshal serialises all but the final coefficient of |in| to |out|.
 static void poly_marshal(uint8_t out[POLY_BYTES], const struct poly *in) {
   const uint16_t *p = in->v;
 
@@ -1718,6 +1721,10 @@ static void poly_marshal(uint8_t out[POLY_BYTES], const struct poly *in) {
   out[6] = 0xf & (p[3] >> 9);
 }
 
+// poly_unmarshal parses the output of |poly_marshal| and sets |out| such that
+// all but the final coefficients match, and the final coefficient is calculated
+// such that evaluating |out| at one results in zero. It returns one on success
+// or zero if |in| is an invalid encoding.
 static int poly_unmarshal(struct poly *out, const uint8_t in[POLY_BYTES]) {
   uint16_t *p = out->v;
 
@@ -2080,17 +2087,6 @@ void HRSS_generate_key(
   poly_clamp(&priv->ph_inverse);
 }
 
-static void owf(uint8_t out[POLY_BYTES], const struct public_key *pub,
-                const struct poly *m_lifted, const struct poly *r) {
-  struct poly prh_plus_m;
-  poly_mul(&prh_plus_m, r, &pub->ph);
-  for (unsigned i = 0; i < N; i++) {
-    prh_plus_m.v[i] += m_lifted->v[i];
-  }
-
-  poly_marshal(out, &prh_plus_m);
-}
-
 static const char kSharedKey[] = "shared key";
 
 void HRSS_encap(uint8_t out_ciphertext[POLY_BYTES],
@@ -2103,7 +2099,14 @@ void HRSS_encap(uint8_t out_ciphertext[POLY_BYTES],
   poly_short_sample(&m, in);
   poly_short_sample(&r, in + HRSS_SAMPLE_BYTES);
   poly_lift(&m_lifted, &m);
-  owf(out_ciphertext, pub, &m_lifted, &r);
+
+  struct poly prh_plus_m;
+  poly_mul(&prh_plus_m, &r, &pub->ph);
+  for (unsigned i = 0; i < N; i++) {
+    prh_plus_m.v[i] += m_lifted.v[i];
+  }
+
+  poly_marshal(out_ciphertext, &prh_plus_m);
 
   uint8_t m_bytes[HRSS_POLY3_BYTES], r_bytes[HRSS_POLY3_BYTES];
   poly_marshal_mod3(m_bytes, &m);
@@ -2119,11 +2122,8 @@ void HRSS_encap(uint8_t out_ciphertext[POLY_BYTES],
 }
 
 void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
-                const struct HRSS_public_key *in_pub,
                 const struct HRSS_private_key *in_priv,
                 const uint8_t *ciphertext, size_t ciphertext_len) {
-  const struct public_key *pub =
-      public_key_from_external((struct HRSS_public_key *)in_pub);
   const struct private_key *priv =
       private_key_from_external((struct HRSS_private_key *)in_priv);
 
@@ -2168,43 +2168,62 @@ void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
     return;
   }
 
-  struct poly f;
+  struct poly f, cf;
+  struct poly3 cf3, m3;
   poly_from_poly3(&f, &priv->f);
-
-  struct poly cf;
   poly_mul(&cf, &c, &f);
-
-  struct poly3 cf3;
   poly3_from_poly(&cf3, &cf);
   // Note that cf3 is not reduced mod Φ(N). That reduction is deferred.
-
-  struct poly3 m3;
   HRSS_poly3_mul(&m3, &cf3, &priv->f_inverse);
 
   struct poly m, m_lifted;
   poly_from_poly3(&m, &m3);
   poly_lift(&m_lifted, &m);
 
+  struct poly r;
   for (unsigned i = 0; i < N; i++) {
-    c.v[i] -= m_lifted.v[i];
+    r.v[i] = c.v[i] - m_lifted.v[i];
   }
-  poly_mul(&c, &c, &priv->ph_inverse);
-  poly_mod_phiN(&c);
-  poly_clamp(&c);
+  poly_mul(&r, &r, &priv->ph_inverse);
+  poly_mod_phiN(&r);
+  poly_clamp(&r);
 
   struct poly3 r3;
-  crypto_word_t ok = poly3_from_poly_checked(&r3, &c);
+  crypto_word_t ok = poly3_from_poly_checked(&r3, &r);
+
+  // [NTRUCOMP] section 5.1 includes ReEnc2 and a proof that it's valid. Rather
+  // than do an expensive |poly_mul|, it rebuilds |c'| from |c - lift(m)|
+  // (called |b|) with:
+  //   t = (−b(1)/N) mod Q
+  //   c' = b + tΦ(N) + lift(m) mod Q
+  //
+  // When polynomials are transmitted, the final coefficient is omitted and
+  // |poly_unmarshal| sets it such that f(1) == 0. Thus c(1) == 0. Also,
+  // |poly_lift| multiplies the result by (x-1) and therefore evaluating a
+  // lifted polynomial at 1 is also zero. Thus lift(m)(1) == 0 and so
+  // (c - lift(m))(1) == 0.
+  //
+  // Although we defer the reduction above, |b| is conceptually reduced mod
+  // Φ(N). In order to do that reduction one subtracts |c[N-1]| from every
+  // coefficient. Therefore b(1) = -c[N-1]×N. The value of |t|, above, then is
+  // just recovering |c[N-1]|, and adding tΦ(N) is simply undoing the reduction.
+  // Therefore b + tΦ(N) + lift(m) = c by construction and we don't need to
+  // recover |c| at all so long as we do the checks in
+  // |poly3_from_poly_checked|.
+  //
+  // The |poly_marshal| here then is just confirming that |poly_unmarshal| is
+  // strict and could be omitted.
 
   uint8_t expected_ciphertext[HRSS_CIPHERTEXT_BYTES];
   OPENSSL_STATIC_ASSERT(HRSS_CIPHERTEXT_BYTES == POLY_BYTES,
                         "ciphertext is the wrong size");
   assert(ciphertext_len == sizeof(expected_ciphertext));
-  owf(expected_ciphertext, pub, &m_lifted, &c);
+  poly_marshal(expected_ciphertext, &c);
 
   uint8_t m_bytes[HRSS_POLY3_BYTES];
   uint8_t r_bytes[HRSS_POLY3_BYTES];
   poly_marshal_mod3(m_bytes, &m);
-  poly_marshal_mod3(r_bytes, &c);
+  poly_marshal_mod3(r_bytes, &r);
 
   ok &= constant_time_is_zero_w(CRYPTO_memcmp(ciphertext, expected_ciphertext,
                                               sizeof(expected_ciphertext)));

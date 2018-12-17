@@ -80,7 +80,6 @@ OPENSSL_EXPORT void HRSS_encap(uint8_t out_ciphertext[HRSS_CIPHERTEXT_BYTES],
 // leak which was done via side-channels. Otherwise it should perform either
 // action in constant-time.
 OPENSSL_EXPORT void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
-                               const struct HRSS_public_key *in_pub,
                                const struct HRSS_private_key *in_priv,
                                const uint8_t *ciphertext,
                                size_t ciphertext_len);
