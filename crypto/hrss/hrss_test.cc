@@ -208,7 +208,7 @@ TEST(HRSS, Random) {
     for (unsigned j = 0; j < 10; j++) {
       uint8_t encap_entropy[HRSS_ENCAP_BYTES];
       RAND_bytes(encap_entropy, sizeof(encap_entropy));
-      SCOPED_TRACE(Bytes(generate_key_entropy));
+      SCOPED_TRACE(Bytes(encap_entropy));
 
       uint8_t ciphertext[HRSS_CIPHERTEXT_BYTES];
       uint8_t shared_key[HRSS_KEY_BYTES];
@@ -216,8 +216,15 @@ TEST(HRSS, Random) {
 
       uint8_t shared_key2[HRSS_KEY_BYTES];
       HRSS_decap(shared_key2, &pub, &priv, ciphertext, sizeof(ciphertext));
-
       EXPECT_EQ(Bytes(shared_key), Bytes(shared_key2));
+
+      uint32_t offset;
+      RAND_bytes((uint8_t*) &offset, sizeof(offset));
+      uint8_t bit;
+      RAND_bytes(&bit, sizeof(bit));
+      ciphertext[offset % sizeof(ciphertext)] ^= (1 << (bit & 7));
+      HRSS_decap(shared_key2, &pub, &priv, ciphertext, sizeof(ciphertext));
+      EXPECT_NE(Bytes(shared_key), Bytes(shared_key2));
     }
   }
 }

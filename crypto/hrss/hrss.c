@@ -1718,7 +1718,7 @@ static void poly_marshal(uint8_t out[POLY_BYTES], const struct poly *in) {
   out[6] = 0xf & (p[3] >> 9);
 }
 
-static void poly_unmarshal(struct poly *out, const uint8_t in[POLY_BYTES]) {
+static int poly_unmarshal(struct poly *out, const uint8_t in[POLY_BYTES]) {
   uint16_t *p = out->v;
 
   for (size_t i = 0; i < N / 8; i++) {
@@ -1751,9 +1751,10 @@ static void poly_unmarshal(struct poly *out, const uint8_t in[POLY_BYTES]) {
     out->v[i] = (int16_t)(out->v[i] << 3) >> 3;
   }
 
-  // There are four unused bits at the top of the final byte. They are always
-  // marshaled as zero by this code but we allow them to take any value when
-  // parsing in order to support future extension.
+  // There are four unused bits in the last byte. We require them to be zero.
+  if ((in[6] & 0xf0) != 0) {
+    return 0;
+  }
 
   // Set the final coefficient as specifed in [HRSSNIST] 1.9.2 step 6.
   uint32_t sum = 0;
@@ -1762,6 +1763,8 @@ static void poly_unmarshal(struct poly *out, const uint8_t in[POLY_BYTES]) {
   }
 
   out->v[N - 1] = (uint16_t)(0u - sum);
+
+  return 1;
 }
 
 // mod3_from_modQ maps {0, 1, Q-1, 65535} -> {0, 1, 2, 2}. Note that |v| may
@@ -2156,15 +2159,14 @@ void HRSS_decap(uint8_t out_shared_key[HRSS_KEY_BYTES],
                         "HRSS shared key length incorrect");
   SHA256_Final(out_shared_key, &hash_ctx);
 
+  struct poly c;
   // If the ciphertext is publicly invalid then a random shared key is still
   // returned to simply the logic of the caller, but this path is not constant
   // time.
-  if (ciphertext_len != HRSS_CIPHERTEXT_BYTES) {
+  if (ciphertext_len != HRSS_CIPHERTEXT_BYTES ||
+      !poly_unmarshal(&c, ciphertext)) {
     return;
   }
-
-  struct poly c;
-  poly_unmarshal(&c, ciphertext);
 
   struct poly f;
   poly_from_poly3(&f, &priv->f);
@@ -2231,7 +2233,9 @@ void HRSS_marshal_public_key(uint8_t out[HRSS_PUBLIC_KEY_BYTES],
 int HRSS_parse_public_key(struct HRSS_public_key *out,
                           const uint8_t in[HRSS_PUBLIC_KEY_BYTES]) {
   struct public_key *pub = public_key_from_external(out);
-  poly_unmarshal(&pub->ph, in);
+  if (!poly_unmarshal(&pub->ph, in)) {
+    return 0;
+  }
   OPENSSL_memset(&pub->ph.v[N], 0, 3 * sizeof(uint16_t));
   return 1;
 }
