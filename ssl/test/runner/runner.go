@@ -473,6 +473,11 @@ type testCase struct {
 	sendKeyUpdates int
 	// keyUpdateRequest is the KeyUpdateRequest value to send in KeyUpdate messages.
 	keyUpdateRequest byte
+	// expectUnsolicitedKeyUpdate makes the test expect a one or more KeyUpdate
+	// messages while reading data from the shim. Don't use this in combination
+	// with any of the fields that send a KeyUpdate otherwise any received
+	// KeyUpdate might not be as unsolicited as expected.
+	expectUnsolicitedKeyUpdate bool
 	// expectMessageDropped, if true, means the test message is expected to
 	// be dropped by the client rather than echoed back.
 	expectMessageDropped bool
@@ -950,6 +955,10 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 			if v != testMessage[i]^0xff {
 				return fmt.Errorf("bad reply contents at byte %d; got %q and wanted %q", i, buf, testMessage)
 			}
+		}
+
+		if seen := tlsConn.keyUpdateSeen; seen != test.expectUnsolicitedKeyUpdate {
+			return fmt.Errorf("keyUpdateSeen (%t) != expectUnsolicitedKeyUpdate", seen)
 		}
 	}
 
@@ -2826,7 +2835,7 @@ read alert 1 0
 			expectedError: ":WRONG_VERSION_NUMBER:",
 		},
 		{
-			name: "KeyUpdate-Client",
+			name: "KeyUpdate-ToClient",
 			config: Config{
 				MaxVersion: VersionTLS13,
 			},
@@ -2835,12 +2844,29 @@ read alert 1 0
 		},
 		{
 			testType: serverTest,
-			name:     "KeyUpdate-Server",
+			name:     "KeyUpdate-ToServer",
 			config: Config{
 				MaxVersion: VersionTLS13,
 			},
 			sendKeyUpdates:   1,
 			keyUpdateRequest: keyUpdateNotRequested,
+		},
+		{
+			name: "KeyUpdate-FromClient",
+			config: Config{
+				MaxVersion: VersionTLS13,
+			},
+			expectUnsolicitedKeyUpdate: true,
+			flags:                      []string{"-key-update"},
+		},
+		{
+			testType: serverTest,
+			name:     "KeyUpdate-FromServer",
+			config: Config{
+				MaxVersion: VersionTLS13,
+			},
+			expectUnsolicitedKeyUpdate: true,
+			flags:                      []string{"-key-update"},
 		},
 		{
 			name: "KeyUpdate-InvalidRequestMode",

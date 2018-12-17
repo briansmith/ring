@@ -106,6 +106,7 @@ type Conn struct {
 	pendingFragments [][]byte // pending outgoing handshake fragments.
 	pendingPacket    []byte   // pending outgoing packet.
 
+	keyUpdateSeen      bool
 	keyUpdateRequested bool
 	seenOneByteRecord  bool
 
@@ -1635,6 +1636,8 @@ func (c *Conn) handlePostHandshakeMessage() error {
 	}
 
 	if keyUpdate, ok := msg.(*keyUpdateMsg); ok {
+		c.keyUpdateSeen = true
+
 		if c.config.Bugs.RejectUnsolicitedKeyUpdate {
 			return errors.New("tls: unexpected KeyUpdate message")
 		}
@@ -1665,7 +1668,7 @@ func (c *Conn) ReadKeyUpdateACK() error {
 	keyUpdate, ok := msg.(*keyUpdateMsg)
 	if !ok {
 		c.sendAlert(alertUnexpectedMessage)
-		return errors.New("tls: unexpected message when reading KeyUpdate")
+		return fmt.Errorf("tls: unexpected message (%T) when reading KeyUpdate", msg)
 	}
 
 	if keyUpdate.keyUpdateRequest != keyUpdateNotRequested {
@@ -1708,13 +1711,12 @@ func (c *Conn) Read(b []byte) (n int, err error) {
 				// Soft error, like EAGAIN
 				return 0, err
 			}
-			if c.hand.Len() > 0 {
+			for c.hand.Len() > 0 {
 				// We received handshake bytes, indicating a
 				// post-handshake message.
 				if err := c.handlePostHandshakeMessage(); err != nil {
 					return 0, err
 				}
-				continue
 			}
 		}
 		if err := c.in.err; err != nil {

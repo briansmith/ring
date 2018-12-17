@@ -4358,6 +4358,35 @@ TEST(SSLTest, ApplyHandoffRemovesUnsupportedCurves) {
   EXPECT_EQ(1u, server->config->supported_group_list.size());
 }
 
+TEST(SSLTest, ZeroSizedWiteFlushesHandshakeMessages) {
+  // If there are pending handshake mesages, an |SSL_write| of zero bytes should
+  // flush them.
+  bssl::UniquePtr<SSL_CTX> server_ctx(SSL_CTX_new(TLS_method()));
+  EXPECT_TRUE(SSL_CTX_set_max_proto_version(server_ctx.get(), TLS1_3_VERSION));
+  EXPECT_TRUE(SSL_CTX_set_min_proto_version(server_ctx.get(), TLS1_3_VERSION));
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> key = GetTestKey();
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(key);
+  ASSERT_TRUE(SSL_CTX_use_certificate(server_ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(server_ctx.get(), key.get()));
+
+  bssl::UniquePtr<SSL_CTX> client_ctx(SSL_CTX_new(TLS_method()));
+  EXPECT_TRUE(SSL_CTX_set_max_proto_version(client_ctx.get(), TLS1_3_VERSION));
+  EXPECT_TRUE(SSL_CTX_set_min_proto_version(client_ctx.get(), TLS1_3_VERSION));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, client_ctx.get(),
+                                     server_ctx.get()));
+
+  BIO *client_wbio = SSL_get_wbio(client.get());
+  EXPECT_EQ(0u, BIO_wpending(client_wbio));
+  EXPECT_TRUE(SSL_key_update(client.get(), SSL_KEY_UPDATE_NOT_REQUESTED));
+  EXPECT_EQ(0u, BIO_wpending(client_wbio));
+  EXPECT_EQ(0, SSL_write(client.get(), nullptr, 0));
+  EXPECT_NE(0u, BIO_wpending(client_wbio));
+}
+
 TEST_P(SSLVersionTest, VerifyBeforeCertRequest) {
   // Configure the server to request client certificates.
   SSL_CTX_set_custom_verify(

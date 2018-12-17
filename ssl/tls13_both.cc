@@ -607,6 +607,25 @@ bool tls13_add_finished(SSL_HANDSHAKE *hs) {
   return true;
 }
 
+bool tls13_add_key_update(SSL *ssl, int update_requested) {
+  ScopedCBB cbb;
+  CBB body_cbb;
+  if (!ssl->method->init_message(ssl, cbb.get(), &body_cbb,
+                                 SSL3_MT_KEY_UPDATE) ||
+      !CBB_add_u8(&body_cbb, update_requested) ||
+      !ssl_add_message_cbb(ssl, cbb.get()) ||
+      !tls13_rotate_traffic_key(ssl, evp_aead_seal)) {
+    return false;
+  }
+
+  // Suppress KeyUpdate acknowledgments until this change is written to the
+  // wire. This prevents us from accumulating write obligations when read and
+  // write progress at different rates. See RFC 8446, section 4.6.3.
+  ssl->s3->key_update_pending = true;
+
+  return true;
+}
+
 static bool tls13_receive_key_update(SSL *ssl, const SSLMessage &msg) {
   CBS body = msg.body;
   uint8_t key_update_request;
@@ -625,21 +644,9 @@ static bool tls13_receive_key_update(SSL *ssl, const SSLMessage &msg) {
 
   // Acknowledge the KeyUpdate
   if (key_update_request == SSL_KEY_UPDATE_REQUESTED &&
-      !ssl->s3->key_update_pending) {
-    ScopedCBB cbb;
-    CBB body_cbb;
-    if (!ssl->method->init_message(ssl, cbb.get(), &body_cbb,
-                                   SSL3_MT_KEY_UPDATE) ||
-        !CBB_add_u8(&body_cbb, SSL_KEY_UPDATE_NOT_REQUESTED) ||
-        !ssl_add_message_cbb(ssl, cbb.get()) ||
-        !tls13_rotate_traffic_key(ssl, evp_aead_seal)) {
-      return false;
-    }
-
-    // Suppress KeyUpdate acknowledgments until this change is written to the
-    // wire. This prevents us from accumulating write obligations when read and
-    // write progress at different rates. See RFC 8446, section 4.6.3.
-    ssl->s3->key_update_pending = true;
+      !ssl->s3->key_update_pending &&
+      !tls13_add_key_update(ssl, SSL_KEY_UPDATE_NOT_REQUESTED)) {
+    return false;
   }
 
   return true;

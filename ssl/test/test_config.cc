@@ -148,6 +148,7 @@ const Flag<bool> kBoolFlags[] = {
   { "-jdk11-workaround", &TestConfig::jdk11_workaround },
   { "-server-preference", &TestConfig::server_preference },
   { "-export-traffic-secrets", &TestConfig::export_traffic_secrets },
+  { "-key-update", &TestConfig::key_update },
 };
 
 const Flag<std::string> kStringFlags[] = {

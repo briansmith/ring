@@ -232,25 +232,29 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *in, unsigned len) {
     return -1;
   }
 
-  if (len == 0) {
-    return 0;
-  }
-
   if (!tls_flush_pending_hs_data(ssl)) {
     return -1;
   }
+
   size_t flight_len = 0;
   if (ssl->s3->pending_flight != nullptr) {
     flight_len =
         ssl->s3->pending_flight->length - ssl->s3->pending_flight_offset;
   }
 
-  size_t max_out = len + SSL_max_seal_overhead(ssl);
-  if (max_out < len || max_out + flight_len < max_out) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
-    return -1;
+  size_t max_out = flight_len;
+  if (len > 0) {
+    const size_t max_ciphertext_len = len + SSL_max_seal_overhead(ssl);
+    if (max_ciphertext_len < len || max_out + max_ciphertext_len < max_out) {
+      OPENSSL_PUT_ERROR(SSL, ERR_R_OVERFLOW);
+      return -1;
+    }
+    max_out += max_ciphertext_len;
   }
-  max_out += flight_len;
+
+  if (max_out == 0) {
+    return 0;
+  }
 
   if (!buf->EnsureCap(flight_len + ssl_seal_align_prefix_len(ssl), max_out)) {
     return -1;
@@ -270,12 +274,14 @@ static int do_ssl3_write(SSL *ssl, int type, const uint8_t *in, unsigned len) {
     buf->DidWrite(flight_len);
   }
 
-  size_t ciphertext_len;
-  if (!tls_seal_record(ssl, buf->remaining().data(), &ciphertext_len,
-                       buf->remaining().size(), type, in, len)) {
-    return -1;
+  if (len > 0) {
+    size_t ciphertext_len;
+    if (!tls_seal_record(ssl, buf->remaining().data(), &ciphertext_len,
+                         buf->remaining().size(), type, in, len)) {
+      return -1;
+    }
+    buf->DidWrite(ciphertext_len);
   }
-  buf->DidWrite(ciphertext_len);
 
   // Now that we've made progress on the connection, uncork KeyUpdate
   // acknowledgments.

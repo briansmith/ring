@@ -1649,6 +1649,11 @@ const char *ssl_server_handshake_state(SSL_HANDSHAKE *hs);
 const char *tls13_client_handshake_state(SSL_HANDSHAKE *hs);
 const char *tls13_server_handshake_state(SSL_HANDSHAKE *hs);
 
+// tls13_add_key_update queues a KeyUpdate message on |ssl|. The
+// |update_requested| argument must be one of |SSL_KEY_UPDATE_REQUESTED| or
+// |SSL_KEY_UPDATE_NOT_REQUESTED|.
+bool tls13_add_key_update(SSL *ssl, int update_requested);
+
 // tls13_post_handshake processes a post-handshake message. It returns true on
 // success and false on failure.
 bool tls13_post_handshake(SSL *ssl, const SSLMessage &msg);
@@ -2505,10 +2510,6 @@ struct SSL_CONFIG {
 
 // From RFC 8446, used in determining PSK modes.
 #define SSL_PSK_DHE_KE 0x1
-
-// From RFC 8446, used in determining whether to respond with a KeyUpdate.
-#define SSL_KEY_UPDATE_NOT_REQUESTED 0
-#define SSL_KEY_UPDATE_REQUESTED 1
 
 // kMaxEarlyDataAccepted is the advertised number of plaintext bytes of early
 // data that will be accepted. This value should be slightly below

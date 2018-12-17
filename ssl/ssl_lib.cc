@@ -1135,6 +1135,37 @@ int SSL_write(SSL *ssl, const void *buf, int num) {
   return ret;
 }
 
+int SSL_key_update(SSL *ssl, int request_type) {
+  ssl_reset_error_state(ssl);
+
+  if (ssl->do_handshake == NULL) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_UNINITIALIZED);
+    return 0;
+  }
+
+  if (ssl->ctx->quic_method != nullptr) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  if (!ssl->s3->initial_handshake_complete) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_HANDSHAKE_NOT_COMPLETE);
+    return 0;
+  }
+
+  if (ssl_protocol_version(ssl) < TLS1_3_VERSION) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_SSL_VERSION);
+    return 0;
+  }
+
+  if (!ssl->s3->key_update_pending &&
+      !tls13_add_key_update(ssl, request_type)) {
+    return 0;
+  }
+
+  return 1;
+}
+
 int SSL_shutdown(SSL *ssl) {
   ssl_reset_error_state(ssl);
 

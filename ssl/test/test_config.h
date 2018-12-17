@@ -172,6 +172,7 @@ struct TestConfig {
   bool jdk11_workaround = false;
   bool server_preference = false;
   bool export_traffic_secrets = false;
+  bool key_update = false;
 
   int argc;
   char **argv;
