@@ -62,7 +62,7 @@
 // NEON and SSE2 for implementing some vector operations.
 
 // TODO: MSVC can likely also be made to work with vector operations.
-#if (defined(OPENSSL_X86) || defined(OPENSSL_X86_64)) && \
+#if ((defined(__SSE__) && defined(OPENSSL_X86)) || defined(OPENSSL_X86_64)) && \
     (defined(__clang__) || !defined(_MSC_VER))
 
 #define HRSS_HAVE_VECTOR_UNIT
