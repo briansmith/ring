@@ -21,7 +21,7 @@ use crate::{
     arithmetic::montgomery::R,
     bits, digest,
     error::{self, KeyRejected},
-    io::der,
+    io::{self, der},
     pkcs8, rand,
 };
 use untrusted;
@@ -176,19 +176,19 @@ impl KeyPair {
 
         fn positive_integer<'a>(
             input: &mut untrusted::Reader<'a>,
-        ) -> Result<untrusted::Input<'a>, KeyRejected> {
+        ) -> Result<io::Positive<'a>, KeyRejected> {
             der::positive_integer(input)
                 .map_err(|error::Unspecified| KeyRejected::invalid_encoding())
         }
 
         let n = positive_integer(input)?;
         let e = positive_integer(input)?;
-        let d = positive_integer(input)?;
-        let p = positive_integer(input)?;
-        let q = positive_integer(input)?;
-        let dP = positive_integer(input)?;
-        let dQ = positive_integer(input)?;
-        let qInv = positive_integer(input)?;
+        let d = positive_integer(input)?.big_endian_without_leading_zero();
+        let p = positive_integer(input)?.big_endian_without_leading_zero();
+        let q = positive_integer(input)?.big_endian_without_leading_zero();
+        let dP = positive_integer(input)?.big_endian_without_leading_zero();
+        let dQ = positive_integer(input)?.big_endian_without_leading_zero();
+        let qInv = positive_integer(input)?.big_endian_without_leading_zero();
 
         let (p, p_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(p)
             .map_err(|error::Unspecified| KeyRejected::invalid_encoding())?;
@@ -226,8 +226,8 @@ impl KeyPair {
 
         // Step 1.c. We validate e >= 65537.
         let public_key = verification::Key::from_modulus_and_exponent(
-            n,
-            e,
+            n.big_endian_without_leading_zero(),
+            e.big_endian_without_leading_zero(),
             bits::BitLength::from_usize_bits(2048),
             super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
             65537,

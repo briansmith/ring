@@ -16,6 +16,7 @@
 //!
 //! This module contains the foundational parts of an ASN.1 DER parser.
 
+use super::Positive;
 use crate::error;
 use untrusted;
 
@@ -180,13 +181,12 @@ pub fn small_nonnegative_integer(input: &mut untrusted::Reader) -> Result<u8, er
     })
 }
 
-/// Parses a positive DER integer, returning the big-endian-encoded value, sans
-/// any leading zero byte.
-#[inline]
+/// Parses a positive DER integer, returning the big-endian-encoded value,
+/// sans any leading zero byte.
 pub fn positive_integer<'a>(
     input: &mut untrusted::Reader<'a>,
-) -> Result<untrusted::Input<'a>, error::Unspecified> {
-    nonnegative_integer(input, 1)
+) -> Result<Positive<'a>, error::Unspecified> {
+    Ok(Positive(nonnegative_integer(input, 1)?))
 }
 
 #[cfg(test)]
@@ -278,7 +278,7 @@ mod tests {
             with_good_i(test_in, |input| {
                 let test_out = [test_out];
                 assert_eq!(
-                    positive_integer(input)?,
+                    positive_integer(input)?.big_endian_without_leading_zero(),
                     untrusted::Input::from(&test_out[..])
                 );
                 Ok(())

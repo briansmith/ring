@@ -86,8 +86,16 @@ impl signature::VerificationAlgorithm for Parameters {
     fn verify(
         &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
-        let public_key = parse_public_key(public_key)?;
-        verify_rsa_(self, public_key, msg, signature)
+        let (n, e) = parse_public_key(public_key)?;
+        verify_rsa_(
+            self,
+            (
+                n.big_endian_without_leading_zero(),
+                e.big_endian_without_leading_zero(),
+            ),
+            msg,
+            signature,
+        )
     }
 }
 

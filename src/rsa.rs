@@ -18,7 +18,11 @@
 // components.
 
 /// RSA signatures.
-use crate::{bits, error, io::der, limb};
+use crate::{
+    bits, error,
+    io::{self, der},
+    limb,
+};
 use untrusted;
 
 mod padding;
@@ -55,7 +59,7 @@ enum ParametersId {
 
 fn parse_public_key(
     input: untrusted::Input,
-) -> Result<(untrusted::Input, untrusted::Input), error::Unspecified> {
+) -> Result<(io::Positive, io::Positive), error::Unspecified> {
     input.read_all(error::Unspecified, |input| {
         der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
             let n = der::positive_integer(input)?;

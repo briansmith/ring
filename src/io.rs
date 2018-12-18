@@ -13,3 +13,9 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 pub mod der;
+
+pub struct Positive<'a>(untrusted::Input<'a>);
+
+impl<'a> Positive<'a> {
+    pub fn big_endian_without_leading_zero(&self) -> untrusted::Input<'a> { self.0 }
+}
