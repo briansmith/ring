@@ -95,7 +95,7 @@ mod c;
 pub mod constant_time;
 
 #[doc(hidden)]
-pub mod der;
+pub mod io;
 
 mod cpu;
 pub mod digest;

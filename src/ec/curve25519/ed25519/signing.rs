@@ -15,7 +15,7 @@
 //! EdDSA Signatures.
 
 use super::{super::ops::*, PUBLIC_KEY_LEN};
-use crate::{der, digest, error, pkcs8, polyfill::convert::*, rand, signature};
+use crate::{digest, error, io::der, pkcs8, polyfill::convert::*, rand, signature};
 use core;
 use untrusted;
 

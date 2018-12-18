@@ -18,7 +18,7 @@
 // components.
 
 /// RSA signatures.
-use crate::{bits, der, error, limb};
+use crate::{bits, error, io::der, limb};
 use untrusted;
 
 mod padding;

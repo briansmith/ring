@@ -32,7 +32,7 @@
 )]
 
 #[cfg(feature = "use_heap")]
-use ring::{der, error, rand, signature, test};
+use ring::{error, io::der, rand, signature, test};
 
 #[cfg(feature = "use_heap")]
 #[test]

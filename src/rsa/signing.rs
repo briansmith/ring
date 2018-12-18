@@ -19,8 +19,9 @@ use super::{
 /// RSA PKCS#1 1.5 signatures.
 use crate::{
     arithmetic::montgomery::R,
-    bits, der, digest,
+    bits, digest,
     error::{self, KeyRejected},
+    io::der,
     pkcs8, rand,
 };
 use untrusted;

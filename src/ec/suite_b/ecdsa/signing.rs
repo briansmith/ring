@@ -17,12 +17,14 @@
 use super::digest_scalar::digest_scalar;
 use crate::{
     arithmetic::montgomery::*,
-    der, digest,
+    digest,
     ec::{
         self,
         suite_b::{ops::*, private_key},
     },
-    error, limb, pkcs8, rand, sealed, signature,
+    error,
+    io::der,
+    limb, pkcs8, rand, sealed, signature,
 };
 use core;
 use untrusted;

@@ -17,9 +17,11 @@
 use super::digest_scalar::digest_scalar;
 use crate::{
     arithmetic::montgomery::*,
-    der, digest,
+    digest,
     ec::suite_b::{ops::*, public_key::*, verify_jacobian_point_is_on_the_curve},
-    error, limb, sealed, signature,
+    error,
+    io::der,
+    limb, sealed, signature,
 };
 use untrusted;
 

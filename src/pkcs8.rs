@@ -16,7 +16,7 @@
 //!
 //! [RFC 5958]: https://tools.ietf.org/html/rfc5958.
 
-use crate::{der, ec, error};
+use crate::{ec, error, io::der};
 use core;
 use untrusted;
 
