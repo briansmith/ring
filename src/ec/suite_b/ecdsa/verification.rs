@@ -19,7 +19,7 @@ use crate::{
     arithmetic::montgomery::*,
     der, digest,
     ec::suite_b::{ops::*, public_key::*, verify_jacobian_point_is_on_the_curve},
-    error, limb, private, signature,
+    error, limb, sealed, signature,
 };
 use untrusted;
 
@@ -157,7 +157,7 @@ impl Algorithm {
     }
 }
 
-impl private::Sealed for Algorithm {}
+impl sealed::Sealed for Algorithm {}
 
 fn split_rs_fixed<'a>(
     ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>,

@@ -459,7 +459,7 @@ fn parse_test_case(current_section: &mut String, lines: &mut FileLines) -> Optio
 /// useful for some types of fuzzing.
 #[allow(missing_docs)]
 pub mod rand {
-    use crate::{error, polyfill, private, rand};
+    use crate::{error, polyfill, rand, sealed};
     use core;
 
     /// An implementation of `SecureRandom` that always fills the output slice
@@ -527,9 +527,9 @@ pub mod rand {
         }
     }
 
-    impl private::Sealed for FixedByteRandom {}
-    impl<'a> private::Sealed for FixedSliceRandom<'a> {}
-    impl<'a> private::Sealed for FixedSliceSequenceRandom<'a> {}
+    impl sealed::Sealed for FixedByteRandom {}
+    impl<'a> sealed::Sealed for FixedSliceRandom<'a> {}
+    impl<'a> sealed::Sealed for FixedSliceSequenceRandom<'a> {}
 
 }
 

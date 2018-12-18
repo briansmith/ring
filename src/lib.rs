@@ -117,18 +117,18 @@ pub mod signature;
 
 pub mod test;
 
-mod private {
+mod sealed {
     /// Traits that are designed to only be implemented internally in *ring*.
     //
     // Usage:
     // ```
-    // use crate::private;
+    // use crate::sealed;
     //
-    // pub trait MyType: private::Sealed {
+    // pub trait MyType: sealed::Sealed {
     //     // [...]
     // }
     //
-    // impl private::Sealed for MyType {}
+    // impl sealed::Sealed for MyType {}
     // ```
     pub trait Sealed {}
 }

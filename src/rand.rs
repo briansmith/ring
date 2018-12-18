@@ -28,7 +28,7 @@
 use crate::error;
 
 /// A secure random number generator.
-pub trait SecureRandom: private::Sealed {
+pub trait SecureRandom: sealed::Sealed {
     /// Fills `dest` with random bytes.
     fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified>;
 }
@@ -91,7 +91,7 @@ impl SecureRandom for SystemRandom {
     fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> { fill_impl(dest) }
 }
 
-impl private::Sealed for SystemRandom {}
+impl sealed::Sealed for SystemRandom {}
 
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "ios", windows)))]
 use self::urandom::fill as fill_impl;
@@ -107,7 +107,7 @@ use self::sysrand_or_urandom::fill as fill_impl;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use self::darwin::fill as fill_impl;
-use crate::private;
+use crate::sealed;
 
 #[cfg(target_os = "linux")]
 mod sysrand_chunk {

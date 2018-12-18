@@ -264,7 +264,7 @@
 
 #[cfg(feature = "use_heap")]
 use crate::rand;
-use crate::{cpu, error, private};
+use crate::{cpu, error, sealed};
 use core;
 use untrusted;
 
@@ -387,7 +387,7 @@ pub(crate) const MAX_LEN: usize = 1/*tag:SEQUENCE*/ + 2/*len*/ +
 
 /// An algorithm for signing.
 #[cfg(feature = "use_heap")]
-pub trait SigningAlgorithm: core::fmt::Debug + Sync + 'static + private::Sealed {
+pub trait SigningAlgorithm: core::fmt::Debug + Sync + 'static + sealed::Sealed {
     /// Parses the key out of the given PKCS#8 document, verifying that it is
     /// valid for the algorithm.
     fn from_pkcs8(&'static self, input: untrusted::Input) -> Result<KeyPair, error::KeyRejected>;
@@ -415,7 +415,7 @@ pub fn sign(
 }
 
 /// A signature verification algorithm.
-pub trait VerificationAlgorithm: core::fmt::Debug + Sync + private::Sealed {
+pub trait VerificationAlgorithm: core::fmt::Debug + Sync + sealed::Sealed {
     /// Verify the signature `signature` of message `msg` with the public key
     /// `public_key`.
     fn verify(

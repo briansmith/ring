@@ -15,7 +15,7 @@
 //! EdDSA Signatures.
 
 use super::super::ops::*;
-use crate::{error, polyfill::convert::*, private, signature};
+use crate::{error, polyfill::convert::*, sealed, signature};
 use core;
 use untrusted;
 
@@ -67,7 +67,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
     }
 }
 
-impl private::Sealed for EdDSAParameters {}
+impl sealed::Sealed for EdDSAParameters {}
 
 extern "C" {
     fn GFp_x25519_ge_double_scalarmult_vartime(

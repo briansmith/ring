@@ -1,7 +1,7 @@
-use crate::private;
+use crate::sealed;
 use core::num::Wrapping;
 
-pub trait Encoding<T>: Copy + From<T> + Sized + private::Sealed
+pub trait Encoding<T>: Copy + From<T> + Sized + sealed::Sealed
 where
     T: From<Self>,
 {
@@ -25,7 +25,7 @@ macro_rules! define_endian {
         where
             T: Copy + Clone + Sized;
 
-        impl<T> private::Sealed for $endian<T> where T: Copy + Clone + Sized {}
+        impl<T> sealed::Sealed for $endian<T> where T: Copy + Clone + Sized {}
     };
 }
 

@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{bigint, parse_public_key, RSAParameters, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
-use crate::{bits, cpu, digest, error, private, signature};
+use crate::{bits, cpu, digest, error, sealed, signature};
 /// RSA PKCS#1 1.5 signatures.
 use core;
 use untrusted;
@@ -91,7 +91,7 @@ impl signature::VerificationAlgorithm for RSAParameters {
     }
 }
 
-impl private::Sealed for RSAParameters {}
+impl sealed::Sealed for RSAParameters {}
 
 impl core::fmt::Debug for RSAParameters {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {

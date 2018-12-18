@@ -22,7 +22,7 @@ use crate::{
         self,
         suite_b::{ops::*, private_key},
     },
-    error, limb, pkcs8, private, rand, signature,
+    error, limb, pkcs8, rand, sealed, signature,
 };
 use core;
 use untrusted;
@@ -55,7 +55,7 @@ impl PartialEq for Algorithm {
 
 impl Eq for Algorithm {}
 
-impl private::Sealed for Algorithm {}
+impl sealed::Sealed for Algorithm {}
 
 #[cfg(feature = "use_heap")]
 impl signature::SigningAlgorithm for Algorithm {
