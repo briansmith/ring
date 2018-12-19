@@ -625,6 +625,10 @@ int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order, BN_CTX *ctx) {
   return 1;
 }
 
+int EC_GROUP_order_bits(const EC_GROUP *group) {
+  return BN_num_bits(&group->order);
+}
+
 int EC_GROUP_get_cofactor(const EC_GROUP *group, BIGNUM *cofactor,
                           BN_CTX *ctx) {
   // All |EC_GROUP|s have cofactor 1.

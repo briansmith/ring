@@ -133,6 +133,9 @@ OPENSSL_EXPORT const EC_POINT *EC_GROUP_get0_generator(const EC_GROUP *group);
 // |group| that specifies the order of the group.
 OPENSSL_EXPORT const BIGNUM *EC_GROUP_get0_order(const EC_GROUP *group);
 
+// EC_GROUP_order_bits returns the number of bits of the order of |group|.
+OPENSSL_EXPORT int EC_GROUP_order_bits(const EC_GROUP *group);
+
 // EC_GROUP_get_cofactor sets |*cofactor| to the cofactor of |group| using
 // |ctx|, if it's not NULL. It returns one on success and zero otherwise.
 OPENSSL_EXPORT int EC_GROUP_get_cofactor(const EC_GROUP *group,
