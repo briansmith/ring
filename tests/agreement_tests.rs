@@ -54,10 +54,8 @@ fn agreement_agree_ephemeral() {
                 let my_public = test_case.consume_bytes("MyQ");
                 let output = test_case.consume_bytes("Output");
 
-                let mut computed_public = [0u8; agreement::PUBLIC_KEY_MAX_LEN];
-                let computed_public = &mut computed_public[..my_private.public_key_len()];
-                assert!(my_private.compute_public_key(computed_public).is_ok());
-                assert_eq!(computed_public, &my_public[..]);
+                let computed_public = my_private.compute_public_key().unwrap();
+                assert_eq!(computed_public.as_ref(), &my_public[..]);
 
                 assert!(agreement::agree_ephemeral(
                     my_private,

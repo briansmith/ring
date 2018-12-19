@@ -150,7 +150,7 @@ fn verify_affine_point_is_on_the_curve_scaled(
 }
 
 pub(crate) fn key_pair_from_pkcs8(
-    curve: &ec::Curve, template: &pkcs8::Template, input: untrusted::Input,
+    curve: &'static ec::Curve, template: &pkcs8::Template, input: untrusted::Input,
 ) -> Result<ec::KeyPair, error::KeyRejected> {
     let (ec_private_key, _) = pkcs8::unwrap_key(template, pkcs8::Version::V1Only, input)?;
     let (private_key, public_key) =
@@ -202,26 +202,19 @@ fn key_pair_from_pkcs8_<'a>(
 }
 
 pub fn key_pair_from_bytes(
-    curve: &ec::Curve, private_key_bytes: untrusted::Input, public_key_bytes: untrusted::Input,
+    curve: &'static ec::Curve, private_key_bytes: untrusted::Input,
+    public_key_bytes: untrusted::Input,
 ) -> Result<ec::KeyPair, error::KeyRejected> {
-    let private_key = ec::PrivateKey::from_bytes(curve, private_key_bytes)
+    let seed = ec::Seed::from_bytes(curve, private_key_bytes)
         .map_err(|error::Unspecified| error::KeyRejected::invalid_component())?;
 
-    let mut public_key_check = [0; ec::PUBLIC_KEY_MAX_LEN];
-    {
-        // Borrow `public_key_check`.
-        let public_key_check = &mut public_key_check[..curve.public_key_len];
-        (curve.public_from_private)(public_key_check, &private_key)
-            .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
-        if public_key_bytes != &*public_key_check {
-            return Err(error::KeyRejected::inconsistent_components());
-        }
+    let r = ec::KeyPair::derive(seed)
+        .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
+    if public_key_bytes != r.public_key().as_ref() {
+        return Err(error::KeyRejected::inconsistent_components());
     }
 
-    Ok(ec::KeyPair {
-        private_key,
-        public_key: public_key_check,
-    })
+    Ok(r)
 }
 
 pub mod curve;

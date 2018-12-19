@@ -34,7 +34,7 @@ macro_rules! suite_b_curve {
         ///     https://github.com/briansmith/ring/blob/master/doc/ecdh.pdf
         pub static $NAME: ec::Curve = ec::Curve {
             public_key_len: 1 + (2 * (($bits + 7) / 8)),
-            elem_and_scalar_len: ($bits + 7) / 8,
+            elem_scalar_seed_len: ($bits + 7) / 8,
             id: $id,
             check_private_key_bytes: $check_private_key_bytes,
             generate_private_key: $generate_private_key,
@@ -47,13 +47,13 @@ macro_rules! suite_b_curve {
         }
 
         fn $generate_private_key(
-            rng: &rand::SecureRandom,
-        ) -> Result<ec::PrivateKey, error::Unspecified> {
-            ec::suite_b::private_key::generate_private_key($private_key_ops, rng)
+            rng: &rand::SecureRandom, out: &mut [u8],
+        ) -> Result<(), error::Unspecified> {
+            ec::suite_b::private_key::generate_private_scalar_bytes($private_key_ops, rng, out)
         }
 
         fn $public_from_private(
-            public_out: &mut [u8], private_key: &ec::PrivateKey,
+            public_out: &mut [u8], private_key: &ec::Seed,
         ) -> Result<(), error::Unspecified> {
             ec::suite_b::private_key::public_from_private($private_key_ops, public_out, private_key)
         }

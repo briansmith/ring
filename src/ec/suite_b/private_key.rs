@@ -28,15 +28,16 @@ use untrusted;
 pub fn random_scalar(
     ops: &PrivateKeyOps, rng: &rand::SecureRandom,
 ) -> Result<Scalar, error::Unspecified> {
-    // Generating a random private key and then converting it into a scalar is a
-    // bit circuitous.
-    let key = generate_private_key(ops, rng)?;
-    Ok(private_key_as_scalar(ops, &key))
+    let num_limbs = ops.common.num_limbs;
+    let mut bytes = [0; ec::SCALAR_MAX_BYTES];
+    let bytes = &mut bytes[..(num_limbs * LIMB_BYTES)];
+    generate_private_scalar_bytes(ops, rng, bytes)?;
+    scalar_from_big_endian_bytes(ops, bytes)
 }
 
-pub fn generate_private_key(
-    ops: &PrivateKeyOps, rng: &rand::SecureRandom,
-) -> Result<ec::PrivateKey, error::Unspecified> {
+pub fn generate_private_scalar_bytes(
+    ops: &PrivateKeyOps, rng: &rand::SecureRandom, out: &mut [u8],
+) -> Result<(), error::Unspecified> {
     // [NSA Suite B Implementer's Guide to ECDSA] Appendix A.1.2, and
     // [NSA Suite B Implementer's Guide to NIST SP 800-56A] Appendix B.2,
     // "Key Pair Generation by Testing Candidates".
@@ -52,36 +53,31 @@ pub fn generate_private_key(
     // sufficient. TODO: Figure out what we can do to mitigate the bias issue
     // and switch to the other mechanism.
 
-    let num_limbs = ops.common.num_limbs;
+    let candidate = out;
 
     // XXX: The value 100 was chosen to match OpenSSL due to uncertainty of
     // what specific value would be better, but it seems bad to try 100 times.
     for _ in 0..100 {
-        let mut candidate = [0; ec::SCALAR_MAX_BYTES];
+        // NSA Guide Steps 1, 2, and 3.
+        //
+        // Since we calculate the length ourselves, it is pointless to check
+        // it, since we can only check it by doing the same calculation.
 
-        {
-            // NSA Guide Steps 1, 2, and 3.
-            //
-            // Since we calculate the length ourselves, it is pointless to check
-            // it, since we can only check it by doing the same calculation.
-            let candidate = &mut candidate[..(num_limbs * LIMB_BYTES)];
+        // NSA Guide Step 4.
+        //
+        // The requirement that the random number generator has the
+        // requested security strength is delegated to `rng`.
+        rng.fill(candidate)?;
 
-            // NSA Guide Step 4.
-            //
-            // The requirement that the random number generator has the
-            // requested security strength is delegated to `rng`.
-            rng.fill(candidate)?;
-
-            // NSA Guide Steps 5, 6, and 7.
-            if check_scalar_big_endian_bytes(ops, candidate).is_err() {
-                continue;
-            }
+        // NSA Guide Steps 5, 6, and 7.
+        if check_scalar_big_endian_bytes(ops, candidate).is_err() {
+            continue;
         }
 
         // NSA Guide Step 8 is done in `public_from_private()`.
 
         // NSA Guide Step 9.
-        return Ok(ec::PrivateKey { bytes: candidate });
+        return Ok(());
     }
 
     Err(error::Unspecified)
@@ -92,13 +88,9 @@ pub fn generate_private_key(
 // private key that way, which means we have to convert it to a Scalar whenever
 // we need to use it.
 #[inline]
-pub fn private_key_as_scalar(ops: &PrivateKeyOps, private_key: &ec::PrivateKey) -> Scalar {
+pub fn private_key_as_scalar(ops: &PrivateKeyOps, private_key: &ec::Seed) -> Scalar {
     // This cannot fail because we know the private key is valid.
-    scalar_from_big_endian_bytes(
-        ops,
-        &private_key.bytes[..(ops.common.num_limbs * LIMB_BYTES)],
-    )
-    .unwrap()
+    scalar_from_big_endian_bytes(ops, private_key.bytes_less_safe()).unwrap()
 }
 
 pub fn check_scalar_big_endian_bytes(
@@ -135,7 +127,7 @@ pub fn scalar_from_big_endian_bytes(
 }
 
 pub fn public_from_private(
-    ops: &PrivateKeyOps, public_out: &mut [u8], my_private_key: &ec::PrivateKey,
+    ops: &PrivateKeyOps, public_out: &mut [u8], my_private_key: &ec::Seed,
 ) -> Result<(), error::Unspecified> {
     let elem_and_scalar_bytes = ops.common.num_limbs * LIMB_BYTES;
     debug_assert_eq!(public_out.len(), 1 + (2 * elem_and_scalar_bytes));

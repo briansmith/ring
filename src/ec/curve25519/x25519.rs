@@ -20,7 +20,7 @@ use untrusted;
 
 static CURVE25519: ec::Curve = ec::Curve {
     public_key_len: PUBLIC_KEY_LEN,
-    elem_and_scalar_len: ELEM_AND_SCALAR_LEN,
+    elem_scalar_seed_len: ELEM_AND_SCALAR_LEN,
     id: ec::CurveID::Curve25519,
     check_private_key_bytes: x25519_check_private_key_bytes,
     generate_private_key: x25519_generate_private_key,
@@ -46,23 +46,17 @@ fn x25519_check_private_key_bytes(bytes: &[u8]) -> Result<(), error::Unspecified
 }
 
 fn x25519_generate_private_key(
-    rng: &rand::SecureRandom,
-) -> Result<ec::PrivateKey, error::Unspecified> {
-    let mut result = ec::PrivateKey {
-        bytes: [0; ec::SCALAR_MAX_BYTES],
-    };
-    rng.fill(&mut result.bytes[..PRIVATE_KEY_LEN])?;
-    Ok(result)
+    rng: &rand::SecureRandom, out: &mut [u8],
+) -> Result<(), error::Unspecified> {
+    rng.fill(out)
 }
 
 fn x25519_public_from_private(
-    public_out: &mut [u8], private_key: &ec::PrivateKey,
+    public_out: &mut [u8], private_key: &ec::Seed,
 ) -> Result<(), error::Unspecified> {
     let public_out = public_out.try_into_()?;
 
-    // XXX: This shouldn't require dynamic checks, but rustc can't slice an
-    // array reference to a shorter array reference. TODO(perf): Fix this.
-    let private_key = (&private_key.bytes[..PRIVATE_KEY_LEN]).try_into_()?;
+    let private_key = private_key.bytes_less_safe().try_into_()?;
     unsafe {
         GFp_x25519_public_from_private(public_out, private_key);
     }
@@ -70,11 +64,9 @@ fn x25519_public_from_private(
 }
 
 fn x25519_ecdh(
-    out: &mut [u8], my_private_key: &ec::PrivateKey, peer_public_key: untrusted::Input,
+    out: &mut [u8], my_private_key: &ec::Seed, peer_public_key: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
-    // XXX: This shouldn't require dynamic checks, but rustc can't slice an
-    // array reference to a shorter array reference. TODO(perf): Fix this.
-    let my_private_key = (&my_private_key.bytes[..PRIVATE_KEY_LEN]).try_into_()?;
+    let my_private_key = my_private_key.bytes_less_safe().try_into_()?;
     let peer_public_key: &[u8; PUBLIC_KEY_LEN] =
         peer_public_key.as_slice_less_safe().try_into_()?;
 

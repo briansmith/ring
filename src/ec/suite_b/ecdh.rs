@@ -45,7 +45,7 @@ macro_rules! ecdh {
         };
 
         fn $ecdh(
-            out: &mut [u8], my_private_key: &ec::PrivateKey, peer_public_key: untrusted::Input,
+            out: &mut [u8], my_private_key: &ec::Seed, peer_public_key: untrusted::Input,
         ) -> Result<(), error::Unspecified> {
             ecdh(
                 $private_key_ops,
@@ -78,7 +78,7 @@ ecdh!(
 
 fn ecdh(
     private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps, out: &mut [u8],
-    my_private_key: &ec::PrivateKey, peer_public_key: untrusted::Input,
+    my_private_key: &ec::Seed, peer_public_key: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
     // The NIST SP 800-56Ar2 steps are from section 5.7.1.2 Elliptic Curve
     // Cryptography Cofactor Diffie-Hellman (ECC CDH) Primitive.
@@ -115,6 +115,7 @@ fn ecdh(
     // assume that since we throw away the values to be destroyed, no
     // information about their values can be recovered. This doesn't meet the
     // NSA guide's explicit requirement to "zeroize" them though.
+    // TODO: this only needs common scalar ops
     let my_private_key = private_key_as_scalar(private_key_ops, my_private_key);
     let product = private_key_ops.point_mul(&my_private_key, &peer_public_key);
 
@@ -183,7 +184,7 @@ mod tests {
             // is rejected and that `generate` gives up after a while of only
             // getting that value from the PRNG.
             let mut n_bytes = [0u8; ec::SCALAR_MAX_BYTES];
-            let num_bytes = curve.elem_and_scalar_len;
+            let num_bytes = curve.elem_scalar_seed_len;
             limb::big_endian_from_limbs(&ops.n.limbs[..ops.num_limbs], &mut n_bytes[..num_bytes]);
             {
                 let n_bytes = &mut n_bytes[..num_bytes];
@@ -201,7 +202,7 @@ mod tests {
                     bytes: n_minus_1_bytes,
                 };
                 let key = agreement::EphemeralPrivateKey::generate(alg, &rng).unwrap();
-                assert_eq!(&n_minus_1_bytes[..], key.bytes(curve));
+                assert_eq!(&n_minus_1_bytes[..], key.bytes());
             }
 
             // Test that n + 1 also fails.
@@ -230,7 +231,7 @@ mod tests {
                     current: core::cell::UnsafeCell::new(0),
                 };
                 let key = agreement::EphemeralPrivateKey::generate(alg, &rng).unwrap();
-                assert_eq!(&n_minus_1_bytes[..num_bytes], key.bytes(curve));
+                assert_eq!(&n_minus_1_bytes[..num_bytes], key.bytes());
             }
         }
     }

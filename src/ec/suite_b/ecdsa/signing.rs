@@ -89,14 +89,12 @@ impl Key {
     pub fn generate_pkcs8(
         alg: &'static Algorithm, rng: &rand::SecureRandom,
     ) -> Result<pkcs8::Document, error::Unspecified> {
-        let private_key = ec::PrivateKey::generate(alg.curve, rng)?;
-        let mut public_key_bytes = [0; ec::PUBLIC_KEY_MAX_LEN];
-        let public_key_bytes = &mut public_key_bytes[..alg.curve.public_key_len];
-        (alg.curve.public_from_private)(public_key_bytes, &private_key)?;
+        let private_key = ec::Seed::generate(alg.curve, rng)?;
+        let public_key = private_key.compute_public_key()?;
         Ok(pkcs8::wrap_key(
             &alg.pkcs8_template,
-            private_key.bytes(alg.curve),
-            public_key_bytes,
+            private_key.bytes_less_safe(),
+            public_key.as_ref(),
         ))
     }
 
@@ -131,7 +129,7 @@ impl Key {
     }
 
     fn new(alg: &'static Algorithm, key_pair: ec::KeyPair) -> Self {
-        let d = private_key::private_key_as_scalar(alg.private_key_ops, &key_pair.private_key);
+        let d = private_key::private_key_as_scalar(alg.private_key_ops, key_pair.seed());
         let d = alg
             .private_scalar_ops
             .scalar_ops

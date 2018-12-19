@@ -147,6 +147,7 @@ include = [
     "src/ec/curve25519/ops.rs",
     "src/ec/curve25519/x25519.rs",
     "src/ec/mod.rs",
+    "src/ec/keys.rs",
     "src/ec/suite_b/curve.rs",
     "src/ec/suite_b/ecdh.rs",
     "src/ec/suite_b/ecdsa/digest_scalar.rs",
