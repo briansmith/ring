@@ -19,6 +19,10 @@
 
 #include "test/abi_test.h"
 
+#if defined(OPENSSL_WINDOWS)
+#include <windows.h>
+#endif
+
 
 static bool test_function_was_called = false;
 static void TestFunction(int a1, int a2, int a3, int a4, int a5, int a6, int a7,
@@ -151,4 +155,31 @@ TEST(ABITest, X86_64) {
   CHECK_ABI(abi_test_clobber_xmm15);
 #endif
 }
+
+#if defined(OPENSSL_WINDOWS)
+static void ThrowWindowsException() {
+  DebugBreak();
+}
+
+static void ExceptionTest() {
+  bool handled = false;
+  __try {
+    CHECK_ABI(ThrowWindowsException);
+  } __except (GetExceptionCode() == EXCEPTION_BREAKPOINT
+                  ? EXCEPTION_EXECUTE_HANDLER
+                  : EXCEPTION_CONTINUE_SEARCH) {
+    handled = true;
+  }
+
+  EXPECT_TRUE(handled);
+}
+
+// Test that the trampoline's SEH metadata works.
+TEST(ABITest, TrampolineSEH) {
+  // Wrap the test in |CHECK_ABI|, to confirm the register-restoring annotations
+  // were correct.
+  CHECK_ABI(ExceptionTest);
+}
+#endif  // OPENSSL_WINDOWS
+
 #endif   // OPENSSL_X86_64 && SUPPORTS_ABI_TEST

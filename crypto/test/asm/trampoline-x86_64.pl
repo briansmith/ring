@@ -137,6 +137,7 @@ my $code = <<____;
 .globl	abi_test_trampoline
 .align	16
 abi_test_trampoline:
+.Labi_test_trampoline_begin:
 .cfi_startproc
 	# Stack layout:
 	#   8 bytes - align
@@ -162,16 +163,25 @@ my $caller_state_offset = $scratch_offset + 8;
 $code .= <<____;
 	subq	\$$stack_alloc_size, %rsp
 .cfi_adjust_cfa_offset	$stack_alloc_size
+.Labi_test_trampoline_prolog_alloc:
 ____
 # Store our caller's state. This is needed because we modify it ourselves, and
 # also to isolate the test infrastruction from the function under test failing
 # to save some register.
+my %reg_offsets;
 $code .= store_caller_state($caller_state_offset, "%rsp", sub {
   my ($off, $reg) = @_;
   $reg = substr($reg, 1);
+  $reg_offsets{$reg} = $off;
   $off -= $stack_alloc_size + 8;
-  return ".cfi_offset\t$reg, $off\n";
+  return <<____;
+.cfi_offset	$reg, $off
+.Labi_test_trampoline_prolog_$reg:
+____
 });
+$code .= <<____;
+.Labi_test_trampoline_prolog_end:
+____
 
 $code .= load_caller_state(0, $state);
 $code .= <<____;
@@ -234,6 +244,7 @@ $code .= <<____;
   # %rax already contains \$func's return value, unmodified.
 	ret
 .cfi_endproc
+.Labi_test_trampoline_end:
 .size	abi_test_trampoline,.-abi_test_trampoline
 ____
 
@@ -260,6 +271,93 @@ abi_test_clobber_xmm$_:
 	pxor	%xmm$_, %xmm$_
 	ret
 .size	abi_test_clobber_xmm$_,.-abi_test_clobber_xmm$_
+____
+}
+
+if ($win64) {
+  # Add unwind metadata for SEH.
+  #
+  # TODO(davidben): This is all manual right now. Once we've added SEH tests,
+  # add support for emitting these in x86_64-xlate.pl, probably based on MASM
+  # and Yasm's unwind directives, and unify with CFI. (Sadly, NASM does not
+  # support these directives.) Then push that upstream to replace the
+  # error-prone and non-standard custom handlers.
+
+  # See https://docs.microsoft.com/en-us/cpp/build/struct-unwind-code?view=vs-2017
+  my $UWOP_ALLOC_LARGE = 1;
+  my $UWOP_ALLOC_SMALL = 2;
+  my $UWOP_SAVE_NONVOL = 4;
+  my $UWOP_SAVE_XMM128 = 8;
+
+  my %UWOP_REG_NUMBER = (rax => 0, rcx => 1, rdx => 2, rbx => 3, rsp => 4,
+                         rbp => 5, rsi => 6, rdi => 7,
+                         map(("r$_" => $_), (8..15)));
+
+  my $unwind_codes = "";
+  my $num_slots = 0;
+  if ($stack_alloc_size <= 128) {
+    my $info = $UWOP_ALLOC_SMALL | ((($stack_alloc_size - 8) / 8) << 4);
+    $unwind_codes .= <<____;
+	.byte	.Labi_test_trampoline_prolog_alloc-.Labi_test_trampoline_begin
+	.byte	$info
+____
+    $num_slots++;
+  } else {
+    die "stack allocation needs three unwind slots" if ($stack_alloc_size > 512 * 1024 + 8);
+    my $info = $UWOP_ALLOC_LARGE;
+    my $value = $stack_alloc_size / 8;
+    $unwind_codes .= <<____;
+	.byte	.Labi_test_trampoline_prolog_alloc-.Labi_test_trampoline_begin
+	.byte	$info
+	.value	$value
+____
+    $num_slots += 2;
+  }
+
+  foreach my $reg (@caller_state) {
+    $reg = substr($reg, 1);
+    die "unknown register $reg" unless exists($reg_offsets{$reg});
+    if ($reg =~ /^r/) {
+      die "unknown register $reg" unless exists($UWOP_REG_NUMBER{$reg});
+      my $info = $UWOP_SAVE_NONVOL | ($UWOP_REG_NUMBER{$reg} << 4);
+      my $value = $reg_offsets{$reg} / 8;
+      $unwind_codes .= <<____;
+	.byte	.Labi_test_trampoline_prolog_$reg-.Labi_test_trampoline_begin
+	.byte	$info
+	.value	$value
+____
+      $num_slots += 2;
+    } elsif ($reg =~ /^xmm/) {
+      my $info = $UWOP_SAVE_XMM128 | (substr($reg, 3) << 4);
+      my $value = $reg_offsets{$reg} / 16;
+      $unwind_codes .= <<____;
+	.byte	.Labi_test_trampoline_prolog_$reg-.Labi_test_trampoline_begin
+	.byte	$info
+	.value	$value
+____
+      $num_slots += 2;
+    } else {
+      die "unknown register $reg";
+    }
+  }
+
+  $code .= <<____;
+.section	.pdata
+.align	4
+	# https://docs.microsoft.com/en-us/cpp/build/struct-runtime-function?view=vs-2017
+	.rva	.Labi_test_trampoline_begin
+	.rva	.Labi_test_trampoline_end
+	.rva	.Labi_test_trampoline_info
+
+.section	.xdata
+.align	8
+.Labi_test_trampoline_info:
+	# https://docs.microsoft.com/en-us/cpp/build/struct-unwind-info?view=vs-2017
+	.byte	1	# version 1, no flags
+	.byte	.Labi_test_trampoline_prolog_end-.Labi_test_trampoline_begin
+	.byte	$num_slots
+	.byte	0	# no frame register
+$unwind_codes
 ____
 }
 
