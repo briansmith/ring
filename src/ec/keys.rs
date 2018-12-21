@@ -12,8 +12,8 @@ impl KeyPair {
         Ok(Self { seed, public_key })
     }
 
-    pub fn seed(&self) -> &Seed { &self.seed }
     pub fn public_key(&self) -> &PublicKey { &self.public_key }
+    pub fn split(self) -> (Seed, PublicKey) { (self.seed, self.public_key) }
 }
 
 pub struct Seed {
@@ -63,6 +63,7 @@ impl Seed {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct PublicKey {
     bytes: [u8; PUBLIC_KEY_MAX_LEN],
     len: usize,
@@ -70,6 +71,12 @@ pub struct PublicKey {
 
 impl AsRef<[u8]> for PublicKey {
     fn as_ref(&self) -> &[u8] { &self.bytes[..self.len] }
+}
+
+impl core::fmt::Debug for PublicKey {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+        f.debug_tuple("PublicKey").field(&self.as_ref()).finish()
+    }
 }
 
 /// The maximum length, in bytes, of an encoded public key.

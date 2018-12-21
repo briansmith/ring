@@ -60,14 +60,15 @@ impl Eq for Algorithm {}
 impl sealed::Sealed for Algorithm {}
 
 /// An ECDSA key pair, used for signing.
-pub struct Key {
+pub struct KeyPair {
     d: Scalar<R>,
     alg: &'static Algorithm,
+    public_key: PublicKey,
 }
 
-derive_debug_via_self!(Key, self.alg);
+derive_debug_via_self!(KeyPair, self.public_key);
 
-impl Key {
+impl KeyPair {
     /// Generates a new key pair and returns the key pair serialized as a
     /// PKCS#8 document.
     ///
@@ -122,13 +123,18 @@ impl Key {
     }
 
     fn new(alg: &'static Algorithm, key_pair: ec::KeyPair) -> Self {
-        let d = private_key::private_key_as_scalar(alg.private_key_ops, key_pair.seed());
+        let (seed, public_key) = key_pair.split();
+        let d = private_key::private_key_as_scalar(alg.private_key_ops, &seed);
         let d = alg
             .private_scalar_ops
             .scalar_ops
             .scalar_product(&d, &alg.private_scalar_ops.oneRR_mod_n);
 
-        Self { d, alg }
+        Self {
+            d,
+            alg,
+            public_key: PublicKey(public_key),
+        }
     }
 
     /// Returns the signature of the message `msg` using a random nonce
@@ -217,6 +223,19 @@ impl Key {
 
         Err(error::Unspecified)
     }
+}
+
+impl signature::KeyPair for KeyPair {
+    type PublicKey = PublicKey;
+
+    fn public_key(&self) -> &Self::PublicKey { &self.public_key }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct PublicKey(ec::PublicKey);
+
+impl AsRef<[u8]> for PublicKey {
+    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
 
 fn format_rs_fixed<'a>(
