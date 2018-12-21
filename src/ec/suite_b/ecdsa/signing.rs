@@ -110,7 +110,7 @@ impl Key {
     /// private key and public key bytes.
     ///
     /// This is intended for use by code that deserializes key pairs. It is
-    /// recommended to use `ECDSAKeyPair::from_pkcs8()` (with a PKCS#8-encoded
+    /// recommended to use `RsaPubeyPair::from_pkcs8()` (with a PKCS#8-encoded
     /// key) instead.
     pub fn from_private_key_and_public_key(
         alg: &'static Algorithm, private_key: untrusted::Input, public_key: untrusted::Input,
@@ -162,10 +162,10 @@ impl Key {
         //        private key d (see [SP800-89] Section 6).
         //
         // The domain parameters are hard-coded into the source code.
-        // `ECDSAKeyPair::generate_pkcs8()` can be used to meet the second
+        // `EcdsaKeyPair::generate_pkcs8()` can be used to meet the second
         // requirement; otherwise, it is up to the user to ensure the key pair
         // was obtained from a trusted private key. The constructors for
-        // `ECDSAKeyPair` ensure that #3 and #4 are met subject to the caveats
+        // `EcdsaKeyPair` ensure that #3 and #4 are met subject to the caveats
         // in SP800-89 Section 6.
 
         let ops = self.alg.private_scalar_ops;
@@ -388,7 +388,7 @@ mod tests {
                 };
 
                 let private_key =
-                    signature::ECDSAKeyPair::from_private_key_and_public_key(alg, d, q).unwrap();
+                    signature::EcdsaKeyPair::from_private_key_and_public_key(alg, d, q).unwrap();
                 let rng = test::rand::FixedSliceRandom { bytes: &k };
 
                 let actual_result = private_key.sign(msg, &rng).unwrap();
@@ -432,7 +432,7 @@ mod tests {
                 };
 
                 let private_key =
-                    signature::ECDSAKeyPair::from_private_key_and_public_key(alg, d, q).unwrap();
+                    signature::EcdsaKeyPair::from_private_key_and_public_key(alg, d, q).unwrap();
                 let rng = test::rand::FixedSliceRandom { bytes: &k };
 
                 let actual_result = private_key.sign(msg, &rng).unwrap();

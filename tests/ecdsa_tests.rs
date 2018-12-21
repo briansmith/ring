@@ -74,7 +74,7 @@ fn ecdsa_from_pkcs8_test() {
         let error = test_case.consume_optional_string("Error");
 
         match (
-            signature::ECDSAKeyPair::from_pkcs8(this_fixed, input),
+            signature::EcdsaKeyPair::from_pkcs8(this_fixed, input),
             error.clone(),
         ) {
             (Ok(_), None) => (),
@@ -84,7 +84,7 @@ fn ecdsa_from_pkcs8_test() {
         };
 
         match (
-            signature::ECDSAKeyPair::from_pkcs8(this_asn1, input),
+            signature::EcdsaKeyPair::from_pkcs8(this_asn1, input),
             error.clone(),
         ) {
             (Ok(_), None) => (),
@@ -93,8 +93,8 @@ fn ecdsa_from_pkcs8_test() {
             (Err(actual), Some(expected)) => assert_eq!(actual.description(), expected),
         };
 
-        assert!(signature::ECDSAKeyPair::from_pkcs8(other_fixed, input).is_err());
-        assert!(signature::ECDSAKeyPair::from_pkcs8(other_asn1, input).is_err());
+        assert!(signature::EcdsaKeyPair::from_pkcs8(other_fixed, input).is_err());
+        assert!(signature::EcdsaKeyPair::from_pkcs8(other_asn1, input).is_err());
 
         Ok(())
     });
@@ -111,7 +111,7 @@ fn ecdsa_generate_pkcs8_test() {
         &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
         &signature::ECDSA_P384_SHA384_FIXED_SIGNING,
     ] {
-        let pkcs8 = signature::ECDSAKeyPair::generate_pkcs8(alg, &rng).unwrap();
+        let pkcs8 = signature::EcdsaKeyPair::generate_pkcs8(alg, &rng).unwrap();
         println!();
         for b in pkcs8.as_ref() {
             print!("{:02x}", *b);
@@ -120,7 +120,7 @@ fn ecdsa_generate_pkcs8_test() {
         println!();
 
         #[cfg(feature = "use_heap")]
-        let _ = signature::ECDSAKeyPair::from_pkcs8(*alg, untrusted::Input::from(pkcs8.as_ref()))
+        let _ = signature::EcdsaKeyPair::from_pkcs8(*alg, untrusted::Input::from(pkcs8.as_ref()))
             .unwrap();
     }
 }
