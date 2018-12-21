@@ -262,39 +262,47 @@
 //! # }
 //! ```
 
-#[cfg(feature = "use_heap")]
-use crate::rand;
-use crate::{cpu, error, sealed};
+use crate::{cpu, ec, error, sealed};
 use core;
 use untrusted;
 
 #[cfg(feature = "use_heap")]
+use crate::rand;
+
+#[cfg(feature = "use_heap")]
 use std;
 
-pub use crate::ec::suite_b::ecdsa::{
-    signing::{
-        Key as ECDSAKeyPair, ECDSA_P256_SHA256_ASN1_SIGNING, ECDSA_P256_SHA256_FIXED_SIGNING,
-        ECDSA_P384_SHA384_ASN1_SIGNING, ECDSA_P384_SHA384_FIXED_SIGNING,
+pub use crate::ec::{
+    curve25519::ed25519::{
+        signing::KeyPair as Ed25519KeyPair,
+        verification::{EdDSAParameters, ED25519},
+        PUBLIC_KEY_LEN as ED25519_PUBLIC_KEY_LEN,
     },
-    verification::{
-        Algorithm as ECDSAVerification, ECDSA_P256_SHA256_ASN1, ECDSA_P256_SHA256_FIXED,
-        ECDSA_P256_SHA384_ASN1, ECDSA_P384_SHA256_ASN1, ECDSA_P384_SHA384_ASN1,
-        ECDSA_P384_SHA384_FIXED,
+    suite_b::ecdsa::{
+        signing::{
+            Key as ECDSAKeyPair, ECDSA_P256_SHA256_ASN1_SIGNING, ECDSA_P256_SHA256_FIXED_SIGNING,
+            ECDSA_P384_SHA384_ASN1_SIGNING, ECDSA_P384_SHA384_FIXED_SIGNING,
+        },
+        verification::{
+            Algorithm as ECDSAVerification, ECDSA_P256_SHA256_ASN1, ECDSA_P256_SHA256_FIXED,
+            ECDSA_P256_SHA384_ASN1, ECDSA_P384_SHA256_ASN1, ECDSA_P384_SHA384_ASN1,
+            ECDSA_P384_SHA384_FIXED,
+        },
     },
 };
 
-pub use crate::ec::curve25519::ed25519::PUBLIC_KEY_LEN as ED25519_PUBLIC_KEY_LEN;
-
-pub use crate::ec::curve25519::ed25519::verification::{EdDSAParameters, ED25519};
-
-pub use crate::ec::curve25519::ed25519::signing::KeyPair as Ed25519KeyPair;
-
-#[cfg(feature = "use_heap")]
-pub use crate::rsa::signing::KeyPair as RSAKeyPair;
-
 #[cfg(feature = "use_heap")]
 pub use crate::rsa::{
+    signing::KeyPair as RSAKeyPair,
+
+    verification::{
+        RSA_PKCS1_2048_8192_SHA1, RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA384,
+        RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_3072_8192_SHA384, RSA_PSS_2048_8192_SHA256,
+        RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
+    },
+
     RSAEncoding,
+    RSAParameters,
 
     // `RSA_PKCS1_SHA1` is intentionally not exposed. At a minimum, we'd need
     // to create test vectors for signing with it, which we don't currently
@@ -308,18 +316,6 @@ pub use crate::rsa::{
     RSA_PSS_SHA384,
     RSA_PSS_SHA512,
 };
-
-#[cfg(feature = "use_heap")]
-pub use crate::rsa::RSAParameters;
-
-#[cfg(feature = "use_heap")]
-pub use crate::rsa::verification::{
-    RSA_PKCS1_2048_8192_SHA1, RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA384,
-    RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_3072_8192_SHA384, RSA_PSS_2048_8192_SHA256,
-    RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
-};
-
-use crate::ec;
 
 /// Lower-level verification primitives. Usage of `ring::signature::verify()`
 /// is preferred when the public key and signature are encoded in standard
