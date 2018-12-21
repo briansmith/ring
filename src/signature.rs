@@ -267,9 +267,6 @@ use core;
 use untrusted;
 
 #[cfg(feature = "use_heap")]
-use crate::rand;
-
-#[cfg(feature = "use_heap")]
 use std;
 
 pub use crate::ec::{
@@ -325,29 +322,6 @@ pub mod primitive {
     pub use crate::rsa::verification::verify_rsa;
 }
 
-/// A key pair for signing.
-#[derive(Debug)]
-#[cfg(feature = "use_heap")]
-pub struct KeyPair {
-    inner: Box<KeyPairImpl + Send + Sync>,
-}
-
-#[cfg(feature = "use_heap")]
-impl KeyPair {
-    pub(crate) fn new<I: KeyPairImpl + Sync>(inner: I) -> Self {
-        Self {
-            inner: std::boxed::Box::new(inner),
-        }
-    }
-}
-
-#[cfg(feature = "use_heap")]
-pub(crate) trait KeyPairImpl: core::fmt::Debug + Send + 'static {
-    fn sign(
-        &self, rng: &rand::SecureRandom, msg: untrusted::Input,
-    ) -> Result<Signature, error::Unspecified>;
-}
-
 /// A public key signature returned from a signing operation.
 #[derive(Clone, Copy)]
 pub struct Signature {
@@ -380,35 +354,6 @@ impl AsRef<[u8]> for Signature {
 /// prefix, and the outer sequence will have a two-byte length.
 pub(crate) const MAX_LEN: usize = 1/*tag:SEQUENCE*/ + 2/*len*/ +
     (2 * (1/*tag:INTEGER*/ + 1/*len*/ + 1/*zero*/ + ec::SCALAR_MAX_BYTES));
-
-/// An algorithm for signing.
-#[cfg(feature = "use_heap")]
-pub trait SigningAlgorithm: core::fmt::Debug + Sync + 'static + sealed::Sealed {
-    /// Parses the key out of the given PKCS#8 document, verifying that it is
-    /// valid for the algorithm.
-    fn from_pkcs8(&'static self, input: untrusted::Input) -> Result<KeyPair, error::KeyRejected>;
-}
-
-/// Returns a key for signing that is parsed from a PKCS#8 document.
-///
-/// The key is checked to ensure it is valid for the given algorithm.
-#[cfg(feature = "use_heap")]
-#[inline]
-pub fn key_pair_from_pkcs8(
-    alg: &'static SigningAlgorithm, input: untrusted::Input,
-) -> Result<KeyPair, error::KeyRejected> {
-    alg.from_pkcs8(input)
-}
-
-/// Returns a signature of the given data using the given key. The signing may
-/// or may not use `rng`, depending on the `key_pair's algorithm.
-#[cfg(feature = "use_heap")]
-#[inline]
-pub fn sign(
-    key_pair: &KeyPair, rng: &rand::SecureRandom, msg: untrusted::Input,
-) -> Result<Signature, error::Unspecified> {
-    key_pair.inner.sign(rng, msg)
-}
 
 /// A signature verification algorithm.
 pub trait VerificationAlgorithm: core::fmt::Debug + Sync + sealed::Sealed {
