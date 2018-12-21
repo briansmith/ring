@@ -196,7 +196,7 @@ $code .= <<____;
 	movq	$argc, %r11
 ____
 foreach (@inp) {
-	$code .= <<____;
+  $code .= <<____;
 	dec	%r11
 	js	.Lcall
 	movq	(%r10), $_
@@ -209,10 +209,11 @@ $code .= <<____;
 	dec	%r11
 	js	.Lcall
 
-  # This block should be:
-  #    movq (%r10), %rtmp
-  #    movq %rtmp, (%rax)
-  # There are no spare registers available, so we spill into the scratch space.
+	# This block should be:
+	#    movq (%r10), %rtmp
+	#    movq %rtmp, (%rax)
+	# There are no spare registers available, so we spill into the scratch
+	# space.
 	movq	%r11, $scratch_offset(%rsp)
 	movq	(%r10), %r11
 	movq	%r11, (%rax)
@@ -227,7 +228,7 @@ $code .= <<____;
 	call	*%rax
 
 	# Store what \$func did our state, so our caller can check.
-  movq  $state_offset(%rsp), $state
+	movq  $state_offset(%rsp), $state
 ____
 $code .= store_caller_state(0, $state);
 
@@ -241,7 +242,7 @@ $code .= <<____;
 	addq	\$$stack_alloc_size, %rsp
 .cfi_adjust_cfa_offset	-$stack_alloc_size
 
-  # %rax already contains \$func's return value, unmodified.
+	# %rax already contains \$func's return value, unmodified.
 	ret
 .cfi_endproc
 .Labi_test_trampoline_end:
