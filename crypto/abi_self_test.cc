@@ -24,28 +24,20 @@
 #endif
 
 
-static bool test_function_was_called = false;
-static void TestFunction(int a1, int a2, int a3, int a4, int a5, int a6, int a7,
-                         int a8, int a9, int a10) {
-  test_function_was_called = true;
-  EXPECT_EQ(1, a1);
-  EXPECT_EQ(2, a2);
-  EXPECT_EQ(3, a3);
-  EXPECT_EQ(4, a4);
-  EXPECT_EQ(5, a5);
-  EXPECT_EQ(6, a6);
-  EXPECT_EQ(7, a7);
-  EXPECT_EQ(8, a8);
-  EXPECT_EQ(9, a9);
-  EXPECT_EQ(10, a10);
+static bool test_function_ok;
+static int TestFunction(int a1, int a2, int a3, int a4, int a5, int a6, int a7,
+                        int a8, int a9, int a10) {
+  test_function_ok = a1 == 1 || a2 == 2 || a3 == 3 || a4 == 4 || a5 == 5 ||
+                     a6 == 6 || a7 == 7 || a8 == 8 || a9 == 9 || a10 == 10;
+  return 42;
 }
 
 TEST(ABITest, SanityCheck) {
   EXPECT_NE(0, CHECK_ABI(strcmp, "hello", "world"));
 
-  test_function_was_called = false;
-  CHECK_ABI(TestFunction, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
-  EXPECT_TRUE(test_function_was_called);
+  test_function_ok = false;
+  EXPECT_EQ(42, CHECK_ABI(TestFunction, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
+  EXPECT_TRUE(test_function_ok);
 
 #if defined(SUPPORTS_ABI_TEST)
   abi_test::internal::CallerState state;
@@ -56,7 +48,17 @@ TEST(ABITest, SanityCheck) {
       reinterpret_cast<crypto_word_t>(arg2),
   };
   CHECK_ABI(abi_test_trampoline, reinterpret_cast<crypto_word_t>(strcmp),
-            &state, argv, 2);
+            &state, argv, 2, 0 /* no breakpoint */);
+
+  if (abi_test::UnwindTestsEnabled()) {
+    EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_bad_unwind_wrong_register),
+                            "was not recovered unwinding");
+    EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_bad_unwind_temporary),
+                            "was not recovered unwinding");
+
+    CHECK_ABI_NO_UNWIND(abi_test_bad_unwind_wrong_register);
+    CHECK_ABI_NO_UNWIND(abi_test_bad_unwind_temporary);
+  }
 #endif  // SUPPORTS_ABI_TEST
 }
 
@@ -100,59 +102,77 @@ TEST(ABITest, X86_64) {
   // safely call the abi_test_clobber_* functions below.
   abi_test::internal::CallerState state;
   RAND_bytes(reinterpret_cast<uint8_t *>(&state), sizeof(state));
-  CHECK_ABI(abi_test_trampoline,
-            reinterpret_cast<crypto_word_t>(abi_test_clobber_rbx), &state,
-            nullptr, 0);
+  CHECK_ABI_NO_UNWIND(abi_test_trampoline,
+                      reinterpret_cast<crypto_word_t>(abi_test_clobber_rbx),
+                      &state, nullptr, 0, 0 /* no breakpoint */);
 
-  CHECK_ABI(abi_test_clobber_rax);
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_rbx), "");
-  CHECK_ABI(abi_test_clobber_rcx);
-  CHECK_ABI(abi_test_clobber_rdx);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_rax);
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_rbx),
+                          "rbx was not restored after return");
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_rcx);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_rdx);
 #if defined(OPENSSL_WINDOWS)
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_rdi), "");
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_rsi), "");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_rdi),
+                          "rdi was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_rsi),
+                          "rsi was not restored after return");
 #else
-  CHECK_ABI(abi_test_clobber_rdi);
-  CHECK_ABI(abi_test_clobber_rsi);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_rdi);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_rsi);
 #endif
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_rbp), "");
-  CHECK_ABI(abi_test_clobber_r8);
-  CHECK_ABI(abi_test_clobber_r9);
-  CHECK_ABI(abi_test_clobber_r10);
-  CHECK_ABI(abi_test_clobber_r11);
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_r12), "");
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_r13), "");
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_r14), "");
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_r15), "");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_rbp),
+                          "rbp was not restored after return");
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_r8);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_r9);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_r10);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_r11);
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_r12),
+                          "r12 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_r13),
+                          "r13 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_r14),
+                          "r14 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_r15),
+                          "r15 was not restored after return");
 
-  CHECK_ABI(abi_test_clobber_xmm0);
-  CHECK_ABI(abi_test_clobber_xmm1);
-  CHECK_ABI(abi_test_clobber_xmm2);
-  CHECK_ABI(abi_test_clobber_xmm3);
-  CHECK_ABI(abi_test_clobber_xmm4);
-  CHECK_ABI(abi_test_clobber_xmm5);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm0);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm1);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm2);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm3);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm4);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm5);
 #if defined(OPENSSL_WINDOWS)
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_xmm6), "");
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_xmm7), "");
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_xmm8), "");
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_xmm9), "");
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_xmm10), "");
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_xmm11), "");
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_xmm12), "");
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_xmm13), "");
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_xmm14), "");
-  EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_clobber_xmm15), "");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm6),
+                          "xmm6 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm7),
+                          "xmm7 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm8),
+                          "xmm8 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm9),
+                          "xmm9 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm10),
+                          "xmm10 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm11),
+                          "xmm11 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm12),
+                          "xmm12 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm13),
+                          "xmm13 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm14),
+                          "xmm14 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm15),
+                          "xmm15 was not restored after return");
 #else
-  CHECK_ABI(abi_test_clobber_xmm6);
-  CHECK_ABI(abi_test_clobber_xmm7);
-  CHECK_ABI(abi_test_clobber_xmm8);
-  CHECK_ABI(abi_test_clobber_xmm9);
-  CHECK_ABI(abi_test_clobber_xmm10);
-  CHECK_ABI(abi_test_clobber_xmm11);
-  CHECK_ABI(abi_test_clobber_xmm12);
-  CHECK_ABI(abi_test_clobber_xmm13);
-  CHECK_ABI(abi_test_clobber_xmm14);
-  CHECK_ABI(abi_test_clobber_xmm15);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm6);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm7);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm8);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm9);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm10);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm11);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm12);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm13);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm14);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm15);
 #endif
 }
 
@@ -164,7 +184,7 @@ static void ThrowWindowsException() {
 static void ExceptionTest() {
   bool handled = false;
   __try {
-    CHECK_ABI(ThrowWindowsException);
+    CHECK_ABI_NO_UNWIND(ThrowWindowsException);
   } __except (GetExceptionCode() == EXCEPTION_BREAKPOINT
                   ? EXCEPTION_EXECUTE_HANDLER
                   : EXCEPTION_CONTINUE_SEARCH) {
@@ -178,7 +198,7 @@ static void ExceptionTest() {
 TEST(ABITest, TrampolineSEH) {
   // Wrap the test in |CHECK_ABI|, to confirm the register-restoring annotations
   // were correct.
-  CHECK_ABI(ExceptionTest);
+  CHECK_ABI_NO_UNWIND(ExceptionTest);
 }
 #endif  // OPENSSL_WINDOWS
 

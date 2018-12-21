@@ -1,7 +1,7 @@
 add_library(
-  test_support
+  test_support_lib
 
-  OBJECT
+  STATIC
 
   abi_test.cc
   file_test.cc
@@ -10,7 +10,12 @@ add_library(
   wycheproof_util.cc
 )
 
-add_dependencies(test_support global_target)
+if (LIBUNWIND_FOUND)
+  target_compile_options(test_support_lib PRIVATE ${LIBUNWIND_CFLAGS_OTHER})
+  target_include_directories(test_support_lib PRIVATE ${LIBUNWIND_INCLUDE_DIRS})
+  target_link_libraries(test_support_lib ${LIBUNWIND_LDFLAGS})
+endif()
+add_dependencies(test_support_lib global_target)
 
 add_library(
   boringssl_gtest_main

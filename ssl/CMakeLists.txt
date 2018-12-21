@@ -52,12 +52,11 @@ add_executable(
   ssl_test.cc
 
   $<TARGET_OBJECTS:boringssl_gtest_main>
-  $<TARGET_OBJECTS:test_support>
 )
 
 add_dependencies(ssl_test global_target)
 
-target_link_libraries(ssl_test ssl crypto boringssl_gtest)
+target_link_libraries(ssl_test test_support_lib boringssl_gtest ssl crypto)
 if(WIN32)
   target_link_libraries(ssl_test ws2_32)
 endif()

@@ -124,15 +124,17 @@ my $max_params = 10;
 my $stack_params_skip = $win64 ? scalar(@inp) : 0;
 my $num_stack_params = $win64 ? $max_params : $max_params - scalar(@inp);
 
-my ($func, $state, $argv, $argc) = @inp;
+my ($func, $state, $argv, $argc, $unwind) = @inp;
 my $code = <<____;
 .text
 
 # abi_test_trampoline loads callee-saved registers from |state|, calls |func|
 # with |argv|, then saves the callee-saved registers into |state|. It returns
-# the result of |func|.
+# the result of |func|. If |unwind| is non-zero, this function triggers unwind
+# instrumentation.
 # uint64_t abi_test_trampoline(void (*func)(...), CallerState *state,
-#                              const uint64_t *argv, size_t argc);
+#                              const uint64_t *argv, size_t argc,
+#                              int unwind);
 .type	abi_test_trampoline, \@abi-omnipotent
 .globl	abi_test_trampoline
 .align	16
@@ -143,12 +145,16 @@ abi_test_trampoline:
 	#   8 bytes - align
 	#   $caller_state_size bytes - saved caller registers
 	#   8 bytes - scratch space
+	#   8 bytes - saved copy of \$unwind (SysV-only)
 	#   8 bytes - saved copy of \$state
 	#   8 bytes - saved copy of \$func
 	#   8 bytes - if needed for stack alignment
 	#   8*$num_stack_params bytes - parameters for \$func
 ____
 my $stack_alloc_size = 8 + $caller_state_size + 8*3 + 8*$num_stack_params;
+if (!$win64) {
+  $stack_alloc_size += 8;
+}
 # SysV and Windows both require the stack to be 16-byte-aligned. The call
 # instruction offsets it by 8, so stack allocations must be 8 mod 16.
 if ($stack_alloc_size % 16 != 8) {
@@ -158,12 +164,24 @@ if ($stack_alloc_size % 16 != 8) {
 my $stack_params_offset = 8 * $stack_params_skip;
 my $func_offset = 8 * $num_stack_params;
 my $state_offset = $func_offset + 8;
-my $scratch_offset = $state_offset + 8;
+# On Win64, unwind is already passed in memory. On SysV, it is passed in as
+# register and we must reserve stack space for it.
+my ($unwind_offset, $scratch_offset);
+if ($win64) {
+  $unwind_offset = $stack_alloc_size + 5*8;
+  $scratch_offset = $state_offset + 8;
+} else {
+  $unwind_offset = $state_offset + 8;
+  $scratch_offset = $unwind_offset + 8;
+}
 my $caller_state_offset = $scratch_offset + 8;
 $code .= <<____;
 	subq	\$$stack_alloc_size, %rsp
 .cfi_adjust_cfa_offset	$stack_alloc_size
 .Labi_test_trampoline_prolog_alloc:
+____
+$code .= <<____ if (!$win64);
+	movq	$unwind, $unwind_offset(%rsp)
 ____
 # Store our caller's state. This is needed because we modify it ourselves, and
 # also to isolate the test infrastruction from the function under test failing
@@ -198,7 +216,7 @@ ____
 foreach (@inp) {
   $code .= <<____;
 	dec	%r11
-	js	.Lcall
+	js	.Largs_done
 	movq	(%r10), $_
 	addq	\$8, %r10
 ____
@@ -207,7 +225,7 @@ $code .= <<____;
 	leaq	$stack_params_offset(%rsp), %rax
 .Largs_loop:
 	dec	%r11
-	js	.Lcall
+	js	.Largs_done
 
 	# This block should be:
 	#    movq (%r10), %rtmp
@@ -223,10 +241,42 @@ $code .= <<____;
 	addq	\$8, %rax
 	jmp	.Largs_loop
 
-.Lcall:
+.Largs_done:
 	movq	$func_offset(%rsp), %rax
+	movq	$unwind_offset(%rsp), %r10
+	testq	%r10, %r10
+	jz	.Lno_unwind
+
+	# Set the trap flag.
+	pushfq
+	orq	\$0x100, 0(%rsp)
+	popfq
+
+	# Run an instruction to trigger a breakpoint immediately before the
+	# call.
+	nop
+.globl	abi_test_unwind_start
+abi_test_unwind_start:
+
+	call	*%rax
+.globl	abi_test_unwind_return
+abi_test_unwind_return:
+
+	# Clear the trap flag. Note this assumes the trap flag was clear on
+	# entry. We do not support instrumenting an unwind-instrumented
+	# |abi_test_trampoline|.
+	pushfq
+	andq	\$-0x101, 0(%rsp)	# -0x101 is ~0x100
+	popfq
+.globl	abi_test_unwind_stop
+abi_test_unwind_stop:
+
+	jmp	.Lcall_done
+
+.Lno_unwind:
 	call	*%rax
 
+.Lcall_done:
 	# Store what \$func did our state, so our caller can check.
 	movq  $state_offset(%rsp), $state
 ____
@@ -274,6 +324,49 @@ abi_test_clobber_xmm$_:
 .size	abi_test_clobber_xmm$_,.-abi_test_clobber_xmm$_
 ____
 }
+
+$code .= <<____;
+# abi_test_bad_unwind_wrong_register preserves the ABI, but annotates the wrong
+# register in CFI metadata.
+# void abi_test_bad_unwind_wrong_register(void);
+.type	abi_test_bad_unwind_wrong_register, \@abi-omnipotent
+.globl	abi_test_bad_unwind_wrong_register
+.align	16
+abi_test_bad_unwind_wrong_register:
+.cfi_startproc
+	pushq	%r12
+.cfi_push	%r13	# This should be %r12
+	popq	%r12
+.cfi_pop	%r12
+	ret
+.cfi_endproc
+.size	abi_test_bad_unwind_wrong_register,.-abi_test_bad_unwind_wrong_register
+
+# abi_test_bad_unwind_temporary preserves the ABI, but temporarily corrupts the
+# storage space for a saved register, breaking unwind.
+# void abi_test_bad_unwind_temporary(void);
+.type	abi_test_bad_unwind_temporary, \@abi-omnipotent
+.globl	abi_test_bad_unwind_temporary
+.align	16
+abi_test_bad_unwind_temporary:
+.cfi_startproc
+	pushq	%r12
+.cfi_push	%r12
+
+	inc	%r12
+	movq	%r12, (%rsp)
+	# Unwinding from here is incorrect.
+
+	dec	%r12
+	movq	%r12, (%rsp)
+	# Unwinding is now fixed.
+
+	popq	%r12
+.cfi_pop	%r12
+	ret
+.cfi_endproc
+.size	abi_test_bad_unwind_temporary,.-abi_test_bad_unwind_temporary
+____
 
 if ($win64) {
   # Add unwind metadata for SEH.

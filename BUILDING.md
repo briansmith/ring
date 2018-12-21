@@ -40,6 +40,10 @@ most recent stable version of each tool.
     Note Go is exempt from the five year support window. If not found by CMake,
     the go executable may be configured explicitly by setting `GO_EXECUTABLE`.
 
+  * On x86_64 Linux, the tests have an optional
+    [libunwind](https://www.nongnu.org/libunwind/) dependency to test the
+    assembly more thoroughly.
+
 ## Building
 
 Using Ninja (note the 'N' is capitalized in the cmake invocation):

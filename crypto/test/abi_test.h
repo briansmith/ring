@@ -113,11 +113,15 @@ struct CallerState {
 };
 
 // RunTrampoline runs |func| on |argv|, recording ABI errors in |out|. It does
-// not perform any type-checking.
+// not perform any type-checking. If |unwind| is true and unwind tests have been
+// enabled, |func| is single-stepped under an unwind test.
 crypto_word_t RunTrampoline(Result *out, crypto_word_t func,
-                            const crypto_word_t *argv, size_t argc);
+                            const crypto_word_t *argv, size_t argc,
+                            bool unwind);
 
-// CheckImpl runs |func| on |args|, recording ABI errors in |out|.
+// CheckImpl runs |func| on |args|, recording ABI errors in |out|. If |unwind|
+// is true and unwind tests have been enabled, |func| is single-stepped under an
+// unwind test.
 //
 // It returns the value as a |crypto_word_t| to work around problems when |R| is
 // void. |args| is wrapped in a |DeductionGuard| so |func| determines the
@@ -125,7 +129,7 @@ crypto_word_t RunTrampoline(Result *out, crypto_word_t func,
 // instance, if |func| takes const int *, and the caller passes an int *, the
 // compiler will complain the deduced types do not match.
 template <typename R, typename... Args>
-inline crypto_word_t CheckImpl(Result *out, R (*func)(Args...),
+inline crypto_word_t CheckImpl(Result *out, bool unwind, R (*func)(Args...),
                                typename DeductionGuard<Args>::Type... args) {
   static_assert(sizeof...(args) <= 10,
                 "too many arguments for abi_test_trampoline");
@@ -135,7 +139,7 @@ inline crypto_word_t CheckImpl(Result *out, R (*func)(Args...),
       (crypto_word_t)args...,
   };
   return RunTrampoline(out, reinterpret_cast<crypto_word_t>(func), argv,
-                       sizeof...(args));
+                       sizeof...(args), unwind);
 }
 #else
 // To simplify callers when ABI testing support is unavoidable, provide a backup
@@ -143,14 +147,15 @@ inline crypto_word_t CheckImpl(Result *out, R (*func)(Args...),
 // call |func| directly.
 template <typename R, typename... Args>
 inline typename std::enable_if<!std::is_void<R>::value, crypto_word_t>::type
-CheckImpl(Result *out, R (*func)(Args...),
+CheckImpl(Result *out, bool /* unwind */, R (*func)(Args...),
           typename DeductionGuard<Args>::Type... args) {
   *out = Result();
   return func(args...);
 }
 
 template <typename... Args>
-inline crypto_word_t CheckImpl(Result *out, void (*func)(Args...),
+inline crypto_word_t CheckImpl(Result *out, bool /* unwind */,
+                               void (*func)(Args...),
                                typename DeductionGuard<Args>::Type... args) {
   *out = Result();
   func(args...);
@@ -169,13 +174,14 @@ inline crypto_word_t CheckImpl(Result *out, void (*func)(Args...),
 std::string FixVAArgsString(const char *str);
 
 // CheckGTest behaves like |CheckImpl|, but it returns the correct type and
-// raises GTest assertions on failure.
+// raises GTest assertions on failure. If |unwind| is true and unwind tests are
+// enabled, |func| is single-stepped under an unwind test.
 template <typename R, typename... Args>
 inline R CheckGTest(const char *va_args_str, const char *file, int line,
-                    R (*func)(Args...),
+                    bool unwind, R (*func)(Args...),
                     typename DeductionGuard<Args>::Type... args) {
   Result result;
-  crypto_word_t ret = CheckImpl(&result, func, args...);
+  crypto_word_t ret = CheckImpl(&result, unwind, func, args...);
   if (!result.ok()) {
     testing::Message msg;
     msg << "ABI failures in " << FixVAArgsString(va_args_str) << ":\n";
@@ -195,8 +201,16 @@ inline R CheckGTest(const char *va_args_str, const char *file, int line,
 template <typename R, typename... Args>
 inline R Check(Result *out, R (*func)(Args...),
                typename internal::DeductionGuard<Args>::Type... args) {
-  return (R)internal::CheckImpl(out, func, args...);
+  return (R)internal::CheckImpl(out, false, func, args...);
 }
+
+// EnableUnwindTests enables unwind tests, if supported. If not supported, it
+// does nothing.
+void EnableUnwindTests();
+
+// UnwindTestsEnabled returns true if unwind tests are enabled and false
+// otherwise.
+bool UnwindTestsEnabled();
 
 }  // namespace abi_test
 
@@ -206,26 +220,73 @@ inline R Check(Result *out, R (*func)(Args...),
 //
 // |CHECK_ABI| does return the value and thus may replace any function call,
 // provided it takes only simple parameters. However, it is recommended to test
-// ABI separately from functional tests of assembly. A future unwind testing
-// extension will single-step the function, which is inefficient.
+// ABI separately from functional tests of assembly. Fully instrumenting a
+// function for ABI checking requires single-stepping the function, which is
+// inefficient.
 //
 // Functional testing requires coverage of input values, while ABI testing only
 // requires branch coverage. Most of our assembly is constant-time, so usually
 // only a few instrumented calls are necessray.
-#define CHECK_ABI(...) \
-  abi_test::internal::CheckGTest(#__VA_ARGS__, __FILE__, __LINE__, __VA_ARGS__)
+#define CHECK_ABI(...)                                                   \
+  abi_test::internal::CheckGTest(#__VA_ARGS__, __FILE__, __LINE__, true, \
+                                 __VA_ARGS__)
+
+// CHECK_ABI_NO_UNWIND behaves like |CHECK_ABI| but disables unwind testing.
+#define CHECK_ABI_NO_UNWIND(...)                                          \
+  abi_test::internal::CheckGTest(#__VA_ARGS__, __FILE__, __LINE__, false, \
+                                 __VA_ARGS__)
 
 
 // Internal functions.
 
 #if defined(SUPPORTS_ABI_TEST)
+struct Uncallable {
+  Uncallable() = delete;
+};
+
+extern "C" {
+
 // abi_test_trampoline loads callee-saved registers from |state|, calls |func|
 // with |argv|, then saves the callee-saved registers into |state|. It returns
-// the result of |func|. We give |func| type |crypto_word_t| to avoid tripping
-// MSVC's warning 4191.
-extern "C" crypto_word_t abi_test_trampoline(
-    crypto_word_t func, abi_test::internal::CallerState *state,
-    const crypto_word_t *argv, size_t argc);
+// the result of |func|. If |unwind| is non-zero, this function triggers unwind
+// instrumentation.
+//
+// We give |func| type |crypto_word_t| to avoid tripping MSVC's warning 4191.
+crypto_word_t abi_test_trampoline(crypto_word_t func,
+                                  abi_test::internal::CallerState *state,
+                                  const crypto_word_t *argv, size_t argc,
+                                  crypto_word_t unwind);
+
+// abi_test_unwind_start points at the instruction that starts unwind testing in
+// |abi_test_trampoline|. This is the value of the instruction pointer at the
+// first |SIGTRAP| during unwind testing.
+//
+// This symbol is not a function and should not be called.
+void abi_test_unwind_start(Uncallable);
+
+// abi_test_unwind_return points at the instruction immediately after the call in
+// |abi_test_trampoline|. When unwinding the function under test, this is the
+// expected address in the |abi_test_trampoline| frame. After this address, the
+// unwind tester should ignore |SIGTRAP| until |abi_test_unwind_stop|.
+//
+// This symbol is not a function and should not be called.
+void abi_test_unwind_return(Uncallable);
+
+// abi_test_unwind_stop is the value of the instruction pointer at the final
+// |SIGTRAP| during unwind testing.
+//
+// This symbol is not a function and should not be called.
+void abi_test_unwind_stop(Uncallable);
+
+// abi_test_bad_unwind_wrong_register preserves the ABI, but annotates the wrong
+// register in CFI metadata.
+void abi_test_bad_unwind_wrong_register(void);
+
+// abi_test_bad_unwind_temporary preserves the ABI, but temporarily corrupts the
+// storage space for a saved register, breaking unwind.
+void abi_test_bad_unwind_temporary(void);
+
+}  // extern "C"
 #endif  // SUPPORTS_ABI_TEST
 
 

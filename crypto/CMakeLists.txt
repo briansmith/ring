@@ -483,12 +483,11 @@ add_executable(
 
   $<TARGET_OBJECTS:crypto_test_data>
   $<TARGET_OBJECTS:boringssl_gtest_main>
-  $<TARGET_OBJECTS:test_support>
 )
 
 add_dependencies(crypto_test global_target)
 
-target_link_libraries(crypto_test crypto boringssl_gtest)
+target_link_libraries(crypto_test test_support_lib boringssl_gtest crypto)
 if(WIN32)
   target_link_libraries(crypto_test ws2_32)
 endif()
