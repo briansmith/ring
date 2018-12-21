@@ -63,7 +63,7 @@ struct alignas(16) Reg128 {
 // See https://docs.microsoft.com/en-us/cpp/build/x64-software-conventions?view=vs-2017#register-usage
 #define LOOP_CALLER_STATE_REGISTERS()  \
   CALLER_STATE_REGISTER(uint64_t, rbx) \
-  CALLER_STATE_REGISTER(uint64_t, rdp) \
+  CALLER_STATE_REGISTER(uint64_t, rbp) \
   CALLER_STATE_REGISTER(uint64_t, rdi) \
   CALLER_STATE_REGISTER(uint64_t, rsi) \
   CALLER_STATE_REGISTER(uint64_t, r12) \
@@ -100,13 +100,8 @@ struct alignas(16) Reg128 {
 //
 // - This is not a shared library build. Assembly functions are not reachable
 //   from tests in shared library builds.
-//
-// - This is a debug build. We can instrument release builds as well, but this
-//   ensures we have coverage for both instrumented and uninstrumented code.
-//   See the comment in |CHECK_ABI|. Note ABI testing is only meaningful for
-//   assembly, which is not affected by compiler optimizations.
 #if defined(LOOP_CALLER_STATE_REGISTERS) && !defined(OPENSSL_NO_ASM) && \
-    !defined(BORINGSSL_SHARED_LIBRARY) && !defined(NDEBUG)
+    !defined(BORINGSSL_SHARED_LIBRARY)
 #define SUPPORTS_ABI_TEST
 
 // CallerState contains all caller state that the callee is expected to
@@ -210,9 +205,13 @@ inline R Check(Result *out, R (*func)(Args...),
 // non-fatal GTest failure if the call did not satisfy ABI requirements.
 //
 // |CHECK_ABI| does return the value and thus may replace any function call,
-// provided it takes only simple parameters. It is recommended to integrate it
-// into functional tests of assembly. To ensure coverage of both instrumented
-// and uninstrumented calls, ABI testing is disabled in release-mode tests.
+// provided it takes only simple parameters. However, it is recommended to test
+// ABI separately from functional tests of assembly. A future unwind testing
+// extension will single-step the function, which is inefficient.
+//
+// Functional testing requires coverage of input values, while ABI testing only
+// requires branch coverage. Most of our assembly is constant-time, so usually
+// only a few instrumented calls are necessray.
 #define CHECK_ABI(...) \
   abi_test::internal::CheckGTest(#__VA_ARGS__, __FILE__, __LINE__, __VA_ARGS__)
 
