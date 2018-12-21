@@ -200,11 +200,11 @@
 //! fn sign_and_verify_rsa(private_key_path: &std::path::Path,
 //!                        public_key_path: &std::path::Path)
 //!                        -> Result<(), MyError> {
-//! // Create an `RSAKeyPair` from the DER-encoded bytes. This example uses
+//! // Create an `RsaKeyPair` from the DER-encoded bytes. This example uses
 //! // a 2048-bit key, but larger keys are also supported.
 //! let private_key_der = read_file(private_key_path)?;
 //! let private_key_der = untrusted::Input::from(&private_key_der);
-//! let key_pair = signature::RSAKeyPair::from_der(private_key_der)
+//! let key_pair = signature::RsaKeyPair::from_der(private_key_der)
 //!     .map_err(|_| MyError::BadPrivateKey)?;
 //!
 //! // Sign the message "hello, world", using PKCS#1 v1.5 padding and the
@@ -290,7 +290,7 @@ pub use crate::ec::{
 
 #[cfg(feature = "use_heap")]
 pub use crate::rsa::{
-    signing::KeyPair as RSAKeyPair,
+    signing::KeyPair as RsaKeyPair,
 
     verification::{
         RSA_PKCS1_2048_8192_SHA1, RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA384,
@@ -298,8 +298,8 @@ pub use crate::rsa::{
         RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
     },
 
-    RSAEncoding,
-    RSAParameters,
+    Encoding as RsaEncoding,
+    Parameters as RsaParameters,
 
     // `RSA_PKCS1_SHA1` is intentionally not exposed. At a minimum, we'd need
     // to create test vectors for signing with it, which we don't currently

@@ -14,7 +14,7 @@
 
 use super::{
     bigint::{self, Prime},
-    verification, N,
+    verification, Encoding, N,
 };
 /// RSA PKCS#1 1.5 signatures.
 use crate::{
@@ -470,8 +470,8 @@ impl KeyPair {
     /// x86-64, this is done pretty well, but not perfectly. On other
     /// platforms, it is done less perfectly.
     pub fn sign(
-        &self, padding_alg: &'static crate::signature::RSAEncoding, rng: &rand::SecureRandom,
-        msg: &[u8], signature: &mut [u8],
+        &self, padding_alg: &'static Encoding, rng: &rand::SecureRandom, msg: &[u8],
+        signature: &mut [u8],
     ) -> Result<(), error::Unspecified> {
         let mod_bits = self.public_key.n_bits;
         if signature.len() != mod_bits.as_usize_bytes_rounded_up() {
@@ -558,7 +558,7 @@ mod tests {
         const PRIVATE_KEY_DER: &'static [u8] =
             include_bytes!("signature_rsa_example_private_key.der");
         let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
-        let key_pair = signature::RSAKeyPair::from_der(key_bytes_der).unwrap();
+        let key_pair = signature::RsaKeyPair::from_der(key_bytes_der).unwrap();
 
         // The output buffer is one byte too short.
         let mut signature = vec![0; key_pair.public_modulus_len() - 1];

@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{bigint, parse_public_key, RSAParameters, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
+use super::{bigint, parse_public_key, Parameters, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
 use crate::{bits, cpu, digest, error, sealed, signature};
 /// RSA PKCS#1 1.5 signatures.
 use core;
@@ -82,7 +82,7 @@ impl Key {
     pub fn modulus_len(&self) -> usize { self.n_bits.as_usize_bytes_rounded_up() }
 }
 
-impl signature::VerificationAlgorithm for RSAParameters {
+impl signature::VerificationAlgorithm for Parameters {
     fn verify(
         &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
@@ -91,11 +91,11 @@ impl signature::VerificationAlgorithm for RSAParameters {
     }
 }
 
-impl sealed::Sealed for RSAParameters {}
+impl sealed::Sealed for Parameters {}
 
-impl core::fmt::Debug for RSAParameters {
+impl core::fmt::Debug for Parameters {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        use super::RSAParametersID::*;
+        use super::ParametersId::*;
         // XXX: This doesn't include the padding algorithm nor the size range.
         write!(
             f,
@@ -120,10 +120,10 @@ macro_rules! rsa_params {
         #[doc=$doc_str]
         ///
         /// Only available in `use_heap` mode.
-        pub static $VERIFY_ALGORITHM: RSAParameters = RSAParameters {
+        pub static $VERIFY_ALGORITHM: Parameters = Parameters {
             padding_alg: $PADDING_ALGORITHM,
             min_bits: bits::BitLength::from_usize_bits($min_bits),
-            id: super::RSAParametersID::$VERIFY_ALGORITHM,
+            id: super::ParametersId::$VERIFY_ALGORITHM,
         };
     };
 }
@@ -213,14 +213,14 @@ rsa_params!(
 //
 // There are a small number of tests that test `verify_rsa` directly, but the
 // test coverage for this function mostly depends on the test coverage for the
-// `signature::VerificationAlgorithm` implementation for `RSAParameters`. If we
+// `signature::VerificationAlgorithm` implementation for `RsaParameters`. If we
 // change that, test coverage for `verify_rsa()` will need to be reconsidered.
 // (The NIST test vectors were originally in a form that was optimized for
 // testing `verify_rsa` directly, but the testing work for RSA PKCS#1
 // verification was done during the implementation of
 // `signature::VerificationAlgorithm`, before `verify_rsa` was factored out).
 pub fn verify_rsa(
-    params: &RSAParameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
+    params: &Parameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
     signature: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
     cpu::cache_detected_features();
@@ -228,7 +228,7 @@ pub fn verify_rsa(
 }
 
 pub(crate) fn verify_rsa_(
-    params: &RSAParameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
+    params: &Parameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
     signature: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
     let max_bits = bits::BitLength::from_usize_bytes(PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)?;

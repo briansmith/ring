@@ -47,7 +47,7 @@ fn rsa_from_pkcs8_test() {
 
         let error = test_case.consume_optional_string("Error");
 
-        match (signature::RSAKeyPair::from_pkcs8(input), error) {
+        match (signature::RsaKeyPair::from_pkcs8(input), error) {
             (Ok(_), None) => (),
             (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
             (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
@@ -79,7 +79,7 @@ fn test_signature_rsa_pkcs1_sign() {
         let result = test_case.consume_string("Result");
 
         let private_key = untrusted::Input::from(&private_key);
-        let key_pair = signature::RSAKeyPair::from_der(private_key);
+        let key_pair = signature::RsaKeyPair::from_der(private_key);
         if result == "Fail-Invalid-Key" {
             assert!(key_pair.is_err());
             return Ok(());
@@ -115,7 +115,7 @@ fn test_signature_rsa_pss_sign() {
         let result = test_case.consume_string("Result");
         let private_key = test_case.consume_bytes("Key");
         let private_key = untrusted::Input::from(&private_key);
-        let key_pair = signature::RSAKeyPair::from_der(private_key);
+        let key_pair = signature::RsaKeyPair::from_der(private_key);
         if key_pair.is_err() && result == "Fail-Invalid-Key" {
             return Ok(());
         }
@@ -136,9 +136,9 @@ fn test_signature_rsa_pss_sign() {
 #[cfg(feature = "use_heap")]
 #[test]
 fn test_rsa_key_pair_traits() {
-    test::compile_time_assert_send::<signature::RSAKeyPair>();
-    test::compile_time_assert_sync::<signature::RSAKeyPair>();
-    test::compile_time_assert_debug::<signature::RSAKeyPair>();
+    test::compile_time_assert_send::<signature::RsaKeyPair>();
+    test::compile_time_assert_sync::<signature::RsaKeyPair>();
+    test::compile_time_assert_debug::<signature::RsaKeyPair>();
 }
 
 #[cfg(feature = "use_heap")]

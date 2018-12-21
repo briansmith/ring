@@ -24,10 +24,8 @@ use untrusted;
 mod padding;
 
 // `RSA_PKCS1_SHA1` is intentionally not exposed.
-pub use self::padding::RSAEncoding;
-
 pub use self::padding::{
-    RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512, RSA_PSS_SHA256, RSA_PSS_SHA384,
+    Encoding, RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512, RSA_PSS_SHA256, RSA_PSS_SHA384,
     RSA_PSS_SHA512,
 };
 
@@ -38,13 +36,13 @@ const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize = bigint::MODULUS_MAX_LIMBS * lim
 const PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS: bits::BitLength = bits::BitLength::from_usize_bits(4096);
 
 /// Parameters for RSA verification.
-pub struct RSAParameters {
-    padding_alg: &'static padding::RSAVerification,
+pub struct Parameters {
+    padding_alg: &'static padding::Verification,
     min_bits: bits::BitLength,
-    id: RSAParametersID,
+    id: ParametersId,
 }
 
-enum RSAParametersID {
+enum ParametersId {
     RSA_PKCS1_2048_8192_SHA1,
     RSA_PKCS1_2048_8192_SHA256,
     RSA_PKCS1_2048_8192_SHA384,

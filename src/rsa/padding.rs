@@ -20,7 +20,7 @@ use untrusted;
 use crate::rand;
 
 /// Common features of both RSA padding encoding and RSA padding verification.
-pub trait RSAPadding: 'static + Sync + crate::sealed::Sealed {
+pub trait Padding: 'static + Sync + crate::sealed::Sealed {
     // The digest algorithm used for digesting the message (and maybe for
     // other things).
     fn digest_alg(&self) -> &'static digest::Algorithm;
@@ -30,7 +30,7 @@ pub trait RSAPadding: 'static + Sync + crate::sealed::Sealed {
 ///
 /// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
 #[cfg(feature = "use_heap")]
-pub trait RSAEncoding: RSAPadding {
+pub trait Encoding: Padding {
     #[doc(hidden)]
     fn encode(
         &self, m_hash: &digest::Digest, m_out: &mut [u8], mod_bits: bits::BitLength,
@@ -42,7 +42,7 @@ pub trait RSAEncoding: RSAPadding {
 /// [RFC 3447 Section 8].
 ///
 /// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
-pub trait RSAVerification: RSAPadding {
+pub trait Verification: Padding {
     fn verify(
         &self, m_hash: &digest::Digest, m: &mut untrusted::Reader, mod_bits: bits::BitLength,
     ) -> Result<(), error::Unspecified>;
@@ -61,12 +61,12 @@ pub struct PKCS1 {
 
 impl crate::sealed::Sealed for PKCS1 {}
 
-impl RSAPadding for PKCS1 {
+impl Padding for PKCS1 {
     fn digest_alg(&self) -> &'static digest::Algorithm { self.digest_alg }
 }
 
 #[cfg(feature = "use_heap")]
-impl RSAEncoding for PKCS1 {
+impl Encoding for PKCS1 {
     fn encode(
         &self, m_hash: &digest::Digest, m_out: &mut [u8], _mod_bits: bits::BitLength,
         _rng: &rand::SecureRandom,
@@ -76,7 +76,7 @@ impl RSAEncoding for PKCS1 {
     }
 }
 
-impl RSAVerification for PKCS1 {
+impl Verification for PKCS1 {
     fn verify(
         &self, m_hash: &digest::Digest, m: &mut untrusted::Reader, mod_bits: bits::BitLength,
     ) -> Result<(), error::Unspecified> {
@@ -210,11 +210,11 @@ impl crate::sealed::Sealed for PSS {}
 // In practice, this is constrained by the maximum digest length.
 const MAX_SALT_LEN: usize = digest::MAX_OUTPUT_LEN;
 
-impl RSAPadding for PSS {
+impl Padding for PSS {
     fn digest_alg(&self) -> &'static digest::Algorithm { self.digest_alg }
 }
 
-impl RSAEncoding for PSS {
+impl Encoding for PSS {
     // Implement padding procedure per EMSA-PSS,
     // https://tools.ietf.org/html/rfc3447#section-9.1.
     fn encode(
@@ -283,7 +283,7 @@ impl RSAEncoding for PSS {
     }
 }
 
-impl RSAVerification for PSS {
+impl Verification for PSS {
     // RSASSA-PSS-VERIFY from https://tools.ietf.org/html/rfc3447#section-8.1.2
     // where steps 1, 2(a), and 2(b) have been done for us.
     fn verify(
