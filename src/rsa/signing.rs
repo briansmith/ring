@@ -21,8 +21,8 @@ use crate::{
     arithmetic::montgomery::R,
     bits, digest,
     error::{self, KeyRejected},
-    io::{self, der},
-    pkcs8, rand,
+    io::{self, der, der_writer},
+    pkcs8, rand, signature,
 };
 use untrusted;
 
@@ -34,6 +34,7 @@ pub struct KeyPair {
     qq: bigint::Modulus<QQ>,
     q_mod_n: bigint::Elem<N, R>,
     public_key: verification::Key,
+    public_key_serialized: PublicKey,
 }
 
 derive_debug_via_self!(KeyPair, self.public_key);
@@ -355,6 +356,8 @@ impl KeyPair {
 
         let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &public_key.n).into_modulus::<QQ>()?;
 
+        let public_key_serialized = PublicKey::from_n_and_e(n, e);
+
         Ok(Self {
             p,
             q,
@@ -362,13 +365,60 @@ impl KeyPair {
             q_mod_n,
             qq,
             public_key,
+            public_key_serialized,
         })
     }
 
     /// Returns the length in bytes of the key pair's public modulus.
     ///
     /// A signature has the same length as the public modulus.
-    pub fn public_modulus_len(&self) -> usize { self.public_key.modulus_len() }
+    pub fn public_modulus_len(&self) -> usize {
+        self.public_key_serialized
+            .modulus()
+            .big_endian_without_leading_zero()
+            .as_slice_less_safe()
+            .len()
+    }
+}
+
+impl signature::KeyPair for KeyPair {
+    type PublicKey = PublicKey;
+
+    fn public_key(&self) -> &Self::PublicKey { &self.public_key_serialized }
+}
+
+/// A serialized RSA public key.
+#[derive(Clone, Debug)]
+pub struct PublicKey(Box<[u8]>);
+
+impl AsRef<[u8]> for PublicKey {
+    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+}
+
+impl PublicKey {
+    fn from_n_and_e(n: io::Positive, e: io::Positive) -> Self {
+        let bytes = der_writer::write_all(der::Tag::Sequence, &|output| {
+            der_writer::write_positive_integer(output, &n);
+            der_writer::write_positive_integer(output, &e);
+        });
+        PublicKey(bytes)
+    }
+
+    /// The public modulus (n).
+    pub fn modulus<'a>(&'a self) -> io::Positive<'a> {
+        // Parsing won't fail because we serialized it ourselves.
+        let (public_key, _exponent) =
+            super::parse_public_key(untrusted::Input::from(self.as_ref())).unwrap();
+        public_key
+    }
+
+    /// The public exponent (e).
+    pub fn exponent<'a>(&'a self) -> io::Positive<'a> {
+        // Parsing won't fail because we serialized it ourselves.
+        let (_public_key, exponent) =
+            super::parse_public_key(untrusted::Input::from(self.as_ref())).unwrap();
+        exponent
+    }
 }
 
 struct PrivatePrime<M: Prime> {

@@ -94,7 +94,6 @@ mod bits;
 mod c;
 pub mod constant_time;
 
-#[doc(hidden)]
 pub mod io;
 
 mod cpu;

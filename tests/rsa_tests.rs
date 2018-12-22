@@ -135,14 +135,6 @@ fn test_signature_rsa_pss_sign() {
 
 #[cfg(feature = "use_heap")]
 #[test]
-fn test_rsa_key_pair_traits() {
-    test::compile_time_assert_send::<signature::RsaKeyPair>();
-    test::compile_time_assert_sync::<signature::RsaKeyPair>();
-    test::compile_time_assert_debug::<signature::RsaKeyPair>();
-}
-
-#[cfg(feature = "use_heap")]
-#[test]
 fn test_signature_rsa_pkcs1_verify() {
     test::from_file("tests/rsa_pkcs1_verify_tests.txt", |section, test_case| {
         assert_eq!(section, "");

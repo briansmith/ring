@@ -12,10 +12,33 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+//! Serialization and deserialization.
+
+#[doc(hidden)]
 pub mod der;
 
+#[cfg(feature = "use_heap")]
+mod writer;
+
+#[cfg(feature = "use_heap")]
+pub(crate) mod der_writer;
+
+/// A serialized positive integer.
+#[derive(Copy, Clone)]
 pub struct Positive<'a>(untrusted::Input<'a>);
 
 impl<'a> Positive<'a> {
+    /// Returns the value, ordered from significant byte to least significant
+    /// byte, without any leading zeros. The result is guaranteed to be
+    /// non-empty.
     pub fn big_endian_without_leading_zero(&self) -> untrusted::Input<'a> { self.0 }
+
+    /// Returns the first byte.
+    ///
+    /// Will not panic because the value is guaranteed to have at least one
+    /// byte.
+    pub fn first_byte(&self) -> u8 {
+        // This won't panic because
+        self.0.as_slice_less_safe()[0]
+    }
 }
