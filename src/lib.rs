@@ -89,7 +89,6 @@ mod arithmetic;
 pub mod aead;
 pub mod agreement;
 
-#[cfg(any(test, feature = "use_heap"))]
 mod bits;
 
 mod c;
