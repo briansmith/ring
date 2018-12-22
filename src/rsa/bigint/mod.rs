@@ -1113,6 +1113,13 @@ impl Nonnegative {
         Ok(ret)
     }
 
+    pub fn to_big_endian(&self) -> Vec<u8> {
+        let byte_count = self.limbs.len() * LIMB_BYTES;
+        let mut bytes = vec![0; byte_count];
+        limb::big_endian_from_limbs(&self.limbs, &mut bytes);
+        bytes
+    }
+
     #[inline]
     pub fn is_odd(&self) -> bool {
         limb::limbs_are_even_constant_time(&self.limbs) != LimbMask::True
@@ -1164,6 +1171,10 @@ impl Nonnegative {
         let mut ret = self.clone();
         limb::limbs_even_add_one(&mut ret.limbs);
         ret
+    }
+
+    pub fn mul(&self, _other: &Nonnegative) -> Self {
+        unimplemented!()
     }
 
     pub fn mod_u16_consttime(&self, v: u16) -> u16 {

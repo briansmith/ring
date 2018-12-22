@@ -81,4 +81,4 @@ pub mod verification;
 
 pub mod signing;
 
-mod bigint;
+pub(crate) mod bigint;

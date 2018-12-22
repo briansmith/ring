@@ -15,6 +15,7 @@
 use super::{
     bigint::{self, Prime},
     verification, Encoding, N,
+    key_generation,
 };
 /// RSA PKCS#1 1.5 signatures.
 use crate::{
@@ -40,6 +41,49 @@ pub struct KeyPair {
 derive_debug_via_self!(KeyPair, self.public_key);
 
 impl KeyPair {
+    /// Generates a new key pair and returns the key pair serialized as a
+    /// raw DER document.
+    pub fn generate_der(
+        nlen: u32,
+        rng: &rand::SecureRandom,
+    ) -> Result<Box<[u8]>, error::Unspecified> {
+        if nlen != 2048 && nlen != 3072 {
+            return Err(error::Unspecified);
+        }
+        let (p, q) = key_generation::generate_pq(nlen, rng)?;
+        // Compute the modulus n as the product of the two primes
+        let n = p.mul(&q);
+        // TODO calculate the private exponent using the extended euclidean algorithm.
+        // We know that this has to hold for the private exponent.
+        // d = e^(-1) mod ((p - 1) * (q - 1))
+        // Format specified by RFC 3447, Appendix A.1.2 "RSA private key syntax"
+        let bytes = der_writer::write_all(der::Tag::Sequence, &|output| {
+            // Version
+            der_writer::write_nonnegative_integer(output, &bigint::Nonnegative::from_u32(0));
+            // Modulus
+            der_writer::write_nonnegative_integer(output, &n);
+            // Public exponent
+            let e = 65537;
+            der_writer::write_nonnegative_integer(output, &bigint::Nonnegative::from_u32(e));
+            // Private exponent
+            // TODO
+            // der_writer::write_nonnegative_integer(output, &d);
+            // Prime 1
+            der_writer::write_nonnegative_integer(output, &p);
+            // Prime 2
+            der_writer::write_nonnegative_integer(output, &q);
+            // Exponent 1
+            // TODO
+            // der_writer::write_nonnegative_integer(output, &dP);
+            // Exponent 2
+            // TODO
+            // der_writer::write_nonnegative_integer(output, &dQ);
+            // Coefficient
+            // TODO
+            // der_writer::write_nonnegative_integer(output, &qInv);
+        });
+        Ok(bytes)
+    }
     /// Parses an unencrypted PKCS#8-encoded RSA private key.
     ///
     /// Only two-prime (not multi-prime) keys are supported. The public modulus

@@ -13,6 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{der::*, writer::*, *};
+use crate::rsa::bigint::Nonnegative;
 
 pub(crate) fn write_positive_integer(output: &mut Accumulator, value: &Positive) {
     let first_byte = value.first_byte();
@@ -23,6 +24,12 @@ pub(crate) fn write_positive_integer(output: &mut Accumulator, value: &Positive)
         }
         write_copy(output, value)
     })
+}
+
+pub(crate) fn write_nonnegative_integer(output: &mut Accumulator, value: &Nonnegative) {
+    let bytes = value.to_big_endian();
+    let positive = Positive(untrusted::Input::from(&bytes));
+    write_positive_integer(output, &positive);
 }
 
 pub(crate) fn write_all(tag: Tag, write_value: &Fn(&mut Accumulator)) -> Box<[u8]> {
