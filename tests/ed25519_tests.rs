@@ -32,7 +32,7 @@
 )]
 
 use ring::{
-    signature::{self, Ed25519KeyPair},
+    signature::{self, Ed25519KeyPair, KeyPair},
     test,
 };
 
@@ -65,7 +65,7 @@ fn test_signature_ed25519() {
         };
         let pkcs8 = Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
         let key_pair = Ed25519KeyPair::from_pkcs8(untrusted::Input::from(pkcs8.as_ref())).unwrap();
-        assert_eq!(public_key, key_pair.public_key_bytes());
+        assert_eq!(public_key, key_pair.public_key().as_ref());
 
         // Test Signature generation.
         let actual_sig = key_pair.sign(&msg);

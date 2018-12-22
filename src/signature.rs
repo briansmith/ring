@@ -127,7 +127,10 @@
 //! ## Signing and verifying with Ed25519
 //!
 //! ```
-//! use ring::{rand, signature};
+//! use ring::{
+//!     rand,
+//!     signature::{self, KeyPair},
+//! };
 //!
 //! # fn sign_and_verify_ed25519() -> Result<(), ring::error::Unspecified> {
 //! // Generate a key pair in PKCS#8 (v2) format.
@@ -147,7 +150,7 @@
 //! // Normally an application would extract the bytes of the signature and
 //! // send them in a protocol message to the peer(s). Here we just get the
 //! // public key key directly from the key pair.
-//! let peer_public_key_bytes = key_pair.public_key_bytes();
+//! let peer_public_key_bytes = key_pair.public_key().as_ref();
 //! let sig_bytes = sig.as_ref();
 //!
 //! // Verify the signature of the message using the public key. Normally the
@@ -346,6 +349,15 @@ impl Signature {
 
 impl AsRef<[u8]> for Signature {
     fn as_ref(&self) -> &[u8] { &self.value[..self.len] }
+}
+
+/// Key pairs for signing messages (private key and public key).
+pub trait KeyPair: core::fmt::Debug + Send + Sized + Sync {
+    /// The type of the public key.
+    type PublicKey: AsRef<[u8]> + core::fmt::Debug + Clone + Send + Sized + Sync;
+
+    /// The public key for the key pair.
+    fn public_key(&self) -> &Self::PublicKey;
 }
 
 /// The longest signature is an ASN.1 P-384 signature where *r* and *s* are of

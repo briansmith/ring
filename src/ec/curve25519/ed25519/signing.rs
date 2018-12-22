@@ -15,7 +15,14 @@
 //! EdDSA Signatures.
 
 use super::{super::ops::*, PUBLIC_KEY_LEN};
-use crate::{digest, error, io::der, pkcs8, polyfill::convert::*, rand, signature};
+use crate::{
+    digest, error,
+    io::der,
+    pkcs8,
+    polyfill::convert::*,
+    rand,
+    signature::{self, KeyPair as SigningKeyPair},
+};
 use core;
 use untrusted;
 
@@ -33,6 +40,8 @@ pub struct KeyPair {
     public_key: PublicKey,
 }
 
+derive_debug_via_self!(KeyPair, self.public_key);
+
 impl<'a> KeyPair {
     /// Generates a new key pair and returns the key pair serialized as a
     /// PKCS#8 document.
@@ -49,7 +58,7 @@ impl<'a> KeyPair {
         Ok(pkcs8::wrap_key(
             &PKCS8_TEMPLATE,
             &seed[..],
-            key_pair.public_key_bytes(),
+            key_pair.public_key().as_ref(),
         ))
     }
 
@@ -107,8 +116,8 @@ impl<'a> KeyPair {
         // This implicitly verifies that `public_key` is the right length.
         // XXX: This rejects ~18 keys when they are partially reduced, though
         // those keys are virtually impossible to find.
-        if public_key != pair.public_key_bytes() {
-            let err = if public_key.len() != pair.public_key_bytes().len() {
+        if public_key != pair.public_key.as_ref() {
+            let err = if public_key.len() != pair.public_key.as_ref().len() {
                 error::KeyRejected::invalid_encoding()
             } else {
                 error::KeyRejected::inconsistent_components()
@@ -155,12 +164,9 @@ impl<'a> KeyPair {
         Self {
             private_scalar: scalar,
             private_prefix: prefix,
-            public_key: a.into_encoded_point(),
+            public_key: PublicKey(a.into_encoded_point()),
         }
     }
-
-    /// Returns a reference to the little-endian-encoded public key bytes.
-    pub fn public_key_bytes(&'a self) -> &'a [u8] { &self.public_key }
 
     /// Returns the signature of the message `msg`.
     pub fn sign(&self, msg: &[u8]) -> signature::Signature {
@@ -181,7 +187,7 @@ impl<'a> KeyPair {
                 GFp_x25519_ge_scalarmult_base(&mut r, &nonce);
             }
             *signature_r = r.into_encoded_point();
-            let hram_digest = eddsa_digest(signature_r, &self.public_key, msg);
+            let hram_digest = eddsa_digest(signature_r, &self.public_key.as_ref(), msg);
             let hram = digest_scalar(hram_digest);
             unsafe {
                 GFp_x25519_sc_muladd(signature_s, &hram, &self.private_scalar, &nonce);
@@ -190,6 +196,19 @@ impl<'a> KeyPair {
             SIGNATURE_LEN
         })
     }
+}
+
+impl signature::KeyPair for KeyPair {
+    type PublicKey = PublicKey;
+
+    fn public_key(&self) -> &Self::PublicKey { &self.public_key }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct PublicKey([u8; PUBLIC_KEY_LEN]);
+
+impl AsRef<[u8]> for PublicKey {
+    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
 
 fn unwrap_pkcs8(
@@ -209,8 +228,6 @@ extern "C" {
     fn GFp_x25519_sc_mask(a: &mut Scalar);
     fn GFp_x25519_sc_muladd(s: &mut Scalar, a: &Scalar, b: &Scalar, c: &Scalar);
 }
-
-type PublicKey = [u8; PUBLIC_KEY_LEN];
 
 type Prefix = [u8; PREFIX_LEN];
 const PREFIX_LEN: usize = digest::SHA512_OUTPUT_LEN - SCALAR_LEN;
