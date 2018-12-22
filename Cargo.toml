@@ -10,7 +10,7 @@ license-file = "LICENSE"
 name = "ring"
 readme = "doc/link-to-readme.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.14.0-alpha1"
+version = "0.14.0-alpha2"
 
 # Prevent multiple versions of *ring* from being linked into the same program.
 links = "ring-asm"
@@ -80,6 +80,7 @@ include = [
     "crypto/fipsmodule/ec/ecp_nistz384.inl",
     "crypto/fipsmodule/ec/gfp_p256.c",
     "crypto/fipsmodule/ec/gfp_p384.c",
+    "crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt",
     "crypto/fipsmodule/modes/asm/aesni-gcm-x86_64.pl",
     "crypto/fipsmodule/modes/asm/ghash-armv4.pl",
     "crypto/fipsmodule/modes/asm/ghash-x86.pl",
