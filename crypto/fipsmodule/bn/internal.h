@@ -194,10 +194,16 @@ void bn_select_words(BN_ULONG *r, BN_ULONG mask, const BN_ULONG *a,
 void bn_rshift_words(BN_ULONG *r, const BN_ULONG *a, unsigned shift,
                      size_t num);
 
+void bn_rshift1_words(BN_ULONG *r, const BN_ULONG *a, size_t num);
+
 // bn_rshift_secret_shift computes r >> n and runs in time independent
 // of both |a| and |n|.
 OPENSSL_EXPORT int bn_rshift_secret_shift(BN_ULONG r[], unsigned n,
                                           BN_ULONG tmp[], size_t num_limbs);
+
+int bn_mod_inverse_consttime(BN_ULONG r[], int *out_no_inverse, const BN_ULONG a[],
+                             const BN_ULONG n[], size_t a_width, size_t n_width,
+                             BN_ULONG *tmp_vars);
 
 // |num| must be at least 4, at least on x86.
 //

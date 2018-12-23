@@ -191,7 +191,6 @@ int bn_rshift_secret_shift(BN_ULONG r[], unsigned n,
   return ret;
 }
 
-#if 0
 void bn_rshift1_words(BN_ULONG *r, const BN_ULONG *a, size_t num) {
   if (num == 0) {
     return;
@@ -201,6 +200,7 @@ void bn_rshift1_words(BN_ULONG *r, const BN_ULONG *a, size_t num) {
   }
   r[num - 1] = a[num - 1] >> 1;
 }
+#if 0
 
 int BN_rshift1(BIGNUM *r, const BIGNUM *a) {
   if (!bn_wexpand(r, a->width)) {

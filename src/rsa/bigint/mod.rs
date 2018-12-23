@@ -1193,9 +1193,14 @@ impl Nonnegative {
         }
     }
 
-    pub fn inverse_mod(&self, _m: &Nonnegative) -> Self {
-        // TODO
-        unimplemented!()
+    pub fn inverse_mod(&self, m: &Nonnegative) -> Self {
+        let mut res = vec![0; self.limbs.len()];
+        let l = usize::max(self.limbs.len(), m.limbs.len());
+        let mut tmp_vars = vec![0; l * 8];
+        limb::limbs_mod_inverse_consttime(&mut res, &self.limbs, &m.limbs, &mut tmp_vars);
+        Nonnegative {
+            limbs: res,
+        }
     }
 
     pub fn mod_u16_consttime(&self, v: u16) -> u16 {

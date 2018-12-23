@@ -113,6 +113,22 @@ pub fn limbs_secret_rshift(r: &mut [Limb], n: u16) {
     unsafe { bn_rshift_secret_shift(r.as_mut_ptr(), n as c::uint, tmp.as_mut_ptr(), r.len()) }
 }
 
+pub fn limbs_mod_inverse_consttime(r: &mut [Limb],
+    a: &[Limb], n: &[Limb], tmp_vars: &mut [Limb])
+{
+    extern {
+        fn bn_mod_inverse_consttime(r: *mut Limb, out_no_inverse: &mut c::int,
+            a: *const Limb, n: *const Limb, a_width: c::size_t, n_width: c::size_t,
+            tmp_vars: *mut Limb) -> c::int;
+    }
+
+    let mut out_no_inverse = 0;
+    unsafe {
+        let _ = bn_mod_inverse_consttime(r.as_mut_ptr(), &mut out_no_inverse, a.as_ptr(), n.as_ptr(),
+            a.len(), n.len(), tmp_vars.as_mut_ptr());
+    }
+}
+
 pub fn limbs_div_mod(quotient: &mut [Limb], remainder: &mut [Limb], numerator: &[Limb],
     divisor: &[Limb], tmp: &mut [Limb]) {
     assert_eq!(quotient.len(), numerator.len());
