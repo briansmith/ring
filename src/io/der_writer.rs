@@ -27,9 +27,13 @@ pub(crate) fn write_positive_integer(output: &mut Accumulator, value: &Positive)
 }
 
 pub(crate) fn write_nonnegative_integer(output: &mut Accumulator, value: &Nonnegative) {
-    let bytes = value.to_big_endian();
-    let positive = Positive(untrusted::Input::from(&bytes));
-    write_positive_integer(output, &positive);
+    if value.is_zero() {
+        write_tlv(output, Tag::Integer, &|_output: &mut Accumulator| ());
+    } else {
+        let bytes = value.to_big_endian();
+        let positive = Positive(untrusted::Input::from(&bytes));
+        write_positive_integer(output, &positive);
+    }
 }
 
 pub(crate) fn write_all(tag: Tag, write_value: &Fn(&mut Accumulator)) -> Box<[u8]> {
