@@ -112,10 +112,6 @@ impl<'a> EphemeralPrivateKey {
         Ok(EphemeralPrivateKey { private_key, alg })
     }
 
-    /// The key exchange algorithm.
-    #[inline]
-    pub fn algorithm(&self) -> &'static Algorithm { self.alg }
-
     /// Computes the public key from the private key.
     #[inline(always)]
     pub fn compute_public_key(&self) -> Result<PublicKey, error::Unspecified> {
