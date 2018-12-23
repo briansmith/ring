@@ -137,6 +137,17 @@ fn mr_iterations_for_bit_count(bit_count: u32) -> Result<u32, error::Unspecified
     }
 }
 
+/// sqrt(2) left shifted by 127 bits.
+/// Everything beyond the comma is discarded, so this approximation is
+/// smaller than sqrt(2).
+///
+/// Can easily be verified by using julia
+/// setprecision(256) do; sqrt(BigFloat(2)) * 2 ^ BigFloat(127) - <value here> end
+/// Or by using wolfram alpha:
+/// sqrt(2) * 2^127 - <value here>
+/// Both should output a positive value < 1.
+const SQRT_2_127: u128 = 240615969168004511545033772477625056927;
+
 /// Generate (p,q) prime pair
 ///
 /// Implementation of FIPS 186-4 section B.3.3
@@ -154,6 +165,8 @@ pub fn generate_pq(
     let e = bigint::Nonnegative::from_u32(65537);
     let iterations = mr_iterations_for_bit_count(nlen / 2)?;
     let limb_count = (nlen / 2) as usize / LIMB_BITS;
+    let nlenh_m1 = (nlen / 2) - 1;
+    let sqrt_2_s_nm = bigint::Nonnegative::from_u128(SQRT_2_127).lshift_64(nlenh_m1 - 127);
     // Step 3 not needed.
     // Step 4.
     // Step 4.1
@@ -167,7 +180,9 @@ pub fn generate_pq(
             p = p.even_add_one();
         }
         // Step 4.4
-        // TODO
+        if p.verify_less_than(&sqrt_2_s_nm).is_ok() {
+            continue;
+        }
         // Step 4.5
         if !p.odd_sub_one().modulo(&e).is_zero() {
             // Step 4.5.1
@@ -194,9 +209,18 @@ pub fn generate_pq(
             q = q.even_add_one();
         }
         // Step 5.4
-        // TODO
+        let difference = if p.verify_less_than(&q).is_ok() {
+            p.sub(&q)
+        } else {
+            q.sub(&p)
+        };
+        if difference.minimal_bits().as_usize_bits() < (nlen as usize / 2) - 100 {
+            continue;
+        }
         // Step 5.5
-        // TODO
+        if q.verify_less_than(&sqrt_2_s_nm).is_ok() {
+            continue;
+        }
         // Step 5.6
         if !q.odd_sub_one().modulo(&e).is_zero() {
             // Step 5.6.1

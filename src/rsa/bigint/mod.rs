@@ -1084,6 +1084,22 @@ pub struct Nonnegative {
 }
 
 impl Nonnegative {
+    pub fn from_u128(v: u128) -> Self {
+        let limbs;
+        #[cfg(target_pointer_width = "64")]
+        {
+            limbs = vec![v as Limb, (v >> LIMB_BITS) as Limb];
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        {
+            limbs = vec![v as Limb, (v >> LIMB_BITS) as Limb,
+                (v >> (LIMB_BITS * 2)) as Limb, (v >> (LIMB_BITS * 3)) as Limb];
+        }
+        Nonnegative {
+            limbs,
+        }
+    }
     pub fn from_u32(v: u32) -> Self {
         Nonnegative {
             limbs: vec![v.into()],
@@ -1161,6 +1177,18 @@ impl Nonnegative {
         return Ok(());
     }
 
+    /// Shift left by v bits where v is a multitude of 64
+    pub fn lshift_64(&self, v: u32) -> Self {
+        assert_eq!(v % 64, 0);
+        assert!(LIMB_BITS <= 64);
+        let extend_amount = v as usize / LIMB_BITS;
+        let mut limbs = vec![0; extend_amount + self.limbs.len()];
+        (&mut limbs[extend_amount..]).copy_from_slice(&self.limbs);
+        Nonnegative {
+            limbs,
+        }
+    }
+
     pub fn sub(&self, v: &Nonnegative) -> Self {
         let mut r = self.clone();
         limb::limbs_sub(&mut r.limbs, &self.limbs, &v.limbs);
@@ -1215,6 +1243,10 @@ impl Nonnegative {
         let mut ret = self.clone();
         limb::limbs_secret_rshift(&mut ret.limbs, v);
         ret
+    }
+
+    pub fn minimal_bits(&self) -> bits::BitLength {
+        limb::limbs_minimal_bits(&self.limbs)
     }
 }
 
