@@ -74,6 +74,15 @@ pub fn limbs_less_than_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
     unsafe { LIMBS_less_than(a.as_ptr(), b.as_ptr(), b.len()) }
 }
 
+pub fn limbs_sub(r: &mut [Limb], a: &[Limb], b: &[Limb]) {
+    extern "C" {
+        fn LIMBS_sub(r: *mut Limb, a: *const Limb, b: *const Limb, limbs_a: c::size_t, limbs_b: c::size_t);
+    }
+    assert_eq!(r.len(), a.len());
+    assert!(a.len() >= b.len());
+    unsafe { LIMBS_sub(r.as_mut_ptr(), a.as_ptr(), b.as_ptr(), a.len(), b.len()) }
+}
+
 pub fn limbs_odd_sub_one(r: &mut [Limb]) {
     extern "C" {
         fn LIMBS_odd_sub_one(r: *mut Limb, num_limbs: c::size_t);

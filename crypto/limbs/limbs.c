@@ -99,6 +99,10 @@ Limb LIMBS_less_than_limb(const Limb a[], Limb b, size_t num_limbs) {
   return constant_time_select_w(lo, hi, lo);
 }
 
+void LIMBS_sub(Limb r[], const Limb a[], const Limb b[], size_t limbs_a, size_t limbs_b) {
+  limbs_hetero_sub(r, a, b, limbs_a, limbs_b);
+}
+
 void LIMBS_odd_sub_one(Limb r[], size_t num_limbs) {
   assert(num_limbs > 0);
   assert(!LIMBS_are_even(r, num_limbs));

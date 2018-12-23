@@ -27,6 +27,7 @@ typedef crypto_word Limb;
 
 Limb LIMBS_are_zero(const Limb a[], size_t num_limbs);
 Limb LIMBS_are_even(const Limb a[], size_t num_limbs);
+void LIMBS_sub(Limb r[], const Limb a[], const Limb b[], size_t limbs_a, size_t limbs_b);
 void LIMBS_odd_sub_one(Limb r[], size_t num_limbs);
 void LIMBS_even_add_one(Limb r[], size_t num_limbs);
 void LIMBS_copy(Limb r[], const Limb a[], size_t num_limbs);

@@ -1161,6 +1161,12 @@ impl Nonnegative {
         return Ok(());
     }
 
+    pub fn sub(&self, v: &Nonnegative) -> Self {
+        let mut r = self.clone();
+        limb::limbs_sub(&mut r.limbs, &self.limbs, &v.limbs);
+        r
+    }
+
     pub fn odd_sub_one(&self) -> Self {
         let mut ret = self.clone();
         limb::limbs_odd_sub_one(&mut ret.limbs);
@@ -1185,6 +1191,11 @@ impl Nonnegative {
         Nonnegative {
             limbs: remainder,
         }
+    }
+
+    pub fn inverse_mod(&self, _m: &Nonnegative) -> Self {
+        // TODO
+        unimplemented!()
     }
 
     pub fn mod_u16_consttime(&self, v: u16) -> u16 {

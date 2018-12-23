@@ -50,12 +50,24 @@ impl KeyPair {
         if nlen != 2048 && nlen != 3072 {
             return Err(error::Unspecified);
         }
+        // Obtain the two primes
         let (p, q) = key_generation::generate_pq(nlen, rng)?;
         // Compute the modulus n as the product of the two primes
         let n = p.mul(&q);
-        // TODO calculate the private exponent using the extended euclidean algorithm.
-        // We know that this has to hold for the private exponent.
-        // d = e^(-1) mod ((p - 1) * (q - 1))
+        // The public exponent e is hardcoded.
+        let e = bigint::Nonnegative::from_u32(65537);
+        // Calculate the private exponent using this formula.
+        // d = e^(-1) mod m
+        // With m = (p - 1) * (q - 1) = n - (p - 1) - q
+        let p1 = p.odd_sub_one();
+        let m = n.sub(&p1).sub(&q);
+        let d = e.inverse_mod(&m);
+        // Calculate d_p, d_q using the modulo operation
+        let d_p = d.modulo(&p1);
+        let q1 = q.odd_sub_one();
+        let d_q = d.modulo(&q1);
+        // Calculate the coefficient
+        let q_inv = q.inverse_mod(&p);
         // Format specified by RFC 3447, Appendix A.1.2 "RSA private key syntax"
         let bytes = der_writer::write_all(der::Tag::Sequence, &|output| {
             // Version
@@ -63,24 +75,19 @@ impl KeyPair {
             // Modulus
             der_writer::write_nonnegative_integer(output, &n);
             // Public exponent
-            let e = 65537;
-            der_writer::write_nonnegative_integer(output, &bigint::Nonnegative::from_u32(e));
+            der_writer::write_nonnegative_integer(output, &e);
             // Private exponent
-            // TODO
-            // der_writer::write_nonnegative_integer(output, &d);
+            der_writer::write_nonnegative_integer(output, &d);
             // Prime 1
             der_writer::write_nonnegative_integer(output, &p);
             // Prime 2
             der_writer::write_nonnegative_integer(output, &q);
             // Exponent 1
-            // TODO
-            // der_writer::write_nonnegative_integer(output, &dP);
+            der_writer::write_nonnegative_integer(output, &d_p);
             // Exponent 2
-            // TODO
-            // der_writer::write_nonnegative_integer(output, &dQ);
+            der_writer::write_nonnegative_integer(output, &d_q);
             // Coefficient
-            // TODO
-            // der_writer::write_nonnegative_integer(output, &qInv);
+            der_writer::write_nonnegative_integer(output, &q_inv);
         });
         Ok(bytes)
     }
