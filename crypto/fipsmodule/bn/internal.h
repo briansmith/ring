@@ -165,6 +165,13 @@ typedef crypto_word BN_ULONG;
 #error "Must define either OPENSSL_32_BIT or OPENSSL_64_BIT"
 #endif
 
+// quotient must have numerator_width many elements
+// remainder must have divisor_width many elements
+// tmp must have divisor_width many elements
+void bn_div_consttime(BN_ULONG quotient[], BN_ULONG remainder[],
+                     const BN_ULONG numerator[], const BN_ULONG divisor[],
+                     BN_ULONG tmp[],
+                     size_t numerator_width, size_t divisor_width);
 
 // bn_mul_add_words multiples |ap| by |w|, adds the result to |rp|, and places
 // the result in |rp|. |ap| and |rp| must both be |num| words long. It returns

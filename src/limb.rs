@@ -104,6 +104,23 @@ pub fn limbs_secret_rshift(r: &mut [Limb], n: u16) {
     unsafe { bn_rshift_secret_shift(r.as_mut_ptr(), n as c::uint, tmp.as_mut_ptr(), r.len()) }
 }
 
+pub fn limbs_div_mod(quotient: &mut [Limb], remainder: &mut [Limb], numerator: &[Limb],
+    divisor: &[Limb], tmp: &mut [Limb]) {
+    assert_eq!(quotient.len(), numerator.len());
+    assert_eq!(remainder.len(), divisor.len());
+    assert_eq!(tmp.len(), divisor.len());
+    extern "C" {
+        fn bn_div_consttime(quotient: *mut Limb, remainder: *mut Limb,
+            numerator: *const Limb, divisor: *const Limb,
+            tmp: *mut Limb,
+            numerator_width: c::size_t, divisor_width: c::size_t);
+    }
+    unsafe {
+        bn_div_consttime(quotient.as_mut_ptr(), remainder.as_mut_ptr(), numerator.as_ptr(),
+            divisor.as_ptr(), tmp.as_mut_ptr(), numerator.len(), divisor.len());
+    }
+}
+
 #[inline]
 pub fn limbs_less_than_limbs_vartime(a: &[Limb], b: &[Limb]) -> bool {
     limbs_less_than_limbs_consttime(a, b) == LimbMask::True

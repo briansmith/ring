@@ -1177,6 +1177,16 @@ impl Nonnegative {
         unimplemented!()
     }
 
+    pub fn modulo(&self, v: &Nonnegative) -> Self {
+        let mut quotient = vec![0; self.limbs.len()];
+        let mut remainder = vec![0; v.limbs.len()];
+        let mut tmp = vec![0; v.limbs.len()];
+        limb::limbs_div_mod(&mut quotient, &mut remainder, &self.limbs, &v.limbs, &mut tmp);
+        Nonnegative {
+            limbs: remainder,
+        }
+    }
+
     pub fn mod_u16_consttime(&self, v: u16) -> u16 {
         limb::mod_u16_consttime(&self.limbs, v)
     }

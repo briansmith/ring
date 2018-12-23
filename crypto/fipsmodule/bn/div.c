@@ -54,16 +54,21 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/bn.h>
+/*#include <openssl/bn.h>
 
 #include <assert.h>
 #include <limits.h>
 
 #include <openssl/err.h>
+*/
+
+#include "GFp/bn.h"
 
 #include "internal.h"
 
+#include "../../limbs/limbs.inl"
 
+#if 0
 #if !defined(BN_CAN_DIVIDE_ULLONG) && !defined(BN_CAN_USE_INLINE_ASM)
 // bn_div_words divides a double-width |h|,|l| by |d| and returns the result,
 // which must fit in a |BN_ULONG|.
@@ -431,16 +436,18 @@ BN_ULONG bn_reduce_once(BN_ULONG *r, const BN_ULONG *a, BN_ULONG carry,
   bn_select_words(r, carry, a /* r < 0 */, r /* r >= 0 */, num);
   return carry;
 }
+#endif
 
-BN_ULONG bn_reduce_once_in_place(BN_ULONG *r, BN_ULONG carry, const BN_ULONG *m,
+static BN_ULONG bn_reduce_once_in_place(BN_ULONG *r, BN_ULONG carry, const BN_ULONG *m,
                                  BN_ULONG *tmp, size_t num) {
   // See |bn_reduce_once| for why this logic works.
-  carry -= bn_sub_words(tmp, r, m, num);
+  carry -= limbs_sub(tmp, r, m, num);
   assert(carry == 0 || carry == (BN_ULONG)-1);
   bn_select_words(r, carry, r /* tmp < 0 */, tmp /* tmp >= 0 */, num);
   return carry;
 }
 
+#if 0
 void bn_mod_sub_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
                       const BN_ULONG *m, BN_ULONG *tmp, size_t num) {
   // r = a - b
@@ -455,80 +462,46 @@ void bn_mod_add_words(BN_ULONG *r, const BN_ULONG *a, const BN_ULONG *b,
   BN_ULONG carry = bn_add_words(r, a, b, num);
   bn_reduce_once_in_place(r, carry, m, tmp, num);
 }
+#endif
 
-int bn_div_consttime(BIGNUM *quotient, BIGNUM *remainder,
-                     const BIGNUM *numerator, const BIGNUM *divisor,
-                     BN_CTX *ctx) {
-  if (BN_is_negative(numerator) || BN_is_negative(divisor)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_NEGATIVE_NUMBER);
-    return 0;
-  }
-  if (BN_is_zero(divisor)) {
-    OPENSSL_PUT_ERROR(BN, BN_R_DIV_BY_ZERO);
-    return 0;
-  }
 
+// quotient must have numerator_width many elements
+// remainder must have divisor_width many elements
+// tmp must have divisor_width many elements
+void bn_div_consttime(BN_ULONG quotient[], BN_ULONG remainder[],
+                     const BN_ULONG numerator[], const BN_ULONG divisor[],
+                     BN_ULONG tmp[],
+                     size_t numerator_width, size_t divisor_width) {
   // This function implements long division in binary. It is not very efficient,
   // but it is simple, easy to make constant-time, and performant enough for RSA
   // key generation.
 
-  int ret = 0;
-  BN_CTX_start(ctx);
-  BIGNUM *q = quotient, *r = remainder;
-  if (quotient == NULL || quotient == numerator || quotient == divisor) {
-    q = BN_CTX_get(ctx);
-  }
-  if (remainder == NULL || remainder == numerator || remainder == divisor) {
-    r = BN_CTX_get(ctx);
-  }
-  BIGNUM *tmp = BN_CTX_get(ctx);
-  if (q == NULL || r == NULL || tmp == NULL ||
-      !bn_wexpand(q, numerator->width) ||
-      !bn_wexpand(r, divisor->width) ||
-      !bn_wexpand(tmp, divisor->width)) {
-    goto err;
-  }
+  memset(quotient, 0, numerator_width * sizeof(BN_ULONG));
 
-  OPENSSL_memset(q->d, 0, numerator->width * sizeof(BN_ULONG));
-  q->width = numerator->width;
-  q->neg = 0;
-
-  OPENSSL_memset(r->d, 0, divisor->width * sizeof(BN_ULONG));
-  r->width = divisor->width;
-  r->neg = 0;
+  memset(remainder, 0, divisor_width * sizeof(BN_ULONG));
 
   // Incorporate |numerator| into |r|, one bit at a time, reducing after each
   // step. At the start of each loop iteration, |r| < |divisor|
-  for (int i = numerator->width - 1; i >= 0; i--) {
+  for (int i = numerator_width - 1; i >= 0; i--) {
     for (int bit = BN_BITS2 - 1; bit >= 0; bit--) {
       // Incorporate the next bit of the numerator, by computing
       // r = 2*r or 2*r + 1. Note the result fits in one more word. We store the
       // extra word in |carry|.
-      BN_ULONG carry = bn_add_words(r->d, r->d, r->d, divisor->width);
-      r->d[0] |= (numerator->d[i] >> bit) & 1;
+      BN_ULONG carry = limbs_add(remainder, remainder, remainder, divisor_width);
+      remainder[0] |= (numerator[i] >> bit) & 1;
       // |r| was previously fully-reduced, so we know:
       //      2*0 <= r <= 2*(divisor-1) + 1
       //        0 <= r <= 2*divisor - 1 < 2*divisor.
       // Thus |r| satisfies the preconditions for |bn_reduce_once_in_place|.
-      BN_ULONG subtracted = bn_reduce_once_in_place(r->d, carry, divisor->d,
-                                                    tmp->d, divisor->width);
+      BN_ULONG subtracted = bn_reduce_once_in_place(remainder, carry, divisor,
+                                                    tmp, divisor_width);
       // The corresponding bit of the quotient is set iff we needed to subtract.
-      q->d[i] |= (~subtracted & 1) << bit;
+      quotient[i] |= (~subtracted & 1) << bit;
     }
   }
-
-  if ((quotient != NULL && !BN_copy(quotient, q)) ||
-      (remainder != NULL && !BN_copy(remainder, r))) {
-    goto err;
-  }
-
-  ret = 1;
-
-err:
-  BN_CTX_end(ctx);
-  return ret;
 }
 
+#if 0
 static BIGNUM *bn_scratch_space_from_ctx(size_t width, BN_CTX *ctx) {
   BIGNUM *ret = BN_CTX_get(ctx);
   if (ret == NULL ||
@@ -884,3 +857,4 @@ int BN_nnmod_pow2(BIGNUM *r, const BIGNUM *a, size_t e) {
   // Finally, add one, for the reason described above.
   return BN_add(r, r, BN_value_one());
 }
+#endif

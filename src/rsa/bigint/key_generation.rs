@@ -151,7 +151,7 @@ pub fn generate_pq(
         return Err(error::Unspecified);
     }
     // Step 2 not needed.
-    //let e = 65537;
+    let e = bigint::Nonnegative::from_u32(65537);
     let iterations = mr_iterations_for_bit_count(nlen / 2)?;
     let limb_count = (nlen / 2) as usize / LIMB_BITS;
     // Step 3 not needed.
@@ -169,10 +169,7 @@ pub fn generate_pq(
         // Step 4.4
         // TODO
         // Step 4.5
-        // TODO this doesn't work, as e == u16_max + 2
-        // We could use bn_is_relatively_prime here though.
-        //if p.odd_sub_one().mod_u16_consttime(e) != 0 {
-        if true {
+        if !p.odd_sub_one().modulo(&e).is_zero() {
             // Step 4.5.1
             if probable_primality_test(&p, iterations, rng)? {
                 // Step 4.5.2
@@ -201,10 +198,7 @@ pub fn generate_pq(
         // Step 5.5
         // TODO
         // Step 5.6
-        // TODO this doesn't work, as e == u16_max + 2
-        // We could use bn_is_relatively_prime here though.
-        //if q.odd_sub_one().mod_u16_consttime(e) != 0 {
-        if true {
+        if !q.odd_sub_one().modulo(&e).is_zero() {
             // Step 5.6.1
             if probable_primality_test(&q, iterations, rng)? {
                 // Step 5.6.2
