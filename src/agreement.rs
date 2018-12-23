@@ -103,13 +103,13 @@ impl<'a> EphemeralPrivateKey {
     /// Generate a new ephemeral private key for the given algorithm.
     pub fn generate(
         alg: &'static Algorithm, rng: &rand::SecureRandom,
-    ) -> Result<EphemeralPrivateKey, error::Unspecified> {
+    ) -> Result<Self, error::Unspecified> {
         // NSA Guide Step 1.
         //
         // This only handles the key generation part of step 1. The rest of
         // step one is done by `compute_public_key()`.
         let private_key = ec::Seed::generate(&alg.curve, rng)?;
-        Ok(EphemeralPrivateKey { private_key, alg })
+        Ok(Self { private_key, alg })
     }
 
     /// Computes the public key from the private key.
