@@ -271,8 +271,6 @@ impl SigningKey {
 /// A context for multi-step (Init-Update-Finish) HMAC signing.
 ///
 /// Use `sign` for single-step HMAC signing.
-///
-/// C analog: `HMAC_CTX`.
 #[derive(Clone)]
 pub struct SigningContext {
     inner: digest::Context,
@@ -284,8 +282,6 @@ derive_debug_via_self!(SigningContext, self.inner.algorithm());
 impl SigningContext {
     /// Constructs a new HMAC signing context using the given digest algorithm
     /// and key.
-    ///
-    /// C analog: `HMAC_CTX_init`
     pub fn with_key(signing_key: &SigningKey) -> SigningContext {
         SigningContext {
             inner: signing_key.ctx_prototype.inner.clone(),
@@ -295,8 +291,6 @@ impl SigningContext {
 
     /// Updates the HMAC with all the data in `data`. `update` may be called
     /// zero or more times until `finish` is called.
-    ///
-    /// C analog: `HMAC_Update`
     pub fn update(&mut self, data: &[u8]) { self.inner.update(data); }
 
     /// Finalizes the HMAC calculation and returns the HMAC value. `sign`
@@ -306,8 +300,6 @@ impl SigningContext {
     /// It is generally not safe to implement HMAC verification by comparing
     // the return value of `sign` to a signature. Use `verify` for verification
     // instead.
-    ///
-    /// C analog: `HMAC_Final`
     pub fn sign(mut self) -> Signature {
         self.outer.update(self.inner.finish().as_ref());
         Signature(self.outer.finish())
@@ -322,8 +314,6 @@ impl SigningContext {
 /// It is generally not safe to implement HMAC verification by comparing the
 /// return value of `sign` to a signature. Use `verify` for verification
 /// instead.
-///
-/// C analog: `HMAC_CTX_init` + `HMAC_Update` + `HMAC_Final`.
 pub fn sign(key: &SigningKey, data: &[u8]) -> Signature {
     let mut ctx = SigningContext::with_key(key);
     ctx.update(data);
@@ -360,8 +350,6 @@ impl VerificationKey {
 /// resultant value equals `signature`, in one step.
 ///
 /// The verification will be done in constant time to prevent timing attacks.
-///
-/// C analog: `HMAC_Init` + `HMAC_Update` + `HMAC_Final` + `CRYPTO_memcmp`
 #[inline(always)]
 pub fn verify(
     key: &VerificationKey, data: &[u8], signature: &[u8],
@@ -376,8 +364,6 @@ pub fn verify(
 /// `VerificationKey` with the same value as `key` and then using `verify`.
 ///
 /// The verification will be done in constant time to prevent timing attacks.
-///
-/// C analog: `HMAC_Init` + `HMAC_Update` + `HMAC_Final` + `CRYPTO_memcmp`
 pub fn verify_with_own_key(
     key: &SigningKey, data: &[u8], signature: &[u8],
 ) -> Result<(), error::Unspecified> {

@@ -132,8 +132,6 @@ use core::num::NonZeroU32;
 /// | out         | dk (derived key)
 /// | out.len()   | dkLen (derived key length)
 ///
-/// C analog: `PKCS5_PBKDF2_HMAC`
-///
 /// # Panics
 ///
 /// `derive` panics if `out.len()` is larger than (2**32 - 1) * the digest
@@ -201,8 +199,6 @@ fn derive_block(
 /// | `secret`                   | P (password)
 /// | `previously_derived`       | dk (derived key)
 /// | `previously_derived.len()` | dkLen (derived key length)
-///
-/// C analog: `PKCS5_PBKDF2_HMAC` + `CRYPTO_memcmp`
 ///
 /// # Panics
 ///

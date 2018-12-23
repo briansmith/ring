@@ -18,10 +18,6 @@
 //! generic composition paradigm][AEAD] for an introduction to the concept of
 //! AEADs.
 //!
-//! C analog: `GFp/aead.h`
-//!
-//! Go analog: [`crypto.cipher.AEAD`]
-//!
 //! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
@@ -38,10 +34,6 @@ pub use self::{
 };
 
 /// A key for authenticating and decrypting (“opening”) AEAD-protected data.
-///
-/// C analog: `EVP_AEAD_CTX` with direction `evp_aead_open`
-///
-/// Go analog: [`crypto.cipher.AEAD`]
 pub struct OpeningKey {
     key: Key,
 }
@@ -50,13 +42,6 @@ impl OpeningKey {
     /// Create a new opening key.
     ///
     /// `key_bytes` must be exactly `algorithm.key_len` bytes long.
-    ///
-    /// C analogs: `EVP_AEAD_CTX_init_with_direction` with direction
-    ///            `evp_aead_open`, `EVP_AEAD_CTX_init`.
-    ///
-    /// Go analog:
-    ///   [`crypto.aes.NewCipher`](https://golang.org/pkg/crypto/aes/#NewCipher)
-    /// + [`crypto.cipher.NewGCM`](https://golang.org/pkg/crypto/cipher/#NewGCM)
     #[inline]
     pub fn new(
         algorithm: &'static Algorithm, key_bytes: &[u8],
@@ -67,8 +52,6 @@ impl OpeningKey {
     }
 
     /// The key's AEAD algorithm.
-    ///
-    /// C analog: `EVP_AEAD_CTX.aead`
     #[inline(always)]
     pub fn algorithm(&self) -> &'static Algorithm { self.key.algorithm() }
 }
@@ -117,10 +100,6 @@ impl OpeningKey {
 /// and `ciphertext_and_tag_modified_in_place` because Rust's type system
 /// does not allow us to have two slices, one mutable and one immutable, that
 /// reference overlapping memory.)
-///
-/// C analog: `EVP_AEAD_CTX_open`
-///
-/// Go analog: [`AEAD.Open`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub fn open_in_place<'a>(
     key: &OpeningKey, nonce: Nonce, ad: &[u8], in_prefix_len: usize,
     ciphertext_and_tag_modified_in_place: &'a mut [u8],
@@ -152,21 +131,12 @@ pub fn open_in_place<'a>(
 }
 
 /// A key for encrypting and signing (“sealing”) data.
-///
-/// C analog: `EVP_AEAD_CTX` with direction `evp_aead_seal`.
-///
-/// Go analog: [`AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub struct SealingKey {
     key: Key,
 }
 
 impl SealingKey {
-    /// C analogs: `EVP_AEAD_CTX_init_with_direction` with direction
-    ///            `evp_aead_seal`, `EVP_AEAD_CTX_init`.
-    ///
-    /// Go analog:
-    ///   [`crypto.aes.NewCipher`](https://golang.org/pkg/crypto/aes/#NewCipher)
-    /// + [`crypto.cipher.NewGCM`](https://golang.org/pkg/crypto/cipher/#NewGCM)
+    /// Constructs a new sealing key from `key_bytes`.
     #[inline]
     pub fn new(
         algorithm: &'static Algorithm, key_bytes: &[u8],
@@ -177,8 +147,6 @@ impl SealingKey {
     }
 
     /// The key's AEAD algorithm.
-    ///
-    /// C analog: `EVP_AEAD_CTX.aead`
     #[inline(always)]
     pub fn algorithm(&self) -> &'static Algorithm { self.key.algorithm() }
 }
@@ -200,10 +168,6 @@ impl SealingKey {
 /// also `MAX_TAG_LEN`.
 ///
 /// `ad` is the additional authenticated data, if any.
-///
-/// C analog: `EVP_AEAD_CTX_seal`.
-///
-/// Go analog: [`AEAD.Seal`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub fn seal_in_place(
     key: &SealingKey, nonce: Nonce, ad: &[u8], in_out: &mut [u8], out_suffix_capacity: usize,
 ) -> Result<usize, error::Unspecified> {
@@ -226,8 +190,6 @@ pub fn seal_in_place(
 
 /// `OpeningKey` and `SealingKey` are type-safety wrappers around `Key`, which
 /// does all the actual work via the C AEAD interface.
-///
-/// C analog: `EVP_AEAD_CTX`
 struct Key {
     inner: KeyInner,
     algorithm: &'static Algorithm,
@@ -254,11 +216,6 @@ impl Key {
 }
 
 /// An AEAD Algorithm.
-///
-/// C analog: `EVP_AEAD`
-///
-/// Go analog:
-///     [`crypto.cipher.AEAD`](https://golang.org/pkg/crypto/cipher/#AEAD)
 pub struct Algorithm {
     init: fn(key: &[u8]) -> Result<KeyInner, error::Unspecified>,
 
@@ -283,28 +240,16 @@ const fn max_input_len(block_len: usize, overhead_blocks_per_nonce: usize) -> u6
 
 impl Algorithm {
     /// The length of the key.
-    ///
-    /// C analog: `EVP_AEAD_key_length`
     #[inline(always)]
     pub fn key_len(&self) -> usize { self.key_len }
 
     /// The length of a tag.
     ///
     /// See also `MAX_TAG_LEN`.
-    ///
-    /// C analog: `EVP_AEAD_max_overhead`
-    ///
-    /// Go analog:
-    ///   [`crypto.cipher.AEAD.Overhead`](https://golang.org/pkg/crypto/cipher/#AEAD)
     #[inline(always)]
     pub fn tag_len(&self) -> usize { TAG_LEN }
 
     /// The length of the nonces.
-    ///
-    /// C analog: `EVP_AEAD_nonce_length`
-    ///
-    /// Go analog:
-    ///   [`crypto.cipher.AEAD.NonceSize`](https://golang.org/pkg/crypto/cipher/#AEAD)
     #[inline(always)]
     pub fn nonce_len(&self) -> usize { NONCE_LEN }
 }

@@ -31,8 +31,6 @@ mod sha1;
 
 /// A context for multi-step (Init-Update-Finish) digest calculations.
 ///
-/// C analog: `EVP_MD_CTX`.
-///
 /// # Examples
 ///
 /// ```
@@ -67,8 +65,6 @@ pub struct Context {
 
 impl Context {
     /// Constructs a new context.
-    ///
-    /// C analogs: `EVP_DigestInit`, `EVP_DigestInit_ex`
     pub fn new(algorithm: &'static Algorithm) -> Context {
         cpu::cache_detected_features();
 
@@ -84,8 +80,6 @@ impl Context {
     /// Updates the digest with all the data in `data`. `update` may be called
     /// zero or more times until `finish` is called. It must not be called
     /// after `finish` has been called.
-    ///
-    /// C analog: `EVP_DigestUpdate`
     pub fn update(&mut self, data: &[u8]) {
         if data.len() < self.algorithm.block_len - self.num_pending {
             self.pending[self.num_pending..(self.num_pending + data.len())].copy_from_slice(data);
@@ -129,8 +123,6 @@ impl Context {
     /// Finalizes the digest calculation and returns the digest value. `finish`
     /// consumes the context so it cannot be (mis-)used after `finish` has been
     /// called.
-    ///
-    /// C analogs: `EVP_DigestFinal`, `EVP_DigestFinal_ex`
     pub fn finish(mut self) -> Digest {
         // We know |num_pending < self.algorithm.block_len|, because we would
         // have processed the block otherwise.
@@ -182,8 +174,6 @@ impl Context {
 }
 
 /// Returns the digest of `data` using the given digest algorithm.
-///
-/// C analog: `EVP_Digest`
 ///
 /// # Examples:
 ///
@@ -241,10 +231,8 @@ impl core::fmt::Debug for Digest {
 }
 
 /// A digest algorithm.
-///
-/// C analog: `EVP_MD`
 pub struct Algorithm {
-    /// C analog: `EVP_MD_size`
+    /// The length of a finalized digest.
     pub output_len: usize,
 
     /// The size of the chaining value of the digest function, in bytes. For
@@ -255,7 +243,7 @@ pub struct Algorithm {
     /// digest algorithm.
     pub chaining_len: usize,
 
-    /// C analog: `EVP_MD_block_size`
+    /// The internal block length.
     pub block_len: usize,
 
     /// The length of the length in the padding.

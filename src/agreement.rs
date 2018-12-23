@@ -101,8 +101,6 @@ pub struct EphemeralPrivateKey {
 
 impl<'a> EphemeralPrivateKey {
     /// Generate a new ephemeral private key for the given algorithm.
-    ///
-    /// C analog: `EC_KEY_new_by_curve_name` + `EC_KEY_generate_key`.
     pub fn generate(
         alg: &'static Algorithm, rng: &rand::SecureRandom,
     ) -> Result<EphemeralPrivateKey, error::Unspecified> {
@@ -170,8 +168,6 @@ impl AsRef<[u8]> for PublicKey {
 /// After the key agreement is done, `agree_ephemeral` calls `kdf` with the raw
 /// key material from the key agreement operation and then returns what `kdf`
 /// returns.
-///
-/// C analogs: `EC_POINT_oct2point` + `ECDH_compute_key`, `X25519`.
 pub fn agree_ephemeral<F, R, E>(
     my_private_key: EphemeralPrivateKey, peer_public_key_alg: &Algorithm,
     peer_public_key: untrusted::Input, error_value: E, kdf: F,
