@@ -116,14 +116,7 @@ impl<'a> EphemeralPrivateKey {
     #[inline]
     pub fn algorithm(&self) -> &'static Algorithm { self.alg }
 
-    /// The size in bytes of the encoded public key.
-    #[inline(always)]
-    pub fn public_key_len(&self) -> usize { self.alg.curve.public_key_len }
-
-    /// Computes the public key from the private key's value and fills `out`
-    /// with the public point encoded in the standard form for the algorithm.
-    ///
-    /// `out.len()` must be equal to the value returned by `public_key_len`.
+    /// Computes the public key from the private key.
     #[inline(always)]
     pub fn compute_public_key(&self) -> Result<PublicKey, error::Unspecified> {
         // NSA Guide Step 1.
