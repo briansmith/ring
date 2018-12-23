@@ -180,7 +180,7 @@ where
     // The domain parameters are hard-coded. This check verifies that the
     // peer's public key's domain parameters match the domain parameters of
     // this private key.
-    if peer_public_key_alg.curve.id != my_private_key.alg.curve.id {
+    if peer_public_key_alg != my_private_key.alg {
         return Err(error_value);
     }
 
