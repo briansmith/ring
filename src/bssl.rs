@@ -22,7 +22,7 @@ use crate::{c, error};
 #[repr(transparent)]
 pub struct Result(c::int);
 
-impl From<Result> for ::std::result::Result<(), error::Unspecified> {
+impl From<Result> for core::result::Result<(), error::Unspecified> {
     fn from(ret: Result) -> Self {
         match ret.0 {
             1 => Ok(()),

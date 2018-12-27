@@ -113,6 +113,7 @@ mod rsa;
 
 pub mod signature;
 
+#[cfg(any(test, feature = "use_heap"))]
 pub mod test;
 
 mod sealed {

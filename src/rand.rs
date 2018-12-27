@@ -93,7 +93,10 @@ impl SecureRandom for SystemRandom {
 
 impl sealed::Sealed for SystemRandom {}
 
-#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "ios", windows)))]
+#[cfg(all(
+    feature = "use_heap",
+    not(any(target_os = "linux", target_os = "macos", target_os = "ios", windows))
+))]
 use self::urandom::fill as fill_impl;
 
 #[cfg(any(
@@ -182,6 +185,7 @@ mod sysrand {
 
 // Keep the `cfg` conditions in sync with the conditions in lib.rs.
 #[cfg(all(
+    feature = "use_heap",
     any(target_os = "redox", unix),
     not(any(target_os = "macos", target_os = "ios")),
     not(all(target_os = "linux", not(feature = "dev_urandom_fallback")))

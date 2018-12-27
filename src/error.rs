@@ -180,6 +180,7 @@ impl std::error::Error for KeyRejected {
     fn description(&self) -> &str { self.description_() }
 }
 
+#[cfg(feature = "use_heap")]
 impl std::fmt::Display for KeyRejected {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.write_str(self.description_())
