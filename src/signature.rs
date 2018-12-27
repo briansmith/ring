@@ -269,9 +269,6 @@ use crate::{cpu, ec, error, sealed};
 use core;
 use untrusted;
 
-#[cfg(feature = "use_heap")]
-use std;
-
 pub use crate::ec::{
     curve25519::ed25519::{
         signing::KeyPair as Ed25519KeyPair,

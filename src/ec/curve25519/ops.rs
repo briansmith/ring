@@ -19,7 +19,7 @@ use crate::{
     bssl, error,
     limb::{Limb, LIMB_BITS},
 };
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 // Elem<T>` is `fe` in curve25519/internal.h.
 // Elem<L> is `fe_loose` in curve25519/internal.h.
