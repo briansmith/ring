@@ -13,7 +13,6 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::{error, rand};
-use untrusted;
 
 pub use self::keys::{KeyPair, PublicKey, Seed};
 
