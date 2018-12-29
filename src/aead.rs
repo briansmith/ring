@@ -323,4 +323,5 @@ pub mod chacha20_poly1305_openssh;
 mod gcm;
 mod nonce;
 mod poly1305;
+pub mod quic;
 mod shift;
