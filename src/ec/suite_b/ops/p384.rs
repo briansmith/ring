@@ -373,9 +373,15 @@ mod internal_benches {
     use super::{super::internal_benches::*, *};
 
     bench_curve!(&[
-        Scalar { limbs: LIMBS_1 },
+        Scalar {
+            limbs: LIMBS_1,
+            encoding: PhantomData,
+            m: PhantomData
+        },
         Scalar {
             limbs: LIMBS_ALTERNATING_10,
+            encoding: PhantomData,
+            m: PhantomData
         },
         Scalar {
             // n - 1
@@ -393,6 +399,8 @@ mod internal_benches {
                 0xecec196a,
                 0xccc52973 - 1
             ],
+            encoding: PhantomData,
+            m: PhantomData,
         },
     ]);
 }

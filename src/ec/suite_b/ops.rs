@@ -1190,33 +1190,33 @@ mod internal_benches {
 macro_rules! bench_curve {
     ( $vectors:expr ) => {
         use super::super::{Elem, Scalar};
-        use bench;
+        extern crate test;
 
         #[bench]
-        fn elem_inverse_squared_bench(bench: &mut bench::Bencher) {
-            // This benchmark assumes that the `elem_inverse_squared()` is
+        fn elem_inverse_squared_bench(bench: &mut test::Bencher) {
+            // This benchmark assumes that `elem_inverse_squared()` is
             // constant-time so inverting 1 mod q is as good of a choice as
             // anything.
             let mut a = Elem::zero();
             a.limbs[0] = 1;
             bench.iter(|| {
-                let _ = PRIVATE_KEY_OPS.elem_inverse(&a);
+                let _ = PRIVATE_KEY_OPS.elem_inverse_squared(&a);
             });
         }
 
         #[bench]
-        fn elem_product_bench(bench: &mut bench::Bencher) {
+        fn elem_product_bench(bench: &mut test::Bencher) {
             // This benchmark assumes that the multiplication is constant-time
             // so 0 * 0 is as good of a choice as anything.
-            let a = Elem::zero();
-            let b = Elem::zero();
+            let a: Elem<R> = Elem::zero();
+            let b: Elem<R> = Elem::zero();
             bench.iter(|| {
                 let _ = COMMON_OPS.elem_product(&a, &b);
             });
         }
 
         #[bench]
-        fn elem_squared_bench(bench: &mut bench::Bencher) {
+        fn elem_squared_bench(bench: &mut test::Bencher) {
             // This benchmark assumes that the squaring is constant-time so
             // 0**2 * 0 is as good of a choice as anything.
             let a = Elem::zero();
@@ -1226,12 +1226,12 @@ macro_rules! bench_curve {
         }
 
         #[bench]
-        fn scalar_inv_to_mont_bench(bench: &mut bench::Bencher) {
+        fn scalar_inv_to_mont_bench(bench: &mut test::Bencher) {
             const VECTORS: &[Scalar] = $vectors;
             let vectors_len = VECTORS.len();
             let mut i = 0;
             bench.iter(|| {
-                let _ = PUBLIC_SCALAR_OPS.scalar_inv_to_mont(&VECTORS[i]);
+                let _ = SCALAR_OPS.scalar_inv_to_mont(&VECTORS[i]);
 
                 i += 1;
                 if i == vectors_len {
