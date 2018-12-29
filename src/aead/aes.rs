@@ -186,6 +186,15 @@ impl Key {
         }
     }
 
+    pub fn new_mask(&self, sample: Block) -> [u8; 5] {
+        let block = self.encrypt_block(sample);
+
+        let mut out: [u8; 5] = [0; 5];
+        out.copy_from_slice(&block.as_ref()[..5]);
+
+        out
+    }
+
     #[cfg(target_arch = "x86_64")]
     #[must_use]
     pub fn is_aes_hw(&self) -> bool {
