@@ -3114,7 +3114,9 @@ $code.=<<___;
 	movq	%xmm1, $a_ptr			# restore $a_ptr
 	movq	%xmm0, $r_ptr			# restore $r_ptr
 	add	\$`32*(18-5)`, %rsp		# difference in frame sizes
+.cfi_adjust_cfa_offset	`-32*(18-5)`
 	jmp	.Lpoint_double_shortcut$x
+.cfi_adjust_cfa_offset	`32*(18-5)`
 
 .align	32
 .Ladd_proceed$x:
