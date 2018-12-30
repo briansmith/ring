@@ -378,6 +378,9 @@ static void ecp_nistz256_points_mul(const EC_GROUP *group, EC_RAW_POINT *r,
       ecp_nistz256_neg(t.p.Z, t.a.Y);
       copy_conditional(t.a.Y, t.p.Z, wvalue & 1);
 
+      // Note |ecp_nistz256_point_add_affine| does not work if |p.p| and |t.a|
+      // are the same non-infinity point, so it is important that we compute the
+      // |g_scalar| term before the |p_scalar| term.
       ecp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
     }
   }
@@ -432,6 +435,9 @@ static void ecp_nistz256_points_mul_public(const EC_GROUP *group,
       ecp_nistz256_neg(t.a.Y, t.a.Y);
     }
 
+    // Note |ecp_nistz256_point_add_affine| does not work if |p.p| and |t.a|
+    // are the same non-infinity point, so it is important that we compute the
+    // |g_scalar| term before the |p_scalar| term.
     ecp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
   }
 
