@@ -101,7 +101,7 @@ impl OpeningKey {
 /// does not allow us to have two slices, one mutable and one immutable, that
 /// reference overlapping memory.)
 pub fn open_in_place<'a>(
-    key: &OpeningKey, nonce: Nonce, ad: &[u8], in_prefix_len: usize,
+    key: &OpeningKey, nonce: Nonce, aad: Aad<'a>, in_prefix_len: usize,
     ciphertext_and_tag_modified_in_place: &'a mut [u8],
 ) -> Result<&'a mut [u8], error::Unspecified> {
     let ciphertext_and_tag_len = ciphertext_and_tag_modified_in_place
@@ -115,7 +115,7 @@ pub fn open_in_place<'a>(
     let (in_out, received_tag) =
         ciphertext_and_tag_modified_in_place.split_at_mut(in_prefix_len + ciphertext_len);
     let Tag(calculated_tag) =
-        (key.key.algorithm.open)(&key.key.inner, nonce, &ad, in_prefix_len, in_out);
+        (key.key.algorithm.open)(&key.key.inner, nonce, aad, in_prefix_len, in_out);
     if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag).is_err() {
         // Zero out the plaintext so that it isn't accidentally leaked or used
         // after verification fails. It would be safest if we could check the
@@ -167,9 +167,9 @@ impl SealingKey {
 /// `out_suffix_capacity` must be at least `key.algorithm().tag_len()`. See
 /// also `MAX_TAG_LEN`.
 ///
-/// `ad` is the additional authenticated data, if any.
-pub fn seal_in_place(
-    key: &SealingKey, nonce: Nonce, ad: &[u8], in_out: &mut [u8], out_suffix_capacity: usize,
+/// `aad` is the additional authenticated data, if any.
+pub fn seal_in_place<'a>(
+    key: &SealingKey, nonce: Nonce, aad: Aad<'a>, in_out: &mut [u8], out_suffix_capacity: usize,
 ) -> Result<usize, error::Unspecified> {
     if out_suffix_capacity < key.key.algorithm.tag_len() {
         return Err(error::Unspecified);
@@ -182,10 +182,26 @@ pub fn seal_in_place(
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
 
     let tag_out: &mut [u8; TAG_LEN] = tag_out.try_into_()?;
-    let Tag(tag) = (key.key.algorithm.seal)(&key.key.inner, nonce, ad, in_out);
+    let Tag(tag) = (key.key.algorithm.seal)(&key.key.inner, nonce, aad, in_out);
     tag_out.copy_from_slice(tag.as_ref());
 
     Ok(in_out_len + TAG_LEN)
+}
+
+/// The additionally authenticated data (AAD) for an opening or sealing
+/// operation. This data is authenticated but is **not** encrypted.
+#[repr(transparent)]
+pub struct Aad<'a>(&'a [u8]);
+
+impl<'a> Aad<'a> {
+    /// Construct the `Aad` by borrowing a contiguous sequence of bytes.
+    #[inline]
+    pub fn from(aad: &'a [u8]) -> Self { Aad(aad) }
+}
+
+impl Aad<'static> {
+    /// Construct an empty `Aad`.
+    pub fn empty() -> Self { Self::from(&[]) }
 }
 
 /// `OpeningKey` and `SealingKey` are type-safety wrappers around `Key`, which
@@ -219,9 +235,14 @@ impl Key {
 pub struct Algorithm {
     init: fn(key: &[u8]) -> Result<KeyInner, error::Unspecified>,
 
-    seal: fn(key: &KeyInner, nonce: Nonce, ad: &[u8], in_out: &mut [u8]) -> Tag,
-    open:
-        fn(ctx: &KeyInner, nonce: Nonce, ad: &[u8], in_prefix_len: usize, in_out: &mut [u8]) -> Tag,
+    seal: for<'a> fn(key: &KeyInner, nonce: Nonce, aad: Aad<'a>, in_out: &mut [u8]) -> Tag,
+    open: for<'a> fn(
+        key: &KeyInner,
+        nonce: Nonce,
+        aad: Aad<'a>,
+        in_prefix_len: usize,
+        in_out: &mut [u8],
+    ) -> Tag,
 
     key_len: usize,
     id: AlgorithmID,

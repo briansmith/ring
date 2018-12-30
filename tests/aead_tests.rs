@@ -76,7 +76,13 @@ fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
         let s_key = aead::SealingKey::new(aead_alg, &key_bytes[..])?;
         let s_result = {
             let nonce = aead::Nonce::try_assume_unique_for_key(&nonce).unwrap();
-            aead::seal_in_place(&s_key, nonce, &ad, &mut s_in_out[..], tag_len)
+            aead::seal_in_place(
+                &s_key,
+                nonce,
+                aead::Aad::from(&ad),
+                &mut s_in_out[..],
+                tag_len,
+            )
         };
 
         ct.extend(tag);
@@ -160,8 +166,13 @@ fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
             }
             o_in_out.extend_from_slice(&ct[..]);
             let nonce = aead::Nonce::try_assume_unique_for_key(&nonce).unwrap();
-            let o_result =
-                aead::open_in_place(&o_key, nonce, &ad, *in_prefix_len, &mut o_in_out[..]);
+            let o_result = aead::open_in_place(
+                &o_key,
+                nonce,
+                aead::Aad::from(&ad),
+                *in_prefix_len,
+                &mut o_in_out[..],
+            );
             match error {
                 None => {
                     assert!(s_result.is_ok());
