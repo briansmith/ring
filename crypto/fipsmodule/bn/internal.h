@@ -336,8 +336,13 @@ int bn_rand_range_words(BN_ULONG *out, BN_ULONG min_inclusive,
 int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
                          const BIGNUM *max_exclusive);
 
+#if !defined(OPENSSL_NO_ASM) &&                         \
+    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
+     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
+#define OPENSSL_BN_ASM_MONT
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, int num);
+#endif
 
 uint64_t bn_mont_n0(const BIGNUM *n);
 

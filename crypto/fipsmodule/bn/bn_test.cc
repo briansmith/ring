@@ -87,6 +87,7 @@
 
 #include "./internal.h"
 #include "../../internal.h"
+#include "../../test/abi_test.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
 
@@ -2377,3 +2378,28 @@ TEST_F(BNTest, WriteIntoNegative) {
   EXPECT_TRUE(BN_is_word(r.get(), 6));
   EXPECT_FALSE(BN_is_negative(r.get()));
 }
+
+#if defined(OPENSSL_BN_ASM_MONT) && defined(SUPPORTS_ABI_TEST)
+TEST_F(BNTest, BNMulMontABI) {
+  for (size_t words : {4, 5, 6, 7, 8, 16, 32}) {
+    SCOPED_TRACE(words);
+
+    bssl::UniquePtr<BIGNUM> m(BN_new());
+    ASSERT_TRUE(m);
+    ASSERT_TRUE(BN_set_bit(m.get(), 0));
+    ASSERT_TRUE(BN_set_bit(m.get(), words * BN_BITS2 - 1));
+    bssl::UniquePtr<BN_MONT_CTX> mont(
+        BN_MONT_CTX_new_for_modulus(m.get(), ctx()));
+    ASSERT_TRUE(mont);
+
+    std::vector<BN_ULONG> r(words), a(words), b(words);
+    a[0] = 1;
+    b[0] = 42;
+
+    CHECK_ABI(bn_mul_mont, r.data(), a.data(), b.data(), mont->N.d, mont->n0,
+              words);
+    CHECK_ABI(bn_mul_mont, r.data(), a.data(), a.data(), mont->N.d, mont->n0,
+              words);
+  }
+}
+#endif   // OPENSSL_BN_ASM_MONT && SUPPORTS_ABI_TEST
