@@ -458,6 +458,7 @@ add_executable(
   fipsmodule/ecdsa/ecdsa_test.cc
   fipsmodule/modes/gcm_test.cc
   fipsmodule/rand/ctrdrbg_test.cc
+  fipsmodule/sha/sha_test.cc
   hkdf/hkdf_test.cc
   hmac_extra/hmac_test.cc
   hrss/hrss_test.cc

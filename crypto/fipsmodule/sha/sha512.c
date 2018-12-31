@@ -60,6 +60,7 @@
 
 #include <openssl/mem.h>
 
+#include "internal.h"
 #include "../../internal.h"
 
 
@@ -74,12 +75,6 @@
 //   there is no need for common collector/padding implementation [yet];
 // - By supporting only a transform function that operates on *aligned* data
 //   the collector/padding function is simpler and easier to optimize.
-
-#if !defined(OPENSSL_NO_ASM) &&                         \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
-     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
-#define SHA512_ASM
-#endif
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
     defined(__ARM_FEATURE_UNALIGNED)
@@ -140,9 +135,9 @@ uint8_t *SHA512(const uint8_t *data, size_t len, uint8_t *out) {
 }
 
 #if !defined(SHA512_ASM)
-static
+static void sha512_block_data_order(uint64_t *state, const uint64_t *W,
+                                    size_t num);
 #endif
-void sha512_block_data_order(uint64_t *state, const uint64_t *W, size_t num);
 
 
 int SHA384_Final(uint8_t *md, SHA512_CTX *sha) {
