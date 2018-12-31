@@ -24,15 +24,41 @@
 #include "../../internal.h"
 
 
+// RSAZ represents 1024-bit integers using unsaturated 29-bit limbs stored in
+// 64-bit integers. This requires 36 limbs but padded up to 40.
+//
 // See crypto/bn/asm/rsaz-avx2.pl for further details.
-void rsaz_1024_norm2red_avx2(void *red, const void *norm);
-void rsaz_1024_mul_avx2(void *ret, const void *a, const void *b, const void *n,
-                        BN_ULONG k);
-void rsaz_1024_sqr_avx2(void *ret, const void *a, const void *n, BN_ULONG k,
-                        int cnt);
-void rsaz_1024_scatter5_avx2(void *tbl, const void *val, int i);
-void rsaz_1024_gather5_avx2(void *val, const void *tbl, int i);
-void rsaz_1024_red2norm_avx2(void *norm, const void *red);
+
+// rsaz_1024_norm2red_avx2 converts |norm| from |BIGNUM| to RSAZ representation
+// and writes the result to |red|.
+void rsaz_1024_norm2red_avx2(BN_ULONG red[40], const BN_ULONG norm[16]);
+
+// rsaz_1024_mul_avx2 computes |a| * |b| mod |n| and writes the result to |ret|.
+// Inputs and outputs are in Montgomery form, using RSAZ's representation. |k|
+// is -|n|^-1 mod 2^64 or |n0| from |BN_MONT_CTX|.
+void rsaz_1024_mul_avx2(BN_ULONG ret[40], const BN_ULONG a[40],
+                        const BN_ULONG b[40], const BN_ULONG n[40], BN_ULONG k);
+
+// rsaz_1024_mul_avx2 computes |a|^(2*|count|) mod |n| and writes the result to
+// |ret|. Inputs and outputs are in Montgomery form, using RSAZ's
+// representation. |k| is -|n|^-1 mod 2^64 or |n0| from |BN_MONT_CTX|.
+void rsaz_1024_sqr_avx2(BN_ULONG ret[40], const BN_ULONG a[40],
+                        const BN_ULONG n[40], BN_ULONG k, int count);
+
+// rsaz_1024_scatter5_avx2 stores |val| at index |i| of |tbl|. |i| must be
+// positive and at most 31. Note the table only uses 18 |BN_ULONG|s per entry
+// instead of 40. It packs two 29-bit limbs into each |BN_ULONG| and only stores
+// 36 limbs rather than the padded 40.
+void rsaz_1024_scatter5_avx2(BN_ULONG tbl[32 * 18], const BN_ULONG val[40],
+                             int i);
+
+// rsaz_1024_gather5_avx2 loads index |i| of |tbl| and writes it to |val|.
+void rsaz_1024_gather5_avx2(BN_ULONG val[40], const BN_ULONG tbl[32 * 18],
+                            int i);
+
+// rsaz_1024_red2norm_avx2 converts |red| from RSAZ to |BIGNUM| representation
+// and writes the result to |norm|.
+void rsaz_1024_red2norm_avx2(BN_ULONG norm[16], const BN_ULONG red[40]);
 
 // one is 1 in RSAZ's representation.
 alignas(64) static const BN_ULONG one[40] = {
@@ -49,22 +75,21 @@ void RSAZ_1024_mod_exp_avx2(BN_ULONG result_norm[16],
                             const BN_ULONG exponent[16],
                             const BN_ULONG m_norm[16], const BN_ULONG RR[16],
                             BN_ULONG k0,
-                            BN_ULONG storage_words[MOD_EXP_CTIME_STORAGE_LEN]) {
+                            BN_ULONG storage[MOD_EXP_CTIME_STORAGE_LEN]) {
   OPENSSL_STATIC_ASSERT(MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH % 64 == 0,
                         "MOD_EXP_CTIME_MIN_CACHE_LINE_WIDTH is too small");
-  unsigned char *storage = (unsigned char *)storage_words;
   assert((uintptr_t)storage % 64 == 0);
 
-  unsigned char *a_inv, *m, *result, *table_s = storage + (320 * 3),
-                                     *R2 = table_s;  // borrow
+  BN_ULONG *a_inv, *m, *result, *table_s = storage + 40 * 3, *R2 = table_s;
+  // Note |R2| aliases |table_s|.
   if (((((uintptr_t)storage & 4095) + 320) >> 12) != 0) {
     result = storage;
-    a_inv = storage + 320;
-    m = storage + (320 * 2);  // should not cross page
+    a_inv = storage + 40;
+    m = storage + 40 * 2;  // should not cross page
   } else {
     m = storage;  // should not cross page
-    result = storage + 320;
-    a_inv = storage + (320 * 2);
+    result = storage + 40;
+    a_inv = storage + 40 * 2;
   }
 
   rsaz_1024_norm2red_avx2(m, m_norm);
