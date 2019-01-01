@@ -60,6 +60,7 @@
 
 #include <openssl/mem.h>
 
+#include "internal.h"
 #include "../../internal.h"
 
 
@@ -81,12 +82,8 @@ int MD5_Init(MD5_CTX *md5) {
   return 1;
 }
 
-#if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
-#define MD5_ASM
+#if defined(MD5_ASM)
 #define md5_block_data_order md5_block_asm_data_order
-extern void md5_block_data_order(uint32_t *state, const uint8_t *data,
-                                 size_t num);
 #else
 static void md5_block_data_order(uint32_t *state, const uint8_t *data,
                                  size_t num);
