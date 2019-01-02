@@ -52,6 +52,10 @@ impl Nonce {
     pub fn assume_unique_for_key(value: [u8; NONCE_LEN]) -> Self { Nonce(value) }
 }
 
+impl AsRef<[u8; NONCE_LEN]> for Nonce {
+    fn as_ref(&self) -> &[u8; NONCE_LEN] { &self.0 }
+}
+
 /// All the AEADs we support use 96-bit nonces.
 pub const NONCE_LEN: usize = 96 / 8;
 
