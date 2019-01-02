@@ -127,7 +127,7 @@ impl<'a> EphemeralPrivateKey {
     pub fn bytes(&'a self) -> &'a [u8] { self.private_key.bytes_less_safe() }
 }
 
-/// TODO: docs
+/// A public key for key agreement.
 pub struct PublicKey(ec::PublicKey);
 
 impl AsRef<[u8]> for PublicKey {
