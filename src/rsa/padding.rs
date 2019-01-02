@@ -129,12 +129,6 @@ macro_rules! rsa_pkcs1_padding {
 }
 
 rsa_pkcs1_padding!(
-    RSA_PKCS1_SHA1,
-    &digest::SHA1,
-    &SHA1_PKCS1_DIGESTINFO_PREFIX,
-    "PKCS#1 1.5 padding using SHA-1 for RSA signatures."
-);
-rsa_pkcs1_padding!(
     RSA_PKCS1_SHA256,
     &digest::SHA256,
     &SHA256_PKCS1_DIGESTINFO_PREFIX,
@@ -165,13 +159,6 @@ macro_rules! pkcs1_digestinfo_prefix {
         ];
     }
 }
-
-pkcs1_digestinfo_prefix!(
-    SHA1_PKCS1_DIGESTINFO_PREFIX,
-    20,
-    5,
-    [0x2b, 0x0e, 0x03, 0x02, 0x1a]
-);
 
 pkcs1_digestinfo_prefix!(
     SHA256_PKCS1_DIGESTINFO_PREFIX,

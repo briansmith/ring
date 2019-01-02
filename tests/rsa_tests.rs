@@ -141,7 +141,6 @@ fn test_signature_rsa_pkcs1_verify() {
 
         let digest_name = test_case.consume_string("Digest");
         let alg = match digest_name.as_ref() {
-            "SHA1" => &signature::RSA_PKCS1_2048_8192_SHA1,
             "SHA256" => &signature::RSA_PKCS1_2048_8192_SHA256,
             "SHA384" => &signature::RSA_PKCS1_2048_8192_SHA384,
             "SHA512" => &signature::RSA_PKCS1_2048_8192_SHA512,

@@ -103,7 +103,6 @@ impl core::fmt::Debug for Parameters {
             f,
             "ring::signature::{}",
             match self.id {
-                RSA_PKCS1_2048_8192_SHA1 => "RSA_PKCS1_2048_8192_SHA1",
                 RSA_PKCS1_2048_8192_SHA256 => "RSA_PKCS1_2048_8192_SHA256",
                 RSA_PKCS1_2048_8192_SHA384 => "RSA_PKCS1_2048_8192_SHA384",
                 RSA_PKCS1_2048_8192_SHA512 => "RSA_PKCS1_2048_8192_SHA512",
@@ -130,14 +129,6 @@ macro_rules! rsa_params {
     };
 }
 
-rsa_params!(
-    RSA_PKCS1_2048_8192_SHA1,
-    2048,
-    &super::padding::RSA_PKCS1_SHA1,
-    "Verification of signatures using RSA keys of 2048-8192 bits,
-             PKCS#1.5 padding, and SHA-1.\n\nSee \"`RSA_PKCS1_*` Details\" in
-             `ring::signature`'s module-level documentation for more details."
-);
 rsa_params!(
     RSA_PKCS1_2048_8192_SHA256,
     2048,

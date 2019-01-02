@@ -27,7 +27,6 @@ use untrusted;
 
 mod padding;
 
-// `RSA_PKCS1_SHA1` is intentionally not exposed.
 pub use self::padding::{
     Encoding, RSA_PKCS1_SHA256, RSA_PKCS1_SHA384, RSA_PKCS1_SHA512, RSA_PSS_SHA256, RSA_PSS_SHA384,
     RSA_PSS_SHA512,
@@ -47,7 +46,6 @@ pub struct Parameters {
 }
 
 enum ParametersId {
-    RSA_PKCS1_2048_8192_SHA1,
     RSA_PKCS1_2048_8192_SHA256,
     RSA_PKCS1_2048_8192_SHA384,
     RSA_PKCS1_2048_8192_SHA512,

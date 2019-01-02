@@ -292,27 +292,13 @@ pub use crate::ec::{
 #[cfg(feature = "use_heap")]
 pub use crate::rsa::{
     signing::KeyPair as RsaKeyPair,
-
     verification::{
-        RSA_PKCS1_2048_8192_SHA1, RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA384,
-        RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_3072_8192_SHA384, RSA_PSS_2048_8192_SHA256,
-        RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
+        RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA384, RSA_PKCS1_2048_8192_SHA512,
+        RSA_PKCS1_3072_8192_SHA384, RSA_PSS_2048_8192_SHA256, RSA_PSS_2048_8192_SHA384,
+        RSA_PSS_2048_8192_SHA512,
     },
-
-    Encoding as RsaEncoding,
-    Parameters as RsaParameters,
-
-    // `RSA_PKCS1_SHA1` is intentionally not exposed. At a minimum, we'd need
-    // to create test vectors for signing with it, which we don't currently
-    // have. But, it's a bad idea to use SHA-1 anyway, so perhaps we just won't
-    // ever expose it.
-    RSA_PKCS1_SHA256,
-    RSA_PKCS1_SHA384,
-    RSA_PKCS1_SHA512,
-
-    RSA_PSS_SHA256,
-    RSA_PSS_SHA384,
-    RSA_PSS_SHA512,
+    Encoding as RsaEncoding, Parameters as RsaParameters, RSA_PKCS1_SHA256, RSA_PKCS1_SHA384,
+    RSA_PKCS1_SHA512, RSA_PSS_SHA256, RSA_PSS_SHA384, RSA_PSS_SHA512,
 };
 
 /// Lower-level verification primitives. Usage of `ring::signature::verify()`
