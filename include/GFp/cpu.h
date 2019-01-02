@@ -119,12 +119,6 @@ static inline int GFp_is_NEON_capable(void) {
 #endif
 }
 
-#if defined(OPENSSL_ARM)
-// GFp_has_broken_NEON returns one if the current CPU is known to have a
-// broken NEON unit. See https://crbug.com/341598.
-OPENSSL_EXPORT int GFp_has_broken_NEON(void);
-#endif
-
 // GFp_is_ARMv8_AES_capable returns true if the current CPU supports the
 // ARMv8 AES instruction.
 int GFp_is_ARMv8_AES_capable(void);

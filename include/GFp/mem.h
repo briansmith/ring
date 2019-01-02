@@ -61,18 +61,6 @@
 
 #include <stdlib.h>
 
-// Memory and string functions, see also buf.h.
-//
-// OpenSSL has, historically, had a complex set of malloc debugging options.
-// However, that was written in a time before Valgrind and ASAN. Since we now
-// have those tools, the OpenSSL allocation functions are simply macros around
-// the standard memory functions.
-
-
-#define OPENSSL_malloc malloc
-#define OPENSSL_realloc realloc
-#define OPENSSL_free free
-
 // GFp_memcmp returns zero iff the |len| bytes at |a| and |b| are equal. It
 // takes an amount of time dependent on |len|, but independent of the contents
 // of |a| and |b|. Unlike memcmp, it cannot be used to put elements into a
