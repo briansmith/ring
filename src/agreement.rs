@@ -128,6 +128,7 @@ impl<'a> EphemeralPrivateKey {
 }
 
 /// A public key for key agreement.
+#[derive(Clone, Debug)]
 pub struct PublicKey(ec::PublicKey);
 
 impl AsRef<[u8]> for PublicKey {
