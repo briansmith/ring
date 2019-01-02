@@ -61,7 +61,7 @@ impl signature::VerificationAlgorithm for Algorithm {
 
             // NSA Guide Step 3: "Convert the bit string H to an integer e as
             // described in Appendix B.2."
-            digest_scalar(self.ops.scalar_ops, &h)
+            digest_scalar(self.ops.scalar_ops, h)
         };
 
         self.verify_digest(public_key, e, signature)
