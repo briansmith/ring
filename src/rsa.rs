@@ -40,21 +40,10 @@ const PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN: usize = bigint::MODULUS_MAX_LIMBS * lim
 const PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS: bits::BitLength = bits::BitLength::from_usize_bits(4096);
 
 /// Parameters for RSA verification.
+#[derive(Debug)]
 pub struct Parameters {
     padding_alg: &'static padding::Verification,
     min_bits: bits::BitLength,
-    id: ParametersId,
-}
-
-enum ParametersId {
-    RSA_PKCS1_2048_8192_SHA1,
-    RSA_PKCS1_2048_8192_SHA256,
-    RSA_PKCS1_2048_8192_SHA384,
-    RSA_PKCS1_2048_8192_SHA512,
-    RSA_PKCS1_3072_8192_SHA384,
-    RSA_PSS_2048_8192_SHA256,
-    RSA_PSS_2048_8192_SHA384,
-    RSA_PSS_2048_8192_SHA512,
 }
 
 fn parse_public_key(

@@ -20,7 +20,7 @@ use untrusted;
 use crate::rand;
 
 /// Common features of both RSA padding encoding and RSA padding verification.
-pub trait Padding: 'static + Sync + crate::sealed::Sealed {
+pub trait Padding: 'static + Sync + crate::sealed::Sealed + core::fmt::Debug {
     // The digest algorithm used for digesting the message (and maybe for
     // other things).
     fn digest_alg(&self) -> &'static digest::Algorithm;
@@ -54,6 +54,7 @@ pub trait Verification: Padding {
 /// documentation for more details.
 ///
 /// [RFC 3447 Section 8.2]: https://tools.ietf.org/html/rfc3447#section-8.2
+#[derive(Debug)]
 pub struct PKCS1 {
     digest_alg: &'static digest::Algorithm,
     digestinfo_prefix: &'static [u8],
@@ -200,6 +201,7 @@ pkcs1_digestinfo_prefix!(
 /// documentation for more details.
 ///
 /// [RFC 3447 Section 8.1]: https://tools.ietf.org/html/rfc3447#section-8.1
+#[derive(Debug)]
 pub struct PSS {
     digest_alg: &'static digest::Algorithm,
 }

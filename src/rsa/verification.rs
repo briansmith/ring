@@ -95,27 +95,6 @@ impl signature::VerificationAlgorithm for Parameters {
 
 impl sealed::Sealed for Parameters {}
 
-impl core::fmt::Debug for Parameters {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        use super::ParametersId::*;
-        // XXX: This doesn't include the padding algorithm nor the size range.
-        write!(
-            f,
-            "ring::signature::{}",
-            match self.id {
-                RSA_PKCS1_2048_8192_SHA1 => "RSA_PKCS1_2048_8192_SHA1",
-                RSA_PKCS1_2048_8192_SHA256 => "RSA_PKCS1_2048_8192_SHA256",
-                RSA_PKCS1_2048_8192_SHA384 => "RSA_PKCS1_2048_8192_SHA384",
-                RSA_PKCS1_2048_8192_SHA512 => "RSA_PKCS1_2048_8192_SHA512",
-                RSA_PKCS1_3072_8192_SHA384 => "RSA_PKCS1_3072_8192_SHA384",
-                RSA_PSS_2048_8192_SHA256 => "RSA_PSS_2048_8192_SHA256",
-                RSA_PSS_2048_8192_SHA384 => "RSA_PSS_2048_8192_SHA384",
-                RSA_PSS_2048_8192_SHA512 => "RSA_PSS_2048_8192_SHA512",
-            }
-        )
-    }
-}
-
 macro_rules! rsa_params {
     ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $PADDING_ALGORITHM:expr,
       $doc_str:expr ) => {
@@ -125,7 +104,6 @@ macro_rules! rsa_params {
         pub static $VERIFY_ALGORITHM: Parameters = Parameters {
             padding_alg: $PADDING_ALGORITHM,
             min_bits: bits::BitLength::from_usize_bits($min_bits),
-            id: super::ParametersId::$VERIFY_ALGORITHM,
         };
     };
 }
