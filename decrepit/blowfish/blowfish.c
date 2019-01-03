@@ -152,18 +152,18 @@ void BF_ecb_encrypt(const uint8_t *in, uint8_t *out,
   l2n(d[1], out);
 }
 
-void BF_cbc_encrypt(const uint8_t *in, uint8_t *out, long length,
+void BF_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
                     const BF_KEY *schedule, uint8_t *ivec, int encrypt) {
   uint32_t tin0, tin1;
   uint32_t tout0, tout1, xor0, xor1;
-  long l = length;
+  size_t l = length;
   uint32_t tin[2];
 
   if (encrypt) {
     n2l(ivec, tout0);
     n2l(ivec, tout1);
     ivec -= 8;
-    for (l -= 8; l >= 0; l -= 8) {
+    while (l >= 8) {
       n2l(in, tin0);
       n2l(in, tin1);
       tin0 ^= tout0;
@@ -175,9 +175,10 @@ void BF_cbc_encrypt(const uint8_t *in, uint8_t *out, long length,
       tout1 = tin[1];
       l2n(tout0, out);
       l2n(tout1, out);
+      l -= 8;
     }
-    if (l != -8) {
-      n2ln(in, tin0, tin1, l + 8);
+    if (l != 0) {
+      n2ln(in, tin0, tin1, l);
       tin0 ^= tout0;
       tin1 ^= tout1;
       tin[0] = tin0;
@@ -194,7 +195,7 @@ void BF_cbc_encrypt(const uint8_t *in, uint8_t *out, long length,
     n2l(ivec, xor0);
     n2l(ivec, xor1);
     ivec -= 8;
-    for (l -= 8; l >= 0; l -= 8) {
+    while (l >= 8) {
       n2l(in, tin0);
       n2l(in, tin1);
       tin[0] = tin0;
@@ -206,8 +207,9 @@ void BF_cbc_encrypt(const uint8_t *in, uint8_t *out, long length,
       l2n(tout1, out);
       xor0 = tin0;
       xor1 = tin1;
+      l -= 8;
     }
-    if (l != -8) {
+    if (l != 0) {
       n2l(in, tin0);
       n2l(in, tin1);
       tin[0] = tin0;
@@ -215,7 +217,7 @@ void BF_cbc_encrypt(const uint8_t *in, uint8_t *out, long length,
       BF_decrypt(tin, schedule);
       tout0 = tin[0] ^ xor0;
       tout1 = tin[1] ^ xor1;
-      l2nn(tout0, tout1, out, l + 8);
+      l2nn(tout0, tout1, out, l);
       xor0 = tin0;
       xor1 = tin1;
     }
