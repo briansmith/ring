@@ -70,6 +70,9 @@ pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
 
 #[inline]
 pub fn limbs_less_than_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
+    extern "C" {
+        fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
+    }
     assert_eq!(a.len(), b.len());
     unsafe { LIMBS_less_than(a.as_ptr(), b.as_ptr(), b.len()) }
 }
@@ -82,23 +85,35 @@ pub fn limbs_less_than_limbs_vartime(a: &[Limb], b: &[Limb]) -> bool {
 #[inline]
 #[cfg(feature = "use_heap")]
 pub fn limbs_less_than_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
+    extern "C" {
+        fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
+    }
     unsafe { LIMBS_less_than_limb(a.as_ptr(), b, a.len()) }
 }
 
 #[inline]
 pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
+    extern "C" {
+        fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
+    }
     unsafe { LIMBS_are_zero(limbs.as_ptr(), limbs.len()) }
 }
 
 #[cfg(any(test, feature = "use_heap"))]
 #[inline]
 pub fn limbs_are_even_constant_time(limbs: &[Limb]) -> LimbMask {
+    extern "C" {
+        fn LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
+    }
     unsafe { LIMBS_are_even(limbs.as_ptr(), limbs.len()) }
 }
 
 #[cfg(any(test, feature = "use_heap"))]
 #[inline]
 pub fn limbs_equal_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
+    extern "C" {
+        fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
+    }
     unsafe { LIMBS_equal_limb(a.as_ptr(), b, a.len()) }
 }
 
@@ -111,6 +126,10 @@ pub fn limbs_equal_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
 // zero.)
 #[cfg(any(test, feature = "use_heap"))]
 pub fn limbs_minimal_bits(a: &[Limb]) -> bits::BitLength {
+    extern "C" {
+        fn LIMB_shr(a: Limb, shift: c::size_t) -> Limb;
+    }
+
     for num_limbs in (1..=a.len()).rev() {
         let high_limb = a[num_limbs - 1];
 
@@ -135,6 +154,9 @@ pub fn limbs_minimal_bits(a: &[Limb]) -> bits::BitLength {
 /// Equivalent to `if (r >= m) { r -= m; }`
 #[inline]
 pub fn limbs_reduce_once_constant_time(r: &mut [Limb], m: &[Limb]) {
+    extern "C" {
+        fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
+    }
     assert_eq!(r.len(), m.len());
     unsafe { LIMBS_reduce_once(r.as_mut_ptr(), m.as_ptr(), m.len()) };
 }
@@ -322,21 +344,6 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
 
             acc
         })
-}
-
-extern "C" {
-    #[cfg(any(test, feature = "use_heap"))]
-    fn LIMB_shr(a: Limb, shift: c::size_t) -> Limb;
-
-    #[cfg(any(test, feature = "use_heap"))]
-    fn LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
-    fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
-    #[cfg(any(test, feature = "use_heap"))]
-    fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
-    fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
-    #[cfg(feature = "use_heap")]
-    fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
-    fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
 }
 
 #[cfg(test)]
