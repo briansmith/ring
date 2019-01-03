@@ -24,7 +24,7 @@
 #include "ecp_nistz.h"
 
 /* Avoid -Wmissing-prototypes warnings. */
-void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
+void RingCore_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
                             const BN_ULONG p_x[P384_LIMBS],
                             const BN_ULONG p_y[P384_LIMBS]);
 
@@ -38,7 +38,7 @@ static BN_ULONG is_zero(const BN_ULONG a[P384_LIMBS]) {
 }
 
 /* Point double: r = 2*a */
-void GFp_nistz384_point_double(P384_POINT *r, const P384_POINT *a) {
+void RingCore_nistz384_point_double(P384_POINT *r, const P384_POINT *a) {
   BN_ULONG S[P384_LIMBS];
   BN_ULONG M[P384_LIMBS];
   BN_ULONG Zsqr[P384_LIMBS];
@@ -83,7 +83,7 @@ void GFp_nistz384_point_double(P384_POINT *r, const P384_POINT *a) {
 }
 
 /* Point addition: r = a+b */
-void GFp_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
+void RingCore_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
                             const P384_POINT *b) {
   BN_ULONG U2[P384_LIMBS], S2[P384_LIMBS];
   BN_ULONG U1[P384_LIMBS], S1[P384_LIMBS];
@@ -127,7 +127,7 @@ void GFp_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
    * so no constant time violation */
   if (is_equal(U1, U2) && !in1infty && !in2infty) {
     if (is_equal(S1, S2)) {
-      GFp_nistz384_point_double(r, a);
+      RingCore_nistz384_point_double(r, a);
     } else {
       memset(r, 0, sizeof(*r));
     }
@@ -172,24 +172,24 @@ static void add_precomputed_w5(P384_POINT *r, unsigned wvalue,
   booth_recode(&recoded_is_negative, &recoded, wvalue, 5);
 
   alignas(64) P384_POINT h;
-  gfp_p384_point_select_w5(&h, table, recoded);
+  RingCore_p384_point_select_w5(&h, table, recoded);
 
   alignas(64) BN_ULONG tmp[P384_LIMBS];
-  GFp_p384_elem_neg(tmp, h.Y);
+  RingCore_p384_elem_neg(tmp, h.Y);
   copy_conditional(h.Y, tmp, recoded_is_negative);
 
-  GFp_nistz384_point_add(r, r, &h);
+  RingCore_nistz384_point_add(r, r, &h);
 }
 
 /* r = p * p_scalar */
-void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
+void RingCore_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
                             const BN_ULONG p_x[P384_LIMBS],
                             const BN_ULONG p_y[P384_LIMBS]) {
   static const unsigned kWindowSize = 5;
   static const unsigned kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
 
   uint8_t p_str[(P384_LIMBS * sizeof(Limb)) + 1];
-  gfp_little_endian_bytes_from_scalar(p_str, sizeof(p_str) / sizeof(p_str[0]),
+  RingCore_little_endian_bytes_from_scalar(p_str, sizeof(p_str) / sizeof(p_str[0]),
                                       p_scalar, P384_LIMBS);
 
   /* A |P384_POINT| is (3 * 48) = 144 bytes, and the 64-byte alignment should
@@ -206,21 +206,21 @@ void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
   limbs_copy(row[1 - 1].Y, p_y, P384_LIMBS);
   limbs_copy(row[1 - 1].Z, ONE, P384_LIMBS);
 
-  GFp_nistz384_point_double(&row[2 - 1], &row[1 - 1]);
-  GFp_nistz384_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);
-  GFp_nistz384_point_double(&row[4 - 1], &row[2 - 1]);
-  GFp_nistz384_point_double(&row[6 - 1], &row[3 - 1]);
-  GFp_nistz384_point_double(&row[8 - 1], &row[4 - 1]);
-  GFp_nistz384_point_double(&row[12 - 1], &row[6 - 1]);
-  GFp_nistz384_point_add(&row[5 - 1], &row[4 - 1], &row[1 - 1]);
-  GFp_nistz384_point_add(&row[7 - 1], &row[6 - 1], &row[1 - 1]);
-  GFp_nistz384_point_add(&row[9 - 1], &row[8 - 1], &row[1 - 1]);
-  GFp_nistz384_point_add(&row[13 - 1], &row[12 - 1], &row[1 - 1]);
-  GFp_nistz384_point_double(&row[14 - 1], &row[7 - 1]);
-  GFp_nistz384_point_double(&row[10 - 1], &row[5 - 1]);
-  GFp_nistz384_point_add(&row[15 - 1], &row[14 - 1], &row[1 - 1]);
-  GFp_nistz384_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
-  GFp_nistz384_point_double(&row[16 - 1], &row[8 - 1]);
+  RingCore_nistz384_point_double(&row[2 - 1], &row[1 - 1]);
+  RingCore_nistz384_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);
+  RingCore_nistz384_point_double(&row[4 - 1], &row[2 - 1]);
+  RingCore_nistz384_point_double(&row[6 - 1], &row[3 - 1]);
+  RingCore_nistz384_point_double(&row[8 - 1], &row[4 - 1]);
+  RingCore_nistz384_point_double(&row[12 - 1], &row[6 - 1]);
+  RingCore_nistz384_point_add(&row[5 - 1], &row[4 - 1], &row[1 - 1]);
+  RingCore_nistz384_point_add(&row[7 - 1], &row[6 - 1], &row[1 - 1]);
+  RingCore_nistz384_point_add(&row[9 - 1], &row[8 - 1], &row[1 - 1]);
+  RingCore_nistz384_point_add(&row[13 - 1], &row[12 - 1], &row[1 - 1]);
+  RingCore_nistz384_point_double(&row[14 - 1], &row[7 - 1]);
+  RingCore_nistz384_point_double(&row[10 - 1], &row[5 - 1]);
+  RingCore_nistz384_point_add(&row[15 - 1], &row[14 - 1], &row[1 - 1]);
+  RingCore_nistz384_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
+  RingCore_nistz384_point_double(&row[16 - 1], &row[8 - 1]);
 
   static const unsigned START_INDEX = 384 - 4;
   unsigned index = START_INDEX;
@@ -234,7 +234,7 @@ void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
   booth_recode(&recoded_is_negative, &recoded, wvalue, 5);
   assert(!recoded_is_negative);
 
-  gfp_p384_point_select_w5(r, table, recoded);
+  RingCore_p384_point_select_w5(r, table, recoded);
 
   while (index >= kWindowSize) {
     if (index != START_INDEX) {
@@ -247,11 +247,11 @@ void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
 
     index -= kWindowSize;
 
-    GFp_nistz384_point_double(r, r);
-    GFp_nistz384_point_double(r, r);
-    GFp_nistz384_point_double(r, r);
-    GFp_nistz384_point_double(r, r);
-    GFp_nistz384_point_double(r, r);
+    RingCore_nistz384_point_double(r, r);
+    RingCore_nistz384_point_double(r, r);
+    RingCore_nistz384_point_double(r, r);
+    RingCore_nistz384_point_double(r, r);
+    RingCore_nistz384_point_double(r, r);
   }
 
   /* Final window */

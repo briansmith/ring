@@ -1489,7 +1489,7 @@ static int fe_isnonzero(const fe_loose *f) {
   fe_tobytes(s, &tight);
 
   static const uint8_t zero[32] = {0};
-  return GFp_memcmp(s, zero, sizeof(zero)) != 0;
+  return RingCore_memcmp(s, zero, sizeof(zero)) != 0;
 }
 
 // return 1 if f is in {1,3,5,...,q-2}
@@ -1570,7 +1570,7 @@ static void fe_pow22523(fe *out, const fe *z) {
 
 // Group operations.
 
-int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
+int RingCore_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
   fe u;
   fe_loose v;
   fe v3;
@@ -1874,7 +1874,7 @@ static void table_select(ge_precomp *t, int pos, signed char b) {
 //
 // Preconditions:
 //   a[31] <= 127
-void GFp_x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t *a) {
+void RingCore_x25519_ge_scalarmult_base(ge_p3 *h, const uint8_t *a) {
   signed char e[64];
   signed char carry;
   ge_p1p1 r;
@@ -2041,7 +2041,7 @@ static void ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
 //   s[0]+256*s[1]+...+256^31*s[31] = s mod l
 //   where l = 2^252 + 27742317777372353535851937790883648493.
 //   Overwrites s in place.
-void GFp_x25519_sc_reduce(uint8_t s[64]) {
+void RingCore_x25519_sc_reduce(uint8_t s[64]) {
   int64_t s0 = 2097151 & load_3(s);
   int64_t s1 = 2097151 & (load_4(s + 2) >> 5);
   int64_t s2 = 2097151 & (load_3(s + 5) >> 2);
@@ -2872,7 +2872,7 @@ static void x25519_scalar_mult_generic(uint8_t out[32],
 
   uint8_t e[32];
   memcpy(e, scalar, 32);
-  GFp_x25519_sc_mask(e);
+  RingCore_x25519_sc_mask(e);
   // The following implementation was transcribed to Coq and proven to
   // correspond to unary scalar multiplication in affine coordinates given that
   // x1 != 0 is the x coordinate of some point on the curve. It was also checked
@@ -2946,8 +2946,8 @@ static void x25519_scalar_mult_generic(uint8_t out[32],
 static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
                                const uint8_t point[32]) {
 #if defined(BORINGSSL_X25519_NEON)
-  if (GFp_is_NEON_capable()) {
-    GFp_x25519_NEON(out, scalar, point);
+  if (RingCore_is_NEON_capable()) {
+    RingCore_x25519_NEON(out, scalar, point);
     return;
   }
 #endif
@@ -2955,31 +2955,31 @@ static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
   x25519_scalar_mult_generic(out, scalar, point);
 }
 
-void GFp_x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
+void RingCore_x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
                             const uint8_t point[32]) {
   x25519_scalar_mult(out, scalar, point);
 }
 
 // Prototypes to avoid -Wmissing-prototypes warnings.
-void GFp_x25519_public_from_private(uint8_t out_public_value[32],
+void RingCore_x25519_public_from_private(uint8_t out_public_value[32],
                                     const uint8_t private_key[32]);
 
-void GFp_x25519_public_from_private(uint8_t out_public_value[32],
+void RingCore_x25519_public_from_private(uint8_t out_public_value[32],
                                     const uint8_t private_key[32]) {
 #if defined(BORINGSSL_X25519_NEON)
-  if (GFp_is_NEON_capable()) {
+  if (RingCore_is_NEON_capable()) {
     static const uint8_t kMongomeryBasePoint[32] = {9};
-    GFp_x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
+    RingCore_x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
     return;
   }
 #endif
 
   uint8_t e[32];
   memcpy(e, private_key, 32);
-  GFp_x25519_sc_mask(e);
+  RingCore_x25519_sc_mask(e);
 
   ge_p3 A;
-  GFp_x25519_ge_scalarmult_base(&A, e);
+  RingCore_x25519_ge_scalarmult_base(&A, e);
 
   // We only need the u-coordinate of the curve25519 point. The map is
   // u=(y+1)/(1-y). Since y=Y/Z, this gives u=(Z+Y)/(Z-Y).
@@ -2992,40 +2992,40 @@ void GFp_x25519_public_from_private(uint8_t out_public_value[32],
   fe_tobytes(out_public_value, &zminusy_inv);
 }
 
-void GFp_x25519_fe_invert(fe *out, const fe *z) {
+void RingCore_x25519_fe_invert(fe *out, const fe *z) {
   fe_invert(out, z);
 }
 
-uint8_t GFp_x25519_fe_isnegative(const fe *f) {
+uint8_t RingCore_x25519_fe_isnegative(const fe *f) {
   return (uint8_t)fe_isnegative(f);
 }
 
-void GFp_x25519_fe_mul_ttt(fe *h, const fe *f, const fe *g) {
+void RingCore_x25519_fe_mul_ttt(fe *h, const fe *f, const fe *g) {
   fe_mul_ttt(h, f, g);
 }
 
-void GFp_x25519_fe_neg(fe *f) {
+void RingCore_x25519_fe_neg(fe *f) {
   fe_loose t;
   fe_neg(&t, f);
   fe_carry(f, &t);
 }
 
-void GFp_x25519_fe_tobytes(uint8_t s[32], const fe *h) {
+void RingCore_x25519_fe_tobytes(uint8_t s[32], const fe *h) {
   fe_tobytes(s, h);
 }
 
-void GFp_x25519_ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
+void RingCore_x25519_ge_double_scalarmult_vartime(ge_p2 *r, const uint8_t *a,
                                              const ge_p3 *A, const uint8_t *b) {
   ge_double_scalarmult_vartime(r, a, A, b);
 }
 
-void GFp_x25519_sc_mask(uint8_t a[32]) {
+void RingCore_x25519_sc_mask(uint8_t a[32]) {
   a[0] &= 248;
   a[31] &= 127;
   a[31] |= 64;
 }
 
-void GFp_x25519_sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
+void RingCore_x25519_sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
                           const uint8_t *c) {
   sc_muladd(s, a, b, c);
 }

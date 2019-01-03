@@ -67,7 +67,7 @@
 
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-// GFp_ia32cap_P contains the Intel CPUID bits when running on an x86 or
+// RingCore_ia32cap_P contains the Intel CPUID bits when running on an x86 or
 // x86-64 system.
 //
 //   Index 0:
@@ -86,7 +86,7 @@
 //
 // Note: the CPUID bits are pre-adjusted for the OSXSAVE bit and the YMM and XMM
 // bits in XCR0, so it is not necessary to check those.
-extern uint32_t GFp_ia32cap_P[4];
+extern uint32_t RingCore_ia32cap_P[4];
 #endif
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
@@ -98,14 +98,14 @@ extern uint32_t GFp_ia32cap_P[4];
 
 #if !defined(OPENSSL_STATIC_ARMCAP)
 
-// GFp_is_NEON_capable_at_runtime returns true if the current CPU has a NEON
+// RingCore_is_NEON_capable_at_runtime returns true if the current CPU has a NEON
 // unit. Note that |OPENSSL_armcap_P| also exists and contains the same
 // information in a form that's easier for assembly to use.
-OPENSSL_EXPORT uint8_t GFp_is_NEON_capable_at_runtime(void);
+OPENSSL_EXPORT uint8_t RingCore_is_NEON_capable_at_runtime(void);
 
-// GFp_is_NEON_capable returns true if the current CPU has a NEON unit. If
+// RingCore_is_NEON_capable returns true if the current CPU has a NEON unit. If
 // this is known statically then it returns one immediately.
-static inline int GFp_is_NEON_capable(void) {
+static inline int RingCore_is_NEON_capable(void) {
   // On 32-bit ARM, one CPU is known to have a broken NEON unit which is known
   // to fail with on some hand-written NEON assembly. Assume that non-Android
   // applications will not use that buggy CPU but still support Android users
@@ -115,21 +115,21 @@ static inline int GFp_is_NEON_capable(void) {
     && (!defined(OPENSSL_ARM) || !defined(__ANDROID__))
   return 1;
 #else
-  return GFp_is_NEON_capable_at_runtime();
+  return RingCore_is_NEON_capable_at_runtime();
 #endif
 }
 
-// GFp_is_ARMv8_AES_capable returns true if the current CPU supports the
+// RingCore_is_ARMv8_AES_capable returns true if the current CPU supports the
 // ARMv8 AES instruction.
-int GFp_is_ARMv8_AES_capable(void);
+int RingCore_is_ARMv8_AES_capable(void);
 
-// GFp_is_ARMv8_PMULL_capable returns true if the current CPU supports the
+// RingCore_is_ARMv8_PMULL_capable returns true if the current CPU supports the
 // ARMv8 PMULL instruction.
-int GFp_is_ARMv8_PMULL_capable(void);
+int RingCore_is_ARMv8_PMULL_capable(void);
 
 #else
 
-static inline int GFp_is_NEON_capable(void) {
+static inline int RingCore_is_NEON_capable(void) {
 #if defined(OPENSSL_STATIC_ARMCAP_NEON) || \
     (defined(__ARM_NEON__) || defined(__ARM_NEON))
   return 1;
@@ -138,7 +138,7 @@ static inline int GFp_is_NEON_capable(void) {
 #endif
 }
 
-static inline int GFp_is_ARMv8_AES_capable(void) {
+static inline int RingCore_is_ARMv8_AES_capable(void) {
 #if defined(OPENSSL_STATIC_ARMCAP_AES) || defined(__ARM_FEATURE_CRYPTO)
   return 1;
 #else
@@ -146,7 +146,7 @@ static inline int GFp_is_ARMv8_AES_capable(void) {
 #endif
 }
 
-static inline int GFp_is_ARMv8_PMULL_capable(void) {
+static inline int RingCore_is_ARMv8_PMULL_capable(void) {
 #if defined(OPENSSL_STATIC_ARMCAP_PMULL) || defined(__ARM_FEATURE_CRYPTO)
   return 1;
 #else
@@ -159,9 +159,9 @@ static inline int GFp_is_ARMv8_PMULL_capable(void) {
 
 #if defined(OPENSSL_PPC64LE)
 
-// GFp_is_PPC64LE_vcrypto_capable returns true iff the current CPU supports
+// RingCore_is_PPC64LE_vcrypto_capable returns true iff the current CPU supports
 // the Vector.AES category of instructions.
-int GFp_is_PPC64LE_vcrypto_capable(void);
+int RingCore_is_PPC64LE_vcrypto_capable(void);
 
 #endif  // OPENSSL_PPC64LE
 

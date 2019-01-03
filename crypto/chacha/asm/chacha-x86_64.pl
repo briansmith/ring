@@ -76,7 +76,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 $code.=<<___;
 .text
 
-.extern GFp_ia32cap_P
+.extern RingCore_ia32cap_P
 
 .align	64
 .Lzero:
@@ -224,13 +224,13 @@ my @x=map("\"$_\"",@x);
 ########################################################################
 # Generic code path that handles all lengths on pre-SSSE3 processors.
 $code.=<<___;
-.globl	GFp_ChaCha20_ctr32
-.type	GFp_ChaCha20_ctr32,\@function,5
+.globl	RingCore_ChaCha20_ctr32
+.type	RingCore_ChaCha20_ctr32,\@function,5
 .align	64
-GFp_ChaCha20_ctr32:
+RingCore_ChaCha20_ctr32:
 	cmp	\$0,$len
 	je	.Lno_data
-	mov	GFp_ia32cap_P+4(%rip),%r10
+	mov	RingCore_ia32cap_P+4(%rip),%r10
 ___
 $code.=<<___	if ($avx>2);
 	bt	\$48,%r10		# check for AVX512F
@@ -396,7 +396,7 @@ $code.=<<___;
 	lea	(%rsi),%rsp
 .Lno_data:
 	ret
-.size	GFp_ChaCha20_ctr32,.-GFp_ChaCha20_ctr32
+.size	RingCore_ChaCha20_ctr32,.-RingCore_ChaCha20_ctr32
 ___
 
 ########################################################################
@@ -695,7 +695,7 @@ ChaCha20_4x:
 	mov		%r10,%r11
 ___
 $code.=<<___	if ($avx>1);
-	shr		\$32,%r10		# GFp_ia32cap_P+8
+	shr		\$32,%r10		# RingCore_ia32cap_P+8
 	test		\$`1<<5`,%r10		# test AVX2
 	jnz		.LChaCha20_8x
 ___
@@ -2676,9 +2676,9 @@ full_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_GFp_ChaCha20_ctr32
-	.rva	.LSEH_end_GFp_ChaCha20_ctr32
-	.rva	.LSEH_info_GFp_ChaCha20_ctr32
+	.rva	.LSEH_begin_RingCore_ChaCha20_ctr32
+	.rva	.LSEH_end_RingCore_ChaCha20_ctr32
+	.rva	.LSEH_info_RingCore_ChaCha20_ctr32
 
 	.rva	.LSEH_begin_ChaCha20_ssse3
 	.rva	.LSEH_end_ChaCha20_ssse3
@@ -2705,7 +2705,7 @@ ___
 $code.=<<___;
 .section	.xdata
 .align	8
-.LSEH_info_GFp_ChaCha20_ctr32:
+.LSEH_info_RingCore_ChaCha20_ctr32:
 	.byte	9,0,0,0
 	.rva	se_handler
 

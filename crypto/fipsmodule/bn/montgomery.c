@@ -112,7 +112,7 @@
 #include "../../limbs/limbs.inl"
 
 // Avoid -Wmissing-prototypes warnings.
-int GFp_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
+int RingCore_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
                                     size_t num_a, const BN_ULONG n[],
                                     size_t num_n,
                                     const BN_ULONG n0_[BN_MONT_CTX_N0_LIMBS]);
@@ -122,7 +122,7 @@ OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
 OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS ==
                        sizeof(uint64_t), BN_MONT_CTX_set_64_bit_mismatch);
 
-int GFp_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
+int RingCore_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
                                     size_t num_a, const BN_ULONG n[],
                                     size_t num_n,
                                     const BN_ULONG n0_[BN_MONT_CTX_N0_LIMBS]) {
@@ -137,7 +137,7 @@ int GFp_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
   BN_ULONG n0 = n0_[0];
   BN_ULONG carry = 0;
   for (size_t i = 0; i < num_n; i++) {
-    BN_ULONG v = GFp_bn_mul_add_words(a + i, n, num_n, a[i] * n0);
+    BN_ULONG v = RingCore_bn_mul_add_words(a + i, n, num_n, a[i] * n0);
     v += carry + a[i + num_n];
     carry |= (v != a[i + num_n]);
     carry &= (v <= a[i + num_n]);

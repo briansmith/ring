@@ -19,11 +19,11 @@
 
 static inline int hwaes_capable(void) {
 #if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)
-  return (GFp_ia32cap_P[1] & (1 << (57 - 32))) != 0;
+  return (RingCore_ia32cap_P[1] & (1 << (57 - 32))) != 0;
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
-  return GFp_is_ARMv8_AES_capable();
+  return RingCore_is_ARMv8_AES_capable();
 #elif defined(OPENSSL_PPC64LE)
-  return GFp_is_PPC64LE_vcrypto_capable();
+  return RingCore_is_PPC64LE_vcrypto_capable();
 #endif
 }
 

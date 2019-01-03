@@ -50,7 +50,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 # output, so this isn't useful anyway.
 $addx = 1;
 
-# int GFp_bn_mul_mont_gather5(
+# int RingCore_bn_mul_mont_gather5(
 $rp="%rdi";	# BN_ULONG *rp,
 $ap="%rsi";	# const BN_ULONG *ap,
 $bp="%rdx";	# const BN_ULONG *bp,
@@ -72,12 +72,12 @@ $m1="%rbp";
 $code=<<___;
 .text
 
-.extern	GFp_ia32cap_P
+.extern	RingCore_ia32cap_P
 
-.globl	GFp_bn_mul_mont_gather5
-.type	GFp_bn_mul_mont_gather5,\@function,6
+.globl	RingCore_bn_mul_mont_gather5
+.type	RingCore_bn_mul_mont_gather5,\@function,6
 .align	64
-GFp_bn_mul_mont_gather5:
+RingCore_bn_mul_mont_gather5:
 .cfi_startproc
 	mov	${num}d,${num}d
 	mov	%rsp,%rax
@@ -86,7 +86,7 @@ GFp_bn_mul_mont_gather5:
 	jnz	.Lmul_enter
 ___
 $code.=<<___ if ($addx);
-	leaq	GFp_ia32cap_P(%rip),%r11
+	leaq	RingCore_ia32cap_P(%rip),%r11
 	mov	8(%r11),%r11d
 ___
 $code.=<<___;
@@ -447,7 +447,7 @@ $code.=<<___;
 .Lmul_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_bn_mul_mont_gather5,.-GFp_bn_mul_mont_gather5
+.size	RingCore_bn_mul_mont_gather5,.-RingCore_bn_mul_mont_gather5
 ___
 {{{
 my @A=("%r10","%r11");
@@ -492,7 +492,7 @@ $code.=<<___;
 	# modulo 4096, which covers ret[num], am[num] and n[num]
 	# (see bn_exp.c). This is done to allow memory disambiguation
 	# logic do its magic. [Extra [num] is allocated in order
-	# to align with GFp_bn_power5's frame, which is cleansed after
+	# to align with RingCore_bn_power5's frame, which is cleansed after
 	# completing exponentiation. Extra 256 bytes is for power mask
 	# calculated from 7th argument, the index.]
 	#
@@ -1065,7 +1065,7 @@ ___
 }}}
 {{{
 ######################################################################
-# void GFp_bn_power5(
+# void RingCore_bn_power5(
 my $rptr="%rdi";	# BN_ULONG *rptr,
 my $aptr="%rsi";	# const BN_ULONG *aptr,
 my $bptr="%rdx";	# const void *table,
@@ -1080,16 +1080,16 @@ my @A1=("%r12","%r13");
 my ($a0,$a1,$ai)=("%r14","%r15","%rbx");
 
 $code.=<<___;
-.globl	GFp_bn_power5
-.type	GFp_bn_power5,\@function,6
+.globl	RingCore_bn_power5
+.type	RingCore_bn_power5,\@function,6
 .align	32
-GFp_bn_power5:
+RingCore_bn_power5:
 .cfi_startproc
 	mov	%rsp,%rax
 .cfi_def_cfa_register	%rax
 ___
 $code.=<<___ if ($addx);
-	leaq	GFp_ia32cap_P(%rip),%r11
+	leaq	RingCore_ia32cap_P(%rip),%r11
 	mov	8(%r11),%r11d
 	and	\$0x80108,%r11d
 	cmp	\$0x80108,%r11d		# check for AD*X+BMI2+BMI1
@@ -1218,13 +1218,13 @@ $code.=<<___;
 .Lpower5_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_bn_power5,.-GFp_bn_power5
+.size	RingCore_bn_power5,.-RingCore_bn_power5
 
-.globl	GFp_bn_sqr8x_internal
-.hidden	GFp_bn_sqr8x_internal
-.type	GFp_bn_sqr8x_internal,\@abi-omnipotent
+.globl	RingCore_bn_sqr8x_internal
+.hidden	RingCore_bn_sqr8x_internal
+.type	RingCore_bn_sqr8x_internal,\@abi-omnipotent
 .align	32
-GFp_bn_sqr8x_internal:
+RingCore_bn_sqr8x_internal:
 __bn_sqr8x_internal:
 	##############################################################
 	# Squaring part:
@@ -2017,7 +2017,7 @@ __bn_sqr8x_reduction:
 	cmp	%rdx,$tptr		# end of t[]?
 	jb	.L8x_reduction_loop
 	ret
-.size	GFp_bn_sqr8x_internal,.-GFp_bn_sqr8x_internal
+.size	RingCore_bn_sqr8x_internal,.-RingCore_bn_sqr8x_internal
 ___
 }
 ##############################################################
@@ -2084,15 +2084,15 @@ ___
 }
 {
 $code.=<<___;
-.globl	GFp_bn_from_montgomery
-.type	GFp_bn_from_montgomery,\@abi-omnipotent
+.globl	RingCore_bn_from_montgomery
+.type	RingCore_bn_from_montgomery,\@abi-omnipotent
 .align	32
-GFp_bn_from_montgomery:
+RingCore_bn_from_montgomery:
 	testl	\$7,`($win64?"48(%rsp)":"%r9d")`
 	jz	bn_from_mont8x
 	xor	%eax,%eax
 	ret
-.size	GFp_bn_from_montgomery,.-GFp_bn_from_montgomery
+.size	RingCore_bn_from_montgomery,.-RingCore_bn_from_montgomery
 
 .type	bn_from_mont8x,\@function,6
 .align	32
@@ -2124,7 +2124,7 @@ bn_from_mont8x:
 	# Ensure that stack frame doesn't alias with $rptr+3*$num
 	# modulo 4096, which covers ret[num], am[num] and n[num]
 	# (see bn_exp.c). The stack is allocated to aligned with
-	# GFp_bn_power5's frame, and as GFp_bn_from_montgomery happens to be
+	# RingCore_bn_power5's frame, and as RingCore_bn_from_montgomery happens to be
 	# last operation, we use the opportunity to cleanse it.
 	#
 	lea	-320(%rsp,$num,2),%r11
@@ -2210,7 +2210,7 @@ bn_from_mont8x:
 	movq	%r10, %xmm3		# -num
 ___
 $code.=<<___ if ($addx);
-	leaq	GFp_ia32cap_P(%rip),%r11
+	leaq	RingCore_ia32cap_P(%rip),%r11
 	mov	8(%r11),%r11d
 	and	\$0x80108,%r11d
 	cmp	\$0x80108,%r11d		# check for AD*X+BMI2+BMI1
@@ -2305,7 +2305,7 @@ bn_mulx4x_mont_gather5:
 	# modulo 4096, which covers ret[num], am[num] and n[num]
 	# (see bn_exp.c). This is done to allow memory disambiguation
 	# logic do its magic. [Extra [num] is allocated in order
-	# to align with GFp_bn_power5's frame, which is cleansed after
+	# to align with RingCore_bn_power5's frame, which is cleansed after
 	# completing exponentiation. Extra 256 bytes is for power mask
 	# calculated from 7th argument, the index.]
 	#
@@ -2742,7 +2742,7 @@ $code.=<<___;
 ___
 }{
 ######################################################################
-# void GFp_bn_power5(
+# void RingCore_bn_power5(
 my $rptr="%rdi";	# BN_ULONG *rptr,
 my $aptr="%rsi";	# const BN_ULONG *aptr,
 my $bptr="%rdx";	# const void *table,
@@ -2892,10 +2892,10 @@ bn_powerx5:
 .cfi_endproc
 .size	bn_powerx5,.-bn_powerx5
 
-.globl	GFp_bn_sqrx8x_internal
-.type	GFp_bn_sqrx8x_internal,\@abi-omnipotent
+.globl	RingCore_bn_sqrx8x_internal
+.type	RingCore_bn_sqrx8x_internal,\@abi-omnipotent
 .align	32
-GFp_bn_sqrx8x_internal:
+RingCore_bn_sqrx8x_internal:
 __bn_sqrx8x_internal:
 	##################################################################
 	# Squaring part:
@@ -3529,7 +3529,7 @@ __bn_sqrx8x_reduction:
 	cmp	8+8(%rsp),%r8		# end of t[]?
 	jb	.Lsqrx8x_reduction_loop
 	ret
-.size	GFp_bn_sqrx8x_internal,.-GFp_bn_sqrx8x_internal
+.size	RingCore_bn_sqrx8x_internal,.-RingCore_bn_sqrx8x_internal
 ___
 }
 ##############################################################
@@ -3599,10 +3599,10 @@ my $STRIDE=2**5*8;
 my $N=$STRIDE/4;
 
 $code.=<<___;
-.globl	GFp_bn_scatter5
-.type	GFp_bn_scatter5,\@abi-omnipotent
+.globl	RingCore_bn_scatter5
+.type	RingCore_bn_scatter5,\@abi-omnipotent
 .align	16
-GFp_bn_scatter5:
+RingCore_bn_scatter5:
 	cmp	\$0, $num
 	jz	.Lscatter_epilogue
 	lea	($tbl,$idx,8),$tbl
@@ -3615,13 +3615,13 @@ GFp_bn_scatter5:
 	jnz	.Lscatter
 .Lscatter_epilogue:
 	ret
-.size	GFp_bn_scatter5,.-GFp_bn_scatter5
+.size	RingCore_bn_scatter5,.-RingCore_bn_scatter5
 
-.globl	GFp_bn_gather5
-.type	GFp_bn_gather5,\@abi-omnipotent
+.globl	RingCore_bn_gather5
+.type	RingCore_bn_gather5,\@abi-omnipotent
 .align	32
-GFp_bn_gather5:
-.LSEH_begin_GFp_bn_gather5:			# Win64 thing, but harmless in other cases
+RingCore_bn_gather5:
+.LSEH_begin_RingCore_bn_gather5:			# Win64 thing, but harmless in other cases
 	# I can't trust assembler to use specific encoding:-(
 	.byte	0x4c,0x8d,0x14,0x24			#lea    (%rsp),%r10
 	.byte	0x48,0x81,0xec,0x08,0x01,0x00,0x00	#sub	$0x108,%rsp
@@ -3705,8 +3705,8 @@ $code.=<<___;
 
 	lea	(%r10),%rsp
 	ret
-.LSEH_end_GFp_bn_gather5:
-.size	GFp_bn_gather5,.-GFp_bn_gather5
+.LSEH_end_RingCore_bn_gather5:
+.size	RingCore_bn_gather5,.-RingCore_bn_gather5
 ___
 }
 $code.=<<___;
@@ -3831,17 +3831,17 @@ mul_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_GFp_bn_mul_mont_gather5
-	.rva	.LSEH_end_GFp_bn_mul_mont_gather5
-	.rva	.LSEH_info_GFp_bn_mul_mont_gather5
+	.rva	.LSEH_begin_RingCore_bn_mul_mont_gather5
+	.rva	.LSEH_end_RingCore_bn_mul_mont_gather5
+	.rva	.LSEH_info_RingCore_bn_mul_mont_gather5
 
 	.rva	.LSEH_begin_bn_mul4x_mont_gather5
 	.rva	.LSEH_end_bn_mul4x_mont_gather5
 	.rva	.LSEH_info_bn_mul4x_mont_gather5
 
-	.rva	.LSEH_begin_GFp_bn_power5
-	.rva	.LSEH_end_GFp_bn_power5
-	.rva	.LSEH_info_GFp_bn_power5
+	.rva	.LSEH_begin_RingCore_bn_power5
+	.rva	.LSEH_end_RingCore_bn_power5
+	.rva	.LSEH_info_RingCore_bn_power5
 
 	.rva	.LSEH_begin_bn_from_mont8x
 	.rva	.LSEH_end_bn_from_mont8x
@@ -3854,16 +3854,16 @@ $code.=<<___ if ($addx);
 
 	.rva	.LSEH_begin_bn_powerx5
 	.rva	.LSEH_end_bn_powerx5
-	.rva	.LSEH_info_GFp_bn_powerx5
+	.rva	.LSEH_info_RingCore_bn_powerx5
 ___
 $code.=<<___;
-	.rva	.LSEH_begin_GFp_bn_gather5
-	.rva	.LSEH_end_GFp_bn_gather5
-	.rva	.LSEH_info_GFp_bn_gather5
+	.rva	.LSEH_begin_RingCore_bn_gather5
+	.rva	.LSEH_end_RingCore_bn_gather5
+	.rva	.LSEH_info_RingCore_bn_gather5
 
 .section	.xdata
 .align	8
-.LSEH_info_GFp_bn_mul_mont_gather5:
+.LSEH_info_RingCore_bn_mul_mont_gather5:
 	.byte	9,0,0,0
 	.rva	mul_handler
 	.rva	.Lmul_body,.Lmul_body,.Lmul_epilogue		# HandlerData[]
@@ -3873,7 +3873,7 @@ $code.=<<___;
 	.rva	mul_handler
 	.rva	.Lmul4x_prologue,.Lmul4x_body,.Lmul4x_epilogue		# HandlerData[]
 .align	8
-.LSEH_info_GFp_bn_power5:
+.LSEH_info_RingCore_bn_power5:
 	.byte	9,0,0,0
 	.rva	mul_handler
 	.rva	.Lpower5_prologue,.Lpower5_body,.Lpower5_epilogue	# HandlerData[]
@@ -3890,14 +3890,14 @@ $code.=<<___ if ($addx);
 	.rva	mul_handler
 	.rva	.Lmulx4x_prologue,.Lmulx4x_body,.Lmulx4x_epilogue	# HandlerData[]
 .align	8
-.LSEH_info_GFp_bn_powerx5:
+.LSEH_info_RingCore_bn_powerx5:
 	.byte	9,0,0,0
 	.rva	mul_handler
 	.rva	.Lpowerx5_prologue,.Lpowerx5_body,.Lpowerx5_epilogue	# HandlerData[]
 ___
 $code.=<<___;
 .align	8
-.LSEH_info_GFp_bn_gather5:
+.LSEH_info_RingCore_bn_gather5:
 	.byte	0x01,0x0b,0x03,0x0a
 	.byte	0x0b,0x01,0x21,0x00	# sub	rsp,0x108
 	.byte	0x04,0xa3,0x00,0x00	# lea	r10,(rsp)

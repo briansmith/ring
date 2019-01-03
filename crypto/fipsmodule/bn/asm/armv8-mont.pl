@@ -55,7 +55,7 @@ open OUT,"| \"$^X\" $xlate $flavour $output";
  $lo1,$hi1,$nj,$m1,$nlo,$nhi,
  $ovf, $i,$j,$tp,$tj) = map("x$_",6..17,19..24);
 
-# int GFp_bn_mul_mont(
+# int RingCore_bn_mul_mont(
 $rp="x0";	# BN_ULONG *rp,
 $ap="x1";	# const BN_ULONG *ap,
 $bp="x2";	# const BN_ULONG *bp,
@@ -66,10 +66,10 @@ $num="x5";	# int num);
 $code.=<<___;
 .text
 
-.globl	GFp_bn_mul_mont
-.type	GFp_bn_mul_mont,%function
+.globl	RingCore_bn_mul_mont
+.type	RingCore_bn_mul_mont,%function
 .align	5
-GFp_bn_mul_mont:
+RingCore_bn_mul_mont:
 	tst	$num,#7
 	b.eq	__bn_sqr8x_mont
 	tst	$num,#3
@@ -268,7 +268,7 @@ GFp_bn_mul_mont:
 	ldp	x23,x24,[x29,#48]
 	ldr	x29,[sp],#64
 	ret
-.size	GFp_bn_mul_mont,.-GFp_bn_mul_mont
+.size	RingCore_bn_mul_mont,.-RingCore_bn_mul_mont
 ___
 {
 ########################################################################

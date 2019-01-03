@@ -183,10 +183,10 @@ rem_4bit_get:
 	nop
 .size	rem_4bit_get,.-rem_4bit_get
 
-.global	GFp_gcm_ghash_4bit
-.type	GFp_gcm_ghash_4bit,%function
+.global	RingCore_gcm_ghash_4bit
+.type	RingCore_gcm_ghash_4bit,%function
 .align	4
-GFp_gcm_ghash_4bit:
+RingCore_gcm_ghash_4bit:
 #if defined(__thumb2__)
 	adr	r12,rem_4bit
 #else
@@ -297,11 +297,11 @@ $code.=<<___;
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	GFp_gcm_ghash_4bit,.-GFp_gcm_ghash_4bit
+.size	RingCore_gcm_ghash_4bit,.-RingCore_gcm_ghash_4bit
 
-.global	GFp_gcm_gmult_4bit
-.type	GFp_gcm_gmult_4bit,%function
-GFp_gcm_gmult_4bit:
+.global	RingCore_gcm_gmult_4bit
+.type	RingCore_gcm_gmult_4bit,%function
+RingCore_gcm_gmult_4bit:
 	stmdb	sp!,{r4-r11,lr}
 	ldrb	$nlo,[$Xi,#15]
 	b	rem_4bit_get
@@ -380,7 +380,7 @@ $code.=<<___;
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	GFp_gcm_gmult_4bit,.-GFp_gcm_gmult_4bit
+.size	RingCore_gcm_gmult_4bit,.-RingCore_gcm_gmult_4bit
 ___
 {
 my ($Xl,$Xm,$Xh,$IN)=map("q$_",(0..3));
@@ -435,10 +435,10 @@ $code.=<<___;
 .arch	armv7-a
 .fpu	neon
 
-.global	GFp_gcm_init_neon
-.type	GFp_gcm_init_neon,%function
+.global	RingCore_gcm_init_neon
+.type	RingCore_gcm_init_neon,%function
 .align	4
-GFp_gcm_init_neon:
+RingCore_gcm_init_neon:
 	vld1.64		$IN#hi,[r1]!		@ load H
 	vmov.i8		$t0,#0xe1
 	vld1.64		$IN#lo,[r1]
@@ -454,12 +454,12 @@ GFp_gcm_init_neon:
 	vstmia		r0,{$IN}
 
 	ret					@ bx lr
-.size	GFp_gcm_init_neon,.-GFp_gcm_init_neon
+.size	RingCore_gcm_init_neon,.-RingCore_gcm_init_neon
 
-.global	GFp_gcm_gmult_neon
-.type	GFp_gcm_gmult_neon,%function
+.global	RingCore_gcm_gmult_neon
+.type	RingCore_gcm_gmult_neon,%function
 .align	4
-GFp_gcm_gmult_neon:
+RingCore_gcm_gmult_neon:
 	vld1.64		$IN#hi,[$Xi]!		@ load Xi
 	vld1.64		$IN#lo,[$Xi]!
 	vmov.i64	$k48,#0x0000ffffffffffff
@@ -472,12 +472,12 @@ GFp_gcm_gmult_neon:
 	veor		$Hhl,$Hlo,$Hhi		@ Karatsuba pre-processing
 	mov		$len,#16
 	b		.Lgmult_neon
-.size	GFp_gcm_gmult_neon,.-GFp_gcm_gmult_neon
+.size	RingCore_gcm_gmult_neon,.-RingCore_gcm_gmult_neon
 
-.global	GFp_gcm_ghash_neon
-.type	GFp_gcm_ghash_neon,%function
+.global	RingCore_gcm_ghash_neon
+.type	RingCore_gcm_ghash_neon,%function
 .align	4
-GFp_gcm_ghash_neon:
+RingCore_gcm_ghash_neon:
 	vld1.64		$Xl#hi,[$Xi]!		@ load Xi
 	vld1.64		$Xl#lo,[$Xi]!
 	vmov.i64	$k48,#0x0000ffffffffffff
@@ -538,7 +538,7 @@ $code.=<<___;
 	vst1.64		$Xl#lo,[$Xi]
 
 	ret					@ bx lr
-.size	GFp_gcm_ghash_neon,.-GFp_gcm_ghash_neon
+.size	RingCore_gcm_ghash_neon,.-RingCore_gcm_ghash_neon
 #endif
 ___
 }

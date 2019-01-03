@@ -118,7 +118,7 @@ static uint64_t OPENSSL_xgetbv(uint32_t xcr) {
 #endif
 }
 
-void GFp_cpuid_setup(void) {
+void RingCore_cpuid_setup(void) {
   // Determine the vendor and maximum input value.
   uint32_t eax, ebx, ecx, edx;
   OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 0);
@@ -217,10 +217,10 @@ void GFp_cpuid_setup(void) {
     extended_features[0] &= ~(1u << 19);
   }
 
-  GFp_ia32cap_P[0] = edx;
-  GFp_ia32cap_P[1] = ecx;
-  GFp_ia32cap_P[2] = extended_features[0];
-  GFp_ia32cap_P[3] = extended_features[1];
+  RingCore_ia32cap_P[0] = edx;
+  RingCore_ia32cap_P[1] = ecx;
+  RingCore_ia32cap_P[2] = extended_features[0];
+  RingCore_ia32cap_P[3] = extended_features[1];
 }
 
 #endif  // !OPENSSL_NO_ASM && (OPENSSL_X86 || OPENSSL_X86_64)

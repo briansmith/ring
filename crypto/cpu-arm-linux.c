@@ -34,32 +34,32 @@
 #define HWCAP2_SHA1 (1 << 2)
 #define HWCAP2_SHA2 (1 << 3)
 
-extern uint32_t GFp_armcap_P;
+extern uint32_t RingCore_armcap_P;
 
-void GFp_cpuid_setup(void) {
+void RingCore_cpuid_setup(void) {
   // |getauxval| is not available on Android until API level 20. Unlike
   // BoringSSL, require API level 20.
   unsigned long hwcap = getauxval(AT_HWCAP);
 
   // Matching OpenSSL, only report other features if NEON is present.
   if (hwcap & HWCAP_NEON) {
-    GFp_armcap_P |= ARMV7_NEON;
+    RingCore_armcap_P |= ARMV7_NEON;
 
     // Note that some (old?) ARMv8 Android devices don't support |AT_HWCAP2|
     // even when the instructions are available.
     unsigned long hwcap2 = getauxval(AT_HWCAP2);
 
     if (hwcap2 & HWCAP2_AES) {
-      GFp_armcap_P |= ARMV8_AES;
+      RingCore_armcap_P |= ARMV8_AES;
     }
     if (hwcap2 & HWCAP2_PMULL) {
-      GFp_armcap_P |= ARMV8_PMULL;
+      RingCore_armcap_P |= ARMV8_PMULL;
     }
     if (hwcap2 & HWCAP2_SHA1) {
-      GFp_armcap_P |= ARMV8_SHA1;
+      RingCore_armcap_P |= ARMV8_SHA1;
     }
     if (hwcap2 & HWCAP2_SHA2) {
-      GFp_armcap_P |= ARMV8_SHA256;
+      RingCore_armcap_P |= ARMV8_SHA256;
     }
   }
 }

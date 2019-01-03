@@ -21,12 +21,12 @@ pub struct Key(GCM128_KEY);
 impl Key {
     pub fn new(h_be: Block) -> Self {
         extern "C" {
-            fn GFp_gcm128_init_htable(gcm_key: &mut GCM128_KEY, h_block: Block);
+            fn RingCore_gcm128_init_htable(gcm_key: &mut GCM128_KEY, h_block: Block);
         }
 
         let mut r = Key(GCM128_KEY([Block::zero(); GCM128_HTABLE_LEN]));
         unsafe {
-            GFp_gcm128_init_htable(&mut r.0, h_be);
+            RingCore_gcm128_init_htable(&mut r.0, h_be);
         }
         r
     }
@@ -56,21 +56,21 @@ impl Context {
         debug_assert!(input.len() > 0);
         debug_assert_eq!(input.len() % BLOCK_LEN, 0);
         extern "C" {
-            fn GFp_gcm128_ghash(ctx: &mut Context, input: *const u8, input_len: c::size_t);
+            fn RingCore_gcm128_ghash(ctx: &mut Context, input: *const u8, input_len: c::size_t);
         }
         unsafe {
-            GFp_gcm128_ghash(self, input.as_ptr(), input.len());
+            RingCore_gcm128_ghash(self, input.as_ptr(), input.len());
         }
     }
 
     pub fn update_block(&mut self, a: Block) {
         extern "C" {
-            fn GFp_gcm128_gmult(ctx: &mut Context);
+            fn RingCore_gcm128_gmult(ctx: &mut Context);
         }
 
         self.0.Xi.bitxor_assign(a);
         unsafe {
-            GFp_gcm128_gmult(self);
+            RingCore_gcm128_gmult(self);
         }
     }
 
@@ -84,9 +84,9 @@ impl Context {
     #[cfg(target_arch = "x86_64")]
     pub(super) fn is_avx2(&self) -> bool {
         extern "C" {
-            fn GFp_aesni_gcm_capable() -> c::int;
+            fn RingCore_aesni_gcm_capable() -> c::int;
         }
-        1 == unsafe { GFp_aesni_gcm_capable() }
+        1 == unsafe { RingCore_aesni_gcm_capable() }
     }
 }
 

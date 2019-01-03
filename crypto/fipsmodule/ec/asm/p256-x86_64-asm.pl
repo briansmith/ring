@@ -59,7 +59,7 @@ $addx = 1;
 
 $code.=<<___;
 .text
-.extern	GFp_ia32cap_P
+.extern	RingCore_ia32cap_P
 
 # The polynomial
 .align 64
@@ -90,11 +90,11 @@ my ($r_ptr,$a_ptr,$b_ptr)=("%rdi","%rsi","%rdx");
 $code.=<<___;
 
 ################################################################################
-# void GFp_nistz256_add(uint64_t res[4], uint64_t a[4], uint64_t b[4]);
-.globl	GFp_nistz256_add
-.type	GFp_nistz256_add,\@function,3
+# void RingCore_nistz256_add(uint64_t res[4], uint64_t a[4], uint64_t b[4]);
+.globl	RingCore_nistz256_add
+.type	RingCore_nistz256_add,\@function,3
 .align	32
-GFp_nistz256_add:
+RingCore_nistz256_add:
 	push	%r12
 	push	%r13
 
@@ -133,14 +133,14 @@ GFp_nistz256_add:
 	pop %r13
 	pop %r12
 	ret
-.size	GFp_nistz256_add,.-GFp_nistz256_add
+.size	RingCore_nistz256_add,.-RingCore_nistz256_add
 
 ################################################################################
-# void GFp_nistz256_neg(uint64_t res[4], uint64_t a[4]);
-.globl	GFp_nistz256_neg
-.type	GFp_nistz256_neg,\@function,2
+# void RingCore_nistz256_neg(uint64_t res[4], uint64_t a[4]);
+.globl	RingCore_nistz256_neg
+.type	RingCore_nistz256_neg,\@function,2
 .align	32
-GFp_nistz256_neg:
+RingCore_nistz256_neg:
 .cfi_startproc
 	push	%r12
 .cfi_push	%r12
@@ -189,7 +189,7 @@ GFp_nistz256_neg:
 .Lneg_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_nistz256_neg,.-GFp_nistz256_neg
+.size	RingCore_nistz256_neg,.-RingCore_nistz256_neg
 ___
 }
 {
@@ -200,19 +200,19 @@ my ($poly1,$poly3)=($acc6,$acc7);
 
 $code.=<<___;
 ################################################################################
-# void GFp_p256_scalar_mul_mont(
+# void RingCore_p256_scalar_mul_mont(
 #   uint64_t res[4],
 #   uint64_t a[4],
 #   uint64_t b[4]);
 
-.globl	GFp_p256_scalar_mul_mont
-.type	GFp_p256_scalar_mul_mont,\@function,3
+.globl	RingCore_p256_scalar_mul_mont
+.type	RingCore_p256_scalar_mul_mont,\@function,3
 .align	32
-GFp_p256_scalar_mul_mont:
+RingCore_p256_scalar_mul_mont:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	GFp_ia32cap_P(%rip), %rcx
+	leaq	RingCore_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
@@ -528,22 +528,22 @@ $code.=<<___;
 .Lord_mul_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_p256_scalar_mul_mont,.-GFp_p256_scalar_mul_mont
+.size	RingCore_p256_scalar_mul_mont,.-RingCore_p256_scalar_mul_mont
 
 ################################################################################
-# void GFp_p256_scalar_sqr_rep_mont(
+# void RingCore_p256_scalar_sqr_rep_mont(
 #   uint64_t res[4],
 #   uint64_t a[4],
 #   int rep);
 
-.globl	GFp_p256_scalar_sqr_rep_mont
-.type	GFp_p256_scalar_sqr_rep_mont,\@function,3
+.globl	RingCore_p256_scalar_sqr_rep_mont
+.type	RingCore_p256_scalar_sqr_rep_mont,\@function,3
 .align	32
-GFp_p256_scalar_sqr_rep_mont:
+RingCore_p256_scalar_sqr_rep_mont:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	GFp_ia32cap_P(%rip), %rcx
+	leaq	RingCore_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
@@ -829,7 +829,7 @@ $code.=<<___;
 .Lord_sqr_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_p256_scalar_sqr_rep_mont,.-GFp_p256_scalar_sqr_rep_mont
+.size	RingCore_p256_scalar_sqr_rep_mont,.-RingCore_p256_scalar_sqr_rep_mont
 ___
 
 $code.=<<___	if ($addx);
@@ -1281,19 +1281,19 @@ ___
 
 $code.=<<___;
 ################################################################################
-# void GFp_nistz256_mul_mont(
+# void RingCore_nistz256_mul_mont(
 #   uint64_t res[4],
 #   uint64_t a[4],
 #   uint64_t b[4]);
 
-.globl	GFp_nistz256_mul_mont
-.type	GFp_nistz256_mul_mont,\@function,3
+.globl	RingCore_nistz256_mul_mont
+.type	RingCore_nistz256_mul_mont,\@function,3
 .align	32
-GFp_nistz256_mul_mont:
+RingCore_nistz256_mul_mont:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	GFp_ia32cap_P(%rip), %rcx
+	leaq	RingCore_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 ___
@@ -1361,7 +1361,7 @@ $code.=<<___;
 .Lmul_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_nistz256_mul_mont,.-GFp_nistz256_mul_mont
+.size	RingCore_nistz256_mul_mont,.-RingCore_nistz256_mul_mont
 
 .type	__ecp_nistz256_mul_montq,\@abi-omnipotent
 .align	32
@@ -1580,20 +1580,20 @@ __ecp_nistz256_mul_montq:
 .size	__ecp_nistz256_mul_montq,.-__ecp_nistz256_mul_montq
 
 ################################################################################
-# void GFp_nistz256_sqr_mont(
+# void RingCore_nistz256_sqr_mont(
 #   uint64_t res[4],
 #   uint64_t a[4]);
 
 # we optimize the square according to S.Gueron and V.Krasnov,
 # "Speeding up Big-Number Squaring"
-.globl	GFp_nistz256_sqr_mont
-.type	GFp_nistz256_sqr_mont,\@function,2
+.globl	RingCore_nistz256_sqr_mont
+.type	RingCore_nistz256_sqr_mont,\@function,2
 .align	32
-GFp_nistz256_sqr_mont:
+RingCore_nistz256_sqr_mont:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	GFp_ia32cap_P(%rip), %rcx
+	leaq	RingCore_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 ___
@@ -1656,7 +1656,7 @@ $code.=<<___;
 .Lsqr_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_nistz256_sqr_mont,.-GFp_nistz256_sqr_mont
+.size	RingCore_nistz256_sqr_mont,.-RingCore_nistz256_sqr_mont
 
 .type	__ecp_nistz256_sqr_montq,\@abi-omnipotent
 .align	32
@@ -2128,21 +2128,21 @@ my ($M1,$T2a,$T2b,$TMP2,$M2,$T2a,$T2b,$TMP2)=map("%xmm$_",(8..15));
 
 $code.=<<___;
 ################################################################################
-# void GFp_nistz256_select_w5(uint64_t *val, uint64_t *in_t, int index);
-.globl	GFp_nistz256_select_w5
-.type	GFp_nistz256_select_w5,\@abi-omnipotent
+# void RingCore_nistz256_select_w5(uint64_t *val, uint64_t *in_t, int index);
+.globl	RingCore_nistz256_select_w5
+.type	RingCore_nistz256_select_w5,\@abi-omnipotent
 .align	32
-GFp_nistz256_select_w5:
+RingCore_nistz256_select_w5:
 ___
 $code.=<<___	if ($avx>1);
-	leaq	GFp_ia32cap_P(%rip), %rax
+	leaq	RingCore_ia32cap_P(%rip), %rax
 	mov	8(%rax), %rax
 	test	\$`1<<5`, %eax
 	jnz	.Lavx2_select_w5
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
-.LSEH_begin_GFp_nistz256_select_w5:
+.LSEH_begin_RingCore_nistz256_select_w5:
 	.byte	0x48,0x8d,0x60,0xe0		#lea	-0x20(%rax), %rsp
 	.byte	0x0f,0x29,0x70,0xe0		#movaps	%xmm6, -0x20(%rax)
 	.byte	0x0f,0x29,0x78,0xf0		#movaps	%xmm7, -0x10(%rax)
@@ -2222,25 +2222,25 @@ $code.=<<___	if ($win64);
 ___
 $code.=<<___;
 	ret
-.LSEH_end_GFp_nistz256_select_w5:
-.size	GFp_nistz256_select_w5,.-GFp_nistz256_select_w5
+.LSEH_end_RingCore_nistz256_select_w5:
+.size	RingCore_nistz256_select_w5,.-RingCore_nistz256_select_w5
 
 ################################################################################
-# void GFp_nistz256_select_w7(uint64_t *val, uint64_t *in_t, int index);
-.globl	GFp_nistz256_select_w7
-.type	GFp_nistz256_select_w7,\@abi-omnipotent
+# void RingCore_nistz256_select_w7(uint64_t *val, uint64_t *in_t, int index);
+.globl	RingCore_nistz256_select_w7
+.type	RingCore_nistz256_select_w7,\@abi-omnipotent
 .align	32
-GFp_nistz256_select_w7:
+RingCore_nistz256_select_w7:
 ___
 $code.=<<___	if ($avx>1);
-	leaq	GFp_ia32cap_P(%rip), %rax
+	leaq	RingCore_ia32cap_P(%rip), %rax
 	mov	8(%rax), %rax
 	test	\$`1<<5`, %eax
 	jnz	.Lavx2_select_w7
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
-.LSEH_begin_GFp_nistz256_select_w7:
+.LSEH_begin_RingCore_nistz256_select_w7:
 	.byte	0x48,0x8d,0x60,0xe0		#lea	-0x20(%rax), %rsp
 	.byte	0x0f,0x29,0x70,0xe0		#movaps	%xmm6, -0x20(%rax)
 	.byte	0x0f,0x29,0x78,0xf0		#movaps	%xmm7, -0x10(%rax)
@@ -2309,8 +2309,8 @@ $code.=<<___	if ($win64);
 ___
 $code.=<<___;
 	ret
-.LSEH_end_GFp_nistz256_select_w7:
-.size	GFp_nistz256_select_w7,.-GFp_nistz256_select_w7
+.LSEH_end_RingCore_nistz256_select_w7:
+.size	RingCore_nistz256_select_w7,.-RingCore_nistz256_select_w7
 ___
 }
 if ($avx>1) {
@@ -2321,17 +2321,17 @@ my ($M1,$T1a,$T1b,$T1c,$TMP1)=map("%ymm$_",(10..14));
 
 $code.=<<___;
 ################################################################################
-# void GFp_nistz256_avx2_select_w5(uint64_t *val, uint64_t *in_t, int index);
-.type	GFp_nistz256_avx2_select_w5,\@abi-omnipotent
+# void RingCore_nistz256_avx2_select_w5(uint64_t *val, uint64_t *in_t, int index);
+.type	RingCore_nistz256_avx2_select_w5,\@abi-omnipotent
 .align	32
-GFp_nistz256_avx2_select_w5:
+RingCore_nistz256_avx2_select_w5:
 .Lavx2_select_w5:
 	vzeroupper
 ___
 $code.=<<___	if ($win64);
 	lea	-0x88(%rsp), %rax
 	mov	%rsp,%r11
-.LSEH_begin_GFp_nistz256_avx2_select_w5:
+.LSEH_begin_RingCore_nistz256_avx2_select_w5:
 	.byte	0x48,0x8d,0x60,0xe0		# lea	-0x20(%rax), %rsp
 	.byte	0xc5,0xf8,0x29,0x70,0xe0	# vmovaps %xmm6, -0x20(%rax)
 	.byte	0xc5,0xf8,0x29,0x78,0xf0	# vmovaps %xmm7, -0x10(%rax)
@@ -2412,8 +2412,8 @@ $code.=<<___	if ($win64);
 ___
 $code.=<<___;
 	ret
-.LSEH_end_GFp_nistz256_avx2_select_w5:
-.size	GFp_nistz256_avx2_select_w5,.-GFp_nistz256_avx2_select_w5
+.LSEH_end_RingCore_nistz256_avx2_select_w5:
+.size	RingCore_nistz256_avx2_select_w5,.-RingCore_nistz256_avx2_select_w5
 ___
 }
 if ($avx>1) {
@@ -2426,18 +2426,18 @@ my ($M2,$T2a,$T2b,$TMP2)=map("%ymm$_",(12..15));
 $code.=<<___;
 
 ################################################################################
-# void GFp_nistz256_avx2_select_w7(uint64_t *val, uint64_t *in_t, int index);
-.globl	GFp_nistz256_avx2_select_w7
-.type	GFp_nistz256_avx2_select_w7,\@abi-omnipotent
+# void RingCore_nistz256_avx2_select_w7(uint64_t *val, uint64_t *in_t, int index);
+.globl	RingCore_nistz256_avx2_select_w7
+.type	RingCore_nistz256_avx2_select_w7,\@abi-omnipotent
 .align	32
-GFp_nistz256_avx2_select_w7:
+RingCore_nistz256_avx2_select_w7:
 .Lavx2_select_w7:
 	vzeroupper
 ___
 $code.=<<___	if ($win64);
 	mov	%rsp,%r11
 	lea	-0x88(%rsp), %rax
-.LSEH_begin_GFp_nistz256_avx2_select_w7:
+.LSEH_begin_RingCore_nistz256_avx2_select_w7:
 	.byte	0x48,0x8d,0x60,0xe0		# lea	-0x20(%rax), %rsp
 	.byte	0xc5,0xf8,0x29,0x70,0xe0	# vmovaps %xmm6, -0x20(%rax)
 	.byte	0xc5,0xf8,0x29,0x78,0xf0	# vmovaps %xmm7, -0x10(%rax)
@@ -2533,18 +2533,18 @@ $code.=<<___	if ($win64);
 ___
 $code.=<<___;
 	ret
-.LSEH_end_GFp_nistz256_avx2_select_w7:
-.size	GFp_nistz256_avx2_select_w7,.-GFp_nistz256_avx2_select_w7
+.LSEH_end_RingCore_nistz256_avx2_select_w7:
+.size	RingCore_nistz256_avx2_select_w7,.-RingCore_nistz256_avx2_select_w7
 ___
 } else {
 $code.=<<___;
-.globl	GFp_nistz256_avx2_select_w7
-.type	GFp_nistz256_avx2_select_w7,\@function,3
+.globl	RingCore_nistz256_avx2_select_w7
+.type	RingCore_nistz256_avx2_select_w7,\@function,3
 .align	32
-GFp_nistz256_avx2_select_w7:
+RingCore_nistz256_avx2_select_w7:
 	.byte	0x0f,0x0b	# ud2
 	ret
-.size	GFp_nistz256_avx2_select_w7,.-GFp_nistz256_avx2_select_w7
+.size	RingCore_nistz256_avx2_select_w7,.-RingCore_nistz256_avx2_select_w7
 ___
 }
 {{{
@@ -2733,14 +2733,14 @@ sub gen_double () {
 	$bias = 0;
 
 $code.=<<___;
-.globl	GFp_nistz256_point_double
-.type	GFp_nistz256_point_double,\@function,2
+.globl	RingCore_nistz256_point_double
+.type	RingCore_nistz256_point_double,\@function,2
 .align	32
-GFp_nistz256_point_double:
+RingCore_nistz256_point_double:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	GFp_ia32cap_P(%rip), %rcx
+	leaq	RingCore_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
@@ -2752,9 +2752,9 @@ ___
 	$bias = 128;
 
 $code.=<<___;
-.type	GFp_nistz256_point_doublex,\@function,2
+.type	RingCore_nistz256_point_doublex,\@function,2
 .align	32
-GFp_nistz256_point_doublex:
+RingCore_nistz256_point_doublex:
 .cfi_startproc
 .Lpoint_doublex:
 ___
@@ -2841,7 +2841,7 @@ $code.=<<___;
 	call	__ecp_nistz256_sqr_mont$x	# p256_sqr_mont(res_y, S);
 ___
 {
-######## GFp_nistz256_div_by_2(res_y, res_y); ##########################
+######## RingCore_nistz256_div_by_2(res_y, res_y); ##########################
 # operate in 4-5-6-7 "name space" that matches squaring output
 #
 my ($poly1,$poly3)=($a_ptr,$t1);
@@ -2964,7 +2964,7 @@ $code.=<<___;
 .Lpoint_double${x}_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_nistz256_point_double$sfx,.-GFp_nistz256_point_double$sfx
+.size	RingCore_nistz256_point_double$sfx,.-RingCore_nistz256_point_double$sfx
 ___
 }
 &gen_double("q");
@@ -2985,14 +2985,14 @@ sub gen_add () {
 	$bias = 0;
 
 $code.=<<___;
-.globl	GFp_nistz256_point_add
-.type	GFp_nistz256_point_add,\@function,3
+.globl	RingCore_nistz256_point_add
+.type	RingCore_nistz256_point_add,\@function,3
 .align	32
-GFp_nistz256_point_add:
+RingCore_nistz256_point_add:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	GFp_ia32cap_P(%rip), %rcx
+	leaq	RingCore_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
@@ -3004,9 +3004,9 @@ ___
 	$bias = 128;
 
 $code.=<<___;
-.type	GFp_nistz256_point_addx,\@function,3
+.type	RingCore_nistz256_point_addx,\@function,3
 .align	32
-GFp_nistz256_point_addx:
+RingCore_nistz256_point_addx:
 .cfi_startproc
 .Lpoint_addx:
 ___
@@ -3354,7 +3354,7 @@ $code.=<<___;
 .Lpoint_add${x}_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_nistz256_point_add$sfx,.-GFp_nistz256_point_add$sfx
+.size	RingCore_nistz256_point_add$sfx,.-RingCore_nistz256_point_add$sfx
 ___
 }
 &gen_add("q");
@@ -3374,14 +3374,14 @@ sub gen_add_affine () {
 	$bias = 0;
 
 $code.=<<___;
-.globl	GFp_nistz256_point_add_affine
-.type	GFp_nistz256_point_add_affine,\@function,3
+.globl	RingCore_nistz256_point_add_affine
+.type	RingCore_nistz256_point_add_affine,\@function,3
 .align	32
-GFp_nistz256_point_add_affine:
+RingCore_nistz256_point_add_affine:
 .cfi_startproc
 ___
 $code.=<<___	if ($addx);
-	leaq	GFp_ia32cap_P(%rip), %rcx
+	leaq	RingCore_ia32cap_P(%rip), %rcx
 	mov	8(%rcx), %rcx
 	and	\$0x80100, %ecx
 	cmp	\$0x80100, %ecx
@@ -3393,9 +3393,9 @@ ___
 	$bias = 128;
 
 $code.=<<___;
-.type	GFp_nistz256_point_add_affinex,\@function,3
+.type	RingCore_nistz256_point_add_affinex,\@function,3
 .align	32
-GFp_nistz256_point_add_affinex:
+RingCore_nistz256_point_add_affinex:
 .cfi_startproc
 .Lpoint_add_affinex:
 ___
@@ -3679,7 +3679,7 @@ $code.=<<___;
 .Ladd_affine${x}_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_nistz256_point_add_affine$sfx,.-GFp_nistz256_point_add_affine$sfx
+.size	RingCore_nistz256_point_add_affine$sfx,.-RingCore_nistz256_point_add_affine$sfx
 ___
 }
 &gen_add_affine("q");
@@ -3972,17 +3972,17 @@ full_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_GFp_nistz256_neg
-	.rva	.LSEH_end_GFp_nistz256_neg
-	.rva	.LSEH_info_GFp_nistz256_neg
+	.rva	.LSEH_begin_RingCore_nistz256_neg
+	.rva	.LSEH_end_RingCore_nistz256_neg
+	.rva	.LSEH_info_RingCore_nistz256_neg
 
-	.rva	.LSEH_begin_GFp_p256_scalar_mul_mont
-	.rva	.LSEH_end_GFp_p256_scalar_mul_mont
-	.rva	.LSEH_info_GFp_p256_scalar_mul_mont
+	.rva	.LSEH_begin_RingCore_p256_scalar_mul_mont
+	.rva	.LSEH_end_RingCore_p256_scalar_mul_mont
+	.rva	.LSEH_info_RingCore_p256_scalar_mul_mont
 
-	.rva	.LSEH_begin_GFp_p256_scalar_sqr_rep_mont
-	.rva	.LSEH_end_GFp_p256_scalar_sqr_rep_mont
-	.rva	.LSEH_info_GFp_p256_scalar_sqr_rep_mont
+	.rva	.LSEH_begin_RingCore_p256_scalar_sqr_rep_mont
+	.rva	.LSEH_end_RingCore_p256_scalar_sqr_rep_mont
+	.rva	.LSEH_info_RingCore_p256_scalar_sqr_rep_mont
 ___
 $code.=<<___	if ($addx);
 	.rva	.LSEH_begin_ecp_nistz256_ord_mul_montx
@@ -3994,71 +3994,71 @@ $code.=<<___	if ($addx);
 	.rva	.LSEH_info_ecp_nistz256_ord_sqr_montx
 ___
 $code.=<<___;
-	.rva	.LSEH_begin_GFp_nistz256_mul_mont
-	.rva	.LSEH_end_GFp_nistz256_mul_mont
-	.rva	.LSEH_info_GFp_nistz256_mul_mont
+	.rva	.LSEH_begin_RingCore_nistz256_mul_mont
+	.rva	.LSEH_end_RingCore_nistz256_mul_mont
+	.rva	.LSEH_info_RingCore_nistz256_mul_mont
 
-	.rva	.LSEH_begin_GFp_nistz256_sqr_mont
-	.rva	.LSEH_end_GFp_nistz256_sqr_mont
-	.rva	.LSEH_info_GFp_nistz256_sqr_mont
+	.rva	.LSEH_begin_RingCore_nistz256_sqr_mont
+	.rva	.LSEH_end_RingCore_nistz256_sqr_mont
+	.rva	.LSEH_info_RingCore_nistz256_sqr_mont
 
-	.rva	.LSEH_begin_GFp_nistz256_select_w5
-	.rva	.LSEH_end_GFp_nistz256_select_w5
-	.rva	.LSEH_info_GFp_nistz256_select_wX
+	.rva	.LSEH_begin_RingCore_nistz256_select_w5
+	.rva	.LSEH_end_RingCore_nistz256_select_w5
+	.rva	.LSEH_info_RingCore_nistz256_select_wX
 
-	.rva	.LSEH_begin_GFp_nistz256_select_w7
-	.rva	.LSEH_end_GFp_nistz256_select_w7
-	.rva	.LSEH_info_GFp_nistz256_select_wX
+	.rva	.LSEH_begin_RingCore_nistz256_select_w7
+	.rva	.LSEH_end_RingCore_nistz256_select_w7
+	.rva	.LSEH_info_RingCore_nistz256_select_wX
 ___
 $code.=<<___	if ($avx>1);
-	.rva	.LSEH_begin_GFp_nistz256_avx2_select_w5
-	.rva	.LSEH_end_GFp_nistz256_avx2_select_w5
-	.rva	.LSEH_info_GFp_nistz256_avx2_select_wX
+	.rva	.LSEH_begin_RingCore_nistz256_avx2_select_w5
+	.rva	.LSEH_end_RingCore_nistz256_avx2_select_w5
+	.rva	.LSEH_info_RingCore_nistz256_avx2_select_wX
 
-	.rva	.LSEH_begin_GFp_nistz256_avx2_select_w7
-	.rva	.LSEH_end_GFp_nistz256_avx2_select_w7
-	.rva	.LSEH_info_GFp_nistz256_avx2_select_wX
+	.rva	.LSEH_begin_RingCore_nistz256_avx2_select_w7
+	.rva	.LSEH_end_RingCore_nistz256_avx2_select_w7
+	.rva	.LSEH_info_RingCore_nistz256_avx2_select_wX
 ___
 $code.=<<___;
-	.rva	.LSEH_begin_GFp_nistz256_point_double
-	.rva	.LSEH_end_GFp_nistz256_point_double
-	.rva	.LSEH_info_GFp_nistz256_point_double
+	.rva	.LSEH_begin_RingCore_nistz256_point_double
+	.rva	.LSEH_end_RingCore_nistz256_point_double
+	.rva	.LSEH_info_RingCore_nistz256_point_double
 
-	.rva	.LSEH_begin_GFp_nistz256_point_add
-	.rva	.LSEH_end_GFp_nistz256_point_add
-	.rva	.LSEH_info_GFp_nistz256_point_add
+	.rva	.LSEH_begin_RingCore_nistz256_point_add
+	.rva	.LSEH_end_RingCore_nistz256_point_add
+	.rva	.LSEH_info_RingCore_nistz256_point_add
 
-	.rva	.LSEH_begin_GFp_nistz256_point_add_affine
-	.rva	.LSEH_end_GFp_nistz256_point_add_affine
-	.rva	.LSEH_info_GFp_nistz256_point_add_affine
+	.rva	.LSEH_begin_RingCore_nistz256_point_add_affine
+	.rva	.LSEH_end_RingCore_nistz256_point_add_affine
+	.rva	.LSEH_info_RingCore_nistz256_point_add_affine
 ___
 $code.=<<___ if ($addx);
-	.rva	.LSEH_begin_GFp_nistz256_point_doublex
-	.rva	.LSEH_end_GFp_nistz256_point_doublex
-	.rva	.LSEH_info_GFp_nistz256_point_doublex
+	.rva	.LSEH_begin_RingCore_nistz256_point_doublex
+	.rva	.LSEH_end_RingCore_nistz256_point_doublex
+	.rva	.LSEH_info_RingCore_nistz256_point_doublex
 
-	.rva	.LSEH_begin_GFp_nistz256_point_addx
-	.rva	.LSEH_end_GFp_nistz256_point_addx
-	.rva	.LSEH_info_GFp_nistz256_point_addx
+	.rva	.LSEH_begin_RingCore_nistz256_point_addx
+	.rva	.LSEH_end_RingCore_nistz256_point_addx
+	.rva	.LSEH_info_RingCore_nistz256_point_addx
 
-	.rva	.LSEH_begin_GFp_nistz256_point_add_affinex
-	.rva	.LSEH_end_GFp_nistz256_point_add_affinex
-	.rva	.LSEH_info_GFp_nistz256_point_add_affinex
+	.rva	.LSEH_begin_RingCore_nistz256_point_add_affinex
+	.rva	.LSEH_end_RingCore_nistz256_point_add_affinex
+	.rva	.LSEH_info_RingCore_nistz256_point_add_affinex
 ___
 $code.=<<___;
 
 .section	.xdata
 .align	8
-.LSEH_info_GFp_nistz256_neg:
+.LSEH_info_RingCore_nistz256_neg:
 	.byte	9,0,0,0
 	.rva	short_handler
 	.rva	.Lneg_body,.Lneg_epilogue		# HandlerData[]
-.LSEH_info_GFp_p256_scalar_mul_mont:
+.LSEH_info_RingCore_p256_scalar_mul_mont:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lord_mul_body,.Lord_mul_epilogue	# HandlerData[]
 	.long	48,0
-.LSEH_info_GFp_p256_scalar_sqr_rep_mont:
+.LSEH_info_RingCore_p256_scalar_sqr_rep_mont:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lord_sqr_body,.Lord_sqr_epilogue	# HandlerData[]
@@ -4077,17 +4077,17 @@ $code.=<<___ if ($addx);
 	.long	48,0
 ___
 $code.=<<___;
-.LSEH_info_GFp_nistz256_mul_mont:
+.LSEH_info_RingCore_nistz256_mul_mont:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lmul_body,.Lmul_epilogue		# HandlerData[]
 	.long	48,0
-.LSEH_info_GFp_nistz256_sqr_mont:
+.LSEH_info_RingCore_nistz256_sqr_mont:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lsqr_body,.Lsqr_epilogue		# HandlerData[]
 	.long	48,0
-.LSEH_info_GFp_nistz256_select_wX:
+.LSEH_info_RingCore_nistz256_select_wX:
 	.byte	0x01,0x33,0x16,0x00
 	.byte	0x33,0xf8,0x09,0x00	#movaps 0x90(rsp),xmm15
 	.byte	0x2e,0xe8,0x08,0x00	#movaps 0x80(rsp),xmm14
@@ -4103,7 +4103,7 @@ $code.=<<___;
 	.align	8
 ___
 $code.=<<___	if ($avx>1);
-.LSEH_info_GFp_nistz256_avx2_select_wX:
+.LSEH_info_RingCore_nistz256_avx2_select_wX:
 	.byte	0x01,0x36,0x17,0x0b
 	.byte	0x36,0xf8,0x09,0x00	# vmovaps 0x90(rsp),xmm15
 	.byte	0x31,0xe8,0x08,0x00	# vmovaps 0x80(rsp),xmm14
@@ -4120,17 +4120,17 @@ $code.=<<___	if ($avx>1);
 	.align	8
 ___
 $code.=<<___;
-.LSEH_info_GFp_nistz256_point_double:
+.LSEH_info_RingCore_nistz256_point_double:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lpoint_doubleq_body,.Lpoint_doubleq_epilogue	# HandlerData[]
 	.long	32*5+56,0
-.LSEH_info_GFp_nistz256_point_add:
+.LSEH_info_RingCore_nistz256_point_add:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lpoint_addq_body,.Lpoint_addq_epilogue		# HandlerData[]
 	.long	32*18+56,0
-.LSEH_info_GFp_nistz256_point_add_affine:
+.LSEH_info_RingCore_nistz256_point_add_affine:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Ladd_affineq_body,.Ladd_affineq_epilogue	# HandlerData[]
@@ -4138,17 +4138,17 @@ $code.=<<___;
 ___
 $code.=<<___ if ($addx);
 .align	8
-.LSEH_info_GFp_nistz256_point_doublex:
+.LSEH_info_RingCore_nistz256_point_doublex:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lpoint_doublex_body,.Lpoint_doublex_epilogue	# HandlerData[]
 	.long	32*5+56,0
-.LSEH_info_GFp_nistz256_point_addx:
+.LSEH_info_RingCore_nistz256_point_addx:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Lpoint_addx_body,.Lpoint_addx_epilogue		# HandlerData[]
 	.long	32*18+56,0
-.LSEH_info_GFp_nistz256_point_add_affinex:
+.LSEH_info_RingCore_nistz256_point_add_affinex:
 	.byte	9,0,0,0
 	.rva	full_handler
 	.rva	.Ladd_affinex_body,.Ladd_affinex_epilogue	# HandlerData[]

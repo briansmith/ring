@@ -16,9 +16,9 @@
 #include "block.h"
 
 // Prevent missing prototypes warnings.
-void GFp_block128_xor_assign(Block *r, Block a);
+void RingCore_block128_xor_assign(Block *r, Block a);
 
-void GFp_block128_xor_assign(Block *r, Block a) {
+void RingCore_block128_xor_assign(Block *r, Block a) {
   r->subblocks[0] ^= a.subblocks[0];
   r->subblocks[1] ^= a.subblocks[1];
 }

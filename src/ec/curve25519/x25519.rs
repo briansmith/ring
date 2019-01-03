@@ -58,7 +58,7 @@ fn x25519_public_from_private(
 
     let private_key = private_key.bytes_less_safe().try_into_()?;
     unsafe {
-        GFp_x25519_public_from_private(public_out, private_key);
+        RingCore_x25519_public_from_private(public_out, private_key);
     }
     Ok(())
 }
@@ -71,7 +71,7 @@ fn x25519_ecdh(
         peer_public_key.as_slice_less_safe().try_into_()?;
 
     unsafe {
-        GFp_x25519_scalar_mult(out.try_into_()?, my_private_key, peer_public_key);
+        RingCore_x25519_scalar_mult(out.try_into_()?, my_private_key, peer_public_key);
     }
 
     let zeros: SharedSecret = [0; SHARED_SECRET_LEN];
@@ -98,8 +98,10 @@ type SharedSecret = [u8; SHARED_SECRET_LEN];
 const SHARED_SECRET_LEN: usize = ELEM_AND_SCALAR_LEN;
 
 extern "C" {
-    fn GFp_x25519_public_from_private(public_key_out: &mut PublicKey, private_key: &PrivateKey);
-    fn GFp_x25519_scalar_mult(
+    fn RingCore_x25519_public_from_private(
+        public_key_out: &mut PublicKey, private_key: &PrivateKey,
+    );
+    fn RingCore_x25519_scalar_mult(
         out: &mut ops::EncodedPoint, scalar: &ops::Scalar, point: &ops::EncodedPoint,
     );
 }

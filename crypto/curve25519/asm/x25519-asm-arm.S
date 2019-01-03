@@ -31,15 +31,15 @@
 .text
 .align 4
 
-.global GFp_x25519_NEON
+.global RingCore_x25519_NEON
 
 #if defined(__APPLE__)
-.private_extern _GFp_x25519_NEON
-_GFp_x25519_NEON:
+.private_extern _RingCore_x25519_NEON
+_RingCore_x25519_NEON:
 #else
-.hidden GFp_x25519_NEON
-.type GFp_x25519_NEON, %function
-GFp_x25519_NEON:
+.hidden RingCore_x25519_NEON
+.type RingCore_x25519_NEON, %function
+RingCore_x25519_NEON:
 #endif
 
 vpush {q4,q5,q6,q7}

@@ -107,12 +107,12 @@ $code.=<<___;
 .quad	1,0,0,0
 .asciz	"ECP_NISTZ256 for ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 
-// void	GFp_nistz256_mul_mont(BN_ULONG x0[4],const BN_ULONG x1[4],
+// void	RingCore_nistz256_mul_mont(BN_ULONG x0[4],const BN_ULONG x1[4],
 //					     const BN_ULONG x2[4]);
-.globl	GFp_nistz256_mul_mont
-.type	GFp_nistz256_mul_mont,%function
+.globl	RingCore_nistz256_mul_mont
+.type	RingCore_nistz256_mul_mont,%function
 .align	4
-GFp_nistz256_mul_mont:
+RingCore_nistz256_mul_mont:
 	stp	x29,x30,[sp,#-32]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -128,13 +128,13 @@ GFp_nistz256_mul_mont:
 	ldp	x19,x20,[sp,#16]
 	ldp	x29,x30,[sp],#32
 	ret
-.size	GFp_nistz256_mul_mont,.-GFp_nistz256_mul_mont
+.size	RingCore_nistz256_mul_mont,.-RingCore_nistz256_mul_mont
 
-// void	GFp_nistz256_sqr_mont(BN_ULONG x0[4],const BN_ULONG x1[4]);
-.globl	GFp_nistz256_sqr_mont
-.type	GFp_nistz256_sqr_mont,%function
+// void	RingCore_nistz256_sqr_mont(BN_ULONG x0[4],const BN_ULONG x1[4]);
+.globl	RingCore_nistz256_sqr_mont
+.type	RingCore_nistz256_sqr_mont,%function
 .align	4
-GFp_nistz256_sqr_mont:
+RingCore_nistz256_sqr_mont:
 	stp	x29,x30,[sp,#-32]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -149,14 +149,14 @@ GFp_nistz256_sqr_mont:
 	ldp	x19,x20,[sp,#16]
 	ldp	x29,x30,[sp],#32
 	ret
-.size	GFp_nistz256_sqr_mont,.-GFp_nistz256_sqr_mont
+.size	RingCore_nistz256_sqr_mont,.-RingCore_nistz256_sqr_mont
 
-// void	GFp_nistz256_add(BN_ULONG x0[4],const BN_ULONG x1[4],
+// void	RingCore_nistz256_add(BN_ULONG x0[4],const BN_ULONG x1[4],
 //					const BN_ULONG x2[4]);
-.globl	GFp_nistz256_add
-.type	GFp_nistz256_add,%function
+.globl	RingCore_nistz256_add
+.type	RingCore_nistz256_add,%function
 .align	4
-GFp_nistz256_add:
+RingCore_nistz256_add:
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -171,13 +171,13 @@ GFp_nistz256_add:
 
 	ldp	x29,x30,[sp],#16
 	ret
-.size	GFp_nistz256_add,.-GFp_nistz256_add
+.size	RingCore_nistz256_add,.-RingCore_nistz256_add
 
-// void	GFp_nistz256_neg(BN_ULONG x0[4],const BN_ULONG x1[4]);
-.globl	GFp_nistz256_neg
-.type	GFp_nistz256_neg,%function
+// void	RingCore_nistz256_neg(BN_ULONG x0[4],const BN_ULONG x1[4]);
+.globl	RingCore_nistz256_neg
+.type	RingCore_nistz256_neg,%function
 .align	4
-GFp_nistz256_neg:
+RingCore_nistz256_neg:
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -193,7 +193,7 @@ GFp_nistz256_neg:
 
 	ldp	x29,x30,[sp],#16
 	ret
-.size	GFp_nistz256_neg,.-GFp_nistz256_neg
+.size	RingCore_nistz256_neg,.-RingCore_nistz256_neg
 
 // note that __ecp_nistz256_mul_mont expects a[0-3] input pre-loaded
 // to $a0-$a3 and b[0] - to $bi
@@ -539,7 +539,7 @@ ___
 # ecp_nistz256.c
 #
 ########################################################################
-# void GFp_nistz256_point_double(P256_POINT *out,const P256_POINT *inp);
+# void RingCore_nistz256_point_double(P256_POINT *out,const P256_POINT *inp);
 #
 {
 my ($S,$M,$Zsqr,$tmp0)=map(32*$_,(0..3));
@@ -548,10 +548,10 @@ my ($S,$M,$Zsqr,$tmp0)=map(32*$_,(0..3));
 my ($rp_real,$ap_real) = map("x$_",(21,22));
 
 $code.=<<___;
-.globl	GFp_nistz256_point_double
-.type	GFp_nistz256_point_double,%function
+.globl	RingCore_nistz256_point_double
+.type	RingCore_nistz256_point_double,%function
 .align	5
-GFp_nistz256_point_double:
+RingCore_nistz256_point_double:
 	stp	x29,x30,[sp,#-80]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -687,12 +687,12 @@ GFp_nistz256_point_double:
 	ldp	x21,x22,[x29,#32]
 	ldp	x29,x30,[sp],#80
 	ret
-.size	GFp_nistz256_point_double,.-GFp_nistz256_point_double
+.size	RingCore_nistz256_point_double,.-RingCore_nistz256_point_double
 ___
 }
 
 ########################################################################
-# void GFp_nistz256_point_add(P256_POINT *out,const P256_POINT *in1,
+# void RingCore_nistz256_point_add(P256_POINT *out,const P256_POINT *in1,
 #			      const P256_POINT *in2);
 {
 my ($res_x,$res_y,$res_z,
@@ -704,10 +704,10 @@ my ($Z1sqr, $Z2sqr) = ($Hsqr, $Rsqr);
 my ($rp_real,$ap_real,$bp_real,$in1infty,$in2infty,$temp)=map("x$_",(21..26));
 
 $code.=<<___;
-.globl	GFp_nistz256_point_add
-.type	GFp_nistz256_point_add,%function
+.globl	RingCore_nistz256_point_add
+.type	RingCore_nistz256_point_add,%function
 .align	5
-GFp_nistz256_point_add:
+RingCore_nistz256_point_add:
 	stp	x29,x30,[sp,#-80]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -952,12 +952,12 @@ $code.=<<___;
 	ldp	x25,x26,[x29,#64]
 	ldp	x29,x30,[sp],#80
 	ret
-.size	GFp_nistz256_point_add,.-GFp_nistz256_point_add
+.size	RingCore_nistz256_point_add,.-RingCore_nistz256_point_add
 ___
 }
 
 ########################################################################
-# void GFp_nistz256_point_add_affine(P256_POINT *out,const P256_POINT *in1,
+# void RingCore_nistz256_point_add_affine(P256_POINT *out,const P256_POINT *in1,
 #				     const P256_POINT_AFFINE *in2);
 {
 my ($res_x,$res_y,$res_z,
@@ -968,10 +968,10 @@ my $Z1sqr = $S2;
 my ($rp_real,$ap_real,$bp_real,$in1infty,$in2infty,$temp)=map("x$_",(21..26));
 
 $code.=<<___;
-.globl	GFp_nistz256_point_add_affine
-.type	GFp_nistz256_point_add_affine,%function
+.globl	RingCore_nistz256_point_add_affine
+.type	RingCore_nistz256_point_add_affine,%function
 .align	5
-GFp_nistz256_point_add_affine:
+RingCore_nistz256_point_add_affine:
 	stp	x29,x30,[sp,#-80]!
 	add	x29,sp,#0
 	stp	x19,x20,[sp,#16]
@@ -1161,7 +1161,7 @@ $code.=<<___;
 	ldp	x25,x26,[x29,#64]
 	ldp	x29,x30,[sp],#80
 	ret
-.size	GFp_nistz256_point_add_affine,.-GFp_nistz256_point_add_affine
+.size	RingCore_nistz256_point_add_affine,.-RingCore_nistz256_point_add_affine
 ___
 }	}
 

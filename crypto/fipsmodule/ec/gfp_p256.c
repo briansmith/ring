@@ -25,21 +25,21 @@ typedef Limb Scalar[P256_LIMBS];
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-void GFp_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
+void RingCore_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b);
-void GFp_p256_scalar_sqr_mont(ScalarMont r, const ScalarMont a);
-void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, int rep);
+void RingCore_p256_scalar_sqr_mont(ScalarMont r, const ScalarMont a);
+void RingCore_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, int rep);
 
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_X86)
-void GFp_nistz256_sqr_mont(Elem r, const Elem a) {
+void RingCore_nistz256_sqr_mont(Elem r, const Elem a) {
   /* XXX: Inefficient. TODO: optimize with dedicated squaring routine. */
-  GFp_nistz256_mul_mont(r, a, a);
+  RingCore_nistz256_mul_mont(r, a, a);
 }
 #endif
 
 #if !defined(OPENSSL_X86_64)
-void GFp_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
+void RingCore_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b) {
   static const BN_ULONG N[] = {
     TOBN(0xf3b9cac2, 0xfc632551),
@@ -51,24 +51,24 @@ void GFp_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
     BN_MONT_CTX_N0(0xccd1c8aa, 0xee00bc4f)
   };
   /* XXX: Inefficient. TODO: optimize with dedicated multiplication routine. */
-  GFp_bn_mul_mont(r, a, b, N, N_N0, P256_LIMBS);
+  RingCore_bn_mul_mont(r, a, b, N, N_N0, P256_LIMBS);
 }
 #endif
 
 #if defined(OPENSSL_X86_64)
-void GFp_p256_scalar_sqr_mont(ScalarMont r, const ScalarMont a) {
-  GFp_p256_scalar_sqr_rep_mont(r, a, 1);
+void RingCore_p256_scalar_sqr_mont(ScalarMont r, const ScalarMont a) {
+  RingCore_p256_scalar_sqr_rep_mont(r, a, 1);
 }
 #else
-void GFp_p256_scalar_sqr_mont(ScalarMont r, const ScalarMont a) {
-  GFp_p256_scalar_mul_mont(r, a, a);
+void RingCore_p256_scalar_sqr_mont(ScalarMont r, const ScalarMont a) {
+  RingCore_p256_scalar_mul_mont(r, a, a);
 }
 
-void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, int rep) {
+void RingCore_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, int rep) {
   assert(rep >= 1);
-  GFp_p256_scalar_sqr_mont(r, a);
+  RingCore_p256_scalar_sqr_mont(r, a);
   for (int i = 1; i < rep; ++i) {
-    GFp_p256_scalar_sqr_mont(r, r);
+    RingCore_p256_scalar_sqr_mont(r, r);
   }
 }
 #endif
@@ -80,7 +80,7 @@ void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, int rep) {
 
 /* TODO(perf): Optimize these. */
 
-void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
+void RingCore_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
                             int index) {
   assert(index >= 0);
   size_t index_s = (size_t)index; /* XXX: constant time? */
@@ -103,7 +103,7 @@ void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
   limbs_copy(out->Z, z, P256_LIMBS);
 }
 
-void GFp_nistz256_select_w7(P256_POINT_AFFINE *out,
+void RingCore_nistz256_select_w7(P256_POINT_AFFINE *out,
                             const P256_POINT_AFFINE table[64], int index) {
   assert(index >= 0);
   size_t index_as_s = (size_t)index; /* XXX: constant time? */

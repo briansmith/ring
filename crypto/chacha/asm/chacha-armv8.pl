@@ -124,27 +124,27 @@ $code.=<<___;
 
 .text
 
-.extern	GFp_armcap_P
+.extern	RingCore_armcap_P
 
 .align	5
 .Lsigma:
 .quad	0x3320646e61707865,0x6b20657479622d32		// endian-neutral
 .Lone:
 .long	1,0,0,0
-.LGFp_armcap_P:
+.LRingCore_armcap_P:
 #ifdef	__ILP32__
-.long	GFp_armcap_P-.
+.long	RingCore_armcap_P-.
 #else
-.quad	GFp_armcap_P-.
+.quad	RingCore_armcap_P-.
 #endif
 .asciz	"ChaCha20 for ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 
-.globl	GFp_ChaCha20_ctr32
-.type	GFp_ChaCha20_ctr32,%function
+.globl	RingCore_ChaCha20_ctr32
+.type	RingCore_ChaCha20_ctr32,%function
 .align	5
-GFp_ChaCha20_ctr32:
+RingCore_ChaCha20_ctr32:
 	cbz	$len,.Labort
-	adr	@x[0],.LGFp_armcap_P
+	adr	@x[0],.LRingCore_armcap_P
 	cmp	$len,#192
 	b.lo	.Lshort
 #ifdef	__ILP32__
@@ -333,7 +333,7 @@ $code.=<<___;
 	ldp	x27,x28,[x29,#80]
 	ldp	x29,x30,[sp],#96
 	ret
-.size	GFp_ChaCha20_ctr32,.-GFp_ChaCha20_ctr32
+.size	RingCore_ChaCha20_ctr32,.-RingCore_ChaCha20_ctr32
 ___
 
 {{{

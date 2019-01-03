@@ -94,7 +94,7 @@ open STDOUT,">$output";
 $sse2=0;
 for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 
-&external_label("GFp_ia32cap_P") if ($sse2);
+&external_label("RingCore_ia32cap_P") if ($sse2);
 
 
 ########################################################################
@@ -207,14 +207,14 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 &function_end_B("_ecp_nistz256_div_by_2");
 
 ########################################################################
-# void GFp_nistz256_add(BN_ULONG edi[8],const BN_ULONG esi[8],
+# void RingCore_nistz256_add(BN_ULONG edi[8],const BN_ULONG esi[8],
 #					const BN_ULONG ebp[8]);
-&function_begin("GFp_nistz256_add");
+&function_begin("RingCore_nistz256_add");
 	&mov	("esi",&wparam(1));
 	&mov	("ebp",&wparam(2));
 	&mov	("edi",&wparam(0));
 	&call	("_ecp_nistz256_add");
-&function_end("GFp_nistz256_add");
+&function_end("RingCore_nistz256_add");
 
 &function_begin_B("_ecp_nistz256_add");
 	&mov	("eax",&DWP(0,"esi"));
@@ -372,8 +372,8 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 &function_end_B("_ecp_nistz256_sub");
 
 ########################################################################
-# void GFp_nistz256_neg(BN_ULONG edi[8],const BN_ULONG esi[8]);
-&function_begin("GFp_nistz256_neg");
+# void RingCore_nistz256_neg(BN_ULONG edi[8],const BN_ULONG esi[8]);
+&function_begin("RingCore_nistz256_neg");
 	&mov	("ebp",&wparam(1));
 	&mov	("edi",&wparam(0));
 
@@ -392,7 +392,7 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&call	("_ecp_nistz256_sub");
 
 	&stack_pop(8);
-&function_end("GFp_nistz256_neg");
+&function_end("RingCore_nistz256_neg");
 
 &function_begin_B("_picup_eax");
 	&mov	("eax",&DWP(0,"esp"));
@@ -400,19 +400,19 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 &function_end_B("_picup_eax");
 
 ########################################################################
-# void GFp_nistz256_mul_mont(BN_ULONG edi[8],const BN_ULONG esi[8],
+# void RingCore_nistz256_mul_mont(BN_ULONG edi[8],const BN_ULONG esi[8],
 #					     const BN_ULONG ebp[8]);
-&function_begin("GFp_nistz256_mul_mont");
+&function_begin("RingCore_nistz256_mul_mont");
 	&mov	("esi",&wparam(1));
 	&mov	("ebp",&wparam(2));
 						if ($sse2) {
 	&call	("_picup_eax");
     &set_label("pic");
-	&picmeup("eax","GFp_ia32cap_P","eax",&label("pic"));
+	&picmeup("eax","RingCore_ia32cap_P","eax",&label("pic"));
 	&mov	("eax",&DWP(0,"eax"));		}
 	&mov	("edi",&wparam(0));
 	&call	("_ecp_nistz256_mul_mont");
-&function_end("GFp_nistz256_mul_mont");
+&function_end("RingCore_nistz256_mul_mont");
 
 &function_begin_B("_ecp_nistz256_mul_mont");
 						if ($sse2) {
@@ -762,22 +762,22 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 # ecp_nistz256.c
 #
 ########################################################################
-# void GFp_nistz256_point_double(P256_POINT *out,const P256_POINT *inp);
+# void RingCore_nistz256_point_double(P256_POINT *out,const P256_POINT *inp);
 #
 &static_label("point_double_shortcut");
-&function_begin("GFp_nistz256_point_double");
+&function_begin("RingCore_nistz256_point_double");
 {   my ($S,$M,$Zsqr,$in_x,$tmp0)=map(32*$_,(0..4));
 
 	&mov	("esi",&wparam(1));
 
 	# above map() describes stack layout with 5 temporary
 	# 256-bit vectors on top, then we take extra word for
-	# GFp_ia32cap_P copy.
+	# RingCore_ia32cap_P copy.
 	&stack_push(8*5+1);
 						if ($sse2) {
 	&call	("_picup_eax");
     &set_label("pic");
-	&picmeup("edx","GFp_ia32cap_P","eax",&label("pic"));
+	&picmeup("edx","RingCore_ia32cap_P","eax",&label("pic"));
 	&mov	("ebp",&DWP(0,"edx"));		}
 
 &set_label("point_double_shortcut");
@@ -797,27 +797,27 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&mov	(&DWP($in_x+20,"esp"),"ebx");
 	&mov	(&DWP($in_x+24,"esp"),"ecx");
 	&mov	(&DWP($in_x+28,"esp"),"edx");
-	&mov	(&DWP(32*5,"esp"),"ebp");	# GFp_ia32cap_P copy
+	&mov	(&DWP(32*5,"esp"),"ebp");	# RingCore_ia32cap_P copy
 
 	&lea	("ebp",&DWP(32,"esi"));
 	&lea	("esi",&DWP(32,"esi"));
 	&lea	("edi",&DWP($S,"esp"));
 	&call	("_ecp_nistz256_add");		# p256_mul_by_2(S, in_y);
 
-	&mov	("eax",&DWP(32*5,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*5,"esp"));	# RingCore_ia32cap_P copy
 	&mov	("esi",64);
 	&add	("esi",&wparam(1));
 	&lea	("edi",&DWP($Zsqr,"esp"));
 	&mov	("ebp","esi");
 	&call	("_ecp_nistz256_mul_mont");	# p256_sqr_mont(Zsqr, in_z);
 
-	&mov	("eax",&DWP(32*5,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*5,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($S,"esp"));
 	&lea	("ebp",&DWP($S,"esp"));
 	&lea	("edi",&DWP($S,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_sqr_mont(S, S);
 
-	&mov	("eax",&DWP(32*5,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*5,"esp"));	# RingCore_ia32cap_P copy
 	&mov	("ebp",&wparam(1));
 	&lea	("esi",&DWP(32,"ebp"));
 	&lea	("ebp",&DWP(64,"ebp"));
@@ -840,13 +840,13 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&lea	("edi",&DWP($Zsqr,"esp"));
 	&call	("_ecp_nistz256_sub");		# p256_sub(Zsqr, in_x, Zsqr);
 
-	&mov	("eax",&DWP(32*5,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*5,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($S,"esp"));
 	&lea	("ebp",&DWP($S,"esp"));
 	&lea	("edi",&DWP($tmp0,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_sqr_mont(tmp0, S);
 
-	&mov	("eax",&DWP(32*5,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*5,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($M,"esp"));
 	&lea	("ebp",&DWP($Zsqr,"esp"));
 	&lea	("edi",&DWP($M,"esp"));
@@ -862,7 +862,7 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&lea	("edi",&DWP($tmp0,"esp"));
 	&call	("_ecp_nistz256_add");		# 1/2 p256_mul_by_3(M, M);
 
-	&mov	("eax",&DWP(32*5,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*5,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($in_x,"esp"));
 	&lea	("ebp",&DWP($S,"esp"));
 	&lea	("edi",&DWP($S,"esp"));
@@ -878,7 +878,7 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&lea	("edi",&DWP($tmp0,"esp"));
 	&call	("_ecp_nistz256_add");		# p256_mul_by_2(tmp0, S);
 
-	&mov	("eax",&DWP(32*5,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*5,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($M,"esp"));
 	&lea	("ebp",&DWP($M,"esp"));
 	&mov	("edi",&wparam(0));
@@ -893,7 +893,7 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&lea	("edi",&DWP($S,"esp"));
 	&call	("_ecp_nistz256_sub");		# p256_sub(S, S, res_x);
 
-	&mov	("eax",&DWP(32*5,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*5,"esp"));	# RingCore_ia32cap_P copy
 	&mov	("esi","edi");			# %edi is still &S
 	&lea	("ebp",&DWP($M,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_mul_mont(S, S, M);
@@ -905,12 +905,12 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&call	("_ecp_nistz256_sub");		# p256_sub(res_y, S, res_y);
 
 	&stack_pop(8*5+1);
-} &function_end("GFp_nistz256_point_double");
+} &function_end("RingCore_nistz256_point_double");
 
 ########################################################################
-# void GFp_nistz256_point_add(P256_POINT *out,const P256_POINT *in1,
+# void RingCore_nistz256_point_add(P256_POINT *out,const P256_POINT *in1,
 #					      const P256_POINT *in2);
-&function_begin("GFp_nistz256_point_add");
+&function_begin("RingCore_nistz256_point_add");
 {   my ($res_x,$res_y,$res_z,
 	$in1_x,$in1_y,$in1_z,
 	$in2_x,$in2_y,$in2_z,
@@ -923,12 +923,12 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	# above map() describes stack layout with 18 temporary
 	# 256-bit vectors on top, then we take extra words for
 	# !in1infty, !in2infty, result of check for zero and
-	# GFp_ia32cap_P copy. [one unused word for padding]
+	# RingCore_ia32cap_P copy. [one unused word for padding]
 	&stack_push(8*18+5);
 						if ($sse2) {
 	&call	("_picup_eax");
     &set_label("pic");
-	&picmeup("edx","GFp_ia32cap_P","eax",&label("pic"));
+	&picmeup("edx","RingCore_ia32cap_P","eax",&label("pic"));
 	&mov	("ebp",&DWP(0,"edx"));		}
 
 	&lea	("edi",&DWP($in2_x,"esp"));
@@ -977,37 +977,37 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&sar	("ebp",31);
 	&mov	(&DWP(32*18+0,"esp"),"ebp");	# !in1infty
 
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($in2_z,"esp"));
 	&lea	("ebp",&DWP($in2_z,"esp"));
 	&lea	("edi",&DWP($Z2sqr,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_sqr_mont(Z2sqr, in2_z);
 
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($in1_z,"esp"));
 	&lea	("ebp",&DWP($in1_z,"esp"));
 	&lea	("edi",&DWP($Z1sqr,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_sqr_mont(Z1sqr, in1_z);
 
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($Z2sqr,"esp"));
 	&lea	("ebp",&DWP($in2_z,"esp"));
 	&lea	("edi",&DWP($S1,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_mul_mont(S1, Z2sqr, in2_z);
 
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($Z1sqr,"esp"));
 	&lea	("ebp",&DWP($in1_z,"esp"));
 	&lea	("edi",&DWP($S2,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_mul_mont(S2, Z1sqr, in1_z);
 
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($in1_y,"esp"));
 	&lea	("ebp",&DWP($S1,"esp"));
 	&lea	("edi",&DWP($S1,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_mul_mont(S1, S1, in1_y);
 
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($in2_y,"esp"));
 	&lea	("ebp",&DWP($S2,"esp"));
 	&lea	("edi",&DWP($S2,"esp"));
@@ -1019,7 +1019,7 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&call	("_ecp_nistz256_sub");		# p256_sub(R, S2, S1);
 
 	&or	("ebx","eax");			# see if result is zero
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&or	("ebx","ecx");
 	&or	("ebx","edx");
 	&or	("ebx",&DWP(0,"edi"));
@@ -1033,7 +1033,7 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 
 	&call	("_ecp_nistz256_mul_mont");	# p256_mul_mont(U1, in1_x, Z2sqr);
 
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($in2_x,"esp"));
 	&lea	("ebp",&DWP($Z1sqr,"esp"));
 	&lea	("edi",&DWP($U2,"esp"));
@@ -1070,42 +1070,42 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 
 &set_label("add_double",16);
 	&mov	("esi",&wparam(1));
-	&mov	("ebp",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("ebp",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&add	("esp",4*((8*18+5)-(8*5+1)));	# difference in frame sizes
 	&jmp	(&label("point_double_shortcut"));
 
 &set_label("add_proceed",16);
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($R,"esp"));
 	&lea	("ebp",&DWP($R,"esp"));
 	&lea	("edi",&DWP($Rsqr,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_sqr_mont(Rsqr, R);
 
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($H,"esp"));
 	&lea	("ebp",&DWP($in1_z,"esp"));
 	&lea	("edi",&DWP($res_z,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_mul_mont(res_z, H, in1_z);
 
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($H,"esp"));
 	&lea	("ebp",&DWP($H,"esp"));
 	&lea	("edi",&DWP($Hsqr,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_sqr_mont(Hsqr, H);
 
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($in2_z,"esp"));
 	&lea	("ebp",&DWP($res_z,"esp"));
 	&lea	("edi",&DWP($res_z,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_mul_mont(res_z, res_z, in2_z);
 
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($Hsqr,"esp"));
 	&lea	("ebp",&DWP($U1,"esp"));
 	&lea	("edi",&DWP($U2,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_mul_mont(U2, U1, Hsqr);
 
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($H,"esp"));
 	&lea	("ebp",&DWP($Hsqr,"esp"));
 	&lea	("edi",&DWP($Hcub,"esp"));
@@ -1131,13 +1131,13 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&lea	("edi",&DWP($res_y,"esp"));
 	&call	("_ecp_nistz256_sub");		# p256_sub(res_y, U2, res_x);
 
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($Hcub,"esp"));
 	&lea	("ebp",&DWP($S1,"esp"));
 	&lea	("edi",&DWP($S2,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_mul_mont(S2, S1, Hcub);
 
-	&mov	("eax",&DWP(32*18+12,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*18+12,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($R,"esp"));
 	&lea	("ebp",&DWP($res_y,"esp"));
 	&lea	("edi",&DWP($res_y,"esp"));
@@ -1183,13 +1183,13 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
     }
     &set_label("add_done");
 	&stack_pop(8*18+5);
-} &function_end("GFp_nistz256_point_add");
+} &function_end("RingCore_nistz256_point_add");
 
 ########################################################################
-# void GFp_nistz256_point_add_affine(P256_POINT *out,
+# void RingCore_nistz256_point_add_affine(P256_POINT *out,
 #				     const P256_POINT *in1,
 #				     const P256_POINT_AFFINE *in2);
-&function_begin("GFp_nistz256_point_add_affine");
+&function_begin("RingCore_nistz256_point_add_affine");
 {
     my ($res_x,$res_y,$res_z,
 	$in1_x,$in1_y,$in1_z,
@@ -1202,12 +1202,12 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 
 	# above map() describes stack layout with 15 temporary
 	# 256-bit vectors on top, then we take extra words for
-	# !in1infty, !in2infty, and GFp_ia32cap_P copy.
+	# !in1infty, !in2infty, and RingCore_ia32cap_P copy.
 	&stack_push(8*15+3);
 						if ($sse2) {
 	&call	("_picup_eax");
     &set_label("pic");
-	&picmeup("edx","GFp_ia32cap_P","eax",&label("pic"));
+	&picmeup("edx","RingCore_ia32cap_P","eax",&label("pic"));
 	&mov	("ebp",&DWP(0,"edx"));		}
 
 	&lea	("edi",&DWP($in1_x,"esp"));
@@ -1251,7 +1251,7 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&or	("ebp","edx");
     }
 	&xor	("ebx","ebx");
-	&mov	("eax",&DWP(32*15+8,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*15+8,"esp"));	# RingCore_ia32cap_P copy
 	&sub	("ebx","ebp");
 	 &lea	("esi",&DWP($in1_z,"esp"));
 	&or	("ebx","ebp");
@@ -1262,13 +1262,13 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 
 	&call	("_ecp_nistz256_mul_mont");	# p256_sqr_mont(Z1sqr, in1_z);
 
-	&mov	("eax",&DWP(32*15+8,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*15+8,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($in2_x,"esp"));
 	&mov	("ebp","edi");			# %esi is stull &Z1sqr
 	&lea	("edi",&DWP($U2,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_mul_mont(U2, Z1sqr, in2_x);
 
-	&mov	("eax",&DWP(32*15+8,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*15+8,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($in1_z,"esp"));
 	&lea	("ebp",&DWP($Z1sqr,"esp"));
 	&lea	("edi",&DWP($S2,"esp"));
@@ -1279,13 +1279,13 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&lea	("edi",&DWP($H,"esp"));
 	&call	("_ecp_nistz256_sub");		# p256_sub(H, U2, in1_x);
 
-	&mov	("eax",&DWP(32*15+8,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*15+8,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($in2_y,"esp"));
 	&lea	("ebp",&DWP($S2,"esp"));
 	&lea	("edi",&DWP($S2,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_mul_mont(S2, S2, in2_y);
 
-	&mov	("eax",&DWP(32*15+8,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*15+8,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($in1_z,"esp"));
 	&lea	("ebp",&DWP($H,"esp"));
 	&lea	("edi",&DWP($res_z,"esp"));
@@ -1296,25 +1296,25 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&lea	("edi",&DWP($R,"esp"));
 	&call	("_ecp_nistz256_sub");		# p256_sub(R, S2, in1_y);
 
-	&mov	("eax",&DWP(32*15+8,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*15+8,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($H,"esp"));
 	&lea	("ebp",&DWP($H,"esp"));
 	&lea	("edi",&DWP($Hsqr,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_sqr_mont(Hsqr, H);
 
-	&mov	("eax",&DWP(32*15+8,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*15+8,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($R,"esp"));
 	&lea	("ebp",&DWP($R,"esp"));
 	&lea	("edi",&DWP($Rsqr,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_sqr_mont(Rsqr, R);
 
-	&mov	("eax",&DWP(32*15+8,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*15+8,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($in1_x,"esp"));
 	&lea	("ebp",&DWP($Hsqr,"esp"));
 	&lea	("edi",&DWP($U2,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_mul_mont(U2, in1_x, Hsqr);
 
-	&mov	("eax",&DWP(32*15+8,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*15+8,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($H,"esp"));
 	&lea	("ebp",&DWP($Hsqr,"esp"));
 	&lea	("edi",&DWP($Hcub,"esp"));
@@ -1340,13 +1340,13 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&lea	("edi",&DWP($res_y,"esp"));
 	&call	("_ecp_nistz256_sub");		# p256_sub(res_y, U2, res_x);
 
-	&mov	("eax",&DWP(32*15+8,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*15+8,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($Hcub,"esp"));
 	&lea	("ebp",&DWP($in1_y,"esp"));
 	&lea	("edi",&DWP($S2,"esp"));
 	&call	("_ecp_nistz256_mul_mont");	# p256_mul_mont(S2, Hcub, in1_y);
 
-	&mov	("eax",&DWP(32*15+8,"esp"));	# GFp_ia32cap_P copy
+	&mov	("eax",&DWP(32*15+8,"esp"));	# RingCore_ia32cap_P copy
 	&lea	("esi",&DWP($R,"esp"));
 	&lea	("ebp",&DWP($res_y,"esp"));
 	&lea	("edi",&DWP($res_y,"esp"));
@@ -1393,7 +1393,7 @@ for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 	&mov	(&DWP($i,"edi"),"eax");
     }
 	&stack_pop(8*15+3);
-} &function_end("GFp_nistz256_point_add_affine");
+} &function_end("RingCore_nistz256_point_add_affine");
 
 &asm_finish();
 

@@ -18,9 +18,9 @@ pub fn cache_detected_features() {
     {
         use std;
         extern "C" {
-            fn GFp_cpuid_setup();
+            fn RingCore_cpuid_setup();
         }
         static INIT: std::sync::Once = std::sync::ONCE_INIT;
-        INIT.call_once(|| unsafe { GFp_cpuid_setup() });
+        INIT.call_once(|| unsafe { RingCore_cpuid_setup() });
     }
 }

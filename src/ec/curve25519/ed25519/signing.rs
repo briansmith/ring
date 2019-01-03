@@ -151,14 +151,14 @@ impl<'a> KeyPair {
 
         let mut scalar = [0u8; SCALAR_LEN];
         scalar.copy_from_slice(&scalar_encoded);
-        unsafe { GFp_x25519_sc_mask(&mut scalar) };
+        unsafe { RingCore_x25519_sc_mask(&mut scalar) };
 
         let mut prefix = [0u8; PREFIX_LEN];
         prefix.copy_from_slice(prefix_encoded);
 
         let mut a = ExtPoint::new_at_infinity();
         unsafe {
-            GFp_x25519_ge_scalarmult_base(&mut a, &scalar);
+            RingCore_x25519_ge_scalarmult_base(&mut a, &scalar);
         }
 
         Self {
@@ -184,13 +184,13 @@ impl<'a> KeyPair {
 
             let mut r = ExtPoint::new_at_infinity();
             unsafe {
-                GFp_x25519_ge_scalarmult_base(&mut r, &nonce);
+                RingCore_x25519_ge_scalarmult_base(&mut r, &nonce);
             }
             *signature_r = r.into_encoded_point();
             let hram_digest = eddsa_digest(signature_r, &self.public_key.as_ref(), msg);
             let hram = digest_scalar(hram_digest);
             unsafe {
-                GFp_x25519_sc_muladd(signature_s, &hram, &self.private_scalar, &nonce);
+                RingCore_x25519_sc_muladd(signature_s, &hram, &self.private_scalar, &nonce);
             }
 
             SIGNATURE_LEN
@@ -224,9 +224,9 @@ fn unwrap_pkcs8(
 }
 
 extern "C" {
-    fn GFp_x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Seed);
-    fn GFp_x25519_sc_mask(a: &mut Scalar);
-    fn GFp_x25519_sc_muladd(s: &mut Scalar, a: &Scalar, b: &Scalar, c: &Scalar);
+    fn RingCore_x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Seed);
+    fn RingCore_x25519_sc_mask(a: &mut Scalar);
+    fn RingCore_x25519_sc_muladd(s: &mut Scalar, a: &Scalar, b: &Scalar, c: &Scalar);
 }
 
 type Prefix = [u8; PREFIX_LEN];

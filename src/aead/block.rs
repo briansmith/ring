@@ -57,10 +57,10 @@ impl Block {
     #[inline]
     pub fn bitxor_assign(&mut self, a: Block) {
         extern "C" {
-            fn GFp_block128_xor_assign(r: &mut Block, a: Block);
+            fn RingCore_block128_xor_assign(r: &mut Block, a: Block);
         }
         unsafe {
-            GFp_block128_xor_assign(self, a);
+            RingCore_block128_xor_assign(self, a);
         }
     }
 }

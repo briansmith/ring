@@ -217,22 +217,22 @@ K256:
 .word	0				@ terminator
 #if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
 .LOPENSSL_armcap:
-.word	GFp_armcap_P-.Lsha256_block_data_order
+.word	RingCore_armcap_P-.Lsha256_block_data_order
 #endif
 .align	5
 
-.global	GFp_sha256_block_data_order
-.type	GFp_sha256_block_data_order,%function
-GFp_sha256_block_data_order:
+.global	RingCore_sha256_block_data_order
+.type	RingCore_sha256_block_data_order,%function
+RingCore_sha256_block_data_order:
 .Lsha256_block_data_order:
 #if __ARM_ARCH__<7 && !defined(__thumb2__)
-	sub	r3,pc,#8		@ GFp_sha256_block_data_order
+	sub	r3,pc,#8		@ RingCore_sha256_block_data_order
 #else
 	adr	r3,.Lsha256_block_data_order
 #endif
 #if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
 	ldr	r12,.LOPENSSL_armcap
-	ldr	r12,[r3,r12]		@ GFp_armcap_P
+	ldr	r12,[r3,r12]		@ RingCore_armcap_P
 #ifdef	__APPLE__
 	ldr	r12,[r12]
 #endif
@@ -298,7 +298,7 @@ $code.=<<___;
 	moveq	pc,lr			@ be binary compatible with V4, yet
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	GFp_sha256_block_data_order,.-GFp_sha256_block_data_order
+.size	RingCore_sha256_block_data_order,.-RingCore_sha256_block_data_order
 ___
 ######################################################################
 # NEON stuff
@@ -687,8 +687,8 @@ $code.=<<___;
 .asciz  "SHA256 block transform for ARMv4/NEON/ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
 .align	2
 #if __ARM_MAX_ARCH__>=7 && !defined(__KERNEL__)
-.comm   GFp_armcap_P,4,4
-.hidden GFp_armcap_P
+.comm   RingCore_armcap_P,4,4
+.hidden RingCore_armcap_P
 #endif
 ___
 

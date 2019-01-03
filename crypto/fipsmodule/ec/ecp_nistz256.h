@@ -31,14 +31,14 @@ typedef struct {
 } P256_POINT_AFFINE;
 
 
-void GFp_nistz256_mul_mont(Limb res[P256_LIMBS], const Limb a[P256_LIMBS],
+void RingCore_nistz256_mul_mont(Limb res[P256_LIMBS], const Limb a[P256_LIMBS],
                            const Limb b[P256_LIMBS]);
-void GFp_nistz256_sqr_mont(Limb res[P256_LIMBS], const Limb a[P256_LIMBS]);
+void RingCore_nistz256_sqr_mont(Limb res[P256_LIMBS], const Limb a[P256_LIMBS]);
 
 /* Functions that perform constant time access to the precomputed tables */
-void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
+void RingCore_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
                             int index);
-void GFp_nistz256_select_w7(P256_POINT_AFFINE *out,
+void RingCore_nistz256_select_w7(P256_POINT_AFFINE *out,
                             const P256_POINT_AFFINE table[64], int index);
 
 #endif /* OPENSSL_HEADER_EC_ECP_NISTZ256_H */

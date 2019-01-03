@@ -70,7 +70,7 @@
     (r) = ret;                          \
   } while (0)
 
-BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
+BN_ULONG RingCore_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
                               BN_ULONG w) {
   BN_ULONG c1 = 0;
 

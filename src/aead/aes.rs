@@ -39,12 +39,12 @@ impl Key {
         match detect_implementation() {
             Implementation::HWAES => {
                 extern "C" {
-                    fn GFp_aes_hw_set_encrypt_key(
+                    fn RingCore_aes_hw_set_encrypt_key(
                         user_key: *const u8, bits: c::uint, key: &mut AES_KEY,
                     ) -> ZeroMeansSuccess;
                 }
                 Result::from(unsafe {
-                    GFp_aes_hw_set_encrypt_key(
+                    RingCore_aes_hw_set_encrypt_key(
                         bytes.as_ptr(),
                         key_bits.as_usize_bits() as c::uint,
                         &mut key,
@@ -55,12 +55,12 @@ impl Key {
             #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
             Implementation::VPAES => {
                 extern "C" {
-                    fn GFp_vpaes_set_encrypt_key(
+                    fn RingCore_vpaes_set_encrypt_key(
                         user_key: *const u8, bits: c::uint, key: &mut AES_KEY,
                     ) -> ZeroMeansSuccess;
                 }
                 Result::from(unsafe {
-                    GFp_vpaes_set_encrypt_key(
+                    RingCore_vpaes_set_encrypt_key(
                         bytes.as_ptr(),
                         key_bits.as_usize_bits() as c::uint,
                         &mut key,
@@ -70,12 +70,12 @@ impl Key {
 
             _ => {
                 extern "C" {
-                    fn GFp_aes_nohw_set_encrypt_key(
+                    fn RingCore_aes_nohw_set_encrypt_key(
                         user_key: *const u8, bits: c::uint, key: &mut AES_KEY,
                     ) -> ZeroMeansSuccess;
                 }
                 Result::from(unsafe {
-                    GFp_aes_nohw_set_encrypt_key(
+                    RingCore_aes_nohw_set_encrypt_key(
                         bytes.as_ptr(),
                         key_bits.as_usize_bits() as c::uint,
                         &mut key,
@@ -95,29 +95,29 @@ impl Key {
         match detect_implementation() {
             Implementation::HWAES => {
                 extern "C" {
-                    fn GFp_aes_hw_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
+                    fn RingCore_aes_hw_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
                 }
                 unsafe {
-                    GFp_aes_hw_encrypt(aliasing_const, aliasing_mut, &self.0);
+                    RingCore_aes_hw_encrypt(aliasing_const, aliasing_mut, &self.0);
                 }
             },
 
             #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
             Implementation::VPAES => {
                 extern "C" {
-                    fn GFp_vpaes_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
+                    fn RingCore_vpaes_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
                 }
                 unsafe {
-                    GFp_vpaes_encrypt(aliasing_const, aliasing_mut, &self.0);
+                    RingCore_vpaes_encrypt(aliasing_const, aliasing_mut, &self.0);
                 }
             },
 
             _ => {
                 extern "C" {
-                    fn GFp_aes_nohw_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
+                    fn RingCore_aes_nohw_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
                 }
                 unsafe {
-                    GFp_aes_nohw_encrypt(aliasing_const, aliasing_mut, &self.0);
+                    RingCore_aes_nohw_encrypt(aliasing_const, aliasing_mut, &self.0);
                 }
             },
         }
@@ -153,13 +153,13 @@ impl Key {
         match detect_implementation() {
             Implementation::HWAES => {
                 extern "C" {
-                    fn GFp_aes_hw_ctr32_encrypt_blocks(
+                    fn RingCore_aes_hw_ctr32_encrypt_blocks(
                         input: *const u8, output: *mut u8, blocks: c::size_t, key: &AES_KEY,
                         ivec: &Counter,
                     );
                 }
                 unsafe {
-                    GFp_aes_hw_ctr32_encrypt_blocks(input, output, blocks, &self.0, ctr);
+                    RingCore_aes_hw_ctr32_encrypt_blocks(input, output, blocks, &self.0, ctr);
                 }
                 ctr.increment_by_less_safe(blocks_u32);
             },
@@ -167,13 +167,13 @@ impl Key {
             #[cfg(target_arch = "arm")]
             Implementation::BSAES => {
                 extern "C" {
-                    fn GFp_bsaes_ctr32_encrypt_blocks(
+                    fn RingCore_bsaes_ctr32_encrypt_blocks(
                         input: *const u8, output: *mut u8, blocks: c::size_t, key: &AES_KEY,
                         ivec: &Counter,
                     );
                 }
                 unsafe {
-                    GFp_bsaes_ctr32_encrypt_blocks(input, output, blocks, &self.0, ctr);
+                    RingCore_bsaes_ctr32_encrypt_blocks(input, output, blocks, &self.0, ctr);
                 }
                 ctr.increment_by_less_safe(blocks_u32);
             },
@@ -233,19 +233,19 @@ pub enum Implementation {
 
 fn detect_implementation() -> Implementation {
     extern "C" {
-        fn GFp_aes_hw_capable() -> c::int;
+        fn RingCore_aes_hw_capable() -> c::int;
     }
 
-    if unsafe { GFp_aes_hw_capable() } != 0 {
+    if unsafe { RingCore_aes_hw_capable() } != 0 {
         return Implementation::HWAES;
     }
 
     #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
     {
         extern "C" {
-            fn GFp_vpaes_capable() -> c::int;
+            fn RingCore_vpaes_capable() -> c::int;
         }
-        if unsafe { GFp_vpaes_capable() } != 0 {
+        if unsafe { RingCore_vpaes_capable() } != 0 {
             return Implementation::VPAES;
         }
     }
@@ -253,9 +253,9 @@ fn detect_implementation() -> Implementation {
     #[cfg(target_arch = "arm")]
     {
         extern "C" {
-            fn GFp_bsaes_capable() -> c::int;
+            fn RingCore_bsaes_capable() -> c::int;
         }
-        if unsafe { GFp_bsaes_capable() } != 0 {
+        if unsafe { RingCore_bsaes_capable() } != 0 {
             return Implementation::BSAES;
         }
     }

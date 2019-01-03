@@ -590,13 +590,13 @@ $code.=<<___;
 .size	_x86_64_AES_encrypt_compact,.-_x86_64_AES_encrypt_compact
 ___
 
-# void GFp_aes_nohw_encrypt (const void *inp,void *out,const AES_KEY *key);
+# void RingCore_aes_nohw_encrypt (const void *inp,void *out,const AES_KEY *key);
 $code.=<<___;
 .align	16
-.globl	GFp_aes_nohw_encrypt
-.type	GFp_aes_nohw_encrypt,\@function,3
-.hidden	GFp_aes_nohw_encrypt
-GFp_aes_nohw_encrypt:
+.globl	RingCore_aes_nohw_encrypt
+.type	RingCore_aes_nohw_encrypt,\@function,3
+.hidden	RingCore_aes_nohw_encrypt
+RingCore_aes_nohw_encrypt:
 .cfi_startproc
 	mov	%rsp,%rax
 .cfi_def_cfa_register	%rax
@@ -674,7 +674,7 @@ GFp_aes_nohw_encrypt:
 .Lenc_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_aes_nohw_encrypt,.-GFp_aes_nohw_encrypt
+.size	RingCore_aes_nohw_encrypt,.-RingCore_aes_nohw_encrypt
 ___
 
 #------------------------------------------------------------------#
@@ -706,13 +706,13 @@ $code.=<<___;
 ___
 }
 
-# int GFp_aes_nohw_set_encrypt_key(const unsigned char *userKey, const int bits,
+# int RingCore_aes_nohw_set_encrypt_key(const unsigned char *userKey, const int bits,
 #                                 AES_KEY *key)
 $code.=<<___;
 .align	16
-.globl GFp_aes_nohw_set_encrypt_key
-.type  GFp_aes_nohw_set_encrypt_key,\@function,3
-GFp_aes_nohw_set_encrypt_key:
+.globl RingCore_aes_nohw_set_encrypt_key
+.type  RingCore_aes_nohw_set_encrypt_key,\@function,3
+RingCore_aes_nohw_set_encrypt_key:
 .cfi_startproc
 	push	%rbx
 .cfi_push	%rbx
@@ -741,7 +741,7 @@ GFp_aes_nohw_set_encrypt_key:
 .Lenc_key_epilogue:
 	ret
 .cfi_endproc
-.size GFp_aes_nohw_set_encrypt_key,.-GFp_aes_nohw_set_encrypt_key
+.size RingCore_aes_nohw_set_encrypt_key,.-RingCore_aes_nohw_set_encrypt_key
 
 .type	_x86_64_AES_set_encrypt_key,\@abi-omnipotent
 .align	16
@@ -1256,21 +1256,21 @@ key_se_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_GFp_aes_nohw_encrypt
-	.rva	.LSEH_end_GFp_aes_nohw_encrypt
-	.rva	.LSEH_info_GFp_aes_nohw_encrypt
+	.rva	.LSEH_begin_RingCore_aes_nohw_encrypt
+	.rva	.LSEH_end_RingCore_aes_nohw_encrypt
+	.rva	.LSEH_info_RingCore_aes_nohw_encrypt
 
-	.rva	.LSEH_begin_GFp_aes_nohw_set_encrypt_key
-	.rva	.LSEH_end_GFp_aes_nohw_set_encrypt_key
-	.rva	.LSEH_info_GFp_aes_nohw_set_encrypt_key
+	.rva	.LSEH_begin_RingCore_aes_nohw_set_encrypt_key
+	.rva	.LSEH_end_RingCore_aes_nohw_set_encrypt_key
+	.rva	.LSEH_info_RingCore_aes_nohw_set_encrypt_key
 
 .section	.xdata
 .align	8
-.LSEH_info_GFp_aes_nohw_encrypt:
+.LSEH_info_RingCore_aes_nohw_encrypt:
 	.byte	9,0,0,0
 	.rva	block_se_handler
 	.rva	.Lenc_prologue,.Lenc_epilogue	# HandlerData[]
-.LSEH_info_GFp_aes_nohw_set_encrypt_key:
+.LSEH_info_RingCore_aes_nohw_set_encrypt_key:
 	.byte	9,0,0,0
 	.rva	key_se_handler
 	.rva	.Lenc_key_prologue,.Lenc_key_epilogue	# HandlerData[]

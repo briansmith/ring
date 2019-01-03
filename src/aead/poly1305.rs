@@ -45,10 +45,10 @@ impl Context {
     #[inline]
     pub fn from_key(Key(key_and_nonce): Key) -> Context {
         extern "C" {
-            fn GFp_poly1305_blocks(
+            fn RingCore_poly1305_blocks(
                 state: &mut Opaque, input: *const u8, len: c::size_t, should_pad: Pad,
             );
-            fn GFp_poly1305_emit(state: &mut Opaque, tag: &mut Tag, nonce: &Nonce);
+            fn RingCore_poly1305_emit(state: &mut Opaque, tag: &mut Tag, nonce: &Nonce);
         }
 
         let key = DerivedKey(key_and_nonce[0].clone());
@@ -58,8 +58,8 @@ impl Context {
             opaque: Opaque([0u8; OPAQUE_LEN]),
             nonce,
             func: Funcs {
-                blocks_fn: GFp_poly1305_blocks,
-                emit_fn: GFp_poly1305_emit,
+                blocks_fn: RingCore_poly1305_blocks,
+                emit_fn: RingCore_poly1305_emit,
             },
         };
 
@@ -122,11 +122,11 @@ struct Funcs {
 #[inline]
 fn init(state: &mut Opaque, key: DerivedKey, func: &mut Funcs) -> Result<(), error::Unspecified> {
     extern "C" {
-        fn GFp_poly1305_init_asm(
+        fn RingCore_poly1305_init_asm(
             state: &mut Opaque, key: &DerivedKey, out_func: &mut Funcs,
         ) -> bssl::Result;
     }
-    Result::from(unsafe { GFp_poly1305_init_asm(state, &key, func) })
+    Result::from(unsafe { RingCore_poly1305_init_asm(state, &key, func) })
 }
 
 #[repr(u32)]

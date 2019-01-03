@@ -276,7 +276,7 @@ if (!$sse2) {{	# pure-MMX "May" version...
     # conflicts.
 
 }} else {{	# "June" MMX version...
-		# ... has slower "April" GFp_gcm_gmult_4bit_mmx with folded
+		# ... has slower "April" RingCore_gcm_gmult_4bit_mmx with folded
 		# loop. This is done to conserve code size...
 $S=16;		# shift factor for rem_4bit
 
@@ -373,7 +373,7 @@ sub mmx_loop() {
 	&bswap	($Zhh);
 }
 
-&function_begin("GFp_gcm_gmult_4bit_mmx");
+&function_begin("RingCore_gcm_gmult_4bit_mmx");
 	&mov	($inp,&wparam(0));	# load Xi
 	&mov	($Htbl,&wparam(1));	# load Htable
 
@@ -391,7 +391,7 @@ sub mmx_loop() {
 	&mov	(&DWP(4,$inp),$Zhl);
 	&mov	(&DWP(8,$inp),$Zlh);
 	&mov	(&DWP(0,$inp),$Zhh);
-&function_end("GFp_gcm_gmult_4bit_mmx");
+&function_end("RingCore_gcm_gmult_4bit_mmx");
 
 ######################################################################
 # Below subroutine is "528B" variant of "4-bit" GCM GHASH function
@@ -400,7 +400,7 @@ sub mmx_loop() {
 
 &static_label("rem_8bit");
 
-&function_begin("GFp_gcm_ghash_4bit_mmx");
+&function_begin("RingCore_gcm_ghash_4bit_mmx");
 { my ($Zlo,$Zhi) = ("mm7","mm6");
   my $rem_8bit = "esi";
   my $Htbl = "ebx";
@@ -595,7 +595,7 @@ sub mmx_loop() {
     &mov	("esp",&DWP(528+16+12,"esp"));	# restore original %esp
     &emms	();
 }
-&function_end("GFp_gcm_ghash_4bit_mmx");
+&function_end("RingCore_gcm_ghash_4bit_mmx");
 }}
 
 if ($sse2) {{
@@ -640,7 +640,7 @@ my ($Xhi,$Xi,$Hkey,$HK)=@_;
 sub clmul64x64_T3 {
 # Even though this subroutine offers visually better ILP, it
 # was empirically found to be a tad slower than above version.
-# At least in GFp_gcm_ghash_clmul context. But it's just as well,
+# At least in RingCore_gcm_ghash_clmul context. But it's just as well,
 # because loop modulo-scheduling is possible only thanks to
 # minimized "register" pressure...
 my ($Xhi,$Xi,$Hkey)=@_;
@@ -701,7 +701,7 @@ my ($Xhi,$Xi) = @_;
 	&pxor		($Xi,$Xhi)		#
 }
 
-&function_begin_B("GFp_gcm_init_clmul");
+&function_begin_B("RingCore_gcm_init_clmul");
 	&mov		($Htbl,&wparam(0));
 	&mov		($Xip,&wparam(1));
 
@@ -742,9 +742,9 @@ my ($Xhi,$Xi) = @_;
 	&movdqu		(&QWP(32,$Htbl),$T2);	# save Karatsuba "salt"
 
 	&ret		();
-&function_end_B("GFp_gcm_init_clmul");
+&function_end_B("RingCore_gcm_init_clmul");
 
-&function_begin_B("GFp_gcm_gmult_clmul");
+&function_begin_B("RingCore_gcm_gmult_clmul");
 	&mov		($Xip,&wparam(0));
 	&mov		($Htbl,&wparam(1));
 
@@ -766,9 +766,9 @@ my ($Xhi,$Xi) = @_;
 	&movdqu		(&QWP(0,$Xip),$Xi);
 
 	&ret	();
-&function_end_B("GFp_gcm_gmult_clmul");
+&function_end_B("RingCore_gcm_gmult_clmul");
 
-&function_begin("GFp_gcm_ghash_clmul");
+&function_begin("RingCore_gcm_ghash_clmul");
 	&mov		($Xip,&wparam(0));
 	&mov		($Htbl,&wparam(1));
 	&mov		($inp,&wparam(2));
@@ -917,7 +917,7 @@ my ($Xhi,$Xi) = @_;
 &set_label("done");
 	&pshufb		($Xi,$T3);
 	&movdqu		(&QWP(0,$Xip),$Xi);
-&function_end("GFp_gcm_ghash_clmul");
+&function_end("RingCore_gcm_ghash_clmul");
 
 } else {		# Algorithm 5. Kept for reference purposes.
 
@@ -966,7 +966,7 @@ my ($Xhi,$Xi)=@_;
 	&pxor		($Xi,$Xhi);		#
 }
 
-&function_begin_B("GFp_gcm_init_clmul");
+&function_begin_B("RingCore_gcm_init_clmul");
 	&mov		($Htbl,&wparam(0));
 	&mov		($Xip,&wparam(1));
 
@@ -987,9 +987,9 @@ my ($Xhi,$Xi)=@_;
 	&movdqu		(&QWP(16,$Htbl),$Xi);	# save H^2
 
 	&ret		();
-&function_end_B("GFp_gcm_init_clmul");
+&function_end_B("RingCore_gcm_init_clmul");
 
-&function_begin_B("GFp_gcm_gmult_clmul");
+&function_begin_B("RingCore_gcm_gmult_clmul");
 	&mov		($Xip,&wparam(0));
 	&mov		($Htbl,&wparam(1));
 
@@ -1010,9 +1010,9 @@ my ($Xhi,$Xi)=@_;
 	&movdqu		(&QWP(0,$Xip),$Xi);
 
 	&ret	();
-&function_end_B("GFp_gcm_gmult_clmul");
+&function_end_B("RingCore_gcm_gmult_clmul");
 
-&function_begin("GFp_gcm_ghash_clmul");
+&function_begin("RingCore_gcm_ghash_clmul");
 	&mov		($Xip,&wparam(0));
 	&mov		($Htbl,&wparam(1));
 	&mov		($inp,&wparam(2));
@@ -1098,7 +1098,7 @@ my ($Xhi,$Xi)=@_;
 &set_label("done");
 	&pshufb		($Xi,$T3);
 	&movdqu		(&QWP(0,$Xip),$Xi);
-&function_end("GFp_gcm_ghash_clmul");
+&function_end("RingCore_gcm_ghash_clmul");
 
 }
 

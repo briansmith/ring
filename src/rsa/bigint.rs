@@ -242,7 +242,7 @@ impl<M> Modulus<M> {
         if n.len() > MODULUS_MAX_LIMBS {
             return Err(error::KeyRejected::too_large());
         }
-        // The x86 implementation of `GFp_bn_mul_mont`, at least, requires at
+        // The x86 implementation of `RingCore_bn_mul_mont`, at least, requires at
         // least 4 limbs. For a long time we have required 4 limbs for all
         // targets, though this may be unnecessary. TODO: Replace this with
         // `n.len() < 256 / LIMB_BITS` so that 32-bit and 64-bit platforms
@@ -261,7 +261,7 @@ impl<M> Modulus<M> {
         // done by taking the lowest `N0_LIMBS_USED` limbs of `n`.
         let n0 = {
             extern "C" {
-                fn GFp_bn_neg_inv_mod_r_u64(n: u64) -> u64;
+                fn RingCore_bn_neg_inv_mod_r_u64(n: u64) -> u64;
             }
 
             // XXX: u64::from isn't guaranteed to be constant time.
@@ -273,7 +273,7 @@ impl<M> Modulus<M> {
                 debug_assert_eq!(LIMB_BITS, 32);
                 n_mod_r |= u64::from(n[1]) << 32;
             }
-            N0::from(unsafe { GFp_bn_neg_inv_mod_r_u64(n_mod_r) })
+            N0::from(unsafe { RingCore_bn_neg_inv_mod_r_u64(n_mod_r) })
         };
 
         let bits = limb::limbs_minimal_bits(&n.limbs);
@@ -497,7 +497,7 @@ pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
     a: &Elem<Larger, Unencoded>, m: &Modulus<Smaller>,
 ) -> Result<Elem<Smaller, RInverse>, error::Unspecified> {
     extern "C" {
-        fn GFp_bn_from_montgomery_in_place(
+        fn RingCore_bn_from_montgomery_in_place(
             r: *mut Limb, num_r: c::size_t, a: *mut Limb, num_a: c::size_t, n: *const Limb,
             num_n: c::size_t, n0: &N0,
         ) -> bssl::Result;
@@ -509,7 +509,7 @@ pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
 
     let mut r = m.zero();
     Result::from(unsafe {
-        GFp_bn_from_montgomery_in_place(
+        RingCore_bn_from_montgomery_in_place(
             r.limbs.as_mut_ptr(),
             r.limbs.len(),
             tmp.as_mut_ptr(),
@@ -920,10 +920,10 @@ pub fn elem_exp_consttime<M>(
 
     fn scatter(table: &mut [Limb], state: &[Limb], i: Window, num_limbs: usize) {
         extern "C" {
-            fn GFp_bn_scatter5(a: *const Limb, a_len: c::size_t, table: *mut Limb, i: Window);
+            fn RingCore_bn_scatter5(a: *const Limb, a_len: c::size_t, table: *mut Limb, i: Window);
         }
         unsafe {
-            GFp_bn_scatter5(
+            RingCore_bn_scatter5(
                 entry(state, ACC, num_limbs).as_ptr(),
                 num_limbs,
                 table.as_mut_ptr(),
@@ -934,10 +934,10 @@ pub fn elem_exp_consttime<M>(
 
     fn gather(table: &[Limb], state: &mut [Limb], i: Window, num_limbs: usize) {
         extern "C" {
-            fn GFp_bn_gather5(r: *mut Limb, a_len: c::size_t, table: *const Limb, i: Window);
+            fn RingCore_bn_gather5(r: *mut Limb, a_len: c::size_t, table: *const Limb, i: Window);
         }
         unsafe {
-            GFp_bn_gather5(
+            RingCore_bn_gather5(
                 entry_mut(state, ACC, num_limbs).as_mut_ptr(),
                 num_limbs,
                 table.as_ptr(),
@@ -956,13 +956,13 @@ pub fn elem_exp_consttime<M>(
 
     fn gather_mul_base(table: &[Limb], state: &mut [Limb], n0: &N0, i: Window, num_limbs: usize) {
         extern "C" {
-            fn GFp_bn_mul_mont_gather5(
+            fn RingCore_bn_mul_mont_gather5(
                 rp: *mut Limb, ap: *const Limb, table: *const Limb, np: *const Limb, n0: &N0,
                 num: c::size_t, power: Window,
             );
         }
         unsafe {
-            GFp_bn_mul_mont_gather5(
+            RingCore_bn_mul_mont_gather5(
                 entry_mut(state, ACC, num_limbs).as_mut_ptr(),
                 entry(state, BASE, num_limbs).as_ptr(),
                 table.as_ptr(),
@@ -976,13 +976,13 @@ pub fn elem_exp_consttime<M>(
 
     fn power(table: &[Limb], state: &mut [Limb], n0: &N0, i: Window, num_limbs: usize) {
         extern "C" {
-            fn GFp_bn_power5(
+            fn RingCore_bn_power5(
                 r: *mut Limb, a: *const Limb, table: *const Limb, n: *const Limb, n0: &N0,
                 num: c::size_t, i: Window,
             );
         }
         unsafe {
-            GFp_bn_power5(
+            RingCore_bn_power5(
                 entry_mut(state, ACC, num_limbs).as_mut_ptr(),
                 entry_mut(state, ACC, num_limbs).as_mut_ptr(),
                 table.as_ptr(),
@@ -1029,13 +1029,13 @@ pub fn elem_exp_consttime<M>(
     );
 
     extern "C" {
-        fn GFp_bn_from_montgomery(
+        fn RingCore_bn_from_montgomery(
             r: *mut Limb, a: *const Limb, not_used: *const Limb, n: *const Limb, n0: &N0,
             num: c::size_t,
         ) -> bssl::Result;
     }
     Result::from(unsafe {
-        GFp_bn_from_montgomery(
+        RingCore_bn_from_montgomery(
             entry_mut(state, ACC, num_limbs).as_mut_ptr(),
             entry(state, ACC, num_limbs).as_ptr(),
             core::ptr::null(),
@@ -1160,7 +1160,7 @@ fn limbs_mont_mul(r: &mut [Limb], a: &[Limb], m: &[Limb], n0: &N0) {
     debug_assert_eq!(r.len(), m.len());
     debug_assert_eq!(a.len(), m.len());
     unsafe {
-        GFp_bn_mul_mont(
+        RingCore_bn_mul_mont(
             r.as_mut_ptr(),
             r.as_ptr(),
             a.as_ptr(),
@@ -1178,7 +1178,7 @@ fn limbs_mont_product(r: &mut [Limb], a: &[Limb], b: &[Limb], m: &[Limb], n0: &N
     debug_assert_eq!(a.len(), m.len());
     debug_assert_eq!(b.len(), m.len());
     unsafe {
-        GFp_bn_mul_mont(
+        RingCore_bn_mul_mont(
             r.as_mut_ptr(),
             a.as_ptr(),
             b.as_ptr(),
@@ -1193,7 +1193,7 @@ fn limbs_mont_product(r: &mut [Limb], a: &[Limb], b: &[Limb], m: &[Limb], n0: &N
 fn limbs_mont_square(r: &mut [Limb], m: &[Limb], n0: &N0) {
     debug_assert_eq!(r.len(), m.len());
     unsafe {
-        GFp_bn_mul_mont(
+        RingCore_bn_mul_mont(
             r.as_mut_ptr(),
             r.as_ptr(),
             r.as_ptr(),
@@ -1206,7 +1206,7 @@ fn limbs_mont_square(r: &mut [Limb], m: &[Limb], n0: &N0) {
 
 extern "C" {
     // `r` and/or 'a' and/or 'b' may alias.
-    fn GFp_bn_mul_mont(
+    fn RingCore_bn_mul_mont(
         r: *mut Limb, a: *const Limb, b: *const Limb, n: *const Limb, n0: &N0, num_limbs: c::size_t,
     );
 }

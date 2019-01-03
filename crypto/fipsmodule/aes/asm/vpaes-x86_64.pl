@@ -451,10 +451,10 @@ _vpaes_schedule_mangle:
 #
 # Interface to OpenSSL
 #
-.globl	GFp_${PREFIX}_set_encrypt_key
-.type	GFp_${PREFIX}_set_encrypt_key,\@function,3
+.globl	RingCore_${PREFIX}_set_encrypt_key
+.type	RingCore_${PREFIX}_set_encrypt_key,\@function,3
 .align	16
-GFp_${PREFIX}_set_encrypt_key:
+RingCore_${PREFIX}_set_encrypt_key:
 ___
 $code.=<<___ if ($win64);
 	lea	-0xb8(%rsp),%rsp
@@ -497,12 +497,12 @@ ___
 $code.=<<___;
 	xor	%eax,%eax
 	ret
-.size	GFp_${PREFIX}_set_encrypt_key,.-GFp_${PREFIX}_set_encrypt_key
+.size	RingCore_${PREFIX}_set_encrypt_key,.-RingCore_${PREFIX}_set_encrypt_key
 
-.globl	GFp_${PREFIX}_encrypt
-.type	GFp_${PREFIX}_encrypt,\@function,3
+.globl	RingCore_${PREFIX}_encrypt
+.type	RingCore_${PREFIX}_encrypt,\@function,3
 .align	16
-GFp_${PREFIX}_encrypt:
+RingCore_${PREFIX}_encrypt:
 ___
 $code.=<<___ if ($win64);
 	lea	-0xb8(%rsp),%rsp
@@ -540,7 +540,7 @@ $code.=<<___ if ($win64);
 ___
 $code.=<<___;
 	ret
-.size	GFp_${PREFIX}_encrypt,.-GFp_${PREFIX}_encrypt
+.size	RingCore_${PREFIX}_encrypt,.-RingCore_${PREFIX}_encrypt
 ___
 $code.=<<___;
 ##
@@ -714,21 +714,21 @@ se_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_GFp_${PREFIX}_set_encrypt_key
-	.rva	.LSEH_end_GFp_${PREFIX}_set_encrypt_key
-	.rva	.LSEH_info_GFp_${PREFIX}_set_encrypt_key
+	.rva	.LSEH_begin_RingCore_${PREFIX}_set_encrypt_key
+	.rva	.LSEH_end_RingCore_${PREFIX}_set_encrypt_key
+	.rva	.LSEH_info_RingCore_${PREFIX}_set_encrypt_key
 
-	.rva	.LSEH_begin_GFp_${PREFIX}_encrypt
-	.rva	.LSEH_end_GFp_${PREFIX}_encrypt
-	.rva	.LSEH_info_GFp_${PREFIX}_encrypt
+	.rva	.LSEH_begin_RingCore_${PREFIX}_encrypt
+	.rva	.LSEH_end_RingCore_${PREFIX}_encrypt
+	.rva	.LSEH_info_RingCore_${PREFIX}_encrypt
 
 .section	.xdata
 .align	8
-.LSEH_info_GFp_${PREFIX}_set_encrypt_key:
+.LSEH_info_RingCore_${PREFIX}_set_encrypt_key:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lenc_key_body,.Lenc_key_epilogue	# HandlerData[]
-.LSEH_info_GFp_${PREFIX}_encrypt:
+.LSEH_info_RingCore_${PREFIX}_encrypt:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lenc_body,.Lenc_epilogue		# HandlerData[]

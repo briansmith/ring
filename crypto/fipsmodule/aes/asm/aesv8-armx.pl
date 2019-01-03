@@ -84,10 +84,10 @@ $code.=<<___;
 .long	0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d,0x0c0f0e0d	// rotate-n-splat
 .long	0x1b,0x1b,0x1b,0x1b
 
-.globl	GFp_${prefix}_set_encrypt_key
-.type	GFp_${prefix}_set_encrypt_key,%function
+.globl	RingCore_${prefix}_set_encrypt_key
+.type	RingCore_${prefix}_set_encrypt_key,%function
 .align	5
-GFp_${prefix}_set_encrypt_key:
+RingCore_${prefix}_set_encrypt_key:
 .Lenc_key:
 ___
 $code.=<<___	if ($flavour =~ /64/);
@@ -253,7 +253,7 @@ $code.=<<___;
 	mov	x0,$ptr			// return value
 	`"ldr	x29,[sp],#16"		if ($flavour =~ /64/)`
 	ret
-.size	GFp_${prefix}_set_encrypt_key,.-GFp_${prefix}_set_encrypt_key
+.size	RingCore_${prefix}_set_encrypt_key,.-RingCore_${prefix}_set_encrypt_key
 ___
 }}}
 {{{
@@ -265,10 +265,10 @@ my $rounds="w3";
 my ($rndkey0,$rndkey1,$inout)=map("q$_",(0..3));
 
 $code.=<<___;
-.globl	GFp_${prefix}_${dir}crypt
-.type	GFp_${prefix}_${dir}crypt,%function
+.globl	RingCore_${prefix}_${dir}crypt
+.type	RingCore_${prefix}_${dir}crypt,%function
 .align	5
-GFp_${prefix}_${dir}crypt:
+RingCore_${prefix}_${dir}crypt:
 	ldr	$rounds,[$key,#240]
 	vld1.32	{$rndkey0},[$key],#16
 	vld1.8	{$inout},[$inp]
@@ -293,7 +293,7 @@ GFp_${prefix}_${dir}crypt:
 
 	vst1.8	{$inout},[$out]
 	ret
-.size	GFp_${prefix}_${dir}crypt,.-GFp_${prefix}_${dir}crypt
+.size	RingCore_${prefix}_${dir}crypt,.-RingCore_${prefix}_${dir}crypt
 ___
 }
 &gen_block("en");
@@ -313,10 +313,10 @@ my ($dat,$tmp)=($dat0,$tmp0);
 ### q8-q15	preloaded key schedule
 
 $code.=<<___;
-.globl	GFp_${prefix}_ctr32_encrypt_blocks
-.type	GFp_${prefix}_ctr32_encrypt_blocks,%function
+.globl	RingCore_${prefix}_ctr32_encrypt_blocks
+.type	RingCore_${prefix}_ctr32_encrypt_blocks,%function
 .align	5
-GFp_${prefix}_ctr32_encrypt_blocks:
+RingCore_${prefix}_ctr32_encrypt_blocks:
 ___
 $code.=<<___	if ($flavour =~ /64/);
 	stp		x29,x30,[sp,#-16]!
@@ -511,7 +511,7 @@ $code.=<<___	if ($flavour =~ /64/);
 	ret
 ___
 $code.=<<___;
-.size	GFp_${prefix}_ctr32_encrypt_blocks,.-GFp_${prefix}_ctr32_encrypt_blocks
+.size	RingCore_${prefix}_ctr32_encrypt_blocks,.-RingCore_${prefix}_ctr32_encrypt_blocks
 ___
 }}}
 $code.=<<___;

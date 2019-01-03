@@ -20,18 +20,18 @@
 #include <GFp/arm_arch.h>
 
 
-extern uint32_t GFp_armcap_P;
+extern uint32_t RingCore_armcap_P;
 
-uint8_t GFp_is_NEON_capable_at_runtime(void) {
-  return (GFp_armcap_P & ARMV7_NEON) != 0;
+uint8_t RingCore_is_NEON_capable_at_runtime(void) {
+  return (RingCore_armcap_P & ARMV7_NEON) != 0;
 }
 
-int GFp_is_ARMv8_AES_capable(void) {
-  return (GFp_armcap_P & ARMV8_AES) != 0;
+int RingCore_is_ARMv8_AES_capable(void) {
+  return (RingCore_armcap_P & ARMV8_AES) != 0;
 }
 
-int GFp_is_ARMv8_PMULL_capable(void) {
-  return (GFp_armcap_P & ARMV8_PMULL) != 0;
+int RingCore_is_ARMv8_PMULL_capable(void) {
+  return (RingCore_armcap_P & ARMV8_PMULL) != 0;
 }
 
 #endif  /* (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) &&

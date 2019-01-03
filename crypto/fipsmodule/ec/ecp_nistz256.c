@@ -33,16 +33,16 @@ typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-void GFp_nistz256_point_mul_base(P256_POINT *r,
+void RingCore_nistz256_point_mul_base(P256_POINT *r,
                                  const Limb g_scalar[P256_LIMBS]);
-void GFp_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
+void RingCore_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
                             const Limb p_x[P256_LIMBS],
                             const Limb p_y[P256_LIMBS]);
 
 
 /* Functions implemented in assembly */
 /* Modular neg: res = -a mod P */
-void GFp_nistz256_neg(Limb res[P256_LIMBS], const Limb a[P256_LIMBS]);
+void RingCore_nistz256_neg(Limb res[P256_LIMBS], const Limb a[P256_LIMBS]);
 
 
 /* One converted into the Montgomery domain */
@@ -82,22 +82,22 @@ static void copy_conditional(Limb dst[P256_LIMBS],
   }
 }
 
-void GFp_nistz256_point_double(P256_POINT *r, const P256_POINT *a);
-void GFp_nistz256_point_add(P256_POINT *r, const P256_POINT *a,
+void RingCore_nistz256_point_double(P256_POINT *r, const P256_POINT *a);
+void RingCore_nistz256_point_add(P256_POINT *r, const P256_POINT *a,
                             const P256_POINT *b);
-void GFp_nistz256_point_add_affine(P256_POINT *r, const P256_POINT *a,
+void RingCore_nistz256_point_add_affine(P256_POINT *r, const P256_POINT *a,
                                    const P256_POINT_AFFINE *b);
 
 
 /* r = p * p_scalar */
-void GFp_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
+void RingCore_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
                             const Limb p_x[P256_LIMBS],
                             const Limb p_y[P256_LIMBS]) {
   static const unsigned kWindowSize = 5;
   static const unsigned kMask = (1 << (5 /* kWindowSize */ + 1)) - 1;
 
   uint8_t p_str[(P256_LIMBS * sizeof(Limb)) + 1];
-  gfp_little_endian_bytes_from_scalar(p_str, sizeof(p_str) / sizeof(p_str[0]),
+  RingCore_little_endian_bytes_from_scalar(p_str, sizeof(p_str) / sizeof(p_str[0]),
                                       p_scalar, P256_LIMBS);
 
   /* A |P256_POINT| is (3 * 32) = 96 bytes, and the 64-byte alignment should
@@ -114,21 +114,21 @@ void GFp_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
   limbs_copy(row[1 - 1].Y, p_y, P256_LIMBS);
   limbs_copy(row[1 - 1].Z, ONE, P256_LIMBS);
 
-  GFp_nistz256_point_double(&row[2 - 1], &row[1 - 1]);
-  GFp_nistz256_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);
-  GFp_nistz256_point_double(&row[4 - 1], &row[2 - 1]);
-  GFp_nistz256_point_double(&row[6 - 1], &row[3 - 1]);
-  GFp_nistz256_point_double(&row[8 - 1], &row[4 - 1]);
-  GFp_nistz256_point_double(&row[12 - 1], &row[6 - 1]);
-  GFp_nistz256_point_add(&row[5 - 1], &row[4 - 1], &row[1 - 1]);
-  GFp_nistz256_point_add(&row[7 - 1], &row[6 - 1], &row[1 - 1]);
-  GFp_nistz256_point_add(&row[9 - 1], &row[8 - 1], &row[1 - 1]);
-  GFp_nistz256_point_add(&row[13 - 1], &row[12 - 1], &row[1 - 1]);
-  GFp_nistz256_point_double(&row[14 - 1], &row[7 - 1]);
-  GFp_nistz256_point_double(&row[10 - 1], &row[5 - 1]);
-  GFp_nistz256_point_add(&row[15 - 1], &row[14 - 1], &row[1 - 1]);
-  GFp_nistz256_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
-  GFp_nistz256_point_double(&row[16 - 1], &row[8 - 1]);
+  RingCore_nistz256_point_double(&row[2 - 1], &row[1 - 1]);
+  RingCore_nistz256_point_add(&row[3 - 1], &row[2 - 1], &row[1 - 1]);
+  RingCore_nistz256_point_double(&row[4 - 1], &row[2 - 1]);
+  RingCore_nistz256_point_double(&row[6 - 1], &row[3 - 1]);
+  RingCore_nistz256_point_double(&row[8 - 1], &row[4 - 1]);
+  RingCore_nistz256_point_double(&row[12 - 1], &row[6 - 1]);
+  RingCore_nistz256_point_add(&row[5 - 1], &row[4 - 1], &row[1 - 1]);
+  RingCore_nistz256_point_add(&row[7 - 1], &row[6 - 1], &row[1 - 1]);
+  RingCore_nistz256_point_add(&row[9 - 1], &row[8 - 1], &row[1 - 1]);
+  RingCore_nistz256_point_add(&row[13 - 1], &row[12 - 1], &row[1 - 1]);
+  RingCore_nistz256_point_double(&row[14 - 1], &row[7 - 1]);
+  RingCore_nistz256_point_double(&row[10 - 1], &row[5 - 1]);
+  RingCore_nistz256_point_add(&row[15 - 1], &row[14 - 1], &row[1 - 1]);
+  RingCore_nistz256_point_add(&row[11 - 1], &row[10 - 1], &row[1 - 1]);
+  RingCore_nistz256_point_double(&row[16 - 1], &row[8 - 1]);
 
   Limb tmp[P256_LIMBS];
   alignas(32) P256_POINT h;
@@ -144,7 +144,7 @@ void GFp_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
 
   booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
   assert(!recoded_is_negative);
-  GFp_nistz256_select_w5(r, table, recoded);
+  RingCore_nistz256_select_w5(r, table, recoded);
 
   while (index >= kWindowSize) {
     if (index != START_INDEX) {
@@ -154,20 +154,20 @@ void GFp_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
       raw_wvalue = (raw_wvalue >> ((index - 1) % 8)) & kMask;
       booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
 
-      GFp_nistz256_select_w5(&h, table, recoded);
-      GFp_nistz256_neg(tmp, h.Y);
+      RingCore_nistz256_select_w5(&h, table, recoded);
+      RingCore_nistz256_neg(tmp, h.Y);
       copy_conditional(h.Y, tmp, recoded_is_negative);
 
-      GFp_nistz256_point_add(r, r, &h);
+      RingCore_nistz256_point_add(r, r, &h);
     }
 
     index -= kWindowSize;
 
-    GFp_nistz256_point_double(r, r);
-    GFp_nistz256_point_double(r, r);
-    GFp_nistz256_point_double(r, r);
-    GFp_nistz256_point_double(r, r);
-    GFp_nistz256_point_double(r, r);
+    RingCore_nistz256_point_double(r, r);
+    RingCore_nistz256_point_double(r, r);
+    RingCore_nistz256_point_double(r, r);
+    RingCore_nistz256_point_double(r, r);
+    RingCore_nistz256_point_double(r, r);
   }
 
   /* Final window */
@@ -175,19 +175,19 @@ void GFp_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
   raw_wvalue = (raw_wvalue << 1) & kMask;
 
   booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
-  GFp_nistz256_select_w5(&h, table, recoded);
-  GFp_nistz256_neg(tmp, h.Y);
+  RingCore_nistz256_select_w5(&h, table, recoded);
+  RingCore_nistz256_neg(tmp, h.Y);
   copy_conditional(h.Y, tmp, recoded_is_negative);
-  GFp_nistz256_point_add(r, r, &h);
+  RingCore_nistz256_point_add(r, r, &h);
 }
 
-void GFp_nistz256_point_mul_base(P256_POINT *r,
+void RingCore_nistz256_point_mul_base(P256_POINT *r,
                                  const Limb g_scalar[P256_LIMBS]) {
   static const unsigned kWindowSize = 7;
   static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
 
   uint8_t p_str[(P256_LIMBS * sizeof(Limb)) + 1];
-  gfp_little_endian_bytes_from_scalar(p_str, sizeof(p_str) / sizeof(p_str[0]),
+  RingCore_little_endian_bytes_from_scalar(p_str, sizeof(p_str) / sizeof(p_str[0]),
                                       g_scalar, P256_LIMBS);
 
   typedef union {
@@ -209,9 +209,9 @@ void GFp_nistz256_point_mul_base(P256_POINT *r,
 
   booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
   const PRECOMP256_ROW *const precomputed_table =
-      (const PRECOMP256_ROW *)GFp_nistz256_precomputed;
-  GFp_nistz256_select_w7(&p.a, precomputed_table[0], recoded);
-  GFp_nistz256_neg(p.p.Z, p.p.Y);
+      (const PRECOMP256_ROW *)RingCore_nistz256_precomputed;
+  RingCore_nistz256_select_w7(&p.a, precomputed_table[0], recoded);
+  RingCore_nistz256_neg(p.p.Z, p.p.Y);
   copy_conditional(p.p.Y, p.p.Z, recoded_is_negative);
 
   limbs_copy(p.p.Z, ONE, P256_LIMBS);
@@ -225,10 +225,10 @@ void GFp_nistz256_point_mul_base(P256_POINT *r,
     index += kWindowSize;
 
     booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
-    GFp_nistz256_select_w7(&t.a, precomputed_table[i], recoded);
-    GFp_nistz256_neg(t.p.Z, t.a.Y);
+    RingCore_nistz256_select_w7(&t.a, precomputed_table[i], recoded);
+    RingCore_nistz256_neg(t.p.Z, t.a.Y);
     copy_conditional(t.a.Y, t.p.Z, recoded_is_negative);
-    GFp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
+    RingCore_nistz256_point_add_affine(&p.p, &p.p, &t.a);
   }
 
   limbs_copy(r->X, p.p.X, P256_LIMBS);

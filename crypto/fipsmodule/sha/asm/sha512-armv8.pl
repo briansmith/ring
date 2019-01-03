@@ -73,7 +73,7 @@ if ($output =~ /sha512-armv8/) {
 	$reg_t="w";
 }
 
-$func="GFp_sha${BITS}_block_data_order";
+$func="RingCore_sha${BITS}_block_data_order";
 
 ($ctx,$inp,$num,$Ktbl)=map("x$_",(0..2,30));
 
@@ -177,7 +177,7 @@ $code.=<<___;
 
 .text
 
-.extern	GFp_armcap_P
+.extern	RingCore_armcap_P
 .globl	$func
 .type	$func,%function
 .align	6
@@ -186,11 +186,11 @@ ___
 $code.=<<___	if ($SZ==4);
 #ifndef	__KERNEL__
 # ifdef	__ILP32__
-	ldrsw	x16,.LGFp_armcap_P
+	ldrsw	x16,.LRingCore_armcap_P
 # else
-	ldr	x16,.LGFp_armcap_P
+	ldr	x16,.LRingCore_armcap_P
 # endif
-	adr	x17,.LGFp_armcap_P
+	adr	x17,.LRingCore_armcap_P
 	add	x16,x16,x17
 	ldr	w16,[x16]
 	tst	w16,#ARMV8_SHA256
@@ -332,11 +332,11 @@ $code.=<<___;
 .size	.LK$BITS,.-.LK$BITS
 #ifndef	__KERNEL__
 .align	3
-.LGFp_armcap_P:
+.LRingCore_armcap_P:
 # ifdef	__ILP32__
-	.long	GFp_armcap_P-.
+	.long	RingCore_armcap_P-.
 # else
-	.quad	GFp_armcap_P-.
+	.quad	RingCore_armcap_P-.
 # endif
 #endif
 .asciz	"SHA$BITS block transform for ARMv8, CRYPTOGAMS by <appro\@openssl.org>"
@@ -427,8 +427,8 @@ ___
 
 $code.=<<___;
 #ifndef	__KERNEL__
-.comm	GFp_armcap_P,4,4
-.hidden	GFp_armcap_P
+.comm	RingCore_armcap_P,4,4
+.hidden	RingCore_armcap_P
 #endif
 ___
 

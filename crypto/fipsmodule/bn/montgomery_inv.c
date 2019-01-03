@@ -17,7 +17,7 @@
 
 
 // Avoid -Wmissing-prototypes warnings.
-uint64_t GFp_bn_neg_inv_mod_r_u64(uint64_t n);
+uint64_t RingCore_bn_neg_inv_mod_r_u64(uint64_t n);
 
 OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
                        BN_MONT_CTX_N0_LIMBS_VALUE_INVALID);
@@ -50,7 +50,7 @@ OPENSSL_COMPILE_ASSERT(sizeof(uint64_t) ==
 // caller would have to negate the resultant |v| for the purpose of Montgomery
 // multiplication. This implementation does the negation implicitly by doing
 // the computations as a difference instead of a sum.
-uint64_t GFp_bn_neg_inv_mod_r_u64(uint64_t n) {
+uint64_t RingCore_bn_neg_inv_mod_r_u64(uint64_t n) {
   assert(n % 2 == 1);
 
   // alpha == 2**(lg r - 1) == r / 2.

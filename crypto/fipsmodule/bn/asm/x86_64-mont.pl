@@ -65,7 +65,7 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 # output, so this isn't useful anyway.
 $addx = 1;
 
-# void GFp_bn_mul_mont(
+# void RingCore_bn_mul_mont(
 $rp="%rdi";	# BN_ULONG *rp,
 $ap="%rsi";	# const BN_ULONG *ap,
 $bp="%rdx";	# const BN_ULONG *bp,
@@ -83,12 +83,12 @@ $m1="%rbp";
 $code=<<___;
 .text
 
-.extern	GFp_ia32cap_P
+.extern	RingCore_ia32cap_P
 
-.globl	GFp_bn_mul_mont
-.type	GFp_bn_mul_mont,\@function,6
+.globl	RingCore_bn_mul_mont
+.type	RingCore_bn_mul_mont,\@function,6
 .align	16
-GFp_bn_mul_mont:
+RingCore_bn_mul_mont:
 .cfi_startproc
 	mov	${num}d,${num}d
 	mov	%rsp,%rax
@@ -99,7 +99,7 @@ GFp_bn_mul_mont:
 	jb	.Lmul_enter
 ___
 $code.=<<___ if ($addx);
-	mov	GFp_ia32cap_P+8(%rip),%r11d
+	mov	RingCore_ia32cap_P+8(%rip),%r11d
 ___
 $code.=<<___;
 	cmp	$ap,$bp
@@ -344,7 +344,7 @@ $code.=<<___;
 .Lmul_epilogue:
 	ret
 .cfi_endproc
-.size	GFp_bn_mul_mont,.-GFp_bn_mul_mont
+.size	RingCore_bn_mul_mont,.-RingCore_bn_mul_mont
 ___
 {{{
 my @A=("%r10","%r11");
@@ -816,10 +816,10 @@ my @A1=("%r12","%r13");
 my ($a0,$a1,$ai)=("%r14","%r15","%rbx");
 
 $code.=<<___	if ($addx);
-.extern	GFp_bn_sqrx8x_internal		# see x86_64-mont5 module
+.extern	RingCore_bn_sqrx8x_internal		# see x86_64-mont5 module
 ___
 $code.=<<___;
-.extern	GFp_bn_sqr8x_internal		# see x86_64-mont5 module
+.extern	RingCore_bn_sqr8x_internal		# see x86_64-mont5 module
 
 .type	bn_sqr8x_mont,\@function,6
 .align	32
@@ -904,12 +904,12 @@ bn_sqr8x_mont:
 	movq	%r10, %xmm3		# -$num
 ___
 $code.=<<___ if ($addx);
-	mov	GFp_ia32cap_P+8(%rip),%eax
+	mov	RingCore_ia32cap_P+8(%rip),%eax
 	and	\$0x80100,%eax
 	cmp	\$0x80100,%eax
 	jne	.Lsqr8x_nox
 
-	call	GFp_bn_sqrx8x_internal	# see x86_64-mont5 module
+	call	RingCore_bn_sqrx8x_internal	# see x86_64-mont5 module
 					# %rax	top-most carry
 					# %rbp	nptr
 					# %rcx	-8*num
@@ -925,7 +925,7 @@ $code.=<<___ if ($addx);
 .Lsqr8x_nox:
 ___
 $code.=<<___;
-	call	GFp_bn_sqr8x_internal	# see x86_64-mont5 module
+	call	RingCore_bn_sqr8x_internal	# see x86_64-mont5 module
 					# %rax	top-most carry
 					# %rbp	nptr
 					# %r8	-8*num
@@ -1530,9 +1530,9 @@ sqr_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_GFp_bn_mul_mont
-	.rva	.LSEH_end_GFp_bn_mul_mont
-	.rva	.LSEH_info_GFp_bn_mul_mont
+	.rva	.LSEH_begin_RingCore_bn_mul_mont
+	.rva	.LSEH_end_RingCore_bn_mul_mont
+	.rva	.LSEH_info_RingCore_bn_mul_mont
 
 	.rva	.LSEH_begin_bn_mul4x_mont
 	.rva	.LSEH_end_bn_mul4x_mont
@@ -1550,7 +1550,7 @@ ___
 $code.=<<___;
 .section	.xdata
 .align	8
-.LSEH_info_GFp_bn_mul_mont:
+.LSEH_info_RingCore_bn_mul_mont:
 	.byte	9,0,0,0
 	.rva	mul_handler
 	.rva	.Lmul_body,.Lmul_epilogue	# HandlerData[]

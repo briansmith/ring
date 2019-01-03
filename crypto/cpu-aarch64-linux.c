@@ -23,9 +23,9 @@
 #include "internal.h"
 
 
-extern uint32_t GFp_armcap_P;
+extern uint32_t RingCore_armcap_P;
 
-void GFp_cpuid_setup(void) {
+void RingCore_cpuid_setup(void) {
   unsigned long hwcap = getauxval(AT_HWCAP);
 
   // See /usr/include/asm/hwcap.h on an aarch64 installation for the source of
@@ -42,19 +42,19 @@ void GFp_cpuid_setup(void) {
     return;
   }
 
-  GFp_armcap_P |= ARMV7_NEON;
+  RingCore_armcap_P |= ARMV7_NEON;
 
   if (hwcap & kAES) {
-    GFp_armcap_P |= ARMV8_AES;
+    RingCore_armcap_P |= ARMV8_AES;
   }
   if (hwcap & kPMULL) {
-    GFp_armcap_P |= ARMV8_PMULL;
+    RingCore_armcap_P |= ARMV8_PMULL;
   }
   if (hwcap & kSHA1) {
-    GFp_armcap_P |= ARMV8_SHA1;
+    RingCore_armcap_P |= ARMV8_SHA1;
   }
   if (hwcap & kSHA256) {
-    GFp_armcap_P |= ARMV8_SHA256;
+    RingCore_armcap_P |= ARMV8_SHA256;
   }
 }
 

@@ -33,13 +33,13 @@ typedef Limb Scalar[P384_LIMBS];
 
 
 /* Prototypes to avoid -Wmissing-prototypes warnings. */
-void GFp_p384_elem_add(Elem r, const Elem a, const Elem b);
-void GFp_p384_elem_sub(Elem r, const Elem a, const Elem b);
-void GFp_p384_elem_div_by_2(Elem r, const Elem a);
-void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b);
-void GFp_p384_elem_neg(Elem r, const Elem a);
-void GFp_p384_scalar_inv_to_mont(ScalarMont r, const Scalar a);
-void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
+void RingCore_p384_elem_add(Elem r, const Elem a, const Elem b);
+void RingCore_p384_elem_sub(Elem r, const Elem a, const Elem b);
+void RingCore_p384_elem_div_by_2(Elem r, const Elem a);
+void RingCore_p384_elem_mul_mont(Elem r, const Elem a, const Elem b);
+void RingCore_p384_elem_neg(Elem r, const Elem a);
+void RingCore_p384_scalar_inv_to_mont(ScalarMont r, const Scalar a);
+void RingCore_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b);
 
 
@@ -172,7 +172,7 @@ static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
     BN_MONT_CTX_N0(0x1, 0x1)
   };
   /* XXX: Not (clearly) constant-time; inefficient.*/
-  GFp_bn_mul_mont(r, a, b, Q, Q_N0, P384_LIMBS);
+  RingCore_bn_mul_mont(r, a, b, Q, Q_N0, P384_LIMBS);
 }
 
 static inline void elem_mul_by_2(Elem r, const Elem a) {
@@ -191,23 +191,23 @@ static inline void elem_sqr_mont(Elem r, const Elem a) {
   elem_mul_mont(r, a, a);
 }
 
-void GFp_p384_elem_add(Elem r, const Elem a, const Elem b) {
+void RingCore_p384_elem_add(Elem r, const Elem a, const Elem b) {
   elem_add(r, a, b);
 }
 
-void GFp_p384_elem_sub(Elem r, const Elem a, const Elem b) {
+void RingCore_p384_elem_sub(Elem r, const Elem a, const Elem b) {
   elem_sub(r, a, b);
 }
 
-void GFp_p384_elem_div_by_2(Elem r, const Elem a) {
+void RingCore_p384_elem_div_by_2(Elem r, const Elem a) {
   elem_div_by_2(r, a);
 }
 
-void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b) {
+void RingCore_p384_elem_mul_mont(Elem r, const Elem a, const Elem b) {
   elem_mul_mont(r, a, b);
 }
 
-void GFp_p384_elem_neg(Elem r, const Elem a) {
+void RingCore_p384_elem_neg(Elem r, const Elem a) {
   Limb is_zero = LIMBS_are_zero(a, P384_LIMBS);
   Carry borrow = limbs_sub(r, Q, a, P384_LIMBS);
 #if defined(NDEBUG)
@@ -220,19 +220,19 @@ void GFp_p384_elem_neg(Elem r, const Elem a) {
 }
 
 
-void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
+void RingCore_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b) {
   static const BN_ULONG N_N0[] = {
     BN_MONT_CTX_N0(0x6ed46089, 0xe88fdc45)
   };
   /* XXX: Inefficient. TODO: Add dedicated multiplication routine. */
-  GFp_bn_mul_mont(r, a, b, N, N_N0, P384_LIMBS);
+  RingCore_bn_mul_mont(r, a, b, N, N_N0, P384_LIMBS);
 }
 
 
 /* TODO(perf): Optimize this. */
 
-static void gfp_p384_point_select_w5(P384_POINT *out,
+static void RingCore_p384_point_select_w5(P384_POINT *out,
                                      const P384_POINT table[16], size_t index) {
   Elem x; memset(x, 0, sizeof(x));
   Elem y; memset(y, 0, sizeof(y));

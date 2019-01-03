@@ -935,11 +935,11 @@ my $const = "r6";	# shared with _bsaes_encrypt8_alt
 my $keysched = "sp";
 
 $code.=<<___;
-.extern	GFp_aes_nohw_encrypt
-.global	GFp_bsaes_ctr32_encrypt_blocks
-.type	GFp_bsaes_ctr32_encrypt_blocks,%function
+.extern	RingCore_aes_nohw_encrypt
+.global	RingCore_bsaes_ctr32_encrypt_blocks
+.type	RingCore_bsaes_ctr32_encrypt_blocks,%function
 .align	5
-GFp_bsaes_ctr32_encrypt_blocks:
+RingCore_bsaes_ctr32_encrypt_blocks:
 	cmp	$len, #8			@ use plain AES for
 	blo	.Lctr_enc_short			@ small sizes
 
@@ -1141,7 +1141,7 @@ GFp_bsaes_ctr32_encrypt_blocks:
 	mov	r1, sp			@ output on the stack
 	mov	r2, r7			@ key
 
-	bl	GFp_aes_nohw_encrypt
+	bl	RingCore_aes_nohw_encrypt
 
 	vld1.8	{@XMM[0]}, [r4]!	@ load input
 	vld1.8	{@XMM[1]}, [sp]		@ load encrypted counter
@@ -1162,7 +1162,7 @@ GFp_bsaes_ctr32_encrypt_blocks:
 	vstmia		sp!, {q0-q1}
 
 	ldmia	sp!, {r4-r8, pc}
-.size	GFp_bsaes_ctr32_encrypt_blocks,.-GFp_bsaes_ctr32_encrypt_blocks
+.size	RingCore_bsaes_ctr32_encrypt_blocks,.-RingCore_bsaes_ctr32_encrypt_blocks
 ___
 }
 $code.=<<___;

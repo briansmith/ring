@@ -1169,8 +1169,8 @@ sub enclast()
 	&data_word(0x00000000, 0x00000000, 0x00000000, 0x00000000);
 &function_end_B("_x86_AES_encrypt");
 
-# void GFp_aes_nohw_encrypt (const void *inp,void *out,const AES_KEY *key);
-&function_begin("GFp_aes_nohw_encrypt");
+# void RingCore_aes_nohw_encrypt (const void *inp,void *out,const AES_KEY *key);
+&function_begin("RingCore_aes_nohw_encrypt");
 	&mov	($acc,&wparam(0));		# load inp
 	&mov	($key,&wparam(2));		# load key
 
@@ -1190,7 +1190,7 @@ sub enclast()
 	&call   (&label("pic_point"));          # make it PIC!
 	&set_label("pic_point");
 	&blindpop($tbl);
-	&picmeup($s0,"GFp_ia32cap_P",$tbl,&label("pic_point")) if (!$x86only);
+	&picmeup($s0,"RingCore_ia32cap_P",$tbl,&label("pic_point")) if (!$x86only);
 	&lea    ($tbl,&DWP(&label("AES_Te")."-".&label("pic_point"),$tbl));
 
 	# pick Te4 copy which can't "overlap" with stack frame or key schedule
@@ -1226,7 +1226,7 @@ sub enclast()
 	&mov	(&DWP(4,$acc),$s1);
 	&mov	(&DWP(8,$acc),$s2);
 	&mov	(&DWP(12,$acc),$s3);
-&function_end("GFp_aes_nohw_encrypt");
+&function_end("RingCore_aes_nohw_encrypt");
 
 #--------------------------------------------------------------------#
 
@@ -1597,12 +1597,12 @@ sub enckey()
     &set_label("exit");
 &function_end("_x86_AES_set_encrypt_key");
 
-# int GFp_aes_nohw_set_encrypt_key(const unsigned char *userKey, const int bits,
+# int RingCore_aes_nohw_set_encrypt_key(const unsigned char *userKey, const int bits,
 #                                  AES_KEY *key)
-&function_begin_B("GFp_aes_nohw_set_encrypt_key");
+&function_begin_B("RingCore_aes_nohw_set_encrypt_key");
 	&call	("_x86_AES_set_encrypt_key");
 	&ret	();
-&function_end_B("GFp_aes_nohw_set_encrypt_key");
+&function_end_B("RingCore_aes_nohw_set_encrypt_key");
 
 &asciz("AES for x86, CRYPTOGAMS by <appro\@openssl.org>");
 

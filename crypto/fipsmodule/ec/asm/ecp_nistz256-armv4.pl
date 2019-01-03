@@ -97,12 +97,12 @@ __ecp_nistz256_mul_by_2:
 	b	.Lreduce_by_sub
 .size	__ecp_nistz256_mul_by_2,.-__ecp_nistz256_mul_by_2
 
-@ void	GFp_nistz256_add(BN_ULONG r0[8],const BN_ULONG r1[8],
+@ void	RingCore_nistz256_add(BN_ULONG r0[8],const BN_ULONG r1[8],
 @					const BN_ULONG r2[8]);
-.globl	GFp_nistz256_add
-.type	GFp_nistz256_add,%function
+.globl	RingCore_nistz256_add
+.type	RingCore_nistz256_add,%function
 .align	4
-GFp_nistz256_add:
+RingCore_nistz256_add:
 	stmdb	sp!,{r4-r12,lr}
 	bl	__ecp_nistz256_add
 #if __ARM_ARCH__>=5 || !defined(__thumb__)
@@ -111,7 +111,7 @@ GFp_nistz256_add:
 	ldmia	sp!,{r4-r12,lr}
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	GFp_nistz256_add,.-GFp_nistz256_add
+.size	RingCore_nistz256_add,.-RingCore_nistz256_add
 
 .type	__ecp_nistz256_add,%function
 .align	4
@@ -378,11 +378,11 @@ __ecp_nistz256_sub:
 	mov	pc,lr
 .size	__ecp_nistz256_sub,.-__ecp_nistz256_sub
 
-@ void	GFp_nistz256_neg(BN_ULONG r0[8],const BN_ULONG r1[8]);
-.globl	GFp_nistz256_neg
-.type	GFp_nistz256_neg,%function
+@ void	RingCore_nistz256_neg(BN_ULONG r0[8],const BN_ULONG r1[8]);
+.globl	RingCore_nistz256_neg
+.type	RingCore_nistz256_neg,%function
 .align	4
-GFp_nistz256_neg:
+RingCore_nistz256_neg:
 	stmdb	sp!,{r4-r12,lr}
 	bl	__ecp_nistz256_neg
 #if __ARM_ARCH__>=5 || !defined(__thumb__)
@@ -391,7 +391,7 @@ GFp_nistz256_neg:
 	ldmia	sp!,{r4-r12,lr}
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	GFp_nistz256_neg,.-GFp_nistz256_neg
+.size	RingCore_nistz256_neg,.-RingCore_nistz256_neg
 
 .type	__ecp_nistz256_neg,%function
 .align	4
@@ -423,12 +423,12 @@ my @acc=map("r$_",(3..11));
 my ($t0,$t1,$bj,$t2,$t3)=map("r$_",(0,1,2,12,14));
 
 $code.=<<___;
-@ void	GFp_nistz256_mul_mont(BN_ULONG r0[8],const BN_ULONG r1[8],
+@ void	RingCore_nistz256_mul_mont(BN_ULONG r0[8],const BN_ULONG r1[8],
 @					     const BN_ULONG r2[8]);
-.globl	GFp_nistz256_mul_mont
-.type	GFp_nistz256_mul_mont,%function
+.globl	RingCore_nistz256_mul_mont
+.type	RingCore_nistz256_mul_mont,%function
 .align	4
-GFp_nistz256_mul_mont:
+RingCore_nistz256_mul_mont:
 	stmdb	sp!,{r4-r12,lr}
 	bl	__ecp_nistz256_mul_mont
 #if __ARM_ARCH__>=5 || !defined(__thumb__)
@@ -437,7 +437,7 @@ GFp_nistz256_mul_mont:
 	ldmia	sp!,{r4-r12,lr}
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	GFp_nistz256_mul_mont,.-GFp_nistz256_mul_mont
+.size	RingCore_nistz256_mul_mont,.-RingCore_nistz256_mul_mont
 
 .type	__ecp_nistz256_mul_mont,%function
 .align	4
@@ -934,10 +934,10 @@ my ($S,$M,$Zsqr,$in_x,$tmp0)=map(32*$_,(0..4));
 # input arguments just below these temporary vectors.
 
 $code.=<<___;
-.globl	GFp_nistz256_point_double
-.type	GFp_nistz256_point_double,%function
+.globl	RingCore_nistz256_point_double
+.type	RingCore_nistz256_point_double,%function
 .align	5
-GFp_nistz256_point_double:
+RingCore_nistz256_point_double:
 	stmdb	sp!,{r0-r12,lr}		@ push from r0, unusual, but intentional
 	sub	sp,sp,#32*5
 
@@ -1034,12 +1034,12 @@ GFp_nistz256_point_double:
 	ldmia	sp!,{r4-r12,lr}
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	GFp_nistz256_point_double,.-GFp_nistz256_point_double
+.size	RingCore_nistz256_point_double,.-RingCore_nistz256_point_double
 ___
 }
 
 ########################################################################
-# void GFp_nistz256_point_add(P256_POINT *out,const P256_POINT *in1,
+# void RingCore_nistz256_point_add(P256_POINT *out,const P256_POINT *in1,
 #			      const P256_POINT *in2);
 {
 my ($res_x,$res_y,$res_z,
@@ -1056,10 +1056,10 @@ my ($Z1sqr, $Z2sqr) = ($Hsqr, $Rsqr);
 # result of check for zero.
 
 $code.=<<___;
-.globl	GFp_nistz256_point_add
-.type	GFp_nistz256_point_add,%function
+.globl	RingCore_nistz256_point_add
+.type	RingCore_nistz256_point_add,%function
 .align	5
-GFp_nistz256_point_add:
+RingCore_nistz256_point_add:
 	stmdb	sp!,{r0-r12,lr}		@ push from r0, unusual, but intentional
 	sub	sp,sp,#32*18+16
 
@@ -1297,12 +1297,12 @@ $code.=<<___;
 	ldmia	sp!,{r4-r12,lr}
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	GFp_nistz256_point_add,.-GFp_nistz256_point_add
+.size	RingCore_nistz256_point_add,.-RingCore_nistz256_point_add
 ___
 }
 
 ########################################################################
-# void GFp_nistz256_point_add_affine(P256_POINT *out,const P256_POINT *in1,
+# void RingCore_nistz256_point_add_affine(P256_POINT *out,const P256_POINT *in1,
 #				     const P256_POINT_AFFINE *in2);
 {
 my ($res_x,$res_y,$res_z,
@@ -1319,10 +1319,10 @@ my $Z1sqr = $S2;
 my @ONE_mont=(1,0,0,-1,-1,-1,-2,0);
 
 $code.=<<___;
-.globl	GFp_nistz256_point_add_affine
-.type	GFp_nistz256_point_add_affine,%function
+.globl	RingCore_nistz256_point_add_affine
+.type	RingCore_nistz256_point_add_affine,%function
 .align	5
-GFp_nistz256_point_add_affine:
+RingCore_nistz256_point_add_affine:
 	stmdb	sp!,{r0-r12,lr}		@ push from r0, unusual, but intentional
 	sub	sp,sp,#32*15
 
@@ -1509,7 +1509,7 @@ $code.=<<___;
 	ldmia	sp!,{r4-r12,lr}
 	bx	lr			@ interoperable with Thumb ISA:-)
 #endif
-.size	GFp_nistz256_point_add_affine,.-GFp_nistz256_point_add_affine
+.size	RingCore_nistz256_point_add_affine,.-RingCore_nistz256_point_add_affine
 ___
 }					}}}
 

@@ -57,14 +57,14 @@
 // archive, linking on OS X will fail to resolve common symbols. By
 // initialising it to zero, it becomes a "data symbol", which isn't so
 // affected.
-HIDDEN uint32_t GFp_ia32cap_P[4] = {0};
+HIDDEN uint32_t RingCore_ia32cap_P[4] = {0};
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 
 #include <GFp/arm_arch.h>
 
 #if defined(OPENSSL_STATIC_ARMCAP)
 
-HIDDEN uint32_t GFp_armcap_P =
+HIDDEN uint32_t RingCore_armcap_P =
 #if defined(OPENSSL_STATIC_ARMCAP_NEON) || \
     (defined(__ARM_NEON__) || defined(__ARM_NEON))
     ARMV7_NEON |
@@ -84,7 +84,7 @@ HIDDEN uint32_t GFp_armcap_P =
     0;
 
 #else
-HIDDEN uint32_t GFp_armcap_P = 0;
+HIDDEN uint32_t RingCore_armcap_P = 0;
 #endif
 
 #endif
@@ -108,15 +108,15 @@ HIDDEN uint32_t GFp_armcap_P = 0;
 #endif
 #endif
 
-const long GFp_SYS_GETRANDOM = SYS_getrandom;
+const long RingCore_SYS_GETRANDOM = SYS_getrandom;
 #endif
 
 // These allow tests in other languages to verify that their understanding of
 // the C types matches the C compiler's understanding.
 
 #define DEFINE_METRICS(ty) \
-  OPENSSL_EXPORT uint16_t GFp_##ty##_align = alignof(ty); \
-  OPENSSL_EXPORT uint16_t GFp_##ty##_size = sizeof(ty);
+  OPENSSL_EXPORT uint16_t RingCore_##ty##_align = alignof(ty); \
+  OPENSSL_EXPORT uint16_t RingCore_##ty##_size = sizeof(ty);
 
 DEFINE_METRICS(int8_t)
 DEFINE_METRICS(uint8_t)

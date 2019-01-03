@@ -118,14 +118,15 @@ mod sysrand_chunk {
     use libc;
 
     extern "C" {
-        static GFp_SYS_GETRANDOM: c::long;
+        static RingCore_SYS_GETRANDOM: c::long;
     }
 
     #[inline]
     pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
         let chunk_len: c::size_t = dest.len();
         let flags: c::uint = 0;
-        let r = unsafe { libc::syscall(GFp_SYS_GETRANDOM, dest.as_mut_ptr(), chunk_len, flags) };
+        let r =
+            unsafe { libc::syscall(RingCore_SYS_GETRANDOM, dest.as_mut_ptr(), chunk_len, flags) };
         if r < 0 {
             if unsafe { *libc::__errno_location() } == libc::EINTR {
                 // If an interrupt occurs while getrandom() is blocking to wait

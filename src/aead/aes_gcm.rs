@@ -181,13 +181,13 @@ fn integrated_aes_gcm<'a>(
     let processed = match direction {
         Direction::Opening { in_prefix_len } => {
             extern "C" {
-                fn GFp_aesni_gcm_decrypt(
+                fn RingCore_aesni_gcm_decrypt(
                     input: *const u8, output: *mut u8, len: c::size_t, key: &aes::AES_KEY,
                     ivec: &mut Counter, gcm: &mut gcm::Context,
                 ) -> c::size_t;
             }
             unsafe {
-                GFp_aesni_gcm_decrypt(
+                RingCore_aesni_gcm_decrypt(
                     in_out[in_prefix_len..].as_ptr(),
                     in_out.as_mut_ptr(),
                     in_out.len() - in_prefix_len,
@@ -199,13 +199,13 @@ fn integrated_aes_gcm<'a>(
         },
         Direction::Sealing => {
             extern "C" {
-                fn GFp_aesni_gcm_encrypt(
+                fn RingCore_aesni_gcm_encrypt(
                     input: *const u8, output: *mut u8, len: c::size_t, key: &aes::AES_KEY,
                     ivec: &mut Counter, gcm: &mut gcm::Context,
                 ) -> c::size_t;
             }
             unsafe {
-                GFp_aesni_gcm_encrypt(
+                RingCore_aesni_gcm_encrypt(
                     in_out.as_ptr(),
                     in_out.as_mut_ptr(),
                     in_out.len(),

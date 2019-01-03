@@ -110,18 +110,18 @@ ___
 $code.=<<___;
 .text
 
-.extern	GFp_ia32cap_P
+.extern	RingCore_ia32cap_P
 
-.globl	GFp_poly1305_init_asm
-.hidden	GFp_poly1305_init_asm
-.globl	GFp_poly1305_blocks
-.hidden	GFp_poly1305_blocks
-.globl	GFp_poly1305_emit
-.hidden	GFp_poly1305_emit
+.globl	RingCore_poly1305_init_asm
+.hidden	RingCore_poly1305_init_asm
+.globl	RingCore_poly1305_blocks
+.hidden	RingCore_poly1305_blocks
+.globl	RingCore_poly1305_emit
+.hidden	RingCore_poly1305_emit
 
-.type	GFp_poly1305_init_asm,\@function,3
+.type	RingCore_poly1305_init_asm,\@function,3
 .align	32
-GFp_poly1305_init_asm:
+RingCore_poly1305_init_asm:
 	xor	%rax,%rax
 	mov	%rax,0($ctx)		# initialize hash value
 	mov	%rax,8($ctx)
@@ -130,11 +130,11 @@ GFp_poly1305_init_asm:
 	cmp	\$0,$inp
 	je	.Lno_key
 
-	lea	GFp_poly1305_blocks(%rip),%r10
-	lea	GFp_poly1305_emit(%rip),%r11
+	lea	RingCore_poly1305_blocks(%rip),%r10
+	lea	RingCore_poly1305_emit(%rip),%r11
 ___
 $code.=<<___	if ($avx);
-	mov	GFp_ia32cap_P+4(%rip),%r9
+	mov	RingCore_ia32cap_P+4(%rip),%r9
 	lea	poly1305_blocks_avx(%rip),%rax
 	lea	poly1305_emit_avx(%rip),%rcx
 	bt	\$`60-32`,%r9		# AVX?
@@ -166,11 +166,11 @@ $code.=<<___;
 	mov	\$1,%eax
 .Lno_key:
 	ret
-.size	GFp_poly1305_init_asm,.-GFp_poly1305_init_asm
+.size	RingCore_poly1305_init_asm,.-RingCore_poly1305_init_asm
 
-.type	GFp_poly1305_blocks,\@function,4
+.type	RingCore_poly1305_blocks,\@function,4
 .align	32
-GFp_poly1305_blocks:
+RingCore_poly1305_blocks:
 .Lblocks:
 	shr	\$4,$len
 	jz	.Lno_data		# too short
@@ -225,11 +225,11 @@ $code.=<<___;
 .Lno_data:
 .Lblocks_epilogue:
 	ret
-.size	GFp_poly1305_blocks,.-GFp_poly1305_blocks
+.size	RingCore_poly1305_blocks,.-RingCore_poly1305_blocks
 
-.type	GFp_poly1305_emit,\@function,3
+.type	RingCore_poly1305_emit,\@function,3
 .align	32
-GFp_poly1305_emit:
+RingCore_poly1305_emit:
 .Lemit:
 	mov	0($ctx),%r8	# load hash value
 	mov	8($ctx),%r9
@@ -250,7 +250,7 @@ GFp_poly1305_emit:
 	mov	%rcx,8($mac)
 
 	ret
-.size	GFp_poly1305_emit,.-GFp_poly1305_emit
+.size	RingCore_poly1305_emit,.-RingCore_poly1305_emit
 ___
 if ($avx) {
 
@@ -2133,17 +2133,17 @@ avx_handler:
 
 .section	.pdata
 .align	4
-	.rva	.LSEH_begin_GFp_poly1305_init_asm
-	.rva	.LSEH_end_GFp_poly1305_init_asm
-	.rva	.LSEH_info_GFp_poly1305_init_asm
+	.rva	.LSEH_begin_RingCore_poly1305_init_asm
+	.rva	.LSEH_end_RingCore_poly1305_init_asm
+	.rva	.LSEH_info_RingCore_poly1305_init_asm
 
-	.rva	.LSEH_begin_GFp_poly1305_blocks
-	.rva	.LSEH_end_GFp_poly1305_blocks
-	.rva	.LSEH_info_GFp_poly1305_blocks
+	.rva	.LSEH_begin_RingCore_poly1305_blocks
+	.rva	.LSEH_end_RingCore_poly1305_blocks
+	.rva	.LSEH_info_RingCore_poly1305_blocks
 
-	.rva	.LSEH_begin_GFp_poly1305_emit
-	.rva	.LSEH_end_GFp_poly1305_emit
-	.rva	.LSEH_info_GFp_poly1305_emit
+	.rva	.LSEH_begin_RingCore_poly1305_emit
+	.rva	.LSEH_end_RingCore_poly1305_emit
+	.rva	.LSEH_info_RingCore_poly1305_emit
 ___
 $code.=<<___ if ($avx);
 	.rva	.LSEH_begin_poly1305_blocks_avx
@@ -2178,20 +2178,20 @@ ___
 $code.=<<___;
 .section	.xdata
 .align	8
-.LSEH_info_GFp_poly1305_init_asm:
+.LSEH_info_RingCore_poly1305_init_asm:
 	.byte	9,0,0,0
 	.rva	se_handler
-	.rva	.LSEH_begin_GFp_poly1305_init_asm,.LSEH_begin_GFp_poly1305_init_asm
+	.rva	.LSEH_begin_RingCore_poly1305_init_asm,.LSEH_begin_RingCore_poly1305_init_asm
 
-.LSEH_info_GFp_poly1305_blocks:
+.LSEH_info_RingCore_poly1305_blocks:
 	.byte	9,0,0,0
 	.rva	se_handler
 	.rva	.Lblocks_body,.Lblocks_epilogue
 
-.LSEH_info_GFp_poly1305_emit:
+.LSEH_info_RingCore_poly1305_emit:
 	.byte	9,0,0,0
 	.rva	se_handler
-	.rva	.LSEH_begin_GFp_poly1305_emit,.LSEH_begin_GFp_poly1305_emit
+	.rva	.LSEH_begin_RingCore_poly1305_emit,.LSEH_begin_RingCore_poly1305_emit
 ___
 $code.=<<___ if ($avx);
 .LSEH_info_poly1305_blocks_avx_1:

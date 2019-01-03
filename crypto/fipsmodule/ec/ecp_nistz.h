@@ -109,7 +109,7 @@ static inline void booth_recode(Limb *is_negative, unsigned *digit,
 }
 
 
-void gfp_little_endian_bytes_from_scalar(uint8_t str[], size_t str_len,
+void RingCore_little_endian_bytes_from_scalar(uint8_t str[], size_t str_len,
                                          const Limb scalar[],
                                          size_t num_limbs);
 

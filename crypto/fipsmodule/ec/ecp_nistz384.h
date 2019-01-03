@@ -32,8 +32,8 @@ typedef struct {
 
 
 // Prototypes to avoid -Wmissing-prototypes warnings.
-void GFp_nistz384_point_double(P384_POINT *r, const P384_POINT *a);
-void GFp_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
+void RingCore_nistz384_point_double(P384_POINT *r, const P384_POINT *a);
+void RingCore_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
                             const P384_POINT *b);
 
 #endif // OPENSSL_HEADER_EC_ECP_NISTZ384_H

@@ -54,26 +54,26 @@
 #include <GFp/arm_arch.h>
 #endif
 
-int GFp_aes_hw_capable(void);
+int RingCore_aes_hw_capable(void);
 
-int GFp_aes_hw_capable(void) {
+int RingCore_aes_hw_capable(void) {
   return hwaes_capable();
 }
 
 #if !defined(OPENSSL_NO_ASM) && \
     (defined(OPENSSL_X86_64) || defined(OPENSSL_X86))
-int GFp_vpaes_capable(void);
+int RingCore_vpaes_capable(void);
 
-int GFp_vpaes_capable(void) {
-  return (GFp_ia32cap_P[1] & (1 << (41 - 32))) != 0;
+int RingCore_vpaes_capable(void) {
+  return (RingCore_ia32cap_P[1] & (1 << (41 - 32))) != 0;
 }
 #endif
 
 #if !defined(OPENSSL_NO_ASM) && \
     defined(OPENSSL_ARM) && __ARM_MAX_ARCH__ >= 7
-int GFp_bsaes_capable(void);
+int RingCore_bsaes_capable(void);
 
-int GFp_bsaes_capable(void) {
-  return GFp_is_NEON_capable();
+int RingCore_bsaes_capable(void) {
+  return RingCore_is_NEON_capable();
 }
 #endif

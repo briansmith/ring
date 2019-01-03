@@ -53,9 +53,9 @@
 #include "internal.h"
 #include "../modes/internal.h"
 
-int GFp_aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
+int RingCore_aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
                                  AES_KEY *aeskey);
-void GFp_aes_nohw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
+void RingCore_aes_nohw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
 
 // Te0[x] = S [x].[02, 01, 01, 03];
 // Te1[x] = S [x].[03, 02, 01, 01];
@@ -285,7 +285,7 @@ static const uint32_t rcon[] = {
 };
 
 // |bits| must be 128 or 256. 192-bit keys are not supported.
-int GFp_aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
+int RingCore_aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
                                  AES_KEY *aeskey) {
   assert(key != NULL);
   assert(aeskey != NULL);
@@ -354,7 +354,7 @@ int GFp_aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
   }
 }
 
-void GFp_aes_nohw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
+void RingCore_aes_nohw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   const uint32_t *rk;
   uint32_t s0, s1, s2, s3, t0, t1, t2, t3;
   int r;

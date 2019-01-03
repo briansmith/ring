@@ -56,9 +56,9 @@
 #include "../../internal.h"
 #include "../../block.h"
 
-void GFp_gcm128_ghash(GCM128_CONTEXT *ctx, const uint8_t input[], size_t input_len);
-void GFp_gcm128_gmult(GCM128_CONTEXT *ctx);
-int GFp_gcm_clmul_enabled(void);
+void RingCore_gcm128_ghash(GCM128_CONTEXT *ctx, const uint8_t input[], size_t input_len);
+void RingCore_gcm128_gmult(GCM128_CONTEXT *ctx);
+int RingCore_gcm_clmul_enabled(void);
 
 #define PACK(s) ((size_t)(s) << (sizeof(size_t) * 8 - 16))
 #define REDUCE1BIT(V)                                                 \
@@ -131,7 +131,7 @@ static const size_t rem_4bit[16] = {
     PACK(0xE100), PACK(0xFD20), PACK(0xD940), PACK(0xC560),
     PACK(0x9180), PACK(0x8DA0), PACK(0xA9C0), PACK(0xB5E0)};
 
-static void GFp_gcm_gmult_4bit(uint8_t Xi[16], const u128 Htable[16]) {
+static void RingCore_gcm_gmult_4bit(uint8_t Xi[16], const u128 Htable[16]) {
   u128 Z;
   int cnt = 15;
   size_t rem, nlo, nhi;
@@ -181,12 +181,12 @@ static void GFp_gcm_gmult_4bit(uint8_t Xi[16], const u128 Htable[16]) {
   to_be_u64_ptr(Xi + 8, Z.lo);
 }
 
-// Streamed gcm_mult_4bit, see GFp_gcm128_[en|de]crypt for
+// Streamed gcm_mult_4bit, see RingCore_gcm128_[en|de]crypt for
 // details... Compiler-generated code doesn't seem to give any
 // performance improvement, at least not on x86[_64]. It's here
 // mostly as reference and a placeholder for possible future
 // non-trivial optimization[s]...
-static void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
+static void RingCore_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
                                const uint8_t *inp, size_t len) {
   u128 Z;
   int cnt;
@@ -242,8 +242,8 @@ static void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
   } while (inp += 16, len -= 16);
 }
 #else
-void GFp_gcm_gmult_4bit(uint8_t Xi[16], const u128 Htable[16]);
-void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
+void RingCore_gcm_gmult_4bit(uint8_t Xi[16], const u128 Htable[16]);
+void RingCore_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
                         const uint8_t *inp, size_t len);
 #endif
 
@@ -254,27 +254,27 @@ void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
 
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-void GFp_gcm_init_clmul(u128 Htable[16], const uint64_t Xi[2]);
-void GFp_gcm_gmult_clmul(uint8_t Xi[16], const u128 Htable[16]);
-void GFp_gcm_ghash_clmul(uint8_t Xi[16], const u128 Htable[16],
+void RingCore_gcm_init_clmul(u128 Htable[16], const uint64_t Xi[2]);
+void RingCore_gcm_gmult_clmul(uint8_t Xi[16], const u128 Htable[16]);
+void RingCore_gcm_ghash_clmul(uint8_t Xi[16], const u128 Htable[16],
                          const uint8_t *inp, size_t len);
 
 #if defined(OPENSSL_X86_64)
 #define GHASH_ASM_X86_64
-void GFp_gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
-void GFp_gcm_ghash_avx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
+void RingCore_gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
+void RingCore_gcm_ghash_avx(uint8_t Xi[16], const u128 Htable[16], const uint8_t *in,
                        size_t len);
-int GFp_aesni_gcm_capable(void);
+int RingCore_aesni_gcm_capable(void);
 
-int GFp_aesni_gcm_capable(void) {
-  return ((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41; // AVX+MOVBE
+int RingCore_aesni_gcm_capable(void) {
+  return ((RingCore_ia32cap_P[1] >> 22) & 0x41) == 0x41; // AVX+MOVBE
 }
 #endif
 
 #if defined(OPENSSL_X86)
 #define GHASH_ASM_X86
-void GFp_gcm_gmult_4bit_mmx(uint8_t Xi[16], const u128 Htable[16]);
-void GFp_gcm_ghash_4bit_mmx(uint8_t Xi[16], const u128 Htable[16],
+void RingCore_gcm_gmult_4bit_mmx(uint8_t Xi[16], const u128 Htable[16]);
+void RingCore_gcm_ghash_4bit_mmx(uint8_t Xi[16], const u128 Htable[16],
                             const uint8_t *inp, size_t len);
 #endif
 
@@ -284,31 +284,31 @@ void GFp_gcm_ghash_4bit_mmx(uint8_t Xi[16], const u128 Htable[16],
 
 #if __ARM_MAX_ARCH__ >= 8
 #define ARM_PMULL_ASM
-void GFp_gcm_init_v8(u128 Htable[16], const uint64_t Xi[2]);
-void GFp_gcm_gmult_v8(uint8_t Xi[16], const u128 Htable[16]);
-void GFp_gcm_ghash_v8(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
+void RingCore_gcm_init_v8(u128 Htable[16], const uint64_t Xi[2]);
+void RingCore_gcm_gmult_v8(uint8_t Xi[16], const u128 Htable[16]);
+void RingCore_gcm_ghash_v8(uint8_t Xi[16], const u128 Htable[16], const uint8_t *inp,
                       size_t len);
 #endif
 
 #if defined(OPENSSL_ARM) && __ARM_MAX_ARCH__ >= 7
 // 32-bit ARM also has support for doing GCM with NEON instructions.
-void GFp_gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]);
-void GFp_gcm_gmult_neon(uint8_t Xi[16], const u128 Htable[16]);
-void GFp_gcm_ghash_neon(uint8_t Xi[16], const u128 Htable[16],
+void RingCore_gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]);
+void RingCore_gcm_gmult_neon(uint8_t Xi[16], const u128 Htable[16]);
+void RingCore_gcm_ghash_neon(uint8_t Xi[16], const u128 Htable[16],
                         const uint8_t *inp, size_t len);
 #endif
 
 #elif defined(OPENSSL_PPC64LE)
 #define GHASH_ASM_PPC64LE
-void GFp_gcm_init_p8(u128 Htable[16], const uint64_t Xi[2]);
-void GFp_gcm_gmult_p8(uint64_t Xi[2], const u128 Htable[16]);
-void GFp_gcm_ghash_p8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+void RingCore_gcm_init_p8(u128 Htable[16], const uint64_t Xi[2]);
+void RingCore_gcm_gmult_p8(uint64_t Xi[2], const u128 Htable[16]);
+void RingCore_gcm_ghash_p8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
                       size_t len);
 #endif // Platform
 
-void GFp_gcm128_init_htable(GCM128_KEY *r, Block h_block);
+void RingCore_gcm128_init_htable(GCM128_KEY *r, Block h_block);
 
-void GFp_gcm128_init_htable(GCM128_KEY *r, Block h_block) {
+void RingCore_gcm128_init_htable(GCM128_KEY *r, Block h_block) {
 
   // H is stored in host byte order
   alignas(16) uint64_t H[2];
@@ -320,32 +320,32 @@ void GFp_gcm128_init_htable(GCM128_KEY *r, Block h_block) {
   // Keep in sync with |gcm128_init_gmult_ghash|.
 
 #if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86)
-  if (GFp_gcm_clmul_enabled()) {
+  if (RingCore_gcm_clmul_enabled()) {
 #if defined(GHASH_ASM_X86_64)
-    if (GFp_aesni_gcm_capable()) {
-      GFp_gcm_init_avx(Htable, H);
+    if (RingCore_aesni_gcm_capable()) {
+      RingCore_gcm_init_avx(Htable, H);
       return;
     }
 #endif
-    GFp_gcm_init_clmul(Htable, H);
+    RingCore_gcm_init_clmul(Htable, H);
     return;
   }
 #endif
 #if defined(ARM_PMULL_ASM)
-  if (GFp_is_ARMv8_PMULL_capable()) {
-    GFp_gcm_init_v8(Htable, H);
+  if (RingCore_is_ARMv8_PMULL_capable()) {
+    RingCore_gcm_init_v8(Htable, H);
     return;
   }
 #endif
 #if defined(OPENSSL_ARM)
-  if (GFp_is_NEON_capable()) {
-    GFp_gcm_init_neon(Htable, H);
+  if (RingCore_is_NEON_capable()) {
+    RingCore_gcm_init_neon(Htable, H);
     return;
   }
 #endif
 #if defined(GHASH_ASM_PPC64LE)
-  if (GFp_is_PPC64LE_vcrypto_capable()) {
-    GFp_gcm_init_p8(ctx->Htable, ctx->H.u);
+  if (RingCore_is_PPC64LE_vcrypto_capable()) {
+    RingCore_gcm_init_p8(ctx->Htable, ctx->H.u);
     return;
   }
 #endif
@@ -353,89 +353,89 @@ void GFp_gcm128_init_htable(GCM128_KEY *r, Block h_block) {
   gcm_init_4bit(Htable, H);
 }
 
-void GFp_gcm128_gmult(GCM128_CONTEXT *ctx) {
-  // Keep in sync with |gcm128_ghash|, gcm128_init_htable| and |GFp_AES_set_encrypt_key|.
+void RingCore_gcm128_gmult(GCM128_CONTEXT *ctx) {
+  // Keep in sync with |gcm128_ghash|, gcm128_init_htable| and |RingCore_AES_set_encrypt_key|.
 
 #if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86)
-  if (GFp_gcm_clmul_enabled()) {
-    // GFp_gcm_gmult_avx2 was an alias for GFp_gcm_gmult_clmul so there's no need
-    // for x86-64 MOVEBE+AVX2 stuff here. Apparently GFp_gcm_gmult_clmul doesn't need
+  if (RingCore_gcm_clmul_enabled()) {
+    // RingCore_gcm_gmult_avx2 was an alias for RingCore_gcm_gmult_clmul so there's no need
+    // for x86-64 MOVEBE+AVX2 stuff here. Apparently RingCore_gcm_gmult_clmul doesn't need
     // that stuff.
-    GFp_gcm_gmult_clmul(ctx->Xi, ctx->key.Htable);
+    RingCore_gcm_gmult_clmul(ctx->Xi, ctx->key.Htable);
     return;
   }
 #endif
 #if defined(ARM_PMULL_ASM)
-  if (GFp_is_ARMv8_PMULL_capable()) {
-    GFp_gcm_gmult_v8(ctx->Xi, ctx->key.Htable);
+  if (RingCore_is_ARMv8_PMULL_capable()) {
+    RingCore_gcm_gmult_v8(ctx->Xi, ctx->key.Htable);
     return;
   }
 #endif
 #if defined(OPENSSL_ARM)
-  if (GFp_is_NEON_capable()) {
-    GFp_gcm_gmult_neon(ctx->Xi, ctx->key.Htable);
+  if (RingCore_is_NEON_capable()) {
+    RingCore_gcm_gmult_neon(ctx->Xi, ctx->key.Htable);
     return;
   }
 #endif
 #if defined(GHASH_ASM_PPC64LE)
-  if (GFp_is_PPC64LE_vcrypto_capable()) {
-    GFp_gcm_gmult_p8(ctx->Xi, ctx->key.Htable);
+  if (RingCore_is_PPC64LE_vcrypto_capable()) {
+    RingCore_gcm_gmult_p8(ctx->Xi, ctx->key.Htable);
     return;
   }
 #endif
 
 #if defined(GHASH_ASM_X86)
-  GFp_gcm_gmult_4bit_mmx(ctx->Xi, ctx->key.Htable);
+  RingCore_gcm_gmult_4bit_mmx(ctx->Xi, ctx->key.Htable);
 #else
-  GFp_gcm_gmult_4bit(ctx->Xi, ctx->key.Htable);
+  RingCore_gcm_gmult_4bit(ctx->Xi, ctx->key.Htable);
 #endif
 }
 
-void GFp_gcm128_ghash(GCM128_CONTEXT *ctx, const uint8_t input[], size_t input_len) {
+void RingCore_gcm128_ghash(GCM128_CONTEXT *ctx, const uint8_t input[], size_t input_len) {
   assert(input_len % 16 == 0);
-  // Keep in sync with |gcm128_init_htable| and |GFp_AES_set_encrypt_key|.
+  // Keep in sync with |gcm128_init_htable| and |RingCore_AES_set_encrypt_key|.
 
 #if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86)
-  if (GFp_gcm_clmul_enabled()) {
+  if (RingCore_gcm_clmul_enabled()) {
 #if defined(GHASH_ASM_X86_64)
-    if (((GFp_ia32cap_P[1] >> 22) & 0x41) == 0x41) { // AVX+MOVBE
-      GFp_gcm_ghash_avx(ctx->Xi, ctx->key.Htable, input, input_len);
+    if (((RingCore_ia32cap_P[1] >> 22) & 0x41) == 0x41) { // AVX+MOVBE
+      RingCore_gcm_ghash_avx(ctx->Xi, ctx->key.Htable, input, input_len);
       return;
     }
 #endif
-    GFp_gcm_ghash_clmul(ctx->Xi, ctx->key.Htable, input, input_len);
+    RingCore_gcm_ghash_clmul(ctx->Xi, ctx->key.Htable, input, input_len);
     return;
   }
 #endif
 #if defined(ARM_PMULL_ASM)
-  if (GFp_is_ARMv8_PMULL_capable()) {
-    GFp_gcm_ghash_v8(ctx->Xi, ctx->key.Htable, input, input_len);
+  if (RingCore_is_ARMv8_PMULL_capable()) {
+    RingCore_gcm_ghash_v8(ctx->Xi, ctx->key.Htable, input, input_len);
     return;
   }
 #endif
 #if defined(OPENSSL_ARM)
-  if (GFp_is_NEON_capable()) {
-    GFp_gcm_ghash_neon(ctx->Xi, ctx->key.Htable, input, input_len);
+  if (RingCore_is_NEON_capable()) {
+    RingCore_gcm_ghash_neon(ctx->Xi, ctx->key.Htable, input, input_len);
     return;
   }
 #endif
 #if defined(GHASH_ASM_PPC64LE)
-  if (GFp_is_PPC64LE_vcrypto_capable()) {
-    GFp_gcm_ghash_p8(ctx->Xi, ctx->key.Htable, input, input_len);
+  if (RingCore_is_PPC64LE_vcrypto_capable()) {
+    RingCore_gcm_ghash_p8(ctx->Xi, ctx->key.Htable, input, input_len);
     return;
   }
 #endif
 
 #if defined(GHASH_ASM_X86)
-  GFp_gcm_ghash_4bit_mmx(ctx->Xi, ctx->key.Htable, input, input_len);
+  RingCore_gcm_ghash_4bit_mmx(ctx->Xi, ctx->key.Htable, input, input_len);
 #else
-  GFp_gcm_ghash_4bit(ctx->Xi, ctx->key.Htable, input, input_len);
+  RingCore_gcm_ghash_4bit(ctx->Xi, ctx->key.Htable, input, input_len);
 #endif
 }
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-int GFp_gcm_clmul_enabled(void) {
-  return GFp_ia32cap_P[0] & (1 << 24) && // check FXSR bit
-         GFp_ia32cap_P[1] & (1 << 1);    // check PCLMULQDQ bit
+int RingCore_gcm_clmul_enabled(void) {
+  return RingCore_ia32cap_P[0] & (1 << 24) && // check FXSR bit
+         RingCore_ia32cap_P[1] & (1 << 1);    // check PCLMULQDQ bit
 }
 #endif

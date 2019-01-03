@@ -78,8 +78,8 @@ define_type!(
     int,
     i32,
     test_int_metrics,
-    GFp_int_align,
-    GFp_int_size,
+    RingCore_int_align,
+    RingCore_int_size,
     "The C `int` type. Equivalent to `libc::c_int`."
 );
 
@@ -87,8 +87,8 @@ define_type!(
     uint,
     u32,
     test_uint_metrics,
-    GFp_uint_align,
-    GFp_uint_size,
+    RingCore_uint_align,
+    RingCore_uint_size,
     "The C `unsigned int` type. Equivalent to `libc::c_uint`."
 );
 
@@ -97,8 +97,8 @@ define_type!(
     long,
     i32,
     test_long_metrics,
-    GFp_long_align,
-    GFp_long_size,
+    RingCore_long_align,
+    RingCore_long_size,
     "The C `long` type. Equivalent to `libc::c_long`."
 );
 
@@ -107,8 +107,8 @@ define_type!(
     long,
     i64,
     test_long_metrics,
-    GFp_long_align,
-    GFp_long_size,
+    RingCore_long_align,
+    RingCore_long_size,
     "The C `long` type. Equivalent to `libc::c_long`."
 );
 
@@ -116,8 +116,8 @@ define_type!(
     size_t,
     usize,
     test_size_t_metrics,
-    GFp_size_t_align,
-    GFp_size_t_size,
+    RingCore_size_t_align,
+    RingCore_size_t_size,
     "The C `size_t` type from `<stdint.h>`.
 
   ISO C's `size_t` is defined to be the type of the result of the
@@ -157,14 +157,44 @@ define_type!(
     unintended truncation. Such code will then work on all platforms."
 );
 
-define_metrics_tests!(i8, test_i8_metrics, GFp_int8_t_align, GFp_int8_t_size);
-define_metrics_tests!(u8, test_u8_metrics, GFp_uint8_t_align, GFp_uint8_t_size);
+define_metrics_tests!(
+    i8,
+    test_i8_metrics,
+    RingCore_int8_t_align,
+    RingCore_int8_t_size
+);
+define_metrics_tests!(
+    u8,
+    test_u8_metrics,
+    RingCore_uint8_t_align,
+    RingCore_uint8_t_size
+);
 
-define_metrics_tests!(i16, test_i16_metrics, GFp_int16_t_align, GFp_int16_t_size);
-define_metrics_tests!(u16, test_u16_metrics, GFp_uint16_t_align, GFp_uint16_t_size);
+define_metrics_tests!(
+    i16,
+    test_i16_metrics,
+    RingCore_int16_t_align,
+    RingCore_int16_t_size
+);
+define_metrics_tests!(
+    u16,
+    test_u16_metrics,
+    RingCore_uint16_t_align,
+    RingCore_uint16_t_size
+);
 
-define_metrics_tests!(i32, test_i32_metrics, GFp_int32_t_align, GFp_int32_t_size);
-define_metrics_tests!(u32, test_u32_metrics, GFp_uint32_t_align, GFp_uint32_t_size);
+define_metrics_tests!(
+    i32,
+    test_i32_metrics,
+    RingCore_int32_t_align,
+    RingCore_int32_t_size
+);
+define_metrics_tests!(
+    u32,
+    test_u32_metrics,
+    RingCore_uint32_t_align,
+    RingCore_uint32_t_size
+);
 
 #[cfg(all(
     test,
@@ -191,15 +221,15 @@ const SIXTY_FOUR_BIT_ALIGNMENT_FACTOR: usize = 2;
 define_metrics_tests!(
     i64,
     test_i64_metrics,
-    GFp_int64_t_align,
-    GFp_int64_t_size,
+    RingCore_int64_t_align,
+    RingCore_int64_t_size,
     SIXTY_FOUR_BIT_ALIGNMENT_FACTOR
 );
 define_metrics_tests!(
     u64,
     test_u64_metrics,
-    GFp_uint64_t_align,
-    GFp_uint64_t_size,
+    RingCore_uint64_t_align,
+    RingCore_uint64_t_size,
     SIXTY_FOUR_BIT_ALIGNMENT_FACTOR
 );
 
@@ -209,16 +239,16 @@ pub mod win32 {
         ULONG,
         u32,
         test_ULONG_metrics,
-        GFp_ULONG_align,
-        GFp_ULONG_size,
+        RingCore_ULONG_align,
+        RingCore_ULONG_size,
         "The win32 `ULONG` type."
     );
     define_type!(
         BOOLEAN,
         u8,
         test_BOOLEAN_metrics,
-        GFp_BOOLEAN_align,
-        GFp_BOOLEAN_size,
+        RingCore_BOOLEAN_align,
+        RingCore_BOOLEAN_size,
         "The win32 `BOOLEAN` type."
     );
 }

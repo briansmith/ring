@@ -39,7 +39,7 @@ pub struct Point {
     // `ops.num_limbs` elements are the X coordinate, the next
     // `ops.num_limbs` elements are the Y coordinate, and the next
     // `ops.num_limbs` elements are the Z coordinate. This layout is dictated
-    // by the requirements of the GFp_nistz256 code.
+    // by the requirements of the RingCore_nistz256 code.
     xyz: [Limb; 3 * MAX_LIMBS],
 }
 
@@ -506,17 +506,17 @@ mod tests {
         })
     }
 
-    // XXX: There's no `GFp_nistz256_sub` in *ring*; it's logic is inlined into
+    // XXX: There's no `RingCore_nistz256_sub` in *ring*; it's logic is inlined into
     // the point arithmetic functions. Thus, we can't test it.
 
     #[test]
     fn p384_elem_sub_test() {
         extern "C" {
-            fn GFp_p384_elem_sub(r: *mut Limb, a: *const Limb, b: *const Limb);
+            fn RingCore_p384_elem_sub(r: *mut Limb, a: *const Limb, b: *const Limb);
         }
         elem_sub_test(
             &p384::COMMON_OPS,
-            GFp_p384_elem_sub,
+            RingCore_p384_elem_sub,
             "src/ec/suite_b/ops/p384_elem_sum_tests.txt",
         );
     }
@@ -557,17 +557,17 @@ mod tests {
         })
     }
 
-    // XXX: There's no `GFp_nistz256_div_by_2` in *ring*; it's logic is inlined
+    // XXX: There's no `RingCore_nistz256_div_by_2` in *ring*; it's logic is inlined
     // into the point arithmetic functions. Thus, we can't test it.
 
     #[test]
     fn p384_elem_div_by_2_test() {
         extern "C" {
-            fn GFp_p384_elem_div_by_2(r: *mut Limb, a: *const Limb);
+            fn RingCore_p384_elem_div_by_2(r: *mut Limb, a: *const Limb);
         }
         elem_div_by_2_test(
             &p384::COMMON_OPS,
-            GFp_p384_elem_div_by_2,
+            RingCore_p384_elem_div_by_2,
             "src/ec/suite_b/ops/p384_elem_div_by_2_tests.txt",
         );
     }
@@ -596,11 +596,11 @@ mod tests {
     #[test]
     fn p256_elem_neg_test() {
         extern "C" {
-            fn GFp_nistz256_neg(r: *mut Limb, a: *const Limb);
+            fn RingCore_nistz256_neg(r: *mut Limb, a: *const Limb);
         }
         elem_neg_test(
             &p256::COMMON_OPS,
-            GFp_nistz256_neg,
+            RingCore_nistz256_neg,
             "src/ec/suite_b/ops/p256_elem_neg_tests.txt",
         );
     }
@@ -608,11 +608,11 @@ mod tests {
     #[test]
     fn p384_elem_neg_test() {
         extern "C" {
-            fn GFp_p384_elem_neg(r: *mut Limb, a: *const Limb);
+            fn RingCore_p384_elem_neg(r: *mut Limb, a: *const Limb);
         }
         elem_neg_test(
             &p384::COMMON_OPS,
-            GFp_p384_elem_neg,
+            RingCore_p384_elem_neg,
             "src/ec/suite_b/ops/p384_elem_neg_tests.txt",
         );
     }
@@ -712,17 +712,17 @@ mod tests {
     #[test]
     fn p256_scalar_square_test() {
         extern "C" {
-            fn GFp_p256_scalar_sqr_rep_mont(r: *mut Limb, a: *const Limb, rep: c::int);
+            fn RingCore_p256_scalar_sqr_rep_mont(r: *mut Limb, a: *const Limb, rep: c::int);
         }
         scalar_square_test(
             &p256::SCALAR_OPS,
-            GFp_p256_scalar_sqr_rep_mont,
+            RingCore_p256_scalar_sqr_rep_mont,
             "src/ec/suite_b/ops/p256_scalar_square_tests.txt",
         );
     }
 
     // XXX: There's no `p384_scalar_square_test()` because there's no dedicated
-    // `GFp_p384_scalar_sqr_rep_mont()`.
+    // `RingCore_p384_scalar_sqr_rep_mont()`.
 
     fn scalar_square_test(
         ops: &ScalarOps, sqr_rep: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, rep: c::int),
@@ -801,7 +801,7 @@ mod tests {
     #[test]
     fn p256_point_sum_mixed_test() {
         extern "C" {
-            fn GFp_nistz256_point_add_affine(
+            fn RingCore_nistz256_point_add_affine(
                 r: *mut Limb,   // [p256::COMMON_OPS.num_limbs*3]
                 a: *const Limb, // [p256::COMMON_OPS.num_limbs*3]
                 b: *const Limb, // [p256::COMMON_OPS.num_limbs*2]
@@ -809,12 +809,12 @@ mod tests {
         }
         point_sum_mixed_test(
             &p256::PRIVATE_KEY_OPS,
-            GFp_nistz256_point_add_affine,
+            RingCore_nistz256_point_add_affine,
             "src/ec/suite_b/ops/p256_point_sum_mixed_tests.txt",
         );
     }
 
-    // XXX: There is no `GFp_nistz384_point_add_affine()`.
+    // XXX: There is no `RingCore_nistz384_point_add_affine()`.
 
     fn point_sum_mixed_test(
         ops: &PrivateKeyOps,
@@ -846,14 +846,14 @@ mod tests {
     #[test]
     fn p256_point_double_test() {
         extern "C" {
-            fn GFp_nistz256_point_double(
+            fn RingCore_nistz256_point_double(
                 r: *mut Limb,   // [p256::COMMON_OPS.num_limbs*3]
                 a: *const Limb, // [p256::COMMON_OPS.num_limbs*3]
             );
         }
         point_double_test(
             &p256::PRIVATE_KEY_OPS,
-            GFp_nistz256_point_double,
+            RingCore_nistz256_point_double,
             "src/ec/suite_b/ops/p256_point_double_tests.txt",
         );
     }
@@ -861,14 +861,14 @@ mod tests {
     #[test]
     fn p384_point_double_test() {
         extern "C" {
-            fn GFp_nistz384_point_double(
+            fn RingCore_nistz384_point_double(
                 r: *mut Limb,   // [p384::COMMON_OPS.num_limbs*3]
                 a: *const Limb, // [p384::COMMON_OPS.num_limbs*3]
             );
         }
         point_double_test(
             &p384::PRIVATE_KEY_OPS,
-            GFp_nistz384_point_double,
+            RingCore_nistz384_point_double,
             "src/ec/suite_b/ops/p384_point_double_tests.txt",
         );
     }

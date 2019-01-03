@@ -58,7 +58,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         let h = digest_scalar(h_digest);
 
         let mut r = Point::new_at_infinity();
-        unsafe { GFp_x25519_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s) };
+        unsafe { RingCore_x25519_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s) };
         let r_check = r.into_encoded_point();
         if *signature_r != r_check {
             return Err(error::Unspecified);
@@ -70,7 +70,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
 impl sealed::Sealed for EdDSAParameters {}
 
 extern "C" {
-    fn GFp_x25519_ge_double_scalarmult_vartime(
+    fn RingCore_x25519_ge_double_scalarmult_vartime(
         r: &mut Point, a_coeff: &Scalar, a: &ExtPoint, b_coeff: &Scalar,
     );
 }
