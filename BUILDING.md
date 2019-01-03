@@ -100,10 +100,6 @@ Once you've run that, Ninja should produce Android-compatible binaries.  You
 can replace `armeabi-v7a` in the above with `arm64-v8a` and use API level 21 or
 higher to build aarch64 binaries.
 
-For older NDK versions, BoringSSL ships a third-party CMake toolchain file. Use
-`../third_party/android-cmake/android.toolchain.cmake` for
-`CMAKE_TOOLCHAIN_FILE` instead.
-
 For other options, see the documentation in the toolchain file.
 
 ### Building for iOS
