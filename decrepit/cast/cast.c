@@ -442,7 +442,7 @@ static int cast_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
 }
 
 static const EVP_CIPHER cast5_ecb = {
-    NID_undef,           CAST_BLOCK,
+    NID_cast5_ecb,       CAST_BLOCK,
     CAST_KEY_LENGTH,     CAST_BLOCK /* iv_len */,
     sizeof(CAST_KEY),    EVP_CIPH_ECB_MODE | EVP_CIPH_VARIABLE_LENGTH,
     NULL /* app_data */, cast_init_key,
@@ -451,7 +451,7 @@ static const EVP_CIPHER cast5_ecb = {
 };
 
 static const EVP_CIPHER cast5_cbc = {
-    NID_undef,           CAST_BLOCK,
+    NID_cast5_cbc,       CAST_BLOCK,
     CAST_KEY_LENGTH,     CAST_BLOCK /* iv_len */,
     sizeof(CAST_KEY),    EVP_CIPH_CBC_MODE | EVP_CIPH_VARIABLE_LENGTH,
     NULL /* app_data */, cast_init_key,

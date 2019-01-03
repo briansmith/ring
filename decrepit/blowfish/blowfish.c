@@ -593,7 +593,7 @@ static int bf_cfb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
 }
 
 static const EVP_CIPHER bf_ecb = {
-    NID_undef,           BF_BLOCK /* block_size */,
+    NID_bf_ecb,          BF_BLOCK /* block_size */,
     16 /* key_size */,   BF_BLOCK /* iv_len */,
     sizeof(BF_KEY),      EVP_CIPH_ECB_MODE | EVP_CIPH_VARIABLE_LENGTH,
     NULL /* app_data */, bf_init_key,
@@ -602,7 +602,7 @@ static const EVP_CIPHER bf_ecb = {
 };
 
 static const EVP_CIPHER bf_cbc = {
-    NID_undef,           BF_BLOCK /* block_size */,
+    NID_bf_cbc,          BF_BLOCK /* block_size */,
     16 /* key_size */,   BF_BLOCK /* iv_len */,
     sizeof(BF_KEY),      EVP_CIPH_CBC_MODE | EVP_CIPH_VARIABLE_LENGTH,
     NULL /* app_data */, bf_init_key,
@@ -611,7 +611,7 @@ static const EVP_CIPHER bf_cbc = {
 };
 
 static const EVP_CIPHER bf_cfb = {
-    NID_undef,           1 /* block_size */,
+    NID_bf_cfb64,        1 /* block_size */,
     16 /* key_size */,   BF_BLOCK /* iv_len */,
     sizeof(BF_KEY),      EVP_CIPH_CFB_MODE | EVP_CIPH_VARIABLE_LENGTH,
     NULL /* app_data */, bf_init_key,
