@@ -57,10 +57,6 @@ OPENSSL_EXPORT void RAND_set_urandom_fd(int fd);
 // ownership of |fd|. If |fd| is negative then /dev/urandom will be opened and
 // any error from open(2) crashes the address space.
 //
-// Setting this also enables thread-local PRNG state, which can reduce lock
-// contention in highly-threaded applications although at the cost of yet more
-// memory.
-//
 // It has an unusual name because the buffer is unsafe across calls to |fork|.
 // Hence, this function should never be called by libraries.
 OPENSSL_EXPORT void RAND_enable_fork_unsafe_buffering(int fd);

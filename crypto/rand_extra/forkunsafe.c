@@ -21,12 +21,9 @@
 
 // g_buffering_enabled is true if fork-unsafe buffering has been enabled.
 static int g_buffering_enabled = 0;
-static CRYPTO_once_t g_buffering_enabled_once = CRYPTO_ONCE_INIT;
-static int g_buffering_enabled_pending = 0;
 
-static void g_buffer_enabled_init(void) {
-  g_buffering_enabled = g_buffering_enabled_pending;
-}
+// g_lock protects |g_buffering_enabled|.
+static struct CRYPTO_STATIC_MUTEX g_lock = CRYPTO_STATIC_MUTEX_INIT;
 
 #if !defined(OPENSSL_WINDOWS)
 void RAND_enable_fork_unsafe_buffering(int fd) {
@@ -35,16 +32,15 @@ void RAND_enable_fork_unsafe_buffering(int fd) {
     abort();
   }
 
-  g_buffering_enabled_pending = 1;
-  CRYPTO_once(&g_buffering_enabled_once, g_buffer_enabled_init);
-  if (g_buffering_enabled != 1) {
-    // RAND_bytes has been called before this function.
-    abort();
-  }
+  CRYPTO_STATIC_MUTEX_lock_write(&g_lock);
+  g_buffering_enabled = 1;
+  CRYPTO_STATIC_MUTEX_unlock_write(&g_lock);
 }
 #endif
 
 int rand_fork_unsafe_buffering_enabled(void) {
-  CRYPTO_once(&g_buffering_enabled_once, g_buffer_enabled_init);
-  return g_buffering_enabled;
+  CRYPTO_STATIC_MUTEX_lock_read(&g_lock);
+  const int ret = g_buffering_enabled;
+  CRYPTO_STATIC_MUTEX_unlock_read(&g_lock);
+  return ret;
 }

@@ -54,6 +54,75 @@ static const unsigned kReseedInterval = 4096;
 // continuous random number generator test in FIPS 140-2, section 4.9.2.
 #define CRNGT_BLOCK_SIZE 16
 
+// rand_thread_state contains the per-thread state for the RNG.
+struct rand_thread_state {
+  CTR_DRBG_STATE drbg;
+  // calls is the number of generate calls made on |drbg| since it was last
+  // (re)seeded. This is bound by |kReseedInterval|.
+  unsigned calls;
+  // last_block_valid is non-zero iff |last_block| contains data from
+  // |CRYPTO_sysrand|.
+  int last_block_valid;
+
+#if defined(BORINGSSL_FIPS)
+  // last_block contains the previous block from |CRYPTO_sysrand|.
+  uint8_t last_block[CRNGT_BLOCK_SIZE];
+  // next and prev form a NULL-terminated, double-linked list of all states in
+  // a process.
+  struct rand_thread_state *next, *prev;
+#endif
+};
+
+#if defined(BORINGSSL_FIPS)
+// thread_states_list is the head of a linked-list of all |rand_thread_state|
+// objects in the process, one per thread. This is needed because FIPS requires
+// that they be zeroed on process exit, but thread-local destructors aren't
+// called when the whole process is exiting.
+DEFINE_BSS_GET(struct rand_thread_state *, thread_states_list);
+DEFINE_STATIC_MUTEX(thread_states_list_lock);
+
+static void rand_thread_state_clear_all(void) __attribute__((destructor));
+static void rand_thread_state_clear_all(void) {
+  CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
+  for (struct rand_thread_state *cur = *thread_states_list_bss_get();
+       cur != NULL; cur = cur->next) {
+    CTR_DRBG_clear(&cur->drbg);
+  }
+  // |thread_states_list_lock is deliberately left locked so that any threads
+  // that are still running will hang if they try to call |RAND_bytes|.
+}
+#endif
+
+// rand_thread_state_free frees a |rand_thread_state|. This is called when a
+// thread exits.
+static void rand_thread_state_free(void *state_in) {
+  struct rand_thread_state *state = state_in;
+
+  if (state_in == NULL) {
+    return;
+  }
+
+#if defined(BORINGSSL_FIPS)
+  CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
+
+  if (state->prev != NULL) {
+    state->prev->next = state->next;
+  } else {
+    *thread_states_list_bss_get() = state->next;
+  }
+
+  if (state->next != NULL) {
+    state->next->prev = state->prev;
+  }
+
+  CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
+
+  CTR_DRBG_clear(&state->drbg);
+#endif
+
+  OPENSSL_free(state);
+}
+
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
 
@@ -103,36 +172,9 @@ static int hwrand(uint8_t *buf, size_t len) {
 
 #endif
 
-// rand_state contains an RNG state. State object are managed in one of two
-// ways, depending on whether |RAND_enable_fork_unsafe_buffering| has been
-// called: if it has been called then thread-local storage is used to keep a
-// per-thread state. Otherwise a mutex-protected pool of state objects is used.
-struct rand_state {
-  CTR_DRBG_STATE drbg;
-  // next forms a NULL-terminated linked-list of all free |rand_state| objects
-  // in a pool. This is unused if using thread-local states.
-  struct rand_state *next;
-  // calls is the number of generate calls made on |drbg| since it was last
-  // (re)seeded. This is bound by
-  // |kReseedInterval - 1 + SIZE_MAX / CTR_DRBG_MAX_GENERATE_LENGTH|.
-  size_t calls;
-
-#if defined(BORINGSSL_FIPS)
-  // prev_all and next_all form another NULL-terminated linked-list, this time
-  // of all |rand_state| objects that have been allocated including those that
-  // might currently be in use.
-  struct rand_state *prev_all, *next_all;
-  // last_block contains the previous block from |CRYPTO_sysrand|.
-  uint8_t last_block[CRNGT_BLOCK_SIZE];
-  // last_block_valid is non-zero iff |last_block| contains data from
-  // |CRYPTO_sysrand|.
-  int last_block_valid;
-#endif
-};
-
 #if defined(BORINGSSL_FIPS)
 
-static void rand_get_seed(struct rand_state *state,
+static void rand_get_seed(struct rand_thread_state *state,
                           uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
   if (!state->last_block_valid) {
     if (!hwrand(state->last_block, sizeof(state->last_block))) {
@@ -181,7 +223,7 @@ static void rand_get_seed(struct rand_state *state,
 
 #else
 
-static void rand_get_seed(struct rand_state *state,
+static void rand_get_seed(struct rand_thread_state *state,
                           uint8_t seed[CTR_DRBG_ENTROPY_LEN]) {
   // If not in FIPS mode, we don't overread from the system entropy source and
   // we don't depend only on the hardware RDRAND.
@@ -190,155 +232,11 @@ static void rand_get_seed(struct rand_state *state,
 
 #endif
 
-// rand_state_free_list is a list of currently free, |rand_state| structures.
-// (It is only used if a mutex-pool is being used to manage |rand_state|
-// objects.) When a thread needs a |rand_state| it picks the head element of
-// this list and allocs a new one if the list is empty. Once it's finished, it
-// pushes the state back onto the front of the list.
-//
-// Since we don't free |rand_state| objects, the number of objects in memory
-// will eventually equal the maximum concurrency of |RAND_bytes| in the
-// mutex-pool model.
-DEFINE_BSS_GET(struct rand_state *, rand_state_free_list);
-
-// rand_state_lock protects |rand_state_free_list| (and |rand_state_all_list|,
-// in FIPS mode).
-DEFINE_STATIC_MUTEX(rand_state_lock);
-
-#if defined(BORINGSSL_FIPS)
-// rand_state_all_list is the head of a linked-list of all |rand_state| objects
-// in the process. This is needed because FIPS requires that they be zeroed on
-// process exit.
-DEFINE_BSS_GET(struct rand_state *, rand_state_all_list);
-
-// rand_drbg_lock is taken in write mode by |rand_state_clear_all|, and
-// in read mode by any operation on the |drbg| member of |rand_state|.
-// This ensures that, in the event that a thread races destructor functions, we
-// never return bogus random data. At worst, the thread will deadlock.
-DEFINE_STATIC_MUTEX(rand_drbg_lock);
-
-static void rand_state_clear_all(void) __attribute__((destructor));
-static void rand_state_clear_all(void) {
-  CRYPTO_STATIC_MUTEX_lock_write(rand_drbg_lock_bss_get());
-  CRYPTO_STATIC_MUTEX_lock_write(rand_state_lock_bss_get());
-  for (struct rand_state *cur = *rand_state_all_list_bss_get();
-       cur != NULL; cur = cur->next_all) {
-    CTR_DRBG_clear(&cur->drbg);
-  }
-  // Both locks are deliberately left locked so that any threads that are still
-  // running will hang if they try to call |RAND_bytes|.
-}
-#endif
-
-// rand_state_free frees a |rand_state|. This is called when a thread exits if
-// we're using thread-local states.
-static void rand_state_free(void *state_in) {
-  struct rand_state *state = state_in;
-  if (state_in == NULL) {
-    return;
-  }
-
-#if defined(BORINGSSL_FIPS)
-  CRYPTO_STATIC_MUTEX_lock_write(rand_state_lock_bss_get());
-  if (state->prev_all != NULL) {
-    state->prev_all->next_all = state->next_all;
-  } else {
-    *rand_state_all_list_bss_get() = state->next_all;
-  }
-
-  if (state->next_all != NULL) {
-    state->next_all->prev_all = state->prev_all;
-  }
-  CRYPTO_STATIC_MUTEX_unlock_write(rand_state_lock_bss_get());
-
-  CTR_DRBG_clear(&state->drbg);
-#endif
-
-  OPENSSL_free(state);
-}
-
-// rand_state_init seeds a |rand_state|.
-static void rand_state_init(struct rand_state *state) {
-  OPENSSL_memset(state, 0, sizeof(struct rand_state));
-  uint8_t seed[CTR_DRBG_ENTROPY_LEN];
-  rand_get_seed(state, seed);
-  if (!CTR_DRBG_init(&state->drbg, seed, NULL, 0)) {
-    abort();
-  }
-}
-
-// rand_state_get returns a usable |rand_state|, or NULL if memory is exhausted.
-//
-// If a pool is being used, it pops a |rand_state| from the head of
-// |rand_state_free_list| and returns it. If the list is empty, it
-// creates a fresh |rand_state| and returns that instead.
-//
-// Alternatively, if thread-local states are being used, it returns the current
-// thread's state object and creates it if needed.
-static struct rand_state *rand_state_get(const int fork_unsafe_buffering) {
-  struct rand_state *state = NULL;
-  if (fork_unsafe_buffering) {
-    // Thread-local storage is used in this case. This is unrelated to fork-
-    // safety and we are overloading this global control to also identify
-    // processes that really care about PRNG speed.
-    state = CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
-  } else {
-    // Otherwise a mutex-protected pool of states is used.
-    CRYPTO_STATIC_MUTEX_lock_write(rand_state_lock_bss_get());
-    state = *rand_state_free_list_bss_get();
-    if (state != NULL) {
-      *rand_state_free_list_bss_get() = state->next;
-    }
-    CRYPTO_STATIC_MUTEX_unlock_write(rand_state_lock_bss_get());
-  }
-
-  if (state != NULL) {
-    return state;
-  }
-
-  state = OPENSSL_malloc(sizeof(struct rand_state));
-  if (state == NULL) {
-    return NULL;
-  }
-
-  rand_state_init(state);
-
-#if defined(BORINGSSL_FIPS)
-  CRYPTO_STATIC_MUTEX_lock_write(rand_state_lock_bss_get());
-  state->next_all = *rand_state_all_list_bss_get();
-  if (state->next_all) {
-    state->next_all->prev_all = state;
-  }
-  *rand_state_all_list_bss_get() = state;
-  CRYPTO_STATIC_MUTEX_unlock_write(rand_state_lock_bss_get());
-#endif
-
-  if (fork_unsafe_buffering &&
-      !CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_RAND, state,
-                               rand_state_free)) {
-    rand_state_free(state);
-    return NULL;
-  }
-
-  return state;
-}
-
-// rand_state_put pushes |state| onto |rand_state_free_list| if the pool is
-// being used. May only be called if the pool is being used.
-static void rand_state_put(struct rand_state *state) {
-  CRYPTO_STATIC_MUTEX_lock_write(rand_state_lock_bss_get());
-  state->next = *rand_state_free_list_bss_get();
-  *rand_state_free_list_bss_get() = state;
-  CRYPTO_STATIC_MUTEX_unlock_write(rand_state_lock_bss_get());
-}
-
 void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
                                      const uint8_t user_additional_data[32]) {
   if (out_len == 0) {
     return;
   }
-
-  const int fork_unsafe_buffering = rand_fork_unsafe_buffering_enabled();
 
   // Additional data is mixed into every CTR-DRBG call to protect, as best we
   // can, against forks & VM clones. We do not over-read this information and
@@ -350,7 +248,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     // entropy is used. This can be expensive (one read per |RAND_bytes| call)
     // and so can be disabled by applications that we have ensured don't fork
     // and aren't at risk of VM cloning.
-    if (!fork_unsafe_buffering) {
+    if (!rand_fork_unsafe_buffering_enabled()) {
       CRYPTO_sysrand(additional_data, sizeof(additional_data));
     } else {
       OPENSSL_memset(additional_data, 0, sizeof(additional_data));
@@ -361,14 +259,41 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     additional_data[i] ^= user_additional_data[i];
   }
 
-  struct rand_state stack_state;
-  struct rand_state *state = rand_state_get(fork_unsafe_buffering);
+  struct rand_thread_state stack_state;
+  struct rand_thread_state *state =
+      CRYPTO_get_thread_local(OPENSSL_THREAD_LOCAL_RAND);
 
   if (state == NULL) {
-    // If the system is out of memory, use an ephemeral state on the
-    // stack.
-    state = &stack_state;
-    rand_state_init(state);
+    state = OPENSSL_malloc(sizeof(struct rand_thread_state));
+    if (state == NULL ||
+        !CRYPTO_set_thread_local(OPENSSL_THREAD_LOCAL_RAND, state,
+                                 rand_thread_state_free)) {
+      // If the system is out of memory, use an ephemeral state on the
+      // stack.
+      state = &stack_state;
+    }
+
+    state->last_block_valid = 0;
+    uint8_t seed[CTR_DRBG_ENTROPY_LEN];
+    rand_get_seed(state, seed);
+    if (!CTR_DRBG_init(&state->drbg, seed, NULL, 0)) {
+      abort();
+    }
+    state->calls = 0;
+
+#if defined(BORINGSSL_FIPS)
+    if (state != &stack_state) {
+      CRYPTO_STATIC_MUTEX_lock_write(thread_states_list_lock_bss_get());
+      struct rand_thread_state **states_list = thread_states_list_bss_get();
+      state->next = *states_list;
+      if (state->next != NULL) {
+        state->next->prev = state;
+      }
+      state->prev = NULL;
+      *states_list = state;
+      CRYPTO_STATIC_MUTEX_unlock_write(thread_states_list_lock_bss_get());
+    }
+#endif
   }
 
   if (state->calls >= kReseedInterval) {
@@ -377,13 +302,13 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 #if defined(BORINGSSL_FIPS)
     // Take a read lock around accesses to |state->drbg|. This is needed to
     // avoid returning bad entropy if we race with
-    // |rand_state_clear_all|.
+    // |rand_thread_state_clear_all|.
     //
     // This lock must be taken after any calls to |CRYPTO_sysrand| to avoid a
     // bug on ppc64le. glibc may implement pthread locks by wrapping user code
     // in a hardware transaction, but, on some older versions of glibc and the
     // kernel, syscalls made with |syscall| did not abort the transaction.
-    CRYPTO_STATIC_MUTEX_lock_read(rand_drbg_lock_bss_get());
+    CRYPTO_STATIC_MUTEX_lock_read(thread_states_list_lock_bss_get());
 #endif
     if (!CTR_DRBG_reseed(&state->drbg, seed, NULL, 0)) {
       abort();
@@ -391,7 +316,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     state->calls = 0;
   } else {
 #if defined(BORINGSSL_FIPS)
-    CRYPTO_STATIC_MUTEX_lock_read(rand_drbg_lock_bss_get());
+    CRYPTO_STATIC_MUTEX_lock_read(thread_states_list_lock_bss_get());
 #endif
   }
 
@@ -420,12 +345,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
   }
 
 #if defined(BORINGSSL_FIPS)
-  CRYPTO_STATIC_MUTEX_unlock_read(rand_drbg_lock_bss_get());
+  CRYPTO_STATIC_MUTEX_unlock_read(thread_states_list_lock_bss_get());
 #endif
-
-  if (!fork_unsafe_buffering && state != &stack_state) {
-    rand_state_put(state);
-  }
 }
 
 int RAND_bytes(uint8_t *out, size_t out_len) {
