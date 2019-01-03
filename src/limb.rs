@@ -61,20 +61,22 @@ pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 #[inline]
 pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
     extern "C" {
-        fn LIMBS_equal(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
+        fn RingCore_LIMBS_equal(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
     }
 
     assert_eq!(a.len(), b.len());
-    unsafe { LIMBS_equal(a.as_ptr(), b.as_ptr(), a.len()) }
+    unsafe { RingCore_LIMBS_equal(a.as_ptr(), b.as_ptr(), a.len()) }
 }
 
 #[inline]
 pub fn limbs_less_than_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
     extern "C" {
-        fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
+        fn RingCore_LIMBS_less_than(
+            a: *const Limb, b: *const Limb, num_limbs: c::size_t,
+        ) -> LimbMask;
     }
     assert_eq!(a.len(), b.len());
-    unsafe { LIMBS_less_than(a.as_ptr(), b.as_ptr(), b.len()) }
+    unsafe { RingCore_LIMBS_less_than(a.as_ptr(), b.as_ptr(), b.len()) }
 }
 
 #[inline]
@@ -86,35 +88,36 @@ pub fn limbs_less_than_limbs_vartime(a: &[Limb], b: &[Limb]) -> bool {
 #[cfg(feature = "use_heap")]
 pub fn limbs_less_than_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
     extern "C" {
-        fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
+        fn RingCore_LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t)
+            -> LimbMask;
     }
-    unsafe { LIMBS_less_than_limb(a.as_ptr(), b, a.len()) }
+    unsafe { RingCore_LIMBS_less_than_limb(a.as_ptr(), b, a.len()) }
 }
 
 #[inline]
 pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
     extern "C" {
-        fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
+        fn RingCore_LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     }
-    unsafe { LIMBS_are_zero(limbs.as_ptr(), limbs.len()) }
+    unsafe { RingCore_LIMBS_are_zero(limbs.as_ptr(), limbs.len()) }
 }
 
 #[cfg(any(test, feature = "use_heap"))]
 #[inline]
 pub fn limbs_are_even_constant_time(limbs: &[Limb]) -> LimbMask {
     extern "C" {
-        fn LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
+        fn RingCore_LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     }
-    unsafe { LIMBS_are_even(limbs.as_ptr(), limbs.len()) }
+    unsafe { RingCore_LIMBS_are_even(limbs.as_ptr(), limbs.len()) }
 }
 
 #[cfg(any(test, feature = "use_heap"))]
 #[inline]
 pub fn limbs_equal_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
     extern "C" {
-        fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
+        fn RingCore_LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
     }
-    unsafe { LIMBS_equal_limb(a.as_ptr(), b, a.len()) }
+    unsafe { RingCore_LIMBS_equal_limb(a.as_ptr(), b, a.len()) }
 }
 
 /// Returns the number of bits in `a`.
@@ -155,10 +158,10 @@ pub fn limbs_minimal_bits(a: &[Limb]) -> bits::BitLength {
 #[inline]
 pub fn limbs_reduce_once_constant_time(r: &mut [Limb], m: &[Limb]) {
     extern "C" {
-        fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
+        fn RingCore_LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
     }
     assert_eq!(r.len(), m.len());
-    unsafe { LIMBS_reduce_once(r.as_mut_ptr(), m.as_ptr(), m.len()) };
+    unsafe { RingCore_LIMBS_reduce_once(r.as_mut_ptr(), m.as_ptr(), m.len()) };
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -296,10 +299,11 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
     const WINDOW_BITS: Wrapping<c::size_t> = Wrapping(5);
 
     extern "C" {
-        fn LIMBS_window5_split_window(
+        fn RingCore_LIMBS_window5_split_window(
             lower_limb: Limb, higher_limb: Limb, index_within_word: BitIndex,
         ) -> Window;
-        fn LIMBS_window5_unsplit_window(limb: Limb, index_within_word: BitIndex) -> Window;
+        fn RingCore_LIMBS_window5_unsplit_window(limb: Limb, index_within_word: BitIndex)
+            -> Window;
     }
 
     let num_limbs = limbs.len();
@@ -313,8 +317,9 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
     };
 
     let initial_value = {
-        let leading_partial_window =
-            unsafe { LIMBS_window5_split_window(*limbs.last().unwrap(), 0, window_low_bit) };
+        let leading_partial_window = unsafe {
+            RingCore_LIMBS_window5_split_window(*limbs.last().unwrap(), 0, window_low_bit)
+        };
         window_low_bit.0 -= WINDOW_BITS;
         init(leading_partial_window)
     };
@@ -328,13 +333,15 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
             low_limb = *current_limb;
 
             if window_low_bit.0 > Wrapping(LIMB_BITS) - WINDOW_BITS {
-                let window =
-                    unsafe { LIMBS_window5_split_window(low_limb, higher_limb, window_low_bit) };
+                let window = unsafe {
+                    RingCore_LIMBS_window5_split_window(low_limb, higher_limb, window_low_bit)
+                };
                 window_low_bit.0 -= WINDOW_BITS;
                 acc = fold(acc, window);
             };
             while window_low_bit.0 < Wrapping(LIMB_BITS) {
-                let window = unsafe { LIMBS_window5_unsplit_window(low_limb, window_low_bit) };
+                let window =
+                    unsafe { RingCore_LIMBS_window5_unsplit_window(low_limb, window_low_bit) };
                 // The loop exits when this subtraction underflows, causing `window_low_bit` to
                 // wrap around to a very large value.
                 window_low_bit.0 -= WINDOW_BITS;

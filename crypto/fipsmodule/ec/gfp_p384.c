@@ -78,7 +78,7 @@ static const BN_ULONG ONE[P384_LIMBS] = {
 
 
 static INLINE_IF_POSSIBLE Limb is_equal(const Elem a, const Elem b) {
-  return LIMBS_equal(a, b, P384_LIMBS);
+  return RingCore_LIMBS_equal(a, b, P384_LIMBS);
 }
 
 static INLINE_IF_POSSIBLE void copy_conditional(Elem r, const Elem a,
@@ -90,11 +90,11 @@ static INLINE_IF_POSSIBLE void copy_conditional(Elem r, const Elem a,
 
 
 static void elem_add(Elem r, const Elem a, const Elem b) {
-  LIMBS_add_mod(r, a, b, Q, P384_LIMBS);
+  RingCore_LIMBS_add_mod(r, a, b, Q, P384_LIMBS);
 }
 
 static void elem_sub(Elem r, const Elem a, const Elem b) {
-  LIMBS_sub_mod(r, a, b, Q, P384_LIMBS);
+  RingCore_LIMBS_sub_mod(r, a, b, Q, P384_LIMBS);
 }
 
 static void elem_div_by_2(Elem r, const Elem a) {
@@ -176,7 +176,7 @@ static inline void elem_mul_mont(Elem r, const Elem a, const Elem b) {
 }
 
 static inline void elem_mul_by_2(Elem r, const Elem a) {
-  LIMBS_shl_mod(r, a, Q, P384_LIMBS);
+  RingCore_LIMBS_shl_mod(r, a, Q, P384_LIMBS);
 }
 
 static INLINE_IF_POSSIBLE void elem_mul_by_3(Elem r, const Elem a) {
@@ -208,7 +208,7 @@ void RingCore_p384_elem_mul_mont(Elem r, const Elem a, const Elem b) {
 }
 
 void RingCore_p384_elem_neg(Elem r, const Elem a) {
-  Limb is_zero = LIMBS_are_zero(a, P384_LIMBS);
+  Limb is_zero = RingCore_LIMBS_are_zero(a, P384_LIMBS);
   Carry borrow = limbs_sub(r, Q, a, P384_LIMBS);
 #if defined(NDEBUG)
   (void)borrow;

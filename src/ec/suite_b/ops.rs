@@ -346,7 +346,7 @@ pub fn elem_reduced_to_scalar(ops: &CommonOps, elem: &Elem<Unencoded>) -> Scalar
 pub fn scalar_sum(ops: &CommonOps, a: &Scalar, b: &Scalar) -> Scalar {
     let mut r = Scalar::zero();
     unsafe {
-        LIMBS_add_mod(
+        RingCore_LIMBS_add_mod(
             r.limbs.as_mut_ptr(),
             a.limbs.as_ptr(),
             b.limbs.as_ptr(),
@@ -434,7 +434,7 @@ fn parse_big_endian_fixed_consttime<M>(
 }
 
 extern "C" {
-    fn LIMBS_add_mod(
+    fn RingCore_LIMBS_add_mod(
         r: *mut Limb, a: *const Limb, b: *const Limb, m: *const Limb, num_limbs: c::size_t,
     );
 }

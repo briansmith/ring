@@ -465,10 +465,12 @@ where
 
 fn elem_mul_by_2<M, AF>(a: &mut Elem<M, AF>, m: &PartialModulus<M>) {
     extern "C" {
-        fn LIMBS_shl_mod(r: *mut Limb, a: *const Limb, m: *const Limb, num_limbs: c::size_t);
+        fn RingCore_LIMBS_shl_mod(
+            r: *mut Limb, a: *const Limb, m: *const Limb, num_limbs: c::size_t,
+        );
     }
     unsafe {
-        LIMBS_shl_mod(
+        RingCore_LIMBS_shl_mod(
             a.limbs.as_mut_ptr(),
             a.limbs.as_ptr(),
             m.limbs.as_ptr(),
@@ -547,12 +549,12 @@ pub fn elem_widen<Larger, Smaller: SmallerModulus<Larger>>(
 pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
     extern "C" {
         // `r` and `a` may alias.
-        fn LIMBS_add_mod(
+        fn RingCore_LIMBS_add_mod(
             r: *mut Limb, a: *const Limb, b: *const Limb, m: *const Limb, num_limbs: c::size_t,
         );
     }
     unsafe {
-        LIMBS_add_mod(
+        RingCore_LIMBS_add_mod(
             a.limbs.as_mut_ptr(),
             a.limbs.as_ptr(),
             b.limbs.as_ptr(),
@@ -567,12 +569,12 @@ pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>) -> Elem<
 pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem<M, E> {
     extern "C" {
         // `r` and `a` may alias.
-        fn LIMBS_sub_mod(
+        fn RingCore_LIMBS_sub_mod(
             r: *mut Limb, a: *const Limb, b: *const Limb, m: *const Limb, num_limbs: c::size_t,
         );
     }
     unsafe {
-        LIMBS_sub_mod(
+        RingCore_LIMBS_sub_mod(
             a.limbs.as_mut_ptr(),
             a.limbs.as_ptr(),
             b.limbs.as_ptr(),
