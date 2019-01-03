@@ -29,8 +29,10 @@ target_link_libraries(decrepit crypto ssl)
 add_executable(
   decrepit_test
 
-  ripemd/ripemd_test.cc
+  blowfish/blowfish_test.cc
+  cast/cast_test.cc
   cfb/cfb_test.cc
+  ripemd/ripemd_test.cc
 
   $<TARGET_OBJECTS:boringssl_gtest_main>
   $<TARGET_OBJECTS:test_support>

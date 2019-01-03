@@ -55,6 +55,8 @@
  * [including the GNU Public Licence.]. */
 
 #include <openssl/cast.h>
+#include <openssl/cipher.h>
+#include <openssl/obj.h>
 
 #if defined(OPENSSL_WINDOWS)
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
@@ -62,6 +64,7 @@ OPENSSL_MSVC_PRAGMA(warning(push, 3))
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 
+#include "../../crypto/internal.h"
 #include "internal.h"
 #include "../macros.h"
 
@@ -406,3 +409,54 @@ void CAST_cfb64_encrypt(const uint8_t *in, uint8_t *out, long length,
   v0 = v1 = ti[0] = ti[1] = t = c = cc = 0;
   *num = n;
 }
+
+static int cast_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
+                         const uint8_t *iv, int enc) {
+  CAST_KEY *cast_key = ctx->cipher_data;
+  CAST_set_key(cast_key, ctx->key_len, key);
+  return 1;
+}
+
+static int cast_ecb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
+                           size_t len) {
+  CAST_KEY *cast_key = ctx->cipher_data;
+
+  while (len >= CAST_BLOCK) {
+    CAST_ecb_encrypt(in, out, cast_key, ctx->encrypt);
+    in += CAST_BLOCK;
+    out += CAST_BLOCK;
+    len -= CAST_BLOCK;
+  }
+  assert(len == 0);
+
+  return 1;
+}
+
+static int cast_cbc_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
+                           size_t len) {
+  CAST_KEY *cast_key = ctx->cipher_data;
+  CAST_cbc_encrypt(in, out, len, cast_key, ctx->iv, ctx->encrypt);
+  return 1;
+}
+
+static const EVP_CIPHER cast5_ecb = {
+    NID_undef,           CAST_BLOCK,
+    CAST_KEY_LENGTH,     CAST_BLOCK /* iv_len */,
+    sizeof(CAST_KEY),    EVP_CIPH_ECB_MODE | EVP_CIPH_VARIABLE_LENGTH,
+    NULL /* app_data */, cast_init_key,
+    cast_ecb_cipher,     NULL /* cleanup */,
+    NULL /* ctrl */,
+};
+
+static const EVP_CIPHER cast5_cbc = {
+    NID_undef,           CAST_BLOCK,
+    CAST_KEY_LENGTH,     CAST_BLOCK /* iv_len */,
+    sizeof(CAST_KEY),    EVP_CIPH_CBC_MODE | EVP_CIPH_VARIABLE_LENGTH,
+    NULL /* app_data */, cast_init_key,
+    cast_cbc_cipher,     NULL /* cleanup */,
+    NULL /* ctrl */,
+};
+
+const EVP_CIPHER *EVP_cast5_ecb(void) { return &cast5_ecb; }
+
+const EVP_CIPHER *EVP_cast5_cbc(void) { return &cast5_cbc; }
