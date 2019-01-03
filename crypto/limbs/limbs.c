@@ -34,7 +34,7 @@ crypto_word RingCore_LIMBS_window5_split_window(Limb lower_limb,
 crypto_word RingCore_LIMBS_window5_unsplit_window(Limb limb,
                                                   size_t index_within_word);
 
-crypto_word LIMB_shr(crypto_word a, size_t shift);
+crypto_word RingCore_LIMB_shr(crypto_word a, size_t shift);
 
 /* Returns 0xfff..f if |a| is all zero limbs, and zero otherwise. |num_limbs|
  * may be zero. */
@@ -192,6 +192,6 @@ crypto_word RingCore_LIMBS_window5_unsplit_window(Limb limb, size_t index_within
   return (limb >> index_within_word) & FIVE_BITS_MASK;
 }
 
-Limb LIMB_shr(Limb a, size_t shift) {
+Limb RingCore_LIMB_shr(Limb a, size_t shift) {
   return a >> shift;
 }

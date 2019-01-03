@@ -130,7 +130,7 @@ pub fn limbs_equal_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
 #[cfg(any(test, feature = "use_heap"))]
 pub fn limbs_minimal_bits(a: &[Limb]) -> bits::BitLength {
     extern "C" {
-        fn LIMB_shr(a: Limb, shift: c::size_t) -> Limb;
+        fn RingCore_LIMB_shr(a: Limb, shift: c::size_t) -> Limb;
     }
 
     for num_limbs in (1..=a.len()).rev() {
@@ -141,7 +141,7 @@ pub fn limbs_minimal_bits(a: &[Limb]) -> bits::BitLength {
         // for the most common inputs because usually the most significant bit
         // it set.
         for high_limb_num_bits in (1..=LIMB_BITS).rev() {
-            let shifted = unsafe { LIMB_shr(high_limb, high_limb_num_bits - 1) };
+            let shifted = unsafe { RingCore_LIMB_shr(high_limb, high_limb_num_bits - 1) };
             if shifted != 0 {
                 return bits::BitLength::from_usize_bits(
                     ((num_limbs - 1) * LIMB_BITS) + high_limb_num_bits,
