@@ -117,10 +117,11 @@ int GFp_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
                                     size_t num_n,
                                     const BN_ULONG n0_[BN_MONT_CTX_N0_LIMBS]);
 
-OPENSSL_COMPILE_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
-                       BN_MONT_CTX_N0_LIMBS_VALUE_INVALID);
-OPENSSL_COMPILE_ASSERT(sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS ==
-                       sizeof(uint64_t), BN_MONT_CTX_set_64_bit_mismatch);
+OPENSSL_STATIC_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
+  "BN_MONT_CTX_N0_LIMBS value is invalid");
+OPENSSL_STATIC_ASSERT(
+  sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS == sizeof(uint64_t),
+  "uint64_t is insufficient precision for n0");
 
 int GFp_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
                                     size_t num_a, const BN_ULONG n[],
