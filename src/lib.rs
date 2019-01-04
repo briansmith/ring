@@ -134,5 +134,5 @@ mod sealed {
 
 #[cfg(test)]
 mod tests {
-    bssl_test!(test_constant_time, bssl_constant_time_test_main);
+    bssl_test!(test_constant_time, RingCore_constant_time_test_main);
 }

@@ -50,7 +50,7 @@
 #include <stdlib.h>
 
 
-int bssl_constant_time_test_main(void);
+int RingCore_constant_time_test_main(void);
 
 static int test_binary_op_w(crypto_word (*op)(crypto_word a, crypto_word b),
                             const char *op_name, crypto_word a, crypto_word b,
@@ -146,7 +146,7 @@ static crypto_word test_values_s[] = {
   SIZE_MAX
 };
 
-int bssl_constant_time_test_main(void) {
+int RingCore_constant_time_test_main(void) {
   int num_failed = 0;
 
   for (size_t i = 0;
