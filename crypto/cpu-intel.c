@@ -128,10 +128,6 @@ void GFp_cpuid_setup(void) {
   int is_intel = ebx == 0x756e6547 /* Genu */ &&
                  edx == 0x49656e69 /* ineI */ &&
                  ecx == 0x6c65746e /* ntel */;
-  int is_amd = ebx == 0x68747541 /* Auth */ &&
-               edx == 0x69746e65 /* enti */ &&
-               ecx == 0x444d4163 /* cAMD */;
-
 
   uint32_t extended_features[2] = {0};
   if (num_ids >= 7) {
@@ -165,7 +161,8 @@ void GFp_cpuid_setup(void) {
     edx &= ~(1u << 30);
   }
 
-  // The SDBG bit is repurposed to denote AMD XOP support.
+  // The SDBG bit is repurposed to denote AMD XOP support. Don't ever use AMD
+  // XOP code paths.
   ecx &= ~(1u << 11);
 
   uint64_t xcr0 = 0;
