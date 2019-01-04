@@ -15,7 +15,7 @@
 use super::{bigint, parse_public_key, Parameters, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
 use crate::{bits, cpu, digest, error, sealed, signature};
 /// RSA PKCS#1 1.5 signatures.
-use core;
+
 use untrusted;
 
 #[derive(Debug)]
