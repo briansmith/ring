@@ -140,7 +140,7 @@ func main() {
 				break
 			}
 		}
-		if skip || isCXXSymbol(s) || strings.HasPrefix(s, "__real@") {
+		if skip || isCXXSymbol(s) || strings.HasPrefix(s, "__real@") || strings.HasPrefix(s, "__x86.get_pc_thunk.") {
 			continue
 		}
 		if _, err := fmt.Fprintln(out, s); err != nil {
