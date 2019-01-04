@@ -141,8 +141,8 @@ $code.=<<___;
 
 .text
 
-.globl	ChaCha20_ctr32
-.type	ChaCha20_ctr32,%function
+.globl	GFp_ChaCha20_ctr32
+.type	GFp_ChaCha20_ctr32,%function
 .align	5
 GFp_ChaCha20_ctr32:
 	cbz	$len,.Labort
