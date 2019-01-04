@@ -203,4 +203,24 @@ hooks = [
                 'boringssl/util/bot/sde-linux64/',
     ],
   },
+  {
+    'name': 'sde_win32',
+    'pattern': '.',
+    'condition': 'checkout_sde and host_os == "win"',
+    'action': [ 'download_from_google_storage',
+                '--no_resume',
+                '--bucket', 'chrome-boringssl-sde',
+                '-s', 'boringssl/util/bot/sde-win32.tar.bz2.sha1'
+    ],
+  },
+  {
+    'name': 'sde_win32_extract',
+    'pattern': '.',
+    'condition': 'checkout_sde and host_os == "win"',
+    'action': [ 'python',
+                'boringssl/util/bot/extract.py',
+                'boringssl/util/bot/sde-win32.tar.bz2',
+                'boringssl/util/bot/sde-win32/',
+    ],
+  },
 ]
