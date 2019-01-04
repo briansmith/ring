@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{arithmetic::montgomery::*, c, error, limb::*};
+use crate::{arithmetic::montgomery::*, error, limb::*};
 use core::marker::PhantomData;
 use untrusted;
 
@@ -346,12 +346,11 @@ pub fn elem_reduced_to_scalar(ops: &CommonOps, elem: &Elem<Unencoded>) -> Scalar
 pub fn scalar_sum(ops: &CommonOps, a: &Scalar, b: &Scalar) -> Scalar {
     let mut r = Scalar::zero();
     unsafe {
-        RingCore_LIMBS_add_mod(
+        limbs_add_mod(
             r.limbs.as_mut_ptr(),
             a.limbs.as_ptr(),
             b.limbs.as_ptr(),
-            ops.n.limbs.as_ptr(),
-            ops.num_limbs,
+            &ops.n.limbs,
         )
     }
     r
@@ -431,12 +430,6 @@ fn parse_big_endian_fixed_consttime<M>(
         &mut r.limbs[..ops.num_limbs],
     )?;
     Ok(r)
-}
-
-extern "C" {
-    fn RingCore_LIMBS_add_mod(
-        r: *mut Limb, a: *const Limb, b: *const Limb, m: *const Limb, num_limbs: c::size_t,
-    );
 }
 
 #[cfg(test)]

@@ -164,6 +164,19 @@ pub fn limbs_reduce_once_constant_time(r: &mut [Limb], m: &[Limb]) {
     unsafe { RingCore_LIMBS_reduce_once(r.as_mut_ptr(), m.as_ptr(), m.len()) };
 }
 
+/// `r`, `a`, and `b` must point to arrays of `Limb`s with `m.len()` elements.
+/// `r` and `a` may alias.
+#[inline]
+pub unsafe fn limbs_add_mod(r: *mut Limb, a: *const Limb, b: *const Limb, m: &[Limb]) {
+    extern "C" {
+        // `r` and `a` may alias.
+        fn RingCore_LIMBS_add_mod(
+            r: *mut Limb, a: *const Limb, b: *const Limb, m: *const Limb, num_limbs: c::size_t,
+        );
+    }
+    RingCore_LIMBS_add_mod(r, a, b, m.as_ptr(), m.len())
+}
+
 #[derive(Clone, Copy, PartialEq)]
 pub enum AllowZero {
     No,
