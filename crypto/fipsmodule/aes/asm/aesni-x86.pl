@@ -404,8 +404,8 @@ if ($PREFIX eq $AESNI_PREFIX) {
 
 ######################################################################
 # void aes_hw_ctr32_encrypt_blocks (const void *in, void *out,
-#                                      size_t blocks, const AES_KEY *key,
-#                                      const char *ivec);
+#                         size_t blocks, const AES_KEY *key,
+#                         const char *ivec);
 #
 # Handles only complete blocks, operates on 32-bit counter and
 # does not update *ivec! (see crypto/modes/ctr128.c for details)
