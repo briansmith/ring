@@ -255,9 +255,16 @@ sub ::asciz
 
 sub ::asm_finish
 {   &file_end();
-    print "#if defined(__i386__)\n" unless $win32;
+    my $comment = "#";
+    $comment = ";" if ($win32 || $netware);
+    print <<___;
+$comment This file is generated from a similarly-named Perl script in the BoringSSL
+$comment source tree. Do not edit by hand.
+
+___
+    print "#if defined(__i386__)\n" unless ($win32 || $netware);
     print @out;
-    print "#endif\n" unless $win32;
+    print "#endif\n" unless ($win32 || $netware);
 }
 
 sub ::asm_init

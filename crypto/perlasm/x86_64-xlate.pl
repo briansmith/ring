@@ -1123,6 +1123,16 @@ my $endbranch = sub {
 
 ########################################################################
 
+{
+  my $comment = "#";
+  $comment = ";" if ($masm || $nasm);
+  print <<___;
+$comment This file is generated from a similarly-named Perl script in the BoringSSL
+$comment source tree. Do not edit by hand.
+
+___
+}
+
 if ($nasm) {
     print <<___;
 default	rel
