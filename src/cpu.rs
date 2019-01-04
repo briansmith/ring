@@ -16,11 +16,16 @@
 pub fn cache_detected_features() {
     #[cfg(not(target_os = "ios"))]
     {
-        use std;
+        use lazy_static::lazy_static;
+
         extern "C" {
             fn GFp_cpuid_setup();
         }
-        static INIT: std::sync::Once = std::sync::ONCE_INIT;
-        INIT.call_once(|| unsafe { GFp_cpuid_setup() });
+
+        lazy_static! {
+            static ref INIT: () = unsafe { GFp_cpuid_setup() };
+        };
+
+        *INIT
     }
 }
