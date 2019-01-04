@@ -32,9 +32,9 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
 *STDOUT=*OUT;
 
 #############################################################################
-# extern int beeu_mod_inverse_vartime(BN_ULONG out[P256_LIMBS],
-#                                     BN_ULONG a[P256_LIMBS],
-#                                     BN_ULONG n[P256_LIMBS]);
+# extern int RingCore_beeu_mod_inverse_vartime(BN_ULONG out[P256_LIMBS],
+#                                              BN_ULONG a[P256_LIMBS],
+#                                              BN_ULONG n[P256_LIMBS]);
 #
 # (Binary Extended Euclidean Algorithm.
 #  See https://en.wikipedia.org/wiki/Binary_GCD_algorithm)
@@ -149,11 +149,11 @@ ___
 $code.=<<___;
 .text
 
-.type beeu_mod_inverse_vartime,\@function
-.hidden beeu_mod_inverse_vartime
-.globl  beeu_mod_inverse_vartime
+.type RingCore_beeu_mod_inverse_vartime,\@function
+.hidden RingCore_beeu_mod_inverse_vartime
+.globl  RingCore_beeu_mod_inverse_vartime
 .align 32
-beeu_mod_inverse_vartime:
+RingCore_beeu_mod_inverse_vartime:
 .cfi_startproc
     push %rbp
 .cfi_push rbp
@@ -399,7 +399,7 @@ beeu_mod_inverse_vartime:
 .cfi_endproc
     ret
 
-.size beeu_mod_inverse_vartime, .-beeu_mod_inverse_vartime
+.size RingCore_beeu_mod_inverse_vartime, .-RingCore_beeu_mod_inverse_vartime
 ___
 
 print $code;
