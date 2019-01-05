@@ -247,12 +247,6 @@ void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
                         const uint8_t *inp, size_t len);
 #endif
 
-// GHASH_CHUNK is "stride parameter" missioned to mitigate cache
-// trashing effect. In other words idea is to hash data while it's
-// still in L1 cache after encryption pass...
-#define GHASH_CHUNK (3 * 1024)
-
-
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
 void GFp_gcm_init_clmul(u128 Htable[16], const uint64_t Xi[2]);
 void GFp_gcm_gmult_clmul(uint8_t Xi[16], const u128 Htable[16]);
