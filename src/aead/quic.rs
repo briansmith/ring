@@ -17,7 +17,7 @@
 //! See draft-ietf-quic-tls.
 
 use crate::{
-    aead::{aes, block::Block},
+    aead::{aes, block::Block, chacha},
     cpu, error,
     polyfill::convert::*,
 };
@@ -31,6 +31,7 @@ pub struct HeaderProtectionKey {
 #[allow(variant_size_differences)]
 enum KeyInner {
     Aes(aes::Key),
+    ChaCha20(chacha::Key),
 }
 
 impl HeaderProtectionKey {
@@ -83,6 +84,7 @@ derive_debug_via_self!(Algorithm, self.id);
 enum AlgorithmID {
     AES_128,
     AES_256,
+    CHACHA20,
 }
 
 impl PartialEq for Algorithm {
@@ -120,7 +122,30 @@ fn aes_init_256(key: &[u8]) -> Result<KeyInner, error::Unspecified> {
 fn aes_new_mask(key: &KeyInner, sample: Block) -> [u8; 5] {
     let aes_key = match key {
         KeyInner::Aes(key) => key,
+        _ => unreachable!(),
     };
 
     aes_key.new_mask(sample)
+}
+
+/// ChaCha20.
+pub static CHACHA20: Algorithm = Algorithm {
+    key_len: chacha::KEY_LEN,
+    init: chacha20_init,
+    new_mask: chacha20_new_mask,
+    id: AlgorithmID::CHACHA20,
+};
+
+fn chacha20_init(key: &[u8]) -> Result<KeyInner, error::Unspecified> {
+    let chacha20_key: &[u8; chacha::KEY_LEN] = key.try_into_()?;
+    Ok(KeyInner::ChaCha20(chacha::Key::from(chacha20_key)))
+}
+
+fn chacha20_new_mask(key: &KeyInner, sample: Block) -> [u8; 5] {
+    let chacha20_key = match key {
+        KeyInner::ChaCha20(key) => key,
+        _ => unreachable!(),
+    };
+
+    chacha20_key.new_mask(sample)
 }
