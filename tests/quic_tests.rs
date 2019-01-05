@@ -39,6 +39,9 @@ fn quic_aes_128() { test_quic(&quic::AES_128, "tests/quic_aes_128_tests.txt"); }
 #[test]
 fn quic_aes_256() { test_quic(&quic::AES_256, "tests/quic_aes_256_tests.txt"); }
 
+#[test]
+fn quic_chacha20() { test_quic(&quic::CHACHA20, "tests/quic_chacha20_tests.txt"); }
+
 fn test_quic(alg: &'static quic::Algorithm, file_path: &str) {
     test_sample_len(alg);
 

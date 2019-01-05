@@ -132,6 +132,9 @@ where
 
 impl Iv {
     #[inline]
+    pub fn assume_unique_for_key(a: Block) -> Self { Iv(a) }
+
+    #[inline]
     pub fn into_block_less_safe(self) -> Block { self.0 }
 }
 
