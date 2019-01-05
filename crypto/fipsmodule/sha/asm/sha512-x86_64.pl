@@ -127,7 +127,7 @@ die "can't locate x86_64-xlate.pl";
 # output, so this isn't useful anyway.
 $avx = 2;
 
-$shaext=1;
+$shaext=0;
 $avx=1		if (!$shaext && $avx);
 
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\"";
