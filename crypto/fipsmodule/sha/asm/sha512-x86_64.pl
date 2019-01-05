@@ -108,6 +108,8 @@
 #	part, body_00_15; reducing the amount of SIMD instructions
 #	below certain limit makes no difference/sense; to conserve
 #	space SHA256 XOP code path is therefore omitted;
+#
+# Modified from upstream OpenSSL to remove the XOP code.
 
 $flavour = shift;
 $output  = shift;
@@ -268,6 +270,8 @@ ___
 $code.=<<___ if ($SZ==4 && $shaext);
 	test	\$`1<<29`,%r11d		# check for SHA
 	jnz	_shaext_shortcut
+___
+    # XOP codepath removed.
 ___
 $code.=<<___ if ($avx>1);
 	and	\$`1<<8|1<<5|1<<3`,%r11d	# check for BMI2+AVX2+BMI1
