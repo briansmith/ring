@@ -1216,6 +1216,9 @@ func transform(w stringWriter, inputs []inputFile) error {
 	// .file directive. Zero is not a valid number.
 	maxObservedFileNumber := 0
 
+	// OPENSSL_ia32cap_get will be synthesized by this script.
+	symbols["OPENSSL_ia32cap_get"] = struct{}{}
+
 	for _, input := range inputs {
 		forEachPath(input.ast.up, func(node *node32) {
 			symbol := input.contents[node.begin:node.end]
@@ -1394,6 +1397,8 @@ func transform(w stringWriter, inputs []inputFile) error {
 		}
 
 		w.WriteString(".type OPENSSL_ia32cap_get, @function\n")
+		w.WriteString(".globl OPENSSL_ia32cap_get\n")
+		w.WriteString(localTargetName("OPENSSL_ia32cap_get") + ":\n")
 		w.WriteString("OPENSSL_ia32cap_get:\n")
 		w.WriteString("\tleaq OPENSSL_ia32cap_P(%rip), %rax\n")
 		w.WriteString("\tret\n")

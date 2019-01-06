@@ -534,8 +534,8 @@ static const uint32_t rcon[] = {
     // for 128-bit blocks, Rijndael never uses more than 10 rcon values
 };
 
-static int aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
-                                    AES_KEY *aeskey) {
+int aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
+                             AES_KEY *aeskey) {
   uint32_t *rk;
   int i = 0;
   uint32_t temp;
@@ -630,8 +630,8 @@ static int aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
   return 0;
 }
 
-static int aes_nohw_set_decrypt_key(const uint8_t *key, unsigned bits,
-                                    AES_KEY *aeskey) {
+int aes_nohw_set_decrypt_key(const uint8_t *key, unsigned bits,
+                             AES_KEY *aeskey) {
   uint32_t *rk;
   int i, j, status;
   uint32_t temp;
@@ -679,8 +679,7 @@ static int aes_nohw_set_decrypt_key(const uint8_t *key, unsigned bits,
   return 0;
 }
 
-static void aes_nohw_encrypt(const uint8_t *in, uint8_t *out,
-                             const AES_KEY *key) {
+void aes_nohw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   const uint32_t *rk;
   uint32_t s0, s1, s2, s3, t0, t1, t2, t3;
   int r;
@@ -741,8 +740,7 @@ static void aes_nohw_encrypt(const uint8_t *in, uint8_t *out,
   PUTU32(out + 12, s3);
 }
 
-static void aes_nohw_decrypt(const uint8_t *in, uint8_t *out,
-                             const AES_KEY *key) {
+void aes_nohw_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   const uint32_t *rk;
   uint32_t s0, s1, s2, s3, t0, t1, t2, t3;
   int r;
@@ -808,17 +806,7 @@ static void aes_nohw_decrypt(const uint8_t *in, uint8_t *out,
   PUTU32(out + 12, s3);
 }
 
-#else  // NO_ASM || (!X86 && !X86_64 && !ARM)
-
-// If not implemented in C, these functions will be provided by assembly code.
-void aes_nohw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-void aes_nohw_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key);
-int aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
-                             AES_KEY *aeskey);
-int aes_nohw_set_decrypt_key(const uint8_t *key, unsigned bits,
-                             AES_KEY *aeskey);
-
-#endif
+#endif  // NO_ASM || (!X86 && !X86_64 && !ARM)
 
 // Be aware that on x86(-64), the |aes_nohw_*| functions are incompatible with
 // the aes_hw_* functions. The latter set |AES_KEY.rounds| to one less than the
