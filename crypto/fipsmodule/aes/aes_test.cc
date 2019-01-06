@@ -23,7 +23,9 @@
 
 #include <openssl/aes.h>
 
+#include "internal.h"
 #include "../../internal.h"
+#include "../../test/abi_test.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
 #include "../../test/wycheproof_util.h"
@@ -186,3 +188,105 @@ TEST(AESTest, WrapBadLengths) {
               AES_wrap_key(&aes, nullptr, out.data(), in.data(), in.size()));
   }
 }
+
+#if defined(SUPPORTS_ABI_TEST)
+TEST(AESTest, ABI) {
+  for (int bits : {128, 192, 256}) {
+    SCOPED_TRACE(bits);
+    const uint8_t kKey[256/8] = {0};
+    AES_KEY key;
+    uint8_t block[AES_BLOCK_SIZE];
+    uint8_t buf[AES_BLOCK_SIZE * 64] = {0};
+    std::vector<int> block_counts;
+    if (bits == 128) {
+      block_counts = {0, 1, 2, 3, 4, 8, 16, 31};
+    } else {
+      // Unwind tests are very slow. Assume that the various input sizes do not
+      // differ significantly by round count for ABI purposes.
+      block_counts = {0, 1, 8};
+    }
+
+    CHECK_ABI(aes_nohw_set_encrypt_key, kKey, bits, &key);
+    CHECK_ABI(aes_nohw_encrypt, block, block, &key);
+#if defined(AES_NOHW_CBC)
+    for (size_t blocks : block_counts) {
+      SCOPED_TRACE(blocks);
+      CHECK_ABI(aes_nohw_cbc_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
+                block, AES_ENCRYPT);
+    }
+#endif
+
+    CHECK_ABI(aes_nohw_set_decrypt_key, kKey, bits, &key);
+    CHECK_ABI(aes_nohw_decrypt, block, block, &key);
+#if defined(AES_NOHW_CBC)
+    for (size_t blocks : block_counts) {
+      SCOPED_TRACE(blocks);
+      CHECK_ABI(aes_nohw_cbc_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
+                block, AES_DECRYPT);
+    }
+#endif
+
+    if (bsaes_capable()) {
+      aes_nohw_set_encrypt_key(kKey, bits, &key);
+      for (size_t blocks : block_counts) {
+        SCOPED_TRACE(blocks);
+        if (blocks != 0) {
+          CHECK_ABI(bsaes_ctr32_encrypt_blocks, buf, buf, blocks, &key, block);
+        }
+      }
+
+      aes_nohw_set_decrypt_key(kKey, bits, &key);
+      for (size_t blocks : block_counts) {
+        SCOPED_TRACE(blocks);
+        CHECK_ABI(bsaes_cbc_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
+                  block, AES_DECRYPT);
+      }
+    }
+
+    if (vpaes_capable()) {
+      CHECK_ABI(vpaes_set_encrypt_key, kKey, bits, &key);
+      CHECK_ABI(vpaes_encrypt, block, block, &key);
+      for (size_t blocks : block_counts) {
+        SCOPED_TRACE(blocks);
+        CHECK_ABI(vpaes_cbc_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
+                  block, AES_ENCRYPT);
+      }
+
+      CHECK_ABI(vpaes_set_decrypt_key, kKey, bits, &key);
+      CHECK_ABI(vpaes_decrypt, block, block, &key);
+      for (size_t blocks : block_counts) {
+        SCOPED_TRACE(blocks);
+        CHECK_ABI(vpaes_cbc_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
+                  block, AES_DECRYPT);
+      }
+    }
+
+    if (hwaes_capable()) {
+      CHECK_ABI(aes_hw_set_encrypt_key, kKey, bits, &key);
+      CHECK_ABI(aes_hw_encrypt, block, block, &key);
+      for (size_t blocks : block_counts) {
+        SCOPED_TRACE(blocks);
+        CHECK_ABI(aes_hw_cbc_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
+                  block, AES_ENCRYPT);
+        CHECK_ABI(aes_hw_ctr32_encrypt_blocks, buf, buf, blocks, &key, block);
+#if defined(HWAES_ECB)
+        CHECK_ABI(aes_hw_ecb_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
+                  AES_ENCRYPT);
+#endif
+      }
+
+      CHECK_ABI(aes_hw_set_decrypt_key, kKey, bits, &key);
+      CHECK_ABI(aes_hw_decrypt, block, block, &key);
+      for (size_t blocks : block_counts) {
+        SCOPED_TRACE(blocks);
+        CHECK_ABI(aes_hw_cbc_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
+                  block, AES_DECRYPT);
+#if defined(HWAES_ECB)
+        CHECK_ABI(aes_hw_ecb_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
+                  AES_DECRYPT);
+#endif
+      }
+    }
+  }
+}
+#endif  // SUPPORTS_ABI_TEST
