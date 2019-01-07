@@ -366,6 +366,29 @@ abi_test_bad_unwind_temporary:
 	ret
 .cfi_endproc
 .size	abi_test_bad_unwind_temporary,.-abi_test_bad_unwind_temporary
+
+# abi_test_get_and_clear_direction_flag clears the direction flag. If the flag
+# was previously set, it returns one. Otherwise, it returns zero.
+# int abi_test_get_and_clear_direction_flag(void);
+.type	abi_test_set_direction_flag, \@abi-omnipotent
+.globl	abi_test_get_and_clear_direction_flag
+abi_test_get_and_clear_direction_flag:
+	pushfq
+	popq	%rax
+	andq	\$0x400, %rax
+	shlq	\$10, %rax
+	cld
+	ret
+.size abi_test_get_and_clear_direction_flag,.-abi_test_get_and_clear_direction_flag
+
+# abi_test_set_direction_flag sets the direction flag.
+# void abi_test_set_direction_flag(void);
+.type	abi_test_set_direction_flag, \@abi-omnipotent
+.globl	abi_test_set_direction_flag
+abi_test_set_direction_flag:
+	std
+	ret
+.size abi_test_set_direction_flag,.-abi_test_set_direction_flag
 ____
 
 if ($win64) {

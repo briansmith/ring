@@ -174,6 +174,11 @@ TEST(ABITest, X86_64) {
   CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm14);
   CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm15);
 #endif
+
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_set_direction_flag),
+                          "Direction flag set after return");
+  EXPECT_EQ(0, abi_test_get_and_clear_direction_flag())
+      << "CHECK_ABI did not insulate the caller from direction flag errors";
 }
 
 #if defined(OPENSSL_WINDOWS)

@@ -286,6 +286,17 @@ void abi_test_bad_unwind_wrong_register(void);
 // storage space for a saved register, breaking unwind.
 void abi_test_bad_unwind_temporary(void);
 
+#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)
+// abi_test_get_and_clear_direction_flag clears the direction flag. If the flag
+// was previously set, it returns one. Otherwise, it returns zero.
+int abi_test_get_and_clear_direction_flag(void);
+
+// abi_test_set_direction_flag sets the direction flag. This does not conform to
+// ABI requirements and must only be called within a |CHECK_ABI| guard to avoid
+// errors later in the program.
+int abi_test_set_direction_flag(void);
+#endif  // OPENSSL_X86_64 || OPENSSL_X86
+
 }  // extern "C"
 #endif  // SUPPORTS_ABI_TEST
 

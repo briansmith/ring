@@ -90,11 +90,25 @@ crypto_word_t RunTrampoline(Result *out, crypto_word_t func,
   unwind &= g_unwind_tests_enabled;
   CallerState state2 = state;
   crypto_word_t ret = abi_test_trampoline(func, &state2, argv, argc, unwind);
+#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)
+  // Query and clear the direction flag early, so negative tests do not
+  // interfere with |malloc|.
+  bool direction_flag = abi_test_get_and_clear_direction_flag();
+#endif  // OPENSSL_X86_64 || OPENSSL_X86
 
   *out = Result();
   ForEachMismatch(state, state2, [&](const char *reg) {
     out->errors.push_back(std::string(reg) + " was not restored after return");
   });
+#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)
+  // Linux and Windows ABIs for x86 require the direction flag be cleared on
+  // return. (Some OpenSSL assembly preserves it, which is stronger, but we only
+  // require what is specified by the ABI so |CHECK_ABI| works with C compiler
+  // output.)
+  if (direction_flag) {
+    out->errors.emplace_back("Direction flag set after return");
+  }
+#endif  // OPENSSL_X86_64 || OPENSSL_X86
   if (unwind) {
     ReadUnwindResult(out);
   }
