@@ -124,6 +124,9 @@ my %globals;
 		$self->{sz} = "";
 	    } elsif ($self->{op} =~ /mov[dq]/ && $$line =~ /%xmm/) {
 		$self->{sz} = "";
+	    } elsif ($self->{op} =~ /^or([qlwb])$/) {
+		$self->{op} = "or";
+		$self->{sz} = $1;
 	    } elsif ($self->{op} =~ /([a-z]{3,})([qlwb])$/) {
 		$self->{op} = $1;
 		$self->{sz} = $2;
