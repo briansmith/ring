@@ -176,5 +176,23 @@ TEST(GCMTest, ABI) {
 #endif  // GHASH_ASM_X86_64
   }
 #endif  // GHASH_ASM_X86 || GHASH_ASM_X86_64
+
+#if defined(GHASH_ASM_ARM)
+  if (gcm_neon_capable()) {
+    CHECK_ABI(gcm_init_neon, Htable, kH);
+    CHECK_ABI(gcm_gmult_neon, X, Htable);
+    for (size_t blocks : kBlockCounts) {
+      CHECK_ABI(gcm_ghash_neon, X, Htable, buf, 16 * blocks);
+    }
+  }
+
+  if (gcm_pmull_capable()) {
+    CHECK_ABI(gcm_init_v8, Htable, kH);
+    CHECK_ABI(gcm_gmult_v8, X, Htable);
+    for (size_t blocks : kBlockCounts) {
+      CHECK_ABI(gcm_ghash_v8, X, Htable, buf, 16 * blocks);
+    }
+  }
+#endif  // GHASH_ASM_ARM
 }
 #endif  // SUPPORTS_ABI_TEST && GHASH_ASM

@@ -243,3 +243,100 @@ TEST(ABITest, X86) {
       << "CHECK_ABI did not insulate the caller from direction flag errors";
 }
 #endif   // OPENSSL_X86 && SUPPORTS_ABI_TEST
+
+#if defined(OPENSSL_ARM) && defined(SUPPORTS_ABI_TEST)
+extern "C" {
+void abi_test_clobber_r0(void);
+void abi_test_clobber_r1(void);
+void abi_test_clobber_r2(void);
+void abi_test_clobber_r3(void);
+void abi_test_clobber_r4(void);
+void abi_test_clobber_r5(void);
+void abi_test_clobber_r6(void);
+void abi_test_clobber_r7(void);
+void abi_test_clobber_r8(void);
+void abi_test_clobber_r9(void);
+void abi_test_clobber_r10(void);
+void abi_test_clobber_r11(void);
+void abi_test_clobber_r12(void);
+// r13, r14, and r15, are sp, lr, and pc, respectively.
+
+void abi_test_clobber_d0(void);
+void abi_test_clobber_d1(void);
+void abi_test_clobber_d2(void);
+void abi_test_clobber_d3(void);
+void abi_test_clobber_d4(void);
+void abi_test_clobber_d5(void);
+void abi_test_clobber_d6(void);
+void abi_test_clobber_d7(void);
+void abi_test_clobber_d8(void);
+void abi_test_clobber_d9(void);
+void abi_test_clobber_d10(void);
+void abi_test_clobber_d11(void);
+void abi_test_clobber_d12(void);
+void abi_test_clobber_d13(void);
+void abi_test_clobber_d14(void);
+void abi_test_clobber_d15(void);
+}  // extern "C"
+
+TEST(ABITest, ARM) {
+  // abi_test_trampoline hides unsaved registers from the caller, so we can
+  // safely call the abi_test_clobber_* functions below.
+  abi_test::internal::CallerState state;
+  RAND_bytes(reinterpret_cast<uint8_t *>(&state), sizeof(state));
+  CHECK_ABI_NO_UNWIND(abi_test_trampoline,
+                      reinterpret_cast<crypto_word_t>(abi_test_clobber_r4),
+                      &state, nullptr, 0, 0 /* no breakpoint */);
+
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_r0);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_r1);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_r2);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_r3);
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_r4),
+                          "r4 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_r5),
+                          "r5 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_r6),
+                          "r6 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_r7),
+                          "r7 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_r8),
+                          "r8 was not restored after return");
+#if defined(OPENSSL_APPLE)
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_r9);
+#else
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_r9),
+                          "r9 was not restored after return");
+#endif
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_r10),
+                          "r10 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_r11),
+                          "r11 was not restored after return");
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_r12);
+
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_d0);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_d1);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_d2);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_d3);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_d4);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_d5);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_d6);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_d7);
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_d8),
+                          "d8 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_d9),
+                          "d9 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_d10),
+                          "d10 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_d11),
+                          "d11 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_d12),
+                          "d12 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_d13),
+                          "d13 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_d14),
+                          "d14 was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_d15),
+                          "d15 was not restored after return");
+}
+#endif   // OPENSSL_ARM && SUPPORTS_ABI_TEST

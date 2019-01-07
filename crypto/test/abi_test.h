@@ -98,7 +98,47 @@ struct alignas(16) Reg128 {
   CALLER_STATE_REGISTER(uint32_t, edi) \
   CALLER_STATE_REGISTER(uint32_t, ebx) \
   CALLER_STATE_REGISTER(uint32_t, ebp)
-#endif  // X86_64 || X86
+#elif defined(OPENSSL_ARM)
+// Unlike x86, ARM has a common ABI across all platforms, described in
+// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0042f/IHI0042F_aapcs.pdf
+// It almost specifies the callee-saved registers, except r9 is left to the
+// platform. Android and iOS differ in handling of r9.
+#define LOOP_CALLER_STATE_REGISTERS_PRE_R9() \
+  CALLER_STATE_REGISTER(uint64_t, d8)        \
+  CALLER_STATE_REGISTER(uint64_t, d9)        \
+  CALLER_STATE_REGISTER(uint64_t, d10)       \
+  CALLER_STATE_REGISTER(uint64_t, d11)       \
+  CALLER_STATE_REGISTER(uint64_t, d12)       \
+  CALLER_STATE_REGISTER(uint64_t, d13)       \
+  CALLER_STATE_REGISTER(uint64_t, d14)       \
+  CALLER_STATE_REGISTER(uint64_t, d15)       \
+  CALLER_STATE_REGISTER(uint32_t, r4)        \
+  CALLER_STATE_REGISTER(uint32_t, r5)        \
+  CALLER_STATE_REGISTER(uint32_t, r6)        \
+  CALLER_STATE_REGISTER(uint32_t, r7)        \
+  CALLER_STATE_REGISTER(uint32_t, r8)
+#define LOOP_CALLER_STATE_REGISTERS_POST_R9() \
+  CALLER_STATE_REGISTER(uint32_t, r10)        \
+  CALLER_STATE_REGISTER(uint32_t, r11)
+#if defined(OPENSSL_APPLE)
+// Starting iOS 3, r9 is treated as a caller-saved register. Before that, it
+// could not be used at all. Most of our assembly treats it as callee-saved
+// anyway to be uniform, but we match the platform to avoid false positives when
+// testing compiler-generated output.
+//
+// https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARMv6FunctionCallingConventions.html
+#define LOOP_CALLER_STATE_REGISTERS() \
+  LOOP_CALLER_STATE_REGISTERS_PRE_R9() \
+  LOOP_CALLER_STATE_REGISTERS_POST_R9()
+#else
+// We found no clear reference which defines Linux's use of r9, but LLVM treats
+// r9 as callee-saved on non-Apple ARM platforms.
+#define LOOP_CALLER_STATE_REGISTERS() \
+  LOOP_CALLER_STATE_REGISTERS_PRE_R9() \
+  CALLER_STATE_REGISTER(uint32_t, r9) \
+  LOOP_CALLER_STATE_REGISTERS_POST_R9()
+#endif  // OPENSSL_APPLE
+#endif  // X86_64 || X86 || ARM
 
 // Enable ABI testing if all of the following are true.
 //

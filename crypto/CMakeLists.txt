@@ -105,6 +105,7 @@ if(${ARCH} STREQUAL "arm")
     chacha/chacha-armv4.${ASM_EXT}
     curve25519/asm/x25519-asm-arm.S
     poly1305/poly1305_arm_asm.S
+    test/trampoline-armv4.${ASM_EXT}
   )
 endif()
 
@@ -143,6 +144,7 @@ perlasm(chacha/chacha-x86.${ASM_EXT} chacha/asm/chacha-x86.pl)
 perlasm(chacha/chacha-x86_64.${ASM_EXT} chacha/asm/chacha-x86_64.pl)
 perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsiv-x86_64.pl)
 perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
+perlasm(test/trampoline-armv4.${ASM_EXT} test/asm/trampoline-armv4.pl)
 perlasm(test/trampoline-x86.${ASM_EXT} test/asm/trampoline-x86.pl)
 perlasm(test/trampoline-x86_64.${ASM_EXT} test/asm/trampoline-x86_64.pl)
 
