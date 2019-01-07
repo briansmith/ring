@@ -312,6 +312,7 @@ mask_mod8192:
 .text
 .global poly_Rq_mul
 .hidden poly_Rq_mul
+.type poly_Rq_mul, @function
 .att_syntax prefix
 poly_Rq_mul:
 .cfi_startproc
@@ -8450,8 +8451,13 @@ vpand mask_mod8192(%rip), %ymm11, %ymm11
 vmovdqu %ymm11, 1320(%rdi)
 mov %r8, %rsp
 pop %r12
+.cfi_restore r12
 pop %rbp
+.cfi_restore rbp
+.cfi_def_cfa_register rsp
+.cfi_adjust_cfa_offset -8
 ret
 .cfi_endproc
+.size poly_Rq_mul,.-poly_Rq_mul
 
 #endif

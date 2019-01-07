@@ -1387,23 +1387,12 @@ static void poly_mul_novec(struct poly *out, const struct poly *x,
   OPENSSL_memset(&out->v[N], 0, 3 * sizeof(uint16_t));
 }
 
-// On x86-64, we can use the AVX2 code from [HRSS]. (The authors have given
-// explicit permission for this and signed a CLA.) However it's 57KB of object
-// code, so it's not used if |OPENSSL_SMALL| is defined.
-#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL) && \
-    defined(OPENSSL_X86_64) && defined(OPENSSL_LINUX)
-// poly_Rq_mul is defined in assembly.
-extern void poly_Rq_mul(struct poly *r, const struct poly *a,
-                        const struct poly *b);
-#endif
-
 static void poly_mul(struct poly *r, const struct poly *a,
                      const struct poly *b) {
-#if !defined(OPENSSL_NO_ASM) && !defined(OPENSSL_SMALL) && \
-    defined(OPENSSL_X86_64) && defined(OPENSSL_LINUX)
+#if defined(POLY_RQ_MUL_ASM)
   const int has_avx2 = (OPENSSL_ia32cap_P[2] & (1 << 5)) != 0;
   if (has_avx2) {
-    poly_Rq_mul(r, a, b);
+    poly_Rq_mul(r->v, a->v, b->v);
     return;
   }
 #endif

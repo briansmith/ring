@@ -14,9 +14,11 @@
 
 #include <gtest/gtest.h>
 
+#include <openssl/cpu.h>
 #include <openssl/hrss.h>
 #include <openssl/rand.h>
 
+#include "../test/abi_test.h"
 #include "../test/test_util.h"
 #include "internal.h"
 
@@ -477,3 +479,18 @@ TEST(HRSS, Golden) {
   };
   EXPECT_EQ(Bytes(shared_key), Bytes(kExpectedFailureKey));
 }
+
+#if defined(POLY_RQ_MUL_ASM) && defined(SUPPORTS_ABI_TEST)
+TEST(HRSS, ABI) {
+  const bool has_avx2 = (OPENSSL_ia32cap_P[2] & (1 << 5)) != 0;
+  if (!has_avx2) {
+    fprintf(stderr, "Skipping ABI test due to lack of AVX2 support.\n");
+    return;
+  }
+
+  alignas(16) uint16_t r[N + 3];
+  alignas(16) uint16_t a[N + 3] = {0};
+  alignas(16) uint16_t b[N + 3] = {0};
+  CHECK_ABI(poly_Rq_mul, r, a, b);
+}
+#endif  // POLY_RQ_MUL_ASM && SUPPORTS_ABI_TEST
