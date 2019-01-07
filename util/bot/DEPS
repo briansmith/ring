@@ -28,21 +28,26 @@ deps = {
   },
 
   'boringssl/util/bot/android_tools': {
-    'url': Var('chromium_git') + '/android_tools.git' + '@' + '130499e25286f4d56acafa252fee09f3cc595c49',
+    'url': Var('chromium_git') + '/android_tools.git' + '@' + 'e958d6ea74442d4e0849bb8a018d215a0e78981d',
     'condition': 'checkout_android',
   },
 
   'boringssl/util/bot/gyp':
     Var('chromium_git') + '/external/gyp.git' + '@' + 'd61a9397e668fa9843c4aa7da9e79460fe590bfb',
 
+  'boringssl/util/bot/libFuzzer': {
+    'url': Var('chromium_git') + '/chromium/llvm-project/compiler-rt/lib/fuzzer.git' +'@' + '2a53098584c48af50aec3fb51febe5e651489774',
+    'condition': 'checkout_fuzzer',
+  },
+
   # Update the following revisions from
   # https://chromium.googlesource.com/chromium/buildtools/+/master/DEPS
   'boringssl/util/bot/libcxx': {
-    'url': Var('chromium_git') + '/chromium/llvm-project/libcxx.git' + '@' + '85a7702b4cc5d69402791fe685f151cf3076be71',
+    'url': Var('chromium_git') + '/chromium/llvm-project/libcxx.git' + '@' + 'e713cc0acf1ae8b82f451bf58ebef67a46ceddfb',
     'condition': 'checkout_libcxx',
   },
   'boringssl/util/bot/libcxxabi': {
-    'url': Var('chromium_git') + '/chromium/llvm-project/libcxxabi.git' + '@' + '05a73941f3fb177c4a891d4ff2a4ed5785e3b80c',
+    'url': Var('chromium_git') + '/chromium/llvm-project/libcxxabi.git' + '@' + '307bb62985575b2e3216a8cfd7e122e0574f33a9',
     'condition': 'checkout_libcxx',
   },
 }

@@ -542,6 +542,14 @@ add_subdirectory(tool)
 add_subdirectory(decrepit)
 
 if(FUZZ)
+  if(LIBFUZZER_FROM_DEPS)
+    file(GLOB LIBFUZZER_SOURCES "util/bot/libFuzzer/*.cpp")
+    add_library(Fuzzer STATIC ${LIBFUZZER_SOURCES})
+    # libFuzzer does not pass our aggressive warnings. It also must be built
+    # without -fsanitize-coverage options or clang crashes.
+    set_target_properties(Fuzzer PROPERTIES COMPILE_FLAGS "-Wno-shadow -Wno-format-nonliteral -Wno-missing-prototypes -fsanitize-coverage=0")
+  endif()
+
   add_subdirectory(fuzz)
 endif()
 
