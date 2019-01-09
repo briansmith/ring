@@ -90,7 +90,10 @@ TEST(GCMTest, TestVectors) {
       CRYPTO_gcm128_encrypt(&ctx, &aes_key, plaintext.data(), out.data(),
                             plaintext.size());
     }
-    ASSERT_TRUE(CRYPTO_gcm128_finish(&ctx, tag.data(), tag.size()));
+
+    std::vector<uint8_t> got_tag(tag.size());
+    CRYPTO_gcm128_tag(&ctx, got_tag.data(), got_tag.size());
+    EXPECT_EQ(Bytes(tag), Bytes(got_tag));
     EXPECT_EQ(Bytes(ciphertext), Bytes(out));
 
     CRYPTO_gcm128_setiv(&ctx, &aes_key, nonce.data(), nonce.size());
