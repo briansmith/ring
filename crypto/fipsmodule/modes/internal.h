@@ -159,7 +159,10 @@ typedef void (*ghash_func)(uint64_t Xi[2], const u128 Htable[16],
 
 typedef struct gcm128_key_st {
   // Note the MOVBE-based, x86-64, GHASH assembly requires |H| and |Htable| to
-  // be the first two elements of this struct.
+  // be the first two elements of this struct. Additionally, some assembly
+  // routines require a 16-byte-aligned |Htable| when hashing data, but not
+  // initialization. |GCM128_KEY| is not itself aligned to simplify embedding in
+  // |EVP_AEAD_CTX|, but |Htable|'s offset must be a multiple of 16.
   u128 H;
   u128 Htable[16];
   gmult_func gmult;
@@ -184,8 +187,10 @@ typedef struct {
   } Yi, EKi, EK0, len, Xi;
 
   // Note that the order of |Xi| and |gcm_key| is fixed by the MOVBE-based,
-  // x86-64, GHASH assembly.
-  GCM128_KEY gcm_key;
+  // x86-64, GHASH assembly. Additionally, some assembly routines require
+  // |gcm_key| to be 16-byte aligned. |GCM128_KEY| is not itself aligned to
+  // simplify embedding in |EVP_AEAD_CTX|.
+  alignas(16) GCM128_KEY gcm_key;
 
   unsigned mres, ares;
 } GCM128_CONTEXT;
@@ -295,6 +300,18 @@ void gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
 void gcm_gmult_avx(uint64_t Xi[2], const u128 Htable[16]);
 void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
                    size_t len);
+
+OPENSSL_INLINE char gcm_ssse3_capable(void) {
+  return (OPENSSL_ia32cap_get()[1] & (1 << (41 - 32))) != 0;
+}
+
+// |gcm_gmult_ssse3| and |gcm_ghash_ssse3| require |Htable| to be
+// 16-byte-aligned, but |gcm_init_ssse3| does not.
+void gcm_init_ssse3(u128 Htable[16], const uint64_t Xi[2]);
+void gcm_gmult_ssse3(uint64_t Xi[2], const u128 Htable[16]);
+void gcm_ghash_ssse3(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
+                     size_t len);
+
 #define AESNI_GCM
 size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
                          const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
@@ -472,10 +489,11 @@ typedef union {
 
 struct polyval_ctx {
   // Note that the order of |S|, |H| and |Htable| is fixed by the MOVBE-based,
-  // x86-64, GHASH assembly.
+  // x86-64, GHASH assembly. Additionally, some assembly routines require
+  // |Htable| to be 16-byte aligned.
   polyval_block S;
   u128 H;
-  u128 Htable[16];
+  alignas(16) u128 Htable[16];
   gmult_func gmult;
   ghash_func ghash;
 };

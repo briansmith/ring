@@ -243,6 +243,33 @@ void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 #define GHASH_CHUNK (3 * 1024)
 #endif  // GHASH_ASM
 
+#if defined(GHASH_ASM_X86_64)
+void gcm_init_ssse3(u128 Htable[16], const uint64_t Xi[2]) {
+  // Run the existing 4-bit version.
+  gcm_init_4bit(Htable, Xi);
+
+  // First, swap hi and lo. The "4bit" version places hi first. It treats the
+  // two fields separately, so the order does not matter, but ghash-ssse3 reads
+  // the entire state into one 128-bit register.
+  for (int i = 0; i < 16; i++) {
+    uint64_t tmp = Htable[i].hi;
+    Htable[i].hi = Htable[i].lo;
+    Htable[i].lo = tmp;
+  }
+
+  // Treat |Htable| as a 16x16 byte table and transpose it. Thus, Htable[i]
+  // contains the i'th byte of j*H for all j.
+  uint8_t *Hbytes = (uint8_t *)Htable;
+  for (int i = 0; i < 16; i++) {
+    for (int j = 0; j < i; j++) {
+      uint8_t tmp = Hbytes[16*i + j];
+      Hbytes[16*i + j] = Hbytes[16*j + i];
+      Hbytes[16*j + i] = tmp;
+    }
+  }
+}
+#endif  // GHASH_ASM_X86_64
+
 #ifdef GCM_FUNCREF_4BIT
 #undef GCM_MUL
 #define GCM_MUL(ctx, Xi) (*gcm_gmult_p)((ctx)->Xi.u, (ctx)->gcm_key.Htable)
@@ -283,6 +310,12 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
     gcm_init_clmul(out_table, H.u);
     *out_mult = gcm_gmult_clmul;
     *out_hash = gcm_ghash_clmul;
+    return;
+  }
+  if (gcm_ssse3_capable()) {
+    gcm_init_ssse3(out_table, H.u);
+    *out_mult = gcm_gmult_ssse3;
+    *out_hash = gcm_ghash_ssse3;
     return;
   }
 #elif defined(GHASH_ASM_X86)

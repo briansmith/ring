@@ -61,6 +61,12 @@
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
 
+#if defined(OPENSSL_WINDOWS)
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
+#include <windows.h>
+OPENSSL_MSVC_PRAGMA(warning(pop))
+#endif
+
 
 TEST(GCMTest, TestVectors) {
   FileTestGTest("crypto/fipsmodule/modes/gcm_tests.txt", [](FileTest *t) {
@@ -133,11 +139,19 @@ TEST(GCMTest, ABI) {
       UINT64_C(0xf328c2b971b2fe78),
   };
 
-  u128 Htable[16];
+  alignas(16) u128 Htable[16];
   CHECK_ABI(gcm_init_4bit, Htable, kH);
   CHECK_ABI(gcm_gmult_4bit, X, Htable);
   for (size_t blocks : kBlockCounts) {
     CHECK_ABI(gcm_ghash_4bit, X, Htable, buf, 16 * blocks);
+  }
+
+  if (gcm_ssse3_capable()) {
+    CHECK_ABI(gcm_init_ssse3, Htable, kH);
+    CHECK_ABI(gcm_gmult_ssse3, X, Htable);
+    for (size_t blocks : kBlockCounts) {
+      CHECK_ABI(gcm_ghash_ssse3, X, Htable, buf, 16 * blocks);
+    }
   }
 
   if (crypto_gcm_clmul_enabled()) {
@@ -156,4 +170,38 @@ TEST(GCMTest, ABI) {
     }
   }
 }
+
+#if defined(OPENSSL_WINDOWS)
+// Sanity-check the SEH unwind codes in ghash-ssse3-x86_64.pl.
+// TODO(davidben): Implement unwind testing for SEH and remove this.
+static void GCMSSSE3ExceptionTest() {
+  if (!gcm_ssse3_capable()) {
+    return;
+  }
+
+  bool handled = false;
+  __try {
+    gcm_gmult_ssse3(nullptr, nullptr);
+  } __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION
+                  ? EXCEPTION_EXECUTE_HANDLER
+                  : EXCEPTION_CONTINUE_SEARCH) {
+    handled = true;
+  }
+  EXPECT_TRUE(handled);
+
+  handled = false;
+  __try {
+    gcm_ghash_ssse3(nullptr, nullptr, nullptr, 16);
+  } __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION
+                  ? EXCEPTION_EXECUTE_HANDLER
+                  : EXCEPTION_CONTINUE_SEARCH) {
+    handled = true;
+  }
+  EXPECT_TRUE(handled);
+}
+
+TEST(GCMTest, SEH) {
+  CHECK_ABI_NO_UNWIND(GCMSSSE3ExceptionTest);
+}
+#endif  // OPENSSL_WINDOWS
 #endif  // GHASH_ASM_X86_64 && SUPPORTS_ABI_TEST
