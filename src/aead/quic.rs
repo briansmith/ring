@@ -50,13 +50,19 @@ impl HeaderProtectionKey {
 
     /// Generate a new QUIC Header Protection mask.
     ///
-    /// `sample` must be exactly 16 bytes long.
+    /// `sample` must be exactly `self.algorithm().sample_len()` bytes long.
     pub fn new_mask(&self, sample: &[u8]) -> Result<[u8; 5], error::Unspecified> {
         let sample = <&[u8; SAMPLE_LEN]>::try_from_(sample)?;
         let sample = Block::from(sample);
 
         let out = (self.algorithm.new_mask)(&self.inner, sample);
         Ok(out)
+    }
+
+    /// The key's algorithm.
+    #[inline(always)]
+    pub fn algorithm(&self) -> &'static Algorithm {
+        self.algorithm
     }
 }
 
@@ -76,6 +82,10 @@ impl Algorithm {
     /// The length of the key.
     #[inline(always)]
     pub fn key_len(&self) -> usize { self.key_len }
+
+    /// The required sample length.
+    #[inline(always)]
+    pub fn sample_len(&self) -> usize { SAMPLE_LEN }
 }
 
 derive_debug_via_self!(Algorithm, self.id);
