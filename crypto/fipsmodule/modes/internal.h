@@ -50,8 +50,11 @@
 #define OPENSSL_HEADER_MODES_INTERNAL_H
 
 #include <openssl/base.h>
-#include <openssl/aes.h>
 
+#include <openssl/aes.h>
+#include <openssl/cpu.h>
+
+#include <stdlib.h>
 #include <string.h>
 
 #include "../../internal.h"
@@ -199,7 +202,7 @@ int crypto_gcm_clmul_enabled(void);
 // AVX implementation was used |*out_is_avx| will be true.
 void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
                        u128 *out_key, u128 out_table[16], int *out_is_avx,
-                       const uint8_t *gcm_key);
+                       const uint8_t gcm_key[16]);
 
 // CRYPTO_gcm128_init_key initialises |gcm_key| to use |block| (typically AES)
 // with the given key. |block_is_hwaes| is one if |block| is |aes_hw_encrypt|.
@@ -261,6 +264,99 @@ OPENSSL_EXPORT int CRYPTO_gcm128_finish(GCM128_CONTEXT *ctx, const uint8_t *tag,
 // The minimum of |len| and 16 bytes are copied into |tag|.
 OPENSSL_EXPORT void CRYPTO_gcm128_tag(GCM128_CONTEXT *ctx, uint8_t *tag,
                                       size_t len);
+
+
+// GCM assembly.
+
+#if !defined(OPENSSL_NO_ASM) &&                         \
+    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
+     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64) || \
+     defined(OPENSSL_PPC64LE))
+#define GHASH_ASM
+#endif
+
+void gcm_init_4bit(u128 Htable[16], const uint64_t H[2]);
+void gcm_gmult_4bit(uint64_t Xi[2], const u128 Htable[16]);
+void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+                    size_t len);
+
+#if defined(GHASH_ASM)
+
+#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
+#define GCM_FUNCREF_4BIT
+void gcm_init_clmul(u128 Htable[16], const uint64_t Xi[2]);
+void gcm_gmult_clmul(uint64_t Xi[2], const u128 Htable[16]);
+void gcm_ghash_clmul(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+                     size_t len);
+
+#if defined(OPENSSL_X86_64)
+#define GHASH_ASM_X86_64
+void gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
+void gcm_gmult_avx(uint64_t Xi[2], const u128 Htable[16]);
+void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
+                   size_t len);
+#define AESNI_GCM
+size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
+                         const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
+                         const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
+#endif  // OPENSSL_X86_64
+
+#if defined(OPENSSL_X86)
+#define GHASH_ASM_X86
+void gcm_gmult_4bit_mmx(uint64_t Xi[2], const u128 Htable[16]);
+void gcm_ghash_4bit_mmx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+                        size_t len);
+#endif  // OPENSSL_X86
+
+#elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
+#include <openssl/arm_arch.h>
+#if __ARM_ARCH__ >= 7
+#define GHASH_ASM_ARM
+#define GCM_FUNCREF_4BIT
+
+OPENSSL_INLINE int gcm_pmull_capable(void) {
+  return CRYPTO_is_ARMv8_PMULL_capable();
+}
+
+void gcm_init_v8(u128 Htable[16], const uint64_t Xi[2]);
+void gcm_gmult_v8(uint64_t Xi[2], const u128 Htable[16]);
+void gcm_ghash_v8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+                  size_t len);
+
+#if defined(OPENSSL_ARM)
+// 32-bit ARM also has support for doing GCM with NEON instructions.
+OPENSSL_INLINE int gcm_neon_capable(void) { return CRYPTO_is_NEON_capable(); }
+
+void gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]);
+void gcm_gmult_neon(uint64_t Xi[2], const u128 Htable[16]);
+void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+                    size_t len);
+#else
+// AArch64 only has the ARMv8 versions of functions.
+OPENSSL_INLINE int gcm_neon_capable(void) { return 0; }
+OPENSSL_INLINE void gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]) {
+  abort();
+}
+OPENSSL_INLINE void gcm_gmult_neon(uint64_t Xi[2], const u128 Htable[16]) {
+  abort();
+}
+OPENSSL_INLINE void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16],
+                                   const uint8_t *inp, size_t len) {
+  abort();
+}
+#endif  // OPENSSL_ARM
+
+#endif  // __ARM_ARCH__ >= 7
+#elif defined(OPENSSL_PPC64LE)
+#define GHASH_ASM_PPC64LE
+#define GCM_FUNCREF_4BIT
+void gcm_init_p8(u128 Htable[16], const uint64_t Xi[2]);
+void gcm_gmult_p8(uint64_t Xi[2], const u128 Htable[16]);
+void gcm_ghash_p8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+                  size_t len);
+#endif
+#endif  // GHASH_ASM
 
 
 // CCM.

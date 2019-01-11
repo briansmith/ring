@@ -57,12 +57,6 @@
 #include "internal.h"
 #include "../../internal.h"
 
-#if !defined(OPENSSL_NO_ASM) &&                         \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
-     defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64) || \
-     defined(OPENSSL_PPC64LE))
-#define GHASH_ASM
-#endif
 
 #define PACK(s) ((size_t)(s) << (sizeof(size_t) * 8 - 16))
 #define REDUCE1BIT(V)                                                 \
@@ -82,7 +76,7 @@
 // bits of a |size_t|.
 static const size_t kSizeTWithoutLower4Bits = (size_t) -16;
 
-static void gcm_init_4bit(u128 Htable[16], uint64_t H[2]) {
+void gcm_init_4bit(u128 Htable[16], const uint64_t H[2]) {
   u128 V;
 
   Htable[0].hi = 0;
@@ -127,7 +121,7 @@ static const size_t rem_4bit[16] = {
     PACK(0xE100), PACK(0xFD20), PACK(0xD940), PACK(0xC560),
     PACK(0x9180), PACK(0x8DA0), PACK(0xA9C0), PACK(0xB5E0)};
 
-static void gcm_gmult_4bit(uint64_t Xi[2], const u128 Htable[16]) {
+void gcm_gmult_4bit(uint64_t Xi[2], const u128 Htable[16]) {
   u128 Z;
   int cnt = 15;
   size_t rem, nlo, nhi;
@@ -182,8 +176,8 @@ static void gcm_gmult_4bit(uint64_t Xi[2], const u128 Htable[16]) {
 // performance improvement, at least not on x86[_64]. It's here
 // mostly as reference and a placeholder for possible future
 // non-trivial optimization[s]...
-static void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16],
-                           const uint8_t *inp, size_t len) {
+void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
+                    size_t len) {
   u128 Z;
   int cnt;
   size_t rem, nlo, nhi;
@@ -237,11 +231,7 @@ static void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16],
     Xi[1] = CRYPTO_bswap8(Z.lo);
   } while (inp += 16, len -= 16);
 }
-#else  // GHASH_ASM
-void gcm_gmult_4bit(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                    size_t len);
-#endif
+#endif   // !GHASH_ASM || AARCH64 || PPC64LE
 
 #define GCM_MUL(ctx, Xi) gcm_gmult_4bit((ctx)->Xi.u, (ctx)->gcm_key.Htable)
 #if defined(GHASH_ASM)
@@ -251,90 +241,7 @@ void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 // trashing effect. In other words idea is to hash data while it's
 // still in L1 cache after encryption pass...
 #define GHASH_CHUNK (3 * 1024)
-#endif
-
-
-#if defined(GHASH_ASM)
-
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64)
-#define GCM_FUNCREF_4BIT
-void gcm_init_clmul(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_clmul(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_clmul(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                     size_t len);
-
-#if defined(OPENSSL_X86_64)
-#define GHASH_ASM_X86_64
-void gcm_init_avx(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_avx(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_avx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in,
-                   size_t len);
-#define AESNI_GCM
-size_t aesni_gcm_encrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
-size_t aesni_gcm_decrypt(const uint8_t *in, uint8_t *out, size_t len,
-                         const AES_KEY *key, uint8_t ivec[16], uint64_t *Xi);
-#endif
-
-#if defined(OPENSSL_X86)
-#define GHASH_ASM_X86
-void gcm_gmult_4bit_mmx(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_4bit_mmx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                        size_t len);
-#endif
-
-#elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
-#include <openssl/arm_arch.h>
-#if __ARM_ARCH__ >= 7
-#define GHASH_ASM_ARM
-#define GCM_FUNCREF_4BIT
-
-static int pmull_capable(void) {
-  return CRYPTO_is_ARMv8_PMULL_capable();
-}
-
-void gcm_init_v8(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_v8(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_v8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                  size_t len);
-
-#if defined(OPENSSL_ARM)
-// 32-bit ARM also has support for doing GCM with NEON instructions.
-static int neon_capable(void) {
-  return CRYPTO_is_NEON_capable();
-}
-
-void gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_neon(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                    size_t len);
-#else
-// AArch64 only has the ARMv8 versions of functions.
-static int neon_capable(void) {
-  return 0;
-}
-static void gcm_init_neon(u128 Htable[16], const uint64_t Xi[2]) {
-  abort();
-}
-static void gcm_gmult_neon(uint64_t Xi[2], const u128 Htable[16]) {
-  abort();
-}
-static void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16],
-                           const uint8_t *inp, size_t len) {
-  abort();
-}
-#endif
-
-#endif
-#elif defined(OPENSSL_PPC64LE)
-#define GHASH_ASM_PPC64LE
-#define GCM_FUNCREF_4BIT
-void gcm_init_p8(u128 Htable[16], const uint64_t Xi[2]);
-void gcm_gmult_p8(uint64_t Xi[2], const u128 Htable[16]);
-void gcm_ghash_p8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
-                  size_t len);
-#endif
-#endif
+#endif  // GHASH_ASM
 
 #ifdef GCM_FUNCREF_4BIT
 #undef GCM_MUL
@@ -344,12 +251,11 @@ void gcm_ghash_p8(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 #define GHASH(ctx, in, len) \
   (*gcm_ghash_p)((ctx)->Xi.u, (ctx)->gcm_key.Htable, in, len)
 #endif
-#endif
+#endif  // GCM_FUNCREF_4BIT
 
 void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
-                       u128 *out_key, u128 out_table[16],
-                       int *out_is_avx,
-                       const uint8_t *gcm_key) {
+                       u128 *out_key, u128 out_table[16], int *out_is_avx,
+                       const uint8_t gcm_key[16]) {
   *out_is_avx = 0;
 
   union {
@@ -387,14 +293,14 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
     return;
   }
 #elif defined(GHASH_ASM_ARM)
-  if (pmull_capable()) {
+  if (gcm_pmull_capable()) {
     gcm_init_v8(out_table, H.u);
     *out_mult = gcm_gmult_v8;
     *out_hash = gcm_ghash_v8;
     return;
   }
 
-  if (neon_capable()) {
+  if (gcm_neon_capable()) {
     gcm_init_neon(out_table, H.u);
     *out_mult = gcm_gmult_neon;
     *out_hash = gcm_ghash_neon;

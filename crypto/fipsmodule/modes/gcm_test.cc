@@ -54,8 +54,10 @@
 #include <gtest/gtest.h>
 
 #include <openssl/aes.h>
+#include <openssl/cpu.h>
 
 #include "internal.h"
+#include "../../test/abi_test.h"
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
 
@@ -115,3 +117,43 @@ TEST(GCMTest, ByteSwap) {
   EXPECT_EQ(UINT64_C(0x0807060504030201),
             CRYPTO_bswap8(UINT64_C(0x0102030405060708)));
 }
+
+#if defined(GHASH_ASM_X86_64) && defined(SUPPORTS_ABI_TEST)
+TEST(GCMTest, ABI) {
+  static const uint64_t kH[2] = {
+      UINT64_C(0x66e94bd4ef8a2c3b),
+      UINT64_C(0x884cfa59ca342b2e),
+  };
+  static const size_t kBlockCounts[] = {1, 2, 3, 4, 7, 8, 15, 16, 31, 32};
+  uint8_t buf[16 * 32];
+  OPENSSL_memset(buf, 42, sizeof(buf));
+
+  uint64_t X[2] = {
+      UINT64_C(0x0388dace60b6a392),
+      UINT64_C(0xf328c2b971b2fe78),
+  };
+
+  u128 Htable[16];
+  CHECK_ABI(gcm_init_4bit, Htable, kH);
+  CHECK_ABI(gcm_gmult_4bit, X, Htable);
+  for (size_t blocks : kBlockCounts) {
+    CHECK_ABI(gcm_ghash_4bit, X, Htable, buf, 16 * blocks);
+  }
+
+  if (crypto_gcm_clmul_enabled()) {
+    CHECK_ABI(gcm_init_clmul, Htable, kH);
+    CHECK_ABI(gcm_gmult_clmul, X, Htable);
+    for (size_t blocks : kBlockCounts) {
+      CHECK_ABI(gcm_ghash_clmul, X, Htable, buf, 16 * blocks);
+    }
+
+    if (((OPENSSL_ia32cap_get()[1] >> 22) & 0x41) == 0x41) {  // AVX+MOVBE
+      CHECK_ABI(gcm_init_avx, Htable, kH);
+      CHECK_ABI(gcm_gmult_avx, X, Htable);
+      for (size_t blocks : kBlockCounts) {
+        CHECK_ABI(gcm_ghash_avx, X, Htable, buf, 16 * blocks);
+      }
+    }
+  }
+}
+#endif  // GHASH_ASM_X86_64 && SUPPORTS_ABI_TEST
