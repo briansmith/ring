@@ -116,11 +116,12 @@ struct evp_aead_st {
 // where |key_bytes| must either be 16, 24 or 32. If not NULL, |*out_block| is
 // set to a function that encrypts single blocks. If not NULL, |*gcm_key| is
 // initialised to do GHASH with the given key. It returns a function for
-// optimised CTR-mode, or NULL if CTR-mode should be built using
-// |*out_block|.
+// optimised CTR-mode, or NULL if CTR-mode should be built using |*out_block|.
+// |large_input| is a hint to select AES implementations. If it is one, the
+// caller expects this key to be used with large inputs.
 ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
                          block128_f *out_block, const uint8_t *key,
-                         size_t key_bytes);
+                         size_t key_bytes, int large_input);
 
 #if defined(__cplusplus)
 }  // extern C

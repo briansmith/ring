@@ -94,8 +94,8 @@ static int aead_aes_ctr_hmac_sha256_init(EVP_AEAD_CTX *ctx, const uint8_t *key,
     return 0;
   }
 
-  aes_ctx->ctr =
-      aes_ctr_set_key(&aes_ctx->ks.ks, NULL, &aes_ctx->block, key, aes_key_len);
+  aes_ctx->ctr = aes_ctr_set_key(&aes_ctx->ks.ks, NULL, &aes_ctx->block, key,
+                                 aes_key_len, 1 /* large inputs */);
   ctx->tag_len = tag_len;
   hmac_init(&aes_ctx->inner_init_state, &aes_ctx->outer_init_state,
             key + aes_key_len);

@@ -57,7 +57,12 @@ int CTR_DRBG_init(CTR_DRBG_STATE *drbg,
     seed_material[i] ^= kInitMask[i];
   }
 
-  drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, seed_material, 32);
+  // |RAND_bytes| is rarely called with large enough inputs for bsaes to be
+  // faster than vpaes. bsaes also currently has side channel trade offs
+  // (https://crbug.com/boringssl/256), which we should especially avoid in the
+  // PRNG. (Note the size hint is a no-op on machines with AES instructions.)
+  drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, seed_material, 32,
+                              0 /* small inputs */);
   OPENSSL_memcpy(drbg->counter.bytes, seed_material + 32, 16);
   drbg->reseed_counter = 1;
 
@@ -93,7 +98,8 @@ static int ctr_drbg_update(CTR_DRBG_STATE *drbg, const uint8_t *data,
     temp[i] ^= data[i];
   }
 
-  drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, temp, 32);
+  drbg->ctr = aes_ctr_set_key(&drbg->ks, NULL, &drbg->block, temp, 32,
+                              0 /* small inputs */);
   OPENSSL_memcpy(drbg->counter.bytes, temp + 32, 16);
 
   return 1;
