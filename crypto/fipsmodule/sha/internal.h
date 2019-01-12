@@ -27,15 +27,18 @@ extern "C" {
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
     defined(OPENSSL_AARCH64) || defined(OPENSSL_PPC64LE)
 #define SHA1_ASM
-void sha1_block_data_order(uint32_t *state, const uint8_t *data, size_t num);
+void sha1_block_data_order(uint32_t *state, const uint8_t *in,
+                           size_t num_blocks);
 #endif
 
 #if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
     defined(OPENSSL_AARCH64)
 #define SHA256_ASM
 #define SHA512_ASM
-void sha256_block_data_order(uint32_t *state, const uint8_t *in, size_t num);
-void sha512_block_data_order(uint64_t *state, const uint64_t *W, size_t num);
+void sha256_block_data_order(uint32_t *state, const uint8_t *in,
+                             size_t num_blocks);
+void sha512_block_data_order(uint64_t *state, const uint8_t *in,
+                             size_t num_blocks);
 #endif
 
 #endif  // OPENSSL_NO_ASM

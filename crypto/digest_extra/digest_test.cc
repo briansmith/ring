@@ -17,6 +17,7 @@
 #include <string.h>
 
 #include <memory>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -181,6 +182,20 @@ static void TestDigest(const TestVector *test) {
   }
   ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len));
   EXPECT_EQ(EVP_MD_size(test->md.func()), digest_len);
+  CompareDigest(test, digest.get(), digest_len);
+
+  // Test with unaligned input.
+  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), NULL));
+  std::vector<char> unaligned(strlen(test->input) + 1);
+  char *ptr = unaligned.data();
+  if ((reinterpret_cast<uintptr_t>(ptr) & 1) == 0) {
+    ptr++;
+  }
+  OPENSSL_memcpy(ptr, test->input, strlen(test->input));
+  for (size_t i = 0; i < test->repeat; i++) {
+    ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), ptr, strlen(test->input)));
+  }
+  ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len));
   CompareDigest(test, digest.get(), digest_len);
 
   // Test the one-shot function.

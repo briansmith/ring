@@ -51,7 +51,7 @@ TEST(SHATest, SHA512ABI) {
   SHA512_CTX ctx;
   SHA512_Init(&ctx);
 
-  static const uint64_t kBuf[SHA512_CBLOCK / sizeof(uint64_t) * 4] = {0};
+  static const uint8_t kBuf[SHA512_CBLOCK * 4] = {0};
   CHECK_ABI(sha512_block_data_order, ctx.h, kBuf, 1);
   CHECK_ABI(sha512_block_data_order, ctx.h, kBuf, 2);
   CHECK_ABI(sha512_block_data_order, ctx.h, kBuf, 3);
