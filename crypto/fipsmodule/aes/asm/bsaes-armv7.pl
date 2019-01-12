@@ -1113,26 +1113,12 @@ my ($inp,$out,$len,$key, $ivp,$fp,$rounds)=map("r$_",(0..3,8..10));
 my ($keysched)=("sp");
 
 $code.=<<___;
-@ TODO(davidben): This should be aes_nohw_cbc_encrypt, but that function does
-@ not exist. Rather than add it, patch this fallback out. See
-@ https://crbug.com/boringssl/256.
-.extern AES_cbc_encrypt
-.extern aes_nohw_decrypt
-
 .global	bsaes_cbc_encrypt
 .type	bsaes_cbc_encrypt,%function
 .align	5
 bsaes_cbc_encrypt:
-#ifndef	__KERNEL__
-	cmp	$len, #128
-#ifndef	__thumb__
-	blo	AES_cbc_encrypt
-#else
-	bhs	1f
-	b	AES_cbc_encrypt
-1:
-#endif
-#endif
+	@ In OpenSSL, this function had a fallback to aes_nohw_cbc_encrypt for
+	@ short inputs. We patch this out, using bsaes for all input sizes.
 
 	@ it is up to the caller to make sure we are called with enc == 0
 
@@ -1230,10 +1216,7 @@ bsaes_cbc_encrypt:
 	adds	$len, $len, #8
 	beq	.Lcbc_dec_done
 
-	vld1.8	{@XMM[0]}, [$inp]!		@ load input
-	cmp	$len, #2
-	blo	.Lcbc_dec_one
-	vld1.8	{@XMM[1]}, [$inp]!
+	@ Set up most parameters for the _bsaes_decrypt8 call.
 #ifndef	BSAES_ASM_EXTENDED_KEY
 	mov	r4, $keysched			@ pass the key
 #else
@@ -1241,6 +1224,11 @@ bsaes_cbc_encrypt:
 #endif
 	mov	r5, $rounds
 	vstmia	$fp, {@XMM[15]}			@ put aside IV
+
+	vld1.8	{@XMM[0]}, [$inp]!		@ load input
+	cmp	$len, #2
+	blo	.Lcbc_dec_one
+	vld1.8	{@XMM[1]}, [$inp]!
 	beq	.Lcbc_dec_two
 	vld1.8	{@XMM[2]}, [$inp]!
 	cmp	$len, #4
@@ -1358,16 +1346,11 @@ bsaes_cbc_encrypt:
 .align	4
 .Lcbc_dec_one:
 	sub	$inp, $inp, #0x10
-	mov	$rounds, $out			@ save original out pointer
-	mov	$out, $fp			@ use the iv scratch space as out buffer
-	mov	r2, $key
-	vmov	@XMM[4],@XMM[15]		@ just in case ensure that IV
-	vmov	@XMM[5],@XMM[0]			@ and input are preserved
-	bl	aes_nohw_decrypt
-	vld1.8	{@XMM[0]}, [$fp]		@ load result
-	veor	@XMM[0], @XMM[0], @XMM[4]	@ ^= IV
-	vmov	@XMM[15], @XMM[5]		@ @XMM[5] holds input
-	vst1.8	{@XMM[0]}, [$rounds]		@ write output
+	bl	_bsaes_decrypt8
+	vldmia	$fp, {@XMM[14]}			@ reload IV
+	vld1.8	{@XMM[15]}, [$inp]!		@ reload input
+	veor	@XMM[0], @XMM[0], @XMM[14]	@ ^= IV
+	vst1.8	{@XMM[0]}, [$out]!		@ write output
 
 .Lcbc_dec_done:
 #ifndef	BSAES_ASM_EXTENDED_KEY

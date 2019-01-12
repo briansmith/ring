@@ -133,7 +133,7 @@ void aes_hw_ecb_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 
 #if defined(BSAES)
 // On platforms where BSAES gets defined (just above), then these functions are
-// provided by asm.
+// provided by asm. Note |bsaes_cbc_encrypt| requires |enc| to be zero.
 void bsaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
                        const AES_KEY *key, uint8_t ivec[16], int enc);
 void bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
