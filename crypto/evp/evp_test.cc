@@ -432,9 +432,19 @@ static void RunWycheproofTest(const char *path) {
     t->IgnoreInstruction("keysize");
     t->IgnoreInstruction("n");
     t->IgnoreAttribute("padding");
+    t->IgnoreInstruction("keyJwk.alg");
+    t->IgnoreInstruction("keyJwk.e");
+    t->IgnoreInstruction("keyJwk.kid");
+    t->IgnoreInstruction("keyJwk.kty");
+    t->IgnoreInstruction("keyJwk.n");
     // Extra EdDSA fields.
     t->IgnoreInstruction("key.pk");
     t->IgnoreInstruction("key.sk");
+    t->IgnoreInstruction("jwk.crv");
+    t->IgnoreInstruction("jwk.d");
+    t->IgnoreInstruction("jwk.kid");
+    t->IgnoreInstruction("jwk.kty");
+    t->IgnoreInstruction("jwk.x");
     // Extra DSA fields.
     t->IgnoreInstruction("key.g");
     t->IgnoreInstruction("key.p");
