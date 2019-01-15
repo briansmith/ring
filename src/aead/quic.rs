@@ -61,9 +61,7 @@ impl HeaderProtectionKey {
 
     /// The key's algorithm.
     #[inline(always)]
-    pub fn algorithm(&self) -> &'static Algorithm {
-        self.algorithm
-    }
+    pub fn algorithm(&self) -> &'static Algorithm { self.algorithm }
 }
 
 const SAMPLE_LEN: usize = super::TAG_LEN;
