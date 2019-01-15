@@ -416,6 +416,38 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
+    - env: TARGET_X=x86_64-fortanix-unknown-sgx  FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: nightly
+      os: linux
+      dist: trusty
+
+    - env: TARGET_X=x86_64-fortanix-unknown-sgx  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      dist: trusty
+
+    - env: TARGET_X=x86_64-fortanix-unknown-sgx CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: nightly
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-7
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=x86_64-fortanix-unknown-sgx CC_X=gcc-7 FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-7
+          sources:
+            - ubuntu-toolchain-r-test
+
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: osx
