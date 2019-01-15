@@ -300,6 +300,9 @@ name = "ring"
 [dependencies]
 untrusted = "0.6.2"
 
+[target.'cfg(not(target_os = "ios"))'.dependencies]
+spin = { version = "0.5.0" }
+
 [target.'cfg(any(target_os = "android", target_os = "linux"))'.dependencies]
 libc = { version = "0.2.45" }
 

@@ -28,8 +28,8 @@ pub(crate) fn features() -> Features {
     // assumed to be present; see `arm::Feature`.
     #[cfg(not(target_os = "ios"))]
     {
-        static INIT: std::sync::Once = std::sync::ONCE_INIT;
-        INIT.call_once(|| {
+        static INIT: spin::Once<()> = spin::Once::new();
+        let () = INIT.call_once(|| {
             #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             {
                 extern "C" {
