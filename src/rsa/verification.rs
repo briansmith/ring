@@ -204,7 +204,7 @@ pub fn verify_rsa(
     params: &Parameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
     signature: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
-    cpu::cache_detected_features();
+    let _ = cpu::features();
     verify_rsa_(params, (n, e), msg, signature)
 }
 

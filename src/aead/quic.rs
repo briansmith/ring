@@ -41,7 +41,7 @@ impl HeaderProtectionKey {
     pub fn new(
         algorithm: &'static Algorithm, key_bytes: &[u8],
     ) -> Result<Self, error::Unspecified> {
-        cpu::cache_detected_features();
+        let _ = cpu::features();
         Ok(HeaderProtectionKey {
             inner: (algorithm.init)(key_bytes)?,
             algorithm,
