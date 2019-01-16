@@ -163,7 +163,7 @@ pub fn agree_ephemeral<F, R, E>(
     peer_public_key: untrusted::Input, error_value: E, kdf: F,
 ) -> Result<R, E>
 where
-    F: FnOnce(&[u8]) -> Result<R, E>,
+    F: Fn(&[u8]) -> Result<R, E>,
 {
     // NSA Guide Prerequisite 1.
     //
