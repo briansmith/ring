@@ -401,6 +401,6 @@ pub fn verify(
     alg: &VerificationAlgorithm, public_key: untrusted::Input, msg: untrusted::Input,
     signature: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
-    cpu::cache_detected_features();
+    let _ = cpu::features();
     alg.verify(public_key, msg, signature)
 }

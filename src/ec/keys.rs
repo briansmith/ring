@@ -25,7 +25,7 @@ impl Seed {
     pub fn generate(
         curve: &'static Curve, rng: &rand::SecureRandom,
     ) -> Result<Seed, error::Unspecified> {
-        cpu::cache_detected_features();
+        let _ = cpu::features();
         let mut r = Self {
             bytes: [0u8; SEED_MAX_BYTES],
             curve,
@@ -37,7 +37,7 @@ impl Seed {
     pub fn from_bytes(
         curve: &'static Curve, bytes: untrusted::Input,
     ) -> Result<Seed, error::Unspecified> {
-        cpu::cache_detected_features();
+        let _ = cpu::features();
         let bytes = bytes.as_slice_less_safe();
         if curve.elem_scalar_seed_len != bytes.len() {
             return Err(error::Unspecified);

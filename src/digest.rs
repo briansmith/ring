@@ -66,7 +66,7 @@ pub struct Context {
 impl Context {
     /// Constructs a new context.
     pub fn new(algorithm: &'static Algorithm) -> Context {
-        cpu::cache_detected_features();
+        let _ = cpu::features();
 
         Context {
             algorithm,

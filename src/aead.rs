@@ -225,7 +225,7 @@ enum KeyInner {
 
 impl Key {
     fn new(algorithm: &'static Algorithm, key_bytes: &[u8]) -> Result<Self, error::Unspecified> {
-        cpu::cache_detected_features();
+        let _ = cpu::features();
         Ok(Key {
             inner: (algorithm.init)(key_bytes)?,
             algorithm,

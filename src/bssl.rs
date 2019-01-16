@@ -51,7 +51,7 @@ macro_rules! bssl_test {
                 fn $bssl_test_main_fn_name() -> c::int;
             }
 
-            cpu::cache_detected_features();
+            let _ = cpu::features();
             ::std::env::set_current_dir(crate::test::ring_src_path()).unwrap();
 
             let result = unsafe { $bssl_test_main_fn_name() };
