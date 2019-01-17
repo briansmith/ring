@@ -488,26 +488,30 @@ static int poly2_top_bits_are_clear(const struct poly2 *p) {
 //  -----------------
 //   0  |  0  | 0
 //   0  |  1  | 1
-//   1  |  0  | 2 (aka -1)
-//   1  |  1  | <invalid>
+//   1  |  1  | -1 (aka 2)
+//   1  |  0  | <invalid>
 //
-// ('s' is for sign, and 'a' just a letter.)
+// ('s' is for sign, and 'a' is the absolute value.)
 //
 // Once bitsliced as such, the following circuits can be used to implement
 // addition and multiplication mod 3:
 //
 //   (s3, a3) = (s1, a1) × (s2, a2)
-//   s3 = (a1 ∧ s2) ⊕ (s1 ∧ a2)
-//   a3 = (s1 ∧ s2) ⊕ (a1 ∧ a2)
+//   a3 = a1 ∧ a2
+//   s3 = (s1 ⊕ s2) ∧ a3
 //
 //   (s3, a3) = (s1, a1) + (s2, a2)
-//   x = (a1 ⊕ a2)
-//   y = (s1 ⊕ s2) ⊕ (a1 ∧ a2)
-//   z = (s1 ∧ s2)
-//   s3 = y ∧ ¬x
-//   a3 = z ∨ (x ∧ ¬y)
+//   t = s1 ⊕ a2
+//   s3 = t ∧ (s2 ⊕ a1)
+//   a3 = (a1 ⊕ a2) ∨ (t ⊕ s2)
 //
-// Negating a value just involves swapping s and a.
+//   (s3, a3) = (s1, a1) - (s2, a2)
+//   t = a1 ⊕ a2
+//   s3 = (s1 ⊕ a2) ∧ (t ⊕ s2)
+//   a3 = t ∨ (s1 ⊕ s2)
+//
+// Negating a value just involves XORing s by a.
+//
 // struct poly3 {
 //   struct poly2 s, a;
 // };
@@ -540,22 +544,45 @@ static void poly3_zero(struct poly3 *p) {
   poly2_zero(&p->a);
 }
 
+// poly3_word_mul sets (|out_s|, |out_a) to (|s1|, |a1|) × (|s2|, |a2|).
+static void poly3_word_mul(crypto_word_t *out_s, crypto_word_t *out_a,
+                           const crypto_word_t s1, const crypto_word_t a1,
+                           const crypto_word_t s2, const crypto_word_t a2) {
+  *out_a = a1 & a2;
+  *out_s = (s1 ^ s2) & *out_a;
+}
+
+// poly3_word_add sets (|out_s|, |out_a|) to (|s1|, |a1|) + (|s2|, |a2|).
+static void poly3_word_add(crypto_word_t *out_s, crypto_word_t *out_a,
+                           const crypto_word_t s1, const crypto_word_t a1,
+                           const crypto_word_t s2, const crypto_word_t a2) {
+  const crypto_word_t t = s1 ^ a2;
+  *out_s = t & (s2 ^ a1);
+  *out_a = (a1 ^ a2) | (t ^ s2);
+}
+
+// poly3_word_sub sets (|out_s|, |out_a|) to (|s1|, |a1|) - (|s2|, |a2|).
+static void poly3_word_sub(crypto_word_t *out_s, crypto_word_t *out_a,
+                           const crypto_word_t s1, const crypto_word_t a1,
+                           const crypto_word_t s2, const crypto_word_t a2) {
+  const crypto_word_t t = a1 ^ a2;
+  *out_s = (s1 ^ a2) & (t ^ s2);
+  *out_a = t | (s1 ^ s2);
+}
+
 // lsb_to_all replicates the least-significant bit of |v| to all bits of the
 // word. This is used in bit-slicing operations to make a vector from a fixed
 // value.
 static crypto_word_t lsb_to_all(crypto_word_t v) { return 0u - (v & 1); }
 
-// poly3_mul_const sets |p| to |p|×m, where m  = (ms, ma).
+// poly3_mul_const sets |p| to |p|×m, where m = (ms, ma).
 static void poly3_mul_const(struct poly3 *p, crypto_word_t ms,
                             crypto_word_t ma) {
   ms = lsb_to_all(ms);
   ma = lsb_to_all(ma);
 
   for (size_t i = 0; i < WORDS_PER_POLY; i++) {
-    const crypto_word_t s = p->s.v[i];
-    const crypto_word_t a = p->a.v[i];
-    p->s.v[i] = (s & ma) ^ (ms & a);
-    p->a.v[i] = (ms & s) ^ (ma & a);
+    poly3_word_mul(&p->s.v[i], &p->a.v[i], p->s.v[i], p->a.v[i], ms, ma);
   }
 }
 
@@ -566,23 +593,15 @@ static void poly3_rotr_consttime(struct poly3 *p, size_t bits) {
   HRSS_poly2_rotr_consttime(&p->a, bits);
 }
 
-// poly3_fmadd sets |out| to |out| + |in|×m, where m is (ms, ma).
-static void poly3_fmadd(struct poly3 *RESTRICT out,
+// poly3_fmadd sets |out| to |out| - |in|×m, where m is (ms, ma).
+static void poly3_fmsub(struct poly3 *RESTRICT out,
                         const struct poly3 *RESTRICT in, crypto_word_t ms,
                         crypto_word_t ma) {
-  // (See the multiplication and addition circuits given above.)
+  crypto_word_t product_s, product_a;
   for (size_t i = 0; i < WORDS_PER_POLY; i++) {
-    const crypto_word_t s = in->s.v[i];
-    const crypto_word_t a = in->a.v[i];
-    const crypto_word_t product_s = (s & ma) ^ (ms & a);
-    const crypto_word_t product_a = (ms & s) ^ (ma & a);
-
-    const crypto_word_t x = out->a.v[i] ^ product_a;
-    const crypto_word_t y =
-        (out->s.v[i] ^ product_s) ^ (out->a.v[i] & product_a);
-    const crypto_word_t z = (out->s.v[i] & product_s);
-    out->s.v[i] = y & ~x;
-    out->a.v[i] = z | (x & ~y);
+    poly3_word_mul(&product_s, &product_a, in->s.v[i], in->a.v[i], ms, ma);
+    poly3_word_sub(&out->s.v[i], &out->a.v[i], out->s.v[i], out->a.v[i],
+                   product_s, product_a);
   }
 }
 
@@ -601,20 +620,13 @@ OPENSSL_UNUSED static int poly3_top_bits_are_clear(const struct poly3 *p) {
 // poly3_mod_phiN reduces |p| by Φ(N).
 static void poly3_mod_phiN(struct poly3 *p) {
   // In order to reduce by Φ(N) we subtract by the value of the greatest
-  // coefficient. That's the same as adding the negative of its value. The
-  // negative of (s, a) is (a, s), so the arguments are swapped in the following
-  // two lines.
-  const crypto_word_t factor_s = final_bit_to_all(p->a.v[WORDS_PER_POLY - 1]);
-  const crypto_word_t factor_a = final_bit_to_all(p->s.v[WORDS_PER_POLY - 1]);
+  // coefficient.
+  const crypto_word_t factor_s = final_bit_to_all(p->s.v[WORDS_PER_POLY - 1]);
+  const crypto_word_t factor_a = final_bit_to_all(p->a.v[WORDS_PER_POLY - 1]);
 
   for (size_t i = 0; i < WORDS_PER_POLY; i++) {
-    const crypto_word_t s = p->s.v[i];
-    const crypto_word_t a = p->a.v[i];
-    const crypto_word_t x = a ^ factor_a;
-    const crypto_word_t y = (s ^ factor_s) ^ (a & factor_a);
-    const crypto_word_t z = (s & factor_s);
-    p->s.v[i] = y & ~x;
-    p->a.v[i] = z | (x & ~y);
+    poly3_word_sub(&p->s.v[i], &p->a.v[i], p->s.v[i], p->a.v[i], factor_s,
+                   factor_a);
   }
 
   poly2_clear_top_bits(&p->s);
@@ -642,17 +654,6 @@ struct poly3_span {
   crypto_word_t *a;
 };
 
-// poly3_word_add sets (|out_s|, |out_a|) to (|s1|, |a1|) + (|s2|, |a2|).
-static void poly3_word_add(crypto_word_t *out_s, crypto_word_t *out_a,
-                           const crypto_word_t s1, const crypto_word_t a1,
-                           const crypto_word_t s2, const crypto_word_t a2) {
-  const crypto_word_t x = a1 ^ a2;
-  const crypto_word_t y = (s1 ^ s2) ^ (a1 & a2);
-  const crypto_word_t z = s1 & s2;
-  *out_s = y & ~x;
-  *out_a = z | (x & ~y);
-}
-
 // poly3_span_add adds |n| words of values from |a| and |b| and writes the
 // result to |out|.
 static void poly3_span_add(const struct poly3_span *out,
@@ -667,8 +668,7 @@ static void poly3_span_add(const struct poly3_span *out,
 static void poly3_span_sub(const struct poly3_span *a,
                            const struct poly3_span *b, size_t n) {
   for (size_t i = 0; i < n; i++) {
-    // Swapping |b->s| and |b->a| negates the value being added.
-    poly3_word_add(&a->s[i], &a->a[i], a->s[i], a->a[i], b->a[i], b->s[i]);
+    poly3_word_sub(&a->s[i], &a->a[i], a->s[i], a->a[i], b->s[i], b->a[i]);
   }
 }
 
@@ -688,13 +688,10 @@ static void poly3_mul_aux(const struct poly3_span *out,
 
     for (size_t i = 0; i < BITS_PER_WORD; i++) {
       // Multiply (s, a) by the next value from (b_s, b_a).
-      const crypto_word_t v_s = lsb_to_all(b_s);
-      const crypto_word_t v_a = lsb_to_all(b_a);
+      crypto_word_t m_s, m_a;
+      poly3_word_mul(&m_s, &m_a, a_s, a_a, lsb_to_all(b_s), lsb_to_all(b_a));
       b_s >>= 1;
       b_a >>= 1;
-
-      const crypto_word_t m_s = (v_s & a_a) ^ (a_s & v_a);
-      const crypto_word_t m_a = (a_s & v_s) ^ (a_a & v_a);
 
       if (i == 0) {
         // Special case otherwise the code tries to shift by BITS_PER_WORD
@@ -816,21 +813,22 @@ static inline void poly3_vec_cswap(vec_t a_s[6], vec_t a_a[6], vec_t b_s[6],
   }
 }
 
-// poly3_vec_fmadd adds (|ms|, |ma|) × (|b_s|, |b_a|) to (|a_s|, |a_a|).
-static inline void poly3_vec_fmadd(vec_t a_s[6], vec_t a_a[6], vec_t b_s[6],
+// poly3_vec_fmsub subtracts (|ms|, |ma|) × (|b_s|, |b_a|) from (|a_s|, |a_a|).
+static inline void poly3_vec_fmsub(vec_t a_s[6], vec_t a_a[6], vec_t b_s[6],
                                    vec_t b_a[6], const vec_t ms,
                                    const vec_t ma) {
   for (int i = 0; i < 6; i++) {
+    // See the bitslice formula, above.
     const vec_t s = b_s[i];
     const vec_t a = b_a[i];
-    const vec_t product_s = (s & ma) ^ (ms & a);
-    const vec_t product_a = (ms & s) ^ (ma & a);
+    const vec_t product_a = a & ma;
+    const vec_t product_s = (s ^ ms) & product_a;
 
-    const vec_t x = a_a[i] ^ product_a;
-    const vec_t y = (a_s[i] ^ product_s) ^ (a_a[i] & product_a);
-    const vec_t z = (a_s[i] & product_s);
-    a_s[i] = y & ~x;
-    a_a[i] = z | (x & ~y);
+    const vec_t out_s = a_s[i];
+    const vec_t out_a = a_a[i];
+    const vec_t t = out_a ^ product_a;
+    a_s[i] = (out_s ^ product_a) & (t ^ product_s);
+    a_a[i] = t | (out_s ^ product_s);
   }
 }
 
@@ -874,19 +872,18 @@ static void poly3_invert_vec(struct poly3 *out, const struct poly3 *in) {
   memset(&still_going, 0xff, sizeof(still_going));
 
   for (unsigned i = 0; i < 2 * (N - 1) - 1; i++) {
-    const vec_t s_a = vec_broadcast_bit(
-        still_going & ((f_a[0] & g_s[0]) ^ (f_s[0] & g_a[0])));
-    const vec_t s_s = vec_broadcast_bit(
-        still_going & ((f_a[0] & g_a[0]) ^ (f_s[0] & g_s[0])));
+    const vec_t s_a = vec_broadcast_bit(still_going & (f_a[0] & g_a[0]));
+    const vec_t s_s =
+        vec_broadcast_bit(still_going & ((f_s[0] ^ g_s[0]) & s_a));
     const vec_t should_swap =
         (s_s | s_a) & vec_broadcast_bit15(deg_f - deg_g);
 
     poly3_vec_cswap(f_s, f_a, g_s, g_a, should_swap);
-    poly3_vec_fmadd(f_s, f_a, g_s, g_a, s_s, s_a);
+    poly3_vec_fmsub(f_s, f_a, g_s, g_a, s_s, s_a);
     poly3_vec_rshift1(f_s, f_a);
 
     poly3_vec_cswap(b_s, b_a, c_s, c_a, should_swap);
-    poly3_vec_fmadd(b_s, b_a, c_s, c_a, s_s, s_a);
+    poly3_vec_fmsub(b_s, b_a, c_s, c_a, s_s, s_a);
     poly3_vec_lshift1(c_s, c_a);
 
     const vec_t deg_sum = should_swap & (deg_f ^ deg_g);
@@ -959,9 +956,9 @@ void HRSS_poly3_invert(struct poly3 *out, const struct poly3 *in) {
 
   for (unsigned i = 0; i < 2 * (N - 1) - 1; i++) {
     const crypto_word_t s_a = lsb_to_all(
-        still_going & ((f.a.v[0] & g.s.v[0]) ^ (f.s.v[0] & g.a.v[0])));
+        still_going & (f.a.v[0] & g.a.v[0]));
     const crypto_word_t s_s = lsb_to_all(
-        still_going & ((f.a.v[0] & g.a.v[0]) ^ (f.s.v[0] & g.s.v[0])));
+        still_going & ((f.s.v[0] ^ g.s.v[0]) & s_a));
     const crypto_word_t should_swap =
         (s_s | s_a) & constant_time_lt_w(deg_f, deg_g);
 
@@ -973,8 +970,8 @@ void HRSS_poly3_invert(struct poly3 *out, const struct poly3 *in) {
     deg_g ^= deg_sum;
     assert(deg_g >= 1);
 
-    poly3_fmadd(&f, &g, s_s, s_a);
-    poly3_fmadd(b, &c, s_s, s_a);
+    poly3_fmsub(&f, &g, s_s, s_a);
+    poly3_fmsub(b, &c, s_s, s_a);
     poly3_rshift1(&f);
     poly3_lshift1(&c);
 
@@ -1486,9 +1483,10 @@ static void poly3_from_poly(struct poly3 *out, const struct poly *in) {
     // The signed value is reduced mod 3, yielding {0, 1, 2}.
     const uint16_t v = mod3((int16_t)(in->v[i] << 3) >> 3);
     s >>= 1;
-    s |= (crypto_word_t)(v & 2) << (BITS_PER_WORD - 2);
+    const crypto_word_t s_bit = (crypto_word_t)(v & 2) << (BITS_PER_WORD - 2);
+    s |= s_bit;
     a >>= 1;
-    a |= (crypto_word_t)(v & 1) << (BITS_PER_WORD - 1);
+    a |= s_bit | (crypto_word_t)(v & 1) << (BITS_PER_WORD - 1);
     shift++;
 
     if (shift == BITS_PER_WORD) {
@@ -1528,9 +1526,11 @@ static crypto_word_t poly3_from_poly_checked(struct poly3 *out,
     ok &= constant_time_eq_w(v, expected);
 
     s >>= 1;
-    s |= (crypto_word_t)(mod3 & 2) << (BITS_PER_WORD - 2);
+    const crypto_word_t s_bit = (crypto_word_t)(mod3 & 2)
+                                << (BITS_PER_WORD - 2);
+    s |= s_bit;
     a >>= 1;
-    a |= (crypto_word_t)(mod3 & 1) << (BITS_PER_WORD - 1);
+    a |= s_bit | (crypto_word_t)(mod3 & 1) << (BITS_PER_WORD - 1);
     shift++;
 
     if (shift == BITS_PER_WORD) {

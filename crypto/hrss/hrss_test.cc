@@ -81,20 +81,18 @@ static void poly3_rand(poly3 *p) {
   RAND_bytes(reinterpret_cast<uint8_t *>(p), sizeof(poly3));
   p->s.v[WORDS_PER_POLY - 1] &= (UINT64_C(1) << BITS_IN_LAST_WORD) - 1;
   p->a.v[WORDS_PER_POLY - 1] &= (UINT64_C(1) << BITS_IN_LAST_WORD) - 1;
-  // (s, a) = (1, 1) is invalid. Map those to one.
+  // (s, a) = (1, 0) is invalid. Map those to -1.
   for (size_t j = 0; j < WORDS_PER_POLY; j++) {
-    p->s.v[j] ^= p->s.v[j] & p->a.v[j];
+    p->a.v[j] |= p->s.v[j];
   }
 }
 
 // poly3_word_add sets (|s1|, |a1|) += (|s2|, |a2|).
 static void poly3_word_add(crypto_word_t *s1, crypto_word_t *a1,
                            const crypto_word_t s2, const crypto_word_t a2) {
-  const crypto_word_t x = *a1 ^ a2;
-  const crypto_word_t y = (*s1 ^ s2) ^ (*a1 & a2);
-  const crypto_word_t z = *s1 & s2;
-  *s1 = y & ~x;
-  *a1 = z | (x & ~y);
+  const crypto_word_t t = *s1 ^ a2;
+  *s1 = t & (s2 ^ *a1);
+  *a1 = (*a1 ^ a2) | (t ^ s2);
 }
 
 TEST(HRSS, Poly3Invert) {
@@ -105,6 +103,7 @@ TEST(HRSS, Poly3Invert) {
 
   // The inverse of -1 is -1.
   p.s.v[0] = 1;
+  p.a.v[0] = 1;
   HRSS_poly3_invert(&inverse, &p);
   EXPECT_EQ(Bytes(reinterpret_cast<const uint8_t*>(&p), sizeof(p)),
             Bytes(reinterpret_cast<const uint8_t*>(&inverse), sizeof(inverse)));
@@ -144,7 +143,7 @@ TEST(HRSS, Poly3UnreducedInput) {
   // |r| is probably already not reduced mod Φ(N), but add x^701 - 1 and
   // recompute to ensure that we get the same answer. (Since (x^701 - 1) ≡ 0 mod
   // Φ(N).)
-  poly3_word_add(&r.s.v[0], &r.a.v[0], 1, 0);
+  poly3_word_add(&r.s.v[0], &r.a.v[0], 1, 1);
   poly3_word_add(&r.s.v[WORDS_PER_POLY - 1], &r.a.v[WORDS_PER_POLY - 1], 0,
                  UINT64_C(1) << BITS_IN_LAST_WORD);
 
@@ -160,11 +159,11 @@ TEST(HRSS, Poly3UnreducedInput) {
 
   for (size_t i = 0; i < WORDS_PER_POLY-1; i++) {
     EXPECT_EQ(CONSTTIME_TRUE_W, result.s.v[i]);
-    EXPECT_EQ(0u, result.a.v[i]);
+    EXPECT_EQ(CONSTTIME_TRUE_W, result.a.v[i]);
   }
   EXPECT_EQ((UINT64_C(1) << (BITS_IN_LAST_WORD - 1)) - 1,
             result.s.v[WORDS_PER_POLY - 1]);
-  EXPECT_EQ(0u, result.a.v[WORDS_PER_POLY - 1]);
+  EXPECT_EQ(result.s.v[WORDS_PER_POLY - 1], result.a.v[WORDS_PER_POLY - 1]);
 }
 
 TEST(HRSS, Basic) {
