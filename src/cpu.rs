@@ -80,6 +80,14 @@ pub(crate) mod arm {
         }
     }
 
+    // Keep in sync with `ARMV7_NEON`.
+    #[cfg(target_arch = "arm")]
+    pub(crate) const NEON: Feature = Feature {
+        mask: 1 << 0,
+        ios: true,
+    };
+
+    // Keep in sync with `ARMV8_PMULL`.
     pub(crate) const PMULL: Feature = Feature {
         mask: 1 << 5,
         ios: true,

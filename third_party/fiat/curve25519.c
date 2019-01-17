@@ -2869,9 +2869,9 @@ static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
 }
 
 
-static void x25519_scalar_mult_generic(uint8_t out[32],
-                                       const uint8_t scalar[32],
-                                       const uint8_t point[32]) {
+void GFp_x25519_scalar_mult_generic(uint8_t out[32],
+                                    const uint8_t scalar[32],
+                                    const uint8_t point[32]) {
   fe x1, x2, z2, x3, z3, tmp0, tmp1;
   fe_loose x2l, z2l, x3l, tmp0l, tmp1l;
 
@@ -2948,37 +2948,12 @@ static void x25519_scalar_mult_generic(uint8_t out[32],
   fe_tobytes(out, &x2);
 }
 
-static void x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
-                               const uint8_t point[32]) {
-#if defined(BORINGSSL_X25519_NEON)
-  if (GFp_is_NEON_capable()) {
-    GFp_x25519_NEON(out, scalar, point);
-    return;
-  }
-#endif
-
-  x25519_scalar_mult_generic(out, scalar, point);
-}
-
-void GFp_x25519_scalar_mult(uint8_t out[32], const uint8_t scalar[32],
-                            const uint8_t point[32]) {
-  x25519_scalar_mult(out, scalar, point);
-}
-
 // Prototypes to avoid -Wmissing-prototypes warnings.
-void GFp_x25519_public_from_private(uint8_t out_public_value[32],
-                                    const uint8_t private_key[32]);
+void GFp_x25519_public_from_private_generic(uint8_t out_public_value[32],
+                                            const uint8_t private_key[32]);
 
-void GFp_x25519_public_from_private(uint8_t out_public_value[32],
-                                    const uint8_t private_key[32]) {
-#if defined(BORINGSSL_X25519_NEON)
-  if (GFp_is_NEON_capable()) {
-    static const uint8_t kMongomeryBasePoint[32] = {9};
-    GFp_x25519_NEON(out_public_value, private_key, kMongomeryBasePoint);
-    return;
-  }
-#endif
-
+void GFp_x25519_public_from_private_generic(uint8_t out_public_value[32],
+                                            const uint8_t private_key[32]) {
   uint8_t e[32];
   memcpy(e, private_key, 32);
   GFp_x25519_sc_mask(e);
