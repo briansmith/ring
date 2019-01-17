@@ -95,7 +95,13 @@ impl sealed::Sealed for SystemRandom {}
 
 #[cfg(all(
     feature = "use_heap",
-    not(any(target_os = "linux", target_os = "macos", target_os = "ios", windows))
+    not(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "ios",
+        target_os = "fuchsia",
+        windows
+    ))
 ))]
 use self::urandom::fill as fill_impl;
 
@@ -110,6 +116,10 @@ use self::sysrand_or_urandom::fill as fill_impl;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use self::darwin::fill as fill_impl;
+
+#[cfg(any(target_os = "fuchsia"))]
+use self::fuchsia::fill as fill_impl;
+
 use crate::sealed;
 
 #[cfg(target_os = "linux")]
@@ -188,7 +198,8 @@ mod sysrand {
     feature = "use_heap",
     any(target_os = "redox", unix),
     not(any(target_os = "macos", target_os = "ios")),
-    not(all(target_os = "linux", not(feature = "dev_urandom_fallback")))
+    not(all(target_os = "linux", not(feature = "dev_urandom_fallback"))),
+    not(any(target_os = "fuchsia")),
 ))]
 mod urandom {
     use crate::error;
@@ -276,6 +287,21 @@ mod darwin {
         fn SecRandomCopyBytes(
             rnd: &'static SecRandomRef, count: c::size_t, bytes: *mut u8,
         ) -> c::int;
+    }
+}
+
+#[cfg(any(target_os = "fuchsia"))]
+mod fuchsia {
+    use crate::error;
+
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        unsafe { zx_cprng_draw(dest.as_mut_ptr(), dest.len()); }
+        Ok(())
+    }
+
+    #[link(name = "zircon")]
+    extern "C" {
+        fn zx_cprng_draw(buffer: *mut u8, length: usize);
     }
 }
 
