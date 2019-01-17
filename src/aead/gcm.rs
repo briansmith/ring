@@ -24,7 +24,9 @@ impl Key {
             fn GFp_gcm128_init_htable(gcm_key: &mut GCM128_KEY, h_block: Block);
         }
 
-        let mut r = Key(GCM128_KEY([Block::zero(); GCM128_HTABLE_LEN]));
+        let mut r = Key(GCM128_KEY {
+            Htable: [u128 { hi: 0, lo: 0 }; GCM128_HTABLE_LEN],
+        });
         unsafe {
             GFp_gcm128_init_htable(&mut r.0, h_be);
         }
@@ -94,7 +96,16 @@ impl Context {
 // Keep in sync with `GCM128_KEY` in modes/internal.h.
 #[derive(Clone)]
 #[repr(C, align(16))]
-struct GCM128_KEY([Block; GCM128_HTABLE_LEN]);
+struct GCM128_KEY {
+    Htable: [u128; GCM128_HTABLE_LEN],
+}
+
+#[derive(Clone, Copy)]
+#[repr(C)]
+struct u128 {
+    hi: u64,
+    lo: u64,
+}
 
 const GCM128_HTABLE_LEN: usize = 16;
 
