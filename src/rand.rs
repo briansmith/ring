@@ -100,7 +100,7 @@ impl sealed::Sealed for SystemRandom {}
 use self::urandom::fill as fill_impl;
 
 #[cfg(any(
-    all(target_os = "linux", not(feature = "dev_urandom_fallback")),
+    all(target_os = "linux", not(any(feature = "dev_urandom_fallback", feature = "sgx"))),
     windows
 ))]
 use self::sysrand::fill as fill_impl;
@@ -108,11 +108,19 @@ use self::sysrand::fill as fill_impl;
 #[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
 use self::sysrand_or_urandom::fill as fill_impl;
 
+
+#[cfg(all(
+    target_os = "linux",
+    feature = "sgx",
+    not(any(feature = "dev_urandom_fallback", feature = "use_heap"))))]
+use self::sgxrand::fill as fill_impl;
+
+
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use self::darwin::fill as fill_impl;
 use crate::sealed;
 
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(feature = "sgx")))]
 mod sysrand_chunk {
     use crate::{c, error};
     use libc;
@@ -168,7 +176,7 @@ mod sysrand_chunk {
     }
 }
 
-#[cfg(any(target_os = "linux", windows))]
+#[cfg(all(any(target_os = "linux", windows), not(feature = "sgx")))]
 mod sysrand {
     use super::sysrand_chunk::chunk;
     use crate::error;
@@ -246,6 +254,20 @@ mod sysrand_or_urandom {
             Mechanism::DevURandom => super::urandom::fill(dest),
         }
     }
+}
+
+#[cfg(all(
+    target_os = "linux",
+    feature = "sgx",
+    not(any(feature = "dev_urandom_fallback", feature = "use_heap"))))]
+mod sgxrand {
+    use sgx_trts::trts;
+    use crate::error;
+
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        trts::rsgx_read_rand(dest).map_err(|_| error::Unspecified)
+    }
+
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]

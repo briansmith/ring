@@ -21,6 +21,8 @@
 //! [AEAD]: http://www-cse.ucsd.edu/~mihir/papers/oem.html
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
+
+
 use self::block::{Block, BLOCK_LEN};
 use crate::{
     constant_time, cpu, error,

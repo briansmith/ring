@@ -303,6 +303,10 @@ libc = { version = "0.2.45" }
 [target.'cfg(any(target_os = "redox", all(unix, not(any(target_os = "macos", target_os = "ios")))))'.dependencies]
 lazy_static = "1.2"
 
+
+[target.'cfg(not(target_env = "sgx"))'.dependencies]
+sgx_trts = { version = "1.0.4", optional = true }
+
 # Keep this in sync with `[dependencies]` in pregenerate_asm/Cargo.toml.
 [build-dependencies]
 cc = "1.0.26"
@@ -315,6 +319,7 @@ internal_benches = []
 slow_tests = []
 test_logging = []
 use_heap = []
+sgx = ["sgx_trts"]
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 
