@@ -76,8 +76,6 @@
 #![cfg_attr(feature = "internal_benches", allow(unstable_features))]
 #![cfg_attr(feature = "internal_benches", feature(test))]
 
-#![cfg_attr(feature = "sgx", allow(unstable_features))] // This is because rust-sgx cuurently use nightly-2018-10-01-x86_64-unknown-linux-gnu
-#![cfg_attr(feature = "sgx", feature(min_const_fn))] // In that version `min_const_fn` is still unstable
 
 #[macro_use]
 mod debug;
