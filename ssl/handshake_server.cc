@@ -402,8 +402,7 @@ static enum ssl_hs_wait_t do_start_accept(SSL_HANDSHAKE *hs) {
 }
 
 // is_probably_jdk11_with_tls13 returns whether |client_hello| was probably sent
-// from a JDK 11 client (11.0.1 or earlier) with both TLS 1.3 and a prior
-// version enabled.
+// from a JDK 11 client with both TLS 1.3 and a prior version enabled.
 static bool is_probably_jdk11_with_tls13(const SSL_CLIENT_HELLO *client_hello) {
   // JDK 11 ClientHellos contain a number of unusual properties which should
   // limit false positives.

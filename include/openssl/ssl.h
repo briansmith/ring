@@ -3794,12 +3794,12 @@ OPENSSL_EXPORT void SSL_set_ignore_tls13_downgrade(SSL *ssl, int ignore);
 // mechanism would have aborted |ssl|'s handshake and zero otherwise.
 OPENSSL_EXPORT int SSL_is_tls13_downgrade(const SSL *ssl);
 
-// SSL_set_jdk11_workaround configures whether to workaround a bug in JDK 11's
-// TLS 1.3 implementation. Prior to 11.0.2, JDK 11 fails to send SNI in
-// connections which offer a TLS 1.3 session. Enabling this workaround will
-// disable TLS 1.3 on such clients.
+// SSL_set_jdk11_workaround configures whether to workaround various bugs in
+// JDK 11's TLS 1.3 implementation by disabling TLS 1.3 for such clients.
 //
-// See also https://bugs.openjdk.java.net/browse/JDK-8211806.
+// https://bugs.openjdk.java.net/browse/JDK-8211806
+// https://bugs.openjdk.java.net/browse/JDK-8212885
+// https://bugs.openjdk.java.net/browse/JDK-8213202
 OPENSSL_EXPORT void SSL_set_jdk11_workaround(SSL *ssl, int enable);
 
 
