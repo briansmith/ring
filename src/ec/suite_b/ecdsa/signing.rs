@@ -17,7 +17,7 @@
 use super::digest_scalar::digest_scalar;
 use crate::{
     arithmetic::montgomery::*,
-    digest,
+    cpu, digest,
     ec::{
         self,
         suite_b::{ops::*, private_key},
@@ -83,7 +83,7 @@ impl KeyPair {
     pub fn generate_pkcs8(
         alg: &'static Algorithm, rng: &rand::SecureRandom,
     ) -> Result<pkcs8::Document, error::Unspecified> {
-        let private_key = ec::Seed::generate(alg.curve, rng)?;
+        let private_key = ec::Seed::generate(alg.curve, rng, cpu::features())?;
         let public_key = private_key.compute_public_key()?;
         Ok(pkcs8::wrap_key(
             &alg.pkcs8_template,
@@ -105,7 +105,12 @@ impl KeyPair {
     pub fn from_pkcs8(
         alg: &'static Algorithm, input: untrusted::Input,
     ) -> Result<Self, error::KeyRejected> {
-        let key_pair = ec::suite_b::key_pair_from_pkcs8(alg.curve, alg.pkcs8_template, input)?;
+        let key_pair = ec::suite_b::key_pair_from_pkcs8(
+            alg.curve,
+            alg.pkcs8_template,
+            input,
+            cpu::features(),
+        )?;
         Ok(Self::new(alg, key_pair))
     }
 
@@ -118,7 +123,8 @@ impl KeyPair {
     pub fn from_private_key_and_public_key(
         alg: &'static Algorithm, private_key: untrusted::Input, public_key: untrusted::Input,
     ) -> Result<Self, error::KeyRejected> {
-        let key_pair = ec::suite_b::key_pair_from_bytes(alg.curve, private_key, public_key)?;
+        let key_pair =
+            ec::suite_b::key_pair_from_bytes(alg.curve, private_key, public_key, cpu::features())?;
         Ok(Self::new(alg, key_pair))
     }
 
