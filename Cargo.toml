@@ -39,9 +39,6 @@ include = [
     "crypto/cipher_extra/test/aes_128_gcm_siv_tests.txt",
     "crypto/cipher_extra/test/aes_256_gcm_siv_tests.txt",
     "crypto/constant_time_test.c",
-    "crypto/cpu-aarch64-linux.c",
-    "crypto/cpu-arm-linux.c",
-    "crypto/cpu-arm.c",
     "crypto/cpu-intel.c",
     "crypto/crypto.c",
     "crypto/curve25519/asm/x25519-asm-arm.S",
@@ -303,7 +300,7 @@ name = "ring"
 [dependencies]
 untrusted = "0.6.2"
 
-[target.'cfg(target_os = "linux")'.dependencies]
+[target.'cfg(any(target_os = "android", target_os = "linux"))'.dependencies]
 libc = { version = "0.2.45" }
 
 [target.'cfg(any(target_os = "redox", all(unix, not(any(target_os = "macos", target_os = "ios")))))'.dependencies]

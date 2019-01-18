@@ -62,30 +62,7 @@ HIDDEN uint32_t GFp_ia32cap_P[4] = {0};
 
 #include <GFp/arm_arch.h>
 
-#if defined(OPENSSL_STATIC_ARMCAP)
-
-HIDDEN uint32_t GFp_armcap_P =
-#if defined(OPENSSL_STATIC_ARMCAP_NEON) || \
-    (defined(__ARM_NEON__) || defined(__ARM_NEON))
-    ARMV7_NEON |
-#endif
-#if defined(OPENSSL_STATIC_ARMCAP_AES) || defined(__ARM_FEATURE_CRYPTO)
-    ARMV8_AES |
-#endif
-#if defined(OPENSSL_STATIC_ARMCAP_SHA1) || defined(__ARM_FEATURE_CRYPTO)
-    ARMV8_SHA1 |
-#endif
-#if defined(OPENSSL_STATIC_ARMCAP_SHA256) || defined(__ARM_FEATURE_CRYPTO)
-    ARMV8_SHA256 |
-#endif
-#if defined(OPENSSL_STATIC_ARMCAP_PMULL) || defined(__ARM_FEATURE_CRYPTO)
-    ARMV8_PMULL |
-#endif
-    0;
-
-#else
 HIDDEN uint32_t GFp_armcap_P = 0;
-#endif
 
 #endif
 

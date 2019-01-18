@@ -107,17 +107,7 @@
 // ARMV7_NEON is true when a NEON unit is present in the current CPU.
 #define ARMV7_NEON (1 << 0)
 
-// ARMV8_AES indicates support for hardware AES instructions.
-#define ARMV8_AES (1 << 2)
-
-// ARMV8_SHA1 indicates support for hardware SHA-1 instructions.
-#define ARMV8_SHA1 (1 << 3)
-
 // ARMV8_SHA256 indicates support for hardware SHA-256 instructions.
 #define ARMV8_SHA256 (1 << 4)
-
-// ARMV8_PMULL indicates support for carryless multiplication.
-#define ARMV8_PMULL (1 << 5)
-
 
 #endif  // OPENSSL_HEADER_ARM_ARCH_H

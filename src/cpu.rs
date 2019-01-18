@@ -28,18 +28,88 @@ pub(crate) fn features() -> Features {
     // assumed to be present; see `arm::Feature`.
     #[cfg(not(target_os = "ios"))]
     {
-        use std;
-        extern "C" {
-            fn GFp_cpuid_setup();
-        }
         static INIT: std::sync::Once = std::sync::ONCE_INIT;
-        INIT.call_once(|| unsafe { GFp_cpuid_setup() });
+        INIT.call_once(|| {
+            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+            {
+                extern "C" {
+                    fn GFp_cpuid_setup();
+                }
+                unsafe {
+                    GFp_cpuid_setup();
+                }
+            }
+
+            #[cfg(all(
+                any(target_os = "android", target_os = "linux"),
+                any(target_arch = "aarch64", target_arch = "arm")
+            ))]
+            {
+                arm::linux_setup();
+            }
+        });
     }
 
     Features(())
 }
 
 pub(crate) mod arm {
+    #[cfg(all(
+        any(target_os = "android", target_os = "linux"),
+        any(target_arch = "aarch64", target_arch = "arm")
+    ))]
+    pub fn linux_setup() {
+        // XXX: The `libc` crate doesn't provide `libc::getauxval` consistently
+        // across all Android/Linux targets, e.g. musl.
+        extern "C" {
+            fn getauxval(type_: libc::c_ulong) -> libc::c_ulong;
+        }
+
+        const AT_HWCAP: libc::c_ulong = 16;
+
+        #[cfg(target_arch = "aarch64")]
+        const HWCAP_NEON: libc::c_ulong = 1 << 1;
+
+        #[cfg(target_arch = "arm")]
+        const HWCAP_NEON: libc::c_ulong = 1 << 12;
+
+        let caps = unsafe { getauxval(AT_HWCAP) };
+
+        // OpenSSL and BoringSSL don't enable any other features if NEON isn't
+        // available.
+        if caps & HWCAP_NEON == HWCAP_NEON {
+            let mut features = NEON.mask;
+
+            #[cfg(target_arch = "aarch64")]
+            const OFFSET: libc::c_ulong = 3;
+
+            #[cfg(target_arch = "arm")]
+            const OFFSET: libc::c_ulong = 0;
+
+            #[cfg(target_arch = "arm")]
+            let caps = {
+                const AT_HWCAP2: libc::c_ulong = 26;
+                unsafe { getauxval(AT_HWCAP2) }
+            };
+
+            const HWCAP_AES: libc::c_ulong = 1 << 0 + OFFSET;
+            const HWCAP_PMULL: libc::c_ulong = 1 << 1 + OFFSET;
+            const HWCAP_SHA2: libc::c_ulong = 1 << 3 + OFFSET;
+
+            if caps & HWCAP_AES == HWCAP_AES {
+                features |= AES.mask;
+            }
+            if caps & HWCAP_PMULL == HWCAP_PMULL {
+                features |= PMULL.mask;
+            }
+            if caps & HWCAP_SHA2 == HWCAP_SHA2 {
+                features |= 1 << 4;
+            }
+
+            unsafe { GFp_armcap_P = features };
+        }
+    }
+
     pub(crate) struct Feature {
         #[cfg_attr(
             any(
@@ -67,9 +137,6 @@ pub(crate) mod arm {
                 any(target_arch = "arm", target_arch = "aarch64")
             ))]
             {
-                extern "C" {
-                    static mut GFp_armcap_P: u32;
-                }
                 return self.mask == self.mask & unsafe { GFp_armcap_P };
             }
 
@@ -81,7 +148,7 @@ pub(crate) mod arm {
     }
 
     // Keep in sync with `ARMV7_NEON`.
-    #[cfg(target_arch = "arm")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
     pub(crate) const NEON: Feature = Feature {
         mask: 1 << 0,
         ios: true,
@@ -98,6 +165,14 @@ pub(crate) mod arm {
         mask: 1 << 5,
         ios: true,
     };
+
+    #[cfg(all(
+        any(target_os = "android", target_os = "linux"),
+        any(target_arch = "arm", target_arch = "aarch64")
+    ))]
+    extern "C" {
+        static mut GFp_armcap_P: u32;
+    }
 }
 
 #[cfg_attr(
