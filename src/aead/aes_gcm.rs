@@ -16,7 +16,7 @@ use super::{
     aes::{self, Counter},
     gcm, shift, Aad, Block, Direction, Nonce, Tag, BLOCK_LEN,
 };
-use crate::{aead, endian::*, error, polyfill};
+use crate::{aead, cpu, endian::*, error, polyfill};
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
 pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
@@ -43,28 +43,33 @@ pub struct Key {
     aes_key: aes::Key,
 }
 
-fn init_128(key: &[u8]) -> Result<aead::KeyInner, error::Unspecified> {
-    init(key, aes::Variant::AES_128)
+fn init_128(key: &[u8], cpu_features: cpu::Features) -> Result<aead::KeyInner, error::Unspecified> {
+    init(key, aes::Variant::AES_128, cpu_features)
 }
 
-fn init_256(key: &[u8]) -> Result<aead::KeyInner, error::Unspecified> {
-    init(key, aes::Variant::AES_256)
+fn init_256(key: &[u8], cpu_features: cpu::Features) -> Result<aead::KeyInner, error::Unspecified> {
+    init(key, aes::Variant::AES_256, cpu_features)
 }
 
-fn init(key: &[u8], variant: aes::Variant) -> Result<aead::KeyInner, error::Unspecified> {
+fn init(
+    key: &[u8], variant: aes::Variant, cpu_features: cpu::Features,
+) -> Result<aead::KeyInner, error::Unspecified> {
     let aes_key = aes::Key::new(key, variant)?;
-    let gcm_key = gcm::Key::new(aes_key.encrypt_block(Block::zero()));
+    let gcm_key = gcm::Key::new(aes_key.encrypt_block(Block::zero()), cpu_features);
     Ok(aead::KeyInner::AesGcm(Key { aes_key, gcm_key }))
 }
 
 const CHUNK_BLOCKS: usize = 3 * 1024 / 16;
 
-fn aes_gcm_seal(key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_out: &mut [u8]) -> Tag {
-    aead(key, nonce, aad, in_out, Direction::Sealing)
+fn aes_gcm_seal(
+    key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_out: &mut [u8], cpu_features: cpu::Features,
+) -> Tag {
+    aead(key, nonce, aad, in_out, Direction::Sealing, cpu_features)
 }
 
 fn aes_gcm_open(
     key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_prefix_len: usize, in_out: &mut [u8],
+    cpu_features: cpu::Features,
 ) -> Tag {
     aead(
         key,
@@ -72,12 +77,14 @@ fn aes_gcm_open(
         aad,
         in_out,
         Direction::Opening { in_prefix_len },
+        cpu_features,
     )
 }
 
 #[inline(always)] // Avoid branching on `direction`.
 fn aead(
     key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_out: &mut [u8], direction: Direction,
+    cpu_features: cpu::Features,
 ) -> Tag {
     let Key { aes_key, gcm_key } = match key {
         aead::KeyInner::AesGcm(key) => key,
@@ -88,7 +95,7 @@ fn aead(
     let tag_iv = ctr.increment();
 
     let aad_len = aad.0.len();
-    let mut gcm_ctx = gcm::Context::new(gcm_key, aad);
+    let mut gcm_ctx = gcm::Context::new(gcm_key, aad, cpu_features);
 
     let in_prefix_len = match direction {
         Direction::Opening { in_prefix_len } => in_prefix_len,
@@ -97,7 +104,14 @@ fn aead(
 
     let total_in_out_len = in_out.len() - in_prefix_len;
 
-    let in_out = integrated_aes_gcm(aes_key, &mut gcm_ctx, in_out, &mut ctr, direction);
+    let in_out = integrated_aes_gcm(
+        aes_key,
+        &mut gcm_ctx,
+        in_out,
+        &mut ctr,
+        direction,
+        cpu_features,
+    );
     let in_out_len = in_out.len() - in_prefix_len;
 
     // Process any (remaining) whole blocks.
@@ -171,11 +185,11 @@ fn aead(
 #[inline] // Optimize out the match on `direction`.
 fn integrated_aes_gcm<'a>(
     aes_key: &aes::Key, gcm_ctx: &mut gcm::Context, in_out: &'a mut [u8], ctr: &mut Counter,
-    direction: Direction,
+    direction: Direction, cpu_features: cpu::Features,
 ) -> &'a mut [u8] {
     use crate::c;
 
-    if !aes_key.is_aes_hw() || !gcm_ctx.is_avx2() {
+    if !aes_key.is_aes_hw() || !gcm_ctx.is_avx2(cpu_features) {
         return in_out;
     }
 
@@ -225,6 +239,7 @@ fn integrated_aes_gcm<'a>(
 #[inline]
 fn integrated_aes_gcm<'a>(
     _: &aes::Key, _: &mut gcm::Context, in_out: &'a mut [u8], _: &mut Counter, _: Direction,
+    _: cpu::Features,
 ) -> &'a mut [u8] {
     in_out // This doesn't process any of the input so it all remains.
 }

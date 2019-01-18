@@ -116,8 +116,14 @@ pub fn open_in_place<'a>(
     check_per_nonce_max_bytes(key.key.algorithm, ciphertext_len)?;
     let (in_out, received_tag) =
         ciphertext_and_tag_modified_in_place.split_at_mut(in_prefix_len + ciphertext_len);
-    let Tag(calculated_tag) =
-        (key.key.algorithm.open)(&key.key.inner, nonce, aad, in_prefix_len, in_out);
+    let Tag(calculated_tag) = (key.key.algorithm.open)(
+        &key.key.inner,
+        nonce,
+        aad,
+        in_prefix_len,
+        in_out,
+        key.key.cpu_features,
+    );
     if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag).is_err() {
         // Zero out the plaintext so that it isn't accidentally leaked or used
         // after verification fails. It would be safest if we could check the
@@ -186,7 +192,8 @@ pub fn seal_in_place(
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
 
     let tag_out: &mut [u8; TAG_LEN] = tag_out.try_into_()?;
-    let Tag(tag) = (key.key.algorithm.seal)(&key.key.inner, nonce, aad, in_out);
+    let Tag(tag) =
+        (key.key.algorithm.seal)(&key.key.inner, nonce, aad, in_out, key.key.cpu_features);
     tag_out.copy_from_slice(tag.as_ref());
 
     Ok(in_out_len + TAG_LEN)
@@ -213,6 +220,7 @@ impl Aad<'static> {
 struct Key {
     inner: KeyInner,
     algorithm: &'static Algorithm,
+    cpu_features: cpu::Features,
 }
 
 derive_debug_via_field!(Key, algorithm);
@@ -225,10 +233,11 @@ enum KeyInner {
 
 impl Key {
     fn new(algorithm: &'static Algorithm, key_bytes: &[u8]) -> Result<Self, error::Unspecified> {
-        let _ = cpu::features();
+        let cpu_features = cpu::features();
         Ok(Key {
-            inner: (algorithm.init)(key_bytes)?,
+            inner: (algorithm.init)(key_bytes, cpu_features)?,
             algorithm,
+            cpu_features,
         })
     }
 
@@ -239,11 +248,23 @@ impl Key {
 
 /// An AEAD Algorithm.
 pub struct Algorithm {
-    init: fn(key: &[u8]) -> Result<KeyInner, error::Unspecified>,
+    init: fn(key: &[u8], cpu_features: cpu::Features) -> Result<KeyInner, error::Unspecified>,
 
-    seal: fn(key: &KeyInner, nonce: Nonce, aad: Aad, in_out: &mut [u8]) -> Tag,
-    open:
-        fn(key: &KeyInner, nonce: Nonce, aad: Aad, in_prefix_len: usize, in_out: &mut [u8]) -> Tag,
+    seal: fn(
+        key: &KeyInner,
+        nonce: Nonce,
+        aad: Aad,
+        in_out: &mut [u8],
+        cpu_features: cpu::Features,
+    ) -> Tag,
+    open: fn(
+        key: &KeyInner,
+        nonce: Nonce,
+        aad: Aad,
+        in_prefix_len: usize,
+        in_out: &mut [u8],
+        cpu_features: cpu::Features,
+    ) -> Tag,
 
     key_len: usize,
     id: AlgorithmID,

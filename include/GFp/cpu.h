@@ -123,10 +123,6 @@ static inline int GFp_is_NEON_capable(void) {
 // ARMv8 AES instruction.
 int GFp_is_ARMv8_AES_capable(void);
 
-// GFp_is_ARMv8_PMULL_capable returns true if the current CPU supports the
-// ARMv8 PMULL instruction.
-int GFp_is_ARMv8_PMULL_capable(void);
-
 #else
 
 static inline int GFp_is_NEON_capable(void) {
@@ -140,14 +136,6 @@ static inline int GFp_is_NEON_capable(void) {
 
 static inline int GFp_is_ARMv8_AES_capable(void) {
 #if defined(OPENSSL_STATIC_ARMCAP_AES) || defined(__ARM_FEATURE_CRYPTO)
-  return 1;
-#else
-  return 0;
-#endif
-}
-
-static inline int GFp_is_ARMv8_PMULL_capable(void) {
-#if defined(OPENSSL_STATIC_ARMCAP_PMULL) || defined(__ARM_FEATURE_CRYPTO)
   return 1;
 #else
   return 0;
