@@ -357,7 +357,6 @@ int GFp_aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,
 void GFp_aes_nohw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   const uint32_t *rk;
   uint32_t s0, s1, s2, s3, t0, t1, t2, t3;
-  int r;
 
   assert(in && out && key);
   rk = key->rd_key;
@@ -370,7 +369,7 @@ void GFp_aes_nohw_encrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
   s3 = from_be_u32_ptr(in + 12) ^ rk[3];
 
   // Nr - 1 full rounds:
-  r = key->rounds >> 1;
+  unsigned r = key->rounds >> 1;
   for (;;) {
     t0 = Te0[(s0 >> 24)] ^ Te1[(s1 >> 16) & 0xff] ^ Te2[(s2 >> 8) & 0xff] ^
          Te3[(s3) & 0xff] ^ rk[4];
