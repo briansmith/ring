@@ -204,7 +204,6 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
             "-Wwrite-strings",
             "-fno-strict-aliasing",
             "-fvisibility=hidden",
-            "-Wno-cast-align",
         ];
         NON_MSVC_FLAGS
     } else {
