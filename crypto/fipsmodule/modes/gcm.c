@@ -124,7 +124,7 @@ static void gcm_init_4bit(u128 Htable[16], const uint64_t H[2]) {
 #endif
 }
 
-#if defined(OPENSSL_AARCH64) || defined(OPENSSL_PPC64LE)
+#if defined(OPENSSL_AARCH64) || defined(OPENSSL_PPC64LE) || defined(OPENSSL_X86_64)
 static const size_t rem_4bit[16] = {
     PACK(0x0000), PACK(0x1C20), PACK(0x3840), PACK(0x2460),
     PACK(0x7080), PACK(0x6CA0), PACK(0x48C0), PACK(0x54E0),
