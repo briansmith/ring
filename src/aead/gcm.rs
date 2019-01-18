@@ -85,8 +85,9 @@ impl Context {
     pub(super) fn is_avx2(&self) -> bool {
         extern "C" {
             fn GFp_aesni_gcm_capable() -> c::int;
+            fn GFp_gcm_clmul_enabled() -> c::int;
         }
-        1 == unsafe { GFp_aesni_gcm_capable() }
+        1 == unsafe { GFp_gcm_clmul_enabled() } && 1 == unsafe { GFp_aesni_gcm_capable() }
     }
 }
 
