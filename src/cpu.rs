@@ -87,6 +87,12 @@ pub(crate) mod arm {
         ios: true,
     };
 
+    // Keep in sync with `ARMV8_AES`.
+    pub(crate) const AES: Feature = Feature {
+        mask: 1 << 2,
+        ios: true,
+    };
+
     // Keep in sync with `ARMV8_PMULL`.
     pub(crate) const PMULL: Feature = Feature {
         mask: 1 << 5,
@@ -132,10 +138,20 @@ pub(crate) mod intel {
         mask: 1 << 1,
     };
 
+    pub(crate) const SSSE3: Feature = Feature {
+        word: 1,
+        mask: 1 << 9,
+    };
+
     #[cfg(target_arch = "x86_64")]
     pub(crate) const MOVBE: Feature = Feature {
         word: 1,
         mask: 1 << 22,
+    };
+
+    pub(crate) const AES: Feature = Feature {
+        word: 1,
+        mask: 1 << 25,
     };
 
     #[cfg(target_arch = "x86_64")]
@@ -154,5 +170,4 @@ pub(crate) mod intel {
             assert_eq!((AVX.mask | MOVBE.mask) >> 22, 0x41);
         }
     }
-
 }

@@ -41,9 +41,8 @@ impl HeaderProtectionKey {
     pub fn new(
         algorithm: &'static Algorithm, key_bytes: &[u8],
     ) -> Result<Self, error::Unspecified> {
-        let _ = cpu::features();
         Ok(HeaderProtectionKey {
-            inner: (algorithm.init)(key_bytes)?,
+            inner: (algorithm.init)(key_bytes, cpu::features())?,
             algorithm,
         })
     }
@@ -68,7 +67,7 @@ const SAMPLE_LEN: usize = super::TAG_LEN;
 
 /// A QUIC Header Protection Algorithm.
 pub struct Algorithm {
-    init: fn(key: &[u8]) -> Result<KeyInner, error::Unspecified>,
+    init: fn(key: &[u8], cpu_features: cpu::Features) -> Result<KeyInner, error::Unspecified>,
 
     new_mask: fn(key: &KeyInner, sample: Block) -> [u8; 5],
 
@@ -117,13 +116,13 @@ pub static AES_256: Algorithm = Algorithm {
     id: AlgorithmID::AES_256,
 };
 
-fn aes_init_128(key: &[u8]) -> Result<KeyInner, error::Unspecified> {
-    let aes_key = aes::Key::new(key, aes::Variant::AES_128)?;
+fn aes_init_128(key: &[u8], cpu_features: cpu::Features) -> Result<KeyInner, error::Unspecified> {
+    let aes_key = aes::Key::new(key, aes::Variant::AES_128, cpu_features)?;
     Ok(KeyInner::Aes(aes_key))
 }
 
-fn aes_init_256(key: &[u8]) -> Result<KeyInner, error::Unspecified> {
-    let aes_key = aes::Key::new(key, aes::Variant::AES_256)?;
+fn aes_init_256(key: &[u8], cpu_features: cpu::Features) -> Result<KeyInner, error::Unspecified> {
+    let aes_key = aes::Key::new(key, aes::Variant::AES_256, cpu_features)?;
     Ok(KeyInner::Aes(aes_key))
 }
 
@@ -144,7 +143,7 @@ pub static CHACHA20: Algorithm = Algorithm {
     id: AlgorithmID::CHACHA20,
 };
 
-fn chacha20_init(key: &[u8]) -> Result<KeyInner, error::Unspecified> {
+fn chacha20_init(key: &[u8], _todo: cpu::Features) -> Result<KeyInner, error::Unspecified> {
     let chacha20_key: &[u8; chacha::KEY_LEN] = key.try_into_()?;
     Ok(KeyInner::ChaCha20(chacha::Key::from(chacha20_key)))
 }
