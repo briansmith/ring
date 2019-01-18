@@ -55,7 +55,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/fipsmodule/bn/generic.c"),
     (&[], "crypto/fipsmodule/bn/montgomery.c"),
     (&[], "crypto/fipsmodule/bn/montgomery_inv.c"),
-    (&[], "crypto/fipsmodule/cipher/e_aes.c"),
     (&[], "crypto/crypto.c"),
     (&[], "crypto/fipsmodule/ec/ecp_nistz.c"),
     (&[], "crypto/fipsmodule/ec/ecp_nistz256.c"),
@@ -128,8 +127,7 @@ const RING_TEST_SRCS: &[&str] = &[("crypto/constant_time_test.c")];
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_INCLUDES: &[&str] =
-    &["crypto/fipsmodule/aes/internal.h",
-      "crypto/fipsmodule/bn/internal.h",
+    &["crypto/fipsmodule/bn/internal.h",
       "crypto/fipsmodule/ec/ecp_nistz256_table.inl",
       "crypto/fipsmodule/ec/ecp_nistz384.inl",
       "crypto/fipsmodule/ec/ecp_nistz.h",

@@ -54,7 +54,7 @@ fn init_256(key: &[u8], cpu_features: cpu::Features) -> Result<aead::KeyInner, e
 fn init(
     key: &[u8], variant: aes::Variant, cpu_features: cpu::Features,
 ) -> Result<aead::KeyInner, error::Unspecified> {
-    let aes_key = aes::Key::new(key, variant)?;
+    let aes_key = aes::Key::new(key, variant, cpu_features)?;
     let gcm_key = gcm::Key::new(aes_key.encrypt_block(Block::zero()), cpu_features);
     Ok(aead::KeyInner::AesGcm(Key { aes_key, gcm_key }))
 }
