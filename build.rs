@@ -93,8 +93,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[X86_64], SHA512_X86_64),
 
     (&[AARCH64, ARM], "crypto/fipsmodule/aes/asm/aesv8-armx.pl"),
-    (&[AARCH64, ARM], "crypto/cpu-arm-linux.c"),
-    (&[AARCH64, ARM], "crypto/cpu-arm.c"),
     (&[AARCH64, ARM], "crypto/fipsmodule/modes/asm/ghashv8-armx.pl"),
 
     (&[ARM], "crypto/fipsmodule/aes/asm/aes-armv4.pl"),
@@ -110,7 +108,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
 
     (&[AARCH64], "crypto/fipsmodule/aes/aes.c"),
     (&[AARCH64], "crypto/fipsmodule/bn/asm/armv8-mont.pl"),
-    (&[AARCH64], "crypto/cpu-aarch64-linux.c"),
     (&[AARCH64], "crypto/chacha/asm/chacha-armv8.pl"),
     (&[AARCH64], "crypto/fipsmodule/ec/asm/ecp_nistz256-armv8.pl"),
     (&[AARCH64], "crypto/poly1305/asm/poly1305-armv8.pl"),
