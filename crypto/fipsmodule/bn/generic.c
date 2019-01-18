@@ -78,7 +78,7 @@ BN_ULONG GFp_bn_mul_add_words(BN_ULONG *rp, const BN_ULONG *ap, size_t num,
     return c1;
   }
 
-  while (num & ~3) {
+  while (num >= 4) {
     mul_add(rp[0], ap[0], w, c1);
     mul_add(rp[1], ap[1], w, c1);
     mul_add(rp[2], ap[2], w, c1);
