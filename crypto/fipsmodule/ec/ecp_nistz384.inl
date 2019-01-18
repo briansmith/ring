@@ -23,6 +23,11 @@
 
 #include "ecp_nistz.h"
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
+
 /* Avoid -Wmissing-prototypes warnings. */
 void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
                             const BN_ULONG p_x[P384_LIMBS],
@@ -259,3 +264,7 @@ void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
   wvalue = (wvalue << 1) & kMask;
   add_precomputed_w5(r, wvalue, table);
 }
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif

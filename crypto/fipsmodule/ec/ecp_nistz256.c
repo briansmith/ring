@@ -29,6 +29,10 @@
 #include "../bn/internal.h"
 #include "../../limbs/limbs.inl"
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
+
 typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 
 

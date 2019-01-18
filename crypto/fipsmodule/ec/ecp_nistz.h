@@ -19,6 +19,11 @@
 
 #include "../../limbs/limbs.h"
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
 
 // This function looks at `w + 1` scalar bits (`w` current, 1 adjacent less
 // significant bit), and recodes them into a signed digit for use in fast point
@@ -108,6 +113,9 @@ static inline void booth_recode(Limb *is_negative, unsigned *digit,
   *digit = d;
 }
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 void gfp_little_endian_bytes_from_scalar(uint8_t str[], size_t str_len,
                                          const Limb scalar[],

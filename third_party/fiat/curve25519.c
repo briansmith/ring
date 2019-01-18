@@ -50,6 +50,11 @@
 #pragma warning(disable: 4244)
 #endif
 
+#if defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#endif
+
 // Various pre-computed constants.
 #include "./curve25519_tables.h"
 
