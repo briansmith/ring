@@ -48,6 +48,13 @@ impl Block {
         }
     }
 
+    pub fn u64s_be_to_native(&mut self) -> [u64; 2] {
+        [
+            u64::from_be(self.subblocks[0]),
+            u64::from_be(self.subblocks[1]),
+        ]
+    }
+
     /// Replaces the first `a.len()` bytes of the block's value with `a`,
     /// leaving the rest of the block unchanged. Panics if `a` is larger
     /// than a block.

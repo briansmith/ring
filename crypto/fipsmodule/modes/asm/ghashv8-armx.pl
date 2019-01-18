@@ -72,7 +72,7 @@ $code.=<<___				if ($flavour !~ /64/);
 ___
 
 ################################################################################
-# void GFp_gcm_init_v8(u128 Htable[16],const u64 H[2]);
+# void GFp_gcm_init_clmul(u128 Htable[16],const u64 H[2]);
 #
 # input:	128-bit H - secret parameter E(K,0^128)
 # output:	precomputed table filled with degrees of twisted H;
@@ -82,10 +82,10 @@ ___
 #		optimize the code independently);
 #
 $code.=<<___;
-.global	GFp_gcm_init_v8
-.type	GFp_gcm_init_v8,%function
+.global	GFp_gcm_init_clmul
+.type	GFp_gcm_init_clmul,%function
 .align	4
-GFp_gcm_init_v8:
+GFp_gcm_init_clmul:
 	vld1.64		{$t1},[x1]		@ load input H
 	vmov.i8		$xC2,#0xe1
 	vshl.i64	$xC2,$xC2,#57		@ 0xc2.0
@@ -131,20 +131,20 @@ GFp_gcm_init_v8:
 	vst1.64		{$Hhl-$H2},[x0]		@ store Htable[1..2]
 
 	ret
-.size	GFp_gcm_init_v8,.-GFp_gcm_init_v8
+.size	GFp_gcm_init_clmul,.-GFp_gcm_init_clmul
 ___
 ################################################################################
-# void GFp_gcm_gmult_v8(u64 Xi[2],const u128 Htable[16]);
+# void GFp_gcm_gmult_clmul(u64 Xi[2],const u128 Htable[16]);
 #
 # input:	Xi - current hash value;
-#		Htable - table precomputed in GFp_gcm_init_v8;
+#		Htable - table precomputed in GFp_gcm_init_clmul;
 # output:	Xi - next hash value Xi;
 #
 $code.=<<___;
-.global	GFp_gcm_gmult_v8
-.type	GFp_gcm_gmult_v8,%function
+.global	GFp_gcm_gmult_clmul
+.type	GFp_gcm_gmult_clmul,%function
 .align	4
-GFp_gcm_gmult_v8:
+GFp_gcm_gmult_clmul:
 	vld1.64		{$t1},[$Xi]		@ load Xi
 	vmov.i8		$xC2,#0xe1
 	vld1.64		{$H-$Hhl},[$Htbl]	@ load twisted H, ...
@@ -181,23 +181,23 @@ GFp_gcm_gmult_v8:
 	vst1.64		{$Xl},[$Xi]		@ write out Xi
 
 	ret
-.size	GFp_gcm_gmult_v8,.-GFp_gcm_gmult_v8
+.size	GFp_gcm_gmult_clmul,.-GFp_gcm_gmult_clmul
 ___
 ################################################################################
-# void GFp_gcm_ghash_v8(u64 Xi[2], const u128 Htable[16], const u8 *inp,
-#                       size_t len);
+# void GFp_gcm_ghash_clmul(u64 Xi[2], const u128 Htable[16], const u8 *inp,
+#                          size_t len);
 #
-# input:	table precomputed in GFp_gcm_init_v8;
+# input:	table precomputed in GFp_gcm_init_clmul;
 #		current hash value Xi;
 #		pointer to input data;
 #		length of input data in bytes, but divisible by block size;
 # output:	next hash value Xi;
 #
 $code.=<<___;
-.global	GFp_gcm_ghash_v8
-.type	GFp_gcm_ghash_v8,%function
+.global	GFp_gcm_ghash_clmul
+.type	GFp_gcm_ghash_clmul,%function
 .align	4
-GFp_gcm_ghash_v8:
+GFp_gcm_ghash_clmul:
 ___
 $code.=<<___		if ($flavour !~ /64/);
 	vstmdb		sp!,{d8-d15}		@ 32-bit ABI says so
@@ -344,7 +344,7 @@ $code.=<<___		if ($flavour !~ /64/);
 ___
 $code.=<<___;
 	ret
-.size	GFp_gcm_ghash_v8,.-GFp_gcm_ghash_v8
+.size	GFp_gcm_ghash_clmul,.-GFp_gcm_ghash_clmul
 ___
 }
 $code.=<<___;

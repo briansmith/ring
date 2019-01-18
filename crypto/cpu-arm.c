@@ -30,9 +30,5 @@ int GFp_is_ARMv8_AES_capable(void) {
   return (GFp_armcap_P & ARMV8_AES) != 0;
 }
 
-int GFp_is_ARMv8_PMULL_capable(void) {
-  return (GFp_armcap_P & ARMV8_PMULL) != 0;
-}
-
 #endif  /* (defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)) &&
            !defined(OPENSSL_STATIC_ARMCAP) */

@@ -373,7 +373,7 @@ sub mmx_loop() {
 	&bswap	($Zhh);
 }
 
-&function_begin("GFp_gcm_gmult_4bit_mmx");
+&function_begin("GFp_gcm_gmult_4bit");
 	&mov	($inp,&wparam(0));	# load Xi
 	&mov	($Htbl,&wparam(1));	# load Htable
 
@@ -391,7 +391,7 @@ sub mmx_loop() {
 	&mov	(&DWP(4,$inp),$Zhl);
 	&mov	(&DWP(8,$inp),$Zlh);
 	&mov	(&DWP(0,$inp),$Zhh);
-&function_end("GFp_gcm_gmult_4bit_mmx");
+&function_end("GFp_gcm_gmult_4bit");
 
 ######################################################################
 # Below subroutine is "528B" variant of "4-bit" GCM GHASH function
@@ -400,7 +400,7 @@ sub mmx_loop() {
 
 &static_label("rem_8bit");
 
-&function_begin("GFp_gcm_ghash_4bit_mmx");
+&function_begin("GFp_gcm_ghash_4bit");
 { my ($Zlo,$Zhi) = ("mm7","mm6");
   my $rem_8bit = "esi";
   my $Htbl = "ebx";
@@ -595,7 +595,7 @@ sub mmx_loop() {
     &mov	("esp",&DWP(528+16+12,"esp"));	# restore original %esp
     &emms	();
 }
-&function_end("GFp_gcm_ghash_4bit_mmx");
+&function_end("GFp_gcm_ghash_4bit");
 }}
 
 if ($sse2) {{

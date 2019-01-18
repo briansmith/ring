@@ -359,13 +359,4 @@ static inline void to_be_u64_ptr(uint8_t *out, uint64_t value) {
 #endif
 }
 
-// from_be_u64 returns the native representation of the 64-bit
-// big-endian-encoded value |x|.
-static inline uint64_t from_be_u64(uint64_t x) {
-#if OPENSSL_ENDIAN != OPENSSL_BIG_ENDIAN
-  x = bswap_u64(x);
-#endif
-  return x;
-}
-
 #endif  // OPENSSL_HEADER_CRYPTO_INTERNAL_H
