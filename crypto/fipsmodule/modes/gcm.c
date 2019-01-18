@@ -237,8 +237,8 @@ static void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
       Z.lo ^= Htable[nlo].lo;
     }
 
-    Xi[0] = from_be_u64(Z.hi);
-    Xi[1] = from_be_u64(Z.lo);
+    to_be_u64_ptr(Xi, Z.hi);
+    to_be_u64_ptr(Xi + 8, Z.lo);
   } while (inp += 16, len -= 16);
 }
 #else
