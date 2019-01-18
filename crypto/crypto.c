@@ -18,10 +18,6 @@
 
 #include <GFp/cpu.h>
 
-#if defined(__linux__)
-#include <sys/syscall.h>
-#endif
-
 #if defined(OPENSSL_WINDOWS)
 
 #if defined(_MSC_VER)
@@ -81,8 +77,12 @@ HIDDEN uint32_t GFp_armcap_P = 0;
 #elif defined(OPENSSL_X86_64)
 #define SYS_getrandom 318
 #else
+#include <sys/syscall.h>
+#if !defined(SYS_getrandom)
 #error "Error: Kernel headers are too old; SYS_getrandom not defined."
 #endif
+#endif
+
 #endif
 
 const long GFp_SYS_GETRANDOM = SYS_getrandom;
