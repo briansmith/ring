@@ -24,13 +24,12 @@ rusts = [
 ]
 
 gcc = "gcc-7"
-clang = "clang-5.0"
+#Clang 5.0 is the default compiler on Travis CI for Ubuntu 14.04.
+clang = "clang"
 
 linux_compilers = [
-    # Assume the default compiler is GCC. This is run first because it is the
-    # one most likely to break, especially since GCC 4.6 is the default
-    # compiler on Travis CI for Ubuntu 12.04, and GCC 4.6 is not supported by
-    # BoringSSL.
+    # Assume the default compiler is GCC.
+    # GCC 4.8 is the default compiler on Travis CI for Ubuntu 14.04.
     "",
 
     clang,
@@ -90,7 +89,7 @@ def format_entries():
                       for features in feature_sets])
 
 # We use alternative names (the "_X" suffix) so that, in mk/travis.sh, we can
-# enure that we set the specific variables we want and that no relevant
+# ensure that we set the specific variables we want and that no relevant
 # variables are unintentially inherited into the build process. Also, we have
 # to set |CC_X| instead of |CC| since Travis sets |CC| to its Travis CI default
 # value *after* processing the |env:| directive here.
@@ -119,7 +118,7 @@ def format_entry(os, target, compiler, rust, mode, features):
 
     # Currently kcov only runs on Linux.
     #
-    # GCC 5 was picked arbitrarily to restrict coverage report to one build for
+    # GCC 7 was picked arbitrarily to restrict coverage report to one build for
     # efficiency reasons.
     #
     # DEBUG mode is needed because debug symbols are needed for coverage
@@ -145,12 +144,8 @@ def format_entry(os, target, compiler, rust, mode, features):
         packages = sorted(get_linux_packages_to_install(target, compiler, arch, kcov))
         sources_with_dups = sum([get_sources_for_package(p) for p in packages],[])
         sources = sorted(list(set(sources_with_dups)))
-
-    # TODO: Use trusty for everything?
-    if arch in ["aarch64", "arm", "armv7"]:
         template += """
-      dist: trusty
-      sudo: required"""
+      dist: trusty"""
 
     if sys == "linux":
         if packages:
@@ -209,7 +204,7 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
                          "libssl-dev:i386",
                          "libstdc++-7-dev:i386"]
 
-        if compiler.startswith("clang-") or compiler == "":
+        if compiler.startswith("clang") or compiler == "":
             packages += ["libc6-dev-i386",
                          "gcc-multilib"]
         elif compiler.startswith("gcc-"):
