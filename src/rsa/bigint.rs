@@ -1368,6 +1368,14 @@ mod tests {
         assert_eq!("Modulus", format!("{:?}", modulus));
     }
 
+    #[test]
+    fn test_public_exponent_debug() {
+        let exponent =
+            PublicExponent::from_be_bytes(untrusted::Input::from(&[0x1, 0x00, 0x01]), 65537)
+                .unwrap();
+        assert_eq!("PublicExponent(65537)", format!("{:?}", exponent));
+    }
+
     fn consume_elem<M>(
         test_case: &mut test::TestCase, name: &str, m: &Modulus<M>,
     ) -> Elem<M, Unencoded> {
