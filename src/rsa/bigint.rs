@@ -1247,25 +1247,10 @@ mod tests {
     }
 
     #[test]
-    fn test_elem_exp_vartime() {
-        test::from_file(
-            "src/rsa/bigint_elem_exp_vartime_tests.txt",
-            |section, test_case| {
-                assert_eq!(section, "");
-
-                let m = consume_modulus::<M>(test_case, "M");
-                let expected_result = consume_elem(test_case, "ModExp", &m);
-                let base = consume_elem(test_case, "A", &m);
-                let e = consume_public_exponent(test_case, "E");
-
-                let actual_result = elem_exp_vartime(base, e, &m);
-                let actual_result = actual_result.into_unencoded(&m);
-                assert_elem_eq(&actual_result, &expected_result);
-
-                Ok(())
-            },
-        )
-    }
+    // TODO: fn test_elem_exp_vartime() using
+    // "src/rsa/bigint_elem_exp_vartime_tests.txt". See that file for details.
+    // In the meantime, the function is tested indirectly via the RSA
+    // verification and signing tests.
 
     #[test]
     fn test_elem_mul() {
@@ -1403,11 +1388,6 @@ mod tests {
         let (value, _) =
             Modulus::from_be_bytes_with_bit_length(untrusted::Input::from(&value)).unwrap();
         value
-    }
-
-    fn consume_public_exponent(test_case: &mut test::TestCase, name: &str) -> PublicExponent {
-        let bytes = test_case.consume_bytes(name);
-        PublicExponent::from_be_bytes(untrusted::Input::from(&bytes), 3).unwrap()
     }
 
     fn consume_nonnegative(test_case: &mut test::TestCase, name: &str) -> Nonnegative {
