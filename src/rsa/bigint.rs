@@ -163,6 +163,13 @@ pub unsafe trait SlightlySmallerModulus<L>: SmallerModulus<L> {}
 /// ℤ/sℤ.
 pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 
+/// The x86 implementation of `GFp_bn_mul_mont`, at least, requires at least 4
+/// limbs. For a long time we have required 4 limbs for all targets, though
+/// this may be unnecessary. TODO: Replace this with
+/// `n.len() < 256 / LIMB_BITS` so that 32-bit and 64-bit platforms behave the
+/// same.
+pub const MODULUS_MIN_LIMBS: usize = 4;
+
 pub const MODULUS_MAX_LIMBS: usize = 8192 / LIMB_BITS;
 
 /// The modulus *m* for a ring ℤ/mℤ, along with the precomputed values needed
@@ -242,12 +249,7 @@ impl<M> Modulus<M> {
         if n.len() > MODULUS_MAX_LIMBS {
             return Err(error::KeyRejected::too_large());
         }
-        // The x86 implementation of `GFp_bn_mul_mont`, at least, requires at
-        // least 4 limbs. For a long time we have required 4 limbs for all
-        // targets, though this may be unnecessary. TODO: Replace this with
-        // `n.len() < 256 / LIMB_BITS` so that 32-bit and 64-bit platforms
-        // behave the same.
-        if n.len() < 4 {
+        if n.len() < MODULUS_MIN_LIMBS {
             return Err(error::KeyRejected::unexpected_error());
         }
         if limb::limbs_are_even_constant_time(&n) != LimbMask::False {
@@ -1355,6 +1357,15 @@ mod tests {
                 Ok(())
             },
         )
+    }
+
+    #[test]
+    fn test_modulus_debug() {
+        let (modulus, _) = Modulus::from_be_bytes_with_bit_length(untrusted::Input::from(
+            &vec![0xff; LIMB_BYTES * MODULUS_MIN_LIMBS],
+        ))
+        .unwrap();
+        assert_eq!("Modulus", format!("{:?}", modulus));
     }
 
     fn consume_elem<M>(
