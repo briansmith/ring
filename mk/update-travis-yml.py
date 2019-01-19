@@ -100,9 +100,15 @@ entry_template = """
 
 entry_indent = "      "
 
-entry_packages_template = """
+entry_linux_packages_template = """
       addons:
         apt:
+          packages:
+            %(packages)s"""
+
+entry_macos_packages_template = """
+      addons:
+        homebrew:
           packages:
             %(packages)s"""
 
@@ -116,15 +122,15 @@ def format_entry(os, target, compiler, rust, mode, features):
     vendor = target_words[1]
     sys = target_words[2]
 
-    # Currently kcov only runs on Linux.
+    # Currently kcov only runs on Linux and macOS.
     #
     # GCC 7 was picked arbitrarily to restrict coverage report to one build for
     # efficiency reasons.
     #
     # DEBUG mode is needed because debug symbols are needed for coverage
     # tracking.
-    kcov = (os == "linux" and compiler == gcc and rust == "stable" and
-            mode == "DEBUG")
+    kcov = (((os == "linux" and compiler == gcc) or os == "osx")
+            and rust == "stable" and mode == "DEBUG")
 
     if sys == "darwin":
         abi = sys
@@ -139,28 +145,26 @@ def format_entry(os, target, compiler, rust, mode, features):
         return [prefix + x for x in xs]
 
     template = entry_template
+    packages = []
+    sources = []
 
     if sys == "linux":
+        template += """
+      dist: trusty"""
         packages = sorted(get_linux_packages_to_install(target, compiler, arch, kcov))
         sources_with_dups = sum([get_sources_for_package(p) for p in packages],[])
         sources = sorted(list(set(sources_with_dups)))
-        template += """
-      dist: trusty"""
-
-    if sys == "linux":
         if packages:
-            template += entry_packages_template
+            template += entry_linux_packages_template
         if sources:
             template += entry_sources_template
-    else:
-        packages = []
-        sources = []
+    elif sys == "macos":
+        os += "\n" + entry_indent + "osx_image: xcode10.1"
+        packages = sorted(get_macos_packages_to_install(target, compiler, arch, kcov))
+        if packages:
+            template += entry_macos_packages_template
 
     cc = compiler
-
-    if os == "osx":
-        os += "\n" + entry_indent + "osx_image: xcode10.1"
-
     compilers = []
     if cc != "":
         compilers += ["CC_X=" + cc]
@@ -177,6 +181,17 @@ def format_entry(os, target, compiler, rust, mode, features):
             "target" : target,
             "os" : os,
             }
+
+def get_macos_packages_to_install(target, compiler, arch, kcov):
+    packages = []
+
+    if kcov == True:
+        packages = ["bash",
+                    "cmake",
+                    "findutils",
+                    "pkgconfig",
+                    "zlib"]
+    return packages
 
 def get_linux_packages_to_install(target, compiler, arch, kcov):
     if compiler.startswith("clang-") or compiler.startswith("gcc-"):

@@ -1,8 +1,7 @@
 language: rust
 cache:
   directories:
-    - $HOME/kcov-i686-unknown-linux-gnu
-    - $HOME/kcov-x86_64-unknown-linux-gnu
+    - $HOME/kcov
     - $HOME/android/android-sdk-linux
     - $HOME/android/android-18-arm-linux-androideabi-4.8
 matrix:
@@ -17,10 +16,18 @@ matrix:
     #
     # BEGIN GENERATED
 
-    - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=1
       rust: stable
       os: osx
       osx_image: xcode10.1
+      addons:
+        homebrew:
+          packages:
+            - bash
+            - cmake
+            - findutils
+            - pkgconfig
+            - zlib
 
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable

@@ -116,8 +116,17 @@ if [[ "$KCOV" == "1" ]]; then
   RUSTFLAGS="-C link-dead-code" \
     cargo test -vv --no-run -j2  ${mode-} ${FEATURES_X-} --target=$TARGET_X
   mk/travis-install-kcov.sh
+
+  if [[ "$TARGET_X"  =~ "apple" ]]; then
+    # Add `/usr/bin` to the front of PATH to use the system python.
+    PATH="/usr/bin:$PATH"
+
+    # Add GNU find(1) from homebrew to PATH.
+    PATH="/usr/local/opt/findutils/libexec/gnubin:$PATH"
+  fi
+
   for test_exe in `find target/$TARGET_X/debug -maxdepth 1 -executable -type f`; do
-    ${HOME}/kcov-${TARGET_X}/bin/kcov \
+    ${HOME}/kcov/bin/kcov \
       --verify \
       --coveralls-id=$TRAVIS_JOB_ID \
       --exclude-path=/usr/include \
