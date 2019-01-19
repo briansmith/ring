@@ -69,6 +69,18 @@ else
   cc --version
 fi
 
+# KCOV needs a C++ compiler.
+if [[ "$KCOV" == "1" ]]; then
+  if [[ ! -z "${CC_X-}" ]]; then
+    CXX="${CC_X/clang/clang++}"
+    CXX="${CC_X/gcc/g++}"
+    export CXX=$CXX
+    $CXX --version
+  else
+    c++ --version
+  fi
+fi
+
 cargo version
 rustc --version
 

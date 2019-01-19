@@ -123,8 +123,8 @@ def format_entry(os, target, compiler, rust, mode, features):
     #
     # DEBUG mode is needed because debug symbols are needed for coverage
     # tracking.
-    kcov = (os == "linux" and arch == "x86_64" and compiler == gcc and
-            rust == "stable" and mode == "DEBUG")
+    kcov = (os == "linux" and compiler == gcc and rust == "stable" and
+            mode == "DEBUG")
 
     if sys == "darwin":
         abi = sys
@@ -184,6 +184,9 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
     else:
         packages = []
 
+    if kcov:
+        packages += [replace_cc_with_cxx(compiler)]
+
     if target == "aarch64-unknown-linux-gnu":
         packages += ["gcc-aarch64-linux-gnu",
                      "libc6-dev-arm64-cross"]
@@ -191,18 +194,18 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
         packages += ["gcc-arm-linux-gnueabihf",
                      "libc6-dev-armhf-cross"]
     if target == "armv7-linux-androideabi":
-        packages += ["expect",
-                     "openjdk-6-jre-headless"]
+        packages += ["expect"]
 
     if arch == "i686":
         if kcov == True:
-            packages += ["libcurl3:i386",
+            packages += [replace_cc_with_cxx(compiler) + "-multilib",
+                         "libcurl3:i386",
                          "libcurl4-openssl-dev:i386",
                          "libdw-dev:i386",
                          "libelf-dev:i386",
+                         "libiberty-dev:i386",
                          "libkrb5-dev:i386",
-                         "libssl-dev:i386",
-                         "libstdc++-7-dev:i386"]
+                         "libssl-dev:i386"]
 
         if compiler.startswith("clang") or compiler == "":
             packages += ["libc6-dev-i386",
@@ -217,7 +220,8 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
             packages += ["libcurl4-openssl-dev",
                          "libelf-dev",
                          "libdw-dev",
-                         "binutils-dev"]
+                         "binutils-dev",
+                         "libiberty-dev"]
     elif arch not in ["aarch64", "arm", "armv7"]:
         raise ValueError("unexpected arch: %s" % arch)
 
@@ -232,8 +236,15 @@ def get_sources_for_package(package):
         # Stuff in llvm-toolchain-trusty depends on stuff in the toolchain
         # packages.
         return [llvm_toolchain, ubuntu_toolchain]
-    else:
+    elif package.startswith("gcc-"):
         return [ubuntu_toolchain]
+    else:
+        return []
+
+def replace_cc_with_cxx(compiler):
+    return compiler \
+               .replace("gcc", "g++") \
+               .replace("clang", "clang++")
 
 def main():
     # Make a backup of the file we are about to update.

@@ -35,9 +35,6 @@ matrix:
         apt:
           packages:
             - expect
-            - openjdk-6-jre-headless
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
@@ -47,9 +44,6 @@ matrix:
         apt:
           packages:
             - expect
-            - openjdk-6-jre-headless
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
@@ -79,10 +73,12 @@ matrix:
         apt:
           packages:
             - binutils-dev
+            - g++-7
             - gcc-7
             - libcurl4-openssl-dev
             - libdw-dev
             - libelf-dev
+            - libiberty-dev
           sources:
             - ubuntu-toolchain-r-test
 
@@ -169,15 +165,24 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
-    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=0
+    - env: TARGET_X=i686-unknown-linux-gnu CC_X=gcc-7 FEATURES_X= MODE_X=DEBUG KCOV=1
       rust: stable
       os: linux
       dist: trusty
       addons:
         apt:
           packages:
+            - g++-7
+            - g++-7-multilib
             - gcc-7
             - gcc-7-multilib
+            - libcurl3:i386
+            - libcurl4-openssl-dev:i386
+            - libdw-dev:i386
+            - libelf-dev:i386
+            - libiberty-dev:i386
+            - libkrb5-dev:i386
+            - libssl-dev:i386
             - linux-libc-dev:i386
           sources:
             - ubuntu-toolchain-r-test
@@ -237,9 +242,6 @@ matrix:
         apt:
           packages:
             - expect
-            - openjdk-6-jre-headless
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
@@ -249,9 +251,6 @@ matrix:
         apt:
           packages:
             - expect
-            - openjdk-6-jre-headless
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
@@ -435,9 +434,6 @@ matrix:
         apt:
           packages:
             - expect
-            - openjdk-6-jre-headless
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
@@ -447,9 +443,6 @@ matrix:
         apt:
           packages:
             - expect
-            - openjdk-6-jre-headless
-          sources:
-            - ubuntu-toolchain-r-test
 
     - env: TARGET_X=x86_64-unknown-linux-gnu  FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta

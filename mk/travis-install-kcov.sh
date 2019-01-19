@@ -24,7 +24,7 @@ set -ex
 
 # kcov 26 or newer is needed when getting coverage information for Rust.
 # kcov 31 is needed so `kcov --version` doesn't exit with status 1.
-KCOV_VERSION=${KCOV_VERSION:-31}
+KCOV_VERSION=${KCOV_VERSION:-36}
 
 KCOV_INSTALL_PREFIX="${HOME}/kcov-${TARGET_X}"
 
