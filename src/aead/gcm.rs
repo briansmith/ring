@@ -38,7 +38,7 @@ impl Key {
 pub struct Context(GCM128_CONTEXT);
 
 impl Context {
-    pub fn new(key: &Key, aad: Aad) -> Self {
+    pub fn new(key: &Key, aad: Aad<&[u8]>) -> Self {
         let mut ctx = Context(GCM128_CONTEXT {
             Xi: Block::zero(),
             H_unused: Block::zero(),
