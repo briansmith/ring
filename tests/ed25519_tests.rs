@@ -165,3 +165,30 @@ fn test_ed25519_from_pkcs8() {
         },
     );
 }
+
+#[test]
+fn ed25519_test_public_key_coverage() {
+    const PRIVATE_KEY: &'static [u8] = include_bytes!("ed25519_test_private_key.p8");
+    const PUBLIC_KEY: &'static [u8] = include_bytes!("ed25519_test_public_key.der");
+    const PUBLIC_KEY_DEBUG: &'static str =
+        "PublicKey(\"5809e9fef6dcec58f0f2e3b0d67e9880a11957e083ace85835c3b6c8fbaf6b7d\")";
+
+    let key_pair =
+        signature::Ed25519KeyPair::from_pkcs8(untrusted::Input::from(PRIVATE_KEY)).unwrap();
+
+    // Test `AsRef<[u8]>`
+    assert_eq!(key_pair.public_key().as_ref(), PUBLIC_KEY);
+
+    // Test `Clone`.
+    let _ = key_pair.public_key().clone();
+
+    // Test `Debug`.
+    assert_eq!(PUBLIC_KEY_DEBUG, format!("{:?}", key_pair.public_key()));
+    assert_eq!(
+        format!(
+            "Ed25519KeyPair {{ public_key: {:?} }}",
+            key_pair.public_key()
+        ),
+        format!("{:?}", key_pair)
+    );
+}

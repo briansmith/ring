@@ -48,7 +48,7 @@ enum AlgorithmID {
     ECDSA_P384_SHA384_FIXED,
 }
 
-derive_debug_via_self!(Algorithm, self.id);
+derive_debug_via_id!(Algorithm);
 
 impl signature::VerificationAlgorithm for Algorithm {
     fn verify(

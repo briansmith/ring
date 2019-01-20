@@ -31,7 +31,11 @@
     warnings
 )]
 
-use ring::{rand, signature, test};
+use ring::{
+    rand,
+    signature::{self, KeyPair},
+    test,
+};
 
 // ECDSA *signing* tests are in src/ec/ecdsa/signing.rs.
 
@@ -195,5 +199,33 @@ fn signature_ecdsa_verify_fixed_test() {
 
             Ok(())
         },
+    );
+}
+
+#[test]
+fn ecdsa_test_public_key_coverage() {
+    const PRIVATE_KEY: &'static [u8] = include_bytes!("ecdsa_test_private_key_p256.p8");
+    const PUBLIC_KEY: &'static [u8] = include_bytes!("ecdsa_test_public_key_p256.der");
+    const PUBLIC_KEY_DEBUG: &'static str = include_str!("ecdsa_test_public_key_p256_debug.txt");
+
+    let key_pair = signature::EcdsaKeyPair::from_pkcs8(
+        &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+        untrusted::Input::from(PRIVATE_KEY),
+    )
+    .unwrap();
+
+    // Test `AsRef<[u8]>`
+    assert_eq!(key_pair.public_key().as_ref(), PUBLIC_KEY);
+
+    // Test `Clone`.
+    {
+        let _ = key_pair.public_key().clone();
+    }
+
+    // Test `Debug`.
+    assert_eq!(PUBLIC_KEY_DEBUG, format!("{:?}", key_pair.public_key()));
+    assert_eq!(
+        format!("EcdsaKeyPair {{ public_key: {:?} }}", key_pair.public_key()),
+        format!("{:?}", key_pair)
     );
 }

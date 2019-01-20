@@ -1251,7 +1251,6 @@ mod tests {
     // "src/rsa/bigint_elem_exp_vartime_tests.txt". See that file for details.
     // In the meantime, the function is tested indirectly via the RSA
     // verification and signing tests.
-
     #[test]
     fn test_elem_mul() {
         test::from_file("src/rsa/bigint_elem_mul_tests.txt", |section, test_case| {

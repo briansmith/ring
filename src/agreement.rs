@@ -84,7 +84,7 @@ pub struct Algorithm {
     ) -> Result<(), error::Unspecified>,
 }
 
-derive_debug_via_self!(Algorithm, self.curve);
+derive_debug_via_field!(Algorithm, stringify!(Algorithm), curve);
 
 impl Eq for Algorithm {}
 impl PartialEq for Algorithm {
@@ -128,12 +128,14 @@ impl<'a> EphemeralPrivateKey {
 }
 
 /// A public key for key agreement.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct PublicKey(ec::PublicKey);
 
 impl AsRef<[u8]> for PublicKey {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
+
+derive_debug_self_as_ref_hex_bytes!(PublicKey);
 
 /// Performs a key agreement with an ephemeral private key and the given public
 /// key.

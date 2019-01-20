@@ -275,7 +275,7 @@ impl Algorithm {
     pub fn nonce_len(&self) -> usize { NONCE_LEN }
 }
 
-derive_debug_via_self!(Algorithm, self.id);
+derive_debug_via_id!(Algorithm);
 
 #[derive(Debug, Eq, PartialEq)]
 enum AlgorithmID {

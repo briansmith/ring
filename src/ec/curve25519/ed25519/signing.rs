@@ -40,7 +40,7 @@ pub struct KeyPair {
     public_key: PublicKey,
 }
 
-derive_debug_via_self!(KeyPair, self.public_key);
+derive_debug_via_field!(KeyPair, stringify!(Ed25519KeyPair), public_key);
 
 impl<'a> KeyPair {
     /// Generates a new key pair and returns the key pair serialized as a
@@ -204,12 +204,14 @@ impl signature::KeyPair for KeyPair {
     fn public_key(&self) -> &Self::PublicKey { &self.public_key }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct PublicKey([u8; PUBLIC_KEY_LEN]);
 
 impl AsRef<[u8]> for PublicKey {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
+
+derive_debug_self_as_ref_hex_bytes!(PublicKey);
 
 fn unwrap_pkcs8(
     version: pkcs8::Version, input: untrusted::Input,

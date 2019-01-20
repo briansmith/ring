@@ -32,7 +32,13 @@
 )]
 
 #[cfg(feature = "use_heap")]
-use ring::{error, io::der, rand, signature, test};
+use ring::{
+    error,
+    io::der,
+    rand,
+    signature::{self, KeyPair},
+    test,
+};
 
 #[cfg(feature = "use_heap")]
 #[test]
@@ -254,4 +260,37 @@ fn test_signature_rsa_primitive_verification() {
             Ok(())
         },
     )
+}
+
+#[cfg(feature = "use_heap")]
+#[test]
+fn rsa_test_public_key_coverage() {
+    const PRIVATE_KEY: &'static [u8] = include_bytes!("rsa_test_private_key_2048.p8");
+    const PUBLIC_KEY: &'static [u8] = include_bytes!("rsa_test_public_key_2048.der");
+    const PUBLIC_KEY_DEBUG: &'static str = include_str!("rsa_test_public_key_2048_debug.txt");
+
+    let key_pair = signature::RsaKeyPair::from_pkcs8(untrusted::Input::from(PRIVATE_KEY)).unwrap();
+
+    // Test `AsRef<[u8]>`
+    assert_eq!(key_pair.public_key().as_ref(), PUBLIC_KEY);
+
+    // Test `Clone`.
+    let _ = key_pair.public_key().clone();
+
+    // Test `exponent()`.
+    assert_eq!(
+        &[0x01, 0x00, 0x01],
+        key_pair
+            .public_key()
+            .exponent()
+            .big_endian_without_leading_zero()
+            .as_slice_less_safe()
+    );
+
+    // Test `Debug`
+    assert_eq!(PUBLIC_KEY_DEBUG, format!("{:?}", key_pair.public_key()));
+    assert_eq!(
+        format!("RsaKeyPair {{ public_key: {:?} }}", key_pair.public_key()),
+        format!("{:?}", key_pair)
+    );
 }

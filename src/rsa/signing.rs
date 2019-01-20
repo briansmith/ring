@@ -33,11 +33,11 @@ pub struct KeyPair {
     qInv: bigint::Elem<P, R>,
     qq: bigint::Modulus<QQ>,
     q_mod_n: bigint::Elem<N, R>,
-    public_key: verification::Key,
-    public_key_serialized: PublicKey,
+    public: verification::Key,
+    public_key: PublicKey,
 }
 
-derive_debug_via_self!(KeyPair, self.public_key);
+derive_debug_via_field!(KeyPair, stringify!(RsaKeyPair), public_key);
 
 impl KeyPair {
     /// Parses an unencrypted PKCS#8-encoded RSA private key.
@@ -364,8 +364,8 @@ impl KeyPair {
             qInv,
             q_mod_n,
             qq,
-            public_key,
-            public_key_serialized,
+            public: public_key,
+            public_key: public_key_serialized,
         })
     }
 
@@ -373,7 +373,7 @@ impl KeyPair {
     ///
     /// A signature has the same length as the public modulus.
     pub fn public_modulus_len(&self) -> usize {
-        self.public_key_serialized
+        self.public_key
             .modulus()
             .big_endian_without_leading_zero()
             .as_slice_less_safe()
@@ -384,16 +384,18 @@ impl KeyPair {
 impl signature::KeyPair for KeyPair {
     type PublicKey = PublicKey;
 
-    fn public_key(&self) -> &Self::PublicKey { &self.public_key_serialized }
+    fn public_key(&self) -> &Self::PublicKey { &self.public_key }
 }
 
 /// A serialized RSA public key.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct PublicKey(Box<[u8]>);
 
 impl AsRef<[u8]> for PublicKey {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
+
+derive_debug_self_as_ref_hex_bytes!(PublicKey);
 
 impl PublicKey {
     fn from_n_and_e(n: io::Positive, e: io::Positive) -> Self {
@@ -524,7 +526,7 @@ impl KeyPair {
         &self, padding_alg: &'static Encoding, rng: &rand::SecureRandom, msg: &[u8],
         signature: &mut [u8],
     ) -> Result<(), error::Unspecified> {
-        let mod_bits = self.public_key.n_bits;
+        let mod_bits = self.public.n_bits;
         if signature.len() != mod_bits.as_usize_bytes_rounded_up() {
             return Err(error::Unspecified);
         }
@@ -535,7 +537,7 @@ impl KeyPair {
         // RFC 8017 Section 5.1.2: RSADP, using the Chinese Remainder Theorem
         // with Garner's algorithm.
 
-        let n = &self.public_key.n;
+        let n = &self.public.n;
 
         // Step 1. The value zero is also rejected.
         let base = bigint::Elem::from_be_bytes_padded(untrusted::Input::from(signature), n)?;
@@ -576,7 +578,7 @@ impl KeyPair {
         // minimum value, since the relationship of `e` to `d`, `p`, and `q` is
         // not verified during `KeyPair` construction.
         {
-            let verify = bigint::elem_exp_vartime(m.clone(), self.public_key.e, n);
+            let verify = bigint::elem_exp_vartime(m.clone(), self.public.e, n);
             let verify = verify.into_unencoded(n);
             bigint::elem_verify_equal_consttime(&verify, &c)?;
         }

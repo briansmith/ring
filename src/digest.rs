@@ -24,7 +24,7 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use crate::{c, cpu, endian::*, polyfill};
+use crate::{c, cpu, debug, endian::*, polyfill};
 use core::{self, num::Wrapping};
 
 mod sha1;
@@ -223,10 +223,7 @@ impl AsRef<[u8]> for Digest {
 impl core::fmt::Debug for Digest {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
         write!(fmt, "{:?}:", self.algorithm)?;
-        for byte in self.as_ref() {
-            write!(fmt, "{:02x}", byte)?;
-        }
-        Ok(())
+        debug::write_hex_bytes(fmt, self.as_ref())
     }
 }
 
@@ -272,7 +269,7 @@ impl PartialEq for Algorithm {
 
 impl Eq for Algorithm {}
 
-derive_debug_via_self!(Algorithm, self.id);
+derive_debug_via_id!(Algorithm);
 
 /// SHA-1 as specified in [FIPS 180-4]. Deprecated.
 ///

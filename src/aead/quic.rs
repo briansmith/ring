@@ -86,7 +86,7 @@ impl Algorithm {
     pub fn sample_len(&self) -> usize { SAMPLE_LEN }
 }
 
-derive_debug_via_self!(Algorithm, self.id);
+derive_debug_via_id!(Algorithm);
 
 #[derive(Debug, Eq, PartialEq)]
 enum AlgorithmID {

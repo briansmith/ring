@@ -31,7 +31,7 @@ pub struct Curve {
         fn(public_out: &mut [u8], private_key: &Seed) -> Result<(), error::Unspecified>,
 }
 
-derive_debug_via_self!(Curve, self.id);
+derive_debug_via_id!(Curve);
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CurveID {

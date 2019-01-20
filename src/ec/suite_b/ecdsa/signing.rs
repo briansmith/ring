@@ -49,7 +49,7 @@ enum AlgorithmID {
     ECDSA_P384_SHA384_ASN1_SIGNING,
 }
 
-derive_debug_via_self!(Algorithm, self.id);
+derive_debug_via_id!(Algorithm);
 
 impl PartialEq for Algorithm {
     fn eq(&self, other: &Self) -> bool { self.id == other.id }
@@ -66,7 +66,7 @@ pub struct KeyPair {
     public_key: PublicKey,
 }
 
-derive_debug_via_self!(KeyPair, self.public_key);
+derive_debug_via_field!(KeyPair, stringify!(EcdsaKeyPair), public_key);
 
 impl KeyPair {
     /// Generates a new key pair and returns the key pair serialized as a
@@ -231,8 +231,10 @@ impl signature::KeyPair for KeyPair {
     fn public_key(&self) -> &Self::PublicKey { &self.public_key }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy)]
 pub struct PublicKey(ec::PublicKey);
+
+derive_debug_self_as_ref_hex_bytes!(PublicKey);
 
 impl AsRef<[u8]> for PublicKey {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }

@@ -168,7 +168,13 @@ pub struct SigningKey {
     ctx_prototype: SigningContext,
 }
 
-derive_debug_via_self!(SigningKey, self.ctx_prototype.inner.algorithm());
+impl core::fmt::Debug for SigningKey {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+        f.debug_struct("SigningKey")
+            .field("algorithm", self.digest_algorithm())
+            .finish()
+    }
+}
 
 impl AsRef<[u8]> for Signature {
     #[inline]
@@ -277,7 +283,13 @@ pub struct SigningContext {
     outer: digest::Context,
 }
 
-derive_debug_via_self!(SigningContext, self.inner.algorithm());
+impl core::fmt::Debug for SigningContext {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+        f.debug_struct("SigningContext")
+            .field("algorithm", self.inner.algorithm())
+            .finish()
+    }
+}
 
 impl SigningContext {
     /// Constructs a new HMAC signing context using the given digest algorithm
@@ -323,6 +335,14 @@ pub fn sign(key: &SigningKey, data: &[u8]) -> Signature {
 /// A key to use for HMAC authentication.
 pub struct VerificationKey {
     wrapped: SigningKey,
+}
+
+impl core::fmt::Debug for VerificationKey {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+        f.debug_struct("VerificationKey")
+            .field("algorithm", self.digest_algorithm())
+            .finish()
+    }
 }
 
 impl VerificationKey {
