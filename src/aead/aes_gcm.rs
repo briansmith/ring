@@ -81,7 +81,7 @@ fn aead<'a>(
 ) -> Tag {
     let Key { aes_key, gcm_key } = match key {
         aead::KeyInner::AesGcm(key) => key,
-        _ => unimplemented!(),
+        _ => unreachable!(),
     };
 
     let mut ctr = Counter::one(nonce);
