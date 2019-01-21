@@ -358,8 +358,6 @@ err:
 }
 
 void sk_sort(_STACK *sk) {
-  int (*comp_func)(const void *,const void *);
-
   if (sk == NULL || sk->comp == NULL || sk->sorted) {
     return;
   }
@@ -370,8 +368,11 @@ void sk_sort(_STACK *sk) {
   // e.g., CFI does not notice. Unfortunately, |qsort| is missing a void*
   // parameter in its callback and |qsort_s| / |qsort_r| are a mess of
   // incompatibility.
-  comp_func = (int (*)(const void *, const void *))(sk->comp);
-  qsort(sk->data, sk->num, sizeof(void *), comp_func);
+  if (sk->num >= 2) {
+    int (*comp_func)(const void *, const void *) =
+        (int (*)(const void *, const void *))(sk->comp);
+    qsort(sk->data, sk->num, sizeof(void *), comp_func);
+  }
   sk->sorted = 1;
 }
 

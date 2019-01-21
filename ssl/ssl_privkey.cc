@@ -553,6 +553,10 @@ static int compare_uint16_t(const void *p1, const void *p2) {
 }
 
 static bool sigalgs_unique(Span<const uint16_t> in_sigalgs) {
+  if (in_sigalgs.size() < 2) {
+    return true;
+  }
+
   Array<uint16_t> sigalgs;
   if (!sigalgs.CopyFrom(in_sigalgs)) {
     return false;
