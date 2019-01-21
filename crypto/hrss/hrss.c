@@ -1460,7 +1460,7 @@ static void poly2_from_poly(struct poly2 *out, const struct poly *in) {
   *words = word;
 }
 
-// mod3 treats |a| is a signed number and returns |a| mod 3.
+// mod3 treats |a| as a signed number and returns |a| mod 3.
 static uint16_t mod3(int16_t a) {
   const int16_t q = ((int32_t)a * 21845) >> 16;
   int16_t ret = a - 3 * q;
@@ -1794,69 +1794,21 @@ static void poly_marshal_mod3(uint8_t out[HRSS_POLY3_BYTES],
 // HRSS-specific functions
 // -----------------------
 
-// poly_short_sample implements the sampling algorithm given in [HRSSNIST]
-// section 1.8.1. The output coefficients are in {0, 1, 0xffff} which makes some
-// later computation easier.
+// poly_short_sample samples a vector of values in {0xffff (i.e. -1), 0, 1}.
+// This is the same action as the algorithm in [HRSSNIST] section 1.8.1, but
+// with HRSS-SXY the sampling algorithm is now a private detail of the
+// implementation (previously it had to match between two parties). This
+// function uses that freedom to implement a flatter distribution of values.
 static void poly_short_sample(struct poly *out,
                               const uint8_t in[HRSS_SAMPLE_BYTES]) {
-  // We wish to calculate the difference (mod 3) between two, two-bit numbers.
-  // Here is a table of results for a - b. Negative one is written as 0b11 so
-  // that a couple of shifts can be used to sign-extend it. Any input value of
-  // 0b11 is invalid and a convention is adopted that an invalid input results
-  // in an invalid output (0b10).
-  //
-  //  b  a result
-  // 00 00 00
-  // 00 01 01
-  // 00 10 11
-  // 00 11 10
-  // 01 00 11
-  // 01 01 00
-  // 01 10 01
-  // 01 11 10
-  // 10 00 01
-  // 10 01 11
-  // 10 10 00
-  // 10 11 10
-  // 11 00 10
-  // 11 01 10
-  // 11 10 10
-  // 11 11 10
-  //
-  // The result column is encoded in a single-word lookup-table:
-  // 0001 1110 1100 0110 0111 0010 1010 1010
-  //   1    d    c    6    7    2    a    a
-  static const uint32_t kLookup = 0x1dc672aa;
-
-  // In order to generate pairs of numbers mod 3 (non-uniformly) we treat pairs
-  // of bits in a uint32 as separate values and sum two random vectors of 1-bit
-  // numbers. This works because these pairs are isolated because no carry can
-  // spread between them.
-
-  uint16_t *p = out->v;
-  for (size_t i = 0; i < N / 8; i++) {
-    uint32_t v;
-    OPENSSL_memcpy(&v, in, sizeof(v));
-    in += sizeof(v);
-
-    uint32_t sums = (v & 0x55555555) + ((v >> 1) & 0x55555555);
-    for (unsigned j = 0; j < 8; j++) {
-      p[j] = (int32_t)(kLookup << ((sums & 15) << 1)) >> 30;
-      sums >>= 4;
-    }
-    p += 8;
+  OPENSSL_STATIC_ASSERT(HRSS_SAMPLE_BYTES == N - 1,
+                        "HRSS_SAMPLE_BYTES incorrect");
+  for (size_t i = 0; i < N - 1; i++) {
+    uint16_t v = mod3(in[i]);
+    // Map {0, 1, 2} -> {0, 1, 0xffff}
+    v |= ((v >> 1) ^ 1) - 1;
+    out->v[i] = v;
   }
-
-  // There are four values remaining.
-  uint16_t v;
-  OPENSSL_memcpy(&v, in, sizeof(v));
-
-  uint16_t sums = (v & 0x5555) + ((v >> 1) & 0x5555);
-  for (unsigned j = 0; j < 4; j++) {
-    p[j] = (int32_t)(kLookup << ((sums & 15) << 1)) >> 30;
-    sums >>= 4;
-  }
-
   out->v[N - 1] = 0;
 }
 

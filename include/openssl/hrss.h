@@ -38,9 +38,8 @@ struct HRSS_public_key {
 
 // HRSS_SAMPLE_BYTES is the number of bytes of entropy needed to generate a
 // short vector. There are 701 coefficients, but the final one is always set to
-// zero when sampling. Otherwise, one byte of input is enough to generate two
-// coefficients.
-#define HRSS_SAMPLE_BYTES ((701 - 1) / 2)
+// zero when sampling. Otherwise, we need one byte of input per coefficient.
+#define HRSS_SAMPLE_BYTES (701 - 1)
 // HRSS_GENERATE_KEY_BYTES is the number of bytes of entropy needed to generate
 // an HRSS key pair.
 #define HRSS_GENERATE_KEY_BYTES (HRSS_SAMPLE_BYTES + HRSS_SAMPLE_BYTES + 32)
