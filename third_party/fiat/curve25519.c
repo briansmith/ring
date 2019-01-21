@@ -46,9 +46,9 @@
 #include "./curve25519_tables.h"
 
 #if defined(BORINGSSL_CURVE25519_64BIT)
-#include "./curve25519_64.c"
+#include "./curve25519_64.h"
 #else
-#include "./curve25519_32.c"
+#include "./curve25519_32.h"
 #endif  // BORINGSSL_CURVE25519_64BIT
 
 
@@ -87,7 +87,7 @@ typedef uint64_t fe_limb_t;
 //   [0x0 ~> 0x8cccccccccccc],
 //   [0x0 ~> 0x8cccccccccccc]]
 //
-// See comments in curve25519_64.c for which functions use these bounds for
+// See comments in curve25519_64.h for which functions use these bounds for
 // inputs or outputs.
 #define assert_fe(f)                                                    \
   do {                                                                  \
@@ -104,7 +104,7 @@ typedef uint64_t fe_limb_t;
 //   [0x0 ~> 0x1a666666666664],
 //   [0x0 ~> 0x1a666666666664]]
 //
-// See comments in curve25519_64.c for which functions use these bounds for
+// See comments in curve25519_64.h for which functions use these bounds for
 // inputs or outputs.
 #define assert_fe_loose(f)                                              \
   do {                                                                  \
@@ -126,7 +126,7 @@ typedef uint32_t fe_limb_t;
 //   [0x0 ~> 0x4666666], [0x0 ~> 0x2333333],
 //   [0x0 ~> 0x4666666], [0x0 ~> 0x2333333]]
 //
-// See comments in curve25519_32.c for which functions use these bounds for
+// See comments in curve25519_32.h for which functions use these bounds for
 // inputs or outputs.
 #define assert_fe(f)                                                     \
   do {                                                                   \
@@ -144,7 +144,7 @@ typedef uint32_t fe_limb_t;
 //   [0x0 ~> 0xd333332], [0x0 ~> 0x6999999],
 //   [0x0 ~> 0xd333332], [0x0 ~> 0x6999999]]
 //
-// See comments in curve25519_32.c for which functions use these bounds for
+// See comments in curve25519_32.h for which functions use these bounds for
 // inputs or outputs.
 #define assert_fe_loose(f)                                               \
   do {                                                                   \

@@ -46,9 +46,9 @@
 // MSVC does not implement uint128_t, and crashes with intrinsics
 #if defined(BORINGSSL_HAS_UINT128)
 #define BORINGSSL_NISTP256_64BIT 1
-#include "p256_64.c"
+#include "p256_64.h"
 #else
-#include "p256_32.c"
+#include "p256_32.h"
 #endif
 
 
