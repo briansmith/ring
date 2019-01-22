@@ -103,8 +103,14 @@ fn hmac_debug() {
     assert_eq!("SigningKey { algorithm: SHA256 }", format!("{:?}", &key));
 
     let ctx = hmac::SigningContext::with_key(&key);
-    assert_eq!("SigningContext { algorithm: SHA256 }", format!("{:?}", &ctx));
+    assert_eq!(
+        "SigningContext { algorithm: SHA256 }",
+        format!("{:?}", &ctx)
+    );
 
     let key = hmac::VerificationKey::new(&digest::SHA384, &[0; 32]);
-    assert_eq!("VerificationKey { algorithm: SHA384 }", format!("{:?}", &key));
+    assert_eq!(
+        "VerificationKey { algorithm: SHA384 }",
+        format!("{:?}", &key)
+    );
 }

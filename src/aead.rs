@@ -101,7 +101,7 @@ impl OpeningKey {
 /// does not allow us to have two slices, one mutable and one immutable, that
 /// reference overlapping memory.)
 pub fn open_in_place<'a>(
-    key: &OpeningKey, nonce: Nonce, aad: Aad<'a>, in_prefix_len: usize,
+    key: &OpeningKey, nonce: Nonce, aad: Aad, in_prefix_len: usize,
     ciphertext_and_tag_modified_in_place: &'a mut [u8],
 ) -> Result<&'a mut [u8], error::Unspecified> {
     let ciphertext_and_tag_len = ciphertext_and_tag_modified_in_place
@@ -168,8 +168,8 @@ impl SealingKey {
 /// also `MAX_TAG_LEN`.
 ///
 /// `aad` is the additional authenticated data, if any.
-pub fn seal_in_place<'a>(
-    key: &SealingKey, nonce: Nonce, aad: Aad<'a>, in_out: &mut [u8], out_suffix_capacity: usize,
+pub fn seal_in_place(
+    key: &SealingKey, nonce: Nonce, aad: Aad, in_out: &mut [u8], out_suffix_capacity: usize,
 ) -> Result<usize, error::Unspecified> {
     if out_suffix_capacity < key.key.algorithm.tag_len() {
         return Err(error::Unspecified);
@@ -235,14 +235,9 @@ impl Key {
 pub struct Algorithm {
     init: fn(key: &[u8]) -> Result<KeyInner, error::Unspecified>,
 
-    seal: for<'a> fn(key: &KeyInner, nonce: Nonce, aad: Aad<'a>, in_out: &mut [u8]) -> Tag,
-    open: for<'a> fn(
-        key: &KeyInner,
-        nonce: Nonce,
-        aad: Aad<'a>,
-        in_prefix_len: usize,
-        in_out: &mut [u8],
-    ) -> Tag,
+    seal: fn(key: &KeyInner, nonce: Nonce, aad: Aad, in_out: &mut [u8]) -> Tag,
+    open:
+        fn(key: &KeyInner, nonce: Nonce, aad: Aad, in_prefix_len: usize, in_out: &mut [u8]) -> Tag,
 
     key_len: usize,
     id: AlgorithmID,
