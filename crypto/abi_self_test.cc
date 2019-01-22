@@ -33,7 +33,7 @@ static int TestFunction(int a1, int a2, int a3, int a4, int a5, int a6, int a7,
 }
 
 TEST(ABITest, SanityCheck) {
-  EXPECT_NE(0, CHECK_ABI(strcmp, "hello", "world"));
+  EXPECT_NE(0, CHECK_ABI_NO_UNWIND(strcmp, "hello", "world"));
 
   test_function_ok = false;
   EXPECT_EQ(42, CHECK_ABI(TestFunction, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
@@ -42,13 +42,11 @@ TEST(ABITest, SanityCheck) {
 #if defined(SUPPORTS_ABI_TEST)
   abi_test::internal::CallerState state;
   RAND_bytes(reinterpret_cast<uint8_t *>(&state), sizeof(state));
-  const char *arg1 = "hello", *arg2 = "world";
-  crypto_word_t argv[2] = {
-      reinterpret_cast<crypto_word_t>(arg1),
-      reinterpret_cast<crypto_word_t>(arg2),
+  crypto_word_t argv[] = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
   };
-  CHECK_ABI(abi_test_trampoline, reinterpret_cast<crypto_word_t>(strcmp),
-            &state, argv, 2, 0 /* no breakpoint */);
+  CHECK_ABI(abi_test_trampoline, reinterpret_cast<crypto_word_t>(TestFunction),
+            &state, argv, 10, 0 /* no breakpoint */);
 
   if (abi_test::UnwindTestsEnabled()) {
     EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_bad_unwind_wrong_register),
