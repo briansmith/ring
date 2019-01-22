@@ -244,10 +244,7 @@ OPENSSL_EXPORT void SHA512_Transform(SHA512_CTX *sha, const uint8_t *block);
 struct sha512_state_st {
   uint64_t h[8];
   uint64_t Nl, Nh;
-  union {
-    uint64_t d[16];
-    uint8_t p[128];
-  } u;
+  uint8_t p[128];
   unsigned num, md_len;
 };
 

@@ -143,7 +143,7 @@ void SHA512_Transform(SHA512_CTX *c, const uint8_t *block) {
 
 int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
   uint64_t l;
-  uint8_t *p = c->u.p;
+  uint8_t *p = c->p;
   const uint8_t *data = in_data;
 
   if (len == 0) {
@@ -160,7 +160,7 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
   c->Nl = l;
 
   if (c->num != 0) {
-    size_t n = sizeof(c->u) - c->num;
+    size_t n = sizeof(c->p) - c->num;
 
     if (len < n) {
       OPENSSL_memcpy(p + c->num, data, len);
@@ -174,10 +174,10 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
     }
   }
 
-  if (len >= sizeof(c->u)) {
-    sha512_block_data_order(c->h, data, len / sizeof(c->u));
+  if (len >= sizeof(c->p)) {
+    sha512_block_data_order(c->h, data, len / sizeof(c->p));
     data += len;
-    len %= sizeof(c->u);
+    len %= sizeof(c->p);
     data -= len;
   }
 
@@ -190,34 +190,34 @@ int SHA512_Update(SHA512_CTX *c, const void *in_data, size_t len) {
 }
 
 int SHA512_Final(uint8_t *md, SHA512_CTX *sha) {
-  uint8_t *p = sha->u.p;
+  uint8_t *p = sha->p;
   size_t n = sha->num;
 
   p[n] = 0x80;  // There always is a room for one
   n++;
-  if (n > (sizeof(sha->u) - 16)) {
-    OPENSSL_memset(p + n, 0, sizeof(sha->u) - n);
+  if (n > (sizeof(sha->p) - 16)) {
+    OPENSSL_memset(p + n, 0, sizeof(sha->p) - n);
     n = 0;
     sha512_block_data_order(sha->h, p, 1);
   }
 
-  OPENSSL_memset(p + n, 0, sizeof(sha->u) - 16 - n);
-  p[sizeof(sha->u) - 1] = (uint8_t)(sha->Nl);
-  p[sizeof(sha->u) - 2] = (uint8_t)(sha->Nl >> 8);
-  p[sizeof(sha->u) - 3] = (uint8_t)(sha->Nl >> 16);
-  p[sizeof(sha->u) - 4] = (uint8_t)(sha->Nl >> 24);
-  p[sizeof(sha->u) - 5] = (uint8_t)(sha->Nl >> 32);
-  p[sizeof(sha->u) - 6] = (uint8_t)(sha->Nl >> 40);
-  p[sizeof(sha->u) - 7] = (uint8_t)(sha->Nl >> 48);
-  p[sizeof(sha->u) - 8] = (uint8_t)(sha->Nl >> 56);
-  p[sizeof(sha->u) - 9] = (uint8_t)(sha->Nh);
-  p[sizeof(sha->u) - 10] = (uint8_t)(sha->Nh >> 8);
-  p[sizeof(sha->u) - 11] = (uint8_t)(sha->Nh >> 16);
-  p[sizeof(sha->u) - 12] = (uint8_t)(sha->Nh >> 24);
-  p[sizeof(sha->u) - 13] = (uint8_t)(sha->Nh >> 32);
-  p[sizeof(sha->u) - 14] = (uint8_t)(sha->Nh >> 40);
-  p[sizeof(sha->u) - 15] = (uint8_t)(sha->Nh >> 48);
-  p[sizeof(sha->u) - 16] = (uint8_t)(sha->Nh >> 56);
+  OPENSSL_memset(p + n, 0, sizeof(sha->p) - 16 - n);
+  p[sizeof(sha->p) - 1] = (uint8_t)(sha->Nl);
+  p[sizeof(sha->p) - 2] = (uint8_t)(sha->Nl >> 8);
+  p[sizeof(sha->p) - 3] = (uint8_t)(sha->Nl >> 16);
+  p[sizeof(sha->p) - 4] = (uint8_t)(sha->Nl >> 24);
+  p[sizeof(sha->p) - 5] = (uint8_t)(sha->Nl >> 32);
+  p[sizeof(sha->p) - 6] = (uint8_t)(sha->Nl >> 40);
+  p[sizeof(sha->p) - 7] = (uint8_t)(sha->Nl >> 48);
+  p[sizeof(sha->p) - 8] = (uint8_t)(sha->Nl >> 56);
+  p[sizeof(sha->p) - 9] = (uint8_t)(sha->Nh);
+  p[sizeof(sha->p) - 10] = (uint8_t)(sha->Nh >> 8);
+  p[sizeof(sha->p) - 11] = (uint8_t)(sha->Nh >> 16);
+  p[sizeof(sha->p) - 12] = (uint8_t)(sha->Nh >> 24);
+  p[sizeof(sha->p) - 13] = (uint8_t)(sha->Nh >> 32);
+  p[sizeof(sha->p) - 14] = (uint8_t)(sha->Nh >> 40);
+  p[sizeof(sha->p) - 15] = (uint8_t)(sha->Nh >> 48);
+  p[sizeof(sha->p) - 16] = (uint8_t)(sha->Nh >> 56);
 
   sha512_block_data_order(sha->h, p, 1);
 
