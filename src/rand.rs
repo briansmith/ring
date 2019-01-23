@@ -91,7 +91,7 @@ impl SecureRandom for SystemRandom {
     fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> { fill_impl(dest) }
 }
 
-impl sealed::Sealed for SystemRandom {}
+unsafe impl sealed::Sealed for SystemRandom {}
 
 #[cfg(all(
     feature = "use_heap",

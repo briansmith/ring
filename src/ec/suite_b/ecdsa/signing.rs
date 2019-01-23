@@ -57,7 +57,7 @@ impl PartialEq for Algorithm {
 
 impl Eq for Algorithm {}
 
-impl sealed::Sealed for Algorithm {}
+unsafe impl sealed::Sealed for Algorithm {}
 
 /// An ECDSA key pair, used for signing.
 pub struct KeyPair {

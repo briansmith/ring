@@ -116,7 +116,8 @@ pub mod signature;
 #[cfg(any(test, feature = "use_heap"))]
 pub mod test;
 
-mod sealed {
+/// Traits that promise cryptographic safety.
+pub mod sealed {
     /// Traits that are designed to only be implemented internally in *ring*.
     //
     // Usage:
@@ -129,7 +130,7 @@ mod sealed {
     //
     // impl sealed::Sealed for MyType {}
     // ```
-    pub trait Sealed {}
+    pub unsafe trait Sealed {}
 }
 
 #[cfg(test)]

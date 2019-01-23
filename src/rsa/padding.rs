@@ -60,7 +60,7 @@ pub struct PKCS1 {
     digestinfo_prefix: &'static [u8],
 }
 
-impl crate::sealed::Sealed for PKCS1 {}
+unsafe impl crate::sealed::Sealed for PKCS1 {}
 
 impl Padding for PKCS1 {
     fn digest_alg(&self) -> &'static digest::Algorithm { self.digest_alg }
@@ -206,7 +206,7 @@ pub struct PSS {
     digest_alg: &'static digest::Algorithm,
 }
 
-impl crate::sealed::Sealed for PSS {}
+unsafe impl crate::sealed::Sealed for PSS {}
 
 // Maximum supported length of the salt in bytes.
 // In practice, this is constrained by the maximum digest length.

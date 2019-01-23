@@ -527,9 +527,9 @@ pub mod rand {
         }
     }
 
-    impl sealed::Sealed for FixedByteRandom {}
-    impl<'a> sealed::Sealed for FixedSliceRandom<'a> {}
-    impl<'a> sealed::Sealed for FixedSliceSequenceRandom<'a> {}
+    unsafe impl sealed::Sealed for FixedByteRandom {}
+    unsafe impl<'a> sealed::Sealed for FixedSliceRandom<'a> {}
+    unsafe impl<'a> sealed::Sealed for FixedSliceSequenceRandom<'a> {}
 
 }
 

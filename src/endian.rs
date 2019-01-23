@@ -25,7 +25,7 @@ macro_rules! define_endian {
         where
             T: Copy + Clone + Sized;
 
-        impl<T> sealed::Sealed for $endian<T> where T: Copy + Clone + Sized {}
+        unsafe impl<T> sealed::Sealed for $endian<T> where T: Copy + Clone + Sized {}
     };
 }
 

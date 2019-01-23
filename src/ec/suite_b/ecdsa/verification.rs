@@ -159,7 +159,7 @@ impl Algorithm {
     }
 }
 
-impl sealed::Sealed for Algorithm {}
+unsafe impl sealed::Sealed for Algorithm {}
 
 fn split_rs_fixed<'a>(
     ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>,

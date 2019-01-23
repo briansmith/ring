@@ -94,7 +94,7 @@ impl signature::VerificationAlgorithm for Parameters {
     }
 }
 
-impl sealed::Sealed for Parameters {}
+unsafe impl sealed::Sealed for Parameters {}
 
 macro_rules! rsa_params {
     ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $PADDING_ALGORITHM:expr,
