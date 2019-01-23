@@ -70,6 +70,13 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
   set(CMAKE_ASM_NASM_FLAGS "${CMAKE_ASM_NASM_FLAGS} -DNDEBUG")
 endif()
 
+# Add a RelWithAsserts build configuration. It is the same as Release, except it
+# does not define NDEBUG, so asserts run.
+foreach(VAR CMAKE_C_FLAGS CMAKE_CXX_FLAGS CMAKE_ASM_FLAGS)
+  string(REGEX REPLACE "(^| )[/-]DNDEBUG( |$)" " " "${VAR}_RELWITHASSERTS"
+         "${${VAR}_RELEASE}")
+endforeach()
+
 if(BORINGSSL_PREFIX AND BORINGSSL_PREFIX_SYMBOLS)
   add_definitions(-DBORINGSSL_PREFIX=${BORINGSSL_PREFIX})
   # CMake automatically connects include_directories to the NASM command-line,
