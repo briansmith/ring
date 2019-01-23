@@ -31,7 +31,7 @@ non-public (`mod x`, not `pub mod x`) and the enclosing module must re-export,
 using `pub use submodule::x`, the items that are intended to be public. This
 way, the implementation details that drove the choice to use nested submodules
 do not affect the public API.
-```
+
 
 Note that this is only necessary when the module has submodules.
 
