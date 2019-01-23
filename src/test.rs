@@ -527,9 +527,24 @@ pub mod rand {
         }
     }
 
+    /// An implementation of `SecureRandom` that fills the output slice
+    /// by calling the inner function.
+    #[derive(Debug)]
+    pub struct NotRandom<F>(pub F);
+
+    impl<F> rand::SecureRandom for NotRandom<F>
+    where
+        F: Fn(&mut [u8]) -> Result<(), error::Unspecified>,
+    {
+        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+            self.0(dest)
+        }
+    }
+
     impl sealed::Sealed for FixedByteRandom {}
     impl<'a> sealed::Sealed for FixedSliceRandom<'a> {}
     impl<'a> sealed::Sealed for FixedSliceSequenceRandom<'a> {}
+    impl<F> sealed::Sealed for NotRandom<F> {}
 
 }
 
