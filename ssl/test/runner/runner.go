@@ -13599,7 +13599,7 @@ func addTLS13CipherPreferenceTests() {
 		},
 	})
 
-	// Test that CECPQ2 cannot be used with TLS_AES_128_GCM_SHA256.
+	// CECPQ2 prefers 256-bit ciphers but will use AES-128 if there's nothing else.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
 		name:     "TLS13-CipherPreference-CECPQ2-AES128Only",
@@ -13612,9 +13612,39 @@ func addTLS13CipherPreferenceTests() {
 		flags: []string{
 			"-curves", strconv.Itoa(int(CurveCECPQ2)),
 		},
-		shouldFail:         true,
-		expectedError:      ":NO_SHARED_CIPHER:",
-		expectedLocalError: "remote error: handshake failure",
+	})
+	// When a 256-bit cipher is offered, even if not in first place, it should be
+	// picked.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-CipherPreference-CECPQ2-AES256Preferred",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+				TLS_AES_256_GCM_SHA384,
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveCECPQ2)),
+		},
+		expectedCipher: TLS_AES_256_GCM_SHA384,
+	})
+	// ... but when CECPQ2 isn't being used, the client's preference controls.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-CipherPreference-CECPQ2-AES128PreferredOtherwise",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+				TLS_AES_256_GCM_SHA384,
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveX25519)),
+		},
+		expectedCipher: TLS_AES_128_GCM_SHA256,
 	})
 
 	// Test that CECPQ2 continues to honor AES vs ChaCha20 logic.

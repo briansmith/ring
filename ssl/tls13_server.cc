@@ -17,6 +17,8 @@
 #include <assert.h>
 #include <string.h>
 
+#include <tuple>
+
 #include <openssl/aead.h>
 #include <openssl/bytestring.h>
 #include <openssl/digest.h>
@@ -95,6 +97,37 @@ static int ssl_ext_supported_versions_add_serverhello(SSL_HANDSHAKE *hs,
   return 1;
 }
 
+// CipherScorer produces a "score" for each possible cipher suite offered by
+// the client.
+class CipherScorer {
+ public:
+  CipherScorer(uint16_t group_id)
+      : aes_is_fine_(EVP_has_aes_hardware()),
+        security_128_is_fine_(group_id != SSL_CURVE_CECPQ2) {}
+
+  typedef std::tuple<bool, bool, bool> Score;
+
+  // MinScore returns a |Score| that will compare less than the score of all
+  // cipher suites.
+  Score MinScore() const {
+    return Score(false, false, false);
+  }
+
+  Score Evaluate(const SSL_CIPHER *a) const {
+    return Score(
+        // Something is always preferable to nothing.
+        true,
+        // Either 128-bit is fine, or 256-bit is preferred.
+        security_128_is_fine_ || a->algorithm_enc != SSL_AES128GCM,
+        // Either AES is fine, or else ChaCha20 is preferred.
+        aes_is_fine_ || a->algorithm_enc == SSL_CHACHA20POLY1305);
+  }
+
+ private:
+  const bool aes_is_fine_;
+  const bool security_128_is_fine_;
+};
+
 static const SSL_CIPHER *choose_tls13_cipher(
     const SSL *ssl, const SSL_CLIENT_HELLO *client_hello, uint16_t group_id) {
   if (client_hello->cipher_suites_len % 2 != 0) {
@@ -105,11 +138,12 @@ static const SSL_CIPHER *choose_tls13_cipher(
   CBS_init(&cipher_suites, client_hello->cipher_suites,
            client_hello->cipher_suites_len);
 
-  const bool aes_is_fine = EVP_has_aes_hardware();
-  const bool require_256_bit = group_id == SSL_CURVE_CECPQ2;
   const uint16_t version = ssl_protocol_version(ssl);
 
   const SSL_CIPHER *best = nullptr;
+  CipherScorer scorer(group_id);
+  CipherScorer::Score best_score = scorer.MinScore();
+
   while (CBS_len(&cipher_suites) > 0) {
     uint16_t cipher_suite;
     if (!CBS_get_u16(&cipher_suites, &cipher_suite)) {
@@ -124,23 +158,12 @@ static const SSL_CIPHER *choose_tls13_cipher(
       continue;
     }
 
-    // Post-quantum key exchanges should be paired with 256-bit ciphers.
-    if (require_256_bit && candidate->algorithm_enc == SSL_AES128GCM) {
-      continue;
-    }
-
-    // TLS 1.3 removes legacy ciphers, so honor the client order, but prefer
-    // ChaCha20 if we do not have AES hardware.
-    if (aes_is_fine) {
-      return candidate;
-    }
-
-    if (candidate->algorithm_enc == SSL_CHACHA20POLY1305) {
-      return candidate;
-    }
-
-    if (best == nullptr) {
+    const CipherScorer::Score candidate_score = scorer.Evaluate(candidate);
+    // |candidate_score| must be larger to displace the current choice. That way
+    // the client's order controls between ciphers with an equal score.
+    if (candidate_score > best_score) {
       best = candidate;
+      best_score = candidate_score;
     }
   }
 
