@@ -12419,6 +12419,7 @@ func addTLS13HandshakeTests() {
 			MaxVersion: VersionTLS13,
 			// Require a HelloRetryRequest for every curve.
 			DefaultCurves: []CurveID{},
+			CurvePreferences: []CurveID{CurveX25519},
 		},
 		expectedCurveID: CurveX25519,
 	})
@@ -12429,6 +12430,7 @@ func addTLS13HandshakeTests() {
 		config: Config{
 			MaxVersion:    VersionTLS13,
 			DefaultCurves: []CurveID{CurveP384},
+			CurvePreferences: []CurveID{CurveX25519, CurveP384},
 		},
 		// Although the ClientHello did not predict our preferred curve,
 		// we always select it whether it is predicted or not.
@@ -13560,6 +13562,7 @@ func addTLS13CipherPreferenceTests() {
 				TLS_CHACHA20_POLY1305_SHA256,
 				TLS_AES_128_GCM_SHA256,
 			},
+			CurvePreferences: []CurveID{CurveX25519},
 		},
 		flags: []string{
 			"-expect-cipher-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
@@ -13576,6 +13579,7 @@ func addTLS13CipherPreferenceTests() {
 				TLS_AES_128_GCM_SHA256,
 				TLS_CHACHA20_POLY1305_SHA256,
 			},
+			CurvePreferences: []CurveID{CurveX25519},
 		},
 		flags: []string{
 			"-expect-cipher-aes", strconv.Itoa(int(TLS_AES_128_GCM_SHA256)),
