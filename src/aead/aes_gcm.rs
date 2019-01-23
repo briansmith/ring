@@ -59,12 +59,12 @@ fn init(key: &[u8], variant: aes::Variant) -> Result<aead::KeyInner, error::Unsp
 
 const CHUNK_BLOCKS: usize = 3 * 1024 / 16;
 
-fn aes_gcm_seal<'a>(key: &aead::KeyInner, nonce: Nonce, aad: Aad<'a>, in_out: &mut [u8]) -> Tag {
+fn aes_gcm_seal(key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_out: &mut [u8]) -> Tag {
     aead(key, nonce, aad, in_out, Direction::Sealing)
 }
 
-fn aes_gcm_open<'a>(
-    key: &aead::KeyInner, nonce: Nonce, aad: Aad<'a>, in_prefix_len: usize, in_out: &mut [u8],
+fn aes_gcm_open(
+    key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_prefix_len: usize, in_out: &mut [u8],
 ) -> Tag {
     aead(
         key,
@@ -76,8 +76,8 @@ fn aes_gcm_open<'a>(
 }
 
 #[inline(always)] // Avoid branching on `direction`.
-fn aead<'a>(
-    key: &aead::KeyInner, nonce: Nonce, Aad(aad): Aad<'a>, in_out: &mut [u8], direction: Direction,
+fn aead(
+    key: &aead::KeyInner, nonce: Nonce, Aad(aad): Aad, in_out: &mut [u8], direction: Direction,
 ) -> Tag {
     let Key { aes_key, gcm_key } = match key {
         aead::KeyInner::AesGcm(key) => key,
