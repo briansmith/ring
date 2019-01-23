@@ -77,8 +77,7 @@ fn aes_gcm_open(
 
 #[inline(always)] // Avoid branching on `direction`.
 fn aead(
-    key: &aead::KeyInner, nonce: Nonce, Aad(aad): Aad, in_out: &mut [u8], direction: Direction,
-) -> Tag {
+    key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_out: &mut [u8], direction: Direction) -> Tag {
     let Key { aes_key, gcm_key } = match key {
         aead::KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
@@ -87,6 +86,7 @@ fn aead(
     let mut ctr = Counter::one(nonce);
     let tag_iv = ctr.increment();
 
+    let aad_len = aad.0.len();
     let mut gcm_ctx = gcm::Context::new(gcm_key, aad);
 
     let in_prefix_len = match direction {
@@ -149,7 +149,7 @@ fn aead(
     });
 
     // Authenticate the final block containing the input lengths.
-    let aad_bits = polyfill::u64_from_usize(aad.len()) << 3;
+    let aad_bits = polyfill::u64_from_usize(aad_len) << 3;
     let ciphertext_bits = polyfill::u64_from_usize(total_in_out_len) << 3;
     gcm_ctx.update_block(Block::from_u64_be(
         BigEndian::from(aad_bits),

@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Block, BLOCK_LEN};
+use super::{Aad, Block, BLOCK_LEN};
 use crate::c;
 
 #[repr(transparent)]
@@ -38,14 +38,14 @@ impl Key {
 pub struct Context(GCM128_CONTEXT);
 
 impl Context {
-    pub fn new(key: &Key, aad: &[u8]) -> Self {
+    pub fn new(key: &Key, aad: Aad) -> Self {
         let mut ctx = Context(GCM128_CONTEXT {
             Xi: Block::zero(),
             H_unused: Block::zero(),
             key: key.0.clone(),
         });
 
-        for ad in aad.chunks(BLOCK_LEN) {
+        for ad in aad.0.chunks(BLOCK_LEN) {
             let mut block = Block::zero();
             block.partial_copy_from(ad);
             ctx.update_block(block);
