@@ -84,7 +84,7 @@ pub struct Algorithm {
     ) -> Result<(), error::Unspecified>,
 }
 
-derive_debug_via_field!(Algorithm, stringify!(Algorithm), curve);
+derive_debug_via_field!(Algorithm, curve);
 
 impl Eq for Algorithm {}
 impl PartialEq for Algorithm {
