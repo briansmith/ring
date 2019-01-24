@@ -38,6 +38,8 @@ pub struct OpeningKey {
     key: Key,
 }
 
+derive_debug_via_field!(OpeningKey, key);
+
 impl OpeningKey {
     /// Create a new opening key.
     ///
@@ -148,6 +150,8 @@ pub struct SealingKey {
     key: Key,
 }
 
+derive_debug_via_field!(SealingKey, key);
+
 impl SealingKey {
     /// Constructs a new sealing key from `key_bytes`.
     #[inline]
@@ -235,6 +239,8 @@ struct Key {
     inner: KeyInner,
     algorithm: &'static Algorithm,
 }
+
+derive_debug_via_field!(Key, algorithm);
 
 #[allow(variant_size_differences)]
 enum KeyInner {

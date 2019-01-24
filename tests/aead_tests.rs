@@ -300,3 +300,20 @@ fn aead_chacha20_poly1305_openssh() {
         },
     );
 }
+
+#[test]
+fn test_aead_key_debug() {
+    let key_bytes = [0; 32];
+
+    let key = aead::OpeningKey::new(&aead::AES_256_GCM, &key_bytes).unwrap();
+    assert_eq!(
+        "OpeningKey { key: Key { algorithm: AES_256_GCM } }",
+        format!("{:?}", key)
+    );
+
+    let key = aead::SealingKey::new(&aead::CHACHA20_POLY1305, &key_bytes).unwrap();
+    assert_eq!(
+        "SealingKey { key: Key { algorithm: CHACHA20_POLY1305 } }",
+        format!("{:?}", key)
+    );
+}
