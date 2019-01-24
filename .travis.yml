@@ -4,7 +4,7 @@ cache:
     - $HOME/kcov-i686-unknown-linux-gnu
     - $HOME/kcov-x86_64-unknown-linux-gnu
     - $HOME/android/android-sdk-linux
-    - $HOME/android/android-18-arm-linux-androideabi-4.8
+    - $HOME/android/armv7a-linux-androideabi26
 matrix:
   fast_finish: true
   allow_failures:

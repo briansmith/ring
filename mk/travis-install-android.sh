@@ -28,8 +28,8 @@ ANDROID_NDK_VERSION=${ANDROID_NDK_VERSION:-17}
 ANDROID_NDK_URL=https://dl.google.com/android/repository/android-ndk-r${ANDROID_NDK_VERSION}-linux-x86_64.zip
 
 ANDROID_INSTALL_PREFIX="${HOME}/android"
-ANDROID_SDK_INSTALL_DIR="${HOME}/android/android-sdk-linux"
-ANDROID_NDK_INSTALL_DIR="${ANDROID_INSTALL_PREFIX}/android-18-arm-linux-androideabi-4.8"
+ANDROID_SDK_INSTALL_DIR="${ANDROID_INSTALL_PREFIX}/android-sdk-linux"
+ANDROID_NDK_INSTALL_DIR="${ANDROID_INSTALL_PREFIX}/armv7a-linux-androideabi26"
 
 if [[ ! -f $ANDROID_SDK_INSTALL_DIR/tools/emulator ]];then
   mkdir -p "${ANDROID_INSTALL_PREFIX}"
@@ -39,7 +39,7 @@ if [[ ! -f $ANDROID_SDK_INSTALL_DIR/tools/emulator ]];then
 
   expect -c '
 set timeout 600;
-spawn ./android-sdk-linux/tools/android update sdk -a --no-ui --filter tools,platform-tools,android-18,sys-img-armeabi-v7a-android-18;
+spawn ./android-sdk-linux/tools/android update sdk -a --no-ui --filter tools,platform-tools,android-24,sys-img-armeabi-v7a-android-24;
 expect {
     "Do you accept the license" { exp_send "y\r" ; exp_continue }
     eof
@@ -58,10 +58,11 @@ if [[ ! -d $ANDROID_NDK_INSTALL_DIR/sysroot/usr/include/arm-linux-androideabi ]]
   ./android-ndk-r${ANDROID_NDK_VERSION}/build/tools/make_standalone_toolchain.py \
 		 --force \
 		 --arch arm \
-		 --api 18 \
+		 --api 26 \
 		 --install-dir ${ANDROID_NDK_INSTALL_DIR}
 
   popd
+  rm -rf "${ANDROID_INSTALL_PREFIX}/downloads"
 fi
 
 echo end of mk/travis-install-android
