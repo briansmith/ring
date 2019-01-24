@@ -215,8 +215,8 @@ the table below. The C compilers listed are used for compiling the C portions.
 </tr>
 <tr><td>Android</td>
     <td>32&#8209;bit&nbsp;ARM</td>
-    <td>Built using the Android SDK 24.4.1 and Android NDK 14, tested using the
-        Android emulator.</td>
+    <td>Built using the Android SDK 24.4.1 and Android NDK 17 targeting API level 26,
+        tested using the Android emulator on API levle 24 system images..</td>
 </tr>
 <tr><td>Mac&nbsp;OS&nbsp;X</td>
     <td>x64</td>

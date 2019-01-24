@@ -30,7 +30,7 @@ armv7-linux-androideabi)
   # install the android sdk/ndk
   mk/travis-install-android.sh
 
-  export PATH=$HOME/android/android-18-arm-linux-androideabi-4.8/bin:$PATH
+  export PATH=$HOME/android/armv7a-linux-androideabi26/bin:$PATH
   export PATH=$HOME/android/android-sdk-linux/platform-tools:$PATH
   export PATH=$HOME/android/android-sdk-linux/tools:$PATH
   ;;
@@ -94,9 +94,46 @@ fi
 case $TARGET_X in
 armv7-linux-androideabi)
   cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X
-  # TODO: There used to be some logic for running the tests here using the
-  # Android emulator. That was removed because something broke this. See
-  # https://github.com/briansmith/ring/issues/603.
+
+  # Building the AVD is slow. Do it here, after we build the code so that any
+  # build breakage is reported sooner, instead of being delayed by this.
+  echo no | android create avd --name arm-24 --target android-24 --abi armeabi-v7a
+  android list avd
+
+  emulator @arm-24 -memory 2048 -no-skin -no-boot-anim -no-window &
+  adb wait-for-device
+  adb root
+  adb wait-for-device
+
+  # Run the unit tests first. The file named ring-<something> in $target_dir is
+  # the test executable.
+
+  find $target_dir -maxdepth 1 -name ring-* ! -name "*.*" \
+    -exec adb push {} /data/ring-test \;
+  for testfile in `find src crypto -name "*_test*.txt" -o -name "*test*.pk8"`; do
+    adb shell "mkdir -p /data/`dirname $testfile`"
+    adb push $testfile /data/$testfile
+  done
+  adb shell "mkdir -p /data/third_party/NIST"
+  adb push third_party/NIST/SHAVS /data/third_party/NIST/SHAVS
+  adb shell "cd /data && ./ring-test" 2>&1 | tee /tmp/ring-test-log
+  grep "test result: ok" /tmp/ring-test-log
+
+  # Run the integration/functional tests.
+  for testfile in `find tests -name "*_test*.txt" -o -name "*test*.pk8"`; do
+    adb shell "mkdir -p /data/`dirname $testfile`"
+    adb push $testfile /data/$testfile
+  done
+
+  for test_exe in `find $target_dir -maxdepth 1 -name "*test*" -type f ! -name "*.*" `; do
+      adb push $test_exe /data/`basename $test_exe`
+      adb shell "cd /data && ./`basename $test_exe`" 2>&1 | \
+          tee /tmp/`basename $test_exe`-log
+      grep "test result: ok" /tmp/`basename $test_exe`-log
+  done
+
+  adb emu kill
+
   ;;
 *)
   cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
