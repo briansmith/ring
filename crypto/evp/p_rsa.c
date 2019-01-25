@@ -553,7 +553,8 @@ const EVP_PKEY_METHOD rsa_pkey_meth = {
     pkey_rsa_verify_recover,
     pkey_rsa_encrypt,
     pkey_rsa_decrypt,
-    0 /* derive */,
+    NULL /* derive */,
+    NULL /* paramgen */,
     pkey_rsa_ctrl,
 };
 

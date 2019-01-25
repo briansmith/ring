@@ -638,3 +638,60 @@ TEST(EVPExtraTest, Ed25519) {
   EXPECT_FALSE(EVP_DigestVerifyFinal(ctx.get(), nullptr, 0));
   ERR_clear_error();
 }
+
+static void ExpectECGroupOnly(const EVP_PKEY *pkey, int nid) {
+  EC_KEY *ec = EVP_PKEY_get0_EC_KEY(pkey);
+  ASSERT_TRUE(ec);
+  const EC_GROUP *group = EC_KEY_get0_group(ec);
+  ASSERT_TRUE(group);
+  EXPECT_EQ(nid, EC_GROUP_get_curve_name(group));
+  EXPECT_FALSE(EC_KEY_get0_public_key(ec));
+  EXPECT_FALSE(EC_KEY_get0_private_key(ec));
+}
+
+static void ExpectECGroupAndKey(const EVP_PKEY *pkey, int nid) {
+  EC_KEY *ec = EVP_PKEY_get0_EC_KEY(pkey);
+  ASSERT_TRUE(ec);
+  const EC_GROUP *group = EC_KEY_get0_group(ec);
+  ASSERT_TRUE(group);
+  EXPECT_EQ(nid, EC_GROUP_get_curve_name(group));
+  EXPECT_TRUE(EC_KEY_get0_public_key(ec));
+  EXPECT_TRUE(EC_KEY_get0_private_key(ec));
+}
+
+TEST(EVPExtraTest, ECKeygen) {
+  // |EVP_PKEY_paramgen| may be used as an extremely roundabout way to get an
+  // |EC_GROUP|.
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_paramgen_init(ctx.get()));
+  ASSERT_TRUE(
+      EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), NID_X9_62_prime256v1));
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_paramgen(ctx.get(), &raw));
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+  raw = nullptr;
+  ExpectECGroupOnly(pkey.get(), NID_X9_62_prime256v1);
+
+  // That resulting |EVP_PKEY| may be used as a template for key generation.
+  ctx.reset(EVP_PKEY_CTX_new(pkey.get(), nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  pkey.reset(raw);
+  raw = nullptr;
+  ExpectECGroupAndKey(pkey.get(), NID_X9_62_prime256v1);
+
+  // |EVP_PKEY_paramgen| may also be skipped.
+  ctx.reset(EVP_PKEY_CTX_new_id(EVP_PKEY_EC, nullptr));
+  ASSERT_TRUE(ctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(ctx.get()));
+  ASSERT_TRUE(
+      EVP_PKEY_CTX_set_ec_paramgen_curve_nid(ctx.get(), NID_X9_62_prime256v1));
+  raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(ctx.get(), &raw));
+  pkey.reset(raw);
+  raw = nullptr;
+  ExpectECGroupAndKey(pkey.get(), NID_X9_62_prime256v1);
+}

@@ -415,7 +415,7 @@ int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx) {
   return 1;
 }
 
-int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **ppkey) {
+int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey) {
   if (!ctx || !ctx->pmeth || !ctx->pmeth->keygen) {
     OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
     return 0;
@@ -425,21 +425,60 @@ int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **ppkey) {
     return 0;
   }
 
-  if (!ppkey) {
+  if (!out_pkey) {
     return 0;
   }
 
-  if (!*ppkey) {
-    *ppkey = EVP_PKEY_new();
-    if (!*ppkey) {
+  if (!*out_pkey) {
+    *out_pkey = EVP_PKEY_new();
+    if (!*out_pkey) {
       OPENSSL_PUT_ERROR(EVP, ERR_LIB_EVP);
       return 0;
     }
   }
 
-  if (!ctx->pmeth->keygen(ctx, *ppkey)) {
-    EVP_PKEY_free(*ppkey);
-    *ppkey = NULL;
+  if (!ctx->pmeth->keygen(ctx, *out_pkey)) {
+    EVP_PKEY_free(*out_pkey);
+    *out_pkey = NULL;
+    return 0;
+  }
+  return 1;
+}
+
+int EVP_PKEY_paramgen_init(EVP_PKEY_CTX *ctx) {
+  if (!ctx || !ctx->pmeth || !ctx->pmeth->paramgen) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+  ctx->operation = EVP_PKEY_OP_PARAMGEN;
+  return 1;
+}
+
+int EVP_PKEY_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey) {
+  if (!ctx || !ctx->pmeth || !ctx->pmeth->paramgen) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+  if (ctx->operation != EVP_PKEY_OP_PARAMGEN) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATON_NOT_INITIALIZED);
+    return 0;
+  }
+
+  if (!out_pkey) {
+    return 0;
+  }
+
+  if (!*out_pkey) {
+    *out_pkey = EVP_PKEY_new();
+    if (!*out_pkey) {
+      OPENSSL_PUT_ERROR(EVP, ERR_LIB_EVP);
+      return 0;
+    }
+  }
+
+  if (!ctx->pmeth->paramgen(ctx, *out_pkey)) {
+    EVP_PKEY_free(*out_pkey);
+    *out_pkey = NULL;
     return 0;
   }
   return 1;

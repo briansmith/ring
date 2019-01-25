@@ -325,6 +325,7 @@ OPENSSL_EXPORT int EC_GROUP_get_order(const EC_GROUP *group, BIGNUM *order,
 OPENSSL_EXPORT void EC_GROUP_set_asn1_flag(EC_GROUP *group, int flag);
 
 #define OPENSSL_EC_NAMED_CURVE 0
+#define OPENSSL_EC_EXPLICIT_CURVE 1
 
 typedef struct ec_method_st EC_METHOD;
 

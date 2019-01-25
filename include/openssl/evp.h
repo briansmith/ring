@@ -646,9 +646,23 @@ OPENSSL_EXPORT int EVP_PKEY_derive(EVP_PKEY_CTX *ctx, uint8_t *key,
 OPENSSL_EXPORT int EVP_PKEY_keygen_init(EVP_PKEY_CTX *ctx);
 
 // EVP_PKEY_keygen performs a key generation operation using the values from
-// |ctx| and sets |*ppkey| to a fresh |EVP_PKEY| containing the resulting key.
+// |ctx|. If |*out_pkey| is non-NULL, it overwrites |*out_pkey| with the
+// resulting key. Otherwise, it sets |*out_pkey| to a newly-allocated |EVP_PKEY|
+// containing the result. It returns one on success or zero on error.
+OPENSSL_EXPORT int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey);
+
+// EVP_PKEY_paramgen_init initialises an |EVP_PKEY_CTX| for a parameter
+// generation operation. It should be called before |EVP_PKEY_paramgen|.
+//
 // It returns one on success or zero on error.
-OPENSSL_EXPORT int EVP_PKEY_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY **ppkey);
+OPENSSL_EXPORT int EVP_PKEY_paramgen_init(EVP_PKEY_CTX *ctx);
+
+// EVP_PKEY_paramgen performs a parameter generation using the values from
+// |ctx|. If |*out_pkey| is non-NULL, it overwrites |*out_pkey| with the
+// resulting parameters, but no key. Otherwise, it sets |*out_pkey| to a
+// newly-allocated |EVP_PKEY| containing the result. It returns one on success
+// or zero on error.
+OPENSSL_EXPORT int EVP_PKEY_paramgen(EVP_PKEY_CTX *ctx, EVP_PKEY **out_pkey);
 
 
 // Generic control functions.
@@ -744,6 +758,15 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_set0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
 // WARNING: the return value differs from the usual return value convention.
 OPENSSL_EXPORT int EVP_PKEY_CTX_get0_rsa_oaep_label(EVP_PKEY_CTX *ctx,
                                                     const uint8_t **out_label);
+
+
+// EC specific control functions.
+
+// EVP_PKEY_CTX_set_ec_paramgen_curve_nid sets the curve used for
+// |EVP_PKEY_keygen| or |EVP_PKEY_paramgen| operations to |nid|. It returns one
+// on success and zero on error.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_paramgen_curve_nid(EVP_PKEY_CTX *ctx,
+                                                          int nid);
 
 
 // Deprecated functions.
@@ -845,6 +868,11 @@ OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
 
 // EVP_PKEY_get1_DH returns NULL.
 OPENSSL_EXPORT DH *EVP_PKEY_get1_DH(const EVP_PKEY *pkey);
+
+// EVP_PKEY_CTX_set_ec_param_enc returns one if |encoding| is
+// |OPENSSL_EC_NAMED_CURVE| or zero with an error otherwise.
+OPENSSL_EXPORT int EVP_PKEY_CTX_set_ec_param_enc(EVP_PKEY_CTX *ctx,
+                                                 int encoding);
 
 
 // Preprocessor compatibility section (hidden).

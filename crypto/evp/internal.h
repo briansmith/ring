@@ -119,6 +119,7 @@ struct evp_pkey_asn1_method_st {
 #define EVP_PKEY_OP_ENCRYPT (1 << 6)
 #define EVP_PKEY_OP_DECRYPT (1 << 7)
 #define EVP_PKEY_OP_DERIVE (1 << 8)
+#define EVP_PKEY_OP_PARAMGEN (1 << 9)
 
 #define EVP_PKEY_OP_TYPE_SIG \
   (EVP_PKEY_OP_SIGN | EVP_PKEY_OP_VERIFY | EVP_PKEY_OP_VERIFYRECOVER)
@@ -128,7 +129,7 @@ struct evp_pkey_asn1_method_st {
 #define EVP_PKEY_OP_TYPE_NOGEN \
   (EVP_PKEY_OP_SIG | EVP_PKEY_OP_CRYPT | EVP_PKEY_OP_DERIVE)
 
-#define EVP_PKEY_OP_TYPE_GEN EVP_PKEY_OP_KEYGEN
+#define EVP_PKEY_OP_TYPE_GEN (EVP_PKEY_OP_KEYGEN | EVP_PKEY_OP_PARAMGEN)
 
 // EVP_PKEY_CTX_ctrl performs |cmd| on |ctx|. The |keytype| and |optype|
 // arguments can be -1 to specify that any type and operation are acceptable,
@@ -171,6 +172,7 @@ OPENSSL_EXPORT int EVP_PKEY_CTX_ctrl(EVP_PKEY_CTX *ctx, int keytype, int optype,
 #define EVP_PKEY_CTRL_GET_RSA_MGF1_MD (EVP_PKEY_ALG_CTRL + 10)
 #define EVP_PKEY_CTRL_RSA_OAEP_LABEL (EVP_PKEY_ALG_CTRL + 11)
 #define EVP_PKEY_CTRL_GET_RSA_OAEP_LABEL (EVP_PKEY_ALG_CTRL + 12)
+#define EVP_PKEY_CTRL_EC_PARAMGEN_CURVE_NID (EVP_PKEY_ALG_CTRL + 13)
 
 struct evp_pkey_ctx_st {
   // Method associated with this operation
@@ -218,6 +220,8 @@ struct evp_pkey_method_st {
                  const uint8_t *in, size_t inlen);
 
   int (*derive)(EVP_PKEY_CTX *ctx, uint8_t *key, size_t *keylen);
+
+  int (*paramgen)(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey);
 
   int (*ctrl)(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
 } /* EVP_PKEY_METHOD */;
