@@ -21,15 +21,23 @@
 //! to use the separate `expand` and `extract` functions if a single derived
 //! `PRK` (defined in RFC 5869) is used more than once.
 //!
-//! Salts have type `hmac::SigningKey` instead of `&[u8]` because they are
-//! frequently used for multiple HKDF operations, and it is more efficient to
-//! construct the `SigningKey` once and reuse it. Given a digest algorithm
-//! `digest_alg` and a salt `salt: &[u8]`, the `SigningKey` should be
-//! constructed as `hmac::SigningKey::new(digest_alg, salt)`.
-//!
 //! [RFC 5869]: https://tools.ietf.org/html/rfc5869
 
-use crate::hmac;
+use crate::{digest, hmac};
+
+/// A salt for HKDF operations.
+///
+/// Constructing a `Salt` is relatively expensive so it is good to reuse a
+/// `Salt` object instead of re-constructing `Salt`s with the same value.
+#[derive(Debug)]
+pub struct Salt(hmac::SigningKey);
+
+impl Salt {
+    /// Constructs a new `Salt` with the given value.
+    pub fn new(digest_algorithm: &'static digest::Algorithm, value: &[u8]) -> Self {
+        Salt(hmac::SigningKey::new(digest_algorithm, value))
+    }
+}
 
 /// Fills `out` with the output of the HKDF Extract-and-Expand operation for
 /// the given inputs.
@@ -38,8 +46,7 @@ use crate::hmac;
 ///
 /// ```
 /// # use ring::{hkdf, hmac};
-/// # fn foo(salt: &hmac::SigningKey, secret: &[u8], info: &[u8],
-/// #        out: &mut [u8]) {
+/// # fn foo(salt: &hkdf::Salt, secret: &[u8], info: &[u8], out: &mut [u8]) {
 /// let prk = hkdf::extract(salt, secret);
 /// hkdf::expand(&prk, info, out)
 /// # }
@@ -50,7 +57,7 @@ use crate::hmac;
 /// # Panics
 ///
 /// `extract_and_expand` panics if `expand` panics.
-pub fn extract_and_expand(salt: &hmac::SigningKey, secret: &[u8], info: &[u8], out: &mut [u8]) {
+pub fn extract_and_expand(salt: &Salt, secret: &[u8], info: &[u8], out: &mut [u8]) {
     let prk = extract(salt, secret);
     expand(&prk, info, out)
 }
@@ -62,7 +69,7 @@ pub fn extract_and_expand(salt: &hmac::SigningKey, secret: &[u8], info: &[u8], o
 /// | `salt.digest_algorithm()` | Hash
 /// | `secret`                  | IKM (Input Keying Material)
 /// | [return value]            | PRK
-pub fn extract(salt: &hmac::SigningKey, secret: &[u8]) -> hmac::SigningKey {
+pub fn extract(Salt(salt): &Salt, secret: &[u8]) -> Prk {
     // The spec says that if no salt is provided then a key of
     // `digest_alg.output_len` bytes of zeros is used. But, HMAC keys are
     // already zero-padded to the block length, which is larger than the output
@@ -70,8 +77,11 @@ pub fn extract(salt: &hmac::SigningKey, secret: &[u8]) -> hmac::SigningKey {
     // `SigningKey` constructor will automatically do the right thing for a
     // zero-length string.
     let prk = hmac::sign(salt, secret);
-    hmac::SigningKey::new(salt.digest_algorithm(), prk.as_ref())
+    Prk(hmac::SigningKey::new(salt.digest_algorithm(), prk.as_ref()))
 }
+
+/// A HKDF PRK (pseudorandom key).
+pub struct Prk(hmac::SigningKey);
 
 /// Fills `out` with the output of the HKDF-Expand operation for the given
 /// inputs.
@@ -92,7 +102,7 @@ pub fn extract(salt: &hmac::SigningKey, secret: &[u8]) -> hmac::SigningKey {
 /// `out.len() > 255 * salt.digest_algorithm().output_len`. This is the limit
 /// imposed by the HKDF specification, and is necessary to prevent overflow of
 /// the 8-bit iteration counter in the expansion step.
-pub fn expand(prk: &hmac::SigningKey, info: &[u8], out: &mut [u8]) {
+pub fn expand(Prk(prk): &Prk, info: &[u8], out: &mut [u8]) {
     let digest_alg = prk.digest_algorithm();
     assert!(out.len() <= 255 * digest_alg.output_len);
     assert!(digest_alg.block_len >= digest_alg.output_len);

@@ -31,7 +31,7 @@
     warnings
 )]
 
-use ring::{error, hkdf, hmac, test, test_file};
+use ring::{error, hkdf, test, test_file};
 
 #[test]
 fn hkdf_tests() {
@@ -46,7 +46,7 @@ fn hkdf_tests() {
         let _ = test_case.consume_bytes("PRK");
         let expected_out = test_case.consume_bytes("OKM");
 
-        let salt = hmac::SigningKey::new(digest_alg, &salt);
+        let salt = hkdf::Salt::new(digest_alg, &salt);
 
         let mut out = vec![0u8; expected_out.len()];
         hkdf::extract_and_expand(&salt, &secret, &info, &mut out);
