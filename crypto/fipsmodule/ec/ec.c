@@ -660,6 +660,22 @@ const char *EC_curve_nid2nist(int nid) {
   return NULL;
 }
 
+int EC_curve_nist2nid(const char *name) {
+  if (strcmp(name, "P-224") == 0) {
+    return NID_secp224r1;
+  }
+  if (strcmp(name, "P-256") == 0) {
+    return NID_X9_62_prime256v1;
+  }
+  if (strcmp(name, "P-384") == 0) {
+    return NID_secp384r1;
+  }
+  if (strcmp(name, "P-521") == 0) {
+    return NID_secp521r1;
+  }
+  return NID_undef;
+}
+
 EC_POINT *EC_POINT_new(const EC_GROUP *group) {
   if (group == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);

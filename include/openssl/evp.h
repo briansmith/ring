@@ -826,6 +826,20 @@ OPENSSL_EXPORT EVP_PKEY *d2i_PrivateKey(int type, EVP_PKEY **out,
 OPENSSL_EXPORT EVP_PKEY *d2i_AutoPrivateKey(EVP_PKEY **out, const uint8_t **inp,
                                             long len);
 
+// d2i_PublicKey parse a public key from |len| bytes at |*inp| in a type-
+// specific format specified by |type|. If |out| is not NULL then, on exit, a
+// pointer to the result is in |*out|. Note that, even if |*out| is already non-
+// NULL on entry, it will not be written to. Rather, a fresh |EVP_PKEY| is
+// allocated and the previous one is freed. On successful exit, |*inp| is
+// advanced past the decoded key. It returns the result or NULL on error.
+//
+// RSA keys are parsed as a DER-encoded RSAPublicKey (RFC 3447) structure.
+// Parsing EC keys is not supported by this function.
+//
+// Use |RSA_parse_public_key| instead.
+OPENSSL_EXPORT EVP_PKEY *d2i_PublicKey(int type, EVP_PKEY **out,
+                                       const uint8_t **inp, long len);
+
 // EVP_PKEY_get0_DH returns NULL.
 OPENSSL_EXPORT DH *EVP_PKEY_get0_DH(const EVP_PKEY *pkey);
 

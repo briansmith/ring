@@ -162,6 +162,11 @@ OPENSSL_EXPORT unsigned EC_GROUP_get_degree(const EC_GROUP *group);
 // for |NID_X9_62_prime256v1|.
 OPENSSL_EXPORT const char *EC_curve_nid2nist(int nid);
 
+// EC_curve_nist2nid returns the NID of the elliptic curve specified by the NIST
+// name |name|, or |NID_undef| if |name| is not a recognized name. For example,
+// it returns |NID_X9_62_prime256v1| for "P-256".
+OPENSSL_EXPORT int EC_curve_nist2nid(const char *name);
+
 
 // Points on elliptic curves.
 
