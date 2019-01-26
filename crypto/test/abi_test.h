@@ -90,7 +90,15 @@ struct alignas(16) Reg128 {
   CALLER_STATE_REGISTER(uint64_t, r14) \
   CALLER_STATE_REGISTER(uint64_t, r15)
 #endif  // OPENSSL_WINDOWS
-#endif  // X86_64 && SUPPORTS_ABI_TEST
+#elif defined(OPENSSL_X86)
+// See https://uclibc.org/docs/psABI-i386.pdf and
+// https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions?view=vs-2017
+#define LOOP_CALLER_STATE_REGISTERS()  \
+  CALLER_STATE_REGISTER(uint32_t, esi) \
+  CALLER_STATE_REGISTER(uint32_t, edi) \
+  CALLER_STATE_REGISTER(uint32_t, ebx) \
+  CALLER_STATE_REGISTER(uint32_t, ebp)
+#endif  // X86_64 || X86
 
 // Enable ABI testing if all of the following are true.
 //
@@ -257,6 +265,7 @@ crypto_word_t abi_test_trampoline(crypto_word_t func,
                                   const crypto_word_t *argv, size_t argc,
                                   crypto_word_t unwind);
 
+#if defined(OPENSSL_X86_64)
 // abi_test_unwind_start points at the instruction that starts unwind testing in
 // |abi_test_trampoline|. This is the value of the instruction pointer at the
 // first |SIGTRAP| during unwind testing.
@@ -285,6 +294,7 @@ void abi_test_bad_unwind_wrong_register(void);
 // abi_test_bad_unwind_temporary preserves the ABI, but temporarily corrupts the
 // storage space for a saved register, breaking unwind.
 void abi_test_bad_unwind_temporary(void);
+#endif  // OPENSSL_X86_64
 
 #if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)
 // abi_test_get_and_clear_direction_flag clears the direction flag. If the flag

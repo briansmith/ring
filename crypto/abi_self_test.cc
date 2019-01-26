@@ -48,6 +48,7 @@ TEST(ABITest, SanityCheck) {
   CHECK_ABI(abi_test_trampoline, reinterpret_cast<crypto_word_t>(TestFunction),
             &state, argv, 10, 0 /* no breakpoint */);
 
+#if defined(OPENSSL_X86_64)
   if (abi_test::UnwindTestsEnabled()) {
     EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_bad_unwind_wrong_register),
                             "was not recovered unwinding");
@@ -57,6 +58,7 @@ TEST(ABITest, SanityCheck) {
     CHECK_ABI_NO_UNWIND(abi_test_bad_unwind_wrong_register);
     CHECK_ABI_NO_UNWIND(abi_test_bad_unwind_temporary);
   }
+#endif  // OPENSSL_X86_64
 #endif  // SUPPORTS_ABI_TEST
 }
 
@@ -206,3 +208,59 @@ TEST(ABITest, TrampolineSEH) {
 #endif  // OPENSSL_WINDOWS
 
 #endif   // OPENSSL_X86_64 && SUPPORTS_ABI_TEST
+
+#if defined(OPENSSL_X86) && defined(SUPPORTS_ABI_TEST)
+extern "C" {
+void abi_test_clobber_eax(void);
+void abi_test_clobber_ebx(void);
+void abi_test_clobber_ecx(void);
+void abi_test_clobber_edx(void);
+void abi_test_clobber_esi(void);
+void abi_test_clobber_edi(void);
+void abi_test_clobber_ebp(void);
+void abi_test_clobber_xmm0(void);
+void abi_test_clobber_xmm1(void);
+void abi_test_clobber_xmm2(void);
+void abi_test_clobber_xmm3(void);
+void abi_test_clobber_xmm4(void);
+void abi_test_clobber_xmm5(void);
+void abi_test_clobber_xmm6(void);
+void abi_test_clobber_xmm7(void);
+}  // extern "C"
+
+TEST(ABITest, X86) {
+  // abi_test_trampoline hides unsaved registers from the caller, so we can
+  // safely call the abi_test_clobber_* functions below.
+  abi_test::internal::CallerState state;
+  RAND_bytes(reinterpret_cast<uint8_t *>(&state), sizeof(state));
+  CHECK_ABI_NO_UNWIND(abi_test_trampoline,
+                      reinterpret_cast<crypto_word_t>(abi_test_clobber_ebx),
+                      &state, nullptr, 0, 0 /* no breakpoint */);
+
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_eax);
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_ebx),
+                          "ebx was not restored after return");
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_ecx);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_edx);
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_edi),
+                          "edi was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_esi),
+                          "esi was not restored after return");
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_clobber_ebp),
+                          "ebp was not restored after return");
+
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm0);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm1);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm2);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm3);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm4);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm5);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm6);
+  CHECK_ABI_NO_UNWIND(abi_test_clobber_xmm7);
+
+  EXPECT_NONFATAL_FAILURE(CHECK_ABI_NO_UNWIND(abi_test_set_direction_flag),
+                          "Direction flag set after return");
+  EXPECT_EQ(0, abi_test_get_and_clear_direction_flag())
+      << "CHECK_ABI did not insulate the caller from direction flag errors";
+}
+#endif   // OPENSSL_X86 && SUPPORTS_ABI_TEST

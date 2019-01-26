@@ -124,7 +124,7 @@ TEST(GCMTest, ByteSwap) {
             CRYPTO_bswap8(UINT64_C(0x0102030405060708)));
 }
 
-#if defined(GHASH_ASM_X86_64) && defined(SUPPORTS_ABI_TEST)
+#if defined(SUPPORTS_ABI_TEST) && defined(GHASH_ASM)
 TEST(GCMTest, ABI) {
   static const uint64_t kH[2] = {
       UINT64_C(0x66e94bd4ef8a2c3b),
@@ -141,11 +141,19 @@ TEST(GCMTest, ABI) {
 
   alignas(16) u128 Htable[16];
   CHECK_ABI(gcm_init_4bit, Htable, kH);
+#if defined(GHASH_ASM_X86)
+  CHECK_ABI(gcm_gmult_4bit_mmx, X, Htable);
+  for (size_t blocks : kBlockCounts) {
+    CHECK_ABI(gcm_ghash_4bit_mmx, X, Htable, buf, 16 * blocks);
+  }
+#else
   CHECK_ABI(gcm_gmult_4bit, X, Htable);
   for (size_t blocks : kBlockCounts) {
     CHECK_ABI(gcm_ghash_4bit, X, Htable, buf, 16 * blocks);
   }
+#endif  // GHASH_ASM_X86
 
+#if defined(GHASH_ASM_X86_64)
   if (gcm_ssse3_capable()) {
     CHECK_ABI(gcm_init_ssse3, Htable, kH);
     CHECK_ABI(gcm_gmult_ssse3, X, Htable);
@@ -153,7 +161,9 @@ TEST(GCMTest, ABI) {
       CHECK_ABI(gcm_ghash_ssse3, X, Htable, buf, 16 * blocks);
     }
   }
+#endif  // GHASH_ASM_X86_64
 
+#if defined(GHASH_ASM_X86) || defined(GHASH_ASM_X86_64)
   if (crypto_gcm_clmul_enabled()) {
     CHECK_ABI(gcm_init_clmul, Htable, kH);
     CHECK_ABI(gcm_gmult_clmul, X, Htable);
@@ -161,6 +171,7 @@ TEST(GCMTest, ABI) {
       CHECK_ABI(gcm_ghash_clmul, X, Htable, buf, 16 * blocks);
     }
 
+#if defined(GHASH_ASM_X86_64)
     if (((OPENSSL_ia32cap_get()[1] >> 22) & 0x41) == 0x41) {  // AVX+MOVBE
       CHECK_ABI(gcm_init_avx, Htable, kH);
       CHECK_ABI(gcm_gmult_avx, X, Htable);
@@ -168,10 +179,12 @@ TEST(GCMTest, ABI) {
         CHECK_ABI(gcm_ghash_avx, X, Htable, buf, 16 * blocks);
       }
     }
+#endif  // GHASH_ASM_X86_64
   }
+#endif  // GHASH_ASM_X86 || GHASH_ASM_X86_64
 }
 
-#if defined(OPENSSL_WINDOWS)
+#if defined(OPENSSL_WINDOWS) && defined(GHASH_ASM_X86_64)
 // Sanity-check the SEH unwind codes in ghash-ssse3-x86_64.pl.
 // TODO(davidben): Implement unwind testing for SEH and remove this.
 static void GCMSSSE3ExceptionTest() {
@@ -203,5 +216,5 @@ static void GCMSSSE3ExceptionTest() {
 TEST(GCMTest, SEH) {
   CHECK_ABI_NO_UNWIND(GCMSSSE3ExceptionTest);
 }
-#endif  // OPENSSL_WINDOWS
-#endif  // GHASH_ASM_X86_64 && SUPPORTS_ABI_TEST
+#endif  // OPENSSL_WINDOWS && GHASH_ASM_X86_64
+#endif  // SUPPORTS_ABI_TEST && GHASH_ASM
