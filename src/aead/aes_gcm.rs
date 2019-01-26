@@ -77,7 +77,8 @@ fn aes_gcm_open(
 
 #[inline(always)] // Avoid branching on `direction`.
 fn aead(
-    key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_out: &mut [u8], direction: Direction) -> Tag {
+    key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_out: &mut [u8], direction: Direction,
+) -> Tag {
     let Key { aes_key, gcm_key } = match key {
         aead::KeyInner::AesGcm(key) => key,
         _ => unreachable!(),
