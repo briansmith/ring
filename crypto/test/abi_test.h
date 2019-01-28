@@ -127,6 +127,57 @@ crypto_word_t RunTrampoline(Result *out, crypto_word_t func,
                             const crypto_word_t *argv, size_t argc,
                             bool unwind);
 
+template <typename T>
+inline crypto_word_t ToWord(T t) {
+  static_assert(sizeof(T) <= sizeof(crypto_word_t),
+                "T is larger than crypto_word_t");
+  // Functions declared to take arguments smaller than native words cannot
+  // assume anything about the unused bits.
+  //
+  // TODO(davidben): Find authoritative citations for all supported assembly
+  // architectures. This is based on observed behavior in Clang, GCC, and MSVC
+  // for x86_64. The results are complex.
+  //
+  // ABI rules here may be inferred from two kinds of experiments:
+  //
+  // 1. When passing a value to a small-argument-taking function, does the
+  //    compiler ensure unused bits are cleared, sign-extended, etc.? Tests for
+  //    register parameters are confounded by x86_64's implicit clearing of
+  //    registers' upper halves, but passing some_u64 >> 1 usually clears this.
+  //
+  // 2. When compiling a small-argument-taking function, does the compiler make
+  //    assumptions about unused bits of arguments?
+  //
+  // Stack parameters are straightforward. As both caller and callee, all
+  // compilers consistently use the minimally-sized read and write. Both SysV
+  // and Windows ABIs tolerate and produce arbitrary values for unused stack
+  // parameter bits.
+  //
+  // MSVC also appears to tolerate and produce arbitrary values for unused
+  // register parameter bits. The SysV ABI is messier. GCC and Clang tolerate
+  // and produce arbitrary values for the upper 32 bits of each register, but
+  // types smaller than |int| are promoted before passing to a register. (Zero
+  // or sign extension depends on signedness of the type.) When compiling a
+  // callee, Clang takes advantage of this conversion, but I was unable to make
+  // GCC do so.
+  //
+  // Note that, although the Win64 rules are sufficient to require our assembly
+  // be conservative, we wish for |CHECK_ABI| to support C-compiled functions,
+  // so it must enforce the correct rules for each platform.
+  //
+  // This is all a mess so, for now, do not support parameter types smaller than
+  // |int| in |CHECK_ABI|. In practice, assembly functions only use 4- and
+  // 8-byte values. (And, given this behavior, we should avoid parameters
+  // smaller than native words in all new code.)
+  static_assert(sizeof(T) >= 4, "types under four bytes are complicated");
+  crypto_word_t ret;
+  // Filling extra bits with 0xaa will be vastly out of bounds for code
+  // expecting either sign- or zero-extension. (0xaa is 0b10101010.)
+  OPENSSL_memset(&ret, 0xaa, sizeof(ret));
+  OPENSSL_memcpy(&ret, &t, sizeof(t));
+  return ret;
+}
+
 // CheckImpl runs |func| on |args|, recording ABI errors in |out|. If |unwind|
 // is true and unwind tests have been enabled, |func| is single-stepped under an
 // unwind test.
@@ -144,7 +195,7 @@ inline crypto_word_t CheckImpl(Result *out, bool unwind, R (*func)(Args...),
 
   // Allocate one extra entry so MSVC does not complain about zero-size arrays.
   crypto_word_t argv[sizeof...(args) + 1] = {
-      (crypto_word_t)args...,
+      ToWord(args)...,
   };
   return RunTrampoline(out, reinterpret_cast<crypto_word_t>(func), argv,
                        sizeof...(args), unwind);
