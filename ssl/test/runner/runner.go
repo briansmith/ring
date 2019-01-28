@@ -14321,8 +14321,10 @@ func addOmitExtensionsTests() {
 					OmitExtensions: true,
 					// Disable all ServerHello extensions so
 					// OmitExtensions works.
-					NoExtendedMasterSecret: true,
-					NoRenegotiationInfo:    true,
+					NoExtendedMasterSecret:        true,
+					NoRenegotiationInfo:           true,
+					NoOCSPStapling:                true,
+					NoSignedCertificateTimestamps: true,
 				},
 			},
 		})
@@ -14338,8 +14340,10 @@ func addOmitExtensionsTests() {
 					EmptyExtensions: true,
 					// Disable all ServerHello extensions so
 					// EmptyExtensions works.
-					NoExtendedMasterSecret: true,
-					NoRenegotiationInfo:    true,
+					NoExtendedMasterSecret:        true,
+					NoRenegotiationInfo:           true,
+					NoOCSPStapling:                true,
+					NoSignedCertificateTimestamps: true,
 				},
 			},
 		})

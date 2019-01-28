@@ -881,10 +881,10 @@ ResendHelloRetryRequest:
 					data: certData,
 				}
 				if i == 0 {
-					if hs.clientHello.ocspStapling {
+					if hs.clientHello.ocspStapling && !c.config.Bugs.NoOCSPStapling {
 						cert.ocspResponse = hs.cert.OCSPStaple
 					}
-					if hs.clientHello.sctListSupported {
+					if hs.clientHello.sctListSupported && !c.config.Bugs.NoSignedCertificateTimestamps {
 						cert.sctList = hs.cert.SignedCertificateTimestampList
 					}
 					cert.duplicateExtensions = config.Bugs.SendDuplicateCertExtensions
@@ -1577,11 +1577,11 @@ func (hs *serverHandshakeState) doFullHandshake() error {
 	c := hs.c
 
 	isPSK := hs.suite.flags&suitePSK != 0
-	if !isPSK && hs.clientHello.ocspStapling && len(hs.cert.OCSPStaple) > 0 {
+	if !isPSK && hs.clientHello.ocspStapling && len(hs.cert.OCSPStaple) > 0 && !c.config.Bugs.NoOCSPStapling {
 		hs.hello.extensions.ocspStapling = true
 	}
 
-	if hs.clientHello.sctListSupported && len(hs.cert.SignedCertificateTimestampList) > 0 {
+	if hs.clientHello.sctListSupported && len(hs.cert.SignedCertificateTimestampList) > 0 && !c.config.Bugs.NoSignedCertificateTimestamps {
 		hs.hello.extensions.sctList = hs.cert.SignedCertificateTimestampList
 	}
 
