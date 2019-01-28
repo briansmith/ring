@@ -2405,6 +2405,55 @@ TEST_F(BNTest, BNMulMontABI) {
 }
 #endif   // OPENSSL_BN_ASM_MONT && SUPPORTS_ABI_TEST
 
+#if defined(OPENSSL_BN_ASM_MONT5) && defined(SUPPORTS_ABI_TEST)
+TEST_F(BNTest, BNMulMont5ABI) {
+  for (size_t words : {4, 5, 6, 7, 8, 16, 32}) {
+    SCOPED_TRACE(words);
+
+    bssl::UniquePtr<BIGNUM> m(BN_new());
+    ASSERT_TRUE(m);
+    ASSERT_TRUE(BN_set_bit(m.get(), 0));
+    ASSERT_TRUE(BN_set_bit(m.get(), words * BN_BITS2 - 1));
+    bssl::UniquePtr<BN_MONT_CTX> mont(
+        BN_MONT_CTX_new_for_modulus(m.get(), ctx()));
+    ASSERT_TRUE(mont);
+
+    std::vector<BN_ULONG> r(words), a(words), b(words), table(words * 32);
+    a[0] = 1;
+    b[0] = 42;
+
+    bn_mul_mont(r.data(), a.data(), b.data(), mont->N.d, mont->n0, words);
+    CHECK_ABI(bn_scatter5, r.data(), words, table.data(), 13);
+    for (size_t i = 0; i < 32; i++) {
+      bn_mul_mont(r.data(), a.data(), b.data(), mont->N.d, mont->n0, words);
+      bn_scatter5(r.data(), words, table.data(), i);
+    }
+    CHECK_ABI(bn_gather5, r.data(), words, table.data(), 13);
+
+    CHECK_ABI(bn_mul_mont_gather5, r.data(), r.data(), table.data(), m->d,
+              mont->n0, words, 13);
+    CHECK_ABI(bn_mul_mont_gather5, r.data(), a.data(), table.data(), m->d,
+              mont->n0, words, 13);
+
+    if (words % 8 == 0) {
+      CHECK_ABI(bn_power5, r.data(), r.data(), table.data(), m->d, mont->n0,
+                words, 13);
+      CHECK_ABI(bn_power5, r.data(), a.data(), table.data(), m->d, mont->n0,
+                words, 13);
+      EXPECT_EQ(1, CHECK_ABI(bn_from_montgomery, r.data(), r.data(), nullptr,
+                             m->d, mont->n0, words));
+      EXPECT_EQ(1, CHECK_ABI(bn_from_montgomery, r.data(), a.data(), nullptr,
+                             m->d, mont->n0, words));
+    } else {
+      EXPECT_EQ(0, CHECK_ABI(bn_from_montgomery, r.data(), r.data(), nullptr,
+                             m->d, mont->n0, words));
+      EXPECT_EQ(0, CHECK_ABI(bn_from_montgomery, r.data(), a.data(), nullptr,
+                             m->d, mont->n0, words));
+    }
+  }
+}
+#endif  // OPENSSL_BN_ASM_MONT5 && SUPPORTS_ABI_TEST
+
 #if defined(RSAZ_ENABLED) && defined(SUPPORTS_ABI_TEST)
 TEST_F(BNTest, RSAZABI) {
   if (!rsaz_avx2_capable()) {

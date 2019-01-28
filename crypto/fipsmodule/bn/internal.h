@@ -357,6 +357,44 @@ int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
                 const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 #endif
 
+#if !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64)
+#define OPENSSL_BN_ASM_MONT5
+
+// bn_mul_mont_gather5 multiples loads index |power| of |table|, multiplies it
+// by |ap| modulo |np|, and stores the result in |rp|. The values are |num|
+// words long and represented in Montgomery form. |n0| is a pointer to the
+// corresponding field in |BN_MONT_CTX|.
+void bn_mul_mont_gather5(BN_ULONG *rp, const BN_ULONG *ap,
+                         const BN_ULONG *table, const BN_ULONG *np,
+                         const BN_ULONG *n0, int num, int power);
+
+// bn_scatter5 stores |inp| to index |power| of |table|. |inp| and each entry of
+// |table| are |num| words long. |power| must be less than 32. |table| must be
+// 32*|num| words long.
+void bn_scatter5(const BN_ULONG *inp, size_t num, BN_ULONG *table,
+                 size_t power);
+
+// bn_gather5 loads index |power| of |table| and stores it in |out|. |out| and
+// each entry of |table| are |num| words long. |power| must be less than 32.
+void bn_gather5(BN_ULONG *out, size_t num, BN_ULONG *table, size_t power);
+
+// bn_power5 squares |ap| five times and multiplies it by the value stored at
+// index |power| of |table|, modulo |np|. It stores the result in |rp|. The
+// values are |num| words long and represented in Montgomery form. |n0| is a
+// pointer to the corresponding field in |BN_MONT_CTX|. |num| must be divisible
+// by 8.
+void bn_power5(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *table,
+               const BN_ULONG *np, const BN_ULONG *n0, int num, int power);
+
+// bn_from_montgomery converts |ap| from Montgomery form modulo |np| and writes
+// the result in |rp|, each of which is |num| words long. It returns one on
+// success and zero if it cannot handle inputs of length |num|. |n0| is a
+// pointer to the corresponding field in |BN_MONT_CTX|.
+int bn_from_montgomery(BN_ULONG *rp, const BN_ULONG *ap,
+                       const BN_ULONG *not_used, const BN_ULONG *np,
+                       const BN_ULONG *n0, int num);
+#endif  // !OPENSSL_NO_ASM && OPENSSL_X86_64
+
 uint64_t bn_mont_n0(const BIGNUM *n);
 
 // bn_mod_exp_base_2_consttime calculates r = 2**p (mod n). |p| must be larger
