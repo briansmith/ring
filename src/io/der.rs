@@ -41,11 +41,15 @@ pub enum Tag {
     ContextSpecificConstructed3 = CONTEXT_SPECIFIC | CONSTRUCTED | 3,
 }
 
+impl From<Tag> for usize {
+    fn from(tag: Tag) -> Self { tag as usize }
+}
+
 pub fn expect_tag_and_get_value<'a>(
     input: &mut untrusted::Reader<'a>, tag: Tag,
 ) -> Result<untrusted::Input<'a>, error::Unspecified> {
     let (actual_tag, inner) = read_tag_and_get_value(input)?;
-    if (tag as usize) != (actual_tag as usize) {
+    if usize::from(tag) != usize::from(actual_tag) {
         return Err(error::Unspecified);
     }
     Ok(inner)
@@ -63,17 +67,17 @@ pub fn read_tag_and_get_value<'a>(
     // is encoded in the seven remaining bits of that byte. Otherwise, those
     // seven bits represent the number of bytes used to encode the length.
     let length = match input.read_byte()? {
-        n if (n & 0x80) == 0 => n as usize,
+        n if (n & 0x80) == 0 => usize::from(n),
         0x81 => {
             let second_byte = input.read_byte()?;
             if second_byte < 128 {
                 return Err(error::Unspecified); // Not the canonical encoding.
             }
-            second_byte as usize
+            usize::from(second_byte)
         },
         0x82 => {
-            let second_byte = input.read_byte()? as usize;
-            let third_byte = input.read_byte()? as usize;
+            let second_byte = usize::from(input.read_byte()?);
+            let third_byte = usize::from(input.read_byte()?);
             let combined = (second_byte << 8) | third_byte;
             if combined < 256 {
                 return Err(error::Unspecified); // Not the canonical encoding.
