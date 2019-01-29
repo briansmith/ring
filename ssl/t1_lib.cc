@@ -300,7 +300,7 @@ static const uint16_t kDefaultGroupsServer[] = {
     SSL_CURVE_X25519,
     SSL_CURVE_SECP256R1,
     SSL_CURVE_SECP384R1,
-};;
+};
 
 Span<const uint16_t> tls1_get_grouplist(const SSL_HANDSHAKE *hs) {
   if (!hs->config->supported_group_list.empty()) {

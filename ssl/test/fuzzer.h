@@ -414,6 +414,13 @@ class TLSFuzzer {
       return false;
     }
 
+    static const int kCurves[] = {NID_CECPQ2, NID_X25519, NID_X9_62_prime256v1,
+                                  NID_secp384r1, NID_secp521r1};
+    if (!SSL_CTX_set1_curves(ctx_.get(), kCurves,
+                             OPENSSL_ARRAY_SIZE(kCurves))) {
+      return false;
+    }
+
     SSL_CTX_set_early_data_enabled(ctx_.get(), 1);
 
     SSL_CTX_set_next_proto_select_cb(ctx_.get(), NPNSelectCallback, nullptr);
