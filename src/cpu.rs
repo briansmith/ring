@@ -47,6 +47,14 @@ pub(crate) fn features() -> Features {
             {
                 arm::linux_setup();
             }
+
+            #[cfg(all(
+                target_os = "fuchsia",
+                any(target_arch = "aarch64")
+            ))]
+            {
+                arm::fuchsia_setup();
+            }
         });
     }
 
@@ -110,6 +118,47 @@ pub(crate) mod arm {
         }
     }
 
+    #[cfg(all(
+        target_os = "fuchsia",
+        any(target_arch = "aarch64")
+    ))]
+    pub fn fuchsia_setup() {
+        type zx_status_t = i32;
+
+        #[link(name = "zircon")]
+        extern "C" {
+            fn zx_system_get_features(kind: u32, features: *mut u32) -> zx_status_t;
+        }
+
+        const ZX_OK: i32 = 0;
+        const ZX_FEATURE_KIND_CPU: u32 = 0;
+        const ZX_ARM64_FEATURE_ISA_ASIMD: u32 = 1 << 2;
+        const ZX_ARM64_FEATURE_ISA_AES: u32 = 1 << 3;
+        const ZX_ARM64_FEATURE_ISA_PMULL: u32 = 1 << 4;
+        const ZX_ARM64_FEATURE_ISA_SHA2: u32 = 1 << 6;
+
+        let mut caps = 0;
+        let rc = unsafe { zx_system_get_features(ZX_FEATURE_KIND_CPU, &mut caps) };
+
+        // OpenSSL and BoringSSL don't enable any other features if NEON isn't
+        // available.
+        if rc == ZX_OK && (caps & ZX_ARM64_FEATURE_ISA_ASIMD == ZX_ARM64_FEATURE_ISA_ASIMD) {
+            let mut features = NEON.mask;
+
+            if caps & ZX_ARM64_FEATURE_ISA_AES == ZX_ARM64_FEATURE_ISA_AES {
+                features |= AES.mask;
+            }
+            if caps & ZX_ARM64_FEATURE_ISA_PMULL == ZX_ARM64_FEATURE_ISA_PMULL {
+                features |= PMULL.mask;
+            }
+            if caps & ZX_ARM64_FEATURE_ISA_SHA2 == ZX_ARM64_FEATURE_ISA_SHA2 {
+                features |= 1 << 4;
+            }
+
+            unsafe { GFp_armcap_P = features };
+        }
+    }
+
     pub(crate) struct Feature {
         #[cfg_attr(
             any(
@@ -133,7 +182,7 @@ pub(crate) mod arm {
             }
 
             #[cfg(all(
-                any(target_os = "android", target_os = "linux"),
+                any(target_os = "android", target_os = "linux", target_os = "fuchsia"),
                 any(target_arch = "arm", target_arch = "aarch64")
             ))]
             {
@@ -167,7 +216,7 @@ pub(crate) mod arm {
     };
 
     #[cfg(all(
-        any(target_os = "android", target_os = "linux"),
+        any(target_os = "android", target_os = "linux", target_os = "fuchsia"),
         any(target_arch = "arm", target_arch = "aarch64")
     ))]
     extern "C" {
