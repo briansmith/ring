@@ -292,22 +292,9 @@ static const uint16_t kDefaultGroups[] = {
     SSL_CURVE_SECP384R1,
 };
 
-// TLS 1.3 servers will pick CECPQ2 if offered by a client, but it's not enabled
-// by default for clients.
-static const uint16_t kDefaultGroupsServer[] = {
-    // CECPQ2 is not yet enabled by default.
-    // SSL_CURVE_CECPQ2,
-    SSL_CURVE_X25519,
-    SSL_CURVE_SECP256R1,
-    SSL_CURVE_SECP384R1,
-};
-
 Span<const uint16_t> tls1_get_grouplist(const SSL_HANDSHAKE *hs) {
   if (!hs->config->supported_group_list.empty()) {
     return hs->config->supported_group_list;
-  }
-  if (hs->ssl->server) {
-    return Span<const uint16_t>(kDefaultGroupsServer);
   }
   return Span<const uint16_t>(kDefaultGroups);
 }
