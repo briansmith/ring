@@ -32,11 +32,145 @@ pub(crate) fn features() -> Features {
         let () = INIT.call_once(|| {
             #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
             {
-                extern "C" {
-                    fn GFp_cpuid_setup();
+                #[cfg(any(feature = "force_std_detection", all(target_env = "sgx" /*, target_vendor = "fortanix"*/)))]
+                {
+                    extern "C" {
+                        static mut GFp_ia32cap_P: [u32; 4];
+                    }
+                    let [l1edx, l1ecx, l7ebx, l7ecx] = unsafe { &mut GFp_ia32cap_P };
+
+                    if is_x86_feature_detected!("aes") {
+                        *l1ecx |= 1<<25;
+                    }
+                    if is_x86_feature_detected!("pclmulqdq") {
+                        *l1ecx |= 1<<1;
+                    }
+                    if is_x86_feature_detected!("rdrand") {
+                        *l1ecx |= 1<<30;
+                    }
+                    if is_x86_feature_detected!("rdseed") {
+                        *l7ebx |= 1<<18;
+                    }
+                    if is_x86_feature_detected!("tsc") {
+                        *l1edx |= 1<<4;
+                    }
+                    if is_x86_feature_detected!("mmx") {
+                        *l1edx |= 1<<23;
+                    }
+                    if is_x86_feature_detected!("sse") {
+                        *l1edx |= 1<<25;
+                    }
+                    if is_x86_feature_detected!("sse2") {
+                        *l1edx |= 1<<26;
+                    }
+                    if is_x86_feature_detected!("sse3") {
+                        *l1ecx |= 1<<0;
+                    }
+                    if is_x86_feature_detected!("ssse3") {
+                        *l1ecx |= 1<<9;
+                    }
+                    if is_x86_feature_detected!("sse4.1") {
+                        *l1ecx |= 1<<19;
+                    }
+                    if is_x86_feature_detected!("sse4.2") {
+                        *l1ecx |= 1<<20;
+                    }
+                    if is_x86_feature_detected!("sha") {
+                        *l7ebx |= 1<<29;
+                    }
+                    if is_x86_feature_detected!("avx") {
+                        *l1ecx |= 1<<28;
+                    }
+                    if is_x86_feature_detected!("avx2") {
+                        *l7ebx |= 1<<5;
+                    }
+                    if is_x86_feature_detected!("avx512f") {
+                        *l7ebx |= 1<<16;
+                    }
+                    if is_x86_feature_detected!("avx512cd") {
+                        *l7ebx |= 1<<28;
+                    }
+                    if is_x86_feature_detected!("avx512er") {
+                        *l7ebx |= 1<<27;
+                    }
+                    if is_x86_feature_detected!("avx512pf") {
+                        *l7ebx |= 1<<26;
+                    }
+                    if is_x86_feature_detected!("avx512bw") {
+                        *l7ebx |= 1<<30;
+                    }
+                    if is_x86_feature_detected!("avx512dq") {
+                        *l7ebx |= 1<<17;
+                    }
+                    if is_x86_feature_detected!("avx512vl") {
+                        *l7ebx |= 1<<31;
+                    }
+                    if is_x86_feature_detected!("avx512ifma") {
+                        *l7ebx |= 1<<21;
+                    }
+                    if is_x86_feature_detected!("avx512vbmi") {
+                        *l7ecx |= 1<<1;
+                    }
+                    if is_x86_feature_detected!("avx512vpopcntdq") {
+                        *l7ecx |= 1<<14;
+                    }
+                    if is_x86_feature_detected!("fma") {
+                        *l1ecx |= 1<<12;
+                    }
+                    if is_x86_feature_detected!("bmi1") {
+                        *l7ebx |= 1<<3;
+                    }
+                    if is_x86_feature_detected!("bmi2") {
+                        *l7ebx |= 1<<8;
+                    }
+                    if is_x86_feature_detected!("popcnt") {
+                        *l1ecx |= 1<<23;
+                    }
+                    if is_x86_feature_detected!("fxsr") {
+                        *l1edx |= 1<<24;
+                    }
+                    if is_x86_feature_detected!("xsave") {
+                        *l1ecx |= 1<<26;
+                    }
+                    /* will be stable on 1.33.0
+                    if is_x86_feature_detected!("cmpxchg16b") {
+                        *l1ecx |= 1<<13;
+                    }
+                    if is_x86_feature_detected!("adx") {
+                        *l7ebx |= 1<<19;
+                    }
+                    */
+
+                    // Rust can't detect the MOVBE feature yet, but it's widely
+                    // available.
+                    *l1ecx |= 1<<22;
+
+                    // This bit is reserved in the CPUID specification, but the
+                    // BoringSSL detection code uses it to represent that this
+                    // is an Intel CPU. However, this bit is only used in
+                    // conjunction with the AVX bit to test for presence of
+                    // AVX, thus serving no purpose. Always set it.
+                    *l1edx |= 1<<30;
+
+                    // Features that don't map to leaf 1 or leaf 7:
+                    //   Leaf 0xd:
+                    //   * xsaveopt
+                    //   * xsaves
+                    //   * xsavec
+                    //   Leaf 0x8000_0001:
+                    //   * sse4a
+                    //   * abm
+                    //   * lzcnt
+                    //   * tbm
                 }
-                unsafe {
-                    GFp_cpuid_setup();
+                #[cfg(not(any(feature = "force_std_detection", all(target_env = "sgx" /*, target_vendor = "fortanix"*/))))]
+                {
+                    extern "C" {
+                        fn GFp_cpuid_setup();
+                    }
+                    unsafe {
+                        GFp_cpuid_setup();
+                    }
                 }
             }
 

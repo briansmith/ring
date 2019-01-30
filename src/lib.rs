@@ -30,6 +30,12 @@
 //!         <code>dev_urandom_fallback</code> feature is disabled, such
 //!         fallbacks will not occur. See the documentation for
 //!         <code>rand::SystemRandom</code> for more details.
+//! <tr><td><code>force_std_detection</code>
+//!     <td>This is only applicable to x86. By default, <i>ring</i> will use
+//!         custom logic with the CPUID instruction to figure out which CPU
+//!         features are available. With this feature, the standard
+//!         <code>std::is_x86_feature_detected</code> macro will be used
+//!         instead.
 //! <tr><td><code>use_heap (default)</code>
 //!     <td>Enable features that require use of the heap, RSA in particular.
 //! </table>
