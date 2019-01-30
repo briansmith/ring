@@ -106,6 +106,21 @@ higher to build aarch64 binaries.
 
 For other options, see the documentation in the toolchain file.
 
+To debug the resulting binaries on an Android device with `gdb`, run the
+commands below. Replace `ARCH` with the architecture of the target device, e.g.
+`arm` or `arm64`.
+
+    adb push ${ANDROID_NDK}/prebuilt/android-ARCH/gdbserver/gdbserver \
+        /data/local/tmp
+    adb forward tcp:5039 tcp:5039
+    adb shell /data/local/tmp/gdbserver :5039 /path/on/device/to/binary
+
+Then run the following in a separate shell. Replace `HOST` with the OS and
+architecture of the host machine, e.g. `linux-x86_64`.
+
+    ${ANDROID_NDK}/prebuilt/HOST/bin/gdb
+    target remote :5039  # in gdb
+
 ### Building for iOS
 
 To build for iOS, pass `-DCMAKE_OSX_SYSROOT=iphoneos` and
