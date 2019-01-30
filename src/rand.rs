@@ -60,6 +60,8 @@ pub trait SecureRandom: sealed::Sealed {
 /// On Windows, `fill` is implemented using the platform's API for secure
 /// random number generation.
 ///
+/// On SGX, `fill()` is implemented using the `RDRAND` instruction.
+///
 /// Otherwise, `fill()` is implemented by reading from `/dev/urandom`. (This is
 /// something that should be improved for any platform that adds something
 /// better.)
@@ -100,6 +102,7 @@ impl sealed::Sealed for SystemRandom {}
         target_os = "macos",
         target_os = "ios",
         target_os = "fuchsia",
+        target_env = "sgx",
         windows
     ))
 ))]
@@ -119,6 +122,9 @@ use self::darwin::fill as fill_impl;
 
 #[cfg(any(target_os = "fuchsia"))]
 use self::fuchsia::fill as fill_impl;
+
+#[cfg(target_env = "sgx")]
+use self::rdrandom::fill as fill_impl;
 
 use crate::sealed;
 
@@ -309,6 +315,36 @@ mod fuchsia {
     #[link(name = "zircon")]
     extern "C" {
         fn zx_cprng_draw(buffer: *mut u8, length: usize);
+    }
+}
+
+#[cfg(all(target_env = "sgx", target_feature = "rdrand"))]
+mod rdrandom {
+    use crate::{bssl, error};
+
+    fn rdrand_loop() -> Result<[u8; 8], error::Unspecified> {
+        extern "C" {
+            fn CRYPTO_rdrand(out: &mut [u8; 8]) -> bssl::Result;
+        }
+
+        for _ in 0..10 {
+            let mut buf = [0u8; 8];
+            match Result::from(unsafe { CRYPTO_rdrand(&mut buf) }) {
+                Ok(()) => return Ok(buf),
+                Err(_) => continue
+            }
+        }
+        Err(error::Unspecified)
+    }
+
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        for dst in dest.chunks_mut(8) {
+            let src = rdrand_loop()?;
+            let dst_len = dst.len();
+            dst.copy_from_slice(&src[..dst_len])
+        }
+
+        Ok(())
     }
 }
 
