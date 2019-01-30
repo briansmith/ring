@@ -1189,11 +1189,15 @@ bool ssl_parse_cert_chain(uint8_t *out_alert,
 // an empty certificate list. It returns true on success and false on error.
 bool ssl_add_cert_chain(SSL_HANDSHAKE *hs, CBB *cbb);
 
-// ssl_cert_check_digital_signature_key_usage parses the DER-encoded, X.509
-// certificate in |in| and returns true if doesn't specify a key usage or, if it
-// does, if it includes digitalSignature. Otherwise it pushes to the error queue
-// and returns false.
-bool ssl_cert_check_digital_signature_key_usage(const CBS *in);
+enum ssl_key_usage_t {
+  key_usage_digital_signature = 0,
+  key_usage_encipherment = 2,
+};
+
+// ssl_cert_check_key_usage parses the DER-encoded, X.509 certificate in |in|
+// and returns true if doesn't specify a key usage or, if it does, if it
+// includes |bit|. Otherwise it pushes to the error queue and returns false.
+bool ssl_cert_check_key_usage(const CBS *in, enum ssl_key_usage_t bit);
 
 // ssl_cert_parse_pubkey extracts the public key from the DER-encoded, X.509
 // certificate in |in|. It returns an allocated |EVP_PKEY| or else returns
@@ -2542,6 +2546,11 @@ struct SSL_CONFIG {
   // we'll accept Channel IDs from clients. For a client, means that we'll
   // advertise support.
   bool channel_id_enabled : 1;
+
+  // If enforce_rsa_key_usage is true, the handshake will fail if the
+  // keyUsage extension is present and incompatible with the TLS usage.
+  // This field is not read until after certificate verification.
+  bool enforce_rsa_key_usage : 1;
 
   // retain_only_sha256_of_client_certs is true if we should compute the SHA256
   // hash of the peer's certificate and then discard it to save memory and

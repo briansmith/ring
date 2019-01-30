@@ -14147,8 +14147,178 @@ func addECDSAKeyUsageTests() {
 				Certificates: []Certificate{cert},
 			},
 			shouldFail:    true,
-			expectedError: ":ECC_CERT_NOT_FOR_SIGNING:",
+			expectedError: ":KEY_USAGE_BIT_INCORRECT:",
 		})
+	}
+}
+
+func addRSAKeyUsageTests() {
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		panic(err)
+	}
+
+	dsTemplate := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now(),
+
+		KeyUsage:              x509.KeyUsageDigitalSignature,
+		BasicConstraintsValid: true,
+	}
+
+	encTemplate := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now(),
+
+		KeyUsage:              x509.KeyUsageKeyEncipherment,
+		BasicConstraintsValid: true,
+	}
+
+	dsDerBytes, err := x509.CreateCertificate(rand.Reader, &dsTemplate, &dsTemplate, &priv.PublicKey, priv)
+	if err != nil {
+		panic(err)
+	}
+
+	encDerBytes, err := x509.CreateCertificate(rand.Reader, &encTemplate, &encTemplate, &priv.PublicKey, priv)
+	if err != nil {
+		panic(err)
+	}
+
+	dsCert := Certificate{
+		Certificate: [][]byte{dsDerBytes},
+		PrivateKey:  priv,
+	}
+
+	encCert := Certificate{
+		Certificate: [][]byte{encDerBytes},
+		PrivateKey:  priv,
+	}
+
+	dsSuites := []uint16{
+		TLS_AES_128_GCM_SHA256,
+		TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+		TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
+	}
+	encSuites := []uint16{
+		TLS_RSA_WITH_AES_128_GCM_SHA256,
+		TLS_RSA_WITH_AES_128_CBC_SHA,
+	}
+
+	for _, ver := range tlsVersions {
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "RSAKeyUsage-WantSignature-GotEncipherment-" + ver.name,
+			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
+				Certificates: []Certificate{encCert},
+				CipherSuites: dsSuites,
+			},
+			shouldFail:    true,
+			expectedError: ":KEY_USAGE_BIT_INCORRECT:",
+			flags: []string{
+				"-enforce-rsa-key-usage",
+			},
+		})
+
+		testCases = append(testCases, testCase{
+			testType: clientTest,
+			name:     "RSAKeyUsage-WantSignature-GotSignature-" + ver.name,
+			config: Config{
+				MinVersion:   ver.version,
+				MaxVersion:   ver.version,
+				Certificates: []Certificate{dsCert},
+				CipherSuites: dsSuites,
+			},
+			flags: []string{
+				"-enforce-rsa-key-usage",
+			},
+		})
+
+		// TLS 1.3 removes the encipherment suites.
+		if ver.version < VersionTLS13 {
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				name:     "RSAKeyUsage-WantEncipherment-GotEncipherment" + ver.name,
+				config: Config{
+					MinVersion:   ver.version,
+					MaxVersion:   ver.version,
+					Certificates: []Certificate{encCert},
+					CipherSuites: encSuites,
+				},
+				flags: []string{
+					"-enforce-rsa-key-usage",
+				},
+			})
+
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				name:     "RSAKeyUsage-WantEncipherment-GotSignature-" + ver.name,
+				config: Config{
+					MinVersion:   ver.version,
+					MaxVersion:   ver.version,
+					Certificates: []Certificate{dsCert},
+					CipherSuites: encSuites,
+				},
+				shouldFail:    true,
+				expectedError: ":KEY_USAGE_BIT_INCORRECT:",
+				flags: []string{
+					"-enforce-rsa-key-usage",
+				},
+			})
+
+			// In 1.2 and below, we should not enforce without the enforce-rsa-key-usage flag.
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				name:     "RSAKeyUsage-WantSignature-GotEncipherment-Unenforced" + ver.name,
+				config: Config{
+					MinVersion:   ver.version,
+					MaxVersion:   ver.version,
+					Certificates: []Certificate{dsCert},
+					CipherSuites: encSuites,
+				},
+			})
+
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				name:     "RSAKeyUsage-WantEncipherment-GotSignature-Unenforced" + ver.name,
+				config: Config{
+					MinVersion:   ver.version,
+					MaxVersion:   ver.version,
+					Certificates: []Certificate{encCert},
+					CipherSuites: dsSuites,
+				},
+			})
+
+		}
+
+		if ver.version >= VersionTLS13 {
+			// In 1.3 and above, we enforce keyUsage even without the flag.
+			testCases = append(testCases, testCase{
+				testType: clientTest,
+				name:     "RSAKeyUsage-WantSignature-GotEncipherment-Enforced" + ver.name,
+				config: Config{
+					MinVersion:   ver.version,
+					MaxVersion:   ver.version,
+					Certificates: []Certificate{encCert},
+					CipherSuites: dsSuites,
+				},
+				shouldFail:    true,
+				expectedError: ":KEY_USAGE_BIT_INCORRECT:",
+			})
+
+		}
 	}
 }
 
@@ -14995,6 +15165,7 @@ func main() {
 	addCertificateTests()
 	addRetainOnlySHA256ClientCertTests()
 	addECDSAKeyUsageTests()
+	addRSAKeyUsageTests()
 	addExtraHandshakeTests()
 	addOmitExtensionsTests()
 	addCertCompressionTests()

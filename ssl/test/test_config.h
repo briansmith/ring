@@ -165,6 +165,7 @@ struct TestConfig {
   bool fail_ocsp_callback = false;
   bool install_cert_compression_algs = false;
   bool reverify_on_resume = false;
+  bool enforce_rsa_key_usage = false;
   bool is_handshaker_supported = false;
   bool handshaker_resume = false;
   std::string handshaker_path;

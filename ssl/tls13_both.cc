@@ -212,7 +212,8 @@ bool tls13_process_certificate(SSL_HANDSHAKE *hs, const SSLMessage &msg,
       }
       // TLS 1.3 always uses certificate keys for signing thus the correct
       // keyUsage is enforced.
-      if (!ssl_cert_check_digital_signature_key_usage(&certificate)) {
+      if (!ssl_cert_check_key_usage(&certificate,
+                                    key_usage_digital_signature)) {
         ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
         return false;
       }

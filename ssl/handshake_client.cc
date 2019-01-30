@@ -1248,6 +1248,27 @@ static enum ssl_hs_wait_t do_send_client_key_exchange(SSL_HANDSHAKE *hs) {
   Array<uint8_t> pms;
   uint32_t alg_k = hs->new_cipher->algorithm_mkey;
   uint32_t alg_a = hs->new_cipher->algorithm_auth;
+  if (ssl_cipher_uses_certificate_auth(hs->new_cipher)) {
+    CRYPTO_BUFFER *leaf =
+        sk_CRYPTO_BUFFER_value(hs->new_session->certs.get(), 0);
+    CBS leaf_cbs;
+    CBS_init(&leaf_cbs, CRYPTO_BUFFER_data(leaf), CRYPTO_BUFFER_len(leaf));
+
+    // Check the key usage matches the cipher suite. We do this unconditionally
+    // for non-RSA certificates. In particular, it's needed to distinguish ECDH
+    // certificates, which we do not support, from ECDSA certificates.
+    // Historically, we have not checked RSA key usages, so it is controlled by
+    // a flag for now. See https://crbug.com/795089.
+    ssl_key_usage_t intended_use = (alg_k & SSL_kRSA)
+                                       ? key_usage_encipherment
+                                       : key_usage_digital_signature;
+    if (ssl->config->enforce_rsa_key_usage ||
+        EVP_PKEY_id(hs->peer_pubkey.get()) != EVP_PKEY_RSA) {
+      if (!ssl_cert_check_key_usage(&leaf_cbs, intended_use)) {
+        return ssl_hs_error;
+      }
+    }
+  }
 
   // If using a PSK key exchange, prepare the pre-shared key.
   unsigned psk_len = 0;

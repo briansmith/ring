@@ -246,7 +246,7 @@ static enum leaf_cert_and_privkey_result_t check_leaf_cert_and_privkey(
   // An ECC certificate may be usable for ECDH or ECDSA. We only support ECDSA
   // certificates, so sanity-check the key usage extension.
   if (pubkey->type == EVP_PKEY_EC &&
-      !ssl_cert_check_digital_signature_key_usage(&cert_cbs)) {
+      !ssl_cert_check_key_usage(&cert_cbs, key_usage_digital_signature)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_UNKNOWN_CERTIFICATE_TYPE);
     return leaf_cert_and_privkey_error;
   }
@@ -540,7 +540,7 @@ bool ssl_cert_check_private_key(const CERT *cert, const EVP_PKEY *privkey) {
   return ssl_compare_public_and_private_key(pubkey.get(), privkey);
 }
 
-bool ssl_cert_check_digital_signature_key_usage(const CBS *in) {
+bool ssl_cert_check_key_usage(const CBS *in, enum ssl_key_usage_t bit) {
   CBS buf = *in;
 
   CBS tbs_cert, outer_extensions;
@@ -606,8 +606,8 @@ bool ssl_cert_check_digital_signature_key_usage(const CBS *in) {
       return false;
     }
 
-    if (!CBS_asn1_bitstring_has_bit(&bit_string, 0)) {
-      OPENSSL_PUT_ERROR(SSL, SSL_R_ECC_CERT_NOT_FOR_SIGNING);
+    if (!CBS_asn1_bitstring_has_bit(&bit_string, bit)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_KEY_USAGE_BIT_INCORRECT);
       return false;
     }
 
@@ -708,20 +708,6 @@ bool ssl_check_leaf_certificate(SSL_HANDSHAKE *hs, EVP_PKEY *pkey,
   if (!(hs->new_cipher->algorithm_auth & ssl_cipher_auth_mask_for_key(pkey))) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_WRONG_CERTIFICATE_TYPE);
     return false;
-  }
-
-  // Check key usages for all key types but RSA. This is needed to distinguish
-  // ECDH certificates, which we do not support, from ECDSA certificates. In
-  // principle, we should check RSA key usages based on cipher, but this breaks
-  // buggy antivirus deployments. Other key types are always used for signing.
-  //
-  // TODO(davidben): Get more recent data on RSA key usages.
-  if (EVP_PKEY_id(pkey) != EVP_PKEY_RSA) {
-    CBS leaf_cbs;
-    CBS_init(&leaf_cbs, CRYPTO_BUFFER_data(leaf), CRYPTO_BUFFER_len(leaf));
-    if (!ssl_cert_check_digital_signature_key_usage(&leaf_cbs)) {
-      return false;
-    }
   }
 
   if (EVP_PKEY_id(pkey) == EVP_PKEY_EC) {
