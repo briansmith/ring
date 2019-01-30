@@ -137,3 +137,41 @@ mod sealed {
     // ```
     pub trait Sealed {}
 }
+
+/// # Information about using *ring* in SGX
+///
+/// ## CPU feature detection
+/// On `x86_64-fortanix-unknown-sgx`, feature detection is done using the
+/// `std::is_x86_feature_detected` macro, which currently only supports
+/// features enabled at compile-time. You must enable at least the `aes` and
+/// `pclmul` features, otherwise *ring* will panic at runtime. See the [GitHub
+/// issue](https://github.com/fortanix/rust-sgx/issues/26) for more
+/// information.
+///
+/// To set compile-time features, you can either specify them as an environment
+/// variable:
+///
+/// ```text
+/// RUSTFLAGS="-C target-feature=+aes,+pclmul"
+/// ```
+///
+/// Or you may configure them per target in [`.cargo/config`].
+///
+/// [`.cargo/config`]: https://doc.rust-lang.org/cargo/reference/config.html#configuration-keys
+///
+/// ## Entropy source
+/// The entropy source used in SGX is the hardware random number generator
+/// provided by the RDRAND instruction.
+///
+/// ## Nightly only
+/// The `x86_64-fortanix-unknown-sgx` target is only available on nightly, and
+/// *ring* Continuous Builds only build it for nightly. See the [GitHub
+/// issue](https://github.com/briansmith/ring/issues/779) for more information.
+///
+/// ## Continuous Testing
+/// While the *ring* test suite works in SGX, and it is run manually from time
+/// to time, it doesn't run automatically as part of a Continuous Testing
+/// setup. See the [GitHub issue](https://github.com/briansmith/ring/issues/778)
+/// for more information.
+#[cfg(target_env = "sgx")]
+pub mod sgx {}
