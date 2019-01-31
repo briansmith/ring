@@ -251,19 +251,26 @@ impl SigningKey {
         };
 
         const IPAD: u8 = 0x36;
+
+        let mut padded_key = [IPAD; digest::MAX_BLOCK_LEN];
+        let padded_key = &mut padded_key[..digest_alg.block_len];
+
+        // If the key is shorter than one block then we're supposed to act like
+        // it is padded with zero bytes up to the block length. `x ^ 0 == x` so
+        // we can just leave the trailing bytes of `padded_key` untouched.
+        for (padded_key, key_value) in padded_key.iter_mut().zip(key_value.iter()) {
+            *padded_key ^= *key_value;
+        }
+        key.ctx_prototype.inner.update(&padded_key);
+
         const OPAD: u8 = 0x5C;
 
-        for b in key_value {
-            key.ctx_prototype.inner.update(&[IPAD ^ b]);
-            key.ctx_prototype.outer.update(&[OPAD ^ b]);
+        // Remove the `IPAD` masking, leaving the unmasked padded key, then
+        // mask with `OPAD`, all in one step.
+        for b in padded_key.iter_mut() {
+            *b ^= IPAD ^ OPAD;
         }
-
-        // If the key is shorter than one block then act as though the key is
-        // padded with zeros.
-        for _ in key_value.len()..digest_alg.block_len {
-            key.ctx_prototype.inner.update(&[IPAD]);
-            key.ctx_prototype.outer.update(&[OPAD]);
-        }
+        key.ctx_prototype.outer.update(&padded_key);
 
         key
     }
