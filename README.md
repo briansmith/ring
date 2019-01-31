@@ -216,8 +216,8 @@ the table below. The C compilers listed are used for compiling the C portions.
 <tr><td>Android</td>
     <td>32&#8209;bit&nbsp;ARM</td>
     <td>Built using the Android SDK 24.4.1 and Android NDK 17 targeting API
-        level 26, since [API level 26 is the minimum that the Google Play Store
-        allows](https://developer.android.com/distribute/best-practices/develop/target-sdk).
+        level 26, since API level 26 is the minimum the Google Play Store allows,
+        according to https://developer.android.com/distribute/best-practices/develop/target-sdk.
         The tests are tested using the Android emulator using API level 24
         system images since those were (as of 2019-1-30) the latest images available.</td>
 </tr>
