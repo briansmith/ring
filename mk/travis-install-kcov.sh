@@ -24,10 +24,9 @@ set -ex
 
 # kcov 26 or newer is needed when getting coverage information for Rust.
 # kcov 31 is needed so `kcov --version` doesn't exit with status 1.
-# kcov 36 is needed for accurate coverage on macOS.
 KCOV_VERSION=${KCOV_VERSION:-36}
 
-KCOV_INSTALL_PREFIX="${HOME}/kcov"
+KCOV_INSTALL_PREFIX="${HOME}/kcov-${TARGET_X}"
 
 # Check if kcov has been cached on travis.
 if [[ -f "$KCOV_INSTALL_PREFIX/bin/kcov" ]]; then
