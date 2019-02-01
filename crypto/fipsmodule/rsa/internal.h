@@ -83,6 +83,7 @@ int rsa_default_private_transform(RSA *rsa, uint8_t *out, const uint8_t *in,
 
 BN_BLINDING *BN_BLINDING_new(void);
 void BN_BLINDING_free(BN_BLINDING *b);
+void BN_BLINDING_invalidate(BN_BLINDING *b);
 int BN_BLINDING_convert(BIGNUM *n, BN_BLINDING *b, const BIGNUM *e,
                         const BN_MONT_CTX *mont_ctx, BN_CTX *ctx);
 int BN_BLINDING_invert(BIGNUM *n, const BN_BLINDING *b, BN_MONT_CTX *mont_ctx,

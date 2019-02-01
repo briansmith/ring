@@ -70,6 +70,7 @@
 #include "../bn/internal.h"
 #include "../../internal.h"
 #include "../delocate.h"
+#include "../fork_detect.h"
 
 
 static int check_modulus_and_exponent_sizes(const RSA *rsa) {
@@ -365,7 +366,20 @@ static BN_BLINDING *rsa_blinding_get(RSA *rsa, unsigned *index_used,
   assert(rsa->mont_n != NULL);
 
   BN_BLINDING *ret = NULL;
+  const uint64_t fork_generation = CRYPTO_get_fork_generation();
   CRYPTO_MUTEX_lock_write(&rsa->lock);
+
+  // Wipe the blinding cache on |fork|.
+  if (rsa->blinding_fork_generation != fork_generation) {
+    for (unsigned i = 0; i < rsa->num_blindings; i++) {
+      // The inuse flag must be zero unless we were forked from a
+      // multi-threaded process, in which case calling back into BoringSSL is
+      // forbidden.
+      assert(rsa->blindings_inuse[i] == 0);
+      BN_BLINDING_invalidate(rsa->blindings[i]);
+    }
+    rsa->blinding_fork_generation = fork_generation;
+  }
 
   uint8_t *const free_inuse_flag =
       OPENSSL_memchr(rsa->blindings_inuse, 0, rsa->num_blindings);

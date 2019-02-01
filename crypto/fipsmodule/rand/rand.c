@@ -29,6 +29,7 @@
 #include "internal.h"
 #include "../../internal.h"
 #include "../delocate.h"
+#include "../fork_detect.h"
 
 
 // It's assumed that the operating system always has an unfailing source of
@@ -57,6 +58,7 @@ static const unsigned kReseedInterval = 4096;
 // rand_thread_state contains the per-thread state for the RNG.
 struct rand_thread_state {
   CTR_DRBG_STATE drbg;
+  uint64_t fork_generation;
   // calls is the number of generate calls made on |drbg| since it was last
   // (re)seeded. This is bound by |kReseedInterval|.
   unsigned calls;
@@ -240,6 +242,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
     return;
   }
 
+  const uint64_t fork_generation = CRYPTO_get_fork_generation();
+
   // Additional data is mixed into every CTR-DRBG call to protect, as best we
   // can, against forks & VM clones. We do not over-read this information and
   // don't reseed with it so, from the point of view of FIPS, this doesn't
@@ -251,9 +255,9 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       !rdrand(additional_data, sizeof(additional_data))) {
     // Without a hardware RNG to save us from address-space duplication, the OS
     // entropy is used. This can be expensive (one read per |RAND_bytes| call)
-    // and so can be disabled by applications that we have ensured don't fork
-    // and aren't at risk of VM cloning.
-    if (rand_fork_unsafe_buffering_enabled()) {
+    // and so is disabled when we have fork detection, or if the application has
+    // promised not to fork.
+    if (fork_generation != 0 || rand_fork_unsafe_buffering_enabled()) {
       OPENSSL_memset(additional_data, 0, sizeof(additional_data));
     } else if (!have_rdrand()) {
       // No alternative so block for OS entropy.
@@ -291,6 +295,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       abort();
     }
     state->calls = 0;
+    state->fork_generation = fork_generation;
 
 #if defined(BORINGSSL_FIPS)
     if (state != &stack_state) {
@@ -307,7 +312,8 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
 #endif
   }
 
-  if (state->calls >= kReseedInterval) {
+  if (state->calls >= kReseedInterval ||
+      state->fork_generation != fork_generation) {
     uint8_t seed[CTR_DRBG_ENTROPY_LEN];
     rand_get_seed(state, seed);
 #if defined(BORINGSSL_FIPS)
@@ -325,6 +331,7 @@ void RAND_bytes_with_additional_data(uint8_t *out, size_t out_len,
       abort();
     }
     state->calls = 0;
+    state->fork_generation = fork_generation;
   } else {
 #if defined(BORINGSSL_FIPS)
     CRYPTO_STATIC_MUTEX_lock_read(thread_states_list_lock_bss_get());

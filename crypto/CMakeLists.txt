@@ -513,6 +513,7 @@ add_executable(
   fipsmodule/ec/ec_test.cc
   fipsmodule/ec/p256-x86_64_test.cc
   fipsmodule/ecdsa/ecdsa_test.cc
+  fipsmodule/fork_detect_test.cc
   fipsmodule/md5/md5_test.cc
   fipsmodule/modes/gcm_test.cc
   fipsmodule/rand/ctrdrbg_test.cc
