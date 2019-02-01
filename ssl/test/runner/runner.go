@@ -14153,7 +14153,7 @@ func addECDSAKeyUsageTests() {
 }
 
 func addRSAKeyUsageTests() {
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	priv := rsaCertificate.PrivateKey.(*rsa.PrivateKey)
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
