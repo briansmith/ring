@@ -31,19 +31,11 @@ matrix:
       rust: stable
       os: linux
       dist: trusty
-      addons:
-        apt:
-          packages:
-            - expect
 
     - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: stable
       os: linux
       dist: trusty
-      addons:
-        apt:
-          packages:
-            - expect
 
     - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-clang FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: stable
@@ -248,19 +240,11 @@ matrix:
       rust: nightly
       os: linux
       dist: trusty
-      addons:
-        apt:
-          packages:
-            - expect
 
     - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: nightly
       os: linux
       dist: trusty
-      addons:
-        apt:
-          packages:
-            - expect
 
     - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-clang FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
@@ -450,19 +434,11 @@ matrix:
       rust: beta
       os: linux
       dist: trusty
-      addons:
-        apt:
-          packages:
-            - expect
 
     - env: TARGET_X=armv7-linux-androideabi CC_X=arm-linux-androideabi-clang FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
       rust: beta
       os: linux
       dist: trusty
-      addons:
-        apt:
-          packages:
-            - expect
 
     - env: TARGET_X=aarch64-linux-android CC_X=aarch64-linux-android-clang FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta

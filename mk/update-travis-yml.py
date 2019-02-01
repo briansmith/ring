@@ -195,8 +195,6 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
     if target == "arm-unknown-linux-gnueabihf":
         packages += ["gcc-arm-linux-gnueabihf",
                      "libc6-dev-armhf-cross"]
-    if target == "armv7-linux-androideabi":
-        packages += ["expect"]
 
     if arch == "i686":
         if kcov == True:
