@@ -110,20 +110,8 @@ armv7-linux-androideabi)
 
   find $target_dir -maxdepth 1 -name ring-* ! -name "*.*" \
     -exec adb push {} /data/ring-test \;
-  for testfile in `find src crypto -name "*_test*.txt" -o -name "*test*.pk8"`; do
-    adb shell "mkdir -p /data/`dirname $testfile`"
-    adb push $testfile /data/$testfile
-  done
-  adb shell "mkdir -p /data/third_party/NIST"
-  adb push third_party/NIST/SHAVS /data/third_party/NIST/SHAVS
   adb shell "cd /data && ./ring-test" 2>&1 | tee /tmp/ring-test-log
   grep "test result: ok" /tmp/ring-test-log
-
-  # Run the integration/functional tests.
-  for testfile in `find tests -name "*_test*.txt" -o -name "*test*.pk8"`; do
-    adb shell "mkdir -p /data/`dirname $testfile`"
-    adb push $testfile /data/$testfile
-  done
 
   for test_exe in `find $target_dir -maxdepth 1 -name "*test*" -type f ! -name "*.*" `; do
       adb push $test_exe /data/`basename $test_exe`

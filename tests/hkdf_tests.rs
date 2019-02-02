@@ -31,11 +31,11 @@
     warnings
 )]
 
-use ring::{error, hkdf, hmac, test};
+use ring::{error, hkdf, hmac, test, test_file};
 
 #[test]
 fn hkdf_tests() {
-    test::from_file("tests/hkdf_tests.txt", |section, test_case| {
+    test::run(test_file!("hkdf_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
         let digest_alg = test_case
             .consume_digest_alg("Hash")
@@ -43,11 +43,7 @@ fn hkdf_tests() {
         let secret = test_case.consume_bytes("IKM");
         let salt = test_case.consume_bytes("salt");
         let info = test_case.consume_bytes("info");
-
-        // The PRK is an intermediate value that we can't test, but we
-        // have to consume it to make test_util::from_file happy.
         let _ = test_case.consume_bytes("PRK");
-
         let expected_out = test_case.consume_bytes("OKM");
 
         let salt = hmac::SigningKey::new(digest_alg, &salt);

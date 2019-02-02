@@ -1224,8 +1224,8 @@ mod tests {
 
     #[test]
     fn test_elem_exp_consttime() {
-        test::from_file(
-            "src/rsa/bigint_elem_exp_consttime_tests.txt",
+        test::run(
+            test_file!("bigint_elem_exp_consttime_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
@@ -1253,28 +1253,31 @@ mod tests {
     // verification and signing tests.
     #[test]
     fn test_elem_mul() {
-        test::from_file("src/rsa/bigint_elem_mul_tests.txt", |section, test_case| {
-            assert_eq!(section, "");
+        test::run(
+            test_file!("bigint_elem_mul_tests.txt"),
+            |section, test_case| {
+                assert_eq!(section, "");
 
-            let m = consume_modulus::<M>(test_case, "M");
-            let expected_result = consume_elem(test_case, "ModMul", &m);
-            let a = consume_elem(test_case, "A", &m);
-            let b = consume_elem(test_case, "B", &m);
+                let m = consume_modulus::<M>(test_case, "M");
+                let expected_result = consume_elem(test_case, "ModMul", &m);
+                let a = consume_elem(test_case, "A", &m);
+                let b = consume_elem(test_case, "B", &m);
 
-            let b = into_encoded(b, &m);
-            let a = into_encoded(a, &m);
-            let actual_result = elem_mul(&a, b, &m);
-            let actual_result = actual_result.into_unencoded(&m);
-            assert_elem_eq(&actual_result, &expected_result);
+                let b = into_encoded(b, &m);
+                let a = into_encoded(a, &m);
+                let actual_result = elem_mul(&a, b, &m);
+                let actual_result = actual_result.into_unencoded(&m);
+                assert_elem_eq(&actual_result, &expected_result);
 
-            Ok(())
-        })
+                Ok(())
+            },
+        )
     }
 
     #[test]
     fn test_elem_squared() {
-        test::from_file(
-            "src/rsa/bigint_elem_squared_tests.txt",
+        test::run(
+            test_file!("bigint_elem_squared_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
@@ -1294,8 +1297,8 @@ mod tests {
 
     #[test]
     fn test_elem_reduced() {
-        test::from_file(
-            "src/rsa/bigint_elem_reduced_tests.txt",
+        test::run(
+            test_file!("bigint_elem_reduced_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
@@ -1320,8 +1323,8 @@ mod tests {
 
     #[test]
     fn test_elem_reduced_once() {
-        test::from_file(
-            "src/rsa/bigint_elem_reduced_once_tests.txt",
+        test::run(
+            test_file!("bigint_elem_reduced_once_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 

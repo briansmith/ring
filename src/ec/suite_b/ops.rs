@@ -473,7 +473,7 @@ mod tests {
     fn p256_elem_add_test() {
         elem_add_test(
             &p256::PUBLIC_SCALAR_OPS,
-            "src/ec/suite_b/ops/p256_elem_sum_tests.txt",
+            test_file!("ops/p256_elem_sum_tests.txt"),
         );
     }
 
@@ -481,12 +481,12 @@ mod tests {
     fn p384_elem_add_test() {
         elem_add_test(
             &p384::PUBLIC_SCALAR_OPS,
-            "src/ec/suite_b/ops/p384_elem_sum_tests.txt",
+            test_file!("ops/p384_elem_sum_tests.txt"),
         );
     }
 
-    fn elem_add_test(ops: &PublicScalarOps, file_path: &str) {
-        test::from_file(file_path, |section, test_case| {
+    fn elem_add_test(ops: &PublicScalarOps, test_file: test::File) {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
             let cops = ops.public_key_ops.common;
@@ -517,16 +517,16 @@ mod tests {
         elem_sub_test(
             &p384::COMMON_OPS,
             GFp_p384_elem_sub,
-            "src/ec/suite_b/ops/p384_elem_sum_tests.txt",
+            test_file!("ops/p384_elem_sum_tests.txt"),
         );
     }
 
     fn elem_sub_test(
         ops: &CommonOps,
         elem_sub: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, b: *const Limb),
-        file_path: &str,
+        test_file: test::File,
     ) {
-        test::from_file(file_path, |section, test_case| {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
             let a = consume_elem(ops, test_case, "a");
@@ -568,15 +568,15 @@ mod tests {
         elem_div_by_2_test(
             &p384::COMMON_OPS,
             GFp_p384_elem_div_by_2,
-            "src/ec/suite_b/ops/p384_elem_div_by_2_tests.txt",
+            test_file!("ops/p384_elem_div_by_2_tests.txt"),
         );
     }
 
     fn elem_div_by_2_test(
         ops: &CommonOps, elem_div_by_2: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
-        file_path: &str,
+        test_file: test::File,
     ) {
-        test::from_file(file_path, |section, test_case| {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
             let a = consume_elem(ops, test_case, "a");
@@ -601,7 +601,7 @@ mod tests {
         elem_neg_test(
             &p256::COMMON_OPS,
             GFp_nistz256_neg,
-            "src/ec/suite_b/ops/p256_elem_neg_tests.txt",
+            test_file!("ops/p256_elem_neg_tests.txt"),
         );
     }
 
@@ -613,15 +613,15 @@ mod tests {
         elem_neg_test(
             &p384::COMMON_OPS,
             GFp_p384_elem_neg,
-            "src/ec/suite_b/ops/p384_elem_neg_tests.txt",
+            test_file!("ops/p384_elem_neg_tests.txt"),
         );
     }
 
     fn elem_neg_test(
         ops: &CommonOps, elem_neg: unsafe extern "C" fn(r: *mut Limb, a: *const Limb),
-        file_path: &str,
+        test_file: test::File,
     ) {
-        test::from_file(file_path, |section, test_case| {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
             let a = consume_elem(ops, test_case, "a");
@@ -651,22 +651,16 @@ mod tests {
 
     #[test]
     fn p256_elem_mul_test() {
-        elem_mul_test(
-            &p256::COMMON_OPS,
-            "src/ec/suite_b/ops/p256_elem_mul_tests.txt",
-        );
+        elem_mul_test(&p256::COMMON_OPS, test_file!("ops/p256_elem_mul_tests.txt"));
     }
 
     #[test]
     fn p384_elem_mul_test() {
-        elem_mul_test(
-            &p384::COMMON_OPS,
-            "src/ec/suite_b/ops/p384_elem_mul_tests.txt",
-        );
+        elem_mul_test(&p384::COMMON_OPS, test_file!("ops/p384_elem_mul_tests.txt"));
     }
 
-    fn elem_mul_test(ops: &CommonOps, file_path: &str) {
-        test::from_file(file_path, |section, test_case| {
+    fn elem_mul_test(ops: &CommonOps, test_file: test::File) {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
             let mut a = consume_elem(ops, test_case, "a");
@@ -683,7 +677,7 @@ mod tests {
     fn p256_scalar_mul_test() {
         scalar_mul_test(
             &p256::SCALAR_OPS,
-            "src/ec/suite_b/ops/p256_scalar_mul_tests.txt",
+            test_file!("ops/p256_scalar_mul_tests.txt"),
         );
     }
 
@@ -691,12 +685,12 @@ mod tests {
     fn p384_scalar_mul_test() {
         scalar_mul_test(
             &p384::SCALAR_OPS,
-            "src/ec/suite_b/ops/p384_scalar_mul_tests.txt",
+            test_file!("ops/p384_scalar_mul_tests.txt"),
         );
     }
 
-    fn scalar_mul_test(ops: &ScalarOps, file_path: &str) {
-        test::from_file(file_path, |section, test_case| {
+    fn scalar_mul_test(ops: &ScalarOps, test_file: test::File) {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let cops = ops.common;
             let mut a = consume_scalar(cops, test_case, "a");
@@ -717,7 +711,7 @@ mod tests {
         scalar_square_test(
             &p256::SCALAR_OPS,
             GFp_p256_scalar_sqr_rep_mont,
-            "src/ec/suite_b/ops/p256_scalar_square_tests.txt",
+            test_file!("ops/p256_scalar_square_tests.txt"),
         );
     }
 
@@ -726,9 +720,9 @@ mod tests {
 
     fn scalar_square_test(
         ops: &ScalarOps, sqr_rep: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, rep: c::int),
-        file_path: &str,
+        test_file: test::File,
     ) {
-        test::from_file(file_path, |section, test_case| {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let cops = &ops.common;
             let a = consume_scalar(cops, test_case, "a");
@@ -771,7 +765,7 @@ mod tests {
     fn p256_point_sum_test() {
         point_sum_test(
             &p256::PRIVATE_KEY_OPS,
-            "src/ec/suite_b/ops/p256_point_sum_tests.txt",
+            test_file!("ops/p256_point_sum_tests.txt"),
         );
     }
 
@@ -779,12 +773,12 @@ mod tests {
     fn p384_point_sum_test() {
         point_sum_test(
             &p384::PRIVATE_KEY_OPS,
-            "src/ec/suite_b/ops/p384_point_sum_tests.txt",
+            test_file!("ops/p384_point_sum_tests.txt"),
         );
     }
 
-    fn point_sum_test(ops: &PrivateKeyOps, file_path: &str) {
-        test::from_file(file_path, |section, test_case| {
+    fn point_sum_test(ops: &PrivateKeyOps, test_file: test::File) {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
             let a = consume_jacobian_point(ops, test_case, "a");
@@ -810,7 +804,7 @@ mod tests {
         point_sum_mixed_test(
             &p256::PRIVATE_KEY_OPS,
             GFp_nistz256_point_add_affine,
-            "src/ec/suite_b/ops/p256_point_sum_mixed_tests.txt",
+            test_file!("ops/p256_point_sum_mixed_tests.txt"),
         );
     }
 
@@ -823,9 +817,9 @@ mod tests {
             a: *const Limb, // [ops.num_limbs*3]
             b: *const Limb, // [ops.num_limbs*2]
         ),
-        file_path: &str,
+        test_file: test::File,
     ) {
-        test::from_file(file_path, |section, test_case| {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
             let a = consume_jacobian_point(ops, test_case, "a");
@@ -854,7 +848,7 @@ mod tests {
         point_double_test(
             &p256::PRIVATE_KEY_OPS,
             GFp_nistz256_point_double,
-            "src/ec/suite_b/ops/p256_point_double_tests.txt",
+            test_file!("ops/p256_point_double_tests.txt"),
         );
     }
 
@@ -869,7 +863,7 @@ mod tests {
         point_double_test(
             &p384::PRIVATE_KEY_OPS,
             GFp_nistz384_point_double,
-            "src/ec/suite_b/ops/p384_point_double_tests.txt",
+            test_file!("ops/p384_point_double_tests.txt"),
         );
     }
 
@@ -879,9 +873,9 @@ mod tests {
             r: *mut Limb,   // [ops.num_limbs*3]
             a: *const Limb, // [ops.num_limbs*3]
         ),
-        file_path: &str,
+        test_file: test::File,
     ) {
-        test::from_file(file_path, |section, test_case| {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
 
             let a = consume_jacobian_point(ops, test_case, "a");
@@ -902,7 +896,7 @@ mod tests {
     fn p256_point_mul_test() {
         point_mul_tests(
             &p256::PRIVATE_KEY_OPS,
-            "src/ec/suite_b/ops/p256_point_mul_tests.txt",
+            test_file!("ops/p256_point_mul_tests.txt"),
         );
     }
 
@@ -910,12 +904,12 @@ mod tests {
     fn p384_point_mul_test() {
         point_mul_tests(
             &p384::PRIVATE_KEY_OPS,
-            "src/ec/suite_b/ops/p384_point_mul_tests.txt",
+            test_file!("ops/p384_point_mul_tests.txt"),
         );
     }
 
-    fn point_mul_tests(ops: &PrivateKeyOps, file_path: &str) {
-        test::from_file(file_path, |section, test_case| {
+    fn point_mul_tests(ops: &PrivateKeyOps, test_file: test::File) {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let p_scalar = consume_scalar(ops.common, test_case, "p_scalar");
             let (x, y) = match consume_point(ops, test_case, "p") {
@@ -936,16 +930,16 @@ mod tests {
         point_mul_serialized_test(
             &p256::PRIVATE_KEY_OPS,
             &p256::PUBLIC_KEY_OPS,
-            "src/ec/suite_b/ops/p256_point_mul_serialized_tests.txt",
+            test_file!("ops/p256_point_mul_serialized_tests.txt"),
         );
     }
 
     fn point_mul_serialized_test(
-        priv_ops: &PrivateKeyOps, pub_ops: &PublicKeyOps, file_path: &str,
+        priv_ops: &PrivateKeyOps, pub_ops: &PublicKeyOps, test_file: test::File,
     ) {
         let cops = pub_ops.common;
 
-        test::from_file(file_path, |section, test_case| {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let p_scalar = consume_scalar(cops, test_case, "p_scalar");
 
@@ -982,7 +976,7 @@ mod tests {
     fn p256_point_mul_base_test() {
         point_mul_base_tests(
             &p256::PRIVATE_KEY_OPS,
-            "src/ec/suite_b/ops/p256_point_mul_base_tests.txt",
+            test_file!("ops/p256_point_mul_base_tests.txt"),
         );
     }
 
@@ -990,12 +984,12 @@ mod tests {
     fn p384_point_mul_base_test() {
         point_mul_base_tests(
             &p384::PRIVATE_KEY_OPS,
-            "src/ec/suite_b/ops/p384_point_mul_base_tests.txt",
+            test_file!("ops/p384_point_mul_base_tests.txt"),
         );
     }
 
-    fn point_mul_base_tests(ops: &PrivateKeyOps, file_path: &str) {
-        test::from_file(file_path, |section, test_case| {
+    fn point_mul_base_tests(ops: &PrivateKeyOps, test_file: test::File) {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section, "");
             let g_scalar = consume_scalar(ops.common, test_case, "g_scalar");
             let expected_result = consume_point(ops, test_case, "r");

@@ -291,7 +291,7 @@ mod tests {
 
     #[test]
     pub fn test_aes() {
-        test::from_file("src/aead/aes_tests.txt", |section, test_case| {
+        test::run(test_file!("aes_tests.txt"), |section, test_case| {
             assert_eq!(section, "");
             let key = consume_key(test_case, "Key");
             let input = test_case.consume_bytes("Input");

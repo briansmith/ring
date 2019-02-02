@@ -147,7 +147,7 @@ mod tests {
     // problem spreads to other platforms.
     #[test]
     pub fn chacha20_tests() {
-        test::from_file("src/aead/chacha_tests.txt", |section, test_case| {
+        test::run(test_file!("chacha_tests.txt"), |section, test_case| {
             assert_eq!(section, "");
 
             let key = test_case.consume_bytes("Key");

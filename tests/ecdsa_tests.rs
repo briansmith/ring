@@ -34,7 +34,7 @@
 use ring::{
     rand,
     signature::{self, KeyPair},
-    test,
+    test, test_file,
 };
 
 // ECDSA *signing* tests are in src/ec/ecdsa/signing.rs.
@@ -42,66 +42,69 @@ use ring::{
 #[cfg(feature = "use_heap")]
 #[test]
 fn ecdsa_from_pkcs8_test() {
-    test::from_file("tests/ecdsa_from_pkcs8_tests.txt", |section, test_case| {
-        use std::error::Error;
+    test::run(
+        test_file!("ecdsa_from_pkcs8_tests.txt"),
+        |section, test_case| {
+            use std::error::Error;
 
-        assert_eq!(section, "");
+            assert_eq!(section, "");
 
-        let curve_name = test_case.consume_string("Curve");
-        let ((this_fixed, this_asn1), (other_fixed, other_asn1)) = match curve_name.as_str() {
-            "P-256" => (
-                (
-                    &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
-                    &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+            let curve_name = test_case.consume_string("Curve");
+            let ((this_fixed, this_asn1), (other_fixed, other_asn1)) = match curve_name.as_str() {
+                "P-256" => (
+                    (
+                        &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+                        &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+                    ),
+                    (
+                        &signature::ECDSA_P384_SHA384_FIXED_SIGNING,
+                        &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
+                    ),
                 ),
-                (
-                    &signature::ECDSA_P384_SHA384_FIXED_SIGNING,
-                    &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
+                "P-384" => (
+                    (
+                        &signature::ECDSA_P384_SHA384_FIXED_SIGNING,
+                        &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
+                    ),
+                    (
+                        &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
+                        &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
+                    ),
                 ),
-            ),
-            "P-384" => (
-                (
-                    &signature::ECDSA_P384_SHA384_FIXED_SIGNING,
-                    &signature::ECDSA_P384_SHA384_ASN1_SIGNING,
-                ),
-                (
-                    &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
-                    &signature::ECDSA_P256_SHA256_ASN1_SIGNING,
-                ),
-            ),
-            _ => unreachable!(),
-        };
+                _ => unreachable!(),
+            };
 
-        let input = test_case.consume_bytes("Input");
-        let input = untrusted::Input::from(&input);
+            let input = test_case.consume_bytes("Input");
+            let input = untrusted::Input::from(&input);
 
-        let error = test_case.consume_optional_string("Error");
+            let error = test_case.consume_optional_string("Error");
 
-        match (
-            signature::EcdsaKeyPair::from_pkcs8(this_fixed, input),
-            error.clone(),
-        ) {
-            (Ok(_), None) => (),
-            (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
-            (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
-            (Err(actual), Some(expected)) => assert_eq!(actual.description(), expected),
-        };
+            match (
+                signature::EcdsaKeyPair::from_pkcs8(this_fixed, input),
+                error.clone(),
+            ) {
+                (Ok(_), None) => (),
+                (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
+                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
+                (Err(actual), Some(expected)) => assert_eq!(actual.description(), expected),
+            };
 
-        match (
-            signature::EcdsaKeyPair::from_pkcs8(this_asn1, input),
-            error.clone(),
-        ) {
-            (Ok(_), None) => (),
-            (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
-            (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
-            (Err(actual), Some(expected)) => assert_eq!(actual.description(), expected),
-        };
+            match (
+                signature::EcdsaKeyPair::from_pkcs8(this_asn1, input),
+                error.clone(),
+            ) {
+                (Ok(_), None) => (),
+                (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
+                (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
+                (Err(actual), Some(expected)) => assert_eq!(actual.description(), expected),
+            };
 
-        assert!(signature::EcdsaKeyPair::from_pkcs8(other_fixed, input).is_err());
-        assert!(signature::EcdsaKeyPair::from_pkcs8(other_asn1, input).is_err());
+            assert!(signature::EcdsaKeyPair::from_pkcs8(other_fixed, input).is_err());
+            assert!(signature::EcdsaKeyPair::from_pkcs8(other_asn1, input).is_err());
 
-        Ok(())
-    });
+            Ok(())
+        },
+    );
 }
 
 // Verify that, at least, we generate PKCS#8 documents that we can read.
@@ -131,44 +134,47 @@ fn ecdsa_generate_pkcs8_test() {
 
 #[test]
 fn signature_ecdsa_verify_asn1_test() {
-    test::from_file("tests/ecdsa_verify_asn1_tests.txt", |section, test_case| {
-        assert_eq!(section, "");
+    test::run(
+        test_file!("ecdsa_verify_asn1_tests.txt"),
+        |section, test_case| {
+            assert_eq!(section, "");
 
-        let curve_name = test_case.consume_string("Curve");
-        let digest_name = test_case.consume_string("Digest");
+            let curve_name = test_case.consume_string("Curve");
+            let digest_name = test_case.consume_string("Digest");
 
-        let msg = test_case.consume_bytes("Msg");
-        let msg = untrusted::Input::from(&msg);
+            let msg = test_case.consume_bytes("Msg");
+            let msg = untrusted::Input::from(&msg);
 
-        let public_key = test_case.consume_bytes("Q");
-        let public_key = untrusted::Input::from(&public_key);
+            let public_key = test_case.consume_bytes("Q");
+            let public_key = untrusted::Input::from(&public_key);
 
-        let sig = test_case.consume_bytes("Sig");
-        let sig = untrusted::Input::from(&sig);
+            let sig = test_case.consume_bytes("Sig");
+            let sig = untrusted::Input::from(&sig);
 
-        let expected_result = test_case.consume_string("Result");
+            let expected_result = test_case.consume_string("Result");
 
-        let alg = match (curve_name.as_str(), digest_name.as_str()) {
-            ("P-256", "SHA256") => &signature::ECDSA_P256_SHA256_ASN1,
-            ("P-256", "SHA384") => &signature::ECDSA_P256_SHA384_ASN1,
-            ("P-384", "SHA256") => &signature::ECDSA_P384_SHA256_ASN1,
-            ("P-384", "SHA384") => &signature::ECDSA_P384_SHA384_ASN1,
-            _ => {
-                panic!("Unsupported curve+digest: {}+{}", curve_name, digest_name);
-            },
-        };
+            let alg = match (curve_name.as_str(), digest_name.as_str()) {
+                ("P-256", "SHA256") => &signature::ECDSA_P256_SHA256_ASN1,
+                ("P-256", "SHA384") => &signature::ECDSA_P256_SHA384_ASN1,
+                ("P-384", "SHA256") => &signature::ECDSA_P384_SHA256_ASN1,
+                ("P-384", "SHA384") => &signature::ECDSA_P384_SHA384_ASN1,
+                _ => {
+                    panic!("Unsupported curve+digest: {}+{}", curve_name, digest_name);
+                },
+            };
 
-        let actual_result = signature::verify(alg, public_key, msg, sig);
-        assert_eq!(actual_result.is_ok(), expected_result == "P (0 )");
+            let actual_result = signature::verify(alg, public_key, msg, sig);
+            assert_eq!(actual_result.is_ok(), expected_result == "P (0 )");
 
-        Ok(())
-    });
+            Ok(())
+        },
+    );
 }
 
 #[test]
 fn signature_ecdsa_verify_fixed_test() {
-    test::from_file(
-        "tests/ecdsa_verify_fixed_tests.txt",
+    test::run(
+        test_file!("ecdsa_verify_fixed_tests.txt"),
         |section, test_case| {
             assert_eq!(section, "");
 

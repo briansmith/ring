@@ -278,8 +278,8 @@ mod tests {
 
     #[test]
     fn test_digest_based_test_vectors() {
-        test::from_file(
-            "crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt",
+        test::run(
+            test_file!("../../../../crypto/fipsmodule/ecdsa/ecdsa_verify_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 

@@ -53,7 +53,7 @@
 //! ```ignore
 //! use ring::test;
 //!
-//! test::from_file("src/hmac_tests.txt", |section, test_case| {
+//! test::run(test::test_file!("hmac_tests.txt"), |section, test_case| {
 //!     assert_eq!(section, ""); // This test doesn't use named sections.
 //!
 //!     let digest_alg = test_case.consume_digest_alg("HMAC");
@@ -122,7 +122,7 @@ use crate::bits;
 use crate::{digest, error};
 
 use core;
-use std::{self, io::BufRead, string::String, vec::Vec};
+use std::{self, string::String, vec::Vec};
 
 /// `compile_time_assert_clone::<T>();` fails to compile if `T` doesn't
 /// implement `Clone`.
@@ -276,43 +276,40 @@ impl TestCase {
     }
 }
 
-/// Returns the path for *ring* source code root.
-///
-/// On iOS, source are assumed to be copied in the application bundle, as
-/// a "src" directory along the test runner.
-#[cfg(target_os = "ios")]
-pub fn ring_src_path() -> std::path::PathBuf {
-    std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .join("src")
+/// References a test input file.
+#[macro_export]
+macro_rules! test_file {
+    ($file_name:expr) => {
+        crate::test::File {
+            file_name: $file_name,
+            contents: include_str!($file_name),
+        }
+    };
 }
 
-/// Returns the path for *ring* source code root.
-///
-/// On most platforms, the tests are run by cargo, so it's just the current
-/// working directory.
-#[cfg(not(target_os = "ios"))]
-pub fn ring_src_path() -> std::path::PathBuf { std::path::PathBuf::from(".") }
+/// A test input file.
+pub struct File<'a> {
+    /// The name (path) of the file.
+    pub file_name: &'a str,
 
-/// Reads test cases out of the file with the path given by
-/// `test_data_relative_file_path`, calling `f` on each vector until `f` fails
-/// or until all the test vectors have been read. `f` can indicate failure
-/// either by returning `Err()` or by panicking.
-pub fn from_file<F>(test_data_relative_file_path: &str, mut f: F)
+    /// The contents of the file.
+    pub contents: &'a str,
+}
+
+/// Parses test cases out of the given file, calling `f` on each vector until
+/// `f` fails or until all the test vectors have been read. `f` can indicate
+/// failure either by returning `Err()` or by panicking.
+pub fn run<F>(test_file: File, mut f: F)
 where
     F: FnMut(&str, &mut TestCase) -> Result<(), error::Unspecified>,
 {
-    let path = ring_src_path().join(test_data_relative_file_path);
-    let file = std::fs::File::open(path).unwrap();
-    let mut lines = std::io::BufReader::new(&file).lines();
+    let lines = &mut test_file.contents.lines();
 
     let mut current_section = String::from("");
     let mut failed = false;
-
+h
     #[allow(box_pointers)]
-    while let Some(mut test_case) = parse_test_case(&mut current_section, &mut lines) {
+    while let Some(mut test_case) = parse_test_case(&mut current_section, lines) {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             f(&current_section, &mut test_case)
         }));
@@ -336,7 +333,7 @@ where
         if let Err(msg) = result {
             failed = true;
 
-            println!("{}: {}", test_data_relative_file_path, msg);
+            println!("{}: {}", test_file.file_name, msg);
             for (name, value, consumed) in test_case.attributes {
                 let consumed_str = if consumed { "" } else { " (unconsumed)" };
                 println!("{}{} = {}", name, consumed_str, value);
@@ -379,17 +376,14 @@ fn from_hex_digit(d: u8) -> Result<u8, String> {
     }
 }
 
-type FileLines<'a> = std::io::Lines<std::io::BufReader<&'a std::fs::File>>;
-
-fn parse_test_case(current_section: &mut String, lines: &mut FileLines) -> Option<TestCase> {
+fn parse_test_case<'a>(
+    current_section: &mut String, lines: &mut Iterator<Item = &'a str>,
+) -> Option<TestCase> {
     let mut attributes = Vec::new();
 
     let mut is_first_line = true;
     loop {
-        let line = match lines.next() {
-            None => None,
-            Some(result) => Some(result.unwrap()),
-        };
+        let line = lines.next();
 
         if cfg!(feature = "test_logging") {
             if let Some(text) = &line {
@@ -539,7 +533,7 @@ mod tests {
 
     #[test]
     fn one_ok() {
-        test::from_file("src/test_1_tests.txt", |_, test_case| {
+        test::run(test_file!("test_1_tests.txt"), |_, test_case| {
             let _ = test_case.consume_string("Key");
             Ok(())
         });
@@ -548,7 +542,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Test failed.")]
     fn one_err() {
-        test::from_file("src/test_1_tests.txt", |_, test_case| {
+        test::run(test_file!("test_1_tests.txt"), |_, test_case| {
             let _ = test_case.consume_string("Key");
             Err(error::Unspecified)
         });
@@ -557,7 +551,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Test failed.")]
     fn one_panics() {
-        test::from_file("src/test_1_tests.txt", |_, test_case| {
+        test::run(test_file!("test_1_tests.txt"), |_, test_case| {
             let _ = test_case.consume_string("Key");
             panic!("");
         });
@@ -577,7 +571,7 @@ mod tests {
 
     fn err_one(test_to_fail: usize) {
         let mut n = 0;
-        test::from_file("src/test_3_tests.txt", |_, test_case| {
+        test::run(test_file!("test_3_tests.txt"), |_, test_case| {
             let _ = test_case.consume_string("Key");
             let result = if n != test_to_fail {
                 Ok(())
@@ -603,7 +597,7 @@ mod tests {
 
     fn panic_one(test_to_fail: usize) {
         let mut n = 0;
-        test::from_file("src/test_3_tests.txt", |_, test_case| {
+        test::run(test_file!("test_3_tests.txt"), |_, test_case| {
             let _ = test_case.consume_string("Key");
             if n == test_to_fail {
                 panic!("Oh Noes!");
@@ -615,9 +609,5 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Syntax error: Expected Key = Value.")]
-    fn syntax_error() { test::from_file("src/test_1_syntax_error_tests.txt", |_, _| Ok(())); }
-
-    #[test]
-    #[should_panic]
-    fn file_not_found() { test::from_file("src/test_file_not_found_tests.txt", |_, _| Ok(())); }
+    fn syntax_error() { test::run(test_file!("test_1_syntax_error_tests.txt"), |_, _| Ok(())); }
 }

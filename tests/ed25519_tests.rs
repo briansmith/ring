@@ -33,13 +33,13 @@
 
 use ring::{
     signature::{self, Ed25519KeyPair, KeyPair},
-    test,
+    test, test_file,
 };
 
 /// Test vectors from BoringSSL.
 #[test]
 fn test_signature_ed25519() {
-    test::from_file("tests/ed25519_tests.txt", |section, test_case| {
+    test::run(test_file!("ed25519_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
         let seed = test_case.consume_bytes("SEED");
         assert_eq!(32, seed.len());
@@ -119,8 +119,8 @@ fn test_ed25519_from_seed_and_public_key_misuse() {
 #[test]
 fn test_ed25519_from_pkcs8_unchecked() {
     // Just test that we can parse the input.
-    test::from_file(
-        "tests/ed25519_from_pkcs8_unchecked_tests.txt",
+    test::run(
+        test_file!("ed25519_from_pkcs8_unchecked_tests.txt"),
         |section, test_case| {
             assert_eq!(section, "");
             let input = test_case.consume_bytes("Input");
@@ -144,8 +144,8 @@ fn test_ed25519_from_pkcs8_unchecked() {
 #[test]
 fn test_ed25519_from_pkcs8() {
     // Just test that we can parse the input.
-    test::from_file(
-        "tests/ed25519_from_pkcs8_tests.txt",
+    test::run(
+        test_file!("ed25519_from_pkcs8_tests.txt"),
         |section, test_case| {
             assert_eq!(section, "");
             let input = test_case.consume_bytes("Input");

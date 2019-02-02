@@ -31,13 +31,13 @@
     warnings
 )]
 
-use ring::{agreement, error, rand, test};
+use ring::{agreement, error, rand, test, test_file};
 
 #[test]
 fn agreement_agree_ephemeral() {
     let rng = rand::SystemRandom::new();
 
-    test::from_file("tests/agreement_tests.txt", |section, test_case| {
+    test::run(test_file!("agreement_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
 
         let curve_name = test_case.consume_string("Curve");

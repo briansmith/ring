@@ -31,12 +31,12 @@
     warnings
 )]
 
-use ring::{digest, test};
+use ring::{digest, test, test_file};
 
 /// Test vectors from BoringSSL, Go, and other sources.
 #[test]
 fn digest_misc() {
-    test::from_file("tests/digest_tests.txt", |section, test_case| {
+    test::run(test_file!("digest_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
         let digest_alg = test_case.consume_digest_alg("Hash").unwrap();
         let input = test_case.consume_bytes("Input");
@@ -62,52 +62,9 @@ fn digest_misc() {
 mod digest_shavs {
     use ring::{digest, test};
 
-    macro_rules! shavs_tests {
-        ( $algorithm_name:ident ) => {
-            #[allow(non_snake_case)]
-            mod $algorithm_name {
-                use super::{run_known_answer_test, run_monte_carlo_test};
-                use ring::digest;
-
-                #[test]
-                fn short_msg_known_answer_test() {
-                    run_known_answer_test(
-                        &digest::$algorithm_name,
-                        &format!(
-                            "third_party/NIST/SHAVS/{}ShortMsg.rsp",
-                            stringify!($algorithm_name)
-                        ),
-                    );
-                }
-
-                #[test]
-                fn long_msg_known_answer_test() {
-                    run_known_answer_test(
-                        &digest::$algorithm_name,
-                        &format!(
-                            "third_party/NIST/SHAVS/{}LongMsg.rsp",
-                            stringify!($algorithm_name)
-                        ),
-                    );
-                }
-
-                #[test]
-                fn monte_carlo_test() {
-                    run_monte_carlo_test(
-                        &digest::$algorithm_name,
-                        &format!(
-                            "third_party/NIST/SHAVS/{}Monte.rsp",
-                            stringify!($algorithm_name)
-                        ),
-                    );
-                }
-            }
-        };
-    }
-
-    fn run_known_answer_test(digest_alg: &'static digest::Algorithm, file_name: &str) {
+    fn run_known_answer_test(digest_alg: &'static digest::Algorithm, test_file: test::File) {
         let section_name = &format!("L = {}", digest_alg.output_len);
-        test::from_file(file_name, |section, test_case| {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section_name, section);
             let len_bits = test_case.consume_usize("Len");
 
@@ -128,13 +85,59 @@ mod digest_shavs {
         });
     }
 
-    fn run_monte_carlo_test(digest_alg: &'static digest::Algorithm, file_name: &str) {
+    macro_rules! shavs_tests {
+        ( $algorithm_name:ident ) => {
+            #[allow(non_snake_case)]
+            mod $algorithm_name {
+                use super::{run_known_answer_test, run_monte_carlo_test};
+                use ring::{digest, test_file};
+
+                #[test]
+                fn short_msg_known_answer_test() {
+                    run_known_answer_test(
+                        &digest::$algorithm_name,
+                        test_file!(concat!(
+                            "../third_party/NIST/SHAVS/",
+                            stringify!($algorithm_name),
+                            "ShortMsg.rsp"
+                        )),
+                    );
+                }
+
+                #[test]
+                fn long_msg_known_answer_test() {
+                    run_known_answer_test(
+                        &digest::$algorithm_name,
+                        test_file!(concat!(
+                            "../third_party/NIST/SHAVS/",
+                            stringify!($algorithm_name),
+                            "LongMsg.rsp"
+                        )),
+                    );
+                }
+
+                #[test]
+                fn monte_carlo_test() {
+                    run_monte_carlo_test(
+                        &digest::$algorithm_name,
+                        test_file!(concat!(
+                            "../third_party/NIST/SHAVS/",
+                            stringify!($algorithm_name),
+                            "Monte.rsp"
+                        )),
+                    );
+                }
+            }
+        };
+    }
+
+    fn run_monte_carlo_test(digest_alg: &'static digest::Algorithm, test_file: test::File) {
         let section_name = &format!("L = {}", digest_alg.output_len);
 
         let mut expected_count: isize = -1;
         let mut seed = Vec::with_capacity(digest_alg.output_len);
 
-        test::from_file(file_name, |section, test_case| {
+        test::run(test_file, |section, test_case| {
             assert_eq!(section_name, section);
 
             if expected_count == -1 {

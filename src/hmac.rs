@@ -487,8 +487,8 @@ mod tests {
     // that the generated key fills the entire `key_bytes` parameter.
     #[test]
     pub fn generate_serializable_tests() {
-        test::from_file(
-            "src/hmac_generate_serializable_tests.txt",
+        test::run(
+            test_file!("hmac_generate_serializable_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
                 let digest_alg = test_case.consume_digest_alg("HMAC").unwrap();

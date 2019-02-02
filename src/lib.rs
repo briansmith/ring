@@ -84,6 +84,10 @@ mod bssl;
 #[macro_use]
 mod polyfill;
 
+#[cfg(any(test, feature = "use_heap"))]
+#[macro_use]
+pub mod test;
+
 mod arithmetic;
 
 pub mod aead;
@@ -112,9 +116,6 @@ pub mod rand;
 mod rsa;
 
 pub mod signature;
-
-#[cfg(any(test, feature = "use_heap"))]
-pub mod test;
 
 mod sealed {
     /// Traits that are designed to only be implemented internally in *ring*.

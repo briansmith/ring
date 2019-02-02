@@ -31,12 +31,12 @@
     warnings
 )]
 
-use ring::{digest, error, pbkdf2, test};
+use ring::{digest, error, pbkdf2, test, test_file};
 use std::num::NonZeroU32;
 
 #[test]
 pub fn pbkdf2_tests() {
-    test::from_file("tests/pbkdf2_tests.txt", |section, test_case| {
+    test::run(test_file!("pbkdf2_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
         let digest_alg = &test_case.consume_digest_alg("Hash").unwrap();
         let iterations = test_case.consume_usize("c");

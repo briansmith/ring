@@ -387,8 +387,8 @@ mod tests {
 
     #[test]
     fn signature_ecdsa_sign_fixed_test() {
-        test::from_file(
-            "src/ec/suite_b/ecdsa/ecdsa_sign_fixed_tests.txt",
+        test::run(
+            test_file!("ecdsa_sign_fixed_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 
@@ -431,8 +431,8 @@ mod tests {
 
     #[test]
     fn signature_ecdsa_sign_asn1_test() {
-        test::from_file(
-            "src/ec/suite_b/ecdsa/ecdsa_sign_asn1_tests.txt",
+        test::run(
+            test_file!("ecdsa_sign_asn1_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 

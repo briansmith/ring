@@ -88,8 +88,8 @@ mod tests {
 
     #[test]
     fn test() {
-        test::from_file(
-            "src/ec/suite_b/ecdsa/ecdsa_digest_scalar_tests.txt",
+        test::run(
+            test_file!("ecdsa_digest_scalar_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 

@@ -31,26 +31,26 @@
     warnings
 )]
 
-use ring::{aead, error, test};
+use ring::{aead, error, test, test_file};
 
 #[test]
-fn aead_aes_gcm_128() { test_aead(&aead::AES_128_GCM, "tests/aead_aes_128_gcm_tests.txt"); }
+fn aead_aes_gcm_128() { test_aead(&aead::AES_128_GCM, test_file!("aead_aes_128_gcm_tests.txt")); }
 
 #[test]
-fn aead_aes_gcm_256() { test_aead(&aead::AES_256_GCM, "tests/aead_aes_256_gcm_tests.txt"); }
+fn aead_aes_gcm_256() { test_aead(&aead::AES_256_GCM, test_file!("aead_aes_256_gcm_tests.txt")); }
 
 #[test]
 fn aead_chacha20_poly1305() {
     test_aead(
         &aead::CHACHA20_POLY1305,
-        "tests/aead_chacha20_poly1305_tests.txt",
+        test_file!("aead_chacha20_poly1305_tests.txt"),
     );
 }
 
-fn test_aead(aead_alg: &'static aead::Algorithm, file_path: &str) {
+fn test_aead(aead_alg: &'static aead::Algorithm, test_file: test::File) {
     test_aead_key_sizes(aead_alg);
 
-    test::from_file(file_path, |section, test_case| {
+    test::run(test_file, |section, test_case| {
         assert_eq!(section, "");
         let key_bytes = test_case.consume_bytes("KEY");
         let nonce = test_case.consume_bytes("NONCE");
@@ -258,8 +258,8 @@ fn test_aead_nonce_sizes() -> Result<(), error::Unspecified> {
 fn aead_chacha20_poly1305_openssh() {
     // TODO: test_aead_key_sizes(...);
 
-    test::from_file(
-        "tests/aead_chacha20_poly1305_openssh_tests.txt",
+    test::run(
+        test_file!("aead_chacha20_poly1305_openssh_tests.txt"),
         |section, test_case| {
             assert_eq!(section, "");
 

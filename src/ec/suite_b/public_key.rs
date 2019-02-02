@@ -72,8 +72,8 @@ mod tests {
 
     #[test]
     fn parse_uncompressed_point_test() {
-        test::from_file(
-            "src/ec/suite_b/suite_b_public_key_tests.txt",
+        test::run(
+            test_file!("suite_b_public_key_tests.txt"),
             |section, test_case| {
                 assert_eq!(section, "");
 

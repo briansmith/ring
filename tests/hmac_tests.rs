@@ -31,11 +31,11 @@
     warnings
 )]
 
-use ring::{digest, error, hmac, test};
+use ring::{digest, error, hmac, test, test_file};
 
 #[test]
 fn hmac_tests() {
-    test::from_file("tests/hmac_tests.txt", |section, test_case| {
+    test::run(test_file!("hmac_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
         let digest_alg = test_case.consume_digest_alg("HMAC");
         let key_value = test_case.consume_bytes("Key");
