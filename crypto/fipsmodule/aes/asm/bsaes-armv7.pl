@@ -1620,7 +1620,8 @@ bsaes_ctr32_encrypt_blocks:
 .size	bsaes_ctr32_encrypt_blocks,.-bsaes_ctr32_encrypt_blocks
 ___
 }
-{
+# In BorinSSL, we patch XTS support out.
+if (0) {
 ######################################################################
 # void bsaes_xts_[en|de]crypt(const char *inp,char *out,size_t len,
 #	const AES_KEY *key1, const AES_KEY *key2,
