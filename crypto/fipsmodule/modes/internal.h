@@ -130,12 +130,6 @@ void CRYPTO_ctr128_encrypt_ctr32(const uint8_t *in, uint8_t *out, size_t len,
                                  uint8_t ecount_buf[16], unsigned *num,
                                  ctr128_f ctr);
 
-#if !defined(OPENSSL_NO_ASM) && \
-    (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
-void aesni_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t blocks,
-                                const AES_KEY *key, const uint8_t *ivec);
-#endif
-
 
 // GCM.
 //
