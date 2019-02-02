@@ -295,7 +295,9 @@ mod fuchsia {
     use crate::error;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        unsafe { zx_cprng_draw(dest.as_mut_ptr(), dest.len()); }
+        unsafe {
+            zx_cprng_draw(dest.as_mut_ptr(), dest.len());
+        }
         Ok(())
     }
 

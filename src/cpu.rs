@@ -48,10 +48,7 @@ pub(crate) fn features() -> Features {
                 arm::linux_setup();
             }
 
-            #[cfg(all(
-                target_os = "fuchsia",
-                any(target_arch = "aarch64")
-            ))]
+            #[cfg(all(target_os = "fuchsia", any(target_arch = "aarch64")))]
             {
                 arm::fuchsia_setup();
             }
@@ -118,10 +115,7 @@ pub(crate) mod arm {
         }
     }
 
-    #[cfg(all(
-        target_os = "fuchsia",
-        any(target_arch = "aarch64")
-    ))]
+    #[cfg(all(target_os = "fuchsia", any(target_arch = "aarch64")))]
     pub fn fuchsia_setup() {
         type zx_status_t = i32;
 
