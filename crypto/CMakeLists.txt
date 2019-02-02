@@ -114,6 +114,7 @@ if(${ARCH} STREQUAL "aarch64")
     CRYPTO_ARCH_SOURCES
 
     chacha/chacha-armv8.${ASM_EXT}
+    test/trampoline-armv8.${ASM_EXT}
   )
 endif()
 
@@ -145,6 +146,7 @@ perlasm(chacha/chacha-x86_64.${ASM_EXT} chacha/asm/chacha-x86_64.pl)
 perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsiv-x86_64.pl)
 perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
 perlasm(test/trampoline-armv4.${ASM_EXT} test/asm/trampoline-armv4.pl)
+perlasm(test/trampoline-armv8.${ASM_EXT} test/asm/trampoline-armv8.pl)
 perlasm(test/trampoline-x86.${ASM_EXT} test/asm/trampoline-x86.pl)
 perlasm(test/trampoline-x86_64.${ASM_EXT} test/asm/trampoline-x86_64.pl)
 

@@ -55,12 +55,15 @@ struct alignas(16) Reg128 {
 };
 
 // LOOP_CALLER_STATE_REGISTERS is a macro that iterates over all registers the
-// callee is expected to save for the caller.
-//
-// TODO(davidben): Add support for other architectures.
+// callee is expected to save for the caller, with the exception of the stack
+// pointer. The stack pointer is tested implicitly by the function successfully
+// returning at all.
 #if defined(OPENSSL_X86_64)
+
+// References:
+// SysV64: https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf
+// Win64: https://docs.microsoft.com/en-us/cpp/build/x64-software-conventions?view=vs-2017#register-usage
 #if defined(OPENSSL_WINDOWS)
-// See https://docs.microsoft.com/en-us/cpp/build/x64-software-conventions?view=vs-2017#register-usage
 #define LOOP_CALLER_STATE_REGISTERS()  \
   CALLER_STATE_REGISTER(uint64_t, rbx) \
   CALLER_STATE_REGISTER(uint64_t, rbp) \
@@ -81,7 +84,6 @@ struct alignas(16) Reg128 {
   CALLER_STATE_REGISTER(Reg128, xmm14) \
   CALLER_STATE_REGISTER(Reg128, xmm15)
 #else
-// See https://github.com/hjl-tools/x86-psABI/wiki/x86-64-psABI-1.0.pdf
 #define LOOP_CALLER_STATE_REGISTERS()  \
   CALLER_STATE_REGISTER(uint64_t, rbx) \
   CALLER_STATE_REGISTER(uint64_t, rbp) \
@@ -90,19 +92,31 @@ struct alignas(16) Reg128 {
   CALLER_STATE_REGISTER(uint64_t, r14) \
   CALLER_STATE_REGISTER(uint64_t, r15)
 #endif  // OPENSSL_WINDOWS
+
 #elif defined(OPENSSL_X86)
-// See https://uclibc.org/docs/psABI-i386.pdf and
-// https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions?view=vs-2017
+
+// References:
+// SysV32: https://uclibc.org/docs/psABI-i386.pdf and
+// Win32: https://docs.microsoft.com/en-us/cpp/cpp/argument-passing-and-naming-conventions?view=vs-2017
 #define LOOP_CALLER_STATE_REGISTERS()  \
   CALLER_STATE_REGISTER(uint32_t, esi) \
   CALLER_STATE_REGISTER(uint32_t, edi) \
   CALLER_STATE_REGISTER(uint32_t, ebx) \
   CALLER_STATE_REGISTER(uint32_t, ebp)
+
 #elif defined(OPENSSL_ARM)
-// Unlike x86, ARM has a common ABI across all platforms, described in
-// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0042f/IHI0042F_aapcs.pdf
-// It almost specifies the callee-saved registers, except r9 is left to the
-// platform. Android and iOS differ in handling of r9.
+
+// References:
+// AAPCS: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0042f/IHI0042F_aapcs.pdf
+// iOS32: https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARMv6FunctionCallingConventions.html
+//
+// ARM specifies a common calling convention, except r9 is left to the
+// platform. Linux and iOS differ in handling of r9. iOS's behavior is defined
+// below. We found no clear reference for Linux but observed behavior from
+// LLVM. iOS 3+ treats r9 as caller-saved, while Linux treats it as
+// callee-saved. Most of our assembly treats it as callee-saved to be uniform,
+// but we match the platform to avoid false positives when testing
+// compiler-generated output.
 #define LOOP_CALLER_STATE_REGISTERS_PRE_R9() \
   CALLER_STATE_REGISTER(uint64_t, d8)        \
   CALLER_STATE_REGISTER(uint64_t, d9)        \
@@ -121,24 +135,53 @@ struct alignas(16) Reg128 {
   CALLER_STATE_REGISTER(uint32_t, r10)        \
   CALLER_STATE_REGISTER(uint32_t, r11)
 #if defined(OPENSSL_APPLE)
-// Starting iOS 3, r9 is treated as a caller-saved register. Before that, it
-// could not be used at all. Most of our assembly treats it as callee-saved
-// anyway to be uniform, but we match the platform to avoid false positives when
-// testing compiler-generated output.
-//
-// https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARMv6FunctionCallingConventions.html
-#define LOOP_CALLER_STATE_REGISTERS() \
+#define LOOP_CALLER_STATE_REGISTERS()  \
   LOOP_CALLER_STATE_REGISTERS_PRE_R9() \
   LOOP_CALLER_STATE_REGISTERS_POST_R9()
-#else
-// We found no clear reference which defines Linux's use of r9, but LLVM treats
-// r9 as callee-saved on non-Apple ARM platforms.
-#define LOOP_CALLER_STATE_REGISTERS() \
+#else  // !OPENSSL_APPLE
+#define LOOP_CALLER_STATE_REGISTERS()  \
   LOOP_CALLER_STATE_REGISTERS_PRE_R9() \
-  CALLER_STATE_REGISTER(uint32_t, r9) \
+  CALLER_STATE_REGISTER(uint32_t, r9)  \
   LOOP_CALLER_STATE_REGISTERS_POST_R9()
 #endif  // OPENSSL_APPLE
-#endif  // X86_64 || X86 || ARM
+
+#elif defined(OPENSSL_AARCH64)
+
+// References:
+// AAPCS64: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
+// iOS64: https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARM64FunctionCallingConventions.html
+//
+// In aarch64, r19 (x19 in a 64-bit context) is the platform register. iOS says
+// user code may not touch it. We found no clear reference for Linux. The iOS
+// behavior implies portable assembly cannot use it, and aarch64 has many
+// registers. Thus this framework ignores register's existence. We can test r19
+// violations with grep.
+#define LOOP_CALLER_STATE_REGISTERS()                                \
+  /* Per AAPCS64, section 5.1.2, only the bottom 64 bits of v8-v15 */ \
+  /* are preserved. These are accessed as dN. */                     \
+  CALLER_STATE_REGISTER(uint64_t, d8)                                \
+  CALLER_STATE_REGISTER(uint64_t, d9)                                \
+  CALLER_STATE_REGISTER(uint64_t, d10)                               \
+  CALLER_STATE_REGISTER(uint64_t, d11)                               \
+  CALLER_STATE_REGISTER(uint64_t, d12)                               \
+  CALLER_STATE_REGISTER(uint64_t, d13)                               \
+  CALLER_STATE_REGISTER(uint64_t, d14)                               \
+  CALLER_STATE_REGISTER(uint64_t, d15)                               \
+  /* For consistency with dN, use the 64-bit name xN, rather than */ \
+  /* the generic rN. */                                              \
+  CALLER_STATE_REGISTER(uint64_t, x19)                               \
+  CALLER_STATE_REGISTER(uint64_t, x20)                               \
+  CALLER_STATE_REGISTER(uint64_t, x21)                               \
+  CALLER_STATE_REGISTER(uint64_t, x22)                               \
+  CALLER_STATE_REGISTER(uint64_t, x23)                               \
+  CALLER_STATE_REGISTER(uint64_t, x24)                               \
+  CALLER_STATE_REGISTER(uint64_t, x25)                               \
+  CALLER_STATE_REGISTER(uint64_t, x26)                               \
+  CALLER_STATE_REGISTER(uint64_t, x27)                               \
+  CALLER_STATE_REGISTER(uint64_t, x28)                               \
+  CALLER_STATE_REGISTER(uint64_t, x29)
+
+#endif  // X86_64 || X86 || ARM || AARCH64
 
 // Enable ABI testing if all of the following are true.
 //
@@ -169,16 +212,28 @@ crypto_word_t RunTrampoline(Result *out, crypto_word_t func,
 
 template <typename T>
 inline crypto_word_t ToWord(T t) {
+#if !defined(OPENSSL_X86) && !defined(OPENSSL_X86_64) && \
+    !defined(OPENSSL_ARM) && !defined(OPENSSL_AARCH64)
+#error "Unknown architecture"
+#endif
   static_assert(sizeof(T) <= sizeof(crypto_word_t),
                 "T is larger than crypto_word_t");
-  // Functions declared to take arguments smaller than native words cannot
-  // assume anything about the unused bits.
+  static_assert(sizeof(T) >= 4, "types under four bytes are complicated");
+
+  // ABIs are complex around arguments that are smaller than native words. For
+  // 32-bit architectures, the rules above imply we only have word-sized
+  // arguments. For 64-bit architectures, we still have assembly functions which
+  // take |int|.
   //
-  // TODO(davidben): Find authoritative citations for all supported assembly
-  // architectures. This is based on observed behavior in Clang, GCC, and MSVC
-  // for x86_64. The results are complex.
+  // For aarch64, AAPCS64, section 5.4.2, clauses C.7 and C.14 says any
+  // remaining bits are unspecified. iOS64 contradicts this and says the callee
+  // extends arguments up to 32 bits, and only the upper 32 bits are
+  // unspecified. Rejecting parameters smaller than 32 bits avoids the
+  // divergence.
   //
-  // ABI rules here may be inferred from two kinds of experiments:
+  // TODO(davidben): Find authoritative citations for x86_64. For x86_64, I
+  // observed the behavior of Clang, GCC, and MSVC. ABI rules here may be
+  // inferred from two kinds of experiments:
   //
   // 1. When passing a value to a small-argument-taking function, does the
   //    compiler ensure unused bits are cleared, sign-extended, etc.? Tests for
@@ -188,28 +243,21 @@ inline crypto_word_t ToWord(T t) {
   // 2. When compiling a small-argument-taking function, does the compiler make
   //    assumptions about unused bits of arguments?
   //
-  // Stack parameters are straightforward. As both caller and callee, all
-  // compilers consistently use the minimally-sized read and write. Both SysV
-  // and Windows ABIs tolerate and produce arbitrary values for unused stack
-  // parameter bits.
+  // MSVC for x86_64 is straightforward. It appears to tolerate and produce
+  // arbitrary values for unused bits, like AAPCS64.
   //
-  // MSVC also appears to tolerate and produce arbitrary values for unused
-  // register parameter bits. The SysV ABI is messier. GCC and Clang tolerate
-  // and produce arbitrary values for the upper 32 bits of each register, but
-  // types smaller than |int| are promoted before passing to a register. (Zero
-  // or sign extension depends on signedness of the type.) When compiling a
-  // callee, Clang takes advantage of this conversion, but I was unable to make
-  // GCC do so.
+  // GCC and Clang for x86_64 are more complex. They match MSVC for stack
+  // parameters. However, for register parameters, they behave like iOS64 and,
+  // as callers, extend up to 32 bits, leaving the remainder arbitrary. When
+  // compiling a callee, Clang takes advantage of this conversion, but I was
+  // unable to make GCC do so.
   //
   // Note that, although the Win64 rules are sufficient to require our assembly
   // be conservative, we wish for |CHECK_ABI| to support C-compiled functions,
   // so it must enforce the correct rules for each platform.
   //
-  // This is all a mess so, for now, do not support parameter types smaller than
-  // |int| in |CHECK_ABI|. In practice, assembly functions only use 4- and
-  // 8-byte values. (And, given this behavior, we should avoid parameters
-  // smaller than native words in all new code.)
-  static_assert(sizeof(T) >= 4, "types under four bytes are complicated");
+  // Fortunately, the |static_assert|s above cause all supported architectures
+  // to behave the same.
   crypto_word_t ret;
   // Filling extra bits with 0xaa will be vastly out of bounds for code
   // expecting either sign- or zero-extension. (0xaa is 0b10101010.)
@@ -230,7 +278,12 @@ inline crypto_word_t ToWord(T t) {
 template <typename R, typename... Args>
 inline crypto_word_t CheckImpl(Result *out, bool unwind, R (*func)(Args...),
                                typename DeductionGuard<Args>::Type... args) {
-  static_assert(sizeof...(args) <= 10,
+  // We only support up to 8 arguments. This ensures all arguments on aarch64
+  // are passed in registers and avoids the iOS descrepancy around packing small
+  // arguments on the stack.
+  //
+  // https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARM64FunctionCallingConventions.html
+  static_assert(sizeof...(args) <= 8,
                 "too many arguments for abi_test_trampoline");
 
   // Allocate one extra entry so MSVC does not complain about zero-size arrays.
