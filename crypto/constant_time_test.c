@@ -45,9 +45,6 @@
 
 #include "internal.h"
 
-#include <stdlib.h>
-
-
 int bssl_constant_time_test_main(void);
 
 static int test_binary_op_w(crypto_word (*op)(crypto_word a, crypto_word b),
@@ -127,9 +124,5 @@ int bssl_constant_time_test_main(void) {
     }
   }
 
-  if (!num_failed) {
-    return EXIT_SUCCESS;
-  }
-
-  return EXIT_FAILURE;
+  return num_failed == 0;
 }

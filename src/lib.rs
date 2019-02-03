@@ -132,8 +132,3 @@ mod sealed {
     // ```
     pub trait Sealed {}
 }
-
-#[cfg(test)]
-mod tests {
-    bssl_test!(test_constant_time, bssl_constant_time_test_main);
-}
