@@ -307,7 +307,7 @@ where
 
     let mut current_section = String::from("");
     let mut failed = false;
-h
+
     #[allow(box_pointers)]
     while let Some(mut test_case) = parse_test_case(&mut current_section, lines) {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
