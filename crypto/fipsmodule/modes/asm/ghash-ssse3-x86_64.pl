@@ -374,16 +374,16 @@ if ($win64) {
 	.byte	5	# num_slots = 1 + 2 + 2
 	.byte	0	# no frame register
 
-	.byte	.Lgmult_seh_allocstack-.Lgmult_seh_begin
-	.byte	@{[$UWOP_ALLOC_SMALL | (((40 - 8) / 8) << 4)]}
+	.byte	.Lgmult_seh_save_xmm10-.Lgmult_seh_begin
+	.byte	@{[$UWOP_SAVE_XMM128 | (10 << 4)]}
+	.value	1
 
 	.byte	.Lgmult_seh_save_xmm6-.Lgmult_seh_begin
 	.byte	@{[$UWOP_SAVE_XMM128 | (6 << 4)]}
 	.value	0
 
-	.byte	.Lgmult_seh_save_xmm10-.Lgmult_seh_begin
-	.byte	@{[$UWOP_SAVE_XMM128 | (10 << 4)]}
-	.value	1
+	.byte	.Lgmult_seh_allocstack-.Lgmult_seh_begin
+	.byte	@{[$UWOP_ALLOC_SMALL | (((40 - 8) / 8) << 4)]}
 
 .align	8
 .Lghash_seh_info:
@@ -392,20 +392,20 @@ if ($win64) {
 	.byte	7	# num_slots = 1 + 2 + 2 + 2
 	.byte	0	# no frame register
 
-	.byte	.Lghash_seh_allocstack-.Lghash_seh_begin
-	.byte	@{[$UWOP_ALLOC_SMALL | (((56 - 8) / 8) << 4)]}
-
-	.byte	.Lghash_seh_save_xmm6-.Lghash_seh_begin
-	.byte	@{[$UWOP_SAVE_XMM128 | (6 << 4)]}
-	.value	0
+	.byte	.Lghash_seh_save_xmm11-.Lghash_seh_begin
+	.byte	@{[$UWOP_SAVE_XMM128 | (11 << 4)]}
+	.value	2
 
 	.byte	.Lghash_seh_save_xmm10-.Lghash_seh_begin
 	.byte	@{[$UWOP_SAVE_XMM128 | (10 << 4)]}
 	.value	1
 
-	.byte	.Lghash_seh_save_xmm11-.Lghash_seh_begin
-	.byte	@{[$UWOP_SAVE_XMM128 | (11 << 4)]}
-	.value	2
+	.byte	.Lghash_seh_save_xmm6-.Lghash_seh_begin
+	.byte	@{[$UWOP_SAVE_XMM128 | (6 << 4)]}
+	.value	0
+
+	.byte	.Lghash_seh_allocstack-.Lghash_seh_begin
+	.byte	@{[$UWOP_ALLOC_SMALL | (((56 - 8) / 8) << 4)]}
 ____
 }
 

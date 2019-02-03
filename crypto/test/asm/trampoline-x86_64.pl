@@ -447,26 +447,7 @@ ____
 
   my $unwind_codes = "";
   my $num_slots = 0;
-  if ($stack_alloc_size <= 128) {
-    my $info = $UWOP_ALLOC_SMALL | ((($stack_alloc_size - 8) / 8) << 4);
-    $unwind_codes .= <<____;
-	.byte	.Labi_test_trampoline_seh_prolog_alloc-.Labi_test_trampoline_seh_begin
-	.byte	$info
-____
-    $num_slots++;
-  } else {
-    die "stack allocation needs three unwind slots" if ($stack_alloc_size > 512 * 1024 + 8);
-    my $info = $UWOP_ALLOC_LARGE;
-    my $value = $stack_alloc_size / 8;
-    $unwind_codes .= <<____;
-	.byte	.Labi_test_trampoline_seh_prolog_alloc-.Labi_test_trampoline_seh_begin
-	.byte	$info
-	.value	$value
-____
-    $num_slots += 2;
-  }
-
-  foreach my $reg (@caller_state) {
+  foreach my $reg (reverse @caller_state) {
     $reg = substr($reg, 1);
     die "unknown register $reg" unless exists($reg_offsets{$reg});
     if ($reg =~ /^r/) {
@@ -491,6 +472,25 @@ ____
     } else {
       die "unknown register $reg";
     }
+  }
+
+  if ($stack_alloc_size <= 128) {
+    my $info = $UWOP_ALLOC_SMALL | ((($stack_alloc_size - 8) / 8) << 4);
+    $unwind_codes .= <<____;
+	.byte	.Labi_test_trampoline_seh_prolog_alloc-.Labi_test_trampoline_seh_begin
+	.byte	$info
+____
+    $num_slots++;
+  } else {
+    die "stack allocation needs three unwind slots" if ($stack_alloc_size > 512 * 1024 + 8);
+    my $info = $UWOP_ALLOC_LARGE;
+    my $value = $stack_alloc_size / 8;
+    $unwind_codes .= <<____;
+	.byte	.Labi_test_trampoline_seh_prolog_alloc-.Labi_test_trampoline_seh_begin
+	.byte	$info
+	.value	$value
+____
+    $num_slots += 2;
   }
 
   $code .= <<____;
