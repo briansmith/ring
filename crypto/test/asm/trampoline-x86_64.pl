@@ -139,7 +139,7 @@ my $code = <<____;
 .globl	abi_test_trampoline
 .align	16
 abi_test_trampoline:
-.Labi_test_trampoline_begin:
+.Labi_test_trampoline_seh_begin:
 .cfi_startproc
 	# Stack layout:
 	#   8 bytes - align
@@ -178,7 +178,7 @@ my $caller_state_offset = $scratch_offset + 8;
 $code .= <<____;
 	subq	\$$stack_alloc_size, %rsp
 .cfi_adjust_cfa_offset	$stack_alloc_size
-.Labi_test_trampoline_prolog_alloc:
+.Labi_test_trampoline_seh_prolog_alloc:
 ____
 $code .= <<____ if (!$win64);
 	movq	$unwind, $unwind_offset(%rsp)
@@ -194,11 +194,11 @@ $code .= store_caller_state($caller_state_offset, "%rsp", sub {
   $off -= $stack_alloc_size + 8;
   return <<____;
 .cfi_offset	$reg, $off
-.Labi_test_trampoline_prolog_$reg:
+.Labi_test_trampoline_seh_prolog_$reg:
 ____
 });
 $code .= <<____;
-.Labi_test_trampoline_prolog_end:
+.Labi_test_trampoline_seh_prolog_end:
 ____
 
 $code .= load_caller_state(0, $state);
@@ -295,7 +295,7 @@ $code .= <<____;
 	# %rax already contains \$func's return value, unmodified.
 	ret
 .cfi_endproc
-.Labi_test_trampoline_end:
+.Labi_test_trampoline_seh_end:
 .size	abi_test_trampoline,.-abi_test_trampoline
 ____
 
@@ -327,18 +327,25 @@ ____
 
 $code .= <<____;
 # abi_test_bad_unwind_wrong_register preserves the ABI, but annotates the wrong
-# register in CFI metadata.
+# register in unwind metadata.
 # void abi_test_bad_unwind_wrong_register(void);
 .type	abi_test_bad_unwind_wrong_register, \@abi-omnipotent
 .globl	abi_test_bad_unwind_wrong_register
 .align	16
 abi_test_bad_unwind_wrong_register:
 .cfi_startproc
+.Labi_test_bad_unwind_wrong_register_seh_begin:
 	pushq	%r12
 .cfi_push	%r13	# This should be %r12
+.Labi_test_bad_unwind_wrong_register_seh_push_r13:
+	# Windows evaluates epilogs directly in the unwinder, rather than using
+	# unwind codes. Add a nop so there is one non-epilog point (immediately
+	# before the nop) where the unwinder can observe the mistake.
+	nop
 	popq	%r12
 .cfi_pop	%r12
 	ret
+.Labi_test_bad_unwind_wrong_register_seh_end:
 .cfi_endproc
 .size	abi_test_bad_unwind_wrong_register,.-abi_test_bad_unwind_wrong_register
 
@@ -350,20 +357,24 @@ abi_test_bad_unwind_wrong_register:
 .align	16
 abi_test_bad_unwind_temporary:
 .cfi_startproc
+.Labi_test_bad_unwind_temporary_seh_begin:
 	pushq	%r12
 .cfi_push	%r12
+.Labi_test_bad_unwind_temporary_seh_push_r12:
 
-	inc	%r12
-	movq	%r12, (%rsp)
-	# Unwinding from here is incorrect.
+	movq	%r12, %rax
+	inc	%rax
+	movq	%rax, (%rsp)
+	# Unwinding from here is incorrect. Although %r12 itself has not been
+	# changed, the unwind codes say to look in (%rsp) instead.
 
-	dec	%r12
 	movq	%r12, (%rsp)
 	# Unwinding is now fixed.
 
 	popq	%r12
 .cfi_pop	%r12
 	ret
+.Labi_test_bad_unwind_temporary_seh_end:
 .cfi_endproc
 .size	abi_test_bad_unwind_temporary,.-abi_test_bad_unwind_temporary
 
@@ -392,6 +403,29 @@ abi_test_set_direction_flag:
 ____
 
 if ($win64) {
+  $code .= <<____;
+# abi_test_bad_unwind_epilog preserves the ABI, and correctly annotates the
+# prolog, but the epilog does not match Win64's rules, breaking unwind during
+# the epilog.
+# void abi_test_bad_unwind_epilog(void);
+.type	abi_test_bad_unwind_epilog, \@abi-omnipotent
+.globl	abi_test_bad_unwind_epilog
+.align	16
+abi_test_bad_unwind_epilog:
+.Labi_test_bad_unwind_epilog_seh_begin:
+	pushq	%r12
+.Labi_test_bad_unwind_epilog_seh_push_r12:
+
+	nop
+
+	# The epilog should begin here, but the nop makes it invalid.
+	popq	%r12
+	nop
+	ret
+.Labi_test_bad_unwind_epilog_seh_end:
+.size	abi_test_bad_unwind_epilog,.-abi_test_bad_unwind_epilog
+____
+
   # Add unwind metadata for SEH.
   #
   # TODO(davidben): This is all manual right now. Once we've added SEH tests,
@@ -401,6 +435,7 @@ if ($win64) {
   # error-prone and non-standard custom handlers.
 
   # See https://docs.microsoft.com/en-us/cpp/build/struct-unwind-code?view=vs-2017
+  my $UWOP_PUSH_NONVOL = 0;
   my $UWOP_ALLOC_LARGE = 1;
   my $UWOP_ALLOC_SMALL = 2;
   my $UWOP_SAVE_NONVOL = 4;
@@ -415,7 +450,7 @@ if ($win64) {
   if ($stack_alloc_size <= 128) {
     my $info = $UWOP_ALLOC_SMALL | ((($stack_alloc_size - 8) / 8) << 4);
     $unwind_codes .= <<____;
-	.byte	.Labi_test_trampoline_prolog_alloc-.Labi_test_trampoline_begin
+	.byte	.Labi_test_trampoline_seh_prolog_alloc-.Labi_test_trampoline_seh_begin
 	.byte	$info
 ____
     $num_slots++;
@@ -424,7 +459,7 @@ ____
     my $info = $UWOP_ALLOC_LARGE;
     my $value = $stack_alloc_size / 8;
     $unwind_codes .= <<____;
-	.byte	.Labi_test_trampoline_prolog_alloc-.Labi_test_trampoline_begin
+	.byte	.Labi_test_trampoline_seh_prolog_alloc-.Labi_test_trampoline_seh_begin
 	.byte	$info
 	.value	$value
 ____
@@ -439,7 +474,7 @@ ____
       my $info = $UWOP_SAVE_NONVOL | ($UWOP_REG_NUMBER{$reg} << 4);
       my $value = $reg_offsets{$reg} / 8;
       $unwind_codes .= <<____;
-	.byte	.Labi_test_trampoline_prolog_$reg-.Labi_test_trampoline_begin
+	.byte	.Labi_test_trampoline_seh_prolog_$reg-.Labi_test_trampoline_seh_begin
 	.byte	$info
 	.value	$value
 ____
@@ -448,7 +483,7 @@ ____
       my $info = $UWOP_SAVE_XMM128 | (substr($reg, 3) << 4);
       my $value = $reg_offsets{$reg} / 16;
       $unwind_codes .= <<____;
-	.byte	.Labi_test_trampoline_prolog_$reg-.Labi_test_trampoline_begin
+	.byte	.Labi_test_trampoline_seh_prolog_$reg-.Labi_test_trampoline_seh_begin
 	.byte	$info
 	.value	$value
 ____
@@ -462,19 +497,61 @@ ____
 .section	.pdata
 .align	4
 	# https://docs.microsoft.com/en-us/cpp/build/struct-runtime-function?view=vs-2017
-	.rva	.Labi_test_trampoline_begin
-	.rva	.Labi_test_trampoline_end
-	.rva	.Labi_test_trampoline_info
+	.rva	.Labi_test_trampoline_seh_begin
+	.rva	.Labi_test_trampoline_seh_end
+	.rva	.Labi_test_trampoline_seh_info
+
+	.rva	.Labi_test_bad_unwind_wrong_register_seh_begin
+	.rva	.Labi_test_bad_unwind_wrong_register_seh_end
+	.rva	.Labi_test_bad_unwind_wrong_register_seh_info
+
+	.rva	.Labi_test_bad_unwind_temporary_seh_begin
+	.rva	.Labi_test_bad_unwind_temporary_seh_end
+	.rva	.Labi_test_bad_unwind_temporary_seh_info
+
+	.rva	.Labi_test_bad_unwind_epilog_seh_begin
+	.rva	.Labi_test_bad_unwind_epilog_seh_end
+	.rva	.Labi_test_bad_unwind_epilog_seh_info
 
 .section	.xdata
 .align	8
-.Labi_test_trampoline_info:
+.Labi_test_trampoline_seh_info:
 	# https://docs.microsoft.com/en-us/cpp/build/struct-unwind-info?view=vs-2017
 	.byte	1	# version 1, no flags
-	.byte	.Labi_test_trampoline_prolog_end-.Labi_test_trampoline_begin
+	.byte	.Labi_test_trampoline_seh_prolog_end-.Labi_test_trampoline_seh_begin
 	.byte	$num_slots
 	.byte	0	# no frame register
 $unwind_codes
+
+.align	8
+.Labi_test_bad_unwind_wrong_register_seh_info:
+	.byte	1	# version 1, no flags
+	.byte	.Labi_test_bad_unwind_wrong_register_seh_push_r13-.Labi_test_bad_unwind_wrong_register_seh_begin
+	.byte	1	# one slot
+	.byte	0	# no frame register
+
+	.byte	.Labi_test_bad_unwind_wrong_register_seh_push_r13-.Labi_test_bad_unwind_wrong_register_seh_begin
+	.byte	@{[$UWOP_PUSH_NONVOL | ($UWOP_REG_NUMBER{r13} << 4)]}
+
+.align	8
+.Labi_test_bad_unwind_temporary_seh_info:
+	.byte	1	# version 1, no flags
+	.byte	.Labi_test_bad_unwind_temporary_seh_push_r12-.Labi_test_bad_unwind_temporary_seh_begin
+	.byte	1	# one slot
+	.byte	0	# no frame register
+
+	.byte	.Labi_test_bad_unwind_temporary_seh_push_r12-.Labi_test_bad_unwind_temporary_seh_begin
+	.byte	@{[$UWOP_PUSH_NONVOL | ($UWOP_REG_NUMBER{r12} << 4)]}
+
+.align	8
+.Labi_test_bad_unwind_epilog_seh_info:
+	.byte	1	# version 1, no flags
+	.byte	.Labi_test_bad_unwind_epilog_seh_push_r12-.Labi_test_bad_unwind_epilog_seh_begin
+	.byte	1	# one slot
+	.byte	0	# no frame register
+
+	.byte	.Labi_test_bad_unwind_epilog_seh_push_r12-.Labi_test_bad_unwind_epilog_seh_begin
+	.byte	@{[$UWOP_PUSH_NONVOL | ($UWOP_REG_NUMBER{r12} << 4)]}
 ____
 }
 

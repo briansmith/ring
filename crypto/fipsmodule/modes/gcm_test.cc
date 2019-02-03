@@ -61,12 +61,6 @@
 #include "../../test/file_test.h"
 #include "../../test/test_util.h"
 
-#if defined(OPENSSL_WINDOWS)
-OPENSSL_MSVC_PRAGMA(warning(push, 3))
-#include <windows.h>
-OPENSSL_MSVC_PRAGMA(warning(pop))
-#endif
-
 
 TEST(GCMTest, TestVectors) {
   FileTestGTest("crypto/fipsmodule/modes/gcm_tests.txt", [](FileTest *t) {
@@ -155,66 +149,32 @@ TEST(GCMTest, ABI) {
 
 #if defined(GHASH_ASM_X86_64)
   if (gcm_ssse3_capable()) {
-    CHECK_ABI(gcm_init_ssse3, Htable, kH);
-    CHECK_ABI(gcm_gmult_ssse3, X, Htable);
+    CHECK_ABI_SEH(gcm_init_ssse3, Htable, kH);
+    CHECK_ABI_SEH(gcm_gmult_ssse3, X, Htable);
     for (size_t blocks : kBlockCounts) {
-      CHECK_ABI(gcm_ghash_ssse3, X, Htable, buf, 16 * blocks);
+      CHECK_ABI_SEH(gcm_ghash_ssse3, X, Htable, buf, 16 * blocks);
     }
   }
 #endif  // GHASH_ASM_X86_64
 
 #if defined(GHASH_ASM_X86) || defined(GHASH_ASM_X86_64)
   if (crypto_gcm_clmul_enabled()) {
-    CHECK_ABI(gcm_init_clmul, Htable, kH);
-    CHECK_ABI(gcm_gmult_clmul, X, Htable);
+    CHECK_ABI_SEH(gcm_init_clmul, Htable, kH);
+    CHECK_ABI_SEH(gcm_gmult_clmul, X, Htable);
     for (size_t blocks : kBlockCounts) {
-      CHECK_ABI(gcm_ghash_clmul, X, Htable, buf, 16 * blocks);
+      CHECK_ABI_SEH(gcm_ghash_clmul, X, Htable, buf, 16 * blocks);
     }
 
 #if defined(GHASH_ASM_X86_64)
     if (((OPENSSL_ia32cap_get()[1] >> 22) & 0x41) == 0x41) {  // AVX+MOVBE
-      CHECK_ABI(gcm_init_avx, Htable, kH);
-      CHECK_ABI(gcm_gmult_avx, X, Htable);
+      CHECK_ABI_SEH(gcm_init_avx, Htable, kH);
+      CHECK_ABI_SEH(gcm_gmult_avx, X, Htable);
       for (size_t blocks : kBlockCounts) {
-        CHECK_ABI(gcm_ghash_avx, X, Htable, buf, 16 * blocks);
+        CHECK_ABI_SEH(gcm_ghash_avx, X, Htable, buf, 16 * blocks);
       }
     }
 #endif  // GHASH_ASM_X86_64
   }
 #endif  // GHASH_ASM_X86 || GHASH_ASM_X86_64
 }
-
-#if defined(OPENSSL_WINDOWS) && defined(GHASH_ASM_X86_64)
-// Sanity-check the SEH unwind codes in ghash-ssse3-x86_64.pl.
-// TODO(davidben): Implement unwind testing for SEH and remove this.
-static void GCMSSSE3ExceptionTest() {
-  if (!gcm_ssse3_capable()) {
-    return;
-  }
-
-  bool handled = false;
-  __try {
-    gcm_gmult_ssse3(nullptr, nullptr);
-  } __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION
-                  ? EXCEPTION_EXECUTE_HANDLER
-                  : EXCEPTION_CONTINUE_SEARCH) {
-    handled = true;
-  }
-  EXPECT_TRUE(handled);
-
-  handled = false;
-  __try {
-    gcm_ghash_ssse3(nullptr, nullptr, nullptr, 16);
-  } __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION
-                  ? EXCEPTION_EXECUTE_HANDLER
-                  : EXCEPTION_CONTINUE_SEARCH) {
-    handled = true;
-  }
-  EXPECT_TRUE(handled);
-}
-
-TEST(GCMTest, SEH) {
-  CHECK_ABI_NO_UNWIND(GCMSSSE3ExceptionTest);
-}
-#endif  // OPENSSL_WINDOWS && GHASH_ASM_X86_64
 #endif  // SUPPORTS_ABI_TEST && GHASH_ASM

@@ -19,10 +19,6 @@
 
 #include "test/abi_test.h"
 
-#if defined(OPENSSL_WINDOWS)
-#include <windows.h>
-#endif
-
 
 static bool test_function_ok;
 static int TestFunction(int a1, int a2, int a3, int a4, int a5, int a6, int a7,
@@ -36,7 +32,7 @@ TEST(ABITest, SanityCheck) {
   EXPECT_NE(0, CHECK_ABI_NO_UNWIND(strcmp, "hello", "world"));
 
   test_function_ok = false;
-  EXPECT_EQ(42, CHECK_ABI(TestFunction, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
+  EXPECT_EQ(42, CHECK_ABI_SEH(TestFunction, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10));
   EXPECT_TRUE(test_function_ok);
 
 #if defined(SUPPORTS_ABI_TEST)
@@ -45,18 +41,28 @@ TEST(ABITest, SanityCheck) {
   crypto_word_t argv[] = {
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
   };
-  CHECK_ABI(abi_test_trampoline, reinterpret_cast<crypto_word_t>(TestFunction),
-            &state, argv, 10, 0 /* no breakpoint */);
+  CHECK_ABI_SEH(abi_test_trampoline,
+                reinterpret_cast<crypto_word_t>(TestFunction), &state, argv, 10,
+                0 /* no breakpoint */);
 
 #if defined(OPENSSL_X86_64)
   if (abi_test::UnwindTestsEnabled()) {
-    EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_bad_unwind_wrong_register),
+    EXPECT_NONFATAL_FAILURE(CHECK_ABI_SEH(abi_test_bad_unwind_wrong_register),
                             "was not recovered unwinding");
-    EXPECT_NONFATAL_FAILURE(CHECK_ABI(abi_test_bad_unwind_temporary),
+    EXPECT_NONFATAL_FAILURE(CHECK_ABI_SEH(abi_test_bad_unwind_temporary),
                             "was not recovered unwinding");
 
     CHECK_ABI_NO_UNWIND(abi_test_bad_unwind_wrong_register);
     CHECK_ABI_NO_UNWIND(abi_test_bad_unwind_temporary);
+
+#if defined(OPENSSL_WINDOWS)
+    // The invalid epilog makes Windows believe the epilog starts later than it
+    // actually does. As a result, immediately after the popq, it does not
+    // realize the stack has been unwound and repeats the work.
+    EXPECT_NONFATAL_FAILURE(CHECK_ABI_SEH(abi_test_bad_unwind_epilog),
+                            "unwound past starting frame");
+    CHECK_ABI_NO_UNWIND(abi_test_bad_unwind_epilog);
+#endif  // OPENSSL_WINDOWS
   }
 #endif  // OPENSSL_X86_64
 #endif  // SUPPORTS_ABI_TEST
@@ -180,33 +186,6 @@ TEST(ABITest, X86_64) {
   EXPECT_EQ(0, abi_test_get_and_clear_direction_flag())
       << "CHECK_ABI did not insulate the caller from direction flag errors";
 }
-
-#if defined(OPENSSL_WINDOWS)
-static void ThrowWindowsException() {
-  DebugBreak();
-}
-
-static void ExceptionTest() {
-  bool handled = false;
-  __try {
-    CHECK_ABI_NO_UNWIND(ThrowWindowsException);
-  } __except (GetExceptionCode() == EXCEPTION_BREAKPOINT
-                  ? EXCEPTION_EXECUTE_HANDLER
-                  : EXCEPTION_CONTINUE_SEARCH) {
-    handled = true;
-  }
-
-  EXPECT_TRUE(handled);
-}
-
-// Test that the trampoline's SEH metadata works.
-TEST(ABITest, TrampolineSEH) {
-  // Wrap the test in |CHECK_ABI|, to confirm the register-restoring annotations
-  // were correct.
-  CHECK_ABI_NO_UNWIND(ExceptionTest);
-}
-#endif  // OPENSSL_WINDOWS
-
 #endif   // OPENSSL_X86_64 && SUPPORTS_ABI_TEST
 
 #if defined(OPENSSL_X86) && defined(SUPPORTS_ABI_TEST)

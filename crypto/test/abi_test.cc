@@ -25,10 +25,9 @@
 #include <openssl/rand.h>
 #include <openssl/span.h>
 
-#if defined(OPENSSL_LINUX) && defined(SUPPORTS_ABI_TEST) && \
-    defined(BORINGSSL_HAVE_LIBUNWIND)
-#define UNWIND_TEST_SIGTRAP
-
+#if defined(OPENSSL_X86_64) && defined(SUPPORTS_ABI_TEST)
+#if defined(OPENSSL_LINUX) && defined(BORINGSSL_HAVE_LIBUNWIND)
+#define SUPPORTS_UNWIND_TEST
 #define UNW_LOCAL_ONLY
 #include <errno.h>
 #include <fcntl.h>
@@ -40,7 +39,13 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#endif  // LINUX && SUPPORTS_ABI_TEST && HAVE_LIBUNWIND
+#elif defined(OPENSSL_WINDOWS)
+#define SUPPORTS_UNWIND_TEST
+OPENSSL_MSVC_PRAGMA(warning(push, 3))
+#include <windows.h>
+OPENSSL_MSVC_PRAGMA(warning(pop))
+#endif
+#endif  // X86_64 && SUPPORTS_ABI_TEST
 
 
 namespace abi_test {
@@ -116,11 +121,523 @@ crypto_word_t RunTrampoline(Result *out, crypto_word_t func,
 }
 #endif  // SUPPORTS_ABI_TEST
 
-#if defined(UNWIND_TEST_SIGTRAP)
-// On Linux, we test unwind metadata using libunwind and |SIGTRAP|. We run the
-// function under test with the trap flag set. This results in |SIGTRAP|s on
-// every instruction. We then handle these signals and verify with libunwind.
+#if defined(SUPPORTS_UNWIND_TEST)
+// We test unwind metadata by running the function under test with the trap flag
+// set. This results in |SIGTRAP| and |EXCEPTION_SINGLE_STEP| on Linux and
+// Windows, respectively. We hande these and verify libunwind or the Windows
+// unwind APIs unwind successfully.
 
+// IsAncestorStackFrame returns true if |a_sp| is an ancestor stack frame of
+// |b_sp|.
+static bool IsAncestorStackFrame(crypto_word_t a_sp, crypto_word_t b_sp) {
+#if defined(OPENSSL_X86_64)
+  // The stack grows down, so ancestor stack frames have higher addresses.
+  return a_sp > b_sp;
+#else
+#error "unknown architecture"
+#endif
+}
+
+// Implement some string formatting utilties. Ideally we would use |snprintf|,
+// but this is called in a signal handler and |snprintf| is not async-signal-
+// safe.
+
+#if !defined(OPENSSL_WINDOWS)
+static std::array<char, DECIMAL_SIZE(crypto_word_t) + 1> WordToDecimal(
+    crypto_word_t v) {
+  std::array<char, DECIMAL_SIZE(crypto_word_t) + 1> ret;
+  size_t len = 0;
+  do {
+    ret[len++] = '0' + v % 10;
+    v /= 10;
+  } while (v != 0);
+  for (size_t i = 0; i < len / 2; i++) {
+    std::swap(ret[i], ret[len - 1 - i]);
+  }
+  ret[len] = '\0';
+  return ret;
+}
+#endif  // !OPENSSL_WINDOWS
+
+static std::array<char, sizeof(crypto_word_t) * 2 + 1> WordToHex(
+    crypto_word_t v) {
+  static const char kHex[] = "0123456789abcdef";
+  std::array<char, sizeof(crypto_word_t) * 2 + 1> ret;
+  for (size_t i = sizeof(crypto_word_t) - 1; i < sizeof(crypto_word_t); i--) {
+    uint8_t b = v & 0xff;
+    v >>= 8;
+    ret[i * 2] = kHex[b >> 4];
+    ret[i * 2 + 1] = kHex[b & 0xf];
+  }
+  ret[sizeof(crypto_word_t) * 2] = '\0';
+  return ret;
+}
+
+static void StrCatSignalSafeImpl(bssl::Span<char> out) {}
+
+template <typename... Args>
+static void StrCatSignalSafeImpl(bssl::Span<char> out, const char *str,
+                                 Args... args) {
+  BUF_strlcat(out.data(), str, out.size());
+  StrCatSignalSafeImpl(out, args...);
+}
+
+template <typename... Args>
+static void StrCatSignalSafe(bssl::Span<char> out, Args... args) {
+  if (out.empty()) {
+    return;
+  }
+  out[0] = '\0';
+  StrCatSignalSafeImpl(out, args...);
+}
+
+template <typename... Args>
+[[noreturn]] static void FatalError(Args... args) {
+  // We cannot use |snprintf| here because it is not async-signal-safe.
+  char buf[512];
+  StrCatSignalSafe(buf, args..., "\n");
+#if defined(OPENSSL_WINDOWS)
+  HANDLE stderr_handle = GetStdHandle(STD_ERROR_HANDLE);
+  if (stderr_handle != INVALID_HANDLE_VALUE) {
+    DWORD unused;
+    WriteFile(stderr_handle, buf, strlen(buf), &unused, nullptr);
+  }
+#else
+  write(STDERR_FILENO, buf, strlen(buf));
+#endif
+  abort();
+}
+
+class UnwindStatus {
+ public:
+  UnwindStatus() : err_(nullptr) {}
+  explicit UnwindStatus(const char *err) : err_(err) {}
+
+  bool ok() const { return err_ == nullptr; }
+  const char *Error() const { return err_; }
+
+ private:
+  const char *err_;
+};
+
+template<typename T>
+class UnwindStatusOr {
+ public:
+  UnwindStatusOr(UnwindStatus status) : status_(status) {
+    assert(!status_.ok());
+  }
+
+  UnwindStatusOr(const T &value) : status_(UnwindStatus()), value_(value) {}
+
+  bool ok() const { return status_.ok(); }
+  const char *Error() const { return status_.Error(); }
+
+  const T &ValueOrDie(const char *msg = "Unexpected error") const {
+    if (!ok()) {
+      FatalError(msg, ": ", Error());
+    }
+    return value_;
+  }
+
+ private:
+  UnwindStatus status_;
+  T value_;
+};
+
+// UnwindCursor abstracts between libunwind and Windows unwind APIs. It is
+// async-signal-safe.
+#if defined(OPENSSL_WINDOWS)
+class UnwindCursor {
+ public:
+  explicit UnwindCursor(const CONTEXT &ctx) : ctx_(ctx) {
+    starting_ip_ = ctx_.Rip;
+  }
+
+  // Step unwinds the cursor by one frame. On success, it returns whether there
+  // were more frames to unwind.
+  UnwindStatusOr<bool> Step() {
+    bool is_top = is_top_;
+    is_top_ = false;
+
+    DWORD64 image_base;
+    RUNTIME_FUNCTION *entry =
+        RtlLookupFunctionEntry(ctx_.Rip, &image_base, nullptr);
+    if (entry == nullptr) {
+      // This is a leaf function. Leaf functions do not touch stack or
+      // callee-saved registers, so they may be unwound by simulating a ret.
+      if (!is_top) {
+        return UnwindStatus("leaf function found below the top frame");
+      }
+      memcpy(&ctx_.Rip, reinterpret_cast<const void *>(ctx_.Rsp),
+             sizeof(ctx_.Rip));
+      ctx_.Rsp += 8;
+      return true;
+    }
+
+    // This is a frame function. Call into the Windows unwinder.
+    void *handler_data;
+    DWORD64 establisher_frame;
+    RtlVirtualUnwind(UNW_FLAG_NHANDLER, image_base, ctx_.Rip, entry, &ctx_,
+                     &handler_data, &establisher_frame, nullptr);
+    return ctx_.Rip != 0;
+  }
+
+  // GetIP returns the instruction pointer at the current frame.
+  UnwindStatusOr<crypto_word_t> GetIP() { return ctx_.Rip; }
+
+  // GetSP returns the stack pointer at the current frame.
+  UnwindStatusOr<crypto_word_t> GetSP() { return ctx_.Rsp; }
+
+  // GetCallerState returns the callee-saved registers at the current frame.
+  UnwindStatusOr<CallerState> GetCallerState() {
+    CallerState state;
+    state.rbx = ctx_.Rbx;
+    state.rbp = ctx_.Rbp;
+    state.rdi = ctx_.Rdi;
+    state.rsi = ctx_.Rsi;
+    state.r12 = ctx_.R12;
+    state.r13 = ctx_.R13;
+    state.r14 = ctx_.R14;
+    state.r15 = ctx_.R15;
+    memcpy(&state.xmm6, &ctx_.Xmm6, sizeof(Reg128));
+    memcpy(&state.xmm7, &ctx_.Xmm7, sizeof(Reg128));
+    memcpy(&state.xmm8, &ctx_.Xmm8, sizeof(Reg128));
+    memcpy(&state.xmm9, &ctx_.Xmm9, sizeof(Reg128));
+    memcpy(&state.xmm10, &ctx_.Xmm10, sizeof(Reg128));
+    memcpy(&state.xmm11, &ctx_.Xmm11, sizeof(Reg128));
+    memcpy(&state.xmm12, &ctx_.Xmm12, sizeof(Reg128));
+    memcpy(&state.xmm13, &ctx_.Xmm13, sizeof(Reg128));
+    memcpy(&state.xmm14, &ctx_.Xmm14, sizeof(Reg128));
+    memcpy(&state.xmm15, &ctx_.Xmm15, sizeof(Reg128));
+    return state;
+  }
+
+  // ToString returns a human-readable representation of the address the cursor
+  // started at, using debug information if available.
+  const char *ToString() {
+    // TODO(davidben): Use SymFromAddr here. See base/debug/stack_trace_win.cc
+    // in Chromium for an example. It probably should be called outside the
+    // exception handler, which means we need to stash the address in
+    // |g_unwind_errors| to defer it.
+    StrCatSignalSafe(starting_ip_buf_, "0x", WordToHex(starting_ip_).data());
+    return starting_ip_buf_;
+  }
+
+ private:
+  CONTEXT ctx_;
+  crypto_word_t starting_ip_;
+  char starting_ip_buf_[64];
+  bool is_top_ = true;
+};
+#else  // !OPENSSL_WINDOWS
+class UnwindCursor {
+ public:
+  explicit UnwindCursor(unw_context_t *ctx) : ctx_(ctx) {
+    int ret = InitAtSignalFrame(&cursor_);
+    if (ret < 0) {
+      FatalError("Error getting unwind context: ", unw_strerror(ret));
+    }
+    starting_ip_ = GetIP().ValueOrDie("Error getting instruction pointer");
+  }
+
+  // Step unwinds the cursor by one frame. On success, it returns whether there
+  // were more frames to unwind.
+  UnwindStatusOr<bool> Step() {
+    int ret = unw_step(&cursor_);
+    if (ret < 0) {
+      return UNWError(ret);
+    }
+    return ret != 0;
+  }
+
+  // GetIP returns the instruction pointer at the current frame.
+  UnwindStatusOr<crypto_word_t> GetIP() {
+    crypto_word_t ip;
+    int ret = GetReg(&ip, UNW_REG_IP);
+    if (ret < 0) {
+      return UNWError(ret);
+    }
+    return ip;
+  }
+
+  // GetSP returns the stack pointer at the current frame.
+  UnwindStatusOr<crypto_word_t> GetSP() {
+    crypto_word_t sp;
+    int ret = GetReg(&sp, UNW_REG_SP);
+    if (ret < 0) {
+      return UNWError(ret);
+    }
+    return sp;
+  }
+
+  // GetCallerState returns the callee-saved registers at the current frame.
+  UnwindStatusOr<CallerState> GetCallerState() {
+    CallerState state;
+    int ret = 0;
+#if defined(OPENSSL_X86_64)
+    ret = ret < 0 ? ret : GetReg(&state.rbx, UNW_X86_64_RBX);
+    ret = ret < 0 ? ret : GetReg(&state.rbp, UNW_X86_64_RBP);
+    ret = ret < 0 ? ret : GetReg(&state.r12, UNW_X86_64_R12);
+    ret = ret < 0 ? ret : GetReg(&state.r13, UNW_X86_64_R13);
+    ret = ret < 0 ? ret : GetReg(&state.r14, UNW_X86_64_R14);
+    ret = ret < 0 ? ret : GetReg(&state.r15, UNW_X86_64_R15);
+#else
+#error "unknown architecture"
+#endif
+    if (ret < 0) {
+      return UNWError(ret);
+    }
+    return state;
+  }
+
+  // ToString returns a human-readable representation of the address the cursor
+  // started at, using debug information if available.
+  const char *ToString() {
+    // Use a new cursor. |cursor_| has already been unwound, and
+    // |unw_get_proc_name| is slow so we do not sample it unconditionally in the
+    // constructor.
+    unw_cursor_t cursor;
+    unw_word_t off;
+    if (InitAtSignalFrame(&cursor) != 0 ||
+        unw_get_proc_name(&cursor, starting_ip_buf_, sizeof(starting_ip_buf_),
+                          &off) != 0) {
+      StrCatSignalSafe(starting_ip_buf_, "0x", WordToHex(starting_ip_).data());
+      return starting_ip_buf_;
+    }
+    size_t len = strlen(starting_ip_buf_);
+    // Print the offset in decimal, to match gdb's disassembly output and ease
+    // debugging.
+    StrCatSignalSafe(bssl::Span<char>(starting_ip_buf_).subspan(len), "+",
+                     WordToDecimal(off).data(), " (0x",
+                     WordToHex(starting_ip_).data(), ")");
+    return starting_ip_buf_;
+  }
+
+ private:
+  static UnwindStatus UNWError(int ret) {
+    assert(ret < 0);
+    const char *msg = unw_strerror(ret);
+    return UnwindStatus(msg == nullptr ? "unknown error" : msg);
+  }
+
+  int InitAtSignalFrame(unw_cursor_t *cursor) {
+    // Work around a bug in libunwind which breaks rax and rdx recovery. This
+    // breaks functions which temporarily use rax as the CFA register. See
+    // https://git.savannah.gnu.org/gitweb/?p=libunwind.git;a=commit;h=819bf51bbd2da462c2ec3401e8ac9153b6e725e3
+    OPENSSL_memset(cursor, 0, sizeof(*cursor));
+    int ret = unw_init_local(cursor, ctx_);
+    if (ret < 0) {
+      return ret;
+    }
+    for (;;) {
+      ret = unw_is_signal_frame(cursor);
+      if (ret < 0) {
+        return ret;
+      }
+      if (ret != 0) {
+        return 0;  // Found the signal frame.
+      }
+      ret = unw_step(cursor);
+      if (ret < 0) {
+        return ret;
+      }
+    }
+  }
+
+  int GetReg(crypto_word_t *out, unw_regnum_t reg) {
+    unw_word_t val;
+    int ret = unw_get_reg(&cursor_, reg, &val);
+    if (ret == 0) {
+      static_assert(sizeof(crypto_word_t) == sizeof(unw_word_t),
+                    "crypto_word_t and unw_word_t are inconsistent");
+      *out = val;
+    }
+    return ret;
+  }
+
+  unw_context_t *ctx_;
+  unw_cursor_t cursor_;
+  crypto_word_t starting_ip_;
+  char starting_ip_buf_[64];
+};
+#endif  // OPENSSL_WINDOWS
+
+// g_in_trampoline is true if we are in an instrumented |abi_test_trampoline|
+// call, in the region that triggers |SIGTRAP|.
+static bool g_in_trampoline = false;
+// g_unwind_function_done, if |g_in_trampoline| is true, is whether the function
+// under test has returned. It is undefined otherwise.
+static bool g_unwind_function_done;
+// g_trampoline_state, if |g_in_trampoline| is true, is the state the function
+// under test must preserve. It is undefined otherwise.
+static CallerState g_trampoline_state;
+// g_trampoline_sp, if |g_in_trampoline| is true, is the stack pointer of the
+// trampoline frame. It is undefined otherwise.
+static crypto_word_t g_trampoline_sp;
+
+// kMaxUnwindErrors is the maximum number of unwind errors reported per
+// function. If a function's unwind tables are wrong, we are otherwise likely to
+// repeat the same error at multiple addresses.
+static constexpr size_t kMaxUnwindErrors = 10;
+
+// Errors are saved in a signal handler. We use a static buffer to avoid
+// allocation.
+static size_t g_num_unwind_errors = 0;
+static char g_unwind_errors[kMaxUnwindErrors][512];
+
+template <typename... Args>
+static void AddUnwindError(Args... args) {
+  if (g_num_unwind_errors >= kMaxUnwindErrors) {
+    return;
+  }
+  StrCatSignalSafe(g_unwind_errors[g_num_unwind_errors], args...);
+  g_num_unwind_errors++;
+}
+
+static void CheckUnwind(UnwindCursor *cursor) {
+  const crypto_word_t kStartAddress =
+      reinterpret_cast<crypto_word_t>(&abi_test_unwind_start);
+  const crypto_word_t kReturnAddress =
+      reinterpret_cast<crypto_word_t>(&abi_test_unwind_return);
+  const crypto_word_t kStopAddress =
+      reinterpret_cast<crypto_word_t>(&abi_test_unwind_stop);
+
+  crypto_word_t sp = cursor->GetSP().ValueOrDie("Error getting stack pointer");
+  crypto_word_t ip =
+      cursor->GetIP().ValueOrDie("Error getting instruction pointer");
+  if (!g_in_trampoline) {
+    if (ip != kStartAddress) {
+      FatalError("Unexpected SIGTRAP at ", cursor->ToString());
+    }
+
+    // Save the current state and begin.
+    g_in_trampoline = true;
+    g_unwind_function_done = false;
+    g_trampoline_sp = sp;
+    g_trampoline_state = cursor->GetCallerState().ValueOrDie(
+        "Error getting initial caller state");
+  } else {
+    if (sp == g_trampoline_sp || g_unwind_function_done) {
+      // |g_unwind_function_done| should imply |sp| is |g_trampoline_sp|, but
+      // clearing the trap flag in x86 briefly displaces the stack pointer.
+      //
+      // Also note we check both |ip| and |sp| below, in case the function under
+      // test is also |abi_test_trampoline|.
+      if (ip == kReturnAddress && sp == g_trampoline_sp) {
+        g_unwind_function_done = true;
+      }
+      if (ip == kStopAddress && sp == g_trampoline_sp) {
+        // |SIGTRAP| is fatal again.
+        g_in_trampoline = false;
+      }
+    } else if (IsAncestorStackFrame(sp, g_trampoline_sp)) {
+      // This should never happen. We went past |g_trampoline_sp| without
+      // stopping at |kStopAddress|.
+      AddUnwindError("stack frame is before caller at ",
+                     cursor->ToString());
+      g_in_trampoline = false;
+    } else if (g_num_unwind_errors < kMaxUnwindErrors) {
+      for (;;) {
+        UnwindStatusOr<bool> step_ret = cursor->Step();
+        if (!step_ret.ok()) {
+          AddUnwindError("error unwinding from ", cursor->ToString(), ": ",
+                         step_ret.Error());
+          break;
+        }
+        // |Step| returns whether there was a frame to unwind.
+        if (!step_ret.ValueOrDie()) {
+          AddUnwindError("could not unwind to starting frame from ",
+                         cursor->ToString());
+          break;
+        }
+
+        UnwindStatusOr<crypto_word_t> cur_sp = cursor->GetSP();
+        if (!cur_sp.ok()) {
+          AddUnwindError("error recovering stack pointer unwinding from ",
+                         cursor->ToString(), ": ", cur_sp.Error());
+          break;
+        }
+        if (IsAncestorStackFrame(cur_sp.ValueOrDie(), g_trampoline_sp)) {
+          AddUnwindError("unwound past starting frame from ",
+                         cursor->ToString());
+          break;
+        }
+        if (cur_sp.ValueOrDie() == g_trampoline_sp) {
+          // We found the parent frame. Check the return address.
+          UnwindStatusOr<crypto_word_t> cur_ip = cursor->GetIP();
+          if (!cur_ip.ok()) {
+            AddUnwindError("error recovering return address unwinding from ",
+                           cursor->ToString(), ": ", cur_ip.Error());
+          } else if (cur_ip.ValueOrDie() != kReturnAddress) {
+            AddUnwindError("wrong return address unwinding from ",
+                           cursor->ToString());
+          }
+
+          // Check the remaining registers.
+          UnwindStatusOr<CallerState> state = cursor->GetCallerState();
+          if (!state.ok()) {
+            AddUnwindError("error recovering registers unwinding from ",
+                           cursor->ToString(), ": ", state.Error());
+          } else {
+            ForEachMismatch(
+                state.ValueOrDie(), g_trampoline_state, [&](const char *reg) {
+                  AddUnwindError(reg, " was not recovered unwinding from ",
+                                 cursor->ToString());
+                });
+          }
+          break;
+        }
+      }
+    }
+  }
+}
+
+static void ReadUnwindResult(Result *out) {
+  for (size_t i = 0; i < g_num_unwind_errors; i++) {
+    out->errors.emplace_back(g_unwind_errors[i]);
+  }
+  if (g_num_unwind_errors == kMaxUnwindErrors) {
+    out->errors.emplace_back("(additional errors omitted)");
+  }
+  g_num_unwind_errors = 0;
+}
+
+#if defined(OPENSSL_WINDOWS)
+static DWORD g_main_thread;
+
+static long ExceptionHandler(EXCEPTION_POINTERS *info) {
+  if (info->ExceptionRecord->ExceptionCode != EXCEPTION_SINGLE_STEP ||
+      GetCurrentThreadId() != g_main_thread) {
+    return EXCEPTION_CONTINUE_SEARCH;
+  }
+
+  UnwindCursor cursor(*info->ContextRecord);
+  CheckUnwind(&cursor);
+  if (g_in_trampoline) {
+    // Windows clears the trap flag, so we must restore it.
+    info->ContextRecord->EFlags |= 0x100;
+  }
+  return EXCEPTION_CONTINUE_EXECUTION;
+}
+
+static void EnableUnwindTestsImpl() {
+  if (IsDebuggerPresent()) {
+    // Unwind tests drive logic via |EXCEPTION_SINGLE_STEP|, which conflicts with
+    // debuggers.
+    fprintf(stderr, "Debugger detected. Disabling unwind tests.\n");
+    return;
+  }
+
+  g_main_thread = GetCurrentThreadId();
+
+  if (AddVectoredExceptionHandler(0, ExceptionHandler) == nullptr) {
+    fprintf(stderr, "Error installing exception handler.\n");
+    abort();
+  }
+
+  g_unwind_tests_enabled = true;
+}
+#else  // !OPENSSL_WINDOWS
 // HandleEINTR runs |func| and returns the result, retrying the operation on
 // |EINTR|.
 template <typename Func>
@@ -170,170 +687,7 @@ static bool IsBeingDebugged() {
   return idx < status.size() && status[idx] != '0';
 }
 
-// IsAncestorStackFrame returns true if |a_sp| is an ancestor stack frame of
-// |b_sp|.
-static bool IsAncestorStackFrame(unw_word_t a_sp, unw_word_t b_sp) {
-#if defined(OPENSSL_X86_64)
-  // The stack grows down, so ancestor stack frames have higher addresses.
-  return a_sp > b_sp;
-#else
-#error "unknown architecture"
-#endif
-}
-
-static int CallerStateFromUNWCursor(CallerState *out, unw_cursor_t *cursor) {
-  // |CallerState| uses |crypto_word_t|, while libunwind uses |unw_word_t|, but
-  // both are defined as |uint*_t| from stdint.h, so we can assume the types
-  // match.
-#if defined(OPENSSL_X86_64)
-  int ret = 0;
-  ret = ret < 0 ? ret : unw_get_reg(cursor, UNW_X86_64_RBX, &out->rbx);
-  ret = ret < 0 ? ret : unw_get_reg(cursor, UNW_X86_64_RBP, &out->rbp);
-  ret = ret < 0 ? ret : unw_get_reg(cursor, UNW_X86_64_R12, &out->r12);
-  ret = ret < 0 ? ret : unw_get_reg(cursor, UNW_X86_64_R13, &out->r13);
-  ret = ret < 0 ? ret : unw_get_reg(cursor, UNW_X86_64_R14, &out->r14);
-  ret = ret < 0 ? ret : unw_get_reg(cursor, UNW_X86_64_R15, &out->r15);
-  return ret;
-#else
-#error "unknown architecture"
-#endif
-}
-
-// Implement some string formatting utilties. Ideally we would use |snprintf|,
-// but this is called in a signal handler and |snprintf| is not async-signal-
-// safe.
-
-static std::array<char, DECIMAL_SIZE(unw_word_t) + 1> WordToDecimal(
-    unw_word_t v) {
-  std::array<char, DECIMAL_SIZE(unw_word_t) + 1> ret;
-  size_t len = 0;
-  do {
-    ret[len++] = '0' + v % 10;
-    v /= 10;
-  } while (v != 0);
-  for (size_t i = 0; i < len / 2; i++) {
-    std::swap(ret[i], ret[len - 1 - i]);
-  }
-  ret[len] = '\0';
-  return ret;
-}
-
-static std::array<char, sizeof(unw_word_t) * 2 + 1> WordToHex(unw_word_t v) {
-  static const char kHex[] = "0123456789abcdef";
-  std::array<char, sizeof(unw_word_t) * 2 + 1> ret;
-  for (size_t i = sizeof(unw_word_t) - 1; i < sizeof(unw_word_t); i--) {
-    uint8_t b = v & 0xff;
-    v >>= 8;
-    ret[i * 2] = kHex[b >> 4];
-    ret[i * 2 + 1] = kHex[b & 0xf];
-  }
-  ret[sizeof(unw_word_t) * 2] = '\0';
-  return ret;
-}
-
-static void StrCatSignalSafeImpl(bssl::Span<char> out) {}
-
-template <typename... Args>
-static void StrCatSignalSafeImpl(bssl::Span<char> out, const char *str,
-                                 Args... args) {
-  BUF_strlcat(out.data(), str, out.size());
-  StrCatSignalSafeImpl(out, args...);
-}
-
-template <typename... Args>
-static void StrCatSignalSafe(bssl::Span<char> out, Args... args) {
-  if (out.empty()) {
-    return;
-  }
-  out[0] = '\0';
-  StrCatSignalSafeImpl(out, args...);
-}
-
-static int UnwindToSignalFrame(unw_cursor_t *cursor) {
-  for (;;) {
-    int ret = unw_is_signal_frame(cursor);
-    if (ret < 0) {
-      return ret;
-    }
-    if (ret != 0) {
-      return 0;  // Found the signal frame.
-    }
-    ret = unw_step(cursor);
-    if (ret < 0) {
-      return ret;
-    }
-  }
-}
-
-// IPToString returns a human-readable representation of |ip|, using debug
-// information from |ctx| if available. |ip| must be the address of |ctx|'s
-// signal frame. This function is async-signal-safe.
-static std::array<char, 256> IPToString(unw_word_t ip, unw_context_t *ctx) {
-  std::array<char, 256> ret;
-  // Use a new cursor. The caller's cursor has already been unwound, but
-  // |unw_get_proc_name| is slow so we do not wish to call it all the time.
-  unw_cursor_t cursor;
-  // Work around a bug in libunwind. See
-  // https://git.savannah.gnu.org/gitweb/?p=libunwind.git;a=commit;h=819bf51bbd2da462c2ec3401e8ac9153b6e725e3
-  OPENSSL_memset(&cursor, 0, sizeof(cursor));
-  unw_word_t off;
-  if (unw_init_local(&cursor, ctx) != 0 ||
-      UnwindToSignalFrame(&cursor) != 0 ||
-      unw_get_proc_name(&cursor, ret.data(), ret.size(), &off) != 0) {
-    StrCatSignalSafe(bssl::MakeSpan(ret), "0x", WordToHex(ip).data());
-    return ret;
-  }
-  size_t len = strlen(ret.data());
-  // Print the offset in decimal, to match gdb's disassembly output and ease
-  // debugging.
-  StrCatSignalSafe(bssl::MakeSpan(ret).subspan(len), "+",
-                   WordToDecimal(off).data(), " (0x", WordToHex(ip).data(),
-                   ")");
-  return ret;
-}
-
 static pthread_t g_main_thread;
-
-// g_in_trampoline is true if we are in an instrumented |abi_test_trampoline|
-// call, in the region that triggers |SIGTRAP|.
-static bool g_in_trampoline = false;
-// g_unwind_function_done, if |g_in_trampoline| is true, is whether the function
-// under test has returned. It is undefined otherwise.
-static bool g_unwind_function_done;
-// g_trampoline_state, if |g_in_trampoline| is true, is the state the function
-// under test must preserve. It is undefined otherwise.
-static CallerState g_trampoline_state;
-// g_trampoline_sp, if |g_in_trampoline| is true, is the stack pointer of the
-// trampoline frame. It is undefined otherwise.
-static unw_word_t g_trampoline_sp;
-
-// kMaxUnwindErrors is the maximum number of unwind errors reported per
-// function. If a function's unwind tables are wrong, we are otherwise likely to
-// repeat the same error at multiple addresses.
-static constexpr size_t kMaxUnwindErrors = 10;
-
-// Errors are saved in a signal handler. We use a static buffer to avoid
-// allocation.
-static size_t num_unwind_errors = 0;
-static char unwind_errors[kMaxUnwindErrors][512];
-
-template <typename... Args>
-static void AddUnwindError(Args... args) {
-  if (num_unwind_errors >= kMaxUnwindErrors) {
-    return;
-  }
-  StrCatSignalSafe(unwind_errors[num_unwind_errors], args...);
-  num_unwind_errors++;
-}
-
-template <typename... Args>
-[[noreturn]] static void FatalError(Args... args) {
-  // We cannot use |snprintf| here because it is not async-signal-safe.
-  char buf[512];
-  StrCatSignalSafe(buf, args..., "\n");
-  write(STDERR_FILENO, buf, strlen(buf));
-  abort();
-}
 
 static void TrapHandler(int sig) {
   // Note this is a signal handler, so only async-signal-safe functions may be
@@ -348,126 +702,12 @@ static void TrapHandler(int sig) {
 
   unw_context_t ctx;
   int ret = unw_getcontext(&ctx);
-  unw_cursor_t cursor;
-  // Work around a bug in libunwind which breaks rax and rdx recovery. This
-  // breaks functions which temporarily use rax as the CFA register. See
-  // https://git.savannah.gnu.org/gitweb/?p=libunwind.git;a=commit;h=819bf51bbd2da462c2ec3401e8ac9153b6e725e3
-  OPENSSL_memset(&cursor, 0, sizeof(cursor));
-  ret = ret < 0 ? ret : unw_init_local(&cursor, &ctx);
-  ret = ret < 0 ? ret : UnwindToSignalFrame(&cursor);
-  unw_word_t sp, ip;
-  ret = ret < 0 ? ret : unw_get_reg(&cursor, UNW_REG_SP, &sp);
-  ret = ret < 0 ? ret : unw_get_reg(&cursor, UNW_REG_IP, &ip);
   if (ret < 0) {
-    FatalError("Error initializing unwind cursor: ", unw_strerror(ret));
+    FatalError("Error getting unwind context: ", unw_strerror(ret));
   }
 
-  const unw_word_t kStartAddress =
-      reinterpret_cast<unw_word_t>(&abi_test_unwind_start);
-  const unw_word_t kReturnAddress =
-      reinterpret_cast<unw_word_t>(&abi_test_unwind_return);
-  const unw_word_t kStopAddress =
-      reinterpret_cast<unw_word_t>(&abi_test_unwind_stop);
-  if (!g_in_trampoline) {
-    if (ip != kStartAddress) {
-      FatalError("Unexpected SIGTRAP at ", IPToString(ip, &ctx).data());
-    }
-
-    // Save the current state and begin.
-    g_in_trampoline = true;
-    g_unwind_function_done = false;
-    g_trampoline_sp = sp;
-    ret = CallerStateFromUNWCursor(&g_trampoline_state, &cursor);
-    if (ret < 0) {
-      FatalError("Error getting initial caller state: ", unw_strerror(ret));
-    }
-  } else {
-    if (sp == g_trampoline_sp || g_unwind_function_done) {
-      // |g_unwind_function_done| should imply |sp| is |g_trampoline_sp|, but
-      // clearing the trap flag in x86 briefly displaces the stack pointer.
-      //
-      // Also note we check both |ip| and |sp| below, in case the function under
-      // test is also |abi_test_trampoline|.
-      if (ip == kReturnAddress && sp == g_trampoline_sp) {
-        g_unwind_function_done = true;
-      }
-      if (ip == kStopAddress && sp == g_trampoline_sp) {
-        // |SIGTRAP| is fatal again.
-        g_in_trampoline = false;
-      }
-    } else if (IsAncestorStackFrame(sp, g_trampoline_sp)) {
-      // This should never happen. We went past |g_trampoline_sp| without
-      // stopping at |kStopAddress|.
-      AddUnwindError("stack frame is before caller at ",
-                     IPToString(ip, &ctx).data());
-      g_in_trampoline = false;
-    } else if (num_unwind_errors < kMaxUnwindErrors) {
-      for (;;) {
-        ret = unw_step(&cursor);
-        if (ret < 0) {
-          AddUnwindError("error unwinding from ", IPToString(ip, &ctx).data(),
-                         ": ", unw_strerror(ret));
-          break;
-        }
-        if (ret == 0) {
-          AddUnwindError("could not unwind to starting frame from ",
-                         IPToString(ip, &ctx).data());
-          break;
-        }
-
-        unw_word_t cur_sp;
-        ret = unw_get_reg(&cursor, UNW_REG_SP, &cur_sp);
-        if (ret < 0) {
-          AddUnwindError("error recovering stack pointer unwinding from ",
-                         IPToString(ip, &ctx).data(), ": ", unw_strerror(ret));
-          break;
-        }
-        if (IsAncestorStackFrame(cur_sp, g_trampoline_sp)) {
-          AddUnwindError("unwound past starting frame from ",
-                         IPToString(ip, &ctx).data());
-          break;
-        }
-        if (cur_sp == g_trampoline_sp) {
-          // We found the parent frame. Check the return address.
-          unw_word_t cur_ip;
-          ret = unw_get_reg(&cursor, UNW_REG_IP, &cur_ip);
-          if (ret < 0) {
-            AddUnwindError("error recovering return address unwinding from ",
-                           IPToString(ip, &ctx).data(), ": ",
-                           unw_strerror(ret));
-          } else if (cur_ip != kReturnAddress) {
-            AddUnwindError("wrong return address unwinding from ",
-                           IPToString(ip, &ctx).data());
-          }
-
-          // Check the remaining registers.
-          CallerState state;
-          ret = CallerStateFromUNWCursor(&state, &cursor);
-          if (ret < 0) {
-            AddUnwindError("error recovering registers unwinding from ",
-                           IPToString(ip, &ctx).data(), ": ",
-                           unw_strerror(ret));
-          } else {
-            ForEachMismatch(state, g_trampoline_state, [&](const char *reg) {
-              AddUnwindError(reg, " was not recovered unwinding from ",
-                             IPToString(ip, &ctx).data());
-            });
-          }
-          break;
-        }
-      }
-    }
-  }
-}
-
-static void ReadUnwindResult(Result *out) {
-  for (size_t i = 0; i < num_unwind_errors; i++) {
-    out->errors.emplace_back(unwind_errors[i]);
-  }
-  if (num_unwind_errors == kMaxUnwindErrors) {
-    out->errors.emplace_back("(additional errors omitted)");
-  }
-  num_unwind_errors = 0;
+  UnwindCursor cursor(&ctx);
+  CheckUnwind(&cursor);
 }
 
 static void EnableUnwindTestsImpl() {
@@ -490,14 +730,16 @@ static void EnableUnwindTestsImpl() {
 
   g_unwind_tests_enabled = true;
 }
+#endif  // OPENSSL_WINDOWS
 
-#else
-// TODO(davidben): Implement an SEH-based unwind-tester.
+#else  // !SUPPORTS_UNWIND_TEST
+
 #if defined(SUPPORTS_ABI_TEST)
 static void ReadUnwindResult(Result *) {}
 #endif
 static void EnableUnwindTestsImpl() {}
-#endif  // UNWIND_TEST_SIGTRAP
+
+#endif  // SUPPORTS_UNWIND_TEST
 
 }  // namespace internal
 

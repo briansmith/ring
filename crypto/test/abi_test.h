@@ -285,8 +285,20 @@ bool UnwindTestsEnabled();
 //
 // Functional testing requires coverage of input values, while ABI testing only
 // requires branch coverage. Most of our assembly is constant-time, so usually
-// only a few instrumented calls are necessray.
-#define CHECK_ABI(...)                                                   \
+// only a few instrumented calls are necessary.
+//
+// TODO(https://crbug.com/boringssl/259): Most of Windows assembly currently
+// fails SEH testing. For now, |CHECK_ABI| behaves like |CHECK_ABI_NO_UNWIND|
+// on Windows. Functions which work with unwind testing on Windows should use
+// |CHECK_ABI_SEH|.
+#if defined(OPENSSL_WINDOWS)
+#define CHECK_ABI(...) CHECK_ABI_NO_UNWIND(__VA_ARGS__)
+#else
+#define CHECK_ABI(...) CHECK_ABI_SEH(__VA_ARGS__)
+#endif
+
+// CHECK_ABI_SEH behaves like |CHECK_ABI| but enables unwind testing on Windows.
+#define CHECK_ABI_SEH(...)                                               \
   abi_test::internal::CheckGTest(#__VA_ARGS__, __FILE__, __LINE__, true, \
                                  __VA_ARGS__)
 
@@ -339,12 +351,19 @@ void abi_test_unwind_return(Uncallable);
 void abi_test_unwind_stop(Uncallable);
 
 // abi_test_bad_unwind_wrong_register preserves the ABI, but annotates the wrong
-// register in CFI metadata.
+// register in unwind metadata.
 void abi_test_bad_unwind_wrong_register(void);
 
 // abi_test_bad_unwind_temporary preserves the ABI, but temporarily corrupts the
 // storage space for a saved register, breaking unwind.
 void abi_test_bad_unwind_temporary(void);
+
+#if defined(OPENSSL_WINDOWS)
+// abi_test_bad_unwind_epilog preserves the ABI, and correctly annotates the
+// prolog, but the epilog does not match Win64's rules, breaking unwind during
+// the epilog.
+void abi_test_bad_unwind_epilog(void);
+#endif
 #endif  // OPENSSL_X86_64
 
 #if defined(OPENSSL_X86_64) || defined(OPENSSL_X86)
