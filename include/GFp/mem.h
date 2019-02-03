@@ -59,8 +59,6 @@
 
 #include <GFp/base.h>
 
-#include <stdlib.h>
-
 // GFp_memcmp returns zero iff the |len| bytes at |a| and |b| are equal. It
 // takes an amount of time dependent on |len|, but independent of the contents
 // of |a| and |b|. Unlike memcmp, it cannot be used to put elements into a
