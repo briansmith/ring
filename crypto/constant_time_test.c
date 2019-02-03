@@ -45,26 +45,17 @@
 
 #include "internal.h"
 
-#include <limits.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 
 int bssl_constant_time_test_main(void);
 
 static int test_binary_op_w(crypto_word (*op)(crypto_word a, crypto_word b),
-                            const char *op_name, crypto_word a, crypto_word b,
-                            int is_true) {
+                            crypto_word a, crypto_word b, int is_true) {
   crypto_word c = op(a, b);
   if (is_true && c != CONSTTIME_TRUE_W) {
-    fprintf(stderr,
-            "Test failed for %s(%zu, %zu): expected %zu (TRUE), got %zu\n",
-            op_name, (size_t)a, (size_t)b, (size_t)CONSTTIME_TRUE_W, (size_t)c);
     return 1;
   } else if (!is_true && c != CONSTTIME_FALSE_W) {
-    fprintf(stderr,
-            "Test failed for  %s(%zu, %zu): expected %zu (FALSE), got %zu\n",
-            op_name, (size_t)a, (size_t)b, (size_t)CONSTTIME_FALSE_W, (size_t)c);
     return 1;
   }
   return 0;
@@ -73,31 +64,15 @@ static int test_binary_op_w(crypto_word (*op)(crypto_word a, crypto_word b),
 static int test_is_zero_w(crypto_word a) {
   crypto_word c = constant_time_is_zero_w(a);
   if (a == 0 && c != CONSTTIME_TRUE_W) {
-    fprintf(stderr,
-            "Test failed for constant_time_is_zero_w(%zu): "
-            "expected %zu (TRUE), got %zu\n",
-            (size_t)a, (size_t)CONSTTIME_TRUE_W, (size_t)c);
     return 1;
   } else if (a != 0 && c != CONSTTIME_FALSE_W) {
-    fprintf(stderr,
-            "Test failed for constant_time_is_zero_w(%zu): "
-            "expected %zu (FALSE), got %zu\n",
-            (size_t)a, (size_t)CONSTTIME_FALSE_W, (size_t)c);
     return 1;
   }
 
   c = constant_time_is_nonzero_w(a);
   if (a == 0 && c != CONSTTIME_FALSE_W) {
-    fprintf(stderr,
-            "Test failed for constant_time_is_nonzero_w(%zu): "
-            "expected %zu (FALSE), got %zu\n",
-            (size_t)a, (size_t)CONSTTIME_FALSE_W, (size_t)c);
     return 1;
   } else if (a != 0 && c != CONSTTIME_TRUE_W) {
-    fprintf(stderr,
-            "Test failed for constant_time_is_nonzero_w(%zu): "
-            "expected %zu (TRUE), got %zu\n",
-            (size_t)a, (size_t)CONSTTIME_TRUE_W, (size_t)c);
     return 1;
   }
 
@@ -107,20 +82,10 @@ static int test_is_zero_w(crypto_word a) {
 static int test_select_w(crypto_word a, crypto_word b) {
   crypto_word selected = constant_time_select_w(CONSTTIME_TRUE_W, a, b);
   if (selected != a) {
-    fprintf(stderr,
-            "Test failed for constant_time_select_w(%zu, %zu,"
-            "%zu): expected %zu(first value), got %zu\n",
-            (size_t)CONSTTIME_TRUE_W, (size_t)a, (size_t)b, (size_t)a,
-            (size_t)selected);
     return 1;
   }
   selected = constant_time_select_w(CONSTTIME_FALSE_W, a, b);
   if (selected != b) {
-    fprintf(stderr,
-            "Test failed for constant_time_select_w(%zu, %zu,"
-            "%zu): expected %zu(second value), got %zu\n",
-            (size_t)CONSTTIME_FALSE_W, (size_t)a, (size_t)b, (size_t)b,
-            (size_t)selected);
     return 1;
   }
   return 0;
@@ -156,10 +121,8 @@ int bssl_constant_time_test_main(void) {
     for (size_t j = 0;
          j < sizeof(test_values_s) / sizeof(test_values_s[0]); ++j) {
       crypto_word b = test_values_s[j];
-      num_failed += test_binary_op_w(&constant_time_eq_w,
-                                     "constant_time_eq_w", a, b, a == b);
-      num_failed += test_binary_op_w(&constant_time_eq_w,
-                                     "constant_time_eq_w", b, a, b == a);
+      num_failed += test_binary_op_w(&constant_time_eq_w, a, b, a == b);
+      num_failed += test_binary_op_w(&constant_time_eq_w, b, a, b == a);
       num_failed += test_select_w(a, b);
     }
   }
@@ -168,6 +131,5 @@ int bssl_constant_time_test_main(void) {
     return EXIT_SUCCESS;
   }
 
-  fprintf(stdout, "%d tests failed!\n", num_failed);
   return EXIT_FAILURE;
 }
