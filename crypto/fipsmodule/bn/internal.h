@@ -340,8 +340,21 @@ int bn_rand_secret_range(BIGNUM *r, int *out_is_uniform, BN_ULONG min_inclusive,
     (defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || \
      defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64))
 #define OPENSSL_BN_ASM_MONT
+// bn_mul_mont writes |ap| * |bp| mod |np| to |rp|, each |num| words
+// long. Inputs and outputs are in Montgomery form. |n0| is a pointer to the
+// corresponding field in |BN_MONT_CTX|. It returns one if |bn_mul_mont| handles
+// inputs of this size and zero otherwise.
+//
+// TODO(davidben): The x86_64 implementation expects a 32-bit input and masks
+// off upper bits. The aarch64 implementation expects a 64-bit input and does
+// not. |size_t| is the safer option but not strictly correct for x86_64. But
+// this function implicitly already has a bound on the size of |num| because it
+// internally creates |num|-sized stack allocation.
+//
+// See also discussion in |ToWord| in abi_test.h for notes on smaller-than-word
+// inputs.
 int bn_mul_mont(BN_ULONG *rp, const BN_ULONG *ap, const BN_ULONG *bp,
-                const BN_ULONG *np, const BN_ULONG *n0, int num);
+                const BN_ULONG *np, const BN_ULONG *n0, size_t num);
 #endif
 
 uint64_t bn_mont_n0(const BIGNUM *n);
