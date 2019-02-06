@@ -17,19 +17,6 @@
 #endif
 
 #include <GFp/cpu.h>
-
-#if defined(OPENSSL_WINDOWS)
-
-#if defined(_MSC_VER)
-#pragma warning(push, 3)
-#endif
-
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
-
-#endif
-
 #include "internal.h"
 
 // Our assembly does not use the GOT to reference symbols, which means
