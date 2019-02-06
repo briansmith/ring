@@ -124,17 +124,17 @@ use crate::sealed;
 
 #[cfg(target_os = "linux")]
 mod sysrand_chunk {
-    use crate::{c, error};
-    use libc;
+    use crate::error;
+    use libc::{self, size_t};
 
     extern "C" {
-        static GFp_SYS_GETRANDOM: c::long;
+        static GFp_SYS_GETRANDOM: libc::c_long;
     }
 
     #[inline]
     pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
-        let chunk_len: c::size_t = dest.len();
-        let flags: c::uint = 0;
+        let chunk_len: size_t = dest.len();
+        let flags: libc::c_uint = 0;
         let r = unsafe { libc::syscall(GFp_SYS_GETRANDOM, dest.as_mut_ptr(), chunk_len, flags) };
         if r < 0 {
             if unsafe { *libc::__errno_location() } == libc::EINTR {
@@ -257,7 +257,7 @@ mod sysrand_or_urandom {
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 mod darwin {
-    use crate::{c, error};
+    use crate::error;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         let r = unsafe { SecRandomCopyBytes(kSecRandomDefault, dest.len(), dest.as_mut_ptr()) };
@@ -281,8 +281,8 @@ mod darwin {
         // For now `rnd` must be `kSecRandomDefault`.
         #[must_use]
         fn SecRandomCopyBytes(
-            rnd: &'static SecRandomRef, count: c::size_t, bytes: *mut u8,
-        ) -> c::int;
+            rnd: &'static SecRandomRef, count: libc::size_t, bytes: *mut u8,
+        ) -> libc::c_int;
     }
 }
 

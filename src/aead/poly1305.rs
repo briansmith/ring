@@ -19,7 +19,8 @@ use super::{
     block::{Block, BLOCK_LEN},
     Tag,
 };
-use crate::{bssl, c, error};
+use crate::{bssl, error};
+use libc::size_t;
 
 /// A Poly1305 key.
 pub struct Key([Block; KEY_BLOCKS]);
@@ -46,7 +47,7 @@ impl Context {
     pub fn from_key(Key(key_and_nonce): Key) -> Context {
         extern "C" {
             fn GFp_poly1305_blocks(
-                state: &mut Opaque, input: *const u8, len: c::size_t, should_pad: Pad,
+                state: &mut Opaque, input: *const u8, len: size_t, should_pad: Pad,
             );
             fn GFp_poly1305_emit(state: &mut Opaque, tag: &mut Tag, nonce: &Nonce);
         }
@@ -115,7 +116,7 @@ struct Nonce(Block);
 #[repr(C)]
 struct Funcs {
     blocks_fn:
-        unsafe extern "C" fn(&mut Opaque, input: *const u8, input_len: c::size_t, should_pad: Pad),
+        unsafe extern "C" fn(&mut Opaque, input: *const u8, input_len: size_t, should_pad: Pad),
     emit_fn: unsafe extern "C" fn(&mut Opaque, &mut Tag, nonce: &Nonce),
 }
 

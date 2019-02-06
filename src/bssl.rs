@@ -12,15 +12,15 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{c, error};
+use crate::error;
 
-/// A `c::int` returned from a foreign function containing **1** if the function
+/// An `int` returned from a foreign function containing **1** if the function
 /// was successful or **0** if an error occurred. This is the convention used by
 /// C code in `ring`.
 #[derive(Clone, Copy, Debug)]
 #[must_use]
 #[repr(transparent)]
-pub struct Result(c::int);
+pub struct Result(libc::c_int);
 
 impl From<Result> for core::result::Result<(), error::Unspecified> {
     fn from(ret: Result) -> Self {
@@ -37,12 +37,12 @@ impl From<Result> for core::result::Result<(), error::Unspecified> {
 #[cfg(test)]
 mod tests {
     mod result {
-        use crate::{bssl, c};
+        use crate::bssl;
         use core::mem;
 
         #[test]
         fn size_and_alignment() {
-            type Underlying = c::int;
+            type Underlying = libc::c_int;
             assert_eq!(mem::size_of::<bssl::Result>(), mem::size_of::<Underlying>());
             assert_eq!(
                 mem::align_of::<bssl::Result>(),

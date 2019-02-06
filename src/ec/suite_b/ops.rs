@@ -12,8 +12,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{arithmetic::montgomery::*, c, error, limb::*};
+use crate::{arithmetic::montgomery::*, error, limb::*};
 use core::marker::PhantomData;
+use libc::size_t;
 use untrusted;
 
 pub use self::elem::*;
@@ -435,7 +436,7 @@ fn parse_big_endian_fixed_consttime<M>(
 
 extern "C" {
     fn LIMBS_add_mod(
-        r: *mut Limb, a: *const Limb, b: *const Limb, m: *const Limb, num_limbs: c::size_t,
+        r: *mut Limb, a: *const Limb, b: *const Limb, m: *const Limb, num_limbs: size_t,
     );
 }
 

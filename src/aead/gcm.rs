@@ -13,7 +13,8 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Aad, Block, BLOCK_LEN};
-use crate::{c, cpu};
+use crate::cpu;
+use libc::size_t;
 
 #[repr(transparent)]
 pub struct Key(GCM128_KEY);
@@ -107,8 +108,7 @@ impl Context {
             Implementation::CLMUL if has_avx_movbe(self.cpu_features) => {
                 extern "C" {
                     fn GFp_gcm_ghash_avx(
-                        ctx: &mut Context, h_table: *const GCM128_KEY, inp: *const u8,
-                        len: c::size_t,
+                        ctx: &mut Context, h_table: *const GCM128_KEY, inp: *const u8, len: size_t,
                     );
                 }
                 unsafe {
@@ -119,8 +119,7 @@ impl Context {
             Implementation::CLMUL => {
                 extern "C" {
                     fn GFp_gcm_ghash_clmul(
-                        ctx: &mut Context, h_table: *const GCM128_KEY, inp: *const u8,
-                        len: c::size_t,
+                        ctx: &mut Context, h_table: *const GCM128_KEY, inp: *const u8, len: size_t,
                     );
                 }
                 unsafe {
@@ -132,8 +131,7 @@ impl Context {
             Implementation::NEON => {
                 extern "C" {
                     fn GFp_gcm_ghash_neon(
-                        ctx: &mut Context, h_table: *const GCM128_KEY, inp: *const u8,
-                        len: c::size_t,
+                        ctx: &mut Context, h_table: *const GCM128_KEY, inp: *const u8, len: size_t,
                     );
                 }
                 unsafe {
@@ -144,8 +142,7 @@ impl Context {
             Implementation::Fallback => {
                 extern "C" {
                     fn GFp_gcm_ghash_4bit(
-                        ctx: &mut Context, h_table: *const GCM128_KEY, inp: *const u8,
-                        len: c::size_t,
+                        ctx: &mut Context, h_table: *const GCM128_KEY, inp: *const u8, len: size_t,
                     );
                 }
                 unsafe {
