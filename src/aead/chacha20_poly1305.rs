@@ -29,7 +29,7 @@ use crate::{
 /// The keys are 256 bits long and the nonces are 96 bits long.
 ///
 /// [RFC 7539]: https://tools.ietf.org/html/rfc7539
-pub static CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
+pub const CHACHA20_POLY1305: aead::Algorithm = aead::Algorithm {
     key_len: chacha::KEY_LEN,
     init: chacha20_poly1305_init,
     seal: chacha20_poly1305_seal,

@@ -35,7 +35,7 @@ impl core::fmt::Debug for EdDSAParameters {
 /// Ed25519 uses SHA-512 as the digest algorithm.
 ///
 /// [Ed25519]: https://ed25519.cr.yp.to/
-pub static ED25519: EdDSAParameters = EdDSAParameters {};
+pub const ED25519: EdDSAParameters = EdDSAParameters {};
 
 impl signature::VerificationAlgorithm for EdDSAParameters {
     fn verify(

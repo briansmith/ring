@@ -32,7 +32,7 @@ macro_rules! suite_b_curve {
         ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
         /// [Suite B Implementer's Guide to NIST SP 800-56A]:
         ///     https://github.com/briansmith/ring/blob/master/doc/ecdh.pdf
-        pub static $NAME: ec::Curve = ec::Curve {
+        pub const $NAME: ec::Curve = ec::Curve {
             public_key_len: 1 + (2 * (($bits + 7) / 8)),
             elem_scalar_seed_len: ($bits + 7) / 8,
             id: $id,

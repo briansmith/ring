@@ -18,7 +18,7 @@ use super::ops;
 use crate::{agreement, constant_time, cpu, ec, error, polyfill::convert::*, rand};
 use untrusted;
 
-static CURVE25519: ec::Curve = ec::Curve {
+const CURVE25519: ec::Curve = ec::Curve {
     public_key_len: PUBLIC_KEY_LEN,
     elem_scalar_seed_len: ELEM_AND_SCALAR_LEN,
     id: ec::CurveID::Curve25519,
@@ -35,7 +35,7 @@ static CURVE25519: ec::Curve = ec::Curve {
 ///
 /// [RFC 7748]: https://tools.ietf.org/html/rfc7748
 /// [RFC 7748 section 6.1]: https://tools.ietf.org/html/rfc7748#section-6.1
-pub static X25519: agreement::Algorithm = agreement::Algorithm {
+pub const X25519: agreement::Algorithm = agreement::Algorithm {
     curve: &CURVE25519,
     ecdh: x25519_ecdh,
 };

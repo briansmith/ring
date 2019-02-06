@@ -39,7 +39,7 @@ macro_rules! ecdh {
         ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
         /// [Suite B Implementer's Guide to NIST SP 800-56A]:
         ///     https://github.com/briansmith/ring/blob/master/doc/ecdh.pdf
-        pub static $NAME: agreement::Algorithm = agreement::Algorithm {
+        pub const $NAME: agreement::Algorithm = agreement::Algorithm {
             curve: $curve,
             ecdh: $ecdh,
         };

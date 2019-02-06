@@ -19,7 +19,7 @@ use super::{
 use crate::{aead, cpu, endian::*, error, polyfill};
 
 /// AES-128 in GCM mode with 128-bit tags and 96 bit nonces.
-pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
+pub const AES_128_GCM: aead::Algorithm = aead::Algorithm {
     key_len: 16,
     init: init_128,
     seal: aes_gcm_seal,
@@ -29,7 +29,7 @@ pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
 };
 
 /// AES-256 in GCM mode with 128-bit tags and 96 bit nonces.
-pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
+pub const AES_256_GCM: aead::Algorithm = aead::Algorithm {
     key_len: 32,
     init: init_256,
     seal: aes_gcm_seal,

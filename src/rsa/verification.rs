@@ -102,7 +102,7 @@ macro_rules! rsa_params {
         #[doc=$doc_str]
         ///
         /// Only available in `use_heap` mode.
-        pub static $VERIFY_ALGORITHM: Parameters = Parameters {
+        pub const $VERIFY_ALGORITHM: Parameters = Parameters {
             padding_alg: $PADDING_ALGORITHM,
             min_bits: bits::BitLength::from_usize_bits($min_bits),
         };

@@ -311,7 +311,7 @@ fn format_rs_asn1<'a>(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &'a 
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA256_FIXED_SIGNING: Algorithm = Algorithm {
+pub const ECDSA_P256_SHA256_FIXED_SIGNING: Algorithm = Algorithm {
     curve: &ec::suite_b::curve::P256,
     private_scalar_ops: &p256::PRIVATE_SCALAR_OPS,
     private_key_ops: &p256::PRIVATE_KEY_OPS,
@@ -326,7 +326,7 @@ pub static ECDSA_P256_SHA256_FIXED_SIGNING: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA384_FIXED_SIGNING: Algorithm = Algorithm {
+pub const ECDSA_P384_SHA384_FIXED_SIGNING: Algorithm = Algorithm {
     curve: &ec::suite_b::curve::P384,
     private_scalar_ops: &p384::PRIVATE_SCALAR_OPS,
     private_key_ops: &p384::PRIVATE_KEY_OPS,
@@ -341,7 +341,7 @@ pub static ECDSA_P384_SHA384_FIXED_SIGNING: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA256_ASN1_SIGNING: Algorithm = Algorithm {
+pub const ECDSA_P256_SHA256_ASN1_SIGNING: Algorithm = Algorithm {
     curve: &ec::suite_b::curve::P256,
     private_scalar_ops: &p256::PRIVATE_SCALAR_OPS,
     private_key_ops: &p256::PRIVATE_KEY_OPS,
@@ -356,7 +356,7 @@ pub static ECDSA_P256_SHA256_ASN1_SIGNING: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA384_ASN1_SIGNING: Algorithm = Algorithm {
+pub const ECDSA_P384_SHA384_ASN1_SIGNING: Algorithm = Algorithm {
     curve: &ec::suite_b::curve::P384,
     private_scalar_ops: &p384::PRIVATE_SCALAR_OPS,
     private_key_ops: &p384::PRIVATE_KEY_OPS,
@@ -366,14 +366,14 @@ pub static ECDSA_P384_SHA384_ASN1_SIGNING: Algorithm = Algorithm {
     id: AlgorithmID::ECDSA_P384_SHA384_ASN1_SIGNING,
 };
 
-static EC_PUBLIC_KEY_P256_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {
+const EC_PUBLIC_KEY_P256_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {
     bytes: include_bytes!("ecPublicKey_p256_pkcs8_v1_template.der"),
     alg_id_range: core::ops::Range { start: 8, end: 27 },
     curve_id_index: 9,
     private_key_index: 0x24,
 };
 
-static EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {
+const EC_PUBLIC_KEY_P384_PKCS8_V1_TEMPLATE: pkcs8::Template = pkcs8::Template {
     bytes: include_bytes!("ecPublicKey_p384_pkcs8_v1_template.der"),
     alg_id_range: core::ops::Range { start: 8, end: 24 },
     curve_id_index: 9,

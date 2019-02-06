@@ -28,7 +28,7 @@ macro_rules! p384_limbs {
     };
 }
 
-pub static COMMON_OPS: CommonOps = CommonOps {
+pub const COMMON_OPS: CommonOps = CommonOps {
     num_limbs: 384 / LIMB_BITS,
 
     q: Modulus {
@@ -72,7 +72,7 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     point_add_jacobian_impl: GFp_nistz384_point_add,
 };
 
-pub static PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
+pub const PRIVATE_KEY_OPS: PrivateKeyOps = PrivateKeyOps {
     common: &COMMON_OPS,
     elem_inv_squared: p384_elem_inv_squared,
     point_mul_base_impl: p384_point_mul_base_impl,
@@ -159,17 +159,17 @@ fn p384_point_mul_base_impl(a: &Scalar) -> Point {
     PRIVATE_KEY_OPS.point_mul(a, &P384_GENERATOR)
 }
 
-pub static PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
+pub const PUBLIC_KEY_OPS: PublicKeyOps = PublicKeyOps {
     common: &COMMON_OPS,
 };
 
-pub static SCALAR_OPS: ScalarOps = ScalarOps {
+pub const SCALAR_OPS: ScalarOps = ScalarOps {
     common: &COMMON_OPS,
     scalar_inv_to_mont_impl: p384_scalar_inv_to_mont,
     scalar_mul_mont: GFp_p384_scalar_mul_mont,
 };
 
-pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
+pub const PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     scalar_ops: &SCALAR_OPS,
     public_key_ops: &PUBLIC_KEY_OPS,
     private_key_ops: &PRIVATE_KEY_OPS,
@@ -185,7 +185,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     },
 };
 
-pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
+pub const PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
     scalar_ops: &SCALAR_OPS,
 
     oneRR_mod_n: Scalar {
