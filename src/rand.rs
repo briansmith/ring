@@ -151,26 +151,22 @@ mod sysrand_chunk {
 
 #[cfg(windows)]
 mod sysrand_chunk {
-    use crate::{c, error};
+    use crate::{error, polyfill};
     use core;
-
-    #[link(name = "advapi32")]
-    extern "system" {
-        #[link_name = "SystemFunction036"]
-        #[must_use]
-        fn RtlGenRandom(
-            random_buffer: *mut u8, random_buffer_length: c::win32::ULONG,
-        ) -> c::win32::BOOLEAN;
-    }
 
     #[inline]
     pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
-        assert!(core::mem::size_of::<usize>() >= core::mem::size_of::<c::win32::ULONG>());
-        let max_chunk_len = c::win32::ULONG::from(0u32).wrapping_sub(1) as usize;
-        assert_eq!(max_chunk_len, 0xffff_ffff);
-        let len = core::cmp::min(dest.len(), max_chunk_len);
+        use winapi::shared::wtypesbase::ULONG;
 
-        if unsafe { RtlGenRandom(dest.as_mut_ptr(), len as c::win32::ULONG) } == 0 {
+        assert!(core::mem::size_of::<usize>() >= core::mem::size_of::<ULONG>());
+        let len = core::cmp::min(dest.len(), polyfill::usize_from_u32(ULONG::max_value()));
+        let result = unsafe {
+            winapi::um::ntsecapi::RtlGenRandom(
+                dest.as_mut_ptr() as *mut winapi::ctypes::c_void,
+                len as ULONG,
+            )
+        };
+        if result == 0 {
             return Err(error::Unspecified);
         }
 

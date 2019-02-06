@@ -24,8 +24,6 @@
 #pragma warning(push, 3)
 #endif
 
-#include <windows.h>
-
 #if defined(_MSC_VER)
 #pragma warning(pop)
 #endif
@@ -114,8 +112,3 @@ typedef unsigned int uint;
 DEFINE_METRICS(uint)
 
 DEFINE_METRICS(size_t)
-
-#if defined(OPENSSL_WINDOWS)
-DEFINE_METRICS(ULONG)
-DEFINE_METRICS(BOOLEAN)
-#endif
