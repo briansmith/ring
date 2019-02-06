@@ -442,7 +442,7 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{c, test};
+    use crate::test;
     use std;
     use untrusted;
 
@@ -706,7 +706,7 @@ mod tests {
     #[test]
     fn p256_scalar_square_test() {
         extern "C" {
-            fn GFp_p256_scalar_sqr_rep_mont(r: *mut Limb, a: *const Limb, rep: c::int);
+            fn GFp_p256_scalar_sqr_rep_mont(r: *mut Limb, a: *const Limb, rep: Limb);
         }
         scalar_square_test(
             &p256::SCALAR_OPS,
@@ -719,7 +719,7 @@ mod tests {
     // `GFp_p384_scalar_sqr_rep_mont()`.
 
     fn scalar_square_test(
-        ops: &ScalarOps, sqr_rep: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, rep: c::int),
+        ops: &ScalarOps, sqr_rep: unsafe extern "C" fn(r: *mut Limb, a: *const Limb, rep: Limb),
         test_file: test::File,
     ) {
         test::run(test_file, |section, test_case| {

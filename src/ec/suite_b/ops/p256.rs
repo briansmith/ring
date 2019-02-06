@@ -16,7 +16,6 @@ use super::{
     elem::{binary_op, binary_op_assign},
     elem_sqr_mul, elem_sqr_mul_acc, Modulus, *,
 };
-use crate::c;
 use core::marker::PhantomData;
 
 macro_rules! p256_limbs {
@@ -187,7 +186,7 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     fn sqr(a: &Scalar<R>) -> Scalar<R> { unary_op(GFp_p256_scalar_sqr_mont, a) }
 
     // Returns (`a` squared `squarings` times) * `b`.
-    fn sqr_mul(a: &Scalar<R>, squarings: c::int, b: &Scalar<R>) -> Scalar<R> {
+    fn sqr_mul(a: &Scalar<R>, squarings: Limb, b: &Scalar<R>) -> Scalar<R> {
         debug_assert!(squarings >= 1);
         let mut tmp = Scalar::zero();
         unsafe { GFp_p256_scalar_sqr_rep_mont(tmp.limbs.as_mut_ptr(), a.limbs.as_ptr(), squarings) }
@@ -195,7 +194,7 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     }
 
     // Sets `acc` = (`acc` squared `squarings` times) * `b`.
-    fn sqr_mul_acc(acc: &mut Scalar<R>, squarings: c::int, b: &Scalar<R>) {
+    fn sqr_mul_acc(acc: &mut Scalar<R>, squarings: Limb, b: &Scalar<R>) {
         debug_assert!(squarings >= 1);
         unsafe {
             GFp_p256_scalar_sqr_rep_mont(acc.limbs.as_mut_ptr(), acc.limbs.as_ptr(), squarings)
@@ -285,7 +284,7 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     ];
 
     for &(squarings, digit) in &REMAINING_WINDOWS {
-        sqr_mul_acc(&mut acc, squarings as c::int, &d[digit as usize]);
+        sqr_mul_acc(&mut acc, Limb::from(squarings), &d[digit as usize]);
     }
 
     acc
@@ -335,7 +334,7 @@ extern "C" {
     fn GFp_p256_scalar_sqr_rep_mont(
         r: *mut Limb,   // [COMMON_OPS.num_limbs]
         a: *const Limb, // [COMMON_OPS.num_limbs]
-        rep: c::int,
+        rep: Limb,
     );
 }
 
