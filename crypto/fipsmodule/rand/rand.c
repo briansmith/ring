@@ -125,15 +125,6 @@ static void rand_thread_state_free(void *state_in) {
 
 #if defined(OPENSSL_X86_64) && !defined(OPENSSL_NO_ASM) && \
     !defined(BORINGSSL_UNSAFE_DETERMINISTIC_MODE)
-
-// These functions are defined in asm/rdrand-x86_64.pl
-extern int CRYPTO_rdrand(uint8_t out[8]);
-extern int CRYPTO_rdrand_multiple8_buf(uint8_t *buf, size_t len);
-
-static int have_rdrand(void) {
-  return (OPENSSL_ia32cap_get()[1] & (1u << 30)) != 0;
-}
-
 static int hwrand(uint8_t *buf, const size_t len) {
   if (!have_rdrand()) {
     return 0;
