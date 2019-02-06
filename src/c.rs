@@ -92,26 +92,6 @@ define_type!(
     "The C `unsigned int` type. Equivalent to `libc::c_uint`."
 );
 
-#[cfg(any(target_os = "windows", target_pointer_width = "32"))]
-define_type!(
-    long,
-    i32,
-    test_long_metrics,
-    GFp_long_align,
-    GFp_long_size,
-    "The C `long` type. Equivalent to `libc::c_long`."
-);
-
-#[cfg(not(any(target_os = "windows", target_pointer_width = "32")))]
-define_type!(
-    long,
-    i64,
-    test_long_metrics,
-    GFp_long_align,
-    GFp_long_size,
-    "The C `long` type. Equivalent to `libc::c_long`."
-);
-
 define_type!(
     size_t,
     usize,
@@ -202,23 +182,3 @@ define_metrics_tests!(
     GFp_uint64_t_size,
     SIXTY_FOUR_BIT_ALIGNMENT_FACTOR
 );
-
-#[cfg(target_os = "windows")]
-pub mod win32 {
-    define_type!(
-        ULONG,
-        u32,
-        test_ULONG_metrics,
-        GFp_ULONG_align,
-        GFp_ULONG_size,
-        "The win32 `ULONG` type."
-    );
-    define_type!(
-        BOOLEAN,
-        u8,
-        test_BOOLEAN_metrics,
-        GFp_BOOLEAN_align,
-        GFp_BOOLEAN_size,
-        "The win32 `BOOLEAN` type."
-    );
-}
