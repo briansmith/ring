@@ -14,7 +14,8 @@
 
 //! Constant-time operations.
 
-use crate::{c, error};
+use crate::error;
+use libc::size_t;
 
 /// Returns `Ok(())` if `a == b` and `Err(error::Unspecified)` otherwise.
 /// The comparison of `a` and `b` is done in constant time with respect to the
@@ -32,7 +33,7 @@ pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), error::Unspecif
 }
 
 extern "C" {
-    fn GFp_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
+    fn GFp_memcmp(a: *const u8, b: *const u8, len: size_t) -> libc::c_int;
 }
 
 #[cfg(test)]

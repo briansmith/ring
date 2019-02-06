@@ -187,7 +187,7 @@ fn integrated_aes_gcm<'a>(
     aes_key: &aes::Key, gcm_ctx: &mut gcm::Context, in_out: &'a mut [u8], ctr: &mut Counter,
     direction: Direction, cpu_features: cpu::Features,
 ) -> &'a mut [u8] {
-    use crate::c;
+    use libc::size_t;
 
     if !aes_key.is_aes_hw() || !gcm_ctx.is_avx2(cpu_features) {
         return in_out;
@@ -197,9 +197,9 @@ fn integrated_aes_gcm<'a>(
         Direction::Opening { in_prefix_len } => {
             extern "C" {
                 fn GFp_aesni_gcm_decrypt(
-                    input: *const u8, output: *mut u8, len: c::size_t, key: &aes::AES_KEY,
+                    input: *const u8, output: *mut u8, len: size_t, key: &aes::AES_KEY,
                     ivec: &mut Counter, gcm: &mut gcm::Context,
-                ) -> c::size_t;
+                ) -> size_t;
             }
             unsafe {
                 GFp_aesni_gcm_decrypt(
@@ -215,9 +215,9 @@ fn integrated_aes_gcm<'a>(
         Direction::Sealing => {
             extern "C" {
                 fn GFp_aesni_gcm_encrypt(
-                    input: *const u8, output: *mut u8, len: c::size_t, key: &aes::AES_KEY,
+                    input: *const u8, output: *mut u8, len: size_t, key: &aes::AES_KEY,
                     ivec: &mut Counter, gcm: &mut gcm::Context,
-                ) -> c::size_t;
+                ) -> size_t;
             }
             unsafe {
                 GFp_aesni_gcm_encrypt(

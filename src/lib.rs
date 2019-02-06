@@ -95,7 +95,6 @@ pub mod agreement;
 
 mod bits;
 
-mod c;
 pub mod constant_time;
 
 pub mod io;
