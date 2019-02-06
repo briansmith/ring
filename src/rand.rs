@@ -100,14 +100,14 @@ impl sealed::Sealed for SystemRandom {}
         target_os = "macos",
         target_os = "ios",
         target_os = "fuchsia",
-        windows
+        target_os = "windows"
     ))
 ))]
 use self::urandom::fill as fill_impl;
 
 #[cfg(any(
     all(target_os = "linux", not(feature = "dev_urandom_fallback")),
-    windows
+    target_os = "windows",
 ))]
 use self::sysrand::fill as fill_impl;
 
@@ -158,7 +158,7 @@ mod sysrand_chunk {
     }
 }
 
-#[cfg(windows)]
+#[cfg(target_os = "windows")]
 mod sysrand_chunk {
     use crate::{error, polyfill};
     use core;
@@ -183,7 +183,7 @@ mod sysrand_chunk {
     }
 }
 
-#[cfg(any(target_os = "linux", windows))]
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 mod sysrand {
     use super::sysrand_chunk::chunk;
     use crate::error;
@@ -198,13 +198,13 @@ mod sysrand {
     }
 }
 
-// Keep the `cfg` conditions in sync with the conditions in lib.rs.
 #[cfg(all(
     feature = "use_heap",
-    any(target_os = "redox", unix),
-    not(any(target_os = "macos", target_os = "ios")),
     not(all(target_os = "linux", not(feature = "dev_urandom_fallback"))),
-    not(any(target_os = "fuchsia")),
+    not(target_os = "macos"),
+    not(target_os = "ios"),
+    not(target_os = "fuchsia"),
+    not(target_os = "windows"),
 ))]
 mod urandom {
     use crate::error;
@@ -215,7 +215,7 @@ mod urandom {
 
         #[cfg(target_os = "redox")]
         static RANDOM_PATH: &str = "rand:";
-        #[cfg(unix)]
+        #[cfg(not(target_os = "redox"))]
         static RANDOM_PATH: &str = "/dev/urandom";
 
         lazy_static! {
@@ -233,7 +233,6 @@ mod urandom {
     }
 }
 
-// Keep the `cfg` conditions in sync with the conditions in lib.rs.
 #[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
 mod sysrand_or_urandom {
     use crate::error;

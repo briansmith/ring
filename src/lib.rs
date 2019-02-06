@@ -59,19 +59,8 @@
     unused_results,
     warnings
 )]
-#![cfg_attr(
-    any(
-        target_os = "redox",
-        all(
-            not(test),
-            not(feature = "use_heap"),
-            unix,
-            not(any(target_os = "macos", target_os = "ios")),
-            any(not(target_os = "linux"), feature = "dev_urandom_fallback")
-        )
-    ),
-    no_std
-)]
+// std is only used in tests or when gated with #[cfg(use_heap)]
+#![cfg_attr(not(any(test, feature = "use_heap")), no_std)]
 #![cfg_attr(feature = "internal_benches", allow(unstable_features))]
 #![cfg_attr(feature = "internal_benches", feature(test))]
 
