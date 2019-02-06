@@ -534,7 +534,7 @@ $code.=<<___;
 # void GFp_p256_scalar_sqr_rep_mont(
 #   uint64_t res[4],
 #   uint64_t a[4],
-#   int rep);
+#   Limb rep);
 
 .globl	GFp_p256_scalar_sqr_rep_mont
 .type	GFp_p256_scalar_sqr_rep_mont,\@function,3

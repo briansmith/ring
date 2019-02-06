@@ -28,7 +28,7 @@ typedef Limb Scalar[P256_LIMBS];
 void GFp_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
                               const ScalarMont b);
 void GFp_p256_scalar_sqr_mont(ScalarMont r, const ScalarMont a);
-void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, int rep);
+void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, Limb rep);
 
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_X86)
@@ -64,10 +64,10 @@ void GFp_p256_scalar_sqr_mont(ScalarMont r, const ScalarMont a) {
   GFp_p256_scalar_mul_mont(r, a, a);
 }
 
-void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, int rep) {
+void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, Limb rep) {
   assert(rep >= 1);
   GFp_p256_scalar_sqr_mont(r, a);
-  for (int i = 1; i < rep; ++i) {
+  for (Limb i = 1; i < rep; ++i) {
     GFp_p256_scalar_sqr_mont(r, r);
   }
 }
