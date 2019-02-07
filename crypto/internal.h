@@ -133,10 +133,8 @@
 // Testing for __STDC_VERSION__/__cplusplus doesn't work because 4.7 already
 // reports support for C11.
 #define alignas(x) __attribute__ ((aligned (x)))
-#define alignof(x) __alignof__ (x)
 #elif defined(_MSC_VER)
 #define alignas(x) __declspec(align(x))
-#define alignof(x) __alignof(x)
 #else
 #include <stdalign.h>
 #endif
