@@ -117,10 +117,6 @@
 
 #include <assert.h>
 
-#if defined(__clang__) || defined(_MSC_VER)
-#include <string.h>
-#endif
-
 #if defined(_MSC_VER)
 #pragma warning(pop)
 #endif
@@ -130,12 +126,6 @@
 #endif
 
 #include <GFp/type_check.h>
-
-#if defined(_MSC_VER)
-#pragma warning(push, 3)
-#include <intrin.h>
-#pragma warning(pop)
-#endif
 
 #if defined(__GNUC__) && \
     (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) < 40800
@@ -172,27 +162,11 @@ void GFp_cpuid_setup(void);
 #endif
 
 
-#if defined(__GNUC__)
-#define bswap_u32(x) __builtin_bswap32(x)
-#define bswap_u64(x) __builtin_bswap64(x)
-#elif defined(_MSC_VER)
-#pragma intrinsic(_byteswap_ulong, _byteswap_uint64)
-#define bswap_u32(x) _byteswap_ulong(x)
-#define bswap_u64(x) _byteswap_uint64(x)
-#endif
-
-
 #if (!defined(_MSC_VER) || defined(__clang__)) && defined(OPENSSL_64_BIT)
 #define BORINGSSL_HAS_UINT128
 typedef __int128_t int128_t;
 typedef __uint128_t uint128_t;
 #endif
-
-
-// |aliasing_uint8| is like |uint8_t| except that it is guaranteed to be
-// |unsigned char| so it can safely be used for aliasing casts. Assume POSIX
-// compliance so that |CHAR_BIT| is guaranteed to be 8.
-typedef unsigned char aliasing_uint8;
 
 
 // Constant-time utility functions.
@@ -292,62 +266,25 @@ static inline crypto_word constant_time_select_w(crypto_word mask,
 
 // from_be_u32_ptr returns the 32-bit big-endian-encoded value at |data|.
 static inline uint32_t from_be_u32_ptr(const uint8_t *data) {
-#if defined(__clang__) || defined(_MSC_VER)
-  // XXX: Unlike GCC, Clang doesn't optimize compliant access to unaligned data
-  // well. See https://llvm.org/bugs/show_bug.cgi?id=20605,
-  // https://llvm.org/bugs/show_bug.cgi?id=17603,
-  // http://blog.regehr.org/archives/702, and
-  // http://blog.regehr.org/archives/1055. MSVC seems to have similar problems.
-  uint32_t value;
-  memcpy(&value, data, sizeof(value));
-#if OPENSSL_ENDIAN != OPENSSL_BIG_ENDIAN
-  value = bswap_u32(value);
-#endif
-  return value;
-#else
   return ((uint32_t)data[0] << 24) |
          ((uint32_t)data[1] << 16) |
          ((uint32_t)data[2] << 8) |
          ((uint32_t)data[3]);
-#endif
 }
 
 
 // to_be_u32_ptr writes the value |x| to the location |out| in big-endian
 // order.
 static inline void to_be_u32_ptr(uint8_t *out, uint32_t value) {
-#if defined(__clang__) || defined(_MSC_VER)
-  // XXX: Unlike GCC, Clang doesn't optimize compliant access to unaligned data
-  // well. See https://llvm.org/bugs/show_bug.cgi?id=20605,
-  // https://llvm.org/bugs/show_bug.cgi?id=17603,
-  // http://blog.regehr.org/archives/702, and
-  // http://blog.regehr.org/archives/1055. MSVC seems to have similar problems.
-#if  OPENSSL_ENDIAN != OPENSSL_BIG_ENDIAN
-  value = bswap_u32(value);
-#endif
-  memcpy(out, &value, sizeof(value));
-#else
   out[0] = (uint8_t)(value >> 24);
   out[1] = (uint8_t)(value >> 16);
   out[2] = (uint8_t)(value >> 8);
   out[3] = (uint8_t)value;
-#endif
 }
 
 // to_be_u64_ptr writes the value |value| to the location |out| in big-endian
 // order.
 static inline void to_be_u64_ptr(uint8_t *out, uint64_t value) {
-#if defined(__clang__) || defined(_MSC_VER)
-  // XXX: Unlike GCC, Clang doesn't optimize compliant access to unaligned data
-  // well. See https://llvm.org/bugs/show_bug.cgi?id=20605,
-  // https://llvm.org/bugs/show_bug.cgi?id=17603,
-  // http://blog.regehr.org/archives/702, and
-  // http://blog.regehr.org/archives/1055. MSVC seems to have similar problems.
-#if  OPENSSL_ENDIAN != OPENSSL_BIG_ENDIAN
-  value = bswap_u64(value);
-#endif
-  memcpy(out, &value, sizeof(value));
-#else
   out[0] = (uint8_t)(value >> 56);
   out[1] = (uint8_t)(value >> 48);
   out[2] = (uint8_t)(value >> 40);
@@ -356,7 +293,6 @@ static inline void to_be_u64_ptr(uint8_t *out, uint64_t value) {
   out[5] = (uint8_t)(value >> 16);
   out[6] = (uint8_t)(value >> 8);
   out[7] = (uint8_t)value;
-#endif
 }
 
 #endif  // OPENSSL_HEADER_CRYPTO_INTERNAL_H

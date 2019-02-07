@@ -15,7 +15,10 @@
 #include "limbs.h"
 
 #if defined(_MSC_VER)
+#pragma warning(push, 3)
 #include <intrin.h>
+#pragma warning(pop)
+
 /* MSVC 2015 RC, when compiling for x86 with /Ox (at least), miscompiles
  * _addcarry_u32(c, 0, prod_hi, &x) like so:
  *
