@@ -208,23 +208,19 @@ mod sysrand {
 ))]
 mod urandom {
     use crate::error;
+    use spin::Once;
     use std;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        use lazy_static::lazy_static;
+        static OPEN: Once<Result<std::fs::File, std::io::Error>> = Once::new();
 
         #[cfg(target_os = "redox")]
         static RANDOM_PATH: &str = "rand:";
         #[cfg(unix)]
         static RANDOM_PATH: &str = "/dev/urandom";
 
-        lazy_static! {
-            static ref FILE: Result<std::fs::File, std::io::Error> =
-                std::fs::File::open(RANDOM_PATH);
-        }
-
-        match *FILE {
-            Ok(ref file) => {
+        match OPEN.call_once(|| std::fs::File::open(RANDOM_PATH)) {
+            Ok(file) => {
                 use std::io::Read;
                 (&*file).read_exact(dest).map_err(|_| error::Unspecified)
             },
@@ -237,29 +233,19 @@ mod urandom {
 #[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
 mod sysrand_or_urandom {
     use crate::error;
+    use spin::Once;
 
-    enum Mechanism {
-        Sysrand,
-        DevURandom,
+    fn sysrand_supported() -> bool {
+        let mut dummy = [0u8; 1];
+        super::sysrand_chunk::chunk(&mut dummy[..]).is_ok()
     }
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        use lazy_static::lazy_static;
-
-        lazy_static! {
-            static ref MECHANISM: Mechanism = {
-                let mut dummy = [0u8; 1];
-                if super::sysrand_chunk::chunk(&mut dummy[..]).is_err() {
-                    Mechanism::DevURandom
-                } else {
-                    Mechanism::Sysrand
-                }
-            };
-        }
-
-        match *MECHANISM {
-            Mechanism::Sysrand => super::sysrand::fill(dest),
-            Mechanism::DevURandom => super::urandom::fill(dest),
+        static SYSRAND_SUPPORTED: Once<bool> = Once::new();
+        if *SYSRAND_SUPPORTED.call_once(sysrand_supported) {
+            super::sysrand::fill(dest)
+        } else {
+            super::urandom::fill(dest)
         }
     }
 }
