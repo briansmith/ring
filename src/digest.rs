@@ -30,6 +30,89 @@ use core::num::Wrapping;
 mod sha1;
 mod sha2;
 
+#[derive(Clone)]
+pub(crate) struct BlockContext {
+    state: State,
+
+    // Note that SHA-512 has a 128-bit input bit counter, but this
+    // implementation only supports up to 2^64-1 input bits for all algorithms,
+    // so a 64-bit counter is more than sufficient.
+    completed_data_blocks: u64,
+
+    /// The context's algorithm.
+    pub algorithm: &'static Algorithm,
+
+    cpu_features: cpu::Features,
+}
+
+impl BlockContext {
+    pub(crate) fn new(algorithm: &'static Algorithm) -> Self {
+        Self {
+            state: algorithm.initial_state,
+            completed_data_blocks: 0,
+            algorithm,
+            cpu_features: cpu::features(),
+        }
+    }
+
+    #[inline]
+    pub(crate) fn update(&mut self, input: &[u8]) {
+        let num_blocks = input.len() / self.algorithm.block_len;
+        assert_eq!(num_blocks * self.algorithm.block_len, input.len());
+        if num_blocks > 0 {
+            unsafe {
+                (self.algorithm.block_data_order)(&mut self.state, input.as_ptr(), num_blocks);
+            }
+            self.completed_data_blocks = self
+                .completed_data_blocks
+                .checked_add(polyfill::u64_from_usize(num_blocks))
+                .unwrap();
+        }
+    }
+
+    pub(crate) fn finish(mut self, pending: &mut [u8], num_pending: usize) -> Digest {
+        let block_len = self.algorithm.block_len;
+        assert_eq!(pending.len(), block_len);
+        assert!(num_pending <= pending.len());
+
+        let mut padding_pos = num_pending;
+        pending[padding_pos] = 0x80;
+        padding_pos += 1;
+
+        if padding_pos > block_len - self.algorithm.len_len {
+            polyfill::slice::fill(&mut pending[padding_pos..block_len], 0);
+            unsafe {
+                (self.algorithm.block_data_order)(&mut self.state, pending.as_ptr(), 1);
+            }
+            // We don't increase |self.completed_data_blocks| because the
+            // padding isn't data, and so it isn't included in the data length.
+            padding_pos = 0;
+        }
+
+        polyfill::slice::fill(&mut pending[padding_pos..(block_len - 8)], 0);
+
+        // Output the length, in bits, in big endian order.
+        let completed_data_bits = self
+            .completed_data_blocks
+            .checked_mul(polyfill::u64_from_usize(block_len))
+            .unwrap()
+            .checked_add(polyfill::u64_from_usize(num_pending))
+            .unwrap()
+            .checked_mul(8)
+            .unwrap();
+        pending[(block_len - 8)..block_len].copy_from_slice(&u64::to_be_bytes(completed_data_bits));
+
+        unsafe {
+            (self.algorithm.block_data_order)(&mut self.state, pending.as_ptr(), 1);
+        }
+
+        Digest {
+            algorithm: self.algorithm,
+            value: (self.algorithm.format_output)(self.state),
+        }
+    }
+}
+
 /// A context for multi-step (Init-Update-Finish) digest calculations.
 ///
 /// # Examples
@@ -49,33 +132,19 @@ mod sha2;
 /// ```
 #[derive(Clone)]
 pub struct Context {
-    state: State,
-
-    // Note that SHA-512 has a 128-bit input bit counter, but this
-    // implementation only supports up to 2^64-1 input bits for all algorithms,
-    // so a 64-bit counter is more than sufficient.
-    completed_data_blocks: u64,
-
+    block: BlockContext,
     // TODO: More explicitly force 64-bit alignment for |pending|.
     pending: [u8; MAX_BLOCK_LEN],
     num_pending: usize,
-
-    /// The context's algorithm.
-    pub algorithm: &'static Algorithm,
-
-    cpu_features: cpu::Features,
 }
 
 impl Context {
     /// Constructs a new context.
     pub fn new(algorithm: &'static Algorithm) -> Self {
         Self {
-            algorithm,
-            state: algorithm.initial_state,
-            completed_data_blocks: 0,
+            block: BlockContext::new(algorithm),
             pending: [0u8; MAX_BLOCK_LEN],
             num_pending: 0,
-            cpu_features: cpu::features(),
         }
     }
 
@@ -83,7 +152,8 @@ impl Context {
     /// zero or more times until `finish` is called. It must not be called
     /// after `finish` has been called.
     pub fn update(&mut self, data: &[u8]) {
-        if data.len() < self.algorithm.block_len - self.num_pending {
+        let block_len = self.block.algorithm.block_len;
+        if data.len() < block_len - self.num_pending {
             self.pending[self.num_pending..(self.num_pending + data.len())].copy_from_slice(data);
             self.num_pending += data.len();
             return;
@@ -91,30 +161,16 @@ impl Context {
 
         let mut remaining = data;
         if self.num_pending > 0 {
-            let to_copy = self.algorithm.block_len - self.num_pending;
-            self.pending[self.num_pending..self.algorithm.block_len]
-                .copy_from_slice(&data[..to_copy]);
-
-            unsafe {
-                (self.algorithm.block_data_order)(&mut self.state, self.pending.as_ptr(), 1);
-            }
-            self.completed_data_blocks = self.completed_data_blocks.checked_add(1).unwrap();
-
+            let to_copy = block_len - self.num_pending;
+            self.pending[self.num_pending..block_len].copy_from_slice(&data[..to_copy]);
+            self.block.update(&self.pending[..block_len]);
             remaining = &remaining[to_copy..];
             self.num_pending = 0;
         }
 
-        let num_blocks = remaining.len() / self.algorithm.block_len;
-        let num_to_save_for_later = remaining.len() % self.algorithm.block_len;
-        if num_blocks > 0 {
-            unsafe {
-                (self.algorithm.block_data_order)(&mut self.state, remaining.as_ptr(), num_blocks);
-            }
-            self.completed_data_blocks = self
-                .completed_data_blocks
-                .checked_add(polyfill::u64_from_usize(num_blocks))
-                .unwrap();
-        }
+        let num_blocks = remaining.len() / block_len;
+        let num_to_save_for_later = remaining.len() % block_len;
+        self.block.update(&remaining[..(num_blocks * block_len)]);
         if num_to_save_for_later > 0 {
             self.pending[..num_to_save_for_later]
                 .copy_from_slice(&remaining[(remaining.len() - num_to_save_for_later)..]);
@@ -126,54 +182,15 @@ impl Context {
     /// consumes the context so it cannot be (mis-)used after `finish` has been
     /// called.
     pub fn finish(mut self) -> Digest {
-        // We know |num_pending < self.algorithm.block_len|, because we would
-        // have processed the block otherwise.
-
-        let mut padding_pos = self.num_pending;
-        self.pending[padding_pos] = 0x80;
-        padding_pos += 1;
-
-        if padding_pos > self.algorithm.block_len - self.algorithm.len_len {
-            polyfill::slice::fill(&mut self.pending[padding_pos..self.algorithm.block_len], 0);
-            unsafe {
-                (self.algorithm.block_data_order)(&mut self.state, self.pending.as_ptr(), 1);
-            }
-            // We don't increase |self.completed_data_blocks| because the
-            // padding isn't data, and so it isn't included in the data length.
-            padding_pos = 0;
-        }
-
-        polyfill::slice::fill(
-            &mut self.pending[padding_pos..(self.algorithm.block_len - 8)],
-            0,
-        );
-
-        // Output the length, in bits, in big endian order.
-        let completed_data_bits = self
-            .completed_data_blocks
-            .checked_mul(polyfill::u64_from_usize(self.algorithm.block_len))
-            .unwrap()
-            .checked_add(polyfill::u64_from_usize(self.num_pending))
-            .unwrap()
-            .checked_mul(8)
-            .unwrap();
-        self.pending[(self.algorithm.block_len - 8)..self.algorithm.block_len]
-            .copy_from_slice(&u64::to_be_bytes(completed_data_bits));
-
-        unsafe {
-            (self.algorithm.block_data_order)(&mut self.state, self.pending.as_ptr(), 1);
-        }
-
-        Digest {
-            algorithm: self.algorithm,
-            value: (self.algorithm.format_output)(self.state),
-        }
+        let block_len = self.block.algorithm.block_len;
+        self.block
+            .finish(&mut self.pending[..block_len], self.num_pending)
     }
 
     /// The algorithm that this context is using.
     #[inline(always)]
     pub fn algorithm(&self) -> &'static Algorithm {
-        self.algorithm
+        self.block.algorithm
     }
 }
 
@@ -545,12 +562,14 @@ mod tests {
             let max_bytes = 1u64 << (64 - 3);
             let max_blocks = max_bytes / polyfill::u64_from_usize(alg.block_len);
             digest::Context {
-                algorithm: alg,
-                state: alg.initial_state,
-                completed_data_blocks: max_blocks - 1,
+                block: digest::BlockContext {
+                    state: alg.initial_state,
+                    completed_data_blocks: max_blocks - 1,
+                    algorithm: alg,
+                    cpu_features: crate::cpu::features(),
+                },
                 pending: [0u8; digest::MAX_BLOCK_LEN],
                 num_pending: 0,
-                cpu_features: crate::cpu::features(),
             }
         }
 
