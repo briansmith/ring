@@ -302,10 +302,7 @@ impl SigningContext {
     /// Constructs a new HMAC signing context using the given digest algorithm
     /// and key.
     pub fn with_key(signing_key: &SigningKey) -> SigningContext {
-        SigningContext {
-            inner: signing_key.ctx_prototype.inner.clone(),
-            outer: signing_key.ctx_prototype.outer.clone(),
-        }
+        signing_key.ctx_prototype.clone()
     }
 
     /// Updates the HMAC with all the data in `data`. `update` may be called
