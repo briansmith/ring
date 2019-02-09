@@ -284,7 +284,7 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     ];
 
     for &(squarings, digit) in &REMAINING_WINDOWS {
-        sqr_mul_acc(&mut acc, Limb::from(squarings), &d[digit as usize]);
+        sqr_mul_acc(&mut acc, Limb::from(squarings), &d[usize::from(digit)]);
     }
 
     acc
