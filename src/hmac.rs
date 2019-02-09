@@ -335,9 +335,7 @@ pub fn sign(key: &SigningKey, data: &[u8]) -> Signature {
 }
 
 /// A key to use for HMAC authentication.
-pub struct VerificationKey {
-    wrapped: SigningKey,
-}
+pub struct VerificationKey(SigningKey);
 
 impl core::fmt::Debug for VerificationKey {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
@@ -358,14 +356,12 @@ impl VerificationKey {
     /// length then it will be compressed using the digest algorithm.
     #[inline(always)]
     pub fn new(digest_alg: &'static digest::Algorithm, key_value: &[u8]) -> Self {
-        Self {
-            wrapped: SigningKey::new(digest_alg, key_value),
-        }
+        VerificationKey(SigningKey::new(digest_alg, key_value))
     }
 
     /// The digest algorithm for the key.
     #[inline]
-    pub fn digest_algorithm(&self) -> &'static digest::Algorithm { self.wrapped.digest_algorithm() }
+    pub fn digest_algorithm(&self) -> &'static digest::Algorithm { self.0.digest_algorithm() }
 }
 
 /// Calculates the HMAC of `data` using the key `key`, and verifies whether the
@@ -376,7 +372,7 @@ impl VerificationKey {
 pub fn verify(
     key: &VerificationKey, data: &[u8], signature: &[u8],
 ) -> Result<(), error::Unspecified> {
-    verify_with_own_key(&key.wrapped, data, signature)
+    verify_with_own_key(&key.0, data, signature)
 }
 
 /// Calculates the HMAC of `data` using the signing key `key`, and verifies
