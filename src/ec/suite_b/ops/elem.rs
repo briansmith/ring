@@ -37,8 +37,8 @@ impl<M, E: Encoding> Elem<M, E> {
     // There's no need to convert `value` to the Montgomery domain since
     // 0 * R**2 (mod m) == 0, so neither the modulus nor the encoding are needed
     // as inputs for constructing a zero-valued element.
-    pub fn zero() -> Elem<M, E> {
-        Elem {
+    pub fn zero() -> Self {
+        Self {
             limbs: [0; MAX_LIMBS],
             m: PhantomData,
             encoding: PhantomData,

@@ -381,7 +381,7 @@ pub struct Elem<M, E = Unencoded> {
 // is resolved or restrict `M: Clone` and `E: Clone`.
 impl<M, E> Clone for Elem<M, E> {
     fn clone(&self) -> Self {
-        Elem {
+        Self {
             limbs: self.limbs.clone(),
             encoding: self.encoding.clone(),
         }

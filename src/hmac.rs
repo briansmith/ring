@@ -188,7 +188,7 @@ impl SigningKey {
     /// The key will be `recommended_key_len(digest_alg)` bytes long.
     pub fn generate(
         digest_alg: &'static digest::Algorithm, rng: &rand::SecureRandom,
-    ) -> Result<SigningKey, error::Unspecified> {
+    ) -> Result<Self, error::Unspecified> {
         // XXX: There should probably be a `digest::MAX_CHAINING_LEN`, but for
         // now `digest::MAX_OUTPUT_LEN` is good enough.
         let mut key_bytes = [0u8; digest::MAX_OUTPUT_LEN];
@@ -207,12 +207,12 @@ impl SigningKey {
     /// deserialized with `SigningKey::new()`.
     pub fn generate_serializable(
         digest_alg: &'static digest::Algorithm, rng: &rand::SecureRandom, key_bytes: &mut [u8],
-    ) -> Result<SigningKey, error::Unspecified> {
+    ) -> Result<Self, error::Unspecified> {
         if key_bytes.len() != recommended_key_len(digest_alg) {
             return Err(error::Unspecified);
         }
         rng.fill(key_bytes)?;
-        Ok(SigningKey::new(digest_alg, key_bytes))
+        Ok(Self::new(digest_alg, key_bytes))
     }
 
     /// Construct an HMAC signing key using the given digest algorithm and key
@@ -234,8 +234,8 @@ impl SigningKey {
     /// the truncation described above reduces their strength to only
     /// `digest_alg.output_len * 8` bits. Support for such keys is likely to be
     /// removed in a future version of *ring*.
-    pub fn new(digest_alg: &'static digest::Algorithm, key_value: &[u8]) -> SigningKey {
-        let mut key = SigningKey {
+    pub fn new(digest_alg: &'static digest::Algorithm, key_value: &[u8]) -> Self {
+        let mut key = Self {
             ctx_prototype: SigningContext {
                 inner: digest::Context::new(digest_alg),
                 outer: digest::Context::new(digest_alg),
@@ -301,9 +301,7 @@ impl core::fmt::Debug for SigningContext {
 impl SigningContext {
     /// Constructs a new HMAC signing context using the given digest algorithm
     /// and key.
-    pub fn with_key(signing_key: &SigningKey) -> SigningContext {
-        signing_key.ctx_prototype.clone()
-    }
+    pub fn with_key(signing_key: &SigningKey) -> Self { signing_key.ctx_prototype.clone() }
 
     /// Updates the HMAC with all the data in `data`. `update` may be called
     /// zero or more times until `finish` is called.
@@ -359,8 +357,8 @@ impl VerificationKey {
     /// it will be padded with zeros. Similarly, if it is longer than the block
     /// length then it will be compressed using the digest algorithm.
     #[inline(always)]
-    pub fn new(digest_alg: &'static digest::Algorithm, key_value: &[u8]) -> VerificationKey {
-        VerificationKey {
+    pub fn new(digest_alg: &'static digest::Algorithm, key_value: &[u8]) -> Self {
+        Self {
             wrapped: SigningKey::new(digest_alg, key_value),
         }
     }

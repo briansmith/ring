@@ -66,10 +66,10 @@ pub struct Context {
 
 impl Context {
     /// Constructs a new context.
-    pub fn new(algorithm: &'static Algorithm) -> Context {
+    pub fn new(algorithm: &'static Algorithm) -> Self {
         let _ = cpu::features();
 
-        Context {
+        Self {
             algorithm,
             state: algorithm.initial_state,
             completed_data_blocks: 0,
