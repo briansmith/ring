@@ -64,12 +64,6 @@ extern "C" {
 #endif
 
 
-#define STRICT_ALIGNMENT 1
-#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86) || defined(OPENSSL_AARCH64)
-#undef STRICT_ALIGNMENT
-#define STRICT_ALIGNMENT 0
-#endif
-
 static inline uint32_t GETU32(const void *in) {
   uint32_t v;
   OPENSSL_memcpy(&v, in, sizeof(v));

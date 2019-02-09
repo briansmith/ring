@@ -514,24 +514,6 @@ int CRYPTO_gcm128_encrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 
   uint32_t ctr = CRYPTO_bswap4(ctx->Yi.d[3]);
-  if (STRICT_ALIGNMENT &&
-      ((uintptr_t)in | (uintptr_t)out) % sizeof(size_t) != 0) {
-    for (size_t i = 0; i < len; ++i) {
-      if (n == 0) {
-        (*block)(ctx->Yi.c, ctx->EKi.c, key);
-        ++ctr;
-        ctx->Yi.d[3] = CRYPTO_bswap4(ctr);
-      }
-      ctx->Xi.c[n] ^= out[i] = in[i] ^ ctx->EKi.c[n];
-      n = (n + 1) % 16;
-      if (n == 0) {
-        GCM_MUL(ctx, Xi);
-      }
-    }
-
-    ctx->mres = n;
-    return 1;
-  }
   while (len >= GHASH_CHUNK) {
     size_t j = GHASH_CHUNK;
 
@@ -622,27 +604,6 @@ int CRYPTO_gcm128_decrypt(GCM128_CONTEXT *ctx, const AES_KEY *key,
   }
 
   uint32_t ctr = CRYPTO_bswap4(ctx->Yi.d[3]);
-  if (STRICT_ALIGNMENT &&
-      ((uintptr_t)in | (uintptr_t)out) % sizeof(size_t) != 0) {
-    for (size_t i = 0; i < len; ++i) {
-      uint8_t c;
-      if (n == 0) {
-        (*block)(ctx->Yi.c, ctx->EKi.c, key);
-        ++ctr;
-        ctx->Yi.d[3] = CRYPTO_bswap4(ctr);
-      }
-      c = in[i];
-      out[i] = c ^ ctx->EKi.c[n];
-      ctx->Xi.c[n] ^= c;
-      n = (n + 1) % 16;
-      if (n == 0) {
-        GCM_MUL(ctx, Xi);
-      }
-    }
-
-    ctx->mres = n;
-    return 1;
-  }
   while (len >= GHASH_CHUNK) {
     size_t j = GHASH_CHUNK;
 
