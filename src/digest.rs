@@ -62,19 +62,20 @@ pub struct Context {
 
     /// The context's algorithm.
     pub algorithm: &'static Algorithm,
+
+    cpu_features: cpu::Features,
 }
 
 impl Context {
     /// Constructs a new context.
     pub fn new(algorithm: &'static Algorithm) -> Self {
-        let _ = cpu::features();
-
         Self {
             algorithm,
             state: algorithm.initial_state,
             completed_data_blocks: 0,
             pending: [0u8; MAX_BLOCK_LEN],
             num_pending: 0,
+            cpu_features: cpu::features(),
         }
     }
 
@@ -561,6 +562,7 @@ mod tests {
                 completed_data_blocks: max_blocks - 1,
                 pending: [0u8; digest::MAX_BLOCK_LEN],
                 num_pending: 0,
+                cpu_features: crate::cpu::features(),
             }
         }
 
