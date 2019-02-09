@@ -223,7 +223,7 @@ impl Key {
         let mut key = Self {
             ctx_prototype: Context {
                 inner: digest::Context::new(digest_alg),
-                outer: digest::Context::new(digest_alg),
+                outer: digest::BlockContext::new(digest_alg),
             },
         };
 
@@ -285,7 +285,7 @@ impl From<hkdf::Okm<'_, Algorithm>> for Key {
 #[derive(Clone)]
 pub struct Context {
     inner: digest::Context,
-    outer: digest::Context,
+    outer: digest::BlockContext,
 }
 
 /// `hmac::SigningContext` was renamed to `hmac::Context`.
@@ -320,9 +320,13 @@ impl Context {
     /// It is generally not safe to implement HMAC verification by comparing
     /// the return value of `sign` to a tag. Use `verify` for verification
     /// instead.
-    pub fn sign(mut self) -> Tag {
-        self.outer.update(self.inner.finish().as_ref());
-        Tag(self.outer.finish())
+    pub fn sign(self) -> Tag {
+        let algorithm = self.inner.algorithm();
+        let mut pending = [0u8; digest::MAX_BLOCK_LEN];
+        let pending = &mut pending[..algorithm.block_len];
+        let num_pending = algorithm.output_len;
+        pending[..num_pending].copy_from_slice(self.inner.finish().as_ref());
+        Tag(self.outer.finish(pending, num_pending))
     }
 }
 
