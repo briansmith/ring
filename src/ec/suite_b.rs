@@ -180,7 +180,7 @@ fn key_pair_from_pkcs8_<'a>(
         .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
 
     // [0] parameters (optional).
-    if input.peek(der::Tag::ContextSpecificConstructed0 as u8) {
+    if input.peek(u8::from(der::Tag::ContextSpecificConstructed0)) {
         let actual_alg_id =
             der::expect_tag_and_get_value(input, der::Tag::ContextSpecificConstructed0)
                 .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
