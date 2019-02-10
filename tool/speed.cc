@@ -19,6 +19,7 @@
 #include <vector>
 
 #include <assert.h>
+#include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -98,6 +99,7 @@ static uint64_t time_now() {
 #endif
 
 static uint64_t g_timeout_seconds = 1;
+static std::vector<size_t> g_chunk_lengths = {16, 256, 1350, 8192};
 
 static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
   // total_us is the total amount of time that we'll aim to measure a function
@@ -274,10 +276,19 @@ static bool SpeedRSAKeyGen(const std::string &selected) {
            (static_cast<double>(num_calls) / us) * 1000000);
     const size_t n = durations.size();
     assert(n > 0);
+
+    // |min| and |max| must be stored in temporary variables to avoid an MSVC
+    // bug on x86. There, size_t is a typedef for unsigned, but MSVC's printf
+    // warning tries to retain the distinction and suggest %zu for size_t
+    // instead of %u. It gets confused if std::vector<unsigned> and
+    // std::vector<size_t> are both instantiated. Being typedefs, the two
+    // instantiations are identical, which somehow breaks the size_t vs unsigned
+    // metadata.
+    unsigned min = durations[0];
     unsigned median = n & 1 ? durations[n / 2]
                             : (durations[n / 2 - 1] + durations[n / 2]) / 2;
-    printf("  min: %uus, median: %uus, max: %uus\n", durations[0], median,
-           durations[n - 1]);
+    unsigned max = durations[n - 1];
+    printf("  min: %uus, median: %uus, max: %uus\n", min, median, max);
   }
 
   return true;
@@ -289,11 +300,19 @@ static uint8_t *align(uint8_t *in, unsigned alignment) {
       ~static_cast<size_t>(alignment - 1));
 }
 
-static bool SpeedAEADChunk(const EVP_AEAD *aead, const std::string &name,
+static std::string ChunkLenSuffix(size_t chunk_len) {
+  char buf[32];
+  snprintf(buf, sizeof(buf), " (%zu byte%s)", chunk_len,
+           chunk_len != 1 ? "s" : "");
+  return buf;
+}
+
+static bool SpeedAEADChunk(const EVP_AEAD *aead, std::string name,
                            size_t chunk_len, size_t ad_len,
                            evp_aead_direction_t direction) {
   static const unsigned kAlignment = 16;
 
+  name += ChunkLenSuffix(chunk_len);
   bssl::ScopedEVP_AEAD_CTX ctx;
   const size_t key_len = EVP_AEAD_key_length(aead);
   const size_t nonce_len = EVP_AEAD_nonce_length(aead);
@@ -390,12 +409,12 @@ static bool SpeedAEAD(const EVP_AEAD *aead, const std::string &name,
     return true;
   }
 
-  return SpeedAEADChunk(aead, name + " (16 bytes)", 16, ad_len,
-                        evp_aead_seal) &&
-         SpeedAEADChunk(aead, name + " (1350 bytes)", 1350, ad_len,
-                        evp_aead_seal) &&
-         SpeedAEADChunk(aead, name + " (8192 bytes)", 8192, ad_len,
-                        evp_aead_seal);
+  for (size_t chunk_len : g_chunk_lengths) {
+    if (!SpeedAEADChunk(aead, name, chunk_len, ad_len, evp_aead_seal)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
@@ -404,15 +423,16 @@ static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
     return true;
   }
 
-  return SpeedAEADChunk(aead, name + " (16 bytes)", 16, ad_len,
-                        evp_aead_open) &&
-         SpeedAEADChunk(aead, name + " (1350 bytes)", 1350, ad_len,
-                        evp_aead_open) &&
-         SpeedAEADChunk(aead, name + " (8192 bytes)", 8192, ad_len,
-                        evp_aead_open);
+  for (size_t chunk_len : g_chunk_lengths) {
+    if (!SpeedAEADChunk(aead, name, chunk_len, ad_len, evp_aead_open)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
-static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
+static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
   bssl::ScopedEVP_MD_CTX ctx;
   uint8_t scratch[8192];
@@ -421,6 +441,7 @@ static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
     return false;
   }
 
+  name += ChunkLenSuffix(chunk_len);
   TimeResults results;
   if (!TimeFunction(&results, [&ctx, md, chunk_len, &scratch]() -> bool {
         uint8_t digest[EVP_MAX_MD_SIZE];
@@ -438,24 +459,30 @@ static bool SpeedHashChunk(const EVP_MD *md, const std::string &name,
   results.PrintWithBytes(name, chunk_len);
   return true;
 }
+
 static bool SpeedHash(const EVP_MD *md, const std::string &name,
                       const std::string &selected) {
   if (!selected.empty() && name.find(selected) == std::string::npos) {
     return true;
   }
 
-  return SpeedHashChunk(md, name + " (16 bytes)", 16) &&
-         SpeedHashChunk(md, name + " (256 bytes)", 256) &&
-         SpeedHashChunk(md, name + " (8192 bytes)", 8192);
+  for (size_t chunk_len : g_chunk_lengths) {
+    if (!SpeedHashChunk(md, name, chunk_len)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
-static bool SpeedRandomChunk(const std::string &name, size_t chunk_len) {
+static bool SpeedRandomChunk(std::string name, size_t chunk_len) {
   uint8_t scratch[8192];
 
   if (chunk_len > sizeof(scratch)) {
     return false;
   }
 
+  name += ChunkLenSuffix(chunk_len);
   TimeResults results;
   if (!TimeFunction(&results, [chunk_len, &scratch]() -> bool {
         RAND_bytes(scratch, chunk_len);
@@ -473,9 +500,13 @@ static bool SpeedRandom(const std::string &selected) {
     return true;
   }
 
-  return SpeedRandomChunk("RNG (16 bytes)", 16) &&
-         SpeedRandomChunk("RNG (256 bytes)", 256) &&
-         SpeedRandomChunk("RNG (8192 bytes)", 8192);
+  for (size_t chunk_len : g_chunk_lengths) {
+    if (!SpeedRandomChunk("RNG", chunk_len)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 static bool SpeedECDHCurve(const std::string &name, int nid,
@@ -802,15 +833,25 @@ static bool SpeedHRSS(const std::string &selected) {
 
 static const struct argument kArguments[] = {
     {
-     "-filter", kOptionalArgument,
-     "A filter on the speed tests to run",
+        "-filter",
+        kOptionalArgument,
+        "A filter on the speed tests to run",
     },
     {
-     "-timeout", kOptionalArgument,
-     "The number of seconds to run each test for (default is 1)",
+        "-timeout",
+        kOptionalArgument,
+        "The number of seconds to run each test for (default is 1)",
     },
     {
-     "", kOptionalArgument, "",
+        "-chunks",
+        kOptionalArgument,
+        "A comma-separated list of input sizes to run tests at (default is "
+        "16,256,1350,8192)",
+    },
+    {
+        "",
+        kOptionalArgument,
+        "",
     },
 };
 
@@ -828,6 +869,32 @@ bool Speed(const std::vector<std::string> &args) {
 
   if (args_map.count("-timeout") != 0) {
     g_timeout_seconds = atoi(args_map["-timeout"].c_str());
+  }
+
+  if (args_map.count("-chunks") != 0) {
+    g_chunk_lengths.clear();
+    const char *start = args_map["-chunks"].data();
+    const char *end = start + args_map["-chunks"].size();
+    while (start != end) {
+      errno = 0;
+      char *ptr;
+      unsigned long long val = strtoull(start, &ptr, 10);
+      if (ptr == start /* no numeric characters found */ ||
+          errno == ERANGE /* overflow */ ||
+          static_cast<size_t>(val) != val) {
+        fprintf(stderr, "Error parsing -chunks argument\n");
+        return false;
+      }
+      g_chunk_lengths.push_back(static_cast<size_t>(val));
+      start = ptr;
+      if (start != end) {
+        if (*start != ',') {
+          fprintf(stderr, "Error parsing -chunks argument\n");
+          return false;
+        }
+        start++;
+      }
+    }
   }
 
   // kTLSADLen is the number of bytes of additional data that TLS passes to
