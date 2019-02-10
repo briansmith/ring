@@ -122,7 +122,8 @@ TEST_F(ImplDispatchTest, AES_set_encrypt_key) {
   AssertFunctionsHit(
       {
           {kFlag_aes_hw_set_encrypt_key, aesni_},
-          // VPAES / BSAES will not be used for the |AES_*| functions.
+          {kFlag_vpaes_set_encrypt_key, ssse3_ && !aesni_},
+          // BSAES will not be used for the |AES_*| functions.
       },
       [] {
         AES_KEY key;
@@ -139,7 +140,8 @@ TEST_F(ImplDispatchTest, AES_single_block) {
   AssertFunctionsHit(
       {
           {kFlag_aes_hw_encrypt, aesni_},
-          // VPAES / BSAES will not be used for the |AES_*| functions.
+          {kFlag_vpaes_encrypt, ssse3_ && !aesni_},
+          // BSAES will not be used for the |AES_*| functions.
       },
       [&key] {
         uint8_t in[AES_BLOCK_SIZE] = {0};

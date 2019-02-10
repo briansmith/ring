@@ -80,14 +80,16 @@ void AES_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t len,
   }
 
 #if defined(AES_NOHW_CBC)
-  aes_nohw_cbc_encrypt(in, out, len, key, ivec, enc);
-#else
+  if (!vpaes_capable()) {
+    aes_nohw_cbc_encrypt(in, out, len, key, ivec, enc);
+    return;
+  }
+#endif
   if (enc) {
     CRYPTO_cbc128_encrypt(in, out, len, key, ivec, AES_encrypt);
   } else {
     CRYPTO_cbc128_decrypt(in, out, len, key, ivec, AES_decrypt);
   }
-#endif
 }
 
 void AES_ofb128_encrypt(const uint8_t *in, uint8_t *out, size_t length,
