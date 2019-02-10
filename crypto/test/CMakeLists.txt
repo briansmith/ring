@@ -15,6 +15,9 @@ if (LIBUNWIND_FOUND)
   target_include_directories(test_support_lib PRIVATE ${LIBUNWIND_INCLUDE_DIRS})
   target_link_libraries(test_support_lib ${LIBUNWIND_LDFLAGS})
 endif()
+if(WIN32)
+  target_link_libraries(test_support_lib dbghelp)
+endif()
 add_dependencies(test_support_lib global_target)
 
 add_library(

@@ -43,6 +43,7 @@
 #define SUPPORTS_UNWIND_TEST
 OPENSSL_MSVC_PRAGMA(warning(push, 3))
 #include <windows.h>
+#include <dbghelp.h>
 OPENSSL_MSVC_PRAGMA(warning(pop))
 #endif
 #endif  // X86_64 && SUPPORTS_ABI_TEST
@@ -253,6 +254,8 @@ class UnwindCursor {
     starting_ip_ = ctx_.Rip;
   }
 
+  crypto_word_t starting_ip() const { return starting_ip_; }
+
   // Step unwinds the cursor by one frame. On success, it returns whether there
   // were more frames to unwind.
   UnwindStatusOr<bool> Step() {
@@ -313,12 +316,8 @@ class UnwindCursor {
   }
 
   // ToString returns a human-readable representation of the address the cursor
-  // started at, using debug information if available.
+  // started at.
   const char *ToString() {
-    // TODO(davidben): Use SymFromAddr here. See base/debug/stack_trace_win.cc
-    // in Chromium for an example. It probably should be called outside the
-    // exception handler, which means we need to stash the address in
-    // |g_unwind_errors| to defer it.
     StrCatSignalSafe(starting_ip_buf_, "0x", WordToHex(starting_ip_).data());
     return starting_ip_buf_;
   }
@@ -483,14 +482,30 @@ static constexpr size_t kMaxUnwindErrors = 10;
 // Errors are saved in a signal handler. We use a static buffer to avoid
 // allocation.
 static size_t g_num_unwind_errors = 0;
-static char g_unwind_errors[kMaxUnwindErrors][512];
+
+struct UnwindError {
+#if defined(OPENSSL_WINDOWS)
+  crypto_word_t ip;
+#endif
+  char str[512];
+};
+
+static UnwindError g_unwind_errors[kMaxUnwindErrors];
 
 template <typename... Args>
-static void AddUnwindError(Args... args) {
+static void AddUnwindError(UnwindCursor *cursor, Args... args) {
   if (g_num_unwind_errors >= kMaxUnwindErrors) {
     return;
   }
-  StrCatSignalSafe(g_unwind_errors[g_num_unwind_errors], args...);
+#if defined(OPENSSL_WINDOWS)
+  // Windows symbol functions should not be called when handling an
+  // exception. Stash the instruction pointer, to be symbolized later.
+  g_unwind_errors[g_num_unwind_errors].ip = cursor->starting_ip();
+  StrCatSignalSafe(g_unwind_errors[g_num_unwind_errors].str, args...);
+#else
+  StrCatSignalSafe(g_unwind_errors[g_num_unwind_errors].str,
+                   "unwinding at ", cursor->ToString(), ": ", args...);
+#endif
   g_num_unwind_errors++;
 }
 
@@ -533,57 +548,51 @@ static void CheckUnwind(UnwindCursor *cursor) {
     } else if (IsAncestorStackFrame(sp, g_trampoline_sp)) {
       // This should never happen. We went past |g_trampoline_sp| without
       // stopping at |kStopAddress|.
-      AddUnwindError("stack frame is before caller at ",
-                     cursor->ToString());
+      AddUnwindError(cursor, "stack frame is before caller");
       g_in_trampoline = false;
     } else if (g_num_unwind_errors < kMaxUnwindErrors) {
       for (;;) {
         UnwindStatusOr<bool> step_ret = cursor->Step();
         if (!step_ret.ok()) {
-          AddUnwindError("error unwinding from ", cursor->ToString(), ": ",
-                         step_ret.Error());
+          AddUnwindError(cursor, "error unwinding: ", step_ret.Error());
           break;
         }
         // |Step| returns whether there was a frame to unwind.
         if (!step_ret.ValueOrDie()) {
-          AddUnwindError("could not unwind to starting frame from ",
-                         cursor->ToString());
+          AddUnwindError(cursor, "could not unwind to starting frame");
           break;
         }
 
         UnwindStatusOr<crypto_word_t> cur_sp = cursor->GetSP();
         if (!cur_sp.ok()) {
-          AddUnwindError("error recovering stack pointer unwinding from ",
-                         cursor->ToString(), ": ", cur_sp.Error());
+          AddUnwindError(cursor,
+                         "error recovering stack pointer: ", cur_sp.Error());
           break;
         }
         if (IsAncestorStackFrame(cur_sp.ValueOrDie(), g_trampoline_sp)) {
-          AddUnwindError("unwound past starting frame from ",
-                         cursor->ToString());
+          AddUnwindError(cursor, "unwound past starting frame");
           break;
         }
         if (cur_sp.ValueOrDie() == g_trampoline_sp) {
           // We found the parent frame. Check the return address.
           UnwindStatusOr<crypto_word_t> cur_ip = cursor->GetIP();
           if (!cur_ip.ok()) {
-            AddUnwindError("error recovering return address unwinding from ",
-                           cursor->ToString(), ": ", cur_ip.Error());
+            AddUnwindError(cursor,
+                           "error recovering return address: ", cur_ip.Error());
           } else if (cur_ip.ValueOrDie() != kReturnAddress) {
-            AddUnwindError("wrong return address unwinding from ",
-                           cursor->ToString());
+            AddUnwindError(cursor, "wrong return address");
           }
 
           // Check the remaining registers.
           UnwindStatusOr<CallerState> state = cursor->GetCallerState();
           if (!state.ok()) {
-            AddUnwindError("error recovering registers unwinding from ",
-                           cursor->ToString(), ": ", state.Error());
+            AddUnwindError(cursor,
+                           "error recovering registers: ", state.Error());
           } else {
-            ForEachMismatch(
-                state.ValueOrDie(), g_trampoline_state, [&](const char *reg) {
-                  AddUnwindError(reg, " was not recovered unwinding from ",
-                                 cursor->ToString());
-                });
+            ForEachMismatch(state.ValueOrDie(), g_trampoline_state,
+                            [&](const char *reg) {
+                              AddUnwindError(cursor, reg, " was not recovered");
+                            });
           }
           break;
         }
@@ -594,7 +603,29 @@ static void CheckUnwind(UnwindCursor *cursor) {
 
 static void ReadUnwindResult(Result *out) {
   for (size_t i = 0; i < g_num_unwind_errors; i++) {
-    out->errors.emplace_back(g_unwind_errors[i]);
+#if defined(OPENSSL_WINDOWS)
+    const crypto_word_t ip = g_unwind_errors[i].ip;
+    char buf[256];
+    DWORD64 displacement;
+    struct {
+      SYMBOL_INFO info;
+      char name_buf[128];
+    } symbol;
+    memset(&symbol, 0, sizeof(symbol));
+    symbol.info.SizeOfStruct = sizeof(symbol.info);
+    symbol.info.MaxNameLen = sizeof(symbol.name_buf);
+    if (SymFromAddr(GetCurrentProcess(), ip, &displacement, &symbol.info)) {
+      snprintf(buf, sizeof(buf), "unwinding at %s+%llu (0x%s): %s",
+               symbol.info.Name, displacement, WordToHex(ip).data(),
+               g_unwind_errors[i].str);
+    } else {
+      snprintf(buf, sizeof(buf), "unwinding at 0x%s: %s",
+               WordToHex(ip).data(), g_unwind_errors[i].str);
+    }
+    out->errors.emplace_back(buf);
+#else
+    out->errors.emplace_back(g_unwind_errors[i].str);
+#endif
   }
   if (g_num_unwind_errors == kMaxUnwindErrors) {
     out->errors.emplace_back("(additional errors omitted)");
@@ -629,6 +660,11 @@ static void EnableUnwindTestsImpl() {
   }
 
   g_main_thread = GetCurrentThreadId();
+
+  SymSetOptions(SYMOPT_DEFERRED_LOADS);
+  if (!SymInitialize(GetCurrentProcess(), nullptr, TRUE)) {
+    fprintf(stderr, "Could not initialize symbols.\n");
+  }
 
   if (AddVectoredExceptionHandler(0, ExceptionHandler) == nullptr) {
     fprintf(stderr, "Error installing exception handler.\n");

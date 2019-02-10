@@ -48,9 +48,9 @@ TEST(ABITest, SanityCheck) {
 #if defined(OPENSSL_X86_64)
   if (abi_test::UnwindTestsEnabled()) {
     EXPECT_NONFATAL_FAILURE(CHECK_ABI_SEH(abi_test_bad_unwind_wrong_register),
-                            "was not recovered unwinding");
+                            "was not recovered");
     EXPECT_NONFATAL_FAILURE(CHECK_ABI_SEH(abi_test_bad_unwind_temporary),
-                            "was not recovered unwinding");
+                            "was not recovered");
 
     CHECK_ABI_NO_UNWIND(abi_test_bad_unwind_wrong_register);
     CHECK_ABI_NO_UNWIND(abi_test_bad_unwind_temporary);
