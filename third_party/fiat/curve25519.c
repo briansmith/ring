@@ -59,6 +59,9 @@
 #include "./curve25519_tables.h"
 
 #if defined(BORINGSSL_CURVE25519_64BIT)
+#if defined(__GNUC__)
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 #include "./curve25519_64.h"
 #else
 #include "./curve25519_32.h"
