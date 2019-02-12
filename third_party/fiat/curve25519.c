@@ -183,7 +183,7 @@ static uint32_t cmovznz32(uint32_t t, uint32_t z, uint32_t nz) {
   } \
 } while (0)
 
-static void fe_frombytes_impl(uint64_t h[5], const uint8_t *s) {
+static void fe_frombytes_impl(uint64_t h[5], const uint8_t s[32]) {
   // Ignores top bit of s.
   uint64_t a0 = load_8(s);
   uint64_t a1 = load_8(s+8);
@@ -202,7 +202,7 @@ static void fe_frombytes_impl(uint64_t h[5], const uint8_t *s) {
   assert_fe(h);
 }
 
-static void fe_frombytes(fe *h, const uint8_t *s) {
+static void fe_frombytes(fe *h, const uint8_t s[32]) {
   fe_frombytes_impl(h->v, s);
 }
 
@@ -660,7 +660,7 @@ static void fe_cmov(fe_loose *f, const fe_loose *g, uint64_t b) {
   } \
 } while (0)
 
-static void fe_frombytes_impl(uint32_t h[10], const uint8_t *s) {
+static void fe_frombytes_impl(uint32_t h[10], const uint8_t s[32]) {
   // Ignores top bit of s.
   uint32_t a0 = load_4(s);
   uint32_t a1 = load_4(s+4);
@@ -683,7 +683,7 @@ static void fe_frombytes_impl(uint32_t h[10], const uint8_t *s) {
   assert_fe(h);
 }
 
-static void fe_frombytes(fe *h, const uint8_t *s) {
+static void fe_frombytes(fe *h, const uint8_t s[32]) {
   fe_frombytes_impl(h->v, s);
 }
 
@@ -1575,7 +1575,7 @@ static void fe_pow22523(fe *out, const fe *z) {
 
 // Group operations.
 
-int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t *s) {
+int GFp_x25519_ge_frombytes_vartime(ge_p3 *h, const uint8_t s[32]) {
   fe u;
   fe_loose v;
   fe v3;
