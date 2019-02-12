@@ -8,8 +8,3 @@
 *.pl linguist-language=Assembly
 *.bin binary
 *.der binary
-crypto/fipsmodule/ec/ecp_nistz256_table.inl linguist-generated=true
-crypto/fipsmodule/ec/ecp_nistz256_table.inl linguist-generated=true
-third_party/fiat/curve25519_tables.h linguist-generated=true
-third_party/fiat/curve25519_32.h linguist-generated=true
-third_party/fiat/curve25519_64.h linguist-generated=true
