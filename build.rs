@@ -141,6 +141,8 @@ const RING_INCLUDES: &[&str] =
       "include/GFp/cpu.h",
       "include/GFp/mem.h",
       "include/GFp/type_check.h",
+      "third_party/fiat/curve25519_32.c",
+      "third_party/fiat/curve25519_64.c",
       "third_party/fiat/curve25519_tables.h",
       "third_party/fiat/internal.h",
     ];
