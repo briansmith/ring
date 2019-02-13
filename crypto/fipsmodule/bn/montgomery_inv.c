@@ -16,9 +16,6 @@
 #include "../../internal.h"
 
 
-// Avoid -Wmissing-prototypes warnings.
-uint64_t GFp_bn_neg_inv_mod_r_u64(uint64_t n);
-
 OPENSSL_STATIC_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
                       "BN_MONT_CTX_N0_LIMBS value is invalid");
 OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS == sizeof(uint64_t),

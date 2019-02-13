@@ -23,13 +23,7 @@ typedef Limb Elem[P256_LIMBS];
 typedef Limb ScalarMont[P256_LIMBS];
 typedef Limb Scalar[P256_LIMBS];
 
-
-/* Prototypes to avoid -Wmissing-prototypes warnings. */
-void GFp_p256_scalar_mul_mont(ScalarMont r, const ScalarMont a,
-                              const ScalarMont b);
-void GFp_p256_scalar_sqr_mont(ScalarMont r, const ScalarMont a);
 void GFp_p256_scalar_sqr_rep_mont(ScalarMont r, const ScalarMont a, Limb rep);
-
 
 #if defined(OPENSSL_ARM) || defined(OPENSSL_X86)
 void GFp_nistz256_sqr_mont(Elem r, const Elem a) {

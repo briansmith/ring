@@ -36,14 +36,6 @@
 typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
 
 
-/* Prototypes to avoid -Wmissing-prototypes warnings. */
-void GFp_nistz256_point_mul_base(P256_POINT *r,
-                                 const Limb g_scalar[P256_LIMBS]);
-void GFp_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
-                            const Limb p_x[P256_LIMBS],
-                            const Limb p_y[P256_LIMBS]);
-
-
 /* Functions implemented in assembly */
 /* Modular neg: res = -a mod P */
 void GFp_nistz256_neg(Limb res[P256_LIMBS], const Limb a[P256_LIMBS]);

@@ -111,12 +111,6 @@
 
 #include "../../limbs/limbs.inl"
 
-// Avoid -Wmissing-prototypes warnings.
-int GFp_bn_from_montgomery_in_place(BN_ULONG r[], size_t num_r, BN_ULONG a[],
-                                    size_t num_a, const BN_ULONG n[],
-                                    size_t num_n,
-                                    const BN_ULONG n0_[BN_MONT_CTX_N0_LIMBS]);
-
 OPENSSL_STATIC_ASSERT(BN_MONT_CTX_N0_LIMBS == 1 || BN_MONT_CTX_N0_LIMBS == 2,
   "BN_MONT_CTX_N0_LIMBS value is invalid");
 OPENSSL_STATIC_ASSERT(

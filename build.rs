@@ -164,7 +164,6 @@ fn c_flags(target: &Target) -> &'static [&'static str] {
         static NON_MSVC_FLAGS: &[&str] = &[
             "-std=c1x", // GCC 4.6 requires "c1x" instead of "c11"
             "-Wbad-function-cast",
-            "-Wmissing-prototypes",
             "-Wnested-externs",
             "-Wstrict-prototypes",
         ];
@@ -189,7 +188,6 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
             "-Wformat=2",
             "-Winline",
             "-Winvalid-pch",
-            "-Wmissing-declarations",
             "-Wmissing-field-initializers",
             "-Wmissing-include-dirs",
             "-Wredundant-decls",

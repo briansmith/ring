@@ -68,6 +68,8 @@
 #endif  // BORINGSSL_CURVE25519_64BIT
 
 
+void GFp_x25519_sc_mask(uint8_t a[32]);
+
 // Low-level intrinsic operations
 
 static uint64_t load_3(const uint8_t *in) {
@@ -1880,10 +1882,6 @@ void GFp_x25519_scalar_mult_generic(uint8_t out[32],
   fe_mul_ttt(&x2, &x2, &z2);
   fe_tobytes(out, &x2);
 }
-
-// Prototypes to avoid -Wmissing-prototypes warnings.
-void GFp_x25519_public_from_private_generic(uint8_t out_public_value[32],
-                                            const uint8_t private_key[32]);
 
 void GFp_x25519_public_from_private_generic(uint8_t out_public_value[32],
                                             const uint8_t private_key[32]) {
