@@ -92,8 +92,8 @@ fn test_aead<Seal, Open>(
         &[u8],
         aead::Nonce,
         aead::Aad<&[u8]>,
-        &mut [u8],
-    ) -> Result<usize, error::Unspecified>,
+        &mut Vec<u8>,
+    ) -> Result<(), error::Unspecified>,
     Open: for<'a> Fn(
         &'static aead::Algorithm,
         &[u8],
@@ -123,25 +123,20 @@ fn test_aead<Seal, Open>(
             _ => (),
         };
 
-        let tag_len = aead_alg.tag_len();
         let mut s_in_out = plaintext.clone();
-        for _ in 0..tag_len {
-            s_in_out.push(0);
-        }
         let nonce = aead::Nonce::try_assume_unique_for_key(&nonce_bytes).unwrap();
         let s_result = seal(
             aead_alg,
             &key_bytes[..],
             nonce,
             aead::Aad::from(&aad[..]),
-            &mut s_in_out[..],
+            &mut s_in_out,
         );
 
         ct.extend(tag);
 
         if s_result.is_ok() {
-            assert_eq!(Ok(ct.len()), s_result);
-            assert_eq!(&ct[..], &s_in_out[..ct.len()]);
+            assert_eq!(&ct, &s_in_out);
         }
 
         // In release builds, test all prefix lengths from 0 to 4096 bytes.
@@ -249,10 +244,10 @@ fn seal_with_key(
     key: &[u8],
     nonce: aead::Nonce,
     aad: aead::Aad<&[u8]>,
-    in_out: &mut [u8],
-) -> Result<usize, error::Unspecified> {
+    in_out: &mut Vec<u8>,
+) -> Result<(), error::Unspecified> {
     let mut s_key: aead::SealingKey<OneNonceSequence> = make_key(algorithm, key, nonce);
-    s_key.seal_in_place(aad, in_out, algorithm.tag_len())
+    s_key.seal_in_place(aad, in_out)
 }
 
 fn open_with_key<'a>(
@@ -272,10 +267,10 @@ fn seal_with_less_safe_key(
     key: &[u8],
     nonce: aead::Nonce,
     aad: aead::Aad<&[u8]>,
-    in_out: &mut [u8],
-) -> Result<usize, error::Unspecified> {
+    in_out: &mut Vec<u8>,
+) -> Result<(), error::Unspecified> {
     let key = make_less_safe_key(algorithm, key);
-    key.seal_in_place(nonce, aad, in_out, algorithm.tag_len())
+    key.seal_in_place(nonce, aad, in_out)
 }
 
 fn open_with_less_safe_key<'a>(

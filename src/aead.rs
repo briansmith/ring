@@ -23,7 +23,6 @@
 
 use self::block::{Block, BLOCK_LEN};
 use crate::{constant_time, cpu, error, hkdf, polyfill};
-use core::convert::TryInto;
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
@@ -232,57 +231,47 @@ impl<N: NonceSequence> SealingKey<N> {
     ///
     /// `nonce` must be unique for every use of the key to seal data.
     ///
-    /// The input is `in_out[..(in_out.len() - out_suffix_capacity)]`; i.e. the
-    /// input is the part of `in_out` that precedes the suffix. When
-    /// `seal_in_place()` returns `Ok(out_len)`, the encrypted and signed output
-    /// is `in_out[..out_len]`; i.e.  the output has been written over input
-    /// and at least part of the data reserved for the suffix. (The
-    /// input/output buffer is expressed this way because Rust's type system
-    /// does not allow us to have two slices, one mutable and one immutable,
-    /// that reference overlapping memory at the same time.)
-    ///
-    /// `out_suffix_capacity` must be at least `key.algorithm().tag_len()`. See
-    /// also `MAX_TAG_LEN`.
+    /// The plaintext is given as the input value of `in_out`. `seal_in_place()`
+    /// will overwrite the plaintext with the ciphertext and then append the tag
+    /// using `in_out.extend()`; the tag will be `self.algorithm.tag_len()` bytes
+    /// long.
     ///
     /// `aad` is the additional authenticated data, if any.
-    pub fn seal_in_place<A: AsRef<[u8]>>(
+    #[inline]
+    pub fn seal_in_place<A: AsRef<[u8]>, InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>>(
         &mut self,
-        Aad(aad): Aad<A>,
-        in_out: &mut [u8],
-        out_suffix_capacity: usize,
-    ) -> Result<usize, error::Unspecified> {
-        seal_in_place_(
-            &self.key,
-            self.nonce_sequence.advance()?,
-            Aad::from(aad.as_ref()),
-            in_out,
-            out_suffix_capacity,
-        )
+        aad: Aad<A>,
+        in_out: &mut InOut,
+    ) -> Result<(), error::Unspecified> {
+        seal_in_place_(&self.key, self.nonce_sequence.advance()?, aad, in_out)
     }
 }
 
-fn seal_in_place_(
+#[inline]
+fn seal_in_place_<A: AsRef<[u8]>, InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>>(
     key: &UnboundKey,
     nonce: Nonce,
-    aad: Aad<&[u8]>,
-    in_out: &mut [u8],
-    out_suffix_capacity: usize,
-) -> Result<usize, error::Unspecified> {
-    if out_suffix_capacity < key.algorithm.tag_len() {
-        return Err(error::Unspecified);
+    Aad(aad): Aad<A>,
+    in_out: &mut InOut,
+) -> Result<(), error::Unspecified> {
+    fn seal_in_place(
+        key: &UnboundKey,
+        nonce: Nonce,
+        aad: Aad<&[u8]>,
+        in_out: &mut [u8],
+    ) -> Result<Tag, error::Unspecified> {
+        check_per_nonce_max_bytes(key.algorithm, in_out.len())?;
+        Ok((key.algorithm.seal)(
+            &key.inner,
+            nonce,
+            aad,
+            in_out,
+            key.cpu_features,
+        ))
     }
-    let in_out_len = in_out
-        .len()
-        .checked_sub(out_suffix_capacity)
-        .ok_or(error::Unspecified)?;
-    check_per_nonce_max_bytes(key.algorithm, in_out_len)?;
-    let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
-
-    let tag_out: &mut [u8; TAG_LEN] = tag_out.try_into()?;
-    let Tag(tag) = (key.algorithm.seal)(&key.inner, nonce, aad, in_out, key.cpu_features);
-    tag_out.copy_from_slice(tag.as_ref());
-
-    Ok(in_out_len + TAG_LEN)
+    let Tag(tag) = seal_in_place(key, nonce, Aad::from(aad.as_ref()), in_out.as_mut())?;
+    in_out.extend(tag.as_ref());
+    Ok(())
 }
 
 /// The additionally authenticated data (AAD) for an opening or sealing
@@ -398,20 +387,14 @@ impl LessSafeKey {
     }
 
     /// Like `Key::seal_in_place()`, except it accepts an arbitrary nonce.
-    pub fn seal_in_place<A: AsRef<[u8]>>(
+    #[inline]
+    pub fn seal_in_place<A: AsRef<[u8]>, InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>>(
         &self,
         nonce: Nonce,
-        Aad(aad): Aad<A>,
-        in_out: &mut [u8],
-        out_suffix_capacity: usize,
-    ) -> Result<usize, error::Unspecified> {
-        seal_in_place_(
-            &self.key,
-            nonce,
-            Aad::from(aad.as_ref()),
-            in_out,
-            out_suffix_capacity,
-        )
+        aad: Aad<A>,
+        in_out: &mut InOut,
+    ) -> Result<(), error::Unspecified> {
+        seal_in_place_(&self.key, nonce, aad, in_out)
     }
 
     /// The key's AEAD algorithm.
