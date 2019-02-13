@@ -1382,7 +1382,7 @@ func (hs *clientHandshakeState) doFullHandshake() error {
 // delegatedCredentialSignedMessage returns the bytes that are signed in order
 // to authenticate a delegated credential.
 func delegatedCredentialSignedMessage(credBytes []byte, algorithm signatureAlgorithm, leafDER []byte) []byte {
-	// https://tools.ietf.org/html/draft-ietf-tls-subcerts-02#section-3
+	// https://tools.ietf.org/html/draft-ietf-tls-subcerts-03#section-3
 	ret := make([]byte, 64, 128)
 	for i := range ret {
 		ret[i] = 0x20
@@ -1467,11 +1467,6 @@ func (hs *clientHandshakeState) verifyCertificates(certMsg *certificateMsg) erro
 	if dc != nil {
 		// Note that this doesn't check a) the delegated credential temporal
 		// validity nor b) that the certificate has the special OID asserted.
-		if dc.expectedTLSVersion != c.wireVersion {
-			c.sendAlert(alertBadCertificate)
-			return errors.New("tls: delegated credential is for wrong TLS version")
-		}
-
 		hs.skxAlgo = dc.expectedCertVerifyAlgo
 
 		var err error

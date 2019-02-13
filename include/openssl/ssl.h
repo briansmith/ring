@@ -3072,7 +3072,7 @@ OPENSSL_EXPORT void SSL_get_peer_quic_transport_params(const SSL *ssl,
 //
 // Servers configure a DC for use in the handshake via
 // |SSL_set1_delegated_credential|. It must be signed by the host's end-entity
-// certificate as defined in draft-ietf-tls-subcerts-02.
+// certificate as defined in draft-ietf-tls-subcerts-03.
 
 // SSL_set1_delegated_credential configures the delegated credential (DC) that
 // will be sent to the peer for the current connection. |dc| is the DC in wire

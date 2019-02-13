@@ -1378,7 +1378,7 @@ enum handback_t {
 // Delegated credentials.
 
 // This structure stores a delegated credential (DC) as defined by
-// draft-ietf-tls-subcerts-02.
+// draft-ietf-tls-subcerts-03.
 struct DC {
   static constexpr bool kAllowUniquePtr = true;
   ~DC();
@@ -1398,9 +1398,6 @@ struct DC {
   // expected_cert_verify_algorithm is the signature scheme of the DC public
   // key.
   uint16_t expected_cert_verify_algorithm = 0;
-
-  // expected_version is the protocol in which the DC must be used.
-  uint16_t expected_version = 0;
 
   // pkey is the public key parsed from |public_key|.
   UniquePtr<EVP_PKEY> pkey;

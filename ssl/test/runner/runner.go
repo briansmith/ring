@@ -346,7 +346,6 @@ func createDelegatedCredential(config delegatedCredentialConfig, parentDER []byt
 	if lifetimeSecs > 1<<32 {
 		return nil, nil, fmt.Errorf("lifetime %s is too long to be expressed", lifetime)
 	}
-
 	tlsVersion := config.tlsVersion
 	if tlsVersion == 0 {
 		tlsVersion = VersionTLS13
@@ -356,10 +355,9 @@ func createDelegatedCredential(config delegatedCredentialConfig, parentDER []byt
 		return nil, nil, fmt.Errorf("delegated credentials require TLS 1.3")
 	}
 
-	// https://tools.ietf.org/html/draft-ietf-tls-subcerts-02#section-3
+	// https://tools.ietf.org/html/draft-ietf-tls-subcerts-03#section-3
 	dc = append(dc, byte(lifetimeSecs>>24), byte(lifetimeSecs>>16), byte(lifetimeSecs>>8), byte(lifetimeSecs))
 	dc = append(dc, byte(expectedAlgo>>8), byte(expectedAlgo))
-	dc = append(dc, byte(tlsVersion>>8), byte(tlsVersion))
 
 	pubBytes, err := x509.MarshalPKIXPublicKey(pub)
 	if err != nil {
@@ -14987,34 +14985,15 @@ func addDelegatedCredentialTests() {
 		},
 	})
 
-	badTLSVersionDC, badTLSVersionPKCS8, err := createDelegatedCredential(delegatedCredentialConfig{
+	// This flag value has mismatched public and private keys which should cause a
+	// configuration error in the shim.
+	_, badTLSVersionPKCS8, err := createDelegatedCredential(delegatedCredentialConfig{
 		algo:       signatureRSAPSSWithSHA256,
 		tlsVersion: 0x1234,
 	}, parentDER, rsaPriv)
 	if err != nil {
 		panic(err)
 	}
-	badTLSVersionFlagValue := fmt.Sprintf("%x,%x", badTLSVersionDC, badTLSVersionPKCS8)
-
-	testCases = append(testCases, testCase{
-		testType: serverTest,
-		name:     "DelegatedCredentials-BadTLSVersion",
-		config: Config{
-			// The delegated credential specifies a crazy TLS version, which should
-			// prevent its use.
-			MinVersion: VersionTLS13,
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				FailIfDelegatedCredentials: true,
-			},
-		},
-		flags: []string{
-			"-delegated-credential", badTLSVersionFlagValue,
-		},
-	})
-
-	// This flag value has mismatched public and private keys which should cause a
-	// configuration error in the shim.
 	mismatchFlagValue := fmt.Sprintf("%x,%x", ecdsaDC, badTLSVersionPKCS8)
 	testCases = append(testCases, testCase{
 		testType: serverTest,

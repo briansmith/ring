@@ -763,7 +763,6 @@ UniquePtr<DC> DC::Dup() {
 
   ret->raw = UpRef(raw);
   ret->expected_cert_verify_algorithm = expected_cert_verify_algorithm;
-  ret->expected_version = expected_version;
   ret->pkey = UpRef(pkey);
   return ret;
 }
@@ -784,7 +783,6 @@ UniquePtr<DC> DC::Parse(CRYPTO_BUFFER *in, uint8_t *out_alert) {
   CRYPTO_BUFFER_init_CBS(dc->raw.get(), &deleg);
   if (!CBS_get_u32(&deleg, &valid_time) ||
       !CBS_get_u16(&deleg, &dc->expected_cert_verify_algorithm) ||
-      !CBS_get_u16(&deleg, &dc->expected_version) ||
       !CBS_get_u24_length_prefixed(&deleg, &pubkey) ||
       !CBS_get_u16(&deleg, &algorithm) ||
       !CBS_get_u16_length_prefixed(&deleg, &sig) ||
@@ -818,17 +816,10 @@ static bool ssl_can_serve_dc(const SSL_HANDSHAKE *hs) {
     return false;
   }
 
-  // Check that the negotiated version matches the protocol version to which the
-  // DC is bound, and that 1.3 or higher has been negotiated.
-  //
-  // NOTE: We use |hs->ssl->version| for checking the DC expected version. We
-  // don't call |ssl_protocol_version| because we need the version sent on the
-  // wire. For example, a delegated credential can be bound to a draft of TLS
-  // 1.3.
+  // Check that 1.3 or higher has been negotiated.
   const DC *dc = cert->dc.get();
   assert(hs->ssl->s3->have_version);
-  if (hs->ssl->version != dc->expected_version ||
-      ssl_protocol_version(hs->ssl) < TLS1_3_VERSION) {
+  if (ssl_protocol_version(hs->ssl) < TLS1_3_VERSION) {
     return false;
   }
 
@@ -846,7 +837,7 @@ static bool ssl_can_serve_dc(const SSL_HANDSHAKE *hs) {
 }
 
 bool ssl_signing_with_dc(const SSL_HANDSHAKE *hs) {
-  // As of draft-ietf-tls-subcert-02, only the server may use delegated
+  // As of draft-ietf-tls-subcert-03, only the server may use delegated
   // credentials to authenticate itself.
   return hs->ssl->server &&
          hs->delegated_credential_requested &&

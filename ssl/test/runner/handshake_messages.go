@@ -1618,11 +1618,10 @@ type certificateEntry struct {
 }
 
 type delegatedCredential struct {
-	// https://tools.ietf.org/html/draft-ietf-tls-subcerts-02#section-3
+	// https://tools.ietf.org/html/draft-ietf-tls-subcerts-03#section-3
 	signedBytes            []byte
 	lifetimeSecs           uint32
 	expectedCertVerifyAlgo signatureAlgorithm
-	expectedTLSVersion     uint16
 	pkixPublicKey          []byte
 	algorithm              signatureAlgorithm
 	signature              []byte
@@ -1725,7 +1724,7 @@ func (m *certificateMsg) unmarshal(data []byte) bool {
 				case extensionSignedCertificateTimestamp:
 					cert.sctList = []byte(body)
 				case extensionDelegatedCredentials:
-					// https://tools.ietf.org/html/draft-ietf-tls-subcerts-02#section-3
+					// https://tools.ietf.org/html/draft-ietf-tls-subcerts-03#section-3
 					if cert.delegatedCredential != nil {
 						return false
 					}
@@ -1736,7 +1735,6 @@ func (m *certificateMsg) unmarshal(data []byte) bool {
 
 					if !body.readU32(&dc.lifetimeSecs) ||
 						!body.readU16(&expectedCertVerifyAlgo) ||
-						!body.readU16(&dc.expectedTLSVersion) ||
 						!body.readU24LengthPrefixedBytes(&dc.pkixPublicKey) ||
 						!body.readU16(&algorithm) ||
 						!body.readU16LengthPrefixedBytes(&dc.signature) ||
@@ -1746,7 +1744,7 @@ func (m *certificateMsg) unmarshal(data []byte) bool {
 
 					dc.expectedCertVerifyAlgo = signatureAlgorithm(expectedCertVerifyAlgo)
 					dc.algorithm = signatureAlgorithm(algorithm)
-					dc.signedBytes = []byte(origBody)[:4+2+2+3+len(dc.pkixPublicKey)]
+					dc.signedBytes = []byte(origBody)[:4+2+3+len(dc.pkixPublicKey)]
 					cert.delegatedCredential = dc
 				default:
 					return false
