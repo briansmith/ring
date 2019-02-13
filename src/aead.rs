@@ -23,6 +23,7 @@
 
 use self::block::{Block, BLOCK_LEN};
 use crate::{constant_time, cpu, error, hkdf, polyfill};
+use core::ops::{Bound, RangeBounds};
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
@@ -94,25 +95,39 @@ impl<N: NonceSequence> core::fmt::Debug for OpeningKey<N> {
 impl<N: NonceSequence> OpeningKey<N> {
     /// Authenticates and decrypts (“opens”) data in place.
     ///
-    /// The input may have a prefix that is `in_prefix_len` bytes long; any such
-    /// prefix is ignored on input and overwritten on output. The last
-    /// `key.algorithm().tag_len()` bytes of
-    /// `ciphertext_and_tag_modified_in_place` must be the tag. The part of
-    /// `ciphertext_and_tag_modified_in_place` between the prefix and the
-    /// tag is the input ciphertext.
+    /// The input is `&in_out[ciphertext_and_tag]`. Use `..` as
+    /// `ciphertext_and_tag` if the entirety of `in_out` is the input.
     ///
-    /// When `open_in_place()` returns `Ok(plaintext)`, the decrypted output is
-    /// `plaintext`, which is
-    /// `&mut ciphertext_and_tag_modified_in_place[..plaintext.len()]`. That is,
-    /// the output plaintext overwrites some or all of the prefix and
-    /// ciphertext. To put it another way, the ciphertext is shifted forward
-    /// `in_prefix_len` bytes and then decrypted in place. To have the
-    /// output overwrite the input without shifting, pass 0 as
-    /// `in_prefix_len`.
+    /// As the input ciphertext is transformed to plaintext, it is shifted to
+    /// the start of `in_out`. When `open_in_place()` returns `Ok(plaintext)`,
+    /// the decrypted output is `plaintext`, which is `&mut
+    /// in_out[..plaintext.len()]`; the output plaintext is always written to
+    /// the beginning of `in_out`, even if the input doesn't start at the
+    /// beginning of `in_out`. For example, the following two code fragments
+    /// are equivalent:
     ///
-    /// When `open_in_place()` returns `Err(..)`,
-    /// `ciphertext_and_tag_modified_in_place` may have been overwritten in an
-    /// unspecified way.
+    /// ```skip
+    /// key.open_in_place(nonce, aad, in_out, in_out, in_prefix_len..)?;
+    /// ```
+    ///
+    /// ```skip
+    /// in_out.copy_within(in_prefix_len.., 0);
+    /// key.open_in_place(nonce, aad, in_out, in_out, ..(in_out.len() - in_prefix_len))?;
+    /// ```
+    ///
+    /// Similarly, these are equivalent (when `copy_within` doesn't panic):
+    ///
+    /// ```skip
+    /// key.open_in_place(nonce, aad, in_out, in_out, start..end)?;
+    /// ```
+    ///
+    /// ```skip
+    /// in_out.copy_within(start..end, 0);
+    /// key.open_in_place(nonce, aad, in_out, ..(end - start));
+    /// ```
+    ///
+    /// When `open_in_place()` returns `Err(..)`, `in_out` may have been
+    /// overwritten in an unspecified way.
     ///
     /// The shifting feature is useful in the case where multiple packets are
     /// being reassembled in place. Consider this example where the peer has
@@ -128,70 +143,81 @@ impl<N: NonceSequence> OpeningKey<N> {
     /// Output: [Plaintext][Plaintext][Plaintext]
     ///        “Split stream reassembled in place”
     /// ```
-    ///
-    /// Let's say the header is always 5 bytes (like TLS 1.2) and the tag is
-    /// always 16 bytes (as for AES-GCM and ChaCha20-Poly1305). Then for
-    /// this example, `in_prefix_len` would be `5` for the first packet, `(5
-    /// + 16) + 5` for the second packet, and `(2 * (5 + 16)) + 5` for the
-    /// third packet.
-    ///
-    /// (The input/output buffer is expressed as combination of `in_prefix_len`
-    /// and `ciphertext_and_tag_modified_in_place` because Rust's type system
-    /// does not allow us to have two slices, one mutable and one immutable,
-    /// that reference overlapping memory.)
-    pub fn open_in_place<'a, A: AsRef<[u8]>>(
+    #[inline]
+    pub fn open_in_place<'in_out, A: AsRef<[u8]>, I: RangeBounds<usize>>(
         &mut self,
-        Aad(aad): Aad<A>,
-        in_prefix_len: usize,
-        ciphertext_and_tag_modified_in_place: &'a mut [u8],
-    ) -> Result<&'a mut [u8], error::Unspecified> {
+        aad: Aad<A>,
+        in_out: &'in_out mut [u8],
+        ciphertext_and_tag: I,
+    ) -> Result<&'in_out mut [u8], error::Unspecified> {
         open_in_place_(
             &self.key,
             self.nonce_sequence.advance()?,
-            Aad::from(aad.as_ref()),
-            in_prefix_len,
-            ciphertext_and_tag_modified_in_place,
+            aad,
+            in_out,
+            ciphertext_and_tag,
         )
     }
 }
 
-fn open_in_place_<'a>(
+#[inline]
+fn open_in_place_<'in_out, A: AsRef<[u8]>, I: RangeBounds<usize>>(
     key: &UnboundKey,
     nonce: Nonce,
-    aad: Aad<&[u8]>,
-    in_prefix_len: usize,
-    ciphertext_and_tag_modified_in_place: &'a mut [u8],
-) -> Result<&'a mut [u8], error::Unspecified> {
-    let ciphertext_and_tag_len = ciphertext_and_tag_modified_in_place
-        .len()
-        .checked_sub(in_prefix_len)
-        .ok_or(error::Unspecified)?;
-    let ciphertext_len = ciphertext_and_tag_len
-        .checked_sub(TAG_LEN)
-        .ok_or(error::Unspecified)?;
-    check_per_nonce_max_bytes(key.algorithm, ciphertext_len)?;
-    let (in_out, received_tag) =
-        ciphertext_and_tag_modified_in_place.split_at_mut(in_prefix_len + ciphertext_len);
-    let Tag(calculated_tag) = (key.algorithm.open)(
-        &key.inner,
-        nonce,
-        aad,
-        in_prefix_len,
-        in_out,
-        key.cpu_features,
-    );
-    if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag).is_err() {
-        // Zero out the plaintext so that it isn't accidentally leaked or used
-        // after verification fails. It would be safest if we could check the
-        // tag before decrypting, but some `open` implementations interleave
-        // authentication with decryption for performance.
-        for b in &mut in_out[..ciphertext_len] {
-            *b = 0;
+    Aad(aad): Aad<A>,
+    in_out: &'in_out mut [u8],
+    ciphertext_and_tag: I,
+) -> Result<&'in_out mut [u8], error::Unspecified> {
+    fn open_in_place<'in_out>(
+        key: &UnboundKey,
+        nonce: Nonce,
+        aad: Aad<&[u8]>,
+        in_out: &'in_out mut [u8],
+        in_prefix_len: usize,
+    ) -> Result<&'in_out mut [u8], error::Unspecified> {
+        let ciphertext_and_tag_len = in_out
+            .len()
+            .checked_sub(in_prefix_len)
+            .ok_or(error::Unspecified)?;
+        let ciphertext_len = ciphertext_and_tag_len
+            .checked_sub(TAG_LEN)
+            .ok_or(error::Unspecified)?;
+        check_per_nonce_max_bytes(key.algorithm, ciphertext_len)?;
+        let (in_out, received_tag) = in_out.split_at_mut(in_prefix_len + ciphertext_len);
+        let Tag(calculated_tag) = (key.algorithm.open)(
+            &key.inner,
+            nonce,
+            aad,
+            in_prefix_len,
+            in_out,
+            key.cpu_features,
+        );
+        if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag).is_err() {
+            // Zero out the plaintext so that it isn't accidentally leaked or used
+            // after verification fails. It would be safest if we could check the
+            // tag before decrypting, but some `open` implementations interleave
+            // authentication with decryption for performance.
+            for b in &mut in_out[..ciphertext_len] {
+                *b = 0;
+            }
+            return Err(error::Unspecified);
         }
-        return Err(error::Unspecified);
+        // `ciphertext_len` is also the plaintext length.
+        Ok(&mut in_out[..ciphertext_len])
     }
-    // `ciphertext_len` is also the plaintext length.
-    Ok(&mut in_out[..ciphertext_len])
+
+    let in_out = match ciphertext_and_tag.end_bound() {
+        Bound::Unbounded => in_out,
+        Bound::Excluded(end) => in_out.get_mut(..*end).ok_or(error::Unspecified)?,
+        Bound::Included(end) => in_out.get_mut(..=*end).ok_or(error::Unspecified)?,
+    };
+    let in_prefix_len = match ciphertext_and_tag.start_bound() {
+        Bound::Unbounded => 0,
+        Bound::Included(start) => *start,
+        Bound::Excluded(start) => (*start).checked_add(1).ok_or(error::Unspecified)?,
+    };
+
+    open_in_place(key, nonce, Aad::from(aad.as_ref()), in_out, in_prefix_len)
 }
 
 /// An AEAD key for encrypting and signing ("sealing"), bound to a nonce
@@ -370,20 +396,15 @@ impl LessSafeKey {
     }
 
     /// Like `Key::open_in_place()`, except it accepts an arbitrary nonce.
-    pub fn open_in_place<'a, A: AsRef<[u8]>>(
+    #[inline]
+    pub fn open_in_place<'in_out, A: AsRef<[u8]>, I: RangeBounds<usize>>(
         &self,
         nonce: Nonce,
-        Aad(aad): Aad<A>,
-        in_prefix_len: usize,
-        ciphertext_and_tag_modified_in_place: &'a mut [u8],
-    ) -> Result<&'a mut [u8], error::Unspecified> {
-        open_in_place_(
-            &self.key,
-            nonce,
-            Aad::from(aad.as_ref()),
-            in_prefix_len,
-            ciphertext_and_tag_modified_in_place,
-        )
+        aad: Aad<A>,
+        in_out: &'in_out mut [u8],
+        ciphertext_and_tag: I,
+    ) -> Result<&'in_out mut [u8], error::Unspecified> {
+        open_in_place_(&self.key, nonce, aad, in_out, ciphertext_and_tag)
     }
 
     /// Like `Key::seal_in_place()`, except it accepts an arbitrary nonce.
