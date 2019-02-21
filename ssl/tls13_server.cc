@@ -950,7 +950,15 @@ static enum ssl_hs_wait_t do_send_new_session_ticket(SSL_HANDSHAKE *hs) {
   }
 
   hs->tls13_state = state_done;
-  return sent_tickets ? ssl_hs_flush : ssl_hs_ok;
+  // In TLS 1.3, the NewSessionTicket isn't flushed until the server performs a
+  // write, to prevent a non-reading client from causing the server to hang in
+  // the case of a small server write buffer. Consumers which don't write data
+  // to the client will need to do a zero-byte write if they wish to flush the
+  // tickets.
+  if (hs->ssl->ctx->quic_method != nullptr && sent_tickets) {
+    return ssl_hs_flush;
+  }
+  return ssl_hs_ok;
 }
 
 enum ssl_hs_wait_t tls13_server_handshake(SSL_HANDSHAKE *hs) {

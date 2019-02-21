@@ -1550,6 +1550,37 @@ static bool CompleteHandshakes(SSL *client, SSL *server) {
   return true;
 }
 
+static bool FlushNewSessionTickets(SSL *client, SSL *server) {
+  // NewSessionTickets are deferred on the server to |SSL_write|, and clients do
+  // not pick them up until |SSL_read|.
+  for (;;) {
+    int server_ret = SSL_write(server, nullptr, 0);
+    int server_err = SSL_get_error(server, server_ret);
+    // The server may either succeed (|server_ret| is zero) or block on write
+    // (|server_ret| is -1 and |server_err| is |SSL_ERROR_WANT_WRITE|).
+    if (server_ret > 0 ||
+        (server_ret < 0 && server_err != SSL_ERROR_WANT_WRITE)) {
+      fprintf(stderr, "Unexpected server result: %d %d\n", server_ret,
+              server_err);
+      return false;
+    }
+
+    int client_ret = SSL_read(client, nullptr, 0);
+    int client_err = SSL_get_error(client, client_ret);
+    // The client must always block on read.
+    if (client_ret != -1 || client_err != SSL_ERROR_WANT_READ) {
+      fprintf(stderr, "Unexpected client result: %d %d\n", client_ret,
+              client_err);
+      return false;
+    }
+
+    // The server flushed everything it had to write.
+    if (server_ret == 0) {
+      return true;
+    }
+  }
+}
+
 struct ClientConfig {
   SSL_SESSION *session = nullptr;
   std::string servername;
@@ -1661,9 +1692,7 @@ TEST_P(SSLVersionTest, SequenceNumber) {
 
   // Drain any post-handshake messages to ensure there are no unread records
   // on either end.
-  uint8_t byte = 0;
-  ASSERT_LE(SSL_read(client_.get(), &byte, 1), 0);
-  ASSERT_LE(SSL_read(server_.get(), &byte, 1), 0);
+  ASSERT_TRUE(FlushNewSessionTickets(client_.get(), server_.get()));
 
   uint64_t client_read_seq = SSL_get_read_sequence(client_.get());
   uint64_t client_write_seq = SSL_get_write_sequence(client_.get());
@@ -1687,6 +1716,7 @@ TEST_P(SSLVersionTest, SequenceNumber) {
   }
 
   // Send a record from client to server.
+  uint8_t byte = 0;
   EXPECT_EQ(SSL_write(client_.get(), &byte, 1), 1);
   EXPECT_EQ(SSL_read(server_.get(), &byte, 1), 1);
 
@@ -2084,13 +2114,11 @@ static bssl::UniquePtr<SSL_SESSION> CreateClientSession(
   // Connect client and server to get a session.
   bssl::UniquePtr<SSL> client, server;
   if (!ConnectClientAndServer(&client, &server, client_ctx, server_ctx,
-                              config)) {
+                              config) ||
+      !FlushNewSessionTickets(client.get(), server.get())) {
     fprintf(stderr, "Failed to connect client and server.\n");
     return nullptr;
   }
-
-  // Run the read loop to account for post-handshake tickets in TLS 1.3.
-  SSL_read(client.get(), nullptr, 0);
 
   SSL_CTX_sess_set_new_cb(client_ctx, nullptr);
 
@@ -2125,7 +2153,8 @@ static bssl::UniquePtr<SSL_SESSION> ExpectSessionRenewed(SSL_CTX *client_ctx,
   ClientConfig config;
   config.session = session;
   if (!ConnectClientAndServer(&client, &server, client_ctx, server_ctx,
-                              config)) {
+                              config) ||
+      !FlushNewSessionTickets(client.get(), server.get())) {
     fprintf(stderr, "Failed to connect client and server.\n");
     return nullptr;
   }
@@ -2139,9 +2168,6 @@ static bssl::UniquePtr<SSL_SESSION> ExpectSessionRenewed(SSL_CTX *client_ctx,
     fprintf(stderr, "Session was not reused.\n");
     return nullptr;
   }
-
-  // Run the read loop to account for post-handshake tickets in TLS 1.3.
-  SSL_read(client.get(), nullptr, 0);
 
   SSL_CTX_sess_set_new_cb(client_ctx, nullptr);
 
@@ -3055,6 +3081,82 @@ TEST_P(SSLVersionTest, ClientSessionCacheMode) {
   EXPECT_FALSE(CreateClientSession(client_ctx_.get(), server_ctx_.get()));
 }
 
+// Test that all versions survive tiny write buffers. In particular, TLS 1.3
+// NewSessionTickets are written post-handshake. Servers that block
+// |SSL_do_handshake| on writing them will deadlock if clients are not draining
+// the buffer. Test that we do not do this.
+TEST_P(SSLVersionTest, SmallBuffer) {
+  // DTLS is a datagram protocol and requires packet-sized buffers.
+  if (is_dtls()) {
+    return;
+  }
+
+  // Test both flushing NewSessionTickets with a zero-sized write and
+  // non-zero-sized write.
+  for (bool use_zero_write : {false, true}) {
+    SCOPED_TRACE(use_zero_write);
+
+    g_last_session = nullptr;
+    SSL_CTX_set_session_cache_mode(client_ctx_.get(), SSL_SESS_CACHE_BOTH);
+    SSL_CTX_sess_set_new_cb(client_ctx_.get(), SaveLastSession);
+
+    bssl::UniquePtr<SSL> client(SSL_new(client_ctx_.get())),
+        server(SSL_new(server_ctx_.get()));
+    ASSERT_TRUE(client);
+    ASSERT_TRUE(server);
+    SSL_set_connect_state(client.get());
+    SSL_set_accept_state(server.get());
+
+    // Use a tiny buffer.
+    BIO *bio1, *bio2;
+    ASSERT_TRUE(BIO_new_bio_pair(&bio1, 1, &bio2, 1));
+
+    // SSL_set_bio takes ownership.
+    SSL_set_bio(client.get(), bio1, bio1);
+    SSL_set_bio(server.get(), bio2, bio2);
+
+    ASSERT_TRUE(CompleteHandshakes(client.get(), server.get()));
+    if (version() >= TLS1_3_VERSION) {
+      // The post-handshake ticket should not have been processed yet.
+      EXPECT_FALSE(g_last_session);
+    }
+
+    if (use_zero_write) {
+      ASSERT_TRUE(FlushNewSessionTickets(client.get(), server.get()));
+      EXPECT_TRUE(g_last_session);
+    }
+
+    // Send some data from server to client. If |use_zero_write| is false, this
+    // will also flush the NewSessionTickets.
+    static const char kMessage[] = "hello world";
+    char buf[sizeof(kMessage)];
+    for (;;) {
+      int server_ret = SSL_write(server.get(), kMessage, sizeof(kMessage));
+      int server_err = SSL_get_error(server.get(), server_ret);
+      int client_ret = SSL_read(client.get(), buf, sizeof(buf));
+      int client_err = SSL_get_error(client.get(), client_ret);
+
+      // The server will write a single record, so every iteration should see
+      // |SSL_ERROR_WANT_WRITE| and |SSL_ERROR_WANT_READ|, until the final
+      // iteration, where both will complete.
+      if (server_ret > 0) {
+        EXPECT_EQ(server_ret, static_cast<int>(sizeof(kMessage)));
+        EXPECT_EQ(client_ret, static_cast<int>(sizeof(kMessage)));
+        EXPECT_EQ(Bytes(buf), Bytes(kMessage));
+        break;
+      }
+
+      ASSERT_EQ(server_ret, -1);
+      ASSERT_EQ(server_err, SSL_ERROR_WANT_WRITE);
+      ASSERT_EQ(client_ret, -1);
+      ASSERT_EQ(client_err, SSL_ERROR_WANT_READ);
+    }
+
+    // The NewSessionTickets should have been flushed and processed.
+    EXPECT_TRUE(g_last_session);
+  }
+}
+
 TEST(SSLTest, AddChainCertHack) {
   // Ensure that we don't accidently break the hack that we have in place to
   // keep curl and serf happy when they use an |X509| even after transfering
@@ -3514,9 +3616,7 @@ TEST_P(TicketAEADMethodTest, Resume) {
   EXPECT_FALSE(SSL_session_reused(client.get()));
   EXPECT_FALSE(SSL_session_reused(server.get()));
 
-  // Run the read loop to account for post-handshake tickets in TLS 1.3.
-  SSL_read(client.get(), nullptr, 0);
-
+  ASSERT_TRUE(FlushNewSessionTickets(client.get(), server.get()));
   bssl::UniquePtr<SSL_SESSION> session = std::move(g_last_session);
   ConnectClientAndServerWithTicketMethod(&client, &server, client_ctx.get(),
                                          server_ctx.get(), retry_count,
