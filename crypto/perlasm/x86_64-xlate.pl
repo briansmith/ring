@@ -1188,8 +1188,11 @@ while(defined(my $line=<>)) {
 	$line =~ s|[#!].*$||;	# get rid of asm-style comments...
     } else {
 	# Get rid of asm-style comments but not preprocessor directives. The
-	# latter are identified by not having a space after the '#'.
-	$line =~ s|[#!] .*$||;
+	# former are identified by having a letter after the '#' and starting in
+	# the first column.
+	$line =~ s|!.*$||;
+	$line =~ s|(?<=.)#.*$||;
+	$line =~ s|^#([^a-z].*)?$||;
     }
 
     $line =~ s|/\*.*\*/||;	# ... and C-style comments...
