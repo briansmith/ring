@@ -1075,6 +1075,6 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp256_method) {
   out->scalar_inv_montgomery = ec_simple_scalar_inv_montgomery;
   out->scalar_inv_montgomery_vartime = ec_GFp_simple_mont_inv_mod_ord_vartime;
   out->cmp_x_coordinate = ec_GFp_nistp256_cmp_x_coordinate;
-};
+}
 
 #undef BORINGSSL_NISTP256_64BIT

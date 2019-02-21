@@ -654,7 +654,7 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistz256_method) {
   out->scalar_inv_montgomery = ecp_nistz256_inv_mod_ord;
   out->scalar_inv_montgomery_vartime = ecp_nistz256_mont_inv_mod_ord_vartime;
   out->cmp_x_coordinate = ecp_nistz256_cmp_x_coordinate;
-};
+}
 
 #endif /* !defined(OPENSSL_NO_ASM) && defined(OPENSSL_X86_64) && \
           !defined(OPENSSL_SMALL) */

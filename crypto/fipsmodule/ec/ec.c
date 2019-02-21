@@ -499,8 +499,8 @@ err:
 struct built_in_groups_st {
   EC_GROUP *groups[OPENSSL_NUM_BUILT_IN_CURVES];
 };
-DEFINE_BSS_GET(struct built_in_groups_st, built_in_groups);
-DEFINE_STATIC_MUTEX(built_in_groups_lock);
+DEFINE_BSS_GET(struct built_in_groups_st, built_in_groups)
+DEFINE_STATIC_MUTEX(built_in_groups_lock)
 
 EC_GROUP *EC_GROUP_new_by_curve_name(int nid) {
   struct built_in_groups_st *groups = built_in_groups_bss_get();

@@ -1120,6 +1120,6 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp224_method) {
   out->scalar_inv_montgomery = ec_simple_scalar_inv_montgomery;
   out->scalar_inv_montgomery_vartime = ec_GFp_simple_mont_inv_mod_ord_vartime;
   out->cmp_x_coordinate = ec_GFp_simple_cmp_x_coordinate;
-};
+}
 
 #endif  // BORINGSSL_HAS_UINT128 && !SMALL

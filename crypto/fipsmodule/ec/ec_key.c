@@ -82,7 +82,7 @@
 #include "../../internal.h"
 
 
-DEFINE_STATIC_EX_DATA_CLASS(g_ec_ex_data_class);
+DEFINE_STATIC_EX_DATA_CLASS(g_ec_ex_data_class)
 
 static EC_WRAPPED_SCALAR *ec_wrapped_scalar_new(const EC_GROUP *group) {
   EC_WRAPPED_SCALAR *wrapped = OPENSSL_malloc(sizeof(EC_WRAPPED_SCALAR));
