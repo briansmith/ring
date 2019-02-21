@@ -1,5 +1,6 @@
 build/
 ssl/test/runner/runner
+*.pyc
 *.swp
 *.swo
 doc/*.html
