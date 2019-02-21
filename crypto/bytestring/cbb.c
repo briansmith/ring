@@ -144,7 +144,7 @@ static int cbb_buffer_add(struct cbb_buffer_st *base, uint8_t **out,
   return 1;
 }
 
-static int cbb_buffer_add_u(struct cbb_buffer_st *base, uint32_t v,
+static int cbb_buffer_add_u(struct cbb_buffer_st *base, uint64_t v,
                             size_t len_len) {
   if (len_len == 0) {
     return 1;
@@ -457,6 +457,13 @@ int CBB_add_u32(CBB *cbb, uint32_t value) {
   }
 
   return cbb_buffer_add_u(cbb->base, value, 4);
+}
+
+int CBB_add_u64(CBB *cbb, uint64_t value) {
+  if (!CBB_flush(cbb)) {
+    return 0;
+  }
+  return cbb_buffer_add_u(cbb->base, value, 8);
 }
 
 void CBB_discard_child(CBB *cbb) {
