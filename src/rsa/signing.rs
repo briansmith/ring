@@ -204,12 +204,29 @@ impl KeyPair {
 
         let n = positive_integer(input)?;
         let e = positive_integer(input)?;
-        let d = positive_integer(input)?.big_endian_without_leading_zero();
-        let p = positive_integer(input)?.big_endian_without_leading_zero();
-        let q = positive_integer(input)?.big_endian_without_leading_zero();
-        let dP = positive_integer(input)?.big_endian_without_leading_zero();
-        let dQ = positive_integer(input)?.big_endian_without_leading_zero();
-        let qInv = positive_integer(input)?.big_endian_without_leading_zero();
+        let d = positive_integer(input)?;
+        let p = positive_integer(input)?;
+        let q = positive_integer(input)?;
+        let dP = positive_integer(input)?;
+        let dQ = positive_integer(input)?;
+        let qInv = positive_integer(input)?;
+
+        Self::from_key_input(KeyPairInput { n, e, d, p, q, dP, dQ, qInv })
+    }
+
+    /// Constructs an RSA private key from components.
+    ///
+    /// This constructor exists to support esoteric private key formats.
+    /// `from_pkcs8()` or `from_der()` should be preferred where possible.
+    pub fn from_key_input(key_input: KeyPairInput) -> Result<Self, KeyRejected> {
+        let KeyPairInput { n, e, d, p, q, dP, dQ, qInv } = key_input;
+
+        let d = d.big_endian_without_leading_zero();
+        let p = p.big_endian_without_leading_zero();
+        let q = q.big_endian_without_leading_zero();
+        let dP = dP.big_endian_without_leading_zero();
+        let dQ = dQ.big_endian_without_leading_zero();
+        let qInv = qInv.big_endian_without_leading_zero();
 
         let (p, p_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(p)
             .map_err(|error::Unspecified| KeyRejected::invalid_encoding())?;
@@ -387,15 +404,6 @@ impl KeyPair {
             public: public_key,
             public_key: public_key_serialized,
         })
-    }
-
-    /// Constructs an RSA private key from components.
-    ///
-    /// This constructor exists to support esoteric private key formats.
-    /// `from_pkcs8()` or `from_der()` should be preferred where possible.
-    pub fn from_key_input(key_input: KeyPairInput) -> Result<Self, KeyRejected> {
-        let _ = key_input;
-        unimplemented!();
     }
 
     /// Returns the length in bytes of the key pair's public modulus.
