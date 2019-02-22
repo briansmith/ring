@@ -291,7 +291,10 @@ pub use crate::ec::{
 
 #[cfg(feature = "use_heap")]
 pub use crate::rsa::{
-    signing::KeyPair as RsaKeyPair,
+    signing::{
+        KeyPair as RsaKeyPair,
+        KeyPairInput as RsaKeyPairInput,
+    },
 
     verification::{
         RSA_PKCS1_2048_8192_SHA1, RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA384,

@@ -26,6 +26,26 @@ use crate::{
 };
 use untrusted;
 
+/// Used to construct an RSA key pair from components.
+pub struct KeyPairInput<'a> {
+    /// Public modulus.
+    pub n: io::Positive<'a>,
+    /// Public exponent.
+    pub e: io::Positive<'a>,
+    /// Private exponent.
+    pub d: io::Positive<'a>,
+    /// Prime 1.
+    pub p: io::Positive<'a>,
+    /// Prime 2.
+    pub q: io::Positive<'a>,
+    /// Exponent 1.
+    pub dP: io::Positive<'a>,
+    /// Exponent 2.
+    pub dQ: io::Positive<'a>,
+    /// Coefficient.
+    pub qInv: io::Positive<'a>,
+}
+
 /// An RSA key pair, used for signing.
 pub struct KeyPair {
     p: PrivatePrime<P>,
@@ -367,6 +387,15 @@ impl KeyPair {
             public: public_key,
             public_key: public_key_serialized,
         })
+    }
+
+    /// Constructs an RSA private key from components.
+    ///
+    /// This constructor exists to support esoteric private key formats.
+    /// `from_pkcs8()` or `from_der()` should be preferred where possible.
+    pub fn from_key_input(key_input: KeyPairInput) -> Result<Self, KeyRejected> {
+        let _ = key_input;
+        unimplemented!();
     }
 
     /// Returns the length in bytes of the key pair's public modulus.

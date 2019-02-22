@@ -38,7 +38,6 @@ impl<'a> Positive<'a> {
     /// Will not panic because the value is guaranteed to have at least one
     /// byte.
     pub fn first_byte(&self) -> u8 {
-        // This won't panic because
         self.0.as_slice_less_safe()[0]
     }
 }
