@@ -696,6 +696,13 @@ _vpaes_schedule_mangle:
 .align	16
 ${PREFIX}_set_encrypt_key:
 .cfi_startproc
+#ifndef NDEBUG
+#ifndef BORINGSSL_FIPS
+.extern        BORINGSSL_function_hit
+       movb \$1, BORINGSSL_function_hit+5(%rip)
+#endif
+#endif
+
 ___
 $code.=<<___ if ($win64);
 	lea	-0xb8(%rsp),%rsp
@@ -801,6 +808,12 @@ $code.=<<___;
 .align	16
 ${PREFIX}_encrypt:
 .cfi_startproc
+#ifndef NDEBUG
+#ifndef BORINGSSL_FIPS
+.extern        BORINGSSL_function_hit
+       movb \$1, BORINGSSL_function_hit+4(%rip)
+#endif
+#endif
 ___
 $code.=<<___ if ($win64);
 	lea	-0xb8(%rsp),%rsp
