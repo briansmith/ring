@@ -446,7 +446,7 @@ class UnwindCursor {
   int GetReg(crypto_word_t *out, unw_regnum_t reg) {
     unw_word_t val;
     int ret = unw_get_reg(&cursor_, reg, &val);
-    if (ret == 0) {
+    if (ret >= 0) {
       static_assert(sizeof(crypto_word_t) == sizeof(unw_word_t),
                     "crypto_word_t and unw_word_t are inconsistent");
       *out = val;
