@@ -34,11 +34,51 @@
 #[cfg(feature = "use_heap")]
 use ring::{
     error,
-    io::der,
+    io::{der, Positive},
     rand,
-    signature::{self, KeyPair},
+    signature::{self, KeyPair, RsaKeyPairInput},
     test, test_file,
 };
+
+#[cfg(feature = "use_heap")]
+#[test]
+#[allow(non_snake_case)]
+fn rsa_from_key_input() {
+    test::run(
+        test_file!("rsa_from_key_input_tests.txt"),
+        |section, test_case| {
+            assert_eq!(section, "");
+
+            let n = test_case.consume_bytes("n");
+            let n = Positive::new(untrusted::Input::from(&n))?;
+
+            let e = test_case.consume_bytes("e");
+            let e = Positive::new(untrusted::Input::from(&e))?;
+
+            let d = test_case.consume_bytes("d");
+            let d = Positive::new(untrusted::Input::from(&d))?;
+
+            let p = test_case.consume_bytes("p");
+            let p = Positive::new(untrusted::Input::from(&p))?;
+
+            let q = test_case.consume_bytes("q");
+            let q = Positive::new(untrusted::Input::from(&q))?;
+
+            let dP = test_case.consume_bytes("dP");
+            let dP = Positive::new(untrusted::Input::from(&dP))?;
+
+            let dQ = test_case.consume_bytes("dQ");
+            let dQ = Positive::new(untrusted::Input::from(&dQ))?;
+
+            let qInv = test_case.consume_bytes("qInv");
+            let qInv = Positive::new(untrusted::Input::from(&qInv))?;
+
+            let key_input = RsaKeyPairInput{ n, e, d, p, q, dP, dQ, qInv };
+            let _ = signature::RsaKeyPair::from_key_input(key_input)?;
+            Ok(())
+        },
+    );
+}
 
 #[cfg(feature = "use_heap")]
 #[test]
