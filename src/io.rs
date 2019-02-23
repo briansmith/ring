@@ -28,6 +28,16 @@ pub(crate) mod der_writer;
 pub struct Positive<'a>(untrusted::Input<'a>);
 
 impl<'a> Positive<'a> {
+    /// Constructs a serialized positive integer from serialized untrusted
+    /// input.
+    ///
+    /// Components are in big-endian, considered unsigned, and must not contain
+    /// leading zeros. Input aside this is just like `from_pkcs8()`. See the
+    /// documentation for `from_pkcs8()` for more details.
+    pub fn new(input: untrusted::Input<'a>) -> Result<Self, crate::error::Unspecified> {
+        Ok(Positive(der::nonnegative_integer(input, 1)?))
+    }
+
     /// Returns the value, ordered from significant byte to least significant
     /// byte, without any leading zeros. The result is guaranteed to be
     /// non-empty.
