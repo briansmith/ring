@@ -121,7 +121,7 @@ where
     inner.read_all(error, decoder)
 }
 
-fn nonnegative_integer<'a>(
+fn read_nonnegative_integer<'a>(
     input: &mut untrusted::Reader<'a>, min_value: u8,
 ) -> Result<untrusted::Input<'a>, error::Unspecified> {
     // Verify that |input|, which has had any leading zero stripped off, is the
@@ -182,7 +182,7 @@ fn nonnegative_integer<'a>(
 /// numeric value. This is typically used for parsing version numbers.
 #[inline]
 pub fn small_nonnegative_integer(input: &mut untrusted::Reader) -> Result<u8, error::Unspecified> {
-    let value = nonnegative_integer(input, 0)?;
+    let value = read_nonnegative_integer(input, 0)?;
     value.read_all(error::Unspecified, |input| {
         let r = input.read_byte()?;
         Ok(r)
@@ -194,7 +194,7 @@ pub fn small_nonnegative_integer(input: &mut untrusted::Reader) -> Result<u8, er
 pub fn positive_integer<'a>(
     input: &mut untrusted::Reader<'a>,
 ) -> Result<Positive<'a>, error::Unspecified> {
-    Ok(Positive(nonnegative_integer(input, 1)?))
+    Ok(Positive(read_nonnegative_integer(input, 1)?))
 }
 
 #[cfg(test)]
