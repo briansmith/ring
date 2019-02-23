@@ -59,7 +59,7 @@ pub fn expect_tag_and_get_value<'a>(
     Ok(inner)
 }
 
-pub fn read_tag_and_get_value<'a>(
+fn read_tag_and_get_value<'a>(
     input: &mut untrusted::Reader<'a>,
 ) -> Result<(u8, untrusted::Input<'a>), error::Unspecified> {
     let tag = input.read_byte()?;
