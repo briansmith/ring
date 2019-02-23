@@ -124,6 +124,13 @@ where
 fn read_nonnegative_integer<'a>(
     input: &mut untrusted::Reader<'a>, min_value: u8,
 ) -> Result<untrusted::Input<'a>, error::Unspecified> {
+    let value = expect_tag_and_get_value(input, Tag::Integer)?;
+    nonnegative_integer(value, min_value)
+}
+
+pub fn nonnegative_integer<'a>(
+    value: untrusted::Input<'a>, min_value: u8,
+) -> Result<untrusted::Input<'a>, error::Unspecified> {
     // Verify that |input|, which has had any leading zero stripped off, is the
     // encoding of a value of at least |min_value|.
     fn check_minimum(input: untrusted::Input, min_value: u8) -> Result<(), error::Unspecified> {
@@ -136,8 +143,6 @@ fn read_nonnegative_integer<'a>(
             Ok(())
         })
     }
-
-    let value = expect_tag_and_get_value(input, Tag::Integer)?;
 
     value.read_all(error::Unspecified, |input| {
         // Empty encodings are not allowed.
