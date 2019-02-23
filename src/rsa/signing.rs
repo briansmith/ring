@@ -61,9 +61,9 @@ impl KeyPair {
     ///
     /// ```sh
     ///    openssl genpkey -algorithm RSA \
-    ///        -pkeyopt rsa_keygen_bits:2048 \
+    ///        -pkeyopt rsa_keygen_bits:3072 \
     ///        -pkeyopt rsa_keygen_pubexp:65537 | \
-    ///      openssl pkcs8 -topk8 -nocrypt -outform der > rsa-2048-private-key.pk8
+    ///      openssl pkcs8 -topk8 -nocrypt -outform der > rsa-3072-private-key.pk8
     /// ```
     ///
     /// Often, keys generated for use in OpenSSL-based software are stored in
