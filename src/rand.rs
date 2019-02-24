@@ -55,6 +55,8 @@ pub trait SecureRandom: sealed::Sealed {
 ///
 /// On macOS and iOS, `fill()` is implemented using `SecRandomCopyBytes`.
 ///
+/// On OpenBSD, `fill()` is implemented using `arc4random_buf`.
+///
 /// On Redox, `fill()` is implemented by reading from `rand:`.
 ///
 /// On Windows, `fill` is implemented using the platform's API for secure
@@ -100,6 +102,7 @@ impl sealed::Sealed for SystemRandom {}
         target_os = "macos",
         target_os = "ios",
         target_os = "fuchsia",
+        target_os = "openbsd",
         windows
     ))
 ))]
@@ -119,6 +122,9 @@ use self::darwin::fill as fill_impl;
 
 #[cfg(any(target_os = "fuchsia"))]
 use self::fuchsia::fill as fill_impl;
+
+#[cfg(any(target_os = "openbsd"))]
+use self::openbsd::fill as fill_impl;
 
 use crate::sealed;
 
@@ -205,6 +211,7 @@ mod sysrand {
     not(any(target_os = "macos", target_os = "ios")),
     not(all(target_os = "linux", not(feature = "dev_urandom_fallback"))),
     not(any(target_os = "fuchsia")),
+    not(any(target_os = "openbsd")),
 ))]
 mod urandom {
     use crate::error;
@@ -309,6 +316,22 @@ mod fuchsia {
     #[link(name = "zircon")]
     extern "C" {
         fn zx_cprng_draw(buffer: *mut u8, length: usize);
+    }
+}
+
+#[cfg(any(target_os = "openbsd"))]
+mod openbsd {
+    use crate::error;
+
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        unsafe {
+            arc4random_buf(dest.as_mut_ptr(), dest.len());
+        }
+        Ok(())
+    }
+
+    extern "C" {
+        fn arc4random_buf(buffer: *mut u8, length: usize);
     }
 }
 
