@@ -241,7 +241,7 @@ void gcm_ghash_4bit(uint64_t Xi[2], const u128 Htable[16], const uint8_t *inp,
 // still in L1 cache after encryption pass...
 #define GHASH_CHUNK (3 * 1024)
 
-#if defined(GHASH_ASM_X86_64)
+#if defined(GHASH_ASM_X86_64) || defined(GHASH_ASM_X86)
 void gcm_init_ssse3(u128 Htable[16], const uint64_t Xi[2]) {
   // Run the existing 4-bit version.
   gcm_init_4bit(Htable, Xi);
@@ -266,7 +266,7 @@ void gcm_init_ssse3(u128 Htable[16], const uint64_t Xi[2]) {
     }
   }
 }
-#endif  // GHASH_ASM_X86_64
+#endif  // GHASH_ASM_X86_64 || GHASH_ASM_X86
 
 #ifdef GCM_FUNCREF_4BIT
 #undef GCM_MUL
@@ -319,6 +319,12 @@ void CRYPTO_ghash_init(gmult_func *out_mult, ghash_func *out_hash,
     gcm_init_clmul(out_table, H.u);
     *out_mult = gcm_gmult_clmul;
     *out_hash = gcm_ghash_clmul;
+    return;
+  }
+  if (gcm_ssse3_capable()) {
+    gcm_init_ssse3(out_table, H.u);
+    *out_mult = gcm_gmult_ssse3;
+    *out_hash = gcm_ghash_ssse3;
     return;
   }
 #elif defined(GHASH_ASM_ARM)

@@ -148,7 +148,7 @@ TEST(GCMTest, ABI) {
   }
 #endif  // GHASH_ASM_X86
 
-#if defined(GHASH_ASM_X86_64)
+#if defined(GHASH_ASM_X86) || defined(GHASH_ASM_X86_64)
   if (gcm_ssse3_capable()) {
     CHECK_ABI_SEH(gcm_init_ssse3, Htable, kH);
     CHECK_ABI_SEH(gcm_gmult_ssse3, X, Htable);
@@ -156,9 +156,7 @@ TEST(GCMTest, ABI) {
       CHECK_ABI_SEH(gcm_ghash_ssse3, X, Htable, buf, 16 * blocks);
     }
   }
-#endif  // GHASH_ASM_X86_64
 
-#if defined(GHASH_ASM_X86) || defined(GHASH_ASM_X86_64)
   if (crypto_gcm_clmul_enabled()) {
     CHECK_ABI_SEH(gcm_init_clmul, Htable, kH);
     CHECK_ABI_SEH(gcm_gmult_clmul, X, Htable);
