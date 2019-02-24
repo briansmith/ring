@@ -881,8 +881,9 @@ OPENSSL_EXPORT int SSL_clear_chain_certs(SSL *ssl);
 // |SSL_get_client_CA_list| for information on the server's certificate
 // request.
 //
-// On the server, the callback will be called on non-resumption handshakes,
-// after extensions have been processed.
+// On the server, the callback will be called after extensions have been
+// processed, but before the resumption decision has been made. This differs
+// from OpenSSL which handles resumption before selecting the certificate.
 OPENSSL_EXPORT void SSL_CTX_set_cert_cb(SSL_CTX *ctx,
                                         int (*cb)(SSL *ssl, void *arg),
                                         void *arg);
@@ -895,6 +896,10 @@ OPENSSL_EXPORT void SSL_CTX_set_cert_cb(SSL_CTX *ctx,
 // On the client, the callback may call |SSL_get0_certificate_types| and
 // |SSL_get_client_CA_list| for information on the server's certificate
 // request.
+//
+// On the server, the callback will be called after extensions have been
+// processed, but before the resumption decision has been made. This differs
+// from OpenSSL which handles resumption before selecting the certificate.
 OPENSSL_EXPORT void SSL_set_cert_cb(SSL *ssl, int (*cb)(SSL *ssl, void *arg),
                                     void *arg);
 
