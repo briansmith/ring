@@ -69,6 +69,7 @@ if(${ARCH} STREQUAL "aarch64")
     sha1-armv8.${ASM_EXT}
     sha256-armv8.${ASM_EXT}
     sha512-armv8.${ASM_EXT}
+    vpaes-armv8.${ASM_EXT}
   )
 endif()
 
@@ -120,6 +121,7 @@ perlasm(sha512-586.${ASM_EXT} sha/asm/sha512-586.pl)
 perlasm(sha512-armv4.${ASM_EXT} sha/asm/sha512-armv4.pl)
 perlasm(sha512-armv8.${ASM_EXT} sha/asm/sha512-armv8.pl)
 perlasm(sha512-x86_64.${ASM_EXT} sha/asm/sha512-x86_64.pl)
+perlasm(vpaes-armv8.${ASM_EXT} aes/asm/vpaes-armv8.pl)
 perlasm(vpaes-x86_64.${ASM_EXT} aes/asm/vpaes-x86_64.pl)
 perlasm(vpaes-x86.${ASM_EXT} aes/asm/vpaes-x86.pl)
 perlasm(x86_64-mont5.${ASM_EXT} bn/asm/x86_64-mont5.pl)

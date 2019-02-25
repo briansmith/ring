@@ -250,6 +250,9 @@ TEST(AESTest, ABI) {
         SCOPED_TRACE(blocks);
         CHECK_ABI(vpaes_cbc_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
                   block, AES_ENCRYPT);
+#if defined(VPAES_CTR32)
+        CHECK_ABI(vpaes_ctr32_encrypt_blocks, buf, buf, blocks, &key, block);
+#endif
       }
 
       CHECK_ABI(vpaes_set_decrypt_key, kKey, bits, &key);

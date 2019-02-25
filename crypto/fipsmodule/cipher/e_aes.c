@@ -143,7 +143,15 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   } else if (vpaes_capable()) {
     ret = vpaes_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
     dat->block = vpaes_encrypt;
-    dat->stream.cbc = mode == EVP_CIPH_CBC_MODE ? vpaes_cbc_encrypt : NULL;
+    dat->stream.cbc = NULL;
+    if (mode == EVP_CIPH_CBC_MODE) {
+      dat->stream.cbc = vpaes_cbc_encrypt;
+    }
+#if defined(VPAES_CTR32)
+    if (mode == EVP_CIPH_CTR_MODE) {
+      dat->stream.ctr = vpaes_ctr32_encrypt_blocks;
+    }
+#endif
   } else {
     ret = aes_nohw_set_encrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
     dat->block = aes_nohw_encrypt;
@@ -253,7 +261,11 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
     if (gcm_key != NULL) {
       CRYPTO_gcm128_init_key(gcm_key, aes_key, vpaes_encrypt, 0);
     }
+#if defined(VPAES_CTR32)
+    return vpaes_ctr32_encrypt_blocks;
+#else
     return NULL;
+#endif
   }
 
   aes_nohw_set_encrypt_key(key, key_bytes * 8, aes_key);

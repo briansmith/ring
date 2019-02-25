@@ -42,7 +42,7 @@ while (($output=shift) && ($output!~/\w[\w\-]*\.\w+$/)) {}
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}arm-xlate.pl" and -f $xlate ) or
-( $xlate="${dir}../../perlasm/arm-xlate.pl" and -f $xlate) or
+( $xlate="${dir}../../../perlasm/arm-xlate.pl" and -f $xlate) or
 die "can't locate arm-xlate.pl";
 
 open OUT,"| \"$^X\" $xlate $flavour $output";
@@ -1171,7 +1171,8 @@ vpaes_cbc_decrypt:
 	ret
 .size	vpaes_cbc_decrypt,.-vpaes_cbc_decrypt
 ___
-if (1) {
+# We omit vpaes_ecb_* in BoringSSL. They are unused.
+if (0) {
 $code.=<<___;
 .globl	vpaes_ecb_encrypt
 .type	vpaes_ecb_encrypt,%function
@@ -1253,7 +1254,89 @@ vpaes_ecb_decrypt:
 	ret
 .size	vpaes_ecb_decrypt,.-vpaes_ecb_decrypt
 ___
-}	}
+}
+
+my ($ctr, $ctr_tmp) = ("w6", "w7");
+
+# void vpaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
+#                                 const AES_KEY *key, const uint8_t ivec[16]);
+$code.=<<___;
+.globl	vpaes_ctr32_encrypt_blocks
+.type	vpaes_ctr32_encrypt_blocks,%function
+.align	4
+vpaes_ctr32_encrypt_blocks:
+	stp	x29,x30,[sp,#-16]!
+	add	x29,sp,#0
+	stp	d8,d9,[sp,#-16]!	// ABI spec says so
+	stp	d10,d11,[sp,#-16]!
+	stp	d12,d13,[sp,#-16]!
+	stp	d14,d15,[sp,#-16]!
+
+	cbz	$len, .Lctr32_done
+
+	// Note, unlike the other functions, $len here is measured in blocks,
+	// not bytes.
+	mov	x17, $len
+	mov	x2,  $key
+
+	// Load the IV and counter portion.
+	ldr	$ctr, [$ivec, #12]
+	ld1	{v7.16b}, [$ivec]
+
+	bl	_vpaes_encrypt_preheat
+	tst	x17, #1
+	rev	$ctr, $ctr		// The counter is big-endian.
+	b.eq	.Lctr32_prep_loop
+
+	// Handle one block so the remaining block count is even for
+	// _vpaes_encrypt_2x.
+	ld1	{v6.16b}, [$inp], #16	// Load input ahead of time
+	bl	_vpaes_encrypt_core
+	eor	v0.16b, v0.16b, v6.16b	// XOR input and result
+	st1	{v0.16b}, [$out], #16
+	subs	x17, x17, #1
+	// Update the counter.
+	add	$ctr, $ctr, #1
+	rev	$ctr_tmp, $ctr
+	mov	v7.s[3], $ctr_tmp
+	b.ls	.Lctr32_done
+
+.Lctr32_prep_loop:
+	// _vpaes_encrypt_core takes its input from v7, while _vpaes_encrypt_2x
+	// uses v14 and v15.
+	mov	v15.16b, v7.16b
+	mov	v14.16b, v7.16b
+	add	$ctr, $ctr, #1
+	rev	$ctr_tmp, $ctr
+	mov	v15.s[3], $ctr_tmp
+
+.Lctr32_loop:
+	ld1	{v6.16b,v7.16b}, [$inp], #32	// Load input ahead of time
+	bl	_vpaes_encrypt_2x
+	eor	v0.16b, v0.16b, v6.16b		// XOR input and result
+	eor	v1.16b, v1.16b, v7.16b		// XOR input and result (#2)
+	st1	{v0.16b,v1.16b}, [$out], #32
+	subs	x17, x17, #2
+	// Update the counter.
+	add	$ctr_tmp, $ctr, #1
+	add	$ctr, $ctr, #2
+	rev	$ctr_tmp, $ctr_tmp
+	mov	v14.s[3], $ctr_tmp
+	rev	$ctr_tmp, $ctr
+	mov	v15.s[3], $ctr_tmp
+	b.hi	.Lctr32_loop
+
+.Lctr32_done:
+	ldp	d14,d15,[sp],#16
+	ldp	d12,d13,[sp],#16
+	ldp	d10,d11,[sp],#16
+	ldp	d8,d9,[sp],#16
+	ldp	x29,x30,[sp],#16
+	ret
+.size	vpaes_ctr32_encrypt_blocks,.-vpaes_ctr32_encrypt_blocks
+___
+}
+
 print $code;
 
 close STDOUT;
