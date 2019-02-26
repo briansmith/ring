@@ -368,7 +368,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
             let &(entry_arch, entry_os, _) = *entry;
             entry_arch == target.arch() && is_none_or_equals(entry_os, target.os())
         })
-        .unwrap();
+        .expect("Target platform is not supported");
 
     let is_git = std::fs::metadata(".git").is_ok();
 
