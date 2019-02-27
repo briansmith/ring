@@ -71,6 +71,14 @@ OPENSSL_MSVC_PRAGMA(warning(pop))
 
 #define OPENSSL_MALLOC_PREFIX 8
 
+#if defined(OPENSSL_ASAN)
+void __asan_poison_memory_region(const volatile void *addr, size_t size);
+void __asan_unpoison_memory_region(const volatile void *addr, size_t size);
+#else
+static void __asan_poison_memory_region(const void *addr, size_t size) {}
+static void __asan_unpoison_memory_region(const void *addr, size_t size) {}
+#endif
+
 #if defined(__GNUC__) || defined(__clang__)
 // sdallocx is a sized |free| function. By passing the size (which we happen to
 // always know in BoringSSL), the malloc implementation can save work. We cannot
@@ -99,6 +107,7 @@ void *OPENSSL_malloc(size_t size) {
 
   *(size_t *)ptr = size;
 
+  __asan_poison_memory_region(ptr, OPENSSL_MALLOC_PREFIX);
   return ((uint8_t *)ptr) + OPENSSL_MALLOC_PREFIX;
 }
 
@@ -108,6 +117,7 @@ void OPENSSL_free(void *orig_ptr) {
   }
 
   void *ptr = ((uint8_t *)orig_ptr) - OPENSSL_MALLOC_PREFIX;
+  __asan_unpoison_memory_region(ptr, OPENSSL_MALLOC_PREFIX);
 
   size_t size = *(size_t *)ptr;
   OPENSSL_cleanse(ptr, size + OPENSSL_MALLOC_PREFIX);
@@ -120,7 +130,9 @@ void *OPENSSL_realloc(void *orig_ptr, size_t new_size) {
   }
 
   void *ptr = ((uint8_t *)orig_ptr) - OPENSSL_MALLOC_PREFIX;
+  __asan_unpoison_memory_region(ptr, OPENSSL_MALLOC_PREFIX);
   size_t old_size = *(size_t *)ptr;
+  __asan_poison_memory_region(ptr, OPENSSL_MALLOC_PREFIX);
 
   void *ret = OPENSSL_malloc(new_size);
   if (ret == NULL) {
