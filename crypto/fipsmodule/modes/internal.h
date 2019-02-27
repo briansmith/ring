@@ -315,8 +315,6 @@ void gcm_ghash_4bit_mmx(uint64_t Xi[2], const u128 Htable[16], const uint8_t *in
 #endif  // OPENSSL_X86
 
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
-#include <openssl/arm_arch.h>
-#if __ARM_ARCH__ >= 7
 #define GHASH_ASM_ARM
 #define GCM_FUNCREF_4BIT
 
@@ -352,7 +350,6 @@ OPENSSL_INLINE void gcm_ghash_neon(uint64_t Xi[2], const u128 Htable[16],
 }
 #endif  // OPENSSL_ARM
 
-#endif  // __ARM_ARCH__ >= 7
 #elif defined(OPENSSL_PPC64LE)
 #define GHASH_ASM_PPC64LE
 #define GCM_FUNCREF_4BIT
