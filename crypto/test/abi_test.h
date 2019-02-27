@@ -109,14 +109,12 @@ struct alignas(16) Reg128 {
 // References:
 // AAPCS: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0042f/IHI0042F_aapcs.pdf
 // iOS32: https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARMv6FunctionCallingConventions.html
+// Linux: http://sourcery.mentor.com/sgpp/lite/arm/portal/kbattach142/arm_gnu_linux_%20abi.pdf
 //
-// ARM specifies a common calling convention, except r9 is left to the
-// platform. Linux and iOS differ in handling of r9. iOS's behavior is defined
-// below. We found no clear reference for Linux but observed behavior from
-// LLVM. iOS 3+ treats r9 as caller-saved, while Linux treats it as
-// callee-saved. Most of our assembly treats it as callee-saved to be uniform,
-// but we match the platform to avoid false positives when testing
-// compiler-generated output.
+// ARM specifies a common calling convention, except r9 is left to the platform.
+// Linux treats r9 as callee-saved, while iOS 3+ treats it as caller-saved. Most
+// of our assembly treats it as callee-saved to be uniform, but we match the
+// platform to avoid false positives when testing compiler-generated output.
 #define LOOP_CALLER_STATE_REGISTERS_PRE_R9() \
   CALLER_STATE_REGISTER(uint64_t, d8)        \
   CALLER_STATE_REGISTER(uint64_t, d9)        \

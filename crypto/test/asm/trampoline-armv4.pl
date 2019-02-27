@@ -27,6 +27,7 @@
 # AAPCS: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0042f/IHI0042F_aapcs.pdf
 # iOS ARMv6: https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARMv6FunctionCallingConventions.html
 # iOS ARMv7: https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARMv7FunctionCallingConventions.html
+# Linux: http://sourcery.mentor.com/sgpp/lite/arm/portal/kbattach142/arm_gnu_linux_%20abi.pdf
 
 use strict;
 
@@ -70,10 +71,10 @@ abi_test_trampoline:
 	stmdb	sp!, {r0-r11,lr}
 
 	@ Reserve stack space for six (10-4) stack parameters, plus an extra 4
-	@ bytes to keep it 8-byte-aligned (see APCS, section 5.3).
+	@ bytes to keep it 8-byte-aligned (see AAPCS, section 5.3).
 	sub     sp, sp, #28
 
-	@ Every register in APCS is either non-volatile or a parameter (except
+	@ Every register in AAPCS is either non-volatile or a parameter (except
 	@ r9 on iOS), so this code, by the actual call, loses all its scratch
 	@ registers. First fill in stack parameters while there are registers
 	@ to spare.
