@@ -49,7 +49,7 @@ OPENSSL_INLINE char bsaes_capable(void) { return vpaes_capable(); }
 
 OPENSSL_INLINE int hwaes_capable(void) { return CRYPTO_is_ARMv8_AES_capable(); }
 
-#if defined(OPENSSL_ARM) && __ARM_MAX_ARCH__ >= 7
+#if defined(OPENSSL_ARM)
 #define BSAES
 OPENSSL_INLINE char bsaes_capable(void) { return CRYPTO_is_NEON_capable(); }
 #endif

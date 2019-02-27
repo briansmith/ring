@@ -1113,7 +1113,10 @@ my ($inp,$out,$len,$key, $ivp,$fp,$rounds)=map("r$_",(0..3,8..10));
 my ($keysched)=("sp");
 
 $code.=<<___;
-.extern aes_nohw_cbc_encrypt
+@ TODO(davidben): This should be aes_nohw_cbc_encrypt, but that function does
+@ not exist. Rather than add it, patch this fallback out. See
+@ https://crbug.com/boringssl/256.
+.extern AES_cbc_encrypt
 .extern aes_nohw_decrypt
 
 .global	bsaes_cbc_encrypt
@@ -1123,10 +1126,10 @@ bsaes_cbc_encrypt:
 #ifndef	__KERNEL__
 	cmp	$len, #128
 #ifndef	__thumb__
-	blo	aes_nohw_cbc_encrypt
+	blo	AES_cbc_encrypt
 #else
 	bhs	1f
-	b	aes_nohw_cbc_encrypt
+	b	AES_cbc_encrypt
 1:
 #endif
 #endif
