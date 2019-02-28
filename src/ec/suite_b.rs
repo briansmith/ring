@@ -15,7 +15,7 @@
 //! Elliptic curve operations on P-256 & P-384.
 
 use self::ops::*;
-use crate::{arithmetic::montgomery::*, cpu, ec, error, io::der, pkcs8};
+use crate::{arithmetic::montgomery::*, cpu, ec, error, io::der, limb::LimbMask, pkcs8};
 use untrusted;
 
 // NIST SP 800-56A Step 3: "If q is an odd prime p, verify that
@@ -142,7 +142,7 @@ fn verify_affine_point_is_on_the_curve_scaled(
     ops.elem_mul(&mut rhs, x);
     ops.elem_add(&mut rhs, b_scaled);
 
-    if !ops.elems_are_equal(&lhs, &rhs) {
+    if ops.elems_are_equal(&lhs, &rhs) != LimbMask::True {
         return Err(error::Unspecified);
     }
 

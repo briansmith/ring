@@ -109,13 +109,9 @@ impl CommonOps {
         binary_op_assign(self.elem_add_impl, a, b)
     }
 
-    pub fn elems_are_equal(&self, a: &Elem<R>, b: &Elem<R>) -> bool {
-        for i in 0..self.num_limbs {
-            if a.limbs[i] != b.limbs[i] {
-                return false;
-            }
-        }
-        true
+    #[inline]
+    pub fn elems_are_equal(&self, a: &Elem<R>, b: &Elem<R>) -> LimbMask {
+        limbs_equal_limbs_consttime(&a.limbs[..self.num_limbs], &b.limbs[..self.num_limbs])
     }
 
     #[inline]
