@@ -415,7 +415,7 @@ def NoTestRunnerFiles(path, dent, is_dir):
 
 
 def NotGTestSupport(path, dent, is_dir):
-  return 'gtest' not in dent
+  return 'gtest' not in dent and 'abi_test' not in dent
 
 
 def SSLHeaderFiles(path, dent, is_dir):
@@ -627,6 +627,7 @@ def main(platforms):
 
   crypto_test_files += FindCFiles(os.path.join('src', 'crypto'), OnlyTests)
   crypto_test_files += [
+      'src/crypto/test/abi_test.cc',
       'src/crypto/test/file_test_gtest.cc',
       'src/crypto/test/gtest_main.cc',
   ]
