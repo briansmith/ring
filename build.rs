@@ -14,9 +14,9 @@
 
 //! Build the non-Rust components.
 
-#![deny(box_pointers)]
 #![forbid(
     anonymous_parameters,
+    box_pointers,
     legacy_directory_ownership,
     missing_copy_implementations,
     missing_debug_implementations,
@@ -445,7 +445,6 @@ fn build_library(
     warnings_are_errors: bool, includes_modified: SystemTime,
 ) {
     // Compile all the (dirty) source files into object files.
-    #[allow(box_pointers)] // XXX
     let objs = additional_srcs
         .into_iter()
         .chain(srcs.into_iter())
