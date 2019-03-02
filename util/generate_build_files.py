@@ -633,7 +633,10 @@ def main(platforms):
   ]
 
   ssl_test_files = FindCFiles(os.path.join('src', 'ssl'), OnlyTests)
-  ssl_test_files.append('src/crypto/test/gtest_main.cc')
+  ssl_test_files += [
+      'src/crypto/test/abi_test.cc',
+      'src/crypto/test/gtest_main.cc',
+  ]
 
   fuzz_c_files = FindCFiles(os.path.join('src', 'fuzz'), NoTests)
 
