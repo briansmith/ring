@@ -315,7 +315,6 @@ fn pregenerate_asm_main() {
         perlasm(&perlasm_src_dsts, target_arch, perlasm_format, None);
 
         if target_os == Some(WINDOWS) {
-            //let lib_name = ring_asm_name(target_arch);
             let srcs = asm_srcs(perlasm_src_dsts);
             for src in srcs {
                 let src_path = PathBuf::from(src);
