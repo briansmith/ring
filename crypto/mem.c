@@ -153,6 +153,10 @@ void OPENSSL_cleanse(void *ptr, size_t len) {
 #endif  // !OPENSSL_NO_ASM
 }
 
+void OPENSSL_clear_free(void *ptr, size_t unused) {
+  OPENSSL_free(ptr);
+}
+
 int CRYPTO_memcmp(const void *in_a, const void *in_b, size_t len) {
   const uint8_t *a = in_a;
   const uint8_t *b = in_b;
