@@ -2672,13 +2672,6 @@ int SSL_cutthrough_complete(const SSL *ssl) {
   return SSL_in_false_start(ssl);
 }
 
-void SSL_get_structure_sizes(size_t *ssl_size, size_t *ssl_ctx_size,
-                             size_t *ssl_session_size) {
-  *ssl_size = sizeof(SSL);
-  *ssl_ctx_size = sizeof(SSL_CTX);
-  *ssl_session_size = sizeof(SSL_SESSION);
-}
-
 int SSL_is_server(const SSL *ssl) { return ssl->server; }
 
 int SSL_is_dtls(const SSL *ssl) { return ssl->method->is_dtls; }

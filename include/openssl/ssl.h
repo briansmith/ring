@@ -3440,13 +3440,6 @@ OPENSSL_EXPORT uint64_t SSL_get_write_sequence(const SSL *ssl);
 
 // Obscure functions.
 
-// SSL_get_structure_sizes returns the sizes of the SSL, SSL_CTX and
-// SSL_SESSION structures so that a test can ensure that outside code agrees on
-// these values.
-OPENSSL_EXPORT void SSL_get_structure_sizes(size_t *ssl_size,
-                                            size_t *ssl_ctx_size,
-                                            size_t *ssl_session_size);
-
 // SSL_CTX_set_msg_callback installs |cb| as the message callback for |ctx|.
 // This callback will be called when sending or receiving low-level record
 // headers, complete handshake messages, ChangeCipherSpec, and alerts.
