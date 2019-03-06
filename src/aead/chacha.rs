@@ -24,7 +24,7 @@ use libc::size_t;
 #[repr(C)]
 pub struct Key([Block; KEY_BLOCKS]);
 
-impl<'a> From<&'a [u8; KEY_LEN]> for Key {
+impl From<&'_ [u8; KEY_LEN]> for Key {
     fn from(value: &[u8; KEY_LEN]) -> Self { Key(<[Block; KEY_BLOCKS]>::from_(value)) }
 }
 

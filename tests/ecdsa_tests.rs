@@ -210,9 +210,9 @@ fn signature_ecdsa_verify_fixed_test() {
 
 #[test]
 fn ecdsa_test_public_key_coverage() {
-    const PRIVATE_KEY: &'static [u8] = include_bytes!("ecdsa_test_private_key_p256.p8");
-    const PUBLIC_KEY: &'static [u8] = include_bytes!("ecdsa_test_public_key_p256.der");
-    const PUBLIC_KEY_DEBUG: &'static str = include_str!("ecdsa_test_public_key_p256_debug.txt");
+    const PRIVATE_KEY: &[u8] = include_bytes!("ecdsa_test_private_key_p256.p8");
+    const PUBLIC_KEY: &[u8] = include_bytes!("ecdsa_test_public_key_p256.der");
+    const PUBLIC_KEY_DEBUG: &str = include_str!("ecdsa_test_public_key_p256_debug.txt");
 
     let key_pair = signature::EcdsaKeyPair::from_pkcs8(
         &signature::ECDSA_P256_SHA256_FIXED_SIGNING,

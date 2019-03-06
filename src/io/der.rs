@@ -219,9 +219,9 @@ mod tests {
         assert!(r.is_err());
     }
 
-    static ZERO_INTEGER: &'static [u8] = &[0x02, 0x01, 0x00];
+    static ZERO_INTEGER: &[u8] = &[0x02, 0x01, 0x00];
 
-    static GOOD_POSITIVE_INTEGERS: &'static [(&'static [u8], u8)] = &[
+    static GOOD_POSITIVE_INTEGERS: &[(&[u8], u8)] = &[
         (&[0x02, 0x01, 0x01], 0x01),
         (&[0x02, 0x01, 0x02], 0x02),
         (&[0x02, 0x01, 0x7e], 0x7e),
@@ -234,7 +234,7 @@ mod tests {
         (&[0x02, 0x02, 0x00, 0xff], 0xff),
     ];
 
-    static BAD_NONNEGATIVE_INTEGERS: &'static [&'static [u8]] = &[
+    static BAD_NONNEGATIVE_INTEGERS: &[&[u8]] = &[
         &[],           // At end of input
         &[0x02],       // Tag only
         &[0x02, 0x00], // Empty value

@@ -42,7 +42,7 @@ pub struct KeyPair {
 
 derive_debug_via_field!(KeyPair, stringify!(Ed25519KeyPair), public_key);
 
-impl<'a> KeyPair {
+impl KeyPair {
     /// Generates a new key pair and returns the key pair serialized as a
     /// PKCS#8 document.
     ///

@@ -157,7 +157,7 @@ const RING_PERL_INCLUDES: &[&str] =
 
 const RING_BUILD_FILE: &[&str] = &["build.rs"];
 
-const PREGENERATED: &'static str = "pregenerated";
+const PREGENERATED: &str = "pregenerated";
 
 fn c_flags(target: &Target) -> &'static [&'static str] {
     if target.env != MSVC {
@@ -245,10 +245,10 @@ const ASM_TARGETS: &[(&str, Option<&str>, &str)] = &[
     ("arm", None, "linux32"),
 ];
 
-const WINDOWS: &'static str = "windows";
-const MSVC: &'static str = "msvc";
-const MSVC_OBJ_OPT: &'static str = "/Fo";
-const MSVC_OBJ_EXT: &'static str = "obj";
+const WINDOWS: &str = "windows";
+const MSVC: &str = "msvc";
+const MSVC_OBJ_OPT: &str = "/Fo";
+const MSVC_OBJ_EXT: &str = "obj";
 
 fn main() {
     if let Ok(package_name) = std::env::var("CARGO_PKG_NAME") {

@@ -62,7 +62,7 @@ pub(crate) fn write_hex_tuple(
 
 struct HexStr<'a>(pub &'a [u8]);
 
-impl<'a> core::fmt::Debug for HexStr<'a> {
+impl core::fmt::Debug for HexStr<'_> {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
         fmt.write_str("\"")?;
         write_hex_bytes(fmt, self.0)?;

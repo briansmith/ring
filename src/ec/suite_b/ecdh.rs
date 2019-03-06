@@ -140,12 +140,7 @@ mod tests {
     use crate::{agreement, ec, limb, test};
     use core;
 
-    static SUPPORTED_SUITE_B_ALGS: [(
-        &'static str,
-        &'static agreement::Algorithm,
-        &'static ec::Curve,
-        &'static ops::CommonOps,
-    ); 2] = [
+    static SUPPORTED_SUITE_B_ALGS: [(&str, &agreement::Algorithm, &ec::Curve, &ops::CommonOps); 2] = [
         (
             "P-256",
             &agreement::ECDH_P256,

@@ -168,8 +168,8 @@ fn test_ed25519_from_pkcs8() {
 
 #[test]
 fn ed25519_test_public_key_coverage() {
-    const PRIVATE_KEY: &'static [u8] = include_bytes!("ed25519_test_private_key.p8");
-    const PUBLIC_KEY: &'static [u8] = include_bytes!("ed25519_test_public_key.der");
+    const PRIVATE_KEY: &[u8] = include_bytes!("ed25519_test_private_key.p8");
+    const PUBLIC_KEY: &[u8] = include_bytes!("ed25519_test_public_key.der");
     const PUBLIC_KEY_DEBUG: &'static str =
         "PublicKey(\"5809e9fef6dcec58f0f2e3b0d67e9880a11957e083ace85835c3b6c8fbaf6b7d\")";
 

@@ -72,12 +72,12 @@ impl Block {
     }
 }
 
-impl<'a> From<&'a [u8; BLOCK_LEN]> for Block {
+impl From<&'_ [u8; BLOCK_LEN]> for Block {
     #[inline]
     fn from(bytes: &[u8; BLOCK_LEN]) -> Self { unsafe { core::mem::transmute_copy(bytes) } }
 }
 
-impl<'a> From_<&'a [u8; 2 * BLOCK_LEN]> for [Block; 2] {
+impl From_<&'_ [u8; 2 * BLOCK_LEN]> for [Block; 2] {
     #[inline]
     fn from_(bytes: &[u8; 2 * BLOCK_LEN]) -> Self { unsafe { core::mem::transmute_copy(bytes) } }
 }

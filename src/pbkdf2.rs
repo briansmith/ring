@@ -33,7 +33,7 @@
 //! use ring::{digest, pbkdf2};
 //! use std::{collections::HashMap, num::NonZeroU32};
 //!
-//! static DIGEST_ALG: &'static digest::Algorithm = &digest::SHA256;
+//! static DIGEST_ALG: &digest::Algorithm = &digest::SHA256;
 //! const CREDENTIAL_LEN: usize = digest::SHA256_OUTPUT_LEN;
 //! pub type Credential = [u8; CREDENTIAL_LEN];
 //!

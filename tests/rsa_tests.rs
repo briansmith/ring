@@ -280,9 +280,9 @@ fn test_signature_rsa_primitive_verification() {
 #[cfg(feature = "use_heap")]
 #[test]
 fn rsa_test_public_key_coverage() {
-    const PRIVATE_KEY: &'static [u8] = include_bytes!("rsa_test_private_key_2048.p8");
-    const PUBLIC_KEY: &'static [u8] = include_bytes!("rsa_test_public_key_2048.der");
-    const PUBLIC_KEY_DEBUG: &'static str = include_str!("rsa_test_public_key_2048_debug.txt");
+    const PRIVATE_KEY: &[u8] = include_bytes!("rsa_test_private_key_2048.p8");
+    const PUBLIC_KEY: &[u8] = include_bytes!("rsa_test_public_key_2048.der");
+    const PUBLIC_KEY_DEBUG: &str = include_str!("rsa_test_public_key_2048_debug.txt");
 
     let key_pair = signature::RsaKeyPair::from_pkcs8(untrusted::Input::from(PRIVATE_KEY)).unwrap();
 

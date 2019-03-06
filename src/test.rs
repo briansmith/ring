@@ -376,8 +376,8 @@ fn from_hex_digit(d: u8) -> Result<u8, String> {
     }
 }
 
-fn parse_test_case<'a>(
-    current_section: &mut String, lines: &mut Iterator<Item = &'a str>,
+fn parse_test_case(
+    current_section: &mut String, lines: &mut Iterator<Item = &str>,
 ) -> Option<TestCase> {
     let mut attributes = Vec::new();
 
@@ -478,7 +478,7 @@ pub mod rand {
         pub bytes: &'a [u8],
     }
 
-    impl<'a> rand::SecureRandom for FixedSliceRandom<'a> {
+    impl rand::SecureRandom for FixedSliceRandom<'_> {
         fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             dest.copy_from_slice(self.bytes);
             Ok(())
@@ -501,7 +501,7 @@ pub mod rand {
         pub current: core::cell::UnsafeCell<usize>,
     }
 
-    impl<'a> rand::SecureRandom for FixedSliceSequenceRandom<'a> {
+    impl rand::SecureRandom for FixedSliceSequenceRandom<'_> {
         fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             let current = unsafe { *self.current.get() };
             let bytes = self.bytes[current];
@@ -513,7 +513,7 @@ pub mod rand {
         }
     }
 
-    impl<'a> Drop for FixedSliceSequenceRandom<'a> {
+    impl Drop for FixedSliceSequenceRandom<'_> {
         fn drop(&mut self) {
             // Ensure that `fill()` was called exactly the right number of
             // times.
@@ -522,8 +522,8 @@ pub mod rand {
     }
 
     impl sealed::Sealed for FixedByteRandom {}
-    impl<'a> sealed::Sealed for FixedSliceRandom<'a> {}
-    impl<'a> sealed::Sealed for FixedSliceSequenceRandom<'a> {}
+    impl sealed::Sealed for FixedSliceRandom<'_> {}
+    impl sealed::Sealed for FixedSliceSequenceRandom<'_> {}
 
 }
 

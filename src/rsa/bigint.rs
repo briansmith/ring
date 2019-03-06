@@ -350,7 +350,7 @@ struct PartialModulus<'a, M> {
     m: PhantomData<M>,
 }
 
-impl<'a, M> PartialModulus<'a, M> {
+impl<M> PartialModulus<'_, M> {
     // TODO: XXX Avoid duplication with `Modulus`.
     fn zero(&self) -> Elem<M, R> {
         let width = Width {

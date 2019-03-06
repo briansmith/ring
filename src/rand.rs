@@ -285,7 +285,7 @@ mod darwin {
 
     #[link(name = "Security", kind = "framework")]
     extern "C" {
-        static kSecRandomDefault: &'static SecRandomRef;
+        static kSecRandomDefault: &SecRandomRef;
 
         // For now `rnd` must be `kSecRandomDefault`.
         #[must_use]

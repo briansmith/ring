@@ -407,7 +407,7 @@ impl PublicKey {
     }
 
     /// The public modulus (n).
-    pub fn modulus<'a>(&'a self) -> io::Positive<'a> {
+    pub fn modulus(&self) -> io::Positive {
         // Parsing won't fail because we serialized it ourselves.
         let (public_key, _exponent) =
             super::parse_public_key(untrusted::Input::from(self.as_ref())).unwrap();
@@ -415,7 +415,7 @@ impl PublicKey {
     }
 
     /// The public exponent (e).
-    pub fn exponent<'a>(&'a self) -> io::Positive<'a> {
+    pub fn exponent(&self) -> io::Positive {
         // Parsing won't fail because we serialized it ourselves.
         let (_public_key, exponent) =
             super::parse_public_key(untrusted::Input::from(self.as_ref())).unwrap();

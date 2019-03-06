@@ -36,8 +36,7 @@ pub struct Algorithm {
     private_key_ops: &'static PrivateKeyOps,
     digest_alg: &'static digest::Algorithm,
     pkcs8_template: &'static pkcs8::Template,
-    format_rs:
-        for<'a> fn(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &'a mut [u8]) -> usize,
+    format_rs: fn(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &mut [u8]) -> usize,
     id: AlgorithmID,
 }
 
@@ -246,9 +245,7 @@ impl AsRef<[u8]> for PublicKey {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
 
-fn format_rs_fixed<'a>(
-    ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &'a mut [u8],
-) -> usize {
+fn format_rs_fixed(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &mut [u8]) -> usize {
     let scalar_len = ops.scalar_bytes_len();
 
     let (r_out, rest) = out.split_at_mut(scalar_len);
@@ -260,7 +257,7 @@ fn format_rs_fixed<'a>(
     2 * scalar_len
 }
 
-fn format_rs_asn1<'a>(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &'a mut [u8]) -> usize {
+fn format_rs_asn1(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &mut [u8]) -> usize {
     // This assumes `a` is not zero since neither `r` or `s` is allowed to be
     // zero.
     fn format_integer_tlv(ops: &ScalarOps, a: &Scalar, out: &mut [u8]) -> usize {

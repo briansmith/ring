@@ -99,7 +99,7 @@ pub struct EphemeralPrivateKey {
     alg: &'static Algorithm,
 }
 
-impl<'a> EphemeralPrivateKey {
+impl EphemeralPrivateKey {
     /// Generate a new ephemeral private key for the given algorithm.
     pub fn generate(
         alg: &'static Algorithm, rng: &rand::SecureRandom,
@@ -126,7 +126,7 @@ impl<'a> EphemeralPrivateKey {
     }
 
     #[cfg(test)]
-    pub fn bytes(&'a self) -> &'a [u8] { self.private_key.bytes_less_safe() }
+    pub fn bytes(&self) -> &[u8] { self.private_key.bytes_less_safe() }
 }
 
 /// A public key for key agreement.
