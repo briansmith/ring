@@ -167,6 +167,7 @@ impl TestCase {
     /// inputs. "SHA224" is mapped to None because *ring* intentionally does
     /// not support SHA224, but we need to consume test vectors from NIST that
     /// have SHA224 vectors in them.
+    #[allow(deprecated)]
     pub fn consume_digest_alg(&mut self, key: &str) -> Option<&'static digest::Algorithm> {
         let name = self.consume_string(key);
         match name.as_ref() {

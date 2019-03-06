@@ -134,8 +134,9 @@ fn pkcs1_encode(pkcs1: &PKCS1, m_hash: &digest::Digest, m_out: &mut [u8]) {
 
 macro_rules! rsa_pkcs1_padding {
     ( $PADDING_ALGORITHM:ident, $digest_alg:expr, $digestinfo_prefix:expr,
-      $doc_str:expr ) => {
+      $doc_str:expr $(, $attr:meta )* ) => {
         #[doc=$doc_str]
+        $( #[$attr] )*
         pub static $PADDING_ALGORITHM: PKCS1 = PKCS1 {
             digest_alg: $digest_alg,
             digestinfo_prefix: $digestinfo_prefix,
@@ -147,7 +148,9 @@ rsa_pkcs1_padding!(
     RSA_PKCS1_SHA1,
     &digest::SHA1,
     &SHA1_PKCS1_DIGESTINFO_PREFIX,
-    "PKCS#1 1.5 padding using SHA-1 for RSA signatures."
+    "PKCS#1 1.5 padding using SHA-1 for RSA signatures.",
+    allow(deprecated),
+    deprecated
 );
 rsa_pkcs1_padding!(
     RSA_PKCS1_SHA256,
@@ -170,7 +173,8 @@ rsa_pkcs1_padding!(
 
 macro_rules! pkcs1_digestinfo_prefix {
     ( $name:ident, $digest_len:expr, $digest_oid_len:expr,
-      [ $( $digest_oid:expr ),* ] ) => {
+      [ $( $digest_oid:expr ),* ] $(, $attr:meta )* ) => {
+        $( #[$attr] )*
         static $name: [u8; 2 + 8 + $digest_oid_len] = [
             der::Tag::Sequence as u8, 8 + $digest_oid_len + $digest_len,
                 der::Tag::Sequence as u8, 2 + $digest_oid_len + 2,
@@ -185,7 +189,8 @@ pkcs1_digestinfo_prefix!(
     SHA1_PKCS1_DIGESTINFO_PREFIX,
     20,
     5,
-    [0x2b, 0x0e, 0x03, 0x02, 0x1a]
+    [0x2b, 0x0e, 0x03, 0x02, 0x1a],
+    deprecated
 );
 
 pkcs1_digestinfo_prefix!(

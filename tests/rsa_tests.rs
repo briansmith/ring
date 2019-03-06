@@ -146,6 +146,7 @@ fn test_signature_rsa_pss_sign() {
 
 #[cfg(feature = "use_heap")]
 #[test]
+#[allow(deprecated)]
 fn test_signature_rsa_pkcs1_verify() {
     test::run(
         test_file!("rsa_pkcs1_verify_tests.txt"),

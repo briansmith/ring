@@ -88,6 +88,7 @@ mod digest_shavs {
     macro_rules! shavs_tests {
         ( $algorithm_name:ident ) => {
             #[allow(non_snake_case)]
+            #[allow(deprecated)]
             mod $algorithm_name {
                 use super::{run_known_answer_test, run_monte_carlo_test};
                 use ring::{digest, test_file};
@@ -191,6 +192,7 @@ macro_rules! test_i_u_f {
     ( $test_name:ident, $alg:expr) => {
         #[cfg(not(debug_assertions))]
         #[test]
+        #[allow(deprecated)]
         fn $test_name() {
             let mut input = [0; (digest::MAX_BLOCK_LEN + 1) * 3];
             let max = $alg.block_len + 1;
@@ -251,6 +253,7 @@ macro_rules! test_large_digest {
     ( $test_name:ident, $alg:expr, $len:expr, $expected:expr) => {
         #[cfg(not(debug_assertions))]
         #[test]
+        #[allow(deprecated)]
         fn $test_name() {
             let chunk = vec![123u8; 16 * 1024];
             let chunk_len = chunk.len() as u64;
@@ -320,6 +323,7 @@ test_large_digest!(
 //                            digest::SHA512_256, 256 / 8, [ ... ]);
 
 #[test]
+#[allow(deprecated)]
 fn test_fmt_algorithm() {
     assert_eq!("SHA1", &format!("{:?}", digest::SHA1));
     assert_eq!("SHA256", &format!("{:?}", digest::SHA256));
@@ -329,6 +333,7 @@ fn test_fmt_algorithm() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn digest_test_fmt() {
     assert_eq!(
         "SHA1:b7e23ec29af22b0b4e41da31e868d57226121c84",

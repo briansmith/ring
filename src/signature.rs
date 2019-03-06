@@ -281,12 +281,17 @@ pub use crate::ec::{
 };
 
 #[cfg(feature = "use_heap")]
+#[allow(deprecated)]
+#[deprecated]
+pub use crate::rsa::verification::RSA_PKCS1_2048_8192_SHA1;
+
+#[cfg(feature = "use_heap")]
 pub use crate::rsa::{
     signing::RsaKeyPair,
     signing::RsaSubjectPublicKey,
 
     verification::{
-        RsaPublicKeyComponents, RSA_PKCS1_2048_8192_SHA1, RSA_PKCS1_2048_8192_SHA256,
+        RsaPublicKeyComponents, RSA_PKCS1_2048_8192_SHA256,
         RSA_PKCS1_2048_8192_SHA384, RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_3072_8192_SHA384,
         RSA_PSS_2048_8192_SHA256, RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
     },

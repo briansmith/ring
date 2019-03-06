@@ -278,6 +278,8 @@ derive_debug_via_id!(Algorithm);
 /// SHA-1 as specified in [FIPS 180-4]. Deprecated.
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
+#[allow(deprecated)]
+#[deprecated]
 pub static SHA1: Algorithm = Algorithm {
     output_len: sha1::OUTPUT_LEN,
     chaining_len: sha1::CHAINING_LEN,
@@ -463,6 +465,8 @@ fn sha512_format_output(input: State) -> Output {
 }
 
 /// The length of the output of SHA-1, in bytes.
+#[allow(deprecated)]
+#[deprecated]
 pub const SHA1_OUTPUT_LEN: usize = sha1::OUTPUT_LEN;
 
 /// The length of the output of SHA-256, in bytes.
@@ -493,6 +497,7 @@ pub mod test_util {
     use super::super::digest;
 
     pub static ALL_ALGORITHMS: [&digest::Algorithm; 5] = [
+        #[allow(deprecated)]
         &digest::SHA1,
         &digest::SHA256,
         &digest::SHA384,
@@ -510,6 +515,7 @@ mod tests {
 
         macro_rules! max_input_tests {
             ( $algorithm_name:ident ) => {
+                #[allow(deprecated)]
                 mod $algorithm_name {
                     use super::super::super::super::digest;
 

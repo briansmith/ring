@@ -104,8 +104,9 @@ impl sealed::Sealed for RsaParameters {}
 
 macro_rules! rsa_params {
     ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $PADDING_ALGORITHM:expr,
-      $doc_str:expr ) => {
+      $doc_str:expr $(, $attr:meta )* ) => {
         #[doc=$doc_str]
+        $( #[$attr] )*
         ///
         /// Only available in `use_heap` mode.
         pub static $VERIFY_ALGORITHM: RsaParameters = RsaParameters {
@@ -121,7 +122,9 @@ rsa_params!(
     &super::padding::RSA_PKCS1_SHA1,
     "Verification of signatures using RSA keys of 2048-8192 bits,
              PKCS#1.5 padding, and SHA-1.\n\nSee \"`RSA_PKCS1_*` Details\" in
-             `ring::signature`'s module-level documentation for more details."
+             `ring::signature`'s module-level documentation for more details.",
+    allow(deprecated),
+    deprecated
 );
 rsa_params!(
     RSA_PKCS1_2048_8192_SHA256,
