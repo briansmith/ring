@@ -38,7 +38,6 @@ pub const LIMB_BITS: usize = 64;
 #[cfg(target_pointer_width = "32")]
 pub const LIMB_BITS: usize = 32;
 
-#[allow(trivial_numeric_casts)]
 #[cfg(target_pointer_width = "64")]
 #[derive(Debug, PartialEq)]
 #[repr(u64)]

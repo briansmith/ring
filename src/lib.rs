@@ -46,7 +46,6 @@
 // internally.
 #![deny(
     missing_docs,
-    trivial_numeric_casts,
     unstable_features, // Used by `internal_benches`
     unused_qualifications,
     variant_size_differences,
@@ -54,6 +53,7 @@
 #![forbid(
     anonymous_parameters,
     trivial_casts,
+    trivial_numeric_casts,
     unused_extern_crates,
     unused_import_braces,
     unused_results,
