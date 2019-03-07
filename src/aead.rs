@@ -47,8 +47,8 @@ impl OpeningKey {
     #[inline]
     pub fn new(
         algorithm: &'static Algorithm, key_bytes: &[u8],
-    ) -> Result<OpeningKey, error::Unspecified> {
-        Ok(OpeningKey {
+    ) -> Result<Self, error::Unspecified> {
+        Ok(Self {
             key: Key::new(algorithm, key_bytes)?,
         })
     }
@@ -150,8 +150,8 @@ impl SealingKey {
     #[inline]
     pub fn new(
         algorithm: &'static Algorithm, key_bytes: &[u8],
-    ) -> Result<SealingKey, error::Unspecified> {
-        Ok(SealingKey {
+    ) -> Result<Self, error::Unspecified> {
+        Ok(Self {
             key: Key::new(algorithm, key_bytes)?,
         })
     }

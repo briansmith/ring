@@ -356,7 +356,7 @@ impl VerificationKey {
     /// length then it will be compressed using the digest algorithm.
     #[inline(always)]
     pub fn new(digest_alg: &'static digest::Algorithm, key_value: &[u8]) -> Self {
-        VerificationKey(SigningKey::new(digest_alg, key_value))
+        Self(SigningKey::new(digest_alg, key_value))
     }
 
     /// The digest algorithm for the key.

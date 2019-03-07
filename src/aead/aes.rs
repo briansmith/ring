@@ -90,7 +90,7 @@ impl Key {
             },
         };
 
-        Ok(Key {
+        Ok(Self {
             inner: key,
             cpu_features,
         })

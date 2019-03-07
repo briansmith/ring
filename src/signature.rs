@@ -336,7 +336,7 @@ impl Signature {
     where
         F: FnOnce(&mut [u8; MAX_LEN]) -> usize,
     {
-        let mut r = Signature {
+        let mut r = Self {
             value: [0; MAX_LEN],
             len: 0,
         };

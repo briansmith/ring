@@ -25,7 +25,7 @@ pub struct Seed {
 impl Seed {
     pub(crate) fn generate(
         curve: &'static Curve, rng: &rand::SecureRandom, cpu_features: cpu::Features,
-    ) -> Result<Seed, error::Unspecified> {
+    ) -> Result<Self, error::Unspecified> {
         let mut r = Self {
             bytes: [0u8; SEED_MAX_BYTES],
             curve,
@@ -43,7 +43,7 @@ impl Seed {
             return Err(error::Unspecified);
         }
         (curve.check_private_key_bytes)(bytes)?;
-        let mut r = Seed {
+        let mut r = Self {
             bytes: [0; SEED_MAX_BYTES],
             curve,
             cpu_features,

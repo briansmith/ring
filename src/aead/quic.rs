@@ -41,7 +41,7 @@ impl HeaderProtectionKey {
     pub fn new(
         algorithm: &'static Algorithm, key_bytes: &[u8],
     ) -> Result<Self, error::Unspecified> {
-        Ok(HeaderProtectionKey {
+        Ok(Self {
             inner: (algorithm.init)(key_bytes, cpu::features())?,
             algorithm,
         })

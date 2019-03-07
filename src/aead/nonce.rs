@@ -49,7 +49,7 @@ impl Nonce {
     /// Constructs a `Nonce` with the given value, assuming that the value is
     /// unique for the lifetime of the key it is being used with.
     #[inline]
-    pub fn assume_unique_for_key(value: [u8; NONCE_LEN]) -> Self { Nonce(value) }
+    pub fn assume_unique_for_key(value: [u8; NONCE_LEN]) -> Self { Self(value) }
 }
 
 impl AsRef<[u8; NONCE_LEN]> for Nonce {
@@ -127,12 +127,12 @@ impl<U32: Layout<u32>> From<Counter<U32>> for Iv
 where
     u32: From<U32>,
 {
-    fn from(counter: Counter<U32>) -> Self { Iv(unsafe { counter.block }) }
+    fn from(counter: Counter<U32>) -> Self { Self(unsafe { counter.block }) }
 }
 
 impl Iv {
     #[inline]
-    pub fn assume_unique_for_key(a: Block) -> Self { Iv(a) }
+    pub fn assume_unique_for_key(a: Block) -> Self { Self(a) }
 
     #[inline]
     pub fn into_block_less_safe(self) -> Block { self.0 }

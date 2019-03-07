@@ -23,7 +23,7 @@ impl Key {
     pub(super) fn new(mut h_be: Block, cpu_features: cpu::Features) -> Self {
         let h = h_be.u64s_be_to_native();
 
-        let mut key = Key(GCM128_KEY {
+        let mut key = Self(GCM128_KEY {
             Htable: [u128 { hi: 0, lo: 0 }; GCM128_HTABLE_LEN],
         });
 

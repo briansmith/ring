@@ -79,7 +79,7 @@ pub struct ExtPoint {
 
 impl ExtPoint {
     pub fn new_at_infinity() -> Self {
-        ExtPoint {
+        Self {
             x: Elem::zero(),
             y: Elem::zero(),
             z: Elem::zero(),
@@ -112,7 +112,7 @@ pub struct Point {
 
 impl Point {
     pub fn new_at_infinity() -> Self {
-        Point {
+        Self {
             x: Elem::zero(),
             y: Elem::zero(),
             z: Elem::zero(),

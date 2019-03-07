@@ -26,7 +26,7 @@ use libc::size_t;
 pub struct Key([Block; KEY_BLOCKS]);
 
 impl From<[Block; KEY_BLOCKS]> for Key {
-    fn from(value: [Block; KEY_BLOCKS]) -> Self { Key(value) }
+    fn from(value: [Block; KEY_BLOCKS]) -> Self { Self(value) }
 }
 
 pub const KEY_BLOCKS: usize = 2;
@@ -44,7 +44,7 @@ const OPAQUE_LEN: usize = 192;
 
 impl Context {
     #[inline]
-    pub fn from_key(Key(key_and_nonce): Key) -> Context {
+    pub fn from_key(Key(key_and_nonce): Key) -> Self {
         extern "C" {
             fn GFp_poly1305_blocks(
                 state: &mut Opaque, input: *const u8, len: size_t, should_pad: Pad,
@@ -55,7 +55,7 @@ impl Context {
         let key = DerivedKey(key_and_nonce[0].clone());
         let nonce = Nonce(key_and_nonce[1].clone());
 
-        let mut ctx = Context {
+        let mut ctx = Self {
             opaque: Opaque([0u8; OPAQUE_LEN]),
             nonce,
             func: Funcs {

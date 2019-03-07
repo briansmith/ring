@@ -21,19 +21,19 @@ pub struct BitLength(usize);
 // overflow.
 impl BitLength {
     #[inline]
-    pub const fn from_usize_bits(bits: usize) -> BitLength { BitLength(bits) }
+    pub const fn from_usize_bits(bits: usize) -> Self { Self(bits) }
 
     #[inline]
-    pub fn from_usize_bytes(bytes: usize) -> Result<BitLength, error::Unspecified> {
+    pub fn from_usize_bytes(bytes: usize) -> Result<Self, error::Unspecified> {
         let bits = bytes.checked_mul(8).ok_or(error::Unspecified)?;
-        Ok(BitLength::from_usize_bits(bits))
+        Ok(Self::from_usize_bits(bits))
     }
 
     #[cfg(feature = "use_heap")]
     #[inline]
-    pub fn half_rounded_up(&self) -> BitLength {
+    pub fn half_rounded_up(&self) -> Self {
         let round_up = self.0 & 1;
-        BitLength((self.0 / 2) + round_up)
+        Self((self.0 / 2) + round_up)
     }
 
     #[inline]

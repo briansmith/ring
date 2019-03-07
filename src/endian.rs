@@ -32,17 +32,17 @@ macro_rules! define_endian {
 macro_rules! impl_endian {
     ($endian:ident, $base:ident, $to_endian:ident, $from_endian:ident) => {
         impl Encoding<$base> for $endian<$base> {
-            const ZERO: Self = $endian(0);
+            const ZERO: Self = Self(0);
         }
 
         impl From<$base> for $endian<$base> {
             #[inline]
-            fn from(value: $base) -> Self { $endian($base::$to_endian(value)) }
+            fn from(value: $base) -> Self { Self($base::$to_endian(value)) }
         }
 
         impl From<Wrapping<$base>> for $endian<$base> {
             #[inline]
-            fn from(Wrapping(value): Wrapping<$base>) -> Self { $endian($base::$to_endian(value)) }
+            fn from(Wrapping(value): Wrapping<$base>) -> Self { Self($base::$to_endian(value)) }
         }
 
         impl From<$endian<$base>> for $base {

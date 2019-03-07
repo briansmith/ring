@@ -291,7 +291,7 @@ impl<M> Modulus<M> {
         };
 
         Ok((
-            Modulus {
+            Self {
                 limbs: n,
                 n0,
                 oneRR,
@@ -597,7 +597,7 @@ impl<M> One<M, RR> {
     // values, using `LIMB_BITS` here, rather than `N0_LIMBS_USED * LIMB_BITS`,
     // is correct because R**2 will still be a multiple of the latter as
     // `N0_LIMBS_USED` is either one or two.
-    fn newRR(m: &PartialModulus<M>, m_bits: bits::BitLength) -> One<M, RR> {
+    fn newRR(m: &PartialModulus<M>, m_bits: bits::BitLength) -> Self {
         let m_bits = m_bits.as_usize_bits();
         let r = (m_bits + (LIMB_BITS - 1)) / LIMB_BITS * LIMB_BITS;
 
@@ -629,7 +629,7 @@ impl<M> One<M, RR> {
         }
         let RR = elem_exp_vartime_(base, exponent, m);
 
-        One(Elem {
+        Self(Elem {
             limbs: RR.limbs,
             encoding: PhantomData, // PhantomData<RR>
         })
@@ -689,7 +689,7 @@ impl PublicExponent {
             return Err(error::KeyRejected::too_large());
         }
 
-        Ok(PublicExponent(value))
+        Ok(Self(value))
     }
 }
 
@@ -776,7 +776,7 @@ impl<M> PrivateExponent<M> {
             return Err(error::Unspecified);
         }
 
-        Ok(PrivateExponent { limbs: dP })
+        Ok(Self { limbs: dP })
     }
 }
 
@@ -785,7 +785,7 @@ impl<M: Prime> PrivateExponent<M> {
     fn for_flt(p: &Modulus<M>) -> Self {
         let two = elem_add(p.one(), p.one(), p);
         let p_minus_2 = elem_sub(p.zero(), &two, p);
-        PrivateExponent {
+        Self {
             limbs: p_minus_2.limbs,
         }
     }
@@ -1148,12 +1148,12 @@ impl From<u64> for N0 {
     fn from(n0: u64) -> Self {
         #[cfg(target_pointer_width = "64")]
         {
-            N0([n0, 0])
+            Self([n0, 0])
         }
 
         #[cfg(target_pointer_width = "32")]
         {
-            N0([n0 as Limb, (n0 >> LIMB_BITS) as Limb])
+            Self([n0 as Limb, (n0 >> LIMB_BITS) as Limb])
         }
     }
 }

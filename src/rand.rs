@@ -83,7 +83,7 @@ pub struct SystemRandom;
 impl SystemRandom {
     /// Constructs a new `SystemRandom`.
     #[inline(always)]
-    pub fn new() -> SystemRandom { SystemRandom }
+    pub fn new() -> Self { Self }
 }
 
 impl SecureRandom for SystemRandom {
