@@ -49,12 +49,6 @@ macro_rules! impl_endian {
             #[inline]
             fn from($endian(value): $endian<$base>) -> Self { $base::$from_endian(value) }
         }
-
-        impl AsRef<[u8; core::mem::size_of::<Self>()]> for $endian<$base> {
-            fn as_ref(&self) -> &[u8; core::mem::size_of::<Self>()] {
-                unsafe { core::mem::transmute(self) }
-            }
-        }
     };
 }
 

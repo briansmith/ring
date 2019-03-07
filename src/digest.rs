@@ -158,7 +158,7 @@ impl Context {
             .checked_mul(8)
             .unwrap();
         self.pending[(self.algorithm.block_len - 8)..self.algorithm.block_len]
-            .copy_from_slice(BigEndian::from(completed_data_bits).as_ref());
+            .copy_from_slice(&u64::to_be_bytes(completed_data_bits));
 
         unsafe {
             (self.algorithm.block_data_order)(&mut self.state, self.pending.as_ptr(), 1);

@@ -53,7 +53,7 @@ fn block_data_order_safe(state: &mut [Wrapping<u32>; 256 / 32], blocks: &[[[u8; 
     let mut w: [W32; 80] = [Wrapping(0); 80];
     for block in blocks {
         for t in 0..16 {
-            w[t] = Wrapping(polyfill::slice::u32_from_be_u8(block[t]))
+            w[t] = Wrapping(u32::from_be_bytes(block[t]))
         }
         for t in 16..80 {
             let wt = w[t - 3] ^ w[t - 8] ^ w[t - 14] ^ w[t - 16];

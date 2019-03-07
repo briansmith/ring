@@ -35,24 +35,6 @@ pub fn wrapping_rotate_left_u32(x: core::num::Wrapping<u32>, n: u32) -> core::nu
 }
 
 pub mod slice {
-    #[inline(always)]
-    pub fn u32_from_be_u8(buffer: [u8; 4]) -> u32 {
-        u32::from(buffer[0]) << 24
-            | u32::from(buffer[1]) << 16
-            | u32::from(buffer[2]) << 8
-            | u32::from(buffer[3])
-    }
-
-    #[inline(always)]
-    pub fn be_u8_from_u32(value: u32) -> [u8; 4] {
-        [
-            ((value >> 24) & 0xff) as u8,
-            ((value >> 16) & 0xff) as u8,
-            ((value >> 8) & 0xff) as u8,
-            (value & 0xff) as u8,
-        ]
-    }
-
     // https://github.com/rust-lang/rust/issues/27750
     // https://internals.rust-lang.org/t/stabilizing-basic-functions-on-arrays-and-slices/2868
     #[inline(always)]

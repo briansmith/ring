@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN;
-use crate::{bits, digest, error, io::der, polyfill};
+use crate::{bits, digest, error, io::der};
 use untrusted;
 
 #[cfg(feature = "use_heap")]
@@ -436,7 +436,7 @@ fn mgf1(
     for (i, mask_chunk) in mask.chunks_mut(digest_len).enumerate() {
         let mut ctx = digest::Context::new(digest_alg);
         ctx.update(seed);
-        ctx.update(&polyfill::slice::be_u8_from_u32(i as u32));
+        ctx.update(&u32::to_be_bytes(i as u32));
         let digest = ctx.finish();
         let mask_chunk_len = mask_chunk.len();
         mask_chunk.copy_from_slice(&digest.as_ref()[..mask_chunk_len]);

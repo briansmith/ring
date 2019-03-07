@@ -165,7 +165,7 @@ fn derive_block(
 ) {
     let mut ctx = hmac::SigningContext::with_key(secret);
     ctx.update(salt);
-    ctx.update(&polyfill::slice::be_u8_from_u32(idx));
+    ctx.update(&u32::to_be_bytes(idx));
 
     let mut u = ctx.sign();
 
