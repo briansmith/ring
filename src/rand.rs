@@ -33,6 +33,73 @@ pub trait SecureRandom: sealed::Sealed {
     fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified>;
 }
 
+/// A trait for modifying the underlying bytes of a type, used by `ring::rand` for random initialization.
+pub trait AsBytesMut {
+    /// Access the raw bytes underlying `self`.
+    fn as_bytes_mut(&mut self) -> &mut [u8];
+}
+
+impl AsBytesMut for u8 {
+    fn as_bytes_mut(&mut self) -> &mut [u8] {
+        core::slice::from_mut(self)
+    }
+}
+
+impl AsBytesMut for [u8] {
+    fn as_bytes_mut(&mut self) -> &mut [u8] {
+        self
+    }
+}
+
+macro_rules! impl_array_AsBytesMut {
+    ($base:ident $(, $len:expr)* ) => {
+        $(
+            impl AsBytesMut for [$base; $len] {
+                fn as_bytes_mut(&mut self) -> &mut [u8] {
+                    let x: &mut [$base] = self;
+                    x.as_bytes_mut()
+                }
+            }
+        )*
+    }
+}
+
+macro_rules! impl_AsBytesMut {
+    ($base:ident) => {
+        impl AsBytesMut for $base {
+            fn as_bytes_mut(&mut self) -> &mut [u8] {
+                core::slice::from_mut(self).as_bytes_mut()
+            }
+        }
+
+        impl AsBytesMut for [$base]
+        {
+            fn as_bytes_mut(&mut self) -> &mut [u8] {
+                unsafe {
+                    core::slice::from_raw_parts_mut(self.as_mut_ptr() as *mut u8,
+                                                    self.len() * core::mem::size_of::<$base>())
+                }
+            }
+        }
+
+    impl_array_AsBytesMut!($base, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32);
+    }
+}
+
+impl_array_AsBytesMut!(u8, 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32);
+impl_AsBytesMut!(u16);
+impl_AsBytesMut!(u32);
+impl_AsBytesMut!(u64);
+impl_AsBytesMut!(u128);
+impl_AsBytesMut!(usize);
+
+/// Attempts to fill a `T` with random bytes and return it.
+pub fn value<T: Default + AsBytesMut>(rng: &SecureRandom) -> Result<T, error::Unspecified> {
+    let mut r: T = Default::default();
+    rng.fill(r.as_bytes_mut())?;
+    Ok(r)
+}
+
 /// A secure random number generator where the random values come directly
 /// from the operating system.
 ///
