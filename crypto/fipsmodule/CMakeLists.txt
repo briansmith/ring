@@ -65,6 +65,7 @@ if(${ARCH} STREQUAL "aarch64")
 
     aesv8-armx.${ASM_EXT}
     armv8-mont.${ASM_EXT}
+    ghash-neon-armv8.${ASM_EXT}
     ghashv8-armx.${ASM_EXT}
     sha1-armv8.${ASM_EXT}
     sha256-armv8.${ASM_EXT}
@@ -99,6 +100,7 @@ perlasm(co-586.${ASM_EXT} bn/asm/co-586.pl)
 perlasm(ghash-armv4.${ASM_EXT} modes/asm/ghash-armv4.pl)
 perlasm(ghashp8-ppc.${ASM_EXT} modes/asm/ghashp8-ppc.pl)
 perlasm(ghashv8-armx.${ASM_EXT} modes/asm/ghashv8-armx.pl)
+perlasm(ghash-neon-armv8.${ASM_EXT} modes/asm/ghash-neon-armv8.pl)
 perlasm(ghash-ssse3-x86_64.${ASM_EXT} modes/asm/ghash-ssse3-x86_64.pl)
 perlasm(ghash-ssse3-x86.${ASM_EXT} modes/asm/ghash-ssse3-x86.pl)
 perlasm(ghash-x86_64.${ASM_EXT} modes/asm/ghash-x86_64.pl)
