@@ -45,6 +45,7 @@ compilers = {
     "aarch64-unknown-linux-gnu" : [ "aarch64-linux-gnu-gcc" ],
     "armv7-linux-androideabi" : [ "arm-linux-androideabi-clang" ],
     "arm-unknown-linux-gnueabihf" : [ "arm-linux-gnueabihf-gcc" ],
+    "mipsel-unknown-linux-gnu": [ "mipsel-linux-gnu-gcc" ],
     "i686-unknown-linux-gnu" : linux_compilers,
     "x86_64-unknown-linux-gnu" : linux_compilers,
     "x86_64-apple-darwin" : osx_compilers,
@@ -76,6 +77,7 @@ targets = {
         "aarch64-unknown-linux-gnu",
         "i686-unknown-linux-gnu",
         "arm-unknown-linux-gnueabihf",
+        "mipsel-unknown-linux-gnu",
     ],
 }
 
@@ -145,7 +147,7 @@ def format_entry(os, target, compiler, rust, mode, features):
         sources_with_dups = sum([get_sources_for_package(p) for p in packages],[])
         sources = sorted(list(set(sources_with_dups)))
         template += """
-      dist: trusty"""
+      dist: xenial"""
 
     if sys == "linux":
         if packages:
@@ -189,12 +191,21 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
 
     if target == "aarch64-unknown-linux-gnu":
         packages += ["gcc-aarch64-linux-gnu",
-                     "libc6-dev-arm64-cross"]
+                     "libc6-dev-arm64-cross",
+                     "binfmt-support",
+                     "qemu-user-binfmt"]
     if target == "arm-unknown-linux-gnueabihf":
         packages += ["gcc-arm-linux-gnueabihf",
-                     "libc6-dev-armhf-cross"]
+                     "libc6-dev-armhf-cross",
+                     "binfmt-support",
+                     "qemu-user-binfmt"]
     if target == "armv7-linux-androideabi":
         packages += ["expect"]
+    if target == "mipsel-unknown-linux-gnu":
+        packages += ["gcc-mipsel-linux-gnu",
+                     "libc6-dev-mipsel-cross",
+                     "binfmt-support",
+                     "qemu-user-binfmt"]
 
     if arch == "i686":
         if kcov == True:
@@ -222,7 +233,7 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
                          "libdw-dev",
                          "binutils-dev",
                          "libiberty-dev"]
-    elif arch not in ["aarch64", "arm", "armv7"]:
+    elif arch not in ["aarch64", "arm", "armv7", "mipsel"]:
         raise ValueError("unexpected arch: %s" % arch)
 
     return packages
@@ -231,9 +242,9 @@ def get_sources_for_package(package):
     ubuntu_toolchain = "ubuntu-toolchain-r-test"
     if package.startswith("clang-"):
         _, version = package.split("-")
-        llvm_toolchain = "llvm-toolchain-trusty-%s" % version
+        llvm_toolchain = "llvm-toolchain-xenial-%s" % version
 
-        # Stuff in llvm-toolchain-trusty depends on stuff in the toolchain
+        # Stuff in llvm-toolchain-xenial depends on stuff in the toolchain
         # packages.
         return [llvm_toolchain, ubuntu_toolchain]
     elif package.startswith("gcc-"):

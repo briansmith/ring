@@ -34,18 +34,12 @@ armv7-linux-androideabi)
   export PATH=$HOME/android/android-sdk-linux/platform-tools:$PATH
   export PATH=$HOME/android/android-sdk-linux/tools:$PATH
   ;;
+mipsel-unknown-linux-gnu)
+  export QEMU_LD_PREFIX=/usr/mipsel-linux-gnu
+  ;;
 *)
   ;;
 esac
-
-if [[ "$TARGET_X" =~ ^(arm|aarch64) && ! "$TARGET_X" =~ android ]]; then
-  # We need a newer QEMU than Travis has.
-  # sudo is needed until the PPA and its packages are whitelisted.
-  # See https://github.com/travis-ci/apt-source-whitelist/issues/271
-  sudo add-apt-repository ppa:pietro-monteiro/qemu-backport -y
-  sudo apt-get update -qq
-  sudo apt-get install --no-install-recommends binfmt-support qemu-user-binfmt -y
-fi
 
 if [[ ! "$TARGET_X" =~ "x86_64-" ]]; then
   rustup target add "$TARGET_X"
