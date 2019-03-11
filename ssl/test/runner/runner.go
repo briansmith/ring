@@ -10588,14 +10588,19 @@ var testCurves = []struct {
 	{"P-521", CurveP521},
 	{"X25519", CurveX25519},
 	{"CECPQ2", CurveCECPQ2},
+	{"CECPQ2b", CurveCECPQ2b},
 }
 
 const bogusCurve = 0x1234
 
+func isPqGroup(r CurveID) bool {
+	return r == CurveCECPQ2 || r == CurveCECPQ2b
+}
+
 func addCurveTests() {
 	for _, curve := range testCurves {
 		for _, ver := range tlsVersions {
-			if curve.id == CurveCECPQ2 && ver.version < VersionTLS13 {
+			if isPqGroup(curve.id) && ver.version < VersionTLS13 {
 				continue
 			}
 
@@ -10637,7 +10642,7 @@ func addCurveTests() {
 				expectedCurveID: curve.id,
 			})
 
-			if curve.id != CurveX25519 && curve.id != CurveCECPQ2 {
+			if curve.id != CurveX25519 && !isPqGroup(curve.id) {
 				testCases = append(testCases, testCase{
 					name: "CurveTest-Client-Compressed-" + suffix,
 					config: Config{
@@ -11062,6 +11067,21 @@ func addCurveTests() {
 		},
 	})
 
+	// CECPQ2b should not be offered by a TLS < 1.3 client.
+	testCases = append(testCases, testCase{
+		name: "CECPQ2bNotInTLS12",
+		config: Config{
+			Bugs: ProtocolBugs{
+				FailIfCECPQ2Offered: true,
+			},
+		},
+		flags: []string{
+			"-max-version", strconv.Itoa(VersionTLS12),
+			"-curves", strconv.Itoa(int(CurveCECPQ2b)),
+			"-curves", strconv.Itoa(int(CurveX25519)),
+		},
+	})
+
 	// CECPQ2 should not crash a TLS < 1.3 client if the server mistakenly
 	// selects it.
 	testCases = append(testCases, testCase{
@@ -11080,9 +11100,38 @@ func addCurveTests() {
 		expectedError: ":WRONG_CURVE:",
 	})
 
+	// CECPQ2b should not crash a TLS < 1.3 client if the server mistakenly
+	// selects it.
+	testCases = append(testCases, testCase{
+		name: "CECPQ2bNotAcceptedByTLS12Client",
+		config: Config{
+			Bugs: ProtocolBugs{
+				SendCurve: CurveCECPQ2b,
+			},
+		},
+		flags: []string{
+			"-max-version", strconv.Itoa(VersionTLS12),
+			"-curves", strconv.Itoa(int(CurveCECPQ2b)),
+			"-curves", strconv.Itoa(int(CurveX25519)),
+		},
+		shouldFail:    true,
+		expectedError: ":WRONG_CURVE:",
+	})
+
 	// CECPQ2 should not be offered by default as a client.
 	testCases = append(testCases, testCase{
 		name: "CECPQ2NotEnabledByDefaultInClients",
+		config: Config{
+			MinVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				FailIfCECPQ2Offered: true,
+			},
+		},
+	})
+
+	// CECPQ2b should not be offered by default as a client.
+	testCases = append(testCases, testCase{
+		name: "CECPQ2bNotEnabledByDefaultInClients",
 		config: Config{
 			MinVersion: VersionTLS13,
 			Bugs: ProtocolBugs{
@@ -11123,6 +11172,38 @@ func addCurveTests() {
 		},
 	})
 
+	// If CECPQ2b is offered, both X25519 and CECPQ2b should have a key-share.
+	testCases = append(testCases, testCase{
+		name: "NotJustCECPQ2bKeyShare",
+		config: Config{
+			MinVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				ExpectedKeyShares: []CurveID{CurveCECPQ2b, CurveX25519},
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveCECPQ2b)),
+			"-curves", strconv.Itoa(int(CurveX25519)),
+			"-expect-curve-id", strconv.Itoa(int(CurveCECPQ2b)),
+		},
+	})
+
+	// ... but only if CECPQ2b is listed first.
+	testCases = append(testCases, testCase{
+		name: "CECPQ2bKeyShareNotIncludedSecond",
+		config: Config{
+			MinVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				ExpectedKeyShares: []CurveID{CurveX25519},
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveX25519)),
+			"-curves", strconv.Itoa(int(CurveCECPQ2b)),
+			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
+		},
+	})
+
 	// If CECPQ2 is the only configured curve, the key share is sent.
 	testCases = append(testCases, testCase{
 		name: "JustConfiguringCECPQ2Works",
@@ -11138,6 +11219,21 @@ func addCurveTests() {
 		},
 	})
 
+	// If CECPQ2b is the only configured curve, the key share is sent.
+	testCases = append(testCases, testCase{
+		name: "JustConfiguringCECPQ2bWorks",
+		config: Config{
+			MinVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				ExpectedKeyShares: []CurveID{CurveCECPQ2b},
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveCECPQ2b)),
+			"-expect-curve-id", strconv.Itoa(int(CurveCECPQ2b)),
+		},
+	})
+
 	// As a server, CECPQ2 is not yet supported by default.
 	testCases = append(testCases, testCase{
 		testType: serverTest,
@@ -11146,6 +11242,21 @@ func addCurveTests() {
 			MinVersion:       VersionTLS13,
 			CurvePreferences: []CurveID{CurveCECPQ2, CurveX25519},
 			DefaultCurves:    []CurveID{CurveCECPQ2},
+		},
+		flags: []string{
+			"-server-preference",
+			"-expect-curve-id", strconv.Itoa(int(CurveX25519)),
+		},
+	})
+
+	// As a server, CECPQ2b is not yet supported by default.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "CECPQ2bNotEnabledByDefaultForAServer",
+		config: Config{
+			MinVersion:       VersionTLS13,
+			CurvePreferences: []CurveID{CurveCECPQ2b, CurveX25519},
+			DefaultCurves:    []CurveID{CurveCECPQ2b},
 		},
 		flags: []string{
 			"-server-preference",
@@ -14076,6 +14187,22 @@ func addTLS13CipherPreferenceTests() {
 			"-curves", strconv.Itoa(int(CurveCECPQ2)),
 		},
 	})
+
+	// CECPQ2b prefers 256-bit ciphers but will use AES-128 if there's nothing else.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-CipherPreference-CECPQ2b-AES128Only",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveCECPQ2b)),
+		},
+	})
+
 	// When a 256-bit cipher is offered, even if not in first place, it should be
 	// picked.
 	testCases = append(testCases, testCase{
@@ -14097,6 +14224,40 @@ func addTLS13CipherPreferenceTests() {
 	testCases = append(testCases, testCase{
 		testType: serverTest,
 		name:     "TLS13-CipherPreference-CECPQ2-AES128PreferredOtherwise",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+				TLS_AES_256_GCM_SHA384,
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveX25519)),
+		},
+		expectedCipher: TLS_AES_128_GCM_SHA256,
+	})
+
+	// When a 256-bit cipher is offered, even if not in first place, it should be
+	// picked.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-CipherPreference-CECPQ2b-AES256Preferred",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+				TLS_AES_256_GCM_SHA384,
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveCECPQ2b)),
+		},
+		expectedCipher: TLS_AES_256_GCM_SHA384,
+	})
+	// ... but when CECPQ2b isn't being used, the client's preference controls.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-CipherPreference-CECPQ2b-AES128PreferredOtherwise",
 		config: Config{
 			MaxVersion: VersionTLS13,
 			CipherSuites: []uint16{
@@ -14141,6 +14302,42 @@ func addTLS13CipherPreferenceTests() {
 		},
 		flags: []string{
 			"-curves", strconv.Itoa(int(CurveCECPQ2)),
+			"-expect-cipher-aes", strconv.Itoa(int(TLS_AES_256_GCM_SHA384)),
+			"-expect-cipher-no-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
+		},
+	})
+
+	// Test that CECPQ2b continues to honor AES vs ChaCha20 logic.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-CipherPreference-CECPQ2b-AES128-ChaCha20-AES256",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+				TLS_CHACHA20_POLY1305_SHA256,
+				TLS_AES_256_GCM_SHA384,
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveCECPQ2b)),
+			"-expect-cipher-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
+			"-expect-cipher-no-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
+		},
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-CipherPreference-CECPQ2b-AES128-AES256-ChaCha20",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			CipherSuites: []uint16{
+				TLS_AES_128_GCM_SHA256,
+				TLS_AES_256_GCM_SHA384,
+				TLS_CHACHA20_POLY1305_SHA256,
+			},
+		},
+		flags: []string{
+			"-curves", strconv.Itoa(int(CurveCECPQ2b)),
 			"-expect-cipher-aes", strconv.Itoa(int(TLS_AES_256_GCM_SHA384)),
 			"-expect-cipher-no-aes", strconv.Itoa(int(TLS_CHACHA20_POLY1305_SHA256)),
 		},

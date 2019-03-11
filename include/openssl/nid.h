@@ -4237,6 +4237,9 @@ extern "C" {
 #define SN_CECPQ2 "CECPQ2"
 #define NID_CECPQ2 959
 
+#define SN_CECPQ2b "CECPQ2b"
+#define NID_CECPQ2b 960
+
 
 #if defined(__cplusplus)
 } /* extern C */

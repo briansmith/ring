@@ -199,6 +199,10 @@ static bool tls1_check_duplicate_extensions(const CBS *cbs) {
   return true;
 }
 
+static bool is_post_quantum_group(uint16_t id) {
+  return id == SSL_CURVE_CECPQ2 || id == SSL_CURVE_CECPQ2b;
+}
+
 bool ssl_client_hello_init(const SSL *ssl, SSL_CLIENT_HELLO *out,
                            const SSLMessage &msg) {
   OPENSSL_memset(out, 0, sizeof(*out));
@@ -325,10 +329,10 @@ bool tls1_get_shared_group(SSL_HANDSHAKE *hs, uint16_t *out_group_id) {
   for (uint16_t pref_group : pref) {
     for (uint16_t supp_group : supp) {
       if (pref_group == supp_group &&
-          // CECPQ2 doesn't fit in the u8-length-prefixed ECPoint field in TLS
-          // 1.2 and below.
+          // CECPQ2(b) doesn't fit in the u8-length-prefixed ECPoint field in
+          // TLS 1.2 and below.
           (ssl_protocol_version(ssl) >= TLS1_3_VERSION ||
-           pref_group != SSL_CURVE_CECPQ2)) {
+           !is_post_quantum_group(pref_group))) {
         *out_group_id = pref_group;
         return true;
       }
@@ -390,9 +394,9 @@ bool tls1_set_curves_list(Array<uint16_t> *out_group_ids, const char *curves) {
 }
 
 bool tls1_check_group_id(const SSL_HANDSHAKE *hs, uint16_t group_id) {
-  if (group_id == SSL_CURVE_CECPQ2 &&
+  if (is_post_quantum_group(group_id) &&
       ssl_protocol_version(hs->ssl) < TLS1_3_VERSION) {
-    // CECPQ2 requires TLS 1.3.
+    // CECPQ2(b) requires TLS 1.3.
     return false;
   }
 
@@ -2228,8 +2232,8 @@ static bool ext_key_share_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 
     group_id = groups[0];
 
-    if (group_id == SSL_CURVE_CECPQ2 && groups.size() >= 2) {
-      // CECPQ2 is not sent as the only initial key share. We'll include the
+    if (is_post_quantum_group(group_id) && groups.size() >= 2) {
+      // CECPQ2(b) is not sent as the only initial key share. We'll include the
       // 2nd preference group too to avoid round-trips.
       second_group_id = groups[1];
       assert(second_group_id != group_id);
@@ -2466,7 +2470,7 @@ static bool ext_supported_groups_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   }
 
   for (uint16_t group : tls1_get_grouplist(hs)) {
-    if (group == SSL_CURVE_CECPQ2 &&
+    if (is_post_quantum_group(group) &&
         hs->max_version < TLS1_3_VERSION) {
       continue;
     }
