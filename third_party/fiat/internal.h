@@ -25,8 +25,6 @@
 
 #include <GFp/base.h>
 
-#include <GFp/base.h>
-
 #include "../../crypto/internal.h"
 
 
