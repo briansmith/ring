@@ -195,6 +195,16 @@ ASN1_INTEGER *c2i_ASN1_INTEGER(ASN1_INTEGER **a, const unsigned char **pp,
     unsigned char *to, *s;
     int i;
 
+    /*
+     * This function can handle lengths up to INT_MAX - 1, but the rest of the
+     * legacy ASN.1 code mixes integer types, so avoid exposing it to
+     * ASN1_INTEGERS with larger lengths.
+     */
+    if (len < 0 || len > INT_MAX / 2) {
+        OPENSSL_PUT_ERROR(ASN1, ASN1_R_TOO_LONG);
+        return NULL;
+    }
+
     if ((a == NULL) || ((*a) == NULL)) {
         if ((ret = M_ASN1_INTEGER_new()) == NULL)
             return (NULL);
