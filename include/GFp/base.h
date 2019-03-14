@@ -62,7 +62,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <sys/types.h>
 
 #if defined(_MSC_VER)
 #pragma warning(pop)
