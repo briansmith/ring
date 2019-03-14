@@ -127,12 +127,6 @@
 #include <stdalign.h>
 #endif
 
-#if defined(OPENSSL_X86) || defined(OPENSSL_X86_64) || defined(OPENSSL_ARM) || \
-    defined(OPENSSL_AARCH64) || defined(OPENSSL_PPC64LE)
-// GFp_cpuid_setup initializes the platform-specific feature cache.
-void GFp_cpuid_setup(void);
-#endif
-
 #define OPENSSL_LITTLE_ENDIAN 1
 #define OPENSSL_BIG_ENDIAN 2
 
