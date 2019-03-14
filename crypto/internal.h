@@ -111,15 +111,7 @@
 
 #include <GFp/base.h> // Must be first.
 
-#if defined(_MSC_VER)
-#pragma warning(push, 3)
-#endif
-
 #include <assert.h>
-
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
 
 #if defined(BORINGSSL_CONSTANT_TIME_VALIDATION)
 #include <valgrind/memcheck.h>
