@@ -113,10 +113,6 @@
 
 #include <assert.h>
 
-#if defined(BORINGSSL_CONSTANT_TIME_VALIDATION)
-#include <valgrind/memcheck.h>
-#endif
-
 #include <GFp/type_check.h>
 
 #if defined(__GNUC__) && \
@@ -233,26 +229,6 @@ static inline crypto_word constant_time_select_w(crypto_word mask,
                                                    crypto_word b) {
   return (mask & a) | (~mask & b);
 }
-
-#if defined(BORINGSSL_CONSTANT_TIME_VALIDATION)
-
-// CONSTTIME_SECRET takes a pointer and a number of bytes and marks that region
-// of memory as secret. Secret data is tracked as it flows to registers and
-// other parts of a memory. If secret data is used as a condition for a branch,
-// or as a memory index, it will trigger warnings in valgrind.
-#define CONSTTIME_SECRET(x, y) VALGRIND_MAKE_MEM_UNDEFINED(x, y)
-
-// CONSTTIME_DECLASSIFY takes a pointer and a number of bytes and marks that
-// region of memory as public. Public data is not subject to constant-time
-// rules.
-#define CONSTTIME_DECLASSIFY(x, y) VALGRIND_MAKE_MEM_DEFINED(x, y)
-
-#else
-
-#define CONSTTIME_SECRET(x, y)
-#define CONSTTIME_DECLASSIFY(x, y)
-
-#endif  // BORINGSSL_CONSTANT_TIME_VALIDATION
 
 // from_be_u32_ptr returns the 32-bit big-endian-encoded value at |data|.
 static inline uint32_t from_be_u32_ptr(const uint8_t *data) {
