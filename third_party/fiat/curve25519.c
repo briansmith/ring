@@ -37,7 +37,6 @@
 #pragma warning(pop)
 #endif
 
-#include <GFp/cpu.h>
 #include <GFp/mem.h>
 
 #include "internal.h"

@@ -48,8 +48,6 @@
 
 #include <GFp/base.h>
 
-#include <GFp/cpu.h>
-
 #include "internal.h"
 #include "../../internal.h"
 
