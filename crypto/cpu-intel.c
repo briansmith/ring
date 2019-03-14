@@ -59,8 +59,6 @@
 
 #if !defined(OPENSSL_NO_ASM) && (defined(OPENSSL_X86) || defined(OPENSSL_X86_64))
 
-#include <inttypes.h>
-
 #if defined(_MSC_VER)
 #pragma warning(push, 3)
 #include <immintrin.h>
