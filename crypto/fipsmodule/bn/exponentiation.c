@@ -614,10 +614,9 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
   BN_MONT_CTX *new_mont = NULL;
 
   BN_CTX_start(ctx);
-  BIGNUM *d = BN_CTX_get(ctx);
   BIGNUM *r = BN_CTX_get(ctx);
   val[0] = BN_CTX_get(ctx);
-  if (!d || !r || !val[0]) {
+  if (r == NULL || val[0] == NULL) {
     goto err;
   }
 
@@ -639,7 +638,9 @@ int BN_mod_exp_mont(BIGNUM *rr, const BIGNUM *a, const BIGNUM *p,
     goto err;
   }
   if (window > 1) {
-    if (!BN_mod_mul_montgomery(d, val[0], val[0], mont, ctx)) {
+    BIGNUM *d = BN_CTX_get(ctx);
+    if (d == NULL ||
+        !BN_mod_mul_montgomery(d, val[0], val[0], mont, ctx)) {
       goto err;
     }
     for (int i = 1; i < 1 << (window - 1); i++) {
