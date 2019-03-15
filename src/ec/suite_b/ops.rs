@@ -232,7 +232,7 @@ impl PublicKeyOps {
     // implements NIST SP 800-56A Step 2: "Verify that xQ and yQ are integers
     // in the interval [0, p-1] in the case that q is an odd prime p[.]"
     pub fn elem_parse(&self, input: &mut untrusted::Reader) -> Result<Elem<R>, error::Unspecified> {
-        let encoded_value = input.skip_and_get_input(self.common.num_limbs * LIMB_BYTES)?;
+        let encoded_value = input.read_bytes(self.common.num_limbs * LIMB_BYTES)?;
         let parsed = elem_parse_big_endian_fixed_consttime(self.common, encoded_value)?;
         let mut r = Elem::zero();
         // Montgomery encode (elem_to_mont).

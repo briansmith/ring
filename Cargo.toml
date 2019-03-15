@@ -300,7 +300,7 @@ include = [
 name = "ring"
 
 [dependencies]
-untrusted = "0.6.2"
+untrusted = { git = "https://github.com/briansmith/untrusted", tag = "ring-master" }
 libc = { version = "0.2.48", default_features = false }
 
 [target.'cfg(not(target_os = "ios"))'.dependencies]

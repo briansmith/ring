@@ -93,7 +93,7 @@ pub fn read_tag_and_get_value<'a>(
         },
     };
 
-    let inner = input.skip_and_get_input(length)?;
+    let inner = input.read_bytes(length)?;
     Ok((tag, inner))
 }
 
@@ -105,7 +105,7 @@ pub fn bit_string_with_no_unused_bits<'a>(
         if unused_bits_at_end != 0 {
             return Err(error::Unspecified);
         }
-        Ok(value.skip_to_end())
+        Ok(value.read_bytes_to_end())
     })
 }
 
@@ -132,7 +132,7 @@ fn nonnegative_integer<'a>(
             if input.at_end() && first_byte < min_value {
                 return Err(error::Unspecified);
             }
-            let _ = input.skip_to_end();
+            let _ = input.read_bytes_to_end();
             Ok(())
         })
     }
@@ -152,7 +152,7 @@ fn nonnegative_integer<'a>(
                 return Ok(value);
             }
 
-            let r = input.skip_to_end();
+            let r = input.read_bytes_to_end();
             r.read_all(error::Unspecified, |input| {
                 let second_byte = input.read_byte()?;
                 if (second_byte & 0x80) == 0 {
@@ -160,7 +160,7 @@ fn nonnegative_integer<'a>(
                     // is set.
                     return Err(error::Unspecified);
                 }
-                let _ = input.skip_to_end();
+                let _ = input.read_bytes_to_end();
                 Ok(())
             })?;
             check_minimum(r, min_value)?;
@@ -172,7 +172,7 @@ fn nonnegative_integer<'a>(
             return Err(error::Unspecified);
         }
 
-        let _ = input.skip_to_end();
+        let _ = input.read_bytes_to_end();
         check_minimum(value, min_value)?;
         Ok(value)
     })

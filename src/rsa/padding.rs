@@ -86,7 +86,7 @@ impl Verification for PKCS1 {
         let mut calculated = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
         let calculated = &mut calculated[..mod_bits.as_usize_bytes_rounded_up()];
         pkcs1_encode(&self, m_hash, calculated);
-        if m.skip_to_end() != calculated.as_ref() {
+        if m.read_bytes_to_end() != calculated.as_ref() {
             return Err(error::Unspecified);
         }
         Ok(())
@@ -317,8 +317,8 @@ impl Verification for PSS {
         // Step 3 is done by `PSSMetrics::new()` above.
 
         // Step 5, out of order.
-        let masked_db = em.skip_and_get_input(metrics.db_len)?;
-        let h_hash = em.skip_and_get_input(metrics.h_len)?;
+        let masked_db = em.read_bytes(metrics.db_len)?;
+        let h_hash = em.read_bytes(metrics.h_len)?;
 
         // Step 4.
         if em.read_byte()? != 0xbc {

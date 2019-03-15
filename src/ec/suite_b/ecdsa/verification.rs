@@ -165,8 +165,8 @@ fn split_rs_fixed<'a>(
     ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>,
 ) -> Result<(untrusted::Input<'a>, untrusted::Input<'a>), error::Unspecified> {
     let scalar_len = ops.scalar_bytes_len();
-    let r = input.skip_and_get_input(scalar_len)?;
-    let s = input.skip_and_get_input(scalar_len)?;
+    let r = input.read_bytes(scalar_len)?;
+    let s = input.read_bytes(scalar_len)?;
     Ok((r, s))
 }
 

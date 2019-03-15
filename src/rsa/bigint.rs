@@ -652,7 +652,7 @@ impl PublicExponent {
         if input.len() > 5 {
             return Err(error::KeyRejected::too_large());
         }
-        let value = input.read_all_mut(error::KeyRejected::invalid_encoding(), |input| {
+        let value = input.read_all(error::KeyRejected::invalid_encoding(), |input| {
             // The exponent can't be zero and it can't be prefixed with
             // zero-valued bytes.
             if input.peek(0) {
