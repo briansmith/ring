@@ -1174,7 +1174,20 @@ while(defined(my $line=<>)) {
 
     $line =~ s|\R$||;           # Better chomp
 
-    $line =~ s|[#!].*$||;	# get rid of asm-style comments...
+    if ($nasm) {
+	$line =~ s|^#ifdef |%ifdef |;
+	$line =~ s|^#ifndef |%ifndef |;
+	$line =~ s|^#endif|%endif|;
+	$line =~ s|[#!].*$||;	# get rid of asm-style comments...
+    } else {
+	# Get rid of asm-style comments but not preprocessor directives. The
+	# former are identified by having a letter after the '#' and starting in
+	# the first column.
+	$line =~ s|!.*$||;
+	$line =~ s|(?<=.)#.*$||;
+	$line =~ s|^#([^a-z].*)?$||;
+    }
+
     $line =~ s|/\*.*\*/||;	# ... and C-style comments...
     $line =~ s|^\s+||;		# ... and skip white spaces in beginning
     $line =~ s|\s+$||;		# ... and at the end
