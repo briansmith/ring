@@ -99,7 +99,7 @@ static uint64_t time_now() {
 #endif
 
 static uint64_t g_timeout_seconds = 1;
-static std::vector<size_t> g_chunk_lengths = {16, 256, 1350, 8192};
+static std::vector<size_t> g_chunk_lengths = {16, 256, 1350, 8192, 16384};
 
 static bool TimeFunction(TimeResults *results, std::function<bool()> func) {
   // total_us is the total amount of time that we'll aim to measure a function
@@ -846,7 +846,7 @@ static const struct argument kArguments[] = {
         "-chunks",
         kOptionalArgument,
         "A comma-separated list of input sizes to run tests at (default is "
-        "16,256,1350,8192)",
+        "16,256,1350,8192,16384)",
     },
     {
         "",
