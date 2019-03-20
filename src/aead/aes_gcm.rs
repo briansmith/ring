@@ -62,13 +62,14 @@ fn init(
 const CHUNK_BLOCKS: usize = 3 * 1024 / 16;
 
 fn aes_gcm_seal(
-    key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_out: &mut [u8], cpu_features: cpu::Features,
+    key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mut [u8],
+    cpu_features: cpu::Features,
 ) -> Tag {
     aead(key, nonce, aad, in_out, Direction::Sealing, cpu_features)
 }
 
 fn aes_gcm_open(
-    key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_prefix_len: usize, in_out: &mut [u8],
+    key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_prefix_len: usize, in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Tag {
     aead(
@@ -83,7 +84,7 @@ fn aes_gcm_open(
 
 #[inline(always)] // Avoid branching on `direction`.
 fn aead(
-    key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_out: &mut [u8], direction: Direction,
+    key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mut [u8], direction: Direction,
     cpu_features: cpu::Features,
 ) -> Tag {
     let Key { aes_key, gcm_key } = match key {

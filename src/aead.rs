@@ -102,8 +102,21 @@ impl OpeningKey {
 /// and `ciphertext_and_tag_modified_in_place` because Rust's type system
 /// does not allow us to have two slices, one mutable and one immutable, that
 /// reference overlapping memory.)
-pub fn open_in_place<'a>(
-    key: &OpeningKey, nonce: Nonce, aad: Aad, in_prefix_len: usize,
+pub fn open_in_place<'a, A: AsRef<[u8]>>(
+    key: &OpeningKey, nonce: Nonce, Aad(aad): Aad<A>, in_prefix_len: usize,
+    ciphertext_and_tag_modified_in_place: &'a mut [u8],
+) -> Result<&'a mut [u8], error::Unspecified> {
+    open_in_place_(
+        key,
+        nonce,
+        Aad::from(aad.as_ref()),
+        in_prefix_len,
+        ciphertext_and_tag_modified_in_place,
+    )
+}
+
+fn open_in_place_<'a>(
+    key: &OpeningKey, nonce: Nonce, aad: Aad<&[u8]>, in_prefix_len: usize,
     ciphertext_and_tag_modified_in_place: &'a mut [u8],
 ) -> Result<&'a mut [u8], error::Unspecified> {
     let ciphertext_and_tag_len = ciphertext_and_tag_modified_in_place
@@ -178,8 +191,20 @@ impl SealingKey {
 /// also `MAX_TAG_LEN`.
 ///
 /// `aad` is the additional authenticated data, if any.
-pub fn seal_in_place(
-    key: &SealingKey, nonce: Nonce, aad: Aad, in_out: &mut [u8], out_suffix_capacity: usize,
+pub fn seal_in_place<A: AsRef<[u8]>>(
+    key: &SealingKey, nonce: Nonce, Aad(aad): Aad<A>, in_out: &mut [u8], out_suffix_capacity: usize,
+) -> Result<usize, error::Unspecified> {
+    seal_in_place_(
+        key,
+        nonce,
+        Aad::from(aad.as_ref()),
+        in_out,
+        out_suffix_capacity,
+    )
+}
+
+fn seal_in_place_(
+    key: &SealingKey, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mut [u8], out_suffix_capacity: usize,
 ) -> Result<usize, error::Unspecified> {
     if out_suffix_capacity < key.key.algorithm.tag_len() {
         return Err(error::Unspecified);
@@ -202,17 +227,17 @@ pub fn seal_in_place(
 /// The additionally authenticated data (AAD) for an opening or sealing
 /// operation. This data is authenticated but is **not** encrypted.
 #[repr(transparent)]
-pub struct Aad<'a>(&'a [u8]);
+pub struct Aad<A: AsRef<[u8]>>(A);
 
-impl<'a> Aad<'a> {
-    /// Construct the `Aad` by borrowing a contiguous sequence of bytes.
+impl<A: AsRef<[u8]>> Aad<A> {
+    /// Construct the `Aad` from the given bytes.
     #[inline]
-    pub fn from(aad: &'a [u8]) -> Self { Aad(aad) }
+    pub fn from(aad: A) -> Self { Aad(aad) }
 }
 
-impl Aad<'static> {
+impl Aad<[u8; 0]> {
     /// Construct an empty `Aad`.
-    pub fn empty() -> Self { Self::from(&[]) }
+    pub fn empty() -> Self { Self::from([]) }
 }
 
 /// `OpeningKey` and `SealingKey` are type-safety wrappers around `Key`, which
@@ -253,14 +278,14 @@ pub struct Algorithm {
     seal: fn(
         key: &KeyInner,
         nonce: Nonce,
-        aad: Aad,
+        aad: Aad<&[u8]>,
         in_out: &mut [u8],
         cpu_features: cpu::Features,
     ) -> Tag,
     open: fn(
         key: &KeyInner,
         nonce: Nonce,
-        aad: Aad,
+        aad: Aad<&[u8]>,
         in_prefix_len: usize,
         in_out: &mut [u8],
         cpu_features: cpu::Features,

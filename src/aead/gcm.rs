@@ -78,7 +78,7 @@ pub struct Context {
 }
 
 impl Context {
-    pub(crate) fn new(key: &Key, aad: Aad, cpu_features: cpu::Features) -> Self {
+    pub(crate) fn new(key: &Key, aad: Aad<&[u8]>, cpu_features: cpu::Features) -> Self {
         let mut ctx = Context {
             inner: GCM128_CONTEXT {
                 Xi: Block::zero(),

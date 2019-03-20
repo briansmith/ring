@@ -47,13 +47,14 @@ fn chacha20_poly1305_init(
 }
 
 fn chacha20_poly1305_seal(
-    key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_out: &mut [u8], cpu_features: cpu::Features,
+    key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_out: &mut [u8],
+    cpu_features: cpu::Features,
 ) -> Tag {
     aead(key, nonce, aad, in_out, Direction::Sealing, cpu_features)
 }
 
 fn chacha20_poly1305_open(
-    key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_prefix_len: usize, in_out: &mut [u8],
+    key: &aead::KeyInner, nonce: Nonce, aad: Aad<&[u8]>, in_prefix_len: usize, in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Tag {
     aead(
@@ -70,8 +71,8 @@ pub type Key = chacha::Key;
 
 #[inline(always)] // Statically eliminate branches on `direction`.
 fn aead(
-    key: &aead::KeyInner, nonce: Nonce, Aad(aad): Aad, in_out: &mut [u8], direction: Direction,
-    _todo: cpu::Features,
+    key: &aead::KeyInner, nonce: Nonce, Aad(aad): Aad<&[u8]>, in_out: &mut [u8],
+    direction: Direction, _todo: cpu::Features,
 ) -> Tag {
     let chacha20_key = match key {
         aead::KeyInner::ChaCha20Poly1305(key) => key,
