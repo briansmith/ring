@@ -7,7 +7,6 @@ if(${ARCH} STREQUAL "x86_64")
     aesni-gcm-x86_64.${ASM_EXT}
     aesni-x86_64.${ASM_EXT}
     aes-x86_64.${ASM_EXT}
-    bsaes-x86_64.${ASM_EXT}
     ghash-ssse3-x86_64.${ASM_EXT}
     ghash-x86_64.${ASM_EXT}
     md5-x86_64.${ASM_EXT}
@@ -95,7 +94,6 @@ perlasm(armv4-mont.${ASM_EXT} bn/asm/armv4-mont.pl)
 perlasm(armv8-mont.${ASM_EXT} bn/asm/armv8-mont.pl)
 perlasm(bn-586.${ASM_EXT} bn/asm/bn-586.pl)
 perlasm(bsaes-armv7.${ASM_EXT} aes/asm/bsaes-armv7.pl)
-perlasm(bsaes-x86_64.${ASM_EXT} aes/asm/bsaes-x86_64.pl)
 perlasm(co-586.${ASM_EXT} bn/asm/co-586.pl)
 perlasm(ghash-armv4.${ASM_EXT} modes/asm/ghash-armv4.pl)
 perlasm(ghashp8-ppc.${ASM_EXT} modes/asm/ghashp8-ppc.pl)

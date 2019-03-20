@@ -35,14 +35,12 @@ OPENSSL_INLINE int hwaes_capable(void) {
 }
 
 #define VPAES
+#if defined(OPENSSL_X86_64)
+#define VPAES_CTR32
+#endif
 OPENSSL_INLINE int vpaes_capable(void) {
   return (OPENSSL_ia32cap_get()[1] & (1 << (41 - 32))) != 0;
 }
-
-#if defined(OPENSSL_X86_64)
-#define BSAES
-OPENSSL_INLINE int bsaes_capable(void) { return vpaes_capable(); }
-#endif  // X86_64
 
 #elif defined(OPENSSL_ARM) || defined(OPENSSL_AARCH64)
 #define HWAES
