@@ -230,7 +230,7 @@ static int aes_ofb_cipher(EVP_CIPHER_CTX *ctx, uint8_t *out, const uint8_t *in,
 
 ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
                          block128_f *out_block, const uint8_t *key,
-                         size_t key_bytes, int large_inputs) {
+                         size_t key_bytes) {
   if (hwaes_capable()) {
     aes_hw_set_encrypt_key(key, key_bytes * 8, aes_key);
     if (gcm_key != NULL) {
@@ -242,9 +242,7 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
     return aes_hw_ctr32_encrypt_blocks;
   }
 
-  const int bsaes_ok = bsaes_capable();
-  const int vpaes_ok = vpaes_capable();
-  if (bsaes_ok && (large_inputs || !vpaes_ok)) {
+  if (bsaes_capable()) {
     aes_nohw_set_encrypt_key(key, key_bytes * 8, aes_key);
     if (gcm_key != NULL) {
       CRYPTO_gcm128_init_key(gcm_key, aes_key, aes_nohw_encrypt, 0);
@@ -255,7 +253,7 @@ ctr128_f aes_ctr_set_key(AES_KEY *aes_key, GCM128_KEY *gcm_key,
     return bsaes_ctr32_encrypt_blocks;
   }
 
-  if (vpaes_ok) {
+  if (vpaes_capable()) {
     vpaes_set_encrypt_key(key, key_bytes * 8, aes_key);
     if (out_block) {
       *out_block = vpaes_encrypt;
@@ -317,7 +315,7 @@ static int aes_gcm_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
   if (key) {
     OPENSSL_memset(&gctx->gcm, 0, sizeof(gctx->gcm));
     gctx->ctr = aes_ctr_set_key(&gctx->ks.ks, &gctx->gcm.gcm_key, NULL, key,
-                                ctx->key_len, 1 /* large inputs */);
+                                ctx->key_len);
     // If we have an iv can set it directly, otherwise use saved IV.
     if (iv == NULL && gctx->iv_set) {
       iv = gctx->iv;
@@ -860,8 +858,8 @@ static int aead_aes_gcm_init_impl(struct aead_aes_gcm_ctx *gcm_ctx,
     return 0;
   }
 
-  gcm_ctx->ctr = aes_ctr_set_key(&gcm_ctx->ks.ks, &gcm_ctx->gcm_key, NULL, key,
-                                 key_len, 1 /* large inputs */);
+  gcm_ctx->ctr =
+      aes_ctr_set_key(&gcm_ctx->ks.ks, &gcm_ctx->gcm_key, NULL, key, key_len);
   *out_tag_len = tag_len;
   return 1;
 }
