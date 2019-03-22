@@ -325,8 +325,10 @@ TEST(AESTest, ABI) {
       CHECK_ABI(vpaes_encrypt, block, block, &key);
       for (size_t blocks : block_counts) {
         SCOPED_TRACE(blocks);
+#if defined(VPAES_CBC)
         CHECK_ABI(vpaes_cbc_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
                   block, AES_ENCRYPT);
+#endif
 #if defined(VPAES_CTR32)
         CHECK_ABI(vpaes_ctr32_encrypt_blocks, buf, buf, blocks, &key, block);
 #endif
@@ -334,11 +336,13 @@ TEST(AESTest, ABI) {
 
       CHECK_ABI(vpaes_set_decrypt_key, kKey, bits, &key);
       CHECK_ABI(vpaes_decrypt, block, block, &key);
+#if defined(VPAES_CBC)
       for (size_t blocks : block_counts) {
         SCOPED_TRACE(blocks);
         CHECK_ABI(vpaes_cbc_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
                   block, AES_DECRYPT);
       }
+#endif  // VPAES_CBC
     }
 
     if (hwaes_capable()) {
