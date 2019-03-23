@@ -89,7 +89,6 @@ constexpr size_t kFlag_aesni_gcm_encrypt = 2;
 constexpr size_t kFlag_aes_hw_set_encrypt_key = 3;
 constexpr size_t kFlag_vpaes_encrypt = 4;
 constexpr size_t kFlag_vpaes_set_encrypt_key = 5;
-constexpr size_t kFlag_bsaes_ctr32_encrypt_blocks = 6;
 
 TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
   AssertFunctionsHit(
@@ -98,9 +97,8 @@ TEST_F(ImplDispatchTest, AEAD_AES_GCM) {
           {kFlag_aes_hw_encrypt, aesni_},
           {kFlag_aes_hw_set_encrypt_key, aesni_},
           {kFlag_aesni_gcm_encrypt, is_x86_64_ && aesni_ && avx_movbe_},
-          {kFlag_vpaes_encrypt, !is_x86_64_ && ssse3_ && !aesni_},
-          {kFlag_vpaes_set_encrypt_key, !is_x86_64_ && ssse3_ && !aesni_},
-          {kFlag_bsaes_ctr32_encrypt_blocks, is_x86_64_ && ssse3_ && !aesni_},
+          {kFlag_vpaes_encrypt, ssse3_ && !aesni_},
+          {kFlag_vpaes_set_encrypt_key, ssse3_ && !aesni_},
       },
       [] {
         const uint8_t kZeros[16] = {0};
@@ -123,7 +121,6 @@ TEST_F(ImplDispatchTest, AES_set_encrypt_key) {
       {
           {kFlag_aes_hw_set_encrypt_key, aesni_},
           {kFlag_vpaes_set_encrypt_key, ssse3_ && !aesni_},
-          // BSAES will not be used for the |AES_*| functions.
       },
       [] {
         AES_KEY key;
@@ -141,7 +138,6 @@ TEST_F(ImplDispatchTest, AES_single_block) {
       {
           {kFlag_aes_hw_encrypt, aesni_},
           {kFlag_vpaes_encrypt, ssse3_ && !aesni_},
-          // BSAES will not be used for the |AES_*| functions.
       },
       [&key] {
         uint8_t in[AES_BLOCK_SIZE] = {0};
