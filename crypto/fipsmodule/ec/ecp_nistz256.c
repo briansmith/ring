@@ -174,56 +174,52 @@ void GFp_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],
   GFp_nistz256_point_add(r, r, &h);
 }
 
+static const unsigned kWindowSize = 7;
+
+static inline void select_precomputed(P256_POINT_AFFINE *p, size_t i,
+                                      unsigned raw_wvalue) {
+  Limb recoded_is_negative;
+  unsigned recoded;
+  booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
+  GFp_nistz256_select_w7(p, &GFp_nistz256_precomputed[i], recoded);
+  Limb neg_y[P256_LIMBS];
+  GFp_nistz256_neg(neg_y, p->Y);
+  copy_conditional(p->Y, neg_y, recoded_is_negative);
+}
+
 void GFp_nistz256_point_mul_base(P256_POINT *r,
                                  const Limb g_scalar[P256_LIMBS]) {
-  static const unsigned kWindowSize = 7;
   static const unsigned kMask = (1 << (7 /* kWindowSize */ + 1)) - 1;
 
   uint8_t p_str[(P256_LIMBS * sizeof(Limb)) + 1];
   gfp_little_endian_bytes_from_scalar(p_str, sizeof(p_str) / sizeof(p_str[0]),
                                       g_scalar, P256_LIMBS);
 
-  typedef union {
-    P256_POINT p;
-    P256_POINT_AFFINE a;
-  } P256_POINT_UNION;
-
-  alignas(32) P256_POINT_UNION p;
-  alignas(32) P256_POINT_UNION t;
-
   /* First window */
   unsigned index = kWindowSize;
 
-  unsigned raw_wvalue;
-  Limb recoded_is_negative;
-  unsigned recoded;
+  alignas(32) P256_POINT_AFFINE t;
 
-  raw_wvalue = (p_str[0] << 1) & kMask;
+  unsigned raw_wvalue = (p_str[0] << 1) & kMask;
+  select_precomputed(&t, 0, raw_wvalue);
 
-  booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
-  PRECOMP256_ROW const* const precomputed_table = GFp_nistz256_precomputed;
-  GFp_nistz256_select_w7(&p.a, &precomputed_table[0], recoded);
-  GFp_nistz256_neg(p.p.Z, p.p.Y);
-  copy_conditional(p.p.Y, p.p.Z, recoded_is_negative);
-
-  limbs_copy(p.p.Z, ONE, P256_LIMBS);
+  alignas(32) P256_POINT p;
+  limbs_copy(p.X, t.X, P256_LIMBS);
+  limbs_copy(p.Y, t.Y, P256_LIMBS);
+  limbs_copy(p.Z, ONE, P256_LIMBS);
   /* If it is at the point at infinity then p.p.X will be zero. */
-  copy_conditional(p.p.Z, p.p.X, is_infinity(p.p.X, p.p.Y));
+  copy_conditional(p.Z, p.X, is_infinity(p.X, p.Y));
 
   for (size_t i = 1; i < 37; i++) {
     unsigned off = (index - 1) / 8;
     raw_wvalue = p_str[off] | p_str[off + 1] << 8;
     raw_wvalue = (raw_wvalue >> ((index - 1) % 8)) & kMask;
     index += kWindowSize;
-
-    booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
-    GFp_nistz256_select_w7(&t.a, &precomputed_table[i], recoded);
-    GFp_nistz256_neg(t.p.Z, t.a.Y);
-    copy_conditional(t.a.Y, t.p.Z, recoded_is_negative);
-    GFp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
+    select_precomputed(&t, i, raw_wvalue);
+    GFp_nistz256_point_add_affine(&p, &p, &t);
   }
 
-  limbs_copy(r->X, p.p.X, P256_LIMBS);
-  limbs_copy(r->Y, p.p.Y, P256_LIMBS);
-  limbs_copy(r->Z, p.p.Z, P256_LIMBS);
+  limbs_copy(r->X, p.X, P256_LIMBS);
+  limbs_copy(r->Y, p.Y, P256_LIMBS);
+  limbs_copy(r->Z, p.Z, P256_LIMBS);
 }
