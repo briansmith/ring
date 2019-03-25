@@ -33,9 +33,6 @@
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif
 
-typedef P256_POINT_AFFINE PRECOMP256_ROW[64];
-
-
 /* Functions implemented in assembly */
 /* Modular neg: res = -a mod P */
 void GFp_nistz256_neg(Limb res[P256_LIMBS], const Limb a[P256_LIMBS]);
@@ -204,9 +201,8 @@ void GFp_nistz256_point_mul_base(P256_POINT *r,
   raw_wvalue = (p_str[0] << 1) & kMask;
 
   booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
-  const PRECOMP256_ROW *const precomputed_table =
-      (const PRECOMP256_ROW *)GFp_nistz256_precomputed;
-  GFp_nistz256_select_w7(&p.a, precomputed_table[0], recoded);
+  PRECOMP256_ROW const* const precomputed_table = GFp_nistz256_precomputed;
+  GFp_nistz256_select_w7(&p.a, &precomputed_table[0], recoded);
   GFp_nistz256_neg(p.p.Z, p.p.Y);
   copy_conditional(p.p.Y, p.p.Z, recoded_is_negative);
 
@@ -221,7 +217,7 @@ void GFp_nistz256_point_mul_base(P256_POINT *r,
     index += kWindowSize;
 
     booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
-    GFp_nistz256_select_w7(&t.a, precomputed_table[i], recoded);
+    GFp_nistz256_select_w7(&t.a, &precomputed_table[i], recoded);
     GFp_nistz256_neg(t.p.Z, t.a.Y);
     copy_conditional(t.a.Y, t.p.Z, recoded_is_negative);
     GFp_nistz256_point_add_affine(&p.p, &p.p, &t.a);
