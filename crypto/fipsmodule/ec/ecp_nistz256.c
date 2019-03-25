@@ -181,7 +181,7 @@ static inline void select_precomputed(P256_POINT_AFFINE *p, size_t i,
   Limb recoded_is_negative;
   unsigned recoded;
   booth_recode(&recoded_is_negative, &recoded, raw_wvalue, kWindowSize);
-  GFp_nistz256_select_w7(p, &GFp_nistz256_precomputed[i], recoded);
+  GFp_nistz256_select_w7(p, GFp_nistz256_precomputed[i], recoded);
   Limb neg_y[P256_LIMBS];
   GFp_nistz256_neg(neg_y, p->Y);
   copy_conditional(p->Y, neg_y, recoded_is_negative);
