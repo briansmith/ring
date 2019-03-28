@@ -737,103 +737,77 @@ static bool DecodeBase64(std::vector<uint8_t> *out, const char *in) {
   return true;
 }
 
-static bool TestSSL_SESSIONEncoding(const char *input_b64) {
-  const uint8_t *cptr;
-  uint8_t *ptr;
+TEST(SSLTest, SessionEncoding) {
+  for (const char *input_b64 : {
+           kOpenSSLSession,
+           kCustomSession,
+           kBoringSSLSession,
+       }) {
+    SCOPED_TRACE(std::string(input_b64));
+    // Decode the input.
+    std::vector<uint8_t> input;
+    ASSERT_TRUE(DecodeBase64(&input, input_b64));
 
-  // Decode the input.
-  std::vector<uint8_t> input;
-  if (!DecodeBase64(&input, input_b64)) {
-    return false;
-  }
+    // Verify the SSL_SESSION decodes.
+    bssl::UniquePtr<SSL_CTX> ssl_ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ssl_ctx);
+    bssl::UniquePtr<SSL_SESSION> session(
+        SSL_SESSION_from_bytes(input.data(), input.size(), ssl_ctx.get()));
+    ASSERT_TRUE(session) << "SSL_SESSION_from_bytes failed";
 
-  // Verify the SSL_SESSION decodes.
-  bssl::UniquePtr<SSL_CTX> ssl_ctx(SSL_CTX_new(TLS_method()));
-  if (!ssl_ctx) {
-    return false;
-  }
-  bssl::UniquePtr<SSL_SESSION> session(
-      SSL_SESSION_from_bytes(input.data(), input.size(), ssl_ctx.get()));
-  if (!session) {
-    fprintf(stderr, "SSL_SESSION_from_bytes failed\n");
-    return false;
-  }
+    // Verify the SSL_SESSION encoding round-trips.
+    size_t encoded_len;
+    bssl::UniquePtr<uint8_t> encoded;
+    uint8_t *encoded_raw;
+    ASSERT_TRUE(SSL_SESSION_to_bytes(session.get(), &encoded_raw, &encoded_len))
+        << "SSL_SESSION_to_bytes failed";
+    encoded.reset(encoded_raw);
+    EXPECT_EQ(Bytes(encoded.get(), encoded_len), Bytes(input))
+        << "SSL_SESSION_to_bytes did not round-trip";
 
-  // Verify the SSL_SESSION encoding round-trips.
-  size_t encoded_len;
-  bssl::UniquePtr<uint8_t> encoded;
-  uint8_t *encoded_raw;
-  if (!SSL_SESSION_to_bytes(session.get(), &encoded_raw, &encoded_len)) {
-    fprintf(stderr, "SSL_SESSION_to_bytes failed\n");
-    return false;
-  }
-  encoded.reset(encoded_raw);
-  if (encoded_len != input.size() ||
-      OPENSSL_memcmp(input.data(), encoded.get(), input.size()) != 0) {
-    fprintf(stderr, "SSL_SESSION_to_bytes did not round-trip\n");
-    hexdump(stderr, "Before: ", input.data(), input.size());
-    hexdump(stderr, "After:  ", encoded_raw, encoded_len);
-    return false;
-  }
+    // Verify the SSL_SESSION also decodes with the legacy API.
+    const uint8_t *cptr = input.data();
+    session.reset(d2i_SSL_SESSION(NULL, &cptr, input.size()));
+    ASSERT_TRUE(session) << "d2i_SSL_SESSION failed";
+    EXPECT_EQ(cptr, input.data() + input.size());
 
-  // Verify the SSL_SESSION also decodes with the legacy API.
-  cptr = input.data();
-  session.reset(d2i_SSL_SESSION(NULL, &cptr, input.size()));
-  if (!session || cptr != input.data() + input.size()) {
-    fprintf(stderr, "d2i_SSL_SESSION failed\n");
-    return false;
-  }
+    // Verify the SSL_SESSION encoding round-trips via the legacy API.
+    int len = i2d_SSL_SESSION(session.get(), NULL);
+    ASSERT_GT(len, 0) << "i2d_SSL_SESSION failed";
+    ASSERT_EQ(static_cast<size_t>(len), input.size())
+        << "i2d_SSL_SESSION(NULL) returned invalid length";
 
-  // Verify the SSL_SESSION encoding round-trips via the legacy API.
-  int len = i2d_SSL_SESSION(session.get(), NULL);
-  if (len < 0 || (size_t)len != input.size()) {
-    fprintf(stderr, "i2d_SSL_SESSION(NULL) returned invalid length\n");
-    return false;
-  }
+    encoded.reset((uint8_t *)OPENSSL_malloc(input.size()));
+    ASSERT_TRUE(encoded);
 
-  encoded.reset((uint8_t *)OPENSSL_malloc(input.size()));
-  if (!encoded) {
-    fprintf(stderr, "malloc failed\n");
-    return false;
+    uint8_t *ptr = encoded.get();
+    len = i2d_SSL_SESSION(session.get(), &ptr);
+    ASSERT_GT(len, 0) << "i2d_SSL_SESSION failed";
+    ASSERT_EQ(static_cast<size_t>(len), input.size())
+        << "i2d_SSL_SESSION(NULL) returned invalid length";
+    ASSERT_EQ(ptr, encoded.get() + input.size())
+        << "i2d_SSL_SESSION did not advance ptr correctly";
+    EXPECT_EQ(Bytes(encoded.get(), encoded_len), Bytes(input))
+        << "SSL_SESSION_to_bytes did not round-trip";
   }
 
-  ptr = encoded.get();
-  len = i2d_SSL_SESSION(session.get(), &ptr);
-  if (len < 0 || (size_t)len != input.size()) {
-    fprintf(stderr, "i2d_SSL_SESSION returned invalid length\n");
-    return false;
-  }
-  if (ptr != encoded.get() + input.size()) {
-    fprintf(stderr, "i2d_SSL_SESSION did not advance ptr correctly\n");
-    return false;
-  }
-  if (OPENSSL_memcmp(input.data(), encoded.get(), input.size()) != 0) {
-    fprintf(stderr, "i2d_SSL_SESSION did not round-trip\n");
-    return false;
-  }
+  for (const char *input_b64 : {
+           kBadSessionExtraField,
+           kBadSessionVersion,
+           kBadSessionTrailingData,
+       }) {
+    SCOPED_TRACE(std::string(input_b64));
+    std::vector<uint8_t> input;
+    ASSERT_TRUE(DecodeBase64(&input, input_b64));
 
-  return true;
-}
-
-static bool TestBadSSL_SESSIONEncoding(const char *input_b64) {
-  std::vector<uint8_t> input;
-  if (!DecodeBase64(&input, input_b64)) {
-    return false;
+    // Verify that the SSL_SESSION fails to decode.
+    bssl::UniquePtr<SSL_CTX> ssl_ctx(SSL_CTX_new(TLS_method()));
+    ASSERT_TRUE(ssl_ctx);
+    bssl::UniquePtr<SSL_SESSION> session(
+        SSL_SESSION_from_bytes(input.data(), input.size(), ssl_ctx.get()));
+    EXPECT_FALSE(session) << "SSL_SESSION_from_bytes unexpectedly succeeded";
+    ERR_clear_error();
   }
-
-  // Verify that the SSL_SESSION fails to decode.
-  bssl::UniquePtr<SSL_CTX> ssl_ctx(SSL_CTX_new(TLS_method()));
-  if (!ssl_ctx) {
-    return false;
-  }
-  bssl::UniquePtr<SSL_SESSION> session(
-      SSL_SESSION_from_bytes(input.data(), input.size(), ssl_ctx.get()));
-  if (session) {
-    fprintf(stderr, "SSL_SESSION_from_bytes unexpectedly succeeded\n");
-    return false;
-  }
-  ERR_clear_error();
-  return true;
 }
 
 static void ExpectDefaultVersion(uint16_t min_version, uint16_t max_version,
@@ -1087,63 +1061,67 @@ static size_t GetClientHelloLen(uint16_t max_version, uint16_t session_version,
   return client_hello.size() - SSL3_RT_HEADER_LENGTH;
 }
 
-struct PaddingTest {
-  size_t input_len, padded_len;
-};
+TEST(SSLTest, Padding) {
+  struct PaddingVersions {
+    uint16_t max_version, session_version;
+  };
+  static const PaddingVersions kPaddingVersions[] = {
+      // Test the padding extension at TLS 1.2.
+      {TLS1_2_VERSION, TLS1_2_VERSION},
+      // Test the padding extension at TLS 1.3 with a TLS 1.2 session, so there
+      // will be no PSK binder after the padding extension.
+      {TLS1_3_VERSION, TLS1_2_VERSION},
+      // Test the padding extension at TLS 1.3 with a TLS 1.3 session, so there
+      // will be a PSK binder after the padding extension.
+      {TLS1_3_VERSION, TLS1_3_VERSION},
 
-static const PaddingTest kPaddingTests[] = {
-    // ClientHellos of length below 0x100 do not require padding.
-    {0xfe, 0xfe},
-    {0xff, 0xff},
-    // ClientHellos of length 0x100 through 0x1fb are padded up to 0x200.
-    {0x100, 0x200},
-    {0x123, 0x200},
-    {0x1fb, 0x200},
-    // ClientHellos of length 0x1fc through 0x1ff get padded beyond 0x200. The
-    // padding extension takes a minimum of four bytes plus one required content
-    // byte. (To work around yet more server bugs, we avoid empty final
-    // extensions.)
-    {0x1fc, 0x201},
-    {0x1fd, 0x202},
-    {0x1fe, 0x203},
-    {0x1ff, 0x204},
-    // Finally, larger ClientHellos need no padding.
-    {0x200, 0x200},
-    {0x201, 0x201},
-};
+  };
 
-static bool TestPaddingExtension(uint16_t max_version,
-                                 uint16_t session_version) {
-  // Sample a baseline length.
-  size_t base_len = GetClientHelloLen(max_version, session_version, 1);
-  if (base_len == 0) {
-    return false;
-  }
+  struct PaddingTest {
+    size_t input_len, padded_len;
+  };
+  static const PaddingTest kPaddingTests[] = {
+      // ClientHellos of length below 0x100 do not require padding.
+      {0xfe, 0xfe},
+      {0xff, 0xff},
+      // ClientHellos of length 0x100 through 0x1fb are padded up to 0x200.
+      {0x100, 0x200},
+      {0x123, 0x200},
+      {0x1fb, 0x200},
+      // ClientHellos of length 0x1fc through 0x1ff get padded beyond 0x200. The
+      // padding extension takes a minimum of four bytes plus one required
+      // content
+      // byte. (To work around yet more server bugs, we avoid empty final
+      // extensions.)
+      {0x1fc, 0x201},
+      {0x1fd, 0x202},
+      {0x1fe, 0x203},
+      {0x1ff, 0x204},
+      // Finally, larger ClientHellos need no padding.
+      {0x200, 0x200},
+      {0x201, 0x201},
+  };
 
-  for (const PaddingTest &test : kPaddingTests) {
-    if (base_len > test.input_len) {
-      fprintf(stderr,
-              "Baseline ClientHello too long (max_version = %04x, "
-              "session_version = %04x).\n",
-              max_version, session_version);
-      return false;
+  for (const PaddingVersions &versions : kPaddingVersions) {
+    SCOPED_TRACE(versions.max_version);
+    SCOPED_TRACE(versions.session_version);
+
+    // Sample a baseline length.
+    size_t base_len =
+        GetClientHelloLen(versions.max_version, versions.session_version, 1);
+    ASSERT_NE(base_len, 0u) << "Baseline length could not be sampled";
+
+    for (const PaddingTest &test : kPaddingTests) {
+      SCOPED_TRACE(test.input_len);
+      ASSERT_LE(base_len, test.input_len) << "Baseline ClientHello too long";
+
+      size_t padded_len =
+          GetClientHelloLen(versions.max_version, versions.session_version,
+                            1 + test.input_len - base_len);
+      EXPECT_EQ(padded_len, test.padded_len)
+          << "ClientHello was not padded to expected length";
     }
-
-    size_t padded_len = GetClientHelloLen(max_version, session_version,
-                                          1 + test.input_len - base_len);
-    if (padded_len != test.padded_len) {
-      fprintf(stderr,
-              "%u-byte ClientHello padded to %u bytes, not %u (max_version = "
-              "%04x, session_version = %04x).\n",
-              static_cast<unsigned>(test.input_len),
-              static_cast<unsigned>(padded_len),
-              static_cast<unsigned>(test.padded_len), max_version,
-              session_version);
-      return false;
-    }
   }
-
-  return true;
 }
 
 static bssl::UniquePtr<X509> GetTestCertificate() {
@@ -4706,7 +4684,7 @@ TEST_P(SSLVersionTest, SessionPropertiesThreads) {
     thread.join();
   }
 }
-#endif
+#endif  // OPENSSL_THREADS
 
 constexpr size_t kNumQUICLevels = 4;
 static_assert(ssl_encryption_initial < kNumQUICLevels,
@@ -5370,26 +5348,6 @@ int BORINGSSL_enum_c_type_test(void);
 TEST(SSLTest, EnumTypes) {
   EXPECT_EQ(sizeof(int), sizeof(ssl_private_key_result_t));
   EXPECT_EQ(1, BORINGSSL_enum_c_type_test());
-}
-
-// TODO(davidben): Convert this file to GTest properly.
-TEST(SSLTest, AllTests) {
-  if (!TestSSL_SESSIONEncoding(kOpenSSLSession) ||
-      !TestSSL_SESSIONEncoding(kCustomSession) ||
-      !TestSSL_SESSIONEncoding(kBoringSSLSession) ||
-      !TestBadSSL_SESSIONEncoding(kBadSessionExtraField) ||
-      !TestBadSSL_SESSIONEncoding(kBadSessionVersion) ||
-      !TestBadSSL_SESSIONEncoding(kBadSessionTrailingData) ||
-      // Test the padding extension at TLS 1.2.
-      !TestPaddingExtension(TLS1_2_VERSION, TLS1_2_VERSION) ||
-      // Test the padding extension at TLS 1.3 with a TLS 1.2 session, so there
-      // will be no PSK binder after the padding extension.
-      !TestPaddingExtension(TLS1_3_VERSION, TLS1_2_VERSION) ||
-      // Test the padding extension at TLS 1.3 with a TLS 1.3 session, so there
-      // will be a PSK binder after the padding extension.
-      !TestPaddingExtension(TLS1_3_VERSION, TLS1_3_VERSION)) {
-    ADD_FAILURE() << "Tests failed";
-  }
 }
 
 }  // namespace
