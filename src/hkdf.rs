@@ -84,7 +84,6 @@ impl Prk {
     pub fn expand(&self, info: &[u8], out: &mut [u8]) {
         let prk = &self.0;
         let digest_alg = prk.digest_algorithm();
-        assert!(out.len() <= 255 * digest_alg.output_len);
         assert!(digest_alg.block_len >= digest_alg.output_len);
 
         let mut ctx = hmac::SigningContext::with_key(prk);
@@ -115,7 +114,7 @@ impl Prk {
 
             ctx = hmac::SigningContext::with_key(prk);
             ctx.update(t);
-            n += 1;
+            n = n.checked_add(1).unwrap();
         }
     }
 }
