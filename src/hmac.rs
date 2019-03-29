@@ -157,7 +157,7 @@
 use crate::{constant_time, digest, error, rand};
 
 /// A deprecated alias for `Tag`.
-#[deprecated(note="`Signature` was renamed to `Tag`. This alias will be removed soon.")]
+#[deprecated(note = "`Signature` was renamed to `Tag`. This alias will be removed soon.")]
 pub type Signature = Tag;
 
 /// An HMAC tag.
@@ -371,9 +371,7 @@ impl VerificationKey {
 ///
 /// The verification will be done in constant time to prevent timing attacks.
 #[inline(always)]
-pub fn verify(
-    key: &VerificationKey, data: &[u8], tag: &[u8],
-) -> Result<(), error::Unspecified> {
+pub fn verify(key: &VerificationKey, data: &[u8], tag: &[u8]) -> Result<(), error::Unspecified> {
     verify_with_own_key(&key.0, data, tag)
 }
 
@@ -427,12 +425,8 @@ mod tests {
             {
                 let key = hmac::SigningKey::generate(d, &mut rng).unwrap();
                 let tag = hmac::sign(&key, HELLO_WORLD_GOOD);
-                assert!(
-                    hmac::verify_with_own_key(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok()
-                );
-                assert!(
-                    hmac::verify_with_own_key(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err()
-                )
+                assert!(hmac::verify_with_own_key(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok());
+                assert!(hmac::verify_with_own_key(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err())
             }
 
             {
@@ -440,12 +434,8 @@ mod tests {
                 let key =
                     hmac::SigningKey::generate_serializable(d, &mut rng, &mut key_bytes).unwrap();
                 let tag = hmac::sign(&key, HELLO_WORLD_GOOD);
-                assert!(
-                    hmac::verify_with_own_key(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok()
-                );
-                assert!(
-                    hmac::verify_with_own_key(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err()
-                )
+                assert!(hmac::verify_with_own_key(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok());
+                assert!(hmac::verify_with_own_key(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err())
             }
 
             // Attempt with a `key_bytes` parameter that wrongly uses the
