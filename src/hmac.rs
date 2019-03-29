@@ -41,8 +41,8 @@
 //!
 //! The key that is used to sign the data should be a `SigningKey`;
 //! `SigningContext` or `sign` should be used for the signing. Use
-//! `verify_with_own_key` to verify the signature using the signing key; this
-//! is equivalent to, but more efficient than, constructing a `VerificationKey`
+//! `verify_with_own_key` to verify the tag using the signing key; this is
+//! equivalent to, but more efficient than, constructing a `VerificationKey`
 //! with the same value as the signing key and then calling `verify`.
 //!
 //! # Use Case: Key Derivation and Password Hashing
@@ -68,12 +68,12 @@
 //!
 //! let msg = "hello, world";
 //!
-//! let signature = hmac::sign(&key, msg.as_bytes());
+//! let tag = hmac::sign(&key, msg.as_bytes());
 //!
 //! // [We give access to the message to an untrusted party, and they give it
 //! // back to us. We need to verify they didn't tamper with it.]
 //!
-//! hmac::verify_with_own_key(&key, msg.as_bytes(), signature.as_ref())?;
+//! hmac::verify_with_own_key(&key, msg.as_bytes(), tag.as_ref())?;
 //! #
 //! # Ok(())
 //! # }
@@ -98,12 +98,12 @@
 //! rng.fill(&mut key_value)?;
 //!
 //! let s_key = hmac::SigningKey::new(&digest::SHA256, key_value.as_ref());
-//! let signature = hmac::sign(&s_key, msg.as_bytes());
+//! let tag = hmac::sign(&s_key, msg.as_bytes());
 //!
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
 //! let v_key = hmac::VerificationKey::new(&digest::SHA256, key_value.as_ref());
-//! hmac::verify(&v_key, msg.as_bytes(), signature.as_ref())?;
+//! hmac::verify(&v_key, msg.as_bytes(), tag.as_ref())?;
 //! #
 //! # Ok(())
 //! # }
@@ -131,7 +131,7 @@
 //! for part in &parts {
 //!     s_ctx.update(part.as_bytes());
 //! }
-//! let signature = s_ctx.sign();
+//! let tag = s_ctx.sign();
 //!
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
@@ -140,7 +140,7 @@
 //! for part in &parts {
 //!     msg.extend(part.as_bytes());
 //! }
-//! hmac::verify(&v_key, &msg.as_ref(), signature.as_ref())?;
+//! hmac::verify(&v_key, &msg.as_ref(), tag.as_ref())?;
 //! #
 //! # Ok(())
 //! # }
@@ -156,12 +156,15 @@
 
 use crate::{constant_time, digest, error, rand};
 
-/// An HMAC signature.
+/// A deprecated alias for `Tag`.
+#[deprecated(note="`Signature` was renamed to `Tag`. This alias will be removed soon.")]
+pub type Signature = Tag;
+
+/// An HMAC tag.
 ///
-/// For a given signature `s`, use `s.as_ref()` to get the signature value as
-/// a byte slice.
+/// For a given tag `t`, use `t.as_ref()` to get the tag value as a byte slice.
 #[derive(Clone, Copy, Debug)]
-pub struct Signature(digest::Digest);
+pub struct Tag(digest::Digest);
 
 /// A key to use for HMAC signing.
 pub struct SigningKey {
@@ -176,7 +179,7 @@ impl core::fmt::Debug for SigningKey {
     }
 }
 
-impl AsRef<[u8]> for Signature {
+impl AsRef<[u8]> for Tag {
     #[inline]
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
@@ -312,11 +315,11 @@ impl SigningContext {
     /// called.
     ///
     /// It is generally not safe to implement HMAC verification by comparing
-    // the return value of `sign` to a signature. Use `verify` for verification
-    // instead.
-    pub fn sign(mut self) -> Signature {
+    /// the return value of `sign` to a tag. Use `verify` for verification
+    /// instead.
+    pub fn sign(mut self) -> Tag {
         self.outer.update(self.inner.finish().as_ref());
-        Signature(self.outer.finish())
+        Tag(self.outer.finish())
     }
 }
 
@@ -326,9 +329,8 @@ impl SigningContext {
 /// parts.
 ///
 /// It is generally not safe to implement HMAC verification by comparing the
-/// return value of `sign` to a signature. Use `verify` for verification
-/// instead.
-pub fn sign(key: &SigningKey, data: &[u8]) -> Signature {
+/// return value of `sign` to a tag. Use `verify` for verification instead.
+pub fn sign(key: &SigningKey, data: &[u8]) -> Tag {
     let mut ctx = SigningContext::with_key(key);
     ctx.update(data);
     ctx.sign()
@@ -365,27 +367,27 @@ impl VerificationKey {
 }
 
 /// Calculates the HMAC of `data` using the key `key`, and verifies whether the
-/// resultant value equals `signature`, in one step.
+/// resultant value equals `tag`, in one step.
 ///
 /// The verification will be done in constant time to prevent timing attacks.
 #[inline(always)]
 pub fn verify(
-    key: &VerificationKey, data: &[u8], signature: &[u8],
+    key: &VerificationKey, data: &[u8], tag: &[u8],
 ) -> Result<(), error::Unspecified> {
-    verify_with_own_key(&key.0, data, signature)
+    verify_with_own_key(&key.0, data, tag)
 }
 
 /// Calculates the HMAC of `data` using the signing key `key`, and verifies
-/// whether the resultant value equals `signature`, in one step.
+/// whether the resultant value equals `tag`, in one step.
 ///
 /// This is logically equivalent to, but more efficient than, constructing a
 /// `VerificationKey` with the same value as `key` and then using `verify`.
 ///
 /// The verification will be done in constant time to prevent timing attacks.
 pub fn verify_with_own_key(
-    key: &SigningKey, data: &[u8], signature: &[u8],
+    key: &SigningKey, data: &[u8], tag: &[u8],
 ) -> Result<(), error::Unspecified> {
-    constant_time::verify_slices_are_equal(sign(key, data).as_ref(), signature)
+    constant_time::verify_slices_are_equal(sign(key, data).as_ref(), tag)
 }
 
 /// Returns the recommended key length for HMAC using the given digest
@@ -424,12 +426,12 @@ mod tests {
         for d in &digest::test_util::ALL_ALGORITHMS {
             {
                 let key = hmac::SigningKey::generate(d, &mut rng).unwrap();
-                let signature = hmac::sign(&key, HELLO_WORLD_GOOD);
+                let tag = hmac::sign(&key, HELLO_WORLD_GOOD);
                 assert!(
-                    hmac::verify_with_own_key(&key, HELLO_WORLD_GOOD, signature.as_ref()).is_ok()
+                    hmac::verify_with_own_key(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok()
                 );
                 assert!(
-                    hmac::verify_with_own_key(&key, HELLO_WORLD_BAD, signature.as_ref()).is_err()
+                    hmac::verify_with_own_key(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err()
                 )
             }
 
@@ -437,12 +439,12 @@ mod tests {
                 let mut key_bytes = vec![0; d.chaining_len];
                 let key =
                     hmac::SigningKey::generate_serializable(d, &mut rng, &mut key_bytes).unwrap();
-                let signature = hmac::sign(&key, HELLO_WORLD_GOOD);
+                let tag = hmac::sign(&key, HELLO_WORLD_GOOD);
                 assert!(
-                    hmac::verify_with_own_key(&key, HELLO_WORLD_GOOD, signature.as_ref()).is_ok()
+                    hmac::verify_with_own_key(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok()
                 );
                 assert!(
-                    hmac::verify_with_own_key(&key, HELLO_WORLD_BAD, signature.as_ref()).is_err()
+                    hmac::verify_with_own_key(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err()
                 )
             }
 
