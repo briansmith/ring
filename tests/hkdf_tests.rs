@@ -49,6 +49,12 @@ fn hkdf_tests() {
         let salt = hkdf::Salt::new(digest_alg, &salt);
 
         let mut out = vec![0u8; expected_out.len()];
+        salt.extract(&secret).expand(&info, &mut out);
+        assert_eq!(out, expected_out);
+
+        // Test deprecated interface.
+        let mut out = vec![0u8; expected_out.len()];
+        #[allow(deprecated)]
         hkdf::extract_and_expand(&salt, &secret, &info, &mut out);
         assert_eq!(out, expected_out);
 

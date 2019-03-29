@@ -37,103 +37,91 @@ impl Salt {
     pub fn new(digest_algorithm: &'static digest::Algorithm, value: &[u8]) -> Self {
         Salt(hmac::SigningKey::new(digest_algorithm, value))
     }
-}
 
-/// Fills `out` with the output of the HKDF Extract-and-Expand operation for
-/// the given inputs.
-///
-/// `extract_and_expand` is exactly equivalent to:
-///
-/// ```
-/// # use ring::{hkdf, hmac};
-/// # fn foo(salt: &hkdf::Salt, secret: &[u8], info: &[u8], out: &mut [u8]) {
-/// let prk = hkdf::extract(salt, secret);
-/// hkdf::expand(&prk, info, out)
-/// # }
-/// ```
-///
-/// See the documentation for `extract` and `expand` for details.
-///
-/// # Panics
-///
-/// `extract_and_expand` panics if `expand` panics.
-pub fn extract_and_expand(salt: &Salt, secret: &[u8], info: &[u8], out: &mut [u8]) {
-    let prk = extract(salt, secret);
-    expand(&prk, info, out)
-}
-
-/// The HKDF-Extract operation.
-///
-/// | Parameter                 | RFC 5869 Term
-/// |---------------------------|--------------
-/// | `salt.digest_algorithm()` | Hash
-/// | `secret`                  | IKM (Input Keying Material)
-/// | [return value]            | PRK
-pub fn extract(Salt(salt): &Salt, secret: &[u8]) -> Prk {
-    // The spec says that if no salt is provided then a key of
-    // `digest_alg.output_len` bytes of zeros is used. But, HMAC keys are
-    // already zero-padded to the block length, which is larger than the output
-    // length of the extract step (the length of the digest). Consequently, the
-    // `SigningKey` constructor will automatically do the right thing for a
-    // zero-length string.
-    let prk = hmac::sign(salt, secret);
-    Prk(hmac::SigningKey::new(salt.digest_algorithm(), prk.as_ref()))
+    /// The HKDF-Extract operation.
+    ///
+    /// | Parameter                 | RFC 5869 Term
+    /// |---------------------------|--------------
+    /// | `salt.digest_algorithm()` | Hash
+    /// | `secret`                  | IKM (Input Keying Material)
+    /// | [return value]            | PRK
+    pub fn extract(&self, secret: &[u8]) -> Prk {
+        // The spec says that if no salt is provided then a key of
+        // `digest_alg.output_len` bytes of zeros is used. But, HMAC keys are
+        // already zero-padded to the block length, which is larger than the output
+        // length of the extract step (the length of the digest). Consequently, the
+        // `SigningKey` constructor will automatically do the right thing for a
+        // zero-length string.
+        let salt = &self.0;
+        let prk = hmac::sign(salt, secret);
+        Prk(hmac::SigningKey::new(salt.digest_algorithm(), prk.as_ref()))
+    }
 }
 
 /// A HKDF PRK (pseudorandom key).
 pub struct Prk(hmac::SigningKey);
 
-/// Fills `out` with the output of the HKDF-Expand operation for the given
-/// inputs.
-///
-/// `prk` should be the return value of an earlier call to `extract`.
-///
-/// | Parameter  | RFC 5869 Term
-/// |------------|--------------
-/// | prk        | PRK
-/// | info       | info
-/// | out        | OKM (Output Keying Material)
-/// | out.len()  | L (Length of output keying material in bytes)
-///
-/// # Panics
-///
-/// `expand` panics if the requested output length is larger than 255 times the
-/// size of the digest algorithm, i.e. if
-/// `out.len() > 255 * salt.digest_algorithm().output_len`. This is the limit
-/// imposed by the HKDF specification, and is necessary to prevent overflow of
-/// the 8-bit iteration counter in the expansion step.
-pub fn expand(Prk(prk): &Prk, info: &[u8], out: &mut [u8]) {
-    let digest_alg = prk.digest_algorithm();
-    assert!(out.len() <= 255 * digest_alg.output_len);
-    assert!(digest_alg.block_len >= digest_alg.output_len);
+impl Prk {
+    /// Fills `out` with the output of the HKDF-Expand operation for the given
+    /// inputs.
+    ///
+    /// `prk` should be the return value of an earlier call to `extract`.
+    ///
+    /// | Parameter  | RFC 5869 Term
+    /// |------------|--------------
+    /// | prk        | PRK
+    /// | info       | info
+    /// | out        | OKM (Output Keying Material)
+    /// | out.len()  | L (Length of output keying material in bytes)
+    ///
+    /// # Panics
+    ///
+    /// `expand` panics if the requested output length is larger than 255 times
+    /// the size of the digest algorithm, i.e. if
+    /// `out.len() > 255 * salt.digest_algorithm().output_len`. This is the
+    /// limit imposed by the HKDF specification, and is necessary to prevent
+    /// overflow of the 8-bit iteration counter in the expansion step.
+    pub fn expand(&self, info: &[u8], out: &mut [u8]) {
+        let prk = &self.0;
+        let digest_alg = prk.digest_algorithm();
+        assert!(out.len() <= 255 * digest_alg.output_len);
+        assert!(digest_alg.block_len >= digest_alg.output_len);
 
-    let mut ctx = hmac::SigningContext::with_key(prk);
+        let mut ctx = hmac::SigningContext::with_key(prk);
 
-    let mut n = 1u8;
-    let mut pos = 0;
-    loop {
-        ctx.update(info);
-        ctx.update(&[n]);
+        let mut n = 1u8;
+        let mut pos = 0;
+        loop {
+            ctx.update(info);
+            ctx.update(&[n]);
 
-        let t = ctx.sign();
+            let t = ctx.sign();
 
-        // Append `t` to the output.
-        let to_copy = if out.len() - pos < digest_alg.output_len {
-            out.len() - pos
-        } else {
-            digest_alg.output_len
-        };
-        let t_bytes = t.as_ref();
-        for i in 0..to_copy {
-            out[pos + i] = t_bytes[i];
+            // Append `t` to the output.
+            let to_copy = if out.len() - pos < digest_alg.output_len {
+                out.len() - pos
+            } else {
+                digest_alg.output_len
+            };
+            let t_bytes = t.as_ref();
+            for i in 0..to_copy {
+                out[pos + i] = t_bytes[i];
+            }
+            if to_copy < digest_alg.output_len {
+                break;
+            }
+            pos += digest_alg.output_len;
+
+            ctx = hmac::SigningContext::with_key(prk);
+            ctx.update(t_bytes);
+            n += 1;
         }
-        if to_copy < digest_alg.output_len {
-            break;
-        }
-        pos += digest_alg.output_len;
-
-        ctx = hmac::SigningContext::with_key(prk);
-        ctx.update(t_bytes);
-        n += 1;
     }
+}
+
+/// Deprecated shortcut for `salt.extract(secret).expand(info, out)`.
+#[deprecated(note = "Use `salt.extract(secret).expand(info, out)`.
+                     Will be removed in the next release.")]
+pub fn extract_and_expand(salt: &Salt, secret: &[u8], info: &[u8], out: &mut [u8]) {
+    salt.extract(secret).expand(info, out)
 }
