@@ -23,7 +23,7 @@
 //!
 //! [RFC 5869]: https://tools.ietf.org/html/rfc5869
 
-use crate::{digest, hmac};
+use crate::{digest, error, hmac};
 
 /// A salt for HKDF operations.
 ///
@@ -59,12 +59,10 @@ impl Salt {
 }
 
 /// A HKDF PRK (pseudorandom key).
+#[derive(Debug)]
 pub struct Prk(hmac::SigningKey);
 
 impl Prk {
-    /// Fills `out` with the output of the HKDF-Expand operation for the given
-    /// inputs.
-    ///
     /// `prk` should be the return value of an earlier call to `extract`.
     ///
     /// | Parameter  | RFC 5869 Term
@@ -73,25 +71,38 @@ impl Prk {
     /// | info       | info
     /// | out        | OKM (Output Keying Material)
     /// | out.len()  | L (Length of output keying material in bytes)
+    #[inline]
+    pub fn expand<'a>(&'a self, info: &'a [u8]) -> Okm<'a> { Okm { prk: self, info } }
+}
+
+/// An HKDF OKM (Output Keying Material)
+///
+/// Intentionally not `Clone` or `Copy` as an OKM is generally only safe to
+/// use once.
+#[derive(Debug)]
+pub struct Okm<'a> {
+    prk: &'a Prk,
+    info: &'a [u8],
+}
+
+impl Okm<'_> {
+    /// Fills `out` with the output of the HKDF-Expand operation for the given
+    /// inputs.
     ///
-    /// # Panics
-    ///
-    /// `expand` panics if the requested output length is larger than 255 times
-    /// the size of the digest algorithm, i.e. if
-    /// `out.len() > 255 * salt.digest_algorithm().output_len`. This is the
-    /// limit imposed by the HKDF specification, and is necessary to prevent
-    /// overflow of the 8-bit iteration counter in the expansion step.
-    pub fn expand(&self, info: &[u8], out: &mut [u8]) {
-        let prk = &self.0;
-        let digest_alg = prk.digest_algorithm();
+    /// Fails if (and only if) the requested output length is larger than 255
+    /// times the size of the digest algorithm's output. (This is the limit
+    /// imposed by the HKDF specification due to the way HKDF's counter is
+    /// constructed.)
+    pub fn fill(self, out: &mut [u8]) -> Result<(), error::Unspecified> {
+        let digest_alg = self.prk.0.digest_algorithm();
         assert!(digest_alg.block_len >= digest_alg.output_len);
 
-        let mut ctx = hmac::SigningContext::with_key(prk);
+        let mut ctx = hmac::SigningContext::with_key(&self.prk.0);
 
         let mut n = 1u8;
         let mut out = out;
         loop {
-            ctx.update(info);
+            ctx.update(self.info);
             ctx.update(&[n]);
 
             let t = ctx.sign();
@@ -109,19 +120,20 @@ impl Prk {
             };
 
             if out.is_empty() {
-                break;
+                return Ok(());
             }
 
-            ctx = hmac::SigningContext::with_key(prk);
+            ctx = hmac::SigningContext::with_key(&self.prk.0);
             ctx.update(t);
-            n = n.checked_add(1).unwrap();
+            n = n.checked_add(1).ok_or(error::Unspecified)?;
         }
     }
 }
 
-/// Deprecated shortcut for `salt.extract(secret).expand(info, out)`.
-#[deprecated(note = "Use `salt.extract(secret).expand(info, out)`.
+/// Deprecated shortcut for `salt.extract(secret).expand(info,
+/// out).fill(out).unwrap()`.
+#[deprecated(note = "Use `salt.extract(secret).expand(info).fill(out)`.
                      Will be removed in the next release.")]
 pub fn extract_and_expand(salt: &Salt, secret: &[u8], info: &[u8], out: &mut [u8]) {
-    salt.extract(secret).expand(info, out)
+    salt.extract(secret).expand(info).fill(out).unwrap()
 }
