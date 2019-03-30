@@ -2029,7 +2029,7 @@ struct SSL_X509_METHOD {
   // check_client_CA_list returns one if |names| is a good list of X.509
   // distinguished names and zero otherwise. This is used to ensure that we can
   // reject unparsable values at handshake time when using crypto/x509.
-  int (*check_client_CA_list)(STACK_OF(CRYPTO_BUFFER) *names);
+  bool (*check_client_CA_list)(STACK_OF(CRYPTO_BUFFER) *names);
 
   // cert_clear frees and NULLs all X509 certificate-related state.
   void (*cert_clear)(CERT *cert);
@@ -2046,35 +2046,35 @@ struct SSL_X509_METHOD {
 
   // session_cache_objects fills out |sess->x509_peer| and |sess->x509_chain|
   // from |sess->certs| and erases |sess->x509_chain_without_leaf|. It returns
-  // one on success or zero on error.
-  int (*session_cache_objects)(SSL_SESSION *session);
+  // true on success or false on error.
+  bool (*session_cache_objects)(SSL_SESSION *session);
   // session_dup duplicates any needed fields from |session| to |new_session|.
-  // It returns one on success or zero on error.
-  int (*session_dup)(SSL_SESSION *new_session, const SSL_SESSION *session);
+  // It returns true on success or false on error.
+  bool (*session_dup)(SSL_SESSION *new_session, const SSL_SESSION *session);
   // session_clear frees any X509-related state from |session|.
   void (*session_clear)(SSL_SESSION *session);
   // session_verify_cert_chain verifies the certificate chain in |session|,
-  // sets |session->verify_result| and returns one on success or zero on
+  // sets |session->verify_result| and returns true on success or false on
   // error.
-  int (*session_verify_cert_chain)(SSL_SESSION *session, SSL_HANDSHAKE *ssl,
-                                   uint8_t *out_alert);
+  bool (*session_verify_cert_chain)(SSL_SESSION *session, SSL_HANDSHAKE *ssl,
+                                    uint8_t *out_alert);
 
   // hs_flush_cached_ca_names drops any cached |X509_NAME|s from |hs|.
   void (*hs_flush_cached_ca_names)(SSL_HANDSHAKE *hs);
-  // ssl_new does any neccessary initialisation of |hs|. It returns one on
-  // success or zero on error.
-  int (*ssl_new)(SSL_HANDSHAKE *hs);
+  // ssl_new does any neccessary initialisation of |hs|. It returns true on
+  // success or false on error.
+  bool (*ssl_new)(SSL_HANDSHAKE *hs);
   // ssl_free frees anything created by |ssl_new|.
   void (*ssl_config_free)(SSL_CONFIG *cfg);
   // ssl_flush_cached_client_CA drops any cached |X509_NAME|s from |ssl|.
   void (*ssl_flush_cached_client_CA)(SSL_CONFIG *cfg);
   // ssl_auto_chain_if_needed runs the deprecated auto-chaining logic if
   // necessary. On success, it updates |ssl|'s certificate configuration as
-  // needed and returns one. Otherwise, it returns zero.
-  int (*ssl_auto_chain_if_needed)(SSL_HANDSHAKE *hs);
-  // ssl_ctx_new does any neccessary initialisation of |ctx|. It returns one on
-  // success or zero on error.
-  int (*ssl_ctx_new)(SSL_CTX *ctx);
+  // needed and returns true. Otherwise, it returns false.
+  bool (*ssl_auto_chain_if_needed)(SSL_HANDSHAKE *hs);
+  // ssl_ctx_new does any neccessary initialisation of |ctx|. It returns true on
+  // success or false on error.
+  bool (*ssl_ctx_new)(SSL_CTX *ctx);
   // ssl_ctx_free frees anything created by |ssl_ctx_new|.
   void (*ssl_ctx_free)(SSL_CTX *ctx);
   // ssl_ctx_flush_cached_client_CA drops any cached |X509_NAME|s from |ctx|.
