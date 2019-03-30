@@ -488,10 +488,10 @@ bool tls13_add_certificate(SSL_HANDSHAKE *hs) {
 
   if (ssl_signing_with_dc(hs)) {
     const CRYPTO_BUFFER *raw = dc->raw.get();
+    CBB child;
     if (!CBB_add_u16(&extensions, TLSEXT_TYPE_delegated_credential) ||
-        !CBB_add_u16(&extensions, CRYPTO_BUFFER_len(raw)) ||
-        !CBB_add_bytes(&extensions,
-                       CRYPTO_BUFFER_data(raw),
+        !CBB_add_u16_length_prefixed(&extensions, &child) ||
+        !CBB_add_bytes(&child, CRYPTO_BUFFER_data(raw),
                        CRYPTO_BUFFER_len(raw)) ||
         !CBB_flush(&extensions)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
