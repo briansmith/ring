@@ -376,24 +376,20 @@ static bool ssl_crypto_x509_session_verify_cert_chain(SSL_SESSION *session,
 
   X509 *leaf = sk_X509_value(cert_chain, 0);
   ScopedX509_STORE_CTX ctx;
-  if (!X509_STORE_CTX_init(ctx.get(), verify_store, leaf, cert_chain)) {
+  if (!X509_STORE_CTX_init(ctx.get(), verify_store, leaf, cert_chain) ||
+      !X509_STORE_CTX_set_ex_data(
+          ctx.get(), SSL_get_ex_data_X509_STORE_CTX_idx(), hs->ssl) ||
+      // We need to inherit the verify parameters. These can be determined by
+      // the context: if its a server it will verify SSL client certificates or
+      // vice versa.
+      !X509_STORE_CTX_set_default(
+          ctx.get(), hs->ssl->server ? "ssl_client" : "ssl_server") ||
+      // Anything non-default in "param" should overwrite anything in the ctx.
+      !X509_VERIFY_PARAM_set1(X509_STORE_CTX_get0_param(ctx.get()),
+                              hs->config->param)) {
     OPENSSL_PUT_ERROR(SSL, ERR_R_X509_LIB);
     return false;
   }
-  if (!X509_STORE_CTX_set_ex_data(
-          ctx.get(), SSL_get_ex_data_X509_STORE_CTX_idx(), hs->ssl)) {
-    return false;
-  }
-
-  // We need to inherit the verify parameters. These can be determined by the
-  // context: if its a server it will verify SSL client certificates or vice
-  // versa.
-  X509_STORE_CTX_set_default(ctx.get(),
-                             hs->ssl->server ? "ssl_client" : "ssl_server");
-
-  // Anything non-default in "param" should overwrite anything in the ctx.
-  X509_VERIFY_PARAM_set1(X509_STORE_CTX_get0_param(ctx.get()),
-                         hs->config->param);
 
   if (hs->config->verify_callback) {
     X509_STORE_CTX_set_verify_cb(ctx.get(), hs->config->verify_callback);
