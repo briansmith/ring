@@ -57,3 +57,22 @@ salt = ""
 info = ""
 PRK = 2adccada18779e7c2077ad2eb19d3f3e731385dd
 OKM = 2c91117204d745f3500d636a62f64f0ab3bae548aa53d423b0d1f27ebba6f5e5673a081d70cce7acfc48
+
+
+# Variants of the above tests.
+
+# Variant of A.1. with zero-length output
+Hash = SHA256
+IKM = 0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b
+salt = 000102030405060708090a0b0c
+info = f0f1f2f3f4f5f6f7f8f9
+PRK = 077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5
+OKM = ""
+
+# Variant of A.1. with hash-length output
+Hash = SHA256
+IKM = 0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b
+salt = 000102030405060708090a0b0c
+info = f0f1f2f3f4f5f6f7f8f9
+PRK = 077709362c2e32df0ddc3f0dc47bba6390b6c73bb50f9c3122ec844ad7c2b3e5
+OKM = 3cb25f25faacd57a90434f64d0362f2a2d2d0a90cf1a5a4c5db02d56ecc4c5bf

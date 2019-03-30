@@ -90,30 +90,31 @@ impl Prk {
         let mut ctx = hmac::SigningContext::with_key(prk);
 
         let mut n = 1u8;
-        let mut pos = 0;
+        let mut out = out;
         loop {
             ctx.update(info);
             ctx.update(&[n]);
 
             let t = ctx.sign();
+            let t = t.as_ref();
 
             // Append `t` to the output.
-            let to_copy = if out.len() - pos < digest_alg.output_len {
-                out.len() - pos
+            out = if out.len() < digest_alg.output_len {
+                let len = out.len();
+                out.copy_from_slice(&t[..len]);
+                &mut []
             } else {
-                digest_alg.output_len
+                let (this_chunk, rest) = out.split_at_mut(digest_alg.output_len);
+                this_chunk.copy_from_slice(t);
+                rest
             };
-            let t_bytes = t.as_ref();
-            for i in 0..to_copy {
-                out[pos + i] = t_bytes[i];
-            }
-            if to_copy < digest_alg.output_len {
+
+            if out.is_empty() {
                 break;
             }
-            pos += digest_alg.output_len;
 
             ctx = hmac::SigningContext::with_key(prk);
-            ctx.update(t_bytes);
+            ctx.update(t);
             n += 1;
         }
     }
