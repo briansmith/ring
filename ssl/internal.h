@@ -1392,7 +1392,7 @@ struct DC {
   static UniquePtr<DC> Parse(CRYPTO_BUFFER *in, uint8_t *out_alert);
 
   // raw is the delegated credential encoded as specified in draft-ietf-tls-
-  // subcerts-02.
+  // subcerts-03.
   UniquePtr<CRYPTO_BUFFER> raw;
 
   // expected_cert_verify_algorithm is the signature scheme of the DC public

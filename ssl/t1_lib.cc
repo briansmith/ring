@@ -2717,7 +2717,7 @@ static bool ext_delegated_credential_parse_clienthello(SSL_HANDSHAKE *hs,
   assert(TLSEXT_TYPE_delegated_credential == 0xff02);
   // TODO: Check that the extension is empty.
   //
-  // As of draft-02, the client sends an empty extension in order indicate
+  // As of draft-03, the client sends an empty extension in order indicate
   // support for delegated credentials. This could change, however, since the
   // spec is not yet finalized. This assertion is here to remind us to enforce
   // this check once the extension ID is assigned.
