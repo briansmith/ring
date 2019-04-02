@@ -15,36 +15,45 @@
 //! HMAC-based Extract-and-Expand Key Derivation Function.
 //!
 //! HKDF is specified in [RFC 5869].
+//! ```
+//! use ring::{aead, digest, error, hkdf};
 //!
-//! In most situations, it is best to use `extract_and_expand` to do both the
-//! HKDF-Extract and HKDF-Expand as one atomic operation. It is only necessary
-//! to use the separate `expand` and `extract` functions if a single derived
-//! `PRK` (defined in RFC 5869) is used more than once.
+//! fn derive_opening_key(
+//!     key_algorithm: &'static aead::Algorithm,
+//!     salt: [u8; 32],
+//!     ikm: [u8; 32],
+//!     info: &[u8])
+//!     -> Result<aead::OpeningKey, error::Unspecified>
+//! {
+//!     let salt = hkdf::Salt::new(&digest::SHA512, &salt);
+//!     let prk = salt.extract(&ikm);
+//!     let mut key_bytes = vec![0; key_algorithm.key_len()];
+//!     let out = prk.expand(info).fill(&mut key_bytes)?;
+//!     aead::OpeningKey::new(key_algorithm, &key_bytes)
+//! }
+//! ```
 //!
 //! [RFC 5869]: https://tools.ietf.org/html/rfc5869
 
 use crate::{digest, error, hmac};
 
 /// A salt for HKDF operations.
-///
-/// Constructing a `Salt` is relatively expensive so it is good to reuse a
-/// `Salt` object instead of re-constructing `Salt`s with the same value.
 #[derive(Debug)]
 pub struct Salt(hmac::SigningKey);
 
 impl Salt {
-    /// Constructs a new `Salt` with the given value.
+    /// Constructs a new `Salt` with the given value based on the given digest
+    /// algorithm.
+    ///
+    /// Constructing a `Salt` is relatively expensive so it is good to reuse a
+    /// `Salt` object instead of re-constructing `Salt`s with the same value.
     pub fn new(digest_algorithm: &'static digest::Algorithm, value: &[u8]) -> Self {
         Salt(hmac::SigningKey::new(digest_algorithm, value))
     }
 
-    /// The HKDF-Extract operation.
+    /// The [HKDF-Extract] operation.
     ///
-    /// | Parameter                 | RFC 5869 Term
-    /// |---------------------------|--------------
-    /// | `salt.digest_algorithm()` | Hash
-    /// | `secret`                  | IKM (Input Keying Material)
-    /// | [return value]            | PRK
+    /// [HKDF-Extract]: https://tools.ietf.org/html/rfc5869#section-2.2
     pub fn extract(&self, secret: &[u8]) -> Prk {
         // The spec says that if no salt is provided then a key of
         // `digest_alg.output_len` bytes of zeros is used. But, HMAC keys are
@@ -63,14 +72,7 @@ impl Salt {
 pub struct Prk(hmac::SigningKey);
 
 impl Prk {
-    /// `prk` should be the return value of an earlier call to `extract`.
-    ///
-    /// | Parameter  | RFC 5869 Term
-    /// |------------|--------------
-    /// | prk        | PRK
-    /// | info       | info
-    /// | out        | OKM (Output Keying Material)
-    /// | out.len()  | L (Length of output keying material in bytes)
+    /// The [HKDF-Expand] operation.
     #[inline]
     pub fn expand<'a>(&'a self, info: &'a [u8]) -> Okm<'a> { Okm { prk: self, info } }
 }
@@ -130,10 +132,9 @@ impl Okm<'_> {
     }
 }
 
-/// Deprecated shortcut for `salt.extract(secret).expand(info,
-/// out).fill(out).unwrap()`.
-#[deprecated(note = "Use `salt.extract(secret).expand(info).fill(out)`.
-                     Will be removed in the next release.")]
+/// Deprecated shortcut for
+/// `salt.extract(secret).expand(info).fill(out).unwrap()`.
+#[deprecated(note = "Will be removed in the next release.")]
 pub fn extract_and_expand(salt: &Salt, secret: &[u8], info: &[u8], out: &mut [u8]) {
     salt.extract(secret).expand(info).fill(out).unwrap()
 }
