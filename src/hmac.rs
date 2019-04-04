@@ -14,46 +14,15 @@
 
 //! HMAC is specified in [RFC 2104].
 //!
-//! After a `SigningKey` or `VerificationKey` is constructed, it can be used
-//! for multiple signing or verification operations. Separating the
-//! construction of the key from the rest of the HMAC operation allows the
-//! per-key precomputation to be done only once, instead of it being done in
-//! every HMAC operation.
+//! After a `Key` is constructed, it can be used for multiple signing or
+//! verification operations. Separating the construction of the key from the
+//! rest of the HMAC operation allows the per-key precomputation to be done
+//! only once, instead of it being done in every HMAC operation.
 //!
 //! Frequently all the data to be signed in a message is available in a single
 //! contiguous piece. In that case, the module-level `sign` function can be
-//! used. Otherwise, if the input is in multiple parts, `SigningContext` should
-//! be used.
-//!
-//! # Use Case: Multi-party Communication
-//!
-//! Examples: TLS, SSH, and IPSEC record/packet authentication.
-//!
-//! The key that is used to sign messages to send to other parties should be a
-//! `SigningKey`; `SigningContext` or `sign` should be used for the signing.
-//! Each key that is used to authenticate messages received from peers should
-//! be a `VerificationKey`; `verify` should be used for the authentication. All
-//! of the keys should have distinct, independent, values.
-//!
-//! # Use Case: One-party Anti-tampering Protection
-//!
-//! Examples: Signed cookies, stateless CSRF protection.
-//!
-//! The key that is used to sign the data should be a `SigningKey`;
-//! `SigningContext` or `sign` should be used for the signing. Use
-//! `verify_with_own_key` to verify the tag using the signing key; this is
-//! equivalent to, but more efficient than, constructing a `VerificationKey`
-//! with the same value as the signing key and then calling `verify`.
-//!
-//! # Use Case: Key Derivation and Password Hashing
-//!
-//! Examples: HKDF, PBKDF2, the TLS PRF.
-//!
-//! All keys used during the key derivation should be `SigningKey`s;
-//! `SigningContext` should usually be used for the HMAC calculations. The
-//! [code for `ring::pbkdf2`] and the [code for `ring::hkdf`] are good
-//! examples of how to use `ring::hmac` efficiently for key derivation.
-//!
+//! used. Otherwise, if the input is in multiple parts, `Context` should be
+//! used.
 //!
 //! # Examples:
 //!
@@ -64,7 +33,7 @@
 //!
 //! # fn main_with_result() -> Result<(), ring::error::Unspecified> {
 //! let rng = rand::SystemRandom::new();
-//! let key = hmac::SigningKey::generate(&digest::SHA256, &rng)?;
+//! let key = hmac::Key::generate(&digest::SHA256, &rng)?;
 //!
 //! let msg = "hello, world";
 //!
@@ -73,7 +42,7 @@
 //! // [We give access to the message to an untrusted party, and they give it
 //! // back to us. We need to verify they didn't tamper with it.]
 //!
-//! hmac::verify_with_own_key(&key, msg.as_bytes(), tag.as_ref())?;
+//! hmac::verify(&key, msg.as_bytes(), tag.as_ref())?;
 //! #
 //! # Ok(())
 //! # }
@@ -97,12 +66,12 @@
 //! let rng = rand::SystemRandom::new();
 //! rng.fill(&mut key_value)?;
 //!
-//! let s_key = hmac::SigningKey::new(&digest::SHA256, key_value.as_ref());
+//! let s_key = hmac::Key::new(&digest::SHA256, key_value.as_ref());
 //! let tag = hmac::sign(&s_key, msg.as_bytes());
 //!
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
-//! let v_key = hmac::VerificationKey::new(&digest::SHA256, key_value.as_ref());
+//! let v_key = hmac::Key::new(&digest::SHA256, key_value.as_ref());
 //! hmac::verify(&v_key, msg.as_bytes(), tag.as_ref())?;
 //! #
 //! # Ok(())
@@ -126,8 +95,8 @@
 //! let rng = rand::SystemRandom::new();
 //! rng.fill(&mut key_value)?;
 //!
-//! let s_key = hmac::SigningKey::new(&digest::SHA384, key_value.as_ref());
-//! let mut s_ctx = hmac::SigningContext::with_key(&s_key);
+//! let s_key = hmac::Key::new(&digest::SHA384, key_value.as_ref());
+//! let mut s_ctx = hmac::Context::with_key(&s_key);
 //! for part in &parts {
 //!     s_ctx.update(part.as_bytes());
 //! }
@@ -135,7 +104,7 @@
 //!
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
-//! let v_key = hmac::VerificationKey::new(&digest::SHA384, key_value.as_ref());
+//! let v_key = hmac::Key::new(&digest::SHA384, key_value.as_ref());
 //! let mut msg = Vec::<u8>::new();
 //! for part in &parts {
 //!     msg.extend(part.as_bytes());
@@ -167,13 +136,23 @@ pub type Signature = Tag;
 pub struct Tag(digest::Digest);
 
 /// A key to use for HMAC signing.
-pub struct SigningKey {
-    ctx_prototype: SigningContext,
+pub struct Key {
+    ctx_prototype: Context,
 }
 
-impl core::fmt::Debug for SigningKey {
+/// `hmac::SigningKey` was renamed to `hmac::Key`.
+#[deprecated(note = "Renamed to `hmac::Key`.")]
+pub type SigningKey = Key;
+
+/// `hmac::VerificationKey` was merged into `hmac::Key`.
+#[deprecated(
+    note = "The distinction between verification & signing keys was removed. Use `hmac::Key`."
+)]
+pub type VerificationKey = Key;
+
+impl core::fmt::Debug for Key {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        f.debug_struct("SigningKey")
+        f.debug_struct("Key")
             .field("algorithm", self.digest_algorithm())
             .finish()
     }
@@ -184,7 +163,7 @@ impl AsRef<[u8]> for Tag {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
 
-impl SigningKey {
+impl Key {
     /// Generate an HMAC signing key using the given digest algorithm with a
     /// random value generated from `rng`.
     ///
@@ -207,7 +186,7 @@ impl SigningKey {
     /// value of the random key is put in `key_bytes` so that it can be
     /// serialized for later use, so `key_bytes` must be exactly
     /// `recommended_key_len(digest_alg)`. This serialized value can be
-    /// deserialized with `SigningKey::new()`.
+    /// deserialized with `Key::new()`.
     pub fn generate_serializable(
         digest_alg: &'static digest::Algorithm, rng: &rand::SecureRandom, key_bytes: &mut [u8],
     ) -> Result<Self, error::Unspecified> {
@@ -239,7 +218,7 @@ impl SigningKey {
     /// removed in a future version of *ring*.
     pub fn new(digest_alg: &'static digest::Algorithm, key_value: &[u8]) -> Self {
         let mut key = Self {
-            ctx_prototype: SigningContext {
+            ctx_prototype: Context {
                 inner: digest::Context::new(digest_alg),
                 outer: digest::Context::new(digest_alg),
             },
@@ -288,23 +267,27 @@ impl SigningKey {
 ///
 /// Use `sign` for single-step HMAC signing.
 #[derive(Clone)]
-pub struct SigningContext {
+pub struct Context {
     inner: digest::Context,
     outer: digest::Context,
 }
 
-impl core::fmt::Debug for SigningContext {
+/// `hmac::SigningContext` was renamed to `hmac::Context`.
+#[deprecated(note = "Renamed to `hmac::Context`.")]
+pub type SigningContext = Context;
+
+impl core::fmt::Debug for Context {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        f.debug_struct("SigningContext")
+        f.debug_struct("Context")
             .field("algorithm", self.inner.algorithm())
             .finish()
     }
 }
 
-impl SigningContext {
+impl Context {
     /// Constructs a new HMAC signing context using the given digest algorithm
     /// and key.
-    pub fn with_key(signing_key: &SigningKey) -> Self { signing_key.ctx_prototype.clone() }
+    pub fn with_key(signing_key: &Key) -> Self { signing_key.ctx_prototype.clone() }
 
     /// Updates the HMAC with all the data in `data`. `update` may be called
     /// zero or more times until `finish` is called.
@@ -325,86 +308,28 @@ impl SigningContext {
 
 /// Calculates the HMAC of `data` using the key `key` in one step.
 ///
-/// Use `SigningContext` to calculate HMACs where the input is in multiple
-/// parts.
+/// Use `Context` to calculate HMACs where the input is in multiple parts.
 ///
 /// It is generally not safe to implement HMAC verification by comparing the
 /// return value of `sign` to a tag. Use `verify` for verification instead.
-pub fn sign(key: &SigningKey, data: &[u8]) -> Tag {
-    let mut ctx = SigningContext::with_key(key);
+pub fn sign(key: &Key, data: &[u8]) -> Tag {
+    let mut ctx = Context::with_key(key);
     ctx.update(data);
     ctx.sign()
-}
-
-/// A key to use for HMAC authentication.
-pub struct VerificationKey(SigningKey);
-
-impl core::fmt::Debug for VerificationKey {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        f.debug_struct("VerificationKey")
-            .field("algorithm", self.digest_algorithm())
-            .finish()
-    }
-}
-
-impl VerificationKey {
-    /// Construct an HMAC verification key using the given digest algorithm and
-    /// key value.
-    ///
-    /// As specified in RFC 2104, if `key_value` is shorter than the digest
-    /// algorithm's block length (as returned by `digest::Algorithm::block_len`,
-    /// not the digest length returned by `digest::Algorithm::output_len`) then
-    /// it will be padded with zeros. Similarly, if it is longer than the block
-    /// length then it will be compressed using the digest algorithm.
-    #[inline(always)]
-    pub fn new(digest_alg: &'static digest::Algorithm, key_value: &[u8]) -> Self {
-        Self(SigningKey::new(digest_alg, key_value))
-    }
-
-    /// The digest algorithm for the key.
-    #[inline]
-    pub fn digest_algorithm(&self) -> &'static digest::Algorithm { self.0.digest_algorithm() }
-}
-
-/// Calculates the HMAC of `data` using the key `key`, and verifies whether the
-/// resultant value equals `tag`, in one step.
-///
-/// The verification will be done in constant time to prevent timing attacks.
-#[inline(always)]
-pub fn verify(key: &VerificationKey, data: &[u8], tag: &[u8]) -> Result<(), error::Unspecified> {
-    verify_with_own_key(&key.0, data, tag)
 }
 
 /// Calculates the HMAC of `data` using the signing key `key`, and verifies
 /// whether the resultant value equals `tag`, in one step.
 ///
 /// This is logically equivalent to, but more efficient than, constructing a
-/// `VerificationKey` with the same value as `key` and then using `verify`.
+/// `Key` with the same value as `key` and then using `verify`.
 ///
 /// The verification will be done in constant time to prevent timing attacks.
-pub fn verify_with_own_key(
-    key: &SigningKey, data: &[u8], tag: &[u8],
-) -> Result<(), error::Unspecified> {
+pub fn verify(key: &Key, data: &[u8], tag: &[u8]) -> Result<(), error::Unspecified> {
     constant_time::verify_slices_are_equal(sign(key, data).as_ref(), tag)
 }
 
-/// Returns the recommended key length for HMAC using the given digest
-/// algorithm.
-///
-/// The value returned is the chaining length of the digest function,
-/// `digest_alg.chaining_len`. This is 32 bytes (256 bits) for SHA-256, and
-/// 64 bytes (512 bits) for SHA-384 and SHA-512.
-///
-/// This recommendation is based on [NIST SP 800-107], Section 5.3.4: Security
-/// Effect of the HMAC Key. The chaining length of the digest algorithm,
-/// instead of its block length, is used to be consistent with the key lengths
-/// chosen for TLS for SHA-256 (see [RFC 5246, Appendix C]) and most other
-/// protocols.
-///
-/// [NIST SP 800-107]:
-///     http://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-107r1.pdf
-/// [RFC 5246, Appendix C]:
-///     https://tools.ietf.org/html/rfc5246#appendix-C
+/// Deprecated
 #[inline]
 pub fn recommended_key_len(digest_alg: &digest::Algorithm) -> usize { digest_alg.chaining_len }
 
@@ -412,7 +337,7 @@ pub fn recommended_key_len(digest_alg: &digest::Algorithm) -> usize { digest_alg
 mod tests {
     use crate::{digest, hmac, rand, test};
 
-    // Make sure that `SigningKey::generate` and `verify_with_own_key` aren't
+    // Make sure that `Key::generate` and `verify_with_own_key` aren't
     // completely wacky.
     #[test]
     pub fn hmac_signing_key_coverage() {
@@ -423,19 +348,18 @@ mod tests {
 
         for d in &digest::test_util::ALL_ALGORITHMS {
             {
-                let key = hmac::SigningKey::generate(d, &mut rng).unwrap();
+                let key = hmac::Key::generate(d, &mut rng).unwrap();
                 let tag = hmac::sign(&key, HELLO_WORLD_GOOD);
-                assert!(hmac::verify_with_own_key(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok());
-                assert!(hmac::verify_with_own_key(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err())
+                assert!(hmac::verify(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok());
+                assert!(hmac::verify(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err())
             }
 
             {
                 let mut key_bytes = vec![0; d.chaining_len];
-                let key =
-                    hmac::SigningKey::generate_serializable(d, &mut rng, &mut key_bytes).unwrap();
+                let key = hmac::Key::generate_serializable(d, &mut rng, &mut key_bytes).unwrap();
                 let tag = hmac::sign(&key, HELLO_WORLD_GOOD);
-                assert!(hmac::verify_with_own_key(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok());
-                assert!(hmac::verify_with_own_key(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err())
+                assert!(hmac::verify(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok());
+                assert!(hmac::verify(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err())
             }
 
             // Attempt with a `key_bytes` parameter that wrongly uses the
@@ -443,25 +367,19 @@ mod tests {
             // values differ.
             if d.chaining_len != d.output_len {
                 let mut key_bytes = vec![0; d.output_len];
-                assert!(
-                    hmac::SigningKey::generate_serializable(d, &mut rng, &mut key_bytes).is_err()
-                );
+                assert!(hmac::Key::generate_serializable(d, &mut rng, &mut key_bytes).is_err());
             }
 
             // Attempt with a too-small `key_bytes`.
             {
                 let mut key_bytes = vec![0; d.chaining_len - 1];
-                assert!(
-                    hmac::SigningKey::generate_serializable(d, &mut rng, &mut key_bytes).is_err()
-                );
+                assert!(hmac::Key::generate_serializable(d, &mut rng, &mut key_bytes).is_err());
             }
 
             // Attempt with a too-large `key_bytes`.
             {
                 let mut key_bytes = vec![0; d.chaining_len + 1];
-                assert!(
-                    hmac::SigningKey::generate_serializable(d, &mut rng, &mut key_bytes).is_err()
-                );
+                assert!(hmac::Key::generate_serializable(d, &mut rng, &mut key_bytes).is_err());
             }
         }
     }
@@ -482,8 +400,7 @@ mod tests {
                 };
                 let mut key_value_out = vec![0; digest_alg.chaining_len];
                 let _ =
-                    hmac::SigningKey::generate_serializable(digest_alg, &rng, &mut key_value_out)
-                        .unwrap();
+                    hmac::Key::generate_serializable(digest_alg, &rng, &mut key_value_out).unwrap();
                 assert_eq!(&key_value_in, &key_value_out);
 
                 Ok(())

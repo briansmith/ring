@@ -39,7 +39,7 @@ use crate::{digest, error, hmac};
 
 /// A salt for HKDF operations.
 #[derive(Debug)]
-pub struct Salt(hmac::SigningKey);
+pub struct Salt(hmac::Key);
 
 impl Salt {
     /// Constructs a new `Salt` with the given value based on the given digest
@@ -48,7 +48,7 @@ impl Salt {
     /// Constructing a `Salt` is relatively expensive so it is good to reuse a
     /// `Salt` object instead of re-constructing `Salt`s with the same value.
     pub fn new(digest_algorithm: &'static digest::Algorithm, value: &[u8]) -> Self {
-        Salt(hmac::SigningKey::new(digest_algorithm, value))
+        Salt(hmac::Key::new(digest_algorithm, value))
     }
 
     /// The [HKDF-Extract] operation.
@@ -58,18 +58,18 @@ impl Salt {
         // The spec says that if no salt is provided then a key of
         // `digest_alg.output_len` bytes of zeros is used. But, HMAC keys are
         // already zero-padded to the block length, which is larger than the output
-        // length of the extract step (the length of the digest). Consequently, the
-        // `SigningKey` constructor will automatically do the right thing for a
+        // length of the extract step (the length of the digest). Consequently the
+        // `Key` constructor will automatically do the right thing for a
         // zero-length string.
         let salt = &self.0;
         let prk = hmac::sign(salt, secret);
-        Prk(hmac::SigningKey::new(salt.digest_algorithm(), prk.as_ref()))
+        Prk(hmac::Key::new(salt.digest_algorithm(), prk.as_ref()))
     }
 }
 
 /// A HKDF PRK (pseudorandom key).
 #[derive(Debug)]
-pub struct Prk(hmac::SigningKey);
+pub struct Prk(hmac::Key);
 
 impl Prk {
     /// The [HKDF-Expand] operation.
@@ -99,7 +99,7 @@ impl Okm<'_> {
         let digest_alg = self.prk.0.digest_algorithm();
         assert!(digest_alg.block_len >= digest_alg.output_len);
 
-        let mut ctx = hmac::SigningContext::with_key(&self.prk.0);
+        let mut ctx = hmac::Context::with_key(&self.prk.0);
 
         let mut n = 1u8;
         let mut out = out;
@@ -125,7 +125,7 @@ impl Okm<'_> {
                 return Ok(());
             }
 
-            ctx = hmac::SigningContext::with_key(&self.prk.0);
+            ctx = hmac::Context::with_key(&self.prk.0);
             ctx.update(t);
             n = n.checked_add(1).ok_or(error::Unspecified)?;
         }

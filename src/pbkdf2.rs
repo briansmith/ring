@@ -147,7 +147,7 @@ pub fn derive(
     // hasn't been optimized to the same extent as fastpbkdf2. In particular,
     // this implementation is probably doing a lot of unnecessary copying.
 
-    let secret = hmac::SigningKey::new(digest_alg, secret);
+    let secret = hmac::Key::new(digest_alg, secret);
 
     // Clear |out|.
     polyfill::slice::fill(out, 0);
@@ -160,10 +160,8 @@ pub fn derive(
     }
 }
 
-fn derive_block(
-    secret: &hmac::SigningKey, iterations: NonZeroU32, salt: &[u8], idx: u32, out: &mut [u8],
-) {
-    let mut ctx = hmac::SigningContext::with_key(secret);
+fn derive_block(secret: &hmac::Key, iterations: NonZeroU32, salt: &[u8], idx: u32, out: &mut [u8]) {
+    let mut ctx = hmac::Context::with_key(secret);
     ctx.update(salt);
     ctx.update(&u32::to_be_bytes(idx));
 
@@ -215,7 +213,7 @@ pub fn verify(
     let mut derived_buf = [0u8; digest::MAX_OUTPUT_LEN];
 
     let output_len = digest_alg.output_len;
-    let secret = hmac::SigningKey::new(digest_alg, secret);
+    let secret = hmac::Key::new(digest_alg, secret);
     let mut idx: u32 = 0;
 
     let mut matches = 1;
