@@ -225,8 +225,8 @@ pub fn parse_big_endian_and_pad_consttime(
         for i in 0..num_encoded_limbs {
             let mut limb: Limb = 0;
             for _ in 0..bytes_in_current_limb {
-                let b = input.read_byte()?;
-                limb = (limb << 8) | (b as Limb);
+                let b: Limb = input.read_byte()?.into();
+                limb = (limb << 8) | b;
             }
             result[num_encoded_limbs - i - 1] = limb;
             bytes_in_current_limb = LIMB_BYTES;

@@ -504,6 +504,7 @@ mod tests {
 
     mod max_input {
         use super::super::super::digest;
+        use crate::polyfill;
 
         macro_rules! max_input_tests {
             ( $algorithm_name:ident ) => {
@@ -555,7 +556,7 @@ mod tests {
             // of input; according to the spec, SHA-384 and SHA-512
             // support up to 2^128-1, but that's not implemented yet.
             let max_bytes = 1u64 << (64 - 3);
-            let max_blocks = max_bytes / (alg.block_len as u64);
+            let max_blocks = max_bytes / polyfill::u64_from_usize(alg.block_len);
             digest::Context {
                 algorithm: alg,
                 state: alg.initial_state,
