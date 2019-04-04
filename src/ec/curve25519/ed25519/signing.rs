@@ -14,7 +14,7 @@
 
 //! EdDSA Signatures.
 
-use super::{super::ops::*, PUBLIC_KEY_LEN};
+use super::{super::ops::*, ED25519_PUBLIC_KEY_LEN};
 use crate::{
     digest, error,
     io::der,
@@ -29,7 +29,7 @@ use untrusted;
 use super::digest::*;
 
 /// An Ed25519 key pair, for signing.
-pub struct KeyPair {
+pub struct Ed25519KeyPair {
     // RFC 8032 Section 5.1.6 calls this *s*.
     private_scalar: Scalar,
 
@@ -40,9 +40,9 @@ pub struct KeyPair {
     public_key: PublicKey,
 }
 
-derive_debug_via_field!(KeyPair, stringify!(Ed25519KeyPair), public_key);
+derive_debug_via_field!(Ed25519KeyPair, stringify!(Ed25519KeyPair), public_key);
 
-impl KeyPair {
+impl Ed25519KeyPair {
     /// Generates a new key pair and returns the key pair serialized as a
     /// PKCS#8 document.
     ///
@@ -198,14 +198,14 @@ impl KeyPair {
     }
 }
 
-impl signature::KeyPair for KeyPair {
+impl signature::KeyPair for Ed25519KeyPair {
     type PublicKey = PublicKey;
 
     fn public_key(&self) -> &Self::PublicKey { &self.public_key }
 }
 
 #[derive(Clone, Copy)]
-pub struct PublicKey([u8; PUBLIC_KEY_LEN]);
+pub struct PublicKey([u8; ED25519_PUBLIC_KEY_LEN]);
 
 impl AsRef<[u8]> for PublicKey {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }

@@ -30,7 +30,7 @@ use core;
 use untrusted;
 
 /// An ECDSA signing algorithm.
-pub struct Algorithm {
+pub struct EcdsaSigningAlgorithm {
     curve: &'static ec::Curve,
     private_scalar_ops: &'static PrivateScalarOps,
     private_key_ops: &'static PrivateKeyOps,
@@ -48,26 +48,26 @@ enum AlgorithmID {
     ECDSA_P384_SHA384_ASN1_SIGNING,
 }
 
-derive_debug_via_id!(Algorithm);
+derive_debug_via_id!(EcdsaSigningAlgorithm);
 
-impl PartialEq for Algorithm {
+impl PartialEq for EcdsaSigningAlgorithm {
     fn eq(&self, other: &Self) -> bool { self.id == other.id }
 }
 
-impl Eq for Algorithm {}
+impl Eq for EcdsaSigningAlgorithm {}
 
-impl sealed::Sealed for Algorithm {}
+impl sealed::Sealed for EcdsaSigningAlgorithm {}
 
 /// An ECDSA key pair, used for signing.
-pub struct KeyPair {
+pub struct EcdsaKeyPair {
     d: Scalar<R>,
-    alg: &'static Algorithm,
+    alg: &'static EcdsaSigningAlgorithm,
     public_key: PublicKey,
 }
 
-derive_debug_via_field!(KeyPair, stringify!(EcdsaKeyPair), public_key);
+derive_debug_via_field!(EcdsaKeyPair, stringify!(EcdsaKeyPair), public_key);
 
-impl KeyPair {
+impl EcdsaKeyPair {
     /// Generates a new key pair and returns the key pair serialized as a
     /// PKCS#8 document.
     ///
@@ -80,7 +80,7 @@ impl KeyPair {
     /// [RFC 5915]: https://tools.ietf.org/html/rfc5915
     /// [RFC 5958 Section 2]: https://tools.ietf.org/html/rfc5958#section-2
     pub fn generate_pkcs8(
-        alg: &'static Algorithm, rng: &rand::SecureRandom,
+        alg: &'static EcdsaSigningAlgorithm, rng: &rand::SecureRandom,
     ) -> Result<pkcs8::Document, error::Unspecified> {
         let private_key = ec::Seed::generate(alg.curve, rng, cpu::features())?;
         let public_key = private_key.compute_public_key()?;
@@ -102,7 +102,7 @@ impl KeyPair {
     /// `ECPrivateKey`, if present, must be the same named curve that is in the
     /// algorithm identifier in the PKCS#8 header.
     pub fn from_pkcs8(
-        alg: &'static Algorithm, input: untrusted::Input,
+        alg: &'static EcdsaSigningAlgorithm, input: untrusted::Input,
     ) -> Result<Self, error::KeyRejected> {
         let key_pair = ec::suite_b::key_pair_from_pkcs8(
             alg.curve,
@@ -120,14 +120,15 @@ impl KeyPair {
     /// recommended to use `RsaPubeyPair::from_pkcs8()` (with a PKCS#8-encoded
     /// key) instead.
     pub fn from_private_key_and_public_key(
-        alg: &'static Algorithm, private_key: untrusted::Input, public_key: untrusted::Input,
+        alg: &'static EcdsaSigningAlgorithm, private_key: untrusted::Input,
+        public_key: untrusted::Input,
     ) -> Result<Self, error::KeyRejected> {
         let key_pair =
             ec::suite_b::key_pair_from_bytes(alg.curve, private_key, public_key, cpu::features())?;
         Ok(Self::new(alg, key_pair))
     }
 
-    fn new(alg: &'static Algorithm, key_pair: ec::KeyPair) -> Self {
+    fn new(alg: &'static EcdsaSigningAlgorithm, key_pair: ec::KeyPair) -> Self {
         let (seed, public_key) = key_pair.split();
         let d = private_key::private_key_as_scalar(alg.private_key_ops, &seed);
         let d = alg
@@ -230,7 +231,7 @@ impl KeyPair {
     }
 }
 
-impl signature::KeyPair for KeyPair {
+impl signature::KeyPair for EcdsaKeyPair {
     type PublicKey = PublicKey;
 
     fn public_key(&self) -> &Self::PublicKey { &self.public_key }
@@ -308,7 +309,7 @@ fn format_rs_asn1(ops: &'static ScalarOps, r: &Scalar, s: &Scalar, out: &mut [u8
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA256_FIXED_SIGNING: Algorithm = Algorithm {
+pub static ECDSA_P256_SHA256_FIXED_SIGNING: EcdsaSigningAlgorithm = EcdsaSigningAlgorithm {
     curve: &ec::suite_b::curve::P256,
     private_scalar_ops: &p256::PRIVATE_SCALAR_OPS,
     private_key_ops: &p256::PRIVATE_KEY_OPS,
@@ -323,7 +324,7 @@ pub static ECDSA_P256_SHA256_FIXED_SIGNING: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA384_FIXED_SIGNING: Algorithm = Algorithm {
+pub static ECDSA_P384_SHA384_FIXED_SIGNING: EcdsaSigningAlgorithm = EcdsaSigningAlgorithm {
     curve: &ec::suite_b::curve::P384,
     private_scalar_ops: &p384::PRIVATE_SCALAR_OPS,
     private_key_ops: &p384::PRIVATE_KEY_OPS,
@@ -338,7 +339,7 @@ pub static ECDSA_P384_SHA384_FIXED_SIGNING: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA256_ASN1_SIGNING: Algorithm = Algorithm {
+pub static ECDSA_P256_SHA256_ASN1_SIGNING: EcdsaSigningAlgorithm = EcdsaSigningAlgorithm {
     curve: &ec::suite_b::curve::P256,
     private_scalar_ops: &p256::PRIVATE_SCALAR_OPS,
     private_key_ops: &p256::PRIVATE_KEY_OPS,
@@ -353,7 +354,7 @@ pub static ECDSA_P256_SHA256_ASN1_SIGNING: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA384_ASN1_SIGNING: Algorithm = Algorithm {
+pub static ECDSA_P384_SHA384_ASN1_SIGNING: EcdsaSigningAlgorithm = EcdsaSigningAlgorithm {
     curve: &ec::suite_b::curve::P384,
     private_scalar_ops: &p384::PRIVATE_SCALAR_OPS,
     private_key_ops: &p384::PRIVATE_KEY_OPS,

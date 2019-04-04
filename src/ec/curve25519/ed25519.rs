@@ -21,4 +21,4 @@ pub mod signing;
 pub mod verification;
 
 /// The length of an Ed25519 public key.
-pub const PUBLIC_KEY_LEN: usize = ELEM_LEN;
+pub const ED25519_PUBLIC_KEY_LEN: usize = ELEM_LEN;

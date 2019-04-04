@@ -30,7 +30,7 @@ pub trait Padding: 'static + Sync + crate::sealed::Sealed + core::fmt::Debug {
 ///
 /// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
 #[cfg(feature = "use_heap")]
-pub trait Encoding: Padding {
+pub trait RsaEncoding: Padding {
     #[doc(hidden)]
     fn encode(
         &self, m_hash: &digest::Digest, m_out: &mut [u8], mod_bits: bits::BitLength,
@@ -67,7 +67,7 @@ impl Padding for PKCS1 {
 }
 
 #[cfg(feature = "use_heap")]
-impl Encoding for PKCS1 {
+impl RsaEncoding for PKCS1 {
     fn encode(
         &self, m_hash: &digest::Digest, m_out: &mut [u8], _mod_bits: bits::BitLength,
         _rng: &rand::SecureRandom,
@@ -216,7 +216,7 @@ impl Padding for PSS {
     fn digest_alg(&self) -> &'static digest::Algorithm { self.digest_alg }
 }
 
-impl Encoding for PSS {
+impl RsaEncoding for PSS {
     // Implement padding procedure per EMSA-PSS,
     // https://tools.ietf.org/html/rfc3447#section-9.1.
     fn encode(

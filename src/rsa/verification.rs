@@ -14,7 +14,7 @@
 
 //! Verification of RSA signatures.
 
-use super::{bigint, parse_public_key, Parameters, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
+use super::{bigint, parse_public_key, RsaParameters, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
 use crate::{bits, cpu, digest, error, sealed, signature};
 
 use untrusted;
@@ -77,7 +77,7 @@ impl Key {
     }
 }
 
-impl signature::VerificationAlgorithm for Parameters {
+impl signature::VerificationAlgorithm for RsaParameters {
     fn verify(
         &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
@@ -94,7 +94,7 @@ impl signature::VerificationAlgorithm for Parameters {
     }
 }
 
-impl sealed::Sealed for Parameters {}
+impl sealed::Sealed for RsaParameters {}
 
 macro_rules! rsa_params {
     ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $PADDING_ALGORITHM:expr,
@@ -102,7 +102,7 @@ macro_rules! rsa_params {
         #[doc=$doc_str]
         ///
         /// Only available in `use_heap` mode.
-        pub static $VERIFY_ALGORITHM: Parameters = Parameters {
+        pub static $VERIFY_ALGORITHM: RsaParameters = RsaParameters {
             padding_alg: $PADDING_ALGORITHM,
             min_bits: bits::BitLength::from_usize_bits($min_bits),
         };
@@ -201,7 +201,7 @@ rsa_params!(
 // verification was done during the implementation of
 // `signature::VerificationAlgorithm`, before `verify_rsa` was factored out).
 pub fn verify_rsa(
-    params: &Parameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
+    params: &RsaParameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
     signature: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
     let _ = cpu::features();
@@ -209,7 +209,7 @@ pub fn verify_rsa(
 }
 
 pub(crate) fn verify_rsa_(
-    params: &Parameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
+    params: &RsaParameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
     signature: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
     let max_bits = bits::BitLength::from_usize_bytes(PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)?;

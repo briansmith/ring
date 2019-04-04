@@ -14,7 +14,7 @@
 
 use super::{
     bigint::{self, Prime},
-    verification, Encoding, N,
+    verification, RsaEncoding, N,
 };
 /// RSA PKCS#1 1.5 signatures.
 use crate::{
@@ -27,19 +27,19 @@ use crate::{
 use untrusted;
 
 /// An RSA key pair, used for signing.
-pub struct KeyPair {
+pub struct RsaKeyPair {
     p: PrivatePrime<P>,
     q: PrivatePrime<Q>,
     qInv: bigint::Elem<P, R>,
     qq: bigint::Modulus<QQ>,
     q_mod_n: bigint::Elem<N, R>,
     public: verification::Key,
-    public_key: PublicKey,
+    public_key: RsaPublicKey,
 }
 
-derive_debug_via_field!(KeyPair, stringify!(RsaKeyPair), public_key);
+derive_debug_via_field!(RsaKeyPair, stringify!(RsaKeyPair), public_key);
 
-impl KeyPair {
+impl RsaKeyPair {
     /// Parses an unencrypted PKCS#8-encoded RSA private key.
     ///
     /// Only two-prime (not multi-prime) keys are supported. The public modulus
@@ -356,7 +356,7 @@ impl KeyPair {
 
         let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &public_key.n).into_modulus::<QQ>()?;
 
-        let public_key_serialized = PublicKey::from_n_and_e(n, e);
+        let public_key_serialized = RsaPublicKey::from_n_and_e(n, e);
 
         Ok(Self {
             p,
@@ -381,29 +381,29 @@ impl KeyPair {
     }
 }
 
-impl signature::KeyPair for KeyPair {
-    type PublicKey = PublicKey;
+impl signature::KeyPair for RsaKeyPair {
+    type PublicKey = RsaPublicKey;
 
     fn public_key(&self) -> &Self::PublicKey { &self.public_key }
 }
 
 /// A serialized RSA public key.
 #[derive(Clone)]
-pub struct PublicKey(Box<[u8]>);
+pub struct RsaPublicKey(Box<[u8]>);
 
-impl AsRef<[u8]> for PublicKey {
+impl AsRef<[u8]> for RsaPublicKey {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
 
-derive_debug_self_as_ref_hex_bytes!(PublicKey);
+derive_debug_self_as_ref_hex_bytes!(RsaPublicKey);
 
-impl PublicKey {
+impl RsaPublicKey {
     fn from_n_and_e(n: io::Positive, e: io::Positive) -> Self {
         let bytes = der_writer::write_all(der::Tag::Sequence, &|output| {
             der_writer::write_positive_integer(output, &n);
             der_writer::write_positive_integer(output, &e);
         });
-        PublicKey(bytes)
+        RsaPublicKey(bytes)
     }
 
     /// The public modulus (n).
@@ -505,7 +505,7 @@ unsafe impl bigint::SlightlySmallerModulus<P> for Q {}
 unsafe impl bigint::SmallerModulus<QQ> for Q {}
 unsafe impl bigint::NotMuchSmallerModulus<QQ> for Q {}
 
-impl KeyPair {
+impl RsaKeyPair {
     /// Sign `msg`. `msg` is digested using the digest algorithm from
     /// `padding_alg` and the digest is then padded using the padding algorithm
     /// from `padding_alg`. The signature it written into `signature`;
@@ -523,7 +523,7 @@ impl KeyPair {
     /// x86-64, this is done pretty well, but not perfectly. On other
     /// platforms, it is done less perfectly.
     pub fn sign(
-        &self, padding_alg: &'static Encoding, rng: &rand::SecureRandom, msg: &[u8],
+        &self, padding_alg: &'static RsaEncoding, rng: &rand::SecureRandom, msg: &[u8],
         signature: &mut [u8],
     ) -> Result<(), error::Unspecified> {
         let mod_bits = self.public.n_bits;

@@ -26,7 +26,7 @@ use crate::{
 use untrusted;
 
 /// An ECDSA verification algorithm.
-pub struct Algorithm {
+pub struct EcdsaVerificationAlgorithm {
     ops: &'static PublicScalarOps,
     digest_alg: &'static digest::Algorithm,
     split_rs:
@@ -48,9 +48,9 @@ enum AlgorithmID {
     ECDSA_P384_SHA384_FIXED,
 }
 
-derive_debug_via_id!(Algorithm);
+derive_debug_via_id!(EcdsaVerificationAlgorithm);
 
-impl signature::VerificationAlgorithm for Algorithm {
+impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
     fn verify(
         &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
@@ -68,7 +68,7 @@ impl signature::VerificationAlgorithm for Algorithm {
     }
 }
 
-impl Algorithm {
+impl EcdsaVerificationAlgorithm {
     /// This is intentionally not public.
     fn verify_digest(
         &self, public_key: untrusted::Input, e: Scalar, signature: untrusted::Input,
@@ -159,7 +159,7 @@ impl Algorithm {
     }
 }
 
-impl sealed::Sealed for Algorithm {}
+impl sealed::Sealed for EcdsaVerificationAlgorithm {}
 
 fn split_rs_fixed<'a>(
     ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>,
@@ -194,7 +194,7 @@ fn twin_mul(
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA256_FIXED: Algorithm = Algorithm {
+pub static ECDSA_P256_SHA256_FIXED: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_fixed,
@@ -206,7 +206,7 @@ pub static ECDSA_P256_SHA256_FIXED: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA384_FIXED: Algorithm = Algorithm {
+pub static ECDSA_P384_SHA384_FIXED: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_fixed,
@@ -218,7 +218,7 @@ pub static ECDSA_P384_SHA384_FIXED: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA256_ASN1: Algorithm = Algorithm {
+pub static ECDSA_P256_SHA256_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_asn1,
@@ -235,7 +235,7 @@ pub static ECDSA_P256_SHA256_ASN1: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA384_ASN1: Algorithm = Algorithm {
+pub static ECDSA_P256_SHA384_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_asn1,
@@ -252,7 +252,7 @@ pub static ECDSA_P256_SHA384_ASN1: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA256_ASN1: Algorithm = Algorithm {
+pub static ECDSA_P384_SHA256_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_asn1,
@@ -264,7 +264,7 @@ pub static ECDSA_P384_SHA256_ASN1: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA384_ASN1: Algorithm = Algorithm {
+pub static ECDSA_P384_SHA384_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_asn1,

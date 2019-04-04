@@ -271,28 +271,28 @@ use untrusted;
 
 pub use crate::ec::{
     curve25519::ed25519::{
-        signing::KeyPair as Ed25519KeyPair,
+        signing::Ed25519KeyPair,
         verification::{EdDSAParameters, ED25519},
-        PUBLIC_KEY_LEN as ED25519_PUBLIC_KEY_LEN,
+        ED25519_PUBLIC_KEY_LEN,
     },
     suite_b::ecdsa::{
         signing::{
-            Algorithm as EcdsaSigningAlgorithm, KeyPair as EcdsaKeyPair,
-            ECDSA_P256_SHA256_ASN1_SIGNING, ECDSA_P256_SHA256_FIXED_SIGNING,
-            ECDSA_P384_SHA384_ASN1_SIGNING, ECDSA_P384_SHA384_FIXED_SIGNING,
+            EcdsaKeyPair, EcdsaSigningAlgorithm, ECDSA_P256_SHA256_ASN1_SIGNING,
+            ECDSA_P256_SHA256_FIXED_SIGNING, ECDSA_P384_SHA384_ASN1_SIGNING,
+            ECDSA_P384_SHA384_FIXED_SIGNING,
         },
         verification::{
-            Algorithm as EcdsaVerificationAlgorithm, ECDSA_P256_SHA256_ASN1,
-            ECDSA_P256_SHA256_FIXED, ECDSA_P256_SHA384_ASN1, ECDSA_P384_SHA256_ASN1,
-            ECDSA_P384_SHA384_ASN1, ECDSA_P384_SHA384_FIXED,
+            EcdsaVerificationAlgorithm, ECDSA_P256_SHA256_ASN1, ECDSA_P256_SHA256_FIXED,
+            ECDSA_P256_SHA384_ASN1, ECDSA_P384_SHA256_ASN1, ECDSA_P384_SHA384_ASN1,
+            ECDSA_P384_SHA384_FIXED,
         },
     },
 };
 
 #[cfg(feature = "use_heap")]
 pub use crate::rsa::{
-    signing::KeyPair as RsaKeyPair,
-    signing::PublicKey as RsaPublicKey,
+    signing::RsaKeyPair,
+    signing::RsaPublicKey,
 
     verification::{
         RSA_PKCS1_2048_8192_SHA1, RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA384,
@@ -300,8 +300,8 @@ pub use crate::rsa::{
         RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
     },
 
-    Encoding as RsaEncoding,
-    Parameters as RsaParameters,
+    RsaEncoding,
+    RsaParameters,
 
     // `RSA_PKCS1_SHA1` is intentionally not exposed. At a minimum, we'd need
     // to create test vectors for signing with it, which we don't currently
