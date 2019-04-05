@@ -34,7 +34,7 @@ pub struct RsaKeyPair {
     qq: bigint::Modulus<QQ>,
     q_mod_n: bigint::Elem<N, R>,
     public: verification::Key,
-    public_key: RsaPublicKey,
+    public_key: RsaSubjectPublicKey,
 }
 
 derive_debug_via_field!(RsaKeyPair, stringify!(RsaKeyPair), public_key);
@@ -360,7 +360,7 @@ impl RsaKeyPair {
 
         let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &public_key.n).into_modulus::<QQ>()?;
 
-        let public_key_serialized = RsaPublicKey::from_n_and_e(n, e);
+        let public_key_serialized = RsaSubjectPublicKey::from_n_and_e(n, e);
 
         Ok(Self {
             p,
@@ -386,28 +386,28 @@ impl RsaKeyPair {
 }
 
 impl signature::KeyPair for RsaKeyPair {
-    type PublicKey = RsaPublicKey;
+    type PublicKey = RsaSubjectPublicKey;
 
     fn public_key(&self) -> &Self::PublicKey { &self.public_key }
 }
 
 /// A serialized RSA public key.
 #[derive(Clone)]
-pub struct RsaPublicKey(Box<[u8]>);
+pub struct RsaSubjectPublicKey(Box<[u8]>);
 
-impl AsRef<[u8]> for RsaPublicKey {
+impl AsRef<[u8]> for RsaSubjectPublicKey {
     fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
 
-derive_debug_self_as_ref_hex_bytes!(RsaPublicKey);
+derive_debug_self_as_ref_hex_bytes!(RsaSubjectPublicKey);
 
-impl RsaPublicKey {
+impl RsaSubjectPublicKey {
     fn from_n_and_e(n: io::Positive, e: io::Positive) -> Self {
         let bytes = der_writer::write_all(der::Tag::Sequence, &|output| {
             der_writer::write_positive_integer(output, &n);
             der_writer::write_positive_integer(output, &e);
         });
-        RsaPublicKey(bytes)
+        RsaSubjectPublicKey(bytes)
     }
 
     /// The public modulus (n).
