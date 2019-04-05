@@ -42,6 +42,16 @@ use crate::{digest, error, hmac};
 pub struct Salt(hmac::Key);
 
 impl Salt {
+    /// The [HKDF-Expand] operation, specialized for deriving a new salt.
+    ///
+    /// The new `Salt` will have a length equal to the digest algorithm's output
+    /// length.
+    ///
+    /// [HKDF-Expand]: https://tools.ietf.org/html/rfc5869#section-2.3
+    pub fn derive(digest_algorithm: &'static digest::Algorithm, okm: Okm) -> Self {
+        Self(hmac::Key::derive(digest_algorithm, okm))
+    }
+
     /// Constructs a new `Salt` with the given value based on the given digest
     /// algorithm.
     ///
@@ -73,6 +83,8 @@ pub struct Prk(hmac::Key);
 
 impl Prk {
     /// The [HKDF-Expand] operation.
+    ///
+    /// [HKDF-Expand]: https://tools.ietf.org/html/rfc5869#section-2.3
     #[inline]
     pub fn expand<'a>(&'a self, info: &'a [u8]) -> Okm<'a> { Okm { prk: self, info } }
 }

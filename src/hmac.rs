@@ -124,6 +124,7 @@
 //!     https://github.com/briansmith/ring/blob/master/src/hkdf.rs
 
 use crate::{constant_time, digest, error, rand};
+use crate::hkdf;
 
 /// A deprecated alias for `Tag`.
 #[deprecated(note = "`Signature` was renamed to `Tag`. This alias will be removed soon.")]
@@ -164,6 +165,18 @@ impl core::fmt::Debug for Key {
 }
 
 impl Key {
+    /// Derive an HMAC key from the output of an `HKDF-Expand` operation.
+    ///
+    /// The key will be `digest_alg.output_len` bytes long, based on the
+    /// recommendation in https://tools.ietf.org/html/rfc2104#section-3.
+    pub fn derive(
+        digest_alg: &'static digest::Algorithm, okm: hkdf::Okm) -> Self {
+        let mut key_bytes = [0; digest::MAX_OUTPUT_LEN];
+        let key_bytes = &mut key_bytes[..digest_alg.output_len];
+        okm.fill(key_bytes).unwrap();
+        Self::new(digest_alg, key_bytes)
+    }
+
     /// Generate an HMAC signing key using the given digest algorithm with a
     /// random value generated from `rng`.
     ///
