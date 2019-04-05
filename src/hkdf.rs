@@ -19,12 +19,8 @@
 //! use ring::{aead, digest, error, hkdf};
 //!
 //! fn derive_opening_key(
-//!     key_algorithm: &'static aead::Algorithm,
-//!     salt: [u8; 32],
-//!     ikm: [u8; 32],
-//!     info: &[u8])
-//!     -> Result<aead::OpeningKey, error::Unspecified>
-//! {
+//!     key_algorithm: &'static aead::Algorithm, salt: [u8; 32], ikm: [u8; 32], info: &[u8],
+//! ) -> Result<aead::OpeningKey, error::Unspecified> {
 //!     let salt = hkdf::Salt::new(&digest::SHA512, &salt);
 //!     let prk = salt.extract(&ikm);
 //!     let mut key_bytes = vec![0; key_algorithm.key_len()];

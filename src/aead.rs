@@ -23,8 +23,9 @@
 
 use self::block::{Block, BLOCK_LEN};
 use crate::{
-    constant_time, cpu, error,
+    constant_time, cpu, error, hkdf,
     polyfill::{self, convert::*},
+    rand,
 };
 
 pub use self::{
@@ -41,6 +42,24 @@ pub struct OpeningKey {
 derive_debug_via_field!(OpeningKey, key);
 
 impl OpeningKey {
+    /// TODO: docs
+    #[inline]
+    pub fn derive(algorithm: &'static Algorithm, okm: hkdf::Okm) -> Self {
+        Self {
+            key: Key::derive(algorithm, okm),
+        }
+    }
+
+    /// TODO: docs
+    #[inline]
+    pub fn generate(
+        algorithm: &'static Algorithm, rng: &rand::SecureRandom,
+    ) -> Result<Self, error::Unspecified> {
+        Ok(Self {
+            key: Key::generate(algorithm, rng)?,
+        })
+    }
+
     /// Create a new opening key.
     ///
     /// `key_bytes` must be exactly `algorithm.key_len` bytes long.
@@ -159,6 +178,24 @@ pub struct SealingKey {
 derive_debug_via_field!(SealingKey, key);
 
 impl SealingKey {
+    /// TODO: docs
+    #[inline]
+    pub fn derive(algorithm: &'static Algorithm, okm: hkdf::Okm) -> Self {
+        Self {
+            key: Key::derive(algorithm, okm),
+        }
+    }
+
+    /// TODO: docs
+    #[inline]
+    pub fn generate(
+        algorithm: &'static Algorithm, rng: &rand::SecureRandom,
+    ) -> Result<Self, error::Unspecified> {
+        Ok(Self {
+            key: Key::generate(algorithm, rng)?,
+        })
+    }
+
     /// Constructs a new sealing key from `key_bytes`.
     #[inline]
     pub fn new(
@@ -257,6 +294,22 @@ enum KeyInner {
 }
 
 impl Key {
+    fn derive(algorithm: &'static Algorithm, okm: hkdf::Okm) -> Self {
+        let mut key_bytes = [0; MAX_KEY_LEN];
+        let key_bytes = &mut key_bytes[..algorithm.key_len];
+        okm.fill(key_bytes).unwrap();
+        Self::new(algorithm, key_bytes).unwrap()
+    }
+
+    fn generate(
+        algorithm: &'static Algorithm, rng: &rand::SecureRandom,
+    ) -> Result<Self, error::Unspecified> {
+        let mut key_bytes = [0; MAX_KEY_LEN];
+        let key_bytes = &mut key_bytes[..algorithm.key_len];
+        rng.fill(key_bytes)?;
+        Self::new(algorithm, key_bytes)
+    }
+
     fn new(algorithm: &'static Algorithm, key_bytes: &[u8]) -> Result<Self, error::Unspecified> {
         let cpu_features = cpu::features();
         Ok(Self {
@@ -341,6 +394,8 @@ impl Eq for Algorithm {}
 #[must_use]
 #[repr(C)]
 struct Tag(Block);
+
+const MAX_KEY_LEN: usize = 32;
 
 // All the AEADs we support use 128-bit tags.
 const TAG_LEN: usize = BLOCK_LEN;
