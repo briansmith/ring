@@ -64,7 +64,7 @@
 #include "../../internal.h"
 
 
-uint8_t *MD5(const uint8_t *data, size_t len, uint8_t *out) {
+uint8_t *MD5(const uint8_t *data, size_t len, uint8_t out[MD5_DIGEST_LENGTH]) {
   MD5_CTX ctx;
   MD5_Init(&ctx);
   MD5_Update(&ctx, data, len);
@@ -94,6 +94,7 @@ static void md5_block_data_order(uint32_t *state, const uint8_t *data,
 
 #define HASH_CTX MD5_CTX
 #define HASH_CBLOCK 64
+#define HASH_DIGEST_LENGTH 16
 #define HASH_UPDATE MD5_Update
 #define HASH_TRANSFORM MD5_Transform
 #define HASH_FINAL MD5_Final
@@ -281,6 +282,7 @@ static void md5_block_data_order(uint32_t *state, const uint8_t *data,
 #undef DATA_ORDER_IS_LITTLE_ENDIAN
 #undef HASH_CTX
 #undef HASH_CBLOCK
+#undef HASH_DIGEST_LENGTH
 #undef HASH_UPDATE
 #undef HASH_TRANSFORM
 #undef HASH_FINAL

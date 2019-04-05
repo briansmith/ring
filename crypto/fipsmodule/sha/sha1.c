@@ -74,7 +74,7 @@ int SHA1_Init(SHA_CTX *sha) {
   return 1;
 }
 
-uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t *out) {
+uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t out[SHA_DIGEST_LENGTH]) {
   SHA_CTX ctx;
   SHA1_Init(&ctx);
   SHA1_Update(&ctx, data, len);
@@ -87,6 +87,7 @@ uint8_t *SHA1(const uint8_t *data, size_t len, uint8_t *out) {
 
 #define HASH_CTX                SHA_CTX
 #define HASH_CBLOCK             64
+#define HASH_DIGEST_LENGTH      20
 #define HASH_MAKE_STRING(c, s) \
   do {                         \
     uint32_t ll;               \
@@ -343,6 +344,7 @@ static void sha1_block_data_order(uint32_t *state, const uint8_t *data,
 #undef DATA_ORDER_IS_BIG_ENDIAN
 #undef HASH_CTX
 #undef HASH_CBLOCK
+#undef HASH_DIGEST_LENGTH
 #undef HASH_MAKE_STRING
 #undef HASH_UPDATE
 #undef HASH_TRANSFORM
