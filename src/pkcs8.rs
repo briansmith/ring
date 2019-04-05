@@ -49,10 +49,14 @@ pub(crate) struct Template {
 
 impl Template {
     #[inline]
-    fn alg_id_value(&self) -> &[u8] { &self.bytes[self.alg_id_range.start..self.alg_id_range.end] }
+    fn alg_id_value(&self) -> untrusted::Input { untrusted::Input::from(self.alg_id_value_()) }
+
+    fn alg_id_value_(&self) -> &[u8] { &self.bytes[self.alg_id_range.start..self.alg_id_range.end] }
 
     #[inline]
-    pub fn curve_oid(&self) -> &[u8] { &self.alg_id_value()[self.curve_id_index..] }
+    pub fn curve_oid(&self) -> untrusted::Input {
+        untrusted::Input::from(&self.alg_id_value_()[self.curve_id_index..])
+    }
 }
 
 /// Parses an unencrypted PKCS#8 private key, verifies that it is the right type
@@ -78,7 +82,7 @@ pub(crate) fn unwrap_key<'a>(
 ///
 /// [RFC 5958]: https://tools.ietf.org/html/rfc5958.
 pub(crate) fn unwrap_key_<'a>(
-    alg_id: &[u8], version: Version, input: untrusted::Input<'a>,
+    alg_id: untrusted::Input, version: Version, input: untrusted::Input<'a>,
 ) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::KeyRejected> {
     input.read_all(error::KeyRejected::invalid_encoding(), |input| {
         der::nested(
@@ -91,7 +95,7 @@ pub(crate) fn unwrap_key_<'a>(
 }
 
 fn unwrap_key__<'a>(
-    alg_id: &[u8], version: Version, input: &mut untrusted::Reader<'a>,
+    alg_id: untrusted::Input, version: Version, input: &mut untrusted::Reader<'a>,
 ) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::KeyRejected> {
     let actual_version = der::small_nonnegative_integer(input)
         .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
@@ -107,7 +111,7 @@ fn unwrap_key__<'a>(
 
     let actual_alg_id = der::expect_tag_and_get_value(input, der::Tag::Sequence)
         .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
-    if actual_alg_id != *alg_id {
+    if actual_alg_id != alg_id {
         return Err(error::KeyRejected::wrong_algorithm());
     }
 

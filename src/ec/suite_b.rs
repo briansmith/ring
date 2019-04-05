@@ -184,7 +184,7 @@ fn key_pair_from_pkcs8_<'a>(
         let actual_alg_id =
             der::expect_tag_and_get_value(input, der::Tag::ContextSpecificConstructed0)
                 .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
-        if actual_alg_id != *template.curve_oid() {
+        if actual_alg_id != template.curve_oid() {
             return Err(error::KeyRejected::wrong_algorithm());
         }
     }
