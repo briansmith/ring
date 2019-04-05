@@ -135,6 +135,11 @@ pub type Signature = Tag;
 #[derive(Clone, Copy, Debug)]
 pub struct Tag(digest::Digest);
 
+impl AsRef<[u8]> for Tag {
+    #[inline]
+    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+}
+
 /// A key to use for HMAC signing.
 pub struct Key {
     ctx_prototype: Context,
@@ -156,11 +161,6 @@ impl core::fmt::Debug for Key {
             .field("algorithm", self.digest_algorithm())
             .finish()
     }
-}
-
-impl AsRef<[u8]> for Tag {
-    #[inline]
-    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
 }
 
 impl Key {
