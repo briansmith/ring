@@ -184,7 +184,7 @@ fn key_pair_from_pkcs8_<'a>(
         let actual_alg_id =
             der::expect_tag_and_get_value(input, der::Tag::ContextSpecificConstructed0)
                 .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
-        if actual_alg_id != template.curve_oid() {
+        if actual_alg_id != *template.curve_oid() {
             return Err(error::KeyRejected::wrong_algorithm());
         }
     }
@@ -211,7 +211,7 @@ pub(crate) fn key_pair_from_bytes(
 
     let r = ec::KeyPair::derive(seed)
         .map_err(|error::Unspecified| error::KeyRejected::unexpected_error())?;
-    if public_key_bytes != r.public_key().as_ref() {
+    if public_key_bytes != *r.public_key().as_ref() {
         return Err(error::KeyRejected::inconsistent_components());
     }
 

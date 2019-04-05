@@ -116,7 +116,7 @@ impl Ed25519KeyPair {
         // This implicitly verifies that `public_key` is the right length.
         // XXX: This rejects ~18 keys when they are partially reduced, though
         // those keys are virtually impossible to find.
-        if public_key != pair.public_key.as_ref() {
+        if public_key != *pair.public_key.as_ref() {
             let err = if public_key.len() != pair.public_key.as_ref().len() {
                 error::KeyRejected::invalid_encoding()
             } else {
