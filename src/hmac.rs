@@ -167,32 +167,13 @@ impl Key {
     /// Generate an HMAC signing key using the given digest algorithm with a
     /// random value generated from `rng`.
     ///
-    /// The key will be `recommended_key_len(digest_alg)` bytes long.
+    /// The key will be `digest_alg.output_len` bytes long, based on the
+    /// recommendation in https://tools.ietf.org/html/rfc2104#section-3.
     pub fn generate(
         digest_alg: &'static digest::Algorithm, rng: &rand::SecureRandom,
     ) -> Result<Self, error::Unspecified> {
-        // XXX: There should probably be a `digest::MAX_CHAINING_LEN`, but for
-        // now `digest::MAX_OUTPUT_LEN` is good enough.
-        let mut key_bytes = [0u8; digest::MAX_OUTPUT_LEN];
-        let key_bytes = &mut key_bytes[..recommended_key_len(digest_alg)];
-        Self::generate_serializable(digest_alg, rng, key_bytes)
-    }
-
-    /// Generate an HMAC signing key using the given digest algorithm with a
-    /// random value generated from `rng`, and puts the raw key value in
-    /// `key_bytes`.
-    ///
-    /// The key will be `recommended_key_len(digest_alg)` bytes long. The raw
-    /// value of the random key is put in `key_bytes` so that it can be
-    /// serialized for later use, so `key_bytes` must be exactly
-    /// `recommended_key_len(digest_alg)`. This serialized value can be
-    /// deserialized with `Key::new()`.
-    pub fn generate_serializable(
-        digest_alg: &'static digest::Algorithm, rng: &rand::SecureRandom, key_bytes: &mut [u8],
-    ) -> Result<Self, error::Unspecified> {
-        if key_bytes.len() != recommended_key_len(digest_alg) {
-            return Err(error::Unspecified);
-        }
+        let mut key_bytes = [0; digest::MAX_OUTPUT_LEN];
+        let key_bytes = &mut key_bytes[..digest_alg.output_len];
         rng.fill(key_bytes)?;
         Ok(Self::new(digest_alg, key_bytes))
     }
@@ -329,13 +310,9 @@ pub fn verify(key: &Key, data: &[u8], tag: &[u8]) -> Result<(), error::Unspecifi
     constant_time::verify_slices_are_equal(sign(key, data).as_ref(), tag)
 }
 
-/// Deprecated
-#[inline]
-pub fn recommended_key_len(digest_alg: &digest::Algorithm) -> usize { digest_alg.chaining_len }
-
 #[cfg(test)]
 mod tests {
-    use crate::{digest, hmac, rand, test};
+    use crate::{digest, hmac, rand};
 
     // Make sure that `Key::generate` and `verify_with_own_key` aren't
     // completely wacky.
@@ -347,64 +324,10 @@ mod tests {
         const HELLO_WORLD_BAD: &[u8] = b"hello, worle";
 
         for d in &digest::test_util::ALL_ALGORITHMS {
-            {
-                let key = hmac::Key::generate(d, &mut rng).unwrap();
-                let tag = hmac::sign(&key, HELLO_WORLD_GOOD);
-                assert!(hmac::verify(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok());
-                assert!(hmac::verify(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err())
-            }
-
-            {
-                let mut key_bytes = vec![0; d.chaining_len];
-                let key = hmac::Key::generate_serializable(d, &mut rng, &mut key_bytes).unwrap();
-                let tag = hmac::sign(&key, HELLO_WORLD_GOOD);
-                assert!(hmac::verify(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok());
-                assert!(hmac::verify(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err())
-            }
-
-            // Attempt with a `key_bytes` parameter that wrongly uses the
-            // output length instead of the chaining length, when those two
-            // values differ.
-            if d.chaining_len != d.output_len {
-                let mut key_bytes = vec![0; d.output_len];
-                assert!(hmac::Key::generate_serializable(d, &mut rng, &mut key_bytes).is_err());
-            }
-
-            // Attempt with a too-small `key_bytes`.
-            {
-                let mut key_bytes = vec![0; d.chaining_len - 1];
-                assert!(hmac::Key::generate_serializable(d, &mut rng, &mut key_bytes).is_err());
-            }
-
-            // Attempt with a too-large `key_bytes`.
-            {
-                let mut key_bytes = vec![0; d.chaining_len + 1];
-                assert!(hmac::Key::generate_serializable(d, &mut rng, &mut key_bytes).is_err());
-            }
+            let key = hmac::Key::generate(d, &mut rng).unwrap();
+            let tag = hmac::sign(&key, HELLO_WORLD_GOOD);
+            assert!(hmac::verify(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok());
+            assert!(hmac::verify(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err())
         }
-    }
-
-    // Test that `generate_serializable()` generates a key from the RNG, and
-    // that the generated key fills the entire `key_bytes` parameter.
-    #[test]
-    pub fn generate_serializable_tests() {
-        test::run(
-            test_file!("hmac_generate_serializable_tests.txt"),
-            |section, test_case| {
-                assert_eq!(section, "");
-                let digest_alg = test_case.consume_digest_alg("HMAC").unwrap();
-                let key_value_in = test_case.consume_bytes("Key");
-
-                let rng = test::rand::FixedSliceRandom {
-                    bytes: &key_value_in,
-                };
-                let mut key_value_out = vec![0; digest_alg.chaining_len];
-                let _ =
-                    hmac::Key::generate_serializable(digest_alg, &rng, &mut key_value_out).unwrap();
-                assert_eq!(&key_value_in, &key_value_out);
-
-                Ok(())
-            },
-        )
     }
 }
