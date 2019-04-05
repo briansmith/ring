@@ -522,11 +522,11 @@ mod test {
                 let _ = test_case.consume_bytes("Salt");
 
                 let bit_len = test_case.consume_usize_bits("Len");
-                let expected_result = test_case.consume_string("Result");
+                let is_valid = test_case.consume_string("Result") == "P";
 
                 let actual_result =
                     encoded.read_all(error::Unspecified, |m| alg.verify(&m_hash, m, bit_len));
-                assert_eq!(actual_result.is_ok(), expected_result == "P");
+                assert_eq!(actual_result.is_ok(), is_valid);
 
                 Ok(())
             },

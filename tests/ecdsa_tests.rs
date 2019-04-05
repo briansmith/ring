@@ -141,17 +141,10 @@ fn signature_ecdsa_verify_asn1_test() {
 
             let curve_name = test_case.consume_string("Curve");
             let digest_name = test_case.consume_string("Digest");
-
             let msg = test_case.consume_bytes("Msg");
-            let msg = untrusted::Input::from(&msg);
-
             let public_key = test_case.consume_bytes("Q");
-            let public_key = untrusted::Input::from(&public_key);
-
             let sig = test_case.consume_bytes("Sig");
-            let sig = untrusted::Input::from(&sig);
-
-            let expected_result = test_case.consume_string("Result");
+            let is_valid = test_case.consume_string("Result") == "P (0 )";
 
             let alg = match (curve_name.as_str(), digest_name.as_str()) {
                 ("P-256", "SHA256") => &signature::ECDSA_P256_SHA256_ASN1,
@@ -163,8 +156,18 @@ fn signature_ecdsa_verify_asn1_test() {
                 },
             };
 
-            let actual_result = signature::verify(alg, public_key, msg, sig);
-            assert_eq!(actual_result.is_ok(), expected_result == "P (0 )");
+            let actual_result =
+                signature::UnparsedPublicKey::new(alg, &public_key).verify(&msg, &sig);
+            assert_eq!(actual_result.is_ok(), is_valid);
+
+            #[allow(deprecated)]
+            let actual_result = signature::verify(
+                alg,
+                untrusted::Input::from(&public_key),
+                untrusted::Input::from(&msg),
+                untrusted::Input::from(&sig),
+            );
+            assert_eq!(actual_result.is_ok(), is_valid);
 
             Ok(())
         },
@@ -182,14 +185,8 @@ fn signature_ecdsa_verify_fixed_test() {
             let digest_name = test_case.consume_string("Digest");
 
             let msg = test_case.consume_bytes("Msg");
-            let msg = untrusted::Input::from(&msg);
-
             let public_key = test_case.consume_bytes("Q");
-            let public_key = untrusted::Input::from(&public_key);
-
             let sig = test_case.consume_bytes("Sig");
-            let sig = untrusted::Input::from(&sig);
-
             let expected_result = test_case.consume_string("Result");
 
             let alg = match (curve_name.as_str(), digest_name.as_str()) {
@@ -200,8 +197,20 @@ fn signature_ecdsa_verify_fixed_test() {
                 },
             };
 
-            let actual_result = signature::verify(alg, public_key, msg, sig);
-            assert_eq!(actual_result.is_ok(), expected_result == "P (0 )");
+            let is_valid = expected_result == "P (0 )";
+
+            let actual_result =
+                signature::UnparsedPublicKey::new(alg, &public_key).verify(&msg, &sig);
+            assert_eq!(actual_result.is_ok(), is_valid);
+
+            #[allow(deprecated)]
+            let actual_result = signature::verify(
+                alg,
+                untrusted::Input::from(&public_key),
+                untrusted::Input::from(&msg),
+                untrusted::Input::from(&sig),
+            );
+            assert_eq!(actual_result.is_ok(), is_valid);
 
             Ok(())
         },

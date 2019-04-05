@@ -81,12 +81,12 @@ mod tests {
 
                 let public_key = test_case.consume_bytes("Q");
                 let public_key = untrusted::Input::from(&public_key);
-                let valid = test_case.consume_string("Result") == "P";
+                let is_valid = test_case.consume_string("Result") == "P";
 
                 let curve_ops = public_key_ops_from_curve_name(&curve_name);
 
                 let result = parse_uncompressed_point(curve_ops, public_key);
-                assert_eq!(valid, result.is_ok());
+                assert_eq!(is_valid, result.is_ok());
 
                 // TODO: Verify that we when we re-serialize the parsed (x, y), the
                 // output is equal to the input.

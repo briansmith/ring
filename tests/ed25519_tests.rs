@@ -47,14 +47,15 @@ fn test_signature_ed25519() {
 
         let public_key = test_case.consume_bytes("PUB");
         assert_eq!(32, public_key.len());
-        let public_key = untrusted::Input::from(&public_key);
 
         let msg = test_case.consume_bytes("MESSAGE");
 
         let expected_sig = test_case.consume_bytes("SIG");
 
         {
-            let key_pair = Ed25519KeyPair::from_seed_and_public_key(seed, public_key).unwrap();
+            let key_pair =
+                Ed25519KeyPair::from_seed_and_public_key(seed, untrusted::Input::from(&public_key))
+                    .unwrap();
             let actual_sig = key_pair.sign(&msg);
             assert_eq!(&expected_sig[..], actual_sig.as_ref());
         }
@@ -65,20 +66,29 @@ fn test_signature_ed25519() {
         };
         let pkcs8 = Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
         let key_pair = Ed25519KeyPair::from_pkcs8(untrusted::Input::from(pkcs8.as_ref())).unwrap();
-        assert_eq!(public_key, *key_pair.public_key().as_ref());
+        assert_eq!(public_key, key_pair.public_key().as_ref());
 
         // Test Signature generation.
         let actual_sig = key_pair.sign(&msg);
         assert_eq!(&expected_sig[..], actual_sig.as_ref());
 
         // Test Signature verification.
-        assert!(signature::verify(
+
+        assert!(
+            signature::UnparsedPublicKey::new(&signature::ED25519, &public_key)
+                .verify(&msg, &expected_sig)
+                .is_ok()
+        );
+
+        #[allow(deprecated)]
+        let actual_result = signature::verify(
             &signature::ED25519,
-            public_key,
+            untrusted::Input::from(&public_key),
             untrusted::Input::from(&msg),
-            untrusted::Input::from(&expected_sig)
-        )
-        .is_ok());
+            untrusted::Input::from(&expected_sig),
+        );
+        assert!(actual_result.is_ok());
+
         Ok(())
     });
 }
