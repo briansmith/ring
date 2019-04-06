@@ -41,7 +41,7 @@ pub struct OpeningKey {
 derive_debug_via_field!(OpeningKey, key);
 
 impl OpeningKey {
-    /// TODO: docs
+    /// Create a new `OpeningKey` by extracting the key's value from `okm`.
     #[inline]
     pub fn derive(algorithm: &'static Algorithm, okm: hkdf::Okm) -> Self {
         Self {
@@ -167,7 +167,7 @@ pub struct SealingKey {
 derive_debug_via_field!(SealingKey, key);
 
 impl SealingKey {
-    /// TODO: docs
+    /// Create a new `OpeningKey` by extracting the key's value from `okm`.
     #[inline]
     pub fn derive(algorithm: &'static Algorithm, okm: hkdf::Okm) -> Self {
         Self {
