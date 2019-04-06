@@ -107,7 +107,7 @@ pub mod hkdf;
 pub mod hmac;
 mod limb;
 pub mod pbkdf2;
-mod pkcs8;
+pub mod pkcs8;
 pub mod rand;
 
 #[cfg(feature = "use_heap")]
