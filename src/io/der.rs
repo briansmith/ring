@@ -194,7 +194,9 @@ pub fn small_nonnegative_integer(input: &mut untrusted::Reader) -> Result<u8, er
 pub fn positive_integer<'a>(
     input: &mut untrusted::Reader<'a>,
 ) -> Result<Positive<'a>, error::Unspecified> {
-    Ok(Positive(nonnegative_integer(input, 1)?))
+    Ok(Positive::new_non_empty_without_leading_zeros(
+        nonnegative_integer(input, 1)?,
+    ))
 }
 
 #[cfg(test)]
