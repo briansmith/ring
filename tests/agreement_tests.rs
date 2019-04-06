@@ -42,32 +42,28 @@ fn agreement_agree_ephemeral() {
 
         let curve_name = test_case.consume_string("Curve");
         let alg = alg_from_curve_name(&curve_name);
-        let peer_public = test_case.consume_bytes("PeerQ");
-        let peer_public = untrusted::Input::from(&peer_public);
+        let peer_public = agreement::UnparsedPublicKey::new(alg, test_case.consume_bytes("PeerQ"));
 
         match test_case.consume_optional_string("Error") {
             None => {
                 let my_private = test_case.consume_bytes("D");
-                let rng = test::rand::FixedSliceRandom { bytes: &my_private };
-                let my_private = agreement::EphemeralPrivateKey::generate(alg, &rng)?;
-
+                let my_private = {
+                    let rng = test::rand::FixedSliceRandom { bytes: &my_private };
+                    agreement::EphemeralPrivateKey::generate(alg, &rng)?
+                };
                 let my_public = test_case.consume_bytes("MyQ");
                 let output = test_case.consume_bytes("Output");
 
                 let computed_public = my_private.compute_public_key().unwrap();
                 assert_eq!(computed_public.as_ref(), &my_public[..]);
 
-                assert!(agreement::agree_ephemeral(
-                    my_private,
-                    alg,
-                    peer_public,
-                    (),
-                    |key_material| {
+                assert!(
+                    agreement::agree_ephemeral(my_private, &peer_public, (), |key_material| {
                         assert_eq!(key_material, &output[..]);
                         Ok(())
-                    }
-                )
-                .is_ok());
+                    })
+                    .is_ok()
+                );
             },
 
             Some(_) => {
@@ -82,8 +78,7 @@ fn agreement_agree_ephemeral() {
                 }
                 assert!(agreement::agree_ephemeral(
                     dummy_private_key,
-                    alg,
-                    peer_public,
+                    &peer_public,
                     (),
                     kdf_not_called
                 )
@@ -151,11 +146,10 @@ fn x25519(private_key: &[u8], public_key: &[u8]) -> Vec<u8> {
 fn x25519_(private_key: &[u8], public_key: &[u8]) -> Result<Vec<u8>, error::Unspecified> {
     let rng = test::rand::FixedSliceRandom { bytes: private_key };
     let private_key = agreement::EphemeralPrivateKey::generate(&agreement::X25519, &rng)?;
-    let public_key = untrusted::Input::from(public_key);
+    let public_key = agreement::UnparsedPublicKey::new(&agreement::X25519, public_key);
     agreement::agree_ephemeral(
         private_key,
-        &agreement::X25519,
-        public_key,
+        &public_key,
         error::Unspecified,
         |agreed_value| Ok(Vec::from(agreed_value)),
     )
