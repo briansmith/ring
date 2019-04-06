@@ -75,12 +75,11 @@ fn ecdsa_from_pkcs8_test() {
             };
 
             let input = test_case.consume_bytes("Input");
-            let input = untrusted::Input::from(&input);
 
             let error = test_case.consume_optional_string("Error");
 
             match (
-                signature::EcdsaKeyPair::from_pkcs8(this_fixed, input),
+                signature::EcdsaKeyPair::from_pkcs8(this_fixed, &input),
                 error.clone(),
             ) {
                 (Ok(_), None) => (),
@@ -90,7 +89,7 @@ fn ecdsa_from_pkcs8_test() {
             };
 
             match (
-                signature::EcdsaKeyPair::from_pkcs8(this_asn1, input),
+                signature::EcdsaKeyPair::from_pkcs8(this_asn1, &input),
                 error.clone(),
             ) {
                 (Ok(_), None) => (),
@@ -99,8 +98,8 @@ fn ecdsa_from_pkcs8_test() {
                 (Err(actual), Some(expected)) => assert_eq!(actual.description(), expected),
             };
 
-            assert!(signature::EcdsaKeyPair::from_pkcs8(other_fixed, input).is_err());
-            assert!(signature::EcdsaKeyPair::from_pkcs8(other_asn1, input).is_err());
+            assert!(signature::EcdsaKeyPair::from_pkcs8(other_fixed, &input).is_err());
+            assert!(signature::EcdsaKeyPair::from_pkcs8(other_asn1, &input).is_err());
 
             Ok(())
         },
@@ -127,8 +126,7 @@ fn ecdsa_generate_pkcs8_test() {
         println!();
 
         #[cfg(feature = "use_heap")]
-        let _ = signature::EcdsaKeyPair::from_pkcs8(*alg, untrusted::Input::from(pkcs8.as_ref()))
-            .unwrap();
+        let _ = signature::EcdsaKeyPair::from_pkcs8(*alg, pkcs8.as_ref()).unwrap();
     }
 }
 
@@ -225,7 +223,7 @@ fn ecdsa_test_public_key_coverage() {
 
     let key_pair = signature::EcdsaKeyPair::from_pkcs8(
         &signature::ECDSA_P256_SHA256_FIXED_SIGNING,
-        untrusted::Input::from(PRIVATE_KEY),
+        PRIVATE_KEY,
     )
     .unwrap();
 

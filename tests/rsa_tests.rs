@@ -51,11 +51,9 @@ fn rsa_from_pkcs8_test() {
             assert_eq!(section, "");
 
             let input = test_case.consume_bytes("Input");
-            let input = untrusted::Input::from(&input);
-
             let error = test_case.consume_optional_string("Error");
 
-            match (signature::RsaKeyPair::from_pkcs8(input), error) {
+            match (signature::RsaKeyPair::from_pkcs8(&input), error) {
                 (Ok(_), None) => (),
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
                 (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
@@ -89,8 +87,7 @@ fn test_signature_rsa_pkcs1_sign() {
             let expected = test_case.consume_bytes("Sig");
             let result = test_case.consume_string("Result");
 
-            let private_key = untrusted::Input::from(&private_key);
-            let key_pair = signature::RsaKeyPair::from_der(private_key);
+            let key_pair = signature::RsaKeyPair::from_der(&private_key);
             if result == "Fail-Invalid-Key" {
                 assert!(key_pair.is_err());
                 return Ok(());
@@ -128,8 +125,7 @@ fn test_signature_rsa_pss_sign() {
 
             let result = test_case.consume_string("Result");
             let private_key = test_case.consume_bytes("Key");
-            let private_key = untrusted::Input::from(&private_key);
-            let key_pair = signature::RsaKeyPair::from_der(private_key);
+            let key_pair = signature::RsaKeyPair::from_der(&private_key);
             if key_pair.is_err() && result == "Fail-Invalid-Key" {
                 return Ok(());
             }
@@ -295,7 +291,7 @@ fn rsa_test_public_key_coverage() {
     const PUBLIC_KEY: &[u8] = include_bytes!("rsa_test_public_key_2048.der");
     const PUBLIC_KEY_DEBUG: &str = include_str!("rsa_test_public_key_2048_debug.txt");
 
-    let key_pair = signature::RsaKeyPair::from_pkcs8(untrusted::Input::from(PRIVATE_KEY)).unwrap();
+    let key_pair = signature::RsaKeyPair::from_pkcs8(PRIVATE_KEY).unwrap();
 
     // Test `AsRef<[u8]>`
     assert_eq!(key_pair.public_key().as_ref(), PUBLIC_KEY);

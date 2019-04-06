@@ -140,8 +140,7 @@
 //! // Normally the application would store the PKCS#8 file persistently. Later
 //! // it would read the PKCS#8 file from persistent storage to use it.
 //!
-//! let key_pair =
-//!     signature::Ed25519KeyPair::from_pkcs8(untrusted::Input::from(pkcs8_bytes.as_ref()))?;
+//! let key_pair = signature::Ed25519KeyPair::from_pkcs8(pkcs8_bytes.as_ref())?;
 //!
 //! // Sign the message "hello, world".
 //! const MESSAGE: &[u8] = b"hello, world";
@@ -203,8 +202,7 @@
 //! // Create an `RsaKeyPair` from the DER-encoded bytes. This example uses
 //! // a 2048-bit key, but larger keys are also supported.
 //! let private_key_der = read_file(private_key_path)?;
-//! let private_key_der = untrusted::Input::from(&private_key_der);
-//! let key_pair = signature::RsaKeyPair::from_der(private_key_der)
+//! let key_pair = signature::RsaKeyPair::from_der(&private_key_der)
 //!     .map_err(|_| MyError::BadPrivateKey)?;
 //!
 //! // Sign the message "hello, world", using PKCS#1 v1.5 padding and the

@@ -136,14 +136,14 @@ impl RsaKeyPair {
     ///
     /// [RFC 5958]:
     ///     https://tools.ietf.org/html/rfc5958
-    pub fn from_pkcs8(input: untrusted::Input) -> Result<Self, KeyRejected> {
+    pub fn from_pkcs8(pkcs8: &[u8]) -> Result<Self, KeyRejected> {
         const RSA_ENCRYPTION: &[u8] = include_bytes!("../data/alg-rsa-encryption.der");
         let (der, _) = pkcs8::unwrap_key_(
             untrusted::Input::from(&RSA_ENCRYPTION),
             pkcs8::Version::V1Only,
-            input,
+            untrusted::Input::from(pkcs8),
         )?;
-        Self::from_der(der)
+        Self::from_der(der.as_slice_less_safe())
     }
 
     /// Parses an RSA private key that is not inside a PKCS#8 wrapper.
@@ -161,8 +161,8 @@ impl RsaKeyPair {
     ///
     /// [NIST SP-800-56B rev. 1]:
     ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Br1.pdf
-    pub fn from_der(input: untrusted::Input) -> Result<Self, KeyRejected> {
-        input.read_all(KeyRejected::invalid_encoding(), |input| {
+    pub fn from_der(input: &[u8]) -> Result<Self, KeyRejected> {
+        untrusted::Input::from(input).read_all(KeyRejected::invalid_encoding(), |input| {
             der::nested(
                 input,
                 der::Tag::Sequence,
@@ -601,7 +601,6 @@ mod tests {
     // We intentionally avoid `use super::*` so that we are sure to use only
     // the public API; this ensures that enough of the API is public.
     use crate::{rand, signature};
-    use untrusted;
 
     // `KeyPair::sign` requires that the output buffer is the same length as
     // the public key modulus. Test what happens when it isn't the same length.
@@ -614,8 +613,7 @@ mod tests {
 
         const PRIVATE_KEY_DER: &'static [u8] =
             include_bytes!("signature_rsa_example_private_key.der");
-        let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
-        let key_pair = signature::RsaKeyPair::from_der(key_bytes_der).unwrap();
+        let key_pair = signature::RsaKeyPair::from_der(PRIVATE_KEY_DER).unwrap();
 
         // The output buffer is one byte too short.
         let mut signature = vec![0; key_pair.public_modulus_len() - 1];

@@ -72,9 +72,13 @@ impl Ed25519KeyPair {
     ///
     /// If you need to parse PKCS#8 v1 files (without the public key) then use
     /// `Ed25519KeyPair::from_pkcs8_maybe_unchecked()` instead.
-    pub fn from_pkcs8(input: untrusted::Input) -> Result<Self, error::KeyRejected> {
-        let (seed, public_key) = unwrap_pkcs8(pkcs8::Version::V2Only, input)?;
-        Self::from_seed_and_public_key(seed, public_key.unwrap())
+    pub fn from_pkcs8(pkcs8: &[u8]) -> Result<Self, error::KeyRejected> {
+        let (seed, public_key) =
+            unwrap_pkcs8(pkcs8::Version::V2Only, untrusted::Input::from(pkcs8))?;
+        Self::from_seed_and_public_key(
+            seed.as_slice_less_safe(),
+            public_key.unwrap().as_slice_less_safe(),
+        )
     }
 
     /// Constructs an Ed25519 key pair by parsing an unencrypted PKCS#8 v1 or v2
@@ -89,12 +93,16 @@ impl Ed25519KeyPair {
     /// between the public key and the private key.
     ///
     /// PKCS#8 v2 files are parsed exactly like `Ed25519KeyPair::from_pkcs8()`.
-    pub fn from_pkcs8_maybe_unchecked(input: untrusted::Input) -> Result<Self, error::KeyRejected> {
-        let (seed, public_key) = unwrap_pkcs8(pkcs8::Version::V1OrV2, input)?;
+    pub fn from_pkcs8_maybe_unchecked(pkcs8: &[u8]) -> Result<Self, error::KeyRejected> {
+        let (seed, public_key) =
+            unwrap_pkcs8(pkcs8::Version::V1OrV2, untrusted::Input::from(pkcs8))?;
         if let Some(public_key) = public_key {
-            Self::from_seed_and_public_key(seed, public_key)
+            Self::from_seed_and_public_key(
+                seed.as_slice_less_safe(),
+                public_key.as_slice_less_safe(),
+            )
         } else {
-            Self::from_seed_unchecked(seed)
+            Self::from_seed_unchecked(seed.as_slice_less_safe())
         }
     }
 
@@ -109,14 +117,14 @@ impl Ed25519KeyPair {
     /// public key). This also detects any corruption of the public or private
     /// key.
     pub fn from_seed_and_public_key(
-        seed: untrusted::Input, public_key: untrusted::Input,
+        seed: &[u8], public_key: &[u8],
     ) -> Result<Self, error::KeyRejected> {
         let pair = Self::from_seed_unchecked(seed)?;
 
         // This implicitly verifies that `public_key` is the right length.
         // XXX: This rejects ~18 keys when they are partially reduced, though
         // those keys are virtually impossible to find.
-        if public_key != *pair.public_key.as_ref() {
+        if public_key != pair.public_key.as_ref() {
             let err = if public_key.len() != pair.public_key.as_ref().len() {
                 error::KeyRejected::invalid_encoding()
             } else {
@@ -137,9 +145,8 @@ impl Ed25519KeyPair {
     /// Since the public key is not given, the public key will be computed from
     /// the private key. It is not possible to detect misuse or corruption of
     /// the private key since the public key isn't given as input.
-    pub fn from_seed_unchecked(seed: untrusted::Input) -> Result<Self, error::KeyRejected> {
+    pub fn from_seed_unchecked(seed: &[u8]) -> Result<Self, error::KeyRejected> {
         let seed = seed
-            .as_slice_less_safe()
             .try_into_()
             .map_err(|_| error::KeyRejected::invalid_encoding())?;
         Ok(Self::from_seed_(seed))
