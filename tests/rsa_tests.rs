@@ -306,7 +306,6 @@ fn rsa_test_public_key_coverage() {
             .public_key()
             .exponent()
             .big_endian_without_leading_zero()
-            .as_slice_less_safe()
     );
 
     // Test `Debug`

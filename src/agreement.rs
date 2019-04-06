@@ -136,7 +136,7 @@ impl AsRef<[u8]> for PublicKey {
 
 derive_debug_self_as_ref_hex_bytes!(PublicKey);
 
-/// An unparsed (possibly invalid) public key for key agreement.
+/// An unparsed, possibly malformed, public key for key agreement.
 pub struct UnparsedPublicKey<B: AsRef<[u8]>> {
     algorithm: &'static Algorithm,
     bytes: B,

@@ -288,7 +288,7 @@ mod tests {
             with_good_i(test_in, |input| {
                 let test_out = [test_out];
                 assert_eq!(
-                    positive_integer(input)?.big_endian_without_leading_zero(),
+                    positive_integer(input)?.big_endian_without_leading_zero_as_input(),
                     untrusted::Input::from(&test_out[..])
                 );
                 Ok(())

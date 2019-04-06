@@ -188,12 +188,12 @@ impl RsaKeyPair {
 
         let n = positive_integer(input)?;
         let e = positive_integer(input)?;
-        let d = positive_integer(input)?.big_endian_without_leading_zero();
-        let p = positive_integer(input)?.big_endian_without_leading_zero();
-        let q = positive_integer(input)?.big_endian_without_leading_zero();
-        let dP = positive_integer(input)?.big_endian_without_leading_zero();
-        let dQ = positive_integer(input)?.big_endian_without_leading_zero();
-        let qInv = positive_integer(input)?.big_endian_without_leading_zero();
+        let d = positive_integer(input)?.big_endian_without_leading_zero_as_input();
+        let p = positive_integer(input)?.big_endian_without_leading_zero_as_input();
+        let q = positive_integer(input)?.big_endian_without_leading_zero_as_input();
+        let dP = positive_integer(input)?.big_endian_without_leading_zero_as_input();
+        let dQ = positive_integer(input)?.big_endian_without_leading_zero_as_input();
+        let qInv = positive_integer(input)?.big_endian_without_leading_zero_as_input();
 
         let (p, p_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(p)
             .map_err(|error::Unspecified| KeyRejected::invalid_encoding())?;
@@ -231,8 +231,8 @@ impl RsaKeyPair {
 
         // Step 1.c. We validate e >= 65537.
         let public_key = verification::Key::from_modulus_and_exponent(
-            n.big_endian_without_leading_zero(),
-            e.big_endian_without_leading_zero(),
+            n.big_endian_without_leading_zero_as_input(),
+            e.big_endian_without_leading_zero_as_input(),
             bits::BitLength::from_usize_bits(2048),
             super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
             65537,
@@ -379,7 +379,7 @@ impl RsaKeyPair {
     pub fn public_modulus_len(&self) -> usize {
         self.public_key
             .modulus()
-            .big_endian_without_leading_zero()
+            .big_endian_without_leading_zero_as_input()
             .as_slice_less_safe()
             .len()
     }

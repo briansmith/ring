@@ -85,8 +85,8 @@ impl signature::VerificationAlgorithm for RsaParameters {
         verify_rsa_(
             self,
             (
-                n.big_endian_without_leading_zero(),
-                e.big_endian_without_leading_zero(),
+                n.big_endian_without_leading_zero_as_input(),
+                e.big_endian_without_leading_zero_as_input(),
             ),
             msg,
             signature,

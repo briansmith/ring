@@ -16,7 +16,7 @@ use super::{der::*, writer::*, *};
 
 pub(crate) fn write_positive_integer(output: &mut Accumulator, value: &Positive) {
     let first_byte = value.first_byte();
-    let value = value.big_endian_without_leading_zero();
+    let value = value.big_endian_without_leading_zero_as_input();
     write_tlv(output, Tag::Integer, |output| {
         if (first_byte & 0x80) != 0 {
             output.write_byte(0); // Disambiguate negative number.

@@ -174,8 +174,8 @@ fn split_rs_asn1<'a>(
     _ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>,
 ) -> Result<(untrusted::Input<'a>, untrusted::Input<'a>), error::Unspecified> {
     der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-        let r = der::positive_integer(input)?.big_endian_without_leading_zero();
-        let s = der::positive_integer(input)?.big_endian_without_leading_zero();
+        let r = der::positive_integer(input)?.big_endian_without_leading_zero_as_input();
+        let s = der::positive_integer(input)?.big_endian_without_leading_zero_as_input();
         Ok((r, s))
     })
 }

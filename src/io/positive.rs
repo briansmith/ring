@@ -29,7 +29,14 @@ impl<'a> Positive<'a> {
     /// Returns the value, ordered from significant byte to least significant
     /// byte, without any leading zeros. The result is guaranteed to be
     /// non-empty.
-    pub fn big_endian_without_leading_zero(&self) -> untrusted::Input<'a> { self.0 }
+    #[inline]
+    pub fn big_endian_without_leading_zero(&self) -> &'a [u8] {
+        self.big_endian_without_leading_zero_as_input()
+            .as_slice_less_safe()
+    }
+
+    #[inline]
+    pub(crate) fn big_endian_without_leading_zero_as_input(&self) -> untrusted::Input<'a> { self.0 }
 }
 
 impl Positive<'_> {
