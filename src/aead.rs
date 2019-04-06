@@ -25,7 +25,6 @@ use self::block::{Block, BLOCK_LEN};
 use crate::{
     constant_time, cpu, error, hkdf,
     polyfill::{self, convert::*},
-    rand,
 };
 
 pub use self::{
@@ -48,16 +47,6 @@ impl OpeningKey {
         Self {
             key: Key::derive(algorithm, okm),
         }
-    }
-
-    /// TODO: docs
-    #[inline]
-    pub fn generate(
-        algorithm: &'static Algorithm, rng: &rand::SecureRandom,
-    ) -> Result<Self, error::Unspecified> {
-        Ok(Self {
-            key: Key::generate(algorithm, rng)?,
-        })
     }
 
     /// Create a new opening key.
@@ -186,16 +175,6 @@ impl SealingKey {
         }
     }
 
-    /// TODO: docs
-    #[inline]
-    pub fn generate(
-        algorithm: &'static Algorithm, rng: &rand::SecureRandom,
-    ) -> Result<Self, error::Unspecified> {
-        Ok(Self {
-            key: Key::generate(algorithm, rng)?,
-        })
-    }
-
     /// Constructs a new sealing key from `key_bytes`.
     #[inline]
     pub fn new(
@@ -299,15 +278,6 @@ impl Key {
         let key_bytes = &mut key_bytes[..algorithm.key_len];
         okm.fill(key_bytes).unwrap();
         Self::new(algorithm, key_bytes).unwrap()
-    }
-
-    fn generate(
-        algorithm: &'static Algorithm, rng: &rand::SecureRandom,
-    ) -> Result<Self, error::Unspecified> {
-        let mut key_bytes = [0; MAX_KEY_LEN];
-        let key_bytes = &mut key_bytes[..algorithm.key_len];
-        rng.fill(key_bytes)?;
-        Self::new(algorithm, key_bytes)
     }
 
     fn new(algorithm: &'static Algorithm, key_bytes: &[u8]) -> Result<Self, error::Unspecified> {
