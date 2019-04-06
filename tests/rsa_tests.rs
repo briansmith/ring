@@ -272,12 +272,8 @@ fn test_signature_rsa_primitive_verification() {
             let msg = test_case.consume_bytes("Msg");
             let sig = test_case.consume_bytes("Sig");
             let expected = test_case.consume_string("Result");
-            let result = signature::primitive::verify_rsa(
-                &signature::RSA_PKCS1_2048_8192_SHA256,
-                (untrusted::Input::from(&n), untrusted::Input::from(&e)),
-                untrusted::Input::from(&msg),
-                untrusted::Input::from(&sig),
-            );
+            let public_key = signature::RsaPublicKeyComponents { n: &n, e: &e };
+            let result = public_key.verify(&signature::RSA_PKCS1_2048_8192_SHA256, &msg, &sig);
             assert_eq!(result.is_ok(), expected == "Pass");
             Ok(())
         },

@@ -286,9 +286,9 @@ pub use crate::rsa::{
     signing::RsaSubjectPublicKey,
 
     verification::{
-        RSA_PKCS1_2048_8192_SHA1, RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA384,
-        RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_3072_8192_SHA384, RSA_PSS_2048_8192_SHA256,
-        RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
+        RsaPublicKeyComponents, RSA_PKCS1_2048_8192_SHA1, RSA_PKCS1_2048_8192_SHA256,
+        RSA_PKCS1_2048_8192_SHA384, RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_3072_8192_SHA384,
+        RSA_PSS_2048_8192_SHA256, RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
     },
 
     RsaEncoding,
@@ -306,17 +306,6 @@ pub use crate::rsa::{
     RSA_PSS_SHA384,
     RSA_PSS_SHA512,
 };
-
-/// Lower-level verification primitives.
-///
-/// Use [UnparsedPublicKey::verify()] instead when the public key is in a
-/// standard format.
-///
-/// [UnparsedPublicKey::verify()]: crate::signature::UnparsedPublicKey
-#[cfg(feature = "use_heap")]
-pub mod primitive {
-    pub use crate::rsa::verification::verify_rsa;
-}
 
 /// A public key signature returned from a signing operation.
 #[derive(Clone, Copy)]

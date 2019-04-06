@@ -175,7 +175,7 @@ rsa_params!(
              `ring::signature`'s module-level documentation for more details."
 );
 
-/// Lower-level API for the verification of RSA signatures.
+/// Low-level API for the verification of RSA signatures.
 ///
 /// When the public key is in DER-encoded PKCS#1 ASN.1 format, it is
 /// recommended to use `ring::signature::verify()` with
@@ -183,16 +183,8 @@ rsa_params!(
 /// will handle the parsing in that case. Otherwise, this function can be used
 /// to pass in the raw bytes for the public key components as
 /// `untrusted::Input` arguments.
-///
-/// `params` determine what algorithm parameters (padding, digest algorithm,
-/// key length range, etc.) are used in the verification. `msg` is the message
-/// and `signature` is the signature.
-///
-/// `n` is the public key modulus and `e` is the public key exponent. Both are
-/// interpreted as unsigned big-endian encoded values. Both must be positive
-/// and neither may have any leading zeros.
 //
-// There are a small number of tests that test `verify_rsa` directly, but the
+// There are a small number of tests that test this directly, but the
 // test coverage for this function mostly depends on the test coverage for the
 // `signature::VerificationAlgorithm` implementation for `RsaParameters`. If we
 // change that, test coverage for `verify_rsa()` will need to be reconsidered.
@@ -200,12 +192,52 @@ rsa_params!(
 // testing `verify_rsa` directly, but the testing work for RSA PKCS#1
 // verification was done during the implementation of
 // `signature::VerificationAlgorithm`, before `verify_rsa` was factored out).
-pub fn verify_rsa(
-    params: &RsaParameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
-    signature: untrusted::Input,
-) -> Result<(), error::Unspecified> {
-    let _ = cpu::features();
-    verify_rsa_(params, (n, e), msg, signature)
+#[derive(Debug)]
+pub struct RsaPublicKeyComponents<B: AsRef<[u8]> + core::fmt::Debug> {
+    /// The public modulus, encoded in big-endian bytes without leading zeros.
+    pub n: B,
+
+    /// The public exponent, encoded in big-endian bytes without leading zeros.
+    /// without leading zeros.
+    pub e: B,
+}
+
+impl<B: Copy> Copy for RsaPublicKeyComponents<B> where B: AsRef<[u8]> + core::fmt::Debug {}
+
+impl<B: Clone> Clone for RsaPublicKeyComponents<B>
+where
+    B: AsRef<[u8]> + core::fmt::Debug,
+{
+    fn clone(&self) -> Self {
+        Self {
+            n: self.n.clone(),
+            e: self.e.clone(),
+        }
+    }
+}
+
+impl<B> RsaPublicKeyComponents<B>
+where
+    B: AsRef<[u8]> + core::fmt::Debug,
+{
+    /// Verifies that `signature` is a valid signature of `message` using `self`
+    /// as the public key. `params` determine what algorithm parameters
+    /// (padding, digest algorithm, key length range, etc.) are used in the
+    /// verification.
+    pub fn verify(
+        &self, params: &RsaParameters, message: &[u8], signature: &[u8],
+    ) -> Result<(), error::Unspecified> {
+        let _ = cpu::features();
+        verify_rsa_(
+            params,
+            (
+                untrusted::Input::from(self.n.as_ref()),
+                untrusted::Input::from(self.e.as_ref()),
+            ),
+            untrusted::Input::from(message),
+            untrusted::Input::from(signature),
+        )
+    }
 }
 
 pub(crate) fn verify_rsa_(
