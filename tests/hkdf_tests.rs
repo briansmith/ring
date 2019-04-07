@@ -31,7 +31,7 @@
     warnings
 )]
 
-use ring::{error, hkdf, test, test_file};
+use ring::{digest, error, hkdf, test, test_file};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_test::wasm_bindgen_test;
@@ -47,16 +47,24 @@ wasm_bindgen_test_configure!(run_in_browser);
 fn hkdf_tests() {
     test::run(test_file!("hkdf_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
-        let digest_alg = test_case
-            .consume_digest_alg("Hash")
-            .ok_or(error::Unspecified)?;
+        let alg = {
+            let digest_alg = test_case
+                .consume_digest_alg("Hash")
+                .ok_or(error::Unspecified)?;
+            if digest_alg == &digest::SHA256 {
+                &hkdf::HKDF_SHA256
+            } else {
+                // TODO: add test vectors for other algorithms
+                panic!("unsupported algorithm: {:?}", digest_alg);
+            }
+        };
         let secret = test_case.consume_bytes("IKM");
         let salt = test_case.consume_bytes("salt");
         let info = test_case.consume_bytes("info");
         let _ = test_case.consume_bytes("PRK");
         let expected_out = test_case.consume_bytes("OKM");
 
-        let salt = hkdf::Salt::new(digest_alg, &salt);
+        let salt = hkdf::Salt::new(alg, &salt);
 
         let mut out = vec![0u8; expected_out.len()];
         salt.extract(&secret).expand(&info).fill(&mut out).unwrap();

@@ -21,7 +21,7 @@
 //! fn derive_opening_key(
 //!     key_algorithm: &'static aead::Algorithm, salt: [u8; 32], ikm: [u8; 32], info: &[u8],
 //! ) -> Result<aead::OpeningKey, error::Unspecified> {
-//!     let salt = hkdf::Salt::new(&digest::SHA512, &salt);
+//!     let salt = hkdf::Salt::new(&hkdf::HKDF_SHA512, &salt);
 //!     let prk = salt.extract(&ikm);
 //!     let mut key_bytes = vec![0; key_algorithm.key_len()];
 //!     let out = prk.expand(info).fill(&mut key_bytes)?;
@@ -33,6 +33,19 @@
 
 use crate::{digest, error, hmac};
 
+/// An HKDF algorithm.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Algorithm(&'static digest::Algorithm);
+
+/// HKDF using HMAC-SHA-256.
+pub static HKDF_SHA256: Algorithm = Algorithm(&digest::SHA256);
+
+/// HKDF using HMAC-SHA-384.
+pub static HKDF_SHA384: Algorithm = Algorithm(&digest::SHA384);
+
+/// HKDF using HMAC-SHA-512.
+pub static HKDF_SHA512: Algorithm = Algorithm(&digest::SHA512);
+
 /// A salt for HKDF operations.
 #[derive(Debug)]
 pub struct Salt(hmac::Key);
@@ -43,8 +56,8 @@ impl Salt {
     ///
     /// Constructing a `Salt` is relatively expensive so it is good to reuse a
     /// `Salt` object instead of re-constructing `Salt`s with the same value.
-    pub fn new(digest_algorithm: &'static digest::Algorithm, value: &[u8]) -> Self {
-        Salt(hmac::Key::new(digest_algorithm, value))
+    pub fn new(algorithm: &'static Algorithm, value: &[u8]) -> Self {
+        Salt(hmac::Key::new(algorithm.0, value))
     }
 
     /// The [HKDF-Extract] operation.
