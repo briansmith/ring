@@ -26,10 +26,9 @@
 // THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 //
-// Author: mheule@google.com (Markus Heule)
-//
-// The Google C++ Testing Framework (Google Test)
+// The Google C++ Testing and Mocking Framework (Google Test)
 
 #include "gtest/gtest-test-part.h"
 #include "src/gtest-internal-inl.h"
@@ -42,18 +41,21 @@ using internal::GetUnitTestImpl;
 // in it.
 std::string TestPartResult::ExtractSummary(const char* message) {
   const char* const stack_trace = strstr(message, internal::kStackTraceMarker);
-  return stack_trace == NULL ? message :
-      std::string(message, stack_trace);
+  return stack_trace == nullptr ? message : std::string(message, stack_trace);
 }
 
 // Prints a TestPartResult object.
 std::ostream& operator<<(std::ostream& os, const TestPartResult& result) {
-  return os
-      << result.file_name() << ":" << result.line_number() << ": "
-      << (result.type() == TestPartResult::kSuccess ? "Success" :
-          result.type() == TestPartResult::kFatalFailure ? "Fatal failure" :
-          "Non-fatal failure") << ":\n"
-      << result.message() << std::endl;
+  return os << result.file_name() << ":" << result.line_number() << ": "
+            << (result.type() == TestPartResult::kSuccess
+                    ? "Success"
+                    : result.type() == TestPartResult::kSkip
+                          ? "Skipped"
+                          : result.type() == TestPartResult::kFatalFailure
+                                ? "Fatal failure"
+                                : "Non-fatal failure")
+            << ":\n"
+            << result.message() << std::endl;
 }
 
 // Appends a TestPartResult to the array.

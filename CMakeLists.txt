@@ -204,6 +204,7 @@ elseif(MSVC)
               # copy constructor is inaccessible or deleted
       "C4626" # assignment operator could not be generated because a base class
               # assignment operator is inaccessible or deleted
+      "C4628" # digraphs not supported with -Ze
       "C4668" # 'symbol' is not defined as a preprocessor macro, replacing with
               # '0' for 'directives'
               # Disable this because GTest uses it everywhere.

@@ -101,9 +101,9 @@ class PerAEADTest : public testing::TestWithParam<KnownAEAD> {
   const EVP_AEAD *aead() { return GetParam().func(); }
 };
 
-INSTANTIATE_TEST_CASE_P(, PerAEADTest, testing::ValuesIn(kAEADs),
-                        [](const testing::TestParamInfo<KnownAEAD> &params)
-                            -> std::string { return params.param.name; });
+INSTANTIATE_TEST_SUITE_P(, PerAEADTest, testing::ValuesIn(kAEADs),
+                         [](const testing::TestParamInfo<KnownAEAD> &params)
+                             -> std::string { return params.param.name; });
 
 // Tests an AEAD against a series of test vectors from a file, using the
 // FileTest format. As an example, here's a valid test case:

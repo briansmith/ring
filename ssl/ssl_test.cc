@@ -1650,11 +1650,11 @@ class SSLVersionTest : public ::testing::TestWithParam<VersionParam> {
   bssl::UniquePtr<EVP_PKEY> key_;
 };
 
-INSTANTIATE_TEST_CASE_P(WithVersion, SSLVersionTest,
-                        testing::ValuesIn(kAllVersions),
-                        [](const testing::TestParamInfo<VersionParam> &i) {
-                          return i.param.name;
-                        });
+INSTANTIATE_TEST_SUITE_P(WithVersion, SSLVersionTest,
+                         testing::ValuesIn(kAllVersions),
+                         [](const testing::TestParamInfo<VersionParam> &i) {
+                           return i.param.name;
+                         });
 
 TEST_P(SSLVersionTest, SequenceNumber) {
   ASSERT_TRUE(Connect());
@@ -3574,7 +3574,7 @@ std::string TicketAEADMethodParamToString(
   return ret;
 }
 
-INSTANTIATE_TEST_CASE_P(
+INSTANTIATE_TEST_SUITE_P(
     TicketAEADMethodTests, TicketAEADMethodTest,
     testing::Combine(testing::Values(TLS1_2_VERSION, TLS1_3_VERSION),
                      testing::Values(0, 1, 2),
