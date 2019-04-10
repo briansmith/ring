@@ -104,6 +104,10 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(CLANG 1)
 endif()
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
+  set(EMSCRIPTEN 1)
+endif()
+
 if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
   # Note clang-cl is odd and sets both CLANG and MSVC. We base our configuration
   # primarily on our normal Clang one.
@@ -117,7 +121,14 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CLANG)
     # honor it. Suppress it here to compensate. See https://crbug.com/772117.
     set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wno-deprecated-declarations")
   else()
-    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wall -ggdb -fvisibility=hidden -fno-common")
+    if(EMSCRIPTEN)
+      # emscripten's emcc/clang does not accept the "-ggdb" flag.
+      set(C_CXX_FLAGS "${C_CXX_FLAGS} -g")
+    else()
+      set(C_CXX_FLAGS "${C_CXX_FLAGS} -ggdb")
+    endif()
+
+    set(C_CXX_FLAGS "${C_CXX_FLAGS} -Wall -fvisibility=hidden -fno-common")
   endif()
 
   if(CLANG)
