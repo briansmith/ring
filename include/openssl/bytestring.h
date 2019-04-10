@@ -345,9 +345,9 @@ struct cbb_st {
   // length-prefix, or zero if no length-prefix is pending.
   uint8_t pending_len_len;
   char pending_is_asn1;
-  // is_top_level is true iff this is a top-level |CBB| (as opposed to a child
+  // is_child is true iff this is a child |CBB| (as opposed to a top-level
   // |CBB|). Top-level objects are valid arguments for |CBB_finish|.
-  char is_top_level;
+  char is_child;
 };
 
 // CBB_zero sets an uninitialised |cbb| to the zero state. It must be
