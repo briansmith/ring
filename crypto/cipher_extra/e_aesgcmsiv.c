@@ -426,6 +426,11 @@ static int aead_aes_gcm_siv_asm_open(const EVP_AEAD_CTX *ctx, uint8_t *out,
     return 0;
   }
 
+  if (nonce_len != EVP_AEAD_AES_GCM_SIV_NONCE_LEN) {
+    OPENSSL_PUT_ERROR(CIPHER, CIPHER_R_UNSUPPORTED_NONCE_SIZE);
+    return 0;
+  }
+
   const struct aead_aes_gcm_siv_asm_ctx *gcm_siv_ctx = asm_ctx_from_ctx(ctx);
   const size_t plaintext_len = in_len - EVP_AEAD_AES_GCM_SIV_TAG_LEN;
   const uint8_t *const given_tag = in + plaintext_len;
