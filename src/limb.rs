@@ -152,7 +152,10 @@ pub enum AllowZero {
 /// `AllowZero::Yes`, or [1, m) if `allow_zero` is `AllowZero::No`. `result` is
 /// padded with zeros to its length.
 pub fn parse_big_endian_in_range_partially_reduced_and_pad_consttime(
-    input: untrusted::Input, allow_zero: AllowZero, m: &[Limb], result: &mut [Limb],
+    input: untrusted::Input,
+    allow_zero: AllowZero,
+    m: &[Limb],
+    result: &mut [Limb],
 ) -> Result<(), error::Unspecified> {
     parse_big_endian_and_pad_consttime(input, result)?;
     limbs_reduce_once_constant_time(result, m);
@@ -173,7 +176,10 @@ pub fn parse_big_endian_in_range_partially_reduced_and_pad_consttime(
 /// about a valid value, but it might leak small amounts of information about an
 /// invalid value (which constraint it failed).
 pub fn parse_big_endian_in_range_and_pad_consttime(
-    input: untrusted::Input, allow_zero: AllowZero, max_exclusive: &[Limb], result: &mut [Limb],
+    input: untrusted::Input,
+    allow_zero: AllowZero,
+    max_exclusive: &[Limb],
+    result: &mut [Limb],
 ) -> Result<(), error::Unspecified> {
     parse_big_endian_and_pad_consttime(input, result)?;
     if limbs_less_than_limbs_consttime(&result, max_exclusive) != LimbMask::True {
@@ -191,7 +197,8 @@ pub fn parse_big_endian_in_range_and_pad_consttime(
 /// This attempts to be constant-time with respect to the value but not with
 /// respect to the length; it is assumed that the length is public knowledge.
 pub fn parse_big_endian_and_pad_consttime(
-    input: untrusted::Input, result: &mut [Limb],
+    input: untrusted::Input,
+    result: &mut [Limb],
 ) -> Result<(), error::Unspecified> {
     if input.is_empty() {
         return Err(error::Unspecified);
@@ -265,7 +272,9 @@ pub type Window = Limb;
 /// Panics if `limbs` is empty.
 #[cfg(feature = "use_heap")]
 pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
-    limbs: &[Limb], init: I, fold: F,
+    limbs: &[Limb],
+    init: I,
+    fold: F,
 ) -> R {
     #[derive(Clone, Copy)]
     #[repr(transparent)]
@@ -275,7 +284,9 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
 
     extern "C" {
         fn LIMBS_window5_split_window(
-            lower_limb: Limb, higher_limb: Limb, index_within_word: BitIndex,
+            lower_limb: Limb,
+            higher_limb: Limb,
+            index_within_word: BitIndex,
         ) -> Window;
         fn LIMBS_window5_unsplit_window(limb: Limb, index_within_word: BitIndex) -> Window;
     }

@@ -117,7 +117,8 @@ impl Ed25519KeyPair {
     /// public key). This also detects any corruption of the public or private
     /// key.
     pub fn from_seed_and_public_key(
-        seed: &[u8], public_key: &[u8],
+        seed: &[u8],
+        public_key: &[u8],
     ) -> Result<Self, error::KeyRejected> {
         let pair = Self::from_seed_unchecked(seed)?;
 
@@ -208,20 +209,25 @@ impl Ed25519KeyPair {
 impl signature::KeyPair for Ed25519KeyPair {
     type PublicKey = PublicKey;
 
-    fn public_key(&self) -> &Self::PublicKey { &self.public_key }
+    fn public_key(&self) -> &Self::PublicKey {
+        &self.public_key
+    }
 }
 
 #[derive(Clone, Copy)]
 pub struct PublicKey([u8; ED25519_PUBLIC_KEY_LEN]);
 
 impl AsRef<[u8]> for PublicKey {
-    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
 }
 
 derive_debug_self_as_ref_hex_bytes!(PublicKey);
 
 fn unwrap_pkcs8(
-    version: pkcs8::Version, input: untrusted::Input,
+    version: pkcs8::Version,
+    input: untrusted::Input,
 ) -> Result<(untrusted::Input, Option<untrusted::Input>), error::KeyRejected> {
     let (private_key, public_key) = pkcs8::unwrap_key(&PKCS8_TEMPLATE, version, input)?;
     let private_key = private_key

@@ -36,7 +36,7 @@ impl Key {
                 unsafe {
                     GFp_gcm_init_avx(&mut key, &h);
                 }
-            },
+            }
 
             Implementation::CLMUL => {
                 extern "C" {
@@ -45,7 +45,7 @@ impl Key {
                 unsafe {
                     GFp_gcm_init_clmul(&mut key, &h);
                 }
-            },
+            }
 
             #[cfg(any(target_arch = "arm"))]
             Implementation::NEON => {
@@ -55,7 +55,7 @@ impl Key {
                 unsafe {
                     GFp_gcm_init_neon(&mut key, &h);
                 }
-            },
+            }
 
             Implementation::Fallback => {
                 extern "C" {
@@ -64,7 +64,7 @@ impl Key {
                 unsafe {
                     GFp_gcm_init_4bit(&mut key, &h);
                 }
-            },
+            }
         }
 
         key
@@ -108,47 +108,59 @@ impl Context {
             Implementation::CLMUL if has_avx_movbe(self.cpu_features) => {
                 extern "C" {
                     fn GFp_gcm_ghash_avx(
-                        ctx: &mut Context, h_table: *const GCM128_KEY, inp: *const u8, len: size_t,
+                        ctx: &mut Context,
+                        h_table: *const GCM128_KEY,
+                        inp: *const u8,
+                        len: size_t,
                     );
                 }
                 unsafe {
                     GFp_gcm_ghash_avx(self, key_aliasing, input.as_ptr(), input.len());
                 }
-            },
+            }
 
             Implementation::CLMUL => {
                 extern "C" {
                     fn GFp_gcm_ghash_clmul(
-                        ctx: &mut Context, h_table: *const GCM128_KEY, inp: *const u8, len: size_t,
+                        ctx: &mut Context,
+                        h_table: *const GCM128_KEY,
+                        inp: *const u8,
+                        len: size_t,
                     );
                 }
                 unsafe {
                     GFp_gcm_ghash_clmul(self, key_aliasing, input.as_ptr(), input.len());
                 }
-            },
+            }
 
             #[cfg(any(target_arch = "arm"))]
             Implementation::NEON => {
                 extern "C" {
                     fn GFp_gcm_ghash_neon(
-                        ctx: &mut Context, h_table: *const GCM128_KEY, inp: *const u8, len: size_t,
+                        ctx: &mut Context,
+                        h_table: *const GCM128_KEY,
+                        inp: *const u8,
+                        len: size_t,
                     );
                 }
                 unsafe {
                     GFp_gcm_ghash_neon(self, key_aliasing, input.as_ptr(), input.len());
                 }
-            },
+            }
 
             Implementation::Fallback => {
                 extern "C" {
                     fn GFp_gcm_ghash_4bit(
-                        ctx: &mut Context, h_table: *const GCM128_KEY, inp: *const u8, len: size_t,
+                        ctx: &mut Context,
+                        h_table: *const GCM128_KEY,
+                        inp: *const u8,
+                        len: size_t,
                     );
                 }
                 unsafe {
                     GFp_gcm_ghash_4bit(self, key_aliasing, input.as_ptr(), input.len());
                 }
-            },
+            }
         }
     }
 
@@ -165,7 +177,7 @@ impl Context {
                 unsafe {
                     GFp_gcm_gmult_clmul(self, key_aliasing);
                 }
-            },
+            }
 
             #[cfg(any(target_arch = "arm"))]
             Implementation::NEON => {
@@ -175,7 +187,7 @@ impl Context {
                 unsafe {
                     GFp_gcm_gmult_neon(self, key_aliasing);
                 }
-            },
+            }
 
             Implementation::Fallback => {
                 extern "C" {
@@ -184,7 +196,7 @@ impl Context {
                 unsafe {
                     GFp_gcm_gmult_4bit(self, key_aliasing);
                 }
-            },
+            }
         }
     }
 

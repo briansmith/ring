@@ -21,7 +21,9 @@ pub struct BitLength(usize);
 // overflow.
 impl BitLength {
     #[inline]
-    pub const fn from_usize_bits(bits: usize) -> Self { Self(bits) }
+    pub const fn from_usize_bits(bits: usize) -> Self {
+        Self(bits)
+    }
 
     #[inline]
     pub fn from_usize_bytes(bytes: usize) -> Result<Self, error::Unspecified> {
@@ -37,7 +39,9 @@ impl BitLength {
     }
 
     #[inline]
-    pub fn as_usize_bits(&self) -> usize { self.0 }
+    pub fn as_usize_bits(&self) -> usize {
+        self.0
+    }
 
     #[cfg(feature = "use_heap")]
     #[inline]

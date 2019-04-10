@@ -208,18 +208,18 @@ impl TestCase {
                                 } else {
                                     panic!("Invalid hex escape sequence in string.");
                                 }
-                            },
+                            }
                             _ => {
                                 panic!("Invalid hex escape sequence in string.");
-                            },
+                            }
                         }
-                    },
+                    }
                     Some(b'"') => {
                         if s.next().is_some() {
                             panic!("characters after the closing quote of a quoted string.");
                         }
                         break;
-                    },
+                    }
                     Some(b) => *b,
                     None => panic!("Missing terminating '\"' in string literal."),
                 };
@@ -232,7 +232,7 @@ impl TestCase {
                 Ok(s) => s,
                 Err(err_str) => {
                     panic!("{} in {}", err_str, s);
-                },
+                }
             }
         }
     }
@@ -325,7 +325,7 @@ where
                     failed = true;
                     Err("Test didn't consume all attributes.")
                 }
-            },
+            }
             Ok(Err(_)) => Err("Test returned Err(error::Unspecified)."),
             Err(_) => Err("Test panicked."),
         };
@@ -377,7 +377,8 @@ fn from_hex_digit(d: u8) -> Result<u8, String> {
 }
 
 fn parse_test_case(
-    current_section: &mut String, lines: &mut Iterator<Item = &str>,
+    current_section: &mut String,
+    lines: &mut Iterator<Item = &str>,
 ) -> Option<TestCase> {
     let mut attributes = Vec::new();
 
@@ -396,12 +397,12 @@ fn parse_test_case(
             // then we're done.
             None if is_first_line => {
                 return None;
-            },
+            }
 
             // End of the file on a non-empty test cases ends the test case.
             None => {
                 return Some(TestCase { attributes });
-            },
+            }
 
             // A blank line ends a test case if the test case isn't empty.
             Some(ref line) if line.is_empty() => {
@@ -409,7 +410,7 @@ fn parse_test_case(
                     return Some(TestCase { attributes });
                 }
                 // Ignore leading blank lines.
-            },
+            }
 
             // Comments start with '#'; ignore them.
             Some(ref line) if line.starts_with('#') => (),
@@ -421,7 +422,7 @@ fn parse_test_case(
                 current_section.push_str(line);
                 let _ = current_section.pop();
                 let _ = current_section.remove(0);
-            },
+            }
 
             Some(ref line) => {
                 is_first_line = false;
@@ -440,7 +441,7 @@ fn parse_test_case(
 
                 // Checking is_none() ensures we don't accept duplicate keys.
                 attributes.push((String::from(key), String::from(value), false));
-            },
+            }
         }
     }
 }
@@ -559,15 +560,21 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Test failed.")]
-    fn first_err() { err_one(0) }
+    fn first_err() {
+        err_one(0)
+    }
 
     #[test]
     #[should_panic(expected = "Test failed.")]
-    fn middle_err() { err_one(1) }
+    fn middle_err() {
+        err_one(1)
+    }
 
     #[test]
     #[should_panic(expected = "Test failed.")]
-    fn last_err() { err_one(2) }
+    fn last_err() {
+        err_one(2)
+    }
 
     fn err_one(test_to_fail: usize) {
         let mut n = 0;
@@ -585,15 +592,21 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Test failed.")]
-    fn first_panic() { panic_one(0) }
+    fn first_panic() {
+        panic_one(0)
+    }
 
     #[test]
     #[should_panic(expected = "Test failed.")]
-    fn middle_panic() { panic_one(1) }
+    fn middle_panic() {
+        panic_one(1)
+    }
 
     #[test]
     #[should_panic(expected = "Test failed.")]
-    fn last_panic() { panic_one(2) }
+    fn last_panic() {
+        panic_one(2)
+    }
 
     fn panic_one(test_to_fail: usize) {
         let mut n = 0;
@@ -609,5 +622,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Syntax error: Expected Key = Value.")]
-    fn syntax_error() { test::run(test_file!("test_1_syntax_error_tests.txt"), |_, _| Ok(())); }
+    fn syntax_error() {
+        test::run(test_file!("test_1_syntax_error_tests.txt"), |_, _| Ok(()));
+    }
 }

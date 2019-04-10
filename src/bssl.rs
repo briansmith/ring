@@ -29,7 +29,7 @@ impl From<Result> for core::result::Result<(), error::Unspecified> {
             c => {
                 debug_assert_eq!(c, 0, "`bssl::Result` value must be 0 or 1");
                 Err(error::Unspecified)
-            },
+            }
         }
     }
 }

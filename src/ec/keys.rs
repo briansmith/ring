@@ -12,8 +12,12 @@ impl KeyPair {
         Ok(Self { seed, public_key })
     }
 
-    pub fn public_key(&self) -> &PublicKey { &self.public_key }
-    pub fn split(self) -> (Seed, PublicKey) { (self.seed, self.public_key) }
+    pub fn public_key(&self) -> &PublicKey {
+        &self.public_key
+    }
+    pub fn split(self) -> (Seed, PublicKey) {
+        (self.seed, self.public_key)
+    }
 }
 
 pub struct Seed {
@@ -24,7 +28,9 @@ pub struct Seed {
 
 impl Seed {
     pub(crate) fn generate(
-        curve: &'static Curve, rng: &rand::SecureRandom, cpu_features: cpu::Features,
+        curve: &'static Curve,
+        rng: &rand::SecureRandom,
+        cpu_features: cpu::Features,
     ) -> Result<Self, error::Unspecified> {
         let mut r = Self {
             bytes: [0u8; SEED_MAX_BYTES],
@@ -36,7 +42,9 @@ impl Seed {
     }
 
     pub(crate) fn from_bytes(
-        curve: &'static Curve, bytes: untrusted::Input, cpu_features: cpu::Features,
+        curve: &'static Curve,
+        bytes: untrusted::Input,
+        cpu_features: cpu::Features,
     ) -> Result<Seed, error::Unspecified> {
         let bytes = bytes.as_slice_less_safe();
         if curve.elem_scalar_seed_len != bytes.len() {
@@ -52,7 +60,9 @@ impl Seed {
         Ok(r)
     }
 
-    pub fn bytes_less_safe(&self) -> &[u8] { &self.bytes[..self.curve.elem_scalar_seed_len] }
+    pub fn bytes_less_safe(&self) -> &[u8] {
+        &self.bytes[..self.curve.elem_scalar_seed_len]
+    }
 
     pub fn compute_public_key(&self) -> Result<PublicKey, error::Unspecified> {
         let mut public_key = PublicKey {
@@ -71,7 +81,9 @@ pub struct PublicKey {
 }
 
 impl AsRef<[u8]> for PublicKey {
-    fn as_ref(&self) -> &[u8] { &self.bytes[..self.len] }
+    fn as_ref(&self) -> &[u8] {
+        &self.bytes[..self.len]
+    }
 }
 
 /// The maximum length, in bytes, of an encoded public key.

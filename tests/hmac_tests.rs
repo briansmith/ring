@@ -46,7 +46,7 @@ fn hmac_tests() {
             Some(digest_alg) => digest_alg,
             None => {
                 return Ok(());
-            }, // Unsupported digest algorithm
+            } // Unsupported digest algorithm
         };
 
         hmac_test_case_inner(digest_alg, &key_value[..], &input[..], &output[..], true)?;
@@ -63,7 +63,10 @@ fn hmac_tests() {
 }
 
 fn hmac_test_case_inner(
-    digest_alg: &'static digest::Algorithm, key_value: &[u8], input: &[u8], output: &[u8],
+    digest_alg: &'static digest::Algorithm,
+    key_value: &[u8],
+    input: &[u8],
+    output: &[u8],
     is_ok: bool,
 ) -> Result<(), error::Unspecified> {
     let key = hmac::Key::new(digest_alg, key_value);

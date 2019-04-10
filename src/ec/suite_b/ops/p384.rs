@@ -206,11 +206,17 @@ fn p384_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     //     0xffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf\
     //       581a0db248b0a77aecec196accc52971.
 
-    fn mul(a: &Scalar<R>, b: &Scalar<R>) -> Scalar<R> { binary_op(GFp_p384_scalar_mul_mont, a, b) }
+    fn mul(a: &Scalar<R>, b: &Scalar<R>) -> Scalar<R> {
+        binary_op(GFp_p384_scalar_mul_mont, a, b)
+    }
 
-    fn sqr(a: &Scalar<R>) -> Scalar<R> { binary_op(GFp_p384_scalar_mul_mont, a, a) }
+    fn sqr(a: &Scalar<R>) -> Scalar<R> {
+        binary_op(GFp_p384_scalar_mul_mont, a, a)
+    }
 
-    fn sqr_mut(a: &mut Scalar<R>) { unary_op_from_binary_op_assign(GFp_p384_scalar_mul_mont, a); }
+    fn sqr_mut(a: &mut Scalar<R>) {
+        unary_op_from_binary_op_assign(GFp_p384_scalar_mul_mont, a);
+    }
 
     // Returns (`a` squared `squarings` times) * `b`.
     fn sqr_mul(a: &Scalar<R>, squarings: usize, b: &Scalar<R>) -> Scalar<R> {

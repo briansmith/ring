@@ -52,7 +52,10 @@ derive_debug_via_id!(EcdsaVerificationAlgorithm);
 
 impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
     fn verify(
-        &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
+        &self,
+        public_key: untrusted::Input,
+        msg: untrusted::Input,
+        signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
         let e = {
             // NSA Guide Step 2: "Use the selected hash function to compute H =
@@ -71,7 +74,10 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
 impl EcdsaVerificationAlgorithm {
     /// This is intentionally not public.
     fn verify_digest(
-        &self, public_key: untrusted::Input, e: Scalar, signature: untrusted::Input,
+        &self,
+        public_key: untrusted::Input,
+        e: Scalar,
+        signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
         // NSA Suite B Implementer's Guide to ECDSA Section 3.4.2.
 
@@ -137,7 +143,10 @@ impl EcdsaVerificationAlgorithm {
         // that would be necessary to compute the affine X coordinate.
         let x = public_key_ops.common.point_x(&product);
         fn sig_r_equals_x(
-            ops: &PublicScalarOps, r: &Elem<Unencoded>, x: &Elem<R>, z2: &Elem<R>,
+            ops: &PublicScalarOps,
+            r: &Elem<Unencoded>,
+            x: &Elem<R>,
+            z2: &Elem<R>,
         ) -> bool {
             let cops = ops.public_key_ops.common;
             let r_jacobian = cops.elem_product(z2, r);
@@ -162,7 +171,8 @@ impl EcdsaVerificationAlgorithm {
 impl sealed::Sealed for EcdsaVerificationAlgorithm {}
 
 fn split_rs_fixed<'a>(
-    ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>,
+    ops: &'static ScalarOps,
+    input: &mut untrusted::Reader<'a>,
 ) -> Result<(untrusted::Input<'a>, untrusted::Input<'a>), error::Unspecified> {
     let scalar_len = ops.scalar_bytes_len();
     let r = input.read_bytes(scalar_len)?;
@@ -171,7 +181,8 @@ fn split_rs_fixed<'a>(
 }
 
 fn split_rs_asn1<'a>(
-    _ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>,
+    _ops: &'static ScalarOps,
+    input: &mut untrusted::Reader<'a>,
 ) -> Result<(untrusted::Input<'a>, untrusted::Input<'a>), error::Unspecified> {
     der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
         let r = der::positive_integer(input)?.big_endian_without_leading_zero_as_input();
@@ -181,7 +192,10 @@ fn split_rs_asn1<'a>(
 }
 
 fn twin_mul(
-    ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar, p_xy: &(Elem<R>, Elem<R>),
+    ops: &PrivateKeyOps,
+    g_scalar: &Scalar,
+    p_scalar: &Scalar,
+    p_xy: &(Elem<R>, Elem<R>),
 ) -> Point {
     // XXX: Inefficient. TODO: implement interleaved wNAF multiplication.
     let scaled_g = ops.point_mul_base(g_scalar);
@@ -309,7 +323,7 @@ mod tests {
                     "P-384" => &ECDSA_P384_SHA384_FIXED,
                     _ => {
                         panic!("Unsupported curve: {}", curve_name);
-                    },
+                    }
                 };
 
                 let digest = super::super::digest_scalar::digest_bytes_scalar(

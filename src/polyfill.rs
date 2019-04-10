@@ -21,10 +21,14 @@ use core;
 pub mod convert;
 
 #[inline(always)]
-pub const fn u64_from_usize(x: usize) -> u64 { x as u64 }
+pub const fn u64_from_usize(x: usize) -> u64 {
+    x as u64
+}
 
 #[inline(always)]
-pub fn usize_from_u32(x: u32) -> usize { x as usize }
+pub fn usize_from_u32(x: u32) -> usize {
+    x as usize
+}
 
 /// `core::num::Wrapping` doesn't support `rotate_left`.
 /// There is no usable trait for `rotate_left`, so this polyfill just

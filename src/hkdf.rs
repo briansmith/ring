@@ -82,7 +82,9 @@ impl Prk {
     ///
     /// [HKDF-Expand]: https://tools.ietf.org/html/rfc5869#section-2.3
     #[inline]
-    pub fn expand<'a>(&'a self, info: &'a [u8]) -> Okm<'a> { Okm { prk: self, info } }
+    pub fn expand<'a>(&'a self, info: &'a [u8]) -> Okm<'a> {
+        Okm { prk: self, info }
+    }
 }
 
 /// An HKDF OKM (Output Keying Material)

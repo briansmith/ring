@@ -83,12 +83,16 @@ pub struct SystemRandom;
 impl SystemRandom {
     /// Constructs a new `SystemRandom`.
     #[inline(always)]
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
 }
 
 impl SecureRandom for SystemRandom {
     #[inline(always)]
-    fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> { fill_impl(dest) }
+    fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        fill_impl(dest)
+    }
 }
 
 impl sealed::Sealed for SystemRandom {}
@@ -227,7 +231,7 @@ mod urandom {
             Ok(ref file) => {
                 use std::io::Read;
                 (&*file).read_exact(dest).map_err(|_| error::Unspecified)
-            },
+            }
             Err(_) => Err(error::Unspecified),
         }
     }
@@ -290,7 +294,9 @@ mod darwin {
         // For now `rnd` must be `kSecRandomDefault`.
         #[must_use]
         fn SecRandomCopyBytes(
-            rnd: &'static SecRandomRef, count: libc::size_t, bytes: *mut u8,
+            rnd: &'static SecRandomRef,
+            count: libc::size_t,
+            bytes: *mut u8,
         ) -> libc::c_int;
     }
 }

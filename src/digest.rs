@@ -172,7 +172,9 @@ impl Context {
 
     /// The algorithm that this context is using.
     #[inline(always)]
-    pub fn algorithm(&self) -> &'static Algorithm { self.algorithm }
+    pub fn algorithm(&self) -> &'static Algorithm {
+        self.algorithm
+    }
 }
 
 /// Returns the digest of `data` using the given digest algorithm.
@@ -212,7 +214,9 @@ pub struct Digest {
 impl Digest {
     /// The algorithm that was used to calculate the digest value.
     #[inline(always)]
-    pub fn algorithm(&self) -> &'static Algorithm { self.algorithm }
+    pub fn algorithm(&self) -> &'static Algorithm {
+        self.algorithm
+    }
 }
 
 impl AsRef<[u8]> for Digest {
@@ -266,7 +270,9 @@ enum AlgorithmID {
 }
 
 impl PartialEq for Algorithm {
-    fn eq(&self, other: &Self) -> bool { self.id == other.id }
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
 }
 
 impl Eq for Algorithm {}
@@ -512,7 +518,9 @@ mod tests {
                     use super::super::super::super::digest;
 
                     #[test]
-                    fn max_input_test() { super::max_input_test(&digest::$algorithm_name); }
+                    fn max_input_test() {
+                        super::max_input_test(&digest::$algorithm_name);
+                    }
 
                     #[test]
                     #[should_panic]

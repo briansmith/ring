@@ -64,7 +64,7 @@ fn agreement_agree_ephemeral() {
                     })
                     .is_ok()
                 );
-            },
+            }
 
             Some(_) => {
                 // In the no-heap mode, some algorithms aren't supported so
@@ -83,7 +83,7 @@ fn agreement_agree_ephemeral() {
                     kdf_not_called
                 )
                 .is_err());
-            },
+            }
         }
 
         return Ok(());
@@ -96,7 +96,10 @@ fn test_agreement_ecdh_x25519_rfc_iterated() {
     let mut u = k.clone();
 
     fn expect_iterated_x25519(
-        expected_result: &str, range: std::ops::Range<usize>, k: &mut Vec<u8>, u: &mut Vec<u8>,
+        expected_result: &str,
+        range: std::ops::Range<usize>,
+        k: &mut Vec<u8>,
+        u: &mut Vec<u8>,
     ) {
         for _ in range {
             let new_k = x25519(k, u);
@@ -160,7 +163,7 @@ fn h(s: &str) -> Vec<u8> {
         Ok(v) => v,
         Err(msg) => {
             panic!("{} in {}", msg, s);
-        },
+        }
     }
 }
 

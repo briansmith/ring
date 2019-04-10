@@ -36,7 +36,9 @@ impl<'a> Positive<'a> {
     }
 
     #[inline]
-    pub(crate) fn big_endian_without_leading_zero_as_input(&self) -> untrusted::Input<'a> { self.0 }
+    pub(crate) fn big_endian_without_leading_zero_as_input(&self) -> untrusted::Input<'a> {
+        self.0
+    }
 }
 
 impl Positive<'_> {

@@ -32,7 +32,9 @@ where
     T: From_<F>,
 {
     #[inline]
-    fn into_(self) -> T { T::from_(self) }
+    fn into_(self) -> T {
+        T::from_(self)
+    }
 }
 
 /// An approximation of the unstable `core::convert::TryFrom`.
@@ -59,7 +61,9 @@ where
     type Error = <T as TryFrom_<F>>::Error;
 
     #[inline]
-    fn try_into_(self) -> Result<T, Self::Error> { T::try_from_(self) }
+    fn try_into_(self) -> Result<T, Self::Error> {
+        T::try_from_(self)
+    }
 }
 
 #[derive(Debug)]
@@ -101,7 +105,8 @@ unsafe fn transmute_slice<A, T>(slice: &[T], expected_len: usize) -> Result<&A, 
 }
 
 unsafe fn transmute_slice_mut<A, T>(
-    slice: &mut [T], expected_len: usize,
+    slice: &mut [T],
+    expected_len: usize,
 ) -> Result<&mut A, TryFromSliceError> {
     if slice.len() != expected_len {
         return Err(TryFromSliceError(()));

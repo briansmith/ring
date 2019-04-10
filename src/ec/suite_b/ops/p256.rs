@@ -180,10 +180,14 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     //    0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc63254f
 
     #[inline]
-    fn mul(a: &Scalar<R>, b: &Scalar<R>) -> Scalar<R> { binary_op(GFp_p256_scalar_mul_mont, a, b) }
+    fn mul(a: &Scalar<R>, b: &Scalar<R>) -> Scalar<R> {
+        binary_op(GFp_p256_scalar_mul_mont, a, b)
+    }
 
     #[inline]
-    fn sqr(a: &Scalar<R>) -> Scalar<R> { unary_op(GFp_p256_scalar_sqr_mont, a) }
+    fn sqr(a: &Scalar<R>) -> Scalar<R> {
+        unary_op(GFp_p256_scalar_sqr_mont, a)
+    }
 
     // Returns (`a` squared `squarings` times) * `b`.
     fn sqr_mul(a: &Scalar<R>, squarings: Limb, b: &Scalar<R>) -> Scalar<R> {

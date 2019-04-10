@@ -83,7 +83,9 @@ use std;
 pub struct Unspecified;
 
 impl Unspecified {
-    fn description_() -> &'static str { "ring::error::Unspecified" }
+    fn description_() -> &'static str {
+        "ring::error::Unspecified"
+    }
 }
 
 // This is required for the implementation of `std::error::Error`.
@@ -96,17 +98,25 @@ impl core::fmt::Display for Unspecified {
 #[cfg(feature = "use_heap")]
 impl std::error::Error for Unspecified {
     #[inline]
-    fn cause(&self) -> Option<&std::error::Error> { None }
+    fn cause(&self) -> Option<&std::error::Error> {
+        None
+    }
 
-    fn description(&self) -> &str { Self::description_() }
+    fn description(&self) -> &str {
+        Self::description_()
+    }
 }
 
 impl From<untrusted::EndOfInput> for Unspecified {
-    fn from(_: untrusted::EndOfInput) -> Self { Unspecified }
+    fn from(_: untrusted::EndOfInput) -> Self {
+        Unspecified
+    }
 }
 
 impl From<TryFromSliceError> for Unspecified {
-    fn from(_: TryFromSliceError) -> Self { Unspecified }
+    fn from(_: TryFromSliceError) -> Self {
+        Unspecified
+    }
 }
 
 /// An error parsing or validating a key.
@@ -144,40 +154,64 @@ pub struct KeyRejected(&'static str);
 
 impl KeyRejected {
     /// The value returned from <Self as std::error::Error>::description()
-    pub fn description_(&self) -> &'static str { self.0 }
+    pub fn description_(&self) -> &'static str {
+        self.0
+    }
 
-    pub(crate) fn inconsistent_components() -> Self { KeyRejected("InconsistentComponents") }
+    pub(crate) fn inconsistent_components() -> Self {
+        KeyRejected("InconsistentComponents")
+    }
 
-    pub(crate) fn invalid_component() -> Self { KeyRejected("InvalidComponent") }
+    pub(crate) fn invalid_component() -> Self {
+        KeyRejected("InvalidComponent")
+    }
 
     #[inline]
-    pub(crate) fn invalid_encoding() -> Self { KeyRejected("InvalidEncoding") }
+    pub(crate) fn invalid_encoding() -> Self {
+        KeyRejected("InvalidEncoding")
+    }
 
-    pub(crate) fn public_key_is_missing() -> Self { KeyRejected("PublicKeyIsMissing") }
+    pub(crate) fn public_key_is_missing() -> Self {
+        KeyRejected("PublicKeyIsMissing")
+    }
 
     #[cfg(feature = "use_heap")]
-    pub(crate) fn too_small() -> Self { KeyRejected("TooSmall") }
+    pub(crate) fn too_small() -> Self {
+        KeyRejected("TooSmall")
+    }
 
     #[cfg(feature = "use_heap")]
-    pub(crate) fn too_large() -> Self { KeyRejected("TooLarge") }
+    pub(crate) fn too_large() -> Self {
+        KeyRejected("TooLarge")
+    }
 
-    pub(crate) fn version_not_supported() -> Self { KeyRejected("VersionNotSupported") }
+    pub(crate) fn version_not_supported() -> Self {
+        KeyRejected("VersionNotSupported")
+    }
 
-    pub(crate) fn wrong_algorithm() -> Self { KeyRejected("WrongAlgorithm") }
+    pub(crate) fn wrong_algorithm() -> Self {
+        KeyRejected("WrongAlgorithm")
+    }
 
     #[cfg(feature = "use_heap")]
     pub(crate) fn private_modulus_len_not_multiple_of_512_bits() -> Self {
         KeyRejected("PrivateModulusLenNotMultipleOf512Bits")
     }
 
-    pub(crate) fn unexpected_error() -> Self { KeyRejected("UnexpectedError") }
+    pub(crate) fn unexpected_error() -> Self {
+        KeyRejected("UnexpectedError")
+    }
 }
 
 #[cfg(feature = "use_heap")]
 impl std::error::Error for KeyRejected {
-    fn cause(&self) -> Option<&std::error::Error> { None }
+    fn cause(&self) -> Option<&std::error::Error> {
+        None
+    }
 
-    fn description(&self) -> &str { self.description_() }
+    fn description(&self) -> &str {
+        self.description_()
+    }
 }
 
 #[cfg(feature = "use_heap")]
@@ -188,5 +222,7 @@ impl std::fmt::Display for KeyRejected {
 }
 
 impl From<KeyRejected> for Unspecified {
-    fn from(_: KeyRejected) -> Self { Unspecified }
+    fn from(_: KeyRejected) -> Self {
+        Unspecified
+    }
 }

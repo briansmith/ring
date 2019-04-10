@@ -105,7 +105,7 @@ mod tests {
                     ("P-384", "SHA384") => (&p384::PUBLIC_SCALAR_OPS, &digest::SHA384),
                     _ => {
                         panic!("Unsupported curve+digest: {}+{}", curve_name, digest_name);
-                    },
+                    }
                 };
 
                 let num_limbs = ops.public_key_ops.common.num_limbs;

@@ -209,7 +209,7 @@ impl RsaKeyPair {
             Err(error::Unspecified) => {
                 // TODO: verify `q` and `qInv` are inverses (mod p).
                 ((q, q_bits, dQ), (p, p_bits, dP, None))
-            },
+            }
         };
 
         // XXX: Some steps are done out of order, but the NIST steps are worded
@@ -388,7 +388,9 @@ impl RsaKeyPair {
 impl signature::KeyPair for RsaKeyPair {
     type PublicKey = RsaSubjectPublicKey;
 
-    fn public_key(&self) -> &Self::PublicKey { &self.public_key }
+    fn public_key(&self) -> &Self::PublicKey {
+        &self.public_key
+    }
 }
 
 /// A serialized RSA public key.
@@ -396,7 +398,9 @@ impl signature::KeyPair for RsaKeyPair {
 pub struct RsaSubjectPublicKey(Box<[u8]>);
 
 impl AsRef<[u8]> for RsaSubjectPublicKey {
-    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
 }
 
 derive_debug_self_as_ref_hex_bytes!(RsaSubjectPublicKey);
@@ -462,7 +466,8 @@ impl<M: Prime + Clone> PrivatePrime<M> {
 }
 
 fn elem_exp_consttime<M, MM>(
-    c: &bigint::Elem<MM>, p: &PrivatePrime<M>,
+    c: &bigint::Elem<MM>,
+    p: &PrivatePrime<M>,
 ) -> Result<bigint::Elem<M>, error::Unspecified>
 where
     M: bigint::NotMuchSmallerModulus<MM>,
@@ -527,7 +532,10 @@ impl RsaKeyPair {
     /// x86-64, this is done pretty well, but not perfectly. On other
     /// platforms, it is done less perfectly.
     pub fn sign(
-        &self, padding_alg: &'static RsaEncoding, rng: &rand::SecureRandom, msg: &[u8],
+        &self,
+        padding_alg: &'static RsaEncoding,
+        rng: &rand::SecureRandom,
+        msg: &[u8],
         signature: &mut [u8],
     ) -> Result<(), error::Unspecified> {
         let mod_bits = self.public.n_bits;

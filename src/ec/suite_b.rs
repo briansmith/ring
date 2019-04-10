@@ -31,7 +31,8 @@ use untrusted;
 //     y**2 == (x**2 + a)*x + b  (mod q)
 //
 fn verify_affine_point_is_on_the_curve(
-    ops: &CommonOps, (x, y): (&Elem<R>, &Elem<R>),
+    ops: &CommonOps,
+    (x, y): (&Elem<R>, &Elem<R>),
 ) -> Result<(), error::Unspecified> {
     verify_affine_point_is_on_the_curve_scaled(ops, (x, y), &ops.a, &ops.b)
 }
@@ -46,7 +47,8 @@ fn verify_affine_point_is_on_the_curve(
 //
 // This function also verifies that the point is not at infinity.
 fn verify_jacobian_point_is_on_the_curve(
-    ops: &CommonOps, p: &Point,
+    ops: &CommonOps,
+    p: &Point,
 ) -> Result<Elem<R>, error::Unspecified> {
     let z = ops.point_z(p);
 
@@ -133,7 +135,10 @@ fn verify_jacobian_point_is_on_the_curve(
 // Elliptic Curve Cryptosystems" by Johannes Blömer, Martin Otto, and
 // Jean-Pierre Seifert.
 fn verify_affine_point_is_on_the_curve_scaled(
-    ops: &CommonOps, (x, y): (&Elem<R>, &Elem<R>), a_scaled: &Elem<R>, b_scaled: &Elem<R>,
+    ops: &CommonOps,
+    (x, y): (&Elem<R>, &Elem<R>),
+    a_scaled: &Elem<R>,
+    b_scaled: &Elem<R>,
 ) -> Result<(), error::Unspecified> {
     let lhs = ops.elem_squared(y);
 
@@ -150,7 +155,9 @@ fn verify_affine_point_is_on_the_curve_scaled(
 }
 
 pub(crate) fn key_pair_from_pkcs8(
-    curve: &'static ec::Curve, template: &pkcs8::Template, input: untrusted::Input,
+    curve: &'static ec::Curve,
+    template: &pkcs8::Template,
+    input: untrusted::Input,
     cpu_features: cpu::Features,
 ) -> Result<ec::KeyPair, error::KeyRejected> {
     let (ec_private_key, _) = pkcs8::unwrap_key(template, pkcs8::Version::V1Only, input)?;
@@ -168,7 +175,8 @@ pub(crate) fn key_pair_from_pkcs8(
 }
 
 fn key_pair_from_pkcs8_<'a>(
-    template: &pkcs8::Template, input: &mut untrusted::Reader<'a>,
+    template: &pkcs8::Template,
+    input: &mut untrusted::Reader<'a>,
 ) -> Result<(untrusted::Input<'a>, untrusted::Input<'a>), error::KeyRejected> {
     let version = der::small_nonnegative_integer(input)
         .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
@@ -203,8 +211,10 @@ fn key_pair_from_pkcs8_<'a>(
 }
 
 pub(crate) fn key_pair_from_bytes(
-    curve: &'static ec::Curve, private_key_bytes: untrusted::Input,
-    public_key_bytes: untrusted::Input, cpu_features: cpu::Features,
+    curve: &'static ec::Curve,
+    private_key_bytes: untrusted::Input,
+    public_key_bytes: untrusted::Input,
+    cpu_features: cpu::Features,
 ) -> Result<ec::KeyPair, error::KeyRejected> {
     let seed = ec::Seed::from_bytes(curve, private_key_bytes, cpu_features)
         .map_err(|error::Unspecified| error::KeyRejected::invalid_component())?;

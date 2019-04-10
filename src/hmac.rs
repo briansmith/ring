@@ -137,7 +137,9 @@ pub struct Tag(digest::Digest);
 
 impl AsRef<[u8]> for Tag {
     #[inline]
-    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
 }
 
 /// A key to use for HMAC signing.
@@ -181,7 +183,8 @@ impl Key {
     /// The key will be `digest_alg.output_len` bytes long, based on the
     /// recommendation in https://tools.ietf.org/html/rfc2104#section-3.
     pub fn generate(
-        digest_alg: &'static digest::Algorithm, rng: &rand::SecureRandom,
+        digest_alg: &'static digest::Algorithm,
+        rng: &rand::SecureRandom,
     ) -> Result<Self, error::Unspecified> {
         let mut key_bytes = [0; digest::MAX_OUTPUT_LEN];
         let key_bytes = &mut key_bytes[..digest_alg.output_len];
@@ -279,11 +282,15 @@ impl core::fmt::Debug for Context {
 impl Context {
     /// Constructs a new HMAC signing context using the given digest algorithm
     /// and key.
-    pub fn with_key(signing_key: &Key) -> Self { signing_key.ctx_prototype.clone() }
+    pub fn with_key(signing_key: &Key) -> Self {
+        signing_key.ctx_prototype.clone()
+    }
 
     /// Updates the HMAC with all the data in `data`. `update` may be called
     /// zero or more times until `finish` is called.
-    pub fn update(&mut self, data: &[u8]) { self.inner.update(data); }
+    pub fn update(&mut self, data: &[u8]) {
+        self.inner.update(data);
+    }
 
     /// Finalizes the HMAC calculation and returns the HMAC value. `sign`
     /// consumes the context so it cannot be (mis-)used after `sign` has been

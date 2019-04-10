@@ -26,7 +26,9 @@ use libc::size_t;
 pub struct Key([Block; KEY_BLOCKS]);
 
 impl From<[Block; KEY_BLOCKS]> for Key {
-    fn from(value: [Block; KEY_BLOCKS]) -> Self { Self(value) }
+    fn from(value: [Block; KEY_BLOCKS]) -> Self {
+        Self(value)
+    }
 }
 
 pub const KEY_BLOCKS: usize = 2;
@@ -47,7 +49,10 @@ impl Context {
     pub fn from_key(Key(key_and_nonce): Key) -> Self {
         extern "C" {
             fn GFp_poly1305_blocks(
-                state: &mut Opaque, input: *const u8, len: size_t, should_pad: Pad,
+                state: &mut Opaque,
+                input: *const u8,
+                len: size_t,
+                should_pad: Pad,
             );
             fn GFp_poly1305_emit(state: &mut Opaque, tag: &mut Tag, nonce: &Nonce);
         }
@@ -84,7 +89,9 @@ impl Context {
         self.func.blocks(&mut self.opaque, input, Pad::Pad);
     }
 
-    pub(super) fn finish(mut self) -> Tag { self.func.emit(&mut self.opaque, &self.nonce) }
+    pub(super) fn finish(mut self) -> Tag {
+        self.func.emit(&mut self.opaque, &self.nonce)
+    }
 }
 
 #[cfg(test)]
@@ -124,7 +131,9 @@ struct Funcs {
 fn init(state: &mut Opaque, key: DerivedKey, func: &mut Funcs) -> Result<(), error::Unspecified> {
     extern "C" {
         fn GFp_poly1305_init_asm(
-            state: &mut Opaque, key: &DerivedKey, out_func: &mut Funcs,
+            state: &mut Opaque,
+            key: &DerivedKey,
+            out_func: &mut Funcs,
         ) -> bssl::Result;
     }
     Result::from(unsafe { GFp_poly1305_init_asm(state, &key, func) })
@@ -179,7 +188,9 @@ mod tests {
     use crate::{polyfill::convert::*, test};
 
     #[test]
-    pub fn test_state_layout() { check_state_layout(); }
+    pub fn test_state_layout() {
+        check_state_layout();
+    }
 
     // Adapted from BoringSSL's crypto/poly1305/poly1305_test.cc.
     #[test]

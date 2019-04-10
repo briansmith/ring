@@ -85,7 +85,9 @@ derive_debug_via_field!(Algorithm, curve);
 
 impl Eq for Algorithm {}
 impl PartialEq for Algorithm {
-    fn eq(&self, other: &Algorithm) -> bool { self.curve.id == other.curve.id }
+    fn eq(&self, other: &Algorithm) -> bool {
+        self.curve.id == other.curve.id
+    }
 }
 
 /// An ephemeral private key for use (only) with `agree_ephemeral`. The
@@ -99,7 +101,8 @@ pub struct EphemeralPrivateKey {
 impl EphemeralPrivateKey {
     /// Generate a new ephemeral private key for the given algorithm.
     pub fn generate(
-        alg: &'static Algorithm, rng: &rand::SecureRandom,
+        alg: &'static Algorithm,
+        rng: &rand::SecureRandom,
     ) -> Result<Self, error::Unspecified> {
         let cpu_features = cpu::features();
 
@@ -123,7 +126,9 @@ impl EphemeralPrivateKey {
     }
 
     #[cfg(test)]
-    pub fn bytes(&self) -> &[u8] { self.private_key.bytes_less_safe() }
+    pub fn bytes(&self) -> &[u8] {
+        self.private_key.bytes_less_safe()
+    }
 }
 
 /// A public key for key agreement.
@@ -131,7 +136,9 @@ impl EphemeralPrivateKey {
 pub struct PublicKey(ec::PublicKey);
 
 impl AsRef<[u8]> for PublicKey {
-    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
 }
 
 derive_debug_self_as_ref_hex_bytes!(PublicKey);
@@ -158,7 +165,9 @@ where
 
 impl<B: AsRef<[u8]>> UnparsedPublicKey<B> {
     /// Constructs a new `UnparsedPublicKey`.
-    pub fn new(algorithm: &'static Algorithm, bytes: B) -> Self { Self { algorithm, bytes } }
+    pub fn new(algorithm: &'static Algorithm, bytes: B) -> Self {
+        Self { algorithm, bytes }
+    }
 }
 
 /// Performs a key agreement with an ephemeral private key and the given public
@@ -184,7 +193,9 @@ impl<B: AsRef<[u8]>> UnparsedPublicKey<B> {
 /// returns.
 #[inline]
 pub fn agree_ephemeral<B: AsRef<[u8]>, F, R, E>(
-    my_private_key: EphemeralPrivateKey, peer_public_key: &UnparsedPublicKey<B>, error_value: E,
+    my_private_key: EphemeralPrivateKey,
+    peer_public_key: &UnparsedPublicKey<B>,
+    error_value: E,
     kdf: F,
 ) -> Result<R, E>
 where
@@ -198,7 +209,9 @@ where
 }
 
 fn agree_ephemeral_<F, R, E>(
-    my_private_key: EphemeralPrivateKey, peer_public_key: UnparsedPublicKey<&[u8]>, error_value: E,
+    my_private_key: EphemeralPrivateKey,
+    peer_public_key: UnparsedPublicKey<&[u8]>,
+    error_value: E,
     kdf: F,
 ) -> Result<R, E>
 where

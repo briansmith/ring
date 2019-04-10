@@ -94,7 +94,9 @@ impl ExtPoint {
             .map(|()| point)
     }
 
-    pub fn into_encoded_point(self) -> EncodedPoint { encode_point(self.x, self.y, self.z) }
+    pub fn into_encoded_point(self) -> EncodedPoint {
+        encode_point(self.x, self.y, self.z)
+    }
 
     pub fn invert_vartime(&mut self) {
         self.x.negate();
@@ -119,7 +121,9 @@ impl Point {
         }
     }
 
-    pub fn into_encoded_point(self) -> EncodedPoint { encode_point(self.x, self.y, self.z) }
+    pub fn into_encoded_point(self) -> EncodedPoint {
+        encode_point(self.x, self.y, self.z)
+    }
 }
 
 fn encode_point(x: Elem<T>, y: Elem<T>, z: Elem<T>) -> EncodedPoint {

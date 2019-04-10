@@ -330,7 +330,9 @@ impl Signature {
 }
 
 impl AsRef<[u8]> for Signature {
-    fn as_ref(&self) -> &[u8] { &self.value[..self.len] }
+    fn as_ref(&self) -> &[u8] {
+        &self.value[..self.len]
+    }
 }
 
 /// Key pairs for signing messages (private key and public key).
@@ -354,7 +356,10 @@ pub trait VerificationAlgorithm: core::fmt::Debug + Sync + sealed::Sealed {
     /// Verify the signature `signature` of message `msg` with the public key
     /// `public_key`.
     fn verify(
-        &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
+        &self,
+        public_key: untrusted::Input,
+        msg: untrusted::Input,
+        signature: untrusted::Input,
     ) -> Result<(), error::Unspecified>;
 }
 
@@ -406,7 +411,9 @@ impl<B: AsRef<[u8]>> UnparsedPublicKey<B> {
 /// [UnparsedPublicKey::verify()]: UnparsedPublicKey::verify
 #[deprecated(note = "Use UnparsedPublicKey::verify")]
 pub fn verify(
-    algorithm: &'static VerificationAlgorithm, public_key: untrusted::Input, msg: untrusted::Input,
+    algorithm: &'static VerificationAlgorithm,
+    public_key: untrusted::Input,
+    msg: untrusted::Input,
     signature: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
     UnparsedPublicKey::new(algorithm, public_key.as_slice_less_safe())
