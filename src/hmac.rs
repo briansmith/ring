@@ -109,7 +109,7 @@
 //! [code for `ring::hkdf`]:
 //!     https://github.com/briansmith/ring/blob/master/src/hkdf.rs
 
-use crate::{constant_time, digest, error, rand};
+use crate::{constant_time, digest, error, hkdf, rand};
 
 /// An HMAC algorithm.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -186,9 +186,16 @@ impl Key {
         algorithm: Algorithm,
         rng: &rand::SecureRandom,
     ) -> Result<Self, error::Unspecified> {
+        Self::construct(algorithm, |buf| rng.fill(buf))
+    }
+
+    fn construct<F>(algorithm: Algorithm, fill: F) -> Result<Self, error::Unspecified>
+    where
+        F: FnOnce(&mut [u8]) -> Result<(), error::Unspecified>,
+    {
         let mut key_bytes = [0; digest::MAX_OUTPUT_LEN];
         let key_bytes = &mut key_bytes[..algorithm.0.output_len];
-        rng.fill(key_bytes)?;
+        fill(key_bytes)?;
         Ok(Self::new(algorithm, key_bytes))
     }
 
@@ -257,6 +264,18 @@ impl Key {
     #[inline]
     pub fn algorithm(&self) -> Algorithm {
         Algorithm(self.ctx_prototype.inner.algorithm())
+    }
+}
+
+impl hkdf::KeyType for Algorithm {
+    fn len(&self) -> usize {
+        self.digest_algorithm().output_len
+    }
+}
+
+impl From<hkdf::Okm<'_, Algorithm>> for Key {
+    fn from(okm: hkdf::Okm<Algorithm>) -> Self {
+        Key::construct(*okm.len(), |buf| okm.fill(buf)).unwrap()
     }
 }
 
