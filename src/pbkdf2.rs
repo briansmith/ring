@@ -33,7 +33,7 @@
 //! use ring::{digest, pbkdf2};
 //! use std::{collections::HashMap, num::NonZeroU32};
 //!
-//! static DIGEST_ALG: &digest::Algorithm = &digest::SHA256;
+//! static PBKDF2_ALG: pbkdf2::Algorithm = pbkdf2::PBKDF2_HMAC_SHA256;
 //! const CREDENTIAL_LEN: usize = digest::SHA256_OUTPUT_LEN;
 //! pub type Credential = [u8; CREDENTIAL_LEN];
 //!
@@ -53,7 +53,7 @@
 //!     pub fn store_password(&mut self, username: &str, password: &str) {
 //!         let salt = self.salt(username);
 //!         let mut to_store: Credential = [0u8; CREDENTIAL_LEN];
-//!         pbkdf2::derive(DIGEST_ALG, self.pbkdf2_iterations, &salt,
+//!         pbkdf2::derive(PBKDF2_ALG, self.pbkdf2_iterations, &salt,
 //!                        password.as_bytes(), &mut to_store);
 //!         self.storage.insert(String::from(username), to_store);
 //!     }
@@ -63,7 +63,7 @@
 //!         match self.storage.get(username) {
 //!            Some(actual_password) => {
 //!                let salt = self.salt(username);
-//!                pbkdf2::verify(DIGEST_ALG, self.pbkdf2_iterations, &salt,
+//!                pbkdf2::verify(PBKDF2_ALG, self.pbkdf2_iterations, &salt,
 //!                               attempted_password.as_bytes(),
 //!                               actual_password)
 //!                     .map_err(|_| Error::WrongUsernameOrPassword)
@@ -115,6 +115,22 @@
 use crate::{constant_time, digest, error, hmac, polyfill};
 use core::num::NonZeroU32;
 
+/// A PBKDF2 algorithm.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Algorithm(hmac::Algorithm);
+
+/// PBKDF2 using HMAC-SHA1.
+pub static PBKDF2_HMAC_SHA1: Algorithm = Algorithm(hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY);
+
+/// PBKDF2 using HMAC-h.
+pub static PBKDF2_HMAC_SHA256: Algorithm = Algorithm(hmac::HMAC_SHA256);
+
+/// PBKDF2 using HMAC-SHA384.
+pub static PBKDF2_HMAC_SHA384: Algorithm = Algorithm(hmac::HMAC_SHA384);
+
+/// PBKDF2 using HMAC-SHA512.
+pub static PBKDF2_HMAC_SHA512: Algorithm = Algorithm(hmac::HMAC_SHA512);
+
 /// Fills `out` with the key derived using PBKDF2 with the given inputs.
 ///
 /// Do not use `derive` as part of verifying a secret; use `verify` instead, to
@@ -137,12 +153,13 @@ use core::num::NonZeroU32;
 /// `derive` panics if `out.len()` is larger than (2**32 - 1) * the digest
 /// algorithm's output length, per the PBKDF2 specification.
 pub fn derive(
-    digest_alg: &'static digest::Algorithm,
+    algorithm: Algorithm,
     iterations: NonZeroU32,
     salt: &[u8],
     secret: &[u8],
     out: &mut [u8],
 ) {
+    let digest_alg = algorithm.0.digest_algorithm();
     let output_len = digest_alg.output_len;
 
     // This implementation's performance is asymptotically optimal as described
@@ -150,7 +167,7 @@ pub fn derive(
     // hasn't been optimized to the same extent as fastpbkdf2. In particular,
     // this implementation is probably doing a lot of unnecessary copying.
 
-    let secret = hmac::Key::new(digest_alg, secret);
+    let secret = hmac::Key::new(algorithm.0, secret);
 
     // Clear |out|.
     polyfill::slice::fill(out, 0);
@@ -206,12 +223,14 @@ fn derive_block(secret: &hmac::Key, iterations: NonZeroU32, salt: &[u8], idx: u3
 /// `verify` panics if `out.len()` is larger than (2**32 - 1) * the digest
 /// algorithm's output length, per the PBKDF2 specification.
 pub fn verify(
-    digest_alg: &'static digest::Algorithm,
+    algorithm: Algorithm,
     iterations: NonZeroU32,
     salt: &[u8],
     secret: &[u8],
     previously_derived: &[u8],
 ) -> Result<(), error::Unspecified> {
+    let digest_alg = algorithm.0.digest_algorithm();
+
     if previously_derived.is_empty() {
         return Err(error::Unspecified);
     }
@@ -219,7 +238,7 @@ pub fn verify(
     let mut derived_buf = [0u8; digest::MAX_OUTPUT_LEN];
 
     let output_len = digest_alg.output_len;
-    let secret = hmac::Key::new(digest_alg, secret);
+    let secret = hmac::Key::new(algorithm.0, secret);
     let mut idx: u32 = 0;
 
     let mut matches = 1;

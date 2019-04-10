@@ -29,10 +29,10 @@
 //! ## Signing a value and verifying it wasn't tampered with
 //!
 //! ```
-//! use ring::{digest, hmac, rand};
+//! use ring::{hmac, rand};
 //!
 //! let rng = rand::SystemRandom::new();
-//! let key = hmac::Key::generate(&digest::SHA256, &rng)?;
+//! let key = hmac::Key::generate(hmac::HMAC_SHA256, &rng)?;
 //!
 //! let msg = "hello, world";
 //!
@@ -60,12 +60,12 @@
 //! let rng = rand::SystemRandom::new();
 //! let key_value: [u8; digest::SHA256_OUTPUT_LEN] = rand::generate(&rng)?.expose();
 //!
-//! let s_key = hmac::Key::new(&digest::SHA256, &key_value);
+//! let s_key = hmac::Key::new(hmac::HMAC_SHA256, key_value.as_ref());
 //! let tag = hmac::sign(&s_key, msg.as_bytes());
 //!
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
-//! let v_key = hmac::Key::new(&digest::SHA256, key_value.as_ref());
+//! let v_key = hmac::Key::new(hmac::HMAC_SHA256, key_value.as_ref());
 //! hmac::verify(&v_key, msg.as_bytes(), tag.as_ref())?;
 //!
 //! # Ok::<(), ring::error::Unspecified>(())
@@ -84,7 +84,7 @@
 //! let rng = rand::SystemRandom::new();
 //! let mut key_value: [u8; digest::SHA384_OUTPUT_LEN] = rand::generate(&rng)?.expose();
 //!
-//! let s_key = hmac::Key::new(&digest::SHA384, &key_value);
+//! let s_key = hmac::Key::new(hmac::HMAC_SHA384, key_value.as_ref());
 //! let mut s_ctx = hmac::Context::with_key(&s_key);
 //! for part in &parts {
 //!     s_ctx.update(part.as_bytes());
@@ -93,7 +93,7 @@
 //!
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
-//! let v_key = hmac::Key::new(&digest::SHA384, key_value.as_ref());
+//! let v_key = hmac::Key::new(hmac::HMAC_SHA384, key_value.as_ref());
 //! let mut msg = Vec::<u8>::new();
 //! for part in &parts {
 //!     msg.extend(part.as_bytes());
@@ -109,7 +109,31 @@
 //! [code for `ring::hkdf`]:
 //!     https://github.com/briansmith/ring/blob/master/src/hkdf.rs
 
-use crate::{constant_time, digest, error, hkdf, rand};
+use crate::{constant_time, digest, error, rand};
+
+/// An HMAC algorithm.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Algorithm(&'static digest::Algorithm);
+
+impl Algorithm {
+    /// The digest algorithm this HMAC algorithm is based on.
+    #[inline]
+    pub fn digest_algorithm(&self) -> &'static digest::Algorithm {
+        self.0
+    }
+}
+
+/// HMAC using SHA-1. Obsolete.
+pub static HMAC_SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm(&digest::SHA1);
+
+/// HMAC using SHA-256.
+pub static HMAC_SHA256: Algorithm = Algorithm(&digest::SHA256);
+
+/// HMAC using SHA-384.
+pub static HMAC_SHA384: Algorithm = Algorithm(&digest::SHA384);
+
+/// HMAC using SHA-512.
+pub static HMAC_SHA512: Algorithm = Algorithm(&digest::SHA512);
 
 /// A deprecated alias for `Tag`.
 #[deprecated(note = "`Signature` was renamed to `Tag`. This alias will be removed soon.")]
@@ -147,36 +171,25 @@ pub type VerificationKey = Key;
 impl core::fmt::Debug for Key {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
         f.debug_struct("Key")
-            .field("algorithm", self.digest_algorithm())
+            .field("algorithm", self.algorithm().digest_algorithm())
             .finish()
     }
 }
 
 impl Key {
-    /// Derive an HMAC key from the output of an `HKDF-Expand` operation.
-    ///
-    /// The key will be `digest_alg.output_len` bytes long, based on the
-    /// recommendation in https://tools.ietf.org/html/rfc2104#section-3.
-    pub fn derive(digest_alg: &'static digest::Algorithm, okm: hkdf::Okm) -> Self {
-        let mut key_bytes = [0; digest::MAX_OUTPUT_LEN];
-        let key_bytes = &mut key_bytes[..digest_alg.output_len];
-        okm.fill(key_bytes).unwrap();
-        Self::new(digest_alg, key_bytes)
-    }
-
     /// Generate an HMAC signing key using the given digest algorithm with a
     /// random value generated from `rng`.
     ///
     /// The key will be `digest_alg.output_len` bytes long, based on the
     /// recommendation in https://tools.ietf.org/html/rfc2104#section-3.
     pub fn generate(
-        digest_alg: &'static digest::Algorithm,
-        rng: &dyn rand::SecureRandom,
+        algorithm: Algorithm,
+        rng: &rand::SecureRandom,
     ) -> Result<Self, error::Unspecified> {
         let mut key_bytes = [0; digest::MAX_OUTPUT_LEN];
-        let key_bytes = &mut key_bytes[..digest_alg.output_len];
+        let key_bytes = &mut key_bytes[..algorithm.0.output_len];
         rng.fill(key_bytes)?;
-        Ok(Self::new(digest_alg, key_bytes))
+        Ok(Self::new(algorithm, key_bytes))
     }
 
     /// Construct an HMAC signing key using the given digest algorithm and key
@@ -198,7 +211,8 @@ impl Key {
     /// the truncation described above reduces their strength to only
     /// `digest_alg.output_len * 8` bits. Support for such keys is likely to be
     /// removed in a future version of *ring*.
-    pub fn new(digest_alg: &'static digest::Algorithm, key_value: &[u8]) -> Self {
+    pub fn new(algorithm: Algorithm, key_value: &[u8]) -> Self {
+        let digest_alg = algorithm.0;
         let mut key = Self {
             ctx_prototype: Context {
                 inner: digest::Context::new(digest_alg),
@@ -240,8 +254,9 @@ impl Key {
     }
 
     /// The digest algorithm for the key.
-    pub fn digest_algorithm(&self) -> &'static digest::Algorithm {
-        self.ctx_prototype.inner.algorithm()
+    #[inline]
+    pub fn algorithm(&self) -> Algorithm {
+        Algorithm(self.ctx_prototype.inner.algorithm())
     }
 }
 
@@ -317,7 +332,7 @@ pub fn verify(key: &Key, data: &[u8], tag: &[u8]) -> Result<(), error::Unspecifi
 
 #[cfg(test)]
 mod tests {
-    use crate::{digest, hmac, rand};
+    use crate::{hmac, rand};
 
     // Make sure that `Key::generate` and `verify_with_own_key` aren't
     // completely wacky.
@@ -328,8 +343,13 @@ mod tests {
         const HELLO_WORLD_GOOD: &[u8] = b"hello, world";
         const HELLO_WORLD_BAD: &[u8] = b"hello, worle";
 
-        for d in &digest::test_util::ALL_ALGORITHMS {
-            let key = hmac::Key::generate(d, &mut rng).unwrap();
+        for algorithm in &[
+            hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY,
+            hmac::HMAC_SHA256,
+            hmac::HMAC_SHA384,
+            hmac::HMAC_SHA512,
+        ] {
+            let key = hmac::Key::generate(*algorithm, &mut rng).unwrap();
             let tag = hmac::sign(&key, HELLO_WORLD_GOOD);
             assert!(hmac::verify(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok());
             assert!(hmac::verify(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err())

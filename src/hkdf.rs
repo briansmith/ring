@@ -31,20 +31,20 @@
 //!
 //! [RFC 5869]: https://tools.ietf.org/html/rfc5869
 
-use crate::{digest, error, hmac};
+use crate::{error, hmac};
 
 /// An HKDF algorithm.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Algorithm(&'static digest::Algorithm);
+pub struct Algorithm(hmac::Algorithm);
 
 /// HKDF using HMAC-SHA-256.
-pub static HKDF_SHA256: Algorithm = Algorithm(&digest::SHA256);
+pub static HKDF_SHA256: Algorithm = Algorithm(hmac::HMAC_SHA256);
 
 /// HKDF using HMAC-SHA-384.
-pub static HKDF_SHA384: Algorithm = Algorithm(&digest::SHA384);
+pub static HKDF_SHA384: Algorithm = Algorithm(hmac::HMAC_SHA384);
 
 /// HKDF using HMAC-SHA-512.
-pub static HKDF_SHA512: Algorithm = Algorithm(&digest::SHA512);
+pub static HKDF_SHA512: Algorithm = Algorithm(hmac::HMAC_SHA512);
 
 /// A salt for HKDF operations.
 #[derive(Debug)]
@@ -72,7 +72,13 @@ impl Salt {
         // zero-length string.
         let salt = &self.0;
         let prk = hmac::sign(salt, secret);
-        Prk(hmac::Key::new(salt.digest_algorithm(), prk.as_ref()))
+        Prk(hmac::Key::new(salt.algorithm(), prk.as_ref()))
+    }
+
+    /// The algorithm used to derive this salt.
+    #[inline]
+    pub fn algorithm(&self) -> Algorithm {
+        Algorithm(self.0.algorithm())
     }
 }
 
@@ -109,7 +115,7 @@ impl Okm<'_> {
     /// imposed by the HKDF specification due to the way HKDF's counter is
     /// constructed.)
     pub fn fill(self, out: &mut [u8]) -> Result<(), error::Unspecified> {
-        let digest_alg = self.prk.0.digest_algorithm();
+        let digest_alg = self.prk.0.algorithm().digest_algorithm();
         assert!(digest_alg.block_len >= digest_alg.output_len);
 
         let mut ctx = hmac::Context::with_key(&self.prk.0);

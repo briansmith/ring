@@ -484,19 +484,6 @@ const SHA512_BLOCK_LEN: usize = 1024 / 8;
 const SHA512_LEN_LEN: usize = 128 / 8;
 
 #[cfg(test)]
-pub mod test_util {
-    use super::super::digest;
-
-    pub static ALL_ALGORITHMS: [&digest::Algorithm; 5] = [
-        &digest::SHA1,
-        &digest::SHA256,
-        &digest::SHA384,
-        &digest::SHA512,
-        &digest::SHA512_256,
-    ];
-}
-
-#[cfg(test)]
 mod tests {
 
     mod max_input {
