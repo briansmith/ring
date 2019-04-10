@@ -31,7 +31,7 @@
     warnings
 )]
 
-use ring::{digest, error, pbkdf2, test, test_file};
+use ring::{error, pbkdf2, test, test_file};
 use std::num::NonZeroU32;
 
 #[test]
@@ -64,14 +64,4 @@ pub fn pbkdf2_tests() {
 
         Ok(())
     });
-}
-
-// Control for pkbdf2_zero_iterations
-#[test]
-pub fn pbkdf2_one_iteration() {
-    let secret = "ZeroIterationsTest".as_bytes();
-    let iterations = NonZeroU32::new(1).unwrap();
-    let salt = "salt".as_bytes();
-    let mut out = vec![0u8; 2];
-    pbkdf2::derive(&digest::SHA256, iterations, &salt, &secret, &mut out);
 }
