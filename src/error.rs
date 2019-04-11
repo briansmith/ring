@@ -62,9 +62,7 @@ use std;
 ///     Ok(bytes)
 /// }
 ///
-/// # fn main() {
-/// #  assert!(eight_random_bytes().is_ok());
-/// # }
+/// assert!(eight_random_bytes().is_ok());
 /// ```
 ///
 /// Experience with using and implementing other crypto libraries like has

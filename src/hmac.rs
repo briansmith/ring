@@ -31,7 +31,6 @@
 //! ```
 //! use ring::{digest, hmac, rand};
 //!
-//! # fn main_with_result() -> Result<(), ring::error::Unspecified> {
 //! let rng = rand::SystemRandom::new();
 //! let key = hmac::Key::generate(&digest::SHA256, &rng)?;
 //!
@@ -43,11 +42,8 @@
 //! // back to us. We need to verify they didn't tamper with it.]
 //!
 //! hmac::verify(&key, msg.as_bytes(), tag.as_ref())?;
-//! #
-//! # Ok(())
-//! # }
-//! #
-//! # fn main() { main_with_result().unwrap() }
+//!
+//! # Ok::<(), ring::error::Unspecified>(())
 //! ```
 //!
 //! ## Using the one-shot API:
@@ -56,7 +52,6 @@
 //! use ring::{digest, hmac, rand};
 //! use ring::rand::SecureRandom;
 //!
-//! # fn main_with_result() -> Result<(), ring::error::Unspecified> {
 //! let msg = "hello, world";
 //!
 //! // The sender generates a secure key value and signs the message with it.
@@ -73,11 +68,8 @@
 //! // integrity of the message.
 //! let v_key = hmac::Key::new(&digest::SHA256, key_value.as_ref());
 //! hmac::verify(&v_key, msg.as_bytes(), tag.as_ref())?;
-//! #
-//! # Ok(())
-//! # }
-//! #
-//! # fn main() { main_with_result().unwrap() }
+//!
+//! # Ok::<(), ring::error::Unspecified>(())
 //! ```
 //!
 //! ## Using the multi-part API:
@@ -85,7 +77,6 @@
 //! use ring::{digest, hmac, rand};
 //! use ring::rand::SecureRandom;
 //!
-//! # fn main_with_result() -> Result<(), ring::error::Unspecified> {
 //! let parts = ["hello", ", ", "world"];
 //!
 //! // The sender generates a secure key value and signs the message with it.
@@ -110,11 +101,8 @@
 //!     msg.extend(part.as_bytes());
 //! }
 //! hmac::verify(&v_key, &msg.as_ref(), tag.as_ref())?;
-//! #
-//! # Ok(())
-//! # }
-//! #
-//! # fn main() { main_with_result().unwrap() }
+//!
+//! # Ok::<(), ring::error::Unspecified>(())
 //! ```
 //!
 //! [RFC 2104]: https://tools.ietf.org/html/rfc2104

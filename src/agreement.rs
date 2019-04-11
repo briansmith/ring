@@ -21,7 +21,6 @@
 //! `agreement::ECDH_P256`/`agreement::ECDH_P384` for `agreement::X25519`.
 //!
 //! ```
-//! # fn x25519_agreement_example() -> Result<(), ring::error::Unspecified> {
 //! use ring::{agreement, rand};
 //!
 //! let rng = rand::SystemRandom::new();
@@ -55,9 +54,9 @@
 //!         // keys from the result. We omit all that here.
 //!         Ok(())
 //!     },
-//! )
-//! # }
-//! # fn main() { x25519_agreement_example().unwrap() }
+//! )?;
+//!
+//! # Ok::<(), ring::error::Unspecified>(())
 //! ```
 
 // The "NSA Guide" steps here are from from section 3.1, "Ephemeral Unified
