@@ -56,8 +56,6 @@ pub enum LimbMask {
 
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 
-#[allow(dead_code)]
-#[cfg(feature = "use_heap")]
 #[inline]
 pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
     extern "C" {
