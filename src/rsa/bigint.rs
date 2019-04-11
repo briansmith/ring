@@ -51,6 +51,7 @@ use core::{
     ops::{Deref, DerefMut},
 };
 use libc::size_t;
+use std::borrow::ToOwned as _; // TODO: Remove; Redundant as of Rust 1.36.
 use untrusted;
 
 pub unsafe trait Prime {}
@@ -117,7 +118,6 @@ impl<M> BoxedLimbs<M> {
 
     fn minimal_width_from_unpadded(limbs: &[Limb]) -> Self {
         debug_assert_ne!(limbs.last(), Some(&0));
-        use std::borrow::ToOwned;
         Self {
             limbs: limbs.to_owned().into_boxed_slice(),
             m: PhantomData,
@@ -142,7 +142,6 @@ impl<M> BoxedLimbs<M> {
     }
 
     fn zero(width: Width<M>) -> Self {
-        use std::borrow::ToOwned;
         Self {
             limbs: vec![0; width.num_limbs].to_owned().into_boxed_slice(),
             m: PhantomData,
