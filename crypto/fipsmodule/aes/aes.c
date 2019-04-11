@@ -834,6 +834,9 @@ void AES_decrypt(const uint8_t *in, uint8_t *out, const AES_KEY *key) {
 }
 
 int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
+  if (bits != 128 && bits != 192 && bits != 256) {
+    return -2;
+  }
   if (hwaes_capable()) {
     return aes_hw_set_encrypt_key(key, bits, aeskey);
   } else if (vpaes_capable()) {
@@ -844,6 +847,9 @@ int AES_set_encrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
 }
 
 int AES_set_decrypt_key(const uint8_t *key, unsigned bits, AES_KEY *aeskey) {
+  if (bits != 128 && bits != 192 && bits != 256) {
+    return -2;
+  }
   if (hwaes_capable()) {
     return aes_hw_set_decrypt_key(key, bits, aeskey);
   } else if (vpaes_capable()) {

@@ -76,18 +76,18 @@ struct aes_key_st {
 typedef struct aes_key_st AES_KEY;
 
 // AES_set_encrypt_key configures |aeskey| to encrypt with the |bits|-bit key,
-// |key|.
+// |key|. |key| must point to |bits|/8 bytes. It returns zero on success and a
+// negative number if |bits| is an invalid AES key size.
 //
-// WARNING: unlike other OpenSSL functions, this returns zero on success and a
-// negative number on error.
+// WARNING: this function breaks the usual return value convention.
 OPENSSL_EXPORT int AES_set_encrypt_key(const uint8_t *key, unsigned bits,
                                        AES_KEY *aeskey);
 
 // AES_set_decrypt_key configures |aeskey| to decrypt with the |bits|-bit key,
-// |key|.
+// |key|. |key| must point to |bits|/8 bytes. It returns zero on success and a
+// negative number if |bits| is an invalid AES key size.
 //
-// WARNING: unlike other OpenSSL functions, this returns zero on success and a
-// negative number on error.
+// WARNING: this function breaks the usual return value convention.
 OPENSSL_EXPORT int AES_set_decrypt_key(const uint8_t *key, unsigned bits,
                                        AES_KEY *aeskey);
 

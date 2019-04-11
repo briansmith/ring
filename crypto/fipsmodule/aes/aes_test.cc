@@ -189,6 +189,13 @@ TEST(AESTest, WrapBadLengths) {
   }
 }
 
+TEST(AESTest, InvalidKeySize) {
+  static const uint8_t kZero[8] = {0};
+  AES_KEY key;
+  EXPECT_LT(AES_set_encrypt_key(kZero, 42, &key), 0);
+  EXPECT_LT(AES_set_decrypt_key(kZero, 42, &key), 0);
+}
+
 #if defined(SUPPORTS_ABI_TEST)
 TEST(AESTest, ABI) {
   for (int bits : {128, 192, 256}) {
