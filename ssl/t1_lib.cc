@@ -199,10 +199,10 @@ static bool tls1_check_duplicate_extensions(const CBS *cbs) {
   return true;
 }
 
-bool ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out,
+bool ssl_client_hello_init(const SSL *ssl, SSL_CLIENT_HELLO *out,
                            const SSLMessage &msg) {
   OPENSSL_memset(out, 0, sizeof(*out));
-  out->ssl = ssl;
+  out->ssl = const_cast<SSL *>(ssl);
   out->client_hello = CBS_data(&msg.body);
   out->client_hello_len = CBS_len(&msg.body);
 

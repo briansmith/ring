@@ -515,15 +515,15 @@ static enum ssl_hs_wait_t do_read_client_hello(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (hs->config->handoff) {
-    return ssl_hs_handoff;
-  }
-
   SSL_CLIENT_HELLO client_hello;
   if (!ssl_client_hello_init(ssl, &client_hello, msg)) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
+  }
+
+  if (hs->config->handoff) {
+    return ssl_hs_handoff;
   }
 
   // Run the early callback.

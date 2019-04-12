@@ -405,7 +405,7 @@ ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
   return ssl_open_record_success;
 }
 
-bool dtls1_get_message(SSL *ssl, SSLMessage *out) {
+bool dtls1_get_message(const SSL *ssl, SSLMessage *out) {
   if (!dtls1_is_current_message_complete(ssl)) {
     return false;
   }

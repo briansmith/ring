@@ -1081,7 +1081,7 @@ void dtls_clear_outgoing_messages(SSL *ssl);
 void ssl_do_info_callback(const SSL *ssl, int type, int value);
 
 // ssl_do_msg_callback calls |ssl|'s message callback, if set.
-void ssl_do_msg_callback(SSL *ssl, int is_write, int content_type,
+void ssl_do_msg_callback(const SSL *ssl, int is_write, int content_type,
                          Span<const uint8_t> in);
 
 
@@ -1798,7 +1798,7 @@ int ssl_log_secret(const SSL *ssl, const char *label, const uint8_t *secret,
 
 // ClientHello functions.
 
-bool ssl_client_hello_init(SSL *ssl, SSL_CLIENT_HELLO *out,
+bool ssl_client_hello_init(const SSL *ssl, SSL_CLIENT_HELLO *out,
                            const SSLMessage &msg);
 
 bool ssl_client_hello_get_extension(const SSL_CLIENT_HELLO *client_hello,
@@ -1958,7 +1958,7 @@ struct SSL_PROTOCOL_METHOD {
   void (*ssl_free)(SSL *ssl);
   // get_message sets |*out| to the current handshake message and returns true
   // if one has been received. It returns false if more input is needed.
-  bool (*get_message)(SSL *ssl, SSLMessage *out);
+  bool (*get_message)(const SSL *ssl, SSLMessage *out);
   // next_message is called to release the current handshake message.
   void (*next_message)(SSL *ssl);
   // Use the |ssl_open_handshake| wrapper.
@@ -2675,7 +2675,7 @@ void ssl_session_renew_timeout(SSL *ssl, SSL_SESSION *session,
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode);
 
 int ssl_send_alert(SSL *ssl, int level, int desc);
-bool ssl3_get_message(SSL *ssl, SSLMessage *out);
+bool ssl3_get_message(const SSL *ssl, SSLMessage *out);
 ssl_open_record_t ssl3_open_handshake(SSL *ssl, size_t *out_consumed,
                                       uint8_t *out_alert, Span<uint8_t> in);
 void ssl3_next_message(SSL *ssl);
@@ -2741,7 +2741,7 @@ unsigned int dtls1_min_mtu(void);
 bool dtls1_new(SSL *ssl);
 void dtls1_free(SSL *ssl);
 
-bool dtls1_get_message(SSL *ssl, SSLMessage *out);
+bool dtls1_get_message(const SSL *ssl, SSLMessage *out);
 ssl_open_record_t dtls1_open_handshake(SSL *ssl, size_t *out_consumed,
                                        uint8_t *out_alert, Span<uint8_t> in);
 void dtls1_next_message(SSL *ssl);

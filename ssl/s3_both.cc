@@ -494,7 +494,7 @@ static bool parse_message(const SSL *ssl, SSLMessage *out,
   return true;
 }
 
-bool ssl3_get_message(SSL *ssl, SSLMessage *out) {
+bool ssl3_get_message(const SSL *ssl, SSLMessage *out) {
   size_t unused;
   if (!parse_message(ssl, out, &unused)) {
     return false;

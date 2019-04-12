@@ -4757,7 +4757,8 @@ OPENSSL_EXPORT bool SealRecord(SSL *ssl, Span<uint8_t> out_prefix,
 
 OPENSSL_EXPORT void SSL_CTX_set_handoff_mode(SSL_CTX *ctx, bool on);
 OPENSSL_EXPORT void SSL_set_handoff_mode(SSL *SSL, bool on);
-OPENSSL_EXPORT bool SSL_serialize_handoff(const SSL *ssl, CBB *out);
+OPENSSL_EXPORT bool SSL_serialize_handoff(const SSL *ssl, CBB *out,
+                                          SSL_CLIENT_HELLO *out_hello);
 OPENSSL_EXPORT bool SSL_decline_handoff(SSL *ssl);
 OPENSSL_EXPORT bool SSL_apply_handoff(SSL *ssl, Span<const uint8_t> handoff);
 OPENSSL_EXPORT bool SSL_serialize_handback(const SSL *ssl, CBB *out);

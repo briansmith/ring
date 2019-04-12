@@ -49,7 +49,8 @@ static bool serialize_features(CBB *out) {
   return CBB_flush(out);
 }
 
-bool SSL_serialize_handoff(const SSL *ssl, CBB *out) {
+bool SSL_serialize_handoff(const SSL *ssl, CBB *out,
+                           SSL_CLIENT_HELLO *out_hello) {
   const SSL3_STATE *const s3 = ssl->s3;
   if (!ssl->server ||
       s3->hs == nullptr ||
@@ -58,6 +59,7 @@ bool SSL_serialize_handoff(const SSL *ssl, CBB *out) {
   }
 
   CBB seq;
+  SSLMessage msg;
   Span<const uint8_t> transcript = s3->hs->transcript.buffer();
   if (!CBB_add_asn1(out, &seq, CBS_ASN1_SEQUENCE) ||
       !CBB_add_asn1_uint64(&seq, kHandoffVersion) ||
@@ -66,7 +68,9 @@ bool SSL_serialize_handoff(const SSL *ssl, CBB *out) {
                                  reinterpret_cast<uint8_t *>(s3->hs_buf->data),
                                  s3->hs_buf->length) ||
       !serialize_features(&seq) ||
-      !CBB_flush(out)) {
+      !CBB_flush(out) ||
+      !ssl->method->get_message(ssl, &msg) ||
+      !ssl_client_hello_init(ssl, out_hello, msg)) {
     return false;
   }
 

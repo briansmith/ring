@@ -4050,8 +4050,9 @@ TEST(SSLTest, Handoff) {
 
   ScopedCBB cbb;
   Array<uint8_t> handoff;
+  SSL_CLIENT_HELLO hello;
   ASSERT_TRUE(CBB_init(cbb.get(), 256));
-  ASSERT_TRUE(SSL_serialize_handoff(server.get(), cbb.get()));
+  ASSERT_TRUE(SSL_serialize_handoff(server.get(), cbb.get(), &hello));
   ASSERT_TRUE(CBBFinishArray(cbb.get(), &handoff));
 
   bssl::UniquePtr<SSL> handshaker(SSL_new(handshaker_ctx.get()));
@@ -4122,8 +4123,9 @@ TEST(SSLTest, HandoffDeclined) {
   ASSERT_EQ(server_err, SSL_ERROR_HANDOFF);
 
   ScopedCBB cbb;
+  SSL_CLIENT_HELLO hello;
   ASSERT_TRUE(CBB_init(cbb.get(), 256));
-  ASSERT_TRUE(SSL_serialize_handoff(server.get(), cbb.get()));
+  ASSERT_TRUE(SSL_serialize_handoff(server.get(), cbb.get(), &hello));
 
   ASSERT_TRUE(SSL_decline_handoff(server.get()));
 
