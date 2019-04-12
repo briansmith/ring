@@ -285,4 +285,4 @@ ____
 
 &asm_finish();
 
-close STDOUT;
+close STDOUT or die "error closing STDOUT";

@@ -2485,4 +2485,4 @@ dummy_chacha20_poly1305_asm:
 ___
 }
 
-close STDOUT;
+close STDOUT or die "error closing STDOUT";
