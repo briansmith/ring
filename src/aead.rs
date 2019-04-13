@@ -22,14 +22,14 @@
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
 use self::block::{Block, BLOCK_LEN};
-use crate::{constant_time, cpu, error, hkdf, polyfill};
+use crate::{constant_time, cpu, error, polyfill};
+use core::convert::TryInto;
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
     chacha20_poly1305::CHACHA20_POLY1305,
     nonce::{Nonce, NONCE_LEN},
 };
-use core::convert::TryInto;
 
 /// A key for authenticating and decrypting (“opening”) AEAD-protected data.
 pub struct OpeningKey {
@@ -39,14 +39,6 @@ pub struct OpeningKey {
 derive_debug_via_field!(OpeningKey, key);
 
 impl OpeningKey {
-    /// Create a new `OpeningKey` by extracting the key's value from `okm`.
-    #[inline]
-    pub fn derive(algorithm: &'static Algorithm, okm: hkdf::Okm) -> Self {
-        Self {
-            key: Key::derive(algorithm, okm),
-        }
-    }
-
     /// Create a new opening key.
     ///
     /// `key_bytes` must be exactly `algorithm.key_len` bytes long.
@@ -174,14 +166,6 @@ pub struct SealingKey {
 derive_debug_via_field!(SealingKey, key);
 
 impl SealingKey {
-    /// Create a new `OpeningKey` by extracting the key's value from `okm`.
-    #[inline]
-    pub fn derive(algorithm: &'static Algorithm, okm: hkdf::Okm) -> Self {
-        Self {
-            key: Key::derive(algorithm, okm),
-        }
-    }
-
     /// Constructs a new sealing key from `key_bytes`.
     #[inline]
     pub fn new(
@@ -295,13 +279,6 @@ enum KeyInner {
 }
 
 impl Key {
-    fn derive(algorithm: &'static Algorithm, okm: hkdf::Okm) -> Self {
-        let mut key_bytes = [0; MAX_KEY_LEN];
-        let key_bytes = &mut key_bytes[..algorithm.key_len];
-        okm.fill(key_bytes).unwrap();
-        Self::new(algorithm, key_bytes).unwrap()
-    }
-
     fn new(algorithm: &'static Algorithm, key_bytes: &[u8]) -> Result<Self, error::Unspecified> {
         let cpu_features = cpu::features();
         Ok(Self {
@@ -396,8 +373,6 @@ impl Eq for Algorithm {}
 #[must_use]
 #[repr(C)]
 struct Tag(Block);
-
-const MAX_KEY_LEN: usize = 32;
 
 // All the AEADs we support use 128-bit tags.
 const TAG_LEN: usize = BLOCK_LEN;
