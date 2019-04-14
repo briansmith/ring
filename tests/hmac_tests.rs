@@ -69,32 +69,36 @@ fn hmac_test_case_inner(
     output: &[u8],
     is_ok: bool,
 ) -> Result<(), error::Unspecified> {
-    let key = hmac::Key::new(digest_alg, key_value);
-
-    // One-shot API.
-    {
-        let signature = hmac::sign(&key, input);
-        assert_eq!(is_ok, signature.as_ref() == output);
-        assert_eq!(is_ok, hmac::verify(&key, input, output).is_ok());
-    }
-
-    // Multi-part API, one single part.
-    {
-        let mut s_ctx = hmac::Context::with_key(&key);
-        s_ctx.update(input);
-        let signature = s_ctx.sign();
-        assert_eq!(is_ok, signature.as_ref() == output);
-    }
-
-    // Multi-part API, byte by byte.
-    {
-        let mut ctx = hmac::Context::with_key(&key);
-        for b in input {
-            ctx.update(&[*b]);
+    let do_test = |key| {
+        // One-shot API.
+        {
+            let signature = hmac::sign(&key, input);
+            assert_eq!(is_ok, signature.as_ref() == output);
+            assert_eq!(is_ok, hmac::verify(&key, input, output).is_ok());
         }
-        let signature = ctx.sign();
-        assert_eq!(is_ok, signature.as_ref() == output);
-    }
+
+        // Multi-part API, one single part.
+        {
+            let mut s_ctx = hmac::Context::with_key(&key);
+            s_ctx.update(input);
+            let signature = s_ctx.sign();
+            assert_eq!(is_ok, signature.as_ref() == output);
+        }
+
+        // Multi-part API, byte by byte.
+        {
+            let mut ctx = hmac::Context::with_key(&key);
+            for b in input {
+                ctx.update(&[*b]);
+            }
+            let signature = ctx.sign();
+            assert_eq!(is_ok, signature.as_ref() == output);
+        }
+    };
+
+    let key = hmac::Key::new(digest_alg, key_value);
+    do_test(key.clone());
+    do_test(key);
 
     Ok(())
 }

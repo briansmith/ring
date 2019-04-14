@@ -131,6 +131,7 @@ impl AsRef<[u8]> for Tag {
 }
 
 /// A key to use for HMAC signing.
+#[derive(Clone)]
 pub struct Key {
     ctx_prototype: Context,
 }
