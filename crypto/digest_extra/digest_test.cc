@@ -198,6 +198,28 @@ static void TestDigest(const TestVector *test) {
   ASSERT_TRUE(EVP_DigestFinal_ex(ctx.get(), digest.get(), &digest_len));
   CompareDigest(test, digest.get(), digest_len);
 
+  // Make a copy of the digest in the initial state.
+  ASSERT_TRUE(EVP_DigestInit_ex(ctx.get(), test->md.func(), NULL));
+  bssl::ScopedEVP_MD_CTX copy;
+  ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), ctx.get()));
+  for (size_t i = 0; i < test->repeat; i++) {
+    ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
+  }
+  ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), digest.get(), &digest_len));
+  CompareDigest(test, digest.get(), digest_len);
+
+  // Make a copy of the digest with half the input provided.
+  size_t half = strlen(test->input) / 2;
+  ASSERT_TRUE(EVP_DigestUpdate(ctx.get(), test->input, half));
+  ASSERT_TRUE(EVP_MD_CTX_copy_ex(copy.get(), ctx.get()));
+  ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input + half,
+                               strlen(test->input) - half));
+  for (size_t i = 1; i < test->repeat; i++) {
+    ASSERT_TRUE(EVP_DigestUpdate(copy.get(), test->input, strlen(test->input)));
+  }
+  ASSERT_TRUE(EVP_DigestFinal_ex(copy.get(), digest.get(), &digest_len));
+  CompareDigest(test, digest.get(), digest_len);
+
   // Test the one-shot function.
   if (test->md.one_shot_func && test->repeat == 1) {
     uint8_t *out = test->md.one_shot_func((const uint8_t *)test->input,
