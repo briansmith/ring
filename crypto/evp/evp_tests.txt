@@ -274,6 +274,17 @@ Digest = SHA256
 Input = "0123456789ABCDEF0123456789ABCDEF"
 CheckVerify
 
+# Check a salt length with a non-standard digest length, to verify things are
+# not just working due to defaults. (The current default is a maximum salt
+# length, but the ecosystem has converged on matching the digest length, so we
+# may change this in the future.)
+Sign = RSA-2048
+RSAPadding = PSS
+PSSSaltLength = 42
+Digest = SHA256
+Input = "0123456789ABCDEF0123456789ABCDEF"
+CheckVerify
+
 # Auto-detected salt length
 Verify = RSA-2048-SPKI
 RSAPadding = PSS
