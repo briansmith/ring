@@ -456,6 +456,9 @@ static int aes_gcm_ctrl(EVP_CIPHER_CTX *c, int type, int arg, void *ptr) {
     case EVP_CTRL_COPY: {
       EVP_CIPHER_CTX *out = ptr;
       EVP_AES_GCM_CTX *gctx_out = aes_gcm_from_cipher_ctx(out);
+      // |EVP_CIPHER_CTX_copy| copies this generically, but we must redo it in
+      // case |out->cipher_data| and |in->cipher_data| are differently aligned.
+      OPENSSL_memcpy(gctx_out, gctx, sizeof(EVP_AES_GCM_CTX));
       if (gctx->iv == c->iv) {
         gctx_out->iv = out->iv;
       } else {
@@ -590,7 +593,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_128_gcm_generic) {
   out->key_len = 16;
   out->iv_len = 12;
   out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING;
-  out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV |
+  out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
   out->init = aes_gcm_init_key;
@@ -658,7 +661,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_192_gcm_generic) {
   out->key_len = 24;
   out->iv_len = 12;
   out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING;
-  out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV |
+  out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
   out->init = aes_gcm_init_key;
@@ -726,7 +729,7 @@ DEFINE_LOCAL_DATA(EVP_CIPHER, aes_256_gcm_generic) {
   out->key_len = 32;
   out->iv_len = 12;
   out->ctx_size = sizeof(EVP_AES_GCM_CTX) + EVP_AES_GCM_CTX_PADDING;
-  out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV |
+  out->flags = EVP_CIPH_GCM_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_CUSTOM_COPY |
                EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_ALWAYS_CALL_INIT |
                EVP_CIPH_CTRL_INIT | EVP_CIPH_FLAG_AEAD_CIPHER;
   out->init = aes_gcm_init_key;
