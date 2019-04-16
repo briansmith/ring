@@ -195,6 +195,9 @@ const char *X509_verify_cert_error_string(long n)
     case X509_V_ERR_STORE_LOOKUP:
         return ("Issuer certificate lookup error");
 
+    case X509_V_ERR_NAME_CONSTRAINTS_WITHOUT_SANS:
+        return "Issuer has name constraints but leaf has no SANs";
+
     default:
         return "unknown certificate verification error";
     }

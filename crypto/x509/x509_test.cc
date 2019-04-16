@@ -32,6 +32,7 @@
 
 #include "../internal.h"
 #include "../test/test_util.h"
+#include "../x509v3/internal.h"
 
 
 std::string GetTestData(const char *path);
@@ -727,6 +728,95 @@ static const char kCommonNameWithIPSAN[] =
     "D0+O6KI=\n"
     "-----END CERTIFICATE-----\n";
 
+// kConstrainedIntermediate is an intermediate signed by kSANTypesRoot, with
+// permitted DNS names of permitted1.test and foo.permitted2.test and an
+// excluded DNS name of excluded.permitted1.test. Its private key is:
+//
+// -----BEGIN PRIVATE KEY-----
+// MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgTXUM4tJWM7OzATty
+// JhNOfIv/d8heWFBeKOfMR+RfaROhRANCAASbbbWYiN6mn+BCpg4XNpibOH0D/DN4
+// kZ5C/Ml2YVomC9T83OKk2CzB8fPAabPb4P4Vv+fIabpEfjWS5nzKLY1y
+// -----END PRIVATE KEY-----
+static const char kConstrainedIntermediate[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIICDjCCAXegAwIBAgIBAjANBgkqhkiG9w0BAQsFADArMRcwFQYDVQQKEw5Cb3Jp\n"
+    "bmdTU0wgVGVzdDEQMA4GA1UEAxMHUm9vdCBDQTAgFw0wMDAxMDEwMDAwMDBaGA8y\n"
+    "MDk5MDEwMTAwMDAwMFowKDEmMCQGA1UEAxMdTmFtZSBDb25zdHJhaW50cyBJbnRl\n"
+    "cm1lZGlhdGUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASbbbWYiN6mn+BCpg4X\n"
+    "NpibOH0D/DN4kZ5C/Ml2YVomC9T83OKk2CzB8fPAabPb4P4Vv+fIabpEfjWS5nzK\n"
+    "LY1yo4GJMIGGMA8GA1UdEwEB/wQFMAMBAf8wGwYDVR0jBBQwEoAQQDfXAftAL7gc\n"
+    "flQEJ4xZATBWBgNVHR4BAf8ETDBKoCowEYIPcGVybWl0dGVkMS50ZXN0MBWCE2Zv\n"
+    "by5wZXJtaXR0ZWQyLnRlc3ShHDAaghhleGNsdWRlZC5wZXJtaXR0ZWQxLnRlc3Qw\n"
+    "DQYJKoZIhvcNAQELBQADgYEAFq1Ka05hiKREwRpSceQPzIIH4B5a5IVBg5/EvmQI\n"
+    "9V0fXyAE1GmahPt70sIBxIgzNTEaY8P/IoOuCdlZWe0msmyEO3S6YSAzOWR5Van6\n"
+    "cXmFM1uMd95TlkxUMRdV+jKJTvG6R/BM2zltaV7Xt662k5HtzT5Svw0rZlFaggZz\n"
+    "UyM=\n"
+    "-----END CERTIFICATE-----\n";
+
+// kCommonNamePermittedLeaf is a leaf certificate signed by
+// kConstrainedIntermediate. Its common name is permitted by the name
+// constraints.
+static const char kCommonNamePermittedLeaf[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBaDCCAQ2gAwIBAgIBAzAKBggqhkjOPQQDAjAoMSYwJAYDVQQDEx1OYW1lIENv\n"
+    "bnN0cmFpbnRzIEludGVybWVkaWF0ZTAgFw0wMDAxMDEwMDAwMDBaGA8yMDk5MDEw\n"
+    "MTAwMDAwMFowPjEeMBwGA1UEChMVQ29tbW9uIG5hbWUgcGVybWl0dGVkMRwwGgYD\n"
+    "VQQDExNmb28ucGVybWl0dGVkMS50ZXN0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcD\n"
+    "QgAENX5Ycs8q8MRzPYUz6DqLHhJR3wcmniFRgkiEa7MxE/mRe00y0VGwH7xi7Aoc\n"
+    "emXPrtD4JwN5bssbcxWGAKYYzaMQMA4wDAYDVR0TAQH/BAIwADAKBggqhkjOPQQD\n"
+    "AgNJADBGAiEAtsnWuRQXtw2xbieC78Y8SVEtTjcZUx8uZyQe1GPLfGICIQDR4fNY\n"
+    "yg3PC94ydPNQZVsFxAne32CbonWWsokalTFpUQ==\n"
+    "-----END CERTIFICATE-----\n";
+static const char kCommonNamePermitted[] = "foo.permitted1.test";
+
+// kCommonNameNotPermittedLeaf is a leaf certificate signed by
+// kConstrainedIntermediate. Its common name is not permitted by the name
+// constraints.
+static const char kCommonNameNotPermittedLeaf[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBazCCARCgAwIBAgIBBDAKBggqhkjOPQQDAjAoMSYwJAYDVQQDEx1OYW1lIENv\n"
+    "bnN0cmFpbnRzIEludGVybWVkaWF0ZTAgFw0wMDAxMDEwMDAwMDBaGA8yMDk5MDEw\n"
+    "MTAwMDAwMFowQTEiMCAGA1UEChMZQ29tbW9uIG5hbWUgbm90IHBlcm1pdHRlZDEb\n"
+    "MBkGA1UEAxMSbm90LXBlcm1pdHRlZC50ZXN0MFkwEwYHKoZIzj0CAQYIKoZIzj0D\n"
+    "AQcDQgAEzfghKuWf0JoXb0Drp09C3yXMSQQ1byt+AUaymvsHOWsxQ9v1Q+vkF/IM\n"
+    "HRqGTk2TyxrB2iClVEn/Uu+YtYox1KMQMA4wDAYDVR0TAQH/BAIwADAKBggqhkjO\n"
+    "PQQDAgNJADBGAiEAxaUslxmoWL1tIvnDz7gDkto/HcmdU0jHVuUQLXcCG8wCIQCN\n"
+    "5xZjitlCQU8UB5qSu9wH4B+0JcVO3Ss4Az76HEJWMw==\n"
+    "-----END CERTIFICATE-----\n";
+static const char kCommonNameNotPermitted[] = "not-permitted.test";
+
+// kCommonNameNotPermittedWithSANsLeaf is a leaf certificate signed by
+// kConstrainedIntermediate. Its common name is not permitted by the name
+// constraints but it has a SAN list.
+static const char kCommonNameNotPermittedWithSANsLeaf[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBqTCCAU+gAwIBAgIBBjAKBggqhkjOPQQDAjAoMSYwJAYDVQQDEx1OYW1lIENv\n"
+    "bnN0cmFpbnRzIEludGVybWVkaWF0ZTAgFw0wMDAxMDEwMDAwMDBaGA8yMDk5MDEw\n"
+    "MTAwMDAwMFowSzEsMCoGA1UEChMjQ29tbW9uIG5hbWUgbm90IHBlcm1pdHRlZCB3\n"
+    "aXRoIFNBTlMxGzAZBgNVBAMTEm5vdC1wZXJtaXR0ZWQudGVzdDBZMBMGByqGSM49\n"
+    "AgEGCCqGSM49AwEHA0IABKsn9wOApXFHrqhLdQgbFSeaSoAIbxgO0zVSRZUb5naR\n"
+    "93zoL3MFOvZEF8xiEqh7le+l3XuUig0fwqpcsZzRNJajRTBDMAwGA1UdEwEB/wQC\n"
+    "MAAwMwYDVR0RBCwwKoITZm9vLnBlcm1pdHRlZDEudGVzdIITZm9vLnBlcm1pdHRl\n"
+    "ZDIudGVzdDAKBggqhkjOPQQDAgNIADBFAiACk+1f184KkKAXuntmrz+Ygcq8MiZl\n"
+    "4delx44FtcNaegIhAIA5nYfzxNcTXxDo3U+x1vSLH6Y7faLvHiFySp7O//q+\n"
+    "-----END CERTIFICATE-----\n";
+static const char kCommonNameNotPermittedWithSANs[] = "not-permitted.test";
+
+// kCommonNameNotDNSLeaf is a leaf certificate signed by
+// kConstrainedIntermediate. Its common name is not a DNS name.
+static const char kCommonNameNotDNSLeaf[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBYTCCAQagAwIBAgIBCDAKBggqhkjOPQQDAjAoMSYwJAYDVQQDEx1OYW1lIENv\n"
+    "bnN0cmFpbnRzIEludGVybWVkaWF0ZTAgFw0wMDAxMDEwMDAwMDBaGA8yMDk5MDEw\n"
+    "MTAwMDAwMFowNzEcMBoGA1UEChMTQ29tbW9uIG5hbWUgbm90IEROUzEXMBUGA1UE\n"
+    "AxMOTm90IGEgRE5TIG5hbWUwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASnueyc\n"
+    "Zxtnw5ke2J2T0/LwAK37auQP/RSFd9mem+BJVbgviawtAlignJmafp7Zw4/GdYEJ\n"
+    "Vm8qlriOJtluvXGcoxAwDjAMBgNVHRMBAf8EAjAAMAoGCCqGSM49BAMCA0kAMEYC\n"
+    "IQChUAmVNI39VHe0zemRE09VDcSEgOxr1nTvjLcg/Q8pVQIhAJYZnJI0YZAi05QH\n"
+    "RHNlAkTK2TnUaVn3fGSylaLiFS1r\n"
+    "-----END CERTIFICATE-----\n";
+static const char kCommonNameNotDNS[] = "Not a DNS name";
+
 // CertFromPEM parses the given, NUL-terminated pem block and returns an
 // |X509*|.
 static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
@@ -790,7 +880,8 @@ static int Verify(X509 *leaf, const std::vector<X509 *> &roots,
                   const std::vector<X509 *> &intermediates,
                   const std::vector<X509_CRL *> &crls, unsigned long flags,
                   bool use_additional_untrusted,
-                  std::function<void(X509_VERIFY_PARAM *)> configure_callback) {
+                  std::function<void(X509_VERIFY_PARAM *)> configure_callback,
+                  int (*verify_callback)(int, X509_STORE_CTX *) = nullptr) {
   bssl::UniquePtr<STACK_OF(X509)> roots_stack(CertsToStack(roots));
   bssl::UniquePtr<STACK_OF(X509)> intermediates_stack(
       CertsToStack(intermediates));
@@ -1887,4 +1978,96 @@ TEST(X509Test, CommonNameFallback) {
   EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
             verify_cert(with_ip.get(), X509_CHECK_FLAG_NEVER_CHECK_SUBJECT,
                         "foo.host1.test"));
+}
+
+TEST(X509Test, LooksLikeDNSName) {
+    static const char *kValid[] = {
+        "example.com",
+        "eXample123-.com",
+        "*.example.com",
+        "exa_mple.com",
+        "example.com.",
+        "project-dev:us-central1:main",
+    };
+    static const char *kInvalid[] = {
+        "-eXample123-.com",
+        "",
+        ".",
+        "*",
+        "*.",
+        "example..com",
+        ".example.com",
+        "example.com..",
+        "*foo.example.com",
+        "foo.*.example.com",
+        "foo,bar",
+    };
+
+    for (const char *str : kValid) {
+      SCOPED_TRACE(str);
+      EXPECT_TRUE(x509v3_looks_like_dns_name(
+          reinterpret_cast<const uint8_t *>(str), strlen(str)));
+    }
+    for (const char *str : kInvalid) {
+      SCOPED_TRACE(str);
+      EXPECT_FALSE(x509v3_looks_like_dns_name(
+          reinterpret_cast<const uint8_t *>(str), strlen(str)));
+    }
+}
+
+TEST(X509Test, CommonNameAndNameConstraints) {
+  bssl::UniquePtr<X509> root = CertFromPEM(kSANTypesRoot);
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> intermediate = CertFromPEM(kConstrainedIntermediate);
+  ASSERT_TRUE(intermediate);
+  bssl::UniquePtr<X509> permitted = CertFromPEM(kCommonNamePermittedLeaf);
+  ASSERT_TRUE(permitted);
+  bssl::UniquePtr<X509> not_permitted =
+      CertFromPEM(kCommonNameNotPermittedLeaf);
+  ASSERT_TRUE(not_permitted);
+  bssl::UniquePtr<X509> not_permitted_with_sans =
+      CertFromPEM(kCommonNameNotPermittedWithSANsLeaf);
+  ASSERT_TRUE(not_permitted_with_sans);
+  bssl::UniquePtr<X509> not_dns = CertFromPEM(kCommonNameNotDNSLeaf);
+  ASSERT_TRUE(not_dns);
+
+  auto verify_cert = [&](X509 *leaf, unsigned flags, const char *host) {
+    return Verify(
+        leaf, {root.get()}, {intermediate.get()}, {}, 0, false,
+        [&](X509_VERIFY_PARAM *param) {
+          ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(param, host, strlen(host)));
+          X509_VERIFY_PARAM_set_hostflags(param, flags);
+        });
+  };
+
+  // Certificates which would otherwise trigger the common name fallback are
+  // rejected whenever there are name constraints. We do this whether or not
+  // the common name matches the constraints.
+  EXPECT_EQ(
+      X509_V_ERR_NAME_CONSTRAINTS_WITHOUT_SANS,
+      verify_cert(permitted.get(), 0 /* no flags */, kCommonNamePermitted));
+  EXPECT_EQ(X509_V_ERR_NAME_CONSTRAINTS_WITHOUT_SANS,
+            verify_cert(not_permitted.get(), 0 /* no flags */,
+                        kCommonNameNotPermitted));
+
+  // This occurs even if the built-in name checks aren't used. The caller may
+  // separately call |X509_check_host|.
+  EXPECT_EQ(X509_V_ERR_NAME_CONSTRAINTS_WITHOUT_SANS,
+            Verify(not_permitted.get(), {root.get()}, {intermediate.get()}, {},
+                   0 /* no flags */, false, nullptr));
+
+  // If the leaf certificate has SANs, the common name fallback is always
+  // disabled, so the name constraints do not apply.
+  EXPECT_EQ(X509_V_OK, Verify(not_permitted_with_sans.get(), {root.get()},
+                              {intermediate.get()}, {}, 0, false, nullptr));
+  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+            verify_cert(not_permitted_with_sans.get(), 0 /* no flags */,
+                        kCommonNameNotPermittedWithSANs));
+
+  // If the common name does not look like a DNS name, we apply neither name
+  // constraints nor common name fallback.
+  EXPECT_EQ(X509_V_OK, Verify(not_dns.get(), {root.get()}, {intermediate.get()},
+                              {}, 0, false, nullptr));
+  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+            verify_cert(not_dns.get(), 0 /* no flags */, kCommonNameNotDNS));
 }
