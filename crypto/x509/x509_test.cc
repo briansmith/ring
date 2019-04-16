@@ -1805,9 +1805,8 @@ TEST(X509Test, CommonNameFallback) {
   EXPECT_EQ(X509_V_OK, verify_cert(without_sans.get(), 0 /* no flags */,
                                    "foo.host1.test"));
 
-  // X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT causes the common name to always be
-  // checked.
-  EXPECT_EQ(X509_V_OK,
+  // X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT is ignored.
+  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
             verify_cert(with_sans.get(), X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT,
                         "foo.host1.test"));
   EXPECT_EQ(X509_V_OK,

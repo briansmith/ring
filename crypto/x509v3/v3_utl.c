@@ -1003,7 +1003,7 @@ static int do_x509_check(X509 *x, const char *chk, size_t chklen,
         GENERAL_NAMES_free(gens);
         if (rv != 0)
             return rv;
-        if (san_present && !(flags & X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT))
+        if (san_present)
             return 0;
     }
 
