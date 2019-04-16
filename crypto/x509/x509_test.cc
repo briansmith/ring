@@ -660,6 +660,39 @@ static const char kSelfSignedMismatchAlgorithms[] =
     "KStYq7X9PKseN+PvmfeoffIKc5R/Ha39oi7cGMVHCr8aiEhsf94=\n"
     "-----END CERTIFICATE-----\n";
 
+// kCommonNameWithSANs is a leaf certificate signed by kSANTypesRoot, with
+// *.host1.test as the common name and a SAN list of *.host2.test and
+// foo.host3.test.
+static const char kCommonNameWithSANs[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIB2zCCAUSgAwIBAgIBAzANBgkqhkiG9w0BAQsFADArMRcwFQYDVQQKEw5Cb3Jp\n"
+    "bmdTU0wgVGVzdDEQMA4GA1UEAxMHUm9vdCBDQTAgFw0wMDAxMDEwMDAwMDBaGA8y\n"
+    "MDk5MDEwMTAwMDAwMFowNzEeMBwGA1UEChMVQ29tbW9uIG5hbWUgd2l0aCBTQU5z\n"
+    "MRUwEwYDVQQDDAwqLmhvc3QxLnRlc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNC\n"
+    "AASgWzfnFnpQrokSLIC+LhCKJDUAY/2usfIDpOnafYoYCasbYetkmOslgyY4Nn07\n"
+    "zjvjNROprA/0bdULXAkdL9bNo0gwRjAbBgNVHSMEFDASgBBAN9cB+0AvuBx+VAQn\n"
+    "jFkBMCcGA1UdEQQgMB6CDCouaG9zdDIudGVzdIIOZm9vLmhvc3QzLnRlc3QwDQYJ\n"
+    "KoZIhvcNAQELBQADgYEAtv2e3hBhsslXB1HTxgusjoschWOVtvGZUaYlhkKzKTCL\n"
+    "4YpDn50BccnucBU/b9phYvaEZtyzOv4ZXhxTGyLnLrIVB9x5ikfCcfl+LNYNjDwM\n"
+    "enm/h1zOfJ7wXLyscD4kU29Wc/zxBd70thIgLYn16CC1S9NtXKsXXDXv5VVH/bg=\n"
+    "-----END CERTIFICATE-----\n";
+
+// kCommonNameWithSANs is a leaf certificate signed by kSANTypesRoot, with
+// *.host1.test as the common name and no SAN list.
+static const char kCommonNameWithoutSANs[] =
+    "-----BEGIN CERTIFICATE-----\n"
+    "MIIBtTCCAR6gAwIBAgIBAzANBgkqhkiG9w0BAQsFADArMRcwFQYDVQQKEw5Cb3Jp\n"
+    "bmdTU0wgVGVzdDEQMA4GA1UEAxMHUm9vdCBDQTAgFw0wMDAxMDEwMDAwMDBaGA8y\n"
+    "MDk5MDEwMTAwMDAwMFowOjEhMB8GA1UEChMYQ29tbW9uIG5hbWUgd2l0aG91dCBT\n"
+    "QU5zMRUwEwYDVQQDDAwqLmhvc3QxLnRlc3QwWTATBgcqhkjOPQIBBggqhkjOPQMB\n"
+    "BwNCAARt2vjlIrPE+kr11VS1rRP/AYQu4fvf1bNw/K9rwYlVBhmLMPYasEmpCtKE\n"
+    "0bDIFydtDYC3wZDpSS+YiaG40sdAox8wHTAbBgNVHSMEFDASgBBAN9cB+0AvuBx+\n"
+    "VAQnjFkBMA0GCSqGSIb3DQEBCwUAA4GBAHRbIeaCEytOpJpw9O2dlB656AHe1+t5\n"
+    "4JiS5mvtzoVOLn7fFk5EFQtZS7sG1Uc2XjlSw+iyvFoTFEqfKyU/mIdc2vBuPwA2\n"
+    "+YXT8aE4S+UZ9oz5j0gDpikGnkSCW0cyHD8L8fntNjaQRSaM482JpmtdmuxClmWO\n"
+    "pFFXI2B5usgI\n"
+    "-----END CERTIFICATE-----\n";
+
 // CertFromPEM parses the given, NUL-terminated pem block and returns an
 // |X509*|.
 static bssl::UniquePtr<X509> CertFromPEM(const char *pem) {
@@ -1743,4 +1776,62 @@ TEST(X509Test, PartialBIOReturn) {
   bssl::UniquePtr<X509> cert2(d2i_X509_bio(bio.get(), nullptr));
   ASSERT_TRUE(cert2);
   EXPECT_EQ(0, X509_cmp(cert.get(), cert2.get()));
+}
+
+TEST(X509Test, CommonNameFallback) {
+  bssl::UniquePtr<X509> root = CertFromPEM(kSANTypesRoot);
+  ASSERT_TRUE(root);
+  bssl::UniquePtr<X509> with_sans = CertFromPEM(kCommonNameWithSANs);
+  ASSERT_TRUE(with_sans);
+  bssl::UniquePtr<X509> without_sans = CertFromPEM(kCommonNameWithoutSANs);
+  ASSERT_TRUE(without_sans);
+
+  auto verify_cert = [&](X509 *leaf, unsigned flags, const char *host) {
+    return Verify(
+        leaf, {root.get()}, {}, {}, 0, false, [&](X509_VERIFY_PARAM *param) {
+          ASSERT_TRUE(X509_VERIFY_PARAM_set1_host(param, host, strlen(host)));
+          X509_VERIFY_PARAM_set_hostflags(param, flags);
+        });
+  };
+
+  // By default, the common name is ignored if the SAN list is present but
+  // otherwise is checked.
+  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+            verify_cert(with_sans.get(), 0 /* no flags */, "foo.host1.test"));
+  EXPECT_EQ(X509_V_OK,
+            verify_cert(with_sans.get(), 0 /* no flags */, "foo.host2.test"));
+  EXPECT_EQ(X509_V_OK,
+            verify_cert(with_sans.get(), 0 /* no flags */, "foo.host3.test"));
+  EXPECT_EQ(X509_V_OK, verify_cert(without_sans.get(), 0 /* no flags */,
+                                   "foo.host1.test"));
+
+  // X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT causes the common name to always be
+  // checked.
+  EXPECT_EQ(X509_V_OK,
+            verify_cert(with_sans.get(), X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT,
+                        "foo.host1.test"));
+  EXPECT_EQ(X509_V_OK,
+            verify_cert(with_sans.get(), X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT,
+                        "foo.host2.test"));
+  EXPECT_EQ(X509_V_OK,
+            verify_cert(with_sans.get(), X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT,
+                        "foo.host3.test"));
+  EXPECT_EQ(X509_V_OK, verify_cert(without_sans.get(),
+                                   X509_CHECK_FLAG_ALWAYS_CHECK_SUBJECT,
+                                   "foo.host1.test"));
+
+  // X509_CHECK_FLAG_NEVER_CHECK_SUBJECT implements the correct behavior: the
+  // common name is never checked.
+  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+            verify_cert(with_sans.get(), X509_CHECK_FLAG_NEVER_CHECK_SUBJECT,
+                        "foo.host1.test"));
+  EXPECT_EQ(X509_V_OK,
+            verify_cert(with_sans.get(), X509_CHECK_FLAG_NEVER_CHECK_SUBJECT,
+                        "foo.host2.test"));
+  EXPECT_EQ(X509_V_OK,
+            verify_cert(with_sans.get(), X509_CHECK_FLAG_NEVER_CHECK_SUBJECT,
+                        "foo.host3.test"));
+  EXPECT_EQ(X509_V_ERR_HOSTNAME_MISMATCH,
+            verify_cert(without_sans.get(), X509_CHECK_FLAG_NEVER_CHECK_SUBJECT,
+                        "foo.host1.test"));
 }
