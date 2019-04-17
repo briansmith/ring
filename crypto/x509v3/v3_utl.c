@@ -955,7 +955,6 @@ static int do_x509_check(X509 *x, const char *chk, size_t chklen,
     int j;
     int cnid = NID_undef;
     int alt_type;
-    int san_present = 0;
     int rv = 0;
     equal_fn equal;
 
@@ -988,7 +987,6 @@ static int do_x509_check(X509 *x, const char *chk, size_t chklen,
             gen = sk_GENERAL_NAME_value(gens, i);
             if (gen->type != check_type)
                 continue;
-            san_present = 1;
             if (check_type == GEN_EMAIL)
                 cstr = gen->d.rfc822Name;
             else if (check_type == GEN_DNS)
@@ -1001,10 +999,7 @@ static int do_x509_check(X509 *x, const char *chk, size_t chklen,
                 break;
         }
         GENERAL_NAMES_free(gens);
-        if (rv != 0)
-            return rv;
-        if (san_present)
-            return 0;
+        return rv;
     }
 
     /* We're done if CN-ID is not pertinent */
