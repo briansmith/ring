@@ -5263,6 +5263,15 @@ TEST_F(QUICMethodTest, BadPostHandshake) {
   EXPECT_EQ(SSL_process_quic_post_handshake(client_.get()), 0);
 }
 
+extern "C" {
+int BORINGSSL_enum_c_type_test(void);
+}
+
+TEST(SSLTest, EnumTypes) {
+  EXPECT_EQ(sizeof(int), sizeof(ssl_private_key_result_t));
+  EXPECT_EQ(1, BORINGSSL_enum_c_type_test());
+}
+
 // TODO(davidben): Convert this file to GTest properly.
 TEST(SSLTest, AllTests) {
   if (!TestSSL_SESSIONEncoding(kOpenSSLSession) ||
