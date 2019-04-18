@@ -54,13 +54,10 @@
  * copied and put under another distribution licence
  * [including the GNU Public Licence.] */
 
-#include <openssl/mem.h>
 #include <openssl/x509.h>
 
 const char *X509_verify_cert_error_string(long n)
 {
-    static char buf[100];
-
     switch ((int)n) {
     case X509_V_OK:
         return ("ok");
@@ -199,7 +196,6 @@ const char *X509_verify_cert_error_string(long n)
         return ("Issuer certificate lookup error");
 
     default:
-        BIO_snprintf(buf, sizeof buf, "error number %ld", n);
-        return (buf);
+        return "unknown certificate verification error";
     }
 }
