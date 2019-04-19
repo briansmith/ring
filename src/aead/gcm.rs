@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use super::{Aad, Block, BLOCK_LEN};
+use super::{Block, BLOCK_LEN};
 use crate::cpu;
 use libc::size_t;
 
@@ -78,8 +78,8 @@ pub struct Context {
 }
 
 impl Context {
-    pub(crate) fn new(key: &Key, aad: Aad, cpu_features: cpu::Features) -> Self {
-        let mut ctx = Context {
+    pub(crate) fn new(key: &Key, cpu_features: cpu::Features) -> Self {
+        let ctx = Context {
             inner: GCM128_CONTEXT {
                 Xi: Block::zero(),
                 H_unused: Block::zero(),
@@ -87,12 +87,6 @@ impl Context {
             },
             cpu_features,
         };
-
-        for ad in aad.0.chunks(BLOCK_LEN) {
-            let mut block = Block::zero();
-            block.partial_copy_from(ad);
-            ctx.update_block(block);
-        }
 
         ctx
     }
@@ -188,6 +182,12 @@ impl Context {
         }
     }
 
+    // This byte reverse is used by AES_GCM_SIV to do the final byte reverse during polyval calculation
+    // polyval = ByteReverse(GHASH(...))
+    pub(super) fn reverse(&mut self) {
+        self.inner.Xi = self.inner.Xi.reverse();
+    }
+
     pub(super) fn pre_finish<F>(self, f: F) -> super::Tag
     where
         F: FnOnce(Block) -> super::Tag,
@@ -258,4 +258,78 @@ fn detect_implementation(cpu: cpu::Features) -> Implementation {
 #[cfg(target_arch = "x86_64")]
 fn has_avx_movbe(cpu_features: cpu::Features) -> bool {
     return cpu::intel::AVX.available(cpu_features) && cpu::intel::MOVBE.available(cpu_features);
+}
+
+
+#[repr(transparent)]
+pub struct PolyValContext {
+    gcm_ctx: Context,
+}
+
+impl PolyValContext {
+
+
+    // POLYVAL(H, X_1, ..., X_n) =
+    // ByteReverse(GHASH(mulX_GHASH(ByteReverse(H)), ByteReverse(X_1), ...,
+    // ByteReverse(X_n))).
+    //
+    // See https://tools.ietf.org/html/draft-irtf-cfrg-gcmsiv-02#appendix-A.
+    pub(super) fn new(auth_key: &Block, cpu_features: cpu::Features) -> PolyValContext {
+        let mut auth_key = auth_key.u64s_native();
+        PolyValContext::reverse_and_mulX_ghash(&mut auth_key);
+
+        let key = Key::new(Block::from_u64_native(auth_key[0], auth_key[1]), cpu_features);
+        PolyValContext { gcm_ctx: Context::new(&key, cpu_features) }
+    }
+
+    // This function does ByteReverse(auth_key) * 'x'
+    // reverse_and_mulX_ghash interprets the auth_key bytes as a reversed element of
+    // the GHASH field, multiplies that by 'x' and serialises the result back into
+    // auth_key, but with GHASH's backwards bit ordering.
+    pub fn reverse_and_mulX_ghash(auth_key: &mut [u64; 2]) {
+
+        let mut hi = auth_key[0];
+        let mut lo = auth_key[1];
+
+        let carry = 0_u64.wrapping_sub(hi & 1);
+
+        // the lsb of lo is moved to the msb of hi
+        hi >>= 1;
+        hi |= lo << 63;
+        // lo will be xored lsb of carry and the 8 bits are shifted to left to last byte fiele
+        lo >>= 1;
+        lo ^= (carry & 0xe1) << 56;
+
+        // swap bytes and assign lo to 0th index and hi to 1st index to do swap at byte and u64 level
+        auth_key[0] = lo.swap_bytes();
+        auth_key[1] = hi.swap_bytes();
+    }
+
+    pub fn update_blocks(&mut self, input: &[u8]) {
+
+        let mut in_len = input.len();
+        // Allocate 32 * 16 bytes for reversed
+        const REVERSED_SIZE: usize = 32 * 16;
+        let mut reversed = [0u8; REVERSED_SIZE];
+
+        let mut start = 0;
+        while start < input.len() {
+            let mut todo = in_len;
+            todo = std::cmp::min(todo, REVERSED_SIZE);
+
+            let reversed = &mut reversed[0..todo];
+            reversed.copy_from_slice(&input[start..todo + start]);
+            reversed.chunks_exact_mut(BLOCK_LEN)
+                    .for_each(|chunk| chunk.reverse());
+
+            self.gcm_ctx.update_blocks(&reversed[0..todo]);
+            start += todo;
+            in_len -= todo;
+        }
+    }
+
+    pub fn pre_finish(&mut self) -> Block {
+        self.gcm_ctx.reverse();
+        self.gcm_ctx.inner.Xi
+    }
 }

@@ -40,6 +40,12 @@ fn aead_aes_gcm_128() { test_aead(&aead::AES_128_GCM, test_file!("aead_aes_128_g
 fn aead_aes_gcm_256() { test_aead(&aead::AES_256_GCM, test_file!("aead_aes_256_gcm_tests.txt")); }
 
 #[test]
+fn aead_aes_gcm_siv_128() { test_aead(&aead::AES_128_GCM_SIV, test_file!("aes_128_gcm_siv_tests.txt"), ); }
+
+#[test]
+fn aead_aes_gcm_siv_256() { test_aead(&aead::AES_256_GCM_SIV, test_file!("aes_256_gcm_siv_tests.txt"), ); }
+
+#[test]
 fn aead_chacha20_poly1305() {
     test_aead(
         &aead::CHACHA20_POLY1305,

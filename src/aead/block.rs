@@ -48,12 +48,31 @@ impl Block {
         }
     }
 
+    #[inline]
+    pub fn from_u64_native(first: u64, second: u64) -> Self {
+        Self {
+            subblocks: [first, second]
+        }
+    }
+
     pub fn u64s_be_to_native(&mut self) -> [u64; 2] {
         [
             u64::from_be(self.subblocks[0]),
             u64::from_be(self.subblocks[1]),
         ]
     }
+
+    pub fn u64s_native(&self) -> [u64; 2] {
+        self.subblocks
+    }
+
+    pub fn reverse(mut self) -> Self {
+        let tmp = self.subblocks[0].swap_bytes();
+        self.subblocks[0] = self.subblocks[1].swap_bytes();
+        self.subblocks[1] = tmp;
+        self
+    }
+
 
     /// Replaces the first `a.len()` bytes of the block's value with `a`,
     /// leaving the rest of the block unchanged. Panics if `a` is larger

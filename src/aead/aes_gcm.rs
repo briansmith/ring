@@ -95,7 +95,13 @@ fn aead(
     let tag_iv = ctr.increment();
 
     let aad_len = aad.0.len();
-    let mut gcm_ctx = gcm::Context::new(gcm_key, aad, cpu_features);
+    let mut gcm_ctx = gcm::Context::new(gcm_key, cpu_features);
+
+    for ad in aad.0.chunks(BLOCK_LEN) {
+        let mut block = Block::zero();
+        block.partial_copy_from(ad);
+        gcm_ctx.update_block(block);
+    }
 
     let in_prefix_len = match direction {
         Direction::Opening { in_prefix_len } => in_prefix_len,

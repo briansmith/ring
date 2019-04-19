@@ -113,7 +113,7 @@ where
     pub fn increment_by_less_safe(&mut self, increment_by: u32) {
         let u32s = unsafe { &mut self.u32s };
         let value = &mut u32s[U32::COUNTER_U32_INDEX];
-        *value = (u32::from(*value) + increment_by).into();
+        *value = (u32::from(*value).wrapping_add(increment_by)).into();
     }
 }
 
@@ -128,6 +128,13 @@ where
     u32: From<U32>,
 {
     fn from(counter: Counter<U32>) -> Self { Iv(unsafe { counter.block }) }
+}
+
+impl<U32: Layout<u32>> From<Counter<U32>> for Block
+    where
+        u32: From<U32>,
+{
+    fn from(counter: Counter<U32>) -> Self { unsafe { counter.block }}
 }
 
 impl Iv {
