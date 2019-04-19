@@ -228,6 +228,7 @@ pub(super) struct AES_KEY {
 // Keep this in sync with `AES_MAXNR` in aes.h.
 const MAX_ROUNDS: usize = 14;
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Variant {
     AES_128,
     AES_256,

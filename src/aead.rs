@@ -26,9 +26,11 @@ use crate::{
     constant_time, cpu, error,
     polyfill::{self, convert::*},
 };
+use std::fmt;
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
+    aes_gcm_siv::{AES_128_GCM_SIV, AES_256_GCM_SIV},
     chacha20_poly1305::CHACHA20_POLY1305,
     nonce::{Nonce, NONCE_LEN},
 };
@@ -114,28 +116,60 @@ pub fn open_in_place<'a>(
         .checked_sub(TAG_LEN)
         .ok_or(error::Unspecified)?;
     check_per_nonce_max_bytes(key.key.algorithm, ciphertext_len)?;
-    let (in_out, received_tag) =
-        ciphertext_and_tag_modified_in_place.split_at_mut(in_prefix_len + ciphertext_len);
-    let Tag(calculated_tag) = (key.key.algorithm.open)(
-        &key.key.inner,
-        nonce,
-        aad,
-        in_prefix_len,
-        in_out,
-        key.key.cpu_features,
-    );
-    if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag).is_err() {
-        // Zero out the plaintext so that it isn't accidentally leaked or used
-        // after verification fails. It would be safest if we could check the
-        // tag before decrypting, but some `open` implementations interleave
-        // authentication with decryption for performance.
-        for b in &mut in_out[..ciphertext_len] {
-            *b = 0;
+    match key.key.algorithm.id {
+        AlgorithmID::AES_128_GCM_SIV | AlgorithmID::AES_256_GCM_SIV => {
+            let Tag(calculated_tag) = (key.key.algorithm.open)(
+                &key.key.inner,
+                nonce,
+                aad,
+                in_prefix_len,
+                ciphertext_and_tag_modified_in_place,
+                key.key.cpu_features,
+            );
+            let received_tag = &ciphertext_and_tag_modified_in_place
+                [in_prefix_len + ciphertext_len..ciphertext_and_tag_modified_in_place.len()];
+
+            if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag)
+                .is_err()
+            {
+                zero_out_plain_text(&mut ciphertext_and_tag_modified_in_place[..ciphertext_len]);
+                return Err(error::Unspecified);
+            }
+            // `ciphertext_len` is also the plaintext length.
+            return Ok(&mut ciphertext_and_tag_modified_in_place[..(ciphertext_len)]);
         }
-        return Err(error::Unspecified);
+        _ => {
+            let (in_out, received_tag) =
+                ciphertext_and_tag_modified_in_place.split_at_mut(in_prefix_len + ciphertext_len);
+            let Tag(calculated_tag) = (key.key.algorithm.open)(
+                &key.key.inner,
+                nonce,
+                aad,
+                in_prefix_len,
+                in_out,
+                key.key.cpu_features,
+            );
+
+            if constant_time::verify_slices_are_equal(calculated_tag.as_ref(), received_tag)
+                .is_err()
+            {
+                zero_out_plain_text(&mut in_out[..ciphertext_len]);
+                return Err(error::Unspecified);
+            }
+            // `ciphertext_len` is also the plaintext length.
+            return Ok(&mut in_out[..ciphertext_len]);
+        }
     }
-    // `ciphertext_len` is also the plaintext length.
-    Ok(&mut in_out[..ciphertext_len])
+}
+
+fn zero_out_plain_text(cipher_text: &mut [u8]) {
+    // Zero out the plaintext so that it isn't accidentally leaked or used
+    // after verification fails. It would be safest if we could check the
+    // calculated_tag before decrypting, but some `open` implementations interleave
+    // authentication with decryption for performance.
+    for b in cipher_text.iter_mut() {
+        *b = 0;
+    }
 }
 
 /// A key for encrypting and signing (“sealing”) data.
@@ -228,6 +262,7 @@ derive_debug_via_field!(Key, algorithm);
 #[allow(variant_size_differences)]
 enum KeyInner {
     AesGcm(aes_gcm::Key),
+    AesGcmSiv(aes_gcm_siv::Key),
     ChaCha20Poly1305(chacha20_poly1305::Key),
 }
 
@@ -244,6 +279,16 @@ impl Key {
     /// The key's AEAD algorithm.
     #[inline(always)]
     fn algorithm(&self) -> &'static Algorithm { self.algorithm }
+}
+
+impl fmt::Debug for KeyInner {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            KeyInner::AesGcm(_) => write!(f, "AesGcm"),
+            KeyInner::AesGcmSiv(_) => write!(f, "AesGcmSiv"),
+            KeyInner::ChaCha20Poly1305(_) => write!(f, "ChaCha20Poly1305"),
+        }
+    }
 }
 
 /// An AEAD Algorithm.
@@ -303,6 +348,8 @@ derive_debug_via_id!(Algorithm);
 enum AlgorithmID {
     AES_128_GCM,
     AES_256_GCM,
+    AES_128_GCM_SIV,
+    AES_256_GCM_SIV,
     CHACHA20_POLY1305,
 }
 
@@ -338,6 +385,8 @@ enum Direction {
 
 mod aes;
 mod aes_gcm;
+mod aes_gcm_siv;
+mod gcm_siv;
 mod block;
 mod chacha;
 mod chacha20_poly1305;
