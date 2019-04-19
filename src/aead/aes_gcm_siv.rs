@@ -85,6 +85,7 @@ fn aes_gcm_siv_seal(
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Tag {
+    let Aad(aad) = aad;
     match gcm_siv::detect_implementation(cpu_features) {
         FALLBACK => {
             unimplemented!();
@@ -101,7 +102,7 @@ fn aes_gcm_siv_seal(
             let gcm_siv_asm_ctx = GcmSivAsmContext::new();
             gcm_siv_asm_ctx.kdf(&nonce, &asm_key, &mut auth_key, &mut enc_key);
             let mut out_tag =
-                gcm_siv_asm_ctx.gcm_siv_asm_polyval(nonce.as_ref(), aad.0, in_out, &auth_key);
+                gcm_siv_asm_ctx.gcm_siv_asm_polyval(nonce.as_ref(), aad, in_out, &auth_key);
             let whole_in_out_len = in_out.len() - (in_out.len() % BLOCK_LEN);
 
             match asm_key.variant {
@@ -320,6 +321,7 @@ fn aes_gcm_siv_open(
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Tag {
+    let Aad(aad) = aad;
     match gcm_siv::detect_implementation(cpu_features) {
         FALLBACK => {
             unimplemented!();
@@ -379,15 +381,15 @@ fn aes_gcm_siv_open(
                 aesgcmsiv_polyval_horner(
                     &mut calculated_tag,
                     &auth_key,
-                    aad.0.as_ptr(),
-                    (aad.0.len() / BLOCK_LEN) as libc::c_uint,
+                    aad.as_ptr(),
+                    (aad.len() / BLOCK_LEN) as libc::c_uint,
                 );
             }
 
             let mut scratch = [0u8; BLOCK_LEN];
-            if (aad.0.len() % BLOCK_LEN) != 0 {
-                let left = &mut scratch[..aad.0.len() % BLOCK_LEN];
-                left.copy_from_slice(&aad.0[aad.0.len() - (aad.0.len() % BLOCK_LEN)..aad.0.len()]);
+            if (aad.len() % BLOCK_LEN) != 0 {
+                let left = &mut scratch[..aad.len() % BLOCK_LEN];
+                left.copy_from_slice(&aad[aad.len() - (aad.len() % BLOCK_LEN)..aad.len()]);
 
                 extern "C" {
                     fn aesgcmsiv_polyval_horner(
@@ -489,7 +491,7 @@ fn aes_gcm_siv_open(
             }
 
             let length_block = [
-                (aad.0.len() as u64 * 8).to_le(),
+                (aad.len() as u64 * 8).to_le(),
                 (in_out_len as u64 * 8).to_le(),
             ];
             {
