@@ -28,7 +28,7 @@ pub static AES_128_GCM: aead::Algorithm = aead::Algorithm {
     max_input_len: AES_GCM_MAX_INPUT_LEN,
 };
 
-/// AES-256 in GCM mode with 128-bit tags and 96 bit nonces.
+/// AES-256 in GCM mode with 256-bit tags and 96 bit nonces.
 pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
     key_len: 32,
     init: init_256,
