@@ -169,7 +169,7 @@ spin = { version = "0.5.2", default-features = false }
 libc = { version = "0.2.84", default-features = false }
 once_cell = { version = "1.5.2", default-features = false, features=["std"], optional = true }
 
-[target.'cfg(any(target_os = "dragonfly", target_os = "freebsd", target_os = "illumos", target_os = "netbsd", target_os = "openbsd", target_os = "solaris"))'.dependencies]
+[target.'cfg(any(target_os = "dragonfly", target_os = "freebsd", target_os = "illumos", target_os = "netbsd", target_os = "openbsd", target_os = "redox", target_os = "solaris"))'.dependencies]
 once_cell = { version = "1.5.2", default-features = false, features=["std"] }
 
 [target.'cfg(all(target_arch = "wasm32", target_vendor = "unknown", target_os = "unknown", target_env = ""))'.dependencies]
