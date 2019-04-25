@@ -149,11 +149,11 @@ struct alignas(16) Reg128 {
 // AAPCS64: http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055b/IHI0055B_aapcs64.pdf
 // iOS64: https://developer.apple.com/library/archive/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARM64FunctionCallingConventions.html
 //
-// In aarch64, r19 (x19 in a 64-bit context) is the platform register. iOS says
-// user code may not touch it. We found no clear reference for Linux. The iOS
-// behavior implies portable assembly cannot use it, and aarch64 has many
-// registers. Thus this framework ignores register's existence. We can test r19
-// violations with grep.
+// In aarch64, r18 (accessed as w18 or x18 in a 64-bit context) is the platform
+// register. iOS says user code may not touch it. We found no clear reference
+// for Linux. The iOS behavior implies portable assembly cannot use it, and
+// aarch64 has many registers. Thus this framework ignores register's existence.
+// We test r18 violations in arm-xlate.pl.
 #define LOOP_CALLER_STATE_REGISTERS()                                \
   /* Per AAPCS64, section 5.1.2, only the bottom 64 bits of v8-v15 */ \
   /* are preserved. These are accessed as dN. */                     \
