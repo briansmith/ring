@@ -96,11 +96,11 @@
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
 //! let v_key = hmac::Key::new(&digest::SHA384, key_value.as_ref());
-//! let mut msg = Vec::<u8>::new();
+//! let mut v_ctx = hmac::Context::with_key(&v_key);
 //! for part in &parts {
-//!     msg.extend(part.as_bytes());
+//!     v_ctx.update(part.as_bytes());
 //! }
-//! hmac::verify(&v_key, &msg.as_ref(), tag.as_ref())?;
+//! v_ctx.verify(tag.as_ref())?;
 //!
 //! # Ok::<(), ring::error::Unspecified>(())
 //! ```
@@ -123,12 +123,43 @@ pub type Signature = Tag;
 #[derive(Clone, Copy, Debug)]
 pub struct Tag(digest::Digest);
 
+impl Tag {
+    /// Do a constant time equality check that is expected to succeed.
+    ///
+    /// The result of the comparison trait `PartialEq` is always a boolean. Verifying a signature
+    /// should however result in a `Result` for ease of use.
+    fn check<T: ?Sized>(&self, rhs: &T) -> Result<(), error::Unspecified>
+        where Self: PartialEq<T>
+    {
+        match self == rhs {
+            true => Ok(()),
+            false => Err(error::Unspecified),
+        }
+    }
+}
+
 impl AsRef<[u8]> for Tag {
     #[inline]
     fn as_ref(&self) -> &[u8] {
         self.0.as_ref()
     }
 }
+
+impl PartialEq for Tag {
+    #[inline]
+    fn eq(&self, rhs: &Self) -> bool {
+        constant_time::verify_slices_are_equal(self.as_ref(), rhs.as_ref()).is_ok()
+    }
+}
+
+impl PartialEq<[u8]> for Tag {
+    #[inline]
+    fn eq(&self, rhs: &[u8]) -> bool {
+        constant_time::verify_slices_are_equal(self.as_ref(), rhs).is_ok()
+    }
+}
+
+impl Eq for Tag { }
 
 /// A key to use for HMAC signing.
 #[derive(Clone)]
@@ -292,6 +323,15 @@ impl Context {
         self.outer.update(self.inner.finish().as_ref());
         Tag(self.outer.finish())
     }
+
+    /// Finalizes the MHAC calculation by verifying whether the resultant value
+    /// equals some provided, alleged `tag`.
+    ///
+    /// The verification will be done in constant time to prevent timing attacks.
+    pub fn verify(self, tag: &[u8]) -> Result<(), error::Unspecified> {
+        let signed = self.sign();
+        signed.check(tag)
+    }
 }
 
 /// Calculates the HMAC of `data` using the key `key` in one step.
@@ -314,7 +354,7 @@ pub fn sign(key: &Key, data: &[u8]) -> Tag {
 ///
 /// The verification will be done in constant time to prevent timing attacks.
 pub fn verify(key: &Key, data: &[u8], tag: &[u8]) -> Result<(), error::Unspecified> {
-    constant_time::verify_slices_are_equal(sign(key, data).as_ref(), tag)
+    sign(key, data).check(tag)
 }
 
 #[cfg(test)]
