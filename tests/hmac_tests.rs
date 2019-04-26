@@ -92,14 +92,21 @@ fn hmac_test_case_inner(
 
     // One-shot API.
     {
-        let signature = hmac::sign(&key, input);
+        let signature = key.sign(input);
         assert_eq!(is_ok, signature.as_ref() == output);
 
         #[cfg(any(not(target_arch = "wasm32"), feature = "wasm32_c"))]
-        assert_eq!(is_ok, hmac::verify(&key, input, output).is_ok());
+        assert_eq!(is_ok, key.verify(input, output).is_ok());
     }
 
-    // Multi-part API, one single part.
+    // Multi-part API, byte by byte
+    {
+        let signature = key.sign_parts(input.chunks(1));
+        assert_eq!(is_ok, signature.as_ref() == output);
+        assert_eq!(is_ok, key.verify_parts(input.chunks(1), output).is_ok());
+    }
+
+    // Context Multi-part API, one single part.
     {
         let mut s_ctx = hmac::Context::with_key(&key);
         s_ctx.update(input);
@@ -107,7 +114,7 @@ fn hmac_test_case_inner(
         assert_eq!(is_ok, signature.as_ref() == output);
     }
 
-    // Multi-part API, byte by byte.
+    // Context Multi-part API, byte by byte.
     {
         let mut ctx = hmac::Context::with_key(&key);
         for b in input {

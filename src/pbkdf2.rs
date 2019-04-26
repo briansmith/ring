@@ -198,7 +198,7 @@ fn derive_block(secret: &hmac::Key, iterations: NonZeroU32, salt: &[u8], idx: u3
         }
         remaining -= 1;
 
-        u = hmac::sign(secret, u.as_ref());
+        u = secret.sign(u.as_ref());
     }
 }
 

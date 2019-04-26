@@ -36,12 +36,12 @@
 //!
 //! let msg = "hello, world";
 //!
-//! let tag = hmac::sign(&key, msg.as_bytes());
+//! let tag = key.sign(msg.as_bytes());
 //!
 //! // [We give access to the message to an untrusted party, and they give it
 //! // back to us. We need to verify they didn't tamper with it.]
 //!
-//! hmac::verify(&key, msg.as_bytes(), tag.as_ref())?;
+//! key.verify(msg.as_bytes(), tag.as_ref())?;
 //!
 //! # Ok::<(), ring::error::Unspecified>(())
 //! ```
@@ -52,7 +52,7 @@
 //! use ring::{digest, hmac, rand};
 //! use ring::rand::SecureRandom;
 //!
-//! let msg = "hello, world";
+//! let msg = b"hello, world";
 //!
 //! // The sender generates a secure key value and signs the message with it.
 //! // Note that in a real protocol, a key agreement protocol would be used to
@@ -61,12 +61,12 @@
 //! let key_value: [u8; digest::SHA256_OUTPUT_LEN] = rand::generate(&rng)?.expose();
 //!
 //! let s_key = hmac::Key::new(hmac::HMAC_SHA256, key_value.as_ref());
-//! let tag = hmac::sign(&s_key, msg.as_bytes());
+//! let tag = s_key.sign(msg);
 //!
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
-//! let v_key = hmac::Key::new(hmac::HMAC_SHA256, key_value.as_ref());
-//! hmac::verify(&v_key, msg.as_bytes(), tag.as_ref())?;
+//! let v_key = hmac::Key::new(&digest::SHA256, key_value.as_ref());
+//! v_key.verify(msg, tag.as_ref())?;
 //!
 //! # Ok::<(), ring::error::Unspecified>(())
 //! ```
@@ -76,7 +76,31 @@
 //! use ring::{digest, hmac, rand};
 //! use ring::rand::SecureRandom;
 //!
-//! let parts = ["hello", ", ", "world"];
+//! let parts: [&[u8]; 3] = [b"hello", b", ", b"world"];
+//!
+//! // The sender generates a secure key value and signs the message with it.
+//! // Note that in a real protocol, a key agreement protocol would be used to
+//! // derive `key_value`.
+//! let rng = rand::SystemRandom::new();
+//! let mut key_value: [u8; digest::SHA384_OUTPUT_LEN] = rand::generate(&rng)?.expose();
+//!
+//! let s_key = hmac::Key::new(hmac::HMAC_SHA384, key_value.as_ref());
+//! let tag = s_key.sign_parts(parts.iter().cloned());
+//!
+//! // The receiver (somehow!) knows the key value, and uses it to verify the
+//! // integrity of the message.
+//! let v_key = hmac::Key::new(&digest::SHA384, key_value.as_ref());
+//! v_key.verify_parts(parts.iter().cloned(), tag.as_ref())?;
+//!
+//! # Ok::<(), ring::error::Unspecified>(())
+//! ```
+//!
+//! ## Using the Context API
+//! ```
+//! use ring::{digest, hmac, rand};
+//! use ring::rand::SecureRandom;
+//!
+//! let parts: [&[u8]; 3] = [b"hello", b", ", b"world"];
 //!
 //! // The sender generates a secure key value and signs the message with it.
 //! // Note that in a real protocol, a key agreement protocol would be used to
@@ -87,6 +111,7 @@
 //! let s_key = hmac::Key::new(hmac::HMAC_SHA384, key_value.as_ref());
 //! let mut s_ctx = hmac::Context::with_key(&s_key);
 //! for part in &parts {
+//!     // The Context can consume parts one after another.
 //!     s_ctx.update(part.as_bytes());
 //! }
 //! let tag = s_ctx.sign();
@@ -94,10 +119,7 @@
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
 //! let v_key = hmac::Key::new(hmac::HMAC_SHA384, key_value.as_ref());
-//! let mut msg = Vec::<u8>::new();
-//! for part in &parts {
-//!     msg.extend(part.as_bytes());
-//! }
+//! v_key.verify_parts(parts.iter().cloned(), tag.as_ref())?;
 //! hmac::verify(&v_key, &msg.as_ref(), tag.as_ref())?;
 //!
 //! # Ok::<(), ring::error::Unspecified>(())
@@ -264,6 +286,77 @@ impl Key {
     pub fn algorithm(&self) -> Algorithm {
         Algorithm(self.inner.algorithm)
     }
+
+    /// Calculates the HMAC of `data` using the key in one step.
+    ///
+    /// Use [`sign_parts`] if the data is not in a contiguous memory region. In
+    /// more involved cases, use [`Context`] to calculate HMACs where the input
+    /// is not available at once.
+    ///
+    /// It is generally not safe to implement HMAC verification by comparing the
+    /// return value of `sign` to a tag. Use [`verify`] for verification instead.
+    ///
+    /// [`sign_parts`]: #method.sign_parts
+    /// [`verify`]: #method.verify
+    /// [`Context`]: ./struct.Context.html
+    pub fn sign(&self, data: &[u8]) -> Tag {
+        self.sign_parts(Some(data))
+    }
+
+    /// Verifies that the HACM of `data` with key equal `tag`.
+    ///
+    /// Use [`verify_parts`] if the data is not in a contiguous memory region.
+    ///
+    /// This will calculates the HMAC of `data` using the signing key, and
+    /// verify whether the resultant value equals `tag`, in one step and without
+    /// making the resulting tag available.  The comparison will be done in
+    /// constant time to prevent timing attacks.
+    ///
+    /// [`verify_parts`]: #method.verify_parts
+    pub fn verify(&self, data: &[u8], tag: &[u8]) -> Result<(), error::Unspecified> {
+        self.verify_parts(Some(data), tag)
+    }
+
+    /// Sign data distributed in multiple memory regions.
+    ///
+    /// This is effectively the same as if signing the concatenation of all byte
+    /// slices returned by the iterator. Use [`Context`] to calculate HMACs
+    /// where the input is not available at once.
+    ///
+    /// It is generally not safe to implement HMAC verification by comparing the
+    /// return value of `sign` to a tag. Use [`verify_parts`] for verification
+    /// instead.
+    ///
+    /// [`verify_parts`]: #method.verify_parts
+    /// [`Context`]: ./struct.Context.html
+    pub fn sign_parts<'a>(&self, parts: impl IntoIterator<Item=&'a [u8]>) -> Tag {
+        let mut ctx = Context::with_key(self);
+        for part in parts {
+            ctx.update(part);
+        }
+        ctx.sign()
+    }
+
+    /// Verify data distributed in multiple memory regions.
+    ///
+    /// This is effectively the same as if verifying the concatenation of all
+    /// byte slices returned by the iterator.
+    ///
+    /// It is not possible to create verification context that does not verify
+    /// the tag in one step after gather all inputs. This avoid accidentally
+    /// processing parts of the input while under the *wrong* impression that
+    /// they were already verified.
+    ///
+    /// This will calculates the HMAC of `data` using the signing key, and
+    /// verify whether the resultant value equals `tag`, in one step and without
+    /// making the resulting tag available.  The comparison will be done in
+    /// constant time to prevent timing attacks.
+    pub fn verify_parts<'a>(&self, parts: impl IntoIterator<Item=&'a [u8]>, tag: &[u8])
+        -> Result<(), error::Unspecified>
+    {
+        let signature = self.sign_parts(parts);
+        constant_time::verify_slices_are_equal(tag.as_ref(), signature.as_ref())
+    }
 }
 
 impl hkdf::KeyType for Algorithm {
@@ -280,7 +373,12 @@ impl From<hkdf::Okm<'_, Algorithm>> for Key {
 
 /// A context for multi-step (Init-Update-Finish) HMAC signing.
 ///
-/// Use `sign` for single-step HMAC signing.
+/// Use [`Key::sign`] for single-step HMAC signing and [`Key::sign_parts`] for signle step signing
+/// of data that is not in a contiguous memory region. Note that there is no verification parallel
+/// to [`Context`] to avoid misusing data that is not already verified.
+// Note: No verify. This is to require all data to be verified and discourage processing parts of
+// the data without being verified. A previous commit (12596a32f9e8cb15dbe7f84d062a9a8c6207a7e8)
+// removed such an interface, so don't add it.
 #[derive(Clone)]
 pub struct Context {
     inner: digest::Context,
@@ -330,6 +428,8 @@ impl Context {
         pending[..num_pending].copy_from_slice(self.inner.finish().as_ref());
         Tag(self.outer.finish(pending, num_pending))
     }
+
+    // Note: no verify. See note on `Context` itself.
 }
 
 /// Calculates the HMAC of `data` using the key `key` in one step.
@@ -338,10 +438,9 @@ impl Context {
 ///
 /// It is generally not safe to implement HMAC verification by comparing the
 /// return value of `sign` to a tag. Use `verify` for verification instead.
+#[deprecated(note = "Moved to `hmac::Key::sign`.")]
 pub fn sign(key: &Key, data: &[u8]) -> Tag {
-    let mut ctx = Context::with_key(key);
-    ctx.update(data);
-    ctx.sign()
+    key.sign(data)
 }
 
 /// Calculates the HMAC of `data` using the signing key `key`, and verifies
@@ -351,8 +450,9 @@ pub fn sign(key: &Key, data: &[u8]) -> Tag {
 /// `Key` with the same value as `key` and then using `verify`.
 ///
 /// The verification will be done in constant time to prevent timing attacks.
+#[deprecated(note = "Moved to `hmac::Key::verify`.")]
 pub fn verify(key: &Key, data: &[u8], tag: &[u8]) -> Result<(), error::Unspecified> {
-    constant_time::verify_slices_are_equal(sign(key, data).as_ref(), tag)
+    key.verify(data, tag)
 }
 
 #[cfg(test)]
@@ -375,9 +475,9 @@ mod tests {
             hmac::HMAC_SHA512,
         ] {
             let key = hmac::Key::generate(*algorithm, &mut rng).unwrap();
-            let tag = hmac::sign(&key, HELLO_WORLD_GOOD);
-            assert!(hmac::verify(&key, HELLO_WORLD_GOOD, tag.as_ref()).is_ok());
-            assert!(hmac::verify(&key, HELLO_WORLD_BAD, tag.as_ref()).is_err())
+            let tag = key.sign(HELLO_WORLD_GOOD);
+            assert!(key.verify(HELLO_WORLD_GOOD, tag.as_ref()).is_ok());
+            assert!(key.verify(HELLO_WORLD_BAD, tag.as_ref()).is_err())
         }
     }
 }

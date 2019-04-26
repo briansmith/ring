@@ -76,7 +76,7 @@ impl Salt {
         // `Key` constructor will automatically do the right thing for a
         // zero-length string.
         let salt = &self.0;
-        let prk = hmac::sign(salt, secret);
+        let prk = salt.sign(secret);
         Prk(hmac::Key::new(salt.algorithm(), prk.as_ref()))
     }
 
