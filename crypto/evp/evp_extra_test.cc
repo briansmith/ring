@@ -555,13 +555,10 @@ TEST(EVPExtraTest, Ed25519) {
       0xa6, 0x23, 0x25, 0xaf, 0x02, 0x1a, 0x68, 0xf7, 0x07, 0x51, 0x1a,
   };
 
-  static const uint8_t kPrivateKey[64] = {
+  static const uint8_t kPrivateKeySeed[32] = {
       0x9d, 0x61, 0xb1, 0x9d, 0xef, 0xfd, 0x5a, 0x60, 0xba, 0x84, 0x4a,
       0xf4, 0x92, 0xec, 0x2c, 0xc4, 0x44, 0x49, 0xc5, 0x69, 0x7b, 0x32,
-      0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60, 0xd7,
-      0x5a, 0x98, 0x01, 0x82, 0xb1, 0x0a, 0xb7, 0xd5, 0x4b, 0xfe, 0xd3,
-      0xc9, 0x64, 0x07, 0x3a, 0x0e, 0xe1, 0x72, 0xf3, 0xda, 0xa6, 0x23,
-      0x25, 0xaf, 0x02, 0x1a, 0x68, 0xf7, 0x07, 0x51, 0x1a,
+      0x69, 0x19, 0x70, 0x3b, 0xac, 0x03, 0x1c, 0xae, 0x7f, 0x60,
   };
 
   static const uint8_t kPrivateKeyPKCS8[] = {
@@ -572,9 +569,37 @@ TEST(EVPExtraTest, Ed25519) {
   };
 
   // Create a public key.
-  bssl::UniquePtr<EVP_PKEY> pubkey(EVP_PKEY_new_ed25519_public(kPublicKey));
+  bssl::UniquePtr<EVP_PKEY> pubkey(EVP_PKEY_new_raw_public_key(
+      EVP_PKEY_ED25519, nullptr, kPublicKey, sizeof(kPublicKey)));
   ASSERT_TRUE(pubkey);
   EXPECT_EQ(EVP_PKEY_ED25519, EVP_PKEY_id(pubkey.get()));
+
+  // The public key must be extractable.
+  uint8_t buf[32];
+  size_t len;
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pubkey.get(), nullptr, &len));
+  EXPECT_EQ(len, 32u);
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pubkey.get(), buf, &len));
+  EXPECT_EQ(Bytes(buf, len), Bytes(kPublicKey));
+  // Passing too large of a buffer is okay. The function will still only read
+  // 32 bytes.
+  len = 64;
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(pubkey.get(), buf, &len));
+  EXPECT_EQ(Bytes(buf, len), Bytes(kPublicKey));
+  // Passing too small of a buffer is noticed.
+  len = 31;
+  EXPECT_FALSE(EVP_PKEY_get_raw_public_key(pubkey.get(), buf, &len));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+  ERR_clear_error();
+
+  // There is no private key.
+  EXPECT_FALSE(EVP_PKEY_get_raw_private_key(pubkey.get(), nullptr, &len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_NOT_A_PRIVATE_KEY, ERR_GET_REASON(err));
+  ERR_clear_error();
 
   // The public key must encode properly.
   bssl::ScopedCBB cbb;
@@ -589,15 +614,39 @@ TEST(EVPExtraTest, Ed25519) {
   // The public key must gracefully fail to encode as a private key.
   ASSERT_TRUE(CBB_init(cbb.get(), 0));
   EXPECT_FALSE(EVP_marshal_private_key(cbb.get(), pubkey.get()));
-  uint32_t err = ERR_get_error();
+  err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(EVP_R_NOT_A_PRIVATE_KEY, ERR_GET_REASON(err));
+  ERR_clear_error();
   cbb.Reset();
 
   // Create a private key.
-  bssl::UniquePtr<EVP_PKEY> privkey(EVP_PKEY_new_ed25519_private(kPrivateKey));
+  bssl::UniquePtr<EVP_PKEY> privkey(EVP_PKEY_new_raw_private_key(
+      EVP_PKEY_ED25519, NULL, kPrivateKeySeed, sizeof(kPrivateKeySeed)));
   ASSERT_TRUE(privkey);
   EXPECT_EQ(EVP_PKEY_ED25519, EVP_PKEY_id(privkey.get()));
+
+  // The private key must be extractable.
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(privkey.get(), nullptr, &len));
+  EXPECT_EQ(len, 32u);
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(privkey.get(), buf, &len));
+  EXPECT_EQ(Bytes(buf, len), Bytes(kPrivateKeySeed));
+  // Passing too large of a buffer is okay. The function will still only read
+  // 32 bytes.
+  len = 64;
+  ASSERT_TRUE(EVP_PKEY_get_raw_private_key(privkey.get(), buf, &len));
+  EXPECT_EQ(Bytes(buf, len), Bytes(kPrivateKeySeed));
+  // Passing too small of a buffer is noticed.
+  len = 31;
+  EXPECT_FALSE(EVP_PKEY_get_raw_private_key(privkey.get(), buf, &len));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+  ERR_clear_error();
+  // The public key must be extractable.
+  len = 32;
+  ASSERT_TRUE(EVP_PKEY_get_raw_public_key(privkey.get(), buf, &len));
+  EXPECT_EQ(Bytes(buf, len), Bytes(kPublicKey));
 
   // The public key must encode from the private key.
   ASSERT_TRUE(CBB_init(cbb.get(), 0));
@@ -617,7 +666,8 @@ TEST(EVPExtraTest, Ed25519) {
   EXPECT_EQ(1, EVP_PKEY_cmp(pubkey.get(), privkey.get()));
 
   static const uint8_t kZeros[32] = {0};
-  bssl::UniquePtr<EVP_PKEY> pubkey2(EVP_PKEY_new_ed25519_public(kZeros));
+  bssl::UniquePtr<EVP_PKEY> pubkey2(EVP_PKEY_new_raw_public_key(
+      EVP_PKEY_ED25519, nullptr, kZeros, sizeof(kZeros)));
   ASSERT_TRUE(pubkey2);
   EXPECT_EQ(0, EVP_PKEY_cmp(pubkey.get(), pubkey2.get()));
   EXPECT_EQ(0, EVP_PKEY_cmp(privkey.get(), pubkey2.get()));
@@ -627,7 +677,6 @@ TEST(EVPExtraTest, Ed25519) {
   ASSERT_TRUE(
       EVP_DigestSignInit(ctx.get(), nullptr, nullptr, nullptr, privkey.get()));
   EXPECT_FALSE(EVP_DigestSignUpdate(ctx.get(), nullptr, 0));
-  size_t len;
   EXPECT_FALSE(EVP_DigestSignFinal(ctx.get(), nullptr, &len));
   ERR_clear_error();
 
@@ -643,12 +692,12 @@ TEST(EVPExtraTest, Ed25519) {
   ctx.Reset();
   ASSERT_TRUE(
       EVP_DigestSignInit(ctx.get(), nullptr, nullptr, nullptr, privkey.get()));
-  uint8_t buf[16];
-  len = sizeof(buf);
+  len = 31;
   EXPECT_FALSE(EVP_DigestSign(ctx.get(), buf, &len, nullptr /* msg */, 0));
   err = ERR_get_error();
   EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
   EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
+  ERR_clear_error();
 }
 
 static void ExpectECGroupOnly(const EVP_PKEY *pkey, int nid) {

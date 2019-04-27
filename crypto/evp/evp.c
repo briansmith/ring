@@ -330,7 +330,73 @@ int EVP_PKEY_set_type(EVP_PKEY *pkey, int type) {
   return 1;
 }
 
+EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
+                                       const uint8_t *in, size_t len) {
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL ||
+      !EVP_PKEY_set_type(ret, type)) {
+    goto err;
+  }
 
+  if (ret->ameth->set_priv_raw == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    goto err;
+  }
+
+  if (!ret->ameth->set_priv_raw(ret, in, len)) {
+    goto err;
+  }
+
+  return ret;
+
+err:
+  EVP_PKEY_free(ret);
+  return NULL;
+}
+
+EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *unused,
+                                      const uint8_t *in, size_t len) {
+  EVP_PKEY *ret = EVP_PKEY_new();
+  if (ret == NULL ||
+      !EVP_PKEY_set_type(ret, type)) {
+    goto err;
+  }
+
+  if (ret->ameth->set_pub_raw == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    goto err;
+  }
+
+  if (!ret->ameth->set_pub_raw(ret, in, len)) {
+    goto err;
+  }
+
+  return ret;
+
+err:
+  EVP_PKEY_free(ret);
+  return NULL;
+}
+
+int EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey, uint8_t *out,
+                                 size_t *out_len) {
+  if (pkey->ameth->get_priv_raw == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+
+  return pkey->ameth->get_priv_raw(pkey, out, out_len);
+}
+
+int EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey, uint8_t *out,
+                                size_t *out_len) {
+  if (pkey->ameth->get_pub_raw == NULL) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE);
+    return 0;
+  }
+
+  return pkey->ameth->get_pub_raw(pkey, out, out_len);
+}
 
 int EVP_PKEY_cmp_parameters(const EVP_PKEY *a, const EVP_PKEY *b) {
   if (a->type != b->type) {

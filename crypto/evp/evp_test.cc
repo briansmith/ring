@@ -179,7 +179,62 @@ static bool ImportKey(FileTest *t, KeyMap *key_map,
       !t->GetBytes(&output, "Output")) {
     return false;
   }
-  EXPECT_EQ(Bytes(output), Bytes(der, der_len)) << "Re-encoding the key did not match.";
+  EXPECT_EQ(Bytes(output), Bytes(der, der_len))
+      << "Re-encoding the key did not match.";
+
+  if (t->HasAttribute("ExpectNoRawPrivate")) {
+    size_t len;
+    EXPECT_FALSE(EVP_PKEY_get_raw_private_key(pkey.get(), nullptr, &len));
+  } else if (t->HasAttribute("ExpectRawPrivate")) {
+    std::vector<uint8_t> expected;
+    if (!t->GetBytes(&expected, "ExpectRawPrivate")) {
+      return false;
+    }
+
+    std::vector<uint8_t> raw;
+    size_t len;
+    if (!EVP_PKEY_get_raw_private_key(pkey.get(), nullptr, &len)) {
+      return false;
+    }
+    raw.resize(len);
+    if (!EVP_PKEY_get_raw_private_key(pkey.get(), raw.data(), &len)) {
+      return false;
+    }
+    raw.resize(len);
+    EXPECT_EQ(Bytes(raw), Bytes(expected));
+
+    // Short buffers should be rejected.
+    raw.resize(len - 1);
+    len = raw.size();
+    EXPECT_FALSE(EVP_PKEY_get_raw_private_key(pkey.get(), raw.data(), &len));
+  }
+
+  if (t->HasAttribute("ExpectNoRawPublic")) {
+    size_t len;
+    EXPECT_FALSE(EVP_PKEY_get_raw_public_key(pkey.get(), nullptr, &len));
+  } else if (t->HasAttribute("ExpectRawPublic")) {
+    std::vector<uint8_t> expected;
+    if (!t->GetBytes(&expected, "ExpectRawPublic")) {
+      return false;
+    }
+
+    std::vector<uint8_t> raw;
+    size_t len;
+    if (!EVP_PKEY_get_raw_public_key(pkey.get(), nullptr, &len)) {
+      return false;
+    }
+    raw.resize(len);
+    if (!EVP_PKEY_get_raw_public_key(pkey.get(), raw.data(), &len)) {
+      return false;
+    }
+    raw.resize(len);
+    EXPECT_EQ(Bytes(raw), Bytes(expected));
+
+    // Short buffers should be rejected.
+    raw.resize(len - 1);
+    len = raw.size();
+    EXPECT_FALSE(EVP_PKEY_get_raw_public_key(pkey.get(), raw.data(), &len));
+  }
 
   // Save the key for future tests.
   const std::string &key_name = t->GetParameter();

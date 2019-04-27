@@ -170,16 +170,6 @@ OPENSSL_EXPORT int EVP_PKEY_assign_EC_KEY(EVP_PKEY *pkey, EC_KEY *key);
 OPENSSL_EXPORT EC_KEY *EVP_PKEY_get0_EC_KEY(const EVP_PKEY *pkey);
 OPENSSL_EXPORT EC_KEY *EVP_PKEY_get1_EC_KEY(const EVP_PKEY *pkey);
 
-// EVP_PKEY_new_ed25519_public returns a newly allocated |EVP_PKEY| wrapping an
-// Ed25519 public key, or NULL on allocation error.
-OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_ed25519_public(
-    const uint8_t public_key[32]);
-
-// EVP_PKEY_new_ed25519_private returns a newly allocated |EVP_PKEY| wrapping an
-// Ed25519 private key, or NULL on allocation error.
-OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_ed25519_private(
-    const uint8_t private_key[64]);
-
 #define EVP_PKEY_NONE NID_undef
 #define EVP_PKEY_RSA NID_rsaEncryption
 #define EVP_PKEY_RSA_PSS NID_rsassaPss
@@ -239,6 +229,48 @@ OPENSSL_EXPORT EVP_PKEY *EVP_parse_private_key(CBS *cbs);
 // structure (RFC 5208) and appends the result to |cbb|. It returns one on
 // success and zero on error.
 OPENSSL_EXPORT int EVP_marshal_private_key(CBB *cbb, const EVP_PKEY *key);
+
+
+// Raw keys
+//
+// Some keys types support a "raw" serialization. Currently the only supported
+// raw format is Ed25519, where the public key and private key formats are those
+// specified in RFC 8032. Note the RFC 8032 private key format is the 32-byte
+// prefix of |ED25519_sign|'s 64-byte private key.
+
+// EVP_PKEY_new_raw_private_key returns a newly allocated |EVP_PKEY| wrapping a
+// private key of the specified type. It returns one on success and zero on
+// error.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_raw_private_key(int type, ENGINE *unused,
+                                                      const uint8_t *in,
+                                                      size_t len);
+
+// EVP_PKEY_new_raw_public_key returns a newly allocated |EVP_PKEY| wrapping a
+// public key of the specified type. It returns one on success and zero on
+// error.
+OPENSSL_EXPORT EVP_PKEY *EVP_PKEY_new_raw_public_key(int type, ENGINE *unused,
+                                                     const uint8_t *in,
+                                                     size_t len);
+
+// EVP_PKEY_get_raw_private_key outputs the private key for |pkey| in raw form.
+// If |out| is NULL, it sets |*out_len| to the size of the raw private key.
+// Otherwise, it writes at most |*out_len| bytes to |out| and sets |*out_len| to
+// the number of bytes written.
+//
+// It returns one on success and zero if |pkey| has no private key, the key
+// type does not support a raw format, or the buffer is too small.
+OPENSSL_EXPORT int EVP_PKEY_get_raw_private_key(const EVP_PKEY *pkey,
+                                                uint8_t *out, size_t *out_len);
+
+// EVP_PKEY_get_raw_public_key outputs the public key for |pkey| in raw form.
+// If |out| is NULL, it sets |*out_len| to the size of the raw public key.
+// Otherwise, it writes at most |*out_len| bytes to |out| and sets |*out_len| to
+// the number of bytes written.
+//
+// It returns one on success and zero if |pkey| has no public key, the key
+// type does not support a raw format, or the buffer is too small.
+OPENSSL_EXPORT int EVP_PKEY_get_raw_public_key(const EVP_PKEY *pkey,
+                                               uint8_t *out, size_t *out_len);
 
 
 // Signing

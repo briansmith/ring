@@ -1327,9 +1327,11 @@ TEST(X509Test, Ed25519Sign) {
   uint8_t pub_bytes[32], priv_bytes[64];
   ED25519_keypair(pub_bytes, priv_bytes);
 
-  bssl::UniquePtr<EVP_PKEY> pub(EVP_PKEY_new_ed25519_public(pub_bytes));
+  bssl::UniquePtr<EVP_PKEY> pub(
+      EVP_PKEY_new_raw_public_key(EVP_PKEY_ED25519, nullptr, pub_bytes, 32));
   ASSERT_TRUE(pub);
-  bssl::UniquePtr<EVP_PKEY> priv(EVP_PKEY_new_ed25519_private(priv_bytes));
+  bssl::UniquePtr<EVP_PKEY> priv(
+      EVP_PKEY_new_raw_private_key(EVP_PKEY_ED25519, nullptr, priv_bytes, 32));
   ASSERT_TRUE(priv);
 
   bssl::ScopedEVP_MD_CTX md_ctx;

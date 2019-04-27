@@ -96,6 +96,11 @@ struct evp_pkey_asn1_method_st {
   // |out|. It returns one on success and zero on error.
   int (*priv_encode)(CBB *out, const EVP_PKEY *key);
 
+  int (*set_priv_raw)(EVP_PKEY *pkey, const uint8_t *in, size_t len);
+  int (*set_pub_raw)(EVP_PKEY *pkey, const uint8_t *in, size_t len);
+  int (*get_priv_raw)(const EVP_PKEY *pkey, uint8_t *out, size_t *out_len);
+  int (*get_pub_raw)(const EVP_PKEY *pkey, uint8_t *out, size_t *out_len);
+
   // pkey_opaque returns 1 if the |pk| is opaque. Opaque keys are backed by
   // custom implementations which do not expose key material and parameters.
   int (*pkey_opaque)(const EVP_PKEY *pk);
