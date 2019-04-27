@@ -637,6 +637,18 @@ TEST(EVPExtraTest, Ed25519) {
   EXPECT_FALSE(EVP_DigestVerifyUpdate(ctx.get(), nullptr, 0));
   EXPECT_FALSE(EVP_DigestVerifyFinal(ctx.get(), nullptr, 0));
   ERR_clear_error();
+
+  // The buffer length to |EVP_DigestSign| is an input/output parameter and
+  // should be checked before signing.
+  ctx.Reset();
+  ASSERT_TRUE(
+      EVP_DigestSignInit(ctx.get(), nullptr, nullptr, nullptr, privkey.get()));
+  uint8_t buf[16];
+  len = sizeof(buf);
+  EXPECT_FALSE(EVP_DigestSign(ctx.get(), buf, &len, nullptr /* msg */, 0));
+  err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_EVP, ERR_GET_LIB(err));
+  EXPECT_EQ(EVP_R_BUFFER_TOO_SMALL, ERR_GET_REASON(err));
 }
 
 static void ExpectECGroupOnly(const EVP_PKEY *pkey, int nid) {

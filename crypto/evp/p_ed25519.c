@@ -32,12 +32,22 @@ static int pkey_ed25519_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
     return 0;
   }
 
-  *siglen = 64;
   if (sig == NULL) {
+    *siglen = 64;
     return 1;
   }
 
-  return ED25519_sign(sig, tbs, tbslen, key->key.priv);
+  if (*siglen < 64) {
+    OPENSSL_PUT_ERROR(EVP, EVP_R_BUFFER_TOO_SMALL);
+    return 0;
+  }
+
+  if (!ED25519_sign(sig, tbs, tbslen, key->key.priv)) {
+    return 0;
+  }
+
+  *siglen = 64;
+  return 1;
 }
 
 static int pkey_ed25519_verify_message(EVP_PKEY_CTX *ctx, const uint8_t *sig,
