@@ -116,6 +116,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[AARCH64], SHA512_ARMV8),
 
     (&[PPC], "crypto/fipsmodule/aes/asm/aes-ppc.pl"),
+    (&[PPC], "crypto/fipsmodule/aes/asm/aesp8-ppc.pl"),
     (&[PPC], "crypto/fipsmodule/aes/asm/vpaes-ppc.pl"),
     (&[PPC], "crypto/fipsmodule/bn/asm/ppc-mont.pl"),
     (&[PPC], "crypto/fipsmodule/bn/asm/ppc.pl"),
@@ -125,6 +126,7 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[PPC], "crypto/fipsmodule/sha/asm/sha512p8-ppc.pl"),
 
     (&[PPC64], "crypto/fipsmodule/aes/asm/aes-ppc.pl"),
+    (&[PPC64], "crypto/fipsmodule/aes/asm/aesp8-ppc.pl"),
     (&[PPC64], "crypto/fipsmodule/aes/asm/vpaes-ppc.pl"),
     (&[PPC64], "crypto/fipsmodule/bn/asm/ppc64-mont.pl"),
     (&[PPC64], "crypto/fipsmodule/bn/asm/ppc.pl"),
