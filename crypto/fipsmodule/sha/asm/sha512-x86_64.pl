@@ -278,7 +278,6 @@ $code.=<<___ if ($SZ==4 && $shaext);
 	jnz	_shaext_shortcut
 ___
     # XOP codepath removed.
-___
 $code.=<<___ if ($avx>1);
 	and	\$`1<<8|1<<5|1<<3`,%r11d	# check for BMI2+AVX2+BMI1
 	cmp	\$`1<<8|1<<5|1<<3`,%r11d
