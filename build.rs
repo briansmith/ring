@@ -369,14 +369,6 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         }
     }
 
-    let (_, _, perlasm_format) = ASM_TARGETS
-        .iter()
-        .find(|entry| {
-            let &(entry_arch, entry_os, _) = *entry;
-            entry_arch == target.arch() && is_none_or_equals(entry_os, target.os())
-        })
-        .unwrap();
-
     let is_git = std::fs::metadata(".git").is_ok();
 
     let use_pregenerated = !is_git;
@@ -388,31 +380,41 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         out_dir
     };
 
-    let perlasm_src_dsts =
-        perlasm_src_dsts(asm_dir, target.arch(), Some(target.os()), perlasm_format);
+    let asm_srcs = ASM_TARGETS
+        .iter()
+        .find(|entry| {
+            let &(entry_arch, entry_os, _) = *entry;
+            entry_arch == target.arch() && is_none_or_equals(entry_os, target.os())
+        })
+        .map(|(_, _, perlasm_format)| {
+            let perlasm_src_dsts =
+                perlasm_src_dsts(asm_dir, target.arch(), Some(target.os()), perlasm_format);
 
-    if !use_pregenerated {
-        perlasm(
-            &perlasm_src_dsts[..],
-            target.arch(),
-            perlasm_format,
-            Some(includes_modified),
-        );
-    }
+            if !use_pregenerated {
+                perlasm(
+                    &perlasm_src_dsts[..],
+                    target.arch(),
+                    perlasm_format,
+                    Some(includes_modified),
+                );
+            }
 
-    let mut asm_srcs = asm_srcs(perlasm_src_dsts);
+            let mut asm_srcs = asm_srcs(perlasm_src_dsts);
 
-    // For Windows we also pregenerate the object files for non-Git builds so
-    // the user doesn't need to install the assembler. On other platforms we
-    // assume the C compiler also assembles.
-    if use_pregenerated && target.os() == WINDOWS {
-        // The pregenerated object files always use ".obj" as the extension,
-        // even when the C/C++ compiler outputs files with the ".o" extension.
-        asm_srcs = asm_srcs
-            .iter()
-            .map(|src| obj_path(&pregenerated, src.as_path(), "obj"))
-            .collect::<Vec<_>>();
-    }
+            // For Windows we also pregenerate the object files for non-Git builds so
+            // the user doesn't need to install the assembler. On other platforms we
+            // assume the C compiler also assembles.
+            if use_pregenerated && target.os() == WINDOWS {
+                // The pregenerated object files always use ".obj" as the extension,
+                // even when the C/C++ compiler outputs files with the ".o" extension.
+                asm_srcs = asm_srcs
+                    .iter()
+                    .map(|src| obj_path(&pregenerated, src.as_path(), "obj"))
+                    .collect::<Vec<_>>();
+            }
+
+            asm_srcs
+        }).unwrap_or_default();
 
     let core_srcs = sources_for_arch(target.arch())
         .into_iter()
