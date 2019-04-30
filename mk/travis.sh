@@ -34,9 +34,10 @@ armv7-linux-androideabi)
   export PATH=$HOME/android/android-sdk-linux/platform-tools:$PATH
   export PATH=$HOME/android/android-sdk-linux/tools:$PATH
   ;;
-*)
 powerpc-unknown-linux-gnu)
   export QEMU_LD_PREFIX=/usr/powerpc-linux-gnu
+  ;;
+*)
   ;;
 esac
 
