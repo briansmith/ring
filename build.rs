@@ -47,6 +47,8 @@ const X86: &str = "x86";
 const X86_64: &str = "x86_64";
 const AARCH64: &str = "aarch64";
 const ARM: &str = "arm";
+const PPC: &str = "powerpc";
+const PPC64: &str = "powerpc64";
 const NEVER: &str = "Don't ever build this file.";
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -112,6 +114,24 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[AARCH64], "crypto/fipsmodule/ec/asm/ecp_nistz256-armv8.pl"),
     (&[AARCH64], "crypto/poly1305/asm/poly1305-armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
+
+    (&[PPC], "crypto/fipsmodule/aes/asm/aes-ppc.pl"),
+    (&[PPC], "crypto/fipsmodule/aes/asm/vpaes-ppc.pl"),
+    (&[PPC], "crypto/fipsmodule/bn/asm/ppc-mont.pl"),
+    (&[PPC], "crypto/fipsmodule/bn/asm/ppc.pl"),
+    (&[PPC], "crypto/fipsmodule/modes/asm/ghashp8-ppc.pl"),
+    (&[PPC], "crypto/fipsmodule/sha/asm/sha1-ppc.pl"),
+    (&[PPC], "crypto/fipsmodule/sha/asm/sha512-ppc.pl"),
+    (&[PPC], "crypto/fipsmodule/sha/asm/sha512p8-ppc.pl"),
+
+    (&[PPC64], "crypto/fipsmodule/aes/asm/aes-ppc.pl"),
+    (&[PPC64], "crypto/fipsmodule/aes/asm/vpaes-ppc.pl"),
+    (&[PPC64], "crypto/fipsmodule/bn/asm/ppc64-mont.pl"),
+    (&[PPC64], "crypto/fipsmodule/bn/asm/ppc.pl"),
+    (&[PPC64], "crypto/fipsmodule/modes/asm/ghashp8-ppc.pl"),
+    (&[PPC64], "crypto/fipsmodule/sha/asm/sha1-ppc.pl"),
+    (&[PPC64], "crypto/fipsmodule/sha/asm/sha512-ppc.pl"),
+    (&[PPC64], "crypto/fipsmodule/sha/asm/sha512p8-ppc.pl"),
 ];
 
 const SHA256_X86_64: &str = "crypto/fipsmodule/sha/asm/sha256-x86_64.pl";
@@ -243,6 +263,8 @@ const ASM_TARGETS: &[(&str, Option<&str>, &str)] = &[
     ("x86", None, "elf"),
     ("arm", Some("ios"), "ios32"),
     ("arm", None, "linux32"),
+    ("powerpc", None, "32"),
+    ("powerpc64", None, "64"),
 ];
 
 const WINDOWS: &str = "windows";
@@ -369,6 +391,13 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         }
     }
 
+    let (_, _, perlasm_format) = ASM_TARGETS
+        .iter()
+        .find(|entry| {
+            let &(entry_arch, entry_os, _) = *entry;
+            entry_arch == target.arch() && is_none_or_equals(entry_os, target.os())
+        }).unwrap();
+
     let is_git = std::fs::metadata(".git").is_ok();
 
     let use_pregenerated = !is_git;
@@ -380,41 +409,31 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         out_dir
     };
 
-    let asm_srcs = ASM_TARGETS
-        .iter()
-        .find(|entry| {
-            let &(entry_arch, entry_os, _) = *entry;
-            entry_arch == target.arch() && is_none_or_equals(entry_os, target.os())
-        })
-        .map(|(_, _, perlasm_format)| {
-            let perlasm_src_dsts =
-                perlasm_src_dsts(asm_dir, target.arch(), Some(target.os()), perlasm_format);
+    let perlasm_src_dsts =
+        perlasm_src_dsts(asm_dir, target.arch(), Some(target.os()), perlasm_format);
 
-            if !use_pregenerated {
-                perlasm(
-                    &perlasm_src_dsts[..],
-                    target.arch(),
-                    perlasm_format,
-                    Some(includes_modified),
-                );
-            }
+    if !use_pregenerated {
+        perlasm(
+            &perlasm_src_dsts[..],
+            target.arch(),
+            perlasm_format,
+            Some(includes_modified),
+        );
+    }
 
-            let mut asm_srcs = asm_srcs(perlasm_src_dsts);
+    let mut asm_srcs = asm_srcs(perlasm_src_dsts);
 
-            // For Windows we also pregenerate the object files for non-Git builds so
-            // the user doesn't need to install the assembler. On other platforms we
-            // assume the C compiler also assembles.
-            if use_pregenerated && target.os() == WINDOWS {
-                // The pregenerated object files always use ".obj" as the extension,
-                // even when the C/C++ compiler outputs files with the ".o" extension.
-                asm_srcs = asm_srcs
-                    .iter()
-                    .map(|src| obj_path(&pregenerated, src.as_path(), "obj"))
-                    .collect::<Vec<_>>();
-            }
-
-            asm_srcs
-        }).unwrap_or_default();
+    // For Windows we also pregenerate the object files for non-Git builds so
+    // the user doesn't need to install the assembler. On other platforms we
+    // assume the C compiler also assembles.
+    if use_pregenerated && target.os() == WINDOWS {
+        // The pregenerated object files always use ".obj" as the extension,
+        // even when the C/C++ compiler outputs files with the ".o" extension.
+        asm_srcs = asm_srcs
+            .iter()
+            .map(|src| obj_path(&pregenerated, src.as_path(), "obj"))
+            .collect::<Vec<_>>();
+    }
 
     let core_srcs = sources_for_arch(target.arch())
         .into_iter()

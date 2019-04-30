@@ -224,6 +224,78 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
+    - env: TARGET_X=powerpc-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: stable
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc64-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: stable
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc64-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc64le-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: stable
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc64le-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: stable
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: nightly
       os: osx
@@ -416,6 +488,78 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
 
+    - env: TARGET_X=powerpc-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: nightly
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc64-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: nightly
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc64-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc64le-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: nightly
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc64le-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: nightly
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
     - env: TARGET_X=x86_64-apple-darwin  FEATURES_X= MODE_X=DEBUG KCOV=0
       rust: beta
       os: osx
@@ -605,6 +749,78 @@ matrix:
           packages:
             - gcc-arm-linux-gnueabihf
             - libc6-dev-armhf-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: beta
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc64-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: beta
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc64-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc64le-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=DEBUG KCOV=0
+      rust: beta
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
+          sources:
+            - ubuntu-toolchain-r-test
+
+    - env: TARGET_X=powerpc64le-unknown-linux-gnu CC_X=powerpc-linux-gnu-gcc FEATURES_X= MODE_X=RELWITHDEBINFO KCOV=0
+      rust: beta
+      os: linux
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-powerpc-linux-gnu
+            - libc6-dev-powerpc-cross
           sources:
             - ubuntu-toolchain-r-test
 
