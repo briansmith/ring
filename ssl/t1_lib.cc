@@ -1790,7 +1790,7 @@ static bool ext_ec_point_add_extension(SSL_HANDSHAKE *hs, CBB *out) {
 }
 
 static bool ext_ec_point_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
-  // The point format extension is unneccessary in TLS 1.3.
+  // The point format extension is unnecessary in TLS 1.3.
   if (hs->min_version >= TLS1_3_VERSION) {
     return true;
   }

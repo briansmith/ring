@@ -2061,7 +2061,7 @@ struct SSL_X509_METHOD {
 
   // hs_flush_cached_ca_names drops any cached |X509_NAME|s from |hs|.
   void (*hs_flush_cached_ca_names)(SSL_HANDSHAKE *hs);
-  // ssl_new does any neccessary initialisation of |hs|. It returns true on
+  // ssl_new does any necessary initialisation of |hs|. It returns true on
   // success or false on error.
   bool (*ssl_new)(SSL_HANDSHAKE *hs);
   // ssl_free frees anything created by |ssl_new|.
@@ -2072,7 +2072,7 @@ struct SSL_X509_METHOD {
   // necessary. On success, it updates |ssl|'s certificate configuration as
   // needed and returns true. Otherwise, it returns false.
   bool (*ssl_auto_chain_if_needed)(SSL_HANDSHAKE *hs);
-  // ssl_ctx_new does any neccessary initialisation of |ctx|. It returns true on
+  // ssl_ctx_new does any necessary initialisation of |ctx|. It returns true on
   // success or false on error.
   bool (*ssl_ctx_new)(SSL_CTX *ctx);
   // ssl_ctx_free frees anything created by |ssl_ctx_new|.
