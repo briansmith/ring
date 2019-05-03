@@ -79,7 +79,10 @@ static void __asan_poison_memory_region(const void *addr, size_t size) {}
 static void __asan_unpoison_memory_region(const void *addr, size_t size) {}
 #endif
 
-#if defined(__GNUC__) || defined(__clang__)
+// Windows doesn't really support weak symbols as of May 2019, and Clang on
+// Windows will emit strong symbols instead. See
+// https://bugs.llvm.org/show_bug.cgi?id=37598
+#if defined(__GNUC__) || (defined(__clang__) && !defined(_MSC_VER))
 // sdallocx is a sized |free| function. By passing the size (which we happen to
 // always know in BoringSSL), the malloc implementation can save work. We cannot
 // depend on |sdallocx| being available so we declare a wrapper that falls back
