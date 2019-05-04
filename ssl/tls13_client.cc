@@ -188,6 +188,7 @@ static enum ssl_hs_wait_t do_read_hello_retry_request(SSL_HANDSHAKE *hs) {
   hs->tls13_state = state_send_second_client_hello;
   // 0-RTT is rejected if we receive a HelloRetryRequest.
   if (hs->in_early_data) {
+    ssl->s3->early_data_reason = ssl_early_data_hello_retry_request;
     return ssl_hs_early_data_rejected;
   }
   return ssl_hs_ok;

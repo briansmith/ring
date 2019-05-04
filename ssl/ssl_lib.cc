@@ -1294,6 +1294,10 @@ void SSL_reset_early_data_reject(SSL *ssl) {
   ssl->s3->wpend_pending = false;
 }
 
+enum ssl_early_data_reason_t SSL_get_early_data_reason(const SSL *ssl) {
+  return ssl->s3->early_data_reason;
+}
+
 static int bio_retry_reason_to_error(int reason) {
   switch (reason) {
     case BIO_RR_CONNECT:

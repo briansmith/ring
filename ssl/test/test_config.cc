@@ -179,6 +179,7 @@ const Flag<std::string> kStringFlags[] = {
   { "-expect-msg-callback", &TestConfig::expect_msg_callback },
   { "-handshaker-path", &TestConfig::handshaker_path },
   { "-delegated-credential", &TestConfig::delegated_credential },
+  { "-expect-early-data-reason", &TestConfig::expect_early_data_reason },
 };
 
 const Flag<std::string> kBase64Flags[] = {

@@ -2266,6 +2266,9 @@ struct SSL3_STATE {
   // which resumed a session.
   int32_t ticket_age_skew = 0;
 
+  // ssl_early_data_reason stores details on why 0-RTT was accepted or rejected.
+  enum ssl_early_data_reason_t early_data_reason = ssl_early_data_unknown;
+
   // aead_read_ctx is the current read cipher state.
   UniquePtr<SSLAEADContext> aead_read_ctx;
 

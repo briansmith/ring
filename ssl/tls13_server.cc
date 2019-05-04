@@ -307,16 +307,15 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
 
 static enum ssl_ticket_aead_result_t select_session(
     SSL_HANDSHAKE *hs, uint8_t *out_alert, UniquePtr<SSL_SESSION> *out_session,
-    int32_t *out_ticket_age_skew, const SSLMessage &msg,
-    const SSL_CLIENT_HELLO *client_hello) {
+    int32_t *out_ticket_age_skew, bool *out_offered_ticket,
+    const SSLMessage &msg, const SSL_CLIENT_HELLO *client_hello) {
   SSL *const ssl = hs->ssl;
-  *out_session = NULL;
+  *out_session = nullptr;
 
-  // Decode the ticket if we agreed on a PSK key exchange mode.
   CBS pre_shared_key;
-  if (!hs->accept_psk_mode ||
-      !ssl_client_hello_get_extension(client_hello, &pre_shared_key,
-                                      TLSEXT_TYPE_pre_shared_key)) {
+  *out_offered_ticket = ssl_client_hello_get_extension(
+      client_hello, &pre_shared_key, TLSEXT_TYPE_pre_shared_key);
+  if (!*out_offered_ticket) {
     return ssl_ticket_aead_ignore_ticket;
   }
 
@@ -335,6 +334,11 @@ static enum ssl_ticket_aead_result_t select_session(
                                                 &client_ticket_age, out_alert,
                                                 &pre_shared_key)) {
     return ssl_ticket_aead_error;
+  }
+
+  // If the peer did not offer psk_dhe, ignore the resumption.
+  if (!hs->accept_psk_mode) {
+    return ssl_ticket_aead_ignore_ticket;
   }
 
   // TLS 1.3 session tickets are renewed separately as part of the
@@ -406,10 +410,18 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
 
   uint8_t alert = SSL_AD_DECODE_ERROR;
   UniquePtr<SSL_SESSION> session;
-  switch (select_session(hs, &alert, &session, &ssl->s3->ticket_age_skew, msg,
-                         &client_hello)) {
+  bool offered_ticket = false;
+  switch (select_session(hs, &alert, &session, &ssl->s3->ticket_age_skew,
+                         &offered_ticket, msg, &client_hello)) {
     case ssl_ticket_aead_ignore_ticket:
       assert(!session);
+      if (!ssl->enable_early_data) {
+        ssl->s3->early_data_reason = ssl_early_data_disabled;
+      } else if (!offered_ticket) {
+        ssl->s3->early_data_reason = ssl_early_data_no_session_offered;
+      } else {
+        ssl->s3->early_data_reason = ssl_early_data_session_not_resumed;
+      }
       if (!ssl_get_new_session(hs, 1 /* server */)) {
         ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_INTERNAL_ERROR);
         return ssl_hs_error;
@@ -422,17 +434,23 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       hs->new_session =
           SSL_SESSION_dup(session.get(), SSL_SESSION_DUP_AUTH_ONLY);
 
-      if (ssl->enable_early_data &&
-          // Early data must be acceptable for this ticket.
-          session->ticket_max_early_data != 0 &&
-          // The client must have offered early data.
-          hs->early_data_offered &&
+      if (!ssl->enable_early_data) {
+        ssl->s3->early_data_reason = ssl_early_data_disabled;
+      } else if (session->ticket_max_early_data == 0) {
+        ssl->s3->early_data_reason = ssl_early_data_unsupported_for_session;
+      } else if (!hs->early_data_offered) {
+        ssl->s3->early_data_reason = ssl_early_data_peer_declined;
+      } else if (ssl->s3->channel_id_valid) {
           // Channel ID is incompatible with 0-RTT.
-          !ssl->s3->channel_id_valid &&
-          // If Token Binding is negotiated, reject 0-RTT.
-          !ssl->s3->token_binding_negotiated &&
-          // The negotiated ALPN must match the one in the ticket.
-          MakeConstSpan(ssl->s3->alpn_selected) == session->early_alpn) {
+        ssl->s3->early_data_reason = ssl_early_data_channel_id;
+      } else if (ssl->s3->token_binding_negotiated) {
+          // Token Binding is incompatible with 0-RTT.
+        ssl->s3->early_data_reason = ssl_early_data_token_binding;
+      } else if (MakeConstSpan(ssl->s3->alpn_selected) != session->early_alpn) {
+        // The negotiated ALPN must match the one in the ticket.
+        ssl->s3->early_data_reason = ssl_early_data_alpn_mismatch;
+      } else {
+        ssl->s3->early_data_reason = ssl_early_data_accepted;
         ssl->s3->early_data_accepted = true;
       }
 
@@ -499,7 +517,10 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
   bool need_retry;
   if (!resolve_ecdhe_secret(hs, &need_retry, &client_hello)) {
     if (need_retry) {
-      ssl->s3->early_data_accepted = false;
+      if (ssl->s3->early_data_accepted) {
+        ssl->s3->early_data_reason = ssl_early_data_hello_retry_request;
+        ssl->s3->early_data_accepted = false;
+      }
       ssl->s3->skip_early_data = true;
       ssl->method->next_message(ssl);
       if (!hs->transcript.UpdateForHelloRetryRequest()) {

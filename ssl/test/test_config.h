@@ -174,6 +174,7 @@ struct TestConfig {
   bool export_traffic_secrets = false;
   bool key_update = false;
   std::string delegated_credential;
+  std::string expect_early_data_reason;
 
   int argc;
   char **argv;

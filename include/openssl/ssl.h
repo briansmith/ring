@@ -3311,6 +3311,44 @@ OPENSSL_EXPORT int SSL_export_early_keying_material(
     SSL *ssl, uint8_t *out, size_t out_len, const char *label, size_t label_len,
     const uint8_t *context, size_t context_len);
 
+// SSL_get_ticket_age_skew returns the difference, in seconds, between the
+// client-sent ticket age and the server-computed value in TLS 1.3 server
+// connections which resumed a session.
+OPENSSL_EXPORT int32_t SSL_get_ticket_age_skew(const SSL *ssl);
+
+enum ssl_early_data_reason_t BORINGSSL_ENUM_INT {
+  // The handshake has not progressed far enough for the 0-RTT status to be
+  // known.
+  ssl_early_data_unknown,
+  // 0-RTT is disabled for this connection.
+  ssl_early_data_disabled,
+  // 0-RTT was accepted.
+  ssl_early_data_accepted,
+  // The negotiated protocol version does not support 0-RTT.
+  ssl_early_data_protocol_version,
+  // The peer declined to offer or accept 0-RTT for an unknown reason.
+  ssl_early_data_peer_declined,
+  // The client did not offer a session.
+  ssl_early_data_no_session_offered,
+  // The server declined to resume the session.
+  ssl_early_data_session_not_resumed,
+  // The session does not support 0-RTT.
+  ssl_early_data_unsupported_for_session,
+  // The server sent a HelloRetryRequest.
+  ssl_early_data_hello_retry_request,
+  // The negotiated ALPN protocol did not match the session.
+  ssl_early_data_alpn_mismatch,
+  // The connection negotiated Channel ID, which is incompatible with 0-RTT.
+  ssl_early_data_channel_id,
+  // The connection negotiated token binding, which is incompatible with 0-RTT.
+  ssl_early_data_token_binding,
+};
+
+// SSL_get_early_data_reason returns details why 0-RTT was accepted or rejected
+// on |ssl|. This is primarily useful on the server.
+OPENSSL_EXPORT enum ssl_early_data_reason_t SSL_get_early_data_reason(
+    const SSL *ssl);
+
 
 // Alerts.
 //
@@ -3814,11 +3852,6 @@ OPENSSL_EXPORT void SSL_CTX_set_grease_enabled(SSL_CTX *ctx, int enabled);
 // SSL_max_seal_overhead returns the maximum overhead, in bytes, of sealing a
 // record with |ssl|.
 OPENSSL_EXPORT size_t SSL_max_seal_overhead(const SSL *ssl);
-
-// SSL_get_ticket_age_skew returns the difference, in seconds, between the
-// client-sent ticket age and the server-computed value in TLS 1.3 server
-// connections which resumed a session.
-OPENSSL_EXPORT int32_t SSL_get_ticket_age_skew(const SSL *ssl);
 
 // SSL_CTX_set_false_start_allowed_without_alpn configures whether connections
 // on |ctx| may use False Start (if |SSL_MODE_ENABLE_FALSE_START| is enabled)

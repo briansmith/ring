@@ -297,13 +297,14 @@ extern "C" {
 // to do this only for C++. However, the ABI type between C and C++ need to have
 // equal sizes, which is confirmed in a unittest.
 #define BORINGSSL_ENUM_INT : int
-enum ssl_private_key_result_t BORINGSSL_ENUM_INT;
-enum ssl_ticket_aead_result_t BORINGSSL_ENUM_INT;
-enum ssl_verify_result_t BORINGSSL_ENUM_INT;
+enum ssl_early_data_reason_t BORINGSSL_ENUM_INT;
 enum ssl_encryption_level_t BORINGSSL_ENUM_INT;
+enum ssl_private_key_result_t BORINGSSL_ENUM_INT;
 enum ssl_renegotiate_mode_t BORINGSSL_ENUM_INT;
 enum ssl_select_cert_result_t BORINGSSL_ENUM_INT;
 enum ssl_select_cert_result_t BORINGSSL_ENUM_INT;
+enum ssl_ticket_aead_result_t BORINGSSL_ENUM_INT;
+enum ssl_verify_result_t BORINGSSL_ENUM_INT;
 #else
 #define BORINGSSL_ENUM_INT
 #endif

@@ -450,6 +450,10 @@ bool SSL_apply_handback(SSL *ssl, Span<const uint8_t> handback) {
   s3->aead_write_ctx->SetVersionIfNullCipher(ssl->version);
   s3->hs->cert_request = cert_request;
 
+  // TODO(davidben): When handoff for TLS 1.3 is added, serialize
+  // |early_data_reason| and stabilize the constants.
+  s3->early_data_reason = ssl_early_data_protocol_version;
+
   Array<uint8_t> key_block;
   if ((type == handback_after_session_resumption ||
        type == handback_after_handshake) &&

@@ -2057,20 +2057,46 @@ static bool ext_psk_key_exchange_modes_parse_clienthello(SSL_HANDSHAKE *hs,
 
 static bool ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
   SSL *const ssl = hs->ssl;
-  if (!ssl->enable_early_data ||
-      // Session must be 0-RTT capable.
-      ssl->session == nullptr ||
-      ssl_session_protocol_version(ssl->session.get()) < TLS1_3_VERSION ||
-      ssl->session->ticket_max_early_data == 0 ||
-      // The second ClientHello never offers early data.
-      hs->received_hello_retry_request ||
-      // In case ALPN preferences changed since this session was established,
-      // avoid reporting a confusing value in |SSL_get0_alpn_selected|.
-      (!ssl->session->early_alpn.empty() &&
-       !ssl_is_alpn_protocol_allowed(hs, ssl->session->early_alpn))) {
+  // The second ClientHello never offers early data, and we must have already
+  // filled in |early_data_reason| by this point.
+  if (hs->received_hello_retry_request) {
+    assert(ssl->s3->early_data_reason != ssl_early_data_unknown);
     return true;
   }
 
+  if (!ssl->enable_early_data) {
+    ssl->s3->early_data_reason = ssl_early_data_disabled;
+    return true;
+  }
+
+  if (hs->max_version < TLS1_3_VERSION) {
+    // We discard inapplicable sessions, so this is redundant with the session
+    // checks below, but we check give a more useful reason.
+    ssl->s3->early_data_reason = ssl_early_data_protocol_version;
+    return true;
+  }
+
+  if (ssl->session == nullptr) {
+    ssl->s3->early_data_reason = ssl_early_data_no_session_offered;
+    return true;
+  }
+
+  if (ssl_session_protocol_version(ssl->session.get()) < TLS1_3_VERSION ||
+      ssl->session->ticket_max_early_data == 0) {
+    ssl->s3->early_data_reason = ssl_early_data_unsupported_for_session;
+    return true;
+  }
+
+  // In case ALPN preferences changed since this session was established, avoid
+  // reporting a confusing value in |SSL_get0_alpn_selected| and sending early
+  // data we know will be rejected.
+  if (!ssl->session->early_alpn.empty() &&
+      !ssl_is_alpn_protocol_allowed(hs, ssl->session->early_alpn)) {
+    ssl->s3->early_data_reason = ssl_early_data_alpn_mismatch;
+    return true;
+  }
+
+  // |early_data_reason| will be filled in later when the server responds.
   hs->early_data_offered = true;
 
   if (!CBB_add_u16(out, TLSEXT_TYPE_early_data) ||
@@ -2083,11 +2109,26 @@ static bool ext_early_data_add_clienthello(SSL_HANDSHAKE *hs, CBB *out) {
 }
 
 static bool ext_early_data_parse_serverhello(SSL_HANDSHAKE *hs,
-                                             uint8_t *out_alert, CBS *contents) {
+                                             uint8_t *out_alert,
+                                             CBS *contents) {
   SSL *const ssl = hs->ssl;
   if (contents == NULL) {
+    if (hs->early_data_offered && !hs->received_hello_retry_request) {
+      ssl->s3->early_data_reason = ssl->s3->session_reused
+                                       ? ssl_early_data_peer_declined
+                                       : ssl_early_data_session_not_resumed;
+    } else {
+      // We already filled in |early_data_reason| when declining to offer 0-RTT
+      // or handling the implicit HelloRetryRequest reject.
+      assert(ssl->s3->early_data_reason != ssl_early_data_unknown);
+    }
     return true;
   }
+
+  // If we received an HRR, the second ClientHello never offers early data, so
+  // the extensions logic will automatically reject early data extensions as
+  // unsolicited. This covered by the ServerAcceptsEarlyDataOnHRR test.
+  assert(!hs->received_hello_retry_request);
 
   if (CBS_len(contents) != 0) {
     *out_alert = SSL_AD_DECODE_ERROR;
@@ -2100,6 +2141,7 @@ static bool ext_early_data_parse_serverhello(SSL_HANDSHAKE *hs,
     return false;
   }
 
+  ssl->s3->early_data_reason = ssl_early_data_accepted;
   ssl->s3->early_data_accepted = true;
   return true;
 }
@@ -3061,6 +3103,9 @@ bool ssl_add_clienthello_tlsext(SSL_HANDSHAKE *hs, CBB *out,
     return false;
   }
 
+  // Note we may send multiple ClientHellos for DTLS HelloVerifyRequest and TLS
+  // 1.3 HelloRetryRequest. For the latter, the extensions may change, so it is
+  // important to reset this value.
   hs->extensions.sent = 0;
 
   for (size_t i = 0; i < kNumExtensions; i++) {

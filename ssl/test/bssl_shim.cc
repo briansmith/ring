@@ -389,6 +389,37 @@ static bool CheckAuthProperties(SSL *ssl, bool is_resume,
   return true;
 }
 
+static const char *EarlyDataReasonToString(ssl_early_data_reason_t reason) {
+  switch (reason) {
+    case ssl_early_data_unknown:
+      return "unknown";
+    case ssl_early_data_disabled:
+      return "disabled";
+    case ssl_early_data_accepted:
+      return "accepted";
+    case ssl_early_data_protocol_version:
+      return "protocol_version";
+    case ssl_early_data_peer_declined:
+      return "peer_declined";
+    case ssl_early_data_no_session_offered:
+      return "no_session_offered";
+    case ssl_early_data_session_not_resumed:
+      return "session_not_resumed";
+    case ssl_early_data_unsupported_for_session:
+      return "unsupported_for_session";
+    case ssl_early_data_hello_retry_request:
+      return "hello_retry_request";
+    case ssl_early_data_alpn_mismatch:
+      return "alpn_mismatch";
+    case ssl_early_data_channel_id:
+      return "channel_id";
+    case ssl_early_data_token_binding:
+      return "token_binding";
+  }
+
+  abort();
+}
+
 // CheckHandshakeProperties checks, immediately after |ssl| completes its
 // initial handshake (or False Starts), whether all the properties are
 // consistent with the test configuration and invariants.
@@ -596,6 +627,15 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
               SSL_early_data_accepted(ssl) ? "" : " not");
       return false;
     }
+
+    const char *early_data_reason =
+        EarlyDataReasonToString(SSL_get_early_data_reason(ssl));
+    if (!config->expect_early_data_reason.empty() &&
+        config->expect_early_data_reason != early_data_reason) {
+      fprintf(stderr, "Early data reason was \"%s\", expected \"%s\"\n",
+              early_data_reason, config->expect_early_data_reason.c_str());
+      return false;
+    }
   }
 
   if (!config->psk.empty()) {
@@ -699,6 +739,16 @@ static bool DoConnection(bssl::UniquePtr<SSL_SESSION> *out_session,
     if (!SSL_in_early_data(ssl.get()) ||
         !CheckHandshakeProperties(ssl.get(), is_resume, config)) {
       fprintf(stderr, "SSL_in_early_data returned false before reset.\n");
+      return false;
+    }
+
+    // Client pre- and post-0-RTT reject states are considered logically
+    // different connections with different test expections. Check that the test
+    // did not mistakenly configure reason expectations on the wrong one.
+    if (!config->expect_early_data_reason.empty()) {
+      fprintf(stderr,
+              "Test error: client reject -expect-early-data-reason flags "
+              "should be configured with -on-retry, not -on-resume.\n");
       return false;
     }
 

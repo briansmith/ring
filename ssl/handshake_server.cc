@@ -635,6 +635,8 @@ static enum ssl_hs_wait_t do_select_certificate(SSL_HANDSHAKE *hs) {
     return ssl_hs_ok;
   }
 
+  ssl->s3->early_data_reason = ssl_early_data_protocol_version;
+
   SSL_CLIENT_HELLO client_hello;
   if (!ssl_client_hello_init(ssl, &client_hello, msg)) {
     return ssl_hs_error;
