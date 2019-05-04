@@ -279,23 +279,23 @@ static uint16_t GetProtocolVersion(const SSL *ssl) {
 // after a renegotiation, that authentication-related properties match |config|.
 static bool CheckAuthProperties(SSL *ssl, bool is_resume,
                                 const TestConfig *config) {
-  if (!config->expected_ocsp_response.empty()) {
+  if (!config->expect_ocsp_response.empty()) {
     const uint8_t *data;
     size_t len;
     SSL_get0_ocsp_response(ssl, &data, &len);
-    if (config->expected_ocsp_response.size() != len ||
-        OPENSSL_memcmp(config->expected_ocsp_response.data(), data, len) != 0) {
+    if (config->expect_ocsp_response.size() != len ||
+        OPENSSL_memcmp(config->expect_ocsp_response.data(), data, len) != 0) {
       fprintf(stderr, "OCSP response mismatch\n");
       return false;
     }
   }
 
-  if (!config->expected_signed_cert_timestamps.empty()) {
+  if (!config->expect_signed_cert_timestamps.empty()) {
     const uint8_t *data;
     size_t len;
     SSL_get0_signed_cert_timestamp_list(ssl, &data, &len);
-    if (config->expected_signed_cert_timestamps.size() != len ||
-        OPENSSL_memcmp(config->expected_signed_cert_timestamps.data(), data,
+    if (config->expect_signed_cert_timestamps.size() != len ||
+        OPENSSL_memcmp(config->expect_signed_cert_timestamps.data(), data,
                        len) != 0) {
       fprintf(stderr, "SCT list mismatch\n");
       return false;
@@ -492,23 +492,23 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     return false;
   }
 
-  if (!config->expected_server_name.empty()) {
+  if (!config->expect_server_name.empty()) {
     const char *server_name =
         SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
     if (server_name == nullptr ||
-        server_name != config->expected_server_name) {
+        server_name != config->expect_server_name) {
       fprintf(stderr, "servername mismatch (got %s; want %s)\n",
-              server_name, config->expected_server_name.c_str());
+              server_name, config->expect_server_name.c_str());
       return false;
     }
   }
 
-  if (!config->expected_next_proto.empty()) {
+  if (!config->expect_next_proto.empty()) {
     const uint8_t *next_proto;
     unsigned next_proto_len;
     SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
-    if (next_proto_len != config->expected_next_proto.size() ||
-        OPENSSL_memcmp(next_proto, config->expected_next_proto.data(),
+    if (next_proto_len != config->expect_next_proto.size() ||
+        OPENSSL_memcmp(next_proto, config->expect_next_proto.data(),
                        next_proto_len) != 0) {
       fprintf(stderr, "negotiated next proto mismatch\n");
       return false;
@@ -519,48 +519,48 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     const uint8_t *alpn_proto;
     unsigned alpn_proto_len;
     SSL_get0_alpn_selected(ssl, &alpn_proto, &alpn_proto_len);
-    if (alpn_proto_len != config->expected_alpn.size() ||
-        OPENSSL_memcmp(alpn_proto, config->expected_alpn.data(),
+    if (alpn_proto_len != config->expect_alpn.size() ||
+        OPENSSL_memcmp(alpn_proto, config->expect_alpn.data(),
                        alpn_proto_len) != 0) {
       fprintf(stderr, "negotiated alpn proto mismatch\n");
       return false;
     }
   }
 
-  if (!config->expected_quic_transport_params.empty()) {
+  if (!config->expect_quic_transport_params.empty()) {
     const uint8_t *peer_params;
     size_t peer_params_len;
     SSL_get_peer_quic_transport_params(ssl, &peer_params, &peer_params_len);
-    if (peer_params_len != config->expected_quic_transport_params.size() ||
+    if (peer_params_len != config->expect_quic_transport_params.size() ||
         OPENSSL_memcmp(peer_params,
-                       config->expected_quic_transport_params.data(),
+                       config->expect_quic_transport_params.data(),
                        peer_params_len) != 0) {
       fprintf(stderr, "QUIC transport params mismatch\n");
       return false;
     }
   }
 
-  if (!config->expected_channel_id.empty()) {
+  if (!config->expect_channel_id.empty()) {
     uint8_t channel_id[64];
     if (!SSL_get_tls_channel_id(ssl, channel_id, sizeof(channel_id))) {
       fprintf(stderr, "no channel id negotiated\n");
       return false;
     }
-    if (config->expected_channel_id.size() != 64 ||
-        OPENSSL_memcmp(config->expected_channel_id.data(), channel_id, 64) !=
+    if (config->expect_channel_id.size() != 64 ||
+        OPENSSL_memcmp(config->expect_channel_id.data(), channel_id, 64) !=
             0) {
       fprintf(stderr, "channel id mismatch\n");
       return false;
     }
   }
 
-  if (config->expected_token_binding_param != -1) {
+  if (config->expect_token_binding_param != -1) {
     if (!SSL_is_token_binding_negotiated(ssl)) {
       fprintf(stderr, "no Token Binding negotiated\n");
       return false;
     }
     if (SSL_get_negotiated_token_binding_param(ssl) !=
-        static_cast<uint8_t>(config->expected_token_binding_param)) {
+        static_cast<uint8_t>(config->expect_token_binding_param)) {
       fprintf(stderr, "Token Binding param mismatch\n");
       return false;
     }

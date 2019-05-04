@@ -6669,7 +6669,7 @@ func addExtensionTests() {
 			flags: []string{
 				"-token-binding-params",
 				base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-				"-expected-token-binding-param",
+				"-expect-token-binding-param",
 				"2",
 			},
 		})
@@ -6718,7 +6718,7 @@ func addExtensionTests() {
 			flags: []string{
 				"-token-binding-params",
 				base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-				"-expected-token-binding-param",
+				"-expect-token-binding-param",
 				"2",
 			},
 		})
@@ -6754,7 +6754,7 @@ func addExtensionTests() {
 			flags: []string{
 				"-token-binding-params",
 				base64.StdEncoding.EncodeToString([]byte{2, 1, 0}),
-				"-expected-token-binding-param",
+				"-expect-token-binding-param",
 				"2",
 			},
 		})
@@ -6772,7 +6772,7 @@ func addExtensionTests() {
 			flags: []string{
 				"-token-binding-params",
 				base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-				"-expected-token-binding-param",
+				"-expect-token-binding-param",
 				"2",
 			},
 		})
@@ -6803,7 +6803,7 @@ func addExtensionTests() {
 			flags: []string{
 				"-token-binding-params",
 				base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-				"-expected-token-binding-param",
+				"-expect-token-binding-param",
 				"2",
 			},
 			shouldFail:    true,
@@ -6823,7 +6823,7 @@ func addExtensionTests() {
 			flags: []string{
 				"-token-binding-params",
 				base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-				"-expected-token-binding-param",
+				"-expect-token-binding-param",
 				"2",
 			},
 			shouldFail:    true,
@@ -6843,7 +6843,7 @@ func addExtensionTests() {
 			flags: []string{
 				"-token-binding-params",
 				base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-				"-expected-token-binding-param",
+				"-expect-token-binding-param",
 				"2",
 			},
 			shouldFail:    true,
@@ -6879,7 +6879,7 @@ func addExtensionTests() {
 			flags: []string{
 				"-token-binding-params",
 				base64.StdEncoding.EncodeToString([]byte{0, 1, 2}),
-				"-expected-token-binding-param",
+				"-expect-token-binding-param",
 				"2",
 			},
 		})
@@ -7044,7 +7044,7 @@ func addExtensionTests() {
 				flags: []string{
 					"-quic-transport-params",
 					base64.StdEncoding.EncodeToString([]byte{3, 4}),
-					"-expected-quic-transport-params",
+					"-expect-quic-transport-params",
 					base64.StdEncoding.EncodeToString([]byte{1, 2}),
 				},
 				expectedQUICTransportParams: []byte{3, 4},
@@ -7061,7 +7061,7 @@ func addExtensionTests() {
 				flags: []string{
 					"-quic-transport-params",
 					base64.StdEncoding.EncodeToString([]byte{3, 4}),
-					"-expected-quic-transport-params",
+					"-expect-quic-transport-params",
 					base64.StdEncoding.EncodeToString([]byte{1, 2}),
 				},
 				expectedQUICTransportParams: []byte{3, 4},
@@ -7105,7 +7105,7 @@ func addExtensionTests() {
 					QUICTransportParams: []byte{1, 2},
 				},
 				flags: []string{
-					"-expected-quic-transport-params",
+					"-expect-quic-transport-params",
 					base64.StdEncoding.EncodeToString([]byte{1, 2}),
 				},
 				shouldFail:    true,

@@ -154,16 +154,16 @@ const Flag<std::string> kStringFlags[] = {
     {"-write-settings", &TestConfig::write_settings},
     {"-key-file", &TestConfig::key_file},
     {"-cert-file", &TestConfig::cert_file},
-    {"-expect-server-name", &TestConfig::expected_server_name},
+    {"-expect-server-name", &TestConfig::expect_server_name},
     {"-advertise-npn", &TestConfig::advertise_npn},
-    {"-expect-next-proto", &TestConfig::expected_next_proto},
+    {"-expect-next-proto", &TestConfig::expect_next_proto},
     {"-select-next-proto", &TestConfig::select_next_proto},
     {"-send-channel-id", &TestConfig::send_channel_id},
     {"-host-name", &TestConfig::host_name},
     {"-advertise-alpn", &TestConfig::advertise_alpn},
-    {"-expect-alpn", &TestConfig::expected_alpn},
-    {"-expect-late-alpn", &TestConfig::expected_late_alpn},
-    {"-expect-advertised-alpn", &TestConfig::expected_advertised_alpn},
+    {"-expect-alpn", &TestConfig::expect_alpn},
+    {"-expect-late-alpn", &TestConfig::expect_late_alpn},
+    {"-expect-advertised-alpn", &TestConfig::expect_advertised_alpn},
     {"-select-alpn", &TestConfig::select_alpn},
     {"-psk", &TestConfig::psk},
     {"-psk-identity", &TestConfig::psk_identity},
@@ -173,7 +173,7 @@ const Flag<std::string> kStringFlags[] = {
     {"-export-context", &TestConfig::export_context},
     {"-expect-peer-cert-file", &TestConfig::expect_peer_cert_file},
     {"-use-client-ca-list", &TestConfig::use_client_ca_list},
-    {"-expect-client-ca-list", &TestConfig::expected_client_ca_list},
+    {"-expect-client-ca-list", &TestConfig::expect_client_ca_list},
     {"-expect-msg-callback", &TestConfig::expect_msg_callback},
     {"-handshaker-path", &TestConfig::handshaker_path},
     {"-delegated-credential", &TestConfig::delegated_credential},
@@ -181,25 +181,24 @@ const Flag<std::string> kStringFlags[] = {
 };
 
 const Flag<std::string> kBase64Flags[] = {
-    {"-expect-certificate-types", &TestConfig::expected_certificate_types},
-    {"-expect-channel-id", &TestConfig::expected_channel_id},
+    {"-expect-certificate-types", &TestConfig::expect_certificate_types},
+    {"-expect-channel-id", &TestConfig::expect_channel_id},
     {"-token-binding-params", &TestConfig::send_token_binding_params},
-    {"-expect-ocsp-response", &TestConfig::expected_ocsp_response},
+    {"-expect-ocsp-response", &TestConfig::expect_ocsp_response},
     {"-expect-signed-cert-timestamps",
-     &TestConfig::expected_signed_cert_timestamps},
+     &TestConfig::expect_signed_cert_timestamps},
     {"-ocsp-response", &TestConfig::ocsp_response},
     {"-signed-cert-timestamps", &TestConfig::signed_cert_timestamps},
     {"-ticket-key", &TestConfig::ticket_key},
     {"-quic-transport-params", &TestConfig::quic_transport_params},
-    {"-expected-quic-transport-params",
-     &TestConfig::expected_quic_transport_params},
+    {"-expect-quic-transport-params",
+     &TestConfig::expect_quic_transport_params},
 };
 
 const Flag<int> kIntFlags[] = {
     {"-port", &TestConfig::port},
     {"-resume-count", &TestConfig::resume_count},
-    {"-expected-token-binding-param",
-     &TestConfig::expected_token_binding_param},
+    {"-expect-token-binding-param", &TestConfig::expect_token_binding_param},
     {"-min-version", &TestConfig::min_version},
     {"-max-version", &TestConfig::max_version},
     {"-expect-version", &TestConfig::expect_version},
@@ -224,7 +223,7 @@ const Flag<int> kIntFlags[] = {
 const Flag<std::vector<int>> kIntVectorFlags[] = {
     {"-signing-prefs", &TestConfig::signing_prefs},
     {"-verify-prefs", &TestConfig::verify_prefs},
-    {"-expect-peer-verify-pref", &TestConfig::expected_peer_verify_prefs},
+    {"-expect-peer-verify-pref", &TestConfig::expect_peer_verify_prefs},
     {"-curves", &TestConfig::curves},
 };
 
@@ -402,9 +401,9 @@ static int ServerNameCallback(SSL *ssl, int *out_alert, void *arg) {
   const TestConfig *config = GetTestConfig(ssl);
   const char *server_name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
   if (server_name == nullptr ||
-      std::string(server_name) != config->expected_server_name) {
+      std::string(server_name) != config->expect_server_name) {
     fprintf(stderr, "servername mismatch (got %s; want %s)\n", server_name,
-            config->expected_server_name.c_str());
+            config->expect_server_name.c_str());
     return SSL_TLSEXT_ERR_ALERT_FATAL;
   }
 
@@ -617,9 +616,9 @@ static int AlpnSelectCallback(SSL *ssl, const uint8_t **out, uint8_t *outlen,
     return SSL_TLSEXT_ERR_NOACK;
   }
 
-  if (!config->expected_advertised_alpn.empty() &&
-      (config->expected_advertised_alpn.size() != inlen ||
-       OPENSSL_memcmp(config->expected_advertised_alpn.data(), in, inlen) !=
+  if (!config->expect_advertised_alpn.empty() &&
+      (config->expect_advertised_alpn.size() != inlen ||
+       OPENSSL_memcmp(config->expect_advertised_alpn.data(), in, inlen) !=
            0)) {
     fprintf(stderr, "bad ALPN select callback inputs\n");
     exit(1);
@@ -633,7 +632,7 @@ static int AlpnSelectCallback(SSL *ssl, const uint8_t **out, uint8_t *outlen,
 
 static bool CheckVerifyCallback(SSL *ssl) {
   const TestConfig *config = GetTestConfig(ssl);
-  if (!config->expected_ocsp_response.empty()) {
+  if (!config->expect_ocsp_response.empty()) {
     const uint8_t *data;
     size_t len;
     SSL_get0_ocsp_response(ssl, &data, &len);
@@ -846,22 +845,22 @@ static bssl::UniquePtr<STACK_OF(X509_NAME)> DecodeHexX509Names(
 
 static bool CheckPeerVerifyPrefs(SSL *ssl) {
   const TestConfig *config = GetTestConfig(ssl);
-  if (!config->expected_peer_verify_prefs.empty()) {
+  if (!config->expect_peer_verify_prefs.empty()) {
     const uint16_t *peer_sigalgs;
     size_t num_peer_sigalgs =
         SSL_get0_peer_verify_algorithms(ssl, &peer_sigalgs);
-    if (config->expected_peer_verify_prefs.size() != num_peer_sigalgs) {
+    if (config->expect_peer_verify_prefs.size() != num_peer_sigalgs) {
       fprintf(stderr,
               "peer verify preferences length mismatch (got %zu, wanted %zu)\n",
-              num_peer_sigalgs, config->expected_peer_verify_prefs.size());
+              num_peer_sigalgs, config->expect_peer_verify_prefs.size());
       return false;
     }
     for (size_t i = 0; i < num_peer_sigalgs; i++) {
       if (static_cast<int>(peer_sigalgs[i]) !=
-          config->expected_peer_verify_prefs[i]) {
+          config->expect_peer_verify_prefs[i]) {
         fprintf(stderr,
                 "peer verify preference %zu mismatch (got %04x, wanted %04x\n",
-                i, peer_sigalgs[i], config->expected_peer_verify_prefs[i]);
+                i, peer_sigalgs[i], config->expect_peer_verify_prefs[i]);
         return false;
       }
     }
@@ -876,22 +875,22 @@ static bool CheckCertificateRequest(SSL *ssl) {
     return false;
   }
 
-  if (!config->expected_certificate_types.empty()) {
+  if (!config->expect_certificate_types.empty()) {
     const uint8_t *certificate_types;
     size_t certificate_types_len =
         SSL_get0_certificate_types(ssl, &certificate_types);
-    if (certificate_types_len != config->expected_certificate_types.size() ||
+    if (certificate_types_len != config->expect_certificate_types.size() ||
         OPENSSL_memcmp(certificate_types,
-                       config->expected_certificate_types.data(),
+                       config->expect_certificate_types.data(),
                        certificate_types_len) != 0) {
       fprintf(stderr, "certificate types mismatch\n");
       return false;
     }
   }
 
-  if (!config->expected_client_ca_list.empty()) {
+  if (!config->expect_client_ca_list.empty()) {
     bssl::UniquePtr<STACK_OF(X509_NAME)> expected =
-        DecodeHexX509Names(config->expected_client_ca_list);
+        DecodeHexX509Names(config->expect_client_ca_list);
     const size_t num_expected = sk_X509_NAME_num(expected.get());
 
     const STACK_OF(X509_NAME) *received = SSL_get_client_CA_list(ssl);
@@ -1098,7 +1097,7 @@ static enum ssl_select_cert_result_t SelectCertificateCallback(
   const TestConfig *config = GetTestConfig(client_hello->ssl);
   GetTestState(client_hello->ssl)->early_callback_called = true;
 
-  if (!config->expected_server_name.empty()) {
+  if (!config->expect_server_name.empty()) {
     const uint8_t *extension_data;
     size_t extension_len;
     CBS extension, server_name_list, host_name;
@@ -1123,8 +1122,8 @@ static enum ssl_select_cert_result_t SelectCertificateCallback(
     }
 
     if (!CBS_mem_equal(&host_name,
-                       (const uint8_t *)config->expected_server_name.data(),
-                       config->expected_server_name.size())) {
+                       (const uint8_t *)config->expect_server_name.data(),
+                       config->expect_server_name.size())) {
       fprintf(stderr, "Server name mismatch.\n");
     }
   }
@@ -1239,7 +1238,7 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
     SSL_CTX_set_grease_enabled(ssl_ctx.get(), 1);
   }
 
-  if (!expected_server_name.empty()) {
+  if (!expect_server_name.empty()) {
     SSL_CTX_set_tlsext_servername_callback(ssl_ctx.get(), ServerNameCallback);
   }
 
@@ -1519,7 +1518,7 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   if (no_ticket) {
     SSL_set_options(ssl.get(), SSL_OP_NO_TICKET);
   }
-  if (!expected_channel_id.empty() || enable_channel_id) {
+  if (!expect_channel_id.empty() || enable_channel_id) {
     SSL_set_tls_channel_id_enabled(ssl.get(), 1);
   }
   if (!send_channel_id.empty()) {
