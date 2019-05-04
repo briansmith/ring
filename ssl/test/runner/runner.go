@@ -11330,6 +11330,96 @@ func addSessionTicketTests() {
 		},
 	})
 
+	// Test that ticket age skew up to 60 seconds in either direction is accepted.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-TicketAgeSkew-Forward-60-Accept",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendTicketAge:           70 * time.Second,
+				SendEarlyData:           [][]byte{{1, 2, 3, 4}},
+				ExpectEarlyDataAccepted: true,
+				ExpectHalfRTTData:       [][]byte{{254, 253, 252, 251}},
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-resumption-delay", "10",
+			"-expect-ticket-age-skew", "60",
+			// 0-RTT is accepted.
+			"-enable-early-data",
+			"-on-resume-expect-accept-early-data",
+			"-on-resume-expect-early-data-reason", "accept",
+		},
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-TicketAgeSkew-Backward-60-Accept",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendTicketAge:           10 * time.Second,
+				SendEarlyData:           [][]byte{{1, 2, 3, 4}},
+				ExpectEarlyDataAccepted: true,
+				ExpectHalfRTTData:       [][]byte{{254, 253, 252, 251}},
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-resumption-delay", "70",
+			"-expect-ticket-age-skew", "-60",
+			// 0-RTT is accepted.
+			"-enable-early-data",
+			"-on-resume-expect-accept-early-data",
+			"-on-resume-expect-early-data-reason", "accept",
+		},
+	})
+
+	// Test that ticket age skew beyond 60 seconds in either direction is rejected.
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-TicketAgeSkew-Forward-61-Reject",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendTicketAge:           71 * time.Second,
+				SendEarlyData:           [][]byte{{1, 2, 3, 4}},
+				ExpectEarlyDataAccepted: false,
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-resumption-delay", "10",
+			"-expect-ticket-age-skew", "61",
+			// 0-RTT is rejected.
+			"-enable-early-data",
+			"-expect-reject-early-data",
+			"-on-resume-expect-early-data-reason", "ticket_age_skew",
+		},
+	})
+	testCases = append(testCases, testCase{
+		testType: serverTest,
+		name:     "TLS13-TicketAgeSkew-Backward-61-Reject",
+		config: Config{
+			MaxVersion: VersionTLS13,
+			Bugs: ProtocolBugs{
+				SendTicketAge:           10 * time.Second,
+				SendEarlyData:           [][]byte{{1, 2, 3, 4}},
+				ExpectEarlyDataAccepted: false,
+			},
+		},
+		resumeSession: true,
+		flags: []string{
+			"-resumption-delay", "71",
+			"-expect-ticket-age-skew", "-61",
+			// 0-RTT is rejected.
+			"-enable-early-data",
+			"-expect-reject-early-data",
+			"-on-resume-expect-early-data-reason", "ticket_age_skew",
+		},
+	})
+
 	testCases = append(testCases, testCase{
 		testType: clientTest,
 		name:     "TLS13-SendTicketEarlyDataInfo",

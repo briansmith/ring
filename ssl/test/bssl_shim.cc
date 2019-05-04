@@ -415,6 +415,8 @@ static const char *EarlyDataReasonToString(ssl_early_data_reason_t reason) {
       return "channel_id";
     case ssl_early_data_token_binding:
       return "token_binding";
+    case ssl_early_data_ticket_age_skew:
+      return "ticket_age_skew";
   }
 
   abort();

@@ -3342,6 +3342,8 @@ enum ssl_early_data_reason_t BORINGSSL_ENUM_INT {
   ssl_early_data_channel_id,
   // The connection negotiated token binding, which is incompatible with 0-RTT.
   ssl_early_data_token_binding,
+  // The client and server ticket age were too far apart.
+  ssl_early_data_ticket_age_skew,
 };
 
 // SSL_get_early_data_reason returns details why 0-RTT was accepted or rejected
