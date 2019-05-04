@@ -4532,7 +4532,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			flags: []string{
 				"-enable-early-data",
 				"-expect-ticket-supports-early-data",
-				"-expect-accept-early-data",
+				"-on-resume-expect-accept-early-data",
 				"-on-resume-shim-writes-first",
 			},
 		})
@@ -4561,7 +4561,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 				flags: []string{
 					"-enable-early-data",
 					"-expect-ticket-supports-early-data",
-					"-expect-accept-early-data",
+					"-on-resume-expect-accept-early-data",
 					"-on-resume-read-with-unfinished-write",
 					"-on-resume-shim-writes-first",
 				},
@@ -4612,7 +4612,7 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 			resumeSession: true,
 			flags: []string{
 				"-enable-early-data",
-				"-expect-accept-early-data",
+				"-on-resume-expect-accept-early-data",
 			},
 			shouldFail:    true,
 			expectedError: ":TOO_MUCH_READ_EARLY_DATA:",
@@ -10129,7 +10129,7 @@ func addExportKeyingMaterialTests() {
 				flags: []string{
 					"-enable-early-data",
 					"-expect-ticket-supports-early-data",
-					"-expect-accept-early-data",
+					"-on-resume-expect-accept-early-data",
 					"-on-resume-export-keying-material", "1024",
 					"-on-resume-export-label", "label",
 					"-on-resume-export-context", "context",
@@ -10160,7 +10160,7 @@ func addExportKeyingMaterialTests() {
 				flags: []string{
 					"-enable-early-data",
 					"-expect-ticket-supports-early-data",
-					"-expect-accept-early-data",
+					"-on-resume-expect-accept-early-data",
 					"-on-resume-export-early-keying-material", "1024",
 					"-on-resume-export-label", "label",
 					"-on-resume-export-context", "context",
@@ -10187,7 +10187,7 @@ func addExportKeyingMaterialTests() {
 				flags: []string{
 					"-enable-early-data",
 					"-expect-ticket-supports-early-data",
-					"-expect-accept-early-data",
+					"-on-resume-expect-accept-early-data",
 					// Handshake twice on the client to force
 					// handshake confirmation.
 					"-handshake-twice",
@@ -12329,7 +12329,7 @@ func addTLS13HandshakeTests() {
 		flags: []string{
 			"-enable-early-data",
 			"-expect-ticket-supports-early-data",
-			"-expect-accept-early-data",
+			"-on-resume-expect-accept-early-data",
 			"-on-resume-shim-writes-first",
 		},
 	})
@@ -12373,7 +12373,7 @@ func addTLS13HandshakeTests() {
 		resumeSession: true,
 		flags: []string{
 			"-enable-early-data",
-			"-expect-accept-early-data",
+			"-on-resume-expect-accept-early-data",
 		},
 	})
 
@@ -12394,7 +12394,7 @@ func addTLS13HandshakeTests() {
 		resumeSession: true,
 		flags: []string{
 			"-enable-early-data",
-			"-expect-accept-early-data",
+			"-on-resume-expect-accept-early-data",
 		},
 	})
 
@@ -13460,7 +13460,7 @@ func addTLS13HandshakeTests() {
 			"-enable-early-data",
 			"-expect-ticket-supports-early-data",
 			"-send-channel-id", path.Join(*resourceDir, channelIDKeyFile),
-			"-expect-accept-early-data",
+			"-on-resume-expect-accept-early-data",
 		},
 	})
 
@@ -13504,7 +13504,7 @@ func addTLS13HandshakeTests() {
 		expectChannelID: false,
 		flags: []string{
 			"-enable-early-data",
-			"-expect-accept-early-data",
+			"-on-resume-expect-accept-early-data",
 			"-enable-channel-id",
 		},
 	})
@@ -13565,7 +13565,7 @@ func addTLS13HandshakeTests() {
 		flags: []string{
 			"-enable-early-data",
 			"-expect-ticket-supports-early-data",
-			"-expect-accept-early-data",
+			"-on-resume-expect-accept-early-data",
 			"-expect-version", strconv.Itoa(VersionTLS13),
 		},
 	})
@@ -13590,7 +13590,7 @@ func addTLS13HandshakeTests() {
 		flags: []string{
 			"-enable-early-data",
 			"-expect-ticket-supports-early-data",
-			"-expect-accept-early-data",
+			"-on-resume-expect-accept-early-data",
 		},
 		shouldFail:         true,
 		expectedError:      ":DIGEST_CHECK_FAILED:",
@@ -13614,7 +13614,7 @@ func addTLS13HandshakeTests() {
 		resumeSession: true,
 		flags: []string{
 			"-enable-early-data",
-			"-expect-accept-early-data",
+			"-on-resume-expect-accept-early-data",
 		},
 		shouldFail:         true,
 		expectedError:      ":DIGEST_CHECK_FAILED:",
@@ -13639,7 +13639,7 @@ func addTLS13HandshakeTests() {
 		flags: []string{
 			"-enable-early-data",
 			"-expect-ticket-supports-early-data",
-			"-expect-accept-early-data",
+			"-on-resume-expect-accept-early-data",
 		},
 		shouldFail:    true,
 		expectedError: ":DECODE_ERROR:",
@@ -14390,7 +14390,7 @@ func addExtraHandshakeTests() {
 		flags: []string{
 			"-async",
 			"-enable-early-data",
-			"-expect-accept-early-data",
+			"-on-resume-expect-accept-early-data",
 			"-no-op-extra-handshake",
 		},
 	})

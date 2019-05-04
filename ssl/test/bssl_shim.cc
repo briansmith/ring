@@ -587,7 +587,8 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     return false;
   }
 
-  if (is_resume && !SSL_in_early_data(ssl)) {
+  // The early data status is only applicable after the handshake is confirmed.
+  if (!SSL_in_early_data(ssl)) {
     if ((config->expect_accept_early_data && !SSL_early_data_accepted(ssl)) ||
         (config->expect_reject_early_data && SSL_early_data_accepted(ssl))) {
       fprintf(stderr,
