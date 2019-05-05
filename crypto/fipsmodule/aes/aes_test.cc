@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 
 #include <openssl/aes.h>
+#include <openssl/rand.h>
 
 #include "internal.h"
 #include "../../internal.h"
@@ -304,7 +305,8 @@ TEST(AESTest, ABI) {
 #endif
 
     if (bsaes_capable()) {
-      aes_nohw_set_encrypt_key(kKey, bits, &key);
+      vpaes_set_encrypt_key(kKey, bits, &key);
+      CHECK_ABI(vpaes_encrypt_key_to_bsaes, &key, &key);
       for (size_t blocks : block_counts) {
         SCOPED_TRACE(blocks);
         if (blocks != 0) {
@@ -312,7 +314,8 @@ TEST(AESTest, ABI) {
         }
       }
 
-      aes_nohw_set_decrypt_key(kKey, bits, &key);
+      vpaes_set_decrypt_key(kKey, bits, &key);
+      CHECK_ABI(vpaes_decrypt_key_to_bsaes, &key, &key);
       for (size_t blocks : block_counts) {
         SCOPED_TRACE(blocks);
         CHECK_ABI(bsaes_cbc_encrypt, buf, buf, AES_BLOCK_SIZE * blocks, &key,
@@ -374,3 +377,52 @@ TEST(AESTest, ABI) {
   }
 }
 #endif  // SUPPORTS_ABI_TEST
+
+#if defined(BSAES) && !defined(BORINGSSL_SHARED_LIBRARY)
+static Bytes AESKeyToBytes(const AES_KEY *key) {
+  return Bytes(reinterpret_cast<const uint8_t *>(key), sizeof(*key));
+}
+
+TEST(AESTest, VPAESToBSAESConvert) {
+  const int kNumIterations = 1000;
+  for (int i = 0; i < kNumIterations; i++) {
+    uint8_t key[256 / 8];
+    RAND_bytes(key, sizeof(key));
+    SCOPED_TRACE(Bytes(key));
+    for (unsigned bits : {128u, 192u, 256u}) {
+      SCOPED_TRACE(bits);
+      for (bool enc : {false, true}) {
+        SCOPED_TRACE(enc);
+        AES_KEY nohw, vpaes, bsaes;
+        OPENSSL_memset(&nohw, 0xaa, sizeof(nohw));
+        OPENSSL_memset(&vpaes, 0xaa, sizeof(vpaes));
+        OPENSSL_memset(&bsaes, 0xaa, sizeof(bsaes));
+
+        if (enc) {
+          aes_nohw_set_encrypt_key(key, bits, &nohw);
+          vpaes_set_encrypt_key(key, bits, &vpaes);
+          vpaes_encrypt_key_to_bsaes(&bsaes, &vpaes);
+        } else {
+          aes_nohw_set_decrypt_key(key, bits, &nohw);
+          vpaes_set_decrypt_key(key, bits, &vpaes);
+          vpaes_decrypt_key_to_bsaes(&bsaes, &vpaes);
+        }
+
+        // Although not fatal, stop running if this fails, otherwise we'll spam
+        // the user's console.
+        ASSERT_EQ(AESKeyToBytes(&nohw), AESKeyToBytes(&bsaes));
+
+        // Repeat the test in-place.
+        OPENSSL_memcpy(&bsaes, &vpaes, sizeof(AES_KEY));
+        if (enc) {
+          vpaes_encrypt_key_to_bsaes(&bsaes, &vpaes);
+        } else {
+          vpaes_decrypt_key_to_bsaes(&bsaes, &vpaes);
+        }
+
+        ASSERT_EQ(AESKeyToBytes(&nohw), AESKeyToBytes(&bsaes));
+      }
+    }
+  }
+}
+#endif  // !NO_ASM && X86_64 && !SHARED_LIBRARY

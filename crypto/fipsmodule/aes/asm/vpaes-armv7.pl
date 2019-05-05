@@ -198,6 +198,50 @@ _vpaes_consts:
 	.quad	0x07E4A34047A4E300, 0x1DFEB95A5DBEF91A
 	.quad	0x5F36B5DC83EA6900, 0x2841C2ABF49D1E77
 
+
+@ Additional constants for converting to bsaes.
+
+@ .Lk_opt_then_skew applies skew(opt(x)) XOR 0x63, where skew is the linear
+@ transform in the AES S-box. 0x63 is incorporated into the low half of the
+@ table. This was computed with the following script:
+@
+@   def u64s_to_u128(x, y):
+@       return x | (y << 64)
+@   def u128_to_u64s(w):
+@       return w & ((1<<64)-1), w >> 64
+@   def get_byte(w, i):
+@       return (w >> (i*8)) & 0xff
+@   def apply_table(table, b):
+@       lo = b & 0xf
+@       hi = b >> 4
+@       return get_byte(table[0], lo) ^ get_byte(table[1], hi)
+@   def opt(b):
+@       table = [
+@           u64s_to_u128(0xFF9F4929D6B66000, 0xF7974121DEBE6808),
+@           u64s_to_u128(0x01EDBD5150BCEC00, 0xE10D5DB1B05C0CE0),
+@       ]
+@       return apply_table(table, b)
+@   def rot_byte(b, n):
+@       return 0xff & ((b << n) | (b >> (8-n)))
+@   def skew(x):
+@       return (x ^ rot_byte(x, 1) ^ rot_byte(x, 2) ^ rot_byte(x, 3) ^
+@               rot_byte(x, 4))
+@   table = [0, 0]
+@   for i in range(16):
+@       table[0] |= (skew(opt(i)) ^ 0x63) << (i*8)
+@       table[1] |= skew(opt(i<<4)) << (i*8)
+@   print("\t.quad\t0x%016x, 0x%016x" % u128_to_u64s(table[0]))
+@   print("\t.quad\t0x%016x, 0x%016x" % u128_to_u64s(table[1]))
+.Lk_opt_then_skew:
+	.quad	0x9cb8436798bc4763, 0x6440bb9f6044bf9b
+	.quad	0x1f30062936192f00, 0xb49bad829db284ab
+
+@ .Lk_decrypt_transform is a permutation which performs an 8-bit left-rotation
+@ followed by a byte-swap on each 32-bit word of a vector. E.g., 0x11223344
+@ becomes 0x22334411 and then 0x11443322.
+.Lk_decrypt_transform:
+	.quad	0x0704050603000102, 0x0f0c0d0e0b08090a
+
 .asciz  "Vector Permutation AES for ARMv7 NEON, Mike Hamburg (Stanford University)"
 .size	_vpaes_consts,.-_vpaes_consts
 .align	6
@@ -1044,6 +1088,196 @@ vpaes_set_decrypt_key:
 	vldmia	sp!, {d8-d15}
 	ldmia	sp!, {r7-r11, pc}	@ return
 .size	vpaes_set_decrypt_key,.-vpaes_set_decrypt_key
+___
+}
+
+{
+my ($out, $inp) = map("r$_", (0..1));
+my ($s0F, $s63, $s63_raw, $mc_forward) = map("q$_", (9..12));
+
+$code .= <<___;
+@ void vpaes_encrypt_key_to_bsaes(AES_KEY *bsaes, const AES_KEY *vpaes);
+.globl	vpaes_encrypt_key_to_bsaes
+.type	vpaes_encrypt_key_to_bsaes,%function
+.align	4
+vpaes_encrypt_key_to_bsaes:
+	stmdb	sp!, {r11, lr}
+
+	@ See _vpaes_schedule_core for the key schedule logic. In particular,
+	@ _vpaes_schedule_transform(.Lk_ipt) (section 2.2 of the paper),
+	@ _vpaes_schedule_mangle (section 4.3), and .Lschedule_mangle_last
+	@ contain the transformations not in the bsaes representation. This
+	@ function inverts those transforms.
+	@
+	@ Note also that bsaes-armv7.pl expects aes-armv4.pl's key
+	@ representation, which does not match the other aes_nohw_*
+	@ implementations. The ARM aes_nohw_* stores each 32-bit word
+	@ byteswapped, as a convenience for (unsupported) big-endian ARM, at the
+	@ cost of extra REV and VREV32 operations in little-endian ARM.
+
+	adr	r2, .Lk_mc_forward
+	adr	r3, .Lk_sr+0x10
+	adr	r11, .Lk_opt		@ Input to _vpaes_schedule_transform.
+	vld1.64	{$mc_forward}, [r2]
+	vmov.i8	$s0F, #0x0f		@ Required by _vpaes_schedule_transform
+	vmov.i8	$s63, #0x5b		@ .Lk_s63 from vpaes-x86_64
+	vmov.i8	$s63_raw, #0x63		@ .LK_s63 without .Lk_ipt applied
+
+	@ vpaes stores one fewer round count than bsaes, but the number of keys
+	@ is the same.
+	ldr	r2, [$inp,#240]
+	add	r2, r2, #1
+	str	r2, [$out,#240]
+
+	@ The first key is transformed with _vpaes_schedule_transform(.Lk_ipt).
+	@ Invert this with .Lk_opt.
+	vld1.64	{q0}, [$inp]!
+	bl	_vpaes_schedule_transform
+	vrev32.8	q0, q0
+	vst1.64	{q0}, [$out]!
+
+	@ The middle keys have _vpaes_schedule_transform(.Lk_ipt) applied,
+	@ followed by _vpaes_schedule_mangle. _vpaes_schedule_mangle XORs 0x63,
+	@ multiplies by the circulant 0,1,1,1, then applies ShiftRows.
+.Loop_enc_key_to_bsaes:
+	vld1.64	{q0}, [$inp]!
+
+	@ Invert the ShiftRows step (see .Lschedule_mangle_both). Note we cycle
+	@ r3 in the opposite direction and start at .Lk_sr+0x10 instead of 0x30.
+	@ We use r3 rather than r8 to avoid a callee-saved register.
+	vld1.64	{q1}, [r3]
+	vtbl.8  q2#lo, {q0}, q1#lo
+	vtbl.8  q2#hi, {q0}, q1#hi
+	add	r3, r3, #16
+	and	r3, r3, #~(1<<6)
+	vmov	q0, q2
+
+	@ Handle the last key differently.
+	subs	r2, r2, #1
+	beq	.Loop_enc_key_to_bsaes_last
+
+	@ Multiply by the circulant. This is its own inverse.
+	vtbl.8	q1#lo, {q0}, $mc_forward#lo
+	vtbl.8	q1#hi, {q0}, $mc_forward#hi
+	vmov	q0, q1
+	vtbl.8	q2#lo, {q1}, $mc_forward#lo
+	vtbl.8	q2#hi, {q1}, $mc_forward#hi
+	veor	q0, q0, q2
+	vtbl.8	q1#lo, {q2}, $mc_forward#lo
+	vtbl.8	q1#hi, {q2}, $mc_forward#hi
+	veor	q0, q0, q1
+
+	@ XOR and finish.
+	veor	q0, q0, $s63
+	bl	_vpaes_schedule_transform
+	vrev32.8	q0, q0
+	vst1.64	{q0}, [$out]!
+	b	.Loop_enc_key_to_bsaes
+
+.Loop_enc_key_to_bsaes_last:
+	@ The final key does not have a basis transform (note
+	@ .Lschedule_mangle_last inverts the original transform). It only XORs
+	@ 0x63 and applies ShiftRows. The latter was already inverted in the
+	@ loop. Note that, because we act on the original representation, we use
+	@ $s63_raw, not $s63.
+	veor	q0, q0, $s63_raw
+	vrev32.8	q0, q0
+	vst1.64	{q0}, [$out]
+
+	@ Wipe registers which contained key material.
+	veor	q0, q0, q0
+	veor	q1, q1, q1
+	veor	q2, q2, q2
+
+	ldmia	sp!, {r11, pc}	@ return
+.size	vpaes_encrypt_key_to_bsaes,.-vpaes_encrypt_key_to_bsaes
+
+@ void vpaes_decrypt_key_to_bsaes(AES_KEY *vpaes, const AES_KEY *bsaes);
+.globl	vpaes_decrypt_key_to_bsaes
+.type	vpaes_decrypt_key_to_bsaes,%function
+.align	4
+vpaes_decrypt_key_to_bsaes:
+	stmdb	sp!, {r11, lr}
+
+	@ See _vpaes_schedule_core for the key schedule logic. Note vpaes
+	@ computes the decryption key schedule in reverse. Additionally,
+	@ aes-x86_64.pl shares some transformations, so we must only partially
+	@ invert vpaes's transformations. In general, vpaes computes in a
+	@ different basis (.Lk_ipt and .Lk_opt) and applies the inverses of
+	@ MixColumns, ShiftRows, and the affine part of the AES S-box (which is
+	@ split into a linear skew and XOR of 0x63). We undo all but MixColumns.
+	@
+	@ Note also that bsaes-armv7.pl expects aes-armv4.pl's key
+	@ representation, which does not match the other aes_nohw_*
+	@ implementations. The ARM aes_nohw_* stores each 32-bit word
+	@ byteswapped, as a convenience for (unsupported) big-endian ARM, at the
+	@ cost of extra REV and VREV32 operations in little-endian ARM.
+
+	adr	r2, .Lk_decrypt_transform
+	adr	r3, .Lk_sr+0x30
+	adr	r11, .Lk_opt_then_skew	@ Input to _vpaes_schedule_transform.
+	vld1.64	{$mc_forward}, [r2]	@ Reuse $mc_forward from encryption.
+	vmov.i8	$s0F, #0x0f		@ Required by _vpaes_schedule_transform
+
+	@ vpaes stores one fewer round count than bsaes, but the number of keys
+	@ is the same.
+	ldr	r2, [$inp,#240]
+	add	r2, r2, #1
+	str	r2, [$out,#240]
+
+	@ Undo the basis change and reapply the S-box affine transform. See
+	@ .Lschedule_mangle_last.
+	vld1.64	{q0}, [$inp]!
+	bl	_vpaes_schedule_transform
+	vrev32.8	q0, q0
+	vst1.64	{q0}, [$out]!
+
+	@ See _vpaes_schedule_mangle for the transform on the middle keys. Note
+	@ it simultaneously inverts MixColumns and the S-box affine transform.
+	@ See .Lk_dksd through .Lk_dks9.
+.Loop_dec_key_to_bsaes:
+	vld1.64	{q0}, [$inp]!
+
+	@ Invert the ShiftRows step (see .Lschedule_mangle_both). Note going
+	@ forwards cancels inverting for which direction we cycle r3. We use r3
+	@ rather than r8 to avoid a callee-saved register.
+	vld1.64	{q1}, [r3]
+	vtbl.8  q2#lo, {q0}, q1#lo
+	vtbl.8  q2#hi, {q0}, q1#hi
+	add	r3, r3, #64-16
+	and	r3, r3, #~(1<<6)
+	vmov	q0, q2
+
+	@ Handle the last key differently.
+	subs	r2, r2, #1
+	beq	.Loop_dec_key_to_bsaes_last
+
+	@ Undo the basis change and reapply the S-box affine transform.
+	bl	_vpaes_schedule_transform
+
+	@ Rotate each word by 8 bytes (cycle the rows) and then byte-swap. We
+	@ combine the two operations in .Lk_decrypt_transform.
+	@
+	@ TODO(davidben): Where does the rotation come from?
+	vtbl.8	q1#lo, {q0}, $mc_forward#lo
+	vtbl.8	q1#hi, {q0}, $mc_forward#hi
+
+	vst1.64	{q1}, [$out]!
+	b	.Loop_dec_key_to_bsaes
+
+.Loop_dec_key_to_bsaes_last:
+	@ The final key only inverts ShiftRows (already done in the loop). See
+	@ .Lschedule_am_decrypting. Its basis is not transformed.
+	vrev32.8	q0, q0
+	vst1.64	{q0}, [$out]!
+
+	@ Wipe registers which contained key material.
+	veor	q0, q0, q0
+	veor	q1, q1, q1
+	veor	q2, q2, q2
+
+	ldmia	sp!, {r11, pc}	@ return
+.size	vpaes_decrypt_key_to_bsaes,.-vpaes_decrypt_key_to_bsaes
 ___
 }
 

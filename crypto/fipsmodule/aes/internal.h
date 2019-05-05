@@ -134,12 +134,14 @@ void aes_hw_ecb_encrypt(const uint8_t *in, uint8_t *out, size_t length,
 
 
 #if defined(BSAES)
-// On platforms where BSAES gets defined (just above), then these functions are
-// provided by asm. Note |bsaes_cbc_encrypt| requires |enc| to be zero.
+// Note |bsaes_cbc_encrypt| requires |enc| to be zero.
 void bsaes_cbc_encrypt(const uint8_t *in, uint8_t *out, size_t length,
                        const AES_KEY *key, uint8_t ivec[16], int enc);
 void bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
                                 const AES_KEY *key, const uint8_t ivec[16]);
+// VPAES to BSAES conversions are available on all BSAES platforms.
+void vpaes_encrypt_key_to_bsaes(AES_KEY *out_bsaes, const AES_KEY *vpaes);
+void vpaes_decrypt_key_to_bsaes(AES_KEY *out_bsaes, const AES_KEY *vpaes);
 #else
 OPENSSL_INLINE char bsaes_capable(void) { return 0; }
 
@@ -154,6 +156,16 @@ OPENSSL_INLINE void bsaes_cbc_encrypt(const uint8_t *in, uint8_t *out,
 OPENSSL_INLINE void bsaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out,
                                                size_t len, const AES_KEY *key,
                                                const uint8_t ivec[16]) {
+  abort();
+}
+
+OPENSSL_INLINE void vpaes_encrypt_key_to_bsaes(AES_KEY *out_bsaes,
+                                               const AES_KEY *vpaes) {
+  abort();
+}
+
+OPENSSL_INLINE void vpaes_decrypt_key_to_bsaes(AES_KEY *out_bsaes,
+                                               const AES_KEY *vpaes) {
   abort();
 }
 #endif  // !BSAES
