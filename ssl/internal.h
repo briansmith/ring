@@ -2677,7 +2677,8 @@ void ssl_session_renew_timeout(SSL *ssl, SSL_SESSION *session,
 
 void ssl_update_cache(SSL_HANDSHAKE *hs, int mode);
 
-int ssl_send_alert(SSL *ssl, int level, int desc);
+void ssl_send_alert(SSL *ssl, int level, int desc);
+int ssl_send_alert_impl(SSL *ssl, int level, int desc);
 bool ssl3_get_message(const SSL *ssl, SSLMessage *out);
 ssl_open_record_t ssl3_open_handshake(SSL *ssl, size_t *out_consumed,
                                       uint8_t *out_alert, Span<uint8_t> in);

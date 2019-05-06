@@ -1195,7 +1195,7 @@ int SSL_shutdown(SSL *ssl) {
 
   if (ssl->s3->write_shutdown != ssl_shutdown_close_notify) {
     // Send a close_notify.
-    if (ssl_send_alert(ssl, SSL3_AL_WARNING, SSL_AD_CLOSE_NOTIFY) <= 0) {
+    if (ssl_send_alert_impl(ssl, SSL3_AL_WARNING, SSL_AD_CLOSE_NOTIFY) <= 0) {
       return -1;
     }
   } else if (ssl->s3->alert_dispatch) {
@@ -1242,7 +1242,7 @@ int SSL_send_fatal_alert(SSL *ssl, uint8_t alert) {
     return ssl->method->dispatch_alert(ssl);
   }
 
-  return ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+  return ssl_send_alert_impl(ssl, SSL3_AL_FATAL, alert);
 }
 
 int SSL_set_quic_transport_params(SSL *ssl, const uint8_t *params,

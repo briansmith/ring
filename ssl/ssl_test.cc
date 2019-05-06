@@ -5350,5 +5350,94 @@ TEST(SSLTest, EnumTypes) {
   EXPECT_EQ(1, BORINGSSL_enum_c_type_test());
 }
 
+TEST_P(SSLVersionTest, DoubleSSLError) {
+  // Connect the inner SSL connections.
+  ASSERT_TRUE(Connect());
+
+  // Make a pair of |BIO|s which wrap |client_| and |server_|.
+  UniquePtr<BIO_METHOD> bio_method(BIO_meth_new(0, nullptr));
+  ASSERT_TRUE(bio_method);
+  ASSERT_TRUE(BIO_meth_set_read(
+      bio_method.get(), [](BIO *bio, char *out, int len) -> int {
+        SSL *ssl = static_cast<SSL *>(BIO_get_data(bio));
+        int ret = SSL_read(ssl, out, len);
+        int ssl_ret = SSL_get_error(ssl, ret);
+        if (ssl_ret == SSL_ERROR_WANT_READ) {
+          BIO_set_retry_read(bio);
+        }
+        return ret;
+      }));
+  ASSERT_TRUE(BIO_meth_set_write(
+      bio_method.get(), [](BIO *bio, const char *in, int len) -> int {
+        SSL *ssl = static_cast<SSL *>(BIO_get_data(bio));
+        int ret = SSL_write(ssl, in, len);
+        int ssl_ret = SSL_get_error(ssl, ret);
+        if (ssl_ret == SSL_ERROR_WANT_WRITE) {
+          BIO_set_retry_write(bio);
+        }
+        return ret;
+      }));
+  ASSERT_TRUE(BIO_meth_set_ctrl(
+      bio_method.get(), [](BIO *bio, int cmd, long larg, void *parg) -> long {
+        // |SSL| objects require |BIO_flush| support.
+        if (cmd == BIO_CTRL_FLUSH) {
+          return 1;
+        }
+        return 0;
+      }));
+
+  UniquePtr<BIO> client_bio(BIO_new(bio_method.get()));
+  ASSERT_TRUE(client_bio);
+  BIO_set_data(client_bio.get(), client_.get());
+  BIO_set_init(client_bio.get(), 1);
+
+  UniquePtr<BIO> server_bio(BIO_new(bio_method.get()));
+  ASSERT_TRUE(server_bio);
+  BIO_set_data(server_bio.get(), server_.get());
+  BIO_set_init(server_bio.get(), 1);
+
+  // Wrap the inner connections in another layer of SSL.
+  UniquePtr<SSL> client_outer(SSL_new(client_ctx_.get()));
+  ASSERT_TRUE(client_outer);
+  SSL_set_connect_state(client_outer.get());
+  SSL_set_bio(client_outer.get(), client_bio.get(), client_bio.get());
+  client_bio.release();  // |SSL_set_bio| takes ownership.
+
+  UniquePtr<SSL> server_outer(SSL_new(server_ctx_.get()));
+  ASSERT_TRUE(server_outer);
+  SSL_set_accept_state(server_outer.get());
+  SSL_set_bio(server_outer.get(), server_bio.get(), server_bio.get());
+  server_bio.release();  // |SSL_set_bio| takes ownership.
+
+  // Configure |client_outer| to reject the server certificate.
+  SSL_set_custom_verify(
+      client_outer.get(), SSL_VERIFY_PEER,
+      [](SSL *ssl, uint8_t *out_alert) -> ssl_verify_result_t {
+        return ssl_verify_invalid;
+      });
+
+  for (;;) {
+    int client_ret = SSL_do_handshake(client_outer.get());
+    int client_err = SSL_get_error(client_outer.get(), client_ret);
+    if (client_err != SSL_ERROR_WANT_READ &&
+        client_err != SSL_ERROR_WANT_WRITE) {
+      // The client handshake should terminate on a certificate verification
+      // error.
+      EXPECT_EQ(SSL_ERROR_SSL, client_err);
+      uint32_t err = ERR_peek_error();
+      EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
+      EXPECT_EQ(SSL_R_CERTIFICATE_VERIFY_FAILED, ERR_GET_REASON(err));
+      break;
+    }
+
+    // Run the server handshake and continue.
+    int server_ret = SSL_do_handshake(server_outer.get());
+    int server_err = SSL_get_error(server_outer.get(), server_ret);
+    ASSERT_TRUE(server_err == SSL_ERROR_NONE ||
+                server_err == SSL_ERROR_WANT_READ ||
+                server_err == SSL_ERROR_WANT_WRITE);
+  }
+}
+
 }  // namespace
 BSSL_NAMESPACE_END
