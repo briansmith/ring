@@ -172,6 +172,7 @@ const RING_INCLUDES: &[&str] =
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_PERL_INCLUDES: &[&str] =
     &["crypto/perlasm/arm-xlate.pl",
+      "crypto/perlasm/ppc-xlate.pl",
       "crypto/perlasm/x86gas.pl",
       "crypto/perlasm/x86nasm.pl",
       "crypto/perlasm/x86asm.pl",
