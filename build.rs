@@ -270,7 +270,7 @@ const ASM_TARGETS: &[(&str, Option<&str>, &str)] = &[
     #[cfg(target_endian = "little")]
     ("powerpc64", Some("linux"), "linux64le"),
     #[cfg(target_endian = "big")]
-    ("powerpc64", Some("linux"), "linux64le"),
+    ("powerpc64", Some("linux"), "linux64"),
     ("powerpc", Some("macos"), "osx32"),
     #[cfg(target_endian = "little")]
     ("powerpc64", Some("macos"), "osx64le"),
