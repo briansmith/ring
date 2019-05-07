@@ -85,6 +85,12 @@
 #elif defined(__mips__) && defined(__LP64__)
 #define OPENSSL_64_BIT
 #define OPENSSL_MIPS64
+#elif defined(__powerpc64__) || defined(__ppc64__) || defined(__PPC64__)
+#define OPENSSL_64_BIT
+#define OPENSSL_PPC64
+#elif defined(__powerpc__) || defined(__ppc__) || defined(__PPC__)
+#define OPENSSL_32_BIT
+#define OPENSSL_PPC32
 #else
 // Note BoringSSL only supports standard 32-bit and 64-bit two's-complement,
 // little-endian architectures. Functions will not produce the correct answer
