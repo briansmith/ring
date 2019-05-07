@@ -325,6 +325,8 @@ class GN(object):
                                 files['test_support_headers'])
       self.PrintVariableSection(out, 'crypto_test_sources',
                                 files['crypto_test'])
+      self.PrintVariableSection(out, 'crypto_test_data',
+                                files['crypto_test_data'])
       self.PrintVariableSection(out, 'ssl_test_sources', files['ssl_test'])
 
 
@@ -691,7 +693,7 @@ if __name__ == '__main__':
   parser.add_option(
       '--embed_test_data', type='choice', dest='embed_test_data',
       action='store', default="true", choices=["true", "false"],
-      help='For Bazel, don\'t embed data files in crypto_test_data.cc')
+      help='For Bazel or GN, don\'t embed data files in crypto_test_data.cc')
   options, args = parser.parse_args(sys.argv[1:])
   PREFIX = options.prefix
   EMBED_TEST_DATA = (options.embed_test_data == "true")
