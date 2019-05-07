@@ -19,7 +19,7 @@ my $globl = sub {
     my $ret;
 
     $name =~ s|^[\.\_]||;
- 
+
     SWITCH: for ($flavour) {
 	/aix/		&& do { $name = ".$name";
 				last;
@@ -27,7 +27,7 @@ my $globl = sub {
 	/osx/		&& do { $name = "_$name";
 				last;
 			      };
-	/linux.*(32|64le)/
+	/linux.*(32|64(le|v2))/
 			&& do {	$ret .= ".globl	$name\n";
 				$ret .= ".type	$name,\@function";
 				last;
@@ -51,7 +51,7 @@ my $globl = sub {
 };
 my $text = sub {
     my $ret = ($flavour =~ /aix/) ? ".csect\t.text[PR],7" : ".text";
-    $ret = ".abiversion	2\n".$ret	if ($flavour =~ /linux.*64le/);
+    $ret = ".abiversion	2\n".$ret	if ($flavour =~ /linux.*64(le|v2)/);
     $ret;
 };
 my $machine = sub {
@@ -153,7 +153,7 @@ my $vmr = sub {
 
 # Some ABIs specify vrsave, special-purpose register #256, as reserved
 # for system use.
-my $no_vrsave = ($flavour =~ /aix|linux64le/);
+my $no_vrsave = ($flavour =~ /aix|linux64(le|v2)/);
 my $mtspr = sub {
     my ($f,$idx,$ra) = @_;
     if ($idx == 256 && $no_vrsave) {
@@ -224,7 +224,7 @@ while($line=<>) {
 	my $label = $1;
 	if ($label) {
 	    printf "%s:",($GLOBALS{$label} or $label);
-	    printf "\n.localentry\t$GLOBALS{$label},0"	if ($GLOBALS{$label} && $flavour =~ /linux.*64le/);
+	    printf "\n.localentry\t$GLOBALS{$label},0"	if ($GLOBALS{$label} && $flavour =~ /linux.*64(le|v2)/);
 	}
     }
 
