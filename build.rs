@@ -37,7 +37,9 @@
 // environment variables at all, so avoid `use std::env` here.
 
 use std::{
+    borrow::Cow,
     fs::{self, DirEntry},
+    io::prelude::*,
     path::{Path, PathBuf},
     process::Command,
     time::SystemTime,
@@ -255,27 +257,19 @@ const LD_FLAGS: &[&str] = &[];
 // None means "any OS" or "any target". The first match in sequence order is
 // taken.
 const ASM_TARGETS: &[(&str, Option<&str>, &str)] = &[
-    ("x86_64", Some("ios"), "macosx"),
-    ("x86_64", Some("macos"), "macosx"),
-    ("x86_64", Some(WINDOWS), "nasm"),
-    ("x86_64", None, "elf"),
-    ("aarch64", Some("ios"), "ios64"),
-    ("aarch64", None, "linux64"),
-    ("x86", Some(WINDOWS), "win32n"),
-    ("x86", Some("ios"), "macosx"),
-    ("x86", None, "elf"),
-    ("arm", Some("ios"), "ios32"),
-    ("arm", None, "linux32"),
-    ("powerpc", Some("linux"), "linux32"),
-    #[cfg(target_endian = "little")]
-    ("powerpc64", Some("linux"), "linux64le"),
-    #[cfg(target_endian = "big")]
-    ("powerpc64", Some("linux"), "linux64"),
-    ("powerpc", Some("macos"), "osx32"),
-    #[cfg(target_endian = "little")]
-    ("powerpc64", Some("macos"), "osx64le"),
-    #[cfg(target_endian = "big")]
-    ("powerpc64", Some("macos"), "osx64"),
+    (X86_64, Some("ios"), "macosx"),
+    (X86_64, Some("macos"), "macosx"),
+    (X86_64, Some(WINDOWS), "nasm"),
+    (X86_64, None, "elf"),
+    (AARCH64, Some("ios"), "ios64"),
+    (AARCH64, None, "linux64"),
+    (X86, Some(WINDOWS), "win32n"),
+    (X86, Some("ios"), "macosx"),
+    (X86, None, "elf"),
+    (ARM, Some("ios"), "ios32"),
+    (ARM, None, "linux32"),
+    (PPC, Some("linux"), "linux32"),
+    (PPC64, Some("linux"), "linux64"),
 ];
 
 const WINDOWS: &str = "windows";
@@ -344,8 +338,32 @@ fn pregenerate_asm_main() {
             &pregenerated
         };
 
-        let perlasm_src_dsts = perlasm_src_dsts(&asm_dir, target_arch, target_os, perlasm_format);
-        perlasm(&perlasm_src_dsts, target_arch, perlasm_format, None);
+        let perlasm_format = if target_arch == PPC64 && target_os == Some("linux") {
+            let mut f = tempfile::NamedTempFile::new().unwrap();
+            f.write_all(
+                br"
+#if defined(_CALL_ELF) && (_CALL_ELF == 2)
+#  if defined(__LITTLE_ENDIAN__)
+linux64le
+#  else
+linux64v2
+#  endif
+#else
+linux64
+#endif
+",
+            )
+            .unwrap();
+            f.flush().unwrap();
+            let v = cc::Build::new().file(f.path()).expand();
+            let s = String::from_utf8(v).unwrap();
+            Cow::from(s.trim().rsplit('\n').next().unwrap().to_owned())
+        } else {
+            Cow::from(perlasm_format)
+        };
+
+        let perlasm_src_dsts = perlasm_src_dsts(&asm_dir, target_arch, target_os, &perlasm_format);
+        perlasm(&perlasm_src_dsts, target_arch, &perlasm_format, None);
 
         if target_os == Some(WINDOWS) {
             let srcs = asm_srcs(perlasm_src_dsts);
@@ -407,7 +425,8 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         .find(|entry| {
             let &(entry_arch, entry_os, _) = *entry;
             entry_arch == target.arch() && is_none_or_equals(entry_os, target.os())
-        }).unwrap();
+        })
+        .unwrap();
 
     let is_git = std::fs::metadata(".git").is_ok();
 
