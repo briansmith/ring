@@ -147,6 +147,9 @@ mod sysrand_chunk {
         #[cfg(target_arch = "x86_64")]
         const SYS_GETRANDOM: libc::c_long = 318;
 
+        #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+        const SYS_GETRANDOM: libc::c_long = 359;
+
         let chunk_len: size_t = dest.len();
         let r = unsafe { libc::syscall(SYS_GETRANDOM, dest.as_mut_ptr(), chunk_len, 0) };
         if r < 0 {
