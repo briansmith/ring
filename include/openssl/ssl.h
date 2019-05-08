@@ -3291,6 +3291,10 @@ OPENSSL_EXPORT void SSL_set_early_data_enabled(SSL *ssl, int enabled);
 // and |SSL_write| to send half-RTT data.
 OPENSSL_EXPORT int SSL_in_early_data(const SSL *ssl);
 
+// SSL_SESSION_early_data_capable returns whether early data would have been
+// attempted with |session| if enabled.
+OPENSSL_EXPORT int SSL_SESSION_early_data_capable(const SSL_SESSION *session);
+
 // SSL_early_data_accepted returns whether early data was accepted on the
 // handshake performed by |ssl|.
 OPENSSL_EXPORT int SSL_early_data_accepted(const SSL *ssl);
