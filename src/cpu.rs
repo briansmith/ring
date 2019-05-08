@@ -30,7 +30,8 @@ pub(crate) fn features() -> Features {
     {
         static INIT: spin::Once<()> = spin::Once::new();
         let () = INIT.call_once(|| {
-            #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+            #[cfg(any(target_arch = "x86", target_arch = "x86_64",
+                      target_arch = "powerpc64", target_arch = "powerpc"))]
             {
                 extern "C" {
                     fn GFp_cpuid_setup();
@@ -58,6 +59,10 @@ pub(crate) fn features() -> Features {
     Features(())
 }
 
+#[cfg_attr(
+    not(any(target_arch = "arm", target_arch = "aarch64")),
+    allow(dead_code)
+)]
 pub(crate) mod arm {
     #[cfg(all(
         any(target_os = "android", target_os = "linux"),
@@ -288,4 +293,40 @@ pub(crate) mod intel {
             assert_eq!((AVX.mask | MOVBE.mask) >> 22, 0x41);
         }
     }
+}
+
+#[cfg_attr(
+    not(any(target_arch = "powerpc", target_arch = "powerpc64")),
+    allow(dead_code)
+)]
+pub(crate) mod ppc {
+    pub(crate) struct Feature {
+        mask: u32,
+    }
+
+    impl Feature {
+        #[inline(always)]
+        pub fn available(&self, _: super::Features) -> bool {
+            #[cfg(any(target_arch = "powerpc", target_arch = "powerpc64"))]
+            {
+                extern "C" {
+                    static mut GFp_ppccap_P: u32;
+                }
+                return self.mask == self.mask & unsafe { GFp_ppccap_P };
+            }
+
+            #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+            {
+                return false;
+            }
+        }
+    }
+
+//  pub(crate) const FPU64:     Feature = Feature { mask: 1 << 0 };
+    pub(crate) const ALTIVEC:   Feature = Feature { mask: 1 << 1 };
+    pub(crate) const CRYPTO207: Feature = Feature { mask: 1 << 2 };
+//  pub(crate) const FPU:       Feature = Feature { mask: 1 << 3 };
+//  pub(crate) const MADD300:   Feature = Feature { mask: 1 << 4 };
+//  pub(crate) const MFTB:      Feature = Feature { mask: 1 << 5 };
+//  pub(crate) const MFSPR268:  Feature = Feature { mask: 1 << 6 };
 }

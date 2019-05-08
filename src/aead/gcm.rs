@@ -38,6 +38,8 @@ impl Key {
                 }
             }
 
+            #[cfg(any(target_arch = "x86_64", target_arch = "x86",
+                      target_arch = "arm", target_arch = "aarch64"))]
             Implementation::CLMUL => {
                 extern "C" {
                     fn GFp_gcm_init_clmul(key: &mut Key, h: &[u64; 2]);
@@ -54,6 +56,16 @@ impl Key {
                 }
                 unsafe {
                     GFp_gcm_init_neon(&mut key, &h);
+                }
+            }
+
+            #[cfg(any(target_arch = "powerpc64"))]
+            Implementation::POWER8 => {
+                extern "C" {
+                    fn GFp_gcm_init_p8(key: &mut Key, h: &[u64; 2]);
+                }
+                unsafe {
+                    GFp_gcm_init_p8(&mut key, &h);
                 }
             }
 
@@ -119,6 +131,8 @@ impl Context {
                 }
             }
 
+            #[cfg(any(target_arch = "x86_64", target_arch = "x86",
+                      target_arch = "arm", target_arch = "aarch64"))]
             Implementation::CLMUL => {
                 extern "C" {
                     fn GFp_gcm_ghash_clmul(
@@ -148,6 +162,21 @@ impl Context {
                 }
             }
 
+            #[cfg(any(target_arch = "powerpc64"))]
+            Implementation::POWER8 => {
+                extern "C" {
+                    fn GFp_gcm_ghash_p8(
+                        ctx: &mut Context,
+                        h_table: *const GCM128_KEY,
+                        inp: *const u8,
+                        len: size_t,
+                    );
+                }
+                unsafe {
+                    GFp_gcm_ghash_p8(self, key_aliasing, input.as_ptr(), input.len());
+                }
+            }
+
             Implementation::Fallback => {
                 extern "C" {
                     fn GFp_gcm_ghash_4bit(
@@ -170,6 +199,8 @@ impl Context {
         let key_aliasing: *const GCM128_KEY = &self.inner.key;
 
         match detect_implementation(self.cpu_features) {
+            #[cfg(any(target_arch = "x86_64", target_arch = "x86",
+                      target_arch = "arm", target_arch = "aarch64"))]
             Implementation::CLMUL => {
                 extern "C" {
                     fn GFp_gcm_gmult_clmul(ctx: &mut Context, Htable: *const GCM128_KEY);
@@ -186,6 +217,16 @@ impl Context {
                 }
                 unsafe {
                     GFp_gcm_gmult_neon(self, key_aliasing);
+                }
+            }
+
+            #[cfg(any(target_arch = "powerpc64"))]
+            Implementation::POWER8 => {
+                extern "C" {
+                    fn GFp_gcm_gmult_p8(ctx: &mut Context, Htable: *const GCM128_KEY);
+                }
+                unsafe {
+                    GFp_gcm_gmult_p8(self, key_aliasing);
                 }
             }
 
@@ -241,20 +282,36 @@ struct GCM128_CONTEXT {
 }
 
 enum Implementation {
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86",
+              target_arch = "arm", target_arch = "aarch64"))]
     CLMUL,
 
     #[cfg(target_arch = "arm")]
     NEON,
+
+    #[cfg(target_arch = "powerpc64")]
+    POWER8,
 
     Fallback,
 }
 
 #[inline]
 fn detect_implementation(cpu: cpu::Features) -> Implementation {
-    if (cpu::intel::FXSR.available(cpu) && cpu::intel::PCLMULQDQ.available(cpu))
-        || cpu::arm::PMULL.available(cpu)
+    #[cfg(any(target_arch = "powerpc64", target_arch = "powerpc"))]
     {
-        return Implementation::CLMUL;
+        if cpu::ppc::CRYPTO207.available(cpu) {
+            return Implementation::POWER8;
+        }
+    }
+
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86",
+              target_arch = "arm", target_arch = "aarch64"))]
+    {
+        if (cpu::intel::FXSR.available(cpu) && cpu::intel::PCLMULQDQ.available(cpu))
+            || cpu::arm::PMULL.available(cpu)
+        {
+            return Implementation::CLMUL;
+        }
     }
 
     #[cfg(target_arch = "arm")]

@@ -45,6 +45,7 @@ compilers = {
     "aarch64-unknown-linux-gnu" : [ "aarch64-linux-gnu-gcc" ],
     "armv7-linux-androideabi" : [ "arm-linux-androideabi-clang" ],
     "arm-unknown-linux-gnueabihf" : [ "arm-linux-gnueabihf-gcc" ],
+    "powerpc64le-unknown-linux-gnu" : [ "powerpc64le-linux-gnu-gcc" ],
     "i686-unknown-linux-gnu" : linux_compilers,
     "x86_64-unknown-linux-gnu" : linux_compilers,
     "x86_64-apple-darwin" : osx_compilers,
@@ -76,6 +77,7 @@ targets = {
         "aarch64-unknown-linux-gnu",
         "i686-unknown-linux-gnu",
         "arm-unknown-linux-gnueabihf",
+        "powerpc64le-unknown-linux-gnu",
     ],
 }
 
@@ -195,6 +197,9 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
                      "libc6-dev-armhf-cross"]
     if target == "armv7-linux-androideabi":
         packages += ["expect"]
+    if target == "powerpc64le-unknown-linux-gnu":
+        packages += ["gcc-powerpc64le-linux-gnu",
+                     "libc6-dev-ppc64el-cross"]
 
     if arch == "i686":
         if kcov == True:
@@ -222,7 +227,7 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
                          "libdw-dev",
                          "binutils-dev",
                          "libiberty-dev"]
-    elif arch not in ["aarch64", "arm", "armv7"]:
+    elif arch not in ["aarch64", "arm", "armv7", "powerpc64le", "powerpc64"]:
         raise ValueError("unexpected arch: %s" % arch)
 
     return packages

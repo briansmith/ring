@@ -34,11 +34,17 @@ armv7-linux-androideabi)
   export PATH=$HOME/android/android-sdk-linux/platform-tools:$PATH
   export PATH=$HOME/android/android-sdk-linux/tools:$PATH
   ;;
+powerpc64le-unknown-linux-gnu)
+  export QEMU_LD_PREFIX=/usr/powerpc64le-linux-gnu
+  ;;
+powerpc64-unknown-linux-gnu)
+  export QEMU_LD_PREFIX=/usr/powerpc64-linux-gnu
+  ;;
 *)
   ;;
 esac
 
-if [[ "$TARGET_X" =~ ^(arm|aarch64) && ! "$TARGET_X" =~ android ]]; then
+if [[ "$TARGET_X" =~ ^(arm|aarch64|powerpc) && ! "$TARGET_X" =~ android ]]; then
   # We need a newer QEMU than Travis has.
   # sudo is needed until the PPA and its packages are whitelisted.
   # See https://github.com/travis-ci/apt-source-whitelist/issues/271

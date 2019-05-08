@@ -102,6 +102,9 @@ pub fn check_state_layout() {
     } else if cfg!(target_arch = "x86_64") {
         // See comment above `__poly1305_block` in poly1305-x86_64.pl.
         Some(4 * (5 + 1 + 2 * 2 + 2 + 4 * 9))
+    } else if cfg!(target_arch = "powerpc64") {
+        // See comment above `GFp_poly1305_blocks_vsx` in poly1305-ppc.pl.
+        Some(4 * (5 + 1 + 2 + 2 * 2 + 4 * 9))
     } else {
         // TODO(davidben): Figure out the layout of the struct. For now,
         // `OPAQUE_LEN` is taken from OpenSSL.

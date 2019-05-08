@@ -64,6 +64,28 @@ macro_rules! limbs {
     };
 }
 
+#[cfg(all(target_pointer_width = "32", target_endian = "big"))]
+macro_rules! limbs {
+    ( $limb_b:expr, $limb_a:expr, $limb_9:expr, $limb_8:expr,
+      $limb_7:expr, $limb_6:expr, $limb_5:expr, $limb_4:expr,
+      $limb_3:expr, $limb_2:expr, $limb_1:expr, $limb_0:expr ) => {
+        [
+            u32::to_be($limb_0),
+            u32::to_be($limb_1),
+            u32::to_be($limb_2),
+            u32::to_be($limb_3),
+            u32::to_be($limb_4),
+            u32::to_be($limb_5),
+            u32::to_be($limb_6),
+            u32::to_be($limb_7),
+            u32::to_be($limb_8),
+            u32::to_be($limb_9),
+            u32::to_be($limb_a),
+            u32::to_be($limb_b),
+        ]
+    };
+}
+
 #[cfg(all(target_pointer_width = "64", target_endian = "little"))]
 macro_rules! limbs {
     ( $limb_b:expr, $limb_a:expr, $limb_9:expr, $limb_8:expr,
@@ -76,6 +98,22 @@ macro_rules! limbs {
             (($limb_7 | 0u64) << 32) | $limb_6,
             (($limb_9 | 0u64) << 32) | $limb_8,
             (($limb_b | 0u64) << 32) | $limb_a,
+        ]
+    };
+}
+
+#[cfg(all(target_pointer_width = "64", target_endian = "big"))]
+macro_rules! limbs {
+    ( $limb_b:expr, $limb_a:expr, $limb_9:expr, $limb_8:expr,
+      $limb_7:expr, $limb_6:expr, $limb_5:expr, $limb_4:expr,
+      $limb_3:expr, $limb_2:expr, $limb_1:expr, $limb_0:expr ) => {
+        [
+            ((($limb_1 | 0u64) << 32) | $limb_0).to_be(),
+            ((($limb_3 | 0u64) << 32) | $limb_2).to_be(),
+            ((($limb_5 | 0u64) << 32) | $limb_4).to_be(),
+            ((($limb_7 | 0u64) << 32) | $limb_6).to_be(),
+            ((($limb_9 | 0u64) << 32) | $limb_8).to_be(),
+            ((($limb_b | 0u64) << 32) | $limb_a).to_be(),
         ]
     };
 }

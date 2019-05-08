@@ -62,7 +62,8 @@ impl Key {
                 })?;
             }
 
-            #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+            #[cfg(any(target_arch = "x86_64", target_arch = "x86",
+                      target_arch = "powerpc64", target_arch = "powerpc"))]
             Implementation::VPAES => {
                 extern "C" {
                     fn GFp_vpaes_set_encrypt_key(
@@ -119,7 +120,8 @@ impl Key {
                 }
             }
 
-            #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+            #[cfg(any(target_arch = "x86_64", target_arch = "x86",
+                      target_arch = "powerpc64", target_arch = "powerpc"))]
             Implementation::VPAES => {
                 extern "C" {
                     fn GFp_vpaes_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
@@ -259,7 +261,8 @@ pub type Counter = nonce::Counter<BigEndian<u32>>;
 pub enum Implementation {
     HWAES = 1,
 
-    #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+    #[cfg(any(target_arch = "x86_64", target_arch = "x86",
+              target_arch = "powerpc64", target_arch = "powerpc"))]
     VPAES = 2,
 
     #[cfg(target_arch = "arm")]
@@ -269,14 +272,28 @@ pub enum Implementation {
 }
 
 fn detect_implementation(cpu_features: cpu::Features) -> Implementation {
-    if cpu::intel::AES.available(cpu_features) || cpu::arm::AES.available(cpu_features) {
-        return Implementation::HWAES;
+    #[cfg(any(target_arch = "powerpc64", target_arch = "powerpc"))]
+    {
+        if cpu::ppc::CRYPTO207.available(cpu_features) {
+            return Implementation::HWAES;
+        } else if cpu::ppc::ALTIVEC.available(cpu_features) {
+            return Implementation::VPAES;
+        }
     }
 
     #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
     {
-        if cpu::intel::SSSE3.available(cpu_features) {
+        if cpu::intel::AES.available(cpu_features) {
+            return Implementation::HWAES;
+        } else if cpu::intel::SSSE3.available(cpu_features) {
             return Implementation::VPAES;
+        }
+    }
+
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
+    {
+        if cpu::arm::AES.available(cpu_features) {
+            return Implementation::HWAES;
         }
     }
 

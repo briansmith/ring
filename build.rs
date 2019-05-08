@@ -38,6 +38,7 @@
 
 use std::{
     fs::{self, DirEntry},
+    io::Write,
     path::{Path, PathBuf},
     process::Command,
     time::SystemTime,
@@ -47,6 +48,8 @@ const X86: &str = "x86";
 const X86_64: &str = "x86_64";
 const AARCH64: &str = "aarch64";
 const ARM: &str = "arm";
+const PPC: &str = "powerpc";
+const PPC64: &str = "powerpc64";
 const NEVER: &str = "Don't ever build this file.";
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -64,6 +67,8 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[], "crypto/mem.c"),
     (&[], "crypto/fipsmodule/modes/gcm.c"),
     (&[], "third_party/fiat/curve25519.c"),
+
+    (&[NEVER], "crypto/fipsmodule/ec/ecp_nistz256_table.c"),
 
     (&[X86_64, X86], "crypto/cpu-intel.c"),
 
@@ -112,6 +117,23 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[AARCH64], "crypto/fipsmodule/ec/asm/ecp_nistz256-armv8.pl"),
     (&[AARCH64], "crypto/poly1305/asm/poly1305-armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
+
+    (&[PPC64, PPC], "crypto/ppccpuid.pl"),
+    (&[PPC64, PPC], "crypto/cpu-ppc.c"),
+
+    (&[PPC64, PPC], "crypto/fipsmodule/aes/aes_ppc.c"),
+    (&[PPC64, PPC], "crypto/fipsmodule/aes/asm/aes-ppc.pl"),
+    (&[PPC64, PPC], "crypto/fipsmodule/aes/asm/vpaes-ppc.pl"),
+    (&[PPC64, PPC], "crypto/fipsmodule/bn/asm/ppc-mont.pl"),
+    (&[PPC64, PPC], "crypto/chacha/asm/chacha-ppc.pl"),
+    (&[PPC64, PPC], "crypto/poly1305/asm/poly1305-ppc.pl"),
+    (&[PPC64, PPC], "crypto/poly1305/asm/poly1305-ppcfp.pl"),
+    (&[PPC64, PPC], SHA512_PPC),
+
+    (&[PPC64], "crypto/fipsmodule/aes/asm/aesp8-ppc.pl"),
+    (&[PPC64], "crypto/fipsmodule/ec/asm/ecp_nistz256-ppc64.pl"),
+    (&[PPC64], "crypto/fipsmodule/modes/asm/ghashp8-ppc.pl"),
+    (&[PPC64], SHA512_P8_PPC),
 ];
 
 const SHA256_X86_64: &str = "crypto/fipsmodule/sha/asm/sha256-x86_64.pl";
@@ -119,6 +141,12 @@ const SHA512_X86_64: &str = "crypto/fipsmodule/sha/asm/sha512-x86_64.pl";
 
 const SHA256_ARMV8: &str = "crypto/fipsmodule/sha/asm/sha256-armv8.pl";
 const SHA512_ARMV8: &str = "crypto/fipsmodule/sha/asm/sha512-armv8.pl";
+
+const SHA256_PPC: &str = "crypto/fipsmodule/sha/asm/sha256-ppc.pl";
+const SHA512_PPC: &str = "crypto/fipsmodule/sha/asm/sha512-ppc.pl";
+
+const SHA256_P8_PPC: &str = "crypto/fipsmodule/sha/asm/sha256p8-ppc.pl";
+const SHA512_P8_PPC: &str = "crypto/fipsmodule/sha/asm/sha512p8-ppc.pl";
 
 const RING_TEST_SRCS: &[&str] = &[("crypto/constant_time_test.c")];
 
@@ -153,7 +181,8 @@ const RING_PERL_INCLUDES: &[&str] =
       "crypto/perlasm/x86gas.pl",
       "crypto/perlasm/x86nasm.pl",
       "crypto/perlasm/x86asm.pl",
-      "crypto/perlasm/x86_64-xlate.pl"];
+      "crypto/perlasm/x86_64-xlate.pl",
+      "crypto/perlasm/ppc-xlate.pl"];
 
 const RING_BUILD_FILE: &[&str] = &["build.rs"];
 
@@ -229,8 +258,8 @@ fn cpp_flags(target: &Target) -> &'static [&'static str] {
 
 const LD_FLAGS: &[&str] = &[];
 
-// None means "any OS" or "any target". The first match in sequence order is
-// taken.
+// Used to determine perlasm format for non-ppc64 as well as
+// to pregenerate all asm files for all targets when requested.
 const ASM_TARGETS: &[(&str, Option<&str>, &str)] = &[
     ("x86_64", Some("ios"), "macosx"),
     ("x86_64", Some("macos"), "macosx"),
@@ -243,7 +272,56 @@ const ASM_TARGETS: &[(&str, Option<&str>, &str)] = &[
     ("x86", None, "elf"),
     ("arm", Some("ios"), "ios32"),
     ("arm", None, "linux32"),
+    ("powerpc64", None, "linux64"),
+    ("powerpc64", None, "linux64v2"),
+    ("powerpc64", None, "linux64le"),
+    ("powerpc", None, "linux32"),
 ];
+
+// For powerpc64, we have multiple ABIs, so determine the format
+// based on C preprocessor output (we're using the same compiler
+// to compile the resulting assembly, so this is most accurate).
+// For other archs, take the first match from ASM_TARGETS.
+fn get_perlasm_format(target: &Target) -> String {
+    if target.arch() == "powerpc64" {
+        // we support multiple ABIs for ppc64
+        let mut test_file = tempfile::NamedTempFile::new().unwrap();
+        test_file.write_all(br"
+#if defined(_CALL_ELF) && (_CALL_ELF == 2)
+#if defined(__LITTLE_ENDIAN__)
+linux64le
+#else
+linux64v2
+#endif
+#else
+linux64
+#endif
+        ").unwrap();
+        test_file.flush().unwrap();
+        let expanded = cc::Build::new().file(test_file.path()).flag("-xc-header").expand();
+        let expanded_str = String::from_utf8(expanded).unwrap();
+        String::from(expanded_str.trim().rsplit('\n').next().unwrap())
+    } else {
+        fn is_none_or_equals<T>(opt: Option<T>, other: T) -> bool
+        where
+            T: PartialEq,
+        {
+            if let Some(value) = opt {
+                value == other
+            } else {
+                true
+            }
+        }
+        let (_, _, perlasm_format) = ASM_TARGETS
+            .iter()
+            .find(|entry| {
+                let &(entry_arch, entry_os, _) = *entry;
+                entry_arch == target.arch() && is_none_or_equals(entry_os, target.os())
+            })
+            .unwrap();
+        String::from(*perlasm_format)
+    }
+}
 
 const WINDOWS: &str = "windows";
 const MSVC: &str = "msvc";
@@ -358,25 +436,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         .max()
         .unwrap();
 
-    fn is_none_or_equals<T>(opt: Option<T>, other: T) -> bool
-    where
-        T: PartialEq,
-    {
-        if let Some(value) = opt {
-            value == other
-        } else {
-            true
-        }
-    }
-
-    let (_, _, perlasm_format) = ASM_TARGETS
-        .iter()
-        .find(|entry| {
-            let &(entry_arch, entry_os, _) = *entry;
-            entry_arch == target.arch() && is_none_or_equals(entry_os, target.os())
-        })
-        .unwrap();
-
+    let perlasm_format = get_perlasm_format(target);
     let is_git = std::fs::metadata(".git").is_ok();
 
     let use_pregenerated = !is_git;
@@ -389,13 +449,13 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
     };
 
     let perlasm_src_dsts =
-        perlasm_src_dsts(asm_dir, target.arch(), Some(target.os()), perlasm_format);
+        perlasm_src_dsts(asm_dir, target.arch(), Some(target.os()), &perlasm_format);
 
     if !use_pregenerated {
         perlasm(
             &perlasm_src_dsts[..],
             target.arch(),
-            perlasm_format,
+            &perlasm_format,
             Some(includes_modified),
         );
     }
@@ -695,6 +755,8 @@ fn perlasm_src_dsts(
         };
         maybe_synthesize(SHA512_X86_64, SHA256_X86_64);
         maybe_synthesize(SHA512_ARMV8, SHA256_ARMV8);
+        maybe_synthesize(SHA512_PPC, SHA256_PPC);
+        maybe_synthesize(SHA512_P8_PPC, SHA256_P8_PPC);
     }
 
     src_dsts

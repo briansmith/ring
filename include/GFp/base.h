@@ -85,11 +85,17 @@
 #elif defined(__mips__) && defined(__LP64__)
 #define OPENSSL_64_BIT
 #define OPENSSL_MIPS64
+#elif defined(__powerpc64__)
+#define OPENSSL_64_BIT
+#if defined(__LITTLE_ENDIAN__)
+#define OPENSSL_PPC64LE
 #else
-// Note BoringSSL only supports standard 32-bit and 64-bit two's-complement,
-// little-endian architectures. Functions will not produce the correct answer
-// on other systems. Run the crypto_test binary, notably
-// crypto/compiler_test.cc, before adding a new architecture.
+#define OPENSSL_PPC64
+#endif
+#elif defined(__powerpc__)
+#define OPENSSL_32_BIT
+#define OPENSSL_PPC
+#else
 #error "Unknown target CPU"
 #endif
 
