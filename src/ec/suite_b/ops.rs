@@ -70,9 +70,18 @@ macro_rules! limbs {
       $limb_7:expr, $limb_6:expr, $limb_5:expr, $limb_4:expr,
       $limb_3:expr, $limb_2:expr, $limb_1:expr, $limb_0:expr ) => {
         [
-            $limb_0.to_be(), $limb_1.to_be(), $limb_2.to_be(), $limb_3.to_be(),
-            $limb_4.to_be(), $limb_5.to_be(), $limb_6.to_be(), $limb_7.to_be(),
-            $limb_8.to_be(), $limb_9.to_be(), $limb_a.to_be(), $limb_b.to_be(),
+            u32::to_be($limb_0),
+            u32::to_be($limb_1),
+            u32::to_be($limb_2),
+            u32::to_be($limb_3),
+            u32::to_be($limb_4),
+            u32::to_be($limb_5),
+            u32::to_be($limb_6),
+            u32::to_be($limb_7),
+            u32::to_be($limb_8),
+            u32::to_be($limb_9),
+            u32::to_be($limb_a),
+            u32::to_be($limb_b),
         ]
     };
 }
