@@ -129,6 +129,10 @@ perlasm(x86_64-mont.${ASM_EXT} bn/asm/x86_64-mont.pl)
 perlasm(x86-mont.${ASM_EXT} bn/asm/x86-mont.pl)
 
 if(FIPS_DELOCATE)
+  if(FIPS_SHARED)
+    error("Can't set both delocate and shared mode for FIPS build")
+  endif()
+
   if(OPENSSL_NO_ASM)
     # If OPENSSL_NO_ASM was defined then ASM will not have been enabled, but in
     # FIPS mode we have to have it because the module build requires going via
@@ -195,6 +199,42 @@ if(FIPS_DELOCATE)
   add_dependencies(fipsmodule global_target)
 
   set_target_properties(fipsmodule PROPERTIES LINKER_LANGUAGE C)
+elseif(FIPS_SHARED)
+  if(NOT BUILD_SHARED_LIBS)
+    error("FIPS_SHARED set but not BUILD_SHARED_LIBS")
+  endif()
+
+  add_library(
+    fipsmodule
+
+    OBJECT
+
+    is_fips.c
+    fips_shared_support.c
+  )
+
+  add_dependencies(fipsmodule global_target)
+
+  add_library(
+    bcm_library
+
+    STATIC
+
+    bcm.c
+
+    ${BCM_ASM_SOURCES}
+  )
+
+  add_dependencies(bcm_library global_target)
+
+  add_custom_command(
+    OUTPUT bcm.o
+    COMMAND ld -r -T ${CMAKE_CURRENT_SOURCE_DIR}/fips_shared.lds -o bcm.o --whole-archive $<TARGET_FILE:bcm_library>
+    DEPENDS bcm_library fips_shared.lds
+    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+  )
+
+  add_custom_target(bcm_o_target DEPENDS bcm.o)
 else()
   add_library(
     fipsmodule

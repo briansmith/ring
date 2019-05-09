@@ -369,9 +369,13 @@ if(FIPS)
   if(FIPS_BREAK_TEST)
     add_definitions("-DBORINGSSL_FIPS_BREAK_${FIPS_BREAK_TEST}=1")
   endif()
-  # Delocate does not work for ASan and MSan builds.
+  # The FIPS integrity check does not work for ASan and MSan builds.
   if(NOT ASAN AND NOT MSAN)
-    set(FIPS_DELOCATE "1")
+    if(BUILD_SHARED_LIBS)
+      set(FIPS_SHARED "1")
+    else()
+      set(FIPS_DELOCATE "1")
+    endif()
   endif()
 endif()
 

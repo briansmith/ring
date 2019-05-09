@@ -100,11 +100,16 @@
 #if defined(BORINGSSL_FIPS)
 
 #if !defined(OPENSSL_ASAN)
-// These symbols are filled in by delocate.go. They point to the start and end
-// of the module, and the location of the integrity hash, respectively.
+// These symbols are filled in by delocate.go (in static builds) or a linker
+// script (in shared builds). They point to the start and end of the module, and
+// the location of the integrity hash, respectively.
 extern const uint8_t BORINGSSL_bcm_text_start[];
 extern const uint8_t BORINGSSL_bcm_text_end[];
 extern const uint8_t BORINGSSL_bcm_text_hash[];
+#if defined(BORINGSSL_SHARED_LIBRARY)
+extern const uint8_t BORINGSSL_bcm_rodata_start[];
+extern const uint8_t BORINGSSL_bcm_rodata_end[];
+#endif
 #endif
 
 static void __attribute__((constructor))
@@ -116,13 +121,34 @@ BORINGSSL_bcm_power_on_self_test(void) {
   // .text section, which triggers the global-buffer overflow detection.
   const uint8_t *const start = BORINGSSL_bcm_text_start;
   const uint8_t *const end = BORINGSSL_bcm_text_end;
+#if defined(BORINGSSL_SHARED_LIBRARY)
+  const uint8_t *const rodata_start = BORINGSSL_bcm_rodata_start;
+  const uint8_t *const rodata_end = BORINGSSL_bcm_rodata_end;
+#endif
 
   static const uint8_t kHMACKey[64] = {0};
   uint8_t result[SHA512_DIGEST_LENGTH];
 
   unsigned result_len;
-  if (!HMAC(EVP_sha512(), kHMACKey, sizeof(kHMACKey), start, end - start,
-            result, &result_len) ||
+  HMAC_CTX hmac_ctx;
+  HMAC_CTX_init(&hmac_ctx);
+  if (!HMAC_Init_ex(&hmac_ctx, kHMACKey, sizeof(kHMACKey), EVP_sha512(),
+                    NULL /* no ENGINE */)) {
+    fprintf(stderr, "HMAC_Init_ex failed.\n");
+    goto err;
+  }
+#if defined(BORINGSSL_SHARED_LIBRARY)
+  uint64_t length = end - start;
+  HMAC_Update(&hmac_ctx, (const uint8_t *) &length, sizeof(length));
+  HMAC_Update(&hmac_ctx, start, length);
+
+  length = rodata_end - rodata_start;
+  HMAC_Update(&hmac_ctx, (const uint8_t *) &length, sizeof(length));
+  HMAC_Update(&hmac_ctx, rodata_start, length);
+#else
+  HMAC_Update(&hmac_ctx, start, end - start);
+#endif
+  if (!HMAC_Final(&hmac_ctx, result, &result_len) ||
       result_len != sizeof(result)) {
     fprintf(stderr, "HMAC failed.\n");
     goto err;

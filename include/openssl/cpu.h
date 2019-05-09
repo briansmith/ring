@@ -93,7 +93,7 @@ extern "C" {
 // bits in XCR0, so it is not necessary to check those.
 extern uint32_t OPENSSL_ia32cap_P[4];
 
-#if defined(BORINGSSL_FIPS)
+#if defined(BORINGSSL_FIPS) && !defined(BORINGSSL_SHARED_LIBRARY)
 const uint32_t *OPENSSL_ia32cap_get(void);
 #else
 OPENSSL_INLINE const uint32_t *OPENSSL_ia32cap_get(void) {
