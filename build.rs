@@ -251,14 +251,10 @@ const MSVC_OBJ_OPT: &str = "/Fo";
 const MSVC_OBJ_EXT: &str = "obj";
 
 fn main() {
-    if let Ok(package_name) = std::env::var("CARGO_PKG_NAME") {
-        if package_name == "ring" {
-            ring_build_rs_main();
-            return;
-        }
-    }
-
-    pregenerate_asm_main();
+    match std::env::var("CARGO_PKG_NAME") {
+        Ok(ref var) if var == "pregenerate_asm" => pregenerate_asm_main(),
+        _ => ring_build_rs_main(),
+    };
 }
 
 fn ring_build_rs_main() {
@@ -280,7 +276,11 @@ fn ring_build_rs_main() {
         ("o", "-o")
     };
 
-    let is_debug = env::var("DEBUG").unwrap() != "false";
+    let is_debug = match env::var("DEBUG") {
+        Ok(ref var) if var == "true" => true,
+        _ => false
+    };
+
     let target = Target {
         arch,
         os,
