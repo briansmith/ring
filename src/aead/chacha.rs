@@ -122,12 +122,30 @@ impl Key {
                 out: *mut u8,
                 in_: *const u8,
                 in_len: size_t,
-                key: &Key,
-                first_iv: &Iv,
+                key: &[u32; 8],
+                first_iv: &[u32; 4],
             );
         }
 
-        GFp_ChaCha20_ctr32(output, input, in_out_len, self, &iv);
+        let key: &[u32; 8] = core::mem::transmute(self);
+        let ctr: &[u32; 4] = core::mem::transmute(&iv);
+
+        if cfg!(target_endian = "big") {
+            // input key and counter are little endian
+            let key: [u32; 8] = [
+                u32::from_le(key[0]), u32::from_le(key[1]),
+                u32::from_le(key[2]), u32::from_le(key[3]),
+                u32::from_le(key[4]), u32::from_le(key[5]),
+                u32::from_le(key[6]), u32::from_le(key[7])
+            ];
+            let ctr: [u32; 4] = [
+                u32::from_le(ctr[0]), u32::from_le(ctr[1]),
+                u32::from_le(ctr[2]), u32::from_le(ctr[3])
+            ];
+            GFp_ChaCha20_ctr32(output, input, in_out_len, &key, &ctr);
+        } else {
+            GFp_ChaCha20_ctr32(output, input, in_out_len, key, ctr);
+        }
     }
 }
 

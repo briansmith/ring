@@ -58,7 +58,18 @@ impl Context {
         }
 
         let key = DerivedKey(key_and_nonce[0].clone());
-        let nonce = Nonce(key_and_nonce[1].clone());
+        let nonce = if cfg!(target_endian = "big") {
+            // treated as little endian
+            let nonce: &[u32; 4] = unsafe { core::mem::transmute(key_and_nonce[1].as_ref()) };
+            let nonce: [u32; 4] = [
+                u32::from_le(nonce[0]), u32::from_le(nonce[1]),
+                u32::from_le(nonce[2]), u32::from_le(nonce[3])
+            ];
+            let nonce: &[u8; 16] = unsafe { core::mem::transmute(&nonce) };
+            Nonce(Block::from(nonce))
+        } else {
+            Nonce(key_and_nonce[1].clone())
+        };
 
         let mut ctx = Self {
             opaque: Opaque([0u8; OPAQUE_LEN]),
