@@ -435,7 +435,7 @@ static bool SpeedAEADOpen(const EVP_AEAD *aead, const std::string &name,
 static bool SpeedHashChunk(const EVP_MD *md, std::string name,
                            size_t chunk_len) {
   bssl::ScopedEVP_MD_CTX ctx;
-  uint8_t scratch[8192];
+  uint8_t scratch[16384];
 
   if (chunk_len > sizeof(scratch)) {
     return false;
@@ -476,7 +476,7 @@ static bool SpeedHash(const EVP_MD *md, const std::string &name,
 }
 
 static bool SpeedRandomChunk(std::string name, size_t chunk_len) {
-  uint8_t scratch[8192];
+  uint8_t scratch[16384];
 
   if (chunk_len > sizeof(scratch)) {
     return false;
