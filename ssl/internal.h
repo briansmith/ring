@@ -2294,6 +2294,10 @@ struct SSL3_STATE {
   // alert_dispatch is true there is an alert in |send_alert| to be sent.
   bool alert_dispatch : 1;
 
+  // renegotiate_pending is whether the read half of the channel is blocked on a
+  // HelloRequest.
+  bool renegotiate_pending : 1;
+
   // hs_buf is the buffer of handshake data to process.
   UniquePtr<BUF_MEM> hs_buf;
 

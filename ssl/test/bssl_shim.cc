@@ -1126,6 +1126,15 @@ static bool DoExchange(bssl::UniquePtr<SSL_SESSION> *out_session,
     return false;
   }
 
+  if (config->renegotiate_explicit &&
+      SSL_total_renegotiations(ssl) !=
+          GetTestState(ssl)->explicit_renegotiates) {
+    fprintf(stderr, "Performed %d renegotiations, but triggered %d of them\n",
+            SSL_total_renegotiations(ssl),
+            GetTestState(ssl)->explicit_renegotiates);
+    return false;
+  }
+
   return true;
 }
 

@@ -61,6 +61,7 @@ struct TestState {
   // cert_verified is true if certificate verification has been driven to
   // completion. This tests that the callback is not called again after this.
   bool cert_verified = false;
+  int explicit_renegotiates = 0;
 };
 
 bool SetTestState(SSL *ssl, std::unique_ptr<TestState> state);

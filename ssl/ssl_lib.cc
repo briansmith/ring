@@ -478,6 +478,7 @@ static bool ssl_can_renegotiate(const SSL *ssl) {
       return false;
 
     case ssl_renegotiate_freely:
+    case ssl_renegotiate_explicit:
       return true;
     case ssl_renegotiate_once:
       return ssl->s3->total_renegotiations == 0;
@@ -945,29 +946,16 @@ static int ssl_do_post_handshake(SSL *ssl, const SSLMessage &msg) {
     return 1;  // Ignore the HelloRequest.
   }
 
-  if (!ssl_can_renegotiate(ssl) ||
-      // Renegotiation is only supported at quiescent points in the application
-      // protocol, namely in HTTPS, just before reading the HTTP response.
-      // Require the record-layer be idle and avoid complexities of sending a
-      // handshake record while an application_data record is being written.
-      !ssl->s3->write_buffer.empty() ||
-      ssl->s3->write_shutdown != ssl_shutdown_none) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
+  ssl->s3->renegotiate_pending = true;
+  if (ssl->renegotiate_mode == ssl_renegotiate_explicit) {
+    return 1;  // Handle it later.
+  }
+
+  if (!SSL_renegotiate(ssl)) {
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_NO_RENEGOTIATION);
     return 0;
   }
 
-  // Begin a new handshake.
-  if (ssl->s3->hs != nullptr) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return 0;
-  }
-  ssl->s3->hs = ssl_handshake_new(ssl);
-  if (ssl->s3->hs == nullptr) {
-    return 0;
-  }
-
-  ssl->s3->total_renegotiations++;
   return 1;
 }
 
@@ -1012,6 +1000,11 @@ static int ssl_read_impl(SSL *ssl) {
   }
 
   while (ssl->s3->pending_app_data.empty()) {
+    if (ssl->s3->renegotiate_pending) {
+      ssl->s3->rwstate = SSL_ERROR_WANT_RENEGOTIATE;
+      return -1;
+    }
+
     // Complete the current handshake, if any. False Start will cause
     // |SSL_do_handshake| to return mid-handshake, so this may require multiple
     // iterations.
@@ -1353,6 +1346,7 @@ int SSL_get_error(const SSL *ssl, int ret_code) {
     case SSL_ERROR_PENDING_TICKET:
     case SSL_ERROR_EARLY_DATA_REJECTED:
     case SSL_ERROR_WANT_CERTIFICATE_VERIFY:
+    case SSL_ERROR_WANT_RENEGOTIATE:
       return ssl->s3->rwstate;
 
     case SSL_ERROR_WANT_READ: {
@@ -1743,8 +1737,39 @@ long SSL_get_default_timeout(const SSL *ssl) {
 
 int SSL_renegotiate(SSL *ssl) {
   // Caller-initiated renegotiation is not supported.
-  OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
-  return 0;
+  if (!ssl->s3->renegotiate_pending) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_SHOULD_NOT_HAVE_BEEN_CALLED);
+    return 0;
+  }
+
+  if (!ssl_can_renegotiate(ssl)) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
+    return 0;
+  }
+
+  // Renegotiation is only supported at quiescent points in the application
+  // protocol, namely in HTTPS, just before reading the HTTP response.
+  // Require the record-layer be idle and avoid complexities of sending a
+  // handshake record while an application_data record is being written.
+  if (!ssl->s3->write_buffer.empty() ||
+      ssl->s3->write_shutdown != ssl_shutdown_none) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_NO_RENEGOTIATION);
+    return 0;
+  }
+
+  // Begin a new handshake.
+  if (ssl->s3->hs != nullptr) {
+    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
+    return 0;
+  }
+  ssl->s3->hs = ssl_handshake_new(ssl);
+  if (ssl->s3->hs == nullptr) {
+    return 0;
+  }
+
+  ssl->s3->renegotiate_pending = false;
+  ssl->s3->total_renegotiations++;
+  return 1;
 }
 
 int SSL_renegotiate_pending(SSL *ssl) {

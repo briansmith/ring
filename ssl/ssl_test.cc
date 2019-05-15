@@ -24,6 +24,7 @@
 
 #include <gtest/gtest.h>
 
+#include <openssl/aead.h>
 #include <openssl/base64.h>
 #include <openssl/bio.h>
 #include <openssl/cipher.h>
@@ -5584,6 +5585,140 @@ TEST_P(SSLVersionTest, DoubleSSLError) {
                 server_err == SSL_ERROR_WANT_READ ||
                 server_err == SSL_ERROR_WANT_WRITE);
   }
+}
+
+TEST(SSLTest, WriteWhileExplicitRenegotiate) {
+  bssl::UniquePtr<SSL_CTX> ctx(SSL_CTX_new(TLS_method()));
+  ASSERT_TRUE(ctx);
+
+  bssl::UniquePtr<X509> cert = GetTestCertificate();
+  bssl::UniquePtr<EVP_PKEY> pkey = GetTestKey();
+  ASSERT_TRUE(cert);
+  ASSERT_TRUE(pkey);
+  ASSERT_TRUE(SSL_CTX_use_certificate(ctx.get(), cert.get()));
+  ASSERT_TRUE(SSL_CTX_use_PrivateKey(ctx.get(), pkey.get()));
+  ASSERT_TRUE(SSL_CTX_set_min_proto_version(ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_max_proto_version(ctx.get(), TLS1_2_VERSION));
+  ASSERT_TRUE(SSL_CTX_set_strict_cipher_list(
+      ctx.get(), "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256"));
+
+  bssl::UniquePtr<SSL> client, server;
+  ASSERT_TRUE(ConnectClientAndServer(&client, &server, ctx.get(), ctx.get(),
+                                     ClientConfig(), true /* do_handshake */,
+                                     false /* don't shed handshake config */));
+  SSL_set_renegotiate_mode(client.get(), ssl_renegotiate_explicit);
+
+  static const uint8_t kInput[] = {'h', 'e', 'l', 'l', 'o'};
+
+  // Write "hello" until the buffer is full, so |client| has a pending write.
+  size_t num_writes = 0;
+  for (;;) {
+    int ret = SSL_write(client.get(), kInput, sizeof(kInput));
+    if (ret != int(sizeof(kInput))) {
+      ASSERT_EQ(-1, ret);
+      ASSERT_EQ(SSL_ERROR_WANT_WRITE, SSL_get_error(client.get(), ret));
+      break;
+    }
+    num_writes++;
+  }
+
+  // Encrypt a HelloRequest.
+  uint8_t in[] = {SSL3_MT_HELLO_REQUEST, 0, 0, 0};
+#if defined(BORINGSSL_UNSAFE_FUZZER_MODE)
+  // Fuzzer-mode records are unencrypted.
+  uint8_t record[5 + sizeof(in)];
+  record[0] = SSL3_RT_HANDSHAKE;
+  record[1] = 3;
+  record[2] = 3;  // TLS 1.2
+  record[3] = 0;
+  record[4] = sizeof(record) - 5;
+  memcpy(record + 5, in, sizeof(in));
+#else
+  // Extract key material from |server|.
+  static const size_t kKeyLen = 32;
+  static const size_t kNonceLen = 12;
+  ASSERT_EQ(2u * (kKeyLen + kNonceLen), SSL_get_key_block_len(server.get()));
+  uint8_t key_block[2u * (kKeyLen + kNonceLen)];
+  ASSERT_TRUE(
+      SSL_generate_key_block(server.get(), key_block, sizeof(key_block)));
+  Span<uint8_t> key = MakeSpan(key_block + kKeyLen, kKeyLen);
+  Span<uint8_t> nonce =
+      MakeSpan(key_block + kKeyLen + kKeyLen + kNonceLen, kNonceLen);
+
+  uint8_t ad[13];
+  uint64_t seq = SSL_get_write_sequence(server.get());
+  for (size_t i = 0; i < 8; i++) {
+    // The nonce is XORed with the sequence number.
+    nonce[11 - i] ^= uint8_t(seq);
+    ad[7 - i] = uint8_t(seq);
+    seq >>= 8;
+  }
+
+  ad[8] = SSL3_RT_HANDSHAKE;
+  ad[9] = 3;
+  ad[10] = 3;  // TLS 1.2
+  ad[11] = 0;
+  ad[12] = sizeof(in);
+
+  uint8_t record[5 + sizeof(in) + 16];
+  record[0] = SSL3_RT_HANDSHAKE;
+  record[1] = 3;
+  record[2] = 3;  // TLS 1.2
+  record[3] = 0;
+  record[4] = sizeof(record) - 5;
+
+  ScopedEVP_AEAD_CTX aead;
+  ASSERT_TRUE(EVP_AEAD_CTX_init(aead.get(), EVP_aead_chacha20_poly1305(),
+                                key.data(), key.size(),
+                                EVP_AEAD_DEFAULT_TAG_LENGTH, nullptr));
+  size_t len;
+  ASSERT_TRUE(EVP_AEAD_CTX_seal(aead.get(), record + 5, &len,
+                                sizeof(record) - 5, nonce.data(), nonce.size(),
+                                in, sizeof(in), ad, sizeof(ad)));
+  ASSERT_EQ(sizeof(record) - 5, len);
+#endif  // BORINGSSL_UNSAFE_FUZZER_MODE
+
+  ASSERT_EQ(int(sizeof(record)),
+            BIO_write(SSL_get_wbio(server.get()), record, sizeof(record)));
+
+  // |SSL_read| should pick up the HelloRequest.
+  uint8_t byte;
+  ASSERT_EQ(-1, SSL_read(client.get(), &byte, 1));
+  ASSERT_EQ(SSL_ERROR_WANT_RENEGOTIATE, SSL_get_error(client.get(), -1));
+
+  // Drain the data from the |client|.
+  uint8_t buf[sizeof(kInput)];
+  for (size_t i = 0; i < num_writes; i++) {
+    ASSERT_EQ(int(sizeof(buf)), SSL_read(server.get(), buf, sizeof(buf)));
+    EXPECT_EQ(Bytes(buf), Bytes(kInput));
+  }
+
+  // |client| should be able to finish the pending write and continue to write,
+  // despite the paused HelloRequest.
+  ASSERT_EQ(int(sizeof(kInput)),
+            SSL_write(client.get(), kInput, sizeof(kInput)));
+  ASSERT_EQ(int(sizeof(buf)), SSL_read(server.get(), buf, sizeof(buf)));
+  EXPECT_EQ(Bytes(buf), Bytes(kInput));
+
+  ASSERT_EQ(int(sizeof(kInput)),
+            SSL_write(client.get(), kInput, sizeof(kInput)));
+  ASSERT_EQ(int(sizeof(buf)), SSL_read(server.get(), buf, sizeof(buf)));
+  EXPECT_EQ(Bytes(buf), Bytes(kInput));
+
+  // |SSL_read| is stuck until we acknowledge the HelloRequest.
+  ASSERT_EQ(-1, SSL_read(client.get(), &byte, 1));
+  ASSERT_EQ(SSL_ERROR_WANT_RENEGOTIATE, SSL_get_error(client.get(), -1));
+
+  ASSERT_TRUE(SSL_renegotiate(client.get()));
+  ASSERT_EQ(-1, SSL_read(client.get(), &byte, 1));
+  ASSERT_EQ(SSL_ERROR_WANT_READ, SSL_get_error(client.get(), -1));
+
+  // We never renegotiate as a server.
+  ASSERT_EQ(-1, SSL_read(server.get(), buf, sizeof(buf)));
+  ASSERT_EQ(SSL_ERROR_SSL, SSL_get_error(server.get(), -1));
+  uint32_t err = ERR_get_error();
+  EXPECT_EQ(ERR_LIB_SSL, ERR_GET_LIB(err));
+  EXPECT_EQ(SSL_R_NO_RENEGOTIATION, ERR_GET_REASON(err));
 }
 
 }  // namespace

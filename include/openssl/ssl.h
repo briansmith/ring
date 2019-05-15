@@ -560,6 +560,13 @@ OPENSSL_EXPORT int SSL_get_error(const SSL *ssl, int ret_code);
 #define SSL_ERROR_HANDOFF 17
 #define SSL_ERROR_HANDBACK 18
 
+// SSL_ERROR_WANT_RENEGOTIATE indicates the operation is pending a response to
+// a renegotiation request from the server. The caller may call
+// |SSL_renegotiate| to schedule a renegotiation and retry the operation.
+//
+// See also |ssl_renegotiate_explicit|.
+#define SSL_ERROR_WANT_RENEGOTIATE 19
+
 // SSL_error_description returns a string representation of |err|, where |err|
 // is one of the |SSL_ERROR_*| constants returned by |SSL_get_error|, or NULL
 // if the value is unrecognized.
@@ -3605,6 +3612,7 @@ enum ssl_renegotiate_mode_t BORINGSSL_ENUM_INT {
   ssl_renegotiate_once,
   ssl_renegotiate_freely,
   ssl_renegotiate_ignore,
+  ssl_renegotiate_explicit,
 };
 
 // SSL_set_renegotiate_mode configures how |ssl|, a client, reacts to
@@ -3618,6 +3626,13 @@ enum ssl_renegotiate_mode_t BORINGSSL_ENUM_INT {
 // Note that ignoring HelloRequest messages may cause the connection to stall
 // if the server waits for the renegotiation to complete.
 //
+// If set to |ssl_renegotiate_explicit|, |SSL_read| and |SSL_peek| calls which
+// encounter a HelloRequest will pause with |SSL_ERROR_WANT_RENEGOTIATE|.
+// |SSL_write| will continue to work while paused. The caller may call
+// |SSL_renegotiate| to begin the renegotiation at a later point. This mode may
+// be used if callers wish to eagerly call |SSL_peek| without triggering a
+// renegotiation.
+//
 // If configuration shedding is enabled (see |SSL_set_shed_handshake_config|),
 // configuration is released if, at any point after the handshake, renegotiation
 // is disabled. It is not possible to switch from disabling renegotiation to
@@ -3629,6 +3644,16 @@ enum ssl_renegotiate_mode_t BORINGSSL_ENUM_INT {
 // or server.
 OPENSSL_EXPORT void SSL_set_renegotiate_mode(SSL *ssl,
                                              enum ssl_renegotiate_mode_t mode);
+
+// SSL_renegotiate starts a deferred renegotiation on |ssl| if it was configured
+// with |ssl_renegotiate_explicit| and has a pending HelloRequest. It returns
+// one on success and zero on error.
+//
+// This function does not do perform any I/O. On success, a subsequent
+// |SSL_do_handshake| call will run the handshake. |SSL_write| and
+// |SSL_read| will also complete the handshake before sending or receiving
+// application data.
+OPENSSL_EXPORT int SSL_renegotiate(SSL *ssl);
 
 // SSL_renegotiate_pending returns one if |ssl| is in the middle of a
 // renegotiation.
@@ -4080,9 +4105,6 @@ OPENSSL_EXPORT int SSL_get_read_ahead(const SSL *ssl);
 
 // SSL_set_read_ahead returns one.
 OPENSSL_EXPORT int SSL_set_read_ahead(SSL *ssl, int yes);
-
-// SSL_renegotiate put an error on the error queue and returns zero.
-OPENSSL_EXPORT int SSL_renegotiate(SSL *ssl);
 
 // SSL_set_state does nothing.
 OPENSSL_EXPORT void SSL_set_state(SSL *ssl, int state);

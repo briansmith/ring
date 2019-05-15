@@ -5268,6 +5268,18 @@ func addStateMachineCoverageTests(config stateMachineTestConfig) {
 		})
 
 		tests = append(tests, testCase{
+			name: "Renegotiate-Client-Explicit",
+			config: Config{
+				MaxVersion: VersionTLS12,
+			},
+			renegotiate: 1,
+			flags: []string{
+				"-renegotiate-explicit",
+				"-expect-total-renegotiations", "1",
+			},
+		})
+
+		tests = append(tests, testCase{
 			name: "SendHalfHelloRequest",
 			config: Config{
 				MaxVersion: VersionTLS12,

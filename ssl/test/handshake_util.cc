@@ -40,8 +40,18 @@ using namespace bssl;
 bool RetryAsync(SSL *ssl, int ret) {
   const TestConfig *config = GetTestConfig(ssl);
   TestState *test_state = GetTestState(ssl);
-  // No error or not async; don't retry.
-  if (ret >= 0 || !config->async) {
+  if (ret >= 0) {
+    return false;
+  }
+
+  int ssl_err = SSL_get_error(ssl, ret);
+  if (ssl_err == SSL_ERROR_WANT_RENEGOTIATE && config->renegotiate_explicit) {
+    test_state->explicit_renegotiates++;
+    return SSL_renegotiate(ssl);
+  }
+
+  if (!config->async) {
+    // Only asynchronous tests should trigger other retries.
     return false;
   }
 
@@ -62,7 +72,7 @@ bool RetryAsync(SSL *ssl, int ret) {
 
   // See if we needed to read or write more. If so, allow one byte through on
   // the appropriate end to maximally stress the state machine.
-  switch (SSL_get_error(ssl, ret)) {
+  switch (ssl_err) {
     case SSL_ERROR_WANT_READ:
       AsyncBioAllowRead(test_state->async_bio, 1);
       return true;

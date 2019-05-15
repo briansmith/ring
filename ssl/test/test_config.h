@@ -119,6 +119,7 @@ struct TestConfig {
   bool renegotiate_once = false;
   bool renegotiate_freely = false;
   bool renegotiate_ignore = false;
+  bool renegotiate_explicit = false;
   bool forbid_renegotiation_after_handshake = false;
   int expect_peer_signature_algorithm = 0;
   bool enable_all_curves = false;

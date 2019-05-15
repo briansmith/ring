@@ -102,6 +102,7 @@ const Flag<bool> kBoolFlags[] = {
     {"-renegotiate-once", &TestConfig::renegotiate_once},
     {"-renegotiate-freely", &TestConfig::renegotiate_freely},
     {"-renegotiate-ignore", &TestConfig::renegotiate_ignore},
+    {"-renegotiate-explicit", &TestConfig::renegotiate_explicit},
     {"-forbid-renegotiation-after-handshake",
      &TestConfig::forbid_renegotiation_after_handshake},
     {"-enable-all-curves", &TestConfig::enable_all_curves},
@@ -1576,6 +1577,9 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   }
   if (renegotiate_ignore) {
     SSL_set_renegotiate_mode(ssl.get(), ssl_renegotiate_ignore);
+  }
+  if (renegotiate_explicit) {
+    SSL_set_renegotiate_mode(ssl.get(), ssl_renegotiate_explicit);
   }
   if (!check_close_notify) {
     SSL_set_quiet_shutdown(ssl.get(), 1);
