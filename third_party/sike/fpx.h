@@ -97,8 +97,8 @@ do {                                     \
 // mc_i = a_i*R^2*R^(-1) = a_i*R in GF(p^2).
 #define sike_to_fp2mont(a, mc)           \
 do {                                     \
-    sike_fpmul_mont(a->c0, (crypto_word_t*)&p503.mont_R2, mc->c0);   \
-    sike_fpmul_mont(a->c1, (crypto_word_t*)&p503.mont_R2, mc->c1);   \
+    sike_fpmul_mont(a->c0, p503.mont_R2, mc->c0);   \
+    sike_fpmul_mont(a->c1, p503.mont_R2, mc->c1);   \
 } while(0)
 
 // Conversion of a GF(p^2) element from Montgomery representation to standard representation,

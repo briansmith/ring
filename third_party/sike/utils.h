@@ -7,8 +7,8 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
-#include <stdbool.h>
-#include "openssl/base.h"
+#include <openssl/base.h>
+
 #include "../crypto/internal.h"
 #include "sike.h"
 
@@ -19,8 +19,6 @@
 #define BITS_FIELD             503
 // Byte size of the field
 #define FIELD_BYTESZ            BITS_TO_BYTES(BITS_FIELD)
-// Number of 64-bit words of a 503-bit field element
-#define NWORDS64_FIELD          ((BITS_FIELD+63)/64)
 // Number of 64-bit words of a 256-bit element
 #define NBITS_ORDER             256
 #define NWORDS64_ORDER          ((NBITS_ORDER+63)/64)
@@ -40,6 +38,8 @@
     #define p503_ZERO_WORDS 3
     // log_2(RADIX)
     #define LOG2RADIX       6
+    // U64_TO_WORDS expands |x| for a |crypto_word_t| array literal.
+    #define U64_TO_WORDS(x) UINT64_C(x)
 #else
     // Number of words of a 503-bit field element
     #define NWORDS_FIELD    16
@@ -47,6 +47,9 @@
     #define p503_ZERO_WORDS 7
     // log_2(RADIX)
     #define LOG2RADIX       5
+    // U64_TO_WORDS expands |x| for a |crypto_word_t| array literal.
+    #define U64_TO_WORDS(x) \
+        (uint32_t)(UINT64_C(x) & 0xffffffff), (uint32_t)(UINT64_C(x) >> 32)
 #endif
 
 // Extended datatype support
@@ -114,21 +117,21 @@ typedef crypto_word_t dfelm_t[2*NWORDS_FIELD];
 // Constants used during SIKEp503 computation.
 struct params_t {
     // Stores P503 prime
-    const uint64_t prime[NWORDS64_FIELD];
+    const crypto_word_t prime[NWORDS_FIELD];
     // Stores P503 + 1
-    const uint64_t prime_p1[NWORDS64_FIELD];
+    const crypto_word_t prime_p1[NWORDS_FIELD];
     // Stores P503 * 2
-    const uint64_t prime_x2[NWORDS64_FIELD];
+    const crypto_word_t prime_x2[NWORDS_FIELD];
     // Alice's generator values {XPA0 + XPA1*i, XQA0, XRA0 + XRA1*i}
     // in GF(p503^2), expressed in Montgomery representation
-    const uint64_t A_gen[5*NWORDS64_FIELD];
+    const crypto_word_t A_gen[5*NWORDS_FIELD];
     // Bob's generator values {XPB0 + XPB1*i, XQB0, XRB0 + XRB1*i}
     // in GF(p503^2), expressed in Montgomery representation
-    const uint64_t B_gen[5*NWORDS64_FIELD];
+    const crypto_word_t B_gen[5*NWORDS_FIELD];
     // Montgomery constant mont_R2 = (2^512)^2 mod p503
-    const uint64_t mont_R2[NWORDS64_FIELD];
+    const crypto_word_t mont_R2[NWORDS_FIELD];
     // Value 'one' in Montgomery representation
-    const uint64_t mont_one[NWORDS64_FIELD];
+    const crypto_word_t mont_one[NWORDS_FIELD];
     // Fixed parameters for isogeny tree computation
     const unsigned int A_strat[A_max-1];
     const unsigned int B_strat[B_max-1];

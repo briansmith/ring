@@ -115,7 +115,7 @@ static void LADDER3PT(
     const size_t nbits = is_A?SIDHp503_PRV_A_BITSZ:SIDHp503_PRV_B_BITSZ;
 
     // Initializing constant
-    sike_fpcopy((crypto_word_t*)&p503.mont_one, A24[0].c0);
+    sike_fpcopy(p503.mont_one, A24[0].c0);
     sike_fp2add(A24, A24, A24);
     sike_fp2add(A, A24, A24);
     sike_fp2div2(A24, A24);
@@ -123,11 +123,11 @@ static void LADDER3PT(
 
     // Initializing points
     sike_fp2copy(xQ, R0->X);
-    sike_fpcopy((crypto_word_t*)&p503.mont_one, R0->Z[0].c0);
+    sike_fpcopy(p503.mont_one, R0->Z[0].c0);
     sike_fp2copy(xPQ, R2->X);
-    sike_fpcopy((crypto_word_t*)&p503.mont_one, R2->Z[0].c0);
+    sike_fpcopy(p503.mont_one, R2->Z[0].c0);
     sike_fp2copy(xP, R->X);
-    sike_fpcopy((crypto_word_t*)&p503.mont_one, R->Z[0].c0);
+    sike_fpcopy(p503.mont_one, R->Z[0].c0);
     memset(R->Z->c1, 0, sizeof(R->Z->c1));
 
     // Main loop
@@ -195,14 +195,14 @@ static void gen_iso_A(const uint8_t* skA, uint8_t* pkA)
     unsigned int m, index = 0, pts_index[MAX_INT_POINTS_ALICE], npts = 0, ii = 0;
 
     // Initialize basis points
-    sike_init_basis((crypto_word_t*)p503.A_gen, XPA, XQA, XRA);
-    sike_init_basis((crypto_word_t*)p503.B_gen, phiP->X, phiQ->X, phiR->X);
-    sike_fpcopy((crypto_word_t*)&p503.mont_one, (phiP->Z)->c0);
-    sike_fpcopy((crypto_word_t*)&p503.mont_one, (phiQ->Z)->c0);
-    sike_fpcopy((crypto_word_t*)&p503.mont_one, (phiR->Z)->c0);
+    sike_init_basis(p503.A_gen, XPA, XQA, XRA);
+    sike_init_basis(p503.B_gen, phiP->X, phiQ->X, phiR->X);
+    sike_fpcopy(p503.mont_one, (phiP->Z)->c0);
+    sike_fpcopy(p503.mont_one, (phiQ->Z)->c0);
+    sike_fpcopy(p503.mont_one, (phiR->Z)->c0);
 
     // Initialize constants
-    sike_fpcopy((crypto_word_t*)&p503.mont_one, A24plus->c0);
+    sike_fpcopy(p503.mont_one, A24plus->c0);
     sike_fp2add(A24plus, A24plus, C24);
 
     // Retrieve kernel point
@@ -267,14 +267,14 @@ static void gen_iso_B(const uint8_t* skB, uint8_t* pkB)
     unsigned int m, index = 0, pts_index[MAX_INT_POINTS_BOB], npts = 0, ii = 0;
 
     // Initialize basis points
-    sike_init_basis((crypto_word_t*)p503.B_gen, XPB, XQB, XRB);
-    sike_init_basis((crypto_word_t*)p503.A_gen, phiP->X, phiQ->X, phiR->X);
-    sike_fpcopy((crypto_word_t*)&p503.mont_one, (phiP->Z)->c0);
-    sike_fpcopy((crypto_word_t*)&p503.mont_one, (phiQ->Z)->c0);
-    sike_fpcopy((crypto_word_t*)&p503.mont_one, (phiR->Z)->c0);
+    sike_init_basis(p503.B_gen, XPB, XQB, XRB);
+    sike_init_basis(p503.A_gen, phiP->X, phiQ->X, phiR->X);
+    sike_fpcopy(p503.mont_one, (phiP->Z)->c0);
+    sike_fpcopy(p503.mont_one, (phiQ->Z)->c0);
+    sike_fpcopy(p503.mont_one, (phiR->Z)->c0);
 
     // Initialize constants
-    sike_fpcopy((crypto_word_t*)&p503.mont_one, A24plus->c0);
+    sike_fpcopy(p503.mont_one, A24plus->c0);
     sike_fp2add(A24plus, A24plus, A24plus);
     sike_fp2copy(A24plus, A24minus);
     sike_fp2neg(A24minus);
@@ -345,7 +345,7 @@ static void ex_iso_A(const uint8_t* skA, const uint8_t* pkB, uint8_t* ssA)
 
     // Initialize constants
     get_A(PKB[0], PKB[1], PKB[2], A); // TODO: Can return projective A?
-    sike_fpadd((crypto_word_t*)&p503.mont_one, (crypto_word_t*)&p503.mont_one, C24->c0);
+    sike_fpadd(p503.mont_one, p503.mont_one, C24->c0);
     sike_fp2add(A, C24, A24plus);
     sike_fpadd(C24->c0, C24->c0, C24->c0);
 
@@ -404,7 +404,7 @@ static void ex_iso_B(const uint8_t* skB, const uint8_t* pkA, uint8_t* ssB)
 
     // Initialize constants
     get_A(PKB[0], PKB[1], PKB[2], A);
-    sike_fpadd((crypto_word_t*)&p503.mont_one, (crypto_word_t*)&p503.mont_one, A24minus->c0);
+    sike_fpadd(p503.mont_one, p503.mont_one, A24minus->c0);
     sike_fp2add(A, A24minus, A24plus);
     sike_fp2sub(A, A24minus, A24minus);
 

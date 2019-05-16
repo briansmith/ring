@@ -190,7 +190,7 @@ void get_A(const f2elm_t xP, const f2elm_t xQ, const f2elm_t xR, f2elm_t A)
     f2elm_t t0, t1, one = F2ELM_INIT;
 
     extern const struct params_t p503;
-    sike_fpcopy((crypto_word_t*)&p503.mont_one, one->c0);
+    sike_fpcopy(p503.mont_one, one->c0);
     sike_fp2add(xP, xQ, t1);                           // t1 = xP+xQ
     sike_fp2mul_mont(xP, xQ, t0);                      // t0 = xP*xQ
     sike_fp2mul_mont(xR, t1, A);                       // A = xR*t1
