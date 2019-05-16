@@ -287,7 +287,7 @@ void sike_fp2mul_mont(const f2elm_t a, const f2elm_t b, f2elm_t c) {
     }
 
     sike_fprdc(tt3, c->c1);                             // c[1] = (a0+a1)*(b0+b1) - a0*b0 - a1*b1
-    mp_addfast(&((crypto_word_t*)&tt1)[NWORDS_FIELD], t1, &((crypto_word_t*)&tt1)[NWORDS_FIELD]);
+    mp_addfast(&tt1[NWORDS_FIELD], t1, &tt1[NWORDS_FIELD]);
     sike_fprdc(tt1, c->c0);                             // c[0] = a0*b0 - a1*b1
 }
 
