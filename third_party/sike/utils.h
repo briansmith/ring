@@ -36,8 +36,6 @@
     #define NWORDS_FIELD    8
     // Number of "0" digits in the least significant part of p503 + 1
     #define p503_ZERO_WORDS 3
-    // log_2(RADIX)
-    #define LOG2RADIX       6
     // U64_TO_WORDS expands |x| for a |crypto_word_t| array literal.
     #define U64_TO_WORDS(x) UINT64_C(x)
 #else
@@ -45,8 +43,6 @@
     #define NWORDS_FIELD    16
     // Number of "0" digits in the least significant part of p503 + 1
     #define p503_ZERO_WORDS 7
-    // log_2(RADIX)
-    #define LOG2RADIX       5
     // U64_TO_WORDS expands |x| for a |crypto_word_t| array literal.
     #define U64_TO_WORDS(x) \
         (uint32_t)(UINT64_C(x) & 0xffffffff), (uint32_t)(UINT64_C(x) >> 32)

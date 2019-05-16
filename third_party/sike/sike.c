@@ -105,7 +105,7 @@ static inline void sike_fp2cswap(point_proj_t P, point_proj_t Q, const crypto_wo
 }
 
 static void LADDER3PT(
-    const f2elm_t xP, const f2elm_t xQ, const f2elm_t xPQ, const crypto_word_t* m,
+    const f2elm_t xP, const f2elm_t xQ, const f2elm_t xPQ, const uint8_t* m,
     int is_A, point_proj_t R, const f2elm_t A) {
     point_proj_t R0 = POINT_PROJ_INIT, R2 = POINT_PROJ_INIT;
     f2elm_t A24 = F2ELM_INIT;
@@ -132,7 +132,7 @@ static void LADDER3PT(
 
     // Main loop
     for (size_t i = 0; i < nbits; i++) {
-        bit = (m[i >> LOG2RADIX] >> (i & (RADIX-1))) & 1;
+        bit = (m[i >> 3] >> (i & 7)) & 1;
         swap = bit ^ prevbit;
         prevbit = bit;
         mask = 0 - (crypto_word_t)swap;
@@ -206,7 +206,7 @@ static void gen_iso_A(const uint8_t* skA, uint8_t* pkA)
     sike_fp2add(A24plus, A24plus, C24);
 
     // Retrieve kernel point
-    LADDER3PT(XPA, XQA, XRA, (crypto_word_t*)skA, 1, R, A);
+    LADDER3PT(XPA, XQA, XRA, skA, 1, R, A);
 
     // Traverse tree
     index = 0;
@@ -280,7 +280,7 @@ static void gen_iso_B(const uint8_t* skB, uint8_t* pkB)
     sike_fp2neg(A24minus);
 
     // Retrieve kernel point
-    LADDER3PT(XPB, XQB, XRB, (crypto_word_t*)skB, 0, R, A);
+    LADDER3PT(XPB, XQB, XRB, skB, 0, R, A);
 
     // Traverse tree
     index = 0;
@@ -350,7 +350,7 @@ static void ex_iso_A(const uint8_t* skA, const uint8_t* pkB, uint8_t* ssA)
     sike_fpadd(C24->c0, C24->c0, C24->c0);
 
     // Retrieve kernel point
-    LADDER3PT(PKB[0], PKB[1], PKB[2], (crypto_word_t*)skA, 1, R, A);
+    LADDER3PT(PKB[0], PKB[1], PKB[2], skA, 1, R, A);
 
     // Traverse tree
     index = 0;
@@ -409,7 +409,7 @@ static void ex_iso_B(const uint8_t* skB, const uint8_t* pkA, uint8_t* ssB)
     sike_fp2sub(A, A24minus, A24minus);
 
     // Retrieve kernel point
-    LADDER3PT(PKB[0], PKB[1], PKB[2], (crypto_word_t*)skB, 0, R, A);
+    LADDER3PT(PKB[0], PKB[1], PKB[2], skB, 0, R, A);
 
     // Traverse tree
     index = 0;

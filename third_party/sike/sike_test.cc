@@ -193,6 +193,20 @@ TEST(SIKE, Negative) {
     EXPECT_NE(memcmp(ss_enc, ss_dec, SIKEp503_SS_BYTESZ), 0);
 }
 
+TEST(SIKE, Unaligned) {
+  alignas(4) uint8_t priv[SIKEp503_PRV_BYTESZ + 1];
+  alignas(4) uint8_t pub[SIKEp503_PUB_BYTESZ + 1];
+  alignas(4) uint8_t shared_key1[SIKEp503_SS_BYTESZ + 1];
+  alignas(4) uint8_t ciphertext[SIKEp503_CT_BYTESZ + 1];
+  alignas(4) uint8_t shared_key2[SIKEp503_SS_BYTESZ + 1];
+
+  ASSERT_TRUE(SIKE_keypair(priv + 1, pub + 1));
+  SIKE_encaps(shared_key1 + 1, ciphertext + 1, pub + 1);
+  SIKE_decaps(shared_key2 + 1, ciphertext + 1, pub + 1, priv + 1);
+
+  EXPECT_EQ(memcmp(shared_key1 + 1, shared_key2 + 1, SIKEp503_SS_BYTESZ), 0);
+}
+
 #if defined(SUPPORTS_ABI_TEST) && (defined(OPENSSL_X86_64) || defined(OPENSSL_AARCH64))
 TEST(SIKE, ABI) {
   felm_t a, b, c;
