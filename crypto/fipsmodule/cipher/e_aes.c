@@ -110,7 +110,10 @@ static int aes_init_key(EVP_CIPHER_CTX *ctx, const uint8_t *key,
         dat->stream.cbc = aes_hw_cbc_encrypt;
       }
     } else if (bsaes_capable() && mode == EVP_CIPH_CBC_MODE) {
-      ret = aes_nohw_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
+      ret = vpaes_set_decrypt_key(key, ctx->key_len * 8, &dat->ks.ks);
+      if (ret == 0) {
+        vpaes_decrypt_key_to_bsaes(&dat->ks.ks, &dat->ks.ks);
+      }
       // If |dat->stream.cbc| is provided, |dat->block| is never used.
       dat->block = NULL;
       dat->stream.cbc = bsaes_cbc_encrypt;
