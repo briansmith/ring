@@ -16,12 +16,34 @@
 
 #include <openssl/curve25519.h>
 #include <openssl/err.h>
+#include <openssl/mem.h>
 
 #include "internal.h"
 
 
 // Ed25519 has no parameters to copy.
 static int pkey_ed25519_copy(EVP_PKEY_CTX *dst, EVP_PKEY_CTX *src) { return 1; }
+
+static int pkey_ed25519_keygen(EVP_PKEY_CTX *ctx, EVP_PKEY *pkey) {
+  ED25519_KEY *key = OPENSSL_malloc(sizeof(ED25519_KEY));
+  if (key == NULL) {
+    OPENSSL_PUT_ERROR(EVP, ERR_R_MALLOC_FAILURE);
+    return 0;
+  }
+
+  if (!EVP_PKEY_set_type(pkey, EVP_PKEY_ED25519)) {
+    OPENSSL_free(key);
+    return 0;
+  }
+
+  uint8_t pubkey_unused[32];
+  ED25519_keypair(pubkey_unused, key->key.priv);
+  key->has_private = 1;
+
+  OPENSSL_free(pkey->pkey.ptr);
+  pkey->pkey.ptr = key;
+  return 1;
+}
 
 static int pkey_ed25519_sign_message(EVP_PKEY_CTX *ctx, uint8_t *sig,
                                      size_t *siglen, const uint8_t *tbs,
@@ -68,7 +90,7 @@ const EVP_PKEY_METHOD ed25519_pkey_meth = {
     NULL /* init */,
     pkey_ed25519_copy,
     NULL /* cleanup */,
-    NULL /* keygen */,
+    pkey_ed25519_keygen,
     NULL /* sign */,
     pkey_ed25519_sign_message,
     NULL /* verify */,

@@ -756,3 +756,29 @@ TEST(EVPExtraTest, ECKeygen) {
   raw = nullptr;
   ExpectECGroupAndKey(pkey.get(), NID_X9_62_prime256v1);
 }
+
+// Test that |EVP_PKEY_keygen| works for Ed25519.
+TEST(EVPExtraTest, Ed25519Keygen) {
+  bssl::UniquePtr<EVP_PKEY_CTX> pctx(
+      EVP_PKEY_CTX_new_id(EVP_PKEY_ED25519, nullptr));
+  ASSERT_TRUE(pctx);
+  ASSERT_TRUE(EVP_PKEY_keygen_init(pctx.get()));
+  EVP_PKEY *raw = nullptr;
+  ASSERT_TRUE(EVP_PKEY_keygen(pctx.get(), &raw));
+  bssl::UniquePtr<EVP_PKEY> pkey(raw);
+
+  // Round-trip a signature to sanity-check the key is good.
+  bssl::ScopedEVP_MD_CTX ctx;
+  ASSERT_TRUE(
+      EVP_DigestSignInit(ctx.get(), nullptr, nullptr, nullptr, pkey.get()));
+  uint8_t sig[64];
+  size_t len = sizeof(sig);
+  ASSERT_TRUE(EVP_DigestSign(ctx.get(), sig, &len,
+                             reinterpret_cast<const uint8_t *>("hello"), 5));
+
+  ctx.Reset();
+  ASSERT_TRUE(
+      EVP_DigestVerifyInit(ctx.get(), nullptr, nullptr, nullptr, pkey.get()));
+  ASSERT_TRUE(EVP_DigestVerify(ctx.get(), sig, len,
+                               reinterpret_cast<const uint8_t *>("hello"), 5));
+}
