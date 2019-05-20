@@ -1826,3 +1826,152 @@ TEST(PKCS12Test, RoundTrip) {
                 NID_pbe_WithSHA1And3_Key_TripleDES_CBC,
                 NID_pbe_WithSHA1And3_Key_TripleDES_CBC, 100, 100);
 }
+
+static bssl::UniquePtr<EVP_PKEY> MakeTestKey() {
+  bssl::UniquePtr<EC_KEY> ec_key(
+      EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
+  if (!ec_key ||
+      !EC_KEY_generate_key(ec_key.get())) {
+    return nullptr;
+  }
+  bssl::UniquePtr<EVP_PKEY> evp_pkey(EVP_PKEY_new());
+  if (!evp_pkey ||
+      !EVP_PKEY_assign_EC_KEY(evp_pkey.get(), ec_key.release())) {
+    return nullptr;
+  }
+  return evp_pkey;
+}
+
+static bssl::UniquePtr<X509> MakeTestCert(EVP_PKEY *key) {
+  bssl::UniquePtr<X509> x509(X509_new());
+  if (!x509) {
+    return nullptr;
+  }
+  X509_NAME* subject = X509_get_subject_name(x509.get());
+  if (!X509_gmtime_adj(X509_get_notBefore(x509.get()), 0) ||
+      !X509_gmtime_adj(X509_get_notAfter(x509.get()), 60 * 60 * 24) ||
+      !X509_NAME_add_entry_by_txt(subject, "CN", MBSTRING_ASC,
+                                  reinterpret_cast<const uint8_t *>("Test"), -1,
+                                  -1, 0) ||
+      !X509_set_issuer_name(x509.get(), subject) ||
+      !X509_set_pubkey(x509.get(), key) ||
+      !X509_sign(x509.get(), key, EVP_sha256())) {
+    return nullptr;
+  }
+  return x509;
+}
+
+static bool PKCS12CreateVector(std::vector<uint8_t> *out, EVP_PKEY *pkey,
+                               const std::vector<X509 *> &certs) {
+  bssl::UniquePtr<STACK_OF(X509)> chain(sk_X509_new_null());
+  if (!chain) {
+    return false;
+  }
+
+  for (X509 *cert : certs) {
+    if (!bssl::PushToStack(chain.get(), bssl::UpRef(cert))) {
+      return false;
+    }
+  }
+
+  bssl::UniquePtr<PKCS12> p12(PKCS12_create(kPassword, nullptr /* name */, pkey,
+                                            nullptr /* cert */, chain.get(), 0,
+                                            0, 0, 0, 0));
+  if (!p12) {
+    return false;
+  }
+
+  int len = i2d_PKCS12(p12.get(), nullptr);
+  if (len < 0) {
+    return false;
+  }
+  out->resize(static_cast<size_t>(len));
+  uint8_t *ptr = out->data();
+  return i2d_PKCS12(p12.get(), &ptr) == len;
+}
+
+static void ExpectPKCS12Parse(bssl::Span<const uint8_t> in,
+                              EVP_PKEY *expect_key, X509 *expect_cert,
+                              const std::vector<X509 *> &expect_ca_certs) {
+  bssl::UniquePtr<BIO> bio(BIO_new_mem_buf(in.data(), in.size()));
+  ASSERT_TRUE(bio);
+
+  bssl::UniquePtr<PKCS12> p12(d2i_PKCS12_bio(bio.get(), nullptr));
+  ASSERT_TRUE(p12);
+
+  EVP_PKEY *key = nullptr;
+  X509 *cert = nullptr;
+  STACK_OF(X509) *ca_certs = nullptr;
+  ASSERT_TRUE(PKCS12_parse(p12.get(), kPassword, &key, &cert, &ca_certs));
+
+  bssl::UniquePtr<EVP_PKEY> delete_key(key);
+  bssl::UniquePtr<X509> delete_cert(cert);
+  bssl::UniquePtr<STACK_OF(X509)> delete_ca_certs(ca_certs);
+
+  if (expect_key == nullptr) {
+    EXPECT_FALSE(key);
+  } else {
+    ASSERT_TRUE(key);
+    EXPECT_EQ(1, EVP_PKEY_cmp(key, expect_key));
+  }
+
+  if (expect_cert == nullptr) {
+    EXPECT_FALSE(cert);
+  } else {
+    ASSERT_TRUE(cert);
+    EXPECT_EQ(0, X509_cmp(cert, expect_cert));
+  }
+
+  ASSERT_EQ(expect_ca_certs.size(), sk_X509_num(ca_certs));
+  for (size_t i = 0; i < expect_ca_certs.size(); i++) {
+    EXPECT_EQ(0, X509_cmp(expect_ca_certs[i], sk_X509_value(ca_certs, i)));
+  }
+}
+
+// Test that |PKCS12_parse| returns values in the expected order.
+TEST(PKCS12Test, Order) {
+  bssl::UniquePtr<EVP_PKEY> key1 = MakeTestKey();
+  ASSERT_TRUE(key1);
+  bssl::UniquePtr<X509> cert1 = MakeTestCert(key1.get());
+  ASSERT_TRUE(cert1);
+  bssl::UniquePtr<X509> cert1b = MakeTestCert(key1.get());
+  ASSERT_TRUE(cert1b);
+  bssl::UniquePtr<EVP_PKEY> key2 = MakeTestKey();
+  ASSERT_TRUE(key2);
+  bssl::UniquePtr<X509> cert2 = MakeTestCert(key2.get());
+  ASSERT_TRUE(cert2);
+  bssl::UniquePtr<EVP_PKEY> key3 = MakeTestKey();
+  ASSERT_TRUE(key3);
+  bssl::UniquePtr<X509> cert3 = MakeTestCert(key3.get());
+  ASSERT_TRUE(cert3);
+
+  // PKCS12_parse uses the key to select the main certificate.
+  std::vector<uint8_t> p12;
+  ASSERT_TRUE(PKCS12CreateVector(&p12, key1.get(),
+                                 {cert1.get(), cert2.get(), cert3.get()}));
+  ExpectPKCS12Parse(p12, key1.get(), cert1.get(), {cert2.get(), cert3.get()});
+
+  ASSERT_TRUE(PKCS12CreateVector(&p12, key1.get(),
+                                 {cert3.get(), cert1.get(), cert2.get()}));
+  ExpectPKCS12Parse(p12, key1.get(), cert1.get(), {cert3.get(), cert2.get()});
+
+  ASSERT_TRUE(PKCS12CreateVector(&p12, key1.get(),
+                                 {cert2.get(), cert3.get(), cert1.get()}));
+  ExpectPKCS12Parse(p12, key1.get(), cert1.get(), {cert2.get(), cert3.get()});
+
+  // In case of duplicates, the last one is selected. (It is unlikely anything
+  // depends on which is selected, but we match OpenSSL.)
+  ASSERT_TRUE(
+      PKCS12CreateVector(&p12, key1.get(), {cert1.get(), cert1b.get()}));
+  ExpectPKCS12Parse(p12, key1.get(), cert1b.get(), {cert1.get()});
+
+  // If there is no key, all certificates are returned as "CA" certificates.
+  ASSERT_TRUE(PKCS12CreateVector(&p12, nullptr,
+                                 {cert1.get(), cert2.get(), cert3.get()}));
+  ExpectPKCS12Parse(p12, nullptr, nullptr,
+                    {cert1.get(), cert2.get(), cert3.get()});
+
+  // The same happens if there is a key, but it does not match any certificate.
+  ASSERT_TRUE(PKCS12CreateVector(&p12, key1.get(), {cert2.get(), cert3.get()}));
+  ExpectPKCS12Parse(p12, key1.get(), nullptr, {cert2.get(), cert3.get()});
+}

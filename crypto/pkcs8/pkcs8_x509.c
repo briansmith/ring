@@ -910,9 +910,25 @@ int PKCS12_parse(const PKCS12 *p12, const char *password, EVP_PKEY **out_pkey,
     return 0;
   }
 
+  // OpenSSL selects the last certificate which matches the private key as
+  // |out_cert|.
+  //
+  // TODO(davidben): OpenSSL additionally reverses the order of the
+  // certificates, which was likely originally a bug, but may be a feature by
+  // now. See https://crbug.com/boringssl/250 and
+  // https://github.com/openssl/openssl/issues/6698.
   *out_cert = NULL;
-  if (sk_X509_num(ca_certs) > 0) {
-    *out_cert = sk_X509_shift(ca_certs);
+  size_t num_certs = sk_X509_num(ca_certs);
+  if (*out_pkey != NULL && num_certs > 0) {
+    for (size_t i = num_certs - 1; i < num_certs; i--) {
+      X509 *cert = sk_X509_value(ca_certs, i);
+      if (X509_check_private_key(cert, *out_pkey)) {
+        *out_cert = cert;
+        sk_X509_delete(ca_certs, i);
+        break;
+      }
+      ERR_clear_error();
+    }
   }
 
   if (out_ca_certs) {
