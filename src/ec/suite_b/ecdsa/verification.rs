@@ -14,7 +14,7 @@
 
 //! ECDSA Signatures using the P-256 and P-384 curves.
 
-use super::digest_scalar::digest_scalar;
+use super::digest_scalar::{digest_scalar, digest_bytes_scalar};
 use crate::{
     arithmetic::montgomery::*,
     digest,
@@ -67,13 +67,26 @@ impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
             digest_scalar(self.ops.scalar_ops, h)
         };
 
-        self.verify_digest(public_key, e, signature)
+        self.verify_digest_scalar(public_key, e, signature)
     }
 }
 
 impl EcdsaVerificationAlgorithm {
+
+    /// Verify the signature `signature` for digest `digest` with the public key
+    /// `public_key`.
+    pub fn verify_digest(
+        &self, public_key: untrusted::Input, digest: untrusted::Input, signature: untrusted::Input,
+    ) -> Result<(), error::Unspecified> {
+        // NSA Guide Step 3: "Convert the bit string H to an integer e as
+        // described in Appendix B.2."
+        let e = digest_bytes_scalar(self.ops.scalar_ops, digest.as_slice_less_safe());
+
+        self.verify_digest_scalar(public_key, e, signature)
+    }
+
     /// This is intentionally not public.
-    fn verify_digest(
+    fn verify_digest_scalar(
         &self,
         public_key: untrusted::Input,
         e: Scalar,
@@ -326,11 +339,11 @@ mod tests {
                     }
                 };
 
-                let digest = super::super::digest_scalar::digest_bytes_scalar(
+                let digest = digest_bytes_scalar(
                     &alg.ops.scalar_ops,
                     &digest[..],
                 );
-                let actual_result = alg.verify_digest(
+                let actual_result = alg.verify_digest_scalar(
                     untrusted::Input::from(&public_key[..]),
                     digest,
                     untrusted::Input::from(&sig[..]),

@@ -31,11 +31,7 @@
     warnings
 )]
 
-use ring::{
-    rand,
-    signature::{self, KeyPair},
-    test, test_file,
-};
+use ring::{rand, signature::{self, KeyPair}, test, test_file, digest};
 
 // ECDSA *signing* tests are in src/ec/ecdsa/signing.rs.
 
@@ -187,9 +183,9 @@ fn signature_ecdsa_verify_fixed_test() {
             let sig = test_case.consume_bytes("Sig");
             let expected_result = test_case.consume_string("Result");
 
-            let alg = match (curve_name.as_str(), digest_name.as_str()) {
-                ("P-256", "SHA256") => &signature::ECDSA_P256_SHA256_FIXED,
-                ("P-384", "SHA384") => &signature::ECDSA_P384_SHA384_FIXED,
+            let (alg, digest_alg) = match (curve_name.as_str(), digest_name.as_str()) {
+                ("P-256", "SHA256") => (&signature::ECDSA_P256_SHA256_FIXED, &digest::SHA256),
+                ("P-384", "SHA384") => (&signature::ECDSA_P384_SHA384_FIXED, &digest::SHA384),
                 _ => {
                     panic!("Unsupported curve+digest: {}+{}", curve_name, digest_name);
                 }
@@ -206,6 +202,15 @@ fn signature_ecdsa_verify_fixed_test() {
                 alg,
                 untrusted::Input::from(&public_key),
                 untrusted::Input::from(&msg),
+                untrusted::Input::from(&sig),
+            );
+            assert_eq!(actual_result.is_ok(), is_valid);
+
+            let digest = digest::digest(digest_alg, msg.as_slice());
+
+            let actual_result = alg.verify_digest(
+                untrusted::Input::from(&public_key),
+                untrusted::Input::from(&digest.as_ref()),
                 untrusted::Input::from(&sig),
             );
             assert_eq!(actual_result.is_ok(), is_valid);

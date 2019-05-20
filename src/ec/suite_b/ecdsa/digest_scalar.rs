@@ -51,8 +51,7 @@ pub fn digest_scalar(ops: &ScalarOps, msg: digest::Digest) -> Scalar {
     digest_scalar_(ops, msg.as_ref())
 }
 
-#[cfg(test)]
-pub(crate) fn digest_bytes_scalar(ops: &ScalarOps, digest: &[u8]) -> Scalar {
+pub fn digest_bytes_scalar(ops: &ScalarOps, digest: &[u8]) -> Scalar {
     digest_scalar_(ops, digest)
 }
 
