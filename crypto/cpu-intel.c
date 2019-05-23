@@ -148,6 +148,9 @@ void OPENSSL_cpuid_setup(void) {
   int is_intel = ebx == 0x756e6547 /* Genu */ &&
                  edx == 0x49656e69 /* ineI */ &&
                  ecx == 0x6c65746e /* ntel */;
+  int is_amd = ebx == 0x68747541 /* Auth */ &&
+               edx == 0x69746e65 /* enti */ &&
+               ecx == 0x444d4163 /* cAMD */;
 
   uint32_t extended_features[2] = {0};
   if (num_ids >= 7) {
@@ -157,6 +160,24 @@ void OPENSSL_cpuid_setup(void) {
   }
 
   OPENSSL_cpuid(&eax, &ebx, &ecx, &edx, 1);
+
+  if (is_amd) {
+    // See https://www.amd.com/system/files/TechDocs/25481.pdf, page 10.
+    const uint32_t base_family = (eax >> 8) & 15;
+
+    uint32_t family = base_family;
+    if (base_family == 0xf) {
+      const uint32_t ext_family = (eax >> 20) & 255;
+      family += ext_family;
+    }
+
+    if (family < 0x17) {
+      // Disable RDRAND on AMD families before 0x17 (Zen) due to reported
+      // failures after suspend.
+      // https://bugzilla.redhat.com/show_bug.cgi?id=1150286
+      ecx &= ~(1u << 30);
+    }
+  }
 
   // Force the hyper-threading bit so that the more conservative path is always
   // chosen.
