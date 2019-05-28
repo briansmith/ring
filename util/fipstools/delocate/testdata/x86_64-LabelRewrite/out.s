@@ -56,6 +56,8 @@ bar:
 .L2:
 
 	.quad .L2-.L1
+	.uleb128 .L2-.L1
+	.sleb128 .L2-.L1
 
 	# Local labels and their jumps are left alone.
 	.text
@@ -82,6 +84,10 @@ bar:
 
 # WAS .quad .L2-.L1
 	.quad	.L2_BCM_1-.L1_BCM_1
+# WAS .uleb128 .L2-.L1
+	.uleb128	.L2_BCM_1-.L1_BCM_1
+# WAS .sleb128 .L2-.L1
+	.sleb128	.L2_BCM_1-.L1_BCM_1
 
 .text
 .loc 1 2 0
