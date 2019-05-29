@@ -208,5 +208,15 @@ TEST(GCMTest, ABI) {
     }
   }
 #endif  // GHASH_ASM_ARM
+
+#if defined(GHASH_ASM_PPC64LE)
+  if (CRYPTO_is_PPC64LE_vcrypto_capable()) {
+    CHECK_ABI(gcm_init_p8, Htable, kH);
+    CHECK_ABI(gcm_gmult_p8, X, Htable);
+    for (size_t blocks : kBlockCounts) {
+      CHECK_ABI(gcm_ghash_p8, X, Htable, buf, 16 * blocks);
+    }
+  }
+#endif  // GHASH_ASM_PPC64LE
 }
 #endif  // SUPPORTS_ABI_TEST && !OPENSSL_NO_ASM

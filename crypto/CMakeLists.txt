@@ -118,6 +118,14 @@ if(${ARCH} STREQUAL "aarch64")
   )
 endif()
 
+if(${ARCH} STREQUAL "ppc64le")
+  set(
+    CRYPTO_ARCH_SOURCES
+
+    test/trampoline-ppc.${ASM_EXT}
+  )
+endif()
+
 if(${ARCH} STREQUAL "x86")
   set(
     CRYPTO_ARCH_SOURCES
@@ -147,6 +155,7 @@ perlasm(cipher_extra/aes128gcmsiv-x86_64.${ASM_EXT} cipher_extra/asm/aes128gcmsi
 perlasm(cipher_extra/chacha20_poly1305_x86_64.${ASM_EXT} cipher_extra/asm/chacha20_poly1305_x86_64.pl)
 perlasm(test/trampoline-armv4.${ASM_EXT} test/asm/trampoline-armv4.pl)
 perlasm(test/trampoline-armv8.${ASM_EXT} test/asm/trampoline-armv8.pl)
+perlasm(test/trampoline-ppc.${ASM_EXT} test/asm/trampoline-ppc.pl)
 perlasm(test/trampoline-x86.${ASM_EXT} test/asm/trampoline-x86.pl)
 perlasm(test/trampoline-x86_64.${ASM_EXT} test/asm/trampoline-x86_64.pl)
 
