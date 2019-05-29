@@ -38,6 +38,7 @@ func (test *delocateTest) Path(file string) string {
 }
 
 var delocateTests = []delocateTest{
+	{"generic-FileDirectives", []string{"in.s"}, "out.s"},
 	{"ppc64le-GlobalEntry", []string{"in.s"}, "out.s"},
 	{"ppc64le-LoadToR0", []string{"in.s"}, "out.s"},
 	{"ppc64le-Sample2", []string{"in.s"}, "out.s"},
