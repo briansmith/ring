@@ -1031,6 +1031,11 @@ static void ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_RAW_POINT *r,
                                        const EC_SCALAR *g_scalar,
                                        const EC_RAW_POINT *p,
                                        const EC_SCALAR *p_scalar) {
+  // Note this function must act in constant-time when exactly one of |g_scalar|
+  // and |p_scalar| is non-NULL. If both are non-NULL, this is not necessary and
+  // we'll hit the variable-time doubling case in |p224_point_add|.
+  //
+  // TODO(davidben): Split this like the other curves to ease analysis.
   p224_felem p_pre_comp[17][3];
   p224_felem x_out, y_out, z_out;
 
@@ -1072,6 +1077,19 @@ static void ec_GFp_nistp224_points_mul(const EC_GROUP *group, EC_RAW_POINT *r,
   p224_felem_to_generic(&r->Z, z_out);
 }
 
+static void ec_GFp_nistp224_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
+                                      const EC_RAW_POINT *p,
+                                      const EC_SCALAR *scalar) {
+  ec_GFp_nistp224_points_mul(group, r, NULL /* g_scalar */, p, scalar);
+}
+
+static void ec_GFp_nistp224_point_mul_base(const EC_GROUP *group,
+                                           EC_RAW_POINT *r,
+                                           const EC_SCALAR *scalar) {
+  ec_GFp_nistp224_points_mul(group, r, scalar, NULL /* p */,
+                             NULL /* p_scalar */);
+}
+
 static void ec_GFp_nistp224_felem_mul(const EC_GROUP *group, EC_FELEM *r,
                                       const EC_FELEM *a, const EC_FELEM *b) {
   p224_felem felem1, felem2;
@@ -1111,7 +1129,8 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp224_method) {
       ec_GFp_nistp224_point_get_affine_coordinates;
   out->add = ec_GFp_nistp224_add;
   out->dbl = ec_GFp_nistp224_dbl;
-  out->mul = ec_GFp_nistp224_points_mul;
+  out->mul = ec_GFp_nistp224_point_mul;
+  out->mul_base = ec_GFp_nistp224_point_mul_base;
   out->mul_public = ec_GFp_nistp224_points_mul;
   out->felem_mul = ec_GFp_nistp224_felem_mul;
   out->felem_sqr = ec_GFp_nistp224_felem_sqr;

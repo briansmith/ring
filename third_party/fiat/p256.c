@@ -731,98 +731,6 @@ static char get_bit(const uint8_t *in, int i) {
   return (in[i >> 3] >> (i & 7)) & 1;
 }
 
-// Interleaved point multiplication using precomputed point multiples: The
-// small point multiples 0*P, 1*P, ..., 17*P are in p_pre_comp, the scalar
-// in p_scalar, if non-NULL. If g_scalar is non-NULL, we also add this multiple
-// of the generator, using certain (large) precomputed multiples in g_pre_comp.
-// Output point (X, Y, Z) is stored in x_out, y_out, z_out.
-static void batch_mul(fe x_out, fe y_out, fe z_out,
-                      const uint8_t *p_scalar, const uint8_t *g_scalar,
-                      const fe p_pre_comp[17][3]) {
-  // set nq to the point at infinity
-  fe nq[3] = {{0},{0},{0}}, ftmp, tmp[3];
-  uint64_t bits;
-  uint8_t sign, digit;
-
-  // Loop over both scalars msb-to-lsb, interleaving additions of multiples
-  // of the generator (two in each of the last 32 rounds) and additions of p
-  // (every 5th round).
-
-  int skip = 1;  // save two point operations in the first round
-  size_t i = p_scalar != NULL ? 255 : 31;
-  for (;;) {
-    // double
-    if (!skip) {
-      point_double(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2]);
-    }
-
-    // add multiples of the generator
-    if (g_scalar != NULL && i <= 31) {
-      // first, look 32 bits upwards
-      bits = get_bit(g_scalar, i + 224) << 3;
-      bits |= get_bit(g_scalar, i + 160) << 2;
-      bits |= get_bit(g_scalar, i + 96) << 1;
-      bits |= get_bit(g_scalar, i + 32);
-      // select the point to add, in constant time
-      select_point(bits, 16, g_pre_comp[1], tmp);
-
-      if (!skip) {
-        point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */,
-                  tmp[0], tmp[1], tmp[2]);
-      } else {
-        fe_copy(nq[0], tmp[0]);
-        fe_copy(nq[1], tmp[1]);
-        fe_copy(nq[2], tmp[2]);
-        skip = 0;
-      }
-
-      // second, look at the current position
-      bits = get_bit(g_scalar, i + 192) << 3;
-      bits |= get_bit(g_scalar, i + 128) << 2;
-      bits |= get_bit(g_scalar, i + 64) << 1;
-      bits |= get_bit(g_scalar, i);
-      // select the point to add, in constant time
-      select_point(bits, 16, g_pre_comp[0], tmp);
-      point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */, tmp[0],
-                tmp[1], tmp[2]);
-    }
-
-    // do other additions every 5 doublings
-    if (p_scalar != NULL && i % 5 == 0) {
-      bits = get_bit(p_scalar, i + 4) << 5;
-      bits |= get_bit(p_scalar, i + 3) << 4;
-      bits |= get_bit(p_scalar, i + 2) << 3;
-      bits |= get_bit(p_scalar, i + 1) << 2;
-      bits |= get_bit(p_scalar, i) << 1;
-      bits |= get_bit(p_scalar, i - 1);
-      ec_GFp_nistp_recode_scalar_bits(&sign, &digit, bits);
-
-      // select the point to add or subtract, in constant time.
-      select_point(digit, 17, p_pre_comp, tmp);
-      fe_opp(ftmp, tmp[1]);  // (X, -Y, Z) is the negative point.
-      fe_cmovznz(tmp[1], sign, tmp[1], ftmp);
-
-      if (!skip) {
-        point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 0 /* mixed */,
-                  tmp[0], tmp[1], tmp[2]);
-      } else {
-        fe_copy(nq[0], tmp[0]);
-        fe_copy(nq[1], tmp[1]);
-        fe_copy(nq[2], tmp[2]);
-        skip = 0;
-      }
-    }
-
-    if (i == 0) {
-      break;
-    }
-    --i;
-  }
-  fe_copy(x_out, nq[0]);
-  fe_copy(y_out, nq[1]);
-  fe_copy(z_out, nq[2]);
-}
-
 // OPENSSL EC_METHOD FUNCTIONS
 
 // Takes the Jacobian coordinates (X, Y, Z) of a point and returns (X', Y') =
@@ -890,45 +798,116 @@ static void ec_GFp_nistp256_dbl(const EC_GROUP *group, EC_RAW_POINT *r,
   fe_to_generic(&r->Z, z);
 }
 
-static void ec_GFp_nistp256_points_mul(const EC_GROUP *group, EC_RAW_POINT *r,
-                                       const EC_SCALAR *g_scalar,
-                                       const EC_RAW_POINT *p,
-                                       const EC_SCALAR *p_scalar) {
+static void ec_GFp_nistp256_point_mul(const EC_GROUP *group, EC_RAW_POINT *r,
+                                      const EC_RAW_POINT *p,
+                                      const EC_SCALAR *scalar) {
   fe p_pre_comp[17][3];
-  fe x_out, y_out, z_out;
+  OPENSSL_memset(&p_pre_comp, 0, sizeof(p_pre_comp));
+  // Precompute multiples.
+  fe_from_generic(p_pre_comp[1][0], &p->X);
+  fe_from_generic(p_pre_comp[1][1], &p->Y);
+  fe_from_generic(p_pre_comp[1][2], &p->Z);
+  for (size_t j = 2; j <= 16; ++j) {
+    if (j & 1) {
+      point_add(p_pre_comp[j][0], p_pre_comp[j][1], p_pre_comp[j][2],
+                p_pre_comp[1][0], p_pre_comp[1][1], p_pre_comp[1][2], 0,
+                p_pre_comp[j - 1][0], p_pre_comp[j - 1][1],
+                p_pre_comp[j - 1][2]);
+    } else {
+      point_double(p_pre_comp[j][0], p_pre_comp[j][1], p_pre_comp[j][2],
+                   p_pre_comp[j / 2][0], p_pre_comp[j / 2][1],
+                   p_pre_comp[j / 2][2]);
+    }
+  }
 
-  if (p != NULL && p_scalar != NULL) {
-    // We treat NULL scalars as 0, and NULL points as points at infinity, i.e.,
-    // they contribute nothing to the linear combination.
-    OPENSSL_memset(&p_pre_comp, 0, sizeof(p_pre_comp));
-    // Precompute multiples.
-    fe_from_generic(p_pre_comp[1][0], &p->X);
-    fe_from_generic(p_pre_comp[1][1], &p->Y);
-    fe_from_generic(p_pre_comp[1][2], &p->Z);
-    for (size_t j = 2; j <= 16; ++j) {
-      if (j & 1) {
-        point_add(p_pre_comp[j][0], p_pre_comp[j][1],
-                  p_pre_comp[j][2], p_pre_comp[1][0],
-                  p_pre_comp[1][1], p_pre_comp[1][2],
-                  0,
-                  p_pre_comp[j - 1][0], p_pre_comp[j - 1][1],
-                  p_pre_comp[j - 1][2]);
+  // Set nq to the point at infinity.
+  fe nq[3] = {{0}, {0}, {0}}, ftmp, tmp[3];
+
+  // Loop over |scalar| msb-to-lsb, incorporating |p_pre_comp| every 5th round.
+  int skip = 1;  // Save two point operations in the first round.
+  for (size_t i = 255; i < 256; i--) {
+    // double
+    if (!skip) {
+      point_double(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2]);
+    }
+
+    // do other additions every 5 doublings
+    if (i % 5 == 0) {
+      uint64_t bits = get_bit(scalar->bytes, i + 4) << 5;
+      bits |= get_bit(scalar->bytes, i + 3) << 4;
+      bits |= get_bit(scalar->bytes, i + 2) << 3;
+      bits |= get_bit(scalar->bytes, i + 1) << 2;
+      bits |= get_bit(scalar->bytes, i) << 1;
+      bits |= get_bit(scalar->bytes, i - 1);
+      uint8_t sign, digit;
+      ec_GFp_nistp_recode_scalar_bits(&sign, &digit, bits);
+
+      // select the point to add or subtract, in constant time.
+      select_point(digit, 17, (const fe(*)[3])p_pre_comp, tmp);
+      fe_opp(ftmp, tmp[1]);  // (X, -Y, Z) is the negative point.
+      fe_cmovznz(tmp[1], sign, tmp[1], ftmp);
+
+      if (!skip) {
+        point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 0 /* mixed */,
+                  tmp[0], tmp[1], tmp[2]);
       } else {
-        point_double(p_pre_comp[j][0], p_pre_comp[j][1],
-                     p_pre_comp[j][2], p_pre_comp[j / 2][0],
-                     p_pre_comp[j / 2][1], p_pre_comp[j / 2][2]);
+        fe_copy(nq[0], tmp[0]);
+        fe_copy(nq[1], tmp[1]);
+        fe_copy(nq[2], tmp[2]);
+        skip = 0;
       }
     }
   }
 
-  batch_mul(x_out, y_out, z_out,
-            (p != NULL && p_scalar != NULL) ? p_scalar->bytes : NULL,
-            g_scalar != NULL ? g_scalar->bytes : NULL,
-            (const fe (*) [3])p_pre_comp);
+  fe_to_generic(&r->X, nq[0]);
+  fe_to_generic(&r->Y, nq[1]);
+  fe_to_generic(&r->Z, nq[2]);
+}
 
-  fe_to_generic(&r->X, x_out);
-  fe_to_generic(&r->Y, y_out);
-  fe_to_generic(&r->Z, z_out);
+static void ec_GFp_nistp256_point_mul_base(const EC_GROUP *group,
+                                           EC_RAW_POINT *r,
+                                           const EC_SCALAR *scalar) {
+  // Set nq to the point at infinity.
+  fe nq[3] = {{0}, {0}, {0}}, tmp[3];
+
+  int skip = 1;  // Save two point operations in the first round.
+  for (size_t i = 31; i < 32; i--) {
+    if (!skip) {
+      point_double(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2]);
+    }
+
+    // First, look 32 bits upwards.
+    uint64_t bits = get_bit(scalar->bytes, i + 224) << 3;
+    bits |= get_bit(scalar->bytes, i + 160) << 2;
+    bits |= get_bit(scalar->bytes, i + 96) << 1;
+    bits |= get_bit(scalar->bytes, i + 32);
+    // Select the point to add, in constant time.
+    select_point(bits, 16, g_pre_comp[1], tmp);
+
+    if (!skip) {
+      point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */, tmp[0],
+                tmp[1], tmp[2]);
+    } else {
+      fe_copy(nq[0], tmp[0]);
+      fe_copy(nq[1], tmp[1]);
+      fe_copy(nq[2], tmp[2]);
+      skip = 0;
+    }
+
+    // Second, look at the current position.
+    bits = get_bit(scalar->bytes, i + 192) << 3;
+    bits |= get_bit(scalar->bytes, i + 128) << 2;
+    bits |= get_bit(scalar->bytes, i + 64) << 1;
+    bits |= get_bit(scalar->bytes, i);
+    // Select the point to add, in constant time.
+    select_point(bits, 16, g_pre_comp[0], tmp);
+    point_add(nq[0], nq[1], nq[2], nq[0], nq[1], nq[2], 1 /* mixed */, tmp[0],
+              tmp[1], tmp[2]);
+  }
+
+  fe_to_generic(&r->X, nq[0]);
+  fe_to_generic(&r->Y, nq[1]);
+  fe_to_generic(&r->Z, nq[2]);
 }
 
 static void ec_GFp_nistp256_point_mul_public(const EC_GROUP *group,
@@ -1066,7 +1045,8 @@ DEFINE_METHOD_FUNCTION(EC_METHOD, EC_GFp_nistp256_method) {
     ec_GFp_nistp256_point_get_affine_coordinates;
   out->add = ec_GFp_nistp256_add;
   out->dbl = ec_GFp_nistp256_dbl;
-  out->mul = ec_GFp_nistp256_points_mul;
+  out->mul = ec_GFp_nistp256_point_mul;
+  out->mul_base = ec_GFp_nistp256_point_mul_base;
   out->mul_public = ec_GFp_nistp256_point_mul_public;
   out->felem_mul = ec_GFp_mont_felem_mul;
   out->felem_sqr = ec_GFp_mont_felem_sqr;

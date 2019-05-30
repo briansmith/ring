@@ -944,8 +944,7 @@ err:
 int ec_point_mul_scalar_public(const EC_GROUP *group, EC_RAW_POINT *r,
                                const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
                                const EC_SCALAR *p_scalar) {
-  if ((g_scalar == NULL && p_scalar == NULL) ||
-      (p == NULL) != (p_scalar == NULL)) {
+  if (g_scalar == NULL || p_scalar == NULL || p == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
@@ -961,7 +960,7 @@ int ec_point_mul_scalar(const EC_GROUP *group, EC_RAW_POINT *r,
     return 0;
   }
 
-  group->meth->mul(group, r, NULL, p, scalar);
+  group->meth->mul(group, r, p, scalar);
   return 1;
 }
 
@@ -972,7 +971,7 @@ int ec_point_mul_scalar_base(const EC_GROUP *group, EC_RAW_POINT *r,
     return 0;
   }
 
-  group->meth->mul(group, r, scalar, NULL, NULL);
+  group->meth->mul_base(group, r, scalar);
   return 1;
 }
 
