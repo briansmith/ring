@@ -325,13 +325,15 @@ void ec_scalar_inv_montgomery(const EC_GROUP *group, EC_SCALAR *r,
 int ec_scalar_inv_montgomery_vartime(const EC_GROUP *group, EC_SCALAR *r,
                                      const EC_SCALAR *a);
 
-// ec_point_mul_scalar sets |r| to generator * |g_scalar| + |p| *
-// |p_scalar|. Unlike other functions which take |EC_SCALAR|, |g_scalar| and
-// |p_scalar| need not be fully reduced. They need only contain as many bits as
-// the order.
+// ec_point_mul_scalar sets |r| to |p| * |scalar|. Both inputs are considered
+// secret.
 int ec_point_mul_scalar(const EC_GROUP *group, EC_RAW_POINT *r,
-                        const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
-                        const EC_SCALAR *p_scalar);
+                        const EC_RAW_POINT *p, const EC_SCALAR *scalar);
+
+// ec_point_mul_scalar_base sets |r| to generator * |scalar|. |scalar| is
+// treated as secret.
+int ec_point_mul_scalar_base(const EC_GROUP *group, EC_RAW_POINT *r,
+                             const EC_SCALAR *scalar);
 
 // ec_point_mul_scalar_public performs the same computation as
 // ec_point_mul_scalar.  It further assumes that the inputs are public so

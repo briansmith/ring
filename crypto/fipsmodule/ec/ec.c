@@ -892,8 +892,6 @@ int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
   }
 
   int ret = 0;
-  EC_SCALAR g_scalar_storage, p_scalar_storage;
-  EC_SCALAR *g_scalar_arg = NULL, *p_scalar_arg = NULL;
   BN_CTX *new_ctx = NULL;
   if (ctx == NULL) {
     new_ctx = BN_CTX_new();
@@ -903,27 +901,43 @@ int EC_POINT_mul(const EC_GROUP *group, EC_POINT *r, const BIGNUM *g_scalar,
     ctx = new_ctx;
   }
 
+  // If both |g_scalar| and |p_scalar| are non-NULL,
+  // |ec_point_mul_scalar_public| would share the doublings between the two
+  // products, which would be more efficient. However, we conservatively assume
+  // the caller needs a constant-time operation. (ECDSA verification does not
+  // use this function.)
+  //
+  // Previously, the low-level constant-time multiplication function aligned
+  // with this function's calling convention, but this was misleading. Curves
+  // which combined the two multiplications did not avoid the doubling case
+  // in the incomplete addition formula and were not constant-time.
+
   if (g_scalar != NULL) {
-    if (!arbitrary_bignum_to_scalar(group, &g_scalar_storage, g_scalar, ctx)) {
+    EC_SCALAR scalar;
+    if (!arbitrary_bignum_to_scalar(group, &scalar, g_scalar, ctx) ||
+        !ec_point_mul_scalar_base(group, &r->raw, &scalar)) {
       goto err;
     }
-    g_scalar_arg = &g_scalar_storage;
   }
 
   if (p_scalar != NULL) {
-    if (!arbitrary_bignum_to_scalar(group, &p_scalar_storage, p_scalar, ctx)) {
+    EC_SCALAR scalar;
+    EC_RAW_POINT tmp;
+    if (!arbitrary_bignum_to_scalar(group, &scalar, p_scalar, ctx) ||
+        !ec_point_mul_scalar(group, &tmp, &p->raw, &scalar)) {
       goto err;
     }
-    p_scalar_arg = &p_scalar_storage;
+    if (g_scalar == NULL) {
+      OPENSSL_memcpy(&r->raw, &tmp, sizeof(EC_RAW_POINT));
+    } else {
+      group->meth->add(group, &r->raw, &r->raw, &tmp);
+    }
   }
 
-  ret = ec_point_mul_scalar(group, &r->raw, g_scalar_arg,
-                            p == NULL ? NULL : &p->raw, p_scalar_arg);
+  ret = 1;
 
 err:
   BN_CTX_free(new_ctx);
-  OPENSSL_cleanse(&g_scalar_storage, sizeof(g_scalar_storage));
-  OPENSSL_cleanse(&p_scalar_storage, sizeof(p_scalar_storage));
   return ret;
 }
 
@@ -941,15 +955,24 @@ int ec_point_mul_scalar_public(const EC_GROUP *group, EC_RAW_POINT *r,
 }
 
 int ec_point_mul_scalar(const EC_GROUP *group, EC_RAW_POINT *r,
-                        const EC_SCALAR *g_scalar, const EC_RAW_POINT *p,
-                        const EC_SCALAR *p_scalar) {
-  if ((g_scalar == NULL && p_scalar == NULL) ||
-      (p == NULL) != (p_scalar == NULL)) {
+                        const EC_RAW_POINT *p, const EC_SCALAR *scalar) {
+  if (p == NULL || scalar == NULL) {
     OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
     return 0;
   }
 
-  group->meth->mul(group, r, g_scalar, p, p_scalar);
+  group->meth->mul(group, r, NULL, p, scalar);
+  return 1;
+}
+
+int ec_point_mul_scalar_base(const EC_GROUP *group, EC_RAW_POINT *r,
+                             const EC_SCALAR *scalar) {
+  if (scalar == NULL) {
+    OPENSSL_PUT_ERROR(EC, ERR_R_PASSED_NULL_PARAMETER);
+    return 0;
+  }
+
+  group->meth->mul(group, r, scalar, NULL, NULL);
   return 1;
 }
 
