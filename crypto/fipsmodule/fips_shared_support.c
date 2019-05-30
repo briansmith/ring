@@ -15,10 +15,7 @@
 #include <stdint.h>
 
 
-#if !defined(BORINGSSL_FIPS) || !defined(BORINGSSL_SHARED_LIBRARY)
-#error "This file should only be built in a shared-object FIPS build"
-#endif
-
+#if defined(BORINGSSL_FIPS) && defined(BORINGSSL_SHARED_LIBRARY)
 // BORINGSSL_bcm_text_hash is is default hash value for the FIPS integrity check
 // that must be replaced with the real value during the build process. This
 // value need only be distinct, i.e. so that we can safely search-and-replace it
@@ -32,3 +29,4 @@ const uint8_t BORINGSSL_bcm_text_hash[64] = {
     0xd7, 0x25, 0xdb, 0x21, 0x98, 0xe9, 0xd5, 0x53, 0xbf, 0x5c, 0x32,
     0x06, 0x83, 0x34, 0x0c, 0x65, 0x89, 0x52, 0xbd, 0x1f,
 };
+#endif  // FIPS && SHARED_LIBRARY

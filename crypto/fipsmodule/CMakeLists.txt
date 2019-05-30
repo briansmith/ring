@@ -193,6 +193,7 @@ if(FIPS_DELOCATE)
 
     OBJECT
 
+    fips_shared_support.c
     is_fips.c
   )
 
@@ -209,8 +210,8 @@ elseif(FIPS_SHARED)
 
     OBJECT
 
-    is_fips.c
     fips_shared_support.c
+    is_fips.c
   )
 
   add_dependencies(fipsmodule global_target)
@@ -242,6 +243,7 @@ else()
     OBJECT
 
     bcm.c
+    fips_shared_support.c
     is_fips.c
 
     ${BCM_ASM_SOURCES}
