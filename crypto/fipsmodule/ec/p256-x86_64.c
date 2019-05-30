@@ -48,7 +48,8 @@ static const BN_ULONG ONE[P256_LIMBS] = {
 // Precomputed tables for the default generator
 #include "p256-x86_64-table.h"
 
-// Recode window to a signed digit, see util-64.c for details
+// Recode window to a signed digit, see |ec_GFp_nistp_recode_scalar_bits| in
+// util.c for details
 static unsigned booth_recode_w5(unsigned in) {
   unsigned s, d;
 
