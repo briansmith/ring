@@ -19,7 +19,7 @@
 #include "../../crypto/internal.h"
 #include "../../crypto/test/test_util.h"
 
-struct TestCase {
+struct CastTestCase {
   uint8_t key[16];
   uint8_t plaintext[16];
   uint8_t iv[8];
@@ -27,7 +27,7 @@ struct TestCase {
   uint8_t cbc_ciphertext[24];
 };
 
-static const TestCase kTests[] = {
+static const CastTestCase kTests[] = {
     // Randomly generated test cases. Checked against vanilla OpenSSL.
     {
         {0xbb, 0x56, 0xb1, 0x27, 0x7c, 0x4c, 0xdd, 0x5a, 0x99, 0x90, 0x1e, 0x6f,

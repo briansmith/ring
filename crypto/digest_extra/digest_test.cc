@@ -55,7 +55,7 @@ static const MD sha384 = { "SHA384", &EVP_sha384, &SHA384 };
 static const MD sha512 = { "SHA512", &EVP_sha512, &SHA512 };
 static const MD md5_sha1 = { "MD5-SHA1", &EVP_md5_sha1, nullptr };
 
-struct TestVector {
+struct DigestTestVector {
   // md is the digest to test.
   const MD &md;
   // input is a NUL-terminated string to hash.
@@ -66,7 +66,7 @@ struct TestVector {
   const char *expected_hex;
 };
 
-static const TestVector kTestVectors[] = {
+static const DigestTestVector kTestVectors[] = {
     // MD4 tests, from RFC 1320. (crypto/md4 does not provide a
     // one-shot MD4 function.)
     { md4, "", 1, "31d6cfe0d16ae931b73c59d7e0c089c0" },
@@ -144,7 +144,7 @@ static const TestVector kTestVectors[] = {
       "900150983cd24fb0d6963f7d28e17f72a9993e364706816aba3e25717850c26c9cd0d89d" },
 };
 
-static void CompareDigest(const TestVector *test,
+static void CompareDigest(const DigestTestVector *test,
                           const uint8_t *digest,
                           size_t digest_len) {
   static const char kHexTable[] = "0123456789abcdef";
@@ -159,7 +159,7 @@ static void CompareDigest(const TestVector *test,
   EXPECT_STREQ(test->expected_hex, digest_hex);
 }
 
-static void TestDigest(const TestVector *test) {
+static void TestDigest(const DigestTestVector *test) {
   bssl::ScopedEVP_MD_CTX ctx;
 
   // Test the input provided.
