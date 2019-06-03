@@ -153,6 +153,7 @@ BORINGSSL_bcm_power_on_self_test(void) {
     fprintf(stderr, "HMAC failed.\n");
     goto err;
   }
+  HMAC_CTX_cleanup(&hmac_ctx);
 
   const uint8_t *expected = BORINGSSL_bcm_text_hash;
 
