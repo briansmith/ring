@@ -14,8 +14,6 @@
 
 #include "../../limbs/limbs.h"
 
-#include <string.h>
-
 #include "ecp_nistz384.h"
 #include "../bn/internal.h"
 #include "../../internal.h"
@@ -223,9 +221,9 @@ void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
 
 static void gfp_p384_point_select_w5(P384_POINT *out,
                                      const P384_POINT table[16], size_t index) {
-  Elem x; memset(x, 0, sizeof(x));
-  Elem y; memset(y, 0, sizeof(y));
-  Elem z; memset(z, 0, sizeof(z));
+  Elem x; limbs_zero(x, P384_LIMBS);
+  Elem y; limbs_zero(y, P384_LIMBS);
+  Elem z; limbs_zero(z, P384_LIMBS);
 
   for (size_t i = 0; i < 16; ++i) {
     Limb mask = constant_time_eq_w(index, i + 1);

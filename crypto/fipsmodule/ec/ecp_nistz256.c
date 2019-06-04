@@ -23,8 +23,6 @@
 
 #include "ecp_nistz256.h"
 
-#include <string.h>
-
 #include "ecp_nistz.h"
 #include "../bn/internal.h"
 #include "../../limbs/limbs.inl"

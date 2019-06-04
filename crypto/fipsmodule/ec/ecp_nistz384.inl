@@ -128,7 +128,9 @@ void GFp_nistz384_point_add(P384_POINT *r, const P384_POINT *a,
     if (is_equal(S1, S2)) {
       GFp_nistz384_point_double(r, a);
     } else {
-      memset(r, 0, sizeof(*r));
+      limbs_zero(r->X, P384_LIMBS);
+      limbs_zero(r->Y, P384_LIMBS);
+      limbs_zero(r->Z, P384_LIMBS);
     }
     return;
   }
