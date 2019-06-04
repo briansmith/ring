@@ -153,3 +153,9 @@ static inline void limbs_select(Limb r[], const Limb table[],
     }
   }
 }
+
+static inline void limbs_zero(Limb r[], size_t num_limbs) {
+  for (size_t i = 0; i < num_limbs; ++i) {
+    r[i] = 0;
+  }
+}
