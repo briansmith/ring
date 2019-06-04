@@ -31,8 +31,6 @@
 #pragma warning(push, 3)
 #endif
 
-#include <string.h>
-
 #if defined(_MSC_VER)
 #pragma warning(pop)
 #endif
@@ -93,9 +91,6 @@ static uint64_t load_4(const uint8_t *in) {
 
 #if defined(BORINGSSL_CURVE25519_64BIT)
 
-typedef uint64_t fe_limb_t;
-#define FE_NUM_LIMBS 5
-
 // assert_fe asserts that |f| satisfies bounds:
 //
 //  [[0x0 ~> 0x8cccccccccccc],
@@ -131,9 +126,6 @@ typedef uint64_t fe_limb_t;
   } while (0)
 
 #else
-
-typedef uint32_t fe_limb_t;
-#define FE_NUM_LIMBS 10
 
 // assert_fe asserts that |f| satisfies bounds:
 //
@@ -185,7 +177,7 @@ static void fe_frombytes_strict(fe *h, const uint8_t s[32]) {
 
 static void fe_frombytes(fe *h, const uint8_t s[32]) {
   uint8_t s_copy[32];
-  memcpy(s_copy, s, 32);
+  bytes_copy(s_copy, s, 32);
   s_copy[31] &= 0x7f;
   fe_frombytes_strict(h, s_copy);
 }
@@ -197,21 +189,21 @@ static void fe_tobytes(uint8_t s[32], const fe *f) {
 
 // h = 0
 static void fe_0(fe *h) {
-  memset(h, 0, sizeof(fe));
+  fe_limbs_zero(h->v);
 }
 
 static void fe_loose_0(fe_loose *h) {
-  memset(h, 0, sizeof(fe_loose));
+  fe_limbs_zero(h->v);
 }
 
 // h = 1
 static void fe_1(fe *h) {
-  memset(h, 0, sizeof(fe));
+  fe_0(h);
   h->v[0] = 1;
 }
 
 static void fe_loose_1(fe_loose *h) {
-  memset(h, 0, sizeof(fe_loose));
+  fe_loose_0(h);
   h->v[0] = 1;
 }
 
@@ -333,17 +325,15 @@ static void fe_cmov(fe_loose *f, const fe_loose *g, fe_limb_t b) {
 
 // h = f
 static void fe_copy(fe *h, const fe *f) {
-  memmove(h, f, sizeof(fe));
+  fe_limbs_copy(h->v, f->v);
 }
 
 static void fe_copy_lt(fe_loose *h, const fe *f) {
-  OPENSSL_STATIC_ASSERT(sizeof(fe_loose) == sizeof(fe),
-                        "fe and fe_loose mismatch");
-  memmove(h, f, sizeof(fe));
+  fe_limbs_copy(h->v, f->v);
 }
 #if !defined(OPENSSL_SMALL)
 static void fe_copy_ll(fe_loose *h, const fe_loose *f) {
-  memmove(h, f, sizeof(fe_loose));
+  fe_limbs_copy(h->v, f->v);
 }
 #endif // !defined(OPENSSL_SMALL)
 
@@ -1810,7 +1800,7 @@ void GFp_x25519_scalar_mult_generic(uint8_t out[32],
   fe_loose x2l, z2l, x3l, tmp0l, tmp1l;
 
   uint8_t e[32];
-  memcpy(e, scalar, 32);
+  bytes_copy(e, scalar, 32);
   GFp_x25519_sc_mask(e);
   // The following implementation was transcribed to Coq and proven to
   // correspond to unary scalar multiplication in affine coordinates given that
@@ -1885,7 +1875,7 @@ void GFp_x25519_scalar_mult_generic(uint8_t out[32],
 void GFp_x25519_public_from_private_generic(uint8_t out_public_value[32],
                                             const uint8_t private_key[32]) {
   uint8_t e[32];
-  memcpy(e, private_key, 32);
+  bytes_copy(e, private_key, 32);
   GFp_x25519_sc_mask(e);
 
   ge_p3 A;
