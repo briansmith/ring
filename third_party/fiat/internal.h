@@ -41,30 +41,43 @@ void GFp_x25519_NEON(uint8_t out[32], const uint8_t scalar[32],
 #endif
 
 #if defined(BORINGSSL_CURVE25519_64BIT)
-// fe means field element. Here the field is \Z/(2^255-19). An element t,
+// An element t,
 // entries t[0]...t[4], represents the integer t[0]+2^51 t[1]+2^102 t[2]+2^153
 // t[3]+2^204 t[4].
 // fe limbs are bounded by 1.125*2^51.
-// Multiplication and carrying produce fe from fe_loose.
-typedef struct fe { uint64_t v[5]; } fe;
-
 // fe_loose limbs are bounded by 3.375*2^51.
-// Addition and subtraction produce fe_loose from (fe, fe).
-typedef struct fe_loose { uint64_t v[5]; } fe_loose;
+typedef uint64_t fe_limb_t;
+#define FE_NUM_LIMBS 5
 #else
-// fe means field element. Here the field is \Z/(2^255-19). An element t,
+// An element t,
 // entries t[0]...t[9], represents the integer t[0]+2^26 t[1]+2^51 t[2]+2^77
 // t[3]+2^102 t[4]+...+2^230 t[9].
 // fe limbs are bounded by 1.125*2^26,1.125*2^25,1.125*2^26,1.125*2^25,etc.
-// Multiplication and carrying produce fe from fe_loose.
-//
-// Keep in sync with `Elem` and `ELEM_LIMBS` in curve25519/ops.rs.
-typedef struct fe { uint32_t v[10]; } fe;
-
 // fe_loose limbs are bounded by 3.375*2^26,3.375*2^25,3.375*2^26,3.375*2^25,etc.
-// Addition and subtraction produce fe_loose from (fe, fe).
-typedef struct fe_loose { uint32_t v[10]; } fe_loose;
+typedef uint32_t fe_limb_t;
+#define FE_NUM_LIMBS 10
 #endif
+
+// fe means field element. Here the field is \Z/(2^255-19).
+// Multiplication and carrying produce fe from fe_loose.
+// Keep in sync with `Elem` and `ELEM_LIMBS` in curve25519/ops.rs.
+typedef struct fe { fe_limb_t v[FE_NUM_LIMBS]; } fe;
+
+// Addition and subtraction produce fe_loose from (fe, fe).
+// Keep in sync with `Elem` and `ELEM_LIMBS` in curve25519/ops.rs.
+typedef struct fe_loose { fe_limb_t v[FE_NUM_LIMBS]; } fe_loose;
+
+static inline void fe_limbs_copy(fe_limb_t r[], const fe_limb_t a[]) {
+  for (size_t i = 0; i < FE_NUM_LIMBS; ++i) {
+    r[i] = a[i];
+  }
+}
+
+static inline void fe_limbs_zero(fe_limb_t r[]) {
+  for (size_t i = 0; i < FE_NUM_LIMBS; ++i) {
+    r[i] = 0;
+  }
+}
 
 // ge means group element.
 //

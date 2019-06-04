@@ -255,4 +255,10 @@ static inline void to_be_u64_ptr(uint8_t *out, uint64_t value) {
   out[7] = (uint8_t)value;
 }
 
+static inline void bytes_copy(uint8_t out[], const uint8_t in[], size_t len) {
+  for (size_t i = 0; i < len; ++i) {
+    out[i] = in[i];
+  }
+}
+
 #endif  // OPENSSL_HEADER_CRYPTO_INTERNAL_H
