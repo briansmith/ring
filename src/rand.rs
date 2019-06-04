@@ -97,18 +97,6 @@ impl SecureRandom for SystemRandom {
 
 impl sealed::Sealed for SystemRandom {}
 
-#[cfg(all(
-    feature = "use_heap",
-    not(any(
-        target_os = "linux",
-        target_os = "macos",
-        target_os = "ios",
-        target_os = "fuchsia",
-        windows
-    ))
-))]
-use self::urandom::fill as fill_impl;
-
 #[cfg(any(
     all(target_os = "linux", not(feature = "dev_urandom_fallback")),
     windows
@@ -201,14 +189,17 @@ mod sysrand {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+mod sysrand {
+    use crate::error;
+
+    pub fn fill(_dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        unimplemented!()
+    }
+}
+
 // Keep the `cfg` conditions in sync with the conditions in lib.rs.
-#[cfg(all(
-    feature = "use_heap",
-    any(target_os = "redox", unix),
-    not(any(target_os = "macos", target_os = "ios")),
-    not(all(target_os = "linux", not(feature = "dev_urandom_fallback"))),
-    not(any(target_os = "fuchsia")),
-))]
+#[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
 mod urandom {
     use crate::error;
 
