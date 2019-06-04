@@ -24,7 +24,7 @@
 //!    is incremented, the current value is returned.
 
 use super::Block;
-use crate::{endian::*, error, polyfill::convert::*};
+use crate::{endian::*, error, polyfill::convert::*, rand};
 use core::marker::PhantomData;
 
 /// A nonce for a single AEAD opening or sealing operation.
@@ -51,6 +51,14 @@ impl Nonce {
     #[inline]
     pub fn assume_unique_for_key(value: [u8; NONCE_LEN]) -> Self {
         Self(value)
+    }
+
+    /// Generate a `Nonce` with a random value generated from `rng`.
+    #[inline]
+    pub fn generate(rng: &rand::SecureRandom) -> Result<Self, error::Unspecified> {
+        let mut nonce = [0u8; 12];
+        rng.fill(&mut nonce)?;
+        Ok(Self(nonce))
     }
 }
 
