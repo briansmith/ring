@@ -38,7 +38,7 @@ func hashMac(out, in, S []byte) {
 
 // Zeroize Fp2
 func zeroize(fp *Fp2) {
-	// Zeroizing in 2 seperated loops tells compiler to
+	// Zeroizing in 2 separated loops tells compiler to
 	// use fast runtime.memclr()
 	for i := range fp.A {
 		fp.A[i] = 0
@@ -561,7 +561,7 @@ func DeriveSecret(prv *PrivateKey, pub *PublicKey) ([]byte, error) {
 
 // Uses SIKE public key to encrypt plaintext. Requires cryptographically secure PRNG
 // Returns ciphertext in case encryption succeeds. Returns error in case PRNG fails
-// or wrongly formated input was provided.
+// or wrongly formatted input was provided.
 func Encrypt(rng io.Reader, pub *PublicKey, ptext []byte) ([]byte, error) {
 	var ptextLen = len(ptext)
 	// c1 must be security level + 64 bits (see [SIKE] 1.4 and 4.3.3)
@@ -618,7 +618,7 @@ func Decrypt(prv *PrivateKey, ctext []byte) ([]byte, error) {
 // Encapsulation receives the public key and generates SIKE ciphertext and shared secret.
 // The generated ciphertext is used for authentication.
 // The rng must be cryptographically secure PRNG.
-// Error is returned in case PRNG fails or wrongly formated input was provided.
+// Error is returned in case PRNG fails or wrongly formatted input was provided.
 func Encapsulate(rng io.Reader, pub *PublicKey) (ctext []byte, secret []byte, err error) {
 	// Buffer for random, secret message
 	var ptext = make([]byte, pub.params.MsgLen)
@@ -638,7 +638,7 @@ func Encapsulate(rng io.Reader, pub *PublicKey) (ctext []byte, secret []byte, er
 	copy(hmac_key, ptext)
 	copy(hmac_key[len(ptext):], pub.Export())
 	hashMac(r, hmac_key[:len(ptext)+pub.Size()], G)
-	// Ensure bitlength is not bigger then to 2^e2-1
+	// Ensure bitlength is not bigger than to 2^e2-1
 	r[len(r)-1] &= (1 << (pub.params.A.SecretBitLen % 8)) - 1
 
 	// (c0 || c1) = Enc(pkA, ptext; r)
@@ -663,7 +663,7 @@ func Encapsulate(rng io.Reader, pub *PublicKey) (ctext []byte, secret []byte, er
 
 // Decapsulate given the keypair and ciphertext as inputs, Decapsulate outputs a shared
 // secret if plaintext verifies correctly, otherwise function outputs random value.
-// Decapsulation may fail in case input is wrongly formated.
+// Decapsulation may fail in case input is wrongly formatted.
 // Constant time for properly initialized input.
 func Decapsulate(prv *PrivateKey, pub *PublicKey, ctext []byte) ([]byte, error) {
 	var r = make([]byte, pub.params.A.SecretByteLen)

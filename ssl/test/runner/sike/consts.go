@@ -90,7 +90,7 @@ type ProjectivePoint struct {
 type key struct {
 	// Domain parameters of the algorithm to be used with a key
 	params *SidhParams
-	// Flag indicates wether corresponds to 2-, 3-torsion group or SIKE
+	// Flag indicates whether corresponds to 2-, 3-torsion group or SIKE
 	keyVariant KeyVariant
 }
 
@@ -121,7 +121,7 @@ type ProjectiveCurveParameters struct {
 
 const (
 	// First 2 bits identify SIDH variant third bit indicates
-	// wether key is a SIKE variant (set) or SIDH (not set)
+	// whether key is a SIKE variant (set) or SIDH (not set)
 
 	// 001 - SIDH: corresponds to 2-torsion group
 	KeyVariant_SIDH_A KeyVariant = 1 << 0

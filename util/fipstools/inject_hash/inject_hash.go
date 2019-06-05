@@ -121,7 +121,7 @@ func do(outPath, oInput string, arInput string) error {
 		}
 
 		if isStatic {
-			// Static objects appear to have different symantics about whether symbol
+			// Static objects appear to have different semantics about whether symbol
 			// values are relative to their section or not.
 			base = 0
 		} else if symbol.Value < base {
