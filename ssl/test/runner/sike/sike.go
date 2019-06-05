@@ -500,7 +500,7 @@ func (prv *PrivateKey) Generate(rand io.Reader) error {
 		dp = &prv.params.B
 	}
 
-	if prv.keyVariant == KeyVariant_SIKE && err == nil {
+	if prv.keyVariant == KeyVariant_SIKE {
 		_, err = io.ReadFull(rand, prv.S)
 	}
 

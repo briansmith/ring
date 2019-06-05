@@ -508,9 +508,6 @@ func testDecapsulation(pk, sk, ct, ssExpected []byte, id uint8) bool {
 		panic("sike test: can't perform degcapsulation KAT")
 	}
 
-	if err != nil {
-		return false
-	}
 	return bytes.Equal(ssGot, ssExpected)
 }
 
