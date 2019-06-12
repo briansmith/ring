@@ -25,7 +25,7 @@
 // as possible.
 
 use crate::{cpu, debug, endian::*, polyfill};
-use core::{self, num::Wrapping};
+use core::num::Wrapping;
 use libc::size_t;
 
 mod sha1;
@@ -507,6 +507,7 @@ mod tests {
     mod max_input {
         use super::super::super::digest;
         use crate::polyfill;
+        use std::vec;
 
         macro_rules! max_input_tests {
             ( $algorithm_name:ident ) => {

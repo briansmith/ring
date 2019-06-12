@@ -143,7 +143,6 @@ fn ecdh(
 mod tests {
     use super::super::ops;
     use crate::{agreement, ec, limb, test};
-    use core;
 
     static SUPPORTED_SUITE_B_ALGS: [(&str, &agreement::Algorithm, &ec::Curve, &ops::CommonOps); 2] = [
         (

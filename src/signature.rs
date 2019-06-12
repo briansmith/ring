@@ -257,7 +257,6 @@
 //! ```
 
 use crate::{cpu, ec, error, sealed};
-use core;
 use untrusted;
 
 pub use crate::ec::{

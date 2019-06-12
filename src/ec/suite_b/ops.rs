@@ -469,7 +469,7 @@ extern "C" {
 mod tests {
     use super::*;
     use crate::test;
-    use std;
+    use std::{format, print, vec, vec::Vec};
     use untrusted;
 
     const ZERO_SCALAR: Scalar = Scalar {

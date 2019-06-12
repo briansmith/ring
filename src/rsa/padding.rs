@@ -521,6 +521,7 @@ rsa_pss_padding!(
 mod test {
     use super::*;
     use crate::{digest, error, test};
+    use std::vec;
     use untrusted;
 
     #[test]

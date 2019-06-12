@@ -12,6 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use std::{boxed::Box, vec::Vec};
+
 pub trait Accumulator {
     fn write_byte(&mut self, value: u8);
     fn write_bytes(&mut self, value: &[u8]);

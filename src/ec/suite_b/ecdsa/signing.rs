@@ -26,7 +26,6 @@ use crate::{
     io::der,
     limb, pkcs8, rand, sealed, signature,
 };
-use core;
 use untrusted;
 
 /// An ECDSA signing algorithm.

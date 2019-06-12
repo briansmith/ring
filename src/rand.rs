@@ -165,7 +165,6 @@ mod sysrand_chunk {
 #[cfg(windows)]
 mod sysrand_chunk {
     use crate::{error, polyfill};
-    use core;
 
     #[inline]
     pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
@@ -212,7 +211,6 @@ mod sysrand {
 ))]
 mod urandom {
     use crate::error;
-    use std;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         use lazy_static::lazy_static;
@@ -321,6 +319,7 @@ mod fuchsia {
 #[cfg(test)]
 mod tests {
     use crate::rand::{self, SecureRandom};
+    use std::vec;
 
     #[test]
     fn test_system_random_lengths() {

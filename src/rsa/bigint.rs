@@ -46,12 +46,16 @@ use crate::{
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
 };
 use core::{
-    self,
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
 use libc::size_t;
-use std::borrow::ToOwned as _; // TODO: Remove; Redundant as of Rust 1.36.
+use std::{
+    borrow::ToOwned as _, // TODO: Remove; Redundant as of Rust 1.36.
+    boxed::Box,
+    vec,
+    vec::Vec,
+};
 use untrusted;
 
 pub unsafe trait Prime {}
@@ -1294,6 +1298,7 @@ extern "C" {
 mod tests {
     use super::*;
     use crate::test;
+    use std::format;
     use untrusted;
 
     // Type-level representation of an arbitrary modulus.

@@ -23,7 +23,6 @@ use crate::{
     rand,
     signature::{self, KeyPair as SigningKeyPair},
 };
-use core;
 use untrusted;
 
 use super::digest::*;
