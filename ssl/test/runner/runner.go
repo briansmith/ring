@@ -15480,6 +15480,7 @@ func addDelegatedCredentialTests() {
 		},
 		flags: []string{
 			"-delegated-credential", ecdsaFlagValue,
+			"-expect-delegated-credential-used",
 		},
 	})
 

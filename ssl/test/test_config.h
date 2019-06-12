@@ -173,6 +173,7 @@ struct TestConfig {
   bool server_preference = false;
   bool export_traffic_secrets = false;
   bool key_update = false;
+  bool expect_delegated_credential_used = false;
   std::string delegated_credential;
   std::string expect_early_data_reason;
 

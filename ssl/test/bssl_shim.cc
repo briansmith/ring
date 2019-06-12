@@ -665,6 +665,13 @@ static bool CheckHandshakeProperties(SSL *ssl, bool is_resume,
     return false;
   }
 
+  if (config->expect_delegated_credential_used !=
+      !!SSL_delegated_credential_used(ssl)) {
+    fprintf(stderr,
+            "Got %s delegated credential usage, but wanted opposite. \n",
+            SSL_delegated_credential_used(ssl) ? "" : "no");
+    return false;
+  }
   return true;
 }
 
