@@ -15,8 +15,6 @@
 //! Polyfills for functionality that will (hopefully) be added to Rust's
 //! standard library soon.
 
-use core;
-
 #[macro_use]
 pub mod convert;
 

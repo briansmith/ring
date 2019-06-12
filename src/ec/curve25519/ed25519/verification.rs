@@ -16,7 +16,6 @@
 
 use super::super::ops::*;
 use crate::{error, polyfill::convert::*, sealed, signature};
-use core;
 use untrusted;
 
 use super::digest::*;

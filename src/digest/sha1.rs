@@ -14,7 +14,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use crate::polyfill;
-use core::{self, num::Wrapping};
+use core::num::Wrapping;
 use libc::size_t;
 
 pub const BLOCK_LEN: usize = 512 / 8;

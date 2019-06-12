@@ -18,7 +18,6 @@ use super::{
     Block, BLOCK_LEN,
 };
 use crate::{endian::*, polyfill::convert::*};
-use core;
 use libc::size_t;
 
 #[repr(C)]
@@ -145,6 +144,7 @@ pub const KEY_LEN: usize = KEY_BLOCKS * BLOCK_LEN;
 mod tests {
     use super::*;
     use crate::test;
+    use std::vec;
 
     // This verifies the encryption functionality provided by ChaCha20_ctr32
     // is successful when either computed on disjoint input/output buffers,
