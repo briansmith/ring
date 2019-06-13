@@ -50,12 +50,7 @@ use core::{
     ops::{Deref, DerefMut},
 };
 use libc::size_t;
-use std::{
-    borrow::ToOwned as _,
-    boxed::Box,
-    vec,
-    vec::Vec,
-};
+use std::{borrow::ToOwned as _, boxed::Box, vec, vec::Vec};
 use untrusted;
 
 pub unsafe trait Prime {}
