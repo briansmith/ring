@@ -28,6 +28,3 @@ pub(crate) type uint = libc::c_uint;
     any(target_arch = "aarch64", target_arch = "arm")
 ))]
 pub(crate) type ulong = libc::c_ulong;
-
-#[cfg(any(target_os = "android", target_os = "linux"))]
-pub(crate) type long = libc::c_long;
