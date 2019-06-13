@@ -261,6 +261,7 @@ include = [
     "tests/quic_aes_256_tests.txt",
     "tests/quic_chacha20_tests.txt",
     "tests/quic_tests.rs",
+    "tests/rand_tests.rs",
     "tests/rsa_from_pkcs8_tests.txt",
     "tests/rsa_pkcs1_sign_tests.txt",
     "tests/rsa_pkcs1_verify_tests.txt",
