@@ -13,8 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::{Aad, Block, BLOCK_LEN};
-use crate::cpu;
-use libc::size_t;
+use crate::{c, cpu};
 
 #[repr(transparent)]
 pub struct Key(GCM128_KEY);
@@ -111,7 +110,7 @@ impl Context {
                         ctx: &mut Context,
                         h_table: *const GCM128_KEY,
                         inp: *const u8,
-                        len: size_t,
+                        len: c::size_t,
                     );
                 }
                 unsafe {
@@ -125,7 +124,7 @@ impl Context {
                         ctx: &mut Context,
                         h_table: *const GCM128_KEY,
                         inp: *const u8,
-                        len: size_t,
+                        len: c::size_t,
                     );
                 }
                 unsafe {
@@ -140,7 +139,7 @@ impl Context {
                         ctx: &mut Context,
                         h_table: *const GCM128_KEY,
                         inp: *const u8,
-                        len: size_t,
+                        len: c::size_t,
                     );
                 }
                 unsafe {
@@ -154,7 +153,7 @@ impl Context {
                         ctx: &mut Context,
                         h_table: *const GCM128_KEY,
                         inp: *const u8,
-                        len: size_t,
+                        len: c::size_t,
                     );
                 }
                 unsafe {

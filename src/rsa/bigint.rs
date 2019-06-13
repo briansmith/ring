@@ -42,14 +42,13 @@
 
 use crate::{
     arithmetic::montgomery::*,
-    bits, bssl, error,
+    bits, bssl, c, error,
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
 };
 use core::{
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
-use libc::size_t;
 use std::{borrow::ToOwned as _, boxed::Box, vec, vec::Vec};
 use untrusted;
 
@@ -486,7 +485,7 @@ where
 
 fn elem_mul_by_2<M, AF>(a: &mut Elem<M, AF>, m: &PartialModulus<M>) {
     extern "C" {
-        fn LIMBS_shl_mod(r: *mut Limb, a: *const Limb, m: *const Limb, num_limbs: size_t);
+        fn LIMBS_shl_mod(r: *mut Limb, a: *const Limb, m: *const Limb, num_limbs: c::size_t);
     }
     unsafe {
         LIMBS_shl_mod(
@@ -522,11 +521,11 @@ pub fn elem_reduced<Larger, Smaller: NotMuchSmallerModulus<Larger>>(
     extern "C" {
         fn GFp_bn_from_montgomery_in_place(
             r: *mut Limb,
-            num_r: size_t,
+            num_r: c::size_t,
             a: *mut Limb,
-            num_a: size_t,
+            num_a: c::size_t,
             n: *const Limb,
-            num_n: size_t,
+            num_n: c::size_t,
             n0: &N0,
         ) -> bssl::Result;
     }
@@ -582,7 +581,7 @@ pub fn elem_add<M, E>(mut a: Elem<M, E>, b: Elem<M, E>, m: &Modulus<M>) -> Elem<
             a: *const Limb,
             b: *const Limb,
             m: *const Limb,
-            num_limbs: size_t,
+            num_limbs: c::size_t,
         );
     }
     unsafe {
@@ -606,7 +605,7 @@ pub fn elem_sub<M, E>(mut a: Elem<M, E>, b: &Elem<M, E>, m: &Modulus<M>) -> Elem
             a: *const Limb,
             b: *const Limb,
             m: *const Limb,
-            num_limbs: size_t,
+            num_limbs: c::size_t,
         );
     }
     unsafe {
@@ -852,7 +851,7 @@ pub fn elem_exp_consttime<M>(
             fn LIMBS_select_512_32(
                 r: *mut Limb,
                 table: *const Limb,
-                num_limbs: size_t,
+                num_limbs: c::size_t,
                 i: Window,
             ) -> bssl::Result;
         }
@@ -976,7 +975,7 @@ pub fn elem_exp_consttime<M>(
 
     fn scatter(table: &mut [Limb], state: &[Limb], i: Window, num_limbs: usize) {
         extern "C" {
-            fn GFp_bn_scatter5(a: *const Limb, a_len: size_t, table: *mut Limb, i: Window);
+            fn GFp_bn_scatter5(a: *const Limb, a_len: c::size_t, table: *mut Limb, i: Window);
         }
         unsafe {
             GFp_bn_scatter5(
@@ -990,7 +989,7 @@ pub fn elem_exp_consttime<M>(
 
     fn gather(table: &[Limb], state: &mut [Limb], i: Window, num_limbs: usize) {
         extern "C" {
-            fn GFp_bn_gather5(r: *mut Limb, a_len: size_t, table: *const Limb, i: Window);
+            fn GFp_bn_gather5(r: *mut Limb, a_len: c::size_t, table: *const Limb, i: Window);
         }
         unsafe {
             GFp_bn_gather5(
@@ -1018,7 +1017,7 @@ pub fn elem_exp_consttime<M>(
                 table: *const Limb,
                 np: *const Limb,
                 n0: &N0,
-                num: size_t,
+                num: c::size_t,
                 power: Window,
             );
         }
@@ -1043,7 +1042,7 @@ pub fn elem_exp_consttime<M>(
                 table: *const Limb,
                 n: *const Limb,
                 n0: &N0,
-                num: size_t,
+                num: c::size_t,
                 i: Window,
             );
         }
@@ -1101,7 +1100,7 @@ pub fn elem_exp_consttime<M>(
             not_used: *const Limb,
             n: *const Limb,
             n0: &N0,
-            num: size_t,
+            num: c::size_t,
         ) -> bssl::Result;
     }
     Result::from(unsafe {
@@ -1285,7 +1284,7 @@ extern "C" {
         b: *const Limb,
         n: *const Limb,
         n0: &N0,
-        num_limbs: size_t,
+        num_limbs: c::size_t,
     );
 }
 

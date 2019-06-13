@@ -12,9 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{arithmetic::montgomery::*, error, limb::*};
+use crate::{arithmetic::montgomery::*, c, error, limb::*};
 use core::marker::PhantomData;
-use libc::size_t;
 use untrusted;
 
 pub use self::elem::*;
@@ -461,7 +460,7 @@ extern "C" {
         a: *const Limb,
         b: *const Limb,
         m: *const Limb,
-        num_limbs: size_t,
+        num_limbs: c::size_t,
     );
 }
 

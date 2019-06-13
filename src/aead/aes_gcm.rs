@@ -205,7 +205,7 @@ fn integrated_aes_gcm<'a>(
     direction: Direction,
     cpu_features: cpu::Features,
 ) -> &'a mut [u8] {
-    use libc::size_t;
+    use crate::c;
 
     if !aes_key.is_aes_hw() || !gcm_ctx.is_avx2(cpu_features) {
         return in_out;
@@ -217,11 +217,11 @@ fn integrated_aes_gcm<'a>(
                 fn GFp_aesni_gcm_decrypt(
                     input: *const u8,
                     output: *mut u8,
-                    len: size_t,
+                    len: c::size_t,
                     key: &aes::AES_KEY,
                     ivec: &mut Counter,
                     gcm: &mut gcm::Context,
-                ) -> size_t;
+                ) -> c::size_t;
             }
             unsafe {
                 GFp_aesni_gcm_decrypt(
@@ -239,11 +239,11 @@ fn integrated_aes_gcm<'a>(
                 fn GFp_aesni_gcm_encrypt(
                     input: *const u8,
                     output: *mut u8,
-                    len: size_t,
+                    len: c::size_t,
                     key: &aes::AES_KEY,
                     ivec: &mut Counter,
                     gcm: &mut gcm::Context,
-                ) -> size_t;
+                ) -> c::size_t;
             }
             unsafe {
                 GFp_aesni_gcm_encrypt(
