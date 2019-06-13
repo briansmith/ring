@@ -51,7 +51,6 @@ const NEVER: &str = "Don't ever build this file.";
 
 #[cfg_attr(rustfmt, rustfmt_skip)]
 const RING_SRCS: &[(&[&str], &str)] = &[
-    (&[], "crypto/block.c"),
     (&[], "crypto/fipsmodule/bn/generic.c"),
     (&[], "crypto/fipsmodule/bn/montgomery.c"),
     (&[], "crypto/fipsmodule/bn/montgomery_inv.c"),
@@ -130,7 +129,6 @@ const RING_INCLUDES: &[&str] =
       "crypto/fipsmodule/ec/ecp_nistz.h",
       "crypto/fipsmodule/ec/ecp_nistz384.h",
       "crypto/fipsmodule/ec/ecp_nistz256.h",
-      "crypto/block.h",
       "crypto/internal.h",
       "crypto/limbs/limbs.h",
       "crypto/limbs/limbs.inl",

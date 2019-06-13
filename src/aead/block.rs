@@ -67,11 +67,8 @@ impl Block {
 
     #[inline]
     pub fn bitxor_assign(&mut self, a: Block) {
-        extern "C" {
-            fn GFp_block128_xor_assign(r: &mut Block, a: Block);
-        }
-        unsafe {
-            GFp_block128_xor_assign(self, a);
+        for (r, a) in self.subblocks.iter_mut().zip(a.subblocks.iter()) {
+            *r ^= *a;
         }
     }
 }
