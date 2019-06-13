@@ -14,7 +14,6 @@
 
 use super::{Aad, Block, BLOCK_LEN};
 use crate::cpu;
-use libc::size_t;
 
 #[repr(transparent)]
 pub struct Key(GCM128_KEY);
@@ -111,7 +110,7 @@ impl Context {
                         ctx: &mut Context,
                         h_table: *const GCM128_KEY,
                         inp: *const u8,
-                        len: size_t,
+                        len: usize,
                     );
                 }
                 unsafe {
@@ -125,7 +124,7 @@ impl Context {
                         ctx: &mut Context,
                         h_table: *const GCM128_KEY,
                         inp: *const u8,
-                        len: size_t,
+                        len: usize,
                     );
                 }
                 unsafe {
@@ -140,7 +139,7 @@ impl Context {
                         ctx: &mut Context,
                         h_table: *const GCM128_KEY,
                         inp: *const u8,
-                        len: size_t,
+                        len: usize,
                     );
                 }
                 unsafe {
@@ -154,7 +153,7 @@ impl Context {
                         ctx: &mut Context,
                         h_table: *const GCM128_KEY,
                         inp: *const u8,
-                        len: size_t,
+                        len: usize,
                     );
                 }
                 unsafe {

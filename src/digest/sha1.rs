@@ -15,7 +15,6 @@
 
 use crate::polyfill;
 use core::{self, num::Wrapping};
-use libc::size_t;
 
 pub const BLOCK_LEN: usize = 512 / 8;
 pub const CHAINING_LEN: usize = 160 / 8;
@@ -47,7 +46,7 @@ fn maj(x: W32, y: W32, z: W32) -> W32 {
 pub(super) unsafe extern "C" fn block_data_order(
     state: &mut super::State,
     data: *const u8,
-    num: size_t,
+    num: usize,
 ) {
     let data = data as *const [[u8; 4]; 16];
     let blocks = core::slice::from_raw_parts(data, num);

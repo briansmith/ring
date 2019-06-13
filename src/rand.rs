@@ -129,26 +129,11 @@ use crate::sealed;
 #[cfg(target_os = "linux")]
 mod sysrand_chunk {
     use crate::error;
-    use libc::{self, size_t};
+    use libc;
 
     #[inline]
     pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
-        // See `SYS_getrandom` in #include <sys/syscall.h>.
-
-        #[cfg(target_arch = "aarch64")]
-        const SYS_GETRANDOM: libc::c_long = 278;
-
-        #[cfg(target_arch = "arm")]
-        const SYS_GETRANDOM: libc::c_long = 384;
-
-        #[cfg(target_arch = "x86")]
-        const SYS_GETRANDOM: libc::c_long = 355;
-
-        #[cfg(target_arch = "x86_64")]
-        const SYS_GETRANDOM: libc::c_long = 318;
-
-        let chunk_len: size_t = dest.len();
-        let r = unsafe { libc::syscall(SYS_GETRANDOM, dest.as_mut_ptr(), chunk_len, 0) };
+        let r = unsafe { libc::syscall(libc::SYS_getrandom, dest.as_mut_ptr(), dest.len(), 0) };
         if r < 0 {
             if unsafe { *libc::__errno_location() } == libc::EINTR {
                 // If an interrupt occurs while getrandom() is blocking to wait
@@ -295,7 +280,7 @@ mod darwin {
         #[must_use]
         fn SecRandomCopyBytes(
             rnd: &'static SecRandomRef,
-            count: libc::size_t,
+            count: usize,
             bytes: *mut u8,
         ) -> libc::c_int;
     }

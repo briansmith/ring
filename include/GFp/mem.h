@@ -64,6 +64,6 @@
 // of |a| and |b|. Unlike memcmp, it cannot be used to put elements into a
 // defined order as the return value when a != b is undefined, other than to be
 // non-zero.
-OPENSSL_EXPORT int GFp_memcmp(const uint8_t *a, const uint8_t *b, size_t len);
+OPENSSL_EXPORT uint8_t GFp_memcmp(const uint8_t *a, const uint8_t *b, size_t len);
 
 #endif  // OPENSSL_HEADER_MEM_H

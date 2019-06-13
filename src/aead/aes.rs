@@ -17,7 +17,6 @@ use super::{
     shift, Block, Direction, BLOCK_LEN,
 };
 use crate::{bits::BitLength, cpu, endian::*, error, polyfill};
-use libc::size_t;
 
 pub(crate) struct Key {
     inner: AES_KEY,
@@ -176,7 +175,7 @@ impl Key {
                     fn GFp_aes_hw_ctr32_encrypt_blocks(
                         input: *const u8,
                         output: *mut u8,
-                        blocks: size_t,
+                        blocks: usize,
                         key: &AES_KEY,
                         ivec: &Counter,
                     );
@@ -193,7 +192,7 @@ impl Key {
                     fn GFp_bsaes_ctr32_encrypt_blocks(
                         input: *const u8,
                         output: *mut u8,
-                        blocks: size_t,
+                        blocks: usize,
                         key: &AES_KEY,
                         ivec: &Counter,
                     );

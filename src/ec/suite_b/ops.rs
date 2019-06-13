@@ -14,7 +14,6 @@
 
 use crate::{arithmetic::montgomery::*, error, limb::*};
 use core::marker::PhantomData;
-use libc::size_t;
 use untrusted;
 
 pub use self::elem::*;
@@ -461,7 +460,7 @@ extern "C" {
         a: *const Limb,
         b: *const Limb,
         m: *const Limb,
-        num_limbs: size_t,
+        num_limbs: usize,
     );
 }
 

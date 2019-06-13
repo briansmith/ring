@@ -19,7 +19,6 @@ use super::{
 };
 use crate::{endian::*, polyfill::convert::*};
 use core;
-use libc::size_t;
 
 #[repr(C)]
 pub struct Key([Block; KEY_BLOCKS]);
@@ -121,7 +120,7 @@ impl Key {
             fn GFp_ChaCha20_ctr32(
                 out: *mut u8,
                 in_: *const u8,
-                in_len: size_t,
+                in_len: usize,
                 key: &Key,
                 first_iv: &Iv,
             );
