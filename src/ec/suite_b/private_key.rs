@@ -27,7 +27,7 @@ use untrusted;
 /// Generates a random scalar in the range [1, n).
 pub fn random_scalar(
     ops: &PrivateKeyOps,
-    rng: &rand::SecureRandom,
+    rng: &dyn rand::SecureRandom,
 ) -> Result<Scalar, error::Unspecified> {
     let num_limbs = ops.common.num_limbs;
     let mut bytes = [0; ec::SCALAR_MAX_BYTES];
@@ -38,7 +38,7 @@ pub fn random_scalar(
 
 pub fn generate_private_scalar_bytes(
     ops: &PrivateKeyOps,
-    rng: &rand::SecureRandom,
+    rng: &dyn rand::SecureRandom,
     out: &mut [u8],
 ) -> Result<(), error::Unspecified> {
     // [NSA Suite B Implementer's Guide to ECDSA] Appendix A.1.2, and

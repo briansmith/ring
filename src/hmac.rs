@@ -173,7 +173,7 @@ impl Key {
     /// recommendation in https://tools.ietf.org/html/rfc2104#section-3.
     pub fn generate(
         digest_alg: &'static digest::Algorithm,
-        rng: &rand::SecureRandom,
+        rng: &dyn rand::SecureRandom,
     ) -> Result<Self, error::Unspecified> {
         let mut key_bytes = [0; digest::MAX_OUTPUT_LEN];
         let key_bytes = &mut key_bytes[..digest_alg.output_len];

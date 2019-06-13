@@ -533,8 +533,8 @@ impl RsaKeyPair {
     /// platforms, it is done less perfectly.
     pub fn sign(
         &self,
-        padding_alg: &'static RsaEncoding,
-        rng: &rand::SecureRandom,
+        padding_alg: &'static dyn RsaEncoding,
+        rng: &dyn rand::SecureRandom,
         msg: &[u8],
         signature: &mut [u8],
     ) -> Result<(), error::Unspecified> {

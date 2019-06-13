@@ -47,7 +47,7 @@ macro_rules! suite_b_curve {
         }
 
         fn $generate_private_key(
-            rng: &rand::SecureRandom,
+            rng: &dyn rand::SecureRandom,
             out: &mut [u8],
         ) -> Result<(), error::Unspecified> {
             ec::suite_b::private_key::generate_private_scalar_bytes($private_key_ops, rng, out)

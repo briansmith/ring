@@ -29,7 +29,7 @@ pub struct Seed {
 impl Seed {
     pub(crate) fn generate(
         curve: &'static Curve,
-        rng: &rand::SecureRandom,
+        rng: &dyn rand::SecureRandom,
         cpu_features: cpu::Features,
     ) -> Result<Self, error::Unspecified> {
         let mut r = Self {
