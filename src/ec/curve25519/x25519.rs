@@ -46,7 +46,7 @@ fn x25519_check_private_key_bytes(bytes: &[u8]) -> Result<(), error::Unspecified
 }
 
 fn x25519_generate_private_key(
-    rng: &rand::SecureRandom,
+    rng: &dyn rand::SecureRandom,
     out: &mut [u8],
 ) -> Result<(), error::Unspecified> {
     rng.fill(out)

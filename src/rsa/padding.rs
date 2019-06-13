@@ -37,7 +37,7 @@ pub trait RsaEncoding: Padding {
         m_hash: &digest::Digest,
         m_out: &mut [u8],
         mod_bits: bits::BitLength,
-        rng: &rand::SecureRandom,
+        rng: &dyn rand::SecureRandom,
     ) -> Result<(), error::Unspecified>;
 }
 
@@ -81,7 +81,7 @@ impl RsaEncoding for PKCS1 {
         m_hash: &digest::Digest,
         m_out: &mut [u8],
         _mod_bits: bits::BitLength,
-        _rng: &rand::SecureRandom,
+        _rng: &dyn rand::SecureRandom,
     ) -> Result<(), error::Unspecified> {
         pkcs1_encode(&self, m_hash, m_out);
         Ok(())
@@ -240,7 +240,7 @@ impl RsaEncoding for PSS {
         m_hash: &digest::Digest,
         m_out: &mut [u8],
         mod_bits: bits::BitLength,
-        rng: &rand::SecureRandom,
+        rng: &dyn rand::SecureRandom,
     ) -> Result<(), error::Unspecified> {
         let metrics = PSSMetrics::new(self.digest_alg, mod_bits)?;
 

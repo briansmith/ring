@@ -25,7 +25,8 @@ pub struct Curve {
     // Precondition: `bytes` is the correct length.
     check_private_key_bytes: fn(bytes: &[u8]) -> Result<(), error::Unspecified>,
 
-    generate_private_key: fn(rng: &rand::SecureRandom, &mut [u8]) -> Result<(), error::Unspecified>,
+    generate_private_key:
+        fn(rng: &dyn rand::SecureRandom, &mut [u8]) -> Result<(), error::Unspecified>,
 
     public_from_private:
         fn(public_out: &mut [u8], private_key: &Seed) -> Result<(), error::Unspecified>,

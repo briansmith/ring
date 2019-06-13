@@ -101,7 +101,7 @@ impl EphemeralPrivateKey {
     /// Generate a new ephemeral private key for the given algorithm.
     pub fn generate(
         alg: &'static Algorithm,
-        rng: &rand::SecureRandom,
+        rng: &dyn rand::SecureRandom,
     ) -> Result<Self, error::Unspecified> {
         let cpu_features = cpu::features();
 

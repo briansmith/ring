@@ -55,7 +55,7 @@ macro_rules! derive_debug_self_as_ref_hex_bytes {
 pub(crate) fn write_hex_tuple(
     fmt: &mut core::fmt::Formatter,
     type_name: &str,
-    value: &AsRef<[u8]>,
+    value: &dyn AsRef<[u8]>,
 ) -> Result<(), ::core::fmt::Error> {
     fmt.debug_tuple(type_name)
         .field(&HexStr(value.as_ref()))
