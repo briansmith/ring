@@ -29,8 +29,6 @@ include = [
 
     "build.rs",
 
-    "crypto/block.c",
-    "crypto/block.h",
     "crypto/chacha/asm/chacha-armv4.pl",
     "crypto/chacha/asm/chacha-armv8.pl",
     "crypto/chacha/asm/chacha-x86.pl",
