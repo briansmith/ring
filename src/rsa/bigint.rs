@@ -51,7 +51,7 @@ use core::{
 };
 use libc::size_t;
 use std::{
-    borrow::ToOwned as _, // TODO: Remove; Redundant as of Rust 1.36.
+    borrow::ToOwned as _,
     boxed::Box,
     vec,
     vec::Vec,
