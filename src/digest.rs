@@ -24,9 +24,8 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use crate::{cpu, debug, endian::*, polyfill};
+use crate::{c, cpu, debug, endian::*, polyfill};
 use core::num::Wrapping;
-use libc::size_t;
 
 mod sha1;
 
@@ -248,7 +247,7 @@ pub struct Algorithm {
     /// The length of the length in the padding.
     len_len: usize,
 
-    block_data_order: unsafe extern "C" fn(state: &mut State, data: *const u8, num: size_t),
+    block_data_order: unsafe extern "C" fn(state: &mut State, data: *const u8, num: c::size_t),
     format_output: fn(input: State) -> Output,
 
     initial_state: State,
@@ -484,8 +483,8 @@ const SHA512_BLOCK_LEN: usize = 1024 / 8;
 const SHA512_LEN_LEN: usize = 128 / 8;
 
 extern "C" {
-    fn GFp_sha256_block_data_order(state: &mut State, data: *const u8, num: size_t);
-    fn GFp_sha512_block_data_order(state: &mut State, data: *const u8, num: size_t);
+    fn GFp_sha256_block_data_order(state: &mut State, data: *const u8, num: c::size_t);
+    fn GFp_sha512_block_data_order(state: &mut State, data: *const u8, num: c::size_t);
 }
 
 #[cfg(test)]

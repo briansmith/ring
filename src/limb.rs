@@ -18,8 +18,7 @@
 //! Limbs ordered least-significant-limb to most-significant-limb. The bits
 //! limbs use the native endianness.
 
-use crate::error;
-use libc::size_t;
+use crate::{c, error};
 use untrusted;
 
 #[cfg(any(test, feature = "use_heap"))]
@@ -59,7 +58,7 @@ pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 #[inline]
 pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
     extern "C" {
-        fn LIMBS_equal(a: *const Limb, b: *const Limb, num_limbs: size_t) -> LimbMask;
+        fn LIMBS_equal(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
     }
 
     assert_eq!(a.len(), b.len());
@@ -276,9 +275,9 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
 ) -> R {
     #[derive(Clone, Copy)]
     #[repr(transparent)]
-    struct BitIndex(Wrapping<size_t>);
+    struct BitIndex(Wrapping<c::size_t>);
 
-    const WINDOW_BITS: Wrapping<size_t> = Wrapping(5);
+    const WINDOW_BITS: Wrapping<c::size_t> = Wrapping(5);
 
     extern "C" {
         fn LIMBS_window5_split_window(
@@ -335,17 +334,17 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
 
 extern "C" {
     #[cfg(any(test, feature = "use_heap"))]
-    fn LIMB_shr(a: Limb, shift: size_t) -> Limb;
+    fn LIMB_shr(a: Limb, shift: c::size_t) -> Limb;
 
     #[cfg(any(test, feature = "use_heap"))]
-    fn LIMBS_are_even(a: *const Limb, num_limbs: size_t) -> LimbMask;
-    fn LIMBS_are_zero(a: *const Limb, num_limbs: size_t) -> LimbMask;
+    fn LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
+    fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     #[cfg(any(test, feature = "use_heap"))]
-    fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: size_t) -> LimbMask;
-    fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: size_t) -> LimbMask;
+    fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
+    fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
     #[cfg(feature = "use_heap")]
-    fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: size_t) -> LimbMask;
-    fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: size_t);
+    fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
+    fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
 }
 
 #[cfg(test)]

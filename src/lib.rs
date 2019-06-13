@@ -85,6 +85,7 @@ pub mod agreement;
 
 mod bits;
 
+pub(crate) mod c;
 pub mod constant_time;
 
 pub mod io;
