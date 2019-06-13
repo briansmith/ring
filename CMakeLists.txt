@@ -1,10 +1,4 @@
-cmake_minimum_required(VERSION 2.8.11)
-
-# Report AppleClang separately from Clang. Their version numbers are different.
-# https://cmake.org/cmake/help/v3.0/policy/CMP0025.html
-if(POLICY CMP0025)
-  cmake_policy(SET CMP0025 NEW)
-endif()
+cmake_minimum_required(VERSION 3.0)
 
 # Defer enabling C and CXX languages.
 project(BoringSSL NONE)
@@ -483,13 +477,6 @@ if(ANDROID AND NOT ANDROID_NDK_REVISION AND ${ARCH} STREQUAL "arm")
   # for assembly files. Without this flag, the compiler believes that it's
   # building for ARMv5.
   set(CMAKE_ASM_FLAGS "-march=${CMAKE_SYSTEM_PROCESSOR} ${CMAKE_ASM_FLAGS}")
-endif()
-
-if(${ARCH} STREQUAL "x86" AND APPLE AND ${CMAKE_VERSION} VERSION_LESS "3.0")
-  # With CMake 2.8.x, ${CMAKE_SYSTEM_PROCESSOR} evalutes to i386 on OS X,
-  # but clang defaults to 64-bit builds on OS X unless otherwise told.
-  # Set ARCH to x86_64 so clang and CMake agree. This is fixed in CMake 3.
-  set(ARCH "x86_64")
 endif()
 
 if(USE_CUSTOM_LIBCXX)
