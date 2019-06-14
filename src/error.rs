@@ -113,6 +113,19 @@ impl From<TryFromSliceError> for Unspecified {
     }
 }
 
+impl From<&Unspecified> for Unspecified {
+    fn from(_: &Unspecified) -> Self {
+        Unspecified
+    }
+}
+
+#[cfg(feature = "use_heap")]
+impl From<std::io::Error> for Unspecified {
+    fn from(_: std::io::Error) -> Self {
+        Unspecified
+    }
+}
+
 /// An error parsing or validating a key.
 ///
 /// The `Display` implementation and `<KeyRejected as Error>::description()`

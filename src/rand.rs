@@ -25,7 +25,7 @@
 //! (seccomp filters on Linux in particular). See `SystemRandom`'s
 //! documentation for more details.
 
-use crate::error;
+use crate::{error, sealed};
 
 /// A secure random number generator.
 pub trait SecureRandom: sealed::Sealed {
@@ -45,35 +45,30 @@ pub trait SecureRandom: sealed::Sealed {
 /// `fill()` once at a non-latency-sensitive time to minimize latency for
 /// future calls.
 ///
-/// On Android, `fill()` will use the [`getrandom`] syscall.
-///
-/// On Linux, `fill()` will use the [`getrandom`] syscall. If the kernel is too
-/// old to support `getrandom` then by default `fill()` falls back to reading
-/// from `/dev/urandom`. This decision is made the first time `fill`
-/// *succeeds*. The fallback to `/dev/urandom` can be disabled by disabling the
-/// `dev_urandom_fallback` default feature; this should be done whenever the
-/// target system is known to support `getrandom`. Library crates should avoid
-/// explicitly enabling the `dev_urandom_fallback` feature.
+/// On Android and Linux, `fill()` will use the [`getrandom`] syscall. If the
+/// kernel is too old to support `getrandom(2)` then, by default, `fill()`
+/// falls back reading from certain files in `/dev`. First, it reads a single
+/// byte from `/dev/random` to make sure the kernel's entropy pool is
+/// initialized. Then it fills the buffer with data from `/dev/urandom`.
 ///
 /// On macOS and iOS, `fill()` is implemented using `SecRandomCopyBytes`.
 ///
+/// On NetBSD, the Linux file-based fallback approch is used.
+///
 /// On Redox, `fill()` is implemented by reading from `rand:`.
 ///
-/// On Windows, `fill` is implemented using the platform's API for secure
-/// random number generation.
+/// On Fuchsia, `fill` is implemented using `zx_cprng_draw`.
 ///
-/// When `/dev/urandom` is used, a file handle for `/dev/urandom` won't be
-/// opened until `fill` is called. In particular, `SystemRandom::new()` will
-/// not open `/dev/urandom` or do other potentially-high-latency things. The
-/// file handle will never be closed, until the operating system closes it at
-/// process shutdown. All instances of `SystemRandom` will share a single file
-/// handle.
+/// On Windows, `fill` is implemented using `RtlGenRandom`.
 ///
-/// On Linux, to properly implement seccomp filtering when the
-/// `dev_urandom_fallback` default feature is disabled, allow `getrandom`
-/// through. When the fallback is enabled, allow file opening, `getrandom`,
-/// and `read` up until the first call to `fill()` succeeds. After that, allow
-/// `getrandom` and `read`.
+/// When a file-based fallback is used, a file won't be opened until `fill` is
+/// called. In particular, `SystemRandom::new()` will not open any files or do
+/// other potentially-high-latency things. The file handle will only be closed
+/// when the operating system closes it at process shutdown. All instances of
+/// `SystemRandom` will share a single file handle.
+///
+/// All file-based methods require the `use_heap` feature. If this feature is
+/// not enabled, only syscalls will be used to obain randomness.
 ///
 /// [`getrandom`]: http://man7.org/linux/man-pages/man2/getrandom.2.html
 pub struct SystemRandom;
@@ -95,195 +90,148 @@ impl SecureRandom for SystemRandom {
 
 impl sealed::Sealed for SystemRandom {}
 
+#[cfg(all(feature = "use_heap", any(target_os = "android", target_os = "linux")))]
+fn fill_impl(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+    use lazy_static::lazy_static;
+    lazy_static! {
+        static ref SYSRAND_SUPPORTED: bool = sysrand::is_supported();
+    }
+    match *SYSRAND_SUPPORTED {
+        true => sysrand::fill(dest),
+        false => file::fill(dest),
+    }
+}
+
 #[cfg(any(
-    target_os = "android",
-    all(target_os = "linux", not(feature = "dev_urandom_fallback")),
+    not(feature = "use_heap"),
+    target_os = "macos",
+    target_os = "ios",
+    target_os = "fuchsia",
     windows
 ))]
-use self::sysrand::fill as fill_impl;
+use sysrand::fill as fill_impl;
 
-#[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
-use self::sysrand_or_urandom::fill as fill_impl;
+#[cfg(any(target_os = "netbsd", target_os = "redox"))]
+use file::fill as fill_impl;
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
-use self::darwin::fill as fill_impl;
+#[cfg(feature = "use_heap")]
+mod file {
+    use crate::error;
+    use std::{fs::File, io::Read};
 
-#[cfg(any(target_os = "fuchsia"))]
-use self::fuchsia::fill as fill_impl;
+    #[allow(dead_code)]
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        #[cfg(target_os = "redox")]
+        static RANDOM_PATH: &str = "rand:";
+        #[cfg(not(target_os = "redox"))]
+        static RANDOM_PATH: &str = "/dev/urandom";
 
-use crate::sealed;
+        use lazy_static::lazy_static;
+        lazy_static! {
+            static ref FILE: Result<File, error::Unspecified> = {
+                if cfg!(not(target_os = "redox")) {
+                    File::open("/dev/random")?.read_exact(&mut [0u8; 1])?;
+                }
+                let file = File::open(RANDOM_PATH)?;
+                Ok(file)
+            };
+        }
+        let mut file: &File = FILE.as_ref()?;
+        file.read_exact(dest)?;
+        Ok(())
+    }
+}
 
 #[cfg(any(target_os = "android", target_os = "linux"))]
-mod sysrand_chunk {
+mod sysrand {
     use crate::error;
 
-    #[inline]
-    pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
-        let r = unsafe { libc::syscall(libc::SYS_getrandom, dest.as_mut_ptr(), dest.len(), 0) };
-        if r < 0 {
-            let errno;
-
-            #[cfg(target_os = "linux")]
-            {
-                errno = unsafe { *libc::__errno_location() };
-            }
-
-            #[cfg(target_os = "android")]
-            {
-                errno = unsafe { *libc::__errno() };
-            }
-
-            if errno == libc::EINTR {
-                // If an interrupt occurs while getrandom() is blocking to wait
-                // for the entropy pool, then EINTR is returned. Returning 0
-                // will cause the caller to try again.
-                return Ok(0);
-            }
-            return Err(error::Unspecified);
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        let mut start = 0;
+        while start < dest.len() {
+            start += getrandom(&mut dest[start..], true)?;
         }
-        Ok(r as usize)
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub fn is_supported() -> bool {
+        getrandom(&mut [], false).is_ok()
+    }
+
+    fn getrandom(dest: &mut [u8], block: bool) -> Result<usize, error::Unspecified> {
+        let flags = if block { 0 } else { libc::GRND_NONBLOCK };
+        let r = unsafe { libc::syscall(libc::SYS_getrandom, dest.as_mut_ptr(), dest.len(), flags) };
+        if r < 0 {
+            #[cfg(target_os = "android")]
+            use libc::__errno as errno;
+            #[cfg(target_os = "linux")]
+            use libc::__errno_location as errno;
+
+            // If an interrupt occurs while getrandom() is blocking to wait
+            // for the entropy pool, then EINTR is returned. Returning 0
+            // will cause the caller to try again.
+            match unsafe { *errno() } {
+                libc::EINTR | libc::EAGAIN => Ok(0),
+                _ => Err(error::Unspecified),
+            }
+        } else {
+            Ok(r as usize)
+        }
     }
 }
 
 #[cfg(windows)]
-mod sysrand_chunk {
-    use crate::{error, polyfill};
-
-    #[inline]
-    pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
-        use winapi::shared::wtypesbase::ULONG;
-
-        assert!(core::mem::size_of::<usize>() >= core::mem::size_of::<ULONG>());
-        let len = core::cmp::min(dest.len(), polyfill::usize_from_u32(ULONG::max_value()));
-        let result = unsafe {
-            winapi::um::ntsecapi::RtlGenRandom(
-                dest.as_mut_ptr() as *mut winapi::ctypes::c_void,
-                len as ULONG,
-            )
-        };
-        if result == 0 {
-            return Err(error::Unspecified);
-        }
-
-        Ok(len)
-    }
-}
-
-#[cfg(any(target_os = "android", target_os = "linux", windows))]
 mod sysrand {
-    use super::sysrand_chunk::chunk;
     use crate::error;
 
+    #[inline]
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        let mut read_len = 0;
-        while read_len < dest.len() {
-            let chunk_len = chunk(&mut dest[read_len..])?;
-            read_len += chunk_len;
+        use winapi::shared::wtypesbase::ULONG;
+        use winapi::um::ntsecapi::RtlGenRandom;
+
+        // Prevent overflow of ULONG
+        for chunk in dest.chunks_mut(ULONG::max_value() as usize) {
+            let ret = unsafe { RtlGenRandom(chunk.as_mut_ptr() as PVOID, chunk.len() as ULONG) };
+            if ret == 0 {
+                return Err(error::Unspecified);
+            }
         }
         Ok(())
     }
 }
 
-// Keep the `cfg` conditions in sync with the conditions in lib.rs.
-#[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
-mod urandom {
-    use crate::error;
-
-    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        use lazy_static::lazy_static;
-
-        #[cfg(target_os = "redox")]
-        static RANDOM_PATH: &str = "rand:";
-        #[cfg(unix)]
-        static RANDOM_PATH: &str = "/dev/urandom";
-
-        lazy_static! {
-            static ref FILE: Result<std::fs::File, std::io::Error> =
-                std::fs::File::open(RANDOM_PATH);
-        }
-
-        match *FILE {
-            Ok(ref file) => {
-                use std::io::Read;
-                (&*file).read_exact(dest).map_err(|_| error::Unspecified)
-            }
-            Err(_) => Err(error::Unspecified),
-        }
-    }
-}
-
-// Keep the `cfg` conditions in sync with the conditions in lib.rs.
-#[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
-mod sysrand_or_urandom {
-    use crate::error;
-
-    enum Mechanism {
-        Sysrand,
-        DevURandom,
-    }
-
-    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        use lazy_static::lazy_static;
-
-        lazy_static! {
-            static ref MECHANISM: Mechanism = {
-                let mut dummy = [0u8; 1];
-                if super::sysrand_chunk::chunk(&mut dummy[..]).is_err() {
-                    Mechanism::DevURandom
-                } else {
-                    Mechanism::Sysrand
-                }
-            };
-        }
-
-        match *MECHANISM {
-            Mechanism::Sysrand => super::sysrand::fill(dest),
-            Mechanism::DevURandom => super::urandom::fill(dest),
-        }
-    }
-}
-
 #[cfg(any(target_os = "macos", target_os = "ios"))]
-mod darwin {
-    use crate::{c, error};
+mod sysrand {
+    use crate::error;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        let r = unsafe { SecRandomCopyBytes(kSecRandomDefault, dest.len(), dest.as_mut_ptr()) };
-        match r {
+        match unsafe { SecRandomCopyBytes(kSecRandomDefault, dest.len(), dest.as_mut_ptr()) } {
             0 => Ok(()),
             _ => Err(error::Unspecified),
         }
     }
 
-    // XXX: This is emulating an opaque type with a non-opaque type. TODO: Fix
-    // this when
-    // https://github.com/rust-lang/rfcs/pull/1861#issuecomment-274613536 is
-    // resolved.
+    // XXX: Replace with extern type when #![feature(extern_types)] is stable
     #[repr(C)]
-    struct SecRandomRef([u8; 0]);
+    struct SecRandom([u8; 0]);
 
     #[link(name = "Security", kind = "framework")]
     extern "C" {
-        static kSecRandomDefault: &'static SecRandomRef;
+        static kSecRandomDefault: &'static SecRandom;
 
         // For now `rnd` must be `kSecRandomDefault`.
         #[must_use]
-        fn SecRandomCopyBytes(
-            rnd: &'static SecRandomRef,
-            count: c::size_t,
-            bytes: *mut u8,
-        ) -> c::int;
+        fn SecRandomCopyBytes(rnd: &'static SecRandom, count: c::size_t, bytes: *mut u8) -> c::int;
     }
 }
 
-#[cfg(any(target_os = "fuchsia"))]
-mod fuchsia {
+#[cfg(target_os = "fuchsia")]
+mod sysrand {
     use crate::error;
 
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        unsafe {
-            zx_cprng_draw(dest.as_mut_ptr(), dest.len());
-        }
+        unsafe { zx_cprng_draw(dest.as_mut_ptr(), dest.len()) };
         Ok(())
     }
 
