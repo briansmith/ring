@@ -1,4 +1,4 @@
-// Copyright 2015-2016 Brian Smith.
+// Copyright 2016-2019 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -12,13 +12,22 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-//! EdDSA Signatures.
+//! C types.
+//!
+//! The libc crate provide the C types for most, but not all, targets that
+//! *ring* supports.
 
-use super::ops::ELEM_LEN;
+use libc;
 
-mod digest;
-pub mod signing;
-pub mod verification;
+pub(crate) type size_t = libc::size_t;
+pub(crate) type int = libc::c_int;
+pub(crate) type uint = libc::c_uint;
 
-/// The length of an Ed25519 public key.
-pub const ED25519_PUBLIC_KEY_LEN: usize = ELEM_LEN;
+#[cfg(all(
+    any(target_os = "android", target_os = "linux"),
+    any(target_arch = "aarch64", target_arch = "arm")
+))]
+pub(crate) type ulong = libc::c_ulong;
+
+#[cfg(any(target_os = "android", target_os = "linux"))]
+pub(crate) type long = libc::c_long;

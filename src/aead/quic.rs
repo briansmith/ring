@@ -39,9 +39,10 @@ impl HeaderProtectionKey {
     ///
     /// `key_bytes` must be exactly `algorithm.key_len` bytes long.
     pub fn new(
-        algorithm: &'static Algorithm, key_bytes: &[u8],
+        algorithm: &'static Algorithm,
+        key_bytes: &[u8],
     ) -> Result<Self, error::Unspecified> {
-        Ok(HeaderProtectionKey {
+        Ok(Self {
             inner: (algorithm.init)(key_bytes, cpu::features())?,
             algorithm,
         })
@@ -60,7 +61,9 @@ impl HeaderProtectionKey {
 
     /// The key's algorithm.
     #[inline(always)]
-    pub fn algorithm(&self) -> &'static Algorithm { self.algorithm }
+    pub fn algorithm(&self) -> &'static Algorithm {
+        self.algorithm
+    }
 }
 
 const SAMPLE_LEN: usize = super::TAG_LEN;
@@ -78,11 +81,15 @@ pub struct Algorithm {
 impl Algorithm {
     /// The length of the key.
     #[inline(always)]
-    pub fn key_len(&self) -> usize { self.key_len }
+    pub fn key_len(&self) -> usize {
+        self.key_len
+    }
 
     /// The required sample length.
     #[inline(always)]
-    pub fn sample_len(&self) -> usize { SAMPLE_LEN }
+    pub fn sample_len(&self) -> usize {
+        SAMPLE_LEN
+    }
 }
 
 derive_debug_via_id!(Algorithm);
@@ -95,7 +102,9 @@ enum AlgorithmID {
 }
 
 impl PartialEq for Algorithm {
-    fn eq(&self, other: &Self) -> bool { self.id == other.id }
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
 }
 
 impl Eq for Algorithm {}

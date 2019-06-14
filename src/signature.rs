@@ -140,8 +140,7 @@
 //! // Normally the application would store the PKCS#8 file persistently. Later
 //! // it would read the PKCS#8 file from persistent storage to use it.
 //!
-//! let key_pair =
-//!     signature::Ed25519KeyPair::from_pkcs8(untrusted::Input::from(pkcs8_bytes.as_ref()))?;
+//! let key_pair = signature::Ed25519KeyPair::from_pkcs8(pkcs8_bytes.as_ref())?;
 //!
 //! // Sign the message "hello, world".
 //! const MESSAGE: &[u8] = b"hello, world";
@@ -151,16 +150,13 @@
 //! // send them in a protocol message to the peer(s). Here we just get the
 //! // public key key directly from the key pair.
 //! let peer_public_key_bytes = key_pair.public_key().as_ref();
-//! let sig_bytes = sig.as_ref();
 //!
 //! // Verify the signature of the message using the public key. Normally the
-//! // verifier of the message would parse the inputs to `signature::verify`
-//! // out of the protocol message(s) sent by the signer.
-//! let peer_public_key = untrusted::Input::from(peer_public_key_bytes);
-//! let msg = untrusted::Input::from(MESSAGE);
-//! let sig = untrusted::Input::from(sig_bytes);
-//!
-//! signature::verify(&signature::ED25519, peer_public_key, msg, sig)?;
+//! // verifier of the message would parse the inputs to this code out of the
+//! // protocol message(s) sent by the signer.
+//! let peer_public_key =
+//!     signature::UnparsedPublicKey::new(&signature::ED25519, peer_public_key_bytes);
+//! peer_public_key.verify(MESSAGE, sig.as_ref())?;
 //!
 //! # Ok(())
 //! # }
@@ -206,8 +202,7 @@
 //! // Create an `RsaKeyPair` from the DER-encoded bytes. This example uses
 //! // a 2048-bit key, but larger keys are also supported.
 //! let private_key_der = read_file(private_key_path)?;
-//! let private_key_der = untrusted::Input::from(&private_key_der);
-//! let key_pair = signature::RsaKeyPair::from_der(private_key_der)
+//! let key_pair = signature::RsaKeyPair::from_der(&private_key_der)
 //!     .map_err(|_| MyError::BadPrivateKey)?;
 //!
 //! // Sign the message "hello, world", using PKCS#1 v1.5 padding and the
@@ -219,15 +214,11 @@
 //!     .map_err(|_| MyError::OOM)?;
 //!
 //! // Verify the signature.
-//! let public_key_der = read_file(public_key_path)?;
-//! let public_key_der = untrusted::Input::from(&public_key_der);
-//! let message = untrusted::Input::from(MESSAGE);
-//! let signature = untrusted::Input::from(&signature);
-//! signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256,
-//!                   public_key_der, message, signature)
-//!     .map_err(|_| MyError::BadSignature)?;
-//!
-//! Ok(())
+//! let public_key =
+//!     signature::UnparsedPublicKey::new(&signature::RSA_PKCS1_2048_8192_SHA256,
+//!                                       read_file(public_key_path)?);
+//! public_key.verify(MESSAGE, &signature)
+//!     .map_err(|_| MyError::BadSignature)
 //! }
 //!
 //! #[derive(Debug)]
@@ -266,41 +257,41 @@
 //! ```
 
 use crate::{cpu, ec, error, sealed};
-use core;
 use untrusted;
 
 pub use crate::ec::{
     curve25519::ed25519::{
-        signing::KeyPair as Ed25519KeyPair,
+        signing::Ed25519KeyPair,
         verification::{EdDSAParameters, ED25519},
-        PUBLIC_KEY_LEN as ED25519_PUBLIC_KEY_LEN,
+        ED25519_PUBLIC_KEY_LEN,
     },
     suite_b::ecdsa::{
         signing::{
-            Algorithm as EcdsaSigningAlgorithm, KeyPair as EcdsaKeyPair,
-            ECDSA_P256_SHA256_ASN1_SIGNING, ECDSA_P256_SHA256_FIXED_SIGNING,
-            ECDSA_P384_SHA384_ASN1_SIGNING, ECDSA_P384_SHA384_FIXED_SIGNING,
+            EcdsaKeyPair, EcdsaSigningAlgorithm, ECDSA_P256_SHA256_ASN1_SIGNING,
+            ECDSA_P256_SHA256_FIXED_SIGNING, ECDSA_P384_SHA384_ASN1_SIGNING,
+            ECDSA_P384_SHA384_FIXED_SIGNING,
         },
         verification::{
-            Algorithm as EcdsaVerificationAlgorithm, ECDSA_P256_SHA256_ASN1,
-            ECDSA_P256_SHA256_FIXED, ECDSA_P256_SHA384_ASN1, ECDSA_P384_SHA256_ASN1,
-            ECDSA_P384_SHA384_ASN1, ECDSA_P384_SHA384_FIXED,
+            EcdsaVerificationAlgorithm, ECDSA_P256_SHA256_ASN1, ECDSA_P256_SHA256_FIXED,
+            ECDSA_P256_SHA384_ASN1, ECDSA_P384_SHA256_ASN1, ECDSA_P384_SHA384_ASN1,
+            ECDSA_P384_SHA384_FIXED,
         },
     },
 };
 
 #[cfg(feature = "use_heap")]
 pub use crate::rsa::{
-    signing::KeyPair as RsaKeyPair,
+    signing::RsaKeyPair,
+    signing::RsaSubjectPublicKey,
 
     verification::{
-        RSA_PKCS1_2048_8192_SHA1, RSA_PKCS1_2048_8192_SHA256, RSA_PKCS1_2048_8192_SHA384,
-        RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_3072_8192_SHA384, RSA_PSS_2048_8192_SHA256,
-        RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
+        RsaPublicKeyComponents, RSA_PKCS1_2048_8192_SHA1, RSA_PKCS1_2048_8192_SHA256,
+        RSA_PKCS1_2048_8192_SHA384, RSA_PKCS1_2048_8192_SHA512, RSA_PKCS1_3072_8192_SHA384,
+        RSA_PSS_2048_8192_SHA256, RSA_PSS_2048_8192_SHA384, RSA_PSS_2048_8192_SHA512,
     },
 
-    Encoding as RsaEncoding,
-    Parameters as RsaParameters,
+    RsaEncoding,
+    RsaParameters,
 
     // `RSA_PKCS1_SHA1` is intentionally not exposed. At a minimum, we'd need
     // to create test vectors for signing with it, which we don't currently
@@ -315,14 +306,6 @@ pub use crate::rsa::{
     RSA_PSS_SHA512,
 };
 
-/// Lower-level verification primitives. Usage of `ring::signature::verify()`
-/// is preferred when the public key and signature are encoded in standard
-/// formats, as it also handles the parsing.
-#[cfg(feature = "use_heap")]
-pub mod primitive {
-    pub use crate::rsa::verification::verify_rsa;
-}
-
 /// A public key signature returned from a signing operation.
 #[derive(Clone, Copy)]
 pub struct Signature {
@@ -336,7 +319,7 @@ impl Signature {
     where
         F: FnOnce(&mut [u8; MAX_LEN]) -> usize,
     {
-        let mut r = Signature {
+        let mut r = Self {
             value: [0; MAX_LEN],
             len: 0,
         };
@@ -346,7 +329,9 @@ impl Signature {
 }
 
 impl AsRef<[u8]> for Signature {
-    fn as_ref(&self) -> &[u8] { &self.value[..self.len] }
+    fn as_ref(&self) -> &[u8] {
+        &self.value[..self.len]
+    }
 }
 
 /// Key pairs for signing messages (private key and public key).
@@ -370,37 +355,66 @@ pub trait VerificationAlgorithm: core::fmt::Debug + Sync + sealed::Sealed {
     /// Verify the signature `signature` of message `msg` with the public key
     /// `public_key`.
     fn verify(
-        &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
+        &self,
+        public_key: untrusted::Input,
+        msg: untrusted::Input,
+        signature: untrusted::Input,
     ) -> Result<(), error::Unspecified>;
 }
 
-/// Verify the signature `signature` of message `msg` with the public key
-/// `public_key` using the algorithm `alg`.
+/// An unparsed, possibly malformed, public key for signature verification.
+pub struct UnparsedPublicKey<B: AsRef<[u8]>> {
+    algorithm: &'static dyn VerificationAlgorithm,
+    bytes: B,
+}
+
+impl<B: Copy> Copy for UnparsedPublicKey<B> where B: AsRef<[u8]> {}
+
+impl<B: Clone> Clone for UnparsedPublicKey<B>
+where
+    B: AsRef<[u8]>,
+{
+    fn clone(&self) -> Self {
+        Self {
+            algorithm: self.algorithm,
+            bytes: self.bytes.clone(),
+        }
+    }
+}
+
+impl<B: AsRef<[u8]>> UnparsedPublicKey<B> {
+    /// Construct a new `UnparsedPublicKey`.
+    ///
+    /// No validation of `bytes` is done until `verify()` is called.
+    #[inline]
+    pub fn new(algorithm: &'static dyn VerificationAlgorithm, bytes: B) -> Self {
+        Self { algorithm, bytes }
+    }
+
+    /// Parses the public key and verifies `signature` is a valid signature of
+    /// `message` using it.
+    ///
+    /// See the [crate::signature] module-level documentation for examples.
+    pub fn verify(&self, message: &[u8], signature: &[u8]) -> Result<(), error::Unspecified> {
+        let _ = cpu::features();
+        self.algorithm.verify(
+            untrusted::Input::from(self.bytes.as_ref()),
+            untrusted::Input::from(message),
+            untrusted::Input::from(signature),
+        )
+    }
+}
+
+/// Deprecated. Use [UnparsedPublicKey::verify()].
 ///
-/// # Examples
-///
-/// ## Verify a RSA PKCS#1 signature that uses the SHA-256 digest
-///
-/// ```
-/// use ring::signature;
-///
-/// enum Error {
-///     InvalidSignature,
-/// }
-///
-/// # #[cfg(feature = "use_heap")]
-/// fn verify_rsa_pkcs1_sha256(
-///     public_key: untrusted::Input, msg: untrusted::Input, sig: untrusted::Input,
-/// ) -> Result<(), Error> {
-///     signature::verify(&signature::RSA_PKCS1_2048_8192_SHA256, public_key, msg, sig)
-///         .map_err(|_| Error::InvalidSignature)
-/// }
-/// # fn main() { }
-/// ```
+/// [UnparsedPublicKey::verify()]: UnparsedPublicKey::verify
+#[deprecated(note = "Use UnparsedPublicKey::verify")]
 pub fn verify(
-    alg: &VerificationAlgorithm, public_key: untrusted::Input, msg: untrusted::Input,
+    algorithm: &'static dyn VerificationAlgorithm,
+    public_key: untrusted::Input,
+    msg: untrusted::Input,
     signature: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
-    let _ = cpu::features();
-    alg.verify(public_key, msg, signature)
+    UnparsedPublicKey::new(algorithm, public_key.as_slice_less_safe())
+        .verify(msg.as_slice_less_safe(), signature.as_slice_less_safe())
 }

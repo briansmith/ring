@@ -28,12 +28,6 @@
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif
 
-/* Avoid -Wmissing-prototypes warnings. */
-void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
-                            const BN_ULONG p_x[P384_LIMBS],
-                            const BN_ULONG p_y[P384_LIMBS]);
-
-
 static BN_ULONG is_zero(const BN_ULONG a[P384_LIMBS]) {
   BN_ULONG acc = 0;
   for (size_t i = 0; i < P384_LIMBS; ++i) {

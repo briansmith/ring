@@ -52,7 +52,9 @@ fn init_256(key: &[u8], cpu_features: cpu::Features) -> Result<aead::KeyInner, e
 }
 
 fn init(
-    key: &[u8], variant: aes::Variant, cpu_features: cpu::Features,
+    key: &[u8],
+    variant: aes::Variant,
+    cpu_features: cpu::Features,
 ) -> Result<aead::KeyInner, error::Unspecified> {
     let aes_key = aes::Key::new(key, variant, cpu_features)?;
     let gcm_key = gcm::Key::new(aes_key.encrypt_block(Block::zero()), cpu_features);
@@ -62,13 +64,21 @@ fn init(
 const CHUNK_BLOCKS: usize = 3 * 1024 / 16;
 
 fn aes_gcm_seal(
-    key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_out: &mut [u8], cpu_features: cpu::Features,
+    key: &aead::KeyInner,
+    nonce: Nonce,
+    aad: Aad<&[u8]>,
+    in_out: &mut [u8],
+    cpu_features: cpu::Features,
 ) -> Tag {
     aead(key, nonce, aad, in_out, Direction::Sealing, cpu_features)
 }
 
 fn aes_gcm_open(
-    key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_prefix_len: usize, in_out: &mut [u8],
+    key: &aead::KeyInner,
+    nonce: Nonce,
+    aad: Aad<&[u8]>,
+    in_prefix_len: usize,
+    in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Tag {
     aead(
@@ -83,7 +93,11 @@ fn aes_gcm_open(
 
 #[inline(always)] // Avoid branching on `direction`.
 fn aead(
-    key: &aead::KeyInner, nonce: Nonce, aad: Aad, in_out: &mut [u8], direction: Direction,
+    key: &aead::KeyInner,
+    nonce: Nonce,
+    aad: Aad<&[u8]>,
+    in_out: &mut [u8],
+    direction: Direction,
     cpu_features: cpu::Features,
 ) -> Tag {
     let Key { aes_key, gcm_key } = match key {
@@ -190,10 +204,14 @@ fn aead(
 #[cfg(target_arch = "x86_64")]
 #[inline] // Optimize out the match on `direction`.
 fn integrated_aes_gcm<'a>(
-    aes_key: &aes::Key, gcm_ctx: &mut gcm::Context, in_out: &'a mut [u8], ctr: &mut Counter,
-    direction: Direction, cpu_features: cpu::Features,
+    aes_key: &aes::Key,
+    gcm_ctx: &mut gcm::Context,
+    in_out: &'a mut [u8],
+    ctr: &mut Counter,
+    direction: Direction,
+    cpu_features: cpu::Features,
 ) -> &'a mut [u8] {
-    use libc::size_t;
+    use crate::c;
 
     if !aes_key.is_aes_hw() || !gcm_ctx.is_avx2(cpu_features) {
         return in_out;
@@ -203,9 +221,13 @@ fn integrated_aes_gcm<'a>(
         Direction::Opening { in_prefix_len } => {
             extern "C" {
                 fn GFp_aesni_gcm_decrypt(
-                    input: *const u8, output: *mut u8, len: size_t, key: &aes::AES_KEY,
-                    ivec: &mut Counter, gcm: &mut gcm::Context,
-                ) -> size_t;
+                    input: *const u8,
+                    output: *mut u8,
+                    len: c::size_t,
+                    key: &aes::AES_KEY,
+                    ivec: &mut Counter,
+                    gcm: &mut gcm::Context,
+                ) -> c::size_t;
             }
             unsafe {
                 GFp_aesni_gcm_decrypt(
@@ -217,13 +239,17 @@ fn integrated_aes_gcm<'a>(
                     gcm_ctx,
                 )
             }
-        },
+        }
         Direction::Sealing => {
             extern "C" {
                 fn GFp_aesni_gcm_encrypt(
-                    input: *const u8, output: *mut u8, len: size_t, key: &aes::AES_KEY,
-                    ivec: &mut Counter, gcm: &mut gcm::Context,
-                ) -> size_t;
+                    input: *const u8,
+                    output: *mut u8,
+                    len: c::size_t,
+                    key: &aes::AES_KEY,
+                    ivec: &mut Counter,
+                    gcm: &mut gcm::Context,
+                ) -> c::size_t;
             }
             unsafe {
                 GFp_aesni_gcm_encrypt(
@@ -235,7 +261,7 @@ fn integrated_aes_gcm<'a>(
                     gcm_ctx,
                 )
             }
-        },
+        }
     };
 
     &mut in_out[processed..]
@@ -244,7 +270,11 @@ fn integrated_aes_gcm<'a>(
 #[cfg(not(target_arch = "x86_64"))]
 #[inline]
 fn integrated_aes_gcm<'a>(
-    _: &aes::Key, _: &mut gcm::Context, in_out: &'a mut [u8], _: &mut Counter, _: Direction,
+    _: &aes::Key,
+    _: &mut gcm::Context,
+    in_out: &'a mut [u8],
+    _: &mut Counter,
+    _: Direction,
     _: cpu::Features,
 ) -> &'a mut [u8] {
     in_out // This doesn't process any of the input so it all remains.

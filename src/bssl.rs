@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::error;
+use crate::{c, error};
 
 /// An `int` returned from a foreign function containing **1** if the function
 /// was successful or **0** if an error occurred. This is the convention used by
@@ -20,7 +20,7 @@ use crate::error;
 #[derive(Clone, Copy, Debug)]
 #[must_use]
 #[repr(transparent)]
-pub struct Result(libc::c_int);
+pub struct Result(c::int);
 
 impl From<Result> for core::result::Result<(), error::Unspecified> {
     fn from(ret: Result) -> Self {
@@ -29,7 +29,7 @@ impl From<Result> for core::result::Result<(), error::Unspecified> {
             c => {
                 debug_assert_eq!(c, 0, "`bssl::Result` value must be 0 or 1");
                 Err(error::Unspecified)
-            },
+            }
         }
     }
 }
@@ -37,12 +37,12 @@ impl From<Result> for core::result::Result<(), error::Unspecified> {
 #[cfg(test)]
 mod tests {
     mod result {
-        use crate::bssl;
+        use crate::{bssl, c};
         use core::mem;
 
         #[test]
         fn size_and_alignment() {
-            type Underlying = libc::c_int;
+            type Underlying = c::int;
             assert_eq!(mem::size_of::<bssl::Result>(), mem::size_of::<Underlying>());
             assert_eq!(
                 mem::align_of::<bssl::Result>(),

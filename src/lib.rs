@@ -46,7 +46,6 @@
 // internally.
 #![deny(
     missing_docs,
-    trivial_numeric_casts,
     unstable_features, // Used by `internal_benches`
     unused_qualifications,
     variant_size_differences,
@@ -54,26 +53,17 @@
 #![forbid(
     anonymous_parameters,
     trivial_casts,
+    trivial_numeric_casts,
     unused_extern_crates,
     unused_import_braces,
     unused_results,
     warnings
 )]
-#![cfg_attr(
-    any(
-        target_os = "redox",
-        all(
-            not(test),
-            not(feature = "use_heap"),
-            unix,
-            not(any(target_os = "macos", target_os = "ios")),
-            any(not(target_os = "linux"), feature = "dev_urandom_fallback")
-        )
-    ),
-    no_std
-)]
-#![cfg_attr(feature = "internal_benches", allow(unstable_features))]
-#![cfg_attr(feature = "internal_benches", feature(test))]
+#![no_std]
+#![cfg_attr(feature = "internal_benches", allow(unstable_features), feature(test))]
+
+#[cfg(any(test, feature = "use_heap"))]
+extern crate std;
 
 #[macro_use]
 mod debug;
@@ -95,6 +85,7 @@ pub mod agreement;
 
 mod bits;
 
+pub(crate) mod c;
 pub mod constant_time;
 
 pub mod io;
@@ -108,7 +99,7 @@ pub mod hkdf;
 pub mod hmac;
 mod limb;
 pub mod pbkdf2;
-mod pkcs8;
+pub mod pkcs8;
 pub mod rand;
 
 #[cfg(feature = "use_heap")]

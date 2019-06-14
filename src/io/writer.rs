@@ -12,6 +12,8 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+use std::{boxed::Box, vec::Vec};
+
 pub trait Accumulator {
     fn write_byte(&mut self, value: u8);
     fn write_bytes(&mut self, value: &[u8]);
@@ -22,16 +24,24 @@ pub(super) struct LengthMeasurement {
 }
 
 impl Into<usize> for LengthMeasurement {
-    fn into(self) -> usize { self.len }
+    fn into(self) -> usize {
+        self.len
+    }
 }
 
 impl LengthMeasurement {
-    pub fn zero() -> Self { Self { len: 0 } }
+    pub fn zero() -> Self {
+        Self { len: 0 }
+    }
 }
 
 impl Accumulator for LengthMeasurement {
-    fn write_byte(&mut self, _value: u8) { self.len += 1; }
-    fn write_bytes(&mut self, value: &[u8]) { self.len += value.len(); }
+    fn write_byte(&mut self, _value: u8) {
+        self.len += 1;
+    }
+    fn write_bytes(&mut self, value: &[u8]) {
+        self.len += value.len();
+    }
 }
 
 pub(super) struct Writer {
@@ -56,10 +66,14 @@ impl Into<Box<[u8]>> for Writer {
 }
 
 impl Accumulator for Writer {
-    fn write_byte(&mut self, value: u8) { self.bytes.push(value); }
-    fn write_bytes(&mut self, value: &[u8]) { self.bytes.extend(value); }
+    fn write_byte(&mut self, value: u8) {
+        self.bytes.push(value);
+    }
+    fn write_bytes(&mut self, value: &[u8]) {
+        self.bytes.extend(value);
+    }
 }
 
-pub fn write_copy(accumulator: &mut Accumulator, to_copy: untrusted::Input) {
+pub fn write_copy(accumulator: &mut dyn Accumulator, to_copy: untrusted::Input) {
     accumulator.write_bytes(to_copy.as_slice_less_safe())
 }

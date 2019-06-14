@@ -17,15 +17,15 @@ use super::{
     nonce::{self, Iv},
     Block, BLOCK_LEN,
 };
-use crate::{endian::*, polyfill::convert::*};
-use core;
-use libc::size_t;
+use crate::{c, endian::*, polyfill::convert::*};
 
 #[repr(C)]
 pub struct Key([Block; KEY_BLOCKS]);
 
-impl<'a> From<&'a [u8; KEY_LEN]> for Key {
-    fn from(value: &[u8; KEY_LEN]) -> Self { Key(<[Block; KEY_BLOCKS]>::from_(value)) }
+impl From<&'_ [u8; KEY_LEN]> for Key {
+    fn from(value: &[u8; KEY_LEN]) -> Self {
+        Self(<[Block; KEY_BLOCKS]>::from_(value))
+    }
 }
 
 impl Key {
@@ -99,21 +99,29 @@ impl Key {
 
     #[inline] // Optimize away match on `counter.`
     unsafe fn encrypt(
-        &self, counter: CounterOrIv, input: *const u8, in_out_len: usize, output: *mut u8,
+        &self,
+        counter: CounterOrIv,
+        input: *const u8,
+        in_out_len: usize,
+        output: *mut u8,
     ) {
         let iv = match counter {
             CounterOrIv::Counter(counter) => counter.into(),
             CounterOrIv::Iv(iv) => {
                 assert!(in_out_len <= 32);
                 iv
-            },
+            }
         };
 
         /// XXX: Although this takes an `Iv`, this actually uses it like a
         /// `Counter`.
         extern "C" {
             fn GFp_ChaCha20_ctr32(
-                out: *mut u8, in_: *const u8, in_len: size_t, key: &Key, first_iv: &Iv,
+                out: *mut u8,
+                in_: *const u8,
+                in_len: c::size_t,
+                key: &Key,
+                first_iv: &Iv,
             );
         }
 
@@ -135,6 +143,7 @@ pub const KEY_LEN: usize = KEY_BLOCKS * BLOCK_LEN;
 mod tests {
     use super::*;
     use crate::test;
+    use std::vec;
 
     // This verifies the encryption functionality provided by ChaCha20_ctr32
     // is successful when either computed on disjoint input/output buffers,
@@ -183,7 +192,12 @@ mod tests {
     }
 
     fn chacha20_test_case_inner(
-        key: &Key, nonce: &[u8], ctr: u32, input: &[u8], expected: &[u8], len: usize,
+        key: &Key,
+        nonce: &[u8],
+        ctr: u32,
+        input: &[u8],
+        expected: &[u8],
+        len: usize,
         in_out_buf: &mut [u8],
     ) {
         // Straightforward encryption into disjoint buffers is computed

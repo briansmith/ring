@@ -28,7 +28,8 @@ use untrusted;
 /// [NIST SP 800-56A, revision 2]:
 ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Ar2.pdf
 pub fn parse_uncompressed_point(
-    ops: &PublicKeyOps, input: untrusted::Input,
+    ops: &PublicKeyOps,
+    input: untrusted::Input,
 ) -> Result<(Elem<R>, Elem<R>), error::Unspecified> {
     // NIST SP 800-56A Step 1: "Verify that Q is not the point at infinity.
     // This can be done by inspection if the point is entered in the standard
@@ -81,12 +82,12 @@ mod tests {
 
                 let public_key = test_case.consume_bytes("Q");
                 let public_key = untrusted::Input::from(&public_key);
-                let valid = test_case.consume_string("Result") == "P";
+                let is_valid = test_case.consume_string("Result") == "P";
 
                 let curve_ops = public_key_ops_from_curve_name(&curve_name);
 
                 let result = parse_uncompressed_point(curve_ops, public_key);
-                assert_eq!(valid, result.is_ok());
+                assert_eq!(is_valid, result.is_ok());
 
                 // TODO: Verify that we when we re-serialize the parsed (x, y), the
                 // output is equal to the input.

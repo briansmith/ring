@@ -28,7 +28,9 @@ pub const BLOCK_LEN: usize = 16;
 
 impl Block {
     #[inline]
-    pub fn zero() -> Self { Self { subblocks: [0, 0] } }
+    pub fn zero() -> Self {
+        Self { subblocks: [0, 0] }
+    }
 
     #[inline]
     pub fn from_u64_le(first: LittleEndian<u64>, second: LittleEndian<u64>) -> Self {
@@ -78,7 +80,9 @@ impl Block {
     /// leaving the rest of the block unchanged. Panics if `a` is larger
     /// than a block.
     #[inline]
-    pub fn partial_copy_from(&mut self, a: &[u8]) { self.as_mut()[..a.len()].copy_from_slice(a); }
+    pub fn partial_copy_from(&mut self, a: &[u8]) {
+        self.as_mut()[..a.len()].copy_from_slice(a);
+    }
 
     #[inline]
     pub fn bitxor_assign(&mut self, a: Block) {
@@ -91,30 +95,40 @@ impl Block {
     }
 }
 
-impl<'a> From<&'a [u8; BLOCK_LEN]> for Block {
+impl From<&'_ [u8; BLOCK_LEN]> for Block {
     #[inline]
-    fn from(bytes: &[u8; BLOCK_LEN]) -> Self { unsafe { core::mem::transmute_copy(bytes) } }
+    fn from(bytes: &[u8; BLOCK_LEN]) -> Self {
+        unsafe { core::mem::transmute_copy(bytes) }
+    }
 }
 
-impl<'a> From_<&'a [u8; 2 * BLOCK_LEN]> for [Block; 2] {
+impl From_<&'_ [u8; 2 * BLOCK_LEN]> for [Block; 2] {
     #[inline]
-    fn from_(bytes: &[u8; 2 * BLOCK_LEN]) -> Self { unsafe { core::mem::transmute_copy(bytes) } }
+    fn from_(bytes: &[u8; 2 * BLOCK_LEN]) -> Self {
+        unsafe { core::mem::transmute_copy(bytes) }
+    }
 }
 
 impl AsRef<[u8; BLOCK_LEN]> for Block {
     #[inline]
-    fn as_ref(&self) -> &[u8; BLOCK_LEN] { unsafe { core::mem::transmute(self) } }
+    fn as_ref(&self) -> &[u8; BLOCK_LEN] {
+        unsafe { core::mem::transmute(self) }
+    }
 }
 
 impl AsMut<[u8; BLOCK_LEN]> for Block {
     #[inline]
-    fn as_mut(&mut self) -> &mut [u8; BLOCK_LEN] { unsafe { core::mem::transmute(self) } }
+    fn as_mut(&mut self) -> &mut [u8; BLOCK_LEN] {
+        unsafe { core::mem::transmute(self) }
+    }
 }
 
 /// Like `AsMut`.
 impl From_<&mut [Block; 2]> for &mut [u8; 2 * BLOCK_LEN] {
     #[inline]
-    fn from_(bytes: &mut [Block; 2]) -> Self { unsafe { core::mem::transmute(bytes) } }
+    fn from_(bytes: &mut [Block; 2]) -> Self {
+        unsafe { core::mem::transmute(bytes) }
+    }
 }
 
 #[cfg(test)]

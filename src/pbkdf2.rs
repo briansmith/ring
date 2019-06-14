@@ -33,7 +33,7 @@
 //! use ring::{digest, pbkdf2};
 //! use std::{collections::HashMap, num::NonZeroU32};
 //!
-//! static DIGEST_ALG: &'static digest::Algorithm = &digest::SHA256;
+//! static DIGEST_ALG: &digest::Algorithm = &digest::SHA256;
 //! const CREDENTIAL_LEN: usize = digest::SHA256_OUTPUT_LEN;
 //! pub type Credential = [u8; CREDENTIAL_LEN];
 //!
@@ -137,7 +137,10 @@ use core::num::NonZeroU32;
 /// `derive` panics if `out.len()` is larger than (2**32 - 1) * the digest
 /// algorithm's output length, per the PBKDF2 specification.
 pub fn derive(
-    digest_alg: &'static digest::Algorithm, iterations: NonZeroU32, salt: &[u8], secret: &[u8],
+    digest_alg: &'static digest::Algorithm,
+    iterations: NonZeroU32,
+    salt: &[u8],
+    secret: &[u8],
     out: &mut [u8],
 ) {
     let output_len = digest_alg.output_len;
@@ -147,7 +150,7 @@ pub fn derive(
     // hasn't been optimized to the same extent as fastpbkdf2. In particular,
     // this implementation is probably doing a lot of unnecessary copying.
 
-    let secret = hmac::SigningKey::new(digest_alg, secret);
+    let secret = hmac::Key::new(digest_alg, secret);
 
     // Clear |out|.
     polyfill::slice::fill(out, 0);
@@ -160,12 +163,10 @@ pub fn derive(
     }
 }
 
-fn derive_block(
-    secret: &hmac::SigningKey, iterations: NonZeroU32, salt: &[u8], idx: u32, out: &mut [u8],
-) {
-    let mut ctx = hmac::SigningContext::with_key(secret);
+fn derive_block(secret: &hmac::Key, iterations: NonZeroU32, salt: &[u8], idx: u32, out: &mut [u8]) {
+    let mut ctx = hmac::Context::with_key(secret);
     ctx.update(salt);
-    ctx.update(&polyfill::slice::be_u8_from_u32(idx));
+    ctx.update(&u32::to_be_bytes(idx));
 
     let mut u = ctx.sign();
 
@@ -205,7 +206,10 @@ fn derive_block(
 /// `verify` panics if `out.len()` is larger than (2**32 - 1) * the digest
 /// algorithm's output length, per the PBKDF2 specification.
 pub fn verify(
-    digest_alg: &'static digest::Algorithm, iterations: NonZeroU32, salt: &[u8], secret: &[u8],
+    digest_alg: &'static digest::Algorithm,
+    iterations: NonZeroU32,
+    salt: &[u8],
+    secret: &[u8],
     previously_derived: &[u8],
 ) -> Result<(), error::Unspecified> {
     if previously_derived.is_empty() {
@@ -215,7 +219,7 @@ pub fn verify(
     let mut derived_buf = [0u8; digest::MAX_OUTPUT_LEN];
 
     let output_len = digest_alg.output_len;
-    let secret = hmac::SigningKey::new(digest_alg, secret);
+    let secret = hmac::Key::new(digest_alg, secret);
     let mut idx: u32 = 0;
 
     let mut matches = 1;

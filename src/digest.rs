@@ -24,9 +24,8 @@
 // The goal for this implementation is to drive the overhead as close to zero
 // as possible.
 
-use crate::{cpu, debug, endian::*, polyfill};
-use core::{self, num::Wrapping};
-use libc::size_t;
+use crate::{c, cpu, debug, endian::*, polyfill};
+use core::num::Wrapping;
 
 mod sha1;
 
@@ -158,7 +157,7 @@ impl Context {
             .checked_mul(8)
             .unwrap();
         self.pending[(self.algorithm.block_len - 8)..self.algorithm.block_len]
-            .copy_from_slice(BigEndian::from(completed_data_bits).as_ref());
+            .copy_from_slice(&u64::to_be_bytes(completed_data_bits));
 
         unsafe {
             (self.algorithm.block_data_order)(&mut self.state, self.pending.as_ptr(), 1);
@@ -172,7 +171,9 @@ impl Context {
 
     /// The algorithm that this context is using.
     #[inline(always)]
-    pub fn algorithm(&self) -> &'static Algorithm { self.algorithm }
+    pub fn algorithm(&self) -> &'static Algorithm {
+        self.algorithm
+    }
 }
 
 /// Returns the digest of `data` using the given digest algorithm.
@@ -181,18 +182,14 @@ impl Context {
 ///
 /// ```
 /// # #[cfg(feature = "use_heap")]
-/// # fn main() {
+/// # {
 /// use ring::{digest, test};
-///
 /// let expected_hex = "09ca7e4eaa6e8ae9c7d261167129184883644d07dfba7cbfbc4c8a2e08360d5b";
 /// let expected: Vec<u8> = test::from_hex(expected_hex).unwrap();
 /// let actual = digest::digest(&digest::SHA256, b"hello, world");
 ///
 /// assert_eq!(&expected, &actual.as_ref());
 /// # }
-///
-/// # #[cfg(not(feature = "use_heap"))]
-/// # fn main() { }
 /// ```
 pub fn digest(algorithm: &'static Algorithm, data: &[u8]) -> Digest {
     let mut ctx = Context::new(algorithm);
@@ -212,7 +209,9 @@ pub struct Digest {
 impl Digest {
     /// The algorithm that was used to calculate the digest value.
     #[inline(always)]
-    pub fn algorithm(&self) -> &'static Algorithm { self.algorithm }
+    pub fn algorithm(&self) -> &'static Algorithm {
+        self.algorithm
+    }
 }
 
 impl AsRef<[u8]> for Digest {
@@ -248,7 +247,7 @@ pub struct Algorithm {
     /// The length of the length in the padding.
     len_len: usize,
 
-    block_data_order: unsafe extern "C" fn(state: &mut State, data: *const u8, num: size_t),
+    block_data_order: unsafe extern "C" fn(state: &mut State, data: *const u8, num: c::size_t),
     format_output: fn(input: State) -> Output,
 
     initial_state: State,
@@ -266,7 +265,9 @@ enum AlgorithmID {
 }
 
 impl PartialEq for Algorithm {
-    fn eq(&self, other: &Self) -> bool { self.id == other.id }
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
 }
 
 impl Eq for Algorithm {}
@@ -482,8 +483,8 @@ const SHA512_BLOCK_LEN: usize = 1024 / 8;
 const SHA512_LEN_LEN: usize = 128 / 8;
 
 extern "C" {
-    fn GFp_sha256_block_data_order(state: &mut State, data: *const u8, num: size_t);
-    fn GFp_sha512_block_data_order(state: &mut State, data: *const u8, num: size_t);
+    fn GFp_sha256_block_data_order(state: &mut State, data: *const u8, num: c::size_t);
+    fn GFp_sha512_block_data_order(state: &mut State, data: *const u8, num: c::size_t);
 }
 
 #[cfg(test)]
@@ -504,6 +505,8 @@ mod tests {
 
     mod max_input {
         use super::super::super::digest;
+        use crate::polyfill;
+        use std::vec;
 
         macro_rules! max_input_tests {
             ( $algorithm_name:ident ) => {
@@ -511,7 +514,9 @@ mod tests {
                     use super::super::super::super::digest;
 
                     #[test]
-                    fn max_input_test() { super::max_input_test(&digest::$algorithm_name); }
+                    fn max_input_test() {
+                        super::max_input_test(&digest::$algorithm_name);
+                    }
 
                     #[test]
                     #[should_panic]
@@ -555,7 +560,7 @@ mod tests {
             // of input; according to the spec, SHA-384 and SHA-512
             // support up to 2^128-1, but that's not implemented yet.
             let max_bytes = 1u64 << (64 - 3);
-            let max_blocks = max_bytes / (alg.block_len as u64);
+            let max_blocks = max_bytes / polyfill::u64_from_usize(alg.block_len);
             digest::Context {
                 algorithm: alg,
                 state: alg.initial_state,

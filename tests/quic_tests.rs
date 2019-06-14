@@ -34,13 +34,19 @@
 use ring::{aead::quic, test, test_file};
 
 #[test]
-fn quic_aes_128() { test_quic(&quic::AES_128, test_file!("quic_aes_128_tests.txt")); }
+fn quic_aes_128() {
+    test_quic(&quic::AES_128, test_file!("quic_aes_128_tests.txt"));
+}
 
 #[test]
-fn quic_aes_256() { test_quic(&quic::AES_256, test_file!("quic_aes_256_tests.txt")); }
+fn quic_aes_256() {
+    test_quic(&quic::AES_256, test_file!("quic_aes_256_tests.txt"));
+}
 
 #[test]
-fn quic_chacha20() { test_quic(&quic::CHACHA20, test_file!("quic_chacha20_tests.txt")); }
+fn quic_chacha20() {
+    test_quic(&quic::CHACHA20, test_file!("quic_chacha20_tests.txt"));
+}
 
 fn test_quic(alg: &'static quic::Algorithm, test_file: test::File) {
     test_sample_len(alg);

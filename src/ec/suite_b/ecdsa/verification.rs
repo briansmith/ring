@@ -26,7 +26,7 @@ use crate::{
 use untrusted;
 
 /// An ECDSA verification algorithm.
-pub struct Algorithm {
+pub struct EcdsaVerificationAlgorithm {
     ops: &'static PublicScalarOps,
     digest_alg: &'static digest::Algorithm,
     split_rs:
@@ -48,11 +48,14 @@ enum AlgorithmID {
     ECDSA_P384_SHA384_FIXED,
 }
 
-derive_debug_via_id!(Algorithm);
+derive_debug_via_id!(EcdsaVerificationAlgorithm);
 
-impl signature::VerificationAlgorithm for Algorithm {
+impl signature::VerificationAlgorithm for EcdsaVerificationAlgorithm {
     fn verify(
-        &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
+        &self,
+        public_key: untrusted::Input,
+        msg: untrusted::Input,
+        signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
         let e = {
             // NSA Guide Step 2: "Use the selected hash function to compute H =
@@ -68,10 +71,13 @@ impl signature::VerificationAlgorithm for Algorithm {
     }
 }
 
-impl Algorithm {
+impl EcdsaVerificationAlgorithm {
     /// This is intentionally not public.
     fn verify_digest(
-        &self, public_key: untrusted::Input, e: Scalar, signature: untrusted::Input,
+        &self,
+        public_key: untrusted::Input,
+        e: Scalar,
+        signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
         // NSA Suite B Implementer's Guide to ECDSA Section 3.4.2.
 
@@ -137,7 +143,10 @@ impl Algorithm {
         // that would be necessary to compute the affine X coordinate.
         let x = public_key_ops.common.point_x(&product);
         fn sig_r_equals_x(
-            ops: &PublicScalarOps, r: &Elem<Unencoded>, x: &Elem<R>, z2: &Elem<R>,
+            ops: &PublicScalarOps,
+            r: &Elem<Unencoded>,
+            x: &Elem<R>,
+            z2: &Elem<R>,
         ) -> bool {
             let cops = ops.public_key_ops.common;
             let r_jacobian = cops.elem_product(z2, r);
@@ -159,29 +168,34 @@ impl Algorithm {
     }
 }
 
-impl sealed::Sealed for Algorithm {}
+impl sealed::Sealed for EcdsaVerificationAlgorithm {}
 
 fn split_rs_fixed<'a>(
-    ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>,
+    ops: &'static ScalarOps,
+    input: &mut untrusted::Reader<'a>,
 ) -> Result<(untrusted::Input<'a>, untrusted::Input<'a>), error::Unspecified> {
     let scalar_len = ops.scalar_bytes_len();
-    let r = input.skip_and_get_input(scalar_len)?;
-    let s = input.skip_and_get_input(scalar_len)?;
+    let r = input.read_bytes(scalar_len)?;
+    let s = input.read_bytes(scalar_len)?;
     Ok((r, s))
 }
 
 fn split_rs_asn1<'a>(
-    _ops: &'static ScalarOps, input: &mut untrusted::Reader<'a>,
+    _ops: &'static ScalarOps,
+    input: &mut untrusted::Reader<'a>,
 ) -> Result<(untrusted::Input<'a>, untrusted::Input<'a>), error::Unspecified> {
     der::nested(input, der::Tag::Sequence, error::Unspecified, |input| {
-        let r = der::positive_integer(input)?.big_endian_without_leading_zero();
-        let s = der::positive_integer(input)?.big_endian_without_leading_zero();
+        let r = der::positive_integer(input)?.big_endian_without_leading_zero_as_input();
+        let s = der::positive_integer(input)?.big_endian_without_leading_zero_as_input();
         Ok((r, s))
     })
 }
 
 fn twin_mul(
-    ops: &PrivateKeyOps, g_scalar: &Scalar, p_scalar: &Scalar, p_xy: &(Elem<R>, Elem<R>),
+    ops: &PrivateKeyOps,
+    g_scalar: &Scalar,
+    p_scalar: &Scalar,
+    p_xy: &(Elem<R>, Elem<R>),
 ) -> Point {
     // XXX: Inefficient. TODO: implement interleaved wNAF multiplication.
     let scaled_g = ops.point_mul_base(g_scalar);
@@ -194,7 +208,7 @@ fn twin_mul(
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA256_FIXED: Algorithm = Algorithm {
+pub static ECDSA_P256_SHA256_FIXED: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_fixed,
@@ -206,7 +220,7 @@ pub static ECDSA_P256_SHA256_FIXED: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_FIXED` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA384_FIXED: Algorithm = Algorithm {
+pub static ECDSA_P384_SHA384_FIXED: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_fixed,
@@ -218,7 +232,7 @@ pub static ECDSA_P384_SHA384_FIXED: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA256_ASN1: Algorithm = Algorithm {
+pub static ECDSA_P256_SHA256_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_asn1,
@@ -235,7 +249,7 @@ pub static ECDSA_P256_SHA256_ASN1: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P256_SHA384_ASN1: Algorithm = Algorithm {
+pub static ECDSA_P256_SHA384_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
     ops: &p256::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_asn1,
@@ -252,7 +266,7 @@ pub static ECDSA_P256_SHA384_ASN1: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA256_ASN1: Algorithm = Algorithm {
+pub static ECDSA_P384_SHA256_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA256,
     split_rs: split_rs_asn1,
@@ -264,7 +278,7 @@ pub static ECDSA_P384_SHA256_ASN1: Algorithm = Algorithm {
 ///
 /// See "`ECDSA_*_ASN1` Details" in `ring::signature`'s module-level
 /// documentation for more details.
-pub static ECDSA_P384_SHA384_ASN1: Algorithm = Algorithm {
+pub static ECDSA_P384_SHA384_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificationAlgorithm {
     ops: &p384::PUBLIC_SCALAR_OPS,
     digest_alg: &digest::SHA384,
     split_rs: split_rs_asn1,
@@ -275,6 +289,7 @@ pub static ECDSA_P384_SHA384_ASN1: Algorithm = Algorithm {
 mod tests {
     use super::*;
     use crate::test;
+    use std::vec::Vec;
 
     #[test]
     fn test_digest_based_test_vectors() {
@@ -309,7 +324,7 @@ mod tests {
                     "P-384" => &ECDSA_P384_SHA384_FIXED,
                     _ => {
                         panic!("Unsupported curve: {}", curve_name);
-                    },
+                    }
                 };
 
                 let digest = super::super::digest_scalar::digest_bytes_scalar(

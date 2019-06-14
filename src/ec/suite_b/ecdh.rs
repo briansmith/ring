@@ -45,7 +45,9 @@ macro_rules! ecdh {
         };
 
         fn $ecdh(
-            out: &mut [u8], my_private_key: &ec::Seed, peer_public_key: untrusted::Input,
+            out: &mut [u8],
+            my_private_key: &ec::Seed,
+            peer_public_key: untrusted::Input,
         ) -> Result<(), error::Unspecified> {
             ecdh(
                 $private_key_ops,
@@ -77,8 +79,11 @@ ecdh!(
 );
 
 fn ecdh(
-    private_key_ops: &PrivateKeyOps, public_key_ops: &PublicKeyOps, out: &mut [u8],
-    my_private_key: &ec::Seed, peer_public_key: untrusted::Input,
+    private_key_ops: &PrivateKeyOps,
+    public_key_ops: &PublicKeyOps,
+    out: &mut [u8],
+    my_private_key: &ec::Seed,
+    peer_public_key: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
     // The NIST SP 800-56Ar2 steps are from section 5.7.1.2 Elliptic Curve
     // Cryptography Cofactor Diffie-Hellman (ECC CDH) Primitive.
@@ -138,14 +143,8 @@ fn ecdh(
 mod tests {
     use super::super::ops;
     use crate::{agreement, ec, limb, test};
-    use core;
 
-    static SUPPORTED_SUITE_B_ALGS: [(
-        &'static str,
-        &'static agreement::Algorithm,
-        &'static ec::Curve,
-        &'static ops::CommonOps,
-    ); 2] = [
+    static SUPPORTED_SUITE_B_ALGS: [(&str, &agreement::Algorithm, &ec::Curve, &ops::CommonOps); 2] = [
         (
             "P-256",
             &agreement::ECDH_P256,

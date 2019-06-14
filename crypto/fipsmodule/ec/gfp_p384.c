@@ -32,17 +32,6 @@ typedef Limb ScalarMont[P384_LIMBS];
 typedef Limb Scalar[P384_LIMBS];
 
 
-/* Prototypes to avoid -Wmissing-prototypes warnings. */
-void GFp_p384_elem_add(Elem r, const Elem a, const Elem b);
-void GFp_p384_elem_sub(Elem r, const Elem a, const Elem b);
-void GFp_p384_elem_div_by_2(Elem r, const Elem a);
-void GFp_p384_elem_mul_mont(Elem r, const Elem a, const Elem b);
-void GFp_p384_elem_neg(Elem r, const Elem a);
-void GFp_p384_scalar_inv_to_mont(ScalarMont r, const Scalar a);
-void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
-                              const ScalarMont b);
-
-
 static const BN_ULONG Q[P384_LIMBS] = {
   TOBN(0x00000000, 0xffffffff),
   TOBN(0xffffffff, 0x00000000),

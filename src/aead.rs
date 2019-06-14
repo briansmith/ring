@@ -23,7 +23,7 @@
 
 use self::block::{Block, BLOCK_LEN};
 use crate::{
-    constant_time, cpu, error,
+    constant_time, cpu, error, hkdf,
     polyfill::{self, convert::*},
 };
 use std::fmt;
@@ -43,21 +43,32 @@ pub struct OpeningKey {
 derive_debug_via_field!(OpeningKey, key);
 
 impl OpeningKey {
+    /// Create a new `OpeningKey` by extracting the key's value from `okm`.
+    #[inline]
+    pub fn derive(algorithm: &'static Algorithm, okm: hkdf::Okm) -> Self {
+        Self {
+            key: Key::derive(algorithm, okm),
+        }
+    }
+
     /// Create a new opening key.
     ///
     /// `key_bytes` must be exactly `algorithm.key_len` bytes long.
     #[inline]
     pub fn new(
-        algorithm: &'static Algorithm, key_bytes: &[u8],
-    ) -> Result<OpeningKey, error::Unspecified> {
-        Ok(OpeningKey {
+        algorithm: &'static Algorithm,
+        key_bytes: &[u8],
+    ) -> Result<Self, error::Unspecified> {
+        Ok(Self {
             key: Key::new(algorithm, key_bytes)?,
         })
     }
 
     /// The key's AEAD algorithm.
     #[inline(always)]
-    pub fn algorithm(&self) -> &'static Algorithm { self.key.algorithm() }
+    pub fn algorithm(&self) -> &'static Algorithm {
+        self.key.algorithm()
+    }
 }
 
 /// Authenticates and decrypts (“opens”) data in place.
@@ -104,8 +115,27 @@ impl OpeningKey {
 /// and `ciphertext_and_tag_modified_in_place` because Rust's type system
 /// does not allow us to have two slices, one mutable and one immutable, that
 /// reference overlapping memory.)
-pub fn open_in_place<'a>(
-    key: &OpeningKey, nonce: Nonce, aad: Aad, in_prefix_len: usize,
+pub fn open_in_place<'a, A: AsRef<[u8]>>(
+    key: &OpeningKey,
+    nonce: Nonce,
+    Aad(aad): Aad<A>,
+    in_prefix_len: usize,
+    ciphertext_and_tag_modified_in_place: &'a mut [u8],
+) -> Result<&'a mut [u8], error::Unspecified> {
+    open_in_place_(
+        key,
+        nonce,
+        Aad::from(aad.as_ref()),
+        in_prefix_len,
+        ciphertext_and_tag_modified_in_place,
+    )
+}
+
+fn open_in_place_<'a>(
+    key: &OpeningKey,
+    nonce: Nonce,
+    aad: Aad<&[u8]>,
+    in_prefix_len: usize,
     ciphertext_and_tag_modified_in_place: &'a mut [u8],
 ) -> Result<&'a mut [u8], error::Unspecified> {
     let ciphertext_and_tag_len = ciphertext_and_tag_modified_in_place
@@ -180,19 +210,30 @@ pub struct SealingKey {
 derive_debug_via_field!(SealingKey, key);
 
 impl SealingKey {
+    /// Create a new `OpeningKey` by extracting the key's value from `okm`.
+    #[inline]
+    pub fn derive(algorithm: &'static Algorithm, okm: hkdf::Okm) -> Self {
+        Self {
+            key: Key::derive(algorithm, okm),
+        }
+    }
+
     /// Constructs a new sealing key from `key_bytes`.
     #[inline]
     pub fn new(
-        algorithm: &'static Algorithm, key_bytes: &[u8],
-    ) -> Result<SealingKey, error::Unspecified> {
-        Ok(SealingKey {
+        algorithm: &'static Algorithm,
+        key_bytes: &[u8],
+    ) -> Result<Self, error::Unspecified> {
+        Ok(Self {
             key: Key::new(algorithm, key_bytes)?,
         })
     }
 
     /// The key's AEAD algorithm.
     #[inline(always)]
-    pub fn algorithm(&self) -> &'static Algorithm { self.key.algorithm() }
+    pub fn algorithm(&self) -> &'static Algorithm {
+        self.key.algorithm()
+    }
 }
 
 /// Encrypts and signs (“seals”) data in place.
@@ -212,8 +253,28 @@ impl SealingKey {
 /// also `MAX_TAG_LEN`.
 ///
 /// `aad` is the additional authenticated data, if any.
-pub fn seal_in_place(
-    key: &SealingKey, nonce: Nonce, aad: Aad, in_out: &mut [u8], out_suffix_capacity: usize,
+pub fn seal_in_place<A: AsRef<[u8]>>(
+    key: &SealingKey,
+    nonce: Nonce,
+    Aad(aad): Aad<A>,
+    in_out: &mut [u8],
+    out_suffix_capacity: usize,
+) -> Result<usize, error::Unspecified> {
+    seal_in_place_(
+        key,
+        nonce,
+        Aad::from(aad.as_ref()),
+        in_out,
+        out_suffix_capacity,
+    )
+}
+
+fn seal_in_place_(
+    key: &SealingKey,
+    nonce: Nonce,
+    aad: Aad<&[u8]>,
+    in_out: &mut [u8],
+    out_suffix_capacity: usize,
 ) -> Result<usize, error::Unspecified> {
     if out_suffix_capacity < key.key.algorithm.tag_len() {
         return Err(error::Unspecified);
@@ -236,17 +297,21 @@ pub fn seal_in_place(
 /// The additionally authenticated data (AAD) for an opening or sealing
 /// operation. This data is authenticated but is **not** encrypted.
 #[repr(transparent)]
-pub struct Aad<'a>(&'a [u8]);
+pub struct Aad<A: AsRef<[u8]>>(A);
 
-impl<'a> Aad<'a> {
-    /// Construct the `Aad` by borrowing a contiguous sequence of bytes.
+impl<A: AsRef<[u8]>> Aad<A> {
+    /// Construct the `Aad` from the given bytes.
     #[inline]
-    pub fn from(aad: &'a [u8]) -> Self { Aad(aad) }
+    pub fn from(aad: A) -> Self {
+        Aad(aad)
+    }
 }
 
-impl Aad<'static> {
+impl Aad<[u8; 0]> {
     /// Construct an empty `Aad`.
-    pub fn empty() -> Self { Self::from(&[]) }
+    pub fn empty() -> Self {
+        Self::from([])
+    }
 }
 
 /// `OpeningKey` and `SealingKey` are type-safety wrappers around `Key`, which
@@ -267,6 +332,13 @@ enum KeyInner {
 }
 
 impl Key {
+    fn derive(algorithm: &'static Algorithm, okm: hkdf::Okm) -> Self {
+        let mut key_bytes = [0; MAX_KEY_LEN];
+        let key_bytes = &mut key_bytes[..algorithm.key_len];
+        okm.fill(key_bytes).unwrap();
+        Self::new(algorithm, key_bytes).unwrap()
+    }
+
     fn new(algorithm: &'static Algorithm, key_bytes: &[u8]) -> Result<Self, error::Unspecified> {
         let cpu_features = cpu::features();
         Ok(Self {
@@ -278,7 +350,9 @@ impl Key {
 
     /// The key's AEAD algorithm.
     #[inline(always)]
-    fn algorithm(&self) -> &'static Algorithm { self.algorithm }
+    fn algorithm(&self) -> &'static Algorithm {
+        self.algorithm
+    }
 }
 
 impl fmt::Debug for KeyInner {
@@ -298,14 +372,14 @@ pub struct Algorithm {
     seal: fn(
         key: &KeyInner,
         nonce: Nonce,
-        aad: Aad,
+        aad: Aad<&[u8]>,
         in_out: &mut [u8],
         cpu_features: cpu::Features,
     ) -> Tag,
     open: fn(
         key: &KeyInner,
         nonce: Nonce,
-        aad: Aad,
+        aad: Aad<&[u8]>,
         in_prefix_len: usize,
         in_out: &mut [u8],
         cpu_features: cpu::Features,
@@ -329,17 +403,23 @@ const fn max_input_len(block_len: usize, overhead_blocks_per_nonce: usize) -> u6
 impl Algorithm {
     /// The length of the key.
     #[inline(always)]
-    pub fn key_len(&self) -> usize { self.key_len }
+    pub fn key_len(&self) -> usize {
+        self.key_len
+    }
 
     /// The length of a tag.
     ///
     /// See also `MAX_TAG_LEN`.
     #[inline(always)]
-    pub fn tag_len(&self) -> usize { TAG_LEN }
+    pub fn tag_len(&self) -> usize {
+        TAG_LEN
+    }
 
     /// The length of the nonces.
     #[inline(always)]
-    pub fn nonce_len(&self) -> usize { NONCE_LEN }
+    pub fn nonce_len(&self) -> usize {
+        NONCE_LEN
+    }
 }
 
 derive_debug_via_id!(Algorithm);
@@ -354,7 +434,9 @@ enum AlgorithmID {
 }
 
 impl PartialEq for Algorithm {
-    fn eq(&self, other: &Self) -> bool { self.id == other.id }
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
 }
 
 impl Eq for Algorithm {}
@@ -363,6 +445,8 @@ impl Eq for Algorithm {}
 #[must_use]
 #[repr(C)]
 struct Tag(Block);
+
+const MAX_KEY_LEN: usize = 32;
 
 // All the AEADs we support use 128-bit tags.
 const TAG_LEN: usize = BLOCK_LEN;

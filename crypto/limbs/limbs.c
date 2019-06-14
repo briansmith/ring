@@ -23,16 +23,6 @@
  * but we haven't verified that assumption. TODO: Fix it so we don't need to
  * make that assumption. */
 
-/* Prototypes to avoid -Wmissing-prototypes warnings. */
-Limb LIMBS_less_than(const Limb a[], const Limb b[], size_t num_limbs);
-Limb LIMBS_less_than_limb(const Limb a[], Limb b, size_t num_limbs);
-int LIMBS_select_512_32(Limb r[], const Limb table[], size_t num_limbs,
-                        crypto_word index);
-crypto_word LIMBS_window5_split_window(Limb lower_limb, Limb higher_limb, size_t index_within_word);
-crypto_word LIMBS_window5_unsplit_window(Limb limb, size_t index_within_word);
-
-crypto_word LIMB_shr(crypto_word a, size_t shift);
-
 /* Returns 0xfff..f if |a| is all zero limbs, and zero otherwise. |num_limbs|
  * may be zero. */
 Limb LIMBS_are_zero(const Limb a[], size_t num_limbs) {

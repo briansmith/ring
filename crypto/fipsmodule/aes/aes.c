@@ -48,8 +48,6 @@
 
 #include <GFp/aes.h>
 
-#include <GFp/cpu.h>
-
 #include "../modes/internal.h"
 
 int GFp_aes_nohw_set_encrypt_key(const uint8_t *key, unsigned bits,

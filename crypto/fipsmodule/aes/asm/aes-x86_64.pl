@@ -554,6 +554,7 @@ $code.=<<___;
 .type	_x86_64_AES_encrypt_compact,\@abi-omnipotent
 .align	16
 _x86_64_AES_encrypt_compact:
+.cfi_startproc
 	lea	128($sbox),$inp			# size optimization
 	mov	0-128($inp),$acc1		# prefetch Te4
 	mov	32-128($inp),$acc2
@@ -587,6 +588,7 @@ $code.=<<___;
 	xor	8($key),$s2
 	xor	12($key),$s3
 	.byte	0xf3,0xc3			# rep ret
+.cfi_endproc
 .size	_x86_64_AES_encrypt_compact,.-_x86_64_AES_encrypt_compact
 ___
 
@@ -746,6 +748,7 @@ GFp_aes_nohw_set_encrypt_key:
 .type	_x86_64_AES_set_encrypt_key,\@abi-omnipotent
 .align	16
 _x86_64_AES_set_encrypt_key:
+.cfi_startproc
 	mov	%esi,%ecx			# %ecx=bits
 	mov	%rdi,%rsi			# %rsi=userKey
 	mov	%rdx,%rdi			# %rdi=key
@@ -808,7 +811,7 @@ $code.=<<___;
 	xor	%rax,%rax
 	jmp	.Lexit
 
-.L14rounds:		
+.L14rounds:
 	mov	0(%rsi),%rax			# copy first 8 dwords
 	mov	8(%rsi),%rbx
 	mov	16(%rsi),%rcx
@@ -882,6 +885,7 @@ $code.=<<___;
 	mov	\$-1,%rax
 .Lexit:
 	.byte	0xf3,0xc3			# rep ret
+.cfi_endproc
 .size	_x86_64_AES_set_encrypt_key,.-_x86_64_AES_set_encrypt_key
 ___
 

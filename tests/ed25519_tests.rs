@@ -43,28 +43,24 @@ fn test_signature_ed25519() {
         assert_eq!(section, "");
         let seed = test_case.consume_bytes("SEED");
         assert_eq!(32, seed.len());
-        let seed = untrusted::Input::from(&seed);
 
         let public_key = test_case.consume_bytes("PUB");
         assert_eq!(32, public_key.len());
-        let public_key = untrusted::Input::from(&public_key);
 
         let msg = test_case.consume_bytes("MESSAGE");
 
         let expected_sig = test_case.consume_bytes("SIG");
 
         {
-            let key_pair = Ed25519KeyPair::from_seed_and_public_key(seed, public_key).unwrap();
+            let key_pair = Ed25519KeyPair::from_seed_and_public_key(&seed, &public_key).unwrap();
             let actual_sig = key_pair.sign(&msg);
             assert_eq!(&expected_sig[..], actual_sig.as_ref());
         }
 
         // Test PKCS#8 generation, parsing, and private-to-public calculations.
-        let rng = test::rand::FixedSliceRandom {
-            bytes: seed.as_slice_less_safe(),
-        };
+        let rng = test::rand::FixedSliceRandom { bytes: &seed };
         let pkcs8 = Ed25519KeyPair::generate_pkcs8(&rng).unwrap();
-        let key_pair = Ed25519KeyPair::from_pkcs8(untrusted::Input::from(pkcs8.as_ref())).unwrap();
+        let key_pair = Ed25519KeyPair::from_pkcs8(pkcs8.as_ref()).unwrap();
         assert_eq!(public_key, key_pair.public_key().as_ref());
 
         // Test Signature generation.
@@ -72,13 +68,40 @@ fn test_signature_ed25519() {
         assert_eq!(&expected_sig[..], actual_sig.as_ref());
 
         // Test Signature verification.
-        assert!(signature::verify(
+
+        assert!(
+            signature::UnparsedPublicKey::new(&signature::ED25519, &public_key)
+                .verify(&msg, &expected_sig)
+                .is_ok()
+        );
+
+        #[allow(deprecated)]
+        let actual_result = signature::verify(
             &signature::ED25519,
-            public_key,
+            untrusted::Input::from(&public_key),
             untrusted::Input::from(&msg),
-            untrusted::Input::from(&expected_sig)
-        )
-        .is_ok());
+            untrusted::Input::from(&expected_sig),
+        );
+        assert!(actual_result.is_ok());
+
+        let mut tampered_sig = expected_sig;
+        tampered_sig[0] ^= 1;
+
+        assert!(
+            signature::UnparsedPublicKey::new(&signature::ED25519, &public_key)
+                .verify(&msg, &tampered_sig)
+                .is_err()
+        );
+
+        #[allow(deprecated)]
+        let actual_result = signature::verify(
+            &signature::ED25519,
+            untrusted::Input::from(&public_key),
+            untrusted::Input::from(&msg),
+            untrusted::Input::from(&tampered_sig),
+        );
+        assert!(actual_result.is_err());
+
         Ok(())
     });
 }
@@ -88,32 +111,16 @@ fn test_ed25519_from_seed_and_public_key_misuse() {
     const PRIVATE_KEY: &[u8] = include_bytes!("ed25519_test_private_key.bin");
     const PUBLIC_KEY: &[u8] = include_bytes!("ed25519_test_public_key.bin");
 
-    assert!(Ed25519KeyPair::from_seed_and_public_key(
-        untrusted::Input::from(PRIVATE_KEY),
-        untrusted::Input::from(PUBLIC_KEY)
-    )
-    .is_ok());
+    assert!(Ed25519KeyPair::from_seed_and_public_key(PRIVATE_KEY, PUBLIC_KEY).is_ok());
 
     // Truncated private key.
-    assert!(Ed25519KeyPair::from_seed_and_public_key(
-        untrusted::Input::from(&PRIVATE_KEY[..31]),
-        untrusted::Input::from(PUBLIC_KEY)
-    )
-    .is_err());
+    assert!(Ed25519KeyPair::from_seed_and_public_key(&PRIVATE_KEY[..31], PUBLIC_KEY).is_err());
 
     // Truncated public key.
-    assert!(Ed25519KeyPair::from_seed_and_public_key(
-        untrusted::Input::from(PRIVATE_KEY),
-        untrusted::Input::from(&PUBLIC_KEY[..31])
-    )
-    .is_err());
+    assert!(Ed25519KeyPair::from_seed_and_public_key(PRIVATE_KEY, &PUBLIC_KEY[..31]).is_err());
 
     // Swapped public and private key.
-    assert!(Ed25519KeyPair::from_seed_and_public_key(
-        untrusted::Input::from(PUBLIC_KEY),
-        untrusted::Input::from(PRIVATE_KEY)
-    )
-    .is_err());
+    assert!(Ed25519KeyPair::from_seed_and_public_key(PUBLIC_KEY, PRIVATE_KEY).is_err());
 }
 
 #[test]
@@ -127,7 +134,7 @@ fn test_ed25519_from_pkcs8_unchecked() {
             let error = test_case.consume_optional_string("Error");
 
             match (
-                Ed25519KeyPair::from_pkcs8_maybe_unchecked(untrusted::Input::from(&input)),
+                Ed25519KeyPair::from_pkcs8_maybe_unchecked(&input),
                 error.clone(),
             ) {
                 (Ok(_), None) => (),
@@ -151,10 +158,7 @@ fn test_ed25519_from_pkcs8() {
             let input = test_case.consume_bytes("Input");
             let error = test_case.consume_optional_string("Error");
 
-            match (
-                Ed25519KeyPair::from_pkcs8(untrusted::Input::from(&input)),
-                error.clone(),
-            ) {
+            match (Ed25519KeyPair::from_pkcs8(&input), error.clone()) {
                 (Ok(_), None) => (),
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
                 (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
@@ -168,13 +172,12 @@ fn test_ed25519_from_pkcs8() {
 
 #[test]
 fn ed25519_test_public_key_coverage() {
-    const PRIVATE_KEY: &'static [u8] = include_bytes!("ed25519_test_private_key.p8");
-    const PUBLIC_KEY: &'static [u8] = include_bytes!("ed25519_test_public_key.der");
+    const PRIVATE_KEY: &[u8] = include_bytes!("ed25519_test_private_key.p8");
+    const PUBLIC_KEY: &[u8] = include_bytes!("ed25519_test_public_key.der");
     const PUBLIC_KEY_DEBUG: &'static str =
         "PublicKey(\"5809e9fef6dcec58f0f2e3b0d67e9880a11957e083ace85835c3b6c8fbaf6b7d\")";
 
-    let key_pair =
-        signature::Ed25519KeyPair::from_pkcs8(untrusted::Input::from(PRIVATE_KEY)).unwrap();
+    let key_pair = signature::Ed25519KeyPair::from_pkcs8(PRIVATE_KEY).unwrap();
 
     // Test `AsRef<[u8]>`
     assert_eq!(key_pair.public_key().as_ref(), PUBLIC_KEY);

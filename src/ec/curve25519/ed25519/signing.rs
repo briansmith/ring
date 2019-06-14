@@ -14,7 +14,7 @@
 
 //! EdDSA Signatures.
 
-use super::{super::ops::*, PUBLIC_KEY_LEN};
+use super::{super::ops::*, ED25519_PUBLIC_KEY_LEN};
 use crate::{
     digest, error,
     io::der,
@@ -23,13 +23,12 @@ use crate::{
     rand,
     signature::{self, KeyPair as SigningKeyPair},
 };
-use core;
 use untrusted;
 
 use super::digest::*;
 
 /// An Ed25519 key pair, for signing.
-pub struct KeyPair {
+pub struct Ed25519KeyPair {
     // RFC 8032 Section 5.1.6 calls this *s*.
     private_scalar: Scalar,
 
@@ -40,9 +39,9 @@ pub struct KeyPair {
     public_key: PublicKey,
 }
 
-derive_debug_via_field!(KeyPair, stringify!(Ed25519KeyPair), public_key);
+derive_debug_via_field!(Ed25519KeyPair, stringify!(Ed25519KeyPair), public_key);
 
-impl<'a> KeyPair {
+impl Ed25519KeyPair {
     /// Generates a new key pair and returns the key pair serialized as a
     /// PKCS#8 document.
     ///
@@ -51,7 +50,9 @@ impl<'a> KeyPair {
     /// https://tools.ietf.org/html/draft-ietf-curdle-pkix-04.
     ///
     /// [RFC 5958 Section 2]: https://tools.ietf.org/html/rfc5958#section-2
-    pub fn generate_pkcs8(rng: &rand::SecureRandom) -> Result<pkcs8::Document, error::Unspecified> {
+    pub fn generate_pkcs8(
+        rng: &dyn rand::SecureRandom,
+    ) -> Result<pkcs8::Document, error::Unspecified> {
         let mut seed = [0u8; SEED_LEN];
         rng.fill(&mut seed)?;
         let key_pair = Self::from_seed_(&seed);
@@ -72,9 +73,13 @@ impl<'a> KeyPair {
     ///
     /// If you need to parse PKCS#8 v1 files (without the public key) then use
     /// `Ed25519KeyPair::from_pkcs8_maybe_unchecked()` instead.
-    pub fn from_pkcs8(input: untrusted::Input) -> Result<Self, error::KeyRejected> {
-        let (seed, public_key) = unwrap_pkcs8(pkcs8::Version::V2Only, input)?;
-        Self::from_seed_and_public_key(seed, public_key.unwrap())
+    pub fn from_pkcs8(pkcs8: &[u8]) -> Result<Self, error::KeyRejected> {
+        let (seed, public_key) =
+            unwrap_pkcs8(pkcs8::Version::V2Only, untrusted::Input::from(pkcs8))?;
+        Self::from_seed_and_public_key(
+            seed.as_slice_less_safe(),
+            public_key.unwrap().as_slice_less_safe(),
+        )
     }
 
     /// Constructs an Ed25519 key pair by parsing an unencrypted PKCS#8 v1 or v2
@@ -89,12 +94,16 @@ impl<'a> KeyPair {
     /// between the public key and the private key.
     ///
     /// PKCS#8 v2 files are parsed exactly like `Ed25519KeyPair::from_pkcs8()`.
-    pub fn from_pkcs8_maybe_unchecked(input: untrusted::Input) -> Result<Self, error::KeyRejected> {
-        let (seed, public_key) = unwrap_pkcs8(pkcs8::Version::V1OrV2, input)?;
+    pub fn from_pkcs8_maybe_unchecked(pkcs8: &[u8]) -> Result<Self, error::KeyRejected> {
+        let (seed, public_key) =
+            unwrap_pkcs8(pkcs8::Version::V1OrV2, untrusted::Input::from(pkcs8))?;
         if let Some(public_key) = public_key {
-            Self::from_seed_and_public_key(seed, public_key)
+            Self::from_seed_and_public_key(
+                seed.as_slice_less_safe(),
+                public_key.as_slice_less_safe(),
+            )
         } else {
-            Self::from_seed_unchecked(seed)
+            Self::from_seed_unchecked(seed.as_slice_less_safe())
         }
     }
 
@@ -109,7 +118,8 @@ impl<'a> KeyPair {
     /// public key). This also detects any corruption of the public or private
     /// key.
     pub fn from_seed_and_public_key(
-        seed: untrusted::Input, public_key: untrusted::Input,
+        seed: &[u8],
+        public_key: &[u8],
     ) -> Result<Self, error::KeyRejected> {
         let pair = Self::from_seed_unchecked(seed)?;
 
@@ -137,9 +147,8 @@ impl<'a> KeyPair {
     /// Since the public key is not given, the public key will be computed from
     /// the private key. It is not possible to detect misuse or corruption of
     /// the private key since the public key isn't given as input.
-    pub fn from_seed_unchecked(seed: untrusted::Input) -> Result<Self, error::KeyRejected> {
+    pub fn from_seed_unchecked(seed: &[u8]) -> Result<Self, error::KeyRejected> {
         let seed = seed
-            .as_slice_less_safe()
             .try_into_()
             .map_err(|_| error::KeyRejected::invalid_encoding())?;
         Ok(Self::from_seed_(seed))
@@ -198,23 +207,28 @@ impl<'a> KeyPair {
     }
 }
 
-impl signature::KeyPair for KeyPair {
+impl signature::KeyPair for Ed25519KeyPair {
     type PublicKey = PublicKey;
 
-    fn public_key(&self) -> &Self::PublicKey { &self.public_key }
+    fn public_key(&self) -> &Self::PublicKey {
+        &self.public_key
+    }
 }
 
 #[derive(Clone, Copy)]
-pub struct PublicKey([u8; PUBLIC_KEY_LEN]);
+pub struct PublicKey([u8; ED25519_PUBLIC_KEY_LEN]);
 
 impl AsRef<[u8]> for PublicKey {
-    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
 }
 
 derive_debug_self_as_ref_hex_bytes!(PublicKey);
 
 fn unwrap_pkcs8(
-    version: pkcs8::Version, input: untrusted::Input,
+    version: pkcs8::Version,
+    input: untrusted::Input,
 ) -> Result<(untrusted::Input, Option<untrusted::Input>), error::KeyRejected> {
     let (private_key, public_key) = pkcs8::unwrap_key(&PKCS8_TEMPLATE, version, input)?;
     let private_key = private_key

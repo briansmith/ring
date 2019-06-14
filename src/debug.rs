@@ -53,7 +53,9 @@ macro_rules! derive_debug_self_as_ref_hex_bytes {
 }
 
 pub(crate) fn write_hex_tuple(
-    fmt: &mut core::fmt::Formatter, type_name: &str, value: &AsRef<[u8]>,
+    fmt: &mut core::fmt::Formatter,
+    type_name: &str,
+    value: &dyn AsRef<[u8]>,
 ) -> Result<(), ::core::fmt::Error> {
     fmt.debug_tuple(type_name)
         .field(&HexStr(value.as_ref()))
@@ -62,7 +64,7 @@ pub(crate) fn write_hex_tuple(
 
 struct HexStr<'a>(pub &'a [u8]);
 
-impl<'a> core::fmt::Debug for HexStr<'a> {
+impl core::fmt::Debug for HexStr<'_> {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
         fmt.write_str("\"")?;
         write_hex_bytes(fmt, self.0)?;
@@ -72,7 +74,8 @@ impl<'a> core::fmt::Debug for HexStr<'a> {
 }
 
 pub(crate) fn write_hex_bytes(
-    fmt: &mut core::fmt::Formatter, bytes: &[u8],
+    fmt: &mut core::fmt::Formatter,
+    bytes: &[u8],
 ) -> Result<(), ::core::fmt::Error> {
     for byte in bytes {
         write!(fmt, "{:02x}", byte)?;

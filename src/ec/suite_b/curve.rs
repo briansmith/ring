@@ -47,13 +47,15 @@ macro_rules! suite_b_curve {
         }
 
         fn $generate_private_key(
-            rng: &rand::SecureRandom, out: &mut [u8],
+            rng: &dyn rand::SecureRandom,
+            out: &mut [u8],
         ) -> Result<(), error::Unspecified> {
             ec::suite_b::private_key::generate_private_scalar_bytes($private_key_ops, rng, out)
         }
 
         fn $public_from_private(
-            public_out: &mut [u8], private_key: &ec::Seed,
+            public_out: &mut [u8],
+            private_key: &ec::Seed,
         ) -> Result<(), error::Unspecified> {
             ec::suite_b::private_key::public_from_private($private_key_ops, public_out, private_key)
         }

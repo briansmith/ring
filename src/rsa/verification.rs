@@ -14,7 +14,7 @@
 
 //! Verification of RSA signatures.
 
-use super::{bigint, parse_public_key, Parameters, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
+use super::{bigint, parse_public_key, RsaParameters, N, PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN};
 use crate::{bits, cpu, digest, error, sealed, signature};
 
 use untrusted;
@@ -28,8 +28,11 @@ pub struct Key {
 
 impl Key {
     pub fn from_modulus_and_exponent(
-        n: untrusted::Input, e: untrusted::Input, n_min_bits: bits::BitLength,
-        n_max_bits: bits::BitLength, e_min_value: u64,
+        n: untrusted::Input,
+        e: untrusted::Input,
+        n_min_bits: bits::BitLength,
+        n_max_bits: bits::BitLength,
+        e_min_value: u64,
     ) -> Result<Self, error::KeyRejected> {
         // This is an incomplete implementation of NIST SP800-56Br1 Section
         // 6.4.2.2, "Partial Public-Key Validation for RSA." That spec defers
@@ -77,16 +80,19 @@ impl Key {
     }
 }
 
-impl signature::VerificationAlgorithm for Parameters {
+impl signature::VerificationAlgorithm for RsaParameters {
     fn verify(
-        &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
+        &self,
+        public_key: untrusted::Input,
+        msg: untrusted::Input,
+        signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
         let (n, e) = parse_public_key(public_key)?;
         verify_rsa_(
             self,
             (
-                n.big_endian_without_leading_zero(),
-                e.big_endian_without_leading_zero(),
+                n.big_endian_without_leading_zero_as_input(),
+                e.big_endian_without_leading_zero_as_input(),
             ),
             msg,
             signature,
@@ -94,7 +100,7 @@ impl signature::VerificationAlgorithm for Parameters {
     }
 }
 
-impl sealed::Sealed for Parameters {}
+impl sealed::Sealed for RsaParameters {}
 
 macro_rules! rsa_params {
     ( $VERIFY_ALGORITHM:ident, $min_bits:expr, $PADDING_ALGORITHM:expr,
@@ -102,7 +108,7 @@ macro_rules! rsa_params {
         #[doc=$doc_str]
         ///
         /// Only available in `use_heap` mode.
-        pub static $VERIFY_ALGORITHM: Parameters = Parameters {
+        pub static $VERIFY_ALGORITHM: RsaParameters = RsaParameters {
             padding_alg: $PADDING_ALGORITHM,
             min_bits: bits::BitLength::from_usize_bits($min_bits),
         };
@@ -175,7 +181,7 @@ rsa_params!(
              `ring::signature`'s module-level documentation for more details."
 );
 
-/// Lower-level API for the verification of RSA signatures.
+/// Low-level API for the verification of RSA signatures.
 ///
 /// When the public key is in DER-encoded PKCS#1 ASN.1 format, it is
 /// recommended to use `ring::signature::verify()` with
@@ -183,16 +189,8 @@ rsa_params!(
 /// will handle the parsing in that case. Otherwise, this function can be used
 /// to pass in the raw bytes for the public key components as
 /// `untrusted::Input` arguments.
-///
-/// `params` determine what algorithm parameters (padding, digest algorithm,
-/// key length range, etc.) are used in the verification. `msg` is the message
-/// and `signature` is the signature.
-///
-/// `n` is the public key modulus and `e` is the public key exponent. Both are
-/// interpreted as unsigned big-endian encoded values. Both must be positive
-/// and neither may have any leading zeros.
 //
-// There are a small number of tests that test `verify_rsa` directly, but the
+// There are a small number of tests that test this directly, but the
 // test coverage for this function mostly depends on the test coverage for the
 // `signature::VerificationAlgorithm` implementation for `RsaParameters`. If we
 // change that, test coverage for `verify_rsa()` will need to be reconsidered.
@@ -200,16 +198,61 @@ rsa_params!(
 // testing `verify_rsa` directly, but the testing work for RSA PKCS#1
 // verification was done during the implementation of
 // `signature::VerificationAlgorithm`, before `verify_rsa` was factored out).
-pub fn verify_rsa(
-    params: &Parameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
-    signature: untrusted::Input,
-) -> Result<(), error::Unspecified> {
-    let _ = cpu::features();
-    verify_rsa_(params, (n, e), msg, signature)
+#[derive(Debug)]
+pub struct RsaPublicKeyComponents<B: AsRef<[u8]> + core::fmt::Debug> {
+    /// The public modulus, encoded in big-endian bytes without leading zeros.
+    pub n: B,
+
+    /// The public exponent, encoded in big-endian bytes without leading zeros.
+    /// without leading zeros.
+    pub e: B,
+}
+
+impl<B: Copy> Copy for RsaPublicKeyComponents<B> where B: AsRef<[u8]> + core::fmt::Debug {}
+
+impl<B: Clone> Clone for RsaPublicKeyComponents<B>
+where
+    B: AsRef<[u8]> + core::fmt::Debug,
+{
+    fn clone(&self) -> Self {
+        Self {
+            n: self.n.clone(),
+            e: self.e.clone(),
+        }
+    }
+}
+
+impl<B> RsaPublicKeyComponents<B>
+where
+    B: AsRef<[u8]> + core::fmt::Debug,
+{
+    /// Verifies that `signature` is a valid signature of `message` using `self`
+    /// as the public key. `params` determine what algorithm parameters
+    /// (padding, digest algorithm, key length range, etc.) are used in the
+    /// verification.
+    pub fn verify(
+        &self,
+        params: &RsaParameters,
+        message: &[u8],
+        signature: &[u8],
+    ) -> Result<(), error::Unspecified> {
+        let _ = cpu::features();
+        verify_rsa_(
+            params,
+            (
+                untrusted::Input::from(self.n.as_ref()),
+                untrusted::Input::from(self.e.as_ref()),
+            ),
+            untrusted::Input::from(message),
+            untrusted::Input::from(signature),
+        )
+    }
 }
 
 pub(crate) fn verify_rsa_(
-    params: &Parameters, (n, e): (untrusted::Input, untrusted::Input), msg: untrusted::Input,
+    params: &RsaParameters,
+    (n, e): (untrusted::Input, untrusted::Input),
+    msg: untrusted::Input,
     signature: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
     let max_bits = bits::BitLength::from_usize_bytes(PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN)?;

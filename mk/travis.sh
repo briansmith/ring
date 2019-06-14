@@ -100,28 +100,8 @@ armv7-linux-androideabi)
   echo no | android create avd --name arm-24 --target android-24 --abi armeabi-v7a
   android list avd
 
-  emulator @arm-24 -memory 2048 -no-skin -no-boot-anim -no-window &
-  adb wait-for-device
-  adb root
-  adb wait-for-device
-
-  # Run the unit tests first. The file named ring-<something> in $target_dir is
-  # the test executable.
-
-  find $target_dir -maxdepth 1 -name ring-* ! -name "*.*" \
-    -exec adb push {} /data/ring-test \;
-  adb shell "cd /data && ./ring-test" 2>&1 | tee /tmp/ring-test-log
-  grep "test result: ok" /tmp/ring-test-log
-
-  for test_exe in `find $target_dir -maxdepth 1 -name "*test*" -type f ! -name "*.*" `; do
-      adb push $test_exe /data/`basename $test_exe`
-      adb shell "cd /data && ./`basename $test_exe`" 2>&1 | \
-          tee /tmp/`basename $test_exe`-log
-      grep "test result: ok" /tmp/`basename $test_exe`-log
-  done
-
-  adb emu kill
-
+  # TODO: testing is disabled because of the following error when running `emulator`:
+  #     Your emulator is out of date, please update by launching Android Studio
   ;;
 *)
   cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X

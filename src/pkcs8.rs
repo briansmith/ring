@@ -17,7 +17,6 @@
 //! [RFC 5958]: https://tools.ietf.org/html/rfc5958.
 
 use crate::{ec, error, io::der};
-use core;
 use untrusted;
 
 pub(crate) enum Version {
@@ -49,10 +48,18 @@ pub(crate) struct Template {
 
 impl Template {
     #[inline]
-    fn alg_id_value(&self) -> &[u8] { &self.bytes[self.alg_id_range.start..self.alg_id_range.end] }
+    fn alg_id_value(&self) -> untrusted::Input {
+        untrusted::Input::from(self.alg_id_value_())
+    }
+
+    fn alg_id_value_(&self) -> &[u8] {
+        &self.bytes[self.alg_id_range.start..self.alg_id_range.end]
+    }
 
     #[inline]
-    pub fn curve_oid(&self) -> &[u8] { &self.alg_id_value()[self.curve_id_index..] }
+    pub fn curve_oid(&self) -> untrusted::Input {
+        untrusted::Input::from(&self.alg_id_value_()[self.curve_id_index..])
+    }
 }
 
 /// Parses an unencrypted PKCS#8 private key, verifies that it is the right type
@@ -62,7 +69,9 @@ impl Template {
 ///
 /// [RFC 5958]: https://tools.ietf.org/html/rfc5958.
 pub(crate) fn unwrap_key<'a>(
-    template: &Template, version: Version, input: untrusted::Input<'a>,
+    template: &Template,
+    version: Version,
+    input: untrusted::Input<'a>,
 ) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::KeyRejected> {
     unwrap_key_(template.alg_id_value(), version, input)
 }
@@ -78,7 +87,9 @@ pub(crate) fn unwrap_key<'a>(
 ///
 /// [RFC 5958]: https://tools.ietf.org/html/rfc5958.
 pub(crate) fn unwrap_key_<'a>(
-    alg_id: &[u8], version: Version, input: untrusted::Input<'a>,
+    alg_id: untrusted::Input,
+    version: Version,
+    input: untrusted::Input<'a>,
 ) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::KeyRejected> {
     input.read_all(error::KeyRejected::invalid_encoding(), |input| {
         der::nested(
@@ -91,7 +102,9 @@ pub(crate) fn unwrap_key_<'a>(
 }
 
 fn unwrap_key__<'a>(
-    alg_id: &[u8], version: Version, input: &mut untrusted::Reader<'a>,
+    alg_id: untrusted::Input,
+    version: Version,
+    input: &mut untrusted::Reader<'a>,
 ) -> Result<(untrusted::Input<'a>, Option<untrusted::Input<'a>>), error::KeyRejected> {
     let actual_version = der::small_nonnegative_integer(input)
         .map_err(|error::Unspecified| error::KeyRejected::invalid_encoding())?;
@@ -117,7 +130,7 @@ fn unwrap_key__<'a>(
         (1, Version::V1OrV2) | (1, Version::V2Only) => true,
         _ => {
             return Err(error::KeyRejected::version_not_supported());
-        },
+        }
     };
 
     let private_key = der::expect_tag_and_get_value(input, der::Tag::OctetString)
@@ -156,7 +169,9 @@ pub struct Document {
 
 impl AsRef<[u8]> for Document {
     #[inline]
-    fn as_ref(&self) -> &[u8] { &self.bytes[..self.len] }
+    fn as_ref(&self) -> &[u8] {
+        &self.bytes[..self.len]
+    }
 }
 
 pub(crate) fn wrap_key(template: &Template, private_key: &[u8], public_key: &[u8]) -> Document {

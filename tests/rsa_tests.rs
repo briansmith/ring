@@ -51,11 +51,9 @@ fn rsa_from_pkcs8_test() {
             assert_eq!(section, "");
 
             let input = test_case.consume_bytes("Input");
-            let input = untrusted::Input::from(&input);
-
             let error = test_case.consume_optional_string("Error");
 
-            match (signature::RsaKeyPair::from_pkcs8(input), error) {
+            match (signature::RsaKeyPair::from_pkcs8(&input), error) {
                 (Ok(_), None) => (),
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
                 (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
@@ -89,8 +87,7 @@ fn test_signature_rsa_pkcs1_sign() {
             let expected = test_case.consume_bytes("Sig");
             let result = test_case.consume_string("Result");
 
-            let private_key = untrusted::Input::from(&private_key);
-            let key_pair = signature::RsaKeyPair::from_der(private_key);
+            let key_pair = signature::RsaKeyPair::from_der(&private_key);
             if result == "Fail-Invalid-Key" {
                 assert!(key_pair.is_err());
                 return Ok(());
@@ -128,8 +125,7 @@ fn test_signature_rsa_pss_sign() {
 
             let result = test_case.consume_string("Result");
             let private_key = test_case.consume_bytes("Key");
-            let private_key = untrusted::Input::from(&private_key);
-            let key_pair = signature::RsaKeyPair::from_der(private_key);
+            let key_pair = signature::RsaKeyPair::from_der(&private_key);
             if key_pair.is_err() && result == "Fail-Invalid-Key" {
                 return Ok(());
             }
@@ -166,12 +162,11 @@ fn test_signature_rsa_pkcs1_verify() {
             };
 
             let public_key = test_case.consume_bytes("Key");
-            let public_key = untrusted::Input::from(&public_key);
 
             // Sanity check that we correctly DER-encoded the originally-
             // provided separate (n, e) components. When we add test vectors
             // for improperly-encoded signatures, we'll have to revisit this.
-            assert!(public_key
+            assert!(untrusted::Input::from(&public_key)
                 .read_all(error::Unspecified, |input| der::nested(
                     input,
                     der::Tag::Sequence,
@@ -185,15 +180,22 @@ fn test_signature_rsa_pkcs1_verify() {
                 .is_ok());
 
             let msg = test_case.consume_bytes("Msg");
-            let msg = untrusted::Input::from(&msg);
-
             let sig = test_case.consume_bytes("Sig");
-            let sig = untrusted::Input::from(&sig);
+            let is_valid = test_case.consume_string("Result") == "P";
 
-            let expected_result = test_case.consume_string("Result");
+            let actual_result =
+                signature::UnparsedPublicKey::new(alg, &public_key).verify(&msg, &sig);
+            assert_eq!(actual_result.is_ok(), is_valid);
 
-            let actual_result = signature::verify(alg, public_key, msg, sig);
-            assert_eq!(actual_result.is_ok(), expected_result == "P");
+            // Deprecated API.
+            #[allow(deprecated)]
+            let actual_result = signature::verify(
+                alg,
+                untrusted::Input::from(&public_key),
+                untrusted::Input::from(&msg),
+                untrusted::Input::from(&sig),
+            );
+            assert_eq!(actual_result.is_ok(), is_valid);
 
             Ok(())
         },
@@ -217,12 +219,11 @@ fn test_signature_rsa_pss_verify() {
             };
 
             let public_key = test_case.consume_bytes("Key");
-            let public_key = untrusted::Input::from(&public_key);
 
             // Sanity check that we correctly DER-encoded the originally-
             // provided separate (n, e) components. When we add test vectors
             // for improperly-encoded signatures, we'll have to revisit this.
-            assert!(public_key
+            assert!(untrusted::Input::from(&public_key)
                 .read_all(error::Unspecified, |input| der::nested(
                     input,
                     der::Tag::Sequence,
@@ -236,15 +237,21 @@ fn test_signature_rsa_pss_verify() {
                 .is_ok());
 
             let msg = test_case.consume_bytes("Msg");
-            let msg = untrusted::Input::from(&msg);
-
             let sig = test_case.consume_bytes("Sig");
-            let sig = untrusted::Input::from(&sig);
+            let is_valid = test_case.consume_string("Result") == "P";
 
-            let expected_result = test_case.consume_string("Result");
+            let actual_result =
+                signature::UnparsedPublicKey::new(alg, &public_key).verify(&msg, &sig);
+            assert_eq!(actual_result.is_ok(), is_valid);
 
-            let actual_result = signature::verify(alg, public_key, msg, sig);
-            assert_eq!(actual_result.is_ok(), expected_result == "P");
+            #[allow(deprecated)]
+            let actual_result = signature::verify(
+                alg,
+                untrusted::Input::from(&public_key),
+                untrusted::Input::from(&msg),
+                untrusted::Input::from(&sig),
+            );
+            assert_eq!(actual_result.is_ok(), is_valid);
 
             Ok(())
         },
@@ -265,12 +272,8 @@ fn test_signature_rsa_primitive_verification() {
             let msg = test_case.consume_bytes("Msg");
             let sig = test_case.consume_bytes("Sig");
             let expected = test_case.consume_string("Result");
-            let result = signature::primitive::verify_rsa(
-                &signature::RSA_PKCS1_2048_8192_SHA256,
-                (untrusted::Input::from(&n), untrusted::Input::from(&e)),
-                untrusted::Input::from(&msg),
-                untrusted::Input::from(&sig),
-            );
+            let public_key = signature::RsaPublicKeyComponents { n: &n, e: &e };
+            let result = public_key.verify(&signature::RSA_PKCS1_2048_8192_SHA256, &msg, &sig);
             assert_eq!(result.is_ok(), expected == "Pass");
             Ok(())
         },
@@ -280,11 +283,11 @@ fn test_signature_rsa_primitive_verification() {
 #[cfg(feature = "use_heap")]
 #[test]
 fn rsa_test_public_key_coverage() {
-    const PRIVATE_KEY: &'static [u8] = include_bytes!("rsa_test_private_key_2048.p8");
-    const PUBLIC_KEY: &'static [u8] = include_bytes!("rsa_test_public_key_2048.der");
-    const PUBLIC_KEY_DEBUG: &'static str = include_str!("rsa_test_public_key_2048_debug.txt");
+    const PRIVATE_KEY: &[u8] = include_bytes!("rsa_test_private_key_2048.p8");
+    const PUBLIC_KEY: &[u8] = include_bytes!("rsa_test_public_key_2048.der");
+    const PUBLIC_KEY_DEBUG: &str = include_str!("rsa_test_public_key_2048_debug.txt");
 
-    let key_pair = signature::RsaKeyPair::from_pkcs8(untrusted::Input::from(PRIVATE_KEY)).unwrap();
+    let key_pair = signature::RsaKeyPair::from_pkcs8(PRIVATE_KEY).unwrap();
 
     // Test `AsRef<[u8]>`
     assert_eq!(key_pair.public_key().as_ref(), PUBLIC_KEY);
@@ -299,7 +302,6 @@ fn rsa_test_public_key_coverage() {
             .public_key()
             .exponent()
             .big_endian_without_leading_zero()
-            .as_slice_less_safe()
     );
 
     // Test `Debug`

@@ -16,7 +16,6 @@
 
 use super::super::ops::*;
 use crate::{error, polyfill::convert::*, sealed, signature};
-use core;
 use untrusted;
 
 use super::digest::*;
@@ -39,7 +38,10 @@ pub static ED25519: EdDSAParameters = EdDSAParameters {};
 
 impl signature::VerificationAlgorithm for EdDSAParameters {
     fn verify(
-        &self, public_key: untrusted::Input, msg: untrusted::Input, signature: untrusted::Input,
+        &self,
+        public_key: untrusted::Input,
+        msg: untrusted::Input,
+        signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
         let public_key = public_key.as_slice_less_safe();
         let public_key: &[u8; ELEM_LEN] = public_key.try_into_()?;;
@@ -71,6 +73,9 @@ impl sealed::Sealed for EdDSAParameters {}
 
 extern "C" {
     fn GFp_x25519_ge_double_scalarmult_vartime(
-        r: &mut Point, a_coeff: &Scalar, a: &ExtPoint, b_coeff: &Scalar,
+        r: &mut Point,
+        a_coeff: &Scalar,
+        a: &ExtPoint,
+        b_coeff: &Scalar,
     );
 }

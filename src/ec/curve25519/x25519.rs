@@ -46,13 +46,15 @@ fn x25519_check_private_key_bytes(bytes: &[u8]) -> Result<(), error::Unspecified
 }
 
 fn x25519_generate_private_key(
-    rng: &rand::SecureRandom, out: &mut [u8],
+    rng: &dyn rand::SecureRandom,
+    out: &mut [u8],
 ) -> Result<(), error::Unspecified> {
     rng.fill(out)
 }
 
 fn x25519_public_from_private(
-    public_out: &mut [u8], private_key: &ec::Seed,
+    public_out: &mut [u8],
+    private_key: &ec::Seed,
 ) -> Result<(), error::Unspecified> {
     let public_out = public_out.try_into_()?;
 
@@ -75,7 +77,8 @@ fn x25519_public_from_private(
 
     extern "C" {
         fn GFp_x25519_public_from_private_generic(
-            public_key_out: &mut PublicKey, private_key: &PrivateKey,
+            public_key_out: &mut PublicKey,
+            private_key: &PrivateKey,
         );
     }
     unsafe {
@@ -86,7 +89,9 @@ fn x25519_public_from_private(
 }
 
 fn x25519_ecdh(
-    out: &mut [u8], my_private_key: &ec::Seed, peer_public_key: untrusted::Input,
+    out: &mut [u8],
+    my_private_key: &ec::Seed,
+    peer_public_key: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
     let cpu_features = my_private_key.cpu_features;
     let my_private_key = my_private_key.bytes_less_safe().try_into_()?;
@@ -95,7 +100,9 @@ fn x25519_ecdh(
 
     #[cfg_attr(not(target_arch = "arm"), allow(unused_variables))]
     fn scalar_mult(
-        out: &mut ops::EncodedPoint, scalar: &ops::Scalar, point: &ops::EncodedPoint,
+        out: &mut ops::EncodedPoint,
+        scalar: &ops::Scalar,
+        point: &ops::EncodedPoint,
         cpu_features: cpu::Features,
     ) {
         #[cfg(target_arch = "arm")]
@@ -107,7 +114,9 @@ fn x25519_ecdh(
 
         extern "C" {
             fn GFp_x25519_scalar_mult_generic(
-                out: &mut ops::EncodedPoint, scalar: &ops::Scalar, point: &ops::EncodedPoint,
+                out: &mut ops::EncodedPoint,
+                scalar: &ops::Scalar,
+                point: &ops::EncodedPoint,
             );
         }
         unsafe {
@@ -135,7 +144,9 @@ fn x25519_ecdh(
 fn x25519_neon(out: &mut ops::EncodedPoint, scalar: &ops::Scalar, point: &ops::EncodedPoint) {
     extern "C" {
         fn GFp_x25519_NEON(
-            out: &mut ops::EncodedPoint, scalar: &ops::Scalar, point: &ops::EncodedPoint,
+            out: &mut ops::EncodedPoint,
+            scalar: &ops::Scalar,
+            point: &ops::EncodedPoint,
         );
     }
     unsafe { GFp_x25519_NEON(out, scalar, point) }

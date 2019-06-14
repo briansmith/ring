@@ -304,6 +304,7 @@ $code.=<<___;
 .type	GFp_gcm_init_clmul,\@abi-omnipotent
 .align	16
 GFp_gcm_init_clmul:
+.cfi_startproc
 .L_init_clmul:
 ___
 $code.=<<___ if ($win64);
@@ -373,6 +374,7 @@ $code.=<<___ if ($win64);
 ___
 $code.=<<___;
 	ret
+.cfi_endproc
 .size	GFp_gcm_init_clmul,.-GFp_gcm_init_clmul
 ___
 }
@@ -383,6 +385,7 @@ $code.=<<___;
 .globl	GFp_gcm_gmult_clmul
 .type	GFp_gcm_gmult_clmul,\@abi-omnipotent
 .align	16
+.cfi_startproc
 GFp_gcm_gmult_clmul:
 	movdqu		($Xip),$Xi
 	movdqa		.Lbswap_mask(%rip),$T3
@@ -419,6 +422,7 @@ $code.=<<___;
 	pshufb		$T3,$Xi
 	movdqu		$Xi,($Xip)
 	ret
+.cfi_endproc
 .size	GFp_gcm_gmult_clmul,.-GFp_gcm_gmult_clmul
 ___
 }
@@ -432,6 +436,7 @@ $code.=<<___;
 .type	GFp_gcm_ghash_clmul,\@abi-omnipotent
 .align	32
 GFp_gcm_ghash_clmul:
+.cfi_startproc
 .L_ghash_clmul:
 ___
 $code.=<<___ if ($win64);
@@ -780,6 +785,7 @@ $code.=<<___ if ($win64);
 ___
 $code.=<<___;
 	ret
+.cfi_endproc
 .size	GFp_gcm_ghash_clmul,.-GFp_gcm_ghash_clmul
 ___
 }
@@ -789,6 +795,7 @@ $code.=<<___;
 .type	GFp_gcm_init_avx,\@abi-omnipotent
 .align	32
 GFp_gcm_init_avx:
+.cfi_startproc
 ___
 if ($avx) {
 my ($Htbl,$Xip)=@_4args;
@@ -917,6 +924,7 @@ $code.=<<___ if ($win64);
 ___
 $code.=<<___;
 	ret
+.cfi_endproc
 .size	GFp_gcm_init_avx,.-GFp_gcm_init_avx
 ___
 } else {
@@ -931,6 +939,7 @@ $code.=<<___;
 .type	GFp_gcm_ghash_avx,\@abi-omnipotent
 .align	32
 GFp_gcm_ghash_avx:
+.cfi_startproc
 ___
 if ($avx) {
 my ($Xip,$Htbl,$inp,$len)=@_4args;
@@ -1343,6 +1352,7 @@ $code.=<<___ if ($win64);
 ___
 $code.=<<___;
 	ret
+.cfi_endproc
 .size	GFp_gcm_ghash_avx,.-GFp_gcm_ghash_avx
 ___
 } else {

@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN;
-use crate::{bits, digest, error, io::der, polyfill};
+use crate::{bits, digest, error, io::der};
 use untrusted;
 
 #[cfg(feature = "use_heap")]
@@ -30,11 +30,14 @@ pub trait Padding: 'static + Sync + crate::sealed::Sealed + core::fmt::Debug {
 ///
 /// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
 #[cfg(feature = "use_heap")]
-pub trait Encoding: Padding {
+pub trait RsaEncoding: Padding {
     #[doc(hidden)]
     fn encode(
-        &self, m_hash: &digest::Digest, m_out: &mut [u8], mod_bits: bits::BitLength,
-        rng: &rand::SecureRandom,
+        &self,
+        m_hash: &digest::Digest,
+        m_out: &mut [u8],
+        mod_bits: bits::BitLength,
+        rng: &dyn rand::SecureRandom,
     ) -> Result<(), error::Unspecified>;
 }
 
@@ -44,7 +47,10 @@ pub trait Encoding: Padding {
 /// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
 pub trait Verification: Padding {
     fn verify(
-        &self, m_hash: &digest::Digest, m: &mut untrusted::Reader, mod_bits: bits::BitLength,
+        &self,
+        m_hash: &digest::Digest,
+        m: &mut untrusted::Reader,
+        mod_bits: bits::BitLength,
     ) -> Result<(), error::Unspecified>;
 }
 
@@ -63,14 +69,19 @@ pub struct PKCS1 {
 impl crate::sealed::Sealed for PKCS1 {}
 
 impl Padding for PKCS1 {
-    fn digest_alg(&self) -> &'static digest::Algorithm { self.digest_alg }
+    fn digest_alg(&self) -> &'static digest::Algorithm {
+        self.digest_alg
+    }
 }
 
 #[cfg(feature = "use_heap")]
-impl Encoding for PKCS1 {
+impl RsaEncoding for PKCS1 {
     fn encode(
-        &self, m_hash: &digest::Digest, m_out: &mut [u8], _mod_bits: bits::BitLength,
-        _rng: &rand::SecureRandom,
+        &self,
+        m_hash: &digest::Digest,
+        m_out: &mut [u8],
+        _mod_bits: bits::BitLength,
+        _rng: &dyn rand::SecureRandom,
     ) -> Result<(), error::Unspecified> {
         pkcs1_encode(&self, m_hash, m_out);
         Ok(())
@@ -79,14 +90,17 @@ impl Encoding for PKCS1 {
 
 impl Verification for PKCS1 {
     fn verify(
-        &self, m_hash: &digest::Digest, m: &mut untrusted::Reader, mod_bits: bits::BitLength,
+        &self,
+        m_hash: &digest::Digest,
+        m: &mut untrusted::Reader,
+        mod_bits: bits::BitLength,
     ) -> Result<(), error::Unspecified> {
         // `mod_bits.as_usize_bytes_rounded_up() <=
         //      PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN` is ensured by `verify_rsa_()`.
         let mut calculated = [0u8; PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN];
         let calculated = &mut calculated[..mod_bits.as_usize_bytes_rounded_up()];
         pkcs1_encode(&self, m_hash, calculated);
-        if m.skip_to_end() != calculated.as_ref() {
+        if m.read_bytes_to_end() != *calculated.as_ref() {
             return Err(error::Unspecified);
         }
         Ok(())
@@ -213,15 +227,20 @@ impl crate::sealed::Sealed for PSS {}
 const MAX_SALT_LEN: usize = digest::MAX_OUTPUT_LEN;
 
 impl Padding for PSS {
-    fn digest_alg(&self) -> &'static digest::Algorithm { self.digest_alg }
+    fn digest_alg(&self) -> &'static digest::Algorithm {
+        self.digest_alg
+    }
 }
 
-impl Encoding for PSS {
+impl RsaEncoding for PSS {
     // Implement padding procedure per EMSA-PSS,
     // https://tools.ietf.org/html/rfc3447#section-9.1.
     fn encode(
-        &self, m_hash: &digest::Digest, m_out: &mut [u8], mod_bits: bits::BitLength,
-        rng: &rand::SecureRandom,
+        &self,
+        m_hash: &digest::Digest,
+        m_out: &mut [u8],
+        mod_bits: bits::BitLength,
+        rng: &dyn rand::SecureRandom,
     ) -> Result<(), error::Unspecified> {
         let metrics = PSSMetrics::new(self.digest_alg, mod_bits)?;
 
@@ -289,7 +308,10 @@ impl Verification for PSS {
     // RSASSA-PSS-VERIFY from https://tools.ietf.org/html/rfc3447#section-8.1.2
     // where steps 1, 2(a), and 2(b) have been done for us.
     fn verify(
-        &self, m_hash: &digest::Digest, m: &mut untrusted::Reader, mod_bits: bits::BitLength,
+        &self,
+        m_hash: &digest::Digest,
+        m: &mut untrusted::Reader,
+        mod_bits: bits::BitLength,
     ) -> Result<(), error::Unspecified> {
         let metrics = PSSMetrics::new(self.digest_alg, mod_bits)?;
 
@@ -317,8 +339,8 @@ impl Verification for PSS {
         // Step 3 is done by `PSSMetrics::new()` above.
 
         // Step 5, out of order.
-        let masked_db = em.skip_and_get_input(metrics.db_len)?;
-        let h_hash = em.skip_and_get_input(metrics.h_len)?;
+        let masked_db = em.read_bytes(metrics.db_len)?;
+        let h_hash = em.read_bytes(metrics.h_len)?;
 
         // Step 4.
         if em.read_byte()? != 0xbc {
@@ -367,7 +389,7 @@ impl Verification for PSS {
         let h_prime = pss_digest(self.digest_alg, m_hash, salt);
 
         // Step 14.
-        if h_hash != h_prime.as_ref() {
+        if h_hash != *h_prime.as_ref() {
             return Err(error::Unspecified);
         }
 
@@ -387,7 +409,8 @@ struct PSSMetrics {
 
 impl PSSMetrics {
     fn new(
-        digest_alg: &'static digest::Algorithm, mod_bits: bits::BitLength,
+        digest_alg: &'static digest::Algorithm,
+        mod_bits: bits::BitLength,
     ) -> Result<PSSMetrics, error::Unspecified> {
         let em_bits = mod_bits.try_sub_1()?;
         let em_len = em_bits.as_usize_bytes_rounded_up();
@@ -426,7 +449,9 @@ impl PSSMetrics {
 // Mask-generating function MGF1 as described in
 // https://tools.ietf.org/html/rfc3447#appendix-B.2.1.
 fn mgf1(
-    digest_alg: &'static digest::Algorithm, seed: &[u8], mask: &mut [u8],
+    digest_alg: &'static digest::Algorithm,
+    seed: &[u8],
+    mask: &mut [u8],
 ) -> Result<(), error::Unspecified> {
     let digest_len = digest_alg.output_len;
 
@@ -436,7 +461,7 @@ fn mgf1(
     for (i, mask_chunk) in mask.chunks_mut(digest_len).enumerate() {
         let mut ctx = digest::Context::new(digest_alg);
         ctx.update(seed);
-        ctx.update(&polyfill::slice::be_u8_from_u32(i as u32));
+        ctx.update(&u32::to_be_bytes(i as u32));
         let digest = ctx.finish();
         let mask_chunk_len = mask_chunk.len();
         mask_chunk.copy_from_slice(&digest.as_ref()[..mask_chunk_len]);
@@ -446,7 +471,9 @@ fn mgf1(
 }
 
 fn pss_digest(
-    digest_alg: &'static digest::Algorithm, m_hash: &digest::Digest, salt: &[u8],
+    digest_alg: &'static digest::Algorithm,
+    m_hash: &digest::Digest,
+    salt: &[u8],
 ) -> digest::Digest {
     // Fixed prefix.
     const PREFIX_ZEROS: [u8; 8] = [0u8; 8];
@@ -494,6 +521,7 @@ rsa_pss_padding!(
 mod test {
     use super::*;
     use crate::{digest, error, test};
+    use std::vec;
     use untrusted;
 
     #[test]
@@ -522,11 +550,11 @@ mod test {
                 let _ = test_case.consume_bytes("Salt");
 
                 let bit_len = test_case.consume_usize_bits("Len");
-                let expected_result = test_case.consume_string("Result");
+                let is_valid = test_case.consume_string("Result") == "P";
 
                 let actual_result =
                     encoded.read_all(error::Unspecified, |m| alg.verify(&m_hash, m, bit_len));
-                assert_eq!(actual_result.is_ok(), expected_result == "P");
+                assert_eq!(actual_result.is_ok(), is_valid);
 
                 Ok(())
             },

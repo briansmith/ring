@@ -64,19 +64,21 @@ pub(crate) mod arm {
         any(target_arch = "aarch64", target_arch = "arm")
     ))]
     pub fn linux_setup() {
+        use crate::c;
+
         // XXX: The `libc` crate doesn't provide `libc::getauxval` consistently
         // across all Android/Linux targets, e.g. musl.
         extern "C" {
-            fn getauxval(type_: libc::c_ulong) -> libc::c_ulong;
+            fn getauxval(type_: c::ulong) -> c::ulong;
         }
 
-        const AT_HWCAP: libc::c_ulong = 16;
+        const AT_HWCAP: c::ulong = 16;
 
         #[cfg(target_arch = "aarch64")]
-        const HWCAP_NEON: libc::c_ulong = 1 << 1;
+        const HWCAP_NEON: c::ulong = 1 << 1;
 
         #[cfg(target_arch = "arm")]
-        const HWCAP_NEON: libc::c_ulong = 1 << 12;
+        const HWCAP_NEON: c::ulong = 1 << 12;
 
         let caps = unsafe { getauxval(AT_HWCAP) };
 
@@ -86,20 +88,20 @@ pub(crate) mod arm {
             let mut features = NEON.mask;
 
             #[cfg(target_arch = "aarch64")]
-            const OFFSET: libc::c_ulong = 3;
+            const OFFSET: c::ulong = 3;
 
             #[cfg(target_arch = "arm")]
-            const OFFSET: libc::c_ulong = 0;
+            const OFFSET: c::ulong = 0;
 
             #[cfg(target_arch = "arm")]
             let caps = {
-                const AT_HWCAP2: libc::c_ulong = 26;
+                const AT_HWCAP2: c::ulong = 26;
                 unsafe { getauxval(AT_HWCAP2) }
             };
 
-            const HWCAP_AES: libc::c_ulong = 1 << 0 + OFFSET;
-            const HWCAP_PMULL: libc::c_ulong = 1 << 1 + OFFSET;
-            const HWCAP_SHA2: libc::c_ulong = 1 << 3 + OFFSET;
+            const HWCAP_AES: c::ulong = 1 << 0 + OFFSET;
+            const HWCAP_PMULL: c::ulong = 1 << 1 + OFFSET;
+            const HWCAP_SHA2: c::ulong = 1 << 3 + OFFSET;
 
             if caps & HWCAP_AES == HWCAP_AES {
                 features |= AES.mask;

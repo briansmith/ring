@@ -14,7 +14,7 @@
 
 use super::{
     bigint::{self, Prime},
-    verification, Encoding, N,
+    verification, RsaEncoding, N,
 };
 /// RSA PKCS#1 1.5 signatures.
 use crate::{
@@ -24,22 +24,23 @@ use crate::{
     io::{self, der, der_writer},
     pkcs8, rand, signature,
 };
+use std::boxed::Box;
 use untrusted;
 
 /// An RSA key pair, used for signing.
-pub struct KeyPair {
+pub struct RsaKeyPair {
     p: PrivatePrime<P>,
     q: PrivatePrime<Q>,
     qInv: bigint::Elem<P, R>,
     qq: bigint::Modulus<QQ>,
     q_mod_n: bigint::Elem<N, R>,
     public: verification::Key,
-    public_key: PublicKey,
+    public_key: RsaSubjectPublicKey,
 }
 
-derive_debug_via_field!(KeyPair, stringify!(RsaKeyPair), public_key);
+derive_debug_via_field!(RsaKeyPair, stringify!(RsaKeyPair), public_key);
 
-impl KeyPair {
+impl RsaKeyPair {
     /// Parses an unencrypted PKCS#8-encoded RSA private key.
     ///
     /// Only two-prime (not multi-prime) keys are supported. The public modulus
@@ -61,9 +62,9 @@ impl KeyPair {
     ///
     /// ```sh
     ///    openssl genpkey -algorithm RSA \
-    ///        -pkeyopt rsa_keygen_bits:2048 \
+    ///        -pkeyopt rsa_keygen_bits:3072 \
     ///        -pkeyopt rsa_keygen_pubexp:65537 | \
-    ///      openssl pkcs8 -topk8 -nocrypt -outform der > rsa-2048-private-key.pk8
+    ///      openssl pkcs8 -topk8 -nocrypt -outform der > rsa-3072-private-key.pk8
     /// ```
     ///
     /// Often, keys generated for use in OpenSSL-based software are stored in
@@ -136,10 +137,14 @@ impl KeyPair {
     ///
     /// [RFC 5958]:
     ///     https://tools.ietf.org/html/rfc5958
-    pub fn from_pkcs8(input: untrusted::Input) -> Result<Self, KeyRejected> {
+    pub fn from_pkcs8(pkcs8: &[u8]) -> Result<Self, KeyRejected> {
         const RSA_ENCRYPTION: &[u8] = include_bytes!("../data/alg-rsa-encryption.der");
-        let (der, _) = pkcs8::unwrap_key_(&RSA_ENCRYPTION, pkcs8::Version::V1Only, input)?;
-        Self::from_der(der)
+        let (der, _) = pkcs8::unwrap_key_(
+            untrusted::Input::from(&RSA_ENCRYPTION),
+            pkcs8::Version::V1Only,
+            untrusted::Input::from(pkcs8),
+        )?;
+        Self::from_der(der.as_slice_less_safe())
     }
 
     /// Parses an RSA private key that is not inside a PKCS#8 wrapper.
@@ -157,8 +162,8 @@ impl KeyPair {
     ///
     /// [NIST SP-800-56B rev. 1]:
     ///     http://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-56Br1.pdf
-    pub fn from_der(input: untrusted::Input) -> Result<Self, KeyRejected> {
-        input.read_all(KeyRejected::invalid_encoding(), |input| {
+    pub fn from_der(input: &[u8]) -> Result<Self, KeyRejected> {
+        untrusted::Input::from(input).read_all(KeyRejected::invalid_encoding(), |input| {
             der::nested(
                 input,
                 der::Tag::Sequence,
@@ -184,12 +189,12 @@ impl KeyPair {
 
         let n = positive_integer(input)?;
         let e = positive_integer(input)?;
-        let d = positive_integer(input)?.big_endian_without_leading_zero();
-        let p = positive_integer(input)?.big_endian_without_leading_zero();
-        let q = positive_integer(input)?.big_endian_without_leading_zero();
-        let dP = positive_integer(input)?.big_endian_without_leading_zero();
-        let dQ = positive_integer(input)?.big_endian_without_leading_zero();
-        let qInv = positive_integer(input)?.big_endian_without_leading_zero();
+        let d = positive_integer(input)?.big_endian_without_leading_zero_as_input();
+        let p = positive_integer(input)?.big_endian_without_leading_zero_as_input();
+        let q = positive_integer(input)?.big_endian_without_leading_zero_as_input();
+        let dP = positive_integer(input)?.big_endian_without_leading_zero_as_input();
+        let dQ = positive_integer(input)?.big_endian_without_leading_zero_as_input();
+        let qInv = positive_integer(input)?.big_endian_without_leading_zero_as_input();
 
         let (p, p_bits) = bigint::Nonnegative::from_be_bytes_with_bit_length(p)
             .map_err(|error::Unspecified| KeyRejected::invalid_encoding())?;
@@ -205,7 +210,7 @@ impl KeyPair {
             Err(error::Unspecified) => {
                 // TODO: verify `q` and `qInv` are inverses (mod p).
                 ((q, q_bits, dQ), (p, p_bits, dP, None))
-            },
+            }
         };
 
         // XXX: Some steps are done out of order, but the NIST steps are worded
@@ -227,8 +232,8 @@ impl KeyPair {
 
         // Step 1.c. We validate e >= 65537.
         let public_key = verification::Key::from_modulus_and_exponent(
-            n.big_endian_without_leading_zero(),
-            e.big_endian_without_leading_zero(),
+            n.big_endian_without_leading_zero_as_input(),
+            e.big_endian_without_leading_zero_as_input(),
             bits::BitLength::from_usize_bits(2048),
             super::PRIVATE_KEY_PUBLIC_MODULUS_MAX_BITS,
             65537,
@@ -356,7 +361,7 @@ impl KeyPair {
 
         let qq = bigint::elem_mul(&q_mod_n, q_mod_n_decoded, &public_key.n).into_modulus::<QQ>()?;
 
-        let public_key_serialized = PublicKey::from_n_and_e(n, e);
+        let public_key_serialized = RsaSubjectPublicKey::from_n_and_e(n, e);
 
         Ok(Self {
             p,
@@ -375,39 +380,43 @@ impl KeyPair {
     pub fn public_modulus_len(&self) -> usize {
         self.public_key
             .modulus()
-            .big_endian_without_leading_zero()
+            .big_endian_without_leading_zero_as_input()
             .as_slice_less_safe()
             .len()
     }
 }
 
-impl signature::KeyPair for KeyPair {
-    type PublicKey = PublicKey;
+impl signature::KeyPair for RsaKeyPair {
+    type PublicKey = RsaSubjectPublicKey;
 
-    fn public_key(&self) -> &Self::PublicKey { &self.public_key }
+    fn public_key(&self) -> &Self::PublicKey {
+        &self.public_key
+    }
 }
 
 /// A serialized RSA public key.
 #[derive(Clone)]
-pub struct PublicKey(Box<[u8]>);
+pub struct RsaSubjectPublicKey(Box<[u8]>);
 
-impl AsRef<[u8]> for PublicKey {
-    fn as_ref(&self) -> &[u8] { self.0.as_ref() }
+impl AsRef<[u8]> for RsaSubjectPublicKey {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
 }
 
-derive_debug_self_as_ref_hex_bytes!(PublicKey);
+derive_debug_self_as_ref_hex_bytes!(RsaSubjectPublicKey);
 
-impl PublicKey {
+impl RsaSubjectPublicKey {
     fn from_n_and_e(n: io::Positive, e: io::Positive) -> Self {
         let bytes = der_writer::write_all(der::Tag::Sequence, &|output| {
             der_writer::write_positive_integer(output, &n);
             der_writer::write_positive_integer(output, &e);
         });
-        PublicKey(bytes)
+        RsaSubjectPublicKey(bytes)
     }
 
     /// The public modulus (n).
-    pub fn modulus<'a>(&'a self) -> io::Positive<'a> {
+    pub fn modulus(&self) -> io::Positive {
         // Parsing won't fail because we serialized it ourselves.
         let (public_key, _exponent) =
             super::parse_public_key(untrusted::Input::from(self.as_ref())).unwrap();
@@ -415,7 +424,7 @@ impl PublicKey {
     }
 
     /// The public exponent (e).
-    pub fn exponent<'a>(&'a self) -> io::Positive<'a> {
+    pub fn exponent(&self) -> io::Positive {
         // Parsing won't fail because we serialized it ourselves.
         let (_public_key, exponent) =
             super::parse_public_key(untrusted::Input::from(self.as_ref())).unwrap();
@@ -458,7 +467,8 @@ impl<M: Prime + Clone> PrivatePrime<M> {
 }
 
 fn elem_exp_consttime<M, MM>(
-    c: &bigint::Elem<MM>, p: &PrivatePrime<M>,
+    c: &bigint::Elem<MM>,
+    p: &PrivatePrime<M>,
 ) -> Result<bigint::Elem<M>, error::Unspecified>
 where
     M: bigint::NotMuchSmallerModulus<MM>,
@@ -505,7 +515,7 @@ unsafe impl bigint::SlightlySmallerModulus<P> for Q {}
 unsafe impl bigint::SmallerModulus<QQ> for Q {}
 unsafe impl bigint::NotMuchSmallerModulus<QQ> for Q {}
 
-impl KeyPair {
+impl RsaKeyPair {
     /// Sign `msg`. `msg` is digested using the digest algorithm from
     /// `padding_alg` and the digest is then padded using the padding algorithm
     /// from `padding_alg`. The signature it written into `signature`;
@@ -523,7 +533,10 @@ impl KeyPair {
     /// x86-64, this is done pretty well, but not perfectly. On other
     /// platforms, it is done less perfectly.
     pub fn sign(
-        &self, padding_alg: &'static Encoding, rng: &rand::SecureRandom, msg: &[u8],
+        &self,
+        padding_alg: &'static dyn RsaEncoding,
+        rng: &dyn rand::SecureRandom,
+        msg: &[u8],
         signature: &mut [u8],
     ) -> Result<(), error::Unspecified> {
         let mod_bits = self.public.n_bits;
@@ -597,7 +610,7 @@ mod tests {
     // We intentionally avoid `use super::*` so that we are sure to use only
     // the public API; this ensures that enough of the API is public.
     use crate::{rand, signature};
-    use untrusted;
+    use std::vec;
 
     // `KeyPair::sign` requires that the output buffer is the same length as
     // the public key modulus. Test what happens when it isn't the same length.
@@ -610,8 +623,7 @@ mod tests {
 
         const PRIVATE_KEY_DER: &'static [u8] =
             include_bytes!("signature_rsa_example_private_key.der");
-        let key_bytes_der = untrusted::Input::from(PRIVATE_KEY_DER);
-        let key_pair = signature::RsaKeyPair::from_der(key_bytes_der).unwrap();
+        let key_pair = signature::RsaKeyPair::from_der(PRIVATE_KEY_DER).unwrap();
 
         // The output buffer is one byte too short.
         let mut signature = vec![0; key_pair.public_modulus_len() - 1];

@@ -71,7 +71,9 @@ $ap="%rsi";	# const BN_ULONG *ap,
 $bp="%rdx";	# const BN_ULONG *bp,
 $np="%rcx";	# const BN_ULONG *np,
 $n0="%r8";	# const BN_ULONG *n0,
-$num="%r9";	# int num);
+# TODO(davidben): The code below treats $num as an int, but C passes in a
+# size_t.
+$num="%r9";	# size_t num);
 $lo0="%r10";
 $hi0="%r11";
 $hi1="%r13";

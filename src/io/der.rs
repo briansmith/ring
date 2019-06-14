@@ -42,15 +42,20 @@ pub enum Tag {
 }
 
 impl From<Tag> for usize {
-    fn from(tag: Tag) -> Self { tag as Self }
+    fn from(tag: Tag) -> Self {
+        tag as Self
+    }
 }
 
 impl From<Tag> for u8 {
-    fn from(tag: Tag) -> Self { tag as Self } // XXX: narrowing conversion.
+    fn from(tag: Tag) -> Self {
+        tag as Self
+    } // XXX: narrowing conversion.
 }
 
 pub fn expect_tag_and_get_value<'a>(
-    input: &mut untrusted::Reader<'a>, tag: Tag,
+    input: &mut untrusted::Reader<'a>,
+    tag: Tag,
 ) -> Result<untrusted::Input<'a>, error::Unspecified> {
     let (actual_tag, inner) = read_tag_and_get_value(input)?;
     if usize::from(tag) != usize::from(actual_tag) {
@@ -78,7 +83,7 @@ pub fn read_tag_and_get_value<'a>(
                 return Err(error::Unspecified); // Not the canonical encoding.
             }
             usize::from(second_byte)
-        },
+        }
         0x82 => {
             let second_byte = usize::from(input.read_byte()?);
             let third_byte = usize::from(input.read_byte()?);
@@ -87,13 +92,13 @@ pub fn read_tag_and_get_value<'a>(
                 return Err(error::Unspecified); // Not the canonical encoding.
             }
             combined
-        },
+        }
         _ => {
             return Err(error::Unspecified); // We don't support longer lengths.
-        },
+        }
     };
 
-    let inner = input.skip_and_get_input(length)?;
+    let inner = input.read_bytes(length)?;
     Ok((tag, inner))
 }
 
@@ -105,14 +110,17 @@ pub fn bit_string_with_no_unused_bits<'a>(
         if unused_bits_at_end != 0 {
             return Err(error::Unspecified);
         }
-        Ok(value.skip_to_end())
+        Ok(value.read_bytes_to_end())
     })
 }
 
 // TODO: investigate taking decoder as a reference to reduce generated code
 // size.
 pub fn nested<'a, F, R, E: Copy>(
-    input: &mut untrusted::Reader<'a>, tag: Tag, error: E, decoder: F,
+    input: &mut untrusted::Reader<'a>,
+    tag: Tag,
+    error: E,
+    decoder: F,
 ) -> Result<R, E>
 where
     F: FnOnce(&mut untrusted::Reader<'a>) -> Result<R, E>,
@@ -122,7 +130,8 @@ where
 }
 
 fn nonnegative_integer<'a>(
-    input: &mut untrusted::Reader<'a>, min_value: u8,
+    input: &mut untrusted::Reader<'a>,
+    min_value: u8,
 ) -> Result<untrusted::Input<'a>, error::Unspecified> {
     // Verify that |input|, which has had any leading zero stripped off, is the
     // encoding of a value of at least |min_value|.
@@ -132,7 +141,7 @@ fn nonnegative_integer<'a>(
             if input.at_end() && first_byte < min_value {
                 return Err(error::Unspecified);
             }
-            let _ = input.skip_to_end();
+            let _ = input.read_bytes_to_end();
             Ok(())
         })
     }
@@ -152,7 +161,7 @@ fn nonnegative_integer<'a>(
                 return Ok(value);
             }
 
-            let r = input.skip_to_end();
+            let r = input.read_bytes_to_end();
             r.read_all(error::Unspecified, |input| {
                 let second_byte = input.read_byte()?;
                 if (second_byte & 0x80) == 0 {
@@ -160,7 +169,7 @@ fn nonnegative_integer<'a>(
                     // is set.
                     return Err(error::Unspecified);
                 }
-                let _ = input.skip_to_end();
+                let _ = input.read_bytes_to_end();
                 Ok(())
             })?;
             check_minimum(r, min_value)?;
@@ -172,7 +181,7 @@ fn nonnegative_integer<'a>(
             return Err(error::Unspecified);
         }
 
-        let _ = input.skip_to_end();
+        let _ = input.read_bytes_to_end();
         check_minimum(value, min_value)?;
         Ok(value)
     })
@@ -194,7 +203,9 @@ pub fn small_nonnegative_integer(input: &mut untrusted::Reader) -> Result<u8, er
 pub fn positive_integer<'a>(
     input: &mut untrusted::Reader<'a>,
 ) -> Result<Positive<'a>, error::Unspecified> {
-    Ok(Positive(nonnegative_integer(input, 1)?))
+    Ok(Positive::new_non_empty_without_leading_zeros(
+        nonnegative_integer(input, 1)?,
+    ))
 }
 
 #[cfg(test)]
@@ -219,9 +230,9 @@ mod tests {
         assert!(r.is_err());
     }
 
-    static ZERO_INTEGER: &'static [u8] = &[0x02, 0x01, 0x00];
+    static ZERO_INTEGER: &[u8] = &[0x02, 0x01, 0x00];
 
-    static GOOD_POSITIVE_INTEGERS: &'static [(&'static [u8], u8)] = &[
+    static GOOD_POSITIVE_INTEGERS: &[(&[u8], u8)] = &[
         (&[0x02, 0x01, 0x01], 0x01),
         (&[0x02, 0x01, 0x02], 0x02),
         (&[0x02, 0x01, 0x7e], 0x7e),
@@ -234,7 +245,7 @@ mod tests {
         (&[0x02, 0x02, 0x00, 0xff], 0xff),
     ];
 
-    static BAD_NONNEGATIVE_INTEGERS: &'static [&'static [u8]] = &[
+    static BAD_NONNEGATIVE_INTEGERS: &[&[u8]] = &[
         &[],           // At end of input
         &[0x02],       // Tag only
         &[0x02, 0x00], // Empty value
@@ -286,7 +297,7 @@ mod tests {
             with_good_i(test_in, |input| {
                 let test_out = [test_out];
                 assert_eq!(
-                    positive_integer(input)?.big_endian_without_leading_zero(),
+                    positive_integer(input)?.big_endian_without_leading_zero_as_input(),
                     untrusted::Input::from(&test_out[..])
                 );
                 Ok(())

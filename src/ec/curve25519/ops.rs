@@ -79,7 +79,7 @@ pub struct ExtPoint {
 
 impl ExtPoint {
     pub fn new_at_infinity() -> Self {
-        ExtPoint {
+        Self {
             x: Elem::zero(),
             y: Elem::zero(),
             z: Elem::zero(),
@@ -94,7 +94,9 @@ impl ExtPoint {
             .map(|()| point)
     }
 
-    pub fn into_encoded_point(self) -> EncodedPoint { encode_point(self.x, self.y, self.z) }
+    pub fn into_encoded_point(self) -> EncodedPoint {
+        encode_point(self.x, self.y, self.z)
+    }
 
     pub fn invert_vartime(&mut self) {
         self.x.negate();
@@ -112,14 +114,16 @@ pub struct Point {
 
 impl Point {
     pub fn new_at_infinity() -> Self {
-        Point {
+        Self {
             x: Elem::zero(),
             y: Elem::zero(),
             z: Elem::zero(),
         }
     }
 
-    pub fn into_encoded_point(self) -> EncodedPoint { encode_point(self.x, self.y, self.z) }
+    pub fn into_encoded_point(self) -> EncodedPoint {
+        encode_point(self.x, self.y, self.z)
+    }
 }
 
 fn encode_point(x: Elem<T>, y: Elem<T>, z: Elem<T>) -> EncodedPoint {

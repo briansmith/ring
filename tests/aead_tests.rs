@@ -34,10 +34,14 @@
 use ring::{aead, error, test, test_file};
 
 #[test]
-fn aead_aes_gcm_128() { test_aead(&aead::AES_128_GCM, test_file!("aead_aes_128_gcm_tests.txt")); }
+fn aead_aes_gcm_128() {
+    test_aead(&aead::AES_128_GCM, test_file!("aead_aes_128_gcm_tests.txt"));
+}
 
 #[test]
-fn aead_aes_gcm_256() { test_aead(&aead::AES_256_GCM, test_file!("aead_aes_256_gcm_tests.txt")); }
+fn aead_aes_gcm_256() {
+    test_aead(&aead::AES_256_GCM, test_file!("aead_aes_256_gcm_tests.txt"));
+}
 
 #[test]
 fn aead_aes_gcm_siv_128() { test_aead(&aead::AES_128_GCM_SIV, test_file!("aes_128_gcm_siv_tests.txt"), ); }
@@ -70,7 +74,7 @@ fn test_aead(aead_alg: &'static aead::Algorithm, test_file: test::File) {
             Some(err) if err == "WRONG_NONCE_LENGTH" => {
                 assert!(aead::Nonce::try_assume_unique_for_key(&nonce).is_err());
                 return Ok(());
-            },
+            }
             _ => (),
         };
 
@@ -183,14 +187,14 @@ fn test_aead(aead_alg: &'static aead::Algorithm, test_file: test::File) {
                 None => {
                     assert!(s_result.is_ok());
                     assert_eq!(&plaintext[..], o_result.unwrap());
-                },
+                }
                 Some(ref error) if error == "WRONG_NONCE_LENGTH" => {
                     assert_eq!(Err(error::Unspecified), s_result);
                     assert_eq!(Err(error::Unspecified), o_result);
-                },
+                }
                 Some(error) => {
                     unreachable!("Unexpected error test case: {}", error);
-                },
+                }
             };
         }
 

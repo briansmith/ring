@@ -18,8 +18,7 @@
 //! Limbs ordered least-significant-limb to most-significant-limb. The bits
 //! limbs use the native endianness.
 
-use crate::error;
-use libc::size_t;
+use crate::{c, error};
 use untrusted;
 
 #[cfg(any(test, feature = "use_heap"))]
@@ -38,7 +37,6 @@ pub const LIMB_BITS: usize = 64;
 #[cfg(target_pointer_width = "32")]
 pub const LIMB_BITS: usize = 32;
 
-#[allow(trivial_numeric_casts)]
 #[cfg(target_pointer_width = "64")]
 #[derive(Debug, PartialEq)]
 #[repr(u64)]
@@ -57,12 +55,10 @@ pub enum LimbMask {
 
 pub const LIMB_BYTES: usize = (LIMB_BITS + 7) / 8;
 
-#[allow(dead_code)]
-#[cfg(feature = "use_heap")]
 #[inline]
 pub fn limbs_equal_limbs_consttime(a: &[Limb], b: &[Limb]) -> LimbMask {
     extern "C" {
-        fn LIMBS_equal(a: *const Limb, b: *const Limb, num_limbs: size_t) -> LimbMask;
+        fn LIMBS_equal(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
     }
 
     assert_eq!(a.len(), b.len());
@@ -153,7 +149,10 @@ pub enum AllowZero {
 /// `AllowZero::Yes`, or [1, m) if `allow_zero` is `AllowZero::No`. `result` is
 /// padded with zeros to its length.
 pub fn parse_big_endian_in_range_partially_reduced_and_pad_consttime(
-    input: untrusted::Input, allow_zero: AllowZero, m: &[Limb], result: &mut [Limb],
+    input: untrusted::Input,
+    allow_zero: AllowZero,
+    m: &[Limb],
+    result: &mut [Limb],
 ) -> Result<(), error::Unspecified> {
     parse_big_endian_and_pad_consttime(input, result)?;
     limbs_reduce_once_constant_time(result, m);
@@ -174,7 +173,10 @@ pub fn parse_big_endian_in_range_partially_reduced_and_pad_consttime(
 /// about a valid value, but it might leak small amounts of information about an
 /// invalid value (which constraint it failed).
 pub fn parse_big_endian_in_range_and_pad_consttime(
-    input: untrusted::Input, allow_zero: AllowZero, max_exclusive: &[Limb], result: &mut [Limb],
+    input: untrusted::Input,
+    allow_zero: AllowZero,
+    max_exclusive: &[Limb],
+    result: &mut [Limb],
 ) -> Result<(), error::Unspecified> {
     parse_big_endian_and_pad_consttime(input, result)?;
     if limbs_less_than_limbs_consttime(&result, max_exclusive) != LimbMask::True {
@@ -192,7 +194,8 @@ pub fn parse_big_endian_in_range_and_pad_consttime(
 /// This attempts to be constant-time with respect to the value but not with
 /// respect to the length; it is assumed that the length is public knowledge.
 pub fn parse_big_endian_and_pad_consttime(
-    input: untrusted::Input, result: &mut [Limb],
+    input: untrusted::Input,
+    result: &mut [Limb],
 ) -> Result<(), error::Unspecified> {
     if input.is_empty() {
         return Err(error::Unspecified);
@@ -226,8 +229,8 @@ pub fn parse_big_endian_and_pad_consttime(
         for i in 0..num_encoded_limbs {
             let mut limb: Limb = 0;
             for _ in 0..bytes_in_current_limb {
-                let b = input.read_byte()?;
-                limb = (limb << 8) | (b as Limb);
+                let b: Limb = input.read_byte()?.into();
+                limb = (limb << 8) | b;
             }
             result[num_encoded_limbs - i - 1] = limb;
             bytes_in_current_limb = LIMB_BYTES;
@@ -266,17 +269,21 @@ pub type Window = Limb;
 /// Panics if `limbs` is empty.
 #[cfg(feature = "use_heap")]
 pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
-    limbs: &[Limb], init: I, fold: F,
+    limbs: &[Limb],
+    init: I,
+    fold: F,
 ) -> R {
     #[derive(Clone, Copy)]
     #[repr(transparent)]
-    struct BitIndex(Wrapping<size_t>);
+    struct BitIndex(Wrapping<c::size_t>);
 
-    const WINDOW_BITS: Wrapping<size_t> = Wrapping(5);
+    const WINDOW_BITS: Wrapping<c::size_t> = Wrapping(5);
 
     extern "C" {
         fn LIMBS_window5_split_window(
-            lower_limb: Limb, higher_limb: Limb, index_within_word: BitIndex,
+            lower_limb: Limb,
+            higher_limb: Limb,
+            index_within_word: BitIndex,
         ) -> Window;
         fn LIMBS_window5_unsplit_window(limb: Limb, index_within_word: BitIndex) -> Window;
     }
@@ -327,17 +334,17 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
 
 extern "C" {
     #[cfg(any(test, feature = "use_heap"))]
-    fn LIMB_shr(a: Limb, shift: size_t) -> Limb;
+    fn LIMB_shr(a: Limb, shift: c::size_t) -> Limb;
 
     #[cfg(any(test, feature = "use_heap"))]
-    fn LIMBS_are_even(a: *const Limb, num_limbs: size_t) -> LimbMask;
-    fn LIMBS_are_zero(a: *const Limb, num_limbs: size_t) -> LimbMask;
+    fn LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
+    fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     #[cfg(any(test, feature = "use_heap"))]
-    fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: size_t) -> LimbMask;
-    fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: size_t) -> LimbMask;
+    fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
+    fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
     #[cfg(feature = "use_heap")]
-    fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: size_t) -> LimbMask;
-    fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: size_t);
+    fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
+    fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
 }
 
 #[cfg(test)]

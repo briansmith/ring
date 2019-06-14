@@ -26,7 +26,8 @@ use untrusted;
 
 /// Generates a random scalar in the range [1, n).
 pub fn random_scalar(
-    ops: &PrivateKeyOps, rng: &rand::SecureRandom,
+    ops: &PrivateKeyOps,
+    rng: &dyn rand::SecureRandom,
 ) -> Result<Scalar, error::Unspecified> {
     let num_limbs = ops.common.num_limbs;
     let mut bytes = [0; ec::SCALAR_MAX_BYTES];
@@ -36,7 +37,9 @@ pub fn random_scalar(
 }
 
 pub fn generate_private_scalar_bytes(
-    ops: &PrivateKeyOps, rng: &rand::SecureRandom, out: &mut [u8],
+    ops: &PrivateKeyOps,
+    rng: &dyn rand::SecureRandom,
+    out: &mut [u8],
 ) -> Result<(), error::Unspecified> {
     // [NSA Suite B Implementer's Guide to ECDSA] Appendix A.1.2, and
     // [NSA Suite B Implementer's Guide to NIST SP 800-56A] Appendix B.2,
@@ -94,7 +97,8 @@ pub fn private_key_as_scalar(ops: &PrivateKeyOps, private_key: &ec::Seed) -> Sca
 }
 
 pub fn check_scalar_big_endian_bytes(
-    ops: &PrivateKeyOps, bytes: &[u8],
+    ops: &PrivateKeyOps,
+    bytes: &[u8],
 ) -> Result<(), error::Unspecified> {
     debug_assert_eq!(bytes.len(), ops.common.num_limbs * LIMB_BYTES);
     scalar_from_big_endian_bytes(ops, bytes).map(|_| ())
@@ -106,7 +110,8 @@ pub fn check_scalar_big_endian_bytes(
 // valid value, but it might leak small amounts of information about an invalid
 // value (which constraint it failed).
 pub fn scalar_from_big_endian_bytes(
-    ops: &PrivateKeyOps, bytes: &[u8],
+    ops: &PrivateKeyOps,
+    bytes: &[u8],
 ) -> Result<Scalar, error::Unspecified> {
     // [NSA Suite B Implementer's Guide to ECDSA] Appendix A.1.2, and
     // [NSA Suite B Implementer's Guide to NIST SP 800-56A] Appendix B.2,
@@ -127,7 +132,9 @@ pub fn scalar_from_big_endian_bytes(
 }
 
 pub fn public_from_private(
-    ops: &PrivateKeyOps, public_out: &mut [u8], my_private_key: &ec::Seed,
+    ops: &PrivateKeyOps,
+    public_out: &mut [u8],
+    my_private_key: &ec::Seed,
 ) -> Result<(), error::Unspecified> {
     let elem_and_scalar_bytes = ops.common.num_limbs * LIMB_BYTES;
     debug_assert_eq!(public_out.len(), 1 + (2 * elem_and_scalar_bytes));
@@ -142,7 +149,8 @@ pub fn public_from_private(
 }
 
 pub fn affine_from_jacobian(
-    ops: &PrivateKeyOps, p: &Point,
+    ops: &PrivateKeyOps,
+    p: &Point,
 ) -> Result<(Elem<R>, Elem<R>), error::Unspecified> {
     let z = ops.common.point_z(p);
 
@@ -176,7 +184,10 @@ pub fn affine_from_jacobian(
 }
 
 pub fn big_endian_affine_from_jacobian(
-    ops: &PrivateKeyOps, x_out: Option<&mut [u8]>, y_out: Option<&mut [u8]>, p: &Point,
+    ops: &PrivateKeyOps,
+    x_out: Option<&mut [u8]>,
+    y_out: Option<&mut [u8]>,
+    p: &Point,
 ) -> Result<(), error::Unspecified> {
     let (x_aff, y_aff) = affine_from_jacobian(ops, p)?;
     let num_limbs = ops.common.num_limbs;
