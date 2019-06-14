@@ -45,6 +45,8 @@ pub trait SecureRandom: sealed::Sealed {
 /// `fill()` once at a non-latency-sensitive time to minimize latency for
 /// future calls.
 ///
+/// On Android, `fill()` will use the [`getrandom`] syscall.
+///
 /// On Linux, `fill()` will use the [`getrandom`] syscall. If the kernel is too
 /// old to support `getrandom` then by default `fill()` falls back to reading
 /// from `/dev/urandom`. This decision is made the first time `fill`
