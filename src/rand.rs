@@ -189,15 +189,6 @@ mod sysrand {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
-mod sysrand {
-    use crate::error;
-
-    pub fn fill(_dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        unimplemented!()
-    }
-}
-
 // Keep the `cfg` conditions in sync with the conditions in lib.rs.
 #[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
 mod urandom {
