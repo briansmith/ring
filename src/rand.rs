@@ -60,10 +60,6 @@ pub trait SecureRandom: sealed::Sealed {
 /// On Windows, `fill` is implemented using the platform's API for secure
 /// random number generation.
 ///
-/// Otherwise, `fill()` is implemented by reading from `/dev/urandom`. (This is
-/// something that should be improved for any platform that adds something
-/// better.)
-///
 /// When `/dev/urandom` is used, a file handle for `/dev/urandom` won't be
 /// opened until `fill` is called. In particular, `SystemRandom::new()` will
 /// not open `/dev/urandom` or do other potentially-high-latency things. The
