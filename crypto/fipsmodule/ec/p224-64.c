@@ -758,7 +758,9 @@ static void p224_point_add(p224_felem x3, p224_felem y3, p224_felem z3,
   z1_is_zero = p224_felem_is_zero(z1);
   z2_is_zero = p224_felem_is_zero(z2);
   // In affine coordinates, (X_1, Y_1) == (X_2, Y_2)
-  if (x_equal && y_equal && !z1_is_zero && !z2_is_zero) {
+  p224_limb is_nontrivial_double =
+      x_equal & y_equal & (1 - z1_is_zero) & (1 - z2_is_zero);
+  if (is_nontrivial_double) {
     p224_point_double(x3, y3, z3, x1, y1, z1);
     return;
   }

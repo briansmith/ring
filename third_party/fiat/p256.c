@@ -321,7 +321,10 @@ static void point_add(fe x3, fe y3, fe z3, const fe x1,
 
   limb_t yneq = fe_nz(r);
 
-  if (!xneq && !yneq && z1nz && z2nz) {
+  limb_t is_nontrivial_double = constant_time_is_zero_w(xneq | yneq) &
+                                ~constant_time_is_zero_w(z1nz) &
+                                ~constant_time_is_zero_w(z2nz);
+  if (is_nontrivial_double) {
     point_double(x3, y3, z3, x1, y1, z1);
     return;
   }

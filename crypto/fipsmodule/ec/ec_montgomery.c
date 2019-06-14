@@ -282,7 +282,8 @@ void ec_GFp_mont_add(const EC_GROUP *group, EC_RAW_POINT *out,
   BN_ULONG yneq = ec_felem_non_zero_mask(group, &r);
 
   // This case will never occur in the constant-time |ec_GFp_mont_mul|.
-  if (!xneq && !yneq && z1nz && z2nz) {
+  BN_ULONG is_nontrivial_double = ~xneq & ~yneq & z1nz & z2nz;
+  if (is_nontrivial_double) {
     ec_GFp_mont_dbl(group, out, a);
     return;
   }
