@@ -68,6 +68,10 @@ extern crate std;
 #[macro_use]
 mod debug;
 
+#[cfg(any(test, feature = "use_heap"))]
+#[macro_use]
+pub mod test;
+
 #[macro_use]
 mod arithmetic;
 
@@ -76,10 +80,6 @@ mod bssl;
 
 #[macro_use]
 mod polyfill;
-
-#[cfg(any(test, feature = "use_heap"))]
-#[macro_use]
-pub mod test;
 
 pub mod aead;
 pub mod agreement;
