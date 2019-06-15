@@ -193,6 +193,7 @@ include = [
     "src/io.rs",
     "src/io/der.rs",
     "src/io/der_writer.rs",
+    "src/io/positive.rs",
     "src/io/writer.rs",
     "src/lib.rs",
     "src/limb.rs",
