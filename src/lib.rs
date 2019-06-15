@@ -78,6 +78,9 @@ mod polyfill;
 #[macro_use]
 pub mod test;
 
+#[macro_use]
+mod versioned_extern;
+
 mod arithmetic;
 
 pub mod aead;

@@ -18,6 +18,6 @@ pub fn digest_scalar(digest: digest::Digest) -> Scalar {
     scalar.copy_from_slice(&unreduced[..SCALAR_LEN]);
     scalar
 }
-extern "C" {
+versioned_extern! {
     fn GFp_x25519_sc_reduce(s: &mut UnreducedScalar);
 }

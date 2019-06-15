@@ -45,7 +45,7 @@ impl Key {
 
         match detect_implementation(cpu_features) {
             Implementation::HWAES => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_aes_hw_set_encrypt_key(
                         user_key: *const u8,
                         bits: c::uint,
@@ -63,7 +63,7 @@ impl Key {
 
             #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
             Implementation::VPAES => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_vpaes_set_encrypt_key(
                         user_key: *const u8,
                         bits: c::uint,
@@ -80,7 +80,7 @@ impl Key {
             }
 
             _ => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_aes_nohw_set_encrypt_key(
                         user_key: *const u8,
                         bits: c::uint,
@@ -110,7 +110,7 @@ impl Key {
 
         match detect_implementation(self.cpu_features) {
             Implementation::HWAES => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_aes_hw_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
                 }
                 unsafe {
@@ -120,7 +120,7 @@ impl Key {
 
             #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
             Implementation::VPAES => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_vpaes_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
                 }
                 unsafe {
@@ -129,7 +129,7 @@ impl Key {
             }
 
             _ => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_aes_nohw_encrypt(a: *const Block, r: *mut Block, key: &AES_KEY);
                 }
                 unsafe {
@@ -171,7 +171,7 @@ impl Key {
 
         match detect_implementation(self.cpu_features) {
             Implementation::HWAES => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_aes_hw_ctr32_encrypt_blocks(
                         input: *const u8,
                         output: *mut u8,
@@ -188,7 +188,7 @@ impl Key {
 
             #[cfg(target_arch = "arm")]
             Implementation::BSAES => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_bsaes_ctr32_encrypt_blocks(
                         input: *const u8,
                         output: *mut u8,

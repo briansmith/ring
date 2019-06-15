@@ -56,6 +56,10 @@
 
 // This file should be the first included by all BoringSSL headers.
 
+#if defined(BORINGSSL_PREFIX)
+#include <boringssl_prefix_symbols.h>
+#endif
+
 #if defined(_MSC_VER)
 #pragma warning(push, 3)
 #endif

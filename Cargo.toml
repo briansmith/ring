@@ -12,9 +12,6 @@ readme = "doc/link-to-readme.md"
 repository = "https://github.com/briansmith/ring"
 version = "0.14.6"
 
-# Prevent multiple versions of *ring* from being linked into the same program.
-links = "ring-asm"
-
 exclude = [
     # The presence of .gitignore is used to differentiate non-packaged builds
     # from packaged builds in build.rs.
@@ -224,6 +221,7 @@ include = [
     "src/test_1_syntax_error_tests.txt",
     "src/test_1_tests.txt",
     "src/test_3_tests.txt",
+    "src/versioned_extern.rs",
     "tests/aead_aes_128_gcm_tests.txt",
     "tests/aead_aes_256_gcm_tests.txt",
     "tests/aead_chacha20_poly1305_tests.txt",
@@ -326,6 +324,7 @@ internal_benches = []
 slow_tests = []
 test_logging = []
 use_heap = []
+boringssl_no_prefix = []
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 

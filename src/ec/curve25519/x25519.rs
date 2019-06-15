@@ -75,7 +75,7 @@ fn x25519_public_from_private(
         }
     }
 
-    extern "C" {
+    versioned_extern! {
         fn GFp_x25519_public_from_private_generic(
             public_key_out: &mut PublicKey,
             private_key: &PrivateKey,
@@ -112,7 +112,7 @@ fn x25519_ecdh(
             }
         }
 
-        extern "C" {
+        versioned_extern! {
             fn GFp_x25519_scalar_mult_generic(
                 out: &mut ops::EncodedPoint,
                 scalar: &ops::Scalar,
@@ -142,7 +142,7 @@ fn x25519_ecdh(
 
 #[cfg(target_arch = "arm")]
 fn x25519_neon(out: &mut ops::EncodedPoint, scalar: &ops::Scalar, point: &ops::EncodedPoint) {
-    extern "C" {
+    versioned_extern! {
         fn GFp_x25519_NEON(
             out: &mut ops::EncodedPoint,
             scalar: &ops::Scalar,

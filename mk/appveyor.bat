@@ -54,6 +54,8 @@ set PATH=%USERPROFILE%\.cargo\bin;%cd%\windows_build_tools;%PATH%
 
 if [%Configuration%] == [Release] set CARGO_MODE=--release
 
+REM Disable BoringSSL symbol prefixing for CI runs w/o pregenerated files.
+
 set
 
 link /?
@@ -61,10 +63,10 @@ cl /?
 rustc --version
 cargo --version
 
-cargo test -vv %CARGO_MODE%
+cargo test -vv --features boringssl_no_prefix %CARGO_MODE%
 if %ERRORLEVEL% NEQ 0 exit 1
 
 REM Verify that `cargo build`, independent from `cargo test`, works; i.e.
 REM verify that non-test builds aren't trying to use test-only features.
-cargo build -vv %CARGO_MODE%
+cargo build -vv --features boringssl_no_prefix %CARGO_MODE%
 if %ERRORLEVEL% NEQ 0 exit 1

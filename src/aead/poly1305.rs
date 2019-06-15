@@ -46,7 +46,7 @@ const OPAQUE_LEN: usize = 192;
 impl Context {
     #[inline]
     pub fn from_key(Key(key_and_nonce): Key) -> Self {
-        extern "C" {
+        versioned_extern! {
             fn GFp_poly1305_blocks(
                 state: &mut Opaque,
                 input: *const u8,
@@ -128,7 +128,7 @@ struct Funcs {
 
 #[inline]
 fn init(state: &mut Opaque, key: DerivedKey, func: &mut Funcs) -> Result<(), error::Unspecified> {
-    extern "C" {
+    versioned_extern! {
         fn GFp_poly1305_init_asm(
             state: &mut Opaque,
             key: &DerivedKey,

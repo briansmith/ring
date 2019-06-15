@@ -93,7 +93,7 @@ fi
 
 case $TARGET_X in
 armv7-linux-androideabi)
-  cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X
+  cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X --features boringssl_no_prefix
 
   # Building the AVD is slow. Do it here, after we build the code so that any
   # build breakage is reported sooner, instead of being delayed by this.
@@ -104,7 +104,7 @@ armv7-linux-androideabi)
   #     Your emulator is out of date, please update by launching Android Studio
   ;;
 *)
-  cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
+  cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X --features boringssl_no_prefix
   ;;
 esac
 
@@ -119,7 +119,7 @@ if [[ "$KCOV" == "1" ]]; then
   # we expect people to use in production.
   cargo clean
   RUSTFLAGS="-C link-dead-code" \
-    cargo test -vv --no-run -j2  ${mode-} ${FEATURES_X-} --target=$TARGET_X
+    cargo test -vv --no-run -j2  ${mode-} ${FEATURES_X-} --target=$TARGET_X --features boringssl_no_prefix
   mk/travis-install-kcov.sh
   for test_exe in `find target/$TARGET_X/debug -maxdepth 1 -executable -type f`; do
     ${HOME}/kcov-${TARGET_X}/bin/kcov \
@@ -136,6 +136,6 @@ fi
 # that non-test builds aren't trying to use test-only features. For platforms
 # for which we don't run tests, this is the only place we even verify that the
 # code builds.
-cargo build -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
+cargo build -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X --features boringssl_no_prefix
 
 echo end of mk/travis.sh

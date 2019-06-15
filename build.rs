@@ -156,6 +156,7 @@ const RING_PERL_INCLUDES: &[&str] =
 const RING_BUILD_FILE: &[&str] = &["build.rs"];
 
 const PREGENERATED: &str = "pregenerated";
+const SYMBOL_PREFIX_INCLUDE: &str = "symbol_prefix_include";
 
 fn c_flags(target: &Target) -> &'static [&'static str] {
     if target.env != MSVC {
@@ -299,6 +300,8 @@ fn pregenerate_asm_main() {
     let pregenerated_tmp = pregenerated.join("tmp");
     std::fs::create_dir(&pregenerated_tmp).unwrap();
 
+    make_prefix_headers(&pregenerated);
+
     for &(target_arch, target_os, perlasm_format) in ASM_TARGETS {
         // For Windows, package pregenerated object files instead of
         // pregenerated assembly language source files, so that the user
@@ -348,6 +351,8 @@ impl Target {
 }
 
 fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
+    use std::env;
+
     let includes_modified = RING_INCLUDES
         .iter()
         .chain(RING_BUILD_FILE.iter())
@@ -424,6 +429,17 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         ("ring-test", &test_srcs[..], &[]),
     ];
 
+    let definitions = if env::var("CARGO_FEATURE_BORINGSSL_NO_PREFIX").is_ok() {
+        Vec::new()
+    } else {
+        let major = env::var("CARGO_PKG_VERSION_MAJOR").unwrap();
+        let minor = env::var("CARGO_PKG_VERSION_MINOR").unwrap();
+        let patch = env::var("CARGO_PKG_VERSION_PATCH").unwrap();
+        let version_string = format!("{}_{}_{}", major, minor, patch);
+        let prefix = format!("__RUST_RING_{}", version_string);
+        vec![("BORINGSSL_PREFIX", prefix)]
+    };
+
     // XXX: Ideally, ring-test would only be built for `cargo test`, but Cargo
     // can't do that yet.
     libs.into_iter()
@@ -436,6 +452,7 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
                 additional_srcs,
                 warnings_are_errors,
                 includes_modified,
+                &definitions,
             )
         });
 
@@ -453,13 +470,23 @@ fn build_library(
     additional_srcs: &[PathBuf],
     warnings_are_errors: bool,
     includes_modified: SystemTime,
+    definitions: &[(&str, String)],
 ) {
     // Compile all the (dirty) source files into object files.
     let objs = additional_srcs
         .into_iter()
         .chain(srcs.into_iter())
         .filter(|f| target.env() != "msvc" || f.extension().unwrap().to_str().unwrap() != "S")
-        .map(|f| compile(f, target, warnings_are_errors, out_dir, includes_modified))
+        .map(|f| {
+            compile(
+                f,
+                target,
+                warnings_are_errors,
+                out_dir,
+                includes_modified,
+                definitions,
+            )
+        })
         .collect::<Vec<_>>();
 
     // Rebuild the library if necessary.
@@ -510,6 +537,7 @@ fn compile(
     warnings_are_errors: bool,
     out_dir: &Path,
     includes_modified: SystemTime,
+    definitions: &[(&str, String)],
 ) -> String {
     let ext = p.extension().unwrap().to_str().unwrap();
     if ext == "obj" {
@@ -519,7 +547,7 @@ fn compile(
         assert!(out_path.set_extension(target.obj_ext));
         if need_run(&p, &out_path, includes_modified) {
             let cmd = if target.os() != WINDOWS || ext != "asm" {
-                cc(p, ext, target, warnings_are_errors, &out_path)
+                cc(p, ext, target, warnings_are_errors, &out_path, definitions)
             } else {
                 yasm(p, target.arch(), &out_path)
             };
@@ -542,9 +570,12 @@ fn cc(
     target: &Target,
     warnings_are_errors: bool,
     out_dir: &Path,
+    definitions: &[(&str, String)],
 ) -> Command {
     let mut c = cc::Build::new();
-    let _ = c.include("include");
+    let _ = c
+        .include("include")
+        .include(format!("{}/{}", PREGENERATED, SYMBOL_PREFIX_INCLUDE));
     match ext {
         "c" => {
             for f in c_flags(target) {
@@ -604,6 +635,9 @@ fn cc(
         // http://www.openwall.com/lists/musl/2015/02/04/3
         // http://www.openwall.com/lists/musl/2015/06/17/1
         let _ = c.flag("-U_FORTIFY_SOURCE");
+    }
+    for (k, v) in definitions {
+        let _ = c.define(k, Some(v.as_str()));
     }
 
     let mut c = c.get_compiler().to_command();
@@ -747,6 +781,22 @@ fn perlasm(
         args.push(dst);
         run_command_with_args(&get_command("PERL_EXECUTABLE", "perl"), &args);
     }
+}
+
+fn make_prefix_headers(dst: &PathBuf) {
+    let symbol_prefix_includes = dst.join(SYMBOL_PREFIX_INCLUDE);
+    std::fs::create_dir(&symbol_prefix_includes).unwrap();
+    let args: Vec<String> = vec![
+        "run".into(),
+        "util/make_prefix_headers.go".into(),
+        "-out".into(),
+        symbol_prefix_includes
+            .to_str()
+            .expect("Could not convert path")
+            .into(),
+        "symbols.txt".into(),
+    ];
+    run_command_with_args(&get_command("GO_EXECUTABLE", "go"), &args);
 }
 
 fn need_run(source: &Path, target: &Path, includes_modified: SystemTime) -> bool {

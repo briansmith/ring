@@ -31,7 +31,7 @@ pub fn verify_slices_are_equal(a: &[u8], b: &[u8]) -> Result<(), error::Unspecif
     }
 }
 
-extern "C" {
+versioned_extern! {
     fn GFp_memcmp(a: *const u8, b: *const u8, len: c::size_t) -> c::int;
 }
 
@@ -41,6 +41,7 @@ mod tests {
 
     #[test]
     fn test_constant_time() -> Result<(), error::Unspecified> {
+        // Don't bother prefixing this test symbol.
         extern "C" {
             fn bssl_constant_time_test_main() -> bssl::Result;
         }

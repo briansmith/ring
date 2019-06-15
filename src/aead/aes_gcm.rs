@@ -213,7 +213,7 @@ fn integrated_aes_gcm<'a>(
 
     let processed = match direction {
         Direction::Opening { in_prefix_len } => {
-            extern "C" {
+            versioned_extern! {
                 fn GFp_aesni_gcm_decrypt(
                     input: *const u8,
                     output: *mut u8,
@@ -235,7 +235,7 @@ fn integrated_aes_gcm<'a>(
             }
         }
         Direction::Sealing => {
-            extern "C" {
+            versioned_extern! {
                 fn GFp_aesni_gcm_encrypt(
                     input: *const u8,
                     output: *mut u8,

@@ -25,6 +25,10 @@
 
 #if !defined(OPENSSL_NO_ASM) && defined(__arm__) && !defined(__APPLE__)
 
+#if defined(BORINGSSL_PREFIX)
+#include <boringssl_prefix_symbols_asm.h>
+#endif
+
 #if !defined(__APPLE__)
 .fpu neon
 #endif

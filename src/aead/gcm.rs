@@ -29,7 +29,7 @@ impl Key {
         match detect_implementation(cpu_features) {
             #[cfg(target_arch = "x86_64")]
             Implementation::CLMUL if has_avx_movbe(cpu_features) => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_gcm_init_avx(key: &mut Key, h: &[u64; 2]);
                 }
                 unsafe {
@@ -38,7 +38,7 @@ impl Key {
             }
 
             Implementation::CLMUL => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_gcm_init_clmul(key: &mut Key, h: &[u64; 2]);
                 }
                 unsafe {
@@ -48,7 +48,7 @@ impl Key {
 
             #[cfg(any(target_arch = "arm"))]
             Implementation::NEON => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_gcm_init_neon(key: &mut Key, h: &[u64; 2]);
                 }
                 unsafe {
@@ -57,7 +57,7 @@ impl Key {
             }
 
             Implementation::Fallback => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_gcm_init_4bit(key: &mut Key, h: &[u64; 2]);
                 }
                 unsafe {
@@ -105,7 +105,7 @@ impl Context {
         match detect_implementation(self.cpu_features) {
             #[cfg(target_arch = "x86_64")]
             Implementation::CLMUL if has_avx_movbe(self.cpu_features) => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_gcm_ghash_avx(
                         ctx: &mut Context,
                         h_table: *const GCM128_KEY,
@@ -119,7 +119,7 @@ impl Context {
             }
 
             Implementation::CLMUL => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_gcm_ghash_clmul(
                         ctx: &mut Context,
                         h_table: *const GCM128_KEY,
@@ -134,7 +134,7 @@ impl Context {
 
             #[cfg(any(target_arch = "arm"))]
             Implementation::NEON => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_gcm_ghash_neon(
                         ctx: &mut Context,
                         h_table: *const GCM128_KEY,
@@ -148,7 +148,7 @@ impl Context {
             }
 
             Implementation::Fallback => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_gcm_ghash_4bit(
                         ctx: &mut Context,
                         h_table: *const GCM128_KEY,
@@ -170,7 +170,7 @@ impl Context {
 
         match detect_implementation(self.cpu_features) {
             Implementation::CLMUL => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_gcm_gmult_clmul(ctx: &mut Context, Htable: *const GCM128_KEY);
                 }
                 unsafe {
@@ -180,7 +180,7 @@ impl Context {
 
             #[cfg(any(target_arch = "arm"))]
             Implementation::NEON => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_gcm_gmult_neon(ctx: &mut Context, Htable: *const GCM128_KEY);
                 }
                 unsafe {
@@ -189,7 +189,7 @@ impl Context {
             }
 
             Implementation::Fallback => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_gcm_gmult_4bit(ctx: &mut Context, Htable: *const GCM128_KEY);
                 }
                 unsafe {

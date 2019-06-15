@@ -239,7 +239,7 @@ fn unwrap_pkcs8(
     Ok((private_key, public_key))
 }
 
-extern "C" {
+versioned_extern! {
     fn GFp_x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Seed);
     fn GFp_x25519_sc_mask(a: &mut Scalar);
     fn GFp_x25519_sc_muladd(s: &mut Scalar, a: &Scalar, b: &Scalar, c: &Scalar);

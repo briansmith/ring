@@ -38,19 +38,21 @@ fn maj(x: W32, y: W32, z: W32) -> W32 {
     (x & y) | (x & z) | (y & z)
 }
 
-/// The main purpose in retaining this is to support legacy protocols and OCSP,
-/// none of which need a fast SHA-1 implementation.
-/// This implementation therefore favors size and simplicity over speed.
-/// Unlike SHA-256, SHA-384, and SHA-512,
-/// there is no assembly language implementation.
-pub(super) unsafe extern "C" fn block_data_order(
-    state: &mut super::State,
-    data: *const u8,
-    num: c::size_t,
-) {
-    let data = data as *const [[u8; 4]; 16];
-    let blocks = core::slice::from_raw_parts(data, num);
-    block_data_order_safe(&mut state.as32, blocks)
+versioned_extern_def! {
+    /// The main purpose in retaining this is to support legacy protocols and OCSP,
+    /// none of which need a fast SHA-1 implementation.
+    /// This implementation therefore favors size and simplicity over speed.
+    /// Unlike SHA-256, SHA-384, and SHA-512,
+    /// there is no assembly language implementation.
+    pub(super) unsafe fn block_data_order(
+        state: &mut super::State,
+        data: *const u8,
+        num: c::size_t,
+    ) {
+        let data = data as *const [[u8; 4]; 16];
+        let blocks = core::slice::from_raw_parts(data, num);
+        block_data_order_safe(&mut state.as32, blocks)
+    }
 }
 
 #[inline(always)]

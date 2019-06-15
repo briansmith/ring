@@ -71,7 +71,7 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
 
 impl sealed::Sealed for EdDSAParameters {}
 
-extern "C" {
+versioned_extern! {
     fn GFp_x25519_ge_double_scalarmult_vartime(
         r: &mut Point,
         a_coeff: &Scalar,
