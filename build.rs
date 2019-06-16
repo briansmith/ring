@@ -573,9 +573,11 @@ fn cc(
     definitions: &[(&str, String)],
 ) -> Command {
     let mut c = cc::Build::new();
-    let _ = c
-        .include("include")
-        .include(format!("{}/{}", PREGENERATED, SYMBOL_PREFIX_INCLUDE));
+    let _ = c.include("include");
+    if std::env::var("CARGO_FEATURE_BORINGSSL_NO_PREFIX").is_err() {
+        let _ = c.include(format!("{}/{}", PREGENERATED, SYMBOL_PREFIX_INCLUDE));
+    }
+
     match ext {
         "c" => {
             for f in c_flags(target) {
