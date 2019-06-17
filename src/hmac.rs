@@ -20,9 +20,14 @@
 //! only once, instead of it being done in every HMAC operation.
 //!
 //! Frequently all the data to be signed in a message is available in a single
-//! contiguous piece. In that case, the module-level `sign` function can be
-//! used. Otherwise, if the input is in multiple parts, `Context` should be
-//! used.
+//! contiguous piece. In that case, the method [`Key::sign`] can be used. If the
+//! input is in multiple parts the complementary [`Key::sign_parts`] provides
+//! the signature in a single step. If not all parts of the data are available
+//! immediately, [`Context`] should be used to compute the signature
+//! incrementally.
+//!
+//! The verification of a signature is performed with the related methods
+//! [`Key::verify`] and [`Key::verify_parts`].
 //!
 //! # Examples:
 //!
@@ -130,7 +135,12 @@
 //!     https://github.com/briansmith/ring/blob/master/src/pbkdf2.rs
 //! [code for `ring::hkdf`]:
 //!     https://github.com/briansmith/ring/blob/master/src/hkdf.rs
-
+//! [`Context`]: struct.Context.html
+//! [`Key::sign`]: struct.Key.html#method.sign
+//! [`Key::sign_parts`]: struct.Key.html#method.sign_parts
+//! [`Key::verify`]: struct.Key.html#method.verify
+//! [`Key::verify_party`]: struct.Key.html#method.verify_parts
+//!
 use crate::{constant_time, digest, error, hkdf, rand};
 
 /// An HMAC algorithm.
@@ -373,9 +383,14 @@ impl From<hkdf::Okm<'_, Algorithm>> for Key {
 
 /// A context for multi-step (Init-Update-Finish) HMAC signing.
 ///
-/// Use [`Key::sign`] for single-step HMAC signing and [`Key::sign_parts`] for signle step signing
-/// of data that is not in a contiguous memory region. Note that there is no verification parallel
-/// to [`Context`] to avoid misusing data that is not already verified.
+/// Prefer [`Key::sign`] for single-step HMAC signing and [`Key::sign_parts`] for signle step
+/// signing of data that is not in a contiguous memory region. Note that [`Context`] has no
+/// verification parallel to [`sign`] to avoid misusing data that is not already verified.
+///
+/// [`Key::sign`]: struct.Key.html#method.sign
+/// [`Key::sign_parts`]: struct.Key.html#method.sign_parts
+/// [`Context`]: struct.Context.html
+/// [`sign`]: #method.sign
 // Note: No verify. This is to require all data to be verified and discourage processing parts of
 // the data without being verified. A previous commit (12596a32f9e8cb15dbe7f84d062a9a8c6207a7e8)
 // removed such an interface, so don't add it.
@@ -408,7 +423,9 @@ impl Context {
     }
 
     /// Updates the HMAC with all the data in `data`. `update` may be called
-    /// zero or more times until `finish` is called.
+    /// zero or more times until [`sign`] is called.
+    ///
+    /// [`sign`]: #method.sign
     pub fn update(&mut self, data: &[u8]) {
         self.inner.update(data);
     }
@@ -418,7 +435,11 @@ impl Context {
     /// called.
     ///
     /// It is generally not safe to implement HMAC verification by comparing
-    /// the return value of `sign` to a tag. Use `verify` for verification
+    /// the return value of `sign` to a tag. Use the methods [`Key::verify`] and
+    /// [`Key::verify_parts`] for verification instead.
+    ///
+    /// [`Key::verify`]: struct.Key.html#method.verify
+    /// [`Key::verify_parts`]: struct.Key.html#method.verify_parts
     /// instead.
     pub fn sign(self) -> Tag {
         let algorithm = self.inner.algorithm();
