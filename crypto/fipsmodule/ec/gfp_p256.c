@@ -77,9 +77,9 @@ void GFp_nistz256_select_w5(P256_POINT *out, const P256_POINT table[16],
   assert(index >= 0);
   size_t index_s = (size_t)index; /* XXX: constant time? */
 
-  alignas(32) Elem x; limbs_zero(x, P256_LIMBS);
-  alignas(32) Elem y; limbs_zero(y, P256_LIMBS);
-  alignas(32) Elem z; limbs_zero(z, P256_LIMBS);
+  alignas(32) Elem x = {0};
+  alignas(32) Elem y = {0};
+  alignas(32) Elem z = {0};
 
   for (size_t i = 0; i < 16; ++i) {
     Limb mask = constant_time_eq_w(index_s, i + 1);

@@ -221,9 +221,9 @@ void GFp_p384_scalar_mul_mont(ScalarMont r, const ScalarMont a,
 
 static void gfp_p384_point_select_w5(P384_POINT *out,
                                      const P384_POINT table[16], size_t index) {
-  Elem x; limbs_zero(x, P384_LIMBS);
-  Elem y; limbs_zero(y, P384_LIMBS);
-  Elem z; limbs_zero(z, P384_LIMBS);
+  Elem x = {0};
+  Elem y = {0};
+  Elem z = {0};
 
   for (size_t i = 0; i < 16; ++i) {
     Limb mask = constant_time_eq_w(index, i + 1);
