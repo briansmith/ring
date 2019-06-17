@@ -76,6 +76,7 @@ pub trait SecureRandom: sealed::Sealed {
 /// `getrandom` and `read`.
 ///
 /// [`getrandom`]: http://man7.org/linux/man-pages/man2/getrandom.2.html
+#[derive(Clone)]
 pub struct SystemRandom;
 
 impl SystemRandom {
