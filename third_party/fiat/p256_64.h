@@ -79,7 +79,13 @@ static void fiat_p256_mulx_u64(uint64_t* out1, uint64_t* out2, uint64_t arg1, ui
 static void fiat_p256_cmovznz_u64(uint64_t* out1, fiat_p256_uint1 arg1, uint64_t arg2, uint64_t arg3) {
   fiat_p256_uint1 x1 = (!(!arg1));
   uint64_t x2 = ((fiat_p256_int1)(0x0 - x1) & UINT64_C(0xffffffffffffffff));
-  uint64_t x3 = ((x2 & arg3) | ((~x2) & arg2));
+  // Note this line has been patched from the synthesized code to add value
+  // barriers.
+  //
+  // Clang recognizes this pattern as a select. While it usually transforms it
+  // to a cmov, it sometimes further transforms it into a branch, which we do
+  // not want.
+  uint64_t x3 = ((value_barrier_u64(x2) & arg3) | (value_barrier_u64(~x2) & arg2));
   *out1 = x3;
 }
 
