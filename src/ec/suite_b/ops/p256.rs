@@ -19,11 +19,8 @@ use super::{
 use core::marker::PhantomData;
 
 macro_rules! p256_limbs {
-    [$limb_7:expr, $limb_6:expr, $limb_5:expr, $limb_4:expr,
-     $limb_3:expr, $limb_2:expr, $limb_1:expr, $limb_0:expr] => {
-        limbs![0, 0, 0, 0,
-               $limb_7, $limb_6, $limb_5, $limb_4,
-               $limb_3, $limb_2, $limb_1, $limb_0]
+    [ $($limb:expr),+ ] => {
+        limbs![$($limb),+, 0, 0, 0, 0]
     };
 }
 
@@ -32,19 +29,19 @@ pub static COMMON_OPS: CommonOps = CommonOps {
 
     q: Modulus {
         p: p256_limbs![
-            0xffffffff, 0x00000001, 0x00000000, 0x00000000, 0x00000000, 0xffffffff, 0xffffffff,
+            0xffffffff, 0xffffffff, 0xffffffff, 0x00000000, 0x00000000, 0x00000000, 0x00000001,
             0xffffffff
         ],
         rr: p256_limbs![
-            0x00000004, 0xfffffffd, 0xffffffff, 0xfffffffe, 0xfffffffb, 0xffffffff, 0x00000000,
-            0x00000003
+            0x00000003, 0x00000000, 0xffffffff, 0xfffffffb, 0xfffffffe, 0xffffffff, 0xfffffffd,
+            0x00000004
         ],
     },
 
     n: Elem {
         limbs: p256_limbs![
-            0xffffffff, 0x00000000, 0xffffffff, 0xffffffff, 0xbce6faad, 0xa7179e84, 0xf3b9cac2,
-            0xfc632551
+            0xfc632551, 0xf3b9cac2, 0xa7179e84, 0xbce6faad, 0xffffffff, 0xffffffff, 0x00000000,
+            0xffffffff
         ],
         m: PhantomData,
         encoding: PhantomData, // Unencoded
@@ -52,7 +49,7 @@ pub static COMMON_OPS: CommonOps = CommonOps {
 
     a: Elem {
         limbs: p256_limbs![
-            0xfffffffc, 0x00000004, 0x00000000, 0x00000000, 0x00000003, 0xffffffff, 0xffffffff,
+            0xfffffffc, 0xffffffff, 0xffffffff, 0x00000003, 0x00000000, 0x00000000, 0x00000004,
             0xfffffffc
         ],
         m: PhantomData,
@@ -60,8 +57,8 @@ pub static COMMON_OPS: CommonOps = CommonOps {
     },
     b: Elem {
         limbs: p256_limbs![
-            0xdc30061d, 0x04874834, 0xe5a220ab, 0xf7212ed6, 0xacf005cd, 0x78843090, 0xd89cdf62,
-            0x29c4bddf
+            0x29c4bddf, 0xd89cdf62, 0x78843090, 0xacf005cd, 0xf7212ed6, 0xe5a220ab, 0x04874834,
+            0xdc30061d
         ],
         m: PhantomData,
         encoding: PhantomData, // R
@@ -150,7 +147,7 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
     private_key_ops: &PRIVATE_KEY_OPS,
 
     q_minus_n: Elem {
-        limbs: p256_limbs![0, 0, 0, 0, 0x43190553, 0x58e8617b, 0x0c46353d, 0x039cdaae],
+        limbs: p256_limbs![0x039cdaae, 0x0c46353d, 0x58e8617b, 0x43190553, 0, 0, 0, 0],
         m: PhantomData,
         encoding: PhantomData, // Unencoded
     },
@@ -161,8 +158,8 @@ pub static PRIVATE_SCALAR_OPS: PrivateScalarOps = PrivateScalarOps {
 
     oneRR_mod_n: Scalar {
         limbs: p256_limbs![
-            0x66e12d94, 0xf3d95620, 0x2845b239, 0x2b6bec59, 0x4699799c, 0x49bd6fa6, 0x83244c95,
-            0xbe79eea2
+            0xbe79eea2, 0x83244c95, 0x49bd6fa6, 0x4699799c, 0x2b6bec59, 0x2845b239, 0xf3d95620,
+            0x66e12d94
         ],
         m: PhantomData,
         encoding: PhantomData, // R
@@ -209,8 +206,8 @@ fn p256_scalar_inv_to_mont(a: &Scalar<Unencoded>) -> Scalar<R> {
     fn to_mont(a: &Scalar) -> Scalar<R> {
         static N_RR: Scalar<Unencoded> = Scalar {
             limbs: p256_limbs![
-                0x66e12d94, 0xf3d95620, 0x2845b239, 0x2b6bec59, 0x4699799c, 0x49bd6fa6, 0x83244c95,
-                0xbe79eea2
+                0xbe79eea2, 0x83244c95, 0x49bd6fa6, 0x4699799c, 0x2b6bec59, 0x2845b239, 0xf3d95620,
+                0x66e12d94
             ],
             m: PhantomData,
             encoding: PhantomData,
@@ -360,14 +357,14 @@ mod internal_benches {
         Scalar {
             // n - 1
             limbs: p256_limbs![
+                0xfc632551 - 1,
+                0xf3b9cac2,
+                0xa7179e84,
+                0xbce6faad,
+                0xffffffff,
                 0xffffffff,
                 0x00000000,
-                0xffffffff,
-                0xffffffff,
-                0xbce6faad,
-                0xa7179e84,
-                0xf3b9cac2,
-                0xfc632551 - 1
+                0xffffffff
             ],
             m: PhantomData,
             encoding: PhantomData,

@@ -19,12 +19,8 @@ use super::{
 use core::marker::PhantomData;
 
 macro_rules! p384_limbs {
-    [$limb_b:expr, $limb_a:expr, $limb_9:expr, $limb_8:expr,
-     $limb_7:expr, $limb_6:expr, $limb_5:expr, $limb_4:expr,
-     $limb_3:expr, $limb_2:expr, $limb_1:expr, $limb_0:expr] => {
-        limbs![$limb_b, $limb_a, $limb_9, $limb_8,
-               $limb_7, $limb_6, $limb_5, $limb_4,
-               $limb_3, $limb_2, $limb_1, $limb_0]
+    [$($limb:expr),+] => {
+        limbs![$($limb),+]
     };
 }
 
@@ -33,16 +29,15 @@ pub static COMMON_OPS: CommonOps = CommonOps {
 
     q: Modulus {
         p: p384_limbs![
-            0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-            0xfffffffe, 0xffffffff, 0x00000000, 0x00000000, 0xffffffff
+            0xffffffff, 0x00000000, 0x00000000, 0xffffffff, 0xfffffffe, 0xffffffff, 0xffffffff,
+            0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff
         ],
-        rr: limbs![0, 0, 0, 1, 2, 0, 0xfffffffe, 0, 2, 0, 0xfffffffe, 1],
+        rr: p384_limbs![1, 0xfffffffe, 0, 2, 0, 0xfffffffe, 0, 2, 1, 0, 0, 0],
     },
-
     n: Elem {
         limbs: p384_limbs![
-            0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xc7634d81,
-            0xf4372ddf, 0x581a0db2, 0x48b0a77a, 0xecec196a, 0xccc52973
+            0xccc52973, 0xecec196a, 0x48b0a77a, 0x581a0db2, 0xf4372ddf, 0xc7634d81, 0xffffffff,
+            0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff
         ],
         m: PhantomData,
         encoding: PhantomData, // Unencoded
@@ -50,16 +45,16 @@ pub static COMMON_OPS: CommonOps = CommonOps {
 
     a: Elem {
         limbs: p384_limbs![
-            0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
-            0xfffffffb, 0xfffffffc, 0x00000000, 0x00000003, 0xfffffffc
+            0xfffffffc, 0x00000003, 0x00000000, 0xfffffffc, 0xfffffffb, 0xffffffff, 0xffffffff,
+            0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff
         ],
         m: PhantomData,
         encoding: PhantomData, // Unreduced
     },
     b: Elem {
         limbs: p384_limbs![
-            0xcd08114b, 0x604fbff9, 0xb62b21f4, 0x1f022094, 0xe3374bee, 0x94938ae2, 0x77f2209b,
-            0x1920022e, 0xf729add8, 0x7a4c32ec, 0x08118871, 0x9d412dcc
+            0x9d412dcc, 0x08118871, 0x7a4c32ec, 0xf729add8, 0x1920022e, 0x77f2209b, 0x94938ae2,
+            0xe3374bee, 0x1f022094, 0xb62b21f4, 0x604fbff9, 0xcd08114b
         ],
         m: PhantomData,
         encoding: PhantomData, // Unreduced
@@ -140,16 +135,16 @@ fn p384_point_mul_base_impl(a: &Scalar) -> Point {
     static P384_GENERATOR: (Elem<R>, Elem<R>) = (
         Elem {
             limbs: p384_limbs![
-                0x4d3aadc2, 0x299e1513, 0x812ff723, 0x614ede2b, 0x64548684, 0x59a30eff, 0x879c3afc,
-                0x541b4d6e, 0x20e378e2, 0xa0d6ce38, 0x3dd07566, 0x49c0b528
+                0x49c0b528, 0x3dd07566, 0xa0d6ce38, 0x20e378e2, 0x541b4d6e, 0x879c3afc, 0x59a30eff,
+                0x64548684, 0x614ede2b, 0x812ff723, 0x299e1513, 0x4d3aadc2
             ],
             m: PhantomData,
             encoding: PhantomData,
         },
         Elem {
             limbs: p384_limbs![
-                0x2b78abc2, 0x5a15c5e9, 0xdd800226, 0x3969a840, 0xc6c35219, 0x68f4ffd9, 0x8bade756,
-                0x2e83b050, 0xa1bfa8bf, 0x7bb4a9ac, 0x23043dad, 0x4b03a4fe
+                0x4b03a4fe, 0x23043dad, 0x7bb4a9ac, 0xa1bfa8bf, 0x2e83b050, 0x8bade756, 0x68f4ffd9,
+                0xc6c35219, 0x3969a840, 0xdd800226, 0x5a15c5e9, 0x2b78abc2
             ],
             m: PhantomData,
             encoding: PhantomData,
@@ -176,8 +171,8 @@ pub static PUBLIC_SCALAR_OPS: PublicScalarOps = PublicScalarOps {
 
     q_minus_n: Elem {
         limbs: p384_limbs![
-            0, 0, 0, 0, 0, 0, 0x389cb27e, 0x0bc8d21f, 0xa7e5f24c, 0xb74f5885, 0x1313e696,
-            0x333ad68c
+            0x333ad68c, 0x1313e696, 0xb74f5885, 0xa7e5f24c, 0x0bc8d21f, 0x389cb27e, 0, 0, 0, 0, 0,
+            0
         ],
 
         m: PhantomData,
@@ -339,8 +334,8 @@ unsafe extern "C" fn GFp_p384_elem_sqr_mont(
 }
 
 const N_RR_LIMBS: [Limb; MAX_LIMBS] = p384_limbs![
-    0x0c84ee01, 0x2b39bf21, 0x3fb05b7a, 0x28266895, 0xd40d4917, 0x4aab1cc5, 0xbc3e483a, 0xfcb82947,
-    0xff3d81e5, 0xdf1aa419, 0x2d319b24, 0x19b409a9
+    0x19b409a9, 0x2d319b24, 0xdf1aa419, 0xff3d81e5, 0xfcb82947, 0xbc3e483a, 0x4aab1cc5, 0xd40d4917,
+    0x28266895, 0x3fb05b7a, 0x2b39bf21, 0x0c84ee01
 ];
 
 extern "C" {
@@ -392,18 +387,18 @@ mod internal_benches {
         Scalar {
             // n - 1
             limbs: p384_limbs![
-                0xffffffff,
-                0xffffffff,
-                0xffffffff,
-                0xffffffff,
-                0xffffffff,
-                0xffffffff,
-                0xc7634d81,
-                0xf4372ddf,
-                0x581a0db2,
-                0x48b0a77a,
+                0xccc52973 - 1,
                 0xecec196a,
-                0xccc52973 - 1
+                0x48b0a77a,
+                0x581a0db2,
+                0xf4372ddf,
+                0xc7634d81,
+                0xffffffff,
+                0xffffffff,
+                0xffffffff,
+                0xffffffff,
+                0xffffffff,
+                0xffffffff
             ],
             encoding: PhantomData,
             m: PhantomData,
