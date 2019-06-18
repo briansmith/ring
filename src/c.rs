@@ -17,11 +17,25 @@
 //! The libc crate provide the C types for most, but not all, targets that
 //! *ring* supports.
 
-use libc;
+#[cfg(not(all(target_arch = "wasm32", target_env = "",)))]
+use ::libc;
 
-pub(crate) type size_t = libc::size_t;
-pub(crate) type int = libc::c_int;
-pub(crate) type uint = libc::c_uint;
+#[cfg(all(target_arch = "wasm32", target_env = ""))]
+mod libc {
+    //! The WASM32 ABI is described at
+    //! https://github.com/WebAssembly/tool-conventions/blob/master/BasicCABI.md#data-representation
+
+    pub(crate) type c_int = i32;
+    pub(crate) type c_uint = u32;
+
+    // "The size_t type is defined as unsigned long."
+    // However, we must define it as an alias of `usize` for compatibility with `libc::size_t`.
+    pub(crate) type size_t = usize;
+}
+
+pub(crate) type size_t = self::libc::size_t;
+pub(crate) type int = self::libc::c_int;
+pub(crate) type uint = self::libc::c_uint;
 
 #[cfg(all(
     any(target_os = "android", target_os = "linux"),

@@ -28,9 +28,19 @@
 use crate::error;
 
 /// A secure random number generator.
-pub trait SecureRandom: crate::sealed::Sealed {
+pub trait SecureRandom: sealed::SecureRandom {
     /// Fills `dest` with random bytes.
     fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified>;
+}
+
+impl<T> SecureRandom for T
+where
+    T: sealed::SecureRandom,
+{
+    #[inline(always)]
+    fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        self.fill_impl(dest)
+    }
 }
 
 /// A random value constructed from a `SecureRandom` that hasn't been exposed
@@ -60,7 +70,14 @@ where
     Ok(Random(r))
 }
 
-mod sealed {
+pub(crate) mod sealed {
+    use crate::error;
+
+    pub trait SecureRandom {
+        /// Fills `dest` with random bytes.
+        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified>;
+    }
+
     pub trait RandomlyConstructable: Sized {
         fn zero() -> Self; // `Default::default()`
         fn as_mut_bytes(&mut self) -> &mut [u8]; // `AsMut<[u8]>::as_mut`
@@ -119,6 +136,11 @@ impl<T> RandomlyConstructable for T where T: self::sealed::RandomlyConstructable
 ///
 /// On macOS and iOS, `fill()` is implemented using `SecRandomCopyBytes`.
 ///
+/// On wasm32-unknown-unknown (non-WASI), `fill()` is implemented using
+/// `window.crypto.getRandomValues()`. It must be used in a context where the
+/// global object is a `Window`; i.e. it must not be used in a Worker or a
+/// non-browser context.
+///
 /// On Windows, `fill` is implemented using the platform's API for secure
 /// random number generation.
 ///
@@ -133,9 +155,9 @@ impl SystemRandom {
     }
 }
 
-impl SecureRandom for SystemRandom {
+impl sealed::SecureRandom for SystemRandom {
     #[inline(always)]
-    fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+    fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
         fill_impl(dest)
     }
 }
@@ -147,6 +169,7 @@ impl crate::sealed::Sealed for SystemRandom {}
         any(target_os = "android", target_os = "linux"),
         not(feature = "dev_urandom_fallback")
     ),
+    target_arch = "wasm32",
     windows
 ))]
 use self::sysrand::fill as fill_impl;
@@ -210,6 +233,40 @@ mod sysrand_chunk {
     }
 }
 
+#[cfg(all(
+    target_arch = "wasm32",
+    target_vendor = "unknown",
+    target_os = "unknown",
+    target_env = "",
+))]
+mod sysrand_chunk {
+    use crate::error;
+
+    impl super::sealed::SecureRandom for web_sys::Crypto {
+        #[inline]
+        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+            // This limit is specified in
+            // https://www.w3.org/TR/WebCryptoAPI/#Crypto-method-getRandomValues.
+            for dest in dest.chunks_mut(0xffff) {
+                let _ = self
+                    .get_random_values_with_u8_array(dest)
+                    .map_err(|_| error::Unspecified)?;
+            }
+            Ok(())
+        }
+    }
+
+    pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
+        use crate::rand::SecureRandom;
+        web_sys::window()
+            .ok_or(error::Unspecified)?
+            .crypto()
+            .map_err(|_| error::Unspecified)?
+            .fill(dest)?;
+        Ok(dest.len())
+    }
+}
+
 #[cfg(windows)]
 mod sysrand_chunk {
     use crate::{error, polyfill};
@@ -234,7 +291,12 @@ mod sysrand_chunk {
     }
 }
 
-#[cfg(any(target_os = "android", target_os = "linux", windows))]
+#[cfg(any(
+    target_os = "android",
+    target_os = "linux",
+    target_arch = "wasm32",
+    windows
+))]
 mod sysrand {
     use super::sysrand_chunk::chunk;
     use crate::error;

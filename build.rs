@@ -349,6 +349,10 @@ impl Target {
 }
 
 fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
+    if target.arch() == "wasm32" {
+        return;
+    }
+
     let includes_modified = RING_INCLUDES
         .iter()
         .chain(RING_BUILD_FILE.iter())

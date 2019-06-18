@@ -454,7 +454,7 @@ fn parse_test_case(
 /// useful for some types of fuzzing.
 #[allow(missing_docs)]
 pub mod rand {
-    use crate::{error, polyfill, rand, sealed};
+    use crate::{error, polyfill, rand};
 
     /// An implementation of `SecureRandom` that always fills the output slice
     /// with the given byte.
@@ -463,8 +463,8 @@ pub mod rand {
         pub byte: u8,
     }
 
-    impl rand::SecureRandom for FixedByteRandom {
-        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+    impl rand::sealed::SecureRandom for FixedByteRandom {
+        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             polyfill::slice::fill(dest, self.byte);
             Ok(())
         }
@@ -478,8 +478,8 @@ pub mod rand {
         pub bytes: &'a [u8],
     }
 
-    impl rand::SecureRandom for FixedSliceRandom<'_> {
-        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+    impl rand::sealed::SecureRandom for FixedSliceRandom<'_> {
+        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             dest.copy_from_slice(self.bytes);
             Ok(())
         }
@@ -501,8 +501,8 @@ pub mod rand {
         pub current: core::cell::UnsafeCell<usize>,
     }
 
-    impl rand::SecureRandom for FixedSliceSequenceRandom<'_> {
-        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+    impl rand::sealed::SecureRandom for FixedSliceSequenceRandom<'_> {
+        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             let current = unsafe { *self.current.get() };
             let bytes = self.bytes[current];
             dest.copy_from_slice(bytes);
@@ -520,11 +520,6 @@ pub mod rand {
             assert_eq!(unsafe { *self.current.get() }, self.bytes.len());
         }
     }
-
-    impl sealed::Sealed for FixedByteRandom {}
-    impl sealed::Sealed for FixedSliceRandom<'_> {}
-    impl sealed::Sealed for FixedSliceSequenceRandom<'_> {}
-
 }
 
 #[cfg(test)]
