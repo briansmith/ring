@@ -154,30 +154,25 @@ mod sysrand_chunk {
 }
 
 #[cfg(windows)]
-mod sysrand_chunk {
-    use crate::{error, polyfill};
+mod sysrand {
+    use crate::error;
 
-    #[inline]
-    pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         use winapi::shared::wtypesbase::ULONG;
+        use winapi::um::ntsecapi::RtlGenRandom;
 
+        // Avoid overflowing ULONG
         assert!(core::mem::size_of::<usize>() >= core::mem::size_of::<ULONG>());
-        let len = core::cmp::min(dest.len(), polyfill::usize_from_u32(ULONG::max_value()));
-        let result = unsafe {
-            winapi::um::ntsecapi::RtlGenRandom(
-                dest.as_mut_ptr() as *mut winapi::ctypes::c_void,
-                len as ULONG,
-            )
-        };
-        if result == 0 {
-            return Err(error::Unspecified);
+        for chunk in dest.chunks_mut(ULONG::max_value() as usize) {
+            if unsafe { RtlGenRandom(chunk.as_mut_ptr() as *mut _, chunk.len() as ULONG) } == 0 {
+                return Err(error::Unspecified);
+            }
         }
-
-        Ok(len)
+        Ok(())
     }
 }
 
-#[cfg(any(target_os = "android", target_os = "linux", windows))]
+#[cfg(any(target_os = "android", target_os = "linux"))]
 mod sysrand {
     use super::sysrand_chunk::chunk;
     use crate::error;
