@@ -89,13 +89,18 @@ impl SecureRandom for SystemRandom {
 impl sealed::Sealed for SystemRandom {}
 
 #[cfg(any(
-    target_os = "android",
-    all(target_os = "linux", not(feature = "dev_urandom_fallback")),
+    all(
+        any(target_os = "android", target_os = "linux"),
+        not(feature = "dev_urandom_fallback")
+    ),
     windows
 ))]
 use self::sysrand::fill as fill_impl;
 
-#[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
+#[cfg(all(
+    any(target_os = "android", target_os = "linux"),
+    feature = "dev_urandom_fallback"
+))]
 use self::sysrand_or_urandom::fill as fill_impl;
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -193,7 +198,10 @@ mod sysrand {
 }
 
 // Keep the `cfg` conditions in sync with the conditions in lib.rs.
-#[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
+#[cfg(all(
+    any(target_os = "android", target_os = "linux"),
+    feature = "dev_urandom_fallback"
+))]
 mod sysrand_or_urandom {
     use crate::error;
 
