@@ -57,8 +57,6 @@ pub trait SecureRandom: sealed::Sealed {
 ///
 /// On macOS and iOS, `fill()` is implemented using `SecRandomCopyBytes`.
 ///
-/// On Redox, `fill()` is implemented by reading from `rand:`.
-///
 /// On Windows, `fill` is implemented using the platform's API for secure
 /// random number generation.
 ///
@@ -207,14 +205,9 @@ mod urandom {
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         use lazy_static::lazy_static;
 
-        #[cfg(target_os = "redox")]
-        static RANDOM_PATH: &str = "rand:";
-        #[cfg(unix)]
-        static RANDOM_PATH: &str = "/dev/urandom";
-
         lazy_static! {
             static ref FILE: Result<std::fs::File, std::io::Error> =
-                std::fs::File::open(RANDOM_PATH);
+                std::fs::File::open("/dev/urandom");
         }
 
         match *FILE {
