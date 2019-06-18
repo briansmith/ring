@@ -191,7 +191,10 @@ mod sysrand {
 }
 
 // Keep the `cfg` conditions in sync with the conditions in lib.rs.
-#[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
+#[cfg(all(
+    any(target_os = "android", target_os = "linux"),
+    feature = "dev_urandom_fallback"
+))]
 mod sysrand_or_urandom {
     use crate::error;
 
