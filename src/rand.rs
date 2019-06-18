@@ -134,17 +134,10 @@ mod sysrand_chunk {
         let chunk_len: c::size_t = dest.len();
         let r = unsafe { libc::syscall(SYS_GETRANDOM, dest.as_mut_ptr(), chunk_len, 0) };
         if r < 0 {
-            let errno;
-
             #[cfg(target_os = "linux")]
-            {
-                errno = unsafe { *libc::__errno_location() };
-            }
-
+            let errno = unsafe { *libc::__errno_location() };
             #[cfg(target_os = "android")]
-            {
-                errno = unsafe { *libc::__errno() };
-            }
+            let errno = unsafe { *libc::__errno() };
 
             if errno == libc::EINTR {
                 // If an interrupt occurs while getrandom() is blocking to wait
