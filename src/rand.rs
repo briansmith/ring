@@ -113,10 +113,19 @@ use crate::sealed;
 
 #[cfg(any(target_os = "android", target_os = "linux"))]
 mod sysrand_chunk {
-    use crate::{c, error};
+    use crate::c;
+
+    pub struct Error(c::int);
+
+    #[cfg(feature = "dev_urandom_fallback")]
+    impl Error {
+        pub fn is_enosys(&self) -> bool {
+            self.0 == libc::ENOSYS
+        }
+    }
 
     #[inline]
-    pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
+    pub fn chunk(dest: &mut [u8]) -> Result<usize, Error> {
         // See `SYS_getrandom` in #include <sys/syscall.h>.
 
         #[cfg(target_arch = "aarch64")]
@@ -152,7 +161,7 @@ mod sysrand_chunk {
                 // will cause the caller to try again.
                 return Ok(0);
             }
-            return Err(error::Unspecified);
+            return Err(Error(errno));
         }
         Ok(r as usize)
     }
@@ -190,7 +199,7 @@ mod sysrand {
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         let mut read_len = 0;
         while read_len < dest.len() {
-            let chunk_len = chunk(&mut dest[read_len..])?;
+            let chunk_len = chunk(&mut dest[read_len..]).map_err(|_| error::Unspecified)?;
             read_len += chunk_len;
         }
         Ok(())
@@ -214,10 +223,9 @@ mod sysrand_or_urandom {
         lazy_static! {
             static ref MECHANISM: Mechanism = {
                 let mut dummy = [0u8; 1];
-                if super::sysrand_chunk::chunk(&mut dummy[..]).is_err() {
-                    Mechanism::DevURandom
-                } else {
-                    Mechanism::Sysrand
+                match super::sysrand_chunk::chunk(&mut dummy[..]) {
+                    Err(ref e) if e.is_enosys() => Mechanism::DevURandom,
+                    _ => Mechanism::Sysrand,
                 }
             };
         }
