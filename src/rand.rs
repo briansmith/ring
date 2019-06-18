@@ -199,29 +199,6 @@ mod sysrand {
 
 // Keep the `cfg` conditions in sync with the conditions in lib.rs.
 #[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
-mod urandom {
-    use crate::error;
-
-    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
-        use lazy_static::lazy_static;
-
-        lazy_static! {
-            static ref FILE: Result<std::fs::File, std::io::Error> =
-                std::fs::File::open("/dev/urandom");
-        }
-
-        match *FILE {
-            Ok(ref file) => {
-                use std::io::Read;
-                (&*file).read_exact(dest).map_err(|_| error::Unspecified)
-            }
-            Err(_) => Err(error::Unspecified),
-        }
-    }
-}
-
-// Keep the `cfg` conditions in sync with the conditions in lib.rs.
-#[cfg(all(target_os = "linux", feature = "dev_urandom_fallback"))]
 mod sysrand_or_urandom {
     use crate::error;
 
@@ -230,6 +207,7 @@ mod sysrand_or_urandom {
         DevURandom,
     }
 
+    #[inline]
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         use lazy_static::lazy_static;
 
@@ -246,7 +224,26 @@ mod sysrand_or_urandom {
 
         match *MECHANISM {
             Mechanism::Sysrand => super::sysrand::fill(dest),
-            Mechanism::DevURandom => super::urandom::fill(dest),
+            Mechanism::DevURandom => urandom_fallback(dest),
+        }
+    }
+
+    #[cold]
+    #[inline(never)]
+    fn urandom_fallback(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        use lazy_static::lazy_static;
+
+        lazy_static! {
+            static ref FILE: Result<std::fs::File, std::io::Error> =
+                std::fs::File::open("/dev/urandom");
+        }
+
+        match *FILE {
+            Ok(ref file) => {
+                use std::io::Read;
+                (&*file).read_exact(dest).map_err(|_| error::Unspecified)
+            }
+            Err(_) => Err(error::Unspecified),
         }
     }
 }
