@@ -14,12 +14,10 @@
 
 //! EdDSA Signatures.
 
-use super::super::ops::*;
+use super::{super::ops::*, eddsa_digest};
 use crate::{error, sealed, signature};
-use untrusted;
-
-use super::digest::*;
 use core::convert::TryInto;
+use untrusted;
 
 /// Parameters for EdDSA signing and verification.
 pub struct EdDSAParameters;
@@ -57,16 +55,13 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
             Ok((signature_r, signature_s))
         })?;
 
-        // Ensure `s` is not too large.
-        if (signature_s[SCALAR_LEN - 1] & 0b11100000) != 0 {
-            return Err(error::Unspecified);
-        }
+        let signature_s = Scalar::from_bytes_checked(*signature_s)?;
 
         let mut a = ExtPoint::from_encoded_point_vartime(public_key)?;
         a.invert_vartime();
 
         let h_digest = eddsa_digest(signature_r, public_key, msg.as_slice_less_safe());
-        let h = digest_scalar(h_digest);
+        let h = Scalar::from_sha512_digest_reduced(h_digest);
 
         let mut r = Point::new_at_infinity();
         unsafe { GFp_x25519_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s) };

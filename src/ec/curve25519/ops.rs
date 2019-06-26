@@ -15,6 +15,7 @@
 //! Elliptic curve operations on the birationally equivalent curves Curve25519
 //! and Edwards25519.
 
+pub use super::scalar::{MaskedScalar, Scalar, SCALAR_LEN};
 use crate::{
     bssl, error,
     limb::{Limb, LIMB_BITS},
@@ -61,12 +62,6 @@ impl Elem<T> {
 // [RFC 8032] https://tools.ietf.org/html/rfc8032#section-5.1.2
 pub type EncodedPoint = [u8; ELEM_LEN];
 pub const ELEM_LEN: usize = 32;
-
-pub type Scalar = [u8; SCALAR_LEN];
-pub const SCALAR_LEN: usize = 32;
-
-pub type UnreducedScalar = [u8; UNREDUCED_SCALAR_LEN];
-const UNREDUCED_SCALAR_LEN: usize = SCALAR_LEN * 2;
 
 // Keep this in sync with `ge_p3` in curve25519/internal.h.
 #[repr(C)]

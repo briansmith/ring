@@ -65,8 +65,6 @@
 #endif  // BORINGSSL_CURVE25519_64BIT
 
 
-void GFp_x25519_sc_mask(uint8_t a[32]);
-
 // Low-level intrinsic operations
 
 static uint64_t load_3(const uint8_t *in) {
@@ -1793,15 +1791,14 @@ static void sc_muladd(uint8_t *s, const uint8_t *a, const uint8_t *b,
 }
 
 
-void GFp_x25519_scalar_mult_generic(uint8_t out[32],
-                                    const uint8_t scalar[32],
-                                    const uint8_t point[32]) {
+void GFp_x25519_scalar_mult_generic_masked(uint8_t out[32],
+                                           const uint8_t scalar_masked[32],
+                                           const uint8_t point[32]) {
   fe x1, x2, z2, x3, z3, tmp0, tmp1;
   fe_loose x2l, z2l, x3l, tmp0l, tmp1l;
 
   uint8_t e[32];
-  bytes_copy(e, scalar, 32);
-  GFp_x25519_sc_mask(e);
+  bytes_copy(e, scalar_masked, 32);
   // The following implementation was transcribed to Coq and proven to
   // correspond to unary scalar multiplication in affine coordinates given that
   // x1 != 0 is the x coordinate of some point on the curve. It was also checked
@@ -1872,11 +1869,10 @@ void GFp_x25519_scalar_mult_generic(uint8_t out[32],
   fe_tobytes(out, &x2);
 }
 
-void GFp_x25519_public_from_private_generic(uint8_t out_public_value[32],
-                                            const uint8_t private_key[32]) {
+void GFp_x25519_public_from_private_generic_masked(uint8_t out_public_value[32],
+                                                   const uint8_t private_key_masked[32]) {
   uint8_t e[32];
-  bytes_copy(e, private_key, 32);
-  GFp_x25519_sc_mask(e);
+  bytes_copy(e, private_key_masked, 32);
 
   ge_p3 A;
   GFp_x25519_ge_scalarmult_base(&A, e);
