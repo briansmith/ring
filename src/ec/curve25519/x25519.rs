@@ -14,7 +14,7 @@
 
 //! X25519 Key agreement.
 
-use super::ops;
+use super::{ops, scalar::SCALAR_LEN};
 use crate::{agreement, constant_time, cpu, ec, error, rand};
 use core::convert::TryInto;
 use untrusted;
@@ -62,7 +62,8 @@ fn x25519_public_from_private(
     #[cfg(target_arch = "arm")]
     let cpu_features = private_key.cpu_features;
 
-    let private_key = private_key.bytes_less_safe().try_into()?;
+    let private_key: &[u8; SCALAR_LEN] = private_key.bytes_less_safe().try_into()?;
+    let private_key = ops::MaskedScalar::from_bytes_masked(*private_key);
 
     #[cfg(target_arch = "arm")]
     {
@@ -71,19 +72,19 @@ fn x25519_public_from_private(
                 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0,
             ];
-            x25519_neon(public_out, private_key, &MONTGOMERY_BASE_POINT);
+            x25519_neon(public_out, &private_key, &MONTGOMERY_BASE_POINT);
             return Ok(());
         }
     }
 
     extern "C" {
-        fn GFp_x25519_public_from_private_generic(
+        fn GFp_x25519_public_from_private_generic_masked(
             public_key_out: &mut PublicKey,
             private_key: &PrivateKey,
         );
     }
     unsafe {
-        GFp_x25519_public_from_private_generic(public_out, private_key);
+        GFp_x25519_public_from_private_generic_masked(public_out, &private_key);
     }
 
     Ok(())
@@ -95,13 +96,14 @@ fn x25519_ecdh(
     peer_public_key: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
     let cpu_features = my_private_key.cpu_features;
-    let my_private_key = my_private_key.bytes_less_safe().try_into()?;
+    let my_private_key: &[u8; SCALAR_LEN] = my_private_key.bytes_less_safe().try_into()?;
+    let my_private_key = ops::MaskedScalar::from_bytes_masked(*my_private_key);
     let peer_public_key: &[u8; PUBLIC_KEY_LEN] = peer_public_key.as_slice_less_safe().try_into()?;
 
     #[cfg_attr(not(target_arch = "arm"), allow(unused_variables))]
     fn scalar_mult(
         out: &mut ops::EncodedPoint,
-        scalar: &ops::Scalar,
+        scalar: &ops::MaskedScalar,
         point: &ops::EncodedPoint,
         cpu_features: cpu::Features,
     ) {
@@ -113,20 +115,20 @@ fn x25519_ecdh(
         }
 
         extern "C" {
-            fn GFp_x25519_scalar_mult_generic(
+            fn GFp_x25519_scalar_mult_generic_masked(
                 out: &mut ops::EncodedPoint,
-                scalar: &ops::Scalar,
+                scalar: &ops::MaskedScalar,
                 point: &ops::EncodedPoint,
             );
         }
         unsafe {
-            GFp_x25519_scalar_mult_generic(out, scalar, point);
+            GFp_x25519_scalar_mult_generic_masked(out, scalar, point);
         }
     }
 
     scalar_mult(
         out.try_into()?,
-        my_private_key,
+        &my_private_key,
         peer_public_key,
         cpu_features,
     );
@@ -141,11 +143,11 @@ fn x25519_ecdh(
 }
 
 #[cfg(target_arch = "arm")]
-fn x25519_neon(out: &mut ops::EncodedPoint, scalar: &ops::Scalar, point: &ops::EncodedPoint) {
+fn x25519_neon(out: &mut ops::EncodedPoint, scalar: &ops::MaskedScalar, point: &ops::EncodedPoint) {
     extern "C" {
         fn GFp_x25519_NEON(
             out: &mut ops::EncodedPoint,
-            scalar: &ops::Scalar,
+            scalar: &ops::MaskedScalar,
             point: &ops::EncodedPoint,
         );
     }
@@ -154,8 +156,7 @@ fn x25519_neon(out: &mut ops::EncodedPoint, scalar: &ops::Scalar, point: &ops::E
 
 const ELEM_AND_SCALAR_LEN: usize = ops::ELEM_LEN;
 
-// An X25519 private key as an unmasked scalar.
-type PrivateKey = [u8; PRIVATE_KEY_LEN];
+type PrivateKey = ops::MaskedScalar;
 const PRIVATE_KEY_LEN: usize = ELEM_AND_SCALAR_LEN;
 
 // An X25519 public key as an encoded Curve25519 point.
