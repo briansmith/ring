@@ -39,14 +39,14 @@
 //! let rng = rand::SystemRandom::new();
 //! let key = hmac::Key::generate(hmac::HMAC_SHA256, &rng)?;
 //!
-//! let msg = "hello, world";
+//! let msg = b"hello, world";
 //!
-//! let tag = key.sign(msg.as_bytes());
+//! let tag = key.sign(msg);
 //!
 //! // [We give access to the message to an untrusted party, and they give it
 //! // back to us. We need to verify they didn't tamper with it.]
 //!
-//! key.verify(msg.as_bytes(), tag.as_ref())?;
+//! key.verify(msg, tag.as_ref())?;
 //!
 //! # Ok::<(), ring::error::Unspecified>(())
 //! ```
@@ -65,12 +65,12 @@
 //! let rng = rand::SystemRandom::new();
 //! let key_value: [u8; digest::SHA256_OUTPUT_LEN] = rand::generate(&rng)?.expose();
 //!
-//! let s_key = hmac::Key::new(hmac::HMAC_SHA256, key_value.as_ref());
+//! let s_key = hmac::Key::new(hmac::HMAC_SHA256, &key_value);
 //! let tag = s_key.sign(msg);
 //!
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
-//! let v_key = hmac::Key::new(&digest::SHA256, key_value.as_ref());
+//! let v_key = hmac::Key::new(hmac::HMAC_SHA256, &key_value);
 //! v_key.verify(msg, tag.as_ref())?;
 //!
 //! # Ok::<(), ring::error::Unspecified>(())
@@ -89,12 +89,12 @@
 //! let rng = rand::SystemRandom::new();
 //! let mut key_value: [u8; digest::SHA384_OUTPUT_LEN] = rand::generate(&rng)?.expose();
 //!
-//! let s_key = hmac::Key::new(hmac::HMAC_SHA384, key_value.as_ref());
+//! let s_key = hmac::Key::new(hmac::HMAC_SHA384, &key_value);
 //! let tag = s_key.sign_parts(parts.iter().cloned());
 //!
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
-//! let v_key = hmac::Key::new(&digest::SHA384, key_value.as_ref());
+//! let v_key = hmac::Key::new(hmac::HMAC_SHA384, &key_value);
 //! v_key.verify_parts(parts.iter().cloned(), tag.as_ref())?;
 //!
 //! # Ok::<(), ring::error::Unspecified>(())
@@ -113,19 +113,18 @@
 //! let rng = rand::SystemRandom::new();
 //! let mut key_value: [u8; digest::SHA384_OUTPUT_LEN] = rand::generate(&rng)?.expose();
 //!
-//! let s_key = hmac::Key::new(hmac::HMAC_SHA384, key_value.as_ref());
+//! let s_key = hmac::Key::new(hmac::HMAC_SHA384, &key_value);
 //! let mut s_ctx = hmac::Context::with_key(&s_key);
-//! for part in &parts {
+//! for &part in &parts {
 //!     // The Context can consume parts one after another.
-//!     s_ctx.update(part.as_bytes());
+//!     s_ctx.update(part);
 //! }
 //! let tag = s_ctx.sign();
 //!
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
 //! // integrity of the message.
-//! let v_key = hmac::Key::new(hmac::HMAC_SHA384, key_value.as_ref());
+//! let v_key = hmac::Key::new(hmac::HMAC_SHA384, &key_value);
 //! v_key.verify_parts(parts.iter().cloned(), tag.as_ref())?;
-//! hmac::verify(&v_key, &msg.as_ref(), tag.as_ref())?;
 //!
 //! # Ok::<(), ring::error::Unspecified>(())
 //! ```
@@ -385,15 +384,15 @@ impl From<hkdf::Okm<'_, Algorithm>> for Key {
 ///
 /// Prefer [`Key::sign`] for single-step HMAC signing and [`Key::sign_parts`] for signle step
 /// signing of data that is not in a contiguous memory region. Note that [`Context`] has no
-/// verification parallel to [`sign`] to avoid misusing data that is not already verified.
+/// verification parallel to [`sign`] to avoid misusing data that is not already verified. Such an
+/// interface had existed [previously][VerificationContext] but has been removed on purpose.
 ///
 /// [`Key::sign`]: struct.Key.html#method.sign
 /// [`Key::sign_parts`]: struct.Key.html#method.sign_parts
 /// [`Context`]: struct.Context.html
 /// [`sign`]: #method.sign
-// Note: No verify. This is to require all data to be verified and discourage processing parts of
-// the data without being verified. A previous commit (12596a32f9e8cb15dbe7f84d062a9a8c6207a7e8)
-// removed such an interface, so don't add it.
+/// [VerificationContext]:
+///     https://github.com/briansmith/ring/commit/12596a32f9e8cb15dbe7f84d062a9a8c6207a7e8
 #[derive(Clone)]
 pub struct Context {
     inner: digest::Context,
@@ -449,8 +448,6 @@ impl Context {
         pending[..num_pending].copy_from_slice(self.inner.finish().as_ref());
         Tag(self.outer.finish(pending, num_pending))
     }
-
-    // Note: no verify. See note on `Context` itself.
 }
 
 /// Calculates the HMAC of `data` using the key `key` in one step.
