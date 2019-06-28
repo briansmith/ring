@@ -13,7 +13,7 @@
 #include "../fpx.h"
 
 // Global constants
-extern const struct params_t p503;
+extern const struct params_t params;
 
 static void digit_x_digit(const crypto_word_t a, const crypto_word_t b, crypto_word_t* c)
 { // Digit multiplication, digit * digit -> 2-digit result
@@ -50,9 +50,9 @@ static void digit_x_digit(const crypto_word_t a, const crypto_word_t b, crypto_w
 }
 
 void sike_fpadd(const felm_t a, const felm_t b, felm_t c)
-{ // Modular addition, c = a+b mod p503.
-  // Inputs: a, b in [0, 2*p503-1]
-  // Output: c in [0, 2*p503-1]
+{ // Modular addition, c = a+b mod p434.
+  // Inputs: a, b in [0, 2*p434-1]
+  // Output: c in [0, 2*p434-1]
     unsigned int i, carry = 0;
     crypto_word_t mask;
 
@@ -62,20 +62,20 @@ void sike_fpadd(const felm_t a, const felm_t b, felm_t c)
 
     carry = 0;
     for (i = 0; i < NWORDS_FIELD; i++) {
-        SUBC(carry, c[i], p503.prime_x2[i], carry, c[i]);
+        SUBC(carry, c[i], params.prime_x2[i], carry, c[i]);
     }
     mask = 0 - (crypto_word_t)carry;
 
     carry = 0;
     for (i = 0; i < NWORDS_FIELD; i++) {
-        ADDC(carry, c[i], p503.prime_x2[i] & mask, carry, c[i]);
+        ADDC(carry, c[i], params.prime_x2[i] & mask, carry, c[i]);
     }
 }
 
 void sike_fpsub(const felm_t a, const felm_t b, felm_t c)
-{ // Modular subtraction, c = a-b mod p503.
-  // Inputs: a, b in [0, 2*p503-1]
-  // Output: c in [0, 2*p503-1]
+{ // Modular subtraction, c = a-b mod p434.
+  // Inputs: a, b in [0, 2*p434-1]
+  // Output: c in [0, 2*p434-1]
     unsigned int i, borrow = 0;
     crypto_word_t mask;
 
@@ -86,7 +86,7 @@ void sike_fpsub(const felm_t a, const felm_t b, felm_t c)
 
     borrow = 0;
     for (i = 0; i < NWORDS_FIELD; i++) {
-        ADDC(borrow, c[i], p503.prime_x2[i] & mask, borrow, c[i]);
+        ADDC(borrow, c[i], params.prime_x2[i] & mask, borrow, c[i]);
     }
 }
 
@@ -124,12 +124,12 @@ void sike_mpmul(const felm_t a, const felm_t b, dfelm_t c)
     c[2*NWORDS_FIELD-1] = v;
 }
 
-void sike_fprdc(const felm_t ma, felm_t mc)
-{ // Efficient Montgomery reduction using comba and exploiting the special form of the prime p503.
-  // mc = ma*R^-1 mod p503x2, where R = 2^512.
-  // If ma < 2^512*p503, the output mc is in the range [0, 2*p503-1].
+void sike_fprdc(felm_t ma, felm_t mc)
+{ // Efficient Montgomery reduction using comba and exploiting the special form of the prime p434.
+  // mc = ma*R^-1 mod p434x2, where R = 2^448.
+  // If ma < 2^448*p434, the output mc is in the range [0, 2*p434-1].
   // ma is assumed to be in Montgomery representation.
-    unsigned int i, j, carry, count = p503_ZERO_WORDS;
+    unsigned int i, j, carry, count = ZERO_WORDS;
     crypto_word_t UV[2], t = 0, u = 0, v = 0;
 
     for (i = 0; i < NWORDS_FIELD; i++) {
@@ -138,8 +138,8 @@ void sike_fprdc(const felm_t ma, felm_t mc)
 
     for (i = 0; i < NWORDS_FIELD; i++) {
         for (j = 0; j < i; j++) {
-            if (j < (i-p503_ZERO_WORDS+1)) {
-                MUL(mc[j], p503.prime_p1[i-j], UV+1, UV[0]);
+            if (j < (i-ZERO_WORDS+1)) {
+                MUL(mc[j], params.prime_p1[i-j], UV+1, UV[0]);
                 ADDC(0, UV[0], v, carry, v);
                 ADDC(carry, UV[1], u, carry, u);
                 t += carry;
@@ -160,7 +160,7 @@ void sike_fprdc(const felm_t ma, felm_t mc)
         }
         for (j = i-NWORDS_FIELD+1; j < NWORDS_FIELD; j++) {
             if (j < (NWORDS_FIELD-count)) {
-                MUL(mc[j], p503.prime_p1[i-j], UV+1, UV[0]);
+                MUL(mc[j], params.prime_p1[i-j], UV+1, UV[0]);
                 ADDC(0, UV[0], v, carry, v);
                 ADDC(carry, UV[1], u, carry, u);
                 t += carry;

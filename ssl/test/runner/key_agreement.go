@@ -434,7 +434,7 @@ func (e *cecpq2Curve) finish(peerKey []byte) (preMasterSecret []byte, err error)
 	return preMasterSecret, nil
 }
 
-// cecpq2BCurve implements CECPQ2b, which is SIKEp503 combined with X25519.
+// cecpq2BCurve implements CECPQ2b, which is SIKE combined with X25519.
 type cecpq2BCurve struct {
 	// Both public key and shared secret size
 	x25519PrivateKey [32]byte

@@ -22,22 +22,22 @@ import (
 func fpAddRdc(z, x, y *Fp) {
 	var carry uint64
 
-	// z=x+y % p503
+	// z=x+y % p
 	for i := 0; i < FP_WORDS; i++ {
 		z[i], carry = bits.Add64(x[i], y[i], carry)
 	}
 
-	// z = z - p503x2
+	// z = z - pX2
 	carry = 0
 	for i := 0; i < FP_WORDS; i++ {
-		z[i], carry = bits.Sub64(z[i], p503x2[i], carry)
+		z[i], carry = bits.Sub64(z[i], pX2[i], carry)
 	}
 
-	// if z<0 add p503x2 back
+	// if z<0 add pX2 back
 	mask := uint64(0 - carry)
 	carry = 0
 	for i := 0; i < FP_WORDS; i++ {
-		z[i], carry = bits.Add64(z[i], p503x2[i]&mask, carry)
+		z[i], carry = bits.Add64(z[i], pX2[i]&mask, carry)
 	}
 }
 
@@ -45,16 +45,16 @@ func fpAddRdc(z, x, y *Fp) {
 func fpSubRdc(z, x, y *Fp) {
 	var borrow uint64
 
-	// z = z - p503x2
+	// z = z - pX2
 	for i := 0; i < FP_WORDS; i++ {
 		z[i], borrow = bits.Sub64(x[i], y[i], borrow)
 	}
 
-	// if z<0 add p503x2 back
+	// if z<0 add pX2 back
 	mask := uint64(0 - borrow)
 	borrow = 0
 	for i := 0; i < FP_WORDS; i++ {
-		z[i], borrow = bits.Add64(z[i], p503x2[i]&mask, borrow)
+		z[i], borrow = bits.Add64(z[i], pX2[i]&mask, borrow)
 	}
 }
 
@@ -62,14 +62,14 @@ func fpSubRdc(z, x, y *Fp) {
 func fpRdcP(x *Fp) {
 	var borrow, mask uint64
 	for i := 0; i < FP_WORDS; i++ {
-		x[i], borrow = bits.Sub64(x[i], p503[i], borrow)
+		x[i], borrow = bits.Sub64(x[i], p[i], borrow)
 	}
 
 	// Sets all bits if borrow = 1
 	mask = 0 - borrow
 	borrow = 0
 	for i := 0; i < FP_WORDS; i++ {
-		x[i], borrow = bits.Add64(x[i], p503[i]&mask, borrow)
+		x[i], borrow = bits.Add64(x[i], p[i]&mask, borrow)
 	}
 }
 
@@ -123,12 +123,12 @@ func fpMontRdc(z *Fp, x *FpX2) {
 	var hi, lo uint64
 	var count int
 
-	count = 3 // number of 0 digits in the least significat part of p503 + 1
+	count = 3 // number of 0 digits in the least significat part of p + 1
 
 	for i := 0; i < FP_WORDS; i++ {
 		for j := 0; j < i; j++ {
 			if j < (i - count + 1) {
-				hi, lo = bits.Mul64(z[j], p503p1[i-j])
+				hi, lo = bits.Mul64(z[j], p1[i-j])
 				v, carry = bits.Add64(lo, v, 0)
 				u, carry = bits.Add64(hi, u, carry)
 				t += carry
@@ -150,7 +150,7 @@ func fpMontRdc(z *Fp, x *FpX2) {
 		}
 		for j := i - FP_WORDS + 1; j < FP_WORDS; j++ {
 			if j < (FP_WORDS - count) {
-				hi, lo = bits.Mul64(z[j], p503p1[i-j])
+				hi, lo = bits.Mul64(z[j], p1[i-j])
 				v, carry = bits.Add64(lo, v, 0)
 				u, carry = bits.Add64(hi, u, carry)
 				t += carry
@@ -188,7 +188,7 @@ func fp2Sub(z, x, y *FpX2) {
 	mask = 0 - borrow
 	borrow = 0
 	for i := FP_WORDS; i < 2*FP_WORDS; i++ {
-		z[i], borrow = bits.Add64(z[i], p503[i-FP_WORDS]&mask, borrow)
+		z[i], borrow = bits.Add64(z[i], p[i-FP_WORDS]&mask, borrow)
 	}
 }
 
@@ -210,25 +210,34 @@ func fpMulRdc(dest, lhs, rhs *Fp) {
 //
 // Allowed to overlap x with dest.
 // All values in Montgomery domains
+// Set dest = x^(2^k), for k >= 1, by repeated squarings.
 func p34(dest, x *Fp) {
+	var lookup [16]Fp
 
-	// Set dest = x^(2^k), for k >= 1, by repeated squarings.
-	pow2k := func(dest, x *Fp, k uint8) {
-		fpMulRdc(dest, x, x)
-		for i := uint8(1); i < k; i++ {
-			fpMulRdc(dest, dest, dest)
-		}
-	}
-	// Sliding-window strategy computed with etc/scripts/sliding_window_strat_calc.py
-	//
 	// This performs sum(powStrategy) + 1 squarings and len(lookup) + len(mulStrategy)
 	// multiplications.
-	powStrategy := []uint8{1, 12, 5, 5, 2, 7, 11, 3, 8, 4, 11, 4, 7, 5, 6, 3, 7, 5, 7, 2, 12, 5, 6, 4, 6, 8, 6, 4, 7, 5, 5, 8, 5, 8, 5, 5, 8, 9, 3, 6, 2, 10, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 3}
-	mulStrategy := []uint8{0, 12, 11, 10, 0, 1, 8, 3, 7, 1, 8, 3, 6, 7, 14, 2, 14, 14, 9, 0, 13, 9, 15, 5, 12, 7, 13, 7, 15, 6, 7, 9, 0, 5, 7, 6, 8, 8, 3, 7, 0, 10, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 3}
+	powStrategy := []uint8{
+		0x03, 0x0A, 0x07, 0x05, 0x06, 0x05, 0x03, 0x08, 0x04, 0x07,
+		0x05, 0x06, 0x04, 0x05, 0x09, 0x06, 0x03, 0x0B, 0x05, 0x05,
+		0x02, 0x08, 0x04, 0x07, 0x07, 0x08, 0x05, 0x06, 0x04, 0x08,
+		0x05, 0x02, 0x0A, 0x06, 0x05, 0x04, 0x08, 0x05, 0x05, 0x05,
+		0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
+		0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
+		0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
+		0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x01}
+	mulStrategy := []uint8{
+		0x02, 0x0F, 0x09, 0x08, 0x0E, 0x0C, 0x02, 0x08, 0x05, 0x0F,
+		0x08, 0x0F, 0x06, 0x06, 0x03, 0x02, 0x00, 0x0A, 0x09, 0x0D,
+		0x01, 0x0C, 0x03, 0x07, 0x01, 0x0A, 0x08, 0x0B, 0x02, 0x0F,
+		0x0E, 0x01, 0x0B, 0x0C, 0x0E, 0x03, 0x0B, 0x0F, 0x0F, 0x0F,
+		0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F,
+		0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F,
+		0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F,
+		0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x0F, 0x00}
+	initialMul := uint8(8)
 
 	// Precompute lookup table of odd multiples of x for window
 	// size k=5.
-	lookup := [16]Fp{}
 	var xx Fp
 	fpMulRdc(&xx, x, x)
 	lookup[0] = *x
@@ -239,9 +248,12 @@ func p34(dest, x *Fp) {
 	// Now lookup = {x, x^3, x^5, ... }
 	// so that lookup[i] = x^{2*i + 1}
 	// so that lookup[k/2] = x^k, for odd k
-	*dest = lookup[mulStrategy[0]]
-	for i := uint8(1); i < uint8(len(powStrategy)); i++ {
-		pow2k(dest, dest, powStrategy[i])
+	*dest = lookup[initialMul]
+	for i := uint8(0); i < uint8(len(powStrategy)); i++ {
+		fpMulRdc(dest, dest, dest)
+		for j := uint8(1); j < powStrategy[i]; j++ {
+			fpMulRdc(dest, dest, dest)
+		}
 		fpMulRdc(dest, dest, &lookup[mulStrategy[i]])
 	}
 }

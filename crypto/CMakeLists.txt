@@ -411,7 +411,7 @@ add_library(
   ../third_party/fiat/curve25519.c
   ../third_party/sike/fpx.c
   ../third_party/sike/isogeny.c
-  ../third_party/sike/P503.c
+  ../third_party/sike/params.c
   ../third_party/sike/sike.c
   ../third_party/sike/asm/fp_generic.c
 

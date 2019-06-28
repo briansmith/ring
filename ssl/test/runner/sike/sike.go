@@ -15,26 +15,11 @@
 package sike
 
 import (
-	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
 	"errors"
 	"io"
 )
-
-// Constants used for cSHAKE customization
-// Those values are different than in [SIKE] - they are encoded on 16bits. This is
-// done in order for implementation to be compatible with [REF] and test vectors.
-var G = []byte{0x00, 0x00}
-var H = []byte{0x01, 0x00}
-var F = []byte{0x02, 0x00}
-
-// Generates HMAC-SHA256 sum
-func hashMac(out, in, S []byte) {
-	h := hmac.New(sha256.New, in)
-	h.Write(S)
-	copy(out, h.Sum(nil))
-}
 
 // Zeroize Fp2
 func zeroize(fp *Fp2) {
@@ -236,9 +221,8 @@ func traverseTreeSharedKeyB(curve *ProjectiveCurveParameters, xR *ProjectivePoin
 // Generate a public key in the 2-torsion group
 func publicKeyGenA(prv *PrivateKey) (pub *PublicKey) {
 	var xPA, xQA, xRA ProjectivePoint
-	var xPB, xQB, xRB, xR ProjectivePoint
+	var xPB, xQB, xRB, xK ProjectivePoint
 	var invZP, invZQ, invZR Fp2
-	var tmp ProjectiveCurveParameters
 
 	pub = NewPublicKey(KeyVariant_SIDH_A)
 	var phi = NewIsogeny4()
@@ -254,16 +238,11 @@ func publicKeyGenA(prv *PrivateKey) (pub *PublicKey) {
 	xPB = ProjectivePoint{X: prv.params.B.Affine_P, Z: prv.params.OneFp2}
 
 	// Find isogeny kernel
-	tmp.C = pub.params.OneFp2
-	xR = ScalarMul3Pt(&tmp, &xPA, &xQA, &xRA, prv.params.A.SecretBitLen, prv.Scalar)
-
-	// Reset params object and travers isogeny tree
-	tmp.C = pub.params.OneFp2
-	zeroize(&tmp.A)
-	traverseTreePublicKeyA(&tmp, &xR, &xPB, &xQB, &xRB, pub)
+	xK = ScalarMul3Pt(&pub.params.InitCurve, &xPA, &xQA, &xRA, prv.params.A.SecretBitLen, prv.Scalar)
+	traverseTreePublicKeyA(&pub.params.InitCurve, &xK, &xPB, &xQB, &xRB, pub)
 
 	// Secret isogeny
-	phi.GenerateCurve(&xR)
+	phi.GenerateCurve(&xK)
 	xPA = phi.EvaluatePoint(&xPB)
 	xQA = phi.EvaluatePoint(&xQB)
 	xRA = phi.EvaluatePoint(&xRB)
@@ -277,10 +256,9 @@ func publicKeyGenA(prv *PrivateKey) (pub *PublicKey) {
 
 // Generate a public key in the 3-torsion group
 func publicKeyGenB(prv *PrivateKey) (pub *PublicKey) {
-	var xPB, xQB, xRB, xR ProjectivePoint
+	var xPB, xQB, xRB, xK ProjectivePoint
 	var xPA, xQA, xRA ProjectivePoint
 	var invZP, invZQ, invZR Fp2
-	var tmp ProjectiveCurveParameters
 
 	pub = NewPublicKey(prv.keyVariant)
 	var phi = NewIsogeny3()
@@ -295,14 +273,10 @@ func publicKeyGenB(prv *PrivateKey) (pub *PublicKey) {
 	xQA = ProjectivePoint{X: prv.params.A.Affine_Q, Z: prv.params.OneFp2}
 	xRA = ProjectivePoint{X: prv.params.A.Affine_R, Z: prv.params.OneFp2}
 
-	tmp.C = pub.params.OneFp2
-	xR = ScalarMul3Pt(&tmp, &xPB, &xQB, &xRB, prv.params.B.SecretBitLen, prv.Scalar)
+	xK = ScalarMul3Pt(&pub.params.InitCurve, &xPB, &xQB, &xRB, prv.params.B.SecretBitLen, prv.Scalar)
+	traverseTreePublicKeyB(&pub.params.InitCurve, &xK, &xPA, &xQA, &xRA, pub)
 
-	tmp.C = pub.params.OneFp2
-	zeroize(&tmp.A)
-	traverseTreePublicKeyB(&tmp, &xR, &xPA, &xQA, &xRA, pub)
-
-	phi.GenerateCurve(&xR)
+	phi.GenerateCurve(&xK)
 	xPB = phi.EvaluatePoint(&xPA)
 	xQB = phi.EvaluatePoint(&xQA)
 	xRB = phi.EvaluatePoint(&xRA)
@@ -321,27 +295,28 @@ func publicKeyGenB(prv *PrivateKey) (pub *PublicKey) {
 // Establishing shared keys in in 2-torsion group
 func deriveSecretA(prv *PrivateKey, pub *PublicKey) []byte {
 	var sharedSecret = make([]byte, pub.params.SharedSecretSize)
-	var cparam ProjectiveCurveParameters
 	var xP, xQ, xQmP ProjectivePoint
-	var xR ProjectivePoint
+	var xK ProjectivePoint
+	var cparam ProjectiveCurveParameters
 	var phi = NewIsogeny4()
 	var jInv Fp2
 
 	// Recover curve coefficients
-	cparam.C = pub.params.OneFp2
 	RecoverCoordinateA(&cparam, &pub.affine_xP, &pub.affine_xQ, &pub.affine_xQmP)
+	// C=1
+	cparam.C = Params.OneFp2
 
 	// Find kernel of the morphism
 	xP = ProjectivePoint{X: pub.affine_xP, Z: pub.params.OneFp2}
 	xQ = ProjectivePoint{X: pub.affine_xQ, Z: pub.params.OneFp2}
 	xQmP = ProjectivePoint{X: pub.affine_xQmP, Z: pub.params.OneFp2}
-	xR = ScalarMul3Pt(&cparam, &xP, &xQ, &xQmP, pub.params.A.SecretBitLen, prv.Scalar)
+	xK = ScalarMul3Pt(&cparam, &xP, &xQ, &xQmP, pub.params.A.SecretBitLen, prv.Scalar)
 
 	// Traverse isogeny tree
-	traverseTreeSharedKeyA(&cparam, &xR, pub)
+	traverseTreeSharedKeyA(&cparam, &xK, pub)
 
 	// Calculate j-invariant on isogeneus curve
-	c := phi.GenerateCurve(&xR)
+	c := phi.GenerateCurve(&xK)
 	RecoverCurveCoefficients4(&cparam, &c)
 	Jinvariant(&cparam, &jInv)
 	convFp2ToBytes(sharedSecret, &jInv)
@@ -352,26 +327,27 @@ func deriveSecretA(prv *PrivateKey, pub *PublicKey) []byte {
 func deriveSecretB(prv *PrivateKey, pub *PublicKey) []byte {
 	var sharedSecret = make([]byte, pub.params.SharedSecretSize)
 	var xP, xQ, xQmP ProjectivePoint
-	var xR ProjectivePoint
+	var xK ProjectivePoint
 	var cparam ProjectiveCurveParameters
 	var phi = NewIsogeny3()
 	var jInv Fp2
 
-	// Recover curve coefficients
-	cparam.C = pub.params.OneFp2
+	// Recover curve A coefficient
 	RecoverCoordinateA(&cparam, &pub.affine_xP, &pub.affine_xQ, &pub.affine_xQmP)
+	// C=1
+	cparam.C = Params.OneFp2
 
 	// Find kernel of the morphism
 	xP = ProjectivePoint{X: pub.affine_xP, Z: pub.params.OneFp2}
 	xQ = ProjectivePoint{X: pub.affine_xQ, Z: pub.params.OneFp2}
 	xQmP = ProjectivePoint{X: pub.affine_xQmP, Z: pub.params.OneFp2}
-	xR = ScalarMul3Pt(&cparam, &xP, &xQ, &xQmP, pub.params.B.SecretBitLen, prv.Scalar)
+	xK = ScalarMul3Pt(&cparam, &xP, &xQ, &xQmP, pub.params.B.SecretBitLen, prv.Scalar)
 
 	// Traverse isogeny tree
-	traverseTreeSharedKeyB(&cparam, &xR, pub)
+	traverseTreeSharedKeyB(&cparam, &xK, pub)
 
 	// Calculate j-invariant on isogeneus curve
-	c := phi.GenerateCurve(&xR)
+	c := phi.GenerateCurve(&xK)
 	RecoverCurveCoefficients3(&cparam, &c)
 	Jinvariant(&cparam, &jInv)
 	convFp2ToBytes(sharedSecret, &jInv)
@@ -379,9 +355,6 @@ func deriveSecretB(prv *PrivateKey, pub *PublicKey) []byte {
 }
 
 func encrypt(skA *PrivateKey, pkA, pkB *PublicKey, ptext []byte) ([]byte, error) {
-	var n [40]byte // n can is max 320-bit (see 1.4 of [SIKE])
-	var ptextLen = len(ptext)
-
 	if pkB.keyVariant != KeyVariant_SIKE {
 		return nil, errors.New("wrong key type")
 	}
@@ -391,14 +364,19 @@ func encrypt(skA *PrivateKey, pkA, pkB *PublicKey, ptext []byte) ([]byte, error)
 		return nil, err
 	}
 
-	hashMac(n[:ptextLen], j, F)
-	for i, _ := range ptext {
-		n[i] ^= ptext[i]
+	if len(ptext) != pkA.params.KemSize {
+		panic("Implementation error")
 	}
 
-	ret := make([]byte, pkA.Size()+ptextLen)
+	digest := sha256.Sum256(j)
+	// Uses truncated digest (first 16-bytes)
+	for i, _ := range ptext {
+		digest[i] ^= ptext[i]
+	}
+
+	ret := make([]byte, pkA.Size()+len(ptext))
 	copy(ret, pkA.Export())
-	copy(ret[pkA.Size():], n[:ptextLen])
+	copy(ret[pkA.Size():], digest[:pkA.params.KemSize])
 	return ret, nil
 }
 
@@ -565,7 +543,7 @@ func DeriveSecret(prv *PrivateKey, pub *PublicKey) ([]byte, error) {
 func Encrypt(rng io.Reader, pub *PublicKey, ptext []byte) ([]byte, error) {
 	var ptextLen = len(ptext)
 	// c1 must be security level + 64 bits (see [SIKE] 1.4 and 4.3.3)
-	if ptextLen != (pub.params.KemSize + 8) {
+	if ptextLen != pub.params.KemSize {
 		return nil, errors.New("Unsupported message length")
 	}
 
@@ -583,9 +561,9 @@ func Encrypt(rng io.Reader, pub *PublicKey, ptext []byte) ([]byte, error) {
 // decryption succeeds or error in case unexptected input was provided.
 // Constant time
 func Decrypt(prv *PrivateKey, ctext []byte) ([]byte, error) {
-	var n [40]byte // n can is max 320-bit (see 1.4 of [SIKE])
 	var c1_len int
-	var pk_len = prv.params.PublicKeySize
+	n := make([]byte, prv.params.KemSize)
+	pk_len := prv.params.PublicKeySize
 
 	if prv.keyVariant != KeyVariant_SIKE {
 		return nil, errors.New("wrong key type")
@@ -594,7 +572,7 @@ func Decrypt(prv *PrivateKey, ctext []byte) ([]byte, error) {
 	// ctext is a concatenation of (pubkey_A || c1=ciphertext)
 	// it must be security level + 64 bits (see [SIKE] 1.4 and 4.3.3)
 	c1_len = len(ctext) - pk_len
-	if c1_len != (int(prv.params.KemSize) + 8) {
+	if c1_len != int(prv.params.KemSize) {
 		return nil, errors.New("wrong size of cipher text")
 	}
 
@@ -608,8 +586,10 @@ func Decrypt(prv *PrivateKey, ctext []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	hashMac(n[:c1_len], j, F)
-	for i, _ := range n[:c1_len] {
+	digest := sha256.Sum256(j)
+	copy(n, digest[:])
+
+	for i, _ := range n {
 		n[i] ^= ctext[pk_len+i]
 	}
 	return n[:c1_len], nil
@@ -621,11 +601,9 @@ func Decrypt(prv *PrivateKey, ctext []byte) ([]byte, error) {
 // Error is returned in case PRNG fails or wrongly formatted input was provided.
 func Encapsulate(rng io.Reader, pub *PublicKey) (ctext []byte, secret []byte, err error) {
 	// Buffer for random, secret message
-	var ptext = make([]byte, pub.params.MsgLen)
-	// r = G(ptext||pub)
-	var r = make([]byte, pub.params.A.SecretByteLen)
-	// Resulting shared secret
-	secret = make([]byte, pub.params.KemSize)
+	ptext := make([]byte, pub.params.MsgLen)
+	// SHA256 hash context object
+	d := sha256.New()
 
 	// Generate ephemeral value
 	_, err = io.ReadFull(rng, ptext)
@@ -633,13 +611,12 @@ func Encapsulate(rng io.Reader, pub *PublicKey) (ctext []byte, secret []byte, er
 		return nil, nil, err
 	}
 
-	// must be big enough to store ptext+c0+c1
-	var hmac_key = make([]byte, pub.Size()+2*Params.MsgLen)
-	copy(hmac_key, ptext)
-	copy(hmac_key[len(ptext):], pub.Export())
-	hashMac(r, hmac_key[:len(ptext)+pub.Size()], G)
-	// Ensure bitlength is not bigger than to 2^e2-1
-	r[len(r)-1] &= (1 << (pub.params.A.SecretBitLen % 8)) - 1
+	// Implementation uses first 28-bytes of secret
+	d.Write(ptext)
+	d.Write(pub.Export())
+	digest := d.Sum(nil)
+	// r = G(ptext||pub)
+	r := digest[:pub.params.A.SecretByteLen]
 
 	// (c0 || c1) = Enc(pkA, ptext; r)
 	skA := NewPrivateKey(KeyVariant_SIDH_A)
@@ -655,10 +632,11 @@ func Encapsulate(rng io.Reader, pub *PublicKey) (ctext []byte, secret []byte, er
 	}
 
 	// K = H(ptext||(c0||c1))
-	copy(hmac_key, ptext)
-	copy(hmac_key[len(ptext):], ctext)
-	hashMac(secret, hmac_key[:len(ptext)+len(ctext)], H)
-	return ctext, secret, nil
+	d.Reset()
+	d.Write(ptext)
+	d.Write(ctext)
+	digest = d.Sum(digest[:0])
+	return ctext, digest[:pub.params.KemSize], nil
 }
 
 // Decapsulate given the keypair and ciphertext as inputs, Decapsulate outputs a shared
@@ -666,10 +644,9 @@ func Encapsulate(rng io.Reader, pub *PublicKey) (ctext []byte, secret []byte, er
 // Decapsulation may fail in case input is wrongly formatted.
 // Constant time for properly initialized input.
 func Decapsulate(prv *PrivateKey, pub *PublicKey, ctext []byte) ([]byte, error) {
-	var r = make([]byte, pub.params.A.SecretByteLen)
-	// Resulting shared secret
-	var secret = make([]byte, pub.params.KemSize)
 	var skA = NewPrivateKey(KeyVariant_SIDH_A)
+	// SHA256 hash context object
+	d := sha256.New()
 
 	m, err := Decrypt(prv, ctext)
 	if err != nil {
@@ -677,33 +654,30 @@ func Decapsulate(prv *PrivateKey, pub *PublicKey, ctext []byte) ([]byte, error) 
 	}
 
 	// r' = G(m'||pub)
-	var hmac_key = make([]byte, pub.Size()+2*Params.MsgLen)
-	copy(hmac_key, m)
-	copy(hmac_key[len(m):], pub.Export())
-	hashMac(r, hmac_key[:len(m)+pub.Size()], G)
-	// Ensure bitlength is not bigger than 2^e2-1
-	r[len(r)-1] &= (1 << (pub.params.A.SecretBitLen % 8)) - 1
-
+	d.Write(m)
+	d.Write(pub.Export())
+	digest := d.Sum(nil)
 	// Never fails
-	skA.Import(r)
+	skA.Import(digest[:pub.params.A.SecretByteLen])
 
 	// Never fails
 	pkA := skA.GeneratePublicKey()
 	c0 := pkA.Export()
 
+	d.Reset()
 	if subtle.ConstantTimeCompare(c0, ctext[:len(c0)]) == 1 {
-		copy(hmac_key, m)
+		d.Write(m)
 	} else {
-		// S is chosen at random when generating a key and unknown to other party. It
+		// S is chosen at random when generating a key and is unknown to the other party. It
 		// may seem weird, but it's correct. It is important that S is unpredictable
 		// to other party. Without this check, it is possible to recover a secret, by
 		// providing series of invalid ciphertexts. It is also important that in case
 		//
 		// See more details in "On the security of supersingular isogeny cryptosystems"
 		// (S. Galbraith, et al., 2016, ePrint #859).
-		copy(hmac_key, prv.S)
+		d.Write(prv.S)
 	}
-	copy(hmac_key[len(m):], ctext)
-	hashMac(secret, hmac_key[:len(m)+len(ctext)], H)
-	return secret, nil
+	d.Write(ctext)
+	digest = d.Sum(digest[:0])
+	return digest[:pub.params.KemSize], nil
 }

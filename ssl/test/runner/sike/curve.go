@@ -72,9 +72,9 @@ func toMontDomain(x *Fp2) {
 	var aRR FpX2
 
 	// convert to montgomery domain
-	fpMul(&aRR, &x.A, &p503R2) // = a*R*R
-	fpMontRdc(&x.A, &aRR)      // = a*R mod p
-	fpMul(&aRR, &x.B, &p503R2)
+	fpMul(&aRR, &x.A, &R2) // = a*R*R
+	fpMontRdc(&x.A, &aRR)  // = a*R mod p
+	fpMul(&aRR, &x.B, &R2)
 	fpMontRdc(&x.B, &aRR)
 }
 

@@ -8,7 +8,7 @@
 #include "utils.h"
 #include "fpx.h"
 
-extern const struct params_t p503;
+extern const struct params_t params;
 
 // Multiprecision squaring, c = a^2 mod p.
 static void fpsqr_mont(const felm_t ma, felm_t mc)
@@ -22,101 +22,79 @@ static void fpsqr_mont(const felm_t ma, felm_t mc)
 static void fpinv_chain_mont(felm_t a)
 {
     unsigned int i, j;
-    felm_t t[15], tt;
+    felm_t t[31], tt;
 
     // Precomputed table
     fpsqr_mont(a, tt);
     sike_fpmul_mont(a, tt, t[0]);
-    for (i = 0; i <= 13; i++) sike_fpmul_mont(t[i], tt, t[i+1]);
+    for (i = 0; i <= 29; i++) sike_fpmul_mont(t[i], tt, t[i+1]);
 
     sike_fpcopy(a, tt);
-    for (i = 0; i < 8; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(a, tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[8], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[6], tt, tt);
-    for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[9], tt, tt);
     for (i = 0; i < 7; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[0], tt, tt);
-    for (i = 0; i < 7; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(a, tt, tt);
-    for (i = 0; i < 7; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[6], tt, tt);
-    for (i = 0; i < 7; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[2], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[8], tt, tt);
-    for (i = 0; i < 7; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(a, tt, tt);
-    for (i = 0; i < 8; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[10], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[0], tt, tt);
-    for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[10], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[10], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
     sike_fpmul_mont(t[5], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[2], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[6], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
+    for (i = 0; i < 10; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[14], tt, tt);
+    for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
     sike_fpmul_mont(t[3], tt, tt);
     for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[5], tt, tt);
-    for (i = 0; i < 12; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[12], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[8], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[6], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[12], tt, tt);
+    sike_fpmul_mont(t[23], tt, tt);
     for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[11], tt, tt);
-    for (i = 0; i < 8; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[6], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[5], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[14], tt, tt);
-    for (i = 0; i < 7; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[14], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[5], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[6], tt, tt);
-    for (i = 0; i < 8; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[8], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(a, tt, tt);
-    for (i = 0; i < 8; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[4], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[6], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[5], tt, tt);
-    for (i = 0; i < 8; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[7], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(a, tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[0], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-    sike_fpmul_mont(t[11], tt, tt);
-    for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
     sike_fpmul_mont(t[13], tt, tt);
+    for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[24], tt, tt);
+    for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[7], tt, tt);
     for (i = 0; i < 8; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[12], tt, tt);
+    for (i = 0; i < 8; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[30], tt, tt);
+    for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
     sike_fpmul_mont(t[1], tt, tt);
     for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[30], tt, tt);
+    for (i = 0; i < 7; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[21], tt, tt);
+    for (i = 0; i < 9; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[2], tt, tt);
+    for (i = 0; i < 9; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[19], tt, tt);
+    for (i = 0; i < 9; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[1], tt, tt);
+    for (i = 0; i < 7; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[24], tt, tt);
+    for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[26], tt, tt);
+    for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[16], tt, tt);
+    for (i = 0; i < 7; i++) fpsqr_mont(tt, tt);
     sike_fpmul_mont(t[10], tt, tt);
-    for (j = 0; j < 49; j++) {
-        for (i = 0; i < 5; i++) fpsqr_mont(tt, tt);
-        sike_fpmul_mont(t[14], tt, tt);
+    for (i = 0; i < 7; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[6], tt, tt);
+    for (i = 0; i < 7; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[0], tt, tt);
+    for (i = 0; i < 9; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[20], tt, tt);
+    for (i = 0; i < 8; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[9], tt, tt);
+    for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[25], tt, tt);
+    for (i = 0; i < 9; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[30], tt, tt);
+    for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[26], tt, tt);
+    for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(a, tt, tt);
+    for (i = 0; i < 7; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[28], tt, tt);
+    for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[6], tt, tt);
+    for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[10], tt, tt);
+    for (i = 0; i < 9; i++) fpsqr_mont(tt, tt);
+    sike_fpmul_mont(t[22], tt, tt);
+    for (j = 0; j < 35; j++) {
+        for (i = 0; i < 6; i++) fpsqr_mont(tt, tt);
+        sike_fpmul_mont(t[30], tt, tt);
     }
     sike_fpcopy(tt, a);
 }
@@ -190,7 +168,7 @@ void sike_fpcopy(const felm_t a, felm_t c) {
     }
 }
 
-// Field multiplication using Montgomery arithmetic, c = a*b*R^-1 mod p503, where R=2^768
+// Field multiplication using Montgomery arithmetic, c = a*b*R^-1 mod prime, where R=2^768
 void sike_fpmul_mont(const felm_t ma, const felm_t mb, felm_t mc)
 {
     dfelm_t temp = {0};
@@ -227,7 +205,7 @@ void sike_fp2sqr_mont(const f2elm_t a, f2elm_t c) {
 void sike_fpneg(felm_t a) {
   uint32_t borrow = 0;
   for (size_t i = 0; i < NWORDS_FIELD; i++) {
-    SUBC(borrow, p503.prime_x2[i], a[i], borrow, a[i]);
+    SUBC(borrow, params.prime_x2[i], a[i], borrow, a[i]);
   }
 }
 
@@ -240,7 +218,7 @@ void sike_fpdiv2(const felm_t a, felm_t c) {
 
   mask = 0 - (crypto_word_t)(a[0] & 1);    // If a is odd compute a+p503
   for (size_t i = 0; i < NWORDS_FIELD; i++) {
-    ADDC(carry, a[i], p503.prime[i] & mask, carry, c[i]);
+    ADDC(carry, a[i], params.prime[i] & mask, carry, c[i]);
   }
 
   // Multiprecision right shift by one.
@@ -256,13 +234,13 @@ void sike_fpcorrection(felm_t a) {
   crypto_word_t mask;
 
   for (size_t i = 0; i < NWORDS_FIELD; i++) {
-    SUBC(borrow, a[i], p503.prime[i], borrow, a[i]);
+    SUBC(borrow, a[i], params.prime[i], borrow, a[i]);
   }
   mask = 0 - (crypto_word_t)borrow;
 
   borrow = 0;
   for (size_t i = 0; i < NWORDS_FIELD; i++) {
-    ADDC(borrow, a[i], p503.prime[i] & mask, borrow, a[i]);
+    ADDC(borrow, a[i], params.prime[i] & mask, borrow, a[i]);
   }
 }
 
@@ -283,7 +261,7 @@ void sike_fp2mul_mont(const f2elm_t a, const f2elm_t b, f2elm_t c) {
     mask = mp_subfast(tt1, tt2, tt1);                  // tt1 = a0*b0 - a1*b1. If tt1 < 0 then mask = 0xFF..F, else if tt1 >= 0 then mask = 0x00..0
 
     for (size_t i = 0; i < NWORDS_FIELD; i++) {
-        t1[i] = p503.prime[i] & mask;
+        t1[i] = params.prime[i] & mask;
     }
 
     sike_fprdc(tt3, c->c1);                             // c[1] = (a0+a1)*(b0+b1) - a0*b0 - a1*b1

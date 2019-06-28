@@ -319,18 +319,18 @@ class CECPQ2bKeyShare : public SSLKeyShare {
               uint8_t *out_alert, Span<const uint8_t> peer_key) override {
     uint8_t public_x25519[32];
     uint8_t private_x25519[32];
-    uint8_t sike_ciphertext[SIKEp503_CT_BYTESZ] = {0};
+    uint8_t sike_ciphertext[SIKE_CT_BYTESZ] = {0};
 
     *out_alert = SSL_AD_INTERNAL_ERROR;
 
-    if (peer_key.size() != sizeof(public_x25519) + SIKEp503_PUB_BYTESZ) {
+    if (peer_key.size() != sizeof(public_x25519) + SIKE_PUB_BYTESZ) {
       *out_alert = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
       return false;
     }
 
     Array<uint8_t> secret;
-    if (!secret.Init(sizeof(private_x25519_) + SIKEp503_SS_BYTESZ)) {
+    if (!secret.Init(sizeof(private_x25519_) + SIKE_SS_BYTESZ)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
@@ -357,12 +357,12 @@ class CECPQ2bKeyShare : public SSLKeyShare {
     *out_alert = SSL_AD_INTERNAL_ERROR;
 
     Array<uint8_t> secret;
-    if (!secret.Init(sizeof(private_x25519_) + SIKEp503_SS_BYTESZ)) {
+    if (!secret.Init(sizeof(private_x25519_) + SIKE_SS_BYTESZ)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_MALLOC_FAILURE);
       return false;
     }
 
-    if (peer_key.size() != 32 + SIKEp503_CT_BYTESZ ||
+    if (peer_key.size() != 32 + SIKE_CT_BYTESZ ||
         !X25519(secret.data(), private_x25519_, peer_key.data())) {
       *out_alert = SSL_AD_DECODE_ERROR;
       OPENSSL_PUT_ERROR(SSL, SSL_R_BAD_ECPOINT);
@@ -377,8 +377,8 @@ class CECPQ2bKeyShare : public SSLKeyShare {
 
  private:
   uint8_t private_x25519_[32];
-  uint8_t private_sike_[SIKEp503_PRV_BYTESZ];
-  uint8_t public_sike_[SIKEp503_PUB_BYTESZ];
+  uint8_t private_sike_[SIKE_PRV_BYTESZ];
+  uint8_t public_sike_[SIKE_PUB_BYTESZ];
 };
 
 CONSTEXPR_ARRAY NamedGroup kNamedGroups[] = {

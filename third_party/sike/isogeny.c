@@ -189,8 +189,8 @@ void get_A(const f2elm_t xP, const f2elm_t xQ, const f2elm_t xR, f2elm_t A)
   // Output: the coefficient A corresponding to the curve E_A: y^2=x^3+A*x^2+x.
     f2elm_t t0, t1, one = F2ELM_INIT;
 
-    extern const struct params_t p503;
-    sike_fpcopy(p503.mont_one, one->c0);
+    extern const struct params_t params;
+    sike_fpcopy(params.mont_one, one->c0);
     sike_fp2add(xP, xQ, t1);                           // t1 = xP+xQ
     sike_fp2mul_mont(xP, xQ, t0);                      // t0 = xP*xQ
     sike_fp2mul_mont(xR, t1, A);                       // A = xR*t1
