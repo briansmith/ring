@@ -1,4 +1,4 @@
-// Copyright 2015-2017 Brian Smith.
+// Copyright 2015-2019 Brian Smith.
 //
 // Permission to use, copy, modify, and/or distribute this software for any
 // purpose with or without fee is hereby granted, provided that the above
@@ -28,6 +28,7 @@ use crate::{c, cpu, debug, endian::*, polyfill};
 use core::num::Wrapping;
 
 mod sha1;
+mod sha2;
 
 /// A context for multi-step (Init-Update-Finish) digest calculations.
 ///
@@ -307,7 +308,7 @@ pub static SHA256: Algorithm = Algorithm {
     chaining_len: SHA256_OUTPUT_LEN,
     block_len: 512 / 8,
     len_len: 64 / 8,
-    block_data_order: GFp_sha256_block_data_order,
+    block_data_order: sha2::GFp_sha256_block_data_order,
     format_output: sha256_format_output,
     initial_state: State {
         as32: [
@@ -332,7 +333,7 @@ pub static SHA384: Algorithm = Algorithm {
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     len_len: SHA512_LEN_LEN,
-    block_data_order: GFp_sha512_block_data_order,
+    block_data_order: sha2::GFp_sha512_block_data_order,
     format_output: sha512_format_output,
     initial_state: State {
         as64: [
@@ -357,7 +358,7 @@ pub static SHA512: Algorithm = Algorithm {
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     len_len: SHA512_LEN_LEN,
-    block_data_order: GFp_sha512_block_data_order,
+    block_data_order: sha2::GFp_sha512_block_data_order,
     format_output: sha512_format_output,
     initial_state: State {
         as64: [
@@ -386,7 +387,7 @@ pub static SHA512_256: Algorithm = Algorithm {
     chaining_len: SHA512_OUTPUT_LEN,
     block_len: SHA512_BLOCK_LEN,
     len_len: SHA512_LEN_LEN,
-    block_data_order: GFp_sha512_block_data_order,
+    block_data_order: sha2::GFp_sha512_block_data_order,
     format_output: sha512_format_output,
     initial_state: State {
         as64: [
@@ -406,8 +407,8 @@ pub static SHA512_256: Algorithm = Algorithm {
 #[derive(Clone, Copy)] // XXX: Why do we need to be `Copy`?
 #[repr(C)]
 union State {
-    as64: [Wrapping<u64>; 512 / 8 / core::mem::size_of::<Wrapping<u64>>()],
-    as32: [Wrapping<u32>; 256 / 8 / core::mem::size_of::<Wrapping<u32>>()],
+    as64: [Wrapping<u64>; sha2::CHAINING_WORDS],
+    as32: [Wrapping<u32>; sha2::CHAINING_WORDS],
 }
 
 #[derive(Clone, Copy)]
@@ -481,11 +482,6 @@ const SHA512_BLOCK_LEN: usize = 1024 / 8;
 
 /// The length of the length field for SHA-512-based algorithms, in bytes.
 const SHA512_LEN_LEN: usize = 128 / 8;
-
-extern "C" {
-    fn GFp_sha256_block_data_order(state: &mut State, data: *const u8, num: c::size_t);
-    fn GFp_sha512_block_data_order(state: &mut State, data: *const u8, num: c::size_t);
-}
 
 #[cfg(test)]
 pub mod test_util {
