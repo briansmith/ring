@@ -18,9 +18,7 @@ use super::{super::ops::*, ED25519_PUBLIC_KEY_LEN};
 use crate::{
     digest, error,
     io::der,
-    pkcs8,
-    polyfill::convert::Into_,
-    rand,
+    pkcs8, rand,
     signature::{self, KeyPair as SigningKeyPair},
 };
 use core::convert::TryInto;
@@ -181,9 +179,8 @@ impl Ed25519KeyPair {
     /// Returns the signature of the message `msg`.
     pub fn sign(&self, msg: &[u8]) -> signature::Signature {
         signature::Signature::new(|signature_bytes| {
-            let (signature_bytes, _unused) = signature_bytes.into_();
-            // Borrow `signature_bytes`.
-            let (signature_r, signature_s) = signature_bytes.into_();
+            let (signature_bytes, _unused) = signature_bytes.split_at_mut(ELEM_LEN + SCALAR_LEN);
+            let (signature_r, signature_s) = signature_bytes.split_at_mut(ELEM_LEN);
             let nonce = {
                 let mut ctx = digest::Context::new(&digest::SHA512);
                 ctx.update(&self.private_prefix);
@@ -196,11 +193,16 @@ impl Ed25519KeyPair {
             unsafe {
                 GFp_x25519_ge_scalarmult_base(&mut r, &nonce);
             }
-            *signature_r = r.into_encoded_point();
+            signature_r.copy_from_slice(&r.into_encoded_point());
             let hram_digest = eddsa_digest(signature_r, &self.public_key.as_ref(), msg);
             let hram = digest_scalar(hram_digest);
             unsafe {
-                GFp_x25519_sc_muladd(signature_s, &hram, &self.private_scalar, &nonce);
+                GFp_x25519_sc_muladd(
+                    signature_s.try_into().unwrap(),
+                    &hram,
+                    &self.private_scalar,
+                    &nonce,
+                );
             }
 
             SIGNATURE_LEN
@@ -260,5 +262,3 @@ static PKCS8_TEMPLATE: pkcs8::Template = pkcs8::Template {
     curve_id_index: 0,
     private_key_index: 0x10,
 };
-
-impl_array_split!(u8, SIGNATURE_LEN, signature::MAX_LEN - SIGNATURE_LEN);

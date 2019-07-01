@@ -36,33 +36,3 @@ where
         T::from_(self)
     }
 }
-
-macro_rules! impl_array_split {
-    ($ty:ty, $first:expr, $second:expr) => {
-        #[allow(unused_qualifications)]
-        impl crate::polyfill::convert::From_<&[$ty; $first + $second]>
-            for (&[$ty; $first], &[$ty; $second])
-        {
-            #[inline]
-            fn from_(to_split: &[$ty; $first + $second]) -> Self {
-                let first: *const u8 = &to_split[0];
-                let split_at: *const u8 = &to_split[$first];
-                unsafe { (core::mem::transmute(first), core::mem::transmute(split_at)) }
-            }
-        }
-
-        #[allow(unused_qualifications)]
-        impl crate::polyfill::convert::From_<&mut [$ty; $first + $second]>
-            for (&mut [$ty; $first], &mut [$ty; $second])
-        {
-            #[inline]
-            fn from_(to_split: &mut [$ty; $first + $second]) -> Self {
-                let first: *mut u8 = &mut to_split[0];
-                let split_at: *mut u8 = &mut to_split[$first];
-                unsafe { (core::mem::transmute(first), core::mem::transmute(split_at)) }
-            }
-        }
-    };
-}
-
-impl_array_split!(u8, 32, 32);

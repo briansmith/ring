@@ -22,13 +22,12 @@ use crate::{c, endian::*, polyfill::convert::*};
 #[repr(C)]
 pub struct Key([Block; KEY_BLOCKS]);
 
-impl From<&'_ [u8; KEY_LEN]> for Key {
-    fn from(value: &[u8; KEY_LEN]) -> Self {
+impl Key {
+    #[inline]
+    pub fn from(value: &[u8; KEY_LEN]) -> Self {
         Self(<[Block; KEY_BLOCKS]>::from_(value))
     }
-}
 
-impl Key {
     #[inline] // Optimize away match on `counter`.
     pub fn encrypt_in_place(&self, counter: Counter, in_out: &mut [u8]) {
         unsafe {
