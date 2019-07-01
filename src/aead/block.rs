@@ -102,9 +102,9 @@ impl AsMut<[u8; BLOCK_LEN]> for Block {
 }
 
 /// Like `AsMut`.
-impl From_<&mut [Block; 2]> for &mut [u8; 2 * BLOCK_LEN] {
+impl<'a> From_<&'a mut [Block; 2]> for &'a mut [u8; 2 * BLOCK_LEN] {
     #[inline]
-    fn from_(bytes: &mut [Block; 2]) -> Self {
+    fn from_(bytes: &'a mut [Block; 2]) -> &'a mut [u8; 2 * BLOCK_LEN] {
         unsafe { core::mem::transmute(bytes) }
     }
 }
