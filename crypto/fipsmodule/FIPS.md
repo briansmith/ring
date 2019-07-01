@@ -13,9 +13,9 @@ BoringCrypto has undergone the following validations:
 
 ## Running CAVP tests
 
-CAVP results are calculated by `fipstools/cavp`, but that binary is almost always run by `fipstools/run_cavp.go`. The latter knows the set of tests to be processed and the flags needed to configure `cavp` for each one. It must be run from the top of a CAVP directory and needs the following options:
+CAVP results are calculated by `util/fipstools/cavp`, but that binary is almost always run by `util/fipstools/run_cavp.go`. The latter knows the set of tests to be processed and the flags needed to configure `cavp` for each one. It must be run from the top of a CAVP directory and needs the following options:
 
-1. `-oracle-bin`: points to the location of `fipstools/cavp`
+1. `-oracle-bin`: points to the location of `util/fipstools/cavp`
 2. `-no-fax`: this is needed to suppress checking of the FAX files, which are only included in sample sets.
 
 ## Breaking power-on and continuous tests
