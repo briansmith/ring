@@ -12,7 +12,7 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{digest, error};
+use crate::{digest, error, limb};
 use core::convert::TryInto;
 
 // A scalar in the range [0,
@@ -25,10 +25,21 @@ impl Scalar {
     // Constructs a `Scalar` from `bytes`, failing if `bytes` encodes a scalar
     // that not in the range [0, `l`).
     pub fn from_bytes_checked(bytes: [u8; SCALAR_LEN]) -> Result<Self, error::Unspecified> {
-        // Ensure `s` is not too large.
-        if (bytes[SCALAR_LEN - 1] & 0b11100000) != 0 {
-            return Err(error::Unspecified);
-        }
+        const ORDER: [limb::Limb; SCALAR_LEN / limb::LIMB_BYTES] =
+            limbs![0x5cf5d3ed, 0x5812631a, 0xa2f79cd6, 0x14def9de, 0, 0, 0, 0x10000000];
+
+        // `bytes` is in little-endian order.
+        let mut reversed = bytes;
+        reversed.reverse();
+
+        let mut limbs = [0; SCALAR_LEN / limb::LIMB_BYTES];
+        limb::parse_big_endian_in_range_and_pad_consttime(
+            untrusted::Input::from(&reversed),
+            limb::AllowZero::Yes,
+            &ORDER,
+            &mut limbs,
+        )?;
+
         Ok(Self(bytes))
     }
 
