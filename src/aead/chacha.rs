@@ -143,6 +143,7 @@ pub const KEY_LEN: usize = KEY_BLOCKS * BLOCK_LEN;
 mod tests {
     use super::*;
     use crate::test;
+    use core::convert::TryInto;
     use std::vec;
 
     // This verifies the encryption functionality provided by ChaCha20_ctr32
@@ -161,7 +162,7 @@ mod tests {
             assert_eq!(section, "");
 
             let key = test_case.consume_bytes("Key");
-            let key: &[u8; KEY_LEN] = key.as_slice().try_into_()?;
+            let key: &[u8; KEY_LEN] = key.as_slice().try_into()?;
             let key = Key::from(key);
 
             let ctr = test_case.consume_usize("Ctr");

@@ -37,86 +37,12 @@ where
     }
 }
 
-/// An approximation of the unstable `core::convert::TryFrom`.
-pub trait TryFrom_<T>: Sized {
-    type Error;
-
-    fn try_from_(value: T) -> Result<Self, Self::Error>;
-}
-
-/// An approximation of the unstable `core::convert::TryInto`.
-pub trait TryInto_<T>
-where
-    T: Sized,
-{
-    type Error;
-
-    fn try_into_(self) -> Result<T, Self::Error>;
-}
-
-impl<T, F> TryInto_<T> for F
-where
-    T: TryFrom_<F>,
-{
-    type Error = <T as TryFrom_<F>>::Error;
-
-    #[inline]
-    fn try_into_(self) -> Result<T, Self::Error> {
-        T::try_from_(self)
-    }
-}
-
-#[derive(Debug)]
-pub struct TryFromSliceError(());
-
-macro_rules! impl_array_try_from {
-    ($ty:ty, $len:expr) => {
-        impl<'a> TryFrom_<&'a [$ty]> for &'a [$ty; $len] {
-            type Error = TryFromSliceError;
-
-            #[inline]
-            fn try_from_(slice: &'a [$ty]) -> Result<Self, Self::Error> {
-                unsafe { transmute_slice::<[$ty; $len], $ty>(slice, $len) }
-            }
-        }
-
-        impl<'a> TryFrom_<&'a mut [$ty]> for &'a mut [$ty; $len] {
-            type Error = TryFromSliceError;
-
-            #[inline]
-            fn try_from_(slice: &'a mut [$ty]) -> Result<Self, Self::Error> {
-                unsafe { transmute_slice_mut::<[$ty; $len], $ty>(slice, $len) }
-            }
-        }
-    };
-}
-
-impl_array_try_from!(u8, 12);
-impl_array_try_from!(u8, 16);
-impl_array_try_from!(u8, 32);
-impl_array_try_from!(u8, 64);
-
-#[inline]
-unsafe fn transmute_slice<A, T>(slice: &[T], expected_len: usize) -> Result<&A, TryFromSliceError> {
-    if slice.len() != expected_len {
-        return Err(TryFromSliceError(()));
-    }
-    Ok(core::mem::transmute(slice.as_ptr()))
-}
-
-unsafe fn transmute_slice_mut<A, T>(
-    slice: &mut [T],
-    expected_len: usize,
-) -> Result<&mut A, TryFromSliceError> {
-    if slice.len() != expected_len {
-        return Err(TryFromSliceError(()));
-    }
-    Ok(core::mem::transmute(slice.as_ptr()))
-}
-
 macro_rules! impl_array_split {
     ($ty:ty, $first:expr, $second:expr) => {
-        impl From_<&[$ty; $first + $second]> for (&[$ty; $first], &[$ty; $second]) {
+        #[allow(unused_qualifications)]
+        impl crate::polyfill::convert::From_<&[$ty; $first + $second]>
+            for (&[$ty; $first], &[$ty; $second])
+        {
             #[inline]
             fn from_(to_split: &[$ty; $first + $second]) -> Self {
                 let first: *const u8 = &to_split[0];
@@ -125,7 +51,10 @@ macro_rules! impl_array_split {
             }
         }
 
-        impl From_<&mut [$ty; $first + $second]> for (&mut [$ty; $first], &mut [$ty; $second]) {
+        #[allow(unused_qualifications)]
+        impl crate::polyfill::convert::From_<&mut [$ty; $first + $second]>
+            for (&mut [$ty; $first], &mut [$ty; $second])
+        {
             #[inline]
             fn from_(to_split: &mut [$ty; $first + $second]) -> Self {
                 let first: *mut u8 = &mut to_split[0];

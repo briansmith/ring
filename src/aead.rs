@@ -22,16 +22,14 @@
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
 use self::block::{Block, BLOCK_LEN};
-use crate::{
-    constant_time, cpu, error, hkdf,
-    polyfill::{self, convert::*},
-};
+use crate::{constant_time, cpu, error, hkdf, polyfill};
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
     chacha20_poly1305::CHACHA20_POLY1305,
     nonce::{Nonce, NONCE_LEN},
 };
+use core::convert::TryInto;
 
 /// A key for authenticating and decrypting (“opening”) AEAD-protected data.
 pub struct OpeningKey {
@@ -252,7 +250,7 @@ fn seal_in_place_(
     check_per_nonce_max_bytes(key.key.algorithm, in_out_len)?;
     let (in_out, tag_out) = in_out.split_at_mut(in_out_len);
 
-    let tag_out: &mut [u8; TAG_LEN] = tag_out.try_into_()?;
+    let tag_out: &mut [u8; TAG_LEN] = tag_out.try_into()?;
     let Tag(tag) =
         (key.key.algorithm.seal)(&key.key.inner, nonce, aad, in_out, key.key.cpu_features);
     tag_out.copy_from_slice(tag.as_ref());

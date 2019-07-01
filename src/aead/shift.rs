@@ -13,7 +13,7 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::block::{Block, BLOCK_LEN};
-use crate::polyfill::convert::*;
+use core::convert::TryFrom;
 
 pub fn shift_full_blocks<F>(in_out: &mut [u8], in_prefix_len: usize, mut transform: F)
 where
@@ -24,10 +24,10 @@ where
     for i in (0..in_out_len).step_by(BLOCK_LEN) {
         let block = {
             let input =
-                <&[u8; BLOCK_LEN]>::try_from_(&in_out[(in_prefix_len + i)..][..BLOCK_LEN]).unwrap();
+                <&[u8; BLOCK_LEN]>::try_from(&in_out[(in_prefix_len + i)..][..BLOCK_LEN]).unwrap();
             transform(input)
         };
-        let output = <&mut [u8; BLOCK_LEN]>::try_from_(&mut in_out[i..][..BLOCK_LEN]).unwrap();
+        let output = <&mut [u8; BLOCK_LEN]>::try_from(&mut in_out[i..][..BLOCK_LEN]).unwrap();
         *output = *block.as_ref();
     }
 }

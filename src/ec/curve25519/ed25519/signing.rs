@@ -19,10 +19,11 @@ use crate::{
     digest, error,
     io::der,
     pkcs8,
-    polyfill::convert::*,
+    polyfill::convert::Into_,
     rand,
     signature::{self, KeyPair as SigningKeyPair},
 };
+use core::convert::TryInto;
 use untrusted;
 
 use super::digest::*;
@@ -149,7 +150,7 @@ impl Ed25519KeyPair {
     /// the private key since the public key isn't given as input.
     pub fn from_seed_unchecked(seed: &[u8]) -> Result<Self, error::KeyRejected> {
         let seed = seed
-            .try_into_()
+            .try_into()
             .map_err(|_| error::KeyRejected::invalid_encoding())?;
         Ok(Self::from_seed_(seed))
     }

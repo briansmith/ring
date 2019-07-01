@@ -15,7 +15,8 @@
 //! X25519 Key agreement.
 
 use super::ops;
-use crate::{agreement, constant_time, cpu, ec, error, polyfill::convert::*, rand};
+use crate::{agreement, constant_time, cpu, ec, error, rand};
+use core::convert::TryInto;
 use untrusted;
 
 static CURVE25519: ec::Curve = ec::Curve {
@@ -56,12 +57,12 @@ fn x25519_public_from_private(
     public_out: &mut [u8],
     private_key: &ec::Seed,
 ) -> Result<(), error::Unspecified> {
-    let public_out = public_out.try_into_()?;
+    let public_out = public_out.try_into()?;
 
     #[cfg(target_arch = "arm")]
     let cpu_features = private_key.cpu_features;
 
-    let private_key = private_key.bytes_less_safe().try_into_()?;
+    let private_key = private_key.bytes_less_safe().try_into()?;
 
     #[cfg(target_arch = "arm")]
     {
@@ -94,9 +95,8 @@ fn x25519_ecdh(
     peer_public_key: untrusted::Input,
 ) -> Result<(), error::Unspecified> {
     let cpu_features = my_private_key.cpu_features;
-    let my_private_key = my_private_key.bytes_less_safe().try_into_()?;
-    let peer_public_key: &[u8; PUBLIC_KEY_LEN] =
-        peer_public_key.as_slice_less_safe().try_into_()?;
+    let my_private_key = my_private_key.bytes_less_safe().try_into()?;
+    let peer_public_key: &[u8; PUBLIC_KEY_LEN] = peer_public_key.as_slice_less_safe().try_into()?;
 
     #[cfg_attr(not(target_arch = "arm"), allow(unused_variables))]
     fn scalar_mult(
@@ -125,7 +125,7 @@ fn x25519_ecdh(
     }
 
     scalar_mult(
-        out.try_into_()?,
+        out.try_into()?,
         my_private_key,
         peer_public_key,
         cpu_features,

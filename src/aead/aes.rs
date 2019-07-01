@@ -306,7 +306,8 @@ impl From<ZeroMeansSuccess> for Result<(), error::Unspecified> {
 #[cfg(test)]
 mod tests {
     use super::{super::BLOCK_LEN, *};
-    use crate::{polyfill::convert::*, test};
+    use crate::test;
+    use core::convert::TryInto;
 
     #[test]
     pub fn test_aes() {
@@ -314,7 +315,7 @@ mod tests {
             assert_eq!(section, "");
             let key = consume_key(test_case, "Key");
             let input = test_case.consume_bytes("Input");
-            let input: &[u8; BLOCK_LEN] = input.as_slice().try_into_()?;
+            let input: &[u8; BLOCK_LEN] = input.as_slice().try_into()?;
             let expected_output = test_case.consume_bytes("Output");
 
             let block = Block::from(input);

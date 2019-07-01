@@ -14,7 +14,6 @@
 
 //! Error reporting.
 
-use crate::polyfill::convert::*;
 use untrusted;
 
 /// An error with absolutely no details.
@@ -107,8 +106,8 @@ impl From<untrusted::EndOfInput> for Unspecified {
     }
 }
 
-impl From<TryFromSliceError> for Unspecified {
-    fn from(_: TryFromSliceError) -> Self {
+impl From<core::array::TryFromSliceError> for Unspecified {
+    fn from(_: core::array::TryFromSliceError) -> Self {
         Unspecified
     }
 }

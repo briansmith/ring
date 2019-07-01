@@ -15,10 +15,11 @@
 //! EdDSA Signatures.
 
 use super::super::ops::*;
-use crate::{error, polyfill::convert::*, sealed, signature};
+use crate::{error, sealed, signature};
 use untrusted;
 
 use super::digest::*;
+use core::convert::TryInto;
 
 /// Parameters for EdDSA signing and verification.
 pub struct EdDSAParameters;
@@ -43,10 +44,18 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         msg: untrusted::Input,
         signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
-        let public_key = public_key.as_slice_less_safe();
-        let public_key: &[u8; ELEM_LEN] = public_key.try_into_()?;;
-        let signature: &[u8; ELEM_LEN + SCALAR_LEN] = signature.as_slice_less_safe().try_into_()?;
-        let (signature_r, signature_s): (&[u8; ELEM_LEN], &[u8; SCALAR_LEN]) = signature.into_();
+        let public_key: &[u8; ELEM_LEN] = public_key.as_slice_less_safe().try_into()?;
+        let (signature_r, signature_s) = signature.read_all(error::Unspecified, |input| {
+            let signature_r: &[u8; ELEM_LEN] = input
+                .read_bytes(ELEM_LEN)?
+                .as_slice_less_safe()
+                .try_into()?;
+            let signature_s: &[u8; SCALAR_LEN] = input
+                .read_bytes(SCALAR_LEN)?
+                .as_slice_less_safe()
+                .try_into()?;
+            Ok((signature_r, signature_s))
+        })?;
 
         // Ensure `s` is not too large.
         if (signature_s[SCALAR_LEN - 1] & 0b11100000) != 0 {

@@ -19,8 +19,8 @@
 use crate::{
     aead::{aes, block::Block, chacha},
     cpu, error,
-    polyfill::convert::*,
 };
+use core::convert::{TryFrom, TryInto};
 
 /// A key for generating QUIC Header Protection masks.
 pub struct HeaderProtectionKey {
@@ -52,7 +52,7 @@ impl HeaderProtectionKey {
     ///
     /// `sample` must be exactly `self.algorithm().sample_len()` bytes long.
     pub fn new_mask(&self, sample: &[u8]) -> Result<[u8; 5], error::Unspecified> {
-        let sample = <&[u8; SAMPLE_LEN]>::try_from_(sample)?;
+        let sample = <&[u8; SAMPLE_LEN]>::try_from(sample)?;
         let sample = Block::from(sample);
 
         let out = (self.algorithm.new_mask)(&self.inner, sample);
@@ -153,7 +153,7 @@ pub static CHACHA20: Algorithm = Algorithm {
 };
 
 fn chacha20_init(key: &[u8], _todo: cpu::Features) -> Result<KeyInner, error::Unspecified> {
-    let chacha20_key: &[u8; chacha::KEY_LEN] = key.try_into_()?;
+    let chacha20_key: &[u8; chacha::KEY_LEN] = key.try_into()?;
     Ok(KeyInner::ChaCha20(chacha::Key::from(chacha20_key)))
 }
 
