@@ -13,8 +13,9 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use crate::{c, polyfill};
-use core::num::Wrapping;
+use super::sha2::{ch, maj, Word};
+use crate::c;
+use core::{convert::TryInto, num::Wrapping};
 
 pub const BLOCK_LEN: usize = 512 / 8;
 pub const CHAINING_LEN: usize = 160 / 8;
@@ -23,76 +24,78 @@ const CHAINING_WORDS: usize = CHAINING_LEN / 4;
 
 type W32 = Wrapping<u32>;
 
-#[inline]
-fn ch(x: W32, y: W32, z: W32) -> W32 {
-    (x & y) | (!x & z)
-}
-
+// FIPS 180-4 4.1.1
 #[inline]
 fn parity(x: W32, y: W32, z: W32) -> W32 {
     x ^ y ^ z
 }
 
-#[inline]
-fn maj(x: W32, y: W32, z: W32) -> W32 {
-    (x & y) | (x & z) | (y & z)
-}
+type State = [W32; CHAINING_WORDS];
+const ROUNDS: usize = 80;
 
-/// The main purpose in retaining this is to support legacy protocols and OCSP,
-/// none of which need a fast SHA-1 implementation.
-/// This implementation therefore favors size and simplicity over speed.
-/// Unlike SHA-256, SHA-384, and SHA-512,
-/// there is no assembly language implementation.
-pub(super) unsafe extern "C" fn block_data_order(
+pub(super) extern "C" fn block_data_order(
     state: &mut super::State,
     data: *const u8,
     num: c::size_t,
 ) {
-    let data = data as *const [[u8; 4]; 16];
-    let blocks = core::slice::from_raw_parts(data, num);
-    block_data_order_safe(&mut state.as32, blocks)
+    let state = unsafe { &mut state.as32 };
+    let state: &mut State = (&mut state[..CHAINING_WORDS]).try_into().unwrap();
+    let data = data as *const [<W32 as Word>::InputBytes; 16];
+    let blocks = unsafe { core::slice::from_raw_parts(data, num) };
+    *state = block_data_order_(*state, blocks)
+}
+
+#[inline]
+fn block_data_order_(mut H: State, M: &[[<W32 as Word>::InputBytes; 16]]) -> State {
+    for M in M {
+        // FIPS 180-4 6.1.2 Step 1
+        let mut W: [W32; ROUNDS] = [W32::ZERO; ROUNDS];
+        for t in 0..16 {
+            W[t] = W32::from_be_bytes(M[t]);
+        }
+        for t in 16..ROUNDS {
+            let wt = W[t - 3] ^ W[t - 8] ^ W[t - 14] ^ W[t - 16];
+            W[t] = rotl(wt, 1);
+        }
+
+        // FIPS 180-4 6.1.2 Step 2
+        let mut a = H[0];
+        let mut b = H[1];
+        let mut c = H[2];
+        let mut d = H[3];
+        let mut e = H[4];
+
+        // FIPS 180-4 6.1.2 Step 3
+        for t in 0..ROUNDS {
+            // FIPS 180-4 {4.1.1, 4.2.1}
+            let (k, f) = match t {
+                0..=19 => (Wrapping(0x5a827999), ch(b, c, d)),
+                20..=39 => (Wrapping(0x6ed9eba1), parity(b, c, d)),
+                40..=59 => (Wrapping(0x8f1bbcdc), maj(b, c, d)),
+                60..=79 => (Wrapping(0xca62c1d6), parity(b, c, d)),
+                _ => unreachable!(),
+            };
+
+            let T = rotl(a, 5) + f + e + k + W[t];
+            e = d;
+            d = c;
+            c = rotl(b, 30);
+            b = a;
+            a = T;
+        }
+
+        // FIPS 180-4 6.1.2 Step 4
+        H[1] += b;
+        H[2] += c;
+        H[3] += d;
+        H[0] += a;
+        H[4] += e;
+    }
+
+    H
 }
 
 #[inline(always)]
-fn block_data_order_safe(state: &mut [Wrapping<u32>; 256 / 32], blocks: &[[[u8; 4]; 16]]) {
-    let state = &mut state[..CHAINING_WORDS];
-
-    let mut w: [W32; 80] = [Wrapping(0); 80];
-    for block in blocks {
-        for t in 0..16 {
-            w[t] = Wrapping(u32::from_be_bytes(block[t]))
-        }
-        for t in 16..80 {
-            let wt = w[t - 3] ^ w[t - 8] ^ w[t - 14] ^ w[t - 16];
-            w[t] = polyfill::wrapping_rotate_left_u32(wt, 1);
-        }
-
-        let mut a = state[0];
-        let mut b = state[1];
-        let mut c = state[2];
-        let mut d = state[3];
-        let mut e = state[4];
-
-        for t in 0..80 {
-            let (k, f) = match t {
-                0..=19 => (0x5a827999, ch(b, c, d)),
-                20..=39 => (0x6ed9eba1, parity(b, c, d)),
-                40..=59 => (0x8f1bbcdc, maj(b, c, d)),
-                60..=79 => (0xca62c1d6, parity(b, c, d)),
-                _ => unreachable!(),
-            };
-            let tt = polyfill::wrapping_rotate_left_u32(a, 5) + f + e + Wrapping(k) + w[t];
-            e = d;
-            d = c;
-            c = polyfill::wrapping_rotate_left_u32(b, 30);
-            b = a;
-            a = tt;
-        }
-
-        state[0] = state[0] + a;
-        state[1] = state[1] + b;
-        state[2] = state[2] + c;
-        state[3] = state[3] + d;
-        state[4] = state[4] + e;
-    }
+fn rotl(x: W32, n: u32) -> W32 {
+    Wrapping(x.0.rotate_left(n))
 }
