@@ -50,8 +50,7 @@ impl Ed25519KeyPair {
     pub fn generate_pkcs8(
         rng: &dyn rand::SecureRandom,
     ) -> Result<pkcs8::Document, error::Unspecified> {
-        let mut seed = [0u8; SEED_LEN];
-        rng.fill(&mut seed)?;
+        let seed: [u8; SEED_LEN] = rand::generate(rng)?.expose();
         let key_pair = Self::from_seed_(&seed);
         Ok(pkcs8::wrap_key(
             &PKCS8_TEMPLATE,

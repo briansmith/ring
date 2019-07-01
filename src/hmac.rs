@@ -57,11 +57,10 @@
 //! // The sender generates a secure key value and signs the message with it.
 //! // Note that in a real protocol, a key agreement protocol would be used to
 //! // derive `key_value`.
-//! let mut key_value = [0u8; 32];
 //! let rng = rand::SystemRandom::new();
-//! rng.fill(&mut key_value)?;
+//! let key_value: [u8; digest::SHA256_OUTPUT_LEN] = rand::generate(&rng)?.expose();
 //!
-//! let s_key = hmac::Key::new(&digest::SHA256, key_value.as_ref());
+//! let s_key = hmac::Key::new(&digest::SHA256, &key_value);
 //! let tag = hmac::sign(&s_key, msg.as_bytes());
 //!
 //! // The receiver (somehow!) knows the key value, and uses it to verify the
@@ -82,11 +81,10 @@
 //! // The sender generates a secure key value and signs the message with it.
 //! // Note that in a real protocol, a key agreement protocol would be used to
 //! // derive `key_value`.
-//! let mut key_value = [0u8; 48];
 //! let rng = rand::SystemRandom::new();
-//! rng.fill(&mut key_value)?;
+//! let mut key_value: [u8; digest::SHA384_OUTPUT_LEN] = rand::generate(&rng)?.expose();
 //!
-//! let s_key = hmac::Key::new(&digest::SHA384, key_value.as_ref());
+//! let s_key = hmac::Key::new(&digest::SHA384, &key_value);
 //! let mut s_ctx = hmac::Context::with_key(&s_key);
 //! for part in &parts {
 //!     s_ctx.update(part.as_bytes());

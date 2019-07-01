@@ -28,10 +28,64 @@
 use crate::error;
 
 /// A secure random number generator.
-pub trait SecureRandom: sealed::Sealed {
+pub trait SecureRandom: crate::sealed::Sealed {
     /// Fills `dest` with random bytes.
     fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified>;
 }
+
+/// A random value constructed from a `SecureRandom` that hasn't been exposed
+/// through any safe Rust interface.
+///
+/// Intentionally does not implement any traits other than `Sized`.
+pub struct Random<T: RandomlyConstructable>(T);
+
+impl<T: RandomlyConstructable> Random<T> {
+    /// Expose the random value.
+    #[inline]
+    pub fn expose(self) -> T {
+        self.0
+    }
+}
+
+/// Generate the new random value using `rng`.
+#[inline]
+pub fn generate<T: RandomlyConstructable>(
+    rng: &SecureRandom,
+) -> Result<Random<T>, error::Unspecified>
+where
+    T: RandomlyConstructable,
+{
+    let mut r = T::zero();
+    rng.fill(r.as_mut_bytes())?;
+    Ok(Random(r))
+}
+
+mod sealed {
+    pub trait RandomlyConstructable: Sized {
+        fn zero() -> Self; // `Default::default()`
+        fn as_mut_bytes(&mut self) -> &mut [u8]; // `AsMut<[u8]>::as_mut`
+    }
+
+    macro_rules! impl_random_arrays {
+        [ $($len:expr)+ ] => {
+            $(
+                impl RandomlyConstructable for [u8; $len] {
+                    #[inline]
+                    fn zero() -> Self { [0; $len] }
+
+                    #[inline]
+                    fn as_mut_bytes(&mut self) -> &mut [u8] { &mut self[..] }
+                }
+            )+
+        }
+    }
+
+    impl_random_arrays![4 8 16 32 48 64];
+}
+
+/// A type that can be returned by `ring::rand::generate()`.
+pub trait RandomlyConstructable: self::sealed::RandomlyConstructable {}
+impl<T> RandomlyConstructable for T where T: self::sealed::RandomlyConstructable {}
 
 /// A secure random number generator where the random values come directly
 /// from the operating system.
@@ -86,7 +140,7 @@ impl SecureRandom for SystemRandom {
     }
 }
 
-impl sealed::Sealed for SystemRandom {}
+impl crate::sealed::Sealed for SystemRandom {}
 
 #[cfg(any(
     all(
@@ -108,8 +162,6 @@ use self::darwin::fill as fill_impl;
 
 #[cfg(any(target_os = "fuchsia"))]
 use self::fuchsia::fill as fill_impl;
-
-use crate::sealed;
 
 #[cfg(any(target_os = "android", target_os = "linux"))]
 mod sysrand_chunk {
