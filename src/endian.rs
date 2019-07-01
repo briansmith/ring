@@ -6,6 +6,8 @@ where
     T: From<Self>,
 {
     const ZERO: Self;
+
+    fn into_raw_value(self) -> T;
 }
 
 pub fn as_bytes<E: Encoding<T>, T>(x: &[E]) -> &[u8]
@@ -33,6 +35,11 @@ macro_rules! impl_endian {
     ($endian:ident, $base:ident, $to_endian:ident, $from_endian:ident) => {
         impl Encoding<$base> for $endian<$base> {
             const ZERO: Self = Self(0);
+
+            #[inline]
+            fn into_raw_value(self) -> $base {
+                self.0
+            }
         }
 
         impl From<$base> for $endian<$base> {
