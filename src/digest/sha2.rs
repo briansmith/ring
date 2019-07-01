@@ -123,15 +123,15 @@ fn block_data_order<S: Sha2>(
     H
 }
 
-// FIPS 180-4 {4.1.2, 4.1.3}
+// FIPS 180-4 {4.1.1, 4.1.2, 4.1.3}
 #[inline(always)]
-fn ch<S: Sha2>(x: S, y: S, z: S) -> S {
+pub(super) fn ch<W: Word>(x: W, y: W, z: W) -> W {
     (x & y) | (!x & z)
 }
 
-// FIPS 180-4 {4.1.2, 4.1.3}
+// FIPS 180-4 {4.1.1, 4.1.2, 4.1.3}
 #[inline(always)]
-fn maj<S: Sha2>(x: S, y: S, z: S) -> S {
+pub(super) fn maj<W: Word>(x: W, y: W, z: W) -> W {
     (x & y) | (x & z) | (y & z)
 }
 
@@ -159,8 +159,8 @@ fn sigma_1<S: Sha2>(x: S) -> S {
     x.rotr(S::SMALL_SIGMA_1.0) ^ x.rotr(S::SMALL_SIGMA_1.1) ^ (x >> S::SMALL_SIGMA_1.2)
 }
 
-/// A SHA-2 input word.
-trait Sha2:
+// Commonality between SHA-1 and SHA-2 words.
+pub(super) trait Word:
     'static
     + Sized
     + Copy
@@ -168,9 +168,7 @@ trait Sha2:
     + AddAssign
     + BitAnd<Output = Self>
     + BitOr<Output = Self>
-    + BitXor<Output = Self>
     + Not<Output = Self>
-    + Shr<usize, Output = Self>
 {
     const ZERO: Self;
 
@@ -181,7 +179,10 @@ trait Sha2:
 
     #[inline]
     fn rotr(self, count: u32) -> Self;
+}
 
+/// A SHA-2 input word.
+trait Sha2: Word + BitXor<Output = Self> + Shr<usize, Output = Self> {
     const BIG_SIGMA_0: (u32, u32, u32);
     const BIG_SIGMA_1: (u32, u32, u32);
     const SMALL_SIGMA_0: (u32, u32, usize);
@@ -193,8 +194,7 @@ trait Sha2:
 const MAX_ROUNDS: usize = 80;
 pub(super) const CHAINING_WORDS: usize = 8;
 
-// SHA-256
-impl Sha2 for Wrapping<u32> {
+impl Word for Wrapping<u32> {
     const ZERO: Self = Wrapping(0);
     type InputBytes = [u8; 4];
 
@@ -207,7 +207,10 @@ impl Sha2 for Wrapping<u32> {
     fn rotr(self, count: u32) -> Self {
         Wrapping(self.0.rotate_right(count))
     }
+}
 
+// SHA-256
+impl Sha2 for Wrapping<u32> {
     // FIPS 180-4 4.1.2
     const BIG_SIGMA_0: (u32, u32, u32) = (2, 13, 22);
     const BIG_SIGMA_1: (u32, u32, u32) = (6, 11, 25);
@@ -283,8 +286,7 @@ impl Sha2 for Wrapping<u32> {
     ];
 }
 
-// SHA-384 and SHA-512
-impl Sha2 for Wrapping<u64> {
+impl Word for Wrapping<u64> {
     const ZERO: Self = Wrapping(0);
     type InputBytes = [u8; 8];
 
@@ -296,7 +298,10 @@ impl Sha2 for Wrapping<u64> {
     fn rotr(self, count: u32) -> Self {
         Wrapping(self.0.rotate_right(count))
     }
+}
 
+// SHA-384 and SHA-512
+impl Sha2 for Wrapping<u64> {
     // FIPS 180-4 4.1.3
     const BIG_SIGMA_0: (u32, u32, u32) = (28, 34, 39);
     const BIG_SIGMA_1: (u32, u32, u32) = (14, 18, 41);
