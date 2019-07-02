@@ -28,14 +28,6 @@
 #pragma GCC diagnostic ignored "-Wsign-conversion"
 #endif
 
-static BN_ULONG is_zero(const BN_ULONG a[P384_LIMBS]) {
-  BN_ULONG acc = 0;
-  for (size_t i = 0; i < P384_LIMBS; ++i) {
-    acc |= a[i];
-  }
-  return constant_time_is_zero_w(acc);
-}
-
 /* Point double: r = 2*a */
 void GFp_nistz384_point_double(P384_POINT *r, const P384_POINT *a) {
   BN_ULONG S[P384_LIMBS];

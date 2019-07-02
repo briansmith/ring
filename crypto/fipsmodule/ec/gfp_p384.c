@@ -63,12 +63,15 @@ static const BN_ULONG ONE[P384_LIMBS] = {
 #define INLINE_IF_POSSIBLE inline
 #endif
 
-
-static INLINE_IF_POSSIBLE Limb is_equal(const Elem a, const Elem b) {
+static inline Limb is_equal(const Elem a, const Elem b) {
   return LIMBS_equal(a, b, P384_LIMBS);
 }
 
-static INLINE_IF_POSSIBLE void copy_conditional(Elem r, const Elem a,
+static inline Limb is_zero(const BN_ULONG a[P384_LIMBS]) {
+  return LIMBS_are_zero(a, P384_LIMBS);
+}
+
+static inline void copy_conditional(Elem r, const Elem a,
                                                 const Limb condition) {
   for (size_t i = 0; i < P384_LIMBS; ++i) {
     r[i] = constant_time_select_w(condition, a[i], r[i]);
@@ -76,11 +79,11 @@ static INLINE_IF_POSSIBLE void copy_conditional(Elem r, const Elem a,
 }
 
 
-static void elem_add(Elem r, const Elem a, const Elem b) {
+static inline void elem_add(Elem r, const Elem a, const Elem b) {
   LIMBS_add_mod(r, a, b, Q, P384_LIMBS);
 }
 
-static void elem_sub(Elem r, const Elem a, const Elem b) {
+static inline void elem_sub(Elem r, const Elem a, const Elem b) {
   LIMBS_sub_mod(r, a, b, Q, P384_LIMBS);
 }
 
