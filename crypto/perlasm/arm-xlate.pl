@@ -217,4 +217,4 @@ while(my $line=<>) {
 print "#endif\n" if ($flavour eq "linux32" || $flavour eq "linux64");
 print "#endif  // !OPENSSL_NO_ASM\n";
 
-close STDOUT;
+close STDOUT or die "error closing STDOUT";
