@@ -938,7 +938,7 @@ $code.=<<___;
 .global	GFp_bsaes_ctr32_encrypt_blocks
 .type	GFp_bsaes_ctr32_encrypt_blocks,%function
 .align	5
-bsaes_ctr32_encrypt_blocks:
+GFp_bsaes_ctr32_encrypt_blocks:
 	@ In OpenSSL, short inputs fall back to aes_nohw_* here. We patch this
 	@ out to retain a constant-time implementation.
 	mov	ip, sp
