@@ -554,7 +554,7 @@ int rsa_default_decrypt(RSA *rsa, size_t *out_len, uint8_t *out, size_t max_out,
   if (!ret) {
     OPENSSL_PUT_ERROR(RSA, RSA_R_PADDING_CHECK_FAILED);
   } else {
-    CONSTTIME_DECLASSIFY(out, out_len);
+    CONSTTIME_DECLASSIFY(out, *out_len);
   }
 
 err:
