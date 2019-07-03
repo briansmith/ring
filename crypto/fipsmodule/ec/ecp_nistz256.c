@@ -154,9 +154,8 @@ void GFp_nistz256_point_add(P256_POINT *r, const P256_POINT *a, const P256_POINT
   elem_mul_mont(U2, in2_x, Z1sqr); /* U2 = X2*Z1^2 */
   elem_sub(H, U2, U1);             /* H = U2 - U1 */
 
-  /* This should not happen during sign/ecdh,
-   * so no constant time violation */
-  if (is_equal(U1, U2) && !in1infty && !in2infty) {
+  BN_ULONG is_exceptional = is_equal(U1, U2) & ~in1infty & ~in2infty;
+  if (is_exceptional) {
     if (is_equal(S1, S2)) {
       GFp_nistz256_point_double(r, a);
     } else {
