@@ -10,7 +10,7 @@ license-file = "LICENSE"
 name = "ring"
 readme = "doc/link-to-readme.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.15.0-alpha2"
+version = "0.15.0-alpha3"
 
 # Prevent multiple versions of *ring* from being linked into the same program.
 links = "ring-asm"
@@ -132,6 +132,7 @@ include = [
     "src/arithmetic/bigint_elem_reduced_once_tests.txt",
     "src/arithmetic/bigint_elem_reduced_tests.txt",
     "src/arithmetic/bigint_elem_squared_tests.txt",
+    "src/arithmetic/constant.rs",
     "src/arithmetic/montgomery.rs",
     "src/array.rs",
     "src/bits.rs",
@@ -143,6 +144,7 @@ include = [
     "src/debug.rs",
     "src/digest.rs",
     "src/digest/sha1.rs",
+    "src/digest/sha2.rs",
     "src/ec/curve25519/ed25519/digest.rs",
     "src/ec/curve25519/ed25519.rs",
     "src/ec/curve25519/ed25519/signing.rs",
@@ -150,6 +152,7 @@ include = [
     "src/ec/curve25519/ed25519/ed25519_pkcs8_v2_template.der",
     "src/ec/curve25519.rs",
     "src/ec/curve25519/ops.rs",
+    "src/ec/curve25519/scalar.rs",
     "src/ec/curve25519/x25519.rs",
     "src/ec.rs",
     "src/ec/keys.rs",
@@ -200,6 +203,7 @@ include = [
     "src/io.rs",
     "src/io/der.rs",
     "src/io/der_writer.rs",
+    "src/io/positive.rs",
     "src/io/writer.rs",
     "src/lib.rs",
     "src/limb.rs",
