@@ -32,7 +32,7 @@
 )]
 
 use ring::{digest, error, pbkdf2, test, test_file};
-use std::num::NonZeroU32;
+use core::num::NonZeroU32;
 
 #[test]
 pub fn pbkdf2_tests() {

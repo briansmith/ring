@@ -14,5 +14,8 @@
 
 #[macro_use]
 pub mod constant;
+
+#[cfg(feature = "use_heap")]
 pub mod bigint;
+
 pub mod montgomery;

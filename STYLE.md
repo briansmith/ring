@@ -88,7 +88,7 @@ The C code generally uses the C `int` type as a return value, where 1 indicates
 success and 0 indicates failure. The module [ring::bssl](src/bssl.rs) contains
 a [transparent] `Result` type which should be used as the return type when
 declaring foreign functions which follow this convention. A
-`ring::bssl::Result` should be converted to a `std::result::Result` using the
+`ring::bssl::Result` should be converted to a `core::result::Result` using the
 pattern in the following example (note the placement of `unsafe`):
 
 [transparent]: https://doc.rust-lang.org/nightly/reference/type-layout.html#the-transparent-representation

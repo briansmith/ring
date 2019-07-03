@@ -142,8 +142,8 @@ pub const KEY_LEN: usize = KEY_BLOCKS * BLOCK_LEN;
 mod tests {
     use super::*;
     use crate::test;
+    use alloc::vec;
     use core::convert::TryInto;
-    use std::vec;
 
     // This verifies the encryption functionality provided by ChaCha20_ctr32
     // is successful when either computed on disjoint input/output buffers,

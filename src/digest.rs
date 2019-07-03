@@ -489,7 +489,7 @@ mod tests {
     mod max_input {
         use super::super::super::digest;
         use crate::polyfill;
-        use std::vec;
+        use alloc::vec;
 
         macro_rules! max_input_tests {
             ( $algorithm_name:ident ) => {

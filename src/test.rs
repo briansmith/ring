@@ -122,8 +122,8 @@ use crate::bits;
 
 use crate::{digest, error};
 
-use std::{format, string::String, vec::Vec};
-use std::{panic, println};
+use alloc::{format, string::String, vec::Vec};
+use std::println;
 
 /// `compile_time_assert_clone::<T>();` fails to compile if `T` doesn't
 /// implement `Clone`.
@@ -311,7 +311,7 @@ where
 
     #[allow(box_pointers)]
     while let Some(mut test_case) = parse_test_case(&mut current_section, lines) {
-        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             f(&current_section, &mut test_case)
         }));
         let result = match result {
