@@ -1170,4 +1170,4 @@ foreach (split("\n",$code)) {
 
 	print $_,"\n";
 }
-close STDOUT;	# enforce flush
+close STDOUT or die "error closing STDOUT";

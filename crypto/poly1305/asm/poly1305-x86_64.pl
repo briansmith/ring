@@ -2240,4 +2240,4 @@ foreach (split('\n',$code)) {
 
 	print $_,"\n";
 }
-close STDOUT;
+close STDOUT or die "error closing STDOUT";

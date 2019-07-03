@@ -1256,7 +1256,7 @@ print "END\n"				if ($masm);
 print "#endif\n"			if ($gas);
 
 
-close STDOUT;
+close STDOUT or die "error closing STDOUT";
 
 #################################################
 # Cross-reference x86_64 ABI "card"

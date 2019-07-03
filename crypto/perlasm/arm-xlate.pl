@@ -164,6 +164,15 @@ while(my $line=<>) {
     $line =~ s|^\s+||;		# ... and skip white spaces in beginning...
     $line =~ s|\s+$||;		# ... and at the end
 
+    if ($flavour =~ /64/) {
+	my $copy = $line;
+	# Also remove line comments.
+	$copy =~ s|//.*||;
+	if ($copy =~ /\b[wx]18\b/) {
+	    die "r18 is reserved by the platform and may not be used.";
+	}
+    }
+
     {
 	$line =~ s|[\b\.]L(\w{2,})|L$1|g;	# common denominator for Locallabel
 	$line =~ s|\bL(\w{2,})|\.L$1|g	if ($dotinlocallabels);
@@ -217,4 +226,4 @@ while(my $line=<>) {
 print "#endif\n" if ($flavour eq "linux32" || $flavour eq "linux64");
 print "#endif  // !OPENSSL_NO_ASM\n";
 
-close STDOUT;
+close STDOUT or die "error closing STDOUT";

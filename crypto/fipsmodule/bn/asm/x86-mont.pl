@@ -333,4 +333,4 @@ $mask="mm7";
 
 &asm_finish();
 
-close STDOUT;
+close STDOUT or die "error closing STDOUT";

@@ -46,7 +46,7 @@ impl Key {
                 }
             }
 
-            #[cfg(any(target_arch = "arm"))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
             Implementation::NEON => {
                 extern "C" {
                     fn GFp_gcm_init_neon(key: &mut Key, h: &[u64; 2]);
@@ -56,6 +56,7 @@ impl Key {
                 }
             }
 
+            #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
                 extern "C" {
                     fn GFp_gcm_init_4bit(key: &mut Key, h: &[u64; 2]);
@@ -132,7 +133,7 @@ impl Context {
                 }
             }
 
-            #[cfg(any(target_arch = "arm"))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
             Implementation::NEON => {
                 extern "C" {
                     fn GFp_gcm_ghash_neon(
@@ -147,6 +148,7 @@ impl Context {
                 }
             }
 
+            #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
                 extern "C" {
                     fn GFp_gcm_ghash_4bit(
@@ -178,7 +180,7 @@ impl Context {
                 }
             }
 
-            #[cfg(any(target_arch = "arm"))]
+            #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
             Implementation::NEON => {
                 extern "C" {
                     fn GFp_gcm_gmult_neon(ctx: &mut Context, Htable: *const GCM128_KEY);
@@ -188,6 +190,7 @@ impl Context {
                 }
             }
 
+            #[cfg(not(target_arch = "aarch64"))]
             Implementation::Fallback => {
                 extern "C" {
                     fn GFp_gcm_gmult_4bit(ctx: &mut Context, Htable: *const GCM128_KEY);
@@ -242,9 +245,10 @@ struct GCM128_CONTEXT {
 enum Implementation {
     CLMUL,
 
-    #[cfg(target_arch = "arm")]
+    #[cfg(any(target_arch = "aarch64", target_arch = "arm"))]
     NEON,
 
+    #[cfg(not(target_arch = "aarch64"))]
     Fallback,
 }
 
@@ -263,6 +267,12 @@ fn detect_implementation(cpu: cpu::Features) -> Implementation {
         }
     }
 
+    #[cfg(target_arch = "aarch64")]
+    {
+        return Implementation::NEON;
+    }
+
+    #[cfg(not(target_arch = "aarch64"))]
     Implementation::Fallback
 }
 
