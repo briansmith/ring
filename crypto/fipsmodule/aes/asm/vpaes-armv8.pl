@@ -90,28 +90,6 @@ _vpaes_consts:
 	.quad	0xE27A93C60B712400, 0x5EB7E955BC982FCD
 
 //
-//  Decryption stuff
-//
-.Lk_dipt:	// decryption input transform
-	.quad	0x0F505B040B545F00, 0x154A411E114E451A
-	.quad	0x86E383E660056500, 0x12771772F491F194
-.Lk_dsbo:	// decryption sbox final output
-	.quad	0x1387EA537EF94000, 0xC7AA6DB9D4943E2D
-	.quad	0x12D7560F93441D00, 0xCA4B8159D8C58E9C
-.Lk_dsb9:	// decryption sbox output *9*u, *9*t
-	.quad	0x851C03539A86D600, 0xCAD51F504F994CC9
-	.quad	0xC03B1789ECD74900, 0x725E2C9EB2FBA565
-.Lk_dsbd:	// decryption sbox output *D*u, *D*t
-	.quad	0x7D57CCDFE6B1A200, 0xF56E9B13882A4439
-	.quad	0x3CE2FAF724C6CB00, 0x2931180D15DEEFD3
-.Lk_dsbb:	// decryption sbox output *B*u, *B*t
-	.quad	0xD022649296B44200, 0x602646F6B0F2D404
-	.quad	0xC19498A6CD596700, 0xF3FF0C3E3255AA6B
-.Lk_dsbe:	// decryption sbox output *E*u, *E*t
-	.quad	0x46F2929626D4D000, 0x2242600464B4F6B0
-	.quad	0x0C55A6CDFFAAC100, 0x9467F36B98593E32
-
-//
 //  Key schedule constants
 //
 .Lk_dksd:	// decryption key schedule: invskew x*D
@@ -255,10 +233,10 @@ _vpaes_encrypt_core:
 	ret
 .size	_vpaes_encrypt_core,.-_vpaes_encrypt_core
 
-.globl	vpaes_encrypt
-.type	vpaes_encrypt,%function
+.globl	GFp_vpaes_encrypt
+.type	GFp_vpaes_encrypt,%function
 .align	4
-vpaes_encrypt:
+GFp_vpaes_encrypt:
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 
@@ -269,7 +247,7 @@ vpaes_encrypt:
 
 	ldp	x29,x30,[sp],#16
 	ret
-.size	vpaes_encrypt,.-vpaes_encrypt
+.size	GFp_vpaes_encrypt,.-GFp_vpaes_encrypt
 
 .type	_vpaes_encrypt_2x,%function
 .align 4
@@ -376,273 +354,6 @@ _vpaes_encrypt_2x:
 	 tbl	v1.16b,  {v8.16b},v1.16b
 	ret
 .size	_vpaes_encrypt_2x,.-_vpaes_encrypt_2x
-
-.type	_vpaes_decrypt_preheat,%function
-.align	4
-_vpaes_decrypt_preheat:
-	adrp	x10, :pg_hi21:.Lk_inv
-	add	x10, x10, :lo12:.Lk_inv
-	movi	v17.16b, #0x0f
-	adrp	x11, :pg_hi21:.Lk_dipt
-	add	x11, x11, :lo12:.Lk_dipt
-	ld1	{v18.2d-v19.2d}, [x10],#32	// .Lk_inv
-	ld1	{v20.2d-v23.2d}, [x11],#64	// .Lk_dipt, .Lk_dsbo
-	ld1	{v24.2d-v27.2d}, [x11],#64	// .Lk_dsb9, .Lk_dsbd
-	ld1	{v28.2d-v31.2d}, [x11]		// .Lk_dsbb, .Lk_dsbe
-	ret
-.size	_vpaes_decrypt_preheat,.-_vpaes_decrypt_preheat
-
-##
-##  Decryption core
-##
-##  Same API as encryption core.
-##
-.type	_vpaes_decrypt_core,%function
-.align	4
-_vpaes_decrypt_core:
-	mov	x9, $key
-	ldr	w8, [$key,#240]			// pull rounds
-
-						// vmovdqa	.Lk_dipt(%rip), %xmm2	# iptlo
-	lsl	x11, x8, #4			// mov	%rax,	%r11;	shl	\$4, %r11
-	eor	x11, x11, #0x30			// xor		\$0x30,	%r11
-	adrp	x10, :pg_hi21:.Lk_sr
-	add	x10, x10, :lo12:.Lk_sr
-	and	x11, x11, #0x30			// and		\$0x30,	%r11
-	add	x11, x11, x10
-	adrp	x10, :pg_hi21:.Lk_mc_forward+48
-	add	x10, x10, :lo12:.Lk_mc_forward+48
-
-	ld1	{v16.2d}, [x9],#16		// vmovdqu	(%r9),	%xmm4		# round0 key
-	and	v1.16b, v7.16b, v17.16b		// vpand	%xmm9,	%xmm0,	%xmm1
-	ushr	v0.16b, v7.16b, #4		// vpsrlb	\$4,	%xmm0,	%xmm0
-	tbl	v2.16b, {$iptlo}, v1.16b	// vpshufb	%xmm1,	%xmm2,	%xmm2
-	ld1	{v5.2d}, [x10]			// vmovdqa	.Lk_mc_forward+48(%rip), %xmm5
-						// vmovdqa	.Lk_dipt+16(%rip), %xmm1 # ipthi
-	tbl	v0.16b, {$ipthi}, v0.16b	// vpshufb	%xmm0,	%xmm1,	%xmm0
-	eor	v2.16b, v2.16b, v16.16b		// vpxor	%xmm4,	%xmm2,	%xmm2
-	eor	v0.16b, v0.16b, v2.16b		// vpxor	%xmm2,	%xmm0,	%xmm0
-	b	.Ldec_entry
-
-.align 4
-.Ldec_loop:
-//
-//  Inverse mix columns
-//
-						// vmovdqa	-0x20(%r10),%xmm4		# 4 : sb9u
-						// vmovdqa	-0x10(%r10),%xmm1		# 0 : sb9t
-	tbl	v4.16b, {$sb9u}, v2.16b		// vpshufb	%xmm2,	%xmm4,	%xmm4		# 4 = sb9u
-	tbl	v1.16b, {$sb9t}, v3.16b		// vpshufb	%xmm3,	%xmm1,	%xmm1		# 0 = sb9t
-	eor	v0.16b, v4.16b, v16.16b		// vpxor	%xmm4,	%xmm0,	%xmm0
-						// vmovdqa	0x00(%r10),%xmm4		# 4 : sbdu
-	eor	v0.16b, v0.16b, v1.16b		// vpxor	%xmm1,	%xmm0,	%xmm0		# 0 = ch
-						// vmovdqa	0x10(%r10),%xmm1		# 0 : sbdt
-
-	tbl	v4.16b, {$sbdu}, v2.16b		// vpshufb	%xmm2,	%xmm4,	%xmm4		# 4 = sbdu
-	tbl 	v0.16b, {v0.16b}, v5.16b	// vpshufb	%xmm5,	%xmm0,	%xmm0		# MC ch
-	tbl	v1.16b, {$sbdt}, v3.16b		// vpshufb	%xmm3,	%xmm1,	%xmm1		# 0 = sbdt
-	eor	v0.16b, v0.16b, v4.16b		// vpxor	%xmm4,	%xmm0,	%xmm0		# 4 = ch
-						// vmovdqa	0x20(%r10),	%xmm4		# 4 : sbbu
-	eor	v0.16b, v0.16b, v1.16b		// vpxor	%xmm1,	%xmm0,	%xmm0		# 0 = ch
-						// vmovdqa	0x30(%r10),	%xmm1		# 0 : sbbt
-
-	tbl	v4.16b, {$sbbu}, v2.16b		// vpshufb	%xmm2,	%xmm4,	%xmm4		# 4 = sbbu
-	tbl	v0.16b, {v0.16b}, v5.16b	// vpshufb	%xmm5,	%xmm0,	%xmm0		# MC ch
-	tbl	v1.16b, {$sbbt}, v3.16b		// vpshufb	%xmm3,	%xmm1,	%xmm1		# 0 = sbbt
-	eor	v0.16b, v0.16b, v4.16b		// vpxor	%xmm4,	%xmm0,	%xmm0		# 4 = ch
-						// vmovdqa	0x40(%r10),	%xmm4		# 4 : sbeu
-	eor	v0.16b, v0.16b, v1.16b		// vpxor	%xmm1,	%xmm0,	%xmm0		# 0 = ch
-						// vmovdqa	0x50(%r10),	%xmm1		# 0 : sbet
-
-	tbl	v4.16b, {$sbeu}, v2.16b		// vpshufb	%xmm2,	%xmm4,	%xmm4		# 4 = sbeu
-	tbl	v0.16b, {v0.16b}, v5.16b	// vpshufb	%xmm5,	%xmm0,	%xmm0		# MC ch
-	tbl	v1.16b, {$sbet}, v3.16b		// vpshufb	%xmm3,	%xmm1,	%xmm1		# 0 = sbet
-	eor	v0.16b, v0.16b, v4.16b		// vpxor	%xmm4,	%xmm0,	%xmm0		# 4 = ch
-	ext	v5.16b, v5.16b, v5.16b, #12	// vpalignr \$12,	%xmm5,	%xmm5,	%xmm5
-	eor	v0.16b, v0.16b, v1.16b		// vpxor	%xmm1,	%xmm0,	%xmm0		# 0 = ch
-	sub	w8, w8, #1			// sub		\$1,%rax			# nr--
-
-.Ldec_entry:
-	// top of round
-	and	v1.16b, v0.16b, v17.16b		// vpand	%xmm9,	%xmm0,	%xmm1	# 0 = k
-	ushr	v0.16b, v0.16b, #4		// vpsrlb	\$4,	%xmm0,	%xmm0	# 1 = i
-	tbl	v2.16b, {$invhi}, v1.16b	// vpshufb	%xmm1,	%xmm11,	%xmm2	# 2 = a/k
-	eor	v1.16b,	v1.16b, v0.16b		// vpxor	%xmm0,	%xmm1,	%xmm1	# 0 = j
-	tbl	v3.16b, {$invlo}, v0.16b	// vpshufb	%xmm0, 	%xmm10,	%xmm3	# 3 = 1/i
-	tbl	v4.16b, {$invlo}, v1.16b	// vpshufb	%xmm1,	%xmm10,	%xmm4	# 4 = 1/j
-	eor	v3.16b, v3.16b, v2.16b		// vpxor	%xmm2,	%xmm3,	%xmm3	# 3 = iak = 1/i + a/k
-	eor	v4.16b, v4.16b, v2.16b		// vpxor	%xmm2, 	%xmm4,	%xmm4	# 4 = jak = 1/j + a/k
-	tbl	v2.16b, {$invlo}, v3.16b	// vpshufb	%xmm3,	%xmm10,	%xmm2	# 2 = 1/iak
-	tbl	v3.16b, {$invlo}, v4.16b	// vpshufb	%xmm4,  %xmm10,	%xmm3	# 3 = 1/jak
-	eor	v2.16b, v2.16b, v1.16b		// vpxor	%xmm1,	%xmm2,	%xmm2	# 2 = io
-	eor	v3.16b, v3.16b, v0.16b		// vpxor	%xmm0,  %xmm3,	%xmm3	# 3 = jo
-	ld1	{v16.2d}, [x9],#16		// vmovdqu	(%r9),	%xmm0
-	cbnz	w8, .Ldec_loop
-
-	// middle of last round
-						// vmovdqa	0x60(%r10),	%xmm4	# 3 : sbou
-	tbl	v4.16b, {$sbou}, v2.16b		// vpshufb	%xmm2,	%xmm4,	%xmm4	# 4 = sbou
-						// vmovdqa	0x70(%r10),	%xmm1	# 0 : sbot
-	ld1	{v2.2d}, [x11]			// vmovdqa	-0x160(%r11),	%xmm2	# .Lk_sr-.Lk_dsbd=-0x160
-	tbl	v1.16b, {$sbot}, v3.16b		// vpshufb	%xmm3,	%xmm1,	%xmm1	# 0 = sb1t
-	eor	v4.16b, v4.16b, v16.16b		// vpxor	%xmm0,	%xmm4,	%xmm4	# 4 = sb1u + k
-	eor	v0.16b, v1.16b, v4.16b		// vpxor	%xmm4,	%xmm1,	%xmm0	# 0 = A
-	tbl	v0.16b, {v0.16b}, v2.16b	// vpshufb	%xmm2,	%xmm0,	%xmm0
-	ret
-.size	_vpaes_decrypt_core,.-_vpaes_decrypt_core
-
-.globl	vpaes_decrypt
-.type	vpaes_decrypt,%function
-.align	4
-vpaes_decrypt:
-	stp	x29,x30,[sp,#-16]!
-	add	x29,sp,#0
-
-	ld1	{v7.16b}, [$inp]
-	bl	_vpaes_decrypt_preheat
-	bl	_vpaes_decrypt_core
-	st1	{v0.16b}, [$out]
-
-	ldp	x29,x30,[sp],#16
-	ret
-.size	vpaes_decrypt,.-vpaes_decrypt
-
-// v14-v15 input, v0-v1 output
-.type	_vpaes_decrypt_2x,%function
-.align	4
-_vpaes_decrypt_2x:
-	mov	x9, $key
-	ldr	w8, [$key,#240]			// pull rounds
-
-						// vmovdqa	.Lk_dipt(%rip), %xmm2	# iptlo
-	lsl	x11, x8, #4			// mov	%rax,	%r11;	shl	\$4, %r11
-	eor	x11, x11, #0x30			// xor		\$0x30,	%r11
-	adrp	x10, :pg_hi21:.Lk_sr
-	add	x10, x10, :lo12:.Lk_sr
-	and	x11, x11, #0x30			// and		\$0x30,	%r11
-	add	x11, x11, x10
-	adrp	x10, :pg_hi21:.Lk_mc_forward+48
-	add	x10, x10, :lo12:.Lk_mc_forward+48
-
-	ld1	{v16.2d}, [x9],#16		// vmovdqu	(%r9),	%xmm4		# round0 key
-	and	v1.16b,  v14.16b, v17.16b	// vpand	%xmm9,	%xmm0,	%xmm1
-	ushr	v0.16b,  v14.16b, #4		// vpsrlb	\$4,	%xmm0,	%xmm0
-	 and	v9.16b,  v15.16b, v17.16b
-	 ushr	v8.16b,  v15.16b, #4
-	tbl	v2.16b,  {$iptlo},v1.16b	// vpshufb	%xmm1,	%xmm2,	%xmm2
-	 tbl	v10.16b, {$iptlo},v9.16b
-	ld1	{v5.2d}, [x10]			// vmovdqa	.Lk_mc_forward+48(%rip), %xmm5
-						// vmovdqa	.Lk_dipt+16(%rip), %xmm1 # ipthi
-	tbl	v0.16b,  {$ipthi},v0.16b	// vpshufb	%xmm0,	%xmm1,	%xmm0
-	 tbl	v8.16b,  {$ipthi},v8.16b
-	eor	v2.16b,  v2.16b,  v16.16b	// vpxor	%xmm4,	%xmm2,	%xmm2
-	 eor	v10.16b, v10.16b, v16.16b
-	eor	v0.16b,  v0.16b,  v2.16b	// vpxor	%xmm2,	%xmm0,	%xmm0
-	 eor	v8.16b,  v8.16b,  v10.16b
-	b	.Ldec_2x_entry
-
-.align 4
-.Ldec_2x_loop:
-//
-//  Inverse mix columns
-//
-						// vmovdqa	-0x20(%r10),%xmm4		# 4 : sb9u
-						// vmovdqa	-0x10(%r10),%xmm1		# 0 : sb9t
-	tbl	v4.16b,  {$sb9u}, v2.16b	// vpshufb	%xmm2,	%xmm4,	%xmm4		# 4 = sb9u
-	 tbl	v12.16b, {$sb9u}, v10.16b
-	tbl	v1.16b,  {$sb9t}, v3.16b	// vpshufb	%xmm3,	%xmm1,	%xmm1		# 0 = sb9t
-	 tbl	v9.16b,  {$sb9t}, v11.16b
-	eor	v0.16b,  v4.16b,  v16.16b	// vpxor	%xmm4,	%xmm0,	%xmm0
-	 eor	v8.16b,  v12.16b, v16.16b
-						// vmovdqa	0x00(%r10),%xmm4		# 4 : sbdu
-	eor	v0.16b,  v0.16b,  v1.16b	// vpxor	%xmm1,	%xmm0,	%xmm0		# 0 = ch
-	 eor	v8.16b,  v8.16b,  v9.16b	// vpxor	%xmm1,	%xmm0,	%xmm0		# 0 = ch
-						// vmovdqa	0x10(%r10),%xmm1		# 0 : sbdt
-
-	tbl	v4.16b,  {$sbdu}, v2.16b	// vpshufb	%xmm2,	%xmm4,	%xmm4		# 4 = sbdu
-	 tbl	v12.16b, {$sbdu}, v10.16b
-	tbl 	v0.16b,  {v0.16b},v5.16b	// vpshufb	%xmm5,	%xmm0,	%xmm0		# MC ch
-	 tbl 	v8.16b,  {v8.16b},v5.16b
-	tbl	v1.16b,  {$sbdt}, v3.16b	// vpshufb	%xmm3,	%xmm1,	%xmm1		# 0 = sbdt
-	 tbl	v9.16b,  {$sbdt}, v11.16b
-	eor	v0.16b,  v0.16b,  v4.16b	// vpxor	%xmm4,	%xmm0,	%xmm0		# 4 = ch
-	 eor	v8.16b,  v8.16b,  v12.16b
-						// vmovdqa	0x20(%r10),	%xmm4		# 4 : sbbu
-	eor	v0.16b,  v0.16b,  v1.16b	// vpxor	%xmm1,	%xmm0,	%xmm0		# 0 = ch
-	 eor	v8.16b,  v8.16b,  v9.16b
-						// vmovdqa	0x30(%r10),	%xmm1		# 0 : sbbt
-
-	tbl	v4.16b,  {$sbbu}, v2.16b	// vpshufb	%xmm2,	%xmm4,	%xmm4		# 4 = sbbu
-	 tbl	v12.16b, {$sbbu}, v10.16b
-	tbl	v0.16b,  {v0.16b},v5.16b	// vpshufb	%xmm5,	%xmm0,	%xmm0		# MC ch
-	 tbl	v8.16b,  {v8.16b},v5.16b
-	tbl	v1.16b,  {$sbbt}, v3.16b	// vpshufb	%xmm3,	%xmm1,	%xmm1		# 0 = sbbt
-	 tbl	v9.16b,  {$sbbt}, v11.16b
-	eor	v0.16b,  v0.16b,  v4.16b	// vpxor	%xmm4,	%xmm0,	%xmm0		# 4 = ch
-	 eor	v8.16b,  v8.16b,  v12.16b
-						// vmovdqa	0x40(%r10),	%xmm4		# 4 : sbeu
-	eor	v0.16b,  v0.16b,  v1.16b	// vpxor	%xmm1,	%xmm0,	%xmm0		# 0 = ch
-	 eor	v8.16b,  v8.16b,  v9.16b
-						// vmovdqa	0x50(%r10),	%xmm1		# 0 : sbet
-
-	tbl	v4.16b,  {$sbeu}, v2.16b	// vpshufb	%xmm2,	%xmm4,	%xmm4		# 4 = sbeu
-	 tbl	v12.16b, {$sbeu}, v10.16b
-	tbl	v0.16b,  {v0.16b},v5.16b	// vpshufb	%xmm5,	%xmm0,	%xmm0		# MC ch
-	 tbl	v8.16b,  {v8.16b},v5.16b
-	tbl	v1.16b,  {$sbet}, v3.16b	// vpshufb	%xmm3,	%xmm1,	%xmm1		# 0 = sbet
-	 tbl	v9.16b,  {$sbet}, v11.16b
-	eor	v0.16b,  v0.16b,  v4.16b	// vpxor	%xmm4,	%xmm0,	%xmm0		# 4 = ch
-	 eor	v8.16b,  v8.16b,  v12.16b
-	ext	v5.16b,  v5.16b,  v5.16b, #12	// vpalignr \$12,	%xmm5,	%xmm5,	%xmm5
-	eor	v0.16b,  v0.16b,  v1.16b	// vpxor	%xmm1,	%xmm0,	%xmm0		# 0 = ch
-	 eor	v8.16b,  v8.16b,  v9.16b
-	sub	w8, w8, #1			// sub		\$1,%rax			# nr--
-
-.Ldec_2x_entry:
-	// top of round
-	and	v1.16b,  v0.16b,  v17.16b	// vpand	%xmm9,	%xmm0,	%xmm1	# 0 = k
-	ushr	v0.16b,  v0.16b,  #4		// vpsrlb	\$4,	%xmm0,	%xmm0	# 1 = i
-	 and	v9.16b,  v8.16b,  v17.16b
-	 ushr	v8.16b,  v8.16b,  #4
-	tbl	v2.16b,  {$invhi},v1.16b	// vpshufb	%xmm1,	%xmm11,	%xmm2	# 2 = a/k
-	 tbl	v10.16b, {$invhi},v9.16b
-	eor	v1.16b,	 v1.16b,  v0.16b	// vpxor	%xmm0,	%xmm1,	%xmm1	# 0 = j
-	 eor	v9.16b,	 v9.16b,  v8.16b
-	tbl	v3.16b,  {$invlo},v0.16b	// vpshufb	%xmm0, 	%xmm10,	%xmm3	# 3 = 1/i
-	 tbl	v11.16b, {$invlo},v8.16b
-	tbl	v4.16b,  {$invlo},v1.16b	// vpshufb	%xmm1,	%xmm10,	%xmm4	# 4 = 1/j
-	 tbl	v12.16b, {$invlo},v9.16b
-	eor	v3.16b,  v3.16b,  v2.16b	// vpxor	%xmm2,	%xmm3,	%xmm3	# 3 = iak = 1/i + a/k
-	 eor	v11.16b, v11.16b, v10.16b
-	eor	v4.16b,  v4.16b,  v2.16b	// vpxor	%xmm2, 	%xmm4,	%xmm4	# 4 = jak = 1/j + a/k
-	 eor	v12.16b, v12.16b, v10.16b
-	tbl	v2.16b,  {$invlo},v3.16b	// vpshufb	%xmm3,	%xmm10,	%xmm2	# 2 = 1/iak
-	 tbl	v10.16b, {$invlo},v11.16b
-	tbl	v3.16b,  {$invlo},v4.16b	// vpshufb	%xmm4,  %xmm10,	%xmm3	# 3 = 1/jak
-	 tbl	v11.16b, {$invlo},v12.16b
-	eor	v2.16b,  v2.16b,  v1.16b	// vpxor	%xmm1,	%xmm2,	%xmm2	# 2 = io
-	 eor	v10.16b, v10.16b, v9.16b
-	eor	v3.16b,  v3.16b,  v0.16b	// vpxor	%xmm0,  %xmm3,	%xmm3	# 3 = jo
-	 eor	v11.16b, v11.16b, v8.16b
-	ld1	{v16.2d}, [x9],#16		// vmovdqu	(%r9),	%xmm0
-	cbnz	w8, .Ldec_2x_loop
-
-	// middle of last round
-						// vmovdqa	0x60(%r10),	%xmm4	# 3 : sbou
-	tbl	v4.16b,  {$sbou}, v2.16b	// vpshufb	%xmm2,	%xmm4,	%xmm4	# 4 = sbou
-	 tbl	v12.16b, {$sbou}, v10.16b
-						// vmovdqa	0x70(%r10),	%xmm1	# 0 : sbot
-	tbl	v1.16b,  {$sbot}, v3.16b	// vpshufb	%xmm3,	%xmm1,	%xmm1	# 0 = sb1t
-	 tbl	v9.16b,  {$sbot}, v11.16b
-	ld1	{v2.2d}, [x11]			// vmovdqa	-0x160(%r11),	%xmm2	# .Lk_sr-.Lk_dsbd=-0x160
-	eor	v4.16b,  v4.16b,  v16.16b	// vpxor	%xmm0,	%xmm4,	%xmm4	# 4 = sb1u + k
-	 eor	v12.16b, v12.16b, v16.16b
-	eor	v0.16b,  v1.16b,  v4.16b	// vpxor	%xmm4,	%xmm1,	%xmm0	# 0 = A
-	 eor	v8.16b,  v9.16b,  v12.16b
-	tbl	v0.16b,  {v0.16b},v2.16b	// vpshufb	%xmm2,	%xmm0,	%xmm0
-	 tbl	v1.16b,  {v8.16b},v2.16b
-	ret
-.size	_vpaes_decrypt_2x,.-_vpaes_decrypt_2x
 ___
 }
 {
@@ -696,20 +407,10 @@ _vpaes_schedule_core:
 	add	x10, x10, :lo12:.Lk_sr
 
 	add	x8, x8, x10
-	cbnz	$dir, .Lschedule_am_decrypting
 
 	// encrypting, output zeroth round key after transform
 	st1	{v0.2d}, [$out]			// vmovdqu	%xmm0,	(%rdx)
-	b	.Lschedule_go
 
-.Lschedule_am_decrypting:
-	// decrypting, output zeroth round key after shiftrows
-	ld1	{v1.2d}, [x8]			// vmovdqa	(%r8,%r10),	%xmm1
-	tbl	v3.16b, {v3.16b}, v1.16b	// vpshufb  %xmm1,	%xmm3,	%xmm3
-	st1	{v3.2d}, [$out]			// vmovdqu	%xmm3,	(%rdx)
-	eor	x8, x8, #0x30			// xor	\$0x30, %r8
-
-.Lschedule_go:
 	cmp	$bits, #192			// cmp	\$192,	%esi
 	b.hi	.Lschedule_256
 	b.eq	.Lschedule_192
@@ -996,7 +697,6 @@ _vpaes_schedule_transform:
 _vpaes_schedule_mangle:
 	mov	v4.16b, v0.16b			// vmovdqa	%xmm0,	%xmm4	# save xmm0 for later
 						// vmovdqa	.Lk_mc_forward(%rip),%xmm5
-	cbnz	$dir, .Lschedule_mangle_dec
 
 	// encrypting
 	eor	v4.16b, v0.16b, v16.16b		// vpxor	.Lk_s63(%rip),	%xmm0,	%xmm4
@@ -1008,47 +708,6 @@ _vpaes_schedule_mangle:
 	ld1	{v1.2d}, [x8]			// vmovdqa	(%r8,%r10),	%xmm1
 	eor	v3.16b, v3.16b, v4.16b		// vpxor	%xmm4,	%xmm3,	%xmm3
 
-	b	.Lschedule_mangle_both
-.align	4
-.Lschedule_mangle_dec:
-	// inverse mix columns
-						// lea	.Lk_dksd(%rip),%r11
-	ushr	v1.16b, v4.16b, #4		// vpsrlb	\$4,	%xmm4,	%xmm1	# 1 = hi
-	and	v4.16b, v4.16b, v17.16b		// vpand	%xmm9,	%xmm4,	%xmm4	# 4 = lo
-
-						// vmovdqa	0x00(%r11),	%xmm2
-	tbl	v2.16b, {v24.16b}, v4.16b	// vpshufb	%xmm4,	%xmm2,	%xmm2
-						// vmovdqa	0x10(%r11),	%xmm3
-	tbl	v3.16b,	{v25.16b}, v1.16b	// vpshufb	%xmm1,	%xmm3,	%xmm3
-	eor	v3.16b, v3.16b, v2.16b		// vpxor	%xmm2,	%xmm3,	%xmm3
-	tbl	v3.16b, {v3.16b}, v9.16b	// vpshufb	%xmm5,	%xmm3,	%xmm3
-
-						// vmovdqa	0x20(%r11),	%xmm2
-	tbl	v2.16b, {v26.16b}, v4.16b	// vpshufb	%xmm4,	%xmm2,	%xmm2
-	eor	v2.16b, v2.16b, v3.16b		// vpxor	%xmm3,	%xmm2,	%xmm2
-						// vmovdqa	0x30(%r11),	%xmm3
-	tbl	v3.16b, {v27.16b}, v1.16b	// vpshufb	%xmm1,	%xmm3,	%xmm3
-	eor	v3.16b, v3.16b, v2.16b		// vpxor	%xmm2,	%xmm3,	%xmm3
-	tbl	v3.16b, {v3.16b}, v9.16b	// vpshufb	%xmm5,	%xmm3,	%xmm3
-
-						// vmovdqa	0x40(%r11),	%xmm2
-	tbl	v2.16b, {v28.16b}, v4.16b	// vpshufb	%xmm4,	%xmm2,	%xmm2
-	eor	v2.16b, v2.16b, v3.16b		// vpxor	%xmm3,	%xmm2,	%xmm2
-						// vmovdqa	0x50(%r11),	%xmm3
-	tbl	v3.16b, {v29.16b}, v1.16b	// vpshufb	%xmm1,	%xmm3,	%xmm3
-	eor	v3.16b, v3.16b, v2.16b		// vpxor	%xmm2,	%xmm3,	%xmm3
-
-						// vmovdqa	0x60(%r11),	%xmm2
-	tbl	v2.16b, {v30.16b}, v4.16b	// vpshufb	%xmm4,	%xmm2,	%xmm2
-	tbl	v3.16b, {v3.16b}, v9.16b	// vpshufb	%xmm5,	%xmm3,	%xmm3
-						// vmovdqa	0x70(%r11),	%xmm4
-	tbl	v4.16b, {v31.16b}, v1.16b	// vpshufb	%xmm1,	%xmm4,	%xmm4
-	ld1	{v1.2d}, [x8]			// vmovdqa	(%r8,%r10),	%xmm1
-	eor	v2.16b, v2.16b, v3.16b		// vpxor	%xmm3,	%xmm2,	%xmm2
-	eor	v3.16b, v4.16b, v2.16b		// vpxor	%xmm2,	%xmm4,	%xmm3
-
-	sub	$out, $out, #16			// add	\$-16,	%rdx
-
 .Lschedule_mangle_both:
 	tbl	v3.16b, {v3.16b}, v1.16b	// vpshufb	%xmm1,	%xmm3,	%xmm3
 	add	x8, x8, #64-16			// add	\$-16,	%r8
@@ -1057,10 +716,10 @@ _vpaes_schedule_mangle:
 	ret
 .size	_vpaes_schedule_mangle,.-_vpaes_schedule_mangle
 
-.globl	vpaes_set_encrypt_key
-.type	vpaes_set_encrypt_key,%function
+.globl	GFp_vpaes_set_encrypt_key
+.type	GFp_vpaes_set_encrypt_key,%function
 .align	4
-vpaes_set_encrypt_key:
+GFp_vpaes_set_encrypt_key:
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 	stp	d8,d9,[sp,#-16]!	// ABI spec says so
@@ -1077,214 +736,20 @@ vpaes_set_encrypt_key:
 	ldp	d8,d9,[sp],#16
 	ldp	x29,x30,[sp],#16
 	ret
-.size	vpaes_set_encrypt_key,.-vpaes_set_encrypt_key
-
-.globl	vpaes_set_decrypt_key
-.type	vpaes_set_decrypt_key,%function
-.align	4
-vpaes_set_decrypt_key:
-	stp	x29,x30,[sp,#-16]!
-	add	x29,sp,#0
-	stp	d8,d9,[sp,#-16]!	// ABI spec says so
-
-	lsr	w9, $bits, #5		// shr	\$5,%eax
-	add	w9, w9, #5		// \$5,%eax
-	str	w9, [$out,#240]		// mov	%eax,240(%rdx)	# AES_KEY->rounds = nbits/32+5;
-	lsl	w9, w9, #4		// shl	\$4,%eax
-	add	$out, $out, #16		// lea	16(%rdx,%rax),%rdx
-	add	$out, $out, x9
-
-	mov	$dir, #1		// mov	\$1,%ecx
-	lsr	w8, $bits, #1		// shr	\$1,%r8d
-	and	x8, x8, #32		// and	\$32,%r8d
-	eor	x8, x8, #32		// xor	\$32,%r8d	# nbits==192?0:32
-	bl	_vpaes_schedule_core
-
-	ldp	d8,d9,[sp],#16
-	ldp	x29,x30,[sp],#16
-	ret
-.size	vpaes_set_decrypt_key,.-vpaes_set_decrypt_key
+.size	GFp_vpaes_set_encrypt_key,.-GFp_vpaes_set_encrypt_key
 ___
 }
 {
-my ($inp,$out,$len,$key,$ivec,$dir) = map("x$_",(0..5));
-
-$code.=<<___;
-.globl	vpaes_cbc_encrypt
-.type	vpaes_cbc_encrypt,%function
-.align	4
-vpaes_cbc_encrypt:
-	cbz	$len, .Lcbc_abort
-	cmp	w5, #0			// check direction
-	b.eq	vpaes_cbc_decrypt
-
-	stp	x29,x30,[sp,#-16]!
-	add	x29,sp,#0
-
-	mov	x17, $len		// reassign
-	mov	x2,  $key		// reassign
-
-	ld1	{v0.16b}, [$ivec]	// load ivec
-	bl	_vpaes_encrypt_preheat
-	b	.Lcbc_enc_loop
-
-.align	4
-.Lcbc_enc_loop:
-	ld1	{v7.16b}, [$inp],#16	// load input
-	eor	v7.16b, v7.16b, v0.16b	// xor with ivec
-	bl	_vpaes_encrypt_core
-	st1	{v0.16b}, [$out],#16	// save output
-	subs	x17, x17, #16
-	b.hi	.Lcbc_enc_loop
-
-	st1	{v0.16b}, [$ivec]	// write ivec
-
-	ldp	x29,x30,[sp],#16
-.Lcbc_abort:
-	ret
-.size	vpaes_cbc_encrypt,.-vpaes_cbc_encrypt
-
-.type	vpaes_cbc_decrypt,%function
-.align	4
-vpaes_cbc_decrypt:
-	stp	x29,x30,[sp,#-16]!
-	add	x29,sp,#0
-	stp	d8,d9,[sp,#-16]!	// ABI spec says so
-	stp	d10,d11,[sp,#-16]!
-	stp	d12,d13,[sp,#-16]!
-	stp	d14,d15,[sp,#-16]!
-
-	mov	x17, $len		// reassign
-	mov	x2,  $key		// reassign
-	ld1	{v6.16b}, [$ivec]	// load ivec
-	bl	_vpaes_decrypt_preheat
-	tst	x17, #16
-	b.eq	.Lcbc_dec_loop2x
-
-	ld1	{v7.16b}, [$inp], #16	// load input
-	bl	_vpaes_decrypt_core
-	eor	v0.16b, v0.16b, v6.16b	// xor with ivec
-	orr	v6.16b, v7.16b, v7.16b	// next ivec value
-	st1	{v0.16b}, [$out], #16
-	subs	x17, x17, #16
-	b.ls	.Lcbc_dec_done
-
-.align	4
-.Lcbc_dec_loop2x:
-	ld1	{v14.16b,v15.16b}, [$inp], #32
-	bl	_vpaes_decrypt_2x
-	eor	v0.16b, v0.16b, v6.16b	// xor with ivec
-	eor	v1.16b, v1.16b, v14.16b
-	orr	v6.16b, v15.16b, v15.16b
-	st1	{v0.16b,v1.16b}, [$out], #32
-	subs	x17, x17, #32
-	b.hi	.Lcbc_dec_loop2x
-
-.Lcbc_dec_done:
-	st1	{v6.16b}, [$ivec]
-
-	ldp	d14,d15,[sp],#16
-	ldp	d12,d13,[sp],#16
-	ldp	d10,d11,[sp],#16
-	ldp	d8,d9,[sp],#16
-	ldp	x29,x30,[sp],#16
-	ret
-.size	vpaes_cbc_decrypt,.-vpaes_cbc_decrypt
-___
-# We omit vpaes_ecb_* in BoringSSL. They are unused.
-if (0) {
-$code.=<<___;
-.globl	vpaes_ecb_encrypt
-.type	vpaes_ecb_encrypt,%function
-.align	4
-vpaes_ecb_encrypt:
-	stp	x29,x30,[sp,#-16]!
-	add	x29,sp,#0
-	stp	d8,d9,[sp,#-16]!	// ABI spec says so
-	stp	d10,d11,[sp,#-16]!
-	stp	d12,d13,[sp,#-16]!
-	stp	d14,d15,[sp,#-16]!
-
-	mov	x17, $len
-	mov	x2,  $key
-	bl	_vpaes_encrypt_preheat
-	tst	x17, #16
-	b.eq	.Lecb_enc_loop
-
-	ld1	{v7.16b}, [$inp],#16
-	bl	_vpaes_encrypt_core
-	st1	{v0.16b}, [$out],#16
-	subs	x17, x17, #16
-	b.ls	.Lecb_enc_done
-
-.align	4
-.Lecb_enc_loop:
-	ld1	{v14.16b,v15.16b}, [$inp], #32
-	bl	_vpaes_encrypt_2x
-	st1	{v0.16b,v1.16b}, [$out], #32
-	subs	x17, x17, #32
-	b.hi	.Lecb_enc_loop
-
-.Lecb_enc_done:
-	ldp	d14,d15,[sp],#16
-	ldp	d12,d13,[sp],#16
-	ldp	d10,d11,[sp],#16
-	ldp	d8,d9,[sp],#16
-	ldp	x29,x30,[sp],#16
-	ret
-.size	vpaes_ecb_encrypt,.-vpaes_ecb_encrypt
-
-.globl	vpaes_ecb_decrypt
-.type	vpaes_ecb_decrypt,%function
-.align	4
-vpaes_ecb_decrypt:
-	stp	x29,x30,[sp,#-16]!
-	add	x29,sp,#0
-	stp	d8,d9,[sp,#-16]!	// ABI spec says so
-	stp	d10,d11,[sp,#-16]!
-	stp	d12,d13,[sp,#-16]!
-	stp	d14,d15,[sp,#-16]!
-
-	mov	x17, $len
-	mov	x2,  $key
-	bl	_vpaes_decrypt_preheat
-	tst	x17, #16
-	b.eq	.Lecb_dec_loop
-
-	ld1	{v7.16b}, [$inp],#16
-	bl	_vpaes_encrypt_core
-	st1	{v0.16b}, [$out],#16
-	subs	x17, x17, #16
-	b.ls	.Lecb_dec_done
-
-.align	4
-.Lecb_dec_loop:
-	ld1	{v14.16b,v15.16b}, [$inp], #32
-	bl	_vpaes_decrypt_2x
-	st1	{v0.16b,v1.16b}, [$out], #32
-	subs	x17, x17, #32
-	b.hi	.Lecb_dec_loop
-
-.Lecb_dec_done:
-	ldp	d14,d15,[sp],#16
-	ldp	d12,d13,[sp],#16
-	ldp	d10,d11,[sp],#16
-	ldp	d8,d9,[sp],#16
-	ldp	x29,x30,[sp],#16
-	ret
-.size	vpaes_ecb_decrypt,.-vpaes_ecb_decrypt
-___
-}
-
+my ($inp,$out,$len,$key,$ivec) = map("x$_",(0..4));
 my ($ctr, $ctr_tmp) = ("w6", "w7");
 
-# void vpaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
-#                                 const AES_KEY *key, const uint8_t ivec[16]);
+# void GFp_vpaes_ctr32_encrypt_blocks(const uint8_t *in, uint8_t *out, size_t len,
+#                                     const AES_KEY *key, const uint8_t ivec[16]);
 $code.=<<___;
-.globl	vpaes_ctr32_encrypt_blocks
-.type	vpaes_ctr32_encrypt_blocks,%function
+.globl	GFp_vpaes_ctr32_encrypt_blocks
+.type	GFp_vpaes_ctr32_encrypt_blocks,%function
 .align	4
-vpaes_ctr32_encrypt_blocks:
+GFp_vpaes_ctr32_encrypt_blocks:
 	stp	x29,x30,[sp,#-16]!
 	add	x29,sp,#0
 	stp	d8,d9,[sp,#-16]!	// ABI spec says so
@@ -1353,7 +818,7 @@ vpaes_ctr32_encrypt_blocks:
 	ldp	d8,d9,[sp],#16
 	ldp	x29,x30,[sp],#16
 	ret
-.size	vpaes_ctr32_encrypt_blocks,.-vpaes_ctr32_encrypt_blocks
+.size	GFp_vpaes_ctr32_encrypt_blocks,.-GFp_vpaes_ctr32_encrypt_blocks
 ___
 }
 

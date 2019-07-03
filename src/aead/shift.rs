@@ -13,12 +13,14 @@
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 use super::block::{Block, BLOCK_LEN};
-use core::convert::TryFrom;
 
+#[cfg(not(target_arch = "aarch64"))]
 pub fn shift_full_blocks<F>(in_out: &mut [u8], in_prefix_len: usize, mut transform: F)
 where
     F: FnMut(&[u8; BLOCK_LEN]) -> Block,
 {
+    use core::convert::TryFrom;
+
     let in_out_len = in_out.len().checked_sub(in_prefix_len).unwrap();
 
     for i in (0..in_out_len).step_by(BLOCK_LEN) {

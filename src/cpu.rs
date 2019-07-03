@@ -82,6 +82,11 @@ pub(crate) mod arm {
 
         let caps = unsafe { getauxval(AT_HWCAP) };
 
+        // We assume NEON is available on AARCH64 because it is a required
+        // feature.
+        #[cfg(target_arch = "aarch64")]
+        debug_assert!(caps & HWCAP_NEON == HWCAP_NEON);
+
         // OpenSSL and BoringSSL don't enable any other features if NEON isn't
         // available.
         if caps & HWCAP_NEON == HWCAP_NEON {
