@@ -43,11 +43,11 @@ use crate::{
     bits, bssl, c, error,
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
 };
+use alloc::{borrow::ToOwned as _, boxed::Box, vec, vec::Vec};
 use core::{
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
-use std::{borrow::ToOwned as _, boxed::Box, vec, vec::Vec};
 use untrusted;
 
 pub unsafe trait Prime {}
@@ -1292,7 +1292,7 @@ extern "C" {
 mod tests {
     use super::*;
     use crate::test;
-    use std::format;
+    use alloc::format;
     use untrusted;
 
     // Type-level representation of an arbitrary modulus.

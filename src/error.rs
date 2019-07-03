@@ -196,7 +196,7 @@ impl KeyRejected {
     }
 }
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "use_std")]
 impl std::error::Error for KeyRejected {
     fn cause(&self) -> Option<&dyn std::error::Error> {
         None

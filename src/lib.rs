@@ -63,6 +63,9 @@
 #![cfg_attr(feature = "internal_benches", allow(unstable_features), feature(test))]
 
 #[cfg(any(test, feature = "use_heap"))]
+extern crate alloc;
+
+#[cfg(any(test, feature = "use_heap"))]
 extern crate std;
 
 #[macro_use]

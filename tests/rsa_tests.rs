@@ -46,8 +46,6 @@ fn rsa_from_pkcs8_test() {
     test::run(
         test_file!("rsa_from_pkcs8_tests.txt"),
         |section, test_case| {
-            use std::error::Error;
-
             assert_eq!(section, "");
 
             let input = test_case.consume_bytes("Input");
@@ -57,7 +55,7 @@ fn rsa_from_pkcs8_test() {
                 (Ok(_), None) => (),
                 (Err(e), None) => panic!("Failed with error \"{}\", but expected to succeed", e),
                 (Ok(_), Some(e)) => panic!("Succeeded, but expected error \"{}\"", e),
-                (Err(actual), Some(expected)) => assert_eq!(actual.description(), expected),
+                (Err(actual), Some(expected)) => assert_eq!(format!("{}", actual), expected),
             };
 
             Ok(())
@@ -93,7 +91,6 @@ fn test_signature_rsa_pkcs1_sign() {
                 return Ok(());
             }
             let key_pair = key_pair.unwrap();
-            let key_pair = std::sync::Arc::new(key_pair);
 
             // XXX: This test is too slow on Android ARM Travis CI builds.
             // TODO: re-enable these tests on Android ARM.

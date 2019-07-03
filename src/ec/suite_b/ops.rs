@@ -440,7 +440,8 @@ extern "C" {
 mod tests {
     use super::*;
     use crate::test;
-    use std::{format, print, vec, vec::Vec};
+    use alloc::{format, vec, vec::Vec};
+    use std::print;
     use untrusted;
 
     const ZERO_SCALAR: Scalar = Scalar {

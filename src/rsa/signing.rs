@@ -24,7 +24,7 @@ use crate::{
     io::{self, der, der_writer},
     pkcs8, rand, signature,
 };
-use std::boxed::Box;
+use alloc::boxed::Box;
 use untrusted;
 
 /// An RSA key pair, used for signing.
