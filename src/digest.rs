@@ -182,7 +182,7 @@ impl Context {
 /// # Examples:
 ///
 /// ```
-/// # #[cfg(feature = "use_heap")]
+/// # #[cfg(feature = "alloc")]
 /// # {
 /// use ring::{digest, test};
 /// let expected_hex = "09ca7e4eaa6e8ae9c7d261167129184883644d07dfba7cbfbc4c8a2e08360d5b";

@@ -39,7 +39,7 @@ use ring::{
 
 // ECDSA *signing* tests are in src/ec/ecdsa/signing.rs.
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 #[test]
 fn ecdsa_from_pkcs8_test() {
     test::run(
@@ -123,7 +123,7 @@ fn ecdsa_generate_pkcs8_test() {
         println!();
         println!();
 
-        #[cfg(feature = "use_heap")]
+        #[cfg(feature = "alloc")]
         let _ = signature::EcdsaKeyPair::from_pkcs8(*alg, pkcs8.as_ref()).unwrap();
     }
 }

@@ -67,13 +67,6 @@ e.g. export `CFLAGS=-D__ANDROID_API__=21`.
 
 Additional Features that are Useful for Development
 ---------------------------------------------------
-
-The `use_heap` feature enables functionality that uses the heap. This is on by
-default. Disabling it is useful for code running in kernel space and some
-embedded applications. For now some RSA, ECDH, and ECDSA signing functionality
-still uses the heap. This feature will go away once RSA signing is the only
-feature that uses the heap.
-
 The `internal_benches` feature enable benchmarks of internal functions. These
 benchmarks are only useful for people hacking on the implementation of *ring*.
 (The benchmarks for the *ring* API are in the
