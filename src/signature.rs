@@ -195,7 +195,7 @@
 //! ```
 //! use ring::{rand, signature};
 //!
-//! # #[cfg(feature = "use_heap")]
+//! # #[cfg(feature = "std")]
 //! fn sign_and_verify_rsa(private_key_path: &std::path::Path,
 //!                        public_key_path: &std::path::Path)
 //!                        -> Result<(), MyError> {
@@ -223,14 +223,14 @@
 //!
 //! #[derive(Debug)]
 //! enum MyError {
-//! #  #[cfg(feature = "use_heap")]
+//! #  #[cfg(feature = "std")]
 //!    IO(std::io::Error),
 //!    BadPrivateKey,
 //!    OOM,
 //!    BadSignature,
 //! }
 //!
-//! # #[cfg(feature = "use_heap")]
+//! # #[cfg(feature = "std")]
 //! fn read_file(path: &std::path::Path) -> Result<Vec<u8>, MyError> {
 //!     use std::io::Read;
 //!
@@ -240,7 +240,7 @@
 //!     Ok(contents)
 //! }
 //! #
-//! # #[cfg(not(feature = "use_heap"))]
+//! # #[cfg(not(feature = "std"))]
 //! # fn sign_and_verify_rsa(_private_key_path: &std::path::Path,
 //! #                        _public_key_path: &std::path::Path)
 //! #                        -> Result<(), ()> {
@@ -279,7 +279,7 @@ pub use crate::ec::{
     },
 };
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 pub use crate::rsa::{
     signing::RsaKeyPair,
     signing::RsaSubjectPublicKey,

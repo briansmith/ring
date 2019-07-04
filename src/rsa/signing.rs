@@ -610,7 +610,7 @@ mod tests {
     // We intentionally avoid `use super::*` so that we are sure to use only
     // the public API; this ensures that enough of the API is public.
     use crate::{rand, signature};
-    use std::vec;
+    use alloc::vec;
 
     // `KeyPair::sign` requires that the output buffer is the same length as
     // the public key modulus. Test what happens when it isn't the same length.

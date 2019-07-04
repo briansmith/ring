@@ -31,7 +31,7 @@
     warnings
 )]
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 use ring::{
     error,
     io::der,
@@ -40,7 +40,7 @@ use ring::{
     test, test_file,
 };
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 #[test]
 fn rsa_from_pkcs8_test() {
     test::run(
@@ -63,7 +63,7 @@ fn rsa_from_pkcs8_test() {
     );
 }
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 #[test]
 fn test_signature_rsa_pkcs1_sign() {
     let rng = rand::SystemRandom::new();
@@ -104,7 +104,7 @@ fn test_signature_rsa_pkcs1_sign() {
     );
 }
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 #[test]
 fn test_signature_rsa_pss_sign() {
     test::run(
@@ -141,7 +141,7 @@ fn test_signature_rsa_pss_sign() {
     );
 }
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 #[test]
 fn test_signature_rsa_pkcs1_verify() {
     test::run(
@@ -199,7 +199,7 @@ fn test_signature_rsa_pkcs1_verify() {
     );
 }
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 #[test]
 fn test_signature_rsa_pss_verify() {
     test::run(
@@ -257,7 +257,7 @@ fn test_signature_rsa_pss_verify() {
 
 // Test for `primitive::verify()`. Read public key parts from a file
 // and use them to verify a signature.
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 #[test]
 fn test_signature_rsa_primitive_verification() {
     test::run(
@@ -277,7 +277,7 @@ fn test_signature_rsa_primitive_verification() {
     )
 }
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 #[test]
 fn rsa_test_public_key_coverage() {
     const PRIVATE_KEY: &[u8] = include_bytes!("rsa_test_private_key_2048.p8");

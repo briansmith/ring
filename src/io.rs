@@ -17,10 +17,10 @@
 #[doc(hidden)]
 pub mod der;
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 mod writer;
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 pub(crate) mod der_writer;
 
 pub(crate) mod positive;

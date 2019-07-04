@@ -441,7 +441,6 @@ mod tests {
     use super::*;
     use crate::test;
     use alloc::{format, vec, vec::Vec};
-    use std::print;
     use untrusted;
 
     const ZERO_SCALAR: Scalar = Scalar {
@@ -1116,12 +1115,11 @@ mod tests {
     ) {
         for i in 0..ops.num_limbs {
             if actual[i] != expected[i] {
-                let mut s = std::string::String::new();
+                let mut s = alloc::string::String::new();
                 for j in 0..ops.num_limbs {
                     let formatted = format!("{:016x}", actual[ops.num_limbs - j - 1]);
                     s.push_str(&formatted);
                 }
-                print!("\n");
                 panic!("Actual != Expected,\nActual = {}", s);
             }
         }

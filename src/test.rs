@@ -117,12 +117,13 @@
 //! stack trace to the line in the test code that panicked: entry 9 in the
 //! stack trace pointing to line 652 of the file `example.rs`.
 
-#[cfg(feature = "use_heap")]
-use crate::bits;
-
-use crate::{digest, error};
-
+#[cfg(feature = "alloc")]
 use alloc::{format, string::String, vec::Vec};
+
+#[cfg(feature = "std")]
+use crate::{bits, digest, error};
+
+#[cfg(feature = "std")]
 use std::println;
 
 /// `compile_time_assert_clone::<T>();` fails to compile if `T` doesn't
@@ -145,14 +146,23 @@ pub fn compile_time_assert_sync<T: Sync>() {}
 /// implement `Debug`.
 pub fn compile_time_assert_debug<T: core::fmt::Debug>() {}
 
+/// `compile_time_assert_debug::<T>();` fails to compile if `T` doesn't
+/// implement `std::error::Error`.
+#[cfg(feature = "std")]
+pub fn compile_time_assert_std_error_error<T: std::error::Error>() {}
+
 /// A test case. A test case consists of a set of named attributes. Every
 /// attribute in the test case must be consumed exactly once; this helps catch
 /// typos and omissions.
+///
+/// Requires the `std` default feature to be enabled.
+#[cfg(feature = "std")]
 #[derive(Debug)]
 pub struct TestCase {
     attributes: Vec<(String, String, bool)>,
 }
 
+#[cfg(feature = "std")]
 impl TestCase {
     /// Maps the string "true" to true and the string "false" to false.
     pub fn consume_bool(&mut self, key: &str) -> bool {
@@ -247,7 +257,7 @@ impl TestCase {
 
     /// Returns the value of an attribute that is an integer, in decimal
     /// notation, as a bit length.
-    #[cfg(feature = "use_heap")]
+    #[cfg(feature = "alloc")]
     pub fn consume_usize_bits(&mut self, key: &str) -> bits::BitLength {
         let s = self.consume_string(key);
         let bits = s.parse::<usize>().unwrap();
@@ -300,6 +310,9 @@ pub struct File<'a> {
 /// Parses test cases out of the given file, calling `f` on each vector until
 /// `f` fails or until all the test vectors have been read. `f` can indicate
 /// failure either by returning `Err()` or by panicking.
+///
+/// Requires the `std` default feature to be enabled
+#[cfg(feature = "std")]
 pub fn run<F>(test_file: File, mut f: F)
 where
     F: FnMut(&str, &mut TestCase) -> Result<(), error::Unspecified>,
@@ -309,7 +322,6 @@ where
     let mut current_section = String::from("");
     let mut failed = false;
 
-    #[allow(box_pointers)]
     while let Some(mut test_case) = parse_test_case(&mut current_section, lines) {
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             f(&current_section, &mut test_case)
@@ -349,6 +361,7 @@ where
 
 /// Decode an string of hex digits into a sequence of bytes. The input must
 /// have an even number of digits.
+#[cfg(feature = "alloc")]
 pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
     if hex_str.len() % 2 != 0 {
         return Err(String::from(
@@ -365,6 +378,7 @@ pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
     Ok(result)
 }
 
+#[cfg(feature = "alloc")]
 fn from_hex_digit(d: u8) -> Result<u8, String> {
     if d >= b'0' && d <= b'9' {
         Ok(d - b'0')
@@ -377,6 +391,8 @@ fn from_hex_digit(d: u8) -> Result<u8, String> {
     }
 }
 
+
+#[cfg(feature = "std")]
 fn parse_test_case(
     current_section: &mut String,
     lines: &mut dyn Iterator<Item = &str>,
@@ -453,7 +469,7 @@ fn parse_test_case(
 /// of randomized algorithms & protocols using known-answer-tests where the
 /// test vectors contain the random seed to use. They are also especially
 /// useful for some types of fuzzing.
-#[allow(missing_docs)]
+#[doc(hidden)]
 pub mod rand {
     use crate::{error, polyfill, rand};
 

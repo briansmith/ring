@@ -289,7 +289,7 @@ pub static ECDSA_P384_SHA384_ASN1: EcdsaVerificationAlgorithm = EcdsaVerificatio
 mod tests {
     use super::*;
     use crate::test;
-    use std::vec::Vec;
+    use alloc::vec::Vec;
 
     #[test]
     fn test_digest_based_test_vectors() {
