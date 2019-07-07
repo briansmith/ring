@@ -148,6 +148,14 @@ impl Context {
         }
     }
 
+    pub(crate) fn clone_from(block: &BlockContext) -> Self {
+        Self {
+            block: block.clone(),
+            pending: [0u8; MAX_BLOCK_LEN],
+            num_pending: 0,
+        }
+    }
+
     /// Updates the digest with all the data in `data`. `update` may be called
     /// zero or more times until `finish` is called. It must not be called
     /// after `finish` has been called.

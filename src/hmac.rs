@@ -155,7 +155,8 @@ impl AsRef<[u8]> for Tag {
 /// A key to use for HMAC signing.
 #[derive(Clone)]
 pub struct Key {
-    ctx_prototype: Context,
+    inner: digest::BlockContext,
+    outer: digest::BlockContext,
 }
 
 /// `hmac::SigningKey` was renamed to `hmac::Key`.
@@ -221,10 +222,8 @@ impl Key {
     pub fn new(algorithm: Algorithm, key_value: &[u8]) -> Self {
         let digest_alg = algorithm.0;
         let mut key = Self {
-            ctx_prototype: Context {
-                inner: digest::Context::new(digest_alg),
-                outer: digest::BlockContext::new(digest_alg),
-            },
+            inner: digest::BlockContext::new(digest_alg),
+            outer: digest::BlockContext::new(digest_alg),
         };
 
         let key_hash;
@@ -246,7 +245,7 @@ impl Key {
         for (padded_key, key_value) in padded_key.iter_mut().zip(key_value.iter()) {
             *padded_key ^= *key_value;
         }
-        key.ctx_prototype.inner.update(&padded_key);
+        key.inner.update(&padded_key);
 
         const OPAD: u8 = 0x5C;
 
@@ -255,7 +254,7 @@ impl Key {
         for b in padded_key.iter_mut() {
             *b ^= IPAD ^ OPAD;
         }
-        key.ctx_prototype.outer.update(&padded_key);
+        key.outer.update(&padded_key);
 
         key
     }
@@ -263,7 +262,7 @@ impl Key {
     /// The digest algorithm for the key.
     #[inline]
     pub fn algorithm(&self) -> Algorithm {
-        Algorithm(self.ctx_prototype.inner.algorithm())
+        Algorithm(self.inner.algorithm)
     }
 }
 
@@ -304,7 +303,10 @@ impl Context {
     /// Constructs a new HMAC signing context using the given digest algorithm
     /// and key.
     pub fn with_key(signing_key: &Key) -> Self {
-        signing_key.ctx_prototype.clone()
+        Self {
+            inner: digest::Context::clone_from(&signing_key.inner),
+            outer: signing_key.outer.clone(),
+        }
     }
 
     /// Updates the HMAC with all the data in `data`. `update` may be called
