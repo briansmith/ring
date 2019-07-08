@@ -283,9 +283,17 @@ var keyWrapTests = testSuite{
 	nil,
 	[]test{
 		{"KW_AD_128", []string{"dec", "128"}, false},
+		{"KW_AD_192", []string{"dec", "192"}, false},
 		{"KW_AD_256", []string{"dec", "256"}, false},
 		{"KW_AE_128", []string{"enc", "128"}, false},
+		{"KW_AE_192", []string{"enc", "192"}, false},
 		{"KW_AE_256", []string{"enc", "256"}, false},
+		{"KWP_AD_128", []string{"dec-pad", "128"}, false},
+		{"KWP_AD_192", []string{"dec-pad", "192"}, false},
+		{"KWP_AD_256", []string{"dec-pad", "256"}, false},
+		{"KWP_AE_128", []string{"enc-pad", "128"}, false},
+		{"KWP_AE_192", []string{"enc-pad", "192"}, false},
+		{"KWP_AE_256", []string{"enc-pad", "256"}, false},
 	},
 }
 

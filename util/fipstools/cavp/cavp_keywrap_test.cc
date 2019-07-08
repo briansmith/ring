@@ -28,15 +28,16 @@ namespace {
 
 struct TestCtx {
   bool encrypt;
+  bool padding;
 };
 
-}
+}  // namespace
 
 static bool AESKeyWrap(std::vector<uint8_t> *out, bool encrypt,
                        const std::vector<uint8_t> &key,
                        const std::vector<uint8_t> &in) {
   size_t key_bits = key.size() * 8;
-  if (key_bits != 128 && key_bits != 256) {
+  if (key_bits != 128 && key_bits != 192 && key_bits != 256) {
     return false;
   }
   AES_KEY aes_key;
@@ -60,6 +61,36 @@ static bool AESKeyWrap(std::vector<uint8_t> *out, bool encrypt,
   return true;
 }
 
+static bool AESKeyWrapWithPadding(std::vector<uint8_t> *out, bool encrypt,
+                                  const std::vector<uint8_t> &key,
+                                  const std::vector<uint8_t> &in) {
+  const size_t key_bits = key.size() * 8;
+  if (key_bits != 128 && key_bits != 192 && key_bits != 256) {
+    return false;
+  }
+  AES_KEY aes_key;
+
+  size_t out_len;
+  if (encrypt) {
+    out->resize(in.size() + 15);
+    if (AES_set_encrypt_key(key.data(), key_bits, &aes_key) ||
+        !AES_wrap_key_padded(&aes_key, out->data(), &out_len, out->size(),
+                             in.data(), in.size())) {
+      return false;
+    }
+  } else {
+    out->resize(in.size());
+    if (AES_set_decrypt_key(key.data(), key_bits, &aes_key) ||
+        !AES_unwrap_key_padded(&aes_key, out->data(), &out_len, out->size(),
+                               in.data(), in.size())) {
+      return false;
+    }
+  }
+
+  out->resize(out_len);
+  return true;
+}
+
 static bool TestCipher(FileTest *t, void *arg) {
   TestCtx *ctx = reinterpret_cast<TestCtx *>(arg);
 
@@ -75,8 +106,13 @@ static bool TestCipher(FileTest *t, void *arg) {
   }
   // clang-format on
 
+  auto wrap_function = AESKeyWrap;
+  if (ctx->padding) {
+    wrap_function = AESKeyWrapWithPadding;
+  }
+
   printf("%s", t->CurrentTestToString().c_str());
-  if (!AESKeyWrap(&result, ctx->encrypt, key, in)) {
+  if (!wrap_function(&result, ctx->encrypt, key, in)) {
     if (ctx->encrypt) {
       return false;
     } else {
@@ -93,7 +129,7 @@ static bool TestCipher(FileTest *t, void *arg) {
 static int usage(char *arg) {
   fprintf(
       stderr,
-      "usage: %s (enc|dec) (128|256) <test file>\n",
+      "usage: %s (enc|dec|enc-pad|dec-pad) (128|192|256) <test file>\n",
       arg);
   return 1;
 }
@@ -104,16 +140,21 @@ int cavp_keywrap_test_main(int argc, char **argv) {
   }
 
   const std::string op(argv[1]);
-  bool encrypt;
+  bool encrypt = false;
+  bool padding = false;
   if (op == "enc") {
     encrypt = true;
   } else if (op == "dec") {
-    encrypt = false;
+  } else if (op == "enc-pad") {
+    encrypt = true;
+    padding = true;
+  } else if (op == "dec-pad") {
+    padding = true;
   } else {
     return usage(argv[0]);
   }
 
-  TestCtx ctx = {encrypt};
+  TestCtx ctx = {encrypt, padding};
 
   FileTest::Options opts;
   opts.path = argv[3];
