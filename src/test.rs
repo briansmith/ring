@@ -120,7 +120,7 @@
 #[cfg(feature = "alloc")]
 use alloc::{format, string::String, vec::Vec};
 
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 use crate::{bits, digest, error};
 
 #[cfg(feature = "std")]
@@ -156,13 +156,13 @@ pub fn compile_time_assert_std_error_error<T: std::error::Error>() {}
 /// typos and omissions.
 ///
 /// Requires the `std` default feature to be enabled.
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 #[derive(Debug)]
 pub struct TestCase {
     attributes: Vec<(String, String, bool)>,
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 impl TestCase {
     /// Maps the string "true" to true and the string "false" to false.
     pub fn consume_bool(&mut self, key: &str) -> bool {
@@ -288,6 +288,7 @@ impl TestCase {
 }
 
 /// References a test input file.
+#[cfg(feature = "alloc")]
 #[macro_export]
 macro_rules! test_file {
     ($file_name:expr) => {
@@ -299,6 +300,7 @@ macro_rules! test_file {
 }
 
 /// A test input file.
+#[cfg(feature = "alloc")]
 pub struct File<'a> {
     /// The name (path) of the file.
     pub file_name: &'a str,
@@ -312,7 +314,7 @@ pub struct File<'a> {
 /// failure either by returning `Err()` or by panicking.
 ///
 /// Requires the `std` default feature to be enabled
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 pub fn run<F>(test_file: File, mut f: F)
 where
     F: FnMut(&str, &mut TestCase) -> Result<(), error::Unspecified>,
@@ -323,9 +325,14 @@ where
     let mut failed = false;
 
     while let Some(mut test_case) = parse_test_case(&mut current_section, lines) {
+        #[cfg(feature = "std")]
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             f(&current_section, &mut test_case)
         }));
+
+        #[cfg(not(feature = "std"))]
+        let result: Result<_, error::Unspecified> = Ok(f(&current_section, &mut test_case));
+
         let result = match result {
             Ok(Ok(())) => {
                 if !test_case
@@ -343,15 +350,21 @@ where
             Err(_) => Err("Test panicked."),
         };
 
-        if let Err(msg) = result {
+        if result.is_err() {
             failed = true;
+        }
 
-            println!("{}: {}", test_file.file_name, msg);
-            for (name, value, consumed) in test_case.attributes {
-                let consumed_str = if consumed { "" } else { " (unconsumed)" };
-                println!("{}{} = {}", name, consumed_str, value);
-            }
-        };
+        #[cfg(feature = "std")]
+        {
+            if let Err(msg) = result {
+                println!("{}: {}", test_file.file_name, msg);
+
+                for (name, value, consumed) in test_case.attributes {
+                    let consumed_str = if consumed { "" } else { " (unconsumed)" };
+                    println!("{}{} = {}", name, consumed_str, value);
+                }
+            };
+        }
     }
 
     if failed {
@@ -391,8 +404,7 @@ fn from_hex_digit(d: u8) -> Result<u8, String> {
     }
 }
 
-
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 fn parse_test_case(
     current_section: &mut String,
     lines: &mut dyn Iterator<Item = &str>,
@@ -403,7 +415,8 @@ fn parse_test_case(
     loop {
         let line = lines.next();
 
-        if cfg!(feature = "test_logging") {
+        #[cfg(feature = "test_logging")]
+        {
             if let Some(text) = &line {
                 println!("Line: {}", text);
             }
@@ -561,7 +574,8 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Test failed.")]
+    #[cfg_attr(feature = "std", should_panic(expected = "Test failed."))]
+    #[cfg_attr(not(feature = "std"), should_panic)]
     fn one_panics() {
         test::run(test_file!("test_1_tests.txt"), |_, test_case| {
             let _ = test_case.consume_string("Key");
@@ -602,19 +616,22 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Test failed.")]
+    #[cfg_attr(feature = "std", should_panic(expected = "Test failed."))]
+    #[cfg_attr(not(feature = "std"), should_panic)]
     fn first_panic() {
         panic_one(0)
     }
 
     #[test]
-    #[should_panic(expected = "Test failed.")]
+    #[cfg_attr(feature = "std", should_panic(expected = "Test failed."))]
+    #[cfg_attr(not(feature = "std"), should_panic)]
     fn middle_panic() {
         panic_one(1)
     }
 
     #[test]
-    #[should_panic(expected = "Test failed.")]
+    #[cfg_attr(feature = "std", should_panic(expected = "Test failed."))]
+    #[cfg_attr(not(feature = "std"), should_panic)]
     fn last_panic() {
         panic_one(2)
     }
