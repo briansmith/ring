@@ -184,7 +184,7 @@ impl Key {
     /// recommendation in https://tools.ietf.org/html/rfc2104#section-3.
     pub fn generate(
         algorithm: Algorithm,
-        rng: &rand::SecureRandom,
+        rng: &dyn rand::SecureRandom,
     ) -> Result<Self, error::Unspecified> {
         Self::construct(algorithm, |buf| rng.fill(buf))
     }
