@@ -65,10 +65,10 @@
 #![no_std]
 #![cfg_attr(feature = "internal_benches", allow(unstable_features), feature(test))]
 
-#[cfg(any(test, feature = "alloc"))]
+#[cfg(feature = "alloc")]
 extern crate alloc;
 
-#[cfg(any(test, feature = "std"))]
+#[cfg(feature = "std")]
 extern crate std;
 
 #[macro_use]
