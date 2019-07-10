@@ -354,7 +354,10 @@ fn test_fmt_algorithm() {
 fn digest_test_fmt() {
     assert_eq!(
         "SHA1:b7e23ec29af22b0b4e41da31e868d57226121c84",
-        &format!("{:?}", digest::digest(&digest::SHA1_FOR_LEGACY_USE_ONLY, b"hello, world"))
+        &format!(
+            "{:?}",
+            digest::digest(&digest::SHA1_FOR_LEGACY_USE_ONLY, b"hello, world")
+        )
     );
     assert_eq!(
         "SHA256:09ca7e4eaa6e8ae9c7d261167129184883644d\
