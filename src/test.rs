@@ -66,7 +66,8 @@
 //! ```
 //!
 //! Note that `consume_digest_alg` automatically maps the string "SHA1" to a
-//! reference to `digest::SHA1`, "SHA256" to `digest::SHA256`, etc.
+//! reference to `digest::SHA1_FOR_LEGACY_USE_ONLY`, "SHA256" to
+//! `digest::SHA256`, etc.
 //!
 //! ## Output When a Test Fails
 //!

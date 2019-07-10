@@ -238,7 +238,7 @@ macro_rules! test_i_u_f {
         }
     };
 }
-test_i_u_f!(digest_test_i_u_f_sha1, digest::SHA1);
+test_i_u_f!(digest_test_i_u_f_sha1, digest::SHA1_FOR_LEGACY_USE_ONLY);
 test_i_u_f!(digest_test_i_u_f_sha256, digest::SHA256);
 test_i_u_f!(digest_test_i_u_f_sha384, digest::SHA384);
 test_i_u_f!(digest_test_i_u_f_sha512, digest::SHA512);
@@ -294,7 +294,7 @@ macro_rules! test_large_digest {
 #[cfg(any(not(target_os = "android"), not(target_arch = "arm")))]
 test_large_digest!(
     digest_test_large_digest_sha1,
-    digest::SHA1,
+    digest::SHA1_FOR_LEGACY_USE_ONLY,
     160 / 8,
     [
         0xCA, 0xC3, 0x4C, 0x31, 0x90, 0x5B, 0xDE, 0x3B, 0xE4, 0x0D, 0x46, 0x6D, 0x70, 0x76, 0xAD,
