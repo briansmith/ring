@@ -278,7 +278,7 @@ derive_debug_via_id!(Algorithm);
 /// SHA-1 as specified in [FIPS 180-4]. Deprecated.
 ///
 /// [FIPS 180-4]: http://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
-pub static SHA1: Algorithm = Algorithm {
+pub static SHA1_FOR_LEGACY_USE_ONLY: Algorithm = Algorithm {
     output_len: sha1::OUTPUT_LEN,
     chaining_len: sha1::CHAINING_LEN,
     block_len: sha1::BLOCK_LEN,
@@ -554,7 +554,7 @@ mod tests {
             }
         }
 
-        max_input_tests!(SHA1);
+        max_input_tests!(SHA1_FOR_LEGACY_USE_ONLY);
         max_input_tests!(SHA256);
         max_input_tests!(SHA384);
         max_input_tests!(SHA512);

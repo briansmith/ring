@@ -49,7 +49,7 @@ fn hmac_tests() {
                     return Ok(());
                 } // Unsupported digest algorithm
             };
-            if digest_alg == &digest::SHA1 {
+            if digest_alg == &digest::SHA1_FOR_LEGACY_USE_ONLY {
                 hmac::HMAC_SHA1_FOR_LEGACY_USE_ONLY
             } else if digest_alg == &digest::SHA256 {
                 hmac::HMAC_SHA256

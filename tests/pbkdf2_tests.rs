@@ -40,7 +40,7 @@ pub fn pbkdf2_tests() {
         assert_eq!(section, "");
         let algorithm = {
             let digest_alg = test_case.consume_digest_alg("Hash").unwrap();
-            if digest_alg == &digest::SHA1 {
+            if digest_alg == &digest::SHA1_FOR_LEGACY_USE_ONLY {
                 pbkdf2::PBKDF2_HMAC_SHA1
             } else if digest_alg == &digest::SHA256 {
                 pbkdf2::PBKDF2_HMAC_SHA256

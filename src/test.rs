@@ -170,7 +170,7 @@ impl TestCase {
     pub fn consume_digest_alg(&mut self, key: &str) -> Option<&'static digest::Algorithm> {
         let name = self.consume_string(key);
         match name.as_ref() {
-            "SHA1" => Some(&digest::SHA1),
+            "SHA1" => Some(&digest::SHA1_FOR_LEGACY_USE_ONLY),
             "SHA224" => None, // We actively skip SHA-224 support.
             "SHA256" => Some(&digest::SHA256),
             "SHA384" => Some(&digest::SHA384),

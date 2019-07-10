@@ -96,7 +96,7 @@ mod digest_shavs {
     }
 
     macro_rules! shavs_tests {
-        ( $algorithm_name:ident ) => {
+        ( $file_name:ident, $algorithm_name:ident ) => {
             #[allow(non_snake_case)]
             mod $algorithm_name {
                 use super::{run_known_answer_test, run_monte_carlo_test};
@@ -112,7 +112,7 @@ mod digest_shavs {
                         &digest::$algorithm_name,
                         test_file!(concat!(
                             "../third_party/NIST/SHAVS/",
-                            stringify!($algorithm_name),
+                            stringify!($file_name),
                             "ShortMsg.rsp"
                         )),
                     );
@@ -125,7 +125,7 @@ mod digest_shavs {
                         &digest::$algorithm_name,
                         test_file!(concat!(
                             "../third_party/NIST/SHAVS/",
-                            stringify!($algorithm_name),
+                            stringify!($file_name),
                             "LongMsg.rsp"
                         )),
                     );
@@ -138,7 +138,7 @@ mod digest_shavs {
                         &digest::$algorithm_name,
                         test_file!(concat!(
                             "../third_party/NIST/SHAVS/",
-                            stringify!($algorithm_name),
+                            stringify!($file_name),
                             "Monte.rsp"
                         )),
                     );
@@ -192,10 +192,10 @@ mod digest_shavs {
         assert_eq!(expected_count, 100);
     }
 
-    shavs_tests!(SHA1);
-    shavs_tests!(SHA256);
-    shavs_tests!(SHA384);
-    shavs_tests!(SHA512);
+    shavs_tests!(SHA1, SHA1_FOR_LEGACY_USE_ONLY);
+    shavs_tests!(SHA256, SHA256);
+    shavs_tests!(SHA384, SHA384);
+    shavs_tests!(SHA512, SHA512);
 }
 
 /// Test some ways in which `Context::update` and/or `Context::finish`
@@ -342,7 +342,7 @@ test_large_digest!(
 #[cfg_attr(not(target_arch = "wasm32"), test)]
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn test_fmt_algorithm() {
-    assert_eq!("SHA1", &format!("{:?}", digest::SHA1));
+    assert_eq!("SHA1", &format!("{:?}", digest::SHA1_FOR_LEGACY_USE_ONLY));
     assert_eq!("SHA256", &format!("{:?}", digest::SHA256));
     assert_eq!("SHA384", &format!("{:?}", digest::SHA384));
     assert_eq!("SHA512", &format!("{:?}", digest::SHA512));
@@ -354,7 +354,7 @@ fn test_fmt_algorithm() {
 fn digest_test_fmt() {
     assert_eq!(
         "SHA1:b7e23ec29af22b0b4e41da31e868d57226121c84",
-        &format!("{:?}", digest::digest(&digest::SHA1, b"hello, world"))
+        &format!("{:?}", digest::digest(&digest::SHA1_FOR_LEGACY_USE_ONLY, b"hello, world"))
     );
     assert_eq!(
         "SHA256:09ca7e4eaa6e8ae9c7d261167129184883644d\
