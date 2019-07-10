@@ -116,7 +116,7 @@ macro_rules! rsa_params {
 }
 
 rsa_params!(
-    RSA_PKCS1_2048_8192_SHA1,
+    RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
     2048,
     &super::padding::RSA_PKCS1_SHA1_FOR_LEGACY_USE_ONLY,
     "Verification of signatures using RSA keys of 2048-8192 bits,

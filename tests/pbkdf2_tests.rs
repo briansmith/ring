@@ -31,8 +31,8 @@
     warnings
 )]
 
-use ring::{digest, error, pbkdf2, test, test_file};
 use core::num::NonZeroU32;
+use ring::{digest, error, pbkdf2, test, test_file};
 
 #[test]
 pub fn pbkdf2_tests() {
