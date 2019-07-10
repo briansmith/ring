@@ -321,6 +321,7 @@ add_library(
   rsa_extra/rsa_asn1.c
   rsa_extra/rsa_print.c
   stack/stack.c
+  siphash/siphash.c
   thread.c
   thread_none.c
   thread_pthread.c
@@ -508,6 +509,7 @@ add_executable(
   rsa_extra/rsa_test.cc
   self_test.cc
   stack/stack_test.cc
+  siphash/siphash_test.cc
   test/file_test_gtest.cc
   thread_test.cc
   x509/x509_test.cc
