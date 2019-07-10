@@ -214,12 +214,11 @@ the table below. The C compilers listed are used for compiling the C portions.
         <code>qemu-user-arm</code>.</td>
 </tr>
 <tr><td>Android</td>
-    <td>32&#8209;bit&nbsp;ARM</td>
-    <td>Built using the Android SDK 24.4.1 and Android NDK 17 targeting API
-        level 26, since API level 26 is the minimum the Google Play Store allows,
-        according to https://developer.android.com/distribute/best-practices/develop/target-sdk.
-        The tests are tested using the Android emulator using API level 24
-        system images since those were (as of 2019-1-30) the latest images available.</td>
+    <td>ARMv7, Aarch64</td>
+    <td>*ring* for ARMv7 Android is built in CI using SDK version 26 targeting
+        API level 18 (Android 4.3+); it is tested in the emulator using the
+        corresponding system image. *ring* for AArch64 Android is built in CI
+        using SDK version 26 targeting API level 21 (Android 5.0).</td>
 </tr>
 <tr><td>Mac&nbsp;OS&nbsp;X</td>
     <td>x64</td>

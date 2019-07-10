@@ -26,17 +26,24 @@ aarch64-unknown-linux-gnu)
 arm-unknown-linux-gnueabihf)
   export QEMU_LD_PREFIX=/usr/arm-linux-gnueabihf
   ;;
-armv7-linux-androideabi)
-  # install the android sdk/ndk
-  mk/travis-install-android.sh
-
-  export PATH=$HOME/android/armv7a-linux-androideabi26/bin:$PATH
-  export PATH=$HOME/android/android-sdk-linux/platform-tools:$PATH
-  export PATH=$HOME/android/android-sdk-linux/tools:$PATH
+aarch64-linux-android)
+  export ANDROID_ABI=aarch64
   ;;
-*)
+armv7-linux-androideabi)
+  export ANDROID_SYSTEM_IMAGE="system-images;android-18;default;armeabi-v7a"
+  export ANDROID_ABI=armeabi-v7a
   ;;
 esac
+
+if [[ ! -z "${ANDROID_ABI-}" ]]; then
+  # install the android sdk/ndk
+  mkdir "$ANDROID_HOME/licenses" || true
+  echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$ANDROID_HOME/licenses/android-sdk-license"
+  sdkmanager ndk-bundle
+  curl -sSf https://build.travis-ci.org/files/rustup-init.sh | sh -s -- --default-toolchain=$RUST_X -y
+  export PATH=$HOME/.cargo/bin:$ANDROID_HOME/ndk-bundle/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH
+  rustup default
+fi
 
 if [[ "$TARGET_X" =~ ^(arm|aarch64) && ! "$TARGET_X" =~ android ]]; then
   # We need a newer QEMU than Travis has.
@@ -91,22 +98,39 @@ else
   target_dir=target/$TARGET_X/debug
 fi
 
-case $TARGET_X in
-armv7-linux-androideabi)
+if [[ -z "${ANDROID_ABI-}" ]]; then
+  cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
+else
   cargo test -vv -j2 --no-run ${mode-} ${FEATURES_X-} --target=$TARGET_X
 
-  # Building the AVD is slow. Do it here, after we build the code so that any
-  # build breakage is reported sooner, instead of being delayed by this.
-  echo no | android create avd --name arm-24 --target android-24 --abi armeabi-v7a
-  android list avd
+  if [[ ! -z "${ANDROID_SYSTEM_IMAGE-}" ]]; then
+    # Building the AVD is slow. Do it here, after we build the code so that any
+    # build breakage is reported sooner, instead of being delayed by this.
+    sdkmanager tools
+    echo no | avdmanager create avd --force --name $ANDROID_ABI -k $ANDROID_SYSTEM_IMAGE --abi $ANDROID_ABI
+    avdmanager list avd
 
-  # TODO: testing is disabled because of the following error when running `emulator`:
-  #     Your emulator is out of date, please update by launching Android Studio
-  ;;
-*)
-  cargo test -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
-  ;;
-esac
+    $ANDROID_HOME/emulator/emulator @$ANDROID_ABI -memory 2048 -no-skin -no-boot-anim -no-window &
+    adb wait-for-device
+
+    # Run the unit tests first. The file named ring-<something> in $target_dir is
+    # the test executable.
+
+    find $target_dir -maxdepth 1 -name ring-* ! -name "*.*" \
+      -exec adb push {} /data/ring-test \;
+    adb shell "cd /data && ./ring-test" 2>&1 | tee /tmp/ring-test-log
+    grep "test result: ok" /tmp/ring-test-log
+
+    for test_exe in `find $target_dir -maxdepth 1 -name "*test*" -type f ! -name "*.*" `; do
+        adb push $test_exe /data/`basename $test_exe`
+        adb shell "cd /data && ./`basename $test_exe`" 2>&1 | \
+            tee /tmp/`basename $test_exe`-log
+        grep "test result: ok" /tmp/`basename $test_exe`-log
+    done
+
+     adb emu kill
+  fi
+fi
 
 if [[ "$KCOV" == "1" ]]; then
   # kcov reports coverage as a percentage of code *linked into the executable*

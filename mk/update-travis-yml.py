@@ -43,7 +43,8 @@ osx_compilers = [
 
 compilers = {
     "aarch64-unknown-linux-gnu" : [ "aarch64-linux-gnu-gcc" ],
-    "armv7-linux-androideabi" : [ "arm-linux-androideabi-clang" ],
+    "aarch64-linux-android" : [ "aarch64-linux-android21-clang" ],
+    "armv7-linux-androideabi" : [ "armv7a-linux-androideabi18-clang" ],
     "arm-unknown-linux-gnueabihf" : [ "arm-linux-gnueabihf-gcc" ],
     "i686-unknown-linux-gnu" : linux_compilers,
     "x86_64-unknown-linux-gnu" : linux_compilers,
@@ -71,6 +72,7 @@ targets = {
         "x86_64-apple-darwin",
     ],
     "linux" : [
+        "aarch64-linux-android",
         "armv7-linux-androideabi",
         "x86_64-unknown-linux-gnu",
         "aarch64-unknown-linux-gnu",
@@ -94,7 +96,7 @@ def format_entries():
 # to set |CC_X| instead of |CC| since Travis sets |CC| to its Travis CI default
 # value *after* processing the |env:| directive here.
 entry_template = """
-    - env: TARGET_X=%(target)s %(compilers)s FEATURES_X=%(features)s MODE_X=%(mode)s KCOV=%(kcov)s
+    - env: TARGET_X=%(target)s %(compilers)s FEATURES_X=%(features)s MODE_X=%(mode)s KCOV=%(kcov)s RUST_X=%(rust)s
       rust: %(rust)s
       os: %(os)s"""
 
@@ -126,19 +128,35 @@ def format_entry(os, target, compiler, rust, mode, features):
     kcov = (os == "linux" and compiler == gcc and rust == "stable" and
             mode == "DEBUG")
 
+    template = entry_template
+
     if sys == "darwin":
         abi = sys
         sys = "macos"
     elif sys == "androideabi":
         abi = sys
         sys = "linux"
+        template += """
+      language: android
+      android:
+        components:
+        - android-18
+        - build-tools-26.0.2
+        - sys-img-armeabi-v7a-android-18"""
+    elif sys == "android":
+        abi = sys
+        sys = "linux"
+        template += """
+      language: android
+      android:
+        components:
+        - android-21
+        - build-tools-26.0.2"""
     else:
         abi = target_words[3]
 
     def prefix_all(prefix, xs):
         return [prefix + x for x in xs]
-
-    template = entry_template
 
     if sys == "linux":
         packages = sorted(get_linux_packages_to_install(target, compiler, arch, kcov))
@@ -193,8 +211,6 @@ def get_linux_packages_to_install(target, compiler, arch, kcov):
     if target == "arm-unknown-linux-gnueabihf":
         packages += ["gcc-arm-linux-gnueabihf",
                      "libc6-dev-armhf-cross"]
-    if target == "armv7-linux-androideabi":
-        packages += ["expect"]
 
     if arch == "i686":
         if kcov == True:
