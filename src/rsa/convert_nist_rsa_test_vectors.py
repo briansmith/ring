@@ -147,7 +147,7 @@ def main(fn, test_type, padding_alg):
     print "# accessible from"
     print "# http://csrc.nist.gov/groups/STM/cavp/digital-signatures.html#test-vectors"
     print "# with SHA-384 digest %s" % (input_file_digest)
-    print "# filtered and reformatted using util/generate-rsa-signing-tests.py."
+    print "# filtered and reformatted using %s." % __file__
     print "#"
     print "# Digest = SHAAlg."
     if test_type == "verify":
