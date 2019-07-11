@@ -151,8 +151,8 @@ fn test_signature_rsa_pkcs1_verify() {
 
             let digest_name = test_case.consume_string("Digest");
             let alg = match digest_name.as_ref() {
-                "SHA1" => &signature::RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
-                "SHA256" => &signature::RSA_PKCS1_2048_8192_SHA256,
+                "SHA1" => &signature::RSA_PKCS1_1024_8192_SHA1_FOR_LEGACY_USE_ONLY,
+                "SHA256" => &signature::RSA_PKCS1_1024_8192_SHA256_FOR_LEGACY_USE_ONLY,
                 "SHA384" => &signature::RSA_PKCS1_2048_8192_SHA384,
                 "SHA512" => &signature::RSA_PKCS1_2048_8192_SHA512,
                 _ => panic!("Unsupported digest: {}", digest_name),

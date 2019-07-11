@@ -117,7 +117,7 @@ fn pkcs1_encode(pkcs1: &PKCS1, m_hash: &digest::Digest, m_out: &mut [u8]) {
     let digest_len = pkcs1.digestinfo_prefix.len() + pkcs1.digest_alg.output_len;
 
     // The specification requires at least 8 bytes of padding. Since we
-    // disallow keys smaller than 2048 bits, this should always be true.
+    // disallow keys smaller than 1024 bits, this should always be true.
     assert!(em.len() >= digest_len + 11);
     let pad_len = em.len() - digest_len - 3;
     em[0] = 0;
