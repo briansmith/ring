@@ -116,21 +116,19 @@ impl<T> RandomlyConstructable for T where T: self::sealed::RandomlyConstructable
 /// `fill()` once at a non-latency-sensitive time to minimize latency for
 /// future calls.
 ///
-/// On Android, `fill()` will use the [`getrandom`] syscall.
-///
-/// On Linux, `fill()` will use the [`getrandom`] syscall. If the kernel is too
-/// old to support `getrandom` then by default `fill()` falls back to reading
-/// from `/dev/urandom`. This decision is made the first time `fill`
-/// *succeeds*. The fallback to `/dev/urandom` can be disabled by disabling the
-/// `dev_urandom_fallback` default feature; this should be done whenever the
-/// target system is known to support `getrandom`. When `/dev/urandom` is used,
-/// a file handle for `/dev/urandom` won't be opened until `fill` is called;
-/// `SystemRandom::new()` will not open `/dev/urandom` or do other
-/// potentially-high-latency things. The file handle will never be closed,
-/// until the operating system closes it at process shutdown. All instances of
-/// `SystemRandom` will share a single file handle. To properly implement
-/// seccomp filtering when the `dev_urandom_fallback` default feature is
-/// disabled, allow `getrandom` through. When the fallback is enabled, allow
+/// On Linux (including Android), `fill()` will use the [`getrandom`] syscall.
+/// If the kernel is too old to support `getrandom` then by default `fill()`
+/// falls back to reading from `/dev/urandom`. This decision is made the first
+/// time `fill` *succeeds*. The fallback to `/dev/urandom` can be disabled by
+/// disabling the `dev_urandom_fallback` default feature; this should be done
+/// whenever the target system is known to support `getrandom`. When
+/// `/dev/urandom` is used, a file handle for `/dev/urandom` won't be opened
+/// until `fill` is called; `SystemRandom::new()` will not open `/dev/urandom`
+/// or do other potentially-high-latency things. The file handle will never be
+/// closed, until the operating system closes it at process shutdown. All
+/// instances of `SystemRandom` will share a single file handle. To properly
+/// implement seccomp filtering when the `dev_urandom_fallback` default feature
+/// is disabled, allow `getrandom` through. When the fallback is enabled, allow
 /// file opening, `getrandom`, and `read` up until the first call to `fill()`
 /// succeeds; after that, allow `getrandom` and `read`.
 ///
