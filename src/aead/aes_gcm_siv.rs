@@ -12,8 +12,6 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-// TODO: Switch to MaybeUninit instead of std::mem::uninitialized once stabilized (see https://github.com/rust-lang/rust/issues/53491)
-
 use super::{
     aes::{
         self, Variant,
@@ -28,6 +26,7 @@ use super::{
 };
 use crate::{aead, aead::TAG_LEN, cpu, error};
 use std::convert::TryInto;
+use std::mem::MaybeUninit;
 
 /// AES-GCM-SIV as described in https://tools.ietf.org/html/draft-irtf-cfrg-gcmsiv-03.
 ///
@@ -119,7 +118,7 @@ fn seal_fallback(
         &enc_key[0..get_encryption_key_size(key.variant.clone())],
         key.variant.clone(),
         cpu::features(),
-    ).unwrap()
+    ).unwrap();
 
     let tag = gcm_siv_ctx.gcm_siv_polyval(in_out, aad, &nonce, &auth_key, cpu_features);
     let tag = enc_key.encrypt_block(tag);
@@ -137,9 +136,13 @@ fn seal_aes_avxni(key: &aead::KeyInner, nonce: Nonce, aad: &[u8], in_out: &mut [
 
     let aes_asm_key = asm_key.aes_asm_key.as_ref().expect("Missing AES ASM KEY");
 
-    let (mut auth_key, mut enc_key) = get_default_auth_enc_keys();
+    let (mut auth_key, mut enc_key) =  (MaybeUninit::<Auth_Key>::uninit(), MaybeUninit::<Encryption_Key>::uninit());
     let gcm_siv_asm_ctx = GcmSivAsmContext::new();
     gcm_siv_asm_ctx.kdf(&nonce, &asm_key, &mut auth_key, &mut enc_key);
+
+    let auth_key = unsafe { auth_key.assume_init() };
+    let enc_key = unsafe { enc_key.assume_init() };
+
     let mut out_tag = gcm_siv_asm_ctx.gcm_siv_asm_polyval(nonce.as_ref(), aad, in_out, &auth_key);
     let whole_in_out_len = in_out.len() - (in_out.len() % BLOCK_LEN);
 
@@ -252,7 +255,7 @@ fn seal_aes_avxni(key: &aead::KeyInner, nonce: Nonce, aad: &[u8], in_out: &mut [
 fn aes_gcm_siv_seal(
     key: &aead::KeyInner,
     nonce: Nonce,
-    aad: Aad,
+    aad: Aad<&[u8]>,
     in_out: &mut [u8],
     cpu_features: cpu::Features,
 ) -> Tag {
@@ -353,16 +356,6 @@ fn crypt_last_block(
     }
 }
 
-fn get_default_auth_enc_keys() -> (Auth_Key, Encryption_Key) {
-    (
-        Auth_Key {
-            key: { unsafe { std::mem::uninitialized() } },
-        },
-        Encryption_Key {
-            key: { unsafe { std::mem::uninitialized() } },
-        },
-    )
-}
 
 fn open_fallback(
     key: &aead::KeyInner,
@@ -442,11 +435,14 @@ fn open_avx_aesni(
         key_type => panic!("Expected AesGcmSiv key Found: {:?}", key_type),
     };
 
-    let (mut auth_key, mut enc_key) = get_default_auth_enc_keys();
+    let (mut auth_key, mut enc_key) = (MaybeUninit::<Auth_Key>::uninit(), MaybeUninit::<Encryption_Key>::uninit());
     let gcm_siv_asm_ctx = GcmSivAsmContext::new();
     gcm_siv_asm_ctx.kdf(&nonce, &asm_key, &mut auth_key, &mut enc_key);
+    let auth_key = unsafe { auth_key.assume_init() };
+    let enc_key = unsafe { enc_key.assume_init() };
+
     let mut expanded_key: AES_ASM_KEY;
-    expanded_key = { unsafe { std::mem::uninitialized() } };
+    expanded_key = { unsafe { MaybeUninit::uninit().assume_init() } };
 
     match &asm_key.variant {
         AES_128 => {
@@ -514,14 +510,15 @@ fn open_avx_aesni(
         }
     }
 
-    let mut htable: HTable;
-    htable = unsafe { std::mem::uninitialized() };
+    let mut htable = MaybeUninit::<HTable>::uninit();
     extern "C" {
         fn aesgcmsiv_htable6_init(htable: *mut HTable, auth_key: *const Auth_Key);
     }
     unsafe {
-        aesgcmsiv_htable6_init(&mut htable, &auth_key);
+        aesgcmsiv_htable6_init(htable.as_mut_ptr(), &auth_key);
     }
+
+    let htable = unsafe { htable.assume_init() };
 
     let in_out_len = in_out.len() - TAG_LEN - in_prefix_len;
     match &asm_key.variant {
@@ -658,7 +655,7 @@ fn open_avx_aesni(
 fn aes_gcm_siv_open(
     key: &aead::KeyInner,
     nonce: Nonce,
-    aad: Aad,
+    aad: Aad<&[u8]>,
     in_prefix_len: usize,
     in_out: &mut [u8],
     cpu_features: cpu::Features,

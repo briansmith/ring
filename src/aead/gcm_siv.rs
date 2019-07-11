@@ -23,6 +23,7 @@ use crate::aead::{
 
 use crate::{bits::BitLength, cpu, endian::BigEndian, endian::LittleEndian, error};
 use std::convert::TryInto;
+use std::mem::MaybeUninit;
 
 #[repr(C, align(16))]
 pub struct Key {
@@ -69,13 +70,10 @@ impl Key {
         let mut key;
 
         match detect_implementation(cpu_features) {
+
             Implementation::AVX_AESNI => {
-                key = Key {
-                    aes_asm_key: Some(AES_ASM_KEY({ unsafe { std::mem::uninitialized() } })),
-                    aes_key: None,
-                    variant: variant.clone(),
-                };
-                let aes_asm_key = key.aes_asm_key.as_mut().ok_or(error::Unspecified)?;
+
+                let mut aes_asm_key = MaybeUninit::<AES_ASM_KEY>::uninit();
 
                 match variant {
                     AES_128 => {
@@ -86,7 +84,7 @@ impl Key {
                             );
                         }
                         unsafe {
-                            aes128gcmsiv_aes_ks(user_key.as_ptr(), aes_asm_key);
+                            aes128gcmsiv_aes_ks(user_key.as_ptr(), aes_asm_key.as_mut_ptr());
                         }
                     }
                     AES_256 => {
@@ -97,10 +95,16 @@ impl Key {
                             );
                         }
                         unsafe {
-                            aes256gcmsiv_aes_ks(user_key.as_ptr(), aes_asm_key);
+                            aes256gcmsiv_aes_ks(user_key.as_ptr(), aes_asm_key.as_mut_ptr());
                         }
                     }
                 }
+                let aes_asm_key = unsafe { aes_asm_key.assume_init() };
+                key = Key {
+                    aes_asm_key: Some(aes_asm_key),
+                    aes_key: None,
+                    variant: variant.clone(),
+                };
             }
             Implementation::FALLBACK => {
                 key = Key {
@@ -125,13 +129,12 @@ impl GcmSivAsmContext {
         &self,
         nonce: &Nonce,
         key: &Key,
-        auth_key: &mut Auth_Key,
-        enc_key: &mut Encryption_Key,
+        auth_key: &mut MaybeUninit<Auth_Key>,
+        enc_key: &mut MaybeUninit<Encryption_Key>,
     ) {
         let aes_asm_key = key.aes_asm_key.as_ref().expect("Missing AES ASM KEY");
 
-        let mut key_material: KeyMaterial;
-        key_material = { unsafe { std::mem::uninitialized() } };
+        let mut key_material = MaybeUninit::<KeyMaterial>::uninit();
         let nonce = nonce.as_ref();
         let nonce = Nonce::try_assume_unique_for_key(nonce).expect("Nonce expected");
         let counter: nonce::Counter<BigEndian<u32>> = nonce::Counter::zero(nonce);
@@ -146,7 +149,7 @@ impl GcmSivAsmContext {
                     );
                 }
                 unsafe {
-                    aes128gcmsiv_kdf(&counter, &mut key_material, aes_asm_key);
+                    aes128gcmsiv_kdf(&counter, key_material.as_mut_ptr(), aes_asm_key);
                 }
             }
             AES_256 => {
@@ -158,21 +161,22 @@ impl GcmSivAsmContext {
                     );
                 }
                 unsafe {
-                    aes256gcmsiv_kdf(&counter, &mut key_material, aes_asm_key);
+                    aes256gcmsiv_kdf(&counter, key_material.as_mut_ptr(), aes_asm_key);
                 }
             }
         }
+        let key_material = unsafe { key_material.assume_init() };
         // The key material array contains auth key at index 0 and 2
-        auth_key.key = [key_material.0[0], key_material.0[2]];
+        unsafe { auth_key.as_mut_ptr().write(Auth_Key {key: [key_material.0[0], key_material.0[2]]}) };
         // The key material array contains encryption key at index 4, 6, 8, 10
         // Note that in a 128 version of AES_GCM_SIV only the 4th and 6th index is used to compute
         // the encryption key where as 256 version uses all of them
-        enc_key.key = [
+        unsafe { enc_key.as_mut_ptr().write(Encryption_Key {key: [
             key_material.0[4],
             key_material.0[6],
             key_material.0[8],
             key_material.0[10],
-        ];
+        ]})};
     }
 
     pub fn gcm_siv_asm_polyval(
@@ -189,18 +193,18 @@ impl GcmSivAsmContext {
         let in_blocks = input.len() / BLOCK_LEN;
 
         let mut htable_init = false;
-        let htable: Htable;
-        htable = { unsafe { std::mem::uninitialized() } };
+        let mut htable= MaybeUninit::<Htable>::uninit();
 
         if ad_blocks > 8 || in_blocks > 8 {
             htable_init = true;
             extern "C" {
-                fn aesgcmsiv_htable_init(out_htable: *const Htable, auth_key: *const Auth_Key);
+                fn aesgcmsiv_htable_init(out_htable: *mut Htable, auth_key: *const Auth_Key);
             }
             unsafe {
-                aesgcmsiv_htable_init(&htable, auth_key);
+                aesgcmsiv_htable_init(htable.as_mut_ptr(), auth_key);
             }
         }
+        let htable = unsafe { htable.assume_init() };
 
         let whole_ad_len = ad.len() - (ad.len() % BLOCK_LEN);
         let remaining_ad_len = ad.len() % BLOCK_LEN;

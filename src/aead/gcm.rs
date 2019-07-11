@@ -14,7 +14,7 @@
 
 use super::{Block, BLOCK_LEN};
 use crate::cpu;
-use libc::size_t;
+use crate::c;
 
 #[repr(transparent)]
 pub struct Key(GCM128_KEY);
