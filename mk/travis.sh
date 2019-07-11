@@ -156,10 +156,4 @@ if [[ "$KCOV" == "1" ]]; then
   done
 fi
 
-# Verify that `cargo build`, independent from `cargo test`, works; i.e. verify
-# that non-test builds aren't trying to use test-only features. For platforms
-# for which we don't run tests, this is the only place we even verify that the
-# code builds.
-cargo build -vv -j2 ${mode-} ${FEATURES_X-} --target=$TARGET_X
-
 echo end of mk/travis.sh
