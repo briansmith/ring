@@ -240,27 +240,21 @@ mod sysrand_chunk {
 mod sysrand_chunk {
     use crate::error;
 
-    impl super::sealed::SecureRandom for web_sys::Crypto {
-        #[inline]
-        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
-            // This limit is specified in
-            // https://www.w3.org/TR/WebCryptoAPI/#Crypto-method-getRandomValues.
-            for dest in dest.chunks_mut(0xffff) {
-                let _ = self
-                    .get_random_values_with_u8_array(dest)
-                    .map_err(|_| error::Unspecified)?;
-            }
-            Ok(())
-        }
-    }
+    pub fn chunk(mut dest: &mut [u8]) -> Result<usize, error::Unspecified> {
+        // This limit is specified in
+        // https://www.w3.org/TR/WebCryptoAPI/#Crypto-method-getRandomValues.
+        const MAX_LEN: usize = 65_536;
+        if dest.len() > MAX_LEN {
+            dest = &mut dest[..MAX_LEN];
+        };
 
-    pub fn chunk(dest: &mut [u8]) -> Result<usize, error::Unspecified> {
-        use crate::rand::SecureRandom;
-        web_sys::window()
+        let _ = web_sys::window()
             .ok_or(error::Unspecified)?
             .crypto()
             .map_err(|_| error::Unspecified)?
-            .fill(dest)?;
+            .get_random_values_with_u8_array(dest)
+            .map_err(|_| error::Unspecified)?;
+
         Ok(dest.len())
     }
 }
