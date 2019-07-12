@@ -62,6 +62,10 @@ impl Ed25519KeyPair {
     /// Constructs an Ed25519 key pair by parsing an unencrypted PKCS#8 v2
     /// Ed25519 private key.
     ///
+    /// `openssl genpkey -algorithm ED25519` generates PKCS# v1 keys, which
+    /// require the use of `Ed25519KeyPair::from_pkcs8_maybe_unchecked()`
+    /// instead of `Ed25519KeyPair::from_pkcs8()`.
+    ///
     /// The input must be in PKCS#8 v2 format, and in particular it must contain
     /// the public key in addition to the private key. `from_pkcs8()` will
     /// verify that the public key and the private key are consistent with each
@@ -80,6 +84,8 @@ impl Ed25519KeyPair {
 
     /// Constructs an Ed25519 key pair by parsing an unencrypted PKCS#8 v1 or v2
     /// Ed25519 private key.
+    ///
+    /// `openssl genpkey -algorithm ED25519` generates PKCS# v1 keys.
     ///
     /// It is recommended to use `Ed25519KeyPair::from_pkcs8()`, which accepts
     /// only PKCS#8 v2 files that contain the public key.
