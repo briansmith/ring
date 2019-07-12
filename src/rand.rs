@@ -143,13 +143,13 @@ impl<T> RandomlyConstructable for T where T: self::sealed::RandomlyConstructable
 /// random number generation.
 ///
 /// [`getrandom`]: http://man7.org/linux/man-pages/man2/getrandom.2.html
-pub struct SystemRandom;
+pub struct SystemRandom(());
 
 impl SystemRandom {
     /// Constructs a new `SystemRandom`.
     #[inline(always)]
     pub fn new() -> Self {
-        Self
+        Self(())
     }
 }
 
