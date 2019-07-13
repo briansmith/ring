@@ -251,7 +251,7 @@ fn seal_with_key(
     aad: aead::Aad<&[u8]>,
     in_out: &mut [u8],
 ) -> Result<usize, error::Unspecified> {
-    let mut s_key = make_key(algorithm, key, nonce);
+    let mut s_key: aead::SealingKey<OneNonceSequence> = make_key(algorithm, key, nonce);
     s_key.seal_in_place(aad, in_out, algorithm.tag_len())
 }
 
@@ -263,7 +263,7 @@ fn open_with_key<'a>(
     in_prefix_len: usize,
     in_out: &'a mut [u8],
 ) -> Result<&'a mut [u8], error::Unspecified> {
-    let mut o_key = make_key(algorithm, key, nonce);
+    let mut o_key: aead::OpeningKey<OneNonceSequence> = make_key(algorithm, key, nonce);
     o_key.open_in_place(aad, in_prefix_len, in_out)
 }
 
@@ -403,23 +403,23 @@ fn test_aead_key_debug() {
         format!("{:?}", key)
     );
 
-    let sealing_key: aead::Key<aead::Sealing, OneNonceSequence> = make_key(
+    let sealing_key: aead::SealingKey<OneNonceSequence> = make_key(
         &aead::CHACHA20_POLY1305,
         &key_bytes,
         aead::Nonce::try_assume_unique_for_key(&nonce).unwrap(),
     );
     assert_eq!(
-        "Key { algorithm: CHACHA20_POLY1305, role: Sealing(()) }",
+        "SealingKey { algorithm: CHACHA20_POLY1305 }",
         format!("{:?}", sealing_key)
     );
 
-    let opening_key: aead::Key<aead::Opening, OneNonceSequence> = make_key(
+    let opening_key: aead::OpeningKey<OneNonceSequence> = make_key(
         &aead::AES_256_GCM,
         &key_bytes,
         aead::Nonce::try_assume_unique_for_key(&nonce).unwrap(),
     );
     assert_eq!(
-        "Key { algorithm: AES_256_GCM, role: Opening(()) }",
+        "OpeningKey { algorithm: AES_256_GCM }",
         format!("{:?}", opening_key)
     );
 
@@ -427,14 +427,14 @@ fn test_aead_key_debug() {
     assert_eq!("Key { algorithm: CHACHA20_POLY1305 }", format!("{:?}", key));
 }
 
-fn make_key<R: aead::Role>(
+fn make_key<K: aead::BoundKey<OneNonceSequence>>(
     algorithm: &'static aead::Algorithm,
     key: &[u8],
     nonce: aead::Nonce,
-) -> aead::Key<R, OneNonceSequence> {
+) -> K {
     let key = aead::UnboundKey::new(algorithm, key).unwrap();
     let nonce_sequence = OneNonceSequence::new(nonce);
-    aead::Key::new(key, nonce_sequence)
+    K::new(key, nonce_sequence)
 }
 
 fn make_less_safe_key(algorithm: &'static aead::Algorithm, key: &[u8]) -> aead::LessSafeKey {
