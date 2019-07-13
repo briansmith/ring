@@ -294,14 +294,14 @@ fn test_aead_key_debug() {
         format!("{:?}", key)
     );
 
-    let sealing_key: aead::Key<aead::Sealing, LessSafeExplicitNonceSequence> =
+    let sealing_key: aead::Key<aead::Sealing, OneNonceSequence> =
         make_key(&aead::CHACHA20_POLY1305, &key_bytes, &nonce);
     assert_eq!(
         "Key { algorithm: CHACHA20_POLY1305, role: Sealing(()) }",
         format!("{:?}", sealing_key)
     );
 
-    let opening_key: aead::Key<aead::Opening, LessSafeExplicitNonceSequence> =
+    let opening_key: aead::Key<aead::Opening, OneNonceSequence> =
         make_key(&aead::AES_256_GCM, &key_bytes, &nonce);
     assert_eq!(
         "Key { algorithm: AES_256_GCM, role: Opening(()) }",
@@ -313,51 +313,25 @@ fn make_key<R: aead::Role>(
     algorithm: &'static aead::Algorithm,
     key: &[u8],
     nonce: &[u8],
-) -> aead::Key<R, LessSafeExplicitNonceSequence> {
+) -> aead::Key<R, OneNonceSequence> {
     let key = aead::UnboundKey::new(algorithm, key).unwrap();
-    let mut nonce_sequence = LessSafeExplicitNonceSequence::new(1);
-    nonce_sequence.set_next(aead::Nonce::try_assume_unique_for_key(nonce).unwrap());
+    let nonce = aead::Nonce::try_assume_unique_for_key(nonce).unwrap();
+    let nonce_sequence = OneNonceSequence::new(nonce);
     aead::Key::new(key, nonce_sequence)
 }
 
-/// A Nonce sequence that allows nonces to be chosen externally.
-///
-/// Some protocols use "explicit" nonces and allow the sender to choose an
-/// arbitrary nonce. Implementations of such protocols can use a counter for
-/// nonces they send, but they need to use a degenerate `NonceSequence` to
-/// handle nonces they receive, which allows the next `Nonce` returned from
-/// `advance()` to be set before each call to `aead::Key::open_in_place()`.
-/// `aead::Key::nonce_sequence_mut()` returns a mutable reference to the
-/// `NonceSequence` being used to set the next nonce.
-struct LessSafeExplicitNonceSequence {
-    next: Option<aead::Nonce>,
-    allowed_invocations: u64,
-}
+struct OneNonceSequence(Option<aead::Nonce>);
 
-impl LessSafeExplicitNonceSequence {
+impl OneNonceSequence {
     /// Constructs the sequence allowing `advance()` to be called
     /// `allowed_invocations` times.
-    fn new(allowed_invocations: u64) -> Self {
-        Self {
-            next: None,
-            allowed_invocations,
-        }
-    }
-
-    /// Sets the next nonce to be returned from `advance()`.
-    ///
-    /// The next call to `advcance()` will return the nonce and forget it.
-    fn set_next(&mut self, next: aead::Nonce) {
-        self.next = Some(next);
+    fn new(nonce: aead::Nonce) -> Self {
+        Self(Some(nonce))
     }
 }
 
-impl aead::NonceSequence for LessSafeExplicitNonceSequence {
+impl aead::NonceSequence for OneNonceSequence {
     fn advance(&mut self) -> Result<aead::Nonce, error::Unspecified> {
-        self.allowed_invocations = self
-            .allowed_invocations
-            .checked_sub(1)
-            .ok_or(error::Unspecified)?;
-        self.next.take().ok_or(error::Unspecified)
+        self.0.take().ok_or(error::Unspecified)
     }
 }
