@@ -38,11 +38,6 @@ pub use self::{
 ///
 /// A simple counter is a reasonable (but probably not ideal) `NonceSequence`.
 ///
-/// Because `aead::Key::nonce_sequence_mut()` returns a mutable reference to
-/// the `NonceSequence` in use, `NonceSequence` implementations should be
-/// careful about how they expose mutating methods; it is generally better to
-/// avoid exposing any mutating methods.
-///
 /// Intentionally not `Clone` or `Copy` since cloning would allow duplication
 /// of the sequence.
 pub trait NonceSequence {
@@ -173,14 +168,6 @@ impl<N: NonceSequence> Key<Opening, N> {
             in_prefix_len,
             ciphertext_and_tag_modified_in_place,
         )
-    }
-
-    /// Allows mutable access to the `NonceSequence` used for this key.
-    ///
-    /// This is provided primarily for use with `NonceSequence` implementations
-    /// that allow the next nonce in the sequence to be explicitly set.
-    pub fn nonce_sequence_mut(&mut self) -> &mut N {
-        &mut self.nonce_sequence
     }
 }
 
@@ -359,6 +346,69 @@ impl hkdf::KeyType for &'static Algorithm {
     #[inline]
     fn len(&self) -> usize {
         self.key_len()
+    }
+}
+
+/// Immutable keys for use in situations where `Key` and `NonceSequence` cannot
+/// reasonably be used.
+///
+/// Prefer to use `Key` and `NonceSequence` when practical.
+pub struct LessSafeKey {
+    key: UnboundKey,
+}
+
+impl LessSafeKey {
+    /// Constructs a `LessSafeKey` from an `UnboundKey`.
+    pub fn new(key: UnboundKey) -> Self {
+        Self { key }
+    }
+
+    /// Like `Key::open_in_place()`, except it accepts an arbitrary nonce.
+    pub fn open_in_place<'a, A: AsRef<[u8]>>(
+        &self,
+        nonce: Nonce,
+        Aad(aad): Aad<A>,
+        in_prefix_len: usize,
+        ciphertext_and_tag_modified_in_place: &'a mut [u8],
+    ) -> Result<&'a mut [u8], error::Unspecified> {
+        open_in_place_(
+            &self.key,
+            nonce,
+            Aad::from(aad.as_ref()),
+            in_prefix_len,
+            ciphertext_and_tag_modified_in_place,
+        )
+    }
+
+    /// Like `Key::seal_in_place()`, except it accepts an arbitrary nonce.
+    pub fn seal_in_place<A: AsRef<[u8]>>(
+        &self,
+        nonce: Nonce,
+        Aad(aad): Aad<A>,
+        in_out: &mut [u8],
+        out_suffix_capacity: usize,
+    ) -> Result<usize, error::Unspecified> {
+        seal_in_place_(
+            &self.key,
+            nonce,
+            Aad::from(aad.as_ref()),
+            in_out,
+            out_suffix_capacity,
+        )
+    }
+
+    /// The key's AEAD algorithm.
+    #[inline]
+    pub fn algorithm(&self) -> &'static Algorithm {
+        &self.key.algorithm
+    }
+}
+
+impl core::fmt::Debug for LessSafeKey {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+        f.debug_struct("Key")
+            .field("algorithm", self.algorithm())
+            .finish()
     }
 }
 
