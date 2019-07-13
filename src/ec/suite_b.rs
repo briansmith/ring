@@ -232,7 +232,6 @@ pub mod curve;
 pub mod ecdh;
 pub mod ecdsa;
 
-#[macro_use]
 mod ops;
 
 mod private_key;

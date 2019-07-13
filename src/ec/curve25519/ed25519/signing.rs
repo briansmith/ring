@@ -14,18 +14,15 @@
 
 //! EdDSA Signatures.
 
-use super::{super::ops::*, ED25519_PUBLIC_KEY_LEN};
+use super::{super::ops::*, eddsa_digest, ED25519_PUBLIC_KEY_LEN};
 use crate::{
     digest, error,
     io::der,
-    pkcs8,
-    polyfill::convert::*,
-    rand,
+    pkcs8, rand,
     signature::{self, KeyPair as SigningKeyPair},
 };
+use core::convert::TryInto;
 use untrusted;
-
-use super::digest::*;
 
 /// An Ed25519 key pair, for signing.
 pub struct Ed25519KeyPair {
@@ -53,8 +50,7 @@ impl Ed25519KeyPair {
     pub fn generate_pkcs8(
         rng: &dyn rand::SecureRandom,
     ) -> Result<pkcs8::Document, error::Unspecified> {
-        let mut seed = [0u8; SEED_LEN];
-        rng.fill(&mut seed)?;
+        let seed: [u8; SEED_LEN] = rand::generate(rng)?.expose();
         let key_pair = Self::from_seed_(&seed);
         Ok(pkcs8::wrap_key(
             &PKCS8_TEMPLATE,
@@ -65,6 +61,10 @@ impl Ed25519KeyPair {
 
     /// Constructs an Ed25519 key pair by parsing an unencrypted PKCS#8 v2
     /// Ed25519 private key.
+    ///
+    /// `openssl genpkey -algorithm ED25519` generates PKCS# v1 keys, which
+    /// require the use of `Ed25519KeyPair::from_pkcs8_maybe_unchecked()`
+    /// instead of `Ed25519KeyPair::from_pkcs8()`.
     ///
     /// The input must be in PKCS#8 v2 format, and in particular it must contain
     /// the public key in addition to the private key. `from_pkcs8()` will
@@ -84,6 +84,8 @@ impl Ed25519KeyPair {
 
     /// Constructs an Ed25519 key pair by parsing an unencrypted PKCS#8 v1 or v2
     /// Ed25519 private key.
+    ///
+    /// `openssl genpkey -algorithm ED25519` generates PKCS# v1 keys.
     ///
     /// It is recommended to use `Ed25519KeyPair::from_pkcs8()`, which accepts
     /// only PKCS#8 v2 files that contain the public key.
@@ -149,30 +151,26 @@ impl Ed25519KeyPair {
     /// the private key since the public key isn't given as input.
     pub fn from_seed_unchecked(seed: &[u8]) -> Result<Self, error::KeyRejected> {
         let seed = seed
-            .try_into_()
+            .try_into()
             .map_err(|_| error::KeyRejected::invalid_encoding())?;
         Ok(Self::from_seed_(seed))
     }
 
     fn from_seed_(seed: &Seed) -> Self {
         let h = digest::digest(&digest::SHA512, seed);
-        let (scalar_encoded, prefix_encoded) = h.as_ref().split_at(SCALAR_LEN);
+        let (private_scalar, private_prefix) = h.as_ref().split_at(SCALAR_LEN);
 
-        let mut scalar = [0u8; SCALAR_LEN];
-        scalar.copy_from_slice(&scalar_encoded);
-        unsafe { GFp_x25519_sc_mask(&mut scalar) };
-
-        let mut prefix = [0u8; PREFIX_LEN];
-        prefix.copy_from_slice(prefix_encoded);
+        let private_scalar =
+            MaskedScalar::from_bytes_masked(private_scalar.try_into().unwrap()).into();
 
         let mut a = ExtPoint::new_at_infinity();
         unsafe {
-            GFp_x25519_ge_scalarmult_base(&mut a, &scalar);
+            GFp_x25519_ge_scalarmult_base(&mut a, &private_scalar);
         }
 
         Self {
-            private_scalar: scalar,
-            private_prefix: prefix,
+            private_scalar,
+            private_prefix: private_prefix.try_into().unwrap(),
             public_key: PublicKey(a.into_encoded_point()),
         }
     }
@@ -180,26 +178,39 @@ impl Ed25519KeyPair {
     /// Returns the signature of the message `msg`.
     pub fn sign(&self, msg: &[u8]) -> signature::Signature {
         signature::Signature::new(|signature_bytes| {
-            let (signature_bytes, _unused) = signature_bytes.into_();
-            // Borrow `signature_bytes`.
-            let (signature_r, signature_s) = signature_bytes.into_();
+            extern "C" {
+                fn GFp_x25519_sc_muladd(
+                    s: &mut [u8; SCALAR_LEN],
+                    a: &Scalar,
+                    b: &Scalar,
+                    c: &Scalar,
+                );
+            }
+
+            let (signature_bytes, _unused) = signature_bytes.split_at_mut(ELEM_LEN + SCALAR_LEN);
+            let (signature_r, signature_s) = signature_bytes.split_at_mut(ELEM_LEN);
             let nonce = {
                 let mut ctx = digest::Context::new(&digest::SHA512);
                 ctx.update(&self.private_prefix);
                 ctx.update(msg);
                 ctx.finish()
             };
-            let nonce = digest_scalar(nonce);
+            let nonce = Scalar::from_sha512_digest_reduced(nonce);
 
             let mut r = ExtPoint::new_at_infinity();
             unsafe {
                 GFp_x25519_ge_scalarmult_base(&mut r, &nonce);
             }
-            *signature_r = r.into_encoded_point();
+            signature_r.copy_from_slice(&r.into_encoded_point());
             let hram_digest = eddsa_digest(signature_r, &self.public_key.as_ref(), msg);
-            let hram = digest_scalar(hram_digest);
+            let hram = Scalar::from_sha512_digest_reduced(hram_digest);
             unsafe {
-                GFp_x25519_sc_muladd(signature_s, &hram, &self.private_scalar, &nonce);
+                GFp_x25519_sc_muladd(
+                    signature_s.try_into().unwrap(),
+                    &hram,
+                    &self.private_scalar,
+                    &nonce,
+                );
             }
 
             SIGNATURE_LEN
@@ -240,9 +251,7 @@ fn unwrap_pkcs8(
 }
 
 versioned_extern! {
-    fn GFp_x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Seed);
-    fn GFp_x25519_sc_mask(a: &mut Scalar);
-    fn GFp_x25519_sc_muladd(s: &mut Scalar, a: &Scalar, b: &Scalar, c: &Scalar);
+    fn GFp_x25519_ge_scalarmult_base(h: &mut ExtPoint, a: &Scalar);
 }
 
 type Prefix = [u8; PREFIX_LEN];
@@ -259,5 +268,3 @@ static PKCS8_TEMPLATE: pkcs8::Template = pkcs8::Template {
     curve_id_index: 0,
     private_key_index: 0x10,
 };
-
-impl_array_split!(u8, SIGNATURE_LEN, signature::MAX_LEN - SIGNATURE_LEN);

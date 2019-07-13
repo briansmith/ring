@@ -96,29 +96,8 @@ void GFp_gcm_init_4bit(u128 Htable[16], const uint64_t H[2]) {
   Htable[13].hi = V.hi ^ Htable[5].hi, Htable[13].lo = V.lo ^ Htable[5].lo;
   Htable[14].hi = V.hi ^ Htable[6].hi, Htable[14].lo = V.lo ^ Htable[6].lo;
   Htable[15].hi = V.hi ^ Htable[7].hi, Htable[15].lo = V.lo ^ Htable[7].lo;
-
-#if defined(OPENSSL_ARM)
-  // ARM assembler expects specific dword order in Htable.
-  {
-    int j;
-
-    for (j = 0; j < 16; ++j) {
-      V = Htable[j];
-#if OPENSSL_ENDIAN == OPENSSL_LITTLE_ENDIAN
-      Htable[j].hi = V.lo;
-      Htable[j].lo = V.hi;
-#elif OPENSSL_ENDIAN == OPENSSL_BIG_ENDIAN
-      Htable[j].hi = V.lo << 32 | V.lo >> 32;
-      Htable[j].lo = V.hi << 32 | V.hi >> 32;
-#else
-#error "OPENSSL_ENDIAN not set."
-#endif
-    }
-  }
-#endif
 }
 
-#if defined(OPENSSL_AARCH64) || defined(OPENSSL_PPC64LE) || defined(OPENSSL_X86_64)
 static const size_t rem_4bit[16] = {
     PACK(0x0000), PACK(0x1C20), PACK(0x3840), PACK(0x2460),
     PACK(0x7080), PACK(0x6CA0), PACK(0x48C0), PACK(0x54E0),
@@ -240,4 +219,3 @@ void GFp_gcm_ghash_4bit(uint8_t Xi[16], const u128 Htable[16],
     to_be_u64_ptr(Xi + 8, Z.lo);
   } while (inp += 16, len -= 16);
 }
-#endif

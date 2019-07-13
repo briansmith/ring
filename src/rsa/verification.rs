@@ -107,7 +107,7 @@ macro_rules! rsa_params {
       $doc_str:expr ) => {
         #[doc=$doc_str]
         ///
-        /// Only available in `use_heap` mode.
+        /// Only available in `alloc` mode.
         pub static $VERIFY_ALGORITHM: RsaParameters = RsaParameters {
             padding_alg: $PADDING_ALGORITHM,
             min_bits: bits::BitLength::from_usize_bits($min_bits),
@@ -116,9 +116,9 @@ macro_rules! rsa_params {
 }
 
 rsa_params!(
-    RSA_PKCS1_2048_8192_SHA1,
+    RSA_PKCS1_2048_8192_SHA1_FOR_LEGACY_USE_ONLY,
     2048,
-    &super::padding::RSA_PKCS1_SHA1,
+    &super::padding::RSA_PKCS1_SHA1_FOR_LEGACY_USE_ONLY,
     "Verification of signatures using RSA keys of 2048-8192 bits,
              PKCS#1.5 padding, and SHA-1.\n\nSee \"`RSA_PKCS1_*` Details\" in
              `ring::signature`'s module-level documentation for more details."

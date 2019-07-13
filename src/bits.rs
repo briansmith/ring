@@ -31,7 +31,7 @@ impl BitLength {
         Ok(Self::from_usize_bits(bits))
     }
 
-    #[cfg(feature = "use_heap")]
+    #[cfg(feature = "alloc")]
     #[inline]
     pub fn half_rounded_up(&self) -> Self {
         let round_up = self.0 & 1;
@@ -43,7 +43,7 @@ impl BitLength {
         self.0
     }
 
-    #[cfg(feature = "use_heap")]
+    #[cfg(feature = "alloc")]
     #[inline]
     pub fn as_usize_bytes_rounded_up(&self) -> usize {
         // Equivalent to (self.0 + 7) / 8, except with no potential for
@@ -55,7 +55,7 @@ impl BitLength {
         (self.0 / 8) + round_up
     }
 
-    #[cfg(feature = "use_heap")]
+    #[cfg(feature = "alloc")]
     #[inline]
     pub fn try_sub_1(self) -> Result<BitLength, error::Unspecified> {
         let sum = self.0.checked_sub(1).ok_or(error::Unspecified)?;

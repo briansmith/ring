@@ -12,4 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+#[macro_use]
+pub mod constant;
+
+#[cfg(feature = "alloc")]
+pub mod bigint;
+
 pub mod montgomery;

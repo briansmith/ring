@@ -27,9 +27,7 @@
 //! ℤ/qℤ. Types and functions dealing with such rings are all parameterized
 //! over a type `M` to ensure that we don't wrongly mix up the math, e.g. by
 //! multiplying an element of ℤ/pℤ by an element of ℤ/qℤ modulo q. This follows
-//! the "unit" pattern described in [Static checking of units in Servo]; `Elem`,
-//! and `Modulus` are analogous to `geom::Length`, and `super::N` and
-//! `super::signing::{P, QQ, Q}` are analogous to `Mm` and `Inch`.
+//! the "unit" pattern described in [Static checking of units in Servo].
 //!
 //! `Elem` also uses the static unit checking pattern to statically track the
 //! Montgomery factors that need to be canceled out in each value using it's
@@ -38,18 +36,16 @@
 //! [Static checking of units in Servo]:
 //!     https://blog.mozilla.org/research/2014/06/23/static-checking-of-units-in-servo/
 
-#![allow(box_pointers)]
-
 use crate::{
     arithmetic::montgomery::*,
     bits, bssl, c, error,
     limb::{self, Limb, LimbMask, LIMB_BITS, LIMB_BYTES},
 };
+use alloc::{borrow::ToOwned as _, boxed::Box, vec, vec::Vec};
 use core::{
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
-use std::{borrow::ToOwned as _, boxed::Box, vec, vec::Vec};
 use untrusted;
 
 pub unsafe trait Prime {}
@@ -168,6 +164,8 @@ pub unsafe trait SlightlySmallerModulus<L>: SmallerModulus<L> {}
 /// ℤ/sℤ.
 pub unsafe trait NotMuchSmallerModulus<L>: SmallerModulus<L> {}
 
+pub unsafe trait PublicModulus {}
+
 /// The x86 implementation of `GFp_bn_mul_mont`, at least, requires at least 4
 /// limbs. For a long time we have required 4 limbs for all targets, though
 /// this may be unnecessary. TODO: Replace this with
@@ -224,7 +222,7 @@ pub struct Modulus<M> {
     oneRR: One<M, RR>,
 }
 
-impl core::fmt::Debug for Modulus<super::N> {
+impl<M: PublicModulus> core::fmt::Debug for Modulus<M> {
     fn fmt(&self, fmt: &mut ::core::fmt::Formatter) -> Result<(), ::core::fmt::Error> {
         fmt.debug_struct("Modulus")
             // TODO: Print modulus value.
@@ -1292,11 +1290,13 @@ versioned_extern! {
 mod tests {
     use super::*;
     use crate::test;
-    use std::format;
+    use alloc::format;
     use untrusted;
 
     // Type-level representation of an arbitrary modulus.
     struct M {}
+
+    unsafe impl PublicModulus for M {}
 
     #[test]
     fn test_elem_exp_consttime() {
@@ -1424,7 +1424,7 @@ mod tests {
 
     #[test]
     fn test_modulus_debug() {
-        let (modulus, _) = Modulus::from_be_bytes_with_bit_length(untrusted::Input::from(
+        let (modulus, _) = Modulus::<M>::from_be_bytes_with_bit_length(untrusted::Input::from(
             &vec![0xff; LIMB_BYTES * MODULUS_MIN_LIMBS],
         ))
         .unwrap();

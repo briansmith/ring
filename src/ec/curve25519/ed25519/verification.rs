@@ -14,11 +14,10 @@
 
 //! EdDSA Signatures.
 
-use super::super::ops::*;
-use crate::{error, polyfill::convert::*, sealed, signature};
+use super::{super::ops::*, eddsa_digest};
+use crate::{error, sealed, signature};
+use core::convert::TryInto;
 use untrusted;
-
-use super::digest::*;
 
 /// Parameters for EdDSA signing and verification.
 pub struct EdDSAParameters;
@@ -43,21 +42,26 @@ impl signature::VerificationAlgorithm for EdDSAParameters {
         msg: untrusted::Input,
         signature: untrusted::Input,
     ) -> Result<(), error::Unspecified> {
-        let public_key = public_key.as_slice_less_safe();
-        let public_key: &[u8; ELEM_LEN] = public_key.try_into_()?;;
-        let signature: &[u8; ELEM_LEN + SCALAR_LEN] = signature.as_slice_less_safe().try_into_()?;
-        let (signature_r, signature_s): (&[u8; ELEM_LEN], &[u8; SCALAR_LEN]) = signature.into_();
+        let public_key: &[u8; ELEM_LEN] = public_key.as_slice_less_safe().try_into()?;
+        let (signature_r, signature_s) = signature.read_all(error::Unspecified, |input| {
+            let signature_r: &[u8; ELEM_LEN] = input
+                .read_bytes(ELEM_LEN)?
+                .as_slice_less_safe()
+                .try_into()?;
+            let signature_s: &[u8; SCALAR_LEN] = input
+                .read_bytes(SCALAR_LEN)?
+                .as_slice_less_safe()
+                .try_into()?;
+            Ok((signature_r, signature_s))
+        })?;
 
-        // Ensure `s` is not too large.
-        if (signature_s[SCALAR_LEN - 1] & 0b11100000) != 0 {
-            return Err(error::Unspecified);
-        }
+        let signature_s = Scalar::from_bytes_checked(*signature_s)?;
 
         let mut a = ExtPoint::from_encoded_point_vartime(public_key)?;
         a.invert_vartime();
 
         let h_digest = eddsa_digest(signature_r, public_key, msg.as_slice_less_safe());
-        let h = digest_scalar(h_digest);
+        let h = Scalar::from_sha512_digest_reduced(h_digest);
 
         let mut r = Point::new_at_infinity();
         unsafe { GFp_x25519_ge_double_scalarmult_vartime(&mut r, &h, &a, &signature_s) };

@@ -33,8 +33,18 @@
 
 use ring::{digest, test, test_file};
 
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_test::wasm_bindgen_test;
+
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_test::wasm_bindgen_test_configure;
+
+#[cfg(target_arch = "wasm32")]
+wasm_bindgen_test_configure!(run_in_browser);
+
 /// Test vectors from BoringSSL, Go, and other sources.
-#[test]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn digest_misc() {
     test::run(test_file!("digest_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
@@ -86,43 +96,49 @@ mod digest_shavs {
     }
 
     macro_rules! shavs_tests {
-        ( $algorithm_name:ident ) => {
+        ( $file_name:ident, $algorithm_name:ident ) => {
             #[allow(non_snake_case)]
             mod $algorithm_name {
                 use super::{run_known_answer_test, run_monte_carlo_test};
                 use ring::{digest, test_file};
 
-                #[test]
+                #[cfg(target_arch = "wasm32")]
+                use wasm_bindgen_test::wasm_bindgen_test;
+
+                #[cfg_attr(not(target_arch = "wasm32"), test)]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
                 fn short_msg_known_answer_test() {
                     run_known_answer_test(
                         &digest::$algorithm_name,
                         test_file!(concat!(
                             "../third_party/NIST/SHAVS/",
-                            stringify!($algorithm_name),
+                            stringify!($file_name),
                             "ShortMsg.rsp"
                         )),
                     );
                 }
 
-                #[test]
+                #[cfg_attr(not(target_arch = "wasm32"), test)]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
                 fn long_msg_known_answer_test() {
                     run_known_answer_test(
                         &digest::$algorithm_name,
                         test_file!(concat!(
                             "../third_party/NIST/SHAVS/",
-                            stringify!($algorithm_name),
+                            stringify!($file_name),
                             "LongMsg.rsp"
                         )),
                     );
                 }
 
-                #[test]
+                #[cfg_attr(not(target_arch = "wasm32"), test)]
+                #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
                 fn monte_carlo_test() {
                     run_monte_carlo_test(
                         &digest::$algorithm_name,
                         test_file!(concat!(
                             "../third_party/NIST/SHAVS/",
-                            stringify!($algorithm_name),
+                            stringify!($file_name),
                             "Monte.rsp"
                         )),
                     );
@@ -176,10 +192,10 @@ mod digest_shavs {
         assert_eq!(expected_count, 100);
     }
 
-    shavs_tests!(SHA1);
-    shavs_tests!(SHA256);
-    shavs_tests!(SHA384);
-    shavs_tests!(SHA512);
+    shavs_tests!(SHA1, SHA1_FOR_LEGACY_USE_ONLY);
+    shavs_tests!(SHA256, SHA256);
+    shavs_tests!(SHA384, SHA384);
+    shavs_tests!(SHA512, SHA512);
 }
 
 /// Test some ways in which `Context::update` and/or `Context::finish`
@@ -190,6 +206,8 @@ mod digest_shavs {
 macro_rules! test_i_u_f {
     ( $test_name:ident, $alg:expr) => {
         #[cfg(not(debug_assertions))]
+        // TODO: #[cfg_attr(not(target_arch = "wasm32"), test)]
+        //       #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
         #[test]
         fn $test_name() {
             let mut input = [0; (digest::MAX_BLOCK_LEN + 1) * 3];
@@ -220,7 +238,7 @@ macro_rules! test_i_u_f {
         }
     };
 }
-test_i_u_f!(digest_test_i_u_f_sha1, digest::SHA1);
+test_i_u_f!(digest_test_i_u_f_sha1, digest::SHA1_FOR_LEGACY_USE_ONLY);
 test_i_u_f!(digest_test_i_u_f_sha256, digest::SHA256);
 test_i_u_f!(digest_test_i_u_f_sha384, digest::SHA384);
 test_i_u_f!(digest_test_i_u_f_sha512, digest::SHA512);
@@ -251,6 +269,8 @@ macro_rules! test_large_digest {
     ( $test_name:ident, $alg:expr, $len:expr, $expected:expr) => {
         #[cfg(not(debug_assertions))]
         #[test]
+        // TODO: #[cfg_attr(not(target_arch = "wasm32"), test)]
+        //       #[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
         fn $test_name() {
             let chunk = vec![123u8; 16 * 1024];
             let chunk_len = chunk.len() as u64;
@@ -274,7 +294,7 @@ macro_rules! test_large_digest {
 #[cfg(any(not(target_os = "android"), not(target_arch = "arm")))]
 test_large_digest!(
     digest_test_large_digest_sha1,
-    digest::SHA1,
+    digest::SHA1_FOR_LEGACY_USE_ONLY,
     160 / 8,
     [
         0xCA, 0xC3, 0x4C, 0x31, 0x90, 0x5B, 0xDE, 0x3B, 0xE4, 0x0D, 0x46, 0x6D, 0x70, 0x76, 0xAD,
@@ -319,20 +339,25 @@ test_large_digest!(
 // TODO: test_large_digest!(digest_test_large_digest_sha512_256,
 //                            digest::SHA512_256, 256 / 8, [ ... ]);
 
-#[test]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn test_fmt_algorithm() {
-    assert_eq!("SHA1", &format!("{:?}", digest::SHA1));
+    assert_eq!("SHA1", &format!("{:?}", digest::SHA1_FOR_LEGACY_USE_ONLY));
     assert_eq!("SHA256", &format!("{:?}", digest::SHA256));
     assert_eq!("SHA384", &format!("{:?}", digest::SHA384));
     assert_eq!("SHA512", &format!("{:?}", digest::SHA512));
     assert_eq!("SHA512_256", &format!("{:?}", digest::SHA512_256));
 }
 
-#[test]
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn digest_test_fmt() {
     assert_eq!(
         "SHA1:b7e23ec29af22b0b4e41da31e868d57226121c84",
-        &format!("{:?}", digest::digest(&digest::SHA1, b"hello, world"))
+        &format!(
+            "{:?}",
+            digest::digest(&digest::SHA1_FOR_LEGACY_USE_ONLY, b"hello, world")
+        )
     );
     assert_eq!(
         "SHA256:09ca7e4eaa6e8ae9c7d261167129184883644d\

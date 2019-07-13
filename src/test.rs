@@ -66,7 +66,8 @@
 //! ```
 //!
 //! Note that `consume_digest_alg` automatically maps the string "SHA1" to a
-//! reference to `digest::SHA1`, "SHA256" to `digest::SHA256`, etc.
+//! reference to `digest::SHA1_FOR_LEGACY_USE_ONLY`, "SHA256" to
+//! `digest::SHA256`, etc.
 //!
 //! ## Output When a Test Fails
 //!
@@ -116,13 +117,14 @@
 //! stack trace to the line in the test code that panicked: entry 9 in the
 //! stack trace pointing to line 652 of the file `example.rs`.
 
-#[cfg(feature = "use_heap")]
-use crate::bits;
+#[cfg(feature = "alloc")]
+use alloc::{format, string::String, vec::Vec};
 
-use crate::{digest, error};
+#[cfg(feature = "alloc")]
+use crate::{bits, digest, error};
 
-use std::{format, string::String, vec::Vec};
-use std::{panic, println};
+#[cfg(feature = "std")]
+use std::println;
 
 /// `compile_time_assert_clone::<T>();` fails to compile if `T` doesn't
 /// implement `Clone`.
@@ -144,14 +146,23 @@ pub fn compile_time_assert_sync<T: Sync>() {}
 /// implement `Debug`.
 pub fn compile_time_assert_debug<T: core::fmt::Debug>() {}
 
+/// `compile_time_assert_debug::<T>();` fails to compile if `T` doesn't
+/// implement `std::error::Error`.
+#[cfg(feature = "std")]
+pub fn compile_time_assert_std_error_error<T: std::error::Error>() {}
+
 /// A test case. A test case consists of a set of named attributes. Every
 /// attribute in the test case must be consumed exactly once; this helps catch
 /// typos and omissions.
+///
+/// Requires the `std` default feature to be enabled.
+#[cfg(feature = "alloc")]
 #[derive(Debug)]
 pub struct TestCase {
     attributes: Vec<(String, String, bool)>,
 }
 
+#[cfg(feature = "alloc")]
 impl TestCase {
     /// Maps the string "true" to true and the string "false" to false.
     pub fn consume_bool(&mut self, key: &str) -> bool {
@@ -170,7 +181,7 @@ impl TestCase {
     pub fn consume_digest_alg(&mut self, key: &str) -> Option<&'static digest::Algorithm> {
         let name = self.consume_string(key);
         match name.as_ref() {
-            "SHA1" => Some(&digest::SHA1),
+            "SHA1" => Some(&digest::SHA1_FOR_LEGACY_USE_ONLY),
             "SHA224" => None, // We actively skip SHA-224 support.
             "SHA256" => Some(&digest::SHA256),
             "SHA384" => Some(&digest::SHA384),
@@ -246,7 +257,7 @@ impl TestCase {
 
     /// Returns the value of an attribute that is an integer, in decimal
     /// notation, as a bit length.
-    #[cfg(feature = "use_heap")]
+    #[cfg(feature = "alloc")]
     pub fn consume_usize_bits(&mut self, key: &str) -> bits::BitLength {
         let s = self.consume_string(key);
         let bits = s.parse::<usize>().unwrap();
@@ -277,6 +288,7 @@ impl TestCase {
 }
 
 /// References a test input file.
+#[cfg(feature = "alloc")]
 #[macro_export]
 macro_rules! test_file {
     ($file_name:expr) => {
@@ -288,6 +300,7 @@ macro_rules! test_file {
 }
 
 /// A test input file.
+#[cfg(feature = "alloc")]
 pub struct File<'a> {
     /// The name (path) of the file.
     pub file_name: &'a str,
@@ -299,6 +312,9 @@ pub struct File<'a> {
 /// Parses test cases out of the given file, calling `f` on each vector until
 /// `f` fails or until all the test vectors have been read. `f` can indicate
 /// failure either by returning `Err()` or by panicking.
+///
+/// Requires the `std` default feature to be enabled
+#[cfg(feature = "alloc")]
 pub fn run<F>(test_file: File, mut f: F)
 where
     F: FnMut(&str, &mut TestCase) -> Result<(), error::Unspecified>,
@@ -308,11 +324,15 @@ where
     let mut current_section = String::from("");
     let mut failed = false;
 
-    #[allow(box_pointers)]
     while let Some(mut test_case) = parse_test_case(&mut current_section, lines) {
-        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+        #[cfg(feature = "std")]
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             f(&current_section, &mut test_case)
         }));
+
+        #[cfg(not(feature = "std"))]
+        let result: Result<_, error::Unspecified> = Ok(f(&current_section, &mut test_case));
+
         let result = match result {
             Ok(Ok(())) => {
                 if !test_case
@@ -330,15 +350,21 @@ where
             Err(_) => Err("Test panicked."),
         };
 
-        if let Err(msg) = result {
+        if result.is_err() {
             failed = true;
+        }
 
-            println!("{}: {}", test_file.file_name, msg);
-            for (name, value, consumed) in test_case.attributes {
-                let consumed_str = if consumed { "" } else { " (unconsumed)" };
-                println!("{}{} = {}", name, consumed_str, value);
-            }
-        };
+        #[cfg(feature = "std")]
+        {
+            if let Err(msg) = result {
+                println!("{}: {}", test_file.file_name, msg);
+
+                for (name, value, consumed) in test_case.attributes {
+                    let consumed_str = if consumed { "" } else { " (unconsumed)" };
+                    println!("{}{} = {}", name, consumed_str, value);
+                }
+            };
+        }
     }
 
     if failed {
@@ -348,6 +374,7 @@ where
 
 /// Decode an string of hex digits into a sequence of bytes. The input must
 /// have an even number of digits.
+#[cfg(feature = "alloc")]
 pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
     if hex_str.len() % 2 != 0 {
         return Err(String::from(
@@ -364,6 +391,7 @@ pub fn from_hex(hex_str: &str) -> Result<Vec<u8>, String> {
     Ok(result)
 }
 
+#[cfg(feature = "alloc")]
 fn from_hex_digit(d: u8) -> Result<u8, String> {
     if d >= b'0' && d <= b'9' {
         Ok(d - b'0')
@@ -376,6 +404,7 @@ fn from_hex_digit(d: u8) -> Result<u8, String> {
     }
 }
 
+#[cfg(feature = "alloc")]
 fn parse_test_case(
     current_section: &mut String,
     lines: &mut dyn Iterator<Item = &str>,
@@ -386,7 +415,8 @@ fn parse_test_case(
     loop {
         let line = lines.next();
 
-        if cfg!(feature = "test_logging") {
+        #[cfg(feature = "test_logging")]
+        {
             if let Some(text) = &line {
                 println!("Line: {}", text);
             }
@@ -452,9 +482,9 @@ fn parse_test_case(
 /// of randomized algorithms & protocols using known-answer-tests where the
 /// test vectors contain the random seed to use. They are also especially
 /// useful for some types of fuzzing.
-#[allow(missing_docs)]
+#[doc(hidden)]
 pub mod rand {
-    use crate::{error, polyfill, rand, sealed};
+    use crate::{error, polyfill, rand};
 
     /// An implementation of `SecureRandom` that always fills the output slice
     /// with the given byte.
@@ -463,8 +493,8 @@ pub mod rand {
         pub byte: u8,
     }
 
-    impl rand::SecureRandom for FixedByteRandom {
-        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+    impl rand::sealed::SecureRandom for FixedByteRandom {
+        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             polyfill::slice::fill(dest, self.byte);
             Ok(())
         }
@@ -478,8 +508,8 @@ pub mod rand {
         pub bytes: &'a [u8],
     }
 
-    impl rand::SecureRandom for FixedSliceRandom<'_> {
-        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+    impl rand::sealed::SecureRandom for FixedSliceRandom<'_> {
+        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             dest.copy_from_slice(self.bytes);
             Ok(())
         }
@@ -501,8 +531,8 @@ pub mod rand {
         pub current: core::cell::UnsafeCell<usize>,
     }
 
-    impl rand::SecureRandom for FixedSliceSequenceRandom<'_> {
-        fn fill(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
+    impl rand::sealed::SecureRandom for FixedSliceSequenceRandom<'_> {
+        fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified> {
             let current = unsafe { *self.current.get() };
             let bytes = self.bytes[current];
             dest.copy_from_slice(bytes);
@@ -520,11 +550,6 @@ pub mod rand {
             assert_eq!(unsafe { *self.current.get() }, self.bytes.len());
         }
     }
-
-    impl sealed::Sealed for FixedByteRandom {}
-    impl sealed::Sealed for FixedSliceRandom<'_> {}
-    impl sealed::Sealed for FixedSliceSequenceRandom<'_> {}
-
 }
 
 #[cfg(test)]
@@ -549,7 +574,8 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Test failed.")]
+    #[cfg_attr(feature = "std", should_panic(expected = "Test failed."))]
+    #[cfg_attr(not(feature = "std"), should_panic)]
     fn one_panics() {
         test::run(test_file!("test_1_tests.txt"), |_, test_case| {
             let _ = test_case.consume_string("Key");
@@ -590,19 +616,22 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Test failed.")]
+    #[cfg_attr(feature = "std", should_panic(expected = "Test failed."))]
+    #[cfg_attr(not(feature = "std"), should_panic)]
     fn first_panic() {
         panic_one(0)
     }
 
     #[test]
-    #[should_panic(expected = "Test failed.")]
+    #[cfg_attr(feature = "std", should_panic(expected = "Test failed."))]
+    #[cfg_attr(not(feature = "std"), should_panic)]
     fn middle_panic() {
         panic_one(1)
     }
 
     #[test]
-    #[should_panic(expected = "Test failed.")]
+    #[cfg_attr(feature = "std", should_panic(expected = "Test failed."))]
+    #[cfg_attr(not(feature = "std"), should_panic)]
     fn last_panic() {
         panic_one(2)
     }

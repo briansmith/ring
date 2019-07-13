@@ -16,7 +16,7 @@ use super::PUBLIC_KEY_PUBLIC_MODULUS_MAX_LEN;
 use crate::{bits, digest, error, io::der};
 use untrusted;
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 use crate::rand;
 
 /// Common features of both RSA padding encoding and RSA padding verification.
@@ -29,7 +29,7 @@ pub trait Padding: 'static + Sync + crate::sealed::Sealed + core::fmt::Debug {
 /// An RSA signature encoding as described in [RFC 3447 Section 8].
 ///
 /// [RFC 3447 Section 8]: https://tools.ietf.org/html/rfc3447#section-8
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 pub trait RsaEncoding: Padding {
     #[doc(hidden)]
     fn encode(
@@ -74,7 +74,7 @@ impl Padding for PKCS1 {
     }
 }
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 impl RsaEncoding for PKCS1 {
     fn encode(
         &self,
@@ -144,8 +144,8 @@ macro_rules! rsa_pkcs1_padding {
 }
 
 rsa_pkcs1_padding!(
-    RSA_PKCS1_SHA1,
-    &digest::SHA1,
+    RSA_PKCS1_SHA1_FOR_LEGACY_USE_ONLY,
+    &digest::SHA1_FOR_LEGACY_USE_ONLY,
     &SHA1_PKCS1_DIGESTINFO_PREFIX,
     "PKCS#1 1.5 padding using SHA-1 for RSA signatures."
 );
@@ -398,7 +398,7 @@ impl Verification for PSS {
 }
 
 struct PSSMetrics {
-    #[cfg_attr(not(feature = "use_heap"), allow(dead_code))]
+    #[cfg_attr(not(feature = "alloc"), allow(dead_code))]
     em_len: usize,
     db_len: usize,
     ps_len: usize,
@@ -521,7 +521,7 @@ rsa_pss_padding!(
 mod test {
     use super::*;
     use crate::{digest, error, test};
-    use std::vec;
+    use alloc::vec;
     use untrusted;
 
     #[test]
@@ -562,7 +562,7 @@ mod test {
     }
 
     // Tests PSS encoding for various public modulus lengths.
-    #[cfg(feature = "use_heap")]
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_pss_padding_encode() {
         test::run(

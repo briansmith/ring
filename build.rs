@@ -74,8 +74,6 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[X86], "crypto/fipsmodule/ec/asm/ecp_nistz256-x86.pl"),
     (&[X86], "crypto/fipsmodule/modes/asm/ghash-x86.pl"),
     (&[X86], "crypto/poly1305/asm/poly1305-x86.pl"),
-    (&[X86], "crypto/fipsmodule/sha/asm/sha256-586.pl"),
-    (&[X86], "crypto/fipsmodule/sha/asm/sha512-586.pl"),
 
     (&[X86_64], "crypto/fipsmodule/aes/asm/aes-x86_64.pl"),
     (&[X86_64], "crypto/fipsmodule/aes/asm/aesni-x86_64.pl"),
@@ -105,10 +103,11 @@ const RING_SRCS: &[(&[&str], &str)] = &[
     (&[ARM], "crypto/fipsmodule/sha/asm/sha256-armv4.pl"),
     (&[ARM], "crypto/fipsmodule/sha/asm/sha512-armv4.pl"),
 
-    (&[AARCH64], "crypto/fipsmodule/aes/aes.c"),
+    (&[AARCH64], "crypto/fipsmodule/aes/asm/vpaes-armv8.pl"),
     (&[AARCH64], "crypto/fipsmodule/bn/asm/armv8-mont.pl"),
     (&[AARCH64], "crypto/chacha/asm/chacha-armv8.pl"),
     (&[AARCH64], "crypto/fipsmodule/ec/asm/ecp_nistz256-armv8.pl"),
+    (&[AARCH64], "crypto/fipsmodule/modes/asm/ghash-neon-armv8.pl"),
     (&[AARCH64], "crypto/poly1305/asm/poly1305-armv8.pl"),
     (&[AARCH64], SHA512_ARMV8),
 ];
@@ -352,6 +351,10 @@ impl Target {
 
 fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
     use std::env;
+
+    if target.arch() == "wasm32" {
+        return;
+    }
 
     let includes_modified = RING_INCLUDES
         .iter()

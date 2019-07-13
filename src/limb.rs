@@ -21,10 +21,10 @@
 use crate::{c, error};
 use untrusted;
 
-#[cfg(any(test, feature = "use_heap"))]
+#[cfg(feature = "alloc")]
 use crate::bits;
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 use core::num::Wrapping;
 
 // XXX: Not correct for x32 ABIs.
@@ -77,7 +77,7 @@ pub fn limbs_less_than_limbs_vartime(a: &[Limb], b: &[Limb]) -> bool {
 }
 
 #[inline]
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 pub fn limbs_less_than_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
     unsafe { LIMBS_less_than_limb(a.as_ptr(), b, a.len()) }
 }
@@ -87,13 +87,13 @@ pub fn limbs_are_zero_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { LIMBS_are_zero(limbs.as_ptr(), limbs.len()) }
 }
 
-#[cfg(any(test, feature = "use_heap"))]
+#[cfg(feature = "alloc")]
 #[inline]
 pub fn limbs_are_even_constant_time(limbs: &[Limb]) -> LimbMask {
     unsafe { LIMBS_are_even(limbs.as_ptr(), limbs.len()) }
 }
 
-#[cfg(any(test, feature = "use_heap"))]
+#[cfg(feature = "alloc")]
 #[inline]
 pub fn limbs_equal_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
     unsafe { LIMBS_equal_limb(a.as_ptr(), b, a.len()) }
@@ -106,7 +106,7 @@ pub fn limbs_equal_limb_constant_time(a: &[Limb], b: Limb) -> LimbMask {
 // with respect to `a.len()` or the value of the result or the value of the
 // most significant bit (It's 1, unless the input is zero, in which case it's
 // zero.)
-#[cfg(any(test, feature = "use_heap"))]
+#[cfg(feature = "alloc")]
 pub fn limbs_minimal_bits(a: &[Limb]) -> bits::BitLength {
     for num_limbs in (1..=a.len()).rev() {
         let high_limb = a[num_limbs - 1];
@@ -252,7 +252,7 @@ pub fn big_endian_from_limbs(limbs: &[Limb], out: &mut [u8]) {
     }
 }
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 pub type Window = Limb;
 
 /// Processes `limbs` as a sequence of 5-bit windows, folding the windows from
@@ -267,7 +267,7 @@ pub type Window = Limb;
 /// channels as long as `init` and `fold` are side-channel free.
 ///
 /// Panics if `limbs` is empty.
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
     limbs: &[Limb],
     init: I,
@@ -333,16 +333,16 @@ pub fn fold_5_bit_windows<R, I: FnOnce(Window) -> R, F: Fn(R, Window) -> R>(
 }
 
 versioned_extern! {
-    #[cfg(any(test, feature = "use_heap"))]
+    #[cfg(feature = "alloc")]
     fn LIMB_shr(a: Limb, shift: c::size_t) -> Limb;
 
-    #[cfg(any(test, feature = "use_heap"))]
+    #[cfg(feature = "alloc")]
     fn LIMBS_are_even(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_are_zero(a: *const Limb, num_limbs: c::size_t) -> LimbMask;
-    #[cfg(any(test, feature = "use_heap"))]
+    #[cfg(feature = "alloc")]
     fn LIMBS_equal_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_less_than(a: *const Limb, b: *const Limb, num_limbs: c::size_t) -> LimbMask;
-    #[cfg(feature = "use_heap")]
+    #[cfg(feature = "alloc")]
     fn LIMBS_less_than_limb(a: *const Limb, b: Limb, num_limbs: c::size_t) -> LimbMask;
     fn LIMBS_reduce_once(r: *mut Limb, m: *const Limb, num_limbs: c::size_t);
 }
@@ -453,7 +453,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "use_heap")]
+    #[cfg(feature = "alloc")]
     fn test_limbs_less_than_limb_constant_time() {
         static LESSER: &[(&[Limb], Limb)] = &[
             (&[0], 1),

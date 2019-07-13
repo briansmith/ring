@@ -30,7 +30,7 @@ echo on
 mkdir windows_build_tools
 mkdir windows_build_tools\
 echo Downloading Yasm...
-powershell -Command "(New-Object Net.WebClient).DownloadFile('http://www.tortall.net/projects/yasm/releases/yasm-1.3.0-win64.exe', 'windows_build_tools\yasm.exe')"
+powershell -Command "(New-Object Net.WebClient).DownloadFile('https://www.tortall.net/projects/yasm/releases/yasm-1.3.0-win64.exe', 'windows_build_tools\yasm.exe')"
 if %ERRORLEVEL% NEQ 0 (
   echo ...downloading Yasm failed.
   exit 1

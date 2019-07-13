@@ -31,14 +31,27 @@
     warnings
 )]
 
-use ring::{error, pbkdf2, test, test_file};
-use std::num::NonZeroU32;
+use core::num::NonZeroU32;
+use ring::{digest, error, pbkdf2, test, test_file};
 
 #[test]
 pub fn pbkdf2_tests() {
     test::run(test_file!("pbkdf2_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
-        let digest_alg = &test_case.consume_digest_alg("Hash").unwrap();
+        let algorithm = {
+            let digest_alg = test_case.consume_digest_alg("Hash").unwrap();
+            if digest_alg == &digest::SHA1_FOR_LEGACY_USE_ONLY {
+                pbkdf2::PBKDF2_HMAC_SHA1
+            } else if digest_alg == &digest::SHA256 {
+                pbkdf2::PBKDF2_HMAC_SHA256
+            } else if digest_alg == &digest::SHA384 {
+                pbkdf2::PBKDF2_HMAC_SHA384
+            } else if digest_alg == &digest::SHA512 {
+                pbkdf2::PBKDF2_HMAC_SHA512
+            } else {
+                unreachable!()
+            }
+        };
         let iterations = test_case.consume_usize("c");
         let iterations = NonZeroU32::new(iterations as u32).unwrap();
         let secret = test_case.consume_bytes("P");
@@ -53,12 +66,12 @@ pub fn pbkdf2_tests() {
 
         {
             let mut out = vec![0u8; dk.len()];
-            pbkdf2::derive(digest_alg, iterations, &salt, &secret, &mut out);
+            pbkdf2::derive(algorithm, iterations, &salt, &secret, &mut out);
             assert_eq!(dk == out, verify_expected_result.is_ok() || dk.is_empty());
         }
 
         assert_eq!(
-            pbkdf2::verify(digest_alg, iterations, &salt, &secret, &dk),
+            pbkdf2::verify(algorithm, iterations, &salt, &secret, &dk),
             verify_expected_result
         );
 

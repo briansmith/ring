@@ -26,7 +26,15 @@ pub(crate) struct Features(());
 pub(crate) fn features() -> Features {
     // We don't do runtime feature detection on iOS. instead some features are
     // assumed to be present; see `arm::Feature`.
-    #[cfg(not(target_os = "ios"))]
+    #[cfg(all(
+        any(
+            target_arch = "aarch64",
+            target_arch = "arm",
+            target_arch = "x86",
+            target_arch = "x86_64"
+        ),
+        not(target_os = "ios")
+    ))]
     {
         static INIT: spin::Once<()> = spin::Once::new();
         let () = INIT.call_once(|| {
@@ -81,6 +89,11 @@ pub(crate) mod arm {
         const HWCAP_NEON: c::ulong = 1 << 12;
 
         let caps = unsafe { getauxval(AT_HWCAP) };
+
+        // We assume NEON is available on AARCH64 because it is a required
+        // feature.
+        #[cfg(target_arch = "aarch64")]
+        debug_assert!(caps & HWCAP_NEON == HWCAP_NEON);
 
         // OpenSSL and BoringSSL don't enable any other features if NEON isn't
         // available.

@@ -22,6 +22,8 @@
 //! <table>
 //! <tr><th>Feature
 //!     <th>Description
+//! <tr><td><code>alloc (default)</code>
+//!     <td>Enable features that require use of the heap, RSA in particular.
 //! <tr><td><code>dev_urandom_fallback (default)</code>
 //!     <td>This is only applicable to Linux. On Linux, by default,
 //!         <code>ring::rand::SystemRandom</code> will fall back to reading
@@ -30,8 +32,9 @@
 //!         <code>dev_urandom_fallback</code> feature is disabled, such
 //!         fallbacks will not occur. See the documentation for
 //!         <code>rand::SystemRandom</code> for more details.
-//! <tr><td><code>use_heap (default)</code>
-//!     <td>Enable features that require use of the heap, RSA in particular.
+//! <tr><td><code>std (default)</code>
+//!     <td>Enable features that use libstd, in particular `std::error::Error`
+//!         integration.
 //! </table>
 
 #![doc(html_root_url = "https://briansmith.org/rustdoc/")]
@@ -62,11 +65,20 @@
 #![no_std]
 #![cfg_attr(feature = "internal_benches", allow(unstable_features), feature(test))]
 
-#[cfg(any(test, feature = "use_heap"))]
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+#[cfg(feature = "std")]
 extern crate std;
 
 #[macro_use]
 mod debug;
+
+#[macro_use]
+pub mod test;
+
+#[macro_use]
+mod arithmetic;
 
 #[macro_use]
 mod bssl;
@@ -74,14 +86,8 @@ mod bssl;
 #[macro_use]
 mod polyfill;
 
-#[cfg(any(test, feature = "use_heap"))]
-#[macro_use]
-pub mod test;
-
 #[macro_use]
 mod versioned_extern;
-
-mod arithmetic;
 
 pub mod aead;
 pub mod agreement;
@@ -105,7 +111,7 @@ pub mod pbkdf2;
 pub mod pkcs8;
 pub mod rand;
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "alloc")]
 mod rsa;
 
 pub mod signature;

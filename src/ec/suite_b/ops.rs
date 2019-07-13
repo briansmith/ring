@@ -51,36 +51,8 @@ impl Point {
     }
 }
 
-#[cfg(all(target_pointer_width = "32", target_endian = "little"))]
-macro_rules! limbs {
-    ( $limb_b:expr, $limb_a:expr, $limb_9:expr, $limb_8:expr,
-      $limb_7:expr, $limb_6:expr, $limb_5:expr, $limb_4:expr,
-      $limb_3:expr, $limb_2:expr, $limb_1:expr, $limb_0:expr ) => {
-        [
-            $limb_0, $limb_1, $limb_2, $limb_3, $limb_4, $limb_5, $limb_6, $limb_7, $limb_8,
-            $limb_9, $limb_a, $limb_b,
-        ]
-    };
-}
-
-#[cfg(all(target_pointer_width = "64", target_endian = "little"))]
-macro_rules! limbs {
-    ( $limb_b:expr, $limb_a:expr, $limb_9:expr, $limb_8:expr,
-      $limb_7:expr, $limb_6:expr, $limb_5:expr, $limb_4:expr,
-      $limb_3:expr, $limb_2:expr, $limb_1:expr, $limb_0:expr ) => {
-        [
-            (($limb_1 | 0u64) << 32) | $limb_0,
-            (($limb_3 | 0u64) << 32) | $limb_2,
-            (($limb_5 | 0u64) << 32) | $limb_4,
-            (($limb_7 | 0u64) << 32) | $limb_6,
-            (($limb_9 | 0u64) << 32) | $limb_8,
-            (($limb_b | 0u64) << 32) | $limb_a,
-        ]
-    };
-}
-
 static ONE: Elem<Unencoded> = Elem {
-    limbs: limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    limbs: limbs![1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     m: PhantomData,
     encoding: PhantomData,
 };
@@ -468,7 +440,7 @@ versioned_extern! {
 mod tests {
     use super::*;
     use crate::test;
-    use std::{format, print, vec, vec::Vec};
+    use alloc::{format, vec, vec::Vec};
     use untrusted;
 
     const ZERO_SCALAR: Scalar = Scalar {
@@ -1143,12 +1115,11 @@ mod tests {
     ) {
         for i in 0..ops.num_limbs {
             if actual[i] != expected[i] {
-                let mut s = std::string::String::new();
+                let mut s = alloc::string::String::new();
                 for j in 0..ops.num_limbs {
                     let formatted = format!("{:016x}", actual[ops.num_limbs - j - 1]);
                     s.push_str(&formatted);
                 }
-                print!("\n");
                 panic!("Actual != Expected,\nActual = {}", s);
             }
         }
@@ -1204,7 +1175,7 @@ mod tests {
 mod internal_benches {
     use super::{Limb, MAX_LIMBS};
 
-    pub const LIMBS_1: [Limb; MAX_LIMBS] = limbs![0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1];
+    pub const LIMBS_1: [Limb; MAX_LIMBS] = limbs![1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
 
     pub const LIMBS_ALTERNATING_10: [Limb; MAX_LIMBS] = limbs![
         0b10101010_10101010_10101010_10101010,

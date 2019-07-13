@@ -10,7 +10,7 @@ license-file = "LICENSE"
 name = "ring"
 readme = "doc/link-to-readme.md"
 repository = "https://github.com/briansmith/ring"
-version = "0.14.6"
+version = "0.15.0-alpha4"
 
 exclude = [
     # The presence of .gitignore is used to differentiate non-packaged builds
@@ -78,9 +78,7 @@ include = [
     "crypto/fipsmodule/modes/asm/ghashv8-armx.pl",
     "crypto/fipsmodule/modes/gcm.c",
     "crypto/fipsmodule/modes/internal.h",
-    "crypto/fipsmodule/sha/asm/sha256-586.pl",
     "crypto/fipsmodule/sha/asm/sha256-armv4.pl",
-    "crypto/fipsmodule/sha/asm/sha512-586.pl",
     "crypto/fipsmodule/sha/asm/sha512-armv4.pl",
     "crypto/fipsmodule/sha/asm/sha512-armv8.pl",
     "crypto/fipsmodule/sha/asm/sha512-x86_64.pl",
@@ -122,6 +120,14 @@ include = [
     "src/aead/shift.rs",
     "src/agreement.rs",
     "src/arithmetic.rs",
+    "src/arithmetic/bigint.rs",
+    "src/arithmetic/bigint_elem_exp_consttime_tests.txt",
+    "src/arithmetic/bigint_elem_exp_vartime_tests.txt",
+    "src/arithmetic/bigint_elem_mul_tests.txt",
+    "src/arithmetic/bigint_elem_reduced_once_tests.txt",
+    "src/arithmetic/bigint_elem_reduced_tests.txt",
+    "src/arithmetic/bigint_elem_squared_tests.txt",
+    "src/arithmetic/constant.rs",
     "src/arithmetic/montgomery.rs",
     "src/array.rs",
     "src/bits.rs",
@@ -133,6 +139,7 @@ include = [
     "src/debug.rs",
     "src/digest.rs",
     "src/digest/sha1.rs",
+    "src/digest/sha2.rs",
     "src/ec/curve25519/ed25519/digest.rs",
     "src/ec/curve25519/ed25519.rs",
     "src/ec/curve25519/ed25519/signing.rs",
@@ -140,6 +147,7 @@ include = [
     "src/ec/curve25519/ed25519/ed25519_pkcs8_v2_template.der",
     "src/ec/curve25519.rs",
     "src/ec/curve25519/ops.rs",
+    "src/ec/curve25519/scalar.rs",
     "src/ec/curve25519/x25519.rs",
     "src/ec.rs",
     "src/ec/keys.rs",
@@ -200,13 +208,6 @@ include = [
     "src/polyfill.rs",
     "src/polyfill/convert.rs",
     "src/rand.rs",
-    "src/rsa/bigint.rs",
-    "src/rsa/bigint_elem_exp_consttime_tests.txt",
-    "src/rsa/bigint_elem_exp_vartime_tests.txt",
-    "src/rsa/bigint_elem_mul_tests.txt",
-    "src/rsa/bigint_elem_reduced_once_tests.txt",
-    "src/rsa/bigint_elem_reduced_tests.txt",
-    "src/rsa/bigint_elem_squared_tests.txt",
     "src/rsa/convert_nist_rsa_test_vectors.py",
     "src/rsa.rs",
     "src/rsa/padding.rs",
@@ -298,32 +299,37 @@ include = [
 name = "ring"
 
 [dependencies]
-untrusted = { git = "https://github.com/briansmith/untrusted", tag = "ring-master" }
-libc = { version = "0.2.48", default_features = false }
+untrusted = { version = "0.7.0-alpha1" }
+libc = { version = "0.2.48", default-features = false }
 
-[target.'cfg(not(target_os = "ios"))'.dependencies]
-spin = { version = "0.5.0" }
+[target.'cfg(all(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86", target_arch = "x86_64"), not(target_os = "ios")))'.dependencies]
+spin = { version = "0.5.0", default-features = false }
 
 [target.'cfg(any(target_os = "android", target_os = "linux"))'.dependencies]
+lazy_static = { version = "1.3", default-features = false, optional = true }
 
-[target.'cfg(any(target_os = "redox", all(unix, not(any(target_os = "macos", target_os = "ios")))))'.dependencies]
-lazy_static = "1.2"
+[target.'cfg(all(target_arch = "wasm32", target_vendor = "unknown", target_os = "unknown", target_env = ""))'.dependencies]
+web-sys = { version = "0.3.25", default-features = false, features = ["Crypto", "Window"] }
+
+[target.'cfg(target_arch = "wasm32")'.dev-dependencies]
+wasm-bindgen-test = { version = "0.2.48", default-features = false }
 
 [target.'cfg(target_os = "windows")'.dependencies]
-winapi = { version = "0.3.6", default_features = false, features = ["ntsecapi", "wtypesbase"] }
+winapi = { version = "0.3.7", default-features = false, features = ["ntsecapi", "wtypesbase"] }
 
 # Keep this in sync with `[dependencies]` in pregenerate_asm/Cargo.toml.
 [build-dependencies]
-cc = "1.0.26"
+cc = { version = "1.0.37", default-features = false }
 
 [features]
 # These features are documented in the top-level module's documentation.
-default = ["use_heap", "dev_urandom_fallback"]
-dev_urandom_fallback = ["use_heap"]
+default = ["alloc", "dev_urandom_fallback", "std"]
+alloc = []
+dev_urandom_fallback = ["std", "lazy_static"]
 internal_benches = []
 slow_tests = []
-test_logging = []
-use_heap = []
+std = ["alloc"]
+test_logging = ["std"]
 boringssl_no_prefix = []
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122

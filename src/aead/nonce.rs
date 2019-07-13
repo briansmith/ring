@@ -24,7 +24,8 @@
 //!    is incremented, the current value is returned.
 
 use super::Block;
-use crate::{endian::*, error, polyfill::convert::*};
+use crate::{endian::*, error};
+use core::convert::TryInto;
 use core::marker::PhantomData;
 
 /// A nonce for a single AEAD opening or sealing operation.
@@ -42,7 +43,7 @@ impl Nonce {
     /// Fails if `value` isn't `NONCE_LEN` bytes long.
     #[inline]
     pub fn try_assume_unique_for_key(value: &[u8]) -> Result<Self, error::Unspecified> {
-        let value: &[u8; NONCE_LEN] = value.try_into_()?;
+        let value: &[u8; NONCE_LEN] = value.try_into()?;
         Ok(Self::assume_unique_for_key(*value))
     }
 

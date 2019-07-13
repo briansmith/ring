@@ -19,6 +19,7 @@
 
 /// RSA signatures.
 use crate::{
+    arithmetic::bigint,
     bits, error,
     io::{self, der},
     limb,
@@ -63,8 +64,8 @@ fn parse_public_key(
 #[derive(Copy, Clone)]
 pub enum N {}
 
+unsafe impl bigint::PublicModulus for N {}
+
 pub mod verification;
 
 pub mod signing;
-
-mod bigint;

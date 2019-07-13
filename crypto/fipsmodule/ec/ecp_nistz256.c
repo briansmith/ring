@@ -74,11 +74,129 @@ static void copy_conditional(Limb dst[P256_LIMBS],
 }
 
 void GFp_nistz256_point_double(P256_POINT *r, const P256_POINT *a);
-void GFp_nistz256_point_add(P256_POINT *r, const P256_POINT *a,
-                            const P256_POINT *b);
 void GFp_nistz256_point_add_affine(P256_POINT *r, const P256_POINT *a,
                                    const P256_POINT_AFFINE *b);
+#if defined(OPENSSL_X86_64)
+void GFp_nistz256_point_add(P256_POINT *r, const P256_POINT *a,
+                            const P256_POINT *b);
+#else
 
+static const BN_ULONG Q[P256_LIMBS] = {
+  TOBN(0xffffffff, 0xffffffff),
+  TOBN(0x00000000, 0xffffffff),
+  TOBN(0x00000000, 0x00000000),
+  TOBN(0xffffffff, 0x00000001),
+};
+
+static inline Limb is_equal(const Limb a[P256_LIMBS], const Limb b[P256_LIMBS]) {
+  return LIMBS_equal(a, b, P256_LIMBS);
+}
+
+static inline Limb is_zero(const BN_ULONG a[P256_LIMBS]) {
+  return LIMBS_are_zero(a, P256_LIMBS);
+}
+
+static inline void elem_mul_by_2(Limb r[P256_LIMBS], const Limb a[P256_LIMBS]) {
+  LIMBS_shl_mod(r, a, Q, P256_LIMBS);
+}
+
+static inline void elem_mul_mont(Limb r[P256_LIMBS], const Limb a[P256_LIMBS],
+                                 const Limb b[P256_LIMBS]) {
+  GFp_nistz256_mul_mont(r, a, b);
+}
+
+static inline void elem_sqr_mont(Limb r[P256_LIMBS], const Limb a[P256_LIMBS]) {
+  GFp_nistz256_sqr_mont(r, a);
+}
+
+static inline void elem_sub(Limb r[P256_LIMBS], const Limb a[P256_LIMBS],
+                            const Limb b[P256_LIMBS]) {
+  LIMBS_sub_mod(r, a, b, Q, P256_LIMBS);
+}
+
+/* Point addition: r = a+b */
+void GFp_nistz256_point_add(P256_POINT *r, const P256_POINT *a, const P256_POINT *b) {
+  BN_ULONG U2[P256_LIMBS], S2[P256_LIMBS];
+  BN_ULONG U1[P256_LIMBS], S1[P256_LIMBS];
+  BN_ULONG Z1sqr[P256_LIMBS];
+  BN_ULONG Z2sqr[P256_LIMBS];
+  BN_ULONG H[P256_LIMBS], R[P256_LIMBS];
+  BN_ULONG Hsqr[P256_LIMBS];
+  BN_ULONG Rsqr[P256_LIMBS];
+  BN_ULONG Hcub[P256_LIMBS];
+
+  BN_ULONG res_x[P256_LIMBS];
+  BN_ULONG res_y[P256_LIMBS];
+  BN_ULONG res_z[P256_LIMBS];
+
+  const BN_ULONG *in1_x = a->X;
+  const BN_ULONG *in1_y = a->Y;
+  const BN_ULONG *in1_z = a->Z;
+
+  const BN_ULONG *in2_x = b->X;
+  const BN_ULONG *in2_y = b->Y;
+  const BN_ULONG *in2_z = b->Z;
+
+  BN_ULONG in1infty = is_zero(a->Z);
+  BN_ULONG in2infty = is_zero(b->Z);
+
+  elem_sqr_mont(Z2sqr, in2_z); /* Z2^2 */
+  elem_sqr_mont(Z1sqr, in1_z); /* Z1^2 */
+
+  elem_mul_mont(S1, Z2sqr, in2_z); /* S1 = Z2^3 */
+  elem_mul_mont(S2, Z1sqr, in1_z); /* S2 = Z1^3 */
+
+  elem_mul_mont(S1, S1, in1_y); /* S1 = Y1*Z2^3 */
+  elem_mul_mont(S2, S2, in2_y); /* S2 = Y2*Z1^3 */
+  elem_sub(R, S2, S1);          /* R = S2 - S1 */
+
+  elem_mul_mont(U1, in1_x, Z2sqr); /* U1 = X1*Z2^2 */
+  elem_mul_mont(U2, in2_x, Z1sqr); /* U2 = X2*Z1^2 */
+  elem_sub(H, U2, U1);             /* H = U2 - U1 */
+
+  BN_ULONG is_exceptional = is_equal(U1, U2) & ~in1infty & ~in2infty;
+  if (is_exceptional) {
+    if (is_equal(S1, S2)) {
+      GFp_nistz256_point_double(r, a);
+    } else {
+      limbs_zero(r->X, P256_LIMBS);
+      limbs_zero(r->Y, P256_LIMBS);
+      limbs_zero(r->Z, P256_LIMBS);
+    }
+    return;
+  }
+
+  elem_sqr_mont(Rsqr, R);             /* R^2 */
+  elem_mul_mont(res_z, H, in1_z);     /* Z3 = H*Z1*Z2 */
+  elem_sqr_mont(Hsqr, H);             /* H^2 */
+  elem_mul_mont(res_z, res_z, in2_z); /* Z3 = H*Z1*Z2 */
+  elem_mul_mont(Hcub, Hsqr, H);       /* H^3 */
+
+  elem_mul_mont(U2, U1, Hsqr); /* U1*H^2 */
+  elem_mul_by_2(Hsqr, U2);     /* 2*U1*H^2 */
+
+  elem_sub(res_x, Rsqr, Hsqr);
+  elem_sub(res_x, res_x, Hcub);
+
+  elem_sub(res_y, U2, res_x);
+
+  elem_mul_mont(S2, S1, Hcub);
+  elem_mul_mont(res_y, R, res_y);
+  elem_sub(res_y, res_y, S2);
+
+  copy_conditional(res_x, in2_x, in1infty);
+  copy_conditional(res_y, in2_y, in1infty);
+  copy_conditional(res_z, in2_z, in1infty);
+
+  copy_conditional(res_x, in1_x, in2infty);
+  copy_conditional(res_y, in1_y, in2infty);
+  copy_conditional(res_z, in1_z, in2infty);
+
+  limbs_copy(r->X, res_x, P256_LIMBS);
+  limbs_copy(r->Y, res_y, P256_LIMBS);
+  limbs_copy(r->Z, res_z, P256_LIMBS);
+}
+#endif
 
 /* r = p * p_scalar */
 void GFp_nistz256_point_mul(P256_POINT *r, const Limb p_scalar[P256_LIMBS],

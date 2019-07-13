@@ -14,7 +14,6 @@
 
 //! Error reporting.
 
-use crate::polyfill::convert::*;
 use untrusted;
 
 /// An error with absolutely no details.
@@ -37,7 +36,7 @@ use untrusted;
 /// enum Error {
 ///     CryptoError,
 ///
-/// #  #[cfg(feature = "use_heap")]
+/// #  #[cfg(feature = "alloc")]
 ///     IOError(std::io::Error),
 ///     // [...]
 /// }
@@ -89,7 +88,7 @@ impl core::fmt::Display for Unspecified {
     }
 }
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "std")]
 impl std::error::Error for Unspecified {
     #[inline]
     fn cause(&self) -> Option<&dyn std::error::Error> {
@@ -107,8 +106,8 @@ impl From<untrusted::EndOfInput> for Unspecified {
     }
 }
 
-impl From<TryFromSliceError> for Unspecified {
-    fn from(_: TryFromSliceError) -> Self {
+impl From<core::array::TryFromSliceError> for Unspecified {
+    fn from(_: core::array::TryFromSliceError) -> Self {
         Unspecified
     }
 }
@@ -169,12 +168,12 @@ impl KeyRejected {
         KeyRejected("PublicKeyIsMissing")
     }
 
-    #[cfg(feature = "use_heap")]
+    #[cfg(feature = "alloc")]
     pub(crate) fn too_small() -> Self {
         KeyRejected("TooSmall")
     }
 
-    #[cfg(feature = "use_heap")]
+    #[cfg(feature = "alloc")]
     pub(crate) fn too_large() -> Self {
         KeyRejected("TooLarge")
     }
@@ -187,7 +186,7 @@ impl KeyRejected {
         KeyRejected("WrongAlgorithm")
     }
 
-    #[cfg(feature = "use_heap")]
+    #[cfg(feature = "alloc")]
     pub(crate) fn private_modulus_len_not_multiple_of_512_bits() -> Self {
         KeyRejected("PrivateModulusLenNotMultipleOf512Bits")
     }
@@ -197,7 +196,7 @@ impl KeyRejected {
     }
 }
 
-#[cfg(feature = "use_heap")]
+#[cfg(feature = "std")]
 impl std::error::Error for KeyRejected {
     fn cause(&self) -> Option<&dyn std::error::Error> {
         None

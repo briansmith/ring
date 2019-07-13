@@ -23,6 +23,7 @@ use crate::{
     error,
     polyfill::{self, convert::*},
 };
+use core::convert::TryInto;
 
 /// ChaCha20-Poly1305 as described in [RFC 7539].
 ///
@@ -43,7 +44,7 @@ fn chacha20_poly1305_init(
     key: &[u8],
     _todo: cpu::Features,
 ) -> Result<aead::KeyInner, error::Unspecified> {
-    let key: &[u8; chacha::KEY_LEN] = key.try_into_()?;
+    let key: &[u8; chacha::KEY_LEN] = key.try_into()?;
     Ok(aead::KeyInner::ChaCha20Poly1305(chacha::Key::from(key)))
 }
 

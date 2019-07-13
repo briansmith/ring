@@ -127,21 +127,6 @@
 #include <stdalign.h>
 #endif
 
-#define OPENSSL_LITTLE_ENDIAN 1
-#define OPENSSL_BIG_ENDIAN 2
-
-#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86) || \
-    (defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
-     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-#define OPENSSL_ENDIAN OPENSSL_LITTLE_ENDIAN
-#elif defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && \
-      __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define OPENSSL_ENDIAN OPENSSL_BIG_ENDIAN
-#else
-#error "Cannot determine endianness"
-#endif
-
-
 #if (!defined(_MSC_VER) || defined(__clang__)) && defined(OPENSSL_64_BIT)
 #define BORINGSSL_HAS_UINT128
 typedef __int128_t int128_t;
@@ -183,6 +168,36 @@ typedef uint32_t crypto_word;
 #define CONSTTIME_TRUE_W ~((crypto_word)0)
 #define CONSTTIME_FALSE_W ((crypto_word)0)
 
+// value_barrier_w returns |a|, but prevents GCC and Clang from reasoning about
+// the returned value. This is used to mitigate compilers undoing constant-time
+// code, until we can express our requirements directly in the language.
+//
+// Note the compiler is aware that |value_barrier_w| has no side effects and
+// always has the same output for a given input. This allows it to eliminate
+// dead code, move computations across loops, and vectorize.
+static inline crypto_word value_barrier_w(crypto_word a) {
+#if !defined(OPENSSL_NO_ASM) && (defined(__GNUC__) || defined(__clang__))
+  __asm__("" : "+r"(a) : /* no inputs */);
+#endif
+  return a;
+}
+
+// value_barrier_u32 behaves like |value_barrier_w| but takes a |uint32_t|.
+static inline uint32_t value_barrier_u32(uint32_t a) {
+#if !defined(OPENSSL_NO_ASM) && (defined(__GNUC__) || defined(__clang__))
+  __asm__("" : "+r"(a) : /* no inputs */);
+#endif
+  return a;
+}
+
+// value_barrier_u64 behaves like |value_barrier_w| but takes a |uint64_t|.
+static inline uint64_t value_barrier_u64(uint64_t a) {
+#if !defined(OPENSSL_NO_ASM) && (defined(__GNUC__) || defined(__clang__))
+  __asm__("" : "+r"(a) : /* no inputs */);
+#endif
+  return a;
+}
+
 // constant_time_msb_w returns the given value with the MSB copied to all the
 // other bits.
 static inline crypto_word constant_time_msb_w(crypto_word a) {
@@ -221,7 +236,13 @@ static inline crypto_word constant_time_eq_w(crypto_word a,
 static inline crypto_word constant_time_select_w(crypto_word mask,
                                                    crypto_word a,
                                                    crypto_word b) {
-  return (mask & a) | (~mask & b);
+  // Clang recognizes this pattern as a select. While it usually transforms it
+  // to a cmov, it sometimes further transforms it into a branch, which we do
+  // not want.
+  //
+  // Adding barriers to both |mask| and |~mask| breaks the relationship between
+  // the two, which makes the compiler stick with bitmasks.
+  return (value_barrier_w(mask) & a) | (value_barrier_w(~mask) & b);
 }
 
 // from_be_u32_ptr returns the 32-bit big-endian-encoded value at |data|.

@@ -35,18 +35,14 @@ impl Block {
     #[inline]
     pub fn from_u64_le(first: LittleEndian<u64>, second: LittleEndian<u64>) -> Self {
         Self {
-            subblocks: [unsafe { core::mem::transmute(first) }, unsafe {
-                core::mem::transmute(second)
-            }],
+            subblocks: [first.into_raw_value(), second.into_raw_value()],
         }
     }
 
     #[inline]
     pub fn from_u64_be(first: BigEndian<u64>, second: BigEndian<u64>) -> Self {
         Self {
-            subblocks: [unsafe { core::mem::transmute(first) }, unsafe {
-                core::mem::transmute(second)
-            }],
+            subblocks: [first.into_raw_value(), second.into_raw_value()],
         }
     }
 
@@ -102,9 +98,9 @@ impl AsMut<[u8; BLOCK_LEN]> for Block {
 }
 
 /// Like `AsMut`.
-impl From_<&mut [Block; 2]> for &mut [u8; 2 * BLOCK_LEN] {
+impl<'a> From_<&'a mut [Block; 2]> for &'a mut [u8; 2 * BLOCK_LEN] {
     #[inline]
-    fn from_(bytes: &mut [Block; 2]) -> Self {
+    fn from_(bytes: &'a mut [Block; 2]) -> &'a mut [u8; 2 * BLOCK_LEN] {
         unsafe { core::mem::transmute(bytes) }
     }
 }

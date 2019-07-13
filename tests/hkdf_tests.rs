@@ -31,33 +31,67 @@
     warnings
 )]
 
-use ring::{error, hkdf, test, test_file};
+use ring::{digest, error, hkdf, test, test_file};
 
-#[test]
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_test::wasm_bindgen_test;
+
+#[cfg(target_arch = "wasm32")]
+use wasm_bindgen_test::wasm_bindgen_test_configure;
+
+#[cfg(target_arch = "wasm32")]
+wasm_bindgen_test_configure!(run_in_browser);
+
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
 fn hkdf_tests() {
     test::run(test_file!("hkdf_tests.txt"), |section, test_case| {
         assert_eq!(section, "");
-        let digest_alg = test_case
-            .consume_digest_alg("Hash")
-            .ok_or(error::Unspecified)?;
+        let alg = {
+            let digest_alg = test_case
+                .consume_digest_alg("Hash")
+                .ok_or(error::Unspecified)?;
+            if digest_alg == &digest::SHA256 {
+                hkdf::HKDF_SHA256
+            } else {
+                // TODO: add test vectors for other algorithms
+                panic!("unsupported algorithm: {:?}", digest_alg);
+            }
+        };
         let secret = test_case.consume_bytes("IKM");
         let salt = test_case.consume_bytes("salt");
         let info = test_case.consume_bytes("info");
         let _ = test_case.consume_bytes("PRK");
         let expected_out = test_case.consume_bytes("OKM");
 
-        let salt = hkdf::Salt::new(digest_alg, &salt);
+        let salt = hkdf::Salt::new(alg, &salt);
 
-        let mut out = vec![0u8; expected_out.len()];
-        salt.extract(&secret).expand(&info).fill(&mut out).unwrap();
-        assert_eq!(out, expected_out);
-
-        // Test deprecated interface.
-        let mut out = vec![0u8; expected_out.len()];
-        #[allow(deprecated)]
-        hkdf::extract_and_expand(&salt, &secret, &info, &mut out);
+        // TODO: test multi-part info, especially with empty parts.
+        let My(out) = salt
+            .extract(&secret)
+            .expand(&[&info], My(expected_out.len()))
+            .unwrap()
+            .into();
         assert_eq!(out, expected_out);
 
         Ok(())
     });
+}
+
+/// Generic newtype wrapper that lets us implement traits for externally-defined
+/// types.
+struct My<T>(T);
+
+impl hkdf::KeyType for My<usize> {
+    fn len(&self) -> usize {
+        self.0
+    }
+}
+
+impl From<hkdf::Okm<'_, My<usize>>> for My<Vec<u8>> {
+    fn from(okm: hkdf::Okm<My<usize>>) -> Self {
+        let mut r = vec![0u8; okm.len().0];
+        okm.fill(&mut r).unwrap();
+        My(r)
+    }
 }
