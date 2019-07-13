@@ -522,7 +522,12 @@ fn compile(
         assert!(out_path.set_extension(target.obj_ext));
         if need_run(&p, &out_path, includes_modified) {
             let cmd = if target.os() != WINDOWS || ext != "asm" {
-                cc(p, ext, target, warnings_are_errors, &out_path)
+                let extra_flags = if target.env() != "msvc" {
+                    vec!(remap_debug_prefix())
+                } else {
+                    vec!()
+                };
+                cc(p, ext, target, warnings_are_errors, extra_flags, &out_path)
             } else {
                 yasm(p, target.arch(), &out_path)
             };
@@ -539,11 +544,22 @@ fn obj_path(out_dir: &Path, src: &Path, obj_ext: &str) -> PathBuf {
     out_path
 }
 
+// This option will strip the build path from C and assembly files compiled by gcc and clang.
+fn remap_debug_prefix() -> String {
+    use std::env;
+    let cwd_path = env::current_dir().expect("Couldn't get current directory");
+    let mut flag = String::from("-fdebug-prefix-map=");
+    flag.push_str(cwd_path.to_str().expect("Invalid path"));
+    flag.push_str("=.");
+    flag
+}
+
 fn cc(
     file: &Path,
     ext: &str,
     target: &Target,
     warnings_are_errors: bool,
+    extra_flags: Vec<String>,
     out_dir: &Path,
 ) -> Command {
     let mut c = cc::Build::new();
@@ -557,6 +573,9 @@ fn cc(
         "S" => (),
         e => panic!("Unsupported file extension: {:?}", e),
     };
+    for f in &extra_flags {
+        let _ = c.flag(f);
+    }
     for f in cpp_flags(target) {
         let _ = c.flag(&f);
     }
