@@ -361,6 +361,8 @@ mod urandom {
 
     #[cfg_attr(any(target_os = "android", target_os = "linux"), cold, inline(never))]
     pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        extern crate std;
+
         use lazy_static::lazy_static;
 
         lazy_static! {

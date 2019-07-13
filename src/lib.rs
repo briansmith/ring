@@ -32,7 +32,7 @@
 //!         <code>dev_urandom_fallback</code> feature is disabled, such
 //!         fallbacks will not occur. See the documentation for
 //!         <code>rand::SystemRandom</code> for more details.
-//! <tr><td><code>std (default)</code>
+//! <tr><td><code>std</code>
 //!     <td>Enable features that use libstd, in particular `std::error::Error`
 //!         integration.
 //! </table>
@@ -67,9 +67,6 @@
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
-
-#[cfg(feature = "std")]
-extern crate std;
 
 #[macro_use]
 mod debug;

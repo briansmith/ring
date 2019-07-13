@@ -75,15 +75,7 @@ benchmarks are only useful for people hacking on the implementation of *ring*.
 The `slow_tests` feature runs additional tests that are too slow to run during
 a normal edit-compile-test cycle.
 
-The `test_logging` feature prints out additional logging information during
-tests, in particular the contents of the test input files, as tests execute.
-When a test fails, the most recently-logged stuff indicates which test vectors
-failed. This isn't enabled by default because it uses too much memory on small
-targets, due to the way that Rust buffers the output until (unless) the test
-fails. For small (embedded) targets, use
-`cargo test --release --no-run --features=test_logging` to build the tests, and
-then run the tests on the target with `<executable-name> --nocapture' to see
-the log.
+The `test_logging` feature prints out the input test vectors when a test fails.
 
 
 [#321]: https://github.com/briansmith/ring/pull/321
