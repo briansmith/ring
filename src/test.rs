@@ -155,7 +155,7 @@ pub fn compile_time_assert_std_error_error<T: std::error::Error>() {}
 /// attribute in the test case must be consumed exactly once; this helps catch
 /// typos and omissions.
 ///
-/// Requires the `std` default feature to be enabled.
+/// Requires the `alloc` default feature to be enabled.
 #[cfg(feature = "alloc")]
 #[derive(Debug)]
 pub struct TestCase {
@@ -313,7 +313,7 @@ pub struct File<'a> {
 /// `f` fails or until all the test vectors have been read. `f` can indicate
 /// failure either by returning `Err()` or by panicking.
 ///
-/// Requires the `std` default feature to be enabled
+/// Requires the `alloc` default feature to be enabled
 #[cfg(feature = "alloc")]
 pub fn run<F>(test_file: File, mut f: F)
 where
