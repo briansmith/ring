@@ -35,23 +35,56 @@ use ring::{aead, error, test, test_file};
 
 #[test]
 fn aead_aes_gcm_128() {
-    test_aead(&aead::AES_128_GCM, test_file!("aead_aes_128_gcm_tests.txt"));
+    test_aead(
+        &aead::AES_128_GCM,
+        seal_with_key,
+        open_with_key,
+        test_file!("aead_aes_128_gcm_tests.txt"),
+    );
 }
 
 #[test]
 fn aead_aes_gcm_256() {
-    test_aead(&aead::AES_256_GCM, test_file!("aead_aes_256_gcm_tests.txt"));
+    test_aead(
+        &aead::AES_256_GCM,
+        seal_with_key,
+        open_with_key,
+        test_file!("aead_aes_256_gcm_tests.txt"),
+    );
 }
 
 #[test]
 fn aead_chacha20_poly1305() {
     test_aead(
         &aead::CHACHA20_POLY1305,
+        seal_with_key,
+        open_with_key,
         test_file!("aead_chacha20_poly1305_tests.txt"),
     );
 }
 
-fn test_aead(aead_alg: &'static aead::Algorithm, test_file: test::File) {
+fn test_aead<Seal, Open>(
+    aead_alg: &'static aead::Algorithm,
+    seal: Seal,
+    open: Open,
+    test_file: test::File,
+) where
+    Seal: Fn(
+        &'static aead::Algorithm,
+        &[u8],
+        &[u8],
+        aead::Aad<&[u8]>,
+        &mut [u8],
+    ) -> Result<usize, error::Unspecified>,
+    Open: for<'a> Fn(
+        &'static aead::Algorithm,
+        &[u8],
+        &[u8],
+        aead::Aad<&[u8]>,
+        usize,
+        &'a mut [u8],
+    ) -> Result<&'a mut [u8], error::Unspecified>,
+{
     test_aead_key_sizes(aead_alg);
 
     test::run(test_file, |section, test_case| {
@@ -59,7 +92,7 @@ fn test_aead(aead_alg: &'static aead::Algorithm, test_file: test::File) {
         let key_bytes = test_case.consume_bytes("KEY");
         let nonce = test_case.consume_bytes("NONCE");
         let plaintext = test_case.consume_bytes("IN");
-        let ad = test_case.consume_bytes("AD");
+        let aad = test_case.consume_bytes("AD");
         let mut ct = test_case.consume_bytes("CT");
         let tag = test_case.consume_bytes("TAG");
         let error = test_case.consume_optional_string("FAILS");
@@ -77,8 +110,13 @@ fn test_aead(aead_alg: &'static aead::Algorithm, test_file: test::File) {
         for _ in 0..tag_len {
             s_in_out.push(0);
         }
-        let mut s_key = make_key(aead_alg, &key_bytes[..], &nonce);
-        let s_result = s_key.seal_in_place(aead::Aad::from(&ad), &mut s_in_out[..], tag_len);
+        let s_result = seal(
+            aead_alg,
+            &key_bytes[..],
+            &nonce,
+            aead::Aad::from(&aad[..]),
+            &mut s_in_out[..],
+        );
 
         ct.extend(tag);
 
@@ -159,9 +197,14 @@ fn test_aead(aead_alg: &'static aead::Algorithm, test_file: test::File) {
             }
             o_in_out.extend_from_slice(&ct[..]);
 
-            let mut o_key = make_key(aead_alg, &key_bytes[..], &nonce);
-            let o_result =
-                o_key.open_in_place(aead::Aad::from(&ad), *in_prefix_len, &mut o_in_out[..]);
+            let o_result = open(
+                aead_alg,
+                &key_bytes,
+                &nonce,
+                aead::Aad::from(&aad[..]),
+                *in_prefix_len,
+                &mut o_in_out,
+            );
             match error {
                 None => {
                     assert!(s_result.is_ok());
@@ -179,6 +222,29 @@ fn test_aead(aead_alg: &'static aead::Algorithm, test_file: test::File) {
 
         Ok(())
     });
+}
+
+fn seal_with_key(
+    algorithm: &'static aead::Algorithm,
+    key: &[u8],
+    nonce: &[u8],
+    aad: aead::Aad<&[u8]>,
+    in_out: &mut [u8],
+) -> Result<usize, error::Unspecified> {
+    let mut s_key = make_key(algorithm, key, &nonce);
+    s_key.seal_in_place(aad, in_out, algorithm.tag_len())
+}
+
+fn open_with_key<'a>(
+    algorithm: &'static aead::Algorithm,
+    key: &[u8],
+    nonce: &[u8],
+    aad: aead::Aad<&[u8]>,
+    in_prefix_len: usize,
+    in_out: &'a mut [u8],
+) -> Result<&'a mut [u8], error::Unspecified> {
+    let mut o_key = make_key(algorithm, key, &nonce);
+    o_key.open_in_place(aad, in_prefix_len, in_out)
 }
 
 fn test_aead_key_sizes(aead_alg: &'static aead::Algorithm) {
