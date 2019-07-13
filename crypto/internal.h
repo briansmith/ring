@@ -127,21 +127,6 @@
 #include <stdalign.h>
 #endif
 
-#define OPENSSL_LITTLE_ENDIAN 1
-#define OPENSSL_BIG_ENDIAN 2
-
-#if defined(OPENSSL_X86_64) || defined(OPENSSL_X86) || \
-    (defined(__BYTE_ORDER__) && defined(__ORDER_LITTLE_ENDIAN__) && \
-     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
-#define OPENSSL_ENDIAN OPENSSL_LITTLE_ENDIAN
-#elif defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && \
-      __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define OPENSSL_ENDIAN OPENSSL_BIG_ENDIAN
-#else
-#error "Cannot determine endianness"
-#endif
-
-
 #if (!defined(_MSC_VER) || defined(__clang__)) && defined(OPENSSL_64_BIT)
 #define BORINGSSL_HAS_UINT128
 typedef __int128_t int128_t;
