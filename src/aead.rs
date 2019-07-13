@@ -50,64 +50,49 @@ pub trait NonceSequence {
     fn advance(&mut self) -> Result<Nonce, error::Unspecified>;
 }
 
-mod sealed {
-    pub trait Role: core::fmt::Debug {
-        const VALUE: Self;
-    }
+/// An AEAD key bound to a nonce sequence.
+pub trait BoundKey<N: NonceSequence>: core::fmt::Debug {
+    /// Constructs a new key from the given `UnboundKey` and `NonceSequence`.
+    fn new(key: UnboundKey, nonce_sequence: N) -> Self;
+
+    /// The key's AEAD algorithm.
+    #[inline]
+    fn algorithm(&self) -> &'static Algorithm;
 }
 
-/// The role for which an AEAD key will be used.
-pub trait Role: self::sealed::Role {}
-impl<R: self::sealed::Role> Role for R {}
-
-/// The key is for opening (authenticating and decrypting).
-#[derive(Debug)]
-pub struct Opening(());
-impl self::sealed::Role for Opening {
-    const VALUE: Self = Self(());
-}
-
-/// The key is for sealing (encrypting and authenticating).
-#[derive(Debug)]
-pub struct Sealing(());
-impl self::sealed::Role for Sealing {
-    const VALUE: Self = Self(());
-}
-
-/// An AEAD key with a designated role and nonce sequence.
-pub struct Key<R: Role, N: NonceSequence> {
+/// An AEAD key for authenticating and decrypting ("opening"), bound to a nonce
+/// sequence.
+///
+/// Intentionally not `Clone` or `Copy` since cloning would allow duplication
+/// of the nonce sequence.
+pub struct OpeningKey<N: NonceSequence> {
     key: UnboundKey,
     nonce_sequence: N,
-    role: R,
 }
 
-impl<R: Role, N: NonceSequence> Key<R, N> {
-    /// Constructs a new `Key` from the given `UnboundKey` and `NonceSequence`.
-    pub fn new(key: UnboundKey, nonce_sequence: N) -> Self {
+impl<N: NonceSequence> BoundKey<N> for OpeningKey<N> {
+    fn new(key: UnboundKey, nonce_sequence: N) -> Self {
         Self {
             key,
             nonce_sequence,
-            role: R::VALUE,
         }
     }
 
-    /// The key's AEAD algorithm.
-    #[inline(always)]
-    pub fn algorithm(&self) -> &'static Algorithm {
-        self.key.algorithm()
+    #[inline]
+    fn algorithm(&self) -> &'static Algorithm {
+        self.key.algorithm
     }
 }
 
-impl<R: Role, N: NonceSequence> core::fmt::Debug for Key<R, N> {
+impl<N: NonceSequence> core::fmt::Debug for OpeningKey<N> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
-        f.debug_struct("Key")
+        f.debug_struct("OpeningKey")
             .field("algorithm", &self.algorithm())
-            .field("role", &self.role)
             .finish()
     }
 }
 
-impl<N: NonceSequence> Key<Opening, N> {
+impl<N: NonceSequence> OpeningKey<N> {
     /// Authenticates and decrypts (“opens”) data in place.
     ///
     /// The input may have a prefix that is `in_prefix_len` bytes long; any such
@@ -210,7 +195,39 @@ fn open_in_place_<'a>(
     Ok(&mut in_out[..ciphertext_len])
 }
 
-impl<N: NonceSequence> Key<Sealing, N> {
+/// An AEAD key for encrypting and signing ("sealing"), bound to a nonce
+/// sequence.
+///
+/// Intentionally not `Clone` or `Copy` since cloning would allow duplication
+/// of the nonce sequence.
+pub struct SealingKey<N: NonceSequence> {
+    key: UnboundKey,
+    nonce_sequence: N,
+}
+
+impl<N: NonceSequence> BoundKey<N> for SealingKey<N> {
+    fn new(key: UnboundKey, nonce_sequence: N) -> Self {
+        Self {
+            key,
+            nonce_sequence,
+        }
+    }
+
+    #[inline]
+    fn algorithm(&self) -> &'static Algorithm {
+        self.key.algorithm
+    }
+}
+
+impl<N: NonceSequence> core::fmt::Debug for SealingKey<N> {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
+        f.debug_struct("SealingKey")
+            .field("algorithm", &self.algorithm())
+            .finish()
+    }
+}
+
+impl<N: NonceSequence> SealingKey<N> {
     /// Encrypts and signs (“seals”) data in place.
     ///
     /// `nonce` must be unique for every use of the key to seal data.
@@ -326,8 +343,8 @@ impl UnboundKey {
     }
 
     /// The key's AEAD algorithm.
-    #[inline(always)]
-    fn algorithm(&self) -> &'static Algorithm {
+    #[inline]
+    pub fn algorithm(&self) -> &'static Algorithm {
         self.algorithm
     }
 }
