@@ -325,13 +325,13 @@ cc = { version = "1.0.37", default-features = false }
 
 [features]
 # These features are documented in the top-level module's documentation.
-default = ["alloc", "dev_urandom_fallback", "std"]
+default = ["alloc", "dev_urandom_fallback"]
 alloc = []
-dev_urandom_fallback = ["std", "lazy_static"]
+dev_urandom_fallback = ["lazy_static"]
 internal_benches = []
 slow_tests = []
 std = ["alloc"]
-test_logging = ["std"]
+test_logging = []
 
 # XXX: debug = false because of https://github.com/rust-lang/rust/issues/34122
 
