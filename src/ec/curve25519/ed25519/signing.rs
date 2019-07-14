@@ -178,7 +178,7 @@ impl Ed25519KeyPair {
     /// Returns the signature of the message `msg`.
     pub fn sign(&self, msg: &[u8]) -> signature::Signature {
         signature::Signature::new(|signature_bytes| {
-            extern "C" {
+            versioned_extern! {
                 fn GFp_x25519_sc_muladd(
                     s: &mut [u8; SCALAR_LEN],
                     a: &Scalar,

@@ -19,23 +19,27 @@ use core::{
 };
 
 #[cfg(not(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64")))]
-pub(super) extern "C" fn GFp_sha256_block_data_order(
-    state: &mut super::State,
-    data: *const u8,
-    num: c::size_t,
-) {
-    let state = unsafe { &mut state.as32 };
-    *state = block_data_order(*state, data, num)
+versioned_extern_def! {
+    pub(super) fn GFp_sha256_block_data_order(
+        state: &mut super::State,
+        data: *const u8,
+        num: c::size_t,
+    ) {
+        let state = unsafe { &mut state.as32 };
+        *state = block_data_order(*state, data, num)
+    }
 }
 
 #[cfg(not(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64")))]
-pub(super) extern "C" fn GFp_sha512_block_data_order(
-    state: &mut super::State,
-    data: *const u8,
-    num: c::size_t,
-) {
-    let state = unsafe { &mut state.as64 };
-    *state = block_data_order(*state, data, num)
+versioned_extern_def! {
+    pub(super) fn GFp_sha512_block_data_order(
+        state: &mut super::State,
+        data: *const u8,
+        num: c::size_t,
+    ) {
+        let state = unsafe { &mut state.as64 };
+        *state = block_data_order(*state, data, num)
+    }
 }
 
 #[cfg_attr(
@@ -379,12 +383,13 @@ impl Sha2 for Wrapping<u64> {
 }
 
 #[cfg(any(target_arch = "aarch64", target_arch = "arm", target_arch = "x86_64"))]
-extern "C" {
+versioned_extern! {
     pub(super) fn GFp_sha256_block_data_order(
         state: &mut super::State,
         data: *const u8,
         num: c::size_t,
     );
+
     pub(super) fn GFp_sha512_block_data_order(
         state: &mut super::State,
         data: *const u8,

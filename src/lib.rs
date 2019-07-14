@@ -65,6 +65,9 @@
 #![no_std]
 #![cfg_attr(feature = "internal_benches", allow(unstable_features), feature(test))]
 
+#[macro_use]
+mod versioned_extern;
+
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
@@ -85,9 +88,6 @@ mod bssl;
 
 #[macro_use]
 mod polyfill;
-
-#[macro_use]
-mod versioned_extern;
 
 pub mod aead;
 pub mod agreement;

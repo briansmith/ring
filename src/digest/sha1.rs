@@ -34,7 +34,7 @@ type State = [W32; CHAINING_WORDS];
 const ROUNDS: usize = 80;
 
 versioned_extern_def! {
-    pub(super) extern "C" fn block_data_order(
+    pub(super) fn block_data_order(
         state: &mut super::State,
         data: *const u8,
         num: c::size_t,

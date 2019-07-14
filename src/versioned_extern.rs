@@ -20,6 +20,7 @@ macro_rules! versioned_extern {
     // Function args w/ trailing comma
     (
         $(#[$($attr:tt)*])*
+        $vis:vis
         fn $name:ident (
             $($var:ident: $typ:ty,)*
         ) $(-> $ret:ty)?;
@@ -27,7 +28,7 @@ macro_rules! versioned_extern {
     ) => (
         versioned_extern!(
             [add_version_prefix!($name)]
-            [$(#[$($attr)*])* fn]
+            [$(#[$($attr)*])* $vis fn]
             $name
             [($($var: $typ,)*) $(-> $ret)?;]
             $($rest)*
@@ -37,6 +38,7 @@ macro_rules! versioned_extern {
     // Function args w/o trailing comma
     (
         $(#[$($attr:tt)*])*
+        $vis:vis
         fn $name:ident (
             $($var:ident: $typ:ty),*
         ) $(-> $ret:ty)?;
@@ -44,27 +46,27 @@ macro_rules! versioned_extern {
     ) => (
         versioned_extern!(
             [add_version_prefix!($name)]
-            [$(#[$($attr)*])* fn]
+            [$(#[$($attr)*])* $vis fn]
             $name
             [($($var: $typ,)*) $(-> $ret)?;]
             $($rest)*
         );
     );
 
-    ($(#[$($attr:tt)*])* static $name:ident: $typ:ty; $($rest:tt)*) => (
+    ($(#[$($attr:tt)*])* $vis:vis static $name:ident: $typ:ty; $($rest:tt)*) => (
         versioned_extern!(
             [add_version_prefix!($name)]
-            [$(#[$($attr)*])* static]
+            [$(#[$($attr)*])* $vis static]
             $name
             [: $typ;]
             $($rest)*
         );
     );
 
-    ($(#[$($attr:tt)*])* static mut $name:ident: $typ:ty; $($rest:tt)*) => (
+    ($(#[$($attr:tt)*])* $vis:vis static mut $name:ident: $typ:ty; $($rest:tt)*) => (
         versioned_extern!(
             [add_version_prefix!($name)]
-            [$(#[$($attr)*])* static mut]
+            [$(#[$($attr)*])* $vis static mut]
             $name
             [: $typ;]
             $($rest)*
@@ -97,6 +99,15 @@ macro_rules! versioned_extern_def {
         versioned_extern_def!(
             [add_version_prefix!($name)]
             [$(#[$($attr)*])* $vis unsafe extern "C" fn]
+            $name
+            [$($rest)+]
+        );
+    );
+
+    ($(#[$($attr:tt)*])* $vis:vis fn $name:ident $($rest:tt)+) => (
+        versioned_extern_def!(
+            [add_version_prefix!($name)]
+            [$(#[$($attr)*])* $vis extern "C" fn]
             $name
             [$($rest)+]
         );

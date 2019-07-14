@@ -194,7 +194,7 @@ impl Key {
 
             #[cfg(target_arch = "aarch64")]
             Implementation::VPAES => {
-                extern "C" {
+                versioned_extern! {
                     fn GFp_vpaes_ctr32_encrypt_blocks(
                         input: *const u8,
                         output: *mut u8,
