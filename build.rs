@@ -588,10 +588,6 @@ fn cc(
         }
     }
 
-    if target.env() != "msvc" {
-        let _ = c.define("_XOPEN_SOURCE", Some("700"));
-    }
-
     if warnings_are_errors {
         let flag = if target.env() != "msvc" {
             "-Werror"
