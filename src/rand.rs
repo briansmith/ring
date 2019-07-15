@@ -178,6 +178,14 @@ use self::sysrand::fill as fill_impl;
 ))]
 use self::sysrand_or_urandom::fill as fill_impl;
 
+#[cfg(any(
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_os = "solaris"
+))]
+use self::urandom::fill as fill_impl;
+
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 use self::darwin::fill as fill_impl;
 
@@ -333,13 +341,26 @@ mod sysrand_or_urandom {
 
         match *MECHANISM {
             Mechanism::Sysrand => super::sysrand::fill(dest),
-            Mechanism::DevURandom => urandom_fallback(dest),
+            Mechanism::DevURandom => super::urandom::fill(dest),
         }
     }
+}
 
-    #[cold]
-    #[inline(never)]
-    fn urandom_fallback(dest: &mut [u8]) -> Result<(), error::Unspecified> {
+#[cfg(any(
+    all(
+        any(target_os = "android", target_os = "linux"),
+        feature = "dev_urandom_fallback"
+    ),
+    target_os = "freebsd",
+    target_os = "netbsd",
+    target_os = "openbsd",
+    target_os = "solaris"
+))]
+mod urandom {
+    use crate::error;
+
+    #[cfg_attr(any(target_os = "android", target_os = "linux"), cold, inline(never))]
+    pub fn fill(dest: &mut [u8]) -> Result<(), error::Unspecified> {
         use lazy_static::lazy_static;
 
         lazy_static! {
