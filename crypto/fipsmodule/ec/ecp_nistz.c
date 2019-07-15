@@ -28,7 +28,7 @@
 void gfp_little_endian_bytes_from_scalar(uint8_t str[], size_t str_len,
                                          const Limb scalar[],
                                          size_t num_limbs) {
-  assert(str_len == (num_limbs * sizeof(Limb)) + 1);
+  ASSERT(str_len == (num_limbs * sizeof(Limb)) + 1);
 
   size_t i;
   for (i = 0; i < num_limbs * sizeof(Limb); i += sizeof(Limb)) {

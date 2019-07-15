@@ -47,7 +47,7 @@ OPENSSL_STATIC_ASSERT(sizeof(BN_ULONG) * BN_MONT_CTX_N0_LIMBS == sizeof(uint64_t
 // multiplication. This implementation does the negation implicitly by doing
 // the computations as a difference instead of a sum.
 uint64_t GFp_bn_neg_inv_mod_r_u64(uint64_t n) {
-  assert(n % 2 == 1);
+  ASSERT(n % 2 == 1);
 
   // alpha == 2**(lg r - 1) == r / 2.
   static const uint64_t alpha = UINT64_C(1) << (LG_LITTLE_R - 1);
@@ -61,7 +61,7 @@ uint64_t GFp_bn_neg_inv_mod_r_u64(uint64_t n) {
   // 2**(lg r - i) == u*2*alpha - v*beta.
   for (size_t i = 0; i < LG_LITTLE_R; ++i) {
 #if BN_BITS2 == 64 && defined(BN_ULLONG)
-    assert((BN_ULLONG)(1) << (LG_LITTLE_R - i) ==
+    ASSERT((BN_ULLONG)(1) << (LG_LITTLE_R - i) ==
            ((BN_ULLONG)u * 2 * alpha) - ((BN_ULLONG)v * beta));
 #endif
 
@@ -98,7 +98,7 @@ uint64_t GFp_bn_neg_inv_mod_r_u64(uint64_t n) {
 
   // The invariant now shows that u*r - v*n == 1 since r == 2 * alpha.
 #if BN_BITS2 == 64 && defined(BN_ULLONG)
-  assert(1 == ((BN_ULLONG)u * 2 * alpha) - ((BN_ULLONG)v * beta));
+  ASSERT(1 == ((BN_ULLONG)u * 2 * alpha) - ((BN_ULLONG)v * beta));
 #endif
 
   return v;

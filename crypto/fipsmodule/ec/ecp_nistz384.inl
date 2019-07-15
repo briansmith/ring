@@ -224,7 +224,7 @@ void GFp_nistz384_point_mul(P384_POINT *r, const BN_ULONG p_scalar[P384_LIMBS],
   wvalue = (wvalue >> ((index - 1) % 8)) & kMask;
 
   booth_recode(&recoded_is_negative, &recoded, wvalue, 5);
-  assert(!recoded_is_negative);
+  ASSERT(!recoded_is_negative);
 
   gfp_p384_point_select_w5(r, table, recoded);
 
