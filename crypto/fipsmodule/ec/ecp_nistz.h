@@ -248,8 +248,8 @@
 //   P-224: ...00111101; w = 3, 4, 5, 6 are okay
 static inline void booth_recode(Limb *is_negative, unsigned *digit,
                                 unsigned in, unsigned w) {
-  assert(w >= 2);
-  assert(w <= 7);
+  ASSERT(w >= 2);
+  ASSERT(w <= 7);
 
   // Set all bits of `s` to MSB(in), similar to |constant_time_msb_s|,
   // but 'in' seen as (`w+1`)-bit value.

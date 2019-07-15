@@ -111,7 +111,12 @@
 
 #include <GFp/base.h> // Must be first.
 
+#if !defined(NDEBUG)
 #include <assert.h>
+#define ASSERT(x) assert(x)
+#else
+#define ASSERT(x) ((void)0)
+#endif
 
 #include <GFp/type_check.h>
 
