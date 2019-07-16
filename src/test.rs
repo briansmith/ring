@@ -337,8 +337,8 @@ where
                     failed = true;
                     Err("Test didn't consume all attributes.")
                 }
-            },
-            Err(error::Unspecified) => Err("Test returned Err(error::Unspecified).")
+            }
+            Err(error::Unspecified) => Err("Test returned Err(error::Unspecified)."),
         };
 
         if result.is_err() {
