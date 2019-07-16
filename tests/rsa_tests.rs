@@ -184,16 +184,6 @@ fn test_signature_rsa_pkcs1_verify() {
                 signature::UnparsedPublicKey::new(alg, &public_key).verify(&msg, &sig);
             assert_eq!(actual_result.is_ok(), is_valid);
 
-            // Deprecated API.
-            #[allow(deprecated)]
-            let actual_result = signature::verify(
-                alg,
-                untrusted::Input::from(&public_key),
-                untrusted::Input::from(&msg),
-                untrusted::Input::from(&sig),
-            );
-            assert_eq!(actual_result.is_ok(), is_valid);
-
             Ok(())
         },
     );
@@ -239,15 +229,6 @@ fn test_signature_rsa_pss_verify() {
 
             let actual_result =
                 signature::UnparsedPublicKey::new(alg, &public_key).verify(&msg, &sig);
-            assert_eq!(actual_result.is_ok(), is_valid);
-
-            #[allow(deprecated)]
-            let actual_result = signature::verify(
-                alg,
-                untrusted::Input::from(&public_key),
-                untrusted::Input::from(&msg),
-                untrusted::Input::from(&sig),
-            );
             assert_eq!(actual_result.is_ok(), is_valid);
 
             Ok(())

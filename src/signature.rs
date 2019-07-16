@@ -405,17 +405,3 @@ impl<B: AsRef<[u8]>> UnparsedPublicKey<B> {
         )
     }
 }
-
-/// Deprecated. Use [UnparsedPublicKey::verify()].
-///
-/// [UnparsedPublicKey::verify()]: UnparsedPublicKey::verify
-#[deprecated(note = "Use UnparsedPublicKey::verify")]
-pub fn verify(
-    algorithm: &'static dyn VerificationAlgorithm,
-    public_key: untrusted::Input,
-    msg: untrusted::Input,
-    signature: untrusted::Input,
-) -> Result<(), error::Unspecified> {
-    UnparsedPublicKey::new(algorithm, public_key.as_slice_less_safe())
-        .verify(msg.as_slice_less_safe(), signature.as_slice_less_safe())
-}
