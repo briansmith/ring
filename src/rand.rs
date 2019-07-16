@@ -73,7 +73,7 @@ where
 pub(crate) mod sealed {
     use crate::error;
 
-    pub trait SecureRandom {
+    pub trait SecureRandom: core::fmt::Debug {
         /// Fills `dest` with random bytes.
         fn fill_impl(&self, dest: &mut [u8]) -> Result<(), error::Unspecified>;
     }
@@ -143,6 +143,7 @@ impl<T> RandomlyConstructable for T where T: self::sealed::RandomlyConstructable
 /// random number generation.
 ///
 /// [`getrandom`]: http://man7.org/linux/man-pages/man2/getrandom.2.html
+#[derive(Clone, Debug)]
 pub struct SystemRandom(());
 
 impl SystemRandom {

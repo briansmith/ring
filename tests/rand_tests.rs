@@ -12,7 +12,10 @@
 // OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 // CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-use ring::rand::{self, SecureRandom as _};
+use ring::{
+    rand::{self, SecureRandom as _},
+    test,
+};
 
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen_test::wasm_bindgen_test;
@@ -65,4 +68,16 @@ fn test_system_random_lengths() {
             assert!(buf.iter().any(|x| *x != 0));
         }
     }
+}
+
+#[cfg_attr(not(target_arch = "wasm32"), test)]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen_test)]
+fn test_system_random_traits() {
+    test::compile_time_assert_clone::<rand::SystemRandom>();
+    test::compile_time_assert_send::<rand::SystemRandom>();
+
+    assert_eq!(
+        "SystemRandom(())",
+        format!("{:?}", rand::SystemRandom::new())
+    );
 }
