@@ -37,11 +37,5 @@ pub(crate) type size_t = self::libc::size_t;
 pub(crate) type int = self::libc::c_int;
 pub(crate) type uint = self::libc::c_uint;
 
-#[cfg(all(
-    any(target_os = "android", target_os = "linux"),
-    any(target_arch = "aarch64", target_arch = "arm")
-))]
-pub(crate) type ulong = libc::c_ulong;
-
 #[cfg(any(target_os = "android", target_os = "linux"))]
 pub(crate) type long = libc::c_long;
