@@ -176,6 +176,8 @@ struct TestConfig {
   bool expect_delegated_credential_used = false;
   std::string delegated_credential;
   std::string expect_early_data_reason;
+  bool enable_pq_experiment_signal = false;
+  bool expect_pq_experiment_signal = false;
 
   int argc;
   char **argv;

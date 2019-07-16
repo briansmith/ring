@@ -126,6 +126,7 @@ const (
 	extensionQUICTransportParams        uint16 = 0xffa5 // draft-ietf-quic-tls-13
 	extensionChannelID                  uint16 = 30032  // not IANA assigned
 	extensionDelegatedCredentials       uint16 = 0xff02 // not IANA assigned
+	extensionPQExperimentSignal         uint16 = 54538
 )
 
 // TLS signaling cipher suite values
@@ -499,6 +500,11 @@ type Config struct {
 	QUICTransportParams []byte
 
 	CertCompressionAlgs map[uint16]CertCompressionAlg
+
+	// PQExperimentSignal instructs a client to send a non-IANA defined extension
+	// that signals participation in an experiment of post-quantum key exchange
+	// methods.
+	PQExperimentSignal bool
 
 	// Bugs specifies optional misbehaviour to be used for testing other
 	// implementations.
@@ -1650,6 +1656,10 @@ type ProtocolBugs struct {
 	// DisableDelegatedCredentials, if true, disables client support for delegated
 	// credentials.
 	DisableDelegatedCredentials bool
+
+	// ExpectPQExperimentSignal specifies whether or not the post-quantum
+	// experiment signal should be received by a client or server.
+	ExpectPQExperimentSignal bool
 }
 
 func (c *Config) serverInit() {

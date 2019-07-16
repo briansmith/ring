@@ -734,7 +734,8 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       handoff(false),
       shed_handshake_config(false),
       ignore_tls13_downgrade(false),
-      jdk11_workaround(false) {
+      jdk11_workaround(false),
+      pq_experiment_signal(false) {
   assert(ssl);
 }
 
@@ -1243,6 +1244,18 @@ int SSL_send_fatal_alert(SSL *ssl, uint8_t alert) {
   }
 
   return ssl_send_alert_impl(ssl, SSL3_AL_FATAL, alert);
+}
+
+int SSL_enable_pq_experiment_signal(SSL *ssl) {
+  if (!ssl->config) {
+    return 0;
+  }
+  ssl->config->pq_experiment_signal = true;
+  return 1;
+}
+
+int SSL_pq_experiment_signal_seen(const SSL *ssl) {
+  return ssl->s3->pq_experiment_signal_seen;
 }
 
 int SSL_set_quic_transport_params(SSL *ssl, const uint8_t *params,

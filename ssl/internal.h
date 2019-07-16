@@ -2254,6 +2254,10 @@ struct SSL3_STATE {
   // token_binding_negotiated is set if Token Binding was negotiated.
   bool token_binding_negotiated : 1;
 
+  // pq_experimental_signal_seen is true if the peer was observed
+  // sending/echoing the post-quantum experiment signal.
+  bool pq_experiment_signal_seen : 1;
+
   // hs_buf is the buffer of handshake data to process.
   UniquePtr<BUF_MEM> hs_buf;
 
@@ -2584,6 +2588,11 @@ struct SSL_CONFIG {
   // jdk11_workaround is whether to disable TLS 1.3 for JDK 11 clients, as a
   // workaround for https://bugs.openjdk.java.net/browse/JDK-8211806.
   bool jdk11_workaround : 1;
+
+  // pq_experiment_signal indicates that an empty extension should be sent
+  // (for clients) or echoed (for servers) to indicate participation in an
+  // experiment of post-quantum key exchanges.
+  bool pq_experiment_signal : 1;
 };
 
 // From RFC 8446, used in determining PSK modes.

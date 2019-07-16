@@ -150,6 +150,8 @@ const Flag<bool> kBoolFlags[] = {
     {"-key-update", &TestConfig::key_update},
     {"-expect-delegated-credential-used",
      &TestConfig::expect_delegated_credential_used},
+    {"-enable-pq-experiment-signal", &TestConfig::enable_pq_experiment_signal},
+    {"-expect-pq-experiment-signal", &TestConfig::expect_pq_experiment_signal},
 };
 
 const Flag<std::string> kStringFlags[] = {
@@ -1712,6 +1714,12 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
       fprintf(stderr, "SSL_set1_delegated_credential failed.\n");
       return nullptr;
     }
+  }
+
+  if (enable_pq_experiment_signal &&
+      !SSL_enable_pq_experiment_signal(ssl.get())) {
+    fprintf(stderr, "SSL_enable_pq_experiment_signal failed.\n");
+    return nullptr;
   }
 
   return ssl;
