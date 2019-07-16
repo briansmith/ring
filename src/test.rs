@@ -142,12 +142,8 @@ pub fn compile_time_assert_send<T: Send>() {}
 /// implement `Sync`.
 pub fn compile_time_assert_sync<T: Sync>() {}
 
-/// `compile_time_assert_debug::<T>();` fails to compile if `T` doesn't
-/// implement `Debug`.
-pub fn compile_time_assert_debug<T: core::fmt::Debug>() {}
-
-/// `compile_time_assert_debug::<T>();` fails to compile if `T` doesn't
-/// implement `std::error::Error`.
+/// `compile_time_assert_std_error_error::<T>();` fails to compile if `T`
+/// doesn't implement `std::error::Error`.
 #[cfg(feature = "std")]
 pub fn compile_time_assert_std_error_error<T: std::error::Error>() {}
 
