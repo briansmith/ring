@@ -118,8 +118,6 @@
 #define ASSERT(x) ((void)0)
 #endif
 
-#include <GFp/type_check.h>
-
 #if defined(__GNUC__) && \
     (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__) < 40800
 // |alignas| and |alignof| were added in C11. GCC added support in version 4.8.
