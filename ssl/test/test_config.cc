@@ -243,7 +243,7 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
   if (string_field != NULL) {
     *i = *i + 1;
     if (*i >= argc) {
-      fprintf(stderr, "Missing parameter\n");
+      fprintf(stderr, "Missing parameter.\n");
       return false;
     }
     if (!skip) {
@@ -256,19 +256,19 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
   if (base64_field != NULL) {
     *i = *i + 1;
     if (*i >= argc) {
-      fprintf(stderr, "Missing parameter\n");
+      fprintf(stderr, "Missing parameter.\n");
       return false;
     }
     size_t len;
     if (!EVP_DecodedLength(&len, strlen(argv[*i]))) {
-      fprintf(stderr, "Invalid base64: %s\n", argv[*i]);
+      fprintf(stderr, "Invalid base64: %s.\n", argv[*i]);
       return false;
     }
     std::unique_ptr<uint8_t[]> decoded(new uint8_t[len]);
     if (!EVP_DecodeBase64(decoded.get(), &len, len,
                           reinterpret_cast<const uint8_t *>(argv[*i]),
                           strlen(argv[*i]))) {
-      fprintf(stderr, "Invalid base64: %s\n", argv[*i]);
+      fprintf(stderr, "Invalid base64: %s.\n", argv[*i]);
       return false;
     }
     if (!skip) {
@@ -282,7 +282,7 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
   if (int_field) {
     *i = *i + 1;
     if (*i >= argc) {
-      fprintf(stderr, "Missing parameter\n");
+      fprintf(stderr, "Missing parameter.\n");
       return false;
     }
     if (!skip) {
@@ -296,7 +296,7 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
   if (int_vector_field) {
     *i = *i + 1;
     if (*i >= argc) {
-      fprintf(stderr, "Missing parameter\n");
+      fprintf(stderr, "Missing parameter.\n");
       return false;
     }
 
@@ -307,7 +307,7 @@ bool ParseFlag(char *flag, int argc, char **argv, int *i,
     return true;
   }
 
-  fprintf(stderr, "Unknown argument: %s\n", flag);
+  fprintf(stderr, "Unknown argument: %s.\n", flag);
   return false;
 }
 
@@ -404,7 +404,7 @@ static int ServerNameCallback(SSL *ssl, int *out_alert, void *arg) {
   const char *server_name = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
   if (server_name == nullptr ||
       std::string(server_name) != config->expect_server_name) {
-    fprintf(stderr, "servername mismatch (got %s; want %s)\n", server_name,
+    fprintf(stderr, "servername mismatch (got %s; want %s).\n", server_name,
             config->expect_server_name.c_str());
     return SSL_TLSEXT_ERR_ALERT_FATAL;
   }
@@ -449,7 +449,7 @@ static void MessageCallback(int is_write, int version, int content_type,
   if (content_type == SSL3_RT_HEADER) {
     if (len !=
         (config->is_dtls ? DTLS1_RT_HEADER_LENGTH : SSL3_RT_HEADER_LENGTH)) {
-      fprintf(stderr, "Incorrect length for record header: %zu\n", len);
+      fprintf(stderr, "Incorrect length for record header: %zu.\n", len);
       state->msg_callback_ok = false;
     }
     return;
@@ -459,7 +459,7 @@ static void MessageCallback(int is_write, int version, int content_type,
   switch (content_type) {
     case 0:
       if (version != SSL2_VERSION) {
-        fprintf(stderr, "Incorrect version for V2ClientHello: %x\n", version);
+        fprintf(stderr, "Incorrect version for V2ClientHello: %x.\n", version);
         state->msg_callback_ok = false;
         return;
       }
@@ -509,7 +509,7 @@ static void MessageCallback(int is_write, int version, int content_type,
       return;
 
     default:
-      fprintf(stderr, "Invalid content_type: %d\n", content_type);
+      fprintf(stderr, "Invalid content_type: %d.\n", content_type);
       state->msg_callback_ok = false;
   }
 }
@@ -622,7 +622,7 @@ static int AlpnSelectCallback(SSL *ssl, const uint8_t **out, uint8_t *outlen,
       (config->expect_advertised_alpn.size() != inlen ||
        OPENSSL_memcmp(config->expect_advertised_alpn.data(), in, inlen) !=
            0)) {
-    fprintf(stderr, "bad ALPN select callback inputs\n");
+    fprintf(stderr, "bad ALPN select callback inputs.\n");
     exit(1);
   }
 
@@ -639,7 +639,7 @@ static bool CheckVerifyCallback(SSL *ssl) {
     size_t len;
     SSL_get0_ocsp_response(ssl, &data, &len);
     if (len == 0) {
-      fprintf(stderr, "OCSP response not available in verify callback\n");
+      fprintf(stderr, "OCSP response not available in verify callback.\n");
       return false;
     }
   }
@@ -808,7 +808,7 @@ static std::vector<std::string> DecodeHexStrings(
   for (const auto &part : parts) {
     std::string binary;
     if (!HexDecode(&binary, part)) {
-      fprintf(stderr, "Bad hex string: %s\n", part.c_str());
+      fprintf(stderr, "Bad hex string: %s.\n", part.c_str());
       return ret;
     }
 
@@ -885,7 +885,7 @@ static bool CheckCertificateRequest(SSL *ssl) {
         OPENSSL_memcmp(certificate_types,
                        config->expect_certificate_types.data(),
                        certificate_types_len) != 0) {
-      fprintf(stderr, "certificate types mismatch\n");
+      fprintf(stderr, "certificate types mismatch.\n");
       return false;
     }
   }
@@ -899,7 +899,7 @@ static bool CheckCertificateRequest(SSL *ssl) {
     const size_t num_received = sk_X509_NAME_num(received);
 
     if (num_received != num_expected) {
-      fprintf(stderr, "expected %u names in CertificateRequest but got %u\n",
+      fprintf(stderr, "expected %u names in CertificateRequest but got %u.\n",
               static_cast<unsigned>(num_expected),
               static_cast<unsigned>(num_received));
       return false;
@@ -908,7 +908,7 @@ static bool CheckCertificateRequest(SSL *ssl) {
     for (size_t i = 0; i < num_received; i++) {
       if (X509_NAME_cmp(sk_X509_NAME_value(received, i),
                         sk_X509_NAME_value(expected.get(), i)) != 0) {
-        fprintf(stderr, "names in CertificateRequest differ at index #%d\n",
+        fprintf(stderr, "names in CertificateRequest differ at index #%d.\n",
                 static_cast<unsigned>(i));
         return false;
       }
@@ -1371,7 +1371,7 @@ static unsigned PskClientCallback(SSL *ssl, const char *hint,
   // Account for the trailing '\0' for the identity.
   if (config->psk_identity.size() >= max_identity_len ||
       config->psk.size() > max_psk_len) {
-    fprintf(stderr, "PSK buffers too small\n");
+    fprintf(stderr, "PSK buffers too small.\n");
     return 0;
   }
 
@@ -1390,7 +1390,7 @@ static unsigned PskServerCallback(SSL *ssl, const char *identity,
   }
 
   if (config->psk.size() > max_psk_len) {
-    fprintf(stderr, "PSK buffers too small\n");
+    fprintf(stderr, "PSK buffers too small.\n");
     return 0;
   }
 
@@ -1681,7 +1681,8 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
   if (!delegated_credential.empty()) {
     std::string::size_type comma = delegated_credential.find(',');
     if (comma == std::string::npos) {
-      fprintf(stderr, "failed to find comma in delegated credential argument");
+      fprintf(stderr,
+              "failed to find comma in delegated credential argument.\n");
       return nullptr;
     }
 
@@ -1689,7 +1690,7 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
     const std::string pkcs8_hex = delegated_credential.substr(comma + 1);
     std::string dc, pkcs8;
     if (!HexDecode(&dc, dc_hex) || !HexDecode(&pkcs8, pkcs8_hex)) {
-      fprintf(stderr, "failed to hex decode delegated credential argument");
+      fprintf(stderr, "failed to hex decode delegated credential argument.\n");
       return nullptr;
     }
 
@@ -1700,7 +1701,7 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
 
     bssl::UniquePtr<EVP_PKEY> priv(EVP_parse_private_key(&pkcs8_cbs));
     if (!priv) {
-      fprintf(stderr, "failed to parse delegated credential private key");
+      fprintf(stderr, "failed to parse delegated credential private key.\n");
       return nullptr;
     }
 
