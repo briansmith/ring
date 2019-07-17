@@ -59,12 +59,15 @@ fn x25519_public_from_private(
 ) -> Result<(), error::Unspecified> {
     let public_out = public_out.try_into()?;
 
+    #[cfg(target_arch = "arm")]
+    let cpu_features = private_key.cpu_features;
+
     let private_key: &[u8; SCALAR_LEN] = private_key.bytes_less_safe().try_into()?;
     let private_key = ops::MaskedScalar::from_bytes_masked(*private_key);
 
     #[cfg(all(not(target_os = "ios"), target_arch = "arm"))]
     {
-        if cpu::arm::NEON.available(private_key.cpu_features) {
+        if cpu::arm::NEON.available(cpu_features) {
             static MONTGOMERY_BASE_POINT: [u8; 32] = [
                 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                 0, 0, 0, 0,
