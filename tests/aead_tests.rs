@@ -31,7 +31,7 @@
     warnings
 )]
 
-use core::ops::RangeBounds;
+use core::ops::RangeFrom;
 use ring::{aead, error, test, test_file};
 
 #[test]
@@ -101,7 +101,7 @@ fn test_aead<Seal, Open>(
         aead::Nonce,
         aead::Aad<&[u8]>,
         &'a mut [u8],
-        core::ops::RangeFrom<usize>,
+        RangeFrom<usize>,
     ) -> Result<&'a mut [u8], error::Unspecified>,
 {
     test_aead_key_sizes(aead_alg);
@@ -251,13 +251,13 @@ fn seal_with_key(
     s_key.seal_in_place(aad, in_out)
 }
 
-fn open_with_key<'a, I: RangeBounds<usize>>(
+fn open_with_key<'a>(
     algorithm: &'static aead::Algorithm,
     key: &[u8],
     nonce: aead::Nonce,
     aad: aead::Aad<&[u8]>,
     in_out: &'a mut [u8],
-    ciphertext_and_tag: I,
+    ciphertext_and_tag: RangeFrom<usize>,
 ) -> Result<&'a mut [u8], error::Unspecified> {
     let mut o_key: aead::OpeningKey<OneNonceSequence> = make_key(algorithm, key, nonce);
     o_key.open_within(aad, in_out, ciphertext_and_tag)
@@ -274,13 +274,13 @@ fn seal_with_less_safe_key(
     key.seal_in_place(nonce, aad, in_out)
 }
 
-fn open_with_less_safe_key<'a, I: RangeBounds<usize>>(
+fn open_with_less_safe_key<'a>(
     algorithm: &'static aead::Algorithm,
     key: &[u8],
     nonce: aead::Nonce,
     aad: aead::Aad<&[u8]>,
     in_out: &'a mut [u8],
-    ciphertext_and_tag: I,
+    ciphertext_and_tag: RangeFrom<usize>,
 ) -> Result<&'a mut [u8], error::Unspecified> {
     let key = make_less_safe_key(algorithm, key);
     key.open_within(nonce, aad, in_out, ciphertext_and_tag)

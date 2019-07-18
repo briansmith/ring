@@ -23,7 +23,7 @@
 
 use self::block::{Block, BLOCK_LEN};
 use crate::{constant_time, cpu, error, hkdf, polyfill};
-use core::ops::{Bound, RangeBounds};
+use core::ops::RangeFrom;
 
 pub use self::{
     aes_gcm::{AES_128_GCM, AES_256_GCM},
@@ -109,7 +109,7 @@ impl<N: NonceSequence> OpeningKey<N> {
         aad: Aad<A>,
         in_out: &'in_out mut [u8],
     ) -> Result<&'in_out mut [u8], error::Unspecified> {
-        self.open_within(aad, in_out, ..)
+        self.open_within(aad, in_out, 0..)
     }
 
     /// Authenticates and decrypts (“opens”) data in place, with a shift.
@@ -131,7 +131,7 @@ impl<N: NonceSequence> OpeningKey<N> {
     /// let plaintext = key.open_in_place(aad, &mut in_out[..ciphertext_and_tag_len])?;
     /// ```
     ///
-    /// Similarly, `key.open_within(aad, in_out, ..)` is equivalent to
+    /// Similarly, `key.open_within(aad, in_out, 0..)` is equivalent to
     /// `key.open_in_place(aad, in_out)`.
     ///
     ///  When `open_in_place()` returns `Err(..)`, `in_out` may have been
@@ -154,11 +154,11 @@ impl<N: NonceSequence> OpeningKey<N> {
     ///
     /// This reassembly be accomplished with three calls to `open_within()`.
     #[inline]
-    pub fn open_within<'in_out, A: AsRef<[u8]>, I: RangeBounds<usize>>(
+    pub fn open_within<'in_out, A: AsRef<[u8]>>(
         &mut self,
         aad: Aad<A>,
         in_out: &'in_out mut [u8],
-        ciphertext_and_tag: I,
+        ciphertext_and_tag: RangeFrom<usize>,
     ) -> Result<&'in_out mut [u8], error::Unspecified> {
         open_within_(
             &self.key,
@@ -171,20 +171,21 @@ impl<N: NonceSequence> OpeningKey<N> {
 }
 
 #[inline]
-fn open_within_<'in_out, A: AsRef<[u8]>, I: RangeBounds<usize>>(
+fn open_within_<'in_out, A: AsRef<[u8]>>(
     key: &UnboundKey,
     nonce: Nonce,
     Aad(aad): Aad<A>,
     in_out: &'in_out mut [u8],
-    ciphertext_and_tag: I,
+    ciphertext_and_tag: RangeFrom<usize>,
 ) -> Result<&'in_out mut [u8], error::Unspecified> {
     fn open_within<'in_out>(
         key: &UnboundKey,
         nonce: Nonce,
         aad: Aad<&[u8]>,
         in_out: &'in_out mut [u8],
-        in_prefix_len: usize,
+        ciphertext_and_tag: RangeFrom<usize>,
     ) -> Result<&'in_out mut [u8], error::Unspecified> {
+        let in_prefix_len = ciphertext_and_tag.start;
         let ciphertext_and_tag_len = in_out
             .len()
             .checked_sub(in_prefix_len)
@@ -216,18 +217,13 @@ fn open_within_<'in_out, A: AsRef<[u8]>, I: RangeBounds<usize>>(
         Ok(&mut in_out[..ciphertext_len])
     }
 
-    let in_out = match ciphertext_and_tag.end_bound() {
-        Bound::Unbounded => in_out,
-        Bound::Excluded(end) => in_out.get_mut(..*end).ok_or(error::Unspecified)?,
-        Bound::Included(end) => in_out.get_mut(..=*end).ok_or(error::Unspecified)?,
-    };
-    let in_prefix_len = match ciphertext_and_tag.start_bound() {
-        Bound::Unbounded => 0,
-        Bound::Included(start) => *start,
-        Bound::Excluded(start) => (*start).checked_add(1).ok_or(error::Unspecified)?,
-    };
-
-    open_within(key, nonce, Aad::from(aad.as_ref()), in_out, in_prefix_len)
+    open_within(
+        key,
+        nonce,
+        Aad::from(aad.as_ref()),
+        in_out,
+        ciphertext_and_tag,
+    )
 }
 
 /// An AEAD key for encrypting and signing ("sealing"), bound to a nonce
@@ -413,17 +409,17 @@ impl LessSafeKey {
         aad: Aad<A>,
         in_out: &'in_out mut [u8],
     ) -> Result<&'in_out mut [u8], error::Unspecified> {
-        self.open_within(nonce, aad, in_out, ..)
+        self.open_within(nonce, aad, in_out, 0..)
     }
 
     /// Like `Key::open_within()`, except it accepts an arbitrary nonce.
     #[inline]
-    pub fn open_within<'in_out, A: AsRef<[u8]>, I: RangeBounds<usize>>(
+    pub fn open_within<'in_out, A: AsRef<[u8]>>(
         &self,
         nonce: Nonce,
         aad: Aad<A>,
         in_out: &'in_out mut [u8],
-        ciphertext_and_tag: I,
+        ciphertext_and_tag: RangeFrom<usize>,
     ) -> Result<&'in_out mut [u8], error::Unspecified> {
         open_within_(&self.key, nonce, aad, in_out, ciphertext_and_tag)
     }
