@@ -260,7 +260,7 @@ fn open_with_key<'a, I: RangeBounds<usize>>(
     ciphertext_and_tag: I,
 ) -> Result<&'a mut [u8], error::Unspecified> {
     let mut o_key: aead::OpeningKey<OneNonceSequence> = make_key(algorithm, key, nonce);
-    o_key.open_in_place(aad, in_out, ciphertext_and_tag)
+    o_key.open_within(aad, in_out, ciphertext_and_tag)
 }
 
 fn seal_with_less_safe_key(
@@ -283,7 +283,7 @@ fn open_with_less_safe_key<'a, I: RangeBounds<usize>>(
     ciphertext_and_tag: I,
 ) -> Result<&'a mut [u8], error::Unspecified> {
     let key = make_less_safe_key(algorithm, key);
-    key.open_in_place(nonce, aad, in_out, ciphertext_and_tag)
+    key.open_within(nonce, aad, in_out, ciphertext_and_tag)
 }
 
 fn test_aead_key_sizes(aead_alg: &'static aead::Algorithm) {
