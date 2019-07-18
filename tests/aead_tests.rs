@@ -317,17 +317,6 @@ fn test_aead_key_sizes(aead_alg: &'static aead::Algorithm) {
 }
 
 // Test that we reject non-standard nonce sizes.
-//
-// XXX: This test isn't that great in terms of how it tests
-// `open_in_place`. It should be constructing a valid ciphertext using the
-// unsupported nonce size using a different implementation that supports
-// non-standard nonce sizes. So, when `open_in_place` returns
-// `Err(error::Unspecified)`, we don't know if it is because it rejected
-// the non-standard nonce size or because it tried to process the input
-// with the wrong nonce. But at least we're verifying that `open_in_place`
-// won't crash or access out-of-bounds memory (when run under valgrind or
-// similar). The AES-128-GCM tests have some WRONG_NONCE_LENGTH test cases
-// that tests this more correctly.
 #[test]
 fn test_aead_nonce_sizes() -> Result<(), error::Unspecified> {
     let nonce_len = aead::NONCE_LEN;
