@@ -95,38 +95,46 @@ impl<N: NonceSequence> core::fmt::Debug for OpeningKey<N> {
 impl<N: NonceSequence> OpeningKey<N> {
     /// Authenticates and decrypts (“opens”) data in place.
     ///
-    /// The input is `&in_out[ciphertext_and_tag]`. Use `..` as
-    /// `ciphertext_and_tag` if the entirety of `in_out` is the input.
-    ///
-    /// As the input ciphertext is transformed to plaintext, it is shifted to
-    /// the start of `in_out`. When `open_in_place()` returns `Ok(plaintext)`,
-    /// the decrypted output is `plaintext`, which is `&mut
-    /// in_out[..plaintext.len()]`; the output plaintext is always written to
-    /// the beginning of `in_out`, even if the input doesn't start at the
-    /// beginning of `in_out`. For example, the following two code fragments
-    /// are equivalent:
-    ///
-    /// ```skip
-    /// key.open_in_place(nonce, aad, in_out, in_out, in_prefix_len..)?;
-    /// ```
-    ///
-    /// ```skip
-    /// in_out.copy_within(in_prefix_len.., 0);
-    /// key.open_in_place(nonce, aad, in_out, in_out, ..(in_out.len() - in_prefix_len))?;
-    /// ```
-    ///
-    /// Similarly, these are equivalent (when `copy_within` doesn't panic):
-    ///
-    /// ```skip
-    /// key.open_in_place(nonce, aad, in_out, in_out, start..end)?;
-    /// ```
-    ///
-    /// ```skip
-    /// in_out.copy_within(start..end, 0);
-    /// key.open_in_place(nonce, aad, in_out, ..(end - start));
-    /// ```
+    /// On input, `in_out` must be the ciphertext followed by the tag. When
+    /// `open_in_place()` returns `Ok(plaintext)`, the input ciphertext
+    /// has been overwritten by the plaintext; `plaintext` will refer to the
+    /// plaintext without the tag.
     ///
     /// When `open_in_place()` returns `Err(..)`, `in_out` may have been
+    /// overwritten in an unspecified way.
+    /// ```
+    #[inline]
+    pub fn open_in_place<'in_out, A: AsRef<[u8]>>(
+        &mut self,
+        aad: Aad<A>,
+        in_out: &'in_out mut [u8],
+    ) -> Result<&'in_out mut [u8], error::Unspecified> {
+        self.open_within(aad, in_out, ..)
+    }
+
+    /// Authenticates and decrypts (“opens”) data in place, with a shift.
+    ///
+    /// On input, `in_out[ciphertext_and_tag]` must be the ciphertext followed
+    /// by the tag. When `open_within()` returns `Ok(plaintext)`, the plaintext
+    /// will be at `in_out[0..plaintext.len()]`. In other words, the following
+    /// two code fragments are equivalent for valid values of
+    /// `ciphertext_and_tag`, except `open_within` will often be more efficient:
+    ///
+    ///
+    /// ```skip
+    /// let plaintext = key.open_within(aad, in_out, cipertext_and_tag)?;
+    /// ```
+    ///
+    /// ```skip
+    /// let ciphertext_and_tag_len = in_out[ciphertext_and_tag].len();
+    /// in_out.copy_within(ciphertext_and_tag, 0);
+    /// let plaintext = key.open_in_place(aad, &mut in_out[..ciphertext_and_tag_len])?;
+    /// ```
+    ///
+    /// Similarly, `key.open_within(aad, in_out, ..)` is equivalent to
+    /// `key.open_in_place(aad, in_out)`.
+    ///
+    ///  When `open_in_place()` returns `Err(..)`, `in_out` may have been
     /// overwritten in an unspecified way.
     ///
     /// The shifting feature is useful in the case where multiple packets are
@@ -143,14 +151,16 @@ impl<N: NonceSequence> OpeningKey<N> {
     /// Output: [Plaintext][Plaintext][Plaintext]
     ///        “Split stream reassembled in place”
     /// ```
+    ///
+    /// This reassembly be accomplished with three calls to `open_within()`.
     #[inline]
-    pub fn open_in_place<'in_out, A: AsRef<[u8]>, I: RangeBounds<usize>>(
+    pub fn open_within<'in_out, A: AsRef<[u8]>, I: RangeBounds<usize>>(
         &mut self,
         aad: Aad<A>,
         in_out: &'in_out mut [u8],
         ciphertext_and_tag: I,
     ) -> Result<&'in_out mut [u8], error::Unspecified> {
-        open_in_place_(
+        open_within_(
             &self.key,
             self.nonce_sequence.advance()?,
             aad,
@@ -161,14 +171,14 @@ impl<N: NonceSequence> OpeningKey<N> {
 }
 
 #[inline]
-fn open_in_place_<'in_out, A: AsRef<[u8]>, I: RangeBounds<usize>>(
+fn open_within_<'in_out, A: AsRef<[u8]>, I: RangeBounds<usize>>(
     key: &UnboundKey,
     nonce: Nonce,
     Aad(aad): Aad<A>,
     in_out: &'in_out mut [u8],
     ciphertext_and_tag: I,
 ) -> Result<&'in_out mut [u8], error::Unspecified> {
-    fn open_in_place<'in_out>(
+    fn open_within<'in_out>(
         key: &UnboundKey,
         nonce: Nonce,
         aad: Aad<&[u8]>,
@@ -217,7 +227,7 @@ fn open_in_place_<'in_out, A: AsRef<[u8]>, I: RangeBounds<usize>>(
         Bound::Excluded(start) => (*start).checked_add(1).ok_or(error::Unspecified)?,
     };
 
-    open_in_place(key, nonce, Aad::from(aad.as_ref()), in_out, in_prefix_len)
+    open_within(key, nonce, Aad::from(aad.as_ref()), in_out, in_prefix_len)
 }
 
 /// An AEAD key for encrypting and signing ("sealing"), bound to a nonce
@@ -397,14 +407,25 @@ impl LessSafeKey {
 
     /// Like `Key::open_in_place()`, except it accepts an arbitrary nonce.
     #[inline]
-    pub fn open_in_place<'in_out, A: AsRef<[u8]>, I: RangeBounds<usize>>(
+    pub fn open_in_place<'in_out, A: AsRef<[u8]>>(
+        &self,
+        nonce: Nonce,
+        aad: Aad<A>,
+        in_out: &'in_out mut [u8],
+    ) -> Result<&'in_out mut [u8], error::Unspecified> {
+        self.open_within(nonce, aad, in_out, ..)
+    }
+
+    /// Like `Key::open_within()`, except it accepts an arbitrary nonce.
+    #[inline]
+    pub fn open_within<'in_out, A: AsRef<[u8]>, I: RangeBounds<usize>>(
         &self,
         nonce: Nonce,
         aad: Aad<A>,
         in_out: &'in_out mut [u8],
         ciphertext_and_tag: I,
     ) -> Result<&'in_out mut [u8], error::Unspecified> {
-        open_in_place_(&self.key, nonce, aad, in_out, ciphertext_and_tag)
+        open_within_(&self.key, nonce, aad, in_out, ciphertext_and_tag)
     }
 
     /// Like `Key::seal_in_place()`, except it accepts an arbitrary nonce.
