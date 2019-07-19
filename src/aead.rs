@@ -95,6 +95,8 @@ impl<N: NonceSequence> core::fmt::Debug for OpeningKey<N> {
 impl<N: NonceSequence> OpeningKey<N> {
     /// Authenticates and decrypts (“opens”) data in place.
     ///
+    /// `aad` is the additional authenticated data (AAD), if any.
+    ///
     /// On input, `in_out` must be the ciphertext followed by the tag. When
     /// `open_in_place()` returns `Ok(plaintext)`, the input ciphertext
     /// has been overwritten by the plaintext; `plaintext` will refer to the
@@ -102,17 +104,21 @@ impl<N: NonceSequence> OpeningKey<N> {
     ///
     /// When `open_in_place()` returns `Err(..)`, `in_out` may have been
     /// overwritten in an unspecified way.
-    /// ```
     #[inline]
-    pub fn open_in_place<'in_out, A: AsRef<[u8]>>(
+    pub fn open_in_place<'in_out, A>(
         &mut self,
         aad: Aad<A>,
         in_out: &'in_out mut [u8],
-    ) -> Result<&'in_out mut [u8], error::Unspecified> {
+    ) -> Result<&'in_out mut [u8], error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+    {
         self.open_within(aad, in_out, 0..)
     }
 
     /// Authenticates and decrypts (“opens”) data in place, with a shift.
+    ///
+    /// `aad` is the additional authenticated data (AAD), if any.
     ///
     /// On input, `in_out[ciphertext_and_tag]` must be the ciphertext followed
     /// by the tag. When `open_within()` returns `Ok(plaintext)`, the plaintext
@@ -154,12 +160,15 @@ impl<N: NonceSequence> OpeningKey<N> {
     ///
     /// This reassembly be accomplished with three calls to `open_within()`.
     #[inline]
-    pub fn open_within<'in_out, A: AsRef<[u8]>>(
+    pub fn open_within<'in_out, A>(
         &mut self,
         aad: Aad<A>,
         in_out: &'in_out mut [u8],
         ciphertext_and_tag: RangeFrom<usize>,
-    ) -> Result<&'in_out mut [u8], error::Unspecified> {
+    ) -> Result<&'in_out mut [u8], error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+    {
         open_within_(
             &self.key,
             self.nonce_sequence.advance()?,
@@ -263,18 +272,26 @@ impl<N: NonceSequence> SealingKey<N> {
     ///
     /// `nonce` must be unique for every use of the key to seal data.
     ///
+    /// `aad` is the additional authenticated data (AAD), if any. This is
+    /// authenticated but not encrypted. The type `A` could be a byte slice
+    /// `&[u8]`, a byte array `[u8; N]` for some constant `N`, `Vec<u8>`, etc.
+    /// If there is no AAD then use `Aad::empty()`.
+    ///
     /// The plaintext is given as the input value of `in_out`. `seal_in_place()`
     /// will overwrite the plaintext with the ciphertext and then append the tag
     /// using `in_out.extend()`; the tag will be `self.algorithm.tag_len()` bytes
-    /// long.
-    ///
-    /// `aad` is the additional authenticated data, if any.
+    /// long. Common types for `InOut` are `Vec<u8>` or `VecDeque<u8>` from the
+    /// standard library, or `BytesMut` from the `bytes` crate.
     #[inline]
-    pub fn seal_in_place<A: AsRef<[u8]>, InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>>(
+    pub fn seal_in_place<A, InOut>(
         &mut self,
         aad: Aad<A>,
         in_out: &mut InOut,
-    ) -> Result<(), error::Unspecified> {
+    ) -> Result<(), error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+        InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>,
+    {
         seal_in_place_(&self.key, self.nonce_sequence.advance()?, aad, in_out)
     }
 }
@@ -308,6 +325,9 @@ fn seal_in_place_<A: AsRef<[u8]>, InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_
 
 /// The additionally authenticated data (AAD) for an opening or sealing
 /// operation. This data is authenticated but is **not** encrypted.
+///
+/// The type `A` could be a byte slice `&[u8]`, a byte array `[u8; N]`
+/// for some constant `N`, `Vec<u8>`, etc.
 #[repr(transparent)]
 pub struct Aad<A: AsRef<[u8]>>(A);
 
@@ -403,35 +423,45 @@ impl LessSafeKey {
 
     /// Like `Key::open_in_place()`, except it accepts an arbitrary nonce.
     #[inline]
-    pub fn open_in_place<'in_out, A: AsRef<[u8]>>(
+    pub fn open_in_place<'in_out, A>(
         &self,
         nonce: Nonce,
         aad: Aad<A>,
         in_out: &'in_out mut [u8],
-    ) -> Result<&'in_out mut [u8], error::Unspecified> {
+    ) -> Result<&'in_out mut [u8], error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+    {
         self.open_within(nonce, aad, in_out, 0..)
     }
 
     /// Like `Key::open_within()`, except it accepts an arbitrary nonce.
     #[inline]
-    pub fn open_within<'in_out, A: AsRef<[u8]>>(
+    pub fn open_within<'in_out, A>(
         &self,
         nonce: Nonce,
         aad: Aad<A>,
         in_out: &'in_out mut [u8],
         ciphertext_and_tag: RangeFrom<usize>,
-    ) -> Result<&'in_out mut [u8], error::Unspecified> {
+    ) -> Result<&'in_out mut [u8], error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+    {
         open_within_(&self.key, nonce, aad, in_out, ciphertext_and_tag)
     }
 
     /// Like `Key::seal_in_place()`, except it accepts an arbitrary nonce.
     #[inline]
-    pub fn seal_in_place<A: AsRef<[u8]>, InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>>(
+    pub fn seal_in_place<A, InOut>(
         &self,
         nonce: Nonce,
         aad: Aad<A>,
         in_out: &mut InOut,
-    ) -> Result<(), error::Unspecified> {
+    ) -> Result<(), error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+        InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>,
+    {
         seal_in_place_(&self.key, nonce, aad, in_out)
     }
 
