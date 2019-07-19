@@ -17,7 +17,7 @@
 #include "isogeny.h"
 #include "fpx.h"
 
-extern const struct params_t params;
+extern const struct params_t sike_params;
 
 // SIDH_JINV_BYTESZ is a number of bytes used for encoding j-invariant.
 #define SIDH_JINV_BYTESZ    110U
@@ -75,7 +75,7 @@ static void ladder3Pt(
     const size_t nbits = is_A?SIDH_PRV_A_BITSZ:SIDH_PRV_B_BITSZ;
 
     // Initializing constant
-    sike_fpcopy(params.mont_one, A24[0].c0);
+    sike_fpcopy(sike_params.mont_one, A24[0].c0);
     sike_fp2add(A24, A24, A24);
     sike_fp2add(A, A24, A24);
     sike_fp2div2(A24, A24);
@@ -83,11 +83,11 @@ static void ladder3Pt(
 
     // Initializing points
     sike_fp2copy(xQ, R0->X);
-    sike_fpcopy(params.mont_one, R0->Z[0].c0);
+    sike_fpcopy(sike_params.mont_one, R0->Z[0].c0);
     sike_fp2copy(xPQ, R2->X);
-    sike_fpcopy(params.mont_one, R2->Z[0].c0);
+    sike_fpcopy(sike_params.mont_one, R2->Z[0].c0);
     sike_fp2copy(xP, R->X);
-    sike_fpcopy(params.mont_one, R->Z[0].c0);
+    sike_fpcopy(sike_params.mont_one, R->Z[0].c0);
     memset(R->Z->c1, 0, sizeof(R->Z->c1));
 
     // Main loop
@@ -98,7 +98,7 @@ static void ladder3Pt(
         mask = 0 - (crypto_word_t)swap;
 
         sike_fp2cswap(R, R2, mask);
-        xDBLADD(R0, R2, R->X, A24);
+        sike_xDBLADD(R0, R2, R->X, A24);
         sike_fp2mul_mont(R2->X, R->Z, R2->X);
     }
 
@@ -158,14 +158,14 @@ static void gen_iso_A(const uint8_t* skA, uint8_t* pkA)
     unsigned int m, index = 0, pts_index[MAX_INT_POINTS_ALICE], npts = 0, ii = 0;
 
     // Initialize basis points
-    sike_init_basis(params.A_gen, XPA, XQA, XRA);
-    sike_init_basis(params.B_gen, phiP->X, phiQ->X, phiR->X);
-    sike_fpcopy(params.mont_one, (phiP->Z)->c0);
-    sike_fpcopy(params.mont_one, (phiQ->Z)->c0);
-    sike_fpcopy(params.mont_one, (phiR->Z)->c0);
+    sike_init_basis(sike_params.A_gen, XPA, XQA, XRA);
+    sike_init_basis(sike_params.B_gen, phiP->X, phiQ->X, phiR->X);
+    sike_fpcopy(sike_params.mont_one, (phiP->Z)->c0);
+    sike_fpcopy(sike_params.mont_one, (phiQ->Z)->c0);
+    sike_fpcopy(sike_params.mont_one, (phiR->Z)->c0);
 
     // Initialize constants: A24plus = A+2C, C24 = 4C, where A=6, C=1
-    sike_fpcopy(params.mont_one, A24plus->c0);
+    sike_fpcopy(sike_params.mont_one, A24plus->c0);
     sike_fp2add(A24plus, A24plus, A24plus);
     sike_fp2add(A24plus, A24plus, C24);
     sike_fp2add(A24plus, C24, A);
@@ -181,18 +181,18 @@ static void gen_iso_A(const uint8_t* skA, uint8_t* pkA)
             sike_fp2copy(R->X, pts[npts]->X);
             sike_fp2copy(R->Z, pts[npts]->Z);
             pts_index[npts++] = index;
-            m = params.A_strat[ii++];
-            xDBLe(R, R, A24plus, C24, (2*m));
+            m = sike_params.A_strat[ii++];
+            sike_xDBLe(R, R, A24plus, C24, (2*m));
             index += m;
         }
-        get_4_isog(R, A24plus, C24, coeff);
+        sike_get_4_isog(R, A24plus, C24, coeff);
 
         for (size_t i = 0; i < npts; i++) {
-            eval_4_isog(pts[i], coeff);
+            sike_eval_4_isog(pts[i], coeff);
         }
-        eval_4_isog(phiP, coeff);
-        eval_4_isog(phiQ, coeff);
-        eval_4_isog(phiR, coeff);
+        sike_eval_4_isog(phiP, coeff);
+        sike_eval_4_isog(phiQ, coeff);
+        sike_eval_4_isog(phiR, coeff);
 
         sike_fp2copy(pts[npts-1]->X, R->X);
         sike_fp2copy(pts[npts-1]->Z, R->Z);
@@ -200,12 +200,12 @@ static void gen_iso_A(const uint8_t* skA, uint8_t* pkA)
         npts -= 1;
     }
 
-    get_4_isog(R, A24plus, C24, coeff);
-    eval_4_isog(phiP, coeff);
-    eval_4_isog(phiQ, coeff);
-    eval_4_isog(phiR, coeff);
+    sike_get_4_isog(R, A24plus, C24, coeff);
+    sike_eval_4_isog(phiP, coeff);
+    sike_eval_4_isog(phiQ, coeff);
+    sike_eval_4_isog(phiR, coeff);
 
-    inv_3_way(phiP->Z, phiQ->Z, phiR->Z);
+    sike_inv_3_way(phiP->Z, phiQ->Z, phiR->Z);
     sike_fp2mul_mont(phiP->X, phiP->Z, phiP->X);
     sike_fp2mul_mont(phiQ->X, phiQ->Z, phiQ->X);
     sike_fp2mul_mont(phiR->X, phiR->Z, phiR->X);
@@ -233,14 +233,14 @@ static void gen_iso_B(const uint8_t* skB, uint8_t* pkB)
     unsigned int m, index = 0, pts_index[MAX_INT_POINTS_BOB], npts = 0, ii = 0;
 
     // Initialize basis points
-    sike_init_basis(params.B_gen, XPB, XQB, XRB);
-    sike_init_basis(params.A_gen, phiP->X, phiQ->X, phiR->X);
-    sike_fpcopy(params.mont_one, (phiP->Z)->c0);
-    sike_fpcopy(params.mont_one, (phiQ->Z)->c0);
-    sike_fpcopy(params.mont_one, (phiR->Z)->c0);
+    sike_init_basis(sike_params.B_gen, XPB, XQB, XRB);
+    sike_init_basis(sike_params.A_gen, phiP->X, phiQ->X, phiR->X);
+    sike_fpcopy(sike_params.mont_one, (phiP->Z)->c0);
+    sike_fpcopy(sike_params.mont_one, (phiQ->Z)->c0);
+    sike_fpcopy(sike_params.mont_one, (phiR->Z)->c0);
 
     // Initialize constants: A24minus = A-2C, A24plus = A+2C, where A=6, C=1
-    sike_fpcopy(params.mont_one, A24plus->c0);
+    sike_fpcopy(sike_params.mont_one, A24plus->c0);
     sike_fp2add(A24plus, A24plus, A24plus);
     sike_fp2add(A24plus, A24plus, A24minus);
     sike_fp2add(A24plus, A24minus, A);
@@ -256,18 +256,18 @@ static void gen_iso_B(const uint8_t* skB, uint8_t* pkB)
             sike_fp2copy(R->X, pts[npts]->X);
             sike_fp2copy(R->Z, pts[npts]->Z);
             pts_index[npts++] = index;
-            m = params.B_strat[ii++];
-            xTPLe(R, R, A24minus, A24plus, m);
+            m = sike_params.B_strat[ii++];
+            sike_xTPLe(R, R, A24minus, A24plus, m);
             index += m;
         }
-        get_3_isog(R, A24minus, A24plus, coeff);
+        sike_get_3_isog(R, A24minus, A24plus, coeff);
 
         for (size_t i = 0; i < npts; i++) {
-            eval_3_isog(pts[i], coeff);
+            sike_eval_3_isog(pts[i], coeff);
         }
-        eval_3_isog(phiP, coeff);
-        eval_3_isog(phiQ, coeff);
-        eval_3_isog(phiR, coeff);
+        sike_eval_3_isog(phiP, coeff);
+        sike_eval_3_isog(phiQ, coeff);
+        sike_eval_3_isog(phiR, coeff);
 
         sike_fp2copy(pts[npts-1]->X, R->X);
         sike_fp2copy(pts[npts-1]->Z, R->Z);
@@ -275,12 +275,12 @@ static void gen_iso_B(const uint8_t* skB, uint8_t* pkB)
         npts -= 1;
     }
 
-    get_3_isog(R, A24minus, A24plus, coeff);
-    eval_3_isog(phiP, coeff);
-    eval_3_isog(phiQ, coeff);
-    eval_3_isog(phiR, coeff);
+    sike_get_3_isog(R, A24minus, A24plus, coeff);
+    sike_eval_3_isog(phiP, coeff);
+    sike_eval_3_isog(phiQ, coeff);
+    sike_eval_3_isog(phiR, coeff);
 
-    inv_3_way(phiP->Z, phiQ->Z, phiR->Z);
+    sike_inv_3_way(phiP->Z, phiQ->Z, phiR->Z);
     sike_fp2mul_mont(phiP->X, phiP->Z, phiP->X);
     sike_fp2mul_mont(phiQ->X, phiQ->Z, phiQ->X);
     sike_fp2mul_mont(phiR->X, phiR->Z, phiR->X);
@@ -311,8 +311,8 @@ static void ex_iso_A(const uint8_t* skA, const uint8_t* pkB, uint8_t* ssA)
     fp2_decode(pkB + 2*SIDH_JINV_BYTESZ, PKB[2]);
 
     // Initialize constants
-    get_A(PKB[0], PKB[1], PKB[2], A);
-    sike_fpadd(params.mont_one, params.mont_one, C24->c0);
+    sike_get_A(PKB[0], PKB[1], PKB[2], A);
+    sike_fpadd(sike_params.mont_one, sike_params.mont_one, C24->c0);
     sike_fp2add(A, C24, A24plus);
     sike_fpadd(C24->c0, C24->c0, C24->c0);
 
@@ -326,14 +326,14 @@ static void ex_iso_A(const uint8_t* skA, const uint8_t* pkB, uint8_t* ssA)
             sike_fp2copy(R->X, pts[npts]->X);
             sike_fp2copy(R->Z, pts[npts]->Z);
             pts_index[npts++] = index;
-            m = params.A_strat[ii++];
-            xDBLe(R, R, A24plus, C24, (2*m));
+            m = sike_params.A_strat[ii++];
+            sike_xDBLe(R, R, A24plus, C24, (2*m));
             index += m;
         }
-        get_4_isog(R, A24plus, C24, coeff);
+        sike_get_4_isog(R, A24plus, C24, coeff);
 
         for (size_t i = 0; i < npts; i++) {
-            eval_4_isog(pts[i], coeff);
+            sike_eval_4_isog(pts[i], coeff);
         }
 
         sike_fp2copy(pts[npts-1]->X, R->X);
@@ -342,11 +342,11 @@ static void ex_iso_A(const uint8_t* skA, const uint8_t* pkB, uint8_t* ssA)
         npts -= 1;
     }
 
-    get_4_isog(R, A24plus, C24, coeff);
+    sike_get_4_isog(R, A24plus, C24, coeff);
     sike_fp2add(A24plus, A24plus, A24plus);
     sike_fp2sub(A24plus, C24, A24plus);
     sike_fp2add(A24plus, A24plus, A24plus);
-    j_inv(A24plus, C24, jinv);
+    sike_j_inv(A24plus, C24, jinv);
     sike_fp2_encode(jinv, ssA);
 }
 
@@ -370,8 +370,8 @@ static void ex_iso_B(const uint8_t* skB, const uint8_t* pkA, uint8_t* ssB)
     fp2_decode(pkA + 2*SIDH_JINV_BYTESZ, PKB[2]);
 
     // Initialize constants
-    get_A(PKB[0], PKB[1], PKB[2], A);
-    sike_fpadd(params.mont_one, params.mont_one, A24minus->c0);
+    sike_get_A(PKB[0], PKB[1], PKB[2], A);
+    sike_fpadd(sike_params.mont_one, sike_params.mont_one, A24minus->c0);
     sike_fp2add(A, A24minus, A24plus);
     sike_fp2sub(A, A24minus, A24minus);
 
@@ -385,14 +385,14 @@ static void ex_iso_B(const uint8_t* skB, const uint8_t* pkA, uint8_t* ssB)
             sike_fp2copy(R->X, pts[npts]->X);
             sike_fp2copy(R->Z, pts[npts]->Z);
             pts_index[npts++] = index;
-            m = params.B_strat[ii++];
-            xTPLe(R, R, A24minus, A24plus, m);
+            m = sike_params.B_strat[ii++];
+            sike_xTPLe(R, R, A24minus, A24plus, m);
             index += m;
         }
-        get_3_isog(R, A24minus, A24plus, coeff);
+        sike_get_3_isog(R, A24minus, A24plus, coeff);
 
         for (size_t i = 0; i < npts; i++) {
-            eval_3_isog(pts[i], coeff);
+            sike_eval_3_isog(pts[i], coeff);
         }
 
         sike_fp2copy(pts[npts-1]->X, R->X);
@@ -401,11 +401,11 @@ static void ex_iso_B(const uint8_t* skB, const uint8_t* pkA, uint8_t* ssB)
         npts -= 1;
     }
 
-    get_3_isog(R, A24minus, A24plus, coeff);
+    sike_get_3_isog(R, A24minus, A24plus, coeff);
     sike_fp2add(A24plus, A24minus, A);
     sike_fp2add(A, A, A);
     sike_fp2sub(A24plus, A24minus, A24plus);
-    j_inv(A, A24plus, jinv);
+    sike_j_inv(A, A24plus, jinv);
     sike_fp2_encode(jinv, ssB);
 }
 

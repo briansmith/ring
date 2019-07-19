@@ -7,7 +7,7 @@
 #include "utils.h"
 
 // Parameters for isogeny system "SIKE"
-const struct params_t params = {
+const struct params_t sike_params = {
     .prime = {
         U64_TO_WORDS(0xFFFFFFFFFFFFFFFF), U64_TO_WORDS(0xFFFFFFFFFFFFFFFF),
         U64_TO_WORDS(0xFFFFFFFFFFFFFFFF), U64_TO_WORDS(0xFDC1767AE2FFFFFF),

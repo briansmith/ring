@@ -13,7 +13,7 @@
 #include "../fpx.h"
 
 // Global constants
-extern const struct params_t params;
+extern const struct params_t sike_params;
 
 static void digit_x_digit(const crypto_word_t a, const crypto_word_t b, crypto_word_t* c)
 { // Digit multiplication, digit * digit -> 2-digit result
@@ -62,13 +62,13 @@ void sike_fpadd(const felm_t a, const felm_t b, felm_t c)
 
     carry = 0;
     for (i = 0; i < NWORDS_FIELD; i++) {
-        SUBC(carry, c[i], params.prime_x2[i], carry, c[i]);
+        SUBC(carry, c[i], sike_params.prime_x2[i], carry, c[i]);
     }
     mask = 0 - (crypto_word_t)carry;
 
     carry = 0;
     for (i = 0; i < NWORDS_FIELD; i++) {
-        ADDC(carry, c[i], params.prime_x2[i] & mask, carry, c[i]);
+        ADDC(carry, c[i], sike_params.prime_x2[i] & mask, carry, c[i]);
     }
 }
 
@@ -86,7 +86,7 @@ void sike_fpsub(const felm_t a, const felm_t b, felm_t c)
 
     borrow = 0;
     for (i = 0; i < NWORDS_FIELD; i++) {
-        ADDC(borrow, c[i], params.prime_x2[i] & mask, borrow, c[i]);
+        ADDC(borrow, c[i], sike_params.prime_x2[i] & mask, borrow, c[i]);
     }
 }
 
@@ -139,7 +139,7 @@ void sike_fprdc(felm_t ma, felm_t mc)
     for (i = 0; i < NWORDS_FIELD; i++) {
         for (j = 0; j < i; j++) {
             if (j < (i-ZERO_WORDS+1)) {
-                MUL(mc[j], params.prime_p1[i-j], UV+1, UV[0]);
+                MUL(mc[j], sike_params.prime_p1[i-j], UV+1, UV[0]);
                 ADDC(0, UV[0], v, carry, v);
                 ADDC(carry, UV[1], u, carry, u);
                 t += carry;
@@ -160,7 +160,7 @@ void sike_fprdc(felm_t ma, felm_t mc)
         }
         for (j = i-NWORDS_FIELD+1; j < NWORDS_FIELD; j++) {
             if (j < (NWORDS_FIELD-count)) {
-                MUL(mc[j], params.prime_p1[i-j], UV+1, UV[0]);
+                MUL(mc[j], sike_params.prime_p1[i-j], UV+1, UV[0]);
                 ADDC(0, UV[0], v, carry, v);
                 ADDC(carry, UV[1], u, carry, u);
                 t += carry;
