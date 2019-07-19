@@ -3044,7 +3044,7 @@ OPENSSL_EXPORT const char *SSL_get_psk_identity(const SSL *ssl);
 // signaling bit. These functions should not be used without explicit permission
 // from BoringSSL-team.
 
-OPENSSL_EXPORT int SSL_enable_pq_experiment_signal(SSL *ssl);
+OPENSSL_EXPORT void SSL_CTX_enable_pq_experiment_signal(SSL_CTX *ctx);
 OPENSSL_EXPORT int SSL_pq_experiment_signal_seen(const SSL *ssl);
 
 

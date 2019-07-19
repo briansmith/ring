@@ -569,7 +569,8 @@ ssl_ctx_st::ssl_ctx_st(const SSL_METHOD *ssl_method)
       false_start_allowed_without_alpn(false),
       ignore_tls13_downgrade(false),
       handoff(false),
-      enable_early_data(false) {
+      enable_early_data(false),
+      pq_experiment_signal(false) {
   CRYPTO_MUTEX_init(&lock);
   CRYPTO_new_ex_data(&ex_data);
 }
@@ -734,8 +735,7 @@ SSL_CONFIG::SSL_CONFIG(SSL *ssl_arg)
       handoff(false),
       shed_handshake_config(false),
       ignore_tls13_downgrade(false),
-      jdk11_workaround(false),
-      pq_experiment_signal(false) {
+      jdk11_workaround(false) {
   assert(ssl);
 }
 
@@ -1246,12 +1246,8 @@ int SSL_send_fatal_alert(SSL *ssl, uint8_t alert) {
   return ssl_send_alert_impl(ssl, SSL3_AL_FATAL, alert);
 }
 
-int SSL_enable_pq_experiment_signal(SSL *ssl) {
-  if (!ssl->config) {
-    return 0;
-  }
-  ssl->config->pq_experiment_signal = true;
-  return 1;
+void SSL_CTX_enable_pq_experiment_signal(SSL_CTX *ctx) {
+  ctx->pq_experiment_signal = true;
 }
 
 int SSL_pq_experiment_signal_seen(const SSL *ssl) {

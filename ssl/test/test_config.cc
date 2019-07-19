@@ -1346,6 +1346,10 @@ bssl::UniquePtr<SSL_CTX> TestConfig::SetupCtx(SSL_CTX *old_ctx) const {
     SSL_CTX_set_options(ssl_ctx.get(), SSL_OP_CIPHER_SERVER_PREFERENCE);
   }
 
+  if (enable_pq_experiment_signal) {
+    SSL_CTX_enable_pq_experiment_signal(ssl_ctx.get());
+  }
+
   return ssl_ctx;
 }
 
@@ -1714,12 +1718,6 @@ bssl::UniquePtr<SSL> TestConfig::NewSSL(
       fprintf(stderr, "SSL_set1_delegated_credential failed.\n");
       return nullptr;
     }
-  }
-
-  if (enable_pq_experiment_signal &&
-      !SSL_enable_pq_experiment_signal(ssl.get())) {
-    fprintf(stderr, "SSL_enable_pq_experiment_signal failed.\n");
-    return nullptr;
   }
 
   return ssl;

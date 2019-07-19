@@ -2588,11 +2588,6 @@ struct SSL_CONFIG {
   // jdk11_workaround is whether to disable TLS 1.3 for JDK 11 clients, as a
   // workaround for https://bugs.openjdk.java.net/browse/JDK-8211806.
   bool jdk11_workaround : 1;
-
-  // pq_experiment_signal indicates that an empty extension should be sent
-  // (for clients) or echoed (for servers) to indicate participation in an
-  // experiment of post-quantum key exchanges.
-  bool pq_experiment_signal : 1;
 };
 
 // From RFC 8446, used in determining PSK modes.
@@ -3192,6 +3187,11 @@ struct ssl_ctx_st {
 
   // If enable_early_data is true, early data can be sent and accepted.
   bool enable_early_data : 1;
+
+  // pq_experiment_signal indicates that an empty extension should be sent
+  // (for clients) or echoed (for servers) to indicate participation in an
+  // experiment of post-quantum key exchanges.
+  bool pq_experiment_signal : 1;
 
  private:
   ~ssl_ctx_st();

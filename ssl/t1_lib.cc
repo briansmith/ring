@@ -2894,7 +2894,7 @@ static bool cert_compression_add_serverhello(SSL_HANDSHAKE *hs, CBB *out) {
 
 static bool ext_pq_experiment_signal_add_clienthello(SSL_HANDSHAKE *hs,
                                                      CBB *out) {
-  if (hs->config->pq_experiment_signal &&
+  if (hs->ssl->ctx->pq_experiment_signal &&
       (!CBB_add_u16(out, TLSEXT_TYPE_pq_experiment_signal) ||
        !CBB_add_u16(out, 0))) {
     return false;
@@ -2910,7 +2910,7 @@ static bool ext_pq_experiment_signal_parse_serverhello(SSL_HANDSHAKE *hs,
     return true;
   }
 
-  if (!hs->config->pq_experiment_signal || CBS_len(contents) != 0) {
+  if (!hs->ssl->ctx->pq_experiment_signal || CBS_len(contents) != 0) {
     return false;
   }
 
@@ -2929,7 +2929,7 @@ static bool ext_pq_experiment_signal_parse_clienthello(SSL_HANDSHAKE *hs,
     return false;
   }
 
-  if (hs->ssl->config->pq_experiment_signal) {
+  if (hs->ssl->ctx->pq_experiment_signal) {
     hs->ssl->s3->pq_experiment_signal_seen = true;
   }
 
