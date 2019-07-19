@@ -1296,7 +1296,8 @@ OPENSSL_EXPORT uint16_t SSL_CIPHER_get_max_version(const SSL_CIPHER *cipher);
 OPENSSL_EXPORT const char *SSL_CIPHER_standard_name(const SSL_CIPHER *cipher);
 
 // SSL_CIPHER_get_name returns the OpenSSL name of |cipher|. For example,
-// "ECDHE-RSA-AES128-GCM-SHA256".
+// "ECDHE-RSA-AES128-GCM-SHA256". Callers are recommended to use
+// |SSL_CIPHER_standard_name| instead.
 OPENSSL_EXPORT const char *SSL_CIPHER_get_name(const SSL_CIPHER *cipher);
 
 // SSL_CIPHER_get_kx_name returns a string that describes the key-exchange
@@ -1399,7 +1400,7 @@ OPENSSL_EXPORT int SSL_CIPHER_get_bits(const SSL_CIPHER *cipher,
 // based on client preferences. An equal-preference is specified with square
 // brackets, combining multiple selectors separated by |. For example:
 //
-//   [ECDHE-ECDSA-CHACHA20-POLY1305|ECDHE-ECDSA-AES128-GCM-SHA256]
+//   [TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256|TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256]
 //
 // Once an equal-preference group is used, future directives must be
 // opcode-less. Inside an equal-preference group, spaces are not allowed.
