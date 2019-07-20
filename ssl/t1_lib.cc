@@ -633,45 +633,7 @@ static bool ext_sni_parse_serverhello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
 
 static bool ext_sni_parse_clienthello(SSL_HANDSHAKE *hs, uint8_t *out_alert,
                                       CBS *contents) {
-  SSL *const ssl = hs->ssl;
-  if (contents == NULL) {
-    return true;
-  }
-
-  CBS server_name_list, host_name;
-  uint8_t name_type;
-  if (!CBS_get_u16_length_prefixed(contents, &server_name_list) ||
-      !CBS_get_u8(&server_name_list, &name_type) ||
-      // Although the server_name extension was intended to be extensible to
-      // new name types and multiple names, OpenSSL 1.0.x had a bug which meant
-      // different name types will cause an error. Further, RFC 4366 originally
-      // defined syntax inextensibly. RFC 6066 corrected this mistake, but
-      // adding new name types is no longer feasible.
-      //
-      // Act as if the extensibility does not exist to simplify parsing.
-      !CBS_get_u16_length_prefixed(&server_name_list, &host_name) ||
-      CBS_len(&server_name_list) != 0 ||
-      CBS_len(contents) != 0) {
-    return false;
-  }
-
-  if (name_type != TLSEXT_NAMETYPE_host_name ||
-      CBS_len(&host_name) == 0 ||
-      CBS_len(&host_name) > TLSEXT_MAXLEN_host_name ||
-      CBS_contains_zero_byte(&host_name)) {
-    *out_alert = SSL_AD_UNRECOGNIZED_NAME;
-    return false;
-  }
-
-  // Copy the hostname as a string.
-  char *raw = nullptr;
-  if (!CBS_strdup(&host_name, &raw)) {
-    *out_alert = SSL_AD_INTERNAL_ERROR;
-    return false;
-  }
-  ssl->s3->hostname.reset(raw);
-
-  hs->should_ack_sni = true;
+  // SNI has already been parsed earlier in the handshake. See |extract_sni|.
   return true;
 }
 

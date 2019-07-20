@@ -3714,6 +3714,8 @@ OPENSSL_EXPORT int SSL_early_callback_ctx_extension_get(
 // high-level operation on |ssl| to be retried at a later time, which will
 // result in another call to |cb|.
 //
+// |SSL_get_servername| may be used during this callback.
+//
 // Note: The |SSL_CLIENT_HELLO| is only valid for the duration of the callback
 // and is not valid while the handshake is paused.
 OPENSSL_EXPORT void SSL_CTX_set_select_certificate_cb(

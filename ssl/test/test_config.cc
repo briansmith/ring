@@ -1102,33 +1102,14 @@ static enum ssl_select_cert_result_t SelectCertificateCallback(
   GetTestState(client_hello->ssl)->early_callback_called = true;
 
   if (!config->expect_server_name.empty()) {
-    const uint8_t *extension_data;
-    size_t extension_len;
-    CBS extension, server_name_list, host_name;
-    uint8_t name_type;
-
-    if (!SSL_early_callback_ctx_extension_get(
-            client_hello, TLSEXT_TYPE_server_name, &extension_data,
-            &extension_len)) {
-      fprintf(stderr, "Could not find server_name extension.\n");
+    const char *server_name =
+        SSL_get_servername(client_hello->ssl, TLSEXT_NAMETYPE_host_name);
+    if (server_name == nullptr ||
+        std::string(server_name) != config->expect_server_name) {
+      fprintf(stderr,
+              "Server name mismatch in early callback (got %s; want %s).\n",
+              server_name, config->expect_server_name.c_str());
       return ssl_select_cert_error;
-    }
-
-    CBS_init(&extension, extension_data, extension_len);
-    if (!CBS_get_u16_length_prefixed(&extension, &server_name_list) ||
-        CBS_len(&extension) != 0 ||
-        !CBS_get_u8(&server_name_list, &name_type) ||
-        name_type != TLSEXT_NAMETYPE_host_name ||
-        !CBS_get_u16_length_prefixed(&server_name_list, &host_name) ||
-        CBS_len(&server_name_list) != 0) {
-      fprintf(stderr, "Could not decode server_name extension.\n");
-      return ssl_select_cert_error;
-    }
-
-    if (!CBS_mem_equal(&host_name,
-                       (const uint8_t *)config->expect_server_name.data(),
-                       config->expect_server_name.size())) {
-      fprintf(stderr, "Server name mismatch.\n");
     }
   }
 
