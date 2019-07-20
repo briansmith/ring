@@ -119,6 +119,9 @@ static int GetKeyType(FileTest *t, const std::string &name) {
   if (name == "Ed25519") {
     return EVP_PKEY_ED25519;
   }
+  if (name == "X25519") {
+    return EVP_PKEY_X25519;
+  }
   ADD_FAILURE() << "Unknown key type: " << name;
   return EVP_PKEY_NONE;
 }
@@ -245,7 +248,7 @@ static bool ImportKey(FileTest *t, KeyMap *key_map,
 
 // SetupContext configures |ctx| based on attributes in |t|, with the exception
 // of the signing digest which must be configured externally.
-static bool SetupContext(FileTest *t, EVP_PKEY_CTX *ctx) {
+static bool SetupContext(FileTest *t, KeyMap *key_map, EVP_PKEY_CTX *ctx) {
   if (t->HasAttribute("RSAPadding")) {
     int padding;
     if (!GetRSAPadding(t, &padding, t->GetAttributeOrDie("RSAPadding")) ||
@@ -285,6 +288,74 @@ static bool SetupContext(FileTest *t, EVP_PKEY_CTX *ctx) {
     }
     buf.release();
   }
+  if (t->HasAttribute("DerivePeer")) {
+    std::string derive_peer = t->GetAttributeOrDie("DerivePeer");
+    if (key_map->count(derive_peer) == 0) {
+      ADD_FAILURE() << "Could not find key " << derive_peer;
+      return false;
+    }
+    EVP_PKEY *derive_peer_key = (*key_map)[derive_peer].get();
+    if (!EVP_PKEY_derive_set_peer(ctx, derive_peer_key)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+static bool TestDerive(FileTest *t, KeyMap *key_map, EVP_PKEY *key) {
+  bssl::UniquePtr<EVP_PKEY_CTX> ctx(EVP_PKEY_CTX_new(key, nullptr));
+  if (!ctx ||
+      !EVP_PKEY_derive_init(ctx.get()) ||
+      !SetupContext(t, key_map, ctx.get())) {
+    return false;
+  }
+
+  bssl::UniquePtr<EVP_PKEY_CTX> copy(EVP_PKEY_CTX_dup(ctx.get()));
+  if (!copy) {
+    return false;
+  }
+
+  for (EVP_PKEY_CTX *pctx : {ctx.get(), copy.get()}) {
+    size_t len;
+    std::vector<uint8_t> actual, output;
+    if (!EVP_PKEY_derive(pctx, nullptr, &len)) {
+      return false;
+    }
+    actual.resize(len);
+    if (!EVP_PKEY_derive(pctx, actual.data(), &len)) {
+      return false;
+    }
+    actual.resize(len);
+
+    // Defer looking up the attribute so Error works properly.
+    if (!t->GetBytes(&output, "Output")) {
+      return false;
+    }
+    EXPECT_EQ(Bytes(output), Bytes(actual));
+
+    // Test when the buffer is too large.
+    actual.resize(len + 1);
+    len = actual.size();
+    if (!EVP_PKEY_derive(pctx, actual.data(), &len)) {
+      return false;
+    }
+    actual.resize(len);
+    EXPECT_EQ(Bytes(output), Bytes(actual));
+
+    // Test when the buffer is too small.
+    actual.resize(len - 1);
+    len = actual.size();
+    if (t->HasAttribute("SmallBufferTruncates")) {
+      if (!EVP_PKEY_derive(pctx, actual.data(), &len)) {
+        return false;
+      }
+      actual.resize(len);
+      EXPECT_EQ(Bytes(output.data(), len), Bytes(actual));
+    } else {
+      EXPECT_FALSE(EVP_PKEY_derive(pctx, actual.data(), &len));
+      ERR_clear_error();
+    }
+  }
   return true;
 }
 
@@ -297,6 +368,14 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
   if (t->GetType() == "PublicKey") {
     return ImportKey(t, key_map, EVP_parse_public_key, EVP_marshal_public_key);
   }
+
+  // Load the key.
+  const std::string &key_name = t->GetParameter();
+  if (key_map->count(key_name) == 0) {
+    ADD_FAILURE() << "Could not find key " << key_name;
+    return false;
+  }
+  EVP_PKEY *key = (*key_map)[key_name].get();
 
   int (*key_op_init)(EVP_PKEY_CTX *ctx) = nullptr;
   int (*key_op)(EVP_PKEY_CTX *ctx, uint8_t *out, size_t *out_len,
@@ -321,18 +400,12 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
   } else if (t->GetType() == "Encrypt") {
     key_op_init = EVP_PKEY_encrypt_init;
     key_op = EVP_PKEY_encrypt;
+  } else if (t->GetType() == "Derive") {
+    return TestDerive(t, key_map, key);
   } else {
     ADD_FAILURE() << "Unknown test " << t->GetType();
     return false;
   }
-
-  // Load the key.
-  const std::string &key_name = t->GetParameter();
-  if (key_map->count(key_name) == 0) {
-    ADD_FAILURE() << "Could not find key " << key_name;
-    return false;
-  }
-  EVP_PKEY *key = (*key_map)[key_name].get();
 
   const EVP_MD *digest = nullptr;
   if (t->HasAttribute("Digest")) {
@@ -355,7 +428,7 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
     bssl::ScopedEVP_MD_CTX ctx, copy;
     EVP_PKEY_CTX *pctx;
     if (!md_op_init(ctx.get(), &pctx, digest, nullptr, key) ||
-        !SetupContext(t, pctx) ||
+        !SetupContext(t, key_map, pctx) ||
         !EVP_MD_CTX_copy_ex(copy.get(), ctx.get())) {
       return false;
     }
@@ -402,7 +475,7 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
       !key_op_init(ctx.get()) ||
       (digest != nullptr &&
        !EVP_PKEY_CTX_set_signature_md(ctx.get(), digest)) ||
-      !SetupContext(t, ctx.get())) {
+      !SetupContext(t, key_map, ctx.get())) {
     return false;
   }
 
@@ -436,7 +509,7 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
           !EVP_PKEY_decrypt_init(decrypt_ctx.get()) ||
           (digest != nullptr &&
            !EVP_PKEY_CTX_set_signature_md(decrypt_ctx.get(), digest)) ||
-          !SetupContext(t, decrypt_ctx.get()) ||
+          !SetupContext(t, key_map, decrypt_ctx.get()) ||
           !EVP_PKEY_decrypt(decrypt_ctx.get(), nullptr, &plaintext_len,
                             actual.data(), actual.size())) {
         return false;
@@ -456,7 +529,7 @@ static bool TestEVP(FileTest *t, KeyMap *key_map) {
           !EVP_PKEY_verify_init(verify_ctx.get()) ||
           (digest != nullptr &&
            !EVP_PKEY_CTX_set_signature_md(verify_ctx.get(), digest)) ||
-          !SetupContext(t, verify_ctx.get())) {
+          !SetupContext(t, key_map, verify_ctx.get())) {
         return false;
       }
       if (t->HasAttribute("VerifyPSSSaltLength")) {

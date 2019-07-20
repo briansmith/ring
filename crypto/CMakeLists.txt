@@ -282,6 +282,8 @@ add_library(
   evp/p_ed25519_asn1.c
   evp/p_rsa.c
   evp/p_rsa_asn1.c
+  evp/p_x25519.c
+  evp/p_x25519_asn1.c
   evp/pbkdf.c
   evp/print.c
   evp/scrypt.c

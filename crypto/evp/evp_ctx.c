@@ -67,15 +67,14 @@
 
 
 static const EVP_PKEY_METHOD *const evp_methods[] = {
-  &rsa_pkey_meth,
-  &ec_pkey_meth,
-  &ed25519_pkey_meth,
+    &rsa_pkey_meth,
+    &ec_pkey_meth,
+    &ed25519_pkey_meth,
+    &x25519_pkey_meth,
 };
 
 static const EVP_PKEY_METHOD *evp_pkey_meth_find(int type) {
-  unsigned i;
-
-  for (i = 0; i < sizeof(evp_methods)/sizeof(EVP_PKEY_METHOD*); i++) {
+  for (size_t i = 0; i < sizeof(evp_methods)/sizeof(EVP_PKEY_METHOD*); i++) {
     if (evp_methods[i]->pkey_id == type) {
       return evp_methods[i];
     }

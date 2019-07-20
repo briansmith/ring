@@ -244,14 +244,22 @@ typedef struct {
   char has_private;
 } ED25519_KEY;
 
+typedef struct {
+  uint8_t pub[32];
+  uint8_t priv[32];
+  char has_private;
+} X25519_KEY;
+
 extern const EVP_PKEY_ASN1_METHOD dsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ec_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD rsa_asn1_meth;
 extern const EVP_PKEY_ASN1_METHOD ed25519_asn1_meth;
+extern const EVP_PKEY_ASN1_METHOD x25519_asn1_meth;
 
 extern const EVP_PKEY_METHOD rsa_pkey_meth;
 extern const EVP_PKEY_METHOD ec_pkey_meth;
 extern const EVP_PKEY_METHOD ed25519_pkey_meth;
+extern const EVP_PKEY_METHOD x25519_pkey_meth;
 
 
 #if defined(__cplusplus)
