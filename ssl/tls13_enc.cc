@@ -38,6 +38,7 @@ static bool init_key_schedule(SSL_HANDSHAKE *hs, uint16_t version,
     return false;
   }
 
+  assert(hs->transcript.DigestLen() <= SSL_MAX_MD_SIZE);
   hs->hash_len = hs->transcript.DigestLen();
 
   // Initialize the secret to the zero key.

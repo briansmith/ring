@@ -465,6 +465,9 @@ BSSL_NAMESPACE_BEGIN
 #define SSL_HANDSHAKE_MAC_SHA256 0x2
 #define SSL_HANDSHAKE_MAC_SHA384 0x4
 
+// SSL_MAX_MD_SIZE is size of the largest hash function used in TLS, SHA-384.
+#define SSL_MAX_MD_SIZE 48
+
 // An SSLCipherPreferenceList contains a list of SSL_CIPHERs with equal-
 // preference groups. For TLS clients, the groups are moot because the server
 // picks the cipher and groups cannot be expressed on the wire. However, for
@@ -1452,13 +1455,13 @@ struct SSL_HANDSHAKE {
   uint16_t max_version = 0;
 
   size_t hash_len = 0;
-  uint8_t secret[EVP_MAX_MD_SIZE] = {0};
-  uint8_t early_traffic_secret[EVP_MAX_MD_SIZE] = {0};
-  uint8_t client_handshake_secret[EVP_MAX_MD_SIZE] = {0};
-  uint8_t server_handshake_secret[EVP_MAX_MD_SIZE] = {0};
-  uint8_t client_traffic_secret_0[EVP_MAX_MD_SIZE] = {0};
-  uint8_t server_traffic_secret_0[EVP_MAX_MD_SIZE] = {0};
-  uint8_t expected_client_finished[EVP_MAX_MD_SIZE] = {0};
+  uint8_t secret[SSL_MAX_MD_SIZE] = {0};
+  uint8_t early_traffic_secret[SSL_MAX_MD_SIZE] = {0};
+  uint8_t client_handshake_secret[SSL_MAX_MD_SIZE] = {0};
+  uint8_t server_handshake_secret[SSL_MAX_MD_SIZE] = {0};
+  uint8_t client_traffic_secret_0[SSL_MAX_MD_SIZE] = {0};
+  uint8_t server_traffic_secret_0[SSL_MAX_MD_SIZE] = {0};
+  uint8_t expected_client_finished[SSL_MAX_MD_SIZE] = {0};
 
   union {
     // sent is a bitset where the bits correspond to elements of kExtensions
@@ -2293,9 +2296,9 @@ struct SSL3_STATE {
   // one.
   UniquePtr<SSL_HANDSHAKE> hs;
 
-  uint8_t write_traffic_secret[EVP_MAX_MD_SIZE] = {0};
-  uint8_t read_traffic_secret[EVP_MAX_MD_SIZE] = {0};
-  uint8_t exporter_secret[EVP_MAX_MD_SIZE] = {0};
+  uint8_t write_traffic_secret[SSL_MAX_MD_SIZE] = {0};
+  uint8_t read_traffic_secret[SSL_MAX_MD_SIZE] = {0};
+  uint8_t exporter_secret[SSL_MAX_MD_SIZE] = {0};
   uint8_t write_traffic_secret_len = 0;
   uint8_t read_traffic_secret_len = 0;
   uint8_t exporter_secret_len = 0;
