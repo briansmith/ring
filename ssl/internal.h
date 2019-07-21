@@ -2173,8 +2173,6 @@ struct SSL3_STATE {
   // the receive half of the connection.
   UniquePtr<ERR_SAVE_STATE> read_error;
 
-  int alert_dispatch = 0;
-
   int total_renegotiations = 0;
 
   // This holds a variable that indicates what we were doing when a 0 or -1 is
@@ -2260,6 +2258,9 @@ struct SSL3_STATE {
   // pq_experimental_signal_seen is true if the peer was observed
   // sending/echoing the post-quantum experiment signal.
   bool pq_experiment_signal_seen : 1;
+
+  // alert_dispatch is true there is an alert in |send_alert| to be sent.
+  bool alert_dispatch : 1;
 
   // hs_buf is the buffer of handshake data to process.
   UniquePtr<BUF_MEM> hs_buf;
