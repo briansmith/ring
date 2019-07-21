@@ -3327,13 +3327,6 @@ OPENSSL_EXPORT int SSL_early_data_accepted(const SSL *ssl);
 // |SSL_ERROR_EARLY_DATA_REJECTED|.
 OPENSSL_EXPORT void SSL_reset_early_data_reject(SSL *ssl);
 
-// SSL_export_early_keying_material behaves like |SSL_export_keying_material|,
-// but it uses the early exporter. The operation will fail if |ssl| did not
-// negotiate TLS 1.3 or 0-RTT.
-OPENSSL_EXPORT int SSL_export_early_keying_material(
-    SSL *ssl, uint8_t *out, size_t out_len, const char *label, size_t label_len,
-    const uint8_t *context, size_t context_len);
-
 // SSL_get_ticket_age_skew returns the difference, in seconds, between the
 // client-sent ticket age and the server-computed value in TLS 1.3 server
 // connections which resumed a session.

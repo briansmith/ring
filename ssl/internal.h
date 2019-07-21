@@ -2296,11 +2296,9 @@ struct SSL3_STATE {
   uint8_t write_traffic_secret[EVP_MAX_MD_SIZE] = {0};
   uint8_t read_traffic_secret[EVP_MAX_MD_SIZE] = {0};
   uint8_t exporter_secret[EVP_MAX_MD_SIZE] = {0};
-  uint8_t early_exporter_secret[EVP_MAX_MD_SIZE] = {0};
   uint8_t write_traffic_secret_len = 0;
   uint8_t read_traffic_secret_len = 0;
   uint8_t exporter_secret_len = 0;
-  uint8_t early_exporter_secret_len = 0;
 
   // Connection binding to prevent renegotiation attacks
   uint8_t previous_client_finished[12] = {0};

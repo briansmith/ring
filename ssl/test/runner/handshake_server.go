@@ -726,16 +726,7 @@ ResendHelloRetryRequest:
 			}
 
 			c.earlyCipherSuite = hs.suite
-			expectEarlyData := config.Bugs.ExpectEarlyData
-			if n := config.Bugs.ExpectEarlyKeyingMaterial; n > 0 {
-				exporter, err := c.ExportEarlyKeyingMaterial(n, []byte(config.Bugs.ExpectEarlyKeyingLabel), []byte(config.Bugs.ExpectEarlyKeyingContext))
-				if err != nil {
-					return err
-				}
-				expectEarlyData = append([][]byte{exporter}, expectEarlyData...)
-			}
-
-			for _, expectedMsg := range expectEarlyData {
+			for _, expectedMsg := range config.Bugs.ExpectEarlyData {
 				if err := c.readRecord(recordTypeApplicationData); err != nil {
 					return err
 				}

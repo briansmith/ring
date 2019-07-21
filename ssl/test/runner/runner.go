@@ -589,9 +589,6 @@ type testCase struct {
 	exportLabel          string
 	exportContext        string
 	useExportContext     bool
-	// exportEarlyKeyingMaterial, if non-zero, behaves like
-	// exportKeyingMaterial, but for the early exporter.
-	exportEarlyKeyingMaterial int
 	// flags, if not empty, contains a list of command-line flags that will
 	// be passed to the shim program.
 	flags []string
@@ -878,20 +875,6 @@ func doExchange(test *testCase, config *Config, conn net.Conn, isResume bool, tr
 	if len(test.expectedQUICTransportParams) > 0 {
 		if !bytes.Equal(test.expectedQUICTransportParams, connState.QUICTransportParams) {
 			return errors.New("Peer did not send expected QUIC transport params")
-		}
-	}
-
-	if isResume && test.exportEarlyKeyingMaterial > 0 {
-		actual := make([]byte, test.exportEarlyKeyingMaterial)
-		if _, err := io.ReadFull(tlsConn, actual); err != nil {
-			return err
-		}
-		expected, err := tlsConn.ExportEarlyKeyingMaterial(test.exportEarlyKeyingMaterial, []byte(test.exportLabel), []byte(test.exportContext))
-		if err != nil {
-			return err
-		}
-		if !bytes.Equal(actual, expected) {
-			return fmt.Errorf("early keying material mismatch; got %x, wanted %x", actual, expected)
 		}
 	}
 
@@ -1272,10 +1255,7 @@ func runTest(test *testCase, shimPath string, mallocNumToFail int64) error {
 			flags = append(flags, "-use-export-context")
 		}
 	}
-	if test.exportEarlyKeyingMaterial > 0 {
-		flags = append(flags, "-on-resume-export-early-keying-material", strconv.Itoa(test.exportEarlyKeyingMaterial))
-	}
-	if test.exportKeyingMaterial > 0 || test.exportEarlyKeyingMaterial > 0 {
+	if test.exportKeyingMaterial > 0 {
 		flags = append(flags, "-export-label", test.exportLabel)
 		flags = append(flags, "-export-context", test.exportContext)
 	}
@@ -10146,106 +10126,6 @@ func addExportKeyingMaterialTests() {
 				expectedError: ":HANDSHAKE_NOT_COMPLETE:",
 			})
 
-			// Test the early exporter works while the client is
-			// sending 0-RTT data. This data arrives during the
-			// server handshake, so we test it with ProtocolBugs.
-			testCases = append(testCases, testCase{
-				name: "ExportEarlyKeyingMaterial-Client-InEarlyData-" + vers.name,
-				config: Config{
-					MaxVersion:       vers.version,
-					MaxEarlyDataSize: 16384,
-				},
-				resumeConfig: &Config{
-					MaxVersion:       vers.version,
-					MaxEarlyDataSize: 16384,
-					Bugs: ProtocolBugs{
-						ExpectEarlyKeyingMaterial: 1024,
-						ExpectEarlyKeyingLabel:    "label",
-						ExpectEarlyKeyingContext:  "context",
-					},
-				},
-				resumeSession: true,
-				flags: []string{
-					"-enable-early-data",
-					"-expect-ticket-supports-early-data",
-					"-on-resume-expect-accept-early-data",
-					"-on-resume-export-early-keying-material", "1024",
-					"-on-resume-export-label", "label",
-					"-on-resume-export-context", "context",
-				},
-			})
-
-			// Test the early exporter still works on the client
-			// after the handshake is confirmed. This arrives after
-			// the server handshake, so the normal hooks work.
-			testCases = append(testCases, testCase{
-				name: "ExportEarlyKeyingMaterial-Client-EarlyDataAccept-" + vers.name,
-				config: Config{
-					MaxVersion:       vers.version,
-					MaxEarlyDataSize: 16384,
-				},
-				resumeConfig: &Config{
-					MaxVersion:       vers.version,
-					MaxEarlyDataSize: 16384,
-				},
-				resumeSession:             true,
-				exportEarlyKeyingMaterial: 1024,
-				exportLabel:               "label",
-				exportContext:             "context",
-				flags: []string{
-					"-enable-early-data",
-					"-expect-ticket-supports-early-data",
-					"-on-resume-expect-accept-early-data",
-					// Handshake twice on the client to force
-					// handshake confirmation.
-					"-handshake-twice",
-				},
-			})
-
-			// Test the early exporter does not work on the client
-			// if 0-RTT was not offered.
-			testCases = append(testCases, testCase{
-				name: "NoExportEarlyKeyingMaterial-Client-Initial-" + vers.name,
-				config: Config{
-					MaxVersion: vers.version,
-				},
-				flags:         []string{"-export-early-keying-material", "1024"},
-				shouldFail:    true,
-				expectedError: ":EARLY_DATA_NOT_IN_USE:",
-			})
-			testCases = append(testCases, testCase{
-				name: "NoExportEarlyKeyingMaterial-Client-Resume-" + vers.name,
-				config: Config{
-					MaxVersion: vers.version,
-				},
-				resumeSession: true,
-				flags:         []string{"-on-resume-export-early-keying-material", "1024"},
-				shouldFail:    true,
-				expectedError: ":EARLY_DATA_NOT_IN_USE:",
-			})
-
-			// Test the early exporter does not work on the client
-			// after a 0-RTT reject.
-			testCases = append(testCases, testCase{
-				name: "NoExportEarlyKeyingMaterial-Client-EarlyDataReject-" + vers.name,
-				config: Config{
-					MaxVersion:       vers.version,
-					MaxEarlyDataSize: 16384,
-					Bugs: ProtocolBugs{
-						AlwaysRejectEarlyData: true,
-					},
-				},
-				resumeSession: true,
-				flags: []string{
-					"-enable-early-data",
-					"-expect-ticket-supports-early-data",
-					"-expect-reject-early-data",
-					"-on-retry-export-early-keying-material", "1024",
-				},
-				shouldFail:    true,
-				expectedError: ":EARLY_DATA_NOT_IN_USE:",
-			})
-
 			// Test the normal exporter on the server in half-RTT.
 			testCases = append(testCases, testCase{
 				testType: serverTest,
@@ -10263,75 +10143,6 @@ func addExportKeyingMaterialTests() {
 				exportContext:        "context",
 				useExportContext:     true,
 				flags:                []string{"-enable-early-data"},
-			})
-
-			// Test the early exporter works on the server in half-RTT.
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "ExportEarlyKeyingMaterial-Server-HalfRTT-" + vers.name,
-				config: Config{
-					MaxVersion: vers.version,
-					Bugs: ProtocolBugs{
-						SendEarlyData:           [][]byte{},
-						ExpectEarlyDataAccepted: true,
-					},
-				},
-				resumeSession:             true,
-				exportEarlyKeyingMaterial: 1024,
-				exportLabel:               "label",
-				exportContext:             "context",
-				flags:                     []string{"-enable-early-data"},
-			})
-
-			// Test the early exporter does not work on the server
-			// if 0-RTT was not offered.
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "NoExportEarlyKeyingMaterial-Server-Initial-" + vers.name,
-				config: Config{
-					MaxVersion: vers.version,
-				},
-				flags:         []string{"-export-early-keying-material", "1024"},
-				shouldFail:    true,
-				expectedError: ":EARLY_DATA_NOT_IN_USE:",
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "NoExportEarlyKeyingMaterial-Server-Resume-" + vers.name,
-				config: Config{
-					MaxVersion: vers.version,
-				},
-				resumeSession: true,
-				flags:         []string{"-on-resume-export-early-keying-material", "1024"},
-				shouldFail:    true,
-				expectedError: ":EARLY_DATA_NOT_IN_USE:",
-			})
-		} else {
-			// Test the early exporter fails before TLS 1.3.
-			testCases = append(testCases, testCase{
-				name: "NoExportEarlyKeyingMaterial-Client-" + vers.name,
-				config: Config{
-					MaxVersion: vers.version,
-				},
-				resumeSession:             true,
-				exportEarlyKeyingMaterial: 1024,
-				exportLabel:               "label",
-				exportContext:             "context",
-				shouldFail:                true,
-				expectedError:             ":WRONG_SSL_VERSION:",
-			})
-			testCases = append(testCases, testCase{
-				testType: serverTest,
-				name:     "NoExportEarlyKeyingMaterial-Server-" + vers.name,
-				config: Config{
-					MaxVersion: vers.version,
-				},
-				resumeSession:             true,
-				exportEarlyKeyingMaterial: 1024,
-				exportLabel:               "label",
-				exportContext:             "context",
-				shouldFail:                true,
-				expectedError:             ":WRONG_SSL_VERSION:",
 			})
 		}
 	}

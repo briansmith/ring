@@ -215,7 +215,6 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
 
 
 static const char kTLS13LabelExporter[] = "exp master";
-static const char kTLS13LabelEarlyExporter[] = "e exp master";
 
 static const char kTLS13LabelClientEarlyTraffic[] = "c e traffic";
 static const char kTLS13LabelClientHandshakeTraffic[] = "c hs traffic";
@@ -229,13 +228,9 @@ bool tls13_derive_early_secrets(SSL_HANDSHAKE *hs) {
                      kTLS13LabelClientEarlyTraffic,
                      strlen(kTLS13LabelClientEarlyTraffic)) ||
       !ssl_log_secret(ssl, "CLIENT_EARLY_TRAFFIC_SECRET",
-                      hs->early_traffic_secret, hs->hash_len) ||
-      !derive_secret(hs, ssl->s3->early_exporter_secret, hs->hash_len,
-                     kTLS13LabelEarlyExporter,
-                     strlen(kTLS13LabelEarlyExporter))) {
+                      hs->early_traffic_secret, hs->hash_len)) {
     return false;
   }
-  ssl->s3->early_exporter_secret_len = hs->hash_len;
 
   if (ssl->quic_method != nullptr) {
     if (ssl->server) {
