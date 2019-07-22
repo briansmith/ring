@@ -58,14 +58,14 @@
 
 #include <GFp/type_check.h>
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 #pragma warning(push, 3)
 #endif
 
 #include <stddef.h>
 #include <stdint.h>
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 #pragma warning(pop)
 #endif
 

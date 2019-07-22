@@ -14,7 +14,7 @@
 
 #include "limbs.h"
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 #pragma warning(push, 3)
 #include <intrin.h>
 #pragma warning(pop)

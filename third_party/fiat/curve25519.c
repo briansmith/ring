@@ -27,11 +27,11 @@
 //
 // The field functions are shared by Ed25519 and X25519 where possible.
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 #pragma warning(push, 3)
 #endif
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 #pragma warning(pop)
 #endif
 
@@ -40,7 +40,7 @@
 #include "internal.h"
 #include "../../crypto/internal.h"
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && !defined(__clang__)
 // '=': conversion from 'int64_t' to 'int32_t', possible loss of data
 #pragma warning(disable: 4242)
 // '=': conversion from 'int32_t' to 'uint8_t', possible loss of data

@@ -57,7 +57,7 @@ static const BN_ULONG ONE[P384_LIMBS] = {
 
 /* XXX: MSVC for x86 warns when it fails to inline these functions it should
  * probably inline. */
-#if defined(_MSC_VER)  && defined(OPENSSL_X86)
+#if defined(_MSC_VER) && !defined(__clang__) && defined(OPENSSL_X86)
 #define INLINE_IF_POSSIBLE __forceinline
 #else
 #define INLINE_IF_POSSIBLE inline
