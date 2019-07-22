@@ -277,13 +277,18 @@ fn ring_build_rs_main() {
         ("o", "-o")
     };
 
-    let is_debug = env::var("DEBUG").unwrap() != "false";
+    let is_git = std::fs::metadata(".git").is_ok();
+
+    // Published builds are always release builds.
+    let is_debug = is_git && env::var("DEBUG").unwrap() != "false";
+
     let target = Target {
         arch,
         os,
         env,
         obj_ext,
         obj_opt,
+        is_git,
         is_debug,
     };
     let pregenerated = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap()).join(PREGENERATED);
@@ -328,6 +333,7 @@ struct Target {
     env: String,
     obj_ext: &'static str,
     obj_opt: &'static str,
+    is_git: bool,
     is_debug: bool,
 }
 
@@ -363,10 +369,8 @@ fn build_c_code(target: &Target, pregenerated: PathBuf, out_dir: &Path) {
         })
         .unwrap();
 
-    let is_git = std::fs::metadata(".git").is_ok();
-
-    let use_pregenerated = !is_git;
-    let warnings_are_errors = is_git;
+    let use_pregenerated = !target.is_git;
+    let warnings_are_errors = target.is_git;
 
     let asm_dir = if use_pregenerated {
         &pregenerated
