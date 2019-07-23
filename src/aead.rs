@@ -421,7 +421,7 @@ impl LessSafeKey {
         Self { key }
     }
 
-    /// Like `Key::open_in_place()`, except it accepts an arbitrary nonce.
+    /// Like [`OpeningKey::open_in_place()`], except it accepts an arbitrary nonce.
     #[inline]
     pub fn open_in_place<'in_out, A>(
         &self,
@@ -435,7 +435,7 @@ impl LessSafeKey {
         self.open_within(nonce, aad, in_out, 0..)
     }
 
-    /// Like `Key::open_within()`, except it accepts an arbitrary nonce.
+    /// Like [`OpeningKey::open_within()`], except it accepts an arbitrary nonce.
     #[inline]
     pub fn open_within<'in_out, A>(
         &self,
@@ -450,7 +450,7 @@ impl LessSafeKey {
         open_within_(&self.key, nonce, aad, in_out, ciphertext_and_tag)
     }
 
-    /// Like `Key::seal_in_place()`, except it accepts an arbitrary nonce.
+    /// Like [`SealingKey::seal_in_place()`], except it accepts an arbitrary nonce.
     #[inline]
     pub fn seal_in_place<A, InOut>(
         &self,
