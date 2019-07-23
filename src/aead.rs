@@ -268,20 +268,8 @@ impl<N: NonceSequence> core::fmt::Debug for SealingKey<N> {
 }
 
 impl<N: NonceSequence> SealingKey<N> {
-    /// Encrypts and signs (“seals”) data in place.
-    ///
-    /// `nonce` must be unique for every use of the key to seal data.
-    ///
-    /// `aad` is the additional authenticated data (AAD), if any. This is
-    /// authenticated but not encrypted. The type `A` could be a byte slice
-    /// `&[u8]`, a byte array `[u8; N]` for some constant `N`, `Vec<u8>`, etc.
-    /// If there is no AAD then use `Aad::empty()`.
-    ///
-    /// The plaintext is given as the input value of `in_out`. `seal_in_place()`
-    /// will overwrite the plaintext with the ciphertext and then append the tag
-    /// using `in_out.extend()`; the tag will be `self.algorithm.tag_len()` bytes
-    /// long. Common types for `InOut` are `Vec<u8>` or `VecDeque<u8>` from the
-    /// standard library, or `BytesMut` from the `bytes` crate.
+    /// Deprecated. Renamed to [`seal_in_place_append_tag()`].
+    #[deprecated(note = "Renamed to `seal_in_place_append_tag`.")]
     #[inline]
     pub fn seal_in_place<A, InOut>(
         &mut self,
@@ -292,35 +280,78 @@ impl<N: NonceSequence> SealingKey<N> {
         A: AsRef<[u8]>,
         InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>,
     {
-        seal_in_place_(&self.key, self.nonce_sequence.advance()?, aad, in_out)
+        self.seal_in_place_append_tag(aad, in_out)
+    }
+
+    /// Encrypts and signs (“seals”) data in place, appending the tag to the
+    /// resulting ciphertext.
+    ///
+    /// `key.seal_in_place_append_tag(aad, in_out)` is equivalent to:
+    ///
+    /// ```skip
+    /// key.seal_in_place_separate_tag(aad, in_out.as_mut())
+    ///     .map(|tag| in_out.extend(tag.as_ref()))
+    /// ```
+    #[inline]
+    pub fn seal_in_place_append_tag<A, InOut>(
+        &mut self,
+        aad: Aad<A>,
+        in_out: &mut InOut,
+    ) -> Result<(), error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+        InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>,
+    {
+        self.seal_in_place_separate_tag(aad, in_out.as_mut())
+            .map(|tag| in_out.extend(tag.as_ref()))
+    }
+
+    /// Encrypts and signs (“seals”) data in place.
+    ///
+    /// `nonce` must be unique for every use of the key to seal data.
+    ///
+    /// `aad` is the additional authenticated data (AAD), if any. This is
+    /// authenticated but not encrypted. The type `A` could be a byte slice
+    /// `&[u8]`, a byte array `[u8; N]` for some constant `N`, `Vec<u8>`, etc.
+    /// If there is no AAD then use `Aad::empty()`.
+    ///
+    /// The plaintext is given as the input value of `in_out`. `seal_in_place()`
+    /// will overwrite the plaintext with the ciphertext and return the tag.
+    /// For most protocols, the caller must append the tag to the ciphertext.
+    /// The tag will be `self.algorithm.tag_len()` bytes long.
+    #[inline]
+    pub fn seal_in_place_separate_tag<A>(
+        &mut self,
+        aad: Aad<A>,
+        in_out: &mut [u8],
+    ) -> Result<Tag, error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+    {
+        seal_in_place_separate_tag_(
+            &self.key,
+            self.nonce_sequence.advance()?,
+            Aad::from(aad.0.as_ref()),
+            in_out,
+        )
     }
 }
 
 #[inline]
-fn seal_in_place_<A: AsRef<[u8]>, InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>>(
+fn seal_in_place_separate_tag_(
     key: &UnboundKey,
     nonce: Nonce,
-    Aad(aad): Aad<A>,
-    in_out: &mut InOut,
-) -> Result<(), error::Unspecified> {
-    fn seal_in_place(
-        key: &UnboundKey,
-        nonce: Nonce,
-        aad: Aad<&[u8]>,
-        in_out: &mut [u8],
-    ) -> Result<Tag, error::Unspecified> {
-        check_per_nonce_max_bytes(key.algorithm, in_out.len())?;
-        Ok((key.algorithm.seal)(
-            &key.inner,
-            nonce,
-            aad,
-            in_out,
-            key.cpu_features,
-        ))
-    }
-    let Tag(tag) = seal_in_place(key, nonce, Aad::from(aad.as_ref()), in_out.as_mut())?;
-    in_out.extend(tag.as_ref());
-    Ok(())
+    aad: Aad<&[u8]>,
+    in_out: &mut [u8],
+) -> Result<Tag, error::Unspecified> {
+    check_per_nonce_max_bytes(key.algorithm, in_out.len())?;
+    Ok((key.algorithm.seal)(
+        &key.inner,
+        nonce,
+        aad,
+        in_out,
+        key.cpu_features,
+    ))
 }
 
 /// The additionally authenticated data (AAD) for an opening or sealing
@@ -450,7 +481,8 @@ impl LessSafeKey {
         open_within_(&self.key, nonce, aad, in_out, ciphertext_and_tag)
     }
 
-    /// Like [`SealingKey::seal_in_place()`], except it accepts an arbitrary nonce.
+    /// Deprecated. Renamed to [`seal_in_place_append_tag()`].
+    #[deprecated(note = "Renamed to `seal_in_place_append_tag`.")]
     #[inline]
     pub fn seal_in_place<A, InOut>(
         &self,
@@ -462,7 +494,39 @@ impl LessSafeKey {
         A: AsRef<[u8]>,
         InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>,
     {
-        seal_in_place_(&self.key, nonce, aad, in_out)
+        self.seal_in_place_append_tag(nonce, aad, in_out)
+    }
+
+    /// Like [`SealingKey::seal_in_place_append_tag()`], except it accepts an
+    /// arbitrary nonce.
+    #[inline]
+    pub fn seal_in_place_append_tag<A, InOut>(
+        &self,
+        nonce: Nonce,
+        aad: Aad<A>,
+        in_out: &mut InOut,
+    ) -> Result<(), error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+        InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>,
+    {
+        self.seal_in_place_separate_tag(nonce, aad, in_out.as_mut())
+            .map(|tag| in_out.extend(tag.as_ref()))
+    }
+
+    /// Like `SealingKey::seal_in_place_separate_tag()`, except it accepts an
+    /// arbitrary nonce.
+    #[inline]
+    pub fn seal_in_place_separate_tag<A>(
+        &self,
+        nonce: Nonce,
+        aad: Aad<A>,
+        in_out: &mut [u8],
+    ) -> Result<Tag, error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+    {
+        seal_in_place_separate_tag_(&self.key, nonce, Aad::from(aad.0.as_ref()), in_out)
     }
 
     /// The key's AEAD algorithm.
@@ -557,7 +621,13 @@ impl Eq for Algorithm {}
 /// An authentication tag.
 #[must_use]
 #[repr(C)]
-struct Tag(Block);
+pub struct Tag(Block);
+
+impl AsRef<[u8]> for Tag {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
 
 const MAX_KEY_LEN: usize = 32;
 
