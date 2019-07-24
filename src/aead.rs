@@ -308,8 +308,6 @@ impl<N: NonceSequence> SealingKey<N> {
 
     /// Encrypts and signs (“seals”) data in place.
     ///
-    /// `nonce` must be unique for every use of the key to seal data.
-    ///
     /// `aad` is the additional authenticated data (AAD), if any. This is
     /// authenticated but not encrypted. The type `A` could be a byte slice
     /// `&[u8]`, a byte array `[u8; N]` for some constant `N`, `Vec<u8>`, etc.
@@ -453,6 +451,8 @@ impl LessSafeKey {
     }
 
     /// Like [`OpeningKey::open_in_place()`], except it accepts an arbitrary nonce.
+    ///
+    /// `nonce` must be unique for every use of the key to open data.
     #[inline]
     pub fn open_in_place<'in_out, A>(
         &self,
@@ -467,6 +467,8 @@ impl LessSafeKey {
     }
 
     /// Like [`OpeningKey::open_within()`], except it accepts an arbitrary nonce.
+    ///
+    /// `nonce` must be unique for every use of the key to open data.
     #[inline]
     pub fn open_within<'in_out, A>(
         &self,
@@ -499,6 +501,8 @@ impl LessSafeKey {
 
     /// Like [`SealingKey::seal_in_place_append_tag()`], except it accepts an
     /// arbitrary nonce.
+    ///
+    /// `nonce` must be unique for every use of the key to seal data.
     #[inline]
     pub fn seal_in_place_append_tag<A, InOut>(
         &self,
@@ -516,6 +520,8 @@ impl LessSafeKey {
 
     /// Like `SealingKey::seal_in_place_separate_tag()`, except it accepts an
     /// arbitrary nonce.
+    ///
+    /// `nonce` must be unique for every use of the key to seal data.
     #[inline]
     pub fn seal_in_place_separate_tag<A>(
         &self,
