@@ -41,7 +41,8 @@ pub use self::{
 /// Intentionally not `Clone` or `Copy` since cloning would allow duplication
 /// of the sequence.
 pub trait NonceSequence {
-    /// Returns a nonce, and prevents that
+    /// Returns the next nonce in the sequence.
+    ///
     /// This may fail if "too many" nonces have been requested, where how many
     /// is too many is up to the implementation of `NonceSequence`. An
     /// implementation may that enforce a maximum number of records are
