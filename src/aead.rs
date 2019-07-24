@@ -330,7 +330,7 @@ impl<N: NonceSequence> SealingKey<N> {
         seal_in_place_separate_tag_(
             &self.key,
             self.nonce_sequence.advance()?,
-            Aad::from(aad.0.as_ref()),
+            Aad::from(aad.as_ref()),
             in_out,
         )
     }
@@ -358,7 +358,6 @@ fn seal_in_place_separate_tag_(
 ///
 /// The type `A` could be a byte slice `&[u8]`, a byte array `[u8; N]`
 /// for some constant `N`, `Vec<u8>`, etc.
-#[repr(transparent)]
 pub struct Aad<A: AsRef<[u8]>>(A);
 
 impl<A: AsRef<[u8]>> Aad<A> {
@@ -366,6 +365,15 @@ impl<A: AsRef<[u8]>> Aad<A> {
     #[inline]
     pub fn from(aad: A) -> Self {
         Aad(aad)
+    }
+}
+
+impl<A> AsRef<[u8]> for Aad<A>
+where
+    A: AsRef<[u8]>,
+{
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_ref()
     }
 }
 
@@ -533,7 +541,7 @@ impl LessSafeKey {
     where
         A: AsRef<[u8]>,
     {
-        seal_in_place_separate_tag_(&self.key, nonce, Aad::from(aad.0.as_ref()), in_out)
+        seal_in_place_separate_tag_(&self.key, nonce, Aad::from(aad.as_ref()), in_out)
     }
 
     /// The key's AEAD algorithm.
