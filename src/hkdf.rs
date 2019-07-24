@@ -24,6 +24,14 @@ use crate::{error, hmac};
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Algorithm(hmac::Algorithm);
 
+impl Algorithm {
+    /// The underlying HMAC algorithm.
+    #[inline]
+    pub fn hmac_algorithm(&self) -> hmac::Algorithm {
+        self.0
+    }
+}
+
 /// HKDF using HMAC-SHA-256.
 pub static HKDF_SHA256: Algorithm = Algorithm(hmac::HMAC_SHA256);
 
