@@ -445,10 +445,10 @@ impl hkdf::KeyType for &'static Algorithm {
     }
 }
 
-/// Immutable keys for use in situations where `Key` and `NonceSequence` cannot
-/// reasonably be used.
+/// Immutable keys for use in situations where `OpeningKey`/`SealingKey` and
+/// `NonceSequence` cannot reasonably be used.
 ///
-/// Prefer to use `Key` and `NonceSequence` when practical.
+/// Prefer to use `OpeningKey`/`SealingKey` and `NonceSequence` when practical.
 pub struct LessSafeKey {
     key: UnboundKey,
 }
