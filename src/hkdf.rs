@@ -105,6 +105,15 @@ pub trait KeyType {
 pub struct Prk(hmac::Key);
 
 impl Prk {
+    /// Construct a new `Prk` directly with the given value.
+    ///
+    /// Usually one can avoid using this. It is useful when the application
+    /// intentionally wants to leak the PRK secret, e.g. to implement
+    /// `SSLKEYLOGFILE` functionality.
+    pub fn new_less_safe(algorithm: Algorithm, value: &[u8]) -> Self {
+        Self(hmac::Key::new(algorithm.hmac_algorithm(), value))
+    }
+
     /// The [HKDF-Expand] operation.
     ///
     /// [HKDF-Expand]: https://tools.ietf.org/html/rfc5869#section-2.3
