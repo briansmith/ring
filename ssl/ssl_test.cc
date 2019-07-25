@@ -4951,7 +4951,7 @@ class QUICMethodTest : public testing::Test {
 
 UnownedSSLExData<MockQUICTransport> QUICMethodTest::ex_data_;
 
-// Test a full handshake works.
+// Test a full handshake and resumption work.
 TEST_F(QUICMethodTest, Basic) {
   const SSL_QUIC_METHOD quic_method = {
       SetEncryptionSecretsCallback,
@@ -5032,6 +5032,56 @@ TEST_F(QUICMethodTest, Basic) {
   EXPECT_FALSE(transport_.server()->has_alert());
   EXPECT_TRUE(SSL_session_reused(client_.get()));
   EXPECT_TRUE(SSL_session_reused(server_.get()));
+}
+
+// Test that HelloRetryRequest in QUIC works.
+TEST_F(QUICMethodTest, HelloRetryRequest) {
+  const SSL_QUIC_METHOD quic_method = {
+      SetEncryptionSecretsCallback,
+      AddHandshakeDataCallback,
+      FlushFlightCallback,
+      SendAlertCallback,
+  };
+
+  ASSERT_TRUE(SSL_CTX_set_quic_method(client_ctx_.get(), &quic_method));
+  ASSERT_TRUE(SSL_CTX_set_quic_method(server_ctx_.get(), &quic_method));
+
+  // BoringSSL predicts the most preferred curve, so using different preferences
+  // will trigger HelloRetryRequest.
+  static const int kClientPrefs[] = {NID_X25519, NID_X9_62_prime256v1};
+  ASSERT_TRUE(SSL_CTX_set1_curves(client_ctx_.get(), kClientPrefs,
+                                  OPENSSL_ARRAY_SIZE(kClientPrefs)));
+  static const int kServerPrefs[] = {NID_X9_62_prime256v1, NID_X25519};
+  ASSERT_TRUE(SSL_CTX_set1_curves(server_ctx_.get(), kServerPrefs,
+                                  OPENSSL_ARRAY_SIZE(kServerPrefs)));
+
+  ASSERT_TRUE(CreateClientAndServer());
+
+  for (;;) {
+    ASSERT_TRUE(ProvideHandshakeData(client_.get()));
+    int client_ret = SSL_do_handshake(client_.get());
+    if (client_ret != 1) {
+      ASSERT_EQ(client_ret, -1);
+      ASSERT_EQ(SSL_get_error(client_.get(), client_ret), SSL_ERROR_WANT_READ);
+    }
+
+    ASSERT_TRUE(ProvideHandshakeData(server_.get()));
+    int server_ret = SSL_do_handshake(server_.get());
+    if (server_ret != 1) {
+      ASSERT_EQ(server_ret, -1);
+      ASSERT_EQ(SSL_get_error(server_.get(), server_ret), SSL_ERROR_WANT_READ);
+    }
+
+    if (client_ret == 1 && server_ret == 1) {
+      break;
+    }
+  }
+
+  EXPECT_EQ(SSL_do_handshake(client_.get()), 1);
+  EXPECT_EQ(SSL_do_handshake(server_.get()), 1);
+  EXPECT_TRUE(transport_.SecretsMatch(ssl_encryption_application));
+  EXPECT_FALSE(transport_.client()->has_alert());
+  EXPECT_FALSE(transport_.server()->has_alert());
 }
 
 // Test only releasing data to QUIC one byte at a time on request, to maximize
