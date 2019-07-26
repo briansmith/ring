@@ -101,7 +101,7 @@ pub trait KeyType {
 }
 
 /// A HKDF PRK (pseudorandom key).
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Prk(hmac::Key);
 
 impl Prk {
