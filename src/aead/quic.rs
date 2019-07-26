@@ -18,7 +18,7 @@
 
 use crate::{
     aead::{aes, block::Block, chacha},
-    cpu, error,
+    cpu, error, hkdf,
 };
 use core::convert::{TryFrom, TryInto};
 
@@ -32,6 +32,16 @@ pub struct HeaderProtectionKey {
 enum KeyInner {
     Aes(aes::Key),
     ChaCha20(chacha::Key),
+}
+
+impl From<hkdf::Okm<'_, &'static Algorithm>> for HeaderProtectionKey {
+    fn from(okm: hkdf::Okm<&'static Algorithm>) -> Self {
+        let mut key_bytes = [0; super::MAX_KEY_LEN];
+        let algorithm = *okm.len();
+        let key_bytes = &mut key_bytes[..algorithm.key_len()];
+        okm.fill(key_bytes).unwrap();
+        Self::new(algorithm, key_bytes).unwrap()
+    }
 }
 
 impl HeaderProtectionKey {
@@ -76,6 +86,13 @@ pub struct Algorithm {
 
     key_len: usize,
     id: AlgorithmID,
+}
+
+impl hkdf::KeyType for &'static Algorithm {
+    #[inline]
+    fn len(&self) -> usize {
+        self.key_len()
+    }
 }
 
 impl Algorithm {
