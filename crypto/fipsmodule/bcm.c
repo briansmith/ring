@@ -76,7 +76,6 @@
 #include "md4/md4.c"
 #include "md5/md5.c"
 #include "modes/cbc.c"
-#include "modes/ccm.c"
 #include "modes/cfb.c"
 #include "modes/ctr.c"
 #include "modes/gcm.c"
