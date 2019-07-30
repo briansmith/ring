@@ -429,3 +429,10 @@ void OpenSSL_add_all_ciphers(void) {}
 void OpenSSL_add_all_digests(void) {}
 
 void EVP_cleanup(void) {}
+
+int EVP_PKEY_base_id(const EVP_PKEY *pkey) {
+  // OpenSSL has two notions of key type because it supports multiple OIDs for
+  // the same algorithm: NID_rsa vs NID_rsaEncryption and five distinct spelling
+  // of DSA. We do not support these, so the base ID is simply the ID.
+  return EVP_PKEY_id(pkey);
+}

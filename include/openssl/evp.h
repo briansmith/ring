@@ -924,6 +924,9 @@ OPENSSL_EXPORT int EVP_PKEY_set1_tls_encodedpoint(EVP_PKEY *pkey,
 OPENSSL_EXPORT size_t EVP_PKEY_get1_tls_encodedpoint(const EVP_PKEY *pkey,
                                                      uint8_t **out_ptr);
 
+// EVP_PKEY_base_id calls |EVP_PKEY_id|.
+OPENSSL_EXPORT int EVP_PKEY_base_id(const EVP_PKEY *pkey);
+
 
 // Preprocessor compatibility section (hidden).
 //
