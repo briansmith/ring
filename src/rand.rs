@@ -193,6 +193,9 @@ use self::darwin::fill as fill_impl;
 #[cfg(any(target_os = "fuchsia"))]
 use self::fuchsia::fill as fill_impl;
 
+#[cfg(any(target_env = "sgx"))]
+use self::sgx::fill as fill_impl;
+
 #[cfg(any(target_os = "android", target_os = "linux"))]
 mod sysrand_chunk {
     use crate::{c, error};
@@ -430,5 +433,36 @@ mod fuchsia {
     #[link(name = "zircon")]
     extern "C" {
         fn zx_cprng_draw(buffer: *mut u8, length: usize);
+    }
+}
+
+#[cfg(any(target_env = "sgx"))]
+mod sgx {
+    use core::arch::x86_64::_rdrand64_step;
+    use crate::error;
+
+    #[inline]
+    fn rdrand() -> Result<u64, error::Unspecified> {
+        // See https://software.intel.com/en-us/articles/intel-digital-random-number-generator-drng-software-implementation-guide
+        // Section 5.2.1
+        for _ in 0..10 {
+            let mut r = 0;
+            if unsafe { _rdrand64_step(&mut r) } == 1 {
+                return Ok(r);
+            }
+        }
+
+        Err(error::Unspecified)
+    }
+
+    pub fn fill(mut dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        while dest.len() > 0 {
+            let rand = rdrand()?.to_ne_bytes();
+            let len = core::cmp::min(dest.len(), rand.len());
+            dest[..len].copy_from_slice(&rand[..len]);
+            dest = &mut dest[len..];
+        }
+
+        Ok(())
     }
 }
