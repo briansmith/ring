@@ -386,7 +386,7 @@ static void run_cert(X509 *crt, const char *nameincert,
     }
 }
 
-// TOOD(davidben): Convert this test to GTest more thoroughly.
+// TODO(davidben): Convert this test to GTest more thoroughly.
 TEST(X509V3Test, NameTest) {
     const struct set_name_fn *pfn = name_fns;
     while (pfn->name) {
