@@ -193,6 +193,9 @@ use self::darwin::fill as fill_impl;
 #[cfg(any(target_os = "fuchsia"))]
 use self::fuchsia::fill as fill_impl;
 
+#[cfg(any(target_env = "sgx"))]
+use self::sgx::fill as fill_impl;
+
 #[cfg(any(target_os = "android", target_os = "linux"))]
 mod sysrand_chunk {
     use crate::{c, error};
@@ -430,5 +433,35 @@ mod fuchsia {
     #[link(name = "zircon")]
     extern "C" {
         fn zx_cprng_draw(buffer: *mut u8, length: usize);
+    }
+}
+
+#[cfg(any(target_env = "sgx"))]
+mod sgx {
+    use crate::error;
+
+    #[allow(improper_ctypes)]
+    extern "unadjusted" {
+        #[link_name = "llvm.x86.rdrand.64"]
+        fn llvm_x64_rdrand_64() -> (u64, i32);
+    }
+
+    #[inline]
+    fn rdrand() -> Result<u64, error::Unspecified> {
+        match unsafe { llvm_x64_rdrand_64() } {
+            (r, 1) => Ok(r),
+            _ => Err(error::Unspecified),
+        }
+    }
+
+    pub fn fill(mut dest: &mut [u8]) -> Result<(), error::Unspecified> {
+        while dest.len() > 0 {
+            let rand = rdrand()?.to_ne_bytes();
+            let len = core::cmp::min(dest.len(), rand.len());
+            dest[..len].copy_from_slice(&rand[..len]);
+            dest = &mut dest[len..];
+        }
+
+        Ok(())
     }
 }

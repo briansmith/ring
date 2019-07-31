@@ -49,7 +49,6 @@
 // internally.
 #![deny(
     missing_docs,
-    unstable_features, // Used by `internal_benches`
     unused_qualifications,
     variant_size_differences,
 )]
@@ -64,6 +63,10 @@
 )]
 #![no_std]
 #![cfg_attr(feature = "internal_benches", allow(unstable_features), feature(test))]
+
+#![cfg_attr(target_env = "sgx", feature(link_llvm_intrinsics, abi_unadjusted))]
+#![cfg_attr(not(target_env = "sgx"), deny(unstable_features))] // Used by `internal_benches`
+
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
