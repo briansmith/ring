@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <cstdarg>
 
+#include <openssl/aes.h>
 #include <openssl/sha.h>
 #include <openssl/span.h>
 
@@ -145,6 +146,18 @@ static bool GetConfig(const Span<const uint8_t> args[]) {
       "  \"messageLength\": [{"
       "    \"min\": 0, \"max\": 65528, \"increment\": 8"
       "  }]"
+      "},"
+      "{"
+      "  \"algorithm\": \"ACVP-AES-ECB\","
+      "  \"revision\": \"1.0\","
+      "  \"direction\": [\"encrypt\", \"decrypt\"],"
+      "  \"keyLen\": [128, 192, 256]"
+      "},"
+      "{"
+      "  \"algorithm\": \"ACVP-AES-CBC\","
+      "  \"revision\": \"1.0\","
+      "  \"direction\": [\"encrypt\", \"decrypt\"],"
+      "  \"keyLen\": [128, 192, 256]"
       "}"
       "]";
   return WriteReply(
@@ -161,6 +174,46 @@ static bool Hash(const Span<const uint8_t> args[]) {
   return WriteReply(STDOUT_FILENO, Span<const uint8_t>(digest));
 }
 
+template <int (*SetKey)(const uint8_t *key, unsigned bits, AES_KEY *out),
+          void (*Block)(const uint8_t *in, uint8_t *out, const AES_KEY *key)>
+static bool AES(const Span<const uint8_t> args[]) {
+  AES_KEY key;
+  if (SetKey(args[0].data(), args[0].size() * 8, &key) != 0) {
+    return false;
+  }
+  if (args[1].size() % AES_BLOCK_SIZE != 0) {
+    return false;
+  }
+
+  std::vector<uint8_t> out;
+  out.resize(args[1].size());
+  for (size_t i = 0; i < args[1].size(); i += AES_BLOCK_SIZE) {
+    Block(args[1].data() + i, &out[i], &key);
+  }
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
+}
+
+template <int (*SetKey)(const uint8_t *key, unsigned bits, AES_KEY *out),
+          int Direction>
+static bool AES_CBC(const Span<const uint8_t> args[]) {
+  AES_KEY key;
+  if (SetKey(args[0].data(), args[0].size() * 8, &key) != 0) {
+    return false;
+  }
+  if (args[1].size() % AES_BLOCK_SIZE != 0 ||
+      args[2].size() != AES_BLOCK_SIZE) {
+    return false;
+  }
+  uint8_t iv[AES_BLOCK_SIZE];
+  memcpy(iv, args[2].data(), AES_BLOCK_SIZE);
+
+  std::vector<uint8_t> out;
+  out.resize(args[1].size());
+  AES_cbc_encrypt(args[1].data(), out.data(), args[1].size(), &key, iv,
+                  Direction);
+  return WriteReply(STDOUT_FILENO, Span<const uint8_t>(out));
+}
+
 static constexpr struct {
   const char name[kMaxNameLength + 1];
   uint8_t expected_args;
@@ -172,6 +225,10 @@ static constexpr struct {
     {"SHA2-256", 1, Hash<SHA256, SHA256_DIGEST_LENGTH>},
     {"SHA2-384", 1, Hash<SHA384, SHA256_DIGEST_LENGTH>},
     {"SHA2-512", 1, Hash<SHA512, SHA512_DIGEST_LENGTH>},
+    {"AES/encrypt", 2, AES<AES_set_encrypt_key, AES_encrypt>},
+    {"AES/decrypt", 2, AES<AES_set_decrypt_key, AES_decrypt>},
+    {"AES-CBC/encrypt", 3, AES_CBC<AES_set_encrypt_key, AES_ENCRYPT>},
+    {"AES-CBC/decrypt", 3, AES_CBC<AES_set_decrypt_key, AES_DECRYPT>},
 };
 
 int main() {
