@@ -393,7 +393,9 @@ int bn_resize_words(BIGNUM *bn, size_t words) {
   // has the same bug but this workaround is not effective there---I've not
   // been able to find a workaround for 8.0.1.
   //
-  // TODO(agl): include a bug link if possible.
+  // At the time of writing (2019-08-08), Clang git does *not* have this bug
+  // and does not need this workaroud. The current git version should go on to
+  // be Clang 10 thus, once we can depend on that, this can be removed.
   if (value_barrier_w((size_t)bn->width == words)) {
     return 1;
   }
