@@ -22,7 +22,7 @@
 //! [`crypto.cipher.AEAD`]: https://golang.org/pkg/crypto/cipher/#AEAD
 
 use self::block::{Block, BLOCK_LEN};
-use crate::{constant_time, cpu, error, hkdf, polyfill};
+use crate::{constant_time, cpu, error, hkdf, polyfill, rand};
 use core::ops::RangeFrom;
 
 pub use self::{
@@ -445,18 +445,58 @@ impl hkdf::KeyType for &'static Algorithm {
     }
 }
 
+mod sealed {
+    pub trait NonceGeneration {
+        const VALUE: Self;
+    }
+}
+
+/// A nonce generation strategy for `LesssSafeKey`; either `ExplicitNonces` or
+/// `RandomNonces`.
+pub trait NonceGeneration: sealed::NonceGeneration {}
+impl<T> NonceGeneration for T where T: sealed::NonceGeneration {}
+
+/// A nonce generation strategy where random nonces are used.
+///
+/// These algorithms are *NOT* nonce-misuse-resistant. They use nonces small
+/// enough where birthday collisions need to be considered, so even ensuring
+/// perfectly-random generation of nonces isn't sufficient to prevent nonce
+/// reuse.
+pub struct RandomNonces(());
+impl sealed::NonceGeneration for RandomNonces {
+    const VALUE: Self = Self(());
+}
+
+/// A nonce generation strategy where explicitly-constructed nonces are used.
+pub struct ExplicitNonces(());
+impl sealed::NonceGeneration for ExplicitNonces {
+    const VALUE: Self = Self(());
+}
+
 /// Immutable keys for use in situations where `OpeningKey`/`SealingKey` and
 /// `NonceSequence` cannot reasonably be used.
 ///
-/// Prefer to use `OpeningKey`/`SealingKey` and `NonceSequence` when practical.
-pub struct LessSafeKey {
+/// These algorithms are *NOT* nonce-misuse-resistant. They use nonces small
+/// enough where the likelihood of collisions must be carefully considered.
+pub struct LessSafeKey<N = ExplicitNonces>
+where
+    N: NonceGeneration,
+{
     key: UnboundKey,
+    _nonce_generation: N,
 }
 
-impl LessSafeKey {
+impl<N> LessSafeKey<N>
+where
+    N: NonceGeneration,
+{
     /// Constructs a `LessSafeKey` from an `UnboundKey`.
+    #[inline]
     pub fn new(key: UnboundKey) -> Self {
-        Self { key }
+        Self {
+            key,
+            _nonce_generation: N::VALUE,
+        }
     }
 
     /// Like [`OpeningKey::open_in_place()`], except it accepts an arbitrary nonce.
@@ -492,6 +532,14 @@ impl LessSafeKey {
         open_within_(&self.key, nonce, aad, in_out, ciphertext_and_tag)
     }
 
+    /// The key's AEAD algorithm.
+    #[inline]
+    pub fn algorithm(&self) -> &'static Algorithm {
+        &self.key.algorithm
+    }
+}
+
+impl LessSafeKey<ExplicitNonces> {
     /// Deprecated. Renamed to [`seal_in_place_append_tag()`].
     #[deprecated(note = "Renamed to `seal_in_place_append_tag`.")]
     #[inline]
@@ -523,6 +571,9 @@ impl LessSafeKey {
         A: AsRef<[u8]>,
         InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>,
     {
+        // Overwrite the plaintext with the ciphertext before extending `in_out`
+        // so that if the `extend()` causes a reallocation, the ciphertext (not
+        // the plaintext) will be in the old deallocated buffer.
         self.seal_in_place_separate_tag(nonce, aad, in_out.as_mut())
             .map(|tag| in_out.extend(tag.as_ref()))
     }
@@ -543,15 +594,63 @@ impl LessSafeKey {
     {
         seal_in_place_separate_tag_(&self.key, nonce, Aad::from(aad.as_ref()), in_out)
     }
+}
 
-    /// The key's AEAD algorithm.
+impl LessSafeKey<RandomNonces> {
+    /// Like [`SealingKey::seal_in_place_append_tag()`], except the nonce is
+    /// randomly generated.
+    ///
+    /// The randomly-generated nonce is returned on success.
     #[inline]
-    pub fn algorithm(&self) -> &'static Algorithm {
-        &self.key.algorithm
+    pub fn seal_with_random_nonce_in_place_append_tag<A, InOut>(
+        &self,
+        aad: Aad<A>,
+        in_out: &mut InOut,
+        rng: &dyn rand::SecureRandom,
+    ) -> Result<Nonce, error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+        InOut: AsMut<[u8]> + for<'in_out> Extend<&'in_out u8>,
+    {
+        // Overwrite the plaintext with the ciphertext before extending `in_out`
+        // so that if the `extend()` causes a reallocation, the ciphertext (not
+        // the plaintext) will be in the old deallocated buffer.
+        self.seal_with_random_nonce_in_place_separate_tag(aad, in_out.as_mut(), rng)
+            .map(|(nonce, tag)| {
+                in_out.extend(tag.as_ref());
+                nonce
+            })
+    }
+
+    /// Like [`SealingKey::seal_in_place_separate_tag()`], except the nonce is
+    /// randomly generated.
+    ///
+    /// The randomly-generated nonce and the tag are returned on success.
+    #[inline]
+    pub fn seal_with_random_nonce_in_place_separate_tag<A>(
+        &self,
+        aad: Aad<A>,
+        in_out: &mut [u8],
+        rng: &dyn rand::SecureRandom,
+    ) -> Result<(Nonce, Tag), error::Unspecified>
+    where
+        A: AsRef<[u8]>,
+    {
+        let nonce = Nonce::assume_unique_for_key(rand::generate(rng)?.expose());
+        seal_in_place_separate_tag_(
+            &self.key,
+            Nonce::assume_unique_for_key(*nonce.as_ref()),
+            Aad::from(aad.as_ref()),
+            in_out,
+        )
+        .map(|tag| (nonce, tag))
     }
 }
 
-impl core::fmt::Debug for LessSafeKey {
+impl<N> core::fmt::Debug for LessSafeKey<N>
+where
+    N: NonceGeneration,
+{
     fn fmt(&self, f: &mut core::fmt::Formatter) -> Result<(), core::fmt::Error> {
         f.debug_struct("LessSafeKey")
             .field("algorithm", self.algorithm())
