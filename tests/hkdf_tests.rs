@@ -25,7 +25,6 @@
     unstable_features,
     unused_extern_crates,
     unused_import_braces,
-    unused_qualifications,
     unused_results,
     variant_size_differences,
     warnings
@@ -78,9 +77,62 @@ fn hkdf_tests() {
     });
 }
 
+#[test]
+fn hkdf_output_len_tests() {
+    for &alg in &[hkdf::HKDF_SHA256, hkdf::HKDF_SHA384, hkdf::HKDF_SHA512] {
+        const MAX_BLOCKS: usize = 255;
+
+        let salt = hkdf::Salt::new(alg, &[]);
+        let prk = salt.extract(&[]); // TODO: enforce minimum length.
+
+        {
+            // Test zero length.
+            let okm = prk.expand(&[b"info"], My(0)).unwrap();
+            let result: My<Vec<u8>> = okm.into();
+            assert_eq!(&result.0, &[]);
+        }
+
+        let max_out_len = MAX_BLOCKS * alg.hmac_algorithm().digest_algorithm().output_len;
+
+        {
+            // Test maximum length output succeeds.
+            let okm = prk.expand(&[b"info"], My(max_out_len)).unwrap();
+            let result: My<Vec<u8>> = okm.into();
+            assert_eq!(result.0.len(), max_out_len);
+        }
+
+        {
+            // Test too-large output fails.
+            assert!(prk.expand(&[b"info"], My(max_out_len + 1)).is_err());
+        }
+
+        {
+            // Test length mismatch (smaller).
+            let okm = prk.expand(&[b"info"], My(2)).unwrap();
+            let mut buf = [0u8; 1];
+            assert_eq!(okm.fill(&mut buf), Err(error::Unspecified));
+        }
+
+        {
+            // Test length mismatch (larger).
+            let okm = prk.expand(&[b"info"], My(2)).unwrap();
+            let mut buf = [0u8; 3];
+            assert_eq!(okm.fill(&mut buf), Err(error::Unspecified));
+        }
+
+        {
+            // Control for above two tests.
+            let okm = prk.expand(&[b"info"], My(2)).unwrap();
+            let mut buf = [0u8; 2];
+            assert_eq!(okm.fill(&mut buf), Ok(()));
+        }
+    }
+}
+
 /// Generic newtype wrapper that lets us implement traits for externally-defined
 /// types.
-struct My<T>(T);
+#[derive(Debug, PartialEq)]
+struct My<T: core::fmt::Debug + PartialEq>(T);
 
 impl hkdf::KeyType for My<usize> {
     fn len(&self) -> usize {
