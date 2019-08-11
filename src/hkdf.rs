@@ -126,7 +126,7 @@ impl Prk {
         len: L,
     ) -> Result<Okm<'a, L>, error::Unspecified> {
         let len_cached = len.len();
-        if len.len() > 255 * self.0.algorithm().digest_algorithm().output_len {
+        if len_cached > 255 * self.0.algorithm().digest_algorithm().output_len {
             return Err(error::Unspecified);
         }
         Ok(Okm {
