@@ -60,7 +60,7 @@ fn agreement_traits<'a>() {
     // Verify `PublicKey` implements `Debug`.
     //
     // TODO: Test the actual output.
-    let _: &core::fmt::Debug = &public_key;
+    let _: &dyn core::fmt::Debug = &public_key;
 
     test::compile_time_assert_clone::<agreement::UnparsedPublicKey<&'a [u8]>>();
     test::compile_time_assert_copy::<agreement::UnparsedPublicKey<&'a [u8]>>();
