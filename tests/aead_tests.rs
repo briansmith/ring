@@ -415,7 +415,10 @@ fn test_aead_key_debug() {
     );
 
     let key: aead::LessSafeKey = make_less_safe_key(&aead::CHACHA20_POLY1305, &key_bytes);
-    assert_eq!("Key { algorithm: CHACHA20_POLY1305 }", format!("{:?}", key));
+    assert_eq!(
+        "LessSafeKey { algorithm: CHACHA20_POLY1305 }",
+        format!("{:?}", key)
+    );
 }
 
 fn make_key<K: aead::BoundKey<OneNonceSequence>>(
