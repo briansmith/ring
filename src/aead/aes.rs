@@ -22,6 +22,7 @@ use super::shift;
 
 use crate::{bits::BitLength, c, cpu, endian::*, error, polyfill};
 
+#[derive(Clone)]
 pub(crate) struct Key {
     inner: AES_KEY,
     cpu_features: cpu::Features,
@@ -262,6 +263,7 @@ impl Key {
 
 // Keep this in sync with AES_KEY in aes.h.
 #[repr(C)]
+#[derive(Clone)]
 pub(super) struct AES_KEY {
     pub rd_key: [u32; 4 * (MAX_ROUNDS + 1)],
     pub rounds: c::uint,

@@ -16,6 +16,7 @@ use super::{Aad, Block, BLOCK_LEN};
 use crate::{c, cpu};
 
 #[repr(transparent)]
+#[derive(Clone)]
 pub struct Key(GCM128_KEY);
 
 impl Key {

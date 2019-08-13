@@ -38,6 +38,7 @@ pub static AES_256_GCM: aead::Algorithm = aead::Algorithm {
     max_input_len: AES_GCM_MAX_INPUT_LEN,
 };
 
+#[derive(Clone)]
 pub struct Key {
     gcm_key: gcm::Key, // First because it has a large alignment requirement.
     aes_key: aes::Key,

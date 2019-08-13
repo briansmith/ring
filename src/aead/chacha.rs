@@ -20,6 +20,7 @@ use super::{
 use crate::{c, endian::*, polyfill::convert::*};
 
 #[repr(C)]
+#[derive(Clone)]
 pub struct Key([Block; KEY_BLOCKS]);
 
 impl Key {
