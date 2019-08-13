@@ -167,6 +167,62 @@ class Android(object):
             makefile, '%s_%s_sources' % (osname, arch), asm_files)
 
 
+class AndroidCMake(object):
+
+  def __init__(self):
+    self.header = \
+"""# Copyright (C) 2019 The Android Open Source Project
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This file is created by generate_build_files.py. Do not edit manually.
+# To specify a custom path prefix, set BORINGSSL_ROOT before including this
+# file, or use list(TRANSFORM ... PREPEND) from CMake 3.12.
+
+"""
+
+  def PrintVariableSection(self, out, name, files):
+    out.write('set(%s\n' % name)
+    for f in sorted(files):
+      # Ideally adding the prefix would be the caller's job, but
+      # list(TRANSFORM ... PREPEND) is only available starting CMake 3.12. When
+      # sources.cmake is the source of truth, we can ask Android to either write
+      # a CMake function or update to 3.12.
+      out.write('  ${BORINGSSL_ROOT}%s\n' % f)
+    out.write(')\n')
+
+  def WriteFiles(self, files, asm_outputs):
+    # The Android emulator uses a custom CMake buildsystem.
+    #
+    # TODO(davidben): Move our various source lists into sources.cmake and have
+    # Android consume that directly.
+    with open('android-sources.cmake', 'w+') as out:
+      out.write(self.header)
+
+      self.PrintVariableSection(out, 'crypto_sources', files['crypto'])
+      self.PrintVariableSection(out, 'ssl_sources', files['ssl'])
+      self.PrintVariableSection(out, 'tool_sources', files['tool'])
+      self.PrintVariableSection(out, 'test_support_sources',
+                                files['test_support'])
+      self.PrintVariableSection(out, 'crypto_test_sources',
+                                files['crypto_test'])
+      self.PrintVariableSection(out, 'ssl_test_sources', files['ssl_test'])
+
+      for ((osname, arch), asm_files) in asm_outputs:
+        self.PrintVariableSection(
+            out, 'crypto_sources_%s_%s' % (osname, arch), asm_files)
+
+
 class Bazel(object):
   """Bazel outputs files suitable for including in Bazel files."""
 
@@ -689,7 +745,7 @@ def main(platforms):
 
 if __name__ == '__main__':
   parser = optparse.OptionParser(usage='Usage: %prog [--prefix=<path>]'
-      ' [android|bazel|eureka|gn|gyp]')
+      ' [android|android-cmake|bazel|eureka|gn|gyp]')
   parser.add_option('--prefix', dest='prefix',
       help='For Bazel, prepend argument to all source files')
   parser.add_option(
@@ -708,6 +764,8 @@ if __name__ == '__main__':
   for s in args:
     if s == 'android':
       platforms.append(Android())
+    elif s == 'android-cmake':
+      platforms.append(AndroidCMake())
     elif s == 'bazel':
       platforms.append(Bazel())
     elif s == 'eureka':
