@@ -385,6 +385,7 @@ impl Aad<[u8; 0]> {
 }
 
 /// An AEAD key without a designated role or nonce sequence.
+#[derive(Clone)]
 pub struct UnboundKey {
     inner: KeyInner,
     algorithm: &'static Algorithm,

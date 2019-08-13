@@ -421,6 +421,12 @@ fn test_aead_key_debug() {
     );
 }
 
+#[test]
+fn test_unbound_key_clone() {
+    test::compile_time_assert_clone::<aead::UnboundKey>();
+    test::compile_time_assert_send::<aead::UnboundKey>();
+}
+
 fn make_key<K: aead::BoundKey<OneNonceSequence>>(
     algorithm: &'static aead::Algorithm,
     key: &[u8],
