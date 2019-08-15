@@ -94,9 +94,9 @@ impl From<Okm<'_, Algorithm>> for Salt {
     }
 }
 
-/// The length of the OKM (Output Keying Material) for a `Prf::expand()` call.
+/// The length of the OKM (Output Keying Material) for a `Prk::expand()` call.
 pub trait KeyType {
-    /// The length that `Prf::expand()` should expand its input to.
+    /// The length that `Prk::expand()` should expand its input to.
     fn len(&self) -> usize;
 }
 
@@ -162,7 +162,7 @@ pub struct Okm<'a, L: KeyType> {
 }
 
 impl<L: KeyType> Okm<'_, L> {
-    /// The `OkmLength` given to `Prf::expand()`.
+    /// The `OkmLength` given to `Prk::expand()`.
     #[inline]
     pub fn len(&self) -> &L {
         &self.len
