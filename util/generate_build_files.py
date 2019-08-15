@@ -76,7 +76,6 @@ class Android(object):
 # limitations under the License.
 
 # This file is created by generate_build_files.py. Do not edit manually.
-
 """
 
   def PrintVariableSection(self, out, name, files):
@@ -90,14 +89,44 @@ class Android(object):
     with open('sources.bp', 'w+') as blueprint:
       blueprint.write(self.header.replace('#', '//'))
 
-      blueprint.write('cc_defaults {\n')
-      blueprint.write('    name: "libcrypto_sources",\n')
-      blueprint.write('    srcs: [\n')
-      for f in sorted(files['crypto']):
-        blueprint.write('        "%s",\n' % f)
-      blueprint.write('    ],\n')
-      blueprint.write('    target: {\n')
+      #  Separate out BCM files to allow different compilation rules (specific to Android FIPS)
+      bcm_c_files = files['bcm_crypto']
+      non_bcm_c_files = [file for file in files['crypto'] if file not in bcm_c_files]
+      non_bcm_asm = self.FilterBcmAsm(asm_outputs, False)
+      bcm_asm = self.FilterBcmAsm(asm_outputs, True)
 
+      self.PrintDefaults(blueprint, 'libcrypto_sources', non_bcm_c_files, non_bcm_asm)
+      self.PrintDefaults(blueprint, 'libcrypto_bcm_sources', bcm_c_files, bcm_asm)
+      self.PrintDefaults(blueprint, 'libssl_sources', files['ssl'])
+      self.PrintDefaults(blueprint, 'bssl_sources', files['tool'])
+      self.PrintDefaults(blueprint, 'boringssl_test_support_sources', files['test_support'])
+      self.PrintDefaults(blueprint, 'boringssl_crypto_test_sources', files['crypto_test'])
+      self.PrintDefaults(blueprint, 'boringssl_ssl_test_sources', files['ssl_test'])
+
+    # Legacy Android.mk format, only used by Trusty in new branches
+    with open('sources.mk', 'w+') as makefile:
+      makefile.write(self.header)
+      makefile.write('\n')
+      self.PrintVariableSection(makefile, 'crypto_sources', files['crypto'])
+
+      for ((osname, arch), asm_files) in asm_outputs:
+        if osname != 'linux':
+          continue
+        self.PrintVariableSection(
+            makefile, '%s_%s_sources' % (osname, arch), asm_files)
+
+  def PrintDefaults(self, blueprint, name, files, asm_outputs={}):
+    """Print a cc_defaults section from a list of C files and optionally assembly outputs"""
+    blueprint.write('\n')
+    blueprint.write('cc_defaults {\n')
+    blueprint.write('    name: "%s",\n' % name)
+    blueprint.write('    srcs: [\n')
+    for f in sorted(files):
+      blueprint.write('        "%s",\n' % f)
+    blueprint.write('    ],\n')
+
+    if asm_outputs:
+      blueprint.write('    target: {\n')
       for ((osname, arch), asm_files) in asm_outputs:
         if osname != 'linux' or arch == 'ppc64le':
           continue
@@ -110,61 +139,22 @@ class Android(object):
           blueprint.write('                "%s",\n' % f)
         blueprint.write('            ],\n')
         blueprint.write('        },\n')
-
       blueprint.write('    },\n')
-      blueprint.write('}\n\n')
 
-      blueprint.write('cc_defaults {\n')
-      blueprint.write('    name: "libssl_sources",\n')
-      blueprint.write('    srcs: [\n')
-      for f in sorted(files['ssl']):
-        blueprint.write('        "%s",\n' % f)
-      blueprint.write('    ],\n')
-      blueprint.write('}\n\n')
+    blueprint.write('}\n')
 
-      blueprint.write('cc_defaults {\n')
-      blueprint.write('    name: "bssl_sources",\n')
-      blueprint.write('    srcs: [\n')
-      for f in sorted(files['tool']):
-        blueprint.write('        "%s",\n' % f)
-      blueprint.write('    ],\n')
-      blueprint.write('}\n\n')
+  def FilterBcmAsm(self, asm, want_bcm):
+    """Filter a list of assembly outputs based on whether they belong in BCM
 
-      blueprint.write('cc_defaults {\n')
-      blueprint.write('    name: "boringssl_test_support_sources",\n')
-      blueprint.write('    srcs: [\n')
-      for f in sorted(files['test_support']):
-        blueprint.write('        "%s",\n' % f)
-      blueprint.write('    ],\n')
-      blueprint.write('}\n\n')
+    Args:
+      asm: Assembly file lists to filter
+      want_bcm: If true then include BCM files, otherwise do not
 
-      blueprint.write('cc_defaults {\n')
-      blueprint.write('    name: "boringssl_crypto_test_sources",\n')
-      blueprint.write('    srcs: [\n')
-      for f in sorted(files['crypto_test']):
-        blueprint.write('        "%s",\n' % f)
-      blueprint.write('    ],\n')
-      blueprint.write('}\n\n')
-
-      blueprint.write('cc_defaults {\n')
-      blueprint.write('    name: "boringssl_ssl_test_sources",\n')
-      blueprint.write('    srcs: [\n')
-      for f in sorted(files['ssl_test']):
-        blueprint.write('        "%s",\n' % f)
-      blueprint.write('    ],\n')
-      blueprint.write('}\n\n')
-
-    # Legacy Android.mk format, only used by Trusty in new branches
-    with open('sources.mk', 'w+') as makefile:
-      makefile.write(self.header)
-
-      self.PrintVariableSection(makefile, 'crypto_sources', files['crypto'])
-
-      for ((osname, arch), asm_files) in asm_outputs:
-        if osname != 'linux':
-          continue
-        self.PrintVariableSection(
-            makefile, '%s_%s_sources' % (osname, arch), asm_files)
+    Returns:
+      A copy of |asm| with files filtered according to |want_bcm|
+    """
+    return [(archinfo, filter(lambda p: ("/crypto/fipsmodule/" in p) == want_bcm, files))
+            for (archinfo, files) in asm]
 
 
 class AndroidCMake(object):
@@ -661,6 +651,11 @@ def main(platforms):
   fips_fragments.append(p256)
   crypto_c_files.remove(p256)
 
+  # BCM shared library C files
+  bcm_crypto_c_files = [
+      os.path.join('src', 'crypto', 'fipsmodule', 'bcm.c')
+  ]
+
   # Generate err_data.c
   with open('err_data.c', 'w+') as err_data:
     subprocess.check_call(['go', 'run', 'err_data_generate.go'],
@@ -718,6 +713,7 @@ def main(platforms):
       FindHeaderFiles(os.path.join('src', 'third_party', 'sike'), NoTests))
 
   files = {
+      'bcm_crypto': bcm_crypto_c_files,
       'crypto': crypto_c_files,
       'crypto_headers': crypto_h_files,
       'crypto_internal_headers': crypto_internal_h_files,
