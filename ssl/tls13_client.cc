@@ -633,12 +633,16 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
 
   if (ssl->s3->early_data_accepted) {
     hs->can_early_write = false;
-    ScopedCBB cbb;
-    CBB body;
-    if (!ssl->method->init_message(ssl, cbb.get(), &body,
-                                   SSL3_MT_END_OF_EARLY_DATA) ||
-        !ssl_add_message_cbb(ssl, cbb.get())) {
-      return ssl_hs_error;
+    // QUIC omits the EndOfEarlyData message. See draft-ietf-quic-tls-22,
+    // section 8.3.
+    if (ssl->quic_method == nullptr) {
+      ScopedCBB cbb;
+      CBB body;
+      if (!ssl->method->init_message(ssl, cbb.get(), &body,
+                                     SSL3_MT_END_OF_EARLY_DATA) ||
+          !ssl_add_message_cbb(ssl, cbb.get())) {
+        return ssl_hs_error;
+      }
     }
   }
 
@@ -908,6 +912,15 @@ bool tls13_process_new_session_ticket(SSL *ssl, const SSLMessage &msg) {
     if (!CBS_get_u32(&early_data_info, &session->ticket_max_early_data) ||
         CBS_len(&early_data_info) != 0) {
       ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
+      OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
+      return false;
+    }
+
+    // QUIC does not use the max_early_data_size parameter and always sets it to
+    // a fixed value. See draft-ietf-quic-tls-22, section 4.5.
+    if (ssl->quic_method != nullptr &&
+        session->ticket_max_early_data != 0xffffffff) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
       OPENSSL_PUT_ERROR(SSL, SSL_R_DECODE_ERROR);
       return false;
     }

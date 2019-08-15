@@ -146,7 +146,10 @@ static bool add_new_session_tickets(SSL_HANDSHAKE *hs, bool *out_sent_tickets) {
     }
     session->ticket_age_add_valid = true;
     if (ssl->enable_early_data) {
-      session->ticket_max_early_data = kMaxEarlyDataAccepted;
+      // QUIC does not use the max_early_data_size parameter and always sets it
+      // to a fixed value. See draft-ietf-quic-tls-22, section 4.5.
+      session->ticket_max_early_data =
+          ssl->quic_method != nullptr ? 0xffffffff : kMaxEarlyDataAccepted;
     }
 
     static_assert(kNumTickets < 256, "Too many tickets");
@@ -442,7 +445,7 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
   }
 
   if (ssl->s3->early_data_accepted) {
-    if (!tls13_derive_early_secrets(hs)) {
+    if (!tls13_derive_early_secret(hs)) {
       return ssl_hs_error;
     }
   } else if (hs->early_data_offered) {
@@ -465,6 +468,15 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
       hs->tls13_state = state_send_hello_retry_request;
       return ssl_hs_ok;
     }
+    return ssl_hs_error;
+  }
+
+  // Note we defer releasing the early traffic secret to QUIC until after ECDHE
+  // is resolved. The early traffic secret should be derived before the key
+  // schedule incorporates ECDHE, but doing so may reject 0-RTT. To avoid
+  // confusing the caller, we split derivation and releasing the secret to QUIC.
+  if (ssl->s3->early_data_accepted &&
+      !tls13_set_early_secret_for_quic(hs)) {
     return ssl_hs_error;
   }
 
@@ -731,7 +743,8 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
     // Finished early. See RFC 8446, section 4.6.1.
     static const uint8_t kEndOfEarlyData[4] = {SSL3_MT_END_OF_EARLY_DATA, 0,
                                                0, 0};
-    if (!hs->transcript.Update(kEndOfEarlyData)) {
+    if (ssl->quic_method == nullptr &&
+        !hs->transcript.Update(kEndOfEarlyData)) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return ssl_hs_error;
     }
@@ -772,7 +785,9 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (ssl->s3->early_data_accepted) {
-    if (!tls13_set_traffic_key(ssl, ssl_encryption_early_data, evp_aead_open,
+    // QUIC never receives handshake messages under 0-RTT keys.
+    if (ssl->quic_method == nullptr &&
+        !tls13_set_traffic_key(ssl, ssl_encryption_early_data, evp_aead_open,
                                hs->early_traffic_secret())) {
       return ssl_hs_error;
     }
@@ -780,6 +795,19 @@ static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
     hs->can_early_read = true;
     hs->in_early_data = true;
   }
+
+  // QUIC doesn't use an EndOfEarlyData message (draft-ietf-quic-tls-22,
+  // section 8.3), so we switch to client_handshake_secret before the early
+  // return.
+  if (ssl->quic_method != nullptr) {
+    if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
+                               hs->client_handshake_secret())) {
+      return ssl_hs_error;
+    }
+    hs->tls13_state = state_read_client_certificate;
+    return ssl->s3->early_data_accepted ? ssl_hs_early_return : ssl_hs_ok;
+  }
+
   hs->tls13_state = state_process_end_of_early_data;
   return ssl->s3->early_data_accepted ? ssl_hs_read_end_of_early_data
                                       : ssl_hs_ok;

@@ -178,6 +178,8 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
     // encryption itself will be handled by the SSL_QUIC_METHOD.
     traffic_aead =
         SSLAEADContext::CreatePlaceholderForQUIC(version, session->cipher);
+    // QUIC never installs early data keys at the TLS layer.
+    assert(level != ssl_encryption_early_data);
   }
 
   if (!traffic_aead) {
@@ -226,7 +228,7 @@ static const char kTLS13LabelServerHandshakeTraffic[] = "s hs traffic";
 static const char kTLS13LabelClientApplicationTraffic[] = "c ap traffic";
 static const char kTLS13LabelServerApplicationTraffic[] = "s ap traffic";
 
-bool tls13_derive_early_secrets(SSL_HANDSHAKE *hs) {
+bool tls13_derive_early_secret(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!derive_secret(hs, hs->early_traffic_secret(),
                      label_to_span(kTLS13LabelClientEarlyTraffic)) ||
@@ -234,26 +236,30 @@ bool tls13_derive_early_secrets(SSL_HANDSHAKE *hs) {
                       hs->early_traffic_secret())) {
     return false;
   }
+  return true;
+}
 
-  if (ssl->quic_method != nullptr) {
-    if (ssl->server) {
-      if (!ssl->quic_method->set_encryption_secrets(
-              ssl, ssl_encryption_early_data, nullptr,
-              hs->early_traffic_secret().data(),
-              hs->early_traffic_secret().size())) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);
-        return false;
-      }
-    } else {
-      if (!ssl->quic_method->set_encryption_secrets(
-              ssl, ssl_encryption_early_data, hs->early_traffic_secret().data(),
-              nullptr, hs->early_traffic_secret().size())) {
-        OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);
-        return false;
-      }
+bool tls13_set_early_secret_for_quic(SSL_HANDSHAKE *hs) {
+  SSL *const ssl = hs->ssl;
+  if (ssl->quic_method == nullptr) {
+    return true;
+  }
+  if (ssl->server) {
+    if (!ssl->quic_method->set_encryption_secrets(
+            ssl, ssl_encryption_early_data, hs->early_traffic_secret().data(),
+            /*write_secret=*/nullptr, hs->early_traffic_secret().size())) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);
+      return false;
+    }
+  } else {
+    if (!ssl->quic_method->set_encryption_secrets(
+            ssl, ssl_encryption_early_data, /*read_secret=*/nullptr,
+            hs->early_traffic_secret().data(),
+            hs->early_traffic_secret().size())) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_QUIC_INTERNAL_ERROR);
+      return false;
     }
   }
-
   return true;
 }
 

@@ -1265,9 +1265,17 @@ bool tls13_set_traffic_key(SSL *ssl, enum ssl_encryption_level_t level,
                            enum evp_aead_direction_t direction,
                            Span<const uint8_t> traffic_secret);
 
-// tls13_derive_early_secrets derives the early traffic secret. It returns true
-// on success and false on error.
-bool tls13_derive_early_secrets(SSL_HANDSHAKE *hs);
+// tls13_derive_early_secret derives the early traffic secret. It returns true
+// on success and false on error. Unlike with other traffic secrets, this
+// function does not pass the keys to QUIC. Call
+// |tls13_set_early_secret_for_quic| to do so. This is done to due to an
+// ordering complication around resolving HelloRetryRequest on the server.
+bool tls13_derive_early_secret(SSL_HANDSHAKE *hs);
+
+// tls13_set_early_secret_for_quic passes the early traffic secrets, as
+// derived by |tls13_derive_early_secret|, to QUIC. It returns true on success
+// and false on error.
+bool tls13_set_early_secret_for_quic(SSL_HANDSHAKE *hs);
 
 // tls13_derive_handshake_secrets derives the handshake traffic secret. It
 // returns true on success and false on error.
