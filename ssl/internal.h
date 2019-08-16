@@ -1452,14 +1452,38 @@ struct SSL_HANDSHAKE {
   // |SSL_OP_NO_*| and |SSL_CTX_set_max_proto_version| APIs.
   uint16_t max_version = 0;
 
-  size_t hash_len = 0;
-  uint8_t secret[SSL_MAX_MD_SIZE] = {0};
-  uint8_t early_traffic_secret[SSL_MAX_MD_SIZE] = {0};
-  uint8_t client_handshake_secret[SSL_MAX_MD_SIZE] = {0};
-  uint8_t server_handshake_secret[SSL_MAX_MD_SIZE] = {0};
-  uint8_t client_traffic_secret_0[SSL_MAX_MD_SIZE] = {0};
-  uint8_t server_traffic_secret_0[SSL_MAX_MD_SIZE] = {0};
-  uint8_t expected_client_finished[SSL_MAX_MD_SIZE] = {0};
+ private:
+  size_t hash_len_ = 0;
+  uint8_t secret_[SSL_MAX_MD_SIZE] = {0};
+  uint8_t early_traffic_secret_[SSL_MAX_MD_SIZE] = {0};
+  uint8_t client_handshake_secret_[SSL_MAX_MD_SIZE] = {0};
+  uint8_t server_handshake_secret_[SSL_MAX_MD_SIZE] = {0};
+  uint8_t client_traffic_secret_0_[SSL_MAX_MD_SIZE] = {0};
+  uint8_t server_traffic_secret_0_[SSL_MAX_MD_SIZE] = {0};
+  uint8_t expected_client_finished_[SSL_MAX_MD_SIZE] = {0};
+
+ public:
+  void ResizeSecrets(size_t hash_len);
+
+  Span<uint8_t> secret() { return MakeSpan(secret_, hash_len_); }
+  Span<uint8_t> early_traffic_secret() {
+    return MakeSpan(early_traffic_secret_, hash_len_);
+  }
+  Span<uint8_t> client_handshake_secret() {
+    return MakeSpan(client_handshake_secret_, hash_len_);
+  }
+  Span<uint8_t> server_handshake_secret() {
+    return MakeSpan(server_handshake_secret_, hash_len_);
+  }
+  Span<uint8_t> client_traffic_secret_0() {
+    return MakeSpan(client_traffic_secret_0_, hash_len_);
+  }
+  Span<uint8_t> server_traffic_secret_0() {
+    return MakeSpan(server_traffic_secret_0_, hash_len_);
+  }
+  Span<uint8_t> expected_client_finished() {
+    return MakeSpan(expected_client_finished_, hash_len_);
+  }
 
   union {
     // sent is a bitset where the bits correspond to elements of kExtensions

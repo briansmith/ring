@@ -607,9 +607,8 @@ static enum ssl_hs_wait_t do_send_server_hello(SSL_HANDSHAKE *hs) {
 
   // Derive and enable the handshake traffic secrets.
   if (!tls13_derive_handshake_secrets(hs) ||
-      !tls13_set_traffic_key(
-          ssl, ssl_encryption_handshake, evp_aead_seal,
-          MakeConstSpan(hs->server_handshake_secret, hs->hash_len))) {
+      !tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
+                             hs->server_handshake_secret())) {
     return ssl_hs_error;
   }
 
@@ -717,11 +716,11 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (!tls13_add_finished(hs) ||
       // Update the secret to the master secret and derive traffic keys.
-      !tls13_advance_key_schedule(hs, MakeConstSpan(kZeroes, hs->hash_len)) ||
+      !tls13_advance_key_schedule(
+          hs, MakeConstSpan(kZeroes, hs->transcript.DigestLen())) ||
       !tls13_derive_application_secrets(hs) ||
-      !tls13_set_traffic_key(
-          ssl, ssl_encryption_application, evp_aead_seal,
-          MakeConstSpan(hs->server_traffic_secret_0, hs->hash_len))) {
+      !tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_seal,
+                             hs->server_traffic_secret_0())) {
     return ssl_hs_error;
   }
 
@@ -738,12 +737,12 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
     }
 
     size_t finished_len;
-    if (!tls13_finished_mac(hs, hs->expected_client_finished, &finished_len,
-                            false /* client */)) {
+    if (!tls13_finished_mac(hs, hs->expected_client_finished().data(),
+                            &finished_len, false /* client */)) {
       return ssl_hs_error;
     }
 
-    if (finished_len != hs->hash_len) {
+    if (finished_len != hs->expected_client_finished().size()) {
       OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
       return ssl_hs_error;
     }
@@ -753,13 +752,13 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
     //
     // TODO(davidben): This will need to be updated for DTLS 1.3.
     assert(!SSL_is_dtls(hs->ssl));
-    assert(hs->hash_len <= 0xff);
-    uint8_t header[4] = {SSL3_MT_FINISHED, 0, 0,
-                         static_cast<uint8_t>(hs->hash_len)};
+    assert(hs->expected_client_finished().size() <= 0xff);
+    uint8_t header[4] = {
+        SSL3_MT_FINISHED, 0, 0,
+        static_cast<uint8_t>(hs->expected_client_finished().size())};
     bool unused_sent_tickets;
     if (!hs->transcript.Update(header) ||
-        !hs->transcript.Update(
-            MakeConstSpan(hs->expected_client_finished, hs->hash_len)) ||
+        !hs->transcript.Update(hs->expected_client_finished()) ||
         !tls13_derive_resumption_secret(hs) ||
         !add_new_session_tickets(hs, &unused_sent_tickets)) {
       return ssl_hs_error;
@@ -773,9 +772,8 @@ static enum ssl_hs_wait_t do_send_server_finished(SSL_HANDSHAKE *hs) {
 static enum ssl_hs_wait_t do_read_second_client_flight(SSL_HANDSHAKE *hs) {
   SSL *const ssl = hs->ssl;
   if (ssl->s3->early_data_accepted) {
-    if (!tls13_set_traffic_key(
-            ssl, ssl_encryption_early_data, evp_aead_open,
-            MakeConstSpan(hs->early_traffic_secret, hs->hash_len))) {
+    if (!tls13_set_traffic_key(ssl, ssl_encryption_early_data, evp_aead_open,
+                               hs->early_traffic_secret())) {
       return ssl_hs_error;
     }
     hs->can_early_write = true;
@@ -809,9 +807,8 @@ static enum ssl_hs_wait_t do_process_end_of_early_data(SSL_HANDSHAKE *hs) {
       ssl->method->next_message(ssl);
     }
   }
-  if (!tls13_set_traffic_key(
-          ssl, ssl_encryption_handshake, evp_aead_open,
-          MakeConstSpan(hs->client_handshake_secret, hs->hash_len))) {
+  if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
+                             hs->client_handshake_secret())) {
     return ssl_hs_error;
   }
   hs->tls13_state = ssl->s3->early_data_accepted
@@ -917,9 +914,8 @@ static enum ssl_hs_wait_t do_read_client_finished(SSL_HANDSHAKE *hs) {
       // and derived the resumption secret.
       !tls13_process_finished(hs, msg, ssl->s3->early_data_accepted) ||
       // evp_aead_seal keys have already been switched.
-      !tls13_set_traffic_key(
-          ssl, ssl_encryption_application, evp_aead_open,
-          MakeConstSpan(hs->client_traffic_secret_0, hs->hash_len))) {
+      !tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_open,
+                             hs->client_traffic_secret_0())) {
     return ssl_hs_error;
   }
 

@@ -157,6 +157,13 @@ SSL_HANDSHAKE::~SSL_HANDSHAKE() {
   ssl->ctx->x509_method->hs_flush_cached_ca_names(this);
 }
 
+void SSL_HANDSHAKE::ResizeSecrets(size_t hash_len) {
+  if (hash_len > SSL_MAX_MD_SIZE) {
+    abort();
+  }
+  hash_len_ = hash_len;
+}
+
 UniquePtr<SSL_HANDSHAKE> ssl_handshake_new(SSL *ssl) {
   UniquePtr<SSL_HANDSHAKE> hs = MakeUnique<SSL_HANDSHAKE>(ssl);
   if (!hs || !hs->transcript.Init()) {

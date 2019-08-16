@@ -393,18 +393,16 @@ static enum ssl_hs_wait_t do_read_server_hello(SSL_HANDSHAKE *hs) {
   if (!tls13_advance_key_schedule(hs, dhe_secret) ||
       !ssl_hash_message(hs, msg) ||
       !tls13_derive_handshake_secrets(hs) ||
-      !tls13_set_traffic_key(
-          ssl, ssl_encryption_handshake, evp_aead_open,
-          MakeConstSpan(hs->server_handshake_secret, hs->hash_len))) {
+      !tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_open,
+                             hs->server_handshake_secret())) {
     return ssl_hs_error;
   }
 
   if (!hs->early_data_offered) {
     // If not sending early data, set client traffic keys now so that alerts are
     // encrypted.
-    if (!tls13_set_traffic_key(
-            ssl, ssl_encryption_handshake, evp_aead_seal,
-            MakeConstSpan(hs->client_handshake_secret, hs->hash_len))) {
+    if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
+                               hs->client_handshake_secret())) {
       return ssl_hs_error;
     }
   }
@@ -619,7 +617,8 @@ static enum ssl_hs_wait_t do_read_server_finished(SSL_HANDSHAKE *hs) {
       !tls13_process_finished(hs, msg, false /* don't use saved value */) ||
       !ssl_hash_message(hs, msg) ||
       // Update the secret to the master secret and derive traffic keys.
-      !tls13_advance_key_schedule(hs, MakeConstSpan(kZeroes, hs->hash_len)) ||
+      !tls13_advance_key_schedule(
+          hs, MakeConstSpan(kZeroes, hs->transcript.DigestLen())) ||
       !tls13_derive_application_secrets(hs)) {
     return ssl_hs_error;
   }
@@ -644,9 +643,8 @@ static enum ssl_hs_wait_t do_send_end_of_early_data(SSL_HANDSHAKE *hs) {
   }
 
   if (hs->early_data_offered) {
-    if (!tls13_set_traffic_key(
-            ssl, ssl_encryption_handshake, evp_aead_seal,
-            MakeConstSpan(hs->client_handshake_secret, hs->hash_len))) {
+    if (!tls13_set_traffic_key(ssl, ssl_encryption_handshake, evp_aead_seal,
+                               hs->client_handshake_secret())) {
       return ssl_hs_error;
     }
   }
@@ -740,12 +738,10 @@ static enum ssl_hs_wait_t do_complete_second_flight(SSL_HANDSHAKE *hs) {
   }
 
   // Derive the final keys and enable them.
-  if (!tls13_set_traffic_key(
-          ssl, ssl_encryption_application, evp_aead_open,
-          MakeConstSpan(hs->server_traffic_secret_0, hs->hash_len)) ||
-      !tls13_set_traffic_key(
-          ssl, ssl_encryption_application, evp_aead_seal,
-          MakeConstSpan(hs->client_traffic_secret_0, hs->hash_len)) ||
+  if (!tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_open,
+                             hs->server_traffic_secret_0()) ||
+      !tls13_set_traffic_key(ssl, ssl_encryption_application, evp_aead_seal,
+                             hs->client_traffic_secret_0()) ||
       !tls13_derive_resumption_secret(hs)) {
     return ssl_hs_error;
   }
