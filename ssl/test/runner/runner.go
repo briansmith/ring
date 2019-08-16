@@ -8033,94 +8033,132 @@ func addResumptionVersionTests() {
 		expectedError: ":OLD_SESSION_PRF_HASH_MISMATCH:",
 	})
 
-	testCases = append(testCases, testCase{
-		testType:      serverTest,
-		name:          "Resume-Server-BinderWrongLength",
-		resumeSession: true,
-		config: Config{
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				SendShortPSKBinder: true,
+	for _, secondBinder := range []bool{false, true} {
+		var suffix string
+		var defaultCurves []CurveID
+		if secondBinder {
+			suffix = "-SecondBinder"
+			// Force a HelloRetryRequest by predicting an empty curve list.
+			defaultCurves = []CurveID{}
+		}
+
+		testCases = append(testCases, testCase{
+			testType:      serverTest,
+			name:          "Resume-Server-BinderWrongLength" + suffix,
+			resumeSession: true,
+			config: Config{
+				MaxVersion:    VersionTLS13,
+				DefaultCurves: defaultCurves,
+				Bugs: ProtocolBugs{
+					SendShortPSKBinder:         true,
+					OnlyCorruptSecondPSKBinder: secondBinder,
+				},
 			},
-		},
-		shouldFail:         true,
-		expectedLocalError: "remote error: error decrypting message",
-		expectedError:      ":DIGEST_CHECK_FAILED:",
-	})
+			shouldFail:         true,
+			expectedLocalError: "remote error: error decrypting message",
+			expectedError:      ":DIGEST_CHECK_FAILED:",
+		})
+
+		testCases = append(testCases, testCase{
+			testType:      serverTest,
+			name:          "Resume-Server-NoPSKBinder" + suffix,
+			resumeSession: true,
+			config: Config{
+				MaxVersion:    VersionTLS13,
+				DefaultCurves: defaultCurves,
+				Bugs: ProtocolBugs{
+					SendNoPSKBinder:            true,
+					OnlyCorruptSecondPSKBinder: secondBinder,
+				},
+			},
+			shouldFail:         true,
+			expectedLocalError: "remote error: error decoding message",
+			expectedError:      ":DECODE_ERROR:",
+		})
+
+		testCases = append(testCases, testCase{
+			testType:      serverTest,
+			name:          "Resume-Server-ExtraPSKBinder" + suffix,
+			resumeSession: true,
+			config: Config{
+				MaxVersion:    VersionTLS13,
+				DefaultCurves: defaultCurves,
+				Bugs: ProtocolBugs{
+					SendExtraPSKBinder:         true,
+					OnlyCorruptSecondPSKBinder: secondBinder,
+				},
+			},
+			shouldFail:         true,
+			expectedLocalError: "remote error: illegal parameter",
+			expectedError:      ":PSK_IDENTITY_BINDER_COUNT_MISMATCH:",
+		})
+
+		testCases = append(testCases, testCase{
+			testType:      serverTest,
+			name:          "Resume-Server-ExtraIdentityNoBinder" + suffix,
+			resumeSession: true,
+			config: Config{
+				MaxVersion:    VersionTLS13,
+				DefaultCurves: defaultCurves,
+				Bugs: ProtocolBugs{
+					ExtraPSKIdentity:           true,
+					OnlyCorruptSecondPSKBinder: secondBinder,
+				},
+			},
+			shouldFail:         true,
+			expectedLocalError: "remote error: illegal parameter",
+			expectedError:      ":PSK_IDENTITY_BINDER_COUNT_MISMATCH:",
+		})
+
+		testCases = append(testCases, testCase{
+			testType:      serverTest,
+			name:          "Resume-Server-InvalidPSKBinder" + suffix,
+			resumeSession: true,
+			config: Config{
+				MaxVersion:    VersionTLS13,
+				DefaultCurves: defaultCurves,
+				Bugs: ProtocolBugs{
+					SendInvalidPSKBinder:       true,
+					OnlyCorruptSecondPSKBinder: secondBinder,
+				},
+			},
+			shouldFail:         true,
+			expectedLocalError: "remote error: error decrypting message",
+			expectedError:      ":DIGEST_CHECK_FAILED:",
+		})
+
+		testCases = append(testCases, testCase{
+			testType:      serverTest,
+			name:          "Resume-Server-PSKBinderFirstExtension" + suffix,
+			resumeSession: true,
+			config: Config{
+				MaxVersion:    VersionTLS13,
+				DefaultCurves: defaultCurves,
+				Bugs: ProtocolBugs{
+					PSKBinderFirst:             true,
+					OnlyCorruptSecondPSKBinder: secondBinder,
+				},
+			},
+			shouldFail:         true,
+			expectedLocalError: "remote error: illegal parameter",
+			expectedError:      ":PRE_SHARED_KEY_MUST_BE_LAST:",
+		})
+	}
 
 	testCases = append(testCases, testCase{
 		testType:      serverTest,
-		name:          "Resume-Server-NoPSKBinder",
+		name:          "Resume-Server-OmitPSKsOnSecondClientHello",
 		resumeSession: true,
 		config: Config{
-			MaxVersion: VersionTLS13,
+			MaxVersion:    VersionTLS13,
+			DefaultCurves: []CurveID{},
 			Bugs: ProtocolBugs{
-				SendNoPSKBinder: true,
-			},
-		},
-		shouldFail:         true,
-		expectedLocalError: "remote error: error decoding message",
-		expectedError:      ":DECODE_ERROR:",
-	})
-
-	testCases = append(testCases, testCase{
-		testType:      serverTest,
-		name:          "Resume-Server-ExtraPSKBinder",
-		resumeSession: true,
-		config: Config{
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				SendExtraPSKBinder: true,
+				OmitPSKsOnSecondClientHello: true,
 			},
 		},
 		shouldFail:         true,
 		expectedLocalError: "remote error: illegal parameter",
-		expectedError:      ":PSK_IDENTITY_BINDER_COUNT_MISMATCH:",
-	})
-
-	testCases = append(testCases, testCase{
-		testType:      serverTest,
-		name:          "Resume-Server-ExtraIdentityNoBinder",
-		resumeSession: true,
-		config: Config{
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				ExtraPSKIdentity: true,
-			},
-		},
-		shouldFail:         true,
-		expectedLocalError: "remote error: illegal parameter",
-		expectedError:      ":PSK_IDENTITY_BINDER_COUNT_MISMATCH:",
-	})
-
-	testCases = append(testCases, testCase{
-		testType:      serverTest,
-		name:          "Resume-Server-InvalidPSKBinder",
-		resumeSession: true,
-		config: Config{
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				SendInvalidPSKBinder: true,
-			},
-		},
-		shouldFail:         true,
-		expectedLocalError: "remote error: error decrypting message",
-		expectedError:      ":DIGEST_CHECK_FAILED:",
-	})
-
-	testCases = append(testCases, testCase{
-		testType:      serverTest,
-		name:          "Resume-Server-PSKBinderFirstExtension",
-		resumeSession: true,
-		config: Config{
-			MaxVersion: VersionTLS13,
-			Bugs: ProtocolBugs{
-				PSKBinderFirst: true,
-			},
-		},
-		shouldFail:         true,
-		expectedLocalError: "remote error: illegal parameter",
-		expectedError:      ":PRE_SHARED_KEY_MUST_BE_LAST:",
+		expectedError:      ":INCONSISTENT_CLIENT_HELLO:",
 	})
 }
 

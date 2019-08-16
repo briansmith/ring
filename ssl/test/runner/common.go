@@ -1459,6 +1459,14 @@ type ProtocolBugs struct {
 	// rejected. See draft-davidben-tls-grease-01.
 	ExpectGREASE bool
 
+	// OmitPSKsOnSecondClientHello, if true, causes the client to omit the
+	// PSK extension on the second ClientHello.
+	OmitPSKsOnSecondClientHello bool
+
+	// OnlyCorruptSecondPSKBinder, if true, causes the options below to
+	// only apply to the second PSK binder.
+	OnlyCorruptSecondPSKBinder bool
+
 	// SendShortPSKBinder, if true, causes the client to send a PSK binder
 	// that is one byte shorter than it should be.
 	SendShortPSKBinder bool

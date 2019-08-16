@@ -326,7 +326,7 @@ bool ssl_write_client_hello(SSL_HANDSHAKE *hs) {
   // Now that the length prefixes have been computed, fill in the placeholder
   // PSK binder.
   if (hs->needs_psk_binder &&
-      !tls13_write_psk_binder(hs, msg.data(), msg.size())) {
+      !tls13_write_psk_binder(hs, MakeSpan(msg))) {
     return false;
   }
 

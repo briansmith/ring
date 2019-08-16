@@ -125,7 +125,7 @@ func (c *Conn) clientHandshake() error {
 		srtpProtectionProfiles:  c.config.SRTPProtectionProfiles,
 		srtpMasterKeyIdentifier: c.config.Bugs.SRTPMasterKeyIdentifer,
 		customExtension:         c.config.Bugs.CustomExtension,
-		pskBinderFirst:          c.config.Bugs.PSKBinderFirst,
+		pskBinderFirst:          c.config.Bugs.PSKBinderFirst && !c.config.Bugs.OnlyCorruptSecondPSKBinder,
 		omitExtensions:          c.config.Bugs.OmitExtensions,
 		emptyExtensions:         c.config.Bugs.EmptyExtensions,
 		delegatedCredentials:    !c.config.Bugs.DisableDelegatedCredentials,
@@ -603,6 +603,12 @@ NextCipherSuite:
 		}
 
 		hello.hasEarlyData = c.config.Bugs.SendEarlyDataOnSecondClientHello
+		// The first ClientHello may have skipped this due to OnlyCorruptSecondPSKBinder.
+		hello.pskBinderFirst = c.config.Bugs.PSKBinderFirst
+		if c.config.Bugs.OmitPSKsOnSecondClientHello {
+			hello.pskIdentities = nil
+			hello.pskBinders = nil
+		}
 		hello.raw = nil
 
 		if len(hello.pskIdentities) > 0 {
@@ -1997,18 +2003,24 @@ func writeIntPadded(b []byte, x *big.Int) {
 }
 
 func generatePSKBinders(version uint16, hello *clientHelloMsg, pskCipherSuite *cipherSuite, psk, firstClientHello, helloRetryRequest []byte, config *Config) {
-	if config.Bugs.SendNoPSKBinder {
-		return
-	}
-
+	maybeCorruptBinder := !config.Bugs.OnlyCorruptSecondPSKBinder || len(firstClientHello) > 0
 	binderLen := pskCipherSuite.hash().Size()
-	if config.Bugs.SendShortPSKBinder {
-		binderLen--
-	}
-
 	numBinders := 1
-	if config.Bugs.SendExtraPSKBinder {
-		numBinders++
+	if maybeCorruptBinder {
+		if config.Bugs.SendNoPSKBinder {
+			// The binders may have been set from the previous
+			// ClientHello.
+			hello.pskBinders = nil
+			return
+		}
+
+		if config.Bugs.SendShortPSKBinder {
+			binderLen--
+		}
+
+		if config.Bugs.SendExtraPSKBinder {
+			numBinders++
+		}
 	}
 
 	// Fill hello.pskBinders with appropriate length arrays of zeros so the
@@ -2023,11 +2035,13 @@ func generatePSKBinders(version uint16, hello *clientHelloMsg, pskCipherSuite *c
 	binderSize := len(hello.pskBinders)*(binderLen+1) + 2
 	truncatedHello := helloBytes[:len(helloBytes)-binderSize]
 	binder := computePSKBinder(psk, version, resumptionPSKBinderLabel, pskCipherSuite, firstClientHello, helloRetryRequest, truncatedHello)
-	if config.Bugs.SendShortPSKBinder {
-		binder = binder[:binderLen]
-	}
-	if config.Bugs.SendInvalidPSKBinder {
-		binder[0] ^= 1
+	if maybeCorruptBinder {
+		if config.Bugs.SendShortPSKBinder {
+			binder = binder[:binderLen]
+		}
+		if config.Bugs.SendInvalidPSKBinder {
+			binder[0] ^= 1
+		}
 	}
 
 	for i := range hello.pskBinders {

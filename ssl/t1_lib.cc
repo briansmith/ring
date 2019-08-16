@@ -1901,7 +1901,17 @@ bool ssl_ext_pre_shared_key_parse_serverhello(SSL_HANDSHAKE *hs,
 
 bool ssl_ext_pre_shared_key_parse_clienthello(
     SSL_HANDSHAKE *hs, CBS *out_ticket, CBS *out_binders,
-    uint32_t *out_obfuscated_ticket_age, uint8_t *out_alert, CBS *contents) {
+    uint32_t *out_obfuscated_ticket_age, uint8_t *out_alert,
+    const SSL_CLIENT_HELLO *client_hello, CBS *contents) {
+  // Verify that the pre_shared_key extension is the last extension in
+  // ClientHello.
+  if (CBS_data(contents) + CBS_len(contents) !=
+      client_hello->extensions + client_hello->extensions_len) {
+    OPENSSL_PUT_ERROR(SSL, SSL_R_PRE_SHARED_KEY_MUST_BE_LAST);
+    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
+    return false;
+  }
+
   // We only process the first PSK identity since we don't support pure PSK.
   CBS identities, binders;
   if (!CBS_get_u16_length_prefixed(contents, &identities) ||

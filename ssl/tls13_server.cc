@@ -241,10 +241,6 @@ static enum ssl_hs_wait_t do_select_parameters(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
-  if (!ssl_hash_message(hs, msg)) {
-    return ssl_hs_error;
-  }
-
   hs->tls13_state = state_select_session;
   return ssl_hs_ok;
 }
@@ -263,20 +259,11 @@ static enum ssl_ticket_aead_result_t select_session(
     return ssl_ticket_aead_ignore_ticket;
   }
 
-  // Verify that the pre_shared_key extension is the last extension in
-  // ClientHello.
-  if (CBS_data(&pre_shared_key) + CBS_len(&pre_shared_key) !=
-      client_hello->extensions + client_hello->extensions_len) {
-    OPENSSL_PUT_ERROR(SSL, SSL_R_PRE_SHARED_KEY_MUST_BE_LAST);
-    *out_alert = SSL_AD_ILLEGAL_PARAMETER;
-    return ssl_ticket_aead_error;
-  }
-
   CBS ticket, binders;
   uint32_t client_ticket_age;
-  if (!ssl_ext_pre_shared_key_parse_clienthello(hs, &ticket, &binders,
-                                                &client_ticket_age, out_alert,
-                                                &pre_shared_key)) {
+  if (!ssl_ext_pre_shared_key_parse_clienthello(
+          hs, &ticket, &binders, &client_ticket_age, out_alert, client_hello,
+          &pre_shared_key)) {
     return ssl_ticket_aead_error;
   }
 
@@ -449,6 +436,10 @@ static enum ssl_hs_wait_t do_select_session(SSL_HANDSHAKE *hs) {
     return ssl_hs_error;
   }
 
+  if (!ssl_hash_message(hs, msg)) {
+    return ssl_hs_error;
+  }
+
   if (ssl->s3->early_data_accepted) {
     if (!tls13_derive_early_secrets(hs)) {
       return ssl_hs_error;
@@ -530,6 +521,41 @@ static enum ssl_hs_wait_t do_read_second_client_hello(SSL_HANDSHAKE *hs) {
     OPENSSL_PUT_ERROR(SSL, SSL_R_CLIENTHELLO_PARSE_FAILED);
     ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECODE_ERROR);
     return ssl_hs_error;
+  }
+
+  // We perform all our negotiation based on the first ClientHello (for
+  // consistency with what |select_certificate_cb| observed), which is in the
+  // transcript, so we can ignore most of this second one.
+  //
+  // We do, however, check the second PSK binder. This covers the client key
+  // share, in case we ever send half-RTT data (we currently do not). It is also
+  // a tricky computation, so we enforce the peer handled it correctly.
+  if (ssl->s3->session_reused) {
+    CBS pre_shared_key;
+    if (!ssl_client_hello_get_extension(&client_hello, &pre_shared_key,
+                                        TLSEXT_TYPE_pre_shared_key)) {
+      OPENSSL_PUT_ERROR(SSL, SSL_R_INCONSISTENT_CLIENT_HELLO);
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_ILLEGAL_PARAMETER);
+      return ssl_hs_error;
+    }
+
+    CBS ticket, binders;
+    uint32_t client_ticket_age;
+    uint8_t alert = SSL_AD_DECODE_ERROR;
+    if (!ssl_ext_pre_shared_key_parse_clienthello(
+            hs, &ticket, &binders, &client_ticket_age, &alert, &client_hello,
+            &pre_shared_key)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, alert);
+      return ssl_hs_error;
+    }
+
+    // Note it is important that we do not obtain a new |SSL_SESSION| from
+    // |ticket|. We have already selected parameters based on the first
+    // ClientHello (in the transcript) and must not switch partway through.
+    if (!tls13_verify_psk_binder(hs, hs->new_session.get(), msg, &binders)) {
+      ssl_send_alert(ssl, SSL3_AL_FATAL, SSL_AD_DECRYPT_ERROR);
+      return ssl_hs_error;
+    }
   }
 
   bool need_retry;

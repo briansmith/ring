@@ -376,7 +376,7 @@ static const char kTLS13LabelFinished[] = "finished";
 static bool tls13_verify_data(const EVP_MD *digest, uint16_t version,
                               uint8_t *out, size_t *out_len,
                               const uint8_t *secret, size_t hash_len,
-                              uint8_t *context, size_t context_len) {
+                              const uint8_t *context, size_t context_len) {
   uint8_t key[EVP_MAX_MD_SIZE];
   unsigned len;
   if (!hkdf_expand_label(key, digest, secret, hash_len, kTLS13LabelFinished,
@@ -454,9 +454,9 @@ bool tls13_export_keying_material(SSL *ssl, Span<uint8_t> out,
 static const char kTLS13LabelPSKBinder[] = "res binder";
 
 static bool tls13_psk_binder(uint8_t *out, uint16_t version,
-                             const EVP_MD *digest, uint8_t *psk, size_t psk_len,
-                             uint8_t *context, size_t context_len,
-                             size_t hash_len) {
+                             const EVP_MD *digest, const uint8_t *psk,
+                             size_t psk_len, const uint8_t *context,
+                             size_t context_len, size_t hash_len) {
   uint8_t binder_context[EVP_MAX_MD_SIZE];
   unsigned binder_context_len;
   if (!EVP_Digest(NULL, 0, binder_context, &binder_context_len, digest, NULL)) {
@@ -465,14 +465,14 @@ static bool tls13_psk_binder(uint8_t *out, uint16_t version,
 
   uint8_t early_secret[EVP_MAX_MD_SIZE] = {0};
   size_t early_secret_len;
-  if (!HKDF_extract(early_secret, &early_secret_len, digest, psk, hash_len,
-                    NULL, 0)) {
+  if (!HKDF_extract(early_secret, &early_secret_len, digest, psk, psk_len, NULL,
+                    0)) {
     return false;
   }
 
   uint8_t binder_key[EVP_MAX_MD_SIZE] = {0};
   size_t len;
-  if (!hkdf_expand_label(binder_key, digest, early_secret, hash_len,
+  if (!hkdf_expand_label(binder_key, digest, early_secret, early_secret_len,
                          kTLS13LabelPSKBinder, strlen(kTLS13LabelPSKBinder),
                          binder_context, binder_context_len, hash_len) ||
       !tls13_verify_data(digest, version, out, &len, binder_key, hash_len,
@@ -480,66 +480,65 @@ static bool tls13_psk_binder(uint8_t *out, uint16_t version,
     return false;
   }
 
+  assert(len == hash_len);
   return true;
 }
 
-bool tls13_write_psk_binder(SSL_HANDSHAKE *hs, uint8_t *msg, size_t len) {
+static bool hash_transcript_and_truncated_client_hello(
+    SSL_HANDSHAKE *hs, uint8_t *out, size_t *out_len, const EVP_MD *digest,
+    Span<const uint8_t> client_hello, size_t binders_len) {
+  // Truncate the ClientHello.
+  if (binders_len + 2 < binders_len || client_hello.size() < binders_len + 2) {
+    return false;
+  }
+  client_hello = client_hello.subspan(0, client_hello.size() - binders_len - 2);
+
+  ScopedEVP_MD_CTX ctx;
+  unsigned len;
+  if (!hs->transcript.CopyToHashContext(ctx.get(), digest) ||
+      !EVP_DigestUpdate(ctx.get(), client_hello.data(), client_hello.size()) ||
+      !EVP_DigestFinal_ex(ctx.get(), out, &len)) {
+    return false;
+  }
+
+  *out_len = len;
+  return true;
+}
+
+bool tls13_write_psk_binder(SSL_HANDSHAKE *hs, Span<uint8_t> msg) {
   SSL *const ssl = hs->ssl;
   const EVP_MD *digest = ssl_session_get_digest(ssl->session.get());
   size_t hash_len = EVP_MD_size(digest);
 
-  if (len < hash_len + 3) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return false;
-  }
-
   ScopedEVP_MD_CTX ctx;
   uint8_t context[EVP_MAX_MD_SIZE];
-  unsigned context_len;
-
-  if (!EVP_DigestInit_ex(ctx.get(), digest, NULL) ||
-      !EVP_DigestUpdate(ctx.get(), hs->transcript.buffer().data(),
-                        hs->transcript.buffer().size()) ||
-      !EVP_DigestUpdate(ctx.get(), msg, len - hash_len - 3) ||
-      !EVP_DigestFinal_ex(ctx.get(), context, &context_len)) {
-    return false;
-  }
-
+  size_t context_len;
   uint8_t verify_data[EVP_MAX_MD_SIZE] = {0};
-  if (!tls13_psk_binder(verify_data, ssl->session->ssl_version, digest,
+  if (!hash_transcript_and_truncated_client_hello(
+          hs, context, &context_len, digest, msg,
+          1 /* length prefix */ + hash_len) ||
+      !tls13_psk_binder(verify_data, ssl->session->ssl_version, digest,
                         ssl->session->master_key,
                         ssl->session->master_key_length, context, context_len,
                         hash_len)) {
     return false;
   }
 
-  OPENSSL_memcpy(msg + len - hash_len, verify_data, hash_len);
+  OPENSSL_memcpy(msg.data() + msg.size() - hash_len, verify_data, hash_len);
   return true;
 }
 
 bool tls13_verify_psk_binder(SSL_HANDSHAKE *hs, SSL_SESSION *session,
                              const SSLMessage &msg, CBS *binders) {
   size_t hash_len = hs->transcript.DigestLen();
-
-  // The message must be large enough to exclude the binders.
-  if (CBS_len(&msg.raw) < CBS_len(binders) + 2) {
-    OPENSSL_PUT_ERROR(SSL, ERR_R_INTERNAL_ERROR);
-    return false;
-  }
-
-  // Hash a ClientHello prefix up to the binders. This includes the header. For
-  // now, this assumes we only ever verify PSK binders on initial
-  // ClientHellos.
   uint8_t context[EVP_MAX_MD_SIZE];
-  unsigned context_len;
-  if (!EVP_Digest(CBS_data(&msg.raw), CBS_len(&msg.raw) - CBS_len(binders) - 2,
-                  context, &context_len, hs->transcript.Digest(), NULL)) {
-    return false;
-  }
-
+  size_t context_len;
   uint8_t verify_data[EVP_MAX_MD_SIZE] = {0};
   CBS binder;
-  if (!tls13_psk_binder(verify_data, hs->ssl->version, hs->transcript.Digest(),
+  if (!hash_transcript_and_truncated_client_hello(hs, context, &context_len,
+                                                  hs->transcript.Digest(),
+                                                  msg.raw, CBS_len(binders)) ||
+      !tls13_psk_binder(verify_data, hs->ssl->version, hs->transcript.Digest(),
                         session->master_key, session->master_key_length,
                         context, context_len, hash_len) ||
       // We only consider the first PSK, so compare against the first binder.

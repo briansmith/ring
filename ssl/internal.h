@@ -596,9 +596,11 @@ class SSLTranscript {
   // is released.
   bool UpdateForHelloRetryRequest();
 
-  // CopyHashContext copies the hash context into |ctx| and returns true on
-  // success.
-  bool CopyHashContext(EVP_MD_CTX *ctx);
+  // CopyToHashContext initializes |ctx| with |digest| and the data thus far in
+  // the transcript. It returns true on success and false on failure. If the
+  // handshake buffer is still present, |digest| may be any supported digest.
+  // Otherwise, |digest| must match the transcript hash.
+  bool CopyToHashContext(EVP_MD_CTX *ctx, const EVP_MD *digest);
 
   Span<const uint8_t> buffer() {
     return MakeConstSpan(reinterpret_cast<const uint8_t *>(buffer_->data),
@@ -1309,7 +1311,7 @@ bool tls13_derive_session_psk(SSL_SESSION *session, Span<const uint8_t> nonce);
 // tls13_write_psk_binder calculates the PSK binder value and replaces the last
 // bytes of |msg| with the resulting value. It returns true on success, and
 // false on failure.
-bool tls13_write_psk_binder(SSL_HANDSHAKE *hs, uint8_t *msg, size_t len);
+bool tls13_write_psk_binder(SSL_HANDSHAKE *hs, Span<uint8_t> msg);
 
 // tls13_verify_psk_binder verifies that the handshake transcript, truncated up
 // to the binders has a valid signature using the value of |session|'s
@@ -1738,7 +1740,8 @@ bool ssl_ext_pre_shared_key_parse_serverhello(SSL_HANDSHAKE *hs,
                                               CBS *contents);
 bool ssl_ext_pre_shared_key_parse_clienthello(
     SSL_HANDSHAKE *hs, CBS *out_ticket, CBS *out_binders,
-    uint32_t *out_obfuscated_ticket_age, uint8_t *out_alert, CBS *contents);
+    uint32_t *out_obfuscated_ticket_age, uint8_t *out_alert,
+    const SSL_CLIENT_HELLO *client_hello, CBS *contents);
 bool ssl_ext_pre_shared_key_add_serverhello(SSL_HANDSHAKE *hs, CBB *out);
 
 // ssl_is_sct_list_valid does a shallow parse of the SCT list in |contents| and
